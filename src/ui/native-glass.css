@@ -21,7 +21,7 @@ body.in-game #game-stage .nc-card .game-button:not(.secondary){text-shadow:none;
 
 /* Reading/privacy dialogs keep their article theme and lifecycle. */
 html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog){
-  background:rgb(255 255 255 / .03);background-image:none;
+  background:rgb(255 255 255 / .13);background-image:none;
   -webkit-backdrop-filter:var(--glass-clear-blur);backdrop-filter:var(--glass-clear-blur);
   color:#0b1015;--sheet-halo:rgb(255 255 255 / .62);
   -webkit-text-stroke:0;paint-order:stroke fill;
@@ -30,7 +30,7 @@ html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dial
 }
 html body #study-view .study-privacy .study-privacy-dialog::backdrop{background:transparent}
 html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog) :is(p,label,h2,button){color:inherit;text-shadow:inherit}
-html body #study-view .study-privacy .study-privacy-actions button{background:rgb(0 0 0 / .03)!important}
+html body #study-view .study-privacy .study-privacy-actions button{background:rgb(0 0 0 / .13)!important}
 
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
   body.in-game #game-stage .nc-card{--glass-clear-fill:#1c1c20;--glass-clear-blur:none;--native-glass-ink:#fff;--native-glass-halo:transparent;border-color:rgb(255 255 255 / .24)}

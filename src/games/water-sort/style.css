@@ -15,7 +15,7 @@
 .ws-game[data-layout=single] .ws-row{display:contents}
 @media(min-width:700px){.ws-hint-label{font-size:12px}}
 
-/* Undo and Hint occupy a compact top row beside the shell controls. */
+/* Undo and Hint are siblings of the existing dock HUD. */
 .ws-game{padding:0 8px 8px}
 .ws-playfield{flex:1 1 auto;min-height:0}
 .ws-game .ws-tubes{inset:4% 0;gap:16px}
@@ -29,10 +29,3 @@
 @media(max-height:500px){.ws-victory strong{font-size:18px}}
 @media(prefers-reduced-motion:reduce){.ws-victory{animation-duration:500ms}}
 .ws-game[data-reduced=true] .ws-victory{animation-duration:500ms}
-
-/* A separate top-row action group keeps the compact HUD at its natural width. */
-.game-view[data-game-id=water-sort] .game-dock{right:calc(env(safe-area-inset-right,0px) + 108px);max-width:calc(100% - var(--dock-inset-left) - env(safe-area-inset-right,0px) - 108px)}
-.ws-top-actions{position:absolute;right:calc(env(safe-area-inset-right,0px) + 12px);top:calc(env(safe-area-inset-top,0px) + 8px);z-index:30;display:flex;gap:4px;height:44px}
-.ws-top-actions>.ui-tab{position:relative;flex:none;display:grid;place-items:center;width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border:0;border-radius:50%;--glass-radius:22px;color:#fff}
-.ws-top-actions svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.ws-top-actions button:disabled{opacity:.4;cursor:default}

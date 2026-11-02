@@ -41,7 +41,7 @@ test('auto-next defaults on, can be switched off and persists in synced settings
  await page.reload();await expect(toggle).not.toBeChecked();await expect(page.frameLocator('.movies-provider-frame').getByRole('button')).toBeVisible();await telemetry(page);await expect(overlay(page)).toBeHidden();
 });
 test('Escape opens Study and cancels any later navigation; returning leaves the stream paused',async({page})=>{
- await open(page);await ended(page);await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await page.clock.runFor(11000);await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();await expect(page.getByRole('button',{name:'Resume stream'})).toBeVisible();await expect(page).toHaveURL(/season\/1\/episode\/1\/play$/);await expect(overlay(page)).toBeHidden();
+ await open(page);await ended(page);await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await page.clock.runFor(11000);await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await expect(page.getByRole('button',{name:'Resume stream'})).toBeVisible();await expect(page).toHaveURL(/season\/1\/episode\/1\/play$/);await expect(overlay(page)).toBeHidden();
 });
 test('navigation and hidden-tab pause cancel timers',async({page})=>{
  await open(page);await ended(page);await page.getByRole('link',{name:'Back to Sherlock'}).click();await page.clock.runFor(11000);await expect(page).not.toHaveURL(/\/play$/);
@@ -81,7 +81,7 @@ test.describe('touch',()=>{test.use({viewport:{width:390,height:844},hasTouch:tr
 test('native video ended resets progress and opens the same countdown',async({page})=>{
  await page.route('**/movies/licenses.json',r=>r.fulfill({json:[{key:'tv-19885:s1:e1',path:'movies/media/fixture.webm',license:'CC0-1.0',credit:'QCC fixture',evidence:'docs/rights/fixture.md',reviewed:true,territory:'Worldwide',expires:'2099-01-01'}]}));
  await page.route('**/movies/media/fixture.webm',r=>r.fulfill({contentType:'video/webm',body:readFileSync('tests/fixtures/movies.webm')}));
- await page.goto(route());const video=page.locator('video');await expect(video).toBeVisible();await video.evaluate(async(v:HTMLVideoElement)=>{await v.play();});await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.currentTime)).toBeGreaterThan(.1);await page.keyboard.press('Escape');await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();await video.evaluate(async(v:HTMLVideoElement)=>{await v.play();});await expect(overlay(page)).toBeVisible();
+ await page.goto(route());const video=page.locator('video');await expect(video).toBeVisible();await video.evaluate(async(v:HTMLVideoElement)=>{await v.play();});await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.currentTime)).toBeGreaterThan(.1);await page.keyboard.press('Escape');await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await video.evaluate(async(v:HTMLVideoElement)=>{await v.play();});await expect(overlay(page)).toBeVisible();
  await page.clock.install();await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.keyboard.press('Escape');await page.clock.runFor(11000);
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')!).progress['tv-19885:s1:e1'])).toBe(0);
 });
@@ -196,29 +196,27 @@ test('Up next hides a frost island until Cancel brings it back',async({page})=>{
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
  await expect(island(page)).not.toHaveAttribute('data-hidden');await expect.poll(()=>islandShown(page)).toBe(1);
 });
-// Up next takes both controls away; Cancel preserves the reader's collapse state.
-test('Up next hides a minimized island and Cancel restores its collapsed state',async({page})=>{
+// Up next takes a minimized island and its capsule away together. Cancel brings the island back, expanded, since the travel count restarts.
+test('Up next hides a minimized island and its capsule, and Cancel brings the island back expanded',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
  // The single-provider player is shorter; keep this scroll outside the bottom zone that expands the island.
  await page.locator('.movies-view').evaluate(e=>e.scrollTo(0,180));
  await expect(island(page)).toHaveAttribute('data-minimized','true');await expect.poll(()=>capsuleShown(page)).toBe(1);
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
- await expect(island(page)).not.toHaveAttribute('data-hidden');await expect(island(page)).toHaveAttribute('data-minimized','true');
- await expect.poll(()=>islandShown(page)).toBe(1);await expect.poll(()=>capsuleShown(page)).toBe(1);
+ await expect(island(page)).not.toHaveAttribute('data-hidden');await expect(island(page)).not.toHaveAttribute('data-minimized');
+ await expect.poll(()=>islandShown(page)).toBe(1);await expect.poll(()=>capsuleShown(page)).toBe(0);
 });
-test('keyboard focus moves from the island into Up next and returns after Cancel',async({page})=>{
+test('keyboard focus in the island keeps it visible while Up next shows',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
- const tab=island(page).locator('[data-section="movies"]');await tab.focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');await expect(tab).toBeFocused();
- await ended(page);await page.clock.runFor(450);await expect(island(page)).toHaveAttribute('data-hidden','true');
- await expect(page.locator('.movies-navigation')).toHaveAttribute('inert');await expect(page.locator('.movies-navigation')).toHaveCSS('visibility','hidden');
- await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
- await page.keyboard.press('Tab');await expect(page.getByRole('button',{name:'Cancel',exact:true})).toBeFocused();await page.keyboard.press('Enter');await page.clock.runFor(200);
- await expect(tab).toBeFocused();await expect(page.locator('.movies-navigation')).not.toHaveAttribute('inert');
+ const tab=island(page).locator('[data-kind="movie"]');await tab.focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');await expect(tab).toBeFocused();
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect(tab).toBeFocused();
+ // A hide would fade over about 380 ms, so the island is read once no transition on it or its layers is running.
+ await expect.poll(()=>island(page).evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);expect(await islandShown(page)).toBe(1);
 });
 test('pointer focus in the island does not keep it visible, so Up next moves focus to Play now',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
- const tab=island(page).locator('[data-section="movies"]');await page.locator('.movies-player>h2').click();await tab.evaluate(e=>(e as HTMLElement).focus());await expect(tab).toBeFocused();expect(await tab.evaluate(e=>e.matches(':focus-visible'))).toBe(false);
+ const tab=island(page).locator('[data-kind="movie"]');await page.locator('.movies-player>h2').click();await tab.evaluate(e=>(e as HTMLElement).focus());await expect(tab).toBeFocused();expect(await tab.evaluate(e=>e.matches(':focus-visible'))).toBe(false);
  // A click on a non-focusable heading, then a script focus, is not keyboard focus.
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');
  // ended() pauses animation frames too; advance the hide transition before
@@ -226,15 +224,12 @@ test('pointer focus in the island does not keep it visible, so Up next moves foc
  await page.clock.runFor(450);await expect.poll(()=>islandShown(page)).toBe(0);
  await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
 });
-test('keyboard focus moves from the separate Menu into Up next and returns after Cancel',async({page})=>{
+test('keyboard focus in the separate Menu keeps the navigation visible during Up next',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
  await island(page).locator('[data-action="study"]').focus();await page.keyboard.press('Tab');
  const menu=page.locator('.movies-menu');await expect(menu).toBeFocused();
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');
- await page.clock.runFor(450);await expect(page.locator('.movies-navigation')).toHaveAttribute('inert');await expect(page.locator('.movies-navigation')).toHaveCSS('visibility','hidden');
- await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
- await page.keyboard.press('Tab');await expect(page.getByRole('button',{name:'Cancel',exact:true})).toBeFocused();await page.keyboard.press('Enter');await page.clock.runFor(200);
- await expect(menu).toBeFocused();await expect(menu).toHaveCSS('opacity','1');await expect(page.locator('.movies-navigation')).not.toHaveAttribute('inert');
+ await expect(menu).toBeFocused();await expect(menu).toHaveCSS('opacity','1');expect(await islandShown(page)).toBe(1);
 });
 test('scrolling the page while Up next shows keeps the island hidden',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);await ended(page);

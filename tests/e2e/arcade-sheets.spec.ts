@@ -1,6 +1,6 @@
 import {test,expect} from '../fixtures';
 import {gameAction,openGameMenu} from '../game-menu';
-import {glyphContrast,glyphFillMask} from '../glass-contrast';
+import {glyphContrast} from '../glass-contrast';
 
 for(const [id,tone] of [['snake','dark'],['fruit-merge','light']] as const){
   test(`${id} menu and its submenus use a neutral glass sheet and retain modal focus`,async({page})=>{
@@ -11,12 +11,11 @@ for(const [id,tone] of [['snake','dark'],['fruit-merge','light']] as const){
     await expect(menu).toHaveAttribute('data-glass-tone',tone);
     const material=await menu.evaluate(e=>{
       const s=getComputedStyle(e),group=getComputedStyle(e.querySelector('.game-menu-actions')!);
-      return {filter:s.backdropFilter,radius:parseFloat(s.borderRadius),padding:parseFloat(s.paddingLeft),groupRadius:parseFloat(group.borderRadius),grabbers:e.querySelectorAll(':scope>.sheet-grabber').length,oldGrabber:getComputedStyle(e,'::before').display};
+      return {filter:s.backdropFilter,radius:parseFloat(s.borderRadius),padding:parseFloat(s.paddingLeft),groupRadius:parseFloat(group.borderRadius),grabber:getComputedStyle(e,'::before').content};
     });
-    expect(material.filter).toContain('blur(3px)');
+    expect(material.filter).toContain('blur(8px)');
     expect(material.radius).toBe(material.groupRadius+material.padding);
-    expect(material.grabbers).toBe(1);
-    expect(material.oldGrabber).toBe('none');
+    expect(material.grabber).toBe('""');
     // The paused game's artwork remains visible behind the sheet. Its state is still paused.
     await expect(page.locator('#pause-overlay')).toHaveCSS('opacity','0');
     await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');
@@ -52,7 +51,7 @@ test('home sheets are light and game-owned submenus share the glass surface',asy
     await expect(page.locator('#game-stage .game-menu-source').first()).toBeAttached();
     await gameAction(page,action);
     const panel=page.locator(selector);await expect(panel).toBeVisible();
-    expect(await panel.evaluate(e=>getComputedStyle(e).backdropFilter)).toContain('blur(3px)');
+    expect(await panel.evaluate(e=>getComputedStyle(e).backdropFilter)).toContain('blur(8px)');
     await expect.poll(()=>panel.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
     const targets=await panel.locator('button').evaluateAll(buttons=>buttons.map(b=>b.getBoundingClientRect().height).filter(h=>h>0));
     expect(Math.min(...targets),`${id} submenu touch targets`).toBeGreaterThanOrEqual(44);
@@ -94,23 +93,17 @@ for(const feature of ['prefers-reduced-transparency','prefers-contrast','forced-
   });
 }
 
-for(const [view,black] of [['home',false],['accounts',false],['snake',false],['fruit-merge',false],['home',true]] as const){
-  test(`${view}${black?' over black artwork':''} sheet text keeps 4.5:1 contrast over the rendered backdrop`,async({page})=>{
+for(const view of ['home','accounts','snake','fruit-merge']){
+  test(`${view} sheet text keeps 4.5:1 contrast over the rendered backdrop`,async({page})=>{
     await page.setViewportSize({width:390,height:844});
     const home=['home','accounts'].includes(view);
     await page.goto(home?'/#/collection':`/#/game/${view}`);
     if(home)await page.getByRole('button',{name:'Open menu',exact:true}).click();
     else await openGameMenu(page);
     if(view==='accounts')await page.getByRole('button',{name:'Log in / Sign up',exact:true}).click();
-    if(black)await page.evaluate(()=>{
-      const artwork=document.createElement('div');artwork.style.cssText='position:fixed;inset:0;background:#000;pointer-events:none;z-index:9999';document.body.append(artwork);
-    });
     const selector=view==='accounts'?'#accounts-dialog':home?'#menu':'#game-options',panel=page.locator(selector);
     await expect.poll(()=>panel.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
     await panel.evaluate(e=>{e.scrollTop=0;});
-    // Paint the changed backdrop before recording adaptive foreground colors.
-    await panel.screenshot({animations:'disabled'});
-    const mask=await glyphFillMask(page,panel,`${selector},${selector} *`);
     const boxes=await panel.evaluate(e=>{
       const outer=e.getBoundingClientRect(),walker=document.createTreeWalker(e,NodeFilter.SHOW_TEXT),boxes=[];
       while(walker.nextNode()){
@@ -118,17 +111,18 @@ for(const [view,black] of [['home',false],['accounts',false],['snake',false],['f
         if(!node.textContent?.trim()||parent.closest('.sr-only')||getComputedStyle(parent).visibility==='hidden')continue;
         const range=document.createRange();range.selectNodeContents(node);
         for(const r of range.getClientRects())if(r.width&&r.top>=outer.top+2&&r.bottom<=outer.bottom-2){
-          boxes.push({x:r.x-outer.x,y:r.y-outer.y,w:r.width,h:r.height,color:getComputedStyle(parent).color,text:node.textContent});
+          boxes.push({x:r.x-outer.x,y:r.y-outer.y,w:r.width,h:r.height,color:getComputedStyle(parent).color});
         }
       }
       return boxes;
     });
     expect(boxes.length).toBeGreaterThan(8);
-    const hide=await page.addStyleTag({content:`${selector},${selector} *{-webkit-text-fill-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}`});
+    const hide=await page.addStyleTag({content:`${selector} *{color:transparent!important}`});
     const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');
     await hide.evaluate(e=>e.parentNode?.removeChild(e));
+    await page.addStyleTag({content:`${selector},${selector} *{background:#000!important;color:#fff!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important}`});
+    const mask=(await panel.screenshot({animations:'disabled'})).toString('base64');
     const ratios=await glyphContrast(page,shot,mask,boxes,(await panel.boundingBox())!);
-    await test.info().attach('sheet-core-contrast',{body:JSON.stringify(boxes.map((box,i)=>({...box,contrast:ratios[i]}))),contentType:'application/json'});
     expect(Math.min(...ratios),ratios.map(r=>r.toFixed(2)).join(', ')).toBeGreaterThanOrEqual(4.5);
   });
 }

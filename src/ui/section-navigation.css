@@ -1,15 +1,20 @@
-/* Existing shell material, shared by every bounded section-glass surface.
-   Geometry and lifetime stay with their components. One painted surface per object.
+/* One material and one painted surface through every navigation state/route.
    The mini button supplies only an icon and a hit target over the same pill. */
-.section-glass.arcade-glass:is([data-glass=frost],[data-glass=backdrop]){
+.section-navigation>.arcade-glass,.section-navigation>.arcade-glass-mini,.floating-glass-group.arcade-glass[data-glass-tone=light]{
+  /* Same clear material as every other glass surface. The backdrop is only
+     softened (never filled white) so one shared ink stays legible over art. */
+  --glass-tint:var(--glass-clear-fill);--glass-frost:blur(3px);
+  --glass-tone:saturate(1.05) brightness(.9) contrast(.85);
+}
+.section-navigation>.arcade-glass:is([data-glass=frost],[data-glass=backdrop]){
   background:none;border:0;box-shadow:none;
 }
-.section-glass.arcade-glass[data-glass=backdrop]{-webkit-backdrop-filter:none;backdrop-filter:none}
-.section-glass.arcade-glass>.ui-glass-lens{
+.section-navigation>.arcade-glass[data-glass=backdrop]{-webkit-backdrop-filter:none;backdrop-filter:none}
+.section-navigation>.arcade-glass>.ui-glass-lens{
   border-radius:inherit;overflow:hidden;
   -webkit-backdrop-filter:var(--glass-frost-body);backdrop-filter:var(--glass-frost-body);
 }
-.section-glass.arcade-glass.is-refracting>.ui-glass-lens{
+.section-navigation>.arcade-glass.is-refracting>.ui-glass-lens{
   -webkit-backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone);
   backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone);
 }

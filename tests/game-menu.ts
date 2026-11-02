@@ -10,14 +10,9 @@ export async function startGame(page:Page,id:string){
 export async function openGameMenu(page:Page){
   if(await page.locator('#game-options[open]').count())return;
   const local=page.locator('#game-stage dialog[open]');
-  if(await local.count()){
-    // WebKit can consume Escape to leave native fullscreen before the sheet
-    // sees it. Use the sheet's real close action while navigating its menus.
-    const close=local.getByRole('button',{name:/^Close\b/}).first();
-    if(await close.count())await close.click();else await page.keyboard.press('Escape');
-  }
+  if(await local.count())await page.keyboard.press('Escape');
   const menu=page.locator('#game-menu');
-  if(await page.evaluate(()=>!!document.pointerLockElement)){await menu.focus();await menu.press('Space');}
+  if(await page.evaluate(()=>!!document.pointerLockElement)){await menu.focus();await menu.press('Enter');}
   else await menu.click();
   await expect(page.locator('#game-options')).toBeVisible();
 }
@@ -39,9 +34,6 @@ export async function appSettings(page:Page){
   if(await page.locator('#game-menu').count()&&!await page.locator('#study-view').isVisible())await gameAction(page,'Settings');
   else await page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true}).click();
   await expect(page.locator('#menu')).toBeVisible();
-  // Native taps need the final sheet geometry; tapping a moving row can land
-  // on a replacement position between touchstart and touchend.
-  await expect.poll(()=>page.locator('#menu').evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
 }
 export async function gameOption(page:Page,label:string,value:string){
   await openGameMenu(page);

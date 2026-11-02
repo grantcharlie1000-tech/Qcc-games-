@@ -223,7 +223,7 @@ test('real drag and held keys steer; P pauses and resumes; Study, blur, death an
     const studied=await data(page,'x');await page.keyboard.down('ArrowLeft');await page.clock.runFor(100);expect(await data(page,'x')).toBeLessThan(studied);
     await page.keyboard.press('Escape');const studyDistance=await root.getAttribute('data-distance');
     await page.keyboard.down('d');await page.clock.runFor(200);expect(await root.getAttribute('data-distance')).toBe(studyDistance);await page.keyboard.up('d');
-    await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();
+    await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
     await expect(root).toHaveAttribute('data-phase','running');await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
     await page.clock.runFor(400);const settled=await data(page,'x');await page.clock.runFor(250);expect(Math.abs(await data(page,'x')-settled)).toBeLessThan(.02);
     await page.keyboard.up('ArrowLeft');
@@ -511,8 +511,8 @@ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366
   const back=(await page.getByRole('link',{name:'Games'}).boundingBox())!,pause=(await page.locator('#game-menu').boundingBox())!;
   for(const control of [back,pause])expect(apart(hud,control)).toBe(true);
   const mid=(b:Box)=>b.x+b.width/2;
-  expect(back.x).toBeLessThanOrEqual(16);
-  expect(Math.abs(mid(speed)-viewport.width/2)).toBeLessThanOrEqual(1);
+  expect(Math.abs(mid(hud)-viewport.width/2)).toBeLessThanOrEqual(1);
+  expect(Math.abs(mid(speed)-mid(hud))).toBeLessThanOrEqual(1);
   expect(speed.y).toBeGreaterThanOrEqual(hud.y+hud.height);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
   await evidence(page,`${viewport.width}x${viewport.height}.png`);

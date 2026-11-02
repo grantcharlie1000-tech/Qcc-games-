@@ -1,9 +1,6 @@
-import {GAME_IDS} from '../../src/core/types';
 import {test,expect} from '../fixtures';
-import {glyphContrast,glyphFillMask} from '../glass-contrast';
+import {glyphContrast} from '../glass-contrast';
 
-// Resolve opaque cores in small captions on both browser rasterizers.
-test.use({deviceScaleFactor:3});
 const forcedFallback=process.env.ARCADE_GLASS_FALLBACK==='1';
 test.beforeEach(async({page})=>{
   if(forcedFallback)await page.addInitScript(()=>{
@@ -11,48 +8,43 @@ test.beforeEach(async({page})=>{
   });
 });
 
-for(const font of ['system','Arial'])for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contrast over a card-row gap at ${scroll}px${font==='system'?'':' with Arial fallback'}`,async({page})=>{
-  if(font==='Arial')await page.addInitScript(()=>addEventListener('DOMContentLoaded',()=>document.documentElement.style.setProperty('--font-sans','Arial')));
+for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contrast over a card-row gap at ${scroll}px`,async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');
-  await page.evaluate(()=>document.fonts.ready);
   const nav=page.locator('.app-navigation'),bar=page.locator('.app-tabbar');
-  // Preserve the same card-row gap after the shared utilities add top clearance.
-  await page.evaluate(y=>scrollTo(0,y+parseFloat(getComputedStyle(document.querySelector('#content')!).paddingTop)),scroll);await expect(bar).toHaveAttribute('data-minimized','true');
+  await page.evaluate(y=>scrollTo(0,y),scroll);await expect(bar).toHaveAttribute('data-minimized','true');
   await page.locator('.ui-tabbar-mini').click();await expect(bar).not.toHaveAttribute('data-minimized');
-  await expect.poll(()=>nav.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
   for(const name of ['Study','Open menu']){
     const button=nav.getByRole('button',{name,exact:true});await button.hover();await page.mouse.down();
-    await expect(name==='Study'?bar:button).toHaveAttribute('data-pressing');
-    await expect.poll(()=>nav.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
-    const bounds=(await nav.boundingBox())!;
-    const mask=await glyphFillMask(page,nav,'.app-navigation .ui-tab>:is(svg,span):not(.ui-glass-lens,.ui-glass-glow)',true);
+    await button.screenshot({animations:'disabled'});
     const boxes=await nav.evaluate(n=>{
       const b=n.getBoundingClientRect();
       return [...n.querySelectorAll('.ui-tab > .ui-icon,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
-        const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
+        const r=e.getBoundingClientRect();return {x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(e).color};
       });
     });
-    const hide=await page.addStyleTag({content:'.app-navigation .ui-tab>:is(svg,span):not(.ui-glass-lens,.ui-glass-glow){color:transparent!important;-webkit-text-fill-color:transparent!important}'});
+    const hidden=await page.addStyleTag({content:'.app-navigation .ui-tab{color:transparent!important}'});
     const shot=(await nav.screenshot({animations:'disabled'})).toString('base64');
-    await hide.evaluate(e=>e.parentNode?.removeChild(e));
+    await hidden.evaluate(e=>e.parentNode?.removeChild(e));
+    const maskStyle=await page.addStyleTag({content:'body{background:#000!important}#content{visibility:hidden!important}.app-navigation .arcade-glass{background:transparent!important;backdrop-filter:none!important}.app-navigation .arcade-glass::before,.app-navigation .arcade-glass::after,.app-navigation .ui-glass-lens,.app-navigation .ui-glass-glow{visibility:hidden!important}.app-navigation .ui-tab{color:#fff!important;background:none!important;text-shadow:none!important}'});
+    const mask=(await nav.screenshot({animations:'disabled'})).toString('base64');
+    await maskStyle.evaluate(e=>e.parentNode?.removeChild(e));
     await page.mouse.move(0,0);await page.mouse.up();
-    const ratios=await glyphContrast(page,shot,mask,boxes,bounds);
+    const ratios=await glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);
     expect(Math.min(...ratios),`${name}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
   }
 });
 
 for(const width of [320,390,1366]){
-  test(`short HUDs hug content within the leading cluster at ${width}px`,async({page})=>{
+  test(`short HUDs hug content and stay centered at ${width}px`,async({page})=>{
     await page.setViewportSize({width,height:844});
     await page.goto('/#/game/snake');
     const hud=page.locator('.game-hud');await expect(hud.locator('strong')).toBeVisible();
     const box=(await hud.boundingBox())!;
-    expect(box.width).toBeGreaterThanOrEqual(64);
+    expect(box.width).toBeGreaterThanOrEqual(88);
     expect(box.width).toBeLessThanOrEqual(120);
-    const back=(await page.locator('.game-dock>a').boundingBox())!,end=(await page.locator('#game-menu').boundingBox())!;
-    expect(Math.abs(box.x+box.width/2-(back.x+back.width+end.x)/2)).toBeLessThan(1);
+    expect(Math.abs(box.x+box.width/2-width/2)).toBeLessThan(1);
     const menu=(await page.locator('#game-menu').boundingBox())!;
-    expect(menu.x-box.x-box.width).toBeGreaterThanOrEqual(width<360?6:8);
+    expect(menu.x-box.x-box.width).toBeGreaterThanOrEqual(8);
     expect(menu.x-box.x-box.width).toBeLessThanOrEqual(12);
   });
   test(`home has five tabs and a separate circular Menu at ${width}px`,async({page})=>{
@@ -67,9 +59,6 @@ for(const width of [320,390,1366]){
     expect(b.width).toBe(b.height);expect(b.width).toBeGreaterThanOrEqual(48);
     await bar.getByRole('button',{name:'Study',exact:true}).focus();
     await page.keyboard.press('Tab');await expect(menu).toBeFocused();
-    await page.keyboard.press('Tab');await expect(page.locator('.section-header .ui-brand')).toBeFocused();
-    await page.keyboard.press('Tab');await expect(page.locator('.section-header [data-shell-action=search]')).toBeFocused();
-    await page.keyboard.press('Tab');await expect(page.locator('.section-header [data-shell-action=study]')).toBeFocused();
     await page.keyboard.press('Tab');await expect(page.locator('.game-card').first()).toBeFocused();
   });
 }
@@ -132,12 +121,7 @@ for(const width of [390,1366]){
     const surface=(await page.locator('.game-surface').boundingBox())!;
     for(const b of boxes){expect(b.y).toBeGreaterThanOrEqual(surface.y);expect(b.bottom).toBeLessThanOrEqual(surface.y+surface.height);}
     const drop=(await page.locator('.fm-board').boundingBox())!;await expect(page.locator('.fm-drop')).toHaveCount(0);
-    for(const b of boxes){
-      // Desktop boards can sit beside the leading control cluster; require
-      // actual rectangular clearance rather than a fixed vertical ordering.
-      const clearance=Math.max(drop.x-b.right,b.x-drop.x-drop.width,drop.y-b.bottom,b.y-drop.y-drop.height);
-      expect(clearance).toBeGreaterThanOrEqual(8);
-    }
+    expect(drop.y+drop.height).toBeLessThanOrEqual(boxes[0].y-8);
     await expect(page.locator('.game-view')).toHaveAttribute('data-glass-tone','light');
     for(const object of await objects.all())await expect(object).toHaveAttribute('data-glass',browserName==='chromium'?'backdrop':'frost');
     await expect(dock).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
@@ -150,7 +134,7 @@ for(const width of [390,1366]){
     await page.goto('/#/game/snake');
     const value=page.locator('.game-hud strong');
     const size=await value.evaluate(e=>parseFloat(getComputedStyle(e).fontSize));
-    expect(size).toBeGreaterThanOrEqual(width===390?18:20);
+    expect(size).toBeGreaterThanOrEqual(width===390?20:22);
     await page.emulateMedia({contrast:'more'});
     await expect(page.locator('.game-hud')).toHaveAttribute('data-glass','off');
     await expect(value).toHaveCSS('font-size',`${size}px`);
@@ -195,14 +179,14 @@ test('pale home glass keeps keyboard focus visible with increased contrast',asyn
   await expect(page.locator('.app-tabbar')).toHaveCSS('background-color','rgb(241, 243, 245)');
 });
 
-test('pointer press lifts the individual button and reduced motion removes the lift',async({page,browserName})=>{
+test('pointer press lifts the individual button and reduced motion removes the lift',async({page})=>{
   await page.goto('/#/game/snake');
   const button=page.locator('#game-menu');
   await button.hover();await page.mouse.down();
   await expect(button).toHaveAttribute('data-pressing','');
   await expect.poll(()=>button.evaluate(e=>parseFloat(getComputedStyle(e).scale))).toBeGreaterThanOrEqual(1.08);
   const filter=await button.getAttribute('data-glass')==='frost'?button:button.locator('.ui-glass-lens');
-  await expect(filter).toHaveCSS('backdrop-filter',/blur\(3px\)/);
+  await expect(filter).toHaveCSS('backdrop-filter',/blur\(1px\)/);
   await page.mouse.move(1,1);await page.mouse.up();
   await expect(button).not.toHaveAttribute('data-pressing');
   await page.emulateMedia({reducedMotion:'reduce'});
@@ -248,47 +232,44 @@ for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density
     await page.goto('/#/game/neon-coil');
     await expect(page.locator('#game-menu')).toHaveClass(/is-refracting/);
     const gameBlur=await page.locator('#game-menu .ui-glass-lens').evaluate(e=>getComputedStyle(e).backdropFilter.match(/blur\([^)]+\)/)![0]);
-    expect(homeBlur).toBe('blur(3px)');
-    expect(gameBlur).toBe('blur(3px)');
+    expect(homeBlur).toBe('blur(4px)');
+    expect(gameBlur).toBe('blur(1.5px)');
   });
 });
 
 // Read the actual rendered background under the glyph boxes with the glyphs
 // hidden. This catches an adaptive tone that looks clear but loses its labels.
-for(const id of GAME_IDS){
+for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','snake','neon-coil','quadfall','maze-muncher','ball-run','blockcraft']){
   test(`${id} dock glyphs retain 4.5:1 contrast over their rendered surface`,async({page,browserName})=>{
     await page.setViewportSize({width:390,height:844});await page.goto(`/#/game/${id}`);
-    await expect(page.locator('.game-view')).toHaveAttribute('data-game-chrome','ready');
     // The shell is intentionally absent behind game-owned modal menus.
     if(id==='blockcraft')await page.getByRole('button',{name:'Play',exact:true}).click();
     const dock=page.locator('.game-dock');
     await expect(dock.locator('.game-hud strong,.game-compact-hud').filter({visible:true}).first()).toBeVisible();
-    const optics=dock.locator(`:scope > .game-glass[data-glass=${browserName==='chromium'&&!forcedFallback?'backdrop':'frost'}]`);
-    await expect(optics).toHaveCount(id==='water-sort'?5:3);
+    await expect(dock.locator(`.game-glass[data-glass=${browserName==='chromium'&&!forcedFallback?'backdrop':'frost'}]`)).toHaveCount(3);
     if(id==='ball-run'){
       await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+100));
       await page.locator('.br-play').click();await page.clock.runFor(600);
     }
     if(id==='blockcraft'){
-      // A cave or night sky may be entirely dark. Clear glass must still
-      // support its dark glyphs on that darkest background.
+      // A cave or night sky may be entirely dark. The light regular variant must
+      // still support its dark glyphs on that darkest background.
       await page.addStyleTag({content:'.blockcraft canvas{opacity:0!important}.blockcraft{background:#000!important}'});
-      await page.evaluate(()=>dispatchEvent(new Event('resize')));
-      await expect.poll(()=>page.locator('.game-hud strong').evaluate(e=>getComputedStyle(e).color)).toBe('rgb(255, 255, 255)');
     }
-    await dock.screenshot({animations:'disabled'});
-    const glyphs='.game-dock :is(.game-hud small,.game-hud strong,.game-compact-hud,.ui-tab > svg,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow))';
-    const mask=await glyphFillMask(page,dock,glyphs,true);
     const boxes=await dock.evaluate(el=>{
       const d=el.getBoundingClientRect();
       return [...el.querySelectorAll('.game-hud small,.game-hud strong,.game-compact-hud,.ui-tab > svg,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
         const r=e.getBoundingClientRect();
-        return {x:(r.x-d.x),y:(r.y-d.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
+        return {x:r.x-d.x,y:r.y-d.y,w:r.width,h:r.height,color:getComputedStyle(e).color};
       }).filter(r=>r.w>0&&r.h>0);
     });
-    const hide=await page.addStyleTag({content:`${glyphs}{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important}`});
+    const hideInk=await page.addStyleTag({content:'.game-hud small,.game-hud strong,.game-compact-hud{color:transparent!important}.game-dock>.ui-tab>svg,.game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){visibility:hidden!important}'});
     const shot=(await dock.screenshot({animations:'disabled'})).toString('base64');
-    await hide.evaluate(e=>e.parentNode?.removeChild(e));
+    // Keep the real text shadow in the background shot. An opaque ink mask
+    // restricts contrast to actual glyph cores, rather than spaces in their boxes.
+    await hideInk.evaluate(e=>e.parentNode?.removeChild(e));
+    await page.addStyleTag({content:'.game-view{background:#000!important}.game-surface,.stage-wrap{visibility:hidden!important}.game-glass{background:transparent!important;backdrop-filter:none!important;border-color:transparent!important}.game-glass::before,.game-glass>.ui-glass-lens,.game-glass>.ui-glass-glow{visibility:hidden!important}.game-hud small,.game-hud strong,.game-compact-hud,.game-dock>.ui-tab{color:#fff!important;text-shadow:none!important}.game-dock>.ui-tab>svg{filter:none!important}'});
+    const mask=(await dock.screenshot({animations:'disabled'})).toString('base64');
     const ratios=await glyphContrast(page,shot,mask,boxes,(await dock.boundingBox())!);
     expect(Math.min(...ratios),`${id}: ${ratios.map(r=>r.toFixed(2)).join(', ')}`).toBeGreaterThanOrEqual(4.5);
   });

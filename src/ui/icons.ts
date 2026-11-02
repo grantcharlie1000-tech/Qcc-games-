@@ -1,9 +1,5 @@
-export type UiIcon='grid'|'film'|'tv'|'bookmark'|'search'|'menu'|'study'|'play'|'info'|'plus'|'check'|'chevron-left'|'chevron-right'|'back'|'close'|'image'|'trophy'|'undo'|'hint'|'star';
+export type UiIcon='grid'|'film'|'tv'|'bookmark'|'search'|'menu'|'study'|'play'|'info'|'plus'|'check'|'chevron-left'|'chevron-right'|'back'|'close'|'image';
 const paths:Record<UiIcon,string>={
-undo:'<path d="m9 4-5 5 5 5M4 9h10a6 6 0 0 1 0 12"/>',
-hint:'<path d="M9 18h6M10 21h4M8 14c-1-1-3-2.5-3-5a7 7 0 0 1 14 0c0 2.5-2 4-3 5l-1 2H9z"/>',
-star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
-trophy:'<path d="M8 3h8v5a4 4 0 0 1-8 0V3ZM8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4M12 12v6M8 21h8M9 18h6v3"/>',
 grid:'<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
 film:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>',
 tv:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="m8 3 4 4 4-4"/>',

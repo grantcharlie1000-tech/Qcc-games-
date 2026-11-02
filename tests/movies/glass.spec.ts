@@ -1,6 +1,5 @@
 import {test,expect,keyboardMode} from '../fixtures';
 import type {Locator,Page,Route} from '@playwright/test';
-import {glyphFillMask,glyphContrastSamples} from '../glass-contrast';
 
 // The Movies menus are Liquid Glass. The episode drawer is a glass sheet, the Up next card takes the sheet's surface, and the
 // genre select is a glass capsule whose open list stays native. The Movies island and forced colours are checked alongside them.
@@ -9,9 +8,6 @@ const DESKTOP={width:1440,height:900};
 const ACCESSIBILITY_NOTE='Reduce Transparency is emulated through CDP, which only Chromium offers.';
 const DRAWER={name:'Select episode',exact:true} as const;
 const TRIGGER={name:'S1 · E1',exact:true} as const;
-// These optical tests intercept the catalog and provider. WebKit can let a
-// registered service worker bypass page.route, even for an uncached API URL.
-test.use({serviceWorkers:'block'});
 
 test.beforeEach(async({page})=>{
  // Existing playback coverage accepts each fresh third-party playback warning.
@@ -41,17 +37,13 @@ async function openDrawer(page:Page,viewport=DESKTOP){
  return drawer;
 }
 // Plays the provider fixture's end of playback, which shows the Up next card for the next episode.
-async function showUpNext(page:Page,viewport=DESKTOP,freezeCountdown=false){
+async function showUpNext(page:Page,viewport=DESKTOP){
  await page.setViewportSize(viewport);
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
  await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
- if(freezeCountdown)await page.clock.install();
  await page.frame({url:/framextv/})!.evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:100,duration:100},'*'));
  const overlay=page.getByRole('dialog',{name:'Up next'});
  await expect(overlay).toBeVisible();
- // Keep the real countdown glyph identical across white/black/restored shots.
- // Its timer behavior is covered independently by auto-next.spec.ts.
- if(freezeCountdown)await page.clock.pauseAt(await page.evaluate(()=>Date.now()+100));
  return overlay;
 }
 // The computed value of each system colour, read from a probe, so an expectation never hard-codes a palette.
@@ -64,9 +56,7 @@ test('the episode drawer is a glass sheet with the sheet\'s blurred backdrop',as
  await expect(drawer).toHaveClass(/\bui-glass-sheet\b/);
  await expect(drawer).toHaveClass(/\bmovies-drawer\b/);
  expect(await drawer.getAttribute('class')).not.toMatch(/\bui-drawer\b/);
- expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(3px)');
- const controls=await page.locator('.movies-fullscreen,.movies-resume-pill,.movies-connecting').evaluateAll(es=>es.map(e=>({stroke:getComputedStyle(e).webkitTextStrokeWidth,shadow:getComputedStyle(e).textShadow})));
- expect(controls.length).toBeGreaterThan(0);for(const paint of controls)expect(paint).toEqual({stroke:'0px',shadow:'none'});
+ expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(28px)');
 });
 
 test('at 390 px the episode drawer is a bottom sheet inset 8 px from the sides and the bottom',async({page})=>{
@@ -160,9 +150,9 @@ test('forced colours give the drawer the system Canvas, CanvasText and a 2 px bo
  expect(await drawer.evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,border:s.borderTopColor,width:s.borderTopWidth};})).toEqual({background:system.Canvas,border:system.CanvasText,width:'2px'});
 });
 
-test('season pills stay flat while the sheet and its close have bounded glass',async({page})=>{
+test('the idle season pill is a translucent fill, and only the sheet has a backdrop filter',async({page})=>{
  const drawer=await openDrawer(page,PHONE);
- expect(await drawer.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none'&&!child.closest('.sheet-close-glass')).length)).toBe(0);
+ expect(await drawer.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none').length)).toBe(0);
  const pill=drawer.getByRole('button',{name:'Season 2',exact:true});
  const fill=await pill.evaluate(el=>getComputedStyle(el).backgroundColor);
  const alpha=parseFloat(/rgba\(\d+, \d+, \d+, ([\d.]+)\)/.exec(fill)?.[1]??'1');
@@ -170,7 +160,7 @@ test('season pills stay flat while the sheet and its close have bounded glass',a
  expect(alpha).toBeLessThan(1);
 });
 
-test('the current episode row preserves clear material with a bold title and rose leading edge',async({page})=>{
+test('the current episode row is a white 700 title on a 16% rose fill, with a rose bar on its leading edge',async({page})=>{
  // The series from the drawer text fixture is used, since its episodes carry the runtime that draws the meta line.
  await page.setViewportSize(PHONE);
  await page.route('**/api/movies?*',route=>{
@@ -186,7 +176,7 @@ test('the current episode row preserves clear material with a bold title and ros
  const current=drawer.locator('[aria-current="true"]');
  await expect(current.locator('small')).toBeVisible();
  expect(await current.locator('strong').evaluate(el=>{const s=getComputedStyle(el);return [s.color,s.fontWeight];})).toEqual(['rgb(255, 255, 255)','700']);
- expect(await current.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+ expect(await current.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(255, 32, 86, 0.16)');
  // The bar is an inset shadow on the leading edge, so the row's content does not move.
  expect(await current.evaluate(el=>getComputedStyle(el).boxShadow)).toMatch(/rgb\(255, 32, 86\) 3px 0px 0px 0px inset/);
  expect(await current.locator('small').evaluate(el=>getComputedStyle(el).color)).toBe('rgb(228, 228, 231)');
@@ -200,17 +190,9 @@ test('the close button is the sheet\'s icon button, and the heading is the sheet
  const drawer=await openDrawer(page,PHONE);
  const close=drawer.getByRole('button',{name:'Close episode list',exact:true});
  await expect(close).toHaveClass(/\bicon-button\b/);
- await expect(close).toHaveClass(/\barcade-glass\b/);
- expect(await close.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).toBe('rgba(184, 184, 184, 0.02)');
  expect(await close.evaluate(el=>{const s=getComputedStyle(el);return [s.width,s.height,s.borderTopLeftRadius];})).toEqual(['44px','44px','50%']);
  const heading=drawer.getByRole('heading',{name:'Episodes',exact:true});
  expect(await heading.evaluate(el=>{const s=getComputedStyle(el);return [s.fontSize,s.fontWeight,s.color,s.letterSpacing];})).toEqual(['20px','600','rgb(255, 255, 255)','-0.2px']);
- const original=await close.elementHandle();
- await drawer.locator('[data-drawer-season]').last().click();
- await expect(close).toHaveClass(/\barcade-glass\b/);
- await expect.poll(()=>original!.evaluate(e=>e.isConnected)).toBe(false);
- expect(await original!.evaluate(e=>e.hasAttribute('data-glass'))).toBe(false);
- expect(await close.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(184, 184, 184, 0.02)');
 });
 
 test('on open, focus goes to the current episode row',async({page})=>{
@@ -260,7 +242,7 @@ test('a long season name wraps inside the drawer at 320 px, with no horizontal o
 // One page per layout: a card shown on a phone would otherwise stay in the page for the desktop check.
 for(const viewport of [PHONE,DESKTOP])test(`the Up next card has the sheet's blurred glass surface at ${viewport.width} px`,async({page})=>{
  const overlay=await showUpNext(page,viewport);
- expect(await overlay.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(3px)');
+ expect(await overlay.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(28px)');
 });
 
 test('the Up next card has a 24 px corner in the card layout at 1440 px',async({page})=>{
@@ -326,21 +308,50 @@ test('Reduce Transparency makes the Up next card opaque with no blur (Chromium o
  expect(await overlay.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).backdropFilter])).toEqual(['rgb(28, 28, 32)','none']);
 });
 
-// Sample the backdrop beneath plain foreground cores, with only the text hidden.
-// Whitespace between letters remains see-through.
-for(const viewport of [DESKTOP,PHONE])test(`plain text on the Up next card keeps 4.5:1 over a bright white frame at ${viewport.width} px`,async({page})=>{
+// White text over a white frame. The provider frame is white, the card's labels are made transparent, and the pixels under each label
+// are read from a screenshot. The ratio uses the brightest pixel under the label, the worst case, against the label's own colour.
+for(const viewport of [DESKTOP,PHONE])test(`white text on the Up next card keeps 4.5:1 over a bright white frame at ${viewport.width} px`,async({page})=>{
  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><body style="margin:0;background:#fff"><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>'}));
- await showUpNext(page,viewport,true);
- const results=await glyphContrast(page,'.movies-next',[
-  {name:'title',selector:'h2'},
-  {name:'countdown',selector:'.movies-next-countdown'},
-  {name:'cancel',selector:'.ui-btn.secondary'}
- ]);
- expect(results.map(item=>item.name)).toEqual(['title','countdown','cancel']);
- for(const item of results){
-  expect(item.missing,item.name).toBe(false);
-  expect(item.count,`${item.name} glyph pixels`).toBeGreaterThan(0);
-  expect(item.worst,`${item.name}: ${item.worst}`).toBeGreaterThanOrEqual(4.5);
+ const overlay=await showUpNext(page,viewport);
+ const card=await overlay.boundingBox();
+ if(!card)throw new Error('The Up next card has no box');
+ const labels=await overlay.evaluate(root=>[...root.querySelectorAll<HTMLElement>('h2,.movies-next-countdown,.ui-btn.secondary')].map(el=>{
+  const range=document.createRange();range.selectNodeContents(el);
+  const rects=[...range.getClientRects()].filter(r=>r.width>0&&r.height>0).map(r=>[r.left,r.top,r.width,r.height]);
+  const kind=el.matches('h2')?'title':el.matches('.movies-next-countdown')?'countdown':'cancel';
+  return {kind,name:(el.textContent??'').trim().slice(0,40),color:getComputedStyle(el).color,rects};
+ }));
+ // The labels are hidden for the screenshot, so the pixels under them are the card's own glass and the frame behind it.
+ await page.addStyleTag({content:'.movies-next :is(h2,.movies-next-countdown,.ui-btn.secondary){color:transparent!important}'});
+ const png=(await page.screenshot({clip:card,type:'png'})).toString('base64');
+ const measured=await page.evaluate(async({png,labels,card})=>{
+  const bytes=Uint8Array.from(atob(png),c=>c.charCodeAt(0));
+  const bitmap=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
+  const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
+  const context=canvas.getContext('2d',{willReadFrequently:true})!;context.drawImage(bitmap,0,0);
+  const linear=(c:number)=>{c/=255;return c<=0.03928?c/12.92:((c+0.055)/1.055)**2.4;};
+  const luminance=(r:number,g:number,b:number)=>0.2126*linear(r)+0.7152*linear(g)+0.0722*linear(b);
+  // The screenshot holds the card at the device scale, so its width over the card's CSS width is the scale each rectangle is sampled at.
+  const scale=bitmap.width/card.width;
+  return labels.map(label=>{
+   const ink=(label.color.match(/[\d.]+/g)??['255','255','255']).slice(0,3).map(Number);
+   const text=luminance(ink[0],ink[1],ink[2]);
+   let brightest=0,total=0,count=0;
+   for(const [x,y,w,h] of label.rects){
+    const sx=Math.max(0,Math.floor((x-card.x)*scale)),sy=Math.max(0,Math.floor((y-card.y)*scale));
+    const data=context.getImageData(sx,sy,Math.max(1,Math.ceil(w*scale)),Math.max(1,Math.ceil(h*scale))).data;
+    for(let i=0;i<data.length;i+=4){const l=luminance(data[i],data[i+1],data[i+2]);brightest=Math.max(brightest,l);total+=l;count++;}
+   }
+   const median=count?total/count:0;
+   return {kind:label.kind,name:label.name,worst:(Math.max(text,brightest)+0.05)/(Math.min(text,brightest)+0.05),typical:(Math.max(text,median)+0.05)/(Math.min(text,median)+0.05),count};
+  });
+ },{png,labels,card});
+ // Every label must be found and must sample pixels, so a label cannot pass by being skipped.
+ expect(measured.map(label=>label.kind)).toEqual(['title','countdown','cancel']);
+ for(const label of measured){
+  console.log(`contrast ${viewport.width} px ${label.kind} (${label.name}): worst ${label.worst.toFixed(2)}:1, typical ${label.typical.toFixed(2)}:1 over ${label.count} pixels`);
+  expect(label.count,`${label.kind} sampled pixels`).toBeGreaterThan(0);
+  expect(label.worst,`${label.kind} worst-case contrast`).toBeGreaterThanOrEqual(4.5);
  }
 });
 
@@ -381,16 +392,17 @@ test('forced colours give the Movies island its pill outline and underline the c
  await page.emulateMedia({forcedColors:'active'});
  await page.setViewportSize(PHONE);
  await page.goto('/#/movies');
- const bar=page.locator('.section-navigation .section-tabbar').first();
+ const bar=page.locator('.movies-view .section-tabbar').first();
  await expect(bar).toBeVisible();
  const system=await systemColours(page,['CanvasText']);
  expect(await bar.evaluate(el=>{const s=getComputedStyle(el,'::after');return [s.outlineStyle,s.outlineWidth,s.outlineColor];})).toEqual(['solid','2px',system.CanvasText]);
- await expect(bar.locator('[data-section="movies"][aria-current="page"]')).toHaveCSS('text-decoration-line','underline');
+ // The island re-renders, so the current tab is read through a fresh locator that waits for it, not through a handle taken earlier.
+ await expect(bar.locator('.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]').first()).toHaveCSS('text-decoration-line','underline');
 });
 
 // The episode drawer's text, measured over the frame behind it. The frames are the watch page's dark fixture (a dark ground with bright shapes,
-// so the glass has something to blur) and a white frame. A foreground-only mask identifies each glyph core;
-// hiding that foreground supplies the actual backdrop beneath it, as on the Up next card.
+// so the glass has something to blur) and a white frame. Each item's text is read, then hidden, and the brightest pixel under its glyph boxes
+// is the worst case, which is how the Up next card's labels are measured.
 const DARK_FRAME='<!doctype html><html><head><meta charset="utf-8"><title>Provider fixture</title><style>html,body{margin:0;height:100%;overflow:hidden;color:#fff;font:600 28px Arial,sans-serif}body{background:radial-gradient(circle at 18% 28%,#ff6b6b 0 9%,transparent 10%),radial-gradient(circle at 74% 34%,#4cc9f0 0 13%,transparent 14%),radial-gradient(circle at 36% 78%,#ffd166 0 11%,transparent 12%),repeating-linear-gradient(60deg,#0b1320 0 38px,#1d3557 38px 76px),#0b1320}.label{position:absolute;left:6%;top:54%;text-shadow:0 2px 8px #000}button{position:absolute;left:6%;bottom:6%;padding:10px 16px;font:600 16px Arial;background:#fff;color:#000;border:0;border-radius:6px}</style></head><body><div class="label">Provider fixture</div><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>';
 const WHITE_FRAME='<!doctype html><html><head><meta charset="utf-8"><title>Provider fixture</title><style>html,body{margin:0;height:100%;background:#fff;overflow:hidden}button{position:absolute;left:6%;bottom:6%;padding:10px 16px;font:600 16px Arial;background:#fff;color:#000;border:0}</style></head><body><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>';
 const DRAWER_EPISODES=[
@@ -417,43 +429,45 @@ const DRAWER_TITLE=(season:number)=>({id:'tv-90300',kind:'tv',name:'Contrast Ser
  {number:1,name:'Season 1',episodes:season===1?[{number:1,name:'Pilot',overview:'The first episode.',runtime:42,airDate:'2024-01-01'},{number:2,name:'Second Episode',overview:'Still the first season.',runtime:44,airDate:'2024-01-08'}]:[]},
  {number:2,name:'Season 2',episodes:season===2?[{number:1,name:'Second Season Opener',overview:'The second season begins.',runtime:50,airDate:'2025-01-01'}]:[]}
 ]});
-// Measure the actual plain foreground against the backdrop beneath its cores.
-// The translucent panel and control paint stay present while only text is hidden.
+// Reads each present item's colour and glyph boxes, hides the text, screenshots the container, and returns the worst and typical ratios.
 type DrawerItem={name:string;missing:boolean;colour:string;worst:number;typical:number;count:number};
 // An item whose selector is not on the page comes back missing, with no pixels, so it fails the check rather than dropping out of it.
 async function glyphContrast(page:Page,container:string,items:{name:string;selector:string}[]):Promise<DrawerItem[]>{
  const box=await page.locator(container).boundingBox();
  if(!box)throw new Error(`${container} has no box`);
- const panel=page.locator(container);
- await panel.screenshot({animations:'disabled'});
- const read=await panel.evaluate((root,items)=>items.map(item=>{
+ const read=await page.locator(container).evaluate((root,items)=>items.map(item=>{
   const el=root.querySelector<HTMLElement>(item.selector);
-  const rects:{x:number;y:number;w:number;h:number;color:string}[]=[];
-  if(!el)return {name:item.name,selector:item.selector,missing:true,colour:'',rects};
-  const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
-  while(walker.nextNode()){
-   const node=walker.currentNode,parent=node.parentElement!;
-   if(!node.textContent?.trim()||parent.closest('.sr-only')||getComputedStyle(parent).visibility==='hidden')continue;
-   const range=document.createRange();range.selectNodeContents(node);
-   const color=getComputedStyle(parent).color;
-   for(const r of range.getClientRects())if(r.width>0&&r.height>0)rects.push({x:r.left,y:r.top,w:r.width,h:r.height,color});
-  }
-  return {name:item.name,selector:item.selector,missing:false,colour:[...new Set(rects.map(r=>r.color))].join(', '),rects};
+  if(!el)return {name:item.name,selector:item.selector,missing:true,colour:'',rects:[] as number[][]};
+  const range=document.createRange();range.selectNodeContents(el);
+  const rects=[...range.getClientRects()].filter(r=>r.width>0&&r.height>0).map(r=>[r.left,r.top,r.width,r.height]);
+  return {name:item.name,selector:item.selector,missing:false,colour:getComputedStyle(el).color,rects};
  }),items);
  const present=read.filter(item=>!item.missing);
- const selectors=present.map(item=>`${container} ${item.selector},${container} ${item.selector} *`).join(',');
- const mask=await glyphFillMask(page,panel,selectors);
- const hide=await page.addStyleTag({content:`${selectors}{-webkit-text-fill-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}`});
- let png:string;
- try{png=(await panel.screenshot({animations:'disabled'})).toString('base64');}
- finally{await hide.evaluate(element=>(element as Element).remove());}
- const measured:Omit<DrawerItem,'missing'>[]=[];
- for(const item of present){
-  const samples=await glyphContrastSamples(page,png,mask,item.rects.map(rect=>({...rect,x:rect.x-box.x,y:rect.y-box.y})),box);
-  const count=samples.reduce((sum,sample)=>sum+sample.count,0);
-  measured.push({name:item.name,colour:item.colour,worst:count?Math.min(...samples.filter(sample=>sample.count>0).map(sample=>sample.worst)):0,typical:count?samples.reduce((sum,sample)=>sum+sample.typical*sample.count,0)/count:0,count});
- }
-
+ const style=await page.addStyleTag({content:present.map(item=>`${container} ${item.selector}{color:transparent!important}`).join('')});
+ const png=(await page.screenshot({clip:box,type:'png'})).toString('base64');
+ await style.evaluate(node=>(node as Element).remove());
+ const measured=await page.evaluate(async({png,present,box})=>{
+  const bytes=Uint8Array.from(atob(png),c=>c.charCodeAt(0));
+  const bitmap=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
+  const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
+  const context=canvas.getContext('2d',{willReadFrequently:true})!;context.drawImage(bitmap,0,0);
+  const linear=(c:number)=>{c/=255;return c<=0.03928?c/12.92:((c+0.055)/1.055)**2.4;};
+  const luminance=(r:number,g:number,b:number)=>0.2126*linear(r)+0.7152*linear(g)+0.0722*linear(b);
+  // The screenshot holds the container at the device scale, so its width over the container's CSS width is the scale each rectangle is sampled at.
+  const scale=bitmap.width/box.width;
+  return present.map(item=>{
+   const ink=(item.colour.match(/[\d.]+/g)??['255','255','255']).slice(0,3).map(Number);
+   const text=luminance(ink[0],ink[1],ink[2]);
+   let brightest=0,total=0,count=0;
+   for(const [x,y,w,h] of item.rects){
+    const data=context.getImageData(Math.max(0,Math.floor((x-box.x)*scale)),Math.max(0,Math.floor((y-box.y)*scale)),Math.max(1,Math.ceil(w*scale)),Math.max(1,Math.ceil(h*scale))).data;
+    for(let i=0;i<data.length;i+=4){const l=luminance(data[i],data[i+1],data[i+2]);brightest=Math.max(brightest,l);total+=l;count++;}
+   }
+   const median=count?total/count:0;
+   const ratio=(a:number,b:number)=>(Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);
+   return {name:item.name,colour:item.colour,worst:ratio(text,brightest),typical:ratio(text,median),count};
+  });
+ },{png,present,box});
  return read.map(item=>{
   const found=measured.find(result=>result.name===item.name);
   return found?{...found,missing:false}:{name:item.name,missing:true,colour:'',worst:0,typical:0,count:0};

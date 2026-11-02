@@ -1,40 +1,13 @@
 import {test,expect} from '../fixtures';
 import type {Page} from '@playwright/test';
-import {glyphContrast,glyphFillMask} from '../glass-contrast';
 
-for(const art of ['gradient','transparent-image'] as const)test(`plain navigation ink samples local ${art} pixels instead of the whole artwork range`,async({page})=>{
-  await page.setViewportSize({width:390,height:844});await page.goto('/?glass=fallback#/collection');
-  await page.evaluate(art=>{
-    const layer=document.createElement('div');layer.id='local-ink-art';
-    layer.style.cssText='position:fixed;inset:0;z-index:49;background:#000';
-    if(art==='gradient')layer.style.background='linear-gradient(90deg,#fff 0 60%,#000 60%)';
-    else{
-      const image=document.createElement('img');image.style.cssText='width:100%;height:100%;object-fit:fill';
-      image.src='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844"><rect x="195" width="195" height="844" fill="white"/></svg>');layer.append(image);
-    }
-    document.body.append(layer);
-  },art);
-  const cases=art==='gradient'?
-    [['.app-tabbar [data-section=games]>svg','rgb(11, 16, 21)'],['.app-menu>svg','rgb(255, 255, 255)']]:
-    [['.app-tabbar [data-section=games]>svg','rgb(255, 255, 255)'],['.app-menu>svg','rgb(11, 16, 21)']];
-  for(const [selector,color] of cases){
-    const glyph=page.locator(selector);await expect(glyph).toHaveCSS('color',color);
-    const bounds=(await glyph.boundingBox())!,mask=await glyphFillMask(page,glyph,selector,true);
-    const hide=await page.addStyleTag({content:`${selector}{color:transparent!important}`});
-    const backdrop=(await glyph.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
-    const [contrast]=await glyphContrast(page,backdrop,mask,[{x:0,y:0,w:bounds.width,h:bounds.height,color}],bounds);
-    expect(contrast).toBeGreaterThanOrEqual(4.5);
-    await expect(glyph).toHaveCSS('-webkit-text-stroke-width','0px');
-  }
-});
-
-async function open(page:Page,fallback:boolean,chromium:boolean){
+async function open(page:Page,fallback:boolean){
   await page.setViewportSize({width:390,height:844});
   await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
   await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
   await expect(page.locator('.game-card').first()).toBeVisible();
-  await expect(page.locator('.app-tabbar')).toHaveAttribute('data-glass',fallback||!chromium?'frost':'backdrop');
-  if(!fallback&&chromium)for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveClass(/is-refracting/);
+  await expect(page.locator('.app-tabbar')).toHaveAttribute('data-glass',fallback?'frost':'backdrop');
+  if(!fallback)for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveClass(/is-refracting/);
 }
 async function finish(page:Page){
   await page.locator('.app-navigation').evaluate(el=>{for(const a of el.getAnimations({subtree:true}))a.finish();});
@@ -50,8 +23,8 @@ async function material(page:Page,selector:string){
 
 for(const fallback of [false,true]){
   const mode=fallback?'CSS fallback':'Chromium lens';
-  test(`${mode}: every filtered layer stays inside the morphing pill`,async({page,browserName})=>{
-    await open(page,fallback,browserName==='chromium');
+  test(`${mode}: every filtered layer stays inside the morphing pill`,async({page})=>{
+    await open(page,fallback);
     const bar=page.locator('.app-tabbar');
     await page.evaluate(()=>scrollTo(0,180));await expect(bar).toHaveAttribute('data-minimized','true');
     await page.locator('.app-navigation').evaluate(el=>{for(const a of el.getAnimations({subtree:true})){a.pause();a.currentTime=110;}});
@@ -69,15 +42,14 @@ for(const fallback of [false,true]){
     }
     const box=(await bar.boundingBox())!;expect(box.width).toBeLessThanOrEqual(57);expect(box.height).toBeLessThanOrEqual(49);
     await page.keyboard.press('Tab');
-    await page.locator('.app-tabbar .ui-tab').first().focus();
     await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBeGreaterThan(200);
     await page.locator('.app-tabbar .ui-tab').first().blur();
     await page.evaluate(()=>scrollTo(0,80));await expect(bar).not.toHaveAttribute('data-minimized','true');
     await finish(page);expect((await bar.boundingBox())!.width).toBeGreaterThan(200);
   });
 
-  test(`${mode}: one material survives collapse and every section route`,async({page,browserName})=>{
-    await open(page,fallback,browserName==='chromium');
+  test(`${mode}: one material survives collapse and every section route`,async({page})=>{
+    await open(page,fallback);
     const initial=await material(page,'.app-tabbar');
     expect(await material(page,'.app-menu')).toEqual(initial);
     const miniRoot=await page.locator('.app-navigation .ui-tabbar-mini').evaluate(el=>{
@@ -92,14 +64,8 @@ for(const fallback of [false,true]){
     for(const route of ['movies/browse/movie','movies/browse/tv','movies/list','collection']){
       await page.evaluate(route=>location.hash='#/'+route,route);
       const movie=route.startsWith('movies'),bar=movie?'.movies-mobile-nav':'.app-tabbar',menu=movie?'.movies-menu':'.app-menu';
-      const section=route==='collection'?'games':route.endsWith('/tv')?'tv':route.endsWith('/list')?'list':'movies';
-      // Visibility alone no longer establishes route completion: this is the
-      // same persistent node throughout every section transition.
-      await expect(page.locator(`.section-tabbar [data-section=${section}]`)).toHaveAttribute('aria-current','page');
-      await expect(page.locator(movie?'.movies-view':'.game-card').first()).toBeVisible();
-      if(movie)await expect(page.locator('.movies-page-head h1')).toHaveText(section==='tv'?'TV Shows':section==='list'?'My list':'Movies');
       await expect(page.locator(bar)).toBeVisible();
-      if(!fallback&&browserName==='chromium')for(const selector of [bar,menu])await expect(page.locator(selector)).toHaveClass(/is-refracting/);
+      if(!fallback)for(const selector of [bar,menu])await expect(page.locator(selector)).toHaveClass(/is-refracting/);
       expect(await material(page,bar),route).toEqual(initial);
       expect(await material(page,menu),route+' companion').toEqual(initial);
     }

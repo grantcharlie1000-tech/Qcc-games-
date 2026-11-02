@@ -14,16 +14,18 @@ test('the games library has no Movies & TV box, and the island Movies tab opens 
  await page.goto('/');await expect(page.locator('.game-card')).toHaveCount(21);
  await expect(page.locator('.movies-launch')).toHaveCount(0);await expect(page.getByRole('link',{name:'Movies & TV',exact:true})).toHaveCount(0);
  await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();
- await expect(page).toHaveURL(/#\/movies$/);await expect(page.getByRole('heading',{name:'Interstellar',exact:true,level:1})).toBeVisible();
+ await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
 });
 
 test('island Movies tab opens Movies & TV: local discovery, episodes, enabled playback, back and Study Mode',async({page})=>{
  await page.goto('/');
  const games=page.locator('.game-card');await expect(games).toHaveCount(21);
  const tab=page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true});
- await expect(tab).toHaveAttribute('href','#/movies');
+ await expect(tab).toHaveAttribute('href','#/movies/browse/movie');
  await tab.focus();await expect(tab).toBeFocused();
- await tab.press('Enter');await expect(page.getByRole('heading',{name:'Interstellar',exact:true,level:1})).toBeVisible();
+ await tab.press('Enter');await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
+ // The Movies tab searches films only, and this flow searches a series, so it goes Home from the Movies header first.
+ await page.locator('.movies-top').getByRole('button',{name:'Home',exact:true}).click();await expect(page.getByRole('heading',{name:'Interstellar',exact:true})).toBeVisible();
  await page.screenshot({path:'test-results/movies-home.png',fullPage:true});
  await expect(page.locator('.movies-poster img').first()).toHaveAttribute('src',/^https:\/\/image\.tmdb\.org\/t\/p\//);
  await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('sherlock');
@@ -34,11 +36,11 @@ test('island Movies tab opens Movies & TV: local discovery, episodes, enabled pl
  await expect(page.locator('.movies-provider-frame')).toBeVisible();await expect(page.locator('video')).toHaveCount(0);
  await page.getByRole('link',{name:'Back to Sherlock'}).click();
  await page.getByRole('button',{name:'Add to my list'}).click();
- await page.locator('.movies-top').getByRole('button',{name:'Saved',exact:true}).click();await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(1);
+ await page.locator('.movies-top').getByRole('button',{name:'My list',exact:true}).click();await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(1);
  await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
  await page.evaluate(()=>scrollTo(0,0));await page.mouse.wheel(0,500);await expect.poll(()=>page.evaluate(()=>scrollY)).toBeGreaterThan(0);
  // Study retains the movies route and returns to the same page.
- await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();
+ await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
  await expect(page.locator('.movies-view')).toBeVisible();
  await page.getByRole('link',{name:'Games',exact:true}).click();await expect(games).toHaveCount(21);await expect(page.locator('.app-tabbar .ui-tab[href="#/collection"]')).toBeFocused();
 });
@@ -120,7 +122,7 @@ test('episode return restores scroll and focus; keyboard stays inside the movie 
  const before=await page.locator('.movies-view').evaluate(e=>e.scrollTop);await cities.click();
  await page.getByRole('link',{name:'Back to Planet Earth II'}).click();await expect(cities).toBeFocused();
  expect(Math.abs(await page.locator('.movies-view').evaluate(e=>e.scrollTop)-before)).toBeLessThan(5);
- await expect(page.locator('.section-navigation')).toHaveJSProperty('inert',false);
+ await expect(page.locator('.app-navigation')).toHaveJSProperty('inert',true);
  await page.getByRole('link',{name:'Games',exact:true}).click();await expect(page.locator('.app-navigation')).toHaveJSProperty('inert',false);
 });
 
@@ -129,15 +131,15 @@ test('game grid offset survives entering and leaving movies',async({page})=>{
  // Scrolling down minimizes the island, so it is scrolled back up to expand it before its Movies tab is tapped.
  await expect(page.locator('.app-tabbar')).toHaveAttribute('data-minimized','true');await page.evaluate(()=>scrollTo(0,60));await expect(page.locator('.app-tabbar')).not.toHaveAttribute('data-minimized');
  const before=await page.evaluate(()=>scrollY);await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();
- await expect(page.locator('#movies-search')).toBeVisible();await page.locator('.section-navigation').getByRole('link',{name:'Games',exact:true}).click();
+ await expect(page.locator('#movies-search')).toBeVisible();await page.locator('.movies-top').getByRole('link',{name:'Games',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(before);await expect(page.locator('.app-tabbar .ui-tab[href="#/collection"]')).toBeFocused();
 });
 
 test('Home clears filters and search finds titles across TV/movie categories',async({page})=>{
  await page.goto('/#/movies');await page.locator('#movies-search').fill('arrival');
- await page.locator('.movies-top').getByRole('button',{name:'All titles',exact:true}).click();
+ await page.locator('.movies-top').getByRole('button',{name:'Home',exact:true}).click();
  await expect(page.locator('.movies-hero')).toBeVisible();await expect(page.locator('#movies-search')).toHaveValue('');
- await page.locator('.movies-top').getByRole('button',{name:'Series',exact:true}).click();
+ await page.locator('.movies-top').getByRole('button',{name:'TV Shows',exact:true}).click();
  await page.locator('.movies-search-toggle').click();await expect(page.locator('#movies-search')).toBeFocused();
  await page.locator('#movies-search').fill('arrival');await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(1);
 });
@@ -157,7 +159,7 @@ test('provider playback is enabled and sandboxed, and Study unloads it',async({p
  await expect(frame).toHaveAttribute('sandbox','allow-scripts allow-same-origin');await expect(frame).toHaveAttribute('referrerpolicy','no-referrer');
  expect(await frame.getAttribute('allow')).toContain("camera 'none'");expect(await frame.getAttribute('src')).toContain('/embed/157336?autoplay=1');
  await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await expect(frame).toHaveCount(0);
- await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame).toBeVisible();
+ await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame).toBeVisible();
 });
 
 test('full-catalog search, episode metadata and playback are on demand',async({page})=>{
@@ -216,7 +218,7 @@ test('external progress is local, rejects other senders and resumes through docu
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}').progress['movie-157336'])).toBeUndefined();
  const origin=new URL(page.url()).origin;await frame.locator('body').evaluate((_,origin)=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:42},origin),origin);
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}').progress['movie-157336'])).toBe(42);
- await page.keyboard.press('Escape');await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame.getByRole('button',{name:'Play stream'})).toBeVisible();
+ await page.keyboard.press('Escape');await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame.getByRole('button',{name:'Play stream'})).toBeVisible();
  expect(await page.locator('.movies-provider-frame').getAttribute('src')).toContain('t=42');
 });
 

@@ -169,14 +169,26 @@ function update(){
     for(const target of targets){
       if(style(target).visibility==='hidden'||style(target).opacity==='0')continue;
       const glyphs=[...target.querySelectorAll<HTMLElement>('svg,span:not(.ui-glass-lens,.ui-glass-glow),small,strong,kbd')].filter(e=>!e.querySelector('svg,span,small,strong,kbd')&&!e.closest('.ui-brand-tile'));
+      // Icon and label of one control share one ink; a navigation bar shares one
+      // ink across all of its tabs, so no glyph differs in colour from its neighbour.
+      const groups=new Map<Element,HTMLElement[]>();
       for(const glyph of glyphs){
         const r=rect(glyph);if(!r.width||!r.height||style(glyph).clip!=='auto')continue;
-        const modal=bar.closest('dialog');
-        const preference=bar.closest('.section-navigation')?'light':luminance(paint(style(modal??bar).color).rgb)>.5?'light':'dark';
-        const selection=bar.matches('.ui-tabbar,.floating-glass-group');
         if(glyph.closest('.game-button:not(.secondary)')&&!glyph.closest('.arcade-glass'))continue;
-        const accessible=matchMedia('(prefers-contrast: more)').matches||matchMedia('(forced-colors: active)').matches||matchMedia('(prefers-reduced-transparency: reduce)').matches;
-        changes.push({glyph,ink:bar.dataset.glass==='off'||accessible?null:glassInk(sample(glyph),preference,selection)});
+        const key=bar.matches('.ui-tabbar')||target.matches('.ui-tabbar-mini')?bar:glyph.closest('.ui-tab,button,a,.game-hud-item,label')??glyph;
+        const group=groups.get(key)??[];group.push(glyph);groups.set(key,group);
+      }
+      const modal=bar.closest('dialog');
+      const preference=bar.closest('.section-navigation')?'light':luminance(paint(style(modal??bar).color).rgb)>.5?'light':'dark';
+      const selection=bar.matches('.ui-tabbar,.floating-glass-group');
+      const accessible=matchMedia('(prefers-contrast: more)').matches||matchMedia('(forced-colors: active)').matches||matchMedia('(prefers-reduced-transparency: reduce)').matches;
+      for(const group of groups.values()){
+        let ink:ReturnType<typeof glassInk>|null=null;
+        if(bar.dataset.glass!=='off'&&!accessible){
+          const samples=group.map(sample),known=samples.filter(s=>s!==UNKNOWN).flat();
+          ink=glassInk(known.length?known:UNKNOWN,preference,selection);
+        }
+        for(const glyph of group)changes.push({glyph,ink});
       }
     }
   }

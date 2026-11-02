@@ -1,14 +1,11 @@
 import type {GameId} from '../core/types';
 import {bindGlass} from './glass';
-import {extraStats,statElement,type DisplayStat} from './stats';
-import type {GameDock} from './floating-controls';
-import {bindDockClearance} from './dock-layout';
 
 type Field={label:string;source:string;attribute?:string;labelSource?:string};
 const score:Field={label:'Score',source:'#game-score strong'};
 const level:Field={label:'',source:'#game-level'};
 /** Read the game's existing presentation. Models and the frozen context API remain the owners of state. */
-const fields:Partial<Record<GameId,Field[]>>={
+const fields:Record<GameId,Field[]>={
   'fruit-merge':[score], 'water-sort':[level], 'color-blocks':[score],
   tower:[{label:'Floors',source:'.tower-height'},{label:'Streak',source:'.tower-combo'}],
   snake:[score], 'neon-coil':[{label:'Mass',source:'.nc-mass'}],
@@ -42,14 +39,12 @@ const surfaceSources:Partial<Record<GameId,string>>={
   'color-connect':'.cc-game','water-sort':'.ws-game','color-blocks':'.cb-game',
   fivefold:'.ff',quadfall:'.qf-game',slipline:'.sl-game'
 };
-const lightSurfaces=new Set<GameId>(['fruit-merge','tower','flappy-bird','animal-stack','blockcraft','block-fill']);
+const lightSurfaces=new Set<GameId>(['fruit-merge','tower','flappy-bird','animal-stack','blockcraft']);
 
-export const gameGlassTone=(id:GameId):'light'|'dark'=>lightSurfaces.has(id)?'light':'dark';
-
-export function bindGameChrome(view:HTMLElement,id:GameId,controller?:GameDock):{options(host:HTMLElement,activate:(action:()=>void)=>void):void;dispose():void}{
+export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLElement,activate:(action:()=>void)=>void):void;dispose():void}{
   const dock=view.querySelector<HTMLElement>('.game-dock')!;
   const hud=dock.querySelector<HTMLElement>('.game-hud')!;
-  view.dataset.glassTone=gameGlassTone(id);
+  view.dataset.glassTone=lightSurfaces.has(id)?'light':'dark';
   // Presentation only: the games retain their native dialog lifecycle and actions.
   for(const panel of view.querySelectorAll<HTMLElement>('.ms-settings,.ff-dialog')){
     panel.classList.add('arcade-sheet');
@@ -80,51 +75,30 @@ export function bindGameChrome(view:HTMLElement,id:GameId,controller?:GameDock):
   if(source)surfaceResize?.observe(source);
   surfaceResize?.observe(view.querySelector('.stage-wrap')!);
   alignSurface();
-  const glass=controller?[]:[...dock.querySelectorAll<HTMLElement>('.arcade-glass')].map(bindGlass);
-  controller?.bind();
-  const clearance=bindDockClearance(view,id);
+  const glass=[...dock.querySelectorAll<HTMLElement>('.arcade-glass')].map(bindGlass);
   const observers:MutationObserver[]=[];
-  const caption=view.querySelector<HTMLElement>('#game-level')!;
-  const metrics=document.createElement('span');metrics.className='game-extra-stats';caption.after(metrics);
-  caption.hidden=true;caption.setAttribute('aria-hidden','true');
-  const syncMetrics=()=>metrics.replaceChildren(...extraStats(id,caption.textContent??'').map(stat=>statElement(stat,'game-metric')));
-  syncMetrics();
-  const metricObserver=new MutationObserver(syncMetrics);metricObserver.observe(caption,{childList:true,subtree:true,characterData:true});observers.push(metricObserver);
-  const presentations=fields[id]??[score];
-  const syncHud=()=>{
-    const values:DisplayStat[]=presentations.flatMap(field=>{
-      const source=view.querySelector<HTMLElement>(field.source);
-      const text=(field.attribute?source?.getAttribute(field.attribute):source?.textContent)?.trim()??'';
-      if(!text)return [];
-      if(field.source==='.sl-hearts')return [{label:'Hearts',value:text.match(/^\d+/)?.[0]??text}];
-      if(field.source==='.cc-pairs')return [{label:'Pairs',value:text.replace(/ pairs$/,'').replace(/\s*\/\s*/g,'/')}];
-      if(field.source==='.cc-progress')return [{label:'Covered',value:text.replace(/ covered$/,'')}];
-      if(!field.label){
-        const stat=extraStats(id,text)[0];
-        if(id==='block-fill')stat.value=String(stat.value).split('/')[0].trim();
-        else stat.value=String(stat.value).replace(/\s*\/\s*/g,'/');
-        return [stat];
-      }
-      return [{label:field.labelSource?view.querySelector(field.labelSource)?.textContent?.trim()||field.label:field.label,value:text.replace(/\s*\/\s*/g,'/')}];
-    });
-    if(controller)controller.mirrorStats(values);
-    else {
-      for(const item of hud.querySelectorAll('.game-hud-item'))item.remove();
-      hud.append(...values.slice(0,3).map(value=>statElement(value,'game-hud-item','small')));
-    }
-  };
-  syncHud();
-  for(const field of presentations){
+  for(const field of fields[id]){
     const source=view.querySelector<HTMLElement>(field.source);
     if(!source)continue;
-    const observer=new MutationObserver(syncHud);
+    const item=document.createElement('span'),label=document.createElement('small'),value=document.createElement('strong');
+    item.className='game-hud-item';label.textContent=field.label;item.append(label,value);hud.append(item);
+    const sync=()=>{
+      // Some games replace the value element on each render (for example Block Fill).
+      const current=view.querySelector<HTMLElement>(field.source);
+      const next=(field.attribute?current?.getAttribute(field.attribute):current?.textContent)?.trim()??'';
+      const nextLabel=field.labelSource?view.querySelector(field.labelSource)?.textContent?.trim()||field.label:field.label;
+      if(label.textContent!==nextLabel)label.textContent=nextLabel;
+      if(value.textContent!==next)value.textContent=next;
+      item.hidden=!next;
+    };
+    sync();
+    const observer=new MutationObserver(sync);
     observer.observe(source.parentElement!,{childList:true,subtree:true,characterData:true,attributes:!!field.attribute,attributeFilter:field.attribute?[field.attribute]:undefined});
     observers.push(observer);
   }
   const sources=()=> (choices[id]??[]).flatMap(choice=>[...view.querySelectorAll<HTMLButtonElement|HTMLSelectElement>(`#game-stage ${choice.selector}`)].map(source=>({source,label:choice.label??source.getAttribute('aria-label')??source.textContent?.trim()??''})));
   // Sources retain their game-owned listeners and DOM ancestry. Menu choices invoke them only after closing/resuming.
   for(const {source} of sources())source.classList.add('game-menu-source');
-  view.dataset.gameChrome='ready';
   return {
     options(host,activate){
       host.replaceChildren();
@@ -146,6 +120,6 @@ export function bindGameChrome(view:HTMLElement,id:GameId,controller?:GameDock):
       }
       host.hidden=!host.childElementCount;
     },
-    dispose(){clearance.dispose();surfaceResize?.disconnect();for(const binding of glass)binding.dispose();for(const observer of observers)observer.disconnect();}
+    dispose(){surfaceResize?.disconnect();for(const binding of glass)binding.dispose();for(const observer of observers)observer.disconnect();}
   };
 }

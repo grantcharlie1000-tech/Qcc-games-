@@ -46,8 +46,9 @@ const leftOf=(element:HTMLElement)=>{const style=getComputedStyle(element);retur
 // to the same bar here, so every island gets them.
 // The capsule is a sibling placed right after the bar, so the bar's own opacity, transform and backdrop never reach it. It is a pointer
 // affordance only: a tap on it expands the bar, and the bar stays reachable by keyboard while minimized.
-export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{reset():void;setScroller(next:Window|HTMLElement):void;dispose():void}{
+export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{reset():void;dispose():void}{
   const bounded=bar.classList.contains('section-tabbar');
+  const target:EventTarget=scroller;
   const mini=document.createElement('button');
   mini.type='button';
   mini.className='ui-tabbar-mini';
@@ -108,8 +109,9 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
     mini.style.setProperty('--tb-sy',String(bar.offsetHeight/mini.offsetHeight));
   };
   const resized=()=>{if(bounded)layout();else instant(layout);schedule();};
-  // The capsule follows the bar or its optional scroll edge. Keep it attached
-  // when a caller mounts the component late; the shared shell never remounts it.
+  // The capsule follows the bar: right after it, or after the scroll edge that glass.ts keeps there. Movies re-renders its children, which
+  // removes the capsule with them, so the bar's parent is watched and the capsule is put back. Movies creates the island before it attaches
+  // the nav, so the watch starts on the first size change of the attached bar, as glass.ts's scroll edge does.
   let parent:Node|null=null;
   const parentWatch=new MutationObserver(()=>keep());
   const keep=()=>{
@@ -132,18 +134,12 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
   // capsule in some browsers, and it is hidden from assistive technology, so it lets the focus go.
   mini.addEventListener('click',()=>{mini.blur();state={minimized:false,lastY:position(scroller).y,travel:0};apply(false);});
 
-  scroller.addEventListener('scroll',schedule,{passive:true});
+  target.addEventListener('scroll',schedule,{passive:true});
   window.addEventListener('resize',resized,{passive:true});
   keep();
   icon();
   if(bounded)layout();else instant(layout);
   return{
-    setScroller(next){
-      if(frame)cancelAnimationFrame(frame);
-      frame=0;
-      if(next!==scroller){scroller.removeEventListener('scroll',schedule);scroller=next;scroller.addEventListener('scroll',schedule,{passive:true});}
-      state={...state,lastY:position(scroller).y,travel:0};
-    },
     reset(){
       if(frame)cancelAnimationFrame(frame);
       frame=0;
@@ -151,7 +147,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
       apply(false);
     },
     dispose(){
-      scroller.removeEventListener('scroll',schedule);
+      target.removeEventListener('scroll',schedule);
       window.removeEventListener('resize',resized);
       measure.disconnect();
       tabs.disconnect();

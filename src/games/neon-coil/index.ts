@@ -28,7 +28,6 @@ const module: GameModule = {
     const you = root.querySelector<HTMLElement>('.nc-you')!, boost = root.querySelector<HTMLButtonElement>('.nc-boost')!;
     const boostNote = root.querySelector<HTMLElement>('.nc-boost-note')!;
     const touchInput = matchMedia('(pointer: coarse)').matches;
-    boost.hidden=!(navigator.maxTouchPoints>0||matchMedia('(any-pointer: coarse)').matches);
     const events = new AbortController(), signal = events.signal;
     let state = createArena(), paused = false, disposed = false, savedRun = false, frame = 0, last: number | null = null;
     let uiAt = -Infinity, lastScore = -1, lastPhase = '', seed = state.seed, keyBoost = false, buttonBoost = false;

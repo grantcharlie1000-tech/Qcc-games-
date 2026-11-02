@@ -5,11 +5,6 @@ for(const fallback of [false,true])for(const close of ['guest','escape'] as cons
     await page.setViewportSize({width:1024,height:577});
     await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
     await expect(page.locator('.game-card').first()).toBeVisible();
-    // Keep the real navigation optics and account transition over a controlled
-    // source. Filtered poster edges can re-rasterize by 1–5 RGB levels when a
-    // closed top-layer dialog is removed, even with identical DOM and styles.
-    // Flat artwork preserves exact paint equality without a pixel tolerance.
-    await page.addStyleTag({content:'#content,.game-grid,.game-card{background:rgb(24 35 49)!important}.game-card{border-color:rgb(24 35 49)!important;box-shadow:none!important}.game-card :is(img,h2,.title-line){visibility:hidden!important}'});
     const dialog=page.locator('#accounts-dialog'),mini=page.locator('.app-navigation .ui-tabbar-mini');
     await expect(dialog).toBeHidden();
     await expect(mini).toHaveCSS('backdrop-filter','none');await expect(mini).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
@@ -29,59 +24,13 @@ for(const fallback of [false,true])for(const close of ['guest','escape'] as cons
     await expect(dialog).not.toHaveAttribute('open');
     // Hold the exit half way through: an inactive native sheet must not retain
     // a filtered/composited rectangle while entry rerenders the games grid.
-    await page.evaluate(async()=>{
-      const held=[];
-      for(const a of document.getAnimations()){
-        const target=(a.effect as KeyframeEffect|null)?.target;
-        if(target instanceof Element&&target.closest('#accounts-dialog')){a.pause();a.currentTime=90;held.push(a.ready);}
-        else a.finish();
-      }
-      // Keep the account exit at its midpoint, but settle unrelated navigation
-      // restoration and queued focus before comparing the same rendered area.
-      await Promise.all(held);await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));
-    });
-    // The old dialog click can sit over a restored tab. Move it away after
-    // holding the exit, so a newly acquired hover fill cannot change the crop.
-    await page.mouse.move(0,0);
-    await expect(page.locator('.app-navigation')).not.toHaveAttribute('data-sheet-hidden');
+    await page.evaluate(()=>{for(const a of document.getAnimations()){a.pause();a.currentTime=90;}});
     await expect(dialog).toBeHidden();await expect(dialog).toHaveCSS('backdrop-filter','none');
     expect(await page.evaluate(()=>[310,512,720].some(x=>!!document.elementFromPoint(x,574)?.closest('#accounts-dialog')))).toBe(false);
-    await page.evaluate(async()=>{
-      // Guest entry can replace the grid. Decode its current art before
-      // comparing pixels viewed through the now-clear navigation.
-      await document.fonts.ready;
-      await Promise.all([...document.querySelectorAll<HTMLImageElement>('.game-card img')].map(image=>image.decode()));
-      await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));
-    });
-    await expect(page.getByRole('button',{name:'Open menu',exact:true})).toBeFocused();
-    await expect.poll(()=>page.evaluate(()=>document.getAnimations().filter(a=>{
-      const target=(a.effect as KeyframeEffect|null)?.target;
-      return !(target instanceof Element&&target.closest('#accounts-dialog'))&&(a.pending||a.playState==='running');
-    }).length)).toBe(0);
-    // Probe the reported rectangle below the real glass. Its curved specular
-    // rim can retain a subpixel entry raster until top-layer recomposition;
-    // the navigation material/collapse specs cover that bounded surface.
-    const glassBottom=await page.locator('.app-navigation>.arcade-glass').evaluateAll(es=>Math.max(...es.map(e=>e.getBoundingClientRect().bottom)));
-    const top=Math.ceil(glassBottom)+3;
-    expect(top).toBeLessThan(575);
-    const options={clip:{x:305,y:top,width:420,height:577-top},animations:'allow' as const};
-    const stableShot=async()=>{
-      let previous:Buffer|undefined;
-      await expect.poll(async()=>{
-        const next=await page.screenshot(options),same=previous?.equals(next)??false;
-        previous=next;return same;
-      },{message:'navigation pixels settle while the account exit stays paused'}).toBe(true);
-      return previous!;
-    };
-    // Backdrop rasterization can settle after DOM/style and animations do.
-    // Capture stable pixels before hiding anything, preserving any stray paint.
-    const actual=await stableShot();
+    const options={clip:{x:305,y:550,width:420,height:27},animations:'allow' as const};
+    const actual=await page.screenshot(options);
     const hidden=await page.addStyleTag({content:'#accounts-dialog,#accounts-dialog::backdrop{display:none!important}'});
-    const without=await stableShot();await hidden.evaluate(e=>e.parentNode?.removeChild(e));
-    if(!actual.equals(without)){
-      await test.info().attach('closed-sheet-paint',{body:actual,contentType:'image/png'});
-      await test.info().attach('closed-sheet-forcibly-hidden',{body:without,contentType:'image/png'});
-    }
+    const without=await page.screenshot(options);await hidden.evaluate(e=>e.parentNode?.removeChild(e));
     expect(actual.equals(without),'closed account tree adds no pixels to the reported white-rectangle region').toBe(true);
     await page.evaluate(()=>{for(const a of document.getAnimations())a.finish();});
     await page.reload();await expect(page.locator('.game-card').first()).toBeVisible();await expect(dialog).toBeHidden();

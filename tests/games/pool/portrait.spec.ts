@@ -56,8 +56,8 @@ for(const viewport of [{width:320,height:568},{width:390,height:844},{width:568,
   // A valid maximum-length display-name fixture exercises the real card CSS.
   await page.locator('.pool-player-identity strong').evaluateAll(nodes=>nodes.forEach(n=>{n.firstChild!.textContent='WWWWWWWWWWWWWWWW (you)';}));
   for(const card of await page.locator('.pool-player').all())expect(await card.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
-  const stage=(await page.locator('.stage-wrap').boundingBox())!;
+  const dock=(await page.locator('.game-dock').boundingBox())!;
   for(const el of await page.locator('.pool-table,.pool-inhand,.pool-under,.pool-live').all()){
-    if(!await el.isVisible())continue;const r=(await el.boundingBox())!;expect(r.y).toBeGreaterThanOrEqual(0);expect(r.y+r.height).toBeLessThanOrEqual(stage.y+stage.height);
+    if(!await el.isVisible())continue;const r=(await el.boundingBox())!;expect(r.y).toBeGreaterThanOrEqual(0);expect(r.y+r.height).toBeLessThanOrEqual(dock.y-4);
   }
 });

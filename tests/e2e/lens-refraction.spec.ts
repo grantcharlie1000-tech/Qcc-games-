@@ -15,15 +15,12 @@ const asFrost=(page:Page)=>page.addInitScript(()=>{Object.defineProperty(navigat
 
 // Black and white stripes, 16 px each. Vertical stripes show a bend at the left and right ends, and horizontal stripes a bend at the
 // top and bottom rims. Both are sharp edges, so any shift of the rim shows as a change in the pixels.
-const stripes=(orientation:'v'|'h',ends:{left:number;right:number})=>'data:image/svg+xml,'+encodeURIComponent(orientation==='v'
-  ?`<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844"><defs>${[['a',ends.left+2],['b',ends.right-2]].map(([id,x])=>`<pattern id="${id}" x="${x}" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="16" height="32" fill="#000"/><rect x="16" width="16" height="32" fill="#fff"/></pattern>`).join('')}</defs><rect width="${(ends.left+ends.right)/2}" height="844" fill="url(#a)"/><rect x="${(ends.left+ends.right)/2}" width="390" height="844" fill="url(#b)"/></svg>`
+const stripes=(orientation:'v'|'h')=>'data:image/svg+xml,'+encodeURIComponent(orientation==='v'
+  ?'<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844"><defs><pattern id="s" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="16" height="32" fill="#000"/><rect x="16" width="16" height="32" fill="#fff"/></pattern></defs><rect width="390" height="844" fill="url(#s)"/></svg>'
   :'<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844"><defs><pattern id="s" y="8" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#000"/><rect y="16" width="32" height="16" fill="#fff"/></pattern></defs><rect width="390" height="844" fill="url(#s)"/></svg>');
 
 // Puts the stripes behind the island, and hides the covers and the tabs, so the pixels are the stripes only.
 async function stage(page:Page,orientation:'v'|'h'='v'){
-  // A separate Menu makes the capsule narrower. Anchor a landmark2px inside
-  // each convex end, rather than letting a fixed page pattern miss one bezel.
-  const capsule=(await page.locator('.app-tabbar').boundingBox())!;
   await page.evaluate(src=>{
     document.getElementById('content')!.style.visibility='hidden';
     const image=document.createElement('img');
@@ -32,8 +29,8 @@ async function stage(page:Page,orientation:'v'|'h'='v'){
     image.src=src;
     image.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none';
     document.body.append(image);
-  },stripes(orientation,{left:capsule.x,right:capsule.x+capsule.width}));
-  await page.addStyleTag({content:'.app-tabbar{--glass-tint:transparent!important;--glass-tone:saturate(1)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after,.app-tabbar>.ui-glass-glow{display:none}.app-tabbar::before{box-shadow:none!important}'});
+  },stripes(orientation));
+  await page.addStyleTag({content:'.app-tabbar{--glass-tint:transparent!important;--glass-tone:saturate(1)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   await page.waitForFunction(()=>(document.querySelector('img[data-t28]') as HTMLImageElement|null)?.complete===true);
 }
 
@@ -90,7 +87,7 @@ async function bend(page:Page,bar:Locator,orientation:'v'|'h'){
   },{flat,bent,again,orientation,dpr});
 }
 
-// Optical fixture: disable tint and unmoving rim paint so the same thresholds measure bending
+// Optical fixture: disable the tint so the same thresholds measure bending
 // independently of light/dark material opacity. Both rim axes must visibly move;
 // the undistorted centre and repeated shot still guard against false positives.
 const RIM={backdropV:15,backdropH:3.5};
@@ -234,8 +231,8 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
     await expect(page.locator('filter[id^="ui-glass-"]')).toHaveCount(0);
     const frost=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
-    expect(frost).toContain('blur(3px)');
-    expect(frost).toContain('saturate(1)');
+    expect(frost).toContain('blur(4px)');
+    expect(frost).toContain('saturate(0.08)');
   });
 
   test('frost has a glow layer on the bar\'s edge, hidden from assistive technology',async({page})=>{
@@ -295,7 +292,7 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.app-navigation [data-glass=frost]')).toHaveCount(2);
     await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
     await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
-    for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveCSS('backdrop-filter',/blur\(3px\)/);
+    for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveCSS('backdrop-filter',/blur\(4px\)/);
   });
 
   test('Movies preserves its separate fallback companion through a re-render',async({page})=>{
@@ -309,11 +306,11 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
   });
 
-  test('leaving Movies retains the shared fallback companion',async({page})=>{
+  test('leaving Movies disposes its companion and restores the Games fallback',async({page})=>{
     await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/#/movies');
     const menu=page.locator('.movies-menu');await expect(menu).toHaveAttribute('data-glass','frost');const original=await menu.elementHandle();
-    await page.goto('/#/collection');await expect(page.locator('.section-navigation')).toHaveCount(1);
-    expect(await original!.evaluate(e=>e.isConnected)).toBe(true);
+    await page.goto('/#/collection');await expect(page.locator('.movies-navigation')).toHaveCount(0);
+    expect(await original!.evaluate(e=>e.isConnected)).toBe(false);
     await expect(page.locator('.app-menu')).toBeVisible();await expect(page.locator('.app-menu')).toHaveAttribute('data-glass','frost');
     await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
   });

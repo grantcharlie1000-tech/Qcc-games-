@@ -5,10 +5,7 @@ for(const viewport of [{width:320,height:568},{width:390,height:844},{width:844,
   test(`all 21 games have safe floating controls without a painted banner at ${viewport.width}×${viewport.height}`,async({page})=>{
     test.setTimeout(180000);await page.setViewportSize(viewport);
     for(const id of GAME_IDS){
-      await page.goto(`/#/game/${id}`);
-      // The first software-rendered WebGL scene can compile past the default
-      // seven-second assertion deadline on a shared CI worker.
-      await expect(page.locator('.loading')).toHaveCount(0,{timeout:30000});
+      await page.goto(`/#/game/${id}`);await expect(page.locator('.loading')).toHaveCount(0);
       await expect(page.locator('#game-stage>*').first()).toBeVisible();
       const layout=await page.locator('.game-view').evaluate(view=>{
         const dock=view.querySelector<HTMLElement>('.game-dock')!,surface=view.querySelector('.game-surface')!,s=getComputedStyle(dock),v=getComputedStyle(view);
@@ -46,19 +43,13 @@ for(const width of [390,1366])test(`Movies/TV header floats as bounded glass gro
   for(const route of ['movie','tv']){
     await page.goto(`/#/movies/browse/${route}`);
     const header=page.locator('.movies-top');await expect(header).toBeVisible();
-    // The persistent shell sits outside the catalog root. Read its bounded
-    // material and the separate content heading in the same frame.
-    await expect.poll(()=>header.evaluate((h,width)=>{
-      if(!h.isConnected)return null;
-      const s=getComputedStyle(h),groups=[...h.querySelectorAll('.floating-glass-group')];
-      const head=document.querySelector('.movies-view .movies-page-head')?.getBoundingClientRect();
-      return{paint:[s.backgroundColor,s.backdropFilter,s.borderBottomWidth],count:groups.length,
-        visible:groups.flatMap(group=>{
-          const box=group.getBoundingClientRect();
-          if(!box.width||!box.height||getComputedStyle(group).visibility==='hidden')return[];
-          return[{width:box.width,bounded:box.width<width-24,mode:group.getAttribute('data-glass')}];
-        }),headVisible:!!head?.width,headY:head?.y};
-    },width)).toMatchObject({paint:['rgba(0, 0, 0, 0)','none','0px'],count:3,
-      visible:Array.from({length:width===390?2:3},()=>({bounded:true,mode:expect.stringMatching(/backdrop|frost/)})),headVisible:true,headY:0});
+    await expect(header).toHaveCSS('background-color','rgba(0, 0, 0, 0)');await expect(header).toHaveCSS('backdrop-filter','none');await expect(header).toHaveCSS('border-bottom-width','0px');
+    await expect(header.locator('.floating-glass-group')).toHaveCount(3);
+    for(const group of await header.locator('.floating-glass-group').all()){
+      if(!await group.isVisible())continue;
+      await expect(group).toHaveAttribute('data-glass',/backdrop|frost/);
+      expect((await group.boundingBox())!.width).toBeLessThan(width-24);
+    }
+    expect((await page.locator('.movies-page-head').boundingBox())!.y).toBe(0);
   }
 });

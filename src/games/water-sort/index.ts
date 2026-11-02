@@ -4,8 +4,7 @@ import { cloneBoard, pour, won } from './rules';
 import { campaignScore, readSnapshot, Session } from './session';
 import { bandsFor, COLOURS, liquidArt, tubeArt } from './art';
 import { liquidLayers, pourFrame, rotatePoint, spillAngle } from './geometry';
-import {mountCompactHud} from '../../ui/game-controls-adapter';
-import {bindGlass} from '../../ui/glass';
+import {mountCompactHud,mountDockActions} from '../../ui/game-controls-adapter';
 import './style.css';
 
 const undoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5-6 5 6 5M3 10h10a6 6 0 0 1 0 12H6"/></svg>';
@@ -22,12 +21,7 @@ const module:GameModule={
     const difficulty=root.querySelector<HTMLSelectElement>('.ws-difficulty')!,levelSelect=root.querySelector<HTMLSelectElement>('.ws-level')!;
     const stream=root.querySelector<SVGSVGElement>('.ws-stream')!,streamPath=stream.querySelector('path')!;
     const undo=root.querySelector<HTMLButtonElement>('[data-action=undo]')!,hintButton=root.querySelector<HTMLButtonElement>('[data-action=hint]')!;
-    const topActions=root.querySelector<HTMLElement>('.ws-actions')!;
-    topActions.className='ws-top-actions';topActions.setAttribute('role','group');topActions.setAttribute('aria-label','Water Sort actions');
-    for(const button of [undo,hintButton])button.className='ui-tab arcade-glass glass-control';
-    (container.closest('.game-view')??root).append(topActions);
-    const actionGlass=[bindGlass(undo),bindGlass(hintButton)];
-    const actions={dispose(){for(const binding of actionGlass)binding.dispose();topActions.remove();}};
+    const actions=mountDockActions(container,undo,hintButton);root.querySelector('.ws-actions')!.remove();
     const hud=mountCompactHud(container);
     const next=root.querySelector<HTMLButtonElement>('[data-action=next]')!;
     let focusAfterPour:number|null=null;

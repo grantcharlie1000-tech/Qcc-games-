@@ -15,8 +15,7 @@ for(const viewport of [{width:320,height:568},{width:390,height:844},{width:844,
     expect(board.width).toBeCloseTo(board.height,3);
     expect(Math.abs(board.x+board.width/2-viewport.width/2)).toBeLessThan(1);
     expect(Math.abs(board.y+board.height/2-stage.y-stage.height/2)).toBeLessThan(1);
-    expect(board.y).toBeGreaterThanOrEqual(stage.y);expect(board.bottom).toBeLessThanOrEqual(stage.y+stage.height);
-    expect(board.x>=dock.x+dock.width||board.y>=dock.bottom||board.bottom<=dock.y||board.x+board.width<=dock.x).toBe(true);
+    expect(board.y).toBeGreaterThanOrEqual(stage.y);expect(board.bottom).toBeLessThanOrEqual(dock.y);
     expect(before.overflow).toBe(false);
     await openGameMenu(page);await expect(page.getByLabel('Show touch controls')).toHaveCount(0);
     await page.getByRole('button',{name:'Close game menu',exact:true}).click();

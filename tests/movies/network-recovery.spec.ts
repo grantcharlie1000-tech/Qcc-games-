@@ -177,7 +177,7 @@ test('a failed Retry title leaves focus where the reader moved it while the titl
  await retry.focus();await page.keyboard.press('Enter');
  await expect.poll(()=>held.length).toBeGreaterThan(0);
  // The reader moves on while the title loads, so the failure must not pull focus back to Retry.
- const search=page.getByRole('button',{name:'Search',exact:true});
+ const search=page.getByRole('button',{name:'Search movies and TV',exact:true});
  await search.focus();
  holding=false;for(const release of held.splice(0))release();
  await expect(page.getByRole('button',{name:'Retry title',exact:true})).toBeVisible();
@@ -209,7 +209,7 @@ test('Resume stream moves keyboard focus to the player heading once the stream i
  await page.goto('/#/movies/movie-157336/play');
  await expect(page.locator('iframe.movies-provider-frame')).toBeVisible();
  await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
- await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();
+ await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
  const resume=page.getByRole('button',{name:'Resume stream',exact:true});
  await resume.focus();await page.keyboard.press('Enter');
  await expect(page.locator('iframe.movies-provider-frame')).toBeVisible();
