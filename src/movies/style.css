@@ -1,6 +1,6 @@
 /* A self-contained streaming UI; game layout and typography stay unchanged. */
 
-.movies-active{overflow:hidden}.movies-view{position:fixed;inset:0;z-index:30;overflow:auto;overscroll-behavior:contain;background:var(--c-bg);color:#fff;font:15px/1.5 var(--font-sans);color-scheme:dark}.movies-view *{box-sizing:border-box}.movies-view [hidden]{display:none}.movies-view a{color:inherit;text-decoration:none}.movies-view button,.movies-view select,.movies-view input{font:inherit}.movies-view button,.movies-view select{cursor:pointer}.movies-view button,.movies-view select,.movies-view input{border:1px solid #777;border-radius:3px;background:#252525;color:white;padding:10px 16px;min-height:44px}.movies-view button:disabled{cursor:not-allowed;opacity:.55}.movies-view h1,.movies-view h2,.movies-view h3,.movies-view p{margin:0}.movies-view h1{font:800 clamp(38px,5vw,72px)/1.08 var(--font-sans);letter-spacing:-1.5px}.movies-view h2{font-size:23px;line-height:1.3;font-weight:700}.movies-view h3{font-size:17px}.movies-view small{color:#bcbcbc}
+.movies-active{overflow:hidden}html:has(body.movies-active:not(.study-active)),body.movies-active:not(.study-active){min-height:100svh;background:var(--c-bg)}.movies-view{position:fixed;inset:0 0 auto;height:100dvh;min-height:100svh;z-index:30;overflow:auto;overscroll-behavior:contain;background:var(--c-bg);color:#fff;font:15px/1.5 var(--font-sans);color-scheme:dark}.movies-view *{box-sizing:border-box}.movies-view [hidden]{display:none}.movies-view a{color:inherit;text-decoration:none}.movies-view button,.movies-view select,.movies-view input{font:inherit}.movies-view button,.movies-view select{cursor:pointer}.movies-view button,.movies-view select,.movies-view input{border:1px solid #777;border-radius:3px;background:#252525;color:white;padding:10px 16px;min-height:44px}.movies-view button:disabled{cursor:not-allowed;opacity:.55}.movies-view h1,.movies-view h2,.movies-view h3,.movies-view p{margin:0}.movies-view h1{font:800 clamp(38px,5vw,72px)/1.08 var(--font-sans);letter-spacing:-1.5px}.movies-view h2{font-size:23px;line-height:1.3;font-weight:700}.movies-view h3{font-size:17px}.movies-view small{color:#bcbcbc}
 .movies-view .movies-primary{display:inline-flex;align-items:center;justify-content:center;gap:14px;border:0;background:#fff;color:#111;font-weight:700;font-size:18px;padding:11px 28px;border-radius:4px;min-height:49px}.movies-view .movies-primary:disabled{opacity:.72;background:#e6e6e6;color:#333}.movies-primary>span{font-size:25px;line-height:1}
 .movies-result-count{color:#b3b3b3;font-size:13px}.movies-view .movies-result-count{margin:20px 0}.movies-empty{padding:100px 7%;text-align:center;max-width:800px;margin:auto;min-height:350px}.movies-empty p{color:#aaa;margin:18px 0 25px}.movies-empty h1{font-size:38px}.movies-empty a{display:inline-block;margin:15px}/* Footer: the brand and links share one row from 768 px; the privacy copy, Clear and the storage line take full rows. */
 .movies-view .movies-footer{display:grid;justify-items:start;gap:12px;margin-top:48px;padding:32px 0 8px;border-top:1px solid var(--line);background:none;color:var(--c-400);font-family:var(--font-sans);font-size:12px;line-height:1.5}
@@ -46,6 +46,28 @@ body.movies-active.study-active{overflow:auto}
    a 44 px height and a 15 px font, and it outranks a plain component rule, so each property the components need is restated here. */
 .movies-view{padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom));scroll-padding-top:var(--header-h);scroll-padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
 .movies-view .ui-header{font-family:var(--font-sans)}
+/* The row itself paints nothing and occupies no document space. Only the
+   bounded groups float over the page; backgrounds continue to the top edge. */
+.movies-view .movies-top.ui-header{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;border:0;pointer-events:none}
+.movies-view .movies-top .ui-header-inner{padding-block:6px;gap:8px;padding-inline:max(var(--floating-gutter,12px),env(safe-area-inset-left,0px)) max(var(--floating-gutter,12px),env(safe-area-inset-right,0px))}
+@media(min-width:640px){.movies-view .movies-top{--floating-gutter:24px}}
+/* The header floats over the dark hero on the clear (dark-tinted) material,
+   so its ink is light; the old light-tone pill fill no longer exists. */
+.movies-view .movies-top .floating-glass-group{--glass-ink:#fff;pointer-events:auto;color:var(--glass-ink);padding:4px;min-height:44px}
+.movies-view .movies-top .movies-brand{padding:4px 10px 4px 6px;flex-shrink:1}
+/* Glyphs that glass-ink.ts inks keep their adaptive colour (shared with icons). */
+.movies-view .movies-top .ui-wordmark span:not(.glass-ink){color:inherit}
+.movies-view .movies-top .ui-nav{gap:0}
+.movies-view .movies-top .ui-header-actions{gap:0}
+.movies-view .movies-top .floating-glass-group :is(.ui-pill,.ui-icon-btn){min-height:36px;color:inherit;background:none;border:0;border-radius:20px}
+.movies-view .movies-top .floating-glass-group .ui-pill[aria-pressed=true]{background:rgb(255 255 255 / .14);color:inherit;box-shadow:none}
+.movies-view .movies-top .ui-kbd{background:rgb(255 255 255 / .06);border-color:rgb(255 255 255 / .22)}
+.movies-view .movies-top .ui-kbd:not(.glass-ink){color:inherit}
+@media(hover:hover) and (pointer:fine){.movies-view .movies-top .floating-glass-group :is(.ui-pill,.ui-icon-btn):hover{background:rgb(255 255 255 / .1);color:inherit}}
+.movies-view>.movies-page-head{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
+.movies-view>.movies-page-title{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
+.movies-view .movies-player.movies-player{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
+.movies-view .movies-detail-inner{margin-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
 .movies-view .ui-nav .ui-pill{min-height:36px;padding:6px 12px;border:0;border-radius:var(--r-lg);background:none;color:var(--c-400);font-size:12px;font-weight:500;line-height:1.2;cursor:pointer}
 .movies-view .ui-nav .ui-pill[aria-pressed="true"]{background:#fff;color:#000;font-weight:700}
 @media (hover:hover) and (pointer:fine){.movies-view .ui-nav .ui-pill:not([aria-pressed="true"]):hover{background:#18181bcc;color:#fff}}
@@ -63,9 +85,9 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .ui-tabbar .ui-tab{min-height:44px;padding:4px 2px;border:0;border-radius:999px;background:none;font-size:10px;font-weight:500;line-height:1.2;cursor:pointer}
 /* The generic .movies-view button rule paints every button white, and the rule above sets a weight of 500 for all of them. These win:
    the idle tabs are 90% white, and the current tab is solid bold white. More contrast makes every tab solid white. */
-.movies-view .ui-tabbar .ui-tab{color:rgb(255 255 255 / .9)}
-.movies-view .ui-tabbar .ui-tab[aria-pressed="true"],.movies-view .ui-tabbar .ui-tab[aria-current="page"]{color:#fff;font-weight:700}
-@media (prefers-contrast:more){.movies-view .ui-tabbar .ui-tab{color:#fff}}
+.movies-view .ui-tabbar .ui-tab{color:var(--glass-ink,#fff)}
+.movies-view .ui-tabbar .ui-tab[aria-pressed="true"],.movies-view .ui-tabbar .ui-tab[aria-current="page"]{color:var(--glass-ink,#fff);font-weight:700}
+@media (prefers-contrast:more){.movies-view .ui-tabbar .ui-tab{color:var(--glass-ink,#fff)}}
 /* A page heading focused by script keeps no ring. The heading of an empty state (loading, not found) takes the keyboard ring, as its Retry button does. */
 .movies-view h1[tabindex="-1"]:focus:not(.movies-empty h1){outline:none}
 .movies-view .ui-rail{margin:24px 0 32px}
@@ -297,6 +319,9 @@ body.movies-active.study-active{overflow:auto}
    pill's label is white: WebKit renders a bright frame lighter through the glass, and a grey label fell below 4.5:1 over a white frame there. */
 .movies-view .movies-drawer .ui-pill{min-height:44px;margin:0;padding:8px 14px;border:1px solid var(--line-strong);border-radius:999px;background:rgb(255 255 255 / .1);color:#fff;font-size:13px;font-weight:500;line-height:1.2;white-space:normal;max-width:100%;cursor:pointer}
 .movies-view .movies-drawer .ui-pill[aria-pressed="true"]{border-color:#fff;background:#fff;color:#000;font-weight:700}
+/* The pressed pill is an opaque white chip: its label keeps the chip's own ink,
+   not the adaptive glass ink sampled from the page behind the sheet. */
+.movies-view .movies-drawer .ui-pill[aria-pressed="true"] .glass-ink{color:#000;text-shadow:none}
 @media (hover:hover) and (pointer:fine){.movies-view .movies-drawer .ui-pill:not([aria-pressed="true"]):hover{background:rgb(255 255 255 / .18);color:#fff}}
 .movies-view .movies-drawer-list{display:grid;gap:4px}
 .movies-view .movies-drawer-row{display:grid;grid-template-columns:112px minmax(0,1fr);align-items:center;gap:12px;min-height:56px;padding:6px;border-radius:12px;color:var(--c-200)}
@@ -345,3 +370,7 @@ body.movies-active.study-active{overflow:auto}
 .movies-warning-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px;margin-top:24px}
 .movies-warning-actions button{min-width:110px;min-height:48px}
 .movies-view .movies-archive-frame{display:block;width:100%;height:100%;border:0}
+
+/* Companion uses the same navigation geometry/material as Games. */
+.movies-view .section-menu{min-height:var(--home-action);padding:0;border-radius:999px;color:var(--glass-ink)}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.movies-view .section-menu:where([data-glass=backdrop],[data-glass=frost]){background:none;border:0}}

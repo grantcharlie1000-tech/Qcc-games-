@@ -168,7 +168,7 @@ test('opening Study while connecting stops the watchdog',async({page})=>{
  await page.keyboard.press('Escape');
  await expect(page.locator('#study-view')).toBeVisible();
  await page.clock.runFor(20000);
- await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
+ await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();
  await expect(page.getByRole('button',{name:'Resume stream'})).toBeVisible();
  await page.clock.runFor(20000);
  await expect(providerFrame(page)).toHaveCount(0);

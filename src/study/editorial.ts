@@ -84,8 +84,8 @@ export const readingNotes: Record<string, readonly [string,string]> = {
 };
 
 export const contributors=[
-  {name:'Ari Rowan',portrait:'ari-rowan',note:'A fictional voice for looking closely at words and ideas.'},
-  {name:'Mina Vale',portrait:'mina-vale',note:'A fictional voice for working through patterns, one step at a time.'},
-  {name:'Leo Finch',portrait:'leo-finch',note:'A fictional voice for asking how a model explains the world.'},
-  {name:'Nell Moss',portrait:'nell-moss',note:'A fictional voice for connecting evidence, people and places.'}
+  {name:'Ari Rowan',portrait:'ari-rowan',note:'A voice for looking closely at words and ideas.'},
+  {name:'Mina Vale',portrait:'mina-vale',note:'A voice for working through patterns, one step at a time.'},
+  {name:'Leo Finch',portrait:'leo-finch',note:'A voice for asking how a model explains the world.'},
+  {name:'Nell Moss',portrait:'nell-moss',note:'A voice for connecting evidence, people and places.'}
 ];

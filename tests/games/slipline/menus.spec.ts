@@ -1,0 +1,25 @@
+import {test,expect} from '../../fixtures';
+import {backToGames,pauseGame,resumeGame} from '../../game-menu';
+import {initial,generate,free,move} from '../../../src/games/slipline/model';
+const completed=()=>{const s=initial(),b=generate(1),ids=b.arrows.map(a=>a.id),blocked=b.arrows.find(a=>!free(b,a,ids))!;for(let i=0;i<3;i++)move(s,blocked.id);return s;};
+for(const viewport of [{width:390,height:844},{width:1366,height:768}])test(`original menus and retained controls at ${viewport.width}`,async({page})=>{
+ await page.setViewportSize(viewport);await page.goto('/#/game/slipline');
+ await expect(page.locator('#game-stage > *').first()).toBeVisible();
+ await expect(page.locator('.game-sheet')).toHaveCount(0);
+ await expect(page.locator('.sl-hint,.sl-footer')).toHaveCount(0);
+ await expect(page.locator('.game-dock')).toBeVisible();
+ await pauseGame(page);await expect(page.locator('#pause-overlay')).toBeVisible();
+ await expect(page.locator('#resume-game')).toHaveText('Keep playing');
+ await resumeGame(page);await expect(page.locator('#pause-overlay')).toBeHidden();
+ await backToGames(page);await expect(page.locator('#game-stage')).toHaveCount(0);
+ await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:slipline',JSON.stringify({version:1,data})),completed());
+ await page.goto('/#/game/slipline');const result=page.locator('.sl-overlay .game-panel');await expect(result).toBeVisible();
+ await expect(page.locator('.game-sheet')).toHaveCount(0);
+ await expect(page.locator('.sl-hint,.sl-footer')).toHaveCount(0);
+ const box=(await result.boundingBox())!,stage=(await page.locator('.stage-wrap').boundingBox())!;
+ expect(box.x).toBeGreaterThanOrEqual(stage.x-1);expect(box.x+box.width).toBeLessThanOrEqual(stage.x+stage.width+1);
+ expect(box.y).toBeGreaterThanOrEqual(stage.y-1);expect(box.y+box.height).toBeLessThanOrEqual(stage.y+stage.height+1);
+ const primary=page.getByRole('button',{name:'Try again',exact:true});await expect(primary).toBeEnabled();
+ const target=(await primary.boundingBox())!;expect(target.height).toBeGreaterThanOrEqual(44);
+ await primary.focus();await primary.press('Enter');await expect(result).toBeHidden();
+});

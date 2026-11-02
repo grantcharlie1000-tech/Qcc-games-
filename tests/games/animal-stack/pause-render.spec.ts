@@ -1,3 +1,4 @@
+import {backToGames,pauseGame,resumeGame} from '../../game-menu';
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
@@ -10,6 +11,11 @@ const observeFrames = (page: Page, count: number) => page.evaluate(n => new Prom
   const next = () => { if (--n === 0) resolve(); else requestAnimationFrame(next); };
   requestAnimationFrame(next);
 }), count);
+
+const settle = async (page: Page) => {
+  await expect.poll(() => page.evaluate(() => document.getAnimations().length)).toBe(0);
+  await observeFrames(page, 4);
+};
 
 test('shared pause stops Canvas rendering and repeated resumes keep one animation loop', async ({ page }) => {
   await page.addInitScript(() => {localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading');});
@@ -34,14 +40,19 @@ test('shared pause stops Canvas rendering and repeated resumes keep one animatio
   await expect(game).toHaveAttribute('data-count', '1');
 
   for (let cycle = 0; cycle < 3; cycle++) {
-    await page.getByRole('button', { name: 'Pause game', exact: true }).click();
+    await pauseGame(page);
+    // The glass lens repaints the frozen board once when the menu sheet's transitions end; wait for that, then require silence.
+    await settle(page);
     const tick = await game.getAttribute('data-tick');
     const paints = await page.evaluate(() => window.animalPauseProbe.paints);
     await observeFrames(page, 12);
     expect(await page.evaluate(() => window.animalPauseProbe.paints)).toBe(paints);
     await expect(game).toHaveAttribute('data-tick', tick!);
-    await page.getByRole('button', { name: 'Keep playing', exact: true }).click();
+    await resumeGame(page);
     await expect.poll(async () => Number(await game.getAttribute('data-tick'))).toBeGreaterThan(Number(tick));
+    // Closing the sheet ends transitions, which repaint once beside the game's own frame; the loop count is judged after that.
+    await settle(page);
+    await page.evaluate(() => { window.animalPauseProbe.perFrame = {}; });
     await observeFrames(page, 8);
   }
 
@@ -49,7 +60,7 @@ test('shared pause stops Canvas rendering and repeated resumes keep one animatio
   await expect(game).toHaveAttribute('data-over', 'false');
   const paintsPerFrame = await page.evaluate(() => Object.values(window.animalPauseProbe.perFrame));
   expect(Math.max(...paintsPerFrame)).toBe(1);
-  await page.getByRole('link', { name: 'Back to game library', exact: true }).click();
+  await backToGames(page);
   await expect(page.locator('.animal-stack')).toHaveCount(0);
   const paintsAfterDispose = await page.evaluate(() => window.animalPauseProbe.paints);
   await observeFrames(page, 8);

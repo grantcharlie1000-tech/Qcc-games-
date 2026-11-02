@@ -1,0 +1,26 @@
+import {test,expect} from '../../fixtures';
+import {backToGames,pauseGame,resumeGame} from '../../game-menu';
+import {Session} from '../../../src/games/water-sort/session';
+import {LEVELS} from '../../../src/games/water-sort/levels';
+const completed=()=>{const s=new Session();for(const [from,to] of LEVELS[0].witness){if(!s.begin(from,to,0))throw Error('Invalid witness');s.advance(1)}return s.state;};
+for(const viewport of [{width:390,height:844},{width:1366,height:768}])test(`original menus and retained controls at ${viewport.width}`,async({page})=>{
+ await page.setViewportSize(viewport);await page.goto('/#/game/water-sort');
+ await expect(page.locator('#game-stage > *').first()).toBeVisible();
+ await expect(page.locator('.game-sheet')).toHaveCount(0);
+ await expect(page.locator('.ws-footer,.ws-actions')).toHaveCount(0);
+ await expect(page.locator('.game-dock')).toBeVisible();
+ await pauseGame(page);await expect(page.locator('#pause-overlay')).toBeVisible();
+ await expect(page.locator('#resume-game')).toHaveText('Keep playing');
+ await resumeGame(page);await expect(page.locator('#pause-overlay')).toBeHidden();
+ await backToGames(page);await expect(page.locator('#game-stage')).toHaveCount(0);
+ await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:water-sort',JSON.stringify({version:1,data})),completed());
+ await page.goto('/#/game/water-sort');const result=page.locator('.ws-next');await expect(result).toBeVisible();
+ await expect(page.locator('.game-sheet')).toHaveCount(0);
+ await expect(page.locator('.ws-footer,.ws-actions')).toHaveCount(0);
+ const box=(await result.boundingBox())!,stage=(await page.locator('.stage-wrap').boundingBox())!;
+ expect(box.x).toBeGreaterThanOrEqual(stage.x-1);expect(box.x+box.width).toBeLessThanOrEqual(stage.x+stage.width+1);
+ expect(box.y).toBeGreaterThanOrEqual(stage.y-1);expect(box.y+box.height).toBeLessThanOrEqual(stage.y+stage.height+1);
+ const primary=page.getByRole('button',{name:'Next level',exact:true});await expect(primary).toBeEnabled();
+ const target=(await primary.boundingBox())!;expect(target.height).toBeGreaterThanOrEqual(44);
+ await primary.focus();await primary.press('Enter');await expect(result).toBeHidden();
+});

@@ -141,10 +141,11 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     ctx.lineWidth = 3; ctx.strokeStyle = '#090f19'; ctx.strokeText(snake.id === 0 ? 'YOU' : snake.name,x,y);
     ctx.fillStyle = '#f7faff'; ctx.fillText(snake.id === 0 ? 'YOU' : snake.name,x,y);
   }
-  function draw(s: Arena, alpha = 1, reduced = false) {
+  // repaint=true redraws the current frame (glass lens) without advancing boost easing.
+  function draw(s: Arena, alpha = 1, reduced = false, repaint = false) {
     const now = performance.now();
     if (arena !== s) { arena = s; boostIntensity.clear(); lastFrame = null; }
-    const elapsed = lastFrame === null ? 0 : Math.max(0,Math.min(250,now-lastFrame)); lastFrame = now;
+    const elapsed = repaint || lastFrame === null ? 0 : Math.max(0,Math.min(250,now-lastFrame)); if (!repaint) lastFrame = now;
     for (const snake of s.snakes) {
       const target = snake.alive && snake.boosting ? 1 : 0, value = boostIntensity.get(snake.id) ?? 0;
       boostIntensity.set(snake.id,reduced ? target : target ? Math.min(1,value+elapsed/100) : Math.max(0,value-elapsed/150));

@@ -1,7 +1,9 @@
+import {backToGames,gameAction,pauseGame,resumeGame} from '../../game-menu';
 import { createHash } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { test, expect, seedStudyTopic, type Page } from '../../fixtures';
 import { GAME_IDS } from '../../../src/core/types';
+import {createArena,restoreArena} from '../../../src/games/neon-coil/model';
 const evidence = process.env.NEON_COIL_EVIDENCE_DIR || 'docs/evidence/neon-coil';
 const game = (page: Page) => page.locator('.nc-game');
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pocket-arcade:v1:save:neon-coil')!).data);
@@ -10,7 +12,7 @@ async function open(page: Page) {
   await page.clock.install({ time: new Date('2026-10-20T10:00:00Z') });
   await page.clock.pauseAt(new Date('2026-10-20T10:00:01Z'));
   await page.goto('/#/game/neon-coil');
-  await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
 }
 test('pointer movement without click, earned growth, Space boost, P pause, keyboard and restart', async ({ page }) => {
   // Allow 60s cumulatively for this ~180-frame software-rendered flow, while
@@ -20,7 +22,7 @@ test('pointer movement without click, earned growth, Space boost, P pause, keybo
   page.setDefaultNavigationTimeout(30_000);
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.setViewportSize({ width: 1440, height: 900 }); await open(page);
-  await page.getByRole('button', { name: 'Enter arena', exact: true }).click();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.mouse.move(1050, 450); await page.clock.runFor(900);
   expect(Number(await game(page).getAttribute('data-x'))).toBeGreaterThan(100);
   expect(Number(await game(page).getAttribute('data-mass'))).toBeGreaterThan(30);
@@ -46,8 +48,8 @@ test('pointer movement without click, earned growth, Space boost, P pause, keybo
   await page.clock.runFor(300);
   const after = await simulated(); expect(after.angle).toBe(heading); expect(after.target).toBe(heading);
   await expect(game(page)).toHaveAttribute('data-angle', heading.toFixed(4));
-  await page.getByRole('button', { name: 'Restart game', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
+  await gameAction(page,'Restart game');
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
   await expect(game(page)).toHaveAttribute('data-tick', '0'); expect(errors).toEqual([]);
 });
 test('rim death creates real food, exposes death reason, and replay has one loop', async ({ page }) => {
@@ -59,7 +61,7 @@ test('rim death creates real food, exposes death reason, and replay has one loop
   for (let n = 0; n < 44; n++) await page.clock.fastForward(250);
   await page.keyboard.up('ArrowLeft');
   await expect(game(page)).toHaveAttribute('data-phase', 'dead');
-  await expect(page.locator('.nc-copy')).toContainText(/rim|body|Head-on/);
+  await expect(page.locator('#game-status')).toContainText(/rim|body|Head-on/);
   expect(Number(await game(page).getAttribute('data-trails'))).toBeGreaterThan(5);
   await expect(page.getByRole('button', { name: 'Play again', exact: true })).toBeVisible();
   await page.screenshot({ path: `${evidence}/death-browser.png` });
@@ -73,7 +75,7 @@ test('real hover steering into a local bot body causes death and collectible pel
   // 8 s: the 3 s spawn immunity and the 20% larger arena put the first body (Echo) ~7 s straight up.
   for (let n = 0; n < 32; n++) await page.clock.fastForward(250);
   await expect(game(page)).toHaveAttribute('data-phase', 'dead');
-  await expect(page.locator('.nc-copy')).toContainText('body');
+  await expect(page.locator('#game-status')).toContainText('body');
   expect(Number(await game(page).getAttribute('data-trails'))).toBeGreaterThan(5);
   await page.screenshot({ path: `${evidence}/body-collision-browser.png` });
   await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
@@ -85,12 +87,12 @@ test('Escape preserves host study, saves exactly, and saved continuation waits f
   await page.keyboard.press('Escape'); await expect(page.locator('#study-view')).toBeVisible();
   const before = await saved(page); await page.clock.runFor(1200); await page.keyboard.press('Space'); await page.keyboard.press('ArrowUp');
   expect(await saved(page)).toEqual(before);
-  await page.locator('.study-article-body').getByRole('link', { name: 'Games', exact: true }).click(); await page.clock.runFor(150);
+  await page.locator('.study-article-body').getByRole('link', { name: 'Return to previous view', exact: true }).click(); await page.clock.runFor(150);
   expect(Number(await game(page).getAttribute('data-tick'))).toBeGreaterThan(before.ticks);
-  await page.getByRole('button', { name: 'Pause game', exact: true }).click(); const paused = await saved(page);
-  await page.reload(); await expect(page.getByRole('button', { name: 'Continue arena', exact: true })).toBeVisible();
+  await pauseGame(page); const paused = await saved(page);
+  await page.reload(); await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
   await page.clock.runFor(800); await expect(game(page)).toHaveAttribute('data-tick', String(paused.ticks));
-  await page.getByRole('button', { name: 'Continue arena', exact: true }).click(); await page.clock.runFor(200);
+  await page.getByRole('button', { name: 'Play', exact: true }).click(); await page.clock.runFor(200);
   expect(Number(await game(page).getAttribute('data-tick'))).toBeGreaterThan(paused.ticks);
 });
 test('resize, high DPI, reduced motion and controls fit desktop, ultrawide and touch widths', async ({ browser }) => {
@@ -105,7 +107,7 @@ test('resize, high DPI, reduced motion and controls fit desktop, ultrawide and t
       return page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }));
     }).toEqual({ w: size.width * 2, h: size.height * 2 });
     expect(await page.locator('.nc-ranking li').count()).toBe(size.width < 600 || size.height < 600 ? 5 : 10);
-    for (const selector of ['#pause-game', '#restart-game', '.nc-boost']) {
+    for (const selector of ['.game-dock a', '#game-menu', '.nc-boost']) {
       const box = (await page.locator(selector).boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(size.width); expect(box.y + box.height).toBeLessThanOrEqual(size.height);
     }
@@ -135,7 +137,7 @@ test('touch drag and a second finger on the boost control steer without scrollin
 test('focusable boost, lost focus, frame stalls, disposal and invalid saves recover safely', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message)); await open(page);
   for (let run = 0; run < 3; run++) {
-    await page.getByRole('button', { name: 'Enter arena', exact: true }).click(); await page.locator('.nc-boost').focus();
+    await page.getByRole('button', { name: 'Play', exact: true }).click(); await page.locator('.nc-boost').focus();
     await page.keyboard.down('Enter'); await page.clock.runFor(150); await expect(game(page)).toHaveAttribute('data-boosting', 'true');
     await page.keyboard.up('Enter'); await page.clock.runFor(150); await expect(game(page)).toHaveAttribute('data-boosting', 'false');
     if (run === 0) {
@@ -148,7 +150,7 @@ test('focusable boost, lost focus, frame stalls, disposal and invalid saves reco
     await page.clock.fastForward(8000);
     await page.evaluate(() => window.dispatchEvent(new Event('pagehide'))); const after = (await saved(page)).ticks;
     expect(after - before).toBeLessThanOrEqual(15);
-    await page.getByRole('link', { name: 'Back to game library', exact: true }).click(); await expect(game(page)).toHaveCount(0);
+    await backToGames(page); await expect(game(page)).toHaveCount(0);
     await page.keyboard.press('p'); await page.clock.runFor(150);
     await page.evaluate(() => localStorage.setItem('pocket-arcade:v1:save:neon-coil', JSON.stringify({ version: 1, data: { version: 1, snakes: 'broken' } })));
     await page.getByRole('link', { name: 'Play Slither.io', exact: true }).click(); await expect(game(page)).toHaveAttribute('data-tick', '0');
@@ -156,7 +158,7 @@ test('focusable boost, lost focus, frame stalls, disposal and invalid saves reco
   expect(errors).toEqual([]);
 });
 test('the library retains original grid Snake and opens Slither.io separately', async ({ page }) => {
-  await open(page); await page.getByRole('link', { name: 'Back to game library', exact: true }).click();
+  await open(page); await backToGames(page);
   await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   await expect(page.getByRole('link', { name: 'Play Snake', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Play Snake', exact: true }).click();
@@ -164,9 +166,9 @@ test('the library retains original grid Snake and opens Slither.io separately', 
   await page.keyboard.press('ArrowRight'); await page.clock.runFor(690);
   await expect(page.locator('#game-score strong')).toHaveText('10');
   await expect(page.locator('.snake-game')).toHaveCount(1); await expect(game(page)).toHaveCount(0);
-  await page.getByRole('link', { name: 'Back to game library', exact: true }).click();
+  await backToGames(page);
   await page.getByRole('link', { name: 'Play Slither.io', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
   await expect(game(page)).toHaveAttribute('data-tick', '0'); await expect(page.locator('.snake-game')).toHaveCount(0);
 });
 
@@ -208,17 +210,19 @@ for (const size of [{ width: 844, height: 390 }, { width: 740, height: 360 }, { 
     // Reproduce rotating the supported small portrait phone while the intro is open.
     await page.setViewportSize(size.width === 568 ? { width: 320, height: 568 } : size); await open(page);
     if (size.width === 568) await page.setViewportSize(size);
+    // The shell commits visual-viewport changes on RAF, which this test freezes.
+    await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('.nc-game').evaluate(e=>e.getBoundingClientRect().height);}).toBe(size.height);
     const bounds = async (selector: string) => (await page.locator(selector).boundingBox())!;
-    const card = await bounds('.nc-card'), enter = await bounds('.nc-start');
-    const footer = await bounds('#restart-game');
+    const card = await bounds('.nc-game .game-sheet-panel'), enter = await bounds('.nc-start');
+    const dock = await bounds('.game-dock');
     await page.screenshot({ path: `${evidence}/intro-${size.width}.png` });
     expect.soft(card.x).toBeGreaterThanOrEqual(0);
     expect.soft(card.x + card.width).toBeLessThanOrEqual(size.width);
-    expect.soft(card.y).toBeGreaterThanOrEqual(62);
-    expect.soft(card.y + card.height).toBeLessThanOrEqual(footer.y - 8);
+    expect.soft(card.y).toBeGreaterThanOrEqual(dock.y+dock.height);
+    expect.soft(card.y + card.height).toBeLessThanOrEqual(size.height - 8);
     expect.soft(enter.height).toBeGreaterThanOrEqual(44);
-    expect.soft(enter.y + enter.height).toBeLessThanOrEqual(footer.y - 8);
-    for (const selector of ['#restart-game', '#favourite-game', '#rules-game', '#game-menu']) {
+    expect.soft(enter.y + enter.height).toBeLessThanOrEqual(size.height - 8);
+    for (const selector of ['.game-dock a', '#game-menu']) {
       const control = await bounds(selector);
       const overlap = enter.x < control.x + control.width && enter.x + enter.width > control.x && enter.y < control.y + control.height && enter.y + enter.height > control.y;
       expect.soft(overlap, `Enter overlaps ${selector}`).toBe(false);
@@ -235,8 +239,8 @@ for (const size of [{ width: 844, height: 390 }, { width: 740, height: 360 }, { 
     const you = await bounds('.nc-you');
     await page.screenshot({ path: `${evidence}/running-${size.width}.png` });
     expect.soft(await page.locator('.nc-ranking li').count()).toBe(5);
-    expect.soft(you.y + you.height).toBeLessThanOrEqual(footer.y - 8);
-    for (const selector of ['#restart-game', '#favourite-game', '#rules-game', '#game-menu', '.nc-boost']) {
+    expect.soft(you.y + you.height).toBeLessThanOrEqual(size.height - 8);
+    for (const selector of ['.game-dock a', '#game-menu', '.nc-boost']) {
       const control = await bounds(selector);
       const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
       expect.soft(overlap, `YOU overlaps ${selector}`).toBe(false);
@@ -245,11 +249,11 @@ for (const size of [{ width: 844, height: 390 }, { width: 740, height: 360 }, { 
 }
 test('short narrow viewport keeps intro and Boost within the supported 320px width', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 }); await open(page);
-  for (const selector of ['.nc-card', '.nc-start', '.nc-boost']) {
+  for (const selector of ['.nc-game .game-sheet-panel', '.nc-start', '.nc-boost']) {
     const box = (await page.locator(selector).boundingBox())!;
     expect.soft(box.x, selector).toBeGreaterThanOrEqual(0);
     expect.soft(box.x + box.width, selector).toBeLessThanOrEqual(320);
-    expect.soft(box.y + box.height, selector).toBeLessThanOrEqual(498);
+    expect.soft(box.y + box.height, selector).toBeLessThanOrEqual(568);
   }
   await page.screenshot({ path: `${evidence}/intro-320.png` });
 });
@@ -260,7 +264,7 @@ for (const lifecycle of ['ready', 'paused', 'dead', 'running'] as const) {
     await page.setViewportSize({ width: 1280, height: 720 }); await open(page);
     if (lifecycle !== 'ready') await page.locator('.nc-start').click();
     if (lifecycle === 'paused') {
-      await page.clock.runFor(150); await page.locator('#pause-game').click();
+      await page.clock.runFor(150); await pauseGame(page);
     } else if (lifecycle === 'dead') {
       await page.keyboard.down('ArrowLeft');
       for (let n = 0; n < 44; n++) await page.clock.fastForward(250);
@@ -297,13 +301,42 @@ for (const lifecycle of ['ready', 'paused', 'dead', 'running'] as const) {
     expect(errors).toEqual([]);
     await page.screenshot({ path: `${evidence}/resize-${lifecycle}.png` });
     await writeFile(`${evidence}/resize-${lifecycle}.json`, JSON.stringify({ lifecycle, before: worldSummary(before), resizes, after: worldSummary(await saved(page)), errors, announcements: await page.locator('#announcer').getAttribute('data-resize-announcements'), bestBefore, bestAfter: await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:neon-coil')) }, null, 2));
-    if (lifecycle === 'paused') await page.locator('#pause-game').click();
+    if (lifecycle === 'paused') await resumeGame(page);
     if (lifecycle === 'running' || lifecycle === 'paused') {
       await page.clock.runFor(200);
       expect(Number(await game(page).getAttribute('data-tick'))).toBeGreaterThan(before.ticks);
     }
   });
 }
+
+for (const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390},{width:1366,height:768}]) {
+ test(`compact ranking clears the real shared dock at ${size.width}x${size.height}`,async({page})=>{
+  await page.setViewportSize(size);await open(page);await page.locator('.nc-start').click();await page.clock.runFor(100);
+  const board=page.locator('.nc-ranking');await expect(board).toBeVisible();
+  await expect.poll(async()=>{
+   const a=(await board.boundingBox())!;
+   const controls=await page.locator('.game-dock > .game-glass').all();
+   for(const control of controls){const b=(await control.boundingBox())!;if(!(a.x>=b.x+b.width||a.x+a.width<=b.x||a.y>=b.y+b.height||a.y+a.height<=b.y))return false;}
+   return true;
+  }).toBe(true);
+  const cluster=(await page.locator('.game-dock').boundingBox())!;
+  const box=(await board.boundingBox())!;expect(Math.abs(box.y-cluster.y)).toBeLessThanOrEqual(8);expect(box.x).toBeGreaterThanOrEqual(size.width/2);expect(box.x+box.width).toBeLessThanOrEqual(size.width);expect(box.y+box.height).toBeLessThanOrEqual(size.height);
+  expect(await board.locator('li').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(12);
+  await expect(page.locator('.nc-guide,.nc-eyebrow,.nc-copy,.nc-footnote')).toHaveCount(0);
+ });
+}
+
+for(const mass of [100000,999999,Number.MAX_SAFE_INTEGER])test(`320px ranking and Mass keep large values readable: ${mass}`,async({page})=>{
+ const state=createArena();state.phase='running';state.snakes[0].mass=mass;expect(restoreArena(state)).not.toBeNull();
+ await page.addInitScript(s=>localStorage.setItem('pocket-arcade:v1:save:neon-coil',JSON.stringify({version:1,data:s})),state);
+ await page.setViewportSize({width:320,height:568});await open(page);await page.locator('.nc-start').click();await page.clock.runFor(32);
+ const full=Math.floor(Number(await game(page).getAttribute('data-mass'))).toString();
+ await expect(page.locator('.game-hud strong')).toHaveAttribute('aria-label',full);
+ await expect(page.locator('.nc-ranking .is-you strong')).toHaveAttribute('aria-label',full);
+ expect(await page.locator('.game-hud strong,.game-hud small,.nc-ranking strong,.nc-ranking h2').evaluateAll(nodes=>nodes.every(e=>{const r=document.createRange();r.selectNodeContents(e);const t=r.getBoundingClientRect(),b=e.getBoundingClientRect();return e.scrollWidth<=e.clientWidth+1&&t.left>=b.left-1&&t.right<=b.right+1;}))).toBe(true);
+ const panel=(await page.locator('.nc-ranking').boundingBox())!,menu=(await page.locator('#game-menu').boundingBox())!;expect(panel.x).toBeGreaterThanOrEqual(menu.x+menu.width+8);
+ await pauseGame(page);expect((await saved(page)).snakes[0].mass).toBe(Number(full));
+});
 
 // Thumb joystick (touch phones): visible, comfortable, analogue, independent of Boost, and clear of the HUD.
 async function phone(browser: import('@playwright/test').Browser) {
@@ -322,7 +355,7 @@ test('touch phone shows a thumb joystick that steers in any direction and holds 
     const rest = (await stick.boundingBox())!;
     expect(rest.width).toBeGreaterThanOrEqual(120); expect(rest.height).toBe(rest.width);
     expect(rest.x).toBeGreaterThanOrEqual(0); expect(rest.y + rest.height).toBeLessThanOrEqual(844); expect(rest.x + rest.width / 2).toBeLessThan(195);
-    for (const selector of ['.nc-ranking', '.nc-boost', '.nc-score', '#restart-game', '#favourite-game', '#rules-game', '#game-menu'])
+    for (const selector of ['.nc-ranking', '.nc-boost', '.game-dock > a.game-glass', '.game-hud', '#game-menu'])
       expect(overlaps(rest, (await page.locator(selector).boundingBox())!), `stick overlaps ${selector}`).toBe(false);
     // Spawn protection is live and visible to the HUD.
     expect(Number(await game(page).getAttribute('data-immune'))).toBeGreaterThan(0);
@@ -373,14 +406,21 @@ test('desktop keeps pointer steering and the original Boost spot, with no joysti
   await page.mouse.move(640, 600); await page.clock.runFor(600);
   expect(Number(await game(page).getAttribute('data-angle'))).toBeCloseTo(Math.PI / 2, 1);
 });
-for (const viewport of [{ width: 1024, height: 768 }, { width: 844, height: 390 }]) test(`touch ${viewport.width}x${viewport.height}: thumb stick clears Boost, ranking, toolbar and Top scores`, async ({ browser }) => {
+test('pressing Play does not frame the arena in the lime keyboard focus ring', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 }); await open(page); await page.locator('.nc-start').click();
+  const canvas = page.locator('.nc-canvas'); await expect(canvas).toBeFocused();
+  await expect(canvas).toHaveCSS('outline-style', 'none');
+  await page.keyboard.press('ArrowLeft'); await expect(page.locator('html')).toHaveAttribute('data-input', 'keyboard');
+  await expect(canvas).toHaveCSS('outline-color', 'rgb(187, 246, 109)');
+});
+for (const viewport of [{ width: 1024, height: 768 }, { width: 844, height: 390 }]) test(`touch ${viewport.width}x${viewport.height}: thumb stick clears Boost, ranking and the glass dock`, async ({ browser }) => {
   const context = await browser.newContext({ viewport, hasTouch: true, isMobile: true });
   await seedStudyTopic(context); const page = await context.newPage();
   try {
     await open(page); await page.locator('.nc-start').tap(); await page.clock.runFor(150);
     const stick = (await page.locator('.nc-stick').boundingBox())!; expect(stick.width).toBeGreaterThanOrEqual(120);
     expect(stick.y + stick.height).toBeLessThanOrEqual(viewport.height); expect(stick.y).toBeGreaterThanOrEqual(0);
-    for (const selector of ['.nc-ranking', '.nc-you', '.nc-boost', '#restart-game', '#favourite-game', '#rules-game', '#game-menu', '.lb-toggle']) {
+    for (const selector of ['.nc-ranking', '.nc-you', '.nc-boost', '.game-dock > a.game-glass', '.game-hud', '#game-menu']) {
       const box = await page.locator(selector).boundingBox(); if (box) expect(overlaps(stick, box), `stick overlaps ${selector}`).toBe(false);
     }
     const boost = (await page.locator('.nc-boost').boundingBox())!; expect(boost.x).toBeGreaterThan(viewport.width / 2);

@@ -27,7 +27,7 @@ const HORNS = `<path d="M15 22C6 16 5 7 9.5 1.5 11 8 15.5 11.5 23 12zM49 22c9-6 
 /** Difficulty badge: a face with fixed fills, always shown next to the difficulty's name. */
 const face = (d: Difficulty) => `<svg class="br-face" data-face="${d}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">${d === 'hard' ? HORNS : ''}<circle cx="32" cy="34" r="29" fill="#2c2c33"/><circle cx="32" cy="34" r="26" fill="${INK}"/><circle cx="32" cy="34" r="20.5" fill="${CONFIG[d].color}"/>${EYES[d]}</svg>`;
 const TROPHY = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M6 3h12v2h3v2.5c0 2.6-1.9 4.6-4.4 4.9A6 6 0 0 1 13 15.8V18h3.5v3h-9v-3H11v-2.2a6 6 0 0 1-3.6-3.4C4.9 12.1 3 10.1 3 7.5V5h3zm0 4H5v.5c0 1.3.8 2.4 1.9 2.8Q6 9.6 6 9zm12 0v2q0 .7-.1 1.3A3 3 0 0 0 19 7.5V7z"/></svg>';
-const HOUSE = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2.5 1.5 11.5h3V21h5.8v-6h3.4v6h5.8v-9.5h3z"/></svg>';
+
 const CROWN = '<svg class="br-crown" viewBox="0 0 28 12" aria-hidden="true" focusable="false"><path d="m2 11-1-9 7 4 6-6 6 6 7-4-1 9z" fill="#ffe0a4"/></svg>';
 
 const STEER_COPY = 'Drag left and right, or hold A / D or ← →, to steer.';
@@ -55,15 +55,8 @@ const template = () => `<div class="br-viewport">
       <div class="br-head"><h2 class="br-title">BALL RUN</h2><p class="br-copy">${STEER_COPY} Avoid the blocks and stay on the track. Survive as long as you can!</p></div>
       <div class="br-body">
         <div class="br-pick"><span class="br-face-slot"></span><p class="br-level">Medium</p><input class="br-slider" type="range" min="0" max="2" step="1" value="1" aria-label="Difficulty" aria-valuetext="Medium"></div>
-        <ul class="br-help" hidden>
-          <li>${STEER_COPY} A new drag starts from where the ball is.</li>
-          <li>Hitting a block or rolling off the edge ends the run.</li>
-          <li>Each cyan gate permanently raises your speed.</li>
-          <li>Score is metres travelled. Your best today, this week and all time are kept for each difficulty.</li>
-          <li>P pauses. R plays again after Game Over.</li>
-        </ul>
         <p class="br-note" hidden></p>
-        <div class="br-actions"><button type="button" class="br-button br-play">Play</button><button type="button" class="br-help-toggle" aria-label="How to play" aria-expanded="false">?</button></div>
+        <div class="br-actions"><button type="button" class="br-button br-play">Play</button></div>
       </div>
     </section>
     <section class="br-panel br-continue" aria-label="Saved run" hidden>
@@ -75,7 +68,7 @@ const template = () => `<div class="br-viewport">
       <div class="br-side">
         <div class="br-records"><p class="br-badge"><span class="br-badge-name">MEDIUM</span><span class="br-face-slot">${CROWN}</span><span>MODE</span></p>
           <ul class="br-rows">${SCOPES.map(s => `<li class="br-row" data-scope="${s}" data-new="false">${TROPHY}<span>${ROWS[s]}</span><em class="br-new">NEW</em><strong>0</strong></li>`).join('')}</ul></div>
-        <div class="br-actions"><button type="button" class="br-home" aria-label="Home">${HOUSE}</button><button type="button" class="br-button br-again">Play again</button></div>
+        <div class="br-actions"><button type="button" class="br-button br-again">Play again</button></div>
       </div>
     </section>
     <section class="br-panel br-lost" aria-label="Graphics interrupted" hidden><h2 class="br-title" tabindex="-1">Graphics interrupted</h2><p class="br-copy">Your run is saved. Leave and reopen Ball Run to restore the graphics.</p></section>
@@ -102,9 +95,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   const hud = q('.br-hud'), modeLabel = q('.br-mode-label'), scoreLabel = q('.br-score'), target = q('.br-target'), targetLabel = q('.br-target-label'), targetValue = q('.br-target-value');
   const speedLabel = q('.br-speed'), boostLabel = q('.br-boost'), layer = q('.br-layer');
   const panels: Record<Exclude<Panel, null>, HTMLElement> = { setup: q('.br-setup'), continue: q('.br-continue'), over: q('.br-over'), lost: q('.br-lost') };
-  const copy = q('.br-head .br-copy'), pick = q('.br-pick'), level = q('.br-level'), slider = q<HTMLInputElement>('.br-slider'), help = q('.br-help'), note = q('.br-note');
-  const play = q<HTMLButtonElement>('.br-play'), helpToggle = q<HTMLButtonElement>('.br-help-toggle'), resumeButton = q<HTMLButtonElement>('.br-resume'), continueInfo = q('.br-continue-info');
-  const reason = q('.br-reason'), final = q('.br-final'), badgeName = q('.br-badge-name'), again = q<HTMLButtonElement>('.br-again'), home = q<HTMLButtonElement>('.br-home');
+  const level = q('.br-level'), slider = q<HTMLInputElement>('.br-slider'), note = q('.br-note');
+  const play = q<HTMLButtonElement>('.br-play'), resumeButton = q<HTMLButtonElement>('.br-resume'), continueInfo = q('.br-continue-info');
+  const reason = q('.br-reason'), final = q('.br-final'), badgeName = q('.br-badge-name'), again = q<HTMLButtonElement>('.br-again');
   const lostTitle = q('.br-lost .br-title'), crown = q('.br-crown'), rows = SCOPES.map(s => q(`.br-row[data-scope="${s}"]`)), faceSlots = [...root.querySelectorAll<HTMLElement>('.br-face-slot')];
 
   let run: Run = createRun(randomSeed(), 1, 'medium'), course = getCourse(run.seed, run.difficulty), records: Records = emptyRecords();
@@ -167,14 +160,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     final.textContent = String(run.score);
     SCOPES.forEach((s, i) => { rows[i].querySelector('strong')!.textContent = String(values[s]); rows[i].dataset.new = String(marks[s]); });
     crown.toggleAttribute('hidden', !SCOPES.some(s => marks[s]));
-  }
-
-  function setHelp(open: boolean) {
-    panels.setup.classList.toggle('br-helping', open);
-    help.hidden = !open;
-    pick.hidden = open;
-    copy.hidden = open;
-    helpToggle.setAttribute('aria-expanded', String(open));
   }
 
   /** Game Over enters with a 250 ms fade and settle from 0.96 on cubic-bezier(0.23, 1, 0.32, 1); reduced
@@ -318,7 +303,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     committed = waiting = false;
     marks = noMarks();
     boostText = 'Speed Up';
-    setHelp(false);
     scene.reset();
     if (start) begin();
     else { screen(); save(); }
@@ -330,7 +314,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     if (run.phase !== 'running') return;
     waiting = false;
     note.hidden = true;
-    setHelp(false);
     view = viewRecords(records, run.difficulty, new Date());
     context.setLevel(`${label()} mode`);
     context.setStatus(`${label()} mode. ${STEER_COPY} P pauses.`);
@@ -346,19 +329,12 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   play.addEventListener('click', begin, { signal });
   resumeButton.addEventListener('click', begin, { signal });
   again.addEventListener('click', playAgain, { signal });
-  home.addEventListener('click', () => {
-    if (paused || contextLost || run.phase !== 'over') return;
-    fresh(false);
-    context.setStatus('Choose a difficulty, then press Play.');
-    play.focus({ preventScroll: true });
-  }, { signal });
   slider.addEventListener('input', () => {
     const difficulty = DIFFICULTIES[Number(slider.value)];
     if (run.phase !== 'ready' || !difficulty || difficulty === run.difficulty) return;
     // Same seed, new difficulty: a different course, built behind the panel.
     fresh(false, difficulty, run.seed);
   }, { signal });
-  helpToggle.addEventListener('click', () => setHelp(help.hidden), { signal });
 
   // Input. Held keys follow Neon Coil's rules; P is the shell's pause button; Escape stays the shell's.
   const dialogOpen = () => !!document.querySelector('dialog[open]');

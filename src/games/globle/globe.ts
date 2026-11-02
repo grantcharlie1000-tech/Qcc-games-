@@ -1,5 +1,6 @@
 import Globe, {type GlobeInstance} from 'globe.gl';
-import {MeshPhongMaterial, Vector3} from 'three';
+import {MeshPhongMaterial, Vector3, type PerspectiveCamera} from 'three';
+import {registerGlassFrameSource,notifyGlassFrame} from '../../ui/glass-frame-source';
 import world from './data/world.json';
 import {LandLayer} from './land';
 
@@ -27,6 +28,8 @@ export class GlobeView {
   private readonly land = new LandLayer(LAND, OUTLINE);
   private readonly abort = new AbortController();
   private readonly resize: ResizeObserver;
+  private readonly baseFov: number;
+  private readonly releaseGlassFrame: () => void;
   private flight = 0;
   private pendingFlight: string | undefined;
   private lostTimer = 0;
@@ -71,7 +74,18 @@ export class GlobeView {
     const signal = this.abort.signal;
     for (const type of ['pointerdown', 'wheel', 'touchstart'] as const) host.addEventListener(type, () => {this.takeControl(); this.wake();}, {passive: true, signal});
     host.addEventListener('keydown', event => this.key(event), {signal});
-    const canvas = this.globe.renderer().domElement;
+    const renderer = this.globe.renderer(), canvas = renderer.domElement;
+    const render = renderer.render;
+    // globe.gl owns the animation/composer loop. Observe this renderer's final
+    // screen pass after it returns, while its non-preserved buffer is available.
+    renderer.render = (scene, camera) => {
+      render.call(renderer, scene, camera);
+      if (renderer.getRenderTarget() === null) notifyGlassFrame(canvas);
+    };
+    const unregister = registerGlassFrameSource(canvas, () => {
+      if (!this.disposed) renderer.render(this.globe.scene(), this.globe.camera());
+    });
+    this.releaseGlassFrame = () => {unregister(); renderer.render = render;};
     canvas.setAttribute('aria-hidden', 'true');
     // Mobile browsers drop contexts in background tabs and usually give them back; Three
     // restores its resources itself. Fall back to list-only play only if that never happens.
@@ -81,6 +95,8 @@ export class GlobeView {
       this.lostTimer = window.setTimeout(onLost, 5000);
     }, {signal});
     canvas.addEventListener('webglcontextrestored', () => {clearTimeout(this.lostTimer); this.paint(); this.fit();}, {signal});
+    // A 44° overview leaves a small rim around the whole globe at altitude 1.8.
+    this.baseFov=Math.min(44,(this.globe.camera() as PerspectiveCamera).fov);
     this.resize = new ResizeObserver(() => this.fit());
     this.resize.observe(host);
     this.fit();
@@ -159,6 +175,7 @@ export class GlobeView {
     this.abort.abort();
     this.resize.disconnect();
     const renderer = this.globe.renderer();
+    this.releaseGlassFrame();
     this.globe._destructor();
     this.land.dispose();
     this.material.dispose();
@@ -198,6 +215,11 @@ export class GlobeView {
     const renderer = this.globe.renderer();
     if (renderer.getPixelRatio() !== ratio) {renderer.setPixelRatio(ratio); this.globe.postProcessingComposer().setPixelRatio(ratio);}
     this.globe.width(width).height(height);
+    // Frame against the tighter dimension. Recovering the info card's height
+    // must not crop the initial globe at both sides of a portrait viewport.
+    const camera=this.globe.camera() as PerspectiveCamera;
+    camera.fov=2*Math.atan(Math.tan(this.baseFov*Math.PI/360)/Math.min(1,width/height))*180/Math.PI;
+    camera.updateProjectionMatrix();
     this.wake();
   }
 

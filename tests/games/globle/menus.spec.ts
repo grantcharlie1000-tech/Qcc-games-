@@ -1,0 +1,24 @@
+import {test,expect} from '../../fixtures';
+import {backToGames,pauseGame,resumeGame} from '../../game-menu';
+for(const viewport of [{width:390,height:844},{width:1366,height:768}])test(`original menus and retained controls at ${viewport.width}`,async({page})=>{
+ await page.setViewportSize(viewport);await page.goto('/#/game/globle');
+ await expect(page.locator('#game-stage > *').first()).toBeVisible();
+ await expect(page.locator('.game-sheet')).toHaveCount(0);
+ await expect(page.locator('.gl-side,.gl-legend,.gl-hint,.gl-more')).toHaveCount(0);
+ await expect(page.locator('.game-dock')).toBeVisible();
+ await pauseGame(page);await expect(page.locator('#pause-overlay')).toBeVisible();
+ await expect(page.locator('#resume-game')).toHaveText('Keep playing');
+ await resumeGame(page);await expect(page.locator('#pause-overlay')).toBeHidden();
+ const completed=await page.evaluate(async()=>{const path='/src/games/globle/model.ts',m=await import(path),s=m.createState(m.aucklandDate());m.applyGuess(s,s.daily.answer);return m.serializeState(s);});
+ await backToGames(page);await expect(page.locator('#game-stage')).toHaveCount(0);
+ await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:globle',JSON.stringify({version:1,data})),completed);
+ await page.goto('/#/game/globle');const result=page.locator('.gl-win');await expect(result).toBeVisible();
+ await expect(page.locator('.game-sheet')).toHaveCount(0);
+ await expect(page.locator('.gl-side,.gl-legend,.gl-hint,.gl-more')).toHaveCount(0);
+ const box=(await result.boundingBox())!,stage=(await page.locator('.stage-wrap').boundingBox())!;
+ expect(box.x).toBeGreaterThanOrEqual(stage.x-1);expect(box.x+box.width).toBeLessThanOrEqual(stage.x+stage.width+1);
+ expect(box.y).toBeGreaterThanOrEqual(stage.y-1);expect(box.y+box.height).toBeLessThanOrEqual(stage.y+stage.height+1);
+ const primary=page.getByRole('button',{name:'Play a practice round',exact:true});await expect(primary).toBeEnabled();
+ const target=(await primary.boundingBox())!;expect(target.height).toBeGreaterThanOrEqual(44);
+ await primary.focus();await primary.press('Enter');await expect(result).toBeHidden();
+});

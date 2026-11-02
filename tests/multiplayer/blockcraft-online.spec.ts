@@ -94,6 +94,8 @@ test('host, guest and a late joiner share one world',async()=>{
     // ---- The guest mines with real input; the host rolls the drop, and the guest picks it up.
     step('The guest mines with real input; the host rolls the drop, and the guest picks it up.');
     const target=at(0,-1,-3);
+    // Settle the pointer before aiming: the shared Play button is elsewhere.
+    await guest.page.mouse.move(512,320);
     await ev(guest.page,(bc,a:{p:V;t:V})=>{
       bc.player.teleport(a.p.x+.5,a.p.y,a.p.z-1.5);
       const s=bc.player.state,e=bc.player.eye(),dx=a.t.x+.5-e.x,dy=a.t.y+1-e.y,dz=a.t.z+.5-e.z;
@@ -102,7 +104,7 @@ test('host, guest and a late joiner share one world',async()=>{
     await expect.poll(()=>data(guest.page,'target'),{timeout:20000}).toBe(`${target.x},${target.y},${target.z}`);
     const cobbleBefore=await ev(guest.page,bc=>bc.inventory.count('cobblestone'));
     await ev(guest.page,bc=>{const inv=bc.inventory;inv.setSlot(inv.selected,{id:'stone_pickaxe',count:1});});
-    await guest.page.mouse.move(512,320);await guest.page.mouse.down();
+    await guest.page.mouse.down();
     await expect.poll(()=>get(guest.page,target),{timeout:30000}).toBe(ids.air);
     await guest.page.mouse.up();
     await expect.poll(()=>get(host.page,target),{timeout:15000}).toBe(ids.air);
@@ -175,7 +177,7 @@ test('host, guest and a late joiner share one world',async()=>{
     const pausedCell=at(-1,0,-1);
     await ev(guest.page,(bc,c:V)=>bc.world.set(c.x,c.y,c.z,4),pausedCell);
     await expect.poll(()=>get(guest.page,pausedCell),{timeout:15000}).toBe(ids.air);
-    await host.page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click({timeout:20000});await expect(host.page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
+    await host.page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click({timeout:20000});await expect(host.page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
     await expect(guest.page.locator('.bc-waiting')).toBeHidden({timeout:15000});
     await guest.page.screenshot({path:test.info().outputPath('guest-after-resume.png')});
     await play(guest);
@@ -185,7 +187,7 @@ test('host, guest and a late joiner share one world',async()=>{
     await host.page.keyboard.press('Escape');await expect(host.page.locator('#study-view')).toBeVisible();
     const saves=await host.page.evaluate(()=>({solo:JSON.parse(localStorage.getItem('pocket-arcade:v1:save:blockcraft')!).data.seed,shared:JSON.parse(localStorage.getItem('pocket-arcade:v1:mp:blockcraft:world')!).world.seed}));
     expect(saves).toEqual({solo:soloSeed,shared:sharedSeed});
-    await host.page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click({timeout:20000});await expect(host.page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
+    await host.page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click({timeout:20000});await expect(host.page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
 
     // ---- The host leaving ends the session cleanly; each guest is back in its own single-player world.
     step('The host leaving ends the session cleanly; each guest is back in its own single-player world.');

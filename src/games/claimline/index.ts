@@ -15,7 +15,7 @@ const RULES = [
 ].join('\n\n');
 
 const NAMES_NOTE = 'Six local bots · nothing is online';
-const TOUCH_COPY = 'Drag anywhere to steer · P pause · Esc study';
+const TOUCH_COPY = 'Drag anywhere to steer';
 const POINTER_COPY = 'Mouse, arrows or WASD to steer · P pause · Esc study';
 
 const module: GameModule = {
@@ -26,14 +26,14 @@ const module: GameModule = {
       <div class="cl-share" aria-label="Your land"><span class="cl-share-label">Your land</span><strong class="cl-share-value">0.00%</strong><div class="cl-share-bar" aria-hidden="true"><i></i></div></div>
       <aside class="cl-ranking" aria-label="Match ranking"><ol></ol></aside>
       <div class="cl-stick" hidden aria-hidden="true"><i class="cl-stick-knob"></i></div>
-      <div class="cl-overlay"><section class="cl-card" aria-labelledby="cl-heading"><p class="cl-eyebrow">LEAVE · LOOP · CLAIM</p><h2 id="cl-heading">Claimline</h2><p class="cl-copy"></p><ol class="cl-guide"><li><b>1</b> Leave your land to lay a trail</li><li><b>2</b> Loop back to claim everything inside</li><li><b>3</b> Guard your trail: a crossing ends your run</li></ol><p class="cl-result" hidden></p><button class="game-button cl-start" type="button">Play</button><p class="cl-footnote"></p></section></div>`;
+      <div class="cl-overlay"><section class="cl-card" aria-labelledby="cl-heading"><p class="cl-eyebrow" hidden></p><h2 id="cl-heading">Claimline</h2><p class="cl-copy"></p><p class="cl-result" hidden></p><button class="game-button cl-start" type="button">Play</button><p class="cl-footnote"></p></section></div>`;
     container.append(root);
     const q = <T extends Element>(selector: string) => root.querySelector<T>(selector)!;
     const canvas = q<HTMLCanvasElement>('.cl-canvas');
     const shareValue = q<HTMLElement>('.cl-share-value'), shareBar = q<HTMLElement>('.cl-share-bar i');
     const board = q<HTMLOListElement>('.cl-ranking ol');
     const overlay = q<HTMLElement>('.cl-overlay'), heading = q<HTMLElement>('#cl-heading');
-    const eyebrow = q<HTMLElement>('.cl-eyebrow'), copy = q<HTMLElement>('.cl-copy'), guide = q<HTMLElement>('.cl-guide');
+    const eyebrow = q<HTMLElement>('.cl-eyebrow'), copy = q<HTMLElement>('.cl-copy');
     const result = q<HTMLElement>('.cl-result'), startButton = q<HTMLButtonElement>('.cl-start'), footnote = q<HTMLElement>('.cl-footnote');
     footnote.textContent = matchMedia('(pointer: coarse)').matches ? TOUCH_COPY : POINTER_COPY;
 
@@ -77,7 +77,7 @@ const module: GameModule = {
       overlay.hidden = world.phase === 'running';
       startButton.disabled = paused;
       const over = world.phase === 'over';
-      guide.hidden = over || savedRun;
+      eyebrow.hidden = !over && !savedRun;
       result.hidden = !over;
       if (over && world.result) {
         const { reason, by } = world.result;
@@ -95,7 +95,6 @@ const module: GameModule = {
         copy.textContent = `Peak ${formatShare(human.peak)} so far. ${NAMES_NOTE}.`;
         startButton.textContent = 'Continue';
       } else {
-        eyebrow.textContent = 'LEAVE · LOOP · CLAIM';
         heading.textContent = 'Claimline';
         copy.textContent = 'Step off your land, loop around and return to claim everything you enclose. Six local bots want it too.';
         startButton.textContent = 'Play';

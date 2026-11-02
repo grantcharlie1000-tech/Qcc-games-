@@ -1,3 +1,4 @@
+import {gameAction,pauseGame,resumeGame} from '../../game-menu';
 import { test, expect, type Page } from '../../fixtures';
 import { CONFIG, DIFFICULTIES, RADIUS, STEP, STEER_RESPONSE, lateralSpeed, type Run } from '../../../src/games/ball-run/config';
 import { getCourse } from '../../../src/games/ball-run/course';
@@ -36,6 +37,7 @@ async function open(page: Page, run: Run) {
 
 for (const difficulty of DIFFICULTIES) {
   test(`${difficulty}: real steering reversal stays on the visible floor in fullscreen`, async ({ page }) => {
+    test.setTimeout(90000); // Software WebGL competes with other jobs in the shared test host.
     // Match a near-edge excursion to the current steering authority and the
     // response lag, instead of reusing a frame count from the slower course.
     const course = getCourse(1, difficulty), halfWidth = course.sample(0).width / 2;
@@ -43,8 +45,10 @@ for (const difficulty of DIFFICULTIES) {
     const turningFrames = Math.ceil(Math.log(2) / STEER_RESPONSE / STEP);
     await page.setViewportSize({ width: 390, height: 844 });
     await open(page, createRun(1, 1, difficulty));
-    await page.getByRole('button', { name: 'Enter full screen', exact: true }).click();
+    await gameAction(page,'Enter full screen');
     await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+    await expect(page.locator('#pause-overlay')).toBeHidden();
+    await frames(page,1,1); // The menu resumed the loop: establish its first RAF timestamp.
     await page.keyboard.down('ArrowRight'); await frames(page, reverse);
     await page.keyboard.up('ArrowRight'); await page.keyboard.down('ArrowLeft');
     await frames(page, turningFrames);
@@ -57,14 +61,14 @@ for (const difficulty of DIFFICULTIES) {
     await expect(game(page)).toHaveAttribute('data-phase', 'running');
     await expect(game(page)).toHaveAttribute('data-grounded', 'true');
     expect(Number(await game(page).getAttribute('data-distance'))).toBeGreaterThan(9);
-    await page.getByRole('button', { name: 'Pause game', exact: true }).click();
+    await pauseGame(page);
     const before = await game(page).getAttribute('data-distance');
     await frames(page, 60);
     expect(await game(page).getAttribute('data-distance')).toBe(before);
-    await page.getByRole('button', { name: 'Resume game', exact: true }).click();
+    await resumeGame(page);
     await frames(page, 12);
     await expect(game(page)).toHaveAttribute('data-grounded', 'true');
-    await page.getByRole('button', { name: 'Restart game', exact: true }).click();
+    await gameAction(page,'Restart game');
     await expect(game(page)).toHaveAttribute('data-phase', 'ready');
     await expect(game(page)).toHaveAttribute('data-grounded', 'true');
   });

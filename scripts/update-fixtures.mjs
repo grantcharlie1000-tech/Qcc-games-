@@ -23,6 +23,11 @@ export function release(build,label){
  map.delete('/'+oldEntry);map.delete('/'+oldGame);
  map.set('/'+game,build.get('/'+oldGame));
  map.set('/'+entry,Buffer.from(build.get('/'+oldEntry).toString().replaceAll(oldGame.split('/').at(-1),game.split('/').at(-1)).replace(/No ads\.(?=[^<]*<br>Made for a little time to play\.)/,`Release ${label}. No ads.`)));
+ // Lazy chunks can import shared code from the entry chunk. A real release
+ // rebuilds those references with the new entry hash, so rewrite them too;
+ // otherwise a game chunk would request the deleted unlabelled entry.
+ const entryName=oldEntry.split('/').at(-1),labelledEntry=entry.split('/').at(-1);
+ for(const [file,content] of map)if(file.endsWith('.js')&&file!=='/'+entry&&file!=='/sw.js'&&content.includes(entryName))map.set(file,Buffer.from(content.toString().replaceAll(entryName,labelledEntry)));
  map.set('/index.html',Buffer.from(build.get('/index.html').toString().replace('<head>',`<head><meta name="arcade-release" content="${label}">`).replaceAll(oldEntry,entry).replaceAll(oldGame,game)));
  // Test-only response gate leaves legacy fetch/cache/lifecycle logic intact.
  const gate=String.raw`const observe=self.addEventListener.bind(self),debug={pending:{},done:[],skipCalls:0,skipDone:0};let eventId=0;

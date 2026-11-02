@@ -1,5 +1,30 @@
+import {appSettings,backToGames} from '../game-menu';
 import {test,expect} from '../fixtures';
 for(const size of [{width:390,height:844},{width:768,height:1024},{width:1366,height:768}]){test(`library at ${size.width}`,async({page})=>{await page.setViewportSize(size);await page.goto('/');await expect(page.locator('.game-card')).toHaveCount(23);await expect(page.getByRole('button',{name:'Open menu'})).toBeVisible();await expect(page.locator('.game-card').first()).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`docs/evidence/home-${size.width}.png`,fullPage:true});});}
-test('menu searches, settings start muted and empty favourites explain next action',async({page})=>{await page.goto('/');await page.getByRole('button',{name:'Open menu'}).click();await expect(page.locator('#sound')).not.toBeChecked();await page.getByRole('searchbox').fill('snake');await page.getByRole('button',{name:'Close menu'}).click();await expect(page.locator('.game-card')).toHaveCount(1);await page.getByRole('button',{name:'Open menu'}).click();await page.getByLabel('Favourites only',{exact:true}).check();await page.getByRole('button',{name:'Close menu'}).click();await expect(page.locator('.empty-library')).toContainText('Your favourites');});
-test('a game whose module finishes loading behind an open menu remains paused',async({page})=>{let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);await page.route('**/src/games/fruit-merge/index.ts*',async route=>{await gate;await route.continue();});await page.goto('/#/game/fruit-merge',{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Open menu'}).click();release();await expect(page.locator('.fm')).toBeAttached();await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');await expect(page.locator('#pause-overlay')).toBeVisible();await page.getByRole('button',{name:'Close menu'}).click();await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');});
-test('blocked browser storage leaves gameplay working and reports memory-only progress',async({page})=>{await page.addInitScript(()=>Object.defineProperty(window,'localStorage',{get(){throw new DOMException('Blocked','SecurityError');}}));await page.goto('/#/game/fruit-merge');await page.getByRole('button',{name:'Play as guest',exact:true}).click();await page.locator('[data-study-topic="close-reading"]').click();await page.getByRole('button',{name:'Drop fruit',exact:true}).click();await expect(page.locator('.fm-count')).toContainText('1 fruit');await page.getByRole('button',{name:'Open menu'}).click();await expect(page.locator('#storage-status')).toContainText('only last for this visit');await page.getByRole('button',{name:'Close menu'}).click();await page.getByRole('link',{name:'Back to game library'}).click();await page.getByRole('link',{name:'Play Suika Game',exact:true}).click();await expect(page.locator('.fm-count')).toContainText('1 fruit');});
+test('menu searches, settings start muted and empty favourites explain next action',async({page})=>{await page.goto('/');await appSettings(page);await expect(page.locator('#sound')).not.toBeChecked();await page.getByRole('searchbox').fill('snake');await page.getByRole('button',{name:'Close menu'}).click();await expect(page.locator('.game-card')).toHaveCount(1);await appSettings(page);await page.getByLabel('Favourites only',{exact:true}).check();await page.getByRole('button',{name:'Close menu'}).click();await expect(page.locator('.empty-library')).toContainText('Your favourites');});
+test('a game whose module finishes loading behind an open menu remains paused',async({page})=>{let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);await page.route('**/src/games/fruit-merge/index.ts*',async route=>{await gate;await route.continue();});await page.goto('/#/game/fruit-merge',{waitUntil:'domcontentloaded'});await appSettings(page);release();await expect(page.locator('.fm')).toBeAttached();await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');await expect(page.locator('#pause-overlay')).toBeVisible();await page.getByRole('button',{name:'Close menu'}).click();await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');});
+test('blocked browser storage leaves gameplay working and reports memory-only progress',async({page})=>{await page.addInitScript(()=>Object.defineProperty(window,'localStorage',{get(){throw new DOMException('Blocked','SecurityError');}}));await page.goto('/#/game/fruit-merge');await page.getByRole('button',{name:'Play as guest',exact:true}).click();await page.locator('[data-study-topic="close-reading"]').click();await page.locator('.fm-board').click();await expect(page.locator('.fm-count')).toContainText('1 fruit');await appSettings(page);await expect(page.locator('#storage-status')).toContainText('only last for this visit');await page.getByRole('button',{name:'Close menu'}).click();await backToGames(page);await page.getByRole('link',{name:'Play Suika Game',exact:true}).click();await expect(page.locator('.fm-count')).toContainText('1 fruit');});
+
+for(const settings of [false,true])test(`a ${settings?'settings':'game'} menu opened while Pool loads receives its resolved controls and tone`,async({page})=>{
+ let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});
+ await page.route('**/src/games/pool/index.ts*',async route=>{await gate;await route.continue();});
+ try{
+  await page.goto('/#/game/pool',{waitUntil:'domcontentloaded'});
+  await page.getByRole('button',{name:'Menu',exact:true}).click();
+  const gameMenu=page.locator('#game-options');await expect(gameMenu).toBeVisible();
+  await expect(gameMenu.getByLabel('Players',{exact:true})).toHaveCount(0);
+  if(settings)await gameMenu.getByRole('button',{name:'Settings',exact:true}).click();
+  const menu=page.locator(settings?'#menu':'#game-options');await expect(menu).toBeVisible();
+  release();
+  await expect(menu).toHaveAttribute('data-glass-tone','dark');
+  await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');
+  if(settings)await menu.getByRole('button',{name:'Close menu',exact:true}).click();
+  else{
+   await expect(menu.getByLabel('Players',{exact:true})).toBeVisible();
+   await menu.getByLabel('Players',{exact:true}).selectOption('two');
+   await expect(page.locator('.pool-player').nth(1)).toContainText('Player 2');
+  }
+  await expect(menu).not.toHaveAttribute('open');
+  await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
+ }finally{release();}
+});

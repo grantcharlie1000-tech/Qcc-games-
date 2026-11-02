@@ -1,0 +1,46 @@
+/* Slither uses the shared clear sheet. Every other game's original menus,
+   panels, typography and dimmers remain owned by its original stylesheet. */
+body.in-game #game-stage .nc-card{
+  --native-glass-ink:#fff;--native-glass-halo:rgb(0 0 0 / .82);
+  --sheet-halo:var(--native-glass-halo);
+  background:var(--glass-clear-fill);
+  -webkit-backdrop-filter:var(--glass-clear-blur) saturate(1.08);
+  backdrop-filter:var(--glass-clear-blur) saturate(1.08);
+  color:var(--native-glass-ink);
+  position:relative;border:1px solid transparent;
+  box-shadow:var(--glass-sheet-lift),var(--glass-sheet-rim);
+  text-shadow:none;
+  -webkit-text-stroke:0;paint-order:stroke fill;
+}
+/* Masked 1px gradient rim: a border-only strip, so no white wash reaches the panel. */
+body.in-game #game-stage .nc-card::after{content:'';position:absolute;inset:-1px;padding:1px;border-radius:inherit;pointer-events:none;background:linear-gradient(135deg,rgb(255 255 255 / .45) 0%,rgb(255 255 255 / .08) 30%,rgb(255 255 255 / .02) 55%,rgb(255 255 255 / .24) 100%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+body.in-game #game-stage .nc-overlay{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+body.in-game #game-stage .nc-card :is(h1,h2,h3,strong,p,small,label){color:var(--native-glass-ink);text-shadow:inherit}
+body.in-game #game-stage .nc-card :is(button,input,select){text-shadow:inherit}
+body.in-game #game-stage .nc-card .game-button:not(.secondary){text-shadow:none;-webkit-text-stroke:0}
+
+/* Reading/privacy dialogs keep their article theme and lifecycle. */
+html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog){
+  background:rgb(255 255 255 / .13);background-image:none;
+  -webkit-backdrop-filter:var(--glass-clear-blur);backdrop-filter:var(--glass-clear-blur);
+  color:#0b1015;--sheet-halo:rgb(255 255 255 / .62);
+  -webkit-text-stroke:0;paint-order:stroke fill;
+  text-shadow:none;
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .4),0 6px 24px -6px rgb(0 0 0 / .14);
+}
+html body #study-view .study-privacy .study-privacy-dialog::backdrop{background:transparent}
+html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog) :is(p,label,h2,button){color:inherit;text-shadow:inherit}
+html body #study-view .study-privacy .study-privacy-actions button{background:rgb(0 0 0 / .13)!important}
+
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+  body.in-game #game-stage .nc-card{--glass-clear-fill:#1c1c20;--glass-clear-blur:none;--native-glass-ink:#fff;--native-glass-halo:transparent;border-color:rgb(255 255 255 / .24)}
+  body.in-game #game-stage .nc-card::after{display:none}
+  body.in-game .game-view[data-glass-tone=light] #game-stage .nc-card{--native-glass-ink:#fff;--native-glass-halo:transparent}
+  html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog){background:#f5f5f5;backdrop-filter:none;-webkit-backdrop-filter:none;text-shadow:none}
+}
+@media(forced-colors:active){
+  body.in-game #game-stage .nc-card{--glass-clear-fill:Canvas;--glass-clear-blur:none;--native-glass-ink:CanvasText;--native-glass-halo:transparent;border-color:CanvasText}
+  body.in-game #game-stage .nc-card::after{display:none}
+  body.in-game .game-view[data-glass-tone=light] #game-stage .nc-card{--native-glass-ink:CanvasText;--native-glass-halo:transparent}
+  html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog){background:Canvas;color:CanvasText;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;text-shadow:none}
+}

@@ -1,5 +1,6 @@
 import type { GameModule } from '../../core/types';
 import { generateLevel, initialState, step, undo, solved, hint, restoreState, sampleSegment, recordWin, campaignScore, LEVEL_COUNT, type Point } from './logic';
+import {mountCompactHud} from '../../ui/game-controls-adapter';
 import './style.css';
 
 const game:GameModule={
@@ -12,6 +13,7 @@ const game:GameModule={
     const root=document.createElement('section');root.className='bf-game';
     root.innerHTML=`<div class="bf-heading"><div><span class="bf-kicker">ONE GOLDEN TRAIL</span><h2>Fill the garden</h2></div><div class="bf-counter" aria-live="polite"></div></div><div class="bf-board-wrap"><svg class="bf-board" xmlns="http://www.w3.org/2000/svg" tabindex="0" role="img" aria-label="Block Fill board. Use arrow keys to trace, Backspace to undo, H for hint."></svg></div><div class="bf-message" role="status"></div><div class="bf-actions"><button class="game-button secondary" data-action="undo">Undo</button><button class="game-button" data-action="hint">Hint</button><button class="game-button secondary" data-action="reset">Reset path</button></div><button class="game-button bf-next" hidden>Next garden <span aria-hidden="true">→</span></button><p class="bf-help">Drag the head • tap a neighbour • arrow keys<br>Every square, exactly once.</p>`;
     container.append(root);
+    const compactHud=mountCompactHud(container);
     const board=root.querySelector<SVGSVGElement>('.bf-board')!,message=root.querySelector<HTMLElement>('.bf-message')!,next=root.querySelector<HTMLButtonElement>('.bf-next')!;
     const buttons=Array.from(root.querySelectorAll<HTMLButtonElement>('button'));
     function snapshot(){return {version:1,level:state.level,path:[...state.path],rewarded:state.rewarded,steps:state.steps,hints:state.hints,best:{...state.best}};}
@@ -34,6 +36,7 @@ const game:GameModule={
       const text=note??(complete?(state.level===LEVEL_COUNT-1?'All gardens filled. Beautifully traced!':'Garden complete! Every square has its place.'):'Start at S. The pale circle is your trail head.');
       message.textContent=text;
       next.hidden=!complete||state.level===LEVEL_COUNT-1;
+      compactHud.set(`Garden ${state.level+1}/${LEVEL_COUNT} · ${Math.round(state.path.length/level.cells.length*100)}%`,`Garden ${state.level+1} of ${LEVEL_COUNT}, ${state.path.length} of ${level.cells.length} squares covered`);
       context.setLevel(`Garden ${state.level+1} / ${LEVEL_COUNT}`);context.setScore(campaignScore(state.best));context.setStatus(complete?'Trail complete':`${state.path.length} / ${level.cells.length} squares covered`);
       for(const button of buttons) button.disabled=paused;
       root.querySelector<HTMLButtonElement>('[data-action="undo"]')!.disabled=paused||state.path.length<2;
@@ -90,7 +93,7 @@ const game:GameModule={
       restart(){stopPointer();state=initialState(state.best);selected=undefined;recovery=0;render();context.save(snapshot());},
       serialize:snapshot,
       restore(data){const validated=restoreState(data);if(validated){stopPointer();state=validated;selected=undefined;recovery=0;render();}},
-      dispose(){disposed=true;stopPointer();abort.abort();root.remove();},
+      dispose(){disposed=true;stopPointer();abort.abort();compactHud.dispose();root.remove();},
     };
   }
 };

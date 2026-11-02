@@ -7,7 +7,9 @@ const angleGap = (a: number, b: number) => Math.abs(Math.atan2(Math.sin(a - b), 
 
 async function start(page: Page) {
   await page.goto('/#/game/claimline');
-  await expect(page.locator('#game-title')).toHaveText('Claimline');
+  // The shell title now lives in the glass options dialog; the arena card carries the visible name.
+  await expect(page.locator('#game-title')).toHaveText('Claimline menu');
+  await expect(page.locator('#cl-heading')).toHaveText('Claimline');
   await page.getByRole('button', { name: 'Play', exact: true }).tap();
   await expect(game(page)).toHaveAttribute('data-phase', 'running');
 }
@@ -32,6 +34,8 @@ test.describe('Claimline phone', () => {
 
   test('fits a 390px phone with the HUD inside the canvas and no overflow', async ({ page }) => {
     await start(page);
+    // Touch players only see the touch hint; key hints stay on keyboard devices.
+    await expect(page.locator('.cl-footnote')).toHaveText('Drag anywhere to steer');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     const canvas = (await page.locator('.cl-canvas').boundingBox())!;
     expect(canvas.x).toBeGreaterThanOrEqual(0);

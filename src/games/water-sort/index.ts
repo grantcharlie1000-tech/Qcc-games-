@@ -4,24 +4,29 @@ import { cloneBoard, pour, won } from './rules';
 import { campaignScore, readSnapshot, Session } from './session';
 import { bandsFor, COLOURS, liquidArt, tubeArt } from './art';
 import { liquidLayers, pourFrame, rotatePoint, spillAngle } from './geometry';
+import {mountCompactHud,mountDockActions} from '../../ui/game-controls-adapter';
 import './style.css';
 
-const undoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5-6 5 6 5M3 10h10a6 6 0 0 1 0 12H6"/></svg>';
-const hintIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6m-5 3h4M8 13a6 6 0 1 1 8 0l-1 3H9zM12 1V0M3 5 1 4m20 0-2 1M2 13H0m24 0h-2"/></svg>';
+const undoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 3.5-6 5 6 5M4 8.5h10a6 6 0 0 1 0 12H7"/></svg>';
+const hintIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19.5h6m-5 3h4M8 14.5a6 6 0 1 1 8 0l-1 3H9zM12 2.5v-1M3.5 6.5l-2-1m21 0-2 1M2.5 14.5H1m22 0h-1.5"/></svg>';
 const module:GameModule={
   id:'water-sort',title:'Water Sort',cover:'game-art/water-sort/cover.svg',
   rules:'Sort the liquids so each colour fills its own tube. A colour split between two tubes is not sorted yet. Tap a source tube, then an empty tube or one with the same top colour. The entire matching top run pours, stopping when the destination is full. Each tube holds four bands. Use Tab or arrow keys to focus and Enter or Space to select. Colour-blind mode adds letters to the bands. Undo reverses a completed pour; Hint shows a winning next pour or how many pours to undo if stuck. The compact difficulty and Level controls select any of 77 verified-soluble levels. Restart resets the current level.',
   mount(container,context) {
     const session=new Session(),abort=new AbortController(),root=document.createElement('section');
     root.className='ws-game';root.setAttribute('aria-label','Water Sort puzzle');
-    root.innerHTML=`<div class="ws-heading"><select class="ws-difficulty" aria-label="Difficulty"><option>Gentle</option><option>Flow</option><option>Deep</option></select><h2 class="ws-level-name">Level 1</h2><select class="ws-level" aria-label="Level">${LEVELS.map((l,i)=>`<option value="${i}">Level ${i+1} · ${l.name}</option>`).join('')}</select></div><div class="ws-playfield"><div class="ws-tubes" aria-label="Liquid tubes"></div><svg class="ws-stream" aria-hidden="true"><path fill="none" stroke-linecap="round"/></svg><div class="ws-victory" hidden><span class="ws-victory-mark">✓</span><strong>Beautifully sorted!</strong></div></div><div class="ws-footer"><p class="ws-message" role="status"></p><div class="ws-actions"><button type="button" data-action="undo" aria-label="Undo">${undoIcon}<span>Undo</span></button><button type="button" class="ws-next" data-action="next" hidden>Next level</button><button type="button" data-action="hint" aria-label="Hint">${hintIcon}<span>Hint</span></button></div></div>`;
+    root.innerHTML=`<div class="ws-heading"><select class="ws-difficulty" aria-label="Difficulty"><option>Gentle</option><option>Flow</option><option>Deep</option></select><h2 class="ws-level-name">Level 1</h2><select class="ws-level" aria-label="Level">${LEVELS.map((l,i)=>`<option value="${i}">Level ${i+1} · ${l.name}</option>`).join('')}</select></div><div class="ws-playfield"><div class="ws-tubes" aria-label="Liquid tubes"></div><svg class="ws-stream" aria-hidden="true"><path fill="none" stroke-linecap="round"/></svg><div class="ws-victory" hidden><span class="ws-victory-mark">✓</span><strong>Beautifully sorted!</strong></div></div><button type="button" class="ws-next" data-action="next" hidden>Next level</button><p class="ws-message sr-only" role="status"></p><div class="ws-actions"><button type="button" data-action="undo" aria-label="Undo">${undoIcon}</button><button type="button" data-action="hint" aria-label="Hint">${hintIcon}</button></div>`;
     container.replaceChildren(root);
     const tubes=root.querySelector<HTMLElement>('.ws-tubes')!,field=root.querySelector<HTMLElement>('.ws-playfield')!;
     const difficulty=root.querySelector<HTMLSelectElement>('.ws-difficulty')!,levelSelect=root.querySelector<HTMLSelectElement>('.ws-level')!;
     const stream=root.querySelector<SVGSVGElement>('.ws-stream')!,streamPath=stream.querySelector('path')!;
+    const undo=root.querySelector<HTMLButtonElement>('[data-action=undo]')!,hintButton=root.querySelector<HTMLButtonElement>('[data-action=hint]')!;
+    const actions=mountDockActions(container,undo,hintButton);root.querySelector('.ws-actions')!.remove();
+    const hud=mountCompactHud(container);
+    const next=root.querySelector<HTMLButtonElement>('[data-action=next]')!;
     let focusAfterPour:number|null=null;
     let selected:number|null=null,hint:ReturnType<Session['hint']>|null=null;
-    let message='Tap a tube, then its destination.',disposed=false,raf=0,lastFrame=0,celebrate:number|null=null;
+    let message='Choose a source tube.',disposed=false,raf=0,lastFrame=0,celebrate:number|null=null;
     let pointer:{id:number;x:number;y:number;from:number;target:HTMLElement}|null=null,suppressClick=false;
     const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
     const snapshot=()=>({...session.state,tubes:cloneBoard(session.state.tubes),history:session.state.history.map(cloneBoard),best:{...session.state.best}});
@@ -36,8 +41,11 @@ const module:GameModule={
     }
     function fit(){
       if(disposed)return;
-      const columns=Math.ceil(session.state.tubes.length/2),rect=field.getBoundingClientRect();
-      const width=Math.max(20,Math.min(92,(rect.width-12)/(columns+.45),(rect.height*.77-16)/6.4));
+      const count=session.state.tubes.length,rect=field.getBoundingClientRect();
+      const single=rect.width>=700&&rect.height>=300&&count<=7;
+      root.dataset.layout=single?'single':'rows';
+      const columns=Math.ceil(count/2);
+      const width=single?Math.min(144,(rect.width-32-(count-1)*40)/count,rect.height*.9/3.2):Math.max(20,Math.min(92,(rect.width-12)/(columns+.45),(rect.height*.9-16)/6.4));
       root.style.setProperty('--ws-tube-width',`${width}px`);
       if(session.pending)paintPour();
     }
@@ -61,10 +69,9 @@ const module:GameModule={
       });
       tubes.innerHTML=`<div class="ws-row">${buttons.slice(0,count).join('')}</div><div class="ws-row">${buttons.slice(count).join('')}</div>`;
       if(focused!==undefined&&!busy&&!session.paused)tubes.querySelector<HTMLButtonElement>(`[data-tube="${focused}"]`)?.focus({preventScroll:true});
-      const undo=root.querySelector<HTMLButtonElement>('[data-action="undo"]')!;
       undo.disabled=session.paused||busy||!state.history.length;undo.classList.toggle('ws-undo-hint',hint?.kind==='undo');
-      root.querySelector<HTMLButtonElement>('[data-action="hint"]')!.disabled=session.paused||busy||complete;
-      const next=root.querySelector<HTMLButtonElement>('[data-action="next"]')!;
+      hintButton.disabled=session.paused||busy||complete;
+      hud.set(`Level ${state.level+1}`);
       next.hidden=!complete;next.disabled=session.paused;next.textContent=state.level===LEVELS.length-1?'Play again':'Next level';
       root.querySelector<HTMLElement>('.ws-victory')!.hidden=!complete;
       const status=complete?`All colours home in ${state.history.length} pours.`:message;
@@ -98,10 +105,11 @@ const module:GameModule={
       const lip=rotatePoint({x:direction>0?61:19,y:26},angle);
       const desiredX=b.x+b.width/2-box.x-(lip.x-40)*scale;
       const clearance=Math.max(70,Math.cos(Math.abs(angle)*Math.PI/180)*215+6)*scale;
-      const desiredY=Math.max(76-box.y+30*scale,b.y-box.y+24*scale-clearance);
+      const safeTop=Math.max(8,box.top);
+      const desiredY=Math.max(safeTop-box.y+30*scale,b.y-box.y+24*scale-clearance);
       const dx=(desiredX-(a.x-box.x+40*scale))*f.travel;
       const lift=f.phase==='travel'?Math.sin(Math.min(1,progress/.18)*Math.PI)*48*scale:0;
-      const dy=Math.max(76+30*scale-(a.y+24*scale),(desiredY-(a.y-box.y+24*scale))*f.travel-lift);
+      const dy=Math.max(safeTop+30*scale-(a.y+24*scale),(desiredY-(a.y-box.y+24*scale))*f.travel-lift);
       const glass=from.querySelector<SVGSVGElement>('.ws-glass')!;
       glass.style.transform=gentle?'none':`translate(${dx}px, ${dy}px) rotate(${angle}deg)`;
       glass.dataset.angle=String(angle);from.style.zIndex='4';
@@ -123,11 +131,11 @@ const module:GameModule={
       if(committed){
         clearAnimation();const values=session.state.tubes[destination];celebrate=values.length&&values.every(c=>c===values[0])?destination:null;
         if(won(session.state.tubes)){tell('Beautifully sorted! Every colour has a home.');context.sound('success');}
-        else message='Tap a tube, then its destination.';
+        else message='Choose a source tube.';
         render(true);
         if(focusAfterPour!==null){
-          const next=won(session.state.tubes)?root.querySelector<HTMLButtonElement>('[data-action="next"]'):tubes.querySelector<HTMLButtonElement>(`[data-tube="${focusAfterPour}"]`);
-          next?.focus({preventScroll:true});focusAfterPour=null;
+          const destination=won(session.state.tubes)?next:tubes.querySelector<HTMLButtonElement>(`[data-tube="${focusAfterPour}"]`);
+          destination?.focus({preventScroll:true});focusAfterPour=null;
         }
       }else{paintPour();raf=requestAnimationFrame(frame);}
     }
@@ -151,18 +159,24 @@ const module:GameModule={
       }
       context.sound('tap');render();
     }
-    function reset(level=session.state.level){clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level,session.state.best).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('Tap a tube, then its destination.');render(true);}
-    root.addEventListener('click',event=>{
-      if(suppressClick&&(event as MouseEvent).detail!==0){suppressClick=false;return;}
-      const target=(event.target as Element).closest<HTMLElement>('button');if(!target||session.paused||session.pending)return;
-      if(target.dataset.tube!==undefined)choose(Number(target.dataset.tube),(event as MouseEvent).detail===0);
-      else if(target.dataset.action==='undo'&&session.undo()){selected=null;hint=null;celebrate=null;tell('Pour undone. Try a new route.');render(true);}
-      else if(target.dataset.action==='hint'&&!won(session.state.tubes)){
+    function reset(level=session.state.level){clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level,session.state.best).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('Choose a source tube.');render(true);}
+    function useAction(kind:'undo'|'hint'){
+      if(session.paused||session.pending)return;
+      if(kind==='undo'&&session.undo()){selected=null;hint=null;celebrate=null;tell('Pour undone. Try a new route.');render(true);}
+      else if(kind==='hint'&&!won(session.state.tubes)){
         selected=null;hint=session.hint();
         if(hint.kind==='pour')tell(`Hint: pour tube ${hint.from+1} into tube ${hint.to+1}. ${hint.remaining} pours from a solution.`);
         else if(hint.kind==='undo')tell(`Undo ${hint.steps} ${hint.steps===1?'pour':'pours'} to reach a winning route.`);
         render();
-      }else if(target.dataset.action==='next'&&won(session.state.tubes))reset((session.state.level+1)%LEVELS.length);
+      }
+    }
+    next.addEventListener('click',()=>{if(!session.paused&&!session.pending&&won(session.state.tubes))reset((session.state.level+1)%LEVELS.length)},{signal:abort.signal});
+    undo.addEventListener('click',()=>useAction('undo'),{signal:abort.signal});
+    hintButton.addEventListener('click',()=>useAction('hint'),{signal:abort.signal});
+    root.addEventListener('click',event=>{
+      if(suppressClick&&(event as MouseEvent).detail!==0){suppressClick=false;return;}
+      const target=(event.target as Element).closest<HTMLElement>('[data-tube]');
+      if(target)choose(Number(target.dataset.tube),(event as MouseEvent).detail===0);
     },{signal:abort.signal});
     root.addEventListener('keydown',event=>{
       const button=(event.target as Element).closest<HTMLElement>('[data-tube]');if(!button)return;
@@ -170,7 +184,7 @@ const module:GameModule={
       if(event.repeat&&(event.key==='Enter'||event.key===' ')){event.preventDefault();return;}
       if(session.paused||session.pending)return;
       if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){
-        event.preventDefault();const cols=Math.ceil(session.state.tubes.length/2),delta=event.key==='ArrowLeft'?-1:event.key==='ArrowRight'?1:event.key==='ArrowUp'?-cols:cols;
+        event.preventDefault();const cols=root.dataset.layout==='single'?session.state.tubes.length:Math.ceil(session.state.tubes.length/2),delta=event.key==='ArrowLeft'?-1:event.key==='ArrowRight'?1:event.key==='ArrowUp'?-cols:cols;
         const index=(Number(button.dataset.tube)+delta+session.state.tubes.length)%session.state.tubes.length;
         tubes.querySelector<HTMLButtonElement>(`[data-tube="${index}"]`)?.focus();
       }
@@ -212,7 +226,7 @@ const module:GameModule={
       pause(){session.paused=true;clearPointer(true);cancelAnimationFrame(raf);raf=0;render();},
       resume(){session.paused=false;render();animate();},restart(){reset();},serialize:snapshot,
       restore(data){const restored=readSnapshot(data);if(!restored)return;clearPointer(true);clearAnimation();session.pending=null;session.state=restored;focusAfterPour=null;selected=null;hint=null;celebrate=null;message='Your colours are right where you left them.';render();},
-      dispose(){clearPointer(true);disposed=true;clearAnimation();observer.disconnect();abort.abort();root.remove();},
+      dispose(){clearPointer(true);disposed=true;clearAnimation();observer.disconnect();abort.abort();hud.dispose();actions.dispose();root.remove();},
     };
   },
 };

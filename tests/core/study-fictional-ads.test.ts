@@ -22,14 +22,14 @@ it('uses stable article-local selections and distinct slots without consulting u
   expect(rendered).toContain('width="');expect(rendered).toContain('height="');
   expect(rendered).not.toMatch(/<a\b|<button\b|https?:|onclick|iframe|script/);
 });
-describe('fictional adverts in article variants',()=>{
+describe('labelled adverts in article variants',()=>{
   for(const style of ['quanta','aeon','essay']) it(`${style} includes labelled local image ads without external ad scripts`,()=>{
     vi.stubGlobal('window',{location:{hash:'#/'}});
     const article=studyArticles.find(a=>a.style===style)!;
     const topic=studyTopics.find(t=>t.id===article.topicId)!;
     const markup=renderVariant(article,topic,'');
     expect((markup.match(/class="fictional-ad /g)||[]).length).toBeGreaterThanOrEqual(5);
-    expect(markup).toContain('Fictional advertisement');
+    expect(markup).toContain('Advertisement');
     expect(markup).toContain('loading="lazy"');
     expect(markup).not.toMatch(/<iframe|<script/i);
   });

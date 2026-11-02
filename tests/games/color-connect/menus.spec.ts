@@ -1,0 +1,25 @@
+import {test,expect} from '../../fixtures';
+import {backToGames,pauseGame,resumeGame} from '../../game-menu';
+import {recordWin,type Snapshot} from '../../../src/games/color-connect/model';
+const completed=()=>{const s:Snapshot={version:1,level:0,paths:[[9,5,6,10,11,15],[14,13,12],[8,4,0,1,2,3,7]],completed:[],moves:3,history:[],assists:0,best:{}};recordWin(s);return s;};
+for(const viewport of [{width:390,height:844},{width:1366,height:768},{width:844,height:390},{width:568,height:320}])test(`original menus and retained controls at ${viewport.width}`,async({page})=>{
+ await page.setViewportSize(viewport);await page.goto('/#/game/color-connect');
+ await expect(page.locator('#game-stage > *').first()).toBeVisible();
+ await expect(page.locator('.game-sheet')).toHaveCount(0);
+ await expect(page.locator('.cc-actions,.cc-legend,.cc-undo,.cc-hint,.cc-erase')).toHaveCount(0);
+ await expect(page.locator('.game-dock')).toBeVisible();
+ await pauseGame(page);await expect(page.locator('#pause-overlay')).toBeVisible();
+ await expect(page.locator('#resume-game')).toHaveText('Keep playing');
+ await resumeGame(page);await expect(page.locator('#pause-overlay')).toBeHidden();
+ await backToGames(page);await expect(page.locator('#game-stage')).toHaveCount(0);
+ await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:color-connect',JSON.stringify({version:1,data})),completed());
+ await page.goto('/#/game/color-connect');const result=page.locator('.cc-win');await expect(result).toBeVisible();
+ await expect(page.locator('.game-sheet')).toHaveCount(0);
+ await expect(page.locator('.cc-actions,.cc-legend,.cc-undo,.cc-hint,.cc-erase')).toHaveCount(0);
+ const box=(await result.boundingBox())!,stage=(await page.locator('.stage-wrap').boundingBox())!;
+ expect(box.x).toBeGreaterThanOrEqual(stage.x-1);expect(box.x+box.width).toBeLessThanOrEqual(stage.x+stage.width+1);
+ expect(box.y).toBeGreaterThanOrEqual(stage.y-1);expect(box.y+box.height).toBeLessThanOrEqual(stage.y+stage.height+1);
+ const primary=page.getByRole('button',{name:'Next puzzle',exact:true});await expect(primary).toBeEnabled();
+ const target=(await primary.boundingBox())!;expect(target.height).toBeGreaterThanOrEqual(44);
+ await primary.focus();await primary.press('Enter');await expect(result).toBeHidden();
+});
