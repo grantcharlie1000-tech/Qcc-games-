@@ -1,5 +1,10 @@
 import {expect} from '@playwright/test';
 import type {Locator,Page} from '@playwright/test';
+/** Hide glyph fill for a backdrop shot while keeping its text-shadow halo.
+ * WebKit paints no text-shadow for fully transparent text, so use a 1% grey:
+ * it leaves the halo intact and only nudges the measured backdrop toward the
+ * ink (a conservative error). */
+export const HIDDEN_INK='rgb(128 128 128 / .01)';
 /** Adaptive glass ink (src/ui/glass-ink.ts) wraps sheet text in .glass-label
  * and resolves each glyph's colour on a later animation frame. Read glyph
  * colours only after every text glyph is inked and two reads agree, so the

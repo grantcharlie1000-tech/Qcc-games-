@@ -415,7 +415,8 @@
   -webkit-text-stroke:0;paint-order:stroke fill;
   text-shadow:none;
 }
-:is(.arcade-glass,.ui-tabbar-mini,.ui-glass-sheet) .glass-ink[data-glass-halo]{text-shadow:0 0 1px var(--glass-local-halo),0 0 2.5px var(--glass-local-halo)}
+/* WebKit paints no text-shadow under paint-order:stroke fill; the stroke is 0. */
+:is(.arcade-glass,.ui-tabbar-mini,.ui-glass-sheet) .glass-ink[data-glass-halo]{paint-order:normal;text-shadow:0 0 1px var(--glass-local-halo),0 0 1px var(--glass-local-halo),0 0 2.5px var(--glass-local-halo)}
 :is(.arcade-glass,.ui-tabbar-mini,.ui-glass-sheet) svg.glass-ink[data-glass-halo]{filter:drop-shadow(1px 0 0 var(--glass-local-halo)) drop-shadow(-1px 0 0 var(--glass-local-halo)) drop-shadow(0 1px 0 var(--glass-local-halo)) drop-shadow(0 -1px 0 var(--glass-local-halo))}
 /* Keep the same plain glyph rendering at every display density. */
 @media(max-resolution:1.5dppx){.arcade-glass .glass-ink,.ui-tabbar-mini .glass-ink{-webkit-text-stroke-width:0}}
