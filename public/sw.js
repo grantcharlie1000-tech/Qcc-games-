@@ -1,14 +1,11 @@
 // Keep this recovery worker at the original URL so existing registrations update.
-self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
-self.addEventListener('activate',event=>event.waitUntil((async()=>{
- // Storage policy must not prevent removal of a broken worker.
- try{
-  const names=await caches.keys();
-  await Promise.allSettled(names.map(async name=>caches.delete(name)));
- }catch{/* CacheStorage may be unavailable on managed devices. */}
+// Future caching workers must not store redirected responses: omit index.html
+// from precache or rebuild the Response before storing it.
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',e=>e.waitUntil((async()=>{
+ for(const k of await caches.keys())if(k.startsWith('pocket-arcade'))await caches.delete(k);
  await self.clients.claim();
+ const cs=await self.clients.matchAll({type:'window'});
  await self.registration.unregister();
- const windows=await self.clients.matchAll({type:'window'});
- // A window can close between enumeration and navigation.
- await Promise.allSettled(windows.map(async client=>client.navigate(client.url)));
+ for(const c of cs){try{await c.navigate(c.url);}catch{}}
 })()));

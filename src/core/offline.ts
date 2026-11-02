@@ -10,7 +10,7 @@ export async function retireOffline():Promise<void>{
  try{
   if(typeof caches!=='undefined'){
    const names=await caches.keys();
-   await Promise.allSettled(names.map(async name=>caches.delete(name)));
+   await Promise.allSettled(names.filter(name=>name.startsWith('pocket-arcade')).map(async name=>caches.delete(name)));
   }
  }catch{/* Cleanup must never prevent the rest of the app from starting. */}
 }

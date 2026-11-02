@@ -6,20 +6,22 @@ import {extname,resolve,sep} from 'node:path';
 const origin='http://127.0.0.1:4618',root=resolve('dist');
 const mime={'.html':'text/html','.js':'application/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.webp':'image/webp','.png':'image/png','.woff2':'font/woff2','.ttf':'font/ttf'};
 let server,scope,legacy,legacyWorker,networkDocuments;
-// Cache-only navigations reproduce ERR_FAILED when index.html is evicted.
-// This fixture has no knowledge of the recovery implementation.
+// Pages redirects index.html to the scope root. addAll retains redirected=true,
+// which Chrome rejects when this old worker serves it for a navigation.
 const oldWorker=String.raw`
 const VERSION='7cc4be4c7742',NAME='pocket-arcade:'+new URL(self.registration.scope).pathname+':'+VERSION+':shell';
+const PRECACHE=[new URL('index.html',self.registration.scope).href];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(NAME);
- await cache.put(new URL('index.html',self.registration.scope),new Response('<!doctype html><h1>Cached old app</h1>',{headers:{'Content-Type':'text/html'}}));
- await caches.open('unrelated-cache');
+ await cache.addAll(PRECACHE);
+ const unrelated=await caches.open('unrelated-cache');
+ await unrelated.put(new URL('preserved.txt',self.registration.scope),new Response('Unrelated data survives'));
  await self.skipWaiting();
 })()));
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('fetch',event=>{
  if(event.request.mode==='navigate'&&!new URL(event.request.url).searchParams.has('network')){
-  event.respondWith(caches.open(NAME).then(cache=>cache.match(new URL('index.html',self.registration.scope))));
+  event.respondWith(caches.open(NAME).then(cache=>cache.match(PRECACHE[0])));
  }
 });
 `;
@@ -34,7 +36,10 @@ test.beforeAll(async()=>{
    if(relative==='sw.js'&&legacyWorker){
     res.writeHead(200,{'Content-Type':'application/javascript','Cache-Control':'no-cache, max-age=0'}).end(oldWorker);return;
    }
-   const document=relative===''||relative==='seed.html'||relative==='index.html';
+   if(relative==='index.html'){
+    res.writeHead(308,{'Location':scope,'Cache-Control':'no-store'}).end();return;
+   }
+   const document=relative===''||relative==='seed.html';
    if(document&&legacy){
     res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'}).end('<!doctype html><h1>Legacy setup</h1>');return;
    }
@@ -68,17 +73,27 @@ async function seed(page){
   await navigator.serviceWorker.ready;
  });
  await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
- const response=await page.reload();
- expect(response.fromServiceWorker()).toBe(true);
- await expect(page.getByRole('heading',{name:'Cached old app'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Legacy setup'})).toBeVisible();
+ expect(await cachedNavigation(page)).toMatchObject({redirected:true,status:200,url:origin+scope});
  expect(await page.evaluate(()=>caches.keys())).toHaveLength(2);
+}
+async function cachedNavigation(page){
+ return page.evaluate(async()=>{
+  const name=(await caches.keys()).find(name=>name.startsWith('pocket-arcade'));
+  const response=await(await caches.open(name)).match(new URL('index.html',location.href));
+  return {redirected:response.redirected,status:response.status,url:response.url,body:await response.text()};
+ });
 }
 async function recovered(page){
  await expect(page.locator('.game-card').first()).toBeVisible();
  await expect.poll(()=>page.evaluate(async()=>({
   caches:await caches.keys(),registrations:(await navigator.serviceWorker.getRegistrations()).length,
   controlled:!!navigator.serviceWorker.controller
- }))).toEqual({caches:[],registrations:0,controlled:false});
+ }))).toEqual({caches:['unrelated-cache'],registrations:0,controlled:false});
+ expect(await page.evaluate(async()=>{
+  const response=await(await caches.open('unrelated-cache')).match(new URL('preserved.txt',location.href));
+  return response.text();
+ })).toBe('Unrelated data survives');
  expect(await page.evaluate(()=>window.appRegistrations)).toEqual([]);
  expect(await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:best:snake'))).toBe('2468');
  expect(await page.evaluate(()=>document.cookie)).toContain('recovery=preserved');
@@ -88,20 +103,26 @@ async function recovered(page){
 }
 
 for(const path of ['/','/Qcc-games-/']){
- test('replacement worker recovers two returning windows with an evicted shell at '+path,async({page,context})=>{
+ test('replacement worker recovers redirected cached navigation after one more load at '+path,async({page,context})=>{
   scope=path;await seed(page);
   const second=await context.newPage();
-  const oldResponse=await second.goto(origin+scope+'seed.html?returning=two#/collection');
-  expect(oldResponse.fromServiceWorker()).toBe(true);
+  const oldResponse=await second.goto(origin+scope+'seed.html?network=1&returning=two#/collection');
+  expect(oldResponse.fromServiceWorker()).toBe(false);
+  expect(await second.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
   const urls=[page.url(),second.url()];
-  await page.evaluate(async()=>{
-   for(const name of await caches.keys())if(name.startsWith('pocket-arcade:'))await(await caches.open(name)).delete(new URL('index.html',location.href));
-  });
+  const cached=await cachedNavigation(page);
   const broken=await context.newPage();
-  await expect(broken.goto(origin+scope+'seed.html?broken=1')).rejects.toThrow(/ERR_FAILED/);
-  await broken.close();
+  const brokenURL=origin+scope+'seed.html?broken=1#/collection';
+  await expect(broken.goto(brokenURL)).rejects.toThrow(/ERR_FAILED/);
+  // Let Chrome commit the error document before installing the replacement.
+  await expect.poll(()=>broken.evaluate(()=>location.protocol)).toBe('chrome-error:');
+  expect(await cachedNavigation(page)).toEqual(cached); // The entry was never evicted.
+  const failedAgain=[];
+  broken.on('requestfailed',request=>{if(request.isNavigationRequest())failedAgain.push(request.failure().errorText);});
+  const networkNavigation=response=>response.request().isNavigationRequest()&&!response.fromServiceWorker()&&response.headers()['x-recovery-network']==='built-app';
+  const brokenResponse=broken.waitForResponse(networkNavigation);
   legacy=false;legacyWorker=false;
-  const responses=[page,second].map(tab=>tab.waitForResponse(response=>response.request().isNavigationRequest()&&!response.fromServiceWorker()&&response.headers()['x-recovery-network']==='built-app'));
+  const responses=[page,second].map(tab=>tab.waitForResponse(networkNavigation));
   // Simulate the browser update check at the original URL. These legacy pages
   // run no app code, so only the replacement worker can rescue them.
   await page.evaluate(()=>{void navigator.serviceWorker.getRegistration().then(registration=>registration.update());});
@@ -109,8 +130,12 @@ for(const path of ['/','/Qcc-games-/']){
   await recovered(page);await recovered(second);
   expect([page.url(),second.url()]).toEqual(urls);
   expect(networkDocuments.sort()).toEqual(urls.map(url=>url.split('#')[0]).sort());
-  const response=await page.reload();expect(response.fromServiceWorker()).toBe(false);expect(response.status()).toBe(200);
-  await expect.poll(()=>page.evaluate(()=>navigator.serviceWorker.getRegistrations().then(registrations=>registrations.length))).toBe(0);
+  // Keep the actual failed tab. One reload of that error document must recover.
+  await broken.reload();
+  const response=await brokenResponse;expect(response.fromServiceWorker()).toBe(false);expect(response.status()).toBe(200);
+  expect(broken.url()).toBe(brokenURL);await recovered(broken);
+  expect(failedAgain).toEqual([]);
+  expect(networkDocuments.sort()).toEqual([...urls,brokenURL].map(url=>url.split('#')[0]).sort());
  });
  test('app startup removes the old worker without registering its replacement at '+path,async({page})=>{
   scope=path;await seed(page);
@@ -121,7 +146,7 @@ for(const path of ['/','/Qcc-games-/']){
   expect(response.status()).toBe(200);expect(response.fromServiceWorker()).toBe(false);
   // Unregistering cannot detach the old controller from the current document.
   // The next network navigation must be uncontrolled.
-  await expect.poll(()=>page.evaluate(async()=>({caches:await caches.keys(),registrations:(await navigator.serviceWorker.getRegistrations()).length}))).toEqual({caches:[],registrations:0});
+  await expect.poll(()=>page.evaluate(async()=>({caches:await caches.keys(),registrations:(await navigator.serviceWorker.getRegistrations()).length}))).toEqual({caches:['unrelated-cache'],registrations:0});
   expect(await page.evaluate(()=>window.appRegistrations)).toEqual([]);
   const reload=await page.reload();expect(reload.fromServiceWorker()).toBe(false);
   await recovered(page);

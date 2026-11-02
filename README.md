@@ -24,7 +24,7 @@ npm run build
 npm run verify:offline
 ```
 
-`verify:offline` now checks the production service-worker kill switch and runs Chromium recovery tests on port 4618. It installs an old caching worker, reproduces failed cached navigation, then checks that the replacement empties all caches, unregisters and reloads each window from the network at `/` and `/Qcc-games-/`. It also checks app-startup cleanup without worker replacement and preservation of local saves and cookies. `verify:update` remains a compatibility alias for this same audit. Set `CHROMIUM_PATH` to use a system Chromium binary when needed. Game tests and shell tests are under `tests/`; historical offline reports describe behavior that has been retired.
+`verify:offline` now checks the production service-worker kill switch and runs Chromium recovery tests on port 4618. It installs an old caching worker whose `cache.addAll` stores `index.html` after a real 308 redirect to the scope root, confirms the cached response has `redirected === true`, and reproduces Chrome's `ERR_FAILED` when the worker serves it for navigation. The replacement deletes only caches starting with `pocket-arcade`, unregisters and reloads controlled windows from the network; the failed tab recovers after one more load. Tests cover `/` and `/Qcc-games-/`, independent app-startup cleanup, and preservation of unrelated cached content, local saves and cookies. `verify:update` remains a compatibility alias for this same audit. Set `CHROMIUM_PATH` to use a system Chromium binary when needed. Game tests and shell tests are under `tests/`; historical offline reports describe behavior that has been retired.
 
 ## Play and save
 
@@ -34,7 +34,9 @@ Use **Menu** on the glass island at the bottom for Study Mode, search, favourite
 
 Scores, settings, favourites and compact game snapshots stay in this browser's local storage. If storage is blocked or full, play continues in memory and the menu explains that progress cannot be retained. Signed-in accounts can sync supported game snapshots between devices. Open **Menu → Leaderboards** to view shared scores for the fifteen scored games. Log in to publish personal bests; account scores queue offline until the connection returns. Guest scores and runs stay local and are not automatically imported into public rankings. Globle retains its own statistics and has no score leaderboard; Pac-Man keeps a local best score only; Corn Clicker keeps its own farm save, backups and statistics, and ranks lifetime kernels harvested on the leaderboards. Restart starts a new run; leaving a game saves its current state. A hidden tab pauses real-time play.
 
-The app loads from the network. The recovery worker remains at the previous `sw.js` URL so returning browsers can remove their old worker and caches. App startup also unregisters existing workers and clears CacheStorage. Saved games, preferences, accounts and cookies remain in their existing storage.
+The app loads from the network. The recovery worker remains at the previous `sw.js` URL so returning browsers can remove their old worker and caches. App startup also unregisters existing workers and deletes only CacheStorage caches whose names start with `pocket-arcade`. Unrelated caches, saved games, preferences, accounts and cookies remain in their existing storage.
+
+The confirmed failure was a redirected cached navigation: Pages redirects `/index.html` to `/` with HTTP 308; the old precache retained the response's `redirected` flag, and Chrome rejected it when the navigation handler served it. Any future caching service worker must not store redirected responses: drop `index.html` from precache or rebuild the `Response` before storing it.
 
 ## The look
 

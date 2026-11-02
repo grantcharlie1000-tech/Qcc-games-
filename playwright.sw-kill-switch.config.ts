@@ -8,6 +8,7 @@ export default defineConfig({
  use:{trace:'retain-on-failure',screenshot:'only-on-failure'},
  projects:[{name:'chromium',use:{...devices['Desktop Chrome'],launchOptions:{
   executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),
-  args:['--no-sandbox']
+  // Keep the failed document until the test's single explicit recovery reload.
+  args:['--no-sandbox','--disable-auto-reload']
  }}}]
 });
