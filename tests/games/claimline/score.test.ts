@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LeaderboardSync } from '../../../src/leaderboard/client';
 import { formatScore } from '../../../src/leaderboard/format';
-import { CLAIMLINE_ON_SHARED_LEADERBOARD, scoredGame } from '../../../src/leaderboard/shared';
+import { SCORED_GAMES, scoredGame } from '../../../src/leaderboard/shared';
 import { createWorld, placePlayer, setOwner, start, step } from '../../../src/games/claimline/model';
 import { basisPoints, formatShare, leaderboardScore } from '../../../src/games/claimline/score';
 import { HUMAN } from '../../../src/games/claimline/types';
@@ -58,17 +58,28 @@ describe('score', () => {
     expect(leaderboardScore({ players: [{ ...world.players[0], isBot: true }] })).toBe(0);
   });
 
-  it('[12b] shared leaderboard: formatScore renders a share and, with the switch off, the game is not a scored game', async () => {
+  it('[12b] shared leaderboard: Claimline is a scored game, formats as a share and submits only the human peak', async () => {
     expect(formatScore('claimline', 1234)).toBe('12.34%');
     expect(formatScore('claimline', 5)).toBe('0.05%');
-    expect(CLAIMLINE_ON_SHARED_LEADERBOARD).toBe(false); // flip together with the database migration that allows the game id
-    expect(scoredGame('claimline')).toBe(CLAIMLINE_ON_SHARED_LEADERBOARD);
-    const storage = memory(), fetcher = vi.fn(async () => Response.json({}));
+    expect(scoredGame('claimline')).toBe(true);
+    expect(SCORED_GAMES).toContain('claimline');
+    // A real match: bots hold far more land than the human, yet only the human's peak is ever queued.
+    const world = createWorld(31, { spawn: false });
+    start(world);
+    placePlayer(world, HUMAN, 40, 40, 0, 5);
+    placePlayer(world, 2, 80, 80, 0, 12);
+    const score = leaderboardScore(world);
+    expect(score).toBe(world.players[0].peak);
+    expect(score).toBeLessThan(basisPoints(world.counts[2], world.playable));
+    const storage = memory(), bodies: unknown[] = [];
+    const fetcher = vi.fn(async (_url: unknown, options: RequestInit) => { bodies.push(JSON.parse(String(options.body))); return Response.json({ entries: [], player: null }); });
     const sync = new LeaderboardSync(storage, fetcher as unknown as typeof fetch);
-    sync.queue('claimline', 1234);
+    sync.queue('claimline', score);
     await sync.flush();
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(bodies).toEqual([{ game: 'claimline', score, name: 'Ada' }]);
+    expect(JSON.stringify(bodies)).not.toMatch(/Moss|Juno|Pip|Rook|Tansy|Bram/);
     expect(storage.read('leaderboard:pending:account:ada', {})).toEqual({});
+    expect(storage.read('leaderboard:sent:account:ada', {})).toEqual({ claimline: score });
     sync.dispose();
   });
 });

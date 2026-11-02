@@ -43,7 +43,15 @@ Bot names and scores never leave the match.
 
 ## Leaderboard
 
-The shared leaderboard needs `claimline` in the `arcade_scores_game_id_check` constraint, which requires a database migration. Until that lands, `CLAIMLINE_ON_SHARED_LEADERBOARD` in `src/leaderboard/shared.ts` stays `false`, so nothing is queued or sent and only the local best (`best:claimline`, already accepted by the account-save key check) is kept. Flipping it to `true` after the migration enables the existing sidebar, dialog and sync unchanged; `formatScore` already renders the score as a percentage.
+Claimline is a scored game on the shared leaderboard and uses the existing sidebar, Leaderboards dialog and `LeaderboardSync` as-is. The submitted score is the human's peak share in hundredths of a percent, shown as a percentage by `formatScore`. Bots are never submitted.
+
+The production database only accepts `claimline` scores after `netlify/database/migrations/20261102090000_claimline_leaderboard.sql` adds it to `arcade_scores_game_id_check`. Until then:
+
+- **Server.** An insert that fails that specific constraint (`23514` on `arcade_scores_game_id_check`) gets a 409 with `code: 'leaderboard-not-open'`. Every other failure is still the generic 503. Reads work and return an empty board.
+- **Client.** `LeaderboardSync` parks only that game for 15 minutes, keeps its best queued, raises no error and applies no shared backoff, and goes on sending other games' scores. A fresh page load retries straight away.
+- **What players see.** The sidebar and dialog show their normal empty state ("No scores yet"), and the local best is kept as usual.
+
+Once the migration is applied, the next retry (or page load) delivers the queued best with no code change.
 
 ## Tests
 

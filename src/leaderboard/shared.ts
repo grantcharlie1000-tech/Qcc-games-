@@ -1,11 +1,11 @@
 import type {GameId} from '../core/types';
+export const SCORED_GAMES:readonly GameId[]=['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','corn-clicker','slipline','quadfall','claimline'];
 /**
- * Claimline's shared-leaderboard switch. Keep this false until a migration adds 'claimline' to the
- * arcade_scores_game_id_check constraint; the server would reject (and the database refuse) its scores before then.
- * While false the game stays off the shared leaderboard and only keeps its local best ('best:claimline').
+ * Error code the server returns (HTTP 409) when the database does not accept a game's scores yet: its game_id is
+ * missing from the arcade_scores_game_id_check constraint until that game's migration is applied. Clients keep
+ * such scores queued and retry quietly, so a newly added game starts syncing on its own once the migration lands.
  */
-export const CLAIMLINE_ON_SHARED_LEADERBOARD:boolean=false;
-export const SCORED_GAMES:readonly GameId[]=['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','corn-clicker','slipline','quadfall',...(CLAIMLINE_ON_SHARED_LEADERBOARD?['claimline' as const]:[])];
+export const LEADERBOARD_NOT_OPEN='leaderboard-not-open';
 export const MINESWEEPER_RANKINGS=['minesweeper-easy','minesweeper-medium','minesweeper-hard','minesweeper-score'] as const;
 export type LeaderboardKey=GameId|typeof MINESWEEPER_RANKINGS[number];
 export const scoredGame=(value:unknown):value is LeaderboardKey=>typeof value==='string'&&(SCORED_GAMES.includes(value as GameId)||MINESWEEPER_RANKINGS.includes(value as typeof MINESWEEPER_RANKINGS[number]));

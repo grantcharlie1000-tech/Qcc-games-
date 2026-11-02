@@ -76,4 +76,4 @@ Fivefold fills the stage with a responsive DOM board and keyboard. Its determini
 
 ## Claimline
 
-Claimline is a canvas territory-capture game against six local bots in one circular arena. It fills the stage, and its score is the human's peak share in hundredths of a percent, shown as a percentage. It stays off the shared leaderboard until a migration adds it to the `arcade_scores` game check; `CLAIMLINE_ON_SHARED_LEADERBOARD` in `src/leaderboard/shared.ts` is the switch. See [its spec](src/games/claimline/SPEC.md).
+Claimline is a canvas territory-capture game against six local bots in one circular arena. It fills the stage, and its score is the human's peak share in hundredths of a percent, shown as a percentage. It is a scored game on the shared leaderboard. Until the `20261102090000_claimline_leaderboard.sql` migration is applied in production, the server answers its score submissions with 409 `leaderboard-not-open`. `LeaderboardSync` then keeps the score queued for that game only and retries quietly, so the board starts filling by itself once the migration lands. See [its spec](src/games/claimline/SPEC.md).
