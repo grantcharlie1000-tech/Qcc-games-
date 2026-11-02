@@ -79,7 +79,7 @@ test('the lens bends only its rim: the clear centre matches the live canvas',asy
 
 test('a WebGL game (Ball Run, non-preserved buffer) feeds an opaque, moving lens',async({page})=>{
   await page.goto('/#/game/ball-run');
-  await expect(page.locator('.game-view')).toHaveAttribute('data-game-chrome','ready');
+  await expect(page.locator('#game-menu')).toBeVisible();
   await page.getByRole('slider',{name:'Difficulty',exact:true}).fill('0');
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(page.locator('.ball-run')).toHaveAttribute('data-phase','running');
@@ -97,7 +97,7 @@ test('all three WebGL sources expose their completed drawing buffer for a repain
   test.setTimeout(120000);
   for(const id of ['ball-run','blockcraft','globle']){
     await page.goto(`/#/game/${id}`);
-    await expect(page.locator('.game-view')).toHaveAttribute('data-game-chrome','ready',{timeout:60000});
+    await expect(page.locator('#game-menu')).toBeVisible({timeout:60000});
     if(id==='blockcraft')await expect(page.locator('.blockcraft')).toHaveAttribute('data-ready','true',{timeout:60000});
     const source=await page.locator('#game-stage canvas:not(.ui-glass-gl>canvas)').first().elementHandle();
     const result=await source!.evaluate(async element=>{

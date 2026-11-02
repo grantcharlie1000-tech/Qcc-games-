@@ -37,6 +37,9 @@ test('shared pause stops Suika Game drawing and repeated resumes keep one physic
  for(let cycle=0;cycle<3;cycle++){
   await pauseGame(page);
   await expect(page.locator('#pause-overlay h2')).toBeVisible();
+  // The glass lens repaints the frozen board once when the menu sheet's transitions end; wait for that, then require silence.
+  await expect.poll(()=>page.evaluate(()=>document.getAnimations().length)).toBe(0);
+  await page.evaluate(()=>window.__fruitRenders.sample(4));
   const paused=await snapshot();
   expect(await page.evaluate(()=>window.__fruitRenders.sample(20))).toEqual({draws:0,maxPerFrame:0});
   expect((await snapshot()).time).toBe(paused.time);
@@ -44,6 +47,9 @@ test('shared pause stops Suika Game drawing and repeated resumes keep one physic
   // The shell can call resume again; its public callback must remain idempotent.
   await page.locator('#resume-game').dispatchEvent('click');
   await page.locator('#resume-game').dispatchEvent('click');
+  // Closing the sheet ends transitions, which repaint once beside the game's own frame; the loop count is judged after that.
+  await expect.poll(()=>page.evaluate(()=>document.getAnimations().length)).toBe(0);
+  await page.evaluate(()=>window.__fruitRenders.sample(4));
   const active=await page.evaluate(()=>window.__fruitRenders.sample(20));
   expect(active.draws).toBeGreaterThan(0);
   expect(active.maxPerFrame).toBe(1);

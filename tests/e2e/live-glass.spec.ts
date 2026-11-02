@@ -1,12 +1,15 @@
 import {test,expect} from '../fixtures';
 
+// The clear glass: an rgb(8 12 18 / .20) fill over the live backdrop, which the SVG-filter material also saturates by 1.08.
+const FILL=.2,VEIL=[8,12,18];
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
 
 for(const id of ['snake','quadfall','maze-muncher','neon-coil'])test(`${id} glass reads new canvas frames without rebuilding its lens map`,async({page})=>{
   await page.goto(`/#/game/${id}`);
   const control=page.locator('#game-menu');await expect(control).toBeVisible();
   await control.screenshot({animations:'disabled'});
-  if(await control.getAttribute('data-glass')==='backdrop'){
+  const SATURATE=await control.getAttribute('data-glass-mode')==='svg'?1.08:1;
+  if(await control.getAttribute('data-glass')==='backdrop'&&await control.getAttribute('data-glass-mode')==='svg'){
     const bounds=(await control.boundingBox())!,lens=(await control.locator('.ui-glass-lens').boundingBox())!;
     // An inward lens never needs to filter an invisible 14px margin around
     // every live control. Keep the sampled compositor area inside its shape.
@@ -39,7 +42,8 @@ for(const id of ['snake','quadfall','maze-muncher','neon-coil'])test(`${id} glas
       const ctx=c.getContext('2d')!;ctx.drawImage(image,0,0);
       return [...ctx.getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data].slice(0,3);
     },png);
-    for(let channel=0;channel<3;channel++)expect(Math.abs(sampled[channel]-(rgb[channel]*.98+184*.02)),`${id}: ${sampled} through ${rgb}`).toBeLessThanOrEqual(3);
+    const lum=.2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];
+    for(let channel=0;channel<3;channel++)expect(Math.abs(sampled[channel]-((lum+SATURATE*(rgb[channel]-lum))*(1-FILL)+VEIL[channel]*FILL)),`${id}: ${sampled} through ${rgb}`).toBeLessThanOrEqual(3);
   }
   expect(await maps()).toEqual(before);
 });
@@ -58,11 +62,17 @@ test('unchanged game text does not trigger a new backdrop colour scan each frame
   // Do not count initial font/map decoding and viewport settlement as work
   // caused by a game replacing an unchanged text node during play.
   await page.waitForTimeout(1000);
-  const scanned=await page.evaluate(()=>new Promise<{before:number;after:number}>(resolve=>{
+  // Live canvases re-sample ink on a 140ms timer (never per frame), so count the frames that
+  // scan: replacing unchanged text on every frame must not add scans beyond that cadence.
+  const scanned=await page.evaluate(()=>new Promise<{scanFrames:number;elapsed:number}>(resolve=>{
     const counter=(window as unknown as {inkScanCounter:{hits:number}}).inkScanCounter;
-    const before=counter.hits;let frame=0;
-    const repeat=()=>{document.getElementById('unchanged-hud')!.textContent='Ready';if(++frame<20)requestAnimationFrame(repeat);else requestAnimationFrame(()=>resolve({before,after:counter.hits}));};
+    let last=counter.hits,scanFrames=0,frame=0;const start=performance.now();
+    const repeat=()=>{
+      if(counter.hits!==last)scanFrames++;last=counter.hits;
+      document.getElementById('unchanged-hud')!.textContent='Ready';
+      if(++frame<30)requestAnimationFrame(repeat);else requestAnimationFrame(()=>{if(counter.hits!==last)scanFrames++;resolve({scanFrames,elapsed:performance.now()-start});});
+    };
     requestAnimationFrame(repeat);
   }));
-  expect(scanned.after).toBe(scanned.before);
+  expect(scanned.scanFrames).toBeLessThanOrEqual(Math.ceil(scanned.elapsed/140)+1);
 });

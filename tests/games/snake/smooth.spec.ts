@@ -152,7 +152,7 @@ test('resize during a turn preserves the grid and renders at the actual high-DPI
   await expect.poll(async()=>{
    await page.clock.runFor(32);
    const measured=await page.evaluate(()=>{
-    const c=document.querySelector('canvas') as HTMLCanvasElement,p=document.querySelector('.snake-garden')!.getBoundingClientRect(),r=c.getBoundingClientRect();
+    const c=document.querySelector('canvas.snake-canvas') as HTMLCanvasElement,p=document.querySelector('.snake-garden')!.getBoundingClientRect(),r=c.getBoundingClientRect();
     return {width:innerWidth,height:innerHeight,dpr:devicePixelRatio,canvas:r.width,backing:c.width,boardBottom:p.bottom,boardRight:p.right};
    });
    const coherent=measured.width===viewport.width&&measured.height===viewport.height&&measured.backing===Math.round(measured.canvas*measured.dpr)&&measured.boardBottom<viewport.height&&measured.boardRight<viewport.width;
@@ -162,7 +162,7 @@ test('resize during a turn preserves the grid and renders at the actual high-DPI
 
   expect(await saved(page)).toEqual(before);
   const measurements=await page.evaluate(()=>{
-   const canvas=document.querySelector('canvas')!,garden=document.querySelector('.snake-garden')!;
+   const canvas=document.querySelector<HTMLCanvasElement>('canvas.snake-canvas')!,garden=document.querySelector('.snake-garden')!;
    const c=canvas.getBoundingClientRect(),p=garden.getBoundingClientRect();
    const radius=getComputedStyle(canvas).borderTopLeftRadius;
    const values=[...radius.matchAll(/([\d.]+)(px|%)/g)].map(match=>Number(match[1])*(match[2]==='%'?c.width/100:1));

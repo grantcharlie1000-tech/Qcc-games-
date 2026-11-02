@@ -273,10 +273,12 @@ test.describe('menus',()=>{
     // Death screen: message, score (the experience collected, as in vanilla) and a Respawn button enabled after a second.
     await page.evaluate(()=>{const s=(window as unknown as {blockcraft:{survival:{kill(m:string):void}}}).blockcraft.survival;
       Object.defineProperty(s,'xpTotal',{configurable:true,get:()=>37});s.kill('Steve hit the ground too hard');});
+    // The delay is one second: assert the disabled state first, before slower text checks can outlast it.
+    const respawn=page.getByRole('button',{name:'Respawn'});
+    await expect(respawn).toBeDisabled();
     await expect(page.getByRole('heading',{name:'You died!'})).toBeVisible();
     await expect(page.locator('.bc-menu')).toContainText('Steve hit the ground too hard');await expect(page.locator('.bc-menu-score')).toHaveText('Score: 37');
-    const respawn=page.getByRole('button',{name:'Respawn'});
-    await expect(respawn).toBeDisabled();await expect(respawn).toBeEnabled({timeout:5000});
+    await expect(respawn).toBeEnabled({timeout:5000});
     await shellHidden(page);
     await page.screenshot({path:evidence('death-1280x720')});
     await respawn.click();

@@ -1,4 +1,4 @@
-import {appSettings,gameAction,pauseGame,resumeGame} from '../game-menu';
+import {appSettings,resumeGame} from '../game-menu';
 import {test,expect,seedStudyTopic} from '../fixtures';
 import type {BrowserContext,Page} from '@playwright/test';
 import {NetlifyDB} from '@netlify/database-dev';
@@ -49,7 +49,10 @@ test('opening leaderboards pauses the active game and closing them restores its 
  await menu();await expect(page.getByLabel('Game',{exact:true})).toHaveValue('snake');
  await expect(page.locator('#pause-overlay')).toBeVisible();
  await page.getByRole('button',{name:'Close leaderboards'}).click();await expect(page.locator('#pause-overlay')).toBeHidden();
- await page.goto('/#/game/minesweeper');await gameAction(page,'Game options');await pauseGame(page);await menu();
+ await page.goto('/#/game/minesweeper');await expect(page.locator('.ms-tile').first()).toBeVisible();
+ // The game menu only pauses while it is open. A hidden tab is the explicit pause that outlives every dialog.
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});document.dispatchEvent(new Event('visibilitychange'));});
+ await expect(page.locator('#pause-overlay')).toBeVisible();await menu();
  await page.getByRole('button',{name:'Close leaderboards'}).click();await expect(page.locator('#pause-overlay')).toBeVisible();
  await resumeGame(page);await expect(page.locator('#pause-overlay')).toBeHidden();
 });

@@ -12,6 +12,11 @@ const observeFrames = (page: Page, count: number) => page.evaluate(n => new Prom
   requestAnimationFrame(next);
 }), count);
 
+const settle = async (page: Page) => {
+  await expect.poll(() => page.evaluate(() => document.getAnimations().length)).toBe(0);
+  await observeFrames(page, 4);
+};
+
 test('shared pause stops Canvas rendering and repeated resumes keep one animation loop', async ({ page }) => {
   await page.addInitScript(() => {localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading');});
   await page.addInitScript(() => {
@@ -36,6 +41,8 @@ test('shared pause stops Canvas rendering and repeated resumes keep one animatio
 
   for (let cycle = 0; cycle < 3; cycle++) {
     await pauseGame(page);
+    // The glass lens repaints the frozen board once when the menu sheet's transitions end; wait for that, then require silence.
+    await settle(page);
     const tick = await game.getAttribute('data-tick');
     const paints = await page.evaluate(() => window.animalPauseProbe.paints);
     await observeFrames(page, 12);
@@ -43,6 +50,9 @@ test('shared pause stops Canvas rendering and repeated resumes keep one animatio
     await expect(game).toHaveAttribute('data-tick', tick!);
     await resumeGame(page);
     await expect.poll(async () => Number(await game.getAttribute('data-tick'))).toBeGreaterThan(Number(tick));
+    // Closing the sheet ends transitions, which repaint once beside the game's own frame; the loop count is judged after that.
+    await settle(page);
+    await page.evaluate(() => { window.animalPauseProbe.perFrame = {}; });
     await observeFrames(page, 8);
   }
 
