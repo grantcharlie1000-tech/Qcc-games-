@@ -1,20 +1,7 @@
-/* Paint-only treatment for native presentation panels. Games still own their
-   visibility, geometry, input, state and content. Board/card/item artwork is
-   deliberately absent from these selectors. */
-body.in-game{
+/* Slither uses the shared clear sheet. Every other game's original menus,
+   panels, typography and dimmers remain owned by its original stylesheet. */
+body.in-game #game-stage .nc-card{
   --native-glass-ink:#fff;--native-glass-halo:rgb(0 0 0 / .82);
-}
-.game-view[data-glass-tone=light]{
-  --native-glass-ink:#0b1015;--native-glass-halo:rgb(255 255 255 / .62);
-}
-body.in-game :is(#game-stage,.stage-wrap) :is(
-  .ws-victory,.cb-over .cb-feedback,.tower-end-card,.snake-card,.nc-card,.nc-boost,
-  .ms-result,.ms-hint-message,.cc-game .cc-win,.br-panel,.pool-message,.animal-stack__bubble,
-  .fb-card,.gl-side,.gl-chip,.bc-menu,.bc-panel,.bc-waiting,.bc-adv-toast,
-  .bc-adv-tip,.bc-tip,.mm-card,.cc-root .cc-col,.cc-root .cc-modal-card,
-  .cc-root .cc-toast,.cc-root .cc-tooltip,.cc-root .cc-tip,
-  .sl-overlay .game-panel,.qf-card,.qf-panel
-),body.in-game #pause-overlay{
   --sheet-halo:var(--native-glass-halo);
   background:var(--glass-clear-fill);
   -webkit-backdrop-filter:var(--glass-clear-blur) saturate(1);
@@ -25,59 +12,10 @@ body.in-game :is(#game-stage,.stage-wrap) :is(
   text-shadow:0 0 0 var(--sheet-halo),0 0 .65px var(--sheet-halo),0 .5px .65px var(--sheet-halo);
   -webkit-text-stroke:1.4px var(--sheet-halo);paint-order:stroke fill;
 }
-/* One optical layer: the container behind each card and its internal groups
-   have no second tint, diffusion, or opaque heading/records panel. */
-body.in-game #game-stage :is(.tower-end,.nc-overlay,.br-layer,.sl-overlay,.cc-root .cc-modal,.bc-screen){
-  background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;
-}
-body.in-game #game-stage :is(
-  .br-panel .br-head,.br-panel .br-records,.br-panel .br-row,
-  .gl-side .gl-win,.gl-side .gl-guess,.bc-menu .bc-controls,.bc-panel .bc-adv-stats,
-  .bc-panel .bc-adv-empty,.bc-panel .bc-adv-tree,.bc-panel .bc-adv-canvas,
-  .bc-panel .bc-adv-stat-row,.bc-panel .bc-adv-stat-item,
-  .bc-adv-tip .bc-adv-tip-bar,.bc-adv-tip .bc-adv-tip-body,
-  .cc-root .cc-subs,.cc-root .cc-farm-bar,.cc-root .cc-ticker,
-  .cc-root .cc-chip-info,.cc-root .cc-crow-option,.cc-root .cc-garden-locked,
-  .cc-root .cc-book-item,.cc-root .cc-skin,.cc-root .cc-perm,.cc-root .cc-upg,
-  .cc-root .cc-prod,.cc-root .cc-ach
-){background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
-body.in-game #game-stage .cc-root .cc-col .cc-tip{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}
-body.in-game #game-stage .cc-root .cc-tip .cc-btn{background:rgb(0 0 0 / .03);color:inherit!important;text-shadow:inherit}
-/* Pixel item slots retain their art. The panel's border image used `fill`,
-   which painted an opaque rectangle even with a transparent CSS background. */
-body.in-game #game-stage .bc-panel::before{border-image:none;background:transparent;box-shadow:none}
-body.in-game #game-stage .bc-panel :is(.bc-adv-empty,.bc-adv-tree){box-shadow:none}
-body.in-game #game-stage .bc-adv-tip{filter:none}
-body.in-game #game-stage .bc-menu .bc-controls :is(dt,dd){color:var(--native-glass-ink);text-shadow:inherit}
-body.in-game #game-stage .bc-panel :is(.bc-adv-stat-name,.bc-adv-stat-label,.bc-adv-stat-val,.bc-adv-stat-num,.bc-adv-stat-empty){color:var(--native-glass-ink);text-shadow:inherit}
-body.in-game #game-stage .bc-adv-stats{-webkit-text-stroke:1.8px var(--native-glass-halo)}
-/* Pixel typography is foreground art, with transparent accessible text behind
-   it. Outline the actual image alpha, never reveal a second system-font label.
-   Keep the original pixel colours and geometry, including its baked shadow.
-   Whole CSS-pixel offsets also render in WebKit, which drops subpixel offsets
-   when a drop-shadow has zero blur. */
-body.in-game #game-stage :is(.bc-panel,.bc-tip,.bc-adv-toast){--pixel-glass-halo:#fff}
-body.in-game #game-stage :is(.bc-adv-empty,.bc-tip,.bc-adv-toast){--pixel-glass-halo:#000}
-body.in-game #game-stage :is(.bc-px:not(.bc-px-css),.bc-adv-toast p.is-art){
-  color:transparent!important;-webkit-text-stroke:0;text-shadow:none!important;
-  filter:drop-shadow(1px 0 0 var(--pixel-glass-halo)) drop-shadow(-1px 0 0 var(--pixel-glass-halo)) drop-shadow(0 1px 0 var(--pixel-glass-halo)) drop-shadow(0 -1px 0 var(--pixel-glass-halo));
-}
-body.in-game #game-stage .bc-px-css{color:var(--native-glass-ink)!important;text-shadow:inherit!important}
-body.in-game #game-stage .nc-boost .nc-chevrons{filter:drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000)}
-body.in-game #game-stage :is(.br-panel,.snake-card,.nc-card,.mm-card,.fb-card,.tower-end-card,.qf-card,.qf-panel,.gl-side,.bc-menu,.bc-panel,.cc-modal-card,.sl-overlay .game-panel) :is(h1,h2,h3,strong,p,small,label){
-  color:var(--native-glass-ink);text-shadow:inherit;
-}
-body.in-game #game-stage :is(.br-panel,.snake-card,.nc-card,.mm-card,.fb-card,.tower-end-card,.qf-card,.gl-side,.bc-menu,.bc-panel,.cc-modal-card,.sl-overlay .game-panel) :is(button,input,select){text-shadow:inherit}
-body.in-game #game-stage :is(.br-panel,.snake-card,.nc-card,.mm-card,.fb-card,.tower-end-card,.qf-card,.gl-side,.bc-menu,.bc-panel,.cc-modal-card,.sl-overlay .game-panel) .game-button:not(.secondary){text-shadow:none;-webkit-text-stroke:0}
-body.in-game #game-stage .bc-menu :is(.bc-btn:not(:disabled),.bc-slider-label){
-  --sheet-halo:rgb(0 0 0 / .82);color:#fff;
-  -webkit-text-stroke:1.4px var(--sheet-halo);paint-order:stroke fill;
-  text-shadow:0 0 .65px var(--sheet-halo),0 .5px .65px var(--sheet-halo);
-}
-body.in-game :is(.mp-waiting,.bc-waiting){
-  background:var(--glass-clear-fill);-webkit-backdrop-filter:var(--glass-clear-blur);backdrop-filter:var(--glass-clear-blur);
-  --sheet-halo:rgb(0 0 0 / .82);color:#fff;text-shadow:0 0 0 var(--sheet-halo),0 0 .65px var(--sheet-halo),0 .5px .65px var(--sheet-halo);
-}
+body.in-game #game-stage .nc-overlay{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+body.in-game #game-stage .nc-card :is(h1,h2,h3,strong,p,small,label){color:var(--native-glass-ink);text-shadow:inherit}
+body.in-game #game-stage .nc-card :is(button,input,select){text-shadow:inherit}
+body.in-game #game-stage .nc-card .game-button:not(.secondary){text-shadow:none;-webkit-text-stroke:0}
 
 /* Reading/privacy dialogs keep their article theme and lifecycle. */
 html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog){
@@ -93,12 +31,12 @@ html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dial
 html body #study-view .study-privacy .study-privacy-actions button{background:rgb(0 0 0 / .03)!important}
 
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
-  body.in-game{--glass-clear-fill:#1c1c20;--glass-clear-blur:none;--native-glass-ink:#fff;--native-glass-halo:transparent}
-  body.in-game .game-view[data-glass-tone=light]{--native-glass-ink:#fff;--native-glass-halo:transparent}
+  body.in-game #game-stage .nc-card{--glass-clear-fill:#1c1c20;--glass-clear-blur:none;--native-glass-ink:#fff;--native-glass-halo:transparent}
+  body.in-game .game-view[data-glass-tone=light] #game-stage .nc-card{--native-glass-ink:#fff;--native-glass-halo:transparent}
   html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog){background:#f5f5f5;backdrop-filter:none;-webkit-backdrop-filter:none;text-shadow:none}
 }
 @media(forced-colors:active){
-  body.in-game{--glass-clear-fill:Canvas;--glass-clear-blur:none;--native-glass-ink:CanvasText;--native-glass-halo:transparent}
-  body.in-game .game-view[data-glass-tone=light]{--native-glass-ink:CanvasText;--native-glass-halo:transparent}
+  body.in-game #game-stage .nc-card{--glass-clear-fill:Canvas;--glass-clear-blur:none;--native-glass-ink:CanvasText;--native-glass-halo:transparent}
+  body.in-game .game-view[data-glass-tone=light] #game-stage .nc-card{--native-glass-ink:CanvasText;--native-glass-halo:transparent}
   html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog){background:Canvas;color:CanvasText;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;text-shadow:none}
 }
