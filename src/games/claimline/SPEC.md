@@ -15,11 +15,11 @@ An original territory-capture game for QCC: one fixed circular arena, the human 
 - **Thin gaps** under about a cell between a trail and its owner's land are sealed by the trail band.
 - **Same rules for everyone.** Speed 8 cells/s, turn rate 4.2 rad/s, hit radius 0.6 and trail band 1 cell apply to the human and every bot.
 - **Score.** Territory % = 100 x owned playable cells / all playable cells. Trails and outside cells never count, and theft can lower it. The HUD shows the current share and a ranking of all seven players. The score reported to the shell (`context.setScore`) is the human's **peak** share in hundredths of a percent (12.34% = 1234), via the pure `leaderboardScore(world)`, which only reads the human player.
-- **End.** The run ends when the human is eliminated or holds the whole arena. Results show peak, final share, rank and time. Bots respawn 3 s after defeat on a free neutral disc away from every head; the human does not.
+- **End.** The run ends when the human is eliminated or holds the whole arena. Results show peak, final share, rank and time. Bots respawn 3 s after defeat on a free neutral disc at least 10 cells from every head and 8 cells from every exposed trail; the human does not.
 
 ## Timing and collisions
 
-`requestAnimationFrame` drives an accumulator with a fixed 1/60 s step. A frame gap is clamped to 0.25 s, which is sub-stepped, never skipped. Each step moves every head, then:
+`requestAnimationFrame` drives an accumulator with a fixed 1/60 s step. Each frame simulates at most 0.25 s, in fixed sub-steps, every one of them swept; any longer stall beyond that is dropped rather than simulated. Each step moves every head, then:
 
 1. samples the head's swept segment every 0.25 cells to find where it left or re-entered its land;
 2. tests the swept segment analytically against every other player's trail segments (swept circle vs capsule, `sweepHit`), so a fast step can't jump a trail; the victim's newest section only counts once the victim has laid it;

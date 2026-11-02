@@ -103,10 +103,11 @@ export function createInput(
   canvas.addEventListener('pointerdown', event => {
     if (event.pointerType === 'mouse') { mouse = local(event, canvas); state.source = 'mouse'; return; }
     if (touchId !== null) return; // one steering touch only
+    // Capture first: if the pointer is already gone this throws and no stale touch id is kept.
+    try { canvas.setPointerCapture(event.pointerId); } catch { return; }
     touchId = event.pointerId;
     origin = local(event, root);
     offset = { x: 0, y: 0 };
-    canvas.setPointerCapture(event.pointerId);
     state.source = 'touch';
     showStick(true);
     placeStick();

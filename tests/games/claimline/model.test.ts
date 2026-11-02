@@ -234,6 +234,38 @@ describe('bots', () => {
     }
   });
 
+  it('a respawning bot never lands within 8 cells of an exposed trail (no unfair instant cut)', () => {
+    // The human's exposed trail zig-zags across the arena in rows 20 cells apart, so most neutral ground is near it.
+    const trail: number[] = [];
+    for (let k = 0, y = CENTER - 40; y <= CENTER + 40; y += 20, k++) {
+      const xs = [CENTER - 44, CENTER + 44];
+      if (k % 2) xs.reverse();
+      trail.push(xs[0], y, xs[1], y);
+    }
+    const clearance = (x: number, y: number) => {
+      let d = Infinity;
+      for (let i = 0; i + 3 < trail.length; i += 2) d = Math.min(d, distToSegment(x, y, trail[i], trail[i + 1], trail[i + 2], trail[i + 3]));
+      return d;
+    };
+    let respawned = 0;
+    for (let trial = 0; trial < 30; trial++) {
+      const world = scene();
+      world.rngState = 1000 + trial * 7919;
+      put(world, HUMAN, CENTER, CENTER - 50, 0, 2);
+      const human = world.players[0];
+      human.trail = trail.slice();
+      human.x = human.px = trail[trail.length - 2]; human.y = human.py = trail[trail.length - 1];
+      const bot = world.players[1];
+      bot.respawnAt = 0; // dead and due
+      step(world);
+      if (!bot.alive) continue;
+      respawned++;
+      expect(clearance(bot.x, bot.y)).toBeGreaterThanOrEqual(8);
+      expect(human.alive).toBe(true);
+    }
+    expect(respawned).toBeGreaterThan(5);
+  });
+
   it('defeated bots respawn on free neutral ground after RESPAWN_SECONDS and bots never respawn when disabled', () => {
     const world = createWorld(9, { bots: 2 });
     start(world);
@@ -295,6 +327,18 @@ describe('snapshot', () => {
     const over = running();
     over.phase = 'over'; over.result = { reason: 'cut', by: 2 };
     sameState(over, restoreWorld(JSON.parse(JSON.stringify(snapshot(over)))) as World);
+  });
+
+  it('rejects an impossible save: a running match whose human is dead, or a live player with no land', () => {
+    const world = createWorld(5);
+    start(world);
+    const dead = JSON.parse(JSON.stringify(snapshot(world)));
+    dead.players[0].alive = false; dead.players[0].trail = [];
+    expect(restoreWorld(dead)).toBeNull();
+    const landless = JSON.parse(JSON.stringify(snapshot(world)));
+    landless.owner = `0:${GRID * GRID}`;
+    expect(restoreWorld(landless)).toBeNull();
+    expect(restoreWorld(JSON.parse(JSON.stringify(snapshot(world))))).not.toBeNull();
   });
 
   it('[14b] malformed data restores to null and never throws', () => {

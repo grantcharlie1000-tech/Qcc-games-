@@ -107,7 +107,8 @@ const module: GameModule = {
       uiAt = now;
       const human = world.players[0];
       const score = leaderboardScore(world);
-      if (score !== lastScore) { lastScore = score; context.setScore(score); }
+      // No score is reported for a match that has not started, so a Best only comes from play.
+      if (score !== lastScore && (world.phase !== 'ready' || world.tick > 0)) { lastScore = score; context.setScore(score); }
       const ranks = ranking(world), place = ranks.findIndex(r => r.id === HUMAN) + 1;
       const mine = ranks[place - 1]?.bp ?? 0;
       context.setLevel(`Rank #${place} of ${PLAYER_COUNT}`);

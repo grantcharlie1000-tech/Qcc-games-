@@ -263,6 +263,18 @@ function cutTime(a: Player, v: Player, trailStartT: number): number {
   return best;
 }
 
+/** A respawn never lands this close to anyone's exposed trail, so nobody loses to a bot that was not there a moment ago. */
+const SPAWN_TRAIL_CLEARANCE = 8;
+
+/** Distance from (x, y) to a player's exposed trail including its live segment to the head; Infinity when home. */
+function trailClearance(q: Player, x: number, y: number): number {
+  const t = q.trail;
+  if (!t.length) return Infinity;
+  let d = distToSegment(x, y, t[t.length - 2], t[t.length - 1], q.x, q.y);
+  for (let i = 0; i + 3 < t.length; i += 2) d = Math.min(d, distToSegment(x, y, t[i], t[i + 1], t[i + 2], t[i + 3]));
+  return d;
+}
+
 function findSpawn(world: World): { x: number; y: number } | null {
   const r = START_R + 2;
   for (let attempt = 0; attempt < 40; attempt++) {
@@ -275,7 +287,7 @@ function findSpawn(world: World): { x: number; y: number } | null {
       const i = cellOf(cx + 0.5, cy + 0.5);
       if (i < 0 || !world.mask[i] || world.owner[i] !== NEUTRAL) { free = false; break; }
     }
-    if (free && world.players.every(q => !q.alive || Math.hypot(q.x - x, q.y - y) >= 10)) return { x, y };
+    if (free && world.players.every(q => !q.alive || (Math.hypot(q.x - x, q.y - y) >= 10 && trailClearance(q, x, y) >= SPAWN_TRAIL_CLEARANCE))) return { x, y };
   }
   return null;
 }
@@ -445,6 +457,9 @@ export function restoreWorld(data: unknown): World | null {
       world.players.push(p);
     }
     world.counts = recount(world);
+    // A live match needs a live human (a dead one would never end the run); every live player holds land.
+    if (phase !== 'over' && !world.players[0].alive) return null;
+    if (world.players.some(p => p.alive && world.counts[p.id] === 0)) return null;
     return world;
   } catch {
     return null;
