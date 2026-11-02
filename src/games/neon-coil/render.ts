@@ -67,7 +67,6 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     dpr = Math.min(2,window.devicePixelRatio || 1);
     const w = Math.round(width*dpr), h = Math.round(height*dpr);
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
-    if (layer.width !== w || layer.height !== h) { layer.width = w; layer.height = h; }
   }
   const inView = (x: number, y: number, margin: number) => Math.abs(x-view.x) <= halfW+margin && Math.abs(y-view.y) <= halfH+margin;
   function interpolate(snake: Snake, alpha: number) {
@@ -123,8 +122,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
     const k = dpr*view.zoom, ox = dpr*(view.width/2-view.x*view.zoom), oy = dpr*(view.height/2-view.y*view.zoom);
     const x0 = Math.max(0,Math.floor(minX*k+ox)), y0 = Math.max(0,Math.floor(minY*k+oy));
-    const x1 = Math.min(layer.width,Math.ceil(maxX*k+ox)), y1 = Math.min(layer.height,Math.ceil(maxY*k+oy));
+    const x1 = Math.min(canvas.width,Math.ceil(maxX*k+ox)), y1 = Math.min(canvas.height,Math.ceil(maxY*k+oy));
     if (x1 <= x0 || y1 <= y0) return;
+    // Allocated on first use, then kept at the canvas's backing size.
+    if (layer.width !== canvas.width || layer.height !== canvas.height) { layer.width = canvas.width; layer.height = canvas.height; }
     ghost.setTransform(1,0,0,1,0,0); ghost.clearRect(x0,y0,x1-x0,y1-y0);
     ghost.setTransform(k,0,0,k,ox,oy);
     for (const snake of group) drawBody(ghost,snake,alpha,pale);

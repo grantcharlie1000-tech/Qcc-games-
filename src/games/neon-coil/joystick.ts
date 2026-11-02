@@ -15,6 +15,8 @@ export interface Joystick {
   angle(): number | undefined;
   /** Begin at a root-relative CSS px point. */
   start(x: number, y: number): void;
+  /** Top of the resting ring, in root CSS px, ignoring any active offset. */
+  restTop(): number;
   move(x: number, y: number): void;
   end(): void;
 }
@@ -26,7 +28,8 @@ export function createJoystick(root: HTMLElement): Joystick {
   root.style.setProperty('--nc-stick-size', `${JOYSTICK_RADIUS * 2}px`);
   root.style.setProperty('--nc-stick-knob', `${JOYSTICK_KNOB_RADIUS * 2}px`);
   const knob = element.querySelector<HTMLElement>('.nc-stick-knob')!;
-  let active = false, origin = { x: 0, y: 0 }, vector: StickVector = { x: 0, y: 0, magnitude: 0 };
+  // `anchor` is where the thumb landed (deflection is measured from it); `origin` is where the ring is drawn.
+  let active = false, anchor = { x: 0, y: 0 }, vector: StickVector = { x: 0, y: 0, magnitude: 0 };
   /** The resting ring in root coordinates (its CSS position already respects safe-area insets). */
   function rest() {
     const box = root.getBoundingClientRect(), left = parseFloat(getComputedStyle(element).left) || 0;
@@ -39,17 +42,19 @@ export function createJoystick(root: HTMLElement): Joystick {
     angle: () => active ? vector.angle : undefined,
     start(x, y) {
       const home = rest();
-      // Appear under the thumb, but never further into the corner than the resting spot.
-      origin = { x: Math.max(x, home.cx), y: Math.min(y, home.cy) };
-      active = true; element.dataset.active = 'true';
+      // The ring appears under the thumb, but never further into the corner than the resting spot.
+      // Steering is measured from the landing point, so touching down never steers by itself.
+      const origin = { x: Math.max(x, home.cx), y: Math.min(y, home.cy) };
+      anchor = { x, y }; active = true; element.dataset.active = 'true';
       element.style.transform = `translate(${origin.x - home.cx}px,${origin.y - home.cy}px)`;
       this.move(x, y);
     },
     move(x, y) {
       if (!active) return;
-      vector = joystickVector(x - origin.x, y - origin.y);
+      vector = joystickVector(x - anchor.x, y - anchor.y);
       knob.style.transform = `translate(${vector.x}px,${vector.y}px)`;
     },
+    restTop() { const home = rest(); return home.cy - JOYSTICK_RADIUS; },
     end() {
       active = false; vector = { x: 0, y: 0, magnitude: 0 }; delete element.dataset.active;
       element.style.transform = ''; knob.style.transform = '';

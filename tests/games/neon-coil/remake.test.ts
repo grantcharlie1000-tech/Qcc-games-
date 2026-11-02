@@ -124,6 +124,17 @@ describe('dot hoover', () => {
     const at = { x: loose.x, y: loose.y };
     stepArena(s); expect(loose.owner).toBeUndefined(); expect(loose).toMatchObject(at);
   });
+  test('the food cap never evicts a pellet that is being hoovered', () => {
+    const s = quiet(); s.snakes[0].immune = 0;
+    s.food = Array.from({ length: tuning.MAX_FOOD }, (_, i) => ({ x: 1200, y: 0, id: i + 1, value: 1, color: 1, trail: false })); s.nextFood = tuning.MAX_FOOD + 1;
+    const flying = s.food[0]; flying.x = 30; flying.y = 30;
+    stepArena(s); expect(flying.owner).toBe(0);
+    stepArena(s, { boost: true }); stepArena(s, { boost: true }); // boost trails force evictions at the cap
+    expect(s.food.length).toBeLessThanOrEqual(tuning.MAX_FOOD);
+    expect(s.food.includes(flying) || s.snakes[0].mass > 29).toBe(true);
+    for (let n = 0; n < 30 && s.food.includes(flying); n++) stepArena(s);
+    expect(s.eaten).toBe(1);
+  });
   test('hoover reach grows gently with body width', () => {
     const s = createArena(), snake = s.snakes[0];
     expect(hooverRadius(snake)).toBe(HOOVER_RADIUS);
@@ -133,6 +144,8 @@ describe('dot hoover', () => {
     const s = quiet(); pellet(s, 30, 20, 2); pellet(s, -20, -35, 1); stepArena(s); stepArena(s);
     expect(s.food.filter(f => f.owner === 0)).toHaveLength(2);
     savable(s); const copy = restoreArena(snapshot(s))!; expect(copy).toEqual(s);
+    // A later retune that lowers the speed cap clamps in-flight pellets instead of discarding the save.
+    const fast = snapshot(s); fast.food[0].speed = tuning.HOOVER_MAX_SPEED * 3; expect(restoreArena(fast)!.food[0].speed).toBe(tuning.HOOVER_MAX_SPEED);
     for (let n = 0; n < 15; n++) { stepArena(s, { angle: .3 }); stepArena(copy, { angle: .3 }); }
     expect(copy).toEqual(s); expect(s.snakes[0].mass).toBe(33);
     const bad = snapshot(s); bad.food[0].owner = 0; delete bad.food[0].speed; expect(restoreArena(bad)).toBeNull();

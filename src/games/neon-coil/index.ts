@@ -51,7 +51,7 @@ const module: GameModule = {
     function resize() {
       const rect = root.getBoundingClientRect(); renderer.resize(rect.width, rect.height);
       // On touch layouts the minimap sits just above the resting thumb stick.
-      if (touchInput && !stick.element.hidden) { const ring = stick.element.getBoundingClientRect(); renderer.setMinimapLift(rect.bottom - ring.top + 46); }
+      if (touchInput && !stick.element.hidden) renderer.setMinimapLift(rect.height - stick.restTop() + 46);
       else renderer.setMinimapLift();
       // Layout-dependent HUD must follow the canvas even when simulation is stopped.
       uiAt = -Infinity; update(performance.now());
@@ -112,7 +112,7 @@ const module: GameModule = {
     canvas.addEventListener('pointermove', event => {
       if (paused || state.phase !== 'running') return;
       if (event.pointerType === 'mouse' && touchId === null) setPointer(event);
-      else if (event.pointerId === touchId) { const p = local(event); stick.move(p.x, p.y); event.preventDefault(); }
+      else if (event.pointerId === touchId) { const p = local(event); stick.move(p.x, p.y); stickHold = stick.angle() ?? stickHold; event.preventDefault(); }
     }, { signal });
     canvas.addEventListener('pointerdown', event => {
       if (paused || state.phase !== 'running' || event.button !== 0) return;
@@ -122,12 +122,12 @@ const module: GameModule = {
       const p = local(event);
       if (touchId !== null || !inJoystickZone(p.x, p.y, renderer.view.width, renderer.view.height)) return;
       canvas.focus({ preventScroll: true }); touchId = event.pointerId; canvas.setPointerCapture(event.pointerId); event.preventDefault();
-      steering = 'stick'; stick.start(p.x, p.y);
+      steering = 'stick'; stick.start(p.x, p.y); stickHold = undefined;
     }, { signal });
     const releaseTouch = (event: PointerEvent) => {
       if (event.pointerId !== touchId) return;
-      // Letting go keeps the snake on its current heading.
-      touchId = null; stick.end(); stickHold = state.snakes[0].angle;
+      // Letting go keeps the last direction the stick gave (so a quick flick completes), or the current heading.
+      touchId = null; stick.end(); stickHold ??= state.snakes[0].angle;
     };
     canvas.addEventListener('pointerup', releaseTouch, { signal }); canvas.addEventListener('pointercancel', releaseTouch, { signal }); canvas.addEventListener('lostpointercapture', releaseTouch, { signal });
     boost.addEventListener('pointerdown', event => { if (boost.disabled || event.button !== 0 || boostId !== null) return; event.preventDefault(); boostId = event.pointerId; buttonBoost = true; boost.setPointerCapture(event.pointerId); }, { signal });
@@ -148,7 +148,7 @@ const module: GameModule = {
     window.addEventListener('blur', clearInput, { signal });
     function controls() {
       let angle: number | undefined;
-      if (steering === 'stick') angle = stick.angle() ?? (stick.active ? undefined : stickHold);
+      if (steering === 'stick') angle = stick.angle() ?? stickHold;
       else if (steering === 'pointer' && pointer) angle = pointerAngle(pointer.x - renderer.view.width / 2, pointer.y - renderer.view.height / 2);
       else if (steering === 'keyboard') angle = keyboard.target();
       return { angle, boost: keyBoost || buttonBoost };

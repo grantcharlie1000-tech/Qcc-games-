@@ -321,6 +321,10 @@ test('touch phone shows a thumb joystick that steers in any direction and holds 
       expect(overlaps(rest, (await page.locator(selector).boundingBox())!), `stick overlaps ${selector}`).toBe(false);
     // Spawn protection is live and visible to the HUD.
     expect(Number(await game(page).getAttribute('data-immune'))).toBeGreaterThan(0);
+    // Touching down in the corner (below and left of the resting ring) never steers by itself.
+    await send('touchStart', [{ x: 40, y: 820, id: 9 }]); await page.clock.runFor(300);
+    expect(Math.abs(Number(await game(page).getAttribute('data-angle')))).toBeLessThan(.01);
+    await send('touchEnd', [{ x: 40, y: 820, id: 9 }]); await page.clock.runFor(150);
     // The thumb lands in the lower-left zone; the ring appears under it and the knob clamps to the ring.
     const thumb = { x: 120, y: 690, id: 1 };
     await send('touchStart', [thumb]); await page.clock.runFor(150); await expect(game(page)).toHaveAttribute('data-stick', 'active');

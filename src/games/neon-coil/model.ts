@@ -84,7 +84,8 @@ function makeSnake(id: number, p: Point, angle: number, mass: number): Snake {
 function addFood(s: Arena, p: Point, value: number, trail = false, color?: number) {
   if (s.food.length >= MAX_FOOD) {
     if (!trail) return;
-    const ordinary = s.food.findIndex(food => !food.trail);
+    // Never evict a pellet that is mid-hoover; its mass is already promised to a head.
+    const ordinary = s.food.findIndex(food => !food.trail && food.owner === undefined);
     s.food.splice(ordinary < 0 ? 0 : ordinary, 1);
   }
   s.food.push({ ...p, id: s.nextFood++, value, color: color ?? Math.floor(random(s) * COLORS.length), trail });
@@ -135,7 +136,7 @@ function segmentGap(p: Point, r: number, seg: Segment) {
   const dx = seg.b.x - seg.a.x, dy = seg.b.y - seg.a.y, length = Math.hypot(dx, dy);
   if (length === 0) return Math.hypot(p.x - seg.a.x, p.y - seg.a.y) - r - bodyRadiusAt(seg.radius, seg.from, seg.length);
   const u = ((p.x - seg.a.x) * dx + (p.y - seg.a.y) * dy) / length, v = Math.abs((p.x - seg.a.x) * dy - (p.y - seg.a.y) * dx) / length;
-  const slope = (bodyRadiusAt(seg.radius, seg.to, seg.length) - bodyRadiusAt(seg.radius, seg.from, seg.length)) / length;
+  const slope = Math.max(-.99, Math.min(.99, (bodyRadiusAt(seg.radius, seg.to, seg.length) - bodyRadiusAt(seg.radius, seg.from, seg.length)) / length));
   const along = Math.max(0, Math.min(length, u + slope * v / Math.sqrt(1 - slope * slope)));
   return Math.hypot(along - u, v) - r - bodyRadiusAt(seg.radius, seg.from + along, seg.length);
 }
@@ -345,11 +346,12 @@ export function restoreArena(data: unknown): Arena | null {
   const foodIds = new Set<number>();
   for (const food of s.food) { if (!point(food) || !Number.isInteger(food.id) || food.id < 1 || food.id >= s.nextFood || foodIds.has(food.id) || !finite(food.value, .001, MAX_MASS) || !Number.isInteger(food.color) || !finite(food.color, 0, COLORS.length - 1) || typeof food.trail !== 'boolean') return null;
     if ((food.owner === undefined) !== (food.speed === undefined)) return null;
-    if (food.owner !== undefined && (!Number.isInteger(food.owner) || !finite(food.owner, 0, BOT_COUNT) || !finite(food.speed, 0, HOOVER_MAX_SPEED))) return null;
+    if (food.owner !== undefined && (!Number.isInteger(food.owner) || !finite(food.owner, 0, BOT_COUNT) || !finite(food.speed, 0, 1e6))) return null;
     foodIds.add(food.id);
   }
   const restored = snapshot(s);
   // Backward compatible: pre-immunity saves load unprotected; retuned timers clamp.
   for (const snake of restored.snakes) snake.immune = snake.alive ? Math.min(snake.immune ?? 0, SPAWN_IMMUNITY_TICKS) : 0;
+  for (const food of restored.food) if (food.speed !== undefined) food.speed = Math.min(food.speed, HOOVER_MAX_SPEED);
   return restored;
 }
