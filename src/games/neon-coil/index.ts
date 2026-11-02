@@ -7,6 +7,7 @@ import { createRenderer } from './render';
 import { skinFor } from './skin';
 import {compactMass,mountDockRanking} from './dock-ranking';
 import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
+import {bindGlass} from '../../ui/glass';
 import './style.css';
 
 const module: GameModule = {
@@ -17,7 +18,7 @@ const module: GameModule = {
     root.innerHTML = `<canvas class="nc-canvas" tabindex="0" role="img" aria-label="Slither.io arena. Move the pointer without clicking, use the thumb stick on touch, or hold arrows and WASD to steer. Hold Space to boost. P pauses."></canvas>
       <div class="nc-score" aria-label="Current mass in Classic mode"><span class="nc-difficulty">CLASSIC</span><strong class="nc-mass">30</strong></div>
       <aside class="nc-ranking" aria-label="Live arena ranking"><h2>LIVE RANKING</h2><ol></ol><div class="nc-you" hidden></div></aside>
-      <div class="nc-bottom"><button class="nc-boost" aria-label="Hold to boost" aria-pressed="false"><span class="nc-chevrons" aria-hidden="true"><i></i><i></i><i></i></span><small class="nc-boost-note">Hold to boost · spends mass</small></button></div>`;
+      <div class="nc-bottom"><button class="nc-boost arcade-glass game-glass" aria-label="Hold to boost" aria-pressed="false"><span class="nc-chevrons glass-ink" aria-hidden="true"><i></i><i></i><i></i></span><small class="nc-boost-note">Hold to boost · spends mass</small></button></div>`;
     container.append(root);
     const canvas = root.querySelector<HTMLCanvasElement>('canvas')!, renderer = createRenderer(canvas);
     const controlsCopy = { touch: 'Thumb stick steers · Hold Boost', keyboard: 'Pointer steers · Space boosts' };
@@ -29,6 +30,8 @@ const module: GameModule = {
     const rankingLayout=mountDockRanking(root,container,rankPanel);
     const you = root.querySelector<HTMLElement>('.nc-you')!, boost = root.querySelector<HTMLButtonElement>('.nc-boost')!;
     const boostNote = root.querySelector<HTMLElement>('.nc-boost-note')!;
+    // Boost wears the same clear glass as the dock; the binding only paints, so pointer capture stays with Boost.
+    const boostGlass = bindGlass(boost);
     const stick = createJoystick(root);
     root.querySelector('.nc-bottom')!.prepend(stick.element);
     let touchInput = false;
@@ -181,7 +184,7 @@ const module: GameModule = {
         state = restored; seed = state.seed; savedRun = state.phase === 'running' || (state.phase === 'ready' && state.ticks > 0);
         if (savedRun) state.phase = 'ready'; last = null; clearInput(); update(0, true); renderer.draw(state, 1, context.settings.reducedMotion);
       },
-      dispose() { disposed = true; releaseGlass(); clearInput(); events.abort(); observer.disconnect(); rankingLayout.dispose(); sheet.dispose(); pauseSheet.dispose(); cancelAnimationFrame(frame); root.remove(); }
+      dispose() { disposed = true; releaseGlass(); boostGlass.dispose(); clearInput(); events.abort(); observer.disconnect(); rankingLayout.dispose(); sheet.dispose(); pauseSheet.dispose(); cancelAnimationFrame(frame); root.remove(); }
     };
   }
 };

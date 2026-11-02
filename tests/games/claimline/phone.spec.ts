@@ -7,7 +7,9 @@ const angleGap = (a: number, b: number) => Math.abs(Math.atan2(Math.sin(a - b), 
 
 async function start(page: Page) {
   await page.goto('/#/game/claimline');
-  await expect(page.locator('#game-title')).toHaveText('Claimline');
+  // The shell title now lives in the glass options dialog; the arena card carries the visible name.
+  await expect(page.locator('#game-title')).toHaveText('Claimline menu');
+  await expect(page.locator('#cl-heading')).toHaveText('Claimline');
   await page.getByRole('button', { name: 'Play', exact: true }).tap();
   await expect(game(page)).toHaveAttribute('data-phase', 'running');
 }

@@ -336,6 +336,7 @@ for(const mass of [100000,999999,Number.MAX_SAFE_INTEGER])test(`320px ranking an
  expect(await page.locator('.game-hud strong,.game-hud small,.nc-ranking strong,.nc-ranking h2').evaluateAll(nodes=>nodes.every(e=>{const r=document.createRange();r.selectNodeContents(e);const t=r.getBoundingClientRect(),b=e.getBoundingClientRect();return e.scrollWidth<=e.clientWidth+1&&t.left>=b.left-1&&t.right<=b.right+1;}))).toBe(true);
  const panel=(await page.locator('.nc-ranking').boundingBox())!,menu=(await page.locator('#game-menu').boundingBox())!;expect(panel.x).toBeGreaterThanOrEqual(menu.x+menu.width+8);
  await pauseGame(page);expect((await saved(page)).snakes[0].mass).toBe(Number(full));
+});
 
 // Thumb joystick (touch phones): visible, comfortable, analogue, independent of Boost, and clear of the HUD.
 async function phone(browser: import('@playwright/test').Browser) {
@@ -404,6 +405,13 @@ test('desktop keeps pointer steering and the original Boost spot, with no joysti
   const b = (await page.locator('.nc-boost').boundingBox())!; expect(b.x).toBeLessThan(100);
   await page.mouse.move(640, 600); await page.clock.runFor(600);
   expect(Number(await game(page).getAttribute('data-angle'))).toBeCloseTo(Math.PI / 2, 1);
+});
+test('pressing Play does not frame the arena in the lime keyboard focus ring', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 }); await open(page); await page.locator('.nc-start').click();
+  const canvas = page.locator('.nc-canvas'); await expect(canvas).toBeFocused();
+  await expect(canvas).toHaveCSS('outline-style', 'none');
+  await page.keyboard.press('ArrowLeft'); await expect(page.locator('html')).toHaveAttribute('data-input', 'keyboard');
+  await expect(canvas).toHaveCSS('outline-color', 'rgb(187, 246, 109)');
 });
 for (const viewport of [{ width: 1024, height: 768 }, { width: 844, height: 390 }]) test(`touch ${viewport.width}x${viewport.height}: thumb stick clears Boost, ranking and the glass dock`, async ({ browser }) => {
   const context = await browser.newContext({ viewport, hasTouch: true, isMobile: true });

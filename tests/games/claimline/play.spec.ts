@@ -1,11 +1,14 @@
 import { test, expect, type Page } from '../../fixtures';
+import { gameAction, pauseGame } from '../../game-menu';
 
 const URL = '/#/game/claimline';
 const game = (page: Page) => page.locator('.cl-game');
 const num = async (page: Page, name: string) => Number(await game(page).getAttribute(`data-${name}`));
 async function open(page: Page) {
   await page.goto(URL);
-  await expect(page.locator('#game-title')).toHaveText('Claimline');
+  // The shell title now lives in the glass options dialog; the arena card carries the visible name.
+  await expect(page.locator('#game-title')).toHaveText('Claimline menu');
+  await expect(page.locator('#cl-heading')).toHaveText('Claimline');
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
 }
 async function play(page: Page) {
@@ -25,6 +28,12 @@ test.describe('Claimline desktop', () => {
     await expect(page.locator('.cl-overlay')).toBeHidden();
     await expect(page.locator('.cl-share-value')).toHaveText(/^\d+\.\d\d%$/);
     await expect(page.locator('#game-score strong')).toHaveText(/^\d+\.\d\d%$/);
+    // The shared glass dock replaces the old top bar and mirrors the share and rank.
+    await expect(page.locator('.game-dock .game-hud strong').first()).toHaveText(/^\d+\.\d\d%$/);
+    await expect(page.locator('.game-dock .game-hud')).toContainText(/Rank #\d of 7/);
+    await expect(page.locator('.game-toolbar')).toHaveCount(0);
+    // Start card: no tagline and no numbered guide.
+    await expect(page.locator('.cl-guide')).toHaveCount(0);
     const rows = page.locator('.cl-ranking[aria-label="Match ranking"] li');
     await expect(rows).toHaveCount(7);
     await expect(page.locator('.cl-ranking li .cl-name', { hasText: /^You$/ })).toHaveCount(1);
@@ -77,8 +86,8 @@ test.describe('Claimline desktop', () => {
   test('restart resets the match and shows the Play card; works while paused', async ({ page }) => {
     await open(page); await play(page);
     await expect.poll(() => num(page, 'tick')).toBeGreaterThan(10);
-    await page.locator('#pause-game').click();
-    await page.locator('#restart-game').click();
+    await pauseGame(page);
+    await gameAction(page, 'Restart game');
     await expect(game(page)).toHaveAttribute('data-tick', '0');
     await expect(game(page)).toHaveAttribute('data-phase', 'ready');
     await page.waitForTimeout(300);
@@ -95,7 +104,7 @@ test.describe('Claimline desktop', () => {
     await open(page); await play(page);
     await page.keyboard.press('Escape');
     await expect(page.locator('#study-view')).toBeVisible();
-    await page.locator('.study-article-body').getByRole('link', { name: 'Games', exact: true }).click();
+    await page.locator('.study-article-body').getByRole('link', { name: 'Return to previous view', exact: true }).click();
     await expect(page.locator('#study-view')).toBeHidden();
     await expect(game(page)).toBeVisible();
     expect(errors).toEqual([]);
@@ -115,7 +124,7 @@ test.describe('Claimline desktop', () => {
   test('score shown is the human peak only and the saved run restores as Continue', async ({ page }) => {
     await open(page); await play(page);
     await expect.poll(() => num(page, 'tick')).toBeGreaterThan(30);
-    await page.locator('#pause-game').click();
+    await pauseGame(page);
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pocket-arcade:v1:save:claimline') ?? 'null'));
     expect(saved?.data?.version).toBe(1);
     await page.reload();
