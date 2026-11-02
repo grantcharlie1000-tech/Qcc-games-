@@ -5,7 +5,7 @@ import type {Database} from '../src/leaderboard/server';
 import {createAccountsHandler} from '../src/accounts/server';
 import {createLeaderboardHandler} from '../src/leaderboard/server';
 import {createTurnHandler} from '../src/multiplayer/turn-server';
-import {handleMoviesCatalog} from '../netlify/functions/movies-search.mts';
+import {handleMoviesCatalog} from './movies-catalog';
 import {createGuardedHandler} from '../netlify/lib/runtime.mts';
 
 export type Route='accounts'|'leaderboard'|'turn'|'movies';

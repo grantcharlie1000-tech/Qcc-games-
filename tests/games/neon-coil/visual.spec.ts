@@ -41,6 +41,7 @@ test('cached body material, boost envelope, reduced motion and world boundary',a
     const {createRenderer}=await import(renderURL),{createArena}=await import(modelURL);
     const canvas=document.createElement('canvas'),renderer=createRenderer(canvas),s=createArena(),p=s.snakes[0];
     renderer.resize(400,300); s.food=[]; for(const bot of s.snakes.slice(1)) bot.alive=false;
+    p.immune=0; // Spawn protection has its own pale rendering; this measures normal material.
     p.body=[{x:0,y:0},{x:-220,y:0}];
     const ctx=canvas.getContext('2d')!,dpr=canvas.width/400;
     const pixel=(x:number,y:number)=>Array.from(ctx.getImageData(Math.round(x*dpr),Math.round(y*dpr),1,1).data);

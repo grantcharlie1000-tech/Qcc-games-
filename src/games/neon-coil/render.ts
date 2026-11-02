@@ -1,5 +1,11 @@
-import { ARENA_RADIUS, radius, wrapAngle, type Arena, type Snake } from './model';
+import { ARENA_RADIUS, bodyRadiusAt, headRadius, hooverRadius, immunityPaleness, radius, wrapAngle, type Arena, type Snake } from './model';
 import { bandIndex, resampleBody, SKINS, skinFor, type StampBuffer } from './skin';
+import { IMMUNE_OPACITY_DROP, IMMUNE_PALE_STRENGTH } from './tuning';
+/** Body sprites paint their disc at radius 46 inside a 96 px canvas. */
+export const SPRITE_DISC = 46 / 48;
+/** Sprite draw size whose visible disc has exactly radius `r` — the same radius the model collides with. */
+export const spriteSize = (r: number) => r * 2 / SPRITE_DISC;
+const PALE = '#eef3f8', BOOST_BAND = '#d6ffff';
 const FOOD_COLORS = ['#22d3ee','#2f7bff','#5be12c','#b6e61a','#ffd21f','#ffa41b','#ff3d5a'];
 const TRAIL_COLORS = [...FOOD_COLORS,'#f03cbf','#9b30ff'];
 const TAU = Math.PI * 2;
@@ -42,7 +48,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     c.fillStyle = g; c.beginPath(); c.arc(48,48,46,0,TAU); c.fill(); bodySprites.set(color,sprite);
   }
   for (const skin of SKINS) { bodySprite(skin.head); for (const color of skin.bands) bodySprite(color); }
-  bodySprite('#d6ffff');
+  bodySprite(BOOST_BAND); bodySprite(PALE);
   const foodSprites = TRAIL_COLORS.map(color => {
     const sprite = surface(64), c = sprite.getContext('2d')!, g = c.createRadialGradient(32,32,2,32,32,31);
     g.addColorStop(0,color+'c0'); g.addColorStop(.25,color+'8c'); g.addColorStop(.52,color+'28'); g.addColorStop(1,color+'00');
@@ -52,7 +58,9 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   });
   const stamps: StampBuffer = { points: [], count: 0, length: 0 }, head = { x: 0, y: 0 };
   const visible: Snake[] = [], boostIntensity = new Map<number, number>();
-  let dpr = 1, halfW = 1, halfH = 1, lastFrame: number | null = null, arena: Arena | null = null;
+  let dpr = 1, halfW = 1, halfH = 1, lastFrame: number | null = null, arena: Arena | null = null, minimapLift = 175;
+  // Protected (immune) snakes are composed here, then laid over the arena translucently.
+  const layer = surface(1), ghost = layer.getContext('2d')!;
   const view: View = { width: 1, height: 1, zoom: 1, x: 0, y: 0 };
   function resize(width: number, height: number) {
     view.width = Math.max(1,width); view.height = Math.max(1,height);
@@ -72,31 +80,60 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
     return false;
   }
-  function drawBody(snake: Snake, alpha: number) {
+  function drawBody(g: CanvasRenderingContext2D, snake: Snake, alpha: number, pale: number) {
     interpolate(snake,alpha);
     const r = radius(snake), d = r*2, skin = skinFor(snake.id,snake.color), intensity = boostIntensity.get(snake.id) ?? 0;
     resampleBody(snake.body,head,d*.25,stamps);
     for (let i = stamps.count-1; i >= 0; i--) {
-      const p = stamps.points[i], taper = .45+.55*Math.min(1,(stamps.length-p.distance)/(d*3)), sr = r*taper;
+      // Same tapered radius the model collides with at this arc distance.
+      const p = stamps.points[i], sr = bodyRadiusAt(r,p.distance,stamps.length);
       if (!inView(p.x,p.y,sr+2)) continue;
-      const band = bandIndex(p.distance,d,skin.bands.length,skin.bandWidth), size = sr*2;
-      ctx.drawImage(bodySprites.get(skin.bands[band])!,p.x-sr,p.y-sr,size,size);
+      const band = bandIndex(p.distance,d,skin.bands.length,skin.bandWidth), size = spriteSize(sr), half = size/2;
+      g.drawImage(bodySprites.get(skin.bands[band])!,p.x-half,p.y-half,size,size);
       if (intensity > 0 && Math.floor(p.distance/(d*1.4))%2 === 0) {
-        ctx.globalAlpha = intensity; ctx.drawImage(bodySprites.get('#d6ffff')!,p.x-sr,p.y-sr,size,size); ctx.globalAlpha = 1;
+        g.globalAlpha = intensity; g.drawImage(bodySprites.get(BOOST_BAND)!,p.x-half,p.y-half,size,size); g.globalAlpha = 1;
       }
+      if (pale > 0) { g.globalAlpha = pale*IMMUNE_PALE_STRENGTH; g.drawImage(bodySprites.get(PALE)!,p.x-half,p.y-half,size,size); g.globalAlpha = 1; }
     }
   }
-  function drawHead(snake: Snake, alpha: number) {
+  function drawHead(g: CanvasRenderingContext2D, snake: Snake, alpha: number, pale: number) {
     interpolate(snake,alpha); if (!inView(head.x,head.y,40)) return;
-    const r = radius(snake), hr = r*1.1, angle = snake.previousAngle+wrapAngle(snake.angle-snake.previousAngle)*alpha;
-    ctx.drawImage(bodySprites.get(skinFor(snake.id,snake.color).head)!,head.x-hr,head.y-hr,hr*2,hr*2);
-    ctx.save(); ctx.translate(head.x,head.y); ctx.rotate(angle);
+    const r = radius(snake), size = spriteSize(headRadius(snake)), half = size/2, angle = snake.previousAngle+wrapAngle(snake.angle-snake.previousAngle)*alpha;
+    g.drawImage(bodySprites.get(skinFor(snake.id,snake.color).head)!,head.x-half,head.y-half,size,size);
+    if (pale > 0) { g.globalAlpha = pale*IMMUNE_PALE_STRENGTH; g.drawImage(bodySprites.get(PALE)!,head.x-half,head.y-half,size,size); g.globalAlpha = 1; }
+    g.save(); g.translate(head.x,head.y); g.rotate(angle);
     for (let side = -1; side <= 1; side += 2) {
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(r*.43,side*r*.48,r*.35,0,TAU); ctx.fill();
-      ctx.fillStyle = '#080d17'; ctx.beginPath(); ctx.arc(r*.56,side*r*.48,r*.16,0,TAU); ctx.fill();
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(r*.43,side*r*.48,r*.35,0,TAU); g.fill();
+      g.fillStyle = '#080d17'; g.beginPath(); g.arc(r*.56,side*r*.48,r*.16,0,TAU); g.fill();
     }
-    ctx.restore();
+    g.restore();
   }
+  /**
+   * Protected snakes with the same paleness are drawn whole (pale) into the
+   * layer, which is then composited once, translucently, so overlapping stamps
+   * never accumulate opacity. Snakes spawned together share a single pass.
+   */
+  function drawGhosts(group: readonly Snake[], alpha: number, pale: number) {
+    // Only the group's on-screen bounding box is cleared and composited.
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const snake of group) {
+      const pad = spriteSize(headRadius(snake))/2+2;
+      for (const p of [snake.previous,...snake.body]) { minX = Math.min(minX,p.x-pad); maxX = Math.max(maxX,p.x+pad); minY = Math.min(minY,p.y-pad); maxY = Math.max(maxY,p.y+pad); }
+    }
+    const k = dpr*view.zoom, ox = dpr*(view.width/2-view.x*view.zoom), oy = dpr*(view.height/2-view.y*view.zoom);
+    const x0 = Math.max(0,Math.floor(minX*k+ox)), y0 = Math.max(0,Math.floor(minY*k+oy));
+    const x1 = Math.min(canvas.width,Math.ceil(maxX*k+ox)), y1 = Math.min(canvas.height,Math.ceil(maxY*k+oy));
+    if (x1 <= x0 || y1 <= y0) return;
+    // Allocated on first use, then kept at the canvas's backing size.
+    if (layer.width !== canvas.width || layer.height !== canvas.height) { layer.width = canvas.width; layer.height = canvas.height; }
+    ghost.setTransform(1,0,0,1,0,0); ghost.clearRect(x0,y0,x1-x0,y1-y0);
+    ghost.setTransform(k,0,0,k,ox,oy);
+    for (const snake of group) drawBody(ghost,snake,alpha,pale);
+    for (const snake of group) drawHead(ghost,snake,alpha,pale);
+    ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha = 1-IMMUNE_OPACITY_DROP*pale;
+    ctx.drawImage(layer,x0,y0,x1-x0,y1-y0,x0,y0,x1-x0,y1-y0); ctx.restore();
+  }
+  const ghosts = new Map<number, Snake[]>();
   function drawLabel(snake: Snake, alpha: number) {
     interpolate(snake,alpha); if (!inView(head.x,head.y,60)) return;
     const x = (head.x-view.x)*view.zoom+view.width/2, y = (head.y-view.y+radius(snake)*3.2)*view.zoom+view.height/2;
@@ -129,20 +166,27 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
     for (const food of s.food) {
       if (!inView(food.x,food.y,16)) continue;
-      const size = food.trail ? Math.min(18,10+Math.sqrt(food.value)) : Math.min(30,12+Math.sqrt(food.value)*4);
+      let size = food.trail ? Math.min(18,10+Math.sqrt(food.value)) : Math.min(30,12+Math.sqrt(food.value)*4);
+      // A hoovered pellet shrinks as it is drawn into its head.
+      const owner = food.owner === undefined ? undefined : s.snakes[food.owner];
+      if (owner?.alive) size *= .55+.45*Math.min(1,Math.hypot(owner.x-food.x,owner.y-food.y)/hooverRadius(owner));
       const color = food.trail ? ((Math.imul(food.id,2654435761) >>> 0)%TRAIL_COLORS.length) : food.color;
       ctx.drawImage(foodSprites[color],food.x-size/2,food.y-size/2,size,size);
     }
     visible.length = 0;
     for (const snake of s.snakes) if (snake.id !== 0 && snake.alive && snakeVisible(snake)) visible.push(snake);
     if (player.alive) visible.push(player);
-    for (const snake of visible) drawBody(snake,alpha);
-    for (const snake of visible) drawHead(snake,alpha);
+    // Protected snakes draw last, as translucent pale ghosts over the others.
+    for (const snake of visible) if (!immunityPaleness(snake,alpha)) drawBody(ctx,snake,alpha,0);
+    for (const snake of visible) if (!immunityPaleness(snake,alpha)) drawHead(ctx,snake,alpha,0);
     ctx.restore();
+    ghosts.clear();
+    for (const snake of visible) { const pale = immunityPaleness(snake,alpha); if (pale) { const group = ghosts.get(pale); if (group) group.push(snake); else ghosts.set(pale,[snake]); } }
+    for (const [pale,group] of ghosts) drawGhosts(group,alpha,pale);
     for (const snake of visible) drawLabel(snake,alpha);
     // Retain the true world map, above the compact boost control and host footer.
     if (view.width >= 700 && view.height >= 500) {
-      const mx = 54, my = view.height-175, r = 27;
+      const mx = 54, my = view.height-minimapLift, r = 27;
       ctx.beginPath(); ctx.arc(mx,my,r+5,0,TAU); ctx.fillStyle = '#0b101a80'; ctx.fill();
       ctx.beginPath(); ctx.arc(mx,my,r,0,TAU); ctx.lineWidth = 1; ctx.strokeStyle = '#6c7a8a55'; ctx.stroke();
       for (const snake of s.snakes) if (snake.alive) {
@@ -151,5 +195,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       }
     }
   }
-  return { resize, draw, view };
+  /** Distance from the viewport bottom to the minimap centre (lifted above the thumb stick on touch layouts). */
+  function setMinimapLift(lift = 175) { minimapLift = lift; }
+  return { resize, draw, view, setMinimapLift };
 }

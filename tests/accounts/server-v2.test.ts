@@ -18,6 +18,16 @@ beforeAll(async()=>{const connectionString=await local.start();await local.apply
 afterAll(async()=>{await pool?.end();await local.stop();});
 beforeEach(async()=>{vi.unstubAllEnvs();await pool.query('TRUNCATE arcade_players,account_attempts CASCADE');});
 describe('incremental accounts sync against Postgres',()=>{
+ it.each([false,true])('accepts Claimline saves and bests with v2=%s while its leaderboard remains closed',async v2=>{
+  const {token}=await signup();
+  const saves={'save:claimline':snapshot({peakShare:1234,seed:42}),'best:claimline':{value:1234,updated:1}};
+  const response=await request('sync',token,v2?{cursor:'0',bases:{},saves}:{saves},v2);
+  expect(response.status).toBe(200);
+  if(v2)expect((await response.json()).acks).toEqual({'save:claimline':'1','best:claimline':'2'});
+  else expect((await response.json()).saves).toEqual(saves);
+  expect((await (await request('sync',token)).json()).saves).toEqual(saves);
+  expect((await pool.query("SELECT * FROM arcade_scores WHERE game_id='claimline'")).rows).toHaveLength(0);
+ });
  it('releases the account lock when acquiring a database connection fails',async()=>{
   const {token}=await signup();let fail=true;
   const flaky=createAccountsHandler({query:pool.query.bind(pool),connect:async()=>{if(fail){fail=false;throw Error('temporary connection failure');}return pool.connect();}});

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "node scripts/movies-validate.mjs && tsc --noEmit && vite build && node scripts/offline-manifest.mjs && node scripts/check-client-db-boundary.mjs && node scripts/pages-headers.mjs",
+    "build": "node scripts/movies-validate.mjs && tsc --noEmit && vite build && node scripts/verify-sw-kill-switch.mjs && node scripts/check-client-db-boundary.mjs && node scripts/pages-headers.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:e2e": "playwright test",

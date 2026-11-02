@@ -1,19 +1,20 @@
 import { describe, expect, test } from 'vitest';
-import { advanceArena, ARENA_RADIUS, bodyLength, BOT_COUNT, createArena, MIN_MASS, pointSegmentDistance, ranking, restoreArena, snapshot, SPEED, STEP, stepArena, TURN_RATE, type Arena } from '../../../src/games/neon-coil/model';
+import { advanceArena, ARENA_RADIUS, bodyLength, BOT_COUNT, createArena, FOOD_TARGET, MIN_MASS, pointSegmentDistance, ranking, restoreArena, snapshot, SPEED, STEP, stepArena, MAX_TURN_RATE, type Arena } from '../../../src/games/neon-coil/model';
+// A controlled arena: bots parked, food far away and spawn immunity already expired.
 function quiet(): Arena {
-  const s = createArena(); s.phase = 'running';
+  const s = createArena(); s.phase = 'running'; s.snakes[0].immune = 0;
   for (const snake of s.snakes.slice(1)) { snake.alive = false; snake.body = []; snake.pathLength = 0; snake.diedAt = 1e8; }
-  s.food = Array.from({ length: 1500 }, (_, i) => ({ x: 1000, y: 0, id: i + 1, value: 1, color: 1, trail: false })); s.nextFood = 1501;
+  s.food = Array.from({ length: FOOD_TARGET }, (_, i) => ({ x: 1000, y: 0, id: i + 1, value: 1, color: 1, trail: false })); s.nextFood = FOOD_TARGET + 1;
   return s;
 }
 function body(s: Arena, id: number, points: { x: number; y: number }[]) {
-  const snake = s.snakes[id]; Object.assign(snake, points[0]); snake.body = points; snake.previous = { ...points[0] }; snake.pathLength = points.reduce((total, p, i) => total + (i ? Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y) : 0), 0); snake.alive = true; snake.brainAt = 1e8;
+  const snake = s.snakes[id]; Object.assign(snake, points[0]); snake.body = points; snake.previous = { ...points[0] }; snake.pathLength = points.reduce((total, p, i) => total + (i ? Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y) : 0), 0); snake.alive = true; snake.brainAt = 1e8; snake.immune = 0;
 }
 describe('continuous local arena', () => {
   test('seed creates 18 named bots, original player, safe opening and deterministic food', () => {
     const a = createArena(42); expect(a).toEqual(createArena(42)); expect(a.snakes).toHaveLength(BOT_COUNT + 1);
     expect(a.snakes[0].name).toBe('YOU'); expect(new Set(a.snakes.map(s => s.name)).size).toBe(19);
-    expect(a.food.length).toBe(1500); expect(restoreArena(a)).toEqual(a);
+    expect(a.food.length).toBe(FOOD_TARGET); expect(restoreArena(a)).toEqual(a);
   });
   test('equal elapsed time and inputs produce the same fixed-step world at 30, 60 and 120 Hz', () => {
     const states = [30, 60, 120].map(hz => { const s = createArena(2); s.phase = 'running'; for (let n = 0; n < hz * 2; n++) advanceArena(s, 1000 / hz, { angle: -.7 }); return s; });
@@ -22,13 +23,16 @@ describe('continuous local arena', () => {
   });
   test('turning is limited, travel is continuous and the body follows curved head history', () => {
     const s = quiet(), snake = s.snakes[0]; stepArena(s, { angle: Math.PI });
-    expect(snake.angle).toBeCloseTo(TURN_RATE * STEP); expect(Math.hypot(snake.x, snake.y)).toBeCloseTo(SPEED * STEP);
+    expect(snake.angle).toBeCloseTo(MAX_TURN_RATE * STEP); expect(Math.hypot(snake.x, snake.y)).toBeCloseTo(SPEED * STEP);
     const head = { x: snake.x, y: snake.y }; stepArena(s, { angle: Math.PI }); expect(snake.body[1]).toEqual(head);
     expect(snake.pathLength).toBeCloseTo(bodyLength(snake.mass));
   });
-  test('eating removes one actual pellet and increases earned mass and actual body length', () => {
+  test('eating removes one actual pellet on arrival and increases earned mass and actual body length', () => {
     const s = quiet(), player = s.snakes[0], before = player.pathLength;
-    s.food[0] = { ...s.food[0], x: SPEED * STEP, y: 0, value: 4 }; stepArena(s);
+    // Hoovered from ahead of the head: it flows in first and only scores when it arrives.
+    s.food[0] = { ...s.food[0], x: 30, y: 0, value: 4 }; stepArena(s);
+    expect(player.mass).toBe(30); expect(s.food.find(f => f.id === 1)?.owner).toBe(0);
+    for (let n = 0; n < 8 && player.mass === 30; n++) stepArena(s);
     expect(player.mass).toBe(34); expect(s.eaten).toBe(1); expect(s.food.some(f => f.id === 1)).toBe(false);
     for (let n = 0; n < 20; n++) stepArena(s); expect(player.pathLength).toBeCloseTo(before + 12);
   });

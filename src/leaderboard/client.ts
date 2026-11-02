@@ -1,10 +1,12 @@
 import {apiUrl} from '../core/api';
 import * as store from '../core/storage';
 import {validUsername} from '../accounts/shared';
-import {scoredGame,validScore,readBoard,type Board} from './shared';
+import {scoredGame,validScore,readBoard,LEADERBOARD_NOT_OPEN,type Board} from './shared';
 interface Storage {read<T>(key:string,fallback:T):T;write(key:string,value:unknown):boolean}
 interface Profile {token:string;name:string}
 export const SCORE_BATCH_MS=180000;
+/** A game whose board the database does not accept yet is parked this long before one quiet retry (see LEADERBOARD_NOT_OPEN). */
+export const NOT_OPEN_RETRY_MS=900000;
 interface Retry {attempt:number;nextAt:number}
 export class LeaderboardSync {
  needsLogin=false;
@@ -13,6 +15,8 @@ export class LeaderboardSync {
  private listeners=new Set<(game:string)=>void>();
  onSynced(listener:(game:string)=>void){this.listeners.add(listener);return ()=>{this.listeners.delete(listener);};}
  private pending:Record<string,number>={};private sent:Record<string,number>={};
+ /** Games parked after a not-open answer, with the time they may be tried again. Scores stay pending meanwhile. */
+ private parked:Record<string,number>={};
  private timer:ReturnType<typeof setTimeout>|undefined;private inFlight:Promise<void>|null=null;
  readonly endpoint=apiUrl('leaderboard');
  constructor(private storage:Storage=store,private fetcher:typeof fetch=globalThis.fetch.bind(globalThis)){
@@ -29,7 +33,7 @@ export class LeaderboardSync {
   if(identity===this.identity)return;
   this.needsLogin=false;this.identity=identity;this.scope=identity.startsWith('acct_')?':account:'+profile!.name.toLowerCase():'';
   if(this.timer)clearTimeout(this.timer);this.timer=undefined;
-  this.pending={};this.sent={};
+  this.pending={};this.sent={};this.parked={};
   const retry=this.storage.read<Retry|null>('leaderboard:retry'+this.scope,null);
   this.retry=retry&&Number.isInteger(retry.attempt)&&retry.attempt>=0&&Number.isFinite(retry.nextAt)?retry:{attempt:0,nextAt:0};
   for(const [key,score] of Object.entries(this.storage.read('leaderboard:pending'+this.scope,{})??{}))if(scoredGame(key)&&validScore(score))this.pending[key]=score;
@@ -46,7 +50,10 @@ export class LeaderboardSync {
  private schedule(){
   if(this.disposed||this.timer||!Object.keys(this.pending).length||!this.rawProfile()||this.needsLogin)return;
   if(typeof document!=='undefined'&&document.hidden)return;
-  const wait=this.retry.nextAt?Math.max(0,this.retry.nextAt-Date.now()):SCORE_BATCH_MS;
+  // When every queued score is parked, wake when the first parking ends instead of every batch interval.
+  const now=Date.now(),parked=Object.keys(this.pending).map(game=>this.parked[game]??0);
+  const idle=parked.every(until=>until>now)?Math.max(SCORE_BATCH_MS,Math.min(...parked)-now):SCORE_BATCH_MS;
+  const wait=this.retry.nextAt?Math.max(0,this.retry.nextAt-now):idle;
   this.timer=setTimeout(()=>{this.timer=undefined;if(typeof document==='undefined'||!document.hidden)void this.flush().catch(()=>{});},wait);
  }
  private defer(response?:Response){
@@ -69,11 +76,16 @@ export class LeaderboardSync {
  private async send(){
   const profile=this.profile();if(!profile)return;
   for(const [game,score] of Object.entries(this.pending)){
+   if((this.parked[game]??0)>Date.now())continue;
    let response:Response;
    try{response=await this.fetcher(this.endpoint,{method:'POST',headers:{Authorization:`Bearer ${profile.token}`,'Content-Type':'application/json'},body:JSON.stringify({game,score,name:profile.name}),signal:AbortSignal.timeout(8000)});}
    catch(error){if(this.profile()?.token===profile.token)this.defer();throw error;}
    if(this.profile()?.token!==profile.token)return;
    if(response.status===401){this.needsLogin=true;throw new Error('Log in again to share your scores. Your progress stays on this device.');}
+   // This game's board is not open in the database yet: keep the score queued, park only this game and carry on
+   // with the others, without the shared outage backoff or an error.
+   if(response.status===409&&(await response.json().catch(()=>null))?.code===LEADERBOARD_NOT_OPEN){this.parked[game]=Date.now()+NOT_OPEN_RETRY_MS;continue;}
+   delete this.parked[game];
    if(!response.ok){this.defer(response);throw new Error('Scores are saved here and will sync when the leaderboard is available.');}
    this.retry={attempt:0,nextAt:0};this.storage.write('leaderboard:retry'+this.scope,this.retry);
    this.sent[game]=Math.max(score,this.sent[game]??0);this.storage.write('leaderboard:sent'+this.scope,this.sent);

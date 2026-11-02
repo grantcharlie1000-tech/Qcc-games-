@@ -67,3 +67,14 @@ it('keeps the Minesweeper score ranking separate from legacy and time scores',as
  expect(score.entries[0].score).toBe(26234);
  expect((await (await handle(new Request(endpoint+'?game=minesweeper'))).json()).entries).toHaveLength(0);
 });
+
+it('keeps the Claimline leaderboard closed without changing the schema or other games',async()=>{
+ const token=await signup('Early_Bird');
+ const response=await submit(token,'ignored',1234,'claimline');
+ expect(response.status).toBe(409);
+ expect(await response.json()).toEqual({error:'This leaderboard opens soon. Your score stays on this device.',code:'leaderboard-not-open'});
+ expect((await pool.query("SELECT * FROM arcade_scores WHERE game_id='claimline'")).rows).toHaveLength(0);
+ expect((await submit(token,'ignored',40,'snake')).status).toBe(200);
+ const empty=await handle(new Request(endpoint+'?game=claimline&view=public'));
+ expect(empty.status).toBe(200);expect((await empty.json()).entries).toEqual([]);
+});
