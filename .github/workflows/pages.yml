@@ -89,7 +89,7 @@ jobs:
       - run: npm test -- --maxWorkers=1
       - name: Verify native diagnostic helper
         run: node --test scripts/update-native-trace.test.mjs
-      # The update and offline audits use Chromium even though the full browser projects run above.
+      # Production worker recovery uses Chromium against the built site on port 4618.
       - name: Use Ubuntu archive for browser dependencies
         run: |
           if [ -f /etc/apt/apt-mirrors.txt ]; then
@@ -97,10 +97,8 @@ jobs:
           fi
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - run: npm run verify:update
-        env:
-          ARCADE_UPDATE_NATIVE_TRACE: ${{ github.event_name == 'pull_request' && '1' || '0' }}
-      - run: npm run verify:offline
+      - name: Verify service worker kill switch and returning-visitor recovery
+        run: npm run verify:offline
       - uses: actions/upload-artifact@v4
         if: always()
         with:

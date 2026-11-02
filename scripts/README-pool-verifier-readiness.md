@@ -1,12 +1,14 @@
+The offline pack and its all-game verifier were retired by the service-worker kill switch. `npm run verify:offline` now verifies worker removal and network recovery. The Pool readiness helper and browser regression tests below remain available independently.
+
 # Pool verifier readiness correction
 
 Test/verifier-only follow-up to the captured focused control failure. No product source, worker, storage, game logic, shot expectation, existing threshold, or skip is changed. The original uninstrumented Pool failures retain their separate evidence; this correction does not prove their exact cause.
 
-`verify-offline.mjs` uses `pool-verifier-shot.mjs` only for Pool. The original hover remains. Before targeting, the helper observes the actual canvas rectangle on animation frames for at most15 seconds, bounded by both browser and Node timers. It requires three consecutive identical rectangle/layout samples and no running/pending stage-subtree animations. A fitted stage must match the current available and natural dimensions (the same formulas used by `viewport-fit.ts`); the native responsive layout must stay inside its available stage. This is a conditional layout prerequisite, not a fixed frame delay or a shot retry.
+The retired offline verifier used `pool-verifier-shot.mjs` only for Pool. The original hover remains. Before targeting, the helper observes the actual canvas rectangle on animation frames for at most15 seconds, bounded by both browser and Node timers. It requires three consecutive identical rectangle/layout samples, no running/pending stage-subtree animations, and the host's fitted width/height/scale to match the current available and natural dimensions (the same formulas used by `viewport-fit.ts`). This is a conditional layout prerequisite, not a fixed frame delay or a shot retry.
 
 Explicit state assertions require a connected table, visible document/canvas, app not inert, Pause-game label, hidden pause overlay, and Pool `aim`/`idle`/zero shots. They fail rather than unpause, resume, restart, change a player, or modify the product. No additional human-turn predicate is introduced. Rectangles must be finite and nonzero. Readiness never reads for one successful shot.
 
-The final actual rectangle projects the same model-space pull from (220,615) to (220,705): horizontal225/840→135/840 in landscape, vertical615/840→705/840 in portrait. The fixture projection is independent of the application's inverse input mapping. After the target mouse move, the helper asserts that the exact rectangle/layout and prerequisites still match immediately before mouse-down. A change fails before down; it never retargets or retries. Mouse-down, eight moves, mouse-up and the immediate strict `data-shots === '1'` assertion remain. There is no wait for a zero count to become one.
+The final actual rectangle supplies the same native225/840→135/840 horizontal eight-step pull. After the target mouse move, the helper asserts that the exact rectangle/layout and prerequisites still match immediately before mouse-down. A change fails before down; it never retargets or retries. Mouse-down, eight moves, mouse-up and the immediate strict `data-shots === '1'` assertion remain. There is no wait for a zero count to become one.
 
 `tests/games/pool/verifier-readiness.spec.ts` is automatically included by the existing Playwright `**/*.spec.ts` discovery in Chromium and WebKit. The workflow's explicit native diagnostic-helper command stays unchanged. The four cases use the actual mounted Pool game and real trusted pointer events:
 
@@ -17,7 +19,7 @@ The final actual rectangle projects the same model-space pull from (220,615) to 
 
 Animations/suppression are disposable regression fixtures, not claims about the exact original mechanism. There are no product callback wrappers or response/source patches. A focused comparison that omits prior unrelated routes cannot establish their influence, intermittent update-specificity, or full acceptance.
 
-Run the regression cases through the existing browser suite, then the original offline verifier against a built application:
+Run the Pool regression cases through the existing browser suite; the separate production worker recovery check requires a build:
 
 ```bash
 npx playwright test tests/games/pool/verifier-readiness.spec.ts
