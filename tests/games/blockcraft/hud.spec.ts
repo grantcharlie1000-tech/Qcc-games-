@@ -276,14 +276,22 @@ test.describe('menus',()=>{
     if(await page.locator('.bc-menu').isVisible())await play(page);
 
     // Death screen: message, score (the experience collected, as in vanilla) and a Respawn button enabled after a second.
-    await page.evaluate(()=>{const s=(window as unknown as {blockcraft:{survival:{kill(m:string):void}}}).blockcraft.survival;
-      Object.defineProperty(s,'xpTotal',{configurable:true,get:()=>37});s.kill('Steve hit the ground too hard');});
-    // The delay is one second: assert the disabled state first, before slower text checks can outlast it.
+    // The delay is one second, which a loaded runner can outlast between two Playwright polls, so the page
+    // itself records the button's state on the first frame the death screen shows and when it enables.
+    const shown=await page.evaluate(()=>new Promise<{disabled:boolean,at:number}>(resolve=>{
+      const s=(window as unknown as {blockcraft:{survival:{kill(m:string):void}}}).blockcraft.survival;
+      Object.defineProperty(s,'xpTotal',{configurable:true,get:()=>37});
+      const button=document.querySelector<HTMLButtonElement>('[data-act=respawn]')!,w=window as unknown as {bcRespawnEnabledAt?:number};
+      new MutationObserver((_,o)=>{if(!button.disabled&&button.offsetParent){w.bcRespawnEnabledAt=performance.now();o.disconnect();}}).observe(button,{attributes:true,attributeFilter:['disabled']});
+      s.kill('Steve hit the ground too hard');
+      const check=()=>button.offsetParent?resolve({disabled:button.disabled,at:performance.now()}):requestAnimationFrame(check);check();}));
+    expect(shown.disabled).toBe(true);
     const respawn=page.getByRole('button',{name:'Respawn'});
-    await expect(respawn).toBeDisabled();
     await expect(page.getByRole('heading',{name:'You died!'})).toBeVisible();
     await expect(page.locator('.bc-menu')).toContainText('Steve hit the ground too hard');await expect(page.locator('.bc-menu-score')).toHaveText('Score: 37');
     await expect(respawn).toBeEnabled({timeout:5000});
+    const enabledAt=await page.evaluate(()=>(window as unknown as {bcRespawnEnabledAt?:number}).bcRespawnEnabledAt);
+    expect(enabledAt! - shown.at).toBeGreaterThan(900);
     await shellHidden(page);
     await page.screenshot({path:evidence('death-1280x720')});
     await respawn.click();
