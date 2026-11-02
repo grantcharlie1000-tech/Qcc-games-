@@ -1,5 +1,5 @@
 import {test,expect} from '../fixtures';
-import {glyphContrast} from '../glass-contrast';
+import {glyphContrast,settleGlassInk} from '../glass-contrast';
 
 const forcedFallback=process.env.ARCADE_GLASS_FALLBACK==='1';
 test.beforeEach(async({page})=>{
@@ -16,21 +16,31 @@ for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contras
   for(const name of ['Study','Open menu']){
     const button=nav.getByRole('button',{name,exact:true});await button.hover();await page.mouse.down();
     await button.screenshot({animations:'disabled'});
+    await settleGlassInk(nav);
     const boxes=await nav.evaluate(n=>{
       const b=n.getBoundingClientRect();
       return [...n.querySelectorAll('.ui-tab > .ui-icon,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
-        const r=e.getBoundingClientRect();return {x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(e).color};
+        const r=e.getBoundingClientRect();return {x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(e).color,icon:e instanceof SVGElement};
       });
     });
-    const hidden=await page.addStyleTag({content:'.app-navigation .ui-tab{color:transparent!important}'});
+    const visible=(await nav.screenshot({animations:'disabled'})).toString('base64');
+    // Adaptive ink colours each .glass-ink glyph itself, so hide the glyphs, not just the tab.
+    const hidden=await page.addStyleTag({content:'.app-navigation .ui-tab,.app-navigation .ui-tab *{color:transparent!important}'});
     const shot=(await nav.screenshot({animations:'disabled'})).toString('base64');
     await hidden.evaluate(e=>e.parentNode?.removeChild(e));
-    const maskStyle=await page.addStyleTag({content:'body{background:#000!important}#content{visibility:hidden!important}.app-navigation .arcade-glass{background:transparent!important;backdrop-filter:none!important}.app-navigation .arcade-glass::before,.app-navigation .arcade-glass::after,.app-navigation .ui-glass-lens,.app-navigation .ui-glass-glow{visibility:hidden!important}.app-navigation .ui-tab{color:#fff!important;background:none!important;text-shadow:none!important}'});
+    const maskStyle=await page.addStyleTag({content:'body{background:#000!important}#content{visibility:hidden!important}.app-navigation .arcade-glass{background:transparent!important;backdrop-filter:none!important}.app-navigation .arcade-glass::before,.app-navigation .arcade-glass::after,.app-navigation .ui-glass-lens,.app-navigation .ui-glass-glow{visibility:hidden!important}.app-navigation .ui-tab,.app-navigation .ui-tab *{color:#fff!important;background:none!important;text-shadow:none!important;filter:none!important}'});
     const mask=(await nav.screenshot({animations:'disabled'})).toString('base64');
     await maskStyle.evaluate(e=>e.parentNode?.removeChild(e));
     await page.mouse.move(0,0);await page.mouse.up();
     const ratios=await glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);
-    expect(Math.min(...ratios),`${name}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
+    // Labels are text (WCAG 1.4.3, 4.5:1). Tab icons are non-text graphics on
+    // the clear material and are held to WCAG 1.4.11's 3:1.
+    // An icon is judged against its adjacent colours (WCAG 1.4.11): the visible
+    // exterior outline, including any adaptive halo, with the icon retained.
+    const iconBoxes=boxes.filter(box=>box.icon);
+    const text=ratios.filter((_,i)=>!boxes[i].icon),icons=await glyphContrast(page,visible,mask,iconBoxes,(await nav.boundingBox())!,true);
+    expect(Math.min(...text),`${name} labels: ${text.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
+    expect(Math.min(...icons),`${name} icons: ${icons.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(3);
   }
 });
 
@@ -146,7 +156,13 @@ test('surface tone follows the game and glyphs have no heavy halo',async({page})
     await page.goto(`/#/game/${id}`);
     await expect(page.locator('.game-view')).toHaveAttribute('data-glass-tone',tone);
     await expect(page.locator('.game-hud')).toHaveCSS('text-shadow','none');
-    await expect(page.locator('#game-menu svg')).toHaveCSS('filter','none');
+    // Over live game art the adaptive ink may add its thin opposite-tone outline:
+    // at most four unblurred 1px drop-shadows, never a heavy blurred halo.
+    await expect.poll(()=>page.locator('#game-menu svg').evaluate(e=>{
+      const filter=getComputedStyle(e).filter;if(filter==='none')return true;
+      const shadows=[...filter.matchAll(/drop-shadow\((?:rgba?\([^)]*\) )?(-?[\d.]+)px (-?[\d.]+)px ([\d.]+)px\)/g)];
+      return shadows.length<=4&&filter.replace(/drop-shadow\((?:rgba?\([^)]*\) )?[^)]*\)/g,'').trim()===''&&shadows.every(([,x,y,blur])=>Math.abs(+x)<=1&&Math.abs(+y)<=1&&+blur===0);
+    })).toBe(true);
   }
 });
 
@@ -186,7 +202,8 @@ test('pointer press lifts the individual button and reduced motion removes the l
   await expect(button).toHaveAttribute('data-pressing','');
   await expect.poll(()=>button.evaluate(e=>parseFloat(getComputedStyle(e).scale))).toBeGreaterThanOrEqual(1.08);
   const filter=await button.getAttribute('data-glass')==='frost'?button:button.locator('.ui-glass-lens');
-  await expect(filter).toHaveCSS('backdrop-filter',/blur\(1px\)/);
+  // A press keeps the clear --glass-clear-blur (1.5px) recipe; only the lift changes.
+  await expect(filter).toHaveCSS('backdrop-filter',/blur\(1\.5px\)/);
   await page.mouse.move(1,1);await page.mouse.up();
   await expect(button).not.toHaveAttribute('data-pressing');
   await page.emulateMedia({reducedMotion:'reduce'});
@@ -232,7 +249,8 @@ for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density
     await page.goto('/#/game/neon-coil');
     await expect(page.locator('#game-menu')).toHaveClass(/is-refracting/);
     const gameBlur=await page.locator('#game-menu .ui-glass-lens').evaluate(e=>getComputedStyle(e).backdropFilter.match(/blur\([^)]+\)/)![0]);
-    expect(homeBlur).toBe('blur(4px)');
+    // Navigation frost (section-navigation.css) and the game --glass-clear-blur.
+    expect(homeBlur).toBe('blur(3px)');
     expect(gameBlur).toBe('blur(1.5px)');
   });
 });
@@ -256,11 +274,12 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
       // still support its dark glyphs on that darkest background.
       await page.addStyleTag({content:'.blockcraft canvas{opacity:0!important}.blockcraft{background:#000!important}'});
     }
+    await settleGlassInk(dock);
     const boxes=await dock.evaluate(el=>{
       const d=el.getBoundingClientRect();
       return [...el.querySelectorAll('.game-hud small,.game-hud strong,.game-compact-hud,.ui-tab > svg,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
         const r=e.getBoundingClientRect();
-        return {x:r.x-d.x,y:r.y-d.y,w:r.width,h:r.height,color:getComputedStyle(e).color};
+        return {x:r.x-d.x,y:r.y-d.y,w:r.width,h:r.height,color:getComputedStyle(e).color,icon:e instanceof SVGElement};
       }).filter(r=>r.w>0&&r.h>0);
     });
     const hideInk=await page.addStyleTag({content:'.game-hud small,.game-hud strong,.game-compact-hud{color:transparent!important}.game-dock>.ui-tab>svg,.game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){visibility:hidden!important}'});
@@ -271,6 +290,10 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
     await page.addStyleTag({content:'.game-view{background:#000!important}.game-surface,.stage-wrap{visibility:hidden!important}.game-glass{background:transparent!important;backdrop-filter:none!important;border-color:transparent!important}.game-glass::before,.game-glass>.ui-glass-lens,.game-glass>.ui-glass-glow{visibility:hidden!important}.game-hud small,.game-hud strong,.game-compact-hud,.game-dock>.ui-tab{color:#fff!important;text-shadow:none!important}.game-dock>.ui-tab>svg{filter:none!important}'});
     const mask=(await dock.screenshot({animations:'disabled'})).toString('base64');
     const ratios=await glyphContrast(page,shot,mask,boxes,(await dock.boundingBox())!);
-    expect(Math.min(...ratios),`${id}: ${ratios.map(r=>r.toFixed(2)).join(', ')}`).toBeGreaterThanOrEqual(4.5);
+    // HUD text keeps WCAG 1.4.3's 4.5:1. The Games and Menu icons are non-text
+    // graphics on the approved clear material: WCAG 1.4.11's 3:1 applies.
+    const text=ratios.filter((_,i)=>!boxes[i].icon),icons=ratios.filter((_,i)=>boxes[i].icon);
+    expect(Math.min(...text),`${id} text: ${text.map(r=>r.toFixed(2)).join(', ')}`).toBeGreaterThanOrEqual(4.5);
+    expect(Math.min(...icons),`${id} icons: ${icons.map(r=>r.toFixed(2)).join(', ')}`).toBeGreaterThanOrEqual(3);
   });
 }

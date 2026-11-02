@@ -1,6 +1,6 @@
 import {test,expect} from '../fixtures';
 import {gameAction,openGameMenu} from '../game-menu';
-import {glyphContrast} from '../glass-contrast';
+import {glyphContrast,settleGlassInk} from '../glass-contrast';
 
 for(const [id,tone] of [['snake','dark'],['fruit-merge','light']] as const){
   test(`${id} menu and its submenus use a neutral glass sheet and retain modal focus`,async({page})=>{
@@ -13,7 +13,8 @@ for(const [id,tone] of [['snake','dark'],['fruit-merge','light']] as const){
       const s=getComputedStyle(e),group=getComputedStyle(e.querySelector('.game-menu-actions')!);
       return {filter:s.backdropFilter,radius:parseFloat(s.borderRadius),padding:parseFloat(s.paddingLeft),groupRadius:parseFloat(group.borderRadius),grabber:getComputedStyle(e,'::before').content};
     });
-    expect(material.filter).toContain('blur(8px)');
+    // The shared clear sheet recipe: --glass-clear-blur with a slight saturation.
+    expect(material.filter).toBe('blur(1.5px) saturate(1.08)');
     expect(material.radius).toBe(material.groupRadius+material.padding);
     expect(material.grabber).toBe('""');
     // The paused game's artwork remains visible behind the sheet. Its state is still paused.
@@ -51,7 +52,7 @@ test('home sheets are light and game-owned submenus share the glass surface',asy
     await expect(page.locator('#game-stage .game-menu-source').first()).toBeAttached();
     await gameAction(page,action);
     const panel=page.locator(selector);await expect(panel).toBeVisible();
-    expect(await panel.evaluate(e=>getComputedStyle(e).backdropFilter)).toContain('blur(8px)');
+    expect(await panel.evaluate(e=>getComputedStyle(e).backdropFilter)).toBe('blur(1.5px) saturate(1.08)');
     await expect.poll(()=>panel.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
     const targets=await panel.locator('button').evaluateAll(buttons=>buttons.map(b=>b.getBoundingClientRect().height).filter(h=>h>0));
     expect(Math.min(...targets),`${id} submenu touch targets`).toBeGreaterThanOrEqual(44);
@@ -104,6 +105,8 @@ for(const view of ['home','accounts','snake','fruit-merge']){
     const selector=view==='accounts'?'#accounts-dialog':home?'#menu':'#game-options',panel=page.locator(selector);
     await expect.poll(()=>panel.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
     await panel.evaluate(e=>{e.scrollTop=0;});
+    // Read glyph colours only once adaptive ink has resolved them.
+    await settleGlassInk(panel);
     const boxes=await panel.evaluate(e=>{
       const outer=e.getBoundingClientRect(),walker=document.createTreeWalker(e,NodeFilter.SHOW_TEXT),boxes=[];
       while(walker.nextNode()){
