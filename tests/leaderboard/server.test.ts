@@ -78,3 +78,22 @@ it('keeps the Claimline leaderboard closed without changing the schema or other 
  const empty=await handle(new Request(endpoint+'?game=claimline&view=public'));
  expect(empty.status).toBe(200);expect((await empty.json()).entries).toEqual([]);
 });
+
+it.each([
+ {error:{code:'53100'},cleanupFails:false,status:507},
+ {error:{code:'53400'},cleanupFails:true,status:507},
+ {error:{code:'23514',constraint:'another_check'},cleanupFails:false,status:503},
+])('rolls back failed score writes without hiding capacity errors: %j',async({error,cleanupFails,status})=>{
+ const token=await signup('Capacity_User');
+ const handler=createLeaderboardHandler({query:pool.query.bind(pool),connect:async()=>{
+  const client=await pool.connect();return {query:async(sql:string,values?:unknown[])=>{
+   if(sql.startsWith('INSERT INTO arcade_scores'))throw error;
+   if(sql==='ROLLBACK'){await client.query(sql);if(cleanupFails)throw Error('cleanup connection failure');return {rows:[]};}
+   return client.query(sql,values);
+  },release:()=>client.release()};
+ }});
+ const response=await handler(new Request(endpoint,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({game:'snake',score:123})}));
+ expect(response.status).toBe(status);
+ if(status===507)expect(await response.json()).toEqual({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'});
+ expect((await pool.query('SELECT * FROM arcade_scores')).rows).toHaveLength(0);
+});

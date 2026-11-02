@@ -7,6 +7,7 @@ import {createLeaderboardHandler} from '../src/leaderboard/server';
 import {createTurnHandler} from '../src/multiplayer/turn-server';
 import {handleMoviesCatalog} from './movies-catalog';
 import {createGuardedHandler} from '../netlify/lib/runtime.mts';
+import {storageFullResponse} from '../src/accounts/storage-errors';
 
 export type Route='accounts'|'leaderboard'|'turn'|'movies';
 type Env=Record<string,string|undefined>;
@@ -69,7 +70,7 @@ export function createApp(options:AppOptions={}){
   let guarded:((request:Request)=>Promise<Response>)|undefined;
   return async request=>{
    try{guarded??=createGuardedHandler(database(),factory,{allowMissingMarker:false,context,env:env as NodeJS.ProcessEnv,now});return await guarded(request);}
-   catch{return Response.json({error:'Service temporarily unavailable.'},{status:503,headers:{'Cache-Control':'no-store'}});}
+   catch(error){return storageFullResponse(error)??Response.json({error:'Service temporarily unavailable.'},{status:503,headers:{'Cache-Control':'no-store'}});}
   };
  }
  const hits=new Map<string,number[]>();

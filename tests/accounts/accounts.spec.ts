@@ -24,6 +24,25 @@ async function signIn(page:Page,username:string,signup=false){
 }
 async function menu(page:Page){await page.getByRole('button',{name:'Open menu',exact:true}).click();if(await page.locator('.ms-settings').isVisible())await page.getByRole('button',{name:'Account & app settings',exact:true}).click();}
 
+for(const failure of [
+ {status:413,error:'storage_quota',message:'Your saves are over the 2 MB limit.'},
+ {status:507,error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},
+])test(`shows ${failure.error} in the account panel and keeps the local save after reload`,async({page,context})=>{
+ await connect(context);await page.goto('/');await signIn(page,`Storage_${failure.status}`,true);
+ await context.route('**/.netlify/functions/accounts**',async route=>{
+  if(route.request().method()==='PUT')await route.fulfill({status:failure.status,contentType:'application/json',body:JSON.stringify({error:failure.error,message:failure.message})});
+  else await route.fallback();
+ });
+ const save={version:1,data:{peakShare:4321,seed:12},updated:10};
+ await page.evaluate(value=>localStorage.setItem('pocket-arcade:v1:save:claimline',JSON.stringify(value)),save);
+ await menu(page);await page.getByRole('button',{name:'Sync now',exact:true}).click();
+ await expect(page.locator('#account-sync-status')).toHaveText(failure.message);
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:claimline')!))).toEqual(save);
+ await page.reload();
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:claimline')!))).toEqual(save);
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:accounts:pending:'+JSON.parse(localStorage.getItem('pocket-arcade:v1:accounts:session')!).username.toLowerCase())!)['save:claimline'].value)).toEqual(save);
+});
+
 test('entry offers guest play before the Study chooser and remembers the choice',async({page,context})=>{
  await connect(context,false);await page.goto('/');const dialog=page.locator('#accounts-dialog');await expect(dialog).toBeVisible();
  await expect(dialog.locator('form').getByRole('button',{name:'Log in',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Sign up',exact:true})).toBeVisible();

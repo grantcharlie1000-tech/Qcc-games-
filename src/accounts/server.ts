@@ -1,9 +1,10 @@
 import {createHash,randomBytes,randomUUID,scrypt,timingSafeEqual} from 'node:crypto';
 import type {Database} from '../leaderboard/server';
-import {validUsername,validPassword,validSaves,MAX_BODY_BYTES,SAVE_KEYS,validRevision,type Saves,type SyncV2Response} from './shared';
+import {validUsername,validPassword,validSaves,MAX_BODY_BYTES,MAX_TOTAL_BYTES,STORAGE_QUOTA,saveBytes,SAVE_KEYS,validRevision,type Saves,type SyncV2Response} from './shared';
 import {mergeSaves} from './merge';
 import {stableText} from '../core/content';
 import {writeFrozen,readOnlyResponse} from './write-freeze';
+import {storageFullResponse} from './storage-errors';
 const sha=(value:string)=>createHash('sha256').update(value).digest('hex');
 const DUMMY='scrypt$16384$8$1$00000000000000000000000000000000$'+'00'.repeat(64);
 const derive=(password:string,salt:Buffer,N:number,r:number,p:number)=>new Promise<Buffer>((resolve,reject)=>scrypt(password,salt,64,{N,r,p,maxmem:64*1024*1024},(error,key)=>error?reject(error):resolve(key)));
@@ -117,9 +118,12 @@ export function createAccountsHandler(db:Database){
      await client.query('INSERT INTO accounts(id,username,password_hash,player_id) VALUES ($1,$2,$3,$4)',[id,data.username,passwordHash,playerId]);
      // Legacy guestToken is accepted for compatibility, but guest scores stay separate.
      const token=await session(client.query.bind(client),id);await client.query('RELEASE SAVEPOINT signup');return respond({token,username:data.username},201);
-    }catch(error){await client.query('ROLLBACK TO SAVEPOINT signup');if((error as {code?:string}).code==='23505')return respond({error:'That username is already taken.'},409);throw error;}
-    }catch(error){failed=true;if(auth)await auth.query('ROLLBACK');throw error;}
-    finally{try{if(auth&&!failed)await auth.query('COMMIT');}finally{auth?.release();for(const release of releases.reverse())release();}}
+    }catch(error){await client.query('ROLLBACK TO SAVEPOINT signup').catch(()=>{});if((error as {code?:string}).code==='23505')return respond({error:'That username is already taken.'},409);throw error;}
+    }catch(error){failed=true;if(auth)await auth.query('ROLLBACK').catch(()=>{});throw error;}
+    finally{
+     try{if(auth&&!failed)try{await auth.query('COMMIT');}catch(error){await auth.query('ROLLBACK').catch(()=>{});throw error;}}
+     finally{auth?.release();for(const release of releases.reverse())release();}
+    }
    }
    if(action==='logout'){
     if(!data||typeof data!=='object'||Array.isArray(data))return respond({error:'Invalid logout request.'},400);
@@ -147,13 +151,19 @@ export function createAccountsHandler(db:Database){
     await client.query('SELECT id FROM accounts WHERE id=$1'+(frozenRead?'':' FOR UPDATE'),[account.id]);
     const submitted:Saves=request.method==='PUT'?data.saves:{};
     const keys=Object.keys(submitted);
-    if(keys.length){
-     const previous=await client.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1 AND key=ANY($2::text[])',[account.id,keys]) as {rows:any[]};
+    if(request.method==='PUT'){
+     // The account row lock above serializes all instances. Include untouched keys and
+     // measure the final merge before writing so a rejected batch changes no saves/revisions.
+     const previous=await client.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1',[account.id]) as {rows:any[]};
      const old=savesFrom(previous.rows),saves=mergeSaves(old,submitted);
      for(const key of keys){
-      let record=saves[key]!;const before=old[key];
+      const before=old[key];
       // Keep semantic no-ops from manufacturing timestamps (including snapshot envelopes).
-      if(before&&(key.startsWith('best:')?(submitted[key]!.value as number)<=(before.value as number):sameContent(key,before.value,submitted[key]!.value)))record=before;
+      if(before&&(key.startsWith('best:')?(submitted[key]!.value as number)<=(before.value as number):sameContent(key,before.value,submitted[key]!.value)))saves[key]=before;
+     }
+     if(Object.values(saves).reduce((total,record)=>total+saveBytes(record),0)>MAX_TOTAL_BYTES)throw 413;
+     for(const key of keys){
+      const record=saves[key]!,before=old[key];
       if(before&&sameRecord(before,record))continue;
       await client.query(`INSERT INTO account_saves(account_id,key,value,updated) VALUES ($1,$2,$3::jsonb,$4)
        ON CONFLICT(account_id,key) DO UPDATE SET value=excluded.value,updated=excluded.updated`,[account.id,key,JSON.stringify(record.value),record.updated]);
@@ -178,10 +188,11 @@ export function createAccountsHandler(db:Database){
      }
     }
     await client.query('COMMIT');return respond(result);
-   }catch(error){if(client)await client.query('ROLLBACK');throw error;}finally{client?.release();release();}
+   }catch(error){if(client)await client.query('ROLLBACK').catch(()=>{});throw error;}finally{client?.release();release();}
   }catch(error){
-   if(error===413)return respond({error:'Request too large.'},413);
+   if(error===413)return respond(action==='sync'?STORAGE_QUOTA:{error:'Request too large.'},413);
    if(error===400)return respond({error:'Invalid JSON.'},400);
+   const full=storageFullResponse(error);if(full)return full;
    return respond({error:'Accounts are temporarily unavailable. Your progress stays on this device.'},503);
   }
  };

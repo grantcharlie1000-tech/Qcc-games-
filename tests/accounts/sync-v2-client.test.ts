@@ -26,6 +26,46 @@ function fixture(){
 const clients:AccountsClient[]=[];const client=(f:ReturnType<typeof fixture>,fetcher=f.fetcher)=>{const c=new AccountsClient(f.storage,fetcher);clients.push(c);return c;};
 afterEach(()=>{for(const c of clients)c.dispose();clients.length=0;vi.useRealTimers();vi.unstubAllGlobals();});
 describe('v2 durable sync scheduling',()=>{
+ const storageErrors=[
+  {status:413,error:'storage_quota',message:'Your saves are over the 2 MB limit.'},
+  {status:507,error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},
+ ];
+ it.each(storageErrors)('shows $error to the player and retains local and staged saves',async failure=>{
+  vi.useFakeTimers();const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');
+  const save={version:1,data:{peakShare:4321,seed:12},updated:10};f.storage.write('save:claimline',save);
+  let visible='';c.onChange(()=>{visible=c.message;});
+  f.fail(Response.json({error:failure.error,message:failure.message},{status:failure.status}));
+  await expect(c.flush()).rejects.toThrow(failure.message);expect(visible).toBe(failure.message);expect(c.message).toBe(failure.message);
+  expect(f.storage.read('save:claimline',null)).toEqual(save);
+  expect(f.storage.read<any>('accounts:sync:ada',{}).pending).toContain('save:claimline');
+  expect(f.storage.read<any>('accounts:pending:ada',{})['save:claimline']).toEqual({value:save,updated:10});
+  expect(f.remote()['save:claimline']).toBeUndefined();
+ });
+ it.each(storageErrors)('uses a player-facing fallback if $error omits its message',async failure=>{
+  const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');f.storage.write('best:snake',10);
+  f.fail(Response.json({error:failure.error},{status:failure.status}));
+  await expect(c.flush()).rejects.toThrow(failure.message);expect(c.message).toBe(failure.message);expect(f.storage.read('best:snake',0)).toBe(10);
+ });
+ it('blocks automatic quota retries while keeping pending saves durable',async()=>{
+  vi.useFakeTimers();const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');f.storage.write('best:snake',10);
+  f.fail(Response.json({error:'storage_quota',message:'Your saves are over the 2 MB limit.'},{status:413}));await expect(c.flush()).rejects.toThrow();const count=f.calls.length;
+  await vi.advanceTimersByTimeAsync(30*60000);expect(f.calls).toHaveLength(count);expect(f.storage.read('best:snake',0)).toBe(10);
+  const recovered=client(f);expect(f.storage.read<any>('accounts:sync:ada',{}).pending).toContain('best:snake');recovered.dispose();
+  await c.flush();expect(f.remote()['best:snake']!.value).toBe(10);
+ });
+ it('retries database-full errors with durable backoff after reloading the client',async()=>{
+  vi.useFakeTimers();const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');f.storage.write('best:snake',10);
+  f.fail(Response.json({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},{status:507}));await expect(c.flush()).rejects.toThrow();const count=f.calls.length;c.dispose();
+  const recovered=client(f);recovered.start();await vi.advanceTimersByTimeAsync(999);expect(f.calls).toHaveLength(count);
+  expect(f.storage.read('best:snake',0)).toBe(10);await vi.advanceTimersByTimeAsync(60000);expect(f.remote()['best:snake']!.value).toBe(10);
+ });
+ it.each(storageErrors)('preserves the $error message when initial sign-in sync fails',async failure=>{
+  const f=fixture(),save={version:1,data:{peakShare:4321},updated:10};f.values.set('accounts:pending:ada',{'save:claimline':{value:save,updated:10}});
+  const c=client(f,(async(input,init)=>init?.method==='PUT'?Response.json({error:failure.error,message:failure.message},{status:failure.status}):f.fetcher(input,init)) as typeof fetch);
+  await c.authenticate('signup','Ada','password1');
+  expect(c.session()?.username).toBe('Ada');expect(c.message).toBe(failure.message);expect(f.storage.read('save:claimline',null)).toEqual(save);
+  expect(f.storage.read<any>('accounts:sync:ada',{}).pending).toContain('save:claimline');
+ });
  it('has no visible idle pulls for thirty minutes and batches sustained local changes once per three minutes',async()=>{
   vi.useFakeTimers();const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');c.start();await vi.advanceTimersByTimeAsync(0);f.calls.length=0;
   await vi.advanceTimersByTimeAsync(30*60000);expect(f.calls).toHaveLength(0);
