@@ -1,4 +1,26 @@
-# Neon Coil verification — 20 October 2026
+# Neon Coil verification
+
+## Gameplay remake: 2 November 2026 (branch `game/snake-remake`)
+
+Covers spawn immunity, dot hoover, render/collision radius parity, the shared smooth steering law, the thumb joystick and the +20% arena. Results below come from completed local runs in this container (Chromium only; WebKit was not run).
+
+| Check | Result |
+| --- | --- |
+| `npx tsc --noEmit` | Passed |
+| `npx vitest run` | 161 files, 3,290 tests passed, including 29 new tests in `tests/games/neon-coil/remake.test.ts` and updated arena tests |
+| `npx playwright test tests/games/neon-coil --project=chromium` | 29 passed (own dev server on port 4631). Under a load average of 24–97 on 8 cores, one `--workers=1` run had 3 timing failures (a `clock.pauseAt` race and two 30 s timeouts); all 3 passed on an immediate rerun. |
+| `npx playwright test tests/e2e/viewport.spec.ts tests/leaderboard/sidebar.spec.ts --project=chromium --workers=1` | 26 passed (an earlier 2-worker run at load average ~100 timed out on page loads) |
+| `npm run build` | Passed (movies-validate, tsc, vite build, offline pack 179 files) |
+
+An independent code review found no critical issues. Its important finding, that a thumb landing below or left of the resting ring steered on touch-down, was fixed and is covered by a browser test. Minor fixes from the same review: holding the last stick direction on release, measuring the minimap lift from the resting ring, never evicting an in-flight pellet at the food cap, clamping over-fast saved pellet speeds, and guarding the taper slope.
+
+New unit coverage: immunity (immune head survives body and head-on contact; immune bodies are non-lethal; the rim still kills; expiry after exactly 180 ticks; bots respawn immune; save round trip and legacy-save loading; pale fade), hoover (acceleration, scoring once on arrival, out-of-radius pellets stay put, nearest-head claim, bots, owner death releases the pellet, deterministic snapshot/restore mid-flight), steering (capped and proportional turn, kink-free trail, 360° joystick vector, clamp, dead zone, pointer dead zone, keyboard hold/tap/release), arena area 1.2× with matching food density, and radius parity (every drawn disc and the head match the hitbox at three masses; contact flips within ±0.05 px of where the drawn discs touch).
+
+New browser coverage (390×844 touch phone, 1024×768 touch tablet, 844×390 touch landscape): the joystick is visible and at least 120 px, clear of the ranking, Boost, toolbar and Top scores; it steers in any direction (including a shallow analogue angle) and holds heading on release; a touch outside the zone does not steer; Boost works while the stick is held; Escape opens Study Mode; desktop keeps pointer steering and the original Boost position with no joystick.
+
+Simulation cost (Node, 600 ticks of a full arena): 1.26 ms/tick, against 1.35 ms/tick before the remake. In-browser game-loop p95 under the container's software canvas is noisy (±4 ms between identical runs). It matches the previous build in steady state, and is somewhat higher during the 3 s spawn window while protected snakes are composited as pale layers.
+
+## Earlier verification: 20 October 2026
 
 The **local R3 resize correction passed its allocated Astra review at `f8df8003c773246984a200cf8a4b48c7578579c5`**, with no remaining findings. Astra independently passed five focused Chromium cases; Sol 6.1 verified all 20 arena Chromium cases, strict TypeScript, 288 unit/core tests and build. The published draft PR remains at `1e08484`; its first full CI failed one WebKit resize assertion. No corrected WebKit run is claimed, and further pushes are held because PR publication automatically deployed a Netlify preview. Details and preserved failures are under **Review R3** below.
 
