@@ -7,6 +7,7 @@ import { test } from 'node:test';
 test('published robots.txt allows crawlers to read noindex without a sitemap', async () => {
   assert.ok(existsSync('dist/robots.txt'), 'dist/robots.txt must be published');
   const robots = await readFile('dist/robots.txt', 'utf8');
+  assert.doesNotMatch(robots, /Disallow:\s*\//i, 'robots.txt must not block crawlers from reading noindex directives');
   assert.equal(robots.replace(/\r\n/g, '\n').trim(), 'User-agent: *\nAllow: /');
 });
 
