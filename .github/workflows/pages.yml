@@ -97,6 +97,7 @@ jobs:
           fi
       - run: npx playwright install --with-deps chromium
       - run: npm run build
+      - run: npm run verify:noindex
       - name: Verify service worker kill switch and returning-visitor recovery
         run: npm run verify:offline
       - uses: actions/upload-artifact@v4
