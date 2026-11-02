@@ -29,6 +29,12 @@ for(const route of ['collection','game/snake','game/neon-coil'])test(`${route} u
   const sheet=page.locator('dialog[open]');
   await expect(sheet).toBeVisible();
   await expect(sheet).toHaveCSS('-webkit-text-stroke-width','0px');
-  expect(await sheet.evaluate(e=>getComputedStyle(e).backdropFilter)).toBe('blur(1.5px) saturate(1.08)');
-  expect(await sheet.evaluate(e=>getComputedStyle(e).backgroundColor)).toBe('rgba(8, 12, 18, 0.2)');
+  const optics=await sheet.evaluate(e=>{
+    const s=getComputedStyle(e),gl=e.querySelector(':scope>.ui-glass-gl');
+    return {webgl:e.matches('[data-glass-mode=webgl]'),partial:e.hasAttribute('data-glass-partial'),filter:s.backdropFilter,fill:s.backgroundColor,lensTint:gl?getComputedStyle(gl,'::after').backgroundColor:null};
+  });
+  // Over a live WebGL game the sheet's fill moves onto the WebGL lens as its
+  // tint; the CSS blur remains only where the lens is partly backed.
+  if(optics.webgl)expect(optics).toEqual({webgl:true,partial:optics.partial,filter:optics.partial?'blur(1.5px) saturate(1.08)':'none',fill:'rgba(0, 0, 0, 0)',lensTint:'rgba(8, 12, 18, 0.2)'});
+  else{expect(optics.filter).toBe('blur(1.5px) saturate(1.08)');expect(optics.fill).toBe('rgba(8, 12, 18, 0.2)');}
 });

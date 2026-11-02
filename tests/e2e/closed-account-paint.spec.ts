@@ -22,6 +22,9 @@ for(const fallback of [false,true])for(const close of ['guest','escape'] as cons
     await dialog.evaluate(e=>e.scrollTop=0);
     if(close==='guest')await dialog.getByRole('button',{name:'Play as guest',exact:true}).click();else await page.keyboard.press('Escape');
     await expect(dialog).not.toHaveAttribute('open');
+    // Escape hands keyboard focus back to Menu on a later frame; let its focus
+    // ring land before comparing, so only the closed sheet could differ.
+    if(close==='escape')await expect(page.locator('.app-navigation [data-action=menu]')).toBeFocused();
     // Hold the exit half way through: an inactive native sheet must not retain
     // a filtered/composited rectangle while entry rerenders the games grid.
     await page.evaluate(()=>{for(const a of document.getAnimations()){a.pause();a.currentTime=90;}});
