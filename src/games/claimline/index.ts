@@ -15,7 +15,7 @@ const RULES = [
 ].join('\n\n');
 
 const NAMES_NOTE = 'Six local bots · nothing is online';
-const TOUCH_COPY = 'Drag anywhere to steer · P pause · Esc study';
+const TOUCH_COPY = 'Drag anywhere to steer';
 const POINTER_COPY = 'Mouse, arrows or WASD to steer · P pause · Esc study';
 
 const module: GameModule = {
