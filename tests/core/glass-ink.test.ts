@@ -6,8 +6,16 @@ describe('clear glass contrast',()=>{
     expect(glassInk([[255,255,255]]).color).toBe('#0b1015');
     expect(glassInk([[0,0,0]]).color).toBe('#fff');
   });
-  it('does not add an outline to mixed content',()=>{
-    expect(glassInk([[0,0,0],[255,255,255]]).halo).toBe('transparent');
+  it('adds a soft opposite-tone halo only where no plain ink reaches 4.5:1',()=>{
+    expect(glassInk([[0,0,0],[255,255,255]],'light')).toEqual({color:'#fff',halo:'rgb(0 0 0 / .8)'});
+    expect(glassInk([[0,0,0],[255,255,255]],'dark')).toEqual({color:'#0b1015',halo:'rgb(255 255 255 / .75)'});
+    expect(glassInk([[255,255,255]]).halo).toBe('transparent');
+    expect(glassInk([[0,0,0]]).halo).toBe('transparent');
+  });
+  it('keeps the halo over textured art, where point samples can miss detail',()=>{
+    expect(glassInk([[120,90,150]],undefined,false,true)).toEqual({color:'#fff',halo:'rgb(0 0 0 / .8)'});
+    expect(glassInk([[20,24,30]],undefined,false,true)).toEqual({color:'#fff',halo:'rgb(0 0 0 / .8)'});
+    expect(glassInk([[120,90,150]])).toEqual({color:'#fff',halo:'transparent'});
   });
   it('handles saturated bright surfaces without a white tint',()=>{
     expect(glassInk([[255,220,90],[210,240,160]])).toEqual({color:'#0b1015',halo:'transparent'});

@@ -1,4 +1,19 @@
+import {expect} from '@playwright/test';
 import type {Locator,Page} from '@playwright/test';
+/** Adaptive glass ink (src/ui/glass-ink.ts) wraps sheet text in .glass-label
+ * and resolves each glyph's colour on a later animation frame. Read glyph
+ * colours only after every text glyph is inked and two reads agree, so the
+ * measured colour is the one actually painted in the screenshot. */
+export async function settleGlassInk(scope:Locator):Promise<void>{
+  const read=()=>scope.evaluate(root=>{
+    const unresolved=[...root.querySelectorAll('.glass-label')].filter(e=>e.getBoundingClientRect().width&&!e.classList.contains('glass-ink')).length;
+    return JSON.stringify({unresolved,ink:[...root.querySelectorAll('.glass-ink')].map(e=>getComputedStyle(e).color)});
+  });
+  // Live-canvas ink is resampled every 140ms and a change must repeat once
+  // before it applies, so require three equal reads spanning 400ms.
+  let previous='',same=0;
+  await expect.poll(async()=>{const current=await read();same=current===previous&&JSON.parse(current).unresolved===0?same+1:0;previous=current;return same>=2;},{intervals:[200]}).toBe(true);
+}
 export interface GlyphBox{x:number;y:number;w:number;h:number;color:string}
 export interface GlyphSample{worst:number;typical:number;count:number;diagonalCount?:number}
 /** Isolate foreground alpha without changing the panel's compositing path.

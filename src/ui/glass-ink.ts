@@ -5,19 +5,27 @@ type Paint={rgb:RGB;alpha:number};
 const INK:RGB=[11,16,21];
 const UNKNOWN:RGB[]=[[0,0,0],[255,255,255]];
 const IMAGE_SIZE=256;
+const isUnknown=(samples:readonly RGB[])=>samples.length===2&&samples[0].every(v=>v===0)&&samples[1].every(v=>v===255);
 type ImagePixels={data:Uint8ClampedArray};
 const luminance=(rgb:RGB)=>rgb.reduce((sum,v,i)=>sum+(v/255<=.04045?v/3294.6:((v/255+.055)/1.055)**2.4)*[.2126,.7152,.0722][i],0);
+const HALO_DARK='rgb(0 0 0 / .8)',HALO_LIGHT='rgb(255 255 255 / .75)';
 const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,number,number];
 /** Choose plain foreground ink for the clear material. Blur softens detail;
- * neither the material nor its glyphs gain an opaque contrast outline. */
-export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false):{color:string;halo:string}{
+ * neither the material nor its glyphs gain an opaque contrast outline. Where
+ * neither ink reaches 4.5:1 over the sampled backdrop (busy or mixed art), the
+ * glyph gets a soft opposite-tone halo; over even art it stays transparent. */
+export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false,textured=false):{color:string;halo:string}{
   const colors=samples.length?samples:[[25,29,28] as RGB];
   const backgrounds=colors.map(rgb=>luminance(mix(rgb,[184,184,184],.02))*(selection==='dark'?.91:selection?.99:1));
   const dark=luminance(INK);
   const darkContrast=Math.min(...backgrounds.map(bg=>(Math.max(bg,dark)+.05)/(Math.min(bg,dark)+.05)));
   const lightContrast=Math.min(...backgrounds.map(bg=>1.05/(bg+.05)));
   let color=darkContrast>=lightContrast?'#0b1015':'#fff';
-  if(Math.max(darkContrast,lightContrast)<4.5){
+  // Point samples of images, canvases and gradients can miss detail that the
+  // light blur still shows under a glyph, so textured backdrops always keep the
+  // halo. Over art the ink already suits, the opposite-tone halo is unobtrusive.
+  const legible=!textured&&Math.max(darkContrast,lightContrast)>=4.5;
+  if(!legible){
     const unknown=colors.length===2&&colors[0].every(v=>v===0)&&colors[1].every(v=>v===255);
     if(unknown&&preferred)color=preferred==='light'?'#fff':'#0b1015';
     else{
@@ -27,7 +35,7 @@ export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',select
       color=(mean+.05)/(dark+.05)>=1.05/(mean+.05)?'#0b1015':'#fff';
     }
   }
-  return {color,halo:'transparent'};
+  return {color,halo:legible?'transparent':color==='#fff'?HALO_DARK:HALO_LIGHT};
 }
 
 // Cache one small image readback per source, never per sample or scroll frame.
@@ -103,8 +111,8 @@ function sampler(){
     }
     return {alpha,rgb:total.map(v=>alpha?v/alpha:0) as [number,number,number]};
   }
-  function sample(glyph:Element):RGB[]{
-    const r=rect(glyph),samples:RGB[]=[];
+  function sample(glyph:Element):RGB[]&{textured?:boolean}{
+    const r=rect(glyph),samples:RGB[]&{textured?:boolean}=[];
     for(const u of [.2,.5,.8])for(const v of [.2,.5,.8]){
       const x=Math.max(0,Math.min(innerWidth-1,r.x+r.width*u)),y=Math.max(0,Math.min(innerHeight-1,r.y+r.height*v));
       const stack=new Set((modal?candidates:document.elementsFromPoint(x,y)).filter(e=>!excluded(e)&&visible(e)&&within(rect(e),x,y)));
@@ -114,6 +122,7 @@ function sampler(){
       for(const element of [...stack].sort(order)){
         const s=style(element),box=rect(element),opacity=Number(s.opacity);
         apply(paint(s.backgroundColor),opacity);
+        if(s.backgroundImage!=='none'||element.matches('img,canvas,video'))samples.textured=true;
         if(s.backgroundImage!=='none'){
           const background=backgroundPaint(s,box,x,y);if(background)apply(background,opacity);else result=UNKNOWN;
         }
@@ -128,7 +137,7 @@ function sampler(){
           [s.borderBottomWidth,s.borderBottomColor,new DOMRect(box.x,box.bottom-parseFloat(s.borderBottomWidth),box.width,parseFloat(s.borderBottomWidth))]
         ] as const)if(parseFloat(width)>0&&within(edge,x,y))apply(paint(color),opacity);
       }
-      if(result.length>1&&result.some(color=>color.some((value,c)=>value!==result[0][c])))return UNKNOWN;
+      if(result.length>1&&result.some(color=>color.some((value,c)=>value!==result[0][c])))return Object.assign([...UNKNOWN],{textured:true});
       samples.push(result[0]);
     }
     return samples;
@@ -185,15 +194,15 @@ function update(){
       for(const group of groups.values()){
         let ink:ReturnType<typeof glassInk>|null=null;
         if(bar.dataset.glass!=='off'&&!accessible){
-          const samples=group.map(sample),known=samples.filter(s=>s!==UNKNOWN).flat();
-          ink=glassInk(known.length?known:UNKNOWN,preference,selection);
+          const samples=group.map(sample),known=samples.filter(s=>!isUnknown(s)).flat();
+          ink=glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured));
         }
         for(const glyph of group)changes.push({glyph,ink});
       }
     }
   }
   for(const {glyph,ink} of changes){
-    if(!ink){glyph.style.removeProperty('--glass-adaptive-ink');glyph.style.removeProperty('--glass-local-halo');glyph.querySelector(':scope > .glass-vector-halo')?.remove();continue;}
+    if(!ink){glyph.style.removeProperty('--glass-adaptive-ink');glyph.style.removeProperty('--glass-local-halo');glyph.removeAttribute('data-glass-halo');glyph.querySelector(':scope > .glass-vector-halo')?.remove();continue;}
     if(!glyph.classList.contains('glass-ink'))glyph.classList.add('glass-ink');
     const previous=glyph.style.getPropertyValue('--glass-adaptive-ink');
     if(previous&&previous!==ink.color&&glyph.closest('.game-view')){
@@ -201,6 +210,8 @@ function update(){
     }else pendingInk.delete(glyph);
     if(previous!==ink.color)glyph.style.setProperty('--glass-adaptive-ink',ink.color);
     if(glyph.style.getPropertyValue('--glass-local-halo')!==ink.halo)glyph.style.setProperty('--glass-local-halo',ink.halo);
+    const halo=ink.halo!=='transparent';
+    if(glyph.hasAttribute('data-glass-halo')!==halo)glyph.toggleAttribute('data-glass-halo',halo);
     glyph.querySelector(':scope > .glass-vector-halo')?.remove();
   }
   clearTimeout(liveTimer);
@@ -243,7 +254,7 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
     bindings.delete(bar);
     const mini=bar.parentElement?.querySelector('.ui-tabbar-mini');
     for(const target of [...bar.querySelectorAll<HTMLElement>('.glass-ink'),...mini?.querySelectorAll<HTMLElement>('.glass-ink')??[]]){
-      target.style.removeProperty('--glass-adaptive-ink');target.style.removeProperty('--glass-local-halo');target.querySelector(':scope > .glass-vector-halo')?.remove();target.classList.remove('glass-ink');
+      target.style.removeProperty('--glass-adaptive-ink');target.style.removeProperty('--glass-local-halo');target.removeAttribute('data-glass-halo');target.querySelector(':scope > .glass-vector-halo')?.remove();target.classList.remove('glass-ink');
     }
     if(!bindings.size){
       observer?.disconnect();observer=undefined;

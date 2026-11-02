@@ -407,12 +407,16 @@
 }
 .arcade-glass .ui-tab,.arcade-glass .ui-tab:is([aria-current=page],[aria-pressed=true]),:is(.game-glass,.glass-control).ui-tab{color:var(--glass-ink);text-shadow:none}
 .arcade-glass .ui-icon,:is(.game-glass,.glass-control)>svg{filter:none}
-/* Plain adaptive ink; no stroke or duplicated icon outline. */
+/* Plain adaptive ink; no stroke or duplicated icon outline. glass-ink.ts sets
+   --glass-local-halo only where neither ink reaches 4.5:1 over the sampled
+   backdrop; elsewhere it is transparent and the glyph renders plain. */
 .arcade-glass .glass-ink,.ui-tabbar-mini .glass-ink{
   color:var(--glass-adaptive-ink,var(--glass-ink));background:none;box-shadow:none;
   -webkit-text-stroke:0;paint-order:stroke fill;
   text-shadow:none;
 }
+:is(.arcade-glass,.ui-tabbar-mini,.ui-glass-sheet) .glass-ink[data-glass-halo]{text-shadow:0 0 1px var(--glass-local-halo),0 0 2.5px var(--glass-local-halo)}
+:is(.arcade-glass,.ui-tabbar-mini,.ui-glass-sheet) svg.glass-ink[data-glass-halo]{filter:drop-shadow(1px 0 0 var(--glass-local-halo)) drop-shadow(-1px 0 0 var(--glass-local-halo)) drop-shadow(0 1px 0 var(--glass-local-halo)) drop-shadow(0 -1px 0 var(--glass-local-halo))}
 /* Keep the same plain glyph rendering at every display density. */
 @media(max-resolution:1.5dppx){.arcade-glass .glass-ink,.ui-tabbar-mini .glass-ink{-webkit-text-stroke-width:0}}
 .glass-vector-halo{display:none}
