@@ -1,6 +1,8 @@
 import { test, expect } from '../../fixtures';
 
-for(const size of [{width:390,height:844},{width:1440,height:900}]) test(`reference HUD and rendered arena ${size.width}x${size.height}`,async({page},testInfo)=>{
+for(const {size,touch} of [{size:{width:390,height:844},touch:true},{size:{width:1440,height:900},touch:false}])test.describe(`${touch?'touch':'desktop'} rendering`,()=>{
+test.use({hasTouch:touch});
+test(`reference HUD and rendered arena ${size.width}x${size.height}`,async({page},testInfo)=>{
   await page.setViewportSize(size);
   await page.clock.install({time:new Date('2026-10-26T10:00:00Z')});
   await page.clock.pauseAt(new Date('2026-10-26T10:00:01Z'));
@@ -22,17 +24,24 @@ for(const size of [{width:390,height:844},{width:1440,height:900}]) test(`refere
   expect(caption.x+caption.width).toBeLessThanOrEqual(score.x);
   await expect(page.locator('.game-hud-item')).toHaveCSS('align-items','baseline');
   const font=await page.locator('.game-hud strong').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)); expect(font).toBeGreaterThanOrEqual(18); expect(font).toBeLessThanOrEqual(22);
-  expect(await page.locator('.nc-ranking').evaluate(el=>getComputedStyle(el).backgroundColor)).toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
+  // The game-owned ranking retains its original dark surface.
+  const rankingSurface=await page.locator('.nc-ranking').evaluate(el=>getComputedStyle(el).backgroundColor.match(/[\d.]+/g)!.map(Number));
+  expect(rankingSurface.slice(0,3)).toEqual([7,17,31]);expect(rankingSurface[3]).toBeCloseTo(201/255,2);
   await expect(page.locator('.nc-ranking li')).toHaveCount(size.width<600?5:10); await expect(page.locator('.nc-you')).toBeVisible();
-  const boost=page.getByRole('button',{name:'Hold to boost',exact:true}),b=(await boost.boundingBox())!;
-  expect(b.width).toBeGreaterThanOrEqual(56); expect(b.width).toBeLessThanOrEqual(64); expect(b.height).toBe(b.width);
-  expect(b.x).toBeGreaterThanOrEqual(20); expect(b.x+b.width).toBeLessThanOrEqual(size.width); expect(b.y+b.height).toBeLessThanOrEqual(size.height);
+  const boost=page.locator('.nc-boost');
+  if(touch){
+    await expect(boost).toBeVisible();const b=(await boost.boundingBox())!;
+    expect(b.width).toBeGreaterThanOrEqual(56); expect(b.width).toBeLessThanOrEqual(64); expect(b.height).toBe(b.width);
+    expect(b.x).toBeGreaterThanOrEqual(20); expect(b.x+b.width).toBeLessThanOrEqual(size.width); expect(b.y+b.height).toBeLessThanOrEqual(size.height);
+  }else await expect(boost).toBeHidden();
   await page.screenshot({path:testInfo.outputPath('normal.png')});
   await page.keyboard.down('Space'); await page.clock.runFor(180); await expect(boost).toHaveAttribute('aria-pressed','true');
-  expect(await boost.evaluate(el=>getComputedStyle(el).boxShadow)).toContain('168, 85, 247');
+  await expect(page.locator('.nc-game')).toHaveAttribute('data-boosting','true');
+  if(touch)expect(await boost.evaluate(el=>getComputedStyle(el).boxShadow)).toContain('168, 85, 247');
   await page.screenshot({path:testInfo.outputPath('boost.png')});
   await page.keyboard.up('Space'); await page.clock.runFor(200); await expect(boost).toHaveAttribute('aria-pressed','false');
   await page.keyboard.press('Escape'); await expect(page.locator('#study-view')).toBeVisible();
+});
 });
 
 test('cached body material, boost envelope, reduced motion and world boundary',async({page})=>{

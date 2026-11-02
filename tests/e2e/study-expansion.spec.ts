@@ -101,7 +101,7 @@ test('changing article during a delayed update cancels the pending reload even a
   await seed(page);await page.goto('/#/game/fruit-merge');await expect(page.locator('.fm-board')).toBeVisible();
   await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
   await page.evaluate(()=>{(window as any).studyDocumentMarker='original';Math.random=()=>0;});
-  await page.getByRole('button',{name:'Reload to update',exact:true}).click();
+  await page.locator('[data-study-update]').getByRole('button',{name:'Reload to update',exact:true}).click();
   await expect(page.locator('[data-study-update]')).toContainText('starting the update');
   await page.keyboard.press('Escape');await page.keyboard.press('Escape');
   expect(await page.evaluate(key=>sessionStorage.getItem(key),key)).toBe('close-reading');

@@ -2,7 +2,7 @@ import {guestTest as test,expect} from '../fixtures';
 import {appSettings} from '../game-menu';
 
 for(const style of ['qcc','quanta','aeon','essay']){
-  test(`${style} displays fictional image ads without covering reading text`,async({page})=>{
+  test(`${style} displays labelled image ads without covering reading text`,async({page})=>{
     await page.setViewportSize({width:1366,height:768});
     await page.addInitScript((style)=>{
       localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');
@@ -18,7 +18,7 @@ for(const style of ['qcc','quanta','aeon','essay']){
     expect(await ads.count()).toBeGreaterThanOrEqual(5);
     await expect(view.locator('.study-ad-placeholder')).toHaveCount(0);
     for(const ad of await ads.all()){
-      await expect(ad).toHaveAttribute('aria-label',/Fictional advertisement/);
+      await expect(ad).toHaveAttribute('aria-label',/Advertisement/);
       await expect(ad.locator('a,button,iframe,script')).toHaveCount(0);
       const image=ad.locator('img');
       if(await ad.isVisible()){await ad.scrollIntoViewIfNeeded();await expect.poll(()=>image.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);}

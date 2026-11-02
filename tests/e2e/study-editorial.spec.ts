@@ -12,7 +12,7 @@ for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:136
  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
  const games=page.locator('.study-article-body p').getByRole('link',{name:'Return to previous view',exact:true});
  await expect(games).toBeVisible();await expect(page.locator('.study-byline')).not.toContainText('Fictional contributor');await expect(page.locator('.study-byline img')).toBeVisible();await expect(page.locator('.study-hero img')).toBeVisible();
- await expect(page.locator('.fictional-ad').first()).toContainText('Fictional advertisement');const adSource=new URL(await page.locator('.fictional-ad').first().locator('img').evaluate((img:HTMLImageElement)=>img.src));expect(adSource.origin).toBe(new URL(page.url()).origin);expect(adSource.pathname).toMatch(/\/study\/fictional-ads\/[^/]+\.webp$/);
+ await expect(page.locator('.fictional-ad').first()).toContainText('Advertisement');const adSource=new URL(await page.locator('.fictional-ad').first().locator('img').evaluate((img:HTMLImageElement)=>img.src));expect(adSource.origin).toBe(new URL(page.url()).origin);expect(adSource.pathname).toMatch(/\/study\/fictional-ads\/[^/]+\.webp$/);
  await expect(page.locator('iframe')).toHaveCount(0);const formats=new Set<string>(),authors=new Set<string>();
  const ids=await page.locator('#study-topic option').evaluateAll(es=>es.map(e=>(e as HTMLOptionElement).value));
  for(const id of ids){

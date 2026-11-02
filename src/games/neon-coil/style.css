@@ -10,7 +10,7 @@
 /* Bright pellets can pass under the white Mass digits; protect the ink only. */
 .game-hud .nc-dock-mass{text-shadow:0 0 1px rgb(0 0 0 / .9),0 1px 1px rgb(0 0 0 / .4)}
 .nc-ranking[data-compact]{padding:8px 6px}
-.nc-ranking[data-compact] h2{letter-spacing:.04em;white-space:nowrap}
+.nc-ranking[data-compact] h2{font-size:9px;letter-spacing:.02em;white-space:nowrap}
 .nc-ranking[data-compact] :is(li,.nc-you){grid-template-columns:14px minmax(0,1fr) auto;gap:3px}
 .nc-ranking[data-compact] i{display:none}
 .nc-ranking h2{margin:0 0 6px;font:700 10px/1.5 system-ui,sans-serif;letter-spacing:.08em;color:#d1d9e5}
@@ -27,3 +27,5 @@
 .nc-boost-note{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 @media(max-width:700px){.nc-ranking{right:max(12px,env(safe-area-inset-right));width:min(162px,46vw);padding:9px 10px}.nc-ranking li,.nc-you{grid-template-columns:15px 4px minmax(0,1fr) auto;gap:4px;font-size:12px;min-height:22px}}
 @media(max-height:600px){.nc-ranking li,.nc-you{min-height:21px}}
+
+.nc-boost[hidden]{display:none}

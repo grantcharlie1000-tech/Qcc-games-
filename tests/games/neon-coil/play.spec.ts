@@ -22,6 +22,7 @@ test('pointer movement without click, earned growth, Space boost, P pause, keybo
   page.setDefaultNavigationTimeout(30_000);
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.setViewportSize({ width: 1440, height: 900 }); await open(page);
+  await expect(page.locator('.nc-boost')).toBeHidden();
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.mouse.move(1050, 450); await page.clock.runFor(900);
   expect(Number(await game(page).getAttribute('data-x'))).toBeGreaterThan(100);
@@ -87,10 +88,13 @@ test('Escape preserves host study, saves exactly, and saved continuation waits f
   await page.getByRole('button', { name: 'Play', exact: true }).click(); await page.clock.runFor(200);
   expect(Number(await game(page).getAttribute('data-tick'))).toBeGreaterThan(paused.ticks);
 });
-test('resize, high DPI, reduced motion and controls fit desktop, ultrawide and touch widths', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 2, reducedMotion: 'reduce' });
+for(const device of [
+  {name:'desktop and ultrawide',touch:false,sizes:[{width:1280,height:720},{width:1920,height:1080},{width:2560,height:1080},{width:1440,height:900}]},
+  {name:'touch portrait and landscape',touch:true,sizes:[{width:390,height:844},{width:844,height:390}]},
+])test(`resize, high DPI, reduced motion and controls fit ${device.name}`, async ({ browser }) => {
+  const context = await browser.newContext({ viewport: device.sizes[0], deviceScaleFactor: 2, reducedMotion: 'reduce',hasTouch:device.touch });
   await seedStudyTopic(context); const page = await context.newPage(); await open(page); await page.locator('.nc-start').click();
-  for (const size of [{ width: 1280, height: 720 }, { width: 1920, height: 1080 }, { width: 2560, height: 1080 }, { width: 1440, height: 900 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
+  for (const size of device.sizes) {
     await page.setViewportSize(size); await page.clock.runFor(100);
     expect(await page.evaluate(() => ({ w: document.documentElement.scrollWidth, h: document.documentElement.scrollHeight }))).toEqual({ w: size.width, h: size.height });
     await expect.poll(async () => {
@@ -99,7 +103,8 @@ test('resize, high DPI, reduced motion and controls fit desktop, ultrawide and t
       return page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }));
     }).toEqual({ w: size.width * 2, h: size.height * 2 });
     expect(await page.locator('.nc-ranking li').count()).toBe(size.width < 600 || size.height < 600 ? 5 : 10);
-    for (const selector of ['.game-dock a', '#game-menu', '.nc-boost']) {
+    if(device.touch)await expect(page.locator('.nc-boost')).toBeVisible();else await expect(page.locator('.nc-boost')).toBeHidden();
+    for (const selector of ['.game-dock a', '#game-menu',...(device.touch?['.nc-boost']:[])]) {
       const box = (await page.locator(selector).boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(size.width); expect(box.y + box.height).toBeLessThanOrEqual(size.height);
     }
@@ -126,10 +131,12 @@ test('touch drag and a second finger on the boost control steer without scrollin
   expect(await page.evaluate(() => [scrollX, scrollY])).toEqual([0, 0]);
   await page.screenshot({ path: `${evidence}/touch-390.png` }); await context.close();
 });
+test.describe('touch-capable Boost keyboard access',()=>{
+test.use({hasTouch:true});
 test('focusable boost, lost focus, frame stalls, disposal and invalid saves recover safely', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message)); await open(page);
   for (let run = 0; run < 3; run++) {
-    await page.getByRole('button', { name: 'Play', exact: true }).click(); await page.locator('.nc-boost').focus();
+    await page.getByRole('button', { name: 'Play', exact: true }).click();await expect(page.locator('.nc-boost')).toBeVisible(); await page.locator('.nc-boost').focus();
     await page.keyboard.down('Enter'); await page.clock.runFor(150); await expect(game(page)).toHaveAttribute('data-boosting', 'true');
     await page.keyboard.up('Enter'); await page.clock.runFor(150); await expect(game(page)).toHaveAttribute('data-boosting', 'false');
     if (run === 0) {
@@ -149,12 +156,13 @@ test('focusable boost, lost focus, frame stalls, disposal and invalid saves reco
   }
   expect(errors).toEqual([]);
 });
+});
 test('the library retains original grid Snake and opens Slither.io separately', async ({ page }) => {
   await open(page); await backToGames(page);
   await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   await expect(page.getByRole('link', { name: 'Play Snake', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Play Snake', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start slithering', exact: true })).toBeVisible();
   await page.keyboard.press('ArrowRight'); await page.clock.runFor(690);
   await expect(page.locator('#game-score strong')).toHaveText('10');
   await expect(page.locator('.snake-game')).toHaveCount(1); await expect(game(page)).toHaveCount(0);
@@ -197,6 +205,8 @@ for (const order of ['steering-first', 'boost-first', 'reacquire'] as const) {
     } finally { await context.close(); }
   });
 }
+test.describe('touch portrait and landscape bounds',()=>{
+test.use({hasTouch:true});
 for (const size of [{ width: 844, height: 390 }, { width: 740, height: 360 }, { width: 568, height: 320 }, { width: 667, height: 375 }]) {
   test(`short landscape bounds and unobscured player ranking ${size.width}x${size.height}`, async ({ page }) => {
     // Reproduce rotating the supported small portrait phone while the intro is open.
@@ -248,6 +258,7 @@ test('short narrow viewport keeps intro and Boost within the supported 320px wid
     expect.soft(box.y + box.height, selector).toBeLessThanOrEqual(568);
   }
   await page.screenshot({ path: `${evidence}/intro-320.png` });
+});
 });
 
 for (const lifecycle of ['ready', 'paused', 'dead', 'running'] as const) {
