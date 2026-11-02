@@ -1,3 +1,4 @@
+import {expectPlainOrOutlinedIcon} from '../glass-contrast';
 import {test,expect} from '../fixtures';
 import type {Locator,Page} from '@playwright/test';
 
@@ -17,7 +18,7 @@ const asFrost=(page:Page)=>page.addInitScript(()=>{Object.defineProperty(navigat
 // top and bottom rims. Both are sharp edges, so any shift of the rim shows as a change in the pixels.
 const stripes=(orientation:'v'|'h')=>'data:image/svg+xml,'+encodeURIComponent(orientation==='v'
   ?'<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844"><defs><pattern id="s" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="16" height="32" fill="#000"/><rect x="16" width="16" height="32" fill="#fff"/></pattern></defs><rect width="390" height="844" fill="url(#s)"/></svg>'
-  :'<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844"><defs><pattern id="s" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#000"/><rect y="16" width="32" height="16" fill="#fff"/></pattern></defs><rect width="390" height="844" fill="url(#s)"/></svg>');
+  :'<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844"><defs><pattern id="s" y="8" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#000"/><rect y="16" width="32" height="16" fill="#fff"/></pattern></defs><rect width="390" height="844" fill="url(#s)"/></svg>');
 
 // Puts the stripes behind the island, and hides the covers and the tabs, so the pixels are the stripes only.
 async function stage(page:Page,orientation:'v'|'h'='v'){
@@ -30,7 +31,7 @@ async function stage(page:Page,orientation:'v'|'h'='v'){
     image.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none';
     document.body.append(image);
   },stripes(orientation));
-  await page.addStyleTag({content:'.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
+  await page.addStyleTag({content:'.app-tabbar{--glass-tint:transparent!important;--glass-tone:saturate(1)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   await page.waitForFunction(()=>(document.querySelector('img[data-t28]') as HTMLImageElement|null)?.complete===true);
 }
 
@@ -43,10 +44,12 @@ async function stage(page:Page,orientation:'v'|'h'='v'){
 async function bend(page:Page,bar:Locator,orientation:'v'|'h'){
   const settle=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const shot=async()=>{await settle();return (await bar.screenshot({animations:'disabled'})).toString('base64');};
-  const scale=await page.evaluate(()=>document.querySelector('filter[id^="ui-glass-"] feDisplacementMap')!.getAttribute('scale'));
+  const filterId=await bar.evaluate(e=>e.style.getPropertyValue('--ui-glass-filter').match(/#([^)]*)/)![1]);
+  const displacement=page.locator(`filter[id="${filterId}"] feDisplacementMap`);
+  const scale=await displacement.getAttribute('scale');
   // The bands and the centre are in CSS px, so the device pixel ratio scales them to the screenshot's pixels.
   const dpr=await page.evaluate(()=>window.devicePixelRatio);
-  const setScale=(value:string)=>page.evaluate(v=>document.querySelector('filter[id^="ui-glass-"] feDisplacementMap')!.setAttribute('scale',v),value);
+  const setScale=(value:string)=>displacement.evaluate((e,v)=>e.setAttribute('scale',v),value);
   const bent=await shot();
   await setScale('0');
   const flat=await shot();
@@ -85,9 +88,9 @@ async function bend(page:Page,bar:Locator,orientation:'v'|'h'){
   },{flat,bent,again,orientation,dpr});
 }
 
-// The rim thresholds, from the measured lower side of each rim at the 10 px bend, with no scroll edge under the backdrop lens (scratch probe
-// at 390 px): vertical 31.7 at density 1 and 31.8 at density 2, horizontal 7.3 and 7.7. Each threshold sits about half its measured value,
-// and well above the zero that a flat bar gives, so a lens with its scale at 0, or a dropped filter, fails clearly.
+// Optical fixture: disable the tint so the same thresholds measure bending
+// independently of light/dark material opacity. Both rim axes must visibly move;
+// the undistorted centre and repeated shot still guard against false positives.
 const RIM={backdropV:15,backdropH:3.5};
 
 // The bend passes when the bar holds still between shots, the rim moves past its threshold, and the centre does not move.
@@ -109,9 +112,8 @@ test('Chromium refracts the backdrop itself, with the same bend at the rim and a
   expectBend(await bend(page,bar,'v'),RIM.backdropV);
 });
 
-// The backdrop does not bend the outer rows of the top and bottom rims. Rows 3 to 11 of the top rim, and rows 53 to 61 of the bottom,
-// stay unbent (0 to 3), while the vertical rims bend fully. The cause is not established: removing the clip-path leaves the profile
-// unchanged. The test measures the whole 20 px band, so it checks the part of the rim that this path does bend.
+// Place a stripe boundary 8px inside each rim. A convex bezel samples inward;
+// a boundary outside the glass (the legacy fixture) cannot reveal that bending.
 test('Chromium refracts the backdrop along the top and bottom rims, and leaves the centre still',async({page,browserName})=>{
   test.skip(browserName!=='chromium','the backdrop lens is Chromium only');
   await page.setViewportSize({width:390,height:844});
@@ -151,11 +153,13 @@ test('the frost survives the island\'s fade: with its lens at half opacity, the 
 // pixel density, so the pixel size is the box times the density.
 async function mapSize(page:Page){
   return page.evaluate(async()=>{
-    const href=document.querySelector('filter[id^="ui-glass-"] feImage')!.getAttribute('href')!;
+    const bar=document.querySelector<HTMLElement>('.app-tabbar')!;
+    const id=bar.style.getPropertyValue('--ui-glass-filter').match(/#([^)]*)/)![1];
+    const href=document.getElementById(id)!.querySelector('feImage')!.getAttribute('href')!;
     const image=new Image();
     image.src=href;
     await image.decode();
-    const lens=document.querySelector('.ui-glass-lens')!.getBoundingClientRect();
+    const lens=bar.querySelector('.ui-glass-lens')!.getBoundingClientRect();
     return {pixels:[image.naturalWidth,image.naturalHeight],css:[lens.width,lens.height],dpr:window.devicePixelRatio};
   });
 }
@@ -218,18 +222,18 @@ test('the lens map follows a change of pixel density, and is built again for eac
 
 // Frost is the bar's own backdrop filter. It needs no copy of the page, so it cannot lag a scroll, and it runs in every engine.
 test.describe('frost, in every browser but Chromium',()=>{
-  test('frost blurs the bar itself, with no lens, no SVG filter and no map',async({page})=>{
+  test('frost filters each visible shape directly, with no SVG filter or map',async({page})=>{
     await asFrost(page);
     await page.setViewportSize({width:390,height:844});
     await page.goto('/');
     const bar=page.locator('.app-tabbar');
     await expect(bar).toHaveAttribute('data-glass','frost');
     await expect(bar).not.toHaveClass(/is-refracting/);
-    await expect(page.locator('.ui-glass-lens')).toHaveCount(0);
+    await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
     await expect(page.locator('filter[id^="ui-glass-"]')).toHaveCount(0);
     const frost=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
-    expect(frost).toContain('blur(10px)');
-    expect(frost).toContain('saturate(1.8)');
+    expect(frost).toContain('blur(3px)');
+    expect(frost).toContain('saturate(1.05)');
   });
 
   test('frost has a glow layer on the bar\'s edge, hidden from assistive technology',async({page})=>{
@@ -239,111 +243,90 @@ test.describe('frost, in every browser but Chromium',()=>{
     const glow=page.locator('.app-tabbar>.ui-glass-glow');
     await expect(glow).toHaveCount(1);
     expect(await glow.getAttribute('aria-hidden')).toBe('true');
-    expect(await glow.evaluate(el=>getComputedStyle(el).boxShadow)).toContain('inset');
+    expect(await glow.evaluate(el=>getComputedStyle(el).backgroundImage)).toContain('conic-gradient');
+    expect(await glow.evaluate(el=>getComputedStyle(el).maskComposite)).toContain('exclude');
     expect(await glow.evaluate(el=>getComputedStyle(el).pointerEvents)).toBe('none');
   });
 
-  test('a phone gets a scroll edge behind the frost bar, and a tap at its centre is not taken by it',async({page})=>{
-    await asFrost(page);
-    await page.setViewportSize({width:390,height:844});
-    await page.goto('/');
+  test('the phone fallback companion has no blur overlay and receives its own click',async({page})=>{
+    await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/');
     await expect(page.locator('.app-tabbar')).toHaveAttribute('data-glass','frost');
-    const edge=page.locator('.ui-scroll-edge');
-    await expect(edge).toHaveCount(1);
-    expect(await edge.getAttribute('aria-hidden')).toBe('true');
-    expect(await edge.evaluate(el=>getComputedStyle(el).pointerEvents)).toBe('none');
-    const box=(await edge.boundingBox())!;
-    const onEdge=(x:number,y:number)=>page.evaluate(([px,py])=>!!document.elementFromPoint(px,py)?.closest('.ui-scroll-edge'),[x,y]);
-    expect(await onEdge(box.x+box.width/2,box.y+box.height/2)).toBe(false);
-    expect(await onEdge(box.x+box.width/2,box.y+4)).toBe(false);
+    const menu=page.locator('.app-menu');await expect(menu).toHaveAttribute('data-glass','frost');
+    await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
+    await expectPlainOrOutlinedIcon(menu.locator('.ui-icon'));
+    await menu.click();await expect(page.locator('#menu')).toBeVisible();
   });
 
-  test('the scroll edge stays while the island is minimized, and fades only with the full hide',async({page})=>{
-    await asFrost(page);
-    await page.setViewportSize({width:390,height:844});
-    await page.goto('/');
-    const bar=page.locator('.app-tabbar');
-    const edge=page.locator('.ui-scroll-edge');
-    await expect(edge).toHaveCount(1);
-    await page.evaluate(()=>window.scrollTo(0,400));
-    await expect(bar).toHaveAttribute('data-minimized','true');
-    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-    expect(await edge.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
-    // Only the full hide, which Up next sets, fades the edge with the island.
-    await page.evaluate(()=>document.querySelector('.app-tabbar')!.setAttribute('data-hidden','true'));
-    await expect.poll(()=>edge.evaluate(el=>getComputedStyle(el).opacity)).toBe('0');
-    await page.evaluate(()=>document.querySelector('.app-tabbar')!.removeAttribute('data-hidden'));
-    await expect.poll(()=>edge.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
+  test('the fallback companion minimizes with the bar and full hide also removes the mini',async({page})=>{
+    await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/');
+    const bar=page.locator('.app-tabbar'),menu=page.locator('.app-menu'),mini=page.locator('.app-navigation .ui-tabbar-mini');
+    await page.evaluate(()=>window.scrollTo(0,400));await expect(bar).toHaveAttribute('data-minimized','true');
+    await expect(menu).toHaveCSS('opacity','0');await expect(mini).toHaveCSS('opacity','1');
+    await bar.evaluate(e=>e.setAttribute('data-hidden','true'));await expect(mini).toHaveCSS('opacity','0');
+    await bar.evaluate(e=>e.removeAttribute('data-hidden'));await expect(mini).toHaveCSS('opacity','1');
+    await page.evaluate(()=>window.scrollTo(0,0));await expect(menu).toHaveCSS('opacity','1');
+    await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
   });
 
-  test('the frost bar fades its own opacity when it minimizes, and reduced motion still fades it',async({page})=>{
+  test('the same frost surface remains inside the minimized pill, including reduced motion',async({page})=>{
     await asFrost(page);
     await page.setViewportSize({width:390,height:844});
     await page.goto('/');
     const bar=page.locator('.app-tabbar');
     await page.evaluate(()=>window.scrollTo(0,400));
     await expect(bar).toHaveAttribute('data-minimized','true');
-    await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).opacity)).toBe('0');
+    await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
+    await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
     await page.emulateMedia({reducedMotion:'reduce'});
     await page.evaluate(()=>window.scrollTo(0,368));
     await expect(bar).not.toHaveAttribute('data-minimized');
     // 64 px of downward travel from 368 minimizes the island again.
     await page.evaluate(()=>window.scrollTo(0,432));
     await expect(bar).toHaveAttribute('data-minimized','true');
-    await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).opacity)).toBe('0');
+    await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
+    await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
     expect(await bar.evaluate(el=>getComputedStyle(el).translate)).toBe('none');
   });
 
-  test('the scroll edge is phone only: a desktop island has one, and it is not shown',async({page})=>{
-    await asFrost(page);
-    await page.setViewportSize({width:1440,height:900});
-    await page.goto('/');
-    await expect(page.locator('.app-tabbar')).toHaveAttribute('data-glass','frost');
-    await expect(page.locator('.ui-scroll-edge')).toHaveCount(1);
-    await expect(page.locator('.ui-scroll-edge')).toBeHidden();
-  });
-
-  test('the Movies island keeps its scroll edge right after it, through a re-render',async({page})=>{
-    await asFrost(page);
-    await page.setViewportSize({width:390,height:844});
-    await page.goto('/#/movies/browse/movie');
-    const movies=page.locator('nav.movies-mobile-nav.ui-tabbar');
-    await expect(movies).toHaveAttribute('data-glass','frost');
-    const edgeAfterIsland=()=>movies.evaluate(el=>el.nextElementSibling?.classList.contains('ui-scroll-edge')??false);
-    await expect.poll(edgeAfterIsland).toBe(true);
-    await page.locator('#movies-search').fill('in');
-    await expect.poll(edgeAfterIsland).toBe(true);
-    await expect(page.locator('nav.movies-mobile-nav.ui-tabbar+.ui-scroll-edge')).toHaveCount(1);
-  });
-
-  test('leaving Movies removes the Movies scroll edge and keeps the arcade one',async({page})=>{
-    await asFrost(page);
-    await page.setViewportSize({width:390,height:844});
-    await page.goto('/');
-    const edges=()=>page.evaluate(()=>document.querySelectorAll('.ui-scroll-edge').length);
-    await expect.poll(edges).toBe(1);
-    await page.goto('/#/movies');
-    await expect(page.locator('nav.movies-mobile-nav.ui-tabbar')).toHaveAttribute('data-glass','frost');
-    await expect.poll(edges).toBe(2);
-    await page.goto('/#/collection');
-    await expect.poll(edges).toBe(1);
-  });
-
-  test('reduced transparency takes the frost and the scroll edge out, and puts them back when that ends',async({page,browserName})=>{
-    test.skip(browserName!=='chromium','Playwright emulates reduced transparency through the Chromium protocol only');
-    await asFrost(page);
-    await page.setViewportSize({width:390,height:844});
-    await page.goto('/');
-    const bar=page.locator('.app-tabbar');
-    await expect(bar).toHaveAttribute('data-glass','frost');
-    await expect(page.locator('.ui-scroll-edge')).toHaveCount(1);
-    const cdp=await page.context().newCDPSession(page);
-    await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'}]});
-    await expect(bar).toHaveAttribute('data-glass','off');
+  test('desktop fallback gives each glass object one filtered surface',async({page})=>{
+    await asFrost(page);await page.setViewportSize({width:1440,height:900});await page.goto('/');
+    await expect(page.locator('.app-navigation [data-glass=frost]')).toHaveCount(2);
     await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
-    expect(await bar.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('none');
-    await cdp.send('Emulation.setEmulatedMedia',{features:[]});
-    await expect(bar).toHaveAttribute('data-glass','frost');
-    await expect(page.locator('.ui-scroll-edge')).toHaveCount(1);
+    await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
+    for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveCSS('backdrop-filter',/blur\(3px\)/);
   });
+
+  test('Movies preserves its separate fallback companion through a re-render',async({page})=>{
+    await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/#/movies/browse/movie');
+    const bar=page.locator('.movies-mobile-nav'),menu=page.locator('.movies-menu');
+    await expect(menu).toHaveAttribute('data-glass','frost');const original=await menu.elementHandle();
+    await page.locator('#movies-search').fill('in');
+    await expect(bar).toHaveAttribute('data-glass','frost');await expect(menu).toHaveAttribute('data-glass','frost');
+    expect(await original!.evaluate(e=>e.isConnected)).toBe(true);
+    expect(await bar.evaluate(e=>e.parentElement===document.querySelector('.movies-menu')!.parentElement)).toBe(true);
+    await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
+  });
+
+  test('leaving Movies disposes its companion and restores the Games fallback',async({page})=>{
+    await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/#/movies');
+    const menu=page.locator('.movies-menu');await expect(menu).toHaveAttribute('data-glass','frost');const original=await menu.elementHandle();
+    await page.goto('/#/collection');await expect(page.locator('.movies-navigation')).toHaveCount(0);
+    expect(await original!.evaluate(e=>e.isConnected)).toBe(false);
+    await expect(page.locator('.app-menu')).toBeVisible();await expect(page.locator('.app-menu')).toHaveAttribute('data-glass','frost');
+    await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
+  });
+
+  test('reduced transparency switches both fallback lenses to opaque surfaces and back',async({page,browserName})=>{
+    test.skip(browserName!=='chromium','CDP reduced-transparency emulation');
+    await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/');
+    const cdp=await page.context().newCDPSession(page);
+    for(const reduce of [true,false]){
+      await cdp.send('Emulation.setEmulatedMedia',{features:reduce?[{name:'prefers-reduced-transparency',value:'reduce'}]:[]});
+      for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveAttribute('data-glass',reduce?'off':'frost');
+      await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
+      if(reduce)for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveCSS('backdrop-filter','none');
+    }
+    await cdp.detach();
+  });
+
 });

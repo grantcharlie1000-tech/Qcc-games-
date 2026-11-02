@@ -1,3 +1,4 @@
+import {gameAction,pauseGame} from '../../game-menu';
 import {test,expect,seedStudyTopic,type Page} from '../../fixtures';
 import type {State} from '../../../src/games/color-blocks/model';
 import {solveHand} from './hand-oracle';
@@ -17,10 +18,10 @@ test('independent fresh games vary their hands while reload preserves each saved
    try{
     expect((await context.storageState()).origins).toEqual([]);await seedStudyTopic(context);
     const page=await context.newPage();await page.goto('/#/game/color-blocks');
-    await expect(page.locator('.cb-piece')).toHaveCount(3);await page.getByRole('button',{name:'Pause game',exact:true}).click();
+    await expect(page.locator('.cb-piece')).toHaveCount(3);await pauseGame(page);
     const before=await saved(page);checkFresh(before);samples.push(before);
     await page.reload();await expect(page.locator('.cb-piece')).toHaveCount(3);
-    await page.getByRole('button',{name:'Pause game',exact:true}).click();expect(await saved(page)).toEqual(before);
+    await pauseGame(page);expect(await saved(page)).toEqual(before);
    }finally{await context.close();}
   }
  }finally{await testInfo.attach('fresh-game-samples',{body:JSON.stringify(samples),contentType:'application/json'});}
@@ -33,11 +34,11 @@ test('Restart creates a new random run rather than replaying a preset deal',asyn
  await page.goto('/#/game/color-blocks');await expect(page.locator('.cb-piece')).toHaveCount(3);
  try{
   for(let i=0;i<16;i++){
-   await page.getByRole('button',{name:'Restart game',exact:true}).click();
+   await gameAction(page,'Restart game');
    const state=await saved(page);checkFresh(state);samples.push(state);
   }
   await page.reload();await expect(page.locator('.cb-piece')).toHaveCount(3);
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();expect(await saved(page)).toEqual(samples.at(-1));
+  await pauseGame(page);expect(await saved(page)).toEqual(samples.at(-1));
  }finally{await testInfo.attach('restart-samples',{body:JSON.stringify(samples),contentType:'application/json'});}
  expect(new Set(samples.map(state=>state.rng)).size).toBeGreaterThan(1);
  expect(new Set(samples.map(state=>state.tray.join(','))).size).toBeGreaterThan(1);

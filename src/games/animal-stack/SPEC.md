@@ -11,3 +11,5 @@ Scoring retained: connected-to-platform stillness30 steps awards100 per animal p
 Official source references and actual applied skill paths/provenance are in `SKILL_USAGE.md`. Actual evidence and limitations are in `TEST_RESULTS.md`.
 
 Tall-stack camera framing preserves native scale and world release relationships. A rendered cutout including stroke must stay below84px, beyond the shared76px HUD reserve, even on the first frame after rotation/restore/resize. Camera interpolation is clamped to this safety floor; it may follow the top tower while the platform/lower tower leaves framing. This changes neither physics nor saved state.
+
+Play starts immediately. Finished and completed runs keep their original status message; the shell owns pause and Restart. The compact HUD shows score and the balanced-animal count. DROP remains a gameplay action: releasing must be deliberate and separate from aiming and tap rotation.

@@ -1,3 +1,4 @@
+import {backToGames,pauseGame,resumeGame} from '../../game-menu';
 import {test,expect} from '@playwright/test';
 
 declare global {
@@ -27,28 +28,34 @@ test('shared pause stops Suika Game drawing and repeated resumes keep one physic
  });
  await page.goto('/#/game/fruit-merge');
  await expect(page.locator('.fm-board')).toBeVisible();
- await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+ await page.locator('.fm-board').click();
  await expect(page.locator('.fm-count')).toHaveText('1 fruit in basket');
  const snapshot=()=>page.evaluate(()=>{
   window.dispatchEvent(new Event('pagehide'));
   return JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data as {time:number};
  });
  for(let cycle=0;cycle<3;cycle++){
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Paused',exact:true})).toBeVisible();
+  await pauseGame(page);
+  await expect(page.locator('#pause-overlay h2')).toBeVisible();
+  // The glass lens repaints the frozen board once when the menu sheet's transitions end; wait for that, then require silence.
+  await expect.poll(()=>page.evaluate(()=>document.getAnimations().length)).toBe(0);
+  await page.evaluate(()=>window.__fruitRenders.sample(4));
   const paused=await snapshot();
   expect(await page.evaluate(()=>window.__fruitRenders.sample(20))).toEqual({draws:0,maxPerFrame:0});
   expect((await snapshot()).time).toBe(paused.time);
-  await page.getByRole('button',{name:'Keep playing',exact:true}).click();
+  await resumeGame(page);
   // The shell can call resume again; its public callback must remain idempotent.
   await page.locator('#resume-game').dispatchEvent('click');
   await page.locator('#resume-game').dispatchEvent('click');
+  // Closing the sheet ends transitions, which repaint once beside the game's own frame; the loop count is judged after that.
+  await expect.poll(()=>page.evaluate(()=>document.getAnimations().length)).toBe(0);
+  await page.evaluate(()=>window.__fruitRenders.sample(4));
   const active=await page.evaluate(()=>window.__fruitRenders.sample(20));
   expect(active.draws).toBeGreaterThan(0);
   expect(active.maxPerFrame).toBe(1);
   expect((await snapshot()).time).toBeGreaterThan(paused.time);
  }
- await page.getByRole('link',{name:'Back to game library',exact:true}).click();
+ await backToGames(page);
  await expect(page.locator('.fm-board')).toHaveCount(0);
  expect(await page.evaluate(()=>window.__fruitRenders.sample(10))).toEqual({draws:0,maxPerFrame:0});
 });

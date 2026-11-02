@@ -1,3 +1,4 @@
+import {backToGames,gameAction,pauseGame,resumeGame} from '../../game-menu';
 import {test, expect} from '../../fixtures';
 import type {Page} from '@playwright/test';
 import {COUNTRIES} from '../../../src/games/globle/countries';
@@ -24,8 +25,8 @@ async function guess(page: Page, text: string, submit: 'enter' | 'button' = 'ent
 /** Starts a practice round with a known answer through the real save/restore path. */
 async function practice(page: Page, answer: string) {
   await open(page);
-  await page.getByRole('button', {name: 'Practice', exact: true}).click();
-  await page.getByRole('link', {name: 'Back to game library'}).click();
+  await gameAction(page,'Practice');
+  await backToGames(page);
   await expect(page.locator('.game-card').first()).toBeVisible();
   await page.evaluate(([key, answer]) => {
     const saved = JSON.parse(localStorage.getItem(key)!);
@@ -65,7 +66,7 @@ test('spelling corrections submit a guess on click and keyboard activation', asy
   await winner.focus();
   await winner.press('Enter');
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
-  await expect(page.locator('.gl-win-text')).toContainText('2 guesses');
+  await expect(page.locator('.gl-win-text')).toContainText('You found it in 2 guesses.');
   await page.reload();
   await expect(page.locator('.gl-guess[data-id=DEU]')).toBeVisible();
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
@@ -115,13 +116,13 @@ test('complete winning round with neighbours, aliases, duplicates and invalid en
   await guess(page, 'France');
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
   await expect(page.locator('.gl-win')).toBeVisible();
-  await expect(page.locator('.gl-win-text')).toContainText('France');
-  await expect(page.locator('.gl-win-text')).toContainText('6 guesses');
+  await expect(page.locator('.gl-win-text')).toContainText('You found it in 6 guesses.');
   await expect(page.locator('.gl-guess').first()).toHaveAttribute('data-id', 'FRA');
   expect(await colour('FRA')).toBe('rgb(47, 168, 79)');
   await expect(input(page)).toBeDisabled();
-  await page.locator('.gl-more summary').click();
+  await gameAction(page,'Stats and options');
   await expect(page.locator('.gl-stats')).toContainText('Practice best6');
+  await page.locator('.gl-close').click();
   await page.screenshot({path: 'tests/games/globle/evidence/chromium.png'});
 
   await page.getByRole('button', {name: 'Play again'}).click();
@@ -139,7 +140,7 @@ test('tiny countries, markers and saved-game restoration across reloads and mode
   for (const id of ['VAT', 'MCO', 'NRU', 'TUV', 'SGP', 'STP']) await expect(page.locator(`.gl-guess[data-id=${id}]`)).toBeVisible();
 
   // Daily progress is separate; switch, guess, then reload the page.
-  await page.getByRole('button', {name: 'Daily', exact: true}).click();
+  await gameAction(page,'Daily');
   await expect(page.locator('.globle')).toHaveAttribute('data-mode', 'daily');
   const dailyAnswer = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).data.daily.answer, KEY);
   const first = dailyAnswer === 'NZL' ? 'Australia' : 'New Zealand';
@@ -150,10 +151,10 @@ test('tiny countries, markers and saved-game restoration across reloads and mode
   await expect(page.locator('.globle')).toHaveAttribute('data-mode', 'daily');
   await expect(page.locator('.gl-guess')).toHaveCount(1);
   expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).data.daily.answer, KEY)).toBe(dailyAnswer);
-  await page.getByRole('button', {name: 'Practice', exact: true}).click();
+  await gameAction(page,'Practice');
   await expect(page.locator('.gl-guess')).toHaveCount(6);
   // Malformed saves are ignored without breaking the game.
-  await page.getByRole('link', {name: 'Back to game library'}).click();
+  await backToGames(page);
   await expect(page.locator('.game-card').first()).toBeVisible(); // the shell has saved on leaving
   await page.evaluate(key => localStorage.setItem(key, JSON.stringify({version: 1, data: {version: 1, mode: 'practice', practice: {answer: 'NOPE'}}})), KEY);
   await open(page);
@@ -260,15 +261,15 @@ test('Escape opens Study, pause stops rendering, leaving frees the WebGL canvas'
   await input(page).focus();
   await page.keyboard.press('Escape');
   await expect(page.locator('#study-view')).toBeVisible();
-  await page.locator('.study-article-body').getByRole('link', {name: 'Games', exact: true}).click();
+  await page.locator('.study-article-body').getByRole('link', {name: 'Return to previous view', exact: true}).click();
   await expect(page.locator('#study-view')).toBeHidden();
   await expect(page.locator('.gl-globe canvas')).toBeVisible();
   await guess(page, 'Kenya');
-  await page.getByRole('button', {name: 'Pause game', exact: true}).click();
+  await pauseGame(page);
   await expect(globe(page)).toHaveAttribute('data-rendering', 'false');
-  await page.getByRole('button', {name: 'Resume game', exact: true}).click();
+  await resumeGame(page);
   for (let i = 0; i < 3; i++) {
-    await page.getByRole('link', {name: 'Back to game library'}).click();
+    await backToGames(page);
     await expect(page.locator('.game-card').first()).toBeVisible();
     expect(await page.locator('canvas').count()).toBe(0);
     await page.goto(url);
@@ -292,4 +293,14 @@ test('a stale second tab cannot overwrite a daily win made in another tab', asyn
   expect(saved.daily.won).toBe(true);
   expect(saved.stats.daily.wins).toBe(1);
   await other.close();
+});
+
+for(const width of [320,390,1366])test(`no info card, compact HUD and larger globe at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:width===1366?768:844});await open(page);await expect(page.locator('.gl-side,.gl-legend,.gl-empty,.gl-hint,.gl-more')).toHaveCount(0);await expect(page.locator('.gl-chip')).toBeHidden();await expect(page.locator('.game-dock')).toHaveCount(1);const hud=page.locator('.game-compact-hud');expect(await hud.evaluate(e=>e.scrollWidth<=e.clientWidth&&e.getBoundingClientRect().height<20)).toBe(true);const g=(await globe(page).boundingBox())!;expect(g.height).toBeGreaterThan((width===1366?768:844)-140);await expect(page.locator('.gl-search,.gl-submit')).toHaveCount(2);await gameAction(page,'Stats and options');await expect(page.locator('.gl-options')).toBeVisible();await page.getByLabel('Colour-blind palette').check();await page.locator('.gl-close').click();await expect(page.locator('#pause-overlay')).toBeHidden();
+});
+test('closest chip keeps the nearest guess when a farther country is guessed',async({page})=>{await practice(page,'FRA');await guess(page,'Spain');const closest=await page.locator('.gl-chip').textContent();await guess(page,'New Zealand');await expect(page.locator('.gl-chip')).toHaveText(closest!);});
+
+test('removed globe legend remains available in How to play',async({page})=>{
+ await open(page);await expect(page.locator('.gl-legend,.gl-hint,.gl-side')).toHaveCount(0);
+ await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('pale cream is far away, orange is closer, red is very close and dark red');
 });

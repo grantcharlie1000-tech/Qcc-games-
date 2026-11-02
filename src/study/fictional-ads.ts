@@ -13,7 +13,7 @@ export function selectFictionalAd(articleId:string,slot:number,format:AdFormat){
 }
 export function renderFictionalAd(articleId:string,slot:number,format:AdFormat='banner'){
   const ad=selectFictionalAd(articleId,slot,format);
-  return `<aside class="fictional-ad fictional-ad-${format}" aria-label="Fictional advertisement: ${escape(ad.brand)}"><span class="fictional-ad-label">Fictional advertisement</span><img src="${studyAsset(`fictional-ads/${ad.file}`)}" alt="Fictional ${escape(ad.brand)} advertisement. Illustration only; no product is offered for sale." width="${ad.width}" height="${ad.height}" loading="lazy" decoding="async"></aside>`;
+  return `<aside class="fictional-ad fictional-ad-${format}" aria-label="Advertisement: ${escape(ad.brand)}"><span class="fictional-ad-label">Advertisement</span><img src="${studyAsset(`fictional-ads/${ad.file}`)}" alt="${escape(ad.brand)} advertisement." width="${ad.width}" height="${ad.height}" loading="lazy" decoding="async"></aside>`;
 }
 export function renderFictionalAdRail(articleId:string,start=0,count=3){
   const formats:AdFormat[]=['tall','portrait','square'];

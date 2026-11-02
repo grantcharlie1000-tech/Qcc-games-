@@ -146,3 +146,6 @@
 @media (max-width:380px){.bc-options{grid-template-columns:1fr}.bc-menu .bc-btn,.bc-slider-label{font-size:14px}}
 @media (max-height:560px){.bc-menu .bc-btn,.bc-slider{min-height:34px}.bc-menu .bc-btn{margin-bottom:6px;padding:4px 8px}.bc-slider input::-webkit-slider-runnable-track,.bc-slider input::-webkit-slider-thumb{height:30px}
   .bc-menu-message{margin-bottom:8px;font-size:12px}.bc-menu[data-kind=start] .bc-menu-title{font-size:32px}}
+
+/* Keep touch-sized menu controls while retaining the original Minecraft presentation. */
+.bc-menu .bc-btn,.bc-menu .bc-slider{min-height:44px}

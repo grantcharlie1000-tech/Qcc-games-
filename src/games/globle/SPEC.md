@@ -86,3 +86,9 @@ land areas used only for camera framing and tiny-country markers.
 - Dispose: cancels timers/listeners/observers, `_destructor()`, disposes renderer, meshes and materials, forces
   WebGL context loss and removes the canvas. A lost context gets 5 s to be restored before list-only play.
 - The shell's Escape → Study behaviour is untouched (the game never handles Escape).
+
+
+### Original menus restored — Charlie 10:18
+
+Start, pause and result UI use the original `0297ed4` game design. Only Slither uses the shared minimal game sheet. The removed controls, larger play area and compact shared-dock HUD remain.
+The original Found it result remains; the removed information card, legend and spin hint do not return. Stats/options stay in the shared menu.
