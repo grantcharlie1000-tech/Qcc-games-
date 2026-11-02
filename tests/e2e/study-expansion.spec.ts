@@ -90,23 +90,15 @@ test('Quanta mobile paragraphs retain a clear line of separation',async({page})=
   expect(spacing.gap).toBeGreaterThanOrEqual(spacing.lineHeight-1);
 });
 
-test('changing article during a delayed update cancels the pending reload even after returning to the original article',async({page})=>{
-  await page.route('**/src/core/offline.ts*',route=>route.fulfill({contentType:'text/javascript',body:`
-    export function watchUpdates(_entry, notify){notify({available:true,message:'An update is ready.'});}
-    export async function checkForUpdates(){}
-    export async function cacheAll(){return 0;}
-    export function activateUpdate(){return new Promise(resolve=>{window.finishStudyActivation=resolve;});}
-  `}));
-  await seed(page);await page.goto('/#/game/fruit-merge');await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
-  await page.evaluate(()=>{(window as any).studyDocumentMarker='original';Math.random=()=>0;});
-  await page.getByRole('button',{name:'Reload to update',exact:true}).click();
-  await expect(page.locator('[data-study-update]')).toContainText('starting the update');
-  await page.keyboard.press('Escape');await page.keyboard.press('Escape');
-  expect(await page.evaluate(key=>sessionStorage.getItem(key),key)).toBe('close-reading');
-  await page.evaluate(()=>(window as any).finishStudyActivation());
-  await expect(page.locator('[data-study-update]')).toContainText('An update is ready');
-  expect(await page.evaluate(()=>(window as any).studyDocumentMarker)).toBe('original');
+test('Study stays usable without worker update controls',async({page})=>{
+  await seed(page);await page.goto('/#/game/fruit-merge');
+  await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  await expect(page.locator('#study-view')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Reload to update',exact:true})).toHaveCount(0);
+  await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
 });
 
 for(const viewport of [{name:'desktop',width:1180,height:900},{name:'mobile',width:390,height:844}]){
