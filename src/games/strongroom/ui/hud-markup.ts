@@ -24,14 +24,15 @@ export const matchMarkup=`<div class="sr-match-hud" data-direction="B" aria-labe
     <div class="vital-values"><div class="health-value baseline"><svg class="icon"><use href="#sr-i-health"/></svg><strong data-role="health" id="hp-value">100</strong><span class="unit" data-role="unit">HP</span></div><div class="armour-value baseline"><svg class="icon"><use href="#sr-i-armour"/></svg><strong data-role="armour" id="armour-value">50</strong><span class="unit" data-role="unit">AR</span></div></div>
     <div class="vital-bars"><div class="hp-bar" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i></i></div><div class="armour-bar" role="meter" aria-label="Armour" aria-valuemin="0" aria-valuemax="50" aria-valuenow="50"><i></i></div></div>
   </section>
-  <section class="objective plate" aria-label="Cracker status">
+  <button class="objective plate" type="button" aria-label="Cracker status">
     <svg class="icon objective-icon"><use href="#sr-i-gadget"/></svg><div class="objective-copy"><div class="objective-title"><span class="site">A</span><span id="objective-title">CRACKER SECURED</span></div><div class="objective-detail"><span id="objective-detail">DEFEND THE SITES</span><span id="plant-percent">0%</span></div><div class="plant-bar" role="progressbar" aria-label="Plant progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div></div>
-  </section>
-  <section class="weapon plate sr-ammo" role="button" tabindex="0" aria-label="Weapon and ammunition">
+  </button>
+  <button type="button" class="weapon plate sr-ammo" aria-label="Swap weapon">
     <div class="weapon-heading baseline"><span class="eyebrow">TC-5 CARBINE</span><svg class="weapon-icon icon"><use href="#sr-i-rifle"/></svg></div>
     <div class="ammo-row"><div class="ammo-value baseline"><strong id="ammo-value">24</strong><span class="ammo-divider">/</span><span id="reserve-value">150</span></div><div class="inventory"><span class="inventory-item baseline" aria-label="5 spare magazines"><svg class="icon"><use href="#sr-i-mag"/></svg><strong id="mag-count" data-role="inventory">5</strong></span><span class="inventory-item baseline" aria-label="2 gadgets"><svg class="icon"><use href="#sr-i-gadget"/></svg><strong id="gadget-count" data-role="inventory">2</strong></span></div></div>
     <div class="reload-status"><span>RELOADING</span><span>1.4 S</span><i></i></div>
-  </section>
+  </button>
+  <div class="sr-round-result" role="status" hidden><strong></strong><span></span></div>
   <div class="touch-controls" aria-label="Touch controls">
     <button class="move-zone" aria-label="Move" data-action="move"><svg class="stick" viewBox="0 0 112 112"><circle class="stick-rim-under" cx="56" cy="56" r="48"/><circle class="stick-rim" cx="56" cy="56" r="48"/><g class="stick-thumb"><circle class="stick-thumb-under" cx="56" cy="56" r="17"/><circle cx="56" cy="56" r="17"/></g></svg></button>
     <div class="action-arc">
@@ -65,4 +66,4 @@ export const hudSymbols=`<svg xmlns="http://www.w3.org/2000/svg" class="sr-symbo
   <symbol id="sr-i-quality" viewBox="0 0 24 24"><path d="M3 4h18v12H3ZM7 21h10M12 16v5M7 9l3 3 7-6"/></symbol>
   <symbol id="sr-i-close" viewBox="0 0 24 24"><path d="m5 5 14 14M19 5 5 19"/></symbol>
   <symbol id="sr-i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 6"/></symbol>
-</defs></svg>`;
+<symbol id="sr-i-interact" viewBox="0 0 24 24"><path d="M4 8V3h5M15 3h5v5M4 16v5h5M15 21h5v-5M9 16V9h3v4l2-2 3 2-3 5h-3Z"/></symbol></defs></svg>`;

@@ -15,6 +15,9 @@ export function bindTouch(root:HTMLElement,input:any,_onScores:()=>void,_onMenu:
  look.addEventListener('pointerdown',e=>last={x:e.clientX,y:e.clientY},{signal});hold(look,()=>{},()=>{},drag);
  const fire=root.querySelector<HTMLButtonElement>('[data-action=fire]')!;fire.addEventListener('pointerdown',e=>last={x:e.clientX,y:e.clientY},{signal});hold(fire,()=>input.setVirtualButton(0,true),()=>input.setVirtualButton(0,false),drag);
  const aim=root.querySelector<HTMLButtonElement>('[data-action=aim]')!;aim.addEventListener('click',()=>{const on=aim.getAttribute('aria-pressed')!=='true';aim.setAttribute('aria-pressed',String(on));input.setVirtualButton(2,on);},{signal});
- for(const action of ['reload','crouch','jump'])root.querySelector(`[data-action=${action}]`)!.addEventListener('click',()=>input.pulseVirtualAction(action),{signal});
+ const crouch=root.querySelector<HTMLButtonElement>('[data-action=crouch]')!;hold(crouch,()=>input.setVirtualAction('crouch',true),()=>input.setVirtualAction('crouch',false));
+ for(const action of ['reload','jump'])root.querySelector(`[data-action=${action}]`)!.addEventListener('click',()=>input.pulseVirtualAction(action),{signal});
+ const gadget=root.querySelector<HTMLButtonElement>('[data-action=gadget]')!;hold(gadget,()=>input.setVirtualAction('weapon3',true),()=>input.setVirtualAction('weapon3',false));
+ const objective=root.closest('.sr-match-hud')!.querySelector<HTMLElement>('.objective')!;hold(objective,()=>input.setVirtualAction('use',true),()=>input.setVirtualAction('use',false));
  const release=()=>{for(const up of held.values())up();held.clear();input.releaseVirtualControls();stick.classList.remove('is-active');aim.setAttribute('aria-pressed','false');};window.addEventListener('blur',release,{signal});signal.addEventListener('abort',release,{once:true});
 }

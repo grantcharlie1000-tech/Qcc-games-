@@ -54,3 +54,19 @@
 .sr-match-hud{position:absolute;inset:0;pointer-events:none}.sr-match-hud button,.sr-match-hud .sr-ammo{pointer-events:auto}.sr-match-hud .sr-ammo{cursor:pointer}.sr-symbols{position:absolute;width:0;height:0;overflow:hidden}.sr-match-hud .sr-look-zone{position:absolute;inset:24% 0 0 38%;pointer-events:auto;touch-action:none}.sr-match-hud .move-zone{pointer-events:auto}.sr-match-hud .reticle{display:block}.sr-match-hud[data-critical=true] .health-value{color:var(--danger)}.sr-match-hud[data-critical=true] .vitals{border-color:var(--danger)}.sr-match-hud .weapon-heading .eyebrow{white-space:nowrap}.sr-match-hud .reload-status.is-active{display:flex}.sr-match-hud .plant-bar.is-active,.sr-match-hud #plant-percent.is-active{display:block}.sr-match-hud .kill-feed li{white-space:normal;overflow-wrap:anywhere}.sr-match-hud .touch-controls .gadget{display:none}.sr-match-hud .round-bar[data-size="5"] .operator{width:21px}.sr-match-hud .round-bar[data-size="5"] .team{gap:5px}
 @media(pointer:coarse){.sr-match-hud .round-bar[data-size="5"] .operator{width:14px}.sr-match-hud .round-bar[data-size="5"] .operators{gap:2px}.sr-match-hud .round-bar[data-size="5"] .team-mark{display:none}.sr-match-hud .round-bar[data-size="5"] .team{gap:3px}}
 @media(prefers-reduced-motion:reduce){.sr-match-hud .toast{transition:opacity 150ms ease}.sr-match-hud .reticle.fading .hit-strokes{transition:opacity 100ms ease}}
+.sr-match-hud .touch-controls .gadget{display:grid}
+.sr-match-hud .objective{color:var(--white);text-align:left;box-shadow:none;border-radius:0;pointer-events:auto;font:inherit}
+.sr-match-hud .objective:disabled{opacity:1;cursor:default;pointer-events:none}
+.sr-match-hud[data-phase=pick] :is(.vitals,.weapon,.objective,.reticle){display:none}
+@media(pointer:fine){.sr-match-hud .objective{pointer-events:none}}
+.sr-match-hud .weapon{color:var(--white);text-align:left;font:inherit;box-shadow:none;border-radius:0}
+.sr-match-hud .kill-feed li{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);line-height:1.15}
+.sr-match-hud .kill-feed li>span{min-width:0;overflow-wrap:anywhere}
+.sr-match-hud .sr-round-result{position:absolute;top:38%;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 32px;background:#09121beb;border-block:1px solid #becbd580;text-align:center;min-width:250px;text-shadow:0 1px 3px #000}
+.sr-match-hud .sr-round-result strong{font:700 32px/1 Barlow,sans-serif;letter-spacing:.1em;color:var(--enemy)}
+.sr-match-hud .sr-round-result[data-won=true] strong{color:var(--ally)}
+.sr-match-hud .sr-round-result span{font-size:12px;letter-spacing:.12em;color:var(--muted)}
+.sr-match-hud .reticle[data-head=true] .hit-strokes{stroke:var(--enemy)}
+.sr-match-hud .reticle[data-eliminated=true] .hit-strokes{transform:scale(1.2);transform-origin:center}
+.sr-match-hud .sr-spotted-marker{position:absolute;width:13px;height:13px;border:2px solid var(--enemy);background:#09121be6;transform:translate(-50%,-50%) rotate(45deg);box-shadow:0 0 0 1px #09121b;pointer-events:none}
+@media(pointer:coarse){.sr-match-hud .sr-round-result{padding:14px 24px}.sr-match-hud .sr-round-result strong{font-size:27px}}
