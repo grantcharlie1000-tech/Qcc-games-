@@ -1,6 +1,6 @@
 import {test,expect} from '../fixtures';
 import {gameAction,openGameMenu} from '../game-menu';
-import {glyphContrast,glyphFillMask} from '../glass-contrast';
+import {glyphContrast,glyphFillMask,settleGlassInk} from '../glass-contrast';
 import type {Page} from '@playwright/test';
 
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
@@ -342,6 +342,12 @@ for(const surface of ['dark','light','multiplayer'] as const)test(`${surface} sh
   if(surface==='multiplayer')await gameAction(page,'Multiplayer');else await openGameMenu(page);
   const selector=surface==='multiplayer'?'.mp-card':'#game-options',panel=page.locator(selector);
   await page.evaluate(surface=>{const art=document.createElement('div');art.style.cssText=`position:fixed;inset:0;pointer-events:none;z-index:${surface==='multiplayer'?59:9999};background:${surface==='light'?'black':'white'}`;document.body.append(art);},surface);
+  // The WebGL lens refracts the game canvas itself, beneath any DOM layer. Hide
+  // that source so the sheet shows the injected art, as it does over a page.
+  await page.addStyleTag({content:'#game-stage canvas:not(.ui-glass-gl>canvas){visibility:hidden!important}'});
+  await page.evaluate(()=>dispatchEvent(new Event('resize')));
+  await expect.poll(()=>panel.evaluate(e=>e.getAttribute('data-glass-mode'))).not.toBe('webgl');
+  await settleGlassInk(panel);
   await panel.screenshot({animations:'disabled'});
   const boxes=await panel.evaluate(e=>{const b=e.getBoundingClientRect();return [...e.querySelectorAll('svg')].filter(s=>s.getBoundingClientRect().width>0).map(s=>{const r=s.getBoundingClientRect();return{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(s).color};});});
   expect(boxes.length).toBeGreaterThanOrEqual(surface==='multiplayer'?1:2);
