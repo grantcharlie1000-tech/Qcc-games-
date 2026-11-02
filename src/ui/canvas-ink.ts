@@ -16,7 +16,8 @@ function capture(source:HTMLCanvasElement):void{
 /** Subscribe only to the current visible game; no discarded WebGL buffer reads. */
 export function syncCanvasInkSource(source:HTMLCanvasElement|null):void{
  if(source===observed)return;unobserve?.();unobserve=undefined;observed=source;
- if(source&&hasGlassFrameSource(source)){
+ // getContext('2d') is null for a WebGL canvas and never creates a context on a 2D one.
+ if(source&&hasGlassFrameSource(source)&&!source.getContext('2d')){
   const current=source,off=onGlassFrame(current,()=>capture(current));
   const lost=()=>{lostSources.add(current);cache.delete(current);};
   const restored=()=>{lostSources.delete(current);try{requestGlassFrame(current);}catch{/* Wait for the game renderer to recover. */}};
@@ -33,7 +34,7 @@ export function canvasInk(area:DOMRect,source:HTMLCanvasElement):RGB[]|null{
  const style=getComputedStyle(source);if(style.opacity==='0'||style.visibility==='hidden'||style.display==='none')return null;
  const box=source.getBoundingClientRect();
  if(area.left>=box.right||area.right<=box.left||area.top>=box.bottom||area.bottom<=box.top)return null;
- if(!hasGlassFrameSource(source))capture(source);
+ if(!hasGlassFrameSource(source)||source.getContext('2d'))capture(source);
  const sample=cache.get(source);if(!sample)return null;
  const {width,height,pixels}=sample;
  const x0=Math.max(0,Math.floor((area.left-box.left)/box.width*width)),x1=Math.min(width-1,Math.ceil((area.right-box.left)/box.width*width));

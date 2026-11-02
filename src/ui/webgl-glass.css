@@ -8,11 +8,15 @@
 .ui-glass-gl>canvas{display:block;width:100%;height:100%}
 /* The lens is opaque inside its shape; the tint is a separate CSS layer above it. */
 .ui-glass-gl::after{content:'';position:absolute;inset:0;background:var(--glass-lens-tint,transparent)}
-[data-glass-mode=webgl]{isolation:isolate;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+[data-glass-mode=webgl]{isolation:isolate}
+/* Fully backed by opaque live pixels: the shader replaces the blur. Otherwise (canvas edge,
+   transparent canvas pixels) the plain blur stays under the lens. Never one blur() url() chain. */
+[data-glass-mode=webgl]:not([data-glass-partial]){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.arcade-glass[data-glass-mode=webgl][data-glass-partial]{-webkit-backdrop-filter:var(--glass-clear-blur) saturate(1.08);backdrop-filter:var(--glass-clear-blur) saturate(1.08)}
 [data-glass-mode=webgl]>.ui-glass-gl{visibility:visible}
 [data-glass-mode=webgl]>.ui-glass-lens{display:none!important}
 /* Arcade pills already tint above the lens with their ::before. */
 .arcade-glass{--glass-lens-tint:transparent}
 /* Sheets paint their tint under their children, so it moves onto the lens. */
-.ui-glass-sheet[data-glass-mode=webgl]{--glass-lens-tint:var(--glass-sheet-fill,rgb(8 12 18 / .10));background-color:transparent!important}
+.ui-glass-sheet[data-glass-mode=webgl]{--glass-lens-tint:var(--sheet-veil,var(--glass-sheet-fill,rgb(8 12 18 / .10)));background-color:transparent!important}
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more),(forced-colors:active){.ui-glass-gl{display:none!important}}

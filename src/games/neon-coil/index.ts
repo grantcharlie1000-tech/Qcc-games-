@@ -127,8 +127,8 @@ const module: GameModule = {
     window.addEventListener('blur', clearInput, { signal });
     // Publish each finished frame to the shared glass lens; repaint redraws the current state only.
     const drawArena = renderer.draw; let drawnAlpha = 1;
-    renderer.draw = (s, alpha = 1, reduced = false) => { drawnAlpha = alpha; drawArena(s, alpha, reduced); notifyGlassFrame(canvas); };
-    const releaseGlass = registerGlassFrameSource(canvas, () => { if (!disposed) renderer.draw(state, drawnAlpha, context.settings.reducedMotion); });
+    renderer.draw = (s, alpha = 1, reduced = false, repaint = false) => { drawnAlpha = alpha; drawArena(s, alpha, reduced, repaint); notifyGlassFrame(canvas); };
+    const releaseGlass = registerGlassFrameSource(canvas, () => { if (!disposed) renderer.draw(state, drawnAlpha, context.settings.reducedMotion, true); });
     function controls() {
       let angle: number | undefined;
       if (steering === 'pointer' && pointer) {

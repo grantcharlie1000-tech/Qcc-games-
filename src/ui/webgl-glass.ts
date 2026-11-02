@@ -85,8 +85,10 @@ interface Lens{
   kind:LensKind;enabled:boolean;active:boolean;source:HTMLCanvasElement|null;
   onActive:(active:boolean)=>void;attach:()=>void;detach:()=>void;
 }
-interface Group{lenses:Set<Lens>;off:()=>void;lost:boolean}
-interface Plan{lens:Lens;x:number;y:number;w:number;h:number;outW:number;outH:number;density:number;preset:LensPreset;slot:number}
+// opaqueKey/opaque: a rare probe (only when the crop geometry changes) of whether the
+// source covers the crop with opaque pixels; transparent areas keep the CSS blur.
+interface Group{lenses:Set<Lens>;off:()=>void;lost:boolean;lastFrame:number;opaqueKey:string;opaque:boolean}
+interface Plan{lens:Lens;x:number;y:number;w:number;h:number;outW:number;outH:number;density:number;preset:LensPreset;slot:number;inside:boolean}
 interface Gpu{
   canvas:HTMLCanvasElement;gl:WebGL2RenderingContext;program:WebGLProgram;vao:WebGLVertexArrayObject;
   texture:WebGLTexture;uniforms:Record<Uniform,WebGLUniformLocation|null>;texW:number;texH:number;
@@ -145,29 +147,31 @@ function ensureGpu():Gpu|null{
   if(gpu||unavailable)return gpu;
   try{
     const canvas=document.createElement('canvas');canvas.width=canvas.height=1;
-    canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();contextLost=true;deactivateAll();});
+    canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();contextLost=true;resolveAll();});
     canvas.addEventListener('webglcontextrestored',()=>{
       contextLost=false;gpu=null;
       try{gpu=createGpu(canvas);}catch{gpu=null;}
-      if(!gpu){unavailable=true;deactivateAll();return;}
-      for(const source of groups.keys())schedule(source);
+      if(!gpu)unavailable=true;
+      resolveAll();
     });
     gpu=createGpu(canvas);
   }catch{gpu=null;}
-  if(!gpu){unavailable=true;webglGlassStats.failures++;}
+  if(!gpu){unavailable=true;webglGlassStats.failures++;queueMicrotask(resolveAll);}
   return gpu;
 }
 
 function setActive(lens:Lens,active:boolean){
   if(lens.active===active)return;
-  lens.active=active;lens.onActive(active);
+  lens.active=active;if(!active)lens.surface.removeAttribute('data-glass-partial');lens.onActive(active);
 }
 function deactivate(group:Group){for(const lens of group.lenses)setActive(lens,false);}
 function deactivateAll(){for(const lens of lenses)setActive(lens,false);}
-function fail(){unavailable=true;webglGlassStats.failures++;deactivateAll();}
+function fail(){unavailable=true;webglGlassStats.failures++;deactivateAll();queueMicrotask(resolveAll);}
 
 function sourceFor(surface:HTMLElement):HTMLCanvasElement|null{
-  const view=surface.closest('.game-view')??(document.body.classList.contains('in-game')?document.querySelector('.game-view'):null);
+  // Shell sheets (the Menu dialog) sit outside the game view; other shell glass never joins.
+  const sheet=surface instanceof HTMLDialogElement||surface.matches('.ui-glass-sheet');
+  const view=surface.closest('.game-view')??(sheet&&document.body.classList.contains('in-game')?document.querySelector('.game-view'):null);
   if(!view)return null;
   for(const canvas of view.querySelectorAll<HTMLCanvasElement>('#game-stage canvas'))if(hasGlassFrameSource(canvas))return canvas;
   return null;
@@ -186,22 +190,26 @@ function radiusOf(surface:HTMLElement,width:number,height:number):number{
 
 /** Draw every visible lens over one source, synchronously after its frame. */
 function render(source:HTMLCanvasElement,group:Group){
+  const started=performance.now();group.lastFrame=started;
   if(document.hidden||group.lost||!allowed()){deactivate(group);return;}
-  const started=performance.now();
   const back=source.getBoundingClientRect();
   if(!back.width||!back.height||!source.width||!source.height||!visible(source)){deactivate(group);return;}
   const plans:Plan[]=[];
   for(const lens of group.lenses){
     if(!lens.enabled||!lens.surface.isConnected||!visible(lens.surface)){setActive(lens,false);continue;}
+    // A re-render may replace the surface's children; restore the lens layer.
+    if(lens.wrapper.parentElement!==lens.surface)lens.attach();
     const box=lens.wrapper.getBoundingClientRect();
     const width=lens.wrapper.offsetWidth,height=lens.wrapper.offsetHeight;
     const overlaps=box.right>back.left&&box.left<back.right&&box.bottom>back.top&&box.top<back.bottom;
     if(!width||!height||!box.width||!box.height||!overlaps){setActive(lens,false);continue;}
-    const density=Math.min(glassDensity(devicePixelRatio),Math.sqrt(MAX_LENS_PIXELS/(width*height)));
+    // 1-1.5 px per CSS px; very large sheets settle at 1.
+    const density=Math.max(1,Math.min(glassDensity(devicePixelRatio),Math.sqrt(MAX_LENS_PIXELS/(width*height))));
     // The surface may be scaled by a press or an opening transition; sample where it is on screen.
     const scale=box.width/width;
     const preset=fitPreset(LENS_PRESETS[lens.kind],box.width,box.height,radiusOf(lens.surface,width,height)*scale);
-    plans.push({lens,x:box.left-back.left,y:box.top-back.top,w:box.width,h:box.height,outW:Math.max(1,Math.round(width*density)),outH:Math.max(1,Math.round(height*density)),density,preset,slot:0});
+    const inside=box.left>=back.left-.5&&box.top>=back.top-.5&&box.right<=back.right+.5&&box.bottom<=back.bottom+.5;
+    plans.push({lens,x:box.left-back.left,y:box.top-back.top,w:box.width,h:box.height,outW:Math.max(1,Math.round(width*density)),outH:Math.max(1,Math.round(height*density)),density,preset,slot:0,inside});
   }
   if(!plans.length){webglGlassStats.skipped++;return;}
   const g=ensureGpu();if(!g){deactivate(group);return;}
@@ -221,7 +229,16 @@ function render(source:HTMLCanvasElement,group:Group){
     const kx=source.width/back.width,ky=source.height/back.height;
     stagingCtx.clearRect(0,0,stW,stH);
     stagingCtx.drawImage(source,cx0*kx,cy0*ky,(cx1-cx0)*kx,(cy1-cy0)*ky,0,0,stW,stH);
+    const key=`${cx0},${cy0},${cx1},${cy1},${stW},${stH}`;
+    if(group.opaqueKey!==key){
+      // Not per frame: a one-off probe when the crop moves or resizes.
+      group.opaqueKey=key;
+      const probe=stagingCtx.getImageData(0,0,stW,stH).data;let opaque=true;
+      for(let i=3;i<probe.length;i+=4*7)if(probe[i]<250){opaque=false;break;}
+      group.opaque=opaque;
+    }
     gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,g.texture);
+    if(gl.isContextLost()){deactivate(group);return;}
     if(g.texW!==staging.width||g.texH!==staging.height){
       g.texW=staging.width;g.texH=staging.height;
       gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,g.texW,g.texH,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
@@ -254,6 +271,9 @@ function render(source:HTMLCanvasElement,group:Group){
       if(lens.output.width!==plan.outW||lens.output.height!==plan.outH){lens.output.width=plan.outW;lens.output.height=plan.outH;}
       lens.ctx.globalCompositeOperation='copy';
       lens.ctx.drawImage(g.canvas,0,plan.slot,plan.outW,plan.outH,0,0,plan.outW,plan.outH);
+      // Where the lens is not fully backed by opaque canvas pixels, the CSS blur stays on under it.
+      const partial=!(plan.inside&&group.opaque);
+      if(lens.surface.hasAttribute('data-glass-partial')!==partial)lens.surface.toggleAttribute('data-glass-partial',partial);
       setActive(lens,true);
     }
   }catch{
@@ -273,7 +293,9 @@ function schedule(source:HTMLCanvasElement|null){
   queueMicrotask(()=>{
     flushQueued=false;
     const sources=[...pending];pending.clear();
-    for(const s of sources)if(groups.has(s))try{requestGlassFrame(s);}catch{/* The lens waits for the game's next frame. */}
+    const now=performance.now();
+    // A running game redraws within a frame anyway; only idle (paused) sources need a repaint.
+    for(const s of sources){const g=groups.get(s);if(g&&now-g.lastFrame>100)try{requestGlassFrame(s);}catch{/* The lens waits for the game's next frame. */}}
   });
 }
 
@@ -291,7 +313,7 @@ function join(lens:Lens,source:HTMLCanvasElement|null){
     const restored=()=>{const g=groups.get(current);if(g){g.lost=false;schedule(current);}};
     current.addEventListener('webglcontextlost',lost);current.addEventListener('webglcontextrestored',restored);
     const offFrame=onGlassFrame(current,()=>{const g=groups.get(current);if(g)render(current,g);});
-    const created:Group={lenses:new Set(),lost:false,off:()=>{offFrame();current.removeEventListener('webglcontextlost',lost);current.removeEventListener('webglcontextrestored',restored);}};
+    const created:Group={lenses:new Set(),lost:false,lastFrame:-Infinity,opaqueKey:'',opaque:false,off:()=>{offFrame();current.removeEventListener('webglcontextlost',lost);current.removeEventListener('webglcontextrestored',restored);}};
     group=created;groups.set(source,group);
   }
   group.lenses.add(lens);schedule(source);
@@ -344,12 +366,15 @@ export function bindWebglLens(surface:HTMLElement,onActive:(active:boolean)=>voi
     schedule(lens.source);
   };
   const resize=typeof ResizeObserver==='function'?new ResizeObserver(refresh):undefined;
+  // A sheet drag moves the surface with inline style while the paused game draws nothing.
+  const moved=new MutationObserver(refresh);
   lens.attach=()=>{
     lens.kind=kind??kindFor(surface);lens.ctx??=output.getContext('2d');
     if(wrapper.parentElement!==surface)surface.prepend(wrapper);
     resize?.observe(wrapper);surface.addEventListener('scroll',refresh,{passive:true});
+    moved.observe(surface,{attributes:true,attributeFilter:['style','class']});
   };
-  lens.detach=()=>{resize?.disconnect();surface.removeEventListener('scroll',refresh);wrapper.remove();};
+  lens.detach=()=>{resize?.disconnect();moved.disconnect();surface.removeEventListener('scroll',refresh);wrapper.remove();};
   return{
     setEnabled(value){
       if(disposed||lens.enabled===value)return;
