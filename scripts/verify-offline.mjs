@@ -5,7 +5,7 @@ import {existsSync} from 'node:fs';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {verifyPoolShot} from './pool-verifier-shot.mjs';
-const titles={'neon-coil':'Slither.io','fruit-merge':'Suika Game','water-sort':'Water Sort','color-blocks':'Block Blast',tower:'Stack',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Flow Free','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle',blockcraft:'Minecraft','maze-muncher':'Pac-Man','corn-clicker':'Corn Clicker',slipline:'Slipline',quadfall:'Tetris',fivefold:'Wordle'};
+const titles={claimline:'Claimline','neon-coil':'Slither.io','fruit-merge':'Suika Game','water-sort':'Water Sort','color-blocks':'Block Blast',tower:'Stack',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Flow Free','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle',blockcraft:'Minecraft','maze-muncher':'Pac-Man','corn-clicker':'Corn Clicker',slipline:'Slipline',quadfall:'Tetris',fivefold:'Wordle'};
 const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles);
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1366,height:768}];
 const studyMedia=JSON.parse(await readFile('dist/study/image-provenance.json','utf8'));
