@@ -14,9 +14,8 @@ import {games, artUrl, loadGame} from './core/catalog';
 import type {GameId, GameInstance} from './core/types';
 import * as store from './core/storage';
 import {playSound} from './core/audio';
-import {activateUpdate, cacheAll, checkForUpdates, watchUpdates} from './core/offline';
+import {retireOffline} from './core/offline';
 import {StudyView} from './study/view';
-import {reloadAfterActivation} from './core/update';
 import {fitGameStage} from './core/viewport-fit';
 import {attachFullscreen,syncPlaySurface} from './core/play-surface';
 import {AccountsClient} from './accounts/client';
@@ -26,6 +25,8 @@ import {SCORED_GAMES,MINESWEEPER_RANKINGS,scoredGame} from './leaderboard/shared
 import {LeaderboardSidebar} from './leaderboard/sidebar';
 import {formatScore} from './leaderboard/format';
 
+void retireOffline();
+
 const icon=(name:string)=>{
   const paths:Record<string,string>={menu:'<path d="M4 7h16M4 12h10"/>',back:'<path d="m14 5-7 7 7 7M7 12h14"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',pause:'<path d="M8 5v14M16 5v14"/>',play:'<path d="m8 4 12 8-12 8z"/>',restart:'<path d="M4 5v6h6M4 11a8 8 0 1 1 1 7"/>',rules:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',fullscreen:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',exitfs:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>'};
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.grid}</svg>`;
@@ -34,7 +35,7 @@ const icon=(name:string)=>{
 trackInputMode();
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<nav class="app-tabbar ui-tabbar" aria-label="Sections"><a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('grid')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv">${uiIcon('tv')}<span>TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button><button class="ui-tab" type="button" data-action="menu" aria-label="Open menu" aria-haspopup="dialog">${uiIcon('menu')}<span>Menu</span></button></nav><main id="content"></main>
-<dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
+<dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog" class="ui-glass-sheet" aria-labelledby="rules-title"><form method="dialog" class="dialog-head"><h2 id="rules-title">How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
 const content=document.querySelector<HTMLElement>('#content')!;
 const menu=document.querySelector<HTMLDialogElement>('#menu')!;
@@ -76,7 +77,7 @@ const study=new StudyView(()=>{
   if(!initialized){
     initialized=true;study.hide();showArcade();void route();
   }else study.showArticle(studyMessage(true));
-}, returnFromStudy, reloadForUpdate);
+}, returnFromStudy);
 
 store.probeStorage();
 function storageStatus(){
@@ -95,36 +96,6 @@ function save():boolean {
   }
   catch {announce('This game could not save this time.');return false;}
 }
-let updateReady=false,updateBusy=false,updateRequest=0,updateFailure='';
-// Any new reading intent cancels the old request, even if the reader returns
-// to its starting article before activation finishes.
-study.root.addEventListener('change',event=>{if(updateBusy&&(event.target as Element).id==='study-topic')updateRequest++;});
-study.root.addEventListener('study-article-change',()=>{if(updateBusy)updateRequest++;});
-function showUpdate(message:string){
-  const notice=document.querySelector<HTMLElement>('#update-notice')!;
-  notice.hidden=!message;document.querySelector('#update-status')!.textContent=message;
-  // While an update is ready the offline download is secondary, so the reload is the menu's one tinted action. A failed check
-  // shows the notice with no reload, and the download keeps its tint.
-  document.querySelector('.offline-button')!.classList.toggle('secondary',updateReady);
-  document.querySelector<HTMLButtonElement>('#reload-update')!.hidden=!updateReady;document.querySelector<HTMLButtonElement>('#reload-update')!.disabled=updateBusy;
-  study.setUpdateStatus(message,updateReady,updateBusy);
-}
-async function reloadForUpdate(){
-  if(!updateReady||updateBusy)return;
-  const request=++updateRequest,gameGeneration=generation,route=location.hash,article=study.session.article()?.id;
-  updateFailure='';updateBusy=true;showUpdate('Saving your game and starting the update…');
-  const result=await reloadAfterActivation(()=>{const saved=setPaused(true);return store.flushPending()&&saved;},activateUpdate,()=>location.reload(),()=>request===updateRequest&&generation===gameGeneration&&location.hash===route&&study.session.article()?.id===article);
-  updateBusy=false;
-  if(result==='save-failed'){updateFailure='Your game could not be saved on this device. Keep this tab open. Free some storage and try again before reloading.';showUpdate(updateFailure);}
-  if(result==='cancelled')showUpdate('An update is ready. Reload when you are ready; your game will be saved first.');
-  if(result==='activation-failed'){updateFailure='The update could not start. Your game remains open. Try again when online.';showUpdate(updateFailure);}
-}
-document.querySelector('#reload-update')!.addEventListener('click',reloadForUpdate);
-watchUpdates(import.meta.url,status=>{
-  const newlyReady=status.available&&!updateReady;updateReady=status.available;
-  showUpdate(updateFailure||status.message);
-  if(newlyReady)announce('An update is ready. Open the menu, or use Reload to update in Study, when you are ready.');
-});
 function setChromeInert(value:boolean):void{
   document.querySelector<HTMLElement>('.app-tabbar')!.inert=value;
 }
@@ -163,7 +134,6 @@ function showAllGames(){
   announce('Showing all games');
 }
 function setPaused(value:boolean):boolean {
-  if(!value&&updateBusy)updateRequest++;
   // A game may finish its asynchronous mount while a chapter is open.
   if(!value&&study.isOpen)return true;
   paused=value;
@@ -190,7 +160,7 @@ function hideArcade(){
   syncViewportLock();
 }
 function studyMessage(saved:boolean):string {
-  if(!activeId)return 'Your chapter is ready to read offline.';
+  if(!activeId)return 'Your chapter is ready to read.';
   if(!instance)return 'Your game will remain paused while you read.';
   if(!saved)return 'Game paused. This save failed, but your game remains open in memory for this visit.';
   return store.canRetain()?'Game paused. Progress saved on this device.':'Game paused. Progress is held in memory for this visit.';
@@ -209,7 +179,6 @@ function openStudy(advance=false){
   hideArcade();study.showArticle(studyMessage(saved));
 }
 function returnFromStudy(){
-  if(updateBusy)updateRequest++;
   if(!initialized)return;
   study.hide();showArcade();updateStudySummary();
   if(accountRoutePending){accountRoutePending=false;resumeAfterStudy=false;focusBeforeStudy=null;void route();return;}
@@ -357,7 +326,7 @@ async function route(){
 function openMenu(trigger?:Element|null){
   updateAccountMenu();
   pausedForDialog=!!activeId&&!paused;if(activeId)setPaused(true);
-  openSheet(menu,trigger);void checkForUpdates();
+  openSheet(menu,trigger);
 }
 document.querySelector('.app-tabbar [data-action="menu"]')!.addEventListener('click',event=>openMenu(event.currentTarget as Element));
 document.querySelector('.app-tabbar [data-action="study"]')!.addEventListener('click',()=>openStudy());
@@ -366,7 +335,7 @@ function dialogClosed(){
   const resume=pausedForDialog;pausedForDialog=false;
   if(resume&&!study.isOpen&&!document.hidden)setPaused(false);
 }
-menu.addEventListener('close',()=>{if(updateBusy)updateRequest++;dialogClosed();if(!activeId&&!movies&&!location.hash.startsWith('#/movies')&&!study.isOpen)library();});
+menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!location.hash.startsWith('#/movies')&&!study.isOpen)library();});
 rulesDialog.addEventListener('close',dialogClosed);
 leaderboards.root.addEventListener('close',dialogClosed);
 document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
@@ -391,16 +360,6 @@ for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#c
   });
 }
 document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);
-document.querySelector<HTMLButtonElement>('.offline-button')!.addEventListener('click',async event=>{
-  const button=event.currentTarget as HTMLButtonElement,progress=document.querySelector<HTMLProgressElement>('#download-progress')!,status=document.querySelector('#offline-status')!;
-  button.disabled=true;progress.hidden=false;status.textContent='Downloading the arcade…';
-  try {
-    const total=await cacheAll((done,count)=>{progress.max=count;progress.value=done;status.textContent=`Downloaded ${done} of ${count} files`;});
-    button.textContent='Offline pack downloaded';
-    status.textContent=`All ${total} files downloaded on this browser. Device policy or storage eviction can still remove cached files.`;
-  }catch(error){status.textContent=error instanceof Error?error.message:'Download failed. Try again when online.';}
-  finally{button.disabled=false;}
-});
 
 window.addEventListener('hashchange',()=>void route());
 window.addEventListener('pagehide',()=>{save();movies?.pause();void accounts.flush(true,false).catch(()=>{});});
@@ -420,7 +379,6 @@ window.addEventListener('keydown',event=>{
 },{capture:true});
 window.addEventListener('keyup',event=>{if(study.isOpen)event.stopImmediatePropagation();},{capture:true});
 updateStudySummary();
-void checkForUpdates();
 function beginStudy(){
  if(study.session.topic()){initialized=true;showArcade();void route();}
  else {hideArcade();study.showPicker();}
