@@ -1,6 +1,7 @@
 import {it,expect,vi,beforeEach,afterEach} from 'vitest';
 beforeEach(()=>vi.useFakeTimers());afterEach(()=>vi.useRealTimers());
-import {LeaderboardSync} from '../../src/leaderboard/client';
+import {LeaderboardSync,NOT_OPEN_RETRY_MS} from '../../src/leaderboard/client';
+import {LEADERBOARD_NOT_OPEN} from '../../src/leaderboard/shared';
 function memory(account=true){const map=new Map<string,unknown>();if(account)map.set('accounts:session',{token:'acct_'+'a'.repeat(64),username:'Ada'});return {read:<T>(key:string,fallback:T)=>(map.get(key)??fallback) as T,write:(key:string,value:unknown)=>{map.set(key,structuredClone(value));return true;}};}
 it('keeps account bests queued through an outage and sends each once',async()=>{const storage=memory();let available=false;const sent:any[]=[];const fetcher=vi.fn(async(_url:any,options:any)=>{if(!available)throw Error('offline');sent.push(JSON.parse(options.body));return Response.json({});});const sync=new LeaderboardSync(storage,fetcher as typeof fetch);sync.queue('snake',100);sync.queue('snake',30);sync.queue('tower',9);await expect(sync.flush()).rejects.toThrow();sync.dispose();available=true;vi.setSystemTime(Date.now()+60000);const restored=new LeaderboardSync(storage,fetcher as typeof fetch);await restored.flush();await restored.flush();expect(sent.map(s=>[s.game,s.score,s.name])).toEqual([['snake',100,'Ada'],['tower',9,'Ada']]);restored.dispose();});
 it('never publishes guest scores or replays legacy guest pending scores on login',async()=>{const storage=memory(false);storage.write('leaderboard:profile',{token:'b'.repeat(64),name:'Guest'});storage.write('leaderboard:pending',{snake:900});const fetcher=vi.fn(async()=>Response.json({}));const sync=new LeaderboardSync(storage,fetcher as typeof fetch);expect(sync.profile()).toBeNull();sync.queue('snake',1000);await sync.flush();expect(fetcher).not.toHaveBeenCalled();storage.write('accounts:session',{token:'acct_'+'a'.repeat(64),username:'Ada'});await sync.flush();expect(fetcher).not.toHaveBeenCalled();sync.queue('snake',10);await sync.flush();expect(JSON.parse((fetcher.mock.calls[0] as any)[1].body).score).toBe(10);sync.dispose();});
@@ -40,4 +41,52 @@ it('increases retry delays after repeated network failures and respects an HTTP-
 });
 it('does not submit a scheduled batch in a hidden tab and retries after it becomes visible',async()=>{
  const doc=Object.assign(new EventTarget(),{hidden:false});vi.stubGlobal('document',doc);try{const scores:number[]=[];const sync=new LeaderboardSync(memory(),(async(_url,options)=>{scores.push(JSON.parse(String(options?.body)).score);return Response.json({});}) as typeof fetch);sync.queue('snake',10);doc.hidden=true;doc.dispatchEvent(new Event('visibilitychange'));await sync.flush();expect(scores).toEqual([]);await vi.advanceTimersByTimeAsync(180000);expect(scores).toEqual([]);doc.hidden=false;doc.dispatchEvent(new Event('visibilitychange'));await vi.advanceTimersByTimeAsync(180000);expect(scores).toEqual([10]);sync.dispose();}finally{vi.unstubAllGlobals();}
+});
+
+it('parks only a game whose board is not open yet, keeps its score queued and still sends the other games',async()=>{
+ const storage=memory();let open=false;const calls:string[]=[];
+ const fetcher=vi.fn(async(_url:any,options:any)=>{const {game}=JSON.parse(options.body);calls.push(game);
+  if(game==='claimline'&&!open)return Response.json({error:'This leaderboard opens soon.',code:LEADERBOARD_NOT_OPEN},{status:409});return Response.json({});});
+ const sync=new LeaderboardSync(storage,fetcher as typeof fetch),synced=vi.fn();sync.onSynced(synced);
+ sync.queue('claimline',1234);sync.queue('snake',50);
+ await expect(sync.flush()).resolves.toBeUndefined(); // no error for the UI to show
+ expect(calls).toEqual(['claimline','snake']);
+ expect(storage.read('leaderboard:pending:account:ada',{})).toEqual({claimline:1234});
+ expect(storage.read('leaderboard:sent:account:ada',{})).toEqual({snake:50});
+ expect(storage.read('leaderboard:retry:account:ada',{attempt:0,nextAt:0})).toEqual({attempt:0,nextAt:0}); // no shared outage backoff
+ expect(synced).toHaveBeenCalledWith('snake');expect(synced).not.toHaveBeenCalledWith('claimline');
+ // Parked: other games keep syncing immediately and the parked game is not posted again yet.
+ sync.queue('tower',9);await sync.flush();expect(calls).toEqual(['claimline','snake','tower']);
+ sync.queue('claimline',1500);await sync.flush();expect(calls).toEqual(['claimline','snake','tower']);
+ expect(storage.read('leaderboard:pending:account:ada',{})).toEqual({claimline:1500});
+ // Once the migration lands the next quiet retry delivers the latest queued best, with no code change.
+ open=true;vi.setSystemTime(Date.now()+NOT_OPEN_RETRY_MS+1);await sync.flush();
+ expect(calls).toEqual(['claimline','snake','tower','claimline']);
+ expect(JSON.parse((fetcher.mock.calls.at(-1) as any)[1].body)).toMatchObject({game:'claimline',score:1500});
+ expect(storage.read('leaderboard:pending:account:ada',{})).toEqual({});
+ expect(synced).toHaveBeenCalledWith('claimline');
+ sync.dispose();
+});
+
+it('retries a parked game on its own timer and a fresh page load retries straight away',async()=>{
+ const storage=memory();let open=false;const calls:string[]=[];
+ const fetcher=vi.fn(async(_url:any,options:any)=>{calls.push(JSON.parse(options.body).game);return open?Response.json({}):Response.json({code:LEADERBOARD_NOT_OPEN},{status:409});});
+ const sync=new LeaderboardSync(storage,fetcher as typeof fetch);sync.queue('claimline',700);await sync.flush();expect(calls).toHaveLength(1);
+ await vi.advanceTimersByTimeAsync(NOT_OPEN_RETRY_MS-1000);expect(calls).toHaveLength(1); // no batch-interval polling while parked
+ open=true;await vi.advanceTimersByTimeAsync(2000);expect(calls).toHaveLength(2);
+ expect(storage.read('leaderboard:pending:account:ada',{})).toEqual({});sync.dispose();
+ // A new session (page load) is not parked: it tries the stored pending score at once.
+ const later=memory();later.write('leaderboard:pending:account:ada',{claimline:900});
+ const seen:string[]=[];const again=new LeaderboardSync(later,vi.fn(async(_u:any,o:any)=>{seen.push(JSON.parse(o.body).game);return Response.json({});}) as typeof fetch);
+ await again.flush();expect(seen).toEqual(['claimline']);again.dispose();
+});
+
+it('treats other failures exactly as before: a 409 without the not-open code and a 503 still back off and report',async()=>{
+ for(const response of [()=>Response.json({error:'conflict'},{status:409}),()=>Response.json({error:'down'},{status:503})]){
+  const storage=memory();const sync=new LeaderboardSync(storage,vi.fn(async()=>response()) as typeof fetch);
+  sync.queue('claimline',10);sync.queue('snake',5);
+  await expect(sync.flush()).rejects.toThrow('Scores are saved here');
+  expect(storage.read<any>('leaderboard:retry:account:ada',{attempt:0}).attempt).toBe(1);
+  expect(storage.read('leaderboard:pending:account:ada',{})).toEqual({claimline:10,snake:5});sync.dispose();
+ }
 });
