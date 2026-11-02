@@ -1,8 +1,9 @@
-import {describe,it,expect,vi} from "vitest";
-import {handleMoviesCatalog} from "../../netlify/functions/movies-search.mts";
+import {afterEach,describe,it,expect,vi} from "vitest";
+import netlifyMovies,{handleMoviesCatalog} from "../../netlify/functions/movies-search.mts";
 import {parseCatalog,parseRails,parseTitle} from "../../src/movies/model";
 
 const request=(query="")=>new Request(`https://qcc.test/api/movies${query}`);
+afterEach(()=>vi.unstubAllGlobals());
 const tmdb=(results:unknown[]=[],extra={})=>new Response(JSON.stringify({results,total_pages:3,total_results:71,...extra}),{status:200,headers:{"content-type":"application/json"}});
 // Movie items for movie paths and TV items for tv paths. Only trending/all carries media_type, so the other rails must force their kind.
 const railResponse=(url:string)=>{
@@ -12,6 +13,18 @@ const railResponse=(url:string)=>{
 };
 
 describe("full catalog metadata endpoint",()=>{
+ it("keeps the Netlify adapter reading its server-side runtime binding",async()=>{
+  const token=crypto.randomUUID();
+  const get=vi.fn(()=>token);
+  const fetcher=vi.fn(async()=>tmdb([{id:7,media_type:"movie",title:"Netlify Film"}]));
+  vi.stubGlobal("Netlify",{env:{get}});
+  vi.stubGlobal("fetch",fetcher);
+  const result=await netlifyMovies(request("?q=netlify"));
+  expect(result.status).toBe(200);
+  expect((await result.json()).titles[0]).toMatchObject({id:"movie-7",name:"Netlify Film"});
+  expect(get).toHaveBeenCalledWith("TMDB_READ_TOKEN");
+  expect(fetcher.mock.calls[0]).toEqual([expect.any(String),expect.objectContaining({headers:{Authorization:`Bearer ${token}`,Accept:"application/json"}})]);
+ });
  it("requires a server-side token and never calls upstream without it",async()=>{
   const fetcher=vi.fn();
   const result=await handleMoviesCatalog(request("?q=arrival"),"",fetcher);
