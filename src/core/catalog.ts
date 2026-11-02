@@ -1,5 +1,6 @@
 import type { GameId, GameModule } from './types';
-export interface GameInfo { id: GameId; title: string; color: string; ink: string; accent: string }
+import {STRONGROOM} from '../games/strongroom/meta';
+export interface GameInfo { id: GameId; title: string; color: string; ink: string; accent: string; hidden?: boolean }
 export const games: GameInfo[] = [
 {id:'color-blocks',title:'Block Blast',color:'#382841',ink:'#ffd04c',accent:'#ffca3a'},
 {id:'water-sort',title:'Water Sort',color:'#594263',ink:'#e4b5f7',accent:'#dca8ed'},
@@ -21,8 +22,10 @@ export const games: GameInfo[] = [
 {id:'corn-clicker',title:'Corn Clicker',color:'#2f5d1e',ink:'#ffe14d',accent:'#ffd447'},
 {id:'slipline',title:'Slipline',color:'#202032',ink:'#eee7ff',accent:'#5cddbb'},
 {id:'quadfall',title:'Tetris',color:'#101631',ink:'#7ee0ff',accent:'#ff9f43'},
-{id:'fivefold',title:'Wordle',color:'#1d2b24',ink:'#f4e9c8',accent:'#6fbf73'}
+{id:'fivefold',title:'Wordle',color:'#1d2b24',ink:'#f4e9c8',accent:'#6fbf73'},
+{id:STRONGROOM.id,title:STRONGROOM.title,color:'#141922',ink:'#FF8A1F',accent:'#3D9BFF',hidden:true}
 ];
+export const publicGames = games.filter(game=>!game.hidden);
 const modules = import.meta.glob<{default:GameModule}>('../games/*/index.ts');
 export async function loadGame(id:GameId):Promise<GameModule> {
   const load = modules[`../games/${id}/index.ts`];

@@ -10,12 +10,13 @@ import {openSheet} from './ui/sheet';
 import {trackInputMode} from './ui/focus';
 import './style.css';
 import './game-viewport.css';
-import {games, artUrl, loadGame} from './core/catalog';
+import {games, publicGames, artUrl, loadGame} from './core/catalog';
 import type {GameId, GameInstance} from './core/types';
 import * as store from './core/storage';
 import {playSound} from './core/audio';
 import {activateUpdate, cacheAll, checkForUpdates, watchUpdates} from './core/offline';
 import {StudyView} from './study/view';
+import {STRONGROOM} from './games/strongroom/meta';
 import {reloadAfterActivation} from './core/update';
 import {fitGameStage} from './core/viewport-fit';
 import {attachFullscreen,syncPlaySurface} from './core/play-surface';
@@ -33,7 +34,7 @@ const icon=(name:string)=>{
 trackInputMode();
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<nav class="app-tabbar ui-tabbar" aria-label="Sections"><a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('grid')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv">${uiIcon('tv')}<span>TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button><button class="ui-tab" type="button" data-action="menu" aria-label="Open menu" aria-haspopup="dialog">${uiIcon('menu')}<span>Menu</span></button></nav><main id="content"></main>
-<dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
+<dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${publicGames.length} games" autocomplete="off"><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${publicGames.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog" class="ui-glass-sheet" aria-labelledby="rules-title"><form method="dialog" class="dialog-head"><h2 id="rules-title">How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
 const content=document.querySelector<HTMLElement>('#content')!;
 const menu=document.querySelector<HTMLDialogElement>('#menu')!;
@@ -57,7 +58,7 @@ let movieStorage:MovieStorage|undefined;
 let movieScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
-const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft']);
+const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft',STRONGROOM.id]);
 // Responsive WebGL layouts fill the standard stage; a scale transform would break pointer mapping.
 const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold']);
 
@@ -126,6 +127,7 @@ function setChromeInert(value:boolean):void{
   document.querySelector<HTMLElement>('.app-tabbar')!.inert=value;
 }
 function leave(saveProgress=true){
+  document.querySelector('meta[data-private-game]')?.remove();
   movies?.dispose();movies=undefined;
   setChromeInert(false);
   tabbar.reset();
@@ -142,7 +144,7 @@ function filterNotice(){
   return onlyFavourites?'Showing your favourites':`Games matching “${search}”`;
 }
 function library(){
-  const items=games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.toLowerCase()));
+  const items=publicGames.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.toLowerCase()));
   const filtered=onlyFavourites||search!=='';
   // The notice text is user input, so it is filled in with textContent below, never through this template.
   content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
@@ -259,6 +261,7 @@ async function route(){
   // A restored scroll position is part of the navigation, so the tab bar re-bases on it rather than counting it as a scroll.
   if(!id){library();if(wasInMovies)requestAnimationFrame(()=>{window.scrollTo(movieScroll.x,movieScroll.y);tabbar.reset();document.querySelector<HTMLElement>('.app-tabbar .ui-tab[href="#/collection"]')?.focus({preventScroll:true});});if(wasInGame)requestAnimationFrame(()=>{if(!activeId){window.scrollTo(libraryScroll.x,libraryScroll.y);tabbar.reset();}});return;}
   const info=games.find(g=>g.id===id)!;activeId=id;document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
+  if(info.hidden){const robots=document.createElement('meta');robots.name='robots';robots.content='noindex, nofollow';robots.dataset.privateGame='true';document.head.append(robots);}
   content.innerHTML=`<section class="game-view" data-game-id="${id}" data-reference-game="${referenceGames.has(id)}" aria-label="${info.title}">
     <div class="game-toolbar">
       <a class="icon-button" href="${collectionHash}" aria-label="Back to game library">${icon('back')}</a><h1 id="game-title">${info.title}</h1>

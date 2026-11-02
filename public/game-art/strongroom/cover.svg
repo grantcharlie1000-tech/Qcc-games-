@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 410" role="img" aria-labelledby="sr-title sr-desc">
+<title id="sr-title">Strongroom breach</title><desc id="sr-desc">A helmeted operator with a rifle is silhouetted in a jagged hole blasted through a grey cell-grid wall, with orange light pouring through.</desc>
+<defs>
+<pattern id="sr-grid" width="32" height="32" y="122" patternUnits="userSpaceOnUse"><path d="M0 .5H32M.5 0V32" stroke="#323A4B" fill="none"/></pattern>
+<radialGradient id="sr-halo" cx="160" cy="268" r="120" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFD9A0"/><stop offset=".45" stop-color="#FFB25A"/><stop offset="1" stop-color="#FF8A1F"/></radialGradient>
+<radialGradient id="sr-spill" cx="160" cy="300" r="170" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FF8A1F" stop-opacity=".55"/><stop offset="1" stop-color="#FF8A1F" stop-opacity="0"/></radialGradient>
+<path id="sr-wall" fill-rule="evenodd" d="M0 122H320V410H0ZM112 218V202H128L138 186H176V170L188 178H192V202H208L216 218H224V250H240V298L246 314H256V346L262 362H264V410H56V362L62 346H64V314L74 298H80V266L88 250H96V218Z"/>
+</defs>
+<rect width="320" height="410" fill="#141922"/>
+<rect x="40" y="160" width="240" height="250" fill="url(#sr-halo)"/>
+<path d="M112 218V202H128L138 186H176V170L188 178H192V202H208L216 218H224V250H240V298L246 314H256V346L262 362H264V410H56V362L62 346H64V314L74 298H80V266L88 250H96V218Z" fill="none" stroke="#FFE2B8" stroke-width="8"/>
+<path d="M106 318 99 238" stroke="#0E1218" stroke-width="3" stroke-linecap="round"/>
+<path id="sr-op" fill="#0E1218" d="M52 416L57 372C61 344 69 329 86 319C101 310 120 306 136 303L141 300 142 290 138 288H125Q117 288 117 279V258Q117 250 125 250H123L121 246H119V237H123C126 221 141 211 160 211S194 221 197 237H201V246H199L197 250H195Q203 250 203 258V279Q203 288 195 288H182L178 290 179 300 184 303C200 306 219 310 234 319C251 329 259 344 263 372L268 416Z"/>
+<clipPath id="sr-clip"><use href="#sr-op"/></clipPath>
+<use href="#sr-op" fill="none" stroke="#FFB25A" stroke-width="5" stroke-opacity=".8" clip-path="url(#sr-clip)"/>
+<g fill="#1D2430"><path d="M112 334Q160 322 208 334V416H112Z"/><path d="M126 304 116 334H134L144 302ZM194 304 204 334H186L176 302Z"/><rect x="152" y="227" width="16" height="12" rx="2"/><rect x="121" y="255" width="12" height="28" rx="5"/><rect x="187" y="255" width="12" height="28" rx="5"/><path d="M118 374h26v30h-26zM147 374h26v30h-26zM176 374h26v30h-26z"/><path d="M123 240h74v3h-74z"/></g>
+<path d="M126 251Q160 242 194 251" stroke="#262E3B" stroke-width="2" fill="none"/>
+<rect x="142" y="258" width="36" height="6" rx="3" fill="#3D9BFF"/><path d="M146 259.6h12" stroke="#BFE0FF" stroke-width="2" stroke-linecap="round"/>
+<g transform="translate(84 328) rotate(22) scale(1.12)">
+<path fill="#3A4456" d="M0-7 26-9H40V7H28L6 15H0ZM38-9H156V4H96L91 6H38ZM156-5H190V3H156ZM56-10V-15H58V-21H86V-15H88V-10ZM68 5H83L87 31H74ZM45 5H56L52 23H43Z"/>
+<path d="M100-4.5h50M100-.5h50" stroke="#1C222D" stroke-width="1.5"/>
+<path d="M1-7 26-9H40M38-9H156M58-21H86M156-5H190" fill="none" stroke="#FFB25A" stroke-width="1.8"/>
+<g fill="#0E1218"><ellipse cx="49" cy="10" rx="8" ry="10"/><ellipse cx="128" cy="0" rx="12" ry="9"/></g>
+</g>
+<use href="#sr-wall" fill="#2A3140"/><path fill="#242B38" d="M96 202h16v16H96zM224 218h16v16h-16zM240 282h16v16h-16zM64 282h16v16H64zM192 170h16v16h-16zM40 378h16v16H40z"/><use href="#sr-wall" fill="url(#sr-grid)"/><use href="#sr-wall" fill="url(#sr-spill)"/>
+<path d="M0 123.5H320" stroke="#3A4356" stroke-width="3"/>
+<g fill="#1C222D"><path d="M81 189l12 4-4 12-12-4z"/><path d="M229 182l10-3 3 10-10 3z"/><path d="M58 245l9 4-4 9-9-4z"/><path d="M255 238l13 5-5 13-13-5z"/><path d="M109 157l8 2-2 8-8-2z"/><path d="M270 316l9 3-3 9-9-3z"/></g>
+<g fill="#3A4356"><path d="M79 186l12 4-4 12-12-4z"/><path d="M227 179l10-3 3 10-10 3z"/><path d="M56 242l9 4-4 9-9-4z"/><path d="M253 235l13 5-5 13-13-5z"/><path d="M107 155l8 2-2 8-8-2z"/><path d="M268 313l9 3-3 9-9-3z"/></g>
+<g fill="#0E1218"><path d="M210 224l8 3-3 8-8-3z"/><path d="M104 236l6-2 2 6-6 2z"/></g>
+<g fill="#FFB25A"><rect x="98" y="176" width="4" height="4"/><rect x="214" y="196" width="3" height="3"/><rect x="246" y="276" width="4" height="4"/><rect x="70" y="232" width="3" height="3"/></g>
+</svg>
