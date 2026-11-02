@@ -7,8 +7,12 @@ Covers spawn immunity, dot hoover, render/collision radius parity, the shared sm
 | Check | Result |
 | --- | --- |
 | `npx tsc --noEmit` | Passed |
-| `npx vitest run` | 161 files, 3,289 tests passed, including 28 new tests in `tests/games/neon-coil/remake.test.ts` and updated arena tests |
-| `npx playwright test tests/games/neon-coil --project=chromium` | 29 passed (own dev server on port 4631) |
+| `npx vitest run` | 161 files, 3,290 tests passed, including 29 new tests in `tests/games/neon-coil/remake.test.ts` and updated arena tests |
+| `npx playwright test tests/games/neon-coil --project=chromium` | 29 passed (own dev server on port 4631). Under a load average of 24–97 on 8 cores, one `--workers=1` run had 3 timing failures (a `clock.pauseAt` race and two 30 s timeouts); all 3 passed on an immediate rerun. |
+| `npx playwright test tests/e2e/viewport.spec.ts tests/leaderboard/sidebar.spec.ts --project=chromium --workers=1` | 26 passed (an earlier 2-worker run at load average ~100 timed out on page loads) |
+| `npm run build` | Passed (movies-validate, tsc, vite build, offline pack 179 files) |
+
+An independent code review found no critical issues. Its important finding, that a thumb landing below or left of the resting ring steered on touch-down, was fixed and is covered by a browser test. Minor fixes from the same review: holding the last stick direction on release, measuring the minimap lift from the resting ring, never evicting an in-flight pellet at the food cap, clamping over-fast saved pellet speeds, and guarding the taper slope.
 
 New unit coverage: immunity (immune head survives body and head-on contact; immune bodies are non-lethal; the rim still kills; expiry after exactly 180 ticks; bots respawn immune; save round trip and legacy-save loading; pale fade), hoover (acceleration, scoring once on arrival, out-of-radius pellets stay put, nearest-head claim, bots, owner death releases the pellet, deterministic snapshot/restore mid-flight), steering (capped and proportional turn, kink-free trail, 360° joystick vector, clamp, dead zone, pointer dead zone, keyboard hold/tap/release), arena area 1.2× with matching food density, and radius parity (every drawn disc and the head match the hitbox at three masses; contact flips within ±0.05 px of where the drawn discs touch).
 
