@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 410" aria-hidden="true">
+ <defs><linearGradient id="cl-bg" x1="0" y1="0" x2="0" y2="95" gradientUnits="userSpaceOnUse"><stop stop-color="#e3f7ec"/><stop offset="1" stop-color="#cdeedd"/></linearGradient><linearGradient id="cl-sea" x1="0" y1="95" x2="0" y2="130" gradientUnits="userSpaceOnUse"><stop stop-color="#cdeedd"/><stop offset="1" stop-color="#9fd8c2"/></linearGradient></defs>
+ <path fill="url(#cl-bg)" d="M0 0h320v410H0z"/>
+ <path fill="url(#cl-sea)" d="M0 95h320v315H0z"/>
+ <circle cx="160" cy="262" r="142" fill="#eefbf5" stroke="#2e6b5a" stroke-width="3"/>
+ <g fill="#a63245" transform="translate(0 5)"><path d="M118 166C158 162 190 196 188 240C186 282 160 300 118 300C76 300 46 276 48 236C50 194 80 170 118 166Z"/></g>
+ <g fill="#315ca6" transform="translate(0 5)"><path d="M236 161C264 161 276 185 274 211C272 237 258 247 236 247C214 247 198 235 198 211C198 183 212 161 236 161Z"/></g>
+ <g fill="#177653" transform="translate(0 5)"><path d="M228 276C254 274 272 294 270 320C268 344 252 356 226 356C200 356 186 340 186 318C186 292 202 277 228 276Z"/></g>
+ <g stroke-width="2.5" stroke-linejoin="round">
+  <path fill="#ff4d6a" stroke="#a63245" d="M118 166C158 162 190 196 188 240C186 282 160 300 118 300C76 300 46 276 48 236C50 194 80 170 118 166Z"/>
+  <path fill="#4b8dff" stroke="#315ca6" d="M236 161C264 161 276 185 274 211C272 237 258 247 236 247C214 247 198 235 198 211C198 183 212 161 236 161Z"/>
+  <path fill="#23b67f" stroke="#177653" d="M228 276C254 274 272 294 270 320C268 344 252 356 226 356C200 356 186 340 186 318C186 292 202 277 228 276Z"/>
+ </g>
+ <path fill="none" stroke="#f3a3b2" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" d="M150 292C170 330 150 372 112 374C72 376 56 342 68 322C76 308 84 302 90 292" opacity=".55"/>
+ <path fill="none" stroke="#ffc6d0" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" d="M150 292C170 330 150 372 112 374C72 376 56 342 68 322C76 308 84 302 90 292"/>
+ <g transform="translate(92 289) rotate(-60) scale(1.3)">
+  <path fill="#ff4d6a" stroke="#fff" stroke-width="3.5" stroke-linejoin="round" d="M17 0C17 3-10 14-12 12C-14 10-14-10-12-12C-10-14 17-3 17 0Z"/>
+  <circle cx="4" cy="-4" r="2.6" fill="#fff"/><circle cx="4" cy="4" r="2.6" fill="#fff"/><circle cx="5" cy="-4" r="1.3" fill="#2a0f1c"/><circle cx="5" cy="4" r="1.3" fill="#2a0f1c"/>
+ </g>
+</svg>
