@@ -21,6 +21,10 @@ test('live canvas ink follows bright and dark frames',async({page})=>{
  });
  const ink=page.locator('.game-hud strong');
  await expect.poll(()=>ink.evaluate(e=>getComputedStyle(e).color)).toBe('rgb(11, 16, 21)');
+ await page.locator('.nc-canvas').evaluate(e=>{(e as HTMLElement).style.opacity='0';(e.parentElement as HTMLElement).style.background='#000';});
+ await expect.poll(()=>ink.evaluate(e=>getComputedStyle(e).color)).toBe('rgb(255, 255, 255)');
+ await page.locator('.nc-canvas').evaluate(e=>(e as HTMLElement).style.opacity='1');
+ await expect.poll(()=>ink.evaluate(e=>getComputedStyle(e).color)).toBe('rgb(11, 16, 21)');
  await page.locator('.nc-canvas').evaluate(e=>{const c=e as HTMLCanvasElement;const ctx=c.getContext('2d')!;ctx.fillStyle='#000';ctx.fillRect(0,0,c.width,c.height);});
  await expect.poll(()=>ink.evaluate(e=>getComputedStyle(e).color)).toBe('rgb(255, 255, 255)');
  await expect(ink).toHaveCSS('-webkit-text-stroke-width','0px');

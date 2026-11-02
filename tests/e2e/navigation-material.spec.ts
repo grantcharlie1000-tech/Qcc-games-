@@ -1,5 +1,32 @@
 import {test,expect} from '../fixtures';
 import type {Page} from '@playwright/test';
+import {glyphContrast,glyphFillMask} from '../glass-contrast';
+
+for(const art of ['gradient','transparent-image'] as const)test(`plain navigation ink samples local ${art} pixels instead of the whole artwork range`,async({page})=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/?glass=fallback#/collection');
+  await page.evaluate(art=>{
+    const layer=document.createElement('div');layer.id='local-ink-art';
+    layer.style.cssText='position:fixed;inset:0;z-index:49;background:#000';
+    if(art==='gradient')layer.style.background='linear-gradient(90deg,#fff 0 60%,#000 60%)';
+    else{
+      const image=document.createElement('img');image.style.cssText='width:100%;height:100%;object-fit:fill';
+      image.src='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844"><rect x="195" width="195" height="844" fill="white"/></svg>');layer.append(image);
+    }
+    document.body.append(layer);
+  },art);
+  const cases=art==='gradient'?
+    [['.app-tabbar [data-section=games]>svg','rgb(11, 16, 21)'],['.app-menu>svg','rgb(255, 255, 255)']]:
+    [['.app-tabbar [data-section=games]>svg','rgb(255, 255, 255)'],['.app-menu>svg','rgb(11, 16, 21)']];
+  for(const [selector,color] of cases){
+    const glyph=page.locator(selector);await expect(glyph).toHaveCSS('color',color);
+    const bounds=(await glyph.boundingBox())!,mask=await glyphFillMask(page,glyph,selector,true);
+    const hide=await page.addStyleTag({content:`${selector}{color:transparent!important}`});
+    const backdrop=(await glyph.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
+    const [contrast]=await glyphContrast(page,backdrop,mask,[{x:0,y:0,w:bounds.width,h:bounds.height,color}],bounds);
+    expect(contrast).toBeGreaterThanOrEqual(4.5);
+    await expect(glyph).toHaveCSS('-webkit-text-stroke-width','0px');
+  }
+});
 
 async function open(page:Page,fallback:boolean,chromium:boolean){
   await page.setViewportSize({width:390,height:844});

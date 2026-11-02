@@ -362,6 +362,8 @@ test('a fine pointer lights up a tab and leaves the current lozenge alone',async
  const alpha=(locator:ReturnType<Page['locator']>)=>locator.evaluate(element=>{const match=getComputedStyle(element).backgroundColor.match(/[\d.]+(?=\)$)/);return match?Number(match[0]):0;});
  const study=bar.getByRole('button',{name:'Study',exact:true});
  const games=bar.getByRole('link',{name:'Games',exact:true});
+ const pill=()=>bar.evaluate(element=>{const style=getComputedStyle(element,'::after');return {background:style.backgroundColor,image:style.backgroundImage,shadow:style.boxShadow};});
+ const initialPill=await pill();
  expect(await alpha(study)).toBe(0);
  await study.hover();
  await expect.poll(()=>alpha(study)).toBeCloseTo(0.06,2);
@@ -372,7 +374,9 @@ test('a fine pointer lights up a tab and leaves the current lozenge alone',async
  await games.hover();
  // The current tab keeps no lozenge of its own: the pill carries the highlight, and a hover leaves it alone.
  expect(await alpha(games)).toBe(0);
- expect(await bar.evaluate(element=>{const match=getComputedStyle(element,'::after').backgroundColor.match(/[\d.]+(?=\)$)/);return match?Number(match[0]):0;})).toBeGreaterThanOrEqual(0.08);
+ expect(await pill()).toEqual(initialPill);
+ const pillAlpha=await bar.evaluate(element=>{const match=getComputedStyle(element,'::after').backgroundColor.match(/[\d.]+(?=\)$)/);return match?Number(match[0]):0;});
+ expect(pillAlpha).toBeGreaterThan(0);expect(pillAlpha).toBeLessThanOrEqual(0.02);
 });
 
 test('the island shows again after returning from Study',async({page})=>{

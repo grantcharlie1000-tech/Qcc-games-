@@ -103,11 +103,14 @@ for(const [view,black] of [['home',false],['accounts',false],['snake',false],['f
     else await openGameMenu(page);
     if(view==='accounts')await page.getByRole('button',{name:'Log in / Sign up',exact:true}).click();
     if(black)await page.evaluate(()=>{
-      const artwork=document.createElement('div');artwork.style.cssText='position:fixed;inset:0;background:#000;z-index:9999';document.body.append(artwork);
+      const artwork=document.createElement('div');artwork.style.cssText='position:fixed;inset:0;background:#000;pointer-events:none;z-index:9999';document.body.append(artwork);
     });
     const selector=view==='accounts'?'#accounts-dialog':home?'#menu':'#game-options',panel=page.locator(selector);
     await expect.poll(()=>panel.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
     await panel.evaluate(e=>{e.scrollTop=0;});
+    // Paint the changed backdrop before recording adaptive foreground colors.
+    await panel.screenshot({animations:'disabled'});
+    const mask=await glyphFillMask(page,panel,`${selector},${selector} *`);
     const boxes=await panel.evaluate(e=>{
       const outer=e.getBoundingClientRect(),walker=document.createTreeWalker(e,NodeFilter.SHOW_TEXT),boxes=[];
       while(walker.nextNode()){
@@ -121,13 +124,11 @@ for(const [view,black] of [['home',false],['accounts',false],['snake',false],['f
       return boxes;
     });
     expect(boxes.length).toBeGreaterThan(8);
-    const mask=await glyphFillMask(page,panel,`${selector},${selector} *`);
-    // Capture the restored original paint on the same raster path as the mask.
-    // Chromium can retain a fractional-baseline texture from the entry scale
-    // animation until text first repaints, even after the animation finishes.
+    const hide=await page.addStyleTag({content:`${selector},${selector} *{-webkit-text-fill-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}`});
     const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');
-    const ratios=await glyphContrast(page,shot,mask,boxes,(await panel.boundingBox())!,true);
-    await test.info().attach('sheet-visible-contrast',{body:JSON.stringify(boxes.map((box,i)=>({...box,contrast:ratios[i]}))),contentType:'application/json'});
+    await hide.evaluate(e=>e.parentNode?.removeChild(e));
+    const ratios=await glyphContrast(page,shot,mask,boxes,(await panel.boundingBox())!);
+    await test.info().attach('sheet-core-contrast',{body:JSON.stringify(boxes.map((box,i)=>({...box,contrast:ratios[i]}))),contentType:'application/json'});
     expect(Math.min(...ratios),ratios.map(r=>r.toFixed(2)).join(', ')).toBeGreaterThanOrEqual(4.5);
   });
 }

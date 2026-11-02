@@ -1,6 +1,6 @@
 import {test,expect} from '../fixtures';
 import {gameAction,openGameMenu} from '../game-menu';
-import {glyphContrast} from '../glass-contrast';
+import {glyphContrast,glyphFillMask} from '../glass-contrast';
 import type {Page} from '@playwright/test';
 
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
@@ -37,80 +37,109 @@ test('bars, buttons and sheets add almost no fill to their live backdrop',async(
   }
 });
 
-test('native start/end cards and floating Boost share the clear optical tokens',async({page})=>{
-  for(const [game,selector,dimmer] of [
-    ['snake','.snake-card',''],['quadfall','.qf-card',''],['maze-muncher','.mm-card',''],
-    ['neon-coil','.nc-card','.nc-overlay'],['neon-coil','.nc-boost',''],
-    ['flappy-bird','.fb-card',''],['ball-run','.br-setup','.br-layer'],
-    ['minesweeper','.ms-hint-message',''],
-    ['tower','.tower-end-card','.tower-end'],['slipline','.sl-overlay .game-panel','.sl-overlay']
+test('native start/end cards and Boost retain their original game palettes',async({page})=>{
+  // These fills come from the original game styles at 0f3d109. Shared glass
+  // belongs to the shell and Slither sheet, not to the original native art.
+  for(const [game,selector,fill] of [
+    ['snake','.snake-card','rgba(20, 55, 38, 0.59)'],
+    ['quadfall','.qf-card','rgba(23, 34, 57, 0.96)'],
+    ['maze-muncher','.mm-card','rgba(5, 7, 26, 0.816)'],
+    ['neon-coil','.nc-boost','rgba(255, 255, 255, 0.12)'],
+    ['flappy-bird','.fb-card','rgba(255, 243, 217, 0.96)'],
+    ['ball-run','.br-setup','rgba(29, 29, 34, 0.95)'],
+    ['minesweeper','.ms-hint-message','rgba(201, 220, 159, 0.03)'],
+    ['tower','.tower-end-card','rgb(244, 227, 229)'],
+    ['slipline','.sl-overlay .game-panel','rgb(36, 43, 44)']
   ]){
     await page.goto(`/#/game/${game}`);await expect(page.locator(selector).first()).toBeAttached();
     const paint=await page.locator(selector).first().evaluate(e=>{const s=getComputedStyle(e);return {fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter};});
-    expect(paint.fill,game).toBe('rgba(184, 184, 184, 0.02)');
+    expect(paint.fill,game).toBe(fill);
     expect(paint.image,game).toBe('none');
-    expect(paint.filter,game).toContain('blur(3px)');
-    if(dimmer){
-      const veil=await page.locator(dimmer).evaluate(e=>{const s=getComputedStyle(e);return {fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter};});
-      expect(veil,game).toEqual({fill:'rgba(0, 0, 0, 0)',image:'none',filter:'none'});
-    }
+    expect(paint.filter,game).toBe('none');
   }
+  for(const [game,selector,fill] of [
+    ['ball-run','.br-layer','rgba(7, 4, 12, 0.65)'],
+    ['tower','.tower-end','rgba(51, 46, 75, 0.57)'],
+    ['slipline','.sl-overlay','rgba(8, 8, 17, 0.72)']
+  ]){
+    await page.goto(`/#/game/${game}`);
+    await expect(page.locator(selector)).toBeAttached();
+    await expect(page.locator(selector)).toHaveCSS('background-color',fill);
+    await expect(page.locator(selector)).toHaveCSS('backdrop-filter','none');
+  }
+  await page.goto('/#/game/neon-coil');
+  await expect(page.locator('.nc-game .game-sheet')).toBeVisible();
+  await expect(page.locator('.nc-game .game-sheet-panel')).toHaveCSS('background-color','rgba(184, 184, 184, 0.02)');
 });
 
-test('Corn guidance adds no second material inside its clear column',async({page})=>{
+test('Corn retains its brown pixel columns and readable cream guidance',async({page})=>{
   await page.goto('/#/game/corn-clicker');
   const tip=page.locator('.cc-col .cc-tip');await expect(tip).toBeAttached();
-  expect(await tip.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,filter:s.backdropFilter,shadow:s.boxShadow};})).toEqual({fill:'rgba(0, 0, 0, 0)',filter:'none',shadow:'none'});
-  await expect(page.locator('.cc-col.cc-left')).toHaveCSS('background-color','rgba(184, 184, 184, 0.02)');
-  const action=tip.locator('.cc-btn');await expect(action).toHaveCSS('color','rgb(255, 255, 255)');
+  expect(await tip.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,filter:s.backdropFilter,shadow:s.boxShadow};})).toEqual({fill:'rgb(255, 243, 196)',filter:'none',shadow:'none'});
+  await expect(page.locator('.cc-col.cc-left')).toHaveCSS('background-image',/radial-gradient.*rgb\(74, 60, 23\).*rgb\(41, 36, 26\)/);
+  await expect(page.locator('.cc-col.cc-left')).toHaveCSS('border-top-color','rgb(107, 68, 34)');
+  const action=tip.locator('.cc-btn');await expect(action).toHaveCSS('color','rgb(61, 46, 7)');
   await expect(action).toBeVisible();
-  const visible=(await action.screenshot({animations:'disabled'})).toString('base64');
   const box=(await action.boundingBox())!;
-  await page.addStyleTag({content:'.cc-tip .cc-btn{background:#000!important;color:#fff!important;-webkit-text-stroke:0!important;text-shadow:none!important;border-color:transparent!important}'});
-  const mask=(await action.screenshot({animations:'disabled'})).toString('base64');
-  const edges=await glyphContrast(page,visible,mask,[{x:0,y:0,w:box.width,h:box.height,color:'rgb(255, 255, 255)'}],box,true);
-  expect(Math.min(...edges)).toBeGreaterThanOrEqual(4.5);
+  const mask=await glyphFillMask(page,action,'.cc-tip .cc-btn');
+  const hide=await page.addStyleTag({content:'.cc-tip .cc-btn{-webkit-text-fill-color:transparent!important}'});
+  const backdrop=(await action.screenshot({animations:'disabled'})).toString('base64');
+  await hide.evaluate(e=>e.parentNode?.removeChild(e));
+  const ratios=await glyphContrast(page,backdrop,mask,[{x:0,y:0,w:box.width,h:box.height,color:'rgb(61, 46, 7)'}],box);
+  expect(Math.min(...ratios)).toBeGreaterThanOrEqual(4.5);
 });
 
-test('native Minesweeper pause keeps the shared clear material and the board hidden',async({page})=>{
+test('native Minesweeper pause retains its opaque green palette and hides the board',async({page})=>{
   await page.goto('/#/game/minesweeper');
-  await gameAction(page,'Game options');
-  await page.locator('.ms-pause').click();
+  await expect(page.locator('.ms-board')).toBeVisible();
+  // Backgrounding is the shell's supported pause trigger; the old native
+  // Pause control no longer exists in the collected game menu.
+  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
   const pause=page.locator('#pause-overlay');
   await expect(pause).toBeVisible();
   await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
-  await expect(pause).toHaveCSS('background-color','rgba(184, 184, 184, 0.02)');
-  await expect(pause).toHaveCSS('backdrop-filter','blur(3px) saturate(1)');
+  await expect(pause).toHaveCSS('background-color','rgb(24, 35, 31)');
+  await expect(pause).toHaveCSS('backdrop-filter','blur(5px)');
+  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});});
   await page.locator('#resume-game').click();
   await expect(pause).toBeHidden();
   await expect(page.locator('.ms-board')).toHaveCSS('visibility','visible');
 });
 
-test('Blockcraft Controls and Advancements keep clear content and one readable label',async({page})=>{
+test('Blockcraft Controls and Advancements retain the original panels and readable labels',async({page})=>{
   await page.goto('/#/game/blockcraft');
   await expect(page.locator('.bc-menu [data-act=primary]')).toBeEnabled({timeout:30000});
   await page.locator('.bc-menu [data-act=controls]').click();
   const controls=page.locator('.bc-menu [data-panel=controls]');await expect(controls).toBeVisible();
   const boxes=await controls.evaluate(e=>{const b=e.getBoundingClientRect();return [...e.querySelectorAll('dt,dd')].slice(0,2).concat([...e.querySelectorAll('.bc-btn')]).map(s=>{const r=s.getBoundingClientRect();return{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(s).color};});});
-  const visible=(await controls.screenshot({animations:'disabled'})).toString('base64');
-  await test.info().attach('blockcraft-clear-controls',{body:Buffer.from(visible,'base64'),contentType:'image/png'});
-  const style=await page.addStyleTag({content:'.bc-menu [data-panel=controls],.bc-menu [data-panel=controls] *{background:#000!important;color:#fff!important;-webkit-text-stroke:0!important;text-shadow:none!important;border-color:transparent!important}'});
-  const mask=(await controls.screenshot({animations:'disabled'})).toString('base64');
-  const edges=await glyphContrast(page,visible,mask,boxes,(await controls.boundingBox())!,true);
-  expect(Math.min(...edges),JSON.stringify(edges)).toBeGreaterThanOrEqual(4.5);
-  await style.evaluate(e=>(e as Element).remove());
+  const mask=await glyphFillMask(page,controls,'.bc-menu [data-panel=controls] :is(dt,dd,.bc-btn)');
+  const hide=await page.addStyleTag({content:'.bc-menu [data-panel=controls] :is(dt,dd,.bc-btn){-webkit-text-fill-color:transparent!important;text-shadow:none!important}'});
+  const backdrop=(await controls.screenshot({animations:'disabled'})).toString('base64');
+  await hide.evaluate(e=>e.parentNode?.removeChild(e));
+  const ratios=await glyphContrast(page,backdrop,mask,boxes,(await controls.boundingBox())!);
+  expect(Math.min(...ratios.slice(0,2)),JSON.stringify(ratios)).toBeGreaterThanOrEqual(4.5);
+  // Preserve the original vanilla gray button, including its existing contrast
+  // limitation. The restoration requirement does not authorize recoloring it.
+  const done=controls.locator('.bc-btn');
+  await expect(done).toHaveCSS('background-image','linear-gradient(rgb(142, 142, 142), rgb(108, 108, 108))');
+  await expect(done).toHaveCSS('color','rgb(255, 255, 255)');
+  await expect(done).toHaveCSS('text-shadow','rgb(63, 63, 63) 2px 2px 0px');
+  await test.info().attach('original-native-button-contrast',{body:JSON.stringify({contrast:ratios[2],limitation:'Original gray palette is preserved; small white Done text does not reach 4.5:1 at every core.'}),contentType:'application/json'});
+  expect(ratios[2]).toBeGreaterThan(3.7);expect(ratios[2]).toBeLessThan(4.1);
   await page.locator('.bc-menu [data-panel=controls] [data-act=back]').click();
   await page.locator('.bc-menu [data-act=advancements]').click();
   const empty=page.locator('.bc-adv-empty');await expect(empty).toBeVisible();
-  await test.info().attach('blockcraft-clear-advancements',{body:await page.locator('.bc-panel').screenshot({animations:'disabled'}),contentType:'image/png'});
-  expect(await empty.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter};})).toEqual({fill:'rgba(0, 0, 0, 0)',image:'none',filter:'none'});
+  await test.info().attach('blockcraft-original-advancements',{body:await page.locator('.bc-panel').screenshot({animations:'disabled'}),contentType:'image/png'});
+  expect(await empty.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter};})).toEqual({fill:'rgb(0, 0, 0)',image:'none',filter:'none'});
   for(const selector of ['.bc-title .bc-px','.bc-adv-empty .bc-px','.bc-adv-summary .bc-px']){
     const art=page.locator(selector).first();await expect(art).toBeVisible();
     const paint=await art.evaluate(e=>{const s=getComputedStyle(e);return{color:s.color,stroke:s.webkitTextStrokeWidth,shadow:s.textShadow,image:s.backgroundImage,filter:s.filter};});
     expect(paint.color).toBe('rgba(0, 0, 0, 0)');expect(paint.stroke).toBe('0px');expect(paint.shadow).toBe('none');
-    expect(paint.image).not.toBe('none');expect(paint.filter).toContain('drop-shadow');
+    expect(paint.image).not.toBe('none');expect(paint.filter).toBe('none');
     const bounds=(await art.boundingBox())!;
-    const visible=(await art.screenshot({animations:'disabled'})).toString('base64');
+    const hide=await page.addStyleTag({content:`${selector}{background-image:none!important}`});
+    const backdrop=(await art.screenshot({animations:'disabled'})).toString('base64');
+    await hide.evaluate(e=>e.parentNode?.removeChild(e));
     const maskArt=await art.evaluate(e=>{
       const url=getComputedStyle(e).backgroundImage.match(/^url\(["']?(.*?)["']?\)$/)![1];
       const doc=new DOMParser().parseFromString(decodeURIComponent(url.slice('data:image/svg+xml,'.length)),'image/svg+xml');
@@ -119,17 +148,15 @@ test('Blockcraft Controls and Advancements keep clear content and one readable l
       for(const n of doc.querySelectorAll('[fill]'))if(n.getAttribute('fill')!=='none')n.setAttribute('fill','#fff');
       return{color,url:'data:image/svg+xml,'+encodeURIComponent(new XMLSerializer().serializeToString(doc))};
     });
-    // A stylesheet follows the periodically refreshed summary node. An inline
-    // mask on its old span can disappear during a screenshot and prove nothing.
-    // Keep the same image filter/raster grid: removing it moves some scaled
-    // pixel-font edges in WebKit. Black glyph shadows disappear into the black
-    // panel, leaving only the white foreground alpha in the mask.
-    const maskStyle=await page.addStyleTag({content:`.bc-panel{background:#000!important}${selector}{background-image:url("${maskArt.url}")!important;--pixel-glass-halo:#000!important}`});
+    // Follow the periodically refreshed summary with a stylesheet and preserve
+    // its original pixel-font raster grid. A black background isolates the
+    // white foreground image without flattening the real panel in the shot.
+    const maskStyle=await page.addStyleTag({content:`${selector}{background-color:#000!important;background-image:url("${maskArt.url}")!important}`});
     const mask=(await art.screenshot({animations:'disabled'})).toString('base64');
-    const edges=await glyphContrast(page,visible,mask,[{x:0,y:0,w:bounds.width,h:bounds.height,color:maskArt.color}],bounds,true);
-    await test.info().attach('pixel-glyph-contrast',{body:JSON.stringify({selector,edges}),contentType:'application/json'});
+    const ratios=await glyphContrast(page,backdrop,mask,[{x:0,y:0,w:bounds.width,h:bounds.height,color:maskArt.color}],bounds);
+    await test.info().attach('pixel-glyph-contrast',{body:JSON.stringify({selector,ratios}),contentType:'application/json'});
     await maskStyle.evaluate(e=>(e as Element).remove());
-    expect(Math.min(...edges),`${selector}: ${JSON.stringify(edges)}`).toBeGreaterThanOrEqual(4.5);
+    expect(Math.min(...ratios),`${selector}: ${JSON.stringify(ratios)}`).toBeGreaterThanOrEqual(4.5);
   }
   // The visible book tab opens Statistics without starting or changing a world.
   await statisticsContrast(page);
@@ -146,9 +173,11 @@ test.describe('desktop Statistics glyphs',()=>{
 });
 
 async function statisticsContrast(page:Page){
+  test.setTimeout(90000);
   await page.locator('.bc-adv-tab[id$="-statistics"]').click();
   await expect(page.locator('.bc-adv-stats')).toBeVisible();
-  await expect(page.locator('.bc-adv-stat-row').first()).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+  await expect(page.locator('.bc-adv-stat-row').first()).toHaveCSS('background-color','rgba(0, 0, 0, 0.06)');
+  await expect(page.locator('.bc-adv-stats')).toHaveCSS('background-color','rgb(220, 220, 220)');
   for(const backdrop of ['#000','#fff']){
     const source=await page.addStyleTag({content:`.bc-screen{background:${backdrop}!important}`});
     for(const selector of ['.bc-adv-stat-name','.bc-adv-stat-empty']){
@@ -156,11 +185,11 @@ async function statisticsContrast(page:Page){
       // Whole-panel clips preserve WebKit's fractional glyph raster alignment.
       const panel=page.locator('.bc-adv-stats'),bounds=(await panel.boundingBox())!,r=(await text.boundingBox())!;
       const color=await text.evaluate(e=>getComputedStyle(e).color);
-      const visible=(await panel.screenshot({animations:'disabled'})).toString('base64');
-      const style=await page.addStyleTag({content:'.bc-adv-stats,.bc-adv-stats *{color:#fff!important;-webkit-text-fill-color:#fff!important;background:#000!important;text-shadow:none!important;-webkit-text-stroke:0!important;border-color:transparent!important}'});
-      const mask=(await panel.screenshot({animations:'disabled'})).toString('base64');
-      const edges=await glyphContrast(page,visible,mask,[{x:r.x-bounds.x,y:r.y-bounds.y,w:r.width,h:r.height,color}],bounds,true);
-      await style.evaluate(e=>(e as Element).remove());
+      const mask=await glyphFillMask(page,panel,selector);
+      const hide=await page.addStyleTag({content:`${selector}{-webkit-text-fill-color:transparent!important;text-shadow:none!important}`});
+      const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');
+      await hide.evaluate(e=>e.parentNode?.removeChild(e));
+      const edges=await glyphContrast(page,shot,mask,[{x:r.x-bounds.x,y:r.y-bounds.y,w:r.width,h:r.height,color}],bounds);
       await test.info().attach('statistics-glyph-contrast',{body:JSON.stringify({selector,backdrop,edges}),contentType:'application/json'});
       expect(Math.min(...edges),`${selector} over ${backdrop}: ${JSON.stringify(edges)}`).toBeGreaterThanOrEqual(4.5);
     }
@@ -168,7 +197,7 @@ async function statisticsContrast(page:Page){
   }
 }
 
-for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} preserves the rendered background with near-zero added white`,async({page})=>{
+for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} preserves uniform dark and light artwork with near-zero added white`,async({page})=>{
   await page.goto(surface==='bar'||surface==='menu'?'/#/collection':'/#/game/snake');
   if(surface==='bar'||surface==='menu'){
     await page.locator('.app-tabbar [data-action=study]').click();
@@ -180,21 +209,29 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} pre
   const panel=page.locator(selector);await expect(panel).toBeVisible();
   await panel.screenshot({animations:'disabled'});
   const bounds=(await panel.boundingBox())!;
-  await page.evaluate(({surface,bounds})=>{
+  await page.evaluate(surface=>{
     const art=document.createElement('div');art.id='transmission-art';
-    // Five horizontal bands let every height see both light and dark content.
-    art.style.cssText=`position:fixed;inset:0;pointer-events:none;z-index:${surface==='sheet'?9999:20};background:repeating-linear-gradient(90deg,#152431 0 30px,#f8e6c0 30px 60px);background-position:${bounds.x}px 0`;
+    art.style.cssText=`position:fixed;inset:0;pointer-events:none;z-index:${surface==='sheet'?9999:20}`;
     (surface==='dock'?document.querySelector('.game-view')!:document.body).append(art);
-  },{surface,bounds});
+  },surface);
   await panel.evaluate(e=>e.classList.add('transmission-panel'));
   const hideInk=await page.addStyleTag({content:'.transmission-panel>*:not(.ui-glass-lens,.ui-glass-glow){visibility:hidden!important}.transmission-panel::after{display:none!important}'});
-  const glass=(await panel.screenshot({animations:'disabled',scale:'css'})).toString('base64');
-  const hide=await page.addStyleTag({content:'.transmission-panel,.transmission-panel::before{visibility:hidden!important}'});
-  const source=(await page.screenshot({clip:bounds,scale:'css'})).toString('base64');
-  await hide.evaluate(e=>(e as Element).remove());await hideInk.evaluate(e=>(e as Element).remove());
-  const measured=await page.evaluate(async({glass,source,surface})=>{
+  const pairs=[];
+  // Uniform sources isolate transmission from the separately tested 3px
+  // diffusion. Measuring blurred stripe boundaries mistakes diffusion for fill.
+  for(const color of ['#152431','#f8e6c0']){
+    await page.locator('#transmission-art').evaluate((e,color)=>{(e as HTMLElement).style.background=color;},color);
+    const glass=(await panel.screenshot({animations:'disabled',scale:'css'})).toString('base64');
+    // Remove the optical paint while keeping the control visible and focused.
+    // Hiding a focused companion would collapse and move the navigation.
+    const hide=await page.addStyleTag({content:'.transmission-panel{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important}.transmission-panel::before,.transmission-panel>.ui-glass-lens,.transmission-panel>.ui-glass-glow{visibility:hidden!important}'});
+    const source=(await page.screenshot({clip:bounds,scale:'css'})).toString('base64');
+    await hide.evaluate(e=>(e as Element).remove());
+    pairs.push({glass,source});
+  }
+  await hideInk.evaluate(e=>(e as Element).remove());
+  const measured=await page.evaluate(async({pairs,surface})=>{
     const decode=async(png:string)=>{const i=new Image();i.src='data:image/png;base64,'+png;await i.decode();const c=document.createElement('canvas');c.width=i.width;c.height=i.height;const ctx=c.getContext('2d')!;ctx.drawImage(i,0,0);return {w:c.width,h:c.height,data:ctx.getImageData(0,0,c.width,c.height).data};};
-    const a=await decode(glass),b=await decode(source);
     const lightness=(data:Uint8ClampedArray,offset:number)=>{
       const y=[.2126,.7152,.0722].reduce((sum,k,c)=>{const v=data[offset+c]/255;return sum+k*(v<=.04045?v/12.92:((v+.055)/1.055)**2.4);},0);
       return y>216/24389?116*Math.cbrt(y)-16:24389/27*y;
@@ -202,16 +239,19 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} pre
     const levels:number[]=[],original:number[]=[],added:number[]=[];
     // Measure the clear centre. The separately tested convex edge intentionally
     // displaces source detail and is not a claim of zero optical displacement.
+    for(const {glass,source} of pairs){
+    const a=await decode(glass),b=await decode(source);
     const x0=surface==='menu'?Math.ceil(a.w*.42):20,x1=surface==='menu'?Math.floor(a.w*.58):a.w-20;
     const y0=surface==='sheet'?20:Math.ceil(a.h*.45),y1=surface==='sheet'?a.h-20:Math.floor(a.h*.55);
     for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
       const l=lightness(a.data,(y*a.w+x)*4),s=lightness(b.data,(y*b.w+x)*4);
       levels.push(l);original.push(s);added.push(Math.max(0,l-s));
     }
+    }
     const mean=(a:number[])=>a.reduce((s,v)=>s+v,0)/a.length;
     const sd=(a:number[])=>{const m=mean(a);return Math.sqrt(mean(a.map(v=>(v-m)**2)));};
     return {lift:mean(added),retention:sd(original)>1?sd(levels)/sd(original):null,samples:levels.length};
-  },{glass,source,surface});
+  },{pairs,surface});
   expect(measured.samples).toBeGreaterThan(20);
   expect(measured.lift,JSON.stringify(measured)).toBeLessThanOrEqual(2);
   if(measured.retention!==null)expect(measured.retention,JSON.stringify(measured)).toBeGreaterThanOrEqual(.95);
@@ -253,18 +293,15 @@ for(const surface of ['dark','light','multiplayer'] as const)test(`${surface} sh
   await page.goto(surface==='multiplayer'?'/#/game/pool':surface==='dark'?'/#/game/snake':'/#/game/fruit-merge');
   if(surface==='multiplayer')await gameAction(page,'Multiplayer');else await openGameMenu(page);
   const selector=surface==='multiplayer'?'.mp-card':'#game-options',panel=page.locator(selector);
-  await page.evaluate(surface=>{const art=document.createElement('div');art.style.cssText=`position:fixed;inset:0;z-index:${surface==='multiplayer'?59:9999};background:${surface==='light'?'black':'white'}`;document.body.append(art);},surface);
+  await page.evaluate(surface=>{const art=document.createElement('div');art.style.cssText=`position:fixed;inset:0;pointer-events:none;z-index:${surface==='multiplayer'?59:9999};background:${surface==='light'?'black':'white'}`;document.body.append(art);},surface);
   await panel.screenshot({animations:'disabled'});
   const boxes=await panel.evaluate(e=>{const b=e.getBoundingClientRect();return [...e.querySelectorAll('svg')].filter(s=>s.getBoundingClientRect().width>0).map(s=>{const r=s.getBoundingClientRect();return{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(s).color};});});
   expect(boxes.length).toBeGreaterThanOrEqual(surface==='multiplayer'?1:2);
-  const visible=(await panel.screenshot({animations:'disabled'})).toString('base64');
+  const mask=await glyphFillMask(page,panel,`${selector} svg`,true);
   const hide=await page.addStyleTag({content:`${selector} svg{color:transparent!important}`});
   const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>(e as Element).remove());
-  await page.addStyleTag({content:`${selector},${selector} *{background:#000!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}${selector} svg{color:#fff!important}.glass-vector-halo{display:none!important}`});
-  const mask=(await panel.screenshot({animations:'disabled'})).toString('base64');
   const ratios=await glyphContrast(page,shot,mask,boxes,(await panel.boundingBox())!);
   expect(Math.min(...ratios),JSON.stringify(ratios)).toBeGreaterThanOrEqual(4.5);
-  const edges=await glyphContrast(page,visible,mask,boxes,(await panel.boundingBox())!,true);
-  await test.info().attach('visible-edge-contrast',{body:JSON.stringify({surface,ratios,edges}),contentType:'application/json'});
-  expect(Math.min(...edges),JSON.stringify(edges)).toBeGreaterThanOrEqual(4.5);
+  await test.info().attach('plain-icon-core-contrast',{body:JSON.stringify({surface,ratios}),contentType:'application/json'});
+  await expect(panel.locator('.glass-vector-halo')).toHaveCount(0);
 });

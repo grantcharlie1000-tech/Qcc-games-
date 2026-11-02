@@ -65,6 +65,8 @@ test('the episode drawer is a glass sheet with the sheet\'s blurred backdrop',as
  await expect(drawer).toHaveClass(/\bmovies-drawer\b/);
  expect(await drawer.getAttribute('class')).not.toMatch(/\bui-drawer\b/);
  expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(3px)');
+ const controls=await page.locator('.movies-fullscreen,.movies-resume-pill,.movies-connecting').evaluateAll(es=>es.map(e=>({stroke:getComputedStyle(e).webkitTextStrokeWidth,shadow:getComputedStyle(e).textShadow})));
+ expect(controls.length).toBeGreaterThan(0);for(const paint of controls)expect(paint).toEqual({stroke:'0px',shadow:'none'});
 });
 
 test('at 390 px the episode drawer is a bottom sheet inset 8 px from the sides and the bottom',async({page})=>{
@@ -324,9 +326,9 @@ test('Reduce Transparency makes the Up next card opaque with no blur (Chromium o
  expect(await overlay.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).backdropFilter])).toEqual(['rgb(28, 28, 32)','none']);
 });
 
-// Contrast is evaluated at visible glyph edges, including their local outline.
-// Whitespace between letters is intentionally see-through.
-for(const viewport of [DESKTOP,PHONE])test(`white text on the Up next card keeps 4.5:1 over a bright white frame at ${viewport.width} px`,async({page})=>{
+// Sample the backdrop beneath plain foreground cores, with only the text hidden.
+// Whitespace between letters remains see-through.
+for(const viewport of [DESKTOP,PHONE])test(`plain text on the Up next card keeps 4.5:1 over a bright white frame at ${viewport.width} px`,async({page})=>{
  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><body style="margin:0;background:#fff"><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>'}));
  await showUpNext(page,viewport,true);
  const results=await glyphContrast(page,'.movies-next',[
@@ -387,8 +389,8 @@ test('forced colours give the Movies island its pill outline and underline the c
 });
 
 // The episode drawer's text, measured over the frame behind it. The frames are the watch page's dark fixture (a dark ground with bright shapes,
-// so the glass has something to blur) and a white frame. A foreground-only mask identifies each glyph;
-// its visible exterior outline supplies the measured backdrop, as on the Up next card.
+// so the glass has something to blur) and a white frame. A foreground-only mask identifies each glyph core;
+// hiding that foreground supplies the actual backdrop beneath it, as on the Up next card.
 const DARK_FRAME='<!doctype html><html><head><meta charset="utf-8"><title>Provider fixture</title><style>html,body{margin:0;height:100%;overflow:hidden;color:#fff;font:600 28px Arial,sans-serif}body{background:radial-gradient(circle at 18% 28%,#ff6b6b 0 9%,transparent 10%),radial-gradient(circle at 74% 34%,#4cc9f0 0 13%,transparent 14%),radial-gradient(circle at 36% 78%,#ffd166 0 11%,transparent 12%),repeating-linear-gradient(60deg,#0b1320 0 38px,#1d3557 38px 76px),#0b1320}.label{position:absolute;left:6%;top:54%;text-shadow:0 2px 8px #000}button{position:absolute;left:6%;bottom:6%;padding:10px 16px;font:600 16px Arial;background:#fff;color:#000;border:0;border-radius:6px}</style></head><body><div class="label">Provider fixture</div><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>';
 const WHITE_FRAME='<!doctype html><html><head><meta charset="utf-8"><title>Provider fixture</title><style>html,body{margin:0;height:100%;background:#fff;overflow:hidden}button{position:absolute;left:6%;bottom:6%;padding:10px 16px;font:600 16px Arial;background:#fff;color:#000;border:0}</style></head><body><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>';
 const DRAWER_EPISODES=[
@@ -415,28 +417,39 @@ const DRAWER_TITLE=(season:number)=>({id:'tv-90300',kind:'tv',name:'Contrast Ser
  {number:1,name:'Season 1',episodes:season===1?[{number:1,name:'Pilot',overview:'The first episode.',runtime:42,airDate:'2024-01-01'},{number:2,name:'Second Episode',overview:'Still the first season.',runtime:44,airDate:'2024-01-08'}]:[]},
  {number:2,name:'Season 2',episodes:season===2?[{number:1,name:'Second Season Opener',overview:'The second season begins.',runtime:50,airDate:'2025-01-01'}]:[]}
 ]});
-// Measure actual visible glyph outlines, retaining the translucent panel paint.
-// The clear material leaves that whitespace transparent; contrast follows the glyph.
+// Measure the actual plain foreground against the backdrop beneath its cores.
+// The translucent panel and control paint stay present while only text is hidden.
 type DrawerItem={name:string;missing:boolean;colour:string;worst:number;typical:number;count:number};
 // An item whose selector is not on the page comes back missing, with no pixels, so it fails the check rather than dropping out of it.
 async function glyphContrast(page:Page,container:string,items:{name:string;selector:string}[]):Promise<DrawerItem[]>{
  const box=await page.locator(container).boundingBox();
  if(!box)throw new Error(`${container} has no box`);
- const read=await page.locator(container).evaluate((root,items)=>items.map(item=>{
+ const panel=page.locator(container);
+ await panel.screenshot({animations:'disabled'});
+ const read=await panel.evaluate((root,items)=>items.map(item=>{
   const el=root.querySelector<HTMLElement>(item.selector);
-  if(!el)return {name:item.name,selector:item.selector,missing:true,colour:'',rects:[] as number[][]};
-  const range=document.createRange();range.selectNodeContents(el);
-  const rects=[...range.getClientRects()].filter(r=>r.width>0&&r.height>0).map(r=>[r.left,r.top,r.width,r.height]);
-  return {name:item.name,selector:item.selector,missing:false,colour:getComputedStyle(el).color,rects};
+  const rects:{x:number;y:number;w:number;h:number;color:string}[]=[];
+  if(!el)return {name:item.name,selector:item.selector,missing:true,colour:'',rects};
+  const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
+  while(walker.nextNode()){
+   const node=walker.currentNode,parent=node.parentElement!;
+   if(!node.textContent?.trim()||parent.closest('.sr-only')||getComputedStyle(parent).visibility==='hidden')continue;
+   const range=document.createRange();range.selectNodeContents(node);
+   const color=getComputedStyle(parent).color;
+   for(const r of range.getClientRects())if(r.width>0&&r.height>0)rects.push({x:r.left,y:r.top,w:r.width,h:r.height,color});
+  }
+  return {name:item.name,selector:item.selector,missing:false,colour:[...new Set(rects.map(r=>r.color))].join(', '),rects};
  }),items);
  const present=read.filter(item=>!item.missing);
- const panel=page.locator(container);
  const selectors=present.map(item=>`${container} ${item.selector},${container} ${item.selector} *`).join(',');
  const mask=await glyphFillMask(page,panel,selectors);
- const png=(await panel.screenshot({animations:'disabled'})).toString('base64');
+ const hide=await page.addStyleTag({content:`${selectors}{-webkit-text-fill-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}`});
+ let png:string;
+ try{png=(await panel.screenshot({animations:'disabled'})).toString('base64');}
+ finally{await hide.evaluate(element=>(element as Element).remove());}
  const measured:Omit<DrawerItem,'missing'>[]=[];
  for(const item of present){
-  const samples=await glyphContrastSamples(page,png,mask,item.rects.map(([x,y,w,h])=>({x:x-box.x,y:y-box.y,w,h,color:item.colour})),box,true);
+  const samples=await glyphContrastSamples(page,png,mask,item.rects.map(rect=>({...rect,x:rect.x-box.x,y:rect.y-box.y})),box);
   const count=samples.reduce((sum,sample)=>sum+sample.count,0);
   measured.push({name:item.name,colour:item.colour,worst:count?Math.min(...samples.filter(sample=>sample.count>0).map(sample=>sample.worst)):0,typical:count?samples.reduce((sum,sample)=>sum+sample.typical*sample.count,0)/count:0,count});
  }

@@ -7,7 +7,7 @@ const PHONE={width:390,height:844};
 const DESKTOP={width:1440,height:900};
 const BRIGHT_BORDER='rgba(255, 255, 255, 0.55)';
 const WHITE_RING={style:'solid',width:'2px',colour:'rgb(255, 255, 255)',offset:'2px'};
-const GLASS_RING={...WHITE_RING,colour:'rgb(11, 16, 21)'};
+const GLASS_RING_SHADOW='rgb(0, 0, 0) 0px 0px 0px 6px';
 const INNER_RING='rgba(255, 255, 255, 0.7) 0px 0px 0px 1px inset';
 const TITLE='/#/movies/tv-19885/season/1/episode/1/play';
 
@@ -21,7 +21,8 @@ const press=(page:Page)=>page.evaluate(()=>window.dispatchEvent(new PointerEvent
 // Neither the page's ring nor the browser's own shows: the outline is off, whatever the element is focused by.
 async function expectNoOutline(locator:Locator){const o=await outline(locator);expect(o.style==='none'||o.width==='0px',`outline ${JSON.stringify(o)}`).toBe(true);}
 async function expectWhiteRing(locator:Locator){expect(await outline(locator)).toEqual(WHITE_RING);}
-async function expectGlassRing(locator:Locator){expect(await outline(locator)).toEqual(GLASS_RING);}
+// Clear glass keeps both white and black edges as artwork moves underneath it.
+async function expectGlassRing(locator:Locator){await expectWhiteRing(locator);expect(await boxShadow(locator)).toContain(GLASS_RING_SHADOW);}
 // A field has no outline and no outer ring, and keyboard use draws its inner ring on the rounded edge.
 async function expectInnerRing(locator:Locator){await expectNoOutline(locator);expect(await boxShadow(locator)).toContain(INNER_RING);}
 async function expectNoInnerRing(locator:Locator){expect(await boxShadow(locator)).not.toContain(INNER_RING);}

@@ -10,39 +10,58 @@ async function moviesReady(page:Page,route:string){
   await expect(page.locator('.movies-page-head h1')).toHaveText(route.endsWith('/tv')?'TV Shows':route.endsWith('/list')?'My list':'Movies');
 }
 
-async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)'){
+async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)',mixed=false){
   const nav=page.locator(scope);
   await nav.screenshot({animations:'disabled',scale:'device'});
-  // Preserve the real filter, outline and raster path. SVG halo groups have
-  // their own color variable, so only the original currentColor shape varies.
+  // Resolve the original foreground cores on the real filter/raster path,
+  // then remove only that foreground to sample the backdrop underneath it.
   const mask=await glyphFillMask(page,nav,`${scope} :is(${glyphs})`,true);
-  const shot=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
   const boxes=await nav.evaluate((n,glyphs)=>{
     const b=n.getBoundingClientRect();
     return [...n.querySelectorAll(glyphs)].filter(e=>getComputedStyle(e).clip==='auto').map(e=>{
       const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
     }).filter(r=>r.w>0&&r.h>0);
   },glyphs);
-  const samples=await glyphContrastSamples(page,shot,mask,boxes,(await nav.boundingBox())!,true);
+  const hide=await page.addStyleTag({content:`${scope} :is(${glyphs}){color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}`});
+  const shot=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
+  await hide.evaluate(e=>e.parentNode?.removeChild(e));
+  const samples=await glyphContrastSamples(page,shot,mask,boxes,(await nav.boundingBox())!);
   const ratios=samples.map(sample=>sample.worst);
+  if(mixed){
+    // A single plain foreground cannot reach 4.5 at every core when the same
+    // glyph crosses light and dark stripes. Measure the best of the two inks
+    // instead of reinstating an outline or pretending that limitation passes.
+    const bounds=(await nav.boundingBox())!;
+    const dark=await glyphContrast(page,shot,mask,boxes.map(box=>({...box,color:'rgb(11, 16, 21)'})),bounds);
+    const light=await glyphContrast(page,shot,mask,boxes.map(box=>({...box,color:'rgb(255, 255, 255)'})),bounds);
+    const best=ratios.map((_,i)=>Math.max(dark[i],light[i]));
+    await test.info().attach('mixed-content-plain-ink-limit',{body:JSON.stringify({ratios,best}),contentType:'application/json'});
+    expect(best.some(ratio=>ratio<4.5),'The fixture must actually cross both luminance ranges within a glyph').toBe(true);
+    for(let i=0;i<ratios.length;i++){
+      if(best[i]>=4.5)expect(ratios[i],`resolvable glyph ${i}: selected ${ratios[i]}, available ${best[i]}`).toBeGreaterThanOrEqual(4.5);
+      else expect(ratios[i],`crossed glyph ${i} must still contain visible foreground cores`).toBeGreaterThan(1);
+      expect(['rgb(11, 16, 21)','rgb(255, 255, 255)']).toContain(boxes[i].color);
+    }
+    await expect(nav.locator('.glass-vector-halo')).toHaveCount(0);
+    const decoration=await nav.locator(glyphs).evaluateAll(es=>es.map(e=>{const s=getComputedStyle(e);return {stroke:s.webkitTextStrokeWidth,shadow:s.textShadow,filter:s.filter};}));
+    for(const glyph of decoration)expect(glyph).toEqual({stroke:'0px',shadow:'none',filter:'none'});
+  }
   if(samples.some(sample=>sample.diagonalCount))await test.info().attach('diagonal-contour-samples',{body:JSON.stringify({boxes,samples}),contentType:'application/json'});
-  if(ratios.some(ratio=>ratio<4.5)){
-    await test.info().attach('visible-glyphs',{body:Buffer.from(shot,'base64'),contentType:'image/png'});
+  if(!mixed&&ratios.some(ratio=>ratio<4.5)){
+    await test.info().attach('sampled-backdrop',{body:Buffer.from(shot,'base64'),contentType:'image/png'});
     await test.info().attach('foreground-mask',{body:Buffer.from(mask,'base64'),contentType:'image/png'});
     await test.info().attach('glyph-boxes',{body:JSON.stringify({boxes,ratios,glyphs:await nav.locator(glyphs).evaluateAll(es=>es.map(e=>({html:e.outerHTML,stroke:getComputedStyle(e).webkitTextStroke,shadow:getComputedStyle(e).textShadow})))}),contentType:'application/json'});
   }
   return ratios;
 }
 
-test('visible label outlines retain 4.5:1 beside real mixed game art',async({page})=>{
+test('plain label cores retain 4.5:1 beside real mixed game art',async({page})=>{
   await page.goto('/#/collection');
   await page.locator('.app-tabbar .ui-tab').first().focus();
   await page.evaluate(()=>scrollTo(0,180));
   await page.waitForTimeout(200);
-  // Keep the foreground in this shot. Compare exterior pixels beside solid
-  // glyph cores; a shadow hidden underneath the letter cannot satisfy this.
   const ratios=await navigationContrast(page,'.app-navigation','.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)');
-  await test.info().attach('visible-label-edge-contrast',{body:JSON.stringify(ratios),contentType:'application/json'});
+  await test.info().attach('plain-label-core-contrast',{body:JSON.stringify(ratios),contentType:'application/json'});
   expect(ratios).toHaveLength(5);
   expect(Math.min(...ratios),JSON.stringify(ratios)).toBeGreaterThanOrEqual(4.5);
 });
@@ -65,9 +84,10 @@ async function headerContrast(page:Page,width:number){
       canvas.getContext('2d')!.fillRect(0,0,canvas.width,canvas.height);document.body.append(canvas);
     });
     await page.evaluate(()=>dispatchEvent(new Event('resize')));await page.waitForTimeout(100);
-    const ratios=await navigationContrast(page,'.movies-top','svg:not(.ui-brand-tile svg),.glass-label,.ui-label,kbd,.ui-wordmark>span');
+    const mixed=background.startsWith('repeating-');
+    const ratios=await navigationContrast(page,'.movies-top','svg:not(.ui-brand-tile svg),.glass-label,.ui-label,kbd,.ui-wordmark>span',mixed);
     expect(ratios.length).toBeGreaterThan(3);
-    expect(Math.min(...ratios),`${background}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
+    if(!mixed)expect(Math.min(...ratios),`${background}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
     await style.evaluate(e=>(e as Element).remove());
     await page.evaluate(()=>document.getElementById('unknown-header-art')?.remove());
   }
@@ -107,12 +127,12 @@ test('clear glass keyboard focus has both light and dark edges',async({page})=>{
   expect(focus.shadow).toContain('rgb(0, 0, 0)');
 });
 
-test('caption edge strokes keep contrast above unreadable dark media',async({page})=>{
+test('plain captions adapt to dark canvas media without a glyph halo',async({page})=>{
   await page.goto('/#/movies/browse/movie');
   await moviesReady(page,'movies/browse/movie');
   await page.addStyleTag({content:'#content,.movies-top,.movies-main,.movies-footer{visibility:hidden}.movies-view{background:transparent!important}.section-navigation{visibility:visible!important}'});
-  // Canvas/video and tainted images have an unknown colour range. A dark
-  // canvas exercises the glyph-local outline at the left edge of the capital T.
+  // The canvas is external to the game sampler; geometric media sampling
+  // still resolves the uniform dark underlay without decorating the glyphs.
   await page.evaluate(()=>{
     const canvas=document.createElement('canvas');canvas.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:1';
     canvas.getContext('2d')!.fillRect(0,0,canvas.width,canvas.height);document.body.append(canvas);
@@ -156,8 +176,10 @@ test('Games and Movies sheet closes use the same clear material and release it o
     await close.screenshot({animations:'disabled'});
     const boxes=await close.evaluate(e=>{const b=e.getBoundingClientRect(),svg=e.querySelector('svg')!,r=svg.getBoundingClientRect();return [{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(svg).color}];});
     const mask=await glyphFillMask(page,close,'.sheet-close-glass>svg',true);
+    const hide=await page.addStyleTag({content:'.sheet-close-glass>svg{color:transparent!important}'});
     const shot=(await close.screenshot({animations:'disabled'})).toString('base64');
-    expect(Math.min(...await glyphContrast(page,shot,mask,boxes,(await close.boundingBox())!,true))).toBeGreaterThanOrEqual(4.5);
+    await hide.evaluate(e=>e.parentNode?.removeChild(e));
+    expect(Math.min(...await glyphContrast(page,shot,mask,boxes,(await close.boundingBox())!))).toBeGreaterThanOrEqual(4.5);
     await close.click();await expect(dialog).not.toBeVisible();
     await expect(close).not.toHaveAttribute('data-glass');
     await expect(close.locator('.glass-ink')).toHaveCount(0);
@@ -206,10 +228,10 @@ for(const fallback of [false,true])test(`clear glass retains the backdrop instea
     expect(hasBlur,'App and independent CSS reference must have the same diffusion capability').toBe(false);
     test.info().annotations.push({type:'renderer limitation',description:'Linux WebKit omits backdrop blur in both app and independent CSS reference. Physical iOS blur remains unverified.'});
     await reference.close();
-  }else expect(patches.spread).toBeGreaterThanOrEqual(0);
-  // Subpixel diffusion can round to a zero-width 10–90% edge in CSS pixels.
-  // The pixel transmission tests reject any return to a frosted centre.
-  expect(patches.spread).toBeLessThanOrEqual(3);
+  }else expect(patches.spread).toBeGreaterThanOrEqual(6);
+  // Three CSS pixels of Gaussian blur give roughly 7.7px of 10–90% spread.
+  // This rejects both a missing diffusion layer and the old 0.3px recipe.
+  expect(patches.spread).toBeLessThanOrEqual(10);
 });
 
 test('navigation, companion and game controls share the same clear optical recipe',async({page})=>{
@@ -234,7 +256,7 @@ test('navigation, companion and game controls share the same clear optical recip
   }
 });
 
-for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: adaptive glyphs retain 4.5:1 on light, dark and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
+for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: plain ink keeps 4.5:1 on uniform content and measures its mixed-content limit (${fallback?'fallback':'native'})`,async({page})=>{
   test.setTimeout(90000);
   await page.goto(`/${fallback?'?glass=fallback':''}#/${route}`);
   if(route.startsWith('movies'))await moviesReady(page,route);
@@ -244,9 +266,10 @@ for(const fallback of [false,true])for(const route of ['collection','movies/brow
   for(const background of ['#fff','#000','#606060','repeating-linear-gradient(90deg,#faf0d0 0 18px,#102030 18px 36px)']){
     const backdrop=await page.addStyleTag({content:`html,body{background:${background}!important}`});
     await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
-    const ratios=await navigationContrast(page,scope);
+    const mixed=background.startsWith('repeating-');
+    const ratios=await navigationContrast(page,scope,undefined,mixed);
     expect(ratios.length).toBeGreaterThanOrEqual(11);
-    expect(Math.min(...ratios),`${background}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
+    if(!mixed)expect(Math.min(...ratios),`${background}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
     await backdrop.evaluate(e=>(e as Element).remove());
   }
 });

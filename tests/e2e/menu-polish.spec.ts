@@ -38,7 +38,7 @@ for(const id of games)test(`${id} menu uses one value style with complete, uncli
   test.setTimeout(90000);
   await page.setViewportSize({width:320,height:844});await page.goto(`/#/game/${id}`);
   if(id==='blockcraft'){await expect(page.locator('.blockcraft')).toHaveAttribute('data-ready','true',{timeout:60000});await page.getByRole('button',{name:'Play',exact:true}).click();}
-  await expect(page.locator('.game-hud strong').first()).toBeVisible();await openGameMenu(page);
+  await expect(page.locator('.game-hud strong:visible,.game-hud .game-compact-hud').first()).toBeVisible();await openGameMenu(page);
   const styles=await page.locator('.game-metrics strong').evaluateAll(values=>values.map(e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect(),p=e.parentElement!.getBoundingClientRect();return {font:[s.fontSize,s.fontWeight,s.lineHeight,s.color].join('|'),fits:r.left>=p.left-1&&r.right<=p.right+1,value:e.textContent};}));
   expect(new Set(styles.map(s=>s.font)).size).toBe(1);expect(styles.every(s=>s.fits&&s.value?.trim())).toBe(true);
   const box=await page.locator('.game-metrics').evaluate(e=>({width:e.clientWidth,content:e.scrollWidth}));expect(box.content).toBeLessThanOrEqual(box.width+1);

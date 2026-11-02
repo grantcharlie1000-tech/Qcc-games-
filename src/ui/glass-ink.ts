@@ -1,21 +1,13 @@
-import {canvasInk} from './canvas-ink';
+import {canvasInk,syncCanvasInkSource} from './canvas-ink';
+import {backgroundPaint,colorPaint} from './glass-background';
 type RGB=readonly [number,number,number];
 type Paint={rgb:RGB;alpha:number};
 const INK:RGB=[11,16,21];
 const UNKNOWN:RGB[]=[[0,0,0],[255,255,255]];
 const IMAGE_SIZE=256;
-const TILE_SIZE=8;
-const GRID_SIZE=IMAGE_SIZE/TILE_SIZE;
-type ImageRange={mean:Uint8ClampedArray};
+type ImagePixels={data:Uint8ClampedArray};
 const luminance=(rgb:RGB)=>rgb.reduce((sum,v,i)=>sum+(v/255<=.04045?v/3294.6:((v/255+.055)/1.055)**2.4)*[.2126,.7152,.0722][i],0);
 const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,number,number];
-// Bound CSS gradient stops; image tiles and live canvases use local averages
-// matching the softened backdrop rather than the old outline's extrema.
-const bounds=(colors:readonly RGB[]):RGB[]=>colors.length<2?[...colors]:[
-  [0,1,2].map(i=>Math.min(...colors.map(c=>c[i]))) as [number,number,number],
-  [0,1,2].map(i=>Math.max(...colors.map(c=>c[i]))) as [number,number,number]
-];
-
 /** Choose plain foreground ink for the clear material. Blur softens detail;
  * neither the material nor its glyphs gain an opaque contrast outline. */
 export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false):{color:string;halo:string}{
@@ -24,134 +16,122 @@ export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',select
   const dark=luminance(INK);
   const darkContrast=Math.min(...backgrounds.map(bg=>(Math.max(bg,dark)+.05)/(Math.min(bg,dark)+.05)));
   const lightContrast=Math.min(...backgrounds.map(bg=>1.05/(bg+.05)));
-  const color=preferred&&Math.max(darkContrast,lightContrast)<4.5
-    ?preferred==='light'?'#fff':'#0b1015'
-    :darkContrast>=lightContrast?'#0b1015':'#fff';
+  let color=darkContrast>=lightContrast?'#0b1015':'#fff';
+  if(Math.max(darkContrast,lightContrast)<4.5){
+    const unknown=colors.length===2&&colors[0].every(v=>v===0)&&colors[1].every(v=>v===255);
+    if(unknown&&preferred)color=preferred==='light'?'#fff':'#0b1015';
+    else{
+      // Known mixed artwork still has a local luminance. A route preference
+      // must not force white ink over its resolvable bright portions.
+      const mean=backgrounds.reduce((sum,value)=>sum+value,0)/backgrounds.length;
+      color=(mean+.05)/(dark+.05)>=1.05/(mean+.05)?'#0b1015':'#fff';
+    }
+  }
   return {color,halo:'transparent'};
 }
 
 // Cache one small image readback per source, never per sample or scroll frame.
 // Tainted media is an unknown colour range; no network or game-state access.
-const images=new WeakMap<HTMLImageElement,{src:string;pixels:ImageRange|null}>();
-function imagePixels(image:HTMLImageElement):ImageRange|null{
+const images=new WeakMap<HTMLImageElement,{src:string;pixels:ImagePixels|null}>();
+function imagePixels(image:HTMLImageElement):ImagePixels|null{
   if(!image.complete||!image.naturalWidth)return null;
-  let cached=images.get(image);
-  if(!cached||cached.src!==image.currentSrc){
+  const src=image.currentSrc||image.src;let cached=images.get(image);
+  if(!cached||cached.src!==src){
     const canvas=document.createElement('canvas');canvas.width=IMAGE_SIZE;canvas.height=IMAGE_SIZE;
     try{
       const ctx=canvas.getContext('2d',{willReadFrequently:true})!;ctx.drawImage(image,0,0,IMAGE_SIZE,IMAGE_SIZE);
-      const data=ctx.getImageData(0,0,IMAGE_SIZE,IMAGE_SIZE).data;
-      const sums=new Uint32Array(GRID_SIZE*GRID_SIZE*3);
-      let opaque=true;
-      for(let y=0;y<IMAGE_SIZE;y++)for(let x=0;x<IMAGE_SIZE;x++){
-        const pixel=(y*IMAGE_SIZE+x)*4,tile=(Math.floor(y/TILE_SIZE)*GRID_SIZE+Math.floor(x/TILE_SIZE))*3;
-        if(data[pixel+3]<250)opaque=false;
-        for(let i=0;i<3;i++)sums[tile+i]+=data[pixel+i];
-      }
-      const mean=new Uint8ClampedArray(sums.length);for(let i=0;i<sums.length;i++)mean[i]=Math.round(sums[i]/(TILE_SIZE*TILE_SIZE));
-      cached={src:image.currentSrc,pixels:opaque?{mean}:null};
-    }
-    catch{cached={src:image.currentSrc,pixels:null};}
+      cached={src,pixels:{data:ctx.getImageData(0,0,IMAGE_SIZE,IMAGE_SIZE).data}};
+    }catch{cached={src,pixels:null};}
     images.set(image,cached);
   }
   return cached.pixels;
 }
-const paint=(value:string):Paint=>{
-  const values=value.match(/[\d.]+/g)?.map(Number)??[0,0,0,0];
-  return {rgb:values.slice(0,3) as [number,number,number],alpha:values[3]??1};
-};
+const paint=colorPaint;
 const within=(r:DOMRect,x:number,y:number)=>x>=r.left&&x<r.right&&y>=r.top&&y<r.bottom;
-const overlaps=(a:DOMRect,b:DOMRect)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
 
 /** All layout/style reads are cached for one update, before any ink writes. */
 function sampler(){
   const styles=new Map<Element,CSSStyleDeclaration>(),rects=new Map<Element,DOMRect>();
-  const liveCanvas=document.querySelector<HTMLCanvasElement>('#game-stage canvas:not(.ui-glass-live)');
-  const ids=new Map<Element,number>();
-  const id=(e:Element)=>{let value=ids.get(e);if(value===undefined){value=ids.size;ids.set(e,value);}return value;};
+  const visibility=new Map<Element,boolean>();
   const style=(e:Element)=>{let s=styles.get(e);if(!s){s=getComputedStyle(e);styles.set(e,s);}return s;};
   const rect=(e:Element)=>{let r=rects.get(e);if(!r){r=e.getBoundingClientRect();rects.set(e,r);}return r;};
-  const passive=[...document.querySelectorAll('body > *, .movies-view > *, .game-view > *')].filter(e=>{
-    if(e.matches('.game-surface,.section-navigation,svg')||e.closest('.arcade-glass'))return false;
+  const visible=(e:Element):boolean=>{
+    let value=visibility.get(e);if(value!==undefined)return value;
+    const s=style(e);value=s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity)>0&&(!e.parentElement||visible(e.parentElement));
+    visibility.set(e,value);return value;
+  };
+  const source=document.querySelector<HTMLCanvasElement>('#game-stage canvas:not(.ui-glass-gl>canvas)');
+  const liveCanvas=source&&visible(source)?source:null;syncCanvasInkSource(liveCanvas);
+  const excluded=(e:Element)=>!!e.closest('dialog,.arcade-glass,.section-navigation,.ui-tabbar-mini,.game-sheet,[hidden]');
+  const modal=!!document.querySelector('dialog[open]');
+  // Top-layer hit testing hides the page beneath a modal. Include all visible
+  // presentation, including arbitrary fixed body overlays and pointerless art.
+  const candidates=[...document.querySelectorAll(modal?'html,body,body *':'html,body,body > *, .movies-view > *, .game-view > *, img')].filter(e=>{
+    if(excluded(e)||!visible(e))return false;
     const s=style(e);
-    return s.pointerEvents==='none'&&s.visibility==='visible'&&Number(s.opacity)>0&&Number(s.zIndex)>0&&(s.backgroundImage!=='none'||paint(s.backgroundColor).alpha>0);
-  }).sort((a,b)=>Number(style(a).zIndex)-Number(style(b).zIndex));
-
-  function imageRange(image:HTMLImageElement,area:DOMRect):RGB[]{
-    const pixels=imagePixels(image);if(!pixels)return UNKNOWN;
-    const r=rect(image),s=style(image);
-    let w=r.width,h=r.height;
+    return (s.backgroundImage!=='none'||paint(s.backgroundColor).alpha>0||e.matches('img,canvas,video')||parseFloat(s.borderTopWidth)>0)&&rect(e).width>0;
+  });
+  const keys=new Map<Element,Array<{node:Element;z:number}>>();
+  const key=(element:Element)=>{
+    let value=keys.get(element);if(value)return value;
+    value=[];
+    for(let e:Element|null=element;e&&e!==document.documentElement;e=e.parentElement){
+      const s=style(e);
+      if(e===element||s.isolation==='isolate'||s.transform!=='none'||Number(s.opacity)<1||s.zIndex!=='auto'&&s.position!=='static')value.unshift({node:e,z:Number(s.zIndex)||0});
+    }
+    keys.set(element,value);return value;
+  };
+  const order=(a:Element,b:Element)=>{
+    const ak=key(a),bk=key(b);let i=0;while(i<ak.length&&i<bk.length&&ak[i].node===bk[i].node)i++;
+    if(i===ak.length||i===bk.length)return ak.length-bk.length;
+    return ak[i].z-bk[i].z||(ak[i].node.compareDocumentPosition(bk[i].node)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);
+  };
+  function imageAt(image:HTMLImageElement,x:number,y:number):Paint|null{
+    const pixels=imagePixels(image);if(!pixels)return null;
+    const r=rect(image),s=style(image);let w=r.width,h=r.height;
     if(s.objectFit==='cover'||s.objectFit==='contain'){
-      const scale=(s.objectFit==='cover'?Math.max:Math.min)(w/image.naturalWidth,h/image.naturalHeight);
-      w=image.naturalWidth*scale;h=image.naturalHeight*scale;
+      const scale=(s.objectFit==='cover'?Math.max:Math.min)(w/image.naturalWidth,h/image.naturalHeight);w=image.naturalWidth*scale;h=image.naturalHeight*scale;
     }
-    // The shell's images are centred; a custom position is conservatively unknown.
-    if(s.objectPosition!=='50% 50%')return UNKNOWN;
-    const left=r.x+(r.width-w)/2,top=r.y+(r.height-h)/2;
-    const x0=Math.max(0,Math.floor((area.left-left)/w*GRID_SIZE)),x1=Math.min(GRID_SIZE-1,Math.floor((area.right-left)/w*GRID_SIZE));
-    const y0=Math.max(0,Math.floor((area.top-top)/h*GRID_SIZE)),y1=Math.min(GRID_SIZE-1,Math.floor((area.bottom-top)/h*GRID_SIZE));
-    const total:[number,number,number]=[0,0,0];let count=0;
-    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
-      const offset=(y*GRID_SIZE+x)*3;
-      for(let i=0;i<3;i++)total[i]+=pixels.mean[offset+i];count++;
+    const position=s.objectPosition.split(/\s+/),offset=(v:string,size:number)=>v?.endsWith('%')?parseFloat(v)*size/100:parseFloat(v)||0;
+    const left=r.x+offset(position[0],r.width-w),top=r.y+offset(position[1]??'50%',r.height-h);
+    const total=[0,0,0];let alpha=0;
+    for(const [dx,wx] of [[-3,1],[0,2],[3,1]])for(const [dy,wy] of [[-3,1],[0,2],[3,1]]){
+      const px=Math.floor((x+dx-left)/w*IMAGE_SIZE),py=Math.floor((y+dy-top)/h*IMAGE_SIZE);
+      if(px<0||py<0||px>=IMAGE_SIZE||py>=IMAGE_SIZE)continue;
+      const i=(py*IMAGE_SIZE+px)*4,a=pixels.data[i+3]/255,weight=wx*wy/16;
+      alpha+=a*weight;for(let c=0;c<3;c++)total[c]+=pixels.data[i+c]*a*weight;
     }
-    return count?[total.map(n=>Math.round(n/count)) as [number,number,number]]:[];
+    return {alpha,rgb:total.map(v=>alpha?v/alpha:0) as [number,number,number]};
   }
-
-  // Modal hit testing exposes only the top layer. Traverse the visible
-  // underlying presentation geometrically instead, without closing the dialog.
-  const modalUnderlay=document.querySelector('dialog[open]')?[...document.querySelectorAll('#content,#content *,#study-view,#study-view *,.movies-view,.movies-view *,.game-view,.game-view *')].filter(e=>{
-    if(e.closest('dialog,.arcade-glass,.section-navigation,.game-sheet,[hidden]'))return false;
-    const s=style(e);return s.display!=='none'&&s.visibility!=='hidden'&&s.opacity!=='0'&&rect(e).width>0;
-  }):[];
   function sample(glyph:Element):RGB[]{
-    const r=rect(glyph);
-    const live=liveCanvas?canvasInk(r,liveCanvas):null;if(live)return live;
-    const ownerDialog=glyph.closest('dialog');
-    // The edge lens can sample artwork beyond the glyph footprint.
-    const area=new DOMRect(r.x-6,r.y-6,r.width+12,r.height+12);
-    const ranges=new Map<HTMLImageElement,RGB[]>();
-    const stacks=new Set<string>();
-    const samples:RGB[]=[];
-    for(const u of [0,.5,1])for(const v of [0,.5,1]){
-      const x=Math.max(0,Math.min(innerWidth-1,area.x+area.width*u));
-      const y=Math.max(0,Math.min(innerHeight-1,area.y+area.height*v));
-      const stack=(ownerDialog?modalUnderlay.filter(e=>within(rect(e),x,y)).reverse():document.elementsFromPoint(x,y)).filter(e=>!e.closest('.arcade-glass,.section-navigation,.ui-tabbar-mini')&&!e.closest('dialog'));
-      const view=stack.find(e=>e.classList.contains('game-view'));
-      const surface=view?.querySelector('.game-surface');
-      if(surface&&within(rect(surface),x,y))stack.splice(stack.indexOf(view!),0,surface);
-      for(const layer of passive)if(within(rect(layer),x,y))stack.unshift(layer);
-      const key=stack.map(id).join(',');if(stacks.has(key))continue;stacks.add(key);
+    const r=rect(glyph),samples:RGB[]=[];
+    for(const u of [.2,.5,.8])for(const v of [.2,.5,.8]){
+      const x=Math.max(0,Math.min(innerWidth-1,r.x+r.width*u)),y=Math.max(0,Math.min(innerHeight-1,r.y+r.height*v));
+      const stack=new Set((modal?candidates:document.elementsFromPoint(x,y)).filter(e=>!excluded(e)&&visible(e)&&within(rect(e),x,y)));
+      for(const e of candidates)if(within(rect(e),x,y))stack.add(e);
       let result:RGB[]=[[0,0,0]];
-      for(const element of stack.reverse()){
-        // Top-layer hit testing cannot reveal the artwork behind a dialog.
-        // Its translucent paint bounds the unknown backdrop conservatively.
-        if(element instanceof HTMLDialogElement)continue;
-        const s=style(element),color=paint(s.backgroundColor);
-        result=result.map(rgb=>mix(rgb,color.rgb,color.alpha));
-        if(s.backgroundImage.includes('gradient(')){
-          const stops=[...s.backgroundImage.matchAll(/rgba?\(([^)]+)\)/g)].map(m=>paint(m[0]));
-          if(stops.length)result=bounds(stops.flatMap(stop=>result.map(rgb=>mix(rgb,stop.rgb,stop.alpha))));
-        }else if(s.backgroundImage!=='none')result=UNKNOWN;
-        if(element instanceof HTMLCanvasElement||element instanceof HTMLVideoElement)result=UNKNOWN;
-        const image=element instanceof HTMLImageElement?element:element.querySelector<HTMLImageElement>(':scope > img');
-        if(image&&style(image).visibility!=='hidden'&&overlaps(rect(image),area)){
-          let range=ranges.get(image);if(!range){range=imageRange(image,area);ranges.set(image,range);}
-          if(range.length)result=range;
+      const apply=(color:Paint,opacity=1)=>{result=result.map(rgb=>mix(rgb,color.rgb,color.alpha*opacity));};
+      for(const element of [...stack].sort(order)){
+        const s=style(element),box=rect(element),opacity=Number(s.opacity);
+        apply(paint(s.backgroundColor),opacity);
+        if(s.backgroundImage!=='none'){
+          const background=backgroundPaint(s,box,x,y);if(background)apply(background,opacity);else result=UNKNOWN;
         }
-        const box=rect(element);
+        if(element instanceof HTMLImageElement){const color=imageAt(element,x,y);if(color)apply(color,opacity);else result=UNKNOWN;}
+        if(element instanceof HTMLCanvasElement){
+          const colors=canvasInk(new DOMRect(x,y,1,1),element);if(colors)result=colors;else result=UNKNOWN;
+        }else if(element instanceof HTMLVideoElement)result=UNKNOWN;
         for(const [width,color,edge] of [
           [s.borderLeftWidth,s.borderLeftColor,new DOMRect(box.x,box.y,parseFloat(s.borderLeftWidth),box.height)],
           [s.borderRightWidth,s.borderRightColor,new DOMRect(box.right-parseFloat(s.borderRightWidth),box.y,parseFloat(s.borderRightWidth),box.height)],
           [s.borderTopWidth,s.borderTopColor,new DOMRect(box.x,box.y,box.width,parseFloat(s.borderTopWidth))],
           [s.borderBottomWidth,s.borderBottomColor,new DOMRect(box.x,box.bottom-parseFloat(s.borderBottomWidth),box.width,parseFloat(s.borderBottomWidth))]
-        ] as const)if(parseFloat(width)>0&&overlaps(edge,area)){
-          const border=paint(color);result=bounds([...result,...result.map(rgb=>mix(rgb,border.rgb,border.alpha))]);
-        }
+        ] as const)if(parseFloat(width)>0&&within(edge,x,y))apply(paint(color),opacity);
       }
-      samples.push(...result);
+      if(result.length>1&&result.some(color=>color.some((value,c)=>value!==result[0][c])))return UNKNOWN;
+      samples.push(result[0]);
     }
-    return bounds(samples);
+    return samples;
   }
   return {style,rect,sample};
 }
@@ -212,7 +192,7 @@ function update(){
     glyph.querySelector(':scope > .glass-vector-halo')?.remove();
   }
   clearTimeout(liveTimer);
-  if(bindings.size&&!document.hidden&&document.querySelector('#game-stage canvas:not(.ui-glass-live)'))liveTimer=setTimeout(schedule,140);
+  if(bindings.size&&!document.hidden&&document.querySelector('#game-stage canvas:not(.ui-glass-gl>canvas)'))liveTimer=setTimeout(schedule,140);
 }
 const schedule=()=>{if(!frame&&!document.hidden)frame=requestAnimationFrame(update);};
 
@@ -257,7 +237,7 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
       observer?.disconnect();observer=undefined;
       density?.removeEventListener('change',schedule);density=undefined;
       document.removeEventListener('scroll',schedule,true);document.removeEventListener('load',schedule,true);document.removeEventListener('visibilitychange',schedule);document.removeEventListener('transitionend',schedule,true);document.removeEventListener('focusin',schedule,true);document.removeEventListener('focusout',schedule,true);window.removeEventListener('resize',schedule);
-      cancelAnimationFrame(frame);frame=0;clearTimeout(liveTimer);
+      cancelAnimationFrame(frame);frame=0;clearTimeout(liveTimer);syncCanvasInkSource(null);
     }
   };
 }

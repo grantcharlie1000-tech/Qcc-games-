@@ -153,7 +153,9 @@ test('the menu grows from the control that opened it in the island and in-game d
   expect(Math.abs(fromGame.x-expectedX)).toBeLessThanOrEqual(1);
   expect(Math.abs(fromGame.y-expectedY)).toBeLessThanOrEqual(1);
   expect(fromGame.x).toBeGreaterThan(gameBox.width*0.5);
-  expect(fromGame.y).toBeGreaterThan(gameBox.height*0.75);
+  // The floating dock is above the sheet, so the clamped origin is its top edge.
+  expect(gameMenu.y+gameMenu.height).toBeLessThan(gameBox.y);
+  expect(fromGame.y).toBe(0);
 });
 
 test('the settings are still native checkboxes: a click and Space toggle them, and the track is green when on',async({page})=>{

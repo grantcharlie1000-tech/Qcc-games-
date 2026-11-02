@@ -18,7 +18,22 @@ test('a short held pull springs back and upward pulling has resistance',async({p
  await expect.poll(async()=>Math.abs((await sheet.boundingBox())!.y-before.y)).toBeLessThan(1);await expect(sheet).toBeVisible();
  await pull(page,'#game-options>.sheet-grabber',-60);const up=(await sheet.boundingBox())!;expect(before.y-up.y).toBeGreaterThan(0);expect(before.y-up.y).toBeLessThan(30);await page.mouse.up();await expect(sheet).toBeVisible();
 });
-test('a quick downward flick dismisses below the distance threshold',async({page})=>{const sheet=await open(page);expect((await sheet.boundingBox())!.height*.3).toBeGreaterThan(100);await pull(page,'#game-options>.sheet-grabber',100,0,1);await page.mouse.up();await expect(sheet).toBeHidden();});
+test('a quick downward flick dismisses below the distance threshold',async({page,context,browserName})=>{
+ const sheet=await open(page);expect((await sheet.boundingBox())!.height*.3).toBeGreaterThan(100);
+ if(browserName==='chromium'){
+  const r=(await page.locator('#game-options>.sheet-grabber').boundingBox())!,x=r.x+r.width/2,y=r.y+r.height/2;
+  const cdp=await context.newCDPSession(page),timestamp=Date.now()/1000;
+  // Snapshot capture can delay automation's mouseup by hundreds of milliseconds.
+  // Native input timestamps describe a 40 ms flick with a 20 ms release.
+  try{
+   await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y,buttons:0,timestamp});
+   await cdp.send('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',buttons:1,clickCount:1,timestamp:timestamp+.01});
+   await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y:y+100,button:'left',buttons:1,timestamp:timestamp+.05});
+   await cdp.send('Input.dispatchMouseEvent',{type:'mouseReleased',x,y:y+100,button:'left',buttons:0,clickCount:1,timestamp:timestamp+.07});
+  }finally{await cdp.detach();}
+ }else{await pull(page,'#game-options>.sheet-grabber',100,0,1);await page.mouse.up();}
+ await expect(sheet).toBeHidden();
+});
 test('content which is already scrolled keeps its scroll gesture',async({page})=>{
  const sheet=await open(page);await sheet.evaluate(e=>{e.style.maxHeight='360px';e.scrollTop=100;});
  await expect.poll(()=>sheet.evaluate(e=>e.scrollTop)).toBeGreaterThan(0);

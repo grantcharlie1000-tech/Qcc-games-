@@ -295,7 +295,7 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.app-navigation [data-glass=frost]')).toHaveCount(2);
     await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
     await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
-    for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveCSS('backdrop-filter',/blur\(0\.3px\)/);
+    for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveCSS('backdrop-filter',/blur\(3px\)/);
   });
 
   test('Movies preserves its separate fallback companion through a re-render',async({page})=>{

@@ -25,16 +25,18 @@ for(const font of ['system','Arial'])for(const scroll of [150,170])test(`pressed
     await expect(name==='Study'?bar:button).toHaveAttribute('data-pressing');
     await expect.poll(()=>nav.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
     const bounds=(await nav.boundingBox())!;
+    const mask=await glyphFillMask(page,nav,'.app-navigation .ui-tab>:is(svg,span):not(.ui-glass-lens,.ui-glass-glow)',true);
     const boxes=await nav.evaluate(n=>{
       const b=n.getBoundingClientRect();
       return [...n.querySelectorAll('.ui-tab > .ui-icon,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
         const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
       });
     });
-    const mask=await glyphFillMask(page,nav,'.app-navigation .ui-tab>:is(svg,span):not(.ui-glass-lens,.ui-glass-glow)',true);
+    const hide=await page.addStyleTag({content:'.app-navigation .ui-tab>:is(svg,span):not(.ui-glass-lens,.ui-glass-glow){color:transparent!important;-webkit-text-fill-color:transparent!important}'});
     const shot=(await nav.screenshot({animations:'disabled'})).toString('base64');
+    await hide.evaluate(e=>e.parentNode?.removeChild(e));
     await page.mouse.move(0,0);await page.mouse.up();
-    const ratios=await glyphContrast(page,shot,mask,boxes,bounds,true);
+    const ratios=await glyphContrast(page,shot,mask,boxes,bounds);
     expect(Math.min(...ratios),`${name}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
   }
 });
@@ -130,7 +132,12 @@ for(const width of [390,1366]){
     const surface=(await page.locator('.game-surface').boundingBox())!;
     for(const b of boxes){expect(b.y).toBeGreaterThanOrEqual(surface.y);expect(b.bottom).toBeLessThanOrEqual(surface.y+surface.height);}
     const drop=(await page.locator('.fm-board').boundingBox())!;await expect(page.locator('.fm-drop')).toHaveCount(0);
-    expect(drop.y+drop.height).toBeLessThanOrEqual(boxes[0].y-8);
+    for(const b of boxes){
+      // Desktop boards can sit beside the leading control cluster; require
+      // actual rectangular clearance rather than a fixed vertical ordering.
+      const clearance=Math.max(drop.x-b.right,b.x-drop.x-drop.width,drop.y-b.bottom,b.y-drop.y-drop.height);
+      expect(clearance).toBeGreaterThanOrEqual(8);
+    }
     await expect(page.locator('.game-view')).toHaveAttribute('data-glass-tone','light');
     for(const object of await objects.all())await expect(object).toHaveAttribute('data-glass',browserName==='chromium'?'backdrop':'frost');
     await expect(dock).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
@@ -256,7 +263,8 @@ for(const id of GAME_IDS){
     if(id==='blockcraft')await page.getByRole('button',{name:'Play',exact:true}).click();
     const dock=page.locator('.game-dock');
     await expect(dock.locator('.game-hud strong,.game-compact-hud').filter({visible:true}).first()).toBeVisible();
-    await expect(dock.locator(`.game-glass[data-glass=${browserName==='chromium'&&!forcedFallback?'backdrop':'frost'}]`)).toHaveCount(3);
+    const optics=dock.locator(`:scope > .game-glass[data-glass=${browserName==='chromium'&&!forcedFallback?'backdrop':'frost'}]`);
+    await expect(optics).toHaveCount(id==='water-sort'?5:3);
     if(id==='ball-run'){
       await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+100));
       await page.locator('.br-play').click();await page.clock.runFor(600);
@@ -265,8 +273,12 @@ for(const id of GAME_IDS){
       // A cave or night sky may be entirely dark. Clear glass must still
       // support its dark glyphs on that darkest background.
       await page.addStyleTag({content:'.blockcraft canvas{opacity:0!important}.blockcraft{background:#000!important}'});
+      await page.evaluate(()=>dispatchEvent(new Event('resize')));
+      await expect.poll(()=>page.locator('.game-hud strong').evaluate(e=>getComputedStyle(e).color)).toBe('rgb(255, 255, 255)');
     }
     await dock.screenshot({animations:'disabled'});
+    const glyphs='.game-dock :is(.game-hud small,.game-hud strong,.game-compact-hud,.ui-tab > svg,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow))';
+    const mask=await glyphFillMask(page,dock,glyphs,true);
     const boxes=await dock.evaluate(el=>{
       const d=el.getBoundingClientRect();
       return [...el.querySelectorAll('.game-hud small,.game-hud strong,.game-compact-hud,.ui-tab > svg,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
@@ -274,12 +286,10 @@ for(const id of GAME_IDS){
         return {x:(r.x-d.x),y:(r.y-d.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
       }).filter(r=>r.w>0&&r.h>0);
     });
+    const hide=await page.addStyleTag({content:`${glyphs}{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important}`});
     const shot=(await dock.screenshot({animations:'disabled'})).toString('base64');
-    // Persistent styles follow refreshed HUD nodes; retain filter geometry so
-    // the mask uses the same raster grid as the visible screenshot.
-    await page.addStyleTag({content:'.game-dock,.game-dock *{background:#000!important;color:#fff!important;-webkit-text-fill-color:#fff!important;text-shadow:none!important;-webkit-text-stroke:0!important;box-shadow:none!important;border-color:transparent!important}.game-dock .glass-vector-halo{visibility:hidden!important}'});
-    const mask=(await dock.screenshot({animations:'disabled'})).toString('base64');
-    const ratios=await glyphContrast(page,shot,mask,boxes,(await dock.boundingBox())!,true);
+    await hide.evaluate(e=>e.parentNode?.removeChild(e));
+    const ratios=await glyphContrast(page,shot,mask,boxes,(await dock.boundingBox())!);
     expect(Math.min(...ratios),`${id}: ${ratios.map(r=>r.toFixed(2)).join(', ')}`).toBeGreaterThanOrEqual(4.5);
   });
 }
