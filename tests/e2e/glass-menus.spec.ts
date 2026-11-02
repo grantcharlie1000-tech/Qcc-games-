@@ -271,7 +271,8 @@ test('forced colours give the sheet the system Canvas, CanvasText and border',as
   const system=await page.evaluate(()=>{
     const probe=document.createElement('p');
     probe.style.background='Canvas';probe.style.color='CanvasText';probe.style.borderTop='2px solid CanvasText';
-    document.body.append(probe);
+    // System colours follow color-scheme, so ask from inside the sheet itself.
+    document.querySelector('#menu')!.append(probe);
     const style=getComputedStyle(probe);
     const result={background:style.backgroundColor,color:style.color,border:style.borderTopColor};
     probe.remove();
@@ -417,7 +418,7 @@ test('forced colours give the sheet controls and fields a 2 px ButtonText border
   await page.setViewportSize(PHONE);
   await page.goto('/');
   await openMenuFromIsland(page);
-  const system=await page.evaluate(()=>{const probe=document.createElement('p');probe.style.borderTop='2px solid ButtonText';document.body.append(probe);const colour=getComputedStyle(probe).borderTopColor;probe.remove();return colour;});
+  const system=await page.evaluate(()=>{const probe=document.createElement('p');probe.style.borderTop='2px solid ButtonText';document.querySelector('#menu')!.append(probe);const colour=getComputedStyle(probe).borderTopColor;probe.remove();return colour;});
   for(const control of [page.locator('#open-accounts'),page.locator('#search'),page.getByRole('button',{name:'Close menu',exact:true})]){
     expect(await control.evaluate(el=>{const style=getComputedStyle(el);return [style.borderTopStyle,style.borderTopWidth,style.borderTopColor];})).toEqual(['solid','2px',system]);
   }

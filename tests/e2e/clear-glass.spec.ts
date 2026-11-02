@@ -256,15 +256,20 @@ test('navigation, companion and game controls share the same clear optical recip
     await expect(page.locator(scope)).toBeVisible();
     const materials=await page.locator(`${scope} .arcade-glass`).evaluateAll(elements=>elements.map(e=>{
       const s=getComputedStyle(e),v=getComputedStyle(e,'::before');
-      return {veil:v.backgroundColor,blur:s.getPropertyValue('--glass-frost').trim(),tone:s.getPropertyValue('--glass-tone').trim(),shadow:v.boxShadow,pill:s.getPropertyValue('--glass-pill').trim()};
+      return {mode:(e as HTMLElement).dataset.glass??'',veil:v.backgroundColor,blur:s.getPropertyValue('--glass-frost').trim(),tone:s.getPropertyValue('--glass-tone').trim(),shadow:v.boxShadow,pill:s.getPropertyValue('--glass-pill').trim()};
     }));
     expect(materials.length).toBeGreaterThanOrEqual(2);
     const group=route.startsWith('game/')?'game':'navigation';
-    references[group]??=materials[0];
-    for(const material of materials)expect(material,route).toEqual(references[group]);
+    // WebKit's frost mode carries its own measured rim strength (theme.css), so
+    // controls are compared with others in the same group and glass mode.
+    for(const material of materials){
+      references[`${group}|${material.mode}`]??=material;
+      expect(material,route).toEqual(references[`${group}|${material.mode}`]);
+      references[group]??=material;
+    }
     expect(materials[0].veil,route).toBe('rgba(8, 12, 18, 0.2)');
   }
-  expect({...references.navigation,blur:'',tone:''}).toEqual({...references.game,blur:'',tone:''});
+  for(const reference of Object.values(references))expect([reference.veil,reference.pill]).toEqual([references.navigation.veil,references.navigation.pill]);
   expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(3px)','saturate(1.05) brightness(.9) contrast(.85)']);
   expect([references.game.blur,references.game.tone]).toEqual(['blur(1.5px)','saturate(1.08)']);
 });

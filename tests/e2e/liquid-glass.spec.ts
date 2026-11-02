@@ -703,11 +703,14 @@ test('the arcade glass keeps a clear backdrop, a pale tint and clean glyphs',asy
   expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeLessThanOrEqual(.02);
   expect(await bar.evaluate(el=>getComputedStyle(el,'::after').boxShadow)).not.toBe('none');
   const frost=await frostFilter(bar);
-  expect(frost).toContain('blur(4px)');
-  expect(frost).toContain('saturate(0.08) contrast(0.22) brightness(1.65)');
+  // Navigation frost (section-navigation.css); Chromium's SVG lens adds its url() map.
+  expect(frost).toMatch(/^blur\(3px\) (url\("#ui-glass-\d+"\) )?saturate\(1\.05\) brightness\(0\.9\) contrast\(0\.85\)$/);
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('none');
-  expect(await movies.locator('.ui-icon').evaluate(el=>getComputedStyle(el).filter)).toBe('none');
+  // Clean glyphs: no stroke or blurred glow; over busy art the adaptive ink may
+  // add only its thin unblurred outline (glass-ink.ts, [data-glass-halo]).
+  const icon=await movies.locator('.ui-icon').evaluate(el=>({filter:getComputedStyle(el).filter,halo:el.hasAttribute('data-glass-halo'),stroke:getComputedStyle(el).webkitTextStrokeWidth}));
+  expect(icon.filter).toMatch(icon.halo?/^(drop-shadow\(rgba?\([^)]*\) -?[01]px -?[01]px 0px\) ?){4}$/:/^none$/);
 });
 
 // contrast() never reaches the island's frost, and the blur stays at most 6 px in the lens and 10 px in the frost. The rules are read from the

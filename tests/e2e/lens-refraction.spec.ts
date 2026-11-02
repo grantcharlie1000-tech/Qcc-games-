@@ -1,3 +1,4 @@
+import {expectPlainOrOutlinedIcon} from '../glass-contrast';
 import {test,expect} from '../fixtures';
 import type {Locator,Page} from '@playwright/test';
 
@@ -252,7 +253,7 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.app-tabbar')).toHaveAttribute('data-glass','frost');
     const menu=page.locator('.app-menu');await expect(menu).toHaveAttribute('data-glass','frost');
     await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
-    await expect(menu.locator('.ui-icon')).toHaveCSS('filter','none');
+    await expectPlainOrOutlinedIcon(menu.locator('.ui-icon'));
     await menu.click();await expect(page.locator('#menu')).toBeVisible();
   });
 

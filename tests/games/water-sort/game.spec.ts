@@ -59,7 +59,9 @@ test('pending animation freezes under pause and commits only once on resume',asy
   await expect(root(page)).toHaveAttribute('data-phase','paused');
   await page.clock.runFor(1000);
   expect(await readBoard(page)).toEqual(initial);
-  await expect(page.getByRole('button',{name:'Hint',exact:true})).toBeDisabled();
+  // Paused means the game menu is open and the page beneath, including the dock's
+  // Hint, is modal-inert (out of the accessibility tree), so address it directly.
+  await expect(page.locator('button[data-action="hint"]')).toBeDisabled();
   await resumeGame(page);
   await page.clock.runFor(1500);
   await expect(root(page)).toHaveAttribute('data-moves','1');

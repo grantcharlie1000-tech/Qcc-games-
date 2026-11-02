@@ -30,12 +30,19 @@ test('bars, buttons and sheets share the one clear fill over their live backdrop
     else if(route==='study')await page.locator('#study-view [data-reading-choices]').first().click();
     else await page.locator(`${scope} .section-menu`).click();
     const dialog=page.locator('dialog[open]');await expect(dialog).toBeVisible();
-    const material=await dialog.evaluate(e=>({fill:getComputedStyle(e).backgroundColor,filter:getComputedStyle(e).backdropFilter}));
+    const material=await dialog.evaluate(e=>{
+      const s=getComputedStyle(e),gl=e.querySelector(':scope>.ui-glass-gl');
+      // Over a live WebGL game the sheet's fill is carried by its WebGL lens tint.
+      return e.matches('[data-glass-mode=webgl]')&&gl
+        ?{fill:getComputedStyle(gl,'::after').backgroundColor,filter:s.backdropFilter,lensOnly:!e.hasAttribute('data-glass-partial')}
+        :{fill:s.backgroundColor,filter:s.backdropFilter,lensOnly:false};
+    });
     // Study's reading-choices dialog keeps its article theme (native-glass.css):
     // a pale 13% fill over the plain --glass-clear-blur. Arcade sheets use the
     // clear fill with --glass-clear-blur and only a slight saturation.
     expect(material.fill,`${route}: sheet`).toBe(route==='study'?'rgba(255, 255, 255, 0.13)':CLEAR_FILL);
-    expect(material.filter,route).toBe(route==='study'?'blur(1.5px)':'blur(1.5px) saturate(1.08)');
+    // A fully backed WebGL lens replaces the CSS blur with its shader.
+    expect(material.filter,route).toBe(route==='study'?'blur(1.5px)':material.lensOnly?'none':'blur(1.5px) saturate(1.08)');
     await page.keyboard.press('Escape');
   }
 });
@@ -265,9 +272,22 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} pre
   // transfer the material predicts for these sources: 0.827 through the fill
   // (saturate 1.08 is negligible here), 0.640 through navigation's
   // saturate(1.05) brightness(.9) contrast(.85) tone before the same fill.
-  const tone=surface==='bar'||surface==='menu'?{saturate:1.05,brightness:.9,contrast:.85}:{saturate:1.08,brightness:1,contrast:1};
+  // Some Linux WebKit builds paint no backdrop filters at all (see clear-glass);
+  // there only the fill applies. That is checked on an independent CSS page.
+  const filtered=await backdropFiltersRender(page);
+  if(!filtered)test.info().annotations.push({type:'renderer limitation',description:'This browser build paints no backdrop filters; only the fill transfer is measured.'});
+  const tone=filtered&&(surface==='bar'||surface==='menu')?{saturate:1.05,brightness:.9,contrast:.85}:{saturate:1.08,brightness:1,contrast:1};
   if(measured.retention!==null)expect(Math.abs(measured.retention-expectedRetention(['#152431','#f8e6c0'],tone)),JSON.stringify(measured)).toBeLessThanOrEqual(.03);
 });
+
+async function backdropFiltersRender(page:Page){
+  const reference=await page.context().newPage();
+  try{
+    await reference.setContent('<body style="margin:0;background:#fff"><div style="position:fixed;inset:0;backdrop-filter:brightness(.5);-webkit-backdrop-filter:brightness(.5)"></div></body>');
+    const png=(await reference.screenshot({clip:{x:10,y:10,width:4,height:4}})).toString('base64');
+    return await reference.evaluate(async png=>{const i=new Image();i.src='data:image/png;base64,'+png;await i.decode();const c=document.createElement('canvas');c.width=i.width;c.height=i.height;const x=c.getContext('2d')!;x.drawImage(i,0,0);return x.getImageData(1,1,1,1).data[0]<200;},png);
+  }finally{await reference.close();}
+}
 
 function expectedRetention(colors:string[],tone:{saturate:number;brightness:number;contrast:number}){
   const lightness=(rgb:number[])=>{

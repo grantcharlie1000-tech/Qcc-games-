@@ -109,3 +109,14 @@ return page.evaluate(async({shot,mask,boxes,bounds,visibleEdges})=>{
       });
     },{shot,mask,boxes,bounds,visibleEdges});
 }
+
+/** An icon carries no blur or glow filter. Where adaptive ink flags busy art
+ * ([data-glass-halo]) it may carry only its thin outline: four unblurred 1px
+ * opposite-tone drop-shadows (src/theme.css). */
+export async function expectPlainOrOutlinedIcon(icon:Locator):Promise<void>{
+  await expect.poll(()=>icon.evaluate(e=>{
+    const filter=getComputedStyle(e).filter;
+    if(!e.hasAttribute('data-glass-halo'))return filter==='none';
+    return /^(drop-shadow\(rgba?\([^)]*\) -?[01]px -?[01]px 0px\) ?){4}$/.test(filter);
+  })).toBe(true);
+}

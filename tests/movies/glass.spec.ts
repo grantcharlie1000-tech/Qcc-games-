@@ -153,8 +153,9 @@ test('forced colours give the drawer the system Canvas, CanvasText and a 2 px bo
 
 test('the idle season pill is a translucent fill, and only the sheet has a backdrop filter',async({page})=>{
  const drawer=await openDrawer(page,PHONE);
- // The sheet's own lens layer is the one child that refracts its backdrop; no pill, row or label has a filter.
- expect(await drawer.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none'&&!child.matches('.ui-glass-lens')).length)).toBe(0);
+ // The sheet's own lens layer, and its clear-glass close control (frost mode in WebKit filters the button itself),
+ // are the only children that refract their backdrop; no pill, row or label has a filter.
+ expect(await drawer.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none'&&!child.matches('.ui-glass-lens,.sheet-close-glass')).map(child=>child.className))).toEqual([]);
  const pill=drawer.getByRole('button',{name:'Season 2',exact:true});
  const fill=await pill.evaluate(el=>getComputedStyle(el).backgroundColor);
  const alpha=parseFloat(/rgba\(\d+, \d+, \d+, ([\d.]+)\)/.exec(fill)?.[1]??'1');
