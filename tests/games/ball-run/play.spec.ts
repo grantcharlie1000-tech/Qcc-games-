@@ -174,10 +174,17 @@ test('a fresh profile opens Medium setup; the slider re-themes it; help explains
   await restartFromMenu(page);
   await expect(slider).toBeVisible();await expect(root).toHaveAttribute('data-difficulty','hard');
   await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('permanently');await page.getByRole('button',{name:'Let’s play'}).click();
+  // Read the launch in the trusted click, after begin() and before the next simulation frame.
+  // Async focus/HUD assertions can otherwise consume enough real time for the ball to accelerate.
+  await play.evaluate(button=>button.addEventListener('click',()=>{
+    const root=button.closest<HTMLElement>('.ball-run')!;
+    button.setAttribute('data-test-start',JSON.stringify({speed:Number(root.dataset.speed),distance:Number(root.dataset.distance)}));
+  },{once:true}));
   await play.click();await expect(root).toHaveAttribute('data-phase','running');await expect(root.locator('.br-setup')).toBeHidden();
   await expect(root.locator('canvas')).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','0');
   await expect(root.locator('.br-mode-label')).toHaveText('HARD MODE');await expect(root.locator('.br-target-label')).toHaveText('NEW BEST');
-  const speed=await data(page,'speed');expect(speed).toBeCloseTo(CONFIG.hard.startSpeed,1);
+  const {speed,distance}=JSON.parse((await play.getAttribute('data-test-start'))!) as {speed:number;distance:number};
+  expect(distance).toBe(0);expect(speed).toBeCloseTo(CONFIG.hard.startSpeed,1);
   await waitDistance(page,15);expect(await data(page,'speed')).toBeGreaterThan(speed);await expect(root.locator('.br-score')).not.toHaveText('0');
   expect(errors).toEqual([]);
 });

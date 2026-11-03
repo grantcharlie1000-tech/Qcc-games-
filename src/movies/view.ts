@@ -104,6 +104,7 @@ export class MoviesView {
  private failed=false;
  private loadError='';
  private query='';
+ private resultGridKey='';
  private focusSearch=false;
  private homeNavigation=false;
  private kind:MovieKind='all';
@@ -500,7 +501,7 @@ export class MoviesView {
  }
  private shelf(id:string,name:string,titles:Title[],subtitle=''){return this.rail(id,name,titles.map(t=>this.card(t)).join(''),titles.length,subtitle);}
  private footer(){return `<footer class="movies-footer ui-footer" aria-label="Credits and privacy"><div class="ui-footer-brand"><span class="ui-brand-tile">${mauriMark}</span><strong>Mauri Study Notes</strong><span>Movies &amp; TV</span></div><nav class="ui-footer-links" aria-label="Movies and TV sections"><a href="#/movies">Home</a><a href="#/movies/browse/movie">Movies</a><a href="#/movies/browse/tv">TV Shows</a><a href="#/movies/list">My list</a></nav><strong>Your screen. Your privacy.</strong><p>My list and playback progress stay on this device. Full-catalog searches go through QCC’s metadata service to TMDB. Real posters and backdrops load from TMDB; its image server receives ordinary image requests.</p><p>${this.catalog.source==='tmdb'?`${this.catalog.attributionLogo?`<img class="movies-tmdb" src="${escape(asset(this.catalog.attributionLogo))}" alt="TMDB" width="100" height="40">`:''}This product uses the TMDB API but is not endorsed or certified by TMDB.`:'Starter selection · Real title artwork from TMDB. Original summaries. Ratings are not supplied. This is not a live trending feed.'}</p>${this.catalog.updated?`<p>Catalog snapshot: ${escape(this.catalog.updated)}</p>`:''}<p>Streaming is provided by an external service. QCC does not verify its availability or distribution rights. Movies are excluded from game offline downloads.</p><button data-action="clear" class="ui-btn secondary small">Clear my list &amp; watch history</button><p class="movies-storage" role="status">${this.storage.durable?'Saved only on this device.':'Browser storage is unavailable. Changes last only for this visit.'}</p></footer>`;}
- private browse(){const {head,body}=this.browseParts();return `${head}<div class="movies-browse">${this.filterBar()}<div id="movies-results">${body}</div>${this.footer()}</div>`;}
+ private browse(){const {head,body,gridKey}=this.browseParts();this.resultGridKey=gridKey;return `${head}<div class="movies-browse">${this.filterBar()}<div id="movies-results">${body}</div>${this.footer()}</div>`;}
  // The title block and the results of a browse page. A redraw in place replaces these two and leaves the rest of the page alone.
  private browseParts(){
   const list=this.kind==='list';
@@ -517,17 +518,17 @@ export class MoviesView {
   // A section and My list open with their title block. Home keeps its hero, and a search on Home keeps its own heading.
   const head=this.kind==='all'?(simple?'<h1 class="movies-page-title" tabindex="-1">Find your next story</h1>':this.hero()):this.pageHead(this.kind,list?available.length:undefined);
   const body=simple?this.results(filtered):this.kind==='movie'||this.kind==='tv'?this.sectionContent(this.kind):this.homeContent();
-  return {head,body};
+  return {head,body,gridKey:JSON.stringify(filtered)};
  }
  // Redraws a browse page's title block and results in place. The header, the island and the filter bar stay as they are, so the search
  // field keeps its node, its focus and its caret while the reader types.
  private refreshBrowse(){
   const header=this.root.querySelector('.movies-top'),browse=this.root.querySelector<HTMLElement>('.movies-browse'),results=browse?.querySelector<HTMLElement>('#movies-results');
   if(!header||!browse||!results){this.render();return;}
-  const scrolls=this.railScrolls(),{head,body}=this.browseParts();
+  const scrolls=this.railScrolls(),{head,body,gridKey}=this.browseParts();
   for(const node of [...this.root.children])if(node!==header&&node!==browse&&node!==this.navigation.root)node.remove();
   browse.insertAdjacentHTML('beforebegin',head);
-  this.patchResults(results,body);
+  this.patchResults(results,body,gridKey);
   this.refreshGenres();this.restoreRailScrolls(scrolls);markImages(this.root);this.footerAttribution();updateRails(this.root);
  }
  // The genre list follows the titles the page has loaded. The select keeps its node and the reader's choice, and only its options change.
@@ -540,22 +541,26 @@ export class MoviesView {
   select.replaceChildren(...next.options);select.value=this.genre;
  }
  // Replaces the results of a browse page. The count line and the status line keep their nodes when the redraw has one of the same kind,
- // so their live regions stay in the page and announce the new text. The grid, the empty state and the pagination are replaced around them.
- private patchResults(results:HTMLElement,markup:string){
+ // so their live regions stay in the page and announce the new text. Unchanged title data keeps the grid too, so a status response cannot
+ // remove a result link between pointerdown and click. The empty state, pagination and changed results are replaced around them.
+ private patchResults(results:HTMLElement,markup:string,gridKey:string){
   const incoming=document.createElement('template');incoming.innerHTML=markup;
   const fresh=[...incoming.content.children] as HTMLElement[];
   const copyOf=(cls:string)=>fresh.find(node=>node.classList.contains(cls));
   const keep=(cls:string)=>{const copy=copyOf(cls),old=results.querySelector<HTMLElement>(':scope > .'+cls);if(!copy||!old)return undefined;old.innerHTML=copy.innerHTML;return old;};
   const count=keep('movies-result-count'),status=keep('movies-catalog-status');
   const countCopy=copyOf('movies-result-count'),statusCopy=copyOf('movies-catalog-status');
-  for(const node of [...results.children])if(node!==count&&node!==status)node.remove();
-  const split=statusCopy?fresh.indexOf(statusCopy):fresh.length;
-  const before=fresh.slice(0,split).filter(node=>node!==countCopy),after=statusCopy?fresh.slice(split+1):[];
-  if(countCopy&&!count)results.prepend(countCopy);
-  for(const node of before)results.insertBefore(node,status??null);
-  if(statusCopy&&!status)results.append(statusCopy);
-  const tail=status??statusCopy;
-  if(tail&&after.length)tail.after(...after);
+  const gridCopy=copyOf('movies-results-grid'),grid=gridCopy&&this.resultGridKey===gridKey?results.querySelector<HTMLElement>(':scope > .movies-results-grid'):undefined;
+  this.resultGridKey=gridKey;
+  for(const node of [...results.children])if(node!==count&&node!==status&&node!==grid)node.remove();
+  // New siblings take the incoming order around retained nodes. The retained grid
+  // itself never moves, so a pending pointer activation stays attached to its link.
+  let next:HTMLElement|null=null;
+  for(const copy of [...fresh].reverse()){
+   const node=(copy===countCopy?count:copy===statusCopy?status:copy===gridCopy?grid:undefined)??copy;
+   if(node===copy)results.insertBefore(node,next);
+   next=node;
+  }
  }
  // A rail keeps its scroll position through a redraw. A rail is found again by its name, which is unique on the page.
  private railScrolls(){return new Map([...this.root.querySelectorAll<HTMLElement>('[data-rail]')].map(rail=>[rail.dataset.rail??'',rail.querySelector<HTMLElement>('.ui-rail-row')?.scrollLeft??0] as const));}
