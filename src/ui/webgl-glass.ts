@@ -89,7 +89,7 @@ interface Lens{
 }
 // opaqueKey/opaque: a rare probe (only when the crop geometry changes) of whether the
 // source covers the crop with opaque pixels; transparent areas keep the CSS blur.
-interface Group{lenses:Set<Lens>;off:()=>void;lost:boolean;opaqueKey:string;opaque:boolean}
+interface Group{lenses:Set<Lens>;off:()=>void;lost:boolean;opaqueKey:string;opaque:boolean;opaqueSince:number;opaqueChecked:boolean}
 interface Plan{lens:Lens;x:number;y:number;w:number;h:number;outW:number;outH:number;density:number;preset:LensPreset;slot:number;inside:boolean}
 interface Gpu{
   canvas:HTMLCanvasElement;gl:WebGL2RenderingContext;program:WebGLProgram;vao:WebGLVertexArrayObject;
@@ -194,13 +194,21 @@ function radiusOf(surface:HTMLElement,width:number,height:number):number{
   return value.endsWith('%')?n*Math.min(width,height)/100:n;
 }
 
+/** Moving crops conservatively retain the CSS backdrop. Read opacity once
+ * after geometry has settled, rather than synchronously on each press frame. */
+function opacityProbeDue(group:Group,key:string,now:number):boolean{
+  if(group.opaqueKey!==key){group.opaqueKey=key;group.opaque=false;group.opaqueSince=now;group.opaqueChecked=false;}
+  if(group.opaqueChecked||now-group.opaqueSince<120)return false;
+  group.opaqueChecked=true;group.opaque=true;
+  return true;
+}
+
 /** A small current-frame copy is the fallback, not WebKit's canvas backdrop.
  * Reduced motion omits bending. No GPU (or context loss) uses the same path.
  * Only visible control crops are copied, never a full-screen overlay. */
 function renderCanvas(source:HTMLCanvasElement,group:Group,plans:Plan[],back:DOMRect){
   const key=`canvas:${source.width},${source.height}:`+plans.map(p=>`${p.x},${p.y},${p.w},${p.h}`).join(';');
-  const probe=group.opaqueKey!==key;
-  if(probe){group.opaqueKey=key;group.opaque=true;}
+  const probe=opacityProbeDue(group,key,performance.now());
   for(const {lens,x,y,w,h,inside} of plans){
     if(!lens.ctx){setActive(lens,false);continue;}
     // One pixel per CSS pixel is enough for the unbent fallback.
@@ -276,9 +284,8 @@ function render(source:HTMLCanvasElement,group:Group){
     stagingCtx.clearRect(0,0,stW,stH);
     stagingCtx.drawImage(source,cx0*kx,cy0*ky,(cx1-cx0)*kx,(cy1-cy0)*ky,0,0,stW,stH);
     const key=`${cx0},${cy0},${cx1},${cy1},${stW},${stH}`;
-    if(group.opaqueKey!==key){
-      // Not per frame: a one-off probe when the crop moves or resizes.
-      group.opaqueKey=key;
+    if(opacityProbeDue(group,key,started)){
+      // One read after a stable crop, never on every frame of a press/drag.
       const probe=stagingCtx.getImageData(0,0,stW,stH).data;let opaque=true;
       for(let i=3;i<probe.length;i+=4*7)if(probe[i]<250){opaque=false;break;}
       group.opaque=opaque;
@@ -358,7 +365,7 @@ function join(lens:Lens,source:HTMLCanvasElement|null){
     const restored=()=>{const g=groups.get(current);if(g){g.lost=false;schedule(current);}};
     current.addEventListener('webglcontextlost',lost);current.addEventListener('webglcontextrestored',restored);
     const offFrame=onGlassFrame(current,()=>{const g=groups.get(current);if(g)render(current,g);});
-    const created:Group={lenses:new Set(),lost:false,opaqueKey:'',opaque:false,off:()=>{offFrame();current.removeEventListener('webglcontextlost',lost);current.removeEventListener('webglcontextrestored',restored);}};
+    const created:Group={lenses:new Set(),lost:false,opaqueKey:'',opaque:false,opaqueSince:0,opaqueChecked:false,off:()=>{offFrame();current.removeEventListener('webglcontextlost',lost);current.removeEventListener('webglcontextrestored',restored);}};
     group=created;groups.set(source,group);
   }
   group.lenses.add(lens);schedule(source);

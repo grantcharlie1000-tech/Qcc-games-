@@ -18,6 +18,7 @@ async function open(page:Page,id:string){
     Object.assign(control.style,{position:'fixed',inset:'auto',left:`${b.left+16}px`,top:`${b.top+16}px`,width:'48px',height:'48px',minWidth:'48px',minHeight:'48px',zIndex:'80'});
   });
   await expect(page.locator('#game-menu')).toHaveAttribute('data-glass-mode',/^(webgl|canvas)$/);
+  await page.waitForTimeout(250); // Let the crop's bounded opacity probe settle.
   return source;
 }
 
@@ -76,4 +77,22 @@ test('without WebGL2 the bounded canvas copy still follows every frame',async({p
     HTMLCanvasElement.prototype.getContext=function(this:HTMLCanvasElement,type:string,...args:unknown[]){if(type==='webgl2'&&!this.isConnected)return null;return Reflect.apply(original,this,[type,...args]);} as typeof original;
   });
   const result=await sampleFrames(page,'claimline');expect(result.mode).toBe('canvas');expect(result.uploads).toBe(0);
+});
+
+test('press animations in the GPU fallback do not read pixels on each changing frame',async({page})=>{
+  await page.addInitScript(()=>{
+    const context=HTMLCanvasElement.prototype.getContext,read=CanvasRenderingContext2D.prototype.getImageData;
+    HTMLCanvasElement.prototype.getContext=function(this:HTMLCanvasElement,type:string,...args:unknown[]){if(type==='webgl2'&&!this.isConnected)return null;return Reflect.apply(context,this,[type,...args]);} as typeof context;
+    Object.assign(window,{fallbackReadbacks:0});
+    CanvasRenderingContext2D.prototype.getImageData=function(...args:Parameters<typeof read>){if(this.canvas.closest('.ui-glass-gl'))(window as unknown as {fallbackReadbacks:number}).fallbackReadbacks++;return Reflect.apply(read,this,args);};
+  });
+  await open(page,'claimline');await page.waitForTimeout(250);
+  await page.evaluate(()=>{(window as unknown as {fallbackReadbacks:number}).fallbackReadbacks=0;});
+  const b=(await page.locator('#game-menu').boundingBox())!;
+  await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();
+  await expect(page.locator('#game-menu')).toHaveAttribute('data-pressing','');
+  await expect.poll(()=>page.locator('#game-menu').evaluate(e=>e.getAnimations().length)).toBeGreaterThan(0);
+  await page.waitForTimeout(90);
+  expect(await page.evaluate(()=>(window as unknown as {fallbackReadbacks:number}).fallbackReadbacks),'changing geometry must keep transparency conservative').toBe(0);
+  await page.mouse.move(2,2);await page.mouse.up();
 });
