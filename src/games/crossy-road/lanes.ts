@@ -59,9 +59,13 @@ export function laneVelocity(lane: Lane): number {
 /** Entry time of the train pass whose warning has most recently started at time t: the moment its
  * front reaches the near band edge (x = −0.5 heading right, x = 8.5 heading left). Passes are
  * `phase + k·period`; at any t the current pass satisfies entry − WARN_LEAD ≤ t < entry − WARN_LEAD + period. */
-export function trainEntry(lane: RailLane, t: number, x = START_COL): number {
+export function trainPass(lane: RailLane, t: number, x = START_COL): number {
   const phase = lane.phase + lane.dir * (x - START_COL) / lane.speed;
-  return phase + Math.floor((t - phase + WARN_LEAD) / lane.period) * lane.period;
+  return Math.floor((t - phase + WARN_LEAD) / lane.period);
+}
+
+export function trainEntry(lane: RailLane, t: number, x = START_COL): number {
+  return lane.phase + lane.dir * (x - START_COL) / lane.speed + trainPass(lane,t,x) * lane.period;
 }
 
 /** Seconds from the train's front entering the band until its back leaves it. */

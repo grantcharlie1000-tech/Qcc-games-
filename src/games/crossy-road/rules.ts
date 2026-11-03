@@ -190,7 +190,9 @@ export function restore(data: unknown): RunState | null {
     if (phase !== 'ready' && phase !== 'running' && phase !== 'over') return null;
     if (!isInt(row, 0, MAX_ROW) || !isInt(maxRow, 0, MAX_ROW) || !isInt(fromRow, 0, MAX_ROW)) return null;
     if (maxRow - row < 0 || maxRow - row > BACK_LIMIT || Math.abs(fromRow - row) > 1) return null;
-    if (!isNum(x, -Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) || !isNum(fromX, -Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)) return null;
+    // A billion tiles exceeds any reachable saved run. Reject corrupt numeric
+    // extremes whose neighbouring column increments are no longer representable.
+    if (!isNum(x, -1e9, 1e9) || !isNum(fromX, -1e9, 1e9)) return null;
     if (typeof hop !== 'number' || !(hop === -1 || (hop >= 0 && hop < HOP_TIME))) return null;
     // A hop is at most 1.5 long. Once grounded, fromX is only where a finished hop began: a log may have carried x anywhere since.
     if (hop >= 0 && Math.abs(fromX - x) > 1.5) return null;

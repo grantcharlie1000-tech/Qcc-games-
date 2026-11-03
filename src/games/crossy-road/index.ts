@@ -3,7 +3,7 @@
  * All gameplay lives in rules.ts; this file decides when to step, draw, report and announce. */
 import type { GameContext, GameInstance, GameModule } from '../../core/types';
 import { AHEAD_ROWS, BEHIND_ROWS, DEATH_TIME, STEP, type DeathCause, type Dir, type CrossyRoadScene, type Quality, type RunState, type SceneFrame, type StepEvents } from './config';
-import { railWarning, trainEntry } from './lanes';
+import { railWarning, trainEntry, trainPass } from './lanes';
 import { createRun, input as hop, pose, restore as restoreRun, serialize, step, ufoWarning } from './rules';
 import { World } from './world';
 import { createScene } from './scene';
@@ -159,8 +159,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       if (lane.kind !== 'rail') continue;
       if (railWarning(lane, run.t, run.x)) ringing = true;
       const entry = trainEntry(lane, run.t, run.x);
-      if (run.t >= entry && run.t - entry < 0.3 && rumbled.get(r) !== entry) {
-        rumbled.set(r, entry);
+      const pass = trainPass(lane, run.t, run.x);
+      if (run.t >= entry && run.t - entry < 0.3 && rumbled.get(r) !== pass) {
+        rumbled.set(r, pass);
         if (Math.abs(r - run.row) <= 3) sfx.rumble();
       }
     }

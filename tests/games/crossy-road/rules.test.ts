@@ -71,7 +71,7 @@ function hop(s: RunState, dir: Dir, world: LaneSource): void {
 describe('createRun', () => {
   it('starts pristine on row 0, column 4, with the seed as an unsigned 32-bit integer', () => {
     expect(createRun(7)).toEqual({
-      v: 1, worldVersion: 4, seed: 7, t: 0, phase: 'ready', row: 0, x: 4, fromRow: 0, fromX: 4, hop: -1, hopDir: 'up', facing: 'up', queued: null,
+      v: 1, worldVersion: 5, seed: 7, t: 0, phase: 'ready', row: 0, x: 4, fromRow: 0, fromX: 4, hop: -1, hopDir: 'up', facing: 'up', queued: null,
       maxRow: 0, lastProgress: 0, safeLine: 0, started: false, bonkAt: -1e9, bonkDir: 'up', landedAt: -1e9, death: null,
     });
     expect(createRun(-1).seed).toBe(4294967295);
@@ -174,25 +174,25 @@ describe('hopTarget', () => {
     ['grass sideways moves one column left', 0, 4, 'left', { row: 0, x: 3 }],
     ['grass sideways moves one column right', 0, 4, 'right', { row: 0, x: 5 }],
     ['the hedge below row 0 blocks down', 0, 4, 'down', null],
-    ['column 0 blocks left', 0, 0, 'left', null],
-    ['column 8 blocks right', 0, 8, 'right', null],
+    ['column 0 allows left', 0, 0, 'left', {row:0,x:-1}],
+    ['column 8 allows right', 0, 8, 'right', {row:0,x:9}],
     ['a tree ahead blocks forward', 0, 6, 'up', null],
     ['land into a log row keeps the integer column', 1, 4, 'up', { row: 2, x: 4 }],
     ['log to land rounds down: 6.4 lands on column 6', 3, 6.4, 'up', { row: 4, x: 6 }],
     ['log to land rounds up: 6.6 lands on column 7', 3, 6.6, 'up', { row: 4, x: 7 }],
     ['log to land at 8.45 rounds to column 8', 3, 8.45, 'up', { row: 4, x: 8 }],
-    ['log to land at 8.5 rounds to column 9: blocked', 3, 8.5, 'up', null],
+    ['log to land at 8.5 rounds to column 9', 3, 8.5, 'up', {row:4,x:9}],
     ['log to land at -0.4 rounds to column 0', 3, -0.4, 'up', { row: 4, x: 0 }],
-    ['log to land at -0.6 rounds to column -1: blocked', 3, -0.6, 'up', null],
+    ['log to land at -0.6 rounds to column -1', 3, -0.6, 'up', {row:4,x:-1}],
     ['log to land rounds onto a tree: 5.6 is column 6, blocked', 2, 5.6, 'down', null],
     ['log to land rounds off the tree: 5.4 is column 5, open', 2, 5.4, 'down', { row: 1, x: 5 }],
     ['log to log keeps the continuous x', 2, 5.37, 'up', { row: 3, x: 5.37 }],
     ['log to lily rounds to the nearest column', 6, 3.6, 'up', { row: 7, x: 4 }],
     ['sideways on a log moves exactly one tile', 2, 5.37, 'right', { row: 2, x: 6.37 }],
     ['sideways on a log reaching 8.4 is allowed', 2, 7.4, 'right', { row: 2, x: 8.4 }],
-    ['sideways on a log reaching 8.6 would round to 9: blocked', 2, 7.6, 'right', null],
+    ['sideways on a log reaching 8.6 is allowed', 2, 7.6, 'right', {row:2,x:8.6}],
     ['sideways on a log reaching -0.4 is allowed', 2, 0.6, 'left', { row: 2, x: -0.4 }],
-    ['sideways on a log reaching -0.6 would round to -1: blocked', 2, 0.4, 'left', null],
+    ['sideways on a log reaching -0.6 is allowed', 2, 0.4, 'left', {row:2,x:-0.6}],
     ['land to lily keeps the column, pad or not', 4, 4, 'up', { row: 5, x: 4 }],
     ['lily to log keeps the column', 5, 2, 'up', { row: 6, x: 2 }],
     ['sideways on a lily row is legal into open water', 5, 2, 'left', { row: 5, x: 1 }],
@@ -230,8 +230,6 @@ describe('blocked moves', () => {
   const cases: Array<[string, Lane[], number, number, Dir]> = [
     ['a tree ahead', [grass(1, [4])], 0, 4, 'up'],
     ['a rock beside', [grass(0, [5], 'rock')], 0, 4, 'right'],
-    ['column 0 going left', [], 0, 0, 'left'],
-    ['column 8 going right', [], 0, 8, 'right'],
     ['row 0 going down (the hedge)', [], 0, 4, 'down'],
   ];
   it.each(cases)('%s is a bonk: position, run and idle timer untouched, never a death', (_name, lanes, row, x, dir) => {
@@ -548,68 +546,17 @@ describe('D3: water', () => {
   });
 });
 
-describe('D4: swept off a log', () => {
-  it.each([
-    ['right', 1, 8.0],
-    ['left', -1, 0.0],
-  ] as const)('riding %s carries the player at dir·speed and sweeps them on the step the centre crosses the band edge, not before', (_name, dir, x0) => {
-    const speed = 1.3, tCross = 0.5 / speed; // 0.385 s: not on the 1/60 s grid
-    const world = source([river(1, { dir, speed })]);
-    const s = standing(1, x0);
-    const { before, events } = stepUntilDeath(s, world);
-    expect(before).toBeLessThanOrEqual(tCross);
-    expect(s.phase).toBe('dying');
-    expect(events.died).toBe('swept');
-    expect(s.death!.t).toBeGreaterThan(tCross);
-    expect(s.death!.t - tCross).toBeLessThanOrEqual(STEP + 1e-9);
-    expect(s.death).toMatchObject({ cause: 'swept', t: s.t, row: 1, x: s.x, dir });
-    expect(s.x).toBeCloseTo(x0 + dir * speed * s.t, 9); // x += dir·speed·dt, summed over the steps
-    expect(Math.abs(s.x - 4)).toBeGreaterThan(4.5);     // outside [−0.5, 8.5]
+describe('log carrying without horizontal boundaries', () => {
+  it.each([['right',1,8],['left',-1,0]] as const)('riding %s carries the player beyond the original band', (_name,dir,x0) => {
+    const world=source([river(1,{dir,speed:1.3})]), s=standing(1,x0);
+    advance(s,world,2);
+    expect(s.phase).toBe('running');expect(s.death).toBeNull();
+    expect(s.x).toBeCloseTo(x0+dir*1.3*2,8);
   });
-
-  it('treats the band edge itself as inside, and anything beyond it as swept on the next step', () => {
-    const world = source([river(1, { dir: 1, speed: 0 })]);
-    for (const x of [8.5, -0.5]) {
-      const s = standing(1, x);
-      advance(s, world, 1);
-      expect(s.phase).toBe('running');
-    }
-    for (const x of [8.5 + 1e-6, -0.5 - 1e-6]) {
-      const s = standing(1, x);
-      expect(step(s, STEP, world).died).toBe('swept');
-    }
-  });
-
-  it('is not triggered while hopping, only once grounded on a log row', () => {
-    // A stationary log [7, 10] holds the landing at x = 8.7, which is outside the band.
-    const world = source([river(1, { dir: 1, speed: 0, movers: [mv(7, 3)] })]);
-    const s = standing(1, 8.7);
-    s.hop = 0.05; s.hopDir = 'up'; s.fromRow = 0; s.fromX = 8.7; // mid-hop onto row 1
-    expect(step(s, 0.01, world).died).toBeNull(); // still in the air at hop 0.06
-    expect(s.hop).toBeCloseTo(0.06, 9);
-    const events = step(s, 0.2, world);           // lands 0.06 s in, safely on the log, and is grounded outside the band
-    expect(events).toMatchObject({ landed: true, died: 'swept' });
-  });
-
-  it.each([
-    [6.4, 6],
-    [6.6, 7],
-    [8.45, 8],
-  ])('a hop forward from a log at x = %s onto grass lands on column %s, and the grass is safe', (x, col) => {
-    const world = source([river(1, { dir: 1, speed: 1.3 })]);
-    const s = standing(1, x);
-    expect(input(s, 'up', world)).toBe('hop');
-    expect(s).toMatchObject({ row: 2, x: col, fromX: x });
-    step(s, HOP_TIME, world);
-    advance(s, world, 1);
-    expect(s).toMatchObject({ phase: 'running', row: 2, x: col });
-  });
-
-  it.each([8.5, -0.6])('a hop forward from x = %s would snap outside columns 0..8: blocked, a bonk and no death', (x) => {
-    const world = source([river(1, { dir: 1, speed: 1.3 })]);
-    const s = standing(1, x, 2);
-    expect(input(s, 'up', world)).toBe('blocked');
-    expect(s).toMatchObject({ row: 1, x, phase: 'running', hop: -1, bonkAt: 2, death: null });
+  it.each([8.5,-.6,10000.4,-10000.6])('hops from a log at %s to the nearest land column', x => {
+    const world=source([river(1,{dir:1,speed:1.3})]), s=standing(1,x,2);
+    expect(input(s,'up',world)).toBe('hop');step(s,HOP_TIME,world);
+    expect(s).toMatchObject({row:2,x:Math.round(x),phase:'running',death:null});
   });
 });
 
@@ -809,11 +756,11 @@ describe('D5: UFO idle', () => {
 });
 
 describe('death precedence when several rules hold on the same step', () => {
-  it('swept before the UFO rules', () => {
+  it('the camera fall-behind rule still applies while riding beyond the old band', () => {
     const world = source([river(5, { dir: 1, speed: 0 })]);
     const s = standing(5, 8.6);
     s.safeLine = 5 + BACK_LIMIT;
-    expect(step(s, 0.01, world).died).toBe('swept');
+    expect(step(s, 0.01, world).died).toBe('ufo-behind');
   });
 
   it('a car before the UFO rules', () => {
@@ -1072,7 +1019,7 @@ describe('serialize and restore', () => {
     ['mid-hop over water, where a log arrives', () => { const world = logWorld(), s = createRun(5); input(s, 'up', world); step(s, 0.05, world); return { s, world }; }, 2],
     ['mid-hop over water, where the player will drown at the landing', () => { const world = bareWorld(), s = createRun(5); input(s, 'up', world); step(s, 0.05, world); return { s, world }; }, 2],
     ['mid-hop with an input queued', () => { const world = logWorld(), s = createRun(5); input(s, 'up', world); input(s, 'left', world); step(s, 0.05, world); return { s, world }; }, 2],
-    ['riding a log for 1.3 s (carried 1.95 tiles) until it is swept off the edge', () => { const world = logWorld(), s = createRun(5); input(s, 'up', world); step(s, HOP_TIME + 1.3, world); return { s, world }; }, 4],
+    ['riding a log for 1.3 s (carried 1.95 tiles) beyond the old edge', () => { const world = logWorld(), s = createRun(5); input(s, 'up', world); step(s, HOP_TIME + 1.3, world); return { s, world }; }, 4],
   ];
   it.each(cases)('round-trips a state %s through JSON and then plays on identically', (_name, make, seconds) => {
     const { s, world } = make();
@@ -1111,7 +1058,7 @@ describe('serialize and restore', () => {
       maxRow: 8, lastProgress: 9.25, safeLine: 6.5, started: true, bonkAt: 11, bonkDir: 'down', landedAt: 12,
     });
     expect(serialize(s)).toEqual({
-      v: 1, worldVersion: 4, seed: 1234, t: 12.5, phase: 'running', row: 7, x: 5.5, fromRow: 6, fromX: 4.5, hop: 0.07, hopDir: 'right', facing: 'left', queued: 'down',
+      v: 1, worldVersion: 5, seed: 1234, t: 12.5, phase: 'running', row: 7, x: 5.5, fromRow: 6, fromX: 4.5, hop: 0.07, hopDir: 'right', facing: 'left', queued: 'down',
       maxRow: 8, lastProgress: 9.25, safeLine: 6.5, started: true, death: null,
     });
     s.phase = 'ready'; s.started = false;
@@ -1227,8 +1174,8 @@ describe('restore rejects anything that is off, and never throws', () => {
     ['maxRow − row = 4', { ...running(), row: 1, fromRow: 1 }],
     ['a hop two rows long', { ...running(), fromRow: 3 }],
     ['a NaN x', { ...running(), x: NaN }], ['an infinite x', { ...running(), x: Infinity }],
-    ['x below the band minus one', { ...running(), x: -1.6, fromX: -1.5 }], ['x above the band plus one', { ...running(), x: 9.6, fromX: 9.5 }],
-    ['a NaN fromX', { ...running(), fromX: NaN }], ['fromX below the range', { ...running(), fromX: -1.6, x: -1.5 }], ['fromX above the range', { ...running(), fromX: 9.6, x: 9.5 }],
+    ['unrepresentable viewport coordinate', { ...running(), x: Number.MAX_SAFE_INTEGER, fromX: Number.MAX_SAFE_INTEGER }],
+    ['a NaN fromX', { ...running(), fromX: NaN }], ['an infinite fromX', { ...running(), fromX: Infinity }],
     ['a hop 1.6 long', { ...running(), hop: 0.05, x: 4, fromX: 5.6 }],
     ['hop = 0.5', { ...running(), hop: 0.5 }], ['hop = HOP_TIME', { ...running(), hop: HOP_TIME }], ['hop = -0.5', { ...running(), hop: -0.5 }],
     ['hop = -2', { ...running(), hop: -2 }], ['a NaN hop', { ...running(), hop: NaN }], ['a string hop', { ...running(), hop: '0' }],

@@ -115,13 +115,13 @@ describe('camera focus', () => {
     expect(stepFocusRow(0, 10, 0)).toBe(0);
   });
 
-  it('wide screens lean 60% toward the player; cropped phones pan up to one cell', () => {
+  it('both screen profiles follow the player without a horizontal clamp', () => {
     const wide = cameraFit(1366,768).halfWidth, phone = cameraFit(390,844).halfWidth;
     expect(focusXTarget(4, wide)).toBe(4);
-    expect(focusXTarget(0, wide)).toBeCloseTo(1.6);
-    expect(focusXTarget(8, wide)).toBeCloseTo(6.4);
-    expect(focusXTarget(0, phone)).toBeCloseTo(3);
-    expect(focusXTarget(8, phone)).toBeCloseTo(5);
+    expect(focusXTarget(0, wide)).toBe(0);
+    expect(focusXTarget(8, wide)).toBe(8);
+    expect(focusXTarget(0, phone)).toBe(0);
+    expect(focusXTarget(8, phone)).toBe(8);
     for (let x=0; x<=8; x+=0.5) {
       const focus=focusXTarget(x,phone), visible=phone/Math.cos(YAW);
       expect(x).toBeGreaterThan(focus-visible);

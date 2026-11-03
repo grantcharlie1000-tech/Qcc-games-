@@ -5,11 +5,15 @@ import {
   type GrassLane, type Lane, type LaneKind, type MovingLane, type Obstacle, type RailLane, type RiverLane, type RoadLane,
 } from '../../../src/games/crossy-road/config';
 import {
-  chunkRng, fitLogRow, generate, generateChunk, hedgeLane, initialState, logBridgeOk, mix, repairGrass, type LogShape,
+  chunkRng, fitLogRow, generate, generateChunk, hedgeLane, initialState as currentInitialState, logBridgeOk, mix, repairGrass, type LogShape,
 } from '../../../src/games/crossy-road/generator';
 import * as laneMath from '../../../src/games/crossy-road/lanes';
 import { forEachMover, platformAt, railWarning, trainClear, trainSpan } from '../../../src/games/crossy-road/lanes';
-import { World } from '../../../src/games/crossy-road/world';
+import { World as CurrentWorld } from '../../../src/games/crossy-road/world';
+// Preserve the released revision-four distribution/fairness contract. Revision
+// five has its own variety and horizontal-streaming property tests.
+const initialState = (seed: number, version: 1|2|3|4 = 4) => currentInitialState(seed, version);
+class World extends CurrentWorld { constructor(seed: number, version: 1|2|3|4 = 4) { super(seed, version); } }
 import { mulberry32 } from '../../../src/core/random';
 
 /** The fairness properties F1-F7 of PLAN.md checked over SEEDS worlds of at least ROWS rows each. Time-invariant properties are
