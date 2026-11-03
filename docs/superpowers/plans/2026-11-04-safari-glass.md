@@ -68,9 +68,9 @@
 
 **Interfaces:** Keep current navigation semantics and minimized states. One shared height/bottom anchor includes the safe-area offset once.
 
-- [ ] Add a failing geometry check with an emulated nonzero bottom safe area.
-- [ ] Fix actual painted nav/hamburger height and vertical alignment at mobile and desktop sizes.
-- [ ] Verify expanded, minimized and keyboard-focus states; commit and attempt push.
+- [x] Add a failing geometry check with an emulated nonzero bottom safe area.
+- [x] Fix actual painted nav/hamburger height and vertical alignment at mobile and desktop sizes.
+- [x] Verify expanded, minimized and keyboard-focus states; commit and attempt push.
 
 ### Task 5: Final evidence and review
 

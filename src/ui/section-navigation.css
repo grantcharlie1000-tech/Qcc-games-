@@ -24,12 +24,12 @@
   backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone);
 }
 .section-navigation>.section-tabbar.ui-tabbar{
-  width:min(calc(100vw - var(--home-inset) - var(--home-inset) - var(--home-action) - var(--home-gap)),calc(440px - var(--home-action) - var(--home-gap)));
-  right:auto;height:var(--tabbar-h);min-height:var(--tabbar-h);
+  width:calc(100% - var(--home-action) - var(--home-gap));
+  left:0;right:auto;height:var(--tabbar-h);min-height:var(--tabbar-h);
   transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
 }
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]){
-  left:calc(12px + env(safe-area-inset-left));width:56px;height:48px;min-height:48px;
+  left:0;top:auto;bottom:0;width:56px;height:48px;min-height:48px;
   --glass-radius:24px;translate:0 0;scale:1;opacity:1;pointer-events:none;
   transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
 }
@@ -37,12 +37,12 @@
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]) :is(.ui-glass-lens,.ui-glass-glow){opacity:1;transition:none}
 .section-navigation>.ui-tabbar-mini{
   background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
-  left:max(var(--home-inset),calc((100vw - 440px)/2));
+  position:absolute;left:0;bottom:0;
   translate:0 0;scale:1;color:var(--glass-ink);
   transition:left 300ms var(--ease-drawer),opacity 120ms var(--ease),translate 180ms var(--ease-out);
 }
-.section-navigation:not(:has(:focus-visible))>.section-tabbar[data-minimized=true]:not([data-hidden=true])~.ui-tabbar-mini{left:calc(12px + env(safe-area-inset-left));transition:left 300ms var(--ease-drawer),opacity 180ms var(--ease) 80ms,translate 180ms var(--ease-out)}
-.section-navigation>.section-tabbar[data-minimized=true]~.ui-tabbar-mini{left:calc(12px + env(safe-area-inset-left))}
+.section-navigation:not(:has(:focus-visible))>.section-tabbar[data-minimized=true]:not([data-hidden=true])~.ui-tabbar-mini{left:0;transition:opacity 180ms var(--ease) 80ms,translate 180ms var(--ease-out)}
+.section-navigation>.section-tabbar[data-minimized=true]~.ui-tabbar-mini{left:0}
 /* Hidden companions have no filtered box for WebKit to leave on its compositor. */
 .section-navigation:has(.section-tabbar:is([data-minimized=true],[data-hidden=true])):not(:has(:focus-visible))>.section-menu{width:0;height:0;min-width:0;min-height:0;overflow:hidden}
 .section-navigation:has(.section-tabbar:is([data-minimized=true],[data-hidden=true])):not(:has(:focus-visible))>.section-menu>.ui-glass-lens{display:none}
