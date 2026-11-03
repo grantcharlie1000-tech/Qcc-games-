@@ -37,6 +37,11 @@ Visible instructions, unsolicited hints and decorative taglines were removed fro
 - Matching start and mid-game screenshots are in `/workspace/qcc-copy-shots/`: `pool-{start,mid}-{before,after}.png`, `claimline-{start,mid}-{before,after}.png`, and `crossy-road-{start,mid}-{before,after}.png`.
 - Typecheck: `flock /tmp/qcc-test.lock npm run check` passed.
 - Unit tests: `flock /tmp/qcc-test.lock npm test -- --maxWorkers=1 --no-file-parallelism` passed: 183 files, 4,053 tests. Full output: `/workspace/qcc-copy-shots/vitest.log`.
-- Build: `flock /tmp/qcc-test.lock npm run build` passed, including TypeScript and the service-worker kill-switch verification. Full output: `/workspace/qcc-copy-shots/build.log`.
+- Build: `flock /tmp/qcc-test.lock npm run build` passed, including TypeScript and the service-worker kill-switch verification. Full output: `/workspace/qcc-copy-shots/build-final.log`.
 - Independent source review of all modified game UIs and copy assertions: one missed Minesweeper first-play callout was identified and removed; no other Critical/Important findings or declined items.
-- Final browser results are recorded below when complete.
+- Chromium: **113 passed** with one worker on port 4618, covering all Pool specs, Claimline, Crossy lifecycle, Corn Clicker, Minecraft HUD, Minesweeper and the affected shared presentation checks. Full output: `/workspace/qcc-copy-shots/playwright-final.log`.
+- This container returned no WebGL2 context in headless Chromium. A direct probe confirmed WebGL2 in headed Chromium on Xvfb, so the final browser tests and matching screenshots used that mode. Browser launch settings stayed outside the product code.
+- All 23 games mounted without browser errors. Explicitly requesting and dismissing Corn Clicker tips passed; pre-assignment Pool pots, assigned trays, and exact `Foul` / `Scratch` feedback were checked. Audit: `/workspace/qcc-copy-shots/visible-copy-after.json`.
+- Inspected Pool start/mid-game/foul/scratch, Claimline, Crossy and the final Corn Clicker screenshots. [Pool before](/workspace/qcc-copy-shots/pool-start-before.png) / [Pool after](/workspace/qcc-copy-shots/pool-start-after.png).
+- Final capture/check exit codes are in `/workspace/qcc-copy-shots/verification-results.json`; the last footer-copy screenshot, typecheck and build are recorded in `/workspace/qcc-copy-shots/finalize-evidence.log`.
+- `git diff --check` passed. Generated tracked test screenshots were restored; requested evidence remains in `/workspace/qcc-copy-shots/`.
