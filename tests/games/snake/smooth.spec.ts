@@ -1,10 +1,11 @@
+import {appSettings,gameAction,pauseGame,resumeGame} from '../../game-menu';
 import {test,expect,type Page} from '../../fixtures';
 import {advance,createState,enqueue,type SnakeState} from '../../../src/games/snake/model';
 import type {savePresentation} from '../../../src/games/snake/presentation';
 
 type Snapshot=SnakeState&{presentation:ReturnType<typeof savePresentation>};
 const saved=async(page:Page):Promise<Snapshot>=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:snake')!).data);
-const pixels=(page:Page)=>page.locator('canvas').evaluate((canvas:HTMLCanvasElement)=>canvas.toDataURL());
+const pixels=(page:Page)=>page.locator('canvas.snake-canvas').evaluate((canvas:HTMLCanvasElement)=>canvas.toDataURL());
 async function setup(page:Page){
  await page.clock.install({time:new Date('2026-10-20T10:00:00Z')});
  await page.clock.pauseAt(new Date('2026-10-20T10:00:01Z'));
@@ -12,12 +13,12 @@ async function setup(page:Page){
  await page.evaluate(()=>document.addEventListener('click',event=>{
   const button=(event.target as HTMLElement).closest('button');
   if(button?.classList.contains('snake-start'))(window as unknown as {snakeTestStart:number}).snakeTestStart=performance.now();
-  if(button?.id==='pause-game')(window as unknown as {snakeTestPause:number}).snakeTestPause=performance.now();
+  if(button?.id==='game-menu')(window as unknown as {snakeTestPause:number}).snakeTestPause=performance.now();
  },true));
  await page.getByRole('button',{name:'Start slithering',exact:true}).click();
  await page.clock.runFor(20); // Establish the RAF timestamp; no simulation tick yet.
 }
-async function pause(page:Page){await page.getByRole('button',{name:'Pause game',exact:true}).click();return saved(page);}
+async function pause(page:Page){await pauseGame(page);return saved(page);}
 
 test('continuous authoritative travel, junction-buffered turn, frozen v2 save and growth reload',async({page})=>{
  await setup(page);await page.clock.runFor(80);
@@ -29,20 +30,20 @@ test('continuous authoritative travel, junction-buffered turn, frozen v2 save an
  expect(snapshot.direction).toBe('right');expect(snapshot.queue).toEqual(['up','left']);expect(snapshot.elapsed).toBeGreaterThan(0);
  const frozen=await pixels(page);await page.clock.runFor(1000);expect(await pixels(page)).toBe(frozen);
  await page.reload();expect(await pixels(page)).toBe(frozen);
- await page.getByRole('button',{name:'Pause game',exact:true}).click();
+ await pauseGame(page);
  expect(await saved(page)).toEqual(snapshot);
  const restoredFrozen=await pixels(page);await page.clock.runFor(1000);expect(await pixels(page)).toBe(restoredFrozen);
- await page.getByRole('button',{name:'Resume game',exact:true}).click();
+ await resumeGame(page);
  await page.clock.runFor(180-snapshot.elapsed);
  const turned=await pause(page);expect(turned.direction).toBe('up');expect(turned.queue).toEqual(['left']);
  expect(turned.body[0].x).toBe(6);expect(turned.body[0].y).toBeLessThan(6);expect(turned.body[0].y).toBeGreaterThan(5);expect(await pixels(page)).not.toBe(restoredFrozen);
  // Save inside the apple/growth interval, including the active 200 ms feedback.
- await page.getByRole('button',{name:'Restart game',exact:true}).click();
+ await gameAction(page,'Restart game');
  await page.getByRole('button',{name:'Start slithering',exact:true}).click();
  await page.clock.runFor(620);const grown=await pause(page);
  expect(grown.score).toBe(10);expect(grown.segments).toBe(4);
  const growingPixels=await pixels(page);await page.reload();expect(await pixels(page)).toBe(growingPixels);
- await page.getByRole('button',{name:'Pause game',exact:true}).click();expect(await saved(page)).toEqual(grown);
+ await pauseGame(page);expect(await saved(page)).toEqual(grown);
 });
 
 test('raw legacy effect ages import once and time-zero v2 held/lost reload preserves exact state and pixels',async({page})=>{
@@ -57,7 +58,7 @@ test('raw legacy effect ages import once and time-zero v2 held/lost reload prese
 
 test('a dropped RAF catches up to the same final grid and committed edge',async({page,browser})=>{
  async function scenario(target:Page,droppedFrame:boolean){
-  await setup(target);await target.getByRole('button',{name:'Restart game',exact:true}).click();
+  await setup(target);await gameAction(target,'Restart game');
   // This independent RAF observer shares the game's delivered timestamps, without naming its callback.
   await target.evaluate(()=>{
    const times:number[]=[];(window as unknown as {snakeTestFrames:number[]}).snakeTestFrames=times;
@@ -124,19 +125,20 @@ test('real input after stalled RAF cannot retarget a past junction or escape an 
 test('resize during a turn preserves the grid and renders at the actual high-DPI display size',async({page,context,browserName})=>{
  await page.setViewportSize({width:1440,height:1200});await setup(page);
  await page.keyboard.press('ArrowUp');await page.clock.runFor(240);
- const before=await pause(page);const garden=await page.locator('.snake-garden').boundingBox();
+ const before=await pause(page);
+ const garden=await page.locator('.snake-garden').boundingBox();
  expect(garden!.width).toBeCloseTo(728,0);
- const canvas=await page.locator('canvas').boundingBox();expect(canvas!.width).toBeCloseTo(694.4,0);
+ const canvas=await page.locator('canvas.snake-canvas').boundingBox();expect(canvas!.width).toBeCloseTo(694.4,0);
  if(browserName==='chromium'){
   const cdp=await context.newCDPSession(page);
   const metrics={width:1366,height:768,mobile:false};
   await cdp.send('Emulation.setDeviceMetricsOverride',{...metrics,deviceScaleFactor:2});
-  await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('.snake-game').evaluate(root=>root.classList.contains('snake-sideways'));}).toBe(true);
-  await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('canvas').evaluate((c:HTMLCanvasElement)=>c.width===Math.round(c.getBoundingClientRect().width*devicePixelRatio));}).toBe(true);
-  const beforeDpr=await page.locator('canvas').evaluate((c:HTMLCanvasElement)=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height,backing:c.width,label:c.getAttribute('aria-label')}));
+  await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('.snake-garden').evaluate(root=>{const r=root.getBoundingClientRect(),s=document.querySelector('.stage-wrap')!.getBoundingClientRect();return r.bottom<=s.bottom&&Math.abs(r.x+r.width/2-innerWidth/2)<1;});}).toBe(true);
+  await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('canvas.snake-canvas').evaluate((c:HTMLCanvasElement)=>c.width===Math.round(c.getBoundingClientRect().width*devicePixelRatio));}).toBe(true);
+  const beforeDpr=await page.locator('canvas.snake-canvas').evaluate((c:HTMLCanvasElement)=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height,backing:c.width,label:c.getAttribute('aria-label')}));
   await cdp.send('Emulation.setDeviceMetricsOverride',{...metrics,deviceScaleFactor:3});
   await page.clock.runFor(32);
-  const afterDpr=await page.locator('canvas').evaluate((c:HTMLCanvasElement)=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height,backing:c.width,label:c.getAttribute('aria-label')}));
+  const afterDpr=await page.locator('canvas.snake-canvas').evaluate((c:HTMLCanvasElement)=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height,backing:c.width,label:c.getAttribute('aria-label')}));
   expect(afterDpr.width).toBe(beforeDpr.width);expect(afterDpr.height).toBe(beforeDpr.height);expect(afterDpr.label).toBe(beforeDpr.label);
   expect(beforeDpr.backing).toBe(Math.round(beforeDpr.width*2));expect(afterDpr.backing).toBe(Math.round(afterDpr.width*3));
   await page.clock.runFor(5000); // Include a real shell autosave while the high-DPI canvas remains paused.
@@ -150,29 +152,29 @@ test('resize during a turn preserves the grid and renders at the actual high-DPI
   await expect.poll(async()=>{
    await page.clock.runFor(32);
    const measured=await page.evaluate(()=>{
-    const c=document.querySelector('canvas') as HTMLCanvasElement,p=document.querySelector('.snake-pad')!.getBoundingClientRect(),r=c.getBoundingClientRect();
-    return {width:innerWidth,height:innerHeight,dpr:devicePixelRatio,canvas:r.width,backing:c.width,padBottom:p.bottom,padRight:p.right};
+    const c=document.querySelector('canvas.snake-canvas') as HTMLCanvasElement,p=document.querySelector('.snake-garden')!.getBoundingClientRect(),r=c.getBoundingClientRect();
+    return {width:innerWidth,height:innerHeight,dpr:devicePixelRatio,canvas:r.width,backing:c.width,boardBottom:p.bottom,boardRight:p.right};
    });
-   const coherent=measured.width===viewport.width&&measured.height===viewport.height&&measured.backing===Math.round(measured.canvas*measured.dpr)&&measured.padBottom<viewport.height&&measured.padRight<viewport.width;
+   const coherent=measured.width===viewport.width&&measured.height===viewport.height&&measured.backing===Math.round(measured.canvas*measured.dpr)&&measured.boardBottom<viewport.height&&measured.boardRight<viewport.width;
    const current=JSON.stringify(measured);stable=coherent&&current===previous?stable+1:0;previous=current;
    return stable;
   }).toBeGreaterThanOrEqual(2); // Await complete viewport, CSS, DPR, backing and control coherence after CDP reset.
 
   expect(await saved(page)).toEqual(before);
   const measurements=await page.evaluate(()=>{
-   const canvas=document.querySelector('canvas')!,pad=document.querySelector('.snake-pad')!;
-   const c=canvas.getBoundingClientRect(),p=pad.getBoundingClientRect();
+   const canvas=document.querySelector<HTMLCanvasElement>('canvas.snake-canvas')!,garden=document.querySelector('.snake-garden')!;
+   const c=canvas.getBoundingClientRect(),p=garden.getBoundingClientRect();
    const radius=getComputedStyle(canvas).borderTopLeftRadius;
    const values=[...radius.matchAll(/([\d.]+)(px|%)/g)].map(match=>Number(match[1])*(match[2]==='%'?c.width/100:1));
    const corner=Math.min(...values);
    const rim=getComputedStyle(document.querySelector('.snake-garden')!,'::after').display;
-   return {width:c.width,height:c.height,backing:canvas.width,dpr:devicePixelRatio,corner,rim,padBottom:p.bottom,padRight:p.right,overflow:document.documentElement.scrollWidth>innerWidth,
-    targets:[...pad.querySelectorAll('button')].map(b=>{const r=b.getBoundingClientRect();return {width:r.width,height:r.height};})};
+   return {width:c.width,height:c.height,backing:canvas.width,dpr:devicePixelRatio,corner,rim,boardBottom:p.bottom,boardRight:p.right,overflow:document.documentElement.scrollWidth>innerWidth,
+    dpad:document.querySelectorAll('.snake-pad,[data-direction]').length};
   });
   expect(measurements.width).toBeCloseTo(measurements.height,0);expect(measurements.corner).toBeLessThanOrEqual(measurements.width/32+1e-6);expect(measurements.rim).toBe('none');
   expect(Math.abs(measurements.backing-Math.round(measurements.width*measurements.dpr))).toBeLessThanOrEqual(1);
-  expect(measurements.padBottom).toBeLessThan(viewport.height);expect(measurements.padRight).toBeLessThan(viewport.width);
-  expect(measurements.overflow).toBe(false);for(const target of measurements.targets){expect(target.width).toBeGreaterThanOrEqual(48);expect(target.height).toBeGreaterThanOrEqual(48);}
+  expect(measurements.boardBottom).toBeLessThan(viewport.height);expect(measurements.boardRight).toBeLessThan(viewport.width);
+  expect(measurements.overflow).toBe(false);expect(measurements.dpad).toBe(0);
  }
 });
 
@@ -196,7 +198,7 @@ test('OS and app reduced motion change the presentation live; cancelled swipes n
   }
  }
  await emulateMotion('reduce');await emulateMotion('no-preference');
- const canvas=page.locator('canvas'),box=(await canvas.boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2;
+ const canvas=page.locator('canvas.snake-canvas'),box=(await canvas.boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2;
  if(browserName==='chromium'){
   const cdp=await context.newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
@@ -219,7 +221,7 @@ test('OS and app reduced motion change the presentation live; cancelled swipes n
  console.info(`Snake capture cancellation ${JSON.stringify({browserName,pointer,got:await canvas.getAttribute('data-test-gotpointercapture'),lost:await canvas.getAttribute('data-test-lostpointercapture')})}`);
  await page.mouse.move(x,y-60);await page.mouse.up();
  const snapshot=await pause(page);expect(snapshot.queue).toEqual([]);expect(snapshot.direction).toBe('right');
- await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await appSettings(page);
  await page.locator('#motion').check();await page.getByRole('button',{name:'Close menu',exact:true}).click();
  await page.clock.runFor(32);await expect(page.locator('.snake-game')).toHaveAttribute('data-reduced-motion','true');
  expect(errors).toEqual([]);

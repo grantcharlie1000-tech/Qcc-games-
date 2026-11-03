@@ -19,10 +19,12 @@ The dashed line is at y114. A fruit must be older than 1200ms, have its top abov
 
 ## Interaction and presentation
 
-Pointer movement aims. Pointer release drops, enabling touch drag to aim before releasing. Arrows aim in 12px increments on the focused basket; Space/Enter drop. The semantic Drop fruit button provides another action. Preview name, fruit counts, status, shared score, best and level remain readable without canvas interpretation. Optional tier-number badges supplement distinct sizes, faces, fruit textures, and colours. Reduced motion suppresses merge sparks and floating point text; gravity remains essential gameplay. Sound goes exclusively through the supplied context.
+Pointer movement aims. Pointer release drops, enabling touch drag to aim before releasing. Arrows aim in 12px increments on the focused basket; Space/Enter drop. The basket is the direct drop target; there is no separate Drop fruit button. Preview name, fruit counts, status, shared score, best and level remain readable without canvas interpretation. Optional tier-number badges supplement distinct sizes, faces, fruit textures, and colours. Reduced motion suppresses merge sparks and floating point text; gravity remains essential gameplay. Sound goes exclusively through the supplied context.
 
-Logical board 360×510, CSS width 100%, capped physical pixel ratio 2. Original canvas fruit portraits use stems, leaves, cheeks, highlights, seeds, rind stripes and expressive faces. The SVG cover preserves the 320×410 viewBox and empty visual title zone above y95. Parent will provide final release card art.
+Logical board 360×510, width fitted to the free play area above the floating dock, capped physical pixel ratio 2. Original canvas fruit portraits use stems, leaves, cheeks, highlights, seeds, rind stripes and expressive faces. The SVG cover preserves the 320×410 viewBox and empty visual title zone above y95. Parent will provide final release card art.
 
 ## Lifecycle
 
 Fixed 60Hz simulation; frame elapsed time clamped to 100ms. Pause stops simulation and input. Restart resets bodies, scores, timers, queue, loss and effects, including while paused. Serialization contains seed, bag, previews, IDs, timing, combo, aim, score and complete body positions, angles, velocities, sleep state, age and danger. Restore validates finite ranges, unique IDs, queue tiers, body counts and schema before changing state. Dispose cancels RAF, removes input listeners and bodies, clears collision events and engine caches, and removes its DOM. No independent storage, runtime network, ads, accounts, or external assets.
+
+A fresh basket is playable immediately. The original `.fm-banner` shows **Basket full — a fresh start awaits!** on loss, and the shared **Restart game** action clears the basket. The banner remains above the dock, including landscape layouts. Shared score/best, pause (`#pause-overlay`, `#resume-game`) and saved baskets remain intact.

@@ -31,7 +31,7 @@ describe("Pages /api/movies",()=>{
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(fetcher.mock.calls[0]).toEqual([
    "https://api.themoviedb.org/3/search/multi?query=space%20opera&include_adult=false&language=en-US&page=2",
-   {headers:{Authorization:`Bearer ${env.TMDB_READ_TOKEN}`,Accept:"application/json"},redirect:"error",signal:expect.any(AbortSignal)},
+   {headers:{Authorization:`Bearer ${env.TMDB_READ_TOKEN}`,Accept:"application/json"},redirect:"manual",signal:expect.any(AbortSignal)},
   ]);
   expectHeaders(result);
  });

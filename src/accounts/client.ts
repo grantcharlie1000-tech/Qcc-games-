@@ -1,9 +1,10 @@
 import {apiUrl} from '../core/api';
 import * as store from '../core/storage';
+import {STORAGE_FULL_MESSAGE} from '../core/storage-full';
 import {contentHash,stableText} from '../core/content';
 import {mergeSaves} from './merge';
 import {scoredGame} from '../leaderboard/shared';
-import {SAVE_KEYS,MAX_BODY_BYTES,STORAGE_QUOTA,STORAGE_FULL,validSave,validRevision,validSessionToken,validUsername,validPassword,type Saves,type SaveRecord,type SaveRevisions,type SyncV2Response} from './shared';
+import {SAVE_KEYS,MAX_BODY_BYTES,MAX_KEEPALIVE_BODY_BYTES,SYNC_BATCH_HEADROOM_BYTES,STORAGE_QUOTA,STORAGE_FULL,jsonBytes,validSave,validRevision,validSessionToken,validUsername,validPassword,type Saves,type SaveRecord,type SaveRevisions,type SyncV2Response} from './shared';
 export interface Session {token:string;username:string}
 export interface AccountStorage {
  read<T>(key:string,fallback:T):T;write(key:string,value:unknown):boolean;
@@ -24,7 +25,7 @@ function readResult(value:any):SyncV2Response {
   ||Object.keys({...value.saves,...value.conflicts,...value.acks}).some(key=>!validRevision(value.revisions[key])))throw new Error('The saved progress could not be read.');
  return value;
 }
-class AccountRequestError extends Error {constructor(message:string,readonly retryable:boolean,readonly retryAt=0){super(message);}}
+class AccountRequestError extends Error {constructor(message:string,readonly retryable:boolean,readonly retryAt=0,readonly status=0){super(message);}}
 export class AccountsClient {
  message='';beforeIdentityChange=()=>{};
  private listeners=new Set<()=>void>();private muted=false;private epoch=0;private started=false;
@@ -104,16 +105,17 @@ export class AccountsClient {
  private async response(action:string,method:string,body:unknown,token?:string,keepalive=false){
   const response=await this.fetcher(`${endpoint}?action=${action}`,{method,headers:{...(action.startsWith('sync')?{'X-QCC-Sync':'2'}:{}),...(token?{Authorization:`Bearer ${token}`}:{}) ,...(body!==undefined?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{}),cache:'no-store',signal:AbortSignal.timeout(8000),keepalive});
   if(!response.ok){
-   let text='Accounts are unavailable. Your progress stays on this browser.';
+   let text=response.status===507?STORAGE_FULL_MESSAGE:'Accounts are unavailable. Your progress stays on this browser.';
    try{
     const data=await response.json();
     const storageError=data.error==='storage_quota'?STORAGE_QUOTA:data.error==='storage_full'?STORAGE_FULL:undefined;
-    if(storageError)text=typeof data.message==='string'?data.message:storageError.message;
+    if(response.status===507||data.error==='storage_full')text=STORAGE_FULL_MESSAGE;
+    else if(storageError)text=typeof data.message==='string'?data.message:storageError.message;
     else if(typeof data.error==='string')text=data.error==='read_only'?'Cloud saves are temporarily read only. Your progress is queued on this browser.':data.error;
    }catch{}
    const retry=response.headers.get('Retry-After'),seconds=retry!==null?Number(retry):NaN;
    const retryAt=retry===null?0:Number.isFinite(seconds)?Date.now()+Math.max(0,seconds)*1000:Math.max(0,Date.parse(retry)||0);
-   throw new AccountRequestError(text,[429,503,507].includes(response.status),retryAt);
+   throw new AccountRequestError(text,[429,502,503,507].includes(response.status),retryAt,response.status);
   }
   return response;
  }
@@ -165,7 +167,7 @@ export class AccountsClient {
   try{await this.flush(false,false);}catch{/* Durable pending progress is staged before clearing this identity. */}
   if(epoch!==this.epoch||this.session()?.token!==session.token)return;
   this.beforeIdentityChange();this.stage(session.username);this.epoch++;clearTimeout(this.timer);this.clear();this.remove(sessionKey);this.knownToken=null;this.state=emptyState();this.restoreGuest();this.guest();this.message='';this.emit();
-  try{await this.revoke(session.token);}catch{this.message='Logged out on this browser. Server sign-out will retry when online.';this.emit();}
+  try{await this.revoke(session.token);}catch(error){this.message=error instanceof AccountRequestError&&error.status===507?error.message:'Logged out on this browser. Server sign-out will retry when online.';this.emit();}
  }
  /** Manual calls pull too; scheduled/lifecycle callers explicitly request dirty-only work. */
  flush(keepalive=false,pull=true):Promise<void>{
@@ -196,20 +198,38 @@ export class AccountsClient {
   try{
    this.track();const records=this.collect(),saves:Saves={};
    for(const key of this.state.pending){const record=records[key];if(!record)continue;if(validSave(key,record))saves[key]=record;else this.message='A save is too large or incompatible to sync. It stays on this browser; other progress still syncs.';}
-   const limit=keepalive?60000:MAX_BODY_BYTES-2048,batches:Saves[]=[];let batch:Saves={};
+   const limit=keepalive?MAX_KEEPALIVE_BODY_BYTES:MAX_BODY_BYTES-SYNC_BATCH_HEADROOM_BYTES,batches:Saves[]=[];let batch:Saves={};
    const body=(saves:Saves)=>({cursor:this.state.cursor,bases:Object.fromEntries(Object.keys(saves).map(key=>[key,this.state.revisions[key]??'0'])),saves});
-   const fits=(saves:Saves)=>new TextEncoder().encode(JSON.stringify(body(saves))).length<limit;
+   const fits=(saves:Saves)=>jsonBytes(body(saves))<limit;
    for(const [key,record] of Object.entries(saves)){
-    if(!fits({[key]:record}))continue;
+    if(!fits({[key]:record})){
+     if(!keepalive)this.message='A save is too large to sync in one request. It stays on this browser; other progress still syncs.';
+     continue;
+    }
     if(!fits({...batch,[key]:record})){batches.push(batch);batch={};}batch[key]=record;
    }
    if(Object.keys(batch).length)batches.push(batch);
    const pull=this.pullRequested&&!keepalive;this.pullRequested=false;
    if(!batches.length&&pull){const response=await this.response('sync&cursor='+this.state.cursor,'GET',undefined,session.token);if(!current())return;const result=readResult(await response.json());if(!current())return;this.reconcile(result,{});}
-   for(const sent of batches){
-    const response=await this.response('sync','PUT',body(sent),session.token,keepalive);
-    if(!current())return;const result=readResult(await response.json());if(!current())return;this.reconcile(result,sent);
+   let queue=batches,quotaError:AccountRequestError|undefined;
+   // A later shrinking save may free quota for an earlier growing one. Attempt
+   // every batch, then retry deferred batches at most once after making progress.
+   for(let pass=0;pass<2&&queue.length;pass++){
+    const deferred:Saves[]=[];let progressed=false;quotaError=undefined;
+    for(const sent of queue){
+     let response:Response;
+     try{response=await this.response('sync','PUT',body(sent),session.token,keepalive);}
+     catch(error){
+      if(!current())return;
+      if(error instanceof AccountRequestError&&error.status===413){quotaError=error;deferred.push(sent);continue;}
+      throw error;
+     }
+     if(!current())return;const result=readResult(await response.json());if(!current())return;this.reconcile(result,sent);progressed=true;
+    }
+    if(!progressed)break;
+    queue=deferred;
    }
+   if(quotaError)throw quotaError;
    if(current()){
     this.state.blocked=false;this.state.attempt=0;this.state.retryAt=0;
     // Unsyncable/large keepalive records wait for a real lifecycle/visible batch, never spin.
@@ -221,7 +241,8 @@ export class AccountsClient {
     if(!(error instanceof AccountRequestError)||error.retryable){
      this.state.attempt=Math.min(this.state.attempt+1,12);
      const backoff=Math.min(5*60000,1000*2**(this.state.attempt-1))*(1+Math.random()*.25);
-     this.state.retryAt=Math.max(Math.ceil(Date.now()+backoff),error instanceof AccountRequestError?error.retryAt:0);
+     // Persist integer milliseconds: loadState rejects fractional retry deadlines.
+     this.state.retryAt=Math.ceil(Math.max(Date.now()+backoff,error instanceof AccountRequestError?error.retryAt:0));
      this.pullRequested=true;
     }else this.state.blocked=true;
     this.persist();this.stage(session.username);this.schedule();this.message=error instanceof Error?error.message:'Progress is waiting to sync.';this.emit();

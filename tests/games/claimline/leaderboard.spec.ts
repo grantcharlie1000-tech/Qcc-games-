@@ -1,4 +1,5 @@
 import { test, expect, seedStudyTopic } from '../../fixtures';
+import { appSettings } from '../../game-menu';
 import type { BrowserContext, Page } from '@playwright/test';
 import { LocalDB, createLocalPool } from '../../support/local-db';
 import { createLeaderboardHandler } from '../../../src/leaderboard/server';
@@ -24,7 +25,7 @@ async function connect(context: BrowserContext, username: string, posts: { game:
   await context.addInitScript(s => localStorage.setItem('pocket-arcade:v1:accounts:session', JSON.stringify(s)), session);
   await context.route(/\/\.netlify\/functions\/(leaderboard|accounts)/, async route => {
     const req = route.request();
-    const result = await (req.url().includes('/accounts') ? accounts : handle)(new Request(req.url(), { method: req.method(), headers: req.headers(), body: req.method() === 'POST' ? req.postData() : undefined }));
+    const result = await (req.url().includes('/accounts') ? accounts : handle)(new Request(req.url(), { method: req.method(), headers: req.headers(), body: ['POST','PUT'].includes(req.method()) ? req.postData() : undefined }));
     if (req.url().includes('/leaderboard') && req.method() === 'POST') posts.push({ ...req.postDataJSON(), status: result.status });
     await route.fulfill({ status: result.status, headers: Object.fromEntries(result.headers), body: await result.text() });
   });
@@ -42,9 +43,8 @@ test('Claimline keeps its peak queued quietly across reloads while its leaderboa
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto('/#/game/claimline');
-    const sidebar = page.getByRole('complementary', { name: 'Claimline leaderboard' });
-    await expect(sidebar).toBeVisible();
-    await page.getByRole('button', { name: 'Top scores', exact: true }).click();
+    // The glass layout has no in-game sidebar: the Leaderboards dialog (Menu > Settings > Leaderboards) is the board.
+    await expect(page.getByRole('complementary', { name: 'Claimline leaderboard' })).toHaveCount(0);
     await page.locator('.cl-start').click();
     // Starting reports the human's peak; the milestone flush posts it and the database refuses the game id.
     await expect.poll(() => posts.filter(p => p.game === 'claimline').length).toBeGreaterThan(0);
@@ -54,11 +54,9 @@ test('Claimline keeps its peak queued quietly across reloads while its leaderboa
     expect(posts.every(p => p.game === 'claimline' && p.score > 0 && p.score <= 10000)).toBe(true);
     await expect.poll(async () => (await pending(page, user)).claimline ?? 0).toBeGreaterThan(0);
     // Graceful: an empty board, no error text, the local best kept, and the game keeps running.
-    await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-    await expect(sidebar.locator('.lb-status')).toHaveText('No scores yet. Be the first!');
     await expect(page.locator('#game-best strong')).toHaveText(/^\d+\.\d\d%$/);
     expect(Number(await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:claimline')))).toBeGreaterThan(0);
-    await page.getByRole('button', { name: 'All rankings' }).click();
+    await appSettings(page); await page.locator('#open-leaderboards').click();
     await expect(page.locator('#leaderboard-game')).toHaveValue('claimline');
     await expect(page.locator('#leaderboard-dialog .lb-status')).toHaveText('No scores yet. Be the first to play!');
     await expect(page.locator('#leaderboard-dialog')).not.toContainText(/unavailable|error/i);

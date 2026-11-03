@@ -1,10 +1,11 @@
 import {createHash,randomBytes,randomUUID,scrypt,timingSafeEqual} from 'node:crypto';
 import type {Database} from '../leaderboard/server';
-import {validUsername,validPassword,validSaves,MAX_BODY_BYTES,MAX_TOTAL_BYTES,STORAGE_QUOTA,saveBytes,SAVE_KEYS,validRevision,type Saves,type SyncV2Response} from './shared';
+import {validUsername,validPassword,validSave,validSaves,MAX_BODY_BYTES,MAX_AUTH_BODY_BYTES,MAX_USER_BYTES,STORAGE_QUOTA,jsonBytes,SAVE_KEYS,validRevision,type Saves,type SyncV2Response} from './shared';
+import {GAME_IDS} from '../core/types';
 import {mergeSaves} from './merge';
 import {stableText} from '../core/content';
 import {writeFrozen,readOnlyResponse} from './write-freeze';
-import {storageFullResponse} from './storage-errors';
+import {isStorageFullError,storageFullResponse} from '../../server/storage-full';
 const sha=(value:string)=>createHash('sha256').update(value).digest('hex');
 const DUMMY='scrypt$16384$8$1$00000000000000000000000000000000$'+'00'.repeat(64);
 const derive=(password:string,salt:Buffer,N:number,r:number,p:number)=>new Promise<Buffer>((resolve,reject)=>scrypt(password,salt,64,{N,r,p,maxmem:64*1024*1024},(error,key)=>error?reject(error):resolve(key)));
@@ -78,7 +79,7 @@ export function createAccountsHandler(db:Database){
    if(request.method!=='GET'){
     const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return respond({error:'This request is not allowed.'},403);
     if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type')??''))return respond({error:'Send JSON.'},415);
-    try{data=await readJson(request,action==='sync'?MAX_BODY_BYTES:2048);}catch(error){throw error===413?413:400;}
+    try{data=await readJson(request,action==='sync'?MAX_BODY_BYTES:MAX_AUTH_BODY_BYTES);}catch(error){throw error===413?413:400;}
    }
    if(action==='signup'||action==='login'){
     const ip=request.headers.get('x-nf-client-connection-ip')?.trim()||'unknown';
@@ -140,20 +141,34 @@ export function createAccountsHandler(db:Database){
    }
    const v2=request.headers.get('X-QCC-Sync')==='2';
    const cursor=request.method==='GET'?(new URL(request.url).searchParams.get('cursor')??'0'):data?.cursor;
-   if(v2&&(!validRevision(cursor)||(request.method==='PUT'&&(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).length!==3||!Object.hasOwn(data,'saves')||!data.bases||typeof data.bases!=='object'||Array.isArray(data.bases)||Object.entries(data.bases).some(([key,revision])=>!SAVE_KEYS.includes(key)||!validRevision(revision))))))return respond({error:'Invalid sync cursor or revisions.'},400);
+   if(v2&&(!validRevision(cursor)||(request.method==='PUT'&&(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).length!==3||!Object.hasOwn(data,'saves')||!data.bases||typeof data.bases!=='object'||Array.isArray(data.bases)||Object.values(data.bases).some(revision=>!validRevision(revision))))))return respond({error:'Invalid sync cursor or revisions.'},400);
    if(request.method==='GET'&&!v2)return respond({saves:savesFrom((await db.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1',[account.id])).rows)});
-   if(request.method==='PUT'&&(!data||typeof data!=='object'||(!v2&&Object.keys(data).length!==1)||!validSaves(data.saves)))return respond({error:'Invalid save keys or values. Oversized saves stay on this device.'},400);
+   let submitted:Saves={};
+   if(request.method==='PUT'){
+    if(!data||typeof data!=='object'||Array.isArray(data)||(!v2&&Object.keys(data).length!==1)||!data.saves||typeof data.saves!=='object'||Array.isArray(data.saves))return respond({error:'Invalid sync body.'},400);
+    // Newer clients can know games this backend has not deployed yet. Drop
+    // unsupported keys before validation/quota checks; never write or ack them.
+    const supported=Object.fromEntries(Object.entries(data.saves).filter(([key])=>SAVE_KEYS.includes(key)));
+    const favourites=supported.favourites;
+    if(favourites&&typeof favourites==='object'&&!Array.isArray(favourites)){
+     const record=favourites as Record<string,unknown>;
+     // Skip the whole incompatible list so we neither erase stored favourites
+     // nor acknowledge a value different from the one the client submitted.
+     if(Array.isArray(record.value)&&record.value.every(id=>typeof id==='string')&&record.value.some(id=>!GAME_IDS.some(game=>game===id))&&validSave('favourites',{...record,value:[]}))delete supported.favourites;
+    }
+    if(!validSaves(supported))return respond({error:'Invalid save values. Oversized saves stay on this device.'},400);
+    submitted=supported;
+   }
    const release=await lock('sync:'+account.id);let client:Awaited<ReturnType<Database['connect']>>|undefined;
    try{
     client=await db.connect();
     const frozenRead=request.method==='GET'&&await writeFrozen(db);
     await client.query(frozenRead?'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY':'BEGIN');
     await client.query('SELECT id FROM accounts WHERE id=$1'+(frozenRead?'':' FOR UPDATE'),[account.id]);
-    const submitted:Saves=request.method==='PUT'?data.saves:{};
     const keys=Object.keys(submitted);
-    if(request.method==='PUT'){
-     // The account row lock above serializes all instances. Include untouched keys and
-     // measure the final merge before writing so a rejected batch changes no saves/revisions.
+    if(keys.length){
+     // Account row lock above serializes quota checks across processes and v1/v2
+     // uploads. Count untouched keys too, and validate before writing any rows.
      const previous=await client.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1',[account.id]) as {rows:any[]};
      const old=savesFrom(previous.rows),saves=mergeSaves(old,submitted);
      for(const key of keys){
@@ -161,7 +176,10 @@ export function createAccountsHandler(db:Database){
       // Keep semantic no-ops from manufacturing timestamps (including snapshot envelopes).
       if(before&&(key.startsWith('best:')?(submitted[key]!.value as number)<=(before.value as number):sameContent(key,before.value,submitted[key]!.value)))saves[key]=before;
      }
-     if(Object.values(saves).reduce((total,record)=>total+saveBytes(record),0)>MAX_TOTAL_BYTES)throw 413;
+     const size=jsonBytes(saves);
+     // Preserve legacy over-quota accounts and permit updates that do not grow
+     // them; reads never enforce a write quota or delete existing progress.
+     if(size>MAX_USER_BYTES&&size>jsonBytes(old))throw 'storage_quota';
      for(const key of keys){
       const record=saves[key]!,before=old[key];
       if(before&&sameRecord(before,record))continue;
@@ -190,9 +208,10 @@ export function createAccountsHandler(db:Database){
     await client.query('COMMIT');return respond(result);
    }catch(error){if(client)await client.query('ROLLBACK').catch(()=>{});throw error;}finally{client?.release();release();}
   }catch(error){
-   if(error===413)return respond(action==='sync'?STORAGE_QUOTA:{error:'Request too large.'},413);
+   if(isStorageFullError(error))return storageFullResponse();
+   if(error==='storage_quota')return respond(STORAGE_QUOTA,413);
+   if(error===413)return respond({error:'Request too large.'},413);
    if(error===400)return respond({error:'Invalid JSON.'},400);
-   const full=storageFullResponse(error);if(full)return full;
    return respond({error:'Accounts are temporarily unavailable. Your progress stays on this device.'},503);
   }
  };

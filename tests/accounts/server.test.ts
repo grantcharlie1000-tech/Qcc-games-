@@ -2,9 +2,10 @@ import {beforeAll,afterAll,beforeEach,describe,it,expect,vi} from 'vitest';
 import {createHash,scrypt,timingSafeEqual} from 'node:crypto';
 vi.mock('node:crypto',async original=>{const crypto=await original<typeof import('node:crypto')>();return {...crypto,scrypt:vi.fn(crypto.scrypt),timingSafeEqual:vi.fn(crypto.timingSafeEqual)};});
 import {LocalDB,createLocalPool} from '../support/local-db';
-import type {Pool} from 'pg';
+import type {Pool,PoolClient} from 'pg';
 import {createAccountsHandler,verifyPassword} from '../../src/accounts/server';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
+import type {Database} from '../../src/leaderboard/server';
 const local=new LocalDB();let pool:Pool;
 let handle:ReturnType<typeof createAccountsHandler>;
 const endpoint='https://arcade.test/.netlify/functions/accounts';
@@ -12,6 +13,46 @@ function request(action:string,body?:unknown,token?:string,method=body===undefin
  return handle(new Request(endpoint+'?action='+action,{method,headers:{'Content-Type':'application/json',Origin:'https://arcade.test',...(token?{Authorization:`Bearer ${token}`}:{ } ),...extra},body:body===undefined?undefined:JSON.stringify(body)}));
 }
 const signup=async(username='Player_One',guestToken?:string)=>{const response=await request('signup',{username,password:'secret password',...(guestToken?{guestToken}:{})});expect(response.status).toBe(201);return response.json();};
+const capacityBody={error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'};
+for(const protocol of ['1','2'])it.each([{code:'53100'},{code:'53400'},new Error('Neon: project size limit exceeded')])(`v${protocol} sync returns 507 and rolls back all writes on capacity failure: %j`,async error=>{
+ const {token}=await signup();
+ await request('sync',{'saves':{'best:snake':{value:5,updated:1}}},token,'PUT');
+ const snapshot=async()=>({saves:(await pool.query('SELECT key,value,updated,revision FROM account_saves ORDER BY key')).rows,accounts:(await pool.query('SELECT sync_revision FROM accounts')).rows});
+ const before=await snapshot();let released=false;
+ const db:Database={query:pool.query.bind(pool),connect:async()=>{const client=await pool.connect();return {
+  query:async(sql,values)=>{if(sql.includes('INSERT INTO account_saves')&&values?.[1]==='best:tower')throw error;return client.query(sql,values);},
+  release:()=>{released=true;client.release();}
+ };}};
+ const saves={'best:snake':{value:100,updated:2},'best:tower':{value:10,updated:2}};
+ const response=await createAccountsHandler(db)(new Request(endpoint+'?action=sync',{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','X-QCC-Sync':protocol},body:JSON.stringify(protocol==='2'?{cursor:'0',bases:{},saves}:{saves})}));
+ expect(response.status).toBe(507);expect(await response.json()).toEqual(capacityBody);expect(response.headers.get('Cache-Control')).toBe('no-store');
+ expect(released).toBe(true);expect(await snapshot()).toEqual(before);
+});
+it('keeps the capacity error when an account commit and subsequent rollback both fail',async()=>{
+ const {token}=await signup();const db:Database={query:pool.query.bind(pool),connect:async()=>{const client=await pool.connect();return {
+  query:async(sql,values)=>{if(sql==='COMMIT')throw {code:'53100'};if(sql==='ROLLBACK'){await client.query(sql);throw new Error('connection lost during cleanup');}return client.query(sql,values);},release:()=>client.release()
+ };}};
+ const response=await createAccountsHandler(db)(new Request(endpoint+'?action=sync',{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({saves:{'best:snake':{value:100,updated:1}}})}));
+ expect(response.status).toBe(507);expect(await response.json()).toEqual(capacityBody);expect((await pool.query('SELECT * FROM account_saves')).rows).toEqual([]);
+});
+it.each(['signup','login'])('returns 507 when %s cannot write authentication records',async action=>{
+ const db:Database={query:async(sql,values)=>{if(sql.includes('DELETE FROM account_sessions'))throw {code:'53400'};return pool.query(sql,values);},connect:()=>pool.connect()};
+ const response=await createAccountsHandler(db)(new Request(endpoint+'?action='+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'Test_Player',password:'secret password'})}));
+ expect(response.status).toBe(507);expect(await response.json()).toEqual(capacityBody);
+});
+it.each(['signup','login'])('rolls back %s authentication if COMMIT runs out of space',async action=>{
+ await signup();const before=(await pool.query('SELECT token_hash FROM account_sessions ORDER BY token_hash')).rows;
+ let transaction:PoolClient|undefined,rolledBack=false,released=false;
+ const db:Database={query:pool.query.bind(pool),connect:async()=>{
+  transaction=await pool.connect();const client=transaction;
+  return {query:async(sql,values)=>{if(sql==='COMMIT')throw {code:'53100'};if(sql==='ROLLBACK')rolledBack=true;return client.query(sql,values);},release:()=>{released=true;client.release();}};
+ }};
+ try{
+  const response=await createAccountsHandler(db)(new Request(endpoint+'?action='+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:action==='signup'?'Commit_New':'Player_One',password:'secret password'})}));
+  expect(response.status).toBe(507);expect(await response.json()).toEqual(capacityBody);expect(rolledBack).toBe(true);expect(released).toBe(true);
+  expect((await pool.query('SELECT token_hash FROM account_sessions ORDER BY token_hash')).rows).toEqual(before);
+ }finally{if(transaction&&!released){await transaction.query('ROLLBACK');transaction.release();}}
+});
 beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('db/migrations');pool=createLocalPool(connectionString);handle=createAccountsHandler(pool);},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});
 beforeEach(async()=>{await pool.query('TRUNCATE arcade_players,account_attempts CASCADE');});
@@ -142,7 +183,8 @@ describe('optional accounts with real Postgres',()=>{
   const merged=await (await request('sync',{saves:second},a.token,'PUT')).json();expect(merged.saves['best:snake'].value).toBe(200);expect(merged.saves.favourites.value).toEqual(['tower']);expect(merged.saves.settings.value.sound).toBe(true);expect(merged.saves.settings.value.autoNextEpisode).toBe(false);expect(merged.saves['save:snake'].value.data.score).toBe(9);
   expect(merged.saves['best:quadfall'].value).toBe(1200);expect(merged.saves['save:quadfall']).toEqual({value:{version:1,data:{phase:'running'},updated:1},updated:1});
   expect((await (await request('sync',undefined,a.token)).json()).saves).toEqual(merged.saves);expect((await (await request('sync',undefined,b.token)).json()).saves).toEqual({});
-  for(const saves of [{'account:token':{value:'secret',updated:1}},{'best:snake':{value:-1,updated:1}},{'save:not-a-game':{value:{version:1,data:{},updated:1},updated:1}},{'save:corn-clicker':{value:'x',updated:1}},{'save:blockcraft':{value:{version:1,data:{text:'x'.repeat(1050000)},updated:1},updated:1}}])expect((await request('sync',{saves},a.token,'PUT')).status).toBe(400);
+  for(const saves of [{'best:snake':{value:-1,updated:1}},{'save:corn-clicker':{value:'x',updated:1}}])expect((await request('sync',{saves},a.token,'PUT')).status).toBe(400);
+  expect((await request('sync',{saves:{'save:blockcraft':{value:{version:1,data:{text:'x'.repeat(1050000)},updated:1},updated:1}}},a.token,'PUT')).status).toBe(413);
  });
  it('serializes concurrent save merges so updates from separate devices are retained',async()=>{
   const a=await signup();await Promise.all([request('sync',{saves:{'best:snake':{value:200,updated:1}}},a.token,'PUT'),request('sync',{saves:{'best:tower':{value:300,updated:1}}},a.token,'PUT')]);

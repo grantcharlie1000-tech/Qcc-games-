@@ -47,10 +47,15 @@ const leftOf=(element:HTMLElement)=>{const style=getComputedStyle(element);retur
 // The capsule is a sibling placed right after the bar, so the bar's own opacity, transform and backdrop never reach it. It is a pointer
 // affordance only: a tap on it expands the bar, and the bar stays reachable by keyboard while minimized.
 export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{reset():void;dispose():void}{
+  const bounded=bar.classList.contains('section-tabbar');
   const target:EventTarget=scroller;
   const mini=document.createElement('button');
   mini.type='button';
   mini.className='ui-tabbar-mini';
+  if(bar.classList.contains('arcade-glass')){
+    mini.classList.add('arcade-glass-mini');
+    mini.dataset.glassTone=bar.dataset.glassTone??'dark';
+  }
   mini.tabIndex=-1;
   mini.setAttribute('aria-hidden','true');
   let state:TabbarScroll={minimized:false,lastY:position(scroller).y,travel:0};
@@ -60,7 +65,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
   const apply=(minimized:boolean)=>{
     if(bar.hasAttribute('data-minimized')===minimized)return;
     // A minimize reads the boxes once and writes the morph's transforms, so the bar and the capsule start from the layout as it is now.
-    if(minimized)layout();
+    if(minimized&&!bounded)layout();
     if(minimized)bar.setAttribute('data-minimized','true');
     else bar.removeAttribute('data-minimized');
   };
@@ -68,6 +73,9 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
   const sync=()=>{
     frame=0;
     const {y,max}=position(scroller);
+    // Sheet focus can scroll the page behind it. Keep the reader's navigation
+    // state, and rebase travel so those programmatic moves never count later.
+    if(bar.closest('[data-sheet-hidden]')){state={...state,lastY:y,travel:0};return;}
     state=nextTabbarState(state,y,max,typing());
     apply(state.minimized);
   };
@@ -89,6 +97,9 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
     const width=bar.offsetWidth;
     mini.hidden=!width;
     if(!width)return;
+    // Shared navigation morphs its actual box. The mini is only an icon/hit
+    // target over that same surface, never a second stretched backdrop.
+    if(bounded)return;
     const barLeft=leftOf(bar),miniLeft=leftOf(mini);
     bar.style.setProperty('--tb-x',`${miniLeft-barLeft}px`);
     bar.style.setProperty('--tb-sx',String(mini.offsetWidth/width));
@@ -97,7 +108,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
     mini.style.setProperty('--tb-sx',String(width/mini.offsetWidth));
     mini.style.setProperty('--tb-sy',String(bar.offsetHeight/mini.offsetHeight));
   };
-  const resized=()=>{instant(layout);schedule();};
+  const resized=()=>{if(bounded)layout();else instant(layout);schedule();};
   // The capsule follows the bar: right after it, or after the scroll edge that glass.ts keeps there. Movies re-renders its children, which
   // removes the capsule with them, so the bar's parent is watched and the capsule is put back. Movies creates the island before it attaches
   // the nav, so the watch starts on the first size change of the attached bar, as glass.ts's scroll edge does.
@@ -109,7 +120,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
     const after=bar.nextElementSibling?.classList.contains('ui-scroll-edge')?bar.nextElementSibling:bar;
     if(mini.previousElementSibling!==after)after.after(mini);
   };
-  const measure=new ResizeObserver(()=>{instant(layout);keep();});
+  const measure=new ResizeObserver(()=>{if(bounded)layout();else instant(layout);keep();});
   measure.observe(bar);
   // The capsule shows the icon of the current tab, or of the first tab while none is current. The icon is a copy, so the bar keeps its own.
   const icon=()=>{
@@ -127,7 +138,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
   window.addEventListener('resize',resized,{passive:true});
   keep();
   icon();
-  instant(layout);
+  if(bounded)layout();else instant(layout);
   return{
     reset(){
       if(frame)cancelAnimationFrame(frame);

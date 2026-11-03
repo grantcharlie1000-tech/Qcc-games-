@@ -13,16 +13,17 @@ await mkdir(folder, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined), args: ['--no-sandbox'] });
 const errors = [], external = [], failed = [], results = [], interaction = [];
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-await context.addInitScript(() => sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading'));
+await context.addInitScript(() => {localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});
 const page = await context.newPage();
 page.on('pageerror', error => errors.push(error.message));
 page.on('request', r => { if (r.url().startsWith('http') && new URL(r.url()).origin !== new URL(base).origin) external.push(r.url()); });
 page.on('response', r => { if (r.status() >= 400) failed.push({ url: r.url(), status: r.status() }); });
 const state = () => page.locator('.nc-game').evaluate(el => ({ ...el.dataset }));
+async function restart(){await page.locator('#game-menu').click();await page.locator('#restart-game').click();await page.locator('#game-options').waitFor({state:'hidden'});}
 async function fresh() {
   await page.goto(new URL('#/game/neon-coil', base).href); await page.locator('.nc-game').waitFor();
-  await page.getByRole('button', { name: 'Restart game', exact: true }).click();
-  await page.getByRole('button', { name: 'Enter arena', exact: true }).click();
+  await restart();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
 }
 const temporary = await mkdtemp(join(tmpdir(), 'neon-coil-evidence-'));
 try {
@@ -42,7 +43,7 @@ try {
     await page.screenshot({ path: join(folder, `play-${viewport.width}.png`) });
   }
   await page.setViewportSize({ width: 1440, height: 900 }); await fresh();
-  await page.getByRole('button', { name: 'Restart game', exact: true }).click();
+  await restart();
   await page.screenshot({ path: join(folder, 'intro-1440.png') });
   const cdp = await context.newCDPSession(page), frames = [];
   cdp.on('Page.screencastFrame', event => { frames.push({ data: event.data, timestamp: event.metadata.timestamp }); void cdp.send('Page.screencastFrameAck', { sessionId: event.sessionId }); });

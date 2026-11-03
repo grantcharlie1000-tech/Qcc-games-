@@ -104,11 +104,11 @@ The HUD shows the smallest record still above the current score (ties show the b
 
 Ready (setup panel) → Playing ⇄ Paused → Dying (0.9 s) → Game Over.
 
-- Setup: `BALL RUN`, short instructions, a face badge (green smile, amber flat mouth, coral angry with horns) beside the difficulty name, a `Difficulty` slider, `Play` in the difficulty colour and a `How to play` toggle. Changing the slider builds a fresh course behind the panel.
+- Setup: `BALL RUN`, short instructions, a face badge (green smile, amber flat mouth, coral angry with horns) beside the difficulty name, a `Difficulty` slider, `Play` in the difficulty colour. Changing the slider builds a fresh course behind the panel.
 - Steering: drag anywhere on the canvas (relative; 6 m per canvas width; a new drag starts from where the ball is), or hold A/D or Left/Right. Both feed one steering value.
 - P clicks the shell's `#pause-game` (ignoring repeats, modifier keys, open dialogs and text fields, but not the slider), so the shell's label, overlay and save stay in sync. R at Game Over plays again. Escape is left to the shell's Study shortcut.
 - Death: a block hit freezes the ball and replaces it with a burst of magenta, cyan and white cubes; a fall keeps the ball visible as it drops. Input is cleared and the score frozen.
-- Game Over: `GAME OVER`, the reason (`You hit a block` / `You fell off the track`), the score, the difficulty badge (with a crown when a record was set), the three records, `Home` (back to setup) and `Play again` (same difficulty, new seed). It enters with opacity and a 0.96 → 1 settle over 250 ms on `cubic-bezier(0.23, 1, 0.32, 1)`.
+- Game Over: `GAME OVER`, the reason (`You hit a block` / `You fell off the track`), the score, the difficulty badge (with a crown when a record was set), the three records, `Play again` (same difficulty, new seed). It enters with opacity and a 0.96 → 1 settle over 250 ms on `cubic-bezier(0.23, 1, 0.32, 1)`.
 - Shell Restart returns to setup with a fresh course. A restored running run waits behind `Your run is waiting` / `Continue`.
 - Pause, blur, tab hiding, pointer cancel or lost capture, death, restart and Study clear held input. A resize ends a drag (it maps canvas pixels to metres) but held keys keep steering. The loop is a fixed-step accumulator capped at 0.1 s per frame; it stops while paused, ready, over or after context loss, and never catches up hidden time.
 - The shell owns back, pause, restart, rules, menu, the pause overlay (z-index 20), autosave and Escape. Game panels sit at z-index 10, clear of the toolbar and the 52 px bottom strip. The HUD (mode, score, next target, speed) sits in the toolbar row centred over the track; on screens too wide for that it stops at 1020 px, so it always stays at least 12 px clear of the pause button.
@@ -142,12 +142,12 @@ Read at use time from the shell's Reduce motion setting or `prefers-reduced-moti
 
 ## Accessibility
 
-- Accessible names: `Play`, `Continue`, `Play again`, `Home`, the `Difficulty` slider (with `aria-valuetext`) and `How to play` (with `aria-expanded`). Headings `Graphics interrupted` and `3D graphics unavailable`, link `Choose another game`.
+- Accessible names: `Play`, `Continue`, `Play again` and the `Difficulty` slider (with `aria-valuetext`). Headings `Graphics interrupted` and `3D graphics unavailable`, link `Choose another game`.
 - Colour is never the only carrier: difficulty names are text, blocks and arches differ in shape, records have text labels, and SVG icons are `aria-hidden` beside text.
 - Status and announcements at start, death and restore (including a restored Game Over and a migrated best). `setLevel` names the mode.
-- Focus: the canvas is a Tab stop only while it steers; `Play again` takes focus at Game Over (also after reload), `Play` after Home, and the `Graphics interrupted` heading on context loss when focus was in the game.
+- Focus: the canvas is a Tab stop only while it steers; `Play again` takes focus at Game Over (also after reload), and the `Graphics interrupted` heading on context loss when focus was in the game.
 - Button labels keep the reference's white-on-colour look but carry a dark edge in a shade of their own fill (edge against fill 4.2–4.9:1). Plain white against the amber and green fills stays below 3:1 by strict WCAG, which ignores text shadows. The speed readout is opaque with a hard outline, so it stays readable over arch bars.
-- Panels fit without scrolling from 320×480 to 1920×1080, including 568×320 with the legacy note; help scrolls inside its panel with Play pinned below it.
+- Panels fit without scrolling from 320×480 to 1920×1080, including 568×320 with the legacy note. Full rules live in the shared game menu.
 
 ## History
 

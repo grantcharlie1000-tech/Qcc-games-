@@ -524,7 +524,7 @@ export class CornClicker {
     button.style.left=`${g.x*100}%`;button.style.top=`${g.y*100}%`;
     button.style.setProperty('--life',String(Math.max(0,g.life/g.maxLife)));
     button.classList.toggle('cc-fading',g.life<3);
-    const label=`Golden cob: collect it (${Math.ceil(g.life)} seconds left, or press G)`;
+    const label=`Golden cob: collect it (${Math.ceil(g.life)} seconds left${matchMedia('(pointer: coarse)').matches?'':', or press G'})`;
     if(button.getAttribute('aria-label')!==label)button.setAttribute('aria-label',label);
   }
   private collectGolden(){
@@ -719,7 +719,8 @@ export class CornClicker {
     for(const t of TIPS)if(!g.s.tutorial.has(t.id)&&t.done(g))g.s.tutorial.add(t.id);
     const el=this.el.tip;
     if(!tip){el.hidden=true;delete el.dataset.tip;return;}
-    if(el.dataset.tip!==tip.id){el.dataset.tip=tip.id;el.querySelector('p')!.textContent=tip.text;el.hidden=false;}
+    const text=tip.id==='golden'&&matchMedia('(pointer: coarse)').matches?'Tap the golden cob.':tip.text;
+    if(el.dataset.tip!==tip.id||el.querySelector('p')!.textContent!==text){el.dataset.tip=tip.id;el.querySelector('p')!.textContent=text;el.hidden=false;}
     this.root.querySelectorAll('.cc-tab').forEach(t=>t.classList.toggle('cc-attention',!!tip.tab&&(t as HTMLElement).dataset.top===tip.tab&&this.top!==tip.tab));
     if(tip.sub)this.root.querySelector(`#cc-subtab-${tip.sub}`)?.classList.toggle('cc-attention',this.sub!==tip.sub);
   }
@@ -905,7 +906,7 @@ export class CornClicker {
         <p class="cc-muted">The farm saves itself every few seconds and after big purchases. Export a save code to keep a copy or move it to another browser.</p>
         <div class="cc-row"><button type="button" class="cc-btn" data-act="save">Save now</button><button type="button" class="cc-btn cc-btn-quiet" data-act="export">Export save</button><button type="button" class="cc-btn cc-btn-quiet" data-act="import">Import save</button></div>
         <h3 class="cc-h3">Backups</h3><div class="cc-backups"></div>
-        <h3 class="cc-h3">Help</h3><div class="cc-row"><button type="button" class="cc-btn cc-btn-quiet" data-act="tutorial">Show tips again</button><button type="button" class="cc-btn cc-btn-danger" data-act="reset">Start a new farm…</button></div>`;
+        <h3 class="cc-h3">Help</h3><div class="cc-row"><button type="button" class="cc-btn cc-btn-quiet" data-act="tutorial">Show tips again</button></div>`;
     }
     for(const input of this.el.options.querySelectorAll<HTMLInputElement|HTMLSelectElement>('[data-opt]')){
       if(document.activeElement===input)continue;
@@ -963,7 +964,6 @@ export class CornClicker {
       if(act==='export')this.showExport();
       if(act==='import')this.showImport();
       if(act==='tutorial'){this.game.s.tutorial.clear();this.toast('Tips will appear again as they become relevant.','info');this.requestSave();}
-      if(act==='reset')this.restart();
       if(backup){
         const b=listBackups()[Number(backup.dataset.backup)];if(!b)return;
         this.confirm('Restore this backup?',`${b.reason}, saved ${new Date(b.at).toLocaleString()}. Your current farm is backed up first, so you can switch back.`,'Restore backup',()=>{

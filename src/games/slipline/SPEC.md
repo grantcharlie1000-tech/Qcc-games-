@@ -5,3 +5,8 @@ An endless deterministic arrow extraction puzzle. Tap a continuous orthogonal ro
 The reference pack supplies the dark indigo surface, lavender routes, rose level label, three hearts, progress tick and yellow hint. The generator uses seeded walks and constructs a reverse removal order. Geometry is regenerated from the level, rather than stored in snapshots. The host provides the toolbar, study and persistence.
 
 Current deviations: the PDF shows its densest board ("Extra Hard, Level 1", about 27 lattice points); Slipline ramps from 7 points to 26 by level 44. Stroke width and arrowheads scale down on small boards so routes stay thin. The failure and win layers use QCC panels instead of the excluded menus. Reduced-motion clears are immediate. Hint count, scoring and the generator are our own because the pack leaves them unspecified.
+
+
+### Original menus restored — Charlie 10:18
+
+Start, pause and result UI use the original `0297ed4` game design. Only Slither uses the shared minimal game sheet. The removed controls, larger play area and compact shared-dock HUD remain.

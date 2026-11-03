@@ -27,32 +27,36 @@ beforeEach(async()=>{
 
 describe('per-account stored save quota',()=>{
  it.each([false,true])('accepts exactly 2 MiB then rejects one more byte across separate v2=%s syncs',async v2=>{
-  expect((await put({'save:snake':record(1048576)},v2)).status).toBe(200);
-  expect((await put({'save:tower':record(1048500)},v2)).status).toBe(200);
-  expect((await put({'save:pool':record(76)},v2)).status).toBe(200);
+  // Three records fit the 1 MiB request envelope. The JSON map adds 42 bytes
+  // for these literal keys, separators and braces to the record byte counts.
+  expect((await put({'save:snake':record(700000)},v2)).status).toBe(200);
+  expect((await put({'save:tower':record(700000)},v2)).status).toBe(200);
+  expect((await put({'save:pool':record(697110)},v2)).status).toBe(200);
+  expect(Buffer.byteLength(JSON.stringify((await(await read()).json()).saves))).toBe(2097152);
   const before=(await read()).clone(),revision=(await pool.query('SELECT sync_revision::text FROM accounts')).rows[0].sync_revision;
-  const response=await put({'save:pool':record(77,2)},v2);
+  const response=await put({'save:pool':record(697111,2)},v2);
   expect(response.status).toBe(413);expect(await response.json()).toEqual(quota);
   expect(response.headers.get('Cache-Control')).toBe('no-store');
   expect(await(await read()).json()).toEqual(await before.json());
   expect((await pool.query('SELECT sync_revision::text FROM accounts')).rows[0].sync_revision).toBe(revision);
  });
  it('counts UTF-8 bytes of untouched records and rejects a multi-key batch atomically',async()=>{
-  expect((await put({'save:snake':record(900000,1,true),'save:tower':record(900000,1,true)})).status).toBe(200);
+  expect((await put({'save:snake':record(900000,1,true)})).status).toBe(200);
+  expect((await put({'save:tower':record(900000,1,true)})).status).toBe(200);
   const before=await(await read()).json();
   const response=await put({'best:snake':{value:10,updated:2},'save:pool':record(400000,2,true)});
   expect(response.status).toBe(413);expect(await response.json()).toEqual(quota);
   expect(await(await read()).json()).toEqual(before);
  });
  it('counts replacements once and measures the winning merge rather than stale submissions',async()=>{
-  expect((await put({'save:snake':record(1048500,9)})).status).toBe(200);
-  expect((await put({'save:tower':record(1048576,9)})).status).toBe(200);
-  expect((await put({'save:pool':record(76,9)})).status).toBe(200);
+  expect((await put({'save:snake':record(700000,9)})).status).toBe(200);
+  expect((await put({'save:tower':record(700000,9)})).status).toBe(200);
+  expect((await put({'save:pool':record(697110,9)})).status).toBe(200);
   // Timestamp-only semantic no-ops retain their original timestamps at the exact cap.
-  const unchanged={value:{...record(1048500,9).value,updated:999},updated:999};
+  const unchanged={value:{...record(700000,9).value,updated:999},updated:999};
   expect((await put({'save:snake':unchanged})).status).toBe(200);
-  expect((await(await read()).json()).saves['save:snake']).toEqual(record(1048500,9));
-  expect((await put({'save:snake':record(1048576,1)})).status).toBe(200); // stale larger record loses
+  expect((await(await read()).json()).saves['save:snake']).toEqual(record(700000,9));
+  expect((await put({'save:snake':record(900000,1)})).status).toBe(200); // stale larger record loses
   expect((await put({'save:snake':record(100,11),'save:pool':record(900000,11)})).status).toBe(200);
   const data=await(await read()).json();
   expect(data.saves['save:snake']).toEqual(record(100,11));expect(data.saves['save:pool']).toEqual(record(900000,11));
@@ -65,11 +69,12 @@ describe('per-account stored save quota',()=>{
   expect((await(await read()).json()).saves['save:blockcraft']).toEqual(record(900000,2));
  });
  it('isolates account totals',async()=>{
-  expect((await put({'save:snake':record(1048576)})).status).toBe(200);
-  expect((await put({'save:tower':record(1048576)})).status).toBe(200);
+  expect((await put({'save:snake':record(700000)})).status).toBe(200);
+  expect((await put({'save:tower':record(700000)})).status).toBe(200);
+  expect((await put({'save:pool':record(697110)})).status).toBe(200);
   const second=await handle(new Request(endpoint+'?action=signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'Other_User',password:'test password'})}));
   expect(second.status).toBe(201);token=(await second.json()).token;
-  expect((await put({'save:snake':record(1048576)})).status).toBe(200);
+  expect((await put({'save:snake':record(700000)})).status).toBe(200);
  });
  it('serializes concurrent batches from separate handler instances before counting stored records',async()=>{
   expect((await put({'save:snake':record(900000)})).status).toBe(200);
@@ -83,9 +88,9 @@ describe('per-account stored save quota',()=>{
   const readIndex=statements.findIndex(sql=>sql.startsWith('SELECT key,value,updated FROM account_saves'));
   expect(statements.slice(0,readIndex)).toContain('SELECT id FROM accounts WHERE id=$1 FOR UPDATE');
  });
- it('returns the quota response for an oversized streamed sync body',async()=>{
+ it('rejects an oversized streamed sync body before writing any saves',async()=>{
   const response=await put({'save:snake':record(1048576),'save:tower':record(1048576)});
-  expect(response.status).toBe(413);expect(await response.json()).toEqual(quota);
+  expect(response.status).toBe(413);expect(await response.json()).toEqual({error:'Request too large.'});
   expect((await pool.query('SELECT * FROM account_saves')).rows).toHaveLength(0);
  });
 });

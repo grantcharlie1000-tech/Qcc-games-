@@ -1,9 +1,13 @@
 import type { GameModule } from '../../core/types';
 import { inJoystickZone, KeyboardSteering, pointerAngle } from './input';
 import { createJoystick } from './joystick';
+import { bindGamePauseSheet, createGameSheet } from '../../ui/game-sheet';
 import { advanceArena, BOT_COUNT, createArena, MIN_MASS, ranking, restoreArena, snapshot, STEP, type Arena } from './model';
 import { createRenderer } from './render';
 import { skinFor } from './skin';
+import {compactMass,mountDockRanking} from './dock-ranking';
+import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
+import {bindGlass} from '../../ui/glass';
 import './style.css';
 
 const module: GameModule = {
@@ -14,25 +18,26 @@ const module: GameModule = {
     root.innerHTML = `<canvas class="nc-canvas" tabindex="0" role="img" aria-label="Slither.io arena. Move the pointer without clicking, use the thumb stick on touch, or hold arrows and WASD to steer. Hold Space to boost. P pauses."></canvas>
       <div class="nc-score" aria-label="Current mass in Classic mode"><span class="nc-difficulty">CLASSIC</span><strong class="nc-mass">30</strong></div>
       <aside class="nc-ranking" aria-label="Live arena ranking"><h2>LIVE RANKING</h2><ol></ol><div class="nc-you" hidden></div></aside>
-      <div class="nc-bottom"><p class="nc-hint">Move pointer to steer <span>·</span> Arrows / WASD <span>·</span> P pause</p><button class="nc-boost" aria-label="Hold to boost" aria-pressed="false"><span class="nc-chevrons" aria-hidden="true"><i></i><i></i><i></i></span><small class="nc-boost-note">Hold SPACE · spends mass</small></button></div>
-      <div class="nc-overlay"><section class="nc-card" aria-labelledby="nc-heading"><p class="nc-eyebrow">A LITTLE LIGHT. A LONG WAY.</p><h2 id="nc-heading">Slither.io<span>Find your flow.</span></h2><p class="nc-copy">Follow your pointer. Gather the glow.<br>Outmaneuver 18 local bots in a living arena.</p><div class="nc-guide"><span><b>01</b> Move pointer to steer</span><span><b>02</b> Eat pellets to grow</span><span><b>03</b> Hold Space to boost · costs mass</span></div><p class="nc-result" hidden></p><button class="game-button nc-start">Enter arena <span aria-hidden="true">↗</span></button><p class="nc-footnote">Arrows / WASD also steer · P pause · Esc study<br>Heads hit other bodies. Your own coils are safe.</p></section></div>`;
+      <div class="nc-bottom"><button class="nc-boost arcade-glass game-glass" aria-label="Hold to boost" aria-pressed="false"><span class="nc-chevrons glass-ink" aria-hidden="true"><i></i><i></i><i></i></span><small class="nc-boost-note">Hold to boost · spends mass</small></button></div>`;
     container.append(root);
     const canvas = root.querySelector<HTMLCanvasElement>('canvas')!, renderer = createRenderer(canvas);
-    const overlay = root.querySelector<HTMLElement>('.nc-overlay')!, heading = root.querySelector<HTMLElement>('#nc-heading')!;
-    const copy = root.querySelector<HTMLElement>('.nc-copy')!, guide = root.querySelector<HTMLElement>('.nc-guide')!;
-    const result = root.querySelector<HTMLElement>('.nc-result')!, start = root.querySelector<HTMLButtonElement>('.nc-start')!;
+    const controlsCopy = { touch: 'Thumb stick steers · Hold Boost', keyboard: 'Pointer steers · Space boosts' };
+    const pauseSheet = bindGamePauseSheet(container, { title: 'Slither.io', controls: controlsCopy });
+    const sheet = createGameSheet(root, { title: 'Slither.io', controls: controlsCopy, onPlay: begin, buttonClass: 'nc-start' });
+    const start = sheet.button;
     const mass = root.querySelector<HTMLElement>('.nc-mass')!, board = root.querySelector<HTMLOListElement>('.nc-ranking ol')!;
+    const rankPanel = root.querySelector<HTMLElement>('.nc-ranking')!;
+    const rankingLayout=mountDockRanking(root,container,rankPanel);
     const you = root.querySelector<HTMLElement>('.nc-you')!, boost = root.querySelector<HTMLButtonElement>('.nc-boost')!;
     const boostNote = root.querySelector<HTMLElement>('.nc-boost-note')!;
-    const hint = root.querySelector<HTMLElement>('.nc-hint')!, stick = createJoystick(root);
+    // Boost wears the same clear glass as the dock; the binding only paints, so pointer capture stays with Boost.
+    const boostGlass = bindGlass(boost);
+    const stick = createJoystick(root);
     root.querySelector('.nc-bottom')!.prepend(stick.element);
     let touchInput = false;
     // Touch layout: thumb stick bottom-left, Boost for the right thumb. Also adopted on the first real touch (hybrid devices).
     function useTouchLayout() {
       if (touchInput) return; touchInput = true; root.dataset.touch = 'true';
-      hint.textContent = 'Thumb stick to steer · Hold BOOST with your right thumb';
-      const steps = guide.querySelectorAll('span');
-      steps[0].lastChild!.textContent = ' Use the thumb stick to steer'; steps[2].lastChild!.textContent = ' Hold Boost to speed up · costs mass';
       uiAt = -Infinity;
     }
     const events = new AbortController(), signal = events.signal;
@@ -53,22 +58,30 @@ const module: GameModule = {
       // On touch layouts the minimap sits just above the resting thumb stick.
       if (touchInput && !stick.element.hidden) renderer.setMinimapLift(rect.height - stick.restTop() + 46);
       else renderer.setMinimapLift();
+      placeRanking();
       // Layout-dependent HUD must follow the canvas even when simulation is stopped.
       uiAt = -Infinity; update(performance.now());
       renderer.draw(state, 1, context.settings.reducedMotion);
     }
+    function placeRanking() {
+      rankingLayout.fit();
+    }
     const observer = new ResizeObserver(resize); observer.observe(root);
+    const dock = container.closest('.game-view')?.querySelector<HTMLElement>('.game-dock');
+    if (dock) observer.observe(dock);
+    if (rankingLayout.hud) observer.observe(rankingLayout.hud);
     window.addEventListener('resize', resize, { signal });
     function persist() { context.save(snapshot(state)); }
     function update(now = 0, force = false) {
       if (!force && now - uiAt < 100) return; uiAt = now;
       const player = state.snakes[0], score = Math.floor(player.mass + 1e-6), ranks = ranking(state), place = ranks.findIndex(snake => snake.id === 0) + 1;
-      best = Math.max(best, score); mass.textContent = String(score);
+      best = Math.max(best, score); mass.textContent = String(score);rankingLayout.setMass(score);
       if (score !== lastScore) { context.setScore(score); lastScore = score; }
       context.setLevel(`Classic · #${place} · ${BOT_COUNT} local bots`);
       const limit = renderer.view.width < 600 || renderer.view.height < 600 ? 5 : 10;
+      rankPanel.hidden=state.phase!=='running';
       const entries = ranks.slice(0, limit);
-      const row = (name: string, value: number, rank: number, color: string) => `<span class="nc-place">${rank}</span><i style="background:${color}" aria-hidden="true"></i><span class="nc-name">${name}</span><strong>${Math.floor(value)}</strong>`;
+      const row = (name: string, value: number, rank: number, color: string) => `<span class="nc-place">${rank}</span><i style="background:${color}" aria-hidden="true"></i><span class="nc-name">${name}</span><strong aria-label="${Math.floor(value)}" title="${Math.floor(value)}">${compactMass(value)}</strong>`;
       // Names and colors are fixed local constants, never data from storage or the network.
       board.innerHTML = entries.map((snake, i) => `<li style="color:${skinFor(snake.id,snake.color).primary}"${snake.id === 0 ? ' class="is-you"' : ''}>${row(snake.name, snake.mass, i + 1, skinFor(snake.id,snake.color).primary)}</li>`).join('');
       you.hidden = place <= limit; you.innerHTML = row('YOU', player.mass, place, skinFor(0,player.color).primary);
@@ -80,23 +93,14 @@ const module: GameModule = {
       root.dataset.rank = String(place); root.dataset.eaten = String(state.eaten); root.dataset.defeated = String(state.defeated);
       boost.disabled = paused || state.phase !== 'running'; boost.setAttribute('aria-pressed', String(player.boosting));
       boostNote.textContent = player.mass <= MIN_MASS + 1e-6 ? 'Eat more glow to boost' : player.boosting ? '1.7× SPEED · −6 MASS / SEC' : touchInput ? 'Hold here · spends mass' : 'Hold SPACE · spends mass';
-      overlay.hidden = state.phase === 'running'; start.disabled = paused;
+      start.disabled = paused;
       const hideStick = !touchInput || state.phase !== 'running';
       if (stick.element.hidden !== hideStick) { stick.element.hidden = hideStick; queueMicrotask(resize); }
       if (lastPhase !== state.phase || force) {
         lastPhase = state.phase;
-        guide.hidden = state.phase === 'dead' || savedRun; result.hidden = state.phase !== 'dead';
-        if (state.phase === 'dead') {
-          heading.innerHTML = 'A bright run.<span>Another little light?</span>';
-          copy.textContent = state.cause;
-          result.textContent = `${score} mass · ${Math.floor(state.ticks * STEP)}s survived · ${player.kills} outmaneuvered · Best ${Math.floor(best)}`;
-          start.textContent = 'Play again';
-          context.announce(`${state.cause} ${score} mass. Play again when ready.`);
-        } else {
-          heading.innerHTML = savedRun ? 'Welcome back.<span>Your glow is waiting.</span>' : 'Slither.io<span>Find your flow.</span>';
-          copy.innerHTML = savedRun ? `${score} mass · ${Math.floor(state.ticks * STEP)}s survived.<br>Continue your saved local arena.` : `${touchInput ? 'Steer with your thumb' : 'Follow your pointer'}. Gather the glow.<br>Outmaneuver 18 local bots in a living arena.`;
-          start.textContent = savedRun ? 'Continue arena' : 'Enter arena';
-        }
+        if (state.phase === 'running') sheet.hide();
+        else sheet.show(state.phase === 'dead' ? 'game-over' : 'start', { score: savedRun || state.phase === 'dead' ? score : undefined, best: Math.floor(best) });
+        if (state.phase === 'dead') context.announce(`${state.cause} ${score} mass. Play again when ready.`);
       }
       context.setStatus(paused ? 'Arena paused.' : state.phase === 'dead' ? `${state.cause} Play again to start a fresh arena.` : state.phase === 'ready' ? (touchInput ? 'Local bots only. Thumb stick steers, Boost button boosts.' : 'Local bots only. Move your pointer to steer, Space to boost.') : `${score} mass. Rank ${place}. Local bots only. Avoid other bodies and the rim.`);
     }
@@ -106,7 +110,6 @@ const module: GameModule = {
       if (state.phase === 'dead') reset();
       state.phase = 'running'; savedRun = false; last = null; clearInput(); update(0, true); persist(); context.sound('tap'); canvas.focus({ preventScroll: true });
     }
-    start.addEventListener('click', begin, { signal });
     const local = (event: PointerEvent) => { const rect = canvas.getBoundingClientRect(); return { x: event.clientX - rect.left, y: event.clientY - rect.top }; };
     function setPointer(event: PointerEvent) { pointer = local(event); steering = 'pointer'; }
     canvas.addEventListener('pointermove', event => {
@@ -146,6 +149,10 @@ const module: GameModule = {
     }, { signal });
     window.addEventListener('keyup', event => { const key = event.key.length === 1 ? event.key.toLowerCase() : event.key; keyboard.release(key, state.snakes[0].angle); if (key === ' ') { if (keyBoost) event.preventDefault(); keyBoost = false; } }, { signal });
     window.addEventListener('blur', clearInput, { signal });
+    // Publish each finished frame to the shared glass lens; repaint redraws the current state only.
+    const drawArena = renderer.draw; let drawnAlpha = 1;
+    renderer.draw = (s, alpha = 1, reduced = false, repaint = false) => { drawnAlpha = alpha; drawArena(s, alpha, reduced, repaint); notifyGlassFrame(canvas); };
+    const releaseGlass = registerGlassFrameSource(canvas, () => { if (!disposed) renderer.draw(state, drawnAlpha, context.settings.reducedMotion, true); });
     function controls() {
       let angle: number | undefined;
       if (steering === 'stick') angle = stick.angle() ?? stickHold;
@@ -177,7 +184,7 @@ const module: GameModule = {
         state = restored; seed = state.seed; savedRun = state.phase === 'running' || (state.phase === 'ready' && state.ticks > 0);
         if (savedRun) state.phase = 'ready'; last = null; clearInput(); update(0, true); renderer.draw(state, 1, context.settings.reducedMotion);
       },
-      dispose() { disposed = true; clearInput(); events.abort(); observer.disconnect(); cancelAnimationFrame(frame); root.remove(); }
+      dispose() { disposed = true; releaseGlass(); boostGlass.dispose(); clearInput(); events.abort(); observer.disconnect(); rankingLayout.dispose(); sheet.dispose(); pauseSheet.dispose(); cancelAnimationFrame(frame); root.remove(); }
     };
   }
 };

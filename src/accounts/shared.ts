@@ -1,16 +1,21 @@
 import {GAME_IDS} from '../core/types';
-// Free-tier budget: Neon Free has 0.5 GB storage; Vercel Hobby caps request bodies at 4.5 MB.
-// Keep each item <= the account total and sync bodies below the host limit (all sizes are UTF-8 bytes).
-export const MAX_TOTAL_BYTES=2*1024*1024;
+import {STORAGE_FULL_MESSAGE} from '../core/storage-full';
+// Keep requests below Vercel Hobby's 4.5 MB hard limit and give each account a
+// bounded share of the 0.5 GB Neon Free budget. These are logical UTF-8 JSON
+// bytes; database indexes/row overhead still consume additional project storage.
+export const MAX_BODY_BYTES=1024*1024;
+export const MAX_USER_BYTES=2*1024*1024;
 export const MAX_KEY_BYTES=1024*1024;
-export const MAX_BODY_BYTES=2*1024*1024;
+export const MAX_AUTH_BODY_BYTES=2048;
+export const MAX_KEEPALIVE_BODY_BYTES=60000;
+// Reserve space for cursor/revisions growing between precomputed sync batches.
+export const SYNC_BATCH_HEADROOM_BYTES=2048;
+export const jsonBytes=(value:unknown)=>new TextEncoder().encode(JSON.stringify(value)).length;
 export const STORAGE_QUOTA={error:'storage_quota',message:'Your saves are over the 2 MB limit.'} as const;
-export const STORAGE_FULL={error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'} as const;
+export const STORAGE_FULL={error:'storage_full',message:STORAGE_FULL_MESSAGE} as const;
 export const SAVE_KEYS:readonly string[]=['settings','favourites',...GAME_IDS.flatMap(id=>['best:'+id,'save:'+id]),...['easy','medium','hard','score'].map(level=>'best:minesweeper-'+level)];
 export interface SaveRecord {value:unknown;updated:number}
 export type Saves=Record<string,SaveRecord>;
-/** Count the stored JSON record, including its value and timestamp, independently of sync framing. */
-export const saveBytes=(record:SaveRecord)=>new TextEncoder().encode(JSON.stringify(record)).length;
 export const validUsername=(value:unknown):value is string=>typeof value==='string'&&/^[a-zA-Z0-9_.-]{3,24}$/.test(value);
 export const validPassword=(value:unknown):value is string=>typeof value==='string'&&value.length>=8&&value.length<=128;
 export const validSessionToken=(value:unknown):value is string=>typeof value==='string'&&/^acct_[a-f0-9]{64}$/.test(value);
@@ -33,7 +38,7 @@ export function validSave(key:string,record:unknown,maxBytes=MAX_KEY_BYTES):reco
  }else if(key.startsWith('best:')){
   if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>Number.MAX_SAFE_INTEGER)return false;
  }else if(!object(value)||value.version!==1||Object.keys(value).some(k=>!['version','data','updated'].includes(k))||!Object.hasOwn(value,'data')||!timestamp(value.updated)||value.updated!==record.updated||!json(value.data))return false;
- try{return saveBytes(record as unknown as SaveRecord)<=maxBytes;}catch{return false;}
+ try{return jsonBytes(record)<=maxBytes;}catch{return false;}
 }
 export function validSaves(value:unknown):value is Saves {
  return object(value)&&Object.keys(value).length<=SAVE_KEYS.length&&Object.entries(value).every(([key,record])=>validSave(key,record));

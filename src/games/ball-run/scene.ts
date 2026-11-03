@@ -4,6 +4,7 @@
  * boxes collision uses. Every instanced buffer is allocated once and reused; the road
  * is rebuilt only when its origin, which moves in 0.5 m steps, changes. */
 import * as THREE from 'three';
+import {registerGlassFrameSource,notifyGlassFrame} from '../../ui/glass-frame-source';
 import { rollAngle } from './roll';
 import { CONFIG, DYING_DURATION, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
@@ -246,6 +247,12 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const rollX = new THREE.Vector3(1, 0, 0), rollZ = new THREE.Vector3(0, 0, 1), rollStep = new THREE.Quaternion();
   let rollDistance = NaN, rollPosition = NaN, rollSeed = NaN, rollRun = NaN;
   let builtOrigin = NaN, builtCourse: Course | null = null, disposed = false;
+  const drawFrame = () => {
+    if (disposed) return;
+    renderer.render(scene, camera);
+    notifyGlassFrame(canvas);
+  };
+  const releaseGlassFrame = registerGlassFrameSource(canvas, drawFrame);
   let gateWalls = 0, yRef = 0, frameElapsed = 0, blockCount = 0;
   let lineCount = 0, cyanCount = 0, course: Course, fovFit = 1;
 
@@ -603,7 +610,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     fog.near = 60 + speed;
     fog.far = 150 + 1.6 * speed;
 
-    renderer.render(scene, camera);
+    drawFrame();
     projection.copy(ball.position).project(camera);
     stats.ballScreenX = (1 + projection.x) / 2;
     stats.ballScreenY = (1 - projection.y) / 2;
@@ -633,6 +640,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   function dispose(): void {
     if (disposed) return;
     disposed = true;
+    releaseGlassFrame();
     for (const mesh of pools) mesh.dispose();
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
@@ -646,6 +654,6 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // Every pool is still visible with no instances: one render now uploads every geometry
   // and compiles every material, so the first boost or crash never stalls on a shader
   // compile and the geometry count is the same from the first frame.
-  renderer.render(scene, camera);
+  drawFrame();
   return { resize, render, reset, stats, dispose };
 }

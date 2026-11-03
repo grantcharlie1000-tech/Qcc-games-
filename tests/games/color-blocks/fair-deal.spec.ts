@@ -1,3 +1,4 @@
+import {gameAction,pauseGame} from '../../game-menu';
 import {test,expect,type Page} from '../../fixtures';
 import {createGame,SHAPES,type State} from '../../../src/games/color-blocks/model';
 import {clearReference,solveHand} from './hand-oracle';
@@ -27,6 +28,6 @@ test('a fresh full hand plays through native touch, mouse and keyboard, then sur
  }
  await expect(root).not.toHaveClass(/cb-over/);expect(solveHand(state.board,state.tray)).toHaveLength(3);
  await page.screenshot({path:'tests/games/color-blocks/evidence/fair-hand-390x844.png'});
- await page.getByRole('button',{name:'Pause game',exact:true}).tap();state=await saved(page);await page.reload();await expect(root).toHaveAttribute('data-moves','4');expect(await saved(page)).toEqual(state);
- await page.getByRole('button',{name:'Restart game',exact:true}).tap();await expect(root).toHaveAttribute('data-moves','0');expect(solveHand((await saved(page)).board,(await saved(page)).tray)).toHaveLength(3);
+ await pauseGame(page);state=await saved(page);await page.reload();await expect(root).toHaveAttribute('data-moves','4');expect(await saved(page)).toEqual(state);
+ await gameAction(page,'Restart game');await expect(root).toHaveAttribute('data-moves','0');expect(solveHand((await saved(page)).board,(await saved(page)).tray)).toHaveLength(3);
 });

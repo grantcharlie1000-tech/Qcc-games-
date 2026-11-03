@@ -12,6 +12,7 @@
 // from above), translucent chunks 2, particles 3, hand 9, screen overlay 100. World shaders are camera-relative
 // (modelViewMatrix is formed in float64 on the CPU), so nothing jitters far from spawn.
 import * as THREE from 'three';
+import {registerGlassFrameSource,notifyGlassFrame} from '../../../ui/glass-frame-source';
 import {ATLAS_COLUMNS,ATLAS_ROWS,LIQUID,TILE_INDEX,isLava,isWater} from '../data/blocks';
 import {biomeDef} from '../data/biomes';
 import {CS,SEA_LEVEL,chunkKey,quadIndices,MAX_PART_QUADS,ROOT_FLAGS} from '../engine/constants';
@@ -161,6 +162,12 @@ export function createRenderer(game:Game):RenderService{
   const screenOverlay=createScreenOverlay(atlas);scene.add(screenOverlay.mesh);
   const clear=new THREE.Color();
   let viewChunks=5,fovModifier=1,fovTarget=1,disposed=false;
+  const drawFrame=()=>{
+    if(disposed)return;
+    renderer.render(scene,camera);
+    notifyGlassFrame(canvas);
+  };
+  const releaseGlassFrame=registerGlassFrameSource(canvas,drawFrame);
 
   function geometryFor(part:MeshPart,minY:number,maxY:number){
     const g=new THREE.BufferGeometry(),n=part.quads*16;
@@ -346,7 +353,7 @@ export function createRenderer(game:Game):RenderService{
     },
     frame,tick,
     // Resize before drawing: resizing after would clear the presented frame.
-    render(){if(disposed)return;govern();renderer.render(scene,camera);},
+    render(){if(disposed)return;govern();drawFrame();},
     info(){return{drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,chunks:chunks.size};},
     reset(){
       for(const r of chunks.values())release(r);chunks.clear();
@@ -355,6 +362,7 @@ export function createRenderer(game:Game):RenderService{
     },
     dispose(){
       if(disposed)return;disposed=true;
+      releaseGlassFrame();
       for(const off of unsubscribe.splice(0))off();
       resize.disconnect();for(const r of chunks.values())release(r);chunks.clear();
       sky.dispose();particles.dispose();hand.dispose();blockOverlay.dispose();screenOverlay.dispose();

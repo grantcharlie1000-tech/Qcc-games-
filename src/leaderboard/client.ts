@@ -1,5 +1,6 @@
 import {apiUrl} from '../core/api';
 import * as store from '../core/storage';
+import {STORAGE_FULL_MESSAGE} from '../core/storage-full';
 import {validUsername} from '../accounts/shared';
 import {scoredGame,validScore,readBoard,LEADERBOARD_NOT_OPEN,type Board} from './shared';
 interface Storage {read<T>(key:string,fallback:T):T;write(key:string,value:unknown):boolean}
@@ -9,11 +10,14 @@ export const SCORE_BATCH_MS=180000;
 export const NOT_OPEN_RETRY_MS=900000;
 interface Retry {attempt:number;nextAt:number}
 export class LeaderboardSync {
- needsLogin=false;
+ needsLogin=false;message='';
  private identity='';private scope='';private flightToken:string|undefined;
  private disposed=false;private retry:Retry={attempt:0,nextAt:0};
  private listeners=new Set<(game:string)=>void>();
  onSynced(listener:(game:string)=>void){this.listeners.add(listener);return ()=>{this.listeners.delete(listener);};}
+ private statusListeners=new Set<(message:string)=>void>();
+ onStatus(listener:(message:string)=>void){this.statusListeners.add(listener);return ()=>{this.statusListeners.delete(listener);};}
+ private setMessage(message:string){if(this.message===message)return;this.message=message;for(const listener of this.statusListeners)listener(message);}
  private pending:Record<string,number>={};private sent:Record<string,number>={};
  /** Games parked after a not-open answer, with the time they may be tried again. Scores stay pending meanwhile. */
  private parked:Record<string,number>={};
@@ -38,6 +42,7 @@ export class LeaderboardSync {
   this.retry=retry&&Number.isInteger(retry.attempt)&&retry.attempt>=0&&Number.isFinite(retry.nextAt)?retry:{attempt:0,nextAt:0};
   for(const [key,score] of Object.entries(this.storage.read('leaderboard:pending'+this.scope,{})??{}))if(scoredGame(key)&&validScore(score))this.pending[key]=score;
   for(const [key,score] of Object.entries(this.storage.read('leaderboard:sent'+this.scope,{})??{}))if(scoredGame(key)&&validScore(score))this.sent[key]=score;
+  this.setMessage('');
   this.schedule();
  }
  profile():Profile|null{this.refreshIdentity();return this.rawProfile();}
@@ -86,6 +91,7 @@ export class LeaderboardSync {
    // with the others, without the shared outage backoff or an error.
    if(response.status===409&&(await response.json().catch(()=>null))?.code===LEADERBOARD_NOT_OPEN){this.parked[game]=Date.now()+NOT_OPEN_RETRY_MS;continue;}
    delete this.parked[game];
+   if(response.status===507){this.defer(response);this.setMessage(STORAGE_FULL_MESSAGE);throw new Error(STORAGE_FULL_MESSAGE);}
    if(!response.ok){this.defer(response);throw new Error('Scores are saved here and will sync when the leaderboard is available.');}
    this.retry={attempt:0,nextAt:0};this.storage.write('leaderboard:retry'+this.scope,this.retry);
    this.sent[game]=Math.max(score,this.sent[game]??0);this.storage.write('leaderboard:sent'+this.scope,this.sent);
@@ -93,6 +99,7 @@ export class LeaderboardSync {
    this.storage.write('leaderboard:pending'+this.scope,this.pending);
    for(const listener of this.listeners)listener(game);
   }
+  this.setMessage('');
  }
  async load(game:string):Promise<Board>{
   if(!scoredGame(game))throw new Error('Choose a game with scores.');
@@ -104,12 +111,13 @@ export class LeaderboardSync {
   ]);
   if(this.profile()?.token!==profile?.token)throw new Error('Player changed. Refresh scores.');
   if(personalResponse?.status===401){this.needsLogin=true;throw new Error('Log in again to share your scores. Your progress stays on this device.');}
+  if(publicResponse.status===507||personalResponse?.status===507){this.setMessage(STORAGE_FULL_MESSAGE);throw new Error(STORAGE_FULL_MESSAGE);}
   if(!publicResponse.ok||(personalResponse&&!personalResponse.ok))throw new Error('Online leaderboard is temporarily unavailable.');
   const publicBoard=await publicResponse.json(),personal=personalResponse?await personalResponse.json():{player:null};
   const board=readBoard({entries:publicBoard?.entries,player:personal?.player});
   if(this.profile()?.token!==profile?.token)throw new Error('Player changed. Refresh scores.');
   if(!board)throw new Error('The leaderboard response could not be read.');
-  this.storage.write('leaderboard:cache:'+game+this.scope,board);return board;
+  this.storage.write('leaderboard:cache:'+game+this.scope,board);if(!Object.keys(this.pending).length)this.setMessage('');return board;
  }
  cached(game:string):Board|null{this.refreshIdentity();return readBoard(this.storage.read('leaderboard:cache:'+game+this.scope,null));}
  dispose(){this.disposed=true;if(this.timer)clearTimeout(this.timer);this.timer=undefined;if(typeof document!=='undefined')document.removeEventListener('visibilitychange',this.visibility);}
