@@ -1,0 +1,16 @@
+{
+  "referenceCommit": "e1346471",
+  "seeds": [
+    11,
+    42
+  ],
+  "difficulties": [
+    "medium",
+    "hard"
+  ],
+  "comparedFrames": 152,
+  "comparedInstances": 246991,
+  "maxMatrixOrColorError": 0.0000152587890625,
+  "tolerance": 0.0001,
+  "method": "Temporary differential Vitest comparison against the baseline scene.ts, using real Three matrices and generated courses with only browser/GPU boundaries stubbed. All visible road, grid, gate, and obstacle matrices/colors matched after world translation. Includes LOD boundaries, gaps, gates, sliders, rebase, backward restore, course changes, and distances up to 62020m. Temporary duplicate source/test removed after validation."
+}
