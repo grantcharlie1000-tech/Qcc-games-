@@ -270,7 +270,7 @@ test('navigation, companion and game controls share the same clear optical recip
     expect(materials[0].veil,route).toBe('rgba(255, 255, 255, 0.06)');
   }
   for(const reference of Object.values(references))expect([reference.veil,reference.pill]).toEqual([references.navigation.veil,references.navigation.pill]);
-  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(3px)','saturate(1.05) brightness(.9) contrast(.85)']);
+  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(3px)','saturate(1.08)']);
   expect([references.game.blur,references.game.tone]).toEqual(['blur(2px)','saturate(1.08)']);
 });
 
