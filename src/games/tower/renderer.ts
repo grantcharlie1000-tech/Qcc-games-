@@ -56,7 +56,6 @@ export function renderTower(canvas:HTMLCanvasElement,s:TowerState,reduced:boolea
     const point=project(moving.x,moving.z,height+1,camera);ctx.fillStyle='#fff6dc';ctx.beginPath();ctx.arc(point[0],point[1]-22,3,0,Math.PI*2);ctx.fill();
   }
   ctx.font='800 12px Arcade, sans-serif';ctx.textAlign='left';ctx.fillStyle='#4f496e';
-  ctx.fillText('PRECISION BUILDS HEIGHT',21,30);
   ctx.font='12px system-ui, sans-serif';ctx.fillStyle='#534a6a';
   ctx.fillText(paused?'PAUSED':s.phase==='over'?'YOUR TOWER':s.phase==='settling'?'NICE LANDING':s.motion.axis==='x'?'NEXT SLAB  ↗':'NEXT SLAB  ↖',21,49);
 }

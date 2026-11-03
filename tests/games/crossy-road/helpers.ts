@@ -19,7 +19,7 @@ declare global {
 
 /** The seed most specs play on: rows 0-4 are the safe start, and nothing about it matters beyond that. */
 export const SEED = 11;
-export const EVIDENCE = '/workspace/qcc-crossy-work/shots';
+export const EVIDENCE = '/workspace/qcc-copy-shots/crossy-road';
 
 // ---------------------------------------------------------------------------------------------------------------------
 // The hook

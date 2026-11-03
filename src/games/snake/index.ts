@@ -51,7 +51,7 @@ const module:GameModule={
     start.textContent='Play again';
    }
    start.disabled=paused;
-   context.setStatus(paused?'Paused':finished?(state.phase==='won'?'All 256 segments earned. You win!':'Run ended.'):'Playing');
+   context.setStatus(paused?'Paused':finished?(state.phase==='won'?'All 256 segments earned. You win!':'Run ended.'):state.phase==='ready'?'Ready':'Playing');
    dirty=true;
   }
   function snapshot(){return JSON.parse(JSON.stringify({...state,presentation:savePresentation(view)})) as unknown;}

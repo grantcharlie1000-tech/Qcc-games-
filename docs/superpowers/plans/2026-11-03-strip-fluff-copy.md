@@ -16,7 +16,7 @@
 - Text/markup only; no CSS, gameplay, features or migrations.
 - Keep titles, buttons, scores, timers, levels/lives, results, errors, accessibility and settings labels.
 - Preserve help explicitly opened from the game menu. Remove instructions and empty copy wrappers from the playfield and start screens.
-- Pool: remove open-table/banner copy, potted-ball captions, unassigned group text, gesture/placement explanations and inline help. Below the table show only `Foul` or `Scratch` on a foul; keep results in the existing player heading and accessible status.
+- Pool: remove open-table/banner copy, potted-ball captions, unassigned group text, gesture/placement explanations and inline help. Below the table show only `Foul` or `Scratch` on a foul; keep results on the table and in accessible status.
 - Keep the assigned group and numbered potted-ball trays; shorten the visible pocket-call label.
 - Run all test/build/browser commands through `flock /tmp/qcc-test.lock`; Chromium only, `--workers=1`.
 - Use ports 46xx for Playwright; never 4173.

@@ -132,6 +132,7 @@ test('returning from a hidden tab does not resume through the game menu',async({
 
 test('Minesweeper local options preserve a background pause',async({page})=>{
   await page.goto('/#/game/minesweeper');
+  await expect(page.locator('.ms-board')).toBeVisible();
   await gameAction(page,'Game options');await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});});
   await expect(page.locator('#pause-overlay')).toBeVisible();
   await gameAction(page,'Game options');await page.getByRole('button',{name:'Close game options',exact:true}).click();
