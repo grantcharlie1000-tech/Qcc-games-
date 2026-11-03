@@ -9,7 +9,7 @@ async function open(page: Page) {
   // The shell title now lives in the glass options dialog; the arena card carries the visible name.
   await expect(page.locator('#game-title')).toHaveText('Claimline menu');
   await expect(page.locator('#cl-heading')).toHaveText('Claimline');
-  await expect(page.locator('.cl-footnote')).toHaveText('Mouse, arrows or WASD to steer · P pause · Esc study');
+  await expect(page.locator('.cl-canvas')).toHaveAttribute('aria-label', /arrow keys or WASD/);
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
 }
 async function play(page: Page) {

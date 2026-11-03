@@ -14,7 +14,7 @@ const module:GameModule={
   let publishedScore=-1,publishedLines=-1,publishedStatus='';
   const abort=new AbortController(),signal=abort.signal;
   const root=document.createElement('section');root.className='cb-game';root.setAttribute('aria-label','Block Blast puzzle');
-  root.innerHTML=`<div class="cb-board-frame"><div class="cb-board" role="grid" aria-label="8 by 8 placement board" aria-describedby="cb-instructions"></div><div class="cb-effects" aria-hidden="true"></div></div><div class="cb-tray" role="group" aria-label="Three-piece tray"></div><div class="cb-feedback" role="status">Pick a piece and find its place</div><p class="cb-instructions" id="cb-instructions">Drag to place, or select a piece then tap the board. Touch pieces lift above your finger. Keyboard: 1, 2 or 3 select, arrows aim, Enter places, Esc pauses and opens Study Mode.</p><svg class="cb-drag-art" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" hidden></svg>`;
+  root.innerHTML=`<div class="cb-board-frame"><div class="cb-board" role="grid" aria-label="8 by 8 placement board" aria-describedby="cb-instructions"></div><div class="cb-effects" aria-hidden="true"></div></div><div class="cb-tray" role="group" aria-label="Three-piece tray"></div><div class="cb-feedback" role="status"></div><p class="cb-instructions sr-only" id="cb-instructions">Drag to place, or select a piece then tap the board. Touch pieces lift above your finger. Keyboard: 1, 2 or 3 select, arrows aim, Enter places, Esc pauses and opens Study Mode.</p><svg class="cb-drag-art" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" hidden></svg>`;
   container.replaceChildren(root);
   const board=root.querySelector<HTMLElement>('.cb-board')!,tray=root.querySelector<HTMLElement>('.cb-tray')!,feedback=root.querySelector<HTMLElement>('.cb-feedback')!;
   const floating=root.querySelector<SVGSVGElement>('.cb-drag-art')!,effects=root.querySelector<HTMLElement>('.cb-effects')!;
@@ -44,17 +44,17 @@ const module:GameModule={
    }
    if(state.score!==publishedScore){context.setScore(state.score);publishedScore=state.score;}
    if(state.lines!==publishedLines){context.setLevel(`${state.lines} lines`);publishedLines=state.lines;}
-   const status=paused?'Paused':hasMove(state)?`${state.moves} ${state.moves===1?'piece':'pieces'} placed · ${state.tray.filter(p=>p!==null).length} left in tray`:'No pieces fit. Restart for another run.';
+   const status=paused?'Paused':hasMove(state)?`${state.moves} ${state.moves===1?'piece':'pieces'} placed · ${state.tray.filter(p=>p!==null).length} left in tray`:'No pieces fit.';
    if(status!==publishedStatus){context.setStatus(status);publishedStatus=status;}
    if(preview&&cursor.x>=0&&cursor.x<SIZE&&cursor.y>=0&&cursor.y<SIZE)board.setAttribute('aria-activedescendant',`cb-cell-${cursor.y*SIZE+cursor.x}`);else board.removeAttribute('aria-activedescendant');
    if(!hasMove(state)){feedback.textContent=`No pieces fit · ${state.score} points`;root.classList.add('cb-over');}else root.classList.remove('cb-over');
   }
-  function choose(slot:number){if(!active()||state.tray[slot]===null)return;ignoreClick=false;selected=slot;preview=false;context.sound('tap');feedback.textContent=`${NAMES[state.tray[slot]!]} selected · fixed orientation`;draw();}
+  function choose(slot:number){if(!active()||state.tray[slot]===null)return;ignoreClick=false;selected=slot;preview=false;context.sound('tap');feedback.textContent=`${NAMES[state.tray[slot]!]} selected`;draw();}
   function commit(animate=true){if(!active()||selected===null)return false;const result=place(state,selected,cursor.x,cursor.y);
-   if(!result){feedback.textContent='That piece needs empty cells. Try another spot.';context.announce(feedback.textContent);return false;}
+   if(!result){feedback.textContent='No room for that piece.';context.announce(feedback.textContent);return false;}
    state=result.state;selected=null;preview=false;
    if(animate)celebrate(result.cleared,result.gained,result.lines);
-   const message=result.lines?`${result.lines} ${result.lines===1?'line':'lines'} cleared! Streak ${state.combo} · +${result.gained}`:`Nicely placed · +${result.gained}`;
+   const message=result.lines?`${result.lines} ${result.lines===1?'line':'lines'} cleared! Streak ${state.combo} · +${result.gained}`:`+${result.gained}`;
    feedback.textContent=message;context.announce(message);context.sound(result.lines?'success':'tap');if(!hasMove(state)){context.sound('lose');context.announce('No remaining pieces fit. Your run is over.');}
    context.save(state);draw();return true;
   }
@@ -153,7 +153,7 @@ const module:GameModule={
   // Grid owns keyboard focus while aiming; cells expose precise accessible labels.
   board.tabIndex=0;
   draw();
-  return {pause(){paused=true;cancel();draw();},resume(){paused=false;draw();},restart(){cancel();state=freshGame();selected=null;cursor={x:0,y:0};feedback.textContent='Fresh board · find your flow';draw();context.save(state);board.focus({preventScroll:true});},serialize(){return structuredClone(state);},restore(data){const restored=restoreGame(data);if(!restored)return;cancel();state=restored;selected=null;feedback.textContent='Your puzzle is ready to continue';draw();},dispose(){disposed=true;cancel();resize.disconnect();abort.abort();root.remove();}};
+  return {pause(){paused=true;cancel();draw();},resume(){paused=false;draw();},restart(){cancel();state=freshGame();selected=null;cursor={x:0,y:0};feedback.textContent='';draw();context.save(state);board.focus({preventScroll:true});},serialize(){return structuredClone(state);},restore(data){const restored=restoreGame(data);if(!restored)return;cancel();state=restored;selected=null;feedback.textContent='';draw();},dispose(){disposed=true;cancel();resize.disconnect();abort.abort();root.remove();}};
  }
 };
 export default module;

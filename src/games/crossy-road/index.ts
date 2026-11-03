@@ -1,4 +1,4 @@
-/** Crossy Road's game module: the shell contract, the fixed-step loop, the DOM overlays (start hint, Continue,
+/** Crossy Road's game module: the shell contract, the fixed-step loop, the DOM overlays (Continue,
  * game over) and the wiring between the pure rules over the seeded World and the Three.js scene.
  * All gameplay lives in rules.ts; this file decides when to step, draw, report and announce. */
 import type { GameContext, GameInstance, GameModule } from '../../core/types';
@@ -15,8 +15,8 @@ import './style.css';
 
 const ID = 'crossy-road';
 const TITLES: Record<DeathCause, string> = { car: 'Bonk!', train: 'Whoosh!', water: 'Splash!', swept: 'Drifted off!', 'ufo-idle': 'Beamed up!', 'ufo-behind': 'Beamed up!' };
-const START_STATUS = 'Tap, swipe or press an arrow key to start hopping.';
-const RUN_STATUS = 'Keep hopping forward. Wait too long and a UFO beams you up.';
+const START_STATUS = 'Ready';
+const RUN_STATUS = 'Playing';
 /** Seconds between signal bell rings while a nearby light flashes. */
 const BELL_GAP = 0.45;
 /** Interval for reporting the observed frame rate to the development hook. */
@@ -31,7 +31,6 @@ function devSeed(): number | null {
 }
 
 const TEMPLATE = `<canvas class="hw-canvas" tabindex="0" aria-label="Crossy Road playfield. Arrow keys or W A S D hop one tile. Tap to hop forward, or swipe to hop that way."></canvas>
-<p class="hw-hint"></p>
 <div class="hw-layer" hidden>
   <section class="hw-card ui-glass-sheet hw-over" aria-labelledby="hw-over-title" hidden>
     <h2 class="hw-title" id="hw-over-title">Game over</h2>
@@ -70,9 +69,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   }
 
   const q = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
-  const hint = q('.hw-hint'), layer = q('.hw-layer');
+  const layer = q('.hw-layer');
   // Only the current device's controls.
-  hint.textContent = matchMedia('(pointer: coarse)').matches ? 'Tap or swipe to hop' : 'Arrow keys or WASD to hop';
   const cards: Record<Exclude<Layer, null>, HTMLElement> = { over: q('.hw-over'), continue: q('.hw-continue'), lost: q('.hw-lost') };
   const overTitle = q('.hw-over .hw-title'), overCause = q('.hw-over .hw-cause'), overScore = q('.hw-score'), overBest = q('.hw-best'), overNew = q('.hw-new');
   const again = q<HTMLButtonElement>('.hw-again'), resumeButton = q<HTMLButtonElement>('.hw-resume');
@@ -218,7 +216,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     cancel();
     const cause = fillCard();
     show('over');
-    context.setStatus(`Game over: ${cause}. Score ${run.maxRow}. Press Space or Play again.`);
+    context.setStatus(`Game over: ${cause}. Score ${run.maxRow}.`);
     again.focus({ preventScroll: true });
   }
 
@@ -229,7 +227,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     // The playfield is a Tab stop only while it takes input.
     canvas.tabIndex = next === null ? 0 : -1;
   }
-  function setHint(on: boolean) { hint.dataset.gone = String(!on); }
 
   function draw(dt: number) {
     if (disposed || lost) return;
@@ -291,7 +288,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     const result = hop(run, dir, world);
     if (result === 'hop') {
       sfx.hop(dir === 'up');
-      if (phase === 'ready') { setHint(false); context.setStatus(RUN_STATUS); }
+      if (phase === 'ready') { context.setStatus(RUN_STATUS); }
     } else if (result === 'blocked') sfx.bonk();
     if (run.maxRow !== before) progressed(before);
     if (!frameId) draw(0);
@@ -323,7 +320,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     root.dataset.cause = '';
     scene.reset();
     show(null);
-    setHint(true);
     reportedScore = 0;
     context.setScore(0);
     reportedRow = -1;
@@ -422,7 +418,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
 
   world.ensure(AHEAD_ROWS);
   show(null);
-  setHint(true);
   setData('quality', quality);
   context.setLevel('Row 0');
   context.setStatus(START_STATUS);
@@ -470,16 +465,15 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       reportedScore = run.maxRow;
       if (run.maxRow > 0) context.setScore(run.maxRow);
       reportedRow = -1;
-      setHint(run.phase === 'ready');
       if (run.phase === 'over') {
         const cause = fillCard();
         show('over');
-        context.setStatus(`Game over: ${cause}. Score ${run.maxRow}. Press Space or Play again.`);
+        context.setStatus(`Game over: ${cause}. Score ${run.maxRow}.`);
         refocus(again);
       } else if (held) {
         continueRow.textContent = String(run.row);
         show('continue');
-        context.setStatus(`Saved run at row ${run.row}. Press Continue or any arrow key.`);
+        context.setStatus(`Saved run · Row ${run.row}`);
         refocus(resumeButton);
       } else {
         root.dataset.cause = '';

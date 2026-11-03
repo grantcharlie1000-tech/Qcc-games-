@@ -31,9 +31,9 @@ const game: GameModule = {
   const abort = new AbortController(), signal=abort.signal, svgPrefix=`cc-${++instanceSequence}`;
   let state:Snapshot={version:1,level:0,paths:emptyPaths(LEVELS[0]),completed:[],moves:0,history:[],assists:0,best:{}};
   let paused=false,disposed=false,selected=-1,active=-1,focusCell=0,pointerId:number|null=null,lastPoint:Point|null=null,gesture:Paths|null=null,keyboardDrawing=false;
-  let feedback='Start at any matching peg. Fill every cell.';
+  let feedback='';
   const root=document.createElement('section');root.className='cc-game';
-  root.innerHTML=`<div class="cc-heading"><div><span class="cc-eyebrow">THREAD THE COLOURS</span><h2 class="cc-puzzle-name"></h2></div><label class="cc-picker-label"><span class="sr-only">Choose puzzle</span><select class="game-select cc-picker" aria-label="Choose puzzle"></select></label></div><div class="cc-stats"><span class="cc-progress"></span><span class="cc-pairs"></span><span class="cc-moves"></span></div><div class="cc-frame"><div class="cc-playfield"><svg class="cc-art" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg><div class="cc-grid" role="grid" aria-label="Flow Free board" aria-describedby="${svgPrefix}-help"></div></div></div><p class="cc-feedback" role="status"></p><div class="cc-win" hidden><strong>Beautifully connected!</strong><span>Every pair. Every cell.</span><button type="button" class="game-button cc-next">Next puzzle</button></div><p id="${svgPrefix}-help" class="cc-help sr-only">Drag from a peg • Cover the whole board<br>Keyboard: arrows to move, Space to draw, Delete to erase.</p>`;
+  root.innerHTML=`<div class="cc-heading"><div><h2 class="cc-puzzle-name"></h2></div><label class="cc-picker-label"><span class="sr-only">Choose puzzle</span><select class="game-select cc-picker" aria-label="Choose puzzle"></select></label></div><div class="cc-stats"><span class="cc-progress"></span><span class="cc-pairs"></span><span class="cc-moves"></span></div><div class="cc-frame"><div class="cc-playfield"><svg class="cc-art" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg><div class="cc-grid" role="grid" aria-label="Flow Free board" aria-describedby="${svgPrefix}-help"></div></div></div><p class="cc-feedback" role="status"></p><div class="cc-win" hidden><strong>Beautifully connected!</strong><button type="button" class="game-button cc-next">Next puzzle</button></div><p id="${svgPrefix}-help" class="cc-help sr-only">Drag from a peg • Cover the whole board<br>Keyboard: arrows to move, Space to draw, Delete to erase.</p>`;
   container.append(root);
   const find=<T extends Element>(selector:string)=>root.querySelector<T>(selector)!;
   const grid=find<HTMLElement>('.cc-grid'), art=find<SVGSVGElement>('.cc-art'), picker=find<HTMLSelectElement>('.cc-picker'),next=find<HTMLButtonElement>('.cc-next');
@@ -119,7 +119,7 @@ const game: GameModule = {
    }else{
     if(feedback.startsWith('Drawing ')){
      const allPairs=state.paths.every((path,color)=>connected(level(),path,color));
-     feedback=allPairs?'Pairs connected, but empty cells remain. Redraw longer trails to fill them.':selected>=0&&connected(level(),state.paths[selected],selected)?`${palette[selected].letter} connected. Keep filling the board.`:'Path saved. Continue from its tip or redraw a peg.';
+     feedback=allPairs?'Pairs connected · Empty cells remain':selected>=0&&connected(level(),state.paths[selected],selected)?`${palette[selected].letter} connected`:'Path saved';
     }
     context.sound('tap');
    }
@@ -170,14 +170,14 @@ const game: GameModule = {
    if(paused||event.altKey||event.ctrlKey||event.metaKey||pointerId!==null)return;
    const n=level().size,row=Math.floor(focusCell/n),col=focusCell%n;
    const deltas:Record<string,number>={ArrowUp:row>0?-n:0,ArrowDown:row<n-1?n:0,ArrowLeft:col>0?-1:0,ArrowRight:col<n-1?1:0};
-   if(event.key in deltas){event.preventDefault();const target=focusCell+deltas[event.key];if(keyboardDrawing){move(target);if(focusCell!==target){say('That cell is blocked. Choose another direction.');render();return}}else focusCell=target;buttons[focusCell].focus({preventScroll:true});render();return}
+   if(event.key in deltas){event.preventDefault();const target=focusCell+deltas[event.key];if(keyboardDrawing){move(target);if(focusCell!==target){say('That cell is blocked.');render();return}}else focusCell=target;buttons[focusCell].focus({preventScroll:true});render();return}
    if(event.key===' '||event.key==='Enter'){event.preventDefault();if(keyboardDrawing)finish();else if(start(focusCell)){keyboardDrawing=true;render()}return}
    if(event.key==='Backspace'&&keyboardDrawing&&active>=0){event.preventDefault();const path=state.paths[active];if(path.length>1){state.paths=copyPaths(state.paths);state.paths[active].pop();focusCell=state.paths[active].at(-1)!;buttons[focusCell].focus({preventScroll:true});render()}return}
    if(event.key==='Delete'){event.preventDefault();if(keyboardDrawing)finish();const color=endpoint(level(),focusCell);selected=color<0?state.paths.findIndex(path=>path.includes(focusCell)):color;eraseSelected()}
   },{signal});
   grid.addEventListener('focusout',event=>{if(keyboardDrawing&&!grid.contains(event.relatedTarget as Node|null))finish()},{signal});
   function eraseSelected(){if(paused||selected<0)return;finish();const before=copyPaths(state.paths);state.paths[selected]=[];say(`Erased ${palette[selected].letter}.`);record(before)}
-  function changePuzzle(index:number){if(paused)return;finish();state.level=index;state.paths=emptyPaths(level());state.history=[];state.moves=state.assists=0;active=selected=-1;focusCell=0;say('New puzzle. Connect every pair and fill every cell.');rebuild();save()}
+  function changePuzzle(index:number){if(paused)return;finish();state.level=index;state.paths=emptyPaths(level());state.history=[];state.moves=state.assists=0;active=selected=-1;focusCell=0;say('New puzzle');rebuild();save()}
   picker.addEventListener('change',()=>changePuzzle(Number(picker.value)),{signal});
   next.addEventListener('click',()=>{if(!paused&&isWon(level(),state.paths))changePuzzle((state.level+1)%LEVELS.length)},{signal});
 
@@ -186,7 +186,7 @@ const game: GameModule = {
    pause(){if(disposed)return;finish();paused=true;render()},
    resume(){if(disposed)return;paused=false;render()},
    // Restart replays the current puzzle; completed and best are campaign progress.
-   restart(){if(disposed)return;finish();state={...state,paths:emptyPaths(level()),moves:0,history:[],assists:0};selected=active=-1;focusCell=0;say('Fresh start. Connect every pair and fill every cell.');rebuild();save()},
+   restart(){if(disposed)return;finish();state={...state,paths:emptyPaths(level()),moves:0,history:[],assists:0};selected=active=-1;focusCell=0;say('Ready');rebuild();save()},
    serialize(){return snapshot()},
    restore(data:unknown){if(disposed)return;const restored=restoreSnapshot(data);if(!restored)return;finish();state=restored;selected=active=-1;focusCell=0;feedback='Saved puzzle restored.';rebuild()},
    dispose(){if(disposed)return;finish();disposed=true;abort.abort();hud.dispose();root.remove()},

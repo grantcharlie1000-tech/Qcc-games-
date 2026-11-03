@@ -65,7 +65,6 @@ test('the shell Restart button turns a running run into a fresh ready run', asyn
   expect(after.seed, 'a new run gets a new seed').not.toBe(before.seed);
   await expect(page.locator('#game-score strong')).toHaveText('0');
   await expect(page.locator('#game-level')).toHaveText('Row 0');
-  await expect(page.locator('.hw-hint')).toHaveAttribute('data-gone', 'false');
   await hop(page, 'ArrowUp');
   expect(await state(page)).toMatchObject({row: 1, phase: 'running'});
   expect(errors).toEqual([]);
@@ -237,7 +236,6 @@ async function playfieldShot(page: Page, name: string, viewport?: {width: number
   const seed = await useRoadAndRiverSeed(page);
   for (let i = 0; i < 3; i++) await hop(page, 'ArrowUp');
   expect(await state(page), `seed ${seed}`).toMatchObject({seed, row: 3, phase: 'running', alive: true});
-  await expect(page.locator('.hw-hint')).toHaveCSS('opacity', '0');
   await expect(page.locator('.hw-layer')).toBeHidden();
   await frames(page, 12); // the camera follows on real time
   await shot(page, name);
