@@ -4,7 +4,7 @@
 :is(.arcade-sheet,body.in-game .mp-card){
   --sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .92);
   /* One clear optical transfer across the entire sheet. */
-  --sheet-veil:var(--glass-frost-fill);--sheet-halo:transparent;
+  --sheet-veil:rgb(12 16 22 / .90);--sheet-halo:transparent;
   --sheet-optics:var(--glass-frost-blur);
   --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .13);
   --sheet-line:rgb(255 255 255 / .16);--sheet-focus:#fff;
@@ -160,3 +160,7 @@ body.in-game .mp-card .game-button.secondary{background:var(--sheet-control);col
 @media(min-width:1366px) and (pointer:fine){
   body.in-game #game-stage :is(.game-controls .game-button,.bf-actions .game-button,.cc-actions .game-button,.sol-actions .game-button,.sl-hint,.pool-pocket-row select){min-height:44px;font-size:14px}
 }
+
+/* Hide the scrollbar while retaining menu scrolling. */
+.arcade-sheet{scrollbar-width:none}
+.arcade-sheet::-webkit-scrollbar{display:none}
