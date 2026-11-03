@@ -417,17 +417,11 @@
    backdrop filter paints a square under the button), white ink as the sheet. */
 .ui-glass-sheet .arcade-glass>.ui-glass-lens{display:none!important}
 .ui-glass-sheet .arcade-glass{--glass-ink:var(--sheet-ink,#14191f)}
-/* Plain adaptive ink; no stroke or duplicated icon outline. glass-ink.ts sets
-   --glass-local-halo only where neither ink reaches 4.5:1 over the sampled
-   backdrop; elsewhere it is transparent and the glyph renders plain. */
+/* Static foreground: no backdrop-dependent colour or contrast halo. */
 .arcade-glass .glass-ink,.ui-tabbar-mini .glass-ink{
-  color:var(--glass-adaptive-ink,var(--glass-ink));background:none;box-shadow:none;
-  -webkit-text-stroke:0;paint-order:stroke fill;
-  text-shadow:none;
+  color:var(--glass-ink);background:none;box-shadow:none;
+  -webkit-text-stroke:0;text-shadow:none;filter:none;
 }
-/* WebKit paints no text-shadow under paint-order:stroke fill; the stroke is 0. */
-:is(.arcade-glass,.ui-tabbar-mini,.ui-glass-sheet) .glass-ink[data-glass-halo]{paint-order:normal;text-shadow:0 0 1px var(--glass-local-halo),0 0 1px var(--glass-local-halo),0 0 2.5px var(--glass-local-halo)}
-:is(.arcade-glass,.ui-tabbar-mini,.ui-glass-sheet) svg.glass-ink[data-glass-halo]{filter:drop-shadow(1px 0 0 var(--glass-local-halo)) drop-shadow(-1px 0 0 var(--glass-local-halo)) drop-shadow(0 1px 0 var(--glass-local-halo)) drop-shadow(0 -1px 0 var(--glass-local-halo))}
 /* Keep the same plain glyph rendering at every display density. */
 @media(max-resolution:1.5dppx){.arcade-glass .glass-ink,.ui-tabbar-mini .glass-ink{-webkit-text-stroke-width:0}}
 .glass-vector-halo{display:none}
@@ -460,7 +454,7 @@ dialog.ui-glass-sheet .icon-button.sheet-close-glass[data-glass=off]{background:
 .reduce-motion .arcade-glass .ui-tab:active{transform:none}
 
 
-.ui-glass-sheet .glass-ink{color:var(--glass-adaptive-ink,inherit);-webkit-text-stroke:0;text-shadow:none}
+.ui-glass-sheet .glass-ink{color:inherit;-webkit-text-stroke:0;text-shadow:none}
 
 /* Performance first: tint and rim, without filtering changing page/canvas
    pixels. Moving sheets and scrolling chrome never allocate a backdrop layer. */
@@ -472,4 +466,28 @@ dialog.ui-glass-sheet .icon-button.sheet-close-glass[data-glass=off]{background:
 .ui-tabbar .ui-tab:is([aria-current=page],[aria-pressed=true]){
   border-radius:999px;background:rgb(0 0 0 / .08);
   box-shadow:inset 0 1px 0 rgb(255 255 255 / .18);
+}
+
+/* Icons and labels stay solid white, including light routes and interaction
+   states. Changes in the backdrop never change the foreground's paint. */
+:is(.arcade-glass,.arcade-glass-mini,.ui-tabbar-mini){
+  --glass-ink:#fff!important;--glass-solid:#151b21!important;
+  color:#fff!important;-webkit-text-fill-color:#fff!important;
+  text-shadow:none!important;filter:none!important;
+}
+:is(.arcade-glass,.arcade-glass-mini,.ui-tabbar-mini) :is(.ui-tab,svg,svg *,span,small,strong,kbd){
+  color:#fff!important;-webkit-text-fill-color:#fff!important;
+  opacity:1!important;filter:none!important;text-shadow:none!important;
+  -webkit-text-stroke:0!important;transition:none!important;
+}
+:is(.ui-glass-sheet,.mp-card,.nc-card,.study-privacy) :is(button,button *,a,a *,svg,select,input:not([type=checkbox],[type=radio],[type=range])){
+  color:#fff!important;-webkit-text-fill-color:#fff!important;
+  filter:none!important;text-shadow:none!important;-webkit-text-stroke:0!important;
+}
+:is(.ui-glass-sheet,.mp-card,.nc-card,.study-privacy) button:disabled{opacity:1}
+@media(forced-colors:active){
+  :is(.arcade-glass,.arcade-glass-mini,.ui-tabbar-mini),
+  :is(.ui-glass-sheet,.mp-card,.nc-card,.study-privacy) :is(button,a,select,input:not([type=checkbox],[type=radio],[type=range])){
+    forced-color-adjust:none;background:#151b21!important;border-color:#fff!important;
+  }
 }
