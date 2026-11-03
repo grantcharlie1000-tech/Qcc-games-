@@ -274,7 +274,7 @@
 /* Sheets and menus are frosted glass: a deep blur and a dark tint hold text over any
    artwork, while the thin rim keeps it glass rather than a milky panel. Small HUD
    controls stay on the clear fill. */
-:root{--glass-clear-fill:rgb(255 255 255 / .06);--glass-clear-blur:blur(2px);--glass-frost-fill:rgb(255 255 255 / .72);--glass-frost-blur:blur(22px) saturate(1.18);--glass-sheet-fill:var(--glass-frost-fill);--glass-sheet-sheen:none;--glass-sheet-body:var(--glass-frost-blur);--glass-sheet-edge:rgb(255 255 255 / .7) rgb(255 255 255 / .28) rgb(255 255 255 / .22) rgb(255 255 255 / .55);--glass-sheet-rim:inset 0 1px 0 rgb(255 255 255 / .45);--glass-sheet-lift:0 8px 28px -8px rgb(0 0 0 / .2),0 1px 3px rgb(0 0 0 / .08)}
+:root{--glass-clear-fill:rgb(255 255 255 / .06);--glass-clear-blur:none;--glass-frost-fill:rgb(255 255 255 / .72);--glass-frost-blur:none;--glass-sheet-fill:var(--glass-frost-fill);--glass-sheet-sheen:none;--glass-sheet-body:var(--glass-frost-blur);--glass-sheet-edge:rgb(255 255 255 / .7) rgb(255 255 255 / .28) rgb(255 255 255 / .22) rgb(255 255 255 / .55);--glass-sheet-rim:inset 0 1px 0 rgb(255 255 255 / .45);--glass-sheet-lift:0 8px 28px -8px rgb(0 0 0 / .2),0 1px 3px rgb(0 0 0 / .08)}
 /* The glass surface: the frosted backdrop, the dimmed tint, the sheen and the inset highlight. The sheets and the Up next card share this rule, so the
    material is declared once. The card overrides only the tint it needs (style.css), and the fallbacks below name both. */
 .ui-glass-sheet,.movies-view .movies-next{-webkit-text-stroke:0;paint-order:stroke fill;--sheet-halo:transparent;text-shadow:none;border:1px solid var(--glass-sheet-edge);background:var(--glass-sheet-sheen),var(--glass-sheet-fill);-webkit-backdrop-filter:var(--glass-sheet-body);backdrop-filter:var(--glass-sheet-body);box-shadow:var(--glass-sheet-rim),var(--glass-sheet-lift)}
@@ -461,3 +461,15 @@ dialog.ui-glass-sheet .icon-button.sheet-close-glass[data-glass=off]{background:
 
 
 .ui-glass-sheet .glass-ink{color:var(--glass-adaptive-ink,inherit);-webkit-text-stroke:0;text-shadow:none}
+
+/* Performance first: tint and rim, without filtering changing page/canvas
+   pixels. Moving sheets and scrolling chrome never allocate a backdrop layer. */
+:is(.arcade-glass,.arcade-glass-mini,.ui-tabbar,.ui-tabbar-mini,.ui-glass-sheet,.ui-header){
+  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+}
+.ui-scroll-edge{display:none}
+.ui-tabbar::after{display:none}
+.ui-tabbar .ui-tab:is([aria-current=page],[aria-pressed=true]){
+  border-radius:999px;background:rgb(0 0 0 / .08);
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .18);
+}

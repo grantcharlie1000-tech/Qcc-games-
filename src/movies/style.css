@@ -287,7 +287,7 @@ body.movies-active.study-active{overflow:auto}
 .reduce-motion .movies-view .movies-next-bar>span{transition:none}
 .movies-view .movies-fullscreen{position:absolute;right:10px;top:10px;z-index:3;min-height:44px;border-color:#ffffff33;background:#101923e8;color:#fff}
 /* The resume pill names the position a stream starts from. It sits top left and clears the Full screen button. */
-.movies-view .movies-resume-pill{position:absolute;left:12px;top:12px;z-index:2;max-width:calc(100% - 150px);padding:6px 12px;border:1px solid var(--line-strong);border-radius:999px;background:#000000b3;color:#fff;font-family:var(--font-mono);font-size:12px;line-height:1.4;pointer-events:none;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.movies-view .movies-resume-pill{position:absolute;left:12px;top:12px;z-index:2;max-width:calc(100% - 150px);padding:6px 12px;border:1px solid var(--line-strong);border-radius:999px;background:#000000b3;color:#fff;font-family:var(--font-mono);font-size:12px;line-height:1.4;pointer-events:none;-webkit-backdrop-filter:none;backdrop-filter:none}
 .movies-view .movies-resume-pill[hidden]{display:none}
 /* The single-provider player keeps its reload control below the screen. */
 .movies-view .movies-player-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0}
