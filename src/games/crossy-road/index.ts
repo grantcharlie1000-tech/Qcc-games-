@@ -31,7 +31,7 @@ function devSeed(): number | null {
 }
 
 const TEMPLATE = `<canvas class="hw-canvas" tabindex="0" aria-label="Crossy Road playfield. Arrow keys or W A S D hop one tile. Tap to hop forward, or swipe to hop that way."></canvas>
-<p class="hw-hint">Tap or swipe to hop <span aria-hidden="true">·</span> arrow keys or WASD</p>
+<p class="hw-hint"></p>
 <div class="hw-layer" hidden>
   <section class="hw-card ui-glass-sheet hw-over" aria-labelledby="hw-over-title" hidden>
     <h2 class="hw-title" id="hw-over-title">Game over</h2>
@@ -71,6 +71,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
 
   const q = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
   const hint = q('.hw-hint'), layer = q('.hw-layer');
+  // Only the current device's controls.
+  hint.textContent = matchMedia('(pointer: coarse)').matches ? 'Tap or swipe to hop' : 'Arrow keys or WASD to hop';
   const cards: Record<Exclude<Layer, null>, HTMLElement> = { over: q('.hw-over'), continue: q('.hw-continue'), lost: q('.hw-lost') };
   const overTitle = q('.hw-over .hw-title'), overCause = q('.hw-over .hw-cause'), overScore = q('.hw-score'), overBest = q('.hw-best'), overNew = q('.hw-new');
   const again = q<HTMLButtonElement>('.hw-again'), resumeButton = q<HTMLButtonElement>('.hw-resume');

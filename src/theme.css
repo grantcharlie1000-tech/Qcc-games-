@@ -271,10 +271,13 @@
    inside it uses plain fills and never a second backdrop filter. src/ui/sheet.ts sets --sheet-origin to the control that
    opened the sheet. Phones get a bottom sheet; from 640 px it is a centred panel. */
 /* The sheet's material: its own tokens on :root, read by .ui-glass-sheet and by the Up next card (style.css) through the shared rule below. */
-:root{--glass-clear-fill:rgb(8 12 18 / .20);--glass-clear-blur:blur(1.5px);--glass-sheet-fill:var(--glass-clear-fill);--glass-sheet-sheen:none;--glass-sheet-body:var(--glass-clear-blur) saturate(1.08);--glass-sheet-edge:rgb(255 255 255 / .3) rgb(255 255 255 / .14) rgb(255 255 255 / .14) rgb(255 255 255 / .3);--glass-sheet-rim:inset 0 -1px 0 rgb(0 0 0 / .12);--glass-sheet-lift:0 5px 16px rgb(0 0 0 / .15),0 1px 2px rgb(0 0 0 / .14)}
+/* Sheets and menus are frosted glass: a deep blur and a dark tint hold text over any
+   artwork, while the thin rim keeps it glass rather than a milky panel. Small HUD
+   controls stay on the clear fill. */
+:root{--glass-clear-fill:rgb(8 12 18 / .20);--glass-clear-blur:blur(1.5px);--glass-frost-fill:rgb(12 16 22 / .58);--glass-frost-blur:blur(20px) saturate(1.5);--glass-sheet-fill:var(--glass-frost-fill);--glass-sheet-sheen:none;--glass-sheet-body:var(--glass-frost-blur);--glass-sheet-edge:rgb(255 255 255 / .3) rgb(255 255 255 / .14) rgb(255 255 255 / .14) rgb(255 255 255 / .3);--glass-sheet-rim:inset 0 -1px 0 rgb(0 0 0 / .12);--glass-sheet-lift:0 5px 16px rgb(0 0 0 / .15),0 1px 2px rgb(0 0 0 / .14)}
 /* The glass surface: the frosted backdrop, the dimmed tint, the sheen and the inset highlight. The sheets and the Up next card share this rule, so the
    material is declared once. The card overrides only the tint it needs (style.css), and the fallbacks below name both. */
-.ui-glass-sheet,.movies-view .movies-next{-webkit-text-stroke:0;paint-order:stroke fill;--sheet-halo:rgb(0 0 0 / .82);text-shadow:none;border:1px solid var(--glass-sheet-edge);background:var(--glass-sheet-sheen),var(--glass-sheet-fill);-webkit-backdrop-filter:var(--glass-sheet-body);backdrop-filter:var(--glass-sheet-body);box-shadow:var(--glass-sheet-rim),var(--glass-sheet-lift)}
+.ui-glass-sheet,.movies-view .movies-next{-webkit-text-stroke:0;paint-order:stroke fill;--sheet-halo:transparent;text-shadow:none;border:1px solid var(--glass-sheet-edge);background:var(--glass-sheet-sheen),var(--glass-sheet-fill);-webkit-backdrop-filter:var(--glass-sheet-body);backdrop-filter:var(--glass-sheet-body);box-shadow:var(--glass-sheet-rim),var(--glass-sheet-lift)}
 /* One exterior device pixel keeps the same glyph contrast at desktop density;
    the panel itself remains clear. Phones retain the finer 0.7px outline. */
 @media(max-resolution:1.5dppx){.ui-glass-sheet,.movies-view .movies-next{-webkit-text-stroke-width:0}}
@@ -336,7 +339,7 @@
 .ui-glass-sheet #rules-text{font:400 17px/1.45 var(--font-sans);color:rgb(255 255 255 / .72)}
 :root[data-input="keyboard"] .ui-glass-sheet :focus-visible{outline:2px solid #fff;outline-offset:2px}
 /* Fallbacks: no backdrop filter, reduced transparency, more contrast, and forced colours. */
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ui-glass-sheet,.movies-view .movies-next{background:var(--glass-clear-fill)}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ui-glass-sheet,.movies-view .movies-next{background:rgb(18 22 28 / .94)}}
 @media (prefers-reduced-transparency:reduce){.ui-glass-sheet,.movies-view .movies-next{background:rgb(28 28 32);-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media (prefers-contrast:more){
   .ui-glass-sheet,.movies-view .movies-next{background:rgb(18 18 20);border:2px solid rgb(255 255 255 / .7);-webkit-backdrop-filter:none;backdrop-filter:none}
@@ -407,6 +410,16 @@
 }
 .arcade-glass .ui-tab,.arcade-glass .ui-tab:is([aria-current=page],[aria-pressed=true]),:is(.game-glass,.glass-control).ui-tab{color:var(--glass-ink);text-shadow:none}
 .arcade-glass .ui-icon,:is(.game-glass,.glass-control)>svg{filter:none}
+/* Navigation glyphs: outline at rest, the filled twin for the selected tab (and
+   for the minimized capsule, which always shows the selected tab). */
+.ui-nav-icon .ui-icon-fill{display:none}
+:is(.ui-tab[aria-current=page],.ui-tab[aria-pressed=true],.ui-tabbar-mini) .ui-nav-icon .ui-icon-line{display:none}
+:is(.ui-tab[aria-current=page],.ui-tab[aria-pressed=true],.ui-tabbar-mini) .ui-nav-icon .ui-icon-fill{display:inline}
+.ui-nav-icon{shape-rendering:geometricPrecision}
+/* Controls on a frosted sheet sit on its blur already: no second lens (a nested
+   backdrop filter paints a square under the button), white ink as the sheet. */
+.ui-glass-sheet .arcade-glass>.ui-glass-lens{display:none!important}
+.ui-glass-sheet .arcade-glass{--glass-ink:#fff}
 /* Plain adaptive ink; no stroke or duplicated icon outline. glass-ink.ts sets
    --glass-local-halo only where neither ink reaches 4.5:1 over the sampled
    backdrop; elsewhere it is transparent and the glyph renders plain. */

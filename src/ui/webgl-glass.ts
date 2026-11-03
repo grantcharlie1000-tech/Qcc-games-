@@ -393,11 +393,11 @@ export function bindWebglLens(surface:HTMLElement,onActive:(active:boolean)=>voi
   };
 }
 
-/** Sheets: the lens over a live game, else the plain CSS blur mode. */
+/** Sheets are frosted: the CSS backdrop blur and dark tint carry them over a
+ * live game too. A refracted lens copy would paint the game back sharp over the
+ * blur, so sheets stay in the blur mode. */
 export function bindSheetLens(surface:HTMLElement):()=>void{
   const previous=surface.dataset.glassMode;
   surface.dataset.glassMode='blur';
-  const lens=bindWebglLens(surface,active=>{surface.dataset.glassMode=active?'webgl':'blur';},'sheet');
-  lens.setEnabled(true);
-  return()=>{lens.dispose();if(previous===undefined)delete surface.dataset.glassMode;else surface.dataset.glassMode=previous;};
+  return()=>{if(previous===undefined)delete surface.dataset.glassMode;else surface.dataset.glassMode=previous;};
 }
