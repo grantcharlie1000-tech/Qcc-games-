@@ -95,7 +95,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let reportedScore = -1, reportedRow = -1, nextBell = 0;
   let quality: Quality = 'high', fpsTime = 0, fpsFrames = 0, fps = 0;
   const resolution = new AdaptiveResolution();
-  let appliedResolution = 3;
+  let appliedResolution = 2;
   let landedThisFrame = false;
   /** Development builds only: a moving average of the main-thread milliseconds one frame takes (simulation plus render submission). */
   let cpuMs = 0;
@@ -157,8 +157,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     for (let r = run.row - 2; r <= run.row + 6; r++) {
       const lane = world.lane(r);
       if (lane.kind !== 'rail') continue;
-      if (railWarning(lane, run.t)) ringing = true;
-      const entry = trainEntry(lane, run.t);
+      if (railWarning(lane, run.t, run.x)) ringing = true;
+      const entry = trainEntry(lane, run.t, run.x);
       if (run.t >= entry && run.t - entry < 0.3 && rumbled.get(r) !== entry) {
         rumbled.set(r, entry);
         if (Math.abs(r - run.row) <= 3) sfx.rumble();
@@ -271,14 +271,13 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     if(!frozen&&quality==='high'&&run.phase!=='dying'&&resolution.cap!==appliedResolution){
       appliedResolution=resolution.cap;
       scene.setResolutionCap(appliedResolution);
-      scene.setQuality(resolution.low?'low':'high');
       setData('quality',scene.stats.quality);
     }
   }
   function setQuality(next: Quality) {
     quality = next;
-    resolution.reset();appliedResolution=3;
-    scene.setResolutionCap(3);
+    resolution.reset();appliedResolution=2;
+    scene.setResolutionCap(2);
     scene.setQuality(next);
     setData('quality', next);
     if (!frameId) draw(0);
@@ -508,7 +507,7 @@ const game: GameModule = Object.freeze({
   id: ID,
   title: 'Crossy Road',
   cover: 'game-art/crossy-road/cover.svg',
-  rules: 'Hop across roads, rivers and railway lines as far as you can. The arrow keys or W A S D hop one tile; tap the playfield to hop forward, or swipe up, down, left or right. Trees and rocks block the way. Cars, trucks and trains end the run, and so do falling in the water and drifting off the edge on a log. Ride logs and lily pads across rivers. A railway signal flashes and rings before every train. Keep making progress: wait too long without reaching a new row, or step three rows back, and a UFO beams you up. Your score is the furthest row you reach. P pauses; Space, Enter or R plays again after a run ends.',
+  rules: 'Hop across roads, rivers and railway lines as far as you can. The arrow keys or W A S D hop one tile; tap the playfield to hop forward, or swipe up, down, left or right. Trees and rocks block the way. Cars, trucks and trains end the run, and so does falling in the water. Ride logs and lily pads across rivers. A railway signal flashes and rings before every train. Keep making progress: wait too long without reaching a new row, or step three rows back, and a UFO beams you up. Your score is the furthest row you reach. P pauses; Space, Enter or R plays again after a run ends.',
   mount,
 });
 export default game;

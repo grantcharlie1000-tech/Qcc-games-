@@ -67,7 +67,7 @@ try {
     method: 'Production preview; 2s warmup; 15s unprofiled rAF; separate 3s CDP CPU profile. Real key/button input, automatic retry after deaths. Crossy begins from the same revision 4 save; retries use the current generator revision. Heap measured after forced GC, outside rAF timing. One browser/page at a time.',
     results: [],
   };
-  for (const game of ['crossy-road', 'ball-run']) for (const settings of profiles) {
+  for (const game of (process.argv.includes('--crossy-only') ? ['crossy-road'] : ['crossy-road', 'ball-run'])) for (const settings of profiles) {
     const context = await browser.newContext({ viewport: settings.viewport, deviceScaleFactor: settings.deviceScaleFactor, serviceWorkers: 'block' });
     try {
       await context.addInitScript(({ game, seed }) => {

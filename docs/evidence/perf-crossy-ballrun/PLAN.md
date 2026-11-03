@@ -30,3 +30,5 @@ The task in this session is the specification. Work stays on `perf/crossy-ballru
 - Existing code already uses seeded mulberry32, instancing, and projected Crossy shadows. Investigate actual profiles before duplicating those optimizations.
 
 - Baseline complete: production build passed; four 15-second samples and separate CPU profiles saved. Shared-shell getImageData dominates all profiles (outside authorized change scope). Ball Run also shows per-frame DOM updates, style/layout work, GC and road transform construction. Preview stopped.
+
+- Priority change: Crossy only; Ball Run source untouched. Skip e2e/CI. Crossy focused tests: 27 passed; `npx tsc --noEmit` passed. Push this implementation milestone immediately, then finish legacy unit-test updates, independent review, and one Crossy-only after measurement.

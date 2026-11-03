@@ -12,12 +12,13 @@
  * the right on screen). */
 import * as THREE from 'three';
 import {carImpact, ufoFlight} from './motion';
+import {obstacleAt, obstacleVariant, lilyAt} from './terrain';
 import {
   BAND_MAX, BAND_MIN, COLS, DEATH_TIME, DEATH_TIME_REDUCED, EDGE_COLS, HOP_TIME, IDLE_LIMIT, IDLE_WARN, RENDER_X_MAX, RENDER_X_MIN, SAFE_LAG, SQUASH_TIME,
   TRAIN_PALETTE, VEHICLE_PALETTE, LOG_PALETTE, ROW_DEPTH, TRAFFIC_ROW_Z, TRAIN_BASE_Y, clamp, lerp,
   type CarStyle, type Death, type Dir, type GrassLane, type CrossyRoadScene, type Lane, type LilyLane, type Mover, type Quality, type RailLane, type RiverLane, type RoadLane, type SceneFrame, type SceneStats,
 } from './config';
-import { forEachMover, laneVelocity, platformAt, railWarning, trainSpan } from './lanes';
+import { forEachMover, forEachTrain, laneVelocity, platformAt, railWarning } from './lanes';
 import {
   LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, VEHICLE_COLORS, beamGeometry, chickenGeometry, carGeometry, lampGeometry, lilyGeometry, logGeometry, rockGeometry,
   signalGlowGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry, mergeVehicle, type VehicleParts,
@@ -58,11 +59,9 @@ export function focusRowTarget(playerRow: number, safeLine: number, maxRow: numb
   return Math.max(playerRow, started ? safeLine + Math.min(SAFE_LAG, maxRow) : 0);
 }
 
-/** A modest lateral follow. Phones crop a cell of the nine-cell band and pan by
- * at most a cell, keeping the player visible without pulling the whole world sideways. */
-export function focusXTarget(playerX: number, halfWidth: number): number {
-  const cropped = 2 * halfWidth / RX < COLS;
-  return clamp(lerp(4, playerX, 0.6), cropped ? 3 : 1.6, cropped ? 5 : 6.4);
+/** Follow the player's world x with the existing smooth camera response. */
+export function focusXTarget(playerX: number, _halfWidth: number): number {
+  return playerX;
 }
 
 // Palette --------------------------------------------------------------------
@@ -136,6 +135,7 @@ class Pool {
   private readonly m: Float32Array;
   private readonly c: Float32Array;
   private readonly previous: Float64Array;
+  private originX = 0;
   private matrixDirty = false;
   private colorDirty = false;
   private readonly rm = { start: 0, count: 0 };
@@ -177,9 +177,10 @@ class Pool {
     }
   }
 
-  begin(): void { this.n = 0; this.matrixDirty = this.colorDirty = false; }
+  begin(originX = 0): void { this.originX = originX; this.n = 0; this.matrixDirty = this.colorDirty = false; }
 
   put(x: number, y: number, z: number, sx: number, sy: number, sz: number, yaw: number, pi: number, k: number): void {
+    x -= this.originX;
     const n = this.n;
     if (n >= this.cap) return;
     const a = n * 9, previous = this.previous;
@@ -210,7 +211,7 @@ class Pool {
     if(n>=this.cap)return;
     const o=n*16, values=matrix.elements;
     for(let i=0;i<16;i++){
-      const value=Math.fround(values[i]);
+      const value=Math.fround(values[i] - (i === 12 ? this.originX : 0));
       if(this.m[o+i]!==value){this.m[o+i]=value;this.matrixDirty=true;}
     }
     this.previous[n*9]=NaN;
@@ -337,11 +338,11 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   const stats: SceneStats = { calls: 0, triangles: 0, geometries: 0, textures: 0, programs: 0, quality: options.quality ?? 'high' };
   let quality: Quality = stats.quality, low = quality === 'low';
-  let resolutionCap = 3, cssWidth = 0, cssHeight = 0;
+  let resolutionCap = 2, cssWidth = 0, cssHeight = 0;
   let disposed = false, fit = cameraFit(1, 1);
   /** Smoothed focus (row and x), the look-at point on the ground, and the shake offset. */
   let snap = true, focusRow = 0, focusX = 4, lookX = 4, lookZ = 0, shakeX = 0, shakeY = 0;
-  let rowLo = 0, rowHi = 0;
+  let rowLo = 0, rowHi = 0, renderOriginX = 0;
   /** The frame being drawn. */
   let now = 0, anim = 0, reduced = false, colorBlind = false;
   /** The row being drawn: its z and the world x window that can be on screen. */
@@ -353,7 +354,6 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   let pX = 0, pY = 0, pZ = 0, pSX = 1, pSY = 1, pSZ = 1, pYaw = 0, pRoll = 0, pTumbleZ = false, pAlpha = 1, pShow = true;
   /** The UFO's transform for this frame. */
   let uShow = false, uX = 0, uY = 0, uZ = 0, uSpin = 0;
-  const span = { x0: 0, x1: 0 };
   const proxy = new THREE.Object3D();
   const qYaw = new THREE.Quaternion(), qTumble = new THREE.Quaternion();
   const axisX = new THREE.Vector3(1, 0, 0), axisY = new THREE.Vector3(0, 1, 0), axisZ = new THREE.Vector3(0, 0, 1);
@@ -361,7 +361,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   // Quality ---------------------------------------------------------------------
 
   function applyPixelRatio(): void {
-    const ratio = Math.min(window.devicePixelRatio || 1, quality === 'high' ? resolutionCap : 1.5);
+    const ratio = Math.min(window.devicePixelRatio || 1, quality === 'high' ? resolutionCap : Math.min(resolutionCap, 1.5));
     const width = cssWidth || 1, height = cssHeight || 1;
     if (renderer.getPixelRatio() === ratio && canvas.width === Math.floor(width * ratio) && canvas.height === Math.floor(height * ratio)) return;
     renderer.setDrawingBufferSize(width, height, ratio);
@@ -369,7 +369,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   function setResolutionCap(cap: number): void {
     if (disposed) return;
-    resolutionCap = clamp(cap, 1.5, 3);
+    resolutionCap = clamp(cap, 1, 2);
     applyPixelRatio();
   }
 
@@ -402,6 +402,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       focusRow = stepFocusRow(focusRow, targetRow, frame.dt);
       focusX += (targetX - focusX) * smoothing(frame.dt);
     }
+    renderOriginX = Math.floor(focusX / 32) * 32;
     // Shake: a short decaying wobble on car and train deaths, never under reduced motion.
     shakeX = 0; shakeY = 0;
     const death = state.death;
@@ -416,7 +417,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     const ahead = ((0.5 - PLAYER_SCREEN) * 2 * fit.halfHeight) / SIN_P, back = shakeY / SIN_P;
     lookX = focusX + FX * (ahead + back) + RX * shakeX;
     lookZ = -focusRow * ROW_DEPTH + FZ * (ahead + back) + RZ * shakeX;
-    camera.position.set(lookX - FX * COS_P * CAMERA_DIST, SIN_P * CAMERA_DIST, lookZ - FZ * COS_P * CAMERA_DIST);
+    camera.position.set(lookX - renderOriginX - FX * COS_P * CAMERA_DIST, SIN_P * CAMERA_DIST, lookZ - FZ * COS_P * CAMERA_DIST);
     // Every row whose strip can touch the screen, plus one each side.
     const zr = fit.halfWidth * Math.abs(RZ) + (fit.halfHeight / SIN_P) * -FZ;
     rowLo = Math.ceil(-0.5 - (lookZ + zr) / ROW_DEPTH) - 1;
@@ -435,11 +436,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   // Lane drawing --------------------------------------------------------------------
 
-  /** A band across the whole lane: three boxes so the zones outside the band are darker. */
-  function band(ci: number, y: number, h: number, zc: number, depth: number, edge = ci, shade = DARK): void {
-    ground.put(LEFT_ZONE_X, y, zc, LEFT_ZONE_W, h, depth, 0, edge, shade);
-    ground.put((BAND_MIN + BAND_MAX) / 2, y, zc, BAND_MAX - BAND_MIN, h, depth, 0, ci, 1);
-    ground.put(RIGHT_ZONE_X, y, zc, RIGHT_ZONE_W, h, depth, 0, edge, shade);
+  /** A bounded strip snapped to horizontal chunks, extending beyond the frustum. */
+  function band(ci: number, y: number, h: number, zc: number, depth: number, _edge = ci, _shade = DARK): void {
+    const left = Math.floor(winLo / 16) * 16 - 8, right = Math.ceil(winHi / 16) * 16 + 8;
+    ground.put((left+right)/2, y, zc, right-left, h, depth, 0, ci, 1);
   }
 
   function putTree(x: number, variant: number, k: number): void {
@@ -453,21 +453,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   function drawGrass(lane: GrassLane, row: number): void {
     band(C_GRASS + lane.shade, -0.5, 0.5, curZ, ROW_DEPTH);
-    for (let c = 0; c < COLS; c++) {
-      if (c < winLo || c > winHi) continue;
-      const rear = row < 0 ? hash(row, c) : 0;
-      if (row < 0 && rear % 5 === 0) continue;
-      const o = row < 0 && rear % 4 === 0 ? 'rock' : lane.obstacles[c];
-      if (o === 'tree') putTree(c, row < 0 ? (rear % 13 === 1 ? 3 : hash(Math.floor(row/2), Math.floor(c/2) + 83) % 3) : lane.variant[c], 1);
-      else if (o === 'rock') putRock(c, lane.variant[c], row, 1);
-    }
-    for (let i = 0; i < lane.edge.length; i++) {
-      const o = lane.edge[i];
-      if (o === null) continue;
-      const x = i < EDGE_COLS ? i - EDGE_COLS : i + 3;
-      if (x < winLo || x > winHi || (low && (x < BAND_MIN - 3 || x > BAND_MAX + 3))) continue;
-      if (o === 'tree') putTree(x, hash(row, x + 100) % 12 === 0 ? 3 : hash(Math.floor(row / 2), Math.floor(x / 2) + 100) % 3, EDGE_SHADE);
-      else putRock(x, hash(row, x + 100) % 3, row, EDGE_SHADE);
+    for(let c=Math.floor(winLo);c<=Math.ceil(winHi);c++) {
+      const o=obstacleAt(lane,c), variant=obstacleVariant(lane,c);
+      if(o==='tree')putTree(c,variant,1);
+      else if(o==='rock')putRock(c,variant,row,1);
     }
   }
 
@@ -488,7 +477,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     if (ahead.kind === 'road') {
       // Muted, one-tile dashes on a two-tile repeat, only between road lanes.
       const zb = curZ - ROW_DEPTH / 2;
-      for (let k = Math.ceil(winLo / 2) * 2; k <= winHi; k += 2) ground.put(k, 0, zb, 0.98, 0.012, 0.065, 0, C_DASH, k < BAND_MIN || k > BAND_MAX ? DARK : 1);
+      for (let k = Math.ceil(winLo / 2) * 2; k <= winHi; k += 2) ground.put(k, 0, zb, 0.98, 0.012, 0.065, 0, C_DASH, 1);
     }
     curRoad = lane;
     curDir = lane.dir;
@@ -514,12 +503,12 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       const speed = (0.1 + 0.18 * ((h >>> 10) & 255) / 255) * ((h >>> 18) & 1 ? -1 : 1);
       const at = ((((h & 1023) / 1024) * 14 + speed * anim) % 14 + 14) % 14;
       for (let x = at + Math.ceil((winLo - len - at) / 14) * 14; x <= winHi + len; x += 14)
-        ground.put(x, WATER_Y, zz, len, 0.008, 0.035, 0, C_RIPPLE, x < BAND_MIN || x > BAND_MAX ? DARK : 1);
+        ground.put(x, WATER_Y, zz, len, 0.008, 0.035, 0, C_RIPPLE, 1);
     }
     const flow = lane.kind === 'river' ? lane.dir * 0.35 : 0.12;
     const foamAt = (hash(Math.floor(row / 2), 823) % 90) / 10 + anim * flow;
     for (let x = foamAt + Math.ceil((winLo - foamAt) / 9) * 9; x <= winHi; x += 9) {
-      const k = x < BAND_MIN || x > BAND_MAX ? 0.90 : 1, shape = hash(row, 825);
+      const k = 1, shape = hash(row, 825);
       ground.put(x, WATER_Y + 0.002, curZ - 0.27 * ROW_DEPTH, 0.60 + (shape & 3) * 0.05, 0.012, 0.28 * ROW_DEPTH, 0, C_FOAM, k);
       ground.put(x - 0.12, WATER_Y + 0.002, curZ - 0.02 * ROW_DEPTH, 0.75 + ((shape >>> 2) & 3) * 0.035, 0.012, 0.32 * ROW_DEPTH, 0, C_FOAM, k);
       ground.put(x + 0.07, WATER_Y + 0.002, curZ + 0.24 * ROW_DEPTH, 0.50 + ((shape >>> 4) & 3) * 0.03, 0.012, 0.24 * ROW_DEPTH, 0, C_FOAM, k);
@@ -527,7 +516,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     if (lane.kind === 'river') {
       forEachMover(lane, now, winLo, winHi, onLog);
     } else {
-      for (let c = 0; c < COLS; c++) if (lane.pads[c] && c >= winLo && c <= winHi) lilies.put(c, PAD_BASE, curZ, 1, 1, 1, ((hash(row, c) % 7) - 3) * 0.035, C_WHITE, 1);
+      for (let c = Math.floor(winLo); c <= Math.ceil(winHi); c++) if (lilyAt(lane,c)) lilies.put(c, PAD_BASE, curZ, 1, 1, 1, ((hash(row, c) % 7) - 3) * 0.035, C_WHITE, 1);
     }
   }
 
@@ -558,18 +547,21 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   function drawRail(lane: RailLane): void {
     band(C_BALLAST, -0.5, 0.5, curZ, ROW_DEPTH);
     for (let x = Math.ceil(winLo); x <= winHi; x++) {
-      ground.put(x, 0, curZ + TRAFFIC_ROW_Z, 0.11, 0.045, 0.70, 0, C_SLEEPER, x < BAND_MIN || x > BAND_MAX ? DARK : 1);
+      ground.put(x, 0, curZ + TRAFFIC_ROW_Z, 0.11, 0.045, 0.70, 0, C_SLEEPER, 1);
     }
     band(C_STEEL, 0.045, 0.06, curZ + TRAFFIC_ROW_Z - 0.20, 0.07);
     band(C_STEEL, 0.045, 0.06, curZ + TRAFFIC_ROW_Z + 0.20, 0.07);
-    const s = trainSpan(lane, now, span);
-    if (s !== null) drawTrain(lane, s.x0, s.x1);
-    // The warning: the lamp alternates bright and dark at 2.5 Hz (under the three-flashes-a-second photosensitivity limit
-    // for saturated red) and swells while it is bright.
-    const on = railWarning(lane, now), lit = on && (now * 2.5) % 1 < 0.5;
-    signal(0.15, on, lit);
-    signal(8.15, on, lit);
+    curRail=lane;
+    forEachTrain(lane, now, winLo, winHi, onTrain);
+    // Signals repeat spatially; each warns about arrival at its own column.
+    for(let x=Math.ceil((winLo-.15)/8)*8+.15;x<=winHi;x+=8) {
+      const on=railWarning(lane,now,x), lit=on && (now*2.5)%1<.5;
+      signal(x,on,lit);
+    }
   }
+
+  let curRail: RailLane;
+  const onTrain=(x0:number,x1:number):void=>drawTrain(curRail,x0,x1);
 
   function drawRow(lane: Lane, row: number, ahead: Lane, behind: Lane): void {
     windowFor(row);
@@ -768,7 +760,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     colorBlind = frame.colorBlind;
     anim = reduced ? 0 : now;
     aim(frame);
-    for (let i = 0; i < pools.length; i++) pools[i].begin();
+    for (let i = 0; i < pools.length; i++) pools[i].begin(renderOriginX);
     let behind = world.lane(rowLo - 1), lane = world.lane(rowLo);
     for (let row = rowLo; row <= rowHi; row++) {
       const ahead = world.lane(row + 1);
@@ -777,6 +769,9 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       lane = ahead;
     }
     actors(frame);
+    if(beam.visible)beam.position.x-=renderOriginX;
+    if(spot.visible)spot.position.x-=renderOriginX;
+    if(shade.visible)shade.position.x-=renderOriginX;
     for (let i = 0; i < pools.length; i++) pools[i].commit();
     renderer.render(scene, camera);
     const info = renderer.info;

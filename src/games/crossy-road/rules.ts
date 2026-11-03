@@ -2,16 +2,17 @@
  * persistence live here and nowhere else. Pure: no DOM, no Three.js, no clock and no randomness, so a run can be replayed,
  * saved and tested at any time. Hazards are functions of the world time `t` (lanes.ts). */
 import {
-  BACK_LIMIT, BAND_MAX, BAND_MIN, COLS, DEATH_TIME, DEATH_TIME_REDUCED, DIRS, HOP_HEIGHT, HOP_TIME, IDLE_LIMIT, IDLE_WARN, MAX_ROW, SAFE_LAG,
+  BACK_LIMIT, DEATH_TIME, DEATH_TIME_REDUCED, DIRS, HOP_HEIGHT, HOP_TIME, IDLE_LIMIT, IDLE_WARN, MAX_ROW, SAFE_LAG,
   START_COL, lerp, scrollRate,
-  type Death, type DeathCause, type Dir, type Lane, type LaneSource, type PlayerPose, type RunState, type StepEvents,
+  type WorldVersion, type Death, type DeathCause, type Dir, type Lane, type LaneSource, type PlayerPose, type RunState, type StepEvents,
 } from './config';
+import {obstacleAt} from './terrain';
 import { laneVelocity, platformAt, trainHit, vehicleHit } from './lanes';
 
 /** A fresh run: row 0, column 4, not started. `seed` is stored as an unsigned 32-bit integer. */
 export function createRun(seed: number): RunState {
   return {
-    v: 1, worldVersion: 4, seed: seed >>> 0, t: 0, phase: 'ready', row: 0, x: START_COL, fromRow: 0, fromX: START_COL, hop: -1, hopDir: 'up', facing: 'up',
+    v: 1, worldVersion: 5, seed: seed >>> 0, t: 0, phase: 'ready', row: 0, x: START_COL, fromRow: 0, fromX: START_COL, hop: -1, hopDir: 'up', facing: 'up',
     queued: null, maxRow: 0, lastProgress: 0, safeLine: 0, started: false, bonkAt: -1e9, bonkDir: 'up', landedAt: -1e9, death: null,
   };
 }
@@ -25,23 +26,10 @@ function aimHop(s: RunState, dir: Dir, world: LaneSource): boolean {
   const row = s.row + dr;
   if (row < 0) return false;
   let x: number;
-  if (dc !== 0) {
-    x = s.x + dc;
-    const here = world.lane(s.row);
-    if (here.kind === 'river') {
-      // On a log x is continuous: the band edge is where it would snap to column 0 or 8.
-      const col = Math.round(x);
-      if (col < 0 || col > COLS - 1) return false;
-    } else if (x < 0 || x > COLS - 1 || (here.kind === 'grass' && here.blocked[x])) return false;
-  } else {
-    const next = world.lane(row);
-    if (next.kind === 'river') x = s.x;
-    else {
-      // Hopping off a log snaps to the nearest column. `+ 0` turns -0 into 0 so that a JSON round trip changes nothing.
-      x = Math.round(s.x) + 0;
-      if (x < 0 || x > COLS - 1 || (next.kind === 'grass' && next.blocked[x])) return false;
-    }
-  }
+  if (dc !== 0) x = s.x + dc;
+  else x = world.lane(row).kind === 'river' ? s.x : Math.round(s.x) + 0;
+  const next = world.lane(row);
+  if(next.kind==='grass' && obstacleAt(next,Math.round(x))!==null)return false;
   aim.row = row; aim.x = x;
   return true;
 }
@@ -125,8 +113,7 @@ export function step(s: RunState, dt: number, world: LaneSource, reducedMotion =
       }
       if (s.phase === 'running') {
         const lane = world.lane(s.row);
-        if (s.hop < 0 && lane.kind === 'river' && (s.x < BAND_MIN || s.x > BAND_MAX)) die(s, events, 'swept', lane); // D4
-        else if (lane.kind === 'road' && vehicleHit(lane, renderX(s), s.t)) die(s, events, 'car', lane); // D1, also mid-hop
+        if (lane.kind === 'road' && vehicleHit(lane, renderX(s), s.t)) die(s, events, 'car', lane); // D1, also mid-hop
         else if (lane.kind === 'rail' && trainHit(lane, renderX(s), s.t)) die(s, events, 'train', lane); // D2
         else if (s.started && (s.row <= s.maxRow - BACK_LIMIT || s.row <= s.safeLine - BACK_LIMIT)) die(s, events, 'ufo-behind', lane); // D6
         else if (s.started && s.t - s.lastProgress >= IDLE_LIMIT - 1e-9) die(s, events, 'ufo-idle', lane); // D5
@@ -168,7 +155,7 @@ export function pose(s: RunState, out: PlayerPose = {x:0,z:0,lift:0,facing:'up',
 /** The persisted form of a run: exactly the state that decides what happens next. Visual-only fields (`bonkAt`, `bonkDir`,
  * `landedAt`) are left out, and a `dying` run is written as `over` so that a restored run shows its card at once. */
 export interface Snapshot {
-  v: 1; worldVersion?: 1 | 2 | 3 | 4; seed: number; t: number; phase: 'ready' | 'running' | 'over';
+  v: 1; worldVersion?: WorldVersion; seed: number; t: number; phase: 'ready' | 'running' | 'over';
   row: number; x: number; fromRow: number; fromX: number; hop: number; hopDir: Dir; facing: Dir; queued: Dir | null;
   maxRow: number; lastProgress: number; safeLine: number; started: boolean; death: Death | null;
 }
@@ -198,12 +185,12 @@ export function restore(data: unknown): RunState | null {
     if (!isRecord(data)) return null;
     const { v, seed, t, phase, row, x, fromRow, fromX, hop, hopDir, facing, queued, maxRow, lastProgress, safeLine, started, death } = data;
     const worldVersion = data.worldVersion === undefined ? 1 : data.worldVersion;
-    if (worldVersion !== 1 && worldVersion !== 2 && worldVersion !== 3 && worldVersion !== 4) return null;
+    if (worldVersion !== 1 && worldVersion !== 2 && worldVersion !== 3 && worldVersion !== 4 && worldVersion !== 5) return null;
     if (v !== 1 || !isInt(seed, 0, 4294967295) || !isNum(t, 0, 1e7)) return null;
     if (phase !== 'ready' && phase !== 'running' && phase !== 'over') return null;
     if (!isInt(row, 0, MAX_ROW) || !isInt(maxRow, 0, MAX_ROW) || !isInt(fromRow, 0, MAX_ROW)) return null;
     if (maxRow - row < 0 || maxRow - row > BACK_LIMIT || Math.abs(fromRow - row) > 1) return null;
-    if (!isNum(x, BAND_MIN - 1, BAND_MAX + 1) || !isNum(fromX, BAND_MIN - 1, BAND_MAX + 1)) return null;
+    if (!isNum(x, -Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) || !isNum(fromX, -Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)) return null;
     if (typeof hop !== 'number' || !(hop === -1 || (hop >= 0 && hop < HOP_TIME))) return null;
     // A hop is at most 1.5 long. Once grounded, fromX is only where a finished hop began: a log may have carried x anywhere since.
     if (hop >= 0 && Math.abs(fromX - x) > 1.5) return null;
