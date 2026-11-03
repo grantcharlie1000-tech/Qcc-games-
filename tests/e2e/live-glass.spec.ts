@@ -1,7 +1,7 @@
 import {test,expect} from '../fixtures';
 
-// The clear glass: an rgb(8 12 18 / .20) fill over the live backdrop, which the SVG-filter material also saturates by 1.08.
-const FILL=.2,VEIL=[8,12,18];
+// The clear glass: an rgb(255 255 255 / .06) fill over the live backdrop, which the SVG-filter material also saturates by 1.08.
+const FILL=.06,VEIL=[255,255,255];
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
 
 for(const id of ['snake','quadfall','maze-muncher','neon-coil'])test(`${id} glass reads new canvas frames without rebuilding its lens map`,async({page})=>{

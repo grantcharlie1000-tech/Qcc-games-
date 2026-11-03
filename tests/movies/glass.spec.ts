@@ -57,7 +57,7 @@ test('the episode drawer is a glass sheet with the sheet\'s blurred backdrop',as
  await expect(drawer).toHaveClass(/\bui-glass-sheet\b/);
  await expect(drawer).toHaveClass(/\bmovies-drawer\b/);
  expect(await drawer.getAttribute('class')).not.toMatch(/\bui-drawer\b/);
- expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(1.5px) saturate(1.08)');
+ expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(22px) saturate(1.18)');
 });
 
 test('at 390 px the episode drawer is a bottom sheet inset 8 px from the sides and the bottom',async({page})=>{
@@ -163,7 +163,7 @@ test('the idle season pill is a translucent fill, and only the sheet has a backd
  expect(alpha).toBeLessThan(1);
 });
 
-test('the current episode row is a white 700 title on a 16% rose fill, with a rose bar on its leading edge',async({page})=>{
+test('the current episode row is a dark 700 title on a 16% rose fill, with a rose bar on its leading edge',async({page})=>{
  // The series from the drawer text fixture is used, since its episodes carry the runtime that draws the meta line.
  await page.setViewportSize(PHONE);
  await page.route('**/api/movies?*',route=>{
@@ -178,15 +178,15 @@ test('the current episode row is a white 700 title on a 16% rose fill, with a ro
  await settledBox(drawer);
  const current=drawer.locator('[aria-current="true"]');
  await expect(current.locator('small')).toBeVisible();
- expect(await current.locator('strong').evaluate(el=>{const s=getComputedStyle(el);return [s.color,s.fontWeight];})).toEqual(['rgb(255, 255, 255)','700']);
+ expect(await current.locator('strong').evaluate(el=>{const s=getComputedStyle(el);return [s.color,s.fontWeight];})).toEqual(['rgb(20, 25, 31)','700']);
  expect(await current.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(255, 32, 86, 0.16)');
  // The bar is an inset shadow on the leading edge, so the row's content does not move.
  expect(await current.evaluate(el=>getComputedStyle(el).boxShadow)).toMatch(/rgb\(255, 32, 86\) 3px 0px 0px 0px inset/);
- expect(await current.locator('small').evaluate(el=>getComputedStyle(el).color)).toBe('rgb(228, 228, 231)');
- expect(await current.evaluate(el=>getComputedStyle(el).color)).toBe('rgb(228, 228, 231)');
+ expect(await current.locator('small').evaluate(el=>getComputedStyle(el).color)).toBe('rgb(20, 25, 31)');
+ expect(await current.evaluate(el=>getComputedStyle(el).color)).toBe('rgb(20, 25, 31)');
  // The row is a link, so hovering it must not turn the current row white: the link's hover colour would otherwise win over the base row colour.
  await current.hover();
- expect(await current.evaluate(el=>getComputedStyle(el).color)).toBe('rgb(228, 228, 231)');
+ expect(await current.evaluate(el=>getComputedStyle(el).color)).toBe('rgb(20, 25, 31)');
 });
 
 test('the close button is the sheet\'s icon button, and the heading is the sheet\'s heading',async({page})=>{
@@ -195,7 +195,7 @@ test('the close button is the sheet\'s icon button, and the heading is the sheet
  await expect(close).toHaveClass(/\bicon-button\b/);
  expect(await close.evaluate(el=>{const s=getComputedStyle(el);return [s.width,s.height,s.borderTopLeftRadius];})).toEqual(['44px','44px','50%']);
  const heading=drawer.getByRole('heading',{name:'Episodes',exact:true});
- expect(await heading.evaluate(el=>{const s=getComputedStyle(el);return [s.fontSize,s.fontWeight,s.color,s.letterSpacing];})).toEqual(['20px','600','rgb(255, 255, 255)','-0.2px']);
+ expect(await heading.evaluate(el=>{const s=getComputedStyle(el);return [s.fontSize,s.fontWeight,s.color,s.letterSpacing];})).toEqual(['20px','600','rgb(20, 25, 31)','-0.2px']);
 });
 
 test('on open, focus goes to the current episode row',async({page})=>{
@@ -245,7 +245,7 @@ test('a long season name wraps inside the drawer at 320 px, with no horizontal o
 // One page per layout: a card shown on a phone would otherwise stay in the page for the desktop check.
 for(const viewport of [PHONE,DESKTOP])test(`the Up next card has the sheet's blurred glass surface at ${viewport.width} px`,async({page})=>{
  const overlay=await showUpNext(page,viewport);
- expect(await overlay.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(1.5px) saturate(1.08)');
+ expect(await overlay.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(22px) saturate(1.18)');
 });
 
 test('the Up next card has a 24 px corner in the card layout at 1440 px',async({page})=>{

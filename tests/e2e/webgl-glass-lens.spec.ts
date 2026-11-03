@@ -115,51 +115,45 @@ test('all three WebGL sources expose their completed drawing buffer for a repain
   }
 });
 
-test('Snake: the menu sheet refracts the paused board and the renderer idles while nothing draws',async({page})=>{
+test('Snake: its frosted menu stays readable and the renderer idles while nothing draws',async({page})=>{
   await page.goto('/#/game/snake');await page.locator('.snake-start').click();
   // At phone portrait the dock sits above the board: no live pixels, so no lens.
   for(const pill of await page.locator(PILLS).all())await expect(pill).not.toHaveAttribute('data-glass-mode','webgl');
   await page.locator('#game-menu').click();
   const sheet=page.locator('#game-options');
-  await expect(sheet).toHaveAttribute('data-glass-mode','webgl');
-  // The sheet reaches past Snake's board, so it is only partly backed by live pixels and keeps
-  // the plain blur under the lens there; a fully backed lens drops the blur.
-  const partial=await sheet.evaluate(e=>e.hasAttribute('data-glass-partial'));
-  if(partial)await expect(sheet).toHaveCSS('backdrop-filter',/blur\(/);else await expect(sheet).toHaveCSS('backdrop-filter','none');
+  await expect(sheet).toHaveAttribute('data-glass-mode','blur');
+  await expect(sheet).toHaveCSS('backdrop-filter','blur(22px) saturate(1.18)');
   // Controls inside the sheet keep a thin fill rather than a second refracting layer.
   await expect(sheet.locator('.sheet-close-glass')).not.toHaveAttribute('data-glass-mode','webgl');
   await expect.poll(()=>sheet.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
-  const lens=sheet.locator(':scope>.ui-glass-gl>canvas');
-  // The board is frozen by the menu's pause: its pixels show through the lens, and no uploads repeat.
-  const covered=await lens.evaluate(e=>{const c=e as HTMLCanvasElement,p=c.getContext('2d')!.getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<p.length;i+=4)if(p[i]>=240)n++;return n/(c.width*c.height);});
-  expect(covered).toBeGreaterThan(.2);
+  await expect(sheet.locator(':scope>.ui-glass-gl')).toHaveCount(0);
   const before=await stats(page);await page.waitForTimeout(600);const after=await stats(page);
   expect(after.uploads-before.uploads).toBeLessThanOrEqual(1);
 });
 
-test('fallbacks select plain blur: no WebGL2, reduced motion, forced blur; accessibility solids select off',async({page,browserName})=>{
+test('reduced motion and no WebGL2 keep live copies; diagnostic blur and accessibility solids opt out',async({page,browserName})=>{
   const notWebgl=async()=>{await expect(page.locator('.game-dock>.game-hud')).toHaveAttribute('data-glass-mode',browserName==='chromium'?/svg|blur/:'blur');await expect(page.locator('.ui-glass-gl:visible')).toHaveCount(0);};
   await slither(page,'?glass=blur');await notWebgl();
   // WebKit's fallback is the pill's own plain blur (Chromium's svg mode filters its .ui-glass-lens child).
   if(browserName==='webkit')await expect(page.locator('.game-dock>.game-hud')).toHaveCSS('backdrop-filter',/blur\(/);
-  await page.emulateMedia({reducedMotion:'reduce'});await slither(page);await notWebgl();
+  await page.emulateMedia({reducedMotion:'reduce'});await slither(page);await expect(page.locator('.game-dock>.game-hud')).toHaveAttribute('data-glass-mode','canvas');
   await page.emulateMedia({reducedMotion:'no-preference',forcedColors:'active'});await slither(page);
   await expect(page.locator('.game-dock>.game-hud')).toHaveAttribute('data-glass-mode','off');
   await page.emulateMedia({forcedColors:'none'});
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(this:HTMLCanvasElement,type:string,...args:unknown[]){if(type==='webgl2'&&!this.isConnected)return null;return Reflect.apply(original,this,[type,...args]);} as typeof original;});
   // A distinct URL forces a fresh document, so the init script runs.
-  await slither(page,'?nogl=1');await notWebgl();
+  await slither(page,'?nogl=1');await expect(page.locator('.game-dock>.game-hud')).toHaveAttribute('data-glass-mode','canvas');
   expect((await stats(page)).failures).toBeGreaterThan(0);
 });
 
-test('lens context loss falls back to blur, restores to the lens, and navigation releases every lens',async({page})=>{
+test('lens context loss keeps live canvas pixels, restores refraction, and navigation releases every lens',async({page})=>{
   // Capture the renderer's own (detached) WebGL2 context without a product hook.
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(this:HTMLCanvasElement,type:string,...args:unknown[]){const ctx=Reflect.apply(original,this,[type,...args]);if(type==='webgl2'&&ctx&&!this.isConnected)(window as unknown as {lensGl:WebGL2RenderingContext}).lensGl=ctx as WebGL2RenderingContext;return ctx;} as typeof original;});
   await slither(page);
   const hud=page.locator('.game-dock>.game-hud');
   await expect(hud).toHaveAttribute('data-glass-mode','webgl');
   await page.evaluate(()=>{(window as unknown as {lensExt:WEBGL_lose_context}).lensExt=(window as unknown as {lensGl:WebGL2RenderingContext}).lensGl.getExtension('WEBGL_lose_context')!;(window as unknown as {lensExt:WEBGL_lose_context}).lensExt.loseContext();});
-  await expect(hud).not.toHaveAttribute('data-glass-mode','webgl');
+  await expect(hud).toHaveAttribute('data-glass-mode','canvas');
   await page.evaluate(()=>(window as unknown as {lensExt:WEBGL_lose_context}).lensExt.restoreContext());
   await expect(hud).toHaveAttribute('data-glass-mode','webgl');
   await page.locator('.game-dock a').click();
