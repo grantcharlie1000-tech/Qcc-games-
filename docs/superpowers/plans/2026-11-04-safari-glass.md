@@ -74,8 +74,16 @@
 
 ### Task 5: Final evidence and review
 
-- [ ] Run `npm run check`, `npm run build`, and `npm test -- --maxWorkers=1 --no-file-parallelism` serially.
-- [ ] Run relevant Playwright suites serially, Chromium first and WebKit after, with one worker.
-- [ ] Capture final mobile/desktop images and make an exact-scale Safari/ours crop comparison.
-- [ ] Obtain independent branch review, address material findings, and rerun affected checks.
-- [ ] Write the requested external `REPORT.md` with commits, push status, tests and real-iPhone gaps; stop servers and verify clean branch state.
+- [x] Run `npm run check`, `npm run build`, and `npm test -- --maxWorkers=1 --no-file-parallelism` serially.
+- [x] Run relevant Playwright suites serially, Chromium first and WebKit after, with one worker.
+- [x] Capture final mobile/desktop images and make an exact-scale Safari/ours crop comparison.
+- [x] Obtain independent branch review, address material findings, and rerun affected checks.
+- [x] Write the requested external `REPORT.md` with commits, push status, tests and real-iPhone gaps; stop servers and verify clean branch state.
+
+### Verification record
+
+Final typecheck and production build passed. The serial unit run passed all 4,053 tests in 183 files (262.29s). Chromium covered the material, sheet lifecycle, native scrolling, safe areas and all 15 lens/realtime cases. Older material expectations were corrected and affected cases rerun. WebKit's 195-case matrix resolved to 175 passes and 20 intentional capability skips after rerunning its unsupported mobile mouse-wheel operation in a desktop input context at the same narrow viewport.
+
+An independent branch review found two Important issues: repeated opacity probing during pressed-control animation, and obsolete material assertions. Both were addressed and affected checks passed. No additional implementation or review agents were used.
+
+The external evidence directory is `/workspace/glass-versions/safari-match-nov4/`: 24 main-baseline and 24 final screenshots, an exact-scale `final/safari-vs-ours.png`, logs and `REPORT.md`. Both task servers are stopped; the baseline worktree is removed. Push attempts after each goal failed because GitHub HTTPS credentials were unavailable. Keep the committed feature branch local; no merge, main push or deployment is authorized. Physical iPhone/iOS 26 appearance, touch/compositing and performance remain unverified.
