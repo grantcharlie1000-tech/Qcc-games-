@@ -718,10 +718,10 @@ export class CornClicker {
     // Completed tips are remembered so they never return.
     for(const t of TIPS)if(!g.s.tutorial.has(t.id)&&t.done(g))g.s.tutorial.add(t.id);
     const el=this.el.tip;
-    if(!this.tipsRequested){el.hidden=true;return;}
     if(!tip){el.hidden=true;delete el.dataset.tip;return;}
     const text=tip.id==='golden'&&matchMedia('(pointer: coarse)').matches?'Tap the golden cob.':tip.text;
-    if(el.dataset.tip!==tip.id||el.querySelector('p')!.textContent!==text){el.dataset.tip=tip.id;el.querySelector('p')!.textContent=text;el.hidden=false;}
+    if(el.dataset.tip!==tip.id||el.querySelector('p')!.textContent!==text){el.dataset.tip=tip.id;el.querySelector('p')!.textContent=text;}
+    el.hidden=!this.tipsRequested;
     this.root.querySelectorAll('.cc-tab').forEach(t=>t.classList.toggle('cc-attention',!!tip.tab&&(t as HTMLElement).dataset.top===tip.tab&&this.top!==tip.tab));
     if(tip.sub)this.root.querySelector(`#cc-subtab-${tip.sub}`)?.classList.toggle('cc-attention',this.sub!==tip.sub);
   }
