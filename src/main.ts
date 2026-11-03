@@ -27,6 +27,7 @@ import {attachFullscreen,syncPlaySurface} from './core/play-surface';
 import {AccountsClient} from './accounts/client';
 import {AccountsView} from './accounts/view';
 import {LeaderboardView} from './leaderboard/view';
+import {LeaderboardSidebar} from './leaderboard/sidebar';
 import {SCORED_GAMES,MINESWEEPER_RANKINGS,scoredGame} from './leaderboard/shared';
 import {formatScore} from './leaderboard/format';
 
@@ -58,6 +59,7 @@ const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},f
 const leaderboards=new LeaderboardView(()=>{pausedForDialog=false;if(activeId)setPaused(true);accountView.open();});
 let gameMenu:HTMLDialogElement|undefined;
 let gameChrome:ReturnType<typeof bindGameChrome>|undefined;
+let leaderboardSidebar:LeaderboardSidebar|undefined;
 let onlyFavourites=false, search='', instance:GameInstance|undefined, activeId:GameId|undefined;
 let paused=false, generation=0, autosave:number|undefined, pausedForDialog=false;
 let initialized=false, resumeAfterStudy=false, focusBeforeStudy:HTMLElement|null=null, scrollBeforeStudy={x:0,y:0};
@@ -117,6 +119,9 @@ function leave(saveProgress=true){
   setChromeInert(false);
   tabbar.reset();
   detachFullscreen?.();detachFullscreen=undefined;
+  leaderboardSidebar?.dispose();leaderboardSidebar=undefined;
+  // Send any queued best score now instead of waiting for the next batch.
+  if(!document.hidden)void leaderboards.sync.flush().catch(()=>{});
   gameChrome?.dispose();gameChrome=undefined;
   gameMenu?.close();gameMenu=undefined;
   stopFitting?.();stopFitting=undefined;
@@ -269,6 +274,7 @@ async function route(){
   const currentMenu=gameMenu,view=document.querySelector<HTMLElement>('.game-view')!;
   const dock=createGameDock({backHref:collectionHash,backIcon:icon('back'),menuIcon:icon('pause'),pointerLock:id==='blockcraft'});
   view.querySelector('.game-surface')!.after(dock.root);
+  if(LeaderboardSidebar.supports(id))leaderboardSidebar=new LeaderboardSidebar(id,games.find(game=>game.id===id)?.title??id,leaderboards.sync,()=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(id);});
   const menuButton=dock.menu;
   const closeGameMenu=()=>{menuButton.setAttribute('aria-expanded','false');currentMenu.close();};
   const transferDialog=(open:()=>void)=>{const resume=pausedForDialog;pausedForDialog=false;closeGameMenu();open();pausedForDialog=resume;};

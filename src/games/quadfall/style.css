@@ -71,3 +71,5 @@
 }
 @media(max-height:500px) and (orientation:landscape){.qf-game,.game-view[data-touch-controls=true] .qf-game{--qf-board-h:calc(100cqh - 8px)}}
 @media(max-height:650px) and (orientation:portrait) and (max-width:599px){.game-view[data-touch-controls=true] .qf-game{--qf-board-h:calc(100cqh - 102px)}.qf-game{--qf-board-h:calc(100cqh - 8px)}}
+
+@media (hover: hover) and (pointer: fine){.game-view[data-touch-controls] .qf-pad{display:none}.game-view[data-touch-controls=true] .qf-game{--qf-board-h:min(760px,calc(100cqh - 8px),calc((100cqw - 308px)*2))}}

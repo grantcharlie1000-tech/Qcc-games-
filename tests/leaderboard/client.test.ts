@@ -14,7 +14,7 @@ it('exposes storage-full errors and retains queued scores across reload until a 
 });
 it.each(['public','personal'])('surfaces the storage-full message when a %s leaderboard read fails',async view=>{
  const storage=memory();storage.write('leaderboard:cache:snake:account:ada',{entries:[],player:null});
- const sync=new LeaderboardSync(storage,(async url=>String(url).includes('view='+view)?Response.json({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},{status:507}):Response.json({entries:[],player:null})) as typeof fetch);
+ const sync=new LeaderboardSync(storage,(async url=>(view==='personal'?String(url).includes('view=personal'):!String(url).includes('view=personal'))?Response.json({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},{status:507}):Response.json({entries:[],player:null})) as typeof fetch);
  await expect(sync.load('snake')).rejects.toThrow('Storage is full right now. Your progress is kept on this device.');expect(sync.cached('snake')).toEqual({entries:[],player:null});sync.dispose();
 });
 it('notifies status consumers of capacity failures and clears the notice for another identity',async()=>{
@@ -47,10 +47,10 @@ it('ignores an old account 401 after switching to a different account',async()=>
 it('loads a public board without credentials and fetches personal rank privately',async()=>{
  const requests:{url:string;options:RequestInit}[]=[];const player={rank:1,playerId:'a'.repeat(64),name:'Ada',score:40};
  const sync=new LeaderboardSync(memory(),(async(url,options)=>{requests.push({url:String(url),options:options!});return Response.json(String(url).includes('view=personal')?{player}:{entries:[player]});}) as typeof fetch);
- expect(await sync.load('snake')).toEqual({entries:[player],player});const pub=requests.find(r=>r.url.includes('view=public'))!;expect(pub).toBeDefined();expect(pub.options.credentials).toBe('omit');expect(new Headers(pub.options.headers).has('Authorization')).toBe(false);expect(requests.find(r=>r.url.includes('view=personal'))?.options.cache).toBe('no-store');sync.dispose();
+ expect(await sync.load('snake')).toEqual({entries:[player],player});const pub=requests.find(r=>!r.url.includes('view=personal'))!;expect(pub).toBeDefined();expect(pub.options.credentials).toBe('omit');expect(pub.options.cache).toBe('no-store');expect(new Headers(pub.options.headers).has('Authorization')).toBe(false);expect(requests.find(r=>r.url.includes('view=personal'))?.options.cache).toBe('no-store');sync.dispose();
 });
-it('batches improving scores for three minutes and retains the newest score',async()=>{
- vi.useFakeTimers();try{const sent:number[]=[];const sync=new LeaderboardSync(memory(),(async(_url,options)=>{sent.push(JSON.parse(String(options?.body)).score);return Response.json({});}) as typeof fetch);sync.queue('snake',10);await vi.advanceTimersByTimeAsync(10000);expect(sent).toEqual([]);sync.queue('snake',30);await vi.advanceTimersByTimeAsync(170000);expect(sent).toEqual([30]);sync.dispose();}finally{vi.useRealTimers();}
+it('batches improving scores for five seconds and retains the newest score',async()=>{
+ vi.useFakeTimers();try{const sent:number[]=[];const sync=new LeaderboardSync(memory(),(async(_url,options)=>{sent.push(JSON.parse(String(options?.body)).score);return Response.json({});}) as typeof fetch);sync.queue('snake',10);await vi.advanceTimersByTimeAsync(1000);expect(sent).toEqual([]);sync.queue('snake',30);await vi.advanceTimersByTimeAsync(4000);expect(sent).toEqual([30]);sync.dispose();}finally{vi.useRealTimers();}
 });
 it('persists Retry-After backoff across reload and suppresses premature lifecycle flushes',async()=>{
  vi.useFakeTimers();try{const storage=memory();let requests=0;const fetcher=(async()=>{requests++;return requests===1?Response.json({error:'read_only',retryable:true},{status:503,headers:{'Retry-After':'120'}}):Response.json({});}) as typeof fetch;
