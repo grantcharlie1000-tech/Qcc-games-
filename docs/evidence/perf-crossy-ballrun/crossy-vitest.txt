@@ -1,0 +1,30 @@
+
+ RUN  v3.2.7 /workspace/qcc-perf
+
+ ✓ tests/games/crossy-road/generator.test.ts (93 tests) 12907ms
+   ✓ logBridgeOk > agrees with the literal definition on 300 random pairs, whether they bridge or not  772ms
+   ✓ CrossyRoad worlds over 2000 seeds x 400 rows > every river block has grass immediately before and after it across all 2,000 seeds  1156ms
+   ✓ CrossyRoad worlds over 2000 seeds x 400 rows > time-sampled checks on the first 200 seeds > F3: at every 0.05 s over 20 s some column sits in a vehicle-free stretch of at least 2.5 tiles  2790ms
+   ✓ CrossyRoad worlds over 2000 seeds x 400 rows > time-sampled checks on the first 200 seeds > F5: whenever a train overlaps the band the light was already on WARN_FLOOR seconds earlier  1217ms
+ ✓ tests/games/crossy-road/rules.test.ts (281 tests) 230ms
+ ✓ tests/games/crossy-road/input.test.ts (135 tests) 23ms
+ ✓ tests/games/crossy-road/lanes.test.ts (36 tests) 7ms
+ ✓ tests/games/crossy-road/audio.test.ts (11 tests) 8ms
+ ✓ tests/games/crossy-road/camera.test.ts (22 tests) 5ms
+ ✓ tests/games/crossy-road/variety.test.ts (5 tests) 1672ms
+   ✓ revision five terrain > leaves road crossing gaps and a provable landing interval on every adjacent river pair  1278ms
+ ✓ tests/games/crossy-road/fidelity.test.ts (6 tests) 205ms
+ ✓ tests/games/crossy-road/streaming.test.ts (16 tests) 10ms
+ ✓ tests/games/crossy-road/geometry.test.ts (8 tests) 111ms
+ ✓ tests/games/crossy-road/terrain.test.ts (4 tests) 1802ms
+   ✓ all grass clusters have reachable openings across negative and positive horizontal chunks  1798ms
+ ✓ tests/games/crossy-road/quality.test.ts (6 tests) 3ms
+ ✓ tests/games/crossy-road/motion.test.ts (4 tests) 3ms
+ ✓ tests/games/crossy-road/allocation.test.ts (2 tests) 3ms
+ ✓ tests/games/crossy-road/integration.test.ts (2 tests) 3ms
+
+ Test Files  15 passed (15)
+      Tests  631 passed (631)
+   Start at  10:25:50
+   Duration  19.60s (transform 339ms, setup 0ms, collect 616ms, tests 16.99s, environment 2ms, prepare 580ms)
+

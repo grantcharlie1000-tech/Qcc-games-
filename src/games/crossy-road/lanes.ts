@@ -2,9 +2,11 @@
  * lane's parameters and the world time `t`, so a run can be replayed, saved and tested at any t
  * without simulating. Pure: no DOM and no Three.js, and nothing allocates unless the caller asks. */
 import {
-  BAND_MAX, BAND_MIN, COLS, PLATFORM_GRACE, PLAYER_HALF, RENDER_X_MAX, RENDER_X_MIN, VEHICLE_INSET, WARN_LEAD, WARN_TAIL,
+  BAND_MAX, BAND_MIN, START_COL, PLATFORM_GRACE, PLAYER_HALF, RENDER_X_MAX, RENDER_X_MIN, VEHICLE_INSET, WARN_LEAD, WARN_TAIL,
   type Lane, type LilyLane, type Mover, type MovingLane, type RailLane, type RiverLane, type RoadLane,
 } from './config';
+
+import {lilyAt} from './terrain';
 
 /** Euclidean modulo: the result is in [0, m). */
 export const mod = (v: number, m: number): number => ((v % m) + m) % m;
@@ -39,7 +41,7 @@ export function vehicleHit(lane: RoadLane, x: number, t: number): boolean {
 export function platformAt(lane: RiverLane | LilyLane, x: number, t: number): boolean {
   if (lane.kind === 'lily') {
     const c = Math.round(x);
-    return c >= 0 && c < COLS && lane.pads[c] === true;
+    return lilyAt(lane, c);
   }
   for (const mover of lane.movers) {
     const base = moverBase(lane, mover, t);
@@ -57,8 +59,13 @@ export function laneVelocity(lane: Lane): number {
 /** Entry time of the train pass whose warning has most recently started at time t: the moment its
  * front reaches the near band edge (x = −0.5 heading right, x = 8.5 heading left). Passes are
  * `phase + k·period`; at any t the current pass satisfies entry − WARN_LEAD ≤ t < entry − WARN_LEAD + period. */
-export function trainEntry(lane: RailLane, t: number): number {
-  return lane.phase + Math.floor((t - lane.phase + WARN_LEAD) / lane.period) * lane.period;
+export function trainPass(lane: RailLane, t: number, x = START_COL): number {
+  const phase = lane.phase + lane.dir * (x - START_COL) / lane.speed;
+  return Math.floor((t - phase + WARN_LEAD) / lane.period);
+}
+
+export function trainEntry(lane: RailLane, t: number, x = START_COL): number {
+  return lane.phase + lane.dir * (x - START_COL) / lane.speed + trainPass(lane,t,x) * lane.period;
 }
 
 /** Seconds from the train's front entering the band until its back leaves it. */
@@ -76,16 +83,28 @@ export function trainSpan(lane: RailLane, t: number, out: { x0: number; x1: numb
   return out.x1 < RENDER_X_MIN || out.x0 > RENDER_X_MAX ? null : out;
 }
 
-const span = { x0: 0, x1: 0 };
-/** D2: does the train's hitbox overlap the player's at time t? */
+/** Every train copy intersecting the visible horizontal window. Period and speed
+ * define its spatial spacing, so panning never teleports a train. */
+export function forEachTrain(lane: RailLane, t: number, xMin: number, xMax: number, fn: (x0:number,x1:number)=>void): void {
+  const cycle=lane.speed*lane.period;
+  const front=(lane.dir>0?BAND_MIN:BAND_MAX)+lane.dir*lane.speed*(t-lane.phase);
+  const base=mod(lane.dir>0?front-lane.length:front,cycle);
+  for(let x0=base+Math.ceil((xMin-lane.length-base)/cycle)*cycle;x0<=xMax;x0+=cycle)fn(x0,x0+lane.length);
+}
+
+/** Train collisions use the same periodic world coordinates as rendering. */
 export function trainHit(lane: RailLane, x: number, t: number): boolean {
-  const s = trainSpan(lane, t, span);
-  return s !== null && s.x0 + VEHICLE_INSET < x + PLAYER_HALF && s.x1 - VEHICLE_INSET > x - PLAYER_HALF;
+  const cycle=lane.speed*lane.period;
+  const front=(lane.dir>0?BAND_MIN:BAND_MAX)+lane.dir*lane.speed*(t-lane.phase);
+  const base=mod(lane.dir>0?front-lane.length:front,cycle), lo=x-PLAYER_HALF, hi=x+PLAYER_HALF;
+  for(let x0=base+Math.ceil((lo-lane.length-base)/cycle)*cycle;x0<hi;x0+=cycle)
+    if(x0+VEHICLE_INSET<hi && x0+lane.length-VEHICLE_INSET>lo)return true;
+  return false;
 }
 
 /** F5: the signal flashes from WARN_LEAD seconds before the front enters the band until WARN_TAIL
  * seconds after the back has left it. */
-export function railWarning(lane: RailLane, t: number): boolean {
-  const u = t - trainEntry(lane, t);
+export function railWarning(lane: RailLane, t: number, x = START_COL): boolean {
+  const u = t - trainEntry(lane, t, x);
   return u >= -WARN_LEAD && u <= trainClear(lane) + WARN_TAIL;
 }

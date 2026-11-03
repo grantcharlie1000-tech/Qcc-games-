@@ -6,7 +6,7 @@ import type {RoadLane} from '../../../src/games/crossy-road/config';
 
 describe('reference generation revision', () => {
   it('keeps rivers densely covered by 2–4-cell logs, including at late difficulty', () => {
-    for(let seed=0;seed<40;seed++) for(const lane of generate(initialState(seed),400).lanes) {
+    for(let seed=0;seed<40;seed++) for(const lane of generate(initialState(seed,4),400).lanes) {
       if(lane.kind!=='river') continue;
       const coverage=lane.movers.reduce((n,m)=>n+m.len,0)/lane.cycle;
       expect(coverage).toBeGreaterThan(0.7);
@@ -21,7 +21,7 @@ describe('reference generation revision', () => {
 
   it('gives each traffic lane one paint, with all reference colours and yellow taxis', () => {
     const colours=new Set<number>();
-    for(let seed=0;seed<40;seed++) for(const lane of generate(initialState(seed),100).lanes) {
+    for(let seed=0;seed<40;seed++) for(const lane of generate(initialState(seed,4),100).lanes) {
       if(lane.kind!=='road') continue;
       expect(new Set(lane.movers.map(m=>m.color)).size).toBe(1);
       if(lane.vehicle==='car') {
@@ -32,7 +32,7 @@ describe('reference generation revision', () => {
     expect(colours).toEqual(new Set([0,1,3,4,5,6]));
   });
   it('adds compact, sedan and taxi lanes with matching physical lengths and varying repeat counts', () => {
-    const lanes=Array.from({length:40},(_,i)=>generate(initialState(i),80).lanes).flat();
+    const lanes=Array.from({length:40},(_,i)=>generate(initialState(i,4),80).lanes).flat();
     const roads=lanes.filter((l): l is RoadLane=>l.kind==='road');
     expect(new Set(roads.filter(l=>l.vehicle==='car').map(l=>l.style))).toEqual(new Set(['compact','sedan','taxi']));
     for(const lane of roads.filter(l=>l.vehicle==='car')) {
@@ -44,7 +44,7 @@ describe('reference generation revision', () => {
   it('produces log/lily pairs, early triple crossings, and short stumps without losing open cells', () => {
     let pairs=0, triples=0, stumps=0;
     for(let seed=0;seed<100;seed++) {
-      const lanes=generate(initialState(seed),80).lanes;
+      const lanes=generate(initialState(seed,4),80).lanes;
       for(let r=1;r<lanes.length-1;r++) {
         const l=lanes[r];
         if(l.kind==='lily' && lanes[r-1].kind==='river' && !['river','lily'].includes(lanes[r+1].kind)) pairs++;
@@ -57,12 +57,12 @@ describe('reference generation revision', () => {
 
   it('stores the generation revision and accepts legacy saves as revision one', () => {
     const save=serialize(createRun(7));
-    expect(save.worldVersion).toBe(4);
-    expect(restore(save)?.worldVersion).toBe(4);
-    for (const worldVersion of [1,2,3]) expect(restore({...save,worldVersion})?.worldVersion).toBe(worldVersion);
+    expect(save.worldVersion).toBe(5);
+    expect(restore(save)?.worldVersion).toBe(5);
+    for (const worldVersion of [1,2,3,4]) expect(restore({...save,worldVersion})?.worldVersion).toBe(worldVersion);
     delete save.worldVersion;
     expect(restore(save)?.worldVersion).toBe(1);
-    expect(restore({...save,worldVersion:5})).toBeNull();
+    expect(restore({...save,worldVersion:6})).toBeNull();
     expect(generate(initialState(7,1),60).lanes).not.toEqual(generate(initialState(7,2),60).lanes);
   });
 });

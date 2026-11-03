@@ -7,6 +7,7 @@ export type LaneKind = 'grass' | 'road' | 'river' | 'lily' | 'rail';
 export type Phase = 'ready' | 'running' | 'dying' | 'over';
 export type DeathCause = 'car' | 'train' | 'water' | 'swept' | 'ufo-idle' | 'ufo-behind';
 export type Quality = 'high' | 'low';
+export type WorldVersion = 1 | 2 | 3 | 4 | 5;
 
 /** One vehicle or log in a moving lane's repeating pattern. `offset` is its left edge inside the
  * pattern (tiles, 0 ≤ offset < cycle), `len` its length in tiles and `color` a palette index. */
@@ -14,6 +15,8 @@ export interface Mover { offset: number; len: number; color: number }
 
 export interface GrassLane {
   kind: 'grass'; row: number;
+  /** Revision five's stateless horizontal terrain and open connecting bank. */
+  seed?: number; clearing?: boolean;
   /** Two greens alternate by row parity. */
   shade: 0 | 1;
   /** Columns 0..8. A tree or rock blocks its column: `blocked[c] === (obstacles[c] !== null)`. */
@@ -29,7 +32,7 @@ export interface RoadLane { kind: 'road'; row: number; dir: -1 | 1; speed: numbe
 /** Logs: they carry the player at `dir·speed` tiles/s. */
 export interface RiverLane { kind: 'river'; row: number; dir: -1 | 1; speed: number; cycle: number; phase: number; movers: Mover[] }
 /** Static lily pads on columns 0..8; the rest of the row is water. */
-export interface LilyLane { kind: 'lily'; row: number; pads: boolean[] }
+export interface LilyLane { kind: 'lily'; row: number; pads: boolean[]; seed?: number }
 /** One train every `period` seconds; `phase` is the first entry time (see lanes.ts). */
 export interface RailLane { kind: 'rail'; row: number; dir: -1 | 1; speed: number; length: number; period: number; phase: number; color: number }
 export type Lane = GrassLane | RoadLane | RiverLane | LilyLane | RailLane;
@@ -48,7 +51,7 @@ export interface RunState {
   v: 1;
   seed: number;
   /** Old saves without a revision replay the original generator. */
-  worldVersion?: 1 | 2 | 3 | 4;
+  worldVersion?: WorldVersion;
   /** World time in seconds; hazards are pure functions of it. */
   t: number;
   phase: Phase;
@@ -108,7 +111,7 @@ export interface CrossyRoadScene {
   dispose(): void;
 }
 
-// Grid. Tile centres are integer x; the player's centre must stay inside [BAND_MIN, BAND_MAX].
+// The original nine-column seed window. Logical x is unbounded; these edges anchor legacy train timing.
 export const COLS = 9;
 export const START_COL = 4;
 export const BAND_MIN = -0.5;
