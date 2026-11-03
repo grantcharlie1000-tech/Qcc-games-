@@ -16,6 +16,7 @@ The [latest main CI run](https://github.com/grantcharlie1000-tech/Qcc-games-/act
 | `tests/games/blockcraft/weather.spec.ts` | A brief lightning bolt expired while the software renderer and test driver exchanged messages. | Hold the clock, advance weather explicitly, and verify the rendered bolt while its lifetime is held. |
 | `tests/movies/network-recovery.spec.ts`, `src/movies/view.ts` | Late status updates replaced pressed result links; Retry could be inserted below the fallback grid. The WIP's grid reuse key also included loaded Home titles absent from an unfiltered section grid. | Preserve unchanged result nodes, retain incoming sibling order, and key reuse from the titles actually rendered. Regressions cover a response during pointer press, Retry placement, and search/fallback transitions. |
 | `tests/games/animal-stack/play.spec.ts`, `tests/multiplayer/*` | Manual browser contexts/navigation still hardcoded port 4173 while the configured server uses 4600. Both targeted reproductions failed with `ERR_CONNECTION_REFUSED`. | Use the configured Playwright base URL for manual contexts and relative multiplayer navigation. |
+| `tests/e2e/focus-rings.spec.ts` | After opening the menu, the test queried its trigger by accessible role while modal navigation asynchronously hid/inerted that trigger. It intermittently timed out after the sheet had opened successfully. | Keep the in-sheet search checks, then close with real pointer input and verify the trigger's restored focus and absent ring when it is accessible again. |
 
 ## Verification record
 
@@ -27,6 +28,7 @@ All install/test/build commands use `flock /tmp/qcc-test.lock`. Browser verifica
 - Movies network recovery after fix: 19 passed (44.3 seconds).
 - Animal Stack CDP and multiplayer Blockcraft before base URL fix: both failed immediately at hardcoded 4173.
 - Base URL fix verification: all 13 Animal Stack and multiplayer browser tests passed (2.9 minutes), including the full online Pool rack and relay-failure behavior.
+- Full local shard 1 additionally exposed the menu-trigger race above and a Chromium process abort (`D-Bus connection was disconnected`) during a screenshot. The latter did not reach a failed app contrast assertion; a private D-Bus rerun is pending.
 - Remaining verification: in progress.
 
 Independent review checked the complete prior WIP and the new Movies and base URL changes. Its actionable Movies finding was reproduced, fixed, and re-reviewed. No additional correctness findings were reported.

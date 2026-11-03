@@ -103,13 +103,18 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
   const menu=page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true});
   await menu.click();
   await expect(page.locator('#menu')).toBeVisible();
-  await expectNoOutline(menu);
   const search=page.getByRole('searchbox');
   await search.click();
   await expect(search).toBeFocused();
   await expectNoOutline(search);
   expect(await borderColour(search)).toBe(BRIGHT_BORDER);
   await expectNoInnerRing(search);
+  // The sheet suppresses navigation. Inspect the trigger once it is visible
+  // again, with pointer focus restored, rather than racing its removal from ARIA.
+  await page.getByRole('button',{name:'Close menu',exact:true}).click();
+  await expect(page.locator('#menu')).toBeHidden();
+  await expect(menu).toBeFocused();
+  await expectNoOutline(menu);
  });
 
  test('Tab shows the white ring on an island tab and on a Movies button',async({page})=>{
