@@ -1,6 +1,15 @@
 import {GAME_IDS} from '../core/types';
+// Keep requests below Vercel Hobby's 4.5 MB hard limit and give each account a
+// bounded share of the 0.5 GB Neon Free budget. These are logical UTF-8 JSON
+// bytes; database indexes/row overhead still consume additional project storage.
+export const MAX_BODY_BYTES=1024*1024;
+export const MAX_USER_BYTES=2*1024*1024;
 export const MAX_KEY_BYTES=1024*1024;
-export const MAX_BODY_BYTES=2*1024*1024;
+export const MAX_AUTH_BODY_BYTES=2048;
+export const MAX_KEEPALIVE_BODY_BYTES=60000;
+// Reserve space for cursor/revisions growing between precomputed sync batches.
+export const SYNC_BATCH_HEADROOM_BYTES=2048;
+export const jsonBytes=(value:unknown)=>new TextEncoder().encode(JSON.stringify(value)).length;
 export const SAVE_KEYS:readonly string[]=['settings','favourites',...GAME_IDS.flatMap(id=>['best:'+id,'save:'+id]),...['easy','medium','hard','score'].map(level=>'best:minesweeper-'+level)];
 export interface SaveRecord {value:unknown;updated:number}
 export type Saves=Record<string,SaveRecord>;
@@ -26,7 +35,7 @@ export function validSave(key:string,record:unknown,maxBytes=MAX_KEY_BYTES):reco
  }else if(key.startsWith('best:')){
   if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>Number.MAX_SAFE_INTEGER)return false;
  }else if(!object(value)||value.version!==1||Object.keys(value).some(k=>!['version','data','updated'].includes(k))||!Object.hasOwn(value,'data')||!timestamp(value.updated)||value.updated!==record.updated||!json(value.data))return false;
- try{return new TextEncoder().encode(JSON.stringify(record)).length<=maxBytes;}catch{return false;}
+ try{return jsonBytes(record)<=maxBytes;}catch{return false;}
 }
 export function validSaves(value:unknown):value is Saves {
  return object(value)&&Object.keys(value).length<=SAVE_KEYS.length&&Object.entries(value).every(([key,record])=>validSave(key,record));

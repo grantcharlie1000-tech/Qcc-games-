@@ -13,9 +13,10 @@ const server=await createServer({server:{port:Number(process.env.PORT||4173)},pl
    if(!accounts&&!req.url?.startsWith('/.netlify/functions/leaderboard'))return next();
    try{
     const module=await vite.ssrLoadModule(accounts?'/src/accounts/server.ts':'/src/leaderboard/server.ts');
+    const {MAX_BODY_BYTES}=await vite.ssrLoadModule('/src/accounts/shared.ts');
     const handle=(accounts?module.createAccountsHandler:module.createLeaderboardHandler)(pool);
     const chunks=[];let length=0;
-    for await(const chunk of req){length+=chunk.length;if(length>(accounts?2097152:2048)){res.writeHead(413,{'Cache-Control':'no-store'});res.end('Request too large');return;}chunks.push(chunk);}
+    for await(const chunk of req){length+=chunk.length;if(length>(accounts?MAX_BODY_BYTES:2048)){res.writeHead(413,{'Cache-Control':'no-store'});res.end('Request too large');return;}chunks.push(chunk);}
     const headers=new Headers();for(const [key,value] of Object.entries(req.headers))if(value)headers.set(key,Array.isArray(value)?value.join(','):value);
     const request=new Request(`http://${req.headers.host}${req.url}`,{method:req.method,headers,body:['POST','PUT'].includes(req.method)?Buffer.concat(chunks):undefined});
     const response=await handle(request);

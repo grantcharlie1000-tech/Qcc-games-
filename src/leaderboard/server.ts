@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {resolveAccount} from '../accounts/server';
 import {writeFrozen,readOnlyResponse} from '../accounts/write-freeze';
+import {isStorageFullError,storageFullResponse} from '../../server/storage-full';
 import {scoredGame,validScore,LEADERBOARD_NOT_OPEN,type Board,type Entry} from './shared';
 /** A Postgres check_violation of the game list constraint: the code knows this game but the database does not yet. */
 const gameNotOpen=(error:unknown)=>{const e=error as {code?:unknown;constraint?:unknown;message?:unknown}|null;return !!e&&e.code==='23514'&&(e.constraint==='arcade_scores_game_id_check'||String(e.message).includes('arcade_scores_game_id_check'));};
@@ -75,9 +76,10 @@ export function createLeaderboardHandler(db:Database){
      ON CONFLICT(game_id,player_id) DO UPDATE SET score=excluded.score,reached_at=now()
      WHERE excluded.score>arcade_scores.score`,[data.game,playerId,data.score]);
     await client.query('COMMIT');
-   }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+   }catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}finally{client.release();}
    return respond(await board(data.game,playerId));
   }catch(error){
+   if(isStorageFullError(error))return storageFullResponse();
    if(request.method==='POST'&&gameNotOpen(error))return respond({error:'This leaderboard opens soon. Your score stays on this device.',code:LEADERBOARD_NOT_OPEN},409);
    return respond({error:'Leaderboard temporarily unavailable. Your score stays on this device.'},503);
   }

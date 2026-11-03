@@ -4,11 +4,37 @@ import {readFile} from 'node:fs/promises';
 import {NetlifyDB} from '@netlify/database-dev';
 import {getDatabase} from '@netlify/database';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
+import type {Database} from '../../src/leaderboard/server';
 import {createAccountsHandler} from '../../src/accounts/server';
 const local=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];let handle:ReturnType<typeof createLeaderboardHandler>,accounts:ReturnType<typeof createAccountsHandler>;
 const endpoint='https://arcade.test/.netlify/functions/leaderboard';
 const submit=(token:string,name:string,score:number,game='snake')=>handle(new Request(endpoint,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',Origin:'https://arcade.test'},body:JSON.stringify({game,name,score})}));
 async function signup(username:string){const r=await accounts(new Request('https://arcade.test/.netlify/functions/accounts?action=signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:'test password'})}));expect(r.status).toBe(201);return (await r.json()).token as string;}
+it.each([{code:'53100'},{code:'53400'},new Error('Neon: project size limit exceeded')])('returns 507 and preserves the previous leaderboard best on capacity failure: %j',async error=>{
+ const token=await signup('Capacity_Player');await submit(token,'ignored',50);
+ const before=(await pool.query('SELECT * FROM arcade_scores')).rows;let released=false;
+ const db:Database={query:pool.query.bind(pool),connect:async()=>{const client=await pool.connect();return {
+  query:async(sql,values)=>{if(sql.includes('INSERT INTO arcade_scores'))throw error;return client.query(sql,values);},release:()=>{released=true;client.release();}
+ };}};
+ const response=await createLeaderboardHandler(db)(new Request(endpoint,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({game:'snake',score:100})}));
+ expect(response.status).toBe(507);expect(await response.json()).toEqual({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'});
+ expect(response.headers.get('Cache-Control')).toBe('no-store');expect(released).toBe(true);expect((await pool.query('SELECT * FROM arcade_scores')).rows).toEqual(before);
+});
+it('returns 507 if a public leaderboard read hits the project size limit',async()=>{
+ const db:Database={query:async()=>{throw new Error('project size limit exceeded');},connect:vi.fn()};
+ const response=await createLeaderboardHandler(db)(new Request(endpoint+'?game=snake&view=public'));
+ expect(response.status).toBe(507);expect(await response.json()).toEqual({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'});
+ expect(response.headers.get('Cache-Control')).toBe('no-store');
+});
+it('preserves capacity errors and the old score when leaderboard COMMIT and rollback cleanup fail',async()=>{
+ const token=await signup('Commit_Player');await submit(token,'ignored',50);const before=(await pool.query('SELECT * FROM arcade_scores')).rows;
+ const db:Database={query:pool.query.bind(pool),connect:async()=>{const client=await pool.connect();return {
+  query:async(sql,values)=>{if(sql==='COMMIT')throw {code:'53100'};if(sql==='ROLLBACK'){await client.query(sql);throw new Error('connection lost during cleanup');}return client.query(sql,values);},release:()=>client.release()
+ };}};
+ const response=await createLeaderboardHandler(db)(new Request(endpoint,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({game:'snake',score:100})}));
+ expect(response.status).toBe(507);expect(await response.json()).toEqual({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'});
+ expect((await pool.query('SELECT * FROM arcade_scores')).rows).toEqual(before);
+});
 beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;handle=createLeaderboardHandler(pool);accounts=createAccountsHandler(pool);},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});beforeEach(async()=>{await pool.query('TRUNCATE arcade_players CASCADE');});
 describe('shared leaderboard with real Postgres',()=>{

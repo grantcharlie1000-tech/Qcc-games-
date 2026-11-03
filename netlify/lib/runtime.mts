@@ -1,5 +1,6 @@
 import {writeFrozen,readOnlyResponse} from '../../src/accounts/write-freeze';
 import type {Database} from '../../src/leaderboard/server';
+import {isStorageFullError,storageFullResponse} from '../../server/storage-full';
 export type Environment='production'|'preview'|'development';
 interface Options {
  allowMissingMarker?:boolean; context?:string; expectedEnv?:string; env?:NodeJS.ProcessEnv;
@@ -30,7 +31,8 @@ export function createGuardedHandler(pool:Database,factory:(db:Database)=>(reque
    checked??=check().catch(error=>{checked=undefined;throw error;});await checked;
    if(await writeFrozen(pool,env,now())&&!['GET','HEAD'].includes(request.method))return readOnlyResponse();
    return await handle(request);
-  }catch{
+  }catch(error){
+   if(isStorageFullError(error))return storageFullResponse();
    // Never log driver errors: they can contain URLs, SQL parameters, or row contents.
    (options.log??console.error)('QCC database access refused: environment, flags, or connection unavailable.');
    return Response.json({error:'Service temporarily unavailable.'},{status:503,headers:{'Cache-Control':'no-store'}});

@@ -22,7 +22,7 @@ Pending keys, revisions, content fingerprints and retry deadlines persist by acc
 
 ## Measured size limits
 
-A record is limited to **1 MiB of UTF-8 JSON**; streamed request bodies are limited to **2 MiB**, including envelope overhead. An oversized/incompatible key stays local and produces a menu notice; other keys still sync. This is a bounded sync facility, not unlimited world storage. The database text cap allows Postgres JSON formatting expansion.
+A record is limited to **1 MiB of UTF-8 JSON**; streamed request bodies are limited to **1 MiB**, including envelope overhead, and total account saves to **2 MiB of compact UTF-8 JSON** across all keys. A record must also fit the request envelope and 2 KiB batching headroom. An oversized/incompatible key stays local and produces a menu notice; other keys still sync. Quota-rejected uploads remain staged locally. Existing over-quota data stays readable and non-growing updates are allowed. The unchanged database text cap allows Postgres JSON formatting expansion. See [the audit and backend mirror requirements](BACKEND_HOSTING.md); live Vercel enforcement needs that separate mirror.
 
 Measured on the actual serializers with fixed clock `1793000000000` and seed 1, including shell and transfer envelopes:
 
@@ -33,7 +33,7 @@ Measured on the actual serializers with fixed clock `1793000000000` and seed 1, 
 | Blockcraft 10,000 edits encoded with `encodeEdits` | 40,166 |
 | Blockcraft maximum 200,000 edits encoded with `encodeEdits` | 800,232 |
 
-The Blockcraft sample includes version, seed, creative settings and empty systems; a real populated world adds player, inventory, entities and other systems. The 1 MiB cap provides headroom above its maximum edit payload, but unusually large systems may still exceed it and remain local.
+The Blockcraft sample includes version, seed, creative settings and empty systems; a real populated world adds player, inventory, entities and other systems. The 1 MiB request cap provides headroom above its maximum edit payload, but unusually large systems may still exceed it and remain local.
 
 To reproduce, load `src/games/corn-clicker/state.ts`, `data.ts` and `src/games/blockcraft/world/world.ts` using Vite `ssrLoadModule`. Serialize `freshState(clock,1)`; populate its sets from `upgradeById.keys()`, `permById.keys()`, `achievementById.keys()` and `VARIETIES.map(v=>v.id)` for the unlocked sample. For Blockcraft, construct maps of voxel indices to block 1, split into at most 30,000 edits per chunk, call `encodeEdits(chunk,0,map)` and include the resulting strings in `{version:2,seed:1,settings:{mode:'creative'},edits,systems:{}}`. Measure `Buffer.byteLength(JSON.stringify({value:{version:1,data,updated:clock},updated:clock}))`.
 

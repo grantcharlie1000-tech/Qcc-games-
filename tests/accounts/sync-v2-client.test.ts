@@ -24,8 +24,54 @@ function fixture(){
  return {values,storage,fetcher,calls,fail:(value:Response|Error)=>{failure=value;},seed:(saves:Saves)=>{for(const [key,value] of Object.entries(saves)){remote[key]=value;revisions[key]=String(++revision);}},remote:()=>remote};
 }
 const clients:AccountsClient[]=[];const client=(f:ReturnType<typeof fixture>,fetcher=f.fetcher)=>{const c=new AccountsClient(f.storage,fetcher);clients.push(c);return c;};
-afterEach(()=>{for(const c of clients)c.dispose();clients.length=0;vi.useRealTimers();vi.unstubAllGlobals();});
+afterEach(()=>{for(const c of clients)c.dispose();clients.length=0;vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks();});
 describe('v2 durable sync scheduling',()=>{
+ it('shows the storage-full message, retains the local save and durable pending data, then recovers after reload',async()=>{
+  vi.useFakeTimers();const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');
+  const save={version:1,data:{checkpoint:'keep me'},updated:1};f.storage.write('save:snake',save);const changed=vi.fn();c.onChange(changed);
+  f.fail(Response.json({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},{status:507}));
+  await expect(c.flush()).rejects.toThrow('Storage is full right now. Your progress is kept on this device.');
+  expect(c.message).toBe('Storage is full right now. Your progress is kept on this device.');expect(changed).toHaveBeenCalled();
+  expect(f.storage.read('save:snake',null)).toEqual(save);expect(f.remote()['save:snake']).toBeUndefined();
+  expect(f.storage.read<any>('accounts:pending:ada',{})['save:snake'].value).toEqual(save);
+  c.dispose();const count=f.calls.length,reloaded=client(f);await reloaded.flush();expect(f.calls).toHaveLength(count);
+  await vi.advanceTimersByTimeAsync(2000);await reloaded.flush();expect(f.remote()['save:snake']!.value).toEqual(save);expect(reloaded.message).toBe('Progress synced.');
+ });
+ it('preserves the storage-full notice when the first signup sync fails',async()=>{
+  const f=fixture();const save={version:1,data:{checkpoint:'guest progress'},updated:1};f.storage.write('save:blockcraft',save);
+  const c=client(f,(async(input,init)=>init?.method==='PUT'?Response.json({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},{status:507}):f.fetcher(input,init)) as typeof fetch);
+  await c.authenticate('signup','Ada','password1');expect(c.session()?.username).toBe('Ada');
+  expect(c.message).toBe('Storage is full right now. Your progress is kept on this device.');expect(f.storage.read('save:blockcraft',null)).toEqual(save);
+  expect(f.storage.read<any>('accounts:pending:ada',{})['save:blockcraft'].value).toEqual(save);
+ });
+ it('keeps unsent saves staged and the storage-full notice when sign-out cannot reach the database',async()=>{
+  const f=fixture();let full=false;
+  const c=client(f,(async(input,init)=>full?Response.json({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},{status:507}):f.fetcher(input,init)) as typeof fetch);
+  await c.authenticate('signup','Ada','password1');const save={version:1,data:{checkpoint:'account progress'},updated:1};f.storage.write('save:snake',save);full=true;
+  await c.logout();expect(c.session()).toBeNull();expect(c.message).toBe('Storage is full right now. Your progress is kept on this device.');
+  expect(f.storage.read<any>('accounts:pending:ada',{})['save:snake'].value).toEqual(save);expect(f.storage.read<string[]>('accounts:revocations',[])).toHaveLength(1);
+ });
+ it('splits large account data into requests of at most 1 MiB including the v2 envelope',async()=>{
+  const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');f.calls.length=0;
+  for(const key of ['save:snake','save:tower','save:pool'])f.storage.write(key,{version:1,data:'é'.repeat(300000),updated:1});
+  await c.flush();const writes=f.calls.filter(call=>call.method==='PUT');expect(writes).toHaveLength(3);
+  for(const call of writes)expect(Buffer.byteLength(JSON.stringify(call.body))).toBeLessThanOrEqual(1048576);
+  for(const key of ['save:snake','save:tower','save:pool'])expect((f.remote()[key]!.value as any).data.length).toBe(300000);
+ });
+ it('retains and stages a record that fits the record cap but cannot fit a 1 MiB request',async()=>{
+  const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');f.calls.length=0;
+  const world={version:1,data:'x'.repeat(1048500),updated:1};f.storage.write('save:blockcraft',world);f.storage.write('best:snake',3);
+  await c.flush();expect(f.remote()['save:blockcraft']).toBeUndefined();expect(f.remote()['best:snake']!.value).toBe(3);
+  expect(c.message).toContain('too large');expect(f.storage.read('save:blockcraft',null)).toEqual(world);
+  expect(f.storage.read<any>('accounts:pending:ada',{})['save:blockcraft'].value).toEqual(world);
+ });
+ it('keeps a rejected quota upload local and durable instead of retrying indefinitely',async()=>{
+  vi.useFakeTimers();const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');f.storage.write('save:snake',{version:1,data:'pending',updated:1});
+  f.fail(Response.json({error:'Account storage exceeds 2 MiB. Your progress stays on this device.'},{status:413}));
+  await expect(c.flush()).rejects.toThrow('2 MiB');const count=f.calls.length;await vi.advanceTimersByTimeAsync(30*60000);
+  expect(f.calls).toHaveLength(count);expect(f.storage.read<any>('save:snake',null).data).toBe('pending');
+  expect(f.storage.read<any>('accounts:pending:ada',{})['save:snake'].value.data).toBe('pending');
+ });
  it('has no visible idle pulls for thirty minutes and batches sustained local changes once per three minutes',async()=>{
   vi.useFakeTimers();const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');c.start();await vi.advanceTimersByTimeAsync(0);f.calls.length=0;
   await vi.advanceTimersByTimeAsync(30*60000);expect(f.calls).toHaveLength(0);
@@ -59,6 +105,16 @@ describe('v2 durable sync scheduling',()=>{
  it('retries a network failure with backoff while keeping content durable',async()=>{
   vi.useFakeTimers();const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');f.storage.write('best:tower',8);f.fail(Error('offline'));
   await expect(c.flush()).rejects.toThrow();const count=f.calls.length;await c.flush();expect(f.calls).toHaveLength(count);await vi.advanceTimersByTimeAsync(60000);expect(f.remote()['best:tower']!.value).toBe(8);
+ });
+ it('retries a transient Pages proxy 502 with backoff and retains pending progress across reload',async()=>{
+  vi.useFakeTimers();vi.spyOn(Math,'random').mockReturnValue(.12345);
+  const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');f.storage.write('best:tower',8);
+  f.fail(Response.json({error:'backend unavailable'},{status:502}));await expect(c.flush()).rejects.toThrow('backend unavailable');
+  expect(f.storage.read<any>('accounts:sync:ada',{}).retryAt).toBeGreaterThan(Date.now());
+  const count=f.calls.length;c.dispose();const recovered=client(f);recovered.start();
+  await vi.advanceTimersByTimeAsync(999);expect(f.calls).toHaveLength(count);
+  expect(f.storage.read('best:tower',0)).toBe(8);await vi.advanceTimersByTimeAsync(60000);
+  expect(f.remote()['best:tower']?.value).toBe(8);
  });
  it('replays an interrupted commit idempotently, preserving the acknowledged revision',async()=>{
   const f=fixture();let lose=false;const c=client(f,(async(input,init)=>{const response=await f.fetcher(input,init);if(lose&&init?.method==='PUT'){lose=false;throw Error('response lost');}return response;}) as typeof fetch);
