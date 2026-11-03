@@ -4,7 +4,6 @@ import { formatShare, leaderboardScore } from './score';
 import { createInput } from './input';
 import { createRenderer, markSvg } from './render';
 import { HUMAN, PLAYER_COUNT, STEP, type World } from './types';
-import { notifyGlassFrame, registerGlassFrameSource } from '../../ui/glass-frame-source';
 import './style.css';
 
 const RULES = [
@@ -39,9 +38,6 @@ const module: GameModule = {
     footnote.textContent = matchMedia('(pointer: coarse)').matches ? TOUCH_COPY : POINTER_COPY;
 
     const renderer = createRenderer(canvas);
-    // The shared glass lens copies each drawn frame. iOS WebKit does not repaint a CSS backdrop-filter over a
-    // redrawn canvas, so without this the dock's glass showed a stale snapshot of the arena.
-    const draw = (alpha: number, now: number) => { renderer.draw(world, alpha, reduced(), now); notifyGlassFrame(canvas); };
     const events = new AbortController(), signal = events.signal;
     const input = createInput(root, canvas, () => renderer.view.headScreen, signal);
 
@@ -74,7 +70,6 @@ const module: GameModule = {
       dirty = true;
     }
     const observer = new ResizeObserver(resize); observer.observe(root);
-    const releaseGlass = registerGlassFrameSource(canvas, () => { if (!disposed) draw(1, performance.now()); });
     window.addEventListener('resize', resize, { signal });
 
     function renderOverlay() {
@@ -179,16 +174,16 @@ const module: GameModule = {
         last = now;
         drain(now);
         if (before === 'running' && world.phase !== 'running') { animateUntil = Math.max(animateUntil, now + 900); onHumanEnded(); }
-        draw(world.phase === 'running' ? Math.min(1, world.accumulator / STEP) : 1, now);
+        renderer.draw(world, world.phase === 'running' ? Math.min(1, world.accumulator / STEP) : 1, reduced(), now);
         update(now);
       } else {
         last = null;
         if (!paused && (dirty || now < animateUntil)) {
-          draw(1, now);
+          renderer.draw(world, 1, reduced(), now);
           if (dirty) update(now, true);
           dirty = false;
         } else if (dirty && paused) {
-          draw(1, now);
+          renderer.draw(world, 1, reduced(), now);
           update(now, true);
           dirty = false;
         }
@@ -238,7 +233,7 @@ const module: GameModule = {
         clearInput(); renderOverlay(); update(0, true); dirty = true;
       },
       dispose() {
-        disposed = true; releaseGlass(); clearInput(); events.abort(); observer.disconnect(); cancelAnimationFrame(frame); root.remove();
+        disposed = true; clearInput(); events.abort(); observer.disconnect(); cancelAnimationFrame(frame); root.remove();
       },
     };
   },

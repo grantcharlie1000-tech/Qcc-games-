@@ -3,7 +3,6 @@ import {create,reveal,flag,chord,restore as restoreBoard,LEVELS,type Board,type 
 import {LABELS,emptyStats,readStats,recordStart,recordWin,competitiveScore,winScore,SCORE_TIERS,rankingKey,formatTime,hint} from './practice';
 import {read,write} from '../../core/storage';
 import {playSound} from '../../core/audio';
-import {openSheet} from '../../ui/sheet';
 import './style.css';
 const art=new URL('game-art/minesweeper/',new URL(import.meta.env.BASE_URL,document.baseURI)).href;
 const image=(name:string)=>`<img src="${art}${name}.svg" alt="" draggable="false">`;
@@ -145,7 +144,7 @@ const game:GameModule={
   $('.ms-undo').addEventListener('click',()=>{if(!practice||!history.length)return;closeMenu();syncTime();const elapsed=board.elapsedMs;board=history.pop()!;board.elapsedMs=elapsed;hinted=null;$('.ms-hint-message').textContent='';last=performance.now();render();save();},{signal:events.signal});
   $('.ms-sound').addEventListener('change',()=>{sound=$<HTMLInputElement>('.ms-sound').checked;playSound(sound);save();},{signal:events.signal});$('.ms-longpress').addEventListener('change',()=>{longPress=$<HTMLInputElement>('.ms-longpress').checked;cancelGestures();save();},{signal:events.signal});
   function openMenu(){
-   if(menu.open)return;resumeAfterMenu=!paused;context.setPaused?.(true);openSheet(menu);
+   if(menu.open)return;resumeAfterMenu=!paused;context.setPaused?.(true);menu.showModal();
   }
   function finishMenu(){
    const resume=resumeAfterMenu;resumeAfterMenu=false;if(resume&&!document.hidden)context.setPaused?.(false);

@@ -10,7 +10,6 @@ import { createScene } from './scene';
 import { attachInput } from './input';
 import { createSfx } from './audio';
 import { installTestHook } from './test-hook';
-import { notifyGlassFrame, registerGlassFrameSource } from '../../ui/glass-frame-source';
 import {AdaptiveResolution} from './quality';
 import './style.css';
 
@@ -242,8 +241,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     frame.colorBlind = context.settings.colorBlind;
     frame.ufoWarn = ufoWarning(run);
     scene.render(frame);
-    // Same task as the render: the glass lens copies the non-preserved WebGL buffer before it is cleared.
-    notifyGlassFrame(canvas);
     if (run.row !== reportedRow) { reportedRow = run.row; context.setLevel(`Row ${run.row}`); }
     setData('phase', run.phase);
     setData('row', String(run.row));
@@ -429,7 +426,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   setData('quality', quality);
   context.setLevel('Row 0');
   context.setStatus(START_STATUS);
-  const releaseGlass = registerGlassFrameSource(canvas, () => draw(0));
   draw(0);
   schedule();
 
@@ -496,7 +492,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     dispose() {
       if (disposed) return;
       disposed = true;
-      releaseGlass();
       cancel();
       abort.abort();
       resize.disconnect();

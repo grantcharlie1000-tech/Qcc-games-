@@ -22,15 +22,6 @@ const stripes=(orientation:'v'|'h')=>'data:image/svg+xml,'+encodeURIComponent(or
 
 // Puts the stripes behind the island, and hides the covers and the tabs, so the pixels are the stripes only.
 async function stage(page:Page,orientation:'v'|'h'='v'){
-  let src=stripes(orientation);
-  if(orientation==='v'){
-    // A convex cap samples inward. Place an edge 8px inside each actual cap;
-    // a screen-anchored stripe can land outside the right cap after resizing.
-    const bar=(await page.locator('.app-tabbar').boundingBox())!;
-    const left=bar.x+8,right=bar.x+bar.width-8;
-    const svg=decodeURIComponent(src.slice('data:image/svg+xml,'.length)).replace('</svg>',`<rect width="${left}" height="844" fill="#000"/><rect x="${left}" width="12" height="844" fill="#fff"/><rect x="${right-12}" width="12" height="844" fill="#fff"/><rect x="${right}" width="${390-right}" height="844" fill="#000"/></svg>`);
-    src='data:image/svg+xml,'+encodeURIComponent(svg);
-  }
   await page.evaluate(src=>{
     document.getElementById('content')!.style.visibility='hidden';
     const image=document.createElement('img');
@@ -39,7 +30,7 @@ async function stage(page:Page,orientation:'v'|'h'='v'){
     image.src=src;
     image.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none';
     document.body.append(image);
-  },src);
+  },stripes(orientation));
   await page.addStyleTag({content:'.app-tabbar{--glass-tint:transparent!important;--glass-tone:saturate(1)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   await page.waitForFunction(()=>(document.querySelector('img[data-t28]') as HTMLImageElement|null)?.complete===true);
 }
@@ -242,7 +233,7 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('filter[id^="ui-glass-"]')).toHaveCount(0);
     const frost=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
     expect(frost).toContain('blur(3px)');
-    expect(frost).toContain('saturate(1.08)');
+    expect(frost).toContain('saturate(1.05)');
   });
 
   test('frost has a glow layer on the bar\'s edge, hidden from assistive technology',async({page})=>{

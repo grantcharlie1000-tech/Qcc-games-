@@ -1,7 +1,6 @@
 // The shared Create Room / Join by Code / Copy Invite Link / Leave Room panel. A game places `root` where it fits and
 // receives the open Room through onOpen; the game owns everything that happens inside the room.
 import './style.css';
-import {bindCustomSheet} from '../ui/sheet';
 import * as store from '../core/storage';
 import {cleanName,normalizeCode} from './protocol';
 import {Room,RoomError,type RoomEvent} from './room';
@@ -180,7 +179,6 @@ export class RoomDialog{
   readonly root=document.createElement('div');
   readonly panel:RoomPanel;
   private before:HTMLElement|null=null;
-  private disposeSheet:()=>void=()=>{};
   constructor(options:PanelOptions){
     this.panel=new RoomPanel(options);
     const r=this.root;r.className='mp-overlay';r.hidden=true;
@@ -195,7 +193,6 @@ export class RoomDialog{
     for(const type of ['pointerdown','pointerup','mousedown','mouseup','click','wheel','touchstart','keydown','keyup'])
       r.addEventListener(type,e=>{if((e as KeyboardEvent).key!=='Escape')e.stopPropagation();});
     (document.querySelector('#app')??document.body).append(r);
-    this.disposeSheet=bindCustomSheet(card,r,()=>this.close());
   }
   get isOpen(){return !this.root.hidden;}
   open(){
@@ -210,5 +207,5 @@ export class RoomDialog{
     if(this.before?.isConnected)this.before.focus({preventScroll:true});
     this.before=null;
   }
-  dispose(){this.disposeSheet();this.panel.dispose();this.root.remove();}
+  dispose(){this.panel.dispose();this.root.remove();}
 }

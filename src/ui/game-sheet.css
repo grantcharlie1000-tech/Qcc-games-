@@ -10,21 +10,6 @@
 .game-sheet-stats dd{margin:0;font:600 24px/1.15 var(--font-sans,system-ui,sans-serif);color:#fff;overflow-wrap:anywhere}
 .game-sheet .game-sheet-primary.game-button{position:relative;display:flex;justify-content:center;align-items:center;flex:none;width:100%;min-height:48px;height:48px;margin:0;padding:0 20px;border-radius:999px;border:0;font:600 17px/1 var(--font-sans,system-ui,sans-serif);text-transform:none;letter-spacing:0;text-shadow:none;cursor:pointer}
 .game-sheet .game-sheet-primary:focus-visible{outline:3px solid #fff;outline-offset:4px}
-.game-sheet>.game-sheet-panel.ui-glass-sheet{--sheet-ink:#14191f;color:var(--sheet-ink)}
-.game-sheet .game-sheet-panel :is(h2,dd){color:var(--sheet-ink)}
-.game-sheet .game-sheet-panel :is(.game-sheet-state,.game-sheet-controls,dt){color:#313943}
-.game-sheet .game-sheet-primary.game-button{background:#14191f;color:#fff}
-.game-sheet .game-sheet-primary:focus-visible{outline-color:var(--sheet-ink)}
-@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
-  .game-sheet>.game-sheet-panel.ui-glass-sheet{--sheet-ink:#fff}
-  .game-sheet .game-sheet-panel :is(.game-sheet-state,.game-sheet-controls,dt){color:#eee}
-  .game-sheet .game-sheet-primary.game-button{background:#fff;color:#14191f}
-}
-@media(forced-colors:active){
-  .game-sheet>.game-sheet-panel.ui-glass-sheet{--sheet-ink:CanvasText}
-  .game-sheet .game-sheet-panel :is(.game-sheet-state,.game-sheet-controls,dt){color:CanvasText}
-  .game-sheet .game-sheet-primary.game-button{background:ButtonFace;color:ButtonText}
-}
 .game-sheet :is(.game-sheet-state,.game-sheet-controls,.game-sheet-stats)[hidden]{display:none}
 /* This is the existing shell overlay, adopted by bindGamePauseSheet. */
 #pause-overlay.game-sheet{z-index:20;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;pointer-events:auto}
