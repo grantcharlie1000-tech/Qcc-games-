@@ -2,7 +2,7 @@
 // SVG filter. Every other browser frosts the bar with its own backdrop filter, which needs no copy of the page and so cannot lag a scroll.
 // Legacy unmarked frost bars retain a scroll edge. autoHideTabbar binds this controller for both Games and Movies.
 import {bindGlassInk} from './glass-ink';
-import {bindWebglLens} from './webgl-glass';
+import {bindWebglLens,type LiveGlassMode} from './webgl-glass';
 export interface Brand{brand:string;version?:string}
 type NavigatorWithBrands=Navigator&{userAgentData?:{brands?:Brand[]}};
 export type GlassMode='backdrop'|'frost'|'off';
@@ -221,7 +221,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const stretchable=canStretch(bar);
   let mode:GlassMode|undefined;
   // True once the map has decoded and the filter is in the document. Until then nothing refers to the filter.
-  let ready=false,disposed=false,webgl=false;
+  let ready=false,disposed=false;
+  let liveMode:LiveGlassMode|null=null;
   let mapWidth=0,mapHeight=0,mapDensity=0,mapSeq=0;
   // Set when the browser cannot make the map (no 2D canvas context, or a map that fails to decode). Such a bar has no lens at all.
   let lensless=false;
@@ -301,13 +302,13 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   // One rendering mode at a time: the WebGL lens over a live game canvas, else
   // Chromium's SVG backdrop, else plain blur. A blur() url() chain is never the fallback.
   const paint=()=>{
-    const svgMode=mode==='backdrop'&&ready&&!webgl;
-    bar.dataset.glassMode=mode===undefined||mode==='off'?'off':webgl?'webgl':svgMode?'svg':'blur';
+    const svgMode=mode==='backdrop'&&ready&&!liveMode;
+    bar.dataset.glassMode=mode===undefined||mode==='off'?'off':liveMode??(svgMode?'svg':'blur');
     bar.classList.toggle('is-refracting',svgMode);
     if(svgMode)bar.style.setProperty('--ui-glass-filter',`url(#${id})`);
     else bar.style.removeProperty('--ui-glass-filter');
   };
-  const live=bindWebglLens(bar,active=>{if(disposed)return;webgl=active;paint();});
+  const live=bindWebglLens(bar,(active,renderer)=>{if(disposed)return;liveMode=active?renderer??'webgl':null;paint();});
   // The map is rebuilt when the bar changes size or the screen's pixel density changes. A detached or hidden bar has no size, so it
   // keeps its last map. Only the backdrop has a map.
   const rebuild=()=>{

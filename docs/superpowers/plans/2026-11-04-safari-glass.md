@@ -57,10 +57,10 @@
 
 **Interfaces:** Keep existing game frame publishers and rendering/simulation behavior. Reuse one shared context, bounded crops and frame delivery; no independent animation loop.
 
-- [ ] Inspect real Claimline, Crossy and Snake source/lens geometry and frame delivery, then demonstrate the stale path with a changing canvas fixture.
-- [ ] Write failing same-frame pixel checks and fallback/preference coverage.
-- [ ] Ensure visible lens output follows current canvas pixels every frame, including CSS fallback paths where needed; bound copies and avoid per-frame pixel readbacks.
-- [ ] Verify pause/hidden/navigation idling and source cleanup; record host CPU measurements and real-phone limits; commit and attempt push.
+- [x] Inspect real Claimline, Crossy and Snake source/lens geometry and frame delivery, then demonstrate the stale path with a changing canvas fixture.
+- [x] Write failing same-frame pixel checks and fallback/preference coverage.
+- [x] Ensure visible lens output follows current canvas pixels every frame, including CSS fallback paths where needed; bound copies and avoid per-frame pixel readbacks.
+- [x] Verify pause/hidden/navigation idling and source cleanup; record host CPU measurements and real-phone limits; commit and attempt push.
 
 ### Task 4: Navigation alignment
 
