@@ -69,6 +69,8 @@ test('cancel may veto dismissal and nested sheets retain the outer lock',async({
   await expect(page.locator('html')).not.toHaveAttribute('data-scroll-locked');
 });
 
+test.describe('mouse wheel scrolling',()=>{
+test.use({isMobile:false,hasTouch:false});
 test('background wheel is locked, the sheet scrolls, and closing restores the page',async({page})=>{
   const sheet=await menu(page),before=await page.evaluate(()=>scrollY);
   await page.mouse.move(2,2);await page.mouse.wheel(0,450);await page.waitForTimeout(100);
@@ -77,6 +79,7 @@ test('background wheel is locked, the sheet scrolls, and closing restores the pa
   const box=(await sheet.boundingBox())!;await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
   await page.mouse.wheel(0,180);await expect.poll(()=>sheet.evaluate(e=>e.scrollTop)).toBeGreaterThan(0);
   await page.keyboard.press('Escape');await expect(sheet).toBeHidden();expect(await page.evaluate(()=>scrollY)).toBe(before);
+});
 });
 
 for(const [id,action,selector] of [['minesweeper','Game options','.ms-settings'],['fivefold','Stats','.ff-dialog'],['pool','Multiplayer','.mp-card'],['globle','Stats and options','.gl-options']] as const){
