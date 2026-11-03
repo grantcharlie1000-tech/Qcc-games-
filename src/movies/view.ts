@@ -518,7 +518,10 @@ export class MoviesView {
   // A section and My list open with their title block. Home keeps its hero, and a search on Home keeps its own heading.
   const head=this.kind==='all'?(simple?'<h1 class="movies-page-title" tabindex="-1">Find your next story</h1>':this.hero()):this.pageHead(this.kind,list?available.length:undefined);
   const body=simple?this.results(filtered):this.kind==='movie'||this.kind==='tv'?this.sectionContent(this.kind):this.homeContent();
-  return {head,body,gridKey:JSON.stringify(filtered)};
+  // An unfiltered section falls back to bundled titles only; loaded Home rails
+  // join search results. Compare the titles actually rendered in either grid.
+  const gridTitles=simple?filtered:this.catalog.titles.filter(t=>t.kind===this.kind);
+  return {head,body,gridKey:JSON.stringify(gridTitles)};
  }
  // Redraws a browse page's title block and results in place. The header, the island and the filter bar stay as they are, so the search
  // field keeps its node, its focus and its caret while the reader types.
