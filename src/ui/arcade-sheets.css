@@ -33,6 +33,11 @@ html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[dat
 /* The tiny handle is decoration, not a false drag affordance or tab stop. */
 :is(.arcade-sheet,body.in-game .mp-card)::before{content:'';display:block;width:36px;height:4px;margin:0 auto 14px;border-radius:999px;background:var(--sheet-ink);opacity:.28}
 @media(min-width:640px){:is(.arcade-sheet,body.in-game .mp-card)::before{display:none}}
+/* The swipe hit area over that handle (sheet-swipe.ts). Transparent: it only claims the touch so the page never pans from it. */
+.arcade-sheet>.sheet-grabber{position:absolute;inset:0 0 auto;height:34px;touch-action:none;z-index:1}
+.arcade-sheet .dialog-head,.arcade-sheet>h2:first-of-type{touch-action:none}
+.arcade-sheet[data-sheet-dragging]{user-select:none;-webkit-user-select:none}
+@media(min-width:640px){.arcade-sheet>.sheet-grabber{display:none}.arcade-sheet .dialog-head,.arcade-sheet>h2:first-of-type{touch-action:auto}}
 .arcade-sheet.ui-glass-sheet{--sheet-from-scale:.98;--sheet-from-lift:18px}
 @media(min-width:640px){.arcade-sheet.ui-glass-sheet{--sheet-from-scale:.96;--sheet-from-lift:8px}}
 .arcade-sheet.ui-glass-sheet[open]{transition-duration:160ms,320ms,320ms,320ms,320ms}

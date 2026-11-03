@@ -4,6 +4,8 @@
 import {bindGlass} from './glass';
 import {bindSheetLens} from './webgl-glass';
 import {syncSheetIconInk,bindGlassInk} from './glass-ink';
+import {bindSheetSwipe,resetSheetSwipe} from './sheet-swipe';
+import {lockPageScroll} from './scroll-lock';
 const closeControls=new WeakMap<HTMLDialogElement,()=>void>();
 
 function bindCloseControls(dialog:HTMLDialogElement):void{
@@ -11,6 +13,9 @@ function bindCloseControls(dialog:HTMLDialogElement):void{
   const disposers=new Map<HTMLElement,()=>void>();
   const disposeInk=bindGlassInk(dialog);
   const disposeLens=bindSheetLens(dialog);
+  // Every modal sheet holds the page still behind it; sheets that show a grab handle also swipe down to close.
+  const unlockScroll=lockPageScroll();
+  const disposeSwipe=dialog.classList.contains('arcade-sheet')?bindSheetSwipe(dialog):()=>{};
   const sync=()=>{
     syncSheetIconInk(dialog);
     const controls=new Set(dialog.querySelectorAll<HTMLElement>('.dialog-head .icon-button,.movies-drawer-head [data-action=close-drawer]'));
@@ -21,7 +26,7 @@ function bindCloseControls(dialog:HTMLDialogElement):void{
     }
   };
   const dispose=()=>{
-    observer.disconnect();disposeInk();disposeLens();dialog.removeEventListener('close',dispose);
+    observer.disconnect();disposeInk();disposeLens();disposeSwipe();unlockScroll();dialog.removeEventListener('close',dispose);
     disposers.forEach(dispose=>dispose());disposers.clear();closeControls.delete(dialog);
   };
   // A Movies re-render can detach an open drawer without firing close.
@@ -52,6 +57,7 @@ export function openSheet(dialog:HTMLDialogElement,trigger?:Element|null):void{
     dialog.classList.add('arcade-sheet');
     dialog.dataset.glassTone=document.body.classList.contains('study-active')?'light':document.querySelector<HTMLElement>('.game-view')?.dataset.glassTone??(document.body.classList.contains('movies-active')?'dark':'light');
   }
+  resetSheetSwipe(dialog);
   dialog.showModal();
   bindCloseControls(dialog);
   if(!trigger){dialog.style.removeProperty('--sheet-origin');return;}
