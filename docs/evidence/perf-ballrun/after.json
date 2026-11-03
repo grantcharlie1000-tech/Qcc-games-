@@ -1,0 +1,400 @@
+{
+  "measuredAt": "2026-11-03T21:51:02.512Z",
+  "commit": "cc95fee96d070a2e7b8bd38dc5932c60a2c99888",
+  "browser": "156.0.8078.4",
+  "renderer": "ANGLE SwiftShader (software GPU)",
+  "durationMs": 15000,
+  "profileMs": 3000,
+  "seed": 11,
+  "method": "Production preview; 2s warmup; 15s unprofiled rAF; separate 3s CDP CPU profile. Real key/button input, automatic retry after deaths. Crossy begins from the same revision 4 save; retries use the current generator revision. Heap measured after forced GC, outside rAF timing. One browser/page at a time.",
+  "results": [
+    {
+      "game": "ball-run",
+      "profile": "phone",
+      "name": "phone",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "deviceScaleFactor": 3,
+      "cpuRate": 4,
+      "frames": 408,
+      "elapsedMs": 15082.8,
+      "avgFps": 27.05,
+      "p95Ms": 116.6,
+      "p99Ms": 133.4,
+      "longFramesOver33ms": 165,
+      "renderedFrames": 409,
+      "phases": {
+        "running": 379,
+        "dying": 29,
+        "over": 1
+      },
+      "drawCalls": {
+        "mean": 6,
+        "p95": 6,
+        "max": 6
+      },
+      "triangles": {
+        "mean": 21471.06,
+        "p95": 21676,
+        "max": 21688
+      },
+      "geometries": {
+        "mean": 3,
+        "p95": 3,
+        "max": 3
+      },
+      "textures": {
+        "mean": 1,
+        "p95": 1,
+        "max": 1
+      },
+      "resolution": [
+        {
+          "ms": 0,
+          "ratio": 1.2487179487179487
+        },
+        {
+          "ms": 2016.6000000000004,
+          "ratio": 1
+        }
+      ],
+      "heap": {
+        "beforeBytes": 5374160,
+        "afterBytes": 5790116,
+        "retainedGrowthBytes": 415956,
+        "uncollectedBytes": 6815544
+      },
+      "mainThread": {
+        "TaskDuration": 13.36,
+        "ScriptDuration": 11.54,
+        "LayoutDuration": 0.14,
+        "RecalcStyleDuration": 0.9,
+        "LayoutCount": 348,
+        "RecalcStyleCount": 376
+      },
+      "cpuProfile": "after-ball-run-phone.cpuprofile.json.gz",
+      "hotspots": [
+        {
+          "function": "getImageData",
+          "selfMs": 1612.29,
+          "source": "getImageData"
+        },
+        {
+          "function": "(idle)",
+          "selfMs": 518.11,
+          "source": "(idle)"
+        },
+        {
+          "function": "(program)",
+          "selfMs": 295.04,
+          "source": "(program)"
+        },
+        {
+          "function": "T",
+          "selfMs": 200.21,
+          "source": "../../src/ui/glass-ink.ts:125:12"
+        },
+        {
+          "function": "getBoundingClientRect",
+          "selfMs": 106.39,
+          "source": "getBoundingClientRect"
+        },
+        {
+          "function": "elementsFromPoint",
+          "selfMs": 104.24,
+          "source": "elementsFromPoint"
+        },
+        {
+          "function": "I",
+          "selfMs": 86.6,
+          "source": "../../src/ui/glass.ts:237:15"
+        },
+        {
+          "function": "drawImage",
+          "selfMs": 44.02,
+          "source": "drawImage"
+        },
+        {
+          "function": "l",
+          "selfMs": 32.43,
+          "source": "../../src/ui/glass-ink.ts:90:21"
+        },
+        {
+          "function": "(garbage collector)",
+          "selfMs": 28.83,
+          "source": "(garbage collector)"
+        },
+        {
+          "function": "DOMRect",
+          "selfMs": 17.11,
+          "source": "DOMRect"
+        },
+        {
+          "function": "texSubImage2D",
+          "selfMs": 15.84,
+          "source": "texSubImage2D"
+        },
+        {
+          "function": "gs",
+          "selfMs": 13.55,
+          "source": "../../src/ui/webgl-glass.ts:192:10"
+        },
+        {
+          "function": "closest",
+          "selfMs": 11.9,
+          "source": "closest"
+        },
+        {
+          "function": "ba",
+          "selfMs": 10.53,
+          "source": "../../src/games/ball-run/scene.ts:598:12"
+        },
+        {
+          "function": "closest",
+          "selfMs": 10.26,
+          "source": "closest"
+        },
+        {
+          "function": "fa",
+          "selfMs": 6.58,
+          "source": "../../src/games/ball-run/scene.ts:434:12"
+        },
+        {
+          "function": "ns",
+          "selfMs": 6.5,
+          "source": "../../src/ui/glass-ink.ts:176:10"
+        },
+        {
+          "function": "ti",
+          "selfMs": 6.33,
+          "source": "../../src/ui/glass-background.ts:4:17"
+        },
+        {
+          "function": "(anonymous)",
+          "selfMs": 6.22,
+          "source": "../../src/ui/webgl-glass.ts:315:41"
+        },
+        {
+          "function": "(anonymous)",
+          "selfMs": 6.16,
+          "source": "../../src/ui/glass-ink.ts:90:51"
+        },
+        {
+          "function": "Qn",
+          "selfMs": 6.11,
+          "source": "../../src/ui/canvas-ink.ts:9:10"
+        },
+        {
+          "function": "Hi",
+          "selfMs": 5.55,
+          "source": "../../src/ui/canvas-ink.ts:30:17"
+        },
+        {
+          "function": "uniformMatrix4fv",
+          "selfMs": 5.04,
+          "source": "uniformMatrix4fv"
+        },
+        {
+          "function": "K",
+          "selfMs": 4.99,
+          "source": "../../src/games/ball-run/index.ts:116:19"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "game": "ball-run",
+      "profile": "desktop",
+      "name": "desktop",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "deviceScaleFactor": 1,
+      "cpuRate": 1,
+      "frames": 292,
+      "elapsedMs": 15016.1,
+      "avgFps": 19.45,
+      "p95Ms": 233.3,
+      "p99Ms": 283.3,
+      "longFramesOver33ms": 86,
+      "renderedFrames": 284,
+      "phases": {
+        "running": 258,
+        "dying": 25,
+        "over": 10
+      },
+      "drawCalls": {
+        "mean": 5.97,
+        "p95": 6,
+        "max": 6
+      },
+      "triangles": {
+        "mean": 21380.23,
+        "p95": 21604,
+        "max": 21676
+      },
+      "geometries": {
+        "mean": 3,
+        "p95": 3,
+        "max": 3
+      },
+      "textures": {
+        "mean": 1,
+        "p95": 1,
+        "max": 1
+      },
+      "resolution": [
+        {
+          "ms": 0,
+          "ratio": 1
+        }
+      ],
+      "heap": {
+        "beforeBytes": 5636540,
+        "afterBytes": 5741552,
+        "retainedGrowthBytes": 105012,
+        "uncollectedBytes": 7452284
+      },
+      "mainThread": {
+        "TaskDuration": 12.52,
+        "ScriptDuration": 12.11,
+        "LayoutDuration": 0.02,
+        "RecalcStyleDuration": 0.17,
+        "LayoutCount": 231,
+        "RecalcStyleCount": 249
+      },
+      "cpuProfile": "after-ball-run-desktop.cpuprofile.json.gz",
+      "hotspots": [
+        {
+          "function": "getImageData",
+          "selfMs": 2449.26,
+          "source": "getImageData"
+        },
+        {
+          "function": "(idle)",
+          "selfMs": 484.55,
+          "source": "(idle)"
+        },
+        {
+          "function": "T",
+          "selfMs": 67.79,
+          "source": "../../src/ui/glass-ink.ts:125:12"
+        },
+        {
+          "function": "(program)",
+          "selfMs": 65.77,
+          "source": "(program)"
+        },
+        {
+          "function": "getBoundingClientRect",
+          "selfMs": 19.87,
+          "source": "getBoundingClientRect"
+        },
+        {
+          "function": "elementsFromPoint",
+          "selfMs": 16.38,
+          "source": "elementsFromPoint"
+        },
+        {
+          "function": "I",
+          "selfMs": 15.99,
+          "source": "../../src/ui/glass.ts:237:15"
+        },
+        {
+          "function": "drawImage",
+          "selfMs": 7.93,
+          "source": "drawImage"
+        },
+        {
+          "function": "(garbage collector)",
+          "selfMs": 7.78,
+          "source": "(garbage collector)"
+        },
+        {
+          "function": "h",
+          "selfMs": 5.83,
+          "source": "../../src/ui/glass-ink.ts:103:15"
+        },
+        {
+          "function": "ns",
+          "selfMs": 5.23,
+          "source": "../../src/ui/glass-ink.ts:176:10"
+        },
+        {
+          "function": "matches",
+          "selfMs": 4.33,
+          "source": "matches"
+        },
+        {
+          "function": "compose",
+          "selfMs": 4.21,
+          "source": "../../node_modules/three/build/three.core.js:12302:2"
+        },
+        {
+          "function": "bufferSubData",
+          "selfMs": 3.3,
+          "source": "bufferSubData"
+        },
+        {
+          "function": "Ms",
+          "selfMs": 3.26,
+          "source": "../../src/games/ball-run/course.ts:180:10"
+        },
+        {
+          "function": "DOMRect",
+          "selfMs": 3.2,
+          "source": "DOMRect"
+        },
+        {
+          "function": "updateMatrixWorld",
+          "selfMs": 2.44,
+          "source": "../../node_modules/three/build/three.core.js:14280:2"
+        },
+        {
+          "function": "uniform1f",
+          "selfMs": 2.22,
+          "source": "uniform1f"
+        },
+        {
+          "function": "closest",
+          "selfMs": 2.11,
+          "source": "closest"
+        },
+        {
+          "function": "clear",
+          "selfMs": 1.55,
+          "source": "clear"
+        },
+        {
+          "function": "o",
+          "selfMs": 1.21,
+          "source": "../../node_modules/three/build/three.module.js:7602:11"
+        },
+        {
+          "function": "texSubImage2D",
+          "selfMs": 1.14,
+          "source": "texSubImage2D"
+        },
+        {
+          "function": "clear",
+          "selfMs": 1.12,
+          "source": "clear"
+        },
+        {
+          "function": "Q",
+          "selfMs": 1.08,
+          "source": "../../node_modules/three/build/three.module.js:9436:11"
+        },
+        {
+          "function": "Ke",
+          "selfMs": 1.07,
+          "source": "../../src/games/ball-run/scene.ts:318:12"
+        }
+      ],
+      "errors": []
+    }
+  ]
+}
