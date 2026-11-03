@@ -274,7 +274,7 @@ async function route(){
   const currentMenu=gameMenu,view=document.querySelector<HTMLElement>('.game-view')!;
   const dock=createGameDock({backHref:collectionHash,backIcon:icon('back'),menuIcon:icon('pause'),pointerLock:id==='blockcraft'});
   view.querySelector('.game-surface')!.after(dock.root);
-  if(LeaderboardSidebar.supports(id))leaderboardSidebar=new LeaderboardSidebar(id,games.find(game=>game.id===id)?.title??id,leaderboards.sync,()=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(id);});
+  if(LeaderboardSidebar.supports(id))leaderboardSidebar=new LeaderboardSidebar(id,games.find(game=>game.id===id)?.title??id,leaderboards.sync,key=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(key);});
   const menuButton=dock.menu;
   const closeGameMenu=()=>{menuButton.setAttribute('aria-expanded','false');currentMenu.close();};
   const transferDialog=(open:()=>void)=>{const resume=pausedForDialog;pausedForDialog=false;closeGameMenu();open();pausedForDialog=resume;};
