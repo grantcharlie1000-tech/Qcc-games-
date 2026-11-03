@@ -21,11 +21,11 @@ export class LeaderboardSidebar {
   this.root.className='lb-sidebar ui-glass-sheet';this.root.setAttribute('aria-label',`${title} leaderboard`);
   this.root.innerHTML=`<button class="lb-toggle" type="button" aria-expanded="false" aria-controls="lb-panel">${trophy}<span>Top scores</span></button>
    <div class="lb-panel" id="lb-panel" hidden>
-    <div class="lb-head"><h2><span>Top scores</span><small></small></h2><button class="icon-button lb-collapse" type="button" aria-label="Hide top scores"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-    ${game==='minesweeper'?`<label class="sr-only" for="lb-ms-key">Ranking</label><select id="lb-ms-key" class="game-select">${MINESWEEPER_RANKINGS.map((key,i)=>`<option value="${key}">${['Easy','Medium','Hard','Score'][i]}</option>`).join('')}</select>`:''}
+    <div class="lb-head"><div class="lb-heading">${trophy}<h2><span>Top scores</span><small></small></h2></div><button class="lb-collapse" type="button" aria-label="Hide top scores"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    ${game==='minesweeper'?`<div class="lb-segments" role="radiogroup" aria-label="Ranking">${MINESWEEPER_RANKINGS.map((key,i)=>`<button type="button" role="radio" data-key="${key}" aria-checked="${key===this.key}" tabindex="${key===this.key?0:-1}">${['Easy','Med','Hard','Score'][i]}</button>`).join('')}</div>`:''}
     <p class="lb-status muted" role="status"></p>
-    <div class="lb-scroll"><table class="lb-table"><caption class="sr-only">Top scores</caption><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Score</th></tr></thead><tbody></tbody></table></div>
-    <div class="lb-actions"><button class="game-button secondary lb-open" type="button"></button><button class="game-button secondary lb-refresh" type="button">Refresh</button></div>
+    <div class="lb-scroll"><table class="lb-table"><caption class="sr-only">Top scores</caption><colgroup><col class="lb-c-rank"><col><col class="lb-c-score"></colgroup><thead class="sr-only"><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Score</th></tr></thead><tbody></tbody></table></div>
+    <div class="lb-actions"><button class="lb-open" type="button"></button><button class="lb-refresh" type="button" aria-label="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.5 9a7 7 0 0 1 12-2L20 12M4 12l2.5 5a7 7 0 0 0 12-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
    </div>`;
   this.root.querySelector('.lb-head small')!.textContent=title;
   // A pointer click hands focus back to the game so Space/arrow keys keep playing instead of re-pressing a panel button.
@@ -33,13 +33,19 @@ export class LeaderboardSidebar {
   this.root.querySelector('.lb-toggle')!.addEventListener('click',toggle(true));
   this.root.querySelector('.lb-collapse')!.addEventListener('click',toggle(false));
   this.root.querySelector('.lb-open')!.addEventListener('click',()=>open(this.key));
-  const select=this.root.querySelector<HTMLSelectElement>('#lb-ms-key');
-  if(select){select.value=this.key;let pointer=false;select.addEventListener('pointerdown',()=>{pointer=true;});select.addEventListener('keydown',()=>{pointer=false;});select.addEventListener('change',()=>{
-   this.key=select.value as LeaderboardKey;store.write('leaderboard:ms-panel-key',this.key);this.request++;this.lastLoaded=0;this.paint(null);
-   if(this.active())void this.refresh();else if(this.wide.matches&&this.expanded&&!document.hidden)this.offline();
-   if(pointer)document.querySelector<HTMLElement>('#game-stage')?.focus({preventScroll:true});pointer=false;
-  });}
-  this.root.querySelector('.lb-refresh')!.addEventListener('click',()=>void this.refresh());
+  const segments=this.root.querySelector<HTMLElement>('.lb-segments');
+  if(segments){
+   const buttons=Array.from(segments.querySelectorAll<HTMLButtonElement>('button'));
+   const choose=(button:HTMLButtonElement)=>{
+    this.key=button.dataset.key as LeaderboardKey;
+    for(const item of buttons){const selected=item===button;item.setAttribute('aria-checked',String(selected));item.tabIndex=selected?0:-1;}
+    store.write('leaderboard:ms-panel-key',this.key);this.request++;this.lastLoaded=0;this.paint(null);
+    if(this.active())void this.refresh();else if(this.wide.matches&&this.expanded&&!document.hidden)this.offline();
+   };
+   for(const button of buttons)button.addEventListener('click',event=>{choose(button);if(event.detail>0)document.querySelector<HTMLElement>('#game-stage')?.focus({preventScroll:true});});
+   segments.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();const current=buttons.findIndex(button=>button.getAttribute('aria-checked')==='true');const next=buttons[(current+(['ArrowRight','ArrowDown'].includes(event.key)?1:-1)+buttons.length)%buttons.length]!;choose(next);next.focus();});
+  }
+  this.root.querySelector('.lb-refresh')!.addEventListener('click',event=>{void this.refresh();if((event as MouseEvent).detail>0)document.querySelector<HTMLElement>('#game-stage')?.focus({preventScroll:true});});
   // A sibling of the game view, positioned fixed, so it never enters the game's layout or fit transform.
   document.querySelector('.game-view')!.after(this.root);
   this.wide.addEventListener('change',this.visibility);window.addEventListener('online',this.online);
@@ -78,7 +84,7 @@ export class LeaderboardSidebar {
   this.busy=true;
   if(!this.root.querySelector('tbody')!.childElementCount)this.status('Loading…');
   try{const board=await this.sync.load(this.key);if(this.disposed||request!==this.request)return;this.paint(board);this.lastLoaded=Date.now();
-   const mine=board.player;this.status(mine?`You: #${mine.rank} · ${formatScore(this.key,mine.score)}`:board.entries.length?'Best score per player.':'No scores yet. Be the first!');}
+   const mine=board.player;this.status(mine?`You: #${mine.rank} · ${formatScore(this.key,mine.score)}`:board.entries.length?'':'No scores yet');}
   catch{if(this.disposed||request!==this.request)return;const cached=this.sync.cached(this.key);this.paint(cached);this.status(cached?'Offline · showing saved rankings.':'Rankings unavailable right now.');}
   finally{this.busy=false;if(this.refreshPending){this.refreshPending=false;void this.refresh();}}
  }

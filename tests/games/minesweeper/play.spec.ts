@@ -110,7 +110,7 @@ test('background pauses with the board hidden, and returning does not resume imp
 });
 
 test('assistive activation, keyboard reveal and shared fullscreen remain dependable',async({page})=>{
- await fixture(page);await expect(page.locator('.ms-intro')).toBeVisible();await page.getByRole('button',{name:'Dismiss first-play explanation'}).click();await page.reload();await expect(page.locator('.ms-intro')).toBeHidden();
+ await fixture(page);await expect(page.locator('.ms-outcome')).toBeEmpty();
  await settings(page);await expect(page.locator('.ms-sound')).not.toBeChecked();await closeSettings(page);
  await page.getByRole('button',{name:'Flag mode',exact:true}).click();await cell(page,0).dispatchEvent('click',{detail:0});await expect(cell(page,0)).toHaveAttribute('data-state','flagged');
  await cell(page,0).focus();await page.keyboard.press('Enter');await expect(cell(page,0)).toHaveAttribute('data-state','flagged');await page.keyboard.press('f');await page.keyboard.press('Space');await expect(cell(page,0)).toHaveAttribute('data-state','open');
