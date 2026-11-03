@@ -39,6 +39,8 @@ for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contras
     // exterior outline, including any adaptive halo, with the icon retained.
     const iconBoxes=boxes.filter(box=>box.icon);
     const text=ratios.filter((_,i)=>!boxes[i].icon),icons=await glyphContrast(page,visible,mask,iconBoxes,(await nav.boundingBox())!,true);
+    await test.info().attach(`${name}-icon-contrast`,{body:JSON.stringify({bounds:await nav.boundingBox(),boxes:iconBoxes,icons}),contentType:'application/json'});
+    await test.info().attach(`${name}-icon-mask`,{body:Buffer.from(mask,'base64'),contentType:'image/png'});
     expect(Math.min(...text),`${name} labels: ${text.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
     expect(Math.min(...icons),`${name} icons: ${icons.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(3);
   }
@@ -230,7 +232,9 @@ for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density
     await page.setViewportSize({width:390,height:844});await page.goto('/');
     const home=page.locator('.app-tabbar');await expect(home).toHaveClass(/is-refracting/);
     const homeBlur=await home.locator('.ui-glass-lens').evaluate(e=>getComputedStyle(e).backdropFilter.match(/blur\([^)]+\)/)![0]);
-    await page.addStyleTag({content:'#content{visibility:hidden}body{background:repeating-linear-gradient(90deg,#172b38 0 10px,#dfc9a6 10px 20px)!important}.app-tabbar::after{display:none}.app-tabbar .ui-tab{visibility:hidden}'});
+    // #92's 12px frost requires wider source detail than the former 3px
+    // blur. A 40px period still compares identical phases 120px apart.
+    await page.addStyleTag({content:'#content{visibility:hidden}body{background:repeating-linear-gradient(90deg,#172b38 0 20px,#dfc9a6 20px 40px)!important}.app-tabbar::after{display:none}.app-tabbar .ui-tab{visibility:hidden}'});
     const shot=(await home.screenshot({animations:'disabled'})).toString('base64');
     const rendered=await page.evaluate(async({shot,density})=>{
       const image=new Image();image.src='data:image/png;base64,'+shot;await image.decode();
@@ -250,7 +254,7 @@ for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density
     await expect(page.locator('#game-menu')).toHaveClass(/is-refracting/);
     const gameBlur=await page.locator('#game-menu .ui-glass-lens').evaluate(e=>getComputedStyle(e).backdropFilter.match(/blur\([^)]+\)/)![0]);
     // Navigation frost (section-navigation.css) and the game --glass-clear-blur.
-    expect(homeBlur).toBe('blur(3px)');
+    expect(homeBlur).toBe('blur(12px)');
     expect(gameBlur).toBe('blur(1.5px)');
   });
 });

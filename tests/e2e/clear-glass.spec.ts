@@ -195,13 +195,13 @@ test('Games and Movies sheet closes use the same clear material and release it o
 
 // The clear-variant acceptance supersedes the earlier regular-HIG alpha fit.
 // Rendered dark/chroma checks still reject hidden luminance compression.
-for(const fallback of [false,true])test(`clear glass retains the backdrop instead of whitening it (${fallback?'fallback':'native'})`,async({page,browserName})=>{
+for(const fallback of [false,true])test(`frosted navigation retains backdrop colour and diffuses its boundary (${fallback?'fallback':'native'})`,async({page,browserName})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
-  // The approved clear fill: a dark, near-neutral 20% veil, never a white one.
-  expect(await bar.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(8, 12, 18, 0.2)');
+  // #92's navigation frost uses a dark 36% veil, never a white one.
+  expect(await bar.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(8, 12, 18, 0.36)');
   await page.addStyleTag({content:'#content{visibility:hidden}body{background:linear-gradient(90deg,#102030 50%,#f5ddb0 50%)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   const png=(await bar.screenshot({animations:'disabled',scale:'css'})).toString('base64');
   const patches=await page.evaluate(async png=>{
@@ -222,7 +222,7 @@ for(const fallback of [false,true])test(`clear glass retains the backdrop instea
     // Some Linux WebKit builds omit backdrop diffusion even on plain HTML.
     // Verify that independently; never classify that as working app blur.
     const reference=await page.context().newPage();
-    await reference.setContent('<body style="margin:0;background:linear-gradient(90deg,#102030 50%,#f5ddb0 50%)"><div style="position:fixed;top:100px;left:0;width:390px;height:64px;background:rgba(184,184,184,.14);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)"></div></body>');
+    await reference.setContent('<body style="margin:0;background:linear-gradient(90deg,#102030 50%,#f5ddb0 50%)"><div style="position:fixed;top:100px;left:0;width:390px;height:64px;background:rgba(8,12,18,.36);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)"></div></body>');
     const png=(await reference.locator('div').screenshot({scale:'css'})).toString('base64');
     const hasBlur=await reference.evaluate(async png=>{
       const img=new Image();img.src='data:image/png;base64,'+png;await img.decode();
@@ -233,16 +233,14 @@ for(const fallback of [false,true])test(`clear glass retains the backdrop instea
     expect(hasBlur,'App and independent CSS reference must have the same diffusion capability').toBe(false);
     test.info().annotations.push({type:'renderer limitation',description:'Linux WebKit omits backdrop blur in both app and independent CSS reference. Physical iOS blur remains unverified.'});
     await reference.close();
-  }else expect(patches.spread).toBeGreaterThanOrEqual(6);
-  // Three CSS pixels of Gaussian blur give roughly 7.7px of 10–90% spread.
-  // This rejects both a missing diffusion layer and the old 0.3px recipe.
-  expect(patches.spread).toBeLessThanOrEqual(10);
+  }else expect(patches.spread).toBeGreaterThanOrEqual(26);
+  // Twelve CSS pixels of Gaussian blur give roughly 30.7px of 10–90% spread.
+  // Both missing diffusion and the former 3px recipe fail this range.
+  expect(patches.spread).toBeLessThanOrEqual(35);
 });
 
-test('navigation, companion and game controls share the same clear optical recipe',async({page})=>{
-  // One fill, rim and pill everywhere. Navigation (with its companion Menu)
-  // softens art with its own 3px frost and tone (section-navigation.css);
-  // every game control uses the --glass-clear-blur recipe.
+test('navigation and its companion share frost while game controls retain their clear optical recipe',async({page})=>{
+  // #92 gives navigation its own frost/tint; game controls remain clear.
   const references:Record<string,Record<string,string>>={};
   for(const route of ['collection','study','movies/browse/movie','movies/browse/tv','movies/list','game/fruit-merge','game/snake','game/blockcraft']){
     await page.goto(`/#/${route==='study'?'collection':route}`);
@@ -267,10 +265,12 @@ test('navigation, companion and game controls share the same clear optical recip
       expect(material,route).toEqual(references[`${group}|${material.mode}`]);
       references[group]??=material;
     }
-    expect(materials[0].veil,route).toBe('rgba(8, 12, 18, 0.2)');
+    expect(materials[0].veil,route).toBe(group==='navigation'?'rgba(8, 12, 18, 0.36)':'rgba(8, 12, 18, 0.2)');
   }
-  for(const reference of Object.values(references))expect([reference.veil,reference.pill]).toEqual([references.navigation.veil,references.navigation.pill]);
-  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(3px)','saturate(1.05) brightness(.9) contrast(.85)']);
+  for(const reference of Object.values(references))expect(reference.pill).toEqual(references.navigation.pill);
+  expect(references.navigation.veil).toBe('rgba(8, 12, 18, 0.36)');
+  expect(references.game.veil).toBe('rgba(8, 12, 18, 0.2)');
+  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(12px)','saturate(1.4) brightness(.94)']);
   expect([references.game.blur,references.game.tone]).toEqual(['blur(1.5px)','saturate(1.08)']);
 });
 
