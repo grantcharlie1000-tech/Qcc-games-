@@ -22,7 +22,7 @@ export function rubberBand(delta:number):number{
 }
 
 const INTERACTIVE='button,a[href],input,select,textarea,label,summary,[contenteditable],[role=slider],[role=button]';
-const ZONE='.sheet-grabber,.dialog-head';
+const ZONE='.sheet-grabber,.ui-drawer-handle,.dialog-head,.movies-drawer-head,.ms-menu-heading,.mp-title';
 /** The handle, the header row, or a sheet's own leading title (the accounts sheet has no header row). */
 function inZone(target:Element,sheet:HTMLElement):boolean{
   if(target.closest(ZONE))return true;
@@ -50,8 +50,9 @@ function atTop(target:Element,sheet:HTMLElement):boolean{
   return true;
 }
 
-export function bindSheetSwipe(dialog:HTMLDialogElement):()=>void{
+export function bindSheetSwipe(dialog:HTMLElement,dismiss?:()=>boolean):()=>void{
   const abort=new AbortController(),signal=abort.signal;
+  const requestDismiss=dismiss??(()=>dialog instanceof HTMLDialogElement&&requestSheetDismiss(dialog));
   // A real element under the decorative ::before handle, so it can take touch-action:none. Invisible; the handle look is unchanged.
   const grabber=dialog.querySelector<HTMLElement>(':scope>.sheet-grabber')??Object.assign(document.createElement('div'),{className:'sheet-grabber'});
   grabber.setAttribute('aria-hidden','true');
@@ -69,12 +70,15 @@ export function bindSheetSwipe(dialog:HTMLDialogElement):()=>void{
     dialog.style.translate=`0 ${y}px`;
   };
   const begin=(id:number|'touch',x:number,y:number,engaged:boolean)=>{
-    clearTimeout(timer);
-    drag={id,startX:x,startY:y,engaged,samples:[{y,t:performance.now()}],height:dialog.getBoundingClientRect().height||1};
+    // Catch an interrupted return/exit where it is on screen, without jumping.
+    const offset=engaged?parseFloat(getComputedStyle(dialog).translate.split(/\s+/)[1])||0:0;
+    if(engaged){clearTimeout(timer);dialog.style.transition='none';setOffset(offset);}
+    drag={id,startX:x,startY:y-offset,engaged,samples:[{y,t:performance.now()}],height:dialog.getBoundingClientRect().height||1};
     if(engaged)engage();
   };
   const engage=()=>{
     if(!drag)return;
+    clearTimeout(timer);
     drag.engaged=true;dialog.setAttribute('data-sheet-dragging','');
     dialog.style.transition='none';
   };
@@ -88,15 +92,19 @@ export function bindSheetSwipe(dialog:HTMLDialogElement):()=>void{
     const current=drag;drag=null;
     if(!current?.engaged)return;
     const distance=y===null?0:y-current.startY;
+    // Include release time: a quick movement followed by a hold is not a flick.
+    const now=performance.now();
+    if(y!==null)current.samples.push({y,t:now});
+    while(current.samples.length>2&&now-current.samples[0].t>100)current.samples.shift();
     const first=current.samples[0],last=current.samples[current.samples.length-1];
     const velocity=last.t>first.t?(last.y-first.y)/(last.t-first.t):0;
     const quick=reducedMotion();
     if(y!==null&&dismissDecision(distance,current.height,velocity)){
-      const gone=()=>{if(!requestSheetDismiss(dialog))springBack(quick);};
+      const gone=()=>{if(!requestDismiss())springBack(quick);};
       if(quick){gone();return;}
       const remaining=Math.max(0,current.height+16-distance);
       const ms=Math.round(Math.min(220,Math.max(120,velocity>0?remaining/velocity:220)));
-      dialog.style.transition=`translate ${ms}ms cubic-bezier(.2,.7,.3,1)`;
+      dialog.style.transition=`translate ${ms}ms var(--ease-out,cubic-bezier(.23,1,.32,1))`;
       setOffset(current.height+16);
       timer=window.setTimeout(gone,ms);
     }else springBack(quick);
@@ -104,9 +112,9 @@ export function bindSheetSwipe(dialog:HTMLDialogElement):()=>void{
   const springBack=(quick:boolean)=>{
     dialog.removeAttribute('data-sheet-dragging');
     if(quick){dialog.style.removeProperty('transition');setOffset(null);return;}
-    dialog.style.transition='translate 260ms cubic-bezier(.2,1.1,.3,1)';
+    dialog.style.transition='translate 260ms var(--ease-glass,cubic-bezier(.23,1,.32,1))';
     setOffset(0);
-    timer=window.setTimeout(()=>{if(!drag){dialog.style.removeProperty('transition');setOffset(null);}},280);
+    timer=window.setTimeout(()=>{if(!drag?.engaged){dialog.style.removeProperty('transition');setOffset(null);}},280);
   };
   // Handle and header: Pointer Events, captured, with touch-action:none in CSS so iOS never claims the pan.
   dialog.addEventListener('pointerdown',event=>{
@@ -121,9 +129,13 @@ export function bindSheetSwipe(dialog:HTMLDialogElement):()=>void{
   dialog.addEventListener('pointermove',event=>{if(drag?.id===event.pointerId)move(event.clientY);},{signal});
   dialog.addEventListener('pointerup',event=>{if(drag?.id===event.pointerId)end(event.clientY);},{signal});
   dialog.addEventListener('pointercancel',event=>{if(drag?.id===event.pointerId)end(null);},{signal});
+  dialog.addEventListener('lostpointercapture',event=>{if(drag?.id===event.pointerId)end(null);},{signal});
+  window.addEventListener('blur',()=>end(null),{signal});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)end(null);},{signal});
   // Body: Touch Events, because the body keeps native scrolling (pan-y) and only a touchmove can take the gesture over at the top.
   dialog.addEventListener('touchstart',event=>{
-    if(drag||event.touches.length!==1||!handleShown())return;
+    if(event.touches.length!==1){end(null);return;}
+    if(drag||!handleShown())return;
     const target=event.target instanceof Element?event.target:null;
     if(!target||inZone(target,dialog)||target.closest(INTERACTIVE)||!atTop(target,dialog))return;
     const touch=event.touches[0];begin('touch',touch.clientX,touch.clientY,false);
@@ -151,6 +163,6 @@ export function bindSheetSwipe(dialog:HTMLDialogElement):()=>void{
 }
 
 /** Called before showModal, so the entry animation starts from the sheet's own resting place. */
-export function resetSheetSwipe(dialog:HTMLDialogElement):void{
+export function resetSheetSwipe(dialog:HTMLElement):void{
   dialog.style.removeProperty('translate');dialog.style.removeProperty('transition');dialog.removeAttribute('data-sheet-dragging');
 }

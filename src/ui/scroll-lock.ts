@@ -11,9 +11,10 @@ export function lockPageScroll():()=>void{
   if(holders++===0){
     const root=document.documentElement,body=document.body;
     const gutter=Math.max(0,window.innerWidth-root.clientWidth);
+    const padding=parseFloat(getComputedStyle(root).paddingRight)||0;
     saved={overflow:root.style.overflow,bodyOverflow:body.style.overflow,padding:root.style.paddingRight,x:scrollX,y:scrollY,hash:location.hash};
     root.style.overflow='hidden';body.style.overflow='hidden';
-    if(gutter)root.style.paddingRight=`${gutter}px`;
+    if(gutter)root.style.paddingRight=`${padding+gutter}px`;
     root.setAttribute('data-scroll-locked','');
     guard=event=>{
       const target=event.target instanceof Element?event.target:null;

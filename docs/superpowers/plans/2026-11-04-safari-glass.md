@@ -46,10 +46,10 @@
 
 **Interfaces:** Preserve `openSheet(dialog, trigger?)`, `bindSheetSwipe`, `lockPageScroll(): () => void`, and the owners' cancel/close behavior.
 
-- [ ] Reproduce handle/body drag, scrolled body, cancellation, focus return, nested locks and navigation cleanup in one serial browser suite.
-- [ ] Add failing coverage for missing behavior before changes.
-- [ ] Fix only the shared gesture/lifecycle gaps, including every sheet with a visible handle; preserve native scrolling and controls.
-- [ ] Verify long drag/flick/short drag, cancellation, reopening, reduced motion and background scroll restoration; commit and attempt push.
+- [x] Reproduce handle/body drag, scrolled body, cancellation, focus return, nested locks and navigation cleanup in one serial browser suite.
+- [x] Add failing coverage for missing behavior before changes.
+- [x] Fix only the shared gesture/lifecycle gaps, including every sheet with a visible handle; preserve native scrolling and controls.
+- [x] Verify long drag/flick/short drag, cancellation, reopening, reduced motion and background scroll restoration; commit and attempt push.
 
 ### Task 3: Live canvas material on iOS
 

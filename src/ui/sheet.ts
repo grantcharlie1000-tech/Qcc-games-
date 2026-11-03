@@ -15,7 +15,7 @@ function bindCloseControls(dialog:HTMLDialogElement):void{
   const disposeLens=bindSheetLens(dialog);
   // Every modal sheet holds the page still behind it; sheets that show a grab handle also swipe down to close.
   const unlockScroll=lockPageScroll();
-  const disposeSwipe=dialog.classList.contains('arcade-sheet')?bindSheetSwipe(dialog):()=>{};
+  const disposeSwipe=dialog.matches('.arcade-sheet,.movies-drawer')||dialog.querySelector('.ui-drawer-handle')?bindSheetSwipe(dialog):()=>{};
   const sync=()=>{
     syncSheetIconInk(dialog);
     const controls=new Set(dialog.querySelectorAll<HTMLElement>('.dialog-head .icon-button,.movies-drawer-head [data-action=close-drawer]'));
@@ -26,7 +26,7 @@ function bindCloseControls(dialog:HTMLDialogElement):void{
     }
   };
   const dispose=()=>{
-    observer.disconnect();disposeInk();disposeLens();disposeSwipe();unlockScroll();dialog.removeEventListener('close',dispose);
+    observer.disconnect();disposeInk();disposeLens();disposeSwipe();unlockScroll();dialog.removeEventListener('close',onClose);
     disposers.forEach(dispose=>dispose());disposers.clear();closeControls.delete(dialog);
   };
   // A Movies re-render can detach an open drawer without firing close.
@@ -36,7 +36,10 @@ function bindCloseControls(dialog:HTMLDialogElement):void{
   });
   sync();
   observer.observe(document.body,{childList:true,subtree:true});
-  dialog.addEventListener('close',dispose,{once:true});
+  // A close event can arrive after this same dialog has already reopened.
+  // Keep listening for the current opening instead of releasing its lock.
+  const onClose=()=>{if(!dialog.open)dispose();};
+  dialog.addEventListener('close',onClose);
   closeControls.set(dialog,dispose);
 }
 type Box=Pick<DOMRectReadOnly,'left'|'top'|'width'|'height'>;
@@ -52,6 +55,7 @@ export function sheetOrigin(trigger:Box,sheet:Box):string{
 // Opens the dialog as a modal, then sets where it grows from. The sheet's box comes from its offset values, which ignore
 // the transform of the entry animation, so the origin is measured against the layout the sheet settles into.
 export function openSheet(dialog:HTMLDialogElement,trigger?:Element|null):void{
+  closeControls.get(dialog)?.();
   // Shared app dialogs opt in. Movies-specific sheets retain their material.
   if(['menu','game-options','rules-dialog','accounts-dialog','leaderboard-dialog'].includes(dialog.id)){
     dialog.classList.add('arcade-sheet');
@@ -63,4 +67,20 @@ export function openSheet(dialog:HTMLDialogElement,trigger?:Element|null):void{
   if(!trigger){dialog.style.removeProperty('--sheet-origin');return;}
   const sheet={left:dialog.offsetLeft,top:dialog.offsetTop,width:dialog.offsetWidth,height:dialog.offsetHeight};
   dialog.style.setProperty('--sheet-origin',sheetOrigin(trigger.getBoundingClientRect(),sheet));
+}
+
+/** Custom game panels keep their own close/focus path and hidden state. */
+export function bindCustomSheet(panel:HTMLElement,host:HTMLElement,close:()=>void):()=>void{
+  let release:(()=>void)|undefined;
+  const sync=()=>{
+    if(host.hidden){release?.();release=undefined;return;}
+    if(release)return;
+    resetSheetSwipe(panel);
+    const unlock=lockPageScroll();
+    const off=bindSheetSwipe(panel,()=>{close();return host.hidden||!host.isConnected;});
+    release=()=>{off();unlock();};
+  };
+  const observer=new MutationObserver(sync);observer.observe(host,{attributes:true,attributeFilter:['hidden']});
+  sync();
+  return()=>{observer.disconnect();release?.();release=undefined;};
 }
