@@ -15,9 +15,8 @@ const game:GameModule={
   const events=new AbortController();
   const root=document.createElement('section');root.className='ms';root.setAttribute('aria-label','Minefield');
   root.innerHTML=`<div class="ms-toolbar"><label class="ms-field"><span>Difficulty</span><select class="ms-level" aria-label="Difficulty"><option value="beginner">Easy · 9 × 9</option><option value="intermediate">Medium · 16 × 16</option><option value="expert">Hard · 30 × 16</option></select></label><div class="ms-instrument"><span>Flags left</span><strong class="ms-count">10</strong></div><div class="ms-instrument"><span>Time</span><strong class="ms-time" aria-label="Elapsed time">00:00</strong></div><div class="ms-tools"></div></div>
-   <aside class="ms-intro" ${read('minesweeper:intro',false)?'hidden':''}><p>Your first opening is safe. Start anywhere.</p><button type="button" class="ms-dismiss" aria-label="Dismiss first-play explanation">Got it</button></aside>
    <div class="ms-frame"><div class="ms-scroll" tabindex="-1" aria-label="Minefield: drag to pan, pinch to zoom"><div class="ms-board" role="grid" aria-label="Minesweeper board" aria-describedby="ms-instructions"></div></div></div>
-   <div class="ms-underboard"><p class="ms-outcome" role="status">Your first move is safe.</p><span class="ms-badge" hidden>Practice · assisted</span></div>
+   <div class="ms-underboard"><p class="ms-outcome" role="status"></p><span class="ms-badge" hidden>Practice · assisted</span></div>
    <p class="ms-hint-message" role="status" hidden></p>
    <section class="ms-result" aria-label="Game result" hidden><div><strong class="ms-result-title"></strong><p class="ms-result-detail"></p></div><div class="ms-result-actions"><button type="button" class="ms-new">New game</button></div></section>
    <div class="ms-bottom"><div class="ms-mode-switch" role="group" aria-label="Touch action"><button type="button" class="ms-reveal-mode" aria-pressed="true">Reveal</button><button type="button" class="ms-mode" aria-label="Flag mode" aria-pressed="false">${image('flag')}<span>Flag</span></button></div><p class="ms-instructions" id="ms-instructions">Click to reveal · Right-click to flag</p></div>
@@ -65,7 +64,7 @@ const game:GameModule={
    });
    root.dataset.status=board.status;root.dataset.paused=String(paused);grid.inert=paused;scroll.setAttribute('aria-hidden',String(paused));
    $('.ms-count').textContent=String(mines-board.flags.filter(Boolean).length);
-   $('.ms-outcome').textContent=board.status==='won'?'Field cleared!':board.status==='lost'?'Mine found!':board.status==='ready'?'Your first move is safe.':`${safe} / ${total} safe tiles`;
+   $('.ms-outcome').textContent=board.status==='won'?'Field cleared!':board.status==='lost'?'Mine found!':board.status==='ready'?'':`${safe} / ${total} safe tiles`;
    $('.ms-result').hidden=!ended;$('.ms-hint-message').hidden=!$('.ms-hint-message').textContent;$('.ms-practice-tools').hidden=!practice;
    $('.ms-menu-subtitle').textContent=`${LABELS[board.level]} · ${LEVELS[board.level].mines} mines${assisted?' · Assisted':''}`;
    if(ended){const score=winScore(board,assisted),base=SCORE_TIERS[board.level].base;$('.ms-result-title').textContent=score?`Score ${score.toLocaleString()}`:board.status==='won'?'Unranked win':'A little wiser for the next field.';$('.ms-result-detail').textContent=score?`${LABELS[board.level]} ${base.toLocaleString()} + speed ${(score-base).toLocaleString()} · ${formatTime(Math.ceil(board.elapsedMs),true)} · Best score ${read<number>('best:minesweeper-score',0).toLocaleString()}`:`${LABELS[board.level]} · ${formatTime(Math.ceil(board.elapsedMs),true)}${assisted?' · Assisted':''}`;}
@@ -87,7 +86,7 @@ const game:GameModule={
    const changed=kind==='flag'?flag(board,i):kind==='chord'||board.revealed[i]?chord(board,i):reveal(board,i);
    if(!changed){if(kind!=='flag'&&board.revealed[i]&&board.cells[i]>0)context.announce('Chord needs the same number of adjacent flags. Incorrect flags can cause a loss.');return;}
    if(practice){history.push(before);if(history.length>80)history.shift();}
-   if(before.status==='ready'&&board.status!=='ready'){last=performance.now();recordStart(stats,board.level,assisted);$('.ms-intro').hidden=true;write('minesweeper:intro',true);}
+   if(before.status==='ready'&&board.status!=='ready'){last=performance.now();recordStart(stats,board.level,assisted);}
    if(before.status==='playing')board.elapsedMs=Math.min(31536000000,board.elapsedMs+Math.max(0,performance.now()-last));
    last=performance.now();hinted=null;$('.ms-hint-message').textContent='';
    const ended=board.status==='won'||board.status==='lost';
@@ -144,7 +143,6 @@ const game:GameModule={
   $('.ms-hint').addEventListener('click',()=>{if(!practice||board.status!=='playing')return;closeMenu();const result=hint(board);hinted=result?.index??null;$('.ms-hint-message').textContent=result?result.explanation+(board.flags[result.index]?' Remove the flag before revealing it.':' The outlined tile is safe to reveal.'):'No safe move established from visible numbers. This solver uses direct and subset deductions; it will not guess.';if(result)setFocus(result.index,true);render();save();},{signal:events.signal});
   $('.ms-undo').addEventListener('click',()=>{if(!practice||!history.length)return;closeMenu();syncTime();const elapsed=board.elapsedMs;board=history.pop()!;board.elapsedMs=elapsed;hinted=null;$('.ms-hint-message').textContent='';last=performance.now();render();save();},{signal:events.signal});
   $('.ms-sound').addEventListener('change',()=>{sound=$<HTMLInputElement>('.ms-sound').checked;playSound(sound);save();},{signal:events.signal});$('.ms-longpress').addEventListener('change',()=>{longPress=$<HTMLInputElement>('.ms-longpress').checked;cancelGestures();save();},{signal:events.signal});
-  $('.ms-dismiss').addEventListener('click',()=>{$('.ms-intro').hidden=true;write('minesweeper:intro',true);},{signal:events.signal});
   function openMenu(){
    if(menu.open)return;resumeAfterMenu=!paused;context.setPaused?.(true);menu.showModal();
   }

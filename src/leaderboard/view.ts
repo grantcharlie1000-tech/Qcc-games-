@@ -21,6 +21,7 @@ export class LeaderboardView {
    <button class="game-button secondary lb-refresh" type="button">Refresh scores</button>
    <section class="lb-login"><p class="muted">Log in to share scores. Guest games and progress stay on this device.</p><button class="game-button" type="button">Log in / Sign up</button></section>`;
   document.body.append(this.root);
+  this.sync.onSynced(game=>{if(this.root.open&&this.select.value===game)void this.refresh();});
   this.sync.onStatus(message=>{if(this.root.open)this.status(message);});
   if(!document.hidden&&navigator.onLine)void this.sync.flush().catch(()=>{});
   this.select.addEventListener('change',()=>void this.refresh());

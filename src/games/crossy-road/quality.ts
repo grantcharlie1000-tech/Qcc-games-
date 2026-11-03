@@ -5,8 +5,8 @@ export class AdaptiveResolution {
   private frames=0;
   private bad=0;
   private good=0;
-  get cap(): number { return 3-this.level*.5; }
-  get low(): boolean {return this.level===3;}
+  get cap(): number { return 2-this.level*.5; }
+  get low(): boolean {return this.level===2;}
   observe(seconds: number): void {
     if(!(seconds>0)||!Number.isFinite(seconds))return;
     // Bound a tab/debugger interruption to one quarter-second contribution.
@@ -24,9 +24,8 @@ export class AdaptiveResolution {
       this.elapsed=0;this.frames=0;
       this.bad=mean>.020?this.bad+1:0;
       this.good=mean<.0175?this.good+1:0;
-      // Preserve DPR2 unless four further bad seconds require the allowed
-      // automatic Low tier. Every upward recovery needs eight good seconds.
-      if(this.bad>=(this.level===2?4:2)){this.level=Math.min(3,this.level+1);this.bad=this.good=0;}
+      // After DPR1.5, allow four further bad seconds before DPR1. Every upward recovery needs eight good seconds.
+      if(this.bad>=(this.level===1?4:2)){this.level=Math.min(2,this.level+1);this.bad=this.good=0;}
       else if(this.good>=8){this.level=Math.max(0,this.level-1);this.bad=this.good=0;}
     }
   }

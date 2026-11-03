@@ -13,9 +13,10 @@
 import {
   CAR_LENGTH, COLS, EDGE_COLS, HOP_TIME, LOG_PALETTE, MOVERS, RAIL_PERIOD_MIN, SAFE_ROWS, START_COL, TRAIN_MAX, TRAIN_MIN, TRAIN_PALETTE, TRAIN_SPEED,
   VEHICLE_PALETTE, clamp, difficulty, lerp, riverGapMax, roadGapMin,
-  type GrassLane, type Lane, type LaneKind, type LilyLane, type Mover, type Obstacle, type RailLane, type RiverLane, type RoadLane,
+  type WorldVersion, type GrassLane, type Lane, type LaneKind, type LilyLane, type Mover, type Obstacle, type RailLane, type RiverLane, type RoadLane,
 } from './config';
 import { platformAt } from './lanes';
+import {seededObstacle, terrainHash} from './terrain';
 import { mulberry32 } from '../../core/random';
 
 type Rng = () => number;
@@ -40,19 +41,20 @@ export function chunkRng(seed: number, chunk: number): () => number {
  * be stood on by a player who started at (row 0, START_COL) and never died. */
 export interface GenState {
   seed: number;
-  version?: 1 | 2 | 3 | 4;
+  version?: WorldVersion;
   /** Index of the next row to generate. */
   nextRow: number;
   /** Index of the next chunk to generate. */
   chunk: number;
   /** Kind of the last chunk (a river chunk with a lily row is still 'river'). */
   prevKind: LaneKind;
+  priorKind?: LaneKind;
   /** Consecutive hazard chunks (road, river, rail) at the end. */
   hazardRun: number;
   reach: boolean[];
 }
 
-export function initialState(seed: number, version: 1 | 2 | 3 | 4 = 4): GenState {
+export function initialState(seed: number, version: WorldVersion = 5): GenState {
   const reach = new Array<boolean>(COLS).fill(false);
   reach[START_COL] = true;
   return { seed: seed >>> 0, version, nextRow: 0, chunk: 0, prevKind: 'grass', hazardRun: 0, reach };
@@ -120,7 +122,13 @@ export function repairGrass(obstacles: Obstacle[], reach: readonly boolean[]): b
 }
 
 /** Chunk 0 keeps columns 2-6 clear and puts an obstacle on each of columns 0, 1, 7, 8 with p 0.35. */
-function grassRow(row: number, rng: Rng, safe: boolean, reach: readonly boolean[], version: 1 | 2 | 3 | 4): { lane: GrassLane; reach: boolean[] } {
+function grassRow(row: number, rng: Rng, safe: boolean, reach: readonly boolean[], version: WorldVersion, seed = 0, clearing = false): { lane: GrassLane; reach: boolean[] } {
+  if (version >= 5) {
+    const obstacles = Array.from({length: COLS}, (_, c) => clearing ? null : seededObstacle(seed, row, c));
+    const next = repairGrass(obstacles, reach);
+    const variant = Array.from({length: COLS}, (_, c) => {const h=terrainHash(seed,row,c);return h%10===0?3:h%3;});
+    return {lane:{kind:'grass',row,shade:shadeOf(row),seed,clearing,obstacles,blocked:obstacles.map(o=>o!==null),variant,edge:[]},reach:next};
+  }
   const density = lerp(0.10, 0.30, difficulty(row));
   const obstacles = new Array<Obstacle>(COLS), variant = new Array<number>(COLS);
   for (let c = 0; c < COLS; c++) {
@@ -154,7 +162,7 @@ function layout(lens: readonly number[], gaps: readonly number[], colors: readon
   return { movers, cycle };
 }
 
-function roadRow(row: number, rng: Rng, dir: Heading, version: 1 | 2 | 3 | 4): RoadLane {
+function roadRow(row: number, rng: Rng, dir: Heading, version: WorldVersion): RoadLane {
   const d = difficulty(row);
   const speed = lerp(1.5, 4.5, d) * jitter(rng);
   const truck = rng() < lerp(0.2, 0.4, d);
@@ -187,15 +195,15 @@ export interface LogShape {
 
 const MIN_LOG_GAP = 2;
 
-function drawLogShape(rng: Rng, d: number, version: 1 | 2 | 3 | 4): LogShape {
+function drawLogShape(rng: Rng, d: number, version: WorldVersion): LogShape {
   const speed = lerp(1.0, 2.6, d) * jitter(rng);
-  const w2 = version >= 4 ? 0.25 : lerp(version === 1 ? 0.1 : 0.2, 0.6, d), w3 = version >= 4 ? 0.5 : version === 1 ? 0.3 : lerp(0.6, 0.3, d), w4 = version === 1 ? lerp(0.6, 0.1, d) : 1 - w2 - w3;
+  const w2 = version >= 5 ? lerp(.1,.35,d) : version >= 4 ? 0.25 : lerp(version === 1 ? 0.1 : 0.2, 0.6, d), w3 = version >= 4 ? 0.5 : version === 1 ? 0.3 : lerp(0.6, 0.3, d), w4 = version === 1 ? lerp(0.6, 0.1, d) : 1 - w2 - w3;
   const gapScale = lerp(2, 4, d), gapMax = riverGapMax(speed);
   const lens: number[] = [], gaps: number[] = [], colors: number[] = [];
   for (let i = 0; i < MOVERS; i++) {
     const u = rng() * (w2 + w3 + w4);
     lens.push(u < w2 ? 2 : u < w2 + w3 ? 3 : 4);
-    gaps.push(version >= 4 ? 0.55 + 0.3 * rng() : clamp(gapScale * jitter(rng), MIN_LOG_GAP, gapMax));
+    gaps.push(version >= 5 ? .55 + (.1 + .13*d) * rng() : version >= 4 ? 0.55 + 0.3 * rng() : clamp(gapScale * jitter(rng), MIN_LOG_GAP, gapMax));
     colors.push(Math.floor(rng() * LOG_PALETTE));
   }
   return { speed, lens, gaps, colors, ...(version >= 4 ? {minGap:0.55} : {}) };
@@ -275,13 +283,14 @@ function lilyRow(row: number, rng: Rng): LilyLane {
   return { kind: 'lily', row, pads };
 }
 
-function railRow(row: number, rng: Rng): RailLane {
+function railRow(row: number, rng: Rng, version: WorldVersion): RailLane {
   const d = difficulty(row);
   const dir = randomDir(rng);
   const length = TRAIN_MIN + Math.floor(rng() * (TRAIN_MAX - TRAIN_MIN + 1));
   const period = Math.max(RAIL_PERIOD_MIN, lerp(9, 5, d) * jitter(rng));
   const phase = rng() * period;
-  return { kind: 'rail', row, dir, speed: TRAIN_SPEED, length, period, phase, color: Math.floor(rng() * TRAIN_PALETTE) };
+  const speed = version >= 5 ? TRAIN_SPEED * (.9 + .2*rng()) * (1 + .18*d) : TRAIN_SPEED;
+  return { kind: 'rail', row, dir, speed, length, period, phase, color: Math.floor(rng() * TRAIN_PALETTE) };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
@@ -294,6 +303,19 @@ const KIND_WEIGHTS: ReadonlyArray<readonly [Family, number, number]> = [
 
 function chooseKind(rng: Rng, state: GenState): Family {
   const start = state.nextRow, d = difficulty(start);
+  if ((state.version ?? 5) >= 5) {
+    const prev = family(state.prevKind), cap = Math.floor(lerp(4, 7, d));
+    if (state.hazardRun >= cap) return 'grass';
+    let total = 0;
+    for (const [candidate,easy,hard] of KIND_WEIGHTS) if(candidate!==prev) total+=lerp(easy,hard,d)*(candidate===state.priorKind ? .55 : 1);
+    let pick = rng()*total;
+    for (const [candidate,easy,hard] of KIND_WEIGHTS) {
+      if(candidate===prev)continue;
+      pick-=lerp(easy,hard,d)*(candidate===state.priorKind ? .55 : 1);
+      if(pick<0)return candidate;
+    }
+    return prev==='road'?'rail':'road';
+  }
   let total = 0;
   for (const [, easy, hard] of KIND_WEIGHTS) total += lerp(easy, hard, d);
   let u = rng() * total, kind: Family = 'rail';
@@ -304,12 +326,19 @@ function chooseKind(rng: Rng, state: GenState): Family {
   const prev = family(state.prevKind);
   if (kind === prev) kind = prev === 'grass' ? 'road' : 'grass';
   // Revision three adds grass banks without changing either released RNG stream.
-  if ((state.version ?? 4) >= 3 && (prev === 'river' || (kind === 'river' && prev !== 'grass'))) kind = 'grass';
+  if ((state.version ?? 5) >= 3 && (prev === 'river' || (kind === 'river' && prev !== 'grass'))) kind = 'grass';
   if (kind !== 'grass' && state.hazardRun >= (start < 60 ? 2 : 3)) kind = 'grass';
   return kind;
 }
 
-function chooseThickness(rng: Rng, kind: Family, start: number, version: 1 | 2 | 3 | 4): number {
+function chooseThickness(rng: Rng, kind: Family, start: number, version: WorldVersion): number {
+  if (version >= 5) {
+    const d=difficulty(start), u=rng();
+    if(kind==='grass')return 1+Math.floor(u*(d<.6?3:2));
+    if(kind==='road')return 1+Math.floor(u*4);
+    if(kind==='river')return 1+Math.floor(u*3);
+    return u < .2+.25*d ? 2 : 1;
+  }
   switch (kind) {
     case 'grass': return 1 + Math.floor(rng() * (start < 20 ? 5 : 3));
     case 'road': return 1 + Math.floor(rng() * (start < 20 ? 2 : 4));
@@ -327,22 +356,23 @@ const passable = (reach: readonly boolean[]): boolean[] => new Array<boolean>(CO
 /** Generates exactly one chunk. The input state is never modified, and the returned state shares no array with it. */
 export function generateChunk(state: GenState): { lanes: Lane[]; state: GenState } {
   const rng = chunkRng(state.seed, state.chunk);
-  const start = state.nextRow, version = state.version ?? 4;
+  const start = state.nextRow, version = state.version ?? 5;
   const safe = state.chunk === 0;
   const kind = safe ? 'grass' : chooseKind(rng, state);
-  const n = safe ? SAFE_ROWS : chooseThickness(rng, kind, start, version);
+  let n = safe ? SAFE_ROWS : chooseThickness(rng, kind, start, version);
+  if(version>=5 && kind!=='grass') n=Math.min(n,Math.floor(lerp(4,7,difficulty(start)))-state.hazardRun);
   const lanes: Lane[] = [];
   let reach: readonly boolean[] = state.reach;
   if (kind === 'grass') {
     for (let i = 0; i < n; i++) {
-      const out = grassRow(start + i, rng, safe, reach, version);
+      const out = grassRow(start + i, rng, safe, reach, version, state.seed, version>=5 && i===0);
       lanes.push(out.lane);
       reach = out.reach;
     }
   } else if (kind === 'road') {
     let dir: Heading = 1;
     for (let i = 0; i < n; i++) {
-      dir = i === 0 ? randomDir(rng) : rng() < 0.7 ? (dir === 1 ? -1 : 1) : dir;
+      dir = version >= 5 || i === 0 ? randomDir(rng) : rng() < 0.7 ? (dir === 1 ? -1 : 1) : dir;
       lanes.push(roadRow(start + i, rng, dir, version));
       reach = passable(reach);
     }
@@ -353,19 +383,24 @@ export function generateChunk(state: GenState): { lanes: Lane[]; state: GenState
       const row = start + i;
       if (lily && i === 1) {
         const pads = lilyRow(row, rng);
+        if(version>=5)pads.seed=state.seed;
         lanes.push(pads);
         reach = pads.pads.slice();
         continue;
       }
-      dir = lastLog === null ? randomDir(rng) : dir === 1 ? -1 : 1;
+      dir = version>=5 || lastLog === null ? randomDir(rng) : dir === 1 ? -1 : 1;
       const below = i > 0 && lanes[i - 1].kind === 'river' ? (lanes[i - 1] as RiverLane) : null;
-      lastLog = fitLogRow(drawLogShape(rng, difficulty(row), version), row, dir, below, rng);
+      const shape = drawLogShape(rng, difficulty(row), version);
+      // v5 gaps are <= .78: even at maximum speed their swept uncovered gap
+      // over a hop is < .75 tiles, shorter than every source log (>=2 tiles).
+      // Every source log therefore has a landing interval at ALL times/x.
+      lastLog = version>=5 ? logLane(shape,row,dir,rng()) : fitLogRow(shape, row, dir, below, rng);
       lanes.push(lastLog);
       reach = passable(reach);
     }
   } else {
     for (let i = 0; i < n; i++) {
-      lanes.push(railRow(start + i, rng));
+      lanes.push(railRow(start + i, rng, version));
       reach = passable(reach);
     }
   }
@@ -373,7 +408,8 @@ export function generateChunk(state: GenState): { lanes: Lane[]; state: GenState
     lanes,
     state: {
       seed: state.seed, version, nextRow: start + n, chunk: state.chunk + 1, prevKind: kind,
-      hazardRun: kind === 'grass' ? 0 : state.hazardRun + 1, reach: reach.slice(),
+      hazardRun: kind === 'grass' ? 0 : state.hazardRun + (version>=5?n:1), reach: reach.slice(),
+      ...(version>=5?{priorKind:state.prevKind}:{}),
     },
   };
 }

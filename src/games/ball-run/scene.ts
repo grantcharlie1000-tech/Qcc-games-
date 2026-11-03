@@ -1,11 +1,12 @@
 /** Ball Run's Three.js renderer, the only module that touches WebGL. It draws one
  * frame from a Run and its Course and keeps only presentation state between frames
  * (trail history, the cached road). Obstacles are drawn from course.pose(), the same
- * boxes collision uses. Every instanced buffer is allocated once and reused; the road
- * is rebuilt only when its origin, which moves in 0.5 m steps, changes. */
+ * boxes collision uses. Road pieces retain their transforms as the visible window
+ * advances; only entering pieces, LOD changes and moving obstacles are uploaded. */
 import * as THREE from 'three';
 import {registerGlassFrameSource,notifyGlassFrame} from '../../ui/glass-frame-source';
 import { rollAngle } from './roll';
+import { RetainedInstances } from './instances';
 import { CONFIG, DYING_DURATION, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
@@ -13,6 +14,7 @@ export interface FrameView { run: Run; course: Course; speed: number }
 export interface SceneStats { calls: number; geometries: number; aspect: number; ballScreenX: number; ballScreenY: number }
 export interface BallRunScene {
   resize(width: number, height: number): void;
+  setResolutionCap(cap: number): void;
   render(view: FrameView): void;
   /** Forgets frame-to-frame state (trail history, cached road) before a new or restored run. */
   reset(): void;
@@ -74,7 +76,8 @@ export function setObstacleTransform(target: THREE.Object3D, pose: ObstaclePose,
 /** Throws when a WebGL 2 renderer cannot be created. */
 export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): BallRunScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'low-power' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  let resolutionCap = 1.5, pixelRatio = Math.min(window.devicePixelRatio || 1, resolutionCap), viewWidth = 0, viewHeight = 0;
+  renderer.setPixelRatio(pixelRatio);
   renderer.setClearColor(PALETTE.void);
   const scene = new THREE.Scene();
   const fog = new THREE.Fog(PALETTE.void, 80, 170);
@@ -144,6 +147,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     }
   }
   const cyan = pool(box, basic({ color: PALETTE.boost }), CYAN, road);
+  const tileCache = new RetainedInstances(tiles), gridCache = new RetainedInstances(grid),
+    blockCache = new RetainedInstances(blocks), cyanCache = new RetainedInstances(cyan);
   const blockShades = [0xb51cfa, 0xab18f0, 0xbb2cff, 0xa414e6].map(c => new THREE.Color(c));
   // Tunnel walls and their posts are seen side-on, so divide out the side light.
   const sideLit = (hex: number) => { const c = new THREE.Color(hex); c.r /= SIDE_LIGHT[0]; c.g /= SIDE_LIGHT[1]; c.b /= SIDE_LIGHT[2]; return c; };
@@ -159,8 +164,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   towerMaterial.polygonOffsetUnits = 1;
   const towers = pool(box, towerMaterial, 4 * CITY_COUNT, city);
   // Instances are written from one shared transform. Callers set its position, rotation and scale
-  // (or a bar's ends) in place and pass no plain numbers to the helpers: a number passed to a
-  // function that is not inlined is boxed on every call, and the road is rebuilt most frames.
+  // (or a bar's ends) in place, without allocating temporary vectors or transforms.
   const transform = new THREE.Object3D(), { position, rotation, scale } = transform;
   const from = new THREE.Vector3(), to = new THREE.Vector3(), direction = new THREE.Vector3(), forward = new THREE.Vector3(0, 0, -1);
   /** Bar cross-sections (width, height). */
@@ -247,13 +251,17 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const rollX = new THREE.Vector3(1, 0, 0), rollZ = new THREE.Vector3(0, 0, 1), rollStep = new THREE.Quaternion();
   let rollDistance = NaN, rollPosition = NaN, rollSeed = NaN, rollRun = NaN;
   let builtOrigin = NaN, builtCourse: Course | null = null, disposed = false;
+  let scannedOrigin = NaN, gateVisit = 0;
+  interface GateParts { index: number; grid: number; cyan: number; blocks: number; visit: number }
+  const gates = new Map<number, GateParts>();
+  let buildingGate: GateParts;
   const drawFrame = () => {
     if (disposed) return;
     renderer.render(scene, camera);
     notifyGlassFrame(canvas);
   };
   const releaseGlassFrame = registerGlassFrameSource(canvas, drawFrame);
-  let gateWalls = 0, yRef = 0, frameElapsed = 0, blockCount = 0;
+  let gateWalls = 0, yRef = 0, frameElapsed = 0;
   let lineCount = 0, cyanCount = 0, course: Course, fovFit = 1;
 
   // Road ---------------------------------------------------------------------
@@ -281,7 +289,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
 
   /** One tile from lo to hi (rolled with the bank, pitched and yawed along the road) plus its lane lines.
    * A and B already hold the track at lo and hi. */
-  function piece(lo: number, hi: number, tileIndex: number): void {
+  function piece(lo: number, hi: number, tileIndex: number, lineKey: number): void {
     track((lo + hi) / 2, M);
     const length = hi - lo, dc = B.center - A.center, de = B.elevation - A.elevation;
     const yaw = -Math.atan2(dc, length), pitch = Math.atan2(de, Math.hypot(dc, length));
@@ -292,37 +300,78 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     // must not shrink its visible width relative to those shared course bounds.
     scale.set(M.width / Math.cos(M.bank), TILE_DEPTH, Math.hypot(dc, de, length) + .01);
     place(tiles, tileIndex);
+    tileCache.changed(tileIndex);
     // Counted, not for-of, which allocated an iterator per tile.
     for (let k = 0; k < LANES.length; k++) {
       if (lineCount >= LINES) return;
       const lane = LANES[k], ax = A.center + lane * A.width, bx = B.center + lane * B.width;
+      const slot = gridCache.keep(lineKey + k);
+      if (slot < 0) return;
       from.set(ax, surfaceY(A, ax) + LIFT, -(lo - builtOrigin));
       to.set(bx, surfaceY(B, bx) + LIFT, -(hi - builtOrigin));
-      bar(grid, lineCount++, lane === 0 ? centerLine : laneLine);
+      bar(grid, slot, lane === 0 ? centerLine : laneLine);
+      gridCache.changed(slot);
+      lineCount++;
     }
   }
 
   function crossLine(d: number): void {
+    // Fractional key spaces separate cross lines (.25) and arches (.5) from lane lines (integers).
+    const key = d + .25;
+    if (gridCache.has(key)) { gridCache.keep(key); lineCount++; return; }
     track(d, S);
     if (!S.ground || lineCount >= LINES) return;
+    const slot = gridCache.keep(key);
+    if (slot < 0) return;
     track(d + .5, M);
     position.set(S.center, S.elevation + yRef + LIFT, -(d - builtOrigin));
     rotation.set(Math.atan(S.gradient), -Math.atan2(M.center - S.center, .5), -S.bank, 'YXZ');
     scale.set(S.width + LINE_WIDTH, LINE_HEIGHT, CROSS_WIDTH);
-    place(grid, lineCount++);
+    place(grid, slot);
+    gridCache.changed(slot);
+    lineCount++;
   }
 
   /** Adds the transform as one piece of a gate's walls, in `color` (they share the block mesh). */
   function gatePiece(color: THREE.Color): void {
     if (gateWalls >= BLOCKS) return;
-    place(blocks, gateWalls);
-    blocks.setColorAt(gateWalls++, color);
+    const slot = blockCache.keep(-1 - (buildingGate.index * 256 + buildingGate.blocks++));
+    if (slot < 0) return;
+    place(blocks, slot);
+    blocks.setColorAt(slot, color);
+    blockCache.changed(slot, true);
+    gateWalls++;
+  }
+
+  function gateBar(mesh: THREE.InstancedMesh, section: THREE.Vector2): void {
+    const cyanBar = mesh === cyan, cache = cyanBar ? cyanCache : gridCache;
+    const key = cyanBar ? buildingGate.index * 512 + buildingGate.cyan++ : buildingGate.index * 1024 + buildingGate.grid++ + .5;
+    const slot = cache.keep(key);
+    if (slot < 0) return;
+    bar(mesh, slot, section);
+    cache.changed(slot);
+    if (cyanBar) cyanCount++; else lineCount++;
+  }
+
+  function keepWalls(parts: GateParts): void {
+    for (let i = 0; i < parts.blocks; i++) blockCache.keep(-1 - (parts.index * 256 + i));
   }
 
   /** A boost gate: magenta walls with pink posts, a lavender arch ring every RING metres,
    * a heavier cyan entrance ring and cyan chevrons on the road. Its loops are counted, not
    * for-of, which allocated an iterator per loop on every rebuild. */
   function arch(gate: Gate): void {
+    const cached = gates.get(gate.index);
+    if (cached) {
+      cached.visit = gateVisit;
+      for (let i = 0; i < cached.grid; i++) gridCache.keep(cached.index * 1024 + i + .5);
+      for (let i = 0; i < cached.cyan; i++) cyanCache.keep(cached.index * 512 + i);
+      keepWalls(cached);
+      lineCount += cached.grid; cyanCount += cached.cyan; gateWalls += cached.blocks;
+      return;
+    }
+    buildingGate = { index: gate.index, grid: 0, cyan: 0, blocks: 0, visit: gateVisit };
+    gates.set(gate.index, buildingGate);
     track((gate.start + gate.end) / 2, M);
     const c = M.center, edge = M.width / 2, radius = edge + ENTRANCE_BAR / 2, length = gate.end - gate.start;
     const e0 = track(gate.start, A).elevation + yRef, e1 = track(gate.end, B).elevation + yRef;
@@ -346,7 +395,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
           if (cyanCount >= CYAN) continue;
           from.set(c + side * radius, y, z);
           to.set(c + side * radius, y + WALL, z);
-          bar(cyan, cyanCount++, entranceBar);
+          gateBar(cyan, entranceBar);
         } else {
           rotation.set(0, 0, 0, 'YXZ');
           position.set(c + side * (edge + BAR / 2), y + WALL / 2, z);
@@ -360,7 +409,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
         const a0 = Math.PI * j / ARCH, a1 = Math.PI * (j + 1) / ARCH;
         from.set(c + radius * Math.cos(a0), y + WALL + radius * Math.sin(a0), z);
         to.set(c + radius * Math.cos(a1), y + WALL + radius * Math.sin(a1), z);
-        bar(mesh, entrance ? cyanCount++ : lineCount++, section);
+        gateBar(mesh, section);
       }
     }
     // Long bars over the arch.
@@ -368,7 +417,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       const a = Math.PI * j / ARCH, x = c + radius * Math.cos(a), h = WALL + radius * Math.sin(a);
       from.set(x, e0 + h, z0);
       to.set(x, e1 + h, z1);
-      bar(grid, lineCount++, archBar);
+      gateBar(grid, archBar);
     }
     // Cyan chevrons pointing forward along the road: arms at d, tip 1.1 m further on.
     const arm = Math.min(.4 * M.width, 1.5);
@@ -377,15 +426,16 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       for (let side = -1; side <= 1; side += 2) {
         from.set(c + side * arm, ya, -(d - builtOrigin));
         to.set(c, yb, -(d + 1.1 - builtOrigin));
-        bar(cyan, cyanCount++, chevron);
+        gateBar(cyan, chevron);
       }
     }
   }
 
   function build(origin: number, range: number): void {
-    builtOrigin = origin;
     builtCourse = course;
-    yRef = SLOPE * origin;
+    scannedOrigin = origin;
+    tileCache.begin(); gridCache.begin(); cyanCache.begin();
+    gateVisit++;
     lineCount = 0;
     cyanCount = 0;
     gateWalls = 0;
@@ -396,28 +446,40 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     for (let a = start; a < end && tileCount < TILES;) {
       const ahead = a - origin, step = ahead < 60 ? .5 : ahead < 140 ? 1 : 2;
       const b = (Math.floor(a / step + 1e-6) + 1) * step;
+      const lod = step === .5 ? 0 : step === 1 ? 1 : 2, tileKey = a * 8 + lod, lineKey = a * 128 + lod * 16;
+      if (tileCache.has(tileKey) && gridCache.has(lineKey + 4)) {
+        tileCache.keep(tileKey); tileCount++;
+        for (let k = 0; k < LANES.length; k++) { gridCache.keep(lineKey + k); lineCount++; }
+        a = b;
+        continue;
+      }
       const groundA = track(a, A).ground, groundB = track(b, B).ground;
       // Nothing is drawn in a drop gap: clip the tile to the ground side of an edge.
-      if (groundA && groundB) piece(a, b, tileCount++);
-      else if (groundA) { const edge = groundEdge(a, b); if (edge - a > .01) { track(edge, B); piece(a, edge, tileCount++); } }
-      else if (groundB) { const edge = groundEdge(a, b); if (b - edge > .01) { track(edge, A); piece(edge, b, tileCount++); } }
+      let lo = a, hi = b;
+      if (groundA && !groundB) { hi = groundEdge(a, b); track(hi, B); }
+      else if (!groundA && groundB) { lo = groundEdge(a, b); track(lo, A); }
+      if ((groundA || groundB) && hi - lo > .01) {
+        const slot = tileCache.keep(tileKey);
+        if (slot >= 0) { piece(lo, hi, slot, lineKey); tileCount++; }
+      }
       a = b;
     }
     for (let d = Math.ceil(start / 2) * 2; d < end; d += 2) crossLine(d);
     course.forEachGate(Math.max(0, start), end, arch);
-    commit(tiles, tileCount);
-    commit(grid, lineCount);
-    commit(cyan, cyanCount);
+    tileCache.end(); gridCache.end(); cyanCache.end();
+    for (const [index, parts] of gates) if (parts.visit !== gateVisit) gates.delete(index);
   }
 
   // Per frame ---------------------------------------------------------------
 
   function placeBlock(o: Obstacle): void {
-    if (blockCount >= BLOCKS) return;
+    const slot = blockCache.keep(o.id), fresh = blockCache.fresh;
+    if (slot < 0 || (!fresh && !o.slide)) return;
     course.pose(o, frameElapsed, pose);
     setObstacleTransform(transform, pose, builtOrigin);
-    place(blocks, blockCount);
-    blocks.setColorAt(blockCount++, o.kind === 'slider' ? sliderColor : blockShades[o.id % blockShades.length]);
+    place(blocks, slot);
+    if (fresh) blocks.setColorAt(slot, o.kind === 'slider' ? sliderColor : blockShades[o.id % blockShades.length]);
+    blockCache.changed(slot, fresh);
   }
 
   let debugCount = 0;
@@ -540,14 +602,23 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     course = view.course;
     const speed = Number.isFinite(view.speed) ? view.speed : course.speed(distance);
     const origin = Math.floor(distance * 2) / 2, range = Math.min(260, 160 + 1.6 * speed);
-    if (origin !== builtOrigin || course !== builtCourse) build(origin, range);
-    road.position.set(0, (distance - origin) * SLOPE, distance - origin);
+    // Stable local coordinates retain exact world-space tiles/LODs. Rebase occasionally
+    // to retain Float32 precision on long runs, and reset after teleports/restores.
+    const roadBase = Math.floor(distance / 256) * 256;
+    if (roadBase !== builtOrigin || changedCourse || Math.abs(origin - scannedOrigin) > 16) {
+      builtOrigin = roadBase; yRef = SLOPE * roadBase;
+      tileCache.reset(); gridCache.reset(); cyanCache.reset(); blockCache.reset(); gates.clear();
+      scannedOrigin = NaN;
+    }
+    blockCache.begin();
+    if (origin !== scannedOrigin) build(origin, range);
+    else gates.forEach(keepWalls);
+    road.position.set(0, (distance - builtOrigin) * SLOPE, distance - builtOrigin);
     city.position.set(0, SLOPE * (distance % CITY_PERIOD), distance % CITY_PERIOD);
 
     frameElapsed = run.elapsed;
-    blockCount = gateWalls;
     course.forEachObstacle(origin - BEHIND, origin + range, placeBlock);
-    commit(blocks, blockCount);
+    blockCache.end();
     if (hitboxes) {
       debugCount = 0;
       // Include the full previous sweep query, even behind the visible road.
@@ -620,12 +691,25 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
 
   function resize(width: number, height: number): void {
     if (disposed || !(width >= 1 && height >= 1)) return;
-    renderer.setSize(width, height, false);
+    const ratio = Math.min(window.devicePixelRatio || 1, resolutionCap);
+    if (ratio !== pixelRatio) { pixelRatio = ratio; renderer.setPixelRatio(ratio); }
+    if (width !== viewWidth || height !== viewHeight) {
+      viewWidth = width; viewHeight = height;
+      renderer.setSize(width, height, false);
+    }
     camera.aspect = width / height;
     // 1 (the plan's FOV unchanged) up to aspect 1.15, where the widest 74° vertical is 82° horizontally.
     fovFit = Math.min(1, Math.tan(THREE.MathUtils.DEG2RAD * H_FOV_CAP / 2) / (camera.aspect * Math.tan(THREE.MathUtils.DEG2RAD * (FOV + FOV_GAIN) / 2)));
     camera.updateProjectionMatrix();
     stats.aspect = camera.aspect;
+  }
+
+  function setResolutionCap(cap: number): void {
+    if (!Number.isFinite(cap)) return;
+    cap = clamp(cap, 1, 1.5);
+    if (cap === resolutionCap) return;
+    resolutionCap = cap;
+    resize(viewWidth, viewHeight);
   }
 
   function reset(): void {
@@ -655,5 +739,5 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // and compiles every material, so the first boost or crash never stalls on a shader
   // compile and the geometry count is the same from the first frame.
   drawFrame();
-  return { resize, render, reset, stats, dispose };
+  return { resize, setResolutionCap, render, reset, stats, dispose };
 }

@@ -27,6 +27,7 @@ import {attachFullscreen,syncPlaySurface} from './core/play-surface';
 import {AccountsClient} from './accounts/client';
 import {AccountsView} from './accounts/view';
 import {LeaderboardView} from './leaderboard/view';
+import {LeaderboardSidebar} from './leaderboard/sidebar';
 import {SCORED_GAMES,MINESWEEPER_RANKINGS,scoredGame} from './leaderboard/shared';
 import {formatScore} from './leaderboard/format';
 
@@ -43,7 +44,7 @@ app.innerHTML=`<main id="content"></main>
 <dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog" class="ui-glass-sheet" aria-labelledby="rules-title"><form method="dialog" class="dialog-head"><h2 id="rules-title">How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
 const navigation=createSectionNavigation('app');
-navigation.bar.innerHTML=`<a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('grid')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv">${uiIcon('tv')}<span>TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button>`;
+navigation.bar.innerHTML=`<a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('games')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv">${uiIcon('tv')}<span>TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button>`;
 app.prepend(navigation.root);
 suppressNavigationUnderSheets();
 const content=document.querySelector<HTMLElement>('#content')!;
@@ -58,6 +59,7 @@ const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},f
 const leaderboards=new LeaderboardView(()=>{pausedForDialog=false;if(activeId)setPaused(true);accountView.open();});
 let gameMenu:HTMLDialogElement|undefined;
 let gameChrome:ReturnType<typeof bindGameChrome>|undefined;
+let leaderboardSidebar:LeaderboardSidebar|undefined;
 let onlyFavourites=false, search='', instance:GameInstance|undefined, activeId:GameId|undefined;
 let paused=false, generation=0, autosave:number|undefined, pausedForDialog=false;
 let initialized=false, resumeAfterStudy=false, focusBeforeStudy:HTMLElement|null=null, scrollBeforeStudy={x:0,y:0};
@@ -117,6 +119,9 @@ function leave(saveProgress=true){
   setChromeInert(false);
   tabbar.reset();
   detachFullscreen?.();detachFullscreen=undefined;
+  leaderboardSidebar?.dispose();leaderboardSidebar=undefined;
+  // Send any queued best score now instead of waiting for the next batch.
+  if(!document.hidden)void leaderboards.sync.flush().catch(()=>{});
   gameChrome?.dispose();gameChrome=undefined;
   gameMenu?.close();gameMenu=undefined;
   stopFitting?.();stopFitting=undefined;
@@ -269,6 +274,7 @@ async function route(){
   const currentMenu=gameMenu,view=document.querySelector<HTMLElement>('.game-view')!;
   const dock=createGameDock({backHref:collectionHash,backIcon:icon('back'),menuIcon:icon('pause'),pointerLock:id==='blockcraft'});
   view.querySelector('.game-surface')!.after(dock.root);
+  if(LeaderboardSidebar.supports(id))leaderboardSidebar=new LeaderboardSidebar(id,games.find(game=>game.id===id)?.title??id,leaderboards.sync,key=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(key);});
   const menuButton=dock.menu;
   const closeGameMenu=()=>{menuButton.setAttribute('aria-expanded','false');currentMenu.close();};
   const transferDialog=(open:()=>void)=>{const resume=pausedForDialog;pausedForDialog=false;closeGameMenu();open();pausedForDialog=resume;};

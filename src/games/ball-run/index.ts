@@ -5,7 +5,8 @@ import { CONFIG, DIFFICULTIES, STEP, speedAt, type Difficulty, type Run } from '
 import { getCourse } from './course';
 import { createRun, restoreSnapshot, step, type Snapshot } from './model';
 import { commitScore, emptyRecords, nextTarget, viewRecords, type RecordView, type Records } from './records';
-import { createScene, type BallRunScene } from './scene';
+import { createScene, type BallRunScene, type FrameView } from './scene';
+import { AdaptiveResolution } from './resolution';
 import './style.css';
 
 type Panel = 'setup' | 'continue' | 'over' | 'lost' | null;
@@ -80,7 +81,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   root.className = 'ball-run';
   root.innerHTML = template();
   container.append(root);
-  const reducedMotion = () => context.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+  const reducedMotion = () => context.settings.reducedMotion || motionQuery.matches;
   const canvas = root.querySelector('canvas')!;
   let scene: BallRunScene;
   try { scene = createScene(canvas, { reducedMotion }); }
@@ -107,8 +109,12 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   /** Records when the run started: the HUD's next target. */
   let view: RecordView = { today: 0, week: 0, allTime: 0 };
   let marks: Marks = noMarks();
-  let shownScore = -1, reported = -1, reportedAt = -Infinity, shownSpeed = -1, boostText = 'Speed Up', boostWidth = 0;
+  let shownScore = -1, reported = -1, reportedAt = -Infinity, shownSpeed = -1, boostText = 'Speed Up', boostTransform = '';
   let viewWidth = canvas.clientWidth, viewHeight = canvas.clientHeight;
+  const frameView: FrameView = { run, course, speed: 0 }, resolution = new AdaptiveResolution();
+  const data = root.dataset;
+  const setData = (key: string, value: string) => { if (data[key] !== value) data[key] = value; };
+  const setText = (element: HTMLElement, value: string) => { if (element.textContent !== value) element.textContent = value; };
   const abort = new AbortController(), signal = abort.signal;
 
   const active = () => !paused && !disposed && !contextLost && !waiting && (run.phase === 'running' || run.phase === 'dying');
@@ -204,14 +210,14 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     const score = run.score;
     if (force || score !== shownScore) {
       shownScore = score;
-      scoreLabel.textContent = String(score);
+      setText(scoreLabel, String(score));
       const next = nextTarget(view, score);
-      target.dataset.scope = next.scope;
-      targetLabel.textContent = next.label;
-      targetValue.textContent = String(next.value);
+      if (target.dataset.scope !== next.scope) target.dataset.scope = next.scope;
+      setText(targetLabel, next.label);
+      setText(targetValue, String(next.value));
     }
     const speed = Math.round(course.speed(run.distance));
-    if (force || speed !== shownSpeed) { shownSpeed = speed; speedLabel.textContent = `${speed} m/s`; }
+    if (force || speed !== shownSpeed) { shownSpeed = speed; setText(speedLabel, `${speed} m/s`); }
     if (run.phase === 'running' && !waiting && score !== reported) {
       const now = performance.now();
       if (now - reportedAt >= 250) { reported = score; reportedAt = now; context.setScore(score); }
@@ -221,27 +227,31 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   function draw() {
     if (disposed || contextLost) return;
     const speed = course.speed(run.distance);
-    scene.render({ run, course, speed });
-    const stats = scene.stats, data = root.dataset, boosting = run.phase === 'running' && !waiting && run.speedUpTime > 0;
-    data.phase = run.phase;
-    data.x = run.x.toFixed(3);
-    data.distance = run.distance.toFixed(3);
-    data.grounded = String(run.grounded);
-    data.ballScreenX = stats.ballScreenX.toFixed(5);
-    data.ballScreenY = stats.ballScreenY.toFixed(5);
-    data.aspect = stats.aspect.toFixed(5);
-    data.drawCalls = String(stats.calls);
-    data.geometries = String(stats.geometries);
-    data.speed = speed.toFixed(2);
-    data.boost = String(boosting);
-    data.gates = String(run.gateIndex + 1);
-    data.score = String(run.score);
+    frameView.run = run; frameView.course = course; frameView.speed = speed;
+    scene.render(frameView);
+    const stats = scene.stats, boosting = run.phase === 'running' && !waiting && run.speedUpTime > 0;
+    setData('phase', run.phase);
+    setData('x', run.x.toFixed(3));
+    setData('distance', run.distance.toFixed(3));
+    setData('grounded', String(run.grounded));
+    setData('ballScreenX', stats.ballScreenX.toFixed(5));
+    setData('ballScreenY', stats.ballScreenY.toFixed(5));
+    setData('aspect', stats.aspect.toFixed(5));
+    setData('drawCalls', String(stats.calls));
+    setData('geometries', String(stats.geometries));
+    setData('speed', speed.toFixed(2));
+    setData('boost', String(boosting));
+    setData('gates', String(run.gateIndex + 1));
+    setData('score', String(run.score));
     if (boostLabel.hidden === boosting) boostLabel.hidden = !boosting;
     if (boosting) {
-      if (boostLabel.textContent !== boostText || !boostWidth) { boostLabel.textContent = boostText; boostWidth = boostLabel.offsetWidth; }
+      setText(boostLabel, boostText);
       // Beside the ball's lower left (its screen radius is about 8 % of the view height), kept on screen.
-      const radius = .08 * viewHeight, x = stats.ballScreenX * viewWidth - radius - 6 - boostWidth;
-      boostLabel.style.transform = `translate(${Math.max(8, Math.min(viewWidth - boostWidth - 8, x)).toFixed(1)}px,${(stats.ballScreenY * viewHeight + .45 * radius).toFixed(1)}px)`;
+      // Percentages in translate refer to the label's own width: CSS can clamp the
+      // same position without a synchronous offsetWidth read after changing text.
+      const radius = .08 * viewHeight, anchor = stats.ballScreenX * viewWidth - radius - 6;
+      const transform = `translate(clamp(8px, calc(${anchor.toFixed(1)}px - 100%), calc(${(viewWidth - 8).toFixed(1)}px - 100%)), ${(stats.ballScreenY * viewHeight + .45 * radius).toFixed(1)}px)`;
+      if (boostTransform !== transform) { boostTransform = transform; boostLabel.style.transform = transform; }
     }
   }
 
@@ -277,6 +287,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     frame = 0;
     if (!active()) return;
     const delta = last ? Math.min((time - last) / 1000, .1) : 0;
+    if (last) scene.setResolutionCap(resolution.observe(time - last));
     last = time;
     accumulator += delta;
     while (accumulator >= STEP && active()) {
@@ -369,7 +380,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   }, { signal });
   // Relative: a new drag starts from the ball, 6 m per canvas width.
   canvas.addEventListener('pointermove', event => {
-    if (drag === event.pointerId && !paused) pointerTarget = ballStart + (event.clientX - pointerStart) / Math.max(1, canvas.clientWidth) * 6;
+    if (drag === event.pointerId && !paused) pointerTarget = ballStart + (event.clientX - pointerStart) / Math.max(1, viewWidth) * 6;
   }, { signal });
   for (const name of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) canvas.addEventListener(name, event => { if (event.pointerId === drag) releasePointer(); }, { signal });
 
@@ -388,16 +399,16 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     if (focused) lostTitle.focus({ preventScroll: true });
     context.setStatus('Graphics context lost. Your run is saved. Leave and reopen Ball Run.');
   }, { signal });
-  const resize = new ResizeObserver(() => {
+  const resize = new ResizeObserver(entries => {
     if (disposed || contextLost) return;
     // A drag maps canvas pixels to metres, so it ends with the old size; held keys keep steering.
     releasePointer();
     pointerTarget = run.x;
-    const width = canvas.clientWidth, height = canvas.clientHeight;
+    const { width: measuredWidth, height: measuredHeight } = entries[0].contentRect;
+    const width = Math.round(measuredWidth), height = Math.round(measuredHeight);
     if (width < 1 || height < 1) return;
     viewWidth = width;
     viewHeight = height;
-    boostWidth = 0;
     scene.resize(width, height);
     draw();
   });

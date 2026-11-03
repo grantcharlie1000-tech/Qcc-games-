@@ -70,7 +70,7 @@ export function installTestHook(host: HookHost): () => void {
     state() {
       const s = host.run(), world = host.world();
       const railWarnings: number[] = [];
-      for (let r = s.row - 2; r <= s.row + 8; r++) { const lane = world.lane(r); if (lane.kind === 'rail' && railWarning(lane, s.t)) railWarnings.push(r); }
+      for (let r = s.row - 2; r <= s.row + 8; r++) { const lane = world.lane(r); if (lane.kind === 'rail' && railWarning(lane, s.t, s.x)) railWarnings.push(r); }
       return {
         seed: s.seed, phase: s.phase, row: s.row, col: Math.round(s.x), x: s.x, maxRow: s.maxRow, score: s.maxRow,
         alive: s.phase === 'ready' || s.phase === 'running', deathCause: s.death?.cause ?? null, t: s.t, idle: idleTime(s),

@@ -5,7 +5,7 @@ import {validUsername} from '../accounts/shared';
 import {scoredGame,validScore,readBoard,LEADERBOARD_NOT_OPEN,type Board} from './shared';
 interface Storage {read<T>(key:string,fallback:T):T;write(key:string,value:unknown):boolean}
 interface Profile {token:string;name:string}
-export const SCORE_BATCH_MS=180000;
+export const SCORE_BATCH_MS=5000;
 /** A game whose board the database does not accept yet is parked this long before one quiet retry (see LEADERBOARD_NOT_OPEN). */
 export const NOT_OPEN_RETRY_MS=900000;
 interface Retry {attempt:number;nextAt:number}
@@ -106,7 +106,7 @@ export class LeaderboardSync {
   const profile=this.profile();
   const url=`${this.endpoint}?game=${encodeURIComponent(game)}`;
   const [publicResponse,personalResponse]=await Promise.all([
-   this.fetcher(url+'&view=public',{credentials:'omit',signal:AbortSignal.timeout(8000)}),
+   this.fetcher(url,{credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(8000)}),
    profile?this.fetcher(url+'&view=personal',{headers:{Authorization:`Bearer ${profile.token}`},credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(8000)}):Promise.resolve(null)
   ]);
   if(this.profile()?.token!==profile?.token)throw new Error('Player changed. Refresh scores.');

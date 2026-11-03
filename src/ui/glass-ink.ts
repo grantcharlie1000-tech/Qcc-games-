@@ -9,16 +9,18 @@ const isUnknown=(samples:readonly RGB[])=>samples.length===2&&samples[0].every(v
 type ImagePixels={data:Uint8ClampedArray};
 const luminance=(rgb:RGB)=>rgb.reduce((sum,v,i)=>sum+(v/255<=.04045?v/3294.6:((v/255+.055)/1.055)**2.4)*[.2126,.7152,.0722][i],0);
 const CLEAR_FILL:RGB=[8,12,18];
+const CLEAR_VEIL=.2,NAV_VEIL=.36;
 const HALO_DARK='rgb(0 0 0 / .8)',HALO_LIGHT='rgb(255 255 255 / .75)';
 const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,number,number];
 /** Choose plain foreground ink for the clear material. Blur softens detail;
  * neither the material nor its glyphs gain an opaque contrast outline. Where
  * neither ink reaches 4.5:1 over the sampled backdrop (busy or mixed art), the
  * glyph gets a soft opposite-tone halo; over even art it stays transparent. */
-export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false,textured=false):{color:string;halo:string}{
+export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false,textured=false,veil=CLEAR_VEIL):{color:string;halo:string}{
   const colors=samples.length?samples:[[25,29,28] as RGB];
-  // Model the approved clear fill (--glass-clear-fill, rgb(8 12 18 / .20)).
-  const backgrounds=colors.map(rgb=>luminance(mix(rgb,CLEAR_FILL,.2))*(selection==='dark'?.91:selection?.99:1));
+  // Model the fill: the clear fill (--glass-clear-fill, rgb(8 12 18 / .20)) or
+  // the bottom navigation's frosted tint (section-navigation.css, alpha .36).
+  const backgrounds=colors.map(rgb=>luminance(mix(rgb,CLEAR_FILL,veil))*(selection==='dark'?.91:selection?.99:1));
   const dark=luminance(INK);
   const darkContrast=Math.min(...backgrounds.map(bg=>(Math.max(bg,dark)+.05)/(Math.min(bg,dark)+.05)));
   const lightContrast=Math.min(...backgrounds.map(bg=>1.05/(bg+.05)));
@@ -209,9 +211,11 @@ function update(){
       const accessible=matchMedia('(prefers-contrast: more)').matches||matchMedia('(forced-colors: active)').matches||matchMedia('(prefers-reduced-transparency: reduce)').matches;
       for(const group of groups.values()){
         let ink:ReturnType<typeof glassInk>|null=null;
-        if(bar.dataset.glass!=='off'&&!accessible){
+        // Frosted sheets carry a dark tint under a deep blur: plain white ink, no halo.
+        if(bar.closest('.ui-glass-sheet')&&!accessible)ink={color:'#fff',halo:'transparent'};
+        else if(bar.dataset.glass!=='off'&&!accessible){
           const samples=group.map(sample),known=samples.filter(s=>!isUnknown(s)).flat();
-          ink=glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured));
+          ink=glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured),bar.closest('.section-navigation')?NAV_VEIL:CLEAR_VEIL);
         }
         for(const glyph of group)changes.push({glyph,ink});
       }
