@@ -54,11 +54,12 @@ test('multi-stat captions fit their compact capsules on a 320px phone',async({pa
   }
 });
 
-test('Pool keeps shot status clear of all six pockets',async({page})=>{
+test('Pool keeps pocket choice below all six pockets',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/pool');
   await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
-  await expect(page.locator('.pool-message')).toContainText('balls rolling');
-  const table=(await page.locator('.pool-table').boundingBox())!,status=(await page.locator('.pool-message').boundingBox())!;
+  await expect(page.locator('.pool-game')).toHaveAttribute('data-phase','moving');
+  await expect(page.locator('.pool-message')).toBeHidden();
+  const table=(await page.locator('.pool-table').boundingBox())!,status=(await page.locator('.pool-pocket-row').boundingBox())!;
   expect(status.y).toBeGreaterThanOrEqual(table.y+table.height);
 });
 
