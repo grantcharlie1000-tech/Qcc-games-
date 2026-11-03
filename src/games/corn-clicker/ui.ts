@@ -245,7 +245,7 @@ export class CornClicker {
     let text:string;
     if(this.passive)text='Paused: this farm is open in another tab.';
     else if(!canRetain())text='Storage is blocked or full: progress lasts only for this visit. Use Options → Export to keep it.';
-    else{const ago=(Date.now()-this.lastSaved)/1000;text=this.lastSaved===0?'Autosaves every few seconds.':ago<5?'Saved just now.':`Saved ${duration(ago)} ago.`;}
+    else{const ago=(Date.now()-this.lastSaved)/1000;text=this.lastSaved===0?'':ago<5?'Saved just now.':`Saved ${duration(ago)} ago.`;}
     if(el.textContent!==text)el.textContent=text;
     el.classList.toggle('cc-warn',this.passive||!canRetain());
   }

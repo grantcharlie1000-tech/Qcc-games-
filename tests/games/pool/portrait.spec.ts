@@ -58,7 +58,7 @@ for(const viewport of [{width:320,height:568},{width:390,height:844},{width:568,
   await page.locator('.pool-player-identity strong').evaluateAll(nodes=>nodes.forEach(n=>{n.firstChild!.textContent='WWWWWWWWWWWWWWWW (you)';}));
   for(const card of await page.locator('.pool-player').all())expect(await card.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
   const dock=(await page.locator('.game-dock').boundingBox())!;
-  for(const el of await page.locator('.pool-table,.pool-inhand,.pool-under,.pool-live').all()){
+  for(const el of await page.locator('.pool-table,.pool-message,.pool-under').all()){
     if(!await el.isVisible())continue;const r=(await el.boundingBox())!;expect(r.y).toBeGreaterThanOrEqual(0);expect(r.y+r.height).toBeLessThanOrEqual(dock.y-4);
   }
 });
