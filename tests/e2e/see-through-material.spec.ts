@@ -5,9 +5,11 @@ import type {Page} from '@playwright/test';
 
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
 
-// Clear bars preserve artwork; sheets use a stronger light frost for text.
-const CLEAR_FILL='rgba(255, 255, 255, 0.06)',FILL_RGB=[255,255,255],FILL_ALPHA=.06;
-test('bars and buttons stay clear while sheets use a readable light frost',async({page})=>{
+// Charlie's clear-variant requirement supersedes the previous fit to the
+// regular HIG tab bar. The approved clear material is one shared fill,
+// --glass-clear-fill rgb(8 12 18 / .20), on every bar, button and sheet.
+const CLEAR_FILL='rgba(8, 12, 18, 0.2)',FILL_RGB=[8,12,18],FILL_ALPHA=.2;
+test('bars, buttons and sheets share the one clear fill over their live backdrop',async({page})=>{
   await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));
   for(const route of ['collection','study','movies/browse/movie','game/snake']){
     await page.goto(`/#/${route==='study'?'collection':route}`);
@@ -36,11 +38,11 @@ test('bars and buttons stay clear while sheets use a readable light frost',async
         :{fill:s.backgroundColor,filter:s.backdropFilter,lensOnly:false};
     });
     // Study's reading-choices dialog keeps its article theme (native-glass.css):
-    // a pale 13% fill over the plain --glass-clear-blur. Arcade sheets frost
-    // the background enough to support plain dark text.
-    expect(material.fill,`${route}: sheet`).toBe(route==='study'?'rgba(255, 255, 255, 0.13)':'rgba(255, 255, 255, 0.72)');
+    // a pale 13% fill over the plain --glass-clear-blur. Arcade sheets use the
+    // clear fill with --glass-clear-blur and only a slight saturation.
+    expect(material.fill,`${route}: sheet`).toBe(route==='study'?'rgba(255, 255, 255, 0.13)':CLEAR_FILL);
     // A fully backed WebGL lens replaces the CSS blur with its shader.
-    expect(material.filter,route).toBe(route==='study'?'blur(2px)':'blur(22px) saturate(1.18)');
+    expect(material.filter,route).toBe(route==='study'?'blur(1.5px)':material.lensOnly?'none':'blur(1.5px) saturate(1.08)');
     await page.keyboard.press('Escape');
   }
 });
@@ -85,11 +87,12 @@ test('native start/end cards retain their original game palettes',async({page})=
   }
   await page.goto('/#/game/neon-coil');
   await expect(page.locator('.nc-game .game-sheet')).toBeVisible();
+  // Over the live arena the Slither sheet is refracted by the WebGL lens, which
+  // carries the sheet's clear fill as its tint (src/ui/webgl-glass.css).
   const panel=page.locator('.nc-game .game-sheet-panel');
-  await expect(panel).toHaveAttribute('data-glass-mode','blur');
-  await expect(panel).toHaveCSS('background-color','rgba(255, 255, 255, 0.72)');
-  await expect(panel).toHaveCSS('backdrop-filter','blur(22px) saturate(1.18)');
-  await expect(panel.locator(':scope>.ui-glass-gl')).toHaveCount(0);
+  await expect(panel).toHaveAttribute('data-glass-mode','webgl');
+  await expect(panel).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+  expect(await panel.evaluate(e=>getComputedStyle(e.querySelector(':scope>.ui-glass-gl')!,'::after').backgroundColor)).toBe(CLEAR_FILL);
 });
 
 test('Corn retains its brown pixel columns and readable cream guidance',async({page})=>{
@@ -217,7 +220,7 @@ async function statisticsContrast(page:Page){
   }
 }
 
-for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} ${surface==='sheet'?'uses a readable frost while retaining the backdrop':'preserves artwork with a faint clear fill'}`,async({page})=>{
+for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} preserves uniform dark and light artwork with near-zero added white`,async({page})=>{
   // Study makes the arcade shell inert and keeps its island minimized (as at
   // 0f3d109), and the uniform art layer then covers it; Games shows the shell.
   // The sheet is the home sheet: over a live game, the WebGL lens samples the
@@ -272,15 +275,17 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} ${s
     return {lift:mean(added),retention:sd(original)>1?sd(levels)/sd(original):null,samples:levels.length};
   },{pairs,surface});
   expect(measured.samples).toBeGreaterThan(20);
-  expect(measured.lift,JSON.stringify(measured)).toBeLessThanOrEqual(surface==='sheet'?38:6);
-  // The faint white fill gently lifts dark values. Check its independently
-  // calculated optical transfer rather than fitting the old dark veil.
+  expect(measured.lift,JSON.stringify(measured)).toBeLessThanOrEqual(2);
+  // The dark 20% fill keeps the art's own contrast, scaled by exactly the
+  // transfer the material predicts for these sources: 0.827 through the fill
+  // (saturate 1.08 is negligible here), 0.640 through navigation's
+  // saturate(1.05) brightness(.9) contrast(.85) tone before the same fill.
   // Some Linux WebKit builds paint no backdrop filters at all (see clear-glass);
   // there only the fill applies. That is checked on an independent CSS page.
   const filtered=await backdropFiltersRender(page);
   if(!filtered)test.info().annotations.push({type:'renderer limitation',description:'This browser build paints no backdrop filters; only the fill transfer is measured.'});
-  const tone={saturate:filtered?(surface==='sheet'?1.18:1.08):1,brightness:1,contrast:1};
-  if(measured.retention!==null)expect(Math.abs(measured.retention-expectedRetention(['#152431','#f8e6c0'],tone,surface==='sheet'?.72:.06)),JSON.stringify(measured)).toBeLessThanOrEqual(.03);
+  const tone=filtered&&(surface==='bar'||surface==='menu')?{saturate:1.05,brightness:.9,contrast:.85}:{saturate:1.08,brightness:1,contrast:1};
+  if(measured.retention!==null)expect(Math.abs(measured.retention-expectedRetention(['#152431','#f8e6c0'],tone)),JSON.stringify(measured)).toBeLessThanOrEqual(.03);
 });
 
 async function backdropFiltersRender(page:Page){
@@ -292,7 +297,7 @@ async function backdropFiltersRender(page:Page){
   }finally{await reference.close();}
 }
 
-function expectedRetention(colors:string[],tone:{saturate:number;brightness:number;contrast:number},fillAlpha=FILL_ALPHA){
+function expectedRetention(colors:string[],tone:{saturate:number;brightness:number;contrast:number}){
   const lightness=(rgb:number[])=>{
     const y=rgb.reduce((sum,v,c)=>{const s=v/255;return sum+[.2126,.7152,.0722][c]*(s<=.04045?s/12.92:((s+.055)/1.055)**2.4);},0);
     return y>216/24389?116*Math.cbrt(y)-16:24389/27*y;
@@ -302,7 +307,7 @@ function expectedRetention(colors:string[],tone:{saturate:number;brightness:numb
   const s=tone.saturate,matrix=[[.213+.787*s,.715-.715*s,.072-.072*s],[.213-.213*s,.715+.285*s,.072-.072*s],[.213-.213*s,.715-.715*s,.072+.928*s]];
   const clamp=(v:number)=>Math.min(1,Math.max(0,v));
   const filtered=(rgb:number[])=>matrix.map(row=>clamp(row.reduce((sum,k,j)=>sum+k*rgb[j]/255,0))).map(v=>255*clamp((v*tone.brightness-.5)*tone.contrast+.5));
-  const through=(rgb:number[])=>filtered(rgb).map((v,c)=>v*(1-fillAlpha)+FILL_RGB[c]*fillAlpha);
+  const through=(rgb:number[])=>filtered(rgb).map((v,c)=>v*(1-FILL_ALPHA)+FILL_RGB[c]*FILL_ALPHA);
   return Math.abs(lightness(through(b))-lightness(through(a)))/Math.abs(lightness(b)-lightness(a));
 }
 
@@ -317,8 +322,9 @@ async function pinArticleNavigation(page:Page){
   });
 }
 
-test('a sheet uses the same frosted transfer at five heights away from the blurred boundary',async({page})=>{
-  // Sample uniform regions beyond the 22px diffusion around the boundary.
+test('a sheet uses the same clear transfer at five heights across a light/dark boundary',async({page})=>{
+  // The home sheet has the same clear material over a DOM backdrop. Over a live
+  // game the WebGL lens samples the canvas itself, not an injected DOM overlay.
   await page.goto('/#/collection');await page.locator('.app-navigation .section-menu').click();
   const panel=page.locator('#menu');await expect(panel).toBeVisible();await panel.screenshot({animations:'disabled'});
   const bounds=(await panel.boundingBox())!;
@@ -330,11 +336,11 @@ test('a sheet uses the same frosted transfer at five heights away from the blurr
   const rows=await page.evaluate(async png=>{
     const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();
     const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const ctx=c.getContext('2d')!;ctx.drawImage(image,0,0);
-    return [.15,.3,.4,.75,.85].map(height=>({height,color:[...ctx.getImageData(12,Math.floor(c.height*height),1,1).data].slice(0,3)}));
+    return [.15,.3,.49,.7,.85].map(height=>({height,color:[...ctx.getImageData(12,Math.floor(c.height*height),1,1).data].slice(0,3)}));
   },png);
   for(const {height,color} of rows){
     const original=height<.55?[248,248,248]:[21,36,49];
-    const expected=original.map(v=>v*.28+255*.72);
+    const expected=original.map((v,c)=>v*(1-FILL_ALPHA)+FILL_RGB[c]*FILL_ALPHA);
     expect(Math.max(...color.map((v,i)=>Math.abs(v-expected[i]))),JSON.stringify(rows)).toBeLessThanOrEqual(2);
   }
 });

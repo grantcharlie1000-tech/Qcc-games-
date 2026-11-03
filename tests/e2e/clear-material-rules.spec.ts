@@ -8,19 +8,21 @@ for(const route of ['collection','game/snake','game/neon-coil'])test(`${route} u
   await expect(surface).toBeVisible();
   await expect(surface.locator('.glass-ink').first()).toBeAttached();
   // The ::before veil settles once the surface is pill-ready.
-  await expect.poll(()=>surface.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(255, 255, 255, 0.06)');
+  await expect.poll(()=>surface.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(8, 12, 18, 0.2)');
   const material=await surface.evaluate(e=>{
-    const s=getComputedStyle(e),lens=e.querySelector('.ui-glass-lens'),webgl=e.matches(':is([data-glass-mode=webgl],[data-glass-mode=canvas]):not([data-glass-partial])');
+    const s=getComputedStyle(e),lens=e.querySelector('.ui-glass-lens'),webgl=e.matches('[data-glass-mode=webgl]:not([data-glass-partial])');
     const gl=e.querySelector(':scope>.ui-glass-gl');
     return {fill:getComputedStyle(e,'::before').backgroundColor,webgl,glVisible:!!gl&&getComputedStyle(gl).visibility==='visible',blur:webgl?s.backdropFilter:getComputedStyle(lens&&getComputedStyle(lens).display!=='none'?lens:e).backdropFilter,
       strokes:[...e.querySelectorAll('.glass-ink')].map(g=>getComputedStyle(g).webkitTextStrokeWidth),halos:e.querySelectorAll('.glass-vector-halo').length};
   });
-  // Bars soften art gently; sheets use the stronger readable frost below.
-  expect(material.fill).toBe('rgba(255, 255, 255, 0.06)');
+  // The approved clear material: one shared --glass-clear-fill (8 12 18 / .20).
+  // Navigation softens art with a 3px frost and a gentle tone curve; game
+  // controls and sheets use the --glass-clear-blur (1.5px) recipe.
+  expect(material.fill).toBe('rgba(8, 12, 18, 0.2)');
   // A live WebGL canvas behind a game control is refracted by the shared WebGL
   // lens, whose shader replaces the CSS blur (src/ui/webgl-glass.css).
   if(material.webgl){expect(material.glVisible).toBe(true);expect(material.blur).toBe('none');}
-  else expect(material.blur).toMatch(route.startsWith('game')?/^blur\(2px\) (url\("#ui-glass-\d+"\) )?saturate\(1\.08\)$/:/^blur\(3px\) (url\("#ui-glass-\d+"\) )?saturate\(1\.08\)$/);
+  else expect(material.blur).toMatch(route.startsWith('game')?/^blur\(1\.5px\) (url\("#ui-glass-\d+"\) )?saturate\(1\.08\)$/:/^blur\(3px\) (url\("#ui-glass-\d+"\) )?saturate\(1\.05\) brightness\(0\.9\) contrast\(0\.85\)$/);
   expect(material.strokes.every(s=>s==='0px')).toBe(true);expect(material.halos).toBe(0);
   if(route.startsWith('game/'))await openGameMenu(page);
   else if(route==='collection')await page.locator('.app-navigation .section-menu').click();
@@ -31,6 +33,8 @@ for(const route of ['collection','game/snake','game/neon-coil'])test(`${route} u
     const s=getComputedStyle(e),gl=e.querySelector(':scope>.ui-glass-gl');
     return {webgl:e.matches('[data-glass-mode=webgl]'),partial:e.hasAttribute('data-glass-partial'),filter:s.backdropFilter,fill:s.backgroundColor,lensTint:gl?getComputedStyle(gl,'::after').backgroundColor:null};
   });
-  expect(optics.webgl).toBe(false);expect(optics.lensTint).toBeNull();
-  expect(optics.filter).toBe('blur(22px) saturate(1.18)');expect(optics.fill).toBe('rgba(255, 255, 255, 0.72)');
+  // Over a live WebGL game the sheet's fill moves onto the WebGL lens as its
+  // tint; the CSS blur remains only where the lens is partly backed.
+  if(optics.webgl)expect(optics).toEqual({webgl:true,partial:optics.partial,filter:optics.partial?'blur(1.5px) saturate(1.08)':'none',fill:'rgba(0, 0, 0, 0)',lensTint:'rgba(8, 12, 18, 0.2)'});
+  else{expect(optics.filter).toBe('blur(1.5px) saturate(1.08)');expect(optics.fill).toBe('rgba(8, 12, 18, 0.2)');}
 });

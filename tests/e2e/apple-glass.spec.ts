@@ -251,7 +251,7 @@ for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density
     const gameBlur=await page.locator('#game-menu .ui-glass-lens').evaluate(e=>getComputedStyle(e).backdropFilter.match(/blur\([^)]+\)/)![0]);
     // Navigation frost (section-navigation.css) and the game --glass-clear-blur.
     expect(homeBlur).toBe('blur(3px)');
-    expect(gameBlur).toBe('blur(2px)');
+    expect(gameBlur).toBe('blur(1.5px)');
   });
 });
 

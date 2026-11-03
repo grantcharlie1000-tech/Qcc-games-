@@ -7,16 +7,14 @@
 // texSubImage2D, draw every lens into one atlas, and copy each atlas slot into
 // the lens's own output canvas, which sits under the surface's DOM content.
 // There is no second requestAnimationFrame and no pixel readback.
-// Without WebGL2, during context loss, or with reduced motion, a bounded 2D
-// copy keeps the actual content live without bending it. Accessibility solids,
-// tainted sources and the explicit blur diagnostic retain the CSS fallback.
+// Anything unexpected (no WebGL2, context loss, tainted source, accessibility
+// or motion preferences) deactivates the lens; the surface keeps its CSS blur.
 import './webgl-glass.css';
 import {hasGlassFrameSource,onGlassFrame,requestGlassFrame,watchGlassFrameSources} from './glass-frame-source';
 import {LENS_PRESETS,fitPreset,glassDensity,type LensPreset} from './glass-lens-profile';
 
 export type LensKind=keyof typeof LENS_PRESETS;
 export interface WebglLens{setEnabled(enabled:boolean):void;dispose():void}
-export type LiveGlassMode='webgl'|'canvas';
 
 const VERTEX=`#version 300 es
 in vec2 a_unit;
@@ -84,12 +82,12 @@ const bucket=(n:number)=>Math.max(32,Math.ceil(n/64)*64);
 
 interface Lens{
   surface:HTMLElement;wrapper:HTMLElement;output:HTMLCanvasElement;ctx:CanvasRenderingContext2D|null;
-  kind:LensKind;enabled:boolean;active:boolean;mode:LiveGlassMode|null;source:HTMLCanvasElement|null;
-  onActive:(active:boolean,mode?:LiveGlassMode)=>void;attach:()=>void;detach:()=>void;
+  kind:LensKind;enabled:boolean;active:boolean;source:HTMLCanvasElement|null;
+  onActive:(active:boolean)=>void;attach:()=>void;detach:()=>void;
 }
 // opaqueKey/opaque: a rare probe (only when the crop geometry changes) of whether the
 // source covers the crop with opaque pixels; transparent areas keep the CSS blur.
-interface Group{lenses:Set<Lens>;off:()=>void;lost:boolean;opaqueKey:string;opaque:boolean;opaqueSince:number;opaqueChecked:boolean}
+interface Group{lenses:Set<Lens>;off:()=>void;lost:boolean;lastFrame:number;opaqueKey:string;opaque:boolean}
 interface Plan{lens:Lens;x:number;y:number;w:number;h:number;outW:number;outH:number;density:number;preset:LensPreset;slot:number;inside:boolean}
 interface Gpu{
   canvas:HTMLCanvasElement;gl:WebGL2RenderingContext;program:WebGLProgram;vao:WebGLVertexArrayObject;
@@ -104,22 +102,20 @@ let staging:HTMLCanvasElement|null=null,stagingCtx:CanvasRenderingContext2D|null
 let unwatchSources:(()=>void)|null=null,unwatchPreferences:(()=>void)|null=null;
 
 /** Measured CPU submission cost; the GPU may still be working afterwards. */
-export const webglGlassStats={frames:0,canvasFrames:0,uploads:0,skipped:0,cpuMs:0,lastCpuMs:0,failures:0};
+export const webglGlassStats={frames:0,uploads:0,skipped:0,cpuMs:0,lastCpuMs:0,failures:0};
 // Read by the frame-time proof scripts; no behaviour depends on it.
 (globalThis as {__qccGlassStats?:typeof webglGlassStats}).__qccGlassStats=webglGlassStats;
 
 let queries:MediaQueryList[]|null=null;
 const preferenceQueries=()=>queries??=['(prefers-reduced-transparency: reduce)','(prefers-contrast: more)','(forced-colors: active)','(prefers-reduced-motion: reduce)'].map(q=>matchMedia(q));
 // Preferences are re-read only when they change, never per frame.
-let preferred=true,refract=true;
+let preferred=true;
 function refreshPolicy(){
   const forcedBlur=new URLSearchParams(location.search).get('glass')==='blur';
-  const preferences=preferenceQueries();
-  preferred=!forcedBlur&&!preferences.slice(0,3).some(q=>q.matches);
-  refract=!document.documentElement.classList.contains('reduce-motion')&&!preferences[3].matches;
+  preferred=!forcedBlur&&!document.documentElement.classList.contains('reduce-motion')&&!preferenceQueries().some(q=>q.matches);
 }
-/** Content stays current even when refraction is disabled or the GPU is lost. */
-function allowed():boolean{return preferred;}
+/** Reduced motion keeps glass still: no per-frame lens, plain blur instead. */
+function allowed():boolean{return preferred&&!unavailable&&!contextLost;}
 
 function compile(gl:WebGL2RenderingContext,type:number,source:string):WebGLShader{
   const shader=gl.createShader(type);if(!shader)throw new Error('shader');
@@ -164,11 +160,9 @@ function ensureGpu():Gpu|null{
   return gpu;
 }
 
-function setActive(lens:Lens,active:boolean,mode:LiveGlassMode='webgl'){
-  const next=active?mode:null;
-  if(lens.active===active&&lens.mode===next)return;
-  lens.active=active;lens.mode=next;
-  if(!active)lens.surface.removeAttribute('data-glass-partial');lens.onActive(active,active?mode:undefined);
+function setActive(lens:Lens,active:boolean){
+  if(lens.active===active)return;
+  lens.active=active;if(!active)lens.surface.removeAttribute('data-glass-partial');lens.onActive(active);
 }
 function deactivate(group:Group){for(const lens of group.lenses)setActive(lens,false);}
 function deactivateAll(){for(const lens of lenses)setActive(lens,false);}
@@ -194,52 +188,9 @@ function radiusOf(surface:HTMLElement,width:number,height:number):number{
   return value.endsWith('%')?n*Math.min(width,height)/100:n;
 }
 
-/** Moving crops conservatively retain the CSS backdrop. Read opacity once
- * after geometry has settled, rather than synchronously on each press frame. */
-function opacityProbeDue(group:Group,key:string,now:number):boolean{
-  if(group.opaqueKey!==key){group.opaqueKey=key;group.opaque=false;group.opaqueSince=now;group.opaqueChecked=false;}
-  if(group.opaqueChecked||now-group.opaqueSince<120)return false;
-  group.opaqueChecked=true;group.opaque=true;
-  return true;
-}
-
-/** A small current-frame copy is the fallback, not WebKit's canvas backdrop.
- * Reduced motion omits bending. No GPU (or context loss) uses the same path.
- * Only visible control crops are copied, never a full-screen overlay. */
-function renderCanvas(source:HTMLCanvasElement,group:Group,plans:Plan[],back:DOMRect){
-  const key=`canvas:${source.width},${source.height}:`+plans.map(p=>`${p.x},${p.y},${p.w},${p.h}`).join(';');
-  const probe=opacityProbeDue(group,key,performance.now());
-  for(const {lens,x,y,w,h,inside} of plans){
-    if(!lens.ctx){setActive(lens,false);continue;}
-    // One pixel per CSS pixel is enough for the unbent fallback.
-    const width=Math.max(1,Math.round(lens.wrapper.offsetWidth)),height=Math.max(1,Math.round(lens.wrapper.offsetHeight));
-    if(lens.output.width!==width||lens.output.height!==height){lens.output.width=width;lens.output.height=height;}
-    lens.ctx.globalCompositeOperation='copy';
-    lens.ctx.clearRect(0,0,width,height);
-    lens.ctx.drawImage(source,x*source.width/back.width,y*source.height/back.height,w*source.width/back.width,h*source.height/back.height,0,0,width,height);
-    // Like the GPU crop, only a geometry change needs an opacity scan.
-    if(probe&&inside){
-      const pixels=lens.ctx.getImageData(0,0,width,height).data;
-      for(let i=3;i<pixels.length;i+=4*7)if(pixels[i]<250){group.opaque=false;break;}
-    }
-  }
-  for(const {lens,inside} of plans){
-    if(!lens.ctx)continue;
-    const partial=!(inside&&group.opaque);
-    if(lens.surface.hasAttribute('data-glass-partial')!==partial)lens.surface.toggleAttribute('data-glass-partial',partial);
-    setActive(lens,true,'canvas');
-  }
-  webglGlassStats.canvasFrames++;
-}
-
-function finishFrame(started:number){
-  webglGlassStats.frames++;
-  const cost=performance.now()-started;webglGlassStats.lastCpuMs=cost;webglGlassStats.cpuMs+=cost;
-}
-
 /** Draw every visible lens over one source, synchronously after its frame. */
 function render(source:HTMLCanvasElement,group:Group){
-  const started=performance.now();
+  const started=performance.now();group.lastFrame=started;
   if(document.hidden||group.lost||!allowed()){deactivate(group);return;}
   const back=source.getBoundingClientRect();
   if(!back.width||!back.height||!source.width||!source.height||!visible(source)){deactivate(group);return;}
@@ -261,12 +212,7 @@ function render(source:HTMLCanvasElement,group:Group){
     plans.push({lens,x:box.left-back.left,y:box.top-back.top,w:box.width,h:box.height,outW:Math.max(1,Math.round(width*density)),outH:Math.max(1,Math.round(height*density)),density,preset,slot:0,inside});
   }
   if(!plans.length){webglGlassStats.skipped++;return;}
-  const g=refract&&!contextLost?ensureGpu():null;
-  if(!g){
-    try{renderCanvas(source,group,plans,back);finishFrame(started);}
-    catch{group.lost=true;deactivate(group);webglGlassStats.failures++;}
-    return;
-  }
+  const g=ensureGpu();if(!g){deactivate(group);return;}
   const {gl}=g;
   // One bounded crop around all lenses, padded by the furthest sample.
   const pad=Math.max(...plans.map(p=>p.preset.bend+p.preset.softness))+2;
@@ -284,8 +230,9 @@ function render(source:HTMLCanvasElement,group:Group){
     stagingCtx.clearRect(0,0,stW,stH);
     stagingCtx.drawImage(source,cx0*kx,cy0*ky,(cx1-cx0)*kx,(cy1-cy0)*ky,0,0,stW,stH);
     const key=`${cx0},${cy0},${cx1},${cy1},${stW},${stH}`;
-    if(opacityProbeDue(group,key,started)){
-      // One read after a stable crop, never on every frame of a press/drag.
+    if(group.opaqueKey!==key){
+      // Not per frame: a one-off probe when the crop moves or resizes.
+      group.opaqueKey=key;
       const probe=stagingCtx.getImageData(0,0,stW,stH).data;let opaque=true;
       for(let i=3;i<probe.length;i+=4*7)if(probe[i]<250){opaque=false;break;}
       group.opaque=opaque;
@@ -333,7 +280,8 @@ function render(source:HTMLCanvasElement,group:Group){
     // A tainted or lost source cannot be refracted; keep the CSS material.
     group.lost=true;deactivate(group);webglGlassStats.failures++;return;
   }
-  finishFrame(started);
+  webglGlassStats.frames++;
+  const cost=performance.now()-started;webglGlassStats.lastCpuMs=cost;webglGlassStats.cpuMs+=cost;
 }
 
 /** Ask the game for its current frame (e.g. paused board, moved sheet). Coalesced per task. */
@@ -345,9 +293,9 @@ function schedule(source:HTMLCanvasElement|null){
   queueMicrotask(()=>{
     flushQueued=false;
     const sources=[...pending];pending.clear();
-    // A policy/geometry change also needs current pixels on a paused source.
-    // Coalesced per task, with no animation loop and no simulation step.
-    for(const s of sources)if(groups.has(s))try{requestGlassFrame(s);}catch{/* The lens waits for the game's next frame. */}
+    const now=performance.now();
+    // A running game redraws within a frame anyway; only idle (paused) sources need a repaint.
+    for(const s of sources){const g=groups.get(s);if(g&&now-g.lastFrame>100)try{requestGlassFrame(s);}catch{/* The lens waits for the game's next frame. */}}
   });
 }
 
@@ -365,7 +313,7 @@ function join(lens:Lens,source:HTMLCanvasElement|null){
     const restored=()=>{const g=groups.get(current);if(g){g.lost=false;schedule(current);}};
     current.addEventListener('webglcontextlost',lost);current.addEventListener('webglcontextrestored',restored);
     const offFrame=onGlassFrame(current,()=>{const g=groups.get(current);if(g)render(current,g);});
-    const created:Group={lenses:new Set(),lost:false,opaqueKey:'',opaque:false,opaqueSince:0,opaqueChecked:false,off:()=>{offFrame();current.removeEventListener('webglcontextlost',lost);current.removeEventListener('webglcontextrestored',restored);}};
+    const created:Group={lenses:new Set(),lost:false,lastFrame:-Infinity,opaqueKey:'',opaque:false,off:()=>{offFrame();current.removeEventListener('webglcontextlost',lost);current.removeEventListener('webglcontextrestored',restored);}};
     group=created;groups.set(source,group);
   }
   group.lenses.add(lens);schedule(source);
@@ -378,7 +326,7 @@ function leave(lens:Lens){
   group.lenses.delete(lens);
   if(!group.lenses.size){group.off();groups.delete(source);}
 }
-function resolveAll(){refreshPolicy();for(const lens of lenses)join(lens,lens.enabled&&allowed()?sourceFor(lens.surface):null);for(const source of groups.keys())schedule(source);}
+function resolveAll(){refreshPolicy();for(const lens of lenses)join(lens,lens.enabled&&allowed()?sourceFor(lens.surface):null);}
 function startWatching(){
   if(unwatchSources)return;
   unwatchSources=watchGlassFrameSources(resolveAll);
@@ -404,12 +352,12 @@ function kindFor(surface:HTMLElement):LensKind{
 }
 
 /** Binds the shared lens to one surface. onActive reports when it is actually refracting. */
-export function bindWebglLens(surface:HTMLElement,onActive:(active:boolean,mode?:LiveGlassMode)=>void,kind?:LensKind):WebglLens{
+export function bindWebglLens(surface:HTMLElement,onActive:(active:boolean)=>void,kind?:LensKind):WebglLens{
   // A neutral element: control stylesheets hide or restyle their own spans.
   const wrapper=document.createElement('qcc-glass-lens');wrapper.className='ui-glass-gl';wrapper.setAttribute('aria-hidden','true');
   const output=document.createElement('canvas');wrapper.append(output);
   let disposed=false;
-  const lens:Lens={surface,wrapper,output,ctx:null,kind:kind??'dock',enabled:false,active:false,mode:null,source:null,onActive,attach:()=>{},detach:()=>{}};
+  const lens:Lens={surface,wrapper,output,ctx:null,kind:kind??'dock',enabled:false,active:false,source:null,onActive,attach:()=>{},detach:()=>{}};
   // A scrolling sheet carries its absolutely positioned children with its content.
   const refresh=()=>{
     if(!lens.enabled)return;
@@ -432,6 +380,7 @@ export function bindWebglLens(surface:HTMLElement,onActive:(active:boolean,mode?
       if(disposed||lens.enabled===value)return;
       lens.enabled=value;
       if(value){
+        if(unavailable)return;
         lenses.add(lens);startWatching();join(lens,allowed()?sourceFor(surface):null);
       }else{
         leave(lens);lenses.delete(lens);stopWatching();
@@ -444,7 +393,7 @@ export function bindWebglLens(surface:HTMLElement,onActive:(active:boolean,mode?
   };
 }
 
-/** Sheets are frosted: the CSS backdrop blur and light veil carry them over a
+/** Sheets are frosted: the CSS backdrop blur and dark tint carry them over a
  * live game too. A refracted lens copy would paint the game back sharp over the
  * blur, so sheets stay in the blur mode. */
 export function bindSheetLens(surface:HTMLElement):()=>void{

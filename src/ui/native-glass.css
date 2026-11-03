@@ -1,7 +1,7 @@
 /* Slither uses the shared clear sheet. Every other game's original menus,
    panels, typography and dimmers remain owned by its original stylesheet. */
 body.in-game #game-stage .nc-card{
-  --native-glass-ink:#14191f;--native-glass-halo:transparent;
+  --native-glass-ink:#fff;--native-glass-halo:transparent;
   --sheet-halo:var(--native-glass-halo);
   background:var(--glass-frost-fill);
   -webkit-backdrop-filter:var(--glass-frost-blur);

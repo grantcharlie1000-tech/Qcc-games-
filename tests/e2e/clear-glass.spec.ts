@@ -81,7 +81,7 @@ async function headerContrast(page:Page,width:number){
   const header=page.locator('.movies-top');await expect(header).toBeVisible();
   await expect(header.locator('.ui-label').first()).toBeVisible();
   const veils=await header.locator('.floating-glass-group').evaluateAll(es=>es.map(e=>getComputedStyle(e,'::before').backgroundColor));
-  expect(veils).toEqual(Array(3).fill('rgba(255, 255, 255, 0.06)'));
+  expect(veils).toEqual(Array(3).fill('rgba(8, 12, 18, 0.2)'));
   await page.addStyleTag({content:'.movies-view{background:transparent!important}.movies-view>*:not(.movies-top){visibility:hidden}'});
   for(const background of ['#fff','#000','#909090','repeating-linear-gradient(90deg,#faf0d0 0 18px,#102030 18px 36px)','canvas']){
     const style=await page.addStyleTag({content:`html,body{background:${background==='canvas'?'#000':background}!important}`});
@@ -178,7 +178,7 @@ test('Games and Movies sheet closes use the same clear material and release it o
     const close=dialog.locator('.dialog-head .icon-button');
     await expect(close).toHaveAttribute('data-glass',browserName==='chromium'?'backdrop':'frost');
     const veil=await close.evaluate(e=>getComputedStyle(e,'::before').backgroundColor);
-    expect(veil).toBe('rgba(255, 255, 255, 0.06)');
+    expect(veil).toBe('rgba(8, 12, 18, 0.2)');
     await expect(close).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
     await close.screenshot({animations:'disabled'});
     await settleGlassInk(dialog);
@@ -201,7 +201,7 @@ for(const fallback of [false,true])test(`clear glass retains the backdrop instea
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   // The approved clear fill: a dark, near-neutral 20% veil, never a white one.
-  expect(await bar.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(255, 255, 255, 0.06)');
+  expect(await bar.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(8, 12, 18, 0.2)');
   await page.addStyleTag({content:'#content{visibility:hidden}body{background:linear-gradient(90deg,#102030 50%,#f5ddb0 50%)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   const png=(await bar.screenshot({animations:'disabled',scale:'css'})).toString('base64');
   const patches=await page.evaluate(async png=>{
@@ -267,11 +267,11 @@ test('navigation, companion and game controls share the same clear optical recip
       expect(material,route).toEqual(references[`${group}|${material.mode}`]);
       references[group]??=material;
     }
-    expect(materials[0].veil,route).toBe('rgba(255, 255, 255, 0.06)');
+    expect(materials[0].veil,route).toBe('rgba(8, 12, 18, 0.2)');
   }
   for(const reference of Object.values(references))expect([reference.veil,reference.pill]).toEqual([references.navigation.veil,references.navigation.pill]);
-  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(3px)','saturate(1.08)']);
-  expect([references.game.blur,references.game.tone]).toEqual(['blur(2px)','saturate(1.08)']);
+  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(3px)','saturate(1.05) brightness(.9) contrast(.85)']);
+  expect([references.game.blur,references.game.tone]).toEqual(['blur(1.5px)','saturate(1.08)']);
 });
 
 for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: adaptive ink keeps 4.5:1 on uniform and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
