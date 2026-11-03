@@ -4,7 +4,7 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
     {
       "heading": "Work through a second original passage",
       "paragraphs": [
-        "Consider this invented sentence: “Mara folded the invitation until its gold lettering disappeared inside a small, hard square.” Begin with the action rather than a label. Mara is not tearing up the invitation or displaying it. Folding conceals its lettering, while “small” and “hard” make the finished object feel contained and resistant. One defensible interpretation is that she is trying to control a feeling connected with the invitation. That is a possibility supported by details, not a fact about an unseen story.",
+        "Consider this sentence: “Mara folded the invitation until its gold lettering disappeared inside a small, hard square.” Begin with the action rather than a label. Mara is not tearing up the invitation or displaying it. Folding conceals its lettering, while “small” and “hard” make the finished object feel contained and resistant. One defensible interpretation is that she is trying to control a feeling connected with the invitation. That is a possibility supported by details, not a fact about an unseen story.",
         "A paragraph could develop the contrast between the invitation's public appearance and Mara's private response. Gold lettering usually makes an invitation look special; here, the action removes that appearance from view. Explain why this contrast matters before naming a broad theme such as exclusion. If a later sentence showed Mara carefully placing the square in a keepsake box, the act might suggest protection rather than rejection. Close reading leaves room for later evidence to change the first explanation."
       ]
     },
@@ -19,7 +19,7 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
       "heading": "Revise an explanation by testing its limits",
       "paragraphs": [
         "Compare “The square shows she is sad” with “By hiding the invitation's celebratory lettering inside a rigid shape, Mara seems to contain a response she cannot comfortably display.” The second version is more useful because its reasoning can be checked against particular words. It is still provisional. If you add a sentence about belonging, identify the connection: public celebration may highlight a gap between the welcome an object promises and the welcome a character actually experiences.",
-        "For independent practice, write two different readings of the invented passage, each with one precise detail. Then state what additional evidence would help distinguish them. Protection might be supported by careful storage; rejection might be supported by throwing the object away. Do not add those imagined events to your quotation or describe them as things that happened. They are tests of your explanation. This exercise builds a habit of making interpretations both specific and open to correction."
+        "For independent practice, write two different readings of the passage, each with one precise detail. Then state what additional evidence would help distinguish them. Protection might be supported by careful storage; rejection might be supported by throwing the object away. Do not add those imagined events to your quotation or describe them as things that happened. They are tests of your explanation. This exercise builds a habit of making interpretations both specific and open to correction."
       ]
     }
   ],
@@ -28,7 +28,7 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
       "heading": "Plan the work each paragraph must do",
       "paragraphs": [
         "Suppose an essay asks how a character's response to failure develops an idea about courage. A weak plan lists three events in order. A stronger plan gives each event a job: first establish the character's fear of being judged, then show a choice made despite that fear, then examine a later action that complicates the apparent success. This creates an argument about development. It also gives you a reason to include each part of the story instead of retelling every event you remember.",
-        "Write a temporary thesis that names a relationship: “The character's growing courage depends less on losing fear than on accepting responsibility while afraid.” This is an invented planning example, not a claim about a particular published work. It establishes what evidence would be relevant. A scene of fear is useful if it helps explain responsibility or a changing choice. A dramatic scene that does neither may be interesting but unnecessary. Planning involves deciding what the question allows you to leave out."
+        "Write a temporary thesis that names a relationship: “The character's growing courage depends less on losing fear than on accepting responsibility while afraid.” This planning example establishes a direction for the argument and identifies what evidence would be relevant. A scene of fear is useful if it helps explain responsibility or a changing choice. A dramatic scene that does neither may be interesting but unnecessary. Planning involves deciding what the question allows you to leave out."
       ]
     },
     {
@@ -50,14 +50,14 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
     {
       "heading": "Read a short original poem twice",
       "paragraphs": [
-        "Use these invented lines as a practice text: “I left the porch light burning. / At dawn it shone on no one. / A moth kept returning / to the circle I had drawn.” First identify the situation: a speaker has left a light on through the night. The second line names an absence, but does not say who was expected or why they did not arrive. That missing information matters. A supported reading may discuss waiting or loneliness without inventing a particular bereavement, argument or relationship.",
+        "Use these lines as a practice text: “I left the porch light burning. / At dawn it shone on no one. / A moth kept returning / to the circle I had drawn.” First identify the situation: a speaker has left a light on through the night. The second line names an absence, but does not say who was expected or why they did not arrive. That missing information matters. A supported reading may discuss waiting or loneliness without inventing a particular bereavement, argument or relationship.",
         "On a second reading, look at the interaction between images. The moth's repeated return contrasts with the absent person, while the light creates a visible circle rather than an unlimited welcome. One interpretation is that the speaker's attempt to invite connection produces a small, repetitive world. Another might emphasise persistence: something continues to return even when the expected visitor does not. Compare these possibilities using the whole poem. No single word is a code that settles the meaning in isolation."
       ]
     },
     {
       "heading": "Connect the speaking voice with structure",
       "paragraphs": [
-        "The plain first-person statement can sound matter-of-fact, especially beside the uncertainty of the situation. A reader might hear restraint rather than a direct declaration of sadness. Explain the evidence for that tone: ordinary domestic nouns, short statements and the absence of an explicit emotional label. Do not treat “the speaker” and “the poet” as interchangeable. An invented speaking voice can explore an experience without giving readers reliable biographical information about the person who wrote the poem.",
+        "The plain first-person statement can sound matter-of-fact, especially beside the uncertainty of the situation. A reader might hear restraint rather than a direct declaration of sadness. Explain the evidence for that tone: ordinary domestic nouns, short statements and the absence of an explicit emotional label. Do not treat “the speaker” and “the poet” as interchangeable. A speaking voice can explore an experience without giving readers reliable biographical information about the person who wrote the poem.",
         "Line endings offer another way to test an interpretation. “Returning” briefly leaves the movement open; the next line specifies its limit. Reading straight through follows the sentence, while noticing the line break can make the delayed boundary more noticeable. Both observations can be relevant. Avoid claiming that every line ending creates a long spoken pause. Describe the particular arrangement and its effect on expectation. If rhyme or sound matters, identify the repeated sounds and explain what they connect, rather than assuming that rhyme always makes a poem cheerful."
       ]
     },
@@ -65,13 +65,13 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
       "heading": "Turn observations into an argument",
       "paragraphs": [
         "A paragraph about absence could begin with the empty arrival described at dawn, then use the moth to complicate that emptiness. The scene is not literally without life; it is without the person the speaker may have hoped for. This distinction makes the interpretation more accurate. It also allows you to discuss the gap between available company and desired company. Select brief quotations that establish that gap, and make clear where your inference begins.",
-        "Try a revision exercise: replace the moth with “a neighbour” and read the invented poem again. The action would become a human visit, changing the relationships suggested by the scene. The comparison shows how the original creature contributes to the poem, but the rewritten version is not evidence from the original. Finish by writing one sentence about a limit in your interpretation. For example, the poem supports an experience of waiting but does not identify its cause. Recognising that limit makes the analysis stronger rather than unfinished."
+        "Try a revision exercise: replace the moth with “a neighbour” and read the poem again. The action would become a human visit, changing the relationships suggested by the scene. The comparison shows how the original creature contributes to the poem, but the rewritten version is not evidence from the original. Finish by writing one sentence about a limit in your interpretation. For example, the poem supports an experience of waiting but does not identify its cause. Recognising that limit makes the analysis stronger rather than unfinished."
       ]
     }
   ],
   "film-language": [
     {
-      "heading": "Analyse an invented sequence rather than a vocabulary list",
+      "heading": "Analyse a sequence rather than a vocabulary list",
       "paragraphs": [
         "Imagine a short scene made for this exercise. A wide shot shows a student waiting outside a classroom. A cut takes us closer to the student's hand, which is creasing a permission slip. Voices inside the room continue, but their words become indistinct. A final shot holds on the student's face before the door opens. Describe the sequence in that order. It gives you a shared piece of evidence against which an interpretation can be tested without referring to a real film or an unseen director's intention.",
         "The change in framing shifts attention from the student's position in the setting to a small physical action. Creasing the paper may suggest tension, but that reading should be checked against the performance and surrounding action. Indistinct voices could make the room seem socially distant even though it is nearby. The held shot gives a viewer time to notice the response before receiving new information. These choices work together; naming “wide shot”, “close-up” and “sound” without connecting them would miss the sequence's development."
@@ -81,13 +81,13 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
       "heading": "Distinguish position, viewpoint and sympathy",
       "paragraphs": [
         "A camera's physical position does not automatically tell us whose thoughts we know. A shot near a character may encourage attention to that character without becoming a literal view through their eyes. Likewise, a low angle can make something appear imposing, but its effect depends on what is being filmed, what happened before it and how the image is composed. Avoid treating a technique as a fixed emotional instruction. Start with what the viewer can actually see and hear.",
-        "Consider an alternative to the invented scene: the final shot reveals a relaxed smile, and the student smooths the paper before entering. That performance would challenge an uncomplicated fear interpretation. Another possibility is that the viewer knows a surprise celebration waits inside. The same waiting could then build anticipation. Film meaning develops through information as well as image size. Explain what the audience knows at that moment and what remains withheld. This is more precise than claiming the camera makes every viewer feel exactly the same emotion."
+        "Consider an alternative to the scene: the final shot reveals a relaxed smile, and the student smooths the paper before entering. That performance would challenge an uncomplicated fear interpretation. Another possibility is that the viewer knows a surprise celebration waits inside. The same waiting could then build anticipation. Film meaning develops through information as well as image size. Explain what the audience knows at that moment and what remains withheld. This is more precise than claiming the camera makes every viewer feel exactly the same emotion."
       ]
     },
     {
       "heading": "Compare choices and support a judgment",
       "paragraphs": [
-        "To discuss editing, compare the duration and relationship of shots. A rapid series of short views may restrict time to inspect a scene, while a held view can make waiting noticeable. Neither pace has one universal meaning. A long shot can feel calm, awkward or threatening depending on action and sound. If you cannot measure an exact duration, use an accurate relative description such as “held longer than the preceding shots”. Do not supply invented timings merely to make the analysis sound technical.",
+        "To discuss editing, compare the duration and relationship of shots. A rapid series of short views may restrict time to inspect a scene, while a held view can make waiting noticeable. Neither pace has one universal meaning. A long shot can feel calm, awkward or threatening depending on action and sound. If you cannot measure an exact duration, use an accurate relative description such as “held longer than the preceding shots”. Use measured timings when making a precise claim about duration.",
         "For practice, choose one change to the exercise: remove the paper close-up, silence the classroom voices, or show the open door before the face. Explain which information the audience would lose or receive earlier. Then return to the original arrangement and write a causal sentence linking a choice to a plausible effect. Finish with a connection to the scene's larger idea, such as uncertainty about entering a group. A clear account of this relationship is more useful than collecting every camera term you can remember."
       ]
     }
@@ -96,7 +96,7 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
     {
       "heading": "Compare two rules in the same context",
       "paragraphs": [
-        "Keep the bike-hire model C = 3h + 5, where C is cost in dollars and h is hours. Suppose a second fictional provider charges D = 2h + 9 over the same allowed range of times. The first provider has the lower fixed charge, but the second has the lower hourly rate. Neither description alone tells you which is cheaper for every hire. Compare like quantities: C and D both measure total dollars for the same number of hours, rather than an hourly rate beside a total.",
+        "Keep the bike-hire model C = 3h + 5, where C is cost in dollars and h is hours. Suppose a second provider charges D = 2h + 9 over the same allowed range of times. The first provider has the lower fixed charge, but the second has the lower hourly rate. Neither description alone tells you which is cheaper for every hire. Compare like quantities: C and D both measure total dollars for the same number of hours, rather than an hourly rate beside a total.",
         "Set the totals equal to find the crossing: 3h + 5 = 2h + 9, so h = 4. Substitution gives a cost of 17 dollars for both. At two hours, the totals are 11 and 13 dollars; at six hours they are 23 and 21 dollars. Those checks support the change in which plan is cheaper. The result is not that every customer should hire for four hours. It identifies the time at which the two model prices are equal."
       ]
     },
@@ -188,7 +188,7 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
     {
       "heading": "Explain a second numerical case",
       "paragraphs": [
-        "Consider a fictional five-kilogram cart on a level track. A horizontal push of 20 newtons acts forward, while friction acts backward with magnitude five newtons. Take forward as positive: the horizontal resultant is 20 − 5 = 15 newtons. Newton's second law gives a = F/m = 15/5 = 3 metres per second squared. The five-kilogram mass belongs in the denominator; adding it to the force values would combine quantities with incompatible units.",
+        "Consider a five-kilogram cart on a level track. A horizontal push of 20 newtons acts forward, while friction acts backward with magnitude five newtons. Take forward as positive: the horizontal resultant is 20 − 5 = 15 newtons. Newton's second law gives a = F/m = 15/5 = 3 metres per second squared. The five-kilogram mass belongs in the denominator; adding it to the force values would combine quantities with incompatible units.",
         "If this acceleration stays constant for two seconds, the velocity changes by six metres per second. That is a change, not necessarily the final velocity. A cart beginning at rest would reach six metres per second forward under those assumptions. A cart initially moving backward at four metres per second would instead end at two metres per second forward. It would slow, stop and reverse during the interval. This shows why direction and the initial state are part of the explanation, not optional labels added after calculation."
       ]
     },
@@ -257,7 +257,7 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
     {
       "heading": "Change one parent and rebuild the possibilities",
       "paragraphs": [
-        "Keep the fictional seed model in which A is completely dominant to a. Now cross Aa with aa. The first parent can contribute A or a; the second contributes a. Combining the equally likely gametes gives Aa and aa in equal proportions, so the model predicts half smooth and half rough offspring. Do not copy the three-to-one ratio from an Aa × Aa cross. A ratio comes from the parental genotypes and assumptions, not simply from the fact that one allele is dominant.",
+        "Keep the seed model in which A is completely dominant to a. Now cross Aa with aa. The first parent can contribute A or a; the second contributes a. Combining the equally likely gametes gives Aa and aa in equal proportions, so the model predicts half smooth and half rough offspring. Do not copy the three-to-one ratio from an Aa × Aa cross. A ratio comes from the parental genotypes and assumptions, not simply from the fact that one allele is dominant.",
         "A predicted half does not require exactly five rough seedlings in a batch of ten. Each fertilisation is treated as another trial under the model, and small samples can differ from the expected proportion. A large departure might motivate checking the assumed parental genotypes, survival, sampling or the model itself. It is not enough to declare the ratio wrong because the first few outcomes did not alternate neatly. Probability predictions and the actual composition of one small family are different statements."
       ]
     },
@@ -265,14 +265,14 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
       "heading": "Use phenotype evidence with an appropriate limit",
       "paragraphs": [
         "In the Aa × Aa model, offspring genotypes have probabilities one quarter AA, one half Aa and one quarter aa. Smooth appearance includes both AA and Aa, so it does not identify one genotype. If an offspring is known to be smooth, the model assigns two of the three smooth combinations to Aa. The conditional probability is therefore two thirds. That result depends on the particular cross and complete-dominance assumptions; it is not a general percentage for every smooth plant in the world.",
-        "The example explains why a photograph cannot establish a seedling's genotype. A visible difference might reflect environment, age or several genes, and similar appearances can arise from different genotypes. The fictional one-gene trait deliberately simplifies those possibilities. Avoid transferring it directly to a human characteristic that has not been specified as a single-gene model. A family resemblance is an observation to explain, not a complete account of which DNA variants produced it."
+        "The example explains why a photograph cannot establish a seedling's genotype. A visible difference might reflect environment, age or several genes, and similar appearances can arise from different genotypes. The one-gene trait deliberately simplifies those possibilities. Avoid transferring it directly to a human characteristic that has not been specified as a single-gene model. A family resemblance is an observation to explain, not a complete account of which DNA variants produced it."
       ]
     },
     {
       "heading": "Keep the vocabulary connected to the process",
       "paragraphs": [
         "An allele is a version of a gene; it is not a small object stored separately from chromosomes. In the simple diploid model, an individual has two alleles at the chosen gene, one inherited through each parent's gamete. Gametes carry one of the pair for this model. The symbols in a cross represent these inherited possibilities. They are not instructions for an offspring to choose the “better” letter, and uppercase does not mean an allele is morally better, stronger in every sense or more common.",
-        "For a final check, explain how two smooth Aa plants can have a rough aa offspring without the trait being invented during that cross. Each parent can pass on a, and the resulting pair can be aa. Then explain why a smooth offspring does not prove AA. Answering both questions distinguishes the inheritance of alleles from the observation of a trait. If you can only repeat a memorised ratio, return to the possible gametes and show how each combination was formed."
+        "For a final check, explain how two smooth Aa plants can have a rough aa offspring without a new allele arising during that cross. Each parent can pass on a, and the resulting pair can be aa. Then explain why a smooth offspring does not prove AA. Answering both questions distinguishes the inheritance of alleles from the observation of a trait. If you can only repeat a memorised ratio, return to the possible gametes and show how each combination was formed."
       ]
     }
   ],
@@ -280,7 +280,7 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
     {
       "heading": "Follow an indirect effect through a model",
       "paragraphs": [
-        "Consider a fictional garden model with plants, plant-eating snails and birds that eat those snails. If bird numbers fall, reduced predation could allow more snails to survive. More snails could then increase feeding on plants. Each step names a relationship rather than jumping straight from fewer birds to fewer plants. The words “could” and “in this model” matter: other predators, food availability, weather and disease may influence what happens in an actual garden.",
+        "Consider a garden model with plants, plant-eating snails and birds that eat those snails. If bird numbers fall, reduced predation could allow more snails to survive. More snails could then increase feeding on plants. Each step names a relationship rather than jumping straight from fewer birds to fewer plants. The words “could” and “in this model” matter: other predators, food availability, weather and disease may influence what happens in an actual garden.",
         "Add an alternative pathway. Suppose the birds also eat insects that feed on the plants. Their decline could change more than one consumer group, and the groups might compete or respond at different rates. A food web is useful because organisms often have several feeding relationships. It does not, by itself, supply the strengths of those relationships. An arrow establishes a proposed transfer of food and energy, not a measured number of individuals that will appear after a disturbance."
       ]
     },
@@ -301,9 +301,9 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
   ],
   "historical-evidence": [
     {
-      "heading": "Test a claim using an explicitly fictional source set",
+      "heading": "Test a claim using an source set",
       "paragraphs": [
-        "Imagine a fictional town debating whether a factory changed everyday life. An employer's leaflet advertises higher wages, a worker's letter describes longer shifts, and a council record lists new housing approvals. These are invented teaching materials, not quotations from a real archive. Start by giving each source a precise job. The leaflet can show what the employer wanted readers to believe; the letter can show one person's account; the record can document an administrative decision. None independently describes every resident's experience.",
+        "Imagine a town debating whether a factory changed everyday life. An employer's leaflet advertises higher wages, a worker's letter describes longer shifts, and a council record lists new housing approvals. Read the three sources together to compare their accounts. Start by giving each source a precise job. The leaflet can show what the employer wanted readers to believe; the letter can show one person's account; the record can document an administrative decision. None independently describes every resident's experience.",
         "A useful question is narrower than “Was the factory good?” Ask whether particular groups experienced particular changes during a specified period. That makes relevance easier to judge. Higher wages and longer hours are not necessarily contradictory claims; both might have occurred. A strong explanation can hold that complexity instead of forcing every source into a single positive or negative verdict. Distinguish evidence of a promise, evidence of an experience and evidence of an action that was recorded."
       ]
     },
@@ -317,7 +317,7 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
     {
       "heading": "Write a conclusion with a boundary",
       "paragraphs": [
-        "For the fictional factory set, a cautious conclusion might say that the leaflet shows an intention to recruit through promises of improvement, while the letter raises questions about working conditions for at least one worker. Housing approvals suggest planned expansion but do not prove every approved home was built or occupied. Notice the verbs: “shows”, “raises questions” and “suggests” indicate different evidential strengths. Choosing them carefully lets you make a useful claim without pretending the sources answer every part of the question.",
+        "For the factory set, a cautious conclusion might say that the leaflet shows an intention to recruit through promises of improvement, while the letter raises questions about working conditions for at least one worker. Housing approvals suggest planned expansion but do not prove every approved home was built or occupied. Notice the verbs: “shows”, “raises questions” and “suggests” indicate different evidential strengths. Choosing them carefully lets you make a useful claim without pretending the sources answer every part of the question.",
         "End with the evidence you would need next. Wage records, completed housing records or accounts from different groups could help test the proposed changes. Naming missing evidence should be connected to a real limitation, not added as a generic sentence about bias. A photograph of a crowded street might support the existence of a gathering but not a claim about everyone's opinion. A generated illustrative image in a revision article is not historical evidence of that gathering at all. Keep teaching illustrations separate from the sources used to establish what happened."
       ]
     }
@@ -379,7 +379,7 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
     {
       "heading": "Compare responses using the same stated aim",
       "paragraphs": [
-        "Suppose a fictional town considers a warning system and a storage basin. A warning system might help people move out of danger without reducing the floodwater itself. A basin might delay or reduce a peak within its capacity but cannot guarantee protection from every possible event. Asking which is “best” without naming an aim is incomplete. Compare reducing harm, reducing water levels, cost, maintenance, time to implement and effects on other places as separate considerations.",
+        "Suppose a town considers a warning system and a storage basin. A warning system might help people move out of danger without reducing the floodwater itself. A basin might delay or reduce a peak within its capacity but cannot guarantee protection from every possible event. Asking which is “best” without naming an aim is incomplete. Compare reducing harm, reducing water levels, cost, maintenance, time to implement and effects on other places as separate considerations.",
         "Distribution matters as well as an average benefit. A response could protect one neighbourhood while transferring water or costs elsewhere. It may also depend on people receiving a warning, having transport or being able to leave a building. These details connect hazard with exposure and vulnerability. Describe who is affected and what conditions allow the response to work. A realistic evaluation recognises limits without dismissing a measure simply because it cannot eliminate every kind of risk."
       ]
     },
@@ -395,7 +395,7 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
     {
       "heading": "Work through a small numerical market",
       "paragraphs": [
-        "Use a deliberately simplified fictional market. At a price of two dollars, buyers want eight units while sellers offer four; at three dollars both quantities are six; at four dollars buyers want four and sellers offer eight. Under the usual introductory adjustment story, the middle price is equilibrium. At two dollars the quantity demanded exceeds the quantity supplied by four units, creating a shortage at that price. The shortage is a comparison of quantities, not another name for the number actually sold.",
+        "Use a deliberately simplified market. At a price of two dollars, buyers want eight units while sellers offer four; at three dollars both quantities are six; at four dollars buyers want four and sellers offer eight. Under the usual introductory adjustment story, the middle price is equilibrium. At two dollars the quantity demanded exceeds the quantity supplied by four units, creating a shortage at that price. The shortage is a comparison of quantities, not another name for the number actually sold.",
         "At four dollars, quantity supplied exceeds quantity demanded by four units, giving a surplus. Pressure for adjustment differs in the two cases, but the model does not promise that every real seller instantly changes the price or that every buyer acts identically. State which behaviour the model assumes. The quantities describe willingness to buy and sell over a defined period and under stated conditions. Keep that period consistent when making comparisons; six items per day and six items per year are not the same market quantity."
       ]
     },
@@ -441,8 +441,8 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
     {
       "heading": "Apply the framework through a person's account",
       "paragraphs": [
-        "Consider a fictional student, Hana, who wants to take part in a community garden but finds the meeting time difficult because of family responsibilities. Begin with Hana's description of what matters to her, rather than deciding that joining must improve her wellbeing. She may value relationships, a connection with the place or an opportunity to contribute. An explanation should connect those details with relevant dimensions, while recognising that a model is a way of understanding experience rather than a test that assigns a stranger four scores.",
-        "A relationship between dimensions needs an actual mechanism. If Hana feels welcomed and listened to, a stronger sense of connection may influence her confidence about participating. If the group changes its timetable, the practical conditions for joining may improve. These are conditional explanations grounded in the invented situation. They are not promises that gardening, exercise or group attendance will have the same effect for everyone. Ask what Hana considers supportive and what would help the group understand her experience more accurately."
+        "Consider a student, Hana, who wants to take part in a community garden but finds the meeting time difficult because of family responsibilities. Begin with Hana's description of what matters to her, rather than deciding that joining must improve her wellbeing. She may value relationships, a connection with the place or an opportunity to contribute. An explanation should connect those details with relevant dimensions, while recognising that a model is a way of understanding experience rather than a test that assigns a stranger four scores.",
+        "A relationship between dimensions needs an actual mechanism. If Hana feels welcomed and listened to, a stronger sense of connection may influence her confidence about participating. If the group changes its timetable, the practical conditions for joining may improve. These are conditional explanations grounded in the situation. They are not promises that gardening, exercise or group attendance will have the same effect for everyone. Ask what Hana considers supportive and what would help the group understand her experience more accurately."
       ]
     },
     {
@@ -455,7 +455,7 @@ export const additionalReading: Record<string,{heading:string;paragraphs:string[
     {
       "heading": "Evaluate a response without turning it into a prescription",
       "paragraphs": [
-        "Compare two fictional proposals: provide a poster encouraging attendance, or talk with participants about the timetable and access. The poster may improve awareness, but it does not remove a time conflict. Consultation may help identify a workable change, but needs to include people who are not already able to attend. Evaluate each against a named aim, such as making participation possible for people with different responsibilities. This produces a reasoned judgment rather than a generic claim that all community activities are helpful.",
+        "Compare two proposals: provide a poster encouraging attendance, or talk with participants about the timetable and access. The poster may improve awareness, but it does not remove a time conflict. Consultation may help identify a workable change, but needs to include people who are not already able to attend. Evaluate each against a named aim, such as making participation possible for people with different responsibilities. This produces a reasoned judgment rather than a generic claim that all community activities are helpful.",
         "For practice, write a short explanation connecting one detail of Hana's experience with two dimensions, then add a limitation or a question you would ask her. Do not invent an answer on her behalf. A generated photograph of a friendly group is an illustrative scene, not evidence that its members are healthy or that it represents the whole model. These notes explain an educational framework; they do not diagnose an individual or prescribe treatment. Use the person's account, relationships and context to keep the reasoning respectful and specific."
       ]
     }

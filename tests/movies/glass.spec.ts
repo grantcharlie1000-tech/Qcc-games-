@@ -1,5 +1,6 @@
 import {test,expect,keyboardMode} from '../fixtures';
 import type {Locator,Page,Route} from '@playwright/test';
+import {HIDDEN_INK,glyphContrastSamples,glyphFillMask,settleGlassInk} from '../glass-contrast';
 
 // The Movies menus are Liquid Glass. The episode drawer is a glass sheet, the Up next card takes the sheet's surface, and the
 // genre select is a glass capsule whose open list stays native. The Movies island and forced colours are checked alongside them.
@@ -56,7 +57,7 @@ test('the episode drawer is a glass sheet with the sheet\'s blurred backdrop',as
  await expect(drawer).toHaveClass(/\bui-glass-sheet\b/);
  await expect(drawer).toHaveClass(/\bmovies-drawer\b/);
  expect(await drawer.getAttribute('class')).not.toMatch(/\bui-drawer\b/);
- expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(28px)');
+ expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(1.5px) saturate(1.08)');
 });
 
 test('at 390 px the episode drawer is a bottom sheet inset 8 px from the sides and the bottom',async({page})=>{
@@ -152,7 +153,9 @@ test('forced colours give the drawer the system Canvas, CanvasText and a 2 px bo
 
 test('the idle season pill is a translucent fill, and only the sheet has a backdrop filter',async({page})=>{
  const drawer=await openDrawer(page,PHONE);
- expect(await drawer.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none').length)).toBe(0);
+ // The sheet's own lens layer, and its clear-glass close control (frost mode in WebKit filters the button itself),
+ // are the only children that refract their backdrop; no pill, row or label has a filter.
+ expect(await drawer.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none'&&!child.matches('.ui-glass-lens,.sheet-close-glass')).map(child=>child.className))).toEqual([]);
  const pill=drawer.getByRole('button',{name:'Season 2',exact:true});
  const fill=await pill.evaluate(el=>getComputedStyle(el).backgroundColor);
  const alpha=parseFloat(/rgba\(\d+, \d+, \d+, ([\d.]+)\)/.exec(fill)?.[1]??'1');
@@ -242,7 +245,7 @@ test('a long season name wraps inside the drawer at 320 px, with no horizontal o
 // One page per layout: a card shown on a phone would otherwise stay in the page for the desktop check.
 for(const viewport of [PHONE,DESKTOP])test(`the Up next card has the sheet's blurred glass surface at ${viewport.width} px`,async({page})=>{
  const overlay=await showUpNext(page,viewport);
- expect(await overlay.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(28px)');
+ expect(await overlay.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(1.5px) saturate(1.08)');
 });
 
 test('the Up next card has a 24 px corner in the card layout at 1440 px',async({page})=>{
@@ -392,7 +395,7 @@ test('forced colours give the Movies island its pill outline and underline the c
  await page.emulateMedia({forcedColors:'active'});
  await page.setViewportSize(PHONE);
  await page.goto('/#/movies');
- const bar=page.locator('.movies-view nav.ui-tabbar').first();
+ const bar=page.locator('.movies-view .section-tabbar').first();
  await expect(bar).toBeVisible();
  const system=await systemColours(page,['CanvasText']);
  expect(await bar.evaluate(el=>{const s=getComputedStyle(el,'::after');return [s.outlineStyle,s.outlineWidth,s.outlineColor];})).toEqual(['solid','2px',system.CanvasText]);
@@ -429,7 +432,7 @@ const DRAWER_TITLE=(season:number)=>({id:'tv-90300',kind:'tv',name:'Contrast Ser
  {number:1,name:'Season 1',episodes:season===1?[{number:1,name:'Pilot',overview:'The first episode.',runtime:42,airDate:'2024-01-01'},{number:2,name:'Second Episode',overview:'Still the first season.',runtime:44,airDate:'2024-01-08'}]:[]},
  {number:2,name:'Season 2',episodes:season===2?[{number:1,name:'Second Season Opener',overview:'The second season begins.',runtime:50,airDate:'2025-01-01'}]:[]}
 ]});
-// Reads each present item's colour and glyph boxes, hides the text, screenshots the container, and returns the worst and typical ratios.
+// Reads each present item's colour and glyph boxes, then measures its glyph cores over the container's rendered backdrop (halo retained).
 type DrawerItem={name:string;missing:boolean;colour:string;worst:number;typical:number;count:number};
 // An item whose selector is not on the page comes back missing, with no pixels, so it fails the check rather than dropping out of it.
 async function glyphContrast(page:Page,container:string,items:{name:string;selector:string}[]):Promise<DrawerItem[]>{
@@ -440,40 +443,35 @@ async function glyphContrast(page:Page,container:string,items:{name:string;selec
   if(!el)return {name:item.name,selector:item.selector,missing:true,colour:'',rects:[] as number[][]};
   const range=document.createRange();range.selectNodeContents(el);
   const rects=[...range.getClientRects()].filter(r=>r.width>0&&r.height>0).map(r=>[r.left,r.top,r.width,r.height]);
-  return {name:item.name,selector:item.selector,missing:false,colour:getComputedStyle(el).color,rects};
+  // Sheet text is wrapped in a .glass-ink span that carries its own adaptive colour, so the ink is read from that span when there is one.
+  const ink=el.matches('.glass-ink')?el:el.querySelector<HTMLElement>('.glass-ink')??el;
+  return {name:item.name,selector:item.selector,missing:false,colour:getComputedStyle(ink).color,rects};
  }),items);
  const present=read.filter(item=>!item.missing);
- const style=await page.addStyleTag({content:present.map(item=>`${container} ${item.selector}{color:transparent!important}`).join('')});
- const png=(await page.screenshot({clip:box,type:'png'})).toString('base64');
+ // Measure at the glyph cores, as the shared glass-contrast helpers do: a fill
+ // mask locates the rasterized ink, and the backdrop shot keeps any adaptive
+ // halo (HIDDEN_INK hides only the fill; WebKit drops shadows of clear text).
+ const panel=page.locator(container);
+ const glyphs=present.map(item=>`${container} ${item.selector},${container} ${item.selector} .glass-ink`).join(',');
+ const mask=await glyphFillMask(page,panel,glyphs);
+ const style=await page.addStyleTag({content:`${glyphs}{color:${HIDDEN_INK}!important;-webkit-text-fill-color:${HIDDEN_INK}!important}`});
+ const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');
  await style.evaluate(node=>(node as Element).remove());
- const measured=await page.evaluate(async({png,present,box})=>{
-  const bytes=Uint8Array.from(atob(png),c=>c.charCodeAt(0));
-  const bitmap=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
-  const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
-  const context=canvas.getContext('2d',{willReadFrequently:true})!;context.drawImage(bitmap,0,0);
-  const linear=(c:number)=>{c/=255;return c<=0.03928?c/12.92:((c+0.055)/1.055)**2.4;};
-  const luminance=(r:number,g:number,b:number)=>0.2126*linear(r)+0.7152*linear(g)+0.0722*linear(b);
-  // The screenshot holds the container at the device scale, so its width over the container's CSS width is the scale each rectangle is sampled at.
-  const scale=bitmap.width/box.width;
-  return present.map(item=>{
-   const ink=(item.colour.match(/[\d.]+/g)??['255','255','255']).slice(0,3).map(Number);
-   const text=luminance(ink[0],ink[1],ink[2]);
-   let brightest=0,total=0,count=0;
-   for(const [x,y,w,h] of item.rects){
-    const data=context.getImageData(Math.max(0,Math.floor((x-box.x)*scale)),Math.max(0,Math.floor((y-box.y)*scale)),Math.max(1,Math.ceil(w*scale)),Math.max(1,Math.ceil(h*scale))).data;
-    for(let i=0;i<data.length;i+=4){const l=luminance(data[i],data[i+1],data[i+2]);brightest=Math.max(brightest,l);total+=l;count++;}
-   }
-   const median=count?total/count:0;
-   const ratio=(a:number,b:number)=>(Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);
-   return {name:item.name,colour:item.colour,worst:ratio(text,brightest),typical:ratio(text,median),count};
-  });
- },{png,present,box});
+ const boxes=present.flatMap(item=>item.rects.map(([x,y,w,h])=>({x:x-box.x,y:y-box.y,w,h,color:item.colour,name:item.name})));
+ const samples=await glyphContrastSamples(page,shot,mask,boxes,box);
+ const measured=present.map(item=>{
+  const own=samples.filter((_,i)=>boxes[i].name===item.name&&samples[i].count>0);
+  const count=own.reduce((sum,sample)=>sum+sample.count,0);
+  return {name:item.name,colour:item.colour,count,worst:own.length?Math.min(...own.map(sample=>sample.worst)):0,typical:count?own.reduce((sum,sample)=>sum+sample.typical*sample.count,0)/count:0};
+ });
  return read.map(item=>{
   const found=measured.find(result=>result.name===item.name);
   return found?{...found,missing:false}:{name:item.name,missing:true,colour:'',worst:0,typical:0,count:0};
  });
 }
 async function expectDrawerText(page:Page,items:{name:string;selector:string}[],state:string){
+ // Adaptive ink resolves asynchronously, so it is read once it has settled.
+ await settleGlassInk(page.locator('dialog.movies-drawer'));
  const results=await glyphContrast(page,'dialog.movies-drawer',items);
  // A selector that is not on the page fails its state, so no item can drop out of the check unnoticed.
  expect(results.filter(item=>item.missing).map(item=>item.name),`${state}: items not on the page`).toEqual([]);
@@ -487,13 +485,14 @@ async function expectDrawerText(page:Page,items:{name:string;selector:string}[],
 for(const frame of ['dark','white'] as const)for(const width of [390,1440])test(`the episode drawer's text keeps 4.5:1 over a ${frame} frame at ${width} px`,async({page})=>{
  await page.setViewportSize({width,height:width>800?900:844});
  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:frame==='dark'?DARK_FRAME:WHITE_FRAME}));
- // The first request for season 2 is held, so the loading line can be read; the next answers as a failure, so the error line and its retry show.
+ // Hold season 2 for the loading sample, then use a non-retried service error
+ // for the error sample. Network backoff is covered in network-recovery.spec.ts.
  const held:Route[]=[];
  await page.route('**/api/movies?*',route=>{
   const url=new URL(route.request().url());
   if(!url.searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
   const season=Number(url.searchParams.get('season')||1);
-  if(season===2){if(!held.length){held.push(route);return;}return route.fulfill({status:502,json:{error:'metadata_unavailable'}});}
+  if(season===2){if(!held.length){held.push(route);return;}return route.fulfill({status:503,json:{error:'metadata_unavailable'}});}
   return route.fulfill({json:{title:DRAWER_TITLE(season)}});
  });
  await page.goto('/#/movies/tv-90300/season/1/episode/1/play');
@@ -506,7 +505,7 @@ for(const frame of ['dark','white'] as const)for(const width of [390,1440])test(
  await drawer.getByRole('button',{name:'Season 2',exact:true}).click();
  await expect(drawer.getByRole('status')).toContainText('Loading');
  await expectDrawerText(page,DRAWER_LOADING,'loading');
- await held[0].fulfill({status:502,json:{error:'metadata_unavailable'}});
+ await held[0].fulfill({status:503,json:{error:'metadata_unavailable'}});
  await expect(drawer.getByRole('status')).toContainText('temporarily unavailable');
  await expectDrawerText(page,DRAWER_ERROR,'error');
 });

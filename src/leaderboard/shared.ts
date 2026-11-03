@@ -1,5 +1,5 @@
 import type {GameId} from '../core/types';
-export const SCORED_GAMES:readonly GameId[]=['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','corn-clicker','slipline','quadfall','claimline'];
+export const SCORED_GAMES:readonly GameId[]=['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','corn-clicker','slipline','quadfall','claimline','crossy-road'];
 /**
  * Error code the server returns (HTTP 409) when the database does not accept a game's scores yet: its game_id is
  * missing from the arcade_scores_game_id_check constraint until that game's migration is applied. Clients keep

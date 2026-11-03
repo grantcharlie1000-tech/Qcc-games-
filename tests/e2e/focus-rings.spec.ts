@@ -37,7 +37,7 @@ async function tabTo(page:Page,target:Locator){
 async function telemetry(page:Page,currentTime=100,duration=100){await page.frame({url:/framextv/})!.evaluate(({currentTime,duration})=>parent.postMessage({event:'frameXTV:timeupdate',currentTime,duration},'*'),{currentTime,duration});}
 const upNext=(page:Page)=>page.getByRole('dialog',{name:'Up next'});
 // Movies replaces the shell's island with its own, whose tabs are buttons.
-const island=(page:Page)=>page.locator('nav.movies-mobile-nav.ui-tabbar');
+const island=(page:Page)=>page.locator('.movies-mobile-nav.ui-tabbar');
 async function ended(page:Page){await page.clock.pauseAt(await page.evaluate(()=>Date.now()+1000));await telemetry(page);await expect(upNext(page)).toBeVisible();}
 
 test.beforeEach(async({page})=>{
@@ -100,7 +100,7 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
 
  test('a mouse click draws no ring on the menu button, nor on the menu sheet\'s search field',async({page})=>{
   await page.goto('/');
-  const menu=page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true});
+  const menu=page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true});
   await menu.click();
   await expect(page.locator('#menu')).toBeVisible();
   await expectNoOutline(menu);
@@ -119,7 +119,12 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
   await expectWhiteRing(tab);
   await openWatch(page);
   const fullscreen=page.getByRole('button',{name:'Full screen',exact:true});
-  await tabTo(page,fullscreen);
+  // Enter from the adjacent app control, after the asynchronous provider has
+  // mounted. Sweeping Tab through its document races the iframe's own focus.
+  await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
+  await page.getByRole('button',{name:'Reload player',exact:true}).focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(fullscreen).toBeFocused();
   await expectWhiteRing(fullscreen);
  });
 

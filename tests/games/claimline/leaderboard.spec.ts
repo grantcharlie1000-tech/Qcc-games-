@@ -1,4 +1,5 @@
 import { test, expect, seedStudyTopic } from '../../fixtures';
+import { appSettings } from '../../game-menu';
 import type { BrowserContext, Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { NetlifyDB } from '@netlify/database-dev';
@@ -47,9 +48,8 @@ test('before the migration a Claimline peak stays queued quietly, and it syncs b
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto('/#/game/claimline');
-    const sidebar = page.getByRole('complementary', { name: 'Claimline leaderboard' });
-    await expect(sidebar).toBeVisible();
-    await page.getByRole('button', { name: 'Top scores', exact: true }).click();
+    // The glass layout has no in-game sidebar: the Leaderboards dialog (Menu > Settings > Leaderboards) is the board.
+    await expect(page.getByRole('complementary', { name: 'Claimline leaderboard' })).toHaveCount(0);
     await page.locator('.cl-start').click();
     // Starting reports the human's peak; the milestone flush posts it and the database refuses the game id.
     await expect.poll(() => posts.filter(p => p.game === 'claimline').length).toBeGreaterThan(0);
@@ -59,11 +59,9 @@ test('before the migration a Claimline peak stays queued quietly, and it syncs b
     expect(posts.every(p => p.game === 'claimline' && p.score > 0 && p.score <= 10000)).toBe(true);
     await expect.poll(async () => (await pending(page, user)).claimline ?? 0).toBeGreaterThan(0);
     // Graceful: an empty board, no error text, the local best kept, and the game keeps running.
-    await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-    await expect(sidebar.locator('.lb-status')).toHaveText('No scores yet. Be the first!');
     await expect(page.locator('#game-best strong')).toHaveText(/^\d+\.\d\d%$/);
     expect(Number(await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:claimline')))).toBeGreaterThan(0);
-    await page.getByRole('button', { name: 'All rankings' }).click();
+    await appSettings(page); await page.locator('#open-leaderboards').click();
     await expect(page.locator('#leaderboard-game')).toHaveValue('claimline');
     await expect(page.locator('#leaderboard-dialog .lb-status')).toHaveText('No scores yet. Be the first to play!');
     await expect(page.locator('#leaderboard-dialog')).not.toContainText(/unavailable|error/i);
@@ -80,7 +78,10 @@ test('before the migration a Claimline peak stays queued quietly, and it syncs b
     await expect.poll(() => posts.filter(p => p.game === 'claimline' && p.status === 200).length).toBeGreaterThan(0);
     await expect.poll(async () => (await pending(page, user)).claimline).toBeUndefined();
     expect(posts.filter(p => p.status === 200).at(-1)).toMatchObject({ game: 'claimline', score: queued });
-    await expect(page.getByRole('complementary', { name: 'Claimline leaderboard' }).locator('.lb-status')).toHaveText(/^You: #1 · \d+\.\d\d%$/);
+    await appSettings(page); await page.locator('#open-leaderboards').click();
+    await expect(page.locator('#leaderboard-game')).toHaveValue('claimline');
+    const you = page.locator('#leaderboard-dialog tr.lb-you');
+    await expect(you).toContainText('Loop_Ada'); await expect(you).toContainText(/\d+\.\d\d%/);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

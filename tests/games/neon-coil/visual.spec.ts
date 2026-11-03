@@ -4,7 +4,7 @@ for(const size of [{width:390,height:844},{width:1440,height:900}]) test(`refere
   await page.setViewportSize(size);
   await page.clock.install({time:new Date('2026-10-26T10:00:00Z')});
   await page.clock.pauseAt(new Date('2026-10-26T10:00:01Z'));
-  await page.goto('/#/game/neon-coil'); await page.getByRole('button',{name:'Enter arena',exact:true}).click();
+  await page.goto('/#/game/neon-coil'); await page.getByRole('button',{name:'Play',exact:true}).click();
   await page.clock.runFor(350);
   const pixels=await page.locator('.nc-canvas').evaluate(node=>{
     const c=node as HTMLCanvasElement,ctx=c.getContext('2d')!, dpr=c.width/c.clientWidth;
@@ -18,10 +18,10 @@ for(const size of [{width:390,height:844},{width:1440,height:900}]) test(`refere
   expect(pixels.bright).toBeGreaterThan(20); expect(pixels.base).toBeGreaterThan(20);
   expect(await page.evaluate(()=>[document.documentElement.scrollWidth,document.documentElement.scrollHeight])).toEqual([size.width,size.height]);
   await expect(page.locator('.nc-score .nc-difficulty')).toHaveText('CLASSIC');
-  const caption=(await page.locator('.nc-difficulty').boundingBox())!,score=(await page.locator('.nc-mass').boundingBox())!;
+  const caption=(await page.locator('.game-hud small').boundingBox())!,score=(await page.locator('.game-hud strong').boundingBox())!;
   expect(caption.y+caption.height).toBeLessThanOrEqual(score.y+1);
-  const font=await page.locator('.nc-mass').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)); expect(font).toBeGreaterThanOrEqual(24); expect(font).toBeLessThanOrEqual(30);
-  expect(await page.locator('.nc-ranking').evaluate(el=>getComputedStyle(el).backgroundColor)).toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
+  const font=await page.locator('.game-hud strong').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)); expect(font).toBeGreaterThanOrEqual(20); expect(font).toBeLessThanOrEqual(22);
+  expect(await page.locator('.nc-ranking li').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(12);
   await expect(page.locator('.nc-ranking li')).toHaveCount(size.width<600?5:10); await expect(page.locator('.nc-you')).toBeVisible();
   const boost=page.getByRole('button',{name:'Hold to boost',exact:true}),b=(await boost.boundingBox())!;
   expect(b.width).toBeGreaterThanOrEqual(56); expect(b.width).toBeLessThanOrEqual(64); expect(b.height).toBe(b.width);

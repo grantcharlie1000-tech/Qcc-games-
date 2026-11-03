@@ -14,3 +14,5 @@ An original maze-chase game in the classic arcade style. Gameplay follows the ge
 
 ## Presentation
 SVG DOM (`art.ts`). The wall outline is traced from the maze and rounded, and the sprites are built from SVG paths, with motion driven by the simulation clock. Reduced motion removes the berry blink, the sway and bob, the death pop and the fright flashing (shown instead as a steady white outline). Each chaser carries a distinct marking (brows, cheek dots, band, droopy lid) so they can be told apart without colour.
+
+The full play area accepts short swipes; arrow keys and WASD use the same queued steering. There is no D-pad or separate movement row. The original `.mm-card` supplies **Start** (also Enter or a direction key) and **Game over** / **Play again**; result copy shows points and level. Its title and result copy stay hidden before a run. The in-maze READY countdown appears during intro. Shared score/best/lives HUD, pause (`#pause-overlay`, `#resume-game`) and floating dock remain outside the board.

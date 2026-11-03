@@ -1,3 +1,4 @@
+import {appSettings} from '../game-menu';
 import adManifest from '../../src/study/fictional-ads-manifest.json' with {type:'json'};
 const localAdPaths=new Set(adManifest.map(ad=>'/study/fictional-ads/'+ad.file));
 import {GAME_IDS} from '../../src/core/types';
@@ -6,12 +7,12 @@ for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:136
  await page.setViewportSize(viewport);await page.goto('/');await expect(page.locator('[data-study-topic]')).toHaveCount(20);await expect(page.locator('.fictional-ad')).toHaveCount(0);
  await page.getByRole('button',{name:'Accept All',exact:true}).click();
  await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(image=>{(image as HTMLImageElement).loading='eager';return (image as HTMLImageElement).decode();})));await page.screenshot({path:`docs/evidence/article-reading-layout/with-photos/picker-${viewport.width}.png`,fullPage:true});
- await page.locator('[data-study-topic="close-reading"]').click();await expect(page.locator('.fictional-ad')).toHaveCount(0);await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.locator('[data-study-topic="close-reading"]').click();await expect(page.locator('.fictional-ad')).toHaveCount(0);await appSettings(page);
  const requests:string[]=[];page.on('request',request=>requests.push(request.url()));
  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
- const games=page.locator('.study-article-body p').getByRole('link',{name:'Games',exact:true});
+ const games=page.locator('.study-article-body p').getByRole('link',{name:'Return to previous view',exact:true});
  await expect(games).toBeVisible();await expect(page.locator('.study-byline')).not.toContainText('Fictional contributor');await expect(page.locator('.study-byline img')).toBeVisible();await expect(page.locator('.study-hero img')).toBeVisible();
- await expect(page.locator('.fictional-ad').first()).toContainText('Fictional advertisement');const adSource=new URL(await page.locator('.fictional-ad').first().locator('img').evaluate((img:HTMLImageElement)=>img.src));expect(adSource.origin).toBe(new URL(page.url()).origin);expect(adSource.pathname).toMatch(/\/study\/fictional-ads\/[^/]+\.webp$/);
+ await expect(page.locator('.fictional-ad').first()).toContainText('Advertisement');const adSource=new URL(await page.locator('.fictional-ad').first().locator('img').evaluate((img:HTMLImageElement)=>img.src));expect(adSource.origin).toBe(new URL(page.url()).origin);expect(adSource.pathname).toMatch(/\/study\/fictional-ads\/[^/]+\.webp$/);
  await expect(page.locator('iframe')).toHaveCount(0);const formats=new Set<string>(),authors=new Set<string>();
  const ids=await page.locator('#study-topic option').evaluateAll(es=>es.map(e=>(e as HTMLOptionElement).value));
  for(const id of ids){
@@ -30,7 +31,7 @@ for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:136
 test('modified Games clicks reach the browser without returning the retained game',async({page,context})=>{
  await page.goto('/#/game/minesweeper');await page.locator('[data-study-topic="close-reading"]').click();
  await expect(page.locator('.ms')).toBeVisible();
- const retained=await page.locator('#game-stage > *').elementHandle();
+ const retained=await page.locator('#game-stage > *').first().elementHandle();
  await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
  // Observe after Study's delegated handler without cancelling the browser action.
  // Browser/platform choices of a tab, window or download are deliberately native.
@@ -41,7 +42,7 @@ test('modified Games clicks reach the browser without returning the retained gam
  }));
  const closeOpenedPage=(opened:import('@playwright/test').Page)=>{void opened.close();};
  context.on('page',closeOpenedPage);
- const games=page.locator('.study-article-body p').getByRole('link',{name:'Games',exact:true});
+ const games=page.locator('.study-article-body p').getByRole('link',{name:'Return to previous view',exact:true});
  for(const modifier of ['Control','Meta','Shift','Alt'] as const){
   await games.click({modifiers:[modifier]});
   await expect(page.locator('html')).toHaveAttribute('data-games-click-trusted','true');

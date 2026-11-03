@@ -48,7 +48,7 @@ const coreTopics: readonly StudyTopic[] = [
         'Read only the first sentence of each paragraph. Can you follow a developing answer to the question? Then check the evidence and explanation within each paragraph. A conclusion should bring the reasoning together and show its significance. It should not introduce a major new example that the essay has not analysed. Leave time to correct references, punctuation and unclear pronouns.'
       ]}
     ],
-    example:{title:'From observation to argument',question:'An invented story shows a runner initially hiding an injury, then asking their team for help. What could a paragraph argue?',steps:[
+    example:{title:'From observation to argument',question:'A story shows a runner initially hiding an injury, then asking their team for help. What could a paragraph argue?',steps:[
       'Make a claim: the runner’s decision redefines strength as accepting support.',
       'Select the moment of asking for help and explain how its language contrasts with earlier secrecy.'
     ],result:'The paragraph can link the contrast to a thesis about responsibility and community, rather than merely retelling the two scenes.'},
@@ -73,7 +73,7 @@ const coreTopics: readonly StudyTopic[] = [
       'The open window and sea invite an interpretation of possibility or freedom.',
       '“But” turns toward a restrictive image: hands at the latch suggest hesitation or a wish for control.'
     ],result:'The voice appears divided between openness and protection. A full interpretation would consider the surrounding poem, not treat this image as conclusive on its own.'},
-    check:{question:'Can you assume that a poem written in the first person describes the poet’s own life?',answer:'No. First-person speakers can be invented. Use evidence from the text and relevant verified context, rather than equating the voice with the author.'}
+    check:{question:'Can you assume that a poem written in the first person describes the poet’s own life?',answer:'No. First-person speakers can differ from their authors. Use evidence from the text and relevant verified context, rather than equating the voice with the author.'}
   },
   {
     id:'film-language',subject:'English',title:'Reading a film frame',subtitle:'Camera, sound & editing',
@@ -90,7 +90,7 @@ const coreTopics: readonly StudyTopic[] = [
         'Avoid a catalogue of techniques with no argument. Select two choices that work together and explain their contribution to an idea. For example, a long shot can isolate a figure while the removal of background sound focuses attention on their breathing. Compare another moment to show how this effect develops or changes. Distinguish a character’s viewpoint from the film’s larger perspective.'
       ]}
     ],
-    example:{title:'Two choices working together',question:'An invented scene cuts from a crowded hall to a close-up of a student, with the crowd’s sound fading. What might this achieve?',steps:[
+    example:{title:'Two choices working together',question:'A scene cuts from a crowded hall to a close-up of a student, with the crowd’s sound fading. What might this achieve?',steps:[
       'The close-up directs attention to the student’s reaction rather than the wider event.',
       'Fading crowd sound can create a sense of subjective isolation or intense concentration.'
     ],result:'Together the choices may position us close to the student’s experience. The expression and surrounding story help decide which interpretation is stronger.'},
@@ -111,7 +111,7 @@ const coreTopics: readonly StudyTopic[] = [
         'A line can extend forever on paper while its context cannot. A hire charge may apply only for whole hours or a limited time. Interpolation estimates within the observed range; extrapolation extends beyond it and needs more caution. Give a numerical answer with a sentence explaining what it means, and check whether the value is possible in the original situation.'
       ]}
     ],
-    example:{title:'A fixed charge and an hourly rate',question:'A fictional bike hire costs $8 for one hour and $14 for three hours. Assume a linear charge. What is its rule?',steps:[
+    example:{title:'A fixed charge and an hourly rate',question:'A bike hire costs $8 for one hour and $14 for three hours. Assume a linear charge. What is its rule?',steps:[
       'Gradient = (14 − 8) ÷ (3 − 1) = 3 dollars per hour.',
       'Substitute (1, 8): 8 = 3 × 1 + c, so c = 5.'
     ],result:'C = 3h + 5. The model has a $5 fixed charge and adds $3 per hour; at four hours it predicts $17.'},
@@ -258,7 +258,7 @@ const coreTopics: readonly StudyTopic[] = [
         'Each fertilisation is a new chance event in the model. A 1 in 4 probability does not guarantee one aa offspring in every group of four. Mutation can produce new alleles; recombination and independent assortment rearrange existing variation. Real inheritance can also involve incomplete dominance, multiple genes and other patterns, so state the assumptions of a simple cross before interpreting it.'
       ]}
     ],
-    example:{title:'A fictional plant trait',question:'In a model, A gives smooth seeds and is completely dominant to a. Cross two Aa plants. What fraction is predicted to have rough seeds?',steps:[
+    example:{title:'A plant trait',question:'In a model, A gives smooth seeds and is completely dominant to a. Cross two Aa plants. What fraction is predicted to have rough seeds?',steps:[
       'Each parent contributes A or a. List AA, Aa, Aa and aa.',
       'Only aa expresses the recessive rough-seed phenotype under these assumptions.'
     ],result:'The predicted probability is 1/4, or 25%, for each offspring. The actual fraction in a small sample can differ.'},

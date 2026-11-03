@@ -153,7 +153,7 @@ const module:GameModule={
   // Grid owns keyboard focus while aiming; cells expose precise accessible labels.
   board.tabIndex=0;
   draw();
-  return {pause(){paused=true;cancel();draw();},resume(){paused=false;draw();},restart(){cancel();state=freshGame();selected=null;cursor={x:0,y:0};feedback.textContent='Fresh board · find your flow';draw();context.save(state);},serialize(){return structuredClone(state);},restore(data){const restored=restoreGame(data);if(!restored)return;cancel();state=restored;selected=null;feedback.textContent='Your puzzle is ready to continue';draw();},dispose(){disposed=true;cancel();resize.disconnect();abort.abort();root.remove();}};
+  return {pause(){paused=true;cancel();draw();},resume(){paused=false;draw();},restart(){cancel();state=freshGame();selected=null;cursor={x:0,y:0};feedback.textContent='Fresh board · find your flow';draw();context.save(state);board.focus({preventScroll:true});},serialize(){return structuredClone(state);},restore(data){const restored=restoreGame(data);if(!restored)return;cancel();state=restored;selected=null;feedback.textContent='Your puzzle is ready to continue';draw();},dispose(){disposed=true;cancel();resize.disconnect();abort.abort();root.remove();}};
  }
 };
 export default module;

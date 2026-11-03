@@ -1,0 +1,162 @@
+@import './native-glass.css';
+
+/* Clear sheet material. Background detail stays live and recognisable;
+   soft blur keeps text readable without a panel-wide veil. */
+:is(.arcade-sheet,body.in-game .mp-card){
+  --sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .92);
+  /* One clear optical transfer across the entire sheet. */
+  --sheet-veil:var(--glass-clear-fill);--sheet-halo:rgb(0 0 0 / .82);
+  --sheet-optics:var(--glass-clear-blur) saturate(1.08);
+  --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .13);
+  --sheet-line:rgb(255 255 255 / .16);--sheet-focus:#fff;
+  --sheet-radius:32px;--sheet-padding:16px;--sheet-group-radius:calc(var(--sheet-radius) - var(--sheet-padding));
+  box-sizing:border-box;padding:var(--sheet-padding);border-radius:var(--sheet-radius);
+  border:1px solid var(--glass-sheet-edge);
+  background:var(--sheet-veil);color:var(--sheet-ink);color-scheme:dark;
+  -webkit-backdrop-filter:var(--sheet-optics);backdrop-filter:var(--sheet-optics);
+  box-shadow:var(--glass-sheet-rim),var(--glass-sheet-lift);
+  font:400 17px/1.45 var(--font-sans);text-shadow:none;
+  -webkit-text-stroke:0;paint-order:stroke fill;
+}
+html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[data-glass-tone=light])) .mp-card{
+  --sheet-ink:#111316;--sheet-action-ink:#fff;--sheet-muted:#22252a;
+  /* Ink adapts to the presentation; the sheet material stays the same. */
+  --sheet-veil:var(--glass-clear-fill);--sheet-halo:rgb(255 255 255 / .62);
+  --sheet-optics:var(--glass-clear-blur) saturate(1.08);
+  --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .13);
+  --sheet-line:rgb(0 0 0 / .12);--sheet-focus:#111316;color-scheme:light;
+}
+/* Plain typography at every display density. */
+@media(max-resolution:1.5dppx){:is(.arcade-sheet,body.in-game .mp-card){-webkit-text-stroke-width:0}}
+@media(min-width:640px){:is(.arcade-sheet,body.in-game .mp-card){--sheet-radius:28px}}
+.arcade-sheet.ui-glass-sheet{padding:var(--sheet-padding)}
+/* The tiny handle is decoration, not a false drag affordance or tab stop. */
+:is(.arcade-sheet,body.in-game .mp-card)::before{content:'';display:block;width:36px;height:4px;margin:0 auto 14px;border-radius:999px;background:var(--sheet-ink);opacity:.28}
+@media(min-width:640px){:is(.arcade-sheet,body.in-game .mp-card)::before{display:none}}
+.arcade-sheet.ui-glass-sheet{--sheet-from-scale:.98;--sheet-from-lift:18px}
+@media(min-width:640px){.arcade-sheet.ui-glass-sheet{--sheet-from-scale:.96;--sheet-from-lift:8px}}
+.arcade-sheet.ui-glass-sheet[open]{transition-duration:160ms,320ms,320ms,320ms,320ms}
+.arcade-sheet.ui-glass-sheet[open]::backdrop{background-color:transparent}
+/* Keep the paused artwork visible; this does not resume the game or alter its state. */
+body:has(.arcade-sheet[open]) #pause-overlay{opacity:0;pointer-events:none}
+.arcade-sheet :is(h1,h2,h3,.dialog-head h2,.game-metrics strong){color:var(--sheet-ink);font-family:var(--font-sans);letter-spacing:-.02em}
+.arcade-sheet :is(h1,h2,.dialog-head h1){font-size:22px;font-weight:650;line-height:1.2}
+.arcade-sheet .dialog-head{margin:0 0 16px;gap:12px}
+.arcade-sheet :is(.muted,.search-label,.menu-note,#rules-text,.game-menu-eyebrow){color:var(--sheet-muted)}
+.arcade-sheet .game-menu-eyebrow{font-size:11px;letter-spacing:.08em;font-weight:550}
+.arcade-sheet :is(.icon-button,.game-button.secondary){background:var(--sheet-control);color:var(--sheet-ink);box-shadow:none}
+.arcade-sheet .game-button:not(.secondary){background:var(--sheet-ink);color:var(--sheet-action-ink);box-shadow:none}
+:is(.arcade-sheet,body.in-game .mp-card) .game-button:not(.secondary){text-shadow:none;-webkit-text-stroke:0}
+/* Form controls reset inherited text shadows in browser stylesheets. Keep
+   the stroke-local contrast on transparent controls; solid actions need none. */
+:is(.arcade-sheet,body.in-game .mp-card) :is(button:not(.game-button),.game-button.secondary,input,select){text-shadow:inherit}
+.arcade-sheet :is(input:not([type=checkbox]),select){background:var(--sheet-control);color:var(--sheet-ink)}
+.arcade-sheet input::placeholder{color:var(--sheet-ink);opacity:1}
+#accounts-dialog.arcade-sheet label{color:var(--sheet-muted)}
+#accounts-dialog.arcade-sheet input{background:var(--sheet-control);color:var(--sheet-ink)}
+.arcade-sheet .account-tabs{gap:4px;padding:4px;border-radius:999px;background:var(--sheet-group)}
+.arcade-sheet .account-tabs .game-button{min-height:48px;padding:8px;background:transparent;color:var(--sheet-ink)}
+.arcade-sheet .account-tabs [aria-pressed=true]{background:var(--sheet-control)}
+.arcade-sheet :is(.setting-list,.game-menu-actions,.game-menu-options,.game-metrics,.ms-menu-section,.ff-numbers){border-radius:var(--sheet-group-radius);background:var(--sheet-group);border:0}
+.arcade-sheet .setting-list{padding-inline:14px}
+.arcade-sheet .setting-list label{color:var(--sheet-ink)}
+.arcade-sheet :is(.setting-list label+label,.menu-note,.lb-table th,.lb-table td){border-color:var(--sheet-line)}
+.arcade-sheet .setting-list input[type=checkbox]:not(:checked){background:color-mix(in srgb,var(--sheet-ink) 20%,transparent)}
+.arcade-sheet .game-metrics{margin-bottom:12px;padding:12px 14px;color:var(--sheet-muted);gap:8px 16px}
+.arcade-sheet :is(.game-menu-actions,.game-menu-options){grid-template-columns:1fr;gap:0;overflow:hidden}
+.arcade-sheet .game-menu-options{margin-bottom:12px}
+.arcade-sheet :is(.game-menu-action,.game-menu-choice){min-height:48px;padding:12px 14px;border:0;border-radius:0;background:transparent;color:var(--sheet-ink);font:500 16px/1.3 var(--font-sans);box-shadow:none}
+.arcade-sheet :is(.game-menu-action,.game-menu-choice)+:is(.game-menu-action,.game-menu-choice){border-top:1px solid var(--sheet-line)}
+.arcade-sheet .game-menu-action#pause-game{background:var(--sheet-control);color:var(--sheet-ink);justify-content:flex-start}
+.arcade-sheet .game-menu-action[aria-pressed=true]{background:var(--sheet-control);color:var(--sheet-ink)}
+.arcade-sheet .game-menu-choice select{width:65%;font-size:15px;border-color:transparent}
+.arcade-sheet .game-touch-setting{font:400 15px/1.4 var(--font-sans);color:var(--sheet-muted);padding:0 14px}
+.arcade-sheet .game-touch-setting[hidden]{display:none}
+.arcade-sheet :is(.ms-setting-row,.game-touch-setting) input[type=checkbox]{position:relative;appearance:none;width:51px;height:31px;flex:none;margin:0;border:0;border-radius:999px;background:color-mix(in srgb,var(--sheet-ink) 20%,transparent);transition:background-color 200ms var(--ease-out)}
+.arcade-sheet :is(.ms-setting-row,.game-touch-setting) input[type=checkbox]::before{content:'';position:absolute;left:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 6px #0003;transition:translate 260ms var(--ease-glass)}
+.arcade-sheet :is(.ms-setting-row,.game-touch-setting) input[type=checkbox]:checked{background:var(--c-green)}
+.arcade-sheet :is(.ms-setting-row,.game-touch-setting) input[type=checkbox]:checked::before{translate:20px 0}
+.arcade-sheet #rules-text{padding:14px;border-radius:var(--sheet-group-radius);background:var(--sheet-group);color:var(--sheet-ink)}
+.arcade-sheet :is(.account-menu,.lb-personal){padding:14px;border-radius:var(--sheet-group-radius);background:var(--sheet-group);border:0}
+.arcade-sheet .account-menu .muted:first-child{margin-top:0}
+.arcade-sheet .lb-table{border-radius:var(--sheet-group-radius);overflow:hidden;background:var(--sheet-group);color:var(--sheet-ink)}
+.arcade-sheet .lb-table :is(th,td){color:var(--sheet-ink);border-color:var(--sheet-line)}
+:root[data-input=keyboard] .arcade-sheet :focus-visible{outline-color:var(--sheet-focus)}
+/* The legacy field ring contains an ID inside :not(); explicitly replace that
+   ring here so light glass gets dark, visible keyboard focus. */
+:root[data-input=keyboard] .arcade-sheet :is(input:not([type=checkbox]),select,textarea):focus-visible{outline:none;box-shadow:inset 0 0 0 1px var(--sheet-focus)!important}
+@media(hover:hover) and (pointer:fine){.arcade-sheet :is(.game-menu-action,.icon-button):hover{background:var(--sheet-control);color:var(--sheet-ink)}}
+
+/* Native game panels retain their own roles, handlers, focus and Escape logic. */
+.game-view dialog.ms-settings{width:calc(100% - 16px);max-width:none;max-height:min(85dvh,calc(100dvh - 24px));margin:auto auto 8px;overflow:auto}
+@media(min-width:640px){.game-view dialog.ms-settings{width:min(440px,calc(100% - 32px));margin:auto;max-height:86dvh}}
+.arcade-sheet :is(.ms-menu-heading,.ms-menu-footer){border:0;margin:0 0 12px}
+.arcade-sheet .ms-menu-section{padding:12px 14px;margin:12px 0}
+.arcade-sheet :is(.ms-menu-subtitle,.ms-statistics,.ms-setting-row small){color:var(--sheet-muted)}
+.arcade-sheet :is(.ms-menu-section h3,.ms-setting-row){color:var(--sheet-ink);font-family:var(--font-sans)}
+.arcade-sheet .ms-setting-row{min-height:48px;border-color:var(--sheet-line);font-size:16px}
+.arcade-sheet .ms-menu-section h3{font-size:13px;font-weight:600;margin:0 0 4px}
+.game-view .arcade-sheet :is(.ms-close,.ms-menu-actions button,.ms-menu-footer button,.ms-zoom button,.ms-practice-tools button){min-height:44px;min-width:44px;border:0;border-radius:12px;background:var(--sheet-control);color:var(--sheet-ink);font:500 16px var(--font-sans);box-shadow:none}
+.game-view .arcade-sheet button.ms-close{border-radius:50%;font-size:24px;margin:0}
+.arcade-sheet .ms-menu-footer{margin-bottom:0}
+.game-view .ff-overlay,body.in-game .mp-overlay{background:transparent}
+.game-view .ff-dialog{width:min(390px,100%)}
+.arcade-sheet.ff-dialog :is(h2,h3){font-family:var(--font-sans)}
+.arcade-sheet .ff-close{color:var(--sheet-ink)!important;background:var(--sheet-control);border-radius:50%;width:44px;height:44px;top:12px;right:12px}
+.arcade-sheet .ff-numbers{padding:12px 8px}
+.arcade-sheet .ff-numbers span{font-size:12px}
+.game-view .arcade-sheet .ff-share{min-height:44px;padding:8px 20px;border-radius:999px;background:var(--sheet-control);color:var(--sheet-ink)!important;font:600 16px var(--font-sans)}
+.arcade-sheet .ff-copy{background:var(--sheet-control);color:var(--sheet-ink);border:1px solid var(--sheet-line);border-radius:12px;padding:12px}
+body.in-game .mp-card{width:min(440px,100%)}
+body.in-game .mp-card .mp-panel{padding:0;border:0;border-radius:0;background:transparent;font-family:var(--font-sans);color:var(--sheet-ink);gap:14px}
+body.in-game .mp-card .mp-title{font:650 22px/1.2 var(--font-sans);letter-spacing:-.02em;color:var(--sheet-ink);padding-right:44px;margin-bottom:4px}
+body.in-game .mp-card :is(.mp-title small,.mp-field,.mp-help,.mp-link,.mp-status){color:var(--sheet-muted);font-family:var(--font-sans)}
+body.in-game .mp-card .mp-title small{display:block;margin:6px 0 0;font-size:14px}
+body.in-game .mp-card .mp-field{font-size:15px}
+body.in-game .mp-card :is(input,.mp-players li){color:var(--sheet-ink);background:var(--sheet-control);border-color:var(--sheet-line)}
+body.in-game .mp-card .mp-room-code{color:var(--sheet-ink)}
+body.in-game .mp-card input::placeholder{color:var(--sheet-ink);opacity:1}
+body.in-game .mp-card :is(.mp-offline,.mp-online){padding:14px;background:var(--sheet-group);border-radius:var(--sheet-group-radius);grid-template-columns:1fr}
+body.in-game .mp-card .mp-help{font-size:14px}
+body.in-game .mp-card .mp-close{top:16px;right:16px;color:var(--sheet-ink);background:var(--sheet-control);border-radius:50%}
+/* The native multiplayer card is not adaptive-inked. Its close icon keeps the
+   sheet's opposite-tone halo as a thin outline so it holds 3:1 over any art. */
+body.in-game .mp-card .mp-close svg{filter:drop-shadow(1px 0 0 var(--sheet-halo)) drop-shadow(-1px 0 0 var(--sheet-halo)) drop-shadow(0 1px 0 var(--sheet-halo)) drop-shadow(0 -1px 0 var(--sheet-halo))}
+body.in-game .mp-card .game-button{font:600 15px var(--font-sans);box-shadow:none;border-radius:999px}
+body.in-game .mp-card .game-button:not(.secondary){background:var(--sheet-ink);color:var(--sheet-action-ink)}
+body.in-game .mp-card .game-button.secondary{background:var(--sheet-control);color:var(--sheet-ink)}
+/* Custom panels use their existing hidden state; discrete display keeps the exit
+   visible without changing focus ownership or delaying game-owned close calls. */
+.game-view .ff-overlay,body.in-game .mp-overlay{transition:display 180ms allow-discrete,background-color 180ms var(--ease-out)}
+.game-view .ff-dialog,body.in-game .mp-card{transition:opacity 180ms var(--ease-out),scale 180ms var(--ease-out);scale:1;opacity:1}
+.game-view .ff-overlay:not([hidden]) .ff-dialog,body.in-game .mp-overlay:not([hidden]) .mp-card{transition-duration:160ms,320ms;transition-timing-function:var(--ease-out),var(--ease-glass-pop)}
+.game-view .ff-overlay[hidden] .ff-dialog,body.in-game .mp-overlay[hidden] .mp-card{opacity:0;scale:.96}
+@starting-style{.game-view .ff-overlay:not([hidden]) .ff-dialog,body.in-game .mp-overlay:not([hidden]) .mp-card{opacity:0;scale:.96}}
+@media(max-width:639px){body.in-game .mp-overlay{align-items:end;padding:8px}body.in-game .mp-card{width:100%}.game-view .ff-overlay{align-items:end;padding:8px}.arcade-sheet .ff-close,body.in-game .mp-card .mp-close{top:30px}}
+
+/* Opaque accessibility fallbacks deliberately retain the established dark palette. */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){--sheet-optics:none}}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+  :is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){-webkit-text-stroke:0;--sheet-veil:#1c1c20;--sheet-optics:none;--sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .9);--sheet-control:#ffffff1a;--sheet-group:#ffffff0f;--sheet-line:#ffffff40;--sheet-focus:#fff;color-scheme:dark;border:1px solid #ffffffb3}
+}
+@media(prefers-contrast:more){:is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){--sheet-veil:#121214;border-width:2px}}
+@media(forced-colors:active){
+  :is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){-webkit-text-stroke:0;--sheet-veil:Canvas;--sheet-optics:none;--sheet-ink:CanvasText;--sheet-muted:CanvasText;--sheet-control:Canvas;--sheet-group:Canvas;--sheet-line:CanvasText;--sheet-focus:Highlight;background:Canvas;color:CanvasText;border:2px solid CanvasText;box-shadow:none}
+  :is(.arcade-sheet[data-glass-tone],body.in-game .mp-card) :is(button,input,select,textarea){border:2px solid ButtonText}
+  .game-view .arcade-sheet.ms-settings :is(button,input,select,textarea){border:2px solid ButtonText}
+  .arcade-sheet :is(.ms-setting-row,.game-touch-setting) input[type=checkbox]{border:2px solid CanvasText}
+  #accounts-dialog.arcade-sheet input{border:2px solid ButtonText}
+  .arcade-sheet :is(.ms-setting-row,.game-touch-setting) input[type=checkbox]::before{background:CanvasText;box-shadow:none}
+  .arcade-sheet :is(.ms-setting-row,.game-touch-setting) input[type=checkbox]:checked{background:CanvasText}
+  .arcade-sheet :is(.ms-setting-row,.game-touch-setting) input[type=checkbox]:checked::before{background:Canvas}
+  :root[data-input=keyboard] .arcade-sheet :is(input:not([type=checkbox]),select,textarea):focus-visible{outline:2px solid CanvasText;outline-offset:-2px;box-shadow:none!important}
+}
+@media(prefers-reduced-motion:reduce){
+  :is(.arcade-sheet,body.in-game .mp-card,.game-view .ff-overlay,body.in-game .mp-overlay),.arcade-sheet *,.arcade-sheet *::before,.arcade-sheet::backdrop{animation:none!important;transition:none!important}
+}
+.reduce-motion :is(.arcade-sheet,body.in-game .mp-card,.game-view .ff-overlay,body.in-game .mp-overlay),.reduce-motion .arcade-sheet *,.reduce-motion .arcade-sheet *::before,.reduce-motion .arcade-sheet::backdrop{animation:none!important;transition:none!important}
+
+/* Desktop action buttons, never tiles/cards/keyboard keys. Keep their game art. */
+@media(min-width:1366px) and (pointer:fine){
+  body.in-game #game-stage :is(.game-controls .game-button,.bf-actions .game-button,.cc-actions .game-button,.sol-actions .game-button,.sl-hint,.pool-pocket-row select){min-height:44px;font-size:14px}
+}

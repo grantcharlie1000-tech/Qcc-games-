@@ -134,3 +134,9 @@ recovery. Level selection exposes all 27; completing Level 27 wraps to Level 1.
 ## Level expansion — 23 October 2026
 
 The original 27 boards remain unchanged. Fifty new Deep puzzles extend the catalogue to 77, with independent minimum-pour difficulty rising from 14 to 21. New boards are distinct even under tube reordering and colour renaming; each has an independently solved route and legal construction witness. The final level now wraps from Level 77 to Level 1. See `docs/LEVEL_EXPANSION.md` for the full arcade inventory and verification.
+
+
+### Original menus restored — Charlie 10:18
+
+Start, pause and result UI use the original `0297ed4` game design. Only Slither uses the shared minimal game sheet. The removed controls, larger play area and compact shared-dock HUD remain.
+The original victory animation and Next level action return without the removed footer: Undo and Hint remain icon-only Liquid Glass dock actions.
