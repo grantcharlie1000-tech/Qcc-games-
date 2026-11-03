@@ -27,17 +27,13 @@ describe('clear glass contrast',()=>{
   it('uses the content over a preferred tone on a uniform bright surface',()=>{
     expect(glassInk([[255,255,255]],'light').color).toBe('#0b1015');
   });
-  it('keeps selected mid-gray tabs readable without a stroke',()=>{
-    // Through the 20% dark clear fill, mid-grey 133 renders near rgb(109),
-    // where white reaches 5.2:1; grey 145 renders near rgb(119), where white
-    // only just reaches 4.5:1, inside the margin, so it gains the halo.
-    expect(glassInk([[133,133,133]],undefined,true)).toEqual({color:'#fff',halo:'transparent'});
-    expect(glassInk([[145,145,145]],undefined,true)).toEqual({color:'#fff',halo:'rgb(0 0 0 / .8)'});
+  it('uses dark ink on mid-gray art preserved by the clear material',()=>{
+    expect(glassInk([[133,133,133]],undefined,true)).toEqual({color:'#0b1015',halo:'transparent'});
+    expect(glassInk([[145,145,145]],undefined,true)).toEqual({color:'#0b1015',halo:'transparent'});
   });
-  it('models the dark clear fill rather than a light veil',()=>{
-    // Darkened by the fill, a pale grey still suits dark ink without a halo.
+  it('models the faint clear fill and keeps uncertainty local to the glyph',()=>{
     expect(glassInk([[200,200,200]])).toEqual({color:'#0b1015',halo:'transparent'});
     // A grey that neither ink clears through the fill gets the halo.
-    expect(glassInk([[150,150,150]]).halo).not.toBe('transparent');
+    expect(glassInk([[110,110,110]]).halo).not.toBe('transparent');
   });
 });

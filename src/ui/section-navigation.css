@@ -4,14 +4,12 @@
   /* Header groups keep the clear material. The backdrop is only softened
      (never filled white) so one shared ink stays legible over art. */
   --glass-tint:var(--glass-clear-fill);--glass-frost:blur(3px);
-  --glass-tone:saturate(1.05) brightness(.9) contrast(.85);
+  --glass-tone:saturate(1.08);
 }
 .section-navigation>.arcade-glass,.section-navigation>.arcade-glass-mini{
-  /* The bottom navigation is frosted: a deeper blur and a darker tint than
-     the clear HUD controls, still never a white wash. glass-ink.ts models
-     this tint (NAV_VEIL) when it picks the shared ink. */
-  --glass-tint:rgb(8 12 18 / .36);--glass-frost:blur(12px);
-  --glass-tone:saturate(1.4) brightness(.94);
+  /* Preserve the artwork's values. The rim and refraction define the glass. */
+  --glass-tint:var(--glass-clear-fill);--glass-frost:blur(3px);
+  --glass-tone:saturate(1.08);
 }
 .section-navigation>.arcade-glass:is([data-glass=frost],[data-glass=backdrop]){
   background:none;border:0;box-shadow:none;

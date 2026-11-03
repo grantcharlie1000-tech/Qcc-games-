@@ -8,8 +8,8 @@ const IMAGE_SIZE=256;
 const isUnknown=(samples:readonly RGB[])=>samples.length===2&&samples[0].every(v=>v===0)&&samples[1].every(v=>v===255);
 type ImagePixels={data:Uint8ClampedArray};
 const luminance=(rgb:RGB)=>rgb.reduce((sum,v,i)=>sum+(v/255<=.04045?v/3294.6:((v/255+.055)/1.055)**2.4)*[.2126,.7152,.0722][i],0);
-const CLEAR_FILL:RGB=[8,12,18];
-const CLEAR_VEIL=.2,NAV_VEIL=.36;
+const CLEAR_FILL:RGB=[255,255,255];
+const CLEAR_VEIL=.06;
 const HALO_DARK='rgb(0 0 0 / .8)',HALO_LIGHT='rgb(255 255 255 / .75)';
 const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,number,number];
 /** Choose plain foreground ink for the clear material. Blur softens detail;
@@ -18,8 +18,7 @@ const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,nu
  * glyph gets a soft opposite-tone halo; over even art it stays transparent. */
 export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false,textured=false,veil=CLEAR_VEIL):{color:string;halo:string}{
   const colors=samples.length?samples:[[25,29,28] as RGB];
-  // Model the fill: the clear fill (--glass-clear-fill, rgb(8 12 18 / .20)) or
-  // the bottom navigation's frosted tint (section-navigation.css, alpha .36).
+  // Model the same faint clear fill used by the navigation and game controls.
   const backgrounds=colors.map(rgb=>luminance(mix(rgb,CLEAR_FILL,veil))*(selection==='dark'?.91:selection?.99:1));
   const dark=luminance(INK);
   const darkContrast=Math.min(...backgrounds.map(bg=>(Math.max(bg,dark)+.05)/(Math.min(bg,dark)+.05)));
@@ -177,7 +176,7 @@ function update(){
   frame=0;
   for(const sheet of bindings)if(sheet.matches('.ui-glass-sheet')){
     for(const parent of sheet.querySelectorAll<HTMLElement>('h1,h2,h3,p,label,a,button,small,strong,span,td,th,dt,dd')){
-      if(parent.closest('.arcade-glass,.glass-label,svg,.game-button:not(.secondary)'))continue;
+      if(parent.closest('.arcade-glass,.glass-label,svg,.game-button:not(.secondary),.ui-btn.primary,.ui-chip'))continue;
       for(const node of [...parent.childNodes])if(node.nodeType===Node.TEXT_NODE&&node.textContent?.trim()){
         const label=document.createElement('span');label.className='glass-label';node.replaceWith(label);label.append(node);
       }
@@ -201,7 +200,7 @@ function update(){
       const groups=new Map<Element,HTMLElement[]>();
       for(const glyph of glyphs){
         const r=rect(glyph);if(!r.width||!r.height||style(glyph).clip!=='auto')continue;
-        if(glyph.closest('.game-button:not(.secondary)')&&!glyph.closest('.arcade-glass'))continue;
+        if(glyph.closest('.ui-chip,.ui-btn.primary')||(glyph.closest('.game-button:not(.secondary)')&&!glyph.closest('.arcade-glass')))continue;
         const key=bar.matches('.ui-tabbar')||target.matches('.ui-tabbar-mini')?bar:glyph.closest('.ui-tab,button,a,.game-hud-item,label')??glyph;
         const group=groups.get(key)??[];group.push(glyph);groups.set(key,group);
       }
@@ -211,11 +210,11 @@ function update(){
       const accessible=matchMedia('(prefers-contrast: more)').matches||matchMedia('(forced-colors: active)').matches||matchMedia('(prefers-reduced-transparency: reduce)').matches;
       for(const group of groups.values()){
         let ink:ReturnType<typeof glassInk>|null=null;
-        // Frosted sheets carry a dark tint under a deep blur: plain white ink, no halo.
-        if(bar.closest('.ui-glass-sheet')&&!accessible)ink={color:'#fff',halo:'transparent'};
+        // Frosted sheets provide their own readable background and plain ink.
+        if(bar.closest('.ui-glass-sheet')&&!accessible)ink={color:getComputedStyle(bar).getPropertyValue('--sheet-ink').trim()||'#14191f',halo:'transparent'};
         else if(bar.dataset.glass!=='off'&&!accessible){
           const samples=group.map(sample),known=samples.filter(s=>!isUnknown(s)).flat();
-          ink=glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured),bar.closest('.section-navigation')?NAV_VEIL:CLEAR_VEIL);
+          ink=glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured));
         }
         for(const glyph of group)changes.push({glyph,ink});
       }

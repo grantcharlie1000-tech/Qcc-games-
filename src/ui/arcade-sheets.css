@@ -1,30 +1,21 @@
 @import './native-glass.css';
 
-/* Frosted sheet material: deep blur plus a dark tint, a thin rim, white ink. */
+/* Sheets share the clear bar's light rim, with enough frost for plain text. */
 :is(.arcade-sheet,body.in-game .mp-card){
-  --sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .92);
+  --sheet-ink:#14191f;--sheet-action-ink:#fff;--sheet-muted:#313943;
   /* One clear optical transfer across the entire sheet. */
   --sheet-veil:var(--glass-frost-fill);--sheet-halo:transparent;
   --sheet-optics:var(--glass-frost-blur);
-  --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .13);
-  --sheet-line:rgb(255 255 255 / .16);--sheet-focus:#fff;
+  --sheet-group:rgb(255 255 255 / .12);--sheet-control:rgb(255 255 255 / .28);
+  --sheet-line:rgb(20 25 31 / .14);--sheet-focus:#14191f;
   --sheet-radius:32px;--sheet-padding:16px;--sheet-group-radius:calc(var(--sheet-radius) - var(--sheet-padding));
   box-sizing:border-box;padding:var(--sheet-padding);border-radius:var(--sheet-radius);
   border:1px solid var(--glass-sheet-edge);
-  background:var(--sheet-veil);color:var(--sheet-ink);color-scheme:dark;
+  background:var(--sheet-veil);color:var(--sheet-ink);color-scheme:light;
   -webkit-backdrop-filter:var(--sheet-optics);backdrop-filter:var(--sheet-optics);
   box-shadow:var(--glass-sheet-rim),var(--glass-sheet-lift);
   font:400 17px/1.45 var(--font-sans);text-shadow:none;
   -webkit-text-stroke:0;paint-order:stroke fill;
-}
-html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[data-glass-tone=light])) .mp-card{
-  /* Light presentations get the same frosted dark sheet and white ink, so every
-     menu reads the same over bright and dark games. */
-  --sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .92);
-  --sheet-veil:var(--glass-frost-fill);--sheet-halo:transparent;
-  --sheet-optics:var(--glass-frost-blur);
-  --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .13);
-  --sheet-line:rgb(255 255 255 / .16);--sheet-focus:#fff;color-scheme:dark;
 }
 /* Plain typography at every display density. */
 @media(max-resolution:1.5dppx){:is(.arcade-sheet,body.in-game .mp-card){-webkit-text-stroke-width:0}}

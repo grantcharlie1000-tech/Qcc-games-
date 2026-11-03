@@ -27,8 +27,8 @@ async function originOf(sheet:Locator){
 }
 async function expectGlassSheet(dialog:Locator){
   await expect(dialog).toHaveClass(/\bui-glass-sheet\b/);
-  // The approved clear sheet: --glass-clear-blur with a slight saturation.
-  expect(await dialog.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(1.5px) saturate(1.08)');
+  // The shared light frost keeps text legible over artwork.
+  expect(await dialog.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(22px) saturate(1.18)');
   const family=await dialog.locator('h2').first().evaluate(el=>getComputedStyle(el).fontFamily);
   expect(family).toContain('-apple-system');
   expect(family).not.toContain('Arcade');
