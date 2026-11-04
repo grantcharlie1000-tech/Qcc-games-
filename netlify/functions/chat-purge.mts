@@ -1,4 +1,5 @@
 import {getPool} from '../lib/db.mts';
+import {boundDatabase} from '../lib/runtime.mts';
 import {netlifyMediaStore} from '../lib/media-store.mts';
 import type {Config} from '@netlify/functions';
 import {purgeExpiredChat} from '../../src/chat/server';
@@ -7,7 +8,7 @@ const BATCH=500,MAX_ITERATIONS=20;
 // Hourly: delete expired chat messages (and their snap media) and stale pending uploads. Logs counts only.
 export default async ()=>{
  try{
-  const pool=getPool(),query=pool.query.bind(pool),store=await netlifyMediaStore();
+  const query=boundDatabase(getPool()).query,store=await netlifyMediaStore();
   let deleted=0,runs=0;
   for(;runs<MAX_ITERATIONS;){
    const count=await purgeExpiredChat(query,store);runs++;deleted+=count;
