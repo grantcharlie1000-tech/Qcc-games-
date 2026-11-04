@@ -87,7 +87,9 @@ for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
   // The lens and the glow are the bar's layers, so the tabs are the children that are neither.
-  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(6);
+  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(5);
+  // No chat backend answers here, so the Apps tab is not added and the bar is the shell's own five tabs.
+  await expect(page.locator('.app-navigation')).not.toHaveAttribute('data-apps','on');
 });
 
 for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}px, and the bar holds only its tabs`,async({page})=>{
