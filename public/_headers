@@ -13,3 +13,6 @@
 
 /movies/*
   Cache-Control: no-store
+
+/deploy-info.json
+  Cache-Control: no-store
