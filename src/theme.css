@@ -464,3 +464,7 @@ dialog.ui-glass-sheet .icon-button.sheet-close-glass[data-glass=off]{background:
 
 
 .ui-glass-sheet .glass-ink{color:var(--glass-adaptive-ink,inherit);-webkit-text-stroke:0;text-shadow:none}
+
+/* Menus remain scrollable without a visible scrollbar. */
+.ui-glass-sheet{--glass-sheet-fill:rgb(12 16 22 / .90);scrollbar-width:none}
+.ui-glass-sheet::-webkit-scrollbar{display:none}
