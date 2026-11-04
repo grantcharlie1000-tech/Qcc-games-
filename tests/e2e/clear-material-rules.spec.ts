@@ -32,6 +32,7 @@ for(const route of ['collection','game/snake','game/neon-coil'])test(`${route} u
     const s=getComputedStyle(e),gl=e.querySelector(':scope>.ui-glass-gl');
     return {webgl:e.matches('[data-glass-mode=webgl]'),partial:e.hasAttribute('data-glass-partial'),filter:s.backdropFilter,fill:s.backgroundColor,lensTint:gl?getComputedStyle(gl,'::after').backgroundColor:null};
   });
+  // #102 (ff95043): arcade game sheets use the readable .9 fill; the collection section sheet keeps the frost fill.
   // #92 deliberately removes the sharp WebGL sheet copy: frost stays in CSS.
-  expect(optics).toEqual({webgl:false,partial:false,filter:'blur(20px) saturate(1.5)',fill:'rgba(12, 16, 22, 0.58)',lensTint:null});
+  expect(optics).toEqual({webgl:false,partial:false,filter:'blur(20px) saturate(1.5)',fill:route==='collection'?'rgba(12, 16, 22, 0.58)':'rgba(12, 16, 22, 0.9)',lensTint:null});
 });

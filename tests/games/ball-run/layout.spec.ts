@@ -13,7 +13,7 @@ for(const viewport of [{width:390,height:844},{width:1366,height:768}])test(`Bal
 for(const viewport of [{width:320,height:568},{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`original setup and difficulty action at ${viewport.width}x${viewport.height}`,async({page})=>{
  await page.setViewportSize(viewport);await page.goto('/#/game/ball-run');
  const setup=page.getByRole('region',{name:'Ball Run setup'});await expect(setup).toBeVisible();
- await expect(setup.getByRole('heading',{name:'BALL RUN',exact:true})).toBeVisible();await expect(setup).toContainText('Avoid the blocks and stay on the track');
+ await expect(setup.getByRole('heading',{name:'BALL RUN',exact:true})).toBeVisible();await expect(setup.locator('.br-copy')).toHaveCount(0);// #101 removed the setup explainer copy
  const slider=setup.getByRole('slider',{name:'Difficulty'});await slider.focus();await page.keyboard.press('End');await expect(slider).toHaveAttribute('aria-valuetext','Hard');
  await expect(setup.locator('.br-level')).toHaveText('Hard');
  const button=setup.getByRole('button',{name:'Play',exact:true}),panel=(await setup.boundingBox())!;
