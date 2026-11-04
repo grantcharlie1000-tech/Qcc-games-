@@ -42,48 +42,58 @@ export function errorFromBody(status:number,text:string,retryHeader:string|null,
  if(status===429)message=rateLimitMessage(action,retry);
  return new ApiError(status,code,message,retry);
 }
+/** Combines the caller's signal with a deadline; works without AbortSignal.any. cleanup() must be called when done. */
+export function deadline(ms:number,signal?:AbortSignal):{signal:AbortSignal;cleanup:()=>void} {
+ const any=(AbortSignal as unknown as {any?:(signals:AbortSignal[])=>AbortSignal}).any;
+ if(typeof any==='function'&&typeof AbortSignal.timeout==='function'){
+  return {signal:signal?any.call(AbortSignal,[AbortSignal.timeout(ms),signal]):AbortSignal.timeout(ms),cleanup:()=>{}};
+ }
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(new DOMException('The operation timed out.','TimeoutError')),ms);
+ const onAbort=()=>controller.abort(signal!.reason);
+ if(signal){if(signal.aborted)onAbort();else signal.addEventListener('abort',onAbort,{once:true});}
+ return {signal:controller.signal,cleanup:()=>{clearTimeout(timer);signal?.removeEventListener('abort',onAbort);}};
+}
+const failure=(error:unknown,signal?:AbortSignal):unknown=>{
+ if(signal?.aborted)return error;
+ const name=(error as {name?:string})?.name;
+ return name==='TimeoutError'||name==='AbortError'?new ApiError(0,'timeout',TIMEOUT_MESSAGE):new ApiError(0,'network',NETWORK_MESSAGE);
+};
 export class AppApi {
  constructor(readonly endpoint:string,private token:()=>string|null,private fetcher:typeof fetch=(...args)=>globalThis.fetch(...args),private timeoutMs=8000){}
- private signal(signal?:AbortSignal):AbortSignal {
-  const timeout=AbortSignal.timeout(this.timeoutMs);
-  if(!signal)return timeout;
-  const any=(AbortSignal as unknown as {any?:(signals:AbortSignal[])=>AbortSignal}).any;
-  return any?any.call(AbortSignal,[timeout,signal]):timeout;
- }
- private async send<T>(action:string,url:string,init:RequestInit,signal?:AbortSignal):Promise<T> {
+ private async run<T>(action:string,url:string,init:RequestInit,signal:AbortSignal|undefined,ms:number,read:(response:Response)=>Promise<T>):Promise<T> {
   const headers:Record<string,string>={...(init.headers as Record<string,string>|undefined)};
   const token=this.token();if(token)headers.Authorization=`Bearer ${token}`;
-  let response:Response;
-  try{response=await this.fetcher(url,{...init,headers,cache:'no-store',signal:this.signal(signal)});}
-  catch(error){
-   if(signal?.aborted)throw error;
-   const name=(error as {name?:string})?.name;
-   if(name==='TimeoutError')throw new ApiError(0,'timeout',TIMEOUT_MESSAGE);
-   if(name==='AbortError')throw new ApiError(0,'timeout',TIMEOUT_MESSAGE);
-   throw new ApiError(0,'network',NETWORK_MESSAGE);
-  }
-  if(!response.ok)throw errorFromBody(response.status,await response.text().catch(()=>''),response.headers.get('Retry-After'),action);
-  try{return await response.json() as T;}catch{throw new ApiError(response.status,'bad_response','Something went wrong. Try again.');}
+  const limit=deadline(ms,signal);
+  try{
+   let response:Response;
+   try{response=await this.fetcher(url,{...init,headers,cache:'no-store',signal:limit.signal});}
+   catch(error){throw failure(error,signal);}
+   if(!response.ok)throw errorFromBody(response.status,await response.text().catch(()=>''),response.headers.get('Retry-After'),action);
+   try{return await read(response);}catch(error){
+    if(error instanceof ApiError)throw error;
+    if(signal?.aborted)throw error;
+    throw failure(error,signal);
+   }
+  }finally{limit.cleanup();}
  }
- /** Like send, but resolves with the raw response (used for binary bodies). */
- async raw(action:string,body:unknown,signal?:AbortSignal):Promise<Response> {
-  const headers:Record<string,string>={'Content-Type':'application/json'};
-  const token=this.token();if(token)headers.Authorization=`Bearer ${token}`;
-  let response:Response;
-  try{response=await this.fetcher(`${this.endpoint}?action=${encodeURIComponent(action)}`,{method:'POST',headers,body:JSON.stringify(body),cache:'no-store',signal:this.signal(signal)});}
-  catch(error){
-   if(signal?.aborted)throw error;
-   const name=(error as {name?:string})?.name;
-   throw name==='TimeoutError'||name==='AbortError'?new ApiError(0,'timeout',TIMEOUT_MESSAGE):new ApiError(0,'network',NETWORK_MESSAGE);
-  }
-  if(!response.ok)throw errorFromBody(response.status,await response.text().catch(()=>''),response.headers.get('Retry-After'),action);
-  return response;
+ /** POST whose response is binary. The deadline covers reading the body too. */
+ raw<T>(action:string,body:unknown,read:(response:Response)=>Promise<T>,signal?:AbortSignal,ms=this.timeoutMs):Promise<T> {
+  return this.run(action,`${this.endpoint}?action=${encodeURIComponent(action)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},signal,ms,read);
  }
  get<T>(action:string,params:Record<string,string>={},signal?:AbortSignal):Promise<T> {
-  const query=new URLSearchParams({action,...params});
-  return this.send<T>(action,`${this.endpoint}?${query}`,{method:'GET'},signal);
+  const query=new URLSearchParams({action,...params});query.set('action',action);
+  return this.run<T>(action,`${this.endpoint}?${query}`,{method:'GET'},signal,this.timeoutMs,readJson);
  }
  post<T>(action:string,body:unknown,signal?:AbortSignal):Promise<T> {
-  return this.send<T>(action,`${this.endpoint}?action=${encodeURIComponent(action)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},signal);
+  return this.run<T>(action,`${this.endpoint}?action=${encodeURIComponent(action)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},signal,this.timeoutMs,readJson);
+ }
+}
+async function readJson<T>(response:Response):Promise<T> {
+ try{return await response.json() as T;}
+ catch(error){
+  const name=(error as {name?:string})?.name;
+  if(name==='TimeoutError'||name==='AbortError'||error instanceof TypeError)throw error;
+  throw new ApiError(response.status,'bad_response','Something went wrong. Try again.');
  }
 }

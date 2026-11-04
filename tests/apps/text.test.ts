@@ -27,6 +27,21 @@ describe('tokenizeRichText',()=>{
  });
  it('does not link mentions inside urls',()=>{const tokens=tokenizeRichText('https://x.nz/@sam #a');expect(tokens.map(t=>t.type)).toEqual(['link','text','tag']);});
 });
+describe('trimming',()=>{
+ it('leaves trailing dots and dashes of a mention as text',()=>{
+  expect(tokenizeRichText('hi @sam.')).toEqual([{type:'text',text:'hi '},{type:'mention',text:'@sam',href:'#/social/u/sam'},{type:'text',text:'.'}]);
+  expect(tokenizeRichText('@sam-- hi')[0]).toMatchObject({type:'mention',text:'@sam'});
+  expect(tokenizeRichText('@ab.')).toEqual([{type:'text',text:'@ab.'}]);
+ });
+ it('keeps balanced parentheses in urls only',()=>{
+  expect(tokenizeRichText('https://en.wikipedia.org/wiki/Foo_(bar).')[0]).toMatchObject({text:'https://en.wikipedia.org/wiki/Foo_(bar)'});
+  expect(tokenizeRichText('(https://a.nz/b)')[1]).toMatchObject({text:'https://a.nz/b'});
+ });
+ it('is linear on long punctuation runs',()=>{
+  const start=Date.now();tokenizeRichText('https://a'+'.'.repeat(50000)+'x');tokenizeRichText('https://a'+')'.repeat(50000));
+  expect(Date.now()-start).toBeLessThan(500);
+ });
+});
 describe('relativeTime',()=>{
  it('uses boundaries',()=>{
   expect(relativeTime(ago(44_000),NOW)).toBe('now');

@@ -55,6 +55,30 @@ describe('AppApi',()=>{
  });
 });
 
+describe('AppApi without AbortSignal.any',()=>{
+ const hang=()=>vi.fn((_u:any,init:RequestInit)=>new Promise<Response>((_,reject)=>init.signal!.addEventListener('abort',()=>reject(init.signal!.reason))));
+ it('still honours the caller signal and the timeout',async()=>{
+  const original=(AbortSignal as any).any;(AbortSignal as any).any=undefined;
+  try{
+   const controller=new AbortController();
+   const pending=new AppApi('/e',()=>null,hang() as any).get('x',{},controller.signal).catch(e=>e);
+   controller.abort();
+   expect(await pending).toMatchObject({name:'AbortError'});
+   expect(await new AppApi('/e',()=>null,hang() as any,20).get('x').catch(e=>e)).toMatchObject({status:0,code:'timeout'});
+   const done=controller;expect(done.signal.aborted).toBe(true);
+  }finally{(AbortSignal as any).any=original;}
+ });
+ it('cannot be overridden by params.action',async()=>{
+  const f=mock(json({}));await new AppApi('/e',()=>null,f as any).get('feed',{action:'evil'});
+  expect(call(f).url).toBe('/e?action=feed');
+ });
+ it('maps a snap body-read failure to ApiError network',async()=>{
+  const body=new Response('x',{status:200});(body as any).blob=()=>Promise.reject(new TypeError('terminated'));
+  const error=await new ChatClient(()=>'t',mock(body) as any).openSnap('9').catch(e=>e);
+  expect(error).toBeInstanceOf(ApiError);expect(error).toMatchObject({status:0,code:'network'});
+ });
+});
+
 describe('SocialClient',()=>{
  it('matches the server contract',async()=>{
   const f=mock(...Array.from({length:16},()=>json({})));const c=new SocialClient(()=>'t',f as any);

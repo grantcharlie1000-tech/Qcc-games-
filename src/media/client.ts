@@ -6,6 +6,7 @@ export type UploadStage='compressing'|'uploading'|'processing'|'ready'|'failed';
 export interface UploadResult {id:string;width:number;height:number;thumb:boolean}
 export const MEDIA_ENDPOINT='/.netlify/functions/media';
 export const UNREADABLE_PHOTO='This photo type can’t be read here. Try a JPEG or PNG.';
+export const TOO_BIG_PHOTO='This photo is too large to upload. Try a smaller one.';
 const MAX_PIXELS=16_000_000;
 const aborted=()=>new DOMException('Aborted','AbortError');
 const check=(signal?:AbortSignal)=>{if(signal?.aborted)throw aborted();};
@@ -25,22 +26,29 @@ export async function prepareImage(file:Blob,purpose:Purpose,signal?:AbortSignal
    const scale=Math.sqrt(MAX_PIXELS/(size.width*size.height));
    size={width:Math.max(1,Math.floor(size.width*scale)),height:Math.max(1,Math.floor(size.height*scale))};
   }
-  const png=file.type==='image/png',type=png?'image/png':'image/jpeg',quality=png?undefined:0.9;
-  let out:Blob|null;
-  if(typeof OffscreenCanvas!=='undefined'){
-   const canvas=new OffscreenCanvas(size.width,size.height),context=canvas.getContext('2d');
-   if(!context)return fallback();
-   context.drawImage(bitmap,0,0,size.width,size.height);check(signal);
-   out=await canvas.convertToBlob({type,quality});
-  }else{
+  const alpha=['image/png','image/webp','image/gif'].includes(file.type);
+  const encode=async(type:string,quality:number|undefined,white:boolean):Promise<Blob|null>=>{
+   if(typeof OffscreenCanvas!=='undefined'){
+    const canvas=new OffscreenCanvas(size.width,size.height),context=canvas.getContext('2d');
+    if(!context)return null;
+    if(white){context.fillStyle='#fff';context.fillRect(0,0,size.width,size.height);}
+    context.drawImage(bitmap,0,0,size.width,size.height);
+    return canvas.convertToBlob({type,quality});
+   }
    const canvas=document.createElement('canvas');canvas.width=size.width;canvas.height=size.height;
-   const context=canvas.getContext('2d');if(!context)return fallback();
-   context.drawImage(bitmap,0,0,size.width,size.height);check(signal);
-   out=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,type,quality));
+   const context=canvas.getContext('2d');if(!context)return null;
+   if(white){context.fillStyle='#fff';context.fillRect(0,0,size.width,size.height);}
+   context.drawImage(bitmap,0,0,size.width,size.height);
+   return new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,type,quality));
+  };
+  // Sources that may carry transparency stay PNG; JPEG is the size fallback (on white, so transparency does not turn black).
+  const attempts:Array<[string,number|undefined,boolean]>=alpha?[['image/png',undefined,false],['image/jpeg',0.85,true]]:[['image/jpeg',0.9,false],['image/jpeg',0.8,false],['image/jpeg',0.7,false]];
+  for(const [type,quality,white] of attempts){
+   const out=await encode(type,quality,white);check(signal);
+   if(!out)return fallback();
+   if(out.size<=MAX_UPLOAD_BYTES)return out;
   }
-  check(signal);
-  if(!out)return fallback();
-  return out;
+  throw new Error(TOO_BIG_PHOTO);
  }finally{bitmap.close();}
 }
 

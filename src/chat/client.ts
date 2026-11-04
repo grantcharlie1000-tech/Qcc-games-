@@ -14,7 +14,7 @@ export class ChatClient {
  removeFriend(username:string){return this.api.post<{ok:true}>('remove_friend',{username});}
  send(to:string,input:SendInput){return this.api.post<MessageView>('send',{to,...input});}
  /** Single-use: a second open is a 410 ApiError with code 'opened'. */
- async openSnap(id:string,signal?:AbortSignal):Promise<Blob>{return (await this.api.raw('open_snap',{id},signal)).blob();}
+ async openSnap(id:string,signal?:AbortSignal):Promise<Blob>{return this.api.raw('open_snap',{id},response=>response.blob(),signal,30000);}
  save(id:string,on:boolean){return this.api.post<MessageView>('save',{id,on});}
  unsend(id:string){return this.api.post<{ok:true}>('unsend',{id});}
  retention(username:string,mode:Retention){return this.api.post<ConversationView>('retention',{with:username,mode});}
