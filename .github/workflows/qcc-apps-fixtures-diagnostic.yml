@@ -1,0 +1,44 @@
+name: Verify deterministic Apps fixtures
+on:
+  push:
+    branches: [diagnostics/qcc-apps-fixtures-20261104]
+permissions:
+  contents: read
+concurrency:
+  group: qcc-apps-fixtures-20261104
+  cancel-in-progress: false
+jobs:
+  apps-fixtures:
+    name: Apps fixtures (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ef9dfbf3dcda6fd01d90ece381e07ef6304f2197
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npx tsc --noEmit
+      - name: Verify full launcher, liquid-glass and enabled-disabled icon coverage
+        run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/apps/launcher.spec.ts tests/e2e/liquid-glass.spec.ts tests/e2e/clear-ink-adaptation.spec.ts tests/e2e/study-app-scrolling.spec.ts --workers=1 --reporter=list
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apps-fixtures-${{ matrix.browser }}
+          path: |
+            playwright-report
+            test-results
