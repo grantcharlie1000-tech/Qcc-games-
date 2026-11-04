@@ -191,6 +191,20 @@ describe('chat handler',{timeout:60000},()=>{
   const broken=createChatHandler({query:(text:string,values?:unknown[])=>text.includes('DELETE FROM chat_messages WHERE id IN')?Promise.reject(new Error('x')):db.query(text,values),connect:db.connect} as Database,store);
   expect((await broken(new Request(`${URL_}?action=summary`,{headers:{authorization:'Bearer '+a.token}}))).status).toBe(200);
  });
+ it('purge without a store deletes text only and keeps snaps and their media for a later run; the deadline stops it',async()=>{
+  const {a,b}=await pair();
+  const t=await text(a,b,'bye'),s=await snap(a,b);
+  await query(`UPDATE chat_messages SET expires_at=now()-interval '1 second' WHERE id=ANY($1::bigint[])`,[[t.id,s.id]]);
+  await purgeExpiredChat(db.query,store,Date.now()-1);
+  expect(await row(t.id)).toBeDefined();expect(await row(s.id)).toBeDefined();
+  await purgeExpiredChat(db.query,null);
+  expect(await row(t.id)).toBeUndefined();expect(await row(s.id)).toBeDefined();
+  expect((await query('SELECT 1 FROM media_objects WHERE id=$1',[s.media])).rows).toHaveLength(1);
+  expect(store.keys().filter(k=>k.startsWith(s.media)).length).toBeGreaterThan(0);
+  await purgeExpiredChat(db.query,store);
+  expect(await row(s.id)).toBeUndefined();expect(store.keys().filter(k=>k.startsWith(s.media))).toEqual([]);
+  expect((await query('SELECT 1 FROM media_objects WHERE id=$1',[s.media])).rows).toHaveLength(0);
+ });
  it('block and remove_friend answer identically for unknown and real usernames',async()=>{
   const a=await account(),b=await account();
   for(const action of ['remove_friend','block']){
