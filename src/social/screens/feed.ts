@@ -48,7 +48,7 @@ export class FeedScreen implements Screen {
    const composer=this.inline=new Composer({ctx:this.ctx,onPosted:post=>{composer.dispose();this.inline=undefined;prompt.hidden=false;this.posted(post);this.ctx.announce('Post published.');}});
    row.append(composer.el);composer.focus();
   };
-  prompt.addEventListener('click',expand);prompt.addEventListener('focus',expand);
+  prompt.addEventListener('click',expand);
   this.column.append(row);
  }
  /** Opens the inline composer when there is one (shortcut n at 1100px and up). */

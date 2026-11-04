@@ -29,16 +29,18 @@ export class PostCard {
  private countBox!:HTMLElement;
  private likeIcon!:HTMLElement;
  private running:Animation[]=[];
- private likeSeq=0;
+ private pumping=false;
+ private confirmed={liked:false,likes:0};
  private readonly live=()=>this.ctx.reduced();
  constructor(private readonly ctx:SocialContext,public post:PostView,private readonly options:PostCardOptions={}) {
   cards.set(this.el,this);
+  this.confirmed={liked:post.liked,likes:post.likes};
   this.build();
  }
  get variant():PostVariant{return this.options.variant??'feed';}
  private build():void {
   const {post,el}=this,variant=this.variant,id=++serial;
-  el.className=`social-post is-${variant}`;el.dataset.id=post.id;el.tabIndex=-1;
+  el.className=`social-post is-${variant}`;if(post.deleted)el.setAttribute('aria-label','Deleted post');el.dataset.id=post.id;el.tabIndex=-1;
   if(this.options.position)el.setAttribute('aria-posinset',String(this.options.position));
   if(variant==='feed'||variant==='reply')el.setAttribute('aria-setsize','-1');
   if(post.deleted){this.buildTombstone();return;}
@@ -153,19 +155,26 @@ export class PostCard {
  }
  /** Optimistic like. Sends the intended state, not a delta; rolls back on failure. Keyboard use gets no motion (DESIGN 12.1 row 3). */
  async toggleLike(keyboard:boolean):Promise<void> {
-  const before=this.post,want=!before.liked,seq=++this.likeSeq;
-  this.apply(want,before.likes+(want?1:-1),!keyboard);
+  const want=!this.post.liked;
+  this.apply(want,this.post.likes+(want?1:-1),!keyboard);
   if(want&&!keyboard)this.pulse();
+  // One request at a time: while one is in flight a further tap only changes the wanted state, and the loop sends it afterwards.
+  if(this.pumping)return;
+  this.pumping=true;
   try{
-   const result=await this.ctx.client.like(before.id,want);
-   if(seq!==this.likeSeq)return;
-   if(result.likes!==this.post.likes||result.liked!==this.post.liked)this.apply(result.liked,result.likes,false);
-  }catch(error){
-   if(seq!==this.likeSeq)return;
-   this.apply(before.liked,before.likes,false);
-   if(error instanceof ApiError&&error.status===429)this.ctx.notify(error.message,{role:'alert'});
-   else this.ctx.fail(error,"Couldn't like that. Try again.",()=>void this.toggleLike(false));
-  }
+   while(this.post.liked!==this.confirmed.liked){
+    try{
+     const result=await this.ctx.client.like(this.post.id,this.post.liked);
+     this.confirmed={liked:result.liked,likes:result.likes};
+     if(this.post.liked===result.liked&&this.post.likes!==result.likes)this.apply(result.liked,result.likes,false);
+    }catch(error){
+     this.apply(this.confirmed.liked,this.confirmed.likes,false);
+     if(error instanceof ApiError&&error.status===429)this.ctx.notify(error.message,{role:'alert'});
+     else this.ctx.fail(error,"Couldn't like that. Try again.",()=>void this.toggleLike(false));
+     break;
+    }
+   }
+  }finally{this.pumping=false;}
  }
  reply():void{if(this.options.onReply)this.options.onReply(this.post);else this.ctx.openCompose({replyTo:this.post,trigger:this.el.querySelector('[data-action=reply]')});}
  open():void{if(this.post.deleted)return;this.ctx.go(`#/social/post/${this.post.id}`);}

@@ -18,6 +18,7 @@ export const profileHash=(username:string,tab:ProfileTab):string=>`#/social/u/${
 export class ProfileScreen implements Screen {
  private readonly controller=new AbortController();
  private list:PostList|undefined;
+ private photoCtl:AbortController|undefined;
  private tabs:HTMLElement|undefined;
  private panel=document.createElement('div');
  private tab:ProfileTab;
@@ -91,6 +92,7 @@ export class ProfileScreen implements Screen {
    if(on){this.tabs!.style.setProperty('--tab-index',String([...this.tabs!.querySelectorAll('[role=tab]')].indexOf(b)));this.panel.setAttribute('aria-labelledby',b.id);}
   }
   if(user)history.replaceState(null,'',location.pathname+location.search+profileHash(profile.username,tab));
+  this.photoCtl?.abort();this.photoCtl=undefined;
   this.list?.dispose();this.list=undefined;this.panel.replaceChildren();
   const label=LABEL[tab],empty=()=>emptyState({title:tab==='posts'?'No posts yet':tab==='replies'?'No replies yet':tab==='photos'?'No photos yet':'No likes yet'});
   const list=this.list=new PostList({ctx:this.ctx,label,loading:'Loading posts…',empty,
@@ -103,6 +105,7 @@ export class ProfileScreen implements Screen {
  /** Photos tab: a 3-column grid of tiles that each link to their post. */
  private photoGrid(profile:ProfileView):void {
   this.list=undefined;
+  const ctl=this.photoCtl=new AbortController();
   const grid=document.createElement('div');grid.className='social-photo-grid';
   const status=document.createElement('div');this.panel.append(grid,status);
   let cursor:string|null=null,busy=false;
@@ -112,8 +115,8 @@ export class ProfileScreen implements Screen {
   const load=async()=>{
    if(busy)return;busy=true;
    try{
-    const page=await this.ctx.client.posts(profile.username,'media',cursor,this.controller.signal);
-    if(this.disposed)return;
+    const page=await this.ctx.client.posts(profile.username,'media',cursor,ctl.signal);
+    if(this.disposed||ctl.signal.aborted)return;
     cursor=page.cursor;more.hidden=cursor===null;
     for(const post of page.items)for(const m of post.media){
      const a=document.createElement('a');a.className='social-photo-tile';a.href=`#/social/post/${post.id}`;a.setAttribute('aria-label',`Photo from post by ${post.author.displayName||post.author.username}`);
@@ -122,10 +125,10 @@ export class ProfileScreen implements Screen {
      a.append(img);grid.append(a);
     }
     if(!grid.children.length)status.replaceChildren(emptyState({title:'No photos yet'}));else status.replaceChildren();
-   }catch(error){if(!this.disposed&&!this.controller.signal.aborted)status.replaceChildren(loadFailed(error,()=>void load()));}
+   }catch(error){if(!this.disposed&&!ctl.signal.aborted)status.replaceChildren(loadFailed(error,()=>void load()));}
    finally{busy=false;}
   };
   void load();
  }
- dispose():void{this.disposed=true;this.controller.abort();this.list?.dispose();this.root.remove();}
+ dispose():void{this.disposed=true;this.controller.abort();this.photoCtl?.abort();this.list?.dispose();this.root.remove();}
 }

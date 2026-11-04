@@ -64,6 +64,7 @@ export class SearchScreen implements Screen {
  private async run():Promise<void> {
   this.controller?.abort();
   if(!this.q){this.last=null;this.paint();return;}
+  if(this.q.length<this.minimum()){this.last=null;this.paint();return;}
   const controller=this.controller=new AbortController();
   this.results.replaceChildren(skeletonRows(5,'Searching…'));
   try{
@@ -80,7 +81,8 @@ export class SearchScreen implements Screen {
   for(const card of this.cards)card.dispose();this.cards.length=0;this.profileLoads?.abort();
   const q=this.q;
   if(!q){this.results.replaceChildren(emptyState({icon:'search',title:'Search QCC Social',text:'Find people by username, or posts by the words in them.'}));this.status.textContent='';return;}
-  if(!this.last||this.last.q!==q){return;}
+  if(q.length<this.minimum()){this.results.replaceChildren();this.status.textContent='';return;}
+  if(!this.last||this.last.q!==q){void this.run();return;}
   if(q.length<this.minimum()){this.results.replaceChildren();return;}
   const {users,posts}=this.last;
   if(this.mode==='people'){

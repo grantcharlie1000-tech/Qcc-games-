@@ -265,7 +265,16 @@ test('keyboard shortcuts do not fire while typing',async({page,context})=>{
  await expect(sheet).not.toBeVisible();
  await page.locator('.social-view').focus();
  await page.keyboard.press('?');await expect(page.locator('#social-shortcuts')).toBeVisible();
- await page.keyboard.press('j');await expect(cards.nth(0)).not.toBeFocused();
+ // The root listener would run for these, so only the open-dialog guard keeps them quiet.
+ await page.evaluate(()=>{const root=document.querySelector('.social-view')!;for(const key of ['n','j','l'])root.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true,cancelable:true}));});
+ await expect(page.locator('#social-compose')).toHaveCount(0);
+ await expect(page.locator('.social-feed > .social-post:focus')).toHaveCount(0);
+ await expect(cards.nth(0).getByRole('button',{name:/^Like,/})).toHaveAttribute('aria-pressed','false');
+ // Closed again, the same event does act (so the assertions above were meaningful).
+ await page.locator('#social-shortcuts').getByRole('button',{name:'Close shortcuts'}).click();
+ await expect(page.locator('#social-shortcuts')).toHaveCount(0,{timeout:3000});
+ await page.evaluate(()=>{document.querySelector('.social-view')!.dispatchEvent(new KeyboardEvent('keydown',{key:'n',bubbles:true,cancelable:true}));});
+ await expect(page.locator('#social-compose')).toBeVisible();
 });
 
 test('reduced motion disables like burst',async({page,context})=>{
@@ -350,4 +359,109 @@ for(const size of [{width:390,height:844},{width:1440,height:900}])test(`layout 
  await page.evaluate(h=>{location.hash=h;},'#/social/activity');await expect(page.getByRole('heading',{name:'Activity',level:1})).toBeVisible();await check('activity');
  await page.evaluate(h=>{location.hash=h;},'#/social/settings');await expect(page.getByRole('heading',{name:'Settings',level:1})).toBeVisible();await check('settings');
  await page.evaluate(h=>{location.hash=h;},`#/social/search?q=${b.name.slice(0,5)}`);await expect(page.locator('.social-person').first()).toBeVisible();await check('search');
+});
+
+test('open sheets close when leaving Social, so Escape still opens Study',async({page,context})=>{
+ await connect(context);const a=await user('es'),b=await user('eb');
+ const text=`escape ${stamp()}`;await post(b.token,text);
+ await open(page,a.name,'#/social/discover');
+ const card=page.locator('.social-post').filter({hasText:text});
+ await card.getByRole('button',{name:'More options for this post'}).click();
+ await page.getByRole('menuitem',{name:'Report post'}).click();
+ await expect(page.locator('#apps-report')).toBeVisible();
+ await page.evaluate(()=>{location.hash='#/collection';});
+ await expect(page.locator('section.social-view')).toHaveCount(0);
+ await expect(page.locator('dialog.apps-sheet[open]')).toHaveCount(0);
+ // A stale modal would swallow Escape on the next visit.
+ await page.evaluate(()=>{location.hash='#/social';});
+ await expect(page.locator('section.social-view')).toBeVisible();
+ await page.keyboard.press('Escape');
+ await expect(page.locator('body')).toHaveClass(/study-active/);
+});
+
+test('self-harm report keeps the support card after sending',async({page,context})=>{
+ await connect(context);const a=await user('sh'),b=await user('sj');
+ const text=`care ${stamp()}`;await post(b.token,text);
+ await open(page,a.name,'#/social/discover');
+ await page.locator('.social-post').filter({hasText:text}).getByRole('button',{name:'More options for this post'}).click();
+ await page.getByRole('menuitem',{name:'Report post'}).click();
+ const sheet=page.locator('#apps-report');
+ await sheet.getByLabel('Self-harm').check();
+ await sheet.getByRole('button',{name:'Send report'}).click();
+ await expect(sheet.getByText('Thanks. QCC moderators will review this.')).toBeVisible();
+ await expect(sheet.locator('.apps-report-done .apps-help')).toHaveText("If you or someone else isn't safe right now, call 111. You can talk to someone any time: call or text 1737, or call Youthline on 0800 376 633.");
+});
+
+test('a failed rapid second like rolls back to the last confirmed state',async({page,context})=>{
+ await connect(context);const a=await user('lk');await post(a.token,'like me');
+ await open(page,a.name);
+ const card=page.locator('.social-feed > .social-post').first();await expect(card).toBeVisible();
+ let calls=0;
+ await page.route('**/.netlify/functions/social?action=like',async route=>{
+  calls++;
+  if(calls===1){await new Promise(r=>setTimeout(r,500));await route.fallback();}
+  else await route.fulfill({status:500,contentType:'application/json',body:JSON.stringify({error:'boom'})});
+ });
+ await card.getByRole('button',{name:/^Like,/}).click();
+ await expect(card.getByRole('button',{name:'Like, 1 like'})).toHaveAttribute('aria-pressed','true');
+ await card.getByRole('button',{name:'Like, 1 like'}).click();
+ await expect(card.getByRole('button',{name:'Like, 0 likes'})).toHaveAttribute('aria-pressed','false');
+ await expect.poll(()=>calls).toBe(2);
+ // The server kept the first like; the card must show it again.
+ await expect(card.getByRole('button',{name:'Like, 1 like'})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByText("Couldn't like that. Try again.")).toBeVisible();
+ const row=await pool.query("SELECT count(*)::int AS n FROM social_likes l JOIN accounts x ON x.id=l.account_id WHERE x.username=$1",[a.name]);
+ expect(row.rows[0].n).toBe(1);
+});
+
+test('user text from profiles and search renders as text',async({page,context})=>{
+ await connect(context);const a=await user('xs');
+ const evil='<img src=x onerror=window.__xss=1>';
+ expect((await call(social,'profile',a.token,{displayName:evil,bio:evil})).status).toBe(200);
+ await post(a.token,'hello from a tricky name');
+ const dialogs:string[]=[];page.on('dialog',d=>{dialogs.push(d.message());void d.dismiss();});
+ await open(page,a.name);
+ await expect(page.locator('.social-post .social-name').first()).toHaveText(evil);
+ await page.evaluate(h=>{location.hash=h;},`#/social/u/${a.name}`);
+ await expect(page.locator('.social-profile-name')).toHaveText(evil);
+ await expect(page.locator('.social-profile-bio')).toHaveText(evil);
+ const q='<svg onload=window.__xss=1>zzz';
+ await page.evaluate(h=>{location.hash=h;},`#/social/search?q=${encodeURIComponent(q)}`);
+ await expect(page.getByText(`No people match “${q}”.`)).toBeVisible();
+ await page.evaluate(h=>{location.hash=h;},`#/social/search?q=${encodeURIComponent(evil)}&in=posts`);
+ await expect(page.getByText(`No posts match “${evil}”.`)).toBeVisible();
+ expect(await page.locator('.social-view img[onerror], .social-view svg[onload]').count()).toBe(0);
+ expect(await page.evaluate(()=>(window as unknown as {__xss?:unknown}).__xss)).toBeUndefined();
+ expect(dialogs).toEqual([]);
+});
+
+test('rate limited post shows the limit copy in the composer',async({page,context})=>{
+ await connect(context);const a=await user('rl');await open(page,a.name);
+ await page.route('**/.netlify/functions/social?action=post',route=>route.fulfill({status:429,headers:{'Retry-After':'120','content-type':'application/json'},body:JSON.stringify({error:'rate_limited'})}));
+ await page.getByRole('button',{name:'New post'}).click();
+ const sheet=page.locator('#social-compose');
+ await sheet.getByRole('textbox',{name:'Post text'}).fill('too many');
+ await sheet.getByRole('button',{name:'Publish'}).click();
+ await expect(sheet.getByRole('alert')).toHaveText("You've posted a lot this hour. Try again in 2 min.");
+ await expect(sheet.getByRole('textbox',{name:'Post text'})).toHaveValue('too many');
+ await expect(sheet.getByRole('button',{name:'Publish'})).toBeEnabled();
+});
+
+test('feed polling stops while hidden and while Study is open',async({page,context})=>{
+ await connect(context,{pollScale:0.05});const a=await user('pl');await post(a.token,'poll me');
+ let feeds=0;page.on('request',r=>{if(r.url().includes('/functions/social')&&r.url().includes('action=feed'))feeds++;});
+ await open(page,a.name);
+ await expect.poll(()=>feeds).toBeGreaterThanOrEqual(3);
+ const setVisibility=(state:'visible'|'hidden')=>page.evaluate(value=>{
+  Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>value});
+  Object.defineProperty(document,'hidden',{configurable:true,get:()=>value==='hidden'});
+  document.dispatchEvent(new Event('visibilitychange'));
+ },state);
+ await setVisibility('hidden');await page.waitForTimeout(300);
+ const hiddenCount=feeds;await page.waitForTimeout(3600);expect(feeds).toBe(hiddenCount);
+ await setVisibility('visible');
+ await expect.poll(()=>feeds).toBeGreaterThan(hiddenCount);
+ await page.keyboard.press('Escape');await expect(page.locator('body')).toHaveClass(/study-active/);
+ await page.waitForTimeout(300);
+ const studyCount=feeds;await page.waitForTimeout(3600);expect(feeds).toBe(studyCount);
 });

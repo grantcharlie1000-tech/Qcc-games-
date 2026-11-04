@@ -16,6 +16,11 @@ export function appSheet(id:string,title:string,options:{className?:string;close
  dialog.addEventListener('close',()=>setTimeout(()=>dialog.remove(),400),{once:true});
  return {dialog,body:dialog.querySelector<HTMLElement>('.apps-sheet-body')!,titleEl:dialog.querySelector('h2')!};
 }
+/** Closes every open app sheet and menu (report, confirm, shortcuts, compose, photo viewer, post menu). Called on leave, route change and sign-out so none can outlive its view or block the shell's Escape. */
+export function closeAppSheets():void {
+ for(const dialog of document.querySelectorAll<HTMLDialogElement>('dialog.apps-sheet[open]'))dialog.close();
+ for(const pop of document.querySelectorAll('.apps-popover'))pop.remove();
+}
 export const showSheet=(dialog:HTMLDialogElement,trigger?:Element|null):void=>openSheet(dialog,trigger??(document.activeElement instanceof Element?document.activeElement:null));
 
 export interface ConfirmOptions {title:string;text:string;confirm:string;cancel?:string;danger?:boolean;typed?:{label:string;match:string};trigger?:Element|null}
@@ -76,6 +81,7 @@ export function reportSheet(options:ReportOptions):Promise<boolean> {
   try{
    await options.submit(chosen,note.value.trim());sent=true;
    q<HTMLElement>('.apps-report-form').hidden=true;q<HTMLElement>('.apps-report-done').hidden=false;
+   if(chosen==='self-harm'){const card=document.createElement('div');card.className='apps-panel apps-help';card.setAttribute('role','note');card.textContent=SELF_HARM_HELP;q('.apps-thanks').after(card);}
    const block=q<HTMLButtonElement>('[data-action=block]');
    if(options.block){block.hidden=false;block.textContent=`Block @${options.block.username} too`;block.addEventListener('click',async()=>{block.disabled=true;try{await options.block!.run();dialog.close();}catch(error){block.disabled=false;block.textContent=error instanceof ApiError?error.message:"Couldn't block. Try again.";}});}
    const titleEl=dialog.querySelector('h2')!;titleEl.textContent='Report sent';

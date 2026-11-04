@@ -91,7 +91,7 @@ export class Composer {
     purpose:'post',token:()=>this.options.ctx.token(),announce:text=>{this.live.textContent=text;},
     position:():{index:number;total:number}=>({index:this.uploads.indexOf(item)+1,total:this.uploads.length}),
     onChange:()=>{if(!this.disposed)this.update();this.options.onChange?.();},
-    onRemove:removed=>{const at=this.uploads.indexOf(removed);if(at>=0)this.uploads.splice(at,1);for(const u of this.uploads)u.refreshLabel();this.update();this.options.onChange?.();},
+    onRemove:removed=>{const at=this.uploads.indexOf(removed);if(at>=0)this.uploads.splice(at,1);for(const u of this.uploads)u.refreshLabel();this.update();this.options.onChange?.();(this.photoButton.hidden?this.textarea:this.photoButton).focus();},
     onFailure:failure=>this.onFailure(failure)
    });
    this.uploads.push(item);this.list.append(item.el);void item.start();

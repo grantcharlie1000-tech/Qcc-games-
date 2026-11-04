@@ -22,6 +22,7 @@ import {openPhotoViewer} from './components/photo-viewer';
 import {openShortcuts,shortcutRows} from './components/shortcuts';
 import {cardOf} from './components/post-card';
 import {closeMenus} from './components/menus';
+import {closeAppSheets} from '../apps/sheets';
 import {emptyState,skeletonPosts,loadFailed} from './components/states';
 import './style.css';
 
@@ -126,7 +127,7 @@ export class SocialView implements AppView {
   if(this.disposed)return;
   this.disposed=true;this.generation++;
   this.root.removeEventListener('keydown',this.onKey);window.removeEventListener('offline',this.onOffline);window.removeEventListener('online',this.onOnline);
-  this.screen?.dispose();this.screen=undefined;this.closeCompose?.();closeMenus();
+  this.screen?.dispose();this.screen=undefined;this.closeCompose?.();closeMenus();closeAppSheets();
   document.getElementById('social-photo')?.remove();
   for(const t of this.noticeTimers)clearTimeout(t);this.noticeTimers.clear();
   if(this.focusTimer!==undefined)clearInterval(this.focusTimer);
@@ -185,7 +186,7 @@ export class SocialView implements AppView {
  private show():void {
   if(this.disposed)return;
   const generation=++this.generation;
-  this.screen?.dispose();this.screen=undefined;this.closeCompose?.();this.closeCompose=undefined;closeMenus();
+  this.screen?.dispose();this.screen=undefined;this.closeCompose?.();this.closeCompose=undefined;closeMenus();closeAppSheets();
   this.column.replaceChildren();this.root.scrollTo({top:0});
   this.route=parseRoute(this.hash||location.hash);
   if(!this.signedIn()){this.me=null;this.renderSignedOut();return;}
