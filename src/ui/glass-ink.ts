@@ -177,7 +177,8 @@ function update(){
   frame=0;
   for(const sheet of bindings)if(sheet.matches('.ui-glass-sheet')){
     for(const parent of sheet.querySelectorAll<HTMLElement>('h1,h2,h3,p,label,a,button,small,strong,span,td,th,dt,dd')){
-      if(parent.closest('.arcade-glass,.glass-label,svg,.game-button:not(.secondary)'))continue;
+      // Solid light buttons (the cream primary, .ui-btn.primary) and the unread badge keep their own dark ink.
+      if(parent.closest('.arcade-glass,.glass-label,svg,.game-button:not(.secondary),.ui-btn.primary,.apps-badge'))continue;
       for(const node of [...parent.childNodes])if(node.nodeType===Node.TEXT_NODE&&node.textContent?.trim()){
         const label=document.createElement('span');label.className='glass-label';node.replaceWith(label);label.append(node);
       }
@@ -195,13 +196,14 @@ function update(){
     const targets=bar.matches('.ui-glass-sheet')?[bar]:minimized?(mini?[mini]:[]):bar.matches('.ui-tab,.floating-glass-group')?[bar]:[...bar.querySelectorAll<HTMLElement>('.ui-tab,.game-hud-item')];
     for(const target of targets){
       if(style(target).visibility==='hidden'||style(target).opacity==='0')continue;
-      const glyphs=[...target.querySelectorAll<HTMLElement>('svg,span:not(.ui-glass-lens,.ui-glass-glow),small,strong,kbd')].filter(e=>!e.querySelector('svg,span,small,strong,kbd')&&!e.closest('.ui-brand-tile'));
+      const glyphs=[...target.querySelectorAll<HTMLElement>('svg,span:not(.ui-glass-lens,.ui-glass-glow),small,strong,kbd')].filter(e=>!e.querySelector('svg,span,small,strong,kbd')&&!e.closest('.ui-brand-tile,.apps-badge'));
+      // The unread badge (.apps-badge) keeps its own fill and ink, so it is not a glyph.
       // Icon and label of one control share one ink; a navigation bar shares one
       // ink across all of its tabs, so no glyph differs in colour from its neighbour.
       const groups=new Map<Element,HTMLElement[]>();
       for(const glyph of glyphs){
         const r=rect(glyph);if(!r.width||!r.height||style(glyph).clip!=='auto')continue;
-        if(glyph.closest('.game-button:not(.secondary)')&&!glyph.closest('.arcade-glass'))continue;
+        if(glyph.closest('.game-button:not(.secondary),.ui-btn.primary')&&!glyph.closest('.arcade-glass'))continue;
         const key=bar.matches('.ui-tabbar')||target.matches('.ui-tabbar-mini')?bar:glyph.closest('.ui-tab,button,a,.game-hud-item,label')??glyph;
         const group=groups.get(key)??[];group.push(glyph);groups.set(key,group);
       }

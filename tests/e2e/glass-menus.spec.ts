@@ -362,7 +362,7 @@ test('Minesweeper options use arcade glass while Study privacy keeps its own loo
   await gameAction(page,'Game options');
   const settings=page.locator('.ms-settings');
   await expect(settings).toBeVisible();
-  expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgba(12, 16, 22, 0.58)','32px']);
+  expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgba(12, 16, 22, 0.9)','32px']);
   expect(await settings.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();

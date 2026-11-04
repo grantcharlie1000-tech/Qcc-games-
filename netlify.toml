@@ -19,3 +19,6 @@
   for = "/movies/*"
   [headers.values]
     Cache-Control = "no-store"
+
+[functions]
+  external_node_modules = ["sharp"]

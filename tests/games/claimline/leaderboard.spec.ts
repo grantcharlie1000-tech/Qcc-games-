@@ -48,8 +48,11 @@ test('before the migration a Claimline peak stays queued quietly, and it syncs b
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto('/#/game/claimline');
-    // The glass layout has no in-game sidebar: the Leaderboards dialog (Menu > Settings > Leaderboards) is the board.
-    await expect(page.getByRole('complementary', { name: 'Claimline leaderboard' })).toHaveCount(0);
+    // Since #93/#94 desktop widths carry a floating "Top scores" panel for every game. It starts collapsed, so a queued
+    // peak shows nothing loud; the Leaderboards dialog (Menu > Settings > Leaderboards) is the full board.
+    const panel = page.getByRole('complementary', { name: 'Claimline leaderboard' });
+    await expect(panel).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Top scores' })).toHaveAttribute('aria-expanded', 'false');
     await page.locator('.cl-start').click();
     // Starting reports the human's peak; the milestone flush posts it and the database refuses the game id.
     await expect.poll(() => posts.filter(p => p.game === 'claimline').length).toBeGreaterThan(0);

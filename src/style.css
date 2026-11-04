@@ -5,7 +5,7 @@
 .dialog-head h2{min-width:0;overflow-wrap:break-word}
 
 /* Glass island tab bar (theme.css .ui-tabbar): where it shows, and the room it needs at the bottom. */
-body.in-game .app-navigation,body.movies-active .app-navigation{display:none}
+body.in-game .app-navigation,body.movies-active .app-navigation,body.social-active .app-navigation,body.chat-active .app-navigation{display:none}
 .app-navigation[data-view-hidden]{display:none}
 body:not(.in-game):not(.movies-active) #content{padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
 html:has(body:not(.in-game):not(.movies-active)){scroll-padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
@@ -19,7 +19,20 @@ html:has(body:not(.in-game):not(.movies-active)){scroll-padding-bottom:calc(var(
 .section-menu>.ui-icon{width:24px;height:24px}
 /* The menu button is exactly the bar's height; it shrinks with the bar when that minimizes. */
 .section-navigation:not(:has(:focus-visible)):has(>.section-tabbar[data-minimized=true]:not([data-hidden=true])){--home-action:48px}
-@media(max-width:359px){.section-navigation{--home-inset:8px;--home-gap:8px}.section-tabbar.ui-tabbar .ui-tab{font-size:9px;padding-inline:1px}}
+/* Six tabs, only while the Apps tab is visible (.app-navigation[data-apps=on]); without it the bar is the five-tab bar.
+   Short TV label under 440px, a 52px menu circle under 390px, and tabs that may shrink to the 44px touch minimum.
+   Below 360px seven controls cannot reach 44px, so the Apps tab leaves the bar and Apps opens from the Menu sheet. */
+.menu-apps{display:none}
+@media(min-width:360px){
+  .app-navigation[data-apps=on] .app-tabbar .ui-tab{min-width:44px}
+}
+@media(min-width:360px) and (max-width:439px){.app-navigation[data-apps=on] .tab-tv{font-size:0}.app-navigation[data-apps=on] .tab-tv::after{content:'TV';font-size:10px}}
+@media(min-width:360px) and (max-width:389px){.app-navigation[data-apps=on]{--home-action:52px;--home-gap:8px}}
+@media(max-width:359px){
+  .section-navigation{--home-inset:8px;--home-gap:8px}.section-tabbar.ui-tabbar .ui-tab{font-size:9px;padding-inline:1px}
+  .app-navigation .app-tabbar [data-action=apps]{display:none}
+  .menu-apps:not([hidden]){display:flex}
+}
 /* The companion follows the existing island controller. Focus in either lens
    reveals the group; pointer focus does not pin it open while scrolling. */
 .section-navigation:has(.section-tabbar:is([data-minimized=true],[data-hidden=true])):not(:has(:focus-visible)) .section-menu{opacity:0;pointer-events:none}
@@ -29,6 +42,9 @@ html:has(body:not(.in-game):not(.movies-active)){scroll-padding-bottom:calc(var(
 .section-navigation:has(.section-menu:focus-visible)>.ui-tabbar-mini{opacity:0;pointer-events:none}
 /* The notch insets clear the top row of the library and both of its sides. Game screens and Movies & TV keep their own layout. */
 body:not(.in-game):not(.movies-active) #content{padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+/* Social and Chat are full-screen islands: they bring their own insets and no tab bar, so the shell's padding steps aside. */
+body:is(.social-active,.chat-active):not(.in-game) #content{padding:0}
+html:has(body:is(.social-active,.chat-active):not(.in-game)){scroll-padding-bottom:0}
 /* The filter notice is page content: it lines up with the grid's padding and width, and wraps at 320 px. */
 .library-filter{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 14px;max-width:1500px;margin:0 auto;padding:12px 11px 0;color:#d8d6cc;font:16px/1.5 system-ui,sans-serif}
 .library-filter-text{margin:0;flex:1 1 180px;min-width:0;overflow-wrap:anywhere}

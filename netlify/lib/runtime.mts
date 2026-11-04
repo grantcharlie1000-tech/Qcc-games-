@@ -13,18 +13,25 @@ export function expectedEnvironment(context:string|undefined):Environment {
  throw new Error('Unrecognized deploy context');
 }
 export {writeFrozen as isWriteFrozen} from '../../src/accounts/write-freeze';
+// pg.Pool.query needs `this`; handlers pass db.query around unbound, so give them a bound view.
+export function boundDatabase(pool:Database):Database {
+ return {query:(text,values)=>pool.query(text,values),connect:()=>pool.connect()} as Database;
+}
+/** Throws unless the database's environment marker matches this deploy context. Shared by request handlers and scheduled jobs. */
+export async function assertEnvironment(pool:Database,options:Options={}):Promise<void> {
+ const env=options.env??process.env;
+ const netlify=(globalThis as typeof globalThis&{Netlify?:{context?:{deploy?:{context?:string}}}}).Netlify;
+ const expected=expectedEnvironment(options.context??netlify?.context?.deploy?.context??env.CONTEXT);
+ const explicit=options.expectedEnv??env.QCC_DB_EXPECTED_ENV;
+ if(explicit&&explicit!==expected)throw new Error('Expected environment conflicts with deploy context');
+ const result=await pool.query('SELECT name FROM qcc_environment WHERE id=true');
+ if(!result.rows.length&&options.allowMissingMarker)return;
+ if(result.rows.length!==1||result.rows[0].name!==expected)throw new Error('Database environment mismatch');
+}
 export function createGuardedHandler(pool:Database,factory:(db:Database)=>(request:Request)=>Promise<Response>,options:Options={}){
  const env=options.env??process.env;const now=options.now??Date.now;
- let checked:Promise<void>|undefined;const handle=factory(pool);
- async function check(){
-  const netlify=(globalThis as typeof globalThis&{Netlify?:{context?:{deploy?:{context?:string}}}}).Netlify;
-  const expected=expectedEnvironment(options.context??netlify?.context?.deploy?.context??env.CONTEXT);
-  const explicit=options.expectedEnv??env.QCC_DB_EXPECTED_ENV;
-  if(explicit&&explicit!==expected)throw new Error('Expected environment conflicts with deploy context');
-  const result=await pool.query('SELECT name FROM qcc_environment WHERE id=true');
-  if(!result.rows.length&&options.allowMissingMarker)return;
-  if(result.rows.length!==1||result.rows[0].name!==expected)throw new Error('Database environment mismatch');
- }
+ let checked:Promise<void>|undefined;const handle=factory(boundDatabase(pool));
+ const check=()=>assertEnvironment(pool,options);
  return async(request:Request):Promise<Response>=>{
   try{
    // Retry a failed check on the next request, but never allow the handler before it passes.

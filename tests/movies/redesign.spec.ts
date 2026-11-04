@@ -767,11 +767,14 @@ test('a successful empty section answer shows the starter grid with no status li
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/browse/movie');
  await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(6);
- // The answer waits until the starter grid is on screen. The answer replaces that grid, so the checks wait for the swap.
+ // The answer waits until the starter grid is on screen. An empty answer leaves the same six films, and patchResults keeps an unchanged grid node
+ // (so a pending click stays attached), so there is no swap to wait for: wait until the answer has been handled and drawn, then check the page.
  const loading=await page.locator('.movies-results-grid').elementHandle();
  const response=page.waitForResponse(response=>response.url().includes('rails=movie'));
  release();await (await response).finished();
- await expect.poll(()=>loading.evaluate(grid=>grid.isConnected)).toBe(false);
+ await page.evaluate(()=>new Promise<void>(done=>{setTimeout(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>done())),100);}));
+ expect(await loading.evaluate(grid=>grid.isConnected)).toBe(true);
+ await expect(page.locator('.movies-results-grid')).toHaveCount(1);
  await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(6);
  await expect(page.locator('.movies-rails-status')).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Retry',exact:true})).toHaveCount(0);
