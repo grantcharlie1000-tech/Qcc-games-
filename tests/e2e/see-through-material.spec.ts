@@ -135,9 +135,7 @@ test('native Minesweeper pause retains its opaque green palette and hides the bo
 });
 
 test('Blockcraft Controls and Advancements retain the original panels and readable labels',async({page})=>{
-  // The world intentionally renders behind these panels. Chromium's software
-  // renderer needs the native-art prelude plus all four contrast samples; do
-  // not let the default 30 s expire before statisticsContrast sets its budget.
+  // The live software-rendered world continues behind the native-art captures.
   test.setTimeout(120000);
   await page.goto('/#/game/blockcraft');
   await expect(page.locator('.bc-menu [data-act=primary]')).toBeEnabled({timeout:30000});
@@ -190,7 +188,16 @@ test('Blockcraft Controls and Advancements retain the original panels and readab
     await maskStyle.evaluate(e=>(e as Element).remove());
     expect(Math.min(...ratios),`${selector}: ${JSON.stringify(ratios)}`).toBeGreaterThanOrEqual(4.5);
   }
-  // The visible book tab opens Statistics without starting or changing a world.
+});
+
+test('mobile Blockcraft Statistics stay legible at DPR3 over light and dark content',async({page})=>{
+  // Keep all four mobile samples independent of the native-art capture budget.
+  // This test inherits the 390×844 touch viewport and DPR3 configured above.
+  test.setTimeout(120000);
+  await page.goto('/#/game/blockcraft');
+  await expect(page.locator('.bc-menu [data-act=primary]')).toBeEnabled({timeout:30000});
+  await page.locator('.bc-menu [data-act=advancements]').click();
+  // Use the visible book tab in the real Advancements panel.
   await statisticsContrast(page);
 });
 
@@ -205,30 +212,44 @@ test.describe('desktop Statistics glyphs',()=>{
 });
 
 async function statisticsContrast(page:Page){
-  // CI traces place the four healthy screenshot/mask samples at about 109 s
-  // with the live world underneath. Retain every sample and contrast threshold.
+  // Keep this budget local; the live software-rendered world continues under the native panel.
   test.setTimeout(120000);
   await page.locator('.bc-adv-tab[id$="-statistics"]').click();
-  await expect(page.locator('.bc-adv-stats')).toBeVisible();
+  const panel=page.locator('.bc-adv-stats');await expect(panel).toBeVisible();
   await expect(page.locator('.bc-adv-stat-row').first()).toHaveCSS('background-color','rgba(0, 0, 0, 0.06)');
-  await expect(page.locator('.bc-adv-stats')).toHaveCSS('background-color','rgb(220, 220, 220)');
-  for(const backdrop of ['#000','#fff']){
-    const source=await page.addStyleTag({content:`.bc-screen{background:${backdrop}!important}`});
+  await expect(panel).toHaveCSS('background-color','rgb(220, 220, 220)');
+  const source=await page.addStyleTag({content:'.bc-screen{background:#000!important}'});
+  try{
     for(const selector of ['.bc-adv-stat-name','.bc-adv-stat-empty']){
       const text=page.locator(selector).first();await text.scrollIntoViewIfNeeded();
+      const read=(backdrop:string)=>source.evaluate((style,{selector,backdrop})=>{
+        style.textContent=`.bc-screen{background:${backdrop}!important}`;
+        const panel=document.querySelector('.bc-adv-stats')!,text=panel.querySelector(selector)!;
+        const b=panel.getBoundingClientRect(),r=text.getBoundingClientRect();
+        return{bounds:{x:b.x,y:b.y,width:b.width,height:b.height},
+          box:{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(text).color},
+          background:getComputedStyle(panel).backgroundColor};
+      },{selector,backdrop});
+      const geometry=await read('#000'),{bounds,box}=geometry;
+      // The opaque panel isolates glyph alpha from the outside source. Reuse
+      // this selector's mask, but independently capture both actual backdrops.
       // Whole-panel clips preserve WebKit's fractional glyph raster alignment.
-      const panel=page.locator('.bc-adv-stats'),bounds=(await panel.boundingBox())!,r=(await text.boundingBox())!;
-      const color=await text.evaluate(e=>getComputedStyle(e).color);
+      expect(geometry.background).toBe('rgb(220, 220, 220)');
       const mask=await glyphFillMask(page,panel,selector);
       const hide=await page.addStyleTag({content:`${selector}{-webkit-text-fill-color:transparent!important;text-shadow:none!important}`});
-      const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');
-      await hide.evaluate(e=>e.parentNode?.removeChild(e));
-      const edges=await glyphContrast(page,shot,mask,[{x:r.x-bounds.x,y:r.y-bounds.y,w:r.width,h:r.height,color}],bounds);
-      await test.info().attach('statistics-glyph-contrast',{body:JSON.stringify({selector,backdrop,edges}),contentType:'application/json'});
-      expect(Math.min(...edges),`${selector} over ${backdrop}: ${JSON.stringify(edges)}`).toBeGreaterThanOrEqual(4.5);
+      try{
+        for(const backdrop of ['#000','#fff']){
+          // Mask reuse is valid only while the sampled ink, raster position
+          // and opaque panel remain unchanged after switching the source.
+          expect(await read(backdrop),`${selector} geometry and color over ${backdrop}`).toEqual(geometry);
+          const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');
+          const edges=await glyphContrast(page,shot,mask,[box],bounds);
+          await test.info().attach('statistics-glyph-contrast',{body:JSON.stringify({selector,backdrop,edges}),contentType:'application/json'});
+          expect(Math.min(...edges),`${selector} over ${backdrop}: ${JSON.stringify(edges)}`).toBeGreaterThanOrEqual(4.5);
+        }
+      }finally{await hide.evaluate(e=>e.parentNode?.removeChild(e));}
     }
-    await source.evaluate(e=>(e as Element).remove());
-  }
+  }finally{await source.evaluate(e=>(e as Element).remove());}
 }
 
 for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} transmits uniform dark and light artwork through its intended tint without added white`,async({page})=>{
