@@ -129,9 +129,13 @@ test('the menu grows from the control that opened it in the island and in-game d
   // Requested exclusion 11 keeps the in-game menu's original bottom placement and backdrop.
   expect(gameBox.y+gameBox.height).toBeCloseTo(PHONE.height-8,0);
   expect(await gameSheet.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0)');
-  const secondary=gameSheet.locator('.game-button.secondary');
-  expect(await secondary.count()).toBeGreaterThan(0);
-  for(const button of await secondary.all())await expect(button).toHaveCSS('border-top-style','none');
+  // These are the original action rows from 62a0f4e, not secondary buttons.
+  const actions=gameSheet.locator('.game-menu-actions > .game-menu-action');
+  await expect(actions).toHaveCount(8);
+  await expect(actions.first()).toHaveCSS('border-top-style','none');
+  for(const action of (await actions.all()).slice(1)){
+    expect(await action.evaluate(el=>{const s=getComputedStyle(el);return [s.borderTopStyle,s.borderTopWidth,s.borderTopColor];})).toEqual(['solid','1px','rgba(255, 255, 255, 0.16)']);
+  }
   // The compact game group anchors the sheet at the actual Menu centre.
   const expectedX=Math.min(Math.max(gameMenu.x+gameMenu.width/2-gameBox.x,0),gameBox.width);
   const expectedY=Math.min(Math.max(gameMenu.y+gameMenu.height/2-gameBox.y,0),gameBox.height);

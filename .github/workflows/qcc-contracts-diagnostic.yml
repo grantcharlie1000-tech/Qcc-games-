@@ -17,16 +17,12 @@ jobs:
       matrix:
         browser: [chromium, webkit]
         group:
-          - name: study
-            files: tests/e2e/study-editorial.spec.ts tests/e2e/study-expansion.spec.ts tests/e2e/study-fictional-ads.spec.ts tests/e2e/study-reading-layout.spec.ts
           - name: menus
             files: tests/e2e/glass-menus.spec.ts tests/e2e/clear-material-rules.spec.ts tests/e2e/see-through-material.spec.ts tests/e2e/webgl-glass-lens.spec.ts
-          - name: games
-            files: tests/games/animal-stack/layout.spec.ts tests/games/ball-run/layout.spec.ts tests/games/ball-run/play.spec.ts tests/games/fruit-merge/layout.spec.ts tests/games/fruit-merge/play.spec.ts tests/games/snake/snake.spec.ts tests/games/crossy-road/deaths.spec.ts tests/games/crossy-road/performance.spec.ts tests/games/crossy-road/rendering.spec.ts tests/movies/movies.spec.ts tests/movies/redesign.spec.ts tests/leaderboard/sidebar.spec.ts
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 3fe38b929d0d79697956076329eae55e8a1de880
+          ref: c42eea6769a0d34ac7d8a0233ce57cc1e54bd21c
       - run: git rev-parse HEAD
       - uses: actions/setup-node@v4
         with:
