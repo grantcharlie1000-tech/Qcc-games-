@@ -34,16 +34,29 @@ VALUES ('post','<post id>','hide','<why>','<your name>');   -- or 'restore'
 
 ## Delete a post
 
-Deleting removes the post's media rows and likes. If it has replies it should stay as a tombstone, so prefer marking it deleted:
+Prefer hiding (above): it needs no blob work and can be reversed. The author's own Delete in the app removes the media and blobs automatically. Use this runbook only when a post must be removed by an operator.
+
+Run it in one transaction. Deleting the `media_objects` rows also removes the matching `social_post_media` rows (cascade). A post with replies stays as a tombstone.
 
 ```sql
-UPDATE social_posts SET deleted=true,body='',hidden=false WHERE id='<post id>';
+BEGIN;
+-- Capture the ids first: you need them to delete the stored blobs.
+SELECT media_id FROM social_post_media WHERE post_id='<post id>';
+DELETE FROM media_objects WHERE id IN (SELECT media_id FROM social_post_media WHERE post_id='<post id>');
 DELETE FROM social_likes WHERE post_id='<post id>';
+UPDATE social_posts SET deleted=true,body='',hidden=false WHERE id='<post id>';
 INSERT INTO social_moderation_actions (target_kind,target_id,action,note,moderator)
 VALUES ('post','<post id>','delete','<why>','<your name>');
+COMMIT;
 ```
 
-Media blobs are removed by the next media purge once the post no longer references them. If a blob must go immediately, ask the developer to delete the object by id.
+The database rows are not the stored files. The blobs `<id>/full` and `<id>/thumb` for each captured media id are never purged automatically and must be deleted from the media store by id. A developer runs, for each id:
+
+```sh
+node --input-type=module -e "const {netlifyMediaStore}=await import('./netlify/lib/media-store.mts');const s=await netlifyMediaStore();for(const v of ['full','thumb'])await s.delete('<media id>/'+v)"
+```
+
+This needs Netlify credentials for the site (for example via `netlify dev` or `netlify env`). Until the blobs are deleted they stay in storage, though they are no longer served.
 
 ## Dismiss reports
 

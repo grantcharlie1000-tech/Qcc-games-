@@ -43,13 +43,11 @@ Photo processing uses Sharp (lazy-imported on the first upload). It needs its na
 Replace `$SITE` with the site origin. No secrets are needed.
 
 ```sh
-# 401 JSON: the handler is live and requires login
-curl -si "$SITE/.netlify/functions/social?action=me" | head -n 1
-curl -si "$SITE/.netlify/functions/chat?action=summary" | head -n 1
-# 404 JSON for an unknown media id (or 503 media_not_configured when no store)
-curl -si "$SITE/.netlify/functions/media?action=get&id=m_00000000000000000000000000000000"
-# Disallowed routes stay closed (Pages proxy): expect 404
-curl -si "$SITE/.netlify/functions/social/extra" | head -n 1
+code() { curl -s -o /dev/null -w '%{http_code}\n' "$@"; }
+code "$SITE/.netlify/functions/social?action=me"        # expect 401 (login required)
+code "$SITE/.netlify/functions/chat?action=summary"     # expect 401
+code "$SITE/.netlify/functions/media?action=get&id=m_00000000000000000000000000000000"  # expect 404 (503 if no media store)
+code "$SITE/.netlify/functions/social/extra"            # expect 404 (route not allowed)
 ```
 
 Then sign in, post, upload a photo, and send a snap between two test accounts. Check the Netlify function log for the hourly `QCC chat purge` line.
