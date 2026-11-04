@@ -21,7 +21,7 @@ async function connect(context:BrowserContext,score:number,username?:string){
 async function appMenu(page:Page){await appSettings(page);}
 async function join(page:Page,name:string){
  await page.goto('/#/');await appMenu(page);await page.locator('#menu').getByRole('button',{name:'Leaderboards',exact:true}).click();
- await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(21);
+ await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(22);
  await page.getByLabel('Game',{exact:true}).selectOption('snake');
  await expect(page.locator('.lb-table tbody')).toContainText(name);
 }
