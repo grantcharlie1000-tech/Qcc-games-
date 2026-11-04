@@ -42,6 +42,8 @@ export interface Input {
   readonly state: Controls;
   readonly touch: boolean;
   readonly locked: boolean;
+  /** False once the browser has refused pointer lock twice (drag-to-look takes over). */
+  readonly lockable: boolean;
   lock(): void;
   unlock(): void;
   /** Move/fire state for this step, and edge actions which then reset. */
@@ -61,7 +63,7 @@ export function createInput(o: InputOptions): Input {
   const { root, canvas, signal } = o;
   const s: Controls = { yaw: 0, pitch: 0, mx: 0, mz: 0, fire: false, ads: false, jump: false, board: false, reload: false, swap: false, slot: -1, grenade: false, lookDX: 0, lookDY: 0 };
   const keys = new Set<string>();
-  let mouseFire = false, mouseAds = false, touchFire = false, touchAds = false, touchJump = false, keyFire = false;
+  let mouseFire = false, mouseAds = false, touchFire = false, touchFire2 = false, touchAds = false, touchJump = false, keyFire = false, wheelAt = 0;
   let touchMode = matchMedia('(pointer: coarse)').matches, lockFailures = 0, wasLocked = false;
   const locked = () => document.pointerLockElement === canvas;
 
@@ -139,7 +141,12 @@ export function createInput(o: InputOptions): Input {
     look(dx, dy, MOUSE);
   }, { signal });
   canvas.addEventListener('contextmenu', e => e.preventDefault(), { signal });
-  canvas.addEventListener('wheel', e => { if (!o.playing()) return; e.preventDefault(); if (Math.abs(e.deltaY) > 2) s.swap = true; }, { signal, passive: false });
+  canvas.addEventListener('wheel', e => {
+    if (!o.playing()) return;
+    e.preventDefault();
+    // One swap per flick: trackpads send dozens of wheel events.
+    if (Math.abs(e.deltaY) > 2 && e.timeStamp - wheelAt > 250) { s.swap = true; wheelAt = e.timeStamp; }
+  }, { signal, passive: false });
 
   // ---- Touch ----
   const pad = document.createElement('div');
@@ -161,7 +168,7 @@ export function createInput(o: InputOptions): Input {
   /** Buttons activated from the keyboard or assistive tech: pressed for one frame, released on the next. */
   let pulses: ((v: boolean) => void)[] = [], releasing: ((v: boolean) => void)[] = [];
   function clearTouch() {
-    stickId = lookId = -1; touchMx = touchMz = 0; touchFire = touchAds = touchJump = false;
+    stickId = lookId = -1; touchMx = touchMz = 0; touchFire = touchFire2 = touchAds = touchJump = false;
     stick.dataset.on = 'false';
     knob.style.transform = '';
     for (const b of pad.querySelectorAll<HTMLElement>('.qc-tb')) b.dataset.down = 'false';
@@ -222,7 +229,7 @@ export function createInput(o: InputOptions): Input {
     b.addEventListener('click', e => { if (e.detail === 0 && o.playing()) act(); }, { signal });
   }
   holdButton('.qc-tb-fire', v => { touchFire = v; }, true);
-  holdButton('.qc-tb-fire2', v => { touchFire = v; });
+  holdButton('.qc-tb-fire2', v => { touchFire2 = v; });
   holdButton('.qc-tb-jump', v => { touchJump = v; });
   holdButton('.qc-tb-board', v => { s.board = v; });
   tapButton('.qc-tb-ads', () => { touchAds = !touchAds; pad.querySelector<HTMLElement>('.qc-tb-ads')!.dataset.on = String(touchAds); });
@@ -235,9 +242,11 @@ export function createInput(o: InputOptions): Input {
     state: s,
     get touch() { return touchMode; },
     get locked() { return locked(); },
+    get lockable() { return typeof canvas.requestPointerLock === 'function' && lockFailures < 2; },
     lock() {
       if (touchMode || locked() || typeof canvas.requestPointerLock !== 'function') return;
-      try { const r = canvas.requestPointerLock() as unknown; if (r instanceof Promise) r.catch(() => { lockFailures++; }); } catch { lockFailures++; }
+      // A refusal is counted once, by the pointerlockerror listener (a rejected promise fires it too).
+      try { const r = canvas.requestPointerLock() as unknown; if (r instanceof Promise) r.catch(() => {}); } catch { lockFailures++; }
     },
     unlock() { if (locked()) { wasLocked = false; document.exitPointerLock(); } },
     take() {
@@ -255,11 +264,11 @@ export function createInput(o: InputOptions): Input {
       s.mx = touchMode ? touchMx : kx; s.mz = touchMode ? touchMz : kz;
       const turn = (k('ArrowLeft') ? 1 : 0) - (k('ArrowRight') ? 1 : 0), tilt = (k('ArrowUp') ? 1 : 0) - (k('ArrowDown') ? 1 : 0);
       if (turn || tilt) { const z = o.zoomScale(); s.yaw += turn * KEY_TURN * dt * z; s.pitch = Math.max(-1.45, Math.min(1.45, s.pitch + tilt * KEY_TURN * 0.6 * dt * z)); }
-      s.fire = mouseFire || touchFire || keyFire;
+      s.fire = mouseFire || touchFire || touchFire2 || keyFire;
       s.ads = mouseAds || touchAds || k('ShiftLeft') || k('ShiftRight');
       s.jump = k('Space') || touchJump;
       if (!touchMode) s.board = k('Tab');
-      root.dataset.touch = String(touchMode);
+      if (root.dataset.touch !== String(touchMode)) root.dataset.touch = String(touchMode);
     },
   };
   return api;

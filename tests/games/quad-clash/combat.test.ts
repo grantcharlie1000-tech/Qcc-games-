@@ -97,6 +97,14 @@ describe('explosives',()=>{
     explode(m2,worldFor(m2),-17.2,0.5,0,4,100,0,'firedrill','rocket');
     expect(b.health).toBe(100);
   });
+  test('a rocket fired while hugging a wall bursts on that wall, never behind it',()=>{
+    const m=duel({primary:'firedrill'});const [you,bot]=m.fighters;
+    // The low wall at x = -16.5..-15.5; you press against its west face, the bot hides on the far side.
+    you.x=-16.5-BODY.radius-0.01;you.z=0;you.yaw=-Math.PI/2;you.pitch=Math.atan2(0.6-BODY.eye,1);bot.x=-14;bot.z=0;bot.y=0;
+    run(m,0.5,i=>[hold(you,{fire:i===20,pitch:you.pitch})]);
+    const blast=eventsOf(m,'explode')[0];
+    expect(blast.x).toBeLessThan(-16.4);expect(bot.health).toBe(100);
+  });
   test('a thrown flask bounces, explodes after its fuse and uses up a grenade',()=>{
     const m=duel();const [you,bot]=m.fighters;face(m,you,bot,2);
     run(m,0.6);
@@ -225,6 +233,8 @@ describe('saving',()=>{
     expect(restore({...good,settings:{...good.settings,map:'moon'}})).toBeNull();
     const bad=JSON.parse(JSON.stringify(good));bad.fighters[2].x='NaN';expect(restore(bad)).toBeNull();
     const badGun=JSON.parse(JSON.stringify(good));badGun.fighters[0].primary='laser';expect(restore(badGun)).toBeNull();
+    const still=JSON.parse(JSON.stringify(good));still.projectiles=[{kind:'rocket',owner:1,x:0,y:1,z:12,vx:0,vy:0,vz:0,age:0,fuse:0.01}];
+    const r0=restore(still)!;expect(r0.projectiles).toHaveLength(0);
     const clamp=JSON.parse(JSON.stringify(good));clamp.fighters[0].health=9999;clamp.fighters[0].grenades=50;
     const r=restore(clamp)!;expect(r.fighters[0].health).toBe(100);expect(r.fighters[0].grenades).toBe(MAX_GRENADES);
   });

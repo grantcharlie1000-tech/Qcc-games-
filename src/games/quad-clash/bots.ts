@@ -74,11 +74,12 @@ const skillOf = (m: Match): BotSkill => SKILL[m.settings.difficulty];
 
 function pathTo(m: Match, nav: Nav, f: Fighter, ai: Ai, goal: number) {
   const start = nearestNode(nav, f.x, f.y, f.z);
-  if (!start) { ai.path = []; return; }
+  if (!start) { ai.path = []; ai.repathAt = m.t + 0.5; return; }
   ai.goal = goal;
   ai.path = findPath(nav, start.id, goal);
   ai.pathI = Math.min(1, ai.path.length - 1);
-  ai.repathAt = m.t + 2.5 + random(m);
+  // An unreachable goal waits half a second before the next search instead of searching every step.
+  ai.repathAt = m.t + (ai.path.length ? 2.5 + random(m) : 0.5);
 }
 
 function chooseGoal(m: Match, nav: Nav, f: Fighter, ai: Ai): number {
@@ -170,10 +171,11 @@ export function think(m: Match, f: Fighter, ai: Ai, dt: number): Intent {
       wantPitch = aim.pitch + 0.12 + dist * 0.012;
       ai.grenadeCool = m.t + 6;
     }
-    ai.path = [];
+    // Pick a fresh route the moment the fight ends.
+    ai.path = []; ai.repathAt = m.t;
   } else {
     // Navigate.
-    if (!ai.path.length || ai.pathI >= ai.path.length || m.t >= ai.repathAt) pathTo(m, nav, f, ai, chooseGoal(m, nav, f, ai));
+    if (m.t >= ai.repathAt || (ai.path.length && ai.pathI >= ai.path.length)) pathTo(m, nav, f, ai, chooseGoal(m, nav, f, ai));
     if (ai.path.length && ai.pathI < ai.path.length) {
       let node = nav.nodes[ai.path[ai.pathI]];
       if (Math.hypot(node.x - f.x, node.z - f.z) < 0.55 && Math.abs(node.y - f.y) < 0.7) {
@@ -204,6 +206,8 @@ export function think(m: Match, f: Fighter, ai: Ai, dt: number): Intent {
   const rate = skill.turn * dt * (engaged ? 1 : 0.8);
   intent.yaw = turn(f.yaw, wantYaw, rate);
   intent.pitch = f.pitch + Math.max(-rate, Math.min(rate, wantPitch - f.pitch));
+  // The throw uses the full lob angle on the step it is released.
+  if (intent.grenade) intent.pitch = Math.max(-1.45, Math.min(1.45, wantPitch));
   local(intent, intent.yaw, wx, wz);
   if (ai.wantJump && m.t >= ai.jumpCool && f.grounded) { intent.jump = true; ai.jumpCool = m.t + 0.6; }
   ai.wantJump = false;

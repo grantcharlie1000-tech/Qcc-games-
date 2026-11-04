@@ -57,6 +57,7 @@ const TEMPLATE = `<canvas class="qc-canvas" tabindex="0" aria-label="Quad Clash 
   <section class="qc-card ui-glass-sheet qc-lost" aria-labelledby="qc-lost-title" hidden>
     <h2 id="qc-lost-title" tabindex="-1">Graphics interrupted</h2>
     <p>Your match is saved. Leave and reopen Quad Clash to restore the graphics.</p>
+    <div class="qc-actions"><a class="game-button" href="#/collection">Back to games</a></div>
   </section>
 </div>`;
 
@@ -89,7 +90,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let ais: Ai[] = m.fighters.map(f => createAi(f.id));
   let prev = new Float32Array(m.fighters.length * 3);
   let paused = false, held = false, frozen = false, disposed = false, lost = false;
-  let frameId = 0, last = 0, acc = 0, runs = 0;
+  let frameId = 0, last = 0, acc = 0, runs = 0, menuFrames = 0;
   let adsBlend = 0, aimName = '', aimFriendly = false, aimTick = 0;
   let reportedScore = -1, reportedLevel = '', best = Math.max(0, Math.floor(context.highScore) || 0), bestAtStart = best;
   let fpsT = 0, fpsN = 0, pixelCap = 2, goodT = 0;
@@ -173,7 +174,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     updateClickLayer();
   }
   function updateClickLayer() {
-    clickLayer.hidden = !(phase === 'playing' && shown === null && !paused && !input.touch && !input.locked && data.wantLock === 'true' && m.fighters[0].alive && !m.over);
+    clickLayer.hidden = !(phase === 'playing' && shown === null && !paused && !input.touch && !input.locked && input.lockable && data.wantLock === 'true' && m.fighters[0].alive && !m.over);
   }
 
   function snapPrev() { m.fighters.forEach((f, i) => { prev[i * 3] = f.x; prev[i * 3 + 1] = f.y; prev[i * 3 + 2] = f.z; }); }
@@ -192,12 +193,15 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     bestAtStart = best;
     reportedScore = -1; report();
     show(null);
-    sfx.bell();
+    if (!paused) sfx.bell();
     context.setStatus(`${MODES[prefs.mode].name} on ${getMap(prefs.map).name}. ${MODES[prefs.mode].blurb}`);
     context.announce(`${MODES[prefs.mode].name} started.`);
     hud.toast(MODES[prefs.mode].name, MODES[prefs.mode].blurb);
     canvas.focus({ preventScroll: true });
-    if (!coarse) { setData('wantLock', 'true'); input.lock(); }
+    if (!coarse) { setData('wantLock', 'true'); if (!paused) input.lock(); }
+    // Restarted from the pause overlay: show the new arena now; play (and the mouse) wait for Resume.
+    if (paused) draw(0);
+    updateClickLayer();
     schedule();
   }
 
@@ -238,7 +242,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     measure(interval);
     input.frame(dt);
     if (phase === 'playing' && !held && !frozen && !m.over) advance(dt);
-    draw(dt);
+    // Behind the setup menu the arena only needs a slow redraw, which saves battery.
+    if (phase !== 'menu' || ++menuFrames % 4 === 0) draw(phase === 'menu' ? dt * 4 : dt);
     if (active()) frameId = requestAnimationFrame(loop);
   }
 
@@ -379,7 +384,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     setData('kills', String(you.kills));
     setData('mode', m.settings.mode);
     setData('map', m.settings.map);
-    root.dataset.hud = String(phase !== 'menu');
+    setData('hud', String(phase !== 'menu'));
   }
 
   function measure(interval: number) {

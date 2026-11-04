@@ -69,6 +69,9 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
   const html = (key: string, node: HTMLElement, value: string) => { if (cache.get(key) !== value) { cache.set(key, value); node.innerHTML = value; } };
   const style = (key: string, node: HTMLElement, prop: string, value: string) => { if (cache.get(key) !== value) { cache.set(key, value); node.style.setProperty(prop, value); } };
   const flag = (key: string, node: HTMLElement, hidden: boolean) => { const v = String(hidden); if (cache.get(key) !== v) { cache.set(key, v); node.hidden = hidden; } };
+  const attr = (key: string, node: HTMLElement, name: string, value: string) => { if (cache.get(key) !== value) { cache.set(key, value); node.dataset[name] = value; } };
+  /** Runs `build` only when the cheap `key` changed since last frame. */
+  const memo = (key: string, sig: string, build: () => void) => { const k = 'sig:' + key; if (cache.get(k) !== sig) { cache.set(k, sig); build(); } };
 
   let hitT = 0, hurtT = 0, toastT = 0, loadout: (id: PrimaryId) => void = () => {};
   let deadPrimary: PrimaryId | null = null;
@@ -100,38 +103,38 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
       const you = m.fighters[0], mode = modeOf(m), wpn = weaponOf(you);
       set('mode', el.mode, mode.name);
       set('timer', el.timer, fmtTime(mode.duration - m.t));
-      html('scores', el.scores, scoreLine(m, you));
+      memo('scores', `${m.teamScores[0]}|${m.teamScores[1]}|${you.kills}|${mode.teams ? '' : m.fighters.map(f => f.kills).join(',')}`, () => html('scores', el.scores, scoreLine(m, you)));
       if (m.settings.mode === 'quad') {
         const z = mapOf(m).zones[m.zoneIndex];
         const owner = m.zoneOwner >= 0 ? `${HOUSES[m.zoneOwner].mark} ${HOUSES[m.zoneOwner].name} holds it` : m.zoneOwner === -2 ? 'Contested!' : 'Unclaimed';
         set('zone', el.zone, `${z.name} · ${owner} · moves in ${fmtTime(m.zoneNext - m.t)}`);
-        el.zone.dataset.owner = String(m.zoneOwner);
+        attr('zoneo', el.zone, 'owner', String(m.zoneOwner));
         flag('zoneh', el.zone, false);
       } else flag('zoneh', el.zone, true);
       // Vitals.
       const hp = Math.max(0, Math.ceil(you.health));
       set('hp', el.healthNum, String(hp));
       style('hpw', el.healthFill, 'width', `${(hp / BODY.maxHealth) * 100}%`);
-      el.health.dataset.low = String(hp <= 35);
-      html('streak', el.streak, STREAKS.map(s => `<i class="${you.streak >= s.kills ? 'on' : ''}" title="${s.name}"></i>`).join('') + `<span>${you.streak} streak</span>`);
-      const buffs = [m.t < you.shieldUntil ? `<span class="qc-buff qc-shield">Shield ${Math.ceil(you.shieldUntil - m.t)}</span>` : '', m.t < you.boostUntil ? `<span class="qc-buff qc-boost">Pass ${Math.ceil(you.boostUntil - m.t)}</span>` : '', m.t < you.protectUntil ? '<span class="qc-buff">Spawn shield</span>' : ''].join('');
-      html('buffs', el.buffs, buffs);
+      attr('hplow', el.health, 'low', String(hp <= 35));
+      memo('streak', String(you.streak), () => html('streak', el.streak, STREAKS.map(s => `<i class="${you.streak >= s.kills ? 'on' : ''}" title="${s.name}"></i>`).join('') + `<span>${you.streak} streak</span>`));
+      const shieldS = m.t < you.shieldUntil ? Math.ceil(you.shieldUntil - m.t) : 0, boostS = m.t < you.boostUntil ? Math.ceil(you.boostUntil - m.t) : 0, spawn = m.t < you.protectUntil;
+      memo('buffs', `${shieldS}|${boostS}|${spawn}`, () => html('buffs', el.buffs, [shieldS ? `<span class="qc-buff qc-shield">Shield ${shieldS}</span>` : '', boostS ? `<span class="qc-buff qc-boost">Pass ${boostS}</span>` : '', spawn ? '<span class="qc-buff">Spawn shield</span>' : ''].join('')));
       // Weapon.
       set('wname', el.weaponName, wpn.name);
       set('mag', el.mag, String(you.mag[you.slot]));
       set('res', el.reserve, you.slot === 1 ? '/ ∞' : `/ ${you.reserve}`);
-      el.mag.dataset.low = String(you.mag[you.slot] <= Math.ceil(wpn.mag * 0.25));
+      attr('maglow', el.mag, 'low', String(you.mag[you.slot] <= Math.ceil(wpn.mag * 0.25)));
       const reloading = you.reloadEnd > 0;
       flag('rel', el.reload, !reloading);
       if (reloading) style('relw', el.reloadBar, 'width', `${Math.min(100, ((m.t - you.reloadStart) / Math.max(0.01, you.reloadEnd - you.reloadStart)) * 100)}%`);
-      html('nades', el.nades, Array.from({ length: MAX_GRENADES }, (_, i) => `<i class="${i < you.grenades ? 'on' : ''}"></i>`).join(''));
+      memo('nades', String(you.grenades), () => html('nades', el.nades, Array.from({ length: MAX_GRENADES }, (_, i) => `<i class="${i < you.grenades ? 'on' : ''}"></i>`).join('')));
       // Crosshair and scope.
       const gap = Math.round(6 + o.spread * 420);
       style('gap', el.cross, '--gap', `${gap}px`);
       flag('crossh', el.cross, !you.alive || o.scoped);
       flag('scope', el.scope, !o.scoped);
       set('name', el.name, o.aimName);
-      el.name.dataset.friendly = String(o.aimFriendly);
+      attr('friendly', el.name, 'friendly', String(o.aimFriendly));
       // Timed flashes and the kill feed's fade.
       clock += o.dt;
       for (let i = feedItems.length - 1; i >= 0; i--) {
@@ -147,13 +150,13 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
       // Scoreboard.
       const showBoard = o.board || m.over;
       flag('board', el.board, !showBoard);
-      if (showBoard) {
+      if (showBoard) memo('board', m.fighters.map(f => `${f.kills},${f.deaths},${f.score}`).join('|'), () => {
         const rows = standings(m).map((f, i) => {
           const tag = modeOf(m).teams ? `<b class="qc-mark qc-team-${f.team}">${HOUSES[f.team].mark}</b>` : '';
           return `<tr class="${f.id === 0 ? 'qc-me' : ''}"><td>${i + 1}</td><td>${tag}${escape(f.name)}</td><td>${f.kills}</td><td>${f.deaths}</td><td>${f.score}</td></tr>`;
         }).join('');
         html('rows', el.boardBody, rows);
-      }
+      });
       // Respawn panel.
       const dead = !you.alive && !m.over;
       flag('dead', el.dead, !dead);

@@ -4,7 +4,7 @@ Engine: Chromium 1243 (`/opt/pw-browsers/chromium`, SwiftShader WebGL), Playwrig
 
 ## Unit (`npx vitest run tests/games/quad-clash`)
 
-45 tests across `world.test.ts`, `combat.test.ts` and `bots.test.ts`, all passing:
+46 tests across `world.test.ts`, `combat.test.ts` and `bots.test.ts`, all passing:
 
 - **Arenas.** Spawns are in open space, and each house has five or more spawns on opposite halves. Every spawn, zone and pickup sits on the main navigation component and is pathable. Raised zones are reachable from the ground.
 - **Movement.** Walls stop you; stage steps climb; a 1.25 m wall needs a jump; landing works; walking down stairs stays grounded; rays hit what they should.
@@ -39,3 +39,20 @@ Engine: Chromium 1243 (`/opt/pw-browsers/chromium`, SwiftShader WebGL), Playwrig
 - WebKit was not run, because its browser is not installed in this environment.
 - Pointer lock behaviour was exercised in Chromium only.
 - The leaderboard needs migration `20261104090000_quad_clash_score.sql` applied before the server accepts scores. Until then, scores queue quietly, as they did for Claimline.
+
+## Independent review
+
+Two read-only reviewers covered the simulation and the presentation/lifecycle code. These findings were fixed:
+- Rockets and flasks spawned inside a wall the thrower was hugging.
+- A saved zero-speed rocket could produce NaN.
+- Restore now clamps pitch, zone and attacker fields.
+- Burst leftovers fired from the sidearm.
+- The spawn chooser could throw if every spawn was crowded.
+- Knockback ignored spawn shields and teammates.
+- Bots repathed every frame toward unreachable goals.
+- Bot grenade lob angle.
+- Restart while paused captured the mouse behind the pause overlay.
+- Per-frame HUD string building is now memoised, and attribute writes are cached.
+- Wheel swap is debounced, pointer-lock refusals are no longer double-counted, and the two touch Fire buttons are independent.
+- "Click to play" is hidden when pointer lock is refused.
+- The menu-phase render rate is reduced, and the lost-graphics card has a link back to the games.

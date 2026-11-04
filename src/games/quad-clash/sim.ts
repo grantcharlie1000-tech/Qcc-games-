@@ -70,8 +70,8 @@ function chooseSpawn(m: Match, f: Fighter) {
     return { s, score: crowd ? -1 : near };
   }).sort((a, b) => b.score - a.score);
   const best = scored[0].score;
-  const good = scored.filter(c => c.score >= best * 0.85 || c.score >= 40);
-  return good[Math.floor(random(m) * good.length)].s;
+  const good = scored.filter(c => c.score >= 0 && (c.score >= best * 0.85 || c.score >= 40));
+  return good.length ? good[Math.floor(random(m) * good.length)].s : scored[0].s;
 }
 
 export function respawn(m: Match, f: Fighter) {
@@ -172,6 +172,7 @@ function weapons(m: Match, w: World, f: Fighter, intent: Intent, dt: number) {
   // A semi-automatic press a moment too early still fires as soon as the weapon is ready.
   if (intent.fire && !f.trigger && !wpn.auto) f.queued = m.t;
   const wants = wpn.auto ? intent.fire : f.queued >= 0 && m.t - f.queued <= 0.18;
+  if (f.burstLeft > 0 && f.mag[slot] <= 0) f.burstLeft = 0;
   if (f.burstLeft > 0 && m.t >= f.burstNext && f.mag[slot] > 0) {
     fireOnce(m, w, f, wpn);
     f.burstLeft--;
@@ -186,7 +187,7 @@ function weapons(m: Match, w: World, f: Fighter, intent: Intent, dt: number) {
     else {
       // Out of everything: click, then draw the sidearm.
       m.events.push({ type: 'dry', owner: f.id });
-      f.slot = 1; f.nextFire = m.t + 0.32;
+      f.slot = 1; f.nextFire = m.t + 0.32; f.burstLeft = 0;
       m.events.push({ type: 'swap', owner: f.id, slot: 1 });
     }
   }
@@ -223,7 +224,10 @@ function fireOnce(m: Match, w: World, f: Fighter, wpn: Weapon) {
     const dl = Math.hypot(dx, dy, dz); dx /= dl; dy /= dl; dz /= dl;
     if (wpn.kind === 'rocket') {
       const sp = wpn.rocketSpeed ?? 30;
-      m.projectiles.push({ kind: 'rocket', owner: f.id, x: ox + dx * 0.6, y: oy - 0.1 + dy * 0.6, z: oz + dz * 0.6, vx: dx * sp, vy: dy * sp, vz: dz * sp, age: 0, fuse: 4 });
+      // Never spawn inside a wall the shooter is hugging: stop just short of it, so the rocket bursts on that wall.
+      const near = rayWorld(w, ox, oy, oz, dx, dy, dz, 0.6, hit);
+      const k = near ? Math.max(0, near.t - 0.05) : 0.6;
+      m.projectiles.push({ kind: 'rocket', owner: f.id, x: ox + dx * k, y: oy + dy * k, z: oz + dz * k, vx: dx * sp, vy: dy * sp, vz: dz * sp, age: 0, fuse: 4 });
       continue;
     }
     const wall = rayWorld(w, ox, oy, oz, dx, dy, dz, wpn.range, hit);
@@ -248,7 +252,10 @@ function fireOnce(m: Match, w: World, f: Fighter, wpn: Weapon) {
 function throwGrenade(m: Match, f: Fighter) {
   viewDir(f.yaw, f.pitch, dir);
   const oy = eyeY(f) - 0.15;
-  m.projectiles.push({ kind: 'grenade', owner: f.id, x: f.x + dir.x * 0.5, y: oy + dir.y * 0.5, z: f.z + dir.z * 0.5, vx: dir.x * GRENADE.speed + f.vx * 0.5, vy: dir.y * GRENADE.speed + GRENADE.up, vz: dir.z * GRENADE.speed + f.vz * 0.5, age: 0, fuse: GRENADE.fuse });
+  // Released short of any wall the thrower is touching, so the flask never starts inside it.
+  const near = rayWorld(worldFor(m), f.x, oy, f.z, dir.x, dir.y, dir.z, 0.5, hit);
+  const k = near ? Math.max(0, near.t - 0.15) : 0.5;
+  m.projectiles.push({ kind: 'grenade', owner: f.id, x: f.x + dir.x * k, y: oy + dir.y * k, z: f.z + dir.z * k, vx: dir.x * GRENADE.speed + f.vx * 0.5, vy: dir.y * GRENADE.speed + GRENADE.up, vz: dir.z * GRENADE.speed + f.vz * 0.5, age: 0, fuse: GRENADE.fuse });
   f.grenades--;
   f.nextGrenade = m.t + GRENADE.cooldown;
   f.protectUntil = 0;
@@ -398,9 +405,12 @@ export function explode(m: Match, w: World, x: number, y: number, z: number, rad
     if (d >= radius) continue;
     if (!clearLine(w, x, y, z, g.x, cy, g.z) && !clearLine(w, x, y, z, g.x, g.y + HITBOX.headY, g.z)) continue;
     const k = 1 - d / radius;
-    // Knock everyone back, owner included: rocket jumps are allowed.
+    // Knock back the owner (rocket jumps are allowed) and enemies without a spawn shield; teammates are untouched.
+    const shove = g === owner || (!!owner && enemies(m, owner, g) && m.t >= g.protectUntil);
+    if (shove) {
     const dx = g.x - x, dz = g.z - z, dl = Math.hypot(dx, dz) || 1;
     g.vx += (dx / dl) * 8 * k; g.vz += (dz / dl) * 8 * k; g.vy = Math.max(g.vy, 6.5 * k); g.grounded = false;
+    }
     if (!owner) continue;
     damage(m, g, owner, dmg * k * (g === owner ? 0.45 : 1), weapon, false, g.x, cy, g.z);
   }
@@ -502,20 +512,28 @@ export function restore(value: unknown): Match | null {
     g.reserve = Math.max(0, Math.min(WEAPONS[g.primary].reserve, Math.floor(g.reserve)));
     g.grenades = Math.max(0, Math.min(MAX_GRENADES, Math.floor(g.grenades)));
     g.kills = Math.max(0, Math.floor(g.kills)); g.deaths = Math.max(0, Math.floor(g.deaths)); g.score = Math.max(0, Math.floor(g.score));
+    g.pitch = Math.max(-1.45, Math.min(1.45, g.pitch));
+    if (g.lastAttacker < -1 || g.lastAttacker >= FIGHTERS) g.lastAttacker = -1;
+    g.lastAttacker = Math.floor(g.lastAttacker);
+    if (g.alive && g.health <= 0) g.health = 1;
     if (g.alive && overlaps(worldFor(m), g.x, g.y + 0.02, g.z)) respawnInPlace(m, g);
   }
   if (!Array.isArray(v.teamScores) || v.teamScores.length !== 2 || !v.teamScores.every(num)) return null;
   m.teamScores = [Math.max(0, Math.floor(v.teamScores[0])), Math.max(0, Math.floor(v.teamScores[1]))];
   const zones = mapOf(m).zones.length;
   if (!num(v.zoneIndex) || v.zoneIndex < 0 || v.zoneIndex >= zones || !num(v.zoneNext) || !num(v.zoneOwner)) return null;
-  m.zoneIndex = Math.floor(v.zoneIndex); m.zoneNext = v.zoneNext; m.zoneOwner = v.zoneOwner;
-  if (Array.isArray(v.zoneAcc) && v.zoneAcc.length === 2 && v.zoneAcc.every(num)) m.zoneAcc = [v.zoneAcc[0], v.zoneAcc[1]];
+  m.zoneIndex = Math.floor(v.zoneIndex); m.zoneNext = Math.max(m.t, v.zoneNext); m.zoneOwner = Math.max(-2, Math.min(1, Math.floor(v.zoneOwner)));
+  const acc = (n: number) => Math.max(0, Math.min(0.999, n));
+  if (Array.isArray(v.zoneAcc) && v.zoneAcc.length === 2 && v.zoneAcc.every(num)) m.zoneAcc = [acc(v.zoneAcc[0]), acc(v.zoneAcc[1])];
   m.over = v.over === true;
   m.winner = num(v.winner) ? v.winner : -1;
-  m.projectiles = Array.isArray(v.projectiles) ? (v.projectiles as Projectile[]).filter(p => p && (p.kind === 'rocket' || p.kind === 'grenade') && [p.x, p.y, p.z, p.vx, p.vy, p.vz, p.age, p.fuse].every(num) && num(p.owner) && p.owner >= 0 && p.owner < FIGHTERS).slice(0, 32).map(p => ({ ...p })) : [];
+  m.projectiles = Array.isArray(v.projectiles) ? (v.projectiles as Projectile[]).filter(p => p && (p.kind === 'rocket' || p.kind === 'grenade') && [p.x, p.y, p.z, p.vx, p.vy, p.vz, p.age, p.fuse].every(num) && Number.isInteger(p.owner) && p.owner >= 0 && p.owner < FIGHTERS
+      && (p.kind === 'grenade' || Math.hypot(p.vx, p.vy, p.vz) > 1) && Math.hypot(p.vx, p.vy, p.vz) < 100)
+      .slice(0, 32).map(p => ({ ...p, age: Math.max(0, p.age), fuse: Math.max(0, Math.min(5, p.fuse)) })) : [];
   if (Array.isArray(v.pickups)) {
     const list = (v.pickups as Pickup[]).filter(p => p && (p.kind === 'ammo' || p.kind === 'grenade') && [p.id, p.x, p.y, p.z, p.respawnAt, p.expires].every(num) && typeof p.active === 'boolean' && typeof p.dropped === 'boolean').slice(0, 48);
-    m.pickups = list.map(p => ({ ...p }));
+    const ids = new Set<number>();
+    m.pickups = list.filter(p => !ids.has(p.id) && ids.add(p.id)).map(p => ({ ...p }));
     m.nextPickupId = Math.max(1, ...m.pickups.map(p => p.id + 1));
   }
   return m;
