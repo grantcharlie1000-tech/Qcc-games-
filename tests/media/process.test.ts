@@ -1,7 +1,8 @@
 import {describe,it,expect} from 'vitest';
 import sharp from 'sharp';
 import {randomBytes} from 'node:crypto';
-import {processImage,MediaError} from '../../src/media/process';
+import {crc32,deflateSync} from 'node:zlib';
+import {processImage,MediaError,MEDIA_MESSAGES} from '../../src/media/process';
 import {POLICIES} from '../../src/media/policy';
 function noise(width:number,height:number,channels:3|4=3){return sharp(randomBytes(width*height*channels),{raw:{width,height,channels}});}
 async function noisyJpeg(width:number,height:number,exif?:Record<string,Record<string,string>>){
@@ -52,7 +53,7 @@ describe('processImage',()=>{
   // 20000x20000 (the brief's size) cannot even be generated here: Sharp's own default limit rejects it.
   const manyPixels=new Uint8Array(await sharp({create:{width:8000,height:6000,channels:3,background:'#000'}}).png({compressionLevel:9}).toBuffer());
   expect(await code(processImage(manyPixels,'post'))).toBe('too_many_pixels');
-  const tooWide=new Uint8Array(await sharp({create:{width:10001,height:8,channels:3,background:'#000'}}).png().toBuffer());
+  const tooWide=new Uint8Array(await sharp({create:{width:10001,height:16,channels:3,background:'#000'}}).png().toBuffer());
   expect(await code(processImage(tooWide,'post'))).toBe('too_many_pixels');
  },60000);
  it('rejects a truncated JPEG as corrupt',async()=>{
@@ -80,5 +81,57 @@ describe('processImage',()=>{
    expect(error).toBeInstanceOf(MediaError);expect((error as MediaError).code).toBe('unsupported_type');
    expect((error as MediaError).message).toContain('HEIC');
   }
+ });
+});
+
+describe('Whetū acceptance cases (kiakura tests/tutorPhotoProcessing.test.ts, adapted)',()=>{
+ const flat=async(width:number,height:number,quality=92)=>new Uint8Array(await sharp({create:{width,height,channels:3,background:{r:245,g:244,b:236}}}).jpeg({quality}).toBuffer());
+ it('keeps a smooth page at the top quality step, at the full edge, inside the target',async()=>{
+  const result=await processImage(await flat(2400,1600),'post');
+  expect(result.quality).toBe(82);expect(result.edgePx).toBe(POLICIES.post.maxEdge);
+  expect(result.full.byteLength).toBeLessThanOrEqual(POLICIES.post.targetBytes);
+  expect(Math.max(result.width,result.height)).toBe(1600);
+ });
+ it('never enlarges a small JPEG and keeps its resolution',async()=>{
+  const result=await processImage(await flat(900,600),'post');
+  expect([result.width,result.height]).toEqual([900,600]);
+ });
+ it('holds a busy, noisy photo under the hard maximum without dropping below the floor edge',async()=>{
+  const raw=Buffer.alloc(2000*1500*3);let seed=7;
+  for(let i=0;i<raw.length;i++){seed=(seed*1103515245+12345)&0x7fffffff;raw[i]=seed&0xff;}
+  const input=new Uint8Array(await sharp(raw,{raw:{width:2000,height:1500,channels:3}}).jpeg({quality:95}).toBuffer());
+  const result=await processImage(input,'post');
+  expect(result.full.byteLength).toBeLessThanOrEqual(POLICIES.post.maxBytes);
+  const longest=Math.max(result.width,result.height);
+  expect(longest).toBeGreaterThanOrEqual(POLICIES.post.floorEdge);expect(longest).toBeLessThanOrEqual(POLICIES.post.maxEdge);
+ },60000);
+ it('maps corrupt data to a fixed reason that never echoes the decoder message',async()=>{
+  const corrupt=new Uint8Array([0xff,0xd8,0xff,0xe0,...new Uint8Array(200).fill(0x5a)]);
+  try{await processImage(corrupt,'post');expect.unreachable();}catch(error){
+   expect(error).toBeInstanceOf(MediaError);expect((error as MediaError).code).toBe('corrupt');
+   expect((error as MediaError).message).toBe(MEDIA_MESSAGES.corrupt);
+   expect((error as MediaError).message).not.toMatch(/vips|jpeg|sharp|huffman/i);
+  }
+ });
+ it('refuses a tiny file that declares a huge canvas from its header alone',async()=>{
+  // A real PNG container (signature, IHDR, one IDAT row, IEND, valid CRCs) that declares 20000x20000. Its pixels were never written.
+  const chunk=(type:string,data:Uint8Array)=>{const out=new Uint8Array(12+data.length),view=new DataView(out.buffer);
+   view.setUint32(0,data.length);out.set(new TextEncoder().encode(type),4);out.set(data,8);view.setUint32(8+data.length,crc32(out.subarray(4,8+data.length)));return out;};
+  const ihdr=new Uint8Array(13);new DataView(ihdr.buffer).setUint32(0,20000);new DataView(ihdr.buffer).setUint32(4,20000);ihdr.set([8,2,0,0,0],8);
+  const header=Buffer.concat([Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]),chunk('IHDR',ihdr),chunk('IDAT',deflateSync(new Uint8Array(60001))),chunk('IEND',new Uint8Array(0))]);
+  expect(header.length).toBeLessThan(1000);
+  expect(await code(processImage(header,'post'))).toBe('too_many_pixels');
+ });
+ it('refuses an empty body and a photo smaller than 16 px as unreadable',async()=>{
+  expect(await code(processImage(new Uint8Array(0),'post'))).toBe('corrupt');
+  const tiny=new Uint8Array(await sharp({create:{width:8,height:8,channels:3,background:'#fff'}}).png().toBuffer());
+  expect(await code(processImage(tiny,'post'))).toBe('corrupt');
+  const edge=new Uint8Array(await sharp({create:{width:16,height:16,channels:3,background:'#fff'}}).png().toBuffer());
+  expect((await processImage(edge,'post')).width).toBe(16);
+ });
+ it('drops the colour profile from the output',async()=>{
+  const p3=new Uint8Array(await sharp({create:{width:64,height:64,channels:3,background:'#c03030'}}).withIccProfile('p3').jpeg().toBuffer());
+  expect((await sharp(p3).metadata()).icc).toBeDefined();
+  expect((await sharp((await processImage(p3,'post')).full).metadata()).icc).toBeUndefined();
  });
 });

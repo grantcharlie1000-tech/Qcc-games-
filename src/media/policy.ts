@@ -10,6 +10,8 @@ export const QUALITY_LADDER=[82,76,70] as const;
 export const MAX_UPLOAD_BYTES=4194304;
 export const MAX_INPUT_SIDE=10000;
 export const MAX_INPUT_PIXELS=40_000_000;
+/** Smaller than this is a tracking pixel or a broken file, not a photo (Whetū's MIN_PHOTO_SIDE_PX). */
+export const MIN_INPUT_SIDE=16;
 export const PENDING_TTL_MS=3600000;
 export const mediaKey=(id:string,variant:'full'|'thumb'):string=>`${id}/${variant}`;
 export const validMediaId=(value:unknown):value is string=>typeof value==='string'&&/^m_[a-f0-9]{32}$/.test(value);
