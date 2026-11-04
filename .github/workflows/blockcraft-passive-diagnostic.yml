@@ -55,7 +55,7 @@ jobs:
           once("    g.updateSettings({mobSpawning:false,daylightCycle:false,weatherCycle:false});g.skipTime(6000);", r'''    g.updateSettings({mobSpawning:false,daylightCycle:false,weatherCycle:false});g.skipTime(6000);
               // PASSIVE_LOOK_OBSERVATIONAL_DIAGNOSTIC_V1: records only; leaves gameplay and assertions intact.
               const w=window as unknown as {__passiveLookDiagnostic:any};
-              const d=w.__passiveLookDiagnostic={version:1,stage:'opening',sequence:0,events:[],worldTicks:[],
+              const d:any=w.__passiveLookDiagnostic={version:1,stage:'opening',sequence:0,events:[],worldTicks:[],
                 discardedEvents:0,discardedTicks:0,errors:[],withinWorldTick:false,worldTickContext:null,sample:null};
               const clone=(value:any)=>value===undefined?null:JSON.parse(JSON.stringify(value));
               const entity=(e:any)=>({id:e.id,kind:e.kind,category:e.category,x:e.x,y:e.y,z:e.z,vx:e.vx,vy:e.vy,vz:e.vz,
