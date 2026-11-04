@@ -4,7 +4,7 @@
 .gl-form{display:flex;flex:1;gap:6px;min-width:0}
 .gl-modes,.gl-summary[hidden]{display:none}
 .gl-search{position:relative;display:flex;flex:1;min-width:0;border-radius:999px}
-.gl-search .gl-input{position:relative;z-index:3;flex:1;min-width:0;min-height:48px;border:0;border-radius:999px;background:transparent;color:var(--glass-ink,#fff);font:400 17px/1.3 var(--font-sans,system-ui,sans-serif);padding:10px 16px;box-shadow:none;outline:none}
+.gl-search .gl-input{position:relative;z-index:3;flex:1;width:0;min-width:0;min-height:48px;border:0;border-radius:999px;background:transparent;color:var(--glass-ink,#fff);font:400 17px/1.3 var(--font-sans,system-ui,sans-serif);padding:10px 16px;box-shadow:none;outline:none}
 .gl-search .gl-input::placeholder{color:var(--glass-ink,#fff);opacity:.65}
 .gl-search:focus-within{outline:3px solid var(--glass-ink,#fff);outline-offset:2px}
 .gl-input:disabled{opacity:.6}
