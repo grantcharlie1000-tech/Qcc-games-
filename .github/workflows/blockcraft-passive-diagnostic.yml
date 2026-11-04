@@ -1,0 +1,153 @@
+name: Diagnose Blockcraft photo entities
+on:
+  push:
+    branches: [diagnostics/blockcraft-passive-d453cbb]
+permissions:
+  contents: read
+concurrency:
+  group: passive-photo-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: d453cbb17a414f6786728763191dc88b132d9c5c
+      - run: git rev-parse HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps chromium
+      - name: Add observational fixture instrumentation
+        run: |
+          python3 - "$GITHUB_WORKSPACE" <<'PY'
+          #!/usr/bin/env python3
+          """Apply observational photo-stage diagnostics only in a disposable CI checkout.
+          Usage: python instrument-passive-stage.py /path/to/checkout
+          No app source or assertion changes. Never run against the shared working checkout.
+          """
+          from pathlib import Path
+          import sys
+          
+          root = Path(sys.argv[1]).resolve()
+          path = root / 'tests/games/blockcraft/passive-stage.ts'
+          source = path.read_text()
+          marker = 'PASSIVE_LOOK_OBSERVATIONAL_DIAGNOSTIC_V1'
+          if marker in source:
+              raise SystemExit('Already instrumented; refusing duplicate application.')
+          
+          def once(old, new):
+              global source
+              if source.count(old) != 1:
+                  raise SystemExit(f'Expected exactly one matching source anchor: {old[:90]!r}; no file written.')
+              source = source.replace(old, new, 1)
+          
+          once("import {expect} from '../../fixtures';", "import {test,expect} from '../../fixtures';")
+          once("    g.updateSettings({mobSpawning:false,daylightCycle:false,weatherCycle:false});g.skipTime(6000);", r'''    g.updateSettings({mobSpawning:false,daylightCycle:false,weatherCycle:false});g.skipTime(6000);
+              // PASSIVE_LOOK_OBSERVATIONAL_DIAGNOSTIC_V1: records only; leaves gameplay and assertions intact.
+              const w=window as unknown as {__passiveLookDiagnostic:any};
+              const d=w.__passiveLookDiagnostic={version:1,stage:'opening',sequence:0,events:[],worldTicks:[],
+                discardedEvents:0,discardedTicks:0,errors:[],withinWorldTick:false,worldTickContext:null,sample:null};
+              const clone=(value:any)=>value===undefined?null:JSON.parse(JSON.stringify(value));
+              const entity=(e:any)=>({id:e.id,kind:e.kind,category:e.category,x:e.x,y:e.y,z:e.z,vx:e.vx,vy:e.vy,vz:e.vz,
+                age:e.age,baby:e.baby,removed:e.removed,health:e.health,deathTime:e.deathTime,data:clone(e.data)});
+              d.captureEntity=entity;
+              d.capture=()=>({clockMs:performance.now(),time:{...g.time},settings:{...g.settings},
+                player:{x:g.player.state.x,y:g.player.state.y,z:g.player.state.z},count:g.entities.all().length,
+                entities:g.entities.all().map(entity),entityDebug:clone(g.entities.debug),
+                pendingWorldTicks:g.ticks.pending(),worldTickStats:{...g.ticks.stats()},chunks:g.world.chunks.size});
+              const record=(type:string,payload:any)=>{
+                if(d.events.length>=10000){d.discardedEvents++;return;}
+                d.events.push({sequence:++d.sequence,type,stage:d.stage,clockMs:performance.now(),gameTick:g.time.tick,
+                  withinWorldTick:d.withinWorldTick,worldTickContext:d.worldTickContext?{...d.worldTickContext}:null,...payload});
+              };
+              const safe=(action:()=>void)=>{try{action();}catch(error){d.errors.push(String(error));}};
+              d.record=record;
+              // EventBus listeners run synchronously, so this stack includes the actual upstream creator.
+              g.events.on('entitySpawned',({entity:e,reason}:any)=>safe(()=>record('entitySpawned',{
+                reason,entity:entity(e),stack:new Error('entitySpawned source').stack,
+                countAtEvent:g.entities.all().length,mobSpawning:g.settings.mobSpawning})));
+              g.events.on('entityRemoved',({entity:e}:any)=>safe(()=>record('entityRemoved',{
+                entity:entity(e),stack:new Error('entityRemoved source').stack})));
+              g.events.on('blockChanged',(change:any)=>safe(()=>{
+                if(d.withinWorldTick)record('blockChangedDuringWorldTick',{change:clone(change)});
+              }));
+              g.events.on('chunkLoaded',(chunk:any)=>safe(()=>record('chunkLoaded',{chunk:clone(chunk)})));
+              g.events.on('chunkUnloaded',(chunk:any)=>safe(()=>record('chunkUnloaded',{chunk:clone(chunk)})));
+              // Preserve the same receiver, arguments, return value, exception, and every original tick.
+              const tick=g.ticks.tick;
+              g.ticks.tick=function(this:any,...args:any[]){
+                const previous=d.worldTickContext,wasWithin=d.withinWorldTick;
+                const context={gameTick:g.time.tick,startMs:performance.now(),pendingBefore:g.ticks.pending(),
+                  countBefore:g.entities.all().length,startSequence:d.sequence};
+                d.withinWorldTick=true;d.worldTickContext=context;
+                try{return Reflect.apply(tick,this,args);}
+                finally{
+                  safe(()=>{
+                    if(d.worldTicks.length>=2000){d.worldTicks.shift();d.discardedTicks++;}
+                    d.worldTicks.push({...context,endMs:performance.now(),pendingAfter:g.ticks.pending(),
+                      countAfter:g.entities.all().length,endSequence:d.sequence});
+                  });
+                  d.withinWorldTick=wasWithin;d.worldTickContext=previous;
+                }
+              };
+              d.initial=d.capture();
+              d.initialWorldTickQueue=clone(g.ticks.serialize());''')
+          once("    // The photo owns the whole entity scene, including animals waiting for unloaded chunks.\n    g.entities.reset();", r'''    const diagnostic=(window as unknown as {__passiveLookDiagnostic:any}).__passiveLookDiagnostic;
+              diagnostic.stage=(mobs as Mob[]).map(m=>m[0]).join(',');
+              diagnostic.record('beforeStageReset',{snapshot:diagnostic.capture()});
+              // The photo owns the whole entity scene, including animals waiting for unloaded chunks.
+              g.entities.reset();
+              diagnostic.record('afterStageReset',{snapshot:diagnostic.capture()});''')
+          once("  const stats=await page.evaluate(()=>{const g=(window as unknown as {blockcraft:Engine}).blockcraft;return{...g.entities.debug.render,count:g.entities.all().length};});", r'''  const stats=await page.evaluate(()=>{
+              const g=(window as unknown as {blockcraft:Engine}).blockcraft;
+              const stats={...g.entities.debug.render,count:g.entities.all().length};
+              const d=(window as unknown as {__passiveLookDiagnostic:any}).__passiveLookDiagnostic;
+              // Same synchronous sampling point as the original test. No extra frames before reading count.
+              d.sample={stats,snapshot:d.capture(),lastEventSequence:d.sequence};
+              d.record('statsSample',{stats});
+              return stats;
+            });''')
+          once("  return stats as {entities:number;drawCalls:number;count:number};", r'''  const diagnostic=await page.evaluate(()=>{
+              const d=(window as unknown as {__passiveLookDiagnostic:any}).__passiveLookDiagnostic;
+              return{version:d.version,stage:d.stage,initial:d.initial,initialWorldTickQueue:d.initialWorldTickQueue,
+                sample:d.sample,afterScreenshot:d.capture(),events:d.events,worldTicks:d.worldTicks,
+                discardedEvents:d.discardedEvents,discardedTicks:d.discardedTicks,errors:d.errors};
+            });
+            await test.info().attach(`passive-stage-${name}-diagnostic`,{
+              body:Buffer.from(JSON.stringify({name,expected:mobs,originalStats:stats,...diagnostic},null,2)),
+              contentType:'application/json'
+            });
+            return stats as {entities:number;drawCalls:number;count:number};''')
+          path.write_text(source)
+          print(f'Instrumented {path}; application source and passive-look assertions unchanged.')
+          PY
+          mkdir -p diagnostic-evidence
+          git diff -- tests/games/blockcraft/passive-stage.ts > diagnostic-evidence/instrumentation.patch
+          git diff --exit-code -- src tests/games/blockcraft/passive-look.spec.ts
+      - run: npm run check
+      - name: Repeat original assertions without retries
+        env:
+          BLOCKCRAFT_EVIDENCE_DIR: diagnostic-evidence
+        run: >-
+          xvfb-run -a npm run test:e2e --
+          tests/games/blockcraft/passive-look.spec.ts
+          --project=chromium --workers=1 --repeat-each=5 --retries=0 --reporter=list,html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blockcraft-passive-observation
+          path: |
+            test-results
+            playwright-report
+            diagnostic-evidence
+          if-no-files-found: warn
