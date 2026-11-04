@@ -285,7 +285,7 @@
   --ease-out:cubic-bezier(.23,1,.32,1);
   --sheet-from-scale:.98;--sheet-from-lift:28px;
   box-sizing:border-box;width:calc(100% - 16px);max-width:none;max-height:min(85dvh,calc(100dvh - 24px - env(safe-area-inset-top)));
-  margin:auto;padding:20px;overflow:auto;overscroll-behavior:contain;
+  margin:auto auto calc(8px + env(safe-area-inset-bottom));padding:20px;overflow:auto;overscroll-behavior:contain;
   border-radius:32px;
   color:#fff;font-family:var(--font-sans);
   transform-origin:var(--sheet-origin,50% 100%);

@@ -29,7 +29,7 @@ html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[dat
 /* Plain typography at every display density. */
 @media(max-resolution:1.5dppx){:is(.arcade-sheet,body.in-game .mp-card){-webkit-text-stroke-width:0}}
 @media(min-width:640px){:is(.arcade-sheet,body.in-game .mp-card){--sheet-radius:28px}}
-.arcade-sheet.ui-glass-sheet{padding:var(--sheet-padding)}
+.arcade-sheet.ui-glass-sheet{padding:var(--sheet-padding);margin:auto}
 /* The tiny handle is decoration, not a false drag affordance or tab stop. */
 :is(.arcade-sheet,body.in-game .mp-card)::before{content:'';display:block;width:36px;height:4px;margin:0 auto 14px;border-radius:999px;background:var(--sheet-ink);opacity:.28}
 @media(min-width:640px){:is(.arcade-sheet,body.in-game .mp-card)::before{display:none}}
