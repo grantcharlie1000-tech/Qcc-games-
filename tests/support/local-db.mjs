@@ -4,7 +4,7 @@ import {createServer} from 'node:net';
 import {PGlite} from '@electric-sql/pglite';
 import {fromNodeSocket} from 'pg-gateway/node';
 import pg from 'pg';
-import {migrate} from '../../scripts/db-migrate.mjs';
+import {migrate,GATED_MIGRATIONS} from '../../scripts/db-migrate.mjs';
 
 export function createLocalPool(connectionString) {
  return new pg.Pool({connectionString,max:1,idleTimeoutMillis:1000,connectionTimeoutMillis:10000});
@@ -37,7 +37,7 @@ export class LocalDB {
  async applyMigrations(directory='db/migrations') {
   if(!this.db)throw new Error('Start the local database before applying migrations');
   const pool=createLocalPool(this.connectionString);
-  try {return await migrate(pool,{directory,expectEnv:'development',bootstrapMarker:'development',log:()=>{}});}
+  try {return await migrate(pool,{directory,expectEnv:'development',bootstrapMarker:'development',approvedMigrations:GATED_MIGRATIONS,log:()=>{}});}
   finally {await pool.end();}
  }
  async query(sql,params) {

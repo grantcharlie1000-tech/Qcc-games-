@@ -36,9 +36,10 @@ PeerJS signalling uses the public `0.peerjs.com` server, so it does not depend o
    - `TMDB_READ_TOKEN`
    - `CLOUDFLARE_TURN_KEY_ID`
    - `CLOUDFLARE_TURN_API_TOKEN`
-   - `BLOB_READ_WRITE_TOKEN` (created by connecting a Vercel Blob store to the project; enables QCC Social/Chat photos)
+   - `BLOB_READ_WRITE_TOKEN` (created by connecting a Vercel Blob store to the project). Photos turn on only when this **and** `QCC_MEDIA_MAX_TOTAL_BYTES` are both set
    - `CRON_SECRET` (any long random value; Vercel sends it as `Authorization: Bearer ...` to the purge cron)
-   - Optional: `QCC_MEDIA_MAX_TOTAL_BYTES` (global media budget, default 2 GiB; Vercel Blob Hobby includes far less, so set it to match your plan)
+   - `QCC_MEDIA_MAX_TOTAL_BYTES` (global media budget in bytes; required for photos, no default, so pick about 80% of your Blob plan's storage; `0` or an invalid value keeps photos off)
+   - `QCC_APPROVED_MIGRATIONS` (owner only; see below. Leave unset until the owner has approved the migration)
    - `QCC_PROXY_SECRET` when requests arrive through the trusted Cloudflare Pages proxy (server-only)
    - Optional: `QCC_DEPLOY_CONTEXT`, `QCC_DB_EXPECTED_ENV`, `QCC_WRITE_FREEZE`
 5. Pages frontend: configure `QCC_API_ORIGIN` and the matching `QCC_PROXY_SECRET` runtime bindings as below.
@@ -52,17 +53,21 @@ The database marker row (`qcc_environment`) must match.
 
 `server/app.ts` serves `social`, `chat` and `media` through the same guarded handler as accounts. `server/media-store.ts`
 (`vercelBlobMediaStore`) is the `MediaStore`: it returns `null`, which disables photos while text keeps working, unless
-`BLOB_READ_WRITE_TOKEN` is set. Objects are written as **private** Vercel Blobs (`access: 'private'`, pathname
-`qcc-media/<key>`, no random suffix), so they have no public URL and are only readable with the store token. Photos reach
+`BLOB_READ_WRITE_TOKEN` and an explicit `QCC_MEDIA_MAX_TOTAL_BYTES` are both set (without them uploads answer 503 `media_not_configured`). A
+`null` store is re-checked after 60 s, so fixing the env does not need a cold start. Objects are written as **private** Vercel Blobs (`access: 'private'`, pathname
+`qcc-media/<key>`, no random suffix), so they have no public URL and are only readable with the store token. Writes use `allowOverwrite:false` and reads use the Blob cache (`useCache:true`; keys are random and immutable, and
+authorization runs against the database before any read). Photos reach
 users only through the authenticated `/api/media` handler, which also decides who may see each one. This needs
 `@vercel/blob` 2.x; an older SDK without private access must not be used.
 
 `vercel.json` registers a cron for `/api/chat-purge`. The route returns 401 unless the request carries
-`Authorization: Bearer $CRON_SECRET`, and runs `purgeExpiredChat`, `purgePendingMedia` and `sweepOrphanMedia` in bounded loops
-(up to 20 rounds each). It passes through the same database environment guard as the other routes and logs only counts.
+`Authorization: Bearer $CRON_SECRET`, and runs `purgeExpiredChat`, `purgePendingMedia` and `sweepOrphanMedia` in small batches (50 rows)
+under a 7 s time budget, deleting each batch's blobs 8 at a time and keeping the rows of failed deletes. A run that hits the budget stops cleanly and the
+next run continues. With no media store configured the purge deletes only text and system messages and keeps snap rows and media
+rows, so no blob is orphaned. It skips while writes are frozen. It passes through the same database environment guard as the other routes and logs only counts.
 **Schedule: daily (`7 3 * * *`).** Vercel Hobby only allows cron jobs that run once per day, and a more frequent expression fails
 the deployment. Reads already filter on `expires_at`, so expired messages are never served between runs; only the row and blob
-deletion is delayed by up to a day. On a Pro plan change the schedule to `7 * * * *` for the hourly purge the docs describe.
+deletion is delayed by up to a day. `vercel.json` has a single `api/[route].js` function (`maxDuration: 10`), so the cron path has no function config of its own and relies on the 7 s deadline. On a Pro plan change the schedule to `7 * * * *` for the hourly purge the docs describe.
 
 Uploads send the raw image bytes with their `Content-Type`. The Vercel request body limit is 4.5 MB and `MAX_UPLOAD_BYTES` is
 4 MiB, so uploads fit; `maxDuration` stays at 10 s. Sharp stays an external `node_modules` dependency (`--packages=external`),
@@ -222,3 +227,12 @@ Usernames, password requirements, fixed 60-day sessions and abuse limits remain:
 the backend router retain accounts 600, leaderboard 300, TURN 20 requests/IP/minute;
 TURN additionally allows 6 credential requests/client/minute. No schema,
 migration, game-save model cap or live database was changed.
+
+### Migration approval gate
+
+`scripts/db-migrate.mjs` keeps a list of gated migrations (currently `20261105090000_social_chat`). If a gated migration is
+**pending** and not listed in `QCC_APPROVED_MIGRATIONS` (comma-separated ids), the run fails before applying anything and the
+message names the migration and the variable. Already-applied migrations are not affected, and `--status` and `--dry-run` still work.
+After approving, the owner sets `QCC_APPROVED_MIGRATIONS=20261105090000_social_chat` **separately** for production and for preview
+(or on a manual run), applies it, then removes the value if they want the gate back. `netlify.toml` still runs `db:migrate` in every context;
+the gate is what stops an unapproved migration there.

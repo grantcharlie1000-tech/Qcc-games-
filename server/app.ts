@@ -7,11 +7,11 @@ import {createLeaderboardHandler} from '../src/leaderboard/server';
 import {createSocialHandler} from '../src/social/server';
 import {createChatHandler,purgeExpiredChat} from '../src/chat/server';
 import {createMediaHandler} from '../src/media/server';
-import {purgePendingMedia,sweepOrphanMedia,type MediaStore} from '../src/media/store';
+import {purgePendingMedia,sweepOrphanMedia,PURGE_BATCH_SIZE,type MediaStore} from '../src/media/store';
 import {vercelBlobMediaStore} from './media-store';
 import {createTurnHandler} from '../src/multiplayer/turn-server';
 import {handleMoviesCatalog} from './movies-catalog';
-import {createGuardedHandler} from '../netlify/lib/runtime.mts';
+import {createGuardedHandler,isWriteFrozen} from '../netlify/lib/runtime.mts';
 import {storageFullResponse} from '../src/accounts/storage-errors';
 import {createHash,timingSafeEqual} from 'node:crypto';
 
@@ -69,18 +69,27 @@ export function createApp(options:AppOptions={}){
  const env=options.env??process.env,now=options.now??Date.now,fetcher=options.fetcher??globalThis.fetch.bind(globalThis);
  const context=deployContext(env);
  let db:Database|undefined;const database=()=>db??=options.database!();
- let store:Promise<MediaStore|null>|undefined;
- const mediaStore=()=>store??=(options.mediaStore??(()=>vercelBlobMediaStore(env)))().catch(()=>null);
+ // A null store (media not configured, or the SDK failed to load) is only remembered for a minute, so fixing the env needs no cold start.
+ const STORE_RETRY_MS=60_000;
+ let store:Promise<MediaStore|null>|undefined,storeAt=0;
+ async function mediaStore():Promise<MediaStore|null>{
+  if(store){const cached=await store;if(cached||now()-storeAt<STORE_RETRY_MS)return cached;}
+  storeAt=now();
+  const created=(options.mediaStore??(()=>vercelBlobMediaStore(env)))().catch(()=>null);
+  store=created;return created;
+ }
  const handlers:Partial<Record<Route,(request:Request,ip:string)=>Promise<Response>>>={};
  const handler=(route:Route)=>handlers[route]??=build(route);
  function build(route:Route):(request:Request,ip:string)=>Promise<Response>{
   if(route==='movies')return request=>handleMoviesCatalog(request,env.TMDB_READ_TOKEN??'',fetcher);
   if(route==='turn'){const turn=createTurnHandler({keyId:env.CLOUDFLARE_TURN_KEY_ID,apiToken:env.CLOUDFLARE_TURN_API_TOKEN},fetcher,now);return (request,ip)=>turn(request,ip);}
-  let guarded:((request:Request)=>Promise<Response>)|undefined;
+  let guarded:((request:Request)=>Promise<Response>)|undefined,builtAt=0,builtWithoutStore=false;
   return async request=>{
    try{
+    if(guarded&&builtWithoutStore&&now()-builtAt>=STORE_RETRY_MS)guarded=undefined;
     if(!guarded){
      const blobs=route==='social'||route==='chat'||route==='media'?await mediaStore():null;
+     builtAt=now();builtWithoutStore=!blobs&&(route==='social'||route==='chat'||route==='media');
      const maxTotalBytes=Number(env.QCC_MEDIA_MAX_TOTAL_BYTES)||undefined;
      const factory=route==='accounts'?createAccountsHandler:route==='leaderboard'?createLeaderboardHandler:route==='social'?(db:Database)=>createSocialHandler(db,blobs)
       :route==='chat'?(db:Database)=>createChatHandler(db,blobs):(db:Database)=>createMediaHandler(db,blobs,{maxTotalBytes});
@@ -92,21 +101,23 @@ export function createApp(options:AppOptions={}){
  }
  const digest=(value:string)=>createHash('sha256').update(value).digest();
  let guardedPurge:((request:Request)=>Promise<Response>)|undefined;
- const BATCH=500,MAX_ITERATIONS=20;
- /** Hourly Vercel cron: expired chat, stale pending uploads, orphaned blobs. Bearer CRON_SECRET only; logs counts only. */
+ /** Time budget for one purge; the function limit is 10 s and a killed run would leave blobs without rows. */
+ const PURGE_BUDGET_MS=7000;
+ /** Vercel cron: expired chat, stale pending uploads, orphaned blobs, within a time budget. Bearer CRON_SECRET only; logs counts only. */
  async function chatPurge(request:Request):Promise<Response>{
   const secret=env.CRON_SECRET,supplied=request.headers.get('authorization')??'';
   if(!secret||request.method!=='GET'||!timingSafeEqual(digest('Bearer '+secret),digest(supplied)))return Response.json({error:'Unauthorized.'},{status:401,headers:{'Cache-Control':'no-store'}});
+  const deadline=now()+PURGE_BUDGET_MS;
   try{
    // Same environment-marker guard as the other routes, so a purge can never touch the wrong database.
    guardedPurge??=createGuardedHandler(database(),db=>async()=>{
+    if(await isWriteFrozen(db,env as NodeJS.ProcessEnv,now())){console.warn('QCC chat purge skipped: writes are frozen.');return Response.json({ok:true,skipped:'frozen'},{headers:{'Cache-Control':'no-store'}});}
     const query=db.query.bind(db),blobs=await mediaStore();
-    let deleted=0,runs=0;
-    for(;runs<MAX_ITERATIONS;){const count=await purgeExpiredChat(query,blobs);runs++;deleted+=count;if(count<BATCH)break;}
-    await purgePendingMedia(query,blobs);
+    const deleted=await purgeExpiredChat(query,blobs,deadline);
+    await purgePendingMedia(query,blobs,deadline);
     let orphans=0;
-    for(let i=0;i<MAX_ITERATIONS;i++){const n=await sweepOrphanMedia(query,blobs,100);orphans+=n;if(n<100)break;}
-    console.log(`QCC chat purge: ${deleted} expired messages deleted in ${runs} run(s), ${orphans} orphaned media removed.`);
+    for(;now()<deadline;){const n=await sweepOrphanMedia(query,blobs,PURGE_BATCH_SIZE,deadline);orphans+=n;if(n<PURGE_BATCH_SIZE)break;}
+    console.log(`QCC chat purge: ${deleted} expired messages deleted, ${orphans} orphaned media removed.`);
     return Response.json({ok:true},{headers:{'Cache-Control':'no-store'}});
    },{allowMissingMarker:false,context,env:env as NodeJS.ProcessEnv,now});
    return await guardedPurge(request);

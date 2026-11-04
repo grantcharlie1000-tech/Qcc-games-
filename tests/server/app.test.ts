@@ -88,6 +88,13 @@ describe('social, chat, media and the purge cron',()=>{
   const a=createApp({env,database:()=>pool as unknown as Database});
   expect((await get(a,'/api/media?action=get&id=m_'+'a'.repeat(32))).status).toBe(503);
  });
+ it('retries the lazy media store after 60 s instead of caching null forever',async()=>{
+  let t=1_000_000,calls=0;const store=createMemoryStore();
+  const a=createApp({env,now:()=>t,database:()=>pool as unknown as Database,mediaStore:async()=>++calls===1?null:store as never});
+  const up=()=>get(a,'/api/media?action=upload&purpose=post',{method:'POST',headers:{'Content-Type':'image/png'},body:new Uint8Array([1,2,3])});
+  expect((await up()).status).toBe(503);t+=30_000;expect((await up()).status).toBe(503);expect(calls).toBe(1);
+  t+=31_000;const r=await up();expect(calls).toBe(2);expect(r.status).not.toBe(503);
+ });
  it('accepts a raw binary image upload with its Content-Type and stores the re-encoded WebP',async()=>{
   const {default:sharp}=await import('sharp');
   const png=await sharp({create:{width:64,height:48,channels:3,background:{r:200,g:30,b:90}}}).png().toBuffer();
@@ -113,7 +120,7 @@ describe('social, chat, media and the purge cron',()=>{
   try{
    const r=await get(make({CRON_SECRET:CRON}),'/api/chat-purge',{headers:{Authorization:'Bearer '+CRON}});
    expect(r.status).toBe(200);expect(await r.json()).toEqual({ok:true});
-   expect(log).toHaveBeenCalledOnce();expect(String(log.mock.calls[0]![0])).toMatch(/^QCC chat purge: \d+ expired messages deleted in \d+ run\(s\), \d+ orphaned media removed\.$/);
+   expect(log).toHaveBeenCalledOnce();expect(String(log.mock.calls[0]![0])).toMatch(/^QCC chat purge: \d+ expired messages deleted, \d+ orphaned media removed\.$/);
   }finally{log.mockRestore();}
  });
 });

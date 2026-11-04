@@ -7,6 +7,16 @@ const environments=['production','preview','development'];
 const quote=value=>'"'+value.replaceAll('"','""')+'"';
 const canonical=name=>name.endsWith('.sql')?name.slice(0,-4):name;
 const LOCK=728192104;
+/** Migrations that need the owner's explicit go-ahead per deployment. A pending gated migration fails the run unless listed in QCC_APPROVED_MIGRATIONS. */
+export const GATED_MIGRATIONS=['20261105090000_social_chat'];
+export const APPROVAL_ENV='QCC_APPROVED_MIGRATIONS';
+export class MigrationApprovalError extends Error{}
+const parseList=value=>new Set((Array.isArray(value)?value:String(value??'').split(',')).map(item=>String(item).trim()).filter(Boolean).map(canonical));
+/** Throws (before anything is applied) when a pending gated migration has not been approved. Already-applied migrations never reach this check. */
+function assertApproved(pending,gated,approved){
+ const blocked=pending.filter(f=>gated.has(f.name)&&!approved.has(f.name)).map(f=>f.name);
+ if(blocked.length)throw new MigrationApprovalError(`Migration requires owner approval: ${blocked.join(', ')}. Nothing was applied. After approving, set ${APPROVAL_ENV}=${blocked.join(',')} for this deployment context and run again.`);
+}
 export async function migrationFiles(directory='db/migrations'){
  const files=[];
  for(const entry of await readdir(directory,{withFileTypes:true})){
@@ -55,10 +65,11 @@ async function history(client,files,baselineThrough){
 }
 /** Apply each unapplied file in its own locked transaction, including late files.
  * @param {import('pg').Pool} pool
- * @param {{expectEnv:string,bootstrapMarker?:string,directory?:string,dryRun?:boolean,status?:boolean,baselineThrough?:string,log?:(message:string)=>void}} options
+ * @param {{expectEnv:string,bootstrapMarker?:string,directory?:string,dryRun?:boolean,status?:boolean,baselineThrough?:string,approvedMigrations?:string[]|string,gatedMigrations?:string[],log?:(message:string)=>void}} options
  */
 export async function migrate(pool,options){
  const {expectEnv,bootstrapMarker,directory='db/migrations',dryRun=false,status=false,baselineThrough,log=console.log}=options;
+ const gated=parseList(options.gatedMigrations??GATED_MIGRATIONS),approved=parseList(options.approvedMigrations??process.env[APPROVAL_ENV]);
  if(bootstrapMarker&&bootstrapMarker!==expectEnv)throw new Error('Bootstrap marker must match expected environment');
  const files=await migrationFiles(directory);const client=await pool.connect();const applied=[];const adopted=[];let pending=[];
  try{
@@ -66,6 +77,7 @@ export async function migrate(pool,options){
    await marker(client,expectEnv,bootstrapMarker);
    const state=await history(client,files,baselineThrough);
    pending=files.filter(f=>!state.applied.has(f.name)&&!state.adopted.has(f.name));
+   if(!dryRun&&!status)assertApproved(pending,gated,approved);
    const latest=[...state.applied.keys(),...state.adopted].sort().at(-1);
    if(latest&&pending.some(f=>f.name<latest))log('Warning: pending migration sorts before latest applied migration; all unapplied files will run.');
    if(dryRun||status){adopted.push(...state.adopted);return;}
@@ -106,4 +118,4 @@ async function main(){
  console.log(`Database host: ${databaseHost(process.env.DATABASE_URL)}; expected environment: ${options.expectEnv}`);
  const pool=createPool();try{await migrate(pool,options);}finally{await pool.end();}
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)main().catch(()=>{console.error('Database migration refused or failed. Check environment marker, arguments, migration history/checksums, and connectivity. Details suppressed to protect data.');process.exitCode=1;});
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)main().catch(error=>{if(error instanceof MigrationApprovalError)console.error(error.message);else console.error('Database migration refused or failed. Check environment marker, arguments, migration history/checksums, and connectivity. Details suppressed to protect data.');process.exitCode=1;});
