@@ -6,7 +6,7 @@ permissions:
   contents: read
 concurrency:
   group: qcc-combined-verification
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   campaign-regression:
     name: Campaign regression (${{ matrix.browser }})
@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 91d74f3a9e860745d2c9afef96aba9a68981d6c0
+          ref: e21eb63b2a365c817a3d553241241b9671ffe754
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 91d74f3a9e860745d2c9afef96aba9a68981d6c0
+          ref: e21eb63b2a365c817a3d553241241b9671ffe754
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -80,7 +80,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 91d74f3a9e860745d2c9afef96aba9a68981d6c0
+          ref: e21eb63b2a365c817a3d553241241b9671ffe754
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -106,7 +106,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 91d74f3a9e860745d2c9afef96aba9a68981d6c0
+          ref: e21eb63b2a365c817a3d553241241b9671ffe754
       - uses: actions/setup-node@v4
         with:
           node-version: 22
