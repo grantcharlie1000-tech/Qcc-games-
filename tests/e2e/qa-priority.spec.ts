@@ -1,8 +1,10 @@
 import {test,expect} from '@playwright/test';
-test('initial topic opens chapter and Games navigation works',async({page})=>{
+test('initial topic opens games and Study navigation works',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('pocket-arcade:v1:accounts:guest','true'));
  await page.goto('/');
  await page.locator('[data-study-topic="forces"]').click();
+ await expect(page.locator('.game-grid')).toBeVisible();
+ await page.locator('.app-tabbar [data-action=study]').click();
  await expect(page.locator('#study-title')).toHaveText('Why motion changes');
  const sections=page.locator('#study-view nav[aria-label="Sections"]');
  await expect(sections).toBeVisible();
@@ -26,6 +28,8 @@ test('next article preserves the common reader layout and disclosure controls',a
  await page.addInitScript(()=>localStorage.setItem('pocket-arcade:v1:accounts:guest','true'));
  await page.goto('/');
  await page.locator('[data-study-topic="forces"]').click();
+ await expect(page.locator('.game-grid')).toBeVisible();
+ await page.locator('.app-tabbar [data-action=study]').click();
  const chapter=page.locator('.study-chapter');const initial=await chapter.getAttribute('data-article-id');
  await page.getByRole('button',{name:'Next article'}).click();
  await expect(chapter).not.toHaveAttribute('data-article-id',initial!);

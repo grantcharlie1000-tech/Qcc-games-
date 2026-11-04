@@ -14,6 +14,8 @@ for(const viewport of [{width:1365,height:768},{width:390,height:844}]){
   await page.getByRole('button',{name:'Reject All',exact:true}).click();
   await expect(page.locator('.study-cookie-panel')).toHaveCount(0);
   await page.locator('[data-study-topic="forces"]').click();
+  await expect(page.locator('.game-grid')).toBeVisible();
+  await page.locator('.app-tabbar [data-action=study]').click();
   await expect(page.locator('#study-title')).toHaveText('Why motion changes');
   await page.locator('.study-hero img').evaluate(async(image:HTMLImageElement)=>{await image.decode().catch(()=>{});});
   await page.screenshot({animations:'disabled',path:testInfo.outputPath(`03-chapter-${viewport.width}.png`)});

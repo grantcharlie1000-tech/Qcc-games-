@@ -167,3 +167,9 @@ body.in-game .mp-card .game-button.secondary{background:var(--sheet-control);col
 
 .arcade-sheet :is(input:not([type=checkbox]),.game-button.secondary){border:2px solid #aeb2ba;background:#292e38;color:#fff}
 .arcade-sheet .account-tabs button[aria-pressed=true]{background:#45546a;color:#fff;border-color:#fff}
+
+/* Preserve the original in-game menu treatment. */
+#game-options.arcade-sheet.ui-glass-sheet{margin:auto auto calc(8px + env(safe-area-inset-bottom))}
+@media(min-width:640px){#game-options.arcade-sheet.ui-glass-sheet{margin:auto}}
+#game-options.arcade-sheet.ui-glass-sheet[open]::backdrop{background-color:transparent}
+#game-options.arcade-sheet .game-button.secondary{border:0;background:var(--sheet-control);color:var(--sheet-ink)}
