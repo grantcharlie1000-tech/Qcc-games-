@@ -1,0 +1,46 @@
+import {test,expect} from '@playwright/test';
+for(const viewport of [{width:1365,height:768},{width:390,height:844}]){
+ test(`after screenshots ${viewport.width}px`,async({page},testInfo)=>{
+  await page.setViewportSize(viewport);await page.goto('/');
+  const account=page.locator('#accounts-dialog');await expect(account).toBeVisible();
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath(`01-account-${viewport.width}.png`)});
+  await account.getByRole('button',{name:'Close sign in'}).click();
+  await expect(page.locator('[data-study-topic]')).toHaveCount(20);
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath(`02-study-picker-${viewport.width}.png`)});
+  await page.locator('.study-header [data-reading-choices]').click();
+  await expect(page.locator('.study-privacy-dialog')).toBeVisible();
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath(`02b-privacy-${viewport.width}.png`)});
+  await page.keyboard.press('Escape');await expect(page.locator('.study-privacy-dialog')).not.toBeVisible();
+  await page.getByRole('button',{name:'Reject All',exact:true}).click();
+  await expect(page.locator('.study-cookie-panel')).toHaveCount(0);
+  await page.locator('[data-study-topic="forces"]').click();
+  await expect(page.locator('#study-title')).toHaveText('Why motion changes');
+  await page.locator('.study-hero img').evaluate(async(image:HTMLImageElement)=>{await image.decode().catch(()=>{});});
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath(`03-chapter-${viewport.width}.png`)});
+  await page.locator('.study-check').scrollIntoViewIfNeeded();
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath(`03b-chapter-check-${viewport.width}.png`)});
+  await page.getByRole('button',{name:'Next article'}).click();
+  await expect(page.locator('.study-chapter')).toHaveAttribute('data-article-id',/^(quanta|aeon|essay):forces$/);
+  const articleId=await page.locator('.study-chapter').getAttribute('data-article-id');
+  testInfo.annotations.push({type:'article-id',description:articleId??'unknown'});
+  await page.locator('.study-hero img').evaluate(async(image:HTMLImageElement)=>{await image.decode().catch(()=>{});});
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath(`04-next-article-${viewport.width}.png`)});
+  await page.locator('.study-check').scrollIntoViewIfNeeded();
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath(`04b-next-check-${viewport.width}.png`)});
+  await page.locator('#study-view nav[aria-label="Sections"]').getByRole('link',{name:'Games',exact:true}).click();
+  await expect(page.locator('.game-grid')).toBeVisible();
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath(`05-games-${viewport.width}.png`)});
+  await page.locator('.app-menu').click();await expect(page.locator('#menu')).toBeVisible();
+  await page.locator('#search').fill('snake');
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath(`06-menu-search-${viewport.width}.png`)});
+  await page.locator('#open-leaderboards').click();await expect(page.locator('#leaderboard-dialog')).toBeVisible();
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath(`07-leaderboard-${viewport.width}.png`)});
+  await page.getByRole('button',{name:'Close leaderboards'}).click();
+  await page.getByRole('link',{name:'Play Snake',exact:true}).click();
+  await expect(page.locator('[data-game-id="snake"].game-view')).toBeVisible();
+  await expect(page.locator('.snake-canvas')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Start slithering',exact:true})).toBeVisible();
+  await page.locator('#game-menu').click();await expect(page.locator('#game-options')).toBeVisible();
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath(`08-game-menu-${viewport.width}.png`)});
+ });
+}
