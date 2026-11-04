@@ -1,0 +1,19 @@
+/* Apps launcher sheet (DESIGN.md section 4.2). Sheet geometry comes from the shared .ui-glass-sheet rules. */
+#apps-dialog .apps-tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 0}
+.apps-tile{position:relative;display:grid;gap:10px;align-content:start;min-height:156px;padding:16px;box-sizing:border-box;border-radius:20px;background:rgb(255 255 255 / .07);box-shadow:inset 0 1px 0 rgb(255 255 255 / .12);color:#fff;text-decoration:none;transition:background-color 150ms var(--ease),transform 160ms var(--ease-out)}
+.apps-tile:active{transform:scale(.97)}
+.apps-tile[aria-current=page]{box-shadow:inset 0 0 0 2px rgb(255 255 255 / .5)}
+.apps-tile strong{font:600 15px/1.3 var(--font-sans);color:#fff}
+.apps-tile-text{font:400 13px/1.4 var(--font-sans);color:rgb(255 255 255 / .72)}
+.apps-tile-mark{position:relative;display:block;width:64px;height:64px}
+.apps-tile-mark .app-tile-mark{display:block;width:64px;height:64px}
+.apps-tile[data-app=social] .apps-tile-mark{color:var(--social-accent)}
+.apps-tile[data-app=chat] .apps-tile-mark{color:var(--chat-accent)}
+.apps-tile-mark>.apps-badge{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;font-size:12px;line-height:20px}
+#apps-dialog .apps-back{display:flex;justify-content:center;align-items:center;margin-top:12px;box-sizing:border-box;width:100%;text-decoration:none}
+#apps-dialog .apps-back[hidden]{display:none}
+#apps-dialog .menu-note{margin-top:14px}
+@media(hover:hover) and (pointer:fine){.apps-tile:hover{background:rgb(255 255 255 / .11)}}
+@media(max-width:359px){#apps-dialog .apps-tiles{gap:8px}.apps-tile{padding:12px;min-height:148px}}
+@media(prefers-reduced-motion:reduce){.apps-tile:active{transform:none}}
+.reduce-motion .apps-tile:active{transform:none}

@@ -48,7 +48,7 @@ export function sheetOrigin(trigger:Box,sheet:Box):string{
 // the transform of the entry animation, so the origin is measured against the layout the sheet settles into.
 export function openSheet(dialog:HTMLDialogElement,trigger?:Element|null):void{
   // Shared app dialogs opt in. Movies-specific sheets retain their material.
-  if(['menu','game-options','rules-dialog','accounts-dialog','leaderboard-dialog'].includes(dialog.id)){
+  if(['menu','game-options','rules-dialog','accounts-dialog','leaderboard-dialog','apps-dialog'].includes(dialog.id)){
     dialog.classList.add('arcade-sheet');
     dialog.dataset.glassTone=document.body.classList.contains('study-active')?'light':document.querySelector<HTMLElement>('.game-view')?.dataset.glassTone??(document.body.classList.contains('movies-active')?'dark':'light');
   }

@@ -1,0 +1,14 @@
+/* QCC Chat section frame (DESIGN.md 3.1). */
+body.chat-active{overflow:hidden}
+html:has(body.chat-active:not(.study-active)),body.chat-active:not(.study-active){min-height:100svh;background:var(--c-bg)}
+.chat-view{position:fixed;inset:0 0 auto;height:100dvh;min-height:100svh;z-index:30;overflow:auto;overscroll-behavior:contain;background:var(--c-bg);color:#fff;font:15px/1.45 var(--font-sans);color-scheme:dark}
+.chat-view *{box-sizing:border-box}
+.chat-main{padding:var(--app-top) max(var(--gutter,16px),env(safe-area-inset-right)) calc(var(--app-bottom) + 16px) max(var(--gutter,16px),env(safe-area-inset-left));max-width:640px;margin-inline:auto}
+.chat-title{margin:0 0 16px;font:800 28px/1.15 var(--font-sans);letter-spacing:-.02em;color:var(--c-100)}
+.chat-view .apps-empty{display:grid;justify-items:start;gap:12px}
+.chat-view .apps-empty .app-tile-mark{width:64px;height:64px;color:var(--chat-accent)}
+.chat-view .apps-empty h2{margin:0;font:700 17px/1.3 var(--font-sans);color:var(--c-100)}
+.chat-view .apps-empty p{margin:0;color:var(--c-300)}
+.chat-view .apps-empty .game-button{display:inline-flex;align-items:center;min-height:44px;padding:10px 20px;border:0;border-radius:999px;font:600 16px/1.2 var(--font-sans);text-decoration:none;cursor:pointer;background:var(--chat-accent);color:var(--chat-accent-ink)}
+.chat-view .apps-empty .game-button.secondary{background:rgb(255 255 255 / .12);color:#fff}
+.chat-view .apps-loading{color:var(--c-400)}

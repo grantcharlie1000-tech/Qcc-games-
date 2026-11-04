@@ -1,0 +1,28 @@
+/* QCC Social and Chat tokens (DESIGN.md section 2) and the shared badge (section 3.6). Loaded by the launcher, which the shell imports eagerly. */
+:root{
+  --social-accent:#a684ff;
+  --social-accent-ink:var(--c-950);
+  --social-accent-soft:rgb(166 132 255 / .16);
+  --social-like:var(--c-rose-soft);
+  --social-warn:var(--c-amber);
+  --social-danger:var(--c-red);
+  --chat-accent:#46ecd5;
+  --chat-accent-ink:var(--c-950);
+  --chat-accent-soft:rgb(70 236 213 / .14);
+  --chat-text:var(--chat-accent);
+  --chat-snap:var(--c-amber);
+  --chat-pending:var(--c-400);
+  --chat-me:var(--c-300);
+  --chat-saved-bg:rgb(70 236 213 / .10);
+  --chat-saved-edge:rgb(70 236 213 / .45);
+  --app-badge:var(--c-rose-soft);
+  --app-badge-ink:var(--c-950);
+  --app-panel:var(--c-950);
+  --app-panel-edge:var(--line);
+  --app-top:calc(env(safe-area-inset-top,0px) + 64px);
+  --app-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom,0px));
+}
+.apps-badge{min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:999px;background:var(--app-badge);color:var(--app-badge-ink);font:700 10px/16px var(--font-sans);text-align:center;box-shadow:0 0 0 2px rgb(0 0 0 / .35);pointer-events:none;transition:transform 240ms var(--ease-glass-pop,var(--ease-out)),opacity 240ms var(--ease-out)}
+.apps-badge[hidden]{display:none}
+@starting-style{.apps-badge{transform:scale(.8);opacity:0}}
+.ui-tab>.apps-badge{position:absolute;top:3px;left:calc(50% + 4px)}
