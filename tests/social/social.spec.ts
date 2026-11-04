@@ -315,6 +315,9 @@ test('new posts pill appears when scrolled and merges on tap',async({page,contex
  await post(a.token,'a brand new post');
  const pill=page.getByRole('button',{name:'1 new post'});await expect(pill).toBeVisible({timeout:10000});
  await expect(page.locator('.social-post').filter({hasText:'a brand new post'})).toHaveCount(0);
+ // Let the pill's entrance transition finish first: an unstable target makes Playwright retry the click with other
+ // scroll alignments, which scrolls the feed to the top, and reaching the top merges the posts on purpose, removing the pill.
+ await pill.evaluate(el=>Promise.all(el.getAnimations().map(a=>a.finished)));
  await pill.click();
  await expect(page.locator('.social-feed > .social-post').first()).toContainText('a brand new post');
  await expect.poll(()=>page.locator('.social-view').evaluate(el=>el.scrollTop)).toBeLessThan(5);
