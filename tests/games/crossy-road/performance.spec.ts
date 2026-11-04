@@ -81,7 +81,8 @@ test.describe('mobile adaptive resolution',()=>{
       h.freeze(false);
     });
     await page.waitForFunction(()=>document.querySelector<HTMLElement>('.crossy-road')?.dataset.perfDone==='true');
-    expect(await page.locator('.hw-canvas').evaluate((c:HTMLCanvasElement)=>c.width)).toBe(780);
+    // The budget starts at DPR 2 (780 px wide at 390 CSS px); two bad seconds drop it to DPR 1.5 and the next level needs four more.
+    expect(await page.locator('.hw-canvas').evaluate((c:HTMLCanvasElement)=>c.width)).toBe(585);
     expect((await hook(page).state()).maxRow).toBeGreaterThan(25);
   });
 });

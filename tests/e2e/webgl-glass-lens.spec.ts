@@ -115,24 +115,23 @@ test('all three WebGL sources expose their completed drawing buffer for a repain
   }
 });
 
-test('Snake: the menu sheet refracts the paused board and the renderer idles while nothing draws',async({page})=>{
+test('Snake: the menu frosts the paused board without a sharp WebGL copy and the renderer idles',async({page})=>{
   await page.goto('/#/game/snake');await page.locator('.snake-start').click();
   // At phone portrait the dock sits above the board: no live pixels, so no lens.
   for(const pill of await page.locator(PILLS).all())await expect(pill).not.toHaveAttribute('data-glass-mode','webgl');
   await page.locator('#game-menu').click();
   const sheet=page.locator('#game-options');
-  await expect(sheet).toHaveAttribute('data-glass-mode','webgl');
-  // The sheet reaches past Snake's board, so it is only partly backed by live pixels and keeps
-  // the plain blur under the lens there; a fully backed lens drops the blur.
-  const partial=await sheet.evaluate(e=>e.hasAttribute('data-glass-partial'));
-  if(partial)await expect(sheet).toHaveCSS('backdrop-filter',/blur\(/);else await expect(sheet).toHaveCSS('backdrop-filter','none');
+  // #92 deliberately uses CSS frost on sheets, including over live games.
+  await expect(sheet).toHaveAttribute('data-glass-mode','blur');
+  await expect(sheet).toHaveCSS('backdrop-filter','blur(20px) saturate(1.5)');
+  await expect(sheet).toHaveCSS('background-color','rgba(12, 16, 22, 0.9)');
   // Controls inside the sheet keep a thin fill rather than a second refracting layer.
   await expect(sheet.locator('.sheet-close-glass')).not.toHaveAttribute('data-glass-mode','webgl');
   await expect.poll(()=>sheet.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
   const lens=sheet.locator(':scope>.ui-glass-gl>canvas');
-  // The board is frozen by the menu's pause: its pixels show through the lens, and no uploads repeat.
-  const covered=await lens.evaluate(e=>{const c=e as HTMLCanvasElement,p=c.getContext('2d')!.getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<p.length;i+=4)if(p[i]>=240)n++;return n/(c.width*c.height);});
-  expect(covered).toBeGreaterThan(.2);
+  // A sharp copy must never paint back over the sheet's blur.
+  await expect(lens).toHaveCount(0);
+  await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');
   const before=await stats(page);await page.waitForTimeout(600);const after=await stats(page);
   expect(after.uploads-before.uploads).toBeLessThanOrEqual(1);
 });

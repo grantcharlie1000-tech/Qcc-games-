@@ -1,3 +1,40 @@
 import { defineConfig, devices } from '@playwright/test';
 import { existsSync } from 'node:fs';
-export default defineConfig({testDir:'./tests',testMatch:'**/*.spec.ts',timeout:30000,expect:{timeout:7000},fullyParallel:false,workers:process.env.CI?1:2,reporter:[['list'],['html',{open:'never'}]],use:{baseURL:process.env.ARCADE_URL || 'http://127.0.0.1:4173',trace:'retain-on-failure',screenshot:'only-on-failure'},projects:[{name:'chromium',use:{...devices['Desktop Chrome'],channel:process.env.BLOCKCRAFT_BROWSER_CHANNEL==='headless-shell'?undefined:'chromium',headless:process.env.BLOCKCRAFT_HEADED!=='1',launchOptions:{executablePath:process.env.CHROMIUM_PATH || (!process.env.CI && existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']}}},{name:'webkit',use:{...devices['Desktop Safari']}}],webServer:process.env.ARCADE_URL ? undefined : {command:'npm run dev -- --port 4173',url:'http://127.0.0.1:4173',reuseExistingServer:true}});
+
+const port = process.env.PLAYWRIGHT_PORT || '4600';
+const externalURL = process.env.ARCADE_URL;
+const baseURL = externalURL || `http://127.0.0.1:${port}`;
+// Multiplayer helpers launch their own browsers and read ARCADE_URL directly.
+process.env.ARCADE_URL = baseURL;
+
+export default defineConfig({
+  testDir: './tests',
+  testMatch: '**/*.spec.ts',
+  timeout: 30000,
+  expect: { timeout: 7000 },
+  // Full CI shards opt into test-level parallelism and two workers via CLI.
+  fullyParallel: false,
+  workers: process.env.CI ? 1 : 2,
+  reporter: [['list'], ['html', { open: 'never' }]],
+  use: { baseURL, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: process.env.BLOCKCRAFT_BROWSER_CHANNEL === 'headless-shell' ? undefined : 'chromium',
+        headless: process.env.BLOCKCRAFT_HEADED !== '1',
+        launchOptions: {
+          executablePath: process.env.CHROMIUM_PATH || (!process.env.CI && existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),
+          args: ['--no-sandbox', '--enable-webgl', '--use-gl=angle', '--use-angle=swiftshader'],
+        },
+      },
+    },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+  ],
+  webServer: externalURL ? undefined : {
+    command: `npm run dev -- --port ${port} --strictPort`,
+    url: baseURL,
+    reuseExistingServer: !process.env.CI,
+  },
+});

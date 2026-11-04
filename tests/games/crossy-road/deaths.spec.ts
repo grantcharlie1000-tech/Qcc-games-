@@ -1,4 +1,5 @@
 import {test, expect} from '../../fixtures';
+import {gameAction} from '../../game-menu';
 import {BAND_MAX, HOP_TIME, IDLE_LIMIT, IDLE_WARN} from '../../../src/games/crossy-road/config';
 import {laneVelocity, mod, platformAt, railWarning, trainHit} from '../../../src/games/crossy-road/lanes';
 import {advance, cardShot, carDeath, expectDeathCard, force, hop, openGame, rail, river, showCard, state} from './helpers';
@@ -82,12 +83,14 @@ test('landing in open water drowns the player: water', async ({page}) => {
   expect(errors).toEqual([]);
 });
 
-test('a log carries the player off the edge: swept', async ({page}) => {
+// Crossy Road has no side limits since #95 (ed34d9d): logical x is unbounded and the old 'swept' trigger was removed, so a log
+// carries the player past the original nine-column band and the run goes on. 'swept' stays in DeathCause only for old saves.
+test('a log carries the player past the old band edge and the run goes on: no swept death', async ({page}) => {
   test.setTimeout(60000);
   const errors = await openGame(page);
   const t0 = (await state(page)).t, landing = t0 + HOP_TIME;
   const lane = river(1, {dir: 1, speed: 2.5, cycle: 40, movers: [{offset: 0, len: 20, color: 0}]});
-  // One long log spans -6 to 14 when the hop lands: it carries the player from column 4 to the band's right edge.
+  // One long log spans -6 to 14 when the hop lands: it carries the player from column 4 past the old right edge.
   lane.phase = mod(-6 - lane.dir * lane.speed * landing, lane.cycle);
   expect(platformAt(lane, 4, landing), 'a log under column 4 at landing').toBe(true);
   const ride = (BAND_MAX - 4) / laneVelocity(lane);
@@ -97,23 +100,16 @@ test('a log carries the player off the edge: swept', async ({page}) => {
   await hop(page, 'ArrowUp');
   let s = await state(page);
   expect(s, 'riding a log after landing').toMatchObject({alive: true, row: 1, hopping: false});
-  expect(s.x, 'the log has carried the player since landing').toBeCloseTo(4 + laneVelocity(lane) * (s.t - landing), 2);
 
-  let diedAt = Number.NaN;
-  for (let i = 0; i < 100 && Number.isNaN(diedAt); i++) {
+  // Ride well past the moment the old band edge would have swept the player off, checking alive at every step.
+  const target = landing + ride + 1;
+  while (s.t < target) {
     await advance(page, 0.05);
     s = await state(page);
-    if (!s.alive) diedAt = s.t;
-    else expect(s.x).toBeLessThanOrEqual(BAND_MAX);
+    expect(s, 'never swept off').toMatchObject({alive: true, phase: 'running', deathCause: null});
   }
-  expect(Number.isNaN(diedAt), 'the player was swept off').toBe(false);
-  expect(s).toMatchObject({deathCause: 'swept', phase: 'dying'});
-  expect(s.x, 'dead once past the right edge').toBeGreaterThan(BAND_MAX);
-  expect(Math.abs((diedAt - landing) - ride), 'seconds from landing to the edge').toBeLessThanOrEqual(0.1);
-
-  await showCard(page);
-  await expectDeathCard(page, 'swept', 'Carried away on a log');
-  await cardShot(page, 'death-swept');
+  expect(s.x, 'carried beyond the old right edge').toBeGreaterThan(BAND_MAX + 1);
+  expect(s.x, 'still moving with the log').toBeCloseTo(4 + laneVelocity(lane) * (s.t - landing), 1);
   expect(errors).toEqual([]);
 });
 
@@ -215,8 +211,7 @@ test('shared Menu opens the Crossy Road leaderboard from game over without a dup
   await expectDeathCard(page, 'car', 'Hit by a car');
   await expect(page.locator('.crossy-road .hw-rankings')).toHaveCount(0);
   await expect(page.locator('.hw-over')).toHaveClass(/ui-glass-sheet/);
-  await page.locator('#game-menu').click();
-  await page.locator('#open-leaderboards').click();
+  await gameAction(page, 'Leaderboards');
   const dialog = page.locator('dialog[open]');
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('heading', {name: 'Leaderboards'})).toBeVisible();

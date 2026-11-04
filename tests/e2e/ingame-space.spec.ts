@@ -3,20 +3,20 @@ import {test,expect} from '../fixtures';
 test('portrait Pool uses the height between player cards and dock',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/pool');
   await page.locator('.pool-table').hover();
-  const table=(await page.locator('.pool-table').boundingBox())!,players=(await page.locator('.pool-players').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;
-  expect(table.height).toBeGreaterThanOrEqual(440);expect(table.height/table.width).toBeCloseTo(840/440,2);
-  expect(players.y).toBeLessThan(32);expect(table.y).toBeGreaterThanOrEqual(players.y+players.height);
-  const footer=(await page.locator('.pool-under').boundingBox())!;
-  expect(footer.y).toBeGreaterThanOrEqual(table.y+table.height);expect(footer.y+footer.height).toBeLessThanOrEqual(dock.y-4);
-  expect(dock.y-footer.y-footer.height).toBeLessThan(24);
+  const table=(await page.locator('.pool-table-box').boundingBox())!,hud=(await page.locator('.pool-hud').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;
+  const fine=(await page.locator('.pool-fine').boundingBox())!;
+  expect(table.height).toBeGreaterThanOrEqual(560);expect(table.height).toBeGreaterThan(table.width);
+  expect(hud.y).toBeLessThan(32);expect(table.y).toBeGreaterThanOrEqual(hud.y+hud.height);
+  expect(fine.y).toBeGreaterThanOrEqual(table.y+table.height);expect(fine.y+fine.height).toBeLessThanOrEqual(dock.y);
+  expect(dock.y-fine.y-fine.height).toBeLessThan(24);
 });
 
-test('Pool PC status and pocket choice have readable rendered text',async({page})=>{
+test('Pool PC status stays readable while the balls roll',async({page})=>{
   await page.setViewportSize({width:1366,height:768});await page.goto('/#/game/pool');
   await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
-  await expect(page.locator('.pool-message')).toContainText('balls rolling');
-  for(const selector of ['.pool-message','.pool-pocket-row','[aria-label="8-ball pocket"]']){
-    const pixels=await page.locator(selector).evaluate(e=>parseFloat(getComputedStyle(e).fontSize)*e.getBoundingClientRect().width/(e as HTMLElement).offsetWidth);
+  await expect(page.locator('.pool-game')).toHaveAttribute('data-phase','moving');
+  for(const selector of ['.pool-message','.pool-player-name']){
+    const pixels=await page.locator(selector).first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)*e.getBoundingClientRect().width/(e as HTMLElement).offsetWidth);
     expect(pixels).toBeGreaterThanOrEqual(14);
   }
 });

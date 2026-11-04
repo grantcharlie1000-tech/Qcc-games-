@@ -87,7 +87,7 @@ for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
   // The lens and the glow are the bar's layers, so the tabs are the children that are neither.
-  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(5);
+  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(6);
 });
 
 for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}px, and the bar holds only its tabs`,async({page})=>{
@@ -480,6 +480,8 @@ test('keyboard focus expands a minimized island, and the capsule steps aside',as
   const bar=page.locator('.app-tabbar');
   const games=bar.getByRole('link',{name:'Games',exact:true});
   await expect(bar).toBeVisible();
+  const expandedWidth=(await bar.boundingBox())!.width;
+  expect(expandedWidth).toBeGreaterThan(200);
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>capsuleShown(page)).toBe(1);
@@ -487,7 +489,9 @@ test('keyboard focus expands a minimized island, and the capsule steps aside',as
   await page.keyboard.press('Tab');
   await expect(games).toBeFocused();
   await expect.poll(()=>capsuleShown(page)).toBe(0);
-  await expect.poll(async()=>(await bar.boundingBox())!.width).toBeGreaterThan(300);
+  // The five-tab bar leaves room for its separate Menu; focus restores its
+  // full width rather than the obsolete >300px layout from before #86.
+  await expect.poll(async()=>Math.abs((await bar.boundingBox())!.width-expandedWidth)).toBeLessThan(1);
 });
 
 test('a pill move stretches the pill with a web animation',async({page})=>{
@@ -694,17 +698,17 @@ test('the Movies island uses the same dark ink and bold selection as Games',asyn
   await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'700'});
 });
 
-test('the arcade glass keeps a clear backdrop, a pale tint and clean glyphs',async({page})=>{
+test('the navigation glass keeps its frosted backdrop, dark tint and clean glyphs',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   const bar=page.locator('.app-tabbar');await expect(bar).toBeVisible();
   const tint=alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
-  // The clear fill is rgb(8 12 18 / .20); the selection pill is near-transparent and drawn by its rim.
-  expect(tint).toBeCloseTo(.2,2);
+  // #92 frosts navigation at .36; the selection pill remains near-transparent.
+  expect(tint).toBeCloseTo(.36,2);
   expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeLessThanOrEqual(.02);
   expect(await bar.evaluate(el=>getComputedStyle(el,'::after').boxShadow)).not.toBe('none');
   const frost=await frostFilter(bar);
   // Navigation frost (section-navigation.css); Chromium's SVG lens adds its url() map.
-  expect(frost).toMatch(/^blur\(3px\) (url\("#ui-glass-\d+"\) )?saturate\(1\.05\) brightness\(0\.9\) contrast\(0\.85\)$/);
+  expect(frost).toMatch(/^blur\(12px\) (url\("#ui-glass-\d+"\) )?saturate\(1\.4\) brightness\(0\.94\)$/);
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('none');
   // Clean glyphs: no stroke or blurred glow; over busy art the adaptive ink may

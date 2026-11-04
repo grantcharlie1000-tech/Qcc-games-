@@ -1,4 +1,5 @@
 import {test,expect} from '../fixtures';
+import type {Route} from '@playwright/test';
 
 const remoteTitle={id:'movie-778899',kind:'movie',name:'Remote Expedition',year:2024,genres:['Adventure'],overview:'A journey beyond the known world.',poster:'https://image.tmdb.org/t/p/w500/remote.jpg',seasons:[]};
 const results={titles:[remoteTitle],page:1,totalPages:1,totalResults:1};
@@ -38,6 +39,72 @@ test('blocked search keeps local matches and offers a working manual retry',asyn
  await page.getByRole('button',{name:'Retry search',exact:true}).click();
  await expect(page.getByRole('link',{name:'Details for Remote Expedition'})).toBeVisible();
  await expect(page.getByRole('button',{name:'Retry search',exact:true})).toHaveCount(0);
+});
+
+test('a failed catalog search cannot swallow a click on a bundled result',async({page})=>{
+ let search:Route|undefined;
+ await page.route('**/api/movies?*',route=>{
+  if(new URL(route.request().url()).searchParams.has('q')){search=route;return;}
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:320,height:850});
+ await page.goto('/#/movies');
+ await expect(page.locator('.movies-rails-status')).toBeVisible();
+ await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('arrival');
+ const result=page.getByRole('link',{name:'Details for Arrival',exact:true});
+ await expect(result).toBeVisible();
+ await expect.poll(()=>!!search).toBe(true);
+ await result.hover();
+ await page.mouse.down();
+ // The response lands during the press, when replacing the link would lose its click.
+ await search!.fulfill({status:503,json:{error:'metadata_unavailable'}});
+ await expect(page.getByRole('button',{name:'Retry search',exact:true})).toBeVisible();
+ await page.mouse.up();
+ await expect(page).toHaveURL(/#\/movies\/movie-329865$/);
+ await expect(page.getByRole('button',{name:'Play movie',exact:true})).toBeEnabled();
+});
+
+test('a late section failure keeps Retry above the starter results',async({page})=>{
+ let request:Route|undefined;
+ await page.route('**/api/movies?*',route=>{
+  if(new URL(route.request().url()).searchParams.get('rails')==='movie'){request=route;return;}
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/#/movies/browse/movie');
+ const grid=page.locator('.movies-results-grid');
+ await expect(grid.getByRole('link').first()).toBeVisible();
+ await expect.poll(()=>!!request).toBe(true);
+ await request!.fulfill({status:503,json:{error:'metadata_unavailable'}});
+ const status=page.locator('.movies-rails-status');
+ await expect(status.getByRole('button',{name:'Retry',exact:true})).toBeVisible();
+ const notice=await status.boundingBox(),posters=await grid.boundingBox();
+ expect(notice).not.toBeNull();expect(posters).not.toBeNull();
+ expect(notice!.y+notice!.height).toBeLessThanOrEqual(posters!.y);
+});
+
+test('section fallback and search keep their own cards after Home rails load',async({page})=>{
+ const starter={...remoteTitle,id:'movie-329865',name:'Starter Adventure',overview:'A bundled film.'};
+ await page.route('**/movies/catalog.json',route=>route.fulfill({json:{titles:[starter]}}));
+ await page.route('**/api/movies?*',route=>new URL(route.request().url()).searchParams.get('rails')==='home'
+  ?route.fulfill({json:{rails:[{id:'featured',title:'Featured films',titles:[remoteTitle]}]}})
+  :route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
+ await page.goto('/#/movies');
+ await expect(page.getByRole('heading',{name:'Remote Expedition',exact:true})).toBeVisible();
+ await page.locator('.movies-top').getByRole('button',{name:'Movies',exact:true}).click();
+ await expect(page.locator('.movies-rails-status')).toBeVisible();
+ const cards=page.locator('.movies-results-grid .movies-poster');
+ await expect(cards).toHaveCount(1);
+ const search=page.getByRole('searchbox',{name:'Search movies and TV'});
+ // Both titles match this one-character local search; no remote search can mask a stale grid.
+ await search.fill('a');
+ await expect(page.locator('.movies-result-count')).toHaveText('2 titles');
+ await expect(cards).toHaveCount(2);
+ await expect(page.getByRole('link',{name:'Details for Remote Expedition'})).toBeVisible();
+ await search.clear();
+ await expect(cards).toHaveCount(1);
+ await expect(page.getByRole('link',{name:'Details for Starter Adventure'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Details for Remote Expedition'})).toHaveCount(0);
 });
 
 test('late browse metadata cannot reload an active player',async({page})=>{

@@ -56,7 +56,7 @@ const module: GameModule = {
       else if (state.phase === 'ready') {heading.textContent = 'Pac-Man'; startButton.textContent = 'Start';}
       lives.querySelector('strong')!.textContent = String(state.phase === 'over' ? 0 : state.lives + 1);
       startButton.disabled = paused;
-      context.setStatus(paused ? 'Paused' : state.phase === 'over' ? 'Game over. Play again for a new run.' : state.phase === 'ready' ? 'Press Start or any direction to begin.' : state.fright > 0 ? 'Power berry! Eat the blue chasers.' : 'Eat every dot and dodge the chasers.');
+      context.setStatus(paused ? 'Paused' : state.phase === 'over' ? 'Game over' : state.phase === 'ready' ? 'Ready' : state.fright > 0 ? 'Power berry!' : 'Playing');
     }
     const persist = () => context.save(JSON.parse(JSON.stringify(state)));
     function react(list: GameEvent[]) {

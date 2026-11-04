@@ -9,23 +9,31 @@ const handles=new Map();
 const server=await createServer({server:{port:Number(process.env.PORT||4173)},plugins:[{
  name:'local-leaderboard',configureServer(vite){
   vite.middlewares.use(async(req,res,next)=>{
-   const accounts=req.url?.startsWith('/.netlify/functions/accounts');
-   if(!accounts&&!req.url?.startsWith('/.netlify/functions/leaderboard'))return next();
+   const route=/^\/\.netlify\/functions\/(accounts|leaderboard|social|chat|media)(?:[?#]|$)/.exec(req.url||'')?.[1];
+   if(!route)return next();
    try{
     const {MAX_BODY_BYTES}=await vite.ssrLoadModule('/src/accounts/shared.ts');
-    const name=accounts?'accounts':'leaderboard';
-    if(!handles.has(name)){
-     const module=await vite.ssrLoadModule(accounts?'/src/accounts/server.ts':'/src/leaderboard/server.ts');
+    const mediaStore=route==='accounts'||route==='leaderboard'?null:(await vite.ssrLoadModule('/src/media/store.ts')).createFileStore('.netlify/local-media');
+    if(!handles.has(route)){
      const {createGuardedHandler}=await vite.ssrLoadModule('/netlify/lib/runtime.mts');
-     handles.set(name,createGuardedHandler(pool,accounts?module.createAccountsHandler:module.createLeaderboardHandler,{allowMissingMarker:false}));
+     const factory=({
+      accounts:async()=>(await vite.ssrLoadModule('/src/accounts/server.ts')).createAccountsHandler,
+      leaderboard:async()=>(await vite.ssrLoadModule('/src/leaderboard/server.ts')).createLeaderboardHandler,
+      social:async()=>{const f=(await vite.ssrLoadModule('/src/social/server.ts')).createSocialHandler;return db=>f(db,mediaStore);},
+      chat:async()=>{const f=(await vite.ssrLoadModule('/src/chat/server.ts')).createChatHandler;return db=>f(db,mediaStore);},
+      media:async()=>{const f=(await vite.ssrLoadModule('/src/media/server.ts')).createMediaHandler;return db=>f(db,mediaStore);}
+     })[route];
+     handles.set(route,createGuardedHandler(pool,await factory(),{allowMissingMarker:false}));
     }
-    const handle=handles.get(name);
+    const handle=handles.get(route);
+    const cap=route==='media'?4194304:route==='leaderboard'?2048:MAX_BODY_BYTES;
     const chunks=[];let length=0;
-    for await(const chunk of req){length+=chunk.length;if(length>(accounts?MAX_BODY_BYTES:2048)){res.writeHead(413,{'Cache-Control':'no-store'});res.end('Request too large');return;}chunks.push(chunk);}
+    for await(const chunk of req){length+=chunk.length;if(length>cap){res.writeHead(413,{'Cache-Control':'no-store'});res.end('Request too large');return;}chunks.push(chunk);}
     const headers=new Headers();for(const [key,value] of Object.entries(req.headers))if(value)headers.set(key,Array.isArray(value)?value.join(','):value);
     const request=new Request(`http://${req.headers.host}${req.url}`,{method:req.method,headers,body:['POST','PUT'].includes(req.method)?Buffer.concat(chunks):undefined});
     const response=await handle(request);
-    res.writeHead(response.status,Object.fromEntries(response.headers));res.end(await response.text());
+    // Binary-safe: media responses are images.
+    res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));
    }catch{res.writeHead(503,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({error:'Local online services unavailable.'}));}
   });
  }

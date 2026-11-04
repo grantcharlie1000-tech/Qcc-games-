@@ -14,10 +14,6 @@ const RULES = [
   'Controls: move the mouse to steer toward the pointer; arrow keys or WASD steer in eight directions; on a touchscreen drag anywhere to use a floating thumbstick, and your heading is kept when you let go. P pauses. Escape opens your study chapter. Restart begins a fresh match.',
 ].join('\n\n');
 
-const NAMES_NOTE = 'Six local bots · nothing is online';
-const TOUCH_COPY = 'Drag anywhere to steer';
-const POINTER_COPY = 'Mouse, arrows or WASD to steer · P pause · Esc study';
-
 const module: GameModule = {
   id: 'claimline', title: 'Claimline', cover: 'game-art/claimline/cover.svg', rules: RULES,
   mount(container, context) {
@@ -26,7 +22,7 @@ const module: GameModule = {
       <div class="cl-share" aria-label="Your land"><span class="cl-share-label">Your land</span><strong class="cl-share-value">0.00%</strong><div class="cl-share-bar" aria-hidden="true"><i></i></div></div>
       <aside class="cl-ranking" aria-label="Match ranking"><ol></ol></aside>
       <div class="cl-stick" hidden aria-hidden="true"><i class="cl-stick-knob"></i></div>
-      <div class="cl-overlay"><section class="cl-card" aria-labelledby="cl-heading"><p class="cl-eyebrow" hidden></p><h2 id="cl-heading">Claimline</h2><p class="cl-copy"></p><p class="cl-result" hidden></p><button class="game-button cl-start" type="button">Play</button><p class="cl-footnote"></p></section></div>`;
+      <div class="cl-overlay"><section class="cl-card" aria-labelledby="cl-heading"><p class="cl-eyebrow" hidden></p><h2 id="cl-heading">Claimline</h2><p class="cl-copy" hidden></p><p class="cl-result" hidden></p><button class="game-button cl-start" type="button">Play</button></section></div>`;
     container.append(root);
     const q = <T extends Element>(selector: string) => root.querySelector<T>(selector)!;
     const canvas = q<HTMLCanvasElement>('.cl-canvas');
@@ -34,8 +30,7 @@ const module: GameModule = {
     const board = q<HTMLOListElement>('.cl-ranking ol');
     const overlay = q<HTMLElement>('.cl-overlay'), heading = q<HTMLElement>('#cl-heading');
     const eyebrow = q<HTMLElement>('.cl-eyebrow'), copy = q<HTMLElement>('.cl-copy');
-    const result = q<HTMLElement>('.cl-result'), startButton = q<HTMLButtonElement>('.cl-start'), footnote = q<HTMLElement>('.cl-footnote');
-    footnote.textContent = matchMedia('(pointer: coarse)').matches ? TOUCH_COPY : POINTER_COPY;
+    const result = q<HTMLElement>('.cl-result'), startButton = q<HTMLButtonElement>('.cl-start');
 
     const renderer = createRenderer(canvas);
     const events = new AbortController(), signal = events.signal;
@@ -79,6 +74,7 @@ const module: GameModule = {
       const over = world.phase === 'over';
       eyebrow.hidden = !over && !savedRun;
       result.hidden = !over;
+      copy.hidden = !over && !savedRun;
       if (over && world.result) {
         const { reason, by } = world.result;
         const attacker = world.players[by - 1]?.name ?? 'Another player';
@@ -92,11 +88,11 @@ const module: GameModule = {
       } else if (savedRun) {
         eyebrow.textContent = 'MATCH SAVED';
         heading.textContent = 'Welcome back';
-        copy.textContent = `Peak ${formatShare(human.peak)} so far. ${NAMES_NOTE}.`;
+        copy.textContent = `Peak ${formatShare(human.peak)}`;
         startButton.textContent = 'Continue';
       } else {
         heading.textContent = 'Claimline';
-        copy.textContent = 'Step off your land, loop around and return to claim everything you enclose. Six local bots want it too.';
+        copy.textContent = '';
         startButton.textContent = 'Play';
       }
     }
@@ -133,8 +129,8 @@ const module: GameModule = {
 
       context.setStatus(paused ? 'Paused.'
         : world.phase === 'over' ? (world.result?.reason === 'won' ? 'You won the arena!' : `Run ended. Peak ${formatShare(human.peak)}.`)
-        : world.phase === 'ready' ? 'Press Play to start.'
-        : `${formatShare(mine)} claimed. Rank ${place} of ${PLAYER_COUNT}. Local bots only.`);
+        : world.phase === 'ready' ? 'Ready'
+        : `${formatShare(mine)} claimed. Rank ${place} of ${PLAYER_COUNT}.`);
     }
 
     function onHumanEnded() {

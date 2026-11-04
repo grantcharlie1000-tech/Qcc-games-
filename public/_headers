@@ -1,4 +1,5 @@
 /*
+  X-Robots-Tag: noindex, nofollow
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   X-DNS-Prefetch-Control: off
@@ -11,4 +12,7 @@
   Cache-Control: no-cache, max-age=0, must-revalidate
 
 /movies/*
+  Cache-Control: no-store
+
+/deploy-info.json
   Cache-Control: no-store

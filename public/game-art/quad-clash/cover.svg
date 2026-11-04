@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 410" role="img" aria-labelledby="qc-title qc-desc">
+<title id="qc-title">Quad Clash egg fighter taking aim</title>
+<desc id="qc-desc">An egg fighter with a gold shell band with a QCC crest fires a giant pencil sidearm across the school campus while a blue rival bursts into confetti beside the green-roof classroom block.</desc>
+<defs>
+  <linearGradient id="qc-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2f5c"/><stop offset=".55" stop-color="#2f5fa8"/><stop offset="1" stop-color="#8cc6ea"/></linearGradient>
+  <linearGradient id="qc-body" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffd76a"/><stop offset=".6" stop-color="#ffc23d"/><stop offset="1" stop-color="#e09a18"/></linearGradient>
+  <linearGradient id="qc-pave" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9d2c0"/><stop offset="1" stop-color="#b9b19c"/></linearGradient>
+  <radialGradient id="qc-flash" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fffbe6"/><stop offset=".45" stop-color="#ffd65a"/><stop offset="1" stop-color="#ff8a1e" stop-opacity="0"/></radialGradient>
+  <clipPath id="qc-card"><path d="M0 0h320v410H0z"/></clipPath>
+</defs>
+<g clip-path="url(#qc-card)">
+<path fill="#1d2f5c" d="M0 0h320v410H0z"/>
+<path fill="url(#qc-sky)" d="M0 95h320v220H0z"/>
+<!-- hills -->
+<path fill="#3f6f62" d="M0 214 46 186 92 206 140 176 196 204 246 178 320 206V240H0z"/>
+<!-- classroom block -->
+<path fill="#e9e5d4" d="M0 196h320v92H0z"/>
+<path fill="#2e5048" d="M0 190h320v10H0zM0 246h320v6H0z"/>
+<g fill="#5fa3d6" stroke="#f4efe2" stroke-width="4">
+  <path d="M14 208h44v30H14zM78 208h44v30H78zM198 208h44v30H198zM262 208h44v30H262zM14 258h44v24H14zM262 258h44v24H262z"/>
+</g>
+<path fill="#f4efe2" d="M34 208h4v30h-4zM98 208h4v30h-4zM218 208h4v30h-4zM282 208h4v30h-4z"/>
+<!-- banner on the block: navy board with gold rule (no lettering) -->
+<path fill="#1d2f5c" stroke="#f2b733" stroke-width="3" d="M132 204h56v38h-56z"/>
+<path fill="#f2b733" d="M147 214c7-5 19-5 26 0v10c0 6-6 11-13 13-7-2-13-7-13-13z"/>
+<!-- quad pavers -->
+<path fill="url(#qc-pave)" d="M0 288h320v122H0z"/>
+<g stroke="#a59d88" stroke-width="1.5" opacity=".7"><path d="M0 312h320M0 344h320M0 384h320M40 288 18 410M110 288 98 410M180 288 184 410M250 288 270 410"/></g>
+<!-- crate cover -->
+<path fill="#c98f4d" d="M236 300h58v52h-58z"/><path fill="none" stroke="#7e5226" stroke-width="7" d="M240 304h50v44h-50zM241 305l48 42"/>
+<!-- rival egg bursting into confetti -->
+<g transform="translate(262 238)">
+  <ellipse cx="0" cy="58" rx="26" ry="6" fill="#000" opacity=".18"/>
+  <path fill="#f3efe6" d="M0-20C-12-20-26 14-26 34c0 29 52 29 52 0C26 14 12-20 0-20z"/>
+  <path fill="#2f6fe0" d="M-26 29h52v12c-13 6-39 6-52 0z"/>
+  <g fill="#14213d"><ellipse cx="-8" cy="9" rx="3" ry="5"/><ellipse cx="8" cy="9" rx="3" ry="5"/></g>
+  <path fill="#ff4d6a" d="M-34-20l9 4-4 7-9-5zM28-26l8-2 2 8-8 2zM-40 16l7-6 4 6-7 5zM34 20l9 2-2 8-9-2z"/>
+</g>
+<g fill="#ffffff"><path d="M228 196l8 2-2 7-8-2zM300 210l6 4-4 5-6-4zM214 232l7-3 2 6-7 3z"/></g>
+<g fill="#2f6fe0"><path d="M246 190l7 3-3 6-7-3zM292 248l8-1 1 7-8 1z"/></g>
+<g fill="#f2b733"><path d="M232 260l6 5-5 5-6-5zM300 182l7 1-1 7-7-1z"/></g>
+<!-- hero egg: one tapered shell, face and house band -->
+<ellipse cx="146" cy="392" rx="66" ry="11" fill="#000" opacity=".22"/>
+<path fill="#f3efe6" d="M146 202c-36 0-72 59-72 112 0 100 144 100 144 0 0-53-36-112-72-112z"/>
+<path fill="url(#qc-body)" d="M77 333c38 10 100 10 138 0v12c-38 10-100 10-138 0z"/>
+<g fill="#192738"><ellipse cx="129" cy="252" rx="4" ry="7"/><ellipse cx="163" cy="252" rx="4" ry="7"/></g>
+<path fill="none" stroke="#192738" stroke-width="3" stroke-linecap="round" d="M140 270c2 7 10 7 12 0"/>
+<ellipse cx="124" cy="390" rx="17" ry="9" fill="#ffc23d"/><ellipse cx="169" cy="390" rx="17" ry="9" fill="#ffc23d"/>
+<!-- arm and pencil sidearm -->
+<path fill="none" stroke="#f3efe6" stroke-width="18" stroke-linecap="round" d="M182 300l30-18"/>
+<g transform="rotate(-24 222 276)">
+  <path fill="#f28bb0" d="M196 268h14v20h-14z"/>
+  <path fill="#b9bec4" d="M210 266h8v24h-8z"/>
+  <path fill="#ffc93c" d="M218 266h56l4 6v12l-4 6h-56z"/>
+  <path fill="#e3a91f" d="M218 281h60v3l-4 6h-56z"/>
+  <path fill="#f1d7a8" d="M278 266l26 12-26 12z"/>
+  <path fill="#2b2f36" d="M296 274l10 4-10 4z"/>
+  <circle cx="216" cy="288" r="11" fill="#f3efe6"/>
+</g>
+<!-- muzzle flash and tracer -->
+<circle cx="298" cy="244" r="20" fill="url(#qc-flash)"/>
+<path stroke="#fff1b0" stroke-width="3" stroke-linecap="round" d="M304 240l16-8" opacity=".9"/>
+<!-- crosshair over the rival -->
+<g fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity=".92">
+  <path d="M262 214v-12M262 262v12M238 238h-12M286 238h12"/>
+  <circle cx="262" cy="238" r="3" fill="#fff" stroke="none"/>
+</g>
+<!-- falling confetti -->
+<g fill="#f2b733"><path d="M30 128l8 2-2 7-8-2zM70 150l6 4-4 5-6-4zM42 300l8-1 1 7-8 1z"/></g>
+<g fill="#ffffff" opacity=".9"><path d="M88 120l6 2-2 6-6-2zM20 170l7 1-1 6-7-1zM60 330l6 3-3 5-6-3z"/></g>
+<g fill="#ff4d6a"><path d="M196 120l7 3-3 6-7-3zM120 134l7-2 2 6-7 2z"/></g>
+</g>
+</svg>

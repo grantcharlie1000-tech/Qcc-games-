@@ -29,12 +29,12 @@ const module:GameModule={
    const signature=[world.animals.length,world.supportedCount,world.height,world.ready,world.aimX,world.rotation,world.score,world.over,world.complete,paused,world.nextKind,colliderOverlay].join('|');if(signature===lastUI)return;lastUI=signature;
    Object.assign(root.dataset,{count:String(world.animals.length),balanced:String(world.supportedCount),ready:String(world.ready),aim:String(Math.round(world.aimX)),angle:String(world.rotation),over:String(world.over),next:world.nextKind,colliders:String(colliderOverlay),rotationAdaptation:'45deg'});
    dropButton.disabled=paused||!world.ready;dropButton.textContent='DROP';dropButton.setAttribute('aria-label',`Drop ${ANIMALS[world.nextKind].name}`);
-   status.textContent=world.over?'The stack tumbled. Restart to try again.':world.complete?'All 40 animals balanced!':'';
+   status.textContent=world.over?'The stack tumbled.':world.complete?'All 40 animals balanced!':'';
    hud.set(`Score ${world.score} · ${world.supportedCount}/40`,`Score ${world.score}, ${world.supportedCount} of 40 animals balanced`);
    context.setLevel(`${world.supportedCount}/40 animals`);
    if(previousScore!==world.score){if(previousScore>=0&&world.score>previousScore){context.sound('success');context.announce(`${world.supportedCount} animals balanced. Height ${world.height} centimetres.`);bubbleUntil=performance.now()+600;}context.setScore(world.score);previousScore=world.score;}
    if((world.over||world.complete)&&!previousEnd){context.sound(world.over?'lose':'success');context.announce(status.textContent);context.save(world.snapshot());}previousEnd=world.over||world.complete;
-   context.setStatus(world.over?status.textContent:world.ready?`Drag ${ANIMALS[world.nextKind].name} horizontally, tap to rotate, then press DROP.`:'Let the animal settle.');
+   context.setStatus(world.over?status.textContent:world.ready?ANIMALS[world.nextKind].name:'Settling');
   }
   function drawAnimal(a:Animal){const b=a.body,img=sprites[a.kind];draw.save();draw.translate(b.position.x,b.position.y);draw.rotate(b.angle);draw.translate(a.offset.x,a.offset.y);if(img.complete&&img.naturalWidth){const box=artBox(a.kind);draw.drawImage(img,box.x,box.y,box.width,box.height);}draw.restore();
    if(colliderOverlay){draw.save();draw.strokeStyle='#ed176b';draw.fillStyle='#ff1c6422';draw.lineWidth=.8;for(const part of b.parts.slice(1)){draw.beginPath();part.vertices.forEach((v,i)=>i?draw.lineTo(v.x,v.y):draw.moveTo(v.x,v.y));draw.closePath();draw.fill();draw.stroke();}draw.strokeStyle='#fff';draw.lineWidth=1.3;draw.beginPath();draw.moveTo(b.position.x-4,b.position.y);draw.lineTo(b.position.x+4,b.position.y);draw.moveTo(b.position.x,b.position.y-4);draw.lineTo(b.position.x,b.position.y+4);draw.stroke();draw.restore();}
@@ -84,7 +84,7 @@ const module:GameModule={
    resume(){if(disposed||!paused)return;paused=false;last=0;accumulator=0;sync();schedule();},
    restart(){clearInput();world.dispose();world=new AnimalWorld();camera=0;accumulator=0;last=0;previousScore=-1;previousEnd=false;lastUI='';bubbleUntil=0;sync();if(paused)render();context.save(world.snapshot());},
    serialize(){return world.snapshot();},
-   restore(data){clearInput();if(world.restore(data)){if(world.legacyScore!==null)context.setScore(world.legacyScore);camera=Math.max(0,220-world.cameraTop);accumulator=0;previousScore=-1;previousEnd=world.over||world.complete;lastUI='';sync();if(paused)render();if(data&&typeof data==='object'&&(data as {version?:number}).version===1){status.textContent='New shapes reset the stack. Score kept in Record.';context.announce(status.textContent);context.save(world.snapshot());}}},
+   restore(data){clearInput();if(world.restore(data)){if(world.legacyScore!==null)context.setScore(world.legacyScore);camera=Math.max(0,220-world.cameraTop);accumulator=0;previousScore=-1;previousEnd=world.over||world.complete;lastUI='';sync();if(paused)render();if(data&&typeof data==='object'&&(data as {version?:number}).version===1){status.textContent='Score kept in Record.';context.announce(status.textContent);context.save(world.snapshot());}}},
    dispose(){disposed=true;releaseGlass();clearInput();if(raf!==null)cancelAnimationFrame(raf);observer.disconnect();controller.abort();hud.dispose();world.dispose();container.replaceChildren();},
   };
  },

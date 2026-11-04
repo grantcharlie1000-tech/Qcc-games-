@@ -25,6 +25,9 @@ import {StudyView} from './study/view';
 import {fitGameStage} from './core/viewport-fit';
 import {attachFullscreen,syncPlaySurface} from './core/play-surface';
 import {AccountsClient} from './accounts/client';
+import {ChatClient} from './chat/client';
+import {AppsLauncher} from './apps/launcher';
+import type {AppDeps,AppView} from './apps/types';
 import {AccountsView} from './accounts/view';
 import {LeaderboardView} from './leaderboard/view';
 import {LeaderboardSidebar} from './leaderboard/sidebar';
@@ -44,7 +47,7 @@ app.innerHTML=`<main id="content"></main>
 <dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog" class="ui-glass-sheet" aria-labelledby="rules-title"><form method="dialog" class="dialog-head"><h2 id="rules-title">How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
 const navigation=createSectionNavigation('app');
-navigation.bar.innerHTML=`<a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('games')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv">${uiIcon('tv')}<span>TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button>`;
+navigation.bar.innerHTML=`<a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('games')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv" aria-label="TV Shows">${uiIcon('tv')}<span class="tab-tv">TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button>`;
 app.prepend(navigation.root);
 suppressNavigationUnderSheets();
 const content=document.querySelector<HTMLElement>('#content')!;
@@ -55,6 +58,8 @@ const tabbar=autoHideTabbar(document.querySelector<HTMLElement>('.app-tabbar')!,
 bindGlass(document.querySelector<HTMLElement>('.app-menu')!);
 const preferences=store.settings();
 const accounts=new AccountsClient();
+const launcher=new AppsLauncher({accounts,chat:new ChatClient(()=>accounts.session()?.token??null),reducedMotion:()=>preferences.reducedMotion});
+void launcher.probe();
 const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry);
 const leaderboards=new LeaderboardView(()=>{pausedForDialog=false;if(activeId)setPaused(true);accountView.open();});
 let gameMenu:HTMLDialogElement|undefined;
@@ -67,12 +72,14 @@ let focusLabelBeforeStudy:string|null=null;
 let accountRoutePending=false;
 let libraryScroll={x:0,y:0};
 let movies:MoviesView|undefined;
+// QCC Social or QCC Chat: one lazy view at a time, replaced when the other app opens.
+let appView:AppView|undefined,appKind:'social'|'chat'|undefined;
 // The saved Movies data is one copy for the page, so it outlives each MoviesView and keeps unsaved changes across a visit to the games.
 let movieStorage:MovieStorage|undefined;
 let movieScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
-const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft','crossy-road']);
+const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft','crossy-road','quad-clash']);
 // Responsive layouts fill the standard stage; scaling their whole UI would shrink labels and controls.
 const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','claimline']);
 // Shell score/best text; Claimline's integer score is its peak share in hundredths of a percent.
@@ -116,6 +123,7 @@ function setChromeInert(value:boolean):void{
 }
 function leave(saveProgress=true){
   movies?.dispose();movies=undefined;
+  appView?.dispose();appView=undefined;appKind=undefined;document.body.classList.remove('social-active','chat-active');
   setChromeInert(false);
   tabbar.reset();
   detachFullscreen?.();detachFullscreen=undefined;
@@ -185,7 +193,7 @@ function studyMessage(saved:boolean):string {
   return store.canRetain()?'Game paused. Progress saved on this device.':'Game paused. Progress is held in memory for this visit.';
 }
 function openStudy(advance=false){
-  movies?.pause();
+  movies?.pause();appView?.pause();
   if(study.isOpen)return;
   focusBeforeStudy=document.activeElement instanceof HTMLElement?document.activeElement:null;
   focusLabelBeforeStudy=focusBeforeStudy?.closest('#game-stage')?focusBeforeStudy.getAttribute('aria-label'):null;
@@ -193,7 +201,7 @@ function openStudy(advance=false){
   resumeAfterStudy=!!activeId&&(!paused||pausedForDialog);
   const saved=setPaused(true); // Pause and serialize synchronously, before painting the chapter.
   pausedForDialog=false;
-  if(menu.open)menu.close();if(rulesDialog.open)rulesDialog.close();if(leaderboards.root.open)leaderboards.root.close();if(gameMenu?.open)gameMenu.close();
+  if(menu.open)menu.close();if(rulesDialog.open)rulesDialog.close();if(leaderboards.root.open)leaderboards.root.close();if(gameMenu?.open)gameMenu.close();if(launcher.sheet.open)launcher.sheet.close();
   if(advance)study.advanceArticle();
   hideArcade();study.showArticle(studyMessage(saved));
 }
@@ -202,6 +210,7 @@ function returnFromStudy(){
   study.hide();showArcade();updateStudySummary();
   if(accountRoutePending){accountRoutePending=false;resumeAfterStudy=false;focusBeforeStudy=null;void route();return;}
   if(resumeAfterStudy&&!document.hidden)setPaused(false);
+  appView?.resume();
   resumeAfterStudy=false;
   window.scrollTo(scrollBeforeStudy.x,scrollBeforeStudy.y);
   // The restored position is not the reader's scroll, so the tab bar re-bases on it.
@@ -213,6 +222,11 @@ function returnFromStudy(){
   focusBeforeStudy=null;focusLabelBeforeStudy=null;
 }
 
+function appDeps():AppDeps{
+  return {accounts,reducedMotion:()=>preferences.reducedMotion,openAccounts:()=>{if(activeId)setPaused(true);accountView.open();},
+    openMenu:()=>openMenu(document.querySelector('.section-navigation:not(.app-navigation) [data-action="menu"]')),
+    openApps:trigger=>launcher.open(trigger??undefined),appsBadge:launcher.subscribe};
+}
 async function route(){
   if(!initialized)return;
   tabbar.reset();
@@ -222,7 +236,7 @@ async function route(){
   const isMovies=location.hash==='#/movies'||location.hash.startsWith('#/movies/');
   if(isMovies){
     if(movies){movies.navigate(location.hash);return;}
-    if(!activeId)movieScroll={x:scrollX,y:scrollY};
+    if(!activeId&&!appView)movieScroll={x:scrollX,y:scrollY};
     if(menu.open)menu.close();
     if(rulesDialog.open)rulesDialog.close();
     if(leaderboards.root.open)leaderboards.root.close();
@@ -237,18 +251,40 @@ async function route(){
     }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Movies &amp; TV could not load.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
     return;
   }
-  const wasInMovies=!!movies;
+  const appRoute=/^#\/(social|chat)(\/|$)/.exec(location.hash)?.[1] as 'social'|'chat'|undefined;
+  if(appRoute){
+    if(appView&&appKind===appRoute){appView.navigate(location.hash);return;}
+    if(!activeId&&!movies&&!appView)movieScroll={x:scrollX,y:scrollY};
+    if(menu.open)menu.close();
+    if(rulesDialog.open)rulesDialog.close();
+    if(leaderboards.root.open)leaderboards.root.close();
+    if(launcher.sheet.open)launcher.sheet.close();
+    const token=++generation;leave();
+    setChromeInert(true);
+    const name=appRoute==='social'?'Social':'Chat';
+    content.innerHTML=`<div class="loading"><p>Opening ${name}…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;
+    try{
+      const ViewClass=appRoute==='social'?(await import('./social/view')).SocialView:(await import('./chat/view')).ChatView;
+      if(token!==generation)return;
+      const view=new ViewClass(content,appDeps());
+      if(token!==generation){view.dispose();return;}
+      appView=view;appKind=appRoute;document.body.classList.add(`${appRoute}-active`);
+      view.navigate(location.hash);
+    }catch{if(token===generation)content.innerHTML=`<div class="game-error"><p>${name} couldn’t open. Check your connection and try again.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;}
+    return;
+  }
+  const wasInMovies=!!movies,wasInApp=!!appView;
   const requested=entryFromHash(location.hash);
   const id=requested&&games.some(g=>g.id===requested)?requested:undefined;
   // Keep a game link's options (an online invite) when the address is made canonical.
   const canonical=id?entryHash(id)+(location.hash.match(/\?.*$/)?.[0]??''):collectionHash;
   if(location.hash!==canonical)history.replaceState(null,'',location.pathname+location.search+canonical);
   const wasInGame=!!activeId;
-  if(id&&!wasInGame)libraryScroll={x:scrollX,y:scrollY};
+  if(id&&!wasInGame&&!wasInApp)libraryScroll={x:scrollX,y:scrollY};
   if(leaderboards.root.open){pausedForDialog=false;leaderboards.root.close();}
   const token=++generation;leave();
   // A restored scroll position is part of the navigation, so the tab bar re-bases on it rather than counting it as a scroll.
-  if(!id){library();if(wasInMovies)requestAnimationFrame(()=>{window.scrollTo(movieScroll.x,movieScroll.y);tabbar.reset();document.querySelector<HTMLElement>('.app-tabbar .ui-tab[href="#/collection"]')?.focus({preventScroll:true});});if(wasInGame)requestAnimationFrame(()=>{if(!activeId){window.scrollTo(libraryScroll.x,libraryScroll.y);tabbar.reset();}});return;}
+  if(!id){library();if(wasInMovies||wasInApp)requestAnimationFrame(()=>{window.scrollTo(movieScroll.x,movieScroll.y);tabbar.reset();document.querySelector<HTMLElement>(wasInApp?'.app-tabbar [data-action="apps"]':'.app-tabbar .ui-tab[href="#/collection"]')?.focus({preventScroll:true});});if(wasInGame)requestAnimationFrame(()=>{if(!activeId){window.scrollTo(libraryScroll.x,libraryScroll.y);tabbar.reset();}});return;}
   const info=games.find(g=>g.id===id)!;activeId=id;document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
   content.innerHTML=`<section class="game-view" data-game-id="${id}" data-reference-game="${referenceGames.has(id)}" aria-label="${info.title}">
     <div class="game-surface" aria-hidden="true"></div>
@@ -301,7 +337,7 @@ async function route(){
     if(!activeId||study.isOpen)return;
     // Some browsers consume Escape when they leave fullscreen. Give any open
     // dialog its usual cancel behavior before treating that exit as Study.
-    const dialog=accountView.root.open?accountView.root:menu.open?menu:rulesDialog.open?rulesDialog:gameMenu?.open?gameMenu:leaderboards.root.open?leaderboards.root:undefined;
+    const dialog=accountView.root.open?accountView.root:launcher.sheet.open?launcher.sheet:menu.open?menu:rulesDialog.open?rulesDialog:gameMenu?.open?gameMenu:leaderboards.root.open?leaderboards.root:undefined;
     if(dialog){const cancel=new Event('cancel',{cancelable:true});if(dialog.dispatchEvent(cancel))dialog.close();return;}
     if(instance?.dismissMenu?.())return;
     openStudy(true);
@@ -402,7 +438,7 @@ function dialogClosed(){
   const resume=pausedForDialog;pausedForDialog=false;
   if(resume&&!study.isOpen&&!document.hidden)setPaused(false);
 }
-menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!location.hash.startsWith('#/movies')&&!study.isOpen)library();});
+menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!appView&&!/^#\/(movies|social|chat)(\/|$)/.test(location.hash)&&!study.isOpen)library();});
 rulesDialog.addEventListener('close',dialogClosed);
 leaderboards.root.addEventListener('close',dialogClosed);
 document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
@@ -414,10 +450,10 @@ document.querySelector('.rules-done')!.addEventListener('click',()=>rulesDialog.
 document.querySelector('#open-study')!.addEventListener('click',()=>openStudy());
 document.querySelector<HTMLInputElement>('#favourites-only')!.addEventListener('change',event=>{
   onlyFavourites=(event.target as HTMLInputElement).checked;
-  if(activeId||movies)location.hash=collectionHash;else library();
+  if(activeId||movies||appView)location.hash=collectionHash;else library();
 });
 document.querySelector<HTMLInputElement>('#search')!.addEventListener('input',event=>{
-  search=(event.target as HTMLInputElement).value;if(activeId||movies)location.hash=collectionHash;else library();
+  search=(event.target as HTMLInputElement).value;if(activeId||movies||appView)location.hash=collectionHash;else library();
 });
 for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#colour','colorBlind']] as const){
   const input=document.querySelector<HTMLInputElement>(selector)!;input.checked=preferences[key];
@@ -429,7 +465,7 @@ for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#c
 document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);
 
 window.addEventListener('hashchange',()=>void route());
-window.addEventListener('pagehide',()=>{save();movies?.pause();void accounts.flush(true,false).catch(()=>{});});
+window.addEventListener('pagehide',()=>{save();movies?.pause();appView?.pause();void accounts.flush(true,false).catch(()=>{});});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance){instance.dismissMenu?.();pausedForDialog=false;setPaused(true);}});
 // Capture on window precedes native dialog cancellation and game-local Escape handlers.
 window.addEventListener('keydown',event=>{
@@ -437,10 +473,10 @@ window.addEventListener('keydown',event=>{
   // Stop their handlers while preserving native reading/keyboard defaults.
   if(accountView.root.open||document.querySelector('dialog.movies-warning[open]'))return;
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
-  if(event.key==='Escape'&&(menu.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open))return;
+  if(event.key==='Escape'&&(menu.open||launcher.sheet.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open||document.querySelector('dialog.apps-sheet[open],.apps-popover')))return;
   if(!study.isOpen&&event.key==='Escape'&&instance?.dismissMenu?.()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key!=='Escape'){event.stopImmediatePropagation();return;}
-  if(event.key!=='Escape'||(!activeId&&!movies&&!study.isOpen))return;
+  if(event.key!=='Escape'||(!activeId&&!movies&&!appView&&!study.isOpen))return;
   event.preventDefault();event.stopImmediatePropagation();
   if(!event.repeat){if(study.isOpen)study.advanceArticle();else openStudy(true);}
 },{capture:true});

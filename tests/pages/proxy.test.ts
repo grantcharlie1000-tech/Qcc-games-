@@ -9,7 +9,7 @@ function context(path:string,init:RequestInit={},env:{QCC_API_ORIGIN?:string;QCC
 }
 afterEach(()=>{vi.unstubAllGlobals();vi.restoreAllMocks();vi.useRealTimers();});
 describe('Pages API proxy',()=>{
- it.each(['accounts','leaderboard','turn'])('proxies the allowed %s route',async route=>{
+ it.each(['accounts','leaderboard','turn','social','chat','media'])('proxies the allowed %s route',async route=>{
   const fetcher=vi.fn(async(_request:Request)=>new Response('upstream'));vi.stubGlobal('fetch',fetcher);
   const response=await onRequest(context(prefix+route));
   expect(response.status).toBe(200);expect(await response.text()).toBe('upstream');
@@ -17,7 +17,7 @@ describe('Pages API proxy',()=>{
   const request=fetcher.mock.calls[0]![0];
   expect(request.url).toBe(origin+prefix+route);
  });
- it.each(['unknown','movies-search','accounts/extra','accounts/','ACCOUNTS','%61ccounts',''])('returns 404 for disallowed route %s',async route=>{
+ it.each(['unknown','movies-search','accounts/extra','social/extra','accounts/','ACCOUNTS','%61ccounts',''])('returns 404 for disallowed route %s',async route=>{
   const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
   const ctx=context(prefix+route,{},{}),response=await onRequest(ctx);
   expect(response.status).toBe(404);expect(fetcher).not.toHaveBeenCalled();expect(ctx.next).not.toHaveBeenCalled();

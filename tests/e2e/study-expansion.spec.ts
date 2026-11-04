@@ -1,4 +1,5 @@
 import {guestTest as test,expect,seedGuest} from '../fixtures';
+import {appSettings} from '../game-menu';
 import {mkdir} from 'node:fs/promises';
 
 const key='pocket-arcade:study:v1:topic';
@@ -12,7 +13,8 @@ async function seed(page:import('@playwright/test').Page,id='close-reading',reme
 
 test('Escape changes styles without changing topic, dismisses privacy and menus first, and preserves a game across reload',async({page})=>{
   await seed(page);await page.goto('/#/game/fruit-merge');
-  await page.getByRole('button',{name:'Drop fruit',exact:true}).click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
+  // Suika drops directly in the basket; the separate drop button was removed.
+  await page.locator('.fm-board').click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
   let saved:unknown;
   let previous='qcc';
   for(let i=0;i<16;i++){
@@ -26,14 +28,14 @@ test('Escape changes styles without changing topic, dismisses privacy and menus 
   const selected=await page.evaluate(key=>sessionStorage.getItem(key),key);await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();expect(await page.evaluate(key=>sessionStorage.getItem(key),key)).toBe(selected);
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data)).toEqual(saved);
-  await page.getByRole('link',{name:'Games',exact:true}).first().click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.locator('#menu')).toBeVisible();
+  await page.getByRole('link',{name:'Return to previous view',exact:true}).first().click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
+  await appSettings(page);await expect(page.locator('#menu')).toBeVisible();
   await page.keyboard.press('Escape');await expect(page.locator('#menu')).not.toBeVisible();await expect(page.locator('#study-view')).toBeHidden();
   await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
   let current=await page.evaluate(key=>sessionStorage.getItem(key)!,key);expect(styleOf(current)).not.toBe(previous);previous=styleOf(current);
   await page.reload();await expect(page.locator('.fm-count')).toContainText('1 fruit');
   await page.keyboard.press('Escape');current=await page.evaluate(key=>sessionStorage.getItem(key)!,key);expect(styleOf(current)).not.toBe(previous);
-  await page.getByRole('link',{name:'Games',exact:true}).first().click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
+  await page.getByRole('link',{name:'Return to previous view',exact:true}).first().click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
 });
 
 test('without consent article choice stays in memory and reload returns to the picker',async({page})=>{
@@ -45,7 +47,7 @@ test('without consent article choice stays in memory and reload returns to the p
 });
 
 test('a newly blocked article write is explained on entry and while already reading',async({page})=>{
-  await seed(page);await page.goto('/#/game/fruit-merge');await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
+  await seed(page);await page.goto('/#/game/fruit-merge');await expect(page.locator('.fm-board')).toBeVisible();
   await page.evaluate(()=>{const original=Storage.prototype.setItem;(window as any).restoreStudyWrite=()=>{Storage.prototype.setItem=original;};Storage.prototype.setItem=function(key,value){if(key==='pocket-arcade:study:v1:topic')throw new DOMException('Quota','QuotaExceededError');return original.call(this,key,value);};});
   await page.keyboard.press('Escape');const dialog=page.getByRole('dialog',{name:'Reading storage choices'});
   await expect(dialog.getByRole('status')).toContainText('could not be remembered');
@@ -59,7 +61,7 @@ test('a newly blocked article write is explained on entry and while already read
 
 test('a browser-consumed fullscreen Escape dismisses a menu first and then advances the article',async({page})=>{
   await seed(page);await page.goto('/#/game/fruit-merge');await expect(page.locator('.fm-count')).toBeVisible();
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.locator('#menu')).toBeVisible();
+  await appSettings(page);await expect(page.locator('#menu')).toBeVisible();
   await page.evaluate(()=>document.dispatchEvent(new Event('fullscreenchange')));
   await expect(page.locator('#menu')).not.toBeVisible();await expect(page.locator('#study-view')).toBeHidden();
   expect(await page.evaluate(key=>sessionStorage.getItem(key),key)).toBe('close-reading');
@@ -73,8 +75,8 @@ test('touch readers can advance through each new style without seeding article I
   const page=await context.newPage();
   try{
     await page.goto('/#/game/fruit-merge');await page.getByRole('button',{name:'Reject All',exact:true}).tap();await page.locator('[data-study-topic="forces"]').tap();
-    await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
-    await page.getByRole('button',{name:'Open menu',exact:true}).tap();await page.getByRole('button',{name:'Study Mode',exact:true}).tap();
+    await expect(page.locator('.fm-board')).toBeVisible();
+    await page.locator('#game-menu').tap();await page.locator('#game-options').getByRole('button',{name:'Settings',exact:true}).tap();await page.getByRole('button',{name:'Study Mode',exact:true}).tap();
     await page.evaluate(()=>{let i=0;const values=[0,.5,.99];Math.random=()=>values[i++%values.length];});
     for(const style of ['quanta','aeon','essay']){
       const next=page.getByRole('button',{name:'Next article',exact:true});await next.scrollIntoViewIfNeeded();await next.tap();
@@ -85,28 +87,28 @@ test('touch readers can advance through each new style without seeding article I
 
 test('Quanta mobile paragraphs retain a clear line of separation',async({page})=>{
   await page.setViewportSize({width:390,height:844});await seed(page,'quanta:close-reading');await page.goto('/#/game/fruit-merge');
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
   const spacing=await page.locator('.variant-prose > p').evaluateAll(ps=>{const first=ps[0],second=ps[1];return {gap:second.getBoundingClientRect().top-first.getBoundingClientRect().bottom,lineHeight:parseFloat(getComputedStyle(first).lineHeight)};});
   expect(spacing.gap).toBeGreaterThanOrEqual(spacing.lineHeight-1);
 });
 
 test('Study stays usable without worker update controls',async({page})=>{
   await seed(page);await page.goto('/#/game/fruit-merge');
-  await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  await expect(page.locator('.fm-board')).toBeVisible();
+  await appSettings(page);
   await page.getByRole('button',{name:'Study Mode',exact:true}).click();
   await expect(page.locator('#study-view')).toBeVisible();
   await expect(page.getByRole('button',{name:'Reload to update',exact:true})).toHaveCount(0);
-  await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
+  await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();
+  await expect(page.locator('.fm-board')).toBeVisible();
 });
 
 for(const viewport of [{name:'desktop',width:1180,height:900},{name:'mobile',width:390,height:844}]){
   for(const style of ['qcc','quanta','aeon','essay'])test(`${style} layout is readable and captured on ${viewport.name}`,async({page})=>{
     await page.setViewportSize({width:viewport.width,height:viewport.height});
     await seed(page,style==='qcc'?'close-reading':`${style}:close-reading`);await page.goto('/#/game/fruit-merge');
-    await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
-    await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+    await expect(page.locator('.fm-board')).toBeVisible();
+    await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
     await expect(page.locator('#study-title')).toBeVisible();
     if(style==='qcc')await expect(page.locator('#study-view')).not.toHaveAttribute('data-style',/./);else await expect(page.locator('#study-view')).toHaveAttribute('data-style',style);
     await page.evaluate(()=>window.scrollTo(0,0));await page.locator('#study-view img').evaluateAll(images=>Promise.all(images.map(image=>{(image as HTMLImageElement).loading='eager';return (image as HTMLImageElement).decode();})));
@@ -115,7 +117,7 @@ for(const viewport of [{name:'desktop',width:1180,height:900},{name:'mobile',wid
     await page.screenshot({path:`docs/evidence/article-expansion/${style}-${viewport.name}-opening.png`});
     const body=page.locator('.study-article-body');await body.evaluate(element=>window.scrollTo(0,Math.max(0,element.getBoundingClientRect().top+window.scrollY-40)));
     await page.screenshot({path:`docs/evidence/article-expansion/${style}-${viewport.name}-reading.png`});
-    await expect(body.getByRole('link',{name:'Games',exact:true})).toBeVisible();
-    await body.getByRole('link',{name:'Games',exact:true}).click();await expect(page.locator('#study-view')).toBeHidden();
+    await expect(body.getByRole('link',{name:'Return to previous view',exact:true})).toBeVisible();
+    await body.getByRole('link',{name:'Return to previous view',exact:true}).click();await expect(page.locator('#study-view')).toBeHidden();
   });
 }

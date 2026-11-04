@@ -1,12 +1,13 @@
 import {test,expect} from '@playwright/test';
 import {gameAction,openGameMenu,pauseGame,resumeGame} from '../game-menu';
-import {BASE,closeAll,launchPlayer,type Player} from './peers';
-import {chooseAI,placeAICue,type PoolState} from '../../src/games/pool/model';
+import {closeAll,launchPlayer,type Player} from './peers';
+import {planNow} from '../../src/games/pool/ai';
+import type {PoolState} from '../../src/games/pool/game';
 
 test.skip(({browserName})=>browserName!=='chromium','Online tests launch their own Chromium processes.');
 test.describe.configure({mode:'serial'});
 
-type Hook={state():PoolState;seat():number|null;aim(a:number,p:number):boolean;ghost(x:number,y:number):boolean;raw(c:unknown):boolean};
+type Hook={state():PoolState;seat():number|null;aim(a:number,p:number,sx?:number,sy?:number,called?:number|null):boolean;place(x:number,y:number):boolean;raw(c:unknown):boolean};
 const hook=<T>(page:import('@playwright/test').Page,fn:(h:Hook,arg:any)=>T,arg?:unknown)=>page.evaluate(([f,a])=>new Function('h','a',`return (${f})(h,a)`)((window as unknown as {__pool:Hook}).__pool,a),[fn.toString(),arg] as const) as Promise<T>;
 const settledEqual=async(a:Player,b:Player)=>{
   await expect.poll(async()=>{
@@ -22,7 +23,7 @@ test('two independent browsers play a full online rack and agree on the result',
   try{
     // Different display orientations must still share exactly one authoritative table.
     await host.page.setViewportSize({width:390,height:844});
-    await host.page.goto(`${BASE}/#/game/pool`);
+    await host.page.goto('/#/game/pool');
     const table=await host.page.locator('.pool-table').boundingBox();
     await gameAction(host.page,'Multiplayer');
     await expect(host.page.getByRole('dialog',{name:'Pool multiplayer'})).toBeVisible();
@@ -35,7 +36,7 @@ test('two independent browsers play a full online rack and agree on the result',
     await expect(host.page.locator('.pool-live')).toContainText('Waiting for an opponent');
 
     // Invalid and unknown codes are explained.
-    await guest.page.goto(`${BASE}/#/game/pool`);
+    await guest.page.goto('/#/game/pool');
     await gameAction(guest.page,'Multiplayer');
     await guest.page.getByLabel('Room code').fill('ABC');await guest.page.getByRole('button',{name:'Join by code'}).click();
     await expect(guest.page.locator('.mp-status')).toHaveText(/6 letters and numbers/);
@@ -43,7 +44,7 @@ test('two independent browsers play a full online rack and agree on the result',
     await expect(guest.page.locator('.mp-status')).toHaveText(/No room with that code/,{timeout:25000});
 
     // The invite link fills in the code.
-    await guest.page.goto(`${BASE}/#/game/pool?room=${code}`);await guest.page.reload();
+    await guest.page.goto(`/#/game/pool?room=${code}`);await guest.page.reload();
     await expect(guest.page.getByLabel('Room code')).toHaveValue(code);
     await guest.page.getByRole('button',{name:'Join by code'}).click();
     await expect(guest.page.locator('.pool-game')).toHaveAttribute('data-online','guest',{timeout:30000});
@@ -57,13 +58,13 @@ test('two independent browsers play a full online rack and agree on the result',
     await openGameMenu(host.page);await expect(host.page.getByRole('button',{name:'Online room'})).toBeVisible();await resumeGame(host.page);
 
     // A third player is refused: the room is full.
-    await extra.page.goto(`${BASE}/#/game/pool?room=${code}`);
+    await extra.page.goto(`/#/game/pool?room=${code}`);
     await extra.page.getByRole('button',{name:'Join by code'}).click();
     await expect(extra.page.locator('.mp-status')).toHaveText('That room is full.',{timeout:30000});
 
     // Out-of-turn command from the guest reaches the host and is rejected there.
     await settledEqual(host,guest);
-    expect(await hook(guest.page,h=>h.raw({t:'shoot',angle:-1.5,power:.9,pocket:0}))).toBe(true);
+    expect(await hook(guest.page,h=>h.raw({t:'shoot',angle:-1.5,power:.9,spinX:0,spinY:0,called:null}))).toBe(true);
     await expect(guest.page.locator('#game-status')).toHaveText('It is not your turn.');
 
     // Host pause pauses the room; guest commands are refused meanwhile; resume resynchronises.
@@ -79,26 +80,23 @@ test('two independent browsers play a full online rack and agree on the result',
       const s=await hook(host.page,h=>h.state());
       if(s.phase==='over')break;
       const mover=players[s.turn],canvas=mover.page.locator('.pool-table');
-      if(s.ballInHand){
-        const copy=JSON.parse(JSON.stringify(s)) as PoolState;placeAICue(copy);
-        expect(await hook(mover.page,(h,a)=>h.ghost(a.x,a.y),{x:copy.balls[0].x,y:copy.balls[0].y})).toBe(true);
-        await canvas.focus();await canvas.press('Enter');
-        await expect.poll(async()=>(await hook(host.page,h=>h.state())).ballInHand,{timeout:20000}).toBe(false);
+      const plan=planNow(s);
+      if(plan.place){
+        await expect.poll(()=>hook(mover.page,(h,a)=>h.place(a.x,a.y),plan.place),{timeout:20000}).toBe(true);
+        await expect.poll(async()=>Math.hypot((await hook(host.page,h=>h.state())).balls[0].x-plan.place!.x,(await hook(host.page,h=>h.state())).balls[0].y-plan.place!.y),{timeout:20000}).toBeLessThan(1e-6);
         await settledEqual(host,guest);
       }
-      const now=await hook(host.page,h=>h.state()),plan=chooseAI(now);
-      if(!now.break&&now.calledPocket!==plan.pocket)await mover.page.locator('#pool-pocket').selectOption(String(plan.pocket));
-      await expect.poll(()=>hook(mover.page,(h,a)=>h.aim(a.angle,a.power),plan),{timeout:20000}).toBe(true);
+      await expect.poll(()=>hook(mover.page,(h,a)=>h.aim(a.angle,a.power,a.spinX,a.spinY,a.called),plan),{timeout:20000}).toBe(true);
       await canvas.focus();await canvas.press('Enter');
-      await expect.poll(async()=>(await hook(host.page,h=>h.state())).shots,{timeout:20000}).toBe(now.shots+1);
+      await expect.poll(async()=>(await hook(host.page,h=>h.state())).shots,{timeout:20000}).toBe(s.shots+1);
       if(shots===0){
         // During the break the guest's balls move from the host's streamed frames (the guest runs no physics).
-        const start=await guest.page.locator('.pool-game').getAttribute('data-table');
-        await expect.poll(()=>guest.page.locator('.pool-game').getAttribute('data-table'),{timeout:5000}).not.toBe(start);
+        const start=(await hook(guest.page,h=>h.state())).balls[0].x;
+        await expect.poll(async()=>(await hook(guest.page,h=>h.state())).balls[0].x,{timeout:5000}).not.toBe(start);
       }
     }
     const [a,b]=await Promise.all([hook(host.page,h=>h.state()),hook(guest.page,h=>h.state())]);
-    const strip=(s:PoolState)=>({...s,angle:0,power:0});
+    const strip=(s:PoolState)=>({...s,aim:null});
     expect(strip(b)).toEqual(strip(a));
     expect(a.phase).toBe('over');
     // Each device labels its own seat "(you)"; otherwise the result text is identical.
@@ -117,13 +115,13 @@ test('forcing the relay without private TURN credentials never connects directly
   test.setTimeout(120_000);
   const host=await launchPlayer('Hana'),guest=await launchPlayer('Tama');
   try{
-    await host.page.goto(`${BASE}/#/game/pool?relay=1`);
+    await host.page.goto('/#/game/pool?relay=1');
     await gameAction(host.page,'Multiplayer');
     await host.page.getByRole('button',{name:'Create room'}).click();
     await expect(host.page.locator('.mp-room-code')).toHaveText(/^[A-Z2-9]{6}$/,{timeout:25000});
     await expect(host.page.locator('.mp-link')).toContainText('private relay is not configured');
     const code=(await host.page.locator('.mp-room-code').textContent())!.trim();
-    await guest.page.goto(`${BASE}/#/game/pool?room=${code}&relay=1`);
+    await guest.page.goto(`/#/game/pool?room=${code}&relay=1`);
     await guest.page.getByRole('button',{name:'Join by code'}).click();
     // With only the free public relay, the join either succeeds through a relay or fails with a plain explanation.
     await expect.poll(async()=>await guest.page.locator('.pool-game').getAttribute('data-online')==='guest'||/Could not|failed/.test(await guest.page.locator('.mp-status').textContent()??''),{timeout:45000}).toBe(true);

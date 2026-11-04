@@ -50,13 +50,13 @@ Movies & TV uses a streaming-style design system. Its tokens and shared `ui-` co
 
 `npm run build` creates `dist/` with relative asset paths, hash routes and a service worker scoped to the directory in which it is served. The unchanged build supports an origin root and a repository subpath.
 
-- **GitHub Pages:** enable GitHub Actions as the Pages source. The included [workflow](.github/workflows/pages.yml) runs verification and publishes `dist/` on pushes to `main` or `work`, or a manual dispatch. Repository Pages settings and account access are required.
-- **Netlify:** [netlify.toml](netlify.toml) publishes `dist/`, selects Node 22 and applies standalone Neon migrations before context builds. Set server-only secret `DATABASE_URL` separately for production and previews, scoped to Builds + Functions. See [database setup and staged cutover](docs/DATABASE.md) before deploying; the old auto-provisioning integration has been removed.
+- **Cloudflare Pages (live):** the existing project is `nceastudy`. The [workflow](.github/workflows/pages.yml) publishes verified `main` builds using repository Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. It includes the Pages Functions and checks the public release commit. See [Cloudflare deployment](docs/CLOUDFLARE_PAGES.md).
+- **Netlify:** import this repository. [netlify.toml](netlify.toml) sets `npm run build`, publishes `dist/`, selects Node 22 and sets security headers. The shared score function and `netlify/database/migrations/` are deployed alongside the site. Netlify provisions the database from the installed `@netlify/database` integration; no browser API keys or manually configured application secrets are needed. Database availability and usage follow the site’s Netlify plan.
 - **Other static hosting:** serve `dist/` over HTTPS. No SPA rewrite is necessary because navigation uses `#/game/<id>`.
 
-Shared online leaderboards require the Netlify function and database; static-only hosts continue to run the games but cannot serve the shared scores. See [leaderboard setup and verification](docs/LEADERBOARDS.md).
+Shared online leaderboards require the configured backend and database. Cloudflare Pages uses the existing API proxy; static-only hosting without that proxy cannot serve shared scores. See [leaderboard setup and verification](docs/LEADERBOARDS.md).
 
-The Netlify project is **[NCEA Study](https://nceastudy.netlify.app)** (`nceastudy`), built from this repository's **main** branch. Publication is inspected through the Netlify connector; [deployment evidence and update status](docs/NETLIFY_DEPLOYMENT.md) record earlier releases. The ready static ZIP is included there too.
+The live arcade is **[NCEA Study on Cloudflare Pages](https://nceastudy.pages.dev)** (`nceastudy`). The verified `main` build publishes through GitHub Actions once its Cloudflare deployment secrets are configured; [Cloudflare setup and release verification](docs/CLOUDFLARE_PAGES.md) describe that path. [Netlify deployment evidence](docs/NETLIFY_DEPLOYMENT.md) records earlier releases on the separate Netlify site.
 
 ## Code and artwork
 
@@ -87,3 +87,7 @@ Tetris is a falling-piece puzzle: arrange seven kinds of quads, clear lines, and
 ## Wordle
 
 Wordle is a daily five-letter puzzle with unlimited practice rounds, separate statistics and accessible colour cues. See [its spec](src/games/fivefold/SPEC.md).
+
+## QCC Social and QCC Chat
+
+QCC Social is a short-post feed with follows, likes, replies and reporting, and QCC Chat adds friend-only messages and view-once photo snaps. Both need a signed-in QCC account and, like the leaderboards, depend on the online backend. Photos are re-encoded on the server and stored by the deployment. See [the spec](docs/social-chat/SPEC.md), [deployment notes](docs/social-chat/DEPLOYMENT.md) and the [moderation runbook](docs/social-chat/MODERATION.md).

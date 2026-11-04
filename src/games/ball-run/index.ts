@@ -31,7 +31,6 @@ const TROPHY = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><p
 
 const CROWN = '<svg class="br-crown" viewBox="0 0 28 12" aria-hidden="true" focusable="false"><path d="m2 11-1-9 7 4 6-6 6 6 7-4-1 9z" fill="#ffe0a4"/></svg>';
 
-const STEER_COPY = 'Drag left and right, or hold A / D or ← →, to steer.';
 /** cubic-bezier(0.23, 1, 0.32, 1) at progress x: solve the curve's x(t) = x by bisection, return y(t). */
 function easeOut(x: number): number {
   const bx = (t: number) => 3 * (1 - t) ** 2 * t * .23 + 3 * (1 - t) * t * t * .32 + t ** 3;
@@ -53,7 +52,7 @@ const template = () => `<div class="br-viewport">
   <p class="br-boost" hidden>Speed Up</p>
   <div class="br-layer" hidden>
     <section class="br-panel br-setup" aria-label="Ball Run setup" hidden>
-      <div class="br-head"><h2 class="br-title">BALL RUN</h2><p class="br-copy">${STEER_COPY} Avoid the blocks and stay on the track. Survive as long as you can!</p></div>
+      <div class="br-head"><h2 class="br-title">BALL RUN</h2></div>
       <div class="br-body">
         <div class="br-pick"><span class="br-face-slot"></span><p class="br-level">Medium</p><input class="br-slider" type="range" min="0" max="2" step="1" value="1" aria-label="Difficulty" aria-valuetext="Medium"></div>
         <p class="br-note" hidden></p>
@@ -121,7 +120,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   const label = () => CONFIG[run.difficulty].label;
   const overReason = () => run.reason === 'fall' ? 'You fell off the track' : 'You hit a block';
   /** Game Over's status line, after a live death and on a Game Over reopened from the save. */
-  const overStatus = () => `${overReason()}. ${run.score} metres. Press R or Play again for a new run.`;
+  const overStatus = () => `${overReason()}. ${run.score} metres.`;
   const snapshot = (): Saved => ({ version: 4, difficulty: run.difficulty, records, run: { ...run }, marks: { ...marks } });
   const save = () => context.save(snapshot());
   function releasePointer() {
@@ -327,7 +326,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     note.hidden = true;
     view = viewRecords(records, run.difficulty, new Date());
     context.setLevel(`${label()} mode`);
-    context.setStatus(`${label()} mode. ${STEER_COPY} P pauses.`);
+    context.setStatus(`${label()} mode`);
     context.announce(`${label()} mode. Rolling.`);
     context.sound('tap');
     screen();
@@ -437,7 +436,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
 
   theme();
   screen();
-  context.setStatus(`Choose Easy, Medium or Hard, then press Play. ${STEER_COPY}`);
+  context.setStatus('Ready');
 
   return {
     pause() { paused = true; clearInput(); cancel(); },
@@ -447,7 +446,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       // Abandoning a run is an ending: its score counts, once.
       if (run.phase === 'running' && run.score > 0) finish();
       fresh(false);
-      context.setStatus('Fresh course. Choose a difficulty, then press Play.');
+      context.setStatus('Ready');
     },
     serialize: snapshot,
     restore(value) {
@@ -468,10 +467,10 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       // An old save's best becomes Medium's all-time record. With no best there is nothing to tell: the plain setup.
       const kept = restored.migrated ? records.medium.allTime : 0;
       note.hidden = kept <= 0;
-      note.textContent = kept > 0 ? `Ball Run has a new course. Your best of ${kept} m is kept as Medium’s all-time record.` : '';
+      note.textContent = kept > 0 ? `Medium best: ${kept} m` : '';
       screen();
       // A Game Over reopened from the save says what ended the run and what to do next, as a live death does.
-      const text = waiting ? `Saved ${label()} run at ${run.score} metres. Press Continue to resume.` : run.phase === 'over' ? overStatus() : kept > 0 ? note.textContent : '';
+      const text = waiting ? `Saved ${label()} run · ${run.score} m` : run.phase === 'over' ? overStatus() : kept > 0 ? note.textContent : '';
       if (text) { context.setStatus(text); context.announce(text); }
       if (run.phase === 'over') focusAgain();
     },
