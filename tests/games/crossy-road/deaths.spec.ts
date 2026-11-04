@@ -2,7 +2,7 @@ import {test, expect} from '../../fixtures';
 import {gameAction} from '../../game-menu';
 import {BAND_MAX, HOP_TIME, IDLE_LIMIT, IDLE_WARN} from '../../../src/games/crossy-road/config';
 import {laneVelocity, mod, platformAt, railWarning, trainHit} from '../../../src/games/crossy-road/lanes';
-import {advance, cardShot, carDeath, expectDeathCard, force, hop, openGame, rail, river, showCard, state} from './helpers';
+import {advance, cardShot, carDeath, expectDeathCard, force, grass, hop, openGame, rail, river, showCard, state} from './helpers';
 
 // Each death is forced on a lane the test builds, triggered through real input and stepped with advance(). Every timing is
 // computed on the Node side from lanes.ts with the forced lane's own numbers. A death takes 0.9 s to play out before the
@@ -83,33 +83,40 @@ test('landing in open water drowns the player: water', async ({page}) => {
   expect(errors).toEqual([]);
 });
 
-// Crossy Road has no side limits since #95 (ed34d9d): logical x is unbounded and the old 'swept' trigger was removed, so a log
-// carries the player past the original nine-column band and the run goes on. 'swept' stays in DeathCause only for old saves.
-test('a log carries the player past the old band edge and the run goes on: no swept death', async ({page}) => {
+test('a log carries the player beyond the old band and the player can hop back onto land', async ({page}) => {
   test.setTimeout(60000);
   const errors = await openGame(page);
   const t0 = (await state(page)).t, landing = t0 + HOP_TIME;
   const lane = river(1, {dir: 1, speed: 2.5, cycle: 40, movers: [{offset: 0, len: 20, color: 0}]});
-  // One long log spans -6 to 14 when the hop lands: it carries the player from column 4 past the old right edge.
+  // One long log spans -6 to 14 when the hop lands: it carries the player past the old right edge.
   lane.phase = mod(-6 - lane.dir * lane.speed * landing, lane.cycle);
   expect(platformAt(lane, 4, landing), 'a log under column 4 at landing').toBe(true);
   const ride = (BAND_MAX - 4) / laneVelocity(lane);
   expect(ride).toBeCloseTo(1.8, 6);
 
-  await force(page, [lane]);
+  await force(page, [lane, grass(2), grass(3)]);
   await hop(page, 'ArrowUp');
   let s = await state(page);
   expect(s, 'riding a log after landing').toMatchObject({alive: true, row: 1, hopping: false});
+  expect(s.x, 'the log has carried the player since landing').toBeCloseTo(4 + laneVelocity(lane) * (s.t - landing), 2);
 
-  // Ride well past the moment the old band edge would have swept the player off, checking alive at every step.
+  // #95 removed side limits and edge-drift deaths. Ride past the former boundary without approaching the idle timeout.
   const target = landing + ride + 1;
   while (s.t < target) {
     await advance(page, 0.05);
     s = await state(page);
     expect(s, 'never swept off').toMatchObject({alive: true, phase: 'running', deathCause: null});
   }
-  expect(s.x, 'carried beyond the old right edge').toBeGreaterThan(BAND_MAX + 1);
-  expect(s.x, 'still moving with the log').toBeCloseTo(4 + laneVelocity(lane) * (s.t - landing), 1);
+  expect(s).toMatchObject({alive: true, deathCause: null, phase: 'running', row: 1, hopping: false});
+  expect(s.x, 'the log carries the player beyond the old right edge').toBeGreaterThan(BAND_MAX + 1);
+  expect(s.x, 'drift still follows the log velocity').toBeCloseTo(4 + laneVelocity(lane) * (s.t - landing), 2);
+  await expect(page.locator('.hw-over')).toBeHidden();
+
+  const landColumn = Math.round(s.x);
+  await hop(page, 'ArrowUp');
+  expect(await state(page)).toMatchObject({alive: true, deathCause: null, phase: 'running', row: 2, x: landColumn, maxRow: 2, hopping: false});
+  await hop(page, 'ArrowUp');
+  expect(await state(page)).toMatchObject({alive: true, deathCause: null, phase: 'running', row: 3, x: landColumn, maxRow: 3, hopping: false});
   expect(errors).toEqual([]);
 });
 

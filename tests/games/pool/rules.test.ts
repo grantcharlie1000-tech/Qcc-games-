@@ -33,6 +33,29 @@ describe('eight-ball rules',()=>{
     expect(s.breakShot).toBe(false);expect(s.groups).toEqual([null,null]);
     expect(s.balls[8].on).toBe(true);
   });
+  it('the keyboard browser fixture produces a legal break at its unchanged shot power',()=>{
+    const s=createGame('ai','medium',1);
+    // ArrowUp starts the UI power at .65; Enter shoots straight ahead with no spin.
+    expect(shoot(s,{angle:0,power:.65,spinX:0,spinY:0,called:null})).toBe(true);
+    const log=s.log!;
+    finish(s);
+    expect(s.phase).toBe('aim');expect(s.shots).toBe(1);
+    expect(log.scratch).toBe(false);
+    expect(log.pots.some(p=>p.id!==0)||log.railBalls.length>=4).toBe(true);
+    expect(s.breakShot).toBe(false);expect(s.foul).toBeNull();
+    expect(s.seed).toBe(1);expect(s.groups).toEqual([null,null]);
+  });
+  it('the same keyboard shot on the recorded illegal rack correctly re-racks for the opponent',()=>{
+    // CI run 41919423209: a valid keyboard shot is not necessarily a legal break.
+    const s=createGame('ai','medium',2828573763);
+    expect(shoot(s,{angle:0,power:.65,spinX:0,spinY:0,called:null})).toBe(true);
+    const log=s.log!;
+    finish(s);
+    expect(log.pots).toEqual([]);expect(log.scratch).toBe(false);
+    expect([...log.railBalls].sort((a,b)=>a-b)).toEqual([1,9]);
+    expect(s).toMatchObject({phase:'aim',shots:1,breakShot:true,turn:1,breaker:1,hand:'kitchen',foul:'Illegal break',seed:917497338,rack:1});
+    expect(s.balls).toEqual(rackBalls(917497338));
+  });
   it('an illegal break re-racks for the opponent; a break scratch gives ball in hand behind the line',()=>{
     let s=createGame('two','medium',1);judge(s,{railBalls:[1,2],first:1});
     expect(s.turn).toBe(1);expect(s.breakShot).toBe(true);expect(s.hand).toBe('kitchen');expect(s.foul).toBe('Illegal break');

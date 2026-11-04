@@ -24,6 +24,8 @@ const ghostAngle=(s:PoolState,pocket:number)=>{
 
 test.describe('Pool',()=>{
   test('breaks from the keyboard and the rack plays on',async({page})=>{
+    // Seed 1 makes the unchanged ArrowUp/Enter shot a legal break; random racks can require a re-break.
+    await seedPool(page,createGame('ai','medium',1));
     await page.setViewportSize({width:1366,height:768});await page.goto('/#/game/pool');
     await expect(root(page)).toHaveAttribute('data-hand','kitchen');
     await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
@@ -151,6 +153,26 @@ test.describe('Pool',()=>{
       if(viewport.width===390)await page.screenshot({path:'tests/games/pool/evidence/chromium.png'});
     });
   }
+
+  test.describe('touchscreen taps',()=>{
+    test.use({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:3});
+
+    test('tap to aim, release, and aim again without shooting or scrolling',async({page})=>{
+      await page.goto('/#/game/pool');await expect(root(page)).toHaveAttribute('data-orient','portrait');
+      const cue=(await poolState(page)).balls[0];
+      // Playwright's native touchscreen taps work in both Chromium and WebKit.
+      // Repeating the tap also checks that release clears the previous aim gesture.
+      for(const dy of [-.2,.2]){
+        const aim=await tableToScreen(page,cue.x+.4,cue.y+dy);
+        await page.touchscreen.tap(aim.x,aim.y);
+        expect((await poolState(page)).aim.angle).toBeCloseTo(Math.atan2(dy,.4),1);
+        await expect(root(page)).toHaveAttribute('data-gesture','idle');
+        await expect(root(page)).toHaveAttribute('data-phase','aim');
+        await expect(root(page)).toHaveAttribute('data-shots','0');
+        expect(await page.evaluate(()=>scrollY)).toBe(0);
+      }
+    });
+  });
 
   test('touch: aim with a finger and shoot with the power cue',async({browser,browserName})=>{
     const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:3});

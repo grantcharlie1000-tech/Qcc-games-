@@ -44,7 +44,7 @@ const module:GameModule={
    c.fillStyle='#eed6a842';for(let y=90;y<HEIGHT;y+=32)for(let x=0;x<WIDTH;x+=32)if((x/32+(y-90)/32)%2===0){c.fillRect(x,y,32,32);}
    // The basket is quiet and light so fruit silhouettes carry the scene.
    c.fillStyle='#fffae9';c.strokeStyle='#cba47b';c.lineWidth=5;c.beginPath();c.roundRect(12,96,336,402,[10,10,23,23]);c.fill();c.stroke();
-   c.strokeStyle=[...physics.fruits.values()].some(f=>f.danger>200)?'#db594d':'#d5a08b';c.lineWidth=1.5;c.setLineDash([5,5]);c.beginPath();c.moveTo(LEFT+3,DANGER);c.lineTo(RIGHT-3,DANGER);c.stroke();c.setLineDash([]);
+   c.strokeStyle=[...physics.fruits.values()].some(f=>f.danger>200)?'#a52218':'#8b3e30';c.lineWidth=2.5;c.setLineDash([5,5]);c.beginPath();c.moveTo(LEFT+3,DANGER);c.lineTo(RIGHT-3,DANGER);c.stroke();c.setLineDash([]);
    c.fillStyle='#b68d75';c.font='bold 8px sans-serif';c.textAlign='right';
    if(!physics.lost){
     const r=TIERS[physics.current].r;c.strokeStyle='#c49c7170';c.setLineDash([3,6]);c.lineWidth=1.5;c.beginPath();c.moveTo(physics.aim,62+r);c.lineTo(physics.aim,FLOOR-3);c.stroke();c.setLineDash([]);

@@ -1,0 +1,58 @@
+name: Verify Claimline leaderboard
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/claimline-leaderboard.yml'
+      - 'src/games/claimline/**'
+      - 'src/leaderboard/**'
+      - 'src/main.ts'
+      - 'src/accounts/**'
+      - 'src/core/**'
+      - 'src/ui/**'
+      - 'src/*.css'
+      - 'package*.json'
+      - 'playwright.config.ts'
+      - 'vite.config.ts'
+      - 'tests/fixtures.ts'
+      - 'tests/game-menu.ts'
+      - 'netlify/database/migrations/**'
+      - 'tests/games/claimline/**'
+      - 'tests/leaderboard/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: claimline-leaderboard-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  leaderboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test -- tests/games/claimline tests/leaderboard --maxWorkers=1
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      # All accounts, writes and migration changes stay in disposable local Postgres.
+      - run: xvfb-run -a npx playwright test tests/games/claimline/leaderboard.spec.ts --project=${{ matrix.browser }} --workers=1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: claimline-leaderboard-${{ matrix.browser }}
+          path: |
+            playwright-report
+            test-results

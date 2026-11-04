@@ -3,3 +3,10 @@
 /* Entry can spring, but a logically closed account sheet must stop painting
    before guest/identity entry replaces the page underneath its exit layer. */
 #accounts-dialog:not([open]),#accounts-dialog:not([open])::backdrop{visibility:hidden;pointer-events:none;-webkit-backdrop-filter:none;backdrop-filter:none;background:transparent;box-shadow:none}
+
+#accounts-dialog .account-close{float:right;min-width:44px;min-height:44px;border:1px solid #aaa;border-radius:8px;background:#20232a;color:#fff;font-size:24px;line-height:1}
+
+#accounts-dialog.arcade-sheet input:not([type=checkbox]){border:2px solid #aeb2ba;background:#292e38;color:#fff}
+@media(forced-colors:active){
+  #accounts-dialog.arcade-sheet input:not([type=checkbox]),#accounts-dialog .account-close{border:2px solid ButtonText;background:Canvas;color:CanvasText}
+}

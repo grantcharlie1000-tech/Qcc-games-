@@ -2,7 +2,7 @@ import {test,expect} from '../../fixtures';
 import {backToGames,pauseGame,resumeGame,gameAction} from '../../game-menu';
 import {AnimalWorld} from '../../../src/games/animal-stack/model';
 
-for(const viewport of [{width:320,height:568},{width:390,height:844},{width:1366,height:768}])test(`immediate play and original end status at ${viewport.width}x${viewport.height}`,async({page})=>{
+for(const viewport of [{width:320,height:568},{width:390,height:844},{width:1366,height:768}])test(`immediate play and concise end status at ${viewport.width}x${viewport.height}`,async({page})=>{
  await page.setViewportSize(viewport);await page.goto('/#/game/animal-stack');
  const root=page.locator('.animal-stack');await expect(root).toHaveAttribute('data-ready','true');
  await expect(root.locator('[data-drop]')).toBeVisible();

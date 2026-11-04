@@ -12,8 +12,9 @@ test.beforeEach(async({page})=>{
 });
 
 test('the games library has no Movies & TV box, and the island Movies tab opens Movies & TV',async({page})=>{
- // The library shows every catalog game; Movies remains a separate island tab.
+ // Render every catalog game, including Quad Clash; Movies remains a separate island tab.
  await page.goto('/');await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
+ await expect(page.getByRole('link',{name:'Play Quad Clash',exact:true})).toBeVisible();
  await expect(page.locator('.movies-launch')).toHaveCount(0);await expect(page.getByRole('link',{name:'Movies & TV',exact:true})).toHaveCount(0);
  await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();
  await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();

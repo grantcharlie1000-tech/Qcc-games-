@@ -198,8 +198,8 @@ function update(){
       if(style(target).visibility==='hidden'||style(target).opacity==='0')continue;
       const glyphs=[...target.querySelectorAll<HTMLElement>('svg,span:not(.ui-glass-lens,.ui-glass-glow),small,strong,kbd')].filter(e=>!e.querySelector('svg,span,small,strong,kbd')&&!e.closest('.ui-brand-tile,.apps-badge'));
       // The unread badge (.apps-badge) keeps its own fill and ink, so it is not a glyph.
-      // Icon and label of one control share one ink; a navigation bar shares one
-      // ink across all of its tabs, so no glyph differs in colour from its neighbour.
+      // Retain the existing sample area for labels, including their icons, so
+      // label contrast does not change. Icons themselves keep fixed white ink.
       const groups=new Map<Element,HTMLElement[]>();
       for(const glyph of glyphs){
         const r=rect(glyph);if(!r.width||!r.height||style(glyph).clip!=='auto')continue;
@@ -212,6 +212,8 @@ function update(){
       const selection=bar.matches('.ui-tabbar,.floating-glass-group');
       const accessible=matchMedia('(prefers-contrast: more)').matches||matchMedia('(forced-colors: active)').matches||matchMedia('(prefers-reduced-transparency: reduce)').matches;
       for(const group of groups.values()){
+        const labels=group.filter(glyph=>!glyph.matches('svg,.nc-chevrons'));
+        if(!labels.length)continue;
         let ink:ReturnType<typeof glassInk>|null=null;
         // Frosted sheets carry a dark tint under a deep blur: plain white ink, no halo.
         if(bar.closest('.ui-glass-sheet')&&!accessible)ink={color:'#fff',halo:'transparent'};
@@ -219,7 +221,7 @@ function update(){
           const samples=group.map(sample),known=samples.filter(s=>!isUnknown(s)).flat();
           ink=glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured),bar.closest('.section-navigation')?NAV_VEIL:CLEAR_VEIL);
         }
-        for(const glyph of group)changes.push({glyph,ink});
+        for(const glyph of labels)changes.push({glyph,ink});
       }
     }
   }

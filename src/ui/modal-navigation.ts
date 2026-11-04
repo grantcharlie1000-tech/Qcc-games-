@@ -38,7 +38,11 @@ export function suppressNavigationUnderSheets():void{
       const target=returnTo;returnTo=null;
       if(target?.isConnected&&!target.closest('[inert]')&&
         (movedFocus||active===document.body||active===document.documentElement||active instanceof Element&&!!active.closest(PANELS))){
-        requestAnimationFrame(()=>{if(!hidden&&target.isConnected&&!target.closest('[inert]'))target.focus({preventScroll:true});});
+        requestAnimationFrame(()=>{
+          const current=document.activeElement;
+          const focusUnclaimed=current===document.body||current===document.documentElement||current instanceof Element&&!!current.closest(PANELS);
+          if(!hidden&&focusUnclaimed&&target.isConnected&&!target.closest('[inert]'))target.focus({preventScroll:true});
+        });
       }
       movedFocus=false;
     }
