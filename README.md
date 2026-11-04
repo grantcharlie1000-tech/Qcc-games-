@@ -50,13 +50,13 @@ Movies & TV uses a streaming-style design system. Its tokens and shared `ui-` co
 
 `npm run build` creates `dist/` with relative asset paths, hash routes and a service worker scoped to the directory in which it is served. The unchanged build supports an origin root and a repository subpath.
 
-- **GitHub Pages:** enable GitHub Actions as the Pages source. The included [workflow](.github/workflows/pages.yml) runs verification and publishes `dist/` on pushes to `main` or `work`, or a manual dispatch. Repository Pages settings and account access are required.
+- **Cloudflare Pages (live):** the existing project is `nceastudy`. The [workflow](.github/workflows/pages.yml) publishes verified `main` builds using repository Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. It includes the Pages Functions and checks the public release commit. See [Cloudflare deployment](docs/CLOUDFLARE_PAGES.md).
 - **Netlify:** import this repository. [netlify.toml](netlify.toml) sets `npm run build`, publishes `dist/`, selects Node 22 and sets security headers. The shared score function and `netlify/database/migrations/` are deployed alongside the site. Netlify provisions the database from the installed `@netlify/database` integration; no browser API keys or manually configured application secrets are needed. Database availability and usage follow the site’s Netlify plan.
 - **Other static hosting:** serve `dist/` over HTTPS. No SPA rewrite is necessary because navigation uses `#/game/<id>`.
 
-Shared online leaderboards require the Netlify function and database; static-only hosts continue to run the games but cannot serve the shared scores. See [leaderboard setup and verification](docs/LEADERBOARDS.md).
+Shared online leaderboards require the configured backend and database. Cloudflare Pages uses the existing API proxy; static-only hosting without that proxy cannot serve shared scores. See [leaderboard setup and verification](docs/LEADERBOARDS.md).
 
-The Netlify project is **[NCEA Study](https://nceastudy.netlify.app)** (`nceastudy`), built from this repository's **main** branch. Publication is inspected through the Netlify connector; [deployment evidence and update status](docs/NETLIFY_DEPLOYMENT.md) record earlier releases. The ready static ZIP is included there too.
+The live arcade is **[NCEA Study on Cloudflare Pages](https://nceastudy.pages.dev)** (`nceastudy`). The verified `main` build publishes through GitHub Actions once its Cloudflare deployment secrets are configured; [Cloudflare setup and release verification](docs/CLOUDFLARE_PAGES.md) describe that path. [Netlify deployment evidence](docs/NETLIFY_DEPLOYMENT.md) records earlier releases on the separate Netlify site.
 
 ## Code and artwork
 

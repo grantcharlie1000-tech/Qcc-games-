@@ -1,7 +1,7 @@
 import {test,expect,type Page} from '../../fixtures';
 
 type HookState={phase:string;held:boolean;paused:boolean;t:number;over:boolean;alive:boolean;x:number;y:number;z:number;yaw:number;pitch:number;health:number;kills:number;deaths:number;score:number;slot:number;mag:number[];reserve:number;grenades:number;weapon:string;teamScores:number[];mode:string;map:string;fighters:{id:number;alive:boolean;x:number;y:number;z:number;team:number;health:number}[]};
-interface Hook{state():HookState;start(p:Record<string,unknown>):void;freeze(on:boolean):void;advance(s:number):void;look(y:number,p:number):void;placeBot(id:number,d:number):void;isolate(keep?:number[]):void;skip(s:number):void;hurtYou(n:number,from?:number):void;stats():{calls:number;triangles:number}}
+interface Hook{state():HookState;start(p:Record<string,unknown>):void;freeze(on:boolean):void;advance(s:number):void;look(y:number,p:number):void;placeBot(id:number,d:number):void;isolate(keep?:number[]):void;skip(s:number):void;hurtYou(n:number,from?:number):void;stats():{calls:number;triangles:number;quality:string;shadows:boolean;width:number;height:number}}
 declare global{interface Window{__quadClashTest?:Hook}}
 
 function watch(page:Page){const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});return errors;}
@@ -19,7 +19,7 @@ async function startFrozen(page:Page,p:Record<string,unknown>){await page.evalua
 test('the setup menu offers every mode, arena, skill and weapon, and Play starts that match',async({page})=>{
   const errors=await open(page);
   const menu=page.locator('.qc-menu');
-  await expect(menu.getByRole('radio')).toHaveCount(3+2+3+7);
+  await expect(menu.getByRole('radio')).toHaveCount(3+3+3+7);
   await menu.getByText('House Match',{exact:true}).click();
   await menu.getByText('Sports Field',{exact:true}).click();
   await menu.getByText('Hard',{exact:true}).click();
@@ -34,6 +34,20 @@ test('the setup menu offers every mode, arena, skill and weapon, and Play starts
   await expect(page.locator('.qc-scores')).toContainText('Kōwhai');
   await expect(page.locator('#game-level')).toContainText('House');
   // The arena actually draws.
+  const stats=await page.evaluate(()=>window.__quadClashTest!.stats());
+  expect(stats.calls).toBeGreaterThan(10);expect(stats.triangles).toBeGreaterThan(1000);
+  expect(errors).toEqual([]);
+});
+
+test('QCC Campus can be selected and rendered with the round egg fighters',async({page})=>{
+  const errors=await open(page);
+  await page.getByRole('radio',{name:'QCC Campus',exact:true}).check();
+  await expect(page.locator('.qc-mode-note')).toContainText('satellite image');
+  await page.getByRole('button',{name:'Play',exact:true}).click();
+  await page.evaluate(()=>{window.__quadClashTest!.freeze(true);});
+  await advance(page,0.5);
+  const s=await state(page);
+  expect(s.map).toBe('campus');expect(s.fighters).toHaveLength(8);
   const stats=await page.evaluate(()=>window.__quadClashTest!.stats());
   expect(stats.calls).toBeGreaterThan(10);expect(stats.triangles).toBeGreaterThan(1000);
   expect(errors).toEqual([]);
@@ -96,7 +110,7 @@ test('falling in battle shows the respawn panel; a new weapon picked there is ca
 
 test('a running match is saved: reopening shows Continue, which resumes the same match',async({page})=>{
   const errors=await open(page);
-  await startFrozen(page,{mode:'quad',map:'quad',primary:'recess',seed:11});
+  await startFrozen(page,{mode:'quad',map:'campus',primary:'recess',seed:11});
   await advance(page,3);
   const before=await state(page);
   // Pausing through the shell saves; reload the page to restore from storage.
@@ -109,7 +123,7 @@ test('a running match is saved: reopening shows Continue, which resumes the same
   if(await page.locator('#pause-game').getAttribute('aria-label')==='Resume game')await page.locator('#pause-game').click();
   await expect(resume).toBeVisible();
   const restored=await state(page);
-  expect(restored.held).toBe(true);expect(restored.mode).toBe('quad');expect(restored.t).toBeCloseTo(before.t,1);
+  expect(restored.held).toBe(true);expect(restored.mode).toBe('quad');expect(restored.map).toBe('campus');expect(restored.t).toBeCloseTo(before.t,1);
   await resume.click();
   await expect(page.locator('.qc-continue')).toBeHidden();
   await page.evaluate(()=>window.__quadClashTest!.freeze(true));
@@ -154,5 +168,54 @@ test.describe('on a phone',()=>{
     await advance(page,0.1);
     expect((await state(page)).weapon).toBe('pencil');
     expect(errors).toEqual([]);
+  });
+});
+
+
+test.describe('low-spec graphics',()=>{
+  test.use({viewport:{width:1920,height:1080},deviceScaleFactor:2});
+  test('Potato keeps full-detail lighting and 1080p with bounded draw calls on retina screens',async({page})=>{
+    const errors=await open(page);
+    await expect(page.getByLabel('Graphics quality')).toHaveValue('potato');
+    await startFrozen(page,{mode:'house',map:'campus',seed:4});
+    await advance(page,.1);
+    for(const yaw of [0,Math.PI/2,Math.PI,-Math.PI/2]) {
+      await page.evaluate(y=>{window.__quadClashTest!.look(y,0);window.__quadClashTest!.advance(0);},yaw);
+      const s=await page.evaluate(()=>window.__quadClashTest!.stats());
+      expect(s.quality).toBe('potato');expect(s.shadows).toBe(true);
+      expect(s.width).toBe(1920);expect(s.height).toBe(1080);expect(s.calls).toBeLessThan(230);
+    }
+    expect(errors).toEqual([]);
+  });
+  test('Balanced remains selectable and the saved graphics preference restores',async({page})=>{
+    // Two cold WebGL loads at retina size can exceed 30s under Chromium's software renderer.
+    test.setTimeout(60_000);
+    const errors=await open(page);
+    await page.getByLabel('Graphics quality').selectOption('balanced');
+    expect((await page.evaluate(()=>window.__quadClashTest!.stats())).shadows).toBe(true);
+    await page.getByRole('button',{name:'Play',exact:true}).click();
+    await page.evaluate(()=>window.__quadClashTest!.freeze(true));await advance(page,.5);
+    await page.keyboard.press('p');await page.reload();
+    await page.waitForFunction(()=>window.__quadClashTest!==undefined);
+    if(await page.locator('#pause-game').getAttribute('aria-label')==='Resume game')await page.locator('#pause-game').click();
+    await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await page.evaluate(()=>{window.__quadClashTest!.freeze(true);window.__quadClashTest!.advance(.1);});
+    expect((await page.evaluate(()=>window.__quadClashTest!.stats())).quality).toBe('balanced');
+    expect(errors).toEqual([]);
+  });
+  test('switching presets preserves the exact rendered picture',async({page})=>{
+    const errors=await open(page);
+    await startFrozen(page,{mode:'house',map:'campus',seed:4});
+    await advance(page,.1);
+    const identical=await page.evaluate(()=>{
+      const hook=window.__quadClashTest!,canvas=document.querySelector<HTMLCanvasElement>('.qc-canvas')!;
+      const graphics=document.querySelector<HTMLSelectElement>('.qc-quality select')!;
+      // Read both frames synchronously so RAF animation cannot advance between them.
+      hook.advance(0);const potato=canvas.toDataURL();
+      graphics.value='balanced';graphics.dispatchEvent(new Event('change'));
+      hook.advance(0);return potato===canvas.toDataURL();
+    });
+    expect(identical).toBe(true);expect(errors).toEqual([]);
   });
 });

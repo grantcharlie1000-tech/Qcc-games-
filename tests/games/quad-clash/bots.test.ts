@@ -4,6 +4,8 @@ import {createAi,stepWithBots,think} from '../../../src/games/quad-clash/bots';
 import {STEP,type Difficulty,type ModeId} from '../../../src/games/quad-clash/config';
 import type {MapId} from '../../../src/games/quad-clash/map';
 import {duel,face} from './helpers';
+import {navFor,nearestNode} from '../../../src/games/quad-clash/nav';
+import {worldFor} from '../../../src/games/quad-clash/sim';
 
 function botMatch(mode:ModeId,map:MapId,difficulty:Difficulty,seed:number,seconds:number){
   const m=createMatch({mode,map,difficulty,primary:'bell',seed});
@@ -21,7 +23,7 @@ describe('bots',()=>{
     const a=botMatch('brawl','quad','normal',42,20).m,b=botMatch('brawl','quad','normal',42,20).m;
     expect(a.fighters.map(f=>[f.x,f.y,f.z,f.kills,f.health])).toEqual(b.fighters.map(f=>[f.x,f.y,f.z,f.kills,f.health]));
   });
-  test.each([['brawl','quad'],['house','field'],['quad','quad'],['quad','field']] as const)('a %s match on %s plays out: bots move, fight and rarely get stuck',(mode,map)=>{
+  test.each([['brawl','quad'],['house','field'],['quad','quad'],['quad','field'],['brawl','campus'],['house','campus'],['quad','campus']] as const)('a %s match on %s plays out: bots move, fight and rarely get stuck',(mode,map)=>{
     const {m,stuck,seconds}=botMatch(mode,map,'normal',7,300);
     const kills=m.fighters.reduce((n,f)=>n+f.kills,0);
     expect(kills).toBeGreaterThan(20);
@@ -30,6 +32,14 @@ describe('bots',()=>{
     expect(standings(m)[0].kills).toBeGreaterThan(3);
     if(mode==='quad')expect(m.teamScores[0]+m.teamScores[1]).toBeGreaterThan(15);
   },30000);
+  test('a bot that has reached a lost target location searches another area',()=>{
+    const m=createMatch({mode:'house',map:'campus',difficulty:'normal',primary:'bell',seed:7});
+    m.t=10;const f=m.fighters[1],ai=createAi(1);f.x=-5.5;f.y=0;f.z=25.5;
+    ai.target=4;ai.lastSeen=10;ai.lastX=f.x;ai.lastY=f.y;ai.lastZ=f.z;ai.thinkAt=99;
+    const nav=navFor(worldFor(m)),current=nearestNode(nav,f.x,f.y,f.z)!;
+    think(m,f,ai,STEP);
+    expect(ai.goal).not.toBe(current.id);expect(ai.path.length).toBeGreaterThan(1);
+  });
   test('harder bots win more fights than easy bots',()=>{
     const score=(d:Difficulty)=>{let k=0;for(let s=1;s<=3;s++){const {m}=botMatch('brawl','quad',d,s,90);k+=m.fighters.reduce((n,f)=>n+f.kills,0)/m.t;}return k;};
     expect(score('hard')).toBeGreaterThan(score('easy'));

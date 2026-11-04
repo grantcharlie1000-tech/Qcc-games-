@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 410" role="img" aria-labelledby="qc-title qc-desc">
-<title id="qc-title">Quad Clash Q-bot taking aim</title>
-<desc id="qc-desc">A gold Q-bot with a QCC crest fires a giant pencil sidearm across the school quad while a blue rival bursts into confetti beside the brick classroom block.</desc>
+<title id="qc-title">Quad Clash egg fighter taking aim</title>
+<desc id="qc-desc">An egg fighter with a gold shell band with a QCC crest fires a giant pencil sidearm across the school campus while a blue rival bursts into confetti beside the green-roof classroom block.</desc>
 <defs>
   <linearGradient id="qc-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2f5c"/><stop offset=".55" stop-color="#2f5fa8"/><stop offset="1" stop-color="#8cc6ea"/></linearGradient>
   <linearGradient id="qc-body" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffd76a"/><stop offset=".6" stop-color="#ffc23d"/><stop offset="1" stop-color="#e09a18"/></linearGradient>
@@ -14,8 +14,8 @@
 <!-- hills -->
 <path fill="#3f6f62" d="M0 214 46 186 92 206 140 176 196 204 246 178 320 206V240H0z"/>
 <!-- classroom block -->
-<path fill="#9c4a33" d="M0 196h320v92H0z"/>
-<path fill="#efe2c4" d="M0 190h320v10H0zM0 246h320v6H0z"/>
+<path fill="#e9e5d4" d="M0 196h320v92H0z"/>
+<path fill="#2e5048" d="M0 190h320v10H0zM0 246h320v6H0z"/>
 <g fill="#5fa3d6" stroke="#f4efe2" stroke-width="4">
   <path d="M14 208h44v30H14zM78 208h44v30H78zM198 208h44v30H198zM262 208h44v30H262zM14 258h44v24H14zM262 258h44v24H262z"/>
 </g>
@@ -28,35 +28,26 @@
 <g stroke="#a59d88" stroke-width="1.5" opacity=".7"><path d="M0 312h320M0 344h320M0 384h320M40 288 18 410M110 288 98 410M180 288 184 410M250 288 270 410"/></g>
 <!-- crate cover -->
 <path fill="#c98f4d" d="M236 300h58v52h-58z"/><path fill="none" stroke="#7e5226" stroke-width="7" d="M240 304h50v44h-50zM241 305l48 42"/>
-<!-- rival bot bursting into confetti -->
+<!-- rival egg bursting into confetti -->
 <g transform="translate(262 238)">
   <ellipse cx="0" cy="58" rx="26" ry="6" fill="#000" opacity=".18"/>
-  <rect x="-20" y="10" width="40" height="46" rx="20" fill="#2f6fe0"/>
-  <circle cx="0" cy="0" r="17" fill="#f3efe6"/>
-  <path fill="#14213d" d="M-15 -2c4-7 26-7 30 0 0 7-6 11-15 11S-15 5-15-2z"/>
+  <path fill="#f3efe6" d="M0-20C-12-20-26 14-26 34c0 29 52 29 52 0C26 14 12-20 0-20z"/>
+  <path fill="#2f6fe0" d="M-26 29h52v12c-13 6-39 6-52 0z"/>
+  <g fill="#14213d"><ellipse cx="-8" cy="9" rx="3" ry="5"/><ellipse cx="8" cy="9" rx="3" ry="5"/></g>
   <path fill="#ff4d6a" d="M-34-20l9 4-4 7-9-5zM28-26l8-2 2 8-8 2zM-40 16l7-6 4 6-7 5zM34 20l9 2-2 8-9-2z"/>
 </g>
 <g fill="#ffffff"><path d="M228 196l8 2-2 7-8-2zM300 210l6 4-4 5-6-4zM214 232l7-3 2 6-7 3z"/></g>
 <g fill="#2f6fe0"><path d="M246 190l7 3-3 6-7-3zM292 248l8-1 1 7-8 1z"/></g>
 <g fill="#f2b733"><path d="M232 260l6 5-5 5-6-5zM300 182l7 1-1 7-7-1z"/></g>
-<!-- hero bot -->
+<!-- hero egg: one tapered shell, face and house band -->
 <ellipse cx="146" cy="392" rx="66" ry="11" fill="#000" opacity=".22"/>
-<rect x="92" y="250" width="108" height="140" rx="54" fill="url(#qc-body)"/>
-<path fill="#f3efe6" d="M110 316c10-30 62-30 72 0v26c-12 22-60 22-72 0z" opacity=".95"/>
-<!-- crest badge: shield with a drawn Q -->
-<path fill="#1d2f5c" stroke="#f2b733" stroke-width="3.5" d="M104 276h30v18c0 10-7 17-15 20-8-3-15-10-15-20z"/>
-<circle cx="119" cy="291" r="7" fill="none" stroke="#f2b733" stroke-width="3.5"/><path stroke="#f2b733" stroke-width="3.5" stroke-linecap="round" d="M122 294l5 6"/>
-<!-- feet -->
-<rect x="104" y="380" width="34" height="18" rx="9" fill="#2b2f36"/><rect x="152" y="380" width="34" height="18" rx="9" fill="#2b2f36"/>
-<!-- head -->
-<circle cx="146" cy="214" r="46" fill="#f3efe6"/>
-<path fill="#ffc23d" d="M100 210c0-30 20-46 46-46s46 16 46 46c-14-10-30-14-46-14s-32 4-46 14z"/>
-<path fill="#14213d" d="M108 216c8-14 68-14 78 0 2 18-16 30-39 30s-41-12-39-30z"/>
-<path fill="#ffffff" opacity=".18" d="M116 214c10-6 22-8 30-8-8 4-16 10-20 18z"/>
-<ellipse cx="170" cy="224" rx="6" ry="8" fill="#9ff3ff"/><ellipse cx="136" cy="224" rx="6" ry="8" fill="#9ff3ff"/>
-<path stroke="#2b2f36" stroke-width="4" stroke-linecap="round" d="M168 170l8-26"/><circle cx="177" cy="141" r="8" fill="#ffc23d"/>
+<path fill="#f3efe6" d="M146 202c-36 0-72 59-72 112 0 100 144 100 144 0 0-53-36-112-72-112z"/>
+<path fill="url(#qc-body)" d="M77 333c38 10 100 10 138 0v12c-38 10-100 10-138 0z"/>
+<g fill="#192738"><ellipse cx="129" cy="252" rx="4" ry="7"/><ellipse cx="163" cy="252" rx="4" ry="7"/></g>
+<path fill="none" stroke="#192738" stroke-width="3" stroke-linecap="round" d="M140 270c2 7 10 7 12 0"/>
+<ellipse cx="124" cy="390" rx="17" ry="9" fill="#ffc23d"/><ellipse cx="169" cy="390" rx="17" ry="9" fill="#ffc23d"/>
 <!-- arm and pencil sidearm -->
-<path fill="none" stroke="url(#qc-body)" stroke-width="22" stroke-linecap="round" d="M182 300l30-18"/>
+<path fill="none" stroke="#f3efe6" stroke-width="18" stroke-linecap="round" d="M182 300l30-18"/>
 <g transform="rotate(-24 222 276)">
   <path fill="#f28bb0" d="M196 268h14v20h-14z"/>
   <path fill="#b9bec4" d="M210 266h8v24h-8z"/>

@@ -5,6 +5,20 @@ import {getMap} from '../../../src/games/quad-clash/map';
 import {duel,eventsOf,face,hold,run} from './helpers';
 
 describe('hitscan weapons',()=>{
+  test('aiming at an egg eye still gives headshot damage',()=>{
+    const m=duel({primary:'hallpass'});const [you,bot]=m.fighters;face(m,you,bot,8);
+    you.x+=0.1;
+    you.pitch=0;
+    run(m,0.4,i=>[hold(you,{ads:true,fire:i===20,pitch:you.pitch})]);
+    expect(eventsOf(m,'hit')[0]).toMatchObject({target:1,head:true,amount:WEAPONS.hallpass.damage*WEAPONS.hallpass.head});
+  });
+  test('a shot through the visible egg shoulder registers as body damage',()=>{
+    const m=duel({primary:'hallpass'});const [you,bot]=m.fighters;face(m,you,bot,8);
+    you.x+=0.42;
+    you.pitch=Math.atan2(1.28-BODY.eye,8);
+    run(m,0.4,i=>[hold(you,{ads:true,fire:i===20,pitch:you.pitch})]);
+    expect(eventsOf(m,'hit')[0]).toMatchObject({target:1,head:false,amount:WEAPONS.hallpass.damage});
+  });
   test('a Hall Pass headshot at 8 m deals damage x head multiplier, and two finish the target',()=>{
     const m=duel({primary:'hallpass'});const [you,bot]=m.fighters;face(m,you,bot,8);
     run(m,0.4,i=>[hold(you,{fire:i===20})]);
@@ -223,6 +237,20 @@ describe('saving',()=>{
     expect(strip(copy)).toEqual(strip(m));
     step(m,STEP,[]);step(copy,STEP,[]);
     expect(copy.fighters.map(f=>[f.x,f.z,f.health])).toEqual(m.fighters.map(f=>[f.x,f.z,f.health]));
+  });
+  test('an earlier campus layout restores scores and gear onto valid new spawns and pickups',()=>{
+    const m=createMatch({mode:'house',map:'campus',difficulty:'normal',primary:'recess',seed:3});
+    m.fighters[0].score=700;m.fighters[0].kills=7;m.fighters[0].health=61;
+    const saved=JSON.parse(JSON.stringify(serialize(m)));delete saved.mapRevision;
+    saved.fighters[0].x=0;saved.fighters[0].z=0;
+    saved.pickups=[{...saved.pickups[0],x:0,y:99,z:0}];
+    saved.projectiles=[{kind:'grenade',owner:1,x:0,y:1,z:0,vx:1,vy:1,vz:1,age:0,fuse:1}];
+    const copy=restore(saved)!;
+    expect(copy.fighters[0]).toMatchObject({score:700,kills:7,health:61,primary:'recess'});
+    expect(getMap('campus').spawns.some(p=>p.x===copy.fighters[0].x&&p.z===copy.fighters[0].z)).toBe(true);
+    expect(copy.pickups).toHaveLength(getMap('campus').pickups.length);
+    expect(copy.pickups.every(p=>p.y<5)).toBe(true);expect(copy.projectiles).toHaveLength(0);
+    expect(copy.zoneIndex).toBe(0);
   });
   test('malformed or foreign snapshots are rejected',()=>{
     const m=createMatch({mode:'brawl',map:'quad',difficulty:'normal',primary:'bell',seed:1});

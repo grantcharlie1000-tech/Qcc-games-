@@ -1,13 +1,13 @@
 /** Navigation grid for the bots: one node per standable floor per metre cell, joined by walk, jump and drop links.
  * Built once per map from the same boxes the physics uses, so every link is one a body can really take. */
 import { BODY } from './config';
-import { floorAt, overlaps, type World } from './physics';
+import { boxesNear, floorAt, overlaps, type World } from './physics';
 
 export interface NavNode { readonly id: number; readonly x: number; readonly y: number; readonly z: number; readonly links: number[]; readonly costs: number[]; component: number }
 export interface Nav { readonly nodes: NavNode[]; readonly cells: Map<number, number[]>; readonly hx: number; readonly hz: number; readonly main: number }
 
 const CELL = 1;
-const CLEAR_R = 0.42;
+const CLEAR_R = BODY.radius + 0.04;
 const JUMP_UP = 1.05;
 const DROP = 4.2;
 const key = (ix: number, iz: number) => (ix + 512) * 1024 + (iz + 512);
@@ -28,7 +28,10 @@ function build(w: World): Nav {
       // Cell centres sit on half metres so that box edges on whole metres never fall on a centre.
       const x = (ix + 0.5) * CELL, z = (iz + 0.5) * CELL;
       const heights = [0];
-      for (let i = 0; i < w.n * 6; i += 6) if (x > b[i] && x < b[i + 3] && z > b[i + 2] && z < b[i + 5]) heights.push(b[i + 4]);
+      for (const id of boxesNear(w,x-CLEAR_R,z-CLEAR_R,x+CLEAR_R,z+CLEAR_R)) {
+        const i=id*6;
+        if (x + CLEAR_R > b[i] && x - CLEAR_R < b[i + 3] && z + CLEAR_R > b[i + 2] && z - CLEAR_R < b[i + 5]) heights.push(b[i + 4]);
+      }
       heights.sort((p, q) => p - q);
       const list: number[] = [];
       let last = -1;
@@ -36,7 +39,7 @@ function build(w: World): Nav {
         if (y - last < 0.05) continue;
         last = y;
         if (overlaps(w, x, y + 0.01, z, CLEAR_R)) continue;
-        if (Math.abs(floorAt(w, x, z, y + 0.01, 0.05) - y) > 0.02) continue;
+        if (Math.abs(floorAt(w, x, z, y + 0.01, CLEAR_R) - y) > 0.02) continue;
         const node: NavNode = { id: nodes.length, x, y, z, links: [], costs: [], component: -1 };
         nodes.push(node);
         list.push(node.id);

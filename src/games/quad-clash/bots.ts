@@ -102,7 +102,8 @@ function chooseGoal(m: Match, nav: Nav, f: Fighter, ai: Ai): number {
   }
   if (m.t - ai.lastSeen < 5 && ai.target >= 0) {
     const n = nearestNode(nav, ai.lastX, ai.lastY + 0.2, ai.lastZ, true);
-    if (n) return n.id;
+    // Once the last-seen location has been reached, search elsewhere instead of repeatedly routing to this cell.
+    if (n && (Math.hypot(n.x-f.x,n.z-f.z)>1.2 || Math.abs(n.y-f.y)>0.7)) return n.id;
   }
   // Hunt: head toward a random living enemy's area, or roam.
   const foes = m.fighters.filter(g => g.alive && enemies(m, f, g));
