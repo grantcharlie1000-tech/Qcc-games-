@@ -21,15 +21,15 @@ body.in-game #game-stage .nc-card .game-button:not(.secondary){text-shadow:none;
 
 /* Reading/privacy dialogs keep their article theme and lifecycle. */
 html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog){
-  background:rgb(255 255 255 / .13);background-image:none;
+  background:rgb(18 23 29 / .9);background-image:none;
   -webkit-backdrop-filter:var(--glass-clear-blur);backdrop-filter:var(--glass-clear-blur);
-  color:#0b1015;--sheet-halo:rgb(255 255 255 / .62);
+  color:#fff;--sheet-halo:transparent;
   -webkit-text-stroke:0;paint-order:stroke fill;
   text-shadow:none;
   box-shadow:inset 0 1px 0 rgb(255 255 255 / .4),0 6px 24px -6px rgb(0 0 0 / .14);
 }
 html body #study-view .study-privacy .study-privacy-dialog::backdrop{background:transparent}
-html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog) :is(p,label,h2,button){color:inherit;text-shadow:inherit}
+html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog) :is(p,label,h2,button,span,strong){color:inherit;text-shadow:inherit}
 html body #study-view .study-privacy .study-privacy-actions button{background:rgb(0 0 0 / .13)!important}
 
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more){

@@ -17,8 +17,14 @@ test('rain and lightning render within budget',async({page},info)=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   // A shader that fails to compile is only logged by three.js: count it as an error too.
   page.on('console',m=>{if(m.type()==='error'&&/shader|webglprogram/i.test(m.text()))errors.push(m.text());});
+  await page.clock.install({time:new Date('2026-10-20T12:00:00Z')});
+  await page.clock.pauseAt(new Date('2026-10-20T12:00:01Z'));
   await page.setViewportSize({width:960,height:540});
-  await page.goto('/#/game/blockcraft');await ready(page);
+  await page.goto('/#/game/blockcraft');
+  await expect.poll(async()=>{
+    await page.clock.fastForward(100);
+    return data(page,'ready');
+  },{timeout:60000,intervals:[100]}).toBe('true');
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
   // The world spawn may sit in a dry biome (deserts and savannas get no rain, as in vanilla), so every loaded column is
@@ -28,21 +34,28 @@ test('rain and lightning render within budget',async({page},info)=>{
     for(const c of g.world.chunks.values())c.biomes.fill(plains);
     g.weather.set('thunder',100000);g.player.teleport(p.x,p.y+1,p.z);
   },biomeId('plains'));
+  await expect.poll(async()=>{
+    await page.clock.fastForward(100);
+    return page.evaluate(()=>(window as unknown as {blockcraft:Debug}).blockcraft.weather.intensity);
+  },{timeout:60000,intervals:[100]}).toBeGreaterThan(.9);
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-weather','thunder');
-  await expect.poll(()=>page.evaluate(()=>(window as unknown as {blockcraft:Debug}).blockcraft.weather.intensity),{timeout:60000}).toBeGreaterThan(.9);
   const drops=await page.evaluate(()=>{
     const s=(window as unknown as {blockcraft:Debug}).blockcraft.render.scene.children.find(c=>c.name==='weather-precipitation');
     return s?{visible:s.visible,count:s.geometry?.instanceCount??0}:null;
   });
   expect(drops?.visible).toBe(true);expect(drops!.count).toBeGreaterThan(300);expect(drops!.count).toBeLessThanOrEqual(1756);
   await page.screenshot({path:info.outputPath('rain.png')});
+  // A bolt lives for only a few ticks. Render 50 ms of game updates while keeping the clock held
+  // during browser roundtrips and the screenshot, so a slow software renderer cannot age it out.
   // A strike a few blocks in front of the player.
   await page.evaluate(()=>{
     const g=(window as unknown as {blockcraft:Debug}).blockcraft,p=g.player.state,x=Math.floor(p.x),z=Math.floor(p.z)-12;
     g.weather.strike(x,g.world.topY(x,z)+1,z);
   });
+  await page.clock.runFor(50);
   await expect.poll(()=>page.evaluate(()=>(window as unknown as {blockcraft:Debug}).blockcraft.weather.bolts.length),{timeout:20000}).toBeGreaterThan(0);
   await page.screenshot({path:info.outputPath('bolt.png')});
+  expect(await page.evaluate(()=>(window as unknown as {blockcraft:Debug}).blockcraft.render.scene.children.find(c=>c.name==='weather-bolt')?.visible)).toBe(true);
   const visible=await page.evaluate(()=>(window as unknown as {blockcraft:Debug}).blockcraft.render.scene.children.filter(c=>c.name.startsWith('weather-')&&c.visible).length);
   expect(visible).toBeLessThanOrEqual(2);
   expect(await data(page,'weather')).toBe('thunder');

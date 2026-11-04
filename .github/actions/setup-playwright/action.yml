@@ -1,0 +1,39 @@
+name: Set up Playwright
+description: Install locked npm dependencies and cache versioned Playwright browsers
+inputs:
+  browser:
+    description: Playwright browser to install (chromium or webkit)
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+      shell: bash
+    - name: Read installed Playwright version
+      id: playwright
+      shell: bash
+      run: |
+        version=$(node -p "require('@playwright/test/package.json').version")
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+    - name: Cache Playwright browsers
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ inputs.browser }}-${{ steps.playwright.outputs.version }}
+    # OS libraries cannot be cached; install them even on a browser cache hit.
+    # Avoid the slow Azure mirror documented in actions/runner-images#12949.
+    - name: Use Ubuntu archive for browser dependencies
+      shell: bash
+      run: |
+        if [ -f /etc/apt/apt-mirrors.txt ]; then
+          sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+        fi
+    - name: Install browser and OS dependencies
+      shell: bash
+      env:
+        PLAYWRIGHT_BROWSER: ${{ inputs.browser }}
+      run: npx playwright install --with-deps "$PLAYWRIGHT_BROWSER"

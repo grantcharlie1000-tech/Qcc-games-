@@ -21,7 +21,6 @@ test('fresh start with mouse and keyboard: one kernel per input, first producer,
   await page.setViewportSize({width:1366,height:768});
   await page.goto('/#/game/corn-clicker');
   await expect(cob(page)).toBeVisible();
-  await expect(page.locator('.cc-tip')).toContainText('Click the cob!');
   for(let i=0;i<15;i++)await cob(page).click();
   await expect(page.locator('.cc-kernels-num')).toHaveText('15');
   // Keyboard: each press awards once; a held key's auto-repeat does not.

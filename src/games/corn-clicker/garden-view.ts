@@ -25,16 +25,16 @@ export class GardenView {
   private selectedPlot:number|null=null;
   private drag:{id:VarietyId;pointer:number;startX:number;startY:number;ghost?:HTMLElement;source:HTMLElement}|null=null;
   private sig='';
-  private grid:HTMLElement;private tray:HTMLElement;private details:HTMLElement;private book:HTMLElement;private locked:HTMLElement;private help:HTMLElement;
+  private grid:HTMLElement;private tray:HTMLElement;private details:HTMLElement;private book:HTMLElement;private locked:HTMLElement;
   private readonly art=new Map<string,string>();
   constructor(private readonly root:HTMLElement,private readonly host:GardenHost){
     root.innerHTML=`<p class="cc-garden-locked" hidden></p>
       <div class="cc-garden-main"><div class="cc-garden-grid" role="group" aria-label="Garden plots"></div>
       <div class="cc-garden-side"><h3 class="cc-h3" id="cc-seed-title">Seeds</h3><div class="cc-seed-tray" role="group" aria-labelledby="cc-seed-title"></div>
-      <p class="cc-garden-help"></p><div class="cc-plot-details" aria-live="polite"></div></div></div>
+      <div class="cc-plot-details" aria-live="polite"></div></div></div>
       <h3 class="cc-h3">Collection</h3><ul class="cc-book"></ul>`;
     this.locked=root.querySelector('.cc-garden-locked')!;this.grid=root.querySelector('.cc-garden-grid')!;
-    this.tray=root.querySelector('.cc-seed-tray')!;this.details=root.querySelector('.cc-plot-details')!;this.book=root.querySelector('.cc-book')!;this.help=root.querySelector('.cc-garden-help')!;
+    this.tray=root.querySelector('.cc-seed-tray')!;this.details=root.querySelector('.cc-plot-details')!;this.book=root.querySelector('.cc-book')!;
     this.tray.addEventListener('pointerdown',this.onSeedDown);
     this.tray.addEventListener('click',this.onSeedClick);
     this.grid.addEventListener('click',this.onPlotClick);
@@ -47,7 +47,7 @@ export class GardenView {
     const g=this.host.game(),s=g.s.garden,style=this.host.style();
     const open=g.has('garden');
     this.locked.hidden=open;
-    this.locked.textContent=open?'':'Buy the Kitchen Garden Plot upgrade to plant.';
+    this.locked.textContent=open?'':'Garden locked';
     this.root.querySelector<HTMLElement>('.cc-garden-main')!.hidden=!open;
     const size=g.gardenSize();
     const sig=[open,size,[...s.discovered].join(),s.plots.map((p,i)=>p?`${p.v}${g.stage(i)}`:'-').join(),this.selectedSeed,this.selectedPlot].join('|');
@@ -83,7 +83,6 @@ export class GardenView {
     this.grid.innerHTML=plots;
     this.tray.innerHTML=VARIETIES.filter(v=>s.discovered.has(v.id)).map(v=>`<button type="button" class="cc-seed" data-seed="${v.id}" aria-pressed="${this.selectedSeed===v.id}" aria-label="${v.name} seed: ${effectLabel(v.id)}, grows in ${duration(v.growSeconds)}">
       <span class="cc-seed-art">${this.plant(v.id,3)}</span><span class="cc-seed-name">${v.name}</span><span class="cc-seed-cost"></span></button>`).join('');
-    this.help.textContent=this.selectedSeed?'Now tap a plot.':'Pick a seed, then a plot. Ripe plants: tap to harvest.';
     this.book.innerHTML=VARIETIES.map(v=>{
       const known=s.discovered.has(v.id);
       const parentsKnown=v.parents?.every(p=>s.discovered.has(p));

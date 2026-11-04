@@ -87,3 +87,7 @@ Tetris is a falling-piece puzzle: arrange seven kinds of quads, clear lines, and
 ## Wordle
 
 Wordle is a daily five-letter puzzle with unlimited practice rounds, separate statistics and accessible colour cues. See [its spec](src/games/fivefold/SPEC.md).
+
+## QCC Social and QCC Chat
+
+QCC Social is a short-post feed with follows, likes, replies and reporting, and QCC Chat adds friend-only messages and view-once photo snaps. Both need a signed-in QCC account and, like the leaderboards, depend on the online backend. Photos are re-encoded on the server and stored by the deployment. See [the spec](docs/social-chat/SPEC.md), [deployment notes](docs/social-chat/DEPLOYMENT.md) and the [moderation runbook](docs/social-chat/MODERATION.md).

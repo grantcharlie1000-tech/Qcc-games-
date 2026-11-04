@@ -26,7 +26,7 @@ const module:GameModule={
     const next=root.querySelector<HTMLButtonElement>('[data-action=next]')!;
     let focusAfterPour:number|null=null;
     let selected:number|null=null,hint:ReturnType<Session['hint']>|null=null;
-    let message='Choose a source tube.',disposed=false,raf=0,lastFrame=0,celebrate:number|null=null;
+    let message='',disposed=false,raf=0,lastFrame=0,celebrate:number|null=null;
     let pointer:{id:number;x:number;y:number;from:number;target:HTMLElement}|null=null,suppressClick=false;
     const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
     const snapshot=()=>({...session.state,tubes:cloneBoard(session.state.tubes),history:session.state.history.map(cloneBoard),best:{...session.state.best}});
@@ -131,7 +131,7 @@ const module:GameModule={
       if(committed){
         clearAnimation();const values=session.state.tubes[destination];celebrate=values.length&&values.every(c=>c===values[0])?destination:null;
         if(won(session.state.tubes)){tell('Beautifully sorted! Every colour has a home.');context.sound('success');}
-        else message='Choose a source tube.';
+        else message='';
         render(true);
         if(focusAfterPour!==null){
           const destination=won(session.state.tubes)?next:tubes.querySelector<HTMLButtonElement>(`[data-tube="${focusAfterPour}"]`);
@@ -144,12 +144,12 @@ const module:GameModule={
       if(disposed||session.paused||session.pending||won(session.state.tubes))return;
       hint=null;celebrate=null;
       if(selected===null){
-        if(!session.state.tubes[index].length){tell('Choose a tube with liquid first.');render();return;}
-        selected=index;tell(`Tube ${index+1} selected. Choose a destination.`);
-      }else if(selected===index){selected=null;tell('Selection cleared. Choose a tube.');}
+        if(!session.state.tubes[index].length){tell('Empty tube.');render();return;}
+        selected=index;tell(`Tube ${index+1} selected.`);
+      }else if(selected===index){selected=null;tell('Selection cleared.');}
       else{
         const result=pour(session.state.tubes,selected,index);
-        if(!result){tell(session.state.tubes[index].length===4?'That tube is full. Choose another destination.':'The top colours must match. Try an empty tube.');render();return;}
+        if(!result){tell(session.state.tubes[index].length===4?'That tube is full.':'The top colours must match.');render();return;}
         if(session.begin(selected,index,reduced()||keyboard?160:1400)){
           focusAfterPour=keyboard?index:null;
           tell(`Pouring ${result.amount} ${COLOURS[result.colour].name} ${result.amount===1?'band':'bands'} from ${selected+1} to ${index+1}.`);
@@ -159,10 +159,10 @@ const module:GameModule={
       }
       context.sound('tap');render();
     }
-    function reset(level=session.state.level){clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level,session.state.best).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('Choose a source tube.');render(true);}
+    function reset(level=session.state.level){clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level,session.state.best).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('');render(true);}
     function useAction(kind:'undo'|'hint'){
       if(session.paused||session.pending)return;
-      if(kind==='undo'&&session.undo()){selected=null;hint=null;celebrate=null;tell('Pour undone. Try a new route.');render(true);}
+      if(kind==='undo'&&session.undo()){selected=null;hint=null;celebrate=null;tell('Pour undone.');render(true);}
       else if(kind==='hint'&&!won(session.state.tubes)){
         selected=null;hint=session.hint();
         if(hint.kind==='pour')tell(`Hint: pour tube ${hint.from+1} into tube ${hint.to+1}. ${hint.remaining} pours from a solution.`);

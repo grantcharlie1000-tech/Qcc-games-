@@ -64,7 +64,10 @@ return page.evaluate(async({shot,mask,boxes,bounds,visibleEdges})=>{
       const sx=c.width/bounds.width,sy=c.height/bounds.height;
       // A fractional CSS clip can round its PNG width up. That coordinate
       // scale must not turn the intended two DPR3 edge pixels into three.
-      const edgeDistance=Math.max(1,Math.floor(window.devicePixelRatio*2/3));
+      // At DPR2 a 1.75px navigation stroke leaves one antialiased pixel
+      // between its opaque core and the exterior. Round up so that exterior
+      // still finds the core; floor() incorrectly reported zero samples.
+      const edgeDistance=Math.max(1,Math.ceil(window.devicePixelRatio*2/3));
       image.src='data:image/png;base64,'+mask;await image.decode();context.drawImage(image,0,0);
       const inkMask=context.getImageData(0,0,c.width,c.height).data;
       const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);

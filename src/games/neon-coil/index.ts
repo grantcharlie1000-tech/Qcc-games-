@@ -18,10 +18,10 @@ const module: GameModule = {
     root.innerHTML = `<canvas class="nc-canvas" tabindex="0" role="img" aria-label="Slither.io arena. Move the pointer without clicking, use the thumb stick on touch, or hold arrows and WASD to steer. Hold Space to boost. P pauses."></canvas>
       <div class="nc-score" aria-label="Current mass in Classic mode"><span class="nc-difficulty">CLASSIC</span><strong class="nc-mass">30</strong></div>
       <aside class="nc-ranking" aria-label="Live arena ranking"><h2>LIVE RANKING</h2><ol></ol><div class="nc-you" hidden></div></aside>
-      <div class="nc-bottom"><button class="nc-boost arcade-glass game-glass" aria-label="Hold to boost" aria-pressed="false"><span class="nc-chevrons glass-ink" aria-hidden="true"><i></i><i></i><i></i></span><small class="nc-boost-note">Hold to boost · spends mass</small></button></div>`;
+      <div class="nc-bottom"><button class="nc-boost arcade-glass game-glass" aria-label="Hold to boost" aria-pressed="false"><span class="nc-chevrons glass-ink" aria-hidden="true"><i></i><i></i><i></i></span><small class="nc-boost-note"></small></button></div>`;
     container.append(root);
     const canvas = root.querySelector<HTMLCanvasElement>('canvas')!, renderer = createRenderer(canvas);
-    const controlsCopy = { touch: 'Thumb stick steers · Hold Boost', keyboard: 'Pointer steers · Space boosts' };
+    const controlsCopy = { touch: '', keyboard: '' };
     const pauseSheet = bindGamePauseSheet(container, { title: 'Slither.io', controls: controlsCopy });
     const sheet = createGameSheet(root, { title: 'Slither.io', controls: controlsCopy, onPlay: begin, buttonClass: 'nc-start' });
     const start = sheet.button;
@@ -92,7 +92,7 @@ const module: GameModule = {
       root.dataset.boosting = String(player.boosting); root.dataset.trails = String(state.food.filter(food => food.trail).length);
       root.dataset.rank = String(place); root.dataset.eaten = String(state.eaten); root.dataset.defeated = String(state.defeated);
       boost.disabled = paused || state.phase !== 'running'; boost.setAttribute('aria-pressed', String(player.boosting));
-      boostNote.textContent = player.mass <= MIN_MASS + 1e-6 ? 'Eat more glow to boost' : player.boosting ? '1.7× SPEED · −6 MASS / SEC' : touchInput ? 'Hold here · spends mass' : 'Hold SPACE · spends mass';
+      boostNote.textContent = player.mass <= MIN_MASS + 1e-6 ? 'Low mass' : player.boosting ? '1.7× SPEED · −6 MASS / SEC' : '';
       start.disabled = paused;
       const hideStick = !touchInput || state.phase !== 'running';
       if (stick.element.hidden !== hideStick) { stick.element.hidden = hideStick; queueMicrotask(resize); }
@@ -102,7 +102,7 @@ const module: GameModule = {
         else sheet.show(state.phase === 'dead' ? 'game-over' : 'start', { score: savedRun || state.phase === 'dead' ? score : undefined, best: Math.floor(best) });
         if (state.phase === 'dead') context.announce(`${state.cause} ${score} mass. Play again when ready.`);
       }
-      context.setStatus(paused ? 'Arena paused.' : state.phase === 'dead' ? `${state.cause} Play again to start a fresh arena.` : state.phase === 'ready' ? (touchInput ? 'Local bots only. Thumb stick steers, Boost button boosts.' : 'Local bots only. Move your pointer to steer, Space to boost.') : `${score} mass. Rank ${place}. Local bots only. Avoid other bodies and the rim.`);
+      context.setStatus(paused ? 'Arena paused.' : state.phase === 'dead' ? state.cause : state.phase === 'ready' ? 'Ready' : `${score} mass. Rank ${place}.`);
     }
     function reset() { seed = (seed + 0x9e3779b9) >>> 0; state = createArena(seed); savedRun = false; last = null; clearInput(); update(0, true); renderer.draw(state, 1, context.settings.reducedMotion); persist(); }
     function begin() {

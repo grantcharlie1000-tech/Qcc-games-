@@ -11,11 +11,12 @@ test('portrait Pool uses the height between player cards and dock',async({page})
   expect(dock.y-footer.y-footer.height).toBeLessThan(24);
 });
 
-test('Pool PC status and pocket choice have readable rendered text',async({page})=>{
+test('Pool PC pocket choice stays readable while the balls roll',async({page})=>{
   await page.setViewportSize({width:1366,height:768});await page.goto('/#/game/pool');
   await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
-  await expect(page.locator('.pool-message')).toContainText('balls rolling');
-  for(const selector of ['.pool-message','.pool-pocket-row','[aria-label="8-ball pocket"]']){
+  await expect(page.locator('.pool-game')).toHaveAttribute('data-phase','moving');
+  await expect(page.locator('.pool-message')).toBeHidden();
+  for(const selector of ['.pool-pocket-row','[aria-label="8-ball pocket"]']){
     const pixels=await page.locator(selector).evaluate(e=>parseFloat(getComputedStyle(e).fontSize)*e.getBoundingClientRect().width/(e as HTMLElement).offsetWidth);
     expect(pixels).toBeGreaterThanOrEqual(14);
   }

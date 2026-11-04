@@ -149,7 +149,7 @@ function overRun(seed:number,difficulty:Difficulty){
   return end;
 }
 
-test('a fresh profile opens Medium setup; the slider re-themes it; help explains permanent gates; Play rolls',async({page})=>{
+test('a fresh profile opens Medium setup; the slider re-themes it; rules open and close; Play rolls',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   const root=game(page),slider=page.getByRole('slider',{name:'Difficulty'}),play=page.getByRole('button',{name:'Play',exact:true});
@@ -173,11 +173,19 @@ test('a fresh profile opens Medium setup; the slider re-themes it; help explains
   await expectClear(page,root.locator('.br-setup'));
   await restartFromMenu(page);
   await expect(slider).toBeVisible();await expect(root).toHaveAttribute('data-difficulty','hard');
-  await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('permanently');await page.getByRole('button',{name:'Let’s play'}).click();
+  await gameAction(page,'Game rules');await expect(page.locator('#rules-dialog')).toBeVisible();await page.getByRole('button',{name:'Let’s play'}).click();
+  await expect(page.locator('#rules-dialog')).toBeHidden();
+  // Read the launch in the trusted click, after begin() and before the next simulation frame.
+  // Async focus/HUD assertions can otherwise consume enough real time for the ball to accelerate.
+  await play.evaluate(button=>button.addEventListener('click',()=>{
+    const root=button.closest<HTMLElement>('.ball-run')!;
+    button.setAttribute('data-test-start',JSON.stringify({speed:Number(root.dataset.speed),distance:Number(root.dataset.distance)}));
+  },{once:true}));
   await play.click();await expect(root).toHaveAttribute('data-phase','running');await expect(root.locator('.br-setup')).toBeHidden();
   await expect(root.locator('canvas')).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','0');
   await expect(root.locator('.br-mode-label')).toHaveText('HARD MODE');await expect(root.locator('.br-target-label')).toHaveText('NEW BEST');
-  const speed=await data(page,'speed');expect(speed).toBeCloseTo(CONFIG.hard.startSpeed,1);
+  const {speed,distance}=JSON.parse((await play.getAttribute('data-test-start'))!) as {speed:number;distance:number};
+  expect(distance).toBe(0);expect(speed).toBeCloseTo(CONFIG.hard.startSpeed,1);
   await waitDistance(page,15);expect(await data(page,'speed')).toBeGreaterThan(speed);await expect(root.locator('.br-score')).not.toHaveText('0');
   expect(errors).toEqual([]);
 });
@@ -520,8 +528,9 @@ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366
   await expectClear(page,root.locator('.br-over'));await evidence(page,`over-${viewport.width}x${viewport.height}.png`);
   await restartFromMenu(page);
   await expectClear(page,root.locator('.br-setup'));await evidence(page,`setup-${viewport.width}x${viewport.height}.png`);
-  await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('permanently');
+  await gameAction(page,'Game rules');await expect(page.locator('#rules-dialog')).toBeVisible();
   await page.getByRole('button',{name:'Let’s play'}).click();
+  await expect(page.locator('#rules-dialog')).toBeHidden();
 
 });
 

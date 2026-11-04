@@ -27,9 +27,9 @@ const module:GameModule={
    if(previousCount!==physics.fruits.size){previousCount=physics.fruits.size;count.textContent=`${physics.fruits.size} fruit${physics.fruits.size===1?'':'s'} in basket`;}
    let highest=0,danger=0;for(const f of physics.fruits.values()){highest=Math.max(highest,f.tier);danger=Math.max(danger,f.danger);}
    if(previousLevel!==highest){previousLevel=highest;context.setLevel(TIERS[highest].name);}
-   const status=physics.lost?'Basket full! Restart for another fresh batch.':danger>200?'Pile too high — a merge could save it!':`Drop a ${TIERS[physics.current].name.toLowerCase()}. Match two of a kind.`;
+   const status=physics.lost?'Basket full':danger>200?'Pile too high':TIERS[physics.current].name;
    if(previousStatus!==status){previousStatus=status;context.setStatus(status);}
-   banner.textContent=physics.lost?'Basket full — a fresh start awaits!':danger>200?`Careful! ${Math.max(0,(2000-danger)/1000).toFixed(1)}s to clear the line`:'';
+   banner.textContent=physics.lost?'Basket full':danger>200?`Above line · ${Math.max(0,(2000-danger)/1000).toFixed(1)}s`:'';
    canvas.setAttribute('aria-busy',String(!physics.ready&&!physics.lost));
    canvas.setAttribute('aria-disabled',String(paused||physics.lost));
    if(physics.lost&&!didLose){didLose=true;context.sound('lose');context.announce(`Basket full. Final score ${physics.score}.`);context.save(physics.snapshot());}
@@ -45,7 +45,7 @@ const module:GameModule={
    // The basket is quiet and light so fruit silhouettes carry the scene.
    c.fillStyle='#fffae9';c.strokeStyle='#cba47b';c.lineWidth=5;c.beginPath();c.roundRect(12,96,336,402,[10,10,23,23]);c.fill();c.stroke();
    c.strokeStyle=[...physics.fruits.values()].some(f=>f.danger>200)?'#db594d':'#d5a08b';c.lineWidth=1.5;c.setLineDash([5,5]);c.beginPath();c.moveTo(LEFT+3,DANGER);c.lineTo(RIGHT-3,DANGER);c.stroke();c.setLineDash([]);
-   c.fillStyle='#b68d75';c.font='bold 8px sans-serif';c.textAlign='right';c.fillText('KEEP BELOW',RIGHT-6,DANGER+12);
+   c.fillStyle='#b68d75';c.font='bold 8px sans-serif';c.textAlign='right';
    if(!physics.lost){
     const r=TIERS[physics.current].r;c.strokeStyle='#c49c7170';c.setLineDash([3,6]);c.lineWidth=1.5;c.beginPath();c.moveTo(physics.aim,62+r);c.lineTo(physics.aim,FLOOR-3);c.stroke();c.setLineDash([]);
     c.fillStyle='#b7926330';c.beginPath();c.ellipse(physics.aim,FLOOR-4,r*.7,4,0,0,Math.PI*2);c.fill();

@@ -189,7 +189,7 @@ for(const [width,height] of [[390,844],[320,568]] as const)test.describe(`phone 
     await page.goto('/#/game/blockcraft');await ready(page);
     // The start menu fits between the toolbar and the bottom edge.
     for(const b of await boxes(page,'.bc-menu .bc-btn')){expect(b.y).toBeGreaterThanOrEqual(56);expect(b.x+b.width).toBeLessThanOrEqual(width);expect(b.y+b.height).toBeLessThanOrEqual(height);}
-    await expect(page.locator('.bc-menu-message')).toContainText('Drag');
+    await expect(page.locator('[data-panel="main"] [data-act="primary"]')).toHaveText('Play');
     await page.screenshot({path:evidence(`menu-${width}x${height}`)});
     await play(page);
     await setSurvival(page,{health:20,absorption:0,food:20,saturation:5,xpLevel:3,xpProgress:.25},4);await give(page);

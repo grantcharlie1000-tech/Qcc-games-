@@ -82,6 +82,6 @@ export function drawTable(canvas:HTMLCanvasElement,s:PoolState,ghost:{x:number;y
  }
  if(s.ballInHand&&ghost){c.save();c.globalAlpha=.75;c.fillStyle=ghost.valid?'#fff7de':'#ff816b';c.beginPath();c.arc(ghost.x,ghost.y,R,0,Math.PI*2);c.fill();c.strokeStyle=ghost.valid?'#fff8c9':'#ff816b';c.lineWidth=2;c.setLineDash([4,4]);c.beginPath();c.arc(ghost.x,ghost.y,R+6,0,Math.PI*2);c.stroke();c.restore();}
  if(s.phase==='over'){
-  c.setTransform(ratio,0,0,ratio,0,0);c.fillStyle='#082840dd';c.fillRect(width/2-185,height/2-70,370,130);c.fillStyle='#fce5a2';c.textAlign='center';c.font='bold 25px system-ui';c.fillText(`${names?`${names[s.winner!]} wins`:s.mode==='ai'?(s.winner===0?'You win':'Computer wins'):`Player ${s.winner!+1} wins`}`,width/2,height/2-15,338);c.font='14px system-ui';c.fillText('Use Restart for a fresh rack',width/2,height/2+19);
+  c.setTransform(ratio,0,0,ratio,0,0);c.fillStyle='#082840dd';c.fillRect(width/2-185,height/2-70,370,130);c.fillStyle='#fce5a2';c.textAlign='center';c.font='bold 25px system-ui';c.fillText(`${names?`${names[s.winner!]} wins`:s.mode==='ai'?(s.winner===0?'You win':'Computer wins'):`Player ${s.winner!+1} wins`}`,width/2,height/2-15,338);
  }
 }

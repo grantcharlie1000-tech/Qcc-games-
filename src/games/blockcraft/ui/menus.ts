@@ -19,8 +19,6 @@ export interface Menus{
 /** Vanilla keeps the death screen's buttons disabled for 20 ticks. */
 export const RESPAWN_DELAY_MS=1000;
 
-const DESKTOP_COPY='Click Play, then move the mouse to look around. W A S D move, Space jumps, Shift sneaks, Ctrl sprints. Left click mines or attacks, right click places or uses, E opens the inventory.';
-const TOUCH_COPY='Tap Play. Drag anywhere to look, use the stick to move, hold to mine and tap to place or use.';
 const TOGGLES:readonly OptionKey[]=['keepInventory','daylightCycle','weatherCycle','mobSpawning'];
 interface Slider{key:OptionKey;min:number;max:number;step:number;get(g:Game):number;set(v:number):Partial<GameSettings>}
 const SLIDERS:readonly Slider[]=[
@@ -114,7 +112,7 @@ export function createMenus(game:Game):Menus{
     const waiting=game.state==='loading'||game.spawning;
     primary.disabled=waiting;
     loading.textContent=kind==='start'||kind==='resume'?waiting?'Generating terrain…':'':'';
-    if(kind==='start'||kind==='resume')message.textContent=game.input.touch?TOUCH_COPY:DESKTOP_COPY;
+    if(kind==='start'||kind==='resume'){message.textContent='';message.hidden=true;}
     if(panel==='controls'&&!el.hidden)buildControls();
   }
   function show(next:MenuKind|null){
@@ -143,7 +141,7 @@ export function createMenus(game:Game):Menus{
     }else if(next==='restart'){
       // Vanilla asks the same before a world is deleted. The question answers the shell's Restart button, so it takes the
       // focus from there; Cancel has it, so Enter or Space never deletes the world by accident.
-      title.textContent='Create a new world?';message.textContent='This world will be lost forever! (A long time!)';
+      title.textContent='Create a new world?';message.textContent='This world will be lost forever!';
       setPanel('restart',false);loading.textContent='';
       q<HTMLButtonElement>('[data-act=cancel]').focus({preventScroll:true});
     }else{

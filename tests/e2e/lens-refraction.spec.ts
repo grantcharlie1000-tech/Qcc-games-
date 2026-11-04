@@ -22,16 +22,21 @@ const stripes=(orientation:'v'|'h')=>'data:image/svg+xml,'+encodeURIComponent(or
 
 // Puts the stripes behind the island, and hides the covers and the tabs, so the pixels are the stripes only.
 async function stage(page:Page,orientation:'v'|'h'='v'){
-  await page.evaluate(src=>{
+  await page.evaluate(({src,orientation})=>{
     document.getElementById('content')!.style.visibility='hidden';
     const image=document.createElement('img');
     image.dataset.t28='stripes';
     image.alt='';
     image.src=src;
-    image.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none';
+    // #92's larger companion leaves a 290px bar. Shift the vertical source
+    // boundary inside both rounded ends so each rim still has detail to bend.
+    image.style.cssText=`position:fixed;left:${orientation==='v'?4:0}px;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none`;
     document.body.append(image);
-  },stripes(orientation));
-  await page.addStyleTag({content:'.app-tabbar{--glass-tint:transparent!important;--glass-tone:saturate(1)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
+  },{src:stripes(orientation),orientation});
+  // Isolate the bend with the same 3px optical fixture used before #92.
+  // The production 12px frost diffuses these 16px stripes almost uniformly;
+  // actual navigation diffusion is checked separately in clear-glass.
+  await page.addStyleTag({content:'.app-tabbar{--glass-tint:transparent!important;--glass-tone:saturate(1)!important;--glass-frost:blur(3px)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   await page.waitForFunction(()=>(document.querySelector('img[data-t28]') as HTMLImageElement|null)?.complete===true);
 }
 
@@ -232,8 +237,8 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
     await expect(page.locator('filter[id^="ui-glass-"]')).toHaveCount(0);
     const frost=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
-    expect(frost).toContain('blur(3px)');
-    expect(frost).toContain('saturate(1.05)');
+    expect(frost).toContain('blur(12px)');
+    expect(frost).toContain('saturate(1.4)');
   });
 
   test('frost has a glow layer on the bar\'s edge, hidden from assistive technology',async({page})=>{
@@ -293,7 +298,7 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.app-navigation [data-glass=frost]')).toHaveCount(2);
     await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
     await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
-    for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveCSS('backdrop-filter',/blur\(3px\)/);
+    for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveCSS('backdrop-filter',/blur\(12px\)/);
   });
 
   test('Movies preserves its separate fallback companion through a re-render',async({page})=>{

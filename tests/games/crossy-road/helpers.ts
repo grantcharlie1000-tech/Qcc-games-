@@ -19,7 +19,6 @@ declare global {
 
 /** The seed most specs play on: rows 0-4 are the safe start, and nothing about it matters beyond that. */
 export const SEED = 11;
-export const EVIDENCE = '/workspace/qcc-crossy-work/shots';
 
 // ---------------------------------------------------------------------------------------------------------------------
 // The hook
@@ -170,9 +169,9 @@ export async function expectDeathCard(page: Page, cause: DeathCause, text: strin
   await expect(page.getByRole('button', {name: 'Play again', exact: true})).toBeFocused();
 }
 
-/** Writes external evidence. Only Chromium writes the common set. */
+/** Writes per-test diagnostics beside the trace and other Playwright artifacts. */
 export async function shot(page: Page, name: string): Promise<void> {
-  if (test.info().project.name === 'chromium') await page.screenshot({path: `${EVIDENCE}/${name}.png`});
+  if (test.info().project.name === 'chromium') await page.screenshot({path: test.info().outputPath(`${name}.png`)});
 }
 
 /** `shot` for a screen with a card. The card fades and scales in over 240 ms on real time, and software WebGL can delay the

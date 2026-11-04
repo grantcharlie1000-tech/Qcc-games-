@@ -1,4 +1,5 @@
 import {test, expect} from '../../fixtures';
+import {gameAction} from '../../game-menu';
 import {BAND_MAX, HOP_TIME, IDLE_LIMIT, IDLE_WARN} from '../../../src/games/crossy-road/config';
 import {laneVelocity, mod, platformAt, railWarning, trainHit} from '../../../src/games/crossy-road/lanes';
 import {advance, cardShot, carDeath, expectDeathCard, force, hop, openGame, rail, river, showCard, state} from './helpers';
@@ -215,8 +216,7 @@ test('shared Menu opens the Crossy Road leaderboard from game over without a dup
   await expectDeathCard(page, 'car', 'Hit by a car');
   await expect(page.locator('.crossy-road .hw-rankings')).toHaveCount(0);
   await expect(page.locator('.hw-over')).toHaveClass(/ui-glass-sheet/);
-  await page.locator('#game-menu').click();
-  await page.locator('#open-leaderboards').click();
+  await gameAction(page, 'Leaderboards');
   const dialog = page.locator('dialog[open]');
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('heading', {name: 'Leaderboards'})).toBeVisible();

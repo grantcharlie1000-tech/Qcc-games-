@@ -15,7 +15,8 @@ export function expectedEnvironment(context:string|undefined):Environment {
 export {writeFrozen as isWriteFrozen} from '../../src/accounts/write-freeze';
 export function createGuardedHandler(pool:Database,factory:(db:Database)=>(request:Request)=>Promise<Response>,options:Options={}){
  const env=options.env??process.env;const now=options.now??Date.now;
- let checked:Promise<void>|undefined;const handle=factory(pool);
+ let checked:Promise<void>|undefined;// Handlers pass `db.query` around unbound (rateLimit etc.); a pg Pool method needs its `this`, so hand them a bound view.
+ const handle=factory({query:(text,values)=>pool.query(text,values),connect:()=>pool.connect()});
  async function check(){
   const netlify=(globalThis as typeof globalThis&{Netlify?:{context?:{deploy?:{context?:string}}}}).Netlify;
   const expected=expectedEnvironment(options.context??netlify?.context?.deploy?.context??env.CONTEXT);

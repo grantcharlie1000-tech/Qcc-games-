@@ -54,11 +54,12 @@ test('multi-stat captions fit their compact capsules on a 320px phone',async({pa
   }
 });
 
-test('Pool keeps shot status clear of all six pockets',async({page})=>{
+test('Pool keeps pocket choice below all six pockets',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/pool');
   await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
-  await expect(page.locator('.pool-message')).toContainText('balls rolling');
-  const table=(await page.locator('.pool-table').boundingBox())!,status=(await page.locator('.pool-message').boundingBox())!;
+  await expect(page.locator('.pool-game')).toHaveAttribute('data-phase','moving');
+  await expect(page.locator('.pool-message')).toBeHidden();
+  const table=(await page.locator('.pool-table').boundingBox())!,status=(await page.locator('.pool-pocket-row').boundingBox())!;
   expect(status.y).toBeGreaterThanOrEqual(table.y+table.height);
 });
 
@@ -131,6 +132,7 @@ test('returning from a hidden tab does not resume through the game menu',async({
 
 test('Minesweeper local options preserve a background pause',async({page})=>{
   await page.goto('/#/game/minesweeper');
+  await expect(page.locator('.ms-board')).toBeVisible();
   await gameAction(page,'Game options');await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});});
   await expect(page.locator('#pause-overlay')).toBeVisible();
   await gameAction(page,'Game options');await page.getByRole('button',{name:'Close game options',exact:true}).click();
