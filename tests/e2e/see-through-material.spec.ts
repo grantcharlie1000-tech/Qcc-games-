@@ -7,7 +7,7 @@ test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasT
 
 // #92 separates frosted navigation/sheets from the unchanged clear HUD fill.
 const CLEAR_FILL='rgba(8, 12, 18, 0.2)',FILL_RGB=[8,12,18],FILL_ALPHA=.2;
-const NAV_FILL='rgba(8, 12, 18, 0.36)',FROST_FILL='rgba(12, 16, 22, 0.58)';
+const NAV_FILL='rgba(8, 12, 18, 0.36)',LIGHT_FROST_FILL='rgba(12, 16, 22, 0.58)',DARK_FROST_FILL='rgba(12, 16, 22, 0.9)';
 test('navigation, clear controls and frosted sheets retain their intended fills over the live backdrop',async({page})=>{
   await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));
   for(const route of ['collection','study','movies/browse/movie','game/snake']){
@@ -38,7 +38,7 @@ test('navigation, clear controls and frosted sheets retain their intended fills 
     });
     // Study retains its article theme. Arcade sheets deliberately use CSS
     // frost, without a sharp WebGL copy over the blur (#92).
-    expect(material.fill,`${route}: sheet`).toBe(route==='study'?'rgba(255, 255, 255, 0.13)':FROST_FILL);
+    expect(material.fill,`${route}: sheet`).toBe(route==='study'?'rgba(18, 23, 29, 0.9)':route==='collection'?LIGHT_FROST_FILL:DARK_FROST_FILL);
     expect(material.filter,route).toBe(route==='study'?'blur(1.5px)':'blur(20px) saturate(1.5)');
     expect(material.lensOnly,route).toBe(false);
     await page.keyboard.press('Escape');
@@ -88,14 +88,21 @@ test('native start/end cards retain their original game palettes',async({page})=
   // Slither is the deliberate exception to native palettes: #92 frosts it.
   const panel=page.locator('.nc-game .game-sheet-panel');
   await expect(panel).toHaveAttribute('data-glass-mode','blur');
-  await expect(panel).toHaveCSS('background-color',FROST_FILL);
+  await expect(panel).toHaveCSS('background-color',DARK_FROST_FILL);
   await expect(panel).toHaveCSS('backdrop-filter','blur(20px) saturate(1.5)');
   await expect(panel.locator(':scope>.ui-glass-gl')).toHaveCount(0);
 });
 
 test('Corn retains its brown pixel columns and readable cream guidance',async({page})=>{
   await page.goto('/#/game/corn-clicker');
-  const tip=page.locator('.cc-col .cc-tip');await expect(tip).toBeAttached();
+  const tip=page.locator('.cc-col .cc-tip');await expect(tip).toBeHidden();
+  // Tips are opt-in. Reach them through the actual help action before measuring their ink.
+  const sections=page.getByRole('tablist',{name:'Corn Clicker sections',exact:true});
+  await sections.getByRole('tab',{name:'Farm',exact:true}).click();
+  await page.getByRole('tab',{name:'Options',exact:true}).click();
+  await page.getByRole('button',{name:'Show tips again',exact:true}).click();
+  await sections.getByRole('tab',{name:'Cob',exact:true}).click();
+  await expect(tip).toBeVisible();
   expect(await tip.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,filter:s.backdropFilter,shadow:s.boxShadow};})).toEqual({fill:'rgb(255, 243, 196)',filter:'none',shadow:'none'});
   await expect(page.locator('.cc-col.cc-left')).toHaveCSS('background-image',/radial-gradient.*rgb\(74, 60, 23\).*rgb\(41, 36, 26\)/);
   await expect(page.locator('.cc-col.cc-left')).toHaveCSS('border-top-color','rgb(107, 68, 34)');
@@ -128,6 +135,10 @@ test('native Minesweeper pause retains its opaque green palette and hides the bo
 });
 
 test('Blockcraft Controls and Advancements retain the original panels and readable labels',async({page})=>{
+  // The world intentionally renders behind these panels. Chromium's software
+  // renderer needs the native-art prelude plus all four contrast samples; do
+  // not let the default 30 s expire before statisticsContrast sets its budget.
+  test.setTimeout(120000);
   await page.goto('/#/game/blockcraft');
   await expect(page.locator('.bc-menu [data-act=primary]')).toBeEnabled({timeout:30000});
   await page.locator('.bc-menu [data-act=controls]').click();
@@ -194,7 +205,9 @@ test.describe('desktop Statistics glyphs',()=>{
 });
 
 async function statisticsContrast(page:Page){
-  test.setTimeout(90000);
+  // CI traces place the four healthy screenshot/mask samples at about 109 s
+  // with the live world underneath. Retain every sample and contrast threshold.
+  test.setTimeout(120000);
   await page.locator('.bc-adv-tab[id$="-statistics"]').click();
   await expect(page.locator('.bc-adv-stats')).toBeVisible();
   await expect(page.locator('.bc-adv-stat-row').first()).toHaveCSS('background-color','rgba(0, 0, 0, 0.06)');
@@ -224,7 +237,10 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} tra
   // The sheet is the home sheet: over a live game, the WebGL lens samples the
   // canvas itself rather than an injected DOM art layer.
   await page.goto(surface==='dock'?'/#/game/snake':'/#/collection');
-  if(surface==='sheet')await page.locator('.app-navigation .section-menu').click();
+  if(surface==='sheet'){
+    await page.locator('.app-navigation .section-menu').click();
+    await expect.poll(()=>page.locator('#menu').evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0.68)');
+  }
   const selector={bar:'.app-tabbar',menu:'.app-menu',dock:'.game-hud',sheet:'#menu'}[surface];
   const panel=page.locator(selector);await expect(panel).toBeVisible();
   await panel.screenshot({animations:'disabled'});
@@ -283,7 +299,7 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} tra
   const navigation=surface==='bar'||surface==='menu';
   const tone=filtered?{saturate:surface==='sheet'?1.5:navigation?1.4:1.08,brightness:navigation?.94:1,contrast:1}:{saturate:1,brightness:1,contrast:1};
   const fill=surface==='sheet'?{rgb:[12,16,22],alpha:.58}:{rgb:FILL_RGB,alpha:navigation?.36:FILL_ALPHA};
-  if(measured.retention!==null)expect(Math.abs(measured.retention-expectedRetention(['#152431','#f8e6c0'],tone,fill)),JSON.stringify(measured)).toBeLessThanOrEqual(.03);
+  if(measured.retention!==null)expect(Math.abs(measured.retention-expectedRetention(['#152431','#f8e6c0'],tone,fill,surface==='sheet'?.32:1)),JSON.stringify(measured)).toBeLessThanOrEqual(.03);
 });
 
 async function backdropFiltersRender(page:Page){
@@ -295,12 +311,14 @@ async function backdropFiltersRender(page:Page){
   }finally{await reference.close();}
 }
 
-function expectedRetention(colors:string[],tone:{saturate:number;brightness:number;contrast:number},fill:{rgb:number[];alpha:number}){
+function expectedRetention(colors:string[],tone:{saturate:number;brightness:number;contrast:number},fill:{rgb:number[];alpha:number},sourceScale=1){
   const lightness=(rgb:number[])=>{
     const y=rgb.reduce((sum,v,c)=>{const s=v/255;return sum+[.2126,.7152,.0722][c]*(s<=.04045?s/12.92:((s+.055)/1.055)**2.4);},0);
     return y>216/24389?116*Math.cbrt(y)-16:24389/27*y;
   };
-  const [a,b]=colors.map(hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)));
+  const [a,b]=colors.map(hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)*sourceScale));
+  // The shell scrim darkens the source first; then the sheet applies its filter and fill.
+  // Reference screenshots retain that scrim, so their denominator uses the dimmed source too.
   // Filter Effects: saturate matrix, then brightness, then contrast, then the fill.
   const s=tone.saturate,matrix=[[.213+.787*s,.715-.715*s,.072-.072*s],[.213-.213*s,.715+.285*s,.072-.072*s],[.213-.213*s,.715-.715*s,.072+.928*s]];
   const clamp=(v:number)=>Math.min(1,Math.max(0,v));
@@ -337,7 +355,8 @@ test('a sheet uses the same frosted transfer at five heights across a light/dark
   },png);
   const filtered=await backdropFiltersRender(page);
   for(const {height,color} of rows){
-    const original=height<.55?[248,248,248]:[21,36,49];
+    // The real shell backdrop is black at 68%; model it independently before frost.
+    const original=(height<.55?[248,248,248]:[21,36,49]).map(v=>v*.32);
     const s=filtered?1.5:1;
     const matrix=[[.213+.787*s,.715-.715*s,.072-.072*s],[.213-.213*s,.715+.285*s,.072-.072*s],[.213-.213*s,.715-.715*s,.072+.928*s]];
     const saturated=matrix.map(row=>Math.max(0,Math.min(255,row.reduce((sum,k,c)=>sum+k*original[c],0))));

@@ -67,7 +67,7 @@ test('the menu and the rules sheet are named by their headings',async({page})=>{
   await expect(page.getByRole('dialog',{name:'How to play',exact:true})).toBeVisible();
 });
 
-test('at 390 px the menu is a bottom sheet inset from the screen edges, and it scrolls inside itself',async({page})=>{
+test('at 390 px the shell menu is centered inside the screen edges and scrolls inside itself',async({page})=>{
   await page.setViewportSize(PHONE);
   await page.goto('/');
   await openMenuFromIsland(page);
@@ -75,7 +75,8 @@ test('at 390 px the menu is a bottom sheet inset from the screen edges, and it s
   const box=await settledBox(menu);
   expect(box.x).toBeCloseTo(8,0);
   expect(box.width).toBeCloseTo(374,0);
-  expect(box.y+box.height).toBeCloseTo(836,0);
+  expect(box.y+box.height/2).toBeCloseTo(PHONE.height/2,0);
+  expect(box.y).toBeGreaterThanOrEqual(8);expect(box.y+box.height).toBeLessThanOrEqual(PHONE.height-8);
   expect(await menu.evaluate(el=>getComputedStyle(el).borderTopLeftRadius)).toBe('32px');
   // The wheel moves the sheet. Once it is at its end, the page behind it stays where it was.
   expect(await menu.evaluate(el=>el.scrollHeight>el.clientHeight)).toBe(true);
@@ -107,9 +108,11 @@ test('the menu grows from the control that opened it in the island and in-game d
   await openMenuFromIsland(page);
   const box=await settledBox(menu);
   const fromIsland=await originOf(menu);
-  // The origin is the tab's centre measured from the sheet's corner. The companion Menu sits beside the five-tab island, at the bottom right.
-  expect(Math.abs(fromIsland.x-(tab.x+tab.width/2-box.x))).toBeLessThanOrEqual(1);
-  expect(Math.abs(fromIsland.y-(tab.y+tab.height/2-box.y))).toBeLessThanOrEqual(1);
+  // The centered shell sheet clamps the trigger's center to its nearest edge.
+  const islandX=Math.min(Math.max(tab.x+tab.width/2-box.x,0),box.width);
+  const islandY=Math.min(Math.max(tab.y+tab.height/2-box.y,0),box.height);
+  expect(Math.abs(fromIsland.x-islandX)).toBeLessThanOrEqual(1);
+  expect(Math.abs(fromIsland.y-islandY)).toBeLessThanOrEqual(1);
   expect(fromIsland.x).toBeGreaterThan(box.width*0.75);
   expect(fromIsland.y).toBeGreaterThan(box.height*0.75);
   await page.keyboard.press('Escape');
@@ -123,6 +126,12 @@ test('the menu grows from the control that opened it in the island and in-game d
   const gameSheet=page.locator('#game-options');
   const gameBox=await settledBox(gameSheet);
   const fromGame=await originOf(gameSheet);
+  // Requested exclusion 11 keeps the in-game menu's original bottom placement and backdrop.
+  expect(gameBox.y+gameBox.height).toBeCloseTo(PHONE.height-8,0);
+  expect(await gameSheet.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+  const secondary=gameSheet.locator('.game-button.secondary');
+  expect(await secondary.count()).toBeGreaterThan(0);
+  for(const button of await secondary.all())await expect(button).toHaveCSS('border-top-style','none');
   // The compact game group anchors the sheet at the actual Menu centre.
   const expectedX=Math.min(Math.max(gameMenu.x+gameMenu.width/2-gameBox.x,0),gameBox.width);
   const expectedY=Math.min(Math.max(gameMenu.y+gameMenu.height/2-gameBox.y,0),gameBox.height);
@@ -179,15 +188,14 @@ test('the primary rules action uses contrasting neutral ink in a 48 px capsule',
   expect(await page.locator('#rules-text').evaluate(el=>{const s=getComputedStyle(el);return [s.fontSize,s.color];})).toEqual(['17px','rgb(255, 255, 255)']);
 });
 
-test('the sheet leaves the page undimmed behind a plain backdrop, and no control inside it has a backdrop filter of its own',async({page})=>{
+test('the shell sheet dims the page with the shared scrim without adding nested control filters',async({page})=>{
   await page.setViewportSize(PHONE);
   await page.goto('/');
   await openMenuFromIsland(page);
   const menu=page.locator('#menu');
-  // The clear material keeps the page behind it undimmed: the ::backdrop
-  // transition settles on a transparent colour, not a dark scrim.
+  // Shell dialogs use the requested shared scrim; the in-game exception is tested above.
   await expect(menu).toBeVisible();await expect.poll(()=>menu.evaluate(el=>el.getAnimations().length)).toBe(0);
-  expect(await menu.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+  expect(await menu.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0.68)');
   expect(await menu.evaluate(el=>getComputedStyle(el,'::backdrop').backdropFilter)).toBe('none');
   // The only nested filter is the close button's own clear-glass lens (or, in
   // WebKit's frost mode, the button itself: the
@@ -337,15 +345,17 @@ test('Escape closes the menu and returns focus to the island Menu',async({page})
   await expect(page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true})).toBeFocused();
 });
 
-test('the accounts and leaderboard dialogs use glass fields and hairlines',async({page})=>{
+test('account fields have readable solid controls while leaderboard selectors retain glass hairlines',async({page})=>{
   await page.setViewportSize(PHONE);
   await page.goto('/');
   await openMenuFromIsland(page);
   await page.getByRole('button',{name:'Log in / Sign up',exact:true}).click();
   const username=page.locator('#account-username');
   await expect(username).toBeVisible();
-  // Fields use the shared --sheet-control fill.
-  expect(await username.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0.13)');
+  // The requested readability fix gives account fields an opaque fill and visible border.
+  for(const field of [username,page.locator('#account-password')]){
+    expect(await field.evaluate(el=>{const s=getComputedStyle(el);return [s.backgroundColor,s.color,s.borderTopStyle,s.borderTopWidth,s.borderTopColor];})).toEqual(['rgb(41, 46, 56)','rgb(255, 255, 255)','solid','2px','rgb(174, 178, 186)']);
+  }
   await page.getByRole('button',{name:'Play as guest',exact:true}).click();
   await openMenuFromIsland(page);
   await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
@@ -362,8 +372,8 @@ test('Minesweeper options use arcade glass while Study privacy keeps its own loo
   await gameAction(page,'Game options');
   const settings=page.locator('.ms-settings');
   await expect(settings).toBeVisible();
-  expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgba(12, 16, 22, 0.58)','32px']);
-  expect(await settings.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+  expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgba(12, 16, 22, 0.9)','32px']);
+  expect(await settings.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0.68)');
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
 
