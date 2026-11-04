@@ -109,6 +109,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   function spinText(){
     const {spinX:x,spinY:y}=state.aim;if(!x&&!y)return 'Centre';
     const v=y>.15?'Follow':y<-.15?'Draw':'',h=x>.15?'right':x<-.15?'left':'';
+    if(!v&&!h)return 'Near centre';
     return v&&h?`${v}, ${h} english`:v||`${h[0].toUpperCase()}${h.slice(1)} english`;
   }
 
@@ -129,6 +130,8 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   function legalHit(hit:number|null){return hit===null||legalFirst(state).includes(hit);}
   function currentTrace(){return trace(state.balls,cue(),state.aim.angle);}
   function updateSuggestion(){
+    // The called pocket is fixed once the shot is struck.
+    if(state.phase!=='aim')return;
     if(state.breakShot||!isOnEight(state)){suggested=null;manualCall=false;state.called=null;return;}
     const t=currentTrace();
     if(t.hit===8){
@@ -257,10 +260,13 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   }
   function began(p:number){
     strikeAnim={t:performance.now(),angle:state.aim.angle,from:p*.24};
-    sound.cue(p);closeSpin();handKeys=false;sinking=[];accumulator=-.07;refresh();
+    // A keyboard ball-in-hand move that was never confirmed ends with the shot.
+    if(handDrag&&handDrag.id>=0&&canvas.hasPointerCapture(handDrag.id))canvas.releasePointerCapture(handDrag.id);
+    handDrag=null;handKeys=false;fast=null;
+    sound.cue(p);closeSpin();sinking=[];accumulator=-.07;refresh();
   }
   function settled(){
-    accumulator=0;manualCall=false;fast=fast===-1?null:fast;
+    accumulator=0;manualCall=false;suggested=null;fast=null;
     const t=state;
     if(t.phase==='over'){
       const win=isHuman(t.winner!);sound.pocket(1);
@@ -354,7 +360,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
     cancelPower();
     if(aimDrag!==null&&canvas.hasPointerCapture(aimDrag))canvas.releasePointerCapture(aimDrag);aimDrag=null;
     if(handDrag){if(canvas.hasPointerCapture(handDrag.id))canvas.releasePointerCapture(handDrag.id);handDrag=null;}
-    fineDrag=null;handKeys=false;root.dataset.gesture='idle';
+    fineDrag=null;handKeys=false;fast=null;root.dataset.gesture='idle';
   }
   function aimAt(p:{x:number;y:number}){
     const c=cue(),dx=p.x-c.x,dy=p.y-c.y;if(Math.hypot(dx,dy)<R*.6)return;
@@ -363,7 +369,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   function turnAim(delta:number){state.aim.angle=Math.atan2(Math.sin(state.aim.angle+delta),Math.cos(state.aim.angle+delta));updateSuggestion();sendAim();}
   on(canvas,'pointerdown',(e:PointerEvent)=>{
     // Holding the table while balls roll fast-forwards the shot.
-    if(state.phase==='moving'&&e.isPrimary&&!online){fast=e.pointerId;e.preventDefault();return;}
+    if(state.phase==='moving'&&e.isPrimary&&!online){fast=e.pointerId;canvas.setPointerCapture(e.pointerId);e.preventDefault();return;}
     if(e.button!==0||!e.isPrimary||!canAct())return;
     if(aimDrag!==null||handDrag||powerDrag)return;
     const p=worldAt(e),c=cue(),touch=e.pointerType!=='mouse'?14/view.scale:4/view.scale;
@@ -487,7 +493,8 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   });
   on(canvas,'keyup',(e:KeyboardEvent)=>{if(e.key===' '&&fast===-1)fast=null;});
   on(canvas,'keydown',(e:KeyboardEvent)=>{if(e.key===' '&&state.phase==='moving'&&!online){e.preventDefault();fast=-1;}});
-  on(canvas,'keyup',(e:KeyboardEvent)=>{if(e.key==='ArrowUp'||e.key==='ArrowDown')window.setTimeout(()=>{if(!powerDrag)setPower(0);paint();},700);});
+  let powerTimer=0;
+  on(canvas,'keyup',(e:KeyboardEvent)=>{if(e.key==='ArrowUp'||e.key==='ArrowDown'){clearTimeout(powerTimer);powerTimer=window.setTimeout(()=>{if(!powerDrag&&!disposed)setPower(0);paint();},700);}});
 
   on($('.pool-again'),'click',()=>{
     if(online?.host){online.host.newRack();state=online.host.state;renderer.look.reset();refresh(true);return;}
@@ -501,7 +508,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   on(window,'blur',()=>{cancelAll();refresh();});
 
   function reset(mode:Mode=state.mode,difficulty:Difficulty=state.difficulty){
-    cancelAll();aiJob=null;sinking=[];strikeAnim=null;
+    cancelAll();aiJob=null;sinking=[];strikeAnim=null;suggested=null;manualCall=false;
     state=createGame(mode,difficulty,(Math.random()*2**32)>>>0||1);renderer.look.reset();accumulator=0;last=0;
     stateChanged(true);
   }
@@ -521,7 +528,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
     // Swing the cue round to the planned line, draw back, then strike.
     const k=Math.min(1,(now-job.anim)/450),ease=k<.5?2*k*k:1-(-2*k+2)**2/2;
     let d=p.angle-job.from;d=Math.atan2(Math.sin(d),Math.cos(d));
-    state.aim.angle=job.from+d*ease;state.aim.spinX=p.spinX;state.aim.spinY=p.spinY;
+    const swing=job.from+d*ease;state.aim.angle=Math.atan2(Math.sin(swing),Math.cos(swing));state.aim.spinX=p.spinX;state.aim.spinY=p.spinY;
     if(!state.breakShot&&isOnEight(state)){state.called=p.called;manualCall=true;}
     if((now-job.start)/1000>=thinkTime(state)&&now-job.anim>950){
       aiJob=null;
@@ -573,12 +580,12 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
     restore(data:unknown){
       const restored=restoreGame(data);if(!restored)return;
       if(online){online.offline=restored;return;}
-      cancelAll();aiJob=null;sinking=[];state=restored;accumulator=0;last=0;renderer.look.reset();
+      cancelAll();aiJob=null;sinking=[];suggested=null;state=restored;manualCall=restored.called!==null;accumulator=0;last=0;renderer.look.reset();
       setSpin(state.aim.spinX,state.aim.spinY);updateSuggestion();refresh();
     },
     dispose(){
       cancelAll();resizeObserver.disconnect();disposed=true;releaseGlass();online?.off();online=null;dialog?.dispose();dialog=null;
-      cancelAnimationFrame(frame);clearTimeout(toastTimer);abort.abort();sound.dispose();root.remove();
+      cancelAnimationFrame(frame);clearTimeout(toastTimer);clearTimeout(powerTimer);abort.abort();sound.dispose();root.remove();
     }
   };
   if(inviteCodeFromHash(location.hash))queueMicrotask(()=>{if(!disposed)showOnline();});

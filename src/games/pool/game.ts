@@ -113,7 +113,9 @@ export function placeCue(s:PoolState,x:number,y:number):boolean{
 }
 /** Nearest clear spot to (x, y), searching outward; used for re-spotting and default cue placement. */
 export function freeSpot(s:PoolState,x:number,y:number,ignore:number,hand:Hand='table',along=true):{x:number;y:number}{
-  const clear=(px:number,py:number)=>validPlacement({...s,balls:s.balls.filter(b=>b.id!==ignore)} as PoolState,px,py,hand);
+  const cue=s.balls[0];
+  const clear=(px:number,py:number)=>validPlacement({...s,balls:s.balls.filter(b=>b.id!==ignore)} as PoolState,px,py,hand)&&
+    (ignore===0||!cue.on||Math.hypot(cue.x-px,cue.y-py)>=2*R+.0005);
   if(along){
     // Spot along the long string, behind the spot first (as the rules require), then in front.
     for(let d=0;d<L;d+=.004)for(const sign of [1,-1]){const px=x+sign*d;if(clear(px,y))return {x:px,y};}
@@ -190,8 +192,8 @@ export function resolve(s:PoolState){
       s.foul='Illegal break';s.message='Illegal break: four balls must reach a cushion. Opponent re-breaks.';return;
     }
     s.called=null;
-    if(pots.some(p=>p.id!==8)){s.message='Ball down on the break. Table is open.';}
-    else{s.turn=opp;s.message=eight?'8 re-spotted. Table is open.':'Nothing down. Table is open.';}
+    if(pots.length){s.message=eight&&pots.length===1?'Ball down on the break: 8 re-spotted. Table is open.':'Ball down on the break. Table is open.';}
+    else{s.turn=opp;s.message='Nothing down. Table is open.';}
     return;
   }
   const group=s.groups[player],first=log.first;
@@ -256,7 +258,7 @@ export function restoreGame(data:unknown):PoolState|null{
   if((g0===null)!==(g1===null)||(g0!==null&&g0===g1))return null;
   if(!(s.foul===null||typeof s.foul==='string'&&s.foul.length<120)||typeof s.message!=='string'||s.message.length>300)return null;
   const aim=s.aim as Record<string,unknown>|null;
-  if(!aim||!num(aim.angle,-4,4)||!num(aim.power,0,1)||!num(aim.spinX,-1,1)||!num(aim.spinY,-1,1))return null;
+  if(!aim||!num(aim.angle,-100,100)||!num(aim.power,0,1)||!num(aim.spinX,-1,1)||!num(aim.spinY,-1,1))return null;
   if(!Array.isArray(s.balls)||s.balls.length!==16)return null;
   const balls:Ball[]=[];
   for(let i=0;i<16;i++){
@@ -284,7 +286,7 @@ export function restoreGame(data:unknown):PoolState|null{
   }else if(s.log!==null)return null;
   return {
     version:2,mode:s.mode,difficulty:s.difficulty as Difficulty,balls,turn:s.turn as 0|1,groups:[g0,g1],phase:s.phase as PoolState['phase'],
-    breakShot:s.breakShot,hand:s.hand as Hand,called:s.called as number|null,aim:{angle:aim.angle as number,power:aim.power as number,spinX:aim.spinX as number,spinY:aim.spinY as number},
+    breakShot:s.breakShot,hand:s.hand as Hand,called:s.called as number|null,aim:{angle:Math.atan2(Math.sin(aim.angle as number),Math.cos(aim.angle as number)),power:aim.power as number,spinX:aim.spinX as number,spinY:aim.spinY as number},
     shots:s.shots as number,rack:s.rack as number,seed:s.seed as number,breaker:s.breaker as 0|1,winner:s.winner as 0|1|null,wins:[...s.wins] as [number,number],
     potted:[...s.potted as number[]],foul:s.foul as string|null,message:s.message,log,shooter:s.shooter as 0|1,onEight:s.onEight
   };

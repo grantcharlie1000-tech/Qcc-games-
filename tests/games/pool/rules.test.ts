@@ -40,9 +40,12 @@ describe('eight-ball rules',()=>{
     expect(s.turn).toBe(1);expect(s.hand).toBe('kitchen');expect(s.breakShot).toBe(false);
     expect(s.balls[0].on).toBe(true);expect(s.balls[0].x).toBeLessThanOrEqual(HEAD_X);
   });
-  it('re-spots the 8 when it drops on the break',()=>{
-    const s=createGame('two','medium',1);judge(s,{first:1,pots:[{id:8,pocket:2},{id:3,pocket:0}]});
+  it('re-spots the 8 when it drops on the break, clear of the cue ball, and the breaker shoots again',()=>{
+    let s=createGame('two','medium',1);judge(s,{first:1,pots:[{id:8,pocket:2},{id:3,pocket:0}]});
     expect(s.balls[8].on).toBe(true);expect(s.turn).toBe(0);expect(s.potted).toEqual([3]);
+    s=createGame('two','medium',1);Object.assign(s.balls[0],{x:FOOT_X+.01,y:W/2});
+    judge(s,{first:1,pots:[{id:8,pocket:2}]});
+    expect(s.turn).toBe(0);expect(Math.hypot(s.balls[8].x-s.balls[0].x,s.balls[8].y-s.balls[0].y)).toBeGreaterThanOrEqual(2*R);
   });
   it('assigns groups from the first legal pot after the break and keeps the turn',()=>{
     const s=midGame([null,null]);judge(s,{first:12,railAfterContact:true,pots:[{id:12,pocket:1},{id:3,pocket:4}]});
@@ -110,6 +113,9 @@ describe('eight-ball rules',()=>{
     expect(bad(c=>c.potted=[3])).toBeNull();
     expect(bad(c=>{c.balls[8].on=false;})).toBeNull();
     expect(bad(c=>c.message=5)).toBeNull();
-    expect(restoreGame(null)).toBeNull();expect(restoreGame('x')).toBeNull();
+    expect(restoreGame(null)).toBeNull();
+    // An aim angle mid-swing (beyond ±π) is normalised rather than rejected.
+    const swung=JSON.parse(JSON.stringify(createGame()));swung.aim.angle=5.28;
+    expect(restoreGame(swung)!.aim.angle).toBeCloseTo(5.28-2*Math.PI);expect(restoreGame('x')).toBeNull();
   });
 });
