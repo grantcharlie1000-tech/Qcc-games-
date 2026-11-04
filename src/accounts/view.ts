@@ -4,9 +4,9 @@ import './style.css';
 export class AccountsView {
  readonly root=document.createElement('dialog');
  private signup=false;private busy=false;
- constructor(readonly client:AccountsClient,private prepare:()=>void,private done:()=>void){
+ constructor(readonly client:AccountsClient,private prepare:()=>void,private done:()=>void,private dismiss:()=>void){
   this.root.id='accounts-dialog';this.root.classList.add('ui-glass-sheet');this.root.setAttribute('aria-labelledby','accounts-title');
-  this.root.innerHTML=`<h2 id="accounts-title">Play your way</h2><p>Use an optional account to carry game saves and scores across devices, or play locally as a guest.</p>
+  this.root.innerHTML=`<button type="button" class="account-close" aria-label="Close sign in">×</button><h2 id="accounts-title">Play your way</h2><p>Use an optional account to carry game saves and scores across devices, or play locally as a guest.</p>
    <button type="button" class="game-button account-guest">Play as guest</button>
    <div class="account-tabs"><button type="button" class="game-button secondary account-login">Log in</button><button type="button" class="game-button secondary account-signup">Sign up</button></div>
    <form><label for="account-username">Username</label><input id="account-username" name="username" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.\\-]{3,24}" required spellcheck="false" autocapitalize="none"><p class="muted">3–24 letters, digits, underscores, hyphens or dots. Your username is public on leaderboards.</p>
@@ -20,8 +20,9 @@ export class AccountsView {
   this.root.querySelector('.account-signup')!.addEventListener('click',()=>this.mode(true));
   this.root.querySelector('form')!.addEventListener('submit',event=>{event.preventDefault();void this.submit();});
   this.root.querySelector('.account-guest')!.addEventListener('click',()=>this.guest());
+  this.root.querySelector('.account-close')!.addEventListener('click',()=>{if(!this.busy){this.clearPasswords();this.root.close();this.dismiss();}});
   this.root.addEventListener('close',()=>this.clearPasswords());
-  this.root.addEventListener('cancel',event=>{event.preventDefault();if(!this.busy)this.guest();});
+  this.root.addEventListener('cancel',event=>{event.preventDefault();if(!this.busy){this.clearPasswords();this.root.close();this.dismiss();}});
  }
  private mode(signup:boolean){
   this.root.querySelector<HTMLElement>('.account-confirm')!.hidden=!signup;this.root.querySelector<HTMLInputElement>('#account-confirm')!.disabled=!signup;

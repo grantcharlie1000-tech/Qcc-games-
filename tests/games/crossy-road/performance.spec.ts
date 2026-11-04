@@ -66,6 +66,8 @@ test.describe('mobile adaptive resolution',()=>{
   test.use({deviceScaleFactor:3});
   test('applies a sustained budget reduction during an uninterrupted buffered-hop sequence',async({page})=>{
     await openGame(page,{viewport:{width:390,height:844}});
+    await hook(page).setQuality('high');
+    expect(await page.locator('.hw-canvas').evaluate((c:HTMLCanvasElement)=>c.width)).toBe(780);
     await page.evaluate(()=>{
       const h=window.__crossyRoadTest!,root=document.querySelector<HTMLElement>('.crossy-road')!;
       h.setQuality('high');
@@ -81,7 +83,9 @@ test.describe('mobile adaptive resolution',()=>{
       h.freeze(false);
     });
     await page.waitForFunction(()=>document.querySelector<HTMLElement>('.crossy-road')?.dataset.perfDone==='true');
-    expect(await page.locator('.hw-canvas').evaluate((c:HTMLCanvasElement)=>c.width)).toBe(780);
+    // High starts at DPR2; 5.6 seconds at 25 Hz lowers it to DPR1.5 without changing geometry quality.
+    expect(await page.locator('.hw-canvas').evaluate((c:HTMLCanvasElement)=>c.width)).toBe(585);
+    expect((await hook(page).stats()).quality).toBe('high');
     expect((await hook(page).state()).maxRow).toBeGreaterThan(25);
   });
 });
