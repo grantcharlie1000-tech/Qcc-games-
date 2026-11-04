@@ -93,7 +93,8 @@ describe('chat handler',{timeout:60000},()=>{
  it('rejects every action on a conversation the caller is not in',async()=>{
   const {a,b}=await pair();const c=await account(),d=await account();await befriend(a,c);await befriend(b,c);
   const t=await text(a,b,'secret'),s=await snap(a,b);
-  const before=(await query('SELECT id,viewed_at,saved_at,expires_at,media_id FROM chat_messages ORDER BY id')).rows;
+  const snapshot=async()=>({m:(await query('SELECT id,viewed_at,saved_at,expires_at,media_id FROM chat_messages ORDER BY id')).rows,o:(await query('SELECT id,state FROM media_objects ORDER BY id')).rows,k:store.keys(),c:(await query('SELECT id,retention FROM chat_conversations WHERE a_id=least($1::uuid,$2::uuid) AND b_id=greatest($1::uuid,$2::uuid)',[a.id,b.id])).rows});
+  const before=await snapshot();
   expect((await get(c,`action=messages&with=${a.name}`)).status).toBe(200);
   expect((await json(await get(c,`action=messages&with=${a.name}`))).messages.map((m:any)=>m.id)).not.toContain(t.id);
   expect((await call(c,'save',{id:t.id,on:true})).status).toBe(404);
@@ -106,7 +107,10 @@ describe('chat handler',{timeout:60000},()=>{
   expect((await call(c,'open_snap',{id:'99999999999999999999'})).status).toBe(404);
   expect((await call(c,'retention',{with:'nobody_x',mode:'week'})).status).toBe(404);
   expect((await call(d,'delete_conversation',{with:a.name})).status).toBe(404);
-  expect((await query('SELECT id,viewed_at,saved_at,expires_at,media_id FROM chat_messages ORDER BY id')).rows).toEqual(before);
+  expect((await call(d,'retention',{with:a.name,mode:'week'})).status).toBe(404);
+  expect((await call(d,'retention',{with:b.name,mode:'week'})).status).toBe(404);
+  expect((await call(c,'delete_conversation',{with:b.name})).status).toBe(404);
+  expect(await snapshot()).toEqual(before);
   expect((await query('SELECT 1 FROM social_reports WHERE reporter_id=$1',[c.id])).rows).toHaveLength(0);
   expect((await query('SELECT 1 FROM chat_conversations WHERE a_id=least($1::uuid,$2::uuid) AND b_id=greatest($1::uuid,$2::uuid)',[a.id,b.id])).rows).toHaveLength(1);
  });
@@ -187,6 +191,25 @@ describe('chat handler',{timeout:60000},()=>{
   const broken=createChatHandler({query:(text:string,values?:unknown[])=>text.includes('DELETE FROM chat_messages WHERE id IN')?Promise.reject(new Error('x')):db.query(text,values),connect:db.connect} as Database,store);
   expect((await broken(new Request(`${URL_}?action=summary`,{headers:{authorization:'Bearer '+a.token}}))).status).toBe(200);
  });
+ it('block and remove_friend answer identically for unknown and real usernames',async()=>{
+  const a=await account(),b=await account();
+  for(const action of ['remove_friend','block']){
+   const real=await call(a,action,{username:b.name}),unknown=await call(a,action,{username:'nobody_'+randomBytes(3).toString('hex')});
+   expect(unknown.status).toBe(real.status);expect(await json(unknown)).toEqual(await json(real));
+   expect((await call(a,action,{username:a.name})).status).toBe(400);
+  }
+ });
+ it('victim can block first and still report the message',async()=>{
+  const {a,b}=await pair();const t=await text(a,b,'bad words');
+  await call(b,'block',{username:a.name});
+  expect(await json(await call(b,'report',{messageId:t.id,category:'harassment'}))).toEqual({ok:true});
+  expect((await query('SELECT snapshot FROM social_reports WHERE reporter_id=$1',[b.id])).rows[0].snapshot).toBe('bad words');
+ });
+ it('concurrent open_snap yields exactly one 200 and one 410',async()=>{
+  const {a,b}=await pair();const s=await snap(a,b);
+  const rs=await Promise.all([call(b,'open_snap',{id:s.id}),call(b,'open_snap',{id:s.id})]);
+  expect(rs.map(r=>r.status).sort()).toEqual([200,410]);
+ });
  it('unsend only by sender',async()=>{
   const {a,b}=await pair();
   const t=await text(a,b,'oops'),s=await snap(a,b);
@@ -210,8 +233,8 @@ describe('chat handler',{timeout:60000},()=>{
   }
   expect((await query('SELECT 1 FROM chat_contacts WHERE owner_id=ANY($1)',[[a.id,b.id]])).rows).toHaveLength(0);
   expect((await call(b,'save',{id:t.id,on:true})).status).toBe(404);
-  expect((await call(b,'report',{messageId:t.id,category:'spam'})).status).toBe(404);
-  expect((await call(b,'block',{username:'nobody_zz'})).status).toBe(404);
+  expect(await json(await call(b,'report',{messageId:t.id,category:'spam'}))).toEqual({ok:true});
+  expect(await json(await call(b,'block',{username:'nobody_zz'}))).toEqual({ok:true});
   // either side can still delete the conversation, and the sender can unsend
   expect((await call(a,'unsend',{id:t.id})).status).toBe(200);
   expect(await json(await call(b,'delete_conversation',{with:a.name}))).toEqual({ok:true});

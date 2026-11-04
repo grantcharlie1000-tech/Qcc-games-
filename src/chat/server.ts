@@ -3,7 +3,7 @@ import type {Database} from '../leaderboard/server';
 import {resolveAccount} from '../accounts/server';
 import {writeFrozen,readOnlyResponse} from '../accounts/write-freeze';
 import {HttpError,respond,readJson,sameOrigin,rateLimit,errorResponse} from '../../server/api';
-import {attachMedia,deleteMediaObjects,purgePendingMedia,type MediaStore} from '../media/store';
+import {attachMedia,purgePendingMedia,type MediaStore} from '../media/store';
 import {mediaKey,validMediaId} from '../media/policy';
 import {accountByUsername,isBlockedEitherWay,setBlock} from '../social/blocks';
 import {REPORT_CATEGORIES,REPORT_NOTE_MAX,LIMITS,codePoints,type ReportCategory} from '../social/shared';
@@ -40,6 +40,11 @@ function messageView(row:any,me:string):MessageView {
 const GET_ACTIONS=new Set(['summary','list','messages']);
 const POST_ACTIONS=new Set(['request','respond','remove_friend','send','open_snap','save','unsend','retention','delete_conversation','report','block']);
 
+/** Best-effort: an orphaned blob is harmless and a failed delete must not fail work that already committed. */
+async function deleteBlobs(store:MediaStore|null,ids:string[]):Promise<void> {
+ if(!store)return;
+ for(const id of ids)for(const variant of ['full','thumb'] as const)try{await store.delete(mediaKey(id,variant));}catch{/* best effort */}
+}
 /** Deletes expired messages in batches, removing snap media only for rows this call actually deleted. Returns the number of messages deleted. */
 export async function purgeExpiredChat(query:Query,store:MediaStore|null):Promise<number> {
  let total=0;
@@ -48,7 +53,11 @@ export async function purgeExpiredChat(query:Query,store:MediaStore|null):Promis
     SELECT id FROM chat_messages WHERE expires_at<=now() ORDER BY expires_at LIMIT ${PURGE_BATCH} FOR UPDATE SKIP LOCKED
    ) RETURNING media_id`);
   total+=result.rows.length;
-  await deleteMediaObjects(query,store,result.rows.flatMap(row=>row.media_id?[row.media_id as string]:[]));
+  const media=result.rows.flatMap(row=>row.media_id?[row.media_id as string]:[]);
+  if(media.length){
+   await query('DELETE FROM media_objects WHERE id=ANY($1::text[])',[media]);
+   await deleteBlobs(store,media);
+  }
   if(result.rows.length<PURGE_BATCH)break;
  }
  await purgePendingMedia(query,store);
@@ -82,6 +91,13 @@ export function createChatHandler(db:Database,store:MediaStore|null):(request:Re
   if(typeof username!=='string'||!USERNAME.test(username))throw notFound();
   const target=await accountByUsername(db.query,username);
   if(!target||target.id===me)throw notFound();
+  return target;
+ }
+ /** Unknown usernames resolve to null (callers answer as for a real one); self is a 400. */
+ async function lookupQuiet(me:string,username:unknown):Promise<{id:string}|null> {
+  if(typeof username!=='string'||!USERNAME.test(username))throw bad('Enter a valid username.');
+  const target=await accountByUsername(db.query,username);
+  if(target?.id===me)throw bad('You cannot do that to yourself.');
   return target;
  }
  const messageId=(value:unknown):string=>{
@@ -185,8 +201,8 @@ export function createChatHandler(db:Database,store:MediaStore|null):(request:Re
   return {status:'declined'};
  }
  async function removeFriend(me:string,data:Record<string,unknown>) {
-  const target=await otherAccount(me,data.username);
-  await db.query('DELETE FROM chat_contacts WHERE (owner_id=$1 AND contact_id=$2) OR (owner_id=$2 AND contact_id=$1)',[me,target.id]);
+  const target=await lookupQuiet(me,data.username);
+  if(target)await db.query('DELETE FROM chat_contacts WHERE (owner_id=$1 AND contact_id=$2) OR (owner_id=$2 AND contact_id=$1)',[me,target.id]);
   return {ok:true};
  }
 
@@ -224,8 +240,9 @@ export function createChatHandler(db:Database,store:MediaStore|null):(request:Re
    if(!message.media_id||!store)throw new HttpError(410,'gone','This snap is gone.');
    const bytes=await store.get(mediaKey(message.media_id,'full'));
    if(!bytes)throw new HttpError(410,'gone','This snap is gone.');
-   await q(`UPDATE chat_messages SET viewed_at=now(),media_id=NULL,
-     expires_at=CASE WHEN $2='viewed' AND saved_at IS NULL THEN least(expires_at,now()+interval '24 hours') ELSE expires_at END WHERE id=$1::bigint`,[id,message.retention]);
+   const opened=await q(`UPDATE chat_messages SET viewed_at=now(),media_id=NULL,
+     expires_at=CASE WHEN $2='viewed' AND saved_at IS NULL THEN least(expires_at,now()+interval '24 hours') ELSE expires_at END WHERE id=$1::bigint AND viewed_at IS NULL RETURNING id`,[id,message.retention]);
+   if(!opened.rows.length)throw new HttpError(410,'opened','This snap was already opened.');
    await q('DELETE FROM media_objects WHERE id=$1',[message.media_id]);
    return {bytes,mediaId:message.media_id as string};
   });
@@ -255,7 +272,7 @@ export function createChatHandler(db:Database,store:MediaStore|null):(request:Re
    await q('DELETE FROM chat_messages WHERE id=$1::bigint AND sender_id=$2',[id,me]);
    return message.media_id as string|null;
   });
-  if(media)await deleteMediaObjects(db.query,store,[media]);
+  if(media){await db.query('DELETE FROM media_objects WHERE id=$1',[media]);await dropBlobs([media]);}
   return {ok:true};
  }
 
@@ -294,7 +311,7 @@ export function createChatHandler(db:Database,store:MediaStore|null):(request:Re
   if(!REPORT_CATEGORIES.includes(category))throw bad('Choose a report category.');
   const note=data.note===undefined||data.note===null?'':data.note;
   if(typeof note!=='string'||codePoints(note.trim())>REPORT_NOTE_MAX)throw bad('Note is too long.');
-  const message=await memberMessage(db.query,me,id,{friends:true});
+  const message=await memberMessage(db.query,me,id,{friends:false});
   if(message.kind==='system')throw notFound();
   if(message.sender_id===me)throw bad('You cannot report your own message.');
   await rateLimit(db.query,'social:report:'+me,LIMITS.report.limit,LIMITS.report.seconds);
@@ -304,8 +321,8 @@ export function createChatHandler(db:Database,store:MediaStore|null):(request:Re
  }
 
  async function block(me:string,data:Record<string,unknown>) {
-  const target=await otherAccount(me,data.username);
-  await setBlock(db.query,me,target.id,true);
+  const target=await lookupQuiet(me,data.username);
+  if(target)await setBlock(db.query,me,target.id,true);
   return {ok:true};
  }
 
