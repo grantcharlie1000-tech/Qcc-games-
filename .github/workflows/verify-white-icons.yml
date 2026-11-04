@@ -1,0 +1,46 @@
+name: Verify fixed white icons
+on:
+  push:
+    branches: [codex/verify-white-icons]
+permissions:
+  contents: read
+jobs:
+  icons:
+    name: White icon regression (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 32b758fd51a19a3c63d63fb75bd98a8f87ce38cf
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Check exact PR head
+        run: test "$(git rev-parse HEAD)" = 32b758fd51a19a3c63d63fb75bd98a8f87ce38cf
+      - name: Check white icons and unchanged labels
+        run: >-
+          xvfb-run -a npm run test:e2e --
+          --project=${{ matrix.browser }} --workers=1 --reporter=list
+          tests/e2e/clear-ink-adaptation.spec.ts
+          tests/e2e/safari-shell.spec.ts
+          tests/e2e/liquid-glass.spec.ts
+          --grep 'icons stay white|icon palette|frosted sheet headings|live canvas ink|fallback Menu icon|selected label|navigation glass keeps'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: white-icons-${{ matrix.browser }}
+          path: test-results
