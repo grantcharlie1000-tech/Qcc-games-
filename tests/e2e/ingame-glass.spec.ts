@@ -54,13 +54,13 @@ test('multi-stat captions fit their compact capsules on a 320px phone',async({pa
   }
 });
 
-test('Pool keeps pocket choice below all six pockets',async({page})=>{
+test('Pool keeps its power and spin controls beside the table while the balls roll',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/pool');
   await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
   await expect(page.locator('.pool-game')).toHaveAttribute('data-phase','moving');
-  await expect(page.locator('.pool-message')).toBeHidden();
-  const table=(await page.locator('.pool-table').boundingBox())!,status=(await page.locator('.pool-pocket-row').boundingBox())!;
-  expect(status.y).toBeGreaterThanOrEqual(table.y+table.height);
+  const table=(await page.locator('.pool-table-box').boundingBox())!,power=(await page.locator('.pool-power').boundingBox())!;
+  expect(power.x+power.width).toBeLessThanOrEqual(table.x+1);
+  await expect(page.locator('.pool-message')).toBeVisible();
 });
 
 for(const viewport of [{width:1366,height:768},{width:390,height:644},{width:320,height:568},{width:844,height:390}]){
