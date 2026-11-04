@@ -13,9 +13,13 @@ export function expectedEnvironment(context:string|undefined):Environment {
  throw new Error('Unrecognized deploy context');
 }
 export {writeFrozen as isWriteFrozen} from '../../src/accounts/write-freeze';
+// pg.Pool.query needs `this`; handlers pass db.query around unbound, so give them a bound view.
+export function boundDatabase(pool:Database):Database {
+ return {query:(text,values)=>pool.query(text,values),connect:()=>pool.connect()} as Database;
+}
 export function createGuardedHandler(pool:Database,factory:(db:Database)=>(request:Request)=>Promise<Response>,options:Options={}){
  const env=options.env??process.env;const now=options.now??Date.now;
- let checked:Promise<void>|undefined;const handle=factory(pool);
+ let checked:Promise<void>|undefined;const handle=factory(boundDatabase(pool));
  async function check(){
   const netlify=(globalThis as typeof globalThis&{Netlify?:{context?:{deploy?:{context?:string}}}}).Netlify;
   const expected=expectedEnvironment(options.context??netlify?.context?.deploy?.context??env.CONTEXT);

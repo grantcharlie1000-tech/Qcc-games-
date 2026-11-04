@@ -6,6 +6,8 @@ const database=new NetlifyDB({directory:'.netlify/local-leaderboard',logger:()=>
 const connectionString=await database.start();
 await database.applyMigrations('netlify/database/migrations');
 const pool=getDatabase({connectionString}).pool;
+// pg.Pool.query needs `this`; hand handlers a bound view.
+const db={query:(text,values)=>pool.query(text,values),connect:()=>pool.connect()};
 const server=await createServer({server:{port:Number(process.env.PORT||4173)},plugins:[{
  name:'local-leaderboard',configureServer(vite){
   vite.middlewares.use(async(req,res,next)=>{
@@ -15,11 +17,11 @@ const server=await createServer({server:{port:Number(process.env.PORT||4173)},pl
     const {MAX_BODY_BYTES}=await vite.ssrLoadModule('/src/accounts/shared.ts');
     const mediaStore=route==='accounts'||route==='leaderboard'?null:(await vite.ssrLoadModule('/src/media/store.ts')).createFileStore('.netlify/local-media');
     let handle;
-    if(route==='accounts')handle=(await vite.ssrLoadModule('/src/accounts/server.ts')).createAccountsHandler(pool);
-    else if(route==='leaderboard')handle=(await vite.ssrLoadModule('/src/leaderboard/server.ts')).createLeaderboardHandler(pool);
-    else if(route==='social')handle=(await vite.ssrLoadModule('/src/social/server.ts')).createSocialHandler(pool,mediaStore);
-    else if(route==='chat')handle=(await vite.ssrLoadModule('/src/chat/server.ts')).createChatHandler(pool,mediaStore);
-    else handle=(await vite.ssrLoadModule('/src/media/server.ts')).createMediaHandler(pool,mediaStore);
+    if(route==='accounts')handle=(await vite.ssrLoadModule('/src/accounts/server.ts')).createAccountsHandler(db);
+    else if(route==='leaderboard')handle=(await vite.ssrLoadModule('/src/leaderboard/server.ts')).createLeaderboardHandler(db);
+    else if(route==='social')handle=(await vite.ssrLoadModule('/src/social/server.ts')).createSocialHandler(db,mediaStore);
+    else if(route==='chat')handle=(await vite.ssrLoadModule('/src/chat/server.ts')).createChatHandler(db,mediaStore);
+    else handle=(await vite.ssrLoadModule('/src/media/server.ts')).createMediaHandler(db,mediaStore);
     const cap=route==='media'?4194304:route==='leaderboard'?2048:MAX_BODY_BYTES;
     const chunks=[];let length=0;
     for await(const chunk of req){length+=chunk.length;if(length>cap){res.writeHead(413,{'Cache-Control':'no-store'});res.end('Request too large');return;}chunks.push(chunk);}
