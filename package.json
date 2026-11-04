@@ -11,6 +11,7 @@
     "test:e2e": "playwright test",
     "check": "tsc --noEmit",
     "verify:offline": "node scripts/verify-offline.mjs",
+    "verify:noindex": "node --test scripts/verify-noindex.mjs",
     "verify:update": "node scripts/verify-update.mjs",
     "dev:online": "node scripts/leaderboard-dev.mjs",
     "movies:import": "node scripts/movies-import.mjs"
