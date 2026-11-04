@@ -1,5 +1,5 @@
 import { test, expect, seedStudyTopic } from '../../fixtures';
-import { appSettings } from '../../game-menu';
+import { appSettings, gameAction } from '../../game-menu';
 import type { BrowserContext, Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { NetlifyDB } from '@netlify/database-dev';
@@ -48,8 +48,12 @@ test('before the migration a Claimline peak stays queued quietly, and it syncs b
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto('/#/game/claimline');
-    // The glass layout has no in-game sidebar: the Leaderboards dialog (Menu > Settings > Leaderboards) is the board.
-    await expect(page.getByRole('complementary', { name: 'Claimline leaderboard' })).toHaveCount(0);
+    // Preserve the existing floating desktop panel and full Leaderboards dialog.
+    const panel = page.getByRole('complementary', { name: 'Claimline leaderboard' });
+    await expect(panel).toBeVisible();
+    await panel.getByRole('button', { name: 'Top scores', exact: true }).click();
+    await expect(panel.locator('.lb-status')).toHaveText('No scores yet');
+    await panel.getByRole('button', { name: 'Hide top scores' }).click();
     await page.locator('.cl-start').click();
     // Starting reports the human's peak; the milestone flush posts it and the database refuses the game id.
     await expect.poll(() => posts.filter(p => p.game === 'claimline').length).toBeGreaterThan(0);
@@ -78,13 +82,46 @@ test('before the migration a Claimline peak stays queued quietly, and it syncs b
     await expect.poll(() => posts.filter(p => p.game === 'claimline' && p.status === 200).length).toBeGreaterThan(0);
     await expect.poll(async () => (await pending(page, user)).claimline).toBeUndefined();
     expect(posts.filter(p => p.status === 200).at(-1)).toMatchObject({ game: 'claimline', score: queued });
-    await appSettings(page); await page.locator('#open-leaderboards').click();
+    await panel.getByRole('button', { name: 'Top scores', exact: true }).click();
+    await expect(panel.locator('tr.lb-you')).toContainText('Loop_Ada');
+    await expect(panel.locator('tr.lb-you td').nth(2)).toHaveText((queued / 100).toFixed(2) + '%');
+    await panel.getByRole('button', { name: 'All rankings' }).click();
     await expect(page.locator('#leaderboard-game')).toHaveValue('claimline');
     const you = page.locator('#leaderboard-dialog tr.lb-you');
-    await expect(you).toContainText('Loop_Ada'); await expect(you).toContainText(/\d+\.\d\d%/);
+    await expect(you).toContainText('Loop_Ada');
+    await expect(you.locator('td').nth(2)).toHaveText((queued / 100).toFixed(2) + '%');
     expect(errors).toEqual([]);
   } finally {
     await context.close();
     await pool.query(migration);
+  }
+});
+
+test('on a phone, Claimline submits the signed-in peak and opens the same rankings from the game menu', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const posts: { game: string; score: number; status: number }[] = [];
+  try {
+    await connect(context, 'Loop_Phone', posts);
+    const page = await context.newPage();
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto('/#/game/claimline');
+    await expect(page.locator('.lb-sidebar')).toBeHidden();
+    await page.locator('.cl-start').click();
+    await expect.poll(() => posts.filter(post => post.game === 'claimline' && post.status === 200).length).toBeGreaterThan(0);
+    expect(posts.every(post => post.game === 'claimline' && post.score > 0 && post.score <= 10000)).toBe(true);
+    await gameAction(page, 'Leaderboards');
+    await expect(page.locator('#leaderboard-game')).toHaveValue('claimline');
+    const you = page.locator('#leaderboard-dialog tr.lb-you');
+    await expect(you).toContainText('Loop_Phone');
+    await expect(you).toContainText(/\d+\.\d\d%/);
+    await page.getByRole('button', { name: 'Close leaderboards' }).click();
+    await expect(page.locator('#leaderboard-dialog')).toBeHidden();
+    await gameAction(page, 'Leaderboards');
+    await expect(page.locator('#leaderboard-game')).toHaveValue('claimline');
+    await expect(you).toContainText('Loop_Phone');
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
   }
 });
