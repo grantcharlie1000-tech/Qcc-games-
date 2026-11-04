@@ -1,6 +1,6 @@
 # Quad Clash
 
-An original first-person arena shooter set on the QCC campus. It is in the same genre as browser arena shooters such as Shell Shockers: fast cartoon combat against bots, a class-based weapon choice, a sidearm, grenades, respawns and streak rewards. It copies no game's characters, maps, art, names or sounds. The fighters are Q-bots: rounded robots wearing the QCC crest. The arenas are school grounds, and every weapon is named after school life.
+An original first-person arena shooter set on the QCC campus. It is in the same genre as browser arena shooters such as Shell Shockers: fast cartoon combat against bots, a class-based weapon choice, a sidearm, grenades, respawns and streak rewards. It copies no game's characters, maps, art, names or sounds. The fighters are eggs with broad, smooth shells, small flat eyes, small feet and narrow house-coloured rings. The arenas are school grounds, and every weapon is named after school life.
 
 ## Modes (five-minute cap)
 
@@ -14,10 +14,11 @@ At the time limit the leader wins; equal scores are a draw. Team colours also ca
 
 ## Arenas
 
+- **QCC Campus** (default for new preferences): manually traced from the user's satellite screenshot. An open north field, three west courts and the pool southwest of the compact school wings follow the image. Thirteen rectangular footprint sections include the pale west hall, large north hall, west annexes, inner/east blocks and long north/south wings. Interiors and heights are simplified. Zones: central courtyard, courts, north hall, pool-side parking and west hall roof, reached by an added staircase. See `CAMPUS_REFERENCE.md` for source coordinates and accuracy limits.
 - **The Quad**: courtyard ringed by brick classroom blocks. A raised assembly stage with steps on four sides sits in the middle. The library balcony is 3 m up a staircase, and there are a locker hall, a bike shed, cafeteria tables, planters and low walls. Zones: the stage, the balcony, the bike shed and the locker hall.
 - **Sports Field**: a pitch with a four-row grandstand and a pavilion with a 3.5 m roof deck. There are goalposts, kit-bag cover and two scoreboard towers climbed by jumping up crates. Zones: the centre circle, the pavilion roof and the grandstand.
 
-Every collider is an axis-aligned box, and the renderer draws the same boxes.
+Every collider is an axis-aligned box, and the renderer draws the same boxes. Campus clutter includes benches, picnic tables, bins, bike racks, planters, sports storage carts, equipment cases, noticeboards and indoor desks/lockers; these are gameplay additions around the traced layout.
 
 ## Weapons
 
@@ -55,11 +56,18 @@ Saving: the snapshot holds the menu choices and, mid-match, the whole match (fig
 
 ## Menu and icons
 
-The setup menu shows the player's own Q-bot in 3D on a gold-rimmed pedestal in the chosen arena, holding the selected weapon. It sits beside a bright card on wide screens and above a bottom sheet on phones. The menu has these parts:
+The setup menu shows the player's own egg fighter in 3D on a gold-rimmed pedestal in the chosen arena, holding the selected weapon. It sits beside a bright card on wide screens and above a bottom sheet on phones. The menu has these parts:
 - A row of seven weapon icons, with the selected weapon's name, role, blurb and stats.
 - Mode, arena and bot pills.
+- A saved Graphics selector: Potato (default, 30 fps rendering target) or Balanced (60 fps). Both retain the same texture resolution, anisotropic filtering, antialiasing, lighting, desktop shadows and effects, within a shared 1080p-equivalent drawing budget. Simulation remains 60 Hz; resolution does not drop when a frame is slow.
 - A Play button that stays in reach.
 
 `icons.ts` holds the original SVG icon set (made with the svg-skill, every icon passing `validate.sh`):
 - Side-view icons for all eight weapons and the flask grenade.
 - `currentColor` UI icons for the touch buttons, the HUD, the respawn picker and kill-feed weapon icons.
+
+Performance details and measurements: see `PERFORMANCE.md`.
+
+Campus materials use deterministic painted weatherboards, reflected classroom windows, corrugated roof sheets with seams/fasteners, timber grain, aggregate paving, pool tiles and weathered school equipment. A small repeating floor-detail tile provides close-up grain without increasing the whole-map atlas beyond 2048 pixels. Court paint is batched world-space geometry so its lines stay sharp near the player. No external texture files or animated material passes are required.
+
+Weapons use five shared tinted finish sheets (paint, steel, grip, wood and brass), with chamfered receivers, tapered stocks, open muzzles, sights/trigger guards and scope lenses. All eight weapons retain their school themes, silhouettes and gameplay values; extra static parts are merged by material and kit-owned resources are released on unmount.

@@ -6,9 +6,10 @@ import { BODY, FFA_COLORS, HOUSES, WEAPONS, type WeaponId } from './config';
 import { getMap, type MapDef, type MapId, type Material } from './map';
 import { buildFighter, buildFlask, buildGun, buildPickup, buildRocket, createKit, disposeOwned, setFighterGun, type FighterModel } from './models';
 import { createEffects } from './effects';
-import { crestTexture, dotTexture, flashTexture, groundTexture, materialTexture, MATERIAL_SCALE, signTexture, skyTexture } from './textures';
+import { applyGroundDetail, crestTexture, dotTexture, flashTexture, groundTexture, gunTexture, materialTexture, MATERIAL_SCALE, signTexture, skyTexture } from './textures';
 import { modeOf, mapOf } from './sim';
 import { weaponOf, type Fighter, type Match, type SimEvent } from './state';
+import { QUALITY, renderRatio, type QualityId } from './performance';
 
 export interface SceneView {
   m: Match;
@@ -26,7 +27,7 @@ export interface SceneView {
   /** Look movement this frame (radians), for weapon sway. */
   lookDX: number;
   lookDY: number;
-  /** Setup menu: frame the player's Q-bot on a pedestal holding this weapon instead of the first-person view. */
+  /** Setup menu: frame the player's egg fighter on a pedestal holding this weapon instead of the first-person view. */
   showcase?: { weapon: WeaponId; color: number };
 }
 
@@ -35,8 +36,8 @@ export interface ClashScene {
   handle(events: readonly SimEvent[], m: Match): void;
   render(v: SceneView): void;
   resize(width: number, height: number): void;
-  setPixelCap(cap: number): void;
-  readonly stats: { calls: number; triangles: number; pixelRatio: number };
+  setQuality(quality: QualityId): void;
+  readonly stats: { calls: number; triangles: number; pixelRatio: number; quality: QualityId; shadows: boolean; width: number; height: number };
   dispose(): void;
 }
 
@@ -47,33 +48,72 @@ const VM_HIP = new THREE.Vector3(0.14, -0.145, -0.42);
 const VM_ADS = new THREE.Vector3(0, -0.1, -0.4);
 const VM_SCALE = 0.6;
 
-export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean }): ClashScene {
+/** Thin world-space paint stays crisp up close; all court markings share one static draw. */
+function courtPaint(map: MapDef): THREE.BufferGeometry | null {
+  const positions: number[] = [];
+  type Point = readonly [number,number];
+  const quad = (a: Point,b: Point,c: Point,d: Point) => {
+    for (const [x,z] of [a,b,c,a,c,d]) positions.push(x,0.014,z);
+  };
+  const half = 0.045;
+  const line = (x0: number,z0: number,x1: number,z1: number) => {
+    const dx=x1-x0,dz=z1-z0,len=Math.hypot(dx,dz);
+    if(!len)return;
+    const nx=-dz/len*half,nz=dx/len*half;
+    quad([x0+nx,z0+nz],[x1+nx,z1+nz],[x1-nx,z1-nz],[x0-nx,z0-nz]);
+  };
+  const arc = (x: number,z: number,r: number,start: number,end: number) => {
+    const steps=Math.ceil((end-start)*16);
+    for(let i=0;i<steps;i++) {
+      const a=start+(end-start)*i/steps,b=start+(end-start)*(i+1)/steps;
+      quad([x+Math.cos(a)*(r+half),z+Math.sin(a)*(r+half)], [x+Math.cos(a)*(r-half),z+Math.sin(a)*(r-half)],
+        [x+Math.cos(b)*(r-half),z+Math.sin(b)*(r-half)], [x+Math.cos(b)*(r+half),z+Math.sin(b)*(r+half)]);
+    }
+  };
+  for(const p of map.surfaces??[])if(p.kind==='court') {
+    const count=p.divisions??1,w=p.x1-p.x0,h=p.z1-p.z0,alongX=p.orientation==='x';
+    for(let i=0;i<count;i++) {
+      const x0=p.x0+(alongX?w*i/count:0)+.6,x1=p.x0+(alongX?w*(i+1)/count:w)-.6;
+      const z0=p.z0+(!alongX?h*i/count:0)+.6,z1=p.z0+(!alongX?h*(i+1)/count:h)-.6;
+      const mid=(z0+z1)/2,cx=(x0+x1)/2,r=Math.min(2,(x1-x0)/2);
+      line(x0,z0,x1,z0);line(x1,z0,x1,z1);line(x1,z1,x0,z1);line(x0,z1,x0,z0);line(x0,mid,x1,mid);
+      arc(cx,mid,.8,0,Math.PI*2);arc(cx,z0,r,0,Math.PI);arc(cx,z1,r,Math.PI,Math.PI*2);
+    }
+  }
+  if(!positions.length)return null;
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geo.computeVertexNormals();geo.computeBoundingSphere();return geo;
+}
+
+export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean; quality?: QualityId }): ClashScene {
+  let quality: QualityId=opts.quality??'potato';
+  const profile=QUALITY[quality];
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.autoClear = false;
   renderer.info.autoReset = false;
-  renderer.shadowMap.enabled = opts.shadows;
+  renderer.shadowMap.enabled = opts.shadows && profile.shadows;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  let pixelCap = 2;
+  const maxAniso=renderer.capabilities.getMaxAnisotropy();
+  const aniso = Math.min(profile.anisotropy,maxAniso);
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, 1, 0.05, 420);
   camera.rotation.order = 'YXZ';
   const hemi = new THREE.HemisphereLight(0xd9ecff, 0x6f8f52, 1.25);
   const sun = new THREE.DirectionalLight(0xfff0d2, 2.4);
-  sun.castShadow = opts.shadows;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.castShadow = opts.shadows && profile.shadows;
+  sun.shadow.mapSize.set(1024, 1024);
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.03;
   scene.add(hemi, sun, sun.target);
 
-  const kit = createKit();
+  const kit = createKit(finish=>gunTexture(finish,aniso));
   const crest = crestTexture(), dot = dotTexture(), flashTex = flashTexture();
   const flashMat = new THREE.SpriteMaterial({ map: flashTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
   const effects = createEffects(dot);
+  effects.setBudget(profile.effects);
   scene.add(effects.group);
 
   let arena: { group: THREE.Group; dispose(): void; flag?: THREE.Mesh } | null = null;
@@ -99,7 +139,7 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
   zoneGroup.visible = false;
   scene.add(zoneGroup);
 
-  // Menu showcase: the player's Q-bot on a gold-rimmed pedestal.
+  // Menu showcase: the player's egg fighter on a gold-rimmed pedestal.
   const heroRoot = new THREE.Group();
   heroRoot.visible = false;
   scene.add(heroRoot);
@@ -167,7 +207,8 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
       geo.setAttribute('uv', new THREE.Float32BufferAttribute(acc.uv, 2));
       geo.setIndex(acc.idx);
       const tex = materialTexture(mat, aniso);
-      const material = new THREE.MeshStandardMaterial({ map: tex, roughness: mat === 'metal' || mat === 'roof' ? 0.45 : 0.85, metalness: mat === 'metal' || mat === 'roof' ? 0.35 : 0 });
+      const metallic = ['metal','roof','campus-roof','roof-light','roof-muted'].includes(mat);
+      const material = new THREE.MeshStandardMaterial({ map: tex, alphaTest: mat === 'fence' ? 0.45 : 0, alphaToCoverage: mat === 'fence', side: mat === 'fence' ? THREE.DoubleSide : THREE.FrontSide, roughness: metallic ? 0.65 : 0.85, metalness: metallic ? 0.2 : 0 });
       const mesh = new THREE.Mesh(geo, material);
       mesh.castShadow = true; mesh.receiveShadow = true;
       group.add(mesh);
@@ -188,16 +229,23 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
       owned.push(merged, capMat);
     }
     // Ground plan and the wider lawn beyond the walls.
-    const gtex = groundTexture(map, PAD, aniso);
+    const gtex = groundTexture(map, PAD, aniso, profile.textureSize);
     const gmat = new THREE.MeshStandardMaterial({ map: gtex, roughness: 0.95 });
+    const detail = applyGroundDetail(gmat,map,PAD,aniso);
     const ggeo = new THREE.PlaneGeometry((map.hx + PAD) * 2, (map.hz + PAD) * 2).rotateX(-Math.PI / 2);
     const ground = new THREE.Mesh(ggeo, gmat);
     ground.receiveShadow = true;
     group.add(ground);
+    const paintGeo = courtPaint(map);
+    if (paintGeo) {
+      const paintMat = new THREE.MeshStandardMaterial({color:0xe7e5c6,roughness:0.95});
+      const paint = new THREE.Mesh(paintGeo,paintMat);paint.receiveShadow=true;
+      group.add(paint);owned.push(paintGeo,paintMat);
+    }
     const lawnGeo = new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2).translate(0, -0.05, 0);
     const lawnMat = new THREE.MeshLambertMaterial({ color: 0x5f9a48 });
     group.add(new THREE.Mesh(lawnGeo, lawnMat));
-    owned.push(gtex, gmat, ggeo, lawnGeo, lawnMat);
+    owned.push(gtex, detail, gmat, ggeo, lawnGeo, lawnMat);
     // Distant hills ring the school.
     const hillGeos: THREE.BufferGeometry[] = [];
     for (let i = 0; i < 26; i++) {
@@ -213,26 +261,25 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
     const leafGeo = new THREE.IcosahedronGeometry(1, 1);
     const leafMat = new THREE.MeshLambertMaterial({ color: 0x3f8f3a, flatShading: true });
     owned.push(leafGeo, leafMat);
-    for (const t of map.trees) {
-      for (const [dx, dy, dz, s] of [[0, 0.62, 0, 1.6], [0.7, 0.45, 0.3, 1.1], [-0.6, 0.5, -0.4, 1.15], [0.1, 0.85, -0.2, 1]] as const) {
-        const leaf = new THREE.Mesh(leafGeo, leafMat);
-        leaf.position.set(t.x + dx, t.h * dy + 1.4, t.z + dz); leaf.scale.setScalar(s * (t.h / 5));
-        leaf.castShadow = true;
-        group.add(leaf);
-      }
+    type Foliage = {x:number;y:number;z:number;sx:number;sy:number;sz:number};
+    const leaves: Foliage[]=[],bushes: Foliage[]=[];
+    for (const t of map.trees) for(const [dx,dy,dz,s] of [[0,.62,0,1.6],[.7,.45,.3,1.1],[-.6,.5,-.4,1.15],[.1,.85,-.2,1]] as const) {
+      const scale=s*(t.h/5);leaves.push({x:t.x+dx,y:t.h*dy+1.4,z:t.z+dz,sx:scale,sy:scale,sz:scale});
     }
-    // Bushes along the planters.
     const bushMat = new THREE.MeshLambertMaterial({ color: 0x4c9a3e, flatShading: true });
     owned.push(bushMat);
-    for (const b of map.boxes) if (b.mat === 'planter') {
-      const along = b.x1 - b.x0 > b.z1 - b.z0, len = along ? b.x1 - b.x0 : b.z1 - b.z0;
-      for (let k = 0.6; k < len; k += 0.9) {
-        const bush = new THREE.Mesh(leafGeo, bushMat);
-        bush.position.set(along ? b.x0 + k : (b.x0 + b.x1) / 2, b.y1 + 0.15, along ? (b.z0 + b.z1) / 2 : b.z0 + k);
-        bush.scale.set(0.45, 0.32, 0.45);
-        group.add(bush);
-      }
+    for(const b of map.boxes)if(b.mat==='planter') {
+      const along=b.x1-b.x0>b.z1-b.z0,len=along?b.x1-b.x0:b.z1-b.z0;
+      for(let k=.6;k<len;k+=.9)bushes.push({x:along?b.x0+k:(b.x0+b.x1)/2,y:b.y1+.15,z:along?(b.z0+b.z1)/2:b.z0+k,sx:.45,sy:.32,sz:.45});
     }
+    const foliage=(items:Foliage[],material:THREE.Material,shadow:boolean)=>{
+      if(!items.length)return;
+      const mesh=new THREE.InstancedMesh(leafGeo,material,items.length),matrix=new THREE.Matrix4();
+      items.forEach((p,i)=>mesh.setMatrixAt(i,matrix.makeScale(p.sx,p.sy,p.sz).setPosition(p.x,p.y,p.z)));
+      mesh.instanceMatrix.needsUpdate=true;mesh.castShadow=shadow;
+      mesh.computeBoundingSphere();group.add(mesh);owned.push(mesh);
+    };
+    foliage(leaves,leafMat,true);foliage(bushes,bushMat,false);
     // Signs.
     for (const s of map.signs) {
       const tex = signTexture(s.text, s.sub, s.w, s.h);
@@ -322,7 +369,7 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
       fm.feet[0].position.z = -0.04 + sw; fm.feet[1].position.z = -0.04 - sw;
       fm.feet[0].position.y = 0.09 + Math.max(0, Math.cos(fm.walk)) * 0.06 * Math.min(1, speed / 5);
       fm.feet[1].position.y = 0.09 + Math.max(0, -Math.cos(fm.walk)) * 0.06 * Math.min(1, speed / 5);
-      fm.body.position.y = 0.78 + (v.reduced ? 0 : Math.abs(Math.sin(fm.walk)) * 0.03 * Math.min(1, speed / 5));
+      fm.body.position.y = 0.84 + (v.reduced ? 0 : Math.abs(Math.sin(fm.walk)) * 0.03 * Math.min(1, speed / 5));
       fm.shield.visible = m.t < f.shieldUntil;
       const protectedNow = m.t < f.protectUntil;
       if (protectedNow && !v.reduced) fm.group.visible = Math.floor(time * 10) % 2 === 0;
@@ -428,7 +475,7 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
     } else vmFlash.visible = false;
   }
 
-  /** The setup menu's hero shot: the player's Q-bot on a pedestal at the arena's first zone, idling with the chosen weapon.
+  /** The setup menu's hero shot: the player's egg fighter on a pedestal at the arena's first zone, idling with the chosen weapon.
    * A view offset slides it left of the menu card on wide screens and above the menu sheet on tall ones. */
   function renderShowcase(v: SceneView, show: { weapon: WeaponId; color: number }) {
     const map = getMap(v.m.settings.map), spot = map.zones[0];
@@ -448,7 +495,7 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
     const sway = v.reduced ? 0.35 : Math.sin(time * 0.7) * 0.45;
     hero.group.rotation.y = Math.PI + sway;
     hero.arms.rotation.x = v.reduced ? 0 : Math.sin(time * 1.3) * 0.06 - 0.05;
-    hero.body.position.y = 0.78 + (v.reduced ? 0 : Math.sin(time * 2.2) * 0.012);
+    hero.body.position.y = 0.84 + (v.reduced ? 0 : Math.sin(time * 2.2) * 0.012);
     hero.flash.visible = false;
     pickupRoot.visible = false;
     effects.update(v.dt, v.reduced);
@@ -473,7 +520,7 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
   }
 
   const api: ClashScene = {
-    stats: { calls: 0, triangles: 0, pixelRatio: 1 },
+    stats: { calls: 0, triangles: 0, pixelRatio: 1, quality, shadows: renderer.shadowMap.enabled, width: 1, height: 1 },
     setMatch(m) {
       clearDynamic();
       deathCam.active = false;
@@ -578,14 +625,20 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
     },
     resize(width, height) {
       lastWidth = Math.max(1, width); lastHeight = Math.max(1, height);
-      const ratio = Math.min(window.devicePixelRatio || 1, pixelCap);
+      const ratio = renderRatio(lastWidth,lastHeight,window.devicePixelRatio||1,quality);
       renderer.setPixelRatio(ratio);
       renderer.setSize(lastWidth, lastHeight, false);
       camera.aspect = lastWidth / lastHeight;
       camera.updateProjectionMatrix();
-      api.stats.pixelRatio = ratio;
+      api.stats.pixelRatio = ratio;api.stats.width=canvas.width;api.stats.height=canvas.height;
     },
-    setPixelCap(cap) { pixelCap = cap; api.resize(lastWidth, lastHeight); },
+    setQuality(next) {
+      if(quality===next)return;
+      // Presets share textures, lighting, geometry and effects. Switching only changes pacing,
+      // so retain the arena's GPU resources instead of rebuilding them.
+      quality=next;
+      api.stats.quality=quality;
+    },
     dispose() {
       clearDynamic();
       if (hero) disposeOwned(hero.group);

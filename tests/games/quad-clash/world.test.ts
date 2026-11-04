@@ -2,6 +2,7 @@ import {describe,expect,test} from 'vitest';
 import {MAP_IDS,getMap} from '../../../src/games/quad-clash/map';
 import {compile,floorAt,moveBody,overlaps,rayWorld,clearLine,type Body} from '../../../src/games/quad-clash/physics';
 import {findPath,navFor,nearestNode} from '../../../src/games/quad-clash/nav';
+import {CAMPUS_BUILDINGS,campusRect} from '../../../src/games/quad-clash/campus-layout';
 import {BODY,STEP} from '../../../src/games/quad-clash/config';
 
 describe.each(MAP_IDS)('arena %s',id=>{
@@ -24,6 +25,44 @@ describe.each(MAP_IDS)('arena %s',id=>{
     const ground=nearestNode(nav,map.spawns[0].x,0.1,map.spawns[0].z)!;
     for(const z of map.zones){const n=nearestNode(nav,z.x,z.y+0.1,z.z)!;const path=findPath(nav,ground.id,n.id,20000);expect(path.length).toBeGreaterThan(0);expect(path.at(-1)).toBe(n.id);}
   });
+});
+
+test('every traced campus block has a connected ground-floor interior below its roof',()=>{
+  const w=compile(getMap('campus')),nav=navFor(w);
+  for(const building of CAMPUS_BUILDINGS) {
+    const r=campusRect(building.rect),x=(r.x0+r.x1)/2,z=(r.z0+r.z1)/2;
+    expect(overlaps(w,x,0.01,z),building.id).toBe(false);
+    const n=nearestNode(nav,x,0.1,z)!;
+    expect(n.y,building.id).toBe(0);expect(n.component,building.id).toBe(nav.main);
+    expect(rayWorld(w,x,BODY.height,z,0,1,0,6),building.id).not.toBeNull();
+  }
+});
+
+test('campus follows the supplied image: field north, courts west, pool south of the courts',()=>{
+  const map=getMap('campus'),field=map.surfaces!.find(p=>p.kind==='grass')!;
+  const courts=map.surfaces!.find(p=>p.kind==='court')!,pool=map.surfaces!.find(p=>p.kind==='pool')!;
+  const north=campusRect(CAMPUS_BUILDINGS.find(b=>b.id==='north-hall')!.rect);
+  const east=campusRect(CAMPUS_BUILDINGS.find(b=>b.id==='east-block')!.rect);
+  expect(field.z1).toBeLessThan(north.z0);
+  expect(courts.x1).toBeLessThan(north.x0);expect(pool.z0).toBeGreaterThan(courts.z1);
+  expect(pool.x1).toBeLessThan(east.x0);expect(courts.divisions).toBe(3);
+});
+
+test('a running jump from the north-wing roof cannot escape over the campus fence',()=>{
+  const w=compile(getMap('campus'));
+  const p:Body={x:45.5,y:3.5,z:4.5,vx:6.4,vy:BODY.jump,vz:0,grounded:false};
+  let highest=0;
+  for(let i=0;i<180;i++) {
+    p.vx=6.4;p.vy-=BODY.gravity*STEP;moveBody(w,p,STEP);highest=Math.max(highest,p.y);
+    expect(p.x+BODY.radius).toBeLessThanOrEqual(w.map.hx+0.00001);
+  }
+  expect(highest).toBeGreaterThan(w.map.wallHeight);
+  for(const [x,z,dx,dz] of [[-49,0,-1,0],[49,0,1,0],[0,-59,0,-1],[0,59,0,1]]) {
+    const q:Body={x,y:10,z,vx:dx*20,vy:0,vz:dz*20,grounded:false};
+    moveBody(w,q,0.5);
+    expect(Math.abs(q.x)+BODY.radius).toBeLessThanOrEqual(w.map.hx+0.00001);
+    expect(Math.abs(q.z)+BODY.radius).toBeLessThanOrEqual(w.map.hz+0.00001);
+  }
 });
 
 describe('body movement',()=>{

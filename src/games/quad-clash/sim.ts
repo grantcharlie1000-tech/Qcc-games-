@@ -5,7 +5,7 @@ import {
   SAVE_VERSION, SHIELD_TIME, SPAWN_PROTECT, STREAKS, WEAPONS, isPrimary, type PrimaryId, type Weapon, type WeaponId, DIFFICULTIES, MODE_IDS,
 } from './config';
 import { getMap, isMapId, type MapDef } from './map';
-import { clearLine, compile, floorAt, moveBody, overlaps, pointSolid, rayBox, raySphere, rayWorld, type RayHit, type World } from './physics';
+import { clearLine, compile, floorAt, moveBody, overlaps, pointSolid, rayBox, rayEllipsoid, rayWorld, type RayHit, type World } from './physics';
 import { enemies, eyeY, idleIntent, random, viewDir, weaponOf, type Fighter, type Intent, type Match, type MatchSettings, type Pickup, type Projectile } from './state';
 
 export const FIGHTERS = 8;
@@ -234,7 +234,7 @@ function fireOnce(m: Match, w: World, f: Fighter, wpn: Weapon) {
     let best = wall ? wall.t : wpn.range, target: Fighter | null = null, head = false;
     for (const g of m.fighters) {
       if (!g.alive || !enemies(m, f, g)) continue;
-      const th = raySphere(ox, oy, oz, dx, dy, dz, g.x, g.y + HITBOX.headY, g.z, HITBOX.headR);
+      const th = rayEllipsoid(ox, oy, oz, dx, dy, dz, g.x, g.y + HITBOX.headY, g.z, HITBOX.headR, HITBOX.headRY, HITBOX.headRZ);
       if (th >= 0 && th < best) { best = th; target = g; head = true; }
       const tb = rayBox(ox, oy, oz, dx, dy, dz, g.x - BODY.radius, g.y, g.z - BODY.radius, g.x + BODY.radius, g.y + HITBOX.bodyTop, g.z + BODY.radius);
       if (tb >= 0 && tb < best - 1e-4) { best = tb; target = g; head = false; }
@@ -481,7 +481,7 @@ export function chooseLoadout(m: Match, f: Fighter, primary: PrimaryId) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export function serialize(m: Match): unknown {
-  return { ...m, events: [], fighters: m.fighters.map(f => ({ ...f, mag: [...f.mag] })), projectiles: m.projectiles.map(p => ({ ...p })), pickups: m.pickups.map(p => ({ ...p })) };
+  return { ...m, mapRevision: mapOf(m).revision ?? 1, events: [], fighters: m.fighters.map(f => ({ ...f, mag: [...f.mag] })), projectiles: m.projectiles.map(p => ({ ...p })), pickups: m.pickups.map(p => ({ ...p })) };
 }
 
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -490,11 +490,12 @@ const FIGHTER_NUMBERS = ['x', 'y', 'z', 'vx', 'vy', 'vz', 'yaw', 'pitch', 'healt
 /** Rebuilds a saved match, or returns null for anything malformed or from another version. */
 export function restore(value: unknown): Match | null {
   if (!value || typeof value !== 'object') return null;
-  const v = value as Partial<Match>;
+  const v = value as Partial<Match> & { mapRevision?: number };
   const s = v.settings as Partial<MatchSettings> | undefined;
   if (v.version !== SAVE_VERSION || !s || !MODE_IDS.includes(s.mode!) || !isMapId(s.map) || !DIFFICULTIES.includes(s.difficulty!) || !isPrimary(s.primary) || !num(s.seed)) return null;
   if (!num(v.t) || v.t < 0 || !num(v.rng) || !Array.isArray(v.fighters) || v.fighters.length !== FIGHTERS) return null;
   const m = createMatch({ mode: s.mode!, map: s.map, difficulty: s.difficulty!, primary: s.primary, seed: s.seed });
+  const layoutChanged = (v.mapRevision ?? 1) !== (mapOf(m).revision ?? 1);
   m.t = v.t; m.rng = v.rng >>> 0; m.events.length = 0;
   for (let i = 0; i < FIGHTERS; i++) {
     const src = v.fighters[i] as unknown as Record<string, unknown>, f = m.fighters[i] as unknown as Record<string, unknown>;
@@ -516,21 +517,21 @@ export function restore(value: unknown): Match | null {
     if (g.lastAttacker < -1 || g.lastAttacker >= FIGHTERS) g.lastAttacker = -1;
     g.lastAttacker = Math.floor(g.lastAttacker);
     if (g.alive && g.health <= 0) g.health = 1;
-    if (g.alive && overlaps(worldFor(m), g.x, g.y + 0.02, g.z)) respawnInPlace(m, g);
+    if (g.alive && (layoutChanged || overlaps(worldFor(m), g.x, g.y + 0.02, g.z))) respawnInPlace(m, g);
   }
   if (!Array.isArray(v.teamScores) || v.teamScores.length !== 2 || !v.teamScores.every(num)) return null;
   m.teamScores = [Math.max(0, Math.floor(v.teamScores[0])), Math.max(0, Math.floor(v.teamScores[1]))];
   const zones = mapOf(m).zones.length;
-  if (!num(v.zoneIndex) || v.zoneIndex < 0 || v.zoneIndex >= zones || !num(v.zoneNext) || !num(v.zoneOwner)) return null;
-  m.zoneIndex = Math.floor(v.zoneIndex); m.zoneNext = Math.max(m.t, v.zoneNext); m.zoneOwner = Math.max(-2, Math.min(1, Math.floor(v.zoneOwner)));
+  if (!num(v.zoneIndex) || v.zoneIndex < 0 || (!layoutChanged && v.zoneIndex >= zones) || !num(v.zoneNext) || !num(v.zoneOwner)) return null;
+  m.zoneIndex = layoutChanged ? 0 : Math.floor(v.zoneIndex); m.zoneNext = Math.max(m.t, v.zoneNext); m.zoneOwner = Math.max(-2, Math.min(1, Math.floor(v.zoneOwner)));
   const acc = (n: number) => Math.max(0, Math.min(0.999, n));
   if (Array.isArray(v.zoneAcc) && v.zoneAcc.length === 2 && v.zoneAcc.every(num)) m.zoneAcc = [acc(v.zoneAcc[0]), acc(v.zoneAcc[1])];
   m.over = v.over === true;
   m.winner = num(v.winner) ? v.winner : -1;
-  m.projectiles = Array.isArray(v.projectiles) ? (v.projectiles as Projectile[]).filter(p => p && (p.kind === 'rocket' || p.kind === 'grenade') && [p.x, p.y, p.z, p.vx, p.vy, p.vz, p.age, p.fuse].every(num) && Number.isInteger(p.owner) && p.owner >= 0 && p.owner < FIGHTERS
+  m.projectiles = !layoutChanged && Array.isArray(v.projectiles) ? (v.projectiles as Projectile[]).filter(p => p && (p.kind === 'rocket' || p.kind === 'grenade') && [p.x, p.y, p.z, p.vx, p.vy, p.vz, p.age, p.fuse].every(num) && Number.isInteger(p.owner) && p.owner >= 0 && p.owner < FIGHTERS
       && (p.kind === 'grenade' || Math.hypot(p.vx, p.vy, p.vz) > 1) && Math.hypot(p.vx, p.vy, p.vz) < 100)
       .slice(0, 32).map(p => ({ ...p, age: Math.max(0, p.age), fuse: Math.max(0, Math.min(5, p.fuse)) })) : [];
-  if (Array.isArray(v.pickups)) {
+  if (!layoutChanged && Array.isArray(v.pickups)) {
     const list = (v.pickups as Pickup[]).filter(p => p && (p.kind === 'ammo' || p.kind === 'grenade') && [p.id, p.x, p.y, p.z, p.respawnAt, p.expires].every(num) && typeof p.active === 'boolean' && typeof p.dropped === 'boolean').slice(0, 48);
     const ids = new Set<number>();
     m.pickups = list.filter(p => !ids.has(p.id) && ids.add(p.id)).map(p => ({ ...p }));
