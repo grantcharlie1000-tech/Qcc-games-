@@ -6,12 +6,8 @@ import {POLL_MS} from '../chat/shared';
 import {openSheet} from '../ui/sheet';
 import {uiIcon} from '../ui/icons';
 import {appIcon} from './icons';
+import {pollMs} from './format';
 
-/** Dev builds only: tests shorten the poll interval with window.__QCC_POLL_SCALE__ (0 to 1), read once. */
-const POLL_SCALE=(()=>{
-  if(!import.meta.env.DEV)return 1;
-  const value=Number((window as unknown as {__QCC_POLL_SCALE__?:number}).__QCC_POLL_SCALE__);return value>0&&value<=1?value:1;
-})();
 const badgeText=(count:number)=>count>99?'99+':String(count);
 
 /** The shell's Apps tab, its unread badge and the launcher sheet. */
@@ -89,7 +85,7 @@ export class AppsLauncher {
     if(token!==this.polledToken){this.polledToken=token;this.stop();this.abort?.abort();this.clear();}
     if(!token||document.visibilityState!=='visible'){this.stop();return;}
     if(this.timer===undefined){
-      this.timer=window.setInterval(()=>{if(document.visibilityState==='visible')void this.refresh();},Math.max(50,POLL_MS.badge*POLL_SCALE));
+      this.timer=window.setInterval(()=>{if(document.visibilityState==='visible')void this.refresh();},pollMs(POLL_MS.badge));
       void this.refresh();
     }
   }
