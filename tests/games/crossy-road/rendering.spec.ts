@@ -2,7 +2,7 @@ import {test, expect, seedStudyTopic} from '../../fixtures';
 import {gameAction, openGameMenu} from '../../game-menu';
 import {advance, carDeath, expectDeathCard, hook, openGame} from './helpers';
 
-test('a DSF3 phone fills the viewport and renders at native resolution with antialiasing', async ({browser}) => {
+test('a DSF3 phone fills the viewport with antialiasing and respects the DPR2 budget', async ({browser}) => {
   const context = await browser.newContext({baseURL: test.info().project.use.baseURL, viewport: {width: 390, height: 844}, deviceScaleFactor: 3});
   await seedStudyTopic(context);
   const page = await context.newPage();
@@ -17,10 +17,9 @@ test('a DSF3 phone fills the viewport and renders at native resolution with anti
     });
     expect(size).toMatchObject({width: 780, height: 1688, x: 0, y: 0, cssWidth: 390, cssHeight: 844, antialias: true, transform: 'none'});
     await expect(page.locator('#game-status')).toHaveCSS('position', 'absolute');
-    // The high-quality budget caps the drawing buffer at DPR 2, so DPR 3 renders the same buffer as DPR 2 (#95).
     // Moving to a different-density screen can change DPR without changing CSS size.
-    await page.evaluate(()=>{Object.defineProperty(window,'devicePixelRatio',{value:2,configurable:true});dispatchEvent(new Event('resize'));});
-    await expect.poll(()=>canvas.evaluate((c:HTMLCanvasElement)=>[c.width,c.height])).toEqual([780,1688]);
+    await page.evaluate(()=>{Object.defineProperty(window,'devicePixelRatio',{value:1,configurable:true});dispatchEvent(new Event('resize'));});
+    await expect.poll(()=>canvas.evaluate((c:HTMLCanvasElement)=>[c.width,c.height])).toEqual([390,844]);
     await page.evaluate(()=>{Object.defineProperty(window,'devicePixelRatio',{value:3,configurable:true});dispatchEvent(new Event('orientationchange'));});
     await expect.poll(()=>canvas.evaluate((c:HTMLCanvasElement)=>[c.width,c.height])).toEqual([780,1688]);
     // Resize/orientation must replace the drawing buffer, not stretch the old bitmap.

@@ -30,6 +30,8 @@ html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[dat
 @media(max-resolution:1.5dppx){:is(.arcade-sheet,body.in-game .mp-card){-webkit-text-stroke-width:0}}
 @media(min-width:640px){:is(.arcade-sheet,body.in-game .mp-card){--sheet-radius:28px}}
 .arcade-sheet.ui-glass-sheet{padding:var(--sheet-padding)}
+/* Apps/Social/Chat retain their own phone-bottom and desktop-center layout. */
+.arcade-sheet.ui-glass-sheet:not(:where(.apps-sheet,#apps-dialog)){margin:auto}
 /* The tiny handle is decoration, not a false drag affordance or tab stop. */
 :is(.arcade-sheet,body.in-game .mp-card)::before{content:'';display:block;width:36px;height:4px;margin:0 auto 14px;border-radius:999px;background:var(--sheet-ink);opacity:.28}
 @media(min-width:640px){:is(.arcade-sheet,body.in-game .mp-card)::before{display:none}}
@@ -37,6 +39,7 @@ html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[dat
 @media(min-width:640px){.arcade-sheet.ui-glass-sheet{--sheet-from-scale:.96;--sheet-from-lift:8px}}
 .arcade-sheet.ui-glass-sheet[open]{transition-duration:160ms,320ms,320ms,320ms,320ms}
 .arcade-sheet.ui-glass-sheet[open]::backdrop{background-color:transparent}
+.arcade-sheet.ui-glass-sheet[open]:not(:where(.apps-sheet,#apps-dialog))::backdrop{background-color:rgb(0 0 0 / .68)}
 /* Keep the paused artwork visible; this does not resume the game or alter its state. */
 body:has(.arcade-sheet[open]) #pause-overlay{opacity:0;pointer-events:none}
 .arcade-sheet :is(h1,h2,h3,.dialog-head h2,.game-metrics strong){color:var(--sheet-ink);font-family:var(--font-sans);letter-spacing:-.02em}
@@ -164,3 +167,20 @@ body.in-game .mp-card .game-button.secondary{background:var(--sheet-control);col
 /* Hide the scrollbar while retaining menu scrolling. */
 .arcade-sheet{scrollbar-width:none}
 .arcade-sheet::-webkit-scrollbar{display:none}
+
+.arcade-sheet:not(:where(.apps-sheet,#apps-dialog)) :is(input:not([type=checkbox]),.game-button.secondary){border:2px solid #aeb2ba;background:#292e38;color:#fff}
+.arcade-sheet .account-tabs button[aria-pressed=true]{background:#45546a;color:#fff;border-color:#fff}
+/* Match the readable controls' specificity so their author colours do not
+   override the user's forced-colour palette. Keep the selected tab distinct. */
+@media(forced-colors:active){
+  .arcade-sheet:not(:where(.apps-sheet,#apps-dialog)) :is(input:not([type=checkbox]),.game-button.secondary){border:2px solid ButtonText;background:Canvas;color:CanvasText}
+  .arcade-sheet .account-tabs button[aria-pressed=true]{border-color:ButtonText;background:Highlight;color:HighlightText}
+  #menu.arcade-sheet input[type=search]{border:2px solid ButtonText;background:Canvas!important;color:CanvasText!important}
+  #menu.arcade-sheet input[type=search]::placeholder{color:CanvasText!important}
+}
+
+/* Preserve the original in-game menu treatment. */
+#game-options.arcade-sheet.ui-glass-sheet{margin:auto auto calc(8px + env(safe-area-inset-bottom))}
+@media(min-width:640px){#game-options.arcade-sheet.ui-glass-sheet{margin:auto}}
+#game-options.arcade-sheet.ui-glass-sheet[open]::backdrop{background-color:transparent}
+#game-options.arcade-sheet .game-button.secondary{border:0;background:var(--sheet-control);color:var(--sheet-ink)}

@@ -757,7 +757,7 @@ test('Movies falls back to its bundled movies with a retry line when its rails f
  expect(requests).toHaveLength(2);
 });
 
-test('a successful empty section answer shows the starter grid with no status line',async({page})=>{
+test('a successful empty section answer preserves the starter grid and its pending title click with no status line',async({page})=>{
  let release!:()=>void;
  const held=new Promise<void>(resolve=>{release=resolve;});
  await page.route('**/api/movies?*',async route=>{
@@ -767,19 +767,27 @@ test('a successful empty section answer shows the starter grid with no status li
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/browse/movie');
  await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(6);
- // The answer waits until the starter grid is on screen. An empty answer leaves the same six films, and patchResults keeps an unchanged grid node
- // (so a pending click stays attached), so there is no swap to wait for: wait until the answer has been handled and drawn, then check the page.
- const loading=await page.locator('.movies-results-grid').elementHandle();
+ // Unchanged titles keep their nodes so a response between pointerdown and click cannot swallow the activation.
+ const starter=await page.locator('.movies-results-grid').elementHandle();
+ const pendingHeading=await page.locator('.movies-page-head').elementHandle();
+ const arrival=page.getByRole('link',{name:'Details for Arrival',exact:true});
+ await arrival.focus();await expect(arrival).toBeFocused();
+ await arrival.hover();await page.mouse.down();
  const response=page.waitForResponse(response=>response.url().includes('rails=movie'));
  release();await (await response).finished();
- await page.evaluate(()=>new Promise<void>(done=>{setTimeout(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>done())),100);}));
- expect(await loading.evaluate(grid=>grid.isConnected)).toBe(true);
+ // refreshBrowse replaces the heading even when it retains unchanged cards. Wait for that actual response render.
+ await expect.poll(()=>pendingHeading.evaluate(heading=>heading.isConnected)).toBe(false);
+ expect(await starter.evaluate(grid=>grid.isConnected)).toBe(true);
  await expect(page.locator('.movies-results-grid')).toHaveCount(1);
+ await expect(arrival).toBeFocused();
  await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(6);
  await expect(page.locator('.movies-rails-status')).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Retry',exact:true})).toHaveCount(0);
  await expect(page.getByText('No titles to show here right now.')).toHaveCount(0);
  await expect(page.getByText('The full catalog is unavailable right now.')).toHaveCount(0);
+ await page.mouse.up();
+ await expect(page).toHaveURL(/#\/movies\/movie-329865$/);
+ await expect(page.getByRole('button',{name:'Play movie',exact:true})).toBeEnabled();
 });
 
 test('section rails keep their ids unique and show their names as text',async({page})=>{

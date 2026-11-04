@@ -1,5 +1,6 @@
 import {guestTest as test,expect} from '../fixtures';
 import {appSettings} from '../game-menu';
+import {articleById} from '../../src/study/articles';
 
 for(const style of ['qcc','quanta','aeon','essay']){
   test(`${style} displays labelled image ads without covering reading text`,async({page})=>{
@@ -15,10 +16,13 @@ for(const style of ['qcc','quanta','aeon','essay']){
     const view=page.locator('#study-view');
     await expect(view).toBeVisible();
     const ads=view.locator('.fictional-ad');
-    expect(await ads.count()).toBeGreaterThanOrEqual(5);
+    await expect(ads).toHaveCount(5);
+    await expect(view.locator('.study-inline-ad .fictional-ad')).toHaveCount(1);
+    for(const side of ['Left','Right'])await expect(view.getByRole('complementary',{name:`${side} advertisements`,exact:true}).locator('.fictional-ad')).toHaveCount(2);
     await expect(view.locator('.study-ad-placeholder')).toHaveCount(0);
     for(const ad of await ads.all()){
-      await expect(ad).toHaveAttribute('aria-label',/Advertisement/);
+      await expect(ad).toHaveAttribute('aria-label',/^Advertisement: .+/);
+      await expect(ad.locator('.fictional-ad-label')).toHaveText('Advertisement');
       await expect(ad.locator('a,button,iframe,script')).toHaveCount(0);
       const image=ad.locator('img');
       if(await ad.isVisible()){await ad.scrollIntoViewIfNeeded();await expect.poll(()=>image.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);}
@@ -26,10 +30,17 @@ for(const style of ['qcc','quanta','aeon','essay']){
       expect(source.origin).toBe(new URL(page.url()).origin);
       expect(source.pathname).toMatch(/\/study\/fictional-ads\/[^/]+\.webp$/);
       await expect(image).toHaveAttribute('loading','lazy');
+      await expect(image).toHaveAttribute('alt',/^.+ advertisement\.$/);
     }
     for(const width of [1366,1024,390]){
       await page.setViewportSize({width,height:844});
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+      await expect(view.locator('.study-inline-ad .fictional-ad')).toBeVisible();
+      await expect(view.locator('.fictional-ad:visible')).toHaveCount(width>=1200?5:1);
+      for(const side of ['Left','Right']){
+        const rail=view.getByRole('complementary',{name:`${side} advertisements`,exact:true});
+        if(width>=1200)await expect(rail).toBeVisible();else await expect(rail).toBeHidden();
+      }
       // Closed details can report rectangles for text the browser does not paint.
       // Check visible paragraphs both before and after opening the answers.
       for(const open of [false,true]){
@@ -48,8 +59,8 @@ for(const style of ['qcc','quanta','aeon','essay']){
   });
 }
 
-test('essay ads preserve a text-first desktop opening and the compact reading layout',async({page})=>{
-  await page.setViewportSize({width:1180,height:900});
+test('essay uses the shared heading, hero and one inline ad between intact paragraphs on desktop and mobile',async({page})=>{
+  await page.setViewportSize({width:1366,height:900});
   await page.addInitScript(()=>{
     localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');
     sessionStorage.setItem('pocket-arcade:study:v1:topic','essay:close-reading');
@@ -57,20 +68,30 @@ test('essay ads preserve a text-first desktop opening and the compact reading la
   await page.goto('/#/game/fruit-merge');
   await appSettings(page);
   await page.getByRole('button',{name:'Study Mode',exact:true}).click();
-  const inspect=()=>page.evaluate(()=>{
-    const body=document.querySelector('.essay-article .variant-prose')!;
-    const paragraphs=[...body.children].filter(el=>el.tagName==='P'&&!el.classList.contains('study-games-sentence')).map(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom};});
-    const ads=[...body.querySelectorAll('.fictional-ad')].filter(el=>el.checkVisibility()).map(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,src:el.querySelector('img')!.src};});
-    const rail=document.querySelector('.essay-ad-rail .fictional-ad')!.getBoundingClientRect();
-    return {paragraphs,ads,railTop:rail.top,height:innerHeight};
+  const chapter=page.locator('.study-chapter');
+  const article=articleById('essay:close-reading')!;
+  await expect(chapter).toHaveAttribute('data-article-id',article.id);
+  await expect(chapter.locator('.study-text-section > p')).toHaveText(article.paragraphs);
+  const inspect=()=>chapter.evaluate(el=>{
+    const box=(node:Element)=>{const r=node.getBoundingClientRect();return {top:r.top,bottom:r.bottom};};
+    return {
+      heading:box(el.querySelector('.study-article-heading')!),hero:box(el.querySelector('.study-hero')!),
+      paragraphs:[...el.querySelectorAll('.study-text-section > p')].map(box),
+      ads:[...el.querySelectorAll('.study-inline-ad .fictional-ad')].filter(node=>node.checkVisibility()).map(node=>({...box(node),src:node.querySelector('img')!.src}))
+    };
   });
-  await page.evaluate(()=>scrollTo(0,0));
-  const desktop=await inspect();expect(desktop.paragraphs).toHaveLength(6);expect(desktop.ads).toHaveLength(3);
-  expect(desktop.ads[0].top).toBeGreaterThanOrEqual(desktop.paragraphs[5].bottom);
-  expect(desktop.ads[0].top).toBeGreaterThanOrEqual(desktop.height);expect(desktop.railTop).toBeGreaterThanOrEqual(desktop.height);
-  await page.setViewportSize({width:390,height:844});
-  const mobile=await inspect();expect(mobile.ads).toHaveLength(3);
-  expect(mobile.ads[0].top).toBeGreaterThanOrEqual(mobile.paragraphs[1].bottom);expect(mobile.ads[0].bottom).toBeLessThanOrEqual(mobile.paragraphs[2].top);
-  expect(mobile.ads[1].top).toBeGreaterThanOrEqual(mobile.paragraphs[3].bottom);expect(mobile.ads[1].bottom).toBeLessThanOrEqual(mobile.paragraphs[4].top);
-  expect(mobile.ads.map(ad=>ad.src).sort()).toEqual(desktop.ads.map(ad=>ad.src).sort());
+  let source='';
+  for(const width of [1366,390]){
+    await page.setViewportSize({width,height:844});
+    await page.evaluate(()=>scrollTo(0,0));
+    const layout=await inspect();expect(layout.paragraphs).toHaveLength(article.paragraphs.length);expect(layout.ads).toHaveLength(1);
+    expect(layout.hero.top).toBeGreaterThanOrEqual(layout.heading.bottom);
+    expect(layout.paragraphs[0].top).toBeGreaterThanOrEqual(layout.hero.bottom);
+    const midpoint=Math.floor(article.paragraphs.length/2);
+    expect(layout.ads[0].top).toBeGreaterThanOrEqual(layout.paragraphs[midpoint].bottom);
+    expect(layout.ads[0].bottom).toBeLessThanOrEqual(layout.paragraphs[midpoint+1].top);
+    if(source)expect(layout.ads[0].src).toBe(source);else source=layout.ads[0].src;
+    await expect(chapter.locator('.study-text-section > p')).toHaveText(article.paragraphs);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
 });

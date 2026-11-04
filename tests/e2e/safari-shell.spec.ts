@@ -109,38 +109,15 @@ for(const stuck of ['fetch','body','restore'])test(`a stalled catalog ${stuck} r
  await page.evaluate(()=>(window as any).__releaseCatalog());await expect(page.getByRole('heading',{name:'TV Shows',exact:true})).toBeVisible();await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
 });
 
-for(const route of ['collection','movies'])test(`${route} fallback Menu ink retains 4.5:1 on black/white patterned content`,async({page})=>{
+for(const route of ['collection','movies'])test(`${route} fallback Menu icon stays white on black and white content`,async({page})=>{
  await page.goto(`/?glass=fallback#/${route}`);const menu=page.locator(route==='collection'?'.app-menu':'.movies-menu');
  await expect(menu).toHaveAttribute('data-glass','frost');
- // Movies redraws its view once the catalog request settles; inject the art after that, or the redraw drops it.
  if(route==='movies')await expect(page.locator('.movies-rails-status,.movies-catalog-status').first()).toBeVisible();
- // The Menu icon keeps one adaptive ink (no outline), so a single glyph cannot clear 4.5:1 across both black and white at once. Black and white
- // fills are therefore measured in turn, which still exercises both ends of backdrop luminance; the ink has to adapt to each.
  const art=await page.evaluateHandle(()=>{const art=document.createElement('div');art.style.cssText='position:fixed;inset:0;z-index:49;pointer-events:none';(document.querySelector('.section-navigation:not(.app-navigation)')?.parentElement??document.body).append(art);return art;});
- const measure=async()=>{
-  const actual=(await menu.screenshot({animations:'disabled'})).toString('base64');
-  const hide=await page.addStyleTag({content:'.section-menu>.ui-icon{visibility:hidden!important}'});
-  const backdrop=(await menu.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
-  // The icon keeps its own adaptive colour, so the mask forces it white as well as the menu around it.
-  const maskStyle=await page.addStyleTag({content:'.section-menu,.section-menu::before{background:#000!important;color:#fff!important;backdrop-filter:none!important;box-shadow:none!important}.section-menu .ui-glass-glow,.section-menu .ui-glass-lens{display:none!important}.section-menu .glass-ink{color:#fff!important;filter:none!important}'});
-  const mask=(await menu.screenshot({animations:'disabled'})).toString('base64');await maskStyle.evaluate(e=>e.parentNode?.removeChild(e));
-  return page.evaluate(async({actual,backdrop,mask})=>{
-   const decode=async(source:string)=>{const image=new Image();image.src='data:image/png;base64,'+source;await image.decode();const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const ctx=c.getContext('2d')!;ctx.drawImage(image,0,0);return {data:ctx.getImageData(0,0,c.width,c.height).data,width:c.width,height:c.height};};
-   const ink=await decode(actual),bg=await decode(backdrop),shape=await decode(mask);
-   const lum=(data:Uint8ClampedArray,i:number)=>[.2126,.7152,.0722].reduce((l,w,c)=>{const v=data[i+c]/255;return l+w*(v<=.04045?v/12.92:((v+.055)/1.055)**2.4);},0);
-   let worst=Infinity,cores=0;
-   // Only the central SVG, excluding the separate white rim.
-   for(let y=Math.ceil(shape.height*.28);y<shape.height*.72;y++)for(let x=Math.ceil(shape.width*.28);x<shape.width*.72;x++){
-    const i=(y*shape.width+x)*4;if(Math.min(...shape.data.slice(i,i+3))<250)continue;
-    const a=lum(ink.data,i),b=lum(bg.data,i);worst=Math.min(worst,(Math.max(a,b)+.05)/(Math.min(a,b)+.05));cores++;
-   }
-   return {worst,cores};
-  },{actual,backdrop,mask});
- };
- for(const fill of ['#000','#fff']){
+ for(const fill of ['#000','#fff','#000']){
   await art.evaluate((e,fill)=>{(e as HTMLElement).style.background=fill;},fill);
-  // The ink follows the backdrop on the next sample, so the measure is polled until it settles.
-  await expect.poll(async()=>{const r=await measure();return r.cores>20?r.worst:0;},{message:`${fill} backdrop`}).toBeGreaterThanOrEqual(4.5);
+  await expect(menu.locator('.ui-icon')).toHaveCSS('color','rgb(255, 255, 255)');
+  await expect(menu.locator('.ui-icon')).not.toHaveAttribute('data-glass-halo');
  }
 });
 
@@ -169,15 +146,15 @@ test.describe('live Movies motion preference',()=>{
  });
 });
 
-for(const press of [false,true])test(`dark selected tab retains 4.5:1 over white artwork${press?' while pressed':''}`,async({page})=>{
+for(const press of [false,true])test(`selected label retains 4.5:1 beside a white icon over white artwork${press?' while pressed':''}`,async({page})=>{
  await page.goto('/?glass=fallback#/movies');await expect(page.locator('.movies-hero')).toBeVisible();
  await page.evaluate(()=>{const art=document.createElement('div');art.style.cssText='position:fixed;inset:0;z-index:49;pointer-events:none;background:white';document.querySelector('.movies-view')!.append(art);});
  const tab=page.locator('.movies-mobile-nav [aria-pressed=true]');await tab.evaluate(e=>e.classList.add('contrast-target'));
  if(press){await tab.hover();await page.mouse.down();}
- // Adaptive ink follows the white artwork on a later frame, and the colour change transitions. Measure once the tab's ink has settled dark.
- await expect.poll(()=>tab.evaluate(e=>({colours:[...e.children].map(child=>getComputedStyle(child).color),animating:e.getAnimations({subtree:true}).length}))).toEqual({colours:['rgb(11, 16, 21)','rgb(11, 16, 21)'],animating:0});
+ // Labels still adapt to white artwork while the icon stays white.
+ await expect.poll(()=>tab.evaluate(e=>({colours:[...e.children].map(child=>getComputedStyle(child).color),animating:e.getAnimations({subtree:true}).length}))).toEqual({colours:['rgb(255, 255, 255)','rgb(11, 16, 21)'],animating:0});
  const actual=(await tab.screenshot({animations:'disabled'})).toString('base64');
- const boxes=await tab.evaluate(e=>{const box=e.getBoundingClientRect();return [...e.querySelectorAll('.ui-icon,span')].map(child=>{const b=child.getBoundingClientRect();return {x:b.x-box.x,y:b.y-box.y,w:b.width,h:b.height};});});
+ const boxes=await tab.evaluate(e=>{const box=e.getBoundingClientRect();return [...e.querySelectorAll('span')].map(child=>{const b=child.getBoundingClientRect();return {x:b.x-box.x,y:b.y-box.y,w:b.width,h:b.height};});});
  // Opacity, not visibility: WebKit drops :active (the pressed scale) once the glyph under the pointer stops being hit-testable.
  const hide=await page.addStyleTag({content:'.contrast-target>*{opacity:0!important}'});const backdrop=(await tab.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
  await page.addStyleTag({content:'.contrast-target{color:white!important;background:black!important;text-shadow:none!important}.contrast-target>*{color:white!important;filter:none!important}'});

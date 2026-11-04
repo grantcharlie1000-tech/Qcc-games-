@@ -3,14 +3,29 @@ import adManifest from '../../src/study/fictional-ads-manifest.json' with {type:
 const localAdPaths=new Set(adManifest.map(ad=>'/study/fictional-ads/'+ad.file));
 import {guestTest as test,expect,seedGuest} from '../fixtures';
 
-test('article opens without a top bar and has inline games navigation, footer controls and bilateral fictional advertisements',async({page})=>{
+test('the unified reader has an accessible heading and hero, inline games navigation, footer controls and two ads per rail',async({page})=>{
  await page.setViewportSize({width:1600,height:1000});await page.goto('/');
  await page.getByRole('button',{name:'Reject All',exact:true}).click();
  await page.locator('[data-study-topic="close-reading"]').click();await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
  await expect(page.locator('.study-sidebar')).toHaveCount(0);await expect(page.getByText('Your reading desk',{exact:true})).toHaveCount(0);await expect(page.getByRole('navigation',{name:'Chapter contents'})).toHaveCount(0);
  await expect(page.locator('.study-diagram,.study-byline svg')).toHaveCount(0);
  await expect(page.locator('#study-view > .study-header, #study-view > .study-utility')).toHaveCount(0);await expect(page.locator('.study-chapter-footer').getByLabel('Study topic',{exact:true})).toBeVisible();const games=page.locator('.study-article-body p').getByRole('link',{name:'Return to previous view',exact:true});await expect(games).toHaveText('games');await expect(games).toBeVisible();
- for(const side of ['left','right']){const slots=page.locator(`[data-ad-rail="${side}"] .fictional-ad`);expect(await slots.count()).toBeGreaterThanOrEqual(3);const boxes=await slots.evaluateAll(es=>es.map(e=>({y:e.getBoundingClientRect().top,height:e.getBoundingClientRect().height})));expect(boxes.at(-1)!.y-boxes[0].y).toBeGreaterThan(1000);}
+ const chapter=page.locator('.study-chapter');
+ await expect(chapter).toHaveAttribute('data-article-id','close-reading');
+ await expect(chapter.getByRole('article',{name:'Reading between the lines',exact:true})).toHaveCount(1);
+ await expect(chapter.locator('.study-article-heading h1')).toHaveText('Reading between the lines');
+ await expect(chapter.locator('.study-hero img')).toBeVisible();await expect(chapter.locator('.study-hero img')).toHaveAttribute('alt',/\S/);
+ await expect(page.locator('.fictional-ad')).toHaveCount(5);await expect(chapter.locator('.study-inline-ad .fictional-ad')).toHaveCount(1);
+ const articleBox=(await chapter.boundingBox())!;
+ for(const side of ['Left','Right']){
+  const rail=page.getByRole('complementary',{name:`${side} advertisements`,exact:true});
+  await expect(rail).toBeVisible();const slots=rail.locator('.fictional-ad');await expect(slots).toHaveCount(2);
+  const boxes=await slots.evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom};}));
+  expect(boxes[1].y-boxes[0].bottom).toBeGreaterThanOrEqual(44);
+  for(const box of boxes)if(side==='Left')expect(box.right).toBeLessThanOrEqual(articleBox.x);else expect(box.x).toBeGreaterThanOrEqual(articleBox.x+articleBox.width);
+ }
+ const next=chapter.locator('.study-chapter-footer').getByRole('button',{name:'Next article',exact:true});await expect(next).toBeEnabled();
+ expect((await next.boundingBox())!.height).toBeGreaterThanOrEqual(44);
  const words=(await page.locator('.study-chapter article').innerText()).trim().split(/\s+/).length;expect(words).toBeGreaterThanOrEqual(900);await expect(page.locator('iframe')).toHaveCount(0);
 });
 

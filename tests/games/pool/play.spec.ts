@@ -152,6 +152,26 @@ test.describe('Pool',()=>{
     });
   }
 
+  test.describe('touchscreen taps',()=>{
+    test.use({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:3});
+
+    test('tap to aim, release, and aim again without shooting or scrolling',async({page})=>{
+      await page.goto('/#/game/pool');await expect(root(page)).toHaveAttribute('data-orient','portrait');
+      const cue=(await poolState(page)).balls[0];
+      // Playwright's native touchscreen taps work in both Chromium and WebKit.
+      // Repeating the tap also checks that release clears the previous aim gesture.
+      for(const dy of [-.2,.2]){
+        const aim=await tableToScreen(page,cue.x+.4,cue.y+dy);
+        await page.touchscreen.tap(aim.x,aim.y);
+        expect((await poolState(page)).aim.angle).toBeCloseTo(Math.atan2(dy,.4),1);
+        await expect(root(page)).toHaveAttribute('data-gesture','idle');
+        await expect(root(page)).toHaveAttribute('data-phase','aim');
+        await expect(root(page)).toHaveAttribute('data-shots','0');
+        expect(await page.evaluate(()=>scrollY)).toBe(0);
+      }
+    });
+  });
+
   test('touch: aim with a finger and shoot with the power cue',async({browser,browserName})=>{
     const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:3});
     await context.addInitScript(()=>{localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});
