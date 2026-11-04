@@ -83,3 +83,11 @@ Claimline is a canvas territory-capture game against six local bots in one circu
 ## Quad Clash
 
 `src/games/quad-clash/` is an original first-person arena shooter on the QCC campus against seven bots (see its [SPEC](src/games/quad-clash/SPEC.md)). It is a full-bleed Three.js reference game like Crossy Road. The match simulation (`sim.ts`, `bots.ts`, `physics.ts`, `nav.ts`) is pure and deterministic at 60 Hz, and the whole running match is saved in the shell snapshot. Desktop play uses pointer lock: Esc frees the mouse and pauses through `context.setPaused`. Touch play has its own stick and buttons. Its score is match points, and it is on the shared leaderboard once `20261104090000_quad_clash_score.sql` is applied (until then submissions queue, as described for Claimline).
+
+## QCC Social and QCC Chat
+
+Social (posts, follows, likes, reports) and Chat (mutual-friend 1:1 text and view-once photo snaps) need a signed-in QCC account. Handlers live in `src/social/`, `src/chat/` and `src/media/`, with pure policy in each `shared.ts`/`policy.ts`, and are served as same-origin Functions `social`, `chat` and `media`.
+Photos are re-encoded server-side with Sharp to WebP and stored through a `MediaStore` (Netlify Blobs on Netlify, files under `.netlify/local-media` in `dev:online`, memory in tests). Without a store, text keeps working and photo buttons are hidden.
+Chat messages expire per conversation retention; an hourly scheduled function purges them and stale pending uploads.
+The Pages proxy allowlist includes the three routes, and the migration needs owner approval before it is applied.
+See [the spec](docs/social-chat/SPEC.md), [deployment](docs/social-chat/DEPLOYMENT.md) and the [moderation runbook](docs/social-chat/MODERATION.md).

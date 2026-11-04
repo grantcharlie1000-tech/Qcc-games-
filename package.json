@@ -17,6 +17,7 @@
     "movies:import": "node scripts/movies-import.mjs"
   },
   "dependencies": {
+    "@netlify/blobs": "11.1.7",
     "@netlify/database": "2.0.1",
     "@netlify/functions": "6.0.3",
     "globe.gl": "2.46.2",

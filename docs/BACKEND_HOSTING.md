@@ -1,8 +1,9 @@
 # Cloudflare Pages → Vercel API
 
 The browser calls same-origin `/.netlify/functions/accounts`,
-`/.netlify/functions/leaderboard` and `/.netlify/functions/turn`. Root
-`functions/_middleware.ts` proxies exactly those three paths. It does not depend
+`/.netlify/functions/leaderboard`, `/.netlify/functions/turn`, `/.netlify/functions/social`,
+`/.netlify/functions/chat` and `/.netlify/functions/media`. Root
+`functions/_middleware.ts` proxies exactly those six paths. It does not depend
 on a `functions/.netlify` dot-folder. Unknown or deeper legacy paths return 404.
 `/api/movies` runs `functions/api/movies.ts` and `server/movies-catalog.ts` on
 Pages, through the middleware's `next()`.
