@@ -1,0 +1,48 @@
+name: Compare Ball Run context-loss recovery
+on:
+  push:
+    branches: [diagnostics/qcc-ballrun-loss-compare]
+permissions:
+  contents: read
+jobs:
+  context-loss:
+    name: Context-loss recovery (${{ matrix.source.label }}, ${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+        source:
+          - label: main
+            sha: f649efe195ef2c7a4bf49df5baed2f0d82a00d66
+          - label: claimline
+            sha: 34bcffe1c6f01744ed7705d3bc6c0274dd9803af
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.source.sha }}
+      - run: git rev-parse HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Repeat the unchanged recovery test on the exact source revision
+        run: >-
+          xvfb-run -a npx playwright test tests/games/ball-run/play.spec.ts
+          --project=${{ matrix.browser }} --workers=1 --repeat-each=10
+          --grep 'lost WebGL visibly saves and remains stopped until exit and re-entry'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ballrun-loss-${{ matrix.source.label }}-${{ matrix.browser }}
+          path: |
+            playwright-report
+            test-results
