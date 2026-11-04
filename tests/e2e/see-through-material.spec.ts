@@ -7,7 +7,7 @@ test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasT
 
 // #92 separates frosted navigation/sheets from the unchanged clear HUD fill.
 const CLEAR_FILL='rgba(8, 12, 18, 0.2)',FILL_RGB=[8,12,18],FILL_ALPHA=.2;
-const NAV_FILL='rgba(8, 12, 18, 0.36)',FROST_FILL='rgba(12, 16, 22, 0.58)';
+const NAV_FILL='rgba(8, 12, 18, 0.36)',FROST_FILL='rgba(12, 16, 22, 0.58)',ARCADE_SHEET_FILL='rgba(12, 16, 22, 0.9)';
 test('navigation, clear controls and frosted sheets retain their intended fills over the live backdrop',async({page})=>{
   await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));
   for(const route of ['collection','study','movies/browse/movie','game/snake']){
@@ -36,9 +36,11 @@ test('navigation, clear controls and frosted sheets retain their intended fills 
         ?{fill:getComputedStyle(gl,'::after').backgroundColor,filter:s.backdropFilter,lensOnly:!e.hasAttribute('data-glass-partial')}
         :{fill:s.backgroundColor,filter:s.backdropFilter,lensOnly:false};
     });
+    // #102 (ff95043) made arcade game sheets and Study's privacy panel a readable
+    // dark .9 fill; the collection section sheet keeps the frost fill.
     // Study retains its article theme. Arcade sheets deliberately use CSS
     // frost, without a sharp WebGL copy over the blur (#92).
-    expect(material.fill,`${route}: sheet`).toBe(route==='study'?'rgba(255, 255, 255, 0.13)':FROST_FILL);
+    expect(material.fill,`${route}: sheet`).toBe(route==='study'?'rgba(18, 23, 29, 0.9)':route==='collection'?FROST_FILL:ARCADE_SHEET_FILL);
     expect(material.filter,route).toBe(route==='study'?'blur(1.5px)':'blur(20px) saturate(1.5)');
     expect(material.lensOnly,route).toBe(false);
     await page.keyboard.press('Escape');
@@ -88,7 +90,7 @@ test('native start/end cards retain their original game palettes',async({page})=
   // Slither is the deliberate exception to native palettes: #92 frosts it.
   const panel=page.locator('.nc-game .game-sheet-panel');
   await expect(panel).toHaveAttribute('data-glass-mode','blur');
-  await expect(panel).toHaveCSS('background-color',FROST_FILL);
+  await expect(panel).toHaveCSS('background-color',ARCADE_SHEET_FILL);
   await expect(panel).toHaveCSS('backdrop-filter','blur(20px) saturate(1.5)');
   await expect(panel.locator(':scope>.ui-glass-gl')).toHaveCount(0);
 });
