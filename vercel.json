@@ -10,6 +10,12 @@
       "includeFiles": "dist-server/**"
     }
   },
+  "crons": [
+    {
+      "path": "/api/chat-purge",
+      "schedule": "7 3 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/.netlify/functions/:route",

@@ -10,13 +10,17 @@ An explicit `VITE_QCC_API_BASE` build setting can instead point it directly at t
 | `/api/accounts` | `/.netlify/functions/accounts` | Postgres |
 | `/api/leaderboard` | `/.netlify/functions/leaderboard` | Postgres |
 | `/api/turn` | `/.netlify/functions/turn` | Cloudflare Realtime TURN key (503 without it) |
+| `/api/social` | `/.netlify/functions/social` | Postgres (text works without a blob store) |
+| `/api/chat` | `/.netlify/functions/chat` | Postgres (text works without a blob store) |
+| `/api/media` | `/.netlify/functions/media` | Postgres and Vercel Blob (`BLOB_READ_WRITE_TOKEN`; 503 `media_not_configured` without it) |
+| `/api/chat-purge` | scheduled function `chat-purge` | Vercel Cron with `CRON_SECRET` (401 without the Bearer header) |
 | `/api/movies` | `/api/movies` | TMDB read token (503 without it) |
 | `/api/health` | none | nothing |
 
 PeerJS signalling uses the public `0.peerjs.com` server, so it does not depend on the host.
 `server/app.ts` provides the parts Netlify used to supply:
 - a CORS allow-list
-- per-IP rate limits (accounts 600/min, leaderboard 300/min, turn 20/min, movies 600/min, per warm instance)
+- per-IP rate limits (accounts 600/min, leaderboard 300/min, turn 20/min, movies 600/min, social 600/min, chat 600/min, media 1200/min, per warm instance)
 - standard `CDN-Cache-Control` headers
 - the deploy-context mapping for the database guard
 
@@ -32,6 +36,9 @@ PeerJS signalling uses the public `0.peerjs.com` server, so it does not depend o
    - `TMDB_READ_TOKEN`
    - `CLOUDFLARE_TURN_KEY_ID`
    - `CLOUDFLARE_TURN_API_TOKEN`
+   - `BLOB_READ_WRITE_TOKEN` (created by connecting a Vercel Blob store to the project; enables QCC Social/Chat photos)
+   - `CRON_SECRET` (any long random value; Vercel sends it as `Authorization: Bearer ...` to the purge cron)
+   - Optional: `QCC_MEDIA_MAX_TOTAL_BYTES` (global media budget, default 2 GiB; Vercel Blob Hobby includes far less, so set it to match your plan)
    - `QCC_PROXY_SECRET` when requests arrive through the trusted Cloudflare Pages proxy (server-only)
    - Optional: `QCC_DEPLOY_CONTEXT`, `QCC_DB_EXPECTED_ENV`, `QCC_WRITE_FREEZE`
 5. Pages frontend: configure `QCC_API_ORIGIN` and the matching `QCC_PROXY_SECRET` runtime bindings as below.
@@ -40,6 +47,27 @@ PeerJS signalling uses the public `0.peerjs.com` server, so it does not depend o
 
 `VERCEL_ENV` maps to the database guard like this: production → `production`, preview → `deploy-preview`.
 The database marker row (`qcc_environment`) must match.
+
+### QCC Social, Chat and media on Vercel
+
+`server/app.ts` serves `social`, `chat` and `media` through the same guarded handler as accounts. `server/media-store.ts`
+(`vercelBlobMediaStore`) is the `MediaStore`: it returns `null`, which disables photos while text keeps working, unless
+`BLOB_READ_WRITE_TOKEN` is set. Objects are written as **private** Vercel Blobs (`access: 'private'`, pathname
+`qcc-media/<key>`, no random suffix), so they have no public URL and are only readable with the store token. Photos reach
+users only through the authenticated `/api/media` handler, which also decides who may see each one. This needs
+`@vercel/blob` 2.x; an older SDK without private access must not be used.
+
+`vercel.json` registers a cron for `/api/chat-purge`. The route returns 401 unless the request carries
+`Authorization: Bearer $CRON_SECRET`, and runs `purgeExpiredChat`, `purgePendingMedia` and `sweepOrphanMedia` in bounded loops
+(up to 20 rounds each). It passes through the same database environment guard as the other routes and logs only counts.
+**Schedule: daily (`7 3 * * *`).** Vercel Hobby only allows cron jobs that run once per day, and a more frequent expression fails
+the deployment. Reads already filter on `expires_at`, so expired messages are never served between runs; only the row and blob
+deletion is delayed by up to a day. On a Pro plan change the schedule to `7 * * * *` for the hourly purge the docs describe.
+
+Uploads send the raw image bytes with their `Content-Type`. The Vercel request body limit is 4.5 MB and `MAX_UPLOAD_BYTES` is
+4 MiB, so uploads fit; `maxDuration` stays at 10 s. Sharp stays an external `node_modules` dependency (`--packages=external`),
+and Vercel installs dependencies with `npm ci`, so its linux-x64 prebuilt binary is present and `includeFiles` needs no change.
+Check one real upload after the first deploy.
 
 ### Client IPs through the Pages proxy
 
@@ -84,8 +112,9 @@ Set `QCC_TRUST_PROXY=1` when the server runs behind a proxy that sets `X-Forward
 ## Cloudflare Pages frontend → Vercel API
 
 The browser calls same-origin `/.netlify/functions/accounts`,
-`/.netlify/functions/leaderboard` and `/.netlify/functions/turn`. Root
-`functions/_middleware.ts` proxies exactly those three paths. It does not depend
+`/.netlify/functions/leaderboard`, `/.netlify/functions/turn`, `/.netlify/functions/social`,
+`/.netlify/functions/chat` and `/.netlify/functions/media`. Root
+`functions/_middleware.ts` proxies exactly those six paths. It does not depend
 on a `functions/.netlify` dot-folder. Unknown or deeper legacy paths return 404.
 `/api/movies` runs `functions/api/movies.ts` and `server/movies-catalog.ts` on
 Pages, through the middleware's `next()`.
