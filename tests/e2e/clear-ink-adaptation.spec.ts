@@ -38,7 +38,7 @@ for(const fallback of [false,true])test(`navigation icons stay white while label
  await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
  await page.locator('.app-tabbar .ui-tab').first().focus();
  await page.addStyleTag({content:'#content *{visibility:hidden!important}#content{background:transparent!important}'});
- const icons=page.locator('.app-navigation svg.ui-icon:visible');
+ const icons=page.locator('.app-navigation>.arcade-glass svg.ui-icon');
  await expect(icons).toHaveCount(6);
  for(const [background,labelColor] of [['#fff','rgb(11, 16, 21)'],['#000','rgb(255, 255, 255)'],['#fff','rgb(11, 16, 21)']]){
   await page.evaluate(background=>{document.body.style.background=background;document.documentElement.style.background=background;dispatchEvent(new Event('resize'));},background);
