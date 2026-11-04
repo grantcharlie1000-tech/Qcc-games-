@@ -3,12 +3,24 @@ import {backToGames,gameAction,gameOption} from '../game-menu';
 const expand=(page:import('@playwright/test').Page)=>gameAction(page,'Leaderboards');
 const close=(page:import('@playwright/test').Page)=>page.getByRole('button',{name:'Close leaderboards',exact:true}).click();
 const panel=(page:import('@playwright/test').Page)=>page.locator('#leaderboard-dialog');
+type Box={x:number;y:number;width:number;height:number};
+const overlaps=(a:Box,b:Box)=>a.x<b.x+b.width&&b.x<a.x+a.width&&a.y<b.y+b.height&&b.y<a.y+a.height;
+/** Since #93/#94 the desktop panel is a collapsed, fixed bottom-left overlay that never enters the game layout or covers the game menu. */
+async function expectSecondaryPanel(page:import('@playwright/test').Page,id:string,viewport:{width:number;height:number}){
+ const side=page.locator('.lb-sidebar');await expect(side,id).toBeVisible();
+ await expect(side.locator('.lb-toggle'),id).toHaveAttribute('aria-expanded','false');await expect(side.locator('.lb-panel'),id).toBeHidden();
+ const box=(await side.boundingBox())!;
+ expect(box.x,id).toBeGreaterThanOrEqual(0);expect(box.x+box.width,id).toBeLessThan(viewport.width/2);
+ expect(box.y,id).toBeGreaterThan(viewport.height/2);expect(box.y+box.height,id).toBeLessThanOrEqual(viewport.height);
+ const menu=await page.locator('#game-menu').boundingBox();if(menu)expect(overlaps(box,menu),id).toBe(false);
+}
 
 test('rankings open from the game menu without taking play space, on desktop and mobile',async({page})=>{
  await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[{rank:1,playerId:'a'.repeat(64),name:'Extraordinarily Longname',score:1234567}],player:null}}));
  for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
   await page.setViewportSize(viewport);await page.goto('/#/game/snake');
-  await expect(panel(page)).toBeHidden();await expect(page.locator('.lb-sidebar')).toHaveCount(0);
+  await expect(panel(page)).toBeHidden();
+  if(viewport.width>=1160)await expectSecondaryPanel(page,'snake',viewport);else await expect(page.locator('.lb-sidebar')).toBeHidden();
   const view=await page.locator('.game-view').boundingBox();expect(view).toEqual({x:0,y:0,...viewport});
   await expand(page);await expect(panel(page)).toContainText('Extraordinarily Longname');
   expect(await page.locator('.game-view').boundingBox()).toEqual(view);
@@ -40,7 +52,8 @@ for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','neon
  await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[],player:null}}));
  await page.goto('/#/game/'+id);await expect(page.locator('#game-stage .loading')).toHaveCount(0);
  const view=await page.locator('.game-view').boundingBox();expect(view!.x,id).toBe(0);expect(view!.width,id).toBe(1440);
- await expect(page.locator('.lb-sidebar')).toHaveCount(0);await expand(page);await expect(page.locator('#leaderboard-game')).toHaveValue(id);
+ await expectSecondaryPanel(page,id,{width:1440,height:900});expect(await page.locator('.game-view').boundingBox(),id).toEqual(view);
+ await expand(page);await expect(page.locator('#leaderboard-game')).toHaveValue(id);
 });
 test('visible rankings stay idle until manual refresh and reopen with fresh results',async({page})=>{
  await page.clock.install();let reads=0;
