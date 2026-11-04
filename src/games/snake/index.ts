@@ -8,7 +8,7 @@ const module:GameModule={
  id:'snake',title:'Snake',cover:'game-art/snake/cover.svg',
  rules:'Guide the snake with arrow keys, WASD or swipes. It moves smoothly at one square every 0.16 seconds. Turns queue for the center of the next square, with at most two saved turns and no reversal. Once a leg starts, a later turn cannot redirect it, even to avoid a wall. Touch apples for 10 points each and grow one segment. Your tail stays in place briefly as you grow. Touching a wall or your body ends the run. A moving tail is safe only if it clears before your head touches it; growth keeps it in place longer. Earn all 256 segments to win. Pause freezes travel, effects and controls. Older grid saves wait for Continue saved run; your progress is kept and turns use the new timing.',
  mount(container,context){
-  container.innerHTML=`<div class="snake-game"><div class="snake-garden"><canvas class="snake-canvas" width="480" height="480" tabindex="0" role="img" aria-label="Snake garden. Use arrow keys, WASD or swipe to steer."></canvas><div class="snake-card"><strong>Apple appetite</strong><p>A little snake. A big garden.<br>How long can you grow?</p><button class="game-button snake-start">Start slithering</button></div></div></div>`;
+  container.innerHTML=`<div class="snake-game"><div class="snake-garden"><canvas class="snake-canvas" width="480" height="480" tabindex="0" role="img" aria-label="Snake garden. Use arrow keys, WASD or swipe to steer."></canvas><div class="snake-card"><strong>Apple appetite</strong><p hidden></p><button class="game-button snake-start">Start slithering</button></div></div></div>`;
   const root=container.querySelector<HTMLElement>('.snake-game')!;
   const canvas=root.querySelector<HTMLCanvasElement>('canvas')!;
   const card=root.querySelector<HTMLElement>('.snake-card')!,heading=card.querySelector('strong')!,message=card.querySelector('p')!,start=card.querySelector<HTMLButtonElement>('button')!;
@@ -39,18 +39,19 @@ const module:GameModule={
   function update(){
    context.setScore(state.score);context.setLevel(`Length ${state.segments}`);
    const finished=state.phase==='lost'||state.phase==='won';
+   message.hidden=!finished;
    card.hidden=state.phase==='running'&&!state.migration?.held;
    if(state.migration?.held){
-    heading.textContent='Welcome back';message.textContent='Your grid save is safe. Continue from this square with the new turn timing.';start.textContent='Continue saved run';
+    heading.textContent='Welcome back';message.textContent='';start.textContent='Continue saved run';
    }else if(state.phase==='ready'){
-    heading.textContent='Apple appetite';message.innerHTML='A little snake. A big garden.<br>How long can you grow?';start.textContent='Start slithering';
+    heading.textContent='Apple appetite';message.textContent='';start.textContent='Start slithering';
    }else if(finished){
     heading.textContent=state.phase==='won'?'Garden complete!':'One more apple?';
-    message.textContent=`${state.score} points · ${state.segments} segments. ${state.phase==='won'?'You earned all 256 segments!':'Give that hungry snake another go.'}`;
+    message.textContent=`${state.score} points · ${state.segments} segments`;
     start.textContent='Play again';
    }
    start.disabled=paused;
-   context.setStatus(paused?'Paused':finished?(state.phase==='won'?'All 256 segments earned. You win!':'Run ended. Play again to grow a new snake.'):'Turns wait for the next square’s center. Eat apples; avoid contact with walls and your body.');
+   context.setStatus(paused?'Paused':finished?(state.phase==='won'?'All 256 segments earned. You win!':'Run ended.'):state.phase==='ready'?'Ready':'Playing');
    dirty=true;
   }
   function snapshot(){return JSON.parse(JSON.stringify({...state,presentation:savePresentation(view)})) as unknown;}

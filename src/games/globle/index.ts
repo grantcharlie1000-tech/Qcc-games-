@@ -101,7 +101,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     if (r.won) {
       const n = r.guesses.length;
       $('.gl-win-text').textContent = `It’s ${nameOf(r.answer)}. You found it in ${n} ${n === 1 ? 'guess' : 'guesses'}.` +
-        (state.mode === 'daily' ? ` Daily streak: ${liveStreak(state.stats.daily, today)}. A new daily puzzle arrives at midnight New Zealand time.` : '');
+        (state.mode === 'daily' ? ` Daily streak: ${liveStreak(state.stats.daily, today)}.` : '');
       $('.gl-again').textContent = state.mode === 'daily' ? 'Play a practice round' : 'Play again';
     }
     hud.set(`${state.mode==='daily'?`Daily #${r.puzzle}`:'Practice'} · ${r.guesses.length} ${r.guesses.length===1?'guess':'guesses'}`);
@@ -197,7 +197,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   }
   $('.gl-again').addEventListener('click', () => {
     if(paused)return;
-    newRound(); say('New practice round. A different country is hidden.');
+    newRound(); say('New practice round.');
     input.focus({preventScroll: true});
   }, {signal});
   colourBox.addEventListener('change', () => {state.colorBlind = colourBox.checked; persist(); render();}, {signal});
@@ -240,7 +240,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       // The shared daily answer cannot be re-rolled; restart begins a fresh practice round.
       const fromDaily = state.mode === 'daily';
       newRound();
-      say(fromDaily ? 'Today’s daily puzzle is kept. Here is a fresh practice round.' : 'New practice round. A different country is hidden.');
+      say(fromDaily ? 'New practice round. Daily puzzle kept.' : 'New practice round.');
     },
     serialize: () => serializeState(state),
     restore(data) {

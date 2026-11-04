@@ -43,6 +43,7 @@ export class CornClicker {
   private paused=false;private passive=false;private disposed=false;private pausedAt=0;
   private raf=0;private heartbeat=0;private saveTimer=0;
   private amount:BuyAmount=1;
+  private tipsRequested=false;
   private top:Top='cob';private sub:Sub='farm';
   private lastUi=0;private lastSlow=0;private lastAchievements=0;private lastBackup=listBackups()[0]?.at??0;private lastSaved=0;
   private newsIndex=-1;private newsAt=0;
@@ -70,7 +71,7 @@ export class CornClicker {
     container.append(this.root);
     const q=(s:string)=>this.root.querySelector<HTMLElement>(s)!;
     this.el={kernels:q('.cc-kernels-num'),cps:q('.cc-cps'),cpc:q('.cc-cpc'),hudK:q('.cc-hud-k'),hudC:q('.cc-hud-c'),buffs:q('.cc-buffs'),cob:q('.cc-cob'),fx:q('.cc-fx'),pests:q('.cc-pests'),
-      tip:q('.cc-tip'),goal:q('.cc-goal-main'),unlock:q('.cc-goal-unlock'),saved:q('.cc-saved'),ticker:q('.cc-ticker'),news:q('.cc-news'),scene:q('.cc-scene'),farmBar:q('.cc-farm-bar'),
+      tip:q('.cc-tip'),saved:q('.cc-saved'),ticker:q('.cc-ticker'),news:q('.cc-news'),scene:q('.cc-scene'),farmBar:q('.cc-farm-bar'),
       upgrades:q('.cc-upgrades'),upcoming:q('.cc-upcoming'),producers:q('.cc-producers'),golden:q('.cc-golden-layer'),toasts:q('.cc-toasts'),tooltip:q('.cc-tooltip'),
       modal:q('.cc-modal'),card:q('.cc-modal-card'),goals:q('#cc-sub-goals'),stats:q('#cc-sub-stats'),replant:q('#cc-sub-replant'),options:q('#cc-sub-options'),upgCount:q('.cc-upg-count')};
     this.garden=new GardenView(q('#cc-sub-garden'),{
@@ -98,7 +99,6 @@ export class CornClicker {
     <div class="cc-fx" aria-hidden="true"></div></div>
   <button type="button" class="cc-mini cc-face-toggle" aria-pressed="false">Use face texture</button>
   <div class="cc-tip" hidden><p></p><button type="button" class="cc-btn cc-btn-quiet cc-tip-done">Got it</button></div>
-  <div class="cc-goal"><p class="cc-goal-main"></p><p class="cc-goal-unlock" hidden></p></div>
   <p class="cc-saved"></p>
 </section>
 <section class="cc-col cc-mid" id="cc-pane-farm" role="tabpanel" aria-labelledby="cc-tab-farm" aria-label="Farm">
@@ -245,7 +245,7 @@ export class CornClicker {
     let text:string;
     if(this.passive)text='Paused: this farm is open in another tab.';
     else if(!canRetain())text='Storage is blocked or full: progress lasts only for this visit. Use Options → Export to keep it.';
-    else{const ago=(Date.now()-this.lastSaved)/1000;text=this.lastSaved===0?'Autosaves every few seconds.':ago<5?'Saved just now.':`Saved ${duration(ago)} ago.`;}
+    else{const ago=(Date.now()-this.lastSaved)/1000;text=this.lastSaved===0?'':ago<5?'Saved just now.':`Saved ${duration(ago)} ago.`;}
     if(el.textContent!==text)el.textContent=text;
     el.classList.toggle('cc-warn',this.passive||!canRetain());
   }
@@ -270,7 +270,7 @@ export class CornClicker {
   }
   private renderAll(){this.updateCounters();this.updateBuffs();this.updateShop();this.slowUpdate();this.updateGolden();}
   private slowUpdate(){
-    this.updateTabs();this.updateTip();this.updateGoal();this.updateSaved();this.updatePests();this.updateTicker();
+    this.updateTabs();this.updateTip();this.updateSaved();this.updatePests();this.updateTicker();
     if(!this.isHidden('farm')){this.updateScene();this.updateFarmBar();}
     if(!this.isHidden('garden'))this.garden.update();
     if(!this.isHidden('goals'))this.updateGoals();
@@ -720,24 +720,10 @@ export class CornClicker {
     const el=this.el.tip;
     if(!tip){el.hidden=true;delete el.dataset.tip;return;}
     const text=tip.id==='golden'&&matchMedia('(pointer: coarse)').matches?'Tap the golden cob.':tip.text;
-    if(el.dataset.tip!==tip.id||el.querySelector('p')!.textContent!==text){el.dataset.tip=tip.id;el.querySelector('p')!.textContent=text;el.hidden=false;}
+    if(el.dataset.tip!==tip.id||el.querySelector('p')!.textContent!==text){el.dataset.tip=tip.id;el.querySelector('p')!.textContent=text;}
+    el.hidden=!this.tipsRequested;
     this.root.querySelectorAll('.cc-tab').forEach(t=>t.classList.toggle('cc-attention',!!tip.tab&&(t as HTMLElement).dataset.top===tip.tab&&this.top!==tip.tab));
     if(tip.sub)this.root.querySelector(`#cc-subtab-${tip.sub}`)?.classList.toggle('cc-attention',this.sub!==tip.sub);
-  }
-  /** One short line under the cob: what to save for next. The next unlock lives in Goals. */
-  private updateGoal(){
-    const g=this.game,style=this.style(),cps=g.effectiveCps();
-    let goal='';
-    if(g.seedsAvailable()>0&&g.s.life.replants===0)goal=`Replant ready: ${g.seedsAvailable()} seed${g.seedsAvailable()>1?'s':''}`;
-    else if(g.totalOwned()===0)goal=`Next: Farmhand · ${format(g.unitPrice('farmhand',0),style)}`;
-    else{
-      const target=[
-        ...g.availableUpgrades().map(u=>({name:u.name,cost:g.upgradePrice(u)})),
-        ...PRODUCERS.filter(p=>g.revealed(p.id)).map(p=>({name:p.name,cost:g.unitPrice(p.id,g.s.producers[p.id])})),
-      ].sort((a,b)=>a.cost.cmp(b.cost)).find(o=>o.cost.gt(g.s.kernels));
-      if(target)goal=`Next: ${target.name}${cps.isZero()?'':` · ${duration(target.cost.sub(g.s.kernels).div(cps).toNumber())}`}`;
-    }
-    if(this.el.goal.textContent!==goal)this.el.goal.textContent=goal;
   }
   private unlockText():string {
     const g=this.game,style=this.style();
@@ -903,7 +889,6 @@ export class CornClicker {
         <label class="cc-opt"><span>Number style</span><select data-opt="numbers"><option value="short">Short (1.23 M)</option><option value="long">Long (1.23 million)</option><option value="scientific">Scientific (1.23e6)</option></select></label>
         <label class="cc-opt"><span>News ticker</span><input type="checkbox" data-opt="ticker"></label>
         <h3 class="cc-h3">Saving</h3>
-        <p class="cc-muted">The farm saves itself every few seconds and after big purchases. Export a save code to keep a copy or move it to another browser.</p>
         <div class="cc-row"><button type="button" class="cc-btn" data-act="save">Save now</button><button type="button" class="cc-btn cc-btn-quiet" data-act="export">Export save</button><button type="button" class="cc-btn cc-btn-quiet" data-act="import">Import save</button></div>
         <h3 class="cc-h3">Backups</h3><div class="cc-backups"></div>
         <h3 class="cc-h3">Help</h3><div class="cc-row"><button type="button" class="cc-btn cc-btn-quiet" data-act="tutorial">Show tips again</button></div>`;
@@ -963,7 +948,7 @@ export class CornClicker {
       if(act==='save'){this.flushSave();this.toast(canRetain()?'Saved.':'Storage is blocked, so the save only lasts for this visit. Use Export to keep a copy.',canRetain()?'info':'warn');}
       if(act==='export')this.showExport();
       if(act==='import')this.showImport();
-      if(act==='tutorial'){this.game.s.tutorial.clear();this.toast('Tips will appear again as they become relevant.','info');this.requestSave();}
+      if(act==='tutorial'){this.tipsRequested=true;this.game.s.tutorial.clear();this.updateTip();this.toast('Tips enabled.','info');this.requestSave();}
       if(backup){
         const b=listBackups()[Number(backup.dataset.backup)];if(!b)return;
         this.confirm('Restore this backup?',`${b.reason}, saved ${new Date(b.at).toLocaleString()}. Your current farm is backed up first, so you can switch back.`,'Restore backup',()=>{

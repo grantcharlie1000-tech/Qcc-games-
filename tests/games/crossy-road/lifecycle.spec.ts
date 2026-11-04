@@ -1,15 +1,13 @@
 import {test, expect} from '../../fixtures';
 import type {Page} from '../../fixtures';
+import {backToGames, gameAction, pauseGame} from '../../game-menu';
 import {advance, carDeath, expectDeathCard, frames, hook, hop, openGame, SEED, shot, showCard, state} from './helpers';
 
 const SAVE_KEY = 'pocket-arcade:v1:save:crossy-road';
-const backToGames = (page: Page) => page.getByRole('link', {name: 'Back to game library'}).click();
-const gameAction = (page: Page, name: string) => page.getByRole('button', {name, exact: true}).click();
-const pauseGame = (page: Page) => gameAction(page, 'Pause game');
 
-/** Reuses study.spec's robust return: the Games link in the reading view, retried until the view has gone. */
+/** Use the reading view's return link, retried until the view has gone. */
 const returnToGame = async (page: Page) => {
-  const studyView = page.locator('#study-view'), games = page.getByRole('link', {name: 'Games', exact: true}).first();
+  const studyView = page.locator('#study-view'), games = page.getByRole('link', {name: 'Return to previous view', exact: true}).first();
   await expect(async () => {
     if (await studyView.isVisible()) await games.click({timeout: 1000});
     await expect(studyView).toBeHidden({timeout: 1000});
@@ -65,7 +63,6 @@ test('the shell Restart button turns a running run into a fresh ready run', asyn
   expect(after.seed, 'a new run gets a new seed').not.toBe(before.seed);
   await expect(page.locator('#game-score strong')).toHaveText('0');
   await expect(page.locator('#game-level')).toHaveText('Row 0');
-  await expect(page.locator('.hw-hint')).toHaveAttribute('data-gone', 'false');
   await hop(page, 'ArrowUp');
   expect(await state(page)).toMatchObject({row: 1, phase: 'running'});
   expect(errors).toEqual([]);
@@ -231,13 +228,12 @@ test('the restored Continue card takes keyboard focus, so Enter continues', asyn
   expect(errors).toEqual([]);
 });
 
-// Evidence screenshots: the same seed (a road and a river inside its first 12 rows), three hops in, hint gone, no card.
+// Evidence screenshots: the same seed (a road and a river inside its first 12 rows), three hops in, no card.
 async function playfieldShot(page: Page, name: string, viewport?: {width: number; height: number}): Promise<void> {
   const errors = await openGame(page, {viewport});
   const seed = await useRoadAndRiverSeed(page);
   for (let i = 0; i < 3; i++) await hop(page, 'ArrowUp');
   expect(await state(page), `seed ${seed}`).toMatchObject({seed, row: 3, phase: 'running', alive: true});
-  await expect(page.locator('.hw-hint')).toHaveCSS('opacity', '0');
   await expect(page.locator('.hw-layer')).toBeHidden();
   await frames(page, 12); // the camera follows on real time
   await shot(page, name);

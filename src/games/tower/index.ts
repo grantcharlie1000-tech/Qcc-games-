@@ -22,7 +22,7 @@ const game:GameModule={
       end.hidden=state.phase!=='over';
       if(!end.hidden)root.querySelector('.tower-result')!.textContent=`${state.blocks.length-1} floors · ${state.score} points. Your best perfect streak: ${state.bestCombo}.`;
       context.setScore(state.score);context.setLevel(`${state.blocks.length-1} floors`);
-      feedbackText=state.phase==='over'?'No overlap! Your tower is complete.':state.last?.kind==='perfect'?`Perfect${state.combo>1?' ×'+state.combo:''}! Full size preserved.`:state.last?.kind==='cut'?'Overhang trimmed. Keep building!':'Tap when the slab lines up with the tower.';
+      feedbackText=state.phase==='over'?'No overlap. Your tower is complete.':state.last?.kind==='perfect'?`Perfect${state.combo>1?' ×'+state.combo:''}! Full size preserved.`:state.last?.kind==='cut'?'Overhang trimmed.':'Ready';
       context.setStatus(feedbackText);canvas.setAttribute('aria-label',`Stack playfield, ${state.blocks.length-1} floors. ${state.phase==='over'?'Run finished.':'Tap or press Space to drop the moving block.'}`);draw();
     }
     function tick(now:number){if(!paused&&!disposed)state=advance(state,Math.max(0,(now-lastTick)/1000));lastTick=now;}
