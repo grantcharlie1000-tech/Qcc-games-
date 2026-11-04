@@ -1,0 +1,139 @@
+name: Verify combined QCC PRs
+on:
+  push:
+    branches: [diagnostics/qcc-108-114-115-20261104]
+permissions:
+  contents: read
+concurrency:
+  group: qcc-combined-verification
+  cancel-in-progress: false
+jobs:
+  campaign-regression:
+    name: Campaign regression (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    # Package mirrors can be slow; keep this separate from the test's timeout.
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 91d74f3a9e860745d2c9afef96aba9a68981d6c0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Avoid the slow Azure mirror documented in actions/runner-images#12949.
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      # Fast feedback on the dense-board regression; the full suite below
+      # remains mandatory and retains every existing verification step.
+      - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/games/campaigns.spec.ts --reporter=list
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: campaign-${{ matrix.browser }}
+          path: test-results
+  qa-after-screenshots:
+    name: QA after screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 91d74f3a9e860745d2c9afef96aba9a68981d6c0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps chromium
+      - run: xvfb-run -a npm run test:e2e -- --project=chromium tests/e2e/qa-after-screenshots.spec.ts --reporter=list
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-after-screenshots
+          path: test-results
+          if-no-files-found: warn
+  browser-e2e:
+    name: Full browser suite (${{ matrix.browser }} ${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    # Two shards per browser: the single-worker WebKit run outgrew the 75 minute budget.
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 91d74f3a9e860745d2c9afef96aba9a68981d6c0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Avoid the slow Azure mirror documented in actions/runner-images#12949.
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-${{ matrix.browser }}-${{ matrix.shard }}
+          path: |
+            playwright-report
+            test-results
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 91d74f3a9e860745d2c9afef96aba9a68981d6c0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Timing budgets must not compete with other test workers on shared runners.
+      - run: npm test -- --maxWorkers=1
+      - name: Verify native diagnostic helper
+        run: node --test scripts/update-native-trace.test.mjs
+      # Production worker recovery uses Chromium against the built site on port 4618.
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run verify:noindex
+      - name: Verify service worker kill switch and returning-visitor recovery
+        run: npm run verify:offline
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arcade-verification
+          path: |
+            playwright-report
+            test-results
+            docs/evidence/release
+            docs/evidence/article-reading-layout
+            docs/evidence/mauri-branding
