@@ -101,10 +101,10 @@ Uploads are capped at 4 MiB after the browser shrinks them. Each account gets 60
 | Check | Result |
 | --- | --- |
 | `npm run check` (TypeScript) | clean |
-| `npm test` (Vitest, single worker) | 204 files, 4,271 tests passed. The Whetū port then added 151/151 passing in the media, apps, social and chat folders |
+| `npm test` (Vitest, single worker) | 205 files, 4,294 tests passed (commit `dc2989d`) |
 | `npm run build`, `verify:noindex` | pass |
-| Playwright (chromium) | 490 passed, 0 failed, 7 skipped (screenshot generators) across apps, social, chat, accounts, Movies and the shell glass/viewport suites |
-| Backend branch | `check:server`, `build:server`, `tsc` clean; 207 server, social, chat and media tests pass |
+| Playwright (chromium) | 494 passed, 0 failed, 7 skipped (screenshot generators) across apps, social, chat, media, accounts, Movies and the shell glass/viewport suites (commit `dc2989d`) |
+| Backend branch | `check:server`, `build:server`, `tsc` clean; 230 server, netlify, database, social, chat and media tests pass (commit `69cd17d`) |
 
 Four browser tests that already failed on `main` were fixed along the way: Globle overflowed the 390 px layout, two Movies tests had a stale game count, and one Movies test waited for a grid swap that never happens by design.
 
