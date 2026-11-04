@@ -153,7 +153,7 @@ Press feedback on every button: `transform:scale(.97)` on `:active`, 160 ms `--e
 
 ### 3.4 Segmented control `.apps-segmented`
 
-Used for Following | Discover, People | Posts, and nowhere else. `role="tablist"`; each segment `button[role=tab][aria-selected][aria-controls]`. Inside a floating glass group in the top bar (feed) or a plain row (search). Segment: `min-height:36px; padding:0 14px; border-radius:20px; font:600 14px/1 var(--font-sans); color:rgb(255 255 255 / .78)`. Selected: `color:#fff; font-weight:700` plus a sliding indicator `span.apps-segmented-pill` (`background:rgb(255 255 255 / .16); border-radius:20px; box-shadow:inset 0 1px 0 rgb(255 255 255 / .2)`) positioned with `transform:translateX()` and a width set from the selected segment. Arrow keys move between segments (roving `tabindex`). Tapping the selected segment again scrolls the feed to the top and merges any waiting posts.
+Used for Following | Discover, People | Posts, and nowhere else. `role="tablist"`; each segment `button[role=tab][aria-selected][aria-controls]`. Inside a floating glass group in the top bar (feed) or a plain row (search). Segment: `min-height:36px; padding:0 14px; border-radius:20px; font:600 14px/1 var(--font-sans); color:rgb(255 255 255 / .78)`. Segments are equal width: the control is `display:grid; grid-auto-flow:column; grid-auto-columns:1fr; position:relative`. Selected: `color:#fff; font-weight:700` plus a sliding indicator `span.apps-segmented-pill` (`position:absolute; inset:4px auto 4px 4px; width:calc((100% - 8px) / N); background:rgb(255 255 255 / .16); border-radius:20px; box-shadow:inset 0 1px 0 rgb(255 255 255 / .2)`) moved with `transform:translateX(calc(100% * index))`. Arrow keys move between segments (roving `tabindex`). Tapping the selected segment again scrolls the feed to the top and merges any waiting posts.
 
 ### 3.5 Underline tabs `.apps-tabs` (profile)
 
@@ -331,7 +331,7 @@ States of a post:
 phone                                        
 ┌────────────────────────────────────┐       
 │(←)                                 │  back to feed (or history parent)
-│ Post                               │  h1 28/800 (visually 20px? no: use h1 class .apps-title-sm 20/700)
+│ Post                               │  h1.apps-title-sm 20/700
 │ (av) parent · 2h                   │  ancestors (≤20), compact post cards
 │  │   parent body                   │  2px connector line var(--line-strong)
 │ (av) Focused Name                  │  focused post
@@ -378,7 +378,7 @@ phone
   - **Ring** `svg.social-ring` 24×24, `viewBox="0 0 24 24"`, `role="presentation"`: track `circle r=10 fill=none stroke=var(--c-700) stroke-width=2.5`; progress `circle r=10 stroke-width=2.5 stroke-linecap=round transform="rotate(-90 12 12)" stroke-dasharray=62.83 stroke-dashoffset=62.83*(1 - min(n/280,1))`. Colour: `--social-accent` up to 260; `--social-warn` 261–280; `--social-danger` above 280 (full ring). Hidden when the text is empty.
   - **Count** `span.social-count` 13/1 `--font-mono`, tabular, `min-width:3ch; text-align:right`: shown only from 261 (remaining "19" … "0") and over the limit ("-12", `--social-danger`, 700).
   - Publish `.ui-btn.primary` pill, label **"Publish"** (reply mode **"Reply"**). Disabled when: empty with no photos; over 280; a photo is not Ready; already sending (then the label is "Publishing…").
-- Helper line `p.social-helper` 13/1.4 `--c-400`, `min-height:18px`, `aria-live="polite"`, updated at most once a second: "N characters left" (261–280), "Too long by N characters" (`--social-danger`), "Wait for photos to finish uploading", "Write something or add a photo" (only after a Publish attempt). Empty otherwise.
+- Helper line `p.social-helper` 13/1.4 `--c-400`, `min-height:18px`, `aria-live="polite"`, updated at most once a second: "N characters left" (261–280), "Too long by N characters" (`--social-danger`), "Wait for photos to finish uploading", "Write something or add a photo" (only after a Publish attempt). Empty otherwise. One message at a time, in this order: too long, waiting for photos, characters left, the after-attempt hint. The numeric count beside the ring stays visible whatever the helper says.
 - Closing with text or photos: confirm sheet "Discard this post?" with "Keep editing" (secondary) and "Discard" (danger). The draft is kept in memory per mode (new post, or reply keyed by parent id) until published or discarded; never persisted to storage.
 - Success: close the sheet, insert the post at the top of Following (or as the first reply), move focus to it, announce "Post published." in the shell `#announcer`.
 
@@ -387,13 +387,13 @@ phone
 ```
 phone 390                                        
 ┌────────────────────────────────────┐   banner full-bleed, 3:1 (130px at 390), max 200
-│(←)                              (⚙)│   top bar floats over the banner; ⚙ own profile only
+│(←)                              [set]│   top bar floats over the banner; [set] = settings, own profile only
 │▓▓▓▓▓▓▓▓▓▓▓▓ banner ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
 │ (avatar 80)            [Follow] (···)│   avatar overlaps banner by 40, 4px ring var(--c-bg)
 │ Display Name                       │   22/1.2/800
 │ @sam  [Follows you]                │   15 --c-400; chip
 │ Bio text up to 160 chars…          │   15/1.45
-│ Member since March 2026            │   14 --c-400, appIcon('timer')? no icon
+│ Member since March 2026            │   14 --c-400, no icon
 │ 12 following   30 followers        │   numbers 600 --c-100, words --c-400
 │ ┌ Posts ┬ Replies ┬ Photos ┐       │   sticky underline tabs
 │ post cards…                        │
@@ -466,7 +466,7 @@ Snap viewer, send-photo, chat info, report, confirm and message menu are sheets.
 ```
 phone 390×844
 ┌────────────────────────────────────┐
-│(💬 Chat)                            │
+│([chat] Chat)                        │
 │ Chats                              │  h1
 │ Friend requests · 2                │  h2 15/700 --c-300, only when incoming > 0
 │ (av) Aroha  @aroha    [Accept][Decline]│
@@ -480,13 +480,13 @@ phone 390×844
 │ (av) Ana                           │
 │      ✓ Opened · 3h                 │
 │ (av) Rangi                         │
-│      ◎ Received · Mon              │
+│      ◉ Received · Mon              │
 │ (av) Kiri                          │
-│      ⌂+ Request sent               │
+│      [req] Request sent            │
 │ Friends only. Not end-to-end       │  footer note 13 --c-400
 │ encrypted. Reported messages can   │
 │ be read by QCC moderators.         │
-│ (💬 Chats|👤+ Add friend|∷ Apps) (≡)│
+│ ([chat] Chats|[add+] Add|∷ Apps) (≡)│
 └────────────────────────────────────┘
 ```
 
@@ -516,18 +516,18 @@ phone 390×844
 phone 390×844 (island hidden)
 ┌────────────────────────────────────┐
 │(←) ( (av28) Sam            ) (ⓘ)   │  top bar: back · name button · info
-│        ⏲ Messages disappear 24     │  first item: system notice card
+│   [timer] Messages disappear 24    │  first item: system notice card
 │        hours after they're viewed. │
 │        Not end-to-end encrypted.   │
 │              TODAY                 │  date separator
 │ (av20) Sam · 4:02 pm               │  group label, teal name
 │        Kia ora! Are you doing the  │  message
 │        quiz later?                 │
-│        I saved the answers 📌 Saved │  saved message (teal tint)
+│        I saved the answers [pin] Saved│  saved message (teal tint)
 │ (av20) You · 4:05 pm               │  --c-300
 │        Yes, after tea              │
 │        ◇ Photo · Opened            │  my snap, opened
-│      ⏲ You set messages to         │  system line
+│   [timer] You set messages to      │  system line
 │        disappear 7 days after sending.│
 │ (av20) Sam · 4:10 pm               │
 │        ┌──────────────────────┐    │  incoming snap tile (amber)
@@ -536,14 +536,14 @@ phone 390×844 (island hidden)
 │        └──────────────────────┘    │
 │                    ✓ Opened        │  receipt under my last message
 │ ────────────────────────────────── │
-│ (📷) [ Message Sam            ] (➤) │  composer, safe-area bottom
+│ (cam) [ Message Sam           ] (send)│  composer, safe-area bottom
 └────────────────────────────────────┘
 ```
 
 - Top bar: back group (`aria-label="Back to chats"`), a centre glass group `button.chat-peer` (28px avatar + name 15/600, ellipsis, `max-width:calc(100vw - 160px)`, opens chat info, `aria-label="Chat info for Sam"`), and an info button (`appIcon('info')`, `aria-label="Chat info"`). On desktop the same three controls form the pane header (`height:60px; padding:0 12px; border-bottom:1px solid var(--line)`) instead of the top bar.
 - Messages container `div.chat-log[role=log][aria-label="Messages with Sam"][aria-live=polite][aria-relevant=additions]`, `padding:12px 16px` and bottom padding equal to the composer's height. Append new nodes only; never rebuild existing ones (keeps the live region quiet and focus stable).
 - **Retention notice** (first item, always): `div.chat-system.chat-intro` centred, `max-width:300px; margin:8px auto 16px; padding:10px 14px; border-radius:16px; background:var(--c-900); font:13px/1.45 var(--font-sans); color:var(--c-400)`, `appIcon('timer')` 14px. Text follows the mode: "Messages disappear 24 hours after they're viewed. Not end-to-end encrypted." or "Messages disappear 7 days after they're sent. Not end-to-end encrypted."
-- **Date separator** `div.chat-day[role=separator]`: "Today", "Yesterday", then "Mon 2 Nov" (en-NZ weekday short + day + month short), `font:700 11px/1 var(--font-sans); letter-spacing:.08em; text-transform:uppercase; color:var(--c-500)`… no: `--c-400` (text); `text-align:center; margin:20px 0 8px`.
+- **Date separator** `div.chat-day[role=separator]`: "Today", "Yesterday", then "Mon 2 Nov" (en-NZ weekday short + day + month short), `font:700 11px/1 var(--font-sans); letter-spacing:.08em; text-transform:uppercase; color:var(--c-400); text-align:center; margin:20px 0 8px`.
 - **Groups** (consecutive messages from one sender, no more than 10 minutes apart, not split by a system line or day): `section.chat-group` `margin-top:14px`.
   - Label row `div.chat-group-head` `display:flex; gap:8px; align-items:center; height:20px`: 20px avatar, name `font:700 13px/1 var(--font-sans)`, friend `color:var(--chat-text)` (display name), you `color:var(--chat-me)` ("You"), then ` · 4:02 pm` 13/400 `--c-400`.
   - Messages indented `padding-left:28px` (aligned with the name). No side bubbles, no coloured side bars.
@@ -581,7 +581,7 @@ Full-screen dialog: `width:100vw; height:100dvh; max-width:none; max-height:none
 
 ```
 ┌────────────────────────────────────┐
-│ (av28) Sam · 2m           8s (⊗)  │  top overlay: gradient #000a→transparent, 88px
+│ (av28) Sam · 2m           8s (×)  │  top overlay: gradient #000a→transparent, 88px
 │                                    │
 │          [ photo, contain ]        │
 │                                    │
@@ -614,7 +614,7 @@ Full-screen dialog: `width:100vw; height:100dvh; max-width:none; max-height:none
 │ messages and photos are deleted after│
 │ 30 days. Saved messages stay up to   │
 │ 90 days.                             │
-│ 🔒 Not end-to-end encrypted. QCC     │  .menu-note
+│ [lock] Not end-to-end encrypted. QCC │  .menu-note
 │ moderators can read messages that    │
 │ are reported.                        │
 │ [ Report a message              ]    │  .game-button.secondary
@@ -708,7 +708,7 @@ Empty states:
 
 ### 7.4 Confirm sheet `#apps-confirm`
 
-Title, one paragraph, then the destructive button first-in-reading-order last-in-row: "Cancel" (`.game-button.secondary`) and the action (`.game-button.secondary.apps-danger`). Initial focus on Cancel.
+Title, one paragraph, then a button row: "Cancel" (`.game-button.secondary`) first, the action (`.game-button.secondary.apps-danger`) last, side by side (`display:grid; grid-template-columns:1fr 1fr; gap:10px`). Initial focus on Cancel.
 
 | Action | Title | Text | Button |
 | --- | --- | --- | --- |
@@ -744,7 +744,7 @@ This deliberately differs from the reference app: there, direction is an arrow-v
 | snap, theirs, not opened | `status-snap-new` (solid diamond) | New photo | amber, 600 |
 | snap, theirs, opened | `status-snap-received` | Photo viewed | `--c-400` |
 | system | `timer` | Chat settings changed | `--c-400` |
-| none yet (new friendship) | `status-text-received` in `--c-500`… use `--c-400` | You're now friends | `--c-400` |
+| none yet (new friendship) | `status-text-received` | You're now friends | `--c-400` |
 | outgoing request | `status-request` | Request sent | `--c-400` |
 
 The glyph keeps its family colour even when the words are grey. Size 16px in rows, 18–20px in the thread, 14px in receipts. The status glyph SVGs have class `app-status-icon`; set `color` on them, not `fill`.
@@ -770,11 +770,11 @@ The glyph keeps its family colour even when the words are grey. Size 16px in row
 
 One component, `apps-upload`, driven by `src/media/client.ts` stage callbacks. Stages and what the user sees:
 
-| Stage | Trigger | Thumb overlay (72×72 in the composer; full preview in the snap sheet) | Label (11/600, centred; 13px in the snap sheet) | Progress bar |
+| Stage | Trigger | Thumb overlay (72×72 in the composer; full preview in the snap sheet) | Label (11/600, centred at the bottom of the thumb, `padding:0 4px 10px`; 13px in the snap sheet). Stage names are internal; these words are what people see | Progress bar |
 | --- | --- | --- | --- | --- |
-| Compressing | file picked, browser shrink running | scrim `rgb(0 0 0 / .55)` | "Compressing…" | none |
+| Compressing | file picked, browser shrink running | scrim `rgb(0 0 0 / .55)` | "Preparing…" | none |
 | Uploading | XHR started | scrim | "Uploading 42%" | 3px bar at the bottom, `background:var(--social-accent)` (teal in Chat), `transform:scaleX(p)`, `transform-origin:left` |
-| Processing | upload sent, waiting for the server | scrim | "Processing…" | bar full |
+| Processing | upload sent, waiting for the server | scrim | "Checking…" | bar full |
 | Ready | server returned the media id | no scrim; a 20px `check` badge (`background:#fff; color:#000`, top-left) for 1.5 s, then nothing | sr: "Photo ready" | hidden |
 | Failed | any error | scrim `rgb(0 0 0 / .7)`, `alert` 20px `--c-amber` | short reason (below) | hidden |
 
@@ -804,8 +804,8 @@ One component, `apps-upload`, driven by `src/media/client.ts` stage callbacks. S
 - Social feed: top bar (brand, segmented) → new-posts pill (when present) → inline composer (≥1100) → posts in order (inside each: name, handle link, more, body links, media tiles, reply, like, share) → "Show more posts" → FAB → island tabs → menu circle. The FAB is after the feed so it never interrupts reading order.
 - Thread: back → ancestors → focused post → reply prompt → replies → "Show more replies".
 - Chat list: brand → requests (Accept, Decline, more per row) → chat rows → sent requests → note → island.
-- Conversation: back → peer → info → log (links, message option buttons, snap buttons) → jump pill → camera → field → send. Opening a conversation puts focus on the field on fine pointers, on the `h1` (the peer name, visually in the top bar) on coarse pointers so the keyboard doesn't pop up.
-- Sheets: first focus on the first field (compose, report note is not first: first is the category group), otherwise the close button; Escape and focus return as `openSheet` already does.
+- Conversation: back → peer → info → log (links, message option buttons, snap buttons) → jump pill → camera → field → send. Opening a conversation puts focus on the field on fine pointers, and on a visually hidden `h1.sr-only` "Chat with Sam" (`tabindex=-1`, first in the log's parent) on coarse pointers so the on-screen keyboard doesn't pop up.
+- Sheets: first focus on the first control that does the work (compose: the textarea; report: the first category or message radio; confirm: Cancel), otherwise the close button; Escape and focus return as `openSheet` already does.
 - Rings: the shell's keyboard-only rings apply (`theme.css:27,340`). Add `:root[data-input="keyboard"] :is(.social-view,.chat-view) :focus-visible{outline:2px solid #fff;outline-offset:2px}`; text fields keep the inner-ring rule. Posts focused by j/k get `outline:2px solid #fff; outline-offset:-2px` (inside, so it isn't clipped).
 
 ### 11.3 Social keyboard shortcuts (desktop, fine pointer)
@@ -850,7 +850,7 @@ Curves are existing tokens only: `--ease-out` `cubic-bezier(.23,1,.32,1)` (enter
 | 2 | Unlike | Tap on a liked Like (tens/day) | — (state change) | none | — | — | — | — |
 | 3 | Like via `l` key, any j/k move | Keyboard (100+/day) | none: keyboard disqualifies motion | none; focus moves instantly | — | — | — | — |
 | 4 | Count roll | Your own like/unlike changes the visible count by ±1 (tens/day) | State indication | WAAPI on two stacked spans in an `overflow:hidden` box (height 1em): old `translateY(0)→(-100%)` + `opacity 1→0`; new `translateY(100%)→0` + `opacity 0→1` (reverse direction for −1) | 160 ms `--ease-out` | Cancel running roll, show the final number | — | Text swaps instantly |
-| 5 | New-posts / new-message pill | Pill appears after a poll (occasional) | Spatial consistency (content is above / below) | CSS transition on `opacity` and `transform: translateY(-8px)→0` (Social, from above); `translateY(8px)→0` (Chat jump pill, from below); enter via `@starting-style` | enter 200 ms `--ease-out`; exit 150 ms `--ease-out` back to the start offset | Transition retargets | Leaves the way it came | Opacity only… the shell reset kills CSS transitions under reduced motion, so it appears/disappears instantly. Acceptable: no WAAPI fallback needed |
+| 5 | New-posts / new-message pill | Pill appears after a poll (occasional) | Spatial consistency (content is above / below) | CSS transition on `opacity` and `transform: translateY(-8px)→0` (Social, from above); `translateY(8px)→0` (Chat jump pill, from below); enter via `@starting-style` | enter 200 ms `--ease-out`; exit 150 ms `--ease-out` back to the start offset | Transition retargets | Leaves the way it came | Appears and disappears instantly (the shell reset removes the transition); no fallback needed |
 | 6 | Composer ring progress | Every keystroke (100+/day) | none | `stroke-dashoffset` set directly, no transition | — | — | — | — |
 | 7 | Composer ring colour | Crossing 260 or 280 characters (occasional) | State indication | CSS transition `stroke` | 150 ms `--ease` | Retargets | — | Instant colour (shell reset) |
 | 8 | Send message (own) | Send in Chat (tens/day) | Spatial consistency (it came from the composer) | WAAPI on the new `.chat-msg`: `opacity 0→1`, `transform: translateY(8px)→0` | 180 ms `--ease-out` | If another message is sent during it, let both run (each is independent) | — | Appears in place |
@@ -868,7 +868,7 @@ Curves are existing tokens only: `--ease-out` `cubic-bezier(.23,1,.32,1)` (enter
 | 20 | Skeleton shimmer | While loading (constant) | State indication (still loading) | CSS keyframes on `.apps-skeleton::after`: a 40%-wide `linear-gradient(90deg, transparent, rgb(255 255 255 / .06), transparent)` band, `transform: translateX(-100%)→(250%)` | 1200 ms `linear` infinite (constant motion, off the main thread) | Removed with the skeleton | — | Static bars (the shell reset removes the animation) |
 | 21 | Upload progress bar | Upload progress events (occasional) | State indication | CSS transition on `transform: scaleX()` | 120 ms `linear` | Retargets to the latest value | Hides when Processing ends | Instant steps |
 | 22 | Save / unsave in chat | Hold or menu (occasional) | State indication | CSS transition `background-color`, `box-shadow` | 150 ms `--ease` | Retargets | — | Instant |
-| 23 | Segmented control pill, profile tab indicator | Tab change (tens/day) | Spatial consistency | CSS transition on `transform` (translateX) and `width`→ use `transform: scaleX` on a fixed-width pill instead of width | 200 ms `--ease-in-out` | Retargets | — | Instant |
+| 23 | Segmented control pill, profile tab indicator | Tab change (tens/day) | Spatial consistency | CSS transition on `transform: translateX()` only. Segments are equal width, so the pill never changes size (no `width`, no `scaleX`, which would squash its rounded ends) | 200 ms `--ease-in-out` | Retargets | — | Instant |
 | 24 | Button press (Publish, Follow, send, FAB, tiles, actions) | Press (tens/day) | Feedback | CSS `transform: scale(.97)` on `:active` (tiles .97, FAB .95) | 160 ms `--ease-out` | Transition | Release springs back on the same rule | None (shell reset, matching `.ui-btn`) |
 | 25 | Follow ↔ Following | Tap (occasional) | State indication | CSS transition `background-color`, `color`, `border-color` | 150 ms `--ease` | Retargets | — | Instant |
 | 26 | Inline notice | Error or limit (occasional) | Preventing a jarring change | `@starting-style` `opacity 0→1` | 150 ms `--ease-out` | — | Removed instantly | Instant |
