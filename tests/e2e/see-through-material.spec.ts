@@ -96,6 +96,12 @@ test('native start/end cards retain their original game palettes',async({page})=
 test('Corn retains its brown pixel columns and readable cream guidance',async({page})=>{
   await page.goto('/#/game/corn-clicker');
   const tip=page.locator('.cc-col .cc-tip');await expect(tip).toBeAttached();
+  // Tips are opt-in since #101: ask for them from Options before checking them.
+  const farmTab=page.locator('#cc-tab-farm');if(await farmTab.isVisible())await farmTab.click();
+  await page.locator('#cc-subtab-options').click();
+  await page.locator('[data-act=tutorial]').click();
+  const cobTab=page.locator('#cc-tab-cob');if(await cobTab.isVisible())await cobTab.click();
+  await expect(tip).toBeVisible();
   expect(await tip.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,filter:s.backdropFilter,shadow:s.boxShadow};})).toEqual({fill:'rgb(255, 243, 196)',filter:'none',shadow:'none'});
   await expect(page.locator('.cc-col.cc-left')).toHaveCSS('background-image',/radial-gradient.*rgb\(74, 60, 23\).*rgb\(41, 36, 26\)/);
   await expect(page.locator('.cc-col.cc-left')).toHaveCSS('border-top-color','rgb(107, 68, 34)');
@@ -127,9 +133,24 @@ test('native Minesweeper pause retains its opaque green palette and hides the bo
   await expect(page.locator('.ms-board')).toHaveCSS('visibility','visible');
 });
 
+/** Under the suite's software GL, Blockcraft is too slow to screenshot in two phases:
+ * 1) after the menu is usable the engine keeps meshing and drawing chunks (~600ms a frame)
+ *    until streaming completes, which shows as a mesh count that stops moving;
+ * 2) while a menu or screen is open it redraws the world every frame (~300ms at 1366x768).
+ * These assertions measure the HTML panels, so wait for (1) and shrink the canvas for (2). */
+async function quietBlockcraftCanvas(page:Page){
+  const root=page.locator('.blockcraft');
+  let previous='',same=0;
+  await expect.poll(async()=>{const now=(await root.getAttribute('data-meshes'))??'';same=now!==''&&now===previous?same+1:0;previous=now;return same>=4;},{intervals:[500],timeout:90000}).toBe(true);
+  await page.addStyleTag({content:'.blockcraft canvas{width:2px!important;height:2px!important}'});
+  await expect.poll(()=>page.evaluate(()=>new Promise<number>(res=>{let n=0;const s=performance.now();const f=()=>{n++;if(performance.now()-s>600)res(n);else requestAnimationFrame(f)};requestAnimationFrame(f)})),{timeout:30000}).toBeGreaterThan(10);
+}
+
 test('Blockcraft Controls and Advancements retain the original panels and readable labels',async({page})=>{
+  test.setTimeout(240000);
   await page.goto('/#/game/blockcraft');
   await expect(page.locator('.bc-menu [data-act=primary]')).toBeEnabled({timeout:30000});
+  await quietBlockcraftCanvas(page);
   await page.locator('.bc-menu [data-act=controls]').click();
   const controls=page.locator('.bc-menu [data-panel=controls]');await expect(controls).toBeVisible();
   const boxes=await controls.evaluate(e=>{const b=e.getBoundingClientRect();return [...e.querySelectorAll('dt,dd')].slice(0,2).concat([...e.querySelectorAll('.bc-btn')]).map(s=>{const r=s.getBoundingClientRect();return{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(s).color};});});
@@ -186,15 +207,16 @@ test('Blockcraft Controls and Advancements retain the original panels and readab
 test.describe('desktop Statistics glyphs',()=>{
   test.use({viewport:{width:1366,height:768},deviceScaleFactor:1,isMobile:false,hasTouch:false});
   test('Blockcraft Statistics stay legible at DPR1 over light and dark content',async({page})=>{
+    test.setTimeout(150000);
     await page.goto('/#/game/blockcraft');
     await expect(page.locator('.bc-menu [data-act=primary]')).toBeEnabled({timeout:30000});
+    await quietBlockcraftCanvas(page);
     await page.locator('.bc-menu [data-act=advancements]').click();
     await statisticsContrast(page);
   });
 });
 
 async function statisticsContrast(page:Page){
-  test.setTimeout(90000);
   await page.locator('.bc-adv-tab[id$="-statistics"]').click();
   await expect(page.locator('.bc-adv-stats')).toBeVisible();
   await expect(page.locator('.bc-adv-stat-row').first()).toHaveCSS('background-color','rgba(0, 0, 0, 0.06)');
