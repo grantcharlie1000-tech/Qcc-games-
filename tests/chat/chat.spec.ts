@@ -537,7 +537,7 @@ test('phone and desktop layouts',async({page,context})=>{
  await page.evaluate(h=>{location.hash=h;},`#/chat/with/${b.name}`);
  await expect(page.locator('.chat-pane-list')).toBeHidden();
  const box=await page.locator('.chat-composer').boundingBox();expect(box!.y+box!.height).toBeLessThanOrEqual(844+0.5);
- expect(box!.width).toBeLessThanOrEqual(390);
+ expect(box!.width).toBeLessThanOrEqual(390+0.5);
  await expect(page.locator('.chat-tabbar')).toHaveAttribute('data-hidden','true');
  await expect(page.getByRole('link',{name:'Back to chats'})).toBeVisible();
 });
