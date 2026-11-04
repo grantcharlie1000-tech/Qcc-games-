@@ -7,7 +7,7 @@ test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasT
 
 // #92 separates frosted navigation/sheets from the unchanged clear HUD fill.
 const CLEAR_FILL='rgba(8, 12, 18, 0.2)',FILL_RGB=[8,12,18],FILL_ALPHA=.2;
-const NAV_FILL='rgba(8, 12, 18, 0.36)',FROST_FILL='rgba(12, 16, 22, 0.58)',ARCADE_SHEET_FILL='rgba(12, 16, 22, 0.9)';
+const NAV_FILL='rgba(8, 12, 18, 0.36)',LIGHT_FROST_FILL='rgba(12, 16, 22, 0.58)',DARK_FROST_FILL='rgba(12, 16, 22, 0.9)';
 test('navigation, clear controls and frosted sheets retain their intended fills over the live backdrop',async({page})=>{
   await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));
   for(const route of ['collection','study','movies/browse/movie','game/snake']){
@@ -36,11 +36,9 @@ test('navigation, clear controls and frosted sheets retain their intended fills 
         ?{fill:getComputedStyle(gl,'::after').backgroundColor,filter:s.backdropFilter,lensOnly:!e.hasAttribute('data-glass-partial')}
         :{fill:s.backgroundColor,filter:s.backdropFilter,lensOnly:false};
     });
-    // #102 (ff95043) made arcade game sheets and Study's privacy panel a readable
-    // dark .9 fill; the collection section sheet keeps the frost fill.
     // Study retains its article theme. Arcade sheets deliberately use CSS
     // frost, without a sharp WebGL copy over the blur (#92).
-    expect(material.fill,`${route}: sheet`).toBe(route==='study'?'rgba(18, 23, 29, 0.9)':route==='collection'?FROST_FILL:ARCADE_SHEET_FILL);
+    expect(material.fill,`${route}: sheet`).toBe(route==='study'?'rgba(18, 23, 29, 0.9)':route==='collection'?LIGHT_FROST_FILL:DARK_FROST_FILL);
     expect(material.filter,route).toBe(route==='study'?'blur(1.5px)':'blur(20px) saturate(1.5)');
     expect(material.lensOnly,route).toBe(false);
     await page.keyboard.press('Escape');
@@ -90,19 +88,20 @@ test('native start/end cards retain their original game palettes',async({page})=
   // Slither is the deliberate exception to native palettes: #92 frosts it.
   const panel=page.locator('.nc-game .game-sheet-panel');
   await expect(panel).toHaveAttribute('data-glass-mode','blur');
-  await expect(panel).toHaveCSS('background-color',ARCADE_SHEET_FILL);
+  await expect(panel).toHaveCSS('background-color',DARK_FROST_FILL);
   await expect(panel).toHaveCSS('backdrop-filter','blur(20px) saturate(1.5)');
   await expect(panel.locator(':scope>.ui-glass-gl')).toHaveCount(0);
 });
 
 test('Corn retains its brown pixel columns and readable cream guidance',async({page})=>{
   await page.goto('/#/game/corn-clicker');
-  const tip=page.locator('.cc-col .cc-tip');await expect(tip).toBeAttached();
-  // Tips are opt-in since #101: ask for them from Options before checking them.
-  const farmTab=page.locator('#cc-tab-farm');if(await farmTab.isVisible())await farmTab.click();
-  await page.locator('#cc-subtab-options').click();
-  await page.locator('[data-act=tutorial]').click();
-  const cobTab=page.locator('#cc-tab-cob');if(await cobTab.isVisible())await cobTab.click();
+  const tip=page.locator('.cc-col .cc-tip');await expect(tip).toBeHidden();
+  // Tips are opt-in. Reach them through the actual help action before measuring their ink.
+  const sections=page.getByRole('tablist',{name:'Corn Clicker sections',exact:true});
+  await sections.getByRole('tab',{name:'Farm',exact:true}).click();
+  await page.getByRole('tab',{name:'Options',exact:true}).click();
+  await page.getByRole('button',{name:'Show tips again',exact:true}).click();
+  await sections.getByRole('tab',{name:'Cob',exact:true}).click();
   await expect(tip).toBeVisible();
   expect(await tip.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,filter:s.backdropFilter,shadow:s.boxShadow};})).toEqual({fill:'rgb(255, 243, 196)',filter:'none',shadow:'none'});
   await expect(page.locator('.cc-col.cc-left')).toHaveCSS('background-image',/radial-gradient.*rgb\(74, 60, 23\).*rgb\(41, 36, 26\)/);
@@ -135,24 +134,11 @@ test('native Minesweeper pause retains its opaque green palette and hides the bo
   await expect(page.locator('.ms-board')).toHaveCSS('visibility','visible');
 });
 
-/** Under the suite's software GL, Blockcraft is too slow to screenshot in two phases:
- * 1) after the menu is usable the engine keeps meshing and drawing chunks (~600ms a frame)
- *    until streaming completes, which shows as a mesh count that stops moving;
- * 2) while a menu or screen is open it redraws the world every frame (~300ms at 1366x768).
- * These assertions measure the HTML panels, so wait for (1) and shrink the canvas for (2). */
-async function quietBlockcraftCanvas(page:Page){
-  const root=page.locator('.blockcraft');
-  let previous='',same=0;
-  await expect.poll(async()=>{const now=(await root.getAttribute('data-meshes'))??'';same=now!==''&&now===previous?same+1:0;previous=now;return same>=4;},{intervals:[500],timeout:90000}).toBe(true);
-  await page.addStyleTag({content:'.blockcraft canvas{width:2px!important;height:2px!important}'});
-  await expect.poll(()=>page.evaluate(()=>new Promise<number>(res=>{let n=0;const s=performance.now();const f=()=>{n++;if(performance.now()-s>600)res(n);else requestAnimationFrame(f)};requestAnimationFrame(f)})),{timeout:30000}).toBeGreaterThan(10);
-}
-
 test('Blockcraft Controls and Advancements retain the original panels and readable labels',async({page})=>{
-  test.setTimeout(240000);
+  // The live software-rendered world continues behind the native-art captures.
+  test.setTimeout(120000);
   await page.goto('/#/game/blockcraft');
   await expect(page.locator('.bc-menu [data-act=primary]')).toBeEnabled({timeout:30000});
-  await quietBlockcraftCanvas(page);
   await page.locator('.bc-menu [data-act=controls]').click();
   const controls=page.locator('.bc-menu [data-panel=controls]');await expect(controls).toBeVisible();
   const boxes=await controls.evaluate(e=>{const b=e.getBoundingClientRect();return [...e.querySelectorAll('dt,dd')].slice(0,2).concat([...e.querySelectorAll('.bc-btn')]).map(s=>{const r=s.getBoundingClientRect();return{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(s).color};});});
@@ -202,44 +188,68 @@ test('Blockcraft Controls and Advancements retain the original panels and readab
     await maskStyle.evaluate(e=>(e as Element).remove());
     expect(Math.min(...ratios),`${selector}: ${JSON.stringify(ratios)}`).toBeGreaterThanOrEqual(4.5);
   }
-  // The visible book tab opens Statistics without starting or changing a world.
+});
+
+test('mobile Blockcraft Statistics stay legible at DPR3 over light and dark content',async({page})=>{
+  // Keep all four mobile samples independent of the native-art capture budget.
+  // This test inherits the 390×844 touch viewport and DPR3 configured above.
+  test.setTimeout(120000);
+  await page.goto('/#/game/blockcraft');
+  await expect(page.locator('.bc-menu [data-act=primary]')).toBeEnabled({timeout:30000});
+  await page.locator('.bc-menu [data-act=advancements]').click();
+  // Use the visible book tab in the real Advancements panel.
   await statisticsContrast(page);
 });
 
 test.describe('desktop Statistics glyphs',()=>{
   test.use({viewport:{width:1366,height:768},deviceScaleFactor:1,isMobile:false,hasTouch:false});
   test('Blockcraft Statistics stay legible at DPR1 over light and dark content',async({page})=>{
-    test.setTimeout(150000);
     await page.goto('/#/game/blockcraft');
     await expect(page.locator('.bc-menu [data-act=primary]')).toBeEnabled({timeout:30000});
-    await quietBlockcraftCanvas(page);
     await page.locator('.bc-menu [data-act=advancements]').click();
     await statisticsContrast(page);
   });
 });
 
 async function statisticsContrast(page:Page){
+  // Keep this budget local; the live software-rendered world continues under the native panel.
+  test.setTimeout(120000);
   await page.locator('.bc-adv-tab[id$="-statistics"]').click();
-  await expect(page.locator('.bc-adv-stats')).toBeVisible();
+  const panel=page.locator('.bc-adv-stats');await expect(panel).toBeVisible();
   await expect(page.locator('.bc-adv-stat-row').first()).toHaveCSS('background-color','rgba(0, 0, 0, 0.06)');
-  await expect(page.locator('.bc-adv-stats')).toHaveCSS('background-color','rgb(220, 220, 220)');
-  for(const backdrop of ['#000','#fff']){
-    const source=await page.addStyleTag({content:`.bc-screen{background:${backdrop}!important}`});
+  await expect(panel).toHaveCSS('background-color','rgb(220, 220, 220)');
+  const source=await page.addStyleTag({content:'.bc-screen{background:#000!important}'});
+  try{
     for(const selector of ['.bc-adv-stat-name','.bc-adv-stat-empty']){
       const text=page.locator(selector).first();await text.scrollIntoViewIfNeeded();
+      const read=(backdrop:string)=>source.evaluate((style,{selector,backdrop})=>{
+        style.textContent=`.bc-screen{background:${backdrop}!important}`;
+        const panel=document.querySelector('.bc-adv-stats')!,text=panel.querySelector(selector)!;
+        const b=panel.getBoundingClientRect(),r=text.getBoundingClientRect();
+        return{bounds:{x:b.x,y:b.y,width:b.width,height:b.height},
+          box:{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(text).color},
+          background:getComputedStyle(panel).backgroundColor};
+      },{selector,backdrop});
+      const geometry=await read('#000'),{bounds,box}=geometry;
+      // The opaque panel isolates glyph alpha from the outside source. Reuse
+      // this selector's mask, but independently capture both actual backdrops.
       // Whole-panel clips preserve WebKit's fractional glyph raster alignment.
-      const panel=page.locator('.bc-adv-stats'),bounds=(await panel.boundingBox())!,r=(await text.boundingBox())!;
-      const color=await text.evaluate(e=>getComputedStyle(e).color);
+      expect(geometry.background).toBe('rgb(220, 220, 220)');
       const mask=await glyphFillMask(page,panel,selector);
       const hide=await page.addStyleTag({content:`${selector}{-webkit-text-fill-color:transparent!important;text-shadow:none!important}`});
-      const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');
-      await hide.evaluate(e=>e.parentNode?.removeChild(e));
-      const edges=await glyphContrast(page,shot,mask,[{x:r.x-bounds.x,y:r.y-bounds.y,w:r.width,h:r.height,color}],bounds);
-      await test.info().attach('statistics-glyph-contrast',{body:JSON.stringify({selector,backdrop,edges}),contentType:'application/json'});
-      expect(Math.min(...edges),`${selector} over ${backdrop}: ${JSON.stringify(edges)}`).toBeGreaterThanOrEqual(4.5);
+      try{
+        for(const backdrop of ['#000','#fff']){
+          // Mask reuse is valid only while the sampled ink, raster position
+          // and opaque panel remain unchanged after switching the source.
+          expect(await read(backdrop),`${selector} geometry and color over ${backdrop}`).toEqual(geometry);
+          const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');
+          const edges=await glyphContrast(page,shot,mask,[box],bounds);
+          await test.info().attach('statistics-glyph-contrast',{body:JSON.stringify({selector,backdrop,edges}),contentType:'application/json'});
+          expect(Math.min(...edges),`${selector} over ${backdrop}: ${JSON.stringify(edges)}`).toBeGreaterThanOrEqual(4.5);
+        }
+      }finally{await hide.evaluate(e=>e.parentNode?.removeChild(e));}
     }
-    await source.evaluate(e=>(e as Element).remove());
-  }
+  }finally{await source.evaluate(e=>(e as Element).remove());}
 }
 
 for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} transmits uniform dark and light artwork through its intended tint without added white`,async({page})=>{
@@ -248,7 +258,10 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} tra
   // The sheet is the home sheet: over a live game, the WebGL lens samples the
   // canvas itself rather than an injected DOM art layer.
   await page.goto(surface==='dock'?'/#/game/snake':'/#/collection');
-  if(surface==='sheet')await page.locator('.app-navigation .section-menu').click();
+  if(surface==='sheet'){
+    await page.locator('.app-navigation .section-menu').click();
+    await expect.poll(()=>page.locator('#menu').evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0.68)');
+  }
   const selector={bar:'.app-tabbar',menu:'.app-menu',dock:'.game-hud',sheet:'#menu'}[surface];
   const panel=page.locator(selector);await expect(panel).toBeVisible();
   await panel.screenshot({animations:'disabled'});
@@ -307,7 +320,7 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} tra
   const navigation=surface==='bar'||surface==='menu';
   const tone=filtered?{saturate:surface==='sheet'?1.5:navigation?1.4:1.08,brightness:navigation?.94:1,contrast:1}:{saturate:1,brightness:1,contrast:1};
   const fill=surface==='sheet'?{rgb:[12,16,22],alpha:.58}:{rgb:FILL_RGB,alpha:navigation?.36:FILL_ALPHA};
-  if(measured.retention!==null)expect(Math.abs(measured.retention-expectedRetention(['#152431','#f8e6c0'],tone,fill)),JSON.stringify(measured)).toBeLessThanOrEqual(.03);
+  if(measured.retention!==null)expect(Math.abs(measured.retention-expectedRetention(['#152431','#f8e6c0'],tone,fill,surface==='sheet'?.32:1)),JSON.stringify(measured)).toBeLessThanOrEqual(.03);
 });
 
 async function backdropFiltersRender(page:Page){
@@ -319,12 +332,14 @@ async function backdropFiltersRender(page:Page){
   }finally{await reference.close();}
 }
 
-function expectedRetention(colors:string[],tone:{saturate:number;brightness:number;contrast:number},fill:{rgb:number[];alpha:number}){
+function expectedRetention(colors:string[],tone:{saturate:number;brightness:number;contrast:number},fill:{rgb:number[];alpha:number},sourceScale=1){
   const lightness=(rgb:number[])=>{
     const y=rgb.reduce((sum,v,c)=>{const s=v/255;return sum+[.2126,.7152,.0722][c]*(s<=.04045?s/12.92:((s+.055)/1.055)**2.4);},0);
     return y>216/24389?116*Math.cbrt(y)-16:24389/27*y;
   };
-  const [a,b]=colors.map(hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)));
+  const [a,b]=colors.map(hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)*sourceScale));
+  // The shell scrim darkens the source first; then the sheet applies its filter and fill.
+  // Reference screenshots retain that scrim, so their denominator uses the dimmed source too.
   // Filter Effects: saturate matrix, then brightness, then contrast, then the fill.
   const s=tone.saturate,matrix=[[.213+.787*s,.715-.715*s,.072-.072*s],[.213-.213*s,.715+.285*s,.072-.072*s],[.213-.213*s,.715-.715*s,.072+.928*s]];
   const clamp=(v:number)=>Math.min(1,Math.max(0,v));
@@ -361,7 +376,8 @@ test('a sheet uses the same frosted transfer at five heights across a light/dark
   },png);
   const filtered=await backdropFiltersRender(page);
   for(const {height,color} of rows){
-    const original=height<.55?[248,248,248]:[21,36,49];
+    // The real shell backdrop is black at 68%; model it independently before frost.
+    const original=(height<.55?[248,248,248]:[21,36,49]).map(v=>v*.32);
     const s=filtered?1.5:1;
     const matrix=[[.213+.787*s,.715-.715*s,.072-.072*s],[.213-.213*s,.715+.285*s,.072-.072*s],[.213-.213*s,.715-.715*s,.072+.928*s]];
     const saturated=matrix.map(row=>Math.max(0,Math.min(255,row.reduce((sum,k,c)=>sum+k*original[c],0))));

@@ -1,32 +1,50 @@
 import {test,expect} from '../fixtures';
 import {backToGames,gameAction,gameOption} from '../game-menu';
+import type {Page} from '@playwright/test';
 const expand=(page:import('@playwright/test').Page)=>gameAction(page,'Leaderboards');
 const close=(page:import('@playwright/test').Page)=>page.getByRole('button',{name:'Close leaderboards',exact:true}).click();
 const panel=(page:import('@playwright/test').Page)=>page.locator('#leaderboard-dialog');
-type Box={x:number;y:number;width:number;height:number};
-const overlaps=(a:Box,b:Box)=>a.x<b.x+b.width&&b.x<a.x+a.width&&a.y<b.y+b.height&&b.y<a.y+a.height;
-/** Since #93/#94 the desktop panel is a collapsed, fixed bottom-left overlay that never enters the game layout or covers the game menu. */
-async function expectSecondaryPanel(page:import('@playwright/test').Page,id:string,viewport:{width:number;height:number}){
- const side=page.locator('.lb-sidebar');await expect(side,id).toBeVisible();
- await expect(side.locator('.lb-toggle'),id).toHaveAttribute('aria-expanded','false');await expect(side.locator('.lb-panel'),id).toBeHidden();
- const box=(await side.boundingBox())!;
- expect(box.x,id).toBeGreaterThanOrEqual(0);expect(box.x+box.width,id).toBeLessThan(viewport.width/2);
- expect(box.y,id).toBeGreaterThan(viewport.height/2);expect(box.y+box.height,id).toBeLessThanOrEqual(viewport.height);
- const menu=await page.locator('#game-menu').boundingBox();if(menu)expect(overlaps(box,menu),id).toBe(false);
+const sidebar=(page:Page)=>page.locator('.lb-sidebar');
+async function expectCompanionClear(page:Page,board?:string){
+ const companion=(await sidebar(page).boundingBox())!,viewport=page.viewportSize()!;
+ expect(companion.x).toBeGreaterThanOrEqual(0);expect(companion.y).toBeGreaterThanOrEqual(0);
+ expect(companion.x+companion.width).toBeLessThanOrEqual(viewport.width);expect(companion.y+companion.height).toBeLessThanOrEqual(viewport.height);
+ // Main's restored companion is anchored in the bottom-left quadrant.
+ expect(companion.x+companion.width).toBeLessThan(viewport.width/2);expect(companion.y).toBeGreaterThan(viewport.height/2);
+ for(const selector of ['.game-dock',...(board?[board]:[])]){
+  const target=(await page.locator(selector).boundingBox())!;
+  expect(companion.x+companion.width<=target.x||target.x+target.width<=companion.x||companion.y+companion.height<=target.y||target.y+target.height<=companion.y,`Top scores overlaps ${selector}`).toBe(true);
+ }
+ expect(await sidebar(page).evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
 }
 
-test('rankings open from the game menu without taking play space, on desktop and mobile',async({page})=>{
+test('the desktop Top scores companion stays clear of play and the game menu opens rankings on desktop and mobile',async({page})=>{
  await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[{rank:1,playerId:'a'.repeat(64),name:'Extraordinarily Longname',score:1234567}],player:null}}));
  for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
   await page.setViewportSize(viewport);await page.goto('/#/game/snake');
-  await expect(panel(page)).toBeHidden();
-  if(viewport.width>=1160)await expectSecondaryPanel(page,'snake',viewport);else await expect(page.locator('.lb-sidebar')).toBeHidden();
+  await expect(page.locator('.snake-garden')).toBeVisible();await expect(panel(page)).toBeHidden();await expect(sidebar(page)).toHaveCount(1);
+  await expect(sidebar(page).locator('.lb-toggle')).toHaveAttribute('aria-expanded','false');await expect(sidebar(page).locator('.lb-panel')).toBeHidden();
   const view=await page.locator('.game-view').boundingBox();expect(view).toEqual({x:0,y:0,...viewport});
+  // #93 restored an opt-in desktop companion after #86 removed the old rail; #94 moved it bottom-left.
+  if(viewport.width===1440){
+   await expect(sidebar(page)).toBeVisible();await expectCompanionClear(page,'.snake-garden');
+   await sidebar(page).getByRole('button',{name:'Top scores',exact:true}).click();
+   await expect(sidebar(page).locator('.lb-toggle')).toHaveAttribute('aria-expanded','true');await expect(sidebar(page).locator('.lb-panel')).toBeVisible();
+   await expect(sidebar(page).locator('tbody tr').first().locator('td')).toHaveText(['1','Extraordinarily Longname','1,234,567']);
+   await expectCompanionClear(page,'.snake-garden');expect(await page.locator('.game-view').boundingBox()).toEqual(view);
+   await sidebar(page).getByRole('button',{name:'All rankings',exact:true}).click();await expect(panel(page)).toContainText('Extraordinarily Longname');
+   await expect(page.locator('#leaderboard-game')).toHaveValue('snake');await close(page);
+   await sidebar(page).getByRole('button',{name:'Hide top scores',exact:true}).click();
+   await expect(sidebar(page).locator('.lb-toggle')).toHaveAttribute('aria-expanded','false');await expect(sidebar(page).locator('.lb-panel')).toBeHidden();
+   await expectCompanionClear(page,'.snake-garden');
+  }else await expect(sidebar(page)).toBeHidden();
   await expand(page);await expect(panel(page)).toContainText('Extraordinarily Longname');
   expect(await page.locator('.game-view').boundingBox()).toEqual(view);
   expect(await panel(page).evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
   await close(page);await expect(page.locator('#pause-overlay')).toBeHidden();
   await page.reload();await expect(panel(page)).toBeHidden();
+  await expect(sidebar(page).locator('.lb-toggle')).toHaveAttribute('aria-expanded','false');await expect(sidebar(page).locator('.lb-panel')).toBeHidden();
+  if(viewport.width===1440)await expect(sidebar(page)).toBeVisible();else await expect(sidebar(page)).toBeHidden();
  }
  await page.goto('/#/game/pool');await expand(page);await expect(page.locator('#leaderboard-game option[value=pool]')).toHaveCount(0);
 });
@@ -52,8 +70,10 @@ for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','neon
  await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[],player:null}}));
  await page.goto('/#/game/'+id);await expect(page.locator('#game-stage .loading')).toHaveCount(0);
  const view=await page.locator('.game-view').boundingBox();expect(view!.x,id).toBe(0);expect(view!.width,id).toBe(1440);
- await expectSecondaryPanel(page,id,{width:1440,height:900});expect(await page.locator('.game-view').boundingBox(),id).toEqual(view);
- await expand(page);await expect(page.locator('#leaderboard-game')).toHaveValue(id);
+ await expect(sidebar(page)).toBeVisible();await expect(sidebar(page).locator('.lb-toggle')).toHaveAttribute('aria-expanded','false');await expect(sidebar(page).locator('.lb-panel')).toBeHidden();
+ await expectCompanionClear(page);
+ await expand(page);await expect(page.locator('#leaderboard-game')).toHaveValue(id);expect(await page.locator('.game-view').boundingBox()).toEqual(view);
+ await close(page);await expect(sidebar(page).locator('.lb-toggle')).toHaveAttribute('aria-expanded','false');await expect(sidebar(page).locator('.lb-panel')).toBeHidden();
 });
 test('visible rankings stay idle until manual refresh and reopen with fresh results',async({page})=>{
  await page.clock.install();let reads=0;

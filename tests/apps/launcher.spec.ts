@@ -127,10 +127,13 @@ test('Apps tab stays hidden and nothing polls when the chat backend is missing',
  await connect(context,0.05,true);
  const name=`bh_${stamp()}`;await signup(name);
  await page.goto('/');await logIn(page,name);
- // Only the one capability probe reached the chat route; the 404 hides the tab with no gap.
- await expect(page.locator('.app-tabbar .ui-tab')).toHaveCount(6);
- await expect(page.locator('.app-tabbar [data-action=apps]')).toBeHidden();
- expect(await page.locator('.app-tabbar .ui-tab:visible').count()).toBe(5);
+ // A failed probe never inserts Apps: the original five destinations remain, with no empty slot or Menu entry.
+ await expect.poll(()=>summaryRequests).toBe(1);
+ await expect(page.locator('.app-navigation')).not.toHaveAttribute('data-apps','on');
+ await expect(page.locator('.app-tabbar .ui-tab')).toHaveCount(5);
+ await expect(page.locator('.app-tabbar [data-action=apps]')).toHaveCount(0);
+ await expect(page.locator('#menu .menu-apps')).toHaveCount(0);
+ await expect(page.locator('.app-tabbar .ui-tab:visible')).toHaveCount(5);
  await page.waitForTimeout(4000);
  expect(summaryRequests).toBe(1);
  // Direct routes still work and show their own state.
@@ -146,21 +149,33 @@ test('Escape still opens Study from #/social',async({page,context})=>{
  await expect(page.locator('body')).toHaveClass(/study-active/);
 });
 
-for(const width of [320,390,1440])test(`six tabs fit without horizontal overflow at ${width} px width`,async({page,context})=>{
- await connect(context);await page.setViewportSize({width,height:844});await page.goto('/');await guest(page);
- await expect(page.locator('.app-tabbar .ui-tab')).toHaveCount(6);
+for(const available of [true,false])for(const width of [320,390,1440])test(`Apps ${available?'available':'unavailable'} navigation fits without horizontal overflow at ${width} px width`,async({page,context})=>{
+ // The real handler's anonymous JSON 401 enables Apps; an explicit 404 keeps the original shell.
+ await connect(context,undefined,!available);await page.setViewportSize({width,height:844});await page.goto('/');await guest(page);
+ await expect.poll(()=>summaryRequests).toBe(1);
+ if(available)await expect(page.locator('.app-navigation')).toHaveAttribute('data-apps','on');
+ else await expect(page.locator('.app-navigation')).not.toHaveAttribute('data-apps','on');
+ await expect(page.locator('.app-tabbar .ui-tab')).toHaveCount(available?6:5);
+ // When available at 320px, Apps moves into Menu rather than shrinking six hit targets.
+ await expect(page.locator('.app-tabbar .ui-tab:visible')).toHaveCount(available&&width>=360?6:5);
+ const apps=page.locator('.app-tabbar [data-action=apps]');
+ if(!available){await expect(apps).toHaveCount(0);await expect(page.locator('#menu .menu-apps')).toHaveCount(0);}
+ else if(width<360)await expect(apps).toBeHidden();else await expect(apps).toBeVisible();
+ await expect(page.locator('.app-tabbar .tab-tv')).toHaveText('TV Shows');
  const metrics=await page.evaluate(()=>{
-  const bar=document.querySelector<HTMLElement>('.app-tabbar')!,tabs=[...bar.querySelectorAll<HTMLElement>('.ui-tab')],menu=document.querySelector<HTMLElement>('.app-menu')!;
-  const box=bar.getBoundingClientRect(),m=menu.getBoundingClientRect();
+  const bar=document.querySelector<HTMLElement>('.app-tabbar')!,tabs=[...bar.querySelectorAll<HTMLElement>('.ui-tab')].filter(t=>t.getClientRects().length>0),menu=document.querySelector<HTMLElement>('.app-menu')!;
+  const box=bar.getBoundingClientRect(),m=menu.getBoundingClientRect(),tv=bar.querySelector<HTMLElement>('.tab-tv')!;
   return {scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth,barOverflow:bar.scrollWidth-bar.clientWidth,
-   tabsInside:tabs.every(t=>{const r=t.getBoundingClientRect();return r.left>=box.left-1&&r.right<=box.right+1;}),tabW:Math.min(...tabs.map(t=>t.getBoundingClientRect().width)),
-   labels:tabs.map(t=>t.scrollWidth-t.clientWidth),menuGap:m.left-box.right,menuInside:m.right<=innerWidth,tv:getComputedStyle(tabs[2].querySelector('.tab-long')!).display};
+   tabsInside:tabs.every(t=>{const r=t.getBoundingClientRect();return r.left>=box.left-1&&r.right<=box.right+1;}),tabW:Math.min(...tabs.map(t=>t.getBoundingClientRect().width)),tabH:Math.min(...tabs.map(t=>t.getBoundingClientRect().height)),
+   labels:tabs.map(t=>t.scrollWidth-t.clientWidth),menuGap:m.left-box.right,menuInside:m.right<=innerWidth,menuW:m.width,menuH:m.height,tvFontSize:parseFloat(getComputedStyle(tv).fontSize),tvShort:getComputedStyle(tv,'::after').content};
  });
  expect(metrics.scroll).toBeLessThanOrEqual(metrics.client);
  expect(metrics.barOverflow).toBeLessThanOrEqual(1);expect(metrics.tabsInside).toBe(true);expect(metrics.menuInside).toBe(true);
  expect(Math.max(...metrics.labels)).toBeLessThanOrEqual(1);expect(metrics.menuGap).toBeGreaterThanOrEqual(0);
- expect(metrics.tabW).toBeGreaterThanOrEqual(width<360?36:44);
- expect(metrics.tv).toBe(width<440?'none':'block');
+ expect(metrics.tabW).toBeGreaterThanOrEqual(44);expect(metrics.tabH).toBeGreaterThanOrEqual(44);
+ expect(metrics.menuW).toBeGreaterThanOrEqual(44);expect(metrics.menuH).toBeGreaterThanOrEqual(44);
+ if(available&&width>=360&&width<440){expect(metrics.tvFontSize).toBe(0);expect(metrics.tvShort).toBe('"TV"');}
+ else {expect(metrics.tvFontSize).toBeGreaterThan(0);expect(metrics.tvShort).toBe('none');}
  await expect(page.getByRole('link',{name:'TV Shows',exact:true})).toBeVisible();
 });
 
