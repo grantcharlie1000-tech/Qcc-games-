@@ -1,0 +1,47 @@
+name: Verify QCC focus regressions
+on:
+  push:
+    branches: [diagnostics/qcc-focus-53e84e8]
+permissions:
+  contents: read
+concurrency:
+  group: qcc-focus-diagnostic-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  focus:
+    name: Focus regressions (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 53e84e887e239b6c4999277768b81e1f9a73f1dd
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify exact PR head focus ownership
+        run: >-
+          xvfb-run -a npm run test:e2e --
+          tests/movies/auto-next.spec.ts
+          tests/games/flappy-bird/play.spec.ts
+          tests/e2e/qa-priority.spec.ts
+          --project=${{ matrix.browser }} --workers=1 --reporter=list
+          --grep 'keyboard focus in the island|keyboard focus in the separate Menu|explicit player focus after cancelling Up next|keyboard and mouse flap, pause and Study freeze|closing a dialog does not steal a newly focused game canvas'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qcc-focus-${{ matrix.browser }}
+          path: test-results
+          if-no-files-found: warn
