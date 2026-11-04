@@ -1,5 +1,6 @@
 import type {AppDeps,AppView} from '../apps/types';
 import {appIcon} from '../apps/icons';
+import {bindAppsBadge} from '../apps/launcher';
 import {bindGlass} from '../ui/glass';
 import {bindFloatingGroups} from '../ui/floating-controls';
 import {autoHideTabbar} from '../ui/tabbar';
@@ -82,6 +83,7 @@ export class SocialView implements AppView {
  private readonly noticeTimers=new Set<number>();
  private readonly links:Record<'home'|'search'|'activity'|'profile',HTMLAnchorElement>;
  private readonly appsTab:HTMLButtonElement;
+ private readonly offBadge:()=>void;
  readonly ctx:SocialContext;
  constructor(private readonly container:HTMLElement,private readonly deps:AppDeps) {
   const root=this.root;
@@ -106,6 +108,7 @@ export class SocialView implements AppView {
   this.links={home:nav.bar.querySelector('[data-tab=home]')!,search:nav.bar.querySelector('[data-tab=search]')!,activity:nav.bar.querySelector('[data-tab=activity]')!,profile:nav.bar.querySelector('[data-tab=profile]')!};
   this.appsTab=nav.bar.querySelector('[data-action=apps]')!;
   this.appsTab.addEventListener('click',()=>deps.openApps(this.appsTab));
+  this.offBadge=bindAppsBadge(this.appsTab,deps.appsBadge);
   nav.menu.addEventListener('click',()=>deps.openMenu());
   container.replaceChildren(root);
   root.append(this.topbar,this.notices,this.layout,this.fab,nav.root);
@@ -131,7 +134,7 @@ export class SocialView implements AppView {
   document.getElementById('social-photo')?.remove();
   for(const t of this.noticeTimers)clearTimeout(t);this.noticeTimers.clear();
   if(this.focusTimer!==undefined)clearInterval(this.focusTimer);
-  this.offAccounts();this.topGlass?.dispose();this.hideTabbar.dispose();this.menuGlass.dispose();
+  this.offAccounts();this.offBadge();this.topGlass?.dispose();this.hideTabbar.dispose();this.menuGlass.dispose();
   if(this.container.contains(this.root))this.container.replaceChildren();
  }
  // ---- services for screens ----

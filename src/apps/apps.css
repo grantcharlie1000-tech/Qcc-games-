@@ -24,7 +24,7 @@
 }
 .apps-badge{min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:999px;background:var(--app-badge);color:var(--app-badge-ink);font:700 10px/16px var(--font-sans);text-align:center;box-shadow:0 0 0 2px rgb(0 0 0 / .35);pointer-events:none;transition:transform 240ms var(--ease-glass-pop,var(--ease-out)),opacity 240ms var(--ease-out)}
 .apps-badge[hidden]{display:none}
-@starting-style{.apps-badge{transform:scale(.8);opacity:0}}
+@starting-style{.apps-badge[data-pop]{transform:scale(.8);opacity:0}}
 .ui-tab>.apps-badge{position:absolute;top:3px;left:calc(50% + 4px)}
 
 /* ---- Shared QCC Social / Chat components (DESIGN.md section 3) ---- */
@@ -95,9 +95,9 @@
 .apps-radio-row{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px;padding:10px 0;font:400 16px/1.3 var(--font-sans);color:#fff;cursor:pointer}
 .apps-radio-row+.apps-radio-row{border-top:1px solid rgb(255 255 255 / .1)}
 .apps-radio-row input{appearance:none;-webkit-appearance:none;flex:none;width:22px;height:22px;margin:0;border:2px solid rgb(255 255 255 / .55);border-radius:50%;background:none;cursor:pointer;display:grid;place-items:center}
-.apps-radio-row input::after{content:'';width:10px;height:10px;border-radius:50%;background:#fff;transform:scale(0)}
+.apps-radio-row input::after{content:'';width:10px;height:10px;border-radius:50%;background:#fff;opacity:0}
 .apps-radio-row input:checked{border-color:#fff}
-.apps-radio-row input:checked::after{transform:scale(1)}
+.apps-radio-row input:checked::after{opacity:1}
 .apps-radio-row:has(input:focus-visible){outline:2px solid #fff;outline-offset:2px;border-radius:8px}
 .apps-help{margin:12px 0 0;background:rgb(255 255 255 / .07);border:0;font:15px/1.5 var(--font-sans);color:#fff}
 .apps-help[hidden]{display:none}
@@ -147,3 +147,6 @@
 .apps-top .apps-seg-group .apps-segmented-pill{inset:4px auto 4px 4px}
 @media(max-width:380px){.apps-top .apps-seg-group .apps-segmented [role=tab]{min-width:80px;padding:0 10px}}
 @media(hover:hover) and (pointer:fine){.apps-back-btn:hover,.apps-actions-group .apps-icon-btn:hover{background:rgb(255 255 255 / .1)}}
+/* Reduced motion, DESIGN 12.1 row 24: the shell reset already drops the press transition; this drops the press scale itself, as theme.css does for .ui-btn. */
+@media(prefers-reduced-motion:reduce){:is(.apps-icon-btn,.apps-tile,.social-action,.social-fab,.chat-camera,.chat-send,.chat-snap):active{transform:none!important}}
+.reduce-motion :is(.apps-icon-btn,.apps-tile,.social-action,.social-fab,.chat-camera,.chat-send,.chat-snap):active{transform:none!important}

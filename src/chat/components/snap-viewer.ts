@@ -39,6 +39,8 @@ export function openSnapViewer(options:SnapViewerOptions):SnapViewer {
  const controller=new AbortController();
  let state:'loading'|'showing'|'failed'|'closing'|'closed'='loading';
  let url:string|null=null,image:HTMLImageElement|null=null,tick:number|undefined,shownAt=0,deadline=0,consumed=false;
+ /** The open fade and the image's scale-in (rows 11): closing during them cancels them (row 11, interruption). */
+ const opening:Animation[]=[];
 
  const markOpened=()=>{if(consumed)return;consumed=true;options.onOpened();};
  function close():void {
@@ -46,8 +48,12 @@ export function openSnapViewer(options:SnapViewerOptions):SnapViewer {
   const was=state;state='closing';
   if(tick!==undefined){clearInterval(tick);tick=undefined;}
   const finish=()=>{if(dialog.open)dialog.close();else release();};
-  const fade=motion(dialog,[{opacity:1},{opacity:0}],{duration:160,easing:EASE_OUT},ctx.deps.reducedMotion);
-  if(image&&was==='showing')motion(image,[{transform:'scale(1)'},{transform:'scale(.98)'}],{duration:160,easing:EASE_OUT},ctx.deps.reducedMotion);
+  // Start the exit from wherever the open fade had got to, so an early close never flashes to full opacity.
+  const from=Number(getComputedStyle(dialog).opacity);
+  const look=image?getComputedStyle(image):null,scale=!look||look.transform==='none'?1:new DOMMatrixReadOnly(look.transform).a,seen=look?Number(look.opacity):1;
+  for(const a of opening.splice(0))a.cancel();
+  const fade=motion(dialog,[{opacity:from},{opacity:0}],{duration:160,easing:EASE_OUT},ctx.deps.reducedMotion);
+  if(image&&was==='showing')motion(image,[{transform:`scale(${scale})`,opacity:seen},{transform:'scale(.98)',opacity:seen}],{duration:160,easing:EASE_OUT},ctx.deps.reducedMotion);
   if(fade){fade.finished.then(finish,finish);}else finish();
  }
  /** The one place everything is let go, whatever closed the dialog (button, Escape, timer, pause, route change). */
@@ -117,13 +123,15 @@ export function openSnapViewer(options:SnapViewerOptions):SnapViewer {
   if(state!=='loading'||!url)return;
   image=img;state='showing';
   stage.replaceChildren(img);
-  motion(img,[{transform:'scale(.96)',opacity:0},{transform:'scale(1)',opacity:1}],{duration:220,easing:EASE_OUT},ctx.deps.reducedMotion,[{opacity:0},{opacity:1}]);
+  const grow=motion(img,[{transform:'scale(.96)',opacity:0},{transform:'scale(1)',opacity:1}],{duration:220,easing:EASE_OUT},ctx.deps.reducedMotion,[{opacity:0},{opacity:1}]);
+  if(grow)opening.push(grow);
   startCountdown();
  }
  document.body.append(dialog);
  dialog.showModal();
  closeButton.focus({preventScroll:true});
- motion(dialog,[{opacity:0},{opacity:1}],{duration:160,easing:EASE_OUT},ctx.deps.reducedMotion,[{opacity:0},{opacity:1}]);
+ const shown=motion(dialog,[{opacity:0},{opacity:1}],{duration:160,easing:EASE_OUT},ctx.deps.reducedMotion,[{opacity:0},{opacity:1}]);
+ if(shown)opening.push(shown);
  void load();
  return {close,dialog};
 }

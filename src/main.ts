@@ -225,7 +225,7 @@ function returnFromStudy(){
 function appDeps():AppDeps{
   return {accounts,reducedMotion:()=>preferences.reducedMotion,openAccounts:()=>{if(activeId)setPaused(true);accountView.open();},
     openMenu:()=>openMenu(document.querySelector('.section-navigation:not(.app-navigation) [data-action="menu"]')),
-    openApps:trigger=>launcher.open(trigger??undefined)};
+    openApps:trigger=>launcher.open(trigger??undefined),appsBadge:launcher.subscribe};
 }
 async function route(){
   if(!initialized)return;

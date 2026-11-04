@@ -97,7 +97,8 @@ export class PostCard {
   const like=this.likeButton=document.createElement('button');like.type='button';like.className='social-action is-like';like.dataset.action='like';
   like.innerHTML=`<span class="social-like-icon"><span class="social-ring-pulse" aria-hidden="true"></span><span class="social-like-glyph">${appIcon(this.post.liked?'like-filled':'like')}</span></span><span class="social-n social-roll" data-n="likes"><span class="cur"></span></span>`;
   this.likeIcon=like.querySelector<HTMLElement>('.social-like-icon')!;this.countBox=like.querySelector<HTMLElement>('.social-roll')!;
-  like.addEventListener('click',event=>{event.stopPropagation();void this.toggleLike(false);});
+  // Enter or Space on the button (detail 0) is keyboard use: no pulse (DESIGN 12.1 rows 1 and 3).
+  like.addEventListener('click',event=>{event.stopPropagation();void this.toggleLike(event.detail===0);});
   const share=document.createElement('button');share.type='button';share.className='social-action is-share';share.setAttribute('aria-label','Share post');share.innerHTML=appIcon('share');
   share.addEventListener('click',event=>{event.stopPropagation();void this.share();});
   row.append(reply,like,share);return row;

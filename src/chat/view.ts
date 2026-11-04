@@ -1,5 +1,6 @@
 import type {AppDeps,AppView} from '../apps/types';
 import {appIcon} from '../apps/icons';
+import {bindAppsBadge} from '../apps/launcher';
 import {ApiError} from '../apps/api';
 import {reducedMotion,motion,EASE_OUT} from '../apps/motion';
 import {closeAppSheets} from '../apps/sheets';
@@ -59,8 +60,11 @@ export class ChatView implements AppView {
  private offline:HTMLElement|undefined;
  private announceTimer:number|undefined;
  private enter:Animation|null=null;
+ /** The route kind last mounted, so the list only slides back in after a conversation (row 17 exit), not on every visit. */
+ private mountedKind:Route['kind']|null=null;
  private readonly links:Record<'chats'|'add',HTMLAnchorElement>;
  private readonly appsTab:HTMLButtonElement;
+ private readonly offBadge:()=>void;
  readonly ctx:ChatContext;
  constructor(private readonly container:HTMLElement,private readonly deps:AppDeps) {
   const root=this.root;
@@ -84,6 +88,7 @@ export class ChatView implements AppView {
   this.links={chats:nav.bar.querySelector('[data-tab=chats]')!,add:nav.bar.querySelector('[data-tab=add]')!};
   this.appsTab=nav.bar.querySelector('[data-action=apps]')!;
   this.appsTab.addEventListener('click',()=>deps.openApps(this.appsTab));
+  this.offBadge=bindAppsBadge(this.appsTab,deps.appsBadge);
   nav.menu.addEventListener('click',()=>deps.openMenu());
   container.replaceChildren(root);
   root.append(this.topbar,this.notices,this.layout,nav.root);
@@ -111,7 +116,7 @@ export class ChatView implements AppView {
   for(const t of this.noticeTimers)clearTimeout(t);this.noticeTimers.clear();
   if(this.announceTimer!==undefined)clearTimeout(this.announceTimer);
   this.mediaWatchers.clear();
-  this.offAccounts();this.topGlass?.dispose();this.hideTabbar.dispose();this.menuGlass.dispose();
+  this.offAccounts();this.offBadge();this.topGlass?.dispose();this.hideTabbar.dispose();this.menuGlass.dispose();
   if(this.container.contains(this.root))this.container.replaceChildren();
  }
  // ---- services for screens ----
@@ -180,7 +185,7 @@ export class ChatView implements AppView {
   this.root.scrollTo({top:0});
   this.root.dataset.route=this.signedIn()?route.kind:'signed-out';this.root.dataset.wide=String(wide);
   this.buildTop();this.syncChrome();
-  if(!this.signedIn()){this.renderSignedOut();return;}
+  if(!this.signedIn()){this.mountedKind=null;this.renderSignedOut();return;}
   this.loadMedia();
   this.mount();
   if(this.paused){this.store.pause();this.screen?.pause?.();}
@@ -195,14 +200,15 @@ export class ChatView implements AppView {
  }
  private mount():void {
   const route=this.route,wide=this.wideQuery.matches;
-  const phoneList=!wide&&route.kind==='list';
+  const phoneList=!wide&&route.kind==='list',from=this.mountedKind;
+  this.mountedKind=route.kind;
   this.listPane.hidden=!wide&&!phoneList;
   this.mainPane.hidden=phoneList;
   if(wide||phoneList){
    if(!this.listScreen)this.listScreen=new ListScreen(this.ctx,this.listPane,this.store);
    this.listScreen.setActive(route.kind==='with'?route.username:null);
   }
-  if(phoneList){this.screen=this.listScreen;this.animateIn();return;}
+  if(phoneList){this.screen=this.listScreen;if(from==='with')this.animateIn();return;}
   const host=this.mainPane;
   switch(route.kind){
    case 'add':this.screen=new AddScreen(this.ctx,host,this.store,!wide);break;
@@ -218,7 +224,7 @@ export class ChatView implements AppView {
     host.append(missing);this.screen={dispose:()=>missing.remove()};
    }
   }
-  if(route.kind==='with'&&!wide)this.animateIn();
+  if(route.kind==='with'&&!wide&&from!=='with')this.animateIn();
  }
  /** DESIGN 12.1 row 17: going deeper slides in a little; the list mirrors it going back. Phone only. */
  private animateIn():void {

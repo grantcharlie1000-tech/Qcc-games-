@@ -67,7 +67,7 @@ export class Composer {
   svg.setAttribute('class','social-ring');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('role','presentation');
   svg.innerHTML=`<circle class="social-ring-track" cx="12" cy="12" r="10" fill="none" stroke-width="2.5"/><circle class="social-ring-arc" cx="12" cy="12" r="10" fill="none" stroke-width="2.5" stroke-linecap="round" transform="rotate(-90 12 12)" stroke-dasharray="${RING_LENGTH}" stroke-dashoffset="${RING_LENGTH}"/>`;
   this.ring=svg.querySelector('.social-ring-arc')!;
-  this.submit.type='button';this.submit.className='ui-btn primary social-publish';
+  this.submit.type='button';this.submit.className='ui-btn primary apps-pill social-publish';
   this.submit.addEventListener('click',()=>void this.send());
   foot.append(photo,this.file,spacer,this.count,svg,this.submit);
   this.helper.className='social-helper';this.helper.id=`composer-helper-${this.id}`;this.helper.setAttribute('aria-live','polite');

@@ -103,7 +103,7 @@ function fillFriendRow(li:HTMLElement,row:ConversationRow):void {
  const existing=link.querySelector('.chat-unread');
  if(row.unread>0){
   if(existing)existing.textContent=badge(row.unread);
-  else{const count=document.createElement('span');count.className='chat-unread';count.setAttribute('aria-hidden','true');count.textContent=badge(row.unread);link.append(count);}
+  else{const count=document.createElement('span');count.className='chat-unread';count.setAttribute('aria-hidden','true');count.textContent=badge(row.unread);if(li.isConnected)count.dataset.pop='';link.append(count);} // pop only when a shown row gains a count (DESIGN 12.1 row 18), not on every list mount
  }else existing?.remove();
 }
 function makeOutgoingRow(row:RequestRow):HTMLElement {

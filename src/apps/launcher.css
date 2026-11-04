@@ -15,5 +15,3 @@
 #apps-dialog .menu-note{margin-top:14px}
 @media(hover:hover) and (pointer:fine){.apps-tile:hover{background:rgb(255 255 255 / .11)}}
 @media(max-width:359px){#apps-dialog .apps-tiles{gap:8px}.apps-tile{padding:12px;min-height:148px}}
-@media(prefers-reduced-motion:reduce){.apps-tile:active{transform:none}}
-.reduce-motion .apps-tile:active{transform:none}

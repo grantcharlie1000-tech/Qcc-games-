@@ -46,6 +46,8 @@ html:has(body.social-active:not(.study-active)),body.social-active:not(.study-ac
 .social-post{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);scroll-margin-top:var(--app-top)}
 .social-post.is-feed,.social-post.is-reply{cursor:pointer}
 @media(hover:hover) and (pointer:fine){.social-post.is-feed:hover,.social-post.is-reply:hover{background:rgb(255 255 255 / .04)}}
+/* DESIGN 12.1 row 27: hover tints ease in over 150 ms, fine pointers only. */
+@media(hover:hover) and (pointer:fine){.social-post.is-feed,.social-post.is-reply,.social-person,.social-activity-row,.social-menu-item{transition:background-color var(--t-fast) var(--ease)}}
 .social-avatar{display:block;width:44px;height:44px}
 .social-avatar.is-ghost{border:1.5px dashed var(--c-700);border-radius:50%}
 .social-post-main{min-width:0}
@@ -85,14 +87,14 @@ html:has(body.social-active:not(.study-active)),body.social-active:not(.study-ac
 .social-action .ui-icon{width:18px;height:18px}
 .social-action.is-like.is-on{color:var(--social-like)}
 .social-like-icon{position:relative;display:inline-grid;place-items:center}
-.social-like-glyph{display:grid;place-items:center}
+.social-like-glyph{position:relative;display:grid;place-items:center}
 .social-ring-pulse{position:absolute;inset:-3px;border:1.5px solid var(--social-like);border-radius:50%;opacity:0;pointer-events:none}
 .social-roll{position:relative;display:inline-block;min-width:3ch;height:1em;overflow:hidden;line-height:1}
 .social-roll .cur{display:block}
 .social-roll .old{position:absolute;inset:0}
 .social-n:empty{display:none}
-.social-roll:has(.cur:empty):not(:has(.old)){min-width:0;width:0}
-.social-action.is-reply .social-n{min-width:2ch}
+/* Counts keep their width when empty (DESIGN 12.3): the actions line up from post to post, and a 0 to 1 like does not move the row. */
+.social-action .social-n,.social-action .social-n:empty{display:inline-block;min-width:3ch;text-align:left}
 @media(hover:hover) and (pointer:fine){
  .social-action.is-reply:hover{color:var(--social-accent);background:var(--social-accent-soft)}
  .social-action.is-like:hover{color:var(--social-like);background:rgb(255 99 126 / .14)}
@@ -130,7 +132,7 @@ html:has(body.social-active:not(.study-active)),body.social-active:not(.study-ac
 .social-new-pill{position:sticky;top:calc(var(--app-top) + 8px);z-index:5;display:flex;align-items:center;gap:8px;width:max-content;height:36px;margin:0 auto -36px;padding:0 14px;border:0;border-radius:999px;background:var(--social-accent);color:var(--social-accent-ink);font:700 14px/1 var(--font-sans);box-shadow:var(--sh-lg,0 10px 30px rgb(0 0 0 / .5));cursor:pointer;transition:opacity 200ms var(--ease-out),transform 200ms var(--ease-out)}
 .social-new-pill .ui-icon{width:16px;height:16px;transform:rotate(90deg)}
 @starting-style{.social-new-pill{opacity:0;transform:translateY(-8px)}}
-.social-new-pill[data-leaving]{opacity:0;transform:translateY(-8px);transition-duration:150ms}
+.social-new-pill[data-leaving]{opacity:0;transform:translateY(-8px);transition-duration:150ms;pointer-events:none}
 /* Composer */
 .social-composer{display:grid;gap:0;min-width:0}
 .social-textarea{display:block;width:100%;min-height:120px;max-height:40dvh;padding:0;border:0;background:transparent;color:#fff;font:17px/1.4 var(--font-sans);resize:none;outline:none}
@@ -165,6 +167,7 @@ html:has(body.social-active:not(.study-active)),body.social-active:not(.study-ac
 /* Menus */
 .social-popover{position:fixed;z-index:70;min-width:200px;padding:6px;border:1px solid var(--line-strong);border-radius:16px;background:rgb(24 24 27 / .98);box-shadow:0 18px 50px -12px rgb(0 0 0 / .8);transition:opacity 150ms var(--ease-out),transform 150ms var(--ease-out)}
 @starting-style{.social-popover{opacity:0;transform:scale(.97)}}
+.social-popover[data-leaving]{opacity:0;transform:scale(.97);transition-duration:120ms;pointer-events:none}
 .social-menu-item{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:10px;background:none;color:var(--c-100);font:600 15px/1 var(--font-sans);text-align:left;cursor:pointer}
 .social-menu-item .ui-icon{width:20px;height:20px;flex:none}
 .social-menu-item.is-danger{color:var(--c-red)}

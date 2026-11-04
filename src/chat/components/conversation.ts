@@ -42,6 +42,8 @@ export class ConversationScreen implements Screen {
  private readonly wrap=el('div','chat-log-wrap');
  private readonly log=el('div','chat-log');
  private readonly jump=el('button','chat-jump');
+ private jumpShown=false;
+ private jumpTimer:number|undefined;
  private readonly composer=el('form','chat-composer');
  private input!:HTMLTextAreaElement;
  private sendButton!:HTMLButtonElement;
@@ -88,8 +90,8 @@ export class ConversationScreen implements Screen {
   this.headGlass=ctx.wide()?undefined:bindFloatingGroups(this.head);
   this.log.append(skeletonRows(6,'Loading messages…'));
   this.poller=new Poller(signal=>this.poll(signal),POLL_MS.conversation);
-  this.jump.addEventListener('click',()=>{this.scrollToBottom(true);this.jump.hidden=true;});
-  this.log.addEventListener('scroll',()=>{if(!this.jump.hidden&&this.distance()<24)this.jump.hidden=true;},{passive:true});
+  this.jump.addEventListener('click',()=>{this.scrollToBottom(true);this.setJump(false);});
+  this.log.addEventListener('scroll',()=>{if(this.jumpShown&&this.distance()<24)this.setJump(false);},{passive:true});
   this.log.addEventListener('click',this.onClick);
   this.log.addEventListener('contextmenu',this.onContext);
   this.log.addEventListener('pointerdown',this.onPointerDown);
@@ -105,6 +107,7 @@ export class ConversationScreen implements Screen {
  resume():void{this.needFull=true;this.poller.resume();}
  hide():void{this.viewer?.close();this.cancelHold();closeChatMenus();}
  dispose():void {
+  if(this.jumpTimer!==undefined)clearTimeout(this.jumpTimer);
   this.disposed=true;this.generation++;this.loadAbort?.abort();
   this.poller.dispose();this.cancelHold();closeChatMenus();this.viewer?.close();this.viewer=null;
   document.removeEventListener('visibilitychange',this.onVisible);
@@ -242,7 +245,7 @@ export class ConversationScreen implements Screen {
   this.emptyNote?.remove();this.emptyNote=undefined;
   const prev=this.lastItem();
   if(!prev||!sameDay(prev.m.createdAt,m.createdAt)){const day=el('div','chat-day',dayLabel(m.createdAt));day.setAttribute('role','separator');this.log.append(day);}
-  let node:HTMLElement,group:HTMLElement|null=null;
+  let node:HTMLElement,group:HTMLElement|null=null,newGroup=false;
   if(m.kind==='system'){
    node=el('p','chat-system');node.dataset.id=m.id;node.innerHTML=`${appIcon('timer')}<span></span>`;node.querySelector('span')!.textContent=systemLine(m.body);
    this.log.append(node);
@@ -250,6 +253,7 @@ export class ConversationScreen implements Screen {
    const continues=!!prev&&prev.m.kind!=='system'&&prev.m.mine===m.mine&&!!prev.group&&this.log.lastElementChild===prev.group&&sameDay(prev.m.createdAt,m.createdAt)&&Math.abs(Date.parse(m.createdAt)-Date.parse(prev.m.createdAt))<=GROUP_GAP_MS;
    if(continues)group=prev!.group;
    else{
+    newGroup=true;
     group=el('section','chat-group');group.dataset.mine=String(m.mine);
     const headEl=el('h3','chat-group-head');
     const who=m.mine?{username:this.ctx.deps.accounts.session()?.username??'you',avatar:null}:this.friend;
@@ -264,8 +268,9 @@ export class ConversationScreen implements Screen {
   this.items.push(item);this.byId.set(m.id,item);
   if(!item.pending&&(this.lastId===null||bigId(m.id)>bigId(this.lastId)))this.lastId=m.id;
   if(options.animate){
-   const own=m.mine;
-   motion(node,[{opacity:0,transform:`translateY(${own?8:6}px)`},{opacity:1,transform:'none'}],{duration:own?180:200,easing:EASE_OUT,delay:own?0:(options.stagger??0)*40},this.ctx.deps.reducedMotion);
+   // Row 8 (your send: no stagger given) or row 9 (a poll: staggered 40 ms). A message that starts a group brings its name line with it.
+   const sent=options.stagger===undefined,delay=sent?0:options.stagger!*40;
+   motion(newGroup&&group?group:node,[{opacity:0,transform:`translateY(${sent?8:6}px)`},{opacity:1,transform:'none'}],{duration:sent?180:200,easing:EASE_OUT,delay,fill:delay?'backwards':'none'},this.ctx.deps.reducedMotion);
   }
   return item;
  }
@@ -359,7 +364,7 @@ export class ConversationScreen implements Screen {
   }
   this.afterChange();
   if(incoming.length){
-   if(atBottom)this.scrollToBottom(false);else{this.jump.hidden=false;}
+   if(atBottom)this.scrollToBottom(false);else this.setJump(true);
    this.ctx.refreshList();
   }else if(sorted.length&&atBottom)this.scrollToBottom(false);
  }
@@ -378,6 +383,17 @@ export class ConversationScreen implements Screen {
   }
  }
  // ---- scrolling ----
+ /** DESIGN 12.1 row 5: the pill rises 8px into place and leaves the way it came (150 ms) before it is hidden. Showing it again mid-exit retargets the transition. */
+ private setJump(show:boolean):void {
+  if(show===this.jumpShown)return;
+  this.jumpShown=show;
+  if(this.jumpTimer!==undefined){clearTimeout(this.jumpTimer);this.jumpTimer=undefined;}
+  if(show){delete this.jump.dataset.leaving;this.jump.hidden=false;return;}
+  if(this.jump.hidden)return;
+  if(this.ctx.reduced()){this.jump.hidden=true;return;}
+  this.jump.dataset.leaving='true';
+  this.jumpTimer=window.setTimeout(()=>{this.jumpTimer=undefined;this.jump.hidden=true;delete this.jump.dataset.leaving;},150);
+ }
  private distance():number{return this.log.scrollHeight-this.log.scrollTop-this.log.clientHeight;}
  private scrollToBottom(smooth:boolean):void{
   const run=()=>{this.log.scrollTo({top:this.log.scrollHeight,behavior:smooth&&!this.ctx.reduced()?'smooth':'auto'});};

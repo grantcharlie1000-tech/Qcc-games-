@@ -8,7 +8,24 @@ import {uiIcon} from '../ui/icons';
 import {appIcon} from './icons';
 import {pollMs} from './format';
 
-const badgeText=(count:number)=>count>99?'99+':String(count);
+/** DESIGN 3.6: 1-9, then 9+. */
+const badgeText=(count:number)=>count>9?'9+':String(count);
+/** What a badge shows: the count and the words added to the control's accessible name. `pop` is true only when the count has just gone from 0 to 1 or more. */
+export interface AppsBadgeState {total:number;detail:string;pop:boolean}
+export type AppsBadgeSubscribe=(run:(state:AppsBadgeState)=>void)=>()=>void;
+/** Paints one `.apps-badge`. The pop (DESIGN 12.1 row 18) is a `@starting-style` keyed on `data-pop`, so it plays when the count appears, not every time a badge is first drawn (a new island, the launcher opening). */
+function paintBadge(badge:HTMLElement,state:AppsBadgeState):void{
+  const show=state.total>0;
+  if(show&&badge.hidden&&state.pop){badge.dataset.pop='';window.setTimeout(()=>{delete badge.dataset.pop;},400);}
+  badge.hidden=!show;badge.textContent=show?badgeText(state.total):'';
+}
+/** Gives an island's Apps tab (Social, Chat) the same badge and accessible name as the shell's (DESIGN 3.1, 3.6). Returns the unsubscribe. */
+export function bindAppsBadge(tab:HTMLElement,subscribe:AppsBadgeSubscribe):()=>void{
+  const badge=document.createElement('span');badge.className='apps-badge';badge.hidden=true;badge.setAttribute('aria-hidden','true');
+  tab.append(badge);
+  const off=subscribe(state=>{paintBadge(badge,state);tab.setAttribute('aria-label',state.detail?`Apps, ${state.detail}`:'Apps');});
+  return ()=>{off();badge.remove();};
+}
 
 /** The shell's Apps tab, its unread badge and the launcher sheet. */
 export class AppsLauncher {
@@ -24,6 +41,8 @@ export class AppsLauncher {
   private abort:AbortController|undefined;
   private polledToken:string|null=null;
   private disposed=false;
+  private shown=0;
+  private readonly listeners=new Set<(state:AppsBadgeState)=>void>();
   private readonly offAccounts:()=>void;
   constructor(private readonly deps:{accounts:AccountsClient;chat:ChatClient;reducedMotion:()=>boolean}) {
     this.tab.type='button';this.tab.className='ui-tab';this.tab.dataset.action='apps';this.tab.setAttribute('aria-haspopup','dialog');
@@ -51,6 +70,15 @@ export class AppsLauncher {
     this.sync();
   }
   get sheet():HTMLDialogElement{return this.dialog;}
+  /** The badge count for other Apps tabs (the Social and Chat islands). Calls `run` now and on every change. */
+  readonly subscribe:AppsBadgeSubscribe=run=>{
+    this.listeners.add(run);run({...this.state(),pop:false});
+    return ()=>{this.listeners.delete(run);};
+  };
+  private state():Omit<AppsBadgeState,'pop'>{
+    const total=this.unread+this.requests;
+    return {total,detail:total<=0?'':this.requests>0?`${total} new in Chat`:`${this.unread} unread message${this.unread===1?'':'s'}`};
+  }
   open(trigger:Element|null=this.tab):void{
     const hash=location.hash,inApp=document.body.classList.contains('social-active')||document.body.classList.contains('chat-active');
     for(const tile of this.dialog.querySelectorAll<HTMLElement>('.apps-tile')){
@@ -75,7 +103,7 @@ export class AppsLauncher {
     this.disposed=true;this.stop();this.abort?.abort();
     document.removeEventListener('visibilitychange',this.onVisibility);this.offAccounts();
     if(this.dialog.open)this.dialog.close();
-    this.dialog.remove();this.tab.remove();
+    this.listeners.clear();this.dialog.remove();this.tab.remove();
   }
   private readonly onVisibility=()=>this.sync();
   // Polls only while signed in and visible; sign-out or an identity change clears the count.
@@ -93,9 +121,10 @@ export class AppsLauncher {
   private clear():void{this.unread=0;this.requests=0;this.render();}
   private show(unread:number,requests:number):void{this.unread=unread;this.requests=requests;this.render();}
   private render():void{
-    const total=this.unread+this.requests;
-    for(const badge of [this.tabBadge,this.tileBadge]){badge.hidden=total<=0;badge.textContent=total>0?badgeText(total):'';}
-    const detail=total<=0?'':this.requests>0?`${total} new in Chat`:`${this.unread} unread message${this.unread===1?'':'s'}`;
+    const {total,detail}=this.state(),state={total,detail,pop:this.shown<=0&&total>0};
+    this.shown=total;
+    for(const badge of [this.tabBadge,this.tileBadge])paintBadge(badge,state);
+    for(const run of [...this.listeners])run(state);
     this.tab.setAttribute('aria-label',detail?`Apps, ${detail}`:'Apps');
     if(detail)this.chatTile.setAttribute('aria-label',`QCC Chat, ${detail}`);else this.chatTile.removeAttribute('aria-label');
   }
