@@ -184,7 +184,8 @@ test('a fresh profile opens Medium setup; the slider re-themes it; rules open an
   await play.click();await expect(root).toHaveAttribute('data-phase','running');await expect(root.locator('.br-setup')).toBeHidden();
   await expect(root.locator('canvas')).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','0');
   await expect(root.locator('.br-mode-label')).toHaveText('HARD MODE');await expect(root.locator('.br-target-label')).toHaveText('NEW BEST');
-  const {speed,distance}=JSON.parse((await play.getAttribute('data-test-start'))!) as {speed:number;distance:number};
+  // The Play button sits in the setup panel, which is hidden once the run starts: role locators drop hidden elements, so read the same element by its class.
+  const {speed,distance}=JSON.parse((await root.locator('.br-play').getAttribute('data-test-start'))!) as {speed:number;distance:number};
   expect(distance).toBe(0);expect(speed).toBeCloseTo(CONFIG.hard.startSpeed,1);
   await waitDistance(page,15);expect(await data(page,'speed')).toBeGreaterThan(speed);await expect(root.locator('.br-score')).not.toHaveText('0');
   expect(errors).toEqual([]);
@@ -544,6 +545,8 @@ test('lost WebGL visibly saves and remains stopped until exit and re-entry',asyn
   const distance=(await saved(page)).run.distance;
   await frames(page,10);expect((await saved(page)).run.distance).toBe(distance);
   await backToGames(page);await page.getByRole('link',{name:'Play Ball Run',exact:true}).click();
+  // Re-entry rebuilds the WebGL scene, which can outlast the 7s expect window under software GL in CI: wait for the game to show its saved-run panel, then check the control is exposed.
+  await page.waitForFunction(()=>document.querySelector('.ball-run .br-continue:not([hidden])')!==null);
   await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeVisible();expect(await data(page,'distance')).toBeCloseTo(distance,2);
 });
 
