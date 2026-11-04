@@ -86,6 +86,8 @@ export function uploadImage(blob:Blob,purpose:Purpose,token:string|null,options:
   xhr.ontimeout=()=>{done();reject(new ApiError(0,'timeout',TIMEOUT_MESSAGE));};
   xhr.onabort=()=>{done();reject(aborted());};
   signal?.addEventListener('abort',onAbort,{once:true});
-  xhr.send(blob);
+  // Send the bytes, not the Blob: every browser uploads an ArrayBuffer the same way, and WebKit's
+  // request interception (Playwright, devtools) can only see a body that isn't a Blob.
+  blob.arrayBuffer().then(bytes=>{if(signal?.aborted){done();reject(aborted());return;}xhr.send(bytes);},()=>{done();reject(new ApiError(0,'network',NETWORK_MESSAGE));});
  });
 }
