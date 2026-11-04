@@ -1,5 +1,6 @@
 /* QCC Chat (DESIGN.md sections 3.1, 6, 8, 11, 12). Scoped to .chat-view; the snap viewer dialog lives on body. */
-body.chat-active{overflow:hidden}
+/* Study reads in the document while the app stays paused underneath. */
+body.chat-active:not(.study-active){overflow:hidden}
 html:has(body.chat-active:not(.study-active)),body.chat-active:not(.study-active){min-height:100svh;background:var(--c-bg)}
 .chat-view{position:fixed;inset:0 0 auto;height:100dvh;min-height:100svh;z-index:30;overflow:auto;overscroll-behavior:contain;background:var(--c-bg);color:#fff;font:15px/1.45 var(--font-sans);color-scheme:dark;scroll-padding-top:var(--app-top)}
 .chat-view *{box-sizing:border-box}
