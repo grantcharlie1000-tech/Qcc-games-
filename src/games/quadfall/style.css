@@ -73,3 +73,15 @@
 @media(max-height:650px) and (orientation:portrait) and (max-width:599px){.game-view[data-touch-controls=true] .qf-game{--qf-board-h:calc(100cqh - 102px)}.qf-game{--qf-board-h:calc(100cqh - 8px)}}
 
 @media (hover: hover) and (pointer: fine){.game-view[data-touch-controls] .qf-pad{display:none}.game-view[data-touch-controls=true] .qf-game{--qf-board-h:min(760px,calc(100cqh - 8px),calc((100cqw - 308px)*2))}}
+
+/* Clear callout: names T-spins, back-to-back, combos and perfect clears over the upper board. */
+.qf-callout{position:absolute;left:8px;right:8px;top:22%;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;pointer-events:none;opacity:0;text-shadow:0 2px 8px #000b}
+.qf-callout strong{font:800 clamp(18px,7cqw,30px)/1.1 Arcade,system-ui,sans-serif;color:#fff0cf}
+.qf-callout span{font:700 clamp(11px,3.4cqw,14px)/1.3 system-ui,sans-serif;color:#7ee0ff;letter-spacing:.04em}
+.qf-callout span:empty,.qf-callout em:empty{display:none}
+.qf-callout em{font:800 clamp(13px,4cqw,17px)/1.2 system-ui,sans-serif;font-style:normal;color:#ffb46e;font-variant-numeric:tabular-nums}
+.qf-callout.qf-show{animation:qf-callout 1.4s cubic-bezier(.2,.8,.2,1) both}
+.qf-callout.qf-still.qf-show{animation:qf-callout-still 1.4s steps(1,end) both}
+@keyframes qf-callout{0%{opacity:0;transform:translateY(8px) scale(.92)}12%{opacity:1;transform:none}75%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-6px)}}
+@keyframes qf-callout-still{0%,99%{opacity:1}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){.qf-callout.qf-show{animation:qf-callout-still 1.4s steps(1,end) both}}
