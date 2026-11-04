@@ -285,6 +285,49 @@ test('the snap viewer closes when the tab is hidden and when leaving the chat',a
  await expect(page.locator('section.chat-view')).toHaveCount(0);
 });
 
+test('remove friend goes through a confirm sheet',async({page,context})=>{
+ await connect(context,{pollScale:0.05});
+ const a=await user('da'),b=await user('db');await befriend(a,b);
+ await open(page,a.name,`#/chat/with/${b.name}`);
+ await expect(page.locator('.chat-intro')).toBeVisible();
+ await page.getByRole('button',{name:'Chat info',exact:true}).click();
+ await page.locator('#chat-info').getByRole('button',{name:'Remove friend'}).click();
+ const confirm=page.locator('#apps-confirm');
+ await expect(confirm.getByRole('heading',{name:`Remove ${b.name}?`})).toBeVisible();
+ await expect(confirm).toContainText("You won't be able to message each other until one of you sends a new request. Your chat stays until it expires.");
+ await expect(confirm.getByRole('button',{name:'Cancel'})).toBeFocused();
+ await confirm.getByRole('button',{name:'Remove',exact:true}).click();
+ await expect(page).toHaveURL(/#\/chat$/);
+ await expect(page.getByText(`Removed ${b.name}.`)).toBeVisible();
+ await expect(page.locator('a.chat-row').filter({hasText:b.name})).toHaveCount(0);
+ expect((await call(chat,`messages&with=${b.name}`,a.token)).status).toBe(404);
+});
+
+test('Escape closes the snap viewer and revokes the photo URL; the menu button never covers a snap',async({page,context})=>{
+ await connect(context,{pollScale:0.05});
+ await page.addInitScript(()=>{
+  const w=window as unknown as {__revoked:string[];__created:string[]};w.__revoked=[];w.__created=[];
+  const revoke=URL.revokeObjectURL.bind(URL),create=URL.createObjectURL.bind(URL);
+  URL.revokeObjectURL=(u:string)=>{w.__revoked.push(u);revoke(u);};
+  URL.createObjectURL=(o:Blob|MediaSource)=>{const u=create(o);w.__created.push(u);return u;};
+ });
+ const a=await user('oa'),b=await user('ob');await befriend(a,b);
+ await snapFrom(a,b);
+ await open(page,b.name,`#/chat/with/${a.name}`);
+ const tile=page.locator('button.chat-snap');await expect(tile).toBeVisible();
+ await tile.hover();
+ const more=page.locator('.chat-entry[data-kind=snap] .chat-msg-more');
+ const t=(await tile.boundingBox())!,m=(await more.boundingBox())!;
+ expect(m.x).toBeGreaterThanOrEqual(t.x+t.width-0.5);
+ await tile.click();
+ await expect(page.locator('#chat-snap img.chat-snap-img')).toBeVisible();
+ const url=await page.locator('#chat-snap img.chat-snap-img').getAttribute('src');
+ await page.keyboard.press('Escape');
+ await expect(page.locator('#chat-snap')).toHaveCount(0);
+ const w=await page.evaluate(()=>window as unknown as {__revoked:string[]});void w;
+ await expect.poll(()=>page.evaluate(()=>(window as unknown as {__revoked:string[]}).__revoked)).toContain(url);
+});
+
 test('report a message from its menu',async({page,context})=>{
  await connect(context,{pollScale:0.05});
  const a=await user('ra'),b=await user('rb');await befriend(a,b);

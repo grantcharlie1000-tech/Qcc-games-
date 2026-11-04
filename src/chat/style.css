@@ -122,7 +122,8 @@ html:has(body.chat-active:not(.study-active)),body.chat-active:not(.study-active
 .chat-saved{display:inline-flex;align-items:center;gap:4px;margin-left:6px;font:600 12px/1 var(--font-sans);color:var(--chat-accent);white-space:nowrap;vertical-align:baseline}
 .chat-saved .ui-icon{width:14px;height:14px}
 @media(hover:hover) and (pointer:fine){.chat-entry:hover .chat-msg,.chat-entry:focus-within .chat-msg{background:rgb(255 255 255 / .04)}.chat-entry.is-saved:hover .chat-msg{background:var(--chat-saved-bg)}}
-.chat-msg-more{position:absolute;right:-6px;top:-6px;display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:50%;background:rgb(24 24 27 / .96);color:var(--c-300);opacity:0;transition:opacity var(--t-fast) var(--ease)}
+.chat-msg-more{position:absolute;right:-14px;top:-14px;display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:50%;background:rgb(24 24 27 / .96);color:var(--c-300);opacity:0;transition:opacity var(--t-fast) var(--ease)}
+.chat-entry:has(.chat-snap) .chat-msg-more{right:auto;left:100%;top:50%;margin-left:8px;translate:0 -50%}
 .chat-msg-more::before{content:'';position:absolute;inset:-6px}
 .chat-msg-more .ui-icon{width:16px;height:16px}
 .chat-entry:hover .chat-msg-more,.chat-entry:focus-within .chat-msg-more,.chat-msg-more:focus-visible{opacity:1}

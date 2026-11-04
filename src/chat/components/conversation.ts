@@ -18,7 +18,7 @@ const GROUP_GAP_MS=10*60*1000;
 const HOLD_MS=500;
 const HOLD_SLOP=8;
 const NEAR_BOTTOM=120;
-const FULL_EVERY=3;
+const FULL_EVERY=10;
 const COUNT_FROM=900;
 const MAX_STAGGER=3;
 
@@ -59,6 +59,7 @@ export class ConversationScreen implements Screen {
  private lastId:string|null=null;
  private poller:Poller;
  private pollCount=0;
+ private needFull=false;
  private generation=0;
  private sending=0;
  private queue:Promise<void>=Promise.resolve();
@@ -95,15 +96,18 @@ export class ConversationScreen implements Screen {
   for(const type of ['pointerup','pointercancel','pointerleave'] as const)this.log.addEventListener(type,this.cancelHold);
   this.log.addEventListener('pointermove',this.onPointerMove);
   this.offMedia=ctx.onMediaChange(()=>this.syncCamera());
+  document.addEventListener('visibilitychange',this.onVisible);
   void this.load();
  }
+ private readonly onVisible=():void=>{if(document.visibilityState==='visible')this.needFull=true;};
  focusTarget():HTMLElement|null{return fine()?this.input:this.h1;}
  pause():void{this.poller.pause();this.viewer?.close();this.cancelHold();closeChatMenus();}
- resume():void{this.poller.resume();}
+ resume():void{this.needFull=true;this.poller.resume();}
  hide():void{this.viewer?.close();this.cancelHold();closeChatMenus();}
  dispose():void {
   this.disposed=true;this.generation++;this.loadAbort?.abort();
   this.poller.dispose();this.cancelHold();closeChatMenus();this.viewer?.close();this.viewer=null;
+  document.removeEventListener('visibilitychange',this.onVisible);
   this.offMedia();this.headGlass?.dispose();
   this.root.remove();
  }
@@ -362,7 +366,7 @@ export class ConversationScreen implements Screen {
  private async poll(signal:AbortSignal):Promise<void> {
   if(!this.ready||this.sending>0||this.disposed)return;
   const generation=this.generation;
-  const full=this.lastId===null||++this.pollCount%FULL_EVERY===0;
+  const full=this.lastId===null||this.needFull||++this.pollCount%FULL_EVERY===0;this.needFull=false;
   try{
    const view=await this.ctx.client.messages(this.username,full?null:this.lastId,signal);
    if(signal.aborted||this.disposed||generation!==this.generation||this.sending>0)return;
