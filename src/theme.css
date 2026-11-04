@@ -285,7 +285,7 @@
   --ease-out:cubic-bezier(.23,1,.32,1);
   --sheet-from-scale:.98;--sheet-from-lift:28px;
   box-sizing:border-box;width:calc(100% - 16px);max-width:none;max-height:min(85dvh,calc(100dvh - 24px - env(safe-area-inset-top)));
-  margin:auto auto calc(8px + env(safe-area-inset-bottom));padding:20px;overflow:auto;overscroll-behavior:contain;
+  margin:auto;padding:20px;overflow:auto;overscroll-behavior:contain;
   border-radius:32px;
   color:#fff;font-family:var(--font-sans);
   transform-origin:var(--sheet-origin,50% 100%);
@@ -307,7 +307,7 @@
 @starting-style{.ui-glass-sheet[open]{opacity:0;scale:var(--sheet-from-scale);translate:0 var(--sheet-from-lift)}}
 /* The dim is a plain fade with no blur: it fades in over 220 ms and out over 160 ms. */
 .ui-glass-sheet::backdrop{background-color:rgb(0 0 0 / 0);transition:background-color 160ms var(--ease-out)}
-.ui-glass-sheet[open]::backdrop{background-color:transparent;transition-duration:220ms}
+.ui-glass-sheet[open]::backdrop{background-color:rgb(0 0 0 / .68);transition-duration:220ms}
 @starting-style{.ui-glass-sheet[open]::backdrop{background-color:rgb(0 0 0 / 0)}}
 /* Content, scoped to the sheet. Where style.css targets the same element at equal specificity, a rule names the sheet twice to win. */
 .ui-glass-sheet h2,.ui-glass-sheet .dialog-head h2{margin:0;font:600 20px/1.25 var(--font-sans);letter-spacing:-.01em;color:#fff}

@@ -55,13 +55,14 @@ const tabbar=autoHideTabbar(document.querySelector<HTMLElement>('.app-tabbar')!,
 bindGlass(document.querySelector<HTMLElement>('.app-menu')!);
 const preferences=store.settings();
 const accounts=new AccountsClient();
-const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry);
+const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry,()=>{if(!initialized){accounts.guest();finishEntry();}else if(accountRoutePending&&!study.isOpen){accountRoutePending=false;void route();}else dialogClosed();});
 const leaderboards=new LeaderboardView(()=>{pausedForDialog=false;if(activeId)setPaused(true);accountView.open();});
 let gameMenu:HTMLDialogElement|undefined;
 let gameChrome:ReturnType<typeof bindGameChrome>|undefined;
 let leaderboardSidebar:LeaderboardSidebar|undefined;
 let onlyFavourites=false, search='', instance:GameInstance|undefined, activeId:GameId|undefined;
 let paused=false, generation=0, autosave:number|undefined, pausedForDialog=false;
+let firstRoutePending=false;
 let initialized=false, resumeAfterStudy=false, focusBeforeStudy:HTMLElement|null=null, scrollBeforeStudy={x:0,y:0};
 let focusLabelBeforeStudy:string|null=null;
 let accountRoutePending=false;
@@ -88,9 +89,12 @@ function syncViewportLock(){
 const study=new StudyView(()=>{
   updateStudySummary();
   if(!initialized){
-    initialized=true;study.hide();showArcade();void route();
+    initialized=true;firstRoutePending=true;study.showArticle(studyMessage(true));
   }else study.showArticle(studyMessage(true));
-}, returnFromStudy);
+}, returnFromStudy, undefined, hash=>{
+  initialized=true;firstRoutePending=false;
+  if(location.hash===hash)void route();else location.hash=hash;
+});
 
 store.probeStorage();
 function storageStatus(){
@@ -138,7 +142,7 @@ function library(){
   const items=games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.toLowerCase()));
   const filtered=onlyFavourites||search!=='';
   // The notice text is user input, so it is filled in with textContent below, never through this template.
-  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
+  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" data-game-id="${g.id}" href="${entryHash(g.id)}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
   if(filtered){
     content.querySelector<HTMLElement>('.library-filter-text')!.textContent=filterNotice();
     content.querySelector('[data-action="show-all"]')!.addEventListener('click',showAllGames);
@@ -200,6 +204,7 @@ function openStudy(advance=false){
 function returnFromStudy(){
   if(!initialized)return;
   study.hide();showArcade();updateStudySummary();
+  if(firstRoutePending){firstRoutePending=false;void route();return;}
   if(accountRoutePending){accountRoutePending=false;resumeAfterStudy=false;focusBeforeStudy=null;void route();return;}
   if(resumeAfterStudy&&!document.hidden)setPaused(false);
   resumeAfterStudy=false;
@@ -215,6 +220,7 @@ function returnFromStudy(){
 
 async function route(){
   if(!initialized)return;
+  firstRoutePending=false;
   tabbar.reset();
   accountRoutePending=false;
   // Explicit browser/hash navigation leaves the reading view as well as the old game.
@@ -474,7 +480,7 @@ accounts.onChange(()=>{
  updateAccountMenu();
  if(activeId)document.querySelector('#favourite-game')?.setAttribute('aria-pressed',String(store.favourites().includes(activeId)));
  if(identity){for(const game of [...SCORED_GAMES.filter(id=>id!=='minesweeper'),...MINESWEEPER_RANKINGS])leaderboards.sync.queue(game,Math.floor(store.read<number>('best:'+game,0)));if(changed&&!document.hidden)void leaderboards.sync.flush().catch(()=>{});}
- if(changed&&initialized&&!accountView.root.open){if(study.isOpen)accountRoutePending=true;else void route();}
+ if(changed&&initialized){if(study.isOpen||accountView.root.open)accountRoutePending=true;else void route();}
 });
 document.querySelector('#sync-account')!.addEventListener('click',()=>{save();void Promise.all([accounts.flush(),leaderboards.sync.flush()]).catch(()=>{});});
 document.querySelector('#open-accounts')!.addEventListener('click',()=>{menu.close();accountView.open();});

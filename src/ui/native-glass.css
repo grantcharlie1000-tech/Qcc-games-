@@ -28,7 +28,7 @@ html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dial
   text-shadow:none;
   box-shadow:inset 0 1px 0 rgb(255 255 255 / .4),0 6px 24px -6px rgb(0 0 0 / .14);
 }
-html body #study-view .study-privacy .study-privacy-dialog::backdrop{background:transparent}
+html body #study-view .study-privacy .study-privacy-dialog::backdrop{background:rgb(0 0 0 / .68)}
 html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog) :is(p,label,h2,button,span,strong){color:inherit;text-shadow:inherit}
 html body #study-view .study-privacy .study-privacy-actions button{background:rgb(0 0 0 / .13)!important}
 

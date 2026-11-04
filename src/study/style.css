@@ -25,3 +25,5 @@
 /* Preferences float above the page without reserving a layout section. */
 #study-view .study-cookie-panel{position:fixed;z-index:30;left:16px;bottom:16px;width:360px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);overflow:auto;margin:0;box-sizing:border-box;box-shadow:0 12px 45px #24132f26}
 .study-games-sentence a{display:inline;min-height:0;line-height:inherit}
+
+.study-sections{display:flex;gap:4px;overflow-x:auto;padding:8px 12px;background:#fff;border-bottom:1px solid #b8aaba;position:relative;z-index:2}.study-sections a,.study-sections span{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 14px;border-radius:8px;white-space:nowrap;color:#39274c!important;font:600 14px system-ui,sans-serif}.study-sections [aria-current=page]{background:#e8dff2}

@@ -36,7 +36,7 @@ html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[dat
 .arcade-sheet.ui-glass-sheet{--sheet-from-scale:.98;--sheet-from-lift:18px}
 @media(min-width:640px){.arcade-sheet.ui-glass-sheet{--sheet-from-scale:.96;--sheet-from-lift:8px}}
 .arcade-sheet.ui-glass-sheet[open]{transition-duration:160ms,320ms,320ms,320ms,320ms}
-.arcade-sheet.ui-glass-sheet[open]::backdrop{background-color:transparent}
+.arcade-sheet.ui-glass-sheet[open]::backdrop{background-color:rgb(0 0 0 / .68)}
 /* Keep the paused artwork visible; this does not resume the game or alter its state. */
 body:has(.arcade-sheet[open]) #pause-overlay{opacity:0;pointer-events:none}
 .arcade-sheet :is(h1,h2,h3,.dialog-head h2,.game-metrics strong){color:var(--sheet-ink);font-family:var(--font-sans);letter-spacing:-.02em}
@@ -164,3 +164,6 @@ body.in-game .mp-card .game-button.secondary{background:var(--sheet-control);col
 /* Hide the scrollbar while retaining menu scrolling. */
 .arcade-sheet{scrollbar-width:none}
 .arcade-sheet::-webkit-scrollbar{display:none}
+
+.arcade-sheet :is(input:not([type=checkbox]),.game-button.secondary){border:2px solid #aeb2ba;background:#292e38;color:#fff}
+.arcade-sheet .account-tabs button[aria-pressed=true]{background:#45546a;color:#fff;border-color:#fff}
