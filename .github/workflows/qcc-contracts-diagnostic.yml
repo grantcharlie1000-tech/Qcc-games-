@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: c42eea6769a0d34ac7d8a0233ce57cc1e54bd21c
+          ref: e949df2c93fa8a3a16794dc89b6a89ed01dc7860
       - run: git rev-parse HEAD
       - uses: actions/setup-node@v4
         with:
