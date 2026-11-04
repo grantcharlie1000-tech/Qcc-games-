@@ -19,7 +19,7 @@ const fields:Record<GameId,Field[]>={
   'corn-clicker':[{label:'Kernels',source:'.cc-kernels-num'},{label:'Per second',source:'.cc-cps'}],
   slipline:[{label:'',source:'.sl-level'},{label:'',source:'.sl-hearts',attribute:'aria-label'}],
   quadfall:[score,level], claimline:[score,level], fivefold:[{label:'',source:'.ff-puzzle'}],
-  'crossy-road':[score]
+  'crossy-road':[score], 'quad-clash':[score,level]
 };
 
 type Choice={selector:string;label?:string};

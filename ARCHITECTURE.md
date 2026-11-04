@@ -79,3 +79,7 @@ Fivefold fills the stage with a responsive DOM board and keyboard. Its determini
 ## Claimline
 
 Claimline is a canvas territory-capture game against six local bots in one circular arena. It fills the stage, and its score is the human's peak share in hundredths of a percent, shown as a percentage. It is a scored game on the shared leaderboard. Until the `20261102090000_claimline_leaderboard.sql` migration is applied in production, the server answers its score submissions with 409 `leaderboard-not-open`. `LeaderboardSync` then keeps the score queued for that game only and retries quietly, so the board starts filling by itself once the migration lands. See [its spec](src/games/claimline/SPEC.md).
+
+## Quad Clash
+
+`src/games/quad-clash/` is an original first-person arena shooter on the QCC campus against seven bots (see its [SPEC](src/games/quad-clash/SPEC.md)). It is a full-bleed Three.js reference game like Crossy Road. The match simulation (`sim.ts`, `bots.ts`, `physics.ts`, `nav.ts`) is pure and deterministic at 60 Hz, and the whole running match is saved in the shell snapshot. Desktop play uses pointer lock: Esc frees the mouse and pauses through `context.setPaused`. Touch play has its own stick and buttons. Its score is match points, and it is on the shared leaderboard once `20261104090000_quad_clash_score.sql` is applied (until then submissions queue, as described for Claimline).

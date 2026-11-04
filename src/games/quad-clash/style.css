@@ -1,0 +1,269 @@
+/* Quad Clash: full-bleed WebGL scene with a DOM HUD. All selectors are namespaced to .quad-clash / .qc-. */
+.game-view[data-game-id=quad-clash]{--scene-width:var(--play-width,100vw);--scene-bg:#1d2f5c}
+.quad-clash{--qc-gold:#ffc23d;--qc-navy:#1d2f5c;--qc-ink:#fff;--qc-top:calc(max(8px,env(safe-area-inset-top)) + 66px);position:relative;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;isolation:isolate;background:#1d2f5c;color:var(--qc-ink);font:15px/1.4 var(--font-sans,system-ui,sans-serif);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.qc-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none;cursor:crosshair}
+:root[data-input="keyboard"] .qc-canvas:focus-visible{outline:2px solid var(--qc-gold);outline-offset:-2px}
+.quad-clash[data-locked=true] .qc-canvas{cursor:none}
+.qc-fallback{display:grid;place-items:center;align-content:center;gap:8px;height:100%;padding:24px;text-align:center}
+.qc-fallback h2{margin:0;font:800 24px/1.2 Arcade,sans-serif;color:var(--qc-gold)}
+.qc-fallback p{margin:0 0 8px;max-width:300px;color:#d8d6cc}
+
+/* ---------- HUD ---------- */
+.qc-hud{position:absolute;inset:0;z-index:2;pointer-events:none;display:none;text-shadow:0 1px 2px rgb(0 0 0 / .55)}
+.quad-clash[data-hud=true] .qc-hud{display:block}
+.qc-status{position:absolute;left:12px;top:var(--qc-top);display:grid;gap:6px;max-width:min(62vw,420px)}
+.qc-mode{display:flex;align-items:center;gap:8px;font:700 12px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;opacity:.92}
+.qc-timer{padding:4px 8px;border-radius:999px;background:rgb(10 16 32 / .55);font:700 15px/1 var(--font-sans);font-variant-numeric:tabular-nums;letter-spacing:0}
+.qc-scores{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px}
+.qc-team{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;background:rgb(10 16 32 / .55);white-space:nowrap}
+.qc-team strong{font-size:16px;font-variant-numeric:tabular-nums}
+.qc-team b{font-size:11px}
+.qc-team-0 b,.qc-mark.qc-team-0{color:#ffc23d}
+.qc-team-1 b,.qc-mark.qc-team-1{color:#7fa9ff}
+.qc-team.qc-yours{box-shadow:inset 0 0 0 2px var(--qc-gold)}
+.qc-goal{font-size:11px;opacity:.75}
+.qc-zone{padding:5px 10px;border-radius:10px;background:rgb(10 16 32 / .6);font-size:12px;font-weight:600}
+.qc-zone[data-owner="0"]{box-shadow:inset 3px 0 0 #ffc23d}
+.qc-zone[data-owner="1"]{box-shadow:inset 3px 0 0 #4d8bff}
+.qc-zone[data-owner="-2"]{box-shadow:inset 3px 0 0 #ff4d6a}
+.qc-feed{position:absolute;right:12px;top:var(--qc-top);display:grid;justify-items:end;gap:4px;margin:0;padding:0;list-style:none;max-width:min(56vw,360px)}
+.qc-feed li{padding:4px 9px;border-radius:8px;background:rgb(10 16 32 / .55);font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;transition:opacity .6s}
+.qc-feed li.qc-mine{background:rgb(255 194 61 / .85);color:#1b1404;text-shadow:none}
+.qc-feed li.qc-fade{opacity:0}
+
+.qc-cross{--gap:8px;position:absolute;left:50%;top:50%;width:0;height:0}
+.qc-cross i{position:absolute;background:#fff;box-shadow:0 0 0 1px rgb(0 0 0 / .55);border-radius:1px}
+.qc-cross .t,.qc-cross .b{left:-1px;width:2px;height:9px}
+.qc-cross .l,.qc-cross .r{top:-1px;width:9px;height:2px}
+.qc-cross .t{bottom:var(--gap)}.qc-cross .b{top:var(--gap)}
+.qc-cross .l{right:var(--gap)}.qc-cross .r{left:var(--gap)}
+.qc-cross .d{left:-1.5px;top:-1.5px;width:3px;height:3px;border-radius:50%}
+.qc-hit{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0}
+.qc-hit i{position:absolute;width:10px;height:2px;background:#fff;box-shadow:0 0 0 1px rgb(0 0 0 / .5)}
+.qc-hit i:nth-child(1){left:6px;top:6px;transform:rotate(45deg)}.qc-hit i:nth-child(2){right:6px;top:6px;transform:rotate(-45deg)}
+.qc-hit i:nth-child(3){left:6px;bottom:6px;transform:rotate(-45deg)}.qc-hit i:nth-child(4){right:6px;bottom:6px;transform:rotate(45deg)}
+.qc-hit[data-kind=head] i{background:#ffc23d}
+.qc-hit[data-kind=kill] i{background:#ff4d6a;width:14px}
+.qc-name{position:absolute;left:50%;top:calc(50% + 30px);transform:translateX(-50%);font:700 13px/1 var(--font-sans);color:#ff8f8f;white-space:nowrap}
+.qc-name[data-friendly=true]{color:#9fe0ff}
+.qc-toast{position:absolute;left:50%;top:26%;transform:translateX(-50%);display:grid;justify-items:center;gap:2px;opacity:0;text-align:center;max-width:calc(100% - 24px)}
+.qc-toast strong{font:400 26px/1.1 Arcade,var(--font-sans);color:var(--qc-gold);letter-spacing:.02em}
+.qc-toast span{font-size:14px;font-weight:600}
+
+.qc-damage{position:absolute;inset:0}
+.qc-vignette{position:absolute;inset:0;opacity:0;background:radial-gradient(ellipse at center,transparent 45%,rgb(220 30 40 / .55) 100%)}
+.qc-arc{position:absolute;left:50%;top:50%;width:220px;height:220px;border-radius:50%;opacity:0;transform:translate(-50%,-50%);background:conic-gradient(from -20deg,rgb(255 60 60 / .9) 0 40deg,transparent 40deg);-webkit-mask:radial-gradient(circle,transparent 92px,#000 94px,#000 108px,transparent 110px);mask:radial-gradient(circle,transparent 92px,#000 94px,#000 108px,transparent 110px)}
+.qc-scope{position:absolute;inset:0;background:radial-gradient(circle at center,transparent 0,transparent min(36vh,36vw),#05080f calc(min(36vh,36vw) + 2px))}
+.qc-scope[hidden]{display:none}
+.qc-scope-ring{position:absolute;left:50%;top:50%;width:min(72vh,72vw);height:min(72vh,72vw);transform:translate(-50%,-50%);border-radius:50%;box-shadow:inset 0 0 0 3px #05080f,inset 0 0 40px rgb(0 0 0 / .5);background:linear-gradient(#05080f,#05080f) center/2px 100% no-repeat,linear-gradient(#05080f,#05080f) center/100% 2px no-repeat}
+
+.qc-vitals{position:absolute;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);display:grid;justify-items:center;gap:6px;width:min(260px,44vw)}
+.qc-vitals .qc-health{width:100%}
+.qc-health{position:relative;height:26px;border-radius:999px;background:rgb(10 16 32 / .6);overflow:hidden;box-shadow:inset 0 0 0 2px rgb(255 255 255 / .25)}
+.qc-health-fill{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#37c98b,#9ae66e);transition:width .15s}
+.qc-health[data-low=true] .qc-health-fill{background:linear-gradient(90deg,#ff4d6a,#ff8a3d)}
+.qc-health-num{position:relative;display:block;padding:0 12px;font:800 16px/26px var(--font-sans);font-variant-numeric:tabular-nums}
+.qc-health-num::before{content:"✚ ";font-size:12px}
+.qc-streak{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600}
+.qc-streak i{width:14px;height:14px;border-radius:3px;background:rgb(10 16 32 / .55);box-shadow:inset 0 0 0 2px rgb(255 255 255 / .35);transform:rotate(45deg) scale(.8)}
+.qc-streak i.on{background:var(--qc-gold);box-shadow:none}
+.qc-streak span{margin-left:4px;opacity:.85}
+.qc-buffs{display:flex;flex-wrap:wrap;gap:4px}
+.qc-buff{padding:3px 8px;border-radius:999px;background:rgb(10 16 32 / .65);font-size:11px;font-weight:700}
+.qc-buff.qc-shield{background:#2a8fb5}.qc-buff.qc-boost{background:#8b6cff}
+.qc-weapon{position:absolute;right:12px;bottom:max(14px,env(safe-area-inset-bottom));display:grid;justify-items:end;gap:4px;text-align:right}
+.qc-weapon-name{font:700 12px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;opacity:.9}
+.qc-ammo{display:flex;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums}
+.qc-mag{font:800 34px/1 var(--font-sans)}
+.qc-mag[data-low=true]{color:#ff8a8a}
+.qc-reserve{font:700 16px/1 var(--font-sans);opacity:.8}
+.qc-reload{width:110px;height:5px;border-radius:3px;background:rgb(10 16 32 / .6);overflow:hidden}
+.qc-reload[hidden]{display:none}
+.qc-reload i{display:block;height:100%;width:0;background:var(--qc-gold)}
+.qc-nades{display:flex;gap:4px}
+.qc-nades i{width:12px;height:14px;border-radius:50% 50% 45% 45%;background:rgb(10 16 32 / .55);box-shadow:inset 0 0 0 2px rgb(125 255 138 / .45)}
+.qc-nades i.on{background:#7dff8a;box-shadow:none}
+
+.qc-board{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100% - 24px));padding:12px;border-radius:16px;background:rgb(10 16 32 / .82);text-shadow:none}
+.qc-board[hidden]{display:none}
+.qc-board table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.qc-board th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.7;text-align:left;padding:4px 6px}
+.qc-board td{padding:6px;border-top:1px solid rgb(255 255 255 / .1)}
+.qc-board td:nth-child(n+3),.qc-board th:nth-child(n+3){text-align:right}
+.qc-board tr.qc-me td{color:var(--qc-gold);font-weight:700}
+.qc-mark{margin-right:6px}
+.quad-clash[data-phase=over] .qc-board{display:none}
+
+.qc-dead{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);display:grid;justify-items:center;gap:4px;width:min(520px,calc(100% - 24px));padding:14px;border-radius:18px;background:rgb(10 16 32 / .7);text-align:center;pointer-events:auto;text-shadow:none}
+.qc-dead[hidden]{display:none}
+.qc-dead p{margin:0}
+.qc-dead-title{font:400 28px/1 Arcade,var(--font-sans);color:#ff8a8a}
+.qc-dead-by{font-size:14px;opacity:.9}
+.qc-dead-count{font-weight:700}
+.qc-dead-pick{margin-top:6px!important;font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.qc-dead-guns{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.qc-gun-chip{display:grid;gap:1px;min-height:44px;padding:6px 10px;border:0;border-radius:12px;background:rgb(255 255 255 / .12);color:#fff;font:700 12px/1.1 var(--font-sans);cursor:pointer}
+.qc-gun-chip small{font-size:10px;font-weight:500;opacity:.75}
+.qc-gun-chip[aria-pressed=true]{background:var(--qc-gold);color:#1b1404}
+.qc-gun-chip:focus-visible{outline:2px solid #fff;outline-offset:2px}
+
+/* ---------- Click-to-play ---------- */
+.qc-click{position:absolute;inset:0;z-index:3;display:grid;place-content:center;justify-items:center;gap:8px;background:rgb(10 16 32 / .35);pointer-events:none}
+.qc-click[hidden]{display:none}
+.qc-click .game-button{pointer-events:auto;min-height:52px;padding-inline:26px;font-size:17px}
+.qc-click p{margin:0;font-size:13px;font-weight:600;text-shadow:0 1px 2px rgb(0 0 0 / .6)}
+
+/* ---------- Cards ---------- */
+.qc-layer{position:absolute;inset:0;z-index:4;display:grid;justify-items:center;align-items:start;padding:var(--qc-top) 12px 12px;overflow:auto;background:linear-gradient(rgb(13 22 46 / .55),rgb(13 22 46 / .3));-webkit-user-select:text;user-select:text}
+.qc-layer[hidden]{display:none}
+.qc-card.ui-glass-sheet{width:min(620px,100%);margin:0 0 12px;padding:18px 16px;text-align:left;opacity:1;scale:1;translate:0 0;transform:none}
+.qc-card[hidden]{display:none}
+.qc-card h2{margin:0;font:650 22px/1.2 var(--font-sans);color:var(--sheet-ink,#fff);letter-spacing:-.02em;outline:none}
+.qc-card p{margin:6px 0 0;color:var(--sheet-muted,#d8d6cc)}
+.qc-brand{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.qc-brand h2{font:400 30px/1 Arcade,var(--font-sans);color:var(--qc-gold);letter-spacing:.01em}
+.qc-brand p{margin:4px 0 0;font-size:13px}
+.qc-crest{display:grid;place-items:center;flex:0 0 46px;height:52px;border:3px solid var(--qc-gold);border-radius:8px 8px 50% 50% / 8px 8px 60% 60%;background:var(--qc-navy);color:var(--qc-gold);font:900 26px/1 Arial,sans-serif}
+.qc-choice,.qc-loadout{margin:12px 0 0;padding:0;border:0;min-width:0}
+.qc-choice legend,.qc-loadout legend{padding:0;margin-bottom:6px;font:700 11px/1 var(--font-sans);letter-spacing:.12em;text-transform:uppercase;color:var(--sheet-muted,#d8d6cc)}
+.qc-choice{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}
+.qc-skills{grid-template-columns:repeat(3,1fr)}
+.qc-opt,.qc-gun{position:relative;display:block;cursor:pointer}
+.qc-opt input,.qc-gun input{position:absolute;opacity:0;pointer-events:none}
+.qc-opt>span,.qc-gun>span{display:grid;gap:2px;height:100%;padding:9px 10px;border-radius:12px;background:rgb(255 255 255 / .08);box-shadow:inset 0 0 0 1px rgb(255 255 255 / .12);transition:background .15s,box-shadow .15s}
+.qc-opt b,.qc-gun b{font-size:14px;color:var(--sheet-ink,#fff)}
+.qc-opt small,.qc-gun small{font-size:11.5px;line-height:1.3;color:var(--sheet-muted,#d8d6cc)}
+.qc-opt input:checked+span,.qc-gun input:checked+span{background:rgb(255 194 61 / .2);box-shadow:inset 0 0 0 2px var(--qc-gold)}
+.qc-opt input:focus-visible+span,.qc-gun input:focus-visible+span{outline:2px solid #fff;outline-offset:2px}
+.qc-skills .qc-opt>span{place-items:center;text-align:center}
+.qc-guns{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px}
+.qc-gun em{font-style:normal;font-size:11.5px;line-height:1.3;color:var(--sheet-muted,#d8d6cc)}
+.qc-stats{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:3px 8px;margin-top:4px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--sheet-muted,#d8d6cc)}
+.qc-bar{height:5px;border-radius:3px;background:rgb(255 255 255 / .14);overflow:hidden}
+.qc-bar i{display:block;height:100%;background:var(--qc-gold)}
+.qc-sidearm{font-size:12px}
+.qc-sens{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:13px;color:var(--sheet-muted,#d8d6cc)}
+.qc-sens input{flex:1;min-width:0;accent-color:var(--qc-gold)}
+.qc-sens output{min-width:3.2em;font-variant-numeric:tabular-nums;text-align:right}
+.qc-actions{display:flex;justify-content:center;gap:10px;margin-top:16px}
+.qc-actions .game-button{flex:1 1 0;max-width:220px;min-height:50px;font-size:17px}
+.qc-help{font-size:12px;text-align:center}
+.qc-card.qc-over,.qc-card.qc-continue{text-align:center}
+.quad-clash[data-phase=over] :is(.qc-cross,.qc-hit,.qc-name,.qc-vitals,.qc-weapon,.qc-damage,.qc-scope,.qc-toast,.qc-dead){display:none}
+.qc-over-title{font:400 34px/1.1 Arcade,var(--font-sans)!important;color:var(--qc-gold)!important;text-align:center}
+.qc-over-stats{display:flex;justify-content:center;flex-wrap:wrap;gap:18px;margin:16px 0 0}
+.qc-over-stats div{min-width:64px}
+.qc-over-stats dt{font:700 11px/1 system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--sheet-muted,#d8d6cc)}
+.qc-over-stats dd{margin:6px 0 0;font:650 28px/1 var(--font-sans);color:var(--sheet-ink,#fff);font-variant-numeric:tabular-nums}
+.qc-over-new{color:var(--qc-gold)!important;font-weight:700}
+.qc-over-new[hidden]{display:none}
+.quad-clash[data-phase=over] .qc-layer{align-items:start}
+/* Show the final scoreboard under the result card. */
+.quad-clash[data-layer=over] .qc-hud .qc-board{display:block;top:auto;bottom:12px;transform:translateX(-50%)}
+
+/* ---------- Touch controls ---------- */
+.qc-touch{position:absolute;inset:0;z-index:3;pointer-events:none;display:none}
+.quad-clash[data-touch=true][data-hud=true][data-phase=playing]:not([data-layer=continue]) .qc-touch{display:block}
+.quad-clash[data-alive=false] .qc-tb{opacity:.35}
+.qc-stick{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;background:rgb(10 16 32 / .25);box-shadow:inset 0 0 0 2px rgb(255 255 255 / .35);opacity:0;transition:opacity .12s}
+.qc-stick[data-on=true]{opacity:1}
+.qc-stick-knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgb(255 255 255 / .55)}
+.qc-tb{position:absolute;display:grid;place-items:center;width:54px;height:54px;padding:0;border:0;border-radius:50%;background:rgb(10 16 32 / .42);box-shadow:inset 0 0 0 2px rgb(255 255 255 / .4);color:#fff;font:800 11px/1 var(--font-sans);letter-spacing:.04em;text-transform:uppercase;pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent}
+.qc-tb[data-down=true],.qc-tb[data-on=true]{background:rgb(255 194 61 / .85);color:#1b1404;box-shadow:none}
+.qc-tb-fire{right:18px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 70px);width:86px;height:86px;font-size:14px;background:rgb(255 77 106 / .55)}
+.qc-tb-fire2{left:16px;top:42%;width:58px;height:58px;background:rgb(255 77 106 / .45)}
+.qc-tb-jump{right:116px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 62px);width:60px;height:60px}
+.qc-tb-ads{right:26px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 170px)}
+.qc-tb-reload{right:96px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 140px);width:48px;height:48px;font-size:9px}
+.qc-tb-nade{right:150px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 128px);width:48px;height:48px;font-size:10px}
+.qc-tb-swap{right:84px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 200px);width:48px;height:48px;font-size:10px}
+.qc-tb-board{left:12px;top:calc(var(--qc-top) + 140px);width:46px;height:46px;font-size:9px}
+.quad-clash[data-touch=true] .qc-vitals{left:12px;transform:none;justify-items:start;width:min(170px,40vw)}
+.quad-clash[data-touch=true] .qc-weapon{bottom:max(10px,env(safe-area-inset-bottom))}
+.quad-clash[data-touch=true] .qc-mag{font-size:26px}
+.quad-clash[data-touch=true] .qc-dead{bottom:auto;top:38%}
+
+@media (max-width:420px){
+  .qc-card.ui-glass-sheet{padding:16px 12px}
+  .qc-guns{grid-template-columns:1fr 1fr}
+  .qc-gun em{display:none}
+  .qc-choice{grid-template-columns:1fr}
+  .qc-skills{grid-template-columns:repeat(3,1fr)}
+  .qc-toast strong{font-size:21px}
+  .qc-feed{max-width:52vw}
+}
+@media (prefers-reduced-motion:reduce){.qc-health-fill,.qc-feed li,.qc-stick{transition:none}}
+.reduce-motion .qc-health-fill,.reduce-motion .qc-feed li{transition:none}
+@media (prefers-contrast:more){.qc-team,.qc-feed li,.qc-timer,.qc-zone,.qc-board,.qc-dead{background:#0a1020}}
+
+/* ---------- Setup menu: bright card beside the Q-bot showcase ---------- */
+.quad-clash[data-layer=menu] .qc-layer{justify-items:end;align-items:center;padding:calc(var(--qc-top) - 4px) max(16px,4vw) 16px;background:linear-gradient(90deg,transparent 35%,rgb(13 40 80 / .28))}
+.qc-card.qc-menu{width:min(440px,100%);max-height:100%;overflow:auto;margin:0;padding:16px 16px 14px;border:3px solid #1d2f5c;border-radius:22px;background:#f2f9ff;color:#1d2f5c;box-shadow:0 10px 0 rgb(13 30 60 / .35),0 24px 60px rgb(0 0 0 / .25);text-align:left;-webkit-user-select:none;user-select:none}
+.qc-menu .qc-brand{margin-bottom:4px}
+.qc-menu .qc-brand h2{color:#1d2f5c;font-size:32px;text-shadow:0 3px 0 #ffc23d}
+.qc-menu .qc-brand p{color:#3b5a8c;font-weight:600}
+.qc-menu .qc-crest{background:#1d2f5c;color:#ffc23d;border-color:#ffc23d}
+.qc-menu legend{color:#3b5a8c!important}
+.qc-menu .qc-choice,.qc-menu .qc-loadout{margin-top:12px}
+.qc-guns{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.qc-gun{position:relative;display:grid;place-items:center;aspect-ratio:1.05;border-radius:12px;background:#ffffff;box-shadow:inset 0 0 0 2px #c5d9ef,0 3px 0 #c5d9ef;cursor:pointer;transition:transform .12s var(--ease-out),box-shadow .12s}
+.qc-gun input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;pointer-events:auto;z-index:1}
+.qc-gun svg{width:92%;height:auto;pointer-events:none}
+.qc-gun:has(input:checked){background:#ffc23d;box-shadow:inset 0 0 0 2px #1d2f5c,0 3px 0 #1d2f5c;transform:translateY(-2px)}
+.qc-gun:has(input:focus-visible){outline:3px solid #1d2f5c;outline-offset:2px}
+@media(hover:hover){.qc-gun:hover{transform:translateY(-2px)}}
+.qc-gun-info{margin-top:10px;padding:10px 12px;border-radius:14px;background:#ffffff;box-shadow:inset 0 0 0 2px #dbe8f6}
+.qc-gun-head{display:flex;align-items:center;gap:10px}
+.qc-gun-art{flex:0 0 96px}
+.qc-gun-art svg{display:block;width:96px;height:40px}
+.qc-gun-head b{display:block;font:400 20px/1.1 Arcade,var(--font-sans);color:#1d2f5c}
+.qc-gun-head small{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#3b5a8c}
+.qc-menu .qc-gun-blurb{margin:6px 0 0;font-size:13px;color:#33496e}
+.qc-menu .qc-stats{color:#3b5a8c}
+.qc-menu .qc-bar{background:#dbe8f6}
+.qc-menu .qc-bar i{background:linear-gradient(90deg,#ffc23d,#ff9d2e)}
+.qc-menu .qc-sidearm{display:flex;align-items:center;gap:8px;margin:8px 0 0;font-size:12px;color:#33496e}
+.qc-side-art svg{display:block;width:54px;height:22px}
+.qc-menu .qc-choice{display:flex;flex-wrap:wrap;gap:6px}
+.qc-menu .qc-choice legend{width:100%}
+.qc-menu .qc-opt{flex:1 1 auto}
+.qc-menu .qc-opt>span{display:grid;place-items:center;min-height:40px;padding:6px 12px;border-radius:999px;background:#ffffff;box-shadow:inset 0 0 0 2px #c5d9ef,0 3px 0 #c5d9ef;text-align:center}
+.qc-menu .qc-opt b{font-size:13.5px;color:#1d2f5c}
+.qc-menu .qc-opt input:checked+span{background:#1d2f5c;box-shadow:inset 0 0 0 2px #1d2f5c,0 3px 0 #0d1830}
+.qc-menu .qc-opt input:checked+span b{color:#ffc23d}
+.qc-menu .qc-opt input:focus-visible+span{outline:3px solid #ffc23d;outline-offset:2px}
+.qc-menu .qc-choice-note{margin:6px 2px 0;font-size:12px;line-height:1.35;color:#33496e}
+.qc-menu .qc-sens{color:#33496e}
+.qc-menu .qc-sens input{accent-color:#1d2f5c}
+.qc-menu .qc-actions .game-button.qc-play{gap:10px;max-width:none;min-height:58px;border-radius:16px;background:#ffc23d;color:#1d2f5c;font:400 26px/1 Arcade,var(--font-sans);letter-spacing:.04em;box-shadow:inset 0 -5px 0 #e09a18,0 4px 0 #1d2f5c}
+.qc-play-icon svg{display:block;width:26px;height:26px}
+.qc-menu .qc-help{color:#3b5a8c}
+@media (max-aspect-ratio:1/1){
+  .quad-clash[data-layer=menu] .qc-layer{justify-items:center;align-items:end;padding:0 10px max(10px,env(safe-area-inset-bottom));background:linear-gradient(transparent 40%,rgb(13 40 80 / .3))}
+  .qc-card.qc-menu{max-height:56%;border-radius:22px 22px 18px 18px}
+}
+@media (max-width:420px){.qc-guns{gap:4px}.qc-gun-art{flex-basis:72px}.qc-gun-art svg{width:72px;height:30px}.qc-menu .qc-brand h2{font-size:26px}}
+
+/* ---------- Icons in the HUD, respawn picker, kill feed and touch buttons ---------- */
+.qc-weapon-art svg{display:block;width:84px;height:35px;filter:drop-shadow(0 1px 2px rgb(0 0 0 / .5))}
+.qc-nades i{display:grid;place-items:center;width:20px;height:20px;border-radius:0;background:none!important;box-shadow:none!important;opacity:.32}
+.qc-nades i.on{opacity:1}
+.qc-nades svg{width:20px;height:20px}
+.qc-gun-chip{justify-items:center}
+.qc-gun-chip svg{width:58px;height:24px}
+.qc-feed li{display:flex;align-items:center;gap:6px}
+.qc-feed b{font-weight:700}
+.qc-feed-art svg{display:block;width:40px;height:17px}
+.qc-feed-head svg{display:block;width:13px;height:13px;color:#ffc23d}
+.qc-feed li.qc-mine .qc-feed-head svg{color:#1b1404}
+.qc-tb svg{width:46%;height:46%}
+.qc-tb-fire svg{width:44%;height:44%}
+/* Compact menu; Play stays in reach at the bottom of the card. */
+.qc-card.qc-menu{padding-bottom:0}
+.qc-menu .qc-brand h2{font-size:28px}
+.qc-menu .qc-gun-info{padding:8px 10px}
+.qc-menu .qc-stats{gap:2px 8px;margin-top:4px}
+.qc-menu .qc-choice,.qc-menu .qc-loadout{margin-top:10px}
+.qc-menu .qc-opt>span{min-height:36px}
+.qc-menu .qc-actions{position:sticky;bottom:0;z-index:1;margin:10px -16px 0;padding:10px 16px 12px;background:linear-gradient(rgb(242 249 255 / 0),#f2f9ff 30%)}
+.qc-menu .qc-help{margin:0 0 12px}
