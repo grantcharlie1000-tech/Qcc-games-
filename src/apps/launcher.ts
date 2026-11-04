@@ -30,6 +30,8 @@ export function bindAppsBadge(tab:HTMLElement,subscribe:AppsBadgeSubscribe):()=>
 /** The shell's Apps tab, its unread badge and the launcher sheet. */
 export class AppsLauncher {
   readonly tab=document.createElement('button');
+  /** The Menu sheet's Apps entry: the way in below 360px, where the bar has no room for the tab (CSS shows it only there). */
+  readonly menuEntry=document.createElement('button');
   private readonly dialog=document.createElement('dialog');
   private readonly tabBadge=document.createElement('span');
   private readonly tileBadge=document.createElement('span');
@@ -52,6 +54,8 @@ export class AppsLauncher {
     this.tab.setAttribute('aria-label','Apps');
     // Hidden (no gap, no polling) until probe() finds a working chat backend.
     this.tab.hidden=true;
+    this.menuEntry.type='button';this.menuEntry.className='game-button secondary menu-apps';this.menuEntry.hidden=true;this.menuEntry.textContent='Apps';this.menuEntry.setAttribute('aria-haspopup','dialog');
+    this.menuEntry.addEventListener('click',()=>{this.menuEntry.closest('dialog')?.close();this.open(document.querySelector('.app-navigation [data-action=menu]'));});
     this.tab.innerHTML=`${appIcon('apps')}<span>Apps</span>`;
     for(const badge of [this.tabBadge,this.tileBadge]){badge.className='apps-badge';badge.hidden=true;badge.setAttribute('aria-hidden','true');}
     this.tab.append(this.tabBadge);
@@ -96,7 +100,13 @@ export class AppsLauncher {
   }
   private enable():boolean{
     if(this.disposed)return false;
-    this.available=true;this.tab.hidden=false;this.sync();return true;
+    this.available=true;
+    // Out of the DOM until a backend answers: while it is absent the bar and Menu sheet are exactly the shell's own.
+    document.querySelector('.app-tabbar [data-action=study]')?.before(this.tab);
+    document.querySelector('#menu .account-menu')?.before(this.menuEntry);
+    this.tab.hidden=false;this.menuEntry.hidden=false;
+    // Six-tab fit rules in style.css apply only while this is set.
+    this.tab.closest<HTMLElement>('.app-navigation')?.setAttribute('data-apps','on');this.sync();return true;
   }
   get sheet():HTMLDialogElement{return this.dialog;}
   /** The badge count for other Apps tabs (the Social and Chat islands). Calls `run` now and on every change. */
@@ -132,7 +142,7 @@ export class AppsLauncher {
     this.disposed=true;this.stop();if(this.retry!==undefined)clearTimeout(this.retry);this.abort?.abort();
     document.removeEventListener('visibilitychange',this.onVisibility);this.offAccounts();
     if(this.dialog.open)this.dialog.close();
-    this.listeners.clear();this.dialog.remove();this.tab.remove();
+    this.listeners.clear();this.dialog.remove();this.tab.closest('.app-navigation')?.removeAttribute('data-apps');this.tab.remove();this.menuEntry.remove();
   }
   private readonly onVisibility=()=>this.sync();
   // Polls only while signed in and visible; sign-out or an identity change clears the count.

@@ -117,7 +117,12 @@ export class SocialView implements AppView {
   root.addEventListener('keydown',this.onKey);
   window.addEventListener('offline',this.onOffline);window.addEventListener('online',this.onOnline);
   if(navigator.onLine===false)this.onOffline();
-  this.offAccounts=deps.accounts.onChange(()=>{this.me=null;this.meToken=null;this.forcedOut=false;this.show();});
+  // Only a different signed-in identity resets the view. A sync that finishes late emits too, and must not rebuild the feed under the reader.
+  let identity=deps.accounts.session()?.token??null;
+  this.offAccounts=deps.accounts.onChange(()=>{
+   const next=deps.accounts.session()?.token??null;if(next===identity)return;identity=next;
+   this.me=null;this.meToken=null;this.forcedOut=false;this.show();
+  });
   root.focus({preventScroll:true});
  }
  navigate(hash:string):void{

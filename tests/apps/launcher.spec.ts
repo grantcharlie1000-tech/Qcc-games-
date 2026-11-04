@@ -5,6 +5,7 @@ import {createAccountsHandler} from '../../src/accounts/server';
 import {createChatHandler} from '../../src/chat/server';
 import {createSocialHandler} from '../../src/social/server';
 import {createMemoryStore} from '../../src/media/store';
+import {seedStudyTopic} from '../fixtures';
 
 const database=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
 let accounts:ReturnType<typeof createAccountsHandler>,chat:ReturnType<typeof createChatHandler>,social:ReturnType<typeof createSocialHandler>;
@@ -174,4 +175,50 @@ test('leaving #/social before its chunk loads keeps the library',async({page,con
  release();await page.waitForTimeout(800);
  await expect(page.locator('.game-card').first()).toBeVisible();await expect(page.locator('section.social-view')).toHaveCount(0);
  await expect(page.locator('body')).not.toHaveClass(/social-active/);
+});
+
+// The shell's tab bar with the capability probe answering (a 401 JSON, as a deployed chat handler gives an anonymous caller).
+test.describe('shell navigation with Apps available',()=>{
+ test.beforeEach(async({context})=>{
+  await seedStudyTopic(context);
+  await context.route('**/.netlify/functions/chat**',route=>route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({error:'Log in to use Chat.'})}));
+ });
+ const controls=(page:Page)=>page.locator('.app-navigation .ui-tab');
+ const sizes=(page:Page)=>controls(page).evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {name:el.getAttribute('aria-label')??el.textContent?.trim(),width:r.width,height:r.height,left:r.left,right:r.right};}).filter(c=>c.width>0&&c.height>0));
+ async function ready(page:Page,width:number){
+  await page.setViewportSize({width,height:844});await page.goto('/');
+  await expect(page.locator('.app-navigation')).toHaveAttribute('data-apps','on');
+  await expect(page.locator('.app-tabbar')).toBeVisible();
+ }
+ for(const width of [320,360,390,1440])test(`every navigation control is at least 44 px at ${width}px`,async({page})=>{
+  await ready(page,width);
+  const list=await sizes(page);
+  expect(list.length).toBe(width<360?6:7);
+  for(const c of list){expect(c.width,`${c.name} width`).toBeGreaterThanOrEqual(44);expect(c.height,`${c.name} height`).toBeGreaterThanOrEqual(44);}
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ });
+ test('the island fits within the viewport with its side insets at 1366px',async({page})=>{
+  await ready(page,1366);
+  const nav=(await page.locator('.app-navigation').boundingBox())!,bar=(await page.locator('.app-tabbar').boundingBox())!;
+  expect(nav.x).toBeGreaterThanOrEqual(12);expect(nav.x+nav.width).toBeLessThanOrEqual(1366-12);
+  expect(bar.x).toBeGreaterThanOrEqual(nav.x);
+  const list=await sizes(page);
+  for(const c of list){expect(c.left).toBeGreaterThanOrEqual(nav.x);expect(c.right).toBeLessThanOrEqual(nav.x+nav.width);}
+ });
+ test('at 320px Apps leaves the bar and opens from the Menu sheet',async({page})=>{
+  await ready(page,320);
+  await expect(page.locator('.app-tabbar [data-action=apps]')).toBeHidden();
+  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  await expect(page.locator('#menu')).toBeVisible();
+  await page.locator('#menu').getByRole('button',{name:'Apps',exact:true}).click();
+  await expect(page.locator('#apps-dialog')).toBeVisible();
+  await expect(page.locator('#menu')).toBeHidden();
+ });
+ for(const width of [360,390])test(`at ${width}px the Apps tab is in the bar and opens the launcher`,async({page})=>{
+  await ready(page,width);
+  const tab=page.locator('.app-tabbar [data-action=apps]');
+  await expect(tab).toBeVisible();
+  await tab.click();
+  await expect(page.locator('#apps-dialog')).toBeVisible();
+ });
 });
