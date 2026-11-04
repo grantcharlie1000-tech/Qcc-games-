@@ -1,0 +1,61 @@
+name: Diagnose Ball Run re-entry timing
+on:
+  push:
+    branches: [diagnostics/ballrun-timing-d453cbb]
+permissions:
+  contents: read
+jobs:
+  timing:
+    if: github.ref == 'refs/heads/diagnostics/ballrun-timing-d453cbb'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [normal, blur]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: harness
+          persist-credentials: false
+          sparse-checkout: scripts/ballrun-diagnostic
+      - uses: actions/checkout@v4
+        with:
+          ref: d453cbb17a414f6786728763191dc88b132d9c5c
+          path: app
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Verify immutable source and instrument temporary checkout
+        run: |
+          test "$(git -C app rev-parse HEAD)" = d453cbb17a414f6786728763191dc88b132d9c5c
+          python3 harness/scripts/ballrun-diagnostic/instrument.py app
+          cat app/diagnostic-integrity.json
+      - run: npm ci
+        working-directory: app
+      - run: npx playwright install --with-deps chromium
+        working-directory: app
+      - run: npm run check
+        working-directory: app
+      - name: Run unchanged lost-WebGL assertion three times
+        working-directory: app
+        env:
+          CI: 'true'
+          BALLRUN_VARIANT: ${{ matrix.variant }}
+        run: >-
+          npx playwright test tests/games/ball-run/play.spec.ts
+          --config=playwright.ballrun-diagnostic.config.ts
+          --project=chromium --workers=1 --repeat-each=3 --retries=0
+          --grep 'lost WebGL visibly saves and remains stopped until exit and re-entry$'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ballrun-timing-${{ matrix.variant }}
+          retention-days: 7
+          path: |
+            app/diagnostic-integrity.json
+            app/playwright-report
+            app/test-results
