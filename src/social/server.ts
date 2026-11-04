@@ -23,7 +23,7 @@ const POST_COLUMNS=`p.id,p.body,p.deleted,p.hidden,p.reply_to,p.author_id,${ts('
  (SELECT count(*)::int FROM social_likes l WHERE l.post_id=p.id) AS likes,
  (SELECT count(*)::int FROM social_posts r WHERE r.reply_to=p.id AND NOT r.deleted AND ${visible('r')}) AS replies,
  EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.account_id=$1) AS liked,
- (SELECT pa.username FROM social_posts pp JOIN accounts pa ON pa.id=pp.author_id WHERE pp.id=p.reply_to AND NOT EXISTS(SELECT 1 FROM social_blocks pb WHERE (pb.blocker_id=$1 AND pb.blocked_id=pp.author_id) OR (pb.blocker_id=pp.author_id AND pb.blocked_id=$1))) AS reply_to_username,
+ (SELECT pa.username FROM social_posts pp JOIN accounts pa ON pa.id=pp.author_id WHERE pp.id=p.reply_to AND ${visible('pp')}) AS reply_to_username,
  (SELECT COALESCE(json_agg(json_build_object('id',m.id,'width',m.width,'height',m.height,'thumb',m.thumb_bytes>0) ORDER BY pm.position),'[]'::json)
    FROM social_post_media pm JOIN media_objects m ON m.id=pm.media_id WHERE pm.post_id=p.id) AS media`;
 const POST_FROM=`FROM social_posts p JOIN accounts a ON a.id=p.author_id LEFT JOIN social_profiles sp ON sp.account_id=p.author_id`;
@@ -102,7 +102,7 @@ export function createSocialHandler(db:Database,store:MediaStore|null):(request:
  };
 
  async function get(action:string,viewer:string,params:URLSearchParams):Promise<unknown> {
-  const cursor=params.get('cursor');
+  const cursor=params.get('cursor')||null;
   switch(action){
    case 'me':{
     const profile=await profileView(db.query,viewer,viewer);if(!profile)throw notFound();
@@ -144,6 +144,7 @@ export function createSocialHandler(db:Database,store:MediaStore|null):(request:
    case 'search':{
     const q=(params.get('q')??'').trim();
     if(!q||codePoints(q)>50)throw bad('Search must be 1 to 50 characters.');
+    await rateLimit(db.query,'social:search:'+viewer,60,60);
     const pattern=likePattern(q);
     const users=await db.query(`SELECT a.username,${displayName('sp','a')} AS display_name,sp.avatar_id FROM accounts a LEFT JOIN social_profiles sp ON sp.account_id=a.id
      WHERE (lower(a.username) LIKE lower($2)||'%' OR sp.display_name ILIKE '%'||$2||'%')
@@ -249,11 +250,14 @@ export function createSocialHandler(db:Database,store:MediaStore|null):(request:
   if(typeof note!=='string'||codePoints(note.trim())>REPORT_NOTE_MAX)throw bad('Note is too long.');
   let targetId:string,accountId:string;
   if(data.kind==='post'){
-   const post=await visiblePost(viewer,postId(data.id));
+   // Victims usually block first, so reports look the target up directly: only a missing or hard-deleted target is a 404.
+   const found=await db.query('SELECT id,author_id FROM social_posts WHERE id=$1 AND NOT deleted',[postId(data.id)]);
+   const post=found.rows[0] as {id:string;author_id:string}|undefined;if(!post)throw notFound();
    if(post.author_id===viewer)throw bad('You cannot report yourself.');
    targetId=post.id;accountId=post.author_id;
   }else{
-   const target=await targetAccount(viewer,data.username);
+   if(typeof data.username!=='string'||!/^[A-Za-z0-9_.-]{3,24}$/.test(data.username))throw notFound();
+   const target=await accountByUsername(db.query,data.username);if(!target)throw notFound();
    if(target.id===viewer)throw bad('You cannot report yourself.');
    targetId=accountId=target.id;
   }

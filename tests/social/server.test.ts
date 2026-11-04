@@ -248,6 +248,56 @@ describe('social handler',()=>{
   expect(await count('SELECT 1 FROM social_posts WHERE id=ANY($1)',[[rep.id,bp.id]])).toBe(2);
   expect(await count('SELECT 1 FROM accounts WHERE id=$1',[a.id])).toBe(1);
  });
+ it('reports on blocked targets are accepted (victims block first)',async()=>{
+  const a=await account(),b=await account(),p=await post(a,'rude');
+  await call(b,'block',{username:a.name,on:true});
+  expect(await (await call(b,'report',{kind:'account',username:a.name,category:'harassment'})).json()).toEqual({ok:true});
+  expect(await (await call(b,'report',{kind:'post',id:p.id,category:'harassment'})).json()).toEqual({ok:true});
+  expect((await query('SELECT 1 FROM social_reports WHERE reporter_id=$1',[b.id])).rows).toHaveLength(2);
+  expect((await call(b,'report',{kind:'post',id:randomUUID(),category:'spam'})).status).toBe(404);
+  expect((await call(b,'report',{kind:'account',username:'nobody_zz',category:'spam'})).status).toBe(404);
+ });
+ it('thread truncates at a blocked or hidden ancestor and hidden posts 404 for strangers',async()=>{
+  const a=await account(),b=await account(),c=await account(),d=await account();
+  const root=await post(a,'root'),mid=await post(b,'mid',{replyTo:root.id}),leaf=await post(c,'leaf',{replyTo:mid.id});
+  await call(c,'block',{username:a.name,on:true});
+  let t=await (await get(c,`action=thread&id=${leaf.id}`)).json();
+  expect(t.ancestors.map((p:any)=>p.id)).toEqual([mid.id]);
+  t=await (await get(d,`action=thread&id=${leaf.id}`)).json();expect(t.ancestors.map((p:any)=>p.id)).toEqual([root.id,mid.id]);
+  await query('UPDATE social_posts SET hidden=true WHERE id=$1',[mid.id]);
+  t=await (await get(d,`action=thread&id=${leaf.id}`)).json();expect(t.ancestors.map((p:any)=>p.id)).toEqual([]);
+  expect(t.post.replyToUsername).toBeNull();
+  expect(JSON.stringify(t)).not.toContain('mid');
+  expect((await get(d,`action=thread&id=${mid.id}`)).status).toBe(404);
+  expect((await call(d,'like',{id:mid.id,on:true})).status).toBe(404);
+  expect((await call(d,'post',{body:'x',replyTo:mid.id})).status).toBe(404);
+  expect((await (await get(d,`action=posts&username=${b.name}&kind=posts`)).json()).items).toHaveLength(0);
+  expect((await (await get(b,`action=posts&username=${b.name}&kind=replies`)).json()).items).toHaveLength(1);
+ });
+ it('paginates likes and thread replies and breaks created_at ties by id',async()=>{
+  const a=await account(),b=await account(),root=await post(a,'root');
+  const replies:string[]=[];for(let i=0;i<22;i++)replies.push((await post(b,'r'+i,{replyTo:root.id})).id);
+  const one=await (await get(a,`action=thread&id=${root.id}`)).json();expect(one.replies.items).toHaveLength(20);
+  const two=await (await get(a,`action=thread&id=${root.id}&cursor=${one.replies.cursor}`)).json();
+  expect([...one.replies.items,...two.replies.items].map((p:any)=>p.id)).toEqual(replies);expect(two.replies.cursor).toBeNull();
+  for(const id of replies)await call(a,'like',{id,on:true});
+  const l1=await (await get(a,`action=posts&username=${a.name}&kind=likes`)).json();expect(l1.items).toHaveLength(20);
+  const l2=await (await get(a,`action=posts&username=${a.name}&kind=likes&cursor=${l1.cursor}`)).json();
+  expect([...l1.items,...l2.items].map((p:any)=>p.id)).toEqual([...replies].reverse());
+  const c=await account();const ids:string[]=[];for(let i=0;i<23;i++)ids.push((await post(c,'t'+i)).id);
+  await query(`UPDATE social_posts SET created_at='2000-01-01T00:00:00.123456Z' WHERE id=ANY($1)`,[ids.slice(0,22)]);
+  const f1=await feed(c,'following'),f2=await feed(c,'following',f1.cursor);
+  const got=[...f1.items,...f2.items].map((p:any)=>p.id);expect(got).toHaveLength(23);expect(new Set(got).size).toBe(23);
+  expect((await get(c,'action=feed&tab=following&cursor=')).status).toBe(200);
+ },60000);
+ it('like and follow rate limits return 429',async()=>{
+  const a=await account(),b=await account(),p=await post(b,'x');
+  await query('INSERT INTO account_attempts(subject,attempts) VALUES ($1,300),($2,100)',['social:like:'+a.id,'social:follow:'+a.id]);
+  expect((await call(a,'like',{id:p.id,on:true})).status).toBe(429);
+  const r=await call(a,'follow',{username:b.name,on:true});expect(r.status).toBe(429);expect(r.headers.get('retry-after')).toBeTruthy();
+  await query('INSERT INTO account_attempts(subject,attempts) VALUES ($1,60)',['social:search:'+a.id]);
+  expect((await get(a,'action=search&q=abc')).status).toBe(429);
+ });
  it('requests without a token get 401',async()=>{
   const body={error:'Please log in again.'};
   for(const action of ['me','feed','blocks','activity']){const r=await call(null,action);expect(r.status).toBe(401);expect(await r.json()).toEqual(body);}
