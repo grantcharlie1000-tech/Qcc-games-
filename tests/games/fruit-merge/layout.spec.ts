@@ -14,7 +14,7 @@ for(const viewport of [{width:390,height:844},{width:844,height:390}])test(`the 
   const data={version:1,seed:42,bag:[0,1,2,3],current:0,next:1,score:123,time:3000,lastDrop:0,lastMerge:0,combo:0,aim:180,nextId:4,lost:true,fruits:[{id:1,tier:10,y:404},{id:2,tier:9,y:245},{id:3,tier:8,y:103}].map(f=>({...f,x:180,vx:0,vy:0,angle:0,av:0,age:3000,danger:0,sleeping:true}))};
   localStorage.setItem('pocket-arcade:v1:save:fruit-merge',JSON.stringify({version:1,data}));
  });
- await page.goto('/#/game/fruit-merge');await expect(page.locator('.fm-banner')).toHaveText('Basket full — a fresh start awaits!');
+ await page.goto('/#/game/fruit-merge');await expect(page.locator('.fm-banner')).toHaveText('Basket full');
  await expect.poll(()=>page.evaluate(()=>document.querySelector('.fm')!.getBoundingClientRect().bottom-document.querySelector('.stage-wrap')!.getBoundingClientRect().bottom)).toBeLessThanOrEqual(.1);
  const board=(await page.locator('.fm-board').boundingBox())!;expect(board.width/board.height).toBeCloseTo(360/510,3);
 });

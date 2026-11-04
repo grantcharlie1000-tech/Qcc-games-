@@ -101,7 +101,7 @@ test('the original result card and HUD keep the session record after a lower-sco
  await page.goto('/#/game/snake');await page.getByRole('button',{name:'Start slithering',exact:true}).click();await page.clock.runFor(2000);
  const result=page.locator('.snake-card p');
  await expect(page.locator('.snake-card strong')).toHaveText('One more apple?');
- await expect(result).toContainText('10 points · 4 segments.');await expect(page.locator('#game-best strong')).toHaveText('10');
+ await expect(result).toHaveText('10 points · 4 segments');await expect(page.locator('#game-best strong')).toHaveText('10');
  await page.getByRole('button',{name:'Play again',exact:true}).click();await page.keyboard.press('ArrowUp');await page.clock.runFor(1600);
- await expect(result).toContainText('0 points · 3 segments.');await expect(page.locator('#game-best strong')).toHaveText('10');
+ await expect(result).toHaveText('0 points · 3 segments');await expect(page.locator('#game-best strong')).toHaveText('10');
 });
