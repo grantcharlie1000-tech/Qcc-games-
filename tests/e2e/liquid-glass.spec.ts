@@ -81,8 +81,15 @@ async function settledBoxes(page:Page){
   return {bar:(await bar.boundingBox())!,capsule:(await capsule.boundingBox())!};
 }
 for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width}px, and the bar holds only its tabs`,async({page})=>{
+  // Exercise the six-tab layout explicitly, independent of the server's Chat availability.
+  await page.route(url=>url.pathname==='/.netlify/functions/chat'&&url.searchParams.get('action')==='summary',route=>{
+    const request=route.request();
+    return request.method()==='GET'&&!request.headers().authorization
+      ?route.fulfill({status:401,json:{error:'unauthorized'}}):route.fallback();
+  });
   await page.setViewportSize({width,height:844});
   await page.goto('/');
+  await expect(page.locator('.app-navigation')).toHaveAttribute('data-apps','on');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
