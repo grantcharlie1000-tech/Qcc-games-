@@ -21,6 +21,7 @@ Thumbs.db
 
 .worktrees/
 .netlify/
+.wrangler/
 playwright-report/
 test-results/
 dist-pages/

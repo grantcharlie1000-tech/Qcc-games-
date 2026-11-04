@@ -98,7 +98,12 @@ export class ChatView implements AppView {
   this.wideQuery.addEventListener('change',this.onWide);
   this.wasWide=this.wideQuery.matches;
   if(navigator.onLine===false)this.onOffline();
-  this.offAccounts=deps.accounts.onChange(()=>{this.meToken=null;this.media=true;this.forcedOut=false;this.store.reset();this.show();});
+  // Only a different signed-in identity resets the view; a late sync emit must not rebuild it.
+  let identity=deps.accounts.session()?.token??null;
+  this.offAccounts=deps.accounts.onChange(()=>{
+   const next=deps.accounts.session()?.token??null;if(next===identity)return;identity=next;
+   this.meToken=null;this.media=true;this.forcedOut=false;this.store.reset();this.show();
+  });
   root.focus({preventScroll:true});
  }
  navigate(hash:string):void{this.hash=hash;this.show();}

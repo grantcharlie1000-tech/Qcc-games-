@@ -124,7 +124,7 @@ test('Snake: the menu frosts the paused board without a sharp WebGL copy and the
   // #92 deliberately uses CSS frost on sheets, including over live games.
   await expect(sheet).toHaveAttribute('data-glass-mode','blur');
   await expect(sheet).toHaveCSS('backdrop-filter','blur(20px) saturate(1.5)');
-  await expect(sheet).toHaveCSS('background-color','rgba(12, 16, 22, 0.58)');
+  await expect(sheet).toHaveCSS('background-color','rgba(12, 16, 22, 0.9)');
   // Controls inside the sheet keep a thin fill rather than a second refracting layer.
   await expect(sheet.locator('.sheet-close-glass')).not.toHaveAttribute('data-glass-mode','webgl');
   await expect.poll(()=>sheet.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
