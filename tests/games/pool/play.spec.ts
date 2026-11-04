@@ -24,6 +24,8 @@ const ghostAngle=(s:PoolState,pocket:number)=>{
 
 test.describe('Pool',()=>{
   test('breaks from the keyboard and the rack plays on',async({page})=>{
+    // Seed 1 makes the unchanged ArrowUp/Enter shot a legal break; random racks can require a re-break.
+    await seedPool(page,createGame('ai','medium',1));
     await page.setViewportSize({width:1366,height:768});await page.goto('/#/game/pool');
     await expect(root(page)).toHaveAttribute('data-hand','kitchen');
     await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
