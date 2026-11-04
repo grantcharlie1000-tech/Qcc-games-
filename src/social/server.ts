@@ -3,8 +3,8 @@ import type {Database} from '../leaderboard/server';
 import {resolveAccount} from '../accounts/server';
 import {writeFrozen,readOnlyResponse} from '../accounts/write-freeze';
 import {HttpError,respond,readJson,sameOrigin,rateLimit,errorResponse,cursorEncode,cursorDecode} from '../../server/api';
-import {attachMedia,type MediaStore} from '../media/store';
-import {mediaKey,validMediaId} from '../media/policy';
+import {attachMedia,deleteMediaObjects,type MediaStore} from '../media/store';
+import {validMediaId} from '../media/policy';
 import {accountByUsername,isBlockedEitherWay,setBlock} from './blocks';
 import {PAGE_SIZE,POST_MAX_MEDIA,DISPLAY_NAME_MAX,BIO_MAX,REPORT_NOTE_MAX,AUTO_HIDE_REPORTS,REPORT_CATEGORIES,LIMITS,codePoints,validPostBody,
  type Author,type MediaRef,type PostView,type Page,type ProfileView,type ActivityItem,type SocialMe,type ReportCategory} from './shared';
@@ -84,10 +84,9 @@ export function createSocialHandler(db:Database,store:MediaStore|null):(request:
   }catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}
   finally{client.release();}
  }
- /** Best-effort, after COMMIT: an orphaned blob is harmless, a failed delete must not fail the request. */
+ /** Best-effort, after COMMIT: blobs go first and a failed delete keeps the media row for a later sweep; it never fails the request. */
  async function dropBlobs(ids:string[]):Promise<void> {
-  if(!store)return;
-  for(const id of ids)for(const variant of ['full','thumb'] as const)try{await store.delete(mediaKey(id,variant));}catch{/* best effort */}
+  await deleteMediaObjects(db.query,store,ids).catch(()=>[]);
  }
  const targetAccount=async(viewer:string,username:unknown)=>{
   if(typeof username!=='string'||!/^[A-Za-z0-9_.-]{3,24}$/.test(username))throw notFound();
@@ -202,9 +201,8 @@ export function createSocialHandler(db:Database,store:MediaStore|null):(request:
    const media=(await q('SELECT media_id FROM social_post_media WHERE post_id=$1',[id])).rows.map(row=>row.media_id as string);
    const replied=(await q('SELECT 1 FROM social_posts WHERE reply_to=$1 LIMIT 1',[id])).rows.length>0;
    await q('DELETE FROM social_likes WHERE post_id=$1',[id]);
-   if(replied)await q(`UPDATE social_posts SET deleted=true,body='' WHERE id=$1`,[id]);
+   if(replied){await q(`UPDATE social_posts SET deleted=true,body='' WHERE id=$1`,[id]);await q('DELETE FROM social_post_media WHERE post_id=$1',[id]);}
    else await q('DELETE FROM social_posts WHERE id=$1',[id]);
-   if(media.length)await q('DELETE FROM media_objects WHERE id=ANY($1::text[])',[media]);
    return media;
   });
   await dropBlobs(dropped);
@@ -294,7 +292,6 @@ export function createSocialHandler(db:Database,store:MediaStore|null):(request:
    }
    await q('UPDATE social_profiles SET display_name=$2,bio=$3,avatar_id=$4,banner_id=$5,updated_at=now() WHERE account_id=$1',
     [viewer,name??current.display_name,bio??current.bio,next.avatar,next.banner]);
-   if(drop.length)await q('DELETE FROM media_objects WHERE id=ANY($1::text[]) AND owner_id=$2',[drop,viewer]);
    return drop;
   });
   await dropBlobs(dropped);
@@ -312,7 +309,7 @@ export function createSocialHandler(db:Database,store:MediaStore|null):(request:
    for(const row of [...owned.rows,...chat.rows])media.add((row.id??row.media_id) as string);
    await q(`UPDATE social_posts p SET deleted=true,body='' WHERE p.author_id=$1 AND NOT p.deleted AND EXISTS(SELECT 1 FROM social_posts r WHERE r.reply_to=p.id AND r.author_id<>$1)`,[viewer]);
    await q('DELETE FROM social_likes WHERE account_id=$1 OR post_id IN (SELECT id FROM social_posts WHERE author_id=$1)',[viewer]);
-   if(media.size)await q('DELETE FROM media_objects WHERE id=ANY($1::text[])',[[...media]]);
+   await q('DELETE FROM social_post_media WHERE post_id IN (SELECT id FROM social_posts WHERE author_id=$1)',[viewer]);
    await q('DELETE FROM social_posts WHERE author_id=$1 AND NOT deleted',[viewer]);
    await q('DELETE FROM social_follows WHERE follower_id=$1 OR followee_id=$1',[viewer]);
    await q('DELETE FROM social_blocks WHERE blocker_id=$1',[viewer]);

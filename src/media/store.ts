@@ -30,35 +30,57 @@ export function createFileStore(dir:string):MediaStore {
  };
 }
 type Query=Database['query'];
-/** Deletes the objects first so a failed delete leaves the row for a later purge, then the rows. */
-export async function deleteMediaObjects(query:Query,store:MediaStore|null,ids:string[]):Promise<void> {
- if(!ids.length)return;
- if(store)for(const id of ids)for(const variant of ['full','thumb'] as const)await store.delete(mediaKey(id,variant));
- await query('DELETE FROM media_objects WHERE id=ANY($1::text[])',[ids]);
+/** Deletes both blob variants of one media id. Returns false (and deletes nothing more) when the store fails, so the caller keeps the row for a later retry. */
+async function deleteBlobs(store:MediaStore|null,id:string):Promise<boolean> {
+ if(!store)return true;
+ try{for(const variant of ['full','thumb'] as const)await store.delete(mediaKey(id,variant));return true;}catch{return false;}
+}
+/** Blob first, then the row: a failed blob delete keeps the row so a later sweep retries. Never throws; returns the ids whose rows were removed. */
+export async function deleteMediaObjects(query:Query,store:MediaStore|null,ids:string[]):Promise<string[]> {
+ const done:string[]=[];
+ for(const id of ids)if(await deleteBlobs(store,id))done.push(id);
+ if(done.length)try{await query('DELETE FROM media_objects WHERE id=ANY($1::text[])',[done]);}catch{return [];}
+ return done;
 }
 /** All-or-nothing in one statement: nothing is attached unless every id is a distinct pending row of this owner and purpose. */
 export async function attachMedia(query:Query,ownerId:string,ids:string[],purpose:Purpose):Promise<MediaRef[]> {
  if(!ids.length)return [];
  if(new Set(ids).size!==ids.length||!ids.every(validMediaId))throw new HttpError(400,'invalid_media','Invalid media.');
  const result=await query(`WITH picked AS (
-   SELECT id FROM media_objects WHERE id=ANY($1::text[]) AND owner_id=$2 AND purpose=$3 AND state='pending' FOR UPDATE
+   SELECT id FROM media_objects WHERE id=ANY($1::text[]) AND owner_id=$2 AND purpose=$3 AND state='pending' AND created_at>now()-($4*interval '1 millisecond') FOR UPDATE
   ), attached AS (
    UPDATE media_objects SET state='attached'
    WHERE id IN (SELECT id FROM picked) AND (SELECT count(*) FROM picked)=cardinality($1::text[])
    RETURNING id,width,height,thumb_bytes>0 AS thumb
-  ) SELECT id,width,height,thumb FROM attached`,[ids,ownerId,purpose]);
+  ) SELECT id,width,height,thumb FROM attached`,[ids,ownerId,purpose,PENDING_TTL_MS]);
  const byId=new Map(result.rows.map(row=>[row.id as string,row]));
  if(byId.size!==ids.length)throw new HttpError(400,'invalid_media','Invalid media.');
  return ids.map(id=>{const row=byId.get(id)!;return {id,width:Number(row.width),height:Number(row.height),thumb:!!row.thumb};});
 }
-/** Claims stale pending rows with a guarded DELETE (so it cannot race with attachMedia), then removes blobs for the rows actually deleted. */
+/** Removes blobs of stale pending rows, then the rows (guarded on state so a racing attach wins; attachMedia also refuses stale rows). */
 export async function purgePendingMedia(query:Query,store:MediaStore|null):Promise<void> {
  for(;;){
-  const result=await query(`DELETE FROM media_objects WHERE id IN (
-    SELECT id FROM media_objects WHERE state='pending' AND created_at<now()-($1*interval '1 millisecond') ORDER BY created_at LIMIT 100 FOR UPDATE SKIP LOCKED
-   ) AND state='pending' AND created_at<now()-($1*interval '1 millisecond') RETURNING id`,[PENDING_TTL_MS]);
-  const ids=result.rows.map(row=>row.id as string);
-  if(store)for(const id of ids)for(const variant of ['full','thumb'] as const)await store.delete(mediaKey(id,variant));
-  if(ids.length<100)return;
+  const found=await query(`SELECT id FROM media_objects WHERE state='pending' AND created_at<now()-($1*interval '1 millisecond') ORDER BY created_at LIMIT 100`,[PENDING_TTL_MS]);
+  const done:string[]=[];
+  for(const row of found.rows)if(await deleteBlobs(store,row.id as string))done.push(row.id as string);
+  if(done.length)await query(`DELETE FROM media_objects WHERE id=ANY($1::text[]) AND state='pending'`,[done]);
+  // Stop when a batch was short or made no progress (a failing store would otherwise loop forever).
+  if(found.rows.length<100||done.length===0)return;
  }
+}
+/** Reaps 'attached' media older than an hour that nothing references (failed cleanups, deleted accounts' counterparts). Blobs first, then rows. Returns the rows removed. */
+export async function sweepOrphanMedia(query:Query,store:MediaStore|null,limit=100):Promise<number> {
+ const found=await query(`SELECT m.id FROM media_objects m WHERE m.state='attached' AND m.created_at<now()-interval '1 hour'
+   AND NOT EXISTS(SELECT 1 FROM social_post_media pm WHERE pm.media_id=m.id)
+   AND NOT EXISTS(SELECT 1 FROM social_profiles sp WHERE sp.avatar_id=m.id OR sp.banner_id=m.id)
+   AND NOT EXISTS(SELECT 1 FROM chat_messages cm WHERE cm.media_id=m.id)
+   ORDER BY m.created_at LIMIT $1`,[limit]);
+ const done:string[]=[];
+ for(const row of found.rows)if(await deleteBlobs(store,row.id as string))done.push(row.id as string);
+ if(!done.length)return 0;
+ const removed=await query(`DELETE FROM media_objects m WHERE m.id=ANY($1::text[]) AND m.state='attached'
+   AND NOT EXISTS(SELECT 1 FROM social_post_media pm WHERE pm.media_id=m.id)
+   AND NOT EXISTS(SELECT 1 FROM social_profiles sp WHERE sp.avatar_id=m.id OR sp.banner_id=m.id)
+   AND NOT EXISTS(SELECT 1 FROM chat_messages cm WHERE cm.media_id=m.id) RETURNING m.id`,[done]);
+ return removed.rows.length;
 }

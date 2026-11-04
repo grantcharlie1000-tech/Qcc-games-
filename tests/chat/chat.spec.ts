@@ -409,6 +409,35 @@ test('chat info: report list, block and delete go through confirm sheets',async(
  await expect(page.locator('a.chat-row').filter({hasText:b.name})).toHaveCount(0);
 });
 
+test('Block warns that the chat closes, and "Report a message first" reports before blocking',async({page,context})=>{
+ await connect(context);
+ const a=await user('rb'),b=await user('rc');await befriend(a,b);await say(b,a,'please stop');
+ await open(page,a.name,`#/chat/with/${b.name}`);
+ await expect(entry(page,'please stop')).toBeVisible();
+ await page.getByRole('button',{name:'Chat info',exact:true}).click();
+ await page.locator('#chat-info').getByRole('button',{name:`Block ${b.name}`}).click();
+ const confirm=page.locator('#apps-confirm');
+ await expect(confirm).toContainText("After blocking, this chat closes and you can't open it again.");
+ await confirm.getByRole('button',{name:'Report a message first'}).click();
+ const report=page.locator('#apps-report');await expect(report).toBeVisible();
+ await report.getByRole('radio',{name:'please stop'}).check();await report.getByRole('radio',{name:'Harassment or bullying'}).check();
+ await report.getByRole('button',{name:'Send report'}).click();
+ await expect(report.getByRole('heading',{name:'Report sent'})).toBeVisible();
+ await report.getByRole('button',{name:'Done'}).click();
+ await expect(report).not.toBeVisible();
+ const reports=await pool.query(`SELECT r.snapshot FROM social_reports r JOIN accounts t ON t.id=r.target_account_id WHERE t.username=$1 AND r.target_kind='message'`,[b.name]);
+ expect(reports.rows).toHaveLength(1);expect(reports.rows[0].snapshot).toContain('please stop');
+ // Still friends, so the user can now block.
+ await page.getByRole('button',{name:'Chat info',exact:true}).click();
+ await page.locator('#chat-info').getByRole('button',{name:`Block ${b.name}`}).click();
+ await confirm.getByRole('button',{name:'Block',exact:true}).click();
+ await expect(page.getByText(`Blocked @${b.name}.`)).toBeVisible();
+ const contacts=await pool.query(`SELECT count(*)::int AS n FROM chat_contacts c JOIN accounts x ON x.id=c.owner_id JOIN accounts y ON y.id=c.contact_id WHERE x.username IN ($1,$2) AND y.username IN ($1,$2)`,[a.name,b.name]);
+ expect(contacts.rows[0].n).toBe(0);
+ const stillThere=await pool.query(`SELECT count(*)::int AS n FROM social_reports r JOIN accounts t ON t.id=r.target_account_id WHERE t.username=$1`,[b.name]);
+ expect(stillThere.rows[0].n).toBe(1);
+});
+
 test('non-friend cannot be messaged (UI shows request flow)',async({page,context})=>{
  await connect(context,{pollScale:0.05});
  const a=await user('na'),b=await user('nb');

@@ -23,12 +23,14 @@ export function closeAppSheets():void {
 }
 export const showSheet=(dialog:HTMLDialogElement,trigger?:Element|null):void=>openSheet(dialog,trigger??(document.activeElement instanceof Element?document.activeElement:null));
 
-export interface ConfirmOptions {title:string;text:string;confirm:string;cancel?:string;danger?:boolean;typed?:{label:string;match:string};trigger?:Element|null}
+export interface ConfirmOptions {title:string;text:string;confirm:string;cancel?:string;danger?:boolean;typed?:{label:string;match:string};trigger?:Element|null;
+ /** A third, quieter choice (for example "Report a message first"). It closes the sheet, resolves false, then runs. */
+ alternate?:{label:string;run:()=>void}}
 /** DESIGN 7.4. Resolves true only when the action button is pressed. Initial focus is on Cancel. */
 export function confirmSheet(options:ConfirmOptions):Promise<boolean> {
  const {dialog,body}=appSheet('apps-confirm',options.title,{closeLabel:'Close'});
  const typed=options.typed;
- body.innerHTML=`<p class="apps-confirm-text"></p>${typed?`<label class="apps-field-label" for="apps-confirm-typed">${escapeHtml(typed.label)}</label><input id="apps-confirm-typed" class="apps-field" autocomplete="off" autocapitalize="none" spellcheck="false">`:''}<div class="apps-confirm-actions"><button type="button" class="game-button secondary" data-action="cancel" autofocus>${escapeHtml(options.cancel??'Cancel')}</button><button type="button" class="game-button secondary apps-danger" data-action="confirm"${typed?' disabled':''}>${escapeHtml(options.confirm)}</button></div>`;
+ body.innerHTML=`<p class="apps-confirm-text"></p>${typed?`<label class="apps-field-label" for="apps-confirm-typed">${escapeHtml(typed.label)}</label><input id="apps-confirm-typed" class="apps-field" autocomplete="off" autocapitalize="none" spellcheck="false">`:''}<div class="apps-confirm-actions"><button type="button" class="game-button secondary" data-action="cancel" autofocus>${escapeHtml(options.cancel??'Cancel')}</button>${options.alternate?`<button type="button" class="game-button secondary" data-action="alternate">${escapeHtml(options.alternate.label)}</button>`:''}<button type="button" class="game-button secondary apps-danger" data-action="confirm"${typed?' disabled':''}>${escapeHtml(options.confirm)}</button></div>`;
  body.querySelector('.apps-confirm-text')!.textContent=options.text;
  const confirmButton=body.querySelector<HTMLButtonElement>('[data-action=confirm]')!;
  if(!options.danger&&!typed)confirmButton.classList.remove('apps-danger');
@@ -38,6 +40,7 @@ export function confirmSheet(options:ConfirmOptions):Promise<boolean> {
   let answer=false;
   confirmButton.addEventListener('click',()=>{if(confirmButton.disabled)return;answer=true;dialog.close();});
   body.querySelector('[data-action=cancel]')!.addEventListener('click',()=>dialog.close());
+  body.querySelector('[data-action=alternate]')?.addEventListener('click',()=>{dialog.addEventListener('close',()=>setTimeout(options.alternate!.run,0),{once:true});dialog.close();});
   dialog.addEventListener('close',()=>resolve(answer),{once:true});
   showSheet(dialog,options.trigger);
   body.querySelector<HTMLElement>('[data-action=cancel]')!.focus();

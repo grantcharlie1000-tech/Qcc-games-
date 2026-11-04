@@ -2,7 +2,7 @@ import {getDatabase} from '@netlify/database';
 import {netlifyMediaStore} from '../lib/media-store.mts';
 import type {Config} from '@netlify/functions';
 import {purgeExpiredChat} from '../../src/chat/server';
-import {purgePendingMedia} from '../../src/media/store';
+import {purgePendingMedia,sweepOrphanMedia} from '../../src/media/store';
 const BATCH=500,MAX_ITERATIONS=20;
 // Hourly: delete expired chat messages (and their snap media) and stale pending uploads. Logs counts only.
 export default async ()=>{
@@ -14,7 +14,9 @@ export default async ()=>{
    if(count<BATCH)break;
   }
   await purgePendingMedia(query,store);
-  console.log(`QCC chat purge: ${deleted} expired messages deleted in ${runs} run(s).`);
+  let orphans=0;
+  for(let i=0;i<MAX_ITERATIONS;i++){const n=await sweepOrphanMedia(query,store,100);orphans+=n;if(n<100)break;}
+  console.log(`QCC chat purge: ${deleted} expired messages deleted in ${runs} run(s), ${orphans} orphaned media removed.`);
   return new Response(null,{status:200});
  }catch{console.error('QCC chat purge failed.');return new Response(null,{status:200});}
 };

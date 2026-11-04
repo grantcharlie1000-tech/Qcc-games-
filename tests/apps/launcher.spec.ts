@@ -17,7 +17,7 @@ test.afterAll(async()=>{await pool?.end();await database.stop();});
 
 const PASSWORD='long enough password';
 let summaryRequests=0;
-async function connect(context:BrowserContext,pollScale?:number){
+async function connect(context:BrowserContext,pollScale?:number,chatMissing=false){
  summaryRequests=0;
  await context.addInitScript(scale=>{
   if(window!==window.top)return;
@@ -27,6 +27,7 @@ async function connect(context:BrowserContext,pollScale?:number){
  for(const [name,handle] of [['accounts',accounts],['chat',chat],['social',social]] as const)await context.route(`**/.netlify/functions/${name}**`,async route=>{
   const req=route.request();
   if(name==='chat'&&req.url().includes('action=summary'))summaryRequests++;
+  if(name==='chat'&&chatMissing)return route.fulfill({status:404,contentType:'text/html',body:'<h1>Not found</h1>'});
   const result=await handle(new Request(req.url(),{method:req.method(),headers:req.headers(),body:['POST','PUT'].includes(req.method())?req.postData():undefined}));
   await route.fulfill({status:result.status,headers:Object.fromEntries(result.headers),body:await result.text()});
  });
@@ -119,6 +120,21 @@ test('launcher stops polling when hidden or signed out',async({page,context})=>{
  await expect(page.locator('#menu')).not.toBeVisible();await page.waitForTimeout(300);
  const signedOutCount=summaryRequests;await page.waitForTimeout(3600);
  expect(summaryRequests).toBe(signedOutCount);
+});
+
+test('Apps tab stays hidden and nothing polls when the chat backend is missing',async({page,context})=>{
+ await connect(context,0.05,true);
+ const name=`bh_${stamp()}`;await signup(name);
+ await page.goto('/');await logIn(page,name);
+ // Only the one capability probe reached the chat route; the 404 hides the tab with no gap.
+ await expect(page.locator('.app-tabbar .ui-tab')).toHaveCount(6);
+ await expect(page.locator('.app-tabbar [data-action=apps]')).toBeHidden();
+ expect(await page.locator('.app-tabbar .ui-tab:visible').count()).toBe(5);
+ await page.waitForTimeout(4000);
+ expect(summaryRequests).toBe(1);
+ // Direct routes still work and show their own state.
+ await page.goto('/#/chat');await page.reload();
+ await expect(page.locator('section.chat-view')).toBeVisible();
 });
 
 test('Escape still opens Study from #/social',async({page,context})=>{

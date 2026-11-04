@@ -60,6 +60,7 @@ const preferences=store.settings();
 const accounts=new AccountsClient();
 const launcher=new AppsLauncher({accounts,chat:new ChatClient(()=>accounts.session()?.token??null),reducedMotion:()=>preferences.reducedMotion});
 navigation.bar.querySelector('[data-action="study"]')!.before(launcher.tab);
+void launcher.probe();
 const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry);
 const leaderboards=new LeaderboardView(()=>{pausedForDialog=false;if(activeId)setPaused(true);accountView.open();});
 let gameMenu:HTMLDialogElement|undefined;

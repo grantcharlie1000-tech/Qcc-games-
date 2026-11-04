@@ -1,7 +1,7 @@
 import './apps.css';
 import './launcher.css';
 import type {AccountsClient} from '../accounts/client';
-import type {ChatClient} from '../chat/client';
+import {CHAT_ENDPOINT,type ChatClient} from '../chat/client';
 import {POLL_MS} from '../chat/shared';
 import {openSheet} from '../ui/sheet';
 import {uiIcon} from '../ui/icons';
@@ -41,12 +41,17 @@ export class AppsLauncher {
   private abort:AbortController|undefined;
   private polledToken:string|null=null;
   private disposed=false;
+  private available=false;
+  private probing:Promise<boolean>|undefined;
+  private retry:number|undefined;
   private shown=0;
   private readonly listeners=new Set<(state:AppsBadgeState)=>void>();
   private readonly offAccounts:()=>void;
   constructor(private readonly deps:{accounts:AccountsClient;chat:ChatClient;reducedMotion:()=>boolean}) {
     this.tab.type='button';this.tab.className='ui-tab';this.tab.dataset.action='apps';this.tab.setAttribute('aria-haspopup','dialog');
     this.tab.setAttribute('aria-label','Apps');
+    // Hidden (no gap, no polling) until probe() finds a working chat backend.
+    this.tab.hidden=true;
     this.tab.innerHTML=`${appIcon('apps')}<span>Apps</span>`;
     for(const badge of [this.tabBadge,this.tileBadge]){badge.className='apps-badge';badge.hidden=true;badge.setAttribute('aria-hidden','true');}
     this.tab.append(this.tabBadge);
@@ -68,6 +73,30 @@ export class AppsLauncher {
     document.addEventListener('visibilitychange',this.onVisibility);
     this.offAccounts=deps.accounts.onChange(()=>this.sync());
     this.sync();
+  }
+  /**
+   * Capability probe, once per page load: an unauthenticated GET of the chat summary. A 401 or a 200 with a JSON body means the handler exists, so the Apps tab and the badge poll switch on.
+   * A 404, 503, 502, network error or non-JSON body (an SPA fallback page) keeps them off. One retry after `retryMs`, then it stops for this page load.
+   */
+  probe(retryMs=30000):Promise<boolean>{
+    return this.probing??=(async()=>{
+      if(await this.probeOnce())return this.enable();
+      await new Promise<void>(resolve=>{this.retry=window.setTimeout(resolve,retryMs);});
+      this.retry=undefined;
+      return !this.disposed&&await this.probeOnce()?this.enable():false;
+    })();
+  }
+  private async probeOnce():Promise<boolean>{
+    if(this.disposed)return false;
+    try{
+      const response=await fetch(`${CHAT_ENDPOINT}?action=summary`,{credentials:'omit',signal:AbortSignal.timeout(10000)});
+      if(response.status!==401&&response.status!==200)return false;
+      await response.json();return true;
+    }catch{return false;}
+  }
+  private enable():boolean{
+    if(this.disposed)return false;
+    this.available=true;this.tab.hidden=false;this.sync();return true;
   }
   get sheet():HTMLDialogElement{return this.dialog;}
   /** The badge count for other Apps tabs (the Social and Chat islands). Calls `run` now and on every change. */
@@ -100,7 +129,7 @@ export class AppsLauncher {
     }catch{/* keep the last count */}
   }
   dispose():void{
-    this.disposed=true;this.stop();this.abort?.abort();
+    this.disposed=true;this.stop();if(this.retry!==undefined)clearTimeout(this.retry);this.abort?.abort();
     document.removeEventListener('visibilitychange',this.onVisibility);this.offAccounts();
     if(this.dialog.open)this.dialog.close();
     this.listeners.clear();this.dialog.remove();this.tab.remove();
@@ -111,7 +140,7 @@ export class AppsLauncher {
     if(this.disposed)return;
     const token=this.deps.accounts.session()?.token??null;
     if(token!==this.polledToken){this.polledToken=token;this.stop();this.abort?.abort();this.clear();}
-    if(!token||document.visibilityState!=='visible'){this.stop();return;}
+    if(!this.available||!token||document.visibilityState!=='visible'){this.stop();return;}
     if(this.timer===undefined){
       this.timer=window.setInterval(()=>{if(document.visibilityState==='visible')void this.refresh();},pollMs(POLL_MS.badge));
       void this.refresh();

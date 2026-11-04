@@ -3,7 +3,7 @@ import type {Database} from '../leaderboard/server';
 import {resolveAccount} from '../accounts/server';
 import {writeFrozen,readOnlyResponse} from '../accounts/write-freeze';
 import {HttpError,respond,readJson,sameOrigin,rateLimit,errorResponse} from '../../server/api';
-import {attachMedia,purgePendingMedia,type MediaStore} from '../media/store';
+import {attachMedia,deleteMediaObjects,purgePendingMedia,sweepOrphanMedia,type MediaStore} from '../media/store';
 import {mediaKey,validMediaId} from '../media/policy';
 import {accountByUsername,isBlockedEitherWay,setBlock} from '../social/blocks';
 import {REPORT_CATEGORIES,REPORT_NOTE_MAX,LIMITS,codePoints,type ReportCategory} from '../social/shared';
@@ -40,11 +40,6 @@ function messageView(row:any,me:string):MessageView {
 const GET_ACTIONS=new Set(['summary','list','messages']);
 const POST_ACTIONS=new Set(['request','respond','remove_friend','send','open_snap','save','unsend','retention','delete_conversation','report','block']);
 
-/** Best-effort: an orphaned blob is harmless and a failed delete must not fail work that already committed. */
-async function deleteBlobs(store:MediaStore|null,ids:string[]):Promise<void> {
- if(!store)return;
- for(const id of ids)for(const variant of ['full','thumb'] as const)try{await store.delete(mediaKey(id,variant));}catch{/* best effort */}
-}
 /** Deletes expired messages in batches, removing snap media only for rows this call actually deleted. Returns the number of messages deleted. */
 export async function purgeExpiredChat(query:Query,store:MediaStore|null):Promise<number> {
  let total=0;
@@ -54,13 +49,12 @@ export async function purgeExpiredChat(query:Query,store:MediaStore|null):Promis
    ) RETURNING media_id`);
   total+=result.rows.length;
   const media=result.rows.flatMap(row=>row.media_id?[row.media_id as string]:[]);
-  if(media.length){
-   await query('DELETE FROM media_objects WHERE id=ANY($1::text[])',[media]);
-   await deleteBlobs(store,media);
-  }
+  // Blob first; a failed blob delete keeps the media row for a later sweep. The message rows are already gone (media_id is SET NULL).
+  if(media.length)await deleteMediaObjects(query,store,media);
   if(result.rows.length<PURGE_BATCH)break;
  }
  await purgePendingMedia(query,store);
+ await sweepOrphanMedia(query,store).catch(()=>0);
  return total;
 }
 
@@ -74,10 +68,9 @@ export function createChatHandler(db:Database,store:MediaStore|null):(request:Re
   }catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}
   finally{client.release();}
  }
- /** Best-effort, after COMMIT: an orphaned blob is harmless, a failed delete must not fail the request. */
- async function dropBlobs(ids:string[]):Promise<void> {
-  if(!store)return;
-  for(const id of ids)for(const variant of ['full','thumb'] as const)try{await store.delete(mediaKey(id,variant));}catch{/* best effort */}
+ /** Best-effort, after COMMIT: blobs go first and a failed delete keeps the media row for a later sweep; it never fails the request. */
+ async function dropMedia(ids:string[]):Promise<void> {
+  await deleteMediaObjects(db.query,store,ids).catch(()=>[]);
  }
  /** Resolves a username to an account that is a current friend of the caller (mutual, unblocked), otherwise 404 with no distinction. */
  async function friend(me:string,username:unknown):Promise<{id:string;username:string;display:Friend}> {
@@ -243,10 +236,9 @@ export function createChatHandler(db:Database,store:MediaStore|null):(request:Re
    const opened=await q(`UPDATE chat_messages SET viewed_at=now(),media_id=NULL,
      expires_at=CASE WHEN $2='viewed' AND saved_at IS NULL THEN least(expires_at,now()+interval '24 hours') ELSE expires_at END WHERE id=$1::bigint AND viewed_at IS NULL RETURNING id`,[id,message.retention]);
    if(!opened.rows.length)throw new HttpError(410,'opened','This snap was already opened.');
-   await q('DELETE FROM media_objects WHERE id=$1',[message.media_id]);
    return {bytes,mediaId:message.media_id as string};
   });
-  await dropBlobs([mediaId]);
+  await dropMedia([mediaId]);
   return new Response(bytes as unknown as BodyInit,{status:200,headers:{'Content-Type':'image/webp','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
  }
 
@@ -272,7 +264,7 @@ export function createChatHandler(db:Database,store:MediaStore|null):(request:Re
    await q('DELETE FROM chat_messages WHERE id=$1::bigint AND sender_id=$2',[id,me]);
    return message.media_id as string|null;
   });
-  if(media){await db.query('DELETE FROM media_objects WHERE id=$1',[media]);await dropBlobs([media]);}
+  if(media)await dropMedia([media]);
   return {ok:true};
  }
 
@@ -298,10 +290,9 @@ export function createChatHandler(db:Database,store:MediaStore|null):(request:Re
    const media=await q('SELECT media_id FROM chat_messages WHERE conversation_id=$1 AND media_id IS NOT NULL FOR UPDATE',[conversation.id]);
    const ids=media.rows.map(row=>row.media_id as string);
    await q('DELETE FROM chat_conversations WHERE id=$1',[conversation.id]);
-   if(ids.length)await q('DELETE FROM media_objects WHERE id=ANY($1::text[])',[ids]);
    return ids;
   });
-  await dropBlobs(dropped);
+  await dropMedia(dropped);
   return {ok:true};
  }
 

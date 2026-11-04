@@ -88,7 +88,8 @@ export function openChatInfo(ctx:ChatContext,options:InfoOptions):void {
  const after=(run:()=>void)=>{dialog.addEventListener('close',()=>setTimeout(run,0),{once:true});dialog.close();};
  body.querySelector('[data-action=report]')!.addEventListener('click',()=>after(()=>openMessageReport(ctx,friend,options.recent().slice(0,10),{trigger})));
  blockButton.addEventListener('click',()=>after(async()=>{
-  const ok=await confirmSheet({title:`Block @${friend.username}?`,text:"You won't see each other's posts or profiles, follows between you are removed, and you'll stop being friends in Chat. They won't be told.",confirm:'Block',danger:true,trigger});
+  const ok=await confirmSheet({title:`Block @${friend.username}?`,text:"You won't see each other's posts or profiles, follows between you are removed, and you'll stop being friends in Chat. They won't be told. After blocking, this chat closes and you can't open it again.",confirm:'Block',danger:true,trigger,
+   alternate:{label:'Report a message first',run:()=>openMessageReport(ctx,friend,options.recent().slice(0,10),{trigger})}});
   if(!ok)return;
   try{await ctx.client.block(friend.username);ctx.notify(`Blocked @${friend.username}.`,{icon:'info'});ctx.go('#/chat');}
   catch(error){ctx.fail(error,"Couldn't block. Try again.");}

@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {randomUUID,randomBytes} from 'node:crypto';
 import {NetlifyDB} from '@netlify/database-dev';
 import {getDatabase} from '@netlify/database';
-import {createFileStore,createMemoryStore,attachMedia,deleteMediaObjects,purgePendingMedia} from '../../src/media/store';
+import {createFileStore,createMemoryStore,attachMedia,deleteMediaObjects,purgePendingMedia,sweepOrphanMedia} from '../../src/media/store';
 import {setBlock,isBlockedEitherWay,accountByUsername} from '../../src/social/blocks';
 import {HttpError,readJson} from '../../server/api';
 const local=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
@@ -67,6 +67,37 @@ describe('purge and delete with real Postgres',()=>{
   const o=await account('del_o'),id=await media(o),store=createMemoryStore();
   await store.put(id+'/full',new Uint8Array([1]));await store.put(id+'/thumb',new Uint8Array([1]));
   await deleteMediaObjects(query,store,[id]);expect(store.keys()).toEqual([]);expect(await states([id])).toEqual({});
+ });
+});
+describe('orphan media sweep',()=>{
+ const put=async(store:ReturnType<typeof createMemoryStore>,ids:string[])=>{for(const id of ids)for(const v of ['full','thumb'])await store.put(`${id}/${v}`,new Uint8Array([1]));};
+ it('removes old unreferenced attached media with blobs and keeps referenced, fresh and pending media',async()=>{
+  const o=await account('swp_o'),store=createMemoryStore();
+  const orphan=await media(o,'snap','attached','2 hours'),fresh=await media(o,'snap','attached','5 minutes'),pending=await media(o,'post','pending','2 hours');
+  const onPost=await media(o,'post','attached','2 hours'),avatar=await media(o,'avatar','attached','2 hours'),banner=await media(o,'banner','attached','2 hours'),inChat=await media(o,'snap','attached','2 hours');
+  await put(store,[orphan,fresh,pending,onPost,avatar,banner,inChat]);
+  const post=randomUUID();
+  await query(`INSERT INTO social_posts(id,author_id) VALUES ($1,$2)`,[post,o]);
+  await query(`INSERT INTO social_post_media(post_id,position,media_id) VALUES ($1,0,$2)`,[post,onPost]);
+  await query(`INSERT INTO social_profiles(account_id,avatar_id,banner_id) VALUES ($1,$2,$3)`,[o,avatar,banner]);
+  const other=await account('swp_p'),[x,y]=[o,other].sort(),conversation=randomUUID();
+  await query(`INSERT INTO chat_conversations(id,a_id,b_id) VALUES ($1,$2,$3)`,[conversation,x,y]);
+  await query(`INSERT INTO chat_messages(conversation_id,sender_id,kind,media_id,expires_at) VALUES ($1,$2,'snap',$3,now()+interval '1 day')`,[conversation,o,inChat]);
+  // Other tests in this file leave their own attached rows behind, so count at least ours.
+  expect(await sweepOrphanMedia(query,store,1000)).toBeGreaterThanOrEqual(1);
+  expect(await states([orphan,fresh,pending,onPost,avatar,banner,inChat])).toEqual({[fresh]:'attached',[pending]:'pending',[onPost]:'attached',[avatar]:'attached',[banner]:'attached',[inChat]:'attached'});
+  expect(store.keys()).not.toContain(`${orphan}/full`);expect(store.keys()).not.toContain(`${orphan}/thumb`);
+  expect(store.keys()).toHaveLength(12);// 6 survivors x 2 variants
+ });
+ it('keeps the row when a blob delete fails, so a later sweep retries',async()=>{
+  const o=await account('swp_f'),id=await media(o,'snap','attached','3 hours'),store=createMemoryStore();await put(store,[id]);
+  const failing={...store,delete:async()=>{throw new Error('blob store down');}};
+  await sweepOrphanMedia(query,failing,1000);expect(await states([id])).toEqual({[id]:'attached'});
+  await sweepOrphanMedia(query,store,1000);expect(await states([id])).toEqual({});expect(store.keys()).toEqual([]);
+ });
+ it('also works with no blob store configured',async()=>{
+  const o=await account('swp_n'),id=await media(o,'snap','attached','3 hours');
+  await sweepOrphanMedia(query,null,1000);expect(await states([id])).toEqual({});
  });
 });
 describe('blocks with real Postgres',()=>{

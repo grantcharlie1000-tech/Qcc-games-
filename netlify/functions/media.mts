@@ -15,4 +15,4 @@ export default async (request:Request)=>{
   return await handle(request);
  }catch(error){if(isStorageFullError(error))return storageFullResponse();return Response.json({error:'Media temporarily unavailable.'},{status:503,headers:{'Cache-Control':'no-store'}});}
 };
-export const config:Config={rateLimit:{action:'rate_limit',aggregateBy:'ip',windowSize:60,windowLimit:60}};
+export const config:Config={rateLimit:{action:'rate_limit',aggregateBy:'ip',windowSize:60,windowLimit:1200}};

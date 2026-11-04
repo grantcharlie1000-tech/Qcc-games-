@@ -289,8 +289,11 @@ test('reduced motion disables like burst',async({page,context})=>{
  });
  expect(count).toBeGreaterThan(0);
  await expect(card().getByRole('button',{name:'Like, 1 like'})).toHaveAttribute('aria-pressed','true');
+ // Wait for the unlike to reach the server: reloading with it in flight leaves like=1, so the next click would unlike.
+ const unliked=page.waitForResponse(r=>r.url().includes('action=like')&&r.request().method()==='POST');
  await card().getByRole('button',{name:'Like, 1 like'}).click();
  await expect(card().getByRole('button',{name:'Like, 0 likes'})).toHaveAttribute('aria-pressed','false');
+ await unliked;
  // With reduced motion (the media query) nothing runs, however soon we look.
  await page.emulateMedia({reducedMotion:'reduce'});await page.reload();
  await expect(card()).toBeVisible();

@@ -77,7 +77,7 @@ system. Neither connects to, imports from or proxies any third-party account.
 | Photo uploads | 60 / day, stored total ≤ 100 MiB / account (media still stored) |
 | Global media budget | `QCC_MEDIA_MAX_TOTAL_BYTES` (default 2 GiB); uploads return 507 above it |
 
-Counters reuse `account_attempts` (`subject = 'social:post:'+account_id`, etc.), so they need no new table. Netlify function limits are 600 requests per IP per minute for social and chat, and 60 for media.
+Counters reuse `account_attempts` (`subject = 'social:post:'+account_id`, etc.), so they need no new table. Netlify function limits are 600 requests per IP per minute for social and chat, and 1200 for media (image GETs share the bucket; uploads are limited to 60/day per account).
 
 ## Media pipeline (photos)
 
