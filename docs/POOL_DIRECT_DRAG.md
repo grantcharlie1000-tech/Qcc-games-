@@ -1,5 +1,7 @@
 # Pool: horizontal table and direct cue gestures
 
+> **Superseded (2026-11-04):** Pool was rebuilt; see [POOL_REMAKE.md](POOL_REMAKE.md). This page records the previous version.
+
 Pool now uses a wide blue table with substantial wood rails, a visible cue, collision preview and a vertical power meter. The supplied reference informed the composition; the table is drawn with the existing original canvas artwork. Navigation, pause, restart, player mode and the called 8-ball pocket remain separate from play. There are no gameplay buttons or aim/power sliders.
 
 Drag the felt to aim, then start a new drag on the white ball and pull backwards along the cue. Release to shoot. An aiming drag never shoots. Return to the white ball or the starting point to cancel; C, Backspace, a second pointer, pointer cancellation, lost capture, pause, restart, blur or changed table geometry also discard a loaded stroke. A screen-scaled deadzone prevents small finger movements from loading power. Pointer capture supports release outside the canvas.

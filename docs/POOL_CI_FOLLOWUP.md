@@ -1,5 +1,7 @@
 # Pool hosted-CI follow-up
 
+> **Superseded (2026-11-04):** Pool was rebuilt; see [POOL_REMAKE.md](POOL_REMAKE.md). This page records the previous version.
+
 The sections through “Supported local integration” record the earlier `d40611f` checkpoint. The resumed repair and current authorization are recorded below; historical RED results remain intact.
 
 The hosted [run 39416367186](https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/39416367186) tested synthetic merge `d07fbd6ed4b22414772558a1b807f706cbd083bf` (Pool head `5b2145e347f09a0cda1eb8f8fb6dfbf6474b04ec`, main `a7f7631d4f606667f23b016ad6091cb3899365e8`). It passed 282 unit tests and 315 browser tests, skipped 13 browser tests, and failed four browser cases. Build, update verification and offline verification did not run after the browser failure. PR #6 publication automatically triggered a Netlify preview; the parent verified active production remains main `a7f7631`. The reviewed `5b2145e` fix passed its exact follow-up before publication. This RED run remains the source of truth for hosted CI; no remote rerun or deployment-triggering write is authorized for this follow-up.
