@@ -232,6 +232,59 @@ test('save keeps message, unsend removes for both',async({page,browser,context})
  await other.context.close();
 });
 
+test('a failed send keeps the text and offers a retry, with the limit copy',async({page,context})=>{
+ await connect(context,{pollScale:0.05});
+ const a=await user('qa'),b=await user('qb');await befriend(a,b);
+ let failures=1;
+ await page.route('**/.netlify/functions/chat?action=send',route=>{
+  if(failures-->0)return route.fulfill({status:429,headers:{'content-type':'application/json','retry-after':'30'},body:'{"error":"rate_limited"}'});
+  return route.fallback();
+ });
+ await open(page,a.name,`#/chat/with/${b.name}`);
+ await expect(page.locator('.chat-intro')).toBeVisible();
+ await send(page,'try me twice');
+ const failed=entry(page,'try me twice');
+ await expect(failed.getByRole('button',{name:'Not sent. Tap to try again.'})).toBeVisible();
+ await expect(page.getByText("You're sending messages quickly. Wait a moment, then try again.")).toBeVisible();
+ await expect(failed).toHaveClass(/is-failed/);
+ await failed.getByRole('button',{name:'Not sent. Tap to try again.'}).click();
+ await expect(failed.getByRole('button',{name:'Not sent. Tap to try again.'})).toHaveCount(0);
+ await expect(failed).not.toHaveClass(/is-pending|is-failed/);
+ const server=await (await call(chat,`messages&with=${b.name}`,a.token)).json() as {messages:{body:string}[]};
+ expect(server.messages.map(m=>m.body)).toEqual(['try me twice']);
+ // Over the limit: the send button stays off and the count goes negative.
+ await composer(page).fill('x'.repeat(1010));
+ await expect(page.locator('.chat-count')).toHaveText('-10');
+ await expect(page.getByRole('button',{name:'Send message'})).toBeDisabled();
+});
+
+test('the snap viewer closes when the tab is hidden and when leaving the chat',async({page,context})=>{
+ await connect(context,{pollScale:0.05});
+ const a=await user('ha'),b=await user('hb');await befriend(a,b);
+ await snapFrom(a,b);await snapFrom(a,b);
+ await open(page,b.name,`#/chat/with/${a.name}`);
+ const tiles=page.locator('button.chat-snap');await expect(tiles).toHaveCount(2);
+ await tiles.first().click();
+ const viewer=page.locator('#chat-snap');await expect(viewer.locator('img.chat-snap-img')).toBeVisible();
+ await page.evaluate(()=>{
+  Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'hidden'});
+  Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});
+  document.dispatchEvent(new Event('visibilitychange'));
+ });
+ await expect(viewer).toHaveCount(0);
+ await page.evaluate(()=>{
+  Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'visible'});
+  Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});
+  document.dispatchEvent(new Event('visibilitychange'));
+ });
+ await expect(tiles).toHaveCount(1);
+ await tiles.first().click();
+ await expect(viewer.locator('img.chat-snap-img')).toBeVisible();
+ await page.evaluate(()=>{location.hash='#/collection';});
+ await expect(viewer).toHaveCount(0);
+ await expect(page.locator('section.chat-view')).toHaveCount(0);
+});
+
 test('report a message from its menu',async({page,context})=>{
  await connect(context,{pollScale:0.05});
  const a=await user('ra'),b=await user('rb');await befriend(a,b);

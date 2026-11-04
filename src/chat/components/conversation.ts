@@ -268,12 +268,13 @@ export class ConversationScreen implements Screen {
  private buildEntry(m:MessageView,pending:boolean):HTMLElement {
   const entry=el('div','chat-entry');entry.dataset.id=m.id;entry.dataset.kind=m.kind;entry.dataset.mine=String(m.mine);entry.tabIndex=-1;
   if(pending)entry.classList.add('is-pending');
+  const body=el('div','chat-body');entry.append(body);
   if(m.kind==='text'){
-   const text=el('div','chat-msg');text.append(renderRichText(m.body??''));entry.append(text);
+   const text=el('div','chat-msg');text.append(renderRichText(m.body??''));body.append(text);
    if(m.saved)this.addSaved(entry);
-  }else entry.append(this.buildSnap(m));
+  }else body.append(this.buildSnap(m));
   const more=el('button','chat-msg-more');more.type='button';more.innerHTML=appIcon('more');more.setAttribute('aria-label','Message options');more.setAttribute('aria-haspopup','menu');
-  entry.append(more);
+  body.append(more);
   if(m.mine){const receipt=el('div','chat-receipt');entry.append(receipt);this.fillReceipt(entry,m);}
   return entry;
  }
@@ -333,7 +334,7 @@ export class ConversationScreen implements Screen {
    else{item.el.classList.remove('is-saved');item.el.querySelector('.chat-saved')?.remove();}
   }else if(!!before.snap?.opened!==!!m.snap?.opened){
    const old=item.el.querySelector('.chat-snap');const next=this.buildSnap(m);
-   if(old)old.replaceWith(next);else item.el.prepend(next);
+   if(old)old.replaceWith(next);else item.el.querySelector('.chat-body')?.prepend(next);
   }
   if(m.mine)this.fillReceipt(item.el,m);
  }
