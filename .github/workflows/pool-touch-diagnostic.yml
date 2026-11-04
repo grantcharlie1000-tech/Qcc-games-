@@ -1,0 +1,37 @@
+name: Verify Pool touch capabilities
+on:
+  push:
+    branches: [diagnostics/pool-touch-d453cbb]
+permissions:
+  contents: read
+jobs:
+  pool:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 9e71795e5aa3f903a46f30771c6f027264ad245c
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npm run check
+      - run: npx vitest run tests/games/pool
+      - name: Verify full Pool play suite
+        run: xvfb-run -a npx playwright test tests/games/pool/play.spec.ts --project=${{ matrix.browser }} --workers=1 --reporter=list
+      - name: Repeat native touchscreen cases
+        run: xvfb-run -a npx playwright test tests/games/pool/play.spec.ts --project=${{ matrix.browser }} --workers=1 --repeat-each=3 --grep 'touchscreen taps|touch\x3a aim with a finger' --reporter=list
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pool-touch-${{ matrix.browser }}
+          path: test-results
+          if-no-files-found: warn
