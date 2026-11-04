@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 32b758fd51a19a3c63d63fb75bd98a8f87ce38cf
+          ref: 39fcf96be5515bb950e37d3e06d46b699cd4034e
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -30,7 +30,7 @@ jobs:
           fi
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - name: Check exact PR head
-        run: test "$(git rev-parse HEAD)" = 32b758fd51a19a3c63d63fb75bd98a8f87ce38cf
+        run: test "$(git rev-parse HEAD)" = 39fcf96be5515bb950e37d3e06d46b699cd4034e
       - name: Check white icons and unchanged labels
         run: >-
           xvfb-run -a npm run test:e2e --
