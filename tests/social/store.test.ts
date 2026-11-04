@@ -69,6 +69,15 @@ describe('purge and delete with real Postgres',()=>{
   await deleteMediaObjects(query,store,[id]);expect(store.keys()).toEqual([]);expect(await states([id])).toEqual({});
  });
 });
+describe('expired pending media',()=>{
+ it('attach of a stale pending photo says media_expired; purge keeps it for a 5 minute margin',async()=>{
+  const o=await account('exp_o'),edge=await media(o,'post','pending','63 minutes'),old=await media(o,'post','pending','90 minutes');
+  await expect(attachMedia(query,o,[old],'post')).rejects.toMatchObject({status:400,code:'media_expired'});
+  await expect(attachMedia(query,o,['m_'+'0'.repeat(32)],'post')).rejects.toMatchObject({code:'invalid_media'});
+  await purgePendingMedia(query,createMemoryStore());
+  expect(await states([edge,old])).toEqual({[edge]:'pending'});
+ });
+});
 describe('orphan media sweep',()=>{
  const put=async(store:ReturnType<typeof createMemoryStore>,ids:string[])=>{for(const id of ids)for(const v of ['full','thumb'])await store.put(`${id}/${v}`,new Uint8Array([1]));};
  it('removes old unreferenced attached media with blobs and keeps referenced, fresh and pending media',async()=>{

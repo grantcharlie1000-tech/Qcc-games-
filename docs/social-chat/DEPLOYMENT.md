@@ -28,7 +28,7 @@ The media limit is high because image GETs (avatars, post photos) share the buck
 
 Netlify uses a Netlify Blobs store named `qcc-media` (strong consistency) through `netlify/lib/media-store.mts` (`@netlify/blobs` 11.1.7, lazily imported). If Blobs is unavailable, the adapter returns `null`. Media actions then answer 503 `media_not_configured`, the UI hides photo buttons, and text keeps working. Only processed WebP derivatives are stored.
 
-The separately deployed Vercel backend (`infra/backend-move`) must add the same three handlers (`social`, `chat`, `media`) and a `MediaStore` adapter. The store is an owner decision (for example Vercel Blob or Cloudflare R2). Until then media stays disabled on that path while text works. It must also run the hourly purge (a cron calling `purgeExpiredChat`, `purgePendingMedia` and `sweepOrphanMedia`).
+The separately deployed Vercel backend (`infra/backend-move`) must add the same three handlers (`social`, `chat`, `media`) and a `MediaStore` adapter. The store is an owner decision (for example Vercel Blob or Cloudflare R2). Until then media stays disabled on that path while text works. It must also run the hourly purge (a cron calling `purgeExpiredChat`, `purgePendingMedia` and, hourly only, `sweepOrphanMedia`).
 
 ## Deleting an account directly in SQL
 

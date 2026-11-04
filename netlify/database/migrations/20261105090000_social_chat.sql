@@ -116,4 +116,9 @@ CREATE TABLE chat_messages (
 );
 CREATE INDEX chat_messages_conversation ON chat_messages(conversation_id,id);
 CREATE INDEX chat_messages_expiry ON chat_messages(expires_at);
+-- Reference checks for the hourly orphan-media sweep and media FK actions.
+CREATE INDEX chat_messages_media ON chat_messages(media_id) WHERE media_id IS NOT NULL;
+CREATE INDEX social_post_media_media ON social_post_media(media_id);
+CREATE INDEX social_profiles_avatar ON social_profiles(avatar_id) WHERE avatar_id IS NOT NULL;
+CREATE INDEX social_profiles_banner ON social_profiles(banner_id) WHERE banner_id IS NOT NULL;
 REVOKE ALL ON social_profiles,media_objects,social_posts,social_post_media,social_likes,social_follows,social_blocks,social_reports,social_moderation_actions,chat_contacts,chat_conversations,chat_messages FROM PUBLIC;

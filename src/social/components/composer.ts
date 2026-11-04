@@ -151,6 +151,7 @@ export class Composer {
    if(this.disposed)return;
    this.sending=false;
    if(error instanceof ApiError&&error.status===401){this.options.ctx.signedOut();return;}
+   if(error instanceof ApiError&&error.code==='media_expired'){for(const item of this.uploads)if(item.ready)item.markFailed(error.message,error.code);this.notice(error.message);this.update();return;}
    this.notice(error instanceof ApiError&&error.status===429?error.message:"Couldn't publish. Your post is still here, so you can try again.");
    this.update();
   }

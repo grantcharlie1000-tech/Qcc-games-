@@ -3,7 +3,7 @@ import type {Database} from '../leaderboard/server';
 import {resolveAccount} from '../accounts/server';
 import {writeFrozen,readOnlyResponse} from '../accounts/write-freeze';
 import {HttpError,respond,readJson,sameOrigin,rateLimit,errorResponse} from '../../server/api';
-import {attachMedia,deleteMediaObjects,purgePendingMedia,sweepOrphanMedia,type MediaStore} from '../media/store';
+import {attachMedia,deleteMediaObjects,purgePendingMedia,type MediaStore} from '../media/store';
 import {mediaKey,validMediaId} from '../media/policy';
 import {accountByUsername,isBlockedEitherWay,setBlock} from '../social/blocks';
 import {REPORT_CATEGORIES,REPORT_NOTE_MAX,LIMITS,codePoints,type ReportCategory} from '../social/shared';
@@ -54,7 +54,6 @@ export async function purgeExpiredChat(query:Query,store:MediaStore|null):Promis
   if(result.rows.length<PURGE_BATCH)break;
  }
  await purgePendingMedia(query,store);
- await sweepOrphanMedia(query,store).catch(()=>0);
  return total;
 }
 

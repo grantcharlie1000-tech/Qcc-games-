@@ -43,6 +43,7 @@ export function openSendPhoto(ctx:ChatContext,options:{file:File;friend:Friend;t
   }catch(error){
    sending=false;cancel.disabled=false;send.disabled=!item.ready;
    if(isAuthError(error)){ctx.signedOut();return;}
+   if(error instanceof ApiError&&error.code==='media_expired')item.markFailed(error.message,error.code);
    notice(error instanceof ApiError&&(error.status===429||error.status===507||error.status===0||error.code==='media_not_configured'||error.status===400)?error.message:describeUploadError(error).short==='Failed'?"Couldn't send the photo. Try again.":describeUploadError(error).long);
   }
  });

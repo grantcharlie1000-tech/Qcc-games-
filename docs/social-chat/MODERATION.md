@@ -17,7 +17,7 @@ GROUP BY target_kind,target_id ORDER BY reporters DESC,first_report;
 
 ## Read a message report
 
-Message reports carry the reporter's snapshot (the reported message and a few before it). The message itself may have expired already, and chat content is not otherwise readable here, so the snapshot is the only copy.
+Message reports carry the reporter's snapshot, which holds only the reported message's own text (`[photo]` for a snap), with no surrounding messages. The message itself may have expired already, and chat content is not otherwise readable here, so the snapshot is the only copy.
 
 ```sql
 SELECT id,reporter_id,target_account_id,category,note,snapshot,created_at
@@ -48,6 +48,14 @@ VALUES ('account','<account id>','hide','<what you hid and why>','<your name>');
 ```
 
 Then resolve the account's reports (Dismiss reports, with `target_kind='account'`).
+
+## Clear a reported bio or display name
+
+```sql
+UPDATE social_profiles SET bio='' WHERE account_id='<account id>';           -- and/or display_name=''
+INSERT INTO social_moderation_actions (target_kind,target_id,action,note,moderator)
+VALUES ('account','<account id>','delete','cleared bio/display name','<your name>');
+```
 
 ## Remove a reported avatar or banner
 

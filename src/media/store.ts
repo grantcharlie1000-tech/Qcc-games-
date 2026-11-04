@@ -5,6 +5,7 @@ import {HttpError} from '../../server/api';
 import type {MediaRef} from '../social/shared';
 import {mediaKey,validMediaId,PENDING_TTL_MS,type Purpose} from './policy';
 
+export const MEDIA_EXPIRED_MESSAGE='This photo took too long to post. Remove it and add it again.';
 export interface MediaStore {
  put(key:string,bytes:Uint8Array):Promise<void>;
  get(key:string):Promise<Uint8Array|null>;
@@ -54,13 +55,19 @@ export async function attachMedia(query:Query,ownerId:string,ids:string[],purpos
    RETURNING id,width,height,thumb_bytes>0 AS thumb
   ) SELECT id,width,height,thumb FROM attached`,[ids,ownerId,purpose,PENDING_TTL_MS]);
  const byId=new Map(result.rows.map(row=>[row.id as string,row]));
- if(byId.size!==ids.length)throw new HttpError(400,'invalid_media','Invalid media.');
+ if(byId.size!==ids.length){
+  const stale=await query(`SELECT 1 FROM media_objects WHERE id=ANY($1::text[]) AND owner_id=$2 AND purpose=$3 AND state='pending' AND created_at<=now()-($4*interval '1 millisecond') LIMIT 1`,[ids,ownerId,purpose,PENDING_TTL_MS]);
+  if(stale.rows.length)throw new HttpError(400,'media_expired',MEDIA_EXPIRED_MESSAGE);
+  throw new HttpError(400,'invalid_media','Invalid media.');
+ }
  return ids.map(id=>{const row=byId.get(id)!;return {id,width:Number(row.width),height:Number(row.height),thumb:!!row.thumb};});
 }
+/** Purge waits this long past the attach TTL so an attach that began at the edge cannot lose its blob. */
+const PENDING_PURGE_MARGIN_MS=5*60*1000;
 /** Removes blobs of stale pending rows, then the rows (guarded on state so a racing attach wins; attachMedia also refuses stale rows). */
 export async function purgePendingMedia(query:Query,store:MediaStore|null):Promise<void> {
  for(;;){
-  const found=await query(`SELECT id FROM media_objects WHERE state='pending' AND created_at<now()-($1*interval '1 millisecond') ORDER BY created_at LIMIT 100`,[PENDING_TTL_MS]);
+  const found=await query(`SELECT id FROM media_objects WHERE state='pending' AND created_at<now()-(($1::bigint+$2::bigint)*interval '1 millisecond') ORDER BY created_at LIMIT 100`,[PENDING_TTL_MS,PENDING_PURGE_MARGIN_MS]);
   const done:string[]=[];
   for(const row of found.rows)if(await deleteBlobs(store,row.id as string))done.push(row.id as string);
   if(done.length)await query(`DELETE FROM media_objects WHERE id=ANY($1::text[]) AND state='pending'`,[done]);
@@ -68,11 +75,12 @@ export async function purgePendingMedia(query:Query,store:MediaStore|null):Promi
   if(found.rows.length<100||done.length===0)return;
  }
 }
-/** Reaps 'attached' media older than an hour that nothing references (failed cleanups, deleted accounts' counterparts). Blobs first, then rows. Returns the rows removed. */
+/** Hourly job only (never per request: it scans all attached media). Reaps 'attached' media older than an hour that nothing references (failed cleanups, deleted accounts' counterparts). Blobs first, then rows. Returns the rows removed. */
 export async function sweepOrphanMedia(query:Query,store:MediaStore|null,limit=100):Promise<number> {
  const found=await query(`SELECT m.id FROM media_objects m WHERE m.state='attached' AND m.created_at<now()-interval '1 hour'
    AND NOT EXISTS(SELECT 1 FROM social_post_media pm WHERE pm.media_id=m.id)
-   AND NOT EXISTS(SELECT 1 FROM social_profiles sp WHERE sp.avatar_id=m.id OR sp.banner_id=m.id)
+   AND NOT EXISTS(SELECT 1 FROM social_profiles sp WHERE sp.avatar_id=m.id)
+   AND NOT EXISTS(SELECT 1 FROM social_profiles sp WHERE sp.banner_id=m.id)
    AND NOT EXISTS(SELECT 1 FROM chat_messages cm WHERE cm.media_id=m.id)
    ORDER BY m.created_at LIMIT $1`,[limit]);
  const done:string[]=[];
@@ -80,7 +88,8 @@ export async function sweepOrphanMedia(query:Query,store:MediaStore|null,limit=1
  if(!done.length)return 0;
  const removed=await query(`DELETE FROM media_objects m WHERE m.id=ANY($1::text[]) AND m.state='attached'
    AND NOT EXISTS(SELECT 1 FROM social_post_media pm WHERE pm.media_id=m.id)
-   AND NOT EXISTS(SELECT 1 FROM social_profiles sp WHERE sp.avatar_id=m.id OR sp.banner_id=m.id)
+   AND NOT EXISTS(SELECT 1 FROM social_profiles sp WHERE sp.avatar_id=m.id)
+   AND NOT EXISTS(SELECT 1 FROM social_profiles sp WHERE sp.banner_id=m.id)
    AND NOT EXISTS(SELECT 1 FROM chat_messages cm WHERE cm.media_id=m.id) RETURNING m.id`,[done]);
  return removed.rows.length;
 }

@@ -84,6 +84,11 @@ export class UploadItem {
    this.failure=describeUploadError(error);this.setStage('failed');this.options.onFailure?.(this.failure,this);
   }
  }
+ /** The server refused the post or snap because this photo waited too long: show its message and offer Remove (or Retry to upload again). */
+ markFailed(message:string,code:string):void {
+  if(this.disposed)return;
+  this.failure={short:'Failed',long:message,code};this.setStage('failed');
+ }
  dispose():void {
   this.disposed=true;this.controller?.abort();this.controller=null;
   if(this.badgeTimer!==undefined)clearTimeout(this.badgeTimer);
