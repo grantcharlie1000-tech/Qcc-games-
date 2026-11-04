@@ -1,6 +1,6 @@
 import {test,expect} from '../fixtures';
 test.use({viewport:{width:390,height:844},hasTouch:true});
-test('sheet headings and secondary actions adapt to the actual content without outlines',async({page})=>{
+test('frosted sheet headings and secondary actions keep white ink over dark and light content without outlines',async({page})=>{
  await page.goto('/#/collection');
  await page.addStyleTag({content:'#content *{visibility:hidden!important}#content,body{background:#050505!important}'});
  await page.locator('.app-navigation .section-menu').click();
@@ -10,7 +10,11 @@ test('sheet headings and secondary actions adapt to the actual content without o
  await page.keyboard.press('Escape');
  await page.addStyleTag({content:'#content,body{background:#fafafa!important}'});
  await page.locator('.app-navigation .section-menu').click();
- await expect.poll(()=>page.locator('#open-accounts').evaluate(e=>getComputedStyle(e.querySelector('.glass-label')??e).color)).toBe('rgb(11, 16, 21)');
+ // #92's dark frost supplies contrast itself, so sheet ink stays white.
+ for(const target of ['#menu h2','#open-accounts','#open-leaderboards']){
+  await expect.poll(()=>page.locator(target).evaluate(e=>getComputedStyle(e.querySelector('.glass-label')??e).color)).toBe('rgb(255, 255, 255)');
+  await expect(page.locator(target)).toHaveCSS('-webkit-text-stroke-width','0px');
+ }
  await expect(page.locator('#menu .glass-vector-halo')).toHaveCount(0);
 });
 test('live canvas ink follows bright and dark frames',async({page})=>{

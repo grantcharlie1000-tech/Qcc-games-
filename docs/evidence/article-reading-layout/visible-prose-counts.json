@@ -1,0 +1,165 @@
+{
+  "scope": "Visible article body, including headings and examples; closed answer explanations, header, navigation, rails and contributor footer excluded.",
+  "articles": [
+    {
+      "id": "close-reading",
+      "visibleWords": 975,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "essay-writing",
+      "visibleWords": 1000,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "poetry",
+      "visibleWords": 1012,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "film-language",
+      "visibleWords": 996,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "linear-relationships",
+      "visibleWords": 1023,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "quadratics",
+      "visibleWords": 997,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "trigonometry",
+      "visibleWords": 993,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "probability",
+      "visibleWords": 958,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "forces",
+      "visibleWords": 1006,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "energy",
+      "visibleWords": 1002,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "acids-bases",
+      "visibleWords": 995,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "inheritance",
+      "visibleWords": 1004,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "ecosystems",
+      "visibleWords": 997,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "historical-evidence",
+      "visibleWords": 1017,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "te-tiriti",
+      "visibleWords": 966,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "wwi-causes",
+      "visibleWords": 1001,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "rivers-flooding",
+      "visibleWords": 1006,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "supply-demand",
+      "visibleWords": 1025,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "algorithms",
+      "visibleWords": 1010,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    },
+    {
+      "id": "hauora",
+      "visibleWords": 1015,
+      "sections": 6,
+      "structuredWorkedExamples": 1,
+      "additionalTopicSections": 3,
+      "readingMinutes": "6 min read"
+    }
+  ]
+}

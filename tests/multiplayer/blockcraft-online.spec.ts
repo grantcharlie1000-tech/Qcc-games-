@@ -1,5 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
-import {BASE,closeAll,launchPlayer,type Player} from './peers';
+import {closeAll,launchPlayer,type Player} from './peers';
 import {blockId} from '../../src/games/blockcraft/data/blocks';
 
 test.skip(({browserName})=>browserName!=='chromium','Online tests launch their own Chromium processes.');
@@ -16,7 +16,7 @@ const step=(name:string)=>console.log(`[${((Date.now()-t0)/1000).toFixed(0)}s] $
 const data=(page:Page,key:string)=>page.locator('.blockcraft').getAttribute(`data-${key}`);
 
 async function openBlockcraft(p:Player){
-  await p.page.goto(`${BASE}/#/game/blockcraft`);
+  await p.page.goto('/#/game/blockcraft');
   await expect(p.page.locator('.blockcraft')).toHaveAttribute('data-ready','true',{timeout:90000});
   // The nearest view distance keeps three software-rendered browsers on one machine responsive.
   await ev(p.page,bc=>bc.setViewDistance(0));
@@ -28,7 +28,7 @@ async function play(p:Player){
   await expect(p.page.locator('.blockcraft')).toHaveAttribute('data-phase','playing',{timeout:20000});
 }
 async function join(p:Player,code:string){
-  await p.page.goto(`${BASE}/#/game/blockcraft?room=${code}`);
+  await p.page.goto(`/#/game/blockcraft?room=${code}`);
   await expect(p.page.locator('.blockcraft')).toHaveAttribute('data-ready','true',{timeout:90000});
   await ev(p.page,bc=>bc.setViewDistance(0));
   // The invite opens the online panel with the code filled in.
@@ -191,7 +191,7 @@ test('host, guest and a late joiner share one world',async()=>{
 
     // ---- The host leaving ends the session cleanly; each guest is back in its own single-player world.
     step('The host leaving ends the session cleanly; each guest is back in its own single-player world.');
-    await host.page.goto(`${BASE}/#/`);
+    await host.page.goto('/#/');
     for(const p of [guest,late]){
       await expect(p.page.locator('#game-status')).toHaveText(/host ended the online game|Lost the connection/,{timeout:30000});
       await expect.poll(()=>ev(p.page,bc=>bc.net.role)).toBe('offline');

@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {gameAction,openGameMenu,pauseGame,resumeGame} from '../game-menu';
-import {BASE,closeAll,launchPlayer,type Player} from './peers';
+import {closeAll,launchPlayer,type Player} from './peers';
 import {chooseAI,placeAICue,type PoolState} from '../../src/games/pool/model';
 
 test.skip(({browserName})=>browserName!=='chromium','Online tests launch their own Chromium processes.');
@@ -22,7 +22,7 @@ test('two independent browsers play a full online rack and agree on the result',
   try{
     // Different display orientations must still share exactly one authoritative table.
     await host.page.setViewportSize({width:390,height:844});
-    await host.page.goto(`${BASE}/#/game/pool`);
+    await host.page.goto('/#/game/pool');
     const table=await host.page.locator('.pool-table').boundingBox();
     await gameAction(host.page,'Multiplayer');
     await expect(host.page.getByRole('dialog',{name:'Pool multiplayer'})).toBeVisible();
@@ -35,7 +35,7 @@ test('two independent browsers play a full online rack and agree on the result',
     await expect(host.page.locator('.pool-live')).toContainText('Waiting for an opponent');
 
     // Invalid and unknown codes are explained.
-    await guest.page.goto(`${BASE}/#/game/pool`);
+    await guest.page.goto('/#/game/pool');
     await gameAction(guest.page,'Multiplayer');
     await guest.page.getByLabel('Room code').fill('ABC');await guest.page.getByRole('button',{name:'Join by code'}).click();
     await expect(guest.page.locator('.mp-status')).toHaveText(/6 letters and numbers/);
@@ -43,7 +43,7 @@ test('two independent browsers play a full online rack and agree on the result',
     await expect(guest.page.locator('.mp-status')).toHaveText(/No room with that code/,{timeout:25000});
 
     // The invite link fills in the code.
-    await guest.page.goto(`${BASE}/#/game/pool?room=${code}`);await guest.page.reload();
+    await guest.page.goto(`/#/game/pool?room=${code}`);await guest.page.reload();
     await expect(guest.page.getByLabel('Room code')).toHaveValue(code);
     await guest.page.getByRole('button',{name:'Join by code'}).click();
     await expect(guest.page.locator('.pool-game')).toHaveAttribute('data-online','guest',{timeout:30000});
@@ -57,7 +57,7 @@ test('two independent browsers play a full online rack and agree on the result',
     await openGameMenu(host.page);await expect(host.page.getByRole('button',{name:'Online room'})).toBeVisible();await resumeGame(host.page);
 
     // A third player is refused: the room is full.
-    await extra.page.goto(`${BASE}/#/game/pool?room=${code}`);
+    await extra.page.goto(`/#/game/pool?room=${code}`);
     await extra.page.getByRole('button',{name:'Join by code'}).click();
     await expect(extra.page.locator('.mp-status')).toHaveText('That room is full.',{timeout:30000});
 
@@ -117,13 +117,13 @@ test('forcing the relay without private TURN credentials never connects directly
   test.setTimeout(120_000);
   const host=await launchPlayer('Hana'),guest=await launchPlayer('Tama');
   try{
-    await host.page.goto(`${BASE}/#/game/pool?relay=1`);
+    await host.page.goto('/#/game/pool?relay=1');
     await gameAction(host.page,'Multiplayer');
     await host.page.getByRole('button',{name:'Create room'}).click();
     await expect(host.page.locator('.mp-room-code')).toHaveText(/^[A-Z2-9]{6}$/,{timeout:25000});
     await expect(host.page.locator('.mp-link')).toContainText('private relay is not configured');
     const code=(await host.page.locator('.mp-room-code').textContent())!.trim();
-    await guest.page.goto(`${BASE}/#/game/pool?room=${code}&relay=1`);
+    await guest.page.goto(`/#/game/pool?room=${code}&relay=1`);
     await guest.page.getByRole('button',{name:'Join by code'}).click();
     // With only the free public relay, the join either succeeds through a relay or fails with a plain explanation.
     await expect.poll(async()=>await guest.page.locator('.pool-game').getAttribute('data-online')==='guest'||/Could not|failed/.test(await guest.page.locator('.mp-status').textContent()??''),{timeout:45000}).toBe(true);

@@ -11,7 +11,8 @@ test.beforeEach(async({page})=>{
 });
 
 test('the games library has no Movies & TV box, and the island Movies tab opens Movies & TV',async({page})=>{
- await page.goto('/');await expect(page.locator('.game-card')).toHaveCount(22);
+ // Crossy Road joined the 23-game library in #90; Movies remains a separate island tab.
+ await page.goto('/');await expect(page.locator('.game-card')).toHaveCount(23);
  await expect(page.locator('.movies-launch')).toHaveCount(0);await expect(page.getByRole('link',{name:'Movies & TV',exact:true})).toHaveCount(0);
  await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();
  await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
@@ -19,7 +20,7 @@ test('the games library has no Movies & TV box, and the island Movies tab opens 
 
 test('island Movies tab opens Movies & TV: local discovery, episodes, enabled playback, back and Study Mode',async({page})=>{
  await page.goto('/');
- const games=page.locator('.game-card');await expect(games).toHaveCount(22);
+ const games=page.locator('.game-card');await expect(games).toHaveCount(23);
  const tab=page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true});
  await expect(tab).toHaveAttribute('href','#/movies/browse/movie');
  await tab.focus();await expect(tab).toBeFocused();
@@ -42,7 +43,7 @@ test('island Movies tab opens Movies & TV: local discovery, episodes, enabled pl
  // Study retains the movies route and returns to the same page.
  await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();
  await expect(page.locator('.movies-view')).toBeVisible();
- await page.getByRole('link',{name:'Games',exact:true}).click();await expect(games).toHaveCount(22);await expect(page.locator('.app-tabbar .ui-tab[href="#/collection"]')).toBeFocused();
+ await page.getByRole('link',{name:'Games',exact:true}).click();await expect(games).toHaveCount(23);await expect(page.locator('.app-tabbar .ui-tab[href="#/collection"]')).toBeFocused();
 });
 
 for(const width of [320,390,768,1366])test(`responsive allowlisted provider boundary at ${width}px`,async({page})=>{

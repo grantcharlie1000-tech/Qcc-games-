@@ -57,7 +57,8 @@ test('the episode drawer is a glass sheet with the sheet\'s blurred backdrop',as
  await expect(drawer).toHaveClass(/\bui-glass-sheet\b/);
  await expect(drawer).toHaveClass(/\bmovies-drawer\b/);
  expect(await drawer.getAttribute('class')).not.toMatch(/\bui-drawer\b/);
- expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(1.5px) saturate(1.08)');
+ // #92 intentionally changed sheets from clear glass to the shared frosted material.
+ expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(20px) saturate(1.5)');
 });
 
 test('at 390 px the episode drawer is a bottom sheet inset 8 px from the sides and the bottom',async({page})=>{
@@ -245,7 +246,8 @@ test('a long season name wraps inside the drawer at 320 px, with no horizontal o
 // One page per layout: a card shown on a phone would otherwise stay in the page for the desktop check.
 for(const viewport of [PHONE,DESKTOP])test(`the Up next card has the sheet's blurred glass surface at ${viewport.width} px`,async({page})=>{
  const overlay=await showUpNext(page,viewport);
- expect(await overlay.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(1.5px) saturate(1.08)');
+ // Up next shares the frosted sheet material introduced in #92.
+ expect(await overlay.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(20px) saturate(1.5)');
 });
 
 test('the Up next card has a 24 px corner in the card layout at 1440 px',async({page})=>{
