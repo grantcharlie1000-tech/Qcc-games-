@@ -6,6 +6,8 @@ export interface AppDeps {
   openAccounts:()=>void;
   reducedMotion:()=>boolean;
   openMenu:()=>void;
+  /** Opens the Apps launcher sheet; the trigger sets where the sheet grows from. */
+  openApps:(trigger?:Element|null)=>void;
 }
 
 /** The contract the shell drives: route changes, Study pausing and teardown. */

@@ -224,7 +224,8 @@ function returnFromStudy(){
 
 function appDeps():AppDeps{
   return {accounts,reducedMotion:()=>preferences.reducedMotion,openAccounts:()=>{if(activeId)setPaused(true);accountView.open();},
-    openMenu:()=>openMenu(document.querySelector('.section-navigation:not(.app-navigation) [data-action="menu"]'))};
+    openMenu:()=>openMenu(document.querySelector('.section-navigation:not(.app-navigation) [data-action="menu"]')),
+    openApps:trigger=>launcher.open(trigger??undefined)};
 }
 async function route(){
   if(!initialized)return;
@@ -472,7 +473,7 @@ window.addEventListener('keydown',event=>{
   // Stop their handlers while preserving native reading/keyboard defaults.
   if(accountView.root.open||document.querySelector('dialog.movies-warning[open]'))return;
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
-  if(event.key==='Escape'&&(menu.open||launcher.sheet.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open))return;
+  if(event.key==='Escape'&&(menu.open||launcher.sheet.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open||document.querySelector('dialog.apps-sheet[open],.apps-popover')))return;
   if(!study.isOpen&&event.key==='Escape'&&instance?.dismissMenu?.()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key!=='Escape'){event.stopImmediatePropagation();return;}
   if(event.key!=='Escape'||(!activeId&&!movies&&!appView&&!study.isOpen))return;
