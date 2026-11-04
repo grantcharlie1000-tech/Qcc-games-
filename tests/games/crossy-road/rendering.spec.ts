@@ -15,20 +15,21 @@ test('a DSF3 phone fills the viewport and renders at native resolution with anti
       return {width: c.width, height: c.height, x: css.x, y: css.y, cssWidth: css.width, cssHeight: css.height,
         antialias: c.getContext('webgl2')?.getContextAttributes()?.antialias, transform: getComputedStyle(c).transform};
     });
-    expect(size).toMatchObject({width: 1170, height: 2532, x: 0, y: 0, cssWidth: 390, cssHeight: 844, antialias: true, transform: 'none'});
+    expect(size).toMatchObject({width: 780, height: 1688, x: 0, y: 0, cssWidth: 390, cssHeight: 844, antialias: true, transform: 'none'});
     await expect(page.locator('#game-status')).toHaveCSS('position', 'absolute');
+    // The high-quality budget caps the drawing buffer at DPR 2, so DPR 3 renders the same buffer as DPR 2 (#95).
     // Moving to a different-density screen can change DPR without changing CSS size.
     await page.evaluate(()=>{Object.defineProperty(window,'devicePixelRatio',{value:2,configurable:true});dispatchEvent(new Event('resize'));});
     await expect.poll(()=>canvas.evaluate((c:HTMLCanvasElement)=>[c.width,c.height])).toEqual([780,1688]);
     await page.evaluate(()=>{Object.defineProperty(window,'devicePixelRatio',{value:3,configurable:true});dispatchEvent(new Event('orientationchange'));});
-    await expect.poll(()=>canvas.evaluate((c:HTMLCanvasElement)=>[c.width,c.height])).toEqual([1170,2532]);
+    await expect.poll(()=>canvas.evaluate((c:HTMLCanvasElement)=>[c.width,c.height])).toEqual([780,1688]);
     // Resize/orientation must replace the drawing buffer, not stretch the old bitmap.
     await page.setViewportSize({width: 844, height: 390});
-    await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([2532, 1170]);
+    await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([1688, 780]);
     await hook(page).setQuality('low');
     await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([1266, 585]);
     await hook(page).setQuality('high');
-    await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([2532, 1170]);
+    await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([1688, 780]);
     expect(errors).toEqual([]);
   } finally { await context.close(); }
 });
