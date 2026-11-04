@@ -3,7 +3,7 @@ import {dirname,join} from 'node:path';
 import type {Database} from '../leaderboard/server';
 import {HttpError} from '../../server/api';
 import type {MediaRef} from '../social/shared';
-import {mediaKey,PENDING_TTL_MS,type Purpose} from './policy';
+import {mediaKey,validMediaId,PENDING_TTL_MS,type Purpose} from './policy';
 
 export interface MediaStore {
  put(key:string,bytes:Uint8Array):Promise<void>;
@@ -36,21 +36,29 @@ export async function deleteMediaObjects(query:Query,store:MediaStore|null,ids:s
  if(store)for(const id of ids)for(const variant of ['full','thumb'] as const)await store.delete(mediaKey(id,variant));
  await query('DELETE FROM media_objects WHERE id=ANY($1::text[])',[ids]);
 }
+/** All-or-nothing in one statement: nothing is attached unless every id is a distinct pending row of this owner and purpose. */
 export async function attachMedia(query:Query,ownerId:string,ids:string[],purpose:Purpose):Promise<MediaRef[]> {
  if(!ids.length)return [];
- const result=await query(`UPDATE media_objects SET state='attached'
-  WHERE id=ANY($1::text[]) AND owner_id=$2 AND purpose=$3 AND state='pending'
-  RETURNING id,width,height,thumb_bytes>0 AS thumb`,[ids,ownerId,purpose]);
+ if(new Set(ids).size!==ids.length||!ids.every(validMediaId))throw new HttpError(400,'invalid_media','Invalid media.');
+ const result=await query(`WITH picked AS (
+   SELECT id FROM media_objects WHERE id=ANY($1::text[]) AND owner_id=$2 AND purpose=$3 AND state='pending' FOR UPDATE
+  ), attached AS (
+   UPDATE media_objects SET state='attached'
+   WHERE id IN (SELECT id FROM picked) AND (SELECT count(*) FROM picked)=cardinality($1::text[])
+   RETURNING id,width,height,thumb_bytes>0 AS thumb
+  ) SELECT id,width,height,thumb FROM attached`,[ids,ownerId,purpose]);
  const byId=new Map(result.rows.map(row=>[row.id as string,row]));
- if(new Set(ids).size!==ids.length||byId.size!==ids.length)throw new HttpError(400,'invalid_media','Invalid media.');
+ if(byId.size!==ids.length)throw new HttpError(400,'invalid_media','Invalid media.');
  return ids.map(id=>{const row=byId.get(id)!;return {id,width:Number(row.width),height:Number(row.height),thumb:!!row.thumb};});
 }
+/** Claims stale pending rows with a guarded DELETE (so it cannot race with attachMedia), then removes blobs for the rows actually deleted. */
 export async function purgePendingMedia(query:Query,store:MediaStore|null):Promise<void> {
  for(;;){
-  const result=await query(`SELECT id FROM media_objects WHERE state='pending' AND created_at<now()-($1*interval '1 millisecond') ORDER BY created_at LIMIT 100`,[PENDING_TTL_MS]);
+  const result=await query(`DELETE FROM media_objects WHERE id IN (
+    SELECT id FROM media_objects WHERE state='pending' AND created_at<now()-($1*interval '1 millisecond') ORDER BY created_at LIMIT 100 FOR UPDATE SKIP LOCKED
+   ) AND state='pending' AND created_at<now()-($1*interval '1 millisecond') RETURNING id`,[PENDING_TTL_MS]);
   const ids=result.rows.map(row=>row.id as string);
-  if(!ids.length)return;
-  await deleteMediaObjects(query,store,ids);
+  if(store)for(const id of ids)for(const variant of ['full','thumb'] as const)await store.delete(mediaKey(id,variant));
   if(ids.length<100)return;
  }
 }

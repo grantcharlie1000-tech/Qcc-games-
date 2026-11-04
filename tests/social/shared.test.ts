@@ -19,7 +19,7 @@ describe('social shared contracts',()=>{
  it('round-trips cursors and rejects garbage',()=>{
   const id=randomUUID();
   expect(cursorDecode(cursorEncode('2026-11-04T00:00:00.000Z',id))).toEqual({createdAt:'2026-11-04T00:00:00.000Z',id});
-  expect(cursorDecode(cursorEncode(new Date('2026-11-04T00:00:00.000Z'),id))?.createdAt).toBe('2026-11-04T00:00:00.000Z');
+  expect(cursorDecode(cursorEncode('2026-11-04T00:00:00.123456Z',id))).toEqual({createdAt:'2026-11-04T00:00:00.123456Z',id});
   expect(cursorDecode('garbage')).toBeNull();
  });
  it('validates media ids',()=>{expect(validMediaId('m_'+'a'.repeat(32))).toBe(true);expect(validMediaId('m_'+'A'.repeat(32))).toBe(false);expect(validMediaId('../x')).toBe(false);});
@@ -28,7 +28,7 @@ describe('rateLimit with real Postgres',()=>{
  it('throws 429 with Retry-After on call limit+1',async()=>{
   const subject='test:'+randomUUID();
   for(let i=0;i<3;i++)await rateLimit(pool.query.bind(pool),subject,3,60);
-  const error=await rateLimit(pool.query.bind(pool),subject,3,60).then(()=>null,e=>e);
+  const error:any=await rateLimit(pool.query.bind(pool),subject,3,60).then(()=>null,e=>e);
   expect(error).toBeInstanceOf(HttpError);expect(error.status).toBe(429);expect(error.code).toBe('rate_limited');
   expect(Number(error.headers['Retry-After'])).toBeGreaterThan(0);
  });

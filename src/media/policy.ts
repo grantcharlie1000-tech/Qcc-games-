@@ -13,3 +13,5 @@ export const MAX_INPUT_PIXELS=40_000_000;
 export const PENDING_TTL_MS=3600000;
 export const mediaKey=(id:string,variant:'full'|'thumb'):string=>`${id}/${variant}`;
 export const validMediaId=(value:unknown):value is string=>typeof value==='string'&&/^m_[a-f0-9]{32}$/.test(value);
+export const MEDIA_ACCOUNT_MAX_BYTES=100*1024*1024;
+export const MEDIA_GLOBAL_DEFAULT_MAX_BYTES=2147483648;

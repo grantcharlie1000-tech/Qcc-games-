@@ -4,6 +4,7 @@ import {isStorageFullError,storageFullResponse} from './storage-full';
 export class HttpError extends Error {
  constructor(readonly status:number,readonly code:string,message:string,readonly headers?:Record<string,string>){super(message);this.name='HttpError';}
 }
+/** `extra` may override default headers (e.g. Cache-Control for media serving); do not use that elsewhere. */
 export function respond(body:unknown,status=200,extra:Record<string,string>={}):Response {
  return Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...extra}});
 }
@@ -39,9 +40,10 @@ export function errorResponse(error:unknown,fallback:string):Response {
  if(isStorageFullError(error))return storageFullResponse();
  return respond({error:fallback},503);
 }
-export function cursorEncode(createdAt:string|Date,id:string):string {
- const iso=createdAt instanceof Date?createdAt.toISOString():createdAt;
- return Buffer.from(`${iso}|${id}`,'utf8').toString('base64url');
+/** `createdAt` must be passed as text with microsecond precision (pg's Date truncates to ms and breaks keyset paging):
+ * select `to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')` and pass that string. */
+export function cursorEncode(createdAt:string,id:string):string {
+ return Buffer.from(`${createdAt}|${id}`,'utf8').toString('base64url');
 }
 export function cursorDecode(value:string):{createdAt:string;id:string}|null {
  if(typeof value!=='string'||!/^[A-Za-z0-9_-]{1,200}$/.test(value))return null;
