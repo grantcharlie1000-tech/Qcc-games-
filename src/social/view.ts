@@ -1,12 +1,10 @@
 import type {AppDeps,AppView} from '../apps/types';
 import {appIcon} from '../apps/icons';
-import {uiIcon} from '../ui/icons';
 import {bindGlass} from '../ui/glass';
 import {bindFloatingGroups} from '../ui/floating-controls';
 import {autoHideTabbar} from '../ui/tabbar';
 import {createSectionNavigation} from '../ui/navigation';
 import {ApiError} from '../apps/api';
-import {motion} from '../apps/motion';
 import {reducedMotion} from '../apps/motion';
 import {SocialClient} from './client';
 import type {SocialMe,PostView} from './shared';
@@ -113,6 +111,8 @@ export class SocialView implements AppView {
   this.hideTabbar=autoHideTabbar(nav.bar,root);
   this.buildRail();
   root.addEventListener('keydown',this.onKey);
+  window.addEventListener('offline',this.onOffline);window.addEventListener('online',this.onOnline);
+  if(navigator.onLine===false)this.onOffline();
   this.offAccounts=deps.accounts.onChange(()=>{this.me=null;this.meToken=null;this.forcedOut=false;this.show();});
   root.focus({preventScroll:true});
  }
@@ -125,7 +125,7 @@ export class SocialView implements AppView {
  dispose():void {
   if(this.disposed)return;
   this.disposed=true;this.generation++;
-  this.root.removeEventListener('keydown',this.onKey);
+  this.root.removeEventListener('keydown',this.onKey);window.removeEventListener('offline',this.onOffline);window.removeEventListener('online',this.onOnline);
   this.screen?.dispose();this.screen=undefined;this.closeCompose?.();closeMenus();
   document.getElementById('social-photo')?.remove();
   for(const t of this.noticeTimers)clearTimeout(t);this.noticeTimers.clear();
@@ -256,11 +256,10 @@ export class SocialView implements AppView {
   const brand=`<a class="apps-brand arcade-glass floating-glass-group" data-glass-tone="light" href="#/social" aria-label="QCC Social home"><span class="apps-brand-mark">${appIcon('social-tile')}</span><span class="apps-wordmark"><span class="wm-short">Social</span><span class="wm-long">QCC Social</span></span></a>`;
   const back=(label:string)=>`<div class="apps-back-group arcade-glass floating-glass-group" data-glass-tone="light"><button type="button" class="apps-back-btn" data-action="back" aria-label="${label}">${appIcon('back')}</button></div>`;
   let left=brand,right='';
-  let backLabel='';
   if(signedIn){
-   if(route.kind==='thread'){left=back('Back to feed');backLabel='thread';}
-   else if(route.kind==='profile'){left=back('Back to feed');backLabel='profile';}
-   else if(route.kind==='settings'){left=back('Back to profile');backLabel='settings';}
+   if(route.kind==='thread')left=back('Back to feed');
+   else if(route.kind==='profile')left=back('Back to feed');
+   else if(route.kind==='settings')left=back('Back to profile');
    if(route.kind==='profile'&&me&&route.username.toLowerCase()===me.toLowerCase())right=`<div class="apps-actions-group arcade-glass floating-glass-group" data-glass-tone="light"><a class="apps-icon-btn" href="#/social/settings" aria-label="Social settings">${appIcon('settings')}</a></div>`;
   }
   const feed=signedIn&&route.kind==='feed';
@@ -275,7 +274,6 @@ export class SocialView implements AppView {
    if(route.kind==='settings'&&me){this.go(`#/social/u/${encodeURIComponent(me)}`);return;}
    if(this.internalNav>0&&history.length>1)history.back();else this.go('#/social');
   });
-  void backLabel;
   this.topGlass=bindFloatingGroups(this.topbar);
  }
  private buildRail():void {
@@ -285,6 +283,13 @@ export class SocialView implements AppView {
    this.go(q?`#/social/search?q=${encodeURIComponent(q)}`:'#/social/search');
   });
  }
+ private offline:HTMLElement|undefined;
+ private readonly onOffline=():void=>{
+  if(this.offline?.isConnected)return;
+  this.notify("You're offline. New posts and messages will load when you're back online.",{icon:'info',sticky:true});
+  this.offline=this.notices.lastElementChild as HTMLElement;
+ };
+ private readonly onOnline=():void=>{this.offline?.remove();this.offline=undefined;};
  // ---- keyboard (DESIGN 11.3) ----
  private readonly onKey=(event:KeyboardEvent):void=>{
   if(event.defaultPrevented||event.ctrlKey||event.metaKey||event.altKey||event.isComposing||event.repeat)return;
@@ -318,4 +323,3 @@ export class SocialView implements AppView {
   }
  };
 }
-void uiIcon;void motion;

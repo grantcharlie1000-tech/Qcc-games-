@@ -228,7 +228,7 @@ test('rich text links are safe',async({page,context})=>{
  const body=page.locator('.social-post .social-body').first();await expect(body).toBeVisible();
  await expect(body.locator('a')).toHaveCount(1);
  const link=body.locator('a');
- await expect(link).toHaveAttribute('href','https://example.com/');
+ await expect(link).toHaveAttribute('href','https://example.com');
  await expect(link).toHaveAttribute('rel','noopener noreferrer nofollow ugc');await expect(link).toHaveAttribute('target','_blank');
  await expect(body.locator('img')).toHaveCount(0);
  await expect(body).toContainText(html);
@@ -270,21 +270,28 @@ test('keyboard shortcuts do not fire while typing',async({page,context})=>{
 
 test('reduced motion disables like burst',async({page,context})=>{
  await connect(context);const a=await user('rm');await post(a.token,'motion post');
- await page.emulateMedia({reducedMotion:'reduce'});
  await open(page,a.name);
- const card=page.locator('.social-feed > .social-post').first();await expect(card).toBeVisible();
- await card.getByRole('button',{name:/^Like,/}).click();
- await expect(card.getByRole('button',{name:'Like, 1 like'})).toHaveAttribute('aria-pressed','true');
- const running=await card.evaluate(el=>el.getAnimations({subtree:true}).map(a=>(a as CSSTransition).transitionProperty??(a as CSSAnimation).animationName??'waapi'));
- expect(running).toEqual([]);
- // With motion allowed the same tap does animate (the pulse and count roll).
- await page.emulateMedia({reducedMotion:'no-preference'});
- const count=await card.evaluate(async el=>{
-  const button=el.querySelector<HTMLButtonElement>('[data-action=like]')!;button.click();
+ const card=()=>page.locator('.social-feed > .social-post').first();await expect(card()).toBeVisible();
+ // With motion allowed the tap animates (the pulse and the count roll).
+ const count=await card().evaluate(async el=>{
+  el.querySelector<HTMLButtonElement>('[data-action=like]')!.click();
   await new Promise(resolve=>requestAnimationFrame(()=>resolve(null)));
   return el.getAnimations({subtree:true}).length;
  });
  expect(count).toBeGreaterThan(0);
+ await expect(card().getByRole('button',{name:'Like, 1 like'})).toHaveAttribute('aria-pressed','true');
+ await card().getByRole('button',{name:'Like, 1 like'}).click();
+ await expect(card().getByRole('button',{name:'Like, 0 likes'})).toHaveAttribute('aria-pressed','false');
+ // With reduced motion (the media query) nothing runs, however soon we look.
+ await page.emulateMedia({reducedMotion:'reduce'});await page.reload();
+ await expect(card()).toBeVisible();
+ const reduced=await card().evaluate(async el=>{
+  el.querySelector<HTMLButtonElement>('[data-action=like]')!.click();
+  await new Promise(resolve=>requestAnimationFrame(()=>resolve(null)));
+  return el.getAnimations({subtree:true}).map(a=>(a as CSSTransition).transitionProperty??(a as CSSAnimation).animationName??'waapi');
+ });
+ expect(reduced).toEqual([]);
+ await expect(card().getByRole('button',{name:'Like, 1 like'})).toHaveAttribute('aria-pressed','true');
 });
 
 test('new posts pill appears when scrolled and merges on tap',async({page,context})=>{

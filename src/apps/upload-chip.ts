@@ -62,7 +62,6 @@ export class UploadItem {
   actions.querySelector('[data-action=retry]')!.addEventListener('click',()=>void this.start());
   actions.querySelector('[data-action=remove]')!.addEventListener('click',()=>{this.dispose();this.options.onRemove(this);});
   this.el.append(this.thumb,actions);
-  this.render();
  }
  get ready():boolean{return this.stage==='ready'&&this.mediaId!==null;}
  async start():Promise<void> {

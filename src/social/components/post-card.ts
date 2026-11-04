@@ -73,7 +73,7 @@ export class PostCard {
    counts.innerHTML=`<span><strong data-n="replies"></strong> <span data-w="replies"></span></span><span><strong data-n="likes"></strong> <span data-w="likes"></span></span>`;main.append(counts);
   }
   main.append(this.buildActions());
-  el.append(side,main);
+  if(variant==='focused'){head.prepend(side);el.append(main);}else el.append(side,main);
   this.syncText();
   if(variant==='feed'||variant==='reply')el.addEventListener('click',event=>this.onClick(event));
   el.addEventListener('keydown',event=>{
