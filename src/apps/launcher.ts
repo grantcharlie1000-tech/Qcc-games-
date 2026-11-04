@@ -7,8 +7,11 @@ import {openSheet} from '../ui/sheet';
 import {uiIcon} from '../ui/icons';
 import {appIcon} from './icons';
 
-/** Tests shorten the poll interval with window.__QCC_POLL_SCALE__ (0 to 1), read once. */
-const POLL_SCALE=(()=>{const value=Number((window as unknown as {__QCC_POLL_SCALE__?:number}).__QCC_POLL_SCALE__);return value>0&&value<=1?value:1;})();
+/** Dev builds only: tests shorten the poll interval with window.__QCC_POLL_SCALE__ (0 to 1), read once. */
+const POLL_SCALE=(()=>{
+  if(!import.meta.env.DEV)return 1;
+  const value=Number((window as unknown as {__QCC_POLL_SCALE__?:number}).__QCC_POLL_SCALE__);return value>0&&value<=1?value:1;
+})();
 const badgeText=(count:number)=>count>99?'99+':String(count);
 
 /** The shell's Apps tab, its unread badge and the launcher sheet. */

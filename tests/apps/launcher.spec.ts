@@ -56,6 +56,8 @@ test('launcher opens Social and Chat routes and back',async({page,context})=>{
  await page.getByRole('button',{name:'Apps',exact:true}).click();
  const sheet=page.locator('#apps-dialog');await expect(sheet).toBeVisible();
  await expect(sheet.getByRole('link',{name:/QCC Social/})).toHaveAttribute('href','#/social');
+ const stops=await sheet.evaluate(el=>[...el.querySelectorAll('.apps-tile')].map(t=>[...t.querySelectorAll('stop')].map(stop=>getComputedStyle(stop).stopColor)));
+ expect(stops[0][0]).not.toBe('rgb(255, 255, 255)');expect(stops[0][0]).not.toBe(stops[1][0]);expect(stops[0][0]).toBe('rgb(166, 132, 255)');
  await sheet.getByRole('link',{name:/QCC Social/}).click();
  await expect(sheet).not.toBeVisible();await expect(page).toHaveURL(/#\/social$/);
  await expect(page.locator('section.social-view')).toBeVisible();await expect(page.locator('body')).toHaveClass(/social-active/);
@@ -107,15 +109,15 @@ test('launcher stops polling when hidden or signed out',async({page,context})=>{
   Object.defineProperty(document,'hidden',{configurable:true,get:()=>value==='hidden'});
   document.dispatchEvent(new Event('visibilitychange'));
  },state);
- await setVisibility('hidden');await page.waitForTimeout(300);
- const hiddenCount=summaryRequests;await page.waitForTimeout(6500);
+ await setVisibility('hidden');await expect.poll(async()=>{const a=summaryRequests;await page.waitForTimeout(150);return summaryRequests===a;}).toBe(true);
+ const hiddenCount=summaryRequests;await page.waitForTimeout(3600);
  expect(summaryRequests).toBe(hiddenCount);
  await setVisibility('visible');
  await expect.poll(()=>summaryRequests).toBeGreaterThan(hiddenCount);
  await page.locator('.app-navigation [data-action=menu]').click();
  await page.getByRole('button',{name:'Log out',exact:true}).click();
  await expect(page.locator('#menu')).not.toBeVisible();await page.waitForTimeout(300);
- const signedOutCount=summaryRequests;await page.waitForTimeout(6500);
+ const signedOutCount=summaryRequests;await page.waitForTimeout(3600);
  expect(summaryRequests).toBe(signedOutCount);
 });
 
@@ -143,4 +145,17 @@ for(const width of [320,390,1440])test(`six tabs fit without horizontal overflow
  expect(metrics.tabW).toBeGreaterThanOrEqual(width<360?36:44);
  expect(metrics.tv).toBe(width<440?'none':'block');
  await expect(page.getByRole('link',{name:'TV Shows',exact:true})).toBeVisible();
+});
+
+test('leaving #/social before its chunk loads keeps the library',async({page,context})=>{
+ await connect(context);await page.goto('/');await guest(page);await expect(page.locator('.game-card').first()).toBeVisible();
+ let release:()=>void=()=>{};const gate=new Promise<void>(resolve=>{release=resolve;});
+ await page.route(/\/src\/social\/view/,async route=>{await gate;await route.continue();});
+ await page.evaluate(()=>{location.hash='#/social';});
+ await expect(page.locator('.loading')).toContainText('Opening Social');
+ await page.evaluate(()=>{location.hash='#/collection';});
+ await expect(page.locator('.game-card').first()).toBeVisible();
+ release();await page.waitForTimeout(800);
+ await expect(page.locator('.game-card').first()).toBeVisible();await expect(page.locator('section.social-view')).toHaveCount(0);
+ await expect(page.locator('body')).not.toHaveClass(/social-active/);
 });

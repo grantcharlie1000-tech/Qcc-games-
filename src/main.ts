@@ -235,7 +235,7 @@ async function route(){
   const isMovies=location.hash==='#/movies'||location.hash.startsWith('#/movies/');
   if(isMovies){
     if(movies){movies.navigate(location.hash);return;}
-    if(!activeId)movieScroll={x:scrollX,y:scrollY};
+    if(!activeId&&!appView)movieScroll={x:scrollX,y:scrollY};
     if(menu.open)menu.close();
     if(rulesDialog.open)rulesDialog.close();
     if(leaderboards.root.open)leaderboards.root.close();
@@ -263,7 +263,9 @@ async function route(){
     const name=appRoute==='social'?'Social':'Chat';
     content.innerHTML=`<div class="loading"><p>Opening ${name}…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;
     try{
-      const view=appRoute==='social'?new (await import('./social/view')).SocialView(content,appDeps()):new (await import('./chat/view')).ChatView(content,appDeps());
+      const ViewClass=appRoute==='social'?(await import('./social/view')).SocialView:(await import('./chat/view')).ChatView;
+      if(token!==generation)return;
+      const view=new ViewClass(content,appDeps());
       if(token!==generation){view.dispose();return;}
       appView=view;appKind=appRoute;document.body.classList.add(`${appRoute}-active`);
       view.navigate(location.hash);
@@ -277,7 +279,7 @@ async function route(){
   const canonical=id?entryHash(id)+(location.hash.match(/\?.*$/)?.[0]??''):collectionHash;
   if(location.hash!==canonical)history.replaceState(null,'',location.pathname+location.search+canonical);
   const wasInGame=!!activeId;
-  if(id&&!wasInGame)libraryScroll={x:scrollX,y:scrollY};
+  if(id&&!wasInGame&&!wasInApp)libraryScroll={x:scrollX,y:scrollY};
   if(leaderboards.root.open){pausedForDialog=false;leaderboards.root.close();}
   const token=++generation;leave();
   // A restored scroll position is part of the navigation, so the tab bar re-bases on it rather than counting it as a scroll.

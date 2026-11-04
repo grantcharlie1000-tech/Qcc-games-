@@ -121,13 +121,13 @@ retry:'<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/>',
    Each call gets its own gradient id, so two tiles on a page never share one. */
 const TILE_INK='#0b0a12';
 let tileSeq=0;
-const tile=(mark:string)=>{
+const tile=(mark:string,from:string,to:string)=>{
   const id=`qcc-tile-${++tileSeq}`;
-  return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="currentColor"/><stop offset="1" stop-color="currentColor" stop-opacity=".74"/></linearGradient></defs><rect width="48" height="48" rx="13" fill="url(#${id})"/><path d="M13 1h22a12 12 0 0 1 12 12v5C34 13 14 13 1 18v-5A12 12 0 0 1 13 1z" fill="#fff" opacity=".16"/><rect x=".5" y=".5" width="47" height="47" rx="12.5" fill="none" stroke="#fff" stroke-opacity=".28"/><g transform="translate(6 6) scale(1.5)" fill="none" stroke="${TILE_INK}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" color="${TILE_INK}">${mark}</g>`;
+  return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="48" height="48" rx="13" fill="url(#${id})"/><path d="M13 1h22a12 12 0 0 1 12 12v5C34 13 14 13 1 18v-5A12 12 0 0 1 13 1z" fill="#fff" opacity=".16"/><rect x=".5" y=".5" width="47" height="47" rx="12.5" fill="none" stroke="#fff" stroke-opacity=".28"/><g transform="translate(6 6) scale(1.5)" fill="none" stroke="${TILE_INK}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" color="${TILE_INK}">${mark}</g>`;
 };
 const tiles:Record<AppTileIconName,()=>string>={
-'social-tile':()=>tile(orbit),
-'chat-tile':()=>tile(`<path d="${bubble}"/>${trail}`),
+'social-tile':()=>tile(orbit,'#a684ff','#6d4cf0'),
+'chat-tile':()=>tile(`<path d="${bubble}"/>${trail}`,'#46ecd5','#14b8a6'),
 };
 
 export const APP_ICON_NAMES=[...Object.keys(nav),...Object.keys(outline),...Object.keys(tiles)] as AppIconName[];
