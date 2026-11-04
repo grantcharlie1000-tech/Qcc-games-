@@ -184,7 +184,8 @@ test('a fresh profile opens Medium setup; the slider re-themes it; rules open an
   await play.click();await expect(root).toHaveAttribute('data-phase','running');await expect(root.locator('.br-setup')).toBeHidden();
   await expect(root.locator('canvas')).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','0');
   await expect(root.locator('.br-mode-label')).toHaveText('HARD MODE');await expect(root.locator('.br-target-label')).toHaveText('NEW BEST');
-  const {speed,distance}=JSON.parse((await play.getAttribute('data-test-start'))!) as {speed:number;distance:number};
+  // Play is now hidden with the setup, so read the same captured button through its stable DOM locator.
+  const {speed,distance}=JSON.parse((await root.locator('.br-play').getAttribute('data-test-start'))!) as {speed:number;distance:number};
   expect(distance).toBe(0);expect(speed).toBeCloseTo(CONFIG.hard.startSpeed,1);
   await waitDistance(page,15);expect(await data(page,'speed')).toBeGreaterThan(speed);await expect(root.locator('.br-score')).not.toHaveText('0');
   expect(errors).toEqual([]);
@@ -287,7 +288,7 @@ test('a restored Hard run hits a block: burst, Game Over with records, R and sha
   await expect(page.getByRole('heading',{name:'Your run is waiting'})).toBeVisible();await expect(root.locator('.br-continue')).toContainText('Hard');await expect(root.locator('.br-continue')).toContainText(`${run.score} m`);
   await expect(root).toHaveAttribute('data-distance',run.distance.toFixed(3));
   // A restored run is announced, not only written to the status line; the canvas behind the panel is no Tab stop.
-  await expect(announced(page)).toHaveText(`Saved Hard run at ${run.score} metres. Press Continue to resume.`);await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
+  await expect(announced(page)).toHaveText(`Saved Hard run · ${run.score} m`);await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
   await page.getByRole('button',{name:'Continue',exact:true}).click();
   await runUntilPhase(page,'dying');await expect(root).toHaveAttribute('data-score',String(score));
   await page.clock.runFor(150);await evidence(page,`collision.png`);
@@ -375,7 +376,7 @@ test('a legacy save keeps its best as Medium’s all-time record on a new course
   const root=game(page);
   await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);
   await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('1');await expect(root.locator('.br-note')).toContainText('143');
-  await expect(page.locator('#game-status')).toContainText('143');await expect(announced(page)).toContainText('Your best of 143 m is kept');
+  await expect(page.locator('#game-status')).toHaveText('Medium best: 143 m');await expect(announced(page)).toHaveText('Medium best: 143 m');
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(root.locator('.br-mode-label')).toHaveText('MEDIUM MODE');await expect(root.locator('.br-target-label')).toHaveText('ALL TIME');await expect(root.locator('.br-target-value')).toHaveText('143');
 });
@@ -404,7 +405,7 @@ test('a legacy save with no best opens the plain setup',async({page})=>{
   const root=game(page);
   await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);
   await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('1');await expect(root.locator('.br-note')).toBeHidden();
-  await expect(page.locator('#game-status')).toHaveText(/^Choose Easy, Medium or Hard, then press Play\./);
+  await expect(page.locator('#game-status')).toHaveText('Ready');
   expect(await page.locator('body').innerText()).not.toMatch(/best of|is kept/i);await expect(announced(page)).not.toContainText('best');
 });
 
@@ -419,8 +420,8 @@ test('a restored Game Over shows only the NEW marks its records still confirm',a
   await expect(row('Today’s best')).toHaveAttribute('data-new','true');await expect(row('Week’s best')).toHaveAttribute('data-new','false');await expect(row('All-time best')).toHaveAttribute('data-new','false');
   await expect(over.locator('.br-crown')).toBeVisible();
   await expect(page.getByRole('button',{name:'Play again',exact:true})).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
-  // The status line and the announcer give the result and what to do next, in the words of a live death, never the setup prompt.
-  const result=`You hit a block. ${end.score} metres. Press R or Play again for a new run.`;
+  // The status line and the announcer give the same result as a live death, never the setup prompt.
+  const result=`You hit a block. ${end.score} metres.`;
   await expect(page.locator('#game-status')).toHaveText(result);await expect(announced(page)).toHaveText(result);
 });
 

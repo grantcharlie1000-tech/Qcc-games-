@@ -2,6 +2,7 @@ import {appSettings} from '../game-menu';
 import adManifest from '../../src/study/fictional-ads-manifest.json' with {type:'json'};
 const localAdPaths=new Set(adManifest.map(ad=>'/study/fictional-ads/'+ad.file));
 import {GAME_IDS} from '../../src/core/types';
+import {topicImage} from '../../src/study/media';
 import {guestTest as test,expect} from '../fixtures';
 for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:1366,height:768}])test(`editorial notes, clean bylines and embedded Games navigation fit ${viewport.width}`,async({page})=>{
  await page.setViewportSize(viewport);await page.goto('/');await expect(page.locator('[data-study-topic]')).toHaveCount(20);await expect(page.locator('.fictional-ad')).toHaveCount(0);
@@ -18,7 +19,12 @@ for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:136
  for(const id of ids){
   await page.getByLabel('Study topic',{exact:true}).selectOption(id);await expect(page.locator('.study-byline')).not.toContainText('Fictional contributor');
   await expect(page.locator('.study-chapter svg,.study-sidebar')).toHaveCount(0);await expect(page.locator('.study-text-section')).toHaveCount(6);await expect(page.locator('.study-byline img')).toBeVisible();
-  const photoTopics=['close-reading','essay-writing','poetry','film-language','forces','energy','inheritance','ecosystems','rivers-flooding','supply-demand','hauora'];await expect(page.locator('.study-hero img')).toHaveCount(photoTopics.includes(id)?1:0);await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(image=>{(image as HTMLImageElement).loading='eager';return (image as HTMLImageElement).decode();})));
+  const photo=topicImage(id)??{file:'reading-writing',alt:'An open notebook and reading materials on a desk'};
+  const hero=page.locator('.study-hero img');await expect(hero).toHaveCount(1);await expect(hero).toBeVisible();
+  await expect(hero).toHaveAttribute('src',`/study/photos/${photo.file}.webp`);await expect(hero).toHaveAttribute('alt',photo.alt);
+  await expect(page.locator('.study-hero figcaption')).not.toBeEmpty();
+  await expect(page.locator('.study-chapter')).toHaveAttribute('data-article-id',id);
+  await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(image=>{(image as HTMLImageElement).loading='eager';return (image as HTMLImageElement).decode();})));
   formats.add((await page.locator('.study-chapter').getAttribute('data-format'))!);authors.add((await page.locator('.study-author-name').textContent())!);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  }

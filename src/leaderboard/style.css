@@ -32,3 +32,5 @@ body:has(.game-view[data-game-id=minesweeper]) .lb-sidebar{bottom:calc(max(12px,
 .lb-sidebar button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 
 .lb-sidebar .lb-c-rank{width:30px}.lb-sidebar .lb-c-score{width:84px}.lb-sidebar .lb-table td:last-child{text-align:right}
+
+#leaderboard-dialog .lb-refresh{display:flex;align-items:center;justify-content:center;width:100%;height:auto;min-height:44px;margin:8px 0;padding:10px 16px;border:2px solid #aeb2ba;border-radius:12px;background:#292e38;color:#fff;white-space:normal}

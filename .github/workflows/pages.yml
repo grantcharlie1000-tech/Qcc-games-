@@ -44,6 +44,31 @@ jobs:
         with:
           name: campaign-${{ matrix.browser }}
           path: test-results
+  qa-after-screenshots:
+    name: QA after screenshots
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps chromium
+      - run: xvfb-run -a npm run test:e2e -- --project=chromium tests/e2e/qa-after-screenshots.spec.ts --reporter=list
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-after-screenshots
+          path: test-results
+          if-no-files-found: warn
   browser-e2e:
     name: Full browser suite (${{ matrix.browser }} ${{ matrix.shard }}/2)
     runs-on: ubuntu-latest

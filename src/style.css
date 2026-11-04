@@ -37,3 +37,5 @@ body:not(.in-game):not(.movies-active) #content{padding-top:env(safe-area-inset-
 /* The menu heading carries the Mauri mark and the name. */
 .menu-brand{display:inline-flex;align-items:center;gap:8px}
 .menu-brand .mauri-mark{width:24px;height:24px;flex-shrink:0}
+
+#menu input[type="search"]{color:#fff!important;background:#20232a!important;border:2px solid #aaa}#menu input[type="search"]::placeholder{color:#c9c9cf!important;opacity:1}
