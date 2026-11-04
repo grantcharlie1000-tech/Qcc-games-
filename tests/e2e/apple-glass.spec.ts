@@ -33,16 +33,15 @@ for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contras
     await maskStyle.evaluate(e=>e.parentNode?.removeChild(e));
     await page.mouse.move(0,0);await page.mouse.up();
     const ratios=await glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);
-    // Labels are text (WCAG 1.4.3, 4.5:1). Tab icons are non-text graphics on
-    // the clear material and are held to WCAG 1.4.11's 3:1.
-    // An icon is judged against its adjacent colours (WCAG 1.4.11): the visible
-    // exterior outline, including any adaptive halo, with the icon retained.
+    // Labels retain WCAG 1.4.3's 4.5:1. Record icon contrast as diagnostics,
+    // but assert the requested fixed-white palette rather than adaptive 3:1.
     const iconBoxes=boxes.filter(box=>box.icon);
     const text=ratios.filter((_,i)=>!boxes[i].icon),icons=await glyphContrast(page,visible,mask,iconBoxes,(await nav.boundingBox())!,true);
     await test.info().attach(`${name}-icon-contrast`,{body:JSON.stringify({bounds:await nav.boundingBox(),boxes:iconBoxes,icons}),contentType:'application/json'});
     await test.info().attach(`${name}-icon-mask`,{body:Buffer.from(mask,'base64'),contentType:'image/png'});
     expect(Math.min(...text),`${name} labels: ${text.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
-    expect(Math.min(...icons),`${name} icons: ${icons.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(3);
+    // Icons now deliberately stay white instead of adapting to the backdrop.
+    for(const box of iconBoxes)expect(box.color).toBe('rgb(255, 255, 255)');
   }
 });
 
@@ -294,10 +293,9 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
     await page.addStyleTag({content:'.game-view{background:#000!important}.game-surface,.stage-wrap{visibility:hidden!important}.game-glass{background:transparent!important;backdrop-filter:none!important;border-color:transparent!important}.game-glass::before,.game-glass>.ui-glass-lens,.game-glass>.ui-glass-glow{visibility:hidden!important}.game-hud small,.game-hud strong,.game-compact-hud,.game-dock>.ui-tab{color:#fff!important;text-shadow:none!important}.game-dock>.ui-tab>svg{filter:none!important}'});
     const mask=(await dock.screenshot({animations:'disabled'})).toString('base64');
     const ratios=await glyphContrast(page,shot,mask,boxes,(await dock.boundingBox())!);
-    // HUD text keeps WCAG 1.4.3's 4.5:1. The Games and Menu icons are non-text
-    // graphics on the approved clear material: WCAG 1.4.11's 3:1 applies.
-    const text=ratios.filter((_,i)=>!boxes[i].icon),icons=ratios.filter((_,i)=>boxes[i].icon);
+    // HUD text keeps its contrast; Games and Menu icons keep fixed white ink.
+    const text=ratios.filter((_,i)=>!boxes[i].icon);
     expect(Math.min(...text),`${id} text: ${text.map(r=>r.toFixed(2)).join(', ')}`).toBeGreaterThanOrEqual(4.5);
-    expect(Math.min(...icons),`${id} icons: ${icons.map(r=>r.toFixed(2)).join(', ')}`).toBeGreaterThanOrEqual(3);
+    for(const box of boxes.filter(box=>box.icon))expect(box.color).toBe('rgb(255, 255, 255)');
   });
 }
