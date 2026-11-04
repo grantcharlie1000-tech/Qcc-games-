@@ -27,3 +27,11 @@
 .study-games-sentence a{display:inline;min-height:0;line-height:inherit}
 
 .study-sections{display:flex;gap:4px;overflow-x:auto;padding:8px 12px;background:#fff;border-bottom:1px solid #b8aaba;position:relative;z-index:2}.study-sections a,.study-sections span{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 14px;border-radius:8px;white-space:nowrap;color:#39274c!important;font:600 14px system-ui,sans-serif}.study-sections [aria-current=page]{background:#e8dff2}
+/* Clearer interaction states and a consistent reader control scale. */
+#study-view .study-sources a,#study-view .variant-sources a{text-decoration:underline;text-underline-offset:3px}
+#study-view .study-sources a:hover,#study-view .variant-sources a:hover{color:#452163}
+#study-view .study-check summary{border-radius:8px;padding:10px;transition:background-color .15s}
+#study-view .study-check summary:hover,#study-view .study-check summary:focus-visible{background:#e8dff2;outline:3px solid #71469b;outline-offset:2px}
+#study-view .study-check details[open] summary{background:#e8dff2;font-weight:700}
+#study-view .study-topic{border-radius:12px}
+#study-view .study-chapter-footer button{margin:8px 8px 0 0;border-radius:12px}
