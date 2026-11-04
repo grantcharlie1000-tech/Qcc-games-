@@ -12,6 +12,7 @@ import { createScene, type ClashScene, type SceneView } from './scene';
 import { createHud } from './hud';
 import { createInput } from './input';
 import { createSfx } from './audio';
+import { FLASK_ICON, UI_ICONS, WEAPON_ICONS } from './icons';
 import './style.css';
 
 const ID = 'quad-clash';
@@ -32,14 +33,19 @@ function weaponStats(id: PrimaryId) {
 const TEMPLATE = `<canvas class="qc-canvas" tabindex="0" aria-label="Quad Clash arena. W A S D move, mouse or arrow keys look, click or F fires, Shift aims, Space jumps, R reloads, Q swaps weapon, G throws a flask grenade."></canvas>
 <div class="qc-click" hidden><button type="button" class="game-button qc-click-btn">Click to play</button><p>The mouse aims. Esc frees it and pauses.</p></div>
 <div class="qc-layer">
-  <section class="qc-card ui-glass-sheet qc-menu" aria-labelledby="qc-menu-title">
+  <section class="qc-card qc-menu" aria-labelledby="qc-menu-title">
     <header class="qc-brand"><span class="qc-crest" aria-hidden="true">Q</span><div><h2 id="qc-menu-title">Quad Clash</h2><p>Lunchtime is war. Kia kaha, QCC.</p></div></header>
+    <fieldset class="qc-loadout"><legend>Loadout</legend>
+      <div class="qc-guns"></div>
+      <div class="qc-gun-info" aria-live="polite"><div class="qc-gun-head"><span class="qc-gun-art" aria-hidden="true"></span><div><b class="qc-gun-name"></b><small class="qc-gun-role"></small></div></div><p class="qc-gun-blurb"></p><div class="qc-stats"></div></div>
+      <p class="qc-sidearm"><span class="qc-side-art" aria-hidden="true"></span><span>Plus the <b>Pencil Pusher</b> sidearm and Science Fair flasks.</span></p>
+    </fieldset>
     <fieldset class="qc-choice qc-modes"><legend>Mode</legend></fieldset>
+    <p class="qc-choice-note qc-mode-note"></p>
     <fieldset class="qc-choice qc-maps"><legend>Arena</legend></fieldset>
     <fieldset class="qc-choice qc-skills"><legend>Bots</legend></fieldset>
-    <fieldset class="qc-loadout"><legend>Loadout</legend><div class="qc-guns"></div><p class="qc-sidearm">Everyone carries the <b>Pencil Pusher</b> sidearm and a Science Fair flask grenade.</p></fieldset>
     <label class="qc-sens"><span>Look speed</span><input type="range" min="0.4" max="2.2" step="0.1" value="1"><output>1.0×</output></label>
-    <div class="qc-actions"><button type="button" class="game-button qc-play">Play</button></div>
+    <div class="qc-actions"><button type="button" class="game-button qc-play"><span class="qc-play-icon" aria-hidden="true"></span>Play</button></div>
     <p class="qc-help"></p>
   </section>
   <section class="qc-card ui-glass-sheet qc-over" aria-labelledby="qc-over-title" hidden>
@@ -126,19 +132,29 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       box.append(label);
     }
   }
-  radios('.qc-modes', 'qc-mode', MODE_IDS.map(id => ({ value: id, label: MODES[id].name, sub: MODES[id].blurb })), prefs.mode, v => { prefs.mode = v as ModeId; });
-  radios('.qc-maps', 'qc-map', MAP_IDS.map(id => ({ value: id, label: getMap(id).name, sub: getMap(id).blurb })), prefs.map, v => { prefs.map = v as MapId; });
+  radios('.qc-modes', 'qc-mode', MODE_IDS.map(id => ({ value: id, label: MODES[id].name })), prefs.mode, v => { prefs.mode = v as ModeId; syncMenu(); });
+  radios('.qc-maps', 'qc-map', MAP_IDS.map(id => ({ value: id, label: getMap(id).name })), prefs.map, v => { prefs.map = v as MapId; syncMenu(); backdrop(); });
   radios('.qc-skills', 'qc-skill', DIFFICULTIES.map(id => ({ value: id, label: id[0].toUpperCase() + id.slice(1) })), prefs.difficulty, v => { prefs.difficulty = v as Difficulty; });
   const guns = q('.qc-guns');
   for (const id of PRIMARIES) {
-    const w = WEAPONS[id], st = weaponStats(id);
+    const w = WEAPONS[id];
     const label = document.createElement('label');
     label.className = 'qc-gun';
-    label.innerHTML = `<input type="radio" name="qc-gun" value="${id}"><span><b>${w.name}</b><small>${w.role}</small><em>${w.blurb}</em>
-      <span class="qc-stats"><span>Damage</span>${stat(st.damage)}<span>Rate</span>${stat(st.rate)}<span>Range</span>${stat(st.range)}<span>Agility</span>${stat(st.mobility)}</span></span>`;
+    label.title = `${w.name}: ${w.role}`;
+    label.innerHTML = `<input type="radio" name="qc-gun" value="${id}" aria-label="${w.name}">${WEAPON_ICONS[id]}`;
     const radio = label.querySelector('input')!;
-    radio.addEventListener('change', () => { if (radio.checked) prefs.primary = id; }, { signal });
+    radio.addEventListener('change', () => { if (radio.checked) { prefs.primary = id; syncMenu(); } }, { signal });
     guns.append(label);
+  }
+  q('.qc-side-art').innerHTML = WEAPON_ICONS.pencil;
+  q('.qc-play-icon').innerHTML = UI_ICONS.fire;
+  function showGun(id: PrimaryId) {
+    const w = WEAPONS[id], st = weaponStats(id);
+    q('.qc-gun-art').innerHTML = WEAPON_ICONS[id];
+    q('.qc-gun-name').textContent = w.name;
+    q('.qc-gun-role').textContent = w.role;
+    q('.qc-gun-blurb').textContent = w.blurb;
+    q('.qc-stats').innerHTML = `<span>Damage</span>${stat(st.damage)}<span>Rate</span>${stat(st.rate)}<span>Range</span>${stat(st.range)}<span>Agility</span>${stat(st.mobility)}`;
   }
   const sens = q<HTMLInputElement>('.qc-sens input'), sensOut = q<HTMLOutputElement>('.qc-sens output');
   sens.addEventListener('input', () => { prefs.sens = Number(sens.value) || 1; sensOut.textContent = `${prefs.sens.toFixed(1)}×`; }, { signal });
@@ -150,6 +166,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       r.checked = (r.name === 'qc-mode' && r.value === prefs.mode) || (r.name === 'qc-map' && r.value === prefs.map) || (r.name === 'qc-skill' && r.value === prefs.difficulty) || (r.name === 'qc-gun' && r.value === prefs.primary);
     }
     sens.value = String(prefs.sens); sensOut.textContent = `${prefs.sens.toFixed(1)}×`;
+    showGun(prefs.primary);
+    q('.qc-mode-note').textContent = `${MODES[prefs.mode].blurb} ${getMap(prefs.map).blurb}`;
   }
   syncMenu();
 
@@ -203,6 +221,17 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     if (paused) draw(0);
     updateClickLayer();
     schedule();
+  }
+
+  /** Behind the setup menu, show the chosen arena. */
+  function backdrop() {
+    if (phase !== 'menu' || m.settings.map === prefs.map) return;
+    m = createMatch({ ...settingsFrom(prefs), seed: 1 });
+    ais = m.fighters.map(f => createAi(f.id));
+    prev = new Float32Array(m.fighters.length * 3);
+    snapPrev();
+    scene.setMatch(m);
+    if (!frameId) draw(0);
   }
 
   function toMenu() {
@@ -290,8 +319,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
         case 'kill': {
           const killer = m.fighters[e.killer], victim = m.fighters[e.victim];
           const wname = e.weapon === 'grenade' ? 'Flask' : WEAPONS[e.weapon].name;
-          const text = killer === victim ? `${victim.name} self-eliminated (${wname})` : `${killer.name} ⟶ ${victim.name} · ${wname}${e.head ? ' · head' : ''}`;
-          hud.feed(text, e.killer === 0 || e.victim === 0);
+          const icon = e.weapon === 'grenade' ? FLASK_ICON : WEAPON_ICONS[e.weapon];
+          if (killer === victim) hud.feed(`${victim.name} self-eliminated (${wname})`, e.victim === 0);
+          else hud.feedKill(killer.name, victim.name, icon, wname, e.head, e.killer === 0 || e.victim === 0);
           if (e.killer === 0 && e.victim !== 0) { hud.hitmarker(true, e.head); sfx.kill(); context.announce(`You eliminated ${victim.name}${e.head ? ' with a headshot' : ''}.`); }
           if (e.victim === 0) {
             context.announce(killer === victim ? 'You eliminated yourself. Respawning in 3 seconds.' : `Eliminated by ${killer.name}. Respawning in 3 seconds. Press 1 to 7 to pick your next weapon.`);
@@ -374,6 +404,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     const view: SceneView = {
       m, alpha: phase === 'playing' ? Math.min(1, acc / STEP) : 1, prev, yaw: input.state.yaw, pitch: input.state.pitch, dt,
       reduced: reduced(), colorBlind: context.settings.colorBlind, ads: adsBlend, lookDX: input.state.lookDX, lookDY: input.state.lookDY,
+      showcase: phase === 'menu' && shown === 'menu' ? { weapon: prefs.primary, color: HOUSES[0].color } : undefined,
     };
     input.state.lookDX = 0; input.state.lookDY = 0;
     scene.render(view);

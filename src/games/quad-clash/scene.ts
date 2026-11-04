@@ -26,6 +26,8 @@ export interface SceneView {
   /** Look movement this frame (radians), for weapon sway. */
   lookDX: number;
   lookDY: number;
+  /** Setup menu: frame the player's Q-bot on a pedestal holding this weapon instead of the first-person view. */
+  showcase?: { weapon: WeaponId; color: number };
 }
 
 export interface ClashScene {
@@ -96,6 +98,21 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
   zoneGroup.add(zoneWall, zoneRing, beacon);
   zoneGroup.visible = false;
   scene.add(zoneGroup);
+
+  // Menu showcase: the player's Q-bot on a gold-rimmed pedestal.
+  const heroRoot = new THREE.Group();
+  heroRoot.visible = false;
+  scene.add(heroRoot);
+  const pedestalGeo = new THREE.CylinderGeometry(0.85, 0.95, 0.22, 40);
+  const pedestalRimGeo = new THREE.TorusGeometry(0.9, 0.05, 8, 48).rotateX(Math.PI / 2);
+  const pedestalMat = new THREE.MeshStandardMaterial({ color: 0x1d2f5c, roughness: 0.5 });
+  const pedestalRimMat = new THREE.MeshStandardMaterial({ color: 0xf2b733, roughness: 0.35, metalness: 0.4 });
+  const pedestal = new THREE.Mesh(pedestalGeo, pedestalMat);
+  const pedestalRim = new THREE.Mesh(pedestalRimGeo, pedestalRimMat);
+  pedestal.position.y = 0.11; pedestalRim.position.y = 0.22;
+  pedestal.receiveShadow = true;
+  heroRoot.add(pedestal, pedestalRim);
+  let hero: FighterModel | null = null, heroColor = -1;
 
   // ---- First-person weapon overlay ----
   const vmScene = new THREE.Scene();
@@ -411,6 +428,45 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
     } else vmFlash.visible = false;
   }
 
+  /** The setup menu's hero shot: the player's Q-bot on a pedestal at the arena's first zone, idling with the chosen weapon.
+   * A view offset slides it left of the menu card on wide screens and above the menu sheet on tall ones. */
+  function renderShowcase(v: SceneView, show: { weapon: WeaponId; color: number }) {
+    const map = getMap(v.m.settings.map), spot = map.zones[0];
+    if (!hero || heroColor !== show.color) {
+      if (hero) { disposeOwned(hero.group); heroRoot.remove(hero.group); }
+      hero = buildFighter(kit, show.color, crest, flashMat);
+      heroColor = show.color;
+      hero.group.position.y = 0.22;
+      heroRoot.add(hero.group);
+    }
+    setFighterGun(kit, hero, show.weapon);
+    heroRoot.visible = true;
+    fighterRoot.visible = false;
+    vmRoot.visible = false;
+    zoneGroup.visible = false;
+    heroRoot.position.set(spot.x, spot.y, spot.z);
+    const sway = v.reduced ? 0.35 : Math.sin(time * 0.7) * 0.45;
+    hero.group.rotation.y = Math.PI + sway;
+    hero.arms.rotation.x = v.reduced ? 0 : Math.sin(time * 1.3) * 0.06 - 0.05;
+    hero.body.position.y = 0.78 + (v.reduced ? 0 : Math.sin(time * 2.2) * 0.012);
+    hero.flash.visible = false;
+    pickupRoot.visible = false;
+    effects.update(v.dt, v.reduced);
+    if (arena?.flag) arena.flag.rotation.y = v.reduced ? 0.2 : Math.sin(time * 1.7) * 0.25;
+    const wide = lastWidth >= lastHeight;
+    const dist = wide ? 4.7 : 6.2, fov = wide ? 40 : 50;
+    camera.position.set(spot.x + 0.6, spot.y + 1.5, spot.z + dist);
+    camera.lookAt(spot.x, spot.y + 1.02, spot.z);
+    if (camera.fov !== fov) camera.fov = fov;
+    if (wide) camera.setViewOffset(lastWidth, lastHeight, lastWidth * (lastWidth > 900 ? 0.2 : 0.12), 0, lastWidth, lastHeight);
+    else camera.setViewOffset(lastWidth, lastHeight, 0, lastHeight * 0.25, lastWidth, lastHeight);
+    renderer.info.reset();
+    renderer.clear();
+    renderer.render(scene, camera);
+    api.stats.calls = renderer.info.render.calls;
+    api.stats.triangles = renderer.info.render.triangles;
+  }
+
   /** World position of the local player's muzzle, for tracer starts. */
   function localMuzzle(out: THREE.Vector3) {
     return out.set(0.16, -0.13, -0.6).applyQuaternion(camera.quaternion).add(camera.position);
@@ -477,6 +533,8 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
     render(v) {
       const m = v.m, you = m.fighters[0];
       time += v.dt;
+      if (v.showcase) { renderShowcase(v, v.showcase); return; }
+      if (heroRoot.visible) { heroRoot.visible = false; fighterRoot.visible = true; pickupRoot.visible = true; camera.clearViewOffset(); }
       syncFighters(v);
       syncPickups(m);
       syncProjectiles(v);
@@ -530,6 +588,8 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean 
     setPixelCap(cap) { pixelCap = cap; api.resize(lastWidth, lastHeight); },
     dispose() {
       clearDynamic();
+      if (hero) disposeOwned(hero.group);
+      pedestalGeo.dispose(); pedestalRimGeo.dispose(); pedestalMat.dispose(); pedestalRimMat.dispose();
       if (arena) { arena.dispose(); arena = null; }
       effects.dispose();
       kit.dispose();

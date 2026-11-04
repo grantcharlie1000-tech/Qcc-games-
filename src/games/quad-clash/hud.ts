@@ -4,6 +4,7 @@
 import { BODY, HOUSES, MAX_GRENADES, PRIMARIES, STREAKS, WEAPONS, type PrimaryId } from './config';
 import { modeOf, mapOf, standings } from './sim';
 import { weaponOf, type Fighter, type Match } from './state';
+import { FLASK_ICON, UI_ICONS, WEAPON_ICONS } from './icons';
 
 export interface Hud {
   readonly root: HTMLElement;
@@ -11,6 +12,8 @@ export interface Hud {
   hitmarker(kill: boolean, head: boolean): void;
   hurt(angle: number, amount: number): void;
   feed(text: string, mine: boolean): void;
+  /** An elimination line: killer, weapon icon, victim. */
+  feedKill(killer: string, victim: string, icon: string, weapon: string, head: boolean, mine: boolean): void;
   toast(title: string, sub?: string): void;
   reset(): void;
   onLoadout(handler: (id: PrimaryId) => void): void;
@@ -41,6 +44,7 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
     <div class="qc-buffs"></div>
   </div>
   <div class="qc-weapon" aria-hidden="true">
+    <div class="qc-weapon-art"></div>
     <div class="qc-weapon-name"></div>
     <div class="qc-ammo"><span class="qc-mag">30</span><span class="qc-reserve">/ 120</span></div>
     <div class="qc-reload"><i></i></div>
@@ -61,7 +65,7 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
     vignette: q('.qc-vignette'), arc: q('.qc-arc'), scope: q('.qc-scope'), cross: q('.qc-cross'), hit: q('.qc-hit'), name: q('.qc-name'),
     toast: q('.qc-toast'), toastTitle: q('.qc-toast strong'), toastSub: q('.qc-toast span'),
     healthFill: q('.qc-health-fill'), healthNum: q('.qc-health-num'), health: q('.qc-health'), streak: q('.qc-streak'), buffs: q('.qc-buffs'),
-    weaponName: q('.qc-weapon-name'), mag: q('.qc-mag'), reserve: q('.qc-reserve'), reload: q('.qc-reload'), reloadBar: q('.qc-reload i'), nades: q('.qc-nades'),
+    weaponName: q('.qc-weapon-name'), weaponArt: q('.qc-weapon-art'), mag: q('.qc-mag'), reserve: q('.qc-reserve'), reload: q('.qc-reload'), reloadBar: q('.qc-reload i'), nades: q('.qc-nades'),
     board: q('.qc-board'), boardBody: q('.qc-board tbody'), dead: q('.qc-dead'), deadBy: q('.qc-dead-by'), deadCount: q('.qc-dead-count span'), deadGuns: q('.qc-dead-guns'),
   };
   const cache = new Map<string, string>();
@@ -81,7 +85,7 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
   for (const id of PRIMARIES) {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'qc-gun-chip'; b.dataset.weapon = id;
-    b.innerHTML = `<span>${WEAPONS[id].name}</span><small>${WEAPONS[id].role}</small>`;
+    b.innerHTML = `${WEAPON_ICONS[id]}<span>${WEAPONS[id].name}</span><small>${WEAPONS[id].role}</small>`;
     b.addEventListener('click', () => loadout(id), { signal });
     el.deadGuns.append(b);
   }
@@ -121,13 +125,14 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
       memo('buffs', `${shieldS}|${boostS}|${spawn}`, () => html('buffs', el.buffs, [shieldS ? `<span class="qc-buff qc-shield">Shield ${shieldS}</span>` : '', boostS ? `<span class="qc-buff qc-boost">Pass ${boostS}</span>` : '', spawn ? '<span class="qc-buff">Spawn shield</span>' : ''].join('')));
       // Weapon.
       set('wname', el.weaponName, wpn.name);
+      html('wart', el.weaponArt, WEAPON_ICONS[wpn.id]);
       set('mag', el.mag, String(you.mag[you.slot]));
       set('res', el.reserve, you.slot === 1 ? '/ ∞' : `/ ${you.reserve}`);
       attr('maglow', el.mag, 'low', String(you.mag[you.slot] <= Math.ceil(wpn.mag * 0.25)));
       const reloading = you.reloadEnd > 0;
       flag('rel', el.reload, !reloading);
       if (reloading) style('relw', el.reloadBar, 'width', `${Math.min(100, ((m.t - you.reloadStart) / Math.max(0.01, you.reloadEnd - you.reloadStart)) * 100)}%`);
-      memo('nades', String(you.grenades), () => html('nades', el.nades, Array.from({ length: MAX_GRENADES }, (_, i) => `<i class="${i < you.grenades ? 'on' : ''}"></i>`).join('')));
+      memo('nades', String(you.grenades), () => html('nades', el.nades, Array.from({ length: MAX_GRENADES }, (_, i) => `<i class="${i < you.grenades ? 'on' : ''}">${FLASK_ICON}</i>`).join('')));
       // Crosshair and scope.
       const gap = Math.round(6 + o.spread * 420);
       style('gap', el.cross, '--gap', `${gap}px`);
@@ -181,6 +186,14 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
     feed(text, mine) {
       const li = document.createElement('li');
       li.textContent = text;
+      if (mine) li.className = 'qc-mine';
+      el.feed.prepend(li);
+      while (el.feed.children.length > FEED_LIMIT) el.feed.lastElementChild!.remove();
+      feedItems.push({ li, t: clock });
+    },
+    feedKill(killer, victim, icon, weapon, head, mine) {
+      const li = document.createElement('li');
+      li.innerHTML = `<b>${escape(killer)}</b><span class="qc-feed-art" title="${escape(weapon)}">${icon}</span>${head ? `<span class="qc-feed-head" title="Headshot">${UI_ICONS.aim}</span>` : ''}<b>${escape(victim)}</b>`;
       if (mine) li.className = 'qc-mine';
       el.feed.prepend(li);
       while (el.feed.children.length > FEED_LIMIT) el.feed.lastElementChild!.remove();

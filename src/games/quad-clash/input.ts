@@ -3,6 +3,8 @@
  * move stick on the left, drag-to-look on the right and buttons for fire, aim, jump, reload, grenade and swap.
  * It never binds Escape and never takes keys from text fields or open dialogs. */
 
+import { UI_ICONS } from './icons';
+
 export interface Controls {
   yaw: number;
   pitch: number;
@@ -153,14 +155,14 @@ export function createInput(o: InputOptions): Input {
   pad.className = 'qc-touch';
   pad.innerHTML = `
     <div class="qc-stick" aria-hidden="true"><div class="qc-stick-knob"></div></div>
-    <button type="button" class="qc-tb qc-tb-fire" aria-label="Fire">Fire</button>
-    <button type="button" class="qc-tb qc-tb-fire2" aria-label="Fire (left hand)">Fire</button>
-    <button type="button" class="qc-tb qc-tb-ads" aria-label="Aim down sights">Aim</button>
-    <button type="button" class="qc-tb qc-tb-jump" aria-label="Jump">Jump</button>
-    <button type="button" class="qc-tb qc-tb-reload" aria-label="Reload">Reload</button>
-    <button type="button" class="qc-tb qc-tb-nade" aria-label="Throw grenade">Flask</button>
-    <button type="button" class="qc-tb qc-tb-swap" aria-label="Swap weapon">Swap</button>
-    <button type="button" class="qc-tb qc-tb-board" aria-label="Scoreboard">Board</button>`;
+    <button type="button" class="qc-tb qc-tb-fire" aria-label="Fire">${UI_ICONS.fire}</button>
+    <button type="button" class="qc-tb qc-tb-fire2" aria-label="Fire (left hand)">${UI_ICONS.fire}</button>
+    <button type="button" class="qc-tb qc-tb-ads" aria-label="Aim down sights">${UI_ICONS.aim}</button>
+    <button type="button" class="qc-tb qc-tb-jump" aria-label="Jump">${UI_ICONS.jump}</button>
+    <button type="button" class="qc-tb qc-tb-reload" aria-label="Reload">${UI_ICONS.reload}</button>
+    <button type="button" class="qc-tb qc-tb-nade" aria-label="Throw grenade">${UI_ICONS.grenade}</button>
+    <button type="button" class="qc-tb qc-tb-swap" aria-label="Swap weapon">${UI_ICONS.swap}</button>
+    <button type="button" class="qc-tb qc-tb-board" aria-label="Scoreboard">${UI_ICONS.board}</button>`;
   root.append(pad);
   const stick = pad.querySelector<HTMLElement>('.qc-stick')!, knob = pad.querySelector<HTMLElement>('.qc-stick-knob')!;
   let stickId = -1, stickX = 0, stickY = 0, lookId = -1, lookX = 0, lookY = 0, touchMx = 0, touchMz = 0;

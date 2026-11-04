@@ -23,7 +23,8 @@ test('the setup menu offers every mode, arena, skill and weapon, and Play starts
   await menu.getByText('House Match',{exact:true}).click();
   await menu.getByText('Sports Field',{exact:true}).click();
   await menu.getByText('Hard',{exact:true}).click();
-  await menu.getByText('Valedictorian',{exact:true}).click();
+  await menu.getByRole('radio',{name:'Valedictorian'}).check();
+  await expect(menu.locator('.qc-gun-name')).toHaveText('Valedictorian');
   await page.getByRole('button',{name:'Play',exact:true}).click();
   const root=page.locator('.quad-clash');
   await expect(root).toHaveAttribute('data-phase','playing');

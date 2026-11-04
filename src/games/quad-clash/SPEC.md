@@ -52,3 +52,14 @@ Pure and deterministic, with no DOM: `config.ts`, `map.ts`, `physics.ts` (box co
 Presentation: `scene.ts` (Three.js arena, models, viewmodel overlay, death camera), `models.ts`, `effects.ts` (pooled tracers, particles, blasts, confetti), `textures.ts` (canvas-drawn textures, no image files), `hud.ts`, `input.ts`, `audio.ts` (Web Audio synthesis) and `index.ts` (the shell contract).
 
 Saving: the snapshot holds the menu choices and, mid-match, the whole match (fighters, projectiles, pickups, clock and the seeded RNG word). Restore validates every field, clamps counts, rejects other versions, and shows a Continue card. Bot brains are rebuilt.
+
+## Menu and icons
+
+The setup menu shows the player's own Q-bot in 3D on a gold-rimmed pedestal in the chosen arena, holding the selected weapon. It sits beside a bright card on wide screens and above a bottom sheet on phones. The menu has these parts:
+- A row of seven weapon icons, with the selected weapon's name, role, blurb and stats.
+- Mode, arena and bot pills.
+- A Play button that stays in reach.
+
+`icons.ts` holds the original SVG icon set (made with the svg-skill, every icon passing `validate.sh`):
+- Side-view icons for all eight weapons and the flask grenade.
+- `currentColor` UI icons for the touch buttons, the HUD, the respawn picker and kill-feed weapon icons.

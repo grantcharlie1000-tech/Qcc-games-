@@ -195,3 +195,75 @@
 @media (prefers-reduced-motion:reduce){.qc-health-fill,.qc-feed li,.qc-stick{transition:none}}
 .reduce-motion .qc-health-fill,.reduce-motion .qc-feed li{transition:none}
 @media (prefers-contrast:more){.qc-team,.qc-feed li,.qc-timer,.qc-zone,.qc-board,.qc-dead{background:#0a1020}}
+
+/* ---------- Setup menu: bright card beside the Q-bot showcase ---------- */
+.quad-clash[data-layer=menu] .qc-layer{justify-items:end;align-items:center;padding:calc(var(--qc-top) - 4px) max(16px,4vw) 16px;background:linear-gradient(90deg,transparent 35%,rgb(13 40 80 / .28))}
+.qc-card.qc-menu{width:min(440px,100%);max-height:100%;overflow:auto;margin:0;padding:16px 16px 14px;border:3px solid #1d2f5c;border-radius:22px;background:#f2f9ff;color:#1d2f5c;box-shadow:0 10px 0 rgb(13 30 60 / .35),0 24px 60px rgb(0 0 0 / .25);text-align:left;-webkit-user-select:none;user-select:none}
+.qc-menu .qc-brand{margin-bottom:4px}
+.qc-menu .qc-brand h2{color:#1d2f5c;font-size:32px;text-shadow:0 3px 0 #ffc23d}
+.qc-menu .qc-brand p{color:#3b5a8c;font-weight:600}
+.qc-menu .qc-crest{background:#1d2f5c;color:#ffc23d;border-color:#ffc23d}
+.qc-menu legend{color:#3b5a8c!important}
+.qc-menu .qc-choice,.qc-menu .qc-loadout{margin-top:12px}
+.qc-guns{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.qc-gun{position:relative;display:grid;place-items:center;aspect-ratio:1.05;border-radius:12px;background:#ffffff;box-shadow:inset 0 0 0 2px #c5d9ef,0 3px 0 #c5d9ef;cursor:pointer;transition:transform .12s var(--ease-out),box-shadow .12s}
+.qc-gun input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;pointer-events:auto;z-index:1}
+.qc-gun svg{width:92%;height:auto;pointer-events:none}
+.qc-gun:has(input:checked){background:#ffc23d;box-shadow:inset 0 0 0 2px #1d2f5c,0 3px 0 #1d2f5c;transform:translateY(-2px)}
+.qc-gun:has(input:focus-visible){outline:3px solid #1d2f5c;outline-offset:2px}
+@media(hover:hover){.qc-gun:hover{transform:translateY(-2px)}}
+.qc-gun-info{margin-top:10px;padding:10px 12px;border-radius:14px;background:#ffffff;box-shadow:inset 0 0 0 2px #dbe8f6}
+.qc-gun-head{display:flex;align-items:center;gap:10px}
+.qc-gun-art{flex:0 0 96px}
+.qc-gun-art svg{display:block;width:96px;height:40px}
+.qc-gun-head b{display:block;font:400 20px/1.1 Arcade,var(--font-sans);color:#1d2f5c}
+.qc-gun-head small{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#3b5a8c}
+.qc-menu .qc-gun-blurb{margin:6px 0 0;font-size:13px;color:#33496e}
+.qc-menu .qc-stats{color:#3b5a8c}
+.qc-menu .qc-bar{background:#dbe8f6}
+.qc-menu .qc-bar i{background:linear-gradient(90deg,#ffc23d,#ff9d2e)}
+.qc-menu .qc-sidearm{display:flex;align-items:center;gap:8px;margin:8px 0 0;font-size:12px;color:#33496e}
+.qc-side-art svg{display:block;width:54px;height:22px}
+.qc-menu .qc-choice{display:flex;flex-wrap:wrap;gap:6px}
+.qc-menu .qc-choice legend{width:100%}
+.qc-menu .qc-opt{flex:1 1 auto}
+.qc-menu .qc-opt>span{display:grid;place-items:center;min-height:40px;padding:6px 12px;border-radius:999px;background:#ffffff;box-shadow:inset 0 0 0 2px #c5d9ef,0 3px 0 #c5d9ef;text-align:center}
+.qc-menu .qc-opt b{font-size:13.5px;color:#1d2f5c}
+.qc-menu .qc-opt input:checked+span{background:#1d2f5c;box-shadow:inset 0 0 0 2px #1d2f5c,0 3px 0 #0d1830}
+.qc-menu .qc-opt input:checked+span b{color:#ffc23d}
+.qc-menu .qc-opt input:focus-visible+span{outline:3px solid #ffc23d;outline-offset:2px}
+.qc-menu .qc-choice-note{margin:6px 2px 0;font-size:12px;line-height:1.35;color:#33496e}
+.qc-menu .qc-sens{color:#33496e}
+.qc-menu .qc-sens input{accent-color:#1d2f5c}
+.qc-menu .qc-actions .game-button.qc-play{gap:10px;max-width:none;min-height:58px;border-radius:16px;background:#ffc23d;color:#1d2f5c;font:400 26px/1 Arcade,var(--font-sans);letter-spacing:.04em;box-shadow:inset 0 -5px 0 #e09a18,0 4px 0 #1d2f5c}
+.qc-play-icon svg{display:block;width:26px;height:26px}
+.qc-menu .qc-help{color:#3b5a8c}
+@media (max-aspect-ratio:1/1){
+  .quad-clash[data-layer=menu] .qc-layer{justify-items:center;align-items:end;padding:0 10px max(10px,env(safe-area-inset-bottom));background:linear-gradient(transparent 40%,rgb(13 40 80 / .3))}
+  .qc-card.qc-menu{max-height:56%;border-radius:22px 22px 18px 18px}
+}
+@media (max-width:420px){.qc-guns{gap:4px}.qc-gun-art{flex-basis:72px}.qc-gun-art svg{width:72px;height:30px}.qc-menu .qc-brand h2{font-size:26px}}
+
+/* ---------- Icons in the HUD, respawn picker, kill feed and touch buttons ---------- */
+.qc-weapon-art svg{display:block;width:84px;height:35px;filter:drop-shadow(0 1px 2px rgb(0 0 0 / .5))}
+.qc-nades i{display:grid;place-items:center;width:20px;height:20px;border-radius:0;background:none!important;box-shadow:none!important;opacity:.32}
+.qc-nades i.on{opacity:1}
+.qc-nades svg{width:20px;height:20px}
+.qc-gun-chip{justify-items:center}
+.qc-gun-chip svg{width:58px;height:24px}
+.qc-feed li{display:flex;align-items:center;gap:6px}
+.qc-feed b{font-weight:700}
+.qc-feed-art svg{display:block;width:40px;height:17px}
+.qc-feed-head svg{display:block;width:13px;height:13px;color:#ffc23d}
+.qc-feed li.qc-mine .qc-feed-head svg{color:#1b1404}
+.qc-tb svg{width:46%;height:46%}
+.qc-tb-fire svg{width:44%;height:44%}
+/* Compact menu; Play stays in reach at the bottom of the card. */
+.qc-card.qc-menu{padding-bottom:0}
+.qc-menu .qc-brand h2{font-size:28px}
+.qc-menu .qc-gun-info{padding:8px 10px}
+.qc-menu .qc-stats{gap:2px 8px;margin-top:4px}
+.qc-menu .qc-choice,.qc-menu .qc-loadout{margin-top:10px}
+.qc-menu .qc-opt>span{min-height:36px}
+.qc-menu .qc-actions{position:sticky;bottom:0;z-index:1;margin:10px -16px 0;padding:10px 16px 12px;background:linear-gradient(rgb(242 249 255 / 0),#f2f9ff 30%)}
+.qc-menu .qc-help{margin:0 0 12px}
