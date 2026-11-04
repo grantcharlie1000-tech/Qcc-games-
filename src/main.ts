@@ -55,7 +55,7 @@ const tabbar=autoHideTabbar(document.querySelector<HTMLElement>('.app-tabbar')!,
 bindGlass(document.querySelector<HTMLElement>('.app-menu')!);
 const preferences=store.settings();
 const accounts=new AccountsClient();
-const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry);
+const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry,()=>{if(!initialized){accounts.guest();finishEntry();}else if(accountRoutePending&&!study.isOpen){accountRoutePending=false;void route();}else dialogClosed();});
 const leaderboards=new LeaderboardView(()=>{pausedForDialog=false;if(activeId)setPaused(true);accountView.open();});
 let gameMenu:HTMLDialogElement|undefined;
 let gameChrome:ReturnType<typeof bindGameChrome>|undefined;
@@ -90,7 +90,10 @@ const study=new StudyView(()=>{
   if(!initialized){
     initialized=true;study.hide();showArcade();void route();
   }else study.showArticle(studyMessage(true));
-}, returnFromStudy);
+}, returnFromStudy, undefined, hash=>{
+  initialized=true;
+  if(location.hash===hash)void route();else location.hash=hash;
+});
 
 store.probeStorage();
 function storageStatus(){
@@ -474,7 +477,7 @@ accounts.onChange(()=>{
  updateAccountMenu();
  if(activeId)document.querySelector('#favourite-game')?.setAttribute('aria-pressed',String(store.favourites().includes(activeId)));
  if(identity){for(const game of [...SCORED_GAMES.filter(id=>id!=='minesweeper'),...MINESWEEPER_RANKINGS])leaderboards.sync.queue(game,Math.floor(store.read<number>('best:'+game,0)));if(changed&&!document.hidden)void leaderboards.sync.flush().catch(()=>{});}
- if(changed&&initialized&&!accountView.root.open){if(study.isOpen)accountRoutePending=true;else void route();}
+ if(changed&&initialized){if(study.isOpen||accountView.root.open)accountRoutePending=true;else void route();}
 });
 document.querySelector('#sync-account')!.addEventListener('click',()=>{save();void Promise.all([accounts.flush(),leaderboards.sync.flush()]).catch(()=>{});});
 document.querySelector('#open-accounts')!.addEventListener('click',()=>{menu.close();accountView.open();});

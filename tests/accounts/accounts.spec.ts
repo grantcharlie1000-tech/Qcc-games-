@@ -61,11 +61,13 @@ test('two browsers carry account scores and favourites, then logout restores gue
 test('logout in another tab preserves Study and returns to a fresh guest game',async({page,context})=>{
  await connect(context);await page.goto('/#/game/minesweeper');await signIn(page,`Tabs_${Date.now()}`,true);
  await page.locator('.ms-tile[data-index="0"]').click();await expect(page.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');
- const reading=await context.newPage();await reading.goto('/#/game/minesweeper');await expect(reading.locator('.ms-tile').first()).toBeVisible();await reading.keyboard.press('Escape');
+ const reading=await context.newPage();await reading.goto('/#/game/minesweeper');await expect(reading.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');await reading.keyboard.press('Escape');
  const selected=await reading.evaluate(()=>sessionStorage.getItem('pocket-arcade:study:v1:topic'));expect(selected).toMatch(/^(quanta|aeon|essay):close-reading$/);const article=articleById(selected!);expect(article).toBeDefined();await expect(reading.locator('#study-topic')).toHaveValue('close-reading');await expect(reading.locator('#study-title')).toHaveText(article!.title);
+ const paragraphs=reading.locator('.study-text-section > p');await expect(paragraphs).toHaveText(article!.paragraphs);
  await menu(page);await page.getByRole('button',{name:'Log out',exact:true}).click();await expect(page.locator('#menu')).not.toBeVisible();
- await expect(reading.locator('#account-summary')).toHaveText('Playing as guest');await expect(reading.locator('#study-title')).toHaveText(article!.title);expect(await reading.locator('.study-article-body > p').count()).toBeGreaterThanOrEqual(6);
+ await expect(reading.locator('#account-summary')).toHaveText('Playing as guest');await expect(reading.locator('#study-view')).toBeVisible();await expect(reading.locator('#study-title')).toHaveText(article!.title);await expect(paragraphs).toHaveText(article!.paragraphs);
  await reading.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();await expect(reading.locator('.ms-tile').first()).toBeVisible();await expect(reading.locator('#game-best strong')).toHaveText('0');
+ await expect(reading.locator('.ms-tile:not([data-state="hidden"])')).toHaveCount(0);
  expect(await reading.evaluate(()=>Number(localStorage.getItem('pocket-arcade:v1:best:minesweeper')??0))).toBe(0);
  await menu(reading);await expect(reading.getByRole('button',{name:'Log in / Sign up',exact:true})).toBeVisible();await expect(reading.getByRole('button',{name:'Log out',exact:true})).not.toBeVisible();await expect(reading.getByRole('button',{name:'Switch account',exact:true})).not.toBeVisible();
 });
