@@ -3,7 +3,7 @@ import type {Database} from '../leaderboard/server';
 import {resolveAccount} from '../accounts/server';
 import {writeFrozen,readOnlyResponse} from '../accounts/write-freeze';
 import {HttpError,respond,readJson,sameOrigin,rateLimit,errorResponse} from '../../server/api';
-import {attachMedia,deleteMediaObjects,purgePendingMedia,type MediaStore} from '../media/store';
+import {attachMedia,deleteMediaObjects,purgePendingMedia,PURGE_BATCH_SIZE,type MediaStore} from '../media/store';
 import {mediaKey,validMediaId} from '../media/policy';
 import {accountByUsername,isBlockedEitherWay,setBlock} from '../social/blocks';
 import {REPORT_CATEGORIES,REPORT_NOTE_MAX,LIMITS,codePoints,type ReportCategory} from '../social/shared';
@@ -11,7 +11,7 @@ import {MESSAGE_MAX_CHARS,RETENTION_MODES,type Retention,type Friend,type Conver
 
 type Query=Database['query'];
 const BODY_LIMIT=16*1024;
-const PURGE_BATCH=500;
+const PURGE_BATCH=PURGE_BATCH_SIZE;
 const PAGE_LIMIT=200;
 const MAX_BIGINT=9223372036854775807n;
 const ts=(column:string)=>`to_char(${column} AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
@@ -40,20 +40,21 @@ function messageView(row:any,me:string):MessageView {
 const GET_ACTIONS=new Set(['summary','list','messages']);
 const POST_ACTIONS=new Set(['request','respond','remove_friend','send','open_snap','save','unsend','retention','delete_conversation','report','block']);
 
-/** Deletes expired messages in batches, removing snap media only for rows this call actually deleted. Returns the number of messages deleted. */
-export async function purgeExpiredChat(query:Query,store:MediaStore|null):Promise<number> {
+/** Deletes expired messages in small batches, removing snap media only for rows this call actually deleted. Without a store, snaps with media are kept (their blobs could not be deleted) and only text/system messages go. Stops cleanly at `deadline` (epoch ms). Returns the number of messages deleted. */
+export async function purgeExpiredChat(query:Query,store:MediaStore|null,deadline?:number):Promise<number> {
  let total=0;
- for(;;){
+ const stillOpen=()=>deadline===undefined||Date.now()<deadline;
+ while(stillOpen()){
   const result=await query(`DELETE FROM chat_messages WHERE id IN (
-    SELECT id FROM chat_messages WHERE expires_at<=now() ORDER BY expires_at LIMIT ${PURGE_BATCH} FOR UPDATE SKIP LOCKED
+    SELECT id FROM chat_messages WHERE expires_at<=now()${store?'':' AND media_id IS NULL'} ORDER BY expires_at LIMIT ${PURGE_BATCH} FOR UPDATE SKIP LOCKED
    ) RETURNING media_id`);
   total+=result.rows.length;
   const media=result.rows.flatMap(row=>row.media_id?[row.media_id as string]:[]);
   // Blob first; a failed blob delete keeps the media row for a later sweep. The message rows are already gone (media_id is SET NULL).
-  if(media.length)await deleteMediaObjects(query,store,media);
+  if(media.length)await deleteMediaObjects(query,store,media,deadline);
   if(result.rows.length<PURGE_BATCH)break;
  }
- await purgePendingMedia(query,store);
+ if(stillOpen())await purgePendingMedia(query,store,deadline);
  return total;
 }
 

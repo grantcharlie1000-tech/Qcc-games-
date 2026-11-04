@@ -104,9 +104,52 @@ describe('orphan media sweep',()=>{
   await sweepOrphanMedia(query,failing,1000);expect(await states([id])).toEqual({[id]:'attached'});
   await sweepOrphanMedia(query,store,1000);expect(await states([id])).toEqual({});expect(store.keys()).toEqual([]);
  });
- it('also works with no blob store configured',async()=>{
-  const o=await account('swp_n'),id=await media(o,'snap','attached','3 hours');
-  await sweepOrphanMedia(query,null,1000);expect(await states([id])).toEqual({});
+ it('is a no-op with no blob store, keeping rows for a later run with a store',async()=>{
+  const o=await account('swp_n'),id=await media(o,'snap','attached','3 hours'),store=createMemoryStore();await put(store,[id]);
+  expect(await sweepOrphanMedia(query,null,1000)).toBe(0);expect(await states([id])).toEqual({[id]:'attached'});
+  await sweepOrphanMedia(query,store,1000);expect(await states([id])).toEqual({});expect(store.keys()).toEqual([]);
+ });
+ it('stops at the deadline without touching anything',async()=>{
+  const o=await account('swp_d'),id=await media(o,'snap','attached','3 hours'),store=createMemoryStore();await put(store,[id]);
+  expect(await sweepOrphanMedia(query,store,1000,Date.now()-1)).toBe(0);
+  expect(await states([id])).toEqual({[id]:'attached'});expect(store.keys()).toHaveLength(2);
+ });
+ it('removes only rows whose blobs were deleted when some deletes fail',async()=>{
+  const o=await account('swp_p2'),bad=await media(o,'snap','attached','4 hours'),good=await media(o,'snap','attached','4 hours');
+  const store=createMemoryStore();await put(store,[bad,good]);
+  const flaky={...store,delete:async(key:string)=>{if(key.startsWith(bad))throw new Error('down');return store.delete(key);}};
+  await sweepOrphanMedia(query,flaky,1000);
+  expect(await states([bad,good])).toEqual({[bad]:'attached'});
+ });
+});
+describe('purge with no store or a deadline',()=>{
+ const put=async(store:ReturnType<typeof createMemoryStore>,id:string)=>{for(const v of ['full','thumb'])await store.put(`${id}/${v}`,new Uint8Array([1]));};
+ it('purgePendingMedia is a no-op without a store',async()=>{
+  const o=await account('pp_n'),id=await media(o,'post','pending','3 hours');
+  await purgePendingMedia(query,null);expect(await states([id])).toEqual({[id]:'pending'});
+ });
+ it('purgePendingMedia stops at the deadline',async()=>{
+  const o=await account('pp_d'),id=await media(o,'post','pending','3 hours'),store=createMemoryStore();await put(store,id);
+  await purgePendingMedia(query,store,Date.now()-1);expect(await states([id])).toEqual({[id]:'pending'});
+  await purgePendingMedia(query,store);expect(await states([id])).toEqual({});
+ });
+ it('purgePendingMedia keeps rows of failed deletes and removes the rest',async()=>{
+  const o=await account('pp_f'),bad=await media(o,'post','pending','3 hours'),good=await media(o,'post','pending','3 hours');
+  const store=createMemoryStore();await put(store,bad);await put(store,good);
+  await purgePendingMedia(query,{...store,delete:async(key:string)=>{if(key.startsWith(bad))throw new Error('down');return store.delete(key);}});
+  expect(await states([bad,good])).toEqual({[bad]:'pending'});
+ });
+ it('deletes blobs concurrently, at most 8 at a time',async()=>{
+  const o=await account('pp_c'),ids=[];for(let i=0;i<20;i++)ids.push(await media(o,'post','pending','3 hours'));
+  const store=createMemoryStore();let running=0,peak=0;
+  for(const id of ids)await put(store,id);
+  const slow={...store,delete:async(key:string)=>{running++;peak=Math.max(peak,running);await new Promise(r=>setTimeout(r,5));running--;return store.delete(key);}};
+  await purgePendingMedia(query,slow);
+  expect(await states(ids)).toEqual({});expect(peak).toBeGreaterThan(1);expect(peak).toBeLessThanOrEqual(8);
+ });
+ it('deleteMediaObjects keeps rows when there is no store',async()=>{
+  const o=await account('dm_n'),id=await media(o);
+  expect(await deleteMediaObjects(query,null,[id])).toEqual([]);expect(await states([id])).toEqual({[id]:'pending'});
  });
 });
 describe('blocks with real Postgres',()=>{
