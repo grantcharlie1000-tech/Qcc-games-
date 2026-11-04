@@ -9,6 +9,7 @@ import { enemies, eyeY, lookAt, viewDir, weaponOf, wrapAngle, type Intent, type 
 import { rayBox, raySphere, rayWorld } from './physics';
 import { BODY, HITBOX } from './config';
 import { createScene, type ClashScene, type SceneView } from './scene';
+import { QUALITY, RenderPacer, isQuality, type QualityId } from './performance';
 import { createHud } from './hud';
 import { createInput } from './input';
 import { createSfx } from './audio';
@@ -18,8 +19,8 @@ import './style.css';
 const ID = 'quad-clash';
 const SNAPSHOT_VERSION = 1;
 
-interface Prefs { mode: ModeId; map: MapId; difficulty: Difficulty; primary: PrimaryId; sens: number }
-const DEFAULT_PREFS: Prefs = { mode: 'brawl', map: 'quad', difficulty: 'normal', primary: 'bell', sens: 1 };
+interface Prefs { mode: ModeId; map: MapId; difficulty: Difficulty; primary: PrimaryId; sens: number; quality: QualityId }
+const DEFAULT_PREFS: Prefs = { mode: 'brawl', map: 'campus', difficulty: 'normal', primary: 'bell', sens: 1, quality: 'potato' };
 type Phase = 'menu' | 'playing' | 'over';
 type Layer = 'menu' | 'over' | 'continue' | 'lost' | null;
 
@@ -34,7 +35,7 @@ const TEMPLATE = `<canvas class="qc-canvas" tabindex="0" aria-label="Quad Clash 
 <div class="qc-click" hidden><button type="button" class="game-button qc-click-btn">Click to play</button><p>The mouse aims. Esc frees it and pauses.</p></div>
 <div class="qc-layer">
   <section class="qc-card qc-menu" aria-labelledby="qc-menu-title">
-    <header class="qc-brand"><span class="qc-crest" aria-hidden="true">Q</span><div><h2 id="qc-menu-title">Quad Clash</h2><p>Lunchtime is war. Kia kaha, QCC.</p></div></header>
+    <header class="qc-brand"><span class="qc-crest" aria-hidden="true">Q</span><div><h2 id="qc-menu-title">Quad Clash</h2><p>Crack the competition. Kia kaha, QCC.</p></div></header>
     <fieldset class="qc-loadout"><legend>Loadout</legend>
       <div class="qc-guns"></div>
       <div class="qc-gun-info" aria-live="polite"><div class="qc-gun-head"><span class="qc-gun-art" aria-hidden="true"></span><div><b class="qc-gun-name"></b><small class="qc-gun-role"></small></div></div><p class="qc-gun-blurb"></p><div class="qc-stats"></div></div>
@@ -44,6 +45,7 @@ const TEMPLATE = `<canvas class="qc-canvas" tabindex="0" aria-label="Quad Clash 
     <p class="qc-choice-note qc-mode-note"></p>
     <fieldset class="qc-choice qc-maps"><legend>Arena</legend></fieldset>
     <fieldset class="qc-choice qc-skills"><legend>Bots</legend></fieldset>
+    <label class="qc-quality"><span>Graphics</span><select aria-label="Graphics quality"><option value="potato">Potato — 30 fps</option><option value="balanced">Balanced — 60 fps</option></select></label>
     <label class="qc-sens"><span>Look speed</span><input type="range" min="0.4" max="2.2" step="0.1" value="1"><output>1.0×</output></label>
     <div class="qc-actions"><button type="button" class="game-button qc-play"><span class="qc-play-icon" aria-hidden="true"></span>Play</button></div>
     <p class="qc-help"></p>
@@ -75,7 +77,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   const canvas = root.querySelector<HTMLCanvasElement>('.qc-canvas')!;
   let scene: ClashScene;
   const coarse = matchMedia('(pointer: coarse)').matches;
-  try { scene = createScene(canvas, { shadows: !coarse }); }
+  try { scene = createScene(canvas, { shadows: !coarse, quality: DEFAULT_PREFS.quality }); }
   catch {
     root.innerHTML = '<div class="qc-fallback" role="status"><h2>3D graphics unavailable</h2><p>Quad Clash needs WebGL. Turn on hardware acceleration in the browser settings, or try a recent browser.</p><a class="game-button" href="#/collection">Choose another game</a></div>';
     context.setStatus('This browser could not start the 3D graphics Quad Clash needs.');
@@ -96,10 +98,10 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let ais: Ai[] = m.fighters.map(f => createAi(f.id));
   let prev = new Float32Array(m.fighters.length * 3);
   let paused = false, held = false, frozen = false, disposed = false, lost = false;
-  let frameId = 0, last = 0, acc = 0, runs = 0, menuFrames = 0;
+  let frameId = 0, last = 0, acc = 0, runs = 0;
+  const pacer=new RenderPacer();
   let adsBlend = 0, aimName = '', aimFriendly = false, aimTick = 0;
   let reportedScore = -1, reportedLevel = '', best = Math.max(0, Math.floor(context.highScore) || 0), bestAtStart = best;
-  let fpsT = 0, fpsN = 0, pixelCap = 2, goodT = 0;
   let shown: Layer = null;
   const frameEvents: SimEvent[] = [];
   const data: Record<string, string> = {};
@@ -161,10 +163,18 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   q('.qc-help').textContent = coarse
     ? 'Left thumb moves, right thumb looks. Hold Fire (drag it to aim while shooting), tap Aim to zoom.'
     : 'WASD move · Mouse look · Click fire · Right-click or Shift aim · Space jump · R reload · Q swap · G grenade · Tab scores · Esc pause';
+  const graphics = q<HTMLSelectElement>('.qc-quality select');
+  graphics.addEventListener('change',()=>{
+    if(!isQuality(graphics.value))return;
+    prefs.quality=graphics.value;pacer.reset();
+    scene.setQuality(prefs.quality);syncMenu();draw(0);
+  },{signal});
   function syncMenu() {
     for (const r of root.querySelectorAll<HTMLInputElement>('.qc-menu input[type=radio]')) {
       r.checked = (r.name === 'qc-mode' && r.value === prefs.mode) || (r.name === 'qc-map' && r.value === prefs.map) || (r.name === 'qc-skill' && r.value === prefs.difficulty) || (r.name === 'qc-gun' && r.value === prefs.primary);
     }
+    graphics.value=prefs.quality;
+    graphics.title=prefs.quality==='potato'?'Full detail with a 30 fps render target to save GPU work.':'The same detail with a 60 fps render target.';
     sens.value = String(prefs.sens); sensOut.textContent = `${prefs.sens.toFixed(1)}×`;
     showGun(prefs.primary);
     q('.qc-mode-note').textContent = `${MODES[prefs.mode].blurb} ${getMap(prefs.map).blurb}`;
@@ -180,7 +190,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
 
   // ---- Lifecycle ----
   const active = () => !paused && !disposed && !lost;
-  function schedule() { if (!frameId && active()) { last = 0; frameId = requestAnimationFrame(loop); } }
+  function schedule() { if (!frameId && active()) { last = 0;pacer.reset(); frameId = requestAnimationFrame(loop); } }
   function cancel() { if (frameId) cancelAnimationFrame(frameId); frameId = 0; }
 
   function show(next: Layer) {
@@ -268,11 +278,11 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     if (!active()) return;
     const interval = last ? (now - last) / 1000 : 0, dt = Math.min(interval, 0.1);
     last = now;
-    measure(interval);
     input.frame(dt);
     if (phase === 'playing' && !held && !frozen && !m.over) advance(dt);
-    // Behind the setup menu the arena only needs a slow redraw, which saves battery.
-    if (phase !== 'menu' || ++menuFrames % 4 === 0) draw(phase === 'menu' ? dt * 4 : dt);
+    // Keep input and fixed-step simulation responsive; cap GPU work independently.
+    const elapsed=pacer.next(interval,phase==='menu'?15:QUALITY[prefs.quality].fps);
+    if(elapsed>0)draw(elapsed);
     if (active()) frameId = requestAnimationFrame(loop);
   }
 
@@ -415,18 +425,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     setData('kills', String(you.kills));
     setData('mode', m.settings.mode);
     setData('map', m.settings.map);
+    setData('quality',prefs.quality);
     setData('hud', String(phase !== 'menu'));
-  }
-
-  function measure(interval: number) {
-    if (interval <= 0 || interval > 1 || frozen) return;
-    fpsT += interval; fpsN++;
-    if (fpsT < 2) return;
-    const fps = fpsN / fpsT;
-    fpsT = 0; fpsN = 0;
-    if (fps < 40 && pixelCap > 0.75) { pixelCap = Math.max(0.75, pixelCap - 0.25); scene.setPixelCap(pixelCap); goodT = 0; }
-    else if (fps > 57) { goodT += 2; if (goodT >= 8 && pixelCap < 2) { pixelCap = Math.min(2, pixelCap + 0.25); scene.setPixelCap(pixelCap); goodT = 0; } }
-    setData('pixelCap', String(pixelCap));
   }
 
   // ---- Buttons ----
@@ -489,7 +489,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   if (import.meta.env.DEV) {
     const api = {
       state: () => { const y = m.fighters[0]; return { phase, held, paused, t: m.t, over: m.over, alive: y.alive, x: y.x, y: y.y, z: y.z, yaw: input.state.yaw, pitch: input.state.pitch, health: y.health, kills: y.kills, deaths: y.deaths, score: y.score, slot: y.slot, mag: [...y.mag], reserve: y.reserve, grenades: y.grenades, weapon: weaponOf(y).id, teamScores: [...m.teamScores], mode: m.settings.mode, map: m.settings.map, fighters: m.fighters.map(f => ({ id: f.id, alive: f.alive, x: f.x, y: f.y, z: f.z, team: f.team, health: f.health })) }; },
-      start: (p: Partial<Prefs> & { seed?: number }) => { prefs = { ...prefs, ...p }; syncMenu(); begin(p.seed ?? 12345); },
+      start: (p: Partial<Prefs> & { seed?: number }) => { prefs = { ...prefs, ...p };scene.setQuality(prefs.quality); syncMenu(); begin(p.seed ?? 12345); },
       freeze: (on: boolean) => { frozen = on; acc = 0; },
       advance: (seconds: number) => { if (disposed) return; input.frame(seconds); advance(seconds); draw(0); },
       look: (yaw: number, pitch: number) => input.setLook(yaw, pitch),
@@ -552,8 +552,10 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
         map: isMapId(p.map) ? p.map : DEFAULT_PREFS.map,
         difficulty: DIFFICULTIES.includes(p.difficulty as Difficulty) ? p.difficulty as Difficulty : DEFAULT_PREFS.difficulty,
         primary: isPrimary(p.primary) ? p.primary : DEFAULT_PREFS.primary,
+        quality: isQuality(p.quality) ? p.quality : DEFAULT_PREFS.quality,
         sens: typeof p.sens === 'number' && Number.isFinite(p.sens) ? Math.max(0.4, Math.min(2.2, p.sens)) : 1,
       };
+      scene.setQuality(prefs.quality);
       syncMenu();
       const restored = v.match ? restoreMatch(v.match) : null;
       if (!restored || restored.over) { toMenu(); return; }
@@ -600,7 +602,7 @@ const game: GameModule = Object.freeze({
   id: ID,
   title: 'Quad Clash',
   cover: 'game-art/quad-clash/cover.svg',
-  rules: 'Quad Clash is a first-person arena shooter on the QCC campus against seven bots. Pick a mode: Lunchtime Brawl (free-for-all, first to 25 eliminations), House Match (Kōwhai against Moana, first house to 40) or Hold the Quad (outnumber the other house inside the marked zone to score a point a second, first to 60; the zone moves every minute). Matches last at most five minutes. Choose one of seven primary weapons; everyone also carries the Pencil Pusher sidearm and Science Fair flask grenades. Health refills after a few seconds out of fire. Eliminated fighters drop ammo and sometimes a flask; pickups also sit around each arena. Streaks reward you: 3 eliminations restock ammo and a grenade, 5 give a 15-second Prefect Shield that halves damage, 8 give the Principal’s Pass for faster movement and reloads. Points: 100 per elimination, 25 more for a headshot, 50 per streak reward, 5 per second holding the zone, 100 for finishing and 500 for winning. Desktop: W A S D move, mouse looks (arrow keys also look), click or F fires, right-click or Shift aims, Space jumps, R reloads, Q, 1, 2 or the wheel swaps, G or E throws a grenade, Tab shows the scoreboard, Esc or P pauses. Touch: left thumb moves, drag on the right to look, and use the on-screen buttons.',
+  rules: 'Quad Clash is a first-person arena shooter on the QCC campus as egg fighters against seven bots. Pick a mode: Lunchtime Brawl (free-for-all, first to 25 eliminations), House Match (Kōwhai against Moana, first house to 40) or Hold the Quad (outnumber the other house inside the marked zone to score a point a second, first to 60; the zone moves every minute). Matches last at most five minutes. Choose one of seven primary weapons; everyone also carries the Pencil Pusher sidearm and Science Fair flask grenades. Health refills after a few seconds out of fire. Eliminated fighters drop ammo and sometimes a flask; pickups also sit around each arena. Streaks reward you: 3 eliminations restock ammo and a grenade, 5 give a 15-second Prefect Shield that halves damage, 8 give the Principal’s Pass for faster movement and reloads. Points: 100 per elimination, 25 more for a headshot, 50 per streak reward, 5 per second holding the zone, 100 for finishing and 500 for winning. Desktop: W A S D move, mouse looks (arrow keys also look), click or F fires, right-click or Shift aims, Space jumps, R reloads, Q, 1, 2 or the wheel swaps, G or E throws a grenade, Tab shows the scoreboard, Esc or P pauses. Touch: left thumb moves, drag on the right to look, and use the on-screen buttons.',
   mount,
 });
 export default game;

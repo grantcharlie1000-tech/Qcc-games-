@@ -1,19 +1,53 @@
-/** Box-world collision for Quad Clash: body movement with step-up, ray casts and floor queries. Pure functions over
- * a compiled array of boxes; the ground plane (y = 0) is solid everywhere. */
+/** Box-world collision for Quad Clash: body movement with step-up, ray casts and floor queries. Queries over
+ * indexed static boxes with reusable scratch storage; the ground plane (y = 0) is solid everywhere. */
 import { BODY } from './config';
 import type { Box, MapDef } from './map';
 
+const CELL = 8;
+const cellKey = (x: number, z: number) => (x + 1024) * 2048 + z + 1024;
 export interface World {
   readonly map: MapDef;
   /** Six numbers per box: x0 y0 z0 x1 y1 z1. */
   readonly b: Float64Array;
   readonly n: number;
+  readonly cells: ReadonlyMap<number, readonly number[]>;
+  readonly range: readonly [number, number, number, number];
+  readonly all: readonly number[];
+  readonly seen: Uint32Array;
+  readonly scratch: number[];
+  query: number;
 }
 
 export function compile(map: MapDef): World {
-  const b = new Float64Array(map.boxes.length * 6);
-  map.boxes.forEach((box: Box, i) => b.set([box.x0, box.y0, box.z0, box.x1, box.y1, box.z1], i * 6));
-  return { map, b, n: map.boxes.length };
+  const b = new Float64Array(map.boxes.length * 6), cells = new Map<number, number[]>();
+  let xmin=Infinity,zmin=Infinity,xmax=-Infinity,zmax=-Infinity;
+  map.boxes.forEach((box: Box, i) => {
+    b.set([box.x0, box.y0, box.z0, box.x1, box.y1, box.z1], i * 6);
+    const x0=Math.floor(box.x0/CELL),z0=Math.floor(box.z0/CELL),x1=Math.floor(box.x1/CELL),z1=Math.floor(box.z1/CELL);
+    xmin=Math.min(xmin,x0);zmin=Math.min(zmin,z0);xmax=Math.max(xmax,x1);zmax=Math.max(zmax,z1);
+    for(let x=x0;x<=x1;x++)for(let z=z0;z<=z1;z++) {
+      const key=cellKey(x,z),list=cells.get(key);
+      if(list)list.push(i);else cells.set(key,[i]);
+    }
+  });
+  return {map,b,n:map.boxes.length,cells,range:[xmin,zmin,xmax,zmax],all:map.boxes.map((_,i)=>i),seen:new Uint32Array(map.boxes.length),scratch:[],query:0};
+}
+
+/** Conservative x/z broad phase. The borrowed result is valid only until this world's next query. */
+export function boxesNear(w: World,x0: number,z0: number,x1: number,z1: number): readonly number[] {
+  const ax=Math.max(w.range[0],Math.floor(x0/CELL)),az=Math.max(w.range[1],Math.floor(z0/CELL));
+  const bx=Math.min(w.range[2],Math.floor(x1/CELL)),bz=Math.min(w.range[3],Math.floor(z1/CELL));
+  const out=w.scratch;out.length=0;
+  if(ax>bx||az>bz)return out;
+  // Long diagonal shots are cheaper as one linear scan than hundreds of bucket lookups.
+  if((bx-ax+1)*(bz-az+1)>48)return w.all;
+  w.query=(w.query+1)>>>0;
+  if(w.query===0){w.seen.fill(0);w.query=1;}
+  for(let x=ax;x<=bx;x++)for(let z=az;z<=bz;z++) {
+    const list=w.cells.get(cellKey(x,z));if(!list)continue;
+    for(const id of list)if(w.seen[id]!==w.query){w.seen[id]=w.query;out.push(id);}
+  }
+  return out;
 }
 
 const EPS = 1e-6;
@@ -21,8 +55,11 @@ const EPS = 1e-6;
 /** Does the body box (footprint half-width r, from y to y + h) overlap any solid? */
 export function overlaps(w: World, x: number, y: number, z: number, r: number = BODY.radius, h: number = BODY.height): boolean {
   if (y < -EPS) return true;
+  // Campus roofs are taller than the visible fence. Keep the arena edge solid at any jump height.
+  if (w.map.boundPlayers && (x-r < -w.map.hx-EPS || x+r > w.map.hx+EPS || z-r < -w.map.hz-EPS || z+r > w.map.hz+EPS)) return true;
   const b = w.b, x0 = x - r, x1 = x + r, z0 = z - r, z1 = z + r, y1 = y + h;
-  for (let i = 0; i < w.n * 6; i += 6) {
+  for (const id of boxesNear(w,x0,z0,x1,z1)) {
+    const i=id*6;
     if (x1 > b[i] + EPS && x0 < b[i + 3] - EPS && y1 > b[i + 1] + EPS && y < b[i + 4] - EPS && z1 > b[i + 2] + EPS && z0 < b[i + 5] - EPS) return true;
   }
   return false;
@@ -32,7 +69,8 @@ export function overlaps(w: World, x: number, y: number, z: number, r: number = 
 export function floorAt(w: World, x: number, z: number, maxY: number, r: number = BODY.radius): number {
   const b = w.b, x0 = x - r, x1 = x + r, z0 = z - r, z1 = z + r;
   let top = 0;
-  for (let i = 0; i < w.n * 6; i += 6) {
+  for (const id of boxesNear(w,x0,z0,x1,z1)) {
+    const i=id*6;
     const t = b[i + 4];
     if (t <= maxY + EPS && t > top && x1 > b[i] + EPS && x0 < b[i + 3] - EPS && z1 > b[i + 2] + EPS && z0 < b[i + 5] - EPS) top = t;
   }
@@ -88,10 +126,12 @@ export interface RayHit { t: number; nx: number; ny: number; nz: number }
 
 /** Nearest solid hit along a unit direction within maxT, or null. Includes the ground plane. */
 export function rayWorld(w: World, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, maxT: number, out?: RayHit): RayHit | null {
-  let best = maxT, nx = 0, ny = 0, nz = 0, hit = false;
+  let best = maxT, nx = 0, ny = 0, nz = 0, hit = false, bestIndex = -1;
   if (dy < 0) { const t = -oy / dy; if (t >= 0 && t < best) { best = t; nx = 0; ny = 1; nz = 0; hit = true; } }
   const b = w.b, ix = 1 / (dx || 1e-12), iy = 1 / (dy || 1e-12), iz = 1 / (dz || 1e-12);
-  for (let i = 0; i < w.n * 6; i += 6) {
+  const ex=ox+dx*maxT,ez=oz+dz*maxT;
+  for (const id of boxesNear(w,Math.min(ox,ex),Math.min(oz,ez),Math.max(ox,ex),Math.max(oz,ez))) {
+    const i=id*6;
     let t0 = (b[i] - ox) * ix, t1 = (b[i + 3] - ox) * ix;
     let tmin = Math.min(t0, t1), tmax = Math.max(t0, t1), axis = 0;
     t0 = (b[i + 1] - oy) * iy; t1 = (b[i + 4] - oy) * iy;
@@ -102,9 +142,9 @@ export function rayWorld(w: World, ox: number, oy: number, oz: number, dx: numbe
     a = Math.min(t0, t1); c = Math.max(t0, t1);
     if (a > tmin) { tmin = a; axis = 2; }
     if (c < tmax) tmax = c;
-    if (tmax < Math.max(tmin, 0) || tmin >= best) continue;
+    if (tmax < Math.max(tmin, 0) || tmin > best || (tmin === best && id >= bestIndex)) continue;
     if (tmin < 0) continue; // origin inside a box: ignore it (cannot happen for valid positions)
-    best = tmin; hit = true;
+    best = tmin; bestIndex = id; hit = true;
     nx = axis === 0 ? -Math.sign(dx) : 0; ny = axis === 1 ? -Math.sign(dy) : 0; nz = axis === 2 ? -Math.sign(dz) : 0;
   }
   if (!hit) return null;
@@ -127,6 +167,17 @@ export function raySphere(ox: number, oy: number, oz: number, dx: number, dy: nu
   if (d2 > r * r) return -1;
   const th = Math.sqrt(r * r - d2), t = tc - th;
   return t >= 0 ? t : tc + th >= 0 ? 0 : -1;
+}
+
+/** Ray against an ellipsoid; keeps the egg's headshot region broad but below the shell crown. */
+export function rayEllipsoid(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, cx: number, cy: number, cz: number, rx: number, ry: number, rz: number): number {
+  const x = (ox - cx) / rx, y = (oy - cy) / ry, z = (oz - cz) / rz;
+  const vx = dx / rx, vy = dy / ry, vz = dz / rz;
+  const a = vx * vx + vy * vy + vz * vz, b = x * vx + y * vy + z * vz, c = x * x + y * y + z * z - 1;
+  const disc = b * b - a * c;
+  if (disc < 0) return -1;
+  const t = (-b - Math.sqrt(disc)) / a;
+  return t >= 0 ? t : (-b + Math.sqrt(disc)) / a >= 0 ? 0 : -1;
 }
 
 /** Ray against an axis-aligned box; returns entry distance or -1. */

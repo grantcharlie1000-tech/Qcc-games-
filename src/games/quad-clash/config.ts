@@ -4,9 +4,9 @@ export const STEP = 1 / 60;
 export const SAVE_VERSION = 1;
 
 export const BODY = {
-  radius: 0.38,
-  height: 1.7,
-  eye: 1.52,
+  radius: 0.58,
+  height: 1.6,
+  eye: 1.42,
   speed: 6.4,
   accel: 70,
   airAccel: 16,
@@ -19,8 +19,8 @@ export const BODY = {
   regenRate: 16,
 } as const;
 
-/** Hit volumes measured from the feet: a body box and a head sphere. */
-export const HITBOX = { bodyTop: 1.16, headY: 1.42, headR: 0.29 } as const;
+/** Hit volumes measured from the feet: the body box overlaps the head ellipsoid to cover the egg shoulders. */
+export const HITBOX = { bodyTop: 1.30, headY: 1.36, headR: 0.43, headRY: 0.22, headRZ: 0.38 } as const;
 
 export const RESPAWN_TIME = 3;
 export const SPAWN_PROTECT = 2;
