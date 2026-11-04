@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 405c49000e072a8ec72628de4cf7a1c50a1a8b39
+          ref: 44b6d3b530b42b813f89ff59a0635d8726e5071d
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -38,8 +38,9 @@ jobs:
           tests/games/flappy-bird/play.spec.ts
           tests/e2e/qa-priority.spec.ts
           tests/e2e/glass-menus.spec.ts
+          tests/accounts/accounts.spec.ts
           --project=${{ matrix.browser }} --workers=1 --reporter=list
-          --grep 'forced colours|keyboard focus in the island|keyboard focus in the separate Menu|explicit player focus after cancelling Up next|keyboard and mouse flap, pause and Study freeze|closing a dialog does not steal a newly focused game canvas'
+          --grep 'logout in another tab|forced colours|keyboard focus in the island|keyboard focus in the separate Menu|explicit player focus after cancelling Up next|keyboard and mouse flap, pause and Study freeze|closing a dialog does not steal a newly focused game canvas'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
