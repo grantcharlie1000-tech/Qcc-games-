@@ -1,4 +1,4 @@
-import {POLICIES,QUALITY_LADDER,MAX_INPUT_PIXELS,MAX_INPUT_SIDE,type Purpose,type Policy} from './policy';
+import {POLICIES,QUALITY_LADDER,MAX_INPUT_PIXELS,MAX_INPUT_SIDE,MIN_INPUT_SIDE,type Purpose,type Policy} from './policy';
 import {sniffFormat} from './sniff';
 export type MediaErrorCode='unsupported_type'|'too_large'|'too_many_pixels'|'corrupt'|'cannot_compress';
 export const MEDIA_MESSAGES:Record<MediaErrorCode,string>={
@@ -12,7 +12,7 @@ export const HEIC_MESSAGE="This HEIC photo can't be read here. Change your camer
 export class MediaError extends Error {
  constructor(readonly code:MediaErrorCode,message:string=MEDIA_MESSAGES[code]){super(message);this.name='MediaError';}
 }
-export interface ProcessedImage {full:Uint8Array;thumb:Uint8Array|null;width:number;height:number}
+export interface ProcessedImage {full:Uint8Array;thumb:Uint8Array|null;width:number;height:number;quality:number;edgePx:number}
 type Sharp=typeof import('sharp').default;
 let loaded:Promise<Sharp>|undefined;
 function loadSharp():Promise<Sharp> {
@@ -20,8 +20,10 @@ function loadSharp():Promise<Sharp> {
  return loaded;
 }
 const pixelLimit=(error:unknown)=>/pixel limit/i.test(error instanceof Error?error.message:String(error));
-interface Encoded {data:Uint8Array;width:number;height:number}
+interface Encoded {data:Uint8Array;width:number;height:number;quality:number;edgePx:number}
 export async function processImage(input:Uint8Array,purpose:Purpose):Promise<ProcessedImage> {
+ // Whetū: an empty body is unreadable, not a wrong type.
+ if(input.byteLength===0)throw new MediaError('corrupt');
  const format=sniffFormat(input);
  if(!format)throw new MediaError('unsupported_type');
  const policy:Policy=POLICIES[purpose];
@@ -38,13 +40,14 @@ export async function processImage(input:Uint8Array,purpose:Purpose):Promise<Pro
  }
  const meta=await wrap(()=>open().metadata());
  if(!meta.width||!meta.height)throw new MediaError('corrupt');
+ if(meta.width<MIN_INPUT_SIDE||meta.height<MIN_INPUT_SIDE)throw new MediaError('corrupt');
  // Orientation 5-8 swaps the sides, but the limits are symmetric.
  if(meta.width>MAX_INPUT_SIDE||meta.height>MAX_INPUT_SIDE||meta.width*meta.height>MAX_INPUT_PIXELS)throw new MediaError('too_many_pixels');
  const encode=(edge:number,quality:number)=>wrap(async():Promise<Encoded>=>{
   const base=open().rotate();
   const resized=policy.square?base.resize({width:edge,height:edge,fit:'cover',position:'attention'}):base.resize({width:edge,height:edge,fit:'inside',withoutEnlargement:true});
   const {data,info}=await resized.webp({quality,effort:4}).toBuffer({resolveWithObject:true});
-  return {data:new Uint8Array(data),width:info.width,height:info.height};
+  return {data:new Uint8Array(data),width:info.width,height:info.height,quality,edgePx:edge};
  });
  const edges=policy.floorEdge<policy.maxEdge?[policy.maxEdge,policy.floorEdge]:[policy.maxEdge];
  let full:Encoded|null=null,fallback:Encoded|null=null;
@@ -62,5 +65,5 @@ export async function processImage(input:Uint8Array,purpose:Purpose):Promise<Pro
    if(thumb.byteLength<=policy.thumbMaxBytes)break;
   }
  }
- return {full:full.data,thumb,width:full.width,height:full.height};
+ return {full:full.data,thumb,width:full.width,height:full.height,quality:full.quality,edgePx:full.edgePx};
 }

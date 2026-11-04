@@ -1,5 +1,6 @@
 import {ApiError,errorFromBody,NETWORK_MESSAGE,TIMEOUT_MESSAGE} from '../apps/api';
 import {fitWithin} from '../apps/image';
+import {screenOriginal,canSendAsIs,fitForPurpose,encodeAttempts} from './plan';
 export {fitWithin};
 import {POLICIES,MAX_UPLOAD_BYTES,validMediaId,type Purpose} from './policy';
 export type UploadStage='compressing'|'uploading'|'processing'|'ready'|'failed';
@@ -15,18 +16,23 @@ export const mediaUrl=(id:string,variant:'full'|'thumb'):string=>`${MEDIA_ENDPOI
 /** Browser-only (createImageBitmap + canvas); covered by Playwright in Task 8. */
 export async function prepareImage(file:Blob,purpose:Purpose,signal?:AbortSignal):Promise<Blob> {
  check(signal);
+ // Whetū preparePhotoFile: refuse what can never work before decoding anything.
+ const screened=screenOriginal({type:file.type,size:file.size,name:(file as File).name??''});
+ if(screened==='too_big')throw new Error(TOO_BIG_PHOTO);
+ if(screened)throw new Error(UNREADABLE_PHOTO);
  const fallback=()=>{if(file.size<=MAX_UPLOAD_BYTES)return file;throw new Error(UNREADABLE_PHOTO);};
  let bitmap:ImageBitmap;
  try{bitmap=await createImageBitmap(file,{imageOrientation:'from-image'});}catch{check(signal);return fallback();}
  try{
   check(signal);
-  const maxEdge=POLICIES[purpose].maxEdge;
-  let size=fitWithin(bitmap.width,bitmap.height,maxEdge);
+  const {maxEdge,square}=POLICIES[purpose];
+  // Whetū shrinkForUpload: a small photo that already fits goes as it is; the server strips metadata and re-encodes.
+  if(canSendAsIs({type:file.type,size:file.size,name:(file as File).name??''},bitmap.width,bitmap.height,maxEdge,square))return file;
+  let size=fitForPurpose(bitmap.width,bitmap.height,maxEdge,square);
   if(size.width*size.height>MAX_PIXELS){
    const scale=Math.sqrt(MAX_PIXELS/(size.width*size.height));
    size={width:Math.max(1,Math.floor(size.width*scale)),height:Math.max(1,Math.floor(size.height*scale))};
   }
-  const alpha=['image/png','image/webp','image/gif'].includes(file.type);
   const encode=async(type:string,quality:number|undefined,white:boolean):Promise<Blob|null>=>{
    if(typeof OffscreenCanvas!=='undefined'){
     const canvas=new OffscreenCanvas(size.width,size.height),context=canvas.getContext('2d');
@@ -41,8 +47,8 @@ export async function prepareImage(file:Blob,purpose:Purpose,signal?:AbortSignal
    context.drawImage(bitmap,0,0,size.width,size.height);
    return new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,type,quality));
   };
-  // Sources that may carry transparency stay PNG; JPEG is the size fallback (on white, so transparency does not turn black).
-  const attempts:Array<[string,number|undefined,boolean]>=alpha?[['image/png',undefined,false],['image/jpeg',0.85,true]]:[['image/jpeg',0.9,false],['image/jpeg',0.8,false],['image/jpeg',0.7,false]];
+  // Sources that may carry transparency stay PNG; every JPEG is drawn on white so transparency does not turn black.
+  const attempts=encodeAttempts(file.type);
   for(const [type,quality,white] of attempts){
    const out=await encode(type,quality,white);check(signal);
    if(!out)return fallback();

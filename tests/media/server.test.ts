@@ -37,6 +37,17 @@ describe('media handler',()=>{
   expect(row).toMatchObject({owner_id:owner,purpose:'post',state:'pending',width:200,height:150});
   expect(row.bytes).toBe(body.bytes);expect(row.thumb_bytes).toBeGreaterThan(0);
  });
+ it('strips EXIF and GPS from a small upload sent unchanged by the browser',async()=>{
+  const {token}=await account('mu_exif'),store=createMemoryStore(),handler=createMediaHandler(db,store);
+  const noisy=sharp(randomBytes(800*600*3),{raw:{width:800,height:600,channels:3}}).blur(2).jpeg({quality:90}).withMetadata({orientation:6,exif:{IFD0:{Make:'TestCam'},IFD3:{GPSLatitudeRef:'S',GPSLatitude:'41/1 17/1 0/1'}}});
+  const jpeg=new Uint8Array(await noisy.toBuffer());
+  expect((await sharp(jpeg).metadata()).exif).toBeDefined();
+  const response=await handler(upload(token,jpeg,'post','image/jpeg'));expect(response.status).toBe(201);
+  const body=await response.json();
+  const meta=await sharp((await store.get(body.id+'/full'))!).metadata();
+  expect(meta.format).toBe('webp');expect(meta.exif).toBeUndefined();
+  expect([meta.width,meta.height]).toEqual([600,800]);expect([body.width,body.height]).toEqual([600,800]);
+ });
  it('sniffs content, not the declared type',async()=>{
   const {token}=await account('mu_sniff'),handler=createMediaHandler(db,createMemoryStore());
   expect((await handler(upload(token,await gif(),'post','image/png'))).status).toBe(201);
