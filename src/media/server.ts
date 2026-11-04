@@ -9,7 +9,7 @@ import {processImage,MediaError,MEDIA_MESSAGES,type MediaErrorCode} from './proc
 import {purgePendingMedia,type MediaStore} from './store';
 
 const STATUS:Record<MediaErrorCode,number>={unsupported_type:415,too_large:413,too_many_pixels:422,corrupt:422,cannot_compress:422};
-const IMMUTABLE='public, max-age=31536000, immutable';
+const PUBLIC_CACHE='public, max-age=600';
 /** Reads at most `limit` bytes; the declared length is only a fast path, the stream is what is enforced. */
 async function readBody(request:Request,limit:number):Promise<Uint8Array> {
  const tooLarge=()=>new HttpError(413,'too_large',MEDIA_MESSAGES.too_large);
@@ -80,7 +80,7 @@ export function createMediaHandler(db:Database,store:MediaStore|null,env:{maxTot
   }else if(row.on_profile)publicly=true;
   else return notFound();
   const bytes=await store.get(mediaKey(id,variant));if(!bytes)return notFound();
-  return new Response(bytes as unknown as BodyInit,{status:200,headers:{'Content-Type':'image/webp','X-Content-Type-Options':'nosniff','Content-Length':String(bytes.byteLength),'Cache-Control':publicly?IMMUTABLE:'private, no-store'}});
+  return new Response(bytes as unknown as BodyInit,{status:200,headers:{'Content-Type':'image/webp','X-Content-Type-Options':'nosniff','Content-Length':String(bytes.byteLength),'Cache-Control':publicly?PUBLIC_CACHE:'private, no-store'}});
  }
  return async request=>{
   try{

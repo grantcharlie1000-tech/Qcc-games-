@@ -115,7 +115,7 @@ describe('media handler',()=>{
    await query('INSERT INTO social_post_media(post_id,position,media_id) VALUES ($1,0,$2)',[post,id]);
    await query("UPDATE media_objects SET state='attached' WHERE id=$1",[id]);
    const ok=await handler(get(id,null));
-   expect(ok.status).toBe(200);expect(ok.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+   expect(ok.status).toBe(200);expect(ok.headers.get('cache-control')).toBe('public, max-age=600');
    expect((await handler(get(id,null,'thumb'))).status).toBe(200);
    await query('UPDATE social_posts SET hidden=true WHERE id=$1',[post]);
    expect((await handler(get(id,null))).status).toBe(404);
