@@ -154,7 +154,10 @@ describe('uploadImage and mediaUrl',()=>{
   const pending=uploadImage(blob,'post','tok',{onProgress:p=>progress.push(p),xhr:Xhr});
   const x=FakeXhr.last;
   expect(x.method).toBe('POST');expect(x.url).toBe('/.netlify/functions/media?action=upload&purpose=post');
-  expect(x.headers).toEqual({'Content-Type':'image/jpeg',Authorization:'Bearer tok'});expect(x.sent).toBe(blob);
+  expect(x.headers).toEqual({'Content-Type':'image/jpeg',Authorization:'Bearer tok'});
+  // The bytes go up as an ArrayBuffer (WebKit request interception cannot read a Blob body).
+  await vi.waitFor(()=>expect(x.sent).toBeInstanceOf(ArrayBuffer));
+  expect(new TextDecoder().decode(x.sent as ArrayBuffer)).toBe('abc');
   x.upload.onprogress!({lengthComputable:true,loaded:1,total:4});x.upload.onprogress!({lengthComputable:true,loaded:4,total:4});
   x.finish(201,{id,width:10,height:5,bytes:3,thumb:true});
   expect(await pending).toEqual({id,width:10,height:5,thumb:true});expect(progress).toEqual([0.25,1]);
