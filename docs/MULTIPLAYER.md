@@ -28,24 +28,24 @@ relay. Keys typed in the name and code fields never reach the game.
 
 ## Pool
 
-The host’s device runs the only simulation (`src/games/pool/online.ts`), with the unchanged rules and physics in
-`model.ts`. Seats are fixed: the host is seat 1 and breaks; the guest is seat 2.
+The host’s device runs the only simulation (`src/games/pool/online.ts`), with the same rules (`game.ts`) and physics
+(`physics.ts`) as offline play. Seats are fixed: the host is seat 1 and breaks first; the guest is seat 2. Later racks alternate the break.
 
-- Guests send numbered commands — `shoot` (angle, power, called pocket), `place` (ball-in-hand position), `pocket` — each
-  made against a state revision. The host refuses commands that are duplicated (old sequence number), stale (another
-  revision), out of turn, sent while balls move or while paused, and anything the rules reject. Refusals are reported to the
-  guest (“It is not your turn.”).
-- While balls roll the host streams ball positions every 50 ms (0.1-unit precision and a pocketed mask); the guest plays them
-  back about 100 ms behind with interpolation. The guest never simulates physics.
-- Every change (shot start, settle, placement, pocket choice, new rack) sends the complete authoritative state, so pockets,
-  fouls, ball-in-hand, turns, groups and the winner are always the host’s.
-- Aim (angle and power) is shown to the other player as it changes.
+- Guests send numbered commands — `shoot` (angle, power, spin, called pocket for the 8) and `place` (ball-in-hand
+  position) — each made against a state revision. The host refuses commands that are duplicated (old sequence number),
+  stale (another revision), out of turn, sent while balls move or while paused, and anything the rules reject. Refusals
+  are reported to the guest (“It is not your turn.”).
+- While balls roll the host streams ball positions every 50 ms (0.1 mm precision and a pocketed mask); the guest plays them
+  back about 100 ms behind with interpolation. The guest never simulates physics; ball rolling is drawn from the motion.
+- Every change (shot start, settle, placement, new rack) sends the complete authoritative state, so pockets, fouls,
+  ball-in-hand, turns, groups and the winner are always the host’s.
+- Aim, power, spin and a ball-in-hand drag are shown to the other player as they change.
 - Online racks are not saved; the shell keeps saving the offline game, which comes back when the room ends. The host’s
-  Restart starts a new online rack; a guest’s Restart is refused.
+  Next rack and Restart start a new online rack; a guest’s Restart is refused.
 
 ## Blockcraft
 
-Choose **Multiplayer** in the start or game menu (in Pool, the **Multiplayer** button beside Players). The menu floats in the centre of the screen over the game, so nothing in the game resizes; close it with ✕ or by clicking outside it. The host’s world becomes the shared world, saved on the host’s device under
+Choose **Multiplayer** in the start or game menu (in Pool, **Multiplayer** in the game menu). The menu floats in the centre of the screen over the game, so nothing in the game resizes; close it with ✕ or by clicking outside it. The host’s world becomes the shared world, saved on the host’s device under
 its own key (`mp:blockcraft:world`), separate from the single-player save. Guests keep their single-player world aside and get
 it back when they leave or the host goes.
 
