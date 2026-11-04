@@ -167,6 +167,14 @@ body.in-game .mp-card .game-button.secondary{background:var(--sheet-control);col
 
 .arcade-sheet :is(input:not([type=checkbox]),.game-button.secondary){border:2px solid #aeb2ba;background:#292e38;color:#fff}
 .arcade-sheet .account-tabs button[aria-pressed=true]{background:#45546a;color:#fff;border-color:#fff}
+/* Match the readable controls' specificity so their author colours do not
+   override the user's forced-colour palette. Keep the selected tab distinct. */
+@media(forced-colors:active){
+  .arcade-sheet :is(input:not([type=checkbox]),.game-button.secondary){border:2px solid ButtonText;background:Canvas;color:CanvasText}
+  .arcade-sheet .account-tabs button[aria-pressed=true]{border-color:ButtonText;background:Highlight;color:HighlightText}
+  #menu.arcade-sheet input[type=search]{border:2px solid ButtonText;background:Canvas!important;color:CanvasText!important}
+  #menu.arcade-sheet input[type=search]::placeholder{color:CanvasText!important}
+}
 
 /* Preserve the original in-game menu treatment. */
 #game-options.arcade-sheet.ui-glass-sheet{margin:auto auto calc(8px + env(safe-area-inset-bottom))}

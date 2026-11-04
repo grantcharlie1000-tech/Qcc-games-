@@ -394,8 +394,37 @@ test('forced colours give the sheet controls and fields a 2 px ButtonText border
   await page.setViewportSize(PHONE);
   await page.goto('/');
   await openMenuFromIsland(page);
-  const system=await page.evaluate(()=>{const probe=document.createElement('p');probe.style.borderTop='2px solid ButtonText';document.querySelector('#menu')!.append(probe);const colour=getComputedStyle(probe).borderTopColor;probe.remove();return colour;});
+  const system=await page.evaluate(()=>{
+    const probe=document.createElement('p');
+    probe.style.cssText='border:2px solid ButtonText;background:Canvas;color:CanvasText';
+    document.querySelector('#menu')!.append(probe);
+    const style=getComputedStyle(probe);
+    const palette={border:style.borderTopColor,background:style.backgroundColor,text:style.color,selectedBackground:'',selectedText:''};
+    probe.style.background='Highlight';probe.style.color='HighlightText';
+    palette.selectedBackground=style.backgroundColor;palette.selectedText=style.color;
+    probe.remove();return palette;
+  });
   for(const control of [page.locator('#open-accounts'),page.locator('#search'),page.getByRole('button',{name:'Close menu',exact:true})]){
-    expect(await control.evaluate(el=>{const style=getComputedStyle(el);return [style.borderTopStyle,style.borderTopWidth,style.borderTopColor];})).toEqual(['solid','2px',system]);
+    expect(await control.evaluate(el=>{const style=getComputedStyle(el);return [style.borderTopStyle,style.borderTopWidth,style.borderTopColor];})).toEqual(['solid','2px',system.border]);
+  }
+  const expectPalette=async(control:Locator,selected=false)=>{
+    expect(await control.evaluate(el=>{const style=getComputedStyle(el);return [style.borderTopStyle,style.borderTopWidth,style.borderTopColor,style.backgroundColor,style.color];})).toEqual(['solid','2px',system.border,selected?system.selectedBackground:system.background,selected?system.selectedText:system.text]);
+  };
+  await expectPalette(page.locator('#search'));
+  expect(await page.locator('#search').evaluate(el=>getComputedStyle(el,'::placeholder').color)).toBe(system.text);
+  await expectPalette(page.locator('#open-accounts'));
+  await page.locator('#open-accounts').click();
+  const account=page.locator('#accounts-dialog');
+  await expect(account).toBeVisible();
+  for(const id of ['#account-username','#account-password'])await expectPalette(account.locator(id));
+  await expectPalette(account.getByRole('button',{name:'Close sign in',exact:true}));
+  const login=account.locator('.account-tabs').getByRole('button',{name:'Log in',exact:true});
+  const signup=account.locator('.account-tabs').getByRole('button',{name:'Sign up',exact:true});
+  for(const [active,inactive] of [[login,signup],[signup,login]]){
+    await active.click();
+    await expect(active).toHaveAttribute('aria-pressed','true');
+    await expect(inactive).toHaveAttribute('aria-pressed','false');
+    await expectPalette(active,true);
+    await expectPalette(inactive);
   }
 });
