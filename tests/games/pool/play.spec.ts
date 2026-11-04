@@ -152,14 +152,34 @@ test.describe('Pool',()=>{
     });
   }
 
-  test('touch: aim with a finger and shoot with the power cue',async({browser})=>{
+  test('touch: aim with a finger and shoot with the power cue',async({browser,browserName})=>{
     const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:3});
     await context.addInitScript(()=>{localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});
     const page=await context.newPage();
     try{
       await page.goto('/#/game/pool');await expect(root(page)).toHaveAttribute('data-orient','portrait');
-      const cdp=await context.newCDPSession(page);
-      const touch=(type:'touchStart'|'touchMove'|'touchEnd',points:{x:number;y:number}[])=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points.map((p,i)=>({...p,id:i+1}))});
+      type TouchType='touchStart'|'touchMove'|'touchEnd';
+      let touch:(type:TouchType,points:{x:number;y:number}[])=>Promise<unknown>;
+      if(browserName==='chromium'){
+        // Real touch input through the browser's input pipeline.
+        const cdp=await context.newCDPSession(page);
+        touch=(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points.map((p,i)=>({...p,id:i+1}))});
+      }else{
+        // CDP is Chromium-only and Playwright's touchscreen can only tap, so WebKit drives the same gestures as touch
+        // pointer events (what Pool listens to) aimed at the element under the finger. Pointer id 1 is always active,
+        // so the game's setPointerCapture accepts it.
+        let last={x:0,y:0};
+        touch=async(type,points)=>{
+          const point=points[0]??last;last=point;
+          return page.evaluate(({type,point,first})=>{
+            const w=window as unknown as {__poolTouchTarget?:Element|null};
+            if(first)w.__poolTouchTarget=document.elementFromPoint(point.x,point.y);
+            const el=w.__poolTouchTarget;if(!el)throw new Error('nothing under the finger');
+            const name=type==='touchStart'?'pointerdown':type==='touchMove'?'pointermove':'pointerup';
+            el.dispatchEvent(new PointerEvent(name,{bubbles:true,cancelable:true,composed:true,pointerId:1,pointerType:'touch',isPrimary:true,button:type==='touchMove'?-1:0,buttons:type==='touchEnd'?0:1,clientX:point.x,clientY:point.y}));
+          },{type,point,first:type==='touchStart'});
+        };
+      }
       const s=await poolState(page),aim=await tableToScreen(page,s.balls[0].x+.4,s.balls[0].y-.2);
       await touch('touchStart',[aim]);await touch('touchMove',[{x:aim.x+3,y:aim.y}]);await touch('touchEnd',[]);
       expect((await poolState(page)).aim.angle).toBeCloseTo(Math.atan2(-.2,.4),1);
