@@ -122,6 +122,15 @@ describe('Whetū acceptance cases (kiakura tests/tutorPhotoProcessing.test.ts, a
   expect(header.length).toBeLessThan(1000);
   expect(await code(processImage(header,'post'))).toBe('too_many_pixels');
  });
+ it('strips EXIF and GPS and rotates a small original that the browser would send unchanged',async()=>{
+  for(const purpose of ['post','avatar'] as const){
+   const input=await noisyJpeg(800,600,{IFD0:{Make:'TestCam'},IFD3:{GPSLatitudeRef:'S',GPSLatitude:'41/1 17/1 0/1'}});
+   expect(input.byteLength).toBeLessThan(1024*1024);
+   const meta=await sharp((await processImage(input,purpose)).full).metadata();
+   expect(meta.format).toBe('webp');expect(meta.exif).toBeUndefined();expect(meta.orientation===undefined||meta.orientation===1).toBe(true);
+   if(purpose==='post')expect([meta.width,meta.height]).toEqual([600,800]);else expect([meta.width,meta.height]).toEqual([256,256]);
+  }
+ });
  it('refuses an empty body and a photo smaller than 16 px as unreadable',async()=>{
   expect(await code(processImage(new Uint8Array(0),'post'))).toBe('corrupt');
   const tiny=new Uint8Array(await sharp({create:{width:8,height:8,channels:3,background:'#fff'}}).png().toBuffer());

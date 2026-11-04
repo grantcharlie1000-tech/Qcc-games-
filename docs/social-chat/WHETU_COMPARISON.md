@@ -44,18 +44,18 @@ Status key: **Same**; **QCC differs** (reason given); **Missing in QCC** (ported
 | 34 | `server-only` and `@/` imports | Next-specific, `IP:1,3-9`, `IF:1,3-6` | Plain relative imports | QCC differs: not applicable (Vite/vanilla) |
 | 35 | Server processing timeout | None in these files | None | Same |
 | 36 | Client screening order | HEIC first, then type not accepted, then size, then empty, `C:184-191`; HEIC with no type detected by extension, `C:186` | `plan.ts:17-23` (type, then size, then empty; extension only when the type is empty), used at `client.ts:19-22` | Missing in QCC (ported) |
-| 37 | Client original size cap | 12 MiB, `C:190` | 20 MiB, `plan.ts:8`; stops the browser decoding a huge file | Missing in QCC (ported); value QCC's own (the upload after shrinking is still capped at 4 MiB) |
+| 37 | Client original size cap | 12 MiB, `C:190` | 20 MiB, `plan.ts:8`; stops the browser decoding a huge file | Missing in QCC (ported); the 20 MiB value is QCC's own estimate, not Whetū's (12 MiB, tied to its bucket). It only bounds browser decode work; the upload after shrinking is still capped at 4 MiB |
 | 38 | Empty file | `unreadable`, `C:191` | `client.ts:22` | Missing in QCC (ported) |
 | 39 | Size check after shrink | `C:193` | Encode loop throws `TOO_BIG_PHOTO`, `client.ts:52-57` | Same |
 | 40 | Decode upright | `createImageBitmap(file,{imageOrientation:"from-image"})`, null on failure, `C:135-141` | `client.ts:25` | Same |
 | 41 | Client max edge | One constant 1600, `C:145` | Per purpose, `client.ts:28` | QCC differs: SPEC purposes |
 | 42 | Fit without enlarging | `fittedSize`, `C:120-128` | `fitWithin`, `src/apps/image.ts:2-7` (identical, plus NaN guard) | Same |
-| 43 | Square purposes | Not needed (crop is separate) | `fitForPurpose` keeps the short side at 256 so the server crop does not upscale, `plan.ts:34-39`, `client.ts:31`. Before: an 800x500 avatar was shrunk to 256x160, then the server's cover crop enlarged it | QCC-only (defect found during comparison, fixed with a test) |
+| 43 | Square purposes | Not needed (crop is separate) | `fitForPurpose` keeps the short side at 256 so the server crop does not upscale, `plan.ts:34-39`, `client.ts:31`. Before: an 800x500 avatar was shrunk to 256x160, then the server's cover crop enlarged it | QCC-only (defect found during comparison, fixed with a test). Long side capped at 4x so a 30000x300 image cannot make a huge canvas (`plan.ts:34-42`) |
 | 44 | White under the photo | Always, `C:151-153` | `encodeAttempts` draws every JPEG on white, `plan.ts:41-43`. Before, only alpha-source fallbacks did, so a transparent AVIF came out black | Missing in QCC (ported) |
 | 45 | JPEG quality 0.9 | `C:114` | First attempt, `plan.ts:42` | Same |
 | 46 | PNG kept for transparent sources, 0.8/0.7 JPEG steps | None; always JPEG 0.9 | `plan.ts:41-43`, `client.ts:51-57` | QCC-only |
 | 47 | Canvas pixel cap 16 MP | None | `client.ts:11,32-35` | QCC-only |
-| 48 | Keep small compatible originals | Fits the edge and is 1 MiB or less: sent unchanged, `C:111,171-172` | `canSendAsIs`, `plan.ts:25-28`, `client.ts:30`. Only JPEG, PNG, WebP, GIF pass through (HEIC/AVIF always re-encode); avatars judged by short side | Missing in QCC (ported) |
+| 48 | Keep small compatible originals | Fits the edge and is 1 MiB or less: sent unchanged, `C:111,171-172` | `canSendAsIs`, `plan.ts:25-28`, `client.ts:30`. Only JPEG, PNG, WebP, GIF pass through (HEIC/AVIF always re-encode); avatars judged by short side, and not passed through if the long side exceeds 4x | Missing in QCC (ported). Deliberate deviations: GIF also passes through (Whetū: JPEG, PNG, WebP only; the server keeps the first frame), and the avatar rule |
 | 49 | Browser cannot decode | Send the original, the server judges, `C:168-169` | `fallback`, `client.ts:23-25` (only if 4 MiB or less) | Same |
 | 50 | HEIC in the browser | Convert to JPEG where decodable; otherwise refuse with `heic-not-decodable`, never sent as HEIC, `C:186-208` | Converts where decodable (same path as any image). Otherwise the original goes to the server, which answers `HEIC_MESSAGE` (SPEC step 1) | QCC differs: SPEC; the server stays authoritative |
 | 51 | Upload progress | XHR `upload.onprogress`, `C:86-88` | `client.ts:73` (clamped to 1) | Same |
@@ -86,7 +86,7 @@ Whetū crops in the browser only because its UI has a zoom control, so the user 
 
 ## What was ported
 
-Server: empty body refused (#2), 16 px minimum side (#8), `quality` and `edgePx` on the result (#25). Browser (`src/media/plan.ts`, used by `src/media/client.ts`): screening by type, size and emptiness (#36-38), small-original pass-through (#48), white under every JPEG (#44), and the avatar short-side fit (#43). Tests: `tests/media/plan.test.ts`, and the Whetū acceptance cases in `tests/media/process.test.ts`. Benchmark script and doc: #69-70.
+Server: empty body refused (#2), 16 px minimum side (#8), `quality` and `edgePx` on the result (#25). Browser (`src/media/plan.ts`, used by `src/media/client.ts`): screening by type, size and emptiness (#36-38), small-original pass-through (#48), white under every JPEG (#44), and the avatar short-side fit (#43). Tests: `tests/media/plan.test.ts`, `tests/media/client.spec.ts` (Playwright: pass-through, shrink, avatar short side, empty file in a real browser), a small-original EXIF/GPS case in `process.test.ts` and `server.test.ts`, and the Whetū acceptance cases in `tests/media/process.test.ts`. Benchmark script and doc: #69-70.
 
 ## Not ported, deliberately
 

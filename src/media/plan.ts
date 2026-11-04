@@ -24,6 +24,7 @@ export function screenOriginal(file:OriginalInfo):Screening|null {
 /** Square purposes (avatar) are judged by the short side: the server crops, so only the short side decides whether anything needs shrinking. */
 export function canSendAsIs(file:OriginalInfo,width:number,height:number,maxEdge:number,square:boolean):boolean {
  if(!PASS_THROUGH_TYPES.has(file.type.toLowerCase())||file.size>KEEP_AS_IS_BYTES)return false;
+ if(square&&Math.max(width,height)>4*maxEdge)return false;
  return (square?Math.min(width,height):Math.max(width,height))<=maxEdge;
 }
 /**
@@ -33,8 +34,11 @@ export function canSendAsIs(file:OriginalInfo,width:number,height:number,maxEdge
  */
 export function fitForPurpose(width:number,height:number,maxEdge:number,square:boolean):{width:number;height:number} {
  const basis=square?Math.min(width,height):Math.max(width,height);
- if(!(basis>0)||basis<=maxEdge)return {width,height};
- const scale=maxEdge/basis;
+ if(!(basis>0))return {width,height};
+ let scale=basis<=maxEdge?1:maxEdge/basis;
+ // The server crops a square, so a long side beyond 4x the square is never used; the cap keeps the canvas and the server's 10,000 px side limit safe.
+ if(square&&Math.max(width,height)*scale>4*maxEdge)scale=4*maxEdge/Math.max(width,height);
+ if(scale>=1)return {width,height};
  return {width:Math.max(1,Math.round(width*scale)),height:Math.max(1,Math.round(height*scale))};
 }
 /** [mime, quality, drawOnWhite] tried in order until one fits the transport limit. White under every JPEG (Whetū encodeFitted) so transparency never turns black. */

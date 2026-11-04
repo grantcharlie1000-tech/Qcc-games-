@@ -32,8 +32,11 @@ describe('canSendAsIs',()=>{
   expect(canSendAsIs(file('image/avif',100_000),800,600,1600,false)).toBe(false);
   expect(canSendAsIs(file('',100_000),800,600,1600,false)).toBe(false);
  });
+ it('does not pass an extreme panorama avatar through',()=>{
+  expect(canSendAsIs(file('image/png',90_000),30000,256,256,true)).toBe(false);
+ });
  it('judges a square purpose by its short side',()=>{
-  expect(canSendAsIs(file('image/png',90_000),2000,256,256,true)).toBe(true);
+  expect(canSendAsIs(file('image/png',90_000),1000,256,256,true)).toBe(true);
   expect(canSendAsIs(file('image/png',90_000),800,500,256,true)).toBe(false);
  });
 });
@@ -41,6 +44,12 @@ describe('fitForPurpose',()=>{
  it('fits the longest edge for ordinary purposes',()=>{
   expect(fitForPurpose(4000,3000,1600,false)).toEqual({width:1600,height:1200});
   expect(fitForPurpose(800,600,1600,false)).toEqual({width:800,height:600});
+ });
+ it('caps the long side of a square purpose so an extreme panorama cannot make a huge canvas',()=>{
+  const size=fitForPurpose(30000,300,256,true);
+  expect(Math.max(size.width,size.height)).toBeLessThanOrEqual(4*256);
+  expect(fitForPurpose(300,30000,256,true).height).toBeLessThanOrEqual(1024);
+  expect(fitForPurpose(800,500,256,true)).toEqual({width:410,height:256});
  });
  it('keeps the short side at the square size so the server crop never upscales',()=>{
   expect(fitForPurpose(800,500,256,true)).toEqual({width:410,height:256});
