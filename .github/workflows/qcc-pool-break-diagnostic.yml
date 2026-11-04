@@ -1,0 +1,48 @@
+name: Verify deterministic Pool break
+on:
+  push:
+    branches: [diagnostics/qcc-pool-break-fixture-20261104]
+permissions:
+  contents: read
+concurrency:
+  group: qcc-pool-break-fixture-20261104
+  cancel-in-progress: false
+jobs:
+  pool-break:
+    name: Pool break (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: bc9fe036936b366454d819f2b2e4a0685f962770
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npx tsc --noEmit
+      - name: Verify Pool model rules, including legal and recorded illegal breaks
+        run: npx vitest run tests/games/pool --maxWorkers=1
+      - name: Verify complete Pool browser controls
+        run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/games/pool/play.spec.ts --workers=1 --reporter=list
+      - name: Repeat unchanged keyboard break assertions
+        run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/games/pool/play.spec.ts --grep="breaks from the keyboard" --repeat-each=3 --workers=1 --reporter=list
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pool-break-${{ matrix.browser }}
+          path: |
+            playwright-report
+            test-results
