@@ -45,7 +45,11 @@ test('remembered sign-in sees it once, with keyboard focus and Escape preserving
   await setup(context,{signedIn:true});await page.goto('/#/game/minesweeper');
   await expect(welcome(page)).toBeVisible();
   await expect(welcome(page).getByRole('button',{name:'Got it'})).toBeFocused();
-  await page.keyboard.press('Tab');await expect(welcome(page).getByRole('button',{name:'Got it'})).toBeFocused();
+  // Native dialogs may Tab into browser chrome (document.activeElement is body),
+  // but must never expose background controls. Shift+Tab returns to the action.
+  await page.keyboard.press('Tab');
+  expect(await welcome(page).evaluate(el=>el.contains(document.activeElement)||document.activeElement===document.body)).toBe(true);
+  await page.keyboard.press('Shift+Tab');await expect(welcome(page).getByRole('button',{name:'Got it'})).toBeFocused();
   await page.keyboard.press('Escape');await expect(welcome(page)).not.toBeVisible();
   await expect(page.locator('.ms-tile').first()).toBeVisible();
   await expect(page.locator('body')).not.toHaveClass(/study-active/);
