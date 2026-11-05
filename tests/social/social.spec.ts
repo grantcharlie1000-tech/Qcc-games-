@@ -471,3 +471,19 @@ test('feed polling stops while hidden and while Study is open',async({page,conte
  await page.waitForTimeout(300);
  const studyCount=feeds;await page.waitForTimeout(3600);expect(feeds).toBe(studyCount);
 });
+
+test('New post and the n shortcut reopen the composer right after it closes',async({page,context})=>{
+ await connect(context);const a=await user('rc');await open(page,a.name);
+ const sheet=page.locator('#social-compose[open]');
+ await page.getByRole('button',{name:'New post'}).click();await expect(sheet).toBeVisible();
+ await sheet.getByRole('button',{name:'Close'}).click();
+ await expect(sheet).toHaveCount(0);
+ // The closed dialog stays in the DOM for its exit animation; the next press must not be swallowed by it.
+ await page.getByRole('button',{name:'New post'}).click();
+ await expect(sheet).toBeVisible();
+ await expect(sheet.getByRole('textbox',{name:'Post text'})).toBeFocused();
+ await sheet.getByRole('button',{name:'Close'}).click();
+ await expect(sheet).toHaveCount(0);
+ await page.keyboard.press('n');
+ await expect(sheet).toBeVisible();
+});

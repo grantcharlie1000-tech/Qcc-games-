@@ -177,7 +177,7 @@ export class SocialView implements AppView {
   this.notify('Please log in again.',{role:'alert'});
  }
  private openCompose(options:ComposeOptions={}):void {
-  if(!this.me||document.getElementById('social-compose'))return;
+  if(!this.me||document.querySelector('#social-compose[open]'))return; // a closed sheet lingers for its exit animation; appSheet replaces it
   closeMenus();
   this.closeCompose=openComposeSheet(this.ctx,{replyTo:options.replyTo,trigger:options.trigger??document.activeElement,onPosted:post=>this.onPosted(post)});
  }
