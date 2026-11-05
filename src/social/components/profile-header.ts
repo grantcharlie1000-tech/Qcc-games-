@@ -42,10 +42,10 @@ export class ProfileHeader {
   }else row.append(av,actions);
   const name=document.createElement('h1');name.className='social-profile-name';name.tabIndex=-1;name.textContent=p.displayName||p.username;
   const handle=document.createElement('p');handle.className='social-profile-handle';handle.append(document.createTextNode(`@${p.username}`));
-  if(p.followsYou){const chip=document.createElement('span');chip.className='social-chip';chip.textContent='Follows you';handle.append(' ',chip);}
   body.append(row,name,handle);
   if(p.bio){const bio=document.createElement('p');bio.className='social-profile-bio';bio.textContent=p.bio;body.append(bio);}
   const since=document.createElement('p');since.className='social-profile-since';since.textContent=memberSince(p.joinedAt);
+  if(p.followsYou){const chip=document.createElement('span');chip.className='social-chip';chip.textContent='Your follower';since.append(chip);}
   const counts=document.createElement('p');counts.className='social-profile-counts';
   counts.innerHTML='<span><strong data-k="following"></strong> following</span> <span><strong data-k="followers"></strong> <span data-k="followers-word">followers</span></span>';
   counts.querySelector('[data-k=following]')!.textContent=compactCount(p.following);
