@@ -46,6 +46,20 @@ describe('snake grid model',()=>{
   const lost=JSON.parse(JSON.stringify(s)) as SnakeState;advance(lost,TICK_MS);expect(lost.phase).toBe('lost');expect(head(lost).x).toBe(SIZE-1);
   expect(enqueue(s,'down')).toBe(true);expect(s.bonk).toBe(0);expect(head(s)).toEqual({x:SIZE-1,y:8});
  });
+ it('a bonk from a queued turn keeps the travel direction: the neck stays illegal and the real escape works',()=>{
+  const s=createState();s.phase='running';s.food={x:0,y:9};
+  s.body=[{x:14,y:1},{x:13,y:1},{x:13,y:0},{x:14,y:0},{x:15,y:0},{x:15,y:1},{x:15,y:2}];s.dir='right';
+  s.score=(s.body.length-4)*10;s.queue=['up'];step(s);
+  expect(s.bonk).toBe(1);expect(s.dir).toBe('right');
+  const neck=JSON.parse(JSON.stringify(s)) as SnakeState;expect(enqueue(neck,'left')).toBe(false);
+  expect(enqueue(s,'down')).toBe(true);expect(s.body[0]).toEqual({x:14,y:2});expect(s.bonk).toBe(0);
+ });
+ it('states saved during a turned bonk and after the resulting death restore',()=>{
+  const s=createState();start(s,'up');while(s.phase==='running'&&s.bonk===0)advance(s,TICK_MS);
+  const plain=(v:SnakeState)=>{const {undo:_u,...rest}=v;return JSON.parse(JSON.stringify(rest));};
+  expect(restoreState(plain(s))).not.toBeNull();
+  advance(s,TICK_MS);expect(s.phase).toBe('lost');expect(restoreState(plain(s))).not.toBeNull();
+ });
  it('a vacating tail is safe but a growth-held tail is not',()=>{
   const s=createState();s.phase='running';s.body=[{x:5,y:5},{x:6,y:5},{x:6,y:6},{x:5,y:6}];s.dir='left';s.food={x:0,y:0};
   expect(blocked(s,{x:5,y:6})).toBe(false);s.growth=1;expect(blocked(s,{x:5,y:6})).toBe(true);
@@ -76,7 +90,7 @@ describe('snake saves',()=>{
  it('rejects malformed and older saves',()=>{
   const good=plain(running());
   const bad=[null,1,{...good,version:2},{...good,score:30},{...good,dir:'left'},{...good,elapsed:TICK_MS},{...good,queue:['right']},{...good,food:good.body[2]},
-   {...good,body:[good.body[0],good.body[2]]},{...good,growth:-1},{...good,phase:'won'},{...good,seed:-1},{...good,bonk:2},{...good,body:[...good.body,good.body[0]]}];
+   {...good,body:[good.body[0],good.body[2]]},{...good,growth:-1},{...good,phase:'won'},{...good,seed:-1},{...good,bonk:2},{...good,body:good.body.slice(0,3),score:-10},{...good,prevTail:{x:9,y:9}},{...good,body:[...good.body,good.body[0]]}];
   for(const b of bad)expect(restoreState(b)).toBeNull();
   expect(restoreState(good)).not.toBeNull();
  });

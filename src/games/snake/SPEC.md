@@ -18,7 +18,7 @@ Goal: a Snake that plays and feels like the familiar search-engine Snake (smooth
 - Animations (all on a presentation clock that freezes while paused):
   - apple pops in with an overshoot (260 ms);
   - eyes track the apple and blink every 2.5–5.5 s; the head turns smoothly;
-  - the mouth opens as the head nears the apple and chomps shut (90 ms) with a head squash (160 ms). The visual eat waits until the drawn head reaches the apple;
+  - the snout hinges open into a D-shaped jaw (rim, dark inside, two fangs) over the last three squares before an apple, then snaps shut (150 ms) with a head squash (160 ms). The visual eat waits until the drawn head reaches the apple;
   - a swallow bulge travels down the body; fruit flecks burst (320 ms) and a "+10" rises (600 ms);
   - on the ready card the snake flicks its tongue;
   - on death: X eyes, a short decaying board shake (280 ms), a soft flash (120 ms), the body dims, and the result card appears after 700 ms ("New best!" when beaten).

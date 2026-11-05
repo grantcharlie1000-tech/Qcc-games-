@@ -89,14 +89,23 @@ export function drawGarden(canvas:HTMLCanvasElement,state:SnakeState,view:SnakeV
  g.save();g.translate(hx+Math.cos(view.angle)*push*CELL,hy+Math.sin(view.angle)*push*CELL);g.rotate(view.angle);g.scale(scale,scale);
  const R=HEAD_R;
  const head=g.createRadialGradient(-2,-3,1,0,0,R);head.addColorStop(0,xmas?'#8fdc9f':'#c8e98a');head.addColorStop(.65,xmas?'#3aa760':'#9bd367');head.addColorStop(1,xmas?XMAS.greenDeep:'#66a94e');
- // The head is a disc with a wedge cut out for the mouth; the inside shows through the cut.
- const jaw=open*.9/2;
- if(jaw>.02){
-  g.fillStyle='#244734';g.beginPath();g.moveTo(R*.05,0);g.arc(0,0,R*.96,-jaw,jaw);g.closePath();g.fill();
-  g.fillStyle='#bd303c';g.beginPath();g.ellipse(R*.55,0,R*.32*open,R*.12*open,0,0,Math.PI*2);g.fill();
+ // Seen from above, the snout hinges open into a D-shaped jaw wider than the head:
+ // a coloured rim around a dark inside, with two small fangs at the hinge corners.
+ const outline=xmas?XMAS.greenDeep:'#36733d',hinge=R*.3;
+ g.save();
+ if(open>.02){g.beginPath();g.rect(-R-4,-R-4,hinge+(R+4-hinge)*(1-open)+R+4,R*2+8);g.clip();}
+ g.fillStyle=outline;g.beginPath();g.arc(0,0,R+1,0,Math.PI*2);g.fill();
+ g.fillStyle=head;g.beginPath();g.arc(0,0,R,0,Math.PI*2);g.fill();
+ g.restore();
+ if(open>.02){
+  const rx=R*1.05*open,ry=R*(1+.3*open);
+  const half=(x:number,a:number,b:number,color:string|CanvasGradient)=>{g.fillStyle=color;g.beginPath();g.ellipse(x,0,a,b,0,-Math.PI/2,Math.PI/2);g.closePath();g.fill();};
+  half(hinge,rx+1.5,ry+1.5,outline);
+  half(hinge,rx,ry,head);
+  half(hinge,rx*.68,ry*.78,'#244734');
+  g.fillStyle='#fbffe8';const f=3.2*open,fy=ry*.78;
+  for(const s of [-1,1]){g.beginPath();g.moveTo(hinge,s*fy);g.lineTo(hinge+f*1.1,s*fy);g.lineTo(hinge+.3,s*(fy-f*1.3));g.closePath();g.fill();}
  }
- g.fillStyle=xmas?XMAS.greenDeep:'#36733d';g.beginPath();g.moveTo(0,0);g.arc(0,0,R+1,jaw,Math.PI*2-jaw);g.closePath();g.fill();
- g.fillStyle=head;g.beginPath();g.moveTo(0,0);g.arc(0,0,R,jaw,Math.PI*2-jaw);g.closePath();g.fill();
  if(flick>0){
   g.strokeStyle='#bd303c';g.lineWidth=1.6;g.lineCap='round';const L=R+.25*CELL*flick;
   g.beginPath();g.moveTo(R*.8,0);g.lineTo(L,0);g.moveTo(L,0);g.lineTo(L+3*flick,-2.5*flick);g.moveTo(L,0);g.lineTo(L+3*flick,2.5*flick);g.stroke();

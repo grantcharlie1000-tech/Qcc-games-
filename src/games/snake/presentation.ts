@@ -19,7 +19,7 @@ export const easeOutQuad=(t:number)=>1-(1-t)*(1-t);
 const clamp=(n:number,lo=0,hi=1)=>Math.max(lo,Math.min(hi,n));
 
 /** Interpolation progress for the current step. Ready/held/ended snakes rest on their head cell. */
-export function progress(s:SnakeState):number{return s.phase==='running'&&s.bonk===0?clamp(s.elapsed/TICK_MS):1;}
+export function progress(s:SnakeState):number{return (s.phase==='running'&&s.bonk===0)||s.phase==='won'?clamp(s.elapsed/TICK_MS):1;}
 export interface Spine{points:{x:number;y:number;s:number}[];length:number;head:Cell;tangent:Cell}
 /**
  * Centre line from visual head to visual tail, in cell units, sampled every `spacing` cells with
@@ -75,11 +75,11 @@ export function eatDelay(s:SnakeState):number{return Math.max(0,TICK_MS*.35-s.el
 export function mouth(s:SnakeState,view:SnakeView,head:Cell,reduced:boolean):number{
  if(reduced||s.phase==='lost')return 0;
  const pending=pendingEat(view),last=view.eats.at(-1),age=last&&!pending?view.clock-last.at:Infinity;
- if(age<90)return 1-age/90;
+ if(age<150)return 1-easeOutQuad(age/150);
  const target=pending?.cell??s.food;
  if(!target||(s.phase!=='running'&&!pending))return 0;
  const d=Math.hypot(target.x-head.x,target.y-head.y);
- return easeOutQuad(clamp((2.5-d)/1.5));
+ return easeOutQuad(clamp((3-d)/1.6));
 }
 export function chompScale(view:SnakeView,reduced:boolean):number{
  const last=view.eats.at(-1);if(reduced||!last||last.at>view.clock)return 1;

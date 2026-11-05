@@ -106,7 +106,7 @@ const module:GameModule={
     context.sound('success');context.announce(`Apple! ${state.score} points.`);
    }
    if(state.phase!==phase&&finished()){
-    view.endedAt=view.clock;revealed=reduced();
+    view.endedAt=view.clock;revealed=false;
     context.sound(state.phase==='won'?'success':'lose');
     context.announce(state.phase==='won'?'You filled the garden!':`Run ended. ${state.score} points.`);persist();
    }
@@ -114,7 +114,7 @@ const module:GameModule={
   }
   function advanceTo(now:number){
    if(disposed||paused||state.phase!=='running'){last=null;return;}
-   const dt=last===null?0:Math.max(0,now-last);last=now;
+   const dt=last===null?0:Math.max(0,now-last);last=Math.max(last??now,now);
    const score=state.score,phase=state.phase;
    advance(state,dt);afterModelChange(score,phase);
   }

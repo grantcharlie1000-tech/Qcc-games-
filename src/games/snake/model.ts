@@ -56,14 +56,15 @@ function move(s:SnakeState,next:Cell):void{
 export function step(s:SnakeState):void{
  if(s.phase!=='running')return;
  const undo=snapshot(s);
- const turned=s.queue.length>0;if(turned)s.dir=s.queue.shift()!;
- s.lastTurned=turned;
- const h=s.body[0],v=vector[s.dir],next={x:h.x+v.x,y:h.y+v.y};
+ // `dir` stays the travel direction (head minus neck) until the move succeeds; a blocked turn stays queued.
+ const nd=s.queue[0]??s.dir,h=s.body[0],v=vector[nd],next={x:h.x+v.x,y:h.y+v.y};
  if(blocked(s,next)){
   s.undo=null;s.prevTail=null;
   if(s.bonk===0){s.bonk=1;return;}
-  s.phase='lost';s.queue=[];return;
+  s.phase='lost';return;
  }
+ const turned=s.queue.length>0;if(turned)s.queue.shift();
+ s.dir=nd;s.lastTurned=turned;
  move(s,next);s.undo=s.phase==='running'?undo:null;
 }
 export function advance(s:SnakeState,ms:number):void{
@@ -85,12 +86,15 @@ function legal(s:SnakeState,d:Direction):boolean{
  * During a bonk hold a safe turn escapes immediately.
  */
 export function enqueue(s:SnakeState,d:Direction):boolean{
- if(s.phase!=='running'||!legal(s,d))return false;
- const perpendicular=s.queue.length===0;
- if(perpendicular&&s.bonk===1){
+ if(s.phase!=='running'||!Object.hasOwn(vector,d))return false;
+ // During a bonk hold any safe direction except back into the neck escapes at once.
+ if(s.bonk===1){
   const v=vector[d],h=s.body[0],next={x:h.x+v.x,y:h.y+v.y};
-  if(!blocked(s,next)){const undo=snapshot(s);s.dir=d;s.lastTurned=true;s.elapsed=0;move(s,next);s.undo=s.phase==='running'?undo:null;return true;}
+  if(d===opposite[s.dir]||blocked(s,next))return false;
+  const undo=snapshot(s);s.queue=[];s.lastTurned=d!==s.dir;s.dir=d;s.elapsed=0;move(s,next);s.undo=s.phase==='running'?undo:null;return true;
  }
+ if(!legal(s,d))return false;
+ const perpendicular=s.queue.length===0;
  const u=s.undo;
  if(perpendicular&&u&&s.bonk===0&&s.elapsed<GRACE_MS&&!s.lastTurned&&u.score===s.score&&d!==u.dir&&d!==opposite[u.dir]){
   const trial:SnakeState={...s,...u,body:u.body.map(copy),queue:[d],phase:'running',bonk:0,undo:null};
@@ -126,10 +130,13 @@ export function restoreState(value:unknown):SnakeState|null{
  if(!Array.isArray(s.queue)||s.queue.length>QUEUE_MAX||!s.queue.every(direction))return null;
  let ref=s.dir;for(const d of s.queue){if(d===ref||d===opposite[ref])return null;ref=d;}
  if(!Number.isInteger(s.growth)||s.growth<0||s.growth>3)return null;
- if(!Number.isInteger(s.score)||s.score!==(length(s)-START_LEN)*POINTS)return null;
+ if(length(s)<START_LEN||!Number.isInteger(s.score)||s.score!==(length(s)-START_LEN)*POINTS)return null;
  if(typeof s.elapsed!=='number'||!Number.isFinite(s.elapsed)||s.elapsed<0||s.elapsed>=TICK_MS)return null;
  if(s.bonk!==0&&s.bonk!==1||typeof s.lastTurned!=='boolean')return null;
- if(s.prevTail!==null&&!grid(s.prevTail))return null;
+ if(s.prevTail!==null){
+  const t=s.body.at(-1)!;
+  if(!grid(s.prevTail)||Math.abs(s.prevTail.x-t.x)+Math.abs(s.prevTail.y-t.y)!==1||s.body.some(p=>same(p,s.prevTail))||s.bonk===1||s.phase==='ready'||s.phase==='lost')return null;
+ }
  if(s.eaten!==null&&!grid(s.eaten))return null;
  if(s.phase==='won'){if(s.food!==null||length(s)<SIZE*SIZE)return null;}
  else if(!grid(s.food)||s.body.some(p=>same(p,s.food)))return null;
