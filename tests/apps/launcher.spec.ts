@@ -139,6 +139,16 @@ test('Apps tab stays hidden and nothing polls when the chat backend is missing',
  await expect(page.locator('section.chat-view')).toBeVisible();
 });
 
+test('the five-tab bar fits 320px with 44px controls when there is no chat backend',async({page,context})=>{
+ await connect(context,0.05,true);await page.setViewportSize({width:320,height:844});await page.goto('/');await guest(page);
+ await expect(page.locator('.app-tabbar .ui-tab')).toHaveCount(5);
+ const m=await page.evaluate(()=>{const bar=document.querySelector<HTMLElement>('.app-tabbar')!,menu=document.querySelector<HTMLElement>('.app-menu')!.getBoundingClientRect();
+  return {overflow:bar.scrollWidth-bar.clientWidth,page:document.documentElement.scrollWidth<=innerWidth,widths:[...bar.querySelectorAll<HTMLElement>('.ui-tab')].map(t=>t.getBoundingClientRect().width),menu:menu.width,menuInside:menu.right<=innerWidth};});
+ expect(m.overflow).toBeLessThanOrEqual(0);expect(m.page).toBe(true);expect(m.menuInside).toBe(true);
+ for(const w of m.widths)expect(w).toBeGreaterThanOrEqual(44);
+ expect(m.menu).toBeGreaterThanOrEqual(44);
+});
+
 test('Escape still opens Study from #/social',async({page,context})=>{
  await connect(context);await page.goto('/');await guest(page);
  await page.goto('/#/social');await page.reload();

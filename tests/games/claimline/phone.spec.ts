@@ -81,8 +81,8 @@ test.describe('Claimline phone', () => {
     await expect(page.locator('.cl-stick')).toBeHidden();
     await expect(game(page)).toHaveAttribute('data-stick', 'idle');
     const x0 = await num(page, 'x'), y0 = await num(page, 'y'), t0 = await num(page, 'target');
-    await page.waitForTimeout(500);
-    expect(Math.hypot((await num(page, 'x')) - x0, (await num(page, 'y')) - y0)).toBeGreaterThan(1);
+    // The loop is requestAnimationFrame-driven, so progress depends on frames actually running; wait for that.
+    await expect.poll(async () => Math.hypot((await num(page, 'x')) - x0, (await num(page, 'y')) - y0)).toBeGreaterThan(1);
     expect(await num(page, 'target')).toBeCloseTo(t0, 3);
     await noScroll(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
