@@ -277,6 +277,38 @@ test('rich text links are safe',async({page,context})=>{
  expect(dialogs).toEqual([]);
 });
 
+test('originality: violet liked heart, "Your follower" chip, "In reply to" line',async({page,context})=>{
+ await connect(context);
+ const a=await user('og'),b=await user('ob');
+ const root=await post(a.token,'original thought');
+ await post(a.token,'a reply to myself',{replyTo:root.id});
+ expect((await call(social,'follow',b.token,{username:a.name})).status).toBe(200);
+ await open(page,a.name);
+ // A reply card names its parent in plain words with the reply glyph.
+ const replyCard=page.locator('.social-feed > .social-post').filter({hasText:'a reply to myself'});
+ await expect(replyCard.locator('.social-replying')).toHaveText(`In reply to @${a.name}`);
+ await expect(replyCard.locator('.social-replying .ui-icon')).toHaveAttribute('data-icon','reply');
+ await expect(replyCard.locator('.social-replying a')).toHaveAttribute('href',`#/social/u/${a.name}`);
+ // A liked post turns the Social accent (violet), and keeps its accessible state.
+ const card=page.locator('.social-feed > .social-post').filter({hasText:'original thought'});
+ const like=card.getByRole('button',{name:/^Like,/});
+ await like.click();
+ await expect(like).toHaveAttribute('aria-pressed','true');
+ await expect(like).toHaveAttribute('aria-label','Like, 1 like');
+ await expect(like).toHaveCSS('color','rgb(166, 132, 255)');
+ const tokens=await like.evaluate(el=>({like:getComputedStyle(el).getPropertyValue('--social-like').trim(),accent:getComputedStyle(el).getPropertyValue('--social-accent').trim()}));
+ expect(tokens.like).toBe(tokens.accent);expect(tokens.like).toBe('#a684ff');
+ await expect(like.locator('.ui-icon')).toHaveAttribute('data-icon','like-filled');
+ await expect(like.locator('.ui-icon path')).toHaveCount(2);
+ // B follows A, so A sees "Your follower" on B's profile, after the member-since line.
+ await page.evaluate(h=>{location.hash=h;},`#/social/u/${b.name}`);
+ const since=page.locator('p.social-profile-since');
+ await expect(since).toContainText('Member since');
+ await expect(since.locator('.social-chip')).toHaveText('Your follower');
+ await expect(page.locator('.social-profile-handle .social-chip')).toHaveCount(0);
+ await expect(page.getByText('Follows you')).toHaveCount(0);
+});
+
 test('keyboard shortcuts do not fire while typing',async({page,context})=>{
  await connect(context);const a=await user('ks');
  for(const n of [1,2,3])await post(a.token,`shortcut post ${n}`);
@@ -285,16 +317,20 @@ test('keyboard shortcuts do not fire while typing',async({page,context})=>{
  await view(page).press('j');await expect(cards.nth(0)).toBeFocused();
  await page.keyboard.press('j');await expect(cards.nth(1)).toBeFocused();
  await page.keyboard.press('k');await expect(cards.nth(0)).toBeFocused();
- await page.keyboard.press('l');
+ await page.keyboard.press('h');
  await expect(cards.nth(0).getByRole('button',{name:/^Like,/})).toHaveAttribute('aria-pressed','true');
- await page.keyboard.press('l');
+ await page.keyboard.press('h');
  await expect(cards.nth(0).getByRole('button',{name:/^Like,/})).toHaveAttribute('aria-pressed','false');
- // n opens the compose sheet; typed letters stay text and fire nothing.
- await page.keyboard.press('n');
+ // p opens the compose sheet; typed letters stay text and fire nothing.
+ // The old X-style keys do nothing: l does not like, o does not open.
+ await page.keyboard.press('l');await page.keyboard.press('o');
+ await expect(cards.nth(0).getByRole('button',{name:/^Like,/})).toHaveAttribute('aria-pressed','false');
+ await expect(page).toHaveURL(/#\/social$/);await expect(page.locator('#social-compose')).toHaveCount(0);
+ await page.keyboard.press('p');
  const sheet=page.locator('#social-compose');await expect(sheet).toBeVisible();
  const box=sheet.getByRole('textbox',{name:'Post text'});await expect(box).toBeFocused();
- await page.keyboard.type('jklnr? /o');
- await expect(box).toHaveValue('jklnr? /o');
+ await page.keyboard.type('jkhpr? /');
+ await expect(box).toHaveValue('jkhpr? /');
  await expect(page.locator('#social-shortcuts')).toHaveCount(0);
  await expect(page.locator('#social-compose')).toHaveCount(1);
  await expect(cards.nth(0).getByRole('button',{name:/^Like,/})).toHaveAttribute('aria-pressed','false');
@@ -305,15 +341,19 @@ test('keyboard shortcuts do not fire while typing',async({page,context})=>{
  await expect(sheet).not.toBeVisible();
  await page.locator('.social-view').focus();
  await page.keyboard.press('?');await expect(page.locator('#social-shortcuts')).toBeVisible();
+ const help=page.locator('#social-shortcuts');
+ for(const [key,what] of [['j','Next / previous post'],['Enter','Open the post'],['r','Reply'],['p','New post'],['h','Like or unlike'],['/','Search'],['?','This help'],['Esc','Close a sheet']])await expect(help.locator('tr').filter({hasText:what})).toContainText(key);
+ await expect(help.locator('tr').filter({hasText:'Like or unlike'}).locator('kbd')).toHaveText(['h']);
+ await expect(help.locator('tr')).toHaveCount(8);
  // The root listener would run for these, so only the open-dialog guard keeps them quiet.
- await page.evaluate(()=>{const root=document.querySelector('.social-view')!;for(const key of ['n','j','l'])root.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true,cancelable:true}));});
+ await page.evaluate(()=>{const root=document.querySelector('.social-view')!;for(const key of ['p','j','h'])root.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true,cancelable:true}));});
  await expect(page.locator('#social-compose')).toHaveCount(0);
  await expect(page.locator('.social-feed > .social-post:focus')).toHaveCount(0);
  await expect(cards.nth(0).getByRole('button',{name:/^Like,/})).toHaveAttribute('aria-pressed','false');
  // Closed again, the same event does act (so the assertions above were meaningful).
  await page.locator('#social-shortcuts').getByRole('button',{name:'Close shortcuts'}).click();
  await expect(page.locator('#social-shortcuts')).toHaveCount(0,{timeout:3000});
- await page.evaluate(()=>{document.querySelector('.social-view')!.dispatchEvent(new KeyboardEvent('keydown',{key:'n',bubbles:true,cancelable:true}));});
+ await page.evaluate(()=>{document.querySelector('.social-view')!.dispatchEvent(new KeyboardEvent('keydown',{key:'p',bubbles:true,cancelable:true}));});
  await expect(page.locator('#social-compose')).toBeVisible();
 });
 
@@ -524,7 +564,7 @@ test('New post and the n shortcut reopen the composer right after it closes',asy
  await expect(sheet.getByRole('textbox',{name:'Post text'})).toBeFocused();
  await sheet.getByRole('button',{name:'Close'}).click();
  await expect(sheet).toHaveCount(0);
- await page.keyboard.press('n');
+ await page.keyboard.press('p');
  await expect(sheet).toBeVisible();
 });
 
