@@ -14,7 +14,7 @@ Baseline at start: `tsc --noEmit` clean; 210 unit files / 4,299 tests passing.
 
 | Feature | Location | Current | Grade | Reference | Problems | Improvements | Priority | Model | Status | Final |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Account entry sheet (guest / log in / sign up) | `src/accounts/view.ts`, `src/ui/arcade-sheets.css` | 6 | C | Apple HIG *Managing accounts*; Discord sign-up | First screen every visitor sees. Fields used a 13 % black fill on a dark sheet and were nearly invisible; selected Log in / Sign up tab indistinguishable; neutral submit had no edge; empty status line left a gap and pushed the sheet past one phone screen | Hairline (`--sheet-line`) on fields, tab track, selected tab and submit; visible focus ring; selected tab bold/full ink, unselected muted; empty status collapses. Keeps guest-first single tint and shared field fill (both pinned by tests) | Critical | Opus | Tested | 8 |
+| Account entry sheet (guest / log in / sign up) | `src/accounts/view.ts`, `src/ui/arcade-sheets.css` | 6 | C | Apple HIG *Managing accounts*; Discord sign-up | First screen every visitor sees. Fields used a 13 % black fill on a dark sheet and were nearly invisible; selected Log in / Sign up tab indistinguishable; neutral submit had no edge; empty status line left a gap and pushed the sheet past one phone screen | Hairline (`--sheet-line`) on fields, tab track, selected tab and submit; visible focus ring; selected tab bold/full ink, unselected muted; empty status collapses. Keeps guest-first single tint and shared field fill (both pinned by tests) | Critical | Opus | Deployed | 8 |
 | Game library grid | `src/main.ts:141-162`, `src/core/catalog.ts` | 8 | A | Apple Games app / Apple Arcade | Strong poster grid at all widths. No “continue playing” row; search only in Menu | Consider a recently-played row and an in-library search affordance (Batch 3) | Low | Opus | Not started | |
 | Search & favourites filter | `src/main.ts:451-457` | 7 | B | Apple Games search tab | Discoverable only inside Menu | Surface search from the library (Batch 3) | Medium | Haiku | Not started | |
 | Menu sheet & settings | `src/main.ts:458-505` | 7 | B | Apple HIG Sheets | Mixes account, prefs, search, nav; storage-full notice easy to miss | Group into sections; promote storage warning (Batch 2) | Medium | Opus | Not started | |
@@ -29,8 +29,8 @@ Baseline at start: `tsc --noEmit` clean; 210 unit files / 4,299 tests passing.
 | Account sync / logout | `src/accounts/client.ts` | 6 | C | Apple HIG *Managing accounts* | No password change, username change or account deletion UI | Account settings page incl. deletion (Batch 3, security-sensitive) | High | Opus | Not started | |
 | Leaderboard dialog | `src/leaderboard/view.ts` | 7 | B | Google Play Games leaderboards | Reached only via Menu; not offered at game over; `format.ts` pulls game modules into shell bundle | Offer leaderboard on game over; move formatters to shared (Batch 2) | Medium | Opus | Not started | |
 | Leaderboard sidebar (desktop) | `src/leaderboard/sidebar.ts` | 7 | B | Google Play Games | Desktop ≥1160 px only by design | Keep | Low | — | Not started | |
-| Social feed | `src/social/screens/feed.ts`, `src/social/client.ts` | 7 | B | X home timeline; Bluesky | Follow is optimistic but the feed fetch did not wait for it: Follow → Home quickly showed an empty Following feed for up to 60 s (also failing `main` CI in Chromium). Search is an unindexed ILIKE | Fixed on `main` (identity- and abort-aware wait for pending follows); batch 1 adds unit tests for it. Index search server-side (Batch 3) | High | Opus | Tested | 8 |
-| Social composer | `src/social/components/composer.ts` | 7 | B | X composer | Photo-limit copy hard-coded “4” | Uses `POST_MAX_MEDIA` (batch 1) | Low | Haiku | Tested | 7 |
+| Social feed | `src/social/screens/feed.ts`, `src/social/client.ts` | 7 | B | X home timeline; Bluesky | Follow is optimistic but the feed fetch did not wait for it: Follow → Home quickly showed an empty Following feed for up to 60 s (also failing `main` CI in Chromium). Search is an unindexed ILIKE | Fixed on `main` (identity- and abort-aware wait for pending follows); batch 1 adds unit tests for it. Index search server-side (Batch 3) | High | Opus | Deployed | 8 |
+| Social composer | `src/social/components/composer.ts` | 7 | B | X composer | Photo-limit copy hard-coded “4” | Uses `POST_MAX_MEDIA` (batch 1) | Low | Haiku | Deployed | 7 |
 | Post card & menu | `src/social/components/post-card.ts` | 8 | B | X | “Copy link” threw synchronously where the Clipboard API is absent (insecure context / old browsers) | Fixed on `main` by the Social/Chat fixes merge (`copySocialLink`); batch 1's duplicate dropped in the merge | Low | Haiku | Deployed via main | 8 |
 | Social settings | `src/social/screens/settings.ts` | 7 | B | X settings | No-op `replace(/^Photos/,'Photos')` | Fixed on `main` independently; batch 1's duplicate dropped in the merge | Low | Haiku | Deployed via main | 7 |
 | Reports & auto-hide | `src/social/server.ts:264-268` | 6 | C | X / Bluesky moderation | Post auto-hides after 3 reporters; small groups can censor | Weight by account age / moderator review (owner decision) | Medium | Opus | Not started | |
@@ -41,7 +41,7 @@ Baseline at start: `tsc --noEmit` clean; 210 unit files / 4,299 tests passing.
 | Movies watch page | `src/movies/provider.ts`, `playback.ts` | 6 | C | Netflix player | Single external provider; multi-provider scaffolding unused | Owner decision | Low | — | Not started | |
 | Online multiplayer rooms | `src/multiplayer/` | 6 | C | — | Reassembled peer messages up to 24 M chars (memory pressure); dead `leaderboard:profile` fallback | Lower reassembly cap per game (Batch 2) | Medium | Opus | Not started | |
 | Legacy Netlify deployment files | `netlify.toml`, `netlify/`, `docs/NETLIFY_DEPLOYMENT.md` | — | D | — | Production is Cloudflare Pages; the old Netlify site (`mauri-gazette.netlify.app`) returns 404. Netlify config and docs remain and can mislead | Owner decision: archive or delete. Keep any shared handler logic the API origin still imports | Low | Opus | Not started | |
-| Docs / naming drift | `README.md`, `ARCHITECTURE.md`, `package.json` | 4 | D | — | Game counts 21 / 22 / 24 disagree; offline described as live; README and ARCHITECTURE still present Netlify as a deploy target | Correct counts, offline and hosting sections to Cloudflare Pages (Batch 2) | Low | Haiku | Not started | |
+| Docs / naming drift | `README.md`, `ARCHITECTURE.md`, `package.json` | 4 | D | — | Game counts 21 / 22 / 24 disagree; offline described as live; README and ARCHITECTURE still present Netlify as a deploy target | Counts (24), retired offline and Cloudflare hosting corrected in README and ARCHITECTURE (batch 2). Remaining: Netlify-era wording in ARCHITECTURE persistence, Movies and multiplayer sections | Low | Haiku | Tested | 6 |
 
 ## Games
 
@@ -56,7 +56,7 @@ Baseline at start: `tsc --noEmit` clean; 210 unit files / 4,299 tests passing.
 | Animal Stack | `src/games/animal-stack` | 7 | B | Animal Tower Battle | Debug collider overlay reachable in prod (`?animal-colliders`, C key) | Gate to dev | Low | Haiku | Not started | |
 | Snake | `src/games/snake` | 7 | B | Google Snake | — (loop is gated; see rejected) | Speed/map options per reference (Batch 3) | Low | Opus | Not started | |
 | Slither.io | `src/games/neon-coil` | 8 | A | Slither.io | — | Polish only | Low | — | Not started | |
-| Minesweeper | `src/games/minesweeper` | 7 | B | Google Minesweeper | Ticker interval runs while paused | Stop ticker on pause | Low | Haiku | Not started | |
+| Minesweeper | `src/games/minesweeper` | 7 | B | Google Minesweeper | — (paused ticker: see rejected) | Polish only | Low | — | Not started | |
 | Solitaire | `src/games/solitaire` | 7 | B | Microsoft Solitaire Collection | Full re-render per change; drag ghost outside game root | Tap-to-auto-move check; contain ghost | Medium | Opus | Not started | |
 | Block Fill | `src/games/block-fill` | 7 | B | One Line / Flow-style path puzzles | Level regenerated many times per input (cheap: <0.1 ms) | Optional memo | Low | Haiku | Not started | |
 | Flow Free | `src/games/color-connect` | 8 | B | Flow Free (Big Duck) | Full SVG rebuild per move | Fine at current sizes | Low | — | Not started | |
@@ -65,9 +65,9 @@ Baseline at start: `tsc --noEmit` clean; 210 unit files / 4,299 tests passing.
 | Minecraft (Blockcraft) | `src/games/blockcraft` | 8 | B | Minecraft | 33 k LOC; some UI listeners without signal | Audit listener teardown | Medium | Opus | Not started | |
 | Pac-Man | `src/games/maze-muncher` | 7 | B | Google Pac-Man doodle | Renders every frame | Idle-frame skip | Low | Haiku | Not started | |
 | Corn Clicker | `src/games/corn-clicker` | 8 | B | Cookie Clicker | 1,036-line `ui.ts`; untracked timers | Track timers for dispose | Low | Opus | Not started | |
-| Slipline | `src/games/slipline` | 7 | B | Arrows / “Unpuzzle” | Board regenerated (≈0.5 ms) several times per render and per input | Cached per level (batch 1) | Medium | Opus | Tested | 7 |
+| Slipline | `src/games/slipline` | 7 | B | Arrows / “Unpuzzle” | Board regenerated (≈0.5 ms) several times per render and per input | Cached per level (batch 1) | Medium | Opus | Deployed | 7 |
 | Tetris | `src/games/quadfall` | 8 | B | Tetris Guideline | Very long single-line functions | Readability refactor only if touched | Low | — | Not started | |
-| Wordle | `src/games/fivefold` | 8 | B | NYT Wordle | `role=dialog aria-modal` without focus trap; thin tests | Focus trap; hard mode check vs reference | Medium | Haiku | Not started | |
+| Wordle | `src/games/fivefold` | 8 | B | NYT Wordle | Stats panel declared `aria-modal` but Tab walked out to the board and toolbar behind it; no backdrop dismissal; thin tests | Tab/Shift+Tab stay inside the stats dialog; clicking the dimmed backdrop closes it and returns focus (batch 2, e2e added). Escape deliberately left to the shell's pause-to-Study. Hard mode vs reference still open | Medium | Opus | Tested | 8 |
 | Claimline | `src/games/claimline` | 8 | B | Paper.io 2 | Renderer exposes no dispose | Add dispose | Low | Haiku | Not started | |
 | Quad Clash | `src/games/quad-clash` | 8 | B | Krunker.io | Heavy on phones; HUD overlaps title at 390 px | Check coarse-pointer quality default | Medium | Opus | Not started | |
 
@@ -78,8 +78,13 @@ Baseline at start: `tsc --noEmit` clean; 210 unit files / 4,299 tests passing.
 - **Pac-Man wastes mobile space (scored 5)** — the classic portrait maze is width-limited at 390 px; it already fills the width.
 - **Block Fill level generation is a performance problem** — 32 backbite passes over ≤64 cells; well under 0.1 ms.
 
+## Rejected findings (batch 2)
+
+- **Minesweeper ticker while paused** — a 200 ms interval whose `syncTime` does nothing while paused; not worth a change.
+
 ## Batch log
 
 | Batch | Branch | Contents | Verification | Deployed |
 |---|---|---|---|---|
-| 1 | `claude/quality-programme-batch1` | Discovery, scoring, reference pack, tracker; account sheet legibility; Slipline board cache; composer limit constant; follow read-your-writes unit tests; meta description (copy-link, settings and follow-race fixes landed on `main` separately and won the merge) | `tsc` clean; slipline + social unit (58) pass; Chromium e2e: slipline, glass-menus, accounts, closed-account-paint, social (64) pass; 390/1366 screenshots | Pending: PR #128 CI → merge → `deploy-info.json` shows merge commit |
+| 1 | `claude/quality-programme-batch1` | Discovery, scoring, reference pack, tracker; account sheet legibility; Slipline board cache; composer limit constant; follow read-your-writes unit tests; meta description (copy-link, settings and follow-race fixes landed on `main` separately and won the merge) | `tsc` clean; slipline + social unit (58) pass; Chromium e2e: slipline, glass-menus, accounts, closed-account-paint, social (64) pass; 390/1366 screenshots | PR #128 merged as `ea0c3cd`; `deploy-info.json` reported `ea0c3cd` (built 2026-11-05 11:47 UTC). Production smoke test at 390×844 touch and 1366×768: account sheet hairlines, 48 px bold selected tab and one-screen fit confirmed; Slipline tap/click clears a free arrow with no heart lost; no page errors |
+| 2 | `claude/quality-programme-batch2` | Wordle stats dialog focus trap + backdrop close; README/ARCHITECTURE game count, offline and hosting corrections; tracker deploy record for batch 1 | `tsc` clean; Wordle Chromium e2e 5/5 (new test fails without the fix) | Pending |
