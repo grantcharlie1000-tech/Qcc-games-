@@ -3,6 +3,7 @@ import {createGame,place,canPlace,hasMove,SHAPES,NAMES,colorOf,restoreGame,SIZE}
 import {gem,blockSvg,COLOR_NAMES} from './art';
 import {mapDrag,grabCell,type Point,type Bounds} from './input';
 import './style.css';
+import './christmas.css';
 const freshGame=()=>createGame(crypto.getRandomValues(new Uint32Array(1))[0]);
 const module:GameModule={
  id:'color-blocks',title:'Block Blast',cover:'game-art/color-blocks/cover.svg',

@@ -1,5 +1,6 @@
 import type {GameId} from '../core/types';
 import {bindGlass} from './glass';
+import {christmas} from '../festive/festive';
 
 type Field={label:string;source:string;attribute?:string;labelSource?:string};
 const score:Field={label:'Score',source:'#game-score strong'};
@@ -41,11 +42,13 @@ const surfaceSources:Partial<Record<GameId,string>>={
   fivefold:'.ff',quadfall:'.qf-game',slipline:'.sl-game'
 };
 const lightSurfaces=new Set<GameId>(['fruit-merge','tower','flappy-bird','animal-stack','blockcraft']);
+// Christmas skins that turn a light surface into a night scene keep dark-tone glass.
+const festiveDarkSurfaces=new Set<GameId>(['tower']);
 
 export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLElement,activate:(action:()=>void)=>void):void;dispose():void}{
   const dock=view.querySelector<HTMLElement>('.game-dock')!;
   const hud=dock.querySelector<HTMLElement>('.game-hud')!;
-  view.dataset.glassTone=lightSurfaces.has(id)?'light':'dark';
+  view.dataset.glassTone=lightSurfaces.has(id)&&!(christmas()&&festiveDarkSurfaces.has(id))?'light':'dark';
   // Presentation only: the games retain their native dialog lifecycle and actions.
   for(const panel of view.querySelectorAll<HTMLElement>('.ms-settings,.ff-dialog')){
     panel.classList.add('arcade-sheet');
@@ -60,6 +63,7 @@ export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLEle
     surface.style.backgroundImage=style.backgroundImage;
     surface.style.backgroundSize=style.backgroundSize;
     surface.style.backgroundPosition=style.backgroundPosition;
+    surface.style.backgroundRepeat=style.backgroundRepeat;
   }
   // Continue Fruit Merge's existing 32px checkerboard outside its basket. Its
   // artwork is painted into a 360px canvas; align the CSS continuation to that

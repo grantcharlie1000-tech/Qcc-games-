@@ -1,0 +1,8 @@
+/* Stack, Christmas: a snowy night behind the same canvas. The inline skyline is the original, so this override needs !important. */
+:root[data-festive="christmas"] .tower-viewport{background:#0e1d40 url("./christmas-sky.svg") center/cover no-repeat!important;border-color:#1b2a4d}
+:root[data-festive="christmas"] .tower-feedback{color:var(--xmas-gold-light);text-shadow:0 2px #0b1733}
+:root[data-festive="christmas"] .tower-end{background:#08132c99}
+:root[data-festive="christmas"] .tower-end-card{background:#fff8ef;border-color:var(--xmas-gold);color:#3d1d24}
+:root[data-festive="christmas"] .tower-end .game-button{background:var(--xmas-red);color:#fff8ef}
+/* The shell continues the backdrop around the play area: sky and stars only, so the moon and snowfield are not repeated. */
+:root[data-festive="christmas"] .game-view[data-game-id=tower] .game-surface{background:var(--xmas-stars) center top/220px 220px,linear-gradient(#091430,#1a3263 60%,#24406f) center/100% 100%!important}

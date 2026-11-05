@@ -1,4 +1,5 @@
 import type { Point } from './model';
+import { christmas } from '../../festive/festive';
 export interface Skin { primary: string; head: string; bands: readonly string[]; bandWidth: number }
 const player: Skin = { primary: '#22d3ee', head: '#1041b1', bands: ['#0f4fd6','#1a8cf0','#22d3ee','#148ec8'], bandWidth: 1.4 };
 const skins: Record<string, Skin> = {
@@ -10,8 +11,22 @@ const skins: Record<string, Skin> = {
   '#74e6b9': { primary: '#39e5b4', head: '#0e906d', bands: ['#13ac92','#3eddb2','#4acb6c'], bandWidth: 1.4 },
   '#ff817f': { primary: '#ff7e83', head: '#c43349', bands: ['#ee4259','#ff8c81','#f76149'], bandWidth: 1.4 }
 };
-export const SKINS: readonly Skin[] = [player, ...Object.values(skins)];
-export const skinFor = (id: number, color: string): Skin => id === 0 ? player : skins[color] ?? skins['#b9f655'];
+/** Christmas skins for the same seven bot colours, plus a candy-cane player. Primaries stay bright for the ranking text. */
+const festivePlayer: Skin = { primary: '#ffe9ec', head: '#c41e33', bands: ['#e33445','#f7f1e7'], bandWidth: .8 };
+const festiveSkins: Record<string, Skin> = {
+  '#b9f655': { primary: '#6fd88c', head: '#1f7a42', bands: ['#2c9a55','#4cbf6c'], bandWidth: 1.4 },
+  '#6bdcf5': { primary: '#bfe3f5', head: '#5fa8d3', bands: ['#e6f3fb','#9fd3ee'], bandWidth: 1 },
+  '#f5a2d4': { primary: '#ff6b7c', head: '#7d1424', bands: ['#b81f33','#e0404f'], bandWidth: 1.4 },
+  '#a99bff': { primary: '#c99be6', head: '#4f2273', bands: ['#7a3fa8','#a865cf'], bandWidth: 1.4 },
+  '#ffc66d': { primary: '#f8dd8a', head: '#a87b1e', bands: ['#e9b949','#f8dd8a'], bandWidth: 1.4 },
+  '#74e6b9': { primary: '#5fd0b8', head: '#0f5a4d', bands: ['#17806e','#e9b949'], bandWidth: 1 },
+  '#ff817f': { primary: '#e8a46a', head: '#6b3614', bands: ['#a85d28','#d08a4f','#f4e6d0'], bandWidth: 1 }
+};
+/** Every skin either theme can show, so sprites exist before a theme change. */
+export const SKINS: readonly Skin[] = [player, ...Object.values(skins), festivePlayer, ...Object.values(festiveSkins)];
+export const skinFor = (id: number, color: string): Skin => christmas()
+  ? (id === 0 ? festivePlayer : festiveSkins[color] ?? festiveSkins['#b9f655'])
+  : (id === 0 ? player : skins[color] ?? skins['#b9f655']);
 export const bandIndex = (distance: number, diameter: number, count: number, width = 1.4) => Math.floor(distance / (diameter * width)) % count;
 export interface Stamp extends Point { distance: number }
 export interface StampBuffer { points: Stamp[]; count: number; length: number }

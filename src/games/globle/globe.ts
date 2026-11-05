@@ -1,6 +1,7 @@
 import Globe, {type GlobeInstance} from 'globe.gl';
 import {MeshPhongMaterial, Vector3, type PerspectiveCamera} from 'three';
 import {registerGlassFrameSource,notifyGlassFrame} from '../../ui/glass-frame-source';
+import {christmas} from '../../festive/festive';
 import world from './data/world.json';
 import {LandLayer} from './land';
 
@@ -42,12 +43,14 @@ export class GlobeView {
 
   constructor(private readonly host: HTMLElement, private readonly reducedMotion: () => boolean, onLost: () => void) {
     const lowDensity = (window.devicePixelRatio || 1) >= 1.5;
+    // At Christmas the space around the globe is transparent so the CSS winter sky shows through; the globe is unchanged.
+    const festive = christmas();
     this.globe = new Globe(host, {
       animateIn: false, waitForGlobeReady: false,
-      rendererConfig: {antialias: !lowDensity, alpha: false, powerPreference: 'low-power', preserveDrawingBuffer: false}
+      rendererConfig: {antialias: !lowDensity, alpha: festive, powerPreference: 'low-power', preserveDrawingBuffer: false}
     });
     this.globe
-      .backgroundColor('#0d1726')
+      .backgroundColor(festive ? 'rgba(0,0,0,0)' : '#0d1726')
       .globeMaterial(this.material)
       .showGraticules(false)
       .showAtmosphere(true).atmosphereColor('#8fc3ff').atmosphereAltitude(0.12)

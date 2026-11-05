@@ -1,5 +1,8 @@
 import { movingBlock } from './model';
 import type { Block, TowerState } from './model';
+import { christmas } from '../../festive/festive';
+/** Christmas wrapping colours by floor: [top, front, side], each a step darker so depth still reads. */
+const FESTIVE_SLABS:[string,string,string][]=[['#ee5866','#c02233','#861824'],['#66c985','#2d8d4d','#1d6334'],['#f8db84','#d9a734','#a37a1c'],['#f6faff','#c9d6e6','#97a9c3']];
 const W=400,H=470,UNIT=19;
 type Point=[number,number];
 function project(x:number,z:number,level:number,camera:number):Point{return [200+(x-z)*.82,359+(x+z)*.32-level*UNIT+camera];}
@@ -13,9 +16,10 @@ function slab(ctx:CanvasRenderingContext2D,b:Block,level:number,camera:number,li
   for(const p of [a,back,c,front])p[1]-=lift;
   const low=(p:Point):Point=>[p[0],p[1]+UNIT];
   ctx.save();ctx.globalAlpha=alpha;
-  path(ctx,[front,c,low(c),low(front)],`hsl(${hue} 37% 42%)`);
-  path(ctx,[back,c,low(c),low(back)],`hsl(${hue} 43% 30%)`);
-  path(ctx,[a,back,c,front],`hsl(${hue} 52% ${level===0?69:73}%)`);
+  const festive=christmas()?FESTIVE_SLABS[level%FESTIVE_SLABS.length]:undefined,edge=festive?'#1b2440':undefined;
+  path(ctx,[front,c,low(c),low(front)],festive?festive[1]:`hsl(${hue} 37% 42%)`,edge);
+  path(ctx,[back,c,low(c),low(back)],festive?festive[2]:`hsl(${hue} 43% 30%)`,edge);
+  path(ctx,[a,back,c,front],festive?festive[0]:`hsl(${hue} 52% ${level===0?69:73}%)`,edge);
   // Fine inset on the top face gives the slab a readable edge at every scale.
   const center:Point=[(a[0]+c[0])/2,(a[1]+c[1])/2];
   ctx.beginPath();[a,back,c,front,a].forEach((p,i)=>{const x=p[0]*.94+center[0]*.06,y=p[1]*.94+center[1]*.06;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
@@ -28,12 +32,14 @@ export function renderTower(canvas:HTMLCanvasElement,s:TowerState,reduced:boolea
   const height=s.blocks.length-1;
   const progress=s.phase==='settling'?Math.min(1,s.phaseElapsed/.2):1;
   const camera=Math.max(0,height-5)*UNIT-(height>5&&s.phase==='settling'&&!reduced?UNIT*(1-progress)**3:0);
-  ctx.fillStyle='rgba(60,42,88,.15)';ctx.beginPath();ctx.ellipse(200,425+camera,108,25,0,0,Math.PI*2);ctx.fill();
+  const xmas=christmas();
+  ctx.fillStyle=xmas?'rgba(40,60,100,.22)':'rgba(60,42,88,.15)';ctx.beginPath();ctx.ellipse(200,425+camera,108,25,0,0,Math.PI*2);ctx.fill();
   // Original floating stone plinth.
   const a=project(-68,-68,0,camera),b=project(68,-68,0,camera),c=project(68,68,0,camera),d=project(-68,68,0,camera);
   for(const p of [a,b,c,d])p[1]+=UNIT+2;
-  path(ctx,[d,c,[c[0],c[1]+20],[d[0],d[1]+20]],'#665b84');
-  path(ctx,[b,c,[c[0],c[1]+20],[b[0],b[1]+20]],'#514e73');path(ctx,[a,b,c,d],'#c1b9d6');
+  // At Christmas the same plinth is a block of packed snow.
+  path(ctx,[d,c,[c[0],c[1]+20],[d[0],d[1]+20]],xmas?'#9fb3cf':'#665b84');
+  path(ctx,[b,c,[c[0],c[1]+20],[b[0],b[1]+20]],xmas?'#7e93b3':'#514e73');path(ctx,[a,b,c,d],xmas?'#f2f7fd':'#c1b9d6');
   for(let i=Math.max(0,height-22);i<=height;i++){
     const lift=i===height&&s.phase==='settling'&&!reduced?22*(1-progress)**3:0;
     slab(ctx,s.blocks[i],i,camera,lift);
@@ -56,6 +62,6 @@ export function renderTower(canvas:HTMLCanvasElement,s:TowerState,reduced:boolea
     const point=project(moving.x,moving.z,height+1,camera);ctx.fillStyle='#fff6dc';ctx.beginPath();ctx.arc(point[0],point[1]-22,3,0,Math.PI*2);ctx.fill();
   }
   ctx.font='800 12px Arcade, sans-serif';ctx.textAlign='left';ctx.fillStyle='#4f496e';
-  ctx.font='12px system-ui, sans-serif';ctx.fillStyle='#534a6a';
+  ctx.font='12px system-ui, sans-serif';ctx.fillStyle=xmas?'#e6eef8':'#534a6a';
   ctx.fillText(paused?'PAUSED':s.phase==='over'?'YOUR TOWER':s.phase==='settling'?'NICE LANDING':s.motion.axis==='x'?'NEXT SLAB  ↗':'NEXT SLAB  ↖',21,49);
 }

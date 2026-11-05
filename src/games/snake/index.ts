@@ -4,6 +4,7 @@ import {drawGarden} from './art';
 import {advancePresentation,createPresentation,restorePresentation,savePresentation} from './presentation';
 import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import './style.css';
+import './christmas.css';
 const module:GameModule={
  id:'snake',title:'Snake',cover:'game-art/snake/cover.svg',
  rules:'Guide the snake with arrow keys, WASD or swipes. It moves smoothly at one square every 0.16 seconds. Turns queue for the center of the next square, with at most two saved turns and no reversal. Once a leg starts, a later turn cannot redirect it, even to avoid a wall. Touch apples for 10 points each and grow one segment. Your tail stays in place briefly as you grow. Touching a wall or your body ends the run. A moving tail is safe only if it clears before your head touches it; growth keeps it in place longer. Earn all 256 segments to win. Pause freezes travel, effects and controls. Older grid saves wait for Continue saved run; your progress is kept and turns use the new timing.',
