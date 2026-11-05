@@ -436,6 +436,16 @@
 .glass-vector-halo{display:none}
 .arcade-glass[data-glass=off] .glass-ink,.section-tabbar[data-glass=off]~.ui-tabbar-mini .glass-ink{color:var(--glass-ink);background:none;box-shadow:none;text-shadow:none;-webkit-text-stroke:0}
 .arcade-glass[data-glass=off] .glass-vector-halo,.section-tabbar[data-glass=off]~.ui-tabbar-mini .glass-vector-halo{display:none}
+/* Icons keep one white foreground regardless of the artwork behind the glass.
+   Text labels retain their separate adaptive contrast treatment. */
+.arcade-glass svg:not(.ui-brand-tile svg),.ui-tabbar-mini svg,.arcade-glass .nc-chevrons{color:var(--glass-icon-ink,#fff)}
+/* Opaque accessibility palettes still use their matching readable foreground. */
+.arcade-glass[data-glass=off],.section-tabbar[data-glass=off]~.ui-tabbar-mini{--glass-icon-ink:var(--glass-ink)}
+/* Sheet control icons stay white too, independently of red destructive labels.
+   Brand artwork, status graphics and solid primary-button ink keep their palettes. */
+.ui-glass-sheet :is(button,a) svg.ui-icon:not(.app-status-icon,.ui-brand-tile svg,.game-button:not(.secondary) svg,.ui-btn.primary svg){color:#fff}
+/* Sheets are not bound as glass controls, so they do not get data-glass=off. */
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more),(forced-colors:active){.ui-glass-sheet :is(button,a) svg.ui-icon:not(.app-status-icon,.ui-brand-tile svg,.game-button:not(.secondary) svg,.ui-btn.primary svg){color:inherit}}
 .arcade-glass.ui-tabbar::after{box-shadow:inset 0 1px 0 rgb(255 255 255 / .25),0 2px 5px rgb(0 0 0 / .04)}
 :is(.game-glass,.glass-control){background:none;box-shadow:none;z-index:1;transition:scale 260ms var(--ease-glass),translate 260ms var(--ease-glass),opacity 120ms var(--ease)}
 :is(.game-glass,.glass-control)>:not(.ui-glass-lens,.ui-glass-glow){position:relative;z-index:1}

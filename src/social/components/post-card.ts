@@ -9,6 +9,7 @@ import type {SocialContext} from '../context';
 import type {PostView} from '../shared';
 import {mediaGrid} from './media-grid';
 import {openMenu} from './menus';
+import {copySocialLink} from './copy-link';
 
 export type PostVariant='feed'|'focused'|'ancestor'|'reply';
 export interface PostCardOptions {
@@ -189,7 +190,7 @@ export class PostCard {
   const url=postLink(this.post.id);
   const nav=navigator as Navigator&{share?:(data:{url:string})=>Promise<void>};
   if(typeof nav.share==='function'){try{await nav.share({url});}catch{/* cancelled */}return;}
-  try{await navigator.clipboard.writeText(url);this.ctx.notify('Link copied');}catch{this.ctx.notify(`Copy this link: ${url}`);}
+  await copySocialLink(this.ctx,url);
  }
  private openMore(trigger:HTMLElement):void {
   const {post,ctx}=this,username=post.author.username;
@@ -199,7 +200,7 @@ export class PostCard {
    items.push({label:'Report post',icon:'report',run:()=>void this.report(trigger)});
    items.push({label:`Block @${username}`,icon:'block',danger:true,run:()=>void this.blockAuthor(trigger)});
   }
-  items.push({label:'Copy link',icon:'share',run:()=>void navigator.clipboard.writeText(postLink(post.id)).then(()=>ctx.notify('Link copied'),()=>ctx.notify(`Copy this link: ${postLink(post.id)}`))});
+  items.push({label:'Copy link',icon:'copy',run:()=>void copySocialLink(ctx,postLink(post.id))});
   openMenu(trigger,'Post options',items,ctx.scroller);
  }
  private async deletePost(trigger:Element):Promise<void> {

@@ -18,3 +18,19 @@
 
 /* The tab stays out of the bar (no gap) until the capability probe succeeds. */
 .app-tabbar .ui-tab[hidden]{display:none}
+
+/* Account and accessibility controls remain relevant in Chat/Social. Game-only
+   search, score and save controls do not belong in their settings sheet. */
+#menu[data-context=chat] :is(label[for=search],#search,.menu-filters,label:has(#sound),label:has(#colour),#open-leaderboards,#open-study,#study-menu-summary,#storage-status,.menu-note,#sync-account,#account-sync-status,.mauri-mark),
+#menu[data-context=social] :is(label[for=search],#search,.menu-filters,label:has(#sound),label:has(#colour),#open-leaderboards,#open-study,#study-menu-summary,#storage-status,.menu-note,#sync-account,#account-sync-status,.mauri-mark){display:none}
+/* Short landscape screens still have a bounded scroll surface. Keep a visible
+   scrollbar cue instead of silently hiding the rest of the account controls. */
+:is(#apps-dialog,#menu,#chat-info,#chat-message-menu).ui-glass-sheet{overflow:auto;overscroll-behavior:contain;contain:paint;scrollbar-width:thin;scrollbar-color:rgb(255 255 255 / .45) transparent}
+:is(#apps-dialog,#menu,#chat-info,#chat-message-menu).ui-glass-sheet::-webkit-scrollbar{display:block;width:6px}
+:is(#apps-dialog,#menu,#chat-info,#chat-message-menu).ui-glass-sheet::-webkit-scrollbar-thumb{background:rgb(255 255 255 / .45);border-radius:999px}
+#apps-dialog .menu-note{font-size:14px;line-height:1.5}
+@media(max-height:500px) and (orientation:landscape){
+ :is(#apps-dialog,#menu,#chat-info,#chat-message-menu).ui-glass-sheet{max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+ #apps-dialog .apps-tile{min-height:112px;padding:12px;gap:6px}
+ #apps-dialog .apps-tile-mark,#apps-dialog .apps-tile-mark .app-tile-mark{width:40px;height:40px}
+}

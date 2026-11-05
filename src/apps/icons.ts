@@ -4,7 +4,7 @@
    - navigation icons: stroke 1.75 with a filled twin for the selected tab, in
      the ui-icon-line / ui-icon-fill groups that theme.css already switches;
    - chat status glyphs: shape = kind (circle = text, diamond = photo),
-     treatment = state (broken = sent, ring + check = opened, solid = new,
+     treatment = state (check = sent, ring + check = opened, solid = new,
      ring + dot = received), person = pending request;
    - launcher tile marks on a 48 grid, tinted by currentColor.
    No brand marks: no bird, no X, no ghost, no copied product icons.
@@ -16,7 +16,7 @@ export type AppStatusIconName=
   |'status-snap-sent'|'status-snap-received'|'status-snap-new'|'status-snap-opened'
   |'status-opened'|'status-request';
 export type AppOutlineIconName=
-  |'social'|'settings'|'compose'|'reply'|'like'|'like-filled'|'share'|'more'|'photo'|'camera'
+  |'social'|'settings'|'compose'|'reply'|'like'|'like-filled'|'share'|'copy'|'more'|'photo'|'camera'
   |'close'|'back'|'send'|'block'|'report'|'trash'|'save'|'saved'|'timer'|'lock'|'check'|'plus'
   |'info'|'alert'|'retry'|'chevron-right';
 export type AppTileIconName='social-tile'|'chat-tile';
@@ -77,6 +77,7 @@ chat:{
 
 const outline:Record<AppOutlineIconName|AppStatusIconName,string>={
 social:orbit,
+copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M15 8V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h4"/>',
 settings:'<path d="M4 7h9M18 7h2M4 17h2M11 17h9"/><circle cx="15.5" cy="7" r="2.5"/><circle cx="8.5" cy="17" r="2.5"/>',
 compose:'<path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
 reply:'<path d="M9.5 7.5 4.5 12l5 4.5"/><path d="M5 12h8.5a6 6 0 0 1 6 6v1"/>',
@@ -102,14 +103,14 @@ info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.5h.01"/>',
 alert:'<path d="M10.3 4.6a2 2 0 0 1 3.4 0l7.1 12.4a2 2 0 0 1-1.7 3H4.9a2 2 0 0 1-1.7-3z"/><path d="M12 9.5v4M12 16.75h.01"/>',
 retry:'<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/>',
 'chevron-right':'<path d="m9.5 6 6 6-6 6"/>',
-/* Chat status glyphs. Broken outlines leave four gaps: at the diagonals of the
-   circle and at the corners of the diamond (round caps eat 1 unit each side). */
-'status-text-sent':'<circle cx="12" cy="12" r="7" stroke-dasharray="6 4.996" stroke-dashoffset="3"/>',
+/* Confirmed sends use a check rather than a spinner-like broken outline.
+   Opened receipts keep their ring/diamond, with text describing the state. */
+'status-text-sent':tick,
 'status-text-received':ring+centreDot,
 'status-text-new':'<circle cx="12" cy="12" r="7.5" fill="currentColor"/>',
 'status-text-opened':ring+tick,
 'status-opened':ring+tick,
-'status-snap-sent':`<path d="${diamond}" stroke-dasharray="6.67 5" stroke-dashoffset="9.17"/>`,
+'status-snap-sent':tick,
 'status-snap-received':`<path d="${diamond}"/>${centreDot}`,
 'status-snap-new':`<path d="M12 3.1 20.9 12 12 20.9 3.1 12z" fill="currentColor"/>`,
 'status-snap-opened':`<path d="${diamond}"/>${tick}`,

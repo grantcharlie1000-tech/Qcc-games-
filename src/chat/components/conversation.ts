@@ -153,7 +153,7 @@ export class ConversationScreen implements Screen {
   });
   this.input.addEventListener('input',()=>this.syncComposer());
   this.input.addEventListener('keydown',event=>{
-   if(event.key!=='Enter'||event.shiftKey||event.isComposing||event.ctrlKey||event.altKey||event.metaKey||!fine())return;
+   if(event.key!=='Enter'||event.shiftKey||event.isComposing||event.ctrlKey||event.altKey||event.metaKey||event.keyCode===229)return;
    event.preventDefault();this.submit();
   });
   c.addEventListener('submit',event=>{event.preventDefault();this.submit();});
@@ -162,7 +162,13 @@ export class ConversationScreen implements Screen {
  private syncCamera():void{if(this.cameraButton)this.cameraButton.hidden=!this.ctx.mediaEnabled();}
  private syncComposer():void {
   const text=this.input.value.trim(),count=codePoints(text);
-  this.input.style.height='auto';this.input.style.height=`${Math.min(this.input.scrollHeight,126)}px`;
+  // scrollHeight excludes the border. Include it in this border-box field so
+  // the browser does not scroll the first line out of view to expose the caret.
+  this.input.style.height='auto';
+  const style=getComputedStyle(this.input),border=(parseFloat(style.borderTopWidth)||0)+(parseFloat(style.borderBottomWidth)||0);
+  const height=Math.min(Math.ceil(this.input.scrollHeight+border),126);
+  this.input.style.height=`${height}px`;
+  if(this.input.scrollHeight<=this.input.clientHeight+1)this.input.scrollTop=0;
   this.sendButton.disabled=!this.ready||this.closed||!text||count>MESSAGE_MAX_CHARS;
   const left=MESSAGE_MAX_CHARS-count;
   this.countEl.textContent=count>=COUNT_FROM?(left<0?String(left):`${left} left`):'';
@@ -490,7 +496,7 @@ export class ConversationScreen implements Screen {
   const m=item.m,items:MenuItem[]=[];
   if(m.kind==='text'){
    items.push({label:m.saved?'Unsave':'Save in chat',icon:m.saved?'saved':'save',run:()=>void this.toggleSave(item)});
-   items.push({label:'Copy text',icon:'share',run:()=>void this.copy(item)});
+   items.push({label:'Copy text',icon:'copy',run:()=>void this.copy(item)});
   }
   if(m.mine)items.push({label:'Unsend',icon:'trash',danger:true,run:()=>void this.unsend(item)});
   else items.push({label:'Report message',icon:'report',run:()=>openMessageReport(this.ctx,this.friend,this.recentFromFriend().slice(0,10),{trigger:item.el,preselect:m.id})});

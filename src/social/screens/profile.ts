@@ -94,7 +94,9 @@ export class ProfileScreen implements Screen {
   if(user)history.replaceState(null,'',location.pathname+location.search+profileHash(profile.username,tab));
   this.photoCtl?.abort();this.photoCtl=undefined;
   this.list?.dispose();this.list=undefined;this.panel.replaceChildren();
-  const label=LABEL[tab],empty=()=>emptyState({title:tab==='posts'?'No posts yet':tab==='replies'?'No replies yet':tab==='photos'?'No photos yet':'No likes yet'});
+  const label=LABEL[tab],empty=()=>profile.mine&&tab==='posts'
+   ?emptyState({title:'Your story starts here',text:'Share an update, a question, or a photo with other QCC players.',action:{label:'Write your first post',run:()=>this.ctx.openCompose(),primary:true}})
+   :emptyState({title:tab==='posts'?'No posts yet':tab==='replies'?'No replies yet':tab==='photos'?'No photos yet':'No likes yet'});
   const list=this.list=new PostList({ctx:this.ctx,label,loading:'Loading posts…',empty,
    card:tab==='photos'?undefined:undefined,
    load:(cursor,signal)=>this.ctx.client.posts(profile.username,KIND[tab],cursor,signal)});

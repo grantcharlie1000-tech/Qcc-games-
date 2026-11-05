@@ -5,7 +5,7 @@ import type {Page,PostView} from '../shared';
 import type {ThreadView} from '../client';
 import {PostCard} from '../components/post-card';
 import {Composer} from '../components/composer';
-import {skeletonPosts,loadFailed} from '../components/states';
+import {skeletonPosts,loadFailed,emptyState} from '../components/states';
 
 const roomy=()=>typeof matchMedia==='function'&&matchMedia('(min-width:640px)').matches;
 
@@ -37,10 +37,8 @@ export class ThreadScreen implements Screen {
    if(isAuthError(error)){this.ctx.signedOut();return;}
    const status=(error as {status?:number}).status;
    if(status===404){
-    const gone=document.createElement('div');gone.className='apps-empty';
-    gone.innerHTML='<div class="social-gone-card"><span class="social-avatar is-ghost" aria-hidden="true"></span><p class="social-gone"></p></div>';
-    gone.querySelector('.social-gone')!.textContent='This post is unavailable';
-    const back=document.createElement('a');back.className='ui-btn secondary apps-pill';back.href='#/social';back.textContent='Back to feed';gone.append(back);
+    const gone=emptyState({icon:'info',title:'Post unavailable',text:'This post may have been deleted or is no longer visible to you. Use the back arrow to return to your feed.'});
+    this.target=gone.querySelector('h2');this.target?.setAttribute('tabindex','-1');
     this.root.replaceChildren(gone);return;
    }
    this.root.replaceChildren(loadFailed(error,()=>{this.root.replaceChildren(skeletonPosts(3,'Loading post…'));void this.load();}));
