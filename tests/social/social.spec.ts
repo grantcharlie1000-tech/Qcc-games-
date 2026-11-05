@@ -10,7 +10,6 @@ import {createMemoryStore} from '../../src/media/store';
 
 const database=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
 let accounts:ReturnType<typeof createAccountsHandler>,chat:ReturnType<typeof createChatHandler>,social:ReturnType<typeof createSocialHandler>,media:ReturnType<typeof createMediaHandler>;
-let mediaDelay=0;
 test.beforeAll(async()=>{
  const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;
  const store=createMemoryStore();const db={query:(text:string,values?:unknown[])=>pool.query(text,values),connect:()=>pool.connect()} as never;
@@ -20,7 +19,7 @@ test.afterAll(async()=>{await pool?.end();await database.stop();});
 test.use({viewport:{width:390,height:844}});
 
 const PASSWORD='long enough password';
-async function connect(context:BrowserContext,options:{pollScale?:number}={}){
+async function connect(context:BrowserContext,options:{pollScale?:number;mediaUploadGate?:Promise<void>}={}){
  await context.addInitScript(scale=>{
   if(window!==window.top)return;
   localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');
@@ -28,7 +27,7 @@ async function connect(context:BrowserContext,options:{pollScale?:number}={}){
  },options.pollScale);
  for(const [name,handle] of [['accounts',accounts],['chat',chat],['social',social],['media',media]] as const)await context.route(`**/.netlify/functions/${name}**`,async route=>{
   const req=route.request();
-  if(name==='media'&&req.method()==='POST'&&mediaDelay)await new Promise(resolve=>setTimeout(resolve,mediaDelay));
+  if(name==='media'&&req.method()==='POST'&&options.mediaUploadGate)await options.mediaUploadGate;
   const body=['POST','PUT'].includes(req.method())?(name==='media'?req.postDataBuffer()??undefined:req.postData()??undefined):undefined;
   const result=await handle(new Request(req.url(),{method:req.method(),headers:req.headers(),body:body as BodyInit|undefined}));
   await route.fulfill({status:result.status,headers:Object.fromEntries(result.headers),body:Buffer.from(await result.arrayBuffer())});
@@ -191,8 +190,10 @@ test('report menu submits',async({page,context})=>{
 });
 
 test('photo post uploads through pipeline and renders thumbnail',async({page,context})=>{
- await connect(context);const a=await user('ph');await open(page,a.name);
- mediaDelay=700;
+ // Keep the upload pending until the throttled helper has been observed, rather than racing a fixed delay.
+ let releaseUpload!:()=>void;
+ const mediaUploadGate=new Promise<void>(resolve=>{releaseUpload=resolve;});
+ await connect(context,{mediaUploadGate});const a=await user('ph');await open(page,a.name);
  try{
   await page.getByRole('button',{name:'New post'}).click();
   const sheet=page.locator('#social-compose'),publish=sheet.getByRole('button',{name:'Publish'});
@@ -201,12 +202,13 @@ test('photo post uploads through pipeline and renders thumbnail',async({page,con
   await expect(chip).toHaveAttribute('data-stage',/compressing|uploading|processing/);
   await expect(publish).toBeDisabled();
   await expect(sheet.locator('.social-helper')).toHaveText('Wait for photos to finish uploading');
+  releaseUpload();
   await expect(chip).toHaveAttribute('data-stage','ready',{timeout:15000});
   await expect(chip).toHaveAttribute('aria-label','Photo 1 of 1, Ready');
   await expect(publish).toBeEnabled();
   await publish.click();
   await expect(sheet).not.toBeVisible();
- }finally{mediaDelay=0;}
+ }finally{releaseUpload();}
  const tile=page.locator('.social-post .social-media-tile img').first();
  await expect(tile).toBeVisible();
  await expect.poll(()=>tile.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);
