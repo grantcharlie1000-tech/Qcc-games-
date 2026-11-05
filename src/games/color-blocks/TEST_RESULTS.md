@@ -1,3 +1,25 @@
+# Block puzzle systems pack verification — 2026-11-05 UTC
+
+Implements the reference pack's proposed scoring, move-counted combo, colour and all-clear rewards, constructive witness generator, reproducible saves and reward presentation. Chromium is the system build at `/opt/pw-browsers/chromium`; WebKit was not run.
+
+| Checklist area | Evidence |
+| --- | --- |
+| Core mechanics | Existing mouse, touch, keyboard, invalid-drop and simultaneous-clear specs pass unchanged apart from the new score totals. `rewards.spec.ts` checks the projected-clear preview (24 lit cells for a three-row drop). |
+| Generation | `fair-deal.test.ts` replays every stored witness from its deal-time board: 384 seeded sparse-to-dense boards and 30 consecutive trays for each of 10 seeds. Where a witness is partial, the independent exhaustive oracle confirms no full path exists. |
+| Scoring | `model.test.ts` reproduces 24, 166 and 389, a crossing row and column (two lines, shared tile once), two colours gone with a survivor, and colour plus all-clear stacking (401) without double counting. |
+| Combo | One and two plain placements keep the chain, the third resets it; save/restore leaves chain and pips unchanged. Browser test checks the pips drop from two to one. |
+| Animation | Screenshots of preview, release (animations frozen for capture), settled board, drag during a fading celebration, reduced motion and the result card are in `tests/games/color-blocks/evidence/rewards-*.png`. |
+| Consistency | `replay(seed, history)` twice gives identical state over 10 seeded runs. A mouse drop interrupted by pause saves exactly the state of the same keyboard drop with no effects. |
+| Mobile / desktop | 390×844 and 1366×768: no horizontal scroll, tray clear of the dock. Existing 844×390 correction spec passes. |
+| Performance / comfort | Clear plus immediate drag: no main-thread long tasks. RAF intervals in headless Chromium show 83–133 ms gaps, but a plain drag on the previous build showed the same gaps (p95 83 ms), so they come from Playwright's synchronous input dispatch. Reduced motion: no particles. Muted sound and tab backgrounding were not separately re-tested. |
+
+| Command | Result |
+| --- | --- |
+| `npx vitest run` | 221 files, 4417 tests passed. |
+| `npx tsc --noEmit`, `npm run build` | Exit 0. |
+| `npx playwright test tests/games/color-blocks --project=chromium` | 26 passed. `correction.spec.ts` needed its video option switched off locally because ffmpeg is not installed here; the committed file is unchanged. |
+| Shell specs: viewport, play-surface, festive, ingame-space, leaderboard sidebar | 59 passed. |
+
 # Gameplay correction verification — 2026-10-19 UTC
 
 Isolated worktree: `/workspace/Qcc-games-/.worktrees/correction-blocks`, branch `correction/color-blocks`, baseline `6861106`. Parent viewport commit `6e0b12d4a94b24efed18ce75ae837f31e8dc38ec` was cherry-picked as `699bae8` solely for integration verification and is excluded from the game handoff. No dependency changes; local node_modules is an untracked symlink. Vite serves this worktree on port 4183.
