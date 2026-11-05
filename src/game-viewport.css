@@ -19,7 +19,7 @@ body.in-game #pause-overlay{border-radius:16px}
 .game-view[data-game-id=corn-clicker]{--game-surface:#242617}
 .game-view[data-game-id=minesweeper]{--game-surface:radial-gradient(ellipse at 50% 35%,#29352e,#191f1d 70%)}
 /* Native full-bleed canvas scenes already paint behind their top dock. */
-.game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=claimline],[data-game-id=quad-clash]) .game-surface{background:transparent}
+.game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=claimline],[data-game-id=quad-clash],[data-game-id=aftertrace]) .game-surface{background:transparent}
 .game-dock{background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;position:relative;order:2;flex:0 0 56px;width:min(100%,560px);height:56px;margin:0 auto;padding:2px;display:flex;align-items:center;justify-content:center;gap:10px;z-index:30;font-family:var(--font-sans)}
 .game-dock>.game-glass{position:relative;border-radius:999px;height:52px;min-height:52px;min-width:0}
 .game-dock>.ui-tab{flex:0 0 52px;min-width:52px;display:flex;flex-direction:row;gap:8px;padding:0;font-size:14px;font-weight:550}
@@ -60,10 +60,10 @@ body.in-game #pause-overlay{border-radius:16px}
 .game-view[data-game-id=animal-stack]{--scene-width:min(var(--play-width,100vw),calc(var(--play-height,100dvh) * .54));--scene-bg:#55c3ec}
 .game-view[data-game-id=water-sort]{--scene-width:min(100%,1100px);--scene-bg:#221b2e}
 .game-view[data-game-id=color-blocks]{--scene-width:min(100%,calc(var(--play-height,100dvh) * .85));--scene-bg:#30223b}
-body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=claimline],[data-game-id=quad-clash]){padding:0;display:block;background:var(--scene-bg,#101a25)}
-body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=claimline],[data-game-id=quad-clash]) .stage-wrap,
-body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=claimline],[data-game-id=quad-clash]) #game-stage{position:absolute;inset:0;width:100%;height:100%;max-height:none;display:grid;place-items:center}
-body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=claimline],[data-game-id=quad-clash]) .game-dock{position:absolute;left:50%;top:max(8px,env(safe-area-inset-top));transform:translateX(-50%);width:min(calc(100% - 24px),560px);margin:0}
+body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=claimline],[data-game-id=quad-clash],[data-game-id=aftertrace]){padding:0;display:block;background:var(--scene-bg,#101a25)}
+body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=claimline],[data-game-id=quad-clash],[data-game-id=aftertrace]) .stage-wrap,
+body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=claimline],[data-game-id=quad-clash],[data-game-id=aftertrace]) #game-stage{position:absolute;inset:0;width:100%;height:100%;max-height:none;display:grid;place-items:center}
+body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=claimline],[data-game-id=quad-clash],[data-game-id=aftertrace]) .game-dock{position:absolute;left:50%;top:max(8px,env(safe-area-inset-top));transform:translateX(-50%);width:min(calc(100% - 24px),560px);margin:0}
 body.in-game .game-view:is([data-game-id=globle],[data-game-id=corn-clicker],[data-game-id=minesweeper],[data-game-id=slipline],[data-game-id=quadfall],[data-game-id=fivefold],[data-game-id=water-sort],[data-game-id=color-blocks],[data-game-id=pool]) #game-stage{height:100%;max-height:none;min-height:0}
 body.in-game .game-view[data-game-id=corn-clicker] #game-stage{container-type:inline-size}
 body.in-game .game-view[data-game-id=slipline] #game-stage{container-type:size}
@@ -98,3 +98,9 @@ body.in-game .game-view[data-game-id=claimline] .cl-game{border-radius:0}
 body.in-game .game-view[data-game-id=claimline] :is(.cl-share,.cl-ranking){top:max(10px,calc(env(safe-area-inset-top) + 6px))}
 body.in-game .game-view[data-game-id=claimline] .cl-share{left:max(10px,env(safe-area-inset-left))}
 body.in-game .game-view[data-game-id=claimline] .cl-ranking{right:max(10px,env(safe-area-inset-right))}
+
+/* Aftertrace draws directly into a full-screen, touch-mapped canvas; the arcade dock stays below the action. */
+.game-view[data-game-id=aftertrace]{--scene-bg:#090f22}
+body.in-game .game-view[data-game-id=aftertrace] #game-stage{height:100%;min-height:0;touch-action:none;overscroll-behavior:none}
+body.in-game .game-view[data-game-id=aftertrace] .game-dock{top:auto;bottom:max(8px,env(safe-area-inset-bottom))}
+body.in-game .game-view[data-game-id=aftertrace] .at-controls{bottom:max(84px,calc(env(safe-area-inset-bottom) + 78px))}
