@@ -164,6 +164,9 @@ function layout(lens: readonly number[], gaps: readonly number[], colors: readon
   return { movers, cycle };
 }
 
+/** Skews draws towards small values with exactly rounded operations only (no Math.pow, whose last bit can differ
+ * between JavaScript engines), so a seed builds the identical world in every browser. */
+const sq = (u: number): number => u * u;
 /** Paints for ordinary cars: every reference colour except taxi yellow. */
 const CAR_PAINTS = [0, 1, 3, 4, 5, 6] as const;
 /** Revision six: the shortest traffic repeat (tiles), wider than a landscape view, so no pattern repeats on screen. */
@@ -193,7 +196,7 @@ function roadRowV6(row: number, rng: Rng, dir: Heading): RoadLane {
     }
     // A quarter of the gaps bunch vehicles into convoys; the rest spread out with a long tail.
     const convoy = rng() < 0.25, g = rng();
-    gaps.push(gapMin + (convoy ? 0.5 * g : spread * Math.pow(g, 1.4)));
+    gaps.push(gapMin + (convoy ? 0.5 * g : spread * g * Math.sqrt(g)));
     span += lens[i] + gaps[i];
   }
   const { movers, cycle } = layout(lens, gaps, colors);
@@ -266,7 +269,7 @@ function logRowV6(row: number, rng: Rng, dir: Heading, below: RiverLane | null):
     const u = rng();
     lens.push(u < w2 ? 2 : u < w2 + w3 ? 3 : 4);
     colors.push(Math.floor(rng() * LOG_PALETTE));
-    gaps.push(gapMin + (gapMax - gapMin) * Math.pow(rng(), 1.7));
+    gaps.push(gapMin + (gapMax - gapMin) * sq(rng()));
   }
   const { movers, cycle } = layout(lens, gaps, colors);
   return { kind: 'river', row, dir, speed, cycle, phase: rng() * cycle, movers };
