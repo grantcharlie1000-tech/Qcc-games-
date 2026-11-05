@@ -487,3 +487,24 @@ test('New post and the n shortcut reopen the composer right after it closes',asy
  await page.keyboard.press('n');
  await expect(sheet).toBeVisible();
 });
+
+for(const size of [{width:390,height:844},{width:1440,height:900}])test(`thread heading is not covered by the back button at ${size.width}px`,async({page,context})=>{
+ await connect(context);await page.setViewportSize(size);
+ const a=await user('tb'),b=await user('tc');
+ const root=await post(b.token,'Low tide at the beach this morning. Worth getting up early for. '.repeat(3).trim());
+ const reply=await post(a.token,'That colour is unreal',{replyTo:root.id});
+ for(let i=0;i<8;i++)await post(b.token,`Reply number ${i} to keep the page tall enough to scroll`,{replyTo:reply.id});
+ await open(page,a.name,`#/social/post/${reply.id}`);
+ await expect(page.locator('.social-post.is-focused')).toContainText('That colour is unreal');
+ await page.waitForTimeout(500); // the focused post scrolls into view after render
+ const back=page.getByRole('button',{name:'Back to feed'}),heading=page.getByRole('heading',{name:'Post',level:1});
+ await expect(back).toBeVisible();await expect(heading).toBeVisible();
+ // The page scrolls under the floating header, so check the whole scrolled range, not one position.
+ for(let top=0;top<=160;top+=8){
+  await page.locator('.social-view').evaluate((el,y)=>{el.scrollTop=y;},top);
+  const [a1,h1]=await Promise.all([back.boundingBox(),heading.boundingBox()]);
+  expect(a1&&h1).toBeTruthy();
+  const overlap=!(a1!.x+a1!.width<=h1!.x||h1!.x+h1!.width<=a1!.x||a1!.y+a1!.height<=h1!.y||h1!.y+h1!.height<=a1!.y);
+  expect(overlap,`scrollTop ${top}: back ${JSON.stringify(a1)} heading ${JSON.stringify(h1)}`).toBe(false);
+ }
+});

@@ -263,10 +263,10 @@ export class SocialView implements AppView {
   this.topGlass?.dispose();this.segmented=undefined;
   const route=this.route,me=this.myName(),signedIn=this.signedIn();
   const brand=`<a class="apps-brand arcade-glass floating-glass-group" data-glass-tone="light" href="#/social" aria-label="QCC Social home"><span class="apps-brand-mark">${appIcon('social-tile')}</span><span class="apps-wordmark"><span class="wm-short">Social</span><span class="wm-long">QCC Social</span></span></a>`;
-  const back=(label:string)=>`<div class="apps-back-group arcade-glass floating-glass-group" data-glass-tone="light"><button type="button" class="apps-back-btn" data-action="back" aria-label="${label}">${appIcon('back')}</button></div>`;
+  const back=(label:string,title='')=>`<div class="apps-back-group arcade-glass floating-glass-group" data-glass-tone="light"><button type="button" class="apps-back-btn" data-action="back" aria-label="${label}">${appIcon('back')}</button>${title?`<h1 class="apps-top-title" tabindex="-1">${title}</h1>`:''}</div>`;
   let left=brand,right='';
   if(signedIn){
-   if(route.kind==='thread')left=back('Back to feed');
+   if(route.kind==='thread')left=back('Back to feed','Post'); // the heading lives beside the button in the header, so scrolling can never put it underneath
    else if(route.kind==='profile')left=back('Back to feed');
    else if(route.kind==='settings')left=back('Back to profile');
    if(route.kind==='profile'&&me&&route.username.toLowerCase()===me.toLowerCase())right=`<div class="apps-actions-group arcade-glass floating-glass-group" data-glass-tone="light"><a class="apps-icon-btn" href="#/social/settings" aria-label="Social settings">${appIcon('settings')}</a></div>`;

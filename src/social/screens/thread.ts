@@ -47,8 +47,7 @@ export class ThreadScreen implements Screen {
   }
  }
  private render(thread:ThreadView):void {
-  const h1=document.createElement('h1');h1.className='apps-title-sm';h1.textContent='Post';h1.tabIndex=-1;
-  this.root.replaceChildren(h1);
+  this.root.replaceChildren();
   for(const post of thread.ancestors){const card=new PostCard(this.ctx,post,{variant:'ancestor',onRemoved:()=>this.ctx.refresh()});this.cards.push(card);this.root.append(card.el);}
   const focused=this.focused=new PostCard(this.ctx,thread.post,{variant:'focused',onReply:()=>this.reply(),onRemoved:(post,reason)=>{if(reason==='deleted')this.ctx.go(thread.post.replyTo?`#/social/post/${thread.post.replyTo}`:'#/social');}});
   this.cards.push(focused);this.root.append(focused.el);this.target=focused.el;
