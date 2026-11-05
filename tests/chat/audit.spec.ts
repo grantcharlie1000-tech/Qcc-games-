@@ -130,8 +130,8 @@ test('touch composer fits its first line and Enter sends while Shift Enter adds 
  await expect(page.locator('.chat-msg').filter({hasText:'QA test message'})).toBeVisible();
  const sent=page.locator('.chat-entry').filter({hasText:text});
  await expect(sent).not.toHaveClass(/is-pending/);
- await expect(sent.locator('.chat-receipt')).toHaveText('Sent');
- await captureChatState(page,'chat-sent-wrapped-message',sent,{message:text,pending:false,failed:false,receipt:'Sent'});
+ await expect(sent.locator('.chat-receipt')).toHaveText('Not seen yet');
+ await captureChatState(page,'chat-sent-wrapped-message',sent,{message:text,pending:false,failed:false,receipt:'Not seen yet'});
  await input.fill('Composing text');
  await input.dispatchEvent('keydown',{key:'Enter',isComposing:true});await expect(input).toHaveValue('Composing text');
 });
@@ -161,7 +161,7 @@ test('accepted request clears the Apps badge immediately without the minute poll
 test('sent receipt is a check, glass icons stay white and destructive labels stay red',async({page,context,browserName})=>{
  await setup(context);await openChat(page,'/with/audit_friend');
  const row=page.locator('.chat-entry').filter({hasText:'A delivered message'});
- await expect(row.locator('.chat-receipt')).toHaveText('Sent');
+ await expect(row.locator('.chat-receipt')).toHaveText('Not seen yet');
  expect(await row.locator('[data-icon=status-text-sent] [stroke-dasharray]').count()).toBe(0);
  await row.locator('.chat-msg').tap();
  const sheet=page.locator('#chat-message-menu');await expect(sheet).toBeVisible();
