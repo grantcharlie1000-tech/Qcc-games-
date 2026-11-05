@@ -158,6 +158,7 @@ test.describe('Pool',()=>{
     const page=await context.newPage();
     try{
       await page.goto('/#/game/pool');await expect(root(page)).toHaveAttribute('data-orient','portrait');
+      for(const sel of ['.pool-table','.pool-power'])expect(await page.locator(sel).evaluate(e=>getComputedStyle(e).touchAction),`${sel} keeps the finger from scrolling`).toBe('none');
       type TouchType='touchStart'|'touchMove'|'touchEnd';
       let touch:(type:TouchType,points:{x:number;y:number}[])=>Promise<unknown>;
       if(browserName==='chromium'){
@@ -165,7 +166,7 @@ test.describe('Pool',()=>{
         const cdp=await context.newCDPSession(page);
         touch=(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points.map((p,i)=>({...p,id:i+1}))});
       }else{
-        // CDP is Chromium-only and Playwright's touchscreen can only tap, so WebKit drives the same gestures as touch
+        // Handler-level coverage only: CDP is Chromium-only and Playwright's touchscreen can only tap, so WebKit drives the same gestures as touch
         // pointer events (what Pool listens to) aimed at the element under the finger. Pointer id 1 is always active,
         // so the game's setPointerCapture accepts it.
         let last={x:0,y:0};
@@ -188,7 +189,8 @@ test.describe('Pool',()=>{
       await expect(root(page)).toHaveAttribute('data-gesture','pull');
       await touch('touchEnd',[]);
       await expect(root(page)).toHaveAttribute('data-shots','1');
-      expect(await page.evaluate(()=>scrollY)).toBe(0);
+      // Only real touch input (CDP) can scroll the page, so the scroll check is meaningful there; WebKit's synthetic events cover the handlers.
+      if(browserName==='chromium')expect(await page.evaluate(()=>scrollY)).toBe(0);
     }finally{await context.close();}
   });
 });
