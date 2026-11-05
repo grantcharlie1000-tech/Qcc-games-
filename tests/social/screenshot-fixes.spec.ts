@@ -1,3 +1,4 @@
+import {expectSheetIconPalette} from '../helpers/glass-icon-palette';
 import {captureAuditEvidence} from '../helpers/audit-evidence';
 import {test,expect,type BrowserContext,type Page} from '@playwright/test';
 import {NetlifyDB} from '@netlify/database-dev';
@@ -130,17 +131,25 @@ for(const size of [{width:390,height:844},{width:844,height:390},{width:320,heig
 });
 
 
-test('copy link uses the copy glyph and reports clipboard success',async({page,context})=>{
+test.describe('touch sheet icon palette',()=>{
+ test.use({hasTouch:true});
+test('copy link uses a white glass glyph, preserves red warnings and reports clipboard success',async({page,context,browserName})=>{
  await connect(context);const a=await user('copy');const p=await post(a.token,'Copy this post');await open(page,a.name);
  await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:(value:string)=>{(window as unknown as {copied:string}).copied=value;return Promise.resolve();}}}));
  await page.locator('.social-post').first().getByRole('button',{name:/More/}).click();
  const copy=page.getByRole('menuitem',{name:'Copy link',exact:true});await expect(copy).toBeVisible();
  await expect(copy.locator('svg rect')).toHaveCount(1);
+ const menu=page.locator('#social-post-menu'),danger=menu.locator('.is-danger').first();
+ await expectSheetIconPalette(page,menu,danger,browserName);
+ await menu.getByRole('button',{name:'Close menu'}).click();
+ await page.locator('.social-post').first().getByRole('button',{name:/More/}).click();
+ await expect(menu.locator('.is-danger svg').first()).toHaveCSS('color','rgb(255, 255, 255)');
  await captureAuditEvidence(page,test.info(),'social-post-options');
  await copy.click();
  await expect(page.getByRole('status').filter({hasText:'Link copied'})).toBeVisible();
  expect(await page.evaluate(()=>(window as unknown as {copied:string}).copied)).toContain('#/social/post/'+p.id);
  await expect(page.getByRole('menuitem',{name:'Copy link',exact:true})).toBeHidden();
+});
 });
 
 test('mention keyboard navigation reveals every option and selection replaces a full token',async({page,context})=>{

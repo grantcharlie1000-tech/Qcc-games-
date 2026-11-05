@@ -145,7 +145,7 @@ export const SAFE_ROWS = 5;
 export const ROW_DEPTH = 1.38;
 /** Near-side vehicle placement keeps their elevated silhouettes inside their own rendered row. */
 export const TRAFFIC_ROW_Z = 0.32;
-export const TRAIN_BASE_Y = 0.09;
+export const TRAIN_BASE_Y = 0.13;
 export const AHEAD_ROWS = 40;
 export const BEHIND_ROWS = 20;
 export const MOVERS = 3;

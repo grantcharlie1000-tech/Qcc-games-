@@ -1,3 +1,4 @@
+import {expectSheetIconPalette} from '../helpers/glass-icon-palette';
 import {captureAuditEvidence} from '../helpers/audit-evidence';
 import {test,expect,type Page,type BrowserContext,type Locator,type ElementHandle} from '@playwright/test';
 
@@ -157,7 +158,7 @@ test('accepted request clears the Apps badge immediately without the minute poll
  await captureAuditEvidence(page,test.info(),'chat-request-accepted-badge-cleared');
 });
 
-test('sent receipt is a check, Copy text is a copy icon and destructive labels stay red',async({page,context})=>{
+test('sent receipt is a check, glass icons stay white and destructive labels stay red',async({page,context,browserName})=>{
  await setup(context);await openChat(page,'/with/audit_friend');
  const row=page.locator('.chat-entry').filter({hasText:'A delivered message'});
  await expect(row.locator('.chat-receipt')).toHaveText('Sent');
@@ -167,7 +168,11 @@ test('sent receipt is a check, Copy text is a copy icon and destructive labels s
  await expect(sheet.getByRole('menuitem',{name:'Copy text'}).locator('[data-icon=copy]')).toBeVisible();
  const unsend=sheet.getByRole('menuitem',{name:'Unsend'});
  await expect.poll(()=>unsend.locator('span').last().evaluate(el=>getComputedStyle(el).color)).toBe('rgb(255, 100, 103)');
+ await expectSheetIconPalette(page,sheet,unsend,browserName);
  await captureChatState(page,'chat-message-actions',sheet,{open:true,copyIcon:true,unsendInk:'rgb(255, 100, 103)'});
+ await sheet.getByRole('button',{name:'Close menu'}).click();
+ await row.locator('.chat-msg').tap();
+ await expect(sheet.getByRole('menuitem',{name:'Unsend'}).locator('svg')).toHaveCSS('color','rgb(255, 255, 255)');
  await sheet.getByRole('button',{name:'Close menu'}).click();
  await page.getByRole('button',{name:'Chat info',exact:true}).click();
  for(const action of ['block','remove','delete']){
