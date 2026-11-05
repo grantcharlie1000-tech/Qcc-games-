@@ -202,6 +202,8 @@ function update(){
       // ink across all of its tabs, so no glyph differs in colour from its neighbour.
       const groups=new Map<Element,HTMLElement[]>();
       for(const glyph of glyphs){
+        // Destructive actions keep the warning colour on both label and icon.
+        if(glyph.closest('.apps-danger,.is-danger')){changes.push({glyph,ink:null});continue;}
         const r=rect(glyph);if(!r.width||!r.height||style(glyph).clip!=='auto')continue;
         if(glyph.closest('.game-button:not(.secondary),.ui-btn.primary')&&!glyph.closest('.arcade-glass'))continue;
         const key=bar.matches('.ui-tabbar')||target.matches('.ui-tabbar-mini')?bar:glyph.closest('.ui-tab,button,a,.game-hud-item,label')??glyph;

@@ -65,7 +65,7 @@ export class AppsLauncher {
 <a class="apps-tile" href="#/social" data-app="social"><span class="apps-tile-mark">${appIcon('social-tile')}</span><strong>QCC Social</strong><span class="apps-tile-text">Posts, replies and follows</span></a>
 <a class="apps-tile" href="#/chat" data-app="chat"><span class="apps-tile-mark">${appIcon('chat-tile')}</span><strong>QCC Chat</strong><span class="apps-tile-text">Friends-only messages</span></a>
 </div>
-<a class="game-button secondary apps-back" href="#/collection" hidden>Back to games</a>
+<a class="game-button secondary apps-back" href="#/collection" hidden>Games library</a>
 <p class="menu-note">Not end-to-end encrypted. Reports go to QCC moderators.</p>`;
     this.chatTile=this.dialog.querySelector<HTMLAnchorElement>('[data-app=chat]')!;
     this.chatTile.querySelector('.apps-tile-mark')!.append(this.tileBadge);
