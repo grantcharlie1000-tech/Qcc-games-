@@ -41,7 +41,7 @@ Baseline at start: `tsc --noEmit` clean; 210 unit files / 4,299 tests passing.
 | Movies watch page | `src/movies/provider.ts`, `playback.ts` | 6 | C | Netflix player | Single external provider; multi-provider scaffolding unused | Owner decision | Low | — | Not started | |
 | Online multiplayer rooms | `src/multiplayer/` | 6 | C | — | Reassembled peer messages up to 24 M chars (memory pressure); dead `leaderboard:profile` fallback | Lower reassembly cap per game (Batch 2) | Medium | Opus | Not started | |
 | Legacy Netlify deployment files | `netlify.toml`, `netlify/`, `docs/NETLIFY_DEPLOYMENT.md` | — | D | — | Production is Cloudflare Pages; the old Netlify site (`mauri-gazette.netlify.app`) returns 404. Netlify config and docs remain and can mislead | Owner decision: archive or delete. Keep any shared handler logic the API origin still imports | Low | Opus | Not started | |
-| Docs / naming drift | `README.md`, `ARCHITECTURE.md`, `package.json` | 4 | D | — | Game counts 21 / 22 / 24 disagree; offline described as live; README and ARCHITECTURE still present Netlify as a deploy target | Counts (24), retired offline and Cloudflare hosting corrected in README and ARCHITECTURE (batch 2). Remaining: Netlify-era wording in ARCHITECTURE persistence, Movies and multiplayer sections | Low | Haiku | Tested | 6 |
+| Docs / naming drift | `README.md`, `ARCHITECTURE.md`, `package.json` | 4 | D | — | Game counts 21 / 22 / 24 disagree; offline described as live; README and ARCHITECTURE still present Netlify as a deploy target | Counts (24), retired offline and Cloudflare hosting corrected in README and ARCHITECTURE (batch 2). Remaining: Netlify-era wording in ARCHITECTURE persistence, Movies and multiplayer sections | Low | Haiku | Deployed | 6 |
 
 ## Games
 
@@ -67,7 +67,7 @@ Baseline at start: `tsc --noEmit` clean; 210 unit files / 4,299 tests passing.
 | Corn Clicker | `src/games/corn-clicker` | 8 | B | Cookie Clicker | 1,036-line `ui.ts`; untracked timers | Track timers for dispose | Low | Opus | Not started | |
 | Slipline | `src/games/slipline` | 7 | B | Arrows / “Unpuzzle” | Board regenerated (≈0.5 ms) several times per render and per input | Cached per level (batch 1) | Medium | Opus | Deployed | 7 |
 | Tetris | `src/games/quadfall` | 8 | B | Tetris Guideline | Very long single-line functions | Readability refactor only if touched | Low | — | Not started | |
-| Wordle | `src/games/fivefold` | 8 | B | NYT Wordle | Stats panel declared `aria-modal` but Tab walked out to the board and toolbar behind it; no backdrop dismissal; thin tests | Tab/Shift+Tab stay inside the stats dialog; clicking the dimmed backdrop closes it and returns focus (batch 2, e2e added). Escape deliberately left to the shell's pause-to-Study. Hard mode vs reference still open | Medium | Opus | Tested | 8 |
+| Wordle | `src/games/fivefold` | 8 | B | NYT Wordle | Stats panel declared `aria-modal` but Tab walked out to the board and toolbar behind it; no backdrop dismissal; thin tests | Tab/Shift+Tab stay inside the stats dialog; clicking the dimmed backdrop closes it and returns focus (batch 2, e2e added). Escape deliberately left to the shell's pause-to-Study. Hard mode vs reference still open | Medium | Opus | Deployed | 8 |
 | Claimline | `src/games/claimline` | 8 | B | Paper.io 2 | Renderer exposes no dispose | Add dispose | Low | Haiku | Not started | |
 | Quad Clash | `src/games/quad-clash` | 8 | B | Krunker.io | Heavy on phones; HUD overlaps title at 390 px | Check coarse-pointer quality default | Medium | Opus | Not started | |
 
@@ -82,9 +82,17 @@ Baseline at start: `tsc --noEmit` clean; 210 unit files / 4,299 tests passing.
 
 - **Minesweeper ticker while paused** — a 200 ms interval whose `syncTime` does nothing while paused; not worth a change.
 
+## CI reliability (main)
+
+| Test | Symptom | Root cause | Fix | Status |
+|---|---|---|---|---|
+| `tests/e2e/glass-menus.spec.ts:101` (WebKit) | Sheet origin off by 1.078 px against a 1 px bound; passes or fails on byte-identical trees | `sheetOrigin()` rounds to whole pixels and measures the sheet with integer `offset*` values; the test compares against fractional `boundingBox()` values, so worst-case error is 1.5 px and fractional dock/font metrics decide each run | Tolerance set to the design's 1.5 px precision, with the reasoning in the spec (batch 3) | Tested |
+| `tests/games/globle/play.spec.ts:166` (Chromium) | Drag after a guess ends at Germany's latitude (49.6 vs 51) | The 1.1 s fly-to is time-based; under CI software WebGL one frame can exceed the whole flight, so it completes before the drag events are processed. `data-lat` is only published at rest, so the test cannot observe mid-flight state | Drive the flight with Playwright's clock, or publish flight state (`data-flying`) and assert the drag clears it. Owned by the Globle work; not changed here | Not started |
+
 ## Batch log
 
 | Batch | Branch | Contents | Verification | Deployed |
 |---|---|---|---|---|
 | 1 | `claude/quality-programme-batch1` | Discovery, scoring, reference pack, tracker; account sheet legibility; Slipline board cache; composer limit constant; follow read-your-writes unit tests; meta description (copy-link, settings and follow-race fixes landed on `main` separately and won the merge) | `tsc` clean; slipline + social unit (58) pass; Chromium e2e: slipline, glass-menus, accounts, closed-account-paint, social (64) pass; 390/1366 screenshots | PR #128 merged as `ea0c3cd`; `deploy-info.json` reported `ea0c3cd` (built 2026-11-05 11:47 UTC). Production smoke test at 390×844 touch and 1366×768: account sheet hairlines, 48 px bold selected tab and one-screen fit confirmed; Slipline tap/click clears a free arrow with no heart lost; no page errors |
-| 2 | `claude/quality-programme-batch2` | Wordle stats dialog focus trap + backdrop close; README/ARCHITECTURE game count, offline and hosting corrections; tracker deploy record for batch 1 | `tsc` clean; Wordle Chromium e2e 5/5 (new test fails without the fix) | Pending |
+| 2 | `claude/quality-programme-batch2` | Wordle stats dialog focus trap + backdrop close; README/ARCHITECTURE game count, offline and hosting corrections; tracker deploy record for batch 1 | `tsc` clean; Wordle Chromium e2e 5/5 (new test fails without the fix) | PR #132 merged as `214afdd`; published with `6628241` (deploy-info.json, built 15:37 UTC). Production smoke test at 390 touch and 1366: Tab stays inside the stats dialog, backdrop click closes it, no page errors |
+| 3 | `claude/quality-programme-batch3` | Root-caused the WebKit glass-menu origin flake on main and set the tolerance to the design's precision; documented the Globle fly-to flake | Chromium glass-menus 23/23 | Pending |
