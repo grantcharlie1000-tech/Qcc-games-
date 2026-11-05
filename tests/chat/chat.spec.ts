@@ -561,3 +561,26 @@ test('reduced motion: no element.animate when motion is reduced',async({page,con
  expect(ran.filter(name=>name.includes('chat-entry')||name.includes('chat-group')||name.includes('chat-snap'))).toEqual([]);
  expect(ran.every(name=>name.includes('chat-pane'))).toBe(true);
 });
+
+test('a friend message that lands during your own send stays in server order',async({page,context})=>{
+ await connect(context,{pollScale:0.05});
+ const a=await user('oa'),b=await user('ob');await befriend(a,b);
+ await say(b,a,'first from friend');
+ let injected=false;
+ await page.route('**/.netlify/functions/chat?action=send**',async route=>{
+  if(!injected){injected=true;await say(b,a,'BETWEEN from friend');}
+  const req=route.request();
+  const result=await chat(new Request(req.url(),{method:req.method(),headers:req.headers(),body:req.postData()??undefined}));
+  await route.fulfill({status:result.status,headers:Object.fromEntries(result.headers),body:Buffer.from(await result.arrayBuffer())});
+ });
+ await open(page,a.name,`#/chat/with/${b.name}`);
+ await expect(entry(page,'first from friend')).toBeVisible();
+ await send(page,'MINE sent');
+ await expect(entry(page,'BETWEEN from friend')).toBeVisible({timeout:8000});
+ // Wait past a full-refresh cycle too: the order must never change.
+ await expect(entry(page,'MINE sent').locator('.chat-receipt')).toHaveText('Sent');
+ const order=async()=>(await page.locator('.chat-entry .chat-msg').allInnerTexts()).map(t=>t.trim());
+ expect(await order()).toEqual(['first from friend','BETWEEN from friend','MINE sent']);
+ await page.waitForTimeout(1500);
+ expect(await order()).toEqual(['first from friend','BETWEEN from friend','MINE sent']);
+});
