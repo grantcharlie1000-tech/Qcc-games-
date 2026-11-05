@@ -47,7 +47,7 @@ test.describe('Pool',()=>{
     await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
     await expect(root(page)).toHaveAttribute('data-phase','moving');await settle(page);
     const s=await poolState(page);
-    expect(s.breakShot).toBe(true);expect(s.hand).toBe('kitchen');expect(s.turn).not.toBe(before.turn);
+    expect(s.breakShot).toBe(true);expect(s.hand).toBe('kitchen');expect(s.turn).toBe(1-before.turn);
     expect(s.balls.every(b=>b.on)).toBe(true);
     expect(s.foul).toBe('Illegal break');
   });
