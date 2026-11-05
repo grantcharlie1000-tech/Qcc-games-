@@ -56,7 +56,7 @@ Baseline at start: `tsc --noEmit` clean; 210 unit files / 4,299 tests passing.
 | Animal Stack | `src/games/animal-stack` | 7 | B | Animal Tower Battle | Debug collider overlay reachable in prod (`?animal-colliders`, C key) | Gate to dev | Low | Haiku | Not started | |
 | Snake | `src/games/snake` | 7 | B | Google Snake | — (loop is gated; see rejected) | Speed/map options per reference (Batch 3) | Low | Opus | Not started | |
 | Slither.io | `src/games/neon-coil` | 8 | A | Slither.io | — | Polish only | Low | — | Not started | |
-| Minesweeper | `src/games/minesweeper` | 7 | B | Google Minesweeper | Ticker interval runs while paused | Stop ticker on pause | Low | Haiku | Not started | |
+| Minesweeper | `src/games/minesweeper` | 7 | B | Google Minesweeper | — (paused ticker: see rejected) | Polish only | Low | — | Not started | |
 | Solitaire | `src/games/solitaire` | 7 | B | Microsoft Solitaire Collection | Full re-render per change; drag ghost outside game root | Tap-to-auto-move check; contain ghost | Medium | Opus | Not started | |
 | Block Fill | `src/games/block-fill` | 7 | B | One Line / Flow-style path puzzles | Level regenerated many times per input (cheap: <0.1 ms) | Optional memo | Low | Haiku | Not started | |
 | Flow Free | `src/games/color-connect` | 8 | B | Flow Free (Big Duck) | Full SVG rebuild per move | Fine at current sizes | Low | — | Not started | |
@@ -67,7 +67,7 @@ Baseline at start: `tsc --noEmit` clean; 210 unit files / 4,299 tests passing.
 | Corn Clicker | `src/games/corn-clicker` | 8 | B | Cookie Clicker | 1,036-line `ui.ts`; untracked timers | Track timers for dispose | Low | Opus | Not started | |
 | Slipline | `src/games/slipline` | 7 | B | Arrows / “Unpuzzle” | Board regenerated (≈0.5 ms) several times per render and per input | Cached per level (batch 1) | Medium | Opus | Deployed | 7 |
 | Tetris | `src/games/quadfall` | 8 | B | Tetris Guideline | Very long single-line functions | Readability refactor only if touched | Low | — | Not started | |
-| Wordle | `src/games/fivefold` | 8 | B | NYT Wordle | `role=dialog aria-modal` without focus trap; thin tests | Focus trap; hard mode check vs reference | Medium | Haiku | Not started | |
+| Wordle | `src/games/fivefold` | 8 | B | NYT Wordle | Stats panel declared `aria-modal` but Tab walked out to the board and toolbar behind it; no backdrop dismissal; thin tests | Tab/Shift+Tab stay inside the stats dialog; clicking the dimmed backdrop closes it and returns focus (batch 2, e2e added). Escape deliberately left to the shell's pause-to-Study. Hard mode vs reference still open | Medium | Opus | Tested | 8 |
 | Claimline | `src/games/claimline` | 8 | B | Paper.io 2 | Renderer exposes no dispose | Add dispose | Low | Haiku | Not started | |
 | Quad Clash | `src/games/quad-clash` | 8 | B | Krunker.io | Heavy on phones; HUD overlaps title at 390 px | Check coarse-pointer quality default | Medium | Opus | Not started | |
 
@@ -77,6 +77,10 @@ Baseline at start: `tsc --noEmit` clean; 210 unit files / 4,299 tests passing.
 - **`accounts:sync:undefined` key** — `stateKey()` is only used after a session check (`client.ts:47-56`).
 - **Pac-Man wastes mobile space (scored 5)** — the classic portrait maze is width-limited at 390 px; it already fills the width.
 - **Block Fill level generation is a performance problem** — 32 backbite passes over ≤64 cells; well under 0.1 ms.
+
+## Rejected findings (batch 2)
+
+- **Minesweeper ticker while paused** — a 200 ms interval whose `syncTime` does nothing while paused; not worth a change.
 
 ## Batch log
 

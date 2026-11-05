@@ -5,3 +5,15 @@ test('keyboard, invalid guesses, daily win, sharing and persistence',async({page
 test('on-screen keyboard, practice restart and pause',async({page})=>{await page.goto('/#/game/fivefold');await gameAction(page,'Practice');await page.getByRole('button',{name:'A',exact:true}).click();await expect(page.locator('.ff-row').first()).toContainText('A');await gameAction(page,'New practice word');await expect(page.locator('.ff-row').first()).not.toContainText('A');await page.getByRole('button',{name:'A',exact:true}).click();await gameAction(page,'Restart game');await expect(page.locator('.ff-filled')).toHaveCount(0);await pauseGame(page);await page.keyboard.type('abc');await expect(page.locator('.ff-filled')).toHaveCount(0);});
 test('focused controls retain keyboard activation and key focus',async({page})=>{await page.goto('/#/game/fivefold');await openGameMenu(page);const practice=page.locator('#game-options').getByRole('button',{name:'Practice',exact:true});await practice.focus();await page.keyboard.press('Enter');await expect(page.locator('.game-hud')).toContainText('Practice');const a=page.getByRole('button',{name:'A',exact:true});await a.focus();await page.keyboard.press('Enter');await expect(page.locator('.ff-row').first()).toContainText('A');await expect(page.getByRole('button',{name:'A',exact:true})).toBeFocused();});
 test('changing rounds cancels the delayed result panel',async({page})=>{await page.clock.install({time:new Date('2026-10-27T01:00:00Z')});await page.goto('/#/game/fivefold');await expect(page.locator('.ff')).toBeVisible();await page.keyboard.type(ANSWERS[0]);await page.keyboard.press('Enter');await gameAction(page,'Practice');await page.clock.runFor(1500);await expect(page.getByRole('dialog',{name:'Statistics'})).toBeHidden();});
+test('the stats dialog keeps Tab inside and closes from its backdrop',async({page})=>{
+ await page.clock.install({time:new Date('2026-10-27T01:00:00Z')});await page.goto('/#/game/fivefold');await expect(page.locator('.ff')).toBeVisible();
+ await page.keyboard.type(ANSWERS[0]);await page.keyboard.press('Enter');
+ const dialog=page.getByRole('dialog',{name:'Statistics'});await expect(dialog).toBeVisible();
+ await expect(dialog.getByRole('button',{name:'Close stats'})).toBeFocused();
+ for(let i=0;i<8;i++){await page.keyboard.press('Tab');expect(await dialog.evaluate(el=>el.contains(document.activeElement))).toBe(true);}
+ for(let i=0;i<8;i++){await page.keyboard.press('Shift+Tab');expect(await dialog.evaluate(el=>el.contains(document.activeElement))).toBe(true);}
+ const box=(await page.locator('.ff-overlay').boundingBox())!,inner=(await dialog.boundingBox())!;
+ // A point on the dimmed backdrop, above the dialog.
+ await page.mouse.click(box.x+box.width/2,Math.max(box.y+2,(box.y+inner.y)/2));
+ await expect(dialog).toBeHidden();
+});
