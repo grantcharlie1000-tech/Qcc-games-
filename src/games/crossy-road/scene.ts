@@ -21,7 +21,7 @@ import {
 import { forEachMover, forEachTrain, laneVelocity, platformAt, railWarning } from './lanes';
 import {
   LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, VEHICLE_COLORS, beamGeometry, chickenGeometry, carGeometry, lampGeometry, lilyGeometry, logGeometry, rockGeometry,
-  signalGlowGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry, mergeVehicle, type VehicleParts,
+  signalGlowGeometry, signalHaloGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry, mergeVehicle, type VehicleParts,
 } from './models';
 
 // Camera ---------------------------------------------------------------------
@@ -69,14 +69,16 @@ export function focusXTarget(playerX: number, _halfWidth: number): number {
 const COLORS: number[] = [];
 const reg = (...hex: number[]): number => { const i = COLORS.length; COLORS.push(...hex); return i; };
 const C_WHITE = reg(0xffffff), C_GRASS = reg(0xcdd9ea, 0xc4d1e4), C_ROAD = reg(0x424856), C_WATER = reg(0x75e3fc), C_BALLAST = reg(0x343a48);
-const C_DASH = reg(0x6b6f83), C_SLEEPER = reg(0x563342), C_STEEL = reg(0x817ba3), C_FOAM = reg(0xfaffff), C_RIPPLE = reg(0xb8f1ff);
+const C_DASH = reg(0x6b6f83), C_SLEEPER = reg(0x7a5444), C_STEEL = reg(0x5b5d70), C_FOAM = reg(0xfaffff), C_RIPPLE = reg(0xb8f1ff);
 const C_WATER_EDGE = reg(0x5ac3fc);
 const C_DIRT = reg(0x633642);
 /** Winter: snow lying on tracks and the grass, green tufts poking through it, and falling flakes. */
-const C_SNOW = reg(0xe6eef8), C_TUFT = reg(0x7fb24a, 0x6a9e3c), C_FLAKE = reg(0xffffff);
+const C_SNOW = reg(0xe6eef8),
+  /** The track: a two-step gravel bed with speckles, tie plates, and polished rail heads. */
+  C_BED = reg(0x6a6774, 0x7d7a86), C_GRAVEL = reg(0x9c99a6, 0x4a4854), C_PLATE = reg(0x2f303a), C_RAIL_HEAD = reg(0xc3c6d6), C_TUFT = reg(0x7fb24a, 0x6a9e3c), C_FLAKE = reg(0xffffff);
 const C_TRUCK = reg(...TRUCK_COLORS);
 const C_VEHICLE = reg(...VEHICLE_COLORS), C_TRAIN = reg(...TRAIN_COLORS), C_LOG = reg(...LOG_COLORS);
-const C_LAMP_ON = reg(0xff2a2a), C_LAMP_OFF = reg(0x4a1a22), C_SPLASH = reg(0xffffff, 0xbfeaff), C_FLUFF = reg(0xfff4dc, 0xffffff);
+const C_LAMP_ON = reg(0xff2a2a), C_LAMP_OFF = reg(0x3a1218), C_SPLASH = reg(0xffffff, 0xbfeaff), C_FLUFF = reg(0xfff4dc, 0xffffff);
 /** Linear RGB triples, indexed by the constants above (times 3). */
 const PAL = (() => {
   const out = new Float32Array(COLORS.length * 3), c = new THREE.Color();
@@ -96,6 +98,11 @@ const CLEAR_COLOR = 0x2a3447;
 
 const WATER_Y = -0.12, LOG_TOP = 0.04, PAD_TOP = -0.072, LOG_BASE = -0.22, PAD_BASE = -0.125, TRAIN_Y = TRAIN_BASE_Y;
 const NOSE_LEN = 2, CARRIAGE_LEN = 2;
+/** Track layers (tiles): the gravel bed's two steps, sleeper thickness, rail centre lines from the track axis and the
+ * rail-head top, which sits just above TRAIN_BASE_Y so bogies ride on the heads. */
+const BED_LOW = 0.016, BED_TOP = 0.034, SLEEPER_H = 0.045, RAIL_GAUGE = 0.2, RAIL_TOP = 0.14;
+/** The signal's two lamps: offset either side of the post and their height (see signalPostGeometry). */
+const SIGNAL_LAMP_X = 0.2, SIGNAL_LAMP_Y = 1.06;
 /** x range, beyond the visible window, in which objects are still placed (tiles). */
 const MARGIN = 2;
 const MAX_ROWS = 64;
@@ -123,6 +130,7 @@ function hash(a: number, b: number): number {
 function surfaceAt(lane: Lane, x: number, t: number): number {
   if (lane.kind === 'river') return platformAt(lane, x, t) ? LOG_TOP : WATER_Y;
   if (lane.kind === 'lily') return platformAt(lane, x, t) ? PAD_TOP : WATER_Y;
+  if (lane.kind === 'rail') return BED_TOP;
   return 0;
 }
 
@@ -313,7 +321,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const train = trainGeometry(), cars = carStyles.map(style => merged(carGeometry(style))), trucks = [merged(truckGeometry(2)), merged(truckGeometry(3))];
 
   // Pools: ground details first, then objects (casters), then the effects drawn last.
-  const ground = pool(box, lit, 2600, false, true);
+  const ground = pool(box, lit, 6400, false, true);
   const trees = [0, 1, 2, 3].map(v => pool(geo(treeGeometry(v)), lit, 320, true));
   const rocks = [0, 1, 2].map(v => pool(geo(rockGeometry(v)), lit, 160, true));
   const carBody = cars.map(g => pool(g, painted, 160, true));
@@ -325,7 +333,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const lilies = pool(geo(lilyGeometry()), lit, 160);
   const posts = pool(geo(signalPostGeometry()), lit, 48, true);
   const lampGeo = geo(lampGeometry());
-  const lamps = pool(lampGeo, unlit, 48), glows = pool(geo(signalGlowGeometry()), glowMaterial, 48, false, false, 3);
+  const lamps = pool(lampGeo, unlit, 96), glows = pool(geo(signalGlowGeometry()), glowMaterial, 48, false, false, 3);
+  // Additive halos make a lit lamp bloom against the scene.
+  const haloMaterial = mat(new THREE.MeshBasicMaterial({vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, blending: THREE.AdditiveBlending}));
+  const halos = pool(geo(signalHaloGeometry()), haloMaterial, 48, false, false, 6);
   const fx = pool(box, unlit, 96);
   const flakes = pool(box, unlit, FLAKES_HIGH, false, false, 4);
 
@@ -535,14 +546,23 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     }
   }
 
-  function signal(x: number, on: boolean, lit: boolean): void {
-    if (x < winLo || x > winHi) return;
+  /** A level-crossing signal beside the track: two red lamps under a crossbuck. While a train is due they flash
+   * alternately (a wig-wag), each lit lamp swelling with a soft additive halo and a red spill on the ground; at
+   * rest both lamps sit dark. `phase` is 0 or 1 for which lamp is lit. */
+  function signal(x: number, on: boolean, phase: number): void {
+    if (x < winLo - 1 || x > winHi + 1) return;
     // Beside the track, on the near edge, so a passing train never clips it.
-    const z = curZ + ROW_DEPTH / 2 - 0.05;
+    const z = curZ + ROW_DEPTH / 2 - 0.05, face = curZ + ROW_DEPTH / 2 - 0.007;
     posts.put(x, 0, z, 1, 1, 1, 0, C_WHITE, 1);
-    const s = on ? (lit ? 1.1 : 1) + (colorBlind ? 0.2 : 0) : 0.85;
-    lamps.put(x, 1.27, curZ + ROW_DEPTH / 2 - 0.007, s, s, 0.05, 0, lit ? C_LAMP_ON : C_LAMP_OFF, 1);
-    if (lit) glows.put(x, 0.112, z, 1.05, 1, 1.05, 0, C_WHITE, 1);
+    for (let side = 0; side < 2; side++) {
+      const lx = x + (side === 0 ? -SIGNAL_LAMP_X : SIGNAL_LAMP_X), lit = on && side === phase;
+      const s = lit ? 1.08 + (colorBlind ? 0.25 : 0) : 0.9;
+      lamps.put(lx, SIGNAL_LAMP_Y, face, s, s, 0.05, 0, lit ? C_LAMP_ON : C_LAMP_OFF, 1);
+      if (lit) {
+        halos.put(lx, SIGNAL_LAMP_Y, face + 0.02, 1, 1, 1, 0, C_WHITE, 1);
+        glows.put(lx, 0.112, z, 0.95, 1, 0.95, 0, C_WHITE, 1);
+      }
+    }
   }
 
   function drawTrain(lane: RailLane, x0: number, x1: number): void {
@@ -564,21 +584,38 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     // Snowy shoulders either side of the track bed.
     band(C_SNOW, 0, 0.02, curZ - ROW_DEPTH / 2 + 0.17, 0.34);
     band(C_SNOW, 0, 0.02, curZ + ROW_DEPTH / 2 - 0.1, 0.2);
+    // A raised gravel bed in two steps, so its edges catch the light like a real ballast shoulder.
+    const tz = curZ + TRAFFIC_ROW_Z;
+    band(C_BED, 0, BED_LOW, tz, 0.96);
+    band(C_BED + 1, BED_LOW, BED_TOP - BED_LOW, tz, 0.8);
     for (let x = Math.ceil(winLo); x <= winHi; x++) {
-      ground.put(x, 0, curZ + TRAFFIC_ROW_Z, 0.11, 0.045, 0.70, 0, C_SLEEPER, 1);
-      // Snow settles on most sleepers and drifts between some of them.
       const h = hash(lane.row, x + 3000);
-      if ((h & 3) !== 0) ground.put(x, 0.045, curZ + TRAFFIC_ROW_Z + (((h >>> 2) & 7) - 3.5) * 0.02, 0.12, 0.016, 0.34 + ((h >>> 5) & 3) * 0.08, 0, C_SNOW, 1);
-      if (((h >>> 8) & 3) === 0) ground.put(x + 0.5, 0, curZ + TRAFFIC_ROW_Z + (((h >>> 10) & 7) - 3.5) * 0.04, 0.3 + ((h >>> 13) & 3) * 0.1, 0.03, 0.18, 0, C_SNOW, 1);
+      // Chunky sleepers every half tile on the bed, each with a dark tie plate under both rails.
+      for (const sx of [x - 0.25, x + 0.25]) {
+        ground.put(sx, BED_TOP, tz, 0.17, SLEEPER_H, 0.72, 0, C_SLEEPER, 1);
+        for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) ground.put(sx, BED_TOP + SLEEPER_H, tz + rz, 0.19, 0.008, 0.12, 0, C_PLATE, 1);
+      }
+      // Gravel speckles between the sleepers.
+      ground.put(x + 0.02 + ((h >>> 16) & 3) * 0.03, BED_TOP, tz + (((h >>> 18) & 15) / 15 - 0.5) * 0.6, 0.06, 0.012, 0.05, 0, C_GRAVEL + ((h >>> 22) & 1), 1);
+      ground.put(x + 0.5 + ((h >>> 23) & 3) * 0.02, BED_TOP, tz + (((h >>> 25) & 15) / 15 - 0.5) * 0.6, 0.05, 0.01, 0.06, 0, C_GRAVEL + ((h >>> 29) & 1), 1);
+      // Snow settles on most sleepers and drifts between some of them.
+      if ((h & 3) !== 0) ground.put(x + 0.25, BED_TOP + SLEEPER_H, tz + (((h >>> 2) & 7) - 3.5) * 0.02, 0.15, 0.016, 0.22 + ((h >>> 5) & 3) * 0.05, 0, C_SNOW, 1);
+      if (((h >>> 8) & 3) === 0) ground.put(x + 0.5, BED_TOP, tz + (((h >>> 10) & 7) - 3.5) * 0.04, 0.26 + ((h >>> 13) & 3) * 0.08, 0.025, 0.16, 0, C_SNOW, 1);
     }
-    band(C_STEEL, 0.045, 0.06, curZ + TRAFFIC_ROW_Z - 0.20, 0.07);
-    band(C_STEEL, 0.045, 0.06, curZ + TRAFFIC_ROW_Z + 0.20, 0.07);
+    // Each rail: a wide foot, a narrow web and a polished head standing on the plates.
+    const foot = BED_TOP + SLEEPER_H + 0.008;
+    for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) {
+      band(C_STEEL, foot, 0.008, tz + rz, 0.1);
+      band(C_STEEL, foot + 0.008, RAIL_TOP - foot - 0.03, tz + rz, 0.035);
+      band(C_RAIL_HEAD, RAIL_TOP - 0.022, 0.022, tz + rz, 0.075);
+    }
     curRail=lane;
     forEachTrain(lane, now, winLo, winHi, onTrain);
     // Signals repeat spatially; each warns about arrival at its own column.
-    for(let x=Math.ceil((winLo-.15)/8)*8+.15;x<=winHi;x+=8) {
-      const on=railWarning(lane,now,x), lit=on && (now*2.5)%1<.5;
-      signal(x,on,lit);
+    // The two lamps alternate about 1.4 times a second; reduced motion still alternates (a light change, not motion).
+    for(let x=Math.ceil((winLo-.15)/8)*8+.15;x<=winHi+1;x+=8) {
+      const on=railWarning(lane,now,x);
+      signal(x,on,(now*1.4)%1<.5?0:1);
     }
   }
 
