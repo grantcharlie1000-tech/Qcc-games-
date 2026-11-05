@@ -6,6 +6,7 @@
    - chat status glyphs: shape = kind (circle = text, diamond = photo),
      treatment = state (check = sent, ring + check = opened, solid = new,
      ring + dot = received), person = pending request;
+   - like: outline = not liked, outline + solid core = liked;
    - launcher tile marks on a 48 grid, tinted by currentColor.
    No brand marks: no bird, no X, no ghost, no copied product icons.
    Pure strings: nothing here touches the DOM at import time. */
@@ -37,6 +38,7 @@ const trail='<circle cx="18.9" cy="10" r="1.4" fill="currentColor" stroke="none"
 /* Social mark: an orbit. A centre dot, an open ring and one satellite in the
    ring's gap at the upper right: you, and the people around you. */
 const orbit='<path d="M19.73 9.93A8 8 0 1 1 14.07 4.27"/><circle cx="17.66" cy="6.34" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="2.75" fill="currentColor" stroke="none"/>';
+const heartCore='M12 16s-3.75-2.3-3.75-5A2.125 2.125 0 0 1 12 9.7a2.125 2.125 0 0 1 3.75 1.3c0 2.7-3.75 5-3.75 5z';
 const heart='M12 19.5s-7.5-4.6-7.5-10A4.25 4.25 0 0 1 12 6.9a4.25 4.25 0 0 1 7.5 2.6c0 5.4-7.5 10-7.5 10z';
 const pin='M9 3.5h6l-1 5 3.5 3.5v1.5h-11V12L10 8.5z';
 
@@ -82,7 +84,7 @@ settings:'<path d="M4 7h9M18 7h2M4 17h2M11 17h9"/><circle cx="15.5" cy="7" r="2.
 compose:'<path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
 reply:'<path d="M9.5 7.5 4.5 12l5 4.5"/><path d="M5 12h8.5a6 6 0 0 1 6 6v1"/>',
 like:`<path d="${heart}"/>`,
-'like-filled':`<path d="${heart}" fill="currentColor"/>`,
+'like-filled':`<path d="${heart}"/><path d="${heartCore}" fill="currentColor" stroke="none"/>`,
 share:'<circle cx="17.5" cy="5.5" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/><path d="m8.7 10.7 6.6-3.9M8.7 13.3l6.6 3.9"/>',
 more:'<circle cx="5.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.4" fill="currentColor" stroke="none"/>',
 photo:'<rect x="3.5" y="5" width="17" height="14" rx="3"/><circle cx="9" cy="10" r="1.75"/><path d="m4 17.5 5-4.5 3.5 3 2.5-2 5 4"/>',

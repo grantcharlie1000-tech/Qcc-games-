@@ -16,6 +16,11 @@ test.beforeAll(async()=>{
  const store=createMemoryStore();const db={query:(text:string,values?:unknown[])=>pool.query(text,values),connect:()=>pool.connect()} as never;
  accounts=createAccountsHandler(pool);chat=createChatHandler(db,store);social=createSocialHandler(db,store);media=createMediaHandler(db,store);
 });
+// The dev database (PGlite behind pg-gateway) runs every connection in one shared session, so a handler call
+// still running from the previous test's closed page can interleave with this test's signup transaction and
+// make it fail (503). Before each test, wait for every backend call the previous one started to finish.
+const inFlight=new Set<Promise<Response>>();
+test.beforeEach(async()=>{await Promise.allSettled([...inFlight]);});
 test.afterAll(async()=>{await pool?.end();await database.stop();});
 test.use({viewport:{width:390,height:844}});
 
@@ -33,7 +38,9 @@ async function connect(context:BrowserContext,options:{pollScale?:number}={}){
    if(url.includes('action=messages'))counts.messages++;else if(url.includes('action=list'))counts.list++;else if(url.includes('action=open_snap'))counts.open_snap++;
   }
   const body=['POST','PUT'].includes(req.method())?(name==='media'?req.postDataBuffer()??undefined:req.postData()??undefined):undefined;
-  const result=await handle(new Request(req.url(),{method:req.method(),headers:req.headers(),body:body as BodyInit|undefined}));
+  const pending=handle(new Request(req.url(),{method:req.method(),headers:req.headers(),body:body as BodyInit|undefined}));
+  inFlight.add(pending);void pending.finally(()=>inFlight.delete(pending)).catch(()=>{});
+  const result=await pending;
   await route.fulfill({status:result.status,headers:Object.fromEntries(result.headers),body:Buffer.from(await result.arrayBuffer())});
  });
 }
@@ -107,7 +114,7 @@ test('friend request, accept, exchange messages in two browser contexts',async({
  await expect(page.locator('.chat-intro')).toContainText("Messages disappear 24 hours after they're viewed. Not end-to-end encrypted.");
  await send(page,'Kia ora from A');
  await expect(entry(page,'Kia ora from A')).toBeVisible();
- await expect(entry(page,'Kia ora from A').locator('.chat-receipt')).toHaveText('Sent');
+ await expect(entry(page,'Kia ora from A').locator('.chat-receipt')).toHaveText('Not seen yet');
 
  // B's list shows it as new, with the unread badge, before B opens the chat.
  await expect(rowB).toContainText('New message');
@@ -116,8 +123,8 @@ test('friend request, accept, exchange messages in two browser contexts',async({
  await rowB.click();
  await expect(entry(pb,'Kia ora from A')).toBeVisible();
  await expect(pb.locator('.chat-group-name[data-who=friend]').first()).toHaveText(a.name);
- // A's receipt flips to Opened once B has viewed it (polling).
- await expect(entry(page,'Kia ora from A').locator('.chat-receipt')).toHaveText('Opened');
+ // A's receipt flips to "They've seen it" once B has viewed it (polling).
+ await expect(entry(page,'Kia ora from A').locator('.chat-receipt')).toHaveText("They've seen it");
 
  // B replies; A receives it by polling while the conversation is open.
  await send(pb,'Kia ora from B');
@@ -138,11 +145,11 @@ test('snap opens once',async({page,browser,context})=>{
  const sendPhoto=sheet.getByRole('button',{name:'Send photo'});
  await expect(sendPhoto).toBeEnabled();await sendPhoto.click();
  await expect(sheet).not.toBeVisible();
- await expect(page.locator('.chat-snap').filter({hasText:'Photo · Sent'})).toBeVisible();
+ await expect(page.locator('.chat-snap').filter({hasText:'Photo · Not seen yet'})).toBeVisible();
 
  const other=await second(browser,b.name,`#/chat/with/${a.name}`);const pb=other.page;
- const tile=pb.getByRole('button',{name:`Photo from ${a.name}. View once. Opens now and is deleted after you close it.`});
- await expect(tile).toBeVisible();await expect(tile).toContainText('Tap to view');
+ const tile=pb.getByRole('button',{name:`Photo from ${a.name}. Open once. It's deleted when you close it.`});
+ await expect(tile).toBeVisible();await expect(tile).toContainText('Photo · Open once');await expect(tile).toContainText('Deleted when you close it');await expect(tile).not.toContainText('Tap to view');
  const id=await pb.locator('.chat-entry[data-kind=snap]').getAttribute('data-id');
  counts.open_snap=0;
  await tile.click();
@@ -157,10 +164,10 @@ test('snap opens once',async({page,browser,context})=>{
  await expect(viewer).toHaveCount(0);
  expect(counts.open_snap).toBe(1);
  // Opened: the tile is gone, the thread and the sender both say so, and the UI offers no second attempt.
- await expect(pb.locator('.chat-snap').filter({hasText:'Photo opened'})).toBeVisible();
+ await expect(pb.locator('.chat-snap').filter({hasText:"Photo · You've seen it"})).toBeVisible();
  await expect(pb.locator('button.chat-snap')).toHaveCount(0);
- await expect(pb.locator('.chat-snap').filter({hasText:'Photo opened'})).toBeVisible();
- await expect(page.locator('.chat-snap').filter({hasText:'Photo · Opened'})).toBeVisible();
+ await expect(pb.locator('.chat-snap').filter({hasText:"Photo · You've seen it"})).toBeVisible();
+ await expect(page.locator('.chat-snap').filter({hasText:"Photo · They've seen it"})).toBeVisible();
  expect(counts.open_snap).toBe(1);
  // The API agrees: a second open is 410.
  const again=await call(chat,'open_snap',b.token,{id});expect(again.status).toBe(410);
@@ -187,14 +194,15 @@ test('snap viewer closes on Escape and after the countdown',async({page,context}
  await expect(viewer).toHaveCount(0);
  await expect(page.locator('.chat-view')).toBeVisible();
  await expect(tiles).toHaveCount(1);
- // The second one closes itself after SNAP_VIEW_SECONDS and the ring and seconds run while it is open.
+ // The second one closes itself after SNAP_VIEW_SECONDS and the dots and seconds run while it is open.
  await tiles.first().click();
  await expect(viewer.locator('img.chat-snap-img')).toBeVisible();
+ await expect(viewer.locator('.chat-snap-dot')).toHaveCount(10);await expect(viewer.locator('.chat-snap-ring')).toHaveCount(0);
  await expect(viewer.locator('.chat-snap-secs')).toHaveText(/^(10|9|8)s$/);
  await expect(viewer.locator('.chat-snap-secs')).toHaveText(/^[3-6]s$/,{timeout:9000});
  await expect(viewer).toHaveCount(0,{timeout:12000});
  await expect(tiles).toHaveCount(0);
- await expect(page.locator('.chat-snap').filter({hasText:'Photo opened'})).toHaveCount(2);
+ await expect(page.locator('.chat-snap').filter({hasText:"Photo · You've seen it"})).toHaveCount(2);
 });
 
 test('save keeps message, unsend removes for both',async({page,browser,context})=>{
@@ -210,8 +218,8 @@ test('save keeps message, unsend removes for both',async({page,browser,context})
  const menu=pb.getByRole('menu',{name:'Message options'});
  await expect(menu.getByRole('menuitem',{name:'Report message'})).toBeVisible();
  await expect(menu.getByRole('menuitem',{name:'Unsend'})).toHaveCount(0);
- await menu.getByRole('menuitem',{name:'Save in chat'}).click();
- await expect(entry(pb,'keep me').locator('.chat-saved')).toHaveText('Saved');
+ await menu.getByRole('menuitem',{name:'Keep message'}).click();
+ await expect(entry(pb,'keep me').locator('.chat-saved')).toHaveText('Kept');await expect(pb.locator('#announcer')).toHaveText('Message kept.');
  await expect(entry(pb,'keep me')).toHaveClass(/is-saved/);
  // A sees the saved state too (it is the same message).
  await expect(entry(page,'keep me').locator('.chat-saved')).toBeVisible();
@@ -226,8 +234,8 @@ test('save keeps message, unsend removes for both',async({page,browser,context})
  // Server state: the saved message survives, the unsent one is gone.
  const server=await (await call(chat,`messages&with=${b.name}`,a.token)).json() as {messages:{body:string;saved:boolean}[]};
  expect(server.messages.map(m=>m.body)).toEqual(['keep me']);expect(server.messages[0]!.saved).toBe(true);
- // Unsave goes back.
- await menuOn(pb,'keep me');await pb.getByRole('menuitem',{name:'Unsave'}).click();
+ // Let it disappear goes back.
+ await menuOn(pb,'keep me');await pb.getByRole('menuitem',{name:'Let it disappear'}).click();
  await expect(entry(pb,'keep me').locator('.chat-saved')).toHaveCount(0);
  await other.context.close();
 });
@@ -355,7 +363,7 @@ test('retention change shows system line',async({page,browser,context})=>{
  const info=page.locator('#chat-info');await expect(info).toBeVisible();
  await expect(info.getByRole('heading',{name:b.name})).toBeVisible();
  await expect(info).toContainText('Not end-to-end encrypted. QCC moderators can read messages that are reported.');
- await expect(info).toContainText('Unopened messages and photos are deleted after 30 days. Saved messages stay up to 90 days.');
+ await expect(info).toContainText('Unopened messages and photos are deleted after 30 days. Kept messages stay up to 90 days.');
  const group=info.getByRole('radiogroup',{name:'Messages disappear'});
  await expect(group.getByRole('radio',{name:'24 hours after viewing'})).toBeChecked();
  await group.locator('label',{hasText:'7 days after sending'}).click();
@@ -578,7 +586,7 @@ test('a friend message that lands during your own send stays in server order',as
  await send(page,'MINE sent');
  await expect(entry(page,'BETWEEN from friend')).toBeVisible({timeout:8000});
  // Wait past a full-refresh cycle too: the order must never change.
- await expect(entry(page,'MINE sent').locator('.chat-receipt')).toHaveText('Sent');
+ await expect(entry(page,'MINE sent').locator('.chat-receipt')).toHaveText('Not seen yet');
  const order=async()=>(await page.locator('.chat-entry .chat-msg').allInnerTexts()).map(t=>t.trim());
  expect(await order()).toEqual(['first from friend','BETWEEN from friend','MINE sent']);
  await page.waitForTimeout(1500);

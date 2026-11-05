@@ -8,13 +8,15 @@ import type {ChatContext} from './context';
 
 /** DESIGN 6.7: a UI constant, not a server rule. */
 export const SNAP_VIEW_SECONDS=10;
-const RING=150.8;
+/** One dot per second. They fade from the right end, so the lit run shrinks leftwards. */
+const DOT_STEP=8,DOT_R=2.5;
+const DOTS=Array.from({length:SNAP_VIEW_SECONDS},(_,i)=>`<circle class="chat-snap-dot" cx="${DOT_R+DOT_STEP*i}" cy="${DOT_R}" r="${DOT_R}"/>`).join('');
 const GRACE_MS=350;
 export const SNAP_FAILED="This photo can't be opened. It may have expired.";
 
 export interface SnapViewerOptions {
  ctx:ChatContext;messageId:string;friend:Friend;sentAt:string;
- /** The server has consumed the photo (or says it is already gone): the row must read "Opened" and never offer it again. */
+ /** The server has consumed the photo (or says it is already gone): the row must read "They've seen it" and never offer it again. */
  onOpened:()=>void;
  /** The viewer is closed and everything is released. */
  onClosed:()=>void;
@@ -31,11 +33,11 @@ export function openSnapViewer(options:SnapViewerOptions):SnapViewer {
  const dialog=document.createElement('dialog');
  dialog.id='chat-snap';dialog.className='apps-sheet chat-snap-dialog';dialog.setAttribute('aria-label',`Photo from ${friend.displayName}`);
  const when=relativeTime(options.sentAt);
- dialog.innerHTML=`<div class="chat-snap-top"><div class="chat-snap-who"><span class="chat-snap-avatar"></span><span class="chat-snap-name"></span></div><div class="chat-snap-timer"><span class="chat-snap-secs" aria-hidden="true"></span><span class="chat-snap-closewrap"><svg class="chat-snap-ring" width="52" height="52" viewBox="0 0 52 52" aria-hidden="true" focusable="false"><circle class="chat-snap-track" cx="26" cy="26" r="24" fill="none" stroke="rgb(255 255 255 / .22)" stroke-width="2.5"/><circle class="chat-snap-progress" cx="26" cy="26" r="24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="${RING}" stroke-dashoffset="0" transform="rotate(-90 26 26)"/></svg><button type="button" class="chat-snap-close" aria-label="Close photo" autofocus>${appIcon('close')}</button></span></div></div><div class="chat-snap-stage"><p class="chat-snap-loading" role="status">Opening photo…</p></div><p class="chat-snap-note">This photo is deleted when you close it. Screenshots can't be blocked on the web.</p><span class="sr-only chat-snap-count" role="status"></span>`;
+ dialog.innerHTML=`<div class="chat-snap-top"><div class="chat-snap-who"><span class="chat-snap-avatar"></span><span class="chat-snap-name"></span></div><div class="chat-snap-timer"><svg class="chat-snap-dots" viewBox="0 0 ${DOT_STEP*SNAP_VIEW_SECONDS-(DOT_STEP-2*DOT_R)} ${2*DOT_R}" width="77" height="5" aria-hidden="true" focusable="false">${DOTS}</svg><span class="chat-snap-secs" aria-hidden="true"></span><button type="button" class="chat-snap-close" aria-label="Close photo" autofocus>${appIcon('close')}</button></div></div><div class="chat-snap-stage"><p class="chat-snap-loading" role="status">Opening photo…</p></div><p class="chat-snap-note">This photo is deleted when you close it. Screenshots can't be blocked on the web.</p><span class="sr-only chat-snap-count" role="status"></span>`;
  dialog.querySelector('.chat-snap-avatar')!.append(avatar(friend,28));
  dialog.querySelector('.chat-snap-name')!.textContent=when?`${friend.displayName} · ${when}`:friend.displayName;
  const q=<T extends Element>(selector:string)=>dialog.querySelector<T>(selector)!;
- const stage=q<HTMLElement>('.chat-snap-stage'),secs=q<HTMLElement>('.chat-snap-secs'),progress=q<SVGCircleElement>('.chat-snap-progress'),count=q<HTMLElement>('.chat-snap-count'),closeButton=q<HTMLButtonElement>('.chat-snap-close');
+ const stage=q<HTMLElement>('.chat-snap-stage'),secs=q<HTMLElement>('.chat-snap-secs'),dotEls=[...dialog.querySelectorAll<SVGCircleElement>('.chat-snap-dot')],count=q<HTMLElement>('.chat-snap-count'),closeButton=q<HTMLButtonElement>('.chat-snap-close');
  const controller=new AbortController();
  let state:'loading'|'showing'|'failed'|'closing'|'closed'='loading';
  let url:string|null=null,image:HTMLImageElement|null=null,tick:number|undefined,shownAt=0,deadline=0,consumed=false;
@@ -74,20 +76,21 @@ export function openSnapViewer(options:SnapViewerOptions):SnapViewer {
  stage.addEventListener('click',()=>{if(state==='showing'&&performance.now()-shownAt>GRACE_MS)close();});
  stage.addEventListener('contextmenu',event=>event.preventDefault());
 
+ /** Dims the last `spent` dots. Reduced motion steps it once a second (the shell zeroes the transition). */
+ const paintDots=(spent:number):void=>dotEls.forEach((d,i)=>d.classList.toggle('is-spent',i>=dotEls.length-spent));
  function startCountdown():void {
   shownAt=performance.now();deadline=shownAt+SNAP_VIEW_SECONDS*1000;
   secs.textContent=`${SNAP_VIEW_SECONDS}s`;count.textContent=`${SNAP_VIEW_SECONDS} seconds`;
   const smooth=!ctx.reduced();
   if(smooth){
-   progress.style.transition=`stroke-dashoffset ${SNAP_VIEW_SECONDS*1000}ms linear`;
-   requestAnimationFrame(()=>requestAnimationFrame(()=>{if(state==='showing')progress.style.strokeDashoffset=String(RING);}));
+   paintDots(1); // the first second's dot starts its 1 s fade now
   }
   let last=SNAP_VIEW_SECONDS;
   tick=window.setInterval(()=>{
    const left=Math.max(0,Math.ceil((deadline-performance.now())/1000));
    if(left!==last){
     last=left;secs.textContent=`${left}s`;
-    if(!smooth)progress.style.strokeDashoffset=String(RING*(1-left/SNAP_VIEW_SECONDS));
+    paintDots(smooth?Math.min(SNAP_VIEW_SECONDS,SNAP_VIEW_SECONDS-left+1):SNAP_VIEW_SECONDS-left);
     if(left===3)count.textContent='3 seconds left';
    }
    if(left<=0)close();
@@ -102,7 +105,7 @@ export function openSnapViewer(options:SnapViewerOptions):SnapViewer {
   const p=document.createElement('p');p.setAttribute('role','alert');p.textContent=SNAP_FAILED;
   const button=document.createElement('button');button.type='button';button.className='ui-btn secondary apps-pill';button.textContent='Close';button.addEventListener('click',close);
   box.append(p,button);stage.append(box);
-  secs.textContent='';progress.style.strokeDashoffset='0';
+  secs.textContent='';paintDots(0);
  }
  async function load():Promise<void> {
   let blob:Blob;
@@ -112,7 +115,7 @@ export function openSnapViewer(options:SnapViewerOptions):SnapViewer {
    if(error instanceof ApiError&&error.status===401){ctx.signedOut();close();return;}
    fail(error instanceof ApiError&&error.status===410);return;
   }
-  // The server has deleted its copy by now. Whatever happens next, the row is Opened.
+  // The server has deleted its copy by now. Whatever happens next, the row reads as seen.
   markOpened();
   if(state!=='loading')return;
   url=URL.createObjectURL(blob);

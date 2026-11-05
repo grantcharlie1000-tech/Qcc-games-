@@ -19,7 +19,7 @@ system. Neither connects to, imports from or proxies any third-party account.
 | --- | --- | --- |
 | Identity | Existing QCC accounts (stable `accounts.id`, public username). Social profile adds a display name, bio, avatar and banner | — |
 | Social | Text posts (≤280 chars) with up to 4 photos, threaded replies, likes, follows, Following feed, Discover feed, user and post search, profiles, activity list, report, block, delete post, delete all my data | Video posts, short-video rail, stories, reposts, quote posts, bookmarks |
-| Chat | Mutual-friend requests, 1:1 text, view-once photo snaps, unread counts, polling, per-chat retention, save-in-chat, unsend, report, block, delete conversation | Groups, reactions, typing indicators, read receipts beyond "Opened", push, realtime sockets, video snaps |
+| Chat | Mutual-friend requests, 1:1 text, view-once photo snaps, unread counts, polling, per-chat retention, save-in-chat, unsend, report, block, delete conversation | Groups, reactions, typing indicators, read receipts beyond "They've seen it", push, realtime sockets, video snaps |
 | Media | Shared photo pipeline: browser pre-shrink, server-authoritative Sharp re-encode to WebP, thumbnails, signature sniffing, bomb limits, metadata stripping, quotas, pending-upload purge | FFmpeg video worker and queue (design below; **not built**) |
 | Shell | Lazy `#/social` and `#/chat` routes and one compact **Apps** launcher in the glass tab bar | — |
 
@@ -46,7 +46,7 @@ system. Neither connects to, imports from or proxies any third-party account.
   - Mode **"7 days"**: messages are deleted **7 days after they were sent**, whether viewed or not.
   - Either friend can change the mode; a system line records the change in the chat.
   - **Unviewed** messages and **unopened snaps** are deleted **30 days** after sending.
-  - **Save in chat** (press-and-hold or the message menu) keeps a text message until it is unsaved, **up to 90 days**. Snaps cannot be saved.
+  - **Keep message** (press-and-hold or the message menu) keeps a text message until it is unsaved, **up to 90 days**. Snaps cannot be saved.
   - **Unsend**: the sender can delete any of their messages for both people at any time.
   - **Delete conversation** removes every message in the conversation for both people, together with snap images not yet opened.
   - The server purges expired rows on every Chat request (bounded batches). The Netlify adapter also runs as a scheduled function each hour.
