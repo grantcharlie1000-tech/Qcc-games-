@@ -1,4 +1,6 @@
-import {test,expect}from'../../fixtures';import{readFileSync}from'node:fs';
+import {test,expect,originalTheme}from'../../fixtures';
+// These scans compare against the original flat sky colour; tall-framing-festive.spec.ts covers the Christmas skin.
+test.beforeEach(async({context})=>originalTheme(context));import{readFileSync}from'node:fs';
 const saved=JSON.parse(readFileSync(new URL('./tall-run.json',import.meta.url),'utf8'));
 for(const viewport of [{width:390,height:844},{width:844,height:390}])test(`real tall saved stack clears HUD through rotations and resize ${viewport.width}×${viewport.height}`,async({page})=>{
  await page.setViewportSize(viewport);await page.goto('/');await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:animal-stack',JSON.stringify({version:1,data,updated:Date.now()})),saved);await page.goto('/#/game/animal-stack');const root=page.locator('.animal-stack'),canvas=root.locator('canvas');await expect(root).toHaveAttribute('data-balanced','5');await expect(root).toHaveAttribute('data-ready','true');

@@ -3,6 +3,11 @@ import {FruitEngine,TIERS,WIDTH,HEIGHT,LEFT,RIGHT,FLOOR,DANGER,STEP} from './eng
 import {drawFruit} from './art';
 import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import './style.css';
+import './christmas.css';
+import {christmas} from '../../festive/festive';
+import {ornamentName,ornamentColor,festiveBackdrop,drawFestiveRim} from './christmas-art';
+// Display names follow the active theme; rules and saves only ever use tier numbers.
+const tierName=(tier:number)=>christmas()?ornamentName(tier):TIERS[tier].name;
 interface Spark {x:number;y:number;vx:number;vy:number;life:number;color:string}
 const module:GameModule={
  id:'fruit-merge',title:'Suika Game',cover:'game-art/fruit-merge/cover.svg',
@@ -23,11 +28,11 @@ const module:GameModule={
   const observer=new ResizeObserver(resize);observer.observe(available);observer.observe(banner);
   const report=()=>{
    if(previousScore!==physics.score){previousScore=physics.score;context.setScore(physics.score);}
-   if(previousNext!==physics.next){previousNext=physics.next;nextLabel.textContent=TIERS[physics.next].name;pc.clearRect(0,0,104,104);drawFruit(pc,physics.next,52,57,35,0,true);}
+   if(previousNext!==physics.next){previousNext=physics.next;nextLabel.textContent=tierName(physics.next);pc.clearRect(0,0,104,104);drawFruit(pc,physics.next,52,57,35,0,true);}
    if(previousCount!==physics.fruits.size){previousCount=physics.fruits.size;count.textContent=`${physics.fruits.size} fruit${physics.fruits.size===1?'':'s'} in basket`;}
    let highest=0,danger=0;for(const f of physics.fruits.values()){highest=Math.max(highest,f.tier);danger=Math.max(danger,f.danger);}
-   if(previousLevel!==highest){previousLevel=highest;context.setLevel(TIERS[highest].name);}
-   const status=physics.lost?'Basket full':danger>200?'Pile too high':TIERS[physics.current].name;
+   if(previousLevel!==highest){previousLevel=highest;context.setLevel(tierName(highest));}
+   const status=physics.lost?'Basket full':danger>200?'Pile too high':tierName(physics.current);
    if(previousStatus!==status){previousStatus=status;context.setStatus(status);}
    banner.textContent=physics.lost?'Basket full':danger>200?`Above line · ${Math.max(0,(2000-danger)/1000).toFixed(1)}s`:'';
    canvas.setAttribute('aria-busy',String(!physics.ready&&!physics.lost));
@@ -35,27 +40,31 @@ const module:GameModule={
    if(physics.lost&&!didLose){didLose=true;context.sound('lose');context.announce(`Basket full. Final score ${physics.score}.`);context.save(physics.snapshot());}
   };
   physics.onMerge=m=>{
-   context.sound('success');context.announce(`${TIERS[m.tier].name}! ${m.points} points${m.combo>1?`, combo ${m.combo}`:''}.`);dirty=true;
-   if(!context.settings.reducedMotion){flash={x:m.x,y:m.y-20,text:m.combo>1?`+${m.points} ×${Math.min(4,m.combo)}`:`+${m.points}`,life:750};for(let n=0;n<10;n++){const angle=n*Math.PI/5;sparks.push({x:m.x,y:m.y,vx:Math.cos(angle)*(1.2+n%3),vy:Math.sin(angle)*2-1,life:450,color:TIERS[m.tier].color});}if(sparks.length>100)sparks=sparks.slice(-100);}
+   context.sound('success');context.announce(`${tierName(m.tier)}! ${m.points} points${m.combo>1?`, combo ${m.combo}`:''}.`);dirty=true;
+   if(!context.settings.reducedMotion){flash={x:m.x,y:m.y-20,text:m.combo>1?`+${m.points} ×${Math.min(4,m.combo)}`:`+${m.points}`,life:750};for(let n=0;n<10;n++){const angle=n*Math.PI/5;sparks.push({x:m.x,y:m.y,vx:Math.cos(angle)*(1.2+n%3),vy:Math.sin(angle)*2-1,life:450,color:christmas()?ornamentColor(m.tier):TIERS[m.tier].color});}if(sparks.length>100)sparks=sparks.slice(-100);}
   };
   function draw(){
    const ratio=Math.min(window.devicePixelRatio||1,2);const w=Math.round(WIDTH*ratio),h=Math.round(HEIGHT*ratio);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}c.setTransform(ratio,0,0,ratio,0,0);c.clearRect(0,0,WIDTH,HEIGHT);
+   const xmas=christmas();
+   if(xmas)c.drawImage(festiveBackdrop(WIDTH,HEIGHT,ratio),0,0,WIDTH,HEIGHT);else{
    c.fillStyle='#fff2ca';c.fillRect(0,0,WIDTH,HEIGHT);
    c.fillStyle='#eed6a842';for(let y=90;y<HEIGHT;y+=32)for(let x=0;x<WIDTH;x+=32)if((x/32+(y-90)/32)%2===0){c.fillRect(x,y,32,32);}
    // The basket is quiet and light so fruit silhouettes carry the scene.
    c.fillStyle='#fffae9';c.strokeStyle='#cba47b';c.lineWidth=5;c.beginPath();c.roundRect(12,96,336,402,[10,10,23,23]);c.fill();c.stroke();
+   }
    c.strokeStyle=[...physics.fruits.values()].some(f=>f.danger>200)?'#db594d':'#d5a08b';c.lineWidth=1.5;c.setLineDash([5,5]);c.beginPath();c.moveTo(LEFT+3,DANGER);c.lineTo(RIGHT-3,DANGER);c.stroke();c.setLineDash([]);
    c.fillStyle='#b68d75';c.font='bold 8px sans-serif';c.textAlign='right';
    if(!physics.lost){
-    const r=TIERS[physics.current].r;c.strokeStyle='#c49c7170';c.setLineDash([3,6]);c.lineWidth=1.5;c.beginPath();c.moveTo(physics.aim,62+r);c.lineTo(physics.aim,FLOOR-3);c.stroke();c.setLineDash([]);
-    c.fillStyle='#b7926330';c.beginPath();c.ellipse(physics.aim,FLOOR-4,r*.7,4,0,0,Math.PI*2);c.fill();
+    const r=TIERS[physics.current].r;c.strokeStyle=xmas?'#7fa3c290':'#c49c7170';c.setLineDash([3,6]);c.lineWidth=1.5;c.beginPath();c.moveTo(physics.aim,62+r);c.lineTo(physics.aim,FLOOR-3);c.stroke();c.setLineDash([]);
+    c.fillStyle=xmas?'#7f9fb840':'#b7926330';c.beginPath();c.ellipse(physics.aim,FLOOR-4,r*.7,4,0,0,Math.PI*2);c.fill();
    }
    for(const f of physics.fruits.values())drawFruit(c,f.tier,f.body.position.x,f.body.position.y,TIERS[f.tier].r,f.body.angle,context.settings.colorBlind);
-   c.strokeStyle='#bc8a5b';c.lineWidth=8;c.lineCap='round';c.beginPath();c.moveTo(17,FLOOR+7);c.quadraticCurveTo(180,FLOOR+15,343,FLOOR+7);c.stroke();c.strokeStyle='#e8c599';c.lineWidth=3;c.beginPath();c.moveTo(20,FLOOR+5);c.lineTo(340,FLOOR+5);c.stroke();
+   if(xmas)drawFestiveRim(c,FLOOR);else{
+   c.strokeStyle='#bc8a5b';c.lineWidth=8;c.lineCap='round';c.beginPath();c.moveTo(17,FLOOR+7);c.quadraticCurveTo(180,FLOOR+15,343,FLOOR+7);c.stroke();c.strokeStyle='#e8c599';c.lineWidth=3;c.beginPath();c.moveTo(20,FLOOR+5);c.lineTo(340,FLOOR+5);c.stroke();}
    if(!physics.lost){c.globalAlpha=physics.ready?1:.45;drawFruit(c,physics.current,physics.aim,58,TIERS[physics.current].r,0,context.settings.colorBlind);c.globalAlpha=1;}
    if(context.settings.reducedMotion){sparks=[];flash=undefined;}
    for(const p of sparks){c.globalAlpha=p.life/450;c.fillStyle=p.color;c.beginPath();c.arc(p.x,p.y,2.6,0,Math.PI*2);c.fill();}c.globalAlpha=1;
-   if(flash){c.globalAlpha=Math.min(1,flash.life/200);c.font='bold 21px sans-serif';c.textAlign='center';c.strokeStyle='#fff9e8';c.lineWidth=5;c.strokeText(flash.text,flash.x,flash.y);c.fillStyle='#975c39';c.fillText(flash.text,flash.x,flash.y);c.globalAlpha=1;}
+   if(flash){c.globalAlpha=Math.min(1,flash.life/200);c.font='bold 21px sans-serif';c.textAlign='center';c.strokeStyle='#fff9e8';c.lineWidth=5;c.strokeText(flash.text,flash.x,flash.y);c.fillStyle=xmas?'#a81b2d':'#975c39';c.fillText(flash.text,flash.x,flash.y);c.globalAlpha=1;}
    notifyGlassFrame(canvas);
   }
   // The shared glass lens samples each drawn frame; repaint redraws the current state only.

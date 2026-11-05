@@ -1,0 +1,21 @@
+/* Corn Clicker, Christmas: evergreen panels in candy-red frames, lights over the cob and the farm,
+   snowflakes in the background. Colours only; no layout, sizes or behaviour change. */
+:root[data-festive="christmas"] .cc-root{--cc-bg:#0d2117;--cc-panel:#15301f;--cc-panel2:#1c3b27;--cc-raise:#264a31;--cc-line:#3c6a47;--cc-muted:#cfd8c2;background:var(--xmas-snowflakes) center top/180px 180px,var(--cc-bg)}
+:root[data-festive="christmas"] .cc-col{border-color:#a81b2d;box-shadow:inset 0 0 0 2px #5a0d18,0 0 0 2px #2a060c}
+:root[data-festive="christmas"] .cc-left{background:var(--xmas-holly) left 4px top 4px/44px 44px no-repeat,var(--xmas-holly) right 4px top 4px/44px 44px no-repeat,radial-gradient(120% 70% at 50% 55%,#2e5a39 0%,var(--cc-panel) 70%)}
+/* A string of lights hangs over the cob and along the top of the farm scene. Decorative and inert. */
+:root[data-festive="christmas"] .cc-cob-stage::before,:root[data-festive="christmas"] .cc-scene::after{content:'';position:absolute;left:0;right:0;top:0;height:22px;pointer-events:none;background:var(--xmas-light-strand) repeat-x center top/146px 22px;filter:drop-shadow(0 0 4px #ffd67859)}
+:root[data-festive="christmas"] .cc-cob-stage::before{z-index:1}
+:root[data-festive="christmas"] .cc-scene::after{z-index:2}
+:root[data-festive="christmas"] .cc-scene-empty{color:#173a2a;text-shadow:0 1px #fffc}
+:root[data-festive="christmas"] .cc-upg{background:linear-gradient(#2b5236,#1b3825)}
+:root[data-festive="christmas"] .cc-prod{background:linear-gradient(90deg,#24452e,#1a3524)}
+@media(hover:hover) and (pointer:fine){:root[data-festive="christmas"] .cc-prod:not(.cc-poor):not(.cc-mystery):hover{background:linear-gradient(90deg,#2f5a3b,#22432d)}}
+:root[data-festive="christmas"] .cc-lot-count{background:#122a1b}
+:root[data-festive="christmas"] .cc-toast{background:#0f2418f2}
+:root[data-festive="christmas"] .cc-toast-achievement{background:#3a0c14f2}
+:root[data-festive="christmas"] .cc-tooltip{background:#0c1d14f7}
+:root[data-festive="christmas"] .cc-code{background:#0a1a11}
+:root[data-festive="christmas"] .cc-seed[aria-pressed=true],:root[data-festive="christmas"] .cc-skin[aria-checked=true]{background:#5a4a20}
+:root[data-festive="christmas"] .cc-golden>img{filter:drop-shadow(0 0 14px #ffd447cc) drop-shadow(0 0 4px #e0283c88)}
+:root[data-festive="christmas"] .game-view[data-game-id=corn-clicker]{--game-surface:var(--xmas-snowflakes) center top/180px 180px,#0d2117}

@@ -1,0 +1,8 @@
+/* Suika Game, Christmas: snowy board, red ledge, festive "Up next" label. Presentation only. */
+:root[data-festive="christmas"] .fm-board{background:#f8f6f1;box-shadow:0 7px 0 #a81b2d,0 9px 17px #3a0b1420}
+:root[data-festive="christmas"] .fm-board:focus-visible{outline-color:#1f7a42}
+:root[data-festive="christmas"] .fm-eyebrow{color:#b8202f}
+:root[data-festive="christmas"] .fm-banner{color:#a81b2d}
+/* The shell continues the board's 32px check outside the canvas (game-chrome.ts
+   alignSurface sets its size and position inline); swap in the same tile, frosted. */
+:root[data-festive="christmas"] .game-view[data-game-id=fruit-merge] .game-surface{background-image:url("./christmas-snow-tile.svg")!important}
