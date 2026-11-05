@@ -24,6 +24,9 @@ const ghostAngle=(s:PoolState,pocket:number)=>{
 
 test.describe('Pool',()=>{
   test('breaks from the keyboard and the rack plays on',async({page})=>{
+    // A fresh game shuffles its rack from the clock, and some racks make the default break illegal (re-racked below),
+    // so this test fixes a rack whose default break is legal.
+    await seedPool(page,createGame('ai','medium',5));
     await page.setViewportSize({width:1366,height:768});await page.goto('/#/game/pool');
     await expect(root(page)).toHaveAttribute('data-hand','kitchen');
     await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
@@ -33,6 +36,20 @@ test.describe('Pool',()=>{
     expect(s.breakShot).toBe(false);
     expect(s.balls.filter(b=>b.on).every(b=>b.x>=R-1e-6&&b.x<=L-R+1e-6&&b.y>=R-1e-6&&b.y<=W-R+1e-6)).toBe(true);
     await expect(page.locator('.pool-message')).not.toBeEmpty();
+  });
+
+  test('an illegal break re-racks for the opponent, who breaks again',async({page})=>{
+    // With this rack the default keyboard break sends fewer than four balls to a cushion and pots nothing.
+    // Two players, so the computer does not take the re-break before the result is read.
+    const before=createGame('two','medium',101);await seedPool(page,before);
+    await page.setViewportSize({width:1366,height:768});await page.goto('/#/game/pool');
+    await expect(root(page)).toHaveAttribute('data-hand','kitchen');
+    await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
+    await expect(root(page)).toHaveAttribute('data-phase','moving');await settle(page);
+    const s=await poolState(page);
+    expect(s.breakShot).toBe(true);expect(s.hand).toBe('kitchen');expect(s.turn).not.toBe(before.turn);
+    expect(s.balls.every(b=>b.on)).toBe(true);
+    expect(s.foul).toBe('Illegal break');
   });
 
   test('the power cue shoots on release and cancels when pushed back to the top',async({page})=>{
@@ -158,6 +175,7 @@ test.describe('Pool',()=>{
     const page=await context.newPage();
     try{
       await page.goto('/#/game/pool');await expect(root(page)).toHaveAttribute('data-orient','portrait');
+      for(const sel of ['.pool-table','.pool-power'])expect(await page.locator(sel).evaluate(e=>getComputedStyle(e).touchAction),`${sel} keeps the finger from scrolling`).toBe('none');
       type TouchType='touchStart'|'touchMove'|'touchEnd';
       let touch:(type:TouchType,points:{x:number;y:number}[])=>Promise<unknown>;
       if(browserName==='chromium'){
@@ -165,7 +183,7 @@ test.describe('Pool',()=>{
         const cdp=await context.newCDPSession(page);
         touch=(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points.map((p,i)=>({...p,id:i+1}))});
       }else{
-        // CDP is Chromium-only and Playwright's touchscreen can only tap, so WebKit drives the same gestures as touch
+        // Handler-level coverage only: CDP is Chromium-only and Playwright's touchscreen can only tap, so WebKit drives the same gestures as touch
         // pointer events (what Pool listens to) aimed at the element under the finger. Pointer id 1 is always active,
         // so the game's setPointerCapture accepts it.
         let last={x:0,y:0};
@@ -188,7 +206,8 @@ test.describe('Pool',()=>{
       await expect(root(page)).toHaveAttribute('data-gesture','pull');
       await touch('touchEnd',[]);
       await expect(root(page)).toHaveAttribute('data-shots','1');
-      expect(await page.evaluate(()=>scrollY)).toBe(0);
+      // Only real touch input (CDP) can scroll the page, so the scroll check is meaningful there; WebKit's synthetic events cover the handlers.
+      if(browserName==='chromium')expect(await page.evaluate(()=>scrollY)).toBe(0);
     }finally{await context.close();}
   });
 });
