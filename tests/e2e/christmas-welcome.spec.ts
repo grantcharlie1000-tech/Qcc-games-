@@ -28,7 +28,7 @@ const welcome=(page:Page)=>page.getByRole('dialog',{name:'Merry Christmas!'});
 test('first sign-in introduces the actual toggle, then stays dismissed on reload and sign-in',async({page,context})=>{
   await setup(context);await page.goto('/');await expect(welcome(page)).not.toBeVisible();
   await signIn(page);await expect(welcome(page)).toBeVisible();
-  await expect(welcome(page)).toContainText('Turn it off in Menu');
+  await expect(welcome(page)).toContainText('You can turn it off in Menu.');
   await welcome(page).getByRole('button',{name:'Got it'}).click();
   await expect(page.locator('.game-card').first()).toBeVisible();
   await expect(page.locator('.game-card').first()).toBeFocused();

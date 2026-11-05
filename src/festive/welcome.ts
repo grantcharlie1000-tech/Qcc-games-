@@ -14,7 +14,7 @@ export class ChristmasWelcome {
     this.root.setAttribute('aria-labelledby','christmas-welcome-title');
     this.root.setAttribute('aria-describedby','christmas-welcome-copy');
     this.root.innerHTML=`${snowPile}<div class="christmas-welcome-content"><h2 id="christmas-welcome-title">Merry Christmas! <span aria-hidden="true">🎄</span></h2>
-      <p id="christmas-welcome-copy">Turn it off in Menu.</p>
+      <p id="christmas-welcome-copy">You can turn it off in Menu.</p>
       <form method="dialog"><button class="game-button" autofocus>Got it</button></form></div>`;
     document.body.append(this.root);
     this.root.addEventListener('close',()=>this.done());
