@@ -58,6 +58,56 @@ async function open(page:Page,name:string,hash='#/social'){
 const view=(page:Page)=>page.locator('section.social-view');
 const png=(width=600,height=400,color='#a684ff')=>sharp({create:{width,height,channels:3,background:color}}).png().toBuffer();
 
+for(const width of [390,1440])test(`profile sticky tabs hide scrolled reply fragments at ${width}px`,async({page,context},testInfo)=>{
+ await connect(context);await page.setViewportSize({width,height:844});
+ const a=await user('pin');
+ await call(social,'profile',a.token,{displayName:'Visible reply author',bio:'This biography must remain visible before the tabs stick.'});
+ const root=await post(a.token,'Original discussion');
+ for(let i=0;i<12;i++)await post(a.token,`Reply ${i}: enough content to scroll beneath the floating toolbar.`,{replyTo:root.id});
+ await open(page,a.name,`#/social/u/${a.name}/replies`);
+ const tabs=page.getByRole('tablist',{name:'Profile sections'}),cards=page.locator('.social-profile-panel .social-post');
+ await expect(cards).toHaveCount(12);
+ const headerVisible=async()=>{
+  await expect(page.locator('.social-profile-bio')).toBeInViewport();
+  expect(await page.locator('.social-profile-counts').evaluate(el=>{
+   const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+20,r.y+r.height/2));
+  })).toBe(true);
+  expect(await page.locator('.social-banner').evaluate(el=>{
+   const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+30));
+  })).toBe(true);
+ };
+ await headerVisible();
+ for(const index of [0,1,2]){
+  await cards.nth(index).evaluate(el=>{
+   const scroller=el.closest<HTMLElement>('.social-view')!;
+   scroller.scrollTop+=el.getBoundingClientRect().top-scroller.getBoundingClientRect().top-20;
+  });
+  await expect.poll(async()=>Math.round((await tabs.boundingBox())!.y)).toBe(64);
+  // The middle of the floating toolbar must not reveal a detached author or image
+  // above the tabs. Exclude the intentionally visible back/settings controls.
+  await expect.poll(async()=>{
+   const r=(await tabs.boundingBox())!;
+   const image=await page.screenshot({clip:{x:r.x+72,y:2,width:r.width-144,height:r.y-4}});
+   const stats=await sharp(image).removeAlpha().stats();
+   return Math.max(...stats.channels.map(c=>c.max));
+  },{message:'Scrolled posts must remain hidden above the pinned profile tabs'}).toBeLessThanOrEqual(1);
+ }
+ await page.screenshot({path:testInfo.outputPath(`profile-sticky-${width}.png`)});
+ await page.getByRole('tab',{name:'Photos',exact:true}).click();
+ await expect(page.getByText('No photos yet',{exact:true})).toBeVisible();
+ await view(page).evaluate(el=>{el.scrollTop=0;});await headerVisible();
+ await page.getByRole('tab',{name:'Replies',exact:true}).click();
+ await expect(cards).toHaveCount(12);
+ await view(page).evaluate(el=>{el.scrollTop=0;});await headerVisible();
+ // The mask must neither eat toolbar clicks nor survive profile disposal.
+ await page.getByRole('link',{name:'Social settings',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Settings',level:1})).toBeVisible();
+ await page.evaluate(h=>{location.hash=h;},`#/social/u/${a.name}/replies`);
+ await expect(cards).toHaveCount(12);await headerVisible();
+ await page.getByRole('link',{name:'Back to feed',exact:true}).click();
+ await expect(page.locator('.social-profile')).toHaveCount(0);
+});
+
 test('signed out shows log in prompt',async({page,context})=>{
  await connect(context);await page.goto('/');await guest(page);
  await page.evaluate(()=>{location.hash='#/social';});
