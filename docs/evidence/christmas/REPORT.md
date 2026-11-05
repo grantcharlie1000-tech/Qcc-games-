@@ -123,3 +123,141 @@ Skills were assessed again for every game (see each section). Used across the pr
 - **Skills:** game-art (gold accents kept off tile fills so they can't be confused with the "present" clue), svg-skill tokens.
 - **Found in review and fixed:** the shell's surface copy dropped `background-repeat`, so the corner holly tiled across the dock; `src/ui/game-chrome.ts` now copies it (a no-op for every existing game).
 - **Tests:** 26 unit; browser tests and the shell glass suites, 31 pass.
+
+---
+
+## Full Christmas skins
+
+Built by four parallel agents from one shared brief (each confined to its own games), then reviewed by me from screenshots, detail crops and diffs before committing. Each game's `NOTES.md` has the full skill record, files and test commands.
+
+### Suika Game (`fruit-merge`)
+
+| Before | After |
+| --- | --- |
+| ![](./fruit-merge/before-mobile.png) | ![](./fruit-merge/after-mobile.png) |
+| ![](./fruit-merge/before-desktop.png) | ![](./fruit-merge/after-desktop.png) |
+
+- **Changes:** The eleven fruits become eleven distinct ornaments (jingle bell, holly berry, snowflake, evergreen, candy, amber, midnight, snow globe, star bauble, Christmas pudding, grand ornament), each with its own colour and motif, in the board, the Up next preview, labels and screen-reader text. Each ornament's round body is exactly the physics radius (checked for all 11 tiers in the browser); loops and caps sit above the circle like the old stems. Frosted check board with lights and an evergreen basket. Ornaments and the static board are cached.
+- **Skills:** game-development + game-art, svg-skill (snow tile, validated), systematic-debugging, verification-before-completion. Details in [`fruit-merge/NOTES.md`](fruit-merge/NOTES.md).
+- **Notes and tests:** Colour-blind tier badges kept. The first version dropped frame rate in the software-rendered test browser (about 4 fps against 29); caching fixed it. Unit 22/22, browser 11/11.
+
+### Flappy Bird (`flappy-bird`)
+
+| Before | After |
+| --- | --- |
+| ![](./flappy-bird/before-mobile.png) | ![](./flappy-bird/after-mobile.png) |
+| ![](./flappy-bird/before-desktop.png) | ![](./flappy-bird/after-desktop.png) |
+
+- **Changes:** Winter sky with a low sun and still snowflakes, snowy dunes with firs, a snowy red-tile roof as the ground, a Santa hat on the unchanged bird, and brick chimneys that fill exactly the pipe collision rectangles with snow-topped stone caps exactly where the pipe caps were. `model.ts` untouched; the scene stays light, so the light dock glass still fits.
+- **Skills:** game-development + game-art + 2d-games, systematic-debugging, verification-before-completion (no SVG, no new motion). Details in [`flappy-bird/NOTES.md`](flappy-bird/NOTES.md).
+- **Notes and tests:** Draw cost 0.22 ms per frame against 0.70 ms for the original. Unit 13/13; final browser results in the regression section.
+
+### Ball Run (`ball-run`)
+
+| Before | After |
+| --- | --- |
+| ![](./ball-run/before-mobile.png) | ![](./ball-run/after-mobile.png) |
+| ![](./ball-run/before-desktop.png) | ![](./ball-run/after-desktop.png) |
+
+- **Changes:** Icy-blue road with snow-white lines, frosted snow-dusted towers with warm lit windows (one 64×256 canvas texture on the existing tower material), a deep winter-blue sky with a static CSS star layer, red/green/gold blocks, white sliders, evergreen-and-gold boost gates and a glossy red bauble ball with gold bands.
+- **Skills:** game-development + 3d-games + game-art, systematic-debugging, verification-before-completion. Details in [`ball-run/NOTES.md`](ball-run/NOTES.md).
+- **Notes and tests:** Only materials, colours, textures and fog change: geometry, ball radius, collision, pools, draw calls and resolution tiers are identical. I sent the first version back because the surroundings still read as the original wireframe city; the snow pass fixed that. Unit 113/113.
+
+### Animal Stack (`animal-stack`)
+
+| Before | After |
+| --- | --- |
+| ![](./animal-stack/before-mobile.png) | ![](./animal-stack/after-mobile.png) |
+| ![](./animal-stack/before-desktop.png) | ![](./animal-stack/after-desktop.png) |
+
+- **Changes:** Santa hats (12 animals), reindeer antlers (3) and striped scarves (9) drawn into each animal's sprite only, a winter sky and snowfield, and a snowy evergreen platform with lights. Colliders, mass, the model and camera framing are untouched; the status text is dark for snow and the DROP button is unchanged.
+- **Skills:** game-development + game-art + 2d-games, svg-skill (24 composed sprites validated), verification-before-completion. Details in [`animal-stack/NOTES.md`](animal-stack/NOTES.md).
+- **Notes and tests:** `tall-framing.spec.ts` asserts the original flat sky, so it is pinned to the original theme; the new `tall-framing-festive.spec.ts` runs the same tall stack with Christmas on and checks the HUD band stays clear. Limitations: hats are not solid, so an animal can appear to rest on one; in a far taller stack than the test, a hat could reach about 20 units into the HUD band. Unit 33/33, browser 18/18.
+
+### Minesweeper (`minesweeper`)
+
+| Before | After |
+| --- | --- |
+| ![](./minesweeper/before-mobile.png) | ![](./minesweeper/after-mobile.png) |
+| ![](./minesweeper/before-desktop.png) | ![](./minesweeper/after-desktop.png) |
+
+- **Changes:** Covered tiles are raised snow mounds on a midnight snowflake background, revealed tiles are flat frosty ground with the classic number colours darkened to at least 4.6:1, mines are lumps of coal (the one that went off glows with embers on a red-ringed tile), and flags are candy canes with holly on the board and in the Flag mode button.
+- **Skills:** svg-skill (five SVGs, validated), game-development + game-art, systematic-debugging, verification-before-completion. Details in [`minesweeper/NOTES.md`](minesweeper/NOTES.md).
+- **Notes and tests:** Rankings, settings and touch Reveal/Flag controls unchanged. Unit tests pass; one browser test (`play.spec:87`) also fails on the original code.
+
+### Solitaire (`solitaire`)
+
+| Before | After |
+| --- | --- |
+| ![](./solitaire/before-mobile.png) | ![](./solitaire/after-mobile.png) |
+| ![](./solitaire/before-desktop.png) | ![](./solitaire/after-desktop.png) |
+
+- **Changes:** Evergreen felt inside a gold frame, holly in the bottom corners, an original red card back with a gold diamond lattice and snowflake medallion, gold outlines on foundation slots, and red/gold buttons. Card faces untouched. The drag ghost reuses the `.solitaire` class, so the felt rules exclude it and a dragged card stays clean.
+- **Skills:** game-development + game-art, svg-skill (card back pattern and holly, validated), systematic-debugging, verification-before-completion. Details in [`solitaire/NOTES.md`](solitaire/NOTES.md).
+- **Notes and tests:** Browser 8/9 in the agent's run; the failure was the 30 s overall limit under machine load (passes when not loaded).
+
+### Block Fill (`block-fill`)
+
+| Before | After |
+| --- | --- |
+| ![](./block-fill/before-mobile.png) | ![](./block-fill/after-mobile.png) |
+| ![](./block-fill/before-desktop.png) | ![](./block-fill/after-desktop.png) |
+
+- **Changes:** Ice cells with a frost sheen, warm-lit covered cells, navy hatched walls, and the drawn path as a green light cable with coloured bulbs, each with a cap, glow and outlined number; the start is a gold S bulb and the head a large warm-white bulb. The hint marker is red so it shows on ice.
+- **Skills:** svg-skill, game-development + game-art, systematic-debugging, verification-before-completion. Details in [`block-fill/NOTES.md`](block-fill/NOTES.md).
+- **Notes and tests:** Markup structure, coordinates, `data-cell` groups, labels, logic and input unchanged. About 2 ms more per move from larger SVG markup; frame time unchanged.
+
+### Flow Free (`color-connect`)
+
+| Before | After |
+| --- | --- |
+| ![](./color-connect/before-mobile.png) | ![](./color-connect/after-mobile.png) |
+| ![](./color-connect/before-desktop.png) | ![](./color-connect/after-desktop.png) |
+
+- **Changes:** Endpoints become Christmas light bulbs whose glass is the pair's own colour-blind shape at the original size, with a green socket, a halo and the letter in place; paths are glowing cables in the pair colour (no blur filters) keeping each pair's dash pattern; gold frame on a starry midnight sky.
+- **Skills:** game-development + game-art, svg-skill, verification-before-completion. Details in [`color-connect/NOTES.md`](color-connect/NOTES.md).
+- **Notes and tests:** All seven pair colours, letters and shapes unchanged; checked on a 9×9 board with all seven pairs (`compare-9x9.png`). On the dark background the shell's dock glass is nearly transparent but the text stays readable.
+
+### Pool (`pool`)
+
+| Before | After |
+| --- | --- |
+| ![](./pool/before-mobile.png) | ![](./pool/after-mobile.png) |
+| ![](./pool/before-desktop.png) | ![](./pool/after-desktop.png) |
+
+- **Changes:** Deeper evergreen felt, red lacquer rails with gold bevel, pinstripes and diamonds, and a static string of coloured lights along the rail's outer band, drawn once into the cached table canvas (bulbs near pockets skipped); dark evergreen room with faint snowflakes. Balls, numbers, stripes, cue, geometry, pockets, physics and online play are unchanged.
+- **Skills:** game-development + game-art, verification-before-completion (Canvas only, static). Details in [`pool/NOTES.md`](pool/NOTES.md).
+- **Notes and tests:** Limitations: bulbs are about 5 px on a phone; the wire has square corners inside the rounded rail corners. Browser 15/15 in the agent's run.
+
+### Pac-Man (`maze-muncher`)
+
+| Before | After |
+| --- | --- |
+| ![](./maze-muncher/before-mobile.png) | ![](./maze-muncher/after-mobile.png) |
+| ![](./maze-muncher/before-desktop.png) | ![](./maze-muncher/after-desktop.png) |
+
+- **Changes:** Night maze with icy walls and snow clipped inside the walls (never into a lane), snowball dots, bauble power pellets that blink like the originals, a Santa hat on the muncher and the spare-life icons, and snowman ghosts whose beanie and scarf keep each ghost's original colour and face marks. Frightened snowmen turn blue, the end-of-fright flash goes white and red, and eaten ghosts show the original eyes.
+- **Skills:** game-development + game-art + 2d-games, svg-skill (exported board validated, unique ids), verification-before-completion. Details in [`maze-muncher/NOTES.md`](maze-muncher/NOTES.md).
+- **Notes and tests:** All 242 dots and 4 pellets keep their positions and sizes; `model.ts` untouched; the hat reaches about 2 units above where the antennae did (drawing only). Unit 19/19, browser 16/16.
+
+### Corn Clicker (`corn-clicker`)
+
+| Before | After |
+| --- | --- |
+| ![](./corn-clicker/before-mobile.png) | ![](./corn-clicker/after-mobile.png) |
+| ![](./corn-clicker/before-desktop.png) | ![](./corn-clicker/after-desktop.png) |
+
+- **Changes:** The cob has snow on its tip and a red gift bow, the golden cob a snow cap and ribbon, both on the same pixel grids so hit areas and layout are unchanged; all four farm backdrop stages are snowy with firs (the first adds a barn with lights and a wreath); evergreen panels in red frames with holly and light strings that ignore clicks.
+- **Skills:** game-development + game-art + 2d-games, verification-before-completion (no SVG authored). Details in [`corn-clicker/NOTES.md`](corn-clicker/NOTES.md).
+- **Notes and tests:** Every economy, timing, save, backup and interface file is untouched. The golden cob appears only after 60–120 s of play, so it was checked from a sprite render (`detail-art.png`). Unit 43/43, browser 9/9.
+
+### Claimline (`claimline`)
+
+| Before | After |
+| --- | --- |
+| ![](./claimline/before-mobile.png) | ![](./claimline/after-mobile.png) |
+| ![](./claimline/before-desktop.png) | ![](./claimline/after-desktop.png) |
+
+- **Changes:** Snow-covered arena with a candy-cane rim and a dark evergreen forest outside; you are red and the six bots are blue, green, gold, plum, ice cyan and gingerbread (original hue order); your head alone wears a Santa hat; capture trails are light strings (soft glow band, dark wire, bulbs every 1.2 cells that stay put as the trail grows).
+- **Skills:** game-development + game-art + 2d-games, systematic-debugging, verification-before-completion. Details in [`claimline/NOTES.md`](claimline/NOTES.md).
+- **Notes and tests:** Shape marks on heads and HUD rows kept. The first version cost 37 ms per frame against 15 ms for the original; building the snow texture at device resolution and skipping off-screen bulbs brought it to parity (about 21–24 ms against 22 ms under the same load). Bots are randomly seeded, so before and after layouts differ. Unit 50/50, browser 14/14.
