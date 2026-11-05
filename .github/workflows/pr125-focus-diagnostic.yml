@@ -1,0 +1,51 @@
+name: Verify PR 125 game focus (no deploy)
+on:
+  push:
+    branches: [codex/pr125-focus-diagnostic-bf42b32]
+permissions:
+  contents: read
+concurrency:
+  group: pr125-focus-diagnostic-${{ github.run_id }}
+  cancel-in-progress: false
+jobs:
+  focused-games:
+    name: Game focus (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: bf42b32dac4ea1d28882d4630ea5a6d9e5cbcbd3
+          persist-credentials: false
+      - name: Verify exact candidate
+        run: test "$(git rev-parse HEAD)" = bf42b32dac4ea1d28882d4630ea5a6d9e5cbcbd3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Repeat the two affected keyboard scenarios
+        run: >-
+          xvfb-run -a npx playwright test
+          tests/games/flappy-bird/play.spec.ts
+          tests/games/water-sort/game.spec.ts
+          --project=${{ matrix.browser }}
+          --workers=1 --retries=0 --repeat-each=5
+          --grep 'keyboard and mouse flap, pause and Study freeze, restore waits, restart and disposal clean up|all level controls and rules work, keyboard can select and pour'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr125-focus-${{ matrix.browser }}
+          path: |
+            playwright-report
+            test-results
