@@ -57,6 +57,18 @@ describe('chat handler',{timeout:60000},()=>{
   expect((await call(a,'block',{username:'xyz'},{origin:'https://evil.test'})).status).toBe(403);
   expect((await handler(new Request(`${URL_}?action=block`,{method:'POST',headers:{authorization:'Bearer '+a.token,'content-type':'text/plain'},body:'{}'}))).status).toBe(415);
  });
+ it('list does not reveal whether a requested username exists',async()=>{
+  const a=await account(),real=await account();
+  const unknown=`ghost_${Math.random().toString(36).slice(2,8)}`;
+  // The request endpoint answers identically for a real and an unknown username...
+  const toReal=await json(await call(a,'request',{username:real.name})),toUnknown=await json(await call(a,'request',{username:unknown}));
+  expect(toReal).toEqual(toUnknown);
+  // ...so the list must not echo requested names back, which would single out the real account.
+  const list=await json(await get(a,'action=list'));
+  expect(list).not.toHaveProperty('outgoing');
+  const text=JSON.stringify(list);
+  expect(text).not.toContain(real.name);expect(text).not.toContain(unknown);
+ });
  it('friend request must be accepted before messaging',async()=>{
   const a=await account(),b=await account();
   expect((await call(a,'send',{to:b.name,kind:'text',body:'hi'})).status).toBe(404);
@@ -65,7 +77,6 @@ describe('chat handler',{timeout:60000},()=>{
   expect((await call(b,'send',{to:a.name,kind:'text',body:'hi'})).status).toBe(404);
   const incoming=(await json(await get(b,'action=list'))).incoming;
   expect(incoming.map((r:any)=>r.friend.username)).toEqual([a.name]);
-  expect((await json(await get(a,'action=list'))).outgoing.map((r:any)=>r.friend.username)).toEqual([b.name]);
   expect(await json(await call(b,'respond',{username:a.name,accept:true}))).toEqual({status:'friends'});
   expect((await call(a,'send',{to:b.name,kind:'text',body:'hi'})).status).toBe(201);
   expect((await get(a,`action=messages&with=${b.name}`)).status).toBe(200);
