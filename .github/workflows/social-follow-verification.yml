@@ -1,0 +1,76 @@
+name: Verify Social follow navigation barrier
+on:
+  push:
+    branches: [diagnostics/qcc-social-follow-barrier-20261105]
+permissions:
+  contents: read
+concurrency:
+  group: qcc-social-follow-barrier
+  cancel-in-progress: false
+jobs:
+  social-browser:
+    name: Social regression (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      # Exercise the unchanged two-user flow plus controlled real follow/unfollow requests. No retries.
+      - name: Repeat follow navigation and photo regressions five times
+        run: >-
+          xvfb-run -a npx playwright test tests/social/social.spec.ts
+          --project=${{ matrix.browser }} --grep 'two users: follow|Following waits for a pending|photo post uploads through pipeline and renders thumbnail'
+          --repeat-each=5 --workers=1 --retries=0
+          --output=test-results-repeat
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-repeat
+      - name: Run the complete Social browser file
+        if: ${{ !cancelled() }}
+        run: >-
+          xvfb-run -a npx playwright test tests/social/social.spec.ts
+          --project=${{ matrix.browser }} --workers=1 --retries=0
+          --output=test-results-social
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-social
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: social-follow-${{ matrix.browser }}
+          path: |
+            playwright-report-repeat
+            playwright-report-social
+            test-results-repeat
+            test-results-social
+          retention-days: 7
+  unit-and-types:
+    name: Unit suite and types
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test -- --maxWorkers=1
+      - run: npm run build
