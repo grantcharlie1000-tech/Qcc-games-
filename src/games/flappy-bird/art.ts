@@ -1,6 +1,9 @@
 import {WIDTH,HEIGHT,FLOOR,BIRD_X,GATE_WIDTH,visibleGates,distanceOf,type Flight} from './model';
+import {christmas} from '../../festive/festive';
+import {drawChristmasFlight} from './christmas-art';
 /** Original vector artwork: a teal marsh swift, copper reed gates and a peach wetland. */
 export function drawFlight(ctx:CanvasRenderingContext2D,s:Flight,reducedMotion:boolean){
+  if(christmas()){drawChristmasFlight(ctx,s,reducedMotion);return;}
   ctx.clearRect(0,0,WIDTH,HEIGHT);ctx.fillStyle='#f9d9a7';ctx.fillRect(0,0,WIDTH,HEIGHT);
   ctx.fillStyle='#fff0cc';ctx.beginPath();ctx.arc(284,96,46,0,Math.PI*2);ctx.fill();
   const drift=reducedMotion?0:distanceOf(s)*.14;

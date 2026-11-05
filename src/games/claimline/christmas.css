@@ -1,0 +1,14 @@
+/* Claimline, Christmas: night-forest surround, snowy cards and the player's red. Presentation only. */
+:root[data-festive="christmas"] .cl-game{background:#0f3b2a;color:#0f3b2a}
+:root[data-festive="christmas"] .cl-share,:root[data-festive="christmas"] .cl-ranking{background:#f6faffd9;box-shadow:0 2px 10px #06102a55}
+:root[data-festive="christmas"] .cl-share-label,:root[data-festive="christmas"] .cl-place{color:#3d6a59}
+:root[data-festive="christmas"] .cl-share-value{color:#0f3b2a}
+:root[data-festive="christmas"] .cl-share-bar{background:#0f3b2a22}
+:root[data-festive="christmas"] .cl-share-bar i{background:var(--xmas-red)}
+:root[data-festive="christmas"] .cl-ranking li.is-you{color:var(--xmas-red-deep)}
+:root[data-festive="christmas"] .cl-overlay{background:#06102a73}
+:root[data-festive="christmas"] .cl-card{background:#f6faff;border-color:var(--xmas-evergreen);color:var(--xmas-evergreen)}
+:root[data-festive="christmas"] .cl-card h2{color:var(--xmas-evergreen)}
+:root[data-festive="christmas"] .cl-start{background:var(--xmas-red)}
+:root[data-festive="christmas"] .cl-stick{border-color:var(--xmas-evergreen)}
+:root[data-festive="christmas"] .cl-stick-knob{background:#a81b2dd9}

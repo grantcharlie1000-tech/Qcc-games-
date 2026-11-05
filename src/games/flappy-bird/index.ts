@@ -3,6 +3,7 @@ import {createFlight,flap,advance,restoreFlight,visibleGates,BIRD_X,GATE_WIDTH,W
 import {drawFlight} from './art';
 import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import './style.css';
+import './christmas.css';
 const game:GameModule={id:'flappy-bird',title:'Flappy Bird',cover:'game-art/flappy-bird/cover.svg',rules:'Guide our marsh swift through the reed gates. Press Space, Up arrow or W, click or tap the scene to flap. Each press gives one upward beat; holding a key does not repeat. Gravity pulls you down. Clear a whole gate to earn one point. Touching a reed, the sky edge or the water ends the flight. The first gates are wider, then the opening gradually narrows. Pause freezes the flight. Continue flight resumes a saved run when you choose. Fly again starts a new seeded route; your best score stays saved on this device.',mount(container,context){
   const root=document.createElement('div');root.className='flappy-bird';
   root.innerHTML=`<div class="fb-scene"><canvas tabindex="0" role="img" aria-label="Marsh flight. Press Space, Up arrow or W to flap; click or tap to flap."></canvas><div class="fb-card"><h2>Find your rhythm</h2><p class="fb-copy" hidden></p><button class="game-button fb-start">Take flight</button></div></div>`;
