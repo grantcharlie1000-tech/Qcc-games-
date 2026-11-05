@@ -32,3 +32,5 @@
 :root[data-festive="christmas"] .mm-card{background:#060d20d6}
 :root[data-festive="christmas"] .mm-card strong{color:var(--xmas-snow);text-shadow:0 3px var(--xmas-red)}
 :root[data-festive="christmas"] .mm-card .game-button{background:var(--xmas-red);color:#fff8ef}
+/* The Santa hat replaces the antennae (hidden by class, so the original markup stays intact). */
+:root[data-festive="christmas"] .mm-antenna,:root[data-festive="christmas"] .mm-antenna-tip{display:none}

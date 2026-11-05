@@ -12,3 +12,5 @@
 :root[data-festive="christmas"] .cb-score-pop small{color:#bfe8c9}
 :root[data-festive="christmas"] .cb-over .cb-feedback{background:#0a2c1bee;color:#ffe0e4}
 :root[data-festive="christmas"] .cb-drag-art{filter:drop-shadow(0 5px 3px #02120950)}
+/* With colour-blind patterns on, the glyph replaces the ribbon (as in Tetris) so the two never cross. */
+:root[data-festive="christmas"] .cb-patterns .cb-ribbon{display:none}

@@ -101,7 +101,7 @@ export function fruitMarkup(kind: Fruit): string {
 function nibMarkup(prefix: string) {
   return `<g class="mm-nib-feet"><ellipse class="mm-foot-a" cx="-2.6" cy="5.6" rx="2.1" ry="1.3" fill="#0f7f6a"/><ellipse class="mm-foot-b" cx="2" cy="5.6" rx="2.1" ry="1.3" fill="#0f7f6a"/></g>
 <path class="mm-antenna" d="M0-5.5Q.5-8.5 2.6-9.2M-2.4-5Q-3-8.5-1-9.6" fill="none" stroke="#0f7f6a" stroke-width=".9" stroke-linecap="round"/>
-<circle cx="2.6" cy="-9.2" r="1.15" fill="#ffe14d"/><circle cx="-1" cy="-9.6" r="1.15" fill="#ffe14d"/>
+<circle class="mm-antenna-tip" cx="2.6" cy="-9.2" r="1.15" fill="#ffe14d"/><circle class="mm-antenna-tip" cx="-1" cy="-9.6" r="1.15" fill="#ffe14d"/>
 <path class="mm-nib-head" d="" fill="url(#${prefix}-nib)"/>
 <path class="mm-nib-jaw" d="" fill="#14a487"/>
 <path class="mm-nib-mouth" d="" fill="#0b2a33"/>
@@ -184,7 +184,7 @@ export function createBoard(prefix = 'mm'): Board {
   const player = el('g', {class: 'mm-nib'}, svg.querySelector('.mm-player')!);
   const nibPose = el('g', {}, player);
   nibPose.innerHTML = xmas
-    ? nibMarkup(prefix).split('\n').filter(line => !line.startsWith('<path class="mm-antenna"') && !line.startsWith('<circle cx="2.6" cy="-9.2"')).join('\n') + hatMarkup(-.9, -5, 6.6, -.2, -.75)
+    ? nibMarkup(prefix) + hatMarkup(-.9, -5, 6.6, -.2, -.75)
     : nibMarkup(prefix);
   const burst = el('g', {class: 'mm-burst'}, player);
   for (let i = 0; i < 8; i++) el('line', {x1: 0, y1: -3, x2: 0, y2: -7, transform: `rotate(${i * 45})`}, burst);

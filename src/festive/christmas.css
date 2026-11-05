@@ -2,8 +2,7 @@
  * Shared Christmas tokens and textures. Every rule is scoped under
  * :root[data-festive="christmas"] (see festive.ts), so switching the theme off
  * restores the original look without touching saves or scores.
- * Textures are tiny inline SVG tiles; no image files, no animation loops except
- * the optional light twinkle below, which reduced motion switches off.
+ * Textures are tiny inline SVG tiles: no image files and no animation.
  */
 :root[data-festive="christmas"]{
   --xmas-red:#d8263a;--xmas-red-deep:#a81b2d;--xmas-red-dark:#6e1220;
@@ -23,20 +22,4 @@
   --xmas-holly:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M30 34c-4-8-14-12-24-10 3 3 2 6 6 7-3 2-3 5 1 7 3-1 6 1 7 4 3-4 7-5 10-8z' fill='%232c9a55' stroke='%231f6a3c' stroke-width='1.5' stroke-linejoin='round'/%3E%3Cpath d='M34 34c4-8 14-12 24-10-3 3-2 6-6 7 3 2 3 5-1 7-3-1-6 1-7 4-3-4-7-5-10-8z' fill='%2339ad63' stroke='%231f6a3c' stroke-width='1.5' stroke-linejoin='round'/%3E%3Ccircle cx='27' cy='38' r='5' fill='%23d8263a'/%3E%3Ccircle cx='37' cy='38' r='5' fill='%23c41e33'/%3E%3Ccircle cx='32' cy='30' r='5' fill='%23e33a4c'/%3E%3Ccircle cx='30.5' cy='28.5' r='1.4' fill='%23fff' opacity='.7'/%3E%3C/svg%3E");
   /* Candy-cane diagonal stripes (16px tile) for borders and accents. */
   --xmas-candy-stripe:repeating-linear-gradient(135deg,#f8f3ea 0 6px,#d8263a 6px 12px);
-}
-
-/*
- * A decorative strand of lights along the top edge of any positioned element.
- * Add <div class="xmas-strand" aria-hidden="true"></div>; it ignores pointers.
- */
-:root[data-festive="christmas"] .xmas-strand{
-  position:absolute;left:0;right:0;top:0;height:22px;pointer-events:none;z-index:1;
-  background:var(--xmas-light-strand) repeat-x left top/146px 22px;
-  filter:drop-shadow(0 0 4px rgba(255,214,120,.35));
-}
-:root:not([data-festive="christmas"]) .xmas-strand{display:none;}
-/* One slow, opacity-only twinkle. Decorative; off under reduced motion. */
-@keyframes xmas-twinkle{0%,100%{opacity:1}50%{opacity:.78}}
-@media (prefers-reduced-motion:no-preference){
-  :root[data-festive="christmas"]:not(.reduce-motion) .xmas-strand{animation:xmas-twinkle 3.2s ease-in-out infinite;}
 }

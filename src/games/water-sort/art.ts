@@ -11,16 +11,16 @@ export const COLOURS = [
 ];
 /** Christmas liquids for the same seven indices (names, letters and rules unchanged). */
 const FESTIVE_LIQUIDS = [
-  {fill:'#d8203c',ink:'#5e0716'},
-  {fill:'#2f7fd1',ink:'#0d2e55'},
-  {fill:'#f4c534',ink:'#5e4706'},
-  {fill:'#279c4f',ink:'#06381a'},
-  {fill:'#a8327f',ink:'#ffe6f4'},
-  {fill:'#c8eef2',ink:'#1d5560'},
-  {fill:'#f07722',ink:'#5a2600'},
+  {name:'Cranberry A',fill:'#d8203c',ink:'#5e0716'},
+  {name:'Blue B',fill:'#2f7fd1',ink:'#0d2e55'},
+  {name:'Gold C',fill:'#f4c534',ink:'#5e4706'},
+  {name:'Green D',fill:'#279c4f',ink:'#06381a'},
+  {name:'Plum E',fill:'#a8327f',ink:'#ffe6f4'},
+  {name:'Frost F',fill:'#c8eef2',ink:'#1d5560'},
+  {name:'Orange G',fill:'#f07722',ink:'#5a2600'},
 ];
 /** The fill and glyph ink currently shown for a colour index. */
-export function liquidColour(index:number):{fill:string,ink:string}{return christmas()?FESTIVE_LIQUIDS[index]:COLOURS[index];}
+export function liquidColour(index:number):{name:string,fill:string,ink:string}{return christmas()?FESTIVE_LIQUIDS[index]:COLOURS[index];}
 export function liquidArt(bands:readonly Liquid[],angle=0):string {
   return liquidLayers(bands,angle).map((layer,i)=>{
     const points=layer.points.map(p=>`${p.x.toFixed(4)},${p.y.toFixed(4)}`).join(' '),c=liquidColour(layer.colour);

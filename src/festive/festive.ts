@@ -13,6 +13,7 @@ export const FESTIVE_KEY='qcc:festive';
 
 export function storedFestiveTheme():FestiveTheme{
   try{
+    // A URL parameter wins for that visit only (used for screenshots); it does not change the stored choice.
     const param=new URLSearchParams(location.search).get('festive');
     if(param==='off'||param==='christmas')return param;
     if(localStorage.getItem(FESTIVE_KEY)==='off')return 'off';

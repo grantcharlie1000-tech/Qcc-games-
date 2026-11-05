@@ -35,7 +35,8 @@ const FESTIVE_PALETTE: typeof ORIGINAL_PALETTE = {
   tower: 0xffffff, towerLine: 0xaec6e0, white: 0xffffff,
 };
 /** Festive obstacles: red, green, gold and a deeper red, keyed by id as before; sliders stay distinct in snow white. */
-const FESTIVE_BLOCKS = [0xd8263a, 0x2c9a55, 0xe9b949, 0xb81d30], FESTIVE_SLIDER = 0xf2f7ff;
+// Obstacles stay in reds and greens; gold is reserved for boost (gates, chevrons, trail), as the original keeps purple obstacles apart from cyan boost.
+const FESTIVE_BLOCKS = [0xd8263a, 0x2c9a55, 0xb81d30, 0x1f7a42], FESTIVE_SLIDER = 0xf2f7ff;
 const TILES = 420, LINES = 3400, BLOCKS = 320, CYAN = 200, TRAIL = 18, BURST = 40, BURST_REDUCED = 14;
 /** Road drawn behind the origin; the camera sits 3.6 m back. */
 const BEHIND = 6;

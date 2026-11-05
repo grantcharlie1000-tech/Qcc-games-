@@ -138,7 +138,8 @@ const sprites=new Map<string,HTMLCanvasElement>();
 function sprite(kind:'turn'|'light',tier:number,pixels:number){
  const key=`${kind}:${tier}:${pixels}`;let s=sprites.get(key);
  if(!s){
-  if(sprites.size>160)sprites.clear();
+  // 22 sprites per scale (11 tiers, two kinds): keep at most two scales so resizing cannot pile up large canvases.
+  if(sprites.size>=44)sprites.clear();
   // Even size keeps the centre on a pixel corner; the scale is exactly `pixels` per 40 units.
   s=document.createElement('canvas');const size=2*Math.ceil(pixels*SPAN/40);s.width=s.height=size;
   const g=s.getContext('2d')!;g.setTransform(pixels/40,0,0,pixels/40,size/2,size/2);

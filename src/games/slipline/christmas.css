@@ -1,13 +1,14 @@
 /*
- * Slipline, Christmas: an icy-blue board with snow-white and holly-green arrows.
+ * Slipline, Christmas: an icy-blue board with snow-white and mint-green arrows.
+ * The green and the blocked red differ by 3.2:1 in lightness (the original lavender and red: 3.0:1).
  * State colours keep their meaning: red is still "blocked", the selection is gold,
  * and clearing arrows glow gold-white. Colour-blind dashes are unchanged.
  */
 :root[data-festive="christmas"] .sl-game{background:var(--xmas-snowflakes) center top/300px 300px,linear-gradient(#123a5e,#0e2d4b 50%,#0a2139) center/100% 100%;color:#dff3ff}
 :root[data-festive="christmas"] .sl-board circle{fill:#cfeaff}
 :root[data-festive="christmas"] .sl-board g{fill:#f4f9ff;stroke:#f4f9ff}
-:root[data-festive="christmas"] .sl-board g[data-tone="1"]{fill:#7fe0a0;stroke:#7fe0a0}
-:root[data-festive="christmas"] .sl-board g[data-state=red]{fill:#ff4d64;stroke:#ff4d64}
+:root[data-festive="christmas"] .sl-board g[data-tone="1"]{fill:#a8f0c0;stroke:#a8f0c0}
+:root[data-festive="christmas"] .sl-board g[data-state=red]{fill:#e8304c;stroke:#e8304c}
 :root[data-festive="christmas"] .sl-board g[data-state=selected]{fill:var(--xmas-gold);stroke:var(--xmas-gold)}
 :root[data-festive="christmas"] .sl-board g[data-state=clearing]{fill:var(--xmas-gold-light);stroke:var(--xmas-gold-light)}
 :root[data-festive="christmas"] .sl-cursor{stroke:var(--xmas-gold-light)}

@@ -1,6 +1,6 @@
 import { test, expect, originalTheme } from '../../fixtures';
 
-// These checks measure the original skin's exact pixel colours; the Christmas skin is covered by tests/e2e/festive.spec.ts.
+// These checks measure the original skin's exact pixel colours; tests/e2e/festive.spec.ts only checks the Christmas skin mounts without errors; its look is verified by the screenshots in docs/evidence/christmas/neon-coil.
 test.beforeEach(async({context})=>originalTheme(context));
 
 for(const size of [{width:390,height:844},{width:1440,height:900}]) test(`reference HUD and rendered arena ${size.width}x${size.height}`,async({page},testInfo)=>{

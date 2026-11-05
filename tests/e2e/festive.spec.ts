@@ -35,3 +35,17 @@ test('the menu switch turns Christmas off and on without touching saves or score
   await expect(page.locator('html')).toHaveAttribute('data-festive','christmas');
   expect(await page.evaluate(()=>localStorage.getItem('qcc:festive'))).toBeNull();
 });
+
+test('switching the theme during a game remounts it in one theme and keeps the run',async({page})=>{
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('/#/game/maze-muncher');
+  await expect(page.locator('#game-stage .xm-wall-rim').first()).toBeAttached();
+  await appSettings(page);
+  await page.getByLabel('Christmas theme',{exact:true}).uncheck();
+  // The original maze returns: no festive-only elements are left behind to lose their scoped colours.
+  await expect(page.locator('#game-stage .mm-wall').first()).toBeAttached();
+  await expect(page.locator('#game-stage [class^="xm-"]')).toHaveCount(0);
+  await page.getByLabel('Christmas theme',{exact:true}).check();
+  await expect(page.locator('#game-stage .xm-wall-rim').first()).toBeAttached();
+  expect(errors).toEqual([]);
+});

@@ -472,7 +472,11 @@ for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#c
 document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);
 // The Christmas theme is presentation only: it is stored outside saves and sync, and games pick up a change as they draw.
 const festiveInput=document.querySelector<HTMLInputElement>('#festive')!;festiveInput.checked=storedFestiveTheme()==='christmas';
-festiveInput.addEventListener('change',()=>{setFestiveTheme(festiveInput.checked?'christmas':'off');announce(festiveInput.checked?'Christmas theme on':'Christmas theme off');});
+festiveInput.addEventListener('change',()=>{
+  setFestiveTheme(festiveInput.checked?'christmas':'off');announce(festiveInput.checked?'Christmas theme on':'Christmas theme off');
+  // Games build some artwork at mount, so an open game is saved and remounted (the same path as navigation) to show one theme throughout.
+  if(activeId)void route();
+});
 
 window.addEventListener('hashchange',()=>void route());
 window.addEventListener('pagehide',()=>{save();movies?.pause();appView?.pause();void accounts.flush(true,false).catch(()=>{});});
