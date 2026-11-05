@@ -1,5 +1,5 @@
 import {captureAuditEvidence} from '../helpers/audit-evidence';
-import {test,expect,type Page,type BrowserContext} from '@playwright/test';
+import {test,expect,type Page,type BrowserContext,type Locator,type ElementHandle} from '@playwright/test';
 
 // UI regressions from the November phone audit. Only the network boundary is
 // stubbed, so the production router, dialogs, composer and badge lifecycle run.
@@ -40,6 +40,52 @@ async function scrollSheetToEnd(page:Page,selector:string){
  await expect.poll(()=>sheet.evaluate(el=>Math.abs(el.scrollHeight-el.clientHeight-el.scrollTop))).toBeLessThan(2);
  return sheet;
 }
+// Visibility alone can pass during a transparent entry animation. Inspect the
+// actual target and its ancestors, then let two frames paint before capture.
+function chatEvidenceState(target:Element){
+ const message=target.querySelector('.chat-msg');
+ const receipt=target.querySelector('.chat-receipt');
+ const copy=[...target.querySelectorAll('[role=menuitem]')].find(el=>el.textContent==='Copy text');
+ const unsend=[...target.querySelectorAll('[role=menuitem]')].find(el=>el.textContent==='Unsend');
+ const copyIcon=copy?.querySelector('[data-icon=copy]');
+ const subjects=[target,...[message,receipt,copy,copyIcon,unsend].filter((el):el is Element=>!!el)];
+ const painted=subjects.every(el=>{
+  const rect=el.getBoundingClientRect();
+  if(rect.width<=0||rect.height<=0||rect.left<0||rect.top<0||rect.right>innerWidth||rect.bottom>innerHeight)return false;
+  const top=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2);
+  // Only the non-interactive Copy glyph may delegate to its owning button.
+  // An ancestor hit for a clipped message/receipt must not count as painted.
+  if(!top||(!el.contains(top)&&!(el===copyIcon&&top===copy)))return false;
+  for(let ancestor:Element|null=el;ancestor;ancestor=ancestor.parentElement){
+   const css=getComputedStyle(ancestor);
+   if(css.display==='none'||css.visibility!=='visible'||Number(css.opacity)<.999)return false;
+   if(ancestor.getAnimations().some(animation=>(animation.pending||animation.playState==='running')&&Number.isFinite(animation.effect?.getTiming().iterations??1)))return false;
+  }
+  return true;
+ });
+ return {connected:target.isConnected,painted,message:message?.textContent?.trim()??null,
+  pending:target.classList.contains('is-pending'),failed:target.classList.contains('is-failed'),receipt:receipt?.textContent?.trim()??null,
+  open:target instanceof HTMLDialogElement?target.open:null,copyIcon:!!copyIcon,
+  unsendInk:unsend?.lastElementChild?getComputedStyle(unsend.lastElementChild).color:null};
+}
+async function captureChatState(page:Page,scenario:string,target:Locator,expected:Partial<ReturnType<typeof chatEvidenceState>>){
+ const captured:{subject:ElementHandle<HTMLElement|SVGElement>|null}={subject:null};
+ const state={connected:true,painted:true,...expected};
+ try{
+  await captureAuditEvidence(page,test.info(),scenario,async phase=>{
+   if(phase==='before'){
+    await expect(target).toBeVisible();
+    await expect.poll(()=>target.evaluate(chatEvidenceState)).toMatchObject(state);
+    await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+    captured.subject=await target.elementHandle();
+   }
+   // The same DOM identity must still be present. In particular, the after
+   // check never retries until a missing message or closed menu reappears.
+   expect(captured.subject).not.toBeNull();
+   expect(await captured.subject!.evaluate(chatEvidenceState)).toMatchObject(state);
+  });
+ }finally{await captured.subject?.dispose();}
+}
 test.use({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
 
 test('Chat signup explains the app and exposes bordered credentials',async({page,context})=>{
@@ -74,13 +120,17 @@ test('Chat and Social menus show app settings rather than game filters',async({p
 test('touch composer fits its first line and Enter sends while Shift Enter adds a line',async({page,context})=>{
  await setup(context);await openChat(page,'/with/audit_friend');
  const input=page.getByRole('textbox',{name:'Message to Audit friend'});
- await input.fill('QA test message, please ignore. This is a longer line to check wrapping inside the bubble on a phone width screen.');
+ const text='QA test message, please ignore. This is a longer line to check wrapping inside the bubble on a phone width screen.';
+ await input.fill(text);
  const sizing=await input.evaluate(el=>({scroll:el.scrollHeight,client:el.clientHeight,top:el.scrollTop}));
  expect(sizing.scroll-sizing.client).toBeLessThanOrEqual(1);expect(sizing.top).toBe(0);
  await input.press('Shift+Enter');await expect(input).toHaveValue(/\n$/);
  await input.press('Enter');await expect(input).toHaveValue('');
  await expect(page.locator('.chat-msg').filter({hasText:'QA test message'})).toBeVisible();
- await captureAuditEvidence(page,test.info(),'chat-sent-wrapped-message');
+ const sent=page.locator('.chat-entry').filter({hasText:text});
+ await expect(sent).not.toHaveClass(/is-pending/);
+ await expect(sent.locator('.chat-receipt')).toHaveText('Sent');
+ await captureChatState(page,'chat-sent-wrapped-message',sent,{message:text,pending:false,failed:false,receipt:'Sent'});
  await input.fill('Composing text');
  await input.dispatchEvent('keydown',{key:'Enter',isComposing:true});await expect(input).toHaveValue('Composing text');
 });
@@ -117,7 +167,7 @@ test('sent receipt is a check, Copy text is a copy icon and destructive labels s
  await expect(sheet.getByRole('menuitem',{name:'Copy text'}).locator('[data-icon=copy]')).toBeVisible();
  const unsend=sheet.getByRole('menuitem',{name:'Unsend'});
  await expect.poll(()=>unsend.locator('span').last().evaluate(el=>getComputedStyle(el).color)).toBe('rgb(255, 100, 103)');
- await captureAuditEvidence(page,test.info(),'chat-message-actions');
+ await captureChatState(page,'chat-message-actions',sheet,{open:true,copyIcon:true,unsendInk:'rgb(255, 100, 103)'});
  await sheet.getByRole('button',{name:'Close menu'}).click();
  await page.getByRole('button',{name:'Chat info',exact:true}).click();
  for(const action of ['block','remove','delete']){

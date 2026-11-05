@@ -4,7 +4,7 @@
 
 The existing PR `Full browser suite` jobs in `.github/workflows/pages.yml` run Chromium and WebKit on GitHub-hosted runners, against the local Vite server. They do not require a preview or production deployment. This change does not edit workflows. The feature branch is outside the workflow’s push branches (`main` and `work`); opening the draft PR runs verification. Every production-publishing step additionally requires `main` and a non-PR event. Review the run for the exact candidate commit, not an older green run.
 
-Selected successful UI states now write viewport PNGs using `tests/helpers/audit-evidence.ts` and attach them to their individual Playwright tests. These are review evidence, not baseline comparisons or proof of visual correctness. Captures happen after the relevant assertions; a later assertion can still fail. Performance captures occur after encode-count assertions, without disabling animations. The separate Globle static-surface captures disable animations only for their image and do not measure motion.
+Selected successful UI states now write viewport PNGs using `tests/helpers/audit-evidence.ts` and attach them to their individual Playwright tests. These are review evidence, not baseline comparisons or proof of visual correctness. Captures happen after the relevant assertions; a later assertion can still fail. The wrapped-message and message-action Chat captures additionally wait for settled target/ancestor motion and authoritative content, then immediately recheck the same DOM identity after capture. The PNG is written and attached only if both guards pass; the post-capture guard does not wait for missing content to reappear. Performance captures occur after encode-count assertions, without disabling animations. The separate Globle static-surface captures disable animations only for their image and do not measure motion.
 
 For a focused run in a browser-capable environment:
 
@@ -52,3 +52,7 @@ No clean synthetic baseline pair has been established for these exact scenarios.
 Keep the final pushed commit prefixed with `[CF-Pages-Skip]` and include `[skip netlify]` in that commit and the PR title. Cloudflare documents the prefix as skipping its Git-integrated deployment; Netlify documents the commit marker for a branch/multi-commit push and the PR-title marker for its Deploy Preview. Neither marker disables the main-branch Actions publisher, so this PR must not be merged or dispatched on main as part of verification. Do not change hosting settings or invoke a deploy/build hook.
 
 Provider references: [Cloudflare GitHub integration](https://developers.cloudflare.com/pages/configuration/git-integration/github-integration/) and [Netlify skip a deploy](https://docs.netlify.com/deploy/manage-deploys/manage-deploys-overview/#skip-a-deploy). These are publication controls, not evidence that browser assertions or screenshots have passed.
+
+## Initial hosted evidence rejected
+
+The first PR #125 WebKit artifact contained `after-chat-message-actions-390x844.png` without its action menu and `after-chat-sent-wrapped-message-390x844.png` without the wrapped message. Those images are not successful evidence for the named states, even though the tests passed. Review newly generated images after the capture guards run. Passing DOM checks still cannot replace opening the actual PNGs.

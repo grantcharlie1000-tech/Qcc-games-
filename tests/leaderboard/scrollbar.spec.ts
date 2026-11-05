@@ -1,5 +1,18 @@
 import {captureAuditEvidence} from '../helpers/audit-evidence';
 import {test,expect} from '../fixtures';
+import type {Locator} from '@playwright/test';
+
+async function settledScrollTop(scores:Locator){
+ // Space scrolls natively and can keep animating after the first nonzero sample.
+ // Poll from the test runner so this also works with the game's clock paused.
+ let previous=-1,unchanged=0;
+ await expect.poll(async()=>{
+  const top=await scores.evaluate(el=>el.scrollTop);
+  unchanged=Math.abs(top-previous)<.5?unchanged+1:0;previous=top;
+  return unchanged;
+ },{intervals:[100]}).toBeGreaterThanOrEqual(3);
+ return previous;
+}
 
 for(const [game,viewport] of [
  ['snake',{width:1440,height:900}],
@@ -40,8 +53,11 @@ for(const [game,viewport] of [
  await expect.poll(()=>scores.evaluate(el=>el.scrollTop)).toBe(0);
  await page.keyboard.press('Space');
  await expect.poll(()=>scores.evaluate(el=>el.scrollTop)).toBeGreaterThan(0);
+ const afterSpace=await settledScrollTop(scores);
  await page.keyboard.press('Shift+Space');
- await expect.poll(()=>scores.evaluate(el=>el.scrollTop)).toBe(0);
+ // Native page-up distances need not exactly undo the preceding page-down.
+ await expect.poll(()=>scores.evaluate(el=>el.scrollTop)).toBeLessThan(afterSpace);
+ await expect(scores).toBeFocused();
  await page.keyboard.press('Tab');
  await expect(side.getByRole('button',{name:'All rankings'})).toBeFocused();
 
@@ -124,8 +140,9 @@ for(const state of ['start','paused'] as const)test(`top scores retain keyboard 
  await expect.poll(()=>scores.evaluate(el=>el.scrollTop)).toBeGreaterThan(0);
  await expect(scores).toBeFocused();await expect(sheet).toBeVisible();
  expect(await readState()).toEqual(before);
+ const afterSpace=await settledScrollTop(scores);
  await page.keyboard.press('Shift+Space');
- await expect.poll(()=>scores.evaluate(el=>el.scrollTop)).toBe(0);
+ await expect.poll(()=>scores.evaluate(el=>el.scrollTop)).toBeLessThan(afterSpace);
  await expect(scores).toBeFocused();await expect(sheet).toBeVisible();
  expect(await readState()).toEqual(before);
  await page.keyboard.press('Enter');

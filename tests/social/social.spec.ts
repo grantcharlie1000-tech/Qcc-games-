@@ -10,7 +10,6 @@ import {createMemoryStore} from '../../src/media/store';
 
 const database=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
 let accounts:ReturnType<typeof createAccountsHandler>,chat:ReturnType<typeof createChatHandler>,social:ReturnType<typeof createSocialHandler>,media:ReturnType<typeof createMediaHandler>;
-let mediaDelay=0;
 test.beforeAll(async()=>{
  const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;
  const store=createMemoryStore();const db={query:(text:string,values?:unknown[])=>pool.query(text,values),connect:()=>pool.connect()} as never;
@@ -20,7 +19,7 @@ test.afterAll(async()=>{await pool?.end();await database.stop();});
 test.use({viewport:{width:390,height:844}});
 
 const PASSWORD='long enough password';
-async function connect(context:BrowserContext,options:{pollScale?:number}={}){
+async function connect(context:BrowserContext,options:{pollScale?:number;mediaUploadGate?:Promise<void>;socialFollowGate?:Promise<void>}={}){
  await context.addInitScript(scale=>{
   if(window!==window.top)return;
   localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');
@@ -28,7 +27,8 @@ async function connect(context:BrowserContext,options:{pollScale?:number}={}){
  },options.pollScale);
  for(const [name,handle] of [['accounts',accounts],['chat',chat],['social',social],['media',media]] as const)await context.route(`**/.netlify/functions/${name}**`,async route=>{
   const req=route.request();
-  if(name==='media'&&req.method()==='POST'&&mediaDelay)await new Promise(resolve=>setTimeout(resolve,mediaDelay));
+  if(name==='media'&&req.method()==='POST'&&options.mediaUploadGate)await options.mediaUploadGate;
+  if(name==='social'&&req.method()==='POST'&&new URL(req.url()).searchParams.get('action')==='follow'&&options.socialFollowGate)await options.socialFollowGate;
   const body=['POST','PUT'].includes(req.method())?(name==='media'?req.postDataBuffer()??undefined:req.postData()??undefined):undefined;
   const result=await handle(new Request(req.url(),{method:req.method(),headers:req.headers(),body:body as BodyInit|undefined}));
   await route.fulfill({status:result.status,headers:Object.fromEntries(result.headers),body:Buffer.from(await result.arrayBuffer())});
@@ -115,6 +115,43 @@ test('two users: follow, post, see in following feed, like, reply, open thread',
  await expect(page.locator('.social-counts')).toContainText('1 reply');
 });
 
+for(const on of [true,false])test(`Following waits for a pending ${on?'follow':'unfollow'} when navigating from a profile`,async({page,context})=>{
+ let releaseFollow!:()=>void;
+ const socialFollowGate=new Promise<void>(resolve=>{releaseFollow=resolve;});
+ await connect(context,{socialFollowGate});
+ const a=await user('wait_a'),b=await user('wait_b'),text=`Pending follow post ${b.name}`;
+ await post(b.token,text);
+ if(!on)expect((await call(social,'follow',a.token,{username:b.name,on:true})).status).toBe(200);
+ await open(page,a.name,`#/social/u/${b.name}`);
+ try{
+  const button=page.getByRole('button',{name:`${on?'Follow':'Following'} @${b.name}`,exact:true});
+  await expect(button).toBeVisible();
+  // Observe starts inside the page, before network interception. Responses still use the real handlers.
+  await page.evaluate(()=>{
+   const state=window as unknown as {__followingReadCount:number};state.__followingReadCount=0;
+   const original=window.fetch.bind(window);
+   window.fetch=(input,init)=>{
+    const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url,location.href);
+    if(url.pathname==='/.netlify/functions/social'&&url.searchParams.get('action')==='feed'&&url.searchParams.get('tab')==='following')state.__followingReadCount++;
+    return original(input,init);
+   };
+  });
+  const started=page.waitForRequest(r=>r.method()==='POST'&&new URL(r.url()).searchParams.get('action')==='follow');
+  await button.click();await started;
+  await expect(page.getByRole('button',{name:`${on?'Following':'Follow'} @${b.name}`,exact:true})).toHaveAttribute('aria-pressed',String(on));
+  await page.locator('.social-view .ui-tab[data-tab=home]').click();
+  await expect(page).toHaveURL(/#\/social$/);
+  const feed=view(page).getByRole('feed',{name:'Following'});
+  await expect(feed).toHaveAttribute('aria-busy','true');
+  expect(await page.evaluate(()=>(window as unknown as {__followingReadCount:number}).__followingReadCount)).toBe(0);
+  releaseFollow();
+  await expect(feed).toHaveAttribute('aria-busy','false');
+  const card=feed.locator('.social-post').filter({hasText:text});
+  if(on)await expect(card).toBeVisible();else await expect(card).toHaveCount(0);
+  expect(await page.evaluate(()=>(window as unknown as {__followingReadCount:number}).__followingReadCount)).toBe(1);
+ }finally{releaseFollow();}
+});
+
 test('composer ring and limit',async({page,context})=>{
  await connect(context);const a=await user('cr');await open(page,a.name);
  await page.getByRole('button',{name:'New post'}).click();
@@ -191,8 +228,10 @@ test('report menu submits',async({page,context})=>{
 });
 
 test('photo post uploads through pipeline and renders thumbnail',async({page,context})=>{
- await connect(context);const a=await user('ph');await open(page,a.name);
- mediaDelay=700;
+ // Keep the upload pending until the throttled helper has been observed, rather than racing a fixed delay.
+ let releaseUpload!:()=>void;
+ const mediaUploadGate=new Promise<void>(resolve=>{releaseUpload=resolve;});
+ await connect(context,{mediaUploadGate});const a=await user('ph');await open(page,a.name);
  try{
   await page.getByRole('button',{name:'New post'}).click();
   const sheet=page.locator('#social-compose'),publish=sheet.getByRole('button',{name:'Publish'});
@@ -201,12 +240,13 @@ test('photo post uploads through pipeline and renders thumbnail',async({page,con
   await expect(chip).toHaveAttribute('data-stage',/compressing|uploading|processing/);
   await expect(publish).toBeDisabled();
   await expect(sheet.locator('.social-helper')).toHaveText('Wait for photos to finish uploading');
+  releaseUpload();
   await expect(chip).toHaveAttribute('data-stage','ready',{timeout:15000});
   await expect(chip).toHaveAttribute('aria-label','Photo 1 of 1, Ready');
   await expect(publish).toBeEnabled();
   await publish.click();
   await expect(sheet).not.toBeVisible();
- }finally{mediaDelay=0;}
+ }finally{releaseUpload();}
  const tile=page.locator('.social-post .social-media-tile img').first();
  await expect(tile).toBeVisible();
  await expect.poll(()=>tile.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);

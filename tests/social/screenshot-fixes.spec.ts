@@ -80,13 +80,17 @@ test('composer always shows a count and offers safe keyboard mentions',async({pa
 
 test('shortcuts has a centered dimmed dialog without duplicate sidebar content',async({page,context})=>{
  await page.setViewportSize({width:1440,height:900});await connect(context);const a=await user('shortcut');await open(page,a.name);
+ // The shell is visible before /me finishes. Keyboard shortcuts intentionally require
+ // an initialized identity; wait for the real feed and compose affordance, not elapsed time.
+ await expect(view(page).getByRole('feed',{name:'Following'})).toHaveAttribute('aria-busy','false');
+ await expect(view(page).getByRole('button',{name:'New post',exact:true})).toBeVisible();
  await expect(page.locator('.social-rail .social-shortcuts')).toHaveCount(0);
- await page.locator('.social-view').focus();await page.keyboard.press('?');
+ await view(page).focus();await expect(view(page)).toBeFocused();await page.keyboard.press('?');
  const dialog=page.getByRole('dialog',{name:'Keyboard shortcuts'});await expect(dialog).toBeVisible();
  await expect.poll(async()=>dialog.evaluate(el=>Math.abs(el.getBoundingClientRect().x+el.getBoundingClientRect().width/2-innerWidth/2))).toBeLessThan(2);
  expect(await dialog.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
  await captureAuditEvidence(page,test.info(),'social-desktop-shortcuts');
- await page.keyboard.press('Escape');await expect(dialog).toBeHidden();
+ await page.keyboard.press('Escape');await expect(dialog).toBeHidden();await expect(view(page)).toBeFocused();
 });
 
 test('profile onboarding offers photo and first post without a floating pencil',async({page,context})=>{
