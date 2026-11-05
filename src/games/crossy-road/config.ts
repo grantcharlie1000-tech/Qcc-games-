@@ -7,7 +7,9 @@ export type LaneKind = 'grass' | 'road' | 'river' | 'lily' | 'rail';
 export type Phase = 'ready' | 'running' | 'dying' | 'over';
 export type DeathCause = 'car' | 'train' | 'water' | 'swept' | 'ufo-idle' | 'ufo-behind';
 export type Quality = 'high' | 'low';
-export type WorldVersion = 1 | 2 | 3 | 4 | 5;
+export type WorldVersion = 1 | 2 | 3 | 4 | 5 | 6;
+/** The generation revision new runs use. Saved runs keep replaying the revision they were made with. */
+export const CURRENT_WORLD: WorldVersion = 6;
 
 /** One vehicle or log in a moving lane's repeating pattern. `offset` is its left edge inside the
  * pattern (tiles, 0 ≤ offset < cycle), `len` its length in tiles and `color` a palette index. */
@@ -195,3 +197,8 @@ export const scrollRate = (row: number): number => lerp(SCROLL_MIN, SCROLL_MAX, 
 export const roadGapMin = (speed: number): number => Math.max(3, 2 * PLAYER_HALF - 2 * VEHICLE_INSET + speed * CROSS_WINDOW);
 /** Largest river gap at a speed: no more than 4 tiles, and a fixed column waits at most RIVER_WAIT seconds for a log. */
 export const riverGapMax = (speed: number): number => Math.min(4, 2 * PLATFORM_GRACE + RIVER_WAIT * speed);
+/** Revision six: adjacent log rows always slide past each other at least this fast (tiles/s), so a rider on the lower
+ * row sweeps across the upper row's gaps and finds a landing within (largest gap − 2·grace) / LOG_SLIP seconds. */
+export const LOG_SLIP = 0.8;
+/** Revision six: the largest log gap at a difficulty (also bounded by riverGapMax for the lane's speed). */
+export const logGapCap = (d: number): number => lerp(1.8, 2.6, clamp(d, 0, 1));

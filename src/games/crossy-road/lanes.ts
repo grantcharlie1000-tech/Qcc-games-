@@ -37,6 +37,17 @@ export function vehicleHit(lane: RoadLane, x: number, t: number): boolean {
   return false;
 }
 
+/** The vehicle whose hitbox overlaps the player at x and time t (as vehicleHit), or null. Lorries are 2 tiles or longer. */
+export function vehicleAt(lane: RoadLane, x: number, t: number): Mover | null {
+  const lo = x - PLAYER_HALF, hi = x + PLAYER_HALF;
+  for (const mover of lane.movers) {
+    const base = moverBase(lane, mover, t);
+    for (let x0 = base + Math.ceil((lo - mover.len - base) / lane.cycle) * lane.cycle; x0 < hi; x0 += lane.cycle)
+      if (x0 + VEHICLE_INSET < hi && x0 + mover.len - VEHICLE_INSET > lo) return mover;
+  }
+  return null;
+}
+
 /** D3/D4: is there a log (its span widened by PLATFORM_GRACE per end) or a lily pad under centre x at time t? */
 export function platformAt(lane: RiverLane | LilyLane, x: number, t: number): boolean {
   if (lane.kind === 'lily') {
