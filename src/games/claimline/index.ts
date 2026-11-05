@@ -5,6 +5,7 @@ import { createInput } from './input';
 import { createRenderer, markSvg } from './render';
 import { HUMAN, PLAYER_COUNT, STEP, type World } from './types';
 import './style.css';
+import './christmas.css';
 
 const RULES = [
   'Claimline is a territory-capture game against six named LOCAL BOTS. Everyone starts on a small disc of their own land inside a circular arena. Nothing is online and no bot ever appears on any leaderboard.',

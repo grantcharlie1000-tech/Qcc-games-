@@ -1,0 +1,36 @@
+/* Solitaire, Christmas: evergreen felt, red-and-gold snowflake card backs,
+   gold slot outlines and holly on the table corners. Card faces are unchanged. */
+:root[data-festive="christmas"] .solitaire:not(.sol-drag-ghost){
+  border-color:#a87b1e;
+  background:repeating-linear-gradient(90deg,#ffffff05 0 1px,transparent 1px 3px),repeating-linear-gradient(0deg,#00000008 0 1px,transparent 1px 3px),linear-gradient(#155a3e,#0f4a32 55%,#0b3a27);
+  box-shadow:inset 0 0 0 2px #e9b94933,inset 0 0 40px #04201466,0 7px 0 #082619;
+}
+/* The play column's surround continues the same felt. */
+:root[data-festive="christmas"] .game-view[data-game-id=solitaire] .game-surface{background:repeating-linear-gradient(90deg,#ffffff05 0 1px,transparent 1px 3px),repeating-linear-gradient(0deg,#00000008 0 1px,transparent 1px 3px),linear-gradient(#0f4a32,#0b3a27)!important}
+
+/* Holly sprigs on two table corners; decoration only. */
+:root[data-festive="christmas"] .solitaire:not(.sol-drag-ghost)::before,
+:root[data-festive="christmas"] .solitaire:not(.sol-drag-ghost)::after{content:"";position:absolute;width:50px;height:50px;background:url("./xmas-holly.svg") center/contain no-repeat;pointer-events:none;z-index:-1}
+:root[data-festive="christmas"] .solitaire:not(.sol-drag-ghost)::before{left:2px;bottom:2px;transform:rotate(-8deg)}
+:root[data-festive="christmas"] .solitaire:not(.sol-drag-ghost)::after{right:2px;bottom:2px;transform:scaleX(-1) rotate(-8deg)}
+
+/* Card backs: original red and gold snowflake lattice. */
+:root[data-festive="christmas"] .sol-back{background:#a81b2d url("./xmas-card-back.svg") center/100% 100% no-repeat;border-color:#f6ead0;outline-color:#4a0c16}
+:root[data-festive="christmas"] .sol-back::after{border-color:#f8dd8a00}
+:root[data-festive="christmas"] .sol-back .sol-rosette{visibility:hidden}
+:root[data-festive="christmas"] .sol-stock-count{background:#5a0e1bcc;color:#fff3d6}
+
+/* Slots and columns: subtle gold outlines on the felt. */
+:root[data-festive="christmas"] .sol-slot{border-color:#e9b94966;background:#06261a40;color:#f8dd8a99}
+:root[data-festive="christmas"] .sol-slot.sol-red{color:#ff9e9e}
+:root[data-festive="christmas"] .sol-foundation .sol-slot{border-style:solid;border-color:#e9b94980;box-shadow:inset 0 0 0 3px #06261a33,inset 0 0 14px #e9b94922}
+:root[data-festive="christmas"] .sol-column-target{border-color:#e9b94933;background:#06261a22}
+:root[data-festive="christmas"] .sol-column-target>small{color:#e9b94955}
+:root[data-festive="christmas"] .sol-label,
+:root[data-festive="christmas"] .sol-column-target>span{color:#f3e6c4}
+:root[data-festive="christmas"] .sol-recycle{color:#f8dd8a}
+:root[data-festive="christmas"] .sol-message{color:#fff6e6}
+
+/* Controls in the palette (same sizes). */
+:root[data-festive="christmas"] .sol-controls .game-button{background:#e9b949;color:#2a1a05}
+:root[data-festive="christmas"] .sol-controls .game-button.secondary{background:#a81b2d;color:#fff8ef}

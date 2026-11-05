@@ -9,6 +9,7 @@ import {compactMass,mountDockRanking} from './dock-ranking';
 import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import {bindGlass} from '../../ui/glass';
 import './style.css';
+import './christmas.css';
 
 const module: GameModule = {
   id: 'neon-coil', title: 'Slither.io', cover: 'game-art/neon-coil/cover.svg',

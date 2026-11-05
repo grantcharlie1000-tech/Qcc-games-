@@ -1,0 +1,10 @@
+/*
+ * Wordle, Christmas: evergreen table, holly in the corners, gold-trimmed tiles and keys.
+ * Clue colours (and their colour-blind alternatives) are untouched: they use !important
+ * in style.css, so nothing here can override a revealed clue.
+ */
+:root[data-festive="christmas"] .ff{background:var(--xmas-holly) left 6px top 6px/54px 54px no-repeat,var(--xmas-holly) right 6px top 6px/54px 54px no-repeat,var(--xmas-snowflakes) center top/180px 180px,linear-gradient(#155039,var(--xmas-evergreen) 50%,var(--xmas-evergreen-deep)) center/100% 100%;color:#fbf3dc;box-shadow:inset 0 0 0 2px #e9b94966}
+:root[data-festive="christmas"] .ff-tile{border-color:#e9b9494d;background:#0b2e1f80}
+:root[data-festive="christmas"] .ff-tile.ff-filled{border-color:var(--xmas-gold)}
+:root[data-festive="christmas"] .ff-key{background:#3d6b52;box-shadow:inset 0 -2px 0 #e9b94980}
+:root[data-festive="christmas"] .ff-dialog{background:#fff8ef;color:#2a1a14;box-shadow:0 0 0 3px var(--xmas-red),0 12px 40px #0008}

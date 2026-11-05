@@ -1,4 +1,4 @@
-import {test,expect} from '../fixtures';
+import {test,expect,originalTheme} from '../fixtures';
 import {gameAction,openGameMenu} from '../game-menu';
 import {glyphContrast,glyphFillMask,settleGlassInk} from '../glass-contrast';
 import type {Page} from '@playwright/test';
@@ -56,7 +56,9 @@ test('Slither Boost wears the shared clear glass instead of its old milky fill',
   expect(paint.fill).toBe('rgba(0, 0, 0, 0)');expect(paint.border).toBe('none');expect(paint.radius).toBe('17px');
 });
 
-test('native start/end cards retain their original game palettes',async({page})=>{
+// Asserts the original artwork's exact colours; the Christmas theme gives these cards their own opaque palette (docs/evidence/christmas).
+test('native start/end cards retain their original game palettes',async({page,context})=>{
+  await originalTheme(context);
   // These fills come from the original game styles at 0f3d109. Shared glass
   // belongs to the shell and Slither sheet, not to the original native art.
   for(const [game,selector,fill] of [
@@ -95,7 +97,9 @@ test('native start/end cards retain their original game palettes',async({page})=
   await expect(panel.locator(':scope>.ui-glass-gl')).toHaveCount(0);
 });
 
-test('Corn retains its brown pixel columns and readable cream guidance',async({page})=>{
+// The cream guidance tip is opaque and readable in both themes; the brown panel colours belong to the original theme only.
+for(const theme of ['original','christmas'] as const)test(`Corn retains its pixel columns and readable cream guidance (${theme})`,async({page,context})=>{
+  if(theme==='original')await originalTheme(context);
   await page.goto('/#/game/corn-clicker');
   const tip=page.locator('.cc-col .cc-tip');await expect(tip).toBeAttached();
   // Tips are opt-in since #101: ask for them from Options before checking them.
@@ -105,8 +109,10 @@ test('Corn retains its brown pixel columns and readable cream guidance',async({p
   const cobTab=page.locator('#cc-tab-cob');if(await cobTab.isVisible())await cobTab.click();
   await expect(tip).toBeVisible();
   expect(await tip.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,filter:s.backdropFilter,shadow:s.boxShadow};})).toEqual({fill:'rgb(255, 243, 196)',filter:'none',shadow:'none'});
+  if(theme==='original'){
   await expect(page.locator('.cc-col.cc-left')).toHaveCSS('background-image',/radial-gradient.*rgb\(74, 60, 23\).*rgb\(41, 36, 26\)/);
   await expect(page.locator('.cc-col.cc-left')).toHaveCSS('border-top-color','rgb(107, 68, 34)');
+  }
   const action=tip.locator('.cc-btn');await expect(action).toHaveCSS('color','rgb(61, 46, 7)');
   await expect(action).toBeVisible();
   const box=(await action.boundingBox())!;
@@ -118,7 +124,9 @@ test('Corn retains its brown pixel columns and readable cream guidance',async({p
   expect(Math.min(...ratios)).toBeGreaterThanOrEqual(4.5);
 });
 
-test('native Minesweeper pause retains its opaque green palette and hides the board',async({page})=>{
+// Asserts the original artwork's exact colours; the Christmas theme gives these cards their own opaque palette (docs/evidence/christmas).
+test('native Minesweeper pause retains its opaque green palette and hides the board',async({page,context})=>{
+  await originalTheme(context);
   await page.goto('/#/game/minesweeper');
   await expect(page.locator('.ms-board')).toBeVisible();
   // Backgrounding is the shell's supported pause trigger; the old native

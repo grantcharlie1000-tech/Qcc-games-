@@ -8,6 +8,9 @@ import { AnimalGesture } from './input';
 import { frameCamera } from './framing';
 import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import './style.css';
+import './christmas.css';
+import { christmas } from '../../festive/festive';
+import { festiveAnimalSvg, festiveBox, festiveBackdrop, drawFestivePlatform } from './christmas-art';
 const module:GameModule={
  id:'animal-stack',title:'Animal Stack',cover:'game-art/animal-stack/cover.svg',
  rules:'Drag only the waiting animal left or right. A short tap rotates it 45°. Press DROP, Space or Enter to release. A/D or Left/Right move; Q/E rotate. Wait for each animal to settle. Each animal connected to the platform and still for half a second earns 100 points, plus 2 points per centimetre of your best tower height. Whole animals can tip and tumble. An animal falling off ends the run. Balance 40 animals to complete the stack.',
@@ -19,8 +22,10 @@ const module:GameModule={
   let preview=createAnimal(world.nextKind,world.aimX,world.spawnY);
   const gesture=new AnimalGesture(),keys=new Set<string>();
   let colliderOverlay=new URLSearchParams(location.search).has('animal-colliders');
+  // Christmas dresses each sprite (hat, antlers or scarf); the physics body is the same either way.
+  const xmas=christmas(),spriteSvg=xmas?festiveAnimalSvg:animalSvg,spriteBox=xmas?festiveBox:artBox;
   const sprites={} as Record<Kind,HTMLImageElement>;
-  for(const kind of KINDS){const image=new Image();image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(animalSvg(kind));sprites[kind]=image;}
+  for(const kind of KINDS){const image=new Image();image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(spriteSvg(kind));sprites[kind]=image;}
   let scale=1,left=0,top=0,ratio=1;
   function resize(){const box=canvas.getBoundingClientRect();ratio=Math.min(2,devicePixelRatio||1);canvas.width=Math.max(1,Math.round(box.width*ratio));canvas.height=Math.max(1,Math.round(box.height*ratio));scale=Math.min(box.width/WIDTH,box.height/HEIGHT);left=(box.width-WIDTH*scale)/2;top=box.height*.73-FLOOR*scale;clearPointer();if(paused)render();}
   function sync(){
@@ -36,18 +41,18 @@ const module:GameModule={
    if((world.over||world.complete)&&!previousEnd){context.sound(world.over?'lose':'success');context.announce(status.textContent);context.save(world.snapshot());}previousEnd=world.over||world.complete;
    context.setStatus(world.over?status.textContent:world.ready?ANIMALS[world.nextKind].name:'Settling');
   }
-  function drawAnimal(a:Animal){const b=a.body,img=sprites[a.kind];draw.save();draw.translate(b.position.x,b.position.y);draw.rotate(b.angle);draw.translate(a.offset.x,a.offset.y);if(img.complete&&img.naturalWidth){const box=artBox(a.kind);draw.drawImage(img,box.x,box.y,box.width,box.height);}draw.restore();
+  function drawAnimal(a:Animal){const b=a.body,img=sprites[a.kind];draw.save();draw.translate(b.position.x,b.position.y);draw.rotate(b.angle);draw.translate(a.offset.x,a.offset.y);if(img.complete&&img.naturalWidth){const box=spriteBox(a.kind);draw.drawImage(img,box.x,box.y,box.width,box.height);}draw.restore();
    if(colliderOverlay){draw.save();draw.strokeStyle='#ed176b';draw.fillStyle='#ff1c6422';draw.lineWidth=.8;for(const part of b.parts.slice(1)){draw.beginPath();part.vertices.forEach((v,i)=>i?draw.lineTo(v.x,v.y):draw.moveTo(v.x,v.y));draw.closePath();draw.fill();draw.stroke();}draw.strokeStyle='#fff';draw.lineWidth=1.3;draw.beginPath();draw.moveTo(b.position.x-4,b.position.y);draw.lineTo(b.position.x+4,b.position.y);draw.moveTo(b.position.x,b.position.y-4);draw.lineTo(b.position.x,b.position.y+4);draw.stroke();draw.restore();}
   }
   function preparePreview(){if(preview.kind!==world.nextKind)preview=createAnimal(world.nextKind,world.aimX,world.spawnY);Matter.Body.setPosition(preview.body,{x:world.aimX,y:world.spawnY});Matter.Body.setAngle(preview.body,world.rotation);}
   // advance=false repaints the current frame without easing the camera (used by the glass lens).
   function render(advance=true){
-   draw.setTransform(ratio,0,0,ratio,0,0);draw.fillStyle='#55c3ec';draw.fillRect(0,0,canvas.width/ratio,canvas.height/ratio);draw.save();draw.translate(left,top);draw.scale(scale,scale);
+   draw.setTransform(ratio,0,0,ratio,0,0);if(xmas)draw.drawImage(festiveBackdrop(canvas.width/ratio,canvas.height/ratio,ratio),0,0,canvas.width/ratio,canvas.height/ratio);else{draw.fillStyle='#55c3ec';draw.fillRect(0,0,canvas.width/ratio,canvas.height/ratio);}draw.save();draw.translate(left,top);draw.scale(scale,scale);
    if(world.ready)preparePreview();
    const current=world.ready?preview:world.active!==null?world.animals[world.active]:null;
    if(advance)camera=frameCamera({previous:camera,stackTop:world.cameraTop,cutoutTop:current?.body.bounds.min.y??Infinity,top,scale,immediate:context.settings.reducedMotion});
    draw.save();draw.translate(0,camera);
-   draw.fillStyle='#779b25';draw.strokeStyle='#161719';draw.lineWidth=3;draw.beginPath();draw.roundRect(18,FLOOR,324,10,1);draw.fill();draw.stroke();draw.fillStyle='#a0cf31';draw.fillRect(20,FLOOR+1,320,5);
+   if(xmas)drawFestivePlatform(draw,FLOOR);else{draw.fillStyle='#779b25';draw.strokeStyle='#161719';draw.lineWidth=3;draw.beginPath();draw.roundRect(18,FLOOR,324,10,1);draw.fill();draw.stroke();draw.fillStyle='#a0cf31';draw.fillRect(20,FLOOR+1,320,5);}
    for(const a of world.animals)drawAnimal(a);if(world.ready)drawAnimal(preview);draw.restore();draw.restore();
    // The platform camera can rise with a very tall tower; the release button remains fixed.
    bubble.hidden=performance.now()>=bubbleUntil;const active=world.animals.at(-1);if(active){bubble.style.left=`${(left+active.body.position.x*scale)/(canvas.width/ratio)*100}%`;bubble.style.top=`${(top+(active.body.bounds.min.y+camera-10)*scale)/(canvas.height/ratio)*100}%`;}

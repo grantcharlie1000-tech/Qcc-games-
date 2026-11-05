@@ -1,0 +1,49 @@
+/* Minesweeper, Christmas: snow-covered tiles on a winter night, cleared frosty
+   ground, coal for mines and candy-cane flags. Presentation only; tile sizes,
+   padding and layout are unchanged. */
+:root[data-festive="christmas"] .game-view[data-game-id=minesweeper]{--game-surface:var(--xmas-snowflakes) center top/180px 180px,linear-gradient(#0e2343,#0b1733 55%,#0c2a3a)}
+:root[data-festive="christmas"] body.in-game .game-view[data-game-id=minesweeper]{background:var(--xmas-snowflakes) center top/180px 180px,linear-gradient(#0e2343,#0b1733 55%,#0c2a3a)}
+:root[data-festive="christmas"] body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#0b1733}
+
+/* The board: an icy frame with a thin gold rim inside the existing padding. */
+:root[data-festive="christmas"] .ms-board{background:#4f6f92;box-shadow:inset 0 0 0 1px #e9b949,inset 0 0 0 3px #2f4a6b}
+
+/* Covered tiles are snow mounds; two variants keep the checkerboard rhythm. */
+:root[data-festive="christmas"] .ms .ms-tile:is([data-state=hidden],[data-state=flagged]){background:#9fb7cf url("./xmas-snow.svg") center/100% 100% no-repeat;box-shadow:none}
+:root[data-festive="christmas"] .ms .ms-tile.ms-alternate:is([data-state=hidden],[data-state=flagged]){background:#97b0ca url("./xmas-snow-alt.svg") center/100% 100% no-repeat}
+:root[data-festive="christmas"] .ms .ms-tile:is([data-state=hidden],[data-state=flagged]):active{background-color:#8aa4c0;filter:brightness(.95)}
+
+/* Revealed tiles are cleared, frosty ground: flat, cool and clearly lower than the snow. */
+:root[data-festive="christmas"] .ms .ms-tile[data-state=open]{background:#dbe6ee;box-shadow:inset 0 1px 2px #23406826}
+:root[data-festive="christmas"] .ms .ms-tile.ms-alternate[data-state=open]{background:#cddbe6}
+:root[data-festive="christmas"] .ms .ms-tile[data-state=mine]{background:#d3dfe9;box-shadow:inset 0 1px 2px #23406826}
+:root[data-festive="christmas"] .ms .ms-tile.ms-exploded{background:#f19a8f;box-shadow:inset 0 0 0 3px #a81b2d}
+:root[data-festive="christmas"] .ms .ms-tile.ms-wrong{background:#e9c3c7 url("./xmas-snow.svg") center/100% 100% no-repeat}
+:root[data-festive="christmas"] .ms .ms-tile.ms-alternate.ms-wrong{background:#e9c3c7 url("./xmas-snow-alt.svg") center/100% 100% no-repeat}
+:root[data-festive="christmas"] .ms-cross{color:#a81b2d;text-shadow:0 1px #fff,0 0 3px #fff}
+
+/* Classic number hues, deepened for at least 4.6:1 on the frosty ground. */
+:root[data-festive="christmas"] .ms .ms-n1[data-state=open]{color:#1a4f95}
+:root[data-festive="christmas"] .ms .ms-n2[data-state=open]{color:#1f6b33}
+:root[data-festive="christmas"] .ms .ms-n3[data-state=open]{color:#b3192e}
+:root[data-festive="christmas"] .ms .ms-n4[data-state=open]{color:#5b2d96}
+:root[data-festive="christmas"] .ms .ms-n5[data-state=open]{color:#7d2e12}
+:root[data-festive="christmas"] .ms .ms-n6[data-state=open]{color:#04626b}
+:root[data-festive="christmas"] .ms .ms-n7[data-state=open]{color:#1c2630}
+:root[data-festive="christmas"] .ms .ms-n8[data-state=open]{color:#4b4f63}
+:root[data-festive="christmas"] .ms .ms-tile:focus-visible{outline-color:#ffe08a;box-shadow:inset 0 0 0 6px #0b1733}
+:root[data-festive="christmas"] .ms .ms-tile.ms-hinted{outline-color:#0b1733}
+
+/* Controls and text in the midnight palette. */
+:root[data-festive="christmas"] .ms-outcome{color:#c3d4e6}
+:root[data-festive="christmas"] .ms-mode-switch{background:#12264a;box-shadow:inset 0 0 0 1px #e9b94940}
+:root[data-festive="christmas"] .ms-mode-switch button{color:#e6eef8}
+:root[data-festive="christmas"] .ms-mode-switch button[aria-pressed=true],
+:root[data-festive="christmas"] .ms-mode-switch button[aria-pressed=true]:active:not(:disabled){color:#fff8ef;background:#a81b2d}
+:root[data-festive="christmas"] .ms-mode-switch img{width:24px;height:24px}
+:root[data-festive="christmas"] .ms-result{background:#14305a;box-shadow:inset 0 0 0 1px #e9b94955}
+:root[data-festive="christmas"] .ms-result strong{color:#f8dd8a}
+:root[data-festive="christmas"] .ms-result p{color:#d4e1ef}
+:root[data-festive="christmas"] .ms-result button{background:#e9b949;color:#2a1a05}
+:root[data-festive="christmas"] .ms[data-status=lost] .ms-result{background:#4a1a26}
+:root[data-festive="christmas"] .ms[data-status=lost] .ms-result strong{color:#ffd6c9}

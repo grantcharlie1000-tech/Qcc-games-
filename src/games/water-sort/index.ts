@@ -2,10 +2,11 @@ import type { GameModule } from '../../core/types';
 import { LEVELS } from './levels';
 import { cloneBoard, pour, won } from './rules';
 import { campaignScore, readSnapshot, Session } from './session';
-import { bandsFor, COLOURS, liquidArt, tubeArt } from './art';
+import { bandsFor, liquidArt, liquidColour, tubeArt } from './art';
 import { liquidLayers, pourFrame, rotatePoint, spillAngle } from './geometry';
 import {mountCompactHud,mountDockActions} from '../../ui/game-controls-adapter';
 import './style.css';
+import './christmas.css';
 
 const undoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 3.5-6 5 6 5M4 8.5h10a6 6 0 0 1 0 12H7"/></svg>';
 const hintIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19.5h6m-5 3h4M8 14.5a6 6 0 1 1 8 0l-1 3H9zM12 2.5v-1M3.5 6.5l-2-1m21 0-2 1M2.5 14.5H1m22 0h-1.5"/></svg>';
@@ -64,7 +65,7 @@ const module:GameModule={
         const finished=values.length>0&&values.every(c=>c===values[0]);
         const legal=selected!==null&&i!==selected&&!!pour(state.tubes,selected,i);
         const hintClass=hint?.kind==='pour'?hint.from===i?' ws-hint-from':hint.to===i?' ws-hint-to':'':'';
-        const label=`Tube ${i+1}, ${values.length?'bottom to top: '+values.map(c=>COLOURS[c].name).join(', '):'empty'}`;
+        const label=`Tube ${i+1}, ${values.length?'bottom to top: '+values.map(c=>liquidColour(c).name).join(', '):'empty'}`;
         return `<button type="button" class="ws-tube${selected===i?' ws-selected':''}${legal?' ws-legal':''}${finished?' ws-finished':''}${hintClass}" data-tube="${i}" data-colours="${values.join(',')}" aria-label="${label}" aria-pressed="${selected===i}" ${session.paused||busy||complete?'disabled':''}>${tubeArt(values,i)}${celebrate===i&&!reduced()?'<span class="ws-bubbles" aria-hidden="true"><i></i><i></i><i></i><i></i></span>':''}${hint?.kind==='pour'&&(hint.from===i||hint.to===i)?`<span class="ws-hint-label">${hint.from===i?'FROM':'TO'}</span>`:''}</button>`;
       });
       tubes.innerHTML=`<div class="ws-row">${buttons.slice(0,count).join('')}</div><div class="ws-row">${buttons.slice(count).join('')}</div>`;
@@ -122,7 +123,7 @@ const module:GameModule={
       // The low lip is placed over the receiving opening: a narrow continuous
       // stream, with no decorative arc between the original slots.
       streamPath.setAttribute('d',`M${x1} ${y1} L${x2} ${y2}`);
-      streamPath.setAttribute('stroke',COLOURS[move.colour].fill);streamPath.setAttribute('stroke-width',String(Math.max(2,4*scale)));
+      streamPath.setAttribute('stroke',liquidColour(move.colour).fill);streamPath.setAttribute('stroke-width',String(Math.max(2,4*scale)));
       stream.style.opacity=!gentle&&f.phase==='flow'?'1':'0';
     }
     function frame(now:number){
@@ -152,7 +153,7 @@ const module:GameModule={
         if(!result){tell(session.state.tubes[index].length===4?'That tube is full.':'The top colours must match.');render();return;}
         if(session.begin(selected,index,reduced()||keyboard?160:1400)){
           focusAfterPour=keyboard?index:null;
-          tell(`Pouring ${result.amount} ${COLOURS[result.colour].name} ${result.amount===1?'band':'bands'} from ${selected+1} to ${index+1}.`);
+          tell(`Pouring ${result.amount} ${liquidColour(result.colour).name} ${result.amount===1?'band':'bands'} from ${selected+1} to ${index+1}.`);
           selected=null;context.sound('tap');render();animate();return;
         }
         tell('This run has reached 5,000 pours. Undo or restart this level.');

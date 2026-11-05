@@ -3,6 +3,7 @@ import { advance, createTower, drop, restoreTower } from './model';
 import { renderTower } from './renderer';
 import { notifyGlassFrame, registerGlassFrameSource } from '../../ui/glass-frame-source';
 import './style.css';
+import './christmas.css';
 
 const game:GameModule={
   id:'tower',title:'Stack',cover:'game-art/tower/cover.svg',

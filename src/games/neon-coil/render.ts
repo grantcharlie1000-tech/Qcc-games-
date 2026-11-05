@@ -1,6 +1,8 @@
 import { ARENA_RADIUS, bodyRadiusAt, headRadius, hooverRadius, immunityPaleness, radius, wrapAngle, type Arena, type Snake } from './model';
 import { bandIndex, resampleBody, SKINS, skinFor, type StampBuffer } from './skin';
 import { IMMUNE_OPACITY_DROP, IMMUNE_PALE_STRENGTH } from './tuning';
+import { christmas } from '../../festive/festive';
+import { BULBS } from '../../festive/art';
 /** Body sprites paint their disc at radius 46 inside a 96 px canvas. */
 export const SPRITE_DISC = 46 / 48;
 /** Sprite draw size whose visible disc has exactly radius `r` — the same radius the model collides with. */
@@ -8,6 +10,8 @@ export const spriteSize = (r: number) => r * 2 / SPRITE_DISC;
 const PALE = '#eef3f8', BOOST_BAND = '#d6ffff';
 const FOOD_COLORS = ['#22d3ee','#2f7bff','#5be12c','#b6e61a','#ffd21f','#ffa41b','#ff3d5a'];
 const TRAIL_COLORS = [...FOOD_COLORS,'#f03cbf','#9b30ff'];
+/** Christmas-light pellets: same count and indices, so stored food colours still map one to one. */
+const FESTIVE_TRAIL = [...BULBS, '#f6faff', '#ff6fb0', '#7fe0ff'];
 const TAU = Math.PI * 2;
 const surface = (size: number) => { const c = document.createElement('canvas'); c.width = c.height = size; return c; };
 const mix = (hex: string, target: number, amount: number) => {
@@ -17,8 +21,10 @@ const mix = (hex: string, target: number, amount: number) => {
 export interface View { width: number; height: number; zoom: number; x: number; y: number }
 export function createRenderer(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext('2d', { alpha: false })!;
+  // The theme is read once per mount: textures are cached for the life of the renderer.
+  const xmas = christmas();
   const tile = surface(256), ink = tile.getContext('2d')!;
-  ink.fillStyle = '#141923'; ink.fillRect(0,0,256,256); ink.lineCap = ink.lineJoin = 'round';
+  ink.fillStyle = xmas ? '#0d1a3a' : '#141923'; ink.fillRect(0,0,256,256); ink.lineCap = ink.lineJoin = 'round';
   // Rounded hooks and bent waves, with wrapped copies at every seam. This local
   // decorative sequence never consumes the simulation's seeded RNG.
   for (let i = 0; i < 42; i++) {
@@ -29,13 +35,19 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       if (i%3 === 0) { ink.bezierCurveTo(-20,8,-4,14,0,2); ink.bezierCurveTo(4,-12,15,-8,13,3); }
       else if (i%3 === 1) { ink.bezierCurveTo(-5,-15,-4,10,4,5); ink.bezierCurveTo(13,-1,2,-14,14,-12); }
       else { ink.bezierCurveTo(-4,-10,-12,8,-3,10); ink.bezierCurveTo(6,13,14,2,12,-6); }
-      ink.strokeStyle = '#0c1017'; ink.lineWidth = 11; ink.stroke();
-      ink.strokeStyle = '#1c2331'; ink.lineWidth = 6; ink.stroke(); ink.restore();
+      ink.strokeStyle = xmas ? '#09132c' : '#0c1017'; ink.lineWidth = 11; ink.stroke();
+      ink.strokeStyle = xmas ? '#16285a' : '#1c2331'; ink.lineWidth = 6; ink.stroke(); ink.restore();
     }
+  }
+  if (xmas) {
+    // Fine snow specks across the midnight tile, placed by a fixed sequence (no simulation RNG).
+    ink.fillStyle = '#dce9ff';
+    for (let i = 0; i < 26; i++) { const x = (i*97.3)%256, y = (i*61.7+i*i*3.1)%256; ink.globalAlpha = .18+.14*(i%3); ink.beginPath(); ink.arc(x,y,.9+(i%4)*.35,0,TAU); ink.fill(); }
+    ink.globalAlpha = 1;
   }
   const pattern = ctx.createPattern(tile,'repeat')!;
   const stripe = surface(48), red = stripe.getContext('2d')!;
-  red.fillStyle = '#3a0c16'; red.fillRect(0,0,48,48); red.strokeStyle = '#450f1d'; red.lineWidth = 8;
+  red.fillStyle = xmas ? '#4a0d18' : '#3a0c16'; red.fillRect(0,0,48,48); red.strokeStyle = xmas ? '#6a1626' : '#450f1d'; red.lineWidth = 8;
   for (let x = -48; x <= 96; x += 24) { red.beginPath(); red.moveTo(x,0); red.lineTo(x+48,48); red.stroke(); }
   const stripes = ctx.createPattern(stripe,'repeat')!;
   const bodySprites = new Map<string, HTMLCanvasElement>();
@@ -49,7 +61,7 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   }
   for (const skin of SKINS) { bodySprite(skin.head); for (const color of skin.bands) bodySprite(color); }
   bodySprite(BOOST_BAND); bodySprite(PALE);
-  const foodSprites = TRAIL_COLORS.map(color => {
+  const foodSprites = (xmas ? FESTIVE_TRAIL : TRAIL_COLORS).map(color => {
     const sprite = surface(64), c = sprite.getContext('2d')!, g = c.createRadialGradient(32,32,2,32,32,31);
     g.addColorStop(0,color+'c0'); g.addColorStop(.25,color+'8c'); g.addColorStop(.52,color+'28'); g.addColorStop(1,color+'00');
     c.fillStyle = g; c.fillRect(0,0,64,64);

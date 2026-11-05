@@ -1,8 +1,9 @@
 import type {GameModule} from '../../core/types';
 import {createGame,place,canPlace,hasMove,SHAPES,NAMES,colorOf,restoreGame,SIZE} from './model';
-import {gem,blockSvg,COLOR_NAMES} from './art';
+import {gem,blockSvg,colorName} from './art';
 import {mapDrag,grabCell,type Point,type Bounds} from './input';
 import './style.css';
+import './christmas.css';
 const freshGame=()=>createGame(crypto.getRandomValues(new Uint32Array(1))[0]);
 const module:GameModule={
  id:'color-blocks',title:'Block Blast',cover:'game-art/color-blocks/cover.svg',
@@ -32,13 +33,13 @@ const module:GameModule={
     cells[i].classList.toggle('cb-ghost',ghost);cells[i].classList.toggle('cb-occupied',!!value);cells[i].classList.toggle('cb-aim',preview&&i===cursor.y*SIZE+cursor.x);
     cells[i].dataset.value=String(value);cells[i].dataset.ghost=String(ghost);cells[i].innerHTML=color?blockSvg(color):'';
     cells[i].tabIndex=selected!==null&&i===Math.max(0,Math.min(SIZE*SIZE-1,cursor.y*SIZE+cursor.x))?0:-1;
-    cells[i].setAttribute('aria-label',`Row ${Math.floor(i/SIZE)+1}, column ${i%SIZE+1}, ${value?COLOR_NAMES[value]:'empty'}${ghost?', placement preview':''}`);
+    cells[i].setAttribute('aria-label',`Row ${Math.floor(i/SIZE)+1}, column ${i%SIZE+1}, ${value?colorName(value):'empty'}${ghost?', placement preview':''}`);
    }
    for(let i=0;i<3;i++){
     const p=state.tray[i],b=slots[i];b.classList.toggle('cb-dragging',drag?.slot===i);b.disabled=p===null||paused||!hasMove(state);b.setAttribute('aria-pressed',String(selected===i));
     if(p===null){b.innerHTML='';b.setAttribute('aria-label',`Piece ${i+1} placed`);continue;}
     const shape=SHAPES[p],w=Math.max(...shape.map(c=>c[0]))+1,h=Math.max(...shape.map(c=>c[1]))+1;
-    b.setAttribute('aria-label',`Piece ${i+1}: ${NAMES[p]}, ${shape.length} blocks, ${COLOR_NAMES[colorOf(p)]}`);
+    b.setAttribute('aria-label',`Piece ${i+1}: ${NAMES[p]}, ${shape.length} blocks, ${colorName(colorOf(p))}`);
     const cell=board.getBoundingClientRect().width/SIZE*.5;
     b.innerHTML=`<svg class="cb-piece-art" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w*32} ${h*32}" width="${w*cell}" height="${h*cell}" aria-hidden="true">${shape.map(([x,y])=>gem(colorOf(p),x*32,y*32)).join('')}</svg>`;
    }
