@@ -3,6 +3,8 @@ import { LEVELS, copyPaths, emptyPaths, endpoint, connected, begin, extend, isWo
 import type { Paths, Point, Snapshot } from './model';
 import {mountCompactHud} from '../../ui/game-controls-adapter';
 import './style.css';
+import './christmas.css';
+import {christmas} from '../../festive/festive';
 
 const palette = [
   {name:'coral',color:'#ff616e',light:'#ffb5b5',dark:'#bc314b',shape:'circle',letter:'A',dash:'2 12'},
@@ -69,7 +71,7 @@ const game: GameModule = {
   }
   function render(){
    if(disposed)return;
-   const current=level(),n=current.size,won=isWon(current,state.paths),pairs=state.paths.filter((path,color)=>connected(current,path,color)).length;
+   const xmas=christmas(),current=level(),n=current.size,won=isWon(current,state.paths),pairs=state.paths.filter((path,color)=>connected(current,path,color)).length;
    const used=new Set(current.pairs.flat());state.paths.flat().forEach(cell=>used.add(cell));
    const percent=Math.round(used.size/(n*n)*100);
    find<HTMLElement>('.cc-puzzle-name').textContent=current.name;
@@ -95,16 +97,21 @@ const game: GameModule = {
    const point=(cell:number)=>`${cell%n*100+50},${Math.floor(cell/n)*100+50}`;
    let drawing=`<defs><linearGradient id="cc-well" x2="0" y2="1"><stop stop-color="#0d203a"/><stop offset="1" stop-color="#1c3451"/></linearGradient><radialGradient id="cc-field" cx=".4" cy="0" r="1"><stop stop-color="#304560"/><stop offset="1" stop-color="#101c33"/></radialGradient>`;
    palette.forEach((p,i)=>drawing+=`<linearGradient id="cc-peg-${i}" x1="0" y1="0" x2=".35" y2="1"><stop stop-color="${p.light}"/><stop offset=".45" stop-color="${p.color}"/><stop offset="1" stop-color="${p.dark}"/></linearGradient>`);
+   if(xmas)palette.forEach((p,i)=>drawing+=`<radialGradient id="cc-bulb-${i}" cx=".38" cy=".35" r=".75"><stop stop-color="${p.light}"/><stop offset=".5" stop-color="${p.color}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient>`);
    drawing+=`</defs><rect width="${n*100}" height="${n*100}" rx="15" fill="url(#cc-field)"/>`;
    for(let cell=0;cell<n*n;cell++){const x=cell%n*100,y=Math.floor(cell/n)*100;drawing+=`<rect x="${x+3}" y="${y+4}" width="94" height="94" rx="13" fill="url(#cc-well)" stroke="#40516a" stroke-opacity=".55" stroke-width="1.5"/><circle cx="${x+50}" cy="${y+50}" r="3" fill="#40516a"/>`;}
    state.paths.forEach((path,color)=>{
     if(path.length<2)return;
     const points=path.map(point).join(' '),p=palette[color];
+    // Christmas: a luminous cable in the pair colour; same polyline, same dash mark.
+    if(xmas){drawing+=`<polyline points="${points}" fill="none" stroke="#040914" stroke-opacity=".55" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 4)"/><polyline points="${points}" fill="none" stroke="${p.color}" stroke-opacity=".22" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${points}" fill="none" stroke="${p.color}" stroke-opacity=".38" stroke-width="27" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${points}" fill="none" stroke="${p.dark}" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${points}" fill="none" stroke="${p.color}" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${points}" fill="none" stroke="${p.light}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-opacity=".9"/><polyline points="${points}" fill="none" stroke="#102039" stroke-opacity=".6" stroke-width="3" stroke-dasharray="${p.dash}" stroke-linecap="round" transform="translate(0 4)"/>`;return;}
     drawing+=`<polyline points="${points}" fill="none" stroke="#071121" stroke-width="43" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 5)"/><polyline points="${points}" fill="none" stroke="${p.dark}" stroke-width="39" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${points}" fill="none" stroke="${p.color}" stroke-width="29" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${points}" fill="none" stroke="${p.light}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" stroke-opacity=".55" transform="translate(0 -5)"/><polyline points="${points}" fill="none" stroke="#102039" stroke-opacity=".48" stroke-width="3" stroke-dasharray="${p.dash}" stroke-linecap="round"/>`;
    });
    current.pairs.forEach((pair,color)=>pair.forEach(cell=>{
     const x=cell%n*100+50,y=Math.floor(cell/n)*100+50,p=palette[color];
-    drawing+=`<g transform="translate(0 5)" fill="#060d1c" opacity=".65">${shape(color,x,y)}</g><g fill="url(#cc-peg-${color})" stroke="#07172b" stroke-width="5">${shape(color,x,y)}</g><path d="M${x-12} ${y-17}q10-9 22-3" fill="none" stroke="white" stroke-width="5" opacity=".6" stroke-linecap="round"/><text x="${x}" y="${y+9}" text-anchor="middle" fill="#10213a" font-family="system-ui,sans-serif" font-weight="900" font-size="25">${p.letter}</text>`;
+    // Christmas: a light bulb whose glass is the pair's own shape (the colour-blind mark), capped by a socket, with the letter inside.
+    if(xmas)drawing+=`<circle cx="${x}" cy="${y}" r="40" fill="${p.color}" opacity=".2"/><g transform="translate(0 5)" fill="#060d1c" opacity=".65">${shape(color,x,y)}</g><rect x="${x-11}" y="${y-44}" width="22" height="18" rx="3.5" fill="#2c6b45" stroke="#07172b" stroke-width="2.5"/><path d="M${x-8} ${y-38}h16M${x-8} ${y-32}h16" stroke="#8fd3a8" stroke-width="1.6" stroke-linecap="round"/><g fill="url(#cc-bulb-${color})" stroke="#07172b" stroke-width="4">${shape(color,x,y)}</g><g fill="none" stroke="${p.light}" stroke-width="2" stroke-opacity=".85" transform="translate(${x} ${y}) scale(.82) translate(${-x} ${-y})">${shape(color,x,y)}</g><path d="M${x-13} ${y-14}q7-8 17-6" fill="none" stroke="white" stroke-width="4.5" opacity=".7" stroke-linecap="round"/><text x="${x}" y="${y+9}" text-anchor="middle" fill="#10213a" font-family="system-ui,sans-serif" font-weight="900" font-size="25">${p.letter}</text>`;
+    else drawing+=`<g transform="translate(0 5)" fill="#060d1c" opacity=".65">${shape(color,x,y)}</g><g fill="url(#cc-peg-${color})" stroke="#07172b" stroke-width="5">${shape(color,x,y)}</g><path d="M${x-12} ${y-17}q10-9 22-3" fill="none" stroke="white" stroke-width="5" opacity=".6" stroke-linecap="round"/><text x="${x}" y="${y+9}" text-anchor="middle" fill="#10213a" font-family="system-ui,sans-serif" font-weight="900" font-size="25">${p.letter}</text>`;
     if(connected(current,state.paths[color],color))drawing+=`<circle cx="${x+24}" cy="${y-24}" r="10" fill="#f2ffe7" stroke="#10213a" stroke-width="2"/><path d="m${x+19} ${y-24} 4 4 7-8" fill="none" stroke="#20633c" stroke-width="3"/>`;
    }));
    art.setAttribute('viewBox',`0 0 ${n*100} ${n*100}`);art.innerHTML=drawing.replaceAll('id="cc-',`id="${svgPrefix}-`).replaceAll('url(#cc-',`url(#${svgPrefix}-`);

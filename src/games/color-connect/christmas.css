@@ -1,0 +1,10 @@
+/* Flow Free, Christmas: a midnight sky around a gold-and-evergreen frame;
+   the board art (bulbs and glowing cables) is drawn in index.ts. Presentation only. */
+:root[data-festive="christmas"] .game-view[data-game-id=color-connect]{--game-surface:var(--xmas-stars) center top/200px 200px,var(--xmas-snowflakes) center top/180px 180px,linear-gradient(#0e2343,#0b1733 60%,#081226)}
+:root[data-festive="christmas"] .game-view[data-game-id=color-connect] .game-surface{background:var(--xmas-stars) center top/200px 200px,var(--xmas-snowflakes) center top/180px 180px,linear-gradient(#0e2343,#0b1733 60%,#081226)!important}
+:root[data-festive="christmas"] .cc-frame{background:linear-gradient(135deg,#f8dd8a,#c99a2e 30%,#a87b1e 70%,#f3cf72);box-shadow:inset 0 0 0 2px #a87b1e,0 6px 0 #082619,0 10px 20px #02081866}
+:root[data-festive="christmas"] .cc-playfield{background:#0b1733;box-shadow:0 0 0 2px #0a2a1c,inset 0 3px 8px #000}
+:root[data-festive="christmas"] .cc-cell:focus-visible{outline-color:#ffe08a}
+:root[data-festive="christmas"] .cc-cell.cc-selected{box-shadow:inset 0 0 0 3px #ffe08a}
+:root[data-festive="christmas"] .cc-win{border-color:#e9b949aa;background:#0b1733d9;color:#fff3d6}
+:root[data-festive="christmas"] .cc-win strong{color:#f8dd8a}
