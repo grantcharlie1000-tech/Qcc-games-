@@ -1,12 +1,12 @@
 # Pocket Arcade architecture
 
-Twenty-two games: Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft, Maze Muncher, Corn Clicker, Slipline, Quadfall, Fivefold, Claimline. No factory game, currency, ads, tracking or runtime CDN. Username/password accounts are optional; guests keep local-only saves. External requests are limited to optional account/save sync and the shared leaderboard (same origin), the Movies & TV images and streaming players described below, and, only when a player opens online play in Pool or Blockcraft, PeerJS Cloud signalling plus a same-origin TURN credential function (see [online multiplayer](docs/MULTIPLAYER.md)).
+Twenty-four games: Color Blocks, Water Sort, Fruit Merge, Tower, Flappy Bird, Ball Run, Animal Stack, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Pool, Globle, Blockcraft, Maze Muncher, Corn Clicker, Slipline, Quadfall, Fivefold, Claimline, Crossy Road, Quad Clash. No factory game, currency, ads, tracking or runtime CDN. Username/password accounts are optional; guests keep local-only saves. External requests are limited to optional account/save sync and the shared leaderboard (same origin), the Movies & TV images and streaming players described below, and, only when a player opens online play in Pool or Blockcraft, PeerJS Cloud signalling plus a same-origin TURN credential function (see [online multiplayer](docs/MULTIPLAYER.md)).
 
 ## Static shell
 
 Vite 7, strict TypeScript, semantic DOM/CSS; no application framework. Hash routes `#/game/<id>` work at the origin root and any repository subpath. Vite's relative base `./` is authoritative. All assets use `import.meta.env.BASE_URL` or relative imports. Locally bundled Lilita One (OFL) supplies the bold, playful lettering. The nine user-provided images, inspected as the contact sheet and detailed originals under `/workspace/arcade-references`, set portrait proportions, dark rims, two-column mobile layout, saturated artwork and minimal header. The original wallet and advertising control was removed, and the later top bar too. The library has no header. A glass tab bar at the bottom holds Games, Movies, TV Shows, My list, Study and Menu, and favourites and search live in the Menu sheet.
 
-`src/core/catalog.ts` contains twenty-two cards and lazy game loaders. A game imports no other game. Matter.js is only imported by physics games; Three.js only by Ball Run, Globle and Blockcraft; globe.gl only by Globle. Blockcraft also starts module Web Workers (`src/games/blockcraft/world/worker.ts`, emitted as a hashed same-origin asset and included in the offline pack) for terrain generation, and falls back to time-sliced main-thread generation if workers are unavailable. `src/main.ts` owns routes, lifecycle, toolbar, pause overlay, rules dialog, autosave, settings, sound and favourites.
+`src/core/catalog.ts` contains twenty-four cards and lazy game loaders. A game imports no other game. Matter.js is only imported by physics games; Three.js only by Ball Run, Globle and Blockcraft; globe.gl only by Globle. Blockcraft also starts module Web Workers (`src/games/blockcraft/world/worker.ts`, emitted as a hashed same-origin asset) for terrain generation, and falls back to time-sliced main-thread generation if workers are unavailable. `src/main.ts` owns routes, lifecycle, toolbar, pause overlay, rules dialog, autosave, settings, sound and favourites.
 
 Shared presentation for Movies & TV and the tab bar: `src/theme.css` holds the design tokens and the `ui-` components, and it is imported first. `src/ui/` holds the icons, image load states, rail scrolling, the tab bar that minimizes into a capsule on scroll, the glass island (its pill, press and lens), the sheet helpers and the input mode that decides whether focus rings show (`focus.ts`). Games keep their own styles.
 
@@ -30,7 +30,7 @@ Tiny snapshots/settings/scores use versioned localStorage envelopes and memory f
 
 ## Offline
 
-Production service worker uses scope relative to the deployment base. Shell cache fills on visit; the explicit menu action caches every production chunk, cover, font and shell file using a generated content-hashed manifest and shows progress. An active-worker version handshake prevents mixing a waiting release with an older tab. Updates wait for older tabs to close before activation; only then are stale caches from the same scope removed. Cache read/write failures cannot turn a successful online fetch into a gameplay failure. Offline depends on a successful prior download, origin, device and browser storage policy; no policy bypass is promised.
+Offline play is retired: the site needs a network connection, and service-worker caching and offline downloads are no longer provided. At startup `src/core/offline.ts` unregisters existing service workers and deletes only CacheStorage caches whose names start with `pocket-arcade`; saves, preferences, accounts and unrelated caches are left alone. `public/sw.js` stays at its original URL as a self-unregistering recovery (kill-switch) worker, so returning browsers remove their old worker and caches.
 
 ## Isolation and integration
 
@@ -38,7 +38,7 @@ Parent branch `work` owns shared files, lockfile and deployment. Each SOL specia
 
 ## Deployment
 
-`npm run build` typechecks, bundles and generates the complete offline manifest. `dist/` can be mounted at `/` or `/Qcc-games-/` unchanged. Netlify serves the static output under netlify.toml. GitHub Pages Actions verifies tests then uploads dist. Hash routes require no fallback rewrite. HTTPS/localhost is necessary for service workers. Deployment URLs are reported only after actual publication and verification.
+`npm run build` typechecks, bundles and runs the service-worker kill-switch check. `dist/` can be mounted at `/` or `/Qcc-games-/` unchanged. Production is the Cloudflare Pages project `nceastudy` (https://nceastudy.pages.dev), published from `main` by [.github/workflows/pages.yml](.github/workflows/pages.yml); see [Cloudflare Pages publishing](docs/CLOUDFLARE_PAGES.md). Netlify files (`netlify.toml`, `netlify/`) are legacy and not used for production. Hash routes require no fallback rewrite. HTTPS/localhost is necessary for service workers. Deployment URLs are reported only after actual publication and verification.
 
 ## Referenced gameplay corrections
 
