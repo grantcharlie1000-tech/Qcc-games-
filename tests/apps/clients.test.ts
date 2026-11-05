@@ -80,6 +80,23 @@ describe('AppApi without AbortSignal.any',()=>{
 });
 
 describe('SocialClient',()=>{
+ it('a feed read waits for an in-flight follow, so Following shows the new author',async()=>{
+  let release!:()=>void;const order:string[]=[];
+  const f=vi.fn(async(url:RequestInfo|URL)=>{const u=String(url);
+   if(u.includes('action=follow')){await new Promise<void>(r=>{release=r;});order.push('follow done');return json({followedByMe:true,followers:1});}
+   order.push('feed sent');return json({items:[],next:null});});
+  const c=new SocialClient(()=>'t',f as any);
+  const follow=c.follow('sam',true),feed=c.feed('following');
+  await Promise.resolve();await Promise.resolve();
+  expect(order).toEqual([]);
+  release();await Promise.all([follow,feed]);
+  expect(order).toEqual(['follow done','feed sent']);
+ });
+ it('a failed follow does not block later feed reads',async()=>{
+  const f=mock(new Error('offline'),json({items:[],next:null}));const c=new SocialClient(()=>'t',f as any);
+  await expect(c.follow('sam',true)).rejects.toThrow();
+  await expect(c.feed('discover')).resolves.toEqual({items:[],next:null});
+ });
  it('matches the server contract',async()=>{
   const f=mock(...Array.from({length:16},()=>json({})));const c=new SocialClient(()=>'t',f as any);
   await c.me();await c.feed('following','c1');await c.thread('p');await c.profile('sam');await c.posts('sam','likes','c2');await c.search('kiwi');await c.activity();await c.blocks();

@@ -14,11 +14,12 @@ for(const fallback of [false,true])for(const close of ['guest','escape'] as cons
     await expect(dialog).toBeVisible();
     await expect.poll(()=>dialog.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
     const button=dialog.locator('.account-submit'),box=(await dialog.boundingBox())!,submit=(await button.boundingBox())!;
-    // The long form intentionally scrolls. Its offscreen submit must remain clipped.
+    // The long form intentionally scrolls. The part of the submit beyond the sheet's edge must remain clipped.
     expect(submit.y+submit.height).toBeGreaterThan(box.y+box.height);
-    expect(await page.evaluate(({x,y})=>!!document.elementFromPoint(x,y)?.closest('.account-submit'),{x:512,y:Math.min(576,submit.y+3)})).toBe(false);
+    expect(await page.evaluate(({x,y})=>!!document.elementFromPoint(x,y)?.closest('.account-submit'),{x:512,y:Math.min(576,Math.max(submit.y,box.y+box.height)+3)})).toBe(false);
     await button.scrollIntoViewIfNeeded();
-    expect((await button.boundingBox())!.y+submit.height).toBeLessThanOrEqual(box.y+box.height);
+    // Integer scrollTop can leave a sub-pixel remainder at a fractional sheet edge.
+    expect((await button.boundingBox())!.y+submit.height).toBeLessThanOrEqual(box.y+box.height+1);
     await dialog.evaluate(e=>e.scrollTop=0);
     if(close==='guest')await dialog.getByRole('button',{name:'Play as guest',exact:true}).click();else await page.keyboard.press('Escape');
     await expect(dialog).not.toHaveAttribute('open');
