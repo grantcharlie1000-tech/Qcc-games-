@@ -16,6 +16,11 @@ test.beforeAll(async()=>{
  const store=createMemoryStore();const db={query:(text:string,values?:unknown[])=>pool.query(text,values),connect:()=>pool.connect()} as never;
  accounts=createAccountsHandler(pool);chat=createChatHandler(db,store);social=createSocialHandler(db,store);media=createMediaHandler(db,store);
 });
+// The dev database (PGlite behind pg-gateway) runs every connection in one shared session, so a handler call
+// still running from the previous test's closed page can interleave with this test's signup transaction and
+// make it fail (503). Before each test, wait for every backend call the previous one started to finish.
+const inFlight=new Set<Promise<Response>>();
+test.beforeEach(async()=>{await Promise.allSettled([...inFlight]);});
 test.afterAll(async()=>{await pool?.end();await database.stop();});
 test.use({viewport:{width:390,height:844}});
 
@@ -33,7 +38,9 @@ async function connect(context:BrowserContext,options:{pollScale?:number}={}){
    if(url.includes('action=messages'))counts.messages++;else if(url.includes('action=list'))counts.list++;else if(url.includes('action=open_snap'))counts.open_snap++;
   }
   const body=['POST','PUT'].includes(req.method())?(name==='media'?req.postDataBuffer()??undefined:req.postData()??undefined):undefined;
-  const result=await handle(new Request(req.url(),{method:req.method(),headers:req.headers(),body:body as BodyInit|undefined}));
+  const pending=handle(new Request(req.url(),{method:req.method(),headers:req.headers(),body:body as BodyInit|undefined}));
+  inFlight.add(pending);void pending.finally(()=>inFlight.delete(pending)).catch(()=>{});
+  const result=await pending;
   await route.fulfill({status:result.status,headers:Object.fromEntries(result.headers),body:Buffer.from(await result.arrayBuffer())});
  });
 }
