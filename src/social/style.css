@@ -100,7 +100,7 @@ html:has(body.social-active:not(.study-active)),body.social-active:not(.study-ac
 .social-action .social-n,.social-action .social-n:empty{display:inline-block;min-width:3ch;text-align:left}
 @media(hover:hover) and (pointer:fine){
  .social-action.is-reply:hover{color:var(--social-accent);background:var(--social-accent-soft)}
- .social-action.is-like:hover{color:var(--social-like);background:rgb(255 99 126 / .14)}
+ .social-action.is-like:hover{color:var(--social-like);background:var(--social-accent-soft)}
  .social-action.is-share:hover{color:#fff;background:rgb(255 255 255 / .08)}
 }
 /* Thread */

@@ -3,7 +3,7 @@
   --social-accent:#a684ff;
   --social-accent-ink:var(--c-950);
   --social-accent-soft:rgb(166 132 255 / .16);
-  --social-like:var(--c-rose-soft);
+  --social-like:var(--social-accent);
   --social-warn:var(--c-amber);
   --social-danger:var(--c-red);
   --chat-accent:#46ecd5;

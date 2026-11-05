@@ -282,7 +282,7 @@ test('originality: violet liked heart, "Your follower" chip, "In reply to" line'
  const a=await user('og'),b=await user('ob');
  const root=await post(a.token,'original thought');
  await post(a.token,'a reply to myself',{replyTo:root.id});
- expect((await call(social,'follow',b.token,{username:a.name})).status).toBe(200);
+ expect((await call(social,'follow',b.token,{username:a.name,on:true})).status).toBe(200);
  await open(page,a.name);
  // A reply card names its parent in plain words with the reply glyph.
  const replyCard=page.locator('.social-feed > .social-post').filter({hasText:'a reply to myself'});
@@ -552,7 +552,7 @@ test('feed polling stops while hidden and while Study is open',async({page,conte
  const studyCount=feeds;await page.waitForTimeout(3600);expect(feeds).toBe(studyCount);
 });
 
-test('New post and the n shortcut reopen the composer right after it closes',async({page,context})=>{
+test('New post and the p shortcut reopen the composer right after it closes',async({page,context})=>{
  await connect(context);const a=await user('rc');await open(page,a.name);
  const sheet=page.locator('#social-compose[open]');
  await page.getByRole('button',{name:'New post'}).click();await expect(sheet).toBeVisible();
