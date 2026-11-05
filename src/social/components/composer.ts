@@ -96,7 +96,7 @@ export class Composer {
    });
    this.uploads.push(item);this.list.append(item.el);void item.start();
   }
-  if(files.length>room)this.notice('You can add up to 4 photos.');
+  if(files.length>room)this.notice(`You can add up to ${POST_MAX_MEDIA} photos.`);
   this.update();this.options.onChange?.();
  }
  private onFailure(failure:UploadFailure):void {

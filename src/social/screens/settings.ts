@@ -127,7 +127,7 @@ export class SettingsScreen implements Screen {
  /** Avatar and banner: current image, "Change", "Remove", and the upload chip while a new one is going up. */
  private mediaBlock(profile:ProfileView,enabled:boolean,state:{avatar:string|null|undefined;banner:string|null|undefined},changed:()=>void):HTMLElement {
   const box=document.createElement('div');box.className='social-media-settings';
-  if(!enabled){const p=document.createElement('p');p.className='social-muted';p.textContent=MEDIA_UNAVAILABLE_MESSAGE.replace(/^Photos/,'Photos');box.append(p);return box;}
+  if(!enabled){const p=document.createElement('p');p.className='social-muted';p.textContent=MEDIA_UNAVAILABLE_MESSAGE;box.append(p);return box;}
   const block=(kind:'avatar'|'banner',title:string)=>{
    const row=document.createElement('div');row.className=`social-media-row is-${kind}`;
    const preview=document.createElement('div');preview.className='social-media-preview';

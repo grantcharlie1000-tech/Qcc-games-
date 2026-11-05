@@ -53,10 +53,15 @@ body:has(.arcade-sheet[open]) #pause-overlay{opacity:0;pointer-events:none}
 .arcade-sheet :is(input:not([type=checkbox]),select){background:var(--sheet-control);color:var(--sheet-ink)}
 .arcade-sheet input::placeholder{color:var(--sheet-ink);opacity:1}
 #accounts-dialog.arcade-sheet label{color:var(--sheet-muted)}
-#accounts-dialog.arcade-sheet input{background:var(--sheet-control);color:var(--sheet-ink)}
-.arcade-sheet .account-tabs{gap:4px;padding:4px;border-radius:999px;background:var(--sheet-group)}
-.arcade-sheet .account-tabs .game-button{min-height:48px;padding:8px;background:transparent;color:var(--sheet-ink)}
-.arcade-sheet .account-tabs [aria-pressed=true]{background:var(--sheet-control)}
+#accounts-dialog.arcade-sheet input{background:var(--sheet-control);color:var(--sheet-ink);border-color:var(--sheet-line)}
+/* The dark control fill alone vanishes on the dark sheet: the hairline gives fields,
+   the selected tab and the neutral submit a visible edge without adding a second tint. */
+#accounts-dialog.arcade-sheet input:focus-visible{outline:2px solid var(--sheet-focus);outline-offset:1px}
+#accounts-dialog.arcade-sheet .account-status:empty{min-height:0;margin:8px 0 0}
+#accounts-dialog.arcade-sheet .account-submit{border:1px solid var(--sheet-line)}
+.arcade-sheet .account-tabs{gap:4px;padding:4px;border-radius:999px;background:var(--sheet-group);box-shadow:inset 0 0 0 1px var(--sheet-line)}
+.arcade-sheet .account-tabs .game-button{min-height:44px;padding:8px;background:transparent;color:var(--sheet-muted);font-weight:500}
+.arcade-sheet .account-tabs [aria-pressed=true]{background:var(--sheet-control);color:var(--sheet-ink);font-weight:650;box-shadow:inset 0 0 0 1px var(--sheet-line)}
 .arcade-sheet :is(.setting-list,.game-menu-actions,.game-menu-options,.game-metrics,.ms-menu-section,.ff-numbers){border-radius:var(--sheet-group-radius);background:var(--sheet-group);border:0}
 .arcade-sheet .setting-list{padding-inline:14px}
 .arcade-sheet .setting-list label{color:var(--sheet-ink)}

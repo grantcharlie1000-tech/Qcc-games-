@@ -199,7 +199,7 @@ export class PostCard {
    items.push({label:'Report post',icon:'report',run:()=>void this.report(trigger)});
    items.push({label:`Block @${username}`,icon:'block',danger:true,run:()=>void this.blockAuthor(trigger)});
   }
-  items.push({label:'Copy link',icon:'share',run:()=>void navigator.clipboard.writeText(postLink(post.id)).then(()=>ctx.notify('Link copied'),()=>ctx.notify(`Copy this link: ${postLink(post.id)}`))});
+  items.push({label:'Copy link',icon:'share',run:()=>{const link=postLink(post.id);const fallback=()=>ctx.notify(`Copy this link: ${link}`);try{void navigator.clipboard.writeText(link).then(()=>ctx.notify('Link copied'),fallback);}catch{fallback();}}});
   openMenu(trigger,'Post options',items,ctx.scroller);
  }
  private async deletePost(trigger:Element):Promise<void> {
