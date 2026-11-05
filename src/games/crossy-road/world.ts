@@ -1,6 +1,6 @@
 /** The row cache over the generator: the `LaneSource` the rules and the renderer read. Pure: no DOM and no Three.js.
  * `lane()` is called hundreds of times per frame, so a cached row is a single Map lookup and allocates nothing. */
-import type { GrassLane, Lane, LaneSource, WorldVersion } from './config';
+import { CURRENT_WORLD, type GrassLane, type Lane, type LaneSource, type WorldVersion } from './config';
 import { generateChunk, hedgeLane, initialState, type GenState } from './generator';
 
 /** A pruned row: plain grass with nothing on it, so a stray look behind the cut is harmless. */
@@ -40,7 +40,7 @@ export class World implements LaneSource {
   /** Rows below this were pruned. It only rises. */
   private floor = 0;
 
-  constructor(seed: number, version: WorldVersion = 5) {
+  constructor(seed: number, version: WorldVersion = CURRENT_WORLD) {
     this.state = initialState(seed, version);
     this.seed = this.state.seed;
   }

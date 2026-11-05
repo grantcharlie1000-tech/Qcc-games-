@@ -5,13 +5,15 @@
  *   chunk      kind pick, thickness, (multi-row river chunks: lily?), then the rows in order
  *   grass row  per column [obstacle?, tree?, variant] x 9, then per edge slot [obstacle?, tree?] x 12
  *   road row   direction, jitter, truck?, (v2 style/count), per mover [length (trucks), gap, colour], phase
+ *              (v6: direction, speed, count, then per mover [kind, length/style, colour, gap shape, gap size], phase)
  *   log row    direction (first of the chunk), speed jitter, per log [length, gap jitter, colour], phase (and any re-rolls)
+ *              (v6: direction, speed, count, then per log [length, colour, gap], phase)
  *   lily row   pad count, then a partial shuffle of the nine columns
  *   rail row   direction, length, period jitter, phase, colour
  * Fairness (F1-F7 in PLAN.md) is built into the rows: grass is repaired deterministically (no random draws), road and river
  * gaps are bounded by roadGapMin/riverGapMax, rail periods leave quiet time, and adjacent log rows are checked with logBridgeOk. */
 import {
-  CAR_LENGTH, COLS, EDGE_COLS, HOP_TIME, LOG_PALETTE, MOVERS, RAIL_PERIOD_MIN, SAFE_ROWS, START_COL, TRAIN_MAX, TRAIN_MIN, TRAIN_PALETTE, TRAIN_SPEED,
+  CAR_LENGTH, COLS, CURRENT_WORLD, LOG_SLIP, logGapCap, EDGE_COLS, HOP_TIME, LOG_PALETTE, MOVERS, RAIL_PERIOD_MIN, SAFE_ROWS, START_COL, TRAIN_MAX, TRAIN_MIN, TRAIN_PALETTE, TRAIN_SPEED,
   VEHICLE_PALETTE, clamp, difficulty, lerp, riverGapMax, roadGapMin,
   type WorldVersion, type GrassLane, type Lane, type LaneKind, type LilyLane, type Mover, type Obstacle, type RailLane, type RiverLane, type RoadLane,
 } from './config';
@@ -54,7 +56,7 @@ export interface GenState {
   reach: boolean[];
 }
 
-export function initialState(seed: number, version: WorldVersion = 5): GenState {
+export function initialState(seed: number, version: WorldVersion = CURRENT_WORLD): GenState {
   const reach = new Array<boolean>(COLS).fill(false);
   reach[START_COL] = true;
   return { seed: seed >>> 0, version, nextRow: 0, chunk: 0, prevKind: 'grass', hazardRun: 0, reach };
@@ -162,7 +164,44 @@ function layout(lens: readonly number[], gaps: readonly number[], colors: readon
   return { movers, cycle };
 }
 
+/** Paints for ordinary cars: every reference colour except taxi yellow. */
+const CAR_PAINTS = [0, 1, 3, 4, 5, 6] as const;
+/** Revision six: the shortest traffic repeat (tiles), wider than a landscape view, so no pattern repeats on screen. */
+const ROAD_REPEAT_MIN = 36;
+
+/** Revision six traffic: every lane mixes compacts, wagons, taxis and lorries in their own colours, with six to ten
+ * vehicles per repeat (a repeat is far wider than any screen) and gaps that range from tight convoys to long breathers.
+ * Every gap still respects roadGapMin, so a standing player always gets CROSS_WINDOW seconds. */
+function roadRowV6(row: number, rng: Rng, dir: Heading): RoadLane {
+  const d = difficulty(row);
+  const speed = lerp(1.5, 4.5, d) * (0.75 + 0.5 * rng());
+  const count = 6 + Math.floor(rng() * 5);
+  const truckChance = lerp(0.12, 0.3, d), gapMin = roadGapMin(speed), spread = lerp(7, 3.5, d);
+  const lens: number[] = [], gaps: number[] = [], colors: number[] = [];
+  let trucks = 0, span = 0;
+  // Keep adding vehicles past `count` until one repeat is wider than the widest view (bounded at 14).
+  for (let i = 0; i < count || (span < ROAD_REPEAT_MIN && i < 14); i++) {
+    if (rng() < truckChance) {
+      trucks++;
+      lens.push(rng() < 0.55 ? 2 : 3);
+      colors.push(Math.floor(rng() * VEHICLE_PALETTE));
+    } else {
+      const u = rng();
+      // Compact (1.2), wagon (1.8) or taxi (1.8, always yellow).
+      lens.push(u < 0.4 ? 1.2 : 1.8);
+      colors.push(u >= 0.82 ? 2 : CAR_PAINTS[Math.floor(rng() * CAR_PAINTS.length)]);
+    }
+    // A quarter of the gaps bunch vehicles into convoys; the rest spread out with a long tail.
+    const convoy = rng() < 0.25, g = rng();
+    gaps.push(gapMin + (convoy ? 0.5 * g : spread * Math.pow(g, 1.4)));
+    span += lens[i] + gaps[i];
+  }
+  const { movers, cycle } = layout(lens, gaps, colors);
+  return { kind: 'road', row, dir, speed, vehicle: trucks * 2 > count ? 'truck' : 'car', cycle, phase: rng() * cycle, movers };
+}
+
 function roadRow(row: number, rng: Rng, dir: Heading, version: WorldVersion): RoadLane {
+  if (version >= 6) return roadRowV6(row, rng, dir);
   const d = difficulty(row);
   const speed = lerp(1.5, 4.5, d) * jitter(rng);
   const truck = rng() < lerp(0.2, 0.4, d);
@@ -207,6 +246,30 @@ function drawLogShape(rng: Rng, d: number, version: WorldVersion): LogShape {
     colors.push(Math.floor(rng() * LOG_PALETTE));
   }
   return { speed, lens, gaps, colors, ...(version >= 4 ? {minGap:0.55} : {}) };
+}
+
+/** Revision six logs: five to eight logs of mixed length per repeat with irregular gaps, from almost touching to
+ * riverGapMax / logGapCap. A lane directly above another log lane slides past it at LOG_SLIP or more, so whoever rides
+ * the lower log always drifts across the upper lane's gaps to a landing (no deterministic re-roll needed). */
+function logRowV6(row: number, rng: Rng, dir: Heading, below: RiverLane | null): RiverLane {
+  const d = difficulty(row);
+  let speed = lerp(1.0, 2.6, d) * (0.7 + 0.6 * rng());
+  if (below !== null && Math.abs(dir * speed - below.dir * below.speed) < LOG_SLIP) {
+    // Same direction at a similar speed: move to whichever side of the lower lane keeps a sensible speed.
+    const slower = below.speed - LOG_SLIP, faster = below.speed + LOG_SLIP;
+    speed = slower >= 0.6 && (speed < below.speed || faster > 3.4) ? slower : faster;
+  }
+  const count = 5 + Math.floor(rng() * 4), w2 = lerp(0.2, 0.4, d), w3 = 0.45;
+  const gapMin = 0.55, gapMax = Math.max(gapMin, Math.min(riverGapMax(speed), logGapCap(d)));
+  const lens: number[] = [], gaps: number[] = [], colors: number[] = [];
+  for (let i = 0; i < count; i++) {
+    const u = rng();
+    lens.push(u < w2 ? 2 : u < w2 + w3 ? 3 : 4);
+    colors.push(Math.floor(rng() * LOG_PALETTE));
+    gaps.push(gapMin + (gapMax - gapMin) * Math.pow(rng(), 1.7));
+  }
+  const { movers, cycle } = layout(lens, gaps, colors);
+  return { kind: 'river', row, dir, speed, cycle, phase: rng() * cycle, movers };
 }
 
 function logLane(shape: LogShape, row: number, dir: Heading, phase: number): RiverLane {
@@ -390,6 +453,12 @@ export function generateChunk(state: GenState): { lanes: Lane[]; state: GenState
       }
       dir = version>=5 || lastLog === null ? randomDir(rng) : dir === 1 ? -1 : 1;
       const below = i > 0 && lanes[i - 1].kind === 'river' ? (lanes[i - 1] as RiverLane) : null;
+      if (version >= 6) {
+        lastLog = logRowV6(row, rng, dir, below);
+        lanes.push(lastLog);
+        reach = passable(reach);
+        continue;
+      }
       const shape = drawLogShape(rng, difficulty(row), version);
       // v5 gaps are <= .78: even at maximum speed their swept uncovered gap
       // over a hop is < .75 tiles, shorter than every source log (>=2 tiles).

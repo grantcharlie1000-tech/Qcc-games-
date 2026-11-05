@@ -68,10 +68,12 @@ export function focusXTarget(playerX: number, _halfWidth: number): number {
 
 const COLORS: number[] = [];
 const reg = (...hex: number[]): number => { const i = COLORS.length; COLORS.push(...hex); return i; };
-const C_WHITE = reg(0xffffff), C_GRASS = reg(0xa7e85c, 0xa0de55), C_ROAD = reg(0x424856), C_WATER = reg(0x75e3fc), C_BALLAST = reg(0x343a48);
+const C_WHITE = reg(0xffffff), C_GRASS = reg(0xcdd9ea, 0xc4d1e4), C_ROAD = reg(0x424856), C_WATER = reg(0x75e3fc), C_BALLAST = reg(0x343a48);
 const C_DASH = reg(0x6b6f83), C_SLEEPER = reg(0x563342), C_STEEL = reg(0x817ba3), C_FOAM = reg(0xfaffff), C_RIPPLE = reg(0xb8f1ff);
 const C_WATER_EDGE = reg(0x5ac3fc);
 const C_DIRT = reg(0x633642);
+/** Winter: snow lying on tracks and the grass, green tufts poking through it, and falling flakes. */
+const C_SNOW = reg(0xe6eef8), C_TUFT = reg(0x7fb24a, 0x6a9e3c), C_FLAKE = reg(0xffffff);
 const C_TRUCK = reg(...TRUCK_COLORS);
 const C_VEHICLE = reg(...VEHICLE_COLORS), C_TRAIN = reg(...TRAIN_COLORS), C_LOG = reg(...LOG_COLORS);
 const C_LAMP_ON = reg(0xff2a2a), C_LAMP_OFF = reg(0x4a1a22), C_SPLASH = reg(0xffffff, 0xbfeaff), C_FLUFF = reg(0xfff4dc, 0xffffff);
@@ -88,15 +90,17 @@ const DARK = 0.80, EDGE_SHADE = 0.85;
  * swept to the band's edge on a wide screen) reaches the end of a lane. */
 const LEFT_ZONE_W = BAND_MIN - (RENDER_X_MIN - 0.5), LEFT_ZONE_X = (RENDER_X_MIN - 0.5 + BAND_MIN) / 2;
 const RIGHT_ZONE_W = RENDER_X_MAX + 0.5 - BAND_MAX, RIGHT_ZONE_X = (BAND_MAX + RENDER_X_MAX + 0.5) / 2;
-const CLEAR_COLOR = 0x27342c;
+const CLEAR_COLOR = 0x2a3447;
 
 // Geometry constants -----------------------------------------------------------
 
-const WATER_Y = -0.12, LOG_TOP = 0.04, PAD_TOP = -0.072, LOG_BASE = -0.20, PAD_BASE = -0.125, TRAIN_Y = TRAIN_BASE_Y;
+const WATER_Y = -0.12, LOG_TOP = 0.04, PAD_TOP = -0.072, LOG_BASE = -0.22, PAD_BASE = -0.125, TRAIN_Y = TRAIN_BASE_Y;
 const NOSE_LEN = 2, CARRIAGE_LEN = 2;
 /** x range, beyond the visible window, in which objects are still placed (tiles). */
 const MARGIN = 2;
 const MAX_ROWS = 64;
+/** Falling snow: flakes per quality tier, and the height of the column they fall through (tiles). */
+const FLAKES_HIGH = 220, FLAKES_LOW = 90, SNOW_H = 7;
 const YAWS: Readonly<Record<Dir, number>> = { up: 0, down: Math.PI, left: Math.PI / 2, right: -Math.PI / 2 };
 /** Unit vectors for each direction in world x and z (forward is −z). */
 const DIR_X: Readonly<Record<Dir, number>> = { up: 0, down: 0, left: -1, right: 1 };
@@ -316,12 +320,14 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const truckBody = trucks.map(g => pool(g, painted, 96, true));
   const noseBody = pool(merged(train.nose), painted, 16, true);
   const carriageBody = pool(merged(train.carriage), painted, 96, true);
-  const logs = ([2, 3, 4] as const).map(len => pool(geo(logGeometry(len)), lit, 192, true, false, 0, WATER_Y));
+  // Logs carry a paint mask: the bark takes the log colour, end grain and snow stay fixed.
+  const logs = ([2, 3, 4] as const).map(len => pool(geo(logGeometry(len)), painted, 192, true, false, 0, WATER_Y));
   const lilies = pool(geo(lilyGeometry()), lit, 160);
   const posts = pool(geo(signalPostGeometry()), lit, 48, true);
   const lampGeo = geo(lampGeometry());
   const lamps = pool(lampGeo, unlit, 48), glows = pool(geo(signalGlowGeometry()), glowMaterial, 48, false, false, 3);
   const fx = pool(box, unlit, 96);
+  const flakes = pool(box, unlit, FLAKES_HIGH, false, false, 4);
 
   // The bird and the UFO use the same pooled transforms and projected shadows.
   const playerPool = pool(geo(chickenGeometry().scale(0.78, 1, 0.78)), playerMaterial, 1, true);
@@ -457,13 +463,22 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       const o=obstacleAt(lane,c), variant=obstacleVariant(lane,c);
       if(o==='tree')putTree(c,variant,1);
       else if(o==='rock')putRock(c,variant,row,1);
+      else {
+        // Scattered decoration on open snow: a few grass tufts poking through, and soft drifts.
+        const h=hash(row,c+1000), kind=h&15, dx=(((h>>>4)&15)/15-0.5)*0.6, dz=(((h>>>8)&15)/15-0.5)*0.7*ROW_DEPTH;
+        if(kind===0) {
+          ground.put(c+dx,0,curZ+dz,0.07,0.1,0.07,0,C_TUFT+((h>>>12)&1),1);
+          ground.put(c+dx+0.08,0,curZ+dz+0.04,0.06,0.07,0.06,0,C_TUFT+((h>>>13)&1),1);
+        } else if(kind===1) ground.put(c+dx,0,curZ+dz,0.3+((h>>>14)&3)*0.08,0.05,0.22,0,C_SNOW,1);
+      }
     }
   }
 
   const onVehicle = (x0: number, x1: number, mover: Mover): void => {
     const cx = (x0 + x1) * 0.5, len = x1 - x0, yaw = curDir > 0 ? 0 : Math.PI, tint = C_VEHICLE + (mover.color % VEHICLE_PALETTE);
-    if (curRoad.vehicle === 'car') {
-      const style = curRoad.style ?? (mover.color % VEHICLE_PALETTE === 2 ? 'taxi' : 'sedan');
+    // Lorries are two tiles or longer; mixed lanes (revision six) pick each car's model from its length and paint.
+    if (mover.len < 2) {
+      const style = curRoad.style ?? (mover.len < 1.5 ? 'compact' : mover.color % VEHICLE_PALETTE === 2 ? 'taxi' : 'sedan');
       const i = carStyles.indexOf(style), size = style === 'compact' ? 1.2 : 1.8;
       carBody[i].put(cx, 0, curZ + TRAFFIC_ROW_Z, len / size, 1, 1, yaw, tint, 1);
     } else {
@@ -546,8 +561,15 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   function drawRail(lane: RailLane): void {
     band(C_BALLAST, -0.5, 0.5, curZ, ROW_DEPTH);
+    // Snowy shoulders either side of the track bed.
+    band(C_SNOW, 0, 0.02, curZ - ROW_DEPTH / 2 + 0.17, 0.34);
+    band(C_SNOW, 0, 0.02, curZ + ROW_DEPTH / 2 - 0.1, 0.2);
     for (let x = Math.ceil(winLo); x <= winHi; x++) {
       ground.put(x, 0, curZ + TRAFFIC_ROW_Z, 0.11, 0.045, 0.70, 0, C_SLEEPER, 1);
+      // Snow settles on most sleepers and drifts between some of them.
+      const h = hash(lane.row, x + 3000);
+      if ((h & 3) !== 0) ground.put(x, 0.045, curZ + TRAFFIC_ROW_Z + (((h >>> 2) & 7) - 3.5) * 0.02, 0.12, 0.016, 0.34 + ((h >>> 5) & 3) * 0.08, 0, C_SNOW, 1);
+      if (((h >>> 8) & 3) === 0) ground.put(x + 0.5, 0, curZ + TRAFFIC_ROW_Z + (((h >>> 10) & 7) - 3.5) * 0.04, 0.3 + ((h >>> 13) & 3) * 0.1, 0.03, 0.18, 0, C_SNOW, 1);
     }
     band(C_STEEL, 0.045, 0.06, curZ + TRAFFIC_ROW_Z - 0.20, 0.07);
     band(C_STEEL, 0.045, 0.06, curZ + TRAFFIC_ROW_Z + 0.20, 0.07);
@@ -750,6 +772,25 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     }
   }
 
+  /** Falling snow: flakes anchored in world space (so they don't slide with the camera) inside a column around the
+   * view, falling and swaying as analytic functions of `anim`. Reduced motion freezes them where they are. */
+  function snowfall(): void {
+    const count = low ? FLAKES_LOW : FLAKES_HIGH;
+    const W = (2 * fit.halfWidth) / RX + 6 + SNOW_H * Math.abs(FX), D = (2 * fit.halfHeight) / SIN_P + 6 + SNOW_H * -FZ;
+    // A flake at height y appears y·cot(pitch) further ahead, so the column is centred behind the look point.
+    const cx = lookX - FX * SNOW_H * 0.5, cz = lookZ - FZ * SNOW_H * 0.5;
+    for (let i = 0; i < count; i++) {
+      const h = hash(i, 9001), g = hash(i, 9002);
+      const speed = 0.55 + 0.5 * ((g & 255) / 255), sway = 0.22 * Math.sin(anim * (0.9 + ((g >>> 8) & 7) * 0.1) + i);
+      const y = SNOW_H - (((((h >>> 20) & 1023) / 1024) * SNOW_H + anim * speed) % SNOW_H) - 0.3;
+      if (y < 0.02) continue;
+      const bx = ((h & 1023) / 1024) * W + sway + anim * 0.12, bz = (((h >>> 10) & 1023) / 1024) * D;
+      const x = cx + ((((bx - cx) % W) + W) % W) - W / 2, z = cz + ((((bz - cz) % D) + D) % D) - D / 2;
+      const size = 0.05 + 0.015 * ((g >>> 12) & 3);
+      flakes.put(x, y, z, size, size, size, 0, C_FLAKE, 1);
+    }
+  }
+
   // Frame -------------------------------------------------------------------------------
 
   function render(frame: SceneFrame): void {
@@ -769,6 +810,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       lane = ahead;
     }
     actors(frame);
+    snowfall();
     if(beam.visible)beam.position.x-=renderOriginX;
     if(spot.visible)spot.position.x-=renderOriginX;
     if(shade.visible)shade.position.x-=renderOriginX;
