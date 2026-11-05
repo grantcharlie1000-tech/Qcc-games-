@@ -29,7 +29,7 @@ html:has(body:not(.in-game):not(.movies-active)){scroll-padding-bottom:calc(var(
 @media(min-width:360px) and (max-width:439px){.app-navigation[data-apps=on] .tab-tv{font-size:0}.app-navigation[data-apps=on] .tab-tv::after{content:'TV';font-size:10px}}
 @media(min-width:360px) and (max-width:389px){.app-navigation[data-apps=on]{--home-action:52px;--home-gap:8px}}
 @media(max-width:359px){
-  .section-navigation{--home-inset:8px;--home-gap:8px}.section-tabbar.ui-tabbar .ui-tab{font-size:9px;padding-inline:1px}
+  .section-navigation{--home-inset:8px;--home-gap:8px;--home-action:52px}.section-tabbar.ui-tabbar .ui-tab{font-size:9px;padding-inline:1px}
   .app-navigation .app-tabbar [data-action=apps]{display:none}
   .menu-apps:not([hidden]){display:flex}
 }
