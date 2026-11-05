@@ -3,7 +3,7 @@
  * All gameplay lives in rules.ts; this file decides when to step, draw, report and announce. */
 import type { GameContext, GameInstance, GameModule } from '../../core/types';
 import { AHEAD_ROWS, BEHIND_ROWS, DEATH_TIME, STEP, type DeathCause, type Dir, type CrossyRoadScene, type Quality, type RunState, type SceneFrame, type StepEvents } from './config';
-import { railWarning, trainEntry, trainPass } from './lanes';
+import { railWarning, trainEntry, trainPass, vehicleAt } from './lanes';
 import { createRun, input as hop, pose, restore as restoreRun, serialize, step, ufoWarning } from './rules';
 import { World } from './world';
 import { createScene } from './scene';
@@ -188,7 +188,12 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   }
 
   function causeText(cause: DeathCause, row: number): string {
-    if (cause === 'car') { const lane = world.lane(row); return lane.kind === 'road' && lane.vehicle === 'truck' ? 'Hit by a truck' : 'Hit by a car'; }
+    if (cause === 'car') {
+      const lane = world.lane(row), death = run.death;
+      if (lane.kind !== 'road') return 'Hit by a car';
+      const hit = death !== null ? vehicleAt(lane, death.x, death.t) : null;
+      return (hit !== null ? hit.len >= 2 : lane.vehicle === 'truck') ? 'Hit by a truck' : 'Hit by a car';
+    }
     return { train: 'Hit by a train', water: 'Fell in the river', swept: 'Carried away on a log', 'ufo-idle': 'Beamed up by a UFO for waiting too long', 'ufo-behind': 'Beamed up by a UFO for falling behind' }[cause];
   }
 
@@ -502,7 +507,7 @@ const game: GameModule = Object.freeze({
   id: ID,
   title: 'Crossy Road',
   cover: 'game-art/crossy-road/cover.svg',
-  rules: 'Hop across roads, rivers and railway lines as far as you can. The arrow keys or W A S D hop one tile; tap the playfield to hop forward, or swipe up, down, left or right. Trees and rocks block the way. Cars, trucks and trains end the run, and so does falling in the water. Ride logs and lily pads across rivers. A railway signal flashes and rings before every train. Keep making progress: wait too long without reaching a new row, or step three rows back, and a UFO beams you up. Your score is the furthest row you reach. P pauses; Space, Enter or R plays again after a run ends.',
+  rules: 'A snowy Christmas run: hop across roads, rivers and railway lines as far as you can. The arrow keys or W A S D hop one tile; tap the playfield to hop forward, or swipe up, down, left or right. Bare winter trees and snowy rocks block the way. Cars, trucks and trains end the run, and so does falling in the water. Ride logs and lily pads across rivers. A railway signal flashes and rings before every train. Keep making progress: wait too long without reaching a new row, or step three rows back, and a UFO beams you up. Your score is the furthest row you reach. P pauses; Space, Enter or R plays again after a run ends.',
   mount,
 });
 export default game;

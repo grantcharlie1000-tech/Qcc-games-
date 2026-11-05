@@ -2,7 +2,7 @@
  * persistence live here and nowhere else. Pure: no DOM, no Three.js, no clock and no randomness, so a run can be replayed,
  * saved and tested at any time. Hazards are functions of the world time `t` (lanes.ts). */
 import {
-  BACK_LIMIT, DEATH_TIME, DEATH_TIME_REDUCED, DIRS, HOP_HEIGHT, HOP_TIME, IDLE_LIMIT, IDLE_WARN, MAX_ROW, SAFE_LAG,
+  BACK_LIMIT, CURRENT_WORLD, DEATH_TIME, DEATH_TIME_REDUCED, DIRS, HOP_HEIGHT, HOP_TIME, IDLE_LIMIT, IDLE_WARN, MAX_ROW, SAFE_LAG,
   START_COL, lerp, scrollRate,
   type WorldVersion, type Death, type DeathCause, type Dir, type Lane, type LaneSource, type PlayerPose, type RunState, type StepEvents,
 } from './config';
@@ -12,7 +12,7 @@ import { laneVelocity, platformAt, trainHit, vehicleHit } from './lanes';
 /** A fresh run: row 0, column 4, not started. `seed` is stored as an unsigned 32-bit integer. */
 export function createRun(seed: number): RunState {
   return {
-    v: 1, worldVersion: 5, seed: seed >>> 0, t: 0, phase: 'ready', row: 0, x: START_COL, fromRow: 0, fromX: START_COL, hop: -1, hopDir: 'up', facing: 'up',
+    v: 1, worldVersion: CURRENT_WORLD, seed: seed >>> 0, t: 0, phase: 'ready', row: 0, x: START_COL, fromRow: 0, fromX: START_COL, hop: -1, hopDir: 'up', facing: 'up',
     queued: null, maxRow: 0, lastProgress: 0, safeLine: 0, started: false, bonkAt: -1e9, bonkDir: 'up', landedAt: -1e9, death: null,
   };
 }
@@ -185,7 +185,7 @@ export function restore(data: unknown): RunState | null {
     if (!isRecord(data)) return null;
     const { v, seed, t, phase, row, x, fromRow, fromX, hop, hopDir, facing, queued, maxRow, lastProgress, safeLine, started, death } = data;
     const worldVersion = data.worldVersion === undefined ? 1 : data.worldVersion;
-    if (worldVersion !== 1 && worldVersion !== 2 && worldVersion !== 3 && worldVersion !== 4 && worldVersion !== 5) return null;
+    if (worldVersion !== 1 && worldVersion !== 2 && worldVersion !== 3 && worldVersion !== 4 && worldVersion !== 5 && worldVersion !== 6) return null;
     if (v !== 1 || !isInt(seed, 0, 4294967295) || !isNum(t, 0, 1e7)) return null;
     if (phase !== 'ready' && phase !== 'running' && phase !== 'over') return null;
     if (!isInt(row, 0, MAX_ROW) || !isInt(maxRow, 0, MAX_ROW) || !isInt(fromRow, 0, MAX_ROW)) return null;
