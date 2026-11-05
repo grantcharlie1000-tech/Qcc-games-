@@ -1,607 +1,551 @@
-// Generates every library poster in public/game-art/<id>/cover.svg from one shared design system.
-//   node scripts/generate-posters.mjs            (all posters)
+// Generates every library poster in public/game-art/<id>/cover.svg as an isometric voxel diorama.
+//   node scripts/generate-posters.mjs            (all posters, then syncs card colours in src/core/catalog.ts)
 //   node scripts/generate-posters.mjs snake pool (only these)
 //
-// The system (see docs/ARTWORK.md):
-//  - Frame: 320×410, the same ratio as the library card. The top 120 units stay calm for the live HTML title.
-//  - Stage: a dark two-stop backdrop built from one hue per game, a lighter glow behind the subject,
-//    a halftone floor and a soft ground shadow. Every poster uses the same stage, so only the hue changes.
-//  - Subject: flat shapes lit from the upper left. Colours come only from PALETTE, each with a light,
-//    base and dark tone. Gloss is a single white highlight, depth is one shared drop shadow.
-//  - Accents: the same four-point sparkle and dot motif in the game's accent colour.
+// Visual direction (see docs/ARTWORK.md), taken from the Blockcraft and Crossy Road covers:
+//  - Every subject is a real voxel model, rendered with one 2:1 isometric projection.
+//  - Faces are flat colours: top lightest, left (+y) the base colour, right (+x) darkest. No outlines,
+//    gradients, blurs or drop shadows.
+//  - Details are pixel "textures" painted onto block faces, including all lettering (a 3×5 pixel font).
+//  - The diorama floats on a flat backdrop with square pixel particles; the top 130 units stay clear for the title.
 import {readFile, writeFile} from 'node:fs/promises';
 
 const W = 320, H = 410;
-export const PALETTE = {
-  red:    ['#ff8a80', '#ff5a5f', '#d23a4d'],
-  orange: ['#ffbd73', '#ff9636', '#de6a1c'],
-  yellow: ['#ffe27a', '#ffcc33', '#e0a015'],
-  green:  ['#8fe48a', '#53c765', '#2f9a4c'],
-  teal:   ['#7deadf', '#28cbb9', '#13968f'],
-  blue:   ['#86b6ff', '#4a87ff', '#2c5fd2'],
-  purple: ['#c3a4ff', '#9a68fb', '#6f43d1'],
-  pink:   ['#ffa1d2', '#ff66b0', '#d4418c'],
-  cream:  ['#ffffff', '#fff3df', '#e5d2b4'],
-  slate:  ['#9aa7c0', '#6c7894', '#47506a'],
-  wood:   ['#e6b07a', '#c4844a', '#93582c'],
-  ink:    ['#4a3f60', '#2a2140', '#160f26'],
-};
-const INK = PALETTE.ink[1];
-export const TITLE_INK = PALETTE.cream[1];
+const FIT = {x0: 14, x1: 306, y0: 138, y1: 396, maxA: 22};
+export const TITLE_INK = '#fff3df';
 
-// Hue, title accent and description per game. Card colour/ink in src/core/catalog.ts derive from these.
+// Base block colours. Faces are shaded from these automatically.
+const C = {
+  white: '#f2f5fa', cream: '#f4e6c8', snow: '#e4edf7', paper: '#fbf4e4',
+  red: '#e8474f', orange: '#f59331', yellow: '#f7c531', gold: '#e9b023', lime: '#9ad547',
+  green: '#4fb548', grass: '#62bc45', leaf: '#3f9a3a', dkgreen: '#2e7d3a', teal: '#25b6a6',
+  sky: '#55b9ea', blue: '#3f7ee8', navy: '#283a6e', purple: '#8a5ae8', pink: '#f05fa6', magenta: '#c548d8',
+  dirt: '#93603a', wood: '#b07a45', dkwood: '#7a4f2b', felt: '#2f9a63', stone: '#8d96a6', slate: '#5f6a80',
+  dark: '#2b2f45', ink: '#1d1a2c', black: '#26232f', grey: '#9aa1ae', water: '#4aa6e0', glass: '#dff3ff',
+};
+// Backdrop hue and title accent per game. Card colours in src/core/catalog.ts derive from these.
 export const POSTERS = {
-  'color-blocks': {hue: 250, accent: 'yellow', title: 'A glossy block piece hovers over a half-filled puzzle board'},
-  'water-sort':   {hue: 290, accent: 'pink',   title: 'Three glass tubes holding stacked bands of coloured water'},
-  'fruit-merge':  {hue: 195, accent: 'red',    title: 'A watermelon, orange, peach and cherries piled in a glass jar'},
-  'tower':        {hue: 325, accent: 'teal',   title: 'A tower of stacked slabs with the next slab sliding in'},
-  'flappy-bird':  {hue: 30, accent: 'yellow', title: 'A round bird flapping between two pillars'},
-  'ball-run':     {hue: 265, accent: 'pink',   title: 'A glossy ball rolling down a glowing perspective track'},
-  'animal-stack': {hue: 175,  accent: 'yellow', title: 'An elephant, a lion and a penguin balanced in a tower'},
-  'snake':        {hue: 42,  accent: 'red',    title: 'A segmented green snake curling towards an apple'},
-  'neon-coil':    {hue: 240, accent: 'green',  title: 'A glowing worm weaving between bright energy orbs'},
-  'minesweeper':  {hue: 200, accent: 'red',    title: 'A minefield of raised tiles with numbers, a flag and a mine'},
-  'solitaire':    {hue: 345, accent: 'cream',  title: 'Four playing cards fanned out: an ace, king, queen and jack'},
-  'block-fill':   {hue: 280, accent: 'yellow', title: 'A single golden path snaking through a grid of tiles'},
-  'color-connect':{hue: 300, accent: 'yellow', title: 'Coloured pipes linking pairs of matching dots on a board'},
-  'pool':         {hue: 158, accent: 'yellow', title: 'A rack of numbered billiard balls, the cue ball and a cue'},
-  'globle':       {hue: 212, accent: 'yellow', title: 'A globe with guessed countries shaded from cream to deep red'},
-  'blockcraft':   {hue: 35, accent: 'green',  title: 'A grass block, a stone block and a little block tree'},
-  'maze-muncher': {hue: 245, accent: 'teal',   title: 'A round muncher chasing pellets through a maze past a jelly ghost'},
-  'corn-clicker': {hue: 95,  accent: 'yellow', title: 'A giant golden corn cob surrounded by floating plus-one sparks'},
-  'slipline':     {hue: 268, accent: 'teal',   title: 'A grid of coloured arrows with one arrow sliding free'},
-  'quadfall':     {hue: 222, accent: 'orange', title: 'A falling block piece above a stack of coloured tiles'},
-  'fivefold':     {hue: 150, accent: 'green',  title: 'Word tiles: PLANT half right above PLAYS solved in green'},
-  'claimline':    {hue: 330, accent: 'pink',   title: 'Coloured territories in an arena with a glowing trail looping out'},
-  'crossy-road':  {hue: 200, accent: 'red',    title: 'A blocky chicken in a red scarf crossing a snowy road and river'},
-  'quad-clash':   {hue: 22,  accent: 'yellow', title: 'An egg fighter in a yellow headband holding a pencil blaster'},
+  'color-blocks': {hue: 250, accent: C.yellow, title: 'A voxel puzzle board half filled with coloured blocks and a T piece hovering above'},
+  'water-sort':   {hue: 290, accent: C.pink,   title: 'Three voxel glass tubes holding stacked bands of coloured water'},
+  'fruit-merge':  {hue: 195, accent: C.red,    title: 'A blocky watermelon, orange and cherries on a wooden crate'},
+  'tower':        {hue: 325, accent: C.teal,   title: 'A tower of stacked voxel slabs with the next slab sliding in'},
+  'flappy-bird':  {hue: 30,  accent: C.yellow, title: 'A blocky yellow bird flapping between two green pipes'},
+  'ball-run':     {hue: 265, accent: C.pink,   title: 'A voxel ball rolling down a neon-edged track past obstacles'},
+  'animal-stack': {hue: 175, accent: C.yellow, title: 'A blocky elephant, lion and penguin balanced in a tower'},
+  'snake':        {hue: 42,  accent: C.red,    title: 'A voxel snake slithering across a grass board towards an apple'},
+  'neon-coil':    {hue: 240, accent: C.lime,   title: 'A glowing voxel worm weaving between bright energy orbs'},
+  'minesweeper':  {hue: 200, accent: C.red,    title: 'A voxel minefield of raised tiles with numbers and flags'},
+  'solitaire':    {hue: 345, accent: C.cream,  title: 'Four blocky playing cards fanned on green felt'},
+  'block-fill':   {hue: 280, accent: C.yellow, title: 'A golden path of raised blocks winding through a tile grid'},
+  'color-connect':{hue: 300, accent: C.yellow, title: 'Coloured voxel pipes linking pairs of matching pegs on a board'},
+  'pool':         {hue: 158, accent: C.yellow, title: 'A voxel pool table with a rack of balls, the cue ball and a cue'},
+  'globle':       {hue: 212, accent: C.yellow, title: 'A voxel globe with guessed countries shaded from cream to deep red'},
+  'blockcraft':   {hue: 205, accent: C.green,  title: 'A floating grass island with a tree, flowers, water and a sheep'},
+  'maze-muncher': {hue: 245, accent: C.teal,   title: 'A blocky muncher chasing pellets through a maze past a ghost'},
+  'corn-clicker': {hue: 95,  accent: C.yellow, title: 'A giant voxel corn cob with floating plus-one coins'},
+  'slipline':     {hue: 268, accent: C.teal,   title: 'A board of arrow tiles with one tile sliding free'},
+  'quadfall':     {hue: 222, accent: C.orange, title: 'A wall of stacked coloured blocks with a T piece falling in'},
+  'fivefold':     {hue: 150, accent: C.green,  title: 'Letter blocks spelling PLANT above PLAYS solved in green'},
+  'claimline':    {hue: 330, accent: C.pink,   title: 'A voxel arena of coloured territories with a trail looping out'},
+  'crossy-road':  {hue: 200, accent: C.red,    title: 'A voxel chicken in a Santa hat hopping across snow, road and river'},
+  'quad-clash':   {hue: 22,  accent: C.yellow, title: 'A blocky egg fighter in a yellow headband holding a pencil blaster'},
 };
 
-// ---------- colour helpers ----------
-const hsl = (h, s, l) => `hsl(${h} ${s}% ${l}%)`;
-function hex(h, s, l) { // HSL → #rrggbb so card colours in the catalog can match the poster exactly
+// ---------- colour ----------
+function toHsl(hex) {
+  const v = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255), max = Math.max(...v), min = Math.min(...v), l = (max + min) / 2;
+  if (max === min) return [0, 0, l * 100];
+  const d = max - min, s = d / (1 - Math.abs(2 * l - 1));
+  const [r, g, b] = v, h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [(h * 60 + 360) % 360, s * 100, l * 100];
+}
+function hex(h, s, l) {
   s /= 100; l /= 100;
   const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
   const f = n => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)))).toString(16).padStart(2, '0');
   return `#${f(0)}${f(8)}${f(4)}`;
 }
-export const stageColours = hue => ({top: hex(hue, 46, 30), bottom: hex(hue, 52, 12), glow: hex(hue, 75, 58)});
+const shift = (c, dl, ds = 0) => { const [h, s, l] = toHsl(c); return hex(h, Math.max(0, Math.min(100, s + ds)), Math.max(0, Math.min(100, l + dl))); };
+const SHADE = {top: c => shift(c, 9), left: c => c, right: c => shift(c, -13, -4)};
+export const backdrop = hue => hex(hue, 42, 21);
 
-// ---------- primitives ----------
-const n = v => +(+v).toFixed(2);
-const attrs = o => Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== false).map(([k, v]) => ` ${k}="${typeof v === 'number' ? n(v) : v}"`).join('');
-const el = (tag, o, kids) => kids === undefined ? `<${tag}${attrs(o)}/>` : `<${tag}${attrs(o)}>${kids}</${tag}>`;
-const rect = (x, y, w, h, fill, o = {}) => el('rect', {x, y, width: w, height: h, fill, ...o});
-const circle = (cx, cy, r, fill, o = {}) => el('circle', {cx, cy, r, fill, ...o});
-const ellipse = (cx, cy, rx, ry, fill, o = {}) => el('ellipse', {cx, cy, rx, ry, fill, ...o});
-const path = (d, fill, o = {}) => el('path', {d, fill, ...o});
-const line = (d, stroke, width, o = {}) => el('path', {d, fill: 'none', stroke, 'stroke-width': width, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', ...o});
-const g = (o, kids) => el('g', o, kids);
-// Rounded-rectangle path data, so many same-fill rectangles can merge into one <path>.
-const rr = (x, y, w, h, r = 0) => r ? `M${n(x + r)} ${n(y)}h${n(w - 2 * r)}a${n(r)} ${n(r)} 0 0 1 ${n(r)} ${n(r)}v${n(h - 2 * r)}a${n(r)} ${n(r)} 0 0 1 ${n(-r)} ${n(r)}h${n(2 * r - w)}a${n(r)} ${n(r)} 0 0 1 ${n(-r)} ${n(-r)}v${n(2 * r - h)}a${n(r)} ${n(r)} 0 0 1 ${n(r)} ${n(-r)}Z` : `M${n(x)} ${n(y)}h${n(w)}v${n(h)}h${n(-w)}Z`;
-// Lettering is drawn as rounded stroke paths, not <text>: posters load through <img>, where only device fonts
-// are available, so real glyphs would change shape from phone to phone. Each glyph sits in a 10×14 box.
-const GLYPHS = {
-  0: 'M5 0C1.5 0 .5 3.5.5 7s1 7 4.5 7 4.5-3.5 4.5-7S8.5 0 5 0Z',
-  1: 'M2 3 6 0v14',
-  2: 'M.8 3.6C1.2 1.2 3 0 5 0c2.6 0 4.4 1.6 4.4 4C9.4 7.4.6 9.6.6 14h9',
-  3: 'M1 0h8L4.4 5.8c3 0 5 1.6 5 4.2S7.4 14 4.8 14C3 14 1.6 13.3.6 12',
-  4: 'M7 14V0L.4 9.6h9.4',
-  5: 'M9 0H1.6L1 6.2c1-.6 2.3-.8 3.6-.8 2.8 0 4.8 1.8 4.8 4.3S7.4 14 4.8 14C3 14 1.6 13.3.6 12',
-  6: 'M8.4 1.2C7.6.4 6.4 0 5.2 0 2.2 0 .6 3.4.6 8c0 3.6 1.6 6 4.4 6 2.6 0 4.4-1.8 4.4-4.3S7.6 5.4 5 5.4C3 5.4 1.4 6.6.7 8.2',
-  7: 'M.6 0h8.8L4 14',
-  8: 'M5 6.4C2.6 6.4 1.2 5.1 1.2 3.2S2.6 0 5 0s3.8 1.3 3.8 3.2S7.4 6.4 5 6.4Zm0 0c2.7 0 4.4 1.5 4.4 3.8S7.7 14 5 14 .6 12.5.6 10.2 2.3 6.4 5 6.4Z',
-  9: 'M9.4 5.6C8.7 7.6 7 8.6 5 8.6 2.4 8.6.6 6.8.6 4.3S2.4 0 5 0c2.8 0 4.4 2.4 4.4 6 0 4.6-1.6 8-4.6 8-1.2 0-2.2-.4-2.8-1.2',
-  A: 'M.6 14 5 0l4.4 14M2.2 9.4h5.6',
-  J: 'M8.6 0v9.4C8.6 12.4 7 14 4.6 14 2.6 14 1.2 12.8.8 11',
-  K: 'M1.2 0v14M9.2 0 1.2 8.4M4.2 5.4 9.4 14',
-  L: 'M1.2 0v14h8',
-  N: 'M1 14V0l8 14V0',
-  P: 'M1.2 14V0h4c2.8 0 4.4 1.6 4.4 4s-1.6 4-4.4 4h-4',
-  Q: 'M5 0C1.5 0 .5 3.5.5 7s1 7 4.5 7 4.5-3.5 4.5-7S8.5 0 5 0ZM6.2 10l3.4 4',
-  S: 'M9 2C8 .7 6.6 0 5 0 2.6 0 1 1.3 1 3.5c0 4.6 8.4 2.4 8.4 7 0 2.1-1.8 3.5-4.4 3.5-2 0-3.6-.9-4.4-2.4',
-  T: 'M.4 0h9.2M5 0v14',
-  Y: 'M.6 0 5 7l4.4-7M5 7v7',
-  '+': 'M5 3.4v7.2M1.4 7h7.2',
+// ---------- pixel font (3×5) and pixel icons ----------
+const FONT = {
+  0: ['111', '101', '101', '101', '111'], 1: ['010', '110', '010', '010', '111'], 2: ['111', '001', '111', '100', '111'],
+  3: ['111', '001', '011', '001', '111'], 4: ['101', '101', '111', '001', '001'], 5: ['111', '100', '111', '001', '111'],
+  6: ['111', '100', '111', '101', '111'], 7: ['111', '001', '010', '010', '010'], 8: ['111', '101', '111', '101', '111'],
+  9: ['111', '101', '111', '001', '111'], A: ['010', '101', '111', '101', '101'], J: ['001', '001', '001', '101', '010'],
+  K: ['101', '101', '110', '101', '101'], L: ['100', '100', '100', '100', '111'], N: ['101', '111', '111', '101', '101'],
+  P: ['110', '101', '110', '100', '100'], Q: ['010', '101', '101', '110', '011'], S: ['011', '100', '010', '001', '110'],
+  T: ['111', '010', '010', '010', '010'], Y: ['101', '101', '010', '010', '010'], '+': ['000', '010', '111', '010', '000'],
 };
-// Same call shape as an SVG text label: centred on (x, y), size ≈ font size, cap height ≈ .72 × size.
-function text(x, y, str, size, fill, o = {}) {
-  const chars = String(str).split(''), k = size * .72 / 14, adv = 12.2, width = (chars.length * adv - 2.2) * k;
-  const glyphs = chars.map((c, i) => {
-    if (!GLYPHS[c]) throw new Error(`No glyph for ${c}`);
-    return path(GLYPHS[c], 'none', i ? {transform: `translate(${n(i * adv)} 0)`} : {});
-  }).join('');
-  return g({transform: `translate(${n(x - width / 2)} ${n(y - 7 * k)}) scale(${n(k)})`, stroke: fill, 'stroke-width': 2.7, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', fill: 'none', ...o}, glyphs);
-}
-const tone = (c, i) => PALETTE[c][i];
-const L = c => tone(c, 0), B = c => tone(c, 1), D = c => tone(c, 2);
+const ICON = {
+  heart: ['01010', '11111', '11111', '01110', '00100'], diamond: ['00100', '01110', '11111', '01110', '00100'],
+  spade: ['00100', '01110', '11111', '00100', '01110'], club: ['01110', '01110', '11111', '00100', '01110'],
+  up: ['00100', '01110', '10101', '00100', '00100'], flag: ['01110', '01111', '01110', '00000', '00000'],
+  arrow: ['00100', '01110', '11111', '00100', '00100', '00100'],
+  cross: ['10001', '01010', '00100', '01010', '10001'], dot: ['0110', '1111', '1111', '0110'],
+};
+const rot = (rows, turns) => { // rotate a pixel glyph clockwise
+  let r = rows;
+  for (let t = 0; t < turns; t++) r = [...r[0]].map((_, i) => r.map(row => row[i]).reverse().join(''));
+  return r;
+};
 
-// Per-poster registry of gradients so each file only defines what it uses.
-let used;
-const sphereFill = c => { used.add(`sphere:${c}`); return `url(#sphere-${c})`; };
-const SHADOW = 'url(#drop)';
-
-// A glossy rounded tile: the shared building block for every grid game.
-function tile(x, y, s, c, o = {}) {
-  const r = o.r ?? s * .2;
-  return g({}, rect(x, y + s * .06, s, s, D(c), {rx: r}) + rect(x, y, s, s * .94, B(c), {rx: r}) +
-    rect(x + s * .14, y + s * .1, s * .46, s * .13, '#fff', {rx: s * .065, opacity: .45}));
-}
-// An empty board slot.
-const slot = (x, y, s, r = s * .2) => rect(x, y, s, s, '#000', {rx: r, opacity: .28});
-// A shaded sphere with a single highlight.
-function sphere(cx, cy, r, c) {
-  return g({}, circle(cx, cy, r, sphereFill(c)) + ellipse(cx - r * .36, cy - r * .42, r * .3, r * .2, '#fff', {opacity: .55, transform: `rotate(-30 ${n(cx - r * .36)} ${n(cy - r * .42)})`}));
-}
-// An isometric box: top light, left base, right dark.
-function cube(x, y, w, h, c, d = w / 2) { // (x,y) is the top corner of the top face
-  const top = `M${n(x)} ${n(y)}l${n(w)} ${n(d / 2)}l${n(-w)} ${n(d / 2)}l${n(-w)} ${n(-d / 2)}Z`;
-  return g({}, path(top, L(c)) +
-    path(`M${n(x - w)} ${n(y + d / 2)}l${n(w)} ${n(d / 2)}v${n(h)}l${n(-w)} ${n(-d / 2)}Z`, B(c)) +
-    path(`M${n(x)} ${n(y + d)}l${n(w)} ${n(-d / 2)}v${n(h)}l${n(-w)} ${n(d / 2)}Z`, D(c)));
-}
-const sparkle = (x, y, s, fill) => path(`M${n(x)} ${n(y - s)}Q${n(x + s * .18)} ${n(y - s * .18)} ${n(x + s)} ${n(y)}Q${n(x + s * .18)} ${n(y + s * .18)} ${n(x)} ${n(y + s)}Q${n(x - s * .18)} ${n(y + s * .18)} ${n(x - s)} ${n(y)}Q${n(x - s * .18)} ${n(y - s * .18)} ${n(x)} ${n(y - s)}Z`, fill);
-const eye = (x, y, r, look = [0, 0]) => circle(x, y, r, '#fff') + circle(x + look[0] * r * .35, y + look[1] * r * .35, r * .58, INK) + circle(x + look[0] * r * .35 - r * .2, y + look[1] * r * .35 - r * .22, r * .2, '#fff');
-const blush = (x, y, r) => ellipse(x, y, r, r * .55, B('pink'), {opacity: .55});
-
-// ---------- stage ----------
-function stage(hue, accent, sparkles) {
-  const c = stageColours(hue);
-  const defs = `<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${c.top}"/><stop offset="1" stop-color="${c.bottom}"/></linearGradient>` +
-    `<radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop stop-color="${c.glow}" stop-opacity=".5"/><stop offset=".55" stop-color="${c.glow}" stop-opacity=".14"/><stop offset="1" stop-color="${c.glow}" stop-opacity="0"/></radialGradient>` +
-    `<pattern id="dots" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="5" cy="5" r="1.3" fill="#fff"/></pattern>` +
-    `<linearGradient id="dotfade" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".9"/></linearGradient>` +
-    `<mask id="floor"><rect x="0" y="300" width="${W}" height="110" fill="url(#dotfade)"/></mask>` +
-    `<filter id="drop" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="#05030c" flood-opacity=".42"/></filter>`;
-  const back = rect(0, 0, W, H, 'url(#bg)') + ellipse(160, 268, 210, 190, 'url(#glow)') +
-    rect(0, 300, W, 110, 'url(#dots)', {mask: 'url(#floor)', opacity: .09});
-  const spark = sparkles.map(([x, y, s], i) => i % 3 === 2 ? circle(x, y, s / 3, B(accent), {opacity: .8}) : sparkle(x, y, s, B(accent))).join('');
-  return {defs, back, spark};
-}
-const ground = (cx, cy, rx, ry = rx * .16) => ellipse(cx, cy, rx, ry, '#05030c', {opacity: .35});
-
-function gradientDefs() {
-  let out = '';
-  for (const key of used) {
-    const [kind, c] = key.split(':');
-    if (kind === 'sphere') out += `<radialGradient id="sphere-${c}" cx="38%" cy="32%" r="72%"><stop stop-color="${L(c)}"/><stop offset=".5" stop-color="${B(c)}"/><stop offset="1" stop-color="${D(c)}"/></radialGradient>`;
+// ---------- voxel scene ----------
+const key = (x, y, z) => `${x},${y},${z}`;
+class Scene {
+  constructor() { this.v = new Map(); this.paints = []; }
+  set(x, y, z, c, o = {}) { if (c) this.v.set(key(x, y, z), {x, y, z, c, ...o}); else this.v.delete(key(x, y, z)); return this; }
+  get(x, y, z) { return this.v.get(key(x, y, z)); }
+  box(x0, y0, z0, dx, dy, dz, c, o) {
+    for (let x = x0; x < x0 + dx; x++) for (let y = y0; y < y0 + dy; y++) for (let z = z0; z < z0 + dz; z++)
+      this.set(x, y, z, typeof c === 'function' ? c(x, y, z) : c, o);
+    return this;
   }
-  return out;
+  ball(cx, cy, cz, r, c) { // voxels whose centres fall inside the sphere
+    for (let x = Math.floor(cx - r); x <= cx + r; x++) for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let z = Math.floor(cz - r); z <= cz + r; z++)
+      if ((x + .5 - cx) ** 2 + (y + .5 - cy) ** 2 + (z + .5 - cz) ** 2 <= r * r) this.set(x, y, z, typeof c === 'function' ? c(x, y, z) : c);
+    return this;
+  }
+  // A pixel glyph painted on a block face: origin + u·col + v·row places each pixel in world space. Each pixel is
+  // drawn straight after the frontmost block whose face it touches (`at` is only a fallback), so later blocks
+  // never paint over it.
+  paint(at, origin, u, v, rows, colour) {
+    rows.forEach((row, j) => [...row].forEach((bit, i) => {
+      if (bit !== '1') return;
+      const p = (a, b) => origin.map((o, k) => o + u[k] * a + v[k] * b);
+      this.paints.push({colour, at, quad: [p(i, j), p(i + 1, j), p(i + 1, j + 1), p(i, j + 1)]});
+    }));
+    return this;
+  }
+  // Glyph lying on the top face at height z, centred on tile (x, y) (or on `centre`). Columns run straight
+  // across the screen and rows run down it, foreshortened like floor markings. px is the pixel width in tiles.
+  top(x, y, z, rows, colour, px = .17, centre = [x + .5, y + .5], at) {
+    const u = [px / 2, -px / 2, 0], v = [px * .8, px * .8, 0], w = rows[0].length, h = rows.length;
+    const o = [0, 1, 2].map(k => [centre[0], centre[1], z + .001][k] - u[k] * w / 2 - v[k] * h / 2);
+    return this.paint(at ?? [x, y, z - 1], o, u, v, rows, colour);
+  }
+  // Glyph on the top face aligned with the grid (columns along +x, rows along +y), like a road marking.
+  floor(x, y, z, rows, colour, px = 1 / 7) {
+    const w = rows[0].length * px, h = rows.length * px;
+    return this.paint([x, y, z - 1], [x + (1 - w) / 2, y + (1 - h) / 2, z + .001], [px, 0, 0], [0, px, 0], rows, colour);
+  }
+  // A flat rectangle painted on the top face at height z, aligned with the grid (road markings, stripes).
+  stripe(x0, y0, x1, y1, z, colour, at) { return this.paint(at, [x0, y0, z + .002], [x1 - x0, 0, 0], [0, y1 - y0, 0], ['1'], colour); }
+  // Glyph on the left (+y) face of voxel (x, y, z): columns along +x, rows downwards.
+  left(x, y, z, rows, colour, px = 1 / 7) {
+    const w = rows[0].length * px, h = rows.length * px;
+    return this.paint([x, y, z], [x + (1 - w) / 2, y + 1.001, z + 1 - (1 - h) / 2], [px, 0, 0], [0, 0, -px], rows, colour);
+  }
+  // Glyph on the right (+x) face of voxel (x, y, z): columns along -y, rows downwards.
+  right(x, y, z, rows, colour, px = 1 / 7) {
+    const w = rows[0].length * px, h = rows.length * px;
+    return this.paint([x, y, z], [x + 1.001, y + 1 - (1 - w) / 2, z + 1 - (1 - h) / 2], [0, -px, 0], [0, 0, -px], rows, colour);
+  }
 }
 
-// Standard sparkle layout; each poster may pass its own.
-const SPARKS = [[276, 150, 8], [40, 198, 7], [292, 188, 6], [254, 128, 5], [52, 168, 5], [30, 238, 6]];
+const n = v => +(+v).toFixed(1); // one decimal is sub-pixel at poster size
+function render(scene) {
+  const solid = (x, y, z) => { const v = scene.get(x, y, z); return v && !v.alpha; };
+  const faces = [], decals = new Map();
+  for (const d of scene.paints) { // attach each painted pixel to the frontmost block face under it
+    const xs = d.quad.map(p => p[0]), ys = d.quad.map(p => p[1]), zs = d.quad.map(p => p[2]);
+    const flat = (a) => Math.max(...a) - Math.min(...a) < 1e-6;
+    const side = flat(zs) ? 'top' : flat(ys) ? 'left' : 'right';
+    const span = a => { const lo = Math.min(...a), hi = Math.max(...a); const out = []; for (let c = Math.floor(lo + 1e-6); c < hi - 1e-6; c++) out.push(c); return out.length ? out : [Math.floor(lo)]; };
+    const cand = [];
+    if (side === 'top') { const z = Math.round(zs[0]) - 1; for (const x of span(xs)) for (const y of span(ys)) cand.push([x, y, z]); }
+    if (side === 'left') { const y = Math.round(ys[0]) - 1; for (const x of span(xs)) for (const z of span(zs)) cand.push([x, y, z]); }
+    if (side === 'right') { const x = Math.round(xs[0]) - 1; for (const y of span(ys)) for (const z of span(zs)) cand.push([x, y, z]); }
+    const found = cand.filter(c => scene.get(...c)).sort((a, b) => (b[0] + b[1] + b[2]) - (a[0] + a[1] + a[2]))[0] ?? d.at;
+    if (!found) throw new Error('Painted pixel is not on any block');
+    const k = key(...found); decals.set(k, [...(decals.get(k) ?? []), {side, ...d}]);
+  }
+  const voxels = [...scene.v.values()].sort((a, b) => (a.x + a.y + a.z) - (b.x + b.y + b.z) || a.z - b.z || a.x - b.x);
+  for (const v of voxels) {
+    const {x, y, z} = v, mat = typeof v.c === 'string' ? {top: v.c, left: v.c, right: v.c} : v.c;
+    const add = (side, pts) => faces.push({fill: SHADE[side](mat[side]), alpha: v.alpha, pts});
+    const hide = (a, b, c) => v.alpha ? scene.get(a, b, c) : solid(a, b, c);
+    if (!hide(x, y, z + 1)) add('top', [[x, y, z + 1], [x + 1, y, z + 1], [x + 1, y + 1, z + 1], [x, y + 1, z + 1]]);
+    if (!hide(x, y + 1, z)) add('left', [[x, y + 1, z + 1], [x + 1, y + 1, z + 1], [x + 1, y + 1, z], [x, y + 1, z]]);
+    if (!hide(x + 1, y, z)) add('right', [[x + 1, y, z + 1], [x + 1, y + 1, z + 1], [x + 1, y + 1, z], [x + 1, y, z]]);
+    if (mat.band) { // grass-style blocks: a coloured strip along the top of each visible side
+      if (!hide(x, y + 1, z)) faces.push({fill: SHADE.left(mat.band), pts: [[x, y + 1.001, z + 1], [x + 1, y + 1.001, z + 1], [x + 1, y + 1.001, z + .7], [x + .5, y + 1.001, z + .62], [x, y + 1.001, z + .7]]});
+      if (!hide(x + 1, y, z)) faces.push({fill: SHADE.right(mat.band), pts: [[x + 1.001, y, z + 1], [x + 1.001, y + 1, z + 1], [x + 1.001, y + 1, z + .7], [x + 1.001, y + .5, z + .62], [x + 1.001, y, z + .7]]});
+    }
+    for (const d of decals.get(key(x, y, z)) ?? []) faces.push({fill: SHADE[d.side](d.colour), pts: d.quad});
+  }
+  // Fit the projected model into the poster's stage area.
+  const proj = ([x, y, z]) => [x - y, (x + y) / 2 - z];
+  let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity;
+  for (const f of faces) for (const p of f.pts) { const [px, py] = proj(p); bx0 = Math.min(bx0, px); bx1 = Math.max(bx1, px); by0 = Math.min(by0, py); by1 = Math.max(by1, py); }
+  const a = Math.min((FIT.x1 - FIT.x0) / (bx1 - bx0), (FIT.y1 - FIT.y0) / (by1 - by0), FIT.maxA);
+  const ox = (FIT.x0 + FIT.x1) / 2 - a * (bx0 + bx1) / 2, oy = FIT.y1 - a * by1 - Math.max(0, ((FIT.y1 - FIT.y0) - a * (by1 - by0)) * .35);
+  // Merge consecutive faces with the same paint into one path (svg-skill optimisation rule).
+  let out = '', run = null;
+  // Opaque faces are also stroked in their own colour: neighbouring faces then overlap by a hair, which hides the
+  // anti-aliasing seams that would otherwise draw a grid over every flat surface.
+  const flush = () => { if (run) out += `<path fill="${run.fill}"${run.alpha ? ` fill-opacity="${run.alpha}"` : ` stroke="${run.fill}"`} d="${run.d}"/>`; run = null; };
+  for (const f of faces) {
+    const d = 'M' + f.pts.map(p => { const [px, py] = proj(p); return `${n(ox + a * px)} ${n(oy + a * py)}`; }).join(' ') + 'Z';
+    if (run && run.fill === f.fill && run.alpha === f.alpha) run.d += d; else { flush(); run = {fill: f.fill, alpha: f.alpha, d}; }
+  }
+  flush();
+  out = `<g stroke-width="${n(Math.min(1.2, a * .08))}" stroke-linejoin="round">${out}</g>`;
+  return {svg: out, box: [ox + a * bx0, oy + a * by0, ox + a * bx1, oy + a * by1]};
+}
 
-// ---------- posters ----------
+// ---------- helpers for scenes ----------
+const GRASS = {top: C.grass, left: C.dirt, right: C.dirt, band: C.grass};
+let seed = 1;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+// An island base: a top layer over `depth` layers of an under-colour.
+const island = (s, x0, y0, w, d, top, under, depth = 2, z0 = 0) => s.box(x0, y0, z0 - depth, w, d, depth, under).box(x0, y0, z0, w, d, 1, top);
+const EYE = ['0110', '1111', '1101', '0110'];
+// Two eyes on the right (+x) face of a creature whose front column is x, at height z, centred on rows y1 and y2.
+const eyesRight = (s, x, y1, y2, z) => { s.right(x, y1, z, EYE, C.white).right(x, y2, z, EYE, C.white); };
+const pupilsRight = (s, x, y1, y2, z) => { s.right(x, y1, z, ['11', '11'], C.ink).right(x, y2, z, ['11', '11'], C.ink); };
+
+// ---------- scenes ----------
 const art = {};
 
-art['color-blocks'] = () => {
-  const s = 40, x0 = 40, y0 = 236;
-  const grid = ['b..ypr', 'bbgy.r', 'pbggyr', 'pp.gbr'];
-  const cmap = {b: 'blue', y: 'yellow', p: 'purple', r: 'red', g: 'green'};
-  let board = rect(x0 - 12, y0 - 12, 6 * s + 24, 4 * s + 24, INK, {rx: 22, filter: SHADOW});
-  grid.forEach((row, j) => [...row].forEach((k, i) => {
-    const x = x0 + i * s + 2, y = y0 + j * s + 2;
-    board += k === '.' ? slot(x, y, s - 4) : tile(x, y, s - 4, cmap[k]);
-  }));
-  const piece = [[0, 0], [1, 0], [2, 0], [1, 1]].map(([i, j]) => tile(110 + i * 42, 146 + j * 42, 40, 'orange')).join('');
-  return ground(160, 392, 140) + board + g({filter: SHADOW, transform: 'rotate(-8 170 180)'}, piece) +
-    line('M120 228v-6M162 228v-12M204 228v-6', '#fff', 3, {opacity: .35});
+art['color-blocks'] = s => {
+  island(s, 0, 0, 8, 8, C.dark, C.navy, 1);
+  const grid = ['b..ypr..', 'bbgy.rr.', 'pbggyrr.', 'pp.gbrpp', 'yp..bbpp', 'yyg..bbr', 'ggg.y.rr', '.g..yyrr'];
+  const map = {b: C.blue, y: C.yellow, p: C.purple, r: C.red, g: C.green};
+  grid.forEach((row, j) => [...row].forEach((k, i) => { if (k !== '.') s.set(i, j, 1, map[k]); }));
+  for (const [i, j] of [[2, 0], [3, 0], [4, 0], [3, 1]]) s.set(i + 1, j + 1, 5, C.orange);
 };
 
-art['water-sort'] = () => {
-  const tubes = [[80, ['blue', 'pink', 'yellow', 'blue']], [160, ['yellow', 'teal', 'pink']], [240, ['teal', 'pink', 'blue', 'yellow']]];
-  let out = ground(160, 384, 130), defs = '';
-  tubes.forEach(([cx, layers], t) => {
-    const w = 52, top = 168, h = 204, x = cx - w / 2, r = w / 2;
-    const shape = `M${x} ${top}h${w}v${h - r}a${r} ${r} 0 0 1 ${-w} 0Z`;
-    defs += `<clipPath id="tube${t}"><path d="${shape}"/></clipPath>`;
-    const band = 42;
-    let liquid = '';
-    layers.forEach((c, i) => {
-      const y = top + h - (i + 1) * band;
-      liquid += rect(x, y, w, band + 1, B(c)) + rect(x + w * .62, y, w * .38, band + 1, D(c), {opacity: .55});
-    });
-    const surface = top + h - layers.length * band;
-    liquid += ellipse(cx, surface, w / 2, 5, L(layers.at(-1)));
-    out += g({filter: SHADOW}, path(shape, '#fff', {opacity: .1}) + g({'clip-path': `url(#tube${t})`}, liquid) +
-      path(shape, 'none', {stroke: tone('cream', 1), 'stroke-width': 4, opacity: .85}) +
-      rect(x - 6, top - 8, w + 12, 12, tone('cream', 1), {rx: 6}) +
-      line(`M${x + 10} ${top + 16}v${h - 60}`, '#fff', 5, {opacity: .45}));
-  });
-  out += circle(160, 150, 6, B('teal')) + circle(166, 128, 4, B('teal'), {opacity: .8});
-  return {body: out, defs};
-};
-
-art['fruit-merge'] = () => {
-  // A glass jar with fruit in merge order: the big one has stripes.
-  const jar = path('M48 196v156q0 26 26 26h172q26 0 26-26V196', 'none', {stroke: tone('cream', 1), 'stroke-width': 6, 'stroke-linecap': 'round', opacity: .8});
-  const melon = `<clipPath id="melon"><circle cx="198" cy="316" r="62"/></clipPath>` + sphere(198, 316, 62, 'green') +
-    g({'clip-path': 'url(#melon)', opacity: .5}, [-40, -14, 12, 38].map(dx => line(`M${198 + dx} 250q${dx * .3 - 14} 66 0 132`, D('green'), 9)).join('')) +
-    ellipse(176, 288, 18, 11, '#fff', {opacity: .4, transform: 'rotate(-30 176 288)'});
-  const orange = sphere(104, 336, 42, 'orange') + path('M104 296q10-12 24-8-6 14-24 8Z', B('green'));
-  const peach = sphere(128, 260, 30, 'pink') + line('M128 232q-4 12 0 24', D('pink'), 3, {opacity: .5});
-  const cherry = sphere(212, 226, 17, 'red') + sphere(240, 236, 17, 'red') + line('M212 210q10-34 22-38M240 220q-2-30-6-48', D('green'), 4) + path('M234 172q16-10 28 0-14 10-28 0Z', B('green'));
-  return ground(160, 388, 130) + g({filter: SHADOW}, melon + orange + peach + cherry) + jar +
-    line('M64 210v120', '#fff', 5, {opacity: .25});
-};
-
-art['tower'] = () => {
-  const cols = ['purple', 'blue', 'blue', 'teal', 'teal', 'green'];
-  let out = ground(160, 392, 120);
-  cols.forEach((c, i) => { out += cube(160, 300 - i * 26, 96, 26, c, 96); });
-  out += g({filter: SHADOW}, cube(214, 132, 96, 26, 'yellow', 96)) + line('M60 154h40M74 168h30', '#fff', 4, {opacity: .4});
-  return out;
-};
-
-art['flappy-bird'] = () => {
-  const pillar = (x, top, w = 52) => g({}, rect(x, top, w, H - top, B('green')) + rect(x + w * .66, top, w * .34, H - top, D('green')) +
-    rect(x - 6, top, w + 12, 24, L('green'), {rx: 6}) + rect(x + w * .66, top + 4, w * .34 + 6, 20, B('green'), {rx: 4}) + rect(x + 8, top + 30, 8, H - top - 30, '#fff', {opacity: .3}));
-  const clouds = g({fill: '#fff', opacity: .12}, circle(70, 180, 22, '#fff') + circle(96, 172, 28, '#fff') + circle(124, 182, 20, '#fff') + rect(60, 180, 80, 22, '#fff', {rx: 11}));
-  const bird = g({filter: SHADOW, transform: 'rotate(-12 166 244)'},
-    sphere(166, 244, 40, 'yellow') + ellipse(188, 262, 18, 10, tone('cream', 1)) +
-    path('M200 236l26 8-26 9Z', B('orange')) + path('M200 244l22 2-22 6Z', D('orange')) +
-    eye(184, 228, 11, [1, 0]) + path('M122 244q16-26 38-6-14 22-38 6Z', L('yellow')) + blush(170, 254, 6));
-  return clouds + pillar(30, 300) + pillar(232, 268) + line('M86 230h-24M92 252h-34M84 274h-20', '#fff', 4, {opacity: .35}) + bird;
-};
-
-art['ball-run'] = () => {
-  const hz = 176;
-  let track = path(`M8 ${H}L132 ${hz}h56L312 ${H}Z`, INK);
-  for (let i = 0; i < 9; i++) { // rails converging on the horizon
-    const t = i / 8, xb = 8 + t * 304, xt = 132 + t * 56;
-    track += line(`M${n(xb)} ${H}L${n(xt)} ${hz}`, B('pink'), 1.6, {opacity: .5});
+art['water-sort'] = s => {
+  island(s, 0, 0, 13, 5, C.wood, C.dkwood, 1);
+  const tubes = [[0, [C.blue, C.pink, C.yellow, C.blue]], [4, [C.yellow, C.teal, C.pink]], [8, [C.teal, C.pink, C.blue, C.yellow]]];
+  for (const [x0, bands] of tubes) {
+    const xs = x0 + 1;
+    for (let z = 1; z <= 10; z++) for (let x = xs; x < xs + 3; x++) for (let y = 1; y < 4; y++) {
+      const band = Math.floor((z - 1) / 2);
+      if (band < bands.length) s.set(x, y, z, bands[band]);
+      else if (z < 10) s.set(x, y, z, C.glass, {alpha: .28});
+      else if (x !== xs + 1 || y !== 2) s.set(x, y, z, C.white);
+    }
   }
-  for (let k = 1; k <= 8; k++) { // cross lines, closer together near the horizon
-    const y = hz + (H - hz) * Math.pow(k / 8, 2.2), t = (y - hz) / (H - hz), half = 28 + t * 124;
-    track += line(`M${n(160 - half)} ${n(y)}h${n(half * 2)}`, B('pink'), 1.6, {opacity: .45});
-  }
-  track += line(`M8 ${H}L132 ${hz}M312 ${H}L188 ${hz}`, L('pink'), 4);
-  const ball = g({filter: SHADOW}, sphere(160, 306, 54, 'purple') + line('M118 290q42 30 84 0', L('purple'), 7, {opacity: .5}) + line('M114 316q46 34 92 0', D('purple'), 7, {opacity: .45}));
-  const blocks = cube(96, 228, 15, 22, 'teal', 15) + cube(226, 252, 18, 26, 'yellow', 18);
-  return track + ellipse(160, 362, 60, 10, '#05030c', {opacity: .5}) + blocks + ball;
+  s.set(6, 2, 13, C.teal).set(6, 2, 15, C.teal);
 };
 
-art['animal-stack'] = () => {
-  // Elephant
-  const el = g({}, path('M76 384v-58q0-46 84-46t84 46v58Z', B('slate')) + path('M206 290q38 10 38 36v58h-30Z', D('slate'), {opacity: .7}) +
-    ellipse(92, 314, 28, 34, L('slate')) + ellipse(228, 314, 28, 34, D('slate')) +
-    path('M160 330q-2 30 16 36', 'none', {stroke: D('slate'), 'stroke-width': 16, 'stroke-linecap': 'round'}) + path('M160 330q-2 30 16 36', 'none', {stroke: L('slate'), 'stroke-width': 4, 'stroke-linecap': 'round', opacity: .5, transform: 'translate(-4 -2)'}) +
-    eye(136, 318, 8, [0, .2]) + eye(184, 318, 8, [0, .2]) + blush(122, 340, 9) + blush(198, 340, 9) +
-    rect(82, 376, 34, 10, D('slate'), {rx: 5}) + rect(204, 376, 34, 10, D('slate'), {rx: 5}));
-  // Lion
-  const lion = g({transform: 'rotate(-5 160 236)'}, circle(160, 236, 54, B('orange')) +
-    [...Array(12)].map((_, i) => { const a = i * Math.PI / 6; return circle(160 + Math.cos(a) * 50, 236 + Math.sin(a) * 50, 14, D('orange')); }).join('') +
-    circle(160, 236, 40, B('yellow')) + circle(128, 202, 10, B('yellow')) + circle(192, 202, 10, B('yellow')) +
-    eye(146, 230, 7) + eye(174, 230, 7) + ellipse(160, 248, 9, 6, D('wood')) + line('M152 258q8 7 16 0', INK, 3) + blush(136, 250, 7) + blush(184, 250, 7));
-  // Penguin
-  const peng = g({transform: 'rotate(7 166 150)'}, ellipse(166, 152, 34, 40, INK) + ellipse(166, 160, 23, 30, tone('cream', 1)) +
-    eye(154, 140, 7) + eye(178, 140, 7) + path('M159 154l7 8 7-8Z', B('orange')) + ellipse(150, 192, 11, 5, B('orange')) + ellipse(182, 192, 11, 5, B('orange')));
-  return ground(160, 388, 110) + g({filter: SHADOW}, el + lion + peng);
+art['fruit-merge'] = s => {
+  island(s, 0, 0, 14, 11, C.wood, C.dkwood, 2);
+  // Blocky fruit in merge order: striped watermelon, orange, peach and a pair of cherries.
+  s.box(1, 1, 1, 7, 7, 6, (x, y, z) => z === 6 ? C.green : (x + y) % 3 === 0 ? C.dkgreen : C.green).box(2, 2, 7, 5, 5, 1, C.green).set(4, 4, 8, C.dkwood);
+  s.box(9, 6, 1, 4, 4, 4, C.orange).box(10, 7, 5, 2, 2, 1, C.orange).set(10, 7, 6, C.leaf).set(11, 7, 6, C.green);
+  s.box(9, 1, 1, 3, 3, 3, C.pink).set(10, 1, 4, C.pink).set(10, 2, 4, C.pink);
+  s.box(3, 9, 1, 2, 1, 2, C.red).box(6, 9, 1, 1, 1, 1, C.red).set(4, 9, 3, C.dkwood).set(5, 9, 4, C.dkwood).set(6, 9, 2, C.dkwood).set(6, 9, 3, C.dkwood).set(5, 9, 5, C.leaf);
 };
 
-art['snake'] = () => {
-  let board = rect(36, 150, 248, 238, '#000', {rx: 24, opacity: .2});
-  let checks = '';
-  for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) if ((i + j) % 2 === 0) checks += rr(44 + i * 29.5, 158 + j * 27.75, 29.5, 27.75);
-  board += path(checks, '#fff', {opacity: .04});
-  const pts = [];
-  for (let x = 250; x >= 70; x -= 26) pts.push([x, 356]);
-  for (let y = 330; y >= 252; y -= 26) pts.push([70, y]);
-  for (let x = 96; x <= 200; x += 26) pts.push([x, 252]);
-  let body = '';
-  pts.forEach(([x, y], i) => { body = sphere(x, y, 15 + i * .1, 'green') + body; });
-  const head = g({}, sphere(226, 252, 22, 'green') + eye(220, 244, 8, [1, 0]) + eye(238, 246, 7, [1, 0]) + line('M248 262l12 4m-6 -2 8 -4', B('red'), 3));
-  const apple = g({}, sphere(232, 182, 24, 'red') + line('M232 160q2-10 8-14', D('wood'), 4) + path('M238 154q14-12 26-2-12 10-26 2Z', B('green')));
-  return ground(160, 392, 130) + board + g({filter: SHADOW}, body + head + apple);
+art['tower'] = s => {
+  const cols = [C.purple, C.blue, C.sky, C.teal, C.green, C.lime, C.yellow];
+  cols.forEach((c, i) => s.box(0, 0, i, 6, 6, 1, c));
+  s.box(4, -1, 9, 6, 6, 1, C.orange);
 };
 
-art['neon-coil'] = () => {
-  const d = 'M58 386C40 320 120 330 128 280S56 214 104 178 214 196 210 246 156 300 206 330 286 290 262 230';
-  const orbs = [[60, 180, 'pink'], [254, 176, 'yellow'], [262, 350, 'blue'], [110, 330, 'orange'], [228, 290, 'purple'], [160, 210, 'teal'], [36, 280, 'yellow']];
-  const defs = `<filter id="neon" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7"/></filter>`;
-  const glow = line(d, B('green'), 30, {filter: 'url(#neon)', opacity: .7});
-  const body = line(d, D('green'), 26) + line(d, B('green'), 20) + line(d, L('green'), 5, {opacity: .7, 'stroke-dasharray': '2 16'});
-  const head = g({}, circle(262, 228, 18, B('green')) + eye(254, 220, 7, [0, -1]) + eye(272, 222, 7, [0, -1]));
-  const orbArt = orbs.map(([x, y, c]) => circle(x, y, 12, B(c), {filter: 'url(#neon)', opacity: .8}) + circle(x, y, 6, L(c))).join('');
-  return {body: orbArt + glow + body + head, defs};
+art['flappy-bird'] = s => {
+  island(s, 0, 0, 14, 6, GRASS, C.dirt, 2);
+  const pipe = (x0, h) => s.box(x0, 1, 1, 3, 3, h, C.green).box(x0 - 1, 0, h + 1, 5, 5, 2, C.lime);
+  pipe(1, 4); pipe(10, 2);
+  s.box(5, 1, 9, 4, 4, 3, C.yellow).box(5, 1, 8, 4, 4, 1, C.cream).box(9, 2, 10, 1, 2, 1, C.orange).box(4, 2, 10, 1, 2, 2, C.gold);
+  s.box(6, 5, 10, 2, 1, 1, C.gold).box(6, 6, 11, 2, 1, 1, C.gold);
+  eyesRight(s, 8, 1, 4, 11);
 };
 
-art['minesweeper'] = () => {
-  const s = 48, x0 = 40, y0 = 186;
-  const map = ['##2#1', '#3.1.', '#2.1.', '1....'];
-  const numCol = {1: 'blue', 2: 'green', 3: 'red'};
-  let out = rect(x0 - 10, y0 - 10, 5 * s + 20, 4 * s + 20, INK, {rx: 20, filter: SHADOW});
+art['ball-run'] = s => {
+  island(s, 0, 0, 22, 6, C.dark, C.navy, 1);
+  for (let x = 0; x < 22; x++) { s.set(x, 0, 1, C.pink); s.set(x, 5, 1, C.pink); if (x % 3 === 0) s.stripe(x + .15, 2.6, x + .85, 3.4, 1, C.magenta, [x, 3, 0]); }
+  s.ball(15, 3, 3.4, 2.5, (x, y, z) => (z + x) % 3 ? C.purple : C.magenta);
+  s.box(4, 1, 1, 2, 1, 2, C.teal).box(9, 3, 1, 2, 2, 1, C.yellow).box(20, 1, 1, 1, 1, 1, C.teal);
+};
+
+art['animal-stack'] = s => {
+  island(s, 0, 0, 10, 10, GRASS, C.dirt, 2);
+  // Elephant facing +x: body, ears, trunk.
+  s.box(2, 2, 1, 5, 5, 4, C.stone).box(5, 1, 2, 1, 1, 3, C.slate).box(5, 7, 2, 1, 1, 3, C.slate);
+  s.box(7, 4, 2, 1, 1, 2, C.stone).set(8, 4, 1, C.stone).set(7, 4, 1, C.stone);
+  eyesRight(s, 6, 3, 5, 4);
+  // Lion: mane block with the face pushed forward.
+  s.box(2, 2, 5, 3, 5, 4, C.orange).box(5, 3, 5, 1, 3, 3, C.yellow).set(6, 4, 5, C.cream).set(3, 2, 9, C.orange).set(3, 6, 9, C.orange);
+  eyesRight(s, 5, 3, 5, 7);
+  s.right(6, 4, 5, ['0000', '0110', '0110', '0000'], C.dkwood);
+  // Penguin on top.
+  s.box(3, 3, 9, 2, 2, 3, C.black).box(5, 3, 9, 1, 2, 2, C.white).set(5, 3, 11, C.black).set(5, 4, 11, C.black).set(6, 3, 10, C.orange);
+  eyesRight(s, 5, 3, 4, 11);
+};
+
+art['snake'] = s => {
+  island(s, 0, 0, 12, 12, C.grass, C.dirt, 2);
+  for (const v of s.v.values()) if (v.z === 0) v.c = {...GRASS, top: (v.x + v.y) % 2 ? C.grass : shift(C.grass, 6)};
+  const path = [];
+  for (let x = 1; x <= 9; x++) path.push([x, 9]);
+  for (let y = 8; y >= 5; y--) path.push([1, y]);
+  for (let x = 2; x <= 7; x++) path.push([x, 5]);
+  path.forEach(([x, y], i) => s.set(x, y, 1, i % 2 ? C.green : C.dkgreen));
+  s.box(8, 4, 1, 2, 2, 2, C.green).set(10, 5, 1, C.red);
+  eyesRight(s, 9, 4, 5, 2);
+  s.box(3, 1, 1, 2, 2, 2, C.red).set(4, 1, 3, C.dkwood).set(4, 1, 4, C.leaf).set(5, 1, 4, C.green);
+};
+
+art['neon-coil'] = s => {
+  island(s, 0, 0, 13, 13, C.navy, C.ink, 1);
+  for (const v of s.v.values()) if (v.z === 0) v.c = (v.x + v.y) % 2 ? C.navy : '#24305a';
+  const pts = [[1, 11], [1, 10], [1, 9], [2, 9], [3, 9], [4, 9], [4, 8], [4, 7], [3, 7], [2, 7], [2, 6], [2, 5], [2, 4], [3, 4], [4, 4], [5, 4], [6, 4], [7, 4], [7, 5], [7, 6], [8, 6], [9, 6], [10, 6], [10, 5], [10, 4], [10, 3]];
+  pts.forEach(([x, y], i) => s.set(x, y, 1, i % 3 === 1 ? C.green : C.lime));
+  s.box(10, 1, 1, 2, 2, 2, C.lime);
+  eyesRight(s, 11, 1, 2, 2);
+  for (const [x, y, z, c] of [[6, 9, 1, C.pink], [11, 10, 1, C.yellow], [5, 1, 1, C.sky], [8, 9, 2, C.orange], [0, 2, 1, C.yellow], [12, 7, 1, C.pink], [6, 7, 1, C.purple], [3, 1, 2, C.teal]]) s.set(x, y, z, c);
+};
+
+art['minesweeper'] = s => {
+  island(s, 0, 0, 6, 6, C.dark, C.navy, 1);
+  const map = ['##2#1.', '#3.1..', '#2.1.1', '1..1#2', '...112', '......'];
+  const numCol = {1: C.blue, 2: C.green, 3: C.red};
   map.forEach((row, j) => [...row].forEach((k, i) => {
-    const x = x0 + i * s + 2, y = y0 + j * s + 2;
-    if (k === '#') out += tile(x, y, s - 4, 'slate');
-    else {
-      out += rect(x, y, s - 4, s - 4, tone('cream', 1), {rx: 9, opacity: .92});
-      if (k !== '.') out += text(x + (s - 4) / 2, y + (s - 4) / 2 + 1, k, 26, D(numCol[k]));
-    }
+    if (k === '#') { s.box(i, j, 1, 1, 1, 2, (i + j) % 2 ? C.stone : shift(C.stone, 5)); return; }
+    s.set(i, j, 1, (i + j) % 2 ? C.paper : shift(C.paper, -6));
+    if (k !== '.') s.top(i, j, 2, FONT[k], numCol[k], .19);
   }));
-  // Flags stand on two of the raised tiles (column, row).
-  const flag = (i, j) => { const x = x0 + i * s + s / 2 - 6, y = y0 + j * s + s - 10; return line(`M${x} ${y}v-28`, INK, 4) + path(`M${x + 2} ${y - 30}l20 8-20 8Z`, B('red')) + rect(x - 9, y - 2, 18, 5, INK, {rx: 2.5}); };
-  const mine = g({filter: SHADOW}, [...Array(8)].map((_, i) => { const a = i * Math.PI / 4; return line(`M${n(250 + Math.cos(a) * 16)} ${n(140 + Math.sin(a) * 16)}L${n(250 + Math.cos(a) * 29)} ${n(140 + Math.sin(a) * 29)}`, INK, 6); }).join('') + sphere(250, 140, 22, 'slate'));
-  return ground(160, 392, 140) + out + flag(0, 1) + flag(1, 0) + mine;
+  for (const [i, j] of [[0, 1], [3, 0], [4, 3]]) s.top(i, j, 3, ICON.flag, C.red, .24).top(i, j, 3, ['01000', '01000', '01000', '01000', '11100'], C.ink, .24);
 };
 
-function suit(kind, x, y, s, fill) {
-  const p = {
-    heart: 'M0 .9C-.2.7-1 .2-1-.35-1-.75-.7-1-.38-1-.18-1 0-.85 0-.65 0-.85.18-1 .38-1 .7-1 1-.75 1-.35 1 .2.2.7 0 .9Z',
-    diamond: 'M0-1 .72 0 0 1-.72 0Z',
-    spade: 'M0-1C.25-.7 1-.25 1 .2 1 .55.7.75.42.75.25.75.1.65 0 .5L.18 1H-.18L0 .5C-.1.65-.25.75-.42.75-.7.75-1 .55-1 .2-1-.25-.25-.7 0-1Z',
-    club: 'M0-1A.32.32 0 0 1 .28-.5.32.32 0 1 1 .2.25L.25 1H-.25L-.2.25A.32.32 0 1 1-.28-.5.32.32 0 0 1 0-1Z',
-  }[kind];
-  return path(p, fill, {transform: `translate(${n(x)} ${n(y)}) scale(${n(s)})`});
-}
-art['solitaire'] = () => {
-  const cards = [['A', 'spade', INK], ['K', 'heart', D('red')], ['Q', 'club', INK], ['J', 'diamond', D('red')]];
-  let out = ground(160, 392, 130);
-  cards.forEach(([rank, k, col], i) => {
-    const a = -24 + i * 16;
-    out += g({transform: `rotate(${a} 160 470)`, filter: SHADOW},
-      rect(118, 196, 112, 160, tone('cream', 1), {rx: 14}) + rect(118, 346, 112, 10, tone('cream', 2), {rx: 5}) +
-      text(136, 220, rank, 24, col) + suit(k, 136, 244, 8, col) + suit(k, 174, 290, 30, col));
+art['solitaire'] = s => {
+  island(s, 0, 0, 16, 6, C.felt, C.dkwood, 2);
+  // Four cards standing in a fan, faces towards the viewer (+y).
+  const cards = [[0, 'A', 'spade', C.ink], [4, 'K', 'heart', C.red], [8, 'Q', 'club', C.ink], [12, 'J', 'diamond', C.red]];
+  cards.forEach(([x0, rank, suit, col], i) => {
+    const y = 1 + i % 2;
+    s.box(x0, y, 1, 3, 1, 4, C.paper);
+    s.paint(null, [x0 + .25, y + 1.001, 4.75], [.2, 0, 0], [0, 0, -.2], FONT[rank], col);
+    s.paint(null, [x0 + .9, y + 1.001, 3.1], [.25, 0, 0], [0, 0, -.25], ICON[suit], col);
   });
-  return out;
+  s.box(1, 4, 1, 3, 1, 1, C.paper).box(1, 4, 2, 3, 1, 1, shift(C.paper, -6)).box(1, 4, 3, 3, 1, 1, C.blue);
 };
 
-art['block-fill'] = () => {
-  const s = 46, x0 = 45, y0 = 160;
-  const pathCells = [[0, 4], [0, 3], [0, 2], [1, 2], [2, 2], [2, 1], [1, 1], [0, 1], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [4, 1], [3, 1]];
-  const blocked = [[3, 2], [3, 3]];
-  let out = rect(x0 - 10, y0 - 10, 5 * s + 20, 5 * s + 20, INK, {rx: 22, filter: SHADOW});
-  const key = (i, j) => `${i},${j}`, filled = new Set(pathCells.map(([i, j]) => key(i, j))), wall = new Set(blocked.map(([i, j]) => key(i, j)));
-  for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) {
-    const x = x0 + i * s + 3, y = y0 + j * s + 3;
-    if (wall.has(key(i, j))) out += rect(x, y, s - 6, s - 6, '#000', {rx: 9, opacity: .5}) + line(`M${x + 12} ${y + 12}l${s - 30} ${s - 30}M${x + s - 18} ${y + 12}l${30 - s} ${s - 30}`, tone('slate', 2), 4);
-    else if (filled.has(key(i, j))) out += tile(x, y, s - 6, 'yellow');
-    else out += slot(x, y, s - 6);
+art['block-fill'] = s => {
+  island(s, 0, 0, 6, 6, C.dark, C.navy, 1);
+  const trail = [[0, 5], [0, 4], [0, 3], [1, 3], [2, 3], [2, 2], [1, 2], [0, 2], [0, 1], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [5, 1], [4, 1], [3, 1]];
+  const on = new Set(trail.map(p => p.join())), wall = new Set(['3,2', '3,3', '5,4']);
+  for (let j = 0; j < 6; j++) for (let i = 0; i < 6; i++) {
+    if (wall.has(`${i},${j}`)) { s.set(i, j, 1, C.slate); s.top(i, j, 2, ICON.cross, C.dark, .17); }
+    else if (on.has(`${i},${j}`)) s.box(i, j, 1, 1, 1, 2, C.yellow);
+    else s.set(i, j, 1, (i + j) % 2 ? '#3a4266' : '#434c74');
   }
-  const c = ([i, j]) => `${x0 + i * s + s / 2} ${y0 + j * s + s / 2 - 1}`;
-  out += line('M' + pathCells.map(c).join('L'), D('yellow'), 8, {opacity: .55});
-  const [hx, hy] = c(pathCells.at(-1)).split(' ').map(Number);
-  out += circle(hx, hy, 13, '#fff') + circle(hx, hy, 7, B('orange'));
-  return ground(160, 400, 140) + out;
+  s.set(3, 1, 3, C.orange);
 };
 
-art['color-connect'] = () => {
-  const s = 48, x0 = 40, y0 = 164;
-  let out = rect(x0 - 10, y0 - 10, 5 * s + 20, 5 * s + 20, INK, {rx: 22, filter: SHADOW});
-  for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) out += slot(x0 + i * s + 3, y0 + j * s + 3, s - 6, 10);
-  const c = ([i, j]) => [x0 + i * s + s / 2, y0 + j * s + s / 2];
-  const flows = [['red', [[0, 0], [0, 3], [1, 3]]], ['yellow', [[1, 0], [4, 0], [4, 2]]], ['teal', [[1, 1], [3, 1], [3, 3], [2, 3]]], ['blue', [[0, 4], [4, 4], [4, 3]]], ['pink', [[1, 2], [2, 2]]]];
-  for (const [col, pts] of flows) {
-    const d = 'M' + pts.map(p => c(p).join(' ')).join('L');
-    out += line(d, D(col), 20) + line(d, B(col), 16) + line(d, L(col), 4, {opacity: .6, transform: 'translate(-3 -3)'});
-    for (const p of [pts[0], pts.at(-1)]) out += sphere(...c(p), 17, col);
-  }
-  return ground(160, 400, 140) + out;
+art['color-connect'] = s => {
+  island(s, 0, 0, 7, 7, C.dark, C.navy, 1);
+  const flows = [[C.red, [[0, 0], [0, 1], [0, 2], [0, 3], [1, 3]]], [C.yellow, [[1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [5, 1], [5, 2]]], [C.teal, [[1, 1], [2, 1], [3, 1], [3, 2], [3, 3], [3, 4], [2, 4]]],
+    [C.blue, [[0, 6], [1, 6], [2, 6], [3, 6], [4, 6], [5, 6], [6, 6], [6, 5]]], [C.pink, [[1, 2], [2, 2]]], [C.orange, [[0, 5], [1, 5], [2, 5], [3, 5], [4, 5], [4, 4], [5, 4], [5, 3], [6, 3]]]];
+  for (const [c, pts] of flows) pts.forEach(([x, y], i) => (i === 0 || i === pts.length - 1) ? s.box(x, y, 1, 1, 1, 2, shift(c, 6)) : s.set(x, y, 1, c));
 };
 
-art['pool'] = () => {
-  const cols = ['yellow', 'blue', 'red', 'purple', 'orange', 'green', 'pink', 'ink', 'teal', 'yellow'];
-  let out = ground(160, 392, 130), k = 0;
-  const r = 22;
-  // Rack pointing down towards the cue ball.
-  for (let row = 0; row < 4; row++) for (let i = 0; i <= 3 - row; i++) {
-    const x = 176 + (i - (3 - row) / 2) * r * 2.04, y = 180 + row * r * 1.78;
-    const c = cols[k++];
-    out += g({filter: SHADOW}, sphere(x, y, r, c) + circle(x + 2, y + 2, 9, '#fff', {opacity: .92}) + text(x + 2, y + 2.6, k, 10, INK));
-  }
-  // Cue ball lined up below the rack, the cue coming in from the lower left.
-  out += line('M150 314L166 262', '#fff', 3, {opacity: .4, 'stroke-dasharray': '4 8'});
-  out += g({filter: SHADOW}, sphere(140, 340, r, 'cream'));
-  out += g({filter: SHADOW}, line('M118 374L40 476', D('wood'), 13) + line('M118 374L72 434', B('wood'), 10) + line('M124 366L118 374', tone('cream', 1), 9) + line('M128 361L124 366', B('blue'), 9));
-  return out;
+art['pool'] = s => {
+  island(s, 0, 0, 13, 9, C.felt, C.dkwood, 2);
+  for (let x = 0; x < 13; x++) { s.set(x, 0, 1, C.wood); s.set(x, 8, 1, C.wood); }
+  for (let y = 0; y < 9; y++) { s.set(0, y, 1, C.wood); s.set(12, y, 1, C.wood); }
+  for (const [x, y] of [[0, 0], [12, 0], [0, 8], [12, 8], [6, 0], [6, 8]]) s.set(x, y, 1, C.black);
+  const cols = [C.yellow, C.blue, C.red, C.purple, C.orange, C.green, C.pink, C.black, C.teal, C.gold];
+  let k = 0; // rack: apex towards the cue ball (high x), widening towards the back
+  for (let row = 0; row < 4; row++) for (let i = 0; i <= row; i++) s.set(6 - row, 4 - row + i * 2, 1, cols[k++]);
+  s.set(9, 4, 1, C.white);
+  for (let x = 10; x < 17; x++) s.set(x, 4, 2, x < 11 ? C.cream : x < 12 ? C.blue : C.wood);
 };
 
-art['globle'] = async () => {
+art['globle'] = async s => {
   const world = JSON.parse(await readFile(new URL('../src/games/globle/data/world.json', import.meta.url), 'utf8'));
-  const cx = 160, cy = 268, R = 116, lat0 = 12 * Math.PI / 180, lng0 = 16 * Math.PI / 180;
-  // A round in progress: the hidden country (Chad) in green, guesses shaded by their real distance from it.
-  const near = D('red'), mid = B('red'), far = B('orange'), farther = L('orange'), farthest = L('yellow');
-  const fills = {TCD: B('green'), NER: near, LBY: near, CMR: near, NGA: near, EGY: mid, DZA: mid, ESP: far, GBR: farther, ZAF: farther, BRA: farthest};
-  const project = ([lng, lat]) => {
-    const p = lat * Math.PI / 180, l = lng * Math.PI / 180 - lng0;
-    const cosc = Math.sin(lat0) * Math.sin(p) + Math.cos(lat0) * Math.cos(p) * Math.cos(l);
-    return {x: cx + R * Math.cos(p) * Math.sin(l), y: cy - R * (Math.cos(lat0) * Math.sin(p) - Math.sin(lat0) * Math.cos(p) * Math.cos(l)), visible: cosc > .02};
-  };
-  const ring = pts => {
-    const ps = pts.map(project);
-    if (ps.filter(p => p.visible).length < 3) return '';
-    for (const p of ps) if (!p.visible) { const k = R / Math.max(1e-6, Math.hypot(p.x - cx, p.y - cy)); p.x = cx + (p.x - cx) * k; p.y = cy + (p.y - cy) * k; }
-    let d = '', last;
-    for (const p of ps) { if (last && Math.hypot(p.x - last.x, p.y - last.y) < 1.4) continue; d += (d ? 'L' : 'M') + p.x.toFixed(1) + ' ' + p.y.toFixed(1); last = p; }
-    return d && d + 'Z';
-  };
-  let land = '', guessed = '';
-  for (const f of world.features) {
-    const d = f.polygons.map(poly => ring(poly[0])).join('');
-    if (!d) continue;
-    if (fills[f.id]) guessed += path(d, fills[f.id]); else land += d;
-  }
-  const defs = `<clipPath id="disc"><circle cx="${cx}" cy="${cy}" r="${R}"/></clipPath>`;
-  used.add('sphere:blue');
-  const body = ground(160, 396, 110) + circle(cx, cy, R + 10, B('blue'), {opacity: .18}) +
-    g({filter: SHADOW}, circle(cx, cy, R, sphereFill('blue'))) +
-    g({'clip-path': 'url(#disc)', 'stroke-linejoin': 'round'}, path(land, tone('cream', 2), {opacity: .9}) + g({stroke: INK, 'stroke-width': .5, 'stroke-opacity': .5}, guessed) +
-      circle(cx + R * .25, cy + R * .3, R * 1.05, '#000', {opacity: .16})) +
-    ellipse(cx - R * .4, cy - R * .48, R * .32, R * .18, '#fff', {opacity: .4, transform: `rotate(-30 ${n(cx - R * .4)} ${n(cy - R * .48)})`});
-  return {body, defs};
-};
-
-art['blockcraft'] = () => {
-  // Pixel speckles on a face: deterministic so the poster is stable.
-  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  const speck = (x, y, w, d, h, side, c, count) => { // side: 'left' | 'right'
-    let out = '';
-    for (let i = 0; i < count; i++) {
-      const u = .12 + rnd() * .62, v = rnd() * .8, sx = side === 'left' ? -1 : 1;
-      const px = x + sx * u * w, py = y + d / 2 * u + v * h;
-      out += path(`M${n(px)} ${n(py)}l${n(sx * 10)} ${n(d / w * 5)}v8l${n(-sx * 10)} ${n(-d / w * 5)}Z`, c, {opacity: .9});
+  const deep = '#a3242e';
+  const fills = {TCD: C.green, NER: deep, LBY: deep, CMR: deep, NGA: deep, CAF: deep, SDN: C.red, EGY: C.red, DZA: C.red, ESP: C.orange, GBR: '#f8b46a', ZAF: '#f8b46a', BRA: '#fbd9a0'};
+  const shapes = world.features.flatMap(f => f.polygons.map(poly => {
+    const ring = poly[0]; let x0 = 180, x1 = -180, y0 = 90, y1 = -90;
+    for (const [lx, ly] of ring) { x0 = Math.min(x0, lx); x1 = Math.max(x1, lx); y0 = Math.min(y0, ly); y1 = Math.max(y1, ly); }
+    return {id: f.id, ring, bb: [x0, x1, y0, y1]};
+  }));
+  const country = (lng, lat) => { // point-in-polygon on the bundled display outlines
+    for (const sh of shapes) {
+      const [x0, x1, y0, y1] = sh.bb;
+      if (lng < x0 || lng > x1 || lat < y0 || lat > y1) continue;
+      let inside = false;
+      for (let i = 0, j = sh.ring.length - 1; i < sh.ring.length; j = i++) {
+        const [xi, yi] = sh.ring[i], [xj, yj] = sh.ring[j];
+        if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+      }
+      if (inside) return sh.id;
     }
-    return out;
+    return null;
   };
-  const grass = (x, y, w, h) => g({}, cube(x, y, w, h, 'wood', w) +
-    path(`M${x - w} ${y + w / 2}l${w} ${w / 2}l${w} ${-w / 2}v16l${-w} ${w / 2}l${-w} ${-w / 2}Z`, B('green')) +
-    path(`M${x} ${y + w}l${w} ${-w / 2}v16l${-w} ${w / 2}Z`, D('green')) +
-    path(`M${x} ${y}l${w} ${w / 2}l${-w} ${w / 2}l${-w} ${-w / 2}Z`, L('green')) +
-    speck(x, y + w / 2 + 18, w, w, h - 22, 'left', D('wood'), 6) + speck(x, y + w / 2 + 18, w, w, h - 22, 'right', '#5d351a', 6));
-  const stone = g({}, cube(244, 268, 38, 66, 'slate', 38) + speck(244, 290, 38, 38, 52, 'left', D('slate'), 3));
-  // The tree stands on the back-left of the grass top: each cube's base centre is (x, y + w/2 + h).
-  const tree = g({}, cube(128, 207, 9, 36, 'wood', 9) + cube(128, 168, 34, 40, 'green', 34) + cube(128, 152, 16, 16, 'green', 16));
-  return ground(160, 396, 140) + g({filter: SHADOW}, grass(160, 214, 92, 92) + tree + stone) + cube(46, 330, 12, 12, 'yellow', 12);
+  // Orient the globe so that 12°N 16°E (central Africa) faces the viewer. F points at the viewer,
+  // R is screen-right and U is screen-up in world space.
+  const norm = v => { const l = Math.hypot(...v); return v.map(c => c / l); };
+  const F = norm([1, 1, 1]), R = norm([1, -1, 0]);
+  const U = norm([F[1] * R[2] - F[2] * R[1], F[2] * R[0] - F[0] * R[2], F[0] * R[1] - F[1] * R[0]]);
+  const Up = U[2] < 0 ? U.map(c => -c) : U;
+  const lat0 = 12 * Math.PI / 180, lng0 = 16 * Math.PI / 180;
+  const C0 = [Math.cos(lat0) * Math.cos(lng0), Math.cos(lat0) * Math.sin(lng0), Math.sin(lat0)];
+  const E0 = [-Math.sin(lng0), Math.cos(lng0), 0];
+  const N0 = [-Math.sin(lat0) * Math.cos(lng0), -Math.sin(lat0) * Math.sin(lng0), Math.cos(lat0)];
+  const r = 9.3, c = 9.5, dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
+  s.ball(c, c, c, r, (x, y, z) => {
+    const p = [x + .5 - c, y + .5 - c, z + .5 - c], f = dot(p, F), u = dot(p, Up), rr = dot(p, R);
+    const gv = norm([0, 1, 2].map(k => f * C0[k] + u * N0[k] + rr * E0[k]));
+    const id = country(Math.atan2(gv[1], gv[0]) * 180 / Math.PI, Math.asin(gv[2]) * 180 / Math.PI);
+    return id ? fills[id] ?? '#d9cfb8' : (z + x) % 5 ? C.water : shift(C.water, 4);
+  });
+  s.box(7, 7, -3, 6, 6, 1, C.wood).box(9, 9, -2, 2, 2, 2, C.dkwood);
 };
 
-art['maze-muncher'] = () => {
-  const wall = (d) => line(d, D('blue'), 14) + line(d, B('blue'), 8);
-  const maze = wall('M30 168h90M200 168h90M30 168v80M290 168v80M80 220h50v40M190 220h50M30 330h60v56M150 300h20v40M230 300h60M290 300v86');
-  const pellets = [70, 98, 126, 154, 182].map(x => circle(x, 276, 5, tone('cream', 1))).join('') + circle(250, 260, 10, L('yellow'));
-  const mouth = 'M0 0L34-22A40 40 0 1 0 34 22Z';
-  const muncher = g({transform: 'translate(232 276) scale(-1 1)', filter: SHADOW}, path(mouth, sphereFill('teal')) + eye(4, -18, 7, [-1, 0]));
-  const ghost = g({filter: SHADOW}, path('M60 384v-52q0-30 30-30t30 30v52l-10-8-10 8-10-8-10 8-10-8Z', B('pink')) + path('M100 304q20 6 20 28v52l-10-8-10 8Z', D('pink'), {opacity: .6}) + eye(80, 334, 8, [1, 0]) + eye(102, 334, 8, [1, 0]));
-  return ground(160, 396, 140) + maze + pellets + muncher + ghost;
+art['blockcraft'] = s => {
+  seed = 11;
+  island(s, 0, 0, 12, 12, GRASS, C.dirt, 3);
+  for (let x = 7; x < 12; x++) for (let y = 7; y < 12; y++) if (x + y > 15) s.set(x, y, 0, C.water);
+  for (const v of s.v.values()) if (v.z < 0 && rnd() < .14) v.c = C.stone;
+  s.box(3, 3, 1, 1, 1, 4, C.dkwood).box(1, 1, 5, 5, 5, 2, C.leaf).box(2, 2, 7, 3, 3, 1, C.leaf).set(3, 3, 8, C.leaf);
+  for (const v of s.v.values()) if (v.c === C.leaf && rnd() < .3) v.c = C.dkgreen;
+  // Sheep facing +x.
+  s.box(7, 2, 2, 3, 2, 2, C.white).box(10, 2, 3, 1, 2, 2, C.grey);
+  for (const [x, y] of [[7, 2], [9, 2], [7, 3], [9, 3]]) s.set(x, y, 1, C.grey);
+  pupilsRight(s, 10, 2, 3, 4);
+  s.set(6, 9, 1, C.red).set(2, 8, 1, C.yellow).set(9, 6, 1, C.blue);
 };
 
-art['corn-clicker'] = () => {
-  const rows = ['', ''];
-  for (let j = 0; j < 13; j++) for (let i = 0; i < 6; i++) rows[j % 2] += rr(132 + i * 11 + (j % 2) * 5.5, 150 + j * 14, 10, 13, 4);
-  const kern = path(rows[0], L('yellow')) + path(rows[1], B('yellow'));
-  const cob = `<clipPath id="cob"><ellipse cx="164" cy="240" rx="40" ry="102"/></clipPath>` + ellipse(164, 240, 40, 102, D('yellow')) +
-    g({'clip-path': 'url(#cob)'}, kern + rect(176, 130, 40, 230, D('orange'), {opacity: .25}));
-  const husk = path('M164 380C110 360 90 300 106 250 120 300 140 330 164 340Z', B('green')) + path('M164 380C218 360 238 300 222 250 208 300 188 330 164 340Z', D('green')) + path('M164 384C140 350 136 300 146 280 152 320 160 346 164 352Z', L('green'));
-  const plus = [[64, 200, 22], [258, 230, 18], [84, 300, 16], [246, 160, 14]].map(([x, y, s]) => text(x, y, '+1', s, L('yellow'))).join('');
-  const coins = [[268, 300], [52, 250]].map(([x, y]) => sphere(x, y, 11, 'yellow')).join('');
-  return ground(164, 392, 90) + plus + coins + g({filter: SHADOW}, cob + husk);
-};
-
-art['slipline'] = () => {
-  const s = 52, x0 = 30, y0 = 168;
-  const arrow = (x, y, dir, c) => { // a short route with an arrowhead pointing in dir
-    const [dx, dy] = {r: [1, 0], l: [-1, 0], u: [0, -1], d: [0, 1]}[dir];
-    const x1 = x - dx * 14, y1 = y - dy * 14, x2 = x + dx * 12, y2 = y + dy * 12;
-    const head = `M${x2 + dx * 8} ${y2 + dy * 8}L${x2 - dy * 10} ${y2 + dx * 10}L${x2 + dy * 10} ${y2 - dx * 10}Z`;
-    return line(`M${x1} ${y1}L${x2} ${y2}`, B(c), 9) + path(head, B(c), {stroke: B(c), 'stroke-width': 4, 'stroke-linejoin': 'round'});
-  };
-  const grid = [['r', 'd', 'l', 'd', 'u'], ['u', 'r', 'r', 'l', 'd'], ['l', 'u', 'd', 'r', 'u'], ['d', 'l', 'u', 'u', 'l']];
-  const cols = ['teal', 'pink', 'purple', 'yellow', 'blue'];
-  let out = rect(x0 - 10, y0 - 10, 5 * s + 20, 4 * s + 20, INK, {rx: 22, filter: SHADOW});
-  grid.forEach((row, j) => row.forEach((dir, i) => {
-    const cx = x0 + i * s + s / 2, cy = y0 + j * s + s / 2;
-    if (i === 3 && j === 0) return; // the slot of the escaping arrow
-    out += slot(cx - s / 2 + 3, cy - s / 2 + 3, s - 6, 12) + arrow(cx, cy, dir, cols[(i * 2 + j) % 5]);
+art['maze-muncher'] = s => {
+  island(s, 0, 0, 13, 13, C.ink, C.navy, 1);
+  const walls = ['#############', '#...........#', '#.##.###.##.#', '#.#.......#.#', '#.#.##.##.#.#', '#....#.#....#', '###.#...#.###', '#...#.#.#...#', '#.###.#.###.#', '#...........#', '#############'];
+  walls.forEach((row, y) => [...row].forEach((k, x) => {
+    if (k === '#') s.set(x, y + 1, 1, C.blue);
+    else if ((x + y) % 2 === 0 && !(y === 8 && x > 1 && x < 11)) s.top(x, y + 1, 1, ICON.dot, C.cream, .1);
   }));
-  out += slot(x0 + 3 * s + 3, y0 + 3, s - 6, 12);
-  const escape = g({filter: SHADOW}, arrow(212, 128, 'u', 'yellow')) + line('M212 156v10M200 152v6M224 152v6', L('yellow'), 3, {opacity: .7});
-  const hearts = [0, 1, 2].map(i => path('M0 .9C-.2.7-1 .2-1-.35-1-.75-.7-1-.38-1-.18-1 0-.85 0-.65 0-.85.18-1 .38-1 .7-1 1-.75 1-.35 1 .2.2.7 0 .9Z', i < 2 ? B('red') : '#fff', {transform: `translate(${120 + i * 40} 400) scale(12)`, opacity: i < 2 ? 1 : .2})).join('');
-  return out + escape + hearts;
+  // Muncher (2×2×2 with a notch for a mouth) and a ghost, both facing +x.
+  s.box(8, 9, 1, 2, 2, 2, C.yellow).set(9, 10, 1, null);
+  eyesRight(s, 9, 9, 10, 2);
+  s.box(3, 9, 1, 2, 2, 2, C.pink).set(4, 10, 1, null).set(3, 10, 1, null);
+  eyesRight(s, 4, 9, 10, 2);
 };
 
-art['quadfall'] = () => {
-  const s = 30, x0 = 85, y0 = 148, cols = 5;
-  const stack = ['....g', 'b..gg', 'bpppr', 'bbyrr', 'yyyr.'];
-  const cmap = {b: 'blue', p: 'purple', r: 'red', g: 'green', y: 'yellow', o: 'orange', t: 'teal'};
-  let out = rect(x0 - 8, y0 - 8, cols * s + 16, 8 * s + 16, INK, {rx: 18, filter: SHADOW});
-  stack.forEach((row, j) => [...row].forEach((k, i) => { const x = x0 + i * s, y = y0 + (3 + j) * s; out += k === '.' ? slot(x + 1, y + 1, s - 2, 6) : tile(x + 1, y + 1, s - 2, cmap[k], {r: 6}); }));
-  for (let j = 0; j < 3; j++) for (let i = 0; i < cols; i++) out += slot(x0 + i * s + 1, y0 + j * s + 1, s - 2, 6);
-  // Falling T piece and its landing ghost.
-  const t = [[1, 0], [2, 0], [3, 0], [2, 1]];
-  out += t.map(([i, j]) => rect(x0 + i * s + 2, y0 + (j + 2) * s - 10 + 2, s - 4, s - 4, 'none', {rx: 6, stroke: L('orange'), 'stroke-width': 2, 'stroke-dasharray': '4 4', opacity: .6})).join('');
-  out += g({filter: SHADOW}, t.map(([i, j]) => tile(x0 + i * s + 1, 116 + j * s, s - 2, 'orange', {r: 6})).join(''));
-  return ground(160, 396, 110) + out + line('M100 112v-10M130 106v-14M160 112v-10', '#fff', 3, {opacity: .35});
+art['corn-clicker'] = s => {
+  island(s, 0, 0, 10, 10, GRASS, C.dirt, 2);
+  s.box(4, 4, 1, 3, 3, 11, (x, y, z) => ((x + y + z) % 2 ? C.yellow : C.gold));
+  s.set(5, 5, 12, C.yellow);
+  for (let z = 1; z <= 5; z++) { s.set(3, 5, z, C.green); s.set(5, 7, z, C.leaf); s.set(7, 5, z, C.leaf); }
+  s.set(2, 5, 6, C.green).set(5, 8, 6, C.leaf).set(8, 5, 6, C.leaf);
+  for (const [x, y, z] of [[1, 8, 6], [8, 1, 9], [9, 8, 3], [1, 2, 10]]) s.set(x, y, z, C.gold);
+  const plus1 = FONT['+'].map((r, i) => r + '0' + FONT[1][i]);
+  s.paint([2, 8, 9], [.5, 9.001, 10.2], [1 / 4, 0, 0], [0, 0, -1 / 4], plus1, C.yellow);
 };
 
-art['fivefold'] = () => {
-  const s = 48, gap = 6, x0 = 160 - (5 * s + 4 * gap) / 2;
-  const rows = [['PLANT', 'gggxx'], ['PLAYS', 'ggggg'], ['', '.....']];
-  const cmap = {g: 'green', y: 'yellow', x: 'slate'};
-  let out = '';
-  rows.forEach(([word, states], j) => [...states].forEach((st, i) => {
-    const x = x0 + i * (s + gap), y = 176 + j * (s + gap);
-    if (st === '.') out += rect(x + 2, y + 2, s - 4, s - 4, 'none', {rx: 10, stroke: '#fff', 'stroke-width': 3, opacity: .22});
-    else out += tile(x, y, s, cmap[st], {r: 10}) + text(x + s / 2, y + s / 2 + 1, word[i], 26, '#fff');
-  }));
-  // Keyboard hint below.
-  const keys = ['', ''];
-  for (let j = 0; j < 2; j++) for (let i = 0; i < 8; i++) keys[+[1, 4, 9, 10].includes(i + j * 8)] += rr(38 + i * 31 + j * 15, 350 + j * 24, 26, 18, 5);
-  out += path(keys[0], '#fff', {opacity: .12}) + path(keys[1], '#fff', {opacity: .5});
-  return ground(160, 400, 140) + g({filter: SHADOW}, out);
+art['slipline'] = s => {
+  island(s, 0, 0, 7, 7, C.dark, C.navy, 1);
+  for (const v of s.v.values()) if (v.z === 0) v.c = (v.x + v.y) % 2 ? C.dark : '#333955';
+  // Arrows are raised bars with a painted head on their tip block; one has slid free off the back edge.
+  const dirs = {r: [1, 0, 1], l: [-1, 0, 3], d: [0, 1, 2], u: [0, -1, 0]};
+  const head = ['00100', '01110', '11111'];
+  const arrows = [[0, 0, 'r', 3, C.teal], [4, 1, 'd', 3, C.pink], [6, 0, 'd', 2, C.yellow], [0, 2, 'd', 3, C.purple], [1, 3, 'r', 3, C.sky], [6, 4, 'l', 3, C.orange], [1, 6, 'r', 4, C.teal], [2, 5, 'u', 2, C.yellow], [5, 6, 'u', 2, C.pink]];
+  for (const [x0, y0, d, len, c] of arrows) {
+    const [dx, dy, turns] = dirs[d];
+    for (let i = 0; i < len; i++) s.set(x0 + dx * i, y0 + dy * i, 1, c);
+    s.floor(x0 + dx * (len - 1), y0 + dy * (len - 1), 2, rot(head, turns), C.white, 1 / 6);
+  }
+  for (let i = 0; i < 3; i++) s.set(2, -2 - i, 2, C.lime);
+  s.floor(2, -4, 3, head, C.white, 1 / 6);
 };
 
-art['claimline'] = () => {
-  const cx = 160, cy = 280, R = 112;
-  const defs = `<clipPath id="arena"><circle cx="${cx}" cy="${cy}" r="${R}"/></clipPath><filter id="neon" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>`;
-  const lands = path('M48 250q30-40 80-30t40 60-60 60-60-30Z', B('teal')) + path('M180 180q60-20 90 30t-10 70-70-20-10-80Z', B('yellow')) + path('M150 330q40-10 70 10t0 60H130Z', B('purple'));
-  const shades = path('M48 250q30-40 80-30t40 60-60 60-60-30Z', D('teal'), {transform: 'translate(0 6)'}) + path('M180 180q60-20 90 30t-10 70-70-20-10-80Z', D('yellow'), {transform: 'translate(0 6)'}) + path('M150 330q40-10 70 10t0 60H130Z', D('purple'), {transform: 'translate(0 6)'});
-  const trail = 'M150 262q50 -10 46 40t-60 40';
-  const body = ground(160, 398, 120) + g({filter: SHADOW}, circle(cx, cy, R, INK)) +
-    g({'clip-path': 'url(#arena)'}, shades + lands) + circle(cx, cy, R, 'none', {stroke: '#fff', 'stroke-width': 3, opacity: .2}) +
-    line(trail, B('pink'), 12, {filter: 'url(#neon)'}) + line(trail, L('pink'), 5, {'stroke-dasharray': '1 9'}) + line(trail, B('pink'), 3) +
-    g({filter: SHADOW}, sphere(136, 342, 12, 'pink') + eye(132, 340, 4) + eye(141, 340, 4)) +
-    sphere(222, 222, 10, 'yellow') + sphere(100, 262, 10, 'teal');
-  return {body, defs};
+art['quadfall'] = s => {
+  const wall = ['......', '......', '......', '......', '.....g', 'b..ggg', 'bpppyr', 'bbyrrr', 'yyyr.t', 'tttt.t'];
+  const map = {b: C.blue, p: C.purple, r: C.red, g: C.green, y: C.yellow, t: C.teal};
+  s.box(-1, 0, 0, 8, 2, 1, C.slate).box(-1, 0, 1, 1, 2, 12, C.slate).box(6, 0, 1, 1, 2, 12, C.slate).box(-1, -1, 0, 8, 1, 13, C.dark);
+  wall.forEach((row, j) => [...row].forEach((k, i) => { if (k !== '.') s.box(i, 0, 10 - j, 1, 2, 1, map[k]); }));
+  for (const [i, j] of [[1, 0], [2, 0], [3, 0], [2, 1]]) s.box(i, 0, 12 - j, 1, 2, 1, C.orange);
 };
 
-art['crossy-road'] = () => {
-  // A rounded diorama board, like the other boards: river with a log, snow verge, road with a car, snow verge.
-  const X = 28, Y = 178, BW = 264, BH = 196;
-  const defs = `<clipPath id="board"><rect x="${X}" y="${Y}" width="${BW}" height="${BH}" rx="22"/></clipPath>`;
-  const lane = (y, h, c, o = {}) => rect(X, y, BW, h, c, o);
-  let lanes = lane(178, 62, B('blue')) + rect(X + BW * .7, 178, BW * .3, 62, D('blue'), {opacity: .35}) + line('M50 196h30M120 222h40M236 200h30', L('blue'), 4, {opacity: .6}) +
-    rect(140, 196, 120, 28, B('wood'), {rx: 10}) + rect(140, 214, 120, 10, D('wood'), {rx: 5}) + circle(250, 209, 8, L('wood'));
-  lanes += lane(240, 44, tone('cream', 1)) + lane(278, 6, tone('cream', 2));
-  lanes += lane(284, 62, tone('ink', 0)) + line('M44 315h28M104 315h28M164 315h28M224 315h28', tone('cream', 1), 5, {opacity: .7});
-  lanes += lane(346, 28, tone('cream', 1));
-  const board = g({filter: SHADOW}, rect(X, Y + 10, BW, BH, tone('cream', 2), {rx: 22}) + g({'clip-path': 'url(#board)'}, lanes));
-  const car = g({filter: SHADOW}, rect(176, 292, 92, 40, B('red'), {rx: 8}) + rect(176, 320, 92, 12, D('red'), {rx: 6}) + rect(194, 276, 52, 24, L('red'), {rx: 6}) + rect(204, 282, 32, 12, B('blue'), {rx: 3}) + circle(196, 334, 9, INK) + circle(250, 334, 9, INK));
-  const ch = g({filter: SHADOW}, rect(70, 206, 62, 66, tone('cream', 1), {rx: 10}) + rect(110, 206, 22, 66, tone('cream', 2), {rx: 8}) +
-    rect(90, 192, 20, 16, B('red'), {rx: 4}) + rect(130, 228, 18, 12, B('orange'), {rx: 3}) + rect(122, 242, 10, 12, B('red'), {rx: 3}) +
-    rect(108, 218, 9, 11, INK, {rx: 2}) + rect(66, 250, 70, 12, B('red'), {rx: 6}) + rect(68, 258, 16, 24, D('red'), {rx: 5}) +
-    rect(84, 272, 8, 12, B('orange')) + rect(110, 272, 8, 12, B('orange')));
-  const snow = [[60, 150], [110, 168], [210, 156], [292, 214], [16, 260], [300, 300]].map(([x, y]) => circle(x, y, 3, '#fff', {opacity: .7})).join('');
-  return {body: ground(160, 392, 130) + snow + board + car + ch, defs};
+art['fivefold'] = s => {
+  island(s, -1, 0, 16, 4, C.dark, C.navy, 1);
+  const rows = [['PLANT', 'gggxx', 3], ['PLAYS', 'ggggg', 1]];
+  for (const [word, states, z] of rows) [...word].forEach((ch, i) => {
+    const x = i * 2 + .0, c = {g: C.green, x: C.slate}[states[i]];
+    s.box(i * 3, 1, z, 2, 2, 2, c);
+    s.paint(null, [i * 3 + .56, 3.001, z + 2 - .42], [1 / 3.4, 0, 0], [0, 0, -1 / 3.4], FONT[ch], C.white);
+  });
 };
 
-art['quad-clash'] = () => {
-  const egg = 'M160 176c-46 0-70 76-70 122 0 48 30 80 70 80s70-32 70-80c0-46-24-122-70-122Z';
-  const defs = `<clipPath id="egg"><path d="${egg}"/></clipPath>`;
-  const ring = ellipse(160, 380, 120, 20, 'none', {stroke: B('yellow'), 'stroke-width': 4, opacity: .55, 'stroke-dasharray': '10 10'});
-  const body = g({filter: SHADOW}, path(egg, tone('cream', 1)) + g({'clip-path': 'url(#egg)'}, ellipse(206, 300, 50, 110, tone('cream', 2), {opacity: .9}) + rect(80, 226, 160, 20, B('yellow')) + rect(80, 242, 160, 4, D('yellow'))) +
-    path('M224 232l26-12-6 22Z', B('yellow')) + path('M226 240l28 4-20 14Z', D('yellow')) +
-    eye(138, 274, 9, [1, 0]) + eye(176, 274, 9, [1, 0]) + line('M126 258l20 6M188 264l20-6', INK, 4) + line('M150 304q10 6 20 0', INK, 3) + blush(124, 296, 8) + blush(192, 296, 8));
-  // Pencil blaster held across the body.
-  const pencil = g({filter: SHADOW, transform: 'rotate(-20 200 330)'}, rect(150, 318, 120, 26, B('yellow'), {rx: 4}) + rect(150, 334, 120, 10, D('yellow')) + rect(140, 318, 16, 26, B('pink'), {rx: 4}) + rect(154, 318, 8, 26, tone('slate', 0)) + path('M270 318l30 13-30 13Z', L('wood')) + path('M290 327l10 4-10 4Z', INK) + ellipse(150, 352, 14, 10, tone('cream', 1)));
-  const flask = g({filter: SHADOW}, path('M54 330h20v20l18 30q4 10-8 10H44q-12 0-8-10l18-30Z', '#fff', {opacity: .25}) + path('M42 374l10-16h26l10 16q4 10-8 10H50q-12 0-8-10Z', B('teal')) + rect(52, 324, 26, 8, D('wood'), {rx: 3}));
-  return {body: ring + body + pencil + flask, defs};
+art['claimline'] = s => {
+  const R = 8.6, c = 8.5;
+  for (let x = 0; x < 17; x++) for (let y = 0; y < 17; y++) if ((x + .5 - c) ** 2 + (y + .5 - c) ** 2 <= R * R) {
+    const t = x + y < 13 && x < 9 ? C.teal : x > 9 && y < 9 ? C.yellow : y > 11 ? C.purple : '#3a4266';
+    s.set(x, y, -1, C.navy).set(x, y, 0, t);
+  }
+  const trail = [[8, 5], [9, 5], [10, 5], [11, 5], [11, 6], [11, 7], [11, 8], [11, 9], [10, 9], [9, 9], [8, 9], [7, 9]];
+  trail.forEach(([x, y]) => s.set(x, y, 0, C.pink));
+  s.box(7, 9, 1, 1, 1, 2, shift(C.pink, -6));
+  s.right(7, 9, 2, ['0000000', '0110110', '0110110'], C.white);
+  s.box(3, 4, 1, 1, 1, 2, C.teal).box(13, 3, 1, 1, 1, 2, C.gold);
 };
 
-// ---------- assemble ----------
+art['crossy-road'] = s => {
+  // Lanes along x, from back (low y) to front: river with a log, snow, road with a car, snow.
+  s.box(0, 0, -1, 14, 3, 1, C.water).box(0, 3, -1, 14, 2, 2, C.snow).box(0, 5, -1, 14, 3, 1, '#4b5162').box(0, 8, -1, 14, 2, 2, C.snow);
+  for (let x = 1; x < 14; x += 3) s.stripe(x, 6.4, x + 1.6, 6.6, 0, C.cream, [x + 1, 6, -1]);
+  s.box(7, 0, 0, 6, 2, 1, C.wood).set(12, 1, 0, C.dkwood);
+  s.box(1, 5, 0, 5, 2, 1, C.red).box(3, 5, 1, 2, 2, 1, C.white);
+  // Chicken (2×2 footprint) with a Santa hat, hopping on the snow.
+  s.box(7, 3, 2, 2, 2, 3, C.white).set(9, 3, 3, C.orange).set(9, 4, 3, C.red).set(7, 3, 1, C.orange).set(8, 4, 1, C.orange);
+  s.box(7, 3, 5, 2, 2, 1, C.red).set(7, 3, 6, C.red).set(7, 3, 7, C.white);
+  pupilsRight(s, 8, 3, 4, 4);
+};
+
+art['quad-clash'] = s => {
+  island(s, 0, 0, 12, 12, GRASS, C.dirt, 2);
+  for (const v of s.v.values()) if (v.z === 0 && v.x > 3 && v.x < 8) v.c = (v.x + v.y) % 2 ? '#c9c0ae' : '#bdb39f';
+  // Egg built in steps like the Crossy Road chicken, facing +x, with a yellow headband.
+  s.box(4, 4, 1, 3, 3, 1, C.cream).box(3, 3, 2, 5, 5, 5, C.cream).box(3, 3, 7, 5, 5, 1, C.yellow).box(4, 4, 8, 3, 3, 2, C.cream).set(5, 5, 10, C.cream);
+  s.set(2, 5, 7, C.yellow).set(1, 5, 6, C.yellow).set(1, 6, 7, C.yellow);
+  s.right(7, 4, 5, ['0000000', '0001100', '0011110', '0011110', '0001100'], C.ink).right(7, 6, 5, ['0000000', '0011000', '0111100', '0111100', '0011000'], C.ink);
+  s.right(7, 4, 6, ['0000000', '0000000', '0000000', '0000000', '0000000', '1111000', '0001111'], C.ink).right(7, 6, 6, ['0000000', '0000000', '0000000', '0000000', '0000000', '0001111', '1111000'], C.ink);
+  s.right(7, 5, 3, ['0000000', '0000000', '0111110', '0011100'], C.ink);
+  // Pencil blaster held across the front.
+  for (let x = 4; x < 13; x++) s.set(x, 8, 4, x < 5 ? C.pink : x < 6 ? C.grey : x < 12 ? C.yellow : C.wood);
+  s.set(13, 8, 4, C.black);
+  s.box(1, 1, 1, 1, 1, 2, C.teal).set(1, 1, 3, C.dkwood);
+};
+
+// ---------- backdrop and assembly ----------
+function backdropSvg(id, hue, box) {
+  seed = [...id].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 2147483646, 7) + 1;
+  const bg = backdrop(hue), dot = shift(bg, 32, -10);
+  let d = '';
+  for (let i = 0; i < 46; i++) {
+    const x = 8 + rnd() * 304, y = 128 + rnd() * 276, sz = rnd() < .3 ? 6 : 4;
+    if (x > box[0] - 4 && x < box[2] + 4 && y > box[1] - 4 && y < box[3] + 4) continue; // only around the model
+    d += `M${n(x)} ${n(y)}h${sz}v${sz}h-${sz}Z`;
+  }
+  return `<path fill="${bg}" d="M0 0h${W}v${H}H0Z"/>` + (d ? `<path fill="${dot}" fill-opacity=".8" d="${d}"/>` : '');
+}
+
 async function build(id) {
-  const spec = POSTERS[id];
-  used = new Set();
-  let r = await art[id]();
-  if (typeof r === 'string') r = {body: r, defs: ''};
-  const st = stage(spec.hue, spec.accent, spec.sparkles ?? SPARKS);
+  const spec = POSTERS[id], s = new Scene();
+  await art[id](s);
+  const model = render(s);
   const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="title desc">` +
-    `<title id="title">${spec.title}</title><desc id="desc">Original Pocket Arcade poster, generated by scripts/generate-posters.mjs.</desc>` +
-    `<defs>${st.defs}${gradientDefs()}${r.defs}</defs>${st.back}${st.spark}${r.body}</svg>\n`;
-  // Round every coordinate to two decimals (svg-skill optimisation rule); hex colours contain no '.'.
-  const out = svg.replace(/-?\d*\.\d{3,}/g, m => String(+(+m).toFixed(2)));
-  await writeFile(new URL(`../public/game-art/${id}/cover.svg`, import.meta.url), out);
-  return out.length;
+    `<title id="title">${spec.title}</title><desc id="desc">Original Pocket Arcade voxel poster, generated by scripts/generate-posters.mjs.</desc>` +
+    backdropSvg(id, spec.hue, model.box) + model.svg + `</svg>\n`;
+  await writeFile(new URL(`../public/game-art/${id}/cover.svg`, import.meta.url), svg);
+  return svg.length;
 }
 
 // Keeps each library card's colours in src/core/catalog.ts in step with its poster: the card colour is the
-// top of the stage (shown while the image loads), the title is always cream and the underline is the accent.
+// flat backdrop (shown while the image loads), the title is always cream and the underline is the accent.
 async function syncCatalog() {
   const file = new URL('../src/core/catalog.ts', import.meta.url);
   let src = await readFile(file, 'utf8');
   for (const [id, spec] of Object.entries(POSTERS)) {
     const re = new RegExp(`(\\{id:'${id}',title:'[^']*',)color:'[^']*',ink:'[^']*',accent:'[^']*'`);
     if (!re.test(src)) throw new Error(`Catalog entry for ${id} not found`);
-    src = src.replace(re, `$1color:'${stageColours(spec.hue).top}',ink:'${TITLE_INK}',accent:'${B(spec.accent)}'`);
+    src = src.replace(re, `$1color:'${backdrop(spec.hue)}',ink:'${TITLE_INK}',accent:'${spec.accent}'`);
   }
   await writeFile(file, src);
 }

@@ -12,32 +12,31 @@ bash .agents/skills/svg-skill/scripts/validate.sh public/game-art
 
 ## The system
 
-- **Frame.** 320×410, the same ratio as the library card, so nothing is cropped. The top 120 units stay quiet because the live HTML title and underline sit there.
-- **Stage.** Every poster uses the same backdrop: a dark two-stop gradient built from a single hue per game (`POSTERS[id].hue`), a lighter glow behind the subject, a halftone floor that fades in towards the bottom, and a soft ground shadow. Only the hue changes between games.
-- **Palette.** Subjects use only the twelve `PALETTE` swatches. Each swatch has a light, base and dark tone, used for the lit, plain and shaded sides of a shape.
-- **Lighting.** Light always comes from the upper left. Glossy surfaces get one white highlight, and raised objects get the shared `drop` shadow.
-- **Shared parts.** Grid games are built from the same glossy `tile` and dark `slot`. Balls, fruit and orbs use the same `sphere`. Blocks and slabs use the same isometric `cube`. Creatures share the same `eye` and `blush`.
-- **Accents.** Each game has one accent swatch. It colours the poster's four-point sparkles and dots, and the title underline on the card. Every title uses the same cream ink.
+The posters use the Blockcraft and Crossy Road covers' visual language: isometric voxel dioramas.
 
-The generator writes `color`, `ink` and `accent` for each game in `src/core/catalog.ts`. The card colour is the top of the poster's stage, so the placeholder shown while the image loads matches the poster.
+- **Frame.** 320×410, the same ratio as the library card, so nothing is cropped. The top 130 units stay clear because the live HTML title and underline sit there.
+- **Voxel models.** Every subject is a real block model built in code (`Scene.box`, `Scene.ball`, `Scene.set`) and rendered with one 2:1 isometric projection. Each model is scaled to fill the same stage area, so the blocks have similar weight from poster to poster.
+- **Flat shading.** Each block colour comes from `C`. The top face is lightened, the left (+y) face uses the base colour and the right (+x) face is darkened, so light always comes from the same side. There are no outlines, gradients, blurs or drop shadows. Faces are stroked in their own colour to hide anti-aliasing seams, and grass-style blocks get a coloured band along the top of their sides.
+- **Painted pixels.** Eyes, numbers, letters, suits, arrows and road markings are pixel art painted onto block faces, like Minecraft textures. Lettering uses a 3×5 pixel font. Each painted pixel attaches to the frontmost block it sits on, so it's drawn in the right depth order.
+- **Backdrop.** A flat colour per game (`POSTERS[id].hue`) with square pixel "snow" around the model. Every title uses the same cream ink, and each game's accent colours its title underline.
+
+The generator writes `color`, `ink` and `accent` for each game in `src/core/catalog.ts`. The card colour is the poster's backdrop, so the placeholder shown while the image loads matches it.
 
 ## How the svg-skill rules apply
 
-The posters follow the installed [`svg-skill`](../.agents/skills/svg-skill/SKILL.md) (illustration scenario, quality checklist and optimisation rules):
+The posters follow the installed [`svg-skill`](../.agents/skills/svg-skill/SKILL.md) (quality checklist and optimisation rules):
 
 - Each file has `xmlns`, the 320×410 `viewBox`, an XML declaration, and `role="img"` with a `<title>` and `<desc>`.
-- Gradients, patterns, clip paths and the shadow filter live in `<defs>` with short ids that are unique within the file. A poster defines only the sphere gradients it uses.
-- Lettering (minesweeper numbers, ball numbers, card ranks, word tiles, `+1`) is drawn with a small rounded stroke alphabet (`GLYPHS`), not `<text>`. Posters load through `<img>`, where only device fonts are available, so real text would change shape between devices.
-- Repeated shapes that share attributes, such as the corn kernels, board checks and keyboard keys, are merged into single paths, and every coordinate is rounded to two decimals.
-- Gradients and shadows are used only where they carry meaning: the stage hue, the shading on round objects, and lifting the subject off the floor.
-- `bash .agents/skills/svg-skill/scripts/validate.sh public/game-art` (with `xmllint` when it's installed) and `tests/core/posters.test.ts` enforce these rules.
+- Lettering is drawn as painted pixel shapes, not `<text>`. Posters load through `<img>`, where only device fonts are available, so real text would change shape between devices.
+- Consecutive faces that share a colour merge into one path, and coordinates are rounded to one decimal, which is sub-pixel at poster size.
+- `bash .agents/skills/svg-skill/scripts/validate.sh public/game-art` and `tests/core/posters.test.ts` enforce these rules. The test also rejects gradients, filters, masks and patterns, so the posters stay flat.
 
 ## Adding a game
 
 1. Add an entry to `POSTERS`, choosing a hue that isn't already close to its neighbours in the library.
-2. Add an `art[id]` function that returns the subject, using the shared parts and palette.
+2. Add an `art[id]` function that builds the voxel model on the scene it's given, using the colours in `C` and painting details with `top`, `floor`, `left`, `right` or `paint`.
 3. Run the generator and check the result in the library grid, including the narrow two-column layout.
 
 ## Provenance
 
-All posters are original vectors drawn in code. They contain no linked images, downloaded artwork, proprietary sprites or game branding. The Globle poster projects the bundled Natural Earth public-domain outlines (`src/games/globle/data/world.json`), with the guessed countries shaded by their real distance from the hidden country.
+All posters are original voxel models drawn in code. They contain no linked images, downloaded artwork, proprietary sprites or game branding. The Globle poster projects the bundled Natural Earth public-domain outlines (`src/games/globle/data/world.json`), with the guessed countries shaded by their real distance from the hidden country.

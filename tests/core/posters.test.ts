@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {describe,expect,test} from 'vitest';
 import {games} from '../../src/core/catalog';
 
-// Every library poster comes from scripts/generate-posters.mjs and shares one frame and stage.
+// Every library poster is a voxel diorama from scripts/generate-posters.mjs, sharing one frame and style.
 describe.each(games.map(game=>[game.id,game] as const))('%s poster',(id,game)=>{
   const svg=readFileSync(new URL(`../../public/game-art/${id}/cover.svg`,import.meta.url),'utf8');
   test('is well-formed SVG in the shared 320×410 frame with an accessible title',()=>{
@@ -20,9 +20,10 @@ describe.each(games.map(game=>[game.id,game] as const))('%s poster',(id,game)=>{
     }
     expect(stack).toEqual([]);
   });
-  test('uses the shared stage and matches its library card',()=>{
-    for(const id of ['bg','glow','dots','drop'])expect(svg).toContain(`id="${id}"`);
-    expect(svg).toContain(`<stop stop-color="${game.color}"/>`);
+  test('uses the flat voxel style on a backdrop that matches its library card',()=>{
+    // Flat-shaded blocks only: no gradients, filters, blurs or masks.
+    expect(svg).not.toMatch(/Gradient|<filter|<mask|<pattern/);
+    expect(svg).toContain(`<path fill="${game.color}" d="M0 0h320v410H0Z"/>`);
     expect(game.ink).toBe('#fff3df');
   });
 });
