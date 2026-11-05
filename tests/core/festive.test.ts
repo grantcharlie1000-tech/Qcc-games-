@@ -45,7 +45,18 @@ test('every Christmas CSS override is scoped to the festive attribute, so turnin
     const body=css.replace(/@keyframes[^{]+\{(?:[^{}]*\{[^}]*\})*[^}]*\}/g,'');
     for(const match of body.matchAll(/(^|})\s*([^{}@]+)\{/g)){
       const selector=match[2]!.trim();if(!selector)continue;
-      for(const part of selector.split(','))expect(part,`${file}: ${part}`).toMatch(/data-festive/);
+      // Split on top-level commas only, so :is(a,b) and :not(a,b) stay inside their selector.
+      const parts:string[]=[];let depth=0,current='';
+      for(const ch of selector){if(ch==='('||ch==='[')depth++;if(ch===')'||ch===']')depth--;if(ch===','&&depth===0){parts.push(current);current='';}else current+=ch;}
+      parts.push(current);
+      for(const part of parts)expect(part.trim(),`${file}: ${part}`).toMatch(/^:root\[data-festive="christmas"\]|^:root:not\(\[data-festive="christmas"\]\)/);
     }
+  }
+});
+
+test('Crossy Road, Blockcraft and Quad Clash do not use the shared festive layer',()=>{
+  for(const id of ['crossy-road','blockcraft','quad-clash']){
+    const files=readdirSync(`src/games/${id}`,{recursive:true,encoding:'utf8'}).filter(f=>/\.(ts|css)$/.test(f));
+    for(const f of files){const text=readFileSync(`src/games/${id}/${f}`,'utf8');expect(text,`${id}/${f}`).not.toMatch(/festive|christmas\.css/);}
   }
 });
