@@ -77,12 +77,14 @@ for(const width of [390,1440])test(`profile sticky tabs hide scrolled reply frag
   })).toBe(true);
  };
  await headerVisible();
+ for(const top of [64,84]){
+ await view(page).evaluate((el,inset)=>{(el as HTMLElement).style.setProperty('--app-top',`${inset}px`);},top);
  for(const index of [0,1,2]){
   await cards.nth(index).evaluate(el=>{
    const scroller=el.closest<HTMLElement>('.social-view')!;
    scroller.scrollTop+=el.getBoundingClientRect().top-scroller.getBoundingClientRect().top-20;
   });
-  await expect.poll(async()=>Math.round((await tabs.boundingBox())!.y)).toBe(64);
+  await expect.poll(async()=>Math.round((await tabs.boundingBox())!.y)).toBe(top);
   // The middle of the floating toolbar must not reveal a detached author or image
   // above the tabs. Exclude the intentionally visible back/settings controls.
   await expect.poll(async()=>{
@@ -92,6 +94,7 @@ for(const width of [390,1440])test(`profile sticky tabs hide scrolled reply frag
    return Math.max(...stats.channels.map(c=>c.max));
   },{message:'Scrolled posts must remain hidden above the pinned profile tabs'}).toBeLessThanOrEqual(1);
  }
+ }
  await page.screenshot({path:testInfo.outputPath(`profile-sticky-${width}.png`)});
  await page.getByRole('tab',{name:'Photos',exact:true}).click();
  await expect(page.getByText('No photos yet',{exact:true})).toBeVisible();
@@ -100,6 +103,8 @@ for(const width of [390,1440])test(`profile sticky tabs hide scrolled reply frag
  await expect(cards).toHaveCount(12);
  await view(page).evaluate(el=>{el.scrollTop=0;});await headerVisible();
  // The mask must neither eat toolbar clicks nor survive profile disposal.
+ await cards.nth(1).evaluate(el=>{el.closest<HTMLElement>('.social-view')!.scrollTop+=el.getBoundingClientRect().top-20;});
+ await expect.poll(async()=>Math.round((await tabs.boundingBox())!.y)).toBe(84);
  await page.getByRole('link',{name:'Social settings',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Settings',level:1})).toBeVisible();
  await page.evaluate(h=>{location.hash=h;},`#/social/u/${a.name}/replies`);
