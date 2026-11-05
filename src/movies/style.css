@@ -55,7 +55,7 @@ body.movies-active.study-active{overflow:auto}
    so its ink is light; the old light-tone pill fill no longer exists. */
 .movies-view .movies-top .floating-glass-group{--glass-ink:#fff;pointer-events:auto;color:var(--glass-ink);padding:4px;min-height:44px}
 .movies-view .movies-top .movies-brand{padding:4px 10px 4px 6px;flex-shrink:1}
-/* Glyphs that glass-ink.ts inks keep their adaptive colour (shared with icons). */
+/* Text glyphs keep their adaptive colour; icons keep their fixed white ink. */
 .movies-view .movies-top .ui-wordmark span:not(.glass-ink){color:inherit}
 .movies-view .movies-top .ui-nav{gap:0}
 .movies-view .movies-top .ui-header-actions{gap:0}

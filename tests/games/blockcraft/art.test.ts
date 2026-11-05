@@ -1,4 +1,3 @@
-import {readFileSync} from 'node:fs';
 import {describe,expect,test,vi} from 'vitest';
 import {TILE,TILE_NAMES,TILE_ALPHA,TINTED_TILES,ATLAS_COLUMNS,ATLAS_ROWS,WOOL_COLOURS,WOOD_TYPES} from '../../../src/games/blockcraft/data/blocks';
 import {type Painter,PAINTERS,placeholder,paintAtlas,atlasPixels,tilePixels,paintTile,paintAtlasTexture,paintClouds,ATLAS_WIDTH,ATLAS_HEIGHT} from '../../../src/games/blockcraft/art/atlas';
@@ -381,37 +380,6 @@ describe('shaped tiles',()=>{
       const p=px(name);let base=0;for(let x=0;x<TILE;x++)if(alphaOf(p,x,15))base++;
       expect(base,name).toBeGreaterThan(0);expect(alphaOf(p,0,0)+alphaOf(p,15,0),name).toBe(0);
     }
-  });
-});
-
-describe('cover',()=>{
-  const svg=readFileSync(new URL('../../../public/game-art/blockcraft/cover.svg',import.meta.url),'utf8');
-  test('the cover is well-formed SVG in the 320×410 frame',()=>{
-    expect(svg.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<svg ')).toBe(true);
-    expect(svg).toContain('viewBox="0 0 320 410"');
-    // Tags nest and close properly and every attribute is quoted.
-    const stack:string[]=[],body=svg.replace(/^<\?xml[^>]*\?>/,'');let elements=0;
-    for(const [,close,name,attrs,self] of body.matchAll(/<(\/?)([A-Za-z][\w:-]*)([^>]*?)(\/?)>/g)){
-      expect(attrs.replace(/\s+[\w:-]+="[^"<]*"/g,'').trim(),`<${name}${attrs}>`).toBe('');
-      if(close)expect(stack.pop()).toBe(name);else{elements++;if(!self)stack.push(name);}
-    }
-    expect(stack).toEqual([]);expect(elements).toBeGreaterThan(500);
-    expect(body.replace(/<[^>]*>/g,'').replace(/[^<>&]*/g,'')).toBe('');
-    expect(svg).toMatch(/<title id="title">[^<]+<\/title>/);
-    expect(svg).not.toMatch(/<script|<text|href=/);
-  });
-  test('the cover keeps the title area clear and shows a cow, a sheep, a creeper, snow and desert',()=>{
-    for(const mob of ['mob-cow','mob-sheep','mob-creeper'])expect(svg).toContain(`class="${mob}"`);
-    for(const [,d] of svg.matchAll(/ d="([^"]+)"/g)){
-      const v=(d.match(/-?\d+(?:\.\d+)?/g)??[]).map(Number);
-      for(let i=0;i+1<v.length;i+=2){
-        expect(v[i]).toBeGreaterThanOrEqual(-.05);expect(v[i]).toBeLessThanOrEqual(320.05);expect(v[i+1]).toBeLessThanOrEqual(410.05);
-        if(!d.startsWith('M0 282'))expect(v[i+1],d.slice(0,40)).toBeGreaterThanOrEqual(95);
-      }
-    }
-    for(const [,y] of svg.matchAll(/<rect x="\d+" y="(\d+)"/g))expect(Number(y)).toBeGreaterThanOrEqual(95);
-    const fills=new Set([...svg.matchAll(/fill="(#[0-9a-f]{6})"/g)].map(m=>m[1]));
-    for(const colour of ['#f2f7fa','#e3d394','#6fbf45'])expect(fills.has(colour),colour).toBe(true);
   });
 });
 

@@ -312,7 +312,7 @@ export function trainGeometry(): { nose: VehicleParts; carriage: VehicleParts } 
         ...windows, ...bogies,
         [0.97, 0.2, 0, 0.08, 0.06, 0.2, dark], [-0.97, 0.2, 0, 0.08, 0.06, 0.2, dark],
       ]),
-    }, 0.78, 0.65),
+    }, 0.755, 0.65),
     nose: laneVehicle({
       body: voxel([
         [-0.275, 0.12, 0, 1.45, 0.72, 0.8, WHITE],
@@ -334,7 +334,7 @@ export function trainGeometry(): { nose: VehicleParts; carriage: VehicleParts } 
         ...bogies,
         [-0.97, 0.2, 0, 0.08, 0.06, 0.2, dark],
       ]),
-    }, 0.78, 0.65),
+    }, 0.755, 0.65),
   };
 }
 
@@ -449,23 +449,43 @@ export function rockGeometry(variant: number): THREE.BufferGeometry {
   ],0.91);
 }
 
-/** A striped post with a wide black lamp box, red front bulb and white cap.
- * The separate bulb is centred at y=1.27 so it can flash and swell visibly. */
+/** A level-crossing signal, facing +z (towards the camera): a concrete footing, a grey mast, a white crossbuck with
+ * red borders on top, a small bell, and a black cross-arm carrying two lamp backboards with sun hoods. The lamps
+ * themselves are drawn separately (lampGeometry) at x = ±0.2, y = 1.06, just in front of the backboards. Every
+ * part stays within z ≤ 0.05 so the post fits the near edge of its rail cell. */
 export function signalPostGeometry(): THREE.BufferGeometry {
-  const red = 0xa94750, white = 0xe5deef;
+  const mast = 0xb9bdca, mastSide = 0x8e93a3, black = 0x1d1e26, red = 0xc8283a, white = 0xf4f5fa;
   const parts: Part[] = [
-    [0, 0, 0, 0.2, 0.06, 0.10, 0x4b505c],
-    [0, 0.06, 0, 0.1, 1.12, 0.1, white],
-    [0, 1.12, 0, 0.5, 0.3, 0.08, 0x24232f],
-    [0, 1.42, 0, 0.115, 0.11, 0.09, white],
+    [0, 0, 0, 0.26, 0.08, 0.1, 0x9a98a2, 0, 0, 0x7a7884],
+    [0, 0.08, 0, 0.08, 1.38, 0.08, mast, 0, 0, mastSide],
+    // Cross-arm and the two lamp backboards with their hoods.
+    [0, 1.02, -0.015, 0.62, 0.07, 0.05, black],
+    [-0.2, 0.94, 0, 0.24, 0.24, 0.04, black], [0.2, 0.94, 0, 0.24, 0.24, 0.04, black],
+    [-0.2, 1.18, 0.02, 0.24, 0.03, 0.06, black], [0.2, 1.18, 0.02, 0.24, 0.03, 0.06, black],
+    // A small bell under the crossbuck.
+    [0, 1.26, 0.01, 0.12, 0.08, 0.07, 0x2a2b33],
+    // Crossbuck: two white boards in an X with red borders behind them, and a red centre boss.
+    [0, 1.47, -0.02, 0.68, 0.13, 0.02, red, 0.6], [0, 1.47, -0.02, 0.68, 0.13, 0.02, red, -0.6],
+    [0, 1.475, 0.0, 0.62, 0.08, 0.025, white, 0.6], [0, 1.475, 0.0, 0.62, 0.08, 0.025, white, -0.6],
+    [0, 1.495, 0.02, 0.05, 0.05, 0.02, red],
   ];
-  for (const y of [0.12, 0.38, 0.64, 0.9]) parts.push([0, y, 0, 0.112, 0.13, 0.096, red]);
   return voxel(parts, 0.92);
 }
 
-/** The signal lamp bulb: a 0.2 cube centred on its origin so it pulses about its centre. */
+/** A signal lamp lens: a 0.2-wide ten-sided disc centred on its origin, its axis along z, so it can swell about its
+ * centre when lit. */
 export function lampGeometry(): THREE.BufferGeometry {
-  return voxel([[0, -0.1, 0, 0.2, 0.2, 0.2, WHITE]], 1);
+  const g = solids([], [[0, -0.1, 0, 0.1, 0.1, 0.2, 10, WHITE]], 1).rotateX(Math.PI / 2);
+  g.computeBoundingSphere();
+  return g;
+}
+
+/** The bloom around a lit lamp: a soft red-orange disc of radius 0.42 tilted 45° back to face the camera, bright in
+ * the middle and fading to nothing. Drawn additively. */
+export function signalHaloGeometry(): THREE.BufferGeometry {
+  const g = radial([[0, 0.95], [0.1, 0.8], [0.22, 0.35], [0.42, 0]], 20, 0xff4a30).rotateX(Math.PI / 4);
+  g.computeBoundingSphere();
+  return g;
 }
 
 /** The cartoon UFO: a ten-sided lavender saucer with a pale dome and a ring of yellow lights, about 1.8

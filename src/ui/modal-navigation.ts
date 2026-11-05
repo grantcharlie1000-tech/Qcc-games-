@@ -6,7 +6,7 @@ const PANELS='dialog,[role="dialog"]';
 /** Navigation is a lower functional layer: never leave its paint under a sheet.
  * Watches presentation only; owners retain their actions, traps and Escape. */
 export function suppressNavigationUnderSheets():void{
-  let returnTo:HTMLElement|null=null,hidden=false,movedFocus=false;
+  let returnTo:HTMLElement|null=null,hidden=false,movedFocus=false,focusGeneration=0;
   const remember=(event:Event)=>{
     const target=event.target instanceof Element?event.target.closest<HTMLElement>('a,button'):null;
     if(!hidden&&target?.closest(CHROME))returnTo=target;
@@ -23,6 +23,7 @@ export function suppressNavigationUnderSheets():void{
   const sync=()=>{
     const panels=[...document.querySelectorAll<HTMLElement>(PANELS)].filter(visible);
     const next=panels.length>0;
+    if(next!==hidden)focusGeneration++;
     const active=document.activeElement;
     // Non-native panels such as Up next may open while a navigation item has
     // keyboard focus. Move it to the existing panel controls before inerting.
@@ -35,10 +36,16 @@ export function suppressNavigationUnderSheets():void{
       root.inert=next||root.hasAttribute('data-view-hidden');
     }
     if(hidden&&!next){
-      const target=returnTo;returnTo=null;
+      const target=returnTo,generation=focusGeneration;returnTo=null;
       if(target?.isConnected&&!target.closest('[inert]')&&
         (movedFocus||active===document.body||active===document.documentElement||active instanceof Element&&!!active.closest(PANELS))){
-        requestAnimationFrame(()=>{if(!hidden&&target.isConnected&&!target.closest('[inert]'))target.focus({preventScroll:true});});
+        requestAnimationFrame(()=>{
+          // A game or its player may claim focus before this frame. Returning
+          // to the old menu trigger must not steal their next keyboard action.
+          const current=document.activeElement;
+          const focusUnclaimed=current===document.body||current===document.documentElement||current instanceof Element&&!!current.closest(PANELS);
+          if(generation===focusGeneration&&!hidden&&focusUnclaimed&&target.isConnected&&!target.closest('[inert]'))target.focus({preventScroll:true});
+        });
       }
       movedFocus=false;
     }

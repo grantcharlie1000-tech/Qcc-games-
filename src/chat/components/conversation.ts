@@ -153,7 +153,7 @@ export class ConversationScreen implements Screen {
   });
   this.input.addEventListener('input',()=>this.syncComposer());
   this.input.addEventListener('keydown',event=>{
-   if(event.key!=='Enter'||event.shiftKey||event.isComposing||event.ctrlKey||event.altKey||event.metaKey||!fine())return;
+   if(event.key!=='Enter'||event.shiftKey||event.isComposing||event.ctrlKey||event.altKey||event.metaKey||event.keyCode===229)return;
    event.preventDefault();this.submit();
   });
   c.addEventListener('submit',event=>{event.preventDefault();this.submit();});
@@ -162,7 +162,13 @@ export class ConversationScreen implements Screen {
  private syncCamera():void{if(this.cameraButton)this.cameraButton.hidden=!this.ctx.mediaEnabled();}
  private syncComposer():void {
   const text=this.input.value.trim(),count=codePoints(text);
-  this.input.style.height='auto';this.input.style.height=`${Math.min(this.input.scrollHeight,126)}px`;
+  // scrollHeight excludes the border. Include it in this border-box field so
+  // the browser does not scroll the first line out of view to expose the caret.
+  this.input.style.height='auto';
+  const style=getComputedStyle(this.input),border=(parseFloat(style.borderTopWidth)||0)+(parseFloat(style.borderBottomWidth)||0);
+  const height=Math.min(Math.ceil(this.input.scrollHeight+border),126);
+  this.input.style.height=`${height}px`;
+  if(this.input.scrollHeight<=this.input.clientHeight+1)this.input.scrollTop=0;
   this.sendButton.disabled=!this.ready||this.closed||!text||count>MESSAGE_MAX_CHARS;
   const left=MESSAGE_MAX_CHARS-count;
   this.countEl.textContent=count>=COUNT_FROM?(left<0?String(left):`${left} left`):'';
@@ -237,8 +243,27 @@ export class ConversationScreen implements Screen {
    if(m.id===firstNew){marker=el('div','chat-new','New');marker.setAttribute('role','separator');this.log.append(marker);}
    this.insert(m,{animate:false});
   }
+  this.advanceCursor(messages);
   this.afterChange();
   if(marker)marker.scrollIntoView({block:'start'});else this.scrollToBottom(false);
+ }
+ private advanceCursor(messages:MessageView[]):void {
+  for(const m of messages)if(this.lastId===null||bigId(m.id)>bigId(this.lastId))this.lastId=m.id;
+ }
+ /** A message arrived with an id below one already shown (it landed during your own send): rebuild the log in id order, pending sends last. */
+ private reflow(delivered:MessageView[]):void {
+  const pendings=this.items.filter(i=>i.pending);
+  const settled=new Map<string,MessageView>();
+  for(const i of this.items)if(!i.pending)settled.set(i.id,i.m);
+  for(const m of delivered)settled.set(m.id,m);
+  for(const node of Array.from(this.log.children))if(node!==this.intro)node.remove();
+  this.items.length=0;this.byId.clear();this.emptyNote=undefined;
+  const sorted=[...settled.values()].sort((a,b)=>{const x=bigId(a.id),y=bigId(b.id);return x<y?-1:x>y?1:0;});
+  for(const m of sorted)this.insert(m,{animate:false});
+  for(const old of pendings){
+   const item=this.insert(old.m,{animate:false,pending:true,body:old.body});
+   const state=this.pendings.get(old.id);if(state)this.setPendingState(item,state,state.state);
+  }
  }
  private lastItem():Item|undefined{return this.items[this.items.length-1];}
  private insert(m:MessageView,options:{animate:boolean;pending?:boolean;body?:string;stagger?:number}):Item {
@@ -266,7 +291,6 @@ export class ConversationScreen implements Screen {
   }
   const item:Item={id:m.id,m,el:node,group,pending:options.pending===true,body:options.body??m.body??''};
   this.items.push(item);this.byId.set(m.id,item);
-  if(!item.pending&&(this.lastId===null||bigId(m.id)>bigId(this.lastId)))this.lastId=m.id;
   if(options.animate){
    // Row 8 (your send: no stagger given) or row 9 (a poll: staggered 40 ms). A message that starts a group brings its name line with it.
    const sent=options.stagger===undefined,delay=sent?0:options.stagger!*40;
@@ -355,8 +379,12 @@ export class ConversationScreen implements Screen {
   const incoming=sorted.filter(m=>!m.mine&&m.kind!=='system');
   const atBottom=this.distance()<=NEAR_BOTTOM;
   let staggered=0;
-  for(const m of sorted)this.insert(m,{animate:atBottom&&staggered<MAX_STAGGER,stagger:staggered++});
+  const shownTop=this.items.reduce((top,i)=>i.pending||bigId(i.id)<=top?top:bigId(i.id),0n);
+  const late=sorted.some(m=>bigId(m.id)<shownTop);
+  if(late){this.reflow(sorted);staggered=sorted.length;}
+  else for(const m of sorted)this.insert(m,{animate:atBottom&&staggered<MAX_STAGGER,stagger:staggered++});
   for(const m of view.messages){const item=this.byId.get(m.id);if(item&&!item.pending)this.update(item,m);}
+  this.advanceCursor(view.messages);
   if(full){
    const shown=new Set(view.messages.map(m=>m.id));
    const floor=view.messages.length>=200?view.messages.reduce((min,m)=>bigId(m.id)<min?bigId(m.id):min,bigId(view.messages[0]!.id)):0n;
@@ -456,7 +484,7 @@ export class ConversationScreen implements Screen {
   item.id=message.id;item.m=message;item.pending=false;
   item.el.dataset.id=message.id;item.el.classList.remove('is-pending','is-failed');
   this.byId.set(message.id,item);
-  if(this.lastId===null||bigId(message.id)>bigId(this.lastId))this.lastId=message.id;
+  // lastId is the poll cursor: it moves only when a poll or load delivers messages, so a friend's message that landed before this one is still fetched.
   this.fillReceipt(item.el,message);
   this.afterChange();
   this.ctx.refreshList();
@@ -490,7 +518,7 @@ export class ConversationScreen implements Screen {
   const m=item.m,items:MenuItem[]=[];
   if(m.kind==='text'){
    items.push({label:m.saved?'Unsave':'Save in chat',icon:m.saved?'saved':'save',run:()=>void this.toggleSave(item)});
-   items.push({label:'Copy text',icon:'share',run:()=>void this.copy(item)});
+   items.push({label:'Copy text',icon:'copy',run:()=>void this.copy(item)});
   }
   if(m.mine)items.push({label:'Unsend',icon:'trash',danger:true,run:()=>void this.unsend(item)});
   else items.push({label:'Report message',icon:'report',run:()=>openMessageReport(this.ctx,this.friend,this.recentFromFriend().slice(0,10),{trigger:item.el,preselect:m.id})});

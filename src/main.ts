@@ -225,7 +225,7 @@ function returnFromStudy(){
 function appDeps():AppDeps{
   return {accounts,reducedMotion:()=>preferences.reducedMotion,openAccounts:()=>{if(activeId)setPaused(true);accountView.open();},
     openMenu:()=>openMenu(document.querySelector('.section-navigation:not(.app-navigation) [data-action="menu"]')),
-    openApps:trigger=>launcher.open(trigger??undefined),appsBadge:launcher.subscribe};
+    openApps:trigger=>launcher.open(trigger??undefined),appsBadge:launcher.subscribe,refreshAppsBadge:()=>launcher.refresh()};
 }
 async function route(){
   if(!initialized)return;
@@ -427,6 +427,9 @@ async function route(){
 
 // The trigger is the control that opened the menu, so the sheet grows from it. Without one, the sheet grows from its bottom centre.
 function openMenu(trigger?:Element|null){
+  const context=appKind??'games';
+  menu.dataset.context=context;
+  menu.querySelector('#menu-title span')!.textContent=context==='games'?'Mauri Study Notes':`QCC ${context==='chat'?'Chat':'Social'} settings`;
   updateAccountMenu();
   pausedForDialog=!!activeId&&!paused;if(activeId)setPaused(true);
   openSheet(menu,trigger);
@@ -474,6 +477,9 @@ window.addEventListener('keydown',event=>{
   if(accountView.root.open||document.querySelector('dialog.movies-warning[open]'))return;
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(event.key==='Escape'&&(menu.open||launcher.sheet.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open||document.querySelector('dialog.apps-sheet[open],.apps-popover')))return;
+  // The inline Social composer owns Escape while its mention picker is open.
+  // Let its target handler dismiss suggestions before the shell opens Study.
+  if(!study.isOpen&&event.key==='Escape'&&event.target instanceof Element&&event.target.matches('.social-textarea[aria-expanded="true"]'))return;
   if(!study.isOpen&&event.key==='Escape'&&instance?.dismissMenu?.()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key!=='Escape'){event.stopImmediatePropagation();return;}
   if(event.key!=='Escape'||(!activeId&&!movies&&!appView&&!study.isOpen))return;
@@ -493,7 +499,7 @@ function finishEntry(){
 }
 function updateAccountMenu(){
  const session=accounts.session();
- document.querySelector('#account-summary')!.textContent=session?`Signed in as ${session.username}`:'Playing as guest';
+ document.querySelector('#account-summary')!.textContent=session?`Signed in as ${session.username}`:appKind?'Not signed in':'Playing as guest';
  document.querySelector<HTMLElement>('#open-accounts')!.hidden=!!session;
  document.querySelector<HTMLElement>('#logout-account')!.hidden=!session;
  document.querySelector<HTMLElement>('#switch-account')!.hidden=!session;

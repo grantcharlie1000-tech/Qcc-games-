@@ -56,3 +56,13 @@
 }
 .reduce-motion .section-navigation>.section-tabbar.ui-tabbar,
 .reduce-motion .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]){translate:none;scale:none;transition:opacity 150ms var(--ease)!important}
+
+/* Short landscape phones need reading room, not a second tall toolbar. Keep
+   every destination at least 44px high and share the reduced footprint with
+   the page's bottom clearance and floating compose control via these tokens. */
+@media (orientation:landscape) and (max-height:500px){
+  :root{--tabbar-h:52px;--tabbar-gap:8px}
+  .section-navigation>.section-tabbar.ui-tabbar{padding-block:4px}
+  .section-navigation>.section-tabbar.ui-tabbar .ui-tab{padding-block:2px;gap:0;font-size:9px}
+  .section-navigation>.section-tabbar.ui-tabbar .ui-tab .ui-icon{width:20px;height:20px}
+}

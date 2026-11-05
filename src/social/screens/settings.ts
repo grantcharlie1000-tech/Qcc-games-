@@ -127,7 +127,8 @@ export class SettingsScreen implements Screen {
  /** Avatar and banner: current image, "Change", "Remove", and the upload chip while a new one is going up. */
  private mediaBlock(profile:ProfileView,enabled:boolean,state:{avatar:string|null|undefined;banner:string|null|undefined},changed:()=>void):HTMLElement {
   const box=document.createElement('div');box.className='social-media-settings';
-  if(!enabled){const p=document.createElement('p');p.className='social-muted';p.textContent=MEDIA_UNAVAILABLE_MESSAGE;box.append(p);return box;}
+  // Upload availability must not prevent someone from removing an existing image.
+  if(!enabled){const p=document.createElement('p');p.className='social-muted';p.textContent=MEDIA_UNAVAILABLE_MESSAGE;box.append(p);}
   const block=(kind:'avatar'|'banner',title:string)=>{
    const row=document.createElement('div');row.className=`social-media-row is-${kind}`;
    const preview=document.createElement('div');preview.className='social-media-preview';
@@ -140,18 +141,22 @@ export class SettingsScreen implements Screen {
    const actions=document.createElement('div');actions.className='social-media-actions';
    const file=document.createElement('input');file.type='file';file.accept='image/*';file.hidden=true;
    const change=document.createElement('button');change.type='button';change.className='ui-btn secondary small apps-pill';change.textContent=kind==='avatar'?'Change photo':'Change banner';
+   change.disabled=!enabled;file.disabled=!enabled;
    const remove=document.createElement('button');remove.type='button';remove.className='ui-btn secondary small apps-pill';remove.textContent='Remove';
    const chips=document.createElement('div');chips.className='social-uploads';
    const live=document.createElement('div');live.className='sr-only';live.setAttribute('aria-live','polite');
+   const clearUploads=()=>{
+    for(const old of this.uploads.filter(u=>u.el.parentElement===chips)){old.dispose();this.uploads.splice(this.uploads.indexOf(old),1);}
+   };
    const syncRemove=()=>{remove.hidden=(state[kind]===undefined?profile[kind]:state[kind])===null;};
    change.addEventListener('click',()=>file.click());
-   remove.addEventListener('click',()=>{state[kind]=null;draw();syncRemove();changed();});
+   remove.addEventListener('click',()=>{clearUploads();state[kind]=null;draw();syncRemove();changed();});
    file.addEventListener('change',()=>{
     const picked=file.files?.[0];file.value='';if(!picked)return;
-    for(const old of this.uploads.filter(u=>u.el.parentElement===chips)){old.dispose();this.uploads.splice(this.uploads.indexOf(old),1);}
+    const beforeUpload=state[kind];clearUploads();
     const item=new UploadItem(picked,{purpose:kind,token:()=>this.ctx.token(),announce:t=>{live.textContent=t;},position:()=>({index:1,total:1}),
      onChange:()=>{if(item.ready){state[kind]=item.mediaId;draw();syncRemove();}changed();},
-     onRemove:removed=>{this.uploads.splice(this.uploads.indexOf(removed),1);state[kind]=undefined;draw();syncRemove();changed();},
+     onRemove:removed=>{this.uploads.splice(this.uploads.indexOf(removed),1);state[kind]=beforeUpload;draw();syncRemove();changed();},
      onFailure:failure=>this.ctx.notify(failure.long,{role:'alert'})});
     this.uploads.push(item);chips.append(item.el);void item.start();changed();
    });
