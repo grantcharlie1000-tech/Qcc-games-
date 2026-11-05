@@ -24,6 +24,9 @@ const ghostAngle=(s:PoolState,pocket:number)=>{
 
 test.describe('Pool',()=>{
   test('breaks from the keyboard and the rack plays on',async({page})=>{
+    // A fresh game shuffles its rack from the clock, and some racks make the default break illegal (re-racked below),
+    // so this test fixes a rack whose default break is legal.
+    await seedPool(page,createGame('ai','medium',5));
     await page.setViewportSize({width:1366,height:768});await page.goto('/#/game/pool');
     await expect(root(page)).toHaveAttribute('data-hand','kitchen');
     await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
@@ -33,6 +36,20 @@ test.describe('Pool',()=>{
     expect(s.breakShot).toBe(false);
     expect(s.balls.filter(b=>b.on).every(b=>b.x>=R-1e-6&&b.x<=L-R+1e-6&&b.y>=R-1e-6&&b.y<=W-R+1e-6)).toBe(true);
     await expect(page.locator('.pool-message')).not.toBeEmpty();
+  });
+
+  test('an illegal break re-racks for the opponent, who breaks again',async({page})=>{
+    // With this rack the default keyboard break sends fewer than four balls to a cushion and pots nothing.
+    // Two players, so the computer does not take the re-break before the result is read.
+    const before=createGame('two','medium',101);await seedPool(page,before);
+    await page.setViewportSize({width:1366,height:768});await page.goto('/#/game/pool');
+    await expect(root(page)).toHaveAttribute('data-hand','kitchen');
+    await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
+    await expect(root(page)).toHaveAttribute('data-phase','moving');await settle(page);
+    const s=await poolState(page);
+    expect(s.breakShot).toBe(true);expect(s.hand).toBe('kitchen');expect(s.turn).not.toBe(before.turn);
+    expect(s.balls.every(b=>b.on)).toBe(true);
+    expect(s.foul).toBe('Illegal break');
   });
 
   test('the power cue shoots on release and cancels when pushed back to the top',async({page})=>{
