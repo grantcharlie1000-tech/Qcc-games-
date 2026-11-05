@@ -1,0 +1,75 @@
+name: Verify Social photo upload gate
+on:
+  push:
+    branches: [diagnostics/qcc-social-photo-gate-20261105]
+permissions:
+  contents: read
+concurrency:
+  group: qcc-social-photo-gate
+  cancel-in-progress: false
+jobs:
+  social-browser:
+    name: Social regression (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      # Retain the real local media handler and every upload/UI assertion. No retries.
+      - name: Repeat the photo pipeline regression ten times
+        run: >-
+          xvfb-run -a npx playwright test tests/social/social.spec.ts
+          --project=${{ matrix.browser }} --grep 'photo post uploads through pipeline and renders thumbnail'
+          --repeat-each=10 --workers=1 --retries=0
+          --output=test-results-photo
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-photo
+      - name: Run the complete Social browser file
+        if: ${{ !cancelled() }}
+        run: >-
+          xvfb-run -a npx playwright test tests/social/social.spec.ts
+          --project=${{ matrix.browser }} --workers=1 --retries=0
+          --output=test-results-social
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-social
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: social-photo-${{ matrix.browser }}
+          path: |
+            playwright-report-photo
+            playwright-report-social
+            test-results-photo
+            test-results-social
+          retention-days: 7
+  unit-and-types:
+    name: Unit suite and types
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test -- --maxWorkers=1
