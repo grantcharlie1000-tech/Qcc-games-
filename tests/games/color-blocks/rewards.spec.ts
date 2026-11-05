@@ -5,7 +5,7 @@ const SAVE='pocket-arcade:v1:save:color-blocks';
 const EVIDENCE='tests/games/color-blocks/evidence';
 /** Rows 0–2 are full except columns 5–7; a big square there clears three rows and three colours. */
 function fixture():State{
- const s:State={...createGame(42),board:Array(64).fill(0),tray:[18,0,1],colors:[3,5,5],witness:[],history:[]};
+ const s:State={...createGame(42),board:Array(64).fill(0),tray:[18,0,1],colors:[3,5,5],witness:[],history:[],seed:0};
  for(let y=0;y<3;y++)for(let x=0;x<5;x++)s.board[y*8+x]=y<2?1:2;s.board[63]=4;return s;
 }
 async function open(page:Page,s=fixture()){
@@ -28,6 +28,8 @@ for(const viewport of [{width:390,height:844},{width:1366,height:768}])test(`pre
  await dragTo(page,0,5);
  await expect(page.locator('.cb-ghost')).toHaveCount(9);await expect(page.locator('.cb-line-preview')).toHaveCount(24);await expect(page.locator('.cb-board')).toHaveClass(/cb-preview-rainbow/);
  await page.screenshot({path:`${EVIDENCE}/rewards-preview-${viewport.width}.png`});
+ // Record every value the dock's score source shows while the total counts up.
+ await page.evaluate(()=>{const w=window as unknown as {cbShown:string[]};w.cbShown=[];const el=document.querySelector('.cb-score-total')!;new MutationObserver(()=>w.cbShown.push(el.textContent!)).observe(el,{childList:true,characterData:true,subtree:true});});
  await page.mouse.up();
  // State commits before presentation: 9 + 20·3² + 40·3 colours gone (1, 2 and the piece's 3).
  await expect(root).toHaveAttribute('data-score','309');await expect(root).toHaveAttribute('data-combo','1');
@@ -37,6 +39,7 @@ for(const viewport of [{width:390,height:844},{width:1366,height:768}])test(`pre
  await expect(page.locator('.cb-breakdown')).toHaveText('+309 = 9 blocks + 180 lines + 120 colour');
  await expect(page.locator('.cb-combo')).toBeVisible();await expect(page.locator('.cb-combo-label')).toHaveText('Combo 1');await expect(page.locator('.cb-pips .cb-pip-on')).toHaveCount(2);
  await expect(page.locator('.cb-effects')).toBeEmpty();await expect(page.locator('.cb-score-total')).toHaveText('309');await expect(page.locator('.game-hud')).toContainText('309');
+ const shown=(await page.evaluate(()=>(window as unknown as {cbShown:string[]}).cbShown)).map(Number);expect(shown.some(v=>v>0&&v<309),`intermediate totals: ${shown.join(', ')}`).toBe(true);expect(shown.at(-1)).toBe(309);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  const tray=(await page.locator('.cb-tray').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;expect(tray.y+tray.height).toBeLessThanOrEqual(dock.y);
  await page.screenshot({path:`${EVIDENCE}/rewards-settled-${viewport.width}.png`});
@@ -81,7 +84,7 @@ test('reduced motion keeps the label but drops particles and scaling',async({pag
  await page.emulateMedia({reducedMotion:'reduce'});await open(page);
  await dragTo(page,0,5);await page.mouse.up();
  await expect(page.locator('.cb-label strong')).toHaveText('3 colours gone!');expect(await page.locator('.cb-spark').count()).toBe(0);
- await expect(page.locator('.cb-score-total')).toHaveText('309');
+ await expect(page.locator('.cb-score-total')).toHaveText('309');await expect(page.locator('.cb-feedback')).toHaveText('3 lines cleared! 3 colours gone! +309 = 9 blocks + 180 lines + 120 colour');
  await capture(page,`${EVIDENCE}/rewards-reduced-motion.png`);
 });
 

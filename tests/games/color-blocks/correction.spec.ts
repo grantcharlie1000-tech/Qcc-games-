@@ -3,7 +3,7 @@ import {test,expect,type Page} from '../../fixtures';
 import {createGame,type State} from '../../../src/games/color-blocks/model';
 test.use({video:{mode:'on',size:{width:390,height:844}}});
 const SAVE='pocket-arcade:v1:save:color-blocks';
-const fixture=():State=>({...createGame(42),tray:[5,12,0],colors:[6,6,1],board:Array(64).fill(0)});
+const fixture=():State=>({...createGame(42),tray:[5,12,0],colors:[6,6,1],board:Array(64).fill(0),seed:0});
 async function open(page:Page,state=fixture()){
  await page.addInitScript(({key,s})=>{localStorage.clear();localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');localStorage.setItem(key,JSON.stringify({version:1,data:s}));},{key:SAVE,s:state});
  await page.goto('/#/game/color-blocks');await expect(page.locator('.cb-cell')).toHaveCount(64);
@@ -51,7 +51,7 @@ test('held placement key cannot place a freshly selected second piece',async({pa
  await page.keyboard.press('Enter');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','2');
 });
 test('pointer crossing clear shows short row/column feedback without changing scoring',async({page})=>{
- const s=fixture();s.tray=[0,1,2];s.colors=[6,6,6];s.moves=2;s.combo=2;s.setup=2;for(let x=1;x<8;x++)s.board[x]=1;for(let y=1;y<8;y++)s.board[y*8]=2;
+ const s=fixture();s.tray=[0,1,2];s.colors=[6,6,6];s.moves=2;s.combo=2;s.maxCombo=2;s.setup=2;for(let x=1;x<8;x++)s.board[x]=1;for(let y=1;y<8;y++)s.board[y*8]=2;
  await open(page,s);await pickup(page);const end=await target(page,0);await page.mouse.move(end.x,end.y,{steps:5});await page.mouse.up();
  await expect(page.locator('.cb-game')).toHaveAttribute('data-score','441');await expect(page.locator('.cb-game')).toHaveAttribute('data-combo','3');
  expect(await page.locator('.cb-occupied').count()).toBe(0);await expect(page.locator('.cb-feedback')).toContainText('2 lines cleared');

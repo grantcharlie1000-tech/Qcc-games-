@@ -110,8 +110,9 @@ export function deal(input:State):State{
   // A tactical opening is favoured mildly, never guaranteed.
   chosen=weightedPick(eligible.length?eligible:candidates,c=>c.clears?1.5:1,s);
  }else{
-  // The bounded search found no complete path. This is not proof that none exists,
-  // but the longest proven prefix is kept and dots fill the rest.
+  // Defensive only: a cleared board always keeps an empty cell, so a dot always
+  // fits and every attempt completes. Kept so a future catalogue cannot deal
+  // an unchecked tray: the longest proven prefix is padded with dots.
   if(!best||!best.tray.length)return structuredClone(input);
   chosen={tray:[...best.tray],colors:[...best.colors],witness:best.witness,ease:0,clears:best.clears};
   while(chosen.tray.length<3){chosen.tray.push(0);chosen.colors.push(1+Math.floor(random(s)*COLOR_COUNT));}
@@ -150,7 +151,7 @@ export function place(input:State,slot:number,x:number,y:number):PlaceResult|nul
 }
 /** Rebuild a run from its seed and placements. Returns null if any move is illegal. */
 export function replay(seed:number,moves:readonly Move[]):State|null{
- let s=createGame(seed);for(const [slot,x,y] of moves){const r=place(s,slot,x,y);if(!r)return null;s=r.state;}return s;
+ if(!seed)return null;let s=createGame(seed);for(const [slot,x,y] of moves){const r=place(s,slot,x,y);if(!r)return null;s=r.state;}return s;
 }
 const integer=(v:unknown,max=Number.MAX_SAFE_INTEGER):v is number=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0&&v<=max;
 const move=(v:unknown):v is Move=>Array.isArray(v)&&v.length===3&&integer(v[0],2)&&integer(v[1],SIZE-1)&&integer(v[2],SIZE-1);
@@ -168,6 +169,8 @@ export function restoreGame(data:unknown):State|null{
   ||!Array.isArray(s.colors)||s.colors.length!==3||!s.tray.every((p,i)=>p===null||integer(s.colors[i],COLOR_COUNT)&&s.colors[i]!==0)
   ||!Array.isArray(s.witness)||s.witness.length>3||!s.witness.every(move)||!Array.isArray(s.recent)||s.recent.length>TUNING.recent||!s.recent.every(v=>integer(v,SHAPES.length-1))
   ||!Array.isArray(s.history)||!s.history.every(move)||!integer(s.seed,4294967295)||!integer(s.rng,4294967295)||s.rng===0
-  ||![s.score,s.combo,s.moves,s.lines,s.maxCombo,s.maxLines].every(v=>integer(v))||!integer(s.setup,TUNING.setupMoves)||s.combo>s.moves||s.history.length>s.moves||clearLines(s.board).lines>0)return null;
+  ||![s.score,s.combo,s.moves,s.lines,s.maxCombo].every(v=>integer(v))||!integer(s.maxLines,2*SIZE)||!integer(s.setup,TUNING.setupMoves)||s.setup>0&&s.combo===0||s.maxCombo<s.combo||s.combo>s.moves
+  // A replayable run must hold every move; seed 0 marks a migrated save with no start.
+  ||(s.seed===0?s.history.length>s.moves:s.history.length!==s.moves)||clearLines(s.board).lines>0)return null;
  return {version:2,generator:s.generator,scoring:s.scoring,mode:'standard',seed:s.seed,rng:s.rng,board:[...s.board],tray:[...s.tray],colors:s.tray.map((p,i)=>p===null?null:s.colors[i]),witness:s.witness.map(m=>[...m] as Move),recent:[...s.recent],history:s.history.map(m=>[...m] as Move),score:s.score,combo:s.combo,setup:s.setup,moves:s.moves,lines:s.lines,maxCombo:s.maxCombo,maxLines:s.maxLines};
 }

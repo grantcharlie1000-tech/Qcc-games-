@@ -79,7 +79,7 @@ describe('saves and reproducibility',()=>{
  });
  it('restores a defensive copy and rejects corrupt saves',()=>{
   const s=place(fixture(),0,0,0)!.state;const r=restoreGame(JSON.parse(JSON.stringify(s)))!;expect(r).toEqual(s);r.board[1]=7;expect(s.board[1]).toBe(0);
-  for(const bad of [null,{}, {...s,version:3},{...s,board:[0]},{...s,tray:[99,0,1]},{...s,rng:NaN},{...s,score:-1},{...s,setup:3},{...s,colors:[null,0,1]},{...s,colors:[1,1]},{...s,history:[[3,0,0]]},{...s,witness:[[0,9,0]]},{...s,mode:'relaxed'},{...s,board:Array(64).fill(8)}])expect(restoreGame(bad)).toBeNull();
+  for(const bad of [null,{}, {...s,version:3},{...s,board:[0]},{...s,tray:[99,0,1]},{...s,rng:NaN},{...s,score:-1},{...s,setup:3},{...s,colors:[null,0,1]},{...s,colors:[1,1]},{...s,history:[[3,0,0]]},{...s,witness:[[0,9,0]]},{...s,mode:'relaxed'},{...s,history:[]},{...s,setup:1,combo:0},{...s,maxCombo:0,combo:1},{...s,maxLines:17},{...s,board:Array(64).fill(8)}])expect(restoreGame(bad)).toBeNull();
  });
  it('migrates a version-one save in place, keeping its board, tray and score',()=>{
   const v1={version:1,board:Array(64).fill(0),tray:[5,null,18],bag:[1,2],rng:99,score:120,combo:2,moves:9,lines:3};v1.board[0]=4;
@@ -96,5 +96,5 @@ describe('saves and reproducibility',()=>{
    const a=replay(seed,s.history)!,b=replay(seed,s.history)!;expect(a).toEqual(s);expect(b).toEqual(a);
   }
  });
- it('rejects a replay containing an illegal move',()=>{expect(replay(5,[[0,0,0],[0,0,0]])).toBeNull();});
+ it('rejects a replay containing an illegal move, or of a migrated seed-0 run',()=>{expect(replay(5,[[0,0,0],[0,0,0]])).toBeNull();expect(replay(0,[])).toBeNull();});
 });

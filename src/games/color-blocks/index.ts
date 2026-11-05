@@ -88,10 +88,15 @@ const module:GameModule={
    const newBest=!bestShown&&best>0&&state.score>best;if(newBest)bestShown=true;
    lastBreakdown=`+${result.gained} = ${describeBreakdown(result.breakdown)}`;
    const label=rewardLabel(result,state.combo,newBest);
-   const message=`${result.lines?`${result.lines} ${result.lines===1?'line':'lines'} cleared! `:''}${label?`${label.primary} `:''}${state.combo>0&&result.lines?`Combo ${state.combo} · `:''}${lastBreakdown}`;
+   // Label items already include the combo when it matters; the points come from the breakdown.
+   const items=label?[label.primary,...label.secondary.split(' · ').slice(0,-1)].join(' · '):'';
+   const named=items?`${items}${/[!.?]$/.test(items)?' ':'. '}`:'';
+   const message=`${result.lines?`${result.lines} ${result.lines===1?'line':'lines'} cleared! `:''}${named}${lastBreakdown}`;
    feedback.textContent=message;context.announce(message);context.sound(result.lines?'success':'tap');if(!hasMove(state)){context.sound('lose');context.announce('No remaining pieces fit. Your run is over.');}
+   // Start the count before drawing so draw() does not jump the shown total to the result.
+   if(animate)countScore();else settleScore();
    context.save(state);draw();
-   if(animate){countScore();celebrate(result,previous.board,label,newBest);}else settleScore();
+   if(animate)celebrate(result,previous.board,label,newBest);
    return true;
   }
   function reduced(){return context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;}
@@ -221,7 +226,7 @@ const module:GameModule={
   // Grid owns keyboard focus while aiming; cells expose precise accessible labels.
   board.tabIndex=0;
   draw();
-  return {pause(){paused=true;cancel();clearEffects();draw();},resume(){paused=false;draw();},restart(){restartRun();},serialize(){return structuredClone(state);},restore(data){const restored=restoreGame(data);if(!restored)return;cancel();clearEffects();state=restored;selected=null;lastBreakdown='';feedback.textContent='';draw();},dispose(){disposed=true;cancel();clearEffects();resize.disconnect();abort.abort();root.remove();}};
+  return {pause(){paused=true;cancel();clearEffects();draw();},resume(){paused=false;draw();},restart(){restartRun();},serialize(){return structuredClone(state);},restore(data){const restored=restoreGame(data);if(!restored)return;cancel();clearEffects();best=Math.max(best,state.score,restored.score);bestShown=false;state=restored;selected=null;lastBreakdown='';feedback.textContent='';draw();},dispose(){disposed=true;cancel();clearEffects();resize.disconnect();abort.abort();root.remove();}};
  }
 };
 export default module;
