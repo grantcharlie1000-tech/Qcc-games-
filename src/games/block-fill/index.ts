@@ -2,6 +2,9 @@ import type { GameModule } from '../../core/types';
 import { generateLevel, initialState, step, undo, solved, hint, restoreState, sampleSegment, recordWin, campaignScore, LEVEL_COUNT, type Point } from './logic';
 import {mountCompactHud} from '../../ui/game-controls-adapter';
 import './style.css';
+import './christmas.css';
+import {christmas} from '../../festive/festive';
+import {festiveBoard} from './christmas';
 
 const game:GameModule={
   id:'block-fill',title:'Block Fill',cover:'game-art/block-fill/cover.svg',
@@ -28,7 +31,8 @@ const game:GameModule={
       board.setAttribute('viewBox',`0 0 ${size} ${size}`);
       board.setAttribute('aria-label',`Block Fill board, garden ${state.level+1}. ${state.path.length} of ${level.cells.length} covered. Head row ${Math.floor(head/level.size)+1}, column ${head%level.size+1}. Arrow keys trace, Backspace undoes, H hints.`);
       board.dataset.covered=String(state.path.length);board.dataset.total=String(level.cells.length);board.dataset.level=String(state.level+1);
-      board.innerHTML=`<defs><linearGradient id="bf-gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff4ad"/><stop offset=".5" stop-color="#ffc83e"/><stop offset="1" stop-color="#f5a81f"/></linearGradient><pattern id="bf-wall" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" fill="#143b3a"/><path d="M0 0V9" stroke="#2c5551" stroke-width="3"/></pattern></defs>${Array.from({length:level.size**2},(_,c)=>{
+      if(christmas()){board.innerHTML=festiveBoard(level,state.path,selected);}
+      else board.innerHTML=`<defs><linearGradient id="bf-gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff4ad"/><stop offset=".5" stop-color="#ffc83e"/><stop offset="1" stop-color="#f5a81f"/></linearGradient><pattern id="bf-wall" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" fill="#143b3a"/><path d="M0 0V9" stroke="#2c5551" stroke-width="3"/></pattern></defs>${Array.from({length:level.size**2},(_,c)=>{
         const x=12+c%level.size*64,y=12+Math.floor(c/level.size)*64,index=state.path.indexOf(c),open=level.cells.includes(c);
         return `<g data-cell="${c}" aria-label="Row ${Math.floor(c/level.size)+1} column ${c%level.size+1}${open?index>=0?', covered '+(index+1):', open':', wall'}"><rect x="${x+4}" y="${y+7}" width="56" height="56" rx="13" fill="#082e2d"/><rect x="${x+4}" y="${y+3}" width="56" height="56" rx="13" fill="${open?index>=0?'#b18b35':'#316b60':'url(#bf-wall)'}" stroke="${open?'#4d8b75':'#173f3b'}" stroke-width="2"/></g>`;
       }).join('')}<polyline points="${trail}" fill="none" stroke="#765514" stroke-width="31" stroke-linejoin="round" stroke-linecap="round" transform="translate(0 3)"/><polyline points="${trail}" fill="none" stroke="url(#bf-gold)" stroke-width="26" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${trail}" fill="none" stroke="#fff5bc" stroke-opacity=".6" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>${state.path.map((c,i)=>{const [x,y]=xy(c).split(',');return `<circle cx="${x}" cy="${y}" r="${c===head?21:i===0?18:12}" fill="${c===head?'#fff6c9':'#f6c346'}" stroke="#805721" stroke-width="${c===head?3:1}"/><text x="${x}" y="${Number(y)+5}" text-anchor="middle" fill="#3b361d" font-family="system-ui,sans-serif" font-weight="900" font-size="${c===head?16:13}">${i===0?'S':i+1}</text>`;}).join('')}${selected!==undefined?`<rect x="${16+selected%level.size*64}" y="${15+Math.floor(selected/level.size)*64}" width="56" height="56" rx="13" fill="none" stroke="#fff9d5" stroke-width="4" stroke-dasharray="6 4"/><text x="${44+selected%level.size*64}" y="${50+Math.floor(selected/level.size)*64}" text-anchor="middle" fill="#fff9d5" font-size="21" font-weight="900">★</text>`:''}`;

@@ -1,5 +1,7 @@
 /** Canvas renderer: cached table art, per-pixel shaded rolling balls, cue stick and aiming guides. */
 import {R,L,W,HEAD_X,FOOT_X,CUSHIONS,POCKETS,type Ball,type Trace} from './physics';
+import {christmas} from '../../festive/festive';
+import {BULBS,XMAS,drawBulb} from '../../festive/art';
 
 export const CUSHION_W=.042,RAIL_W=.092,MARGIN=CUSHION_W+RAIL_W;
 const OUTER={x:-MARGIN,y:-MARGIN,w:L+2*MARGIN,h:W+2*MARGIN};
@@ -31,20 +33,30 @@ function jawBack(jx:number,jy:number,ex:number,ey:number,nx:number,ny:number){
   // Where the jaw line from J (direction e) meets the back of the cushion (offset CUSHION_W along −n).
   const t=CUSHION_W/Math.max(.05,-(ex*nx+ey*ny));return {x:jx+ex*t,y:jy+ey*t};
 }
+/** Christmas table colours: red lacquer rails with gold trim, gold diamonds and a deep evergreen felt.
+ * The original values are kept beside them; only colours differ, never a shape or position. */
+const TABLE={
+  base:'#2a140a',wood:['#6b3418','#4a2210','#5e2c13'],grainDark:'30,10,2',grainLight:'160,90,45',bevel:'rgba(255,210,160,.22)',
+  cloth:['#1c8a57','#147447','#0c5634'],cushion:['#1a7d4e','#106a40','#0a4b2d'],nose:'rgba(160,255,200,.22)',sight:'#efe6d2',sightEdge:'rgba(60,30,10,.6)',
+};
+const FESTIVE_TABLE:typeof TABLE={
+  base:'#3a0a12',wood:['#b51f33','#7f1424','#9a1a2c'],grainDark:'40,4,10',grainLight:'240,120,120',bevel:'rgba(248,221,138,.55)',
+  cloth:['#17784a','#0f5f39','#083f26'],cushion:['#146b42','#0d5734','#073a22'],nose:'rgba(190,255,215,.2)',sight:XMAS.gold,sightEdge:'rgba(90,50,5,.75)',
+};
 function drawTableArt(c:CanvasRenderingContext2D,v:View){
   worldTransform(c,v);
-  const px=1/v.scale,random=seeded(7);
+  const px=1/v.scale,random=seeded(7),festive=christmas(),T=festive?FESTIVE_TABLE:TABLE;
   // Shadow under the whole table.
   c.save();c.shadowColor='rgba(0,0,0,.55)';c.shadowBlur=26*v.dpr;c.shadowOffsetY=v.portrait?0:8*v.dpr;c.shadowOffsetX=v.portrait?8*v.dpr:0;
-  c.fillStyle='#2a140a';c.beginPath();c.roundRect(OUTER.x,OUTER.y,OUTER.w,OUTER.h,.06);c.fill();c.restore();
+  c.fillStyle=T.base;c.beginPath();c.roundRect(OUTER.x,OUTER.y,OUTER.w,OUTER.h,.06);c.fill();c.restore();
   // Wood rails: walnut with grain and a polished bevel.
   const wood=c.createLinearGradient(0,OUTER.y,0,OUTER.y+OUTER.h);
-  wood.addColorStop(0,'#6b3418');wood.addColorStop(.5,'#4a2210');wood.addColorStop(1,'#5e2c13');
+  wood.addColorStop(0,T.wood[0]);wood.addColorStop(.5,T.wood[1]);wood.addColorStop(1,T.wood[2]);
   c.fillStyle=wood;c.beginPath();c.roundRect(OUTER.x,OUTER.y,OUTER.w,OUTER.h,.06);c.fill();
   c.save();c.beginPath();c.roundRect(OUTER.x,OUTER.y,OUTER.w,OUTER.h,.06);c.clip();
   for(let i=0;i<260;i++){
     const y=OUTER.y+random()*OUTER.h,x=OUTER.x+random()*OUTER.w,len=.15+random()*.6,amp=.002+random()*.004;
-    c.strokeStyle=random()<.5?`rgba(30,10,2,${.12+random()*.18})`:`rgba(160,90,45,${.06+random()*.1})`;
+    c.strokeStyle=random()<.5?`rgba(${T.grainDark},${.12+random()*.18})`:`rgba(${T.grainLight},${.06+random()*.1})`;
     c.lineWidth=(.6+random()*1.4)*px;c.beginPath();
     const vertical=x<-CUSHION_W||x>L+CUSHION_W;
     if(vertical&&(y>-CUSHION_W&&y<W+CUSHION_W)){c.moveTo(x,y);c.bezierCurveTo(x+amp,y+len/3,x-amp,y+len*2/3,x,y+len);}
@@ -53,7 +65,7 @@ function drawTableArt(c:CanvasRenderingContext2D,v:View){
   }
   c.restore();
   // Bevel highlights on the outer and inner edges.
-  c.lineWidth=2.2*px;c.strokeStyle='rgba(255,210,160,.22)';c.beginPath();c.roundRect(OUTER.x+1.5*px,OUTER.y+1.5*px,OUTER.w-3*px,OUTER.h-3*px,.058);c.stroke();
+  c.lineWidth=2.2*px;c.strokeStyle=T.bevel;c.beginPath();c.roundRect(OUTER.x+1.5*px,OUTER.y+1.5*px,OUTER.w-3*px,OUTER.h-3*px,.058);c.stroke();
   c.lineWidth=1*px;c.strokeStyle='rgba(0,0,0,.6)';c.beginPath();c.roundRect(OUTER.x,OUTER.y,OUTER.w,OUTER.h,.06);c.stroke();
   // Leather pocket surrounds on the rail.
   for(const p of POCKETS){
@@ -61,9 +73,11 @@ function drawTableArt(c:CanvasRenderingContext2D,v:View){
     g.addColorStop(0,'#0b0603');g.addColorStop(.7,'#1d120b');g.addColorStop(1,'rgba(29,18,11,0)');
     c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,p.side?.088:.098,0,Math.PI*2);c.fill();
   }
+  // Christmas: a gold pinstripe where the rail meets the cushions; the pocket holes are drawn over it.
+  if(festive){c.strokeStyle=XMAS.gold;c.lineWidth=1.4*px;c.strokeRect(-CUSHION_W-1.5*px,-CUSHION_W-1.5*px,L+2*CUSHION_W+3*px,W+2*CUSHION_W+3*px);}
   // Cloth: playing surface plus the cushion band, lit from above.
   const cloth=c.createRadialGradient(L/2,W/2,.05,L/2,W/2,L*.62);
-  cloth.addColorStop(0,'#1c8a57');cloth.addColorStop(.6,'#147447');cloth.addColorStop(1,'#0c5634');
+  cloth.addColorStop(0,T.cloth[0]);cloth.addColorStop(.6,T.cloth[1]);cloth.addColorStop(1,T.cloth[2]);
   c.fillStyle=cloth;c.fillRect(-CUSHION_W,-CUSHION_W,L+2*CUSHION_W,W+2*CUSHION_W);
   c.fillStyle='rgba(0,0,0,.35)';c.fillRect(-CUSHION_W-1*px,-CUSHION_W-1*px,L+2*CUSHION_W+2*px,1.5*px);
   // Felt nap.
@@ -77,10 +91,10 @@ function drawTableArt(c:CanvasRenderingContext2D,v:View){
     const jawAt=(x:number,y:number)=>{const j=CUSHIONS.slice(0,12).find(j=>Math.abs(j.ax-x)<1e-9&&Math.abs(j.ay-y)<1e-9)!;const jl=Math.hypot(j.bx-j.ax,j.by-j.ay);return jawBack(x,y,(j.bx-j.ax)/jl,(j.by-j.ay)/jl,inx,iny);};
     const a=jawAt(s.ax,s.ay),b=jawAt(s.bx,s.by);
     const grad=c.createLinearGradient(s.ax,s.ay,s.ax-inx*CUSHION_W,s.ay-iny*CUSHION_W);
-    grad.addColorStop(0,'#1a7d4e');grad.addColorStop(.25,'#106a40');grad.addColorStop(1,'#0a4b2d');
+    grad.addColorStop(0,T.cushion[0]);grad.addColorStop(.25,T.cushion[1]);grad.addColorStop(1,T.cushion[2]);
     c.fillStyle=grad;c.beginPath();c.moveTo(s.ax,s.ay);c.lineTo(s.bx,s.by);c.lineTo(b.x,b.y);c.lineTo(a.x,a.y);c.closePath();c.fill();
     c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=1*px;c.stroke();
-    c.strokeStyle='rgba(160,255,200,.22)';c.lineWidth=1.2*px;c.beginPath();c.moveTo(s.ax+inx*.6*px,s.ay+iny*.6*px);c.lineTo(s.bx+inx*.6*px,s.by+iny*.6*px);c.stroke();
+    c.strokeStyle=T.nose;c.lineWidth=1.2*px;c.beginPath();c.moveTo(s.ax+inx*.6*px,s.ay+iny*.6*px);c.lineTo(s.bx+inx*.6*px,s.by+iny*.6*px);c.stroke();
   }
   // Pocket holes.
   for(const p of POCKETS){
@@ -90,13 +104,47 @@ function drawTableArt(c:CanvasRenderingContext2D,v:View){
     c.strokeStyle='rgba(0,0,0,.8)';c.lineWidth=2*px;c.stroke();
   }
   // Pearl sights.
-  const sight=(x:number,y:number)=>{const s=.0085;c.fillStyle='#efe6d2';c.beginPath();c.moveTo(x,y-s);c.lineTo(x+s*.62,y);c.lineTo(x,y+s);c.lineTo(x-s*.62,y);c.closePath();c.fill();c.strokeStyle='rgba(60,30,10,.6)';c.lineWidth=.8*px;c.stroke();};
+  const sight=(x:number,y:number)=>{const s=.0085;c.fillStyle=T.sight;c.beginPath();c.moveTo(x,y-s);c.lineTo(x+s*.62,y);c.lineTo(x,y+s);c.lineTo(x-s*.62,y);c.closePath();c.fill();c.strokeStyle=T.sightEdge;c.lineWidth=.8*px;c.stroke();};
   const mid=CUSHION_W+RAIL_W/2;
   for(const k of [1,2,3,5,6,7]){sight(L*k/8,-mid);sight(L*k/8,W+mid);}
   for(const k of [1,2,3]){sight(-mid,W*k/4);sight(L+mid,W*k/4);}
   // Spots.
   c.fillStyle='rgba(255,255,255,.22)';
   for(const [x,y] of [[HEAD_X,W/2],[FOOT_X,W/2],[L/2,W/2]]){c.beginPath();c.arc(x,y,.0045,0,Math.PI*2);c.fill();}
+  if(festive)drawFestiveTrim(c,px);
+}
+
+/** Christmas: a gold pinstripe inside the outer edge, and a static string of lights along the
+ * outer band of the rail (between the diamonds and the table edge), drawn once into the cached
+ * table art. It stays clear of the pocket surrounds and never touches the cloth. */
+const LIGHT_INSET=.028,BULB=.017;
+function drawFestiveTrim(c:CanvasRenderingContext2D,px:number){
+  // A gold pinstripe just inside the outer edge.
+  c.strokeStyle='rgba(248,221,138,.8)';c.lineWidth=1.1*px;
+  c.beginPath();c.roundRect(OUTER.x+3*px,OUTER.y+3*px,OUTER.w-6*px,OUTER.h-6*px,.055);c.stroke();
+  // Wire: a rounded rectangle LIGHT_INSET inside the outer edge, scalloping slightly between bulbs.
+  const e=MARGIN-LIGHT_INSET,x0=-e,y0=-e,x1=L+e,y1=W+e;
+  const runs:{ax:number;ay:number;bx:number;by:number;ox:number;oy:number;n:number}[]=[
+    {ax:x0,ay:y0,bx:x1,by:y0,ox:0,oy:-1,n:30},{ax:x0,ay:y1,bx:x1,by:y1,ox:0,oy:1,n:30},
+    {ax:x0,ay:y0,bx:x0,by:y1,ox:-1,oy:0,n:15},{ax:x1,ay:y0,bx:x1,by:y1,ox:1,oy:0,n:15},
+  ];
+  c.lineCap='round';c.lineJoin='round';c.strokeStyle='#1d3226';c.lineWidth=1.3*px;
+  for(const r of runs){
+    c.beginPath();
+    for(let i=0;i<=r.n*8;i++){
+      const t=i/(r.n*8),sag=Math.abs(Math.sin(t*r.n*Math.PI))*.004;
+      const x=r.ax+(r.bx-r.ax)*t-r.ox*sag,y=r.ay+(r.by-r.ay)*t-r.oy*sag;
+      if(i)c.lineTo(x,y);else c.moveTo(x,y);
+    }
+    c.stroke();
+  }
+  // Bulbs hang outward from the wire at the scallop points, skipping the corners and the side pockets.
+  let k=0;
+  for(const r of runs)for(let i=1;i<r.n;i++){
+    const t=i/r.n,x=r.ax+(r.bx-r.ax)*t,y=r.ay+(r.by-r.ay)*t;
+    if(POCKETS.some(p=>Math.hypot(p.x-x,p.y-y)<(p.side?.1:.13)))continue;
+    drawBulb(c,x,y,BULB,BULBS[k++%BULBS.length]!,Math.atan2(r.oy,r.ox)+(i%2?.18:-.18),true);
+  }
 }
 
 // ---------------------------------------------------------------- Balls
@@ -230,7 +278,7 @@ export class Renderer{
   draw(v:View,scene:Scene){
     const cw=Math.round(v.width*v.dpr),ch=Math.round(v.height*v.dpr);
     if(this.canvas.width!==cw||this.canvas.height!==ch){this.canvas.width=cw;this.canvas.height=ch;}
-    const key=`${cw}x${ch}:${v.scale}:${v.portrait}`;
+    const key=`${cw}x${ch}:${v.scale}:${v.portrait}:${christmas()}`;
     if(this.bgKey!==key){
       this.bg.width=cw;this.bg.height=ch;const b=this.bg.getContext('2d')!;b.clearRect(0,0,cw,ch);drawTableArt(b,v);b.setTransform(1,0,0,1,0,0);this.bgKey=key;this.look.last.clear();
     }
