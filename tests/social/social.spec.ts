@@ -87,15 +87,16 @@ for(const width of [390,1440])test(`profile sticky tabs hide scrolled reply frag
   await expect.poll(async()=>Math.round((await tabs.boundingBox())!.y)).toBe(top);
   // The middle of the floating toolbar must not reveal a detached author or image
   // above the tabs. Exclude the intentionally visible back/settings controls.
-  // Capture the viewport before cropping: WebKit's clipped captures misplace
-  // this band at deviceScaleFactor 2, even while the viewport pixels are black.
+  // Use CSS pixels on Retina too, and materialize the crop before stats():
+  // Sharp stats() otherwise reads the original screenshot (including alpha).
   await expect.poll(async()=>{
    const r=(await tabs.boundingBox())!;
    const image=await page.screenshot({scale:'css'});
-   const stats=await sharp(image).extract({left:Math.round(r.x)+72,top:2,width:Math.floor(r.width)-144,height:Math.round(r.y)-4}).removeAlpha().stats();
+   const band=await sharp(image).extract({left:Math.round(r.x)+72,top:2,width:Math.floor(r.width)-144,height:Math.round(r.y)-4}).removeAlpha().toBuffer();
+   const stats=await sharp(band).stats();
    return Math.max(...stats.channels.map(c=>c.max));
   },{message:'Scrolled posts must remain hidden above the pinned profile tabs'}).toBeLessThanOrEqual(1);
-  expect(await tabs.evaluate(el=>{const r=el.getBoundingClientRect();return document.elementFromPoint(r.x+100,30)?.closest('.social-post')!==null;})).toBe(false);
+  expect(await tabs.evaluate(el=>{const r=el.getBoundingClientRect();return !!document.elementFromPoint(r.x+100,30)?.closest('.social-post');})).toBe(false);
  }
  }
  await page.screenshot({path:testInfo.outputPath(`profile-sticky-${width}.png`)});
