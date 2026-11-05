@@ -261,3 +261,59 @@ Built by four parallel agents from one shared brief (each confined to its own ga
 - **Changes:** Snow-covered arena with a candy-cane rim and a dark evergreen forest outside; you are red and the six bots are blue, green, gold, plum, ice cyan and gingerbread (original hue order); your head alone wears a Santa hat; capture trails are light strings (soft glow band, dark wire, bulbs every 1.2 cells that stay put as the trail grows).
 - **Skills:** game-development + game-art + 2d-games, systematic-debugging, verification-before-completion. Details in [`claimline/NOTES.md`](claimline/NOTES.md).
 - **Notes and tests:** Shape marks on heads and HUD rows kept. The first version cost 37 ms per frame against 15 ms for the original; building the snow texture at device resolution and skipping off-screen bulbs brought it to parity (about 21–24 ms against 22 ms under the same load). Bots are randomly seeded, so before and after layouts differ. Unit 50/50, browser 14/14.
+
+---
+
+## Quality control
+
+### Regression results (final code)
+
+| Check | Result |
+| --- | --- |
+| `npx tsc --noEmit` | Clean |
+| `npx vitest run` (all unit tests) | 219 files, 4,354 tests passed |
+| `npm run build` | Succeeds, including the service-worker kill-switch check |
+| Browser suites for the 21 games, `tests/e2e`, campaigns and game sheet (833 tests, Chromium, 2 workers, 1 retry) | 826 passed, 1 skipped, 12 failed; classification below |
+| Crossy Road browser suite | 62 passed |
+| Minecraft (Blockcraft), Quad Clash | Mount with no page errors; no festive changes |
+| `git diff 0246c6d` of `src/games/{crossy-road,blockcraft,quad-clash}`, `public/` (all game posters) and `src/core/catalog.ts` | No changes |
+
+Each of the 12 failures was run again, one worker, on this branch and on the original commit:
+
+- **Fail on the original code as well (pre-existing):** `redesign-shell.spec.ts:68` (phone navigation size at 360 px) and the Block Blast touch-evidence test (its gameplay assertions pass; it fails at `video.saveAs` because the container's ffmpeg is older than this Playwright version expects).
+- **Timing under load (pass on both servers when rerun alone):** Ball Run boost readout (two variants), Flappy Bird scored flight, Globle drag/zoom, and two Snake tests. They fail only when two workers share a busy machine.
+- **Pre-existing flaky test:** Tetris `the most recently pressed direction wins while both are held` relies on Playwright's flowing fake clock and the game's auto-shift, so any latency between steps moves the piece twice. It fails on the original code too (1 of 10 runs in a sample). Profiling found no festive cost: no long tasks after Start in 12 runs, identical frame pacing (16.7 ms median, 16.8 ms p95) and lower main-thread load than the original theme.
+- **Original-palette assertions (fixed):** three `see-through-material` tests assert the original cards' exact colours. Two are pinned to the original theme; the Corn test now runs in both themes, checking the original panel colours only for the original theme and the opaque tip with at least 4.5:1 text contrast in both. The suite now passes 16/16.
+
+Other tests that measure the original artwork's exact pixels were pinned the same way (`neon-coil/visual.spec.ts`, `animal-stack/tall-framing.spec.ts`); Animal Stack also gained a festive framing test, and Ball Run's speed-readout contrast check now measures against the active theme's bar colour. `tests/e2e/festive.spec.ts` mounts all 21 games with the theme on, checks the menu switch leaves saves and scores alone, and switches the theme both ways inside Pac-Man.
+
+### Independent code review
+
+A separate reviewer read the whole diff. Verdict: no critical issues; gameplay state, physics, saves, scores and input untouched; theme-off paths identical to the original. Fixed from its findings:
+
+- Switching the theme mid-game could leave mixed artwork (Pac-Man's walls lost their colour). The shell now saves and remounts the open game when the switch changes, through the normal navigation path.
+- Ball Run had gold obstacles beside gold boost gates. Obstacles are now reds and greens only; gold means boost.
+- Slipline's idle green and blocked red now differ by 3.2:1 in lightness (the original lavender and red: 3.0:1).
+- Block Blast hides its ribbon when colour-blind glyphs are on; Block Blast and Water Sort read festive colour names to screen readers.
+- Suika's ornament cache is bounded to two scales; Pac-Man hides its antennae by class; an unused helper was removed.
+
+Declined, with reasons: per-frame drawing in Flappy Bird (measured 0.22 ms per frame against 0.70 ms for the original) and Snake (36 static snowflakes replace the original's 36 static grass tufts, so the cost is unchanged).
+
+### Performance
+
+Measured per game where the skin draws every frame: Flappy Bird 0.22 ms per frame against 0.70 ms for the original; Claimline 21–24 ms against 22 ms under the same load (after caching fixed an early 37 ms version); Suika level with the original after caching (an early version ran at about 4 fps in the software-rendered test browser); Tetris identical frame pacing with lower main-thread load; Block Fill about 2 ms more per move from larger SVG markup, frame time unchanged; Ball Run adds one 64×256 texture and no draw calls. No game adds particle systems, blur filters or snowfall.
+
+### Restoring the original look
+
+Open the Menu and turn off **Christmas theme**. The game in play is saved and reopened in its original look; every other game opens in its original look. The choice is stored under `qcc:festive`, separate from saves, scores, sync and leaderboards. A unit test checks that every Christmas CSS rule is scoped to the theme attribute.
+
+### Known limitations
+
+- **Animal Stack:** hats are drawing only, so an animal can appear to rest on one; in a far taller stack than the tests use, a hat could reach about 20 units into the score area.
+- **Corn Clicker:** the golden cob appears only after 60–120 s of play, so it was checked from a sprite render (`corn-clicker/detail-art.png`), not an in-game screenshot.
+- **Pool:** light bulbs are about 5 px on a phone, and the light wire has square corners inside the rounded rail corners.
+- **Flow Free:** on its dark background the shell's dock glass is nearly transparent (text stays readable).
+- **Claimline:** bots are randomly seeded, so its before and after screenshots show different layouts.
+- **Christmas is the default with no date window.** Turning it off after the season is a single default in `src/festive/festive.ts`, or the Menu switch per player.
+- **Environment:** video-saving tests cannot finish in this container (ffmpeg mismatch), and only Chromium was run; WebKit was not tested.
+- Running the browser tests rewrites some committed evidence images under `tests/games/*/evidence` and `docs/evidence/` (outside this report). Those rewritten files were not committed.
