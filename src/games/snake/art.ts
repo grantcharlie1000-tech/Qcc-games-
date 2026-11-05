@@ -1,88 +1,136 @@
-import {SIZE,HEAD_RADIUS,BODY_RADIUS,FOOD_RADIUS, type SnakeState} from './model';
-import {projectSnake, type SnakePresentation} from './presentation';
+import {SIZE,type SnakeState} from './model';
+import {pendingEat,buildSpine,bulge,bulgePositions,blink,chompScale,deathFx,EAT_FX_MS,foodScale,mouth,taper,tongue,easeOutCubic,type Spine,type SnakeView} from './presentation';
 import {christmas} from '../../festive/festive';
 import {drawBauble,drawSantaHat,drawSnowflake,XMAS} from '../../festive/art';
 const FESTIVE_FOOD=[XMAS.red,XMAS.gold,XMAS.green,'#2f7fd1'] as const;
-const BOARD = 480, CELL = BOARD / SIZE;
+const BOARD=480, CELL=BOARD/SIZE, HALF=CELL/2;
+export const TUBE=.8*CELL, HEAD_R=.46*CELL, FOOD_R=.33*CELL;
+const px=(n:number)=>n*CELL+HALF;
+const festiveFood=(c:{x:number;y:number})=>FESTIVE_FOOD[(c.x+c.y*SIZE)%FESTIVE_FOOD.length]!;
+
+/** Strokes the spine with a per-sample width; constant-width runs are drawn as single paths. */
+function strokeSpine(g:CanvasRenderingContext2D,spine:Spine,widths:number[],extra:number,style:string|CanvasGradient,base:number){
+ const p=spine.points;if(p.length<2){g.fillStyle=style;g.beginPath();g.arc(px(p[0].x),px(p[0].y),(widths[0]+extra)/2,0,Math.PI*2);g.fill();return;}
+ g.strokeStyle=style;g.lineCap='round';g.lineJoin='round';
+ let i=0;
+ while(i<p.length-1){
+  if(Math.abs(widths[i]-base)<.05&&Math.abs(widths[i+1]-base)<.05){
+   g.lineWidth=base+extra;g.beginPath();g.moveTo(px(p[i].x),px(p[i].y));
+   while(i<p.length-1&&Math.abs(widths[i+1]-base)<.05){i++;g.lineTo(px(p[i].x),px(p[i].y));}
+   g.stroke();
+  }else{
+   g.lineWidth=Math.max(widths[i],widths[i+1])+extra;g.beginPath();g.moveTo(px(p[i].x),px(p[i].y));g.lineTo(px(p[i+1].x),px(p[i+1].y));g.stroke();i++;
+  }
+ }
+}
 
 /** Original Canvas artwork. Geometry stays in board units; backing pixels follow the actual display. */
-export function drawGarden(canvas: HTMLCanvasElement, state: SnakeState, view: SnakePresentation, reducedMotion: boolean) {
-  const g = canvas.getContext('2d')!;
-  const display = canvas.getBoundingClientRect().width || BOARD;
-  const pixels = Math.max(1, Math.round(display * (window.devicePixelRatio || 1)));
-  if (canvas.width !== pixels || canvas.height !== pixels) canvas.width = canvas.height = pixels;
-  g.setTransform(pixels / BOARD, 0, 0, pixels / BOARD, 0, 0);
-  const circle = (x:number,y:number,r:number,color:string|CanvasGradient) => {
-    g.fillStyle=color;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();
-  };
-  const xmas = christmas();
-  const grass = g.createLinearGradient(0,0,BOARD,BOARD);
-  grass.addColorStop(0,xmas?'#f7fafd':'#c8de94');grass.addColorStop(1,xmas?'#dbe7f2':'#a4c976');
-  g.fillStyle=grass;g.fillRect(0,0,BOARD,BOARD);
-  for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++) {
-    g.fillStyle=(x+y)%2?(xmas?'#ffffff40':'#ffffff0b'):(xmas?'#5b86b014':'#3664260a');g.fillRect(x*CELL,y*CELL,CELL,CELL);
-  }
-  if(xmas) {
-    // Stationary snowflakes in the same sparse grid as the original tufts.
-    for(let y=18;y<BOARD;y+=90)for(let x=20;x<BOARD;x+=90) drawSnowflake(g,x,y,5,'#8fb3cf',.45);
-  } else {
-  // Quiet, stationary tufts leave the travel lanes readable.
+export function drawGarden(canvas:HTMLCanvasElement,state:SnakeState,view:SnakeView,reduced:boolean,spine=buildSpine(state)){
+ const g=canvas.getContext('2d')!;
+ const display=canvas.getBoundingClientRect().width||BOARD;
+ const pixels=Math.max(1,Math.round(display*Math.min(2,window.devicePixelRatio||1)));
+ if(canvas.width!==pixels||canvas.height!==pixels)canvas.width=canvas.height=pixels;
+ const fx=deathFx(view,state,reduced);
+ g.setTransform(pixels/BOARD,0,0,pixels/BOARD,0,0);
+ g.translate(fx.dx,fx.dy);
+ const circle=(x:number,y:number,r:number,color:string|CanvasGradient)=>{g.fillStyle=color;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();};
+ const xmas=christmas();
+ // Grass, extended past the edges so a shake never exposes blank pixels.
+ const grass=g.createLinearGradient(0,0,BOARD,BOARD);
+ grass.addColorStop(0,xmas?'#f7fafd':'#c8de94');grass.addColorStop(1,xmas?'#dbe7f2':'#a4c976');
+ g.fillStyle=grass;g.fillRect(-8,-8,BOARD+16,BOARD+16);
+ for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){g.fillStyle=(x+y)%2?(xmas?'#ffffff40':'#ffffff0b'):(xmas?'#5b86b014':'#3664260a');g.fillRect(x*CELL,y*CELL,CELL,CELL);}
+ if(xmas){for(let y=18;y<BOARD;y+=90)for(let x=20;x<BOARD;x+=90)drawSnowflake(g,x,y,5,'#8fb3cf',.45);}
+ else{
   g.strokeStyle='#5b843a29';g.lineWidth=1.4;g.lineCap='round';
-  for(let y=18;y<BOARD;y+=90)for(let x=20;x<BOARD;x+=90) {
-    g.beginPath();g.moveTo(x,y+4);g.quadraticCurveTo(x-5,y,x-3,y-4);
-    g.moveTo(x,y+4);g.quadraticCurveTo(x+3,y+1,x+4,y-2);g.stroke();
-  }
-  }
-  if(state.food) {
-    const r=FOOD_RADIUS*CELL;
-    g.save();g.globalAlpha=reducedMotion?1:.85+.15*Math.min(1,Math.max(0,(view.time-view.foodAt)/200));g.translate(state.food.x*CELL+15,state.food.y*CELL+15);
-    g.fillStyle=xmas?'#27466a2e':'#25472425';g.beginPath();g.ellipse(0,r+2,r,2,0,0,Math.PI*2);g.fill();
-    // At Christmas the food is a bauble; its solid disk is the same FOOD_RADIUS, the cap sits above it.
-    if(xmas){drawBauble(g,0,0,r,FESTIVE_FOOD[(state.food.x+state.food.y*SIZE)%FESTIVE_FOOD.length]!);g.restore();}
-    else {
-    // Stem/leaf and shadow are decorative; the solid fruit disk is exactly FOOD_RADIUS.
-    g.strokeStyle='#70462e';g.lineWidth=1.8;g.beginPath();g.moveTo(0,-r+1);g.lineTo(1,-r-4);g.stroke();
+  for(let y=18;y<BOARD;y+=90)for(let x=20;x<BOARD;x+=90){g.beginPath();g.moveTo(x,y+4);g.quadraticCurveTo(x-5,y,x-3,y-4);g.moveTo(x,y+4);g.quadraticCurveTo(x+3,y+1,x+4,y-2);g.stroke();}
+ }
+ // Apple (or bauble) with a springy pop-in.
+ // Until the drawn head reaches an apple the model already ate, keep showing that apple.
+ const pending=pendingEat(view),apple=pending?.cell??state.food;
+ if(apple){
+  const k=pending?1:foodScale(view,reduced),r=FOOD_R;
+  if(k>0){
+   g.save();g.translate(px(apple.x),px(apple.y));
+   g.fillStyle=xmas?'#27466a2e':'#25472425';g.beginPath();g.ellipse(0,r+2,r*Math.min(1,k),2,0,0,Math.PI*2);g.fill();
+   g.scale(k,k);
+   if(xmas)drawBauble(g,0,0,r,festiveFood(apple));
+   else{
+    g.strokeStyle='#70462e';g.lineWidth=1.8;g.lineCap='round';g.beginPath();g.moveTo(0,-r+1);g.lineTo(1,-r-4);g.stroke();
     g.fillStyle='#36783e';g.beginPath();g.ellipse(4,-r-2,3,1.8,-.4,0,Math.PI*2);g.fill();
     const red=g.createRadialGradient(-r*.3,-r*.4,0,0,0,r);red.addColorStop(0,'#ffb386');red.addColorStop(.4,'#ef6552');red.addColorStop(1,'#bd303c');
-    circle(0,0,r,red);circle(-r*.35,-r*.35,1,'#ffe4c8');g.restore();
-    }
+    circle(0,0,r,red);circle(-r*.35,-r*.35,1.4,'#ffe4c8');
+   }
+   g.restore();
   }
-  const pose=projectSnake(state,view,reducedMotion);
-  const path=()=>{g.beginPath();pose.path.forEach((p,i)=>i?g.lineTo(p.x*CELL+15,p.y*CELL+15):g.moveTo(p.x*CELL+15,p.y*CELL+15));};
-  g.lineJoin='round';g.lineCap='round';
-  g.save();g.translate(0,2.5);path();g.strokeStyle=xmas?'#2a456840':'#31552e40';g.lineWidth=BODY_RADIUS*CELL*2;g.stroke();g.restore();
-  path();g.strokeStyle=xmas?XMAS.redDark:'#36733d';g.lineWidth=BODY_RADIUS*CELL*2;g.stroke();
-  const body=g.createLinearGradient(0,0,BOARD,BOARD);body.addColorStop(0,xmas?'#e8414f':'#92ce69');body.addColorStop(1,xmas?XMAS.redDeep:'#68ae53');
-  path();g.strokeStyle=body;g.lineWidth=BODY_RADIUS*CELL*2-2;g.stroke();
-  if(xmas) {
-    // Green bands along the same path, like a festive stocking stripe; geometry is unchanged.
-    g.save();g.lineCap='butt';g.setLineDash([CELL*.42,CELL*.58]);path();g.strokeStyle=XMAS.green;g.lineWidth=BODY_RADIUS*CELL*2-2;g.stroke();g.restore();
+ }
+ // Body: shadow, outline, gradient fill, highlight; widths taper to the tail and bulge after a swallow.
+ const bulges=bulgePositions(view,reduced),total=spine.length;
+ const widths=spine.points.map(p=>TUBE*taper(p.s,total)*bulge(p.s,bulges,total));
+ g.save();g.globalAlpha=fx.fade;
+ g.save();g.translate(0,2.5);strokeSpine(g,spine,widths,0,xmas?'#2a456840':'#31552e40',TUBE);g.restore();
+ strokeSpine(g,spine,widths,0,xmas?XMAS.redDark:'#36733d',TUBE);
+ const body=g.createLinearGradient(0,0,BOARD,BOARD);body.addColorStop(0,xmas?'#e8414f':'#92ce69');body.addColorStop(1,xmas?XMAS.redDeep:'#68ae53');
+ strokeSpine(g,spine,widths,-2,body,TUBE);
+ const pts=spine.points;
+ const trace=()=>{g.beginPath();pts.forEach((p,i)=>i?g.lineTo(px(p.x),px(p.y)):g.moveTo(px(p.x),px(p.y)));};
+ if(xmas&&pts.length>1){
+  // Stocking stripes travel with the body rather than sliding along it.
+  g.save();g.lineCap='butt';g.lineJoin='round';g.setLineDash([CELL*.42,CELL*.58]);g.lineDashOffset=-(state.ticks+(state.phase==='running'&&state.bonk===0?state.elapsed/135:0))*CELL;
+  trace();g.strokeStyle=XMAS.green;g.lineWidth=TUBE*.6;g.stroke();g.restore();
+ }
+ if(pts.length>1){g.save();g.translate(-.5,-1.5);trace();g.strokeStyle='#c5e99545';g.lineWidth=5;g.lineCap='round';g.lineJoin='round';g.stroke();g.restore();}
+ // Head rig.
+ const hx=px(spine.head.x),hy=px(spine.head.y),lost=state.phase==='lost';
+ const open=mouth(state,view,spine.head,reduced),scale=chompScale(view,reduced),lid=blink(view,state,reduced),flick=tongue(view,state,reduced);
+ let push=0;
+ if(state.bonk===1&&state.phase==='running'&&!reduced)push=.12*Math.sin(Math.PI*Math.min(1,state.elapsed/135));
+ if(lost&&!reduced)push=.08;
+ g.save();g.translate(hx+Math.cos(view.angle)*push*CELL,hy+Math.sin(view.angle)*push*CELL);g.rotate(view.angle);g.scale(scale,scale);
+ const R=HEAD_R;
+ const head=g.createRadialGradient(-2,-3,1,0,0,R);head.addColorStop(0,xmas?'#8fdc9f':'#c8e98a');head.addColorStop(.65,xmas?'#3aa760':'#9bd367');head.addColorStop(1,xmas?XMAS.greenDeep:'#66a94e');
+ // The head is a disc with a wedge cut out for the mouth; the inside shows through the cut.
+ const jaw=open*.9/2;
+ if(jaw>.02){
+  g.fillStyle='#244734';g.beginPath();g.moveTo(R*.05,0);g.arc(0,0,R*.96,-jaw,jaw);g.closePath();g.fill();
+  g.fillStyle='#bd303c';g.beginPath();g.ellipse(R*.55,0,R*.32*open,R*.12*open,0,0,Math.PI*2);g.fill();
+ }
+ g.fillStyle=xmas?XMAS.greenDeep:'#36733d';g.beginPath();g.moveTo(0,0);g.arc(0,0,R+1,jaw,Math.PI*2-jaw);g.closePath();g.fill();
+ g.fillStyle=head;g.beginPath();g.moveTo(0,0);g.arc(0,0,R,jaw,Math.PI*2-jaw);g.closePath();g.fill();
+ if(flick>0){
+  g.strokeStyle='#bd303c';g.lineWidth=1.6;g.lineCap='round';const L=R+.25*CELL*flick;
+  g.beginPath();g.moveTo(R*.8,0);g.lineTo(L,0);g.moveTo(L,0);g.lineTo(L+3*flick,-2.5*flick);g.moveTo(L,0);g.lineTo(L+3*flick,2.5*flick);g.stroke();
+ }
+ if(xmas){g.save();g.translate(-R*.2,0);g.rotate(-Math.PI/2);drawSantaHat(g,0,0,R*1.15,0,.5);g.restore();}
+ const ex=.1*CELL,ey=.22*CELL,sr=.17*CELL;
+ if(lost){
+  g.strokeStyle='#274d32';g.lineWidth=2.2;g.lineCap='round';
+  for(const y of [-ey,ey]){g.beginPath();g.moveTo(ex-3.5,y-3.5);g.lineTo(ex+3.5,y+3.5);g.moveTo(ex-3.5,y+3.5);g.lineTo(ex+3.5,y-3.5);g.stroke();}
+ }else{
+  const lx=view.look.x*CELL,ly=view.look.y*CELL;
+  for(const y of [-ey,ey]){
+   g.save();g.translate(ex,y);g.scale(1,lid);
+   circle(0,0,sr,'#fbffe8');circle(lx+1,ly,.085*CELL,'#244734');circle(lx+1.6,ly-1,.9,'#fff');
+   g.restore();
+   if(lid<.95){g.strokeStyle='#36733d';g.lineWidth=1.2;g.beginPath();g.ellipse(ex,y,sr,sr*lid,0,0,Math.PI*2);g.stroke();}
   }
-  // Continuous inset highlight follows the same corners as the body, without bead-like seams.
-  g.save();g.translate(-.5,-1.5);path();g.strokeStyle='#c5e99545';g.lineWidth=5;g.stroke();g.restore();
-  const hx=pose.head.x*CELL+15,hy=pose.head.y*CELL+15;
-  g.save();g.translate(hx,hy);g.rotate(Math.atan2(pose.tangent.y,pose.tangent.x));
-  const eatAge=view.time-view.ateAt;
-  const appetite=reducedMotion?0:Math.max(0,1-eatAge/200);
-  const head=g.createRadialGradient(-2,-3,1,0,0,HEAD_RADIUS*CELL);head.addColorStop(0,xmas?'#8fdc9f':'#c8e98a');head.addColorStop(.65,xmas?'#3aa760':'#9bd367');head.addColorStop(1,xmas?XMAS.greenDeep:'#66a94e');
-  g.fillStyle=head;g.beginPath();g.arc(0,0,HEAD_RADIUS*CELL,0,Math.PI*2);g.fill();
-  // A Santa hat on the back of the head, its tip trailing behind; drawn inside the head's footprint and behind the eyes.
-  if(xmas){g.save();g.translate(-HEAD_RADIUS*CELL*.2,0);g.rotate(-Math.PI/2);drawSantaHat(g,0,0,HEAD_RADIUS*CELL*1.25,0,.5);g.restore();}
-  const lost=state.phase==='lost';
-  if(lost) {
-    // A calm facial change communicates collision without a flash or screen shake.
-    g.strokeStyle='#274d32';g.lineWidth=2;
-    for(const y of [-6,6]){g.beginPath();g.moveTo(1,y-1.5);g.lineTo(6,y+1.5);g.moveTo(1,y+1.5);g.lineTo(6,y-1.5);g.stroke();}
-  } else {
-    for(const y of [-6,6]) {
-      circle(4,y,4.5,'#fbffe8');circle(6,y,2.2,'#244734');circle(6.5,y-.8,.8,'#fff');
-    }
+ }
+ g.restore();
+ g.restore();
+ // Eating feedback: flecks of fruit and a rising "+10".
+ if(!reduced)for(const e of view.eats){
+  const age=view.clock-e.at;if(age<0||age>EAT_FX_MS)continue;
+  const cx=px(e.cell.x),cy=px(e.cell.y),colors=xmas?[festiveFood(e.cell),XMAS.gold,XMAS.green]:['#ef6552','#ffb386','#36783e'];
+  if(age<320){
+   g.globalAlpha=1-age/320;
+   for(let i=0;i<6;i++){const a=i/6*Math.PI*2+.4,d=(60+i%3*25)*age/1000+FOOD_R*.6;circle(cx+Math.cos(a)*d,cy+Math.sin(a)*d,2.5-i%2,colors[i%3]);}
   }
-  g.strokeStyle=xmas?'#14532e':'#396137';g.lineWidth=1.6;g.beginPath();
-  if(lost){g.moveTo(7,-1.5);g.lineTo(7,1.5);}else {g.arc(5,0,2.8+appetite*.5,-.7,.7);}g.stroke();g.restore();
-  if(!reducedMotion && view.eaten && eatAge>=0 && eatAge<200) {
-    // Opacity-only feedback at the consumed cell; no particles or repeated pulsing.
-    g.globalAlpha=(1-eatAge/200)*.35;g.strokeStyle='#fff4c0';g.lineWidth=2;g.beginPath();
-    g.arc(view.eaten.x*CELL+15,view.eaten.y*CELL+15,FOOD_RADIUS*CELL+3,0,Math.PI*2);g.stroke();g.globalAlpha=1;
+  if(age<600){
+   const t=age/600;g.globalAlpha=age<350?1:1-(age-350)/250;
+   g.font='15px Arcade, system-ui, sans-serif';g.textAlign='center';g.textBaseline='middle';g.lineWidth=3;g.lineJoin='round';
+   const y=cy-12-18*easeOutCubic(t);g.strokeStyle='#36733d';g.strokeText('+10',cx,y);g.fillStyle='#fff4c0';g.fillText('+10',cx,y);
   }
+  g.globalAlpha=1;
+ }
+ if(fx.flash>0){g.fillStyle='#fff4c0';g.globalAlpha=fx.flash;g.fillRect(-8,-8,BOARD+16,BOARD+16);g.globalAlpha=1;}
 }

@@ -17,6 +17,10 @@ Independently inventoried with `rg --files .agents/skills -g SKILL.md` before im
 | `.agents/skills/requesting-code-review/SKILL.md` | same Superpowers source | Prepared concrete scope, requirements and verification for independent parent review; the explicit no-extra-agents task restriction overrides the guide's reviewer-spawn example. |
 | `.agents/skills/verification-before-completion/SKILL.md` | same Superpowers source | Fresh scoped unit, complete available unit suite, TypeScript, Chromium E2E, screenshot and measured RAF evidence before handoff. |
 
+## v3 rework (grid model, animations)
+
+- `.agents/skills/game-development/SKILL.md` and `.agents/skills/animate/SKILL.md` guided the design: fixed-tick logic with interpolated rendering, an input buffer, and purposeful, short, interruptible effects that are disabled under reduced motion.
+
 # Gaps and browser documentation actually read
 
 The timing/input/scaling specialty guides target Phaser. They do not specify native DOM APIs or Snake's reversal/tail rules. Native documentation was read separately; it is not reported as an invoked skill.
