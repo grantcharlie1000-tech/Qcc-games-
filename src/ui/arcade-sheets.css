@@ -60,7 +60,7 @@ body:has(.arcade-sheet[open]) #pause-overlay{opacity:0;pointer-events:none}
 #accounts-dialog.arcade-sheet .account-status:empty{min-height:0;margin:8px 0 0}
 #accounts-dialog.arcade-sheet .account-submit{border:1px solid var(--sheet-line)}
 .arcade-sheet .account-tabs{gap:4px;padding:4px;border-radius:999px;background:var(--sheet-group);box-shadow:inset 0 0 0 1px var(--sheet-line)}
-.arcade-sheet .account-tabs .game-button{min-height:44px;padding:8px;background:transparent;color:var(--sheet-muted);font-weight:500}
+.arcade-sheet .account-tabs .game-button{min-height:48px;padding:8px;background:transparent;color:var(--sheet-muted);font-weight:500}
 .arcade-sheet .account-tabs [aria-pressed=true]{background:var(--sheet-control);color:var(--sheet-ink);font-weight:650;box-shadow:inset 0 0 0 1px var(--sheet-line)}
 .arcade-sheet :is(.setting-list,.game-menu-actions,.game-menu-options,.game-metrics,.ms-menu-section,.ff-numbers){border-radius:var(--sheet-group-radius);background:var(--sheet-group);border:0}
 .arcade-sheet .setting-list{padding-inline:14px}
