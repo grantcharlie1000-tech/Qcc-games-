@@ -2,10 +2,14 @@ import {appIcon} from '../../apps/icons';
 import {ApiError} from '../../apps/api';
 import type {Screen,ChatContext} from './context';
 import {isAuthError} from './context';
+import type {RequestRow} from '../shared';
 import {IncomingRequests,makeOutgoingRow,reconcile,type ListStore} from './list';
 
 export const USERNAME_PATTERN=/^[a-zA-Z0-9_.-]{3,24}$/;
 export const USERNAME_HELP='Usernames are 3–24 letters, numbers, dots, dashes or underscores.';
+
+/** Usernames this device asked in this page session, per login token. They come from what the person typed, never from the server, so a real and an unknown username look the same. */
+const sentThisSession=new Map<string,RequestRow[]>();
 
 /** `#/chat/add` (DESIGN 6.4). The answer never says whether a username exists; only a mutual request reads differently. */
 export class AddScreen implements Screen {
@@ -47,8 +51,18 @@ export class AddScreen implements Screen {
  private renderRequests():void {
   const data=this.store.data;if(!data||this.disposed)return;
   this.incoming.update(data.incoming);
-  this.sentSection.hidden=!data.outgoing.length;
-  reconcile(this.sentList,data.outgoing,row=>row.friend.username.toLowerCase(),makeOutgoingRow,()=>{});
+  this.renderSent();
+ }
+ private renderSent():void {
+  const friends=new Set(this.store.data?.friends.map(row=>row.friend.username.toLowerCase())??[]);
+  const rows=(sentThisSession.get(this.ctx.token()??'')??[]).filter(row=>!friends.has(row.friend.username.toLowerCase()));
+  this.sentSection.hidden=!rows.length;
+  reconcile(this.sentList,rows,row=>row.friend.username.toLowerCase(),makeOutgoingRow,()=>{});
+ }
+ private remember(username:string):void {
+  const key=this.ctx.token()??'',rows=sentThisSession.get(key)??[];
+  if(rows.some(row=>row.friend.username.toLowerCase()===username.toLowerCase()))return;
+  sentThisSession.set(key,[{friend:{username,displayName:username,avatar:null},at:new Date().toISOString()},...rows]);
  }
  private async send():Promise<void> {
   if(this.busy)return;
@@ -65,7 +79,7 @@ export class AddScreen implements Screen {
    if(answer.status==='friends'){
     text.textContent=`You and @${username} are now friends. `;
     const link=document.createElement('a');link.className='apps-link';link.href=`#/chat/with/${encodeURIComponent(username)}`;link.textContent='Open chat';text.append(link);
-   }else text.textContent=`Request sent. If @${username} accepts, they'll appear in your chats.`;
+   }else{this.remember(username);this.renderSent();text.textContent=`Request sent. If @${username} accepts, they'll appear in your chats.`;}
    p.append(text);this.result.replaceChildren(p);
    this.input.value='';this.ctx.refreshList();
   }catch(error){

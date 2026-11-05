@@ -127,15 +127,26 @@ test('Apps tab stays hidden and nothing polls when the chat backend is missing',
  await connect(context,0.05,true);
  const name=`bh_${stamp()}`;await signup(name);
  await page.goto('/');await logIn(page,name);
- // Only the one capability probe reached the chat route; the 404 hides the tab with no gap.
- await expect(page.locator('.app-tabbar .ui-tab')).toHaveCount(6);
- await expect(page.locator('.app-tabbar [data-action=apps]')).toBeHidden();
+ // Only the one capability probe reached the chat route; after the 404 the Apps tab is never added, so the bar is the shell's own five tabs.
+ await expect(page.locator('.app-tabbar .ui-tab')).toHaveCount(5);
+ await expect(page.locator('.app-tabbar [data-action=apps]')).toHaveCount(0);
+ await expect(page.locator('.app-navigation')).not.toHaveAttribute('data-apps','on');
  expect(await page.locator('.app-tabbar .ui-tab:visible').count()).toBe(5);
  await page.waitForTimeout(4000);
  expect(summaryRequests).toBe(1);
  // Direct routes still work and show their own state.
  await page.goto('/#/chat');await page.reload();
  await expect(page.locator('section.chat-view')).toBeVisible();
+});
+
+test('the five-tab bar fits 320px with 44px controls when there is no chat backend',async({page,context})=>{
+ await connect(context,0.05,true);await page.setViewportSize({width:320,height:844});await page.goto('/');await guest(page);
+ await expect(page.locator('.app-tabbar .ui-tab')).toHaveCount(5);
+ const m=await page.evaluate(()=>{const bar=document.querySelector<HTMLElement>('.app-tabbar')!,menu=document.querySelector<HTMLElement>('.app-menu')!.getBoundingClientRect();
+  return {overflow:bar.scrollWidth-bar.clientWidth,page:document.documentElement.scrollWidth<=innerWidth,widths:[...bar.querySelectorAll<HTMLElement>('.ui-tab')].map(t=>t.getBoundingClientRect().width),menu:menu.width,menuInside:menu.right<=innerWidth};});
+ expect(m.overflow).toBeLessThanOrEqual(0);expect(m.page).toBe(true);expect(m.menuInside).toBe(true);
+ for(const w of m.widths)expect(w).toBeGreaterThanOrEqual(44);
+ expect(m.menu).toBeGreaterThanOrEqual(44);
 });
 
 test('Escape still opens Study from #/social',async({page,context})=>{
@@ -148,19 +159,24 @@ test('Escape still opens Study from #/social',async({page,context})=>{
 
 for(const width of [320,390,1440])test(`six tabs fit without horizontal overflow at ${width} px width`,async({page,context})=>{
  await connect(context);await page.setViewportSize({width,height:844});await page.goto('/');await guest(page);
+ await expect(page.locator('.app-navigation')).toHaveAttribute('data-apps','on');
  await expect(page.locator('.app-tabbar .ui-tab')).toHaveCount(6);
  const metrics=await page.evaluate(()=>{
-  const bar=document.querySelector<HTMLElement>('.app-tabbar')!,tabs=[...bar.querySelectorAll<HTMLElement>('.ui-tab')],menu=document.querySelector<HTMLElement>('.app-menu')!;
+  // Below 360px the Apps tab is hidden (it moves to the Menu sheet), so measure the tabs that are shown.
+  const bar=document.querySelector<HTMLElement>('.app-tabbar')!,tabs=[...bar.querySelectorAll<HTMLElement>('.ui-tab')].filter(t=>t.getBoundingClientRect().width>0),menu=document.querySelector<HTMLElement>('.app-menu')!;
   const box=bar.getBoundingClientRect(),m=menu.getBoundingClientRect();
   return {scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth,barOverflow:bar.scrollWidth-bar.clientWidth,
    tabsInside:tabs.every(t=>{const r=t.getBoundingClientRect();return r.left>=box.left-1&&r.right<=box.right+1;}),tabW:Math.min(...tabs.map(t=>t.getBoundingClientRect().width)),
-   labels:tabs.map(t=>t.scrollWidth-t.clientWidth),menuGap:m.left-box.right,menuInside:m.right<=innerWidth,tv:getComputedStyle(tabs[2].querySelector('.tab-long')!).display};
+   labels:tabs.map(t=>t.scrollWidth-t.clientWidth),menuGap:m.left-box.right,menuInside:m.right<=innerWidth,shown:tabs.length,tv:getComputedStyle(bar.querySelector('.tab-tv')!,'::after').content};
  });
  expect(metrics.scroll).toBeLessThanOrEqual(metrics.client);
  expect(metrics.barOverflow).toBeLessThanOrEqual(1);expect(metrics.tabsInside).toBe(true);expect(metrics.menuInside).toBe(true);
  expect(Math.max(...metrics.labels)).toBeLessThanOrEqual(1);expect(metrics.menuGap).toBeGreaterThanOrEqual(0);
- expect(metrics.tabW).toBeGreaterThanOrEqual(width<360?36:44);
- expect(metrics.tv).toBe(width<440?'none':'block');
+ // f60500b: every control is at least 44 px; the 36 px allowance went with Apps moving to the Menu below 360px.
+ expect(metrics.tabW).toBeGreaterThanOrEqual(44);
+ expect(metrics.shown).toBe(width<360?5:6);
+ // Between 360 and 439px the TV tab shows a CSS-only "TV" label; its accessible name stays "TV Shows".
+ expect(metrics.tv).toBe(width>=360&&width<440?'"TV"':'none');
  await expect(page.getByRole('link',{name:'TV Shows',exact:true})).toBeVisible();
 });
 

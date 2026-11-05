@@ -1272,8 +1272,10 @@ export class MoviesView {
    const label=`Up next: S${next.season} · E${next.episode}${next.name?' — '+next.name:''}`;
    overlay.innerHTML=`<h2>${escape(label)}</h2><p class="movies-next-countdown">Playing in 10</p><div class="movies-next-actions"><button class="ui-btn primary" data-action="play-next">Play now</button><button class="ui-btn secondary" data-action="cancel-next">Cancel</button></div><div class="movies-next-bar" aria-hidden="true"><span style="width: 100%"></span></div>`;overlay.hidden=false;
    const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent=label+'. Playing in 10 seconds.';
-   // The island stays shown only while a keyboard focus is inside it. Any other focus there would sit on a hidden tab.
-   if(!this.navigation.root.querySelector(':focus-visible')){const before=document.activeElement;this.nextReturn=before===this.root||before===document.body?undefined:before;overlay.querySelector<HTMLElement>('[data-action="play-next"]')?.focus({preventScroll:true});}
+   // Shared sheet navigation moves keyboard focus out of the island and restores it after removing inert.
+   const navigationFocus=this.navigation.root.querySelector(':focus-visible');
+   if(navigationFocus)this.nextReturn=navigationFocus;
+   else{const before=document.activeElement;this.nextReturn=before===this.root||before===document.body?undefined:before;overlay.querySelector<HTMLElement>('[data-action="play-next"]')?.focus({preventScroll:true});}
    let seconds=10;this.countdown=setInterval(()=>{if(!this.preferences.autoNext()){this.cancelNext();return;}seconds--;if(seconds<=0)this.playNext();else {const count=overlay.querySelector('.movies-next-countdown');if(count)count.textContent='Playing in '+seconds;const bar=overlay.querySelector<HTMLElement>('.movies-next-bar>span');if(bar)bar.style.width=`${seconds*10}%`;}},1000);
   };
   if(this.fullscreenElement()&&(this.fullscreenElement()===this.frame||this.fullscreenElement()===this.video))void this.exitFullscreen().then(show);else show();
@@ -1283,7 +1285,8 @@ export class MoviesView {
   const back=this.nextReturn;this.nextReturn=undefined;
   const overlay=this.root.querySelector<HTMLElement>('.movies-next');const visible=overlay&&!overlay.hidden;if(overlay)overlay.hidden=true;
   const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent='';
-  if(focus&&visible)(this.isPageControl(back)?back:this.root.querySelector<HTMLElement>('.movies-screen'))?.focus({preventScroll:true});
+  // Do not claim focus for the player while shared navigation is restoring a still-inert tab or Menu.
+  if(focus&&visible&&!this.navigation.root.contains(back??null))(this.isPageControl(back)?back:this.root.querySelector<HTMLElement>('.movies-screen'))?.focus({preventScroll:true});
  }
  private playNext(){const hash=this.nextHash;this.cancelNext();if(hash&&this.preferences.autoNext()){this.confirmedPlayback='';location.hash=hash;}}
  // A control of the page itself. The root, a provider frame and a video take their own keys, so focus never rests on them.

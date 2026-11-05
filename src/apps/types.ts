@@ -11,6 +11,8 @@ export interface AppDeps {
   openApps:(trigger?:Element|null)=>void;
   /** The shell launcher's unread badge, for the island's own Apps tab (DESIGN 3.6). */
   appsBadge:AppsBadgeSubscribe;
+  /** Refresh after a Chat mutation or viewing unread messages, without waiting for the badge poll. */
+  refreshAppsBadge?:()=>Promise<void>;
 }
 
 /** The contract the shell drives: route changes, Study pausing and teardown. */

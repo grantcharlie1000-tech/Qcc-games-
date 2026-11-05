@@ -225,12 +225,9 @@ export class ListScreen implements Screen {
    return;
   }
   this.incoming.update(data.incoming);
-  const empty=!data.friends.length&&!data.outgoing.length&&!data.incoming.length;
-  type Item={kind:'f';row:ConversationRow}|{kind:'o';row:RequestRow};
-  const items:Item[]=[...data.friends.map((row):Item=>({kind:'f',row})),...data.outgoing.map((row):Item=>({kind:'o',row}))];
-  reconcile(this.list,items,item=>`${item.kind}:${item.row.friend.username.toLowerCase()}`,
-   item=>item.kind==='f'?makeFriendRow(item.row):makeOutgoingRow(item.row),
-   (el,item)=>{if(item.kind==='f')fillFriendRow(el,item.row);});
+  const empty=!data.friends.length&&!data.incoming.length;
+  const items=data.friends;
+  reconcile(this.list,items,row=>row.friend.username.toLowerCase(),makeFriendRow,fillFriendRow);
   if(empty){
    if(this.shown!=='empty'){this.shown='empty';this.slot.replaceChildren(emptyState({icon:'chat',title:'No chats yet',text:'Add a friend by their exact username. They need to accept before you can chat.',action:{label:'Add a friend',href:'#/chat/add',primary:true}}));}
   }else if(this.shown!=='rows'){this.shown='rows';this.slot.replaceChildren();}

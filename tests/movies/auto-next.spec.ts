@@ -239,6 +239,18 @@ test('keyboard focus in the separate Menu moves to Up next, which hides the navi
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();await page.clock.runFor(50);
  await expect(nav).not.toHaveAttribute('data-sheet-hidden');await expect(menu).toBeFocused();
 });
+test('explicit player focus after cancelling Up next wins over delayed navigation restoration',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await open(page);
+ const tab=island(page).locator('[data-kind="movie"]');await tab.focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');await expect(tab).toBeFocused();
+ await ended(page);await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
+ await page.evaluate(()=>new Promise<void>(resolve=>{
+  document.querySelector<HTMLButtonElement>('[data-action="cancel-next"]')!.click();
+  queueMicrotask(()=>{document.querySelector<HTMLElement>('.movies-screen')!.focus();resolve();});
+ }));
+ await expect(overlay(page)).toBeHidden();await page.clock.runFor(50);
+ await expect(page.locator('.movies-navigation')).not.toHaveAttribute('data-sheet-hidden');
+ await expect(page.locator('.movies-screen')).toBeFocused();
+});
 test('scrolling the page while Up next shows keeps the island hidden',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);await ended(page);
  const view=page.locator('.movies-view');await view.evaluate(e=>e.scrollTo(0,300));

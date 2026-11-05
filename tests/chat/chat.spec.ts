@@ -86,7 +86,7 @@ test('friend request, accept, exchange messages in two browser contexts',async({
  await page.getByRole('button',{name:'Send request'}).click();
  await expect(page.getByText(`Request sent. If @${b.name} accepts, they'll appear in your chats.`)).toBeVisible();
  await expect(page.locator('#chat-add-username')).toHaveValue('');
- // The sent request is listed on the Add screen and at the end of the chat list.
+ // The sent request is remembered by this device on the Add screen; the server no longer lists it.
  await expect(page.locator('.chat-sent').getByText('Request sent')).toBeVisible();
 
  const other=await second(browser,b.name,'#/chat');const pb=other.page;
@@ -560,4 +560,45 @@ test('reduced motion: no element.animate when motion is reduced',async({page,con
  const ran=await page.evaluate(()=>(window as unknown as {__animations:string[]}).__animations);
  expect(ran.filter(name=>name.includes('chat-entry')||name.includes('chat-group')||name.includes('chat-snap'))).toEqual([]);
  expect(ran.every(name=>name.includes('chat-pane'))).toBe(true);
+});
+
+test('a friend message that lands during your own send stays in server order',async({page,context})=>{
+ await connect(context,{pollScale:0.05});
+ const a=await user('oa'),b=await user('ob');await befriend(a,b);
+ await say(b,a,'first from friend');
+ let injected=false;
+ await page.route('**/.netlify/functions/chat?action=send**',async route=>{
+  if(!injected){injected=true;await say(b,a,'BETWEEN from friend');}
+  const req=route.request();
+  const result=await chat(new Request(req.url(),{method:req.method(),headers:req.headers(),body:req.postData()??undefined}));
+  await route.fulfill({status:result.status,headers:Object.fromEntries(result.headers),body:Buffer.from(await result.arrayBuffer())});
+ });
+ await open(page,a.name,`#/chat/with/${b.name}`);
+ await expect(entry(page,'first from friend')).toBeVisible();
+ await send(page,'MINE sent');
+ await expect(entry(page,'BETWEEN from friend')).toBeVisible({timeout:8000});
+ // Wait past a full-refresh cycle too: the order must never change.
+ await expect(entry(page,'MINE sent').locator('.chat-receipt')).toHaveText('Sent');
+ const order=async()=>(await page.locator('.chat-entry .chat-msg').allInnerTexts()).map(t=>t.trim());
+ expect(await order()).toEqual(['first from friend','BETWEEN from friend','MINE sent']);
+ await page.waitForTimeout(1500);
+ expect(await order()).toEqual(['first from friend','BETWEEN from friend','MINE sent']);
+});
+
+test('Sent requests come from this device, so a real and an unknown username look the same',async({page,context})=>{
+ await connect(context,{pollScale:0.05});
+ const a=await user('sa'),b=await user('sb');const ghost=`ghost_${stamp()}`.slice(0,24);
+ await open(page,a.name,'#/chat/add');
+ for(const name of [b.name,ghost]){
+  await page.locator('#chat-add-username').fill(name);await page.getByRole('button',{name:'Send request'}).click();
+  await expect(page.getByText(`Request sent. If @${name} accepts, they'll appear in your chats.`)).toBeVisible();
+ }
+ const rows=page.locator('.chat-sent .chat-row');
+ await expect(rows).toHaveCount(2);
+ for(const name of [b.name,ghost])await expect(rows.filter({hasText:`@${name}`})).toContainText('Request sent');
+ // A fresh page (no memory of this session) learns nothing from the server.
+ await page.reload();
+ await expect(page.getByRole('heading',{name:'Add a friend',level:1})).toBeVisible();
+ await page.waitForTimeout(600);
+ await expect(page.locator('.chat-sent .chat-row')).toHaveCount(0);
 });

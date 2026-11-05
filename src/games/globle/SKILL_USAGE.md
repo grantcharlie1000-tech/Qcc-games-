@@ -5,7 +5,7 @@
 | `.agents/skills/using-superpowers/SKILL.md` | obra/superpowers | Loaded at session start as AGENTS.md requires; the user's detailed brief served as the approved design, so no separate brainstorming round was held. |
 | `.agents/skills/game-development/SKILL.md` | vudovn/ag-kit | Kept a pure state machine (`model.ts`: evaluate → apply → stats) separate from input and rendering (`index.ts`, `globe.ts`). |
 | `.agents/skills/game-development/web-games/SKILL.md` | vudovn/ag-kit | Lazy loading of the 3D chunk and data, pause when hidden, low-power WebGL renderer, no CDN or remote assets. |
-| `.agents/skills/svg-skill/SKILL.md` | svg-skill upstream | Cover uses the 320×410 viewBox with `title`/`desc`, shared `defs`, no text; it is generated from the real Natural Earth outlines by `scripts/build-globle-cover.mjs`. |
+| `.agents/skills/svg-skill/SKILL.md` | svg-skill upstream | Cover uses the 320×410 viewBox with `title`/`desc`, shared `defs`, no text; it is generated with the shared library poster system from the real Natural Earth outlines by `scripts/generate-posters.mjs`. |
 
 # Gaps and documentation read
 

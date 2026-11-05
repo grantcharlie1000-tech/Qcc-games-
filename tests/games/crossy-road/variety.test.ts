@@ -4,17 +4,17 @@ import {createRun} from '../../../src/games/crossy-road/rules';
 import {HOP_TIME, PLATFORM_GRACE, roadGapMin, type Lane} from '../../../src/games/crossy-road/config';
 
 describe('revision five terrain', () => {
-  it('starts new runs on the varied generation revision', () => {
-    expect(createRun(11).worldVersion).toBe(5);
+  it('is no longer the revision new runs start on, but saved revision-five runs still replay it', () => {
+    expect(createRun(11).worldVersion).toBe(6);
   });
 
   it('replays seeds independently of the requested generation batch sizes', () => {
     for(const seed of [0,1,11,2024,0xffffffff]) {
-      const all=generate(initialState(seed),400).lanes;
-      let state=initialState(seed);const chunks:Lane[]=[];
+      const all=generate(initialState(seed,5),400).lanes;
+      let state=initialState(seed,5);const chunks:Lane[]=[];
       while(chunks.length<400){const next=generateChunk(state);state=next.state;chunks.push(...next.lanes);}
       expect(chunks).toEqual(all);
-      expect(generate(initialState(seed+1),400).lanes).not.toEqual(all);
+      expect(generate(initialState(seed+1,5),400).lanes).not.toEqual(all);
     }
   });
 
@@ -22,7 +22,7 @@ describe('revision five terrain', () => {
     let riverToHazard=0, sameRiverDirection=0, oppositeRiverDirection=0;
     const transitions=new Set<string>(), structures=new Set<string>();
     for(let seed=0;seed<80;seed++) {
-      const lanes=generate(initialState(seed),450).lanes;
+      const lanes=generate(initialState(seed,5),450).lanes;
       let length=0,last='';
       for(let r=5;r<lanes.length;r++) {
         const lane=lanes[r],previous=lanes[r-1],kind=lane.kind==='lily'?'river':lane.kind;
@@ -44,7 +44,7 @@ describe('revision five terrain', () => {
   it('ramps speed, obstacle density and hazardous terrain across distance', () => {
     const stats=()=>({grass:0,waterRail:0,blocked:0,roadSpeed:0,roads:0,logSpeed:0,logs:0});
     const early=stats(),late=stats();
-    for(let seed=0;seed<100;seed++) for(const lane of generate(initialState(seed),600).lanes) {
+    for(let seed=0;seed<100;seed++) for(const lane of generate(initialState(seed,5),600).lanes) {
       if(lane.row<5||lane.row>=600)continue;
       const s=lane.row<155?early:lane.row>=450?late:null;if(!s)continue;
       if(lane.kind==='grass'){s.grass++;s.blocked+=lane.blocked.filter(Boolean).length;}
@@ -61,7 +61,7 @@ describe('revision five terrain', () => {
 
   it('leaves road crossing gaps and a provable landing interval on every adjacent river pair', () => {
     for(let seed=0;seed<200;seed++) {
-      const lanes=generate(initialState(seed),400).lanes;
+      const lanes=generate(initialState(seed,5),400).lanes;
       for(const lane of lanes) {
         if(lane.kind!=='river'&&lane.kind!=='road')continue;
         for(let i=0;i<lane.movers.length;i++) {

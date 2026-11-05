@@ -34,7 +34,7 @@ example with a small local adapter or a fallback).
 | Weather | `world/weather.ts`, `world/weather-*.ts`, `render/weather*.ts` | `weather*.test.ts` |
 | Advancements and statistics | `ui/advancements.ts`, `ui/advancements-*.ts`, `ui/advancements.css` | `advancements*.test.ts` |
 | HUD and menus | `ui/hud.ts`, `ui/hud.css`, `ui/hud-*.ts`, `ui/menus*.ts` | `hud*.test.ts`, `hud*.spec.ts` |
-| Block art | `art/atlas.ts`, `art/tiles-*.ts`, `scripts/generate-blockcraft-cover.py`, `public/game-art/blockcraft/*` | `art*.test.ts` |
+| Block art | `art/atlas.ts`, `art/tiles-*.ts`, `scripts/generate-posters.mjs` (poster), `public/game-art/blockcraft/*` | `art*.test.ts` |
 | Item art | `art/items.ts`, `art/sprites-*.ts` | `item-art*.test.ts` |
 | Online play | `net/*`, `engine/players.ts` (player views: use `playersOf(game)` / `hasAuthority(game)` instead of `game.player` for anything that should also see online guests) | `net*.test.ts`, `tests/multiplayer/blockcraft-online.spec.ts` |
 

@@ -4,6 +4,7 @@ import {ApiError} from '../../apps/api';
 import {UploadItem,type UploadFailure} from '../../apps/upload-chip';
 import {codePoints,POST_MAX_CHARS,POST_MAX_MEDIA,type PostView} from '../shared';
 import type {SocialContext} from '../context';
+import {MentionSuggestions} from './mentions';
 
 export const RING_LENGTH=62.83;
 export type RingState='ok'|'warn'|'over';
@@ -27,6 +28,7 @@ export class Composer {
  private readonly helper=document.createElement('p');
  private readonly slot=document.createElement('div');
  private readonly ring:SVGCircleElement;
+ private readonly mentions:MentionSuggestions;
  private readonly count=document.createElement('span');
  private readonly submit=document.createElement('button');
  private readonly photoButton=document.createElement('button');
@@ -62,7 +64,7 @@ export class Composer {
   photo.addEventListener('click',()=>this.file.click());
   this.file.addEventListener('change',()=>{const files=[...(this.file.files??[])];this.file.value='';this.addFiles(files);});
   const spacer=document.createElement('span');spacer.className='social-spacer';
-  this.count.className='social-count';this.count.setAttribute('aria-hidden','true');
+  this.count.className='social-count';this.count.id=`composer-count-${this.id}`;ta.setAttribute('aria-describedby',`composer-helper-${this.id} composer-count-${this.id}`);
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
   svg.setAttribute('class','social-ring');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('role','presentation');
   svg.innerHTML=`<circle class="social-ring-track" cx="12" cy="12" r="10" fill="none" stroke-width="2.5"/><circle class="social-ring-arc" cx="12" cy="12" r="10" fill="none" stroke-width="2.5" stroke-linecap="round" transform="rotate(-90 12 12)" stroke-dasharray="${RING_LENGTH}" stroke-dashoffset="${RING_LENGTH}"/>`;
@@ -71,7 +73,8 @@ export class Composer {
   this.submit.addEventListener('click',()=>void this.send());
   foot.append(photo,this.file,spacer,this.count,svg,this.submit);
   this.helper.className='social-helper';this.helper.id=`composer-helper-${this.id}`;this.helper.setAttribute('aria-live','polite');
-  this.el.append(ta,this.list,this.slot,foot,this.helper,this.live);
+  this.mentions=new MentionSuggestions(ctx,ta,this.id,()=>{this.grow();this.update();options.onChange?.();});
+  this.el.append(ta,this.mentions.el,this.list,this.slot,foot,this.helper,this.live);
   this.update(true);
  }
  get text():string{return this.textarea.value;}
@@ -112,8 +115,7 @@ export class Composer {
   const n=codePoints(this.textarea.value),state=ringState(n);
   this.ring.setAttribute('stroke-dashoffset',String(ringOffset(n)));
   const svg=this.ring.ownerSVGElement!;svg.dataset.state=state;svg.style.visibility=n===0?'hidden':'visible';
-  const remaining=POST_MAX_CHARS-n;
-  this.count.textContent=n>260?String(remaining):'';this.count.dataset.state=state;
+  this.count.textContent=`${n}/${POST_MAX_CHARS}`;this.count.dataset.state=state;
   this.count.setAttribute('data-n',String(n));
   this.submit.textContent=this.sending?'Publishing…':this.options.replyTo?'Reply':'Publish';
   this.submit.disabled=!this.canPublish;
@@ -157,7 +159,7 @@ export class Composer {
   }
  }
  dispose():void {
-  this.disposed=true;
+  this.disposed=true;this.mentions.dispose();
   if(this.helperTimer!==undefined)clearTimeout(this.helperTimer);
   for(const u of this.uploads)u.dispose();this.uploads.length=0;this.el.remove();
  }
