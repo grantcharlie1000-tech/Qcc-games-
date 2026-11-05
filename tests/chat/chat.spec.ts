@@ -187,7 +187,7 @@ test('snap viewer closes on Escape and after the countdown',async({page,context}
  await expect(viewer).toHaveCount(0);
  await expect(page.locator('.chat-view')).toBeVisible();
  await expect(tiles).toHaveCount(1);
- // The second one closes itself after SNAP_VIEW_SECONDS and the ring and seconds run while it is open.
+ // The second one closes itself after SNAP_VIEW_SECONDS and the dots and seconds run while it is open.
  await tiles.first().click();
  await expect(viewer.locator('img.chat-snap-img')).toBeVisible();
  await expect(viewer.locator('.chat-snap-dot')).toHaveCount(10);await expect(viewer.locator('.chat-snap-ring')).toHaveCount(0);

@@ -178,12 +178,13 @@ test('motion frames, phone',async({page,context})=>{
  await page.locator('button.chat-snap.is-new').click();
  await expect(page.locator('#chat-snap img.chat-snap-img')).toHaveCount(1);
  await strip(page,'snap-open',{x:0,y:0,width:390,height:844},[0,55,110,220]);
- await expect.poll(()=>page.evaluate(()=>document.getAnimations().filter(a=>a instanceof CSSTransition&&a.transitionProperty==='stroke-dashoffset').length)).toBe(1);
- await page.evaluate(()=>{for(const a of document.getAnimations())if(a instanceof CSSTransition&&a.transitionProperty==='stroke-dashoffset'){a.pause();a.currentTime=0;}});
+ await expect.poll(()=>page.evaluate(()=>document.getAnimations().filter(a=>a instanceof CSSTransition&&a.transitionProperty==='opacity'&&(a.effect as KeyframeEffect).target instanceof Element&&((a.effect as KeyframeEffect).target as Element).classList.contains('chat-snap-dot')).length)).toBe(1);
+ await expect(page.locator('.chat-snap-dot')).toHaveCount(10);
+ await page.evaluate(()=>{for(const a of document.getAnimations())if(a instanceof CSSTransition&&a.transitionProperty==='opacity'&&((a.effect as KeyframeEffect).target as Element).classList.contains('chat-snap-dot')){a.pause();a.currentTime=0;}});
  const ring=await clipOf(page.locator('.chat-snap-timer'),{x:8,y:8});
  const ringShots:Buffer[]=[];
- for(const t of [0,2500,5000,7500,9900]){
-  await page.evaluate(t=>{for(const a of document.getAnimations())if(a instanceof CSSTransition&&a.transitionProperty==='stroke-dashoffset')a.currentTime=t;},t);
+ for(const t of [0,250,500,750,990]){
+  await page.evaluate(t=>{for(const a of document.getAnimations())if(a instanceof CSSTransition&&a.transitionProperty==='opacity'&&((a.effect as KeyframeEffect).target as Element).classList.contains('chat-snap-dot'))a.currentTime=t;},t);
   await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   ringShots.push(await page.screenshot({clip:ring}));
  }
@@ -242,7 +243,7 @@ for(const trigger of ['media query','app setting'] as const)test(`reduced motion
  await page.locator('button.chat-snap.is-new').click();
  await expect(page.locator('#chat-snap img.chat-snap-img')).toBeVisible();
  await page.waitForTimeout(1300);
- report.snap={waapi:await logOf(page),ringTransition:await page.locator('.chat-snap-progress').evaluate(c=>getComputedStyle(c).transitionDuration),offset:await page.locator('.chat-snap-progress').evaluate(c=>getComputedStyle(c).strokeDashoffset)};
+ report.snap={waapi:await logOf(page),dotTransition:await page.locator('.chat-snap-dot').first().evaluate(c=>getComputedStyle(c).transitionDuration),dots:await page.locator('.chat-snap-dot').count(),spent:await page.locator('.chat-snap-dot.is-spent').count(),secs:await page.locator('.chat-snap-secs').textContent()};
  await page.getByRole('button',{name:'Close photo'}).click();
  await expect(page.locator('#chat-snap')).toHaveCount(0);
  report.snapClose=await logOf(page);
@@ -255,5 +256,7 @@ for(const trigger of ['media query','app setting'] as const)test(`reduced motion
  expect((report.like as {css:unknown[]}).css).toEqual([]);expect((report.pill as {css:unknown[]}).css).toEqual([]);expect((report.sheet as {css:unknown[]}).css).toEqual([]);
  expect(report.pressTransform).toBe('none');
  expect((report.pill as {opacity:string}).opacity).toBe('1');
- expect((report.snap as {ringTransition:string}).ringTransition).toMatch(/^0s$|^0\.00001s$|^1e-05s$/);
+ expect((report.snap as {dotTransition:string}).dotTransition).toMatch(/^0s$|^0\.00001s$|^1e-05s$/);
+ // Stepped, not smooth: after 1.3 s exactly one dot has gone out and the label agrees.
+ expect((report.snap as {dots:number}).dots).toBe(10);expect((report.snap as {spent:number}).spent).toBe(1);expect((report.snap as {secs:string}).secs).toBe('9s');
 });
