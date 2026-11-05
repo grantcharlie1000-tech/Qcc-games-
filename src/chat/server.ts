@@ -146,17 +146,14 @@ export function createChatHandler(db:Database,store:MediaStore|null):(request:Re
    ORDER BY COALESCE(lm.created_at,greatest(c1.created_at,c2.created_at)) DESC,a.username`,[me]);
   const requests=(sql:string)=>db.query(sql,[me]).then(result=>result.rows.map((row):RequestRow=>({friend:friendOf(row),at:row.at})));
   const blockedWith=(other:string)=>`NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=${other}) OR (b.blocker_id=${other} AND b.blocked_id=$1))`;
-  const [incoming,outgoing]=await Promise.all([
-   requests(`SELECT ${profileColumns},${ts('r.created_at')} AS at FROM chat_contacts r JOIN accounts a ON a.id=r.owner_id LEFT JOIN social_profiles sp ON sp.account_id=a.id
-    WHERE r.contact_id=$1 AND NOT EXISTS(SELECT 1 FROM chat_contacts mine WHERE mine.owner_id=$1 AND mine.contact_id=r.owner_id) AND ${blockedWith('r.owner_id')} ORDER BY r.created_at DESC,a.username`),
-   requests(`SELECT ${profileColumns},${ts('r.created_at')} AS at FROM chat_contacts r JOIN accounts a ON a.id=r.contact_id LEFT JOIN social_profiles sp ON sp.account_id=a.id
-    WHERE r.owner_id=$1 AND NOT EXISTS(SELECT 1 FROM chat_contacts back WHERE back.owner_id=r.contact_id AND back.contact_id=$1) AND ${blockedWith('r.contact_id')} ORDER BY r.created_at DESC,a.username`)
-  ]);
+  // Sent requests are deliberately not listed: the request endpoint answers the same for real and unknown usernames, and echoing only real accounts here would undo that.
+  const incoming=await requests(`SELECT ${profileColumns},${ts('r.created_at')} AS at FROM chat_contacts r JOIN accounts a ON a.id=r.owner_id LEFT JOIN social_profiles sp ON sp.account_id=a.id
+    WHERE r.contact_id=$1 AND NOT EXISTS(SELECT 1 FROM chat_contacts mine WHERE mine.owner_id=$1 AND mine.contact_id=r.owner_id) AND ${blockedWith('r.owner_id')} ORDER BY r.created_at DESC,a.username`);
   return {
    friends:friends.rows.map((row):ConversationRow=>({
     friend:friendOf(row),unread:Number(row.unread),
     last:row.lm_kind?{kind:row.lm_kind,mine:row.lm_sender===me,viewed:!!row.lm_viewed,at:row.lm_at}:null
-   })),incoming,outgoing
+   })),incoming
   };
  }
 
