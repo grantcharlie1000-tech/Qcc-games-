@@ -46,7 +46,7 @@ system. Neither connects to, imports from or proxies any third-party account.
   - Mode **"7 days"**: messages are deleted **7 days after they were sent**, whether viewed or not.
   - Either friend can change the mode; a system line records the change in the chat.
   - **Unviewed** messages and **unopened snaps** are deleted **30 days** after sending.
-  - **Save in chat** (press-and-hold or the message menu) keeps a text message until it is unsaved, **up to 90 days**. Snaps cannot be saved.
+  - **Keep message** (press-and-hold or the message menu) keeps a text message until it is unsaved, **up to 90 days**. Snaps cannot be saved.
   - **Unsend**: the sender can delete any of their messages for both people at any time.
   - **Delete conversation** removes every message in the conversation for both people, together with snap images not yet opened.
   - The server purges expired rows on every Chat request (bounded batches). The Netlify adapter also runs as a scheduled function each hour.

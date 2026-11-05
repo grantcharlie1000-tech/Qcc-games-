@@ -31,9 +31,9 @@ Screenshots: `docs/evidence/social-chat/` (phone 390×844 and desktop 1440×900)
 - **Friends only:** send a request to an exact username; the reply always reads "Request sent", so nobody can probe which accounts exist. The other person accepts or declines. There are no suggestions and no directory.
 - **Chat list:** incoming requests sit on top. Each friend shows an original status icon plus words: "New photo", "3 new messages", "They've seen it", "Not seen yet", "You've seen it", "They've seen your photo". Shapes, not only colours, tell text and photos, sent and received, and new and opened apart.
 - **Conversation:** messages are grouped under the sender's name, with day separators and a "New" line. Sending shows the message straight away, with Retry if it fails. New messages arrive every 4 s while you're looking and are announced to screen readers.
-- **Photos (snaps):** view once. Tap to open full-screen with a 10 s countdown ring. Once closed, the server has already deleted the photo and the row shows "They've seen it". The app says plainly that screenshots can't be blocked on the web.
+- **Photos (snaps):** view once. Tap to open full-screen with a 10 s countdown of ten dots. Once closed, the server has already deleted the photo and the row shows "They've seen it". The app says plainly that screenshots can't be blocked on the web.
 - **Message menu** (long-press, right-click or the "…" button):
-  - **Save in chat** keeps a text message up to 90 days.
+  - **Keep message** keeps a text message up to 90 days.
   - **Unsend** deletes it for both people.
   - **Report** copies only that message's text for moderators.
 - **Chat info:**
