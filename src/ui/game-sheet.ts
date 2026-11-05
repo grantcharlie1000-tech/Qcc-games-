@@ -54,12 +54,12 @@ function populate(element:HTMLDivElement,options:GameSheetOptions,existingButton
   },{signal});
   for(const name of ['pointerdown','pointerup','touchstart','touchend'] as const)element.addEventListener(name,event=>event.stopPropagation(),{signal});
   // Games often bind Enter/Space on window. Consume keys only while the play
-  // area owns focus, so a focused dock or native sheet retains its own keys.
+  // area owns focus, so the dock, leaderboard and native sheets retain their keys.
   window.addEventListener('keydown',event=>{
     if(element.hidden||element.closest('[hidden]')||document.querySelector('dialog[open]'))return;
     if(pause&&pause!==element&&!pause.hidden)return;
     const active=document.activeElement;
-    if(active instanceof HTMLElement&&active.closest('.game-dock,dialog,input,textarea,select'))return;
+    if(active instanceof HTMLElement&&active.closest('.game-dock,.lb-sidebar,dialog,input,textarea,select'))return;
     if(active instanceof HTMLElement&&element.contains(active)&&active!==button&&active.closest('button,a,summary'))return;
     if(event.key==='Enter'||event.key===' '){
       event.preventDefault();event.stopImmediatePropagation();

@@ -22,6 +22,12 @@ body.in-game #pause-overlay{border-radius:16px}
 .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=claimline],[data-game-id=quad-clash]) .game-surface{background:transparent}
 .game-dock{background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;position:relative;order:2;flex:0 0 56px;width:min(100%,560px);height:56px;margin:0 auto;padding:2px;display:flex;align-items:center;justify-content:center;gap:10px;z-index:30;font-family:var(--font-sans)}
 .game-dock>.game-glass{position:relative;border-radius:999px;height:52px;min-height:52px;min-width:0}
+/* The dock already has the shared clear lens. Extra rim shadows and the
+   masked specular outline boxed each control in. Remove only that decorative
+   frame; leave refraction/tint, keyboard focus, and accessibility solids alone. */
+.game-dock>.arcade-glass.game-glass::before,
+.game-dock>.arcade-glass.game-glass:hover::before{box-shadow:none}
+.game-dock>.arcade-glass.game-glass>.ui-glass-glow{background:none;box-shadow:none}
 .game-dock>.ui-tab{flex:0 0 52px;min-width:52px;display:flex;flex-direction:row;gap:8px;padding:0;font-size:14px;font-weight:550}
 .game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){display:none}
 .game-dock>.ui-tab svg{width:24px;height:24px;flex:none}

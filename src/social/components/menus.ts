@@ -15,7 +15,7 @@ export function openMenu(trigger:HTMLElement,title:string,items:MenuItem[],host:
    const button=document.createElement('button');
    button.type='button';button.setAttribute('role','menuitem');button.className=`social-menu-item${item.danger?' is-danger':''}`;
    button.innerHTML=`${appIcon(item.icon)}<span></span>`;button.querySelector('span')!.textContent=item.label;
-   button.addEventListener('click',event=>{event.stopPropagation();done(event.detail===0);trigger.focus({preventScroll:true});setTimeout(item.run,0);});
+   button.addEventListener('click',event=>{event.stopPropagation();done(event.detail===0);trigger.focus({preventScroll:true});item.run();});
    container.append(button);
   }
  };

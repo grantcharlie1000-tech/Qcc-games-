@@ -113,11 +113,11 @@ All live in `src/apps/` (`apps.css`, `ui.ts`) with the `apps-` class prefix, so 
 
 Both apps mount like Movies (qcc-design-system.md section 4): `section.social-view` / `section.chat-view`, `position:fixed; inset:0 0 auto; height:100dvh; overflow:auto; overscroll-behavior:contain; z-index:30; background:var(--c-bg); color:#fff; font:15px/1.45 var(--font-sans); color-scheme:dark`. `body.social-active` / `body.chat-active` hide `.app-navigation` (add both to the `src/style.css` line 8 and 10–11 rules). Each view builds its own island with `createSectionNavigation('social' | 'chat')` (extend the scope union in `src/ui/navigation.ts`) and binds `autoHideTabbar(bar, this.root)`.
 
-**Top bar** `.apps-top.ui-header` (copy `.movies-top`): fixed, `top:env(safe-area-inset-top,0px)`, transparent, `pointer-events:none`; `.ui-header-inner` `padding:6px max(12px, env(safe-area-inset-left)) 6px max(12px, env(safe-area-inset-right))`, 24px gutters from 640. Children are `.arcade-glass.floating-glass-group[data-glass-tone=light]` groups, `min-height:44px; padding:4px; pointer-events:auto; --glass-ink:#fff`, bound with `bindFloatingGroups`. Buttons inside: 36px min-height, `border-radius:20px`, no border, inherit colour; icon-only buttons are 36×36 inside a 44 group (the group is the touch target).
+**Top bar** `.apps-top.ui-header`: fixed. Chat retains `top:env(safe-area-inset-top,0px)`, a transparent surface and `pointer-events:none`. Social uses an opaque `var(--c-bg)` surface at `top:0`, safe-area top padding and a 64px inner row so post authors and media do not show through the controls; `.ui-header-inner` `padding:6px max(12px, env(safe-area-inset-left)) 6px max(12px, env(safe-area-inset-right))`, 24px gutters from 640. Children are `.arcade-glass.floating-glass-group[data-glass-tone=light]` groups, `min-height:44px; padding:4px; pointer-events:auto; --glass-ink:#fff`, bound with `bindFloatingGroups`. Buttons inside: 36px min-height, `border-radius:20px`, no border, inherit colour; icon-only buttons are 36×36 inside a 44 group (the group is the touch target).
 
 - **Brand group** `a.apps-brand` (left): 28px app tile mark + wordmark (16/18/800, `letter-spacing:-.025em`). Phone: "Social" / "Chat". From 768: "QCC Social" / "QCC Chat". Below 360px the wordmark is hidden; the link keeps `aria-label="QCC Social home"`.
 - **Back group** (left, replaces the brand on child routes): one 36×36 button, `appIcon('back')` 20px, `aria-label` names the destination ("Back to feed", "Back to chats").
-- Content starts at `padding-top:var(--app-top)` and ends at `padding-bottom:calc(var(--app-bottom) + 16px)`.
+- Content starts at `padding-top:var(--app-top)`. Chat ends at `padding-bottom:calc(var(--app-bottom) + 16px)`; Social reserves `calc(var(--app-bottom) + 32px)` below its layout and matching scroll clearance for the last post.
 
 **Island** (bottom): the standard `.section-navigation` with the app's tabs and the shell's menu circle (`data-action=menu`, calls the `openMenu` callback as Movies does). Tabs use `appIcon` nav twins (outline at rest, fill when `aria-current=page`).
 
@@ -127,6 +127,8 @@ Both apps mount like Movies (qcc-design-system.md section 4): `section.social-vi
 | Chat | Chats `chat` `#/chat` · Add friend `add-friend` `#/chat/add` · Apps `apps` (button) |
 
 Set `aria-current="page"` on the tab for the current route yourself (nothing does it today). The Apps tab is `button.ui-tab[data-action=apps][aria-haspopup=dialog]` and carries the unread badge (3.6).
+
+In landscape viewports at most 500px high, navigation uses a 52px bar and 8px gap while retaining 44px-high tab targets. Expensive glass refraction maps rebuild at the settled size rather than every width-animation frame; interrupted transitions restore the current geometry.
 
 ### 3.2 Avatar `.apps-avatar`
 
@@ -175,7 +177,7 @@ For non-blocking errors and rate limits. `role="status"` (errors that block a ju
 
 ### 3.9 Sheets
 
-Every overlay is a `dialog.ui-glass-sheet` opened with `openSheet(dialog, trigger)`, with the standard head (`form[method=dialog].dialog-head > h2 + button.icon-button[aria-label="Close …"]`). That gives the existing open/close motion, backdrop, focus and fallbacks. App sheets: launcher (`#apps-dialog`), compose (`#social-compose`), photo viewer (`#social-photo`), report (`#apps-report`), confirm (`#apps-confirm`), shortcuts (`#social-shortcuts`), message menu on phone (`#chat-message-menu`), chat info (`#chat-info`), send photo (`#chat-send-photo`), snap viewer (`#chat-snap`, full-screen variant, 6.5). Add each id to the Escape cancel chain (qcc-design-system.md 3.5).
+Every overlay is a `dialog.ui-glass-sheet` opened with `openSheet(dialog, trigger)`, with the standard head (`form[method=dialog].dialog-head > h2 + button.icon-button[aria-label="Close …"]`). That gives the existing open/close motion, backdrop, focus and fallbacks. Social compose, post-options and shortcuts dialogs use an opaque surface and dimmed backdrop. Clipboard actions start during the click and announce "Link copied", or show a persistent manual-copy fallback. App sheets: launcher (`#apps-dialog`), compose (`#social-compose`), photo viewer (`#social-photo`), report (`#apps-report`), confirm (`#apps-confirm`), shortcuts (`#social-shortcuts`), message menu on phone (`#chat-message-menu`), chat info (`#chat-info`), send photo (`#chat-send-photo`), snap viewer (`#chat-snap`, full-screen variant, 6.5). Add each id to the Escape cancel chain (qcc-design-system.md 3.5).
 
 ### 3.10 Skeletons `.apps-skeleton`
 
@@ -213,7 +215,7 @@ phone 390 (bottom sheet, existing .ui-glass-sheet geometry)
 │ │ Posts, replies│ │ Friends-only  │  │  13/1.4 rgb(255 255 255/.72)
 │ │ and follows   │ │ messages      │  │
 │ └───────────────┘ └───────────────┘  │
-│ [ Back to games ]                    │  only when opened inside Social/Chat
+│ [ Games library ]                    │  only when opened inside Social/Chat
 │ Not end-to-end encrypted. Reports go │  .menu-note
 │ to QCC moderators.                   │
 └──────────────────────────────────────┘
@@ -223,7 +225,7 @@ phone 390 (bottom sheet, existing .ui-glass-sheet geometry)
 - Tile mark: `appIcon('social-tile')` / `appIcon('chat-tile')`, 64×64, inside `span.apps-tile-mark` with `color:var(--social-accent)` / `var(--chat-accent)` (the mark is tinted by `currentColor`). The Chat tile badge sits on the mark's top-right.
 - The current app's tile has `aria-current="page"` and a 2px inset ring `box-shadow:inset 0 0 0 2px rgb(255 255 255 / .5)`.
 - Selecting a tile closes the sheet, then navigates.
-- "Back to games" is `a.game-button.secondary` to `#/collection`, full width, `margin-top:12px`.
+- "Games library" is `a.game-button.secondary` to `#/collection`, full width, `margin-top:12px`.
 - Note copy: "Not end-to-end encrypted. Reports go to QCC moderators."
 - Opened from the shell Apps tab, the Social island Apps tab and the Chat island Apps tab, always with the trigger for `--sheet-origin`.
 
@@ -255,7 +257,7 @@ Compose, report, confirm, photo viewer and shortcut help are sheets, not routes.
 | --- | --- |
 | < 640 | One column, full width. Posts edge to edge (`padding:12px 16px`). |
 | 640–1099 | One column, `max-width:600px; margin:0 auto; border-inline:1px solid var(--line)`. |
-| ≥ 1100 | Main column 600px + right rail 320px, `gap:32px`, centred (total 952px). Rail is `position:sticky; top:var(--app-top)` and holds: search field (links to the search route on Enter), "Keyboard shortcuts" panel (the list in 11.3, plus "Press ? for help"), and the safety note. No suggestions, no trends. |
+| ≥ 1100 | Main column 600px + right rail 320px, `gap:32px`, centred (total 952px). Rail is `position:sticky; top:var(--app-top)` and holds: search field (links to the search route on Enter), "Keyboard shortcuts" panel with a "Show shortcuts" button (the full list appears only in the modal), and the safety note. No suggestions, no trends. |
 
 The scroll container is `.social-view`. The island floats over the bottom at every width.
 
@@ -264,7 +266,7 @@ The scroll container is `.social-view`. The island floats over the bottom at eve
 ```
 phone 390×844                                 desktop 1440×900 (≥1100)
 ┌────────────────────────────────────┐       ┌───────────────────────────────────────────────────────┐
-│(◎ Social)        (Following|Discover)│       │      (◎ QCC Social)            (Following|Discover)    │
+│(◎)     (Following|Discover)   (✎)   │       │      (◎ QCC Social)       (Following|Discover) (✎)     │
 │                                    │       │      ┌──────────── 600 ──────────┐  ┌──── 320 ────┐   │
 │  [ 3 new posts ]  ← pill, sticky    │       │      │(av) Write a post…   [photo]│  │ [search…  ] │   │
 │ ────────────────────────────────── │       │      │────────────────────────────│  │ Shortcuts   │   │
@@ -274,16 +276,16 @@ phone 390×844                                 desktop 1440×900 (≥1100)
 │      └──────────────────────────┘  │       │      │     ↩ 2   ♡ 14   ⋰         │                    │
 │      ↩ 2      ♡ 14      ⋰          │       │      │────────────────────────────│                    │
 │ ────────────────────────────────── │       │      └────────────────────────────┘                    │
-│                              (✎)   │ FAB   │                 ( island, centred 440 )   (≡)          │
+│                                    │       │                 ( island, centred 440 )   (≡)          │
 │ (⌂ Home|⌕|∿|☺|∷ Apps)       (≡)   │       └───────────────────────────────────────────────────────┘
 └────────────────────────────────────┘
 ```
 
-- Top bar: brand group left; `.apps-segmented` (Following, Discover) in a glass group on the right. From 1100, the top bar inner width is 952px and the segmented control sits at the right end of the 600px main column (`grid-template-columns:600px 320px; gap:32px`).
+- Top bar: brand group, `.apps-segmented` (Following, Discover), then a 44px New post button. Below 440px, the Social wordmark is hidden to preserve room. From 1100, the top bar inner width is 952px and the compose control leaves 352px for the rail and gutter, keeping the controls above the 600px feed.
 - Feed list: `div[role=feed][aria-busy][aria-label="Following"]` of `article.social-post` (5.4). 20 per page; the next page loads when the last post is within 1.5 viewport heights; a "Show more posts" secondary button is always rendered after the last post as the keyboard fallback. End: `p.apps-end` "You're all caught up." (13px `--c-400`, centred, `padding:24px`).
 - **New posts pill** `button.social-new-pill`: polled every 60 s while visible (⚑, SPEC sets no Social interval). If the reader is within 64px of the top, merge silently. Otherwise show the pill: `position:sticky; top:calc(var(--app-top) + 8px); margin:0 auto; z-index:5; display:flex; width:max-content; height:36px; padding:0 14px; gap:8px; border-radius:999px; background:var(--social-accent); color:var(--social-accent-ink); font:700 14px/1 var(--font-sans); box-shadow:var(--sh-lg)`, `appIcon('back')` rotated 90° (up arrow) 16px. Copy "1 new post" / "N new posts". Tap: scroll to top (instant under reduced motion), merge, focus the first new post. Scrolling to the top also merges and removes it. Never inserts above the reader automatically.
-- **Compose FAB** (`< 1100`): `button.social-fab[aria-label="New post"]` with `appIcon('compose')` 24px; 56×56 circle, `background:#fff; color:#000; box-shadow:0 10px 28px -8px rgb(0 0 0 / .6)`, `position:fixed; right:max(16px, calc(env(safe-area-inset-right) + 16px)); bottom:calc(var(--tabbar-h) + var(--tabbar-gap) + env(safe-area-inset-bottom) + 16px); z-index:45`. At 390px its centre lines up with the menu circle. Hidden on thread, settings and search routes.
-- **Inline composer** (`≥ 1100`, Following only): an `.apps-panel`-less row at the top of the column, `padding:12px 16px; border-bottom:1px solid var(--line)`: 44px avatar, a one-line field "Write a post" that expands into the full composer (5.6) in place on focus. No FAB at this width.
+- **Compose control**: `button.social-fab[aria-label="New post"]` with a 22px `appIcon('compose')` in a 44×44 circle. It is a static child of the top bar at every width, never a floating control over post media or empty states. Hidden on thread, settings and search routes.
+- **Inline composer** (`≥ 1100`, Following only): an `.apps-panel`-less row at the top of the column, `padding:12px 16px; border-bottom:1px solid var(--line)`: 44px avatar, a one-line field "Write a post" that expands into the full composer (5.6) in place on focus. The top-bar compose control also remains available at this width.
 
 ### 5.4 Post card `article.social-post`
 
@@ -322,7 +324,7 @@ States of a post:
 | --- | --- |
 | Deleted with replies (tombstone) | Same grid; avatar slot is a 44px circle with `1.5px dashed var(--c-700)`; text "This post was deleted" 15 `--c-400`; no header, no actions. Not clickable. |
 | Hidden by reports, author's view | Above the body: `div.social-flag` `display:flex; gap:8px; padding:8px 10px; border-radius:12px; background:rgb(255 185 0 / .10); color:var(--c-amber); font:600 13px/1.4`, `appIcon('alert')` 16px: "Hidden while reviewed. Only you can see this post." |
-| Hidden or unavailable, other viewers | Thread placeholder like the tombstone: "This post is unavailable". Never says why. |
+| Hidden or unavailable, other viewers | Resolved information icon and heading "Post unavailable" with "This post may have been deleted or is no longer visible to you." The single back control remains in the header; no ghost avatar or irrelevant New post control. The copy does not reveal the specific reason. |
 | Sending (own new post) | Inserted at the top at `opacity:.6` with time "Sending…"; actions disabled. On failure, the post is removed and its text goes back into the composer with the notice. |
 
 ### 5.5 Thread (`#/social/post/<id>`)
@@ -367,18 +369,19 @@ phone
 │ └──────────────────────────────────┘ │
 │ [thumb][thumb][thumb]                │  72×72, radius 12, gap 8 (section 10)
 │ ──────────────────────────────────── │
-│ (▣ photo)              14 (◔)  [Publish] │
+│ (▣ photo)          266/280 (◔) [Publish] │
 │ 14 characters left                   │  helper / reason line, 13px
 └──────────────────────────────────────┘
 ```
 
-- Textarea: no border, `background:transparent`, `color:#fff`, placeholder `color:var(--c-400)` ("Write a post" / "Write a reply"), `resize:none`, `aria-label="Post text"`, `aria-describedby` = helper line id. Counting is Unicode code points (`codePoints()` from `src/social/shared.ts`).
+- Textarea: no border, `background:transparent`, `color:#fff`, placeholder `color:var(--c-400)` ("Write a post" / "Write a reply"), `resize:none`, `aria-label="Post text"`, `aria-describedby` includes the helper and numeric count ids. Counting is Unicode code points (`codePoints()` from `src/social/shared.ts`).
 - Footer row `display:flex; align-items:center; gap:12px; padding-top:12px; border-top:1px solid rgb(255 255 255 / .1)`.
   - Photo button `apps-icon-btn` with `appIcon('photo')`, `aria-label="Add photos"`, opens `input[type=file][accept="image/*"][multiple]`. Hidden when media is not configured (`SocialMe.media === false` or a 503 `media_not_configured`) or 4 photos are attached.
   - **Ring** `svg.social-ring` 24×24, `viewBox="0 0 24 24"`, `role="presentation"`: track `circle r=10 fill=none stroke=var(--c-700) stroke-width=2.5`; progress `circle r=10 stroke-width=2.5 stroke-linecap=round transform="rotate(-90 12 12)" stroke-dasharray=62.83 stroke-dashoffset=62.83*(1 - min(n/280,1))`. Colour: `--social-accent` up to 260; `--social-warn` 261–280; `--social-danger` above 280 (full ring). Hidden when the text is empty.
-  - **Count** `span.social-count` 13/1 `--font-mono`, tabular, `min-width:3ch; text-align:right`: shown only from 261 (remaining "19" … "0") and over the limit ("-12", `--social-danger`, 700).
+  - **Count** `span.social-count` 13/1 `--font-mono`, tabular, `min-width:3ch; text-align:right`: always shows used/limit, starting at "0/280". Above 280 it keeps the actual count (for example "292/280") and uses `--social-danger` with weight 700.
   - Publish `.ui-btn.primary` pill, label **"Publish"** (reply mode **"Reply"**). Disabled when: empty with no photos; over 280; a photo is not Ready; already sending (then the label is "Publishing…").
 - Helper line `p.social-helper` 13/1.4 `--c-400`, `min-height:18px`, `aria-live="polite"`, updated at most once a second: "N characters left" (261–280), "Too long by N characters" (`--social-danger`), "Wait for photos to finish uploading", "Write something or add a photo" (only after a Publish attempt). Empty otherwise. One message at a time, in this order: too long, waiting for photos, characters left, the after-attempt hint. The numeric count beside the ring stays visible whatever the helper says.
+- **Mentions**: a standalone `@` offers authors from the visible posts; typing a username searches eligible people with a 300ms debounce. Only the username token is sent, not the draft. Up/Down selects a suggestion, Enter inserts it, Escape dismisses it, and pointer selection is supported. Moving the caret inside a handle replaces the complete token without corrupting its suffix; keyboard selection scrolls only the suggestion list. Empty/error states keep manual typing available.
 - Closing with text or photos: confirm sheet "Discard this post?" with "Keep editing" (secondary) and "Discard" (danger). The draft is kept in memory per mode (new post, or reply keyed by parent id) until published or discarded; never persisted to storage.
 - Success: close the sheet, insert the post at the top of Following (or as the first reply), move focus to it, announce "Post published." in the shell `#announcer`.
 
@@ -408,6 +411,7 @@ phone 390
 - Counts: plain text, not links (no follower lists in SPEC).
 - Tabs (3.5): Posts, Replies, Photos ⚑. Photos tab shows a 3-column grid of photo tiles (`aspect-ratio:1; gap:2px`) linking to their posts.
 - Blocked by me: replace bio, counts and tabs with an `.apps-empty`: "You blocked @sam" / "You won't see each other's posts. Unblocking doesn't restore follows." / button "Unblock". Blocked by them, or the account doesn't exist: "This account is unavailable" (identical for both cases).
+- Own profiles without a photo show an Add photo link when uploads are available. An empty Posts tab offers "Write your first post"; the compose control remains in the header instead of covering the empty state.
 - Own profile top bar shows a settings button (`appIcon('settings')`, `aria-label="Social settings"`) in a right-hand glass group.
 
 ### 5.8 Search (`#/social/search`)
@@ -434,7 +438,7 @@ phone 390
 
 Back button to own profile; `h1` "Settings". Sections are `.apps-panel` blocks with `h2` above each (`margin:24px 16px 8px`; panels `margin:0 16px`; from 640 inside the 600 column).
 
-1. **Profile**: avatar (80px preview + "Change photo" / "Remove" small secondary), banner (3:1 preview + "Change banner" / "Remove"), "Display name" input (≤40, counter "12/40" right-aligned 13px), "Bio" textarea (≤160, counter), Save primary pill (disabled until changed; "Saved" notice on success). Fields use the sheet field look on a panel: `min-height:44px; padding:10px 12px; border-radius:12px; background:rgb(255 255 255 / .06); border:1px solid transparent; font:16px/1.3 var(--font-sans)`. Photo controls hide when media is not configured; the note "Photos are unavailable right now." replaces them.
+1. **Profile**: avatar (80px preview + "Change photo" / "Remove" small secondary), banner (3:1 preview + "Change banner" / "Remove"), "Display name" input (≤40, counter "12/40" right-aligned 13px), "Bio" textarea (≤160, counter), Save primary pill (disabled until changed; "Saved" notice on success). Fields use the sheet field look on a panel: `min-height:44px; padding:10px 12px; border-radius:12px; background:rgb(255 255 255 / .06); border:1px solid transparent; font:16px/1.3 var(--font-sans)`. When media uploads are unavailable, Change photo/Change banner are disabled and the unavailable note is shown, but existing photos can still be removed. Remove cancels that image's replacement upload before staging deletion; Save persists it. Cancelling a replacement restores the state that preceded that upload, including an earlier staged removal.
 2. **Keyboard**: switch row "Single-key shortcuts" (default on; stored per device under `social:shortcuts` with `store.write`), and "Show shortcuts" link button opening `#social-shortcuts`.
 3. **Blocked accounts**: rows (32px avatar, `@handle`, "Unblock" small secondary). Empty: "You haven't blocked anyone." Unblock asks nothing and shows the notice "Unblocked @sam. Follows aren't restored."
 4. **Your data**: text "Delete everything you've posted or sent in QCC Social and QCC Chat." and the danger button "Delete all my Social and Chat data" → confirm (7.4).
@@ -567,7 +571,7 @@ phone 390×844 (island hidden)
   - Camera `button.chat-camera` 44×44 circle `background:rgb(255 255 255 / .10)`, `appIcon('camera')` 20px, `aria-label="Send a photo"`; opens `input[type=file][accept="image/*"]` (no `capture`, so phones offer camera or library). Hidden when media is not configured.
   - `textarea` 1–5 rows, `min-height:44px; padding:11px 16px; border-radius:22px; background:rgb(255 255 255 / .08); border:1px solid transparent; font:16px/1.4 var(--font-sans); color:#fff`, placeholder "Message Sam", `aria-label="Message to Sam"`, `maxlength` none (count in JS).
   - Send `button.chat-send` 44×44 circle, `background:var(--chat-accent); color:var(--chat-accent-ink)`, `appIcon('send')` 20px, `aria-label="Send message"`. Disabled when empty, over 1000, or sending: `background:rgb(255 255 255 / .10); color:var(--c-500)`.
-- Enter sends on fine pointers; Shift+Enter inserts a newline. On coarse pointers Enter inserts a newline (send button only). Ignore Enter while composing (IME).
+- Enter sends on both fine and coarse pointers; Shift+Enter inserts a newline. Ignore Enter while composing (IME), including legacy keyCode 229. The send button stays available on touch keyboards.
 - From 900 characters show `span.chat-count` "87 left" (12px, over 1000 "-12" in `--c-red`) above the right end of the field.
 - Can't send (blocked, friendship gone, 403): composer replaced by `p.chat-closed` 14 `--c-400` centred: "You can't send messages in this chat."
 
@@ -643,7 +647,7 @@ Full-screen dialog: `width:100vw; height:100dvh; max-width:none; max-height:none
 | Load failed | `.apps-empty` with `alert` icon and "Try again" secondary | "Couldn't load this." / "Check your connection and try again." |
 | Offline (`navigator.onLine === false`) | notice under the top bar, keeps any content already shown | "You're offline. New posts and messages will load when you're back online." |
 | Service down (502/503 other than media) | load-failed layout | "Social is unavailable right now. Try again soon." / "Chat is unavailable right now. Try again soon." |
-| Media not configured (503 `media_not_configured`, or `SocialMe.media === false`) | hide every photo, camera, avatar and banner upload control; text keeps working; no message except in settings | settings: "Photos are unavailable right now." |
+| Media not configured (503 `media_not_configured`, or `SocialMe.media === false`) | hide compose/camera upload controls and disable profile replacement controls; text and removal of existing profile photos keep working | settings: "Photos are unavailable right now." |
 | Rate limited (429, `Retry-After` honoured) | inline notice next to the control; the control stays enabled after the wait | table 7.2 |
 | Storage full (507) | inline notice | "Photo storage is full right now. Try again later." |
 | Not found | `.apps-empty` | "This page doesn't exist." / "Back to feed" or "Back to chats" |
@@ -727,7 +731,7 @@ Delete all data adds a field before the buttons: label "Type your username to co
 Two rules, each readable without colour:
 
 - **Shape = what it is.** Circle = text message. Diamond = photo (view-once). Person = friend request. System lines use the timer.
-- **Treatment = where it is.** Broken outline (four gaps) = sent, not seen yet. Ring with a check = opened by your friend. Solid = new for you. Ring with a centre dot = you've seen it.
+- **Treatment = where it is.** A check = sent, not seen yet; a confirmed send must not resemble a loading spinner. Ring with a check = opened by your friend. Solid = new for you. Ring with a centre dot = you've seen it.
 
 Colour is the third cue: text glyphs `--chat-text` (teal), photo glyphs `--chat-snap` (amber), request `--chat-pending` (grey). Status words always sit beside the glyph. The colour-blind setting (`colorBlind`) needs nothing extra because shape and words already carry the meaning.
 
@@ -735,11 +739,11 @@ This deliberately differs from the reference app: there, direction is an arrow-v
 
 | `LastMessage` (kind, mine, viewed) | Glyph (`appIcon`) | Words in the list | Colour of words |
 | --- | --- | --- | --- |
-| text, mine, not viewed | `status-text-sent` (broken circle) | Sent | `--c-400` |
+| text, mine, not viewed | `status-text-sent` (check) | Sent | `--c-400` |
 | text, mine, viewed | `status-text-opened` (= `status-opened`) | Opened | `--c-400` |
 | text, theirs, not viewed | `status-text-new` (solid circle) | New message (2+: "N new messages") | teal, 600 |
 | text, theirs, viewed | `status-text-received` (ring + dot) | Received | `--c-400` |
-| snap, mine, not opened | `status-snap-sent` (broken diamond) | Photo sent | `--c-400` |
+| snap, mine, not opened | `status-snap-sent` (check) | Photo sent | `--c-400` |
 | snap, mine, opened | `status-snap-opened` | Photo opened | `--c-400` |
 | snap, theirs, not opened | `status-snap-new` (solid diamond) | New photo | amber, 600 |
 | snap, theirs, opened | `status-snap-received` | Photo viewed | `--c-400` |
@@ -801,7 +805,7 @@ One component, `apps-upload`, driven by `src/media/client.ts` stage callbacks. S
 
 ### 11.2 Focus order
 
-- Social feed: top bar (brand, segmented) → new-posts pill (when present) → inline composer (≥1100) → posts in order (inside each: name, handle link, more, body links, media tiles, reply, like, share) → "Show more posts" → FAB → island tabs → menu circle. The FAB is after the feed so it never interrupts reading order.
+- Social feed: top bar (brand, segmented, New post) → new-posts pill (when present) → inline composer (≥1100) → posts in order (inside each: name, handle link, more, body links, media tiles, reply, like, share) → "Show more posts" → island tabs → menu circle.
 - Thread: back → ancestors → focused post → reply prompt → replies → "Show more replies".
 - Chat list: brand → requests (Accept, Decline, more per row) → chat rows → sent requests → note → island.
 - Conversation: back → peer → info → log (links, message option buttons, snap buttons) → jump pill → camera → field → send. Opening a conversation puts focus on the field on fine pointers, and on a visually hidden `h1.sr-only` "Chat with Sam" (`tabindex=-1`, first in the log's parent) on coarse pointers so the on-screen keyboard doesn't pop up.
@@ -823,13 +827,13 @@ Active only when: Social is mounted, no dialog is open, no modifier (Ctrl, Meta,
 | `?` | Shortcut help sheet `#social-shortcuts` |
 | `Esc` | Close the open sheet (existing) |
 
-The help sheet lists these in a two-column table with `.ui-kbd` keys. No shortcuts in Chat beyond Enter to send.
+The help sheet lists these in a two-column table with `.ui-kbd` keys, centered in the viewport with a dimmed backdrop. The sidebar contains only an entry point, not a duplicate shortcuts table. No shortcuts in Chat beyond Enter to send.
 
 ### 11.4 Targets, colour, text
 
 - Every interactive element is at least 44×44 (visual size may be smaller; extend the hit area with padding or a transparent `::before`). Exception: the shell's tab bar below 360px (section 4.1).
 - Adjacent icon actions keep ≥8px between hit areas.
-- Status is never colour alone (sections 1, 8). Liked = filled icon + `aria-pressed` + count; saved = tint + pin + "Saved"; over-limit = red + negative number + helper text; unread = weight + words + count badge.
+- Status is never colour alone (sections 1, 8). Liked = filled icon + `aria-pressed` + count; saved = tint + pin + "Saved"; over-limit = red + used/limit count + helper text; unread = weight + words + count badge.
 - Text never uses `--c-500` or darker (4.35:1 fails on black).
 - Respect `prefers-contrast:more` and `prefers-reduced-transparency` through the existing glass and sheet fallbacks; app-specific translucent fills (composer bar, sticky field rows) become `background:#000` under both.
 - `forced-colors:active`: status glyphs use `currentColor` so they follow `CanvasText`; the saved tint gets `border:1px solid CanvasText`.
