@@ -1,11 +1,13 @@
 import type {AppDeps} from '../apps/types';
 import type {SocialClient} from './client';
-import type {PostView,SocialMe} from './shared';
+import type {PostView,SocialMe,Author} from './shared';
 
-export interface NoticeOptions {role?:'status'|'alert';action?:{label:string;run:()=>void};icon?:'alert'|'info'|null;sticky?:boolean}
+export interface NoticeOptions {role?:'status'|'alert';action?:{label:string;run:()=>void};icon?:'alert'|'info'|'check'|null;sticky?:boolean}
 export interface ComposeOptions {replyTo?:PostView;trigger?:Element|null}
 /** What every Social screen and component gets from the view (the controller). */
 export interface SocialContext {
+ /** People already visible in this view, used locally for bare @ suggestions. */
+ mentionCandidates?:()=>Author[];
  readonly client:SocialClient;
  readonly deps:AppDeps;
  /** The scroll container (section.social-view). */

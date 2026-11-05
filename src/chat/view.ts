@@ -75,7 +75,7 @@ export class ChatView implements AppView {
    wide:()=>this.wideQuery.matches,
    notify:(text,options)=>this.notify(text,options),announce:text=>this.announce(text),
    fail:(error,fallback,retry)=>this.fail(error,fallback,retry),signedOut:()=>this.signedOut(),
-   go:hash=>this.go(hash),refreshList:()=>this.store.refresh(),unreadFor:username=>this.store.unreadFor(username)
+   go:hash=>this.go(hash),refreshList:()=>{this.store.refresh();void deps.refreshAppsBadge?.();},unreadFor:username=>this.store.unreadFor(username)
   };
   this.store=new ListStore(this.ctx);
   this.topbar.className='apps-top ui-header';

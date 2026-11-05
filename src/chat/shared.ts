@@ -7,7 +7,7 @@ export interface Friend {username:string;displayName:string;avatar:string|null}
 export interface LastMessage {kind:'text'|'snap'|'system';mine:boolean;viewed:boolean;at:string}
 export interface ConversationRow {friend:Friend;last:LastMessage|null;unread:number}
 export interface RequestRow {friend:Friend;at:string}
-export interface ChatList {friends:ConversationRow[];incoming:RequestRow[];outgoing:RequestRow[]}
+export interface ChatList {friends:ConversationRow[];incoming:RequestRow[]}
 export interface MessageView {id:string;kind:'text'|'snap'|'system';mine:boolean;body:string|null;snap:{opened:boolean}|null;createdAt:string;viewedAt:string|null;saved:boolean}
 export interface ConversationView {friend:Friend;retention:Retention;messages:MessageView[]}
 export interface ChatSummary {unread:number;requests:number}

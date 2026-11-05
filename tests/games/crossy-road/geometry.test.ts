@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {carGeometry,truckGeometry,trainGeometry,logGeometry,lilyGeometry,signalPostGeometry,lampGeometry,treeGeometry,mergeVehicle} from '../../../src/games/crossy-road/models';
+import {carGeometry,truckGeometry,trainGeometry,logGeometry,lilyGeometry,signalPostGeometry,lampGeometry,treeGeometry,mergeVehicle,chickenGeometry,ufoGeometry} from '../../../src/games/crossy-road/models';
 import type {BufferGeometry} from 'three';
 import {ROW_DEPTH,TRAFFIC_ROW_Z,TRAIN_BASE_Y} from '../../../src/games/crossy-road/config';
 
@@ -51,11 +51,42 @@ describe('objects remain within one row of ground',()=>{
   });
 });
 
-it('stacked tree foliage has no internal horizontal caps to produce seams',()=>{
-  const tree=treeGeometry(2), index=tree.getIndex()!, normal=tree.getAttribute('normal'), position=tree.getAttribute('position');
-  for(let i=0;i<index.count;i+=3) {
-    const v=index.getX(i), y=position.getY(v);
-    if(y>0.5 && y<2.0) expect(normal.getY(v)).toBe(0);
+it('winter trees are bare: only bark and snow, a tile wide at most, and taller variants grow taller',()=>{
+  let previous=0;
+  for(const variant of [0,1,2]) {
+    const tree=treeGeometry(variant), color=tree.getAttribute('color'), b=bounds(tree);
+    for(let i=0;i<color.count;i++) {
+      // No foliage green anywhere: every vertex is bark brown (red-dominant) or snow (blue-white).
+      const r=color.getX(i), g=color.getY(i), bl=color.getZ(i);
+      expect(g>r && g>bl, `variant ${variant} vertex ${i}`).toBe(false);
+    }
+    expect(b.max.x-b.min.x).toBeLessThanOrEqual(1);expect(b.max.z-b.min.z).toBeLessThanOrEqual(1);
+    expect(b.max.y).toBeGreaterThan(previous);previous=b.max.y;
+    tree.dispose();
   }
-  tree.dispose();
+});
+
+it('the bird and the UFO both wear a red Santa hat on top',()=>{
+  for(const g of [chickenGeometry(),ufoGeometry()]) {
+    const position=g.getAttribute('position'), color=g.getAttribute('color');
+    let top=-Infinity; for(let i=0;i<position.count;i++) top=Math.max(top,position.getY(i));
+    let redNearTop=0;
+    for(let i=0;i<position.count;i++) if(position.getY(i)>top-0.25 && color.getX(i)>0.4 && color.getY(i)<0.1) redNearTop++;
+    expect(redNearTop).toBeGreaterThan(8);
+    g.dispose();
+  }
+});
+
+it('logs keep their snow and end grain untinted while the bark takes the log colour',()=>{
+  for(const len of [2,3,4] as const) {
+    const log=logGeometry(len), paint=log.getAttribute('paint'), color=log.getAttribute('color');
+    let fixedSnow=0, painted=0;
+    for(let i=0;i<paint.count;i++) {
+      if(paint.getX(i)===1) painted++;
+      else if(color.getX(i)>0.85 && color.getY(i)>0.85 && color.getZ(i)>0.85) fixedSnow++;
+    }
+    expect(painted,'painted').toBeGreaterThan(0);expect(fixedSnow,'snow').toBeGreaterThan(0);
+    const b=bounds(log);expect(b.max.x-b.min.x).toBeLessThanOrEqual(len+1e-6);
+    log.dispose();
+  }
 });

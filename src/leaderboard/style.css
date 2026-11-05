@@ -20,7 +20,10 @@ body:has(.game-view[data-game-id=minesweeper]) .lb-sidebar{bottom:calc(max(12px,
 .lb-segments{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:3px;border-radius:999px;background:rgb(0 0 0 / .22)}
 .lb-segments button{min-width:0;padding:6px 2px;border:0;border-radius:999px;background:transparent;color:rgb(255 255 255 / .75);font-size:12px}
 .lb-segments button[aria-checked=true]{background:var(--c-amber,#ffb900);color:#191919;font-weight:700}
-.lb-scroll{flex:0 1 auto;min-height:0;max-height:40vh;overflow:auto}
+/* The nested list, not the glass sheet, owns scrolling when scores overflow. */
+.lb-scroll{flex:0 1 auto;min-height:0;max-height:40vh;overflow:auto;scrollbar-width:none}
+.lb-scroll::-webkit-scrollbar{display:none}
+.lb-scroll:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:4px}
 .lb-sidebar .lb-table th:first-child,.lb-sidebar .lb-table td:first-child{width:32px}
 .lb-sidebar .lb-table th:last-child,.lb-sidebar .lb-table td:last-child{width:76px}
 .lb-sidebar .lb-table td{padding:8px 4px;font-size:13px}

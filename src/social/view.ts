@@ -20,7 +20,7 @@ import {SettingsScreen,shortcutsOn} from './screens/settings';
 import {Segmented} from './components/segmented';
 import {openComposeSheet} from './components/compose-sheet';
 import {openPhotoViewer} from './components/photo-viewer';
-import {openShortcuts,shortcutRows} from './components/shortcuts';
+import {openShortcuts} from './components/shortcuts';
 import {cardOf} from './components/post-card';
 import {closeMenus} from './components/menus';
 import {closeAppSheets} from '../apps/sheets';
@@ -90,6 +90,7 @@ export class SocialView implements AppView {
   root.className='social-view';root.setAttribute('aria-label','QCC Social');root.tabIndex=-1;
   this.ctx={
    client:this.client,deps,scroller:root,
+   mentionCandidates:()=>[...root.querySelectorAll('.social-post')].flatMap(el=>{const author=cardOf(el)?.post.author;return author?[author]:[];}),
    me:()=>this.me,token:()=>this.deps.accounts.session()?.token??null,reduced:()=>reducedMotion(deps.reducedMotion),
    notify:(text,options)=>this.notify(text,options),announce:text=>this.announce(text),
    fail:(error,fallback,retry)=>this.fail(error,fallback,retry),signedOut:()=>this.signedOut(),reloadMe:()=>this.loadMe(),
@@ -111,7 +112,7 @@ export class SocialView implements AppView {
   this.offBadge=bindAppsBadge(this.appsTab,deps.appsBadge);
   nav.menu.addEventListener('click',()=>deps.openMenu());
   container.replaceChildren(root);
-  root.append(this.topbar,this.notices,this.layout,this.fab,nav.root);
+  root.append(this.topbar,this.notices,this.layout,nav.root);
   this.hideTabbar=autoHideTabbar(nav.bar,root);
   this.buildRail();
   root.addEventListener('keydown',this.onKey);
@@ -177,7 +178,7 @@ export class SocialView implements AppView {
   this.notify('Please log in again.',{role:'alert'});
  }
  private openCompose(options:ComposeOptions={}):void {
-  if(!this.me||document.getElementById('social-compose'))return;
+  if(!this.me||document.querySelector('#social-compose[open]'))return; // a closed sheet lingers for its exit animation; appSheet replaces it
   closeMenus();
   this.closeCompose=openComposeSheet(this.ctx,{replyTo:options.replyTo,trigger:options.trigger??document.activeElement,onPosted:post=>this.onPosted(post)});
  }
@@ -263,10 +264,10 @@ export class SocialView implements AppView {
   this.topGlass?.dispose();this.segmented=undefined;
   const route=this.route,me=this.myName(),signedIn=this.signedIn();
   const brand=`<a class="apps-brand arcade-glass floating-glass-group" data-glass-tone="light" href="#/social" aria-label="QCC Social home"><span class="apps-brand-mark">${appIcon('social-tile')}</span><span class="apps-wordmark"><span class="wm-short">Social</span><span class="wm-long">QCC Social</span></span></a>`;
-  const back=(label:string)=>`<div class="apps-back-group arcade-glass floating-glass-group" data-glass-tone="light"><button type="button" class="apps-back-btn" data-action="back" aria-label="${label}">${appIcon('back')}</button></div>`;
+  const back=(label:string,title='')=>`<div class="apps-back-group arcade-glass floating-glass-group" data-glass-tone="light"><button type="button" class="apps-back-btn" data-action="back" aria-label="${label}">${appIcon('back')}</button>${title?`<h1 class="apps-top-title" tabindex="-1">${title}</h1>`:''}</div>`;
   let left=brand,right='';
   if(signedIn){
-   if(route.kind==='thread')left=back('Back to feed');
+   if(route.kind==='thread')left=back('Back to feed','Post'); // the heading lives beside the button in the header, so scrolling can never put it underneath
    else if(route.kind==='profile')left=back('Back to feed');
    else if(route.kind==='settings')left=back('Back to profile');
    if(route.kind==='profile'&&me&&route.username.toLowerCase()===me.toLowerCase())right=`<div class="apps-actions-group arcade-glass floating-glass-group" data-glass-tone="light"><a class="apps-icon-btn" href="#/social/settings" aria-label="Social settings">${appIcon('settings')}</a></div>`;
@@ -283,10 +284,12 @@ export class SocialView implements AppView {
    if(route.kind==='settings'&&me){this.go(`#/social/u/${encodeURIComponent(me)}`);return;}
    if(this.internalNav>0&&history.length>1)history.back();else this.go('#/social');
   });
+  this.topbar.querySelector('.ui-header-inner')!.append(this.fab);
   this.topGlass=bindFloatingGroups(this.topbar);
  }
  private buildRail():void {
-  this.rail.innerHTML=`<form class="social-rail-search" role="search"><input type="search" class="social-search-field" placeholder="Search people and posts" aria-label="Search people and posts" autocomplete="off" maxlength="50"><span class="social-search-icon">${appIcon('search')}</span></form><section class="apps-panel social-rail-panel" aria-label="Keyboard shortcuts"><h2>Keyboard shortcuts</h2><table class="social-shortcuts"><tbody>${shortcutRows()}</tbody></table><p class="muted">Press <kbd class="ui-kbd">?</kbd> for help</p></section><p class="social-rail-note">Posts here can be seen by other QCC players. Reports go to QCC moderators.</p>`;
+  this.rail.innerHTML=`<form class="social-rail-search" role="search"><input type="search" class="social-search-field" placeholder="Search people and posts" aria-label="Search people and posts" autocomplete="off" maxlength="50"><span class="social-search-icon">${appIcon('search')}</span></form><section class="apps-panel social-rail-panel" aria-label="Keyboard shortcuts"><h2>Keyboard shortcuts</h2><p class="muted">Navigate posts and write faster.</p><button type="button" class="ui-btn secondary apps-pill" data-action="shortcuts">Show shortcuts</button></section><p class="social-rail-note">Posts here can be seen by other QCC players. Reports go to QCC moderators.</p>`;
+  this.rail.querySelector('[data-action=shortcuts]')!.addEventListener('click',event=>openShortcuts(event.currentTarget as Element));
   this.rail.querySelector('form')!.addEventListener('submit',event=>{
    event.preventDefault();const q=this.rail.querySelector<HTMLInputElement>('input')!.value.trim();
    this.go(q?`#/social/search?q=${encodeURIComponent(q)}`:'#/social/search');

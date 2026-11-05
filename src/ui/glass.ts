@@ -1,6 +1,7 @@
 // Liquid Glass for the island: the selection pill, the jelly press, and the material behind the bar. Chromium bends its backdrop with an
 // SVG filter. Every other browser frosts the bar with its own backdrop filter, which needs no copy of the page and so cannot lag a scroll.
 // Legacy unmarked frost bars retain a scroll edge. autoHideTabbar binds this controller for both Games and Movies.
+import {observeSettledResize} from './settled-resize';
 import {bindGlassInk} from './glass-ink';
 import {bindWebglLens} from './webgl-glass';
 export interface Brand{brand:string;version?:string}
@@ -308,11 +309,23 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     else bar.style.removeProperty('--ui-glass-filter');
   };
   const live=bindWebglLens(bar,active=>{if(disposed)return;webgl=active;paint();});
+  // Stretch the decoded field inside the current bounded lens while its box
+  // morphs. Re-encoding a DPR3 PNG on every ResizeObserver notification was
+  // blocking scrolling; only the settled shape needs a fresh ray field.
+  const fitMap=(width:number,height:number)=>{
+    if(arcade){filter.setAttribute('width',String(width));filter.setAttribute('height',String(height));}
+    image.setAttribute('width',String(width));
+    image.setAttribute('height',String(height));
+  };
   // The map is rebuilt when the bar changes size or the screen's pixel density changes. A detached or hidden bar has no size, so it
   // keeps its last map. Only the backdrop has a map.
   const rebuild=()=>{
     const width=bar.offsetWidth+2*margin,height=bar.offsetHeight+2*margin,density=lensDensity(window.devicePixelRatio);
-    if(mode!=='backdrop'||!bar.offsetWidth||!bar.offsetHeight||(width===mapWidth&&height===mapHeight&&density===mapDensity))return;
+    if(mode!=='backdrop'||!bar.offsetWidth||!bar.offsetHeight)return;
+    // A cancelled morph can return to the cached PNG's size. Its live SVG
+    // bounds were stretched in between, so restore them even on a cache hit.
+    fitMap(width,height);
+    if(width===mapWidth&&height===mapHeight&&density===mapDensity)return;
     mapWidth=width;
     mapHeight=height;
     mapDensity=density;
@@ -325,9 +338,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       if(token!==mapSeq||disposed)return;
       // Match the filter region and the map exactly. Percent/object-box filter
       // regions can rescale the field when a content-sized capsule resizes.
-      if(arcade){filter.setAttribute('width',String(width));filter.setAttribute('height',String(height));}
-      image.setAttribute('width',String(width));
-      image.setAttribute('height',String(height));
+      fitMap(bar.offsetWidth+2*margin,bar.offsetHeight+2*margin);
       image.setAttribute('href',url);
       image.setAttributeNS(XLINK_NS,'xlink:href',url);
       if(!ready){filter.insertBefore(image,displace);document.body.append(svg);ready=true;}
@@ -391,8 +402,10 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   });
   observer.observe(bar,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-current','aria-pressed','data-hidden']});
   // A resize changes the tab positions with no mutation, and a size change also covers a bar that was hidden or detached.
-  const resize=typeof ResizeObserver==='function'?new ResizeObserver(()=>{rebuild();sync(false);keepEdge();}):undefined;
-  resize?.observe(bar);
+  const stopResize=observeSettledResize(bar,()=>{rebuild();sync(false);keepEdge();},()=>{
+    if(mode==='backdrop'&&ready)fitMap(bar.offsetWidth+2*margin,bar.offsetHeight+2*margin);
+    sync(false);keepEdge();
+  });
   void document.fonts?.ready.then(()=>{if(!disposed)sync(false);});
   for(const query of queries)query.addEventListener('change',applyMode);
 
@@ -406,7 +419,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       disposed=true;
       disposeInk?.();
       observer.disconnect();
-      resize?.disconnect();
+      stopResize();
       parentWatch.disconnect();
       for(const query of queries)query.removeEventListener('change',applyMode);
       densityQuery?.removeEventListener('change',onDensity);

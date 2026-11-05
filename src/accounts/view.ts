@@ -6,10 +6,10 @@ export class AccountsView {
  private signup=false;private busy=false;
  constructor(readonly client:AccountsClient,private prepare:()=>void,private done:()=>void){
   this.root.id='accounts-dialog';this.root.classList.add('ui-glass-sheet');this.root.setAttribute('aria-labelledby','accounts-title');
-  this.root.innerHTML=`<h2 id="accounts-title">Play your way</h2><p>Use an optional account to carry game saves and scores across devices, or play locally as a guest.</p>
+  this.root.innerHTML=`<h2 id="accounts-title">Play your way</h2><p class="account-intro">Use an optional account to carry game saves and scores across devices, or play locally as a guest.</p>
    <button type="button" class="game-button account-guest">Play as guest</button>
    <div class="account-tabs"><button type="button" class="game-button secondary account-login">Log in</button><button type="button" class="game-button secondary account-signup">Sign up</button></div>
-   <form><label for="account-username">Username</label><input id="account-username" name="username" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.\\-]{3,24}" required spellcheck="false" autocapitalize="none"><p class="muted">3–24 letters, digits, underscores, hyphens or dots. Your username is public on leaderboards.</p>
+   <form><label for="account-username">Username</label><input id="account-username" name="username" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.\\-]{3,24}" required spellcheck="false" autocapitalize="none"><p class="muted account-username-help">3–24 letters, digits, underscores, hyphens or dots. Your username is public on leaderboards.</p>
    <label for="account-password">Password</label><input id="account-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required>
    <div class="account-confirm" hidden><label for="account-confirm">Confirm password</label><input id="account-confirm" name="confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" disabled required></div>
    <p class="account-warning" hidden>Forgotten passwords cannot be recovered. No email or other personal information is collected. Keep your password somewhere safe.</p>
@@ -35,7 +35,14 @@ export class AccountsView {
  private status(message:string){this.root.querySelector('.account-status')!.textContent=message;}
  private clearPasswords(){for(const input of this.root.querySelectorAll<HTMLInputElement>('input[type=password]'))input.value='';}
  private guest(){this.clearPasswords();this.client.guest();this.root.close();this.done();}
- open(){if(this.root.open)return;this.mode(false);this.root.querySelector<HTMLFormElement>('form')!.reset();openSheet(this.root);}
+ open(){if(this.root.open)return;
+  const context=location.hash.match(/^#\/(chat|social)(?:\/|$)/)?.[1];
+  this.root.querySelector('#accounts-title')!.textContent=context?`Join QCC ${context==='chat'?'Chat':'Social'}`:'Play your way';
+  this.root.querySelector('.account-intro')!.textContent=context?'Log in or create a QCC account to connect with people. Use the same account for Chat and Social.':'Use an optional account to carry game saves and scores across devices, or play locally as a guest.';
+  this.root.querySelector('.account-guest')!.textContent=context?'Not now':'Play as guest';
+  this.root.querySelector('.account-username-help')!.textContent='3–24 letters, digits, underscores, hyphens or dots. '+(context?'Your username is public on your profile.':'Your username is public on leaderboards.');
+  this.root.querySelector<HTMLElement>('.account-local')!.hidden=!!context;
+  this.mode(false);this.root.querySelector<HTMLFormElement>('form')!.reset();openSheet(this.root);}
  private async submit(){
   if(this.busy)return;
   if(this.signup&&this.root.querySelector<HTMLInputElement>('#account-password')!.value!==this.root.querySelector<HTMLInputElement>('#account-confirm')!.value){this.status('Passwords do not match.');return;}

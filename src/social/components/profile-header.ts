@@ -8,6 +8,7 @@ import type {SocialContext} from '../context';
 import type {ProfileView} from '../shared';
 import {openMenu} from './menus';
 import {postLink} from './post-card';
+import {copySocialLink} from './copy-link';
 
 export const profileLink=(username:string):string=>`${location.origin}${location.pathname}#/social/u/${encodeURIComponent(username)}`;
 
@@ -35,7 +36,10 @@ export class ProfileHeader {
    more.addEventListener('click',()=>this.openMore(more));
    actions.append(this.follow,more);
   }
-  row.append(av,actions);
+  if(p.mine&&!p.avatar&&ctx.mediaEnabled()){
+   const photo=document.createElement('a');photo.className='social-add-photo';photo.href='#/social/settings';photo.setAttribute('aria-label','Add profile photo');
+   const label=document.createElement('span');label.textContent='Add photo';photo.append(av,label);row.append(photo,actions);
+  }else row.append(av,actions);
   const name=document.createElement('h1');name.className='social-profile-name';name.tabIndex=-1;name.textContent=p.displayName||p.username;
   const handle=document.createElement('p');handle.className='social-profile-handle';handle.append(document.createTextNode(`@${p.username}`));
   if(p.followsYou){const chip=document.createElement('span');chip.className='social-chip';chip.textContent='Follows you';handle.append(' ',chip);}
@@ -77,7 +81,7 @@ export class ProfileHeader {
  private openMore(trigger:HTMLElement):void {
   const p=this.profile;
   openMenu(trigger,`@${p.username}`,[
-   {label:'Copy profile link',icon:'share',run:()=>void navigator.clipboard.writeText(profileLink(p.username)).then(()=>this.ctx.notify('Link copied'),()=>this.ctx.notify(`Copy this link: ${profileLink(p.username)}`))},
+   {label:'Copy profile link',icon:'copy',run:()=>void copySocialLink(this.ctx,profileLink(p.username))},
    {label:'Report @'+p.username,icon:'report',run:()=>void reportSheet({title:'Report account',intro:"Tell us what's wrong. QCC moderators will look at it.",trigger,onUnauthorized:()=>this.ctx.signedOut(),submit:async(category,note)=>{await this.ctx.client.report({kind:'account',username:p.username,category,...(note?{note}:{})});}})},
    {label:`Block @${p.username}`,icon:'block',danger:true,run:()=>void this.block(trigger)}
   ],this.ctx.scroller);

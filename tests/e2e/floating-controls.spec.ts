@@ -5,7 +5,11 @@ for(const viewport of [{width:320,height:568},{width:390,height:844},{width:844,
   test(`all 21 games have safe floating controls without a painted banner at ${viewport.width}×${viewport.height}`,async({page})=>{
     test.setTimeout(180000);await page.setViewportSize(viewport);
     for(const id of GAME_IDS){
-      await page.goto(`/#/game/${id}`);await expect(page.locator('.loading')).toHaveCount(0);
+      await page.goto(`/#/game/${id}`);
+      // Quad Clash's mount builds its WebGL scene, then the first glass-lens canvas readback (bindGameChrome) stalls the main
+      // thread for ~6 s on the GPU queue under software GL (~10 s measured here, slower on CI), and the page cannot answer this
+      // poll meanwhile. Every other game clears in under 2 s; 45 s matches the Blockcraft boot waits.
+      await expect(page.locator('.loading')).toHaveCount(0,{timeout:45000});
       await expect(page.locator('#game-stage>*').first()).toBeVisible();
       const layout=await page.locator('.game-view').evaluate(view=>{
         const dock=view.querySelector<HTMLElement>('.game-dock')!,surface=view.querySelector('.game-surface')!,s=getComputedStyle(dock),v=getComputedStyle(view);

@@ -24,10 +24,14 @@ export class LeaderboardSidebar {
     <div class="lb-head"><div class="lb-heading">${trophy}<h2><span>Top scores</span><small></small></h2></div><button class="lb-collapse" type="button" aria-label="Hide top scores"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     ${game==='minesweeper'?`<div class="lb-segments" role="radiogroup" aria-label="Ranking">${MINESWEEPER_RANKINGS.map((key,i)=>`<button type="button" role="radio" data-key="${key}" aria-checked="${key===this.key}" tabindex="${key===this.key?0:-1}">${['Easy','Med','Hard','Score'][i]}</button>`).join('')}</div>`:''}
     <p class="lb-status muted" role="status"></p>
-    <div class="lb-scroll"><table class="lb-table"><caption class="sr-only">Top scores</caption><colgroup><col class="lb-c-rank"><col><col class="lb-c-score"></colgroup><thead class="sr-only"><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Score</th></tr></thead><tbody></tbody></table></div>
+    <div class="lb-scroll" tabindex="0" role="region" aria-label="Top scores"><table class="lb-table"><caption class="sr-only">Top scores</caption><colgroup><col class="lb-c-rank"><col><col class="lb-c-score"></colgroup><thead class="sr-only"><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Score</th></tr></thead><tbody></tbody></table></div>
     <div class="lb-actions"><button class="lb-open" type="button"></button><button class="lb-refresh" type="button" aria-label="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.5 9a7 7 0 0 1 12-2L20 12M4 12l2.5 5a7 7 0 0 0 12-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
    </div>`;
   this.root.querySelector('.lb-head small')!.textContent=title;
+  // Keep all focused-list keydowns out of game shortcuts, including Shift before
+  // Shift+Space/Tab. Native scrolling and focus movement still run; keyup may
+  // reach the game to release any controls held before focus entered the list.
+  this.root.querySelector<HTMLElement>('.lb-scroll')!.addEventListener('keydown',event=>event.stopPropagation());
   // A pointer click hands focus back to the game so Space/arrow keys keep playing instead of re-pressing a panel button.
   const toggle=(open:boolean)=>(event:Event)=>{this.setExpanded(open);if((event as MouseEvent).detail>0)document.querySelector<HTMLElement>('#game-stage')?.focus({preventScroll:true});};
   this.root.querySelector('.lb-toggle')!.addEventListener('click',toggle(true));

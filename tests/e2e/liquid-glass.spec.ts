@@ -87,7 +87,9 @@ for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
   // The lens and the glow are the bar's layers, so the tabs are the children that are neither.
-  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(6);
+  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(5);
+  // No chat backend answers here, so the Apps tab is not added and the bar is the shell's own five tabs.
+  await expect(page.locator('.app-navigation')).not.toHaveAttribute('data-apps','on');
 });
 
 for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}px, and the bar holds only its tabs`,async({page})=>{
@@ -370,9 +372,9 @@ test('the minimized island leaves a capsule with the current tab icon, at the bo
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>capsuleShown(page)).toBe(1);
   expect(await capsule.evaluate(el=>[el.tagName,el.getAttribute('aria-hidden'),el.getAttribute('tabindex'),getComputedStyle(el).borderRadius])).toEqual(['BUTTON','true','-1','999px']);
-  // The icon is a copy of the current tab's icon, centred in the adaptive glass ink: white or #0b1015.
+  // The icon is a copy of the current tab's icon and always stays white.
   expect(await capsule.locator('svg.ui-icon').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-current="page"] svg.ui-icon').evaluate(el=>el.innerHTML));
-  expect(['rgb(255, 255, 255)','rgb(11, 16, 21)']).toContain(await capsule.locator('svg.ui-icon').evaluate(el=>getComputedStyle(el).color));
+  await expect(capsule.locator('svg.ui-icon')).toHaveCSS('color','rgb(255, 255, 255)');
   const box=(await capsule.boundingBox())!;
   const icon=(await capsule.locator('svg.ui-icon').boundingBox())!;
   expect(box.width).toBeCloseTo(56,0);

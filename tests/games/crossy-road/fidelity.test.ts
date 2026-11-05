@@ -57,12 +57,12 @@ describe('reference generation revision', () => {
 
   it('stores the generation revision and accepts legacy saves as revision one', () => {
     const save=serialize(createRun(7));
-    expect(save.worldVersion).toBe(5);
-    expect(restore(save)?.worldVersion).toBe(5);
-    for (const worldVersion of [1,2,3,4]) expect(restore({...save,worldVersion})?.worldVersion).toBe(worldVersion);
+    expect(save.worldVersion).toBe(6);
+    expect(restore(save)?.worldVersion).toBe(6);
+    for (const worldVersion of [1,2,3,4,5]) expect(restore({...save,worldVersion})?.worldVersion).toBe(worldVersion);
     delete save.worldVersion;
     expect(restore(save)?.worldVersion).toBe(1);
-    expect(restore({...save,worldVersion:6})).toBeNull();
+    expect(restore({...save,worldVersion:7})).toBeNull();
     expect(generate(initialState(7,1),60).lanes).not.toEqual(generate(initialState(7,2),60).lanes);
   });
 });
