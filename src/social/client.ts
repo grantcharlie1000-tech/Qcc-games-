@@ -10,9 +10,14 @@ export interface ProfileUpdate {displayName?:string;bio?:string;avatarId?:string
 const cursorParams=(cursor?:string|null):Record<string,string>=>cursor?{cursor}:{};
 export class SocialClient {
  readonly api:AppApi;
+ /** Follow/block writes still in flight. Feed reads wait for them so a quick
+  *  Follow → Home shows the newly followed posts (read-your-writes). */
+ private readonly graphWrites=new Set<Promise<unknown>>();
+ private track<T>(write:Promise<T>):Promise<T>{const settled=write.then(()=>undefined,()=>undefined);this.graphWrites.add(settled);void settled.then(()=>this.graphWrites.delete(settled));return write;}
+ private async settledGraph():Promise<void>{if(this.graphWrites.size)await Promise.all([...this.graphWrites]);}
  constructor(token:()=>string|null,fetcher?:typeof fetch){this.api=new AppApi(SOCIAL_ENDPOINT,token,fetcher);}
  me(signal?:AbortSignal){return this.api.get<SocialMe>('me',{},signal);}
- feed(tab:FeedTab,cursor?:string|null,signal?:AbortSignal){return this.api.get<Page<PostView>>('feed',{tab,...cursorParams(cursor)},signal);}
+ async feed(tab:FeedTab,cursor?:string|null,signal?:AbortSignal){await this.settledGraph();signal?.throwIfAborted();return this.api.get<Page<PostView>>('feed',{tab,...cursorParams(cursor)},signal);}
  thread(id:string,signal?:AbortSignal){return this.api.get<ThreadView>('thread',{id},signal);}
  profile(username:string,signal?:AbortSignal){return this.api.get<ProfileView>('profile',{username},signal);}
  posts(username:string,kind:PostsKind,cursor?:string|null,signal?:AbortSignal){return this.api.get<Page<PostView>>('posts',{username,kind,...cursorParams(cursor)},signal);}
@@ -22,8 +27,8 @@ export class SocialClient {
  createPost(body:string,media:string[]=[],replyTo?:string|null){return this.api.post<PostView>('post',{body,media,...(replyTo?{replyTo}:{})});}
  deletePost(id:string){return this.api.post<{ok:true}>('delete_post',{id});}
  like(id:string,on:boolean){return this.api.post<{likes:number;liked:boolean}>('like',{id,on});}
- follow(username:string,on:boolean){return this.api.post<{followedByMe:boolean;followers:number}>('follow',{username,on});}
- block(username:string,on:boolean){return this.api.post<{blockedByMe:boolean}>('block',{username,on});}
+ follow(username:string,on:boolean){return this.track(this.api.post<{followedByMe:boolean;followers:number}>('follow',{username,on}));}
+ block(username:string,on:boolean){return this.track(this.api.post<{blockedByMe:boolean}>('block',{username,on}));}
  report(input:ReportInput){return this.api.post<{ok:true}>('report',input);}
  updateProfile(input:ProfileUpdate){return this.api.post<ProfileView>('profile',input);}
  deleteAll(){return this.api.post<{ok:true}>('delete_all',{confirm:'DELETE'});}

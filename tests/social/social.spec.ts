@@ -192,7 +192,9 @@ test('report menu submits',async({page,context})=>{
 
 test('photo post uploads through pipeline and renders thumbnail',async({page,context})=>{
  await connect(context);const a=await user('ph');await open(page,a.name);
- mediaDelay=700;
+ // The helper line updates at most once a second, so keep the upload in flight
+ // well past that window; ~1 s left the "Wait" state unobservable on slow CI.
+ mediaDelay=2500;
  try{
   await page.getByRole('button',{name:'New post'}).click();
   const sheet=page.locator('#social-compose'),publish=sheet.getByRole('button',{name:'Publish'});
