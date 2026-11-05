@@ -28,7 +28,6 @@ export const PALETTE = {
 };
 const INK = PALETTE.ink[1];
 export const TITLE_INK = PALETTE.cream[1];
-const FONT = `font-family="'Arial Rounded MT Bold','Nunito','Helvetica Neue',Arial,sans-serif" font-weight="800"`;
 
 // Hue, title accent and description per game. Card colour/ink in src/core/catalog.ts derive from these.
 export const POSTERS = {
@@ -78,7 +77,42 @@ const ellipse = (cx, cy, rx, ry, fill, o = {}) => el('ellipse', {cx, cy, rx, ry,
 const path = (d, fill, o = {}) => el('path', {d, fill, ...o});
 const line = (d, stroke, width, o = {}) => el('path', {d, fill: 'none', stroke, 'stroke-width': width, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', ...o});
 const g = (o, kids) => el('g', o, kids);
-const text = (x, y, s, size, fill, o = {}) => `<text x="${n(x)}" y="${n(y)}" font-size="${size}" fill="${fill}" text-anchor="middle" dominant-baseline="central" ${FONT}${attrs(o)}>${s}</text>`;
+// Rounded-rectangle path data, so many same-fill rectangles can merge into one <path>.
+const rr = (x, y, w, h, r = 0) => r ? `M${n(x + r)} ${n(y)}h${n(w - 2 * r)}a${n(r)} ${n(r)} 0 0 1 ${n(r)} ${n(r)}v${n(h - 2 * r)}a${n(r)} ${n(r)} 0 0 1 ${n(-r)} ${n(r)}h${n(2 * r - w)}a${n(r)} ${n(r)} 0 0 1 ${n(-r)} ${n(-r)}v${n(2 * r - h)}a${n(r)} ${n(r)} 0 0 1 ${n(r)} ${n(-r)}Z` : `M${n(x)} ${n(y)}h${n(w)}v${n(h)}h${n(-w)}Z`;
+// Lettering is drawn as rounded stroke paths, not <text>: posters load through <img>, where only device fonts
+// are available, so real glyphs would change shape from phone to phone. Each glyph sits in a 10×14 box.
+const GLYPHS = {
+  0: 'M5 0C1.5 0 .5 3.5.5 7s1 7 4.5 7 4.5-3.5 4.5-7S8.5 0 5 0Z',
+  1: 'M2 3 6 0v14',
+  2: 'M.8 3.6C1.2 1.2 3 0 5 0c2.6 0 4.4 1.6 4.4 4C9.4 7.4.6 9.6.6 14h9',
+  3: 'M1 0h8L4.4 5.8c3 0 5 1.6 5 4.2S7.4 14 4.8 14C3 14 1.6 13.3.6 12',
+  4: 'M7 14V0L.4 9.6h9.4',
+  5: 'M9 0H1.6L1 6.2c1-.6 2.3-.8 3.6-.8 2.8 0 4.8 1.8 4.8 4.3S7.4 14 4.8 14C3 14 1.6 13.3.6 12',
+  6: 'M8.4 1.2C7.6.4 6.4 0 5.2 0 2.2 0 .6 3.4.6 8c0 3.6 1.6 6 4.4 6 2.6 0 4.4-1.8 4.4-4.3S7.6 5.4 5 5.4C3 5.4 1.4 6.6.7 8.2',
+  7: 'M.6 0h8.8L4 14',
+  8: 'M5 6.4C2.6 6.4 1.2 5.1 1.2 3.2S2.6 0 5 0s3.8 1.3 3.8 3.2S7.4 6.4 5 6.4Zm0 0c2.7 0 4.4 1.5 4.4 3.8S7.7 14 5 14 .6 12.5.6 10.2 2.3 6.4 5 6.4Z',
+  9: 'M9.4 5.6C8.7 7.6 7 8.6 5 8.6 2.4 8.6.6 6.8.6 4.3S2.4 0 5 0c2.8 0 4.4 2.4 4.4 6 0 4.6-1.6 8-4.6 8-1.2 0-2.2-.4-2.8-1.2',
+  A: 'M.6 14 5 0l4.4 14M2.2 9.4h5.6',
+  J: 'M8.6 0v9.4C8.6 12.4 7 14 4.6 14 2.6 14 1.2 12.8.8 11',
+  K: 'M1.2 0v14M9.2 0 1.2 8.4M4.2 5.4 9.4 14',
+  L: 'M1.2 0v14h8',
+  N: 'M1 14V0l8 14V0',
+  P: 'M1.2 14V0h4c2.8 0 4.4 1.6 4.4 4s-1.6 4-4.4 4h-4',
+  Q: 'M5 0C1.5 0 .5 3.5.5 7s1 7 4.5 7 4.5-3.5 4.5-7S8.5 0 5 0ZM6.2 10l3.4 4',
+  S: 'M9 2C8 .7 6.6 0 5 0 2.6 0 1 1.3 1 3.5c0 4.6 8.4 2.4 8.4 7 0 2.1-1.8 3.5-4.4 3.5-2 0-3.6-.9-4.4-2.4',
+  T: 'M.4 0h9.2M5 0v14',
+  Y: 'M.6 0 5 7l4.4-7M5 7v7',
+  '+': 'M5 3.4v7.2M1.4 7h7.2',
+};
+// Same call shape as an SVG text label: centred on (x, y), size ≈ font size, cap height ≈ .72 × size.
+function text(x, y, str, size, fill, o = {}) {
+  const chars = String(str).split(''), k = size * .72 / 14, adv = 12.2, width = (chars.length * adv - 2.2) * k;
+  const glyphs = chars.map((c, i) => {
+    if (!GLYPHS[c]) throw new Error(`No glyph for ${c}`);
+    return path(GLYPHS[c], 'none', i ? {transform: `translate(${n(i * adv)} 0)`} : {});
+  }).join('');
+  return g({transform: `translate(${n(x - width / 2)} ${n(y - 7 * k)}) scale(${n(k)})`, stroke: fill, 'stroke-width': 2.7, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', fill: 'none', ...o}, glyphs);
+}
 const tone = (c, i) => PALETTE[c][i];
 const L = c => tone(c, 0), B = c => tone(c, 1), D = c => tone(c, 2);
 
@@ -248,7 +282,9 @@ art['animal-stack'] = () => {
 
 art['snake'] = () => {
   let board = rect(36, 150, 248, 238, '#000', {rx: 24, opacity: .2});
-  for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) if ((i + j) % 2 === 0) board += rect(44 + i * 29.5, 158 + j * 27.75, 29.5, 27.75, '#fff', {opacity: .04});
+  let checks = '';
+  for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) if ((i + j) % 2 === 0) checks += rr(44 + i * 29.5, 158 + j * 27.75, 29.5, 27.75);
+  board += path(checks, '#fff', {opacity: .04});
   const pts = [];
   for (let x = 250; x >= 70; x -= 26) pts.push([x, 356]);
   for (let y = 330; y >= 252; y -= 26) pts.push([70, y]);
@@ -303,7 +339,7 @@ art['solitaire'] = () => {
   const cards = [['A', 'spade', INK], ['K', 'heart', D('red')], ['Q', 'club', INK], ['J', 'diamond', D('red')]];
   let out = ground(160, 392, 130);
   cards.forEach(([rank, k, col], i) => {
-    const a = -27 + i * 18;
+    const a = -24 + i * 16;
     out += g({transform: `rotate(${a} 160 470)`, filter: SHADOW},
       rect(118, 196, 112, 160, tone('cream', 1), {rx: 14}) + rect(118, 346, 112, 10, tone('cream', 2), {rx: 5}) +
       text(136, 220, rank, 24, col) + suit(k, 136, 244, 8, col) + suit(k, 174, 290, 30, col));
@@ -430,11 +466,9 @@ art['maze-muncher'] = () => {
 };
 
 art['corn-clicker'] = () => {
-  let kern = '';
-  for (let j = 0; j < 13; j++) for (let i = 0; i < 6; i++) {
-    const x = 132 + i * 11 + (j % 2) * 5.5, y = 150 + j * 14;
-    kern += rect(x, y, 10, 13, j % 2 ? B('yellow') : L('yellow'), {rx: 4});
-  }
+  const rows = ['', ''];
+  for (let j = 0; j < 13; j++) for (let i = 0; i < 6; i++) rows[j % 2] += rr(132 + i * 11 + (j % 2) * 5.5, 150 + j * 14, 10, 13, 4);
+  const kern = path(rows[0], L('yellow')) + path(rows[1], B('yellow'));
   const cob = `<clipPath id="cob"><ellipse cx="164" cy="240" rx="40" ry="102"/></clipPath>` + ellipse(164, 240, 40, 102, D('yellow')) +
     g({'clip-path': 'url(#cob)'}, kern + rect(176, 130, 40, 230, D('orange'), {opacity: .25}));
   const husk = path('M164 380C110 360 90 300 106 250 120 300 140 330 164 340Z', B('green')) + path('M164 380C218 360 238 300 222 250 208 300 188 330 164 340Z', D('green')) + path('M164 384C140 350 136 300 146 280 152 320 160 346 164 352Z', L('green'));
@@ -490,7 +524,9 @@ art['fivefold'] = () => {
     else out += tile(x, y, s, cmap[st], {r: 10}) + text(x + s / 2, y + s / 2 + 1, word[i], 26, '#fff');
   }));
   // Keyboard hint below.
-  for (let j = 0; j < 2; j++) for (let i = 0; i < 8; i++) out += rect(38 + i * 31 + j * 15, 350 + j * 24, 26, 18, '#fff', {rx: 5, opacity: [1, 4, 9, 10].includes(i + j * 8) ? .5 : .12});
+  const keys = ['', ''];
+  for (let j = 0; j < 2; j++) for (let i = 0; i < 8; i++) keys[+[1, 4, 9, 10].includes(i + j * 8)] += rr(38 + i * 31 + j * 15, 350 + j * 24, 26, 18, 5);
+  out += path(keys[0], '#fff', {opacity: .12}) + path(keys[1], '#fff', {opacity: .5});
   return ground(160, 400, 140) + g({filter: SHADOW}, out);
 };
 
@@ -551,8 +587,10 @@ async function build(id) {
   const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="title desc">` +
     `<title id="title">${spec.title}</title><desc id="desc">Original Pocket Arcade poster, generated by scripts/generate-posters.mjs.</desc>` +
     `<defs>${st.defs}${gradientDefs()}${r.defs}</defs>${st.back}${st.spark}${r.body}</svg>\n`;
-  await writeFile(new URL(`../public/game-art/${id}/cover.svg`, import.meta.url), svg);
-  return svg.length;
+  // Round every coordinate to two decimals (svg-skill optimisation rule); hex colours contain no '.'.
+  const out = svg.replace(/-?\d*\.\d{3,}/g, m => String(+(+m).toFixed(2)));
+  await writeFile(new URL(`../public/game-art/${id}/cover.svg`, import.meta.url), out);
+  return out.length;
 }
 
 // Keeps each library card's colours in src/core/catalog.ts in step with its poster: the card colour is the

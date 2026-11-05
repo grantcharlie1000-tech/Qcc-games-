@@ -10,6 +10,9 @@ describe.each(games.map(game=>[game.id,game] as const))('%s poster',(id,game)=>{
     expect(svg).toContain('viewBox="0 0 320 410"');
     expect(svg).toMatch(/<title id="title">[^<]+<\/title>/);
     expect(svg).not.toMatch(/<script|href=|<image/);
+    // svg-skill: lettering is drawn as paths (no device-font dependency) and coordinates keep two decimals.
+    expect(svg).not.toContain('<text');
+    expect(svg).not.toMatch(/\d\.\d{3,}/);
     const stack:string[]=[],body=svg.replace(/^<\?xml[^>]*\?>/,'');
     for(const [,close,name,attrs,self] of body.matchAll(/<(\/?)([A-Za-z][\w:-]*)([^>]*?)(\/?)>/g)){
       expect(attrs.replace(/\s+[\w:-]+="[^"<]*"/g,'').trim(),`<${name}${attrs}>`).toBe('');

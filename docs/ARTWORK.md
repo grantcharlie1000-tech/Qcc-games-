@@ -21,6 +21,17 @@ bash .agents/skills/svg-skill/scripts/validate.sh public/game-art
 
 The generator writes `color`, `ink` and `accent` for each game in `src/core/catalog.ts`. The card colour is the top of the poster's stage, so the placeholder shown while the image loads matches the poster.
 
+## How the svg-skill rules apply
+
+The posters follow the installed [`svg-skill`](../.agents/skills/svg-skill/SKILL.md) (illustration scenario, quality checklist and optimisation rules):
+
+- Each file has `xmlns`, the 320×410 `viewBox`, an XML declaration, and `role="img"` with a `<title>` and `<desc>`.
+- Gradients, patterns, clip paths and the shadow filter live in `<defs>` with short ids that are unique within the file. A poster defines only the sphere gradients it uses.
+- Lettering (minesweeper numbers, ball numbers, card ranks, word tiles, `+1`) is drawn with a small rounded stroke alphabet (`GLYPHS`), not `<text>`. Posters load through `<img>`, where only device fonts are available, so real text would change shape between devices.
+- Repeated shapes that share attributes, such as the corn kernels, board checks and keyboard keys, are merged into single paths, and every coordinate is rounded to two decimals.
+- Gradients and shadows are used only where they carry meaning: the stage hue, the shading on round objects, and lifting the subject off the floor.
+- `bash .agents/skills/svg-skill/scripts/validate.sh public/game-art` (with `xmllint` when it's installed) and `tests/core/posters.test.ts` enforce these rules.
+
 ## Adding a game
 
 1. Add an entry to `POSTERS`, choosing a hue that isn't already close to its neighbours in the library.
