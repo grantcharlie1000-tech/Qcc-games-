@@ -1,5 +1,6 @@
 import {test,expect} from '../../fixtures';
 import {openGame,hook} from './helpers';
+import {AdaptiveResolution} from '../../../src/games/crossy-road/quality';
 
 test('crisp directional shadows keep the reference contrast without an offscreen shadow texture',async({page})=>{
   await openGame(page,{viewport:{width:390,height:844}});
@@ -82,7 +83,12 @@ test.describe('mobile adaptive resolution',()=>{
     });
     await page.waitForFunction(()=>document.querySelector<HTMLElement>('.crossy-road')?.dataset.perfDone==='true');
     // The budget starts at DPR 2 (780 px wide at 390 CSS px); two bad seconds drop it to DPR 1.5 and the next level needs four more.
-    expect(await page.locator('.hw-canvas').evaluate((c:HTMLCanvasElement)=>c.width)).toBe(585);
+    // The run is 140 frames x 40 ms = 5.6 s: past the first drop (2 s) but short of the second (6 s). Coupling: one more slow window
+    // (>= 6 s of bad frames, i.e. 150 frames) would give DPR 1 = 390 px. Assert that schedule from quality.ts itself, at both edges,
+    // so the 585 px expectation is derived from the controller rather than a bare constant.
+    const schedule=(frames:number)=>{const r=new AdaptiveResolution();for(let i=0;i<frames;i++)r.observe(.04);return r.cap;};
+    expect(schedule(139)).toBe(1.5);expect(schedule(140)).toBe(1.5);expect(schedule(150)).toBe(1);
+    expect(await page.locator('.hw-canvas').evaluate((c:HTMLCanvasElement)=>c.width)).toBe(390*schedule(140));
     expect((await hook(page).state()).maxRow).toBeGreaterThan(25);
   });
 });

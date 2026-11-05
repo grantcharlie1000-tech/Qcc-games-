@@ -2,7 +2,7 @@ import {test, expect, seedStudyTopic} from '../../fixtures';
 import {gameAction, openGameMenu} from '../../game-menu';
 import {advance, carDeath, expectDeathCard, hook, openGame} from './helpers';
 
-test('a DSF3 phone fills the viewport and renders at native resolution with antialiasing', async ({browser}) => {
+test('a DSF3 phone fills the viewport and renders at a DPR-2-capped buffer with antialiasing', async ({browser}) => {
   const context = await browser.newContext({baseURL: test.info().project.use.baseURL, viewport: {width: 390, height: 844}, deviceScaleFactor: 3});
   await seedStudyTopic(context);
   const page = await context.newPage();
