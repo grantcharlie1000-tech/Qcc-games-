@@ -8,6 +8,9 @@ on:
       - 'tests/core/christmas-welcome.test.ts'
       - 'tests/e2e/christmas-welcome.spec.ts'
       - 'tests/accounts/**'
+      - 'tests/apps/**'
+      - 'tests/chat/**'
+      - 'tests/social/**'
       - '.github/workflows/christmas-welcome.yml'
   workflow_dispatch:
 permissions:
@@ -40,7 +43,7 @@ jobs:
           fi
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - name: Verify welcome and account entry
-        run: xvfb-run -a npx playwright test tests/e2e/christmas-welcome.spec.ts tests/accounts/accounts.spec.ts tests/accounts/storage-full.spec.ts --project=${{ matrix.browser }} --workers=1 --reporter=list
+        run: xvfb-run -a npx playwright test tests/e2e/christmas-welcome.spec.ts tests/accounts/accounts.spec.ts tests/accounts/storage-full.spec.ts tests/apps tests/chat tests/social --project=${{ matrix.browser }} --workers=1 --reporter=list
       - uses: actions/upload-artifact@v4
         if: always()
         with:
