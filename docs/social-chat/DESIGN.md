@@ -480,11 +480,11 @@ phone 390×844
 │ (av) Mere                          │
 │      ● New message · 5m            │
 │ (av) Tama                          │
-│      ◌ Sent · 1h                   │
+│      ◌ Not seen yet · 1h           │
 │ (av) Ana                           │
-│      ✓ Opened · 3h                 │
+│      ✓ They've seen it · 3h        │
 │ (av) Rangi                         │
-│      ◉ Received · Mon              │
+│      ◉ You've seen it · Mon        │
 │ (av) Kiri                          │
 │      [req] Request sent            │
 │ Friends only. Not end-to-end       │  footer note 13 --c-400
@@ -530,7 +530,7 @@ phone 390×844 (island hidden)
 │        I saved the answers [pin] Saved│  saved message (teal tint)
 │ (av20) You · 4:05 pm               │  --c-300
 │        Yes, after tea              │
-│        ◇ Photo · Opened            │  my snap, opened
+│        ◇ Photo · They've seen it   │  my snap, opened
 │   [timer] You set messages to      │  system line
 │        disappear 7 days after sending.│
 │ (av20) Sam · 4:10 pm               │
@@ -538,7 +538,7 @@ phone 390×844 (island hidden)
 │        │ ◆ Photo · Tap to view│    │
 │        │   View once          │    │
 │        └──────────────────────┘    │
-│                    ✓ Opened        │  receipt under my last message
+│                    ✓ They've seen it │  receipt under my last message
 │ ────────────────────────────────── │
 │ (cam) [ Message Sam           ] (send)│  composer, safe-area bottom
 └────────────────────────────────────┘
@@ -559,9 +559,9 @@ phone 390×844 (island hidden)
 - **Snap items** `button.chat-snap` (incoming unopened) or `div.chat-snap` (others): `display:inline-flex; gap:10px; align-items:center; min-height:52px; padding:10px 14px; border-radius:16px; font:600 15px/1.2 var(--font-sans)`.
   - Incoming, unopened: `border:1.5px solid var(--chat-snap); background:rgb(255 185 0 / .08); color:#fff`; `status-snap-new` 20px amber; "Photo · Tap to view", second line "View once" 12/400 `--c-400`. `aria-label="Photo from Sam. View once. Opens now and is deleted after you close it."`
   - Incoming, opened: `status-snap-received` 18px, "Photo opened" 14/400 `--c-400`, no border.
-  - Mine, unopened: `status-snap-sent` 18px amber, "Photo · Sent". Mine, opened: `status-snap-opened`, "Photo · Opened".
+  - Mine, unopened: `status-snap-sent` 18px amber, "Photo · Not seen yet". Mine, opened: `status-snap-opened`, "Photo · They've seen it". Theirs, opened: "Photo · You've seen it".
 - **System line** `div.chat-system` (retention changes): centred, `appIcon('timer')` 14 + text 13/1.45 `--c-400`, `margin:14px auto`. Copy in 7.2.
-- **Receipt** under your last message, right-aligned in the group: glyph 14px + "Sent" / "Opened" 12px `--c-400`. Only on the last of your messages.
+- **Receipt** under your last message, right-aligned in the group: glyph 14px + "Not seen yet" / "They've seen it" 12px `--c-400`. Only on the last of your messages.
 - **Jump pill**: when a message arrives and the reader is more than 120px from the bottom: `button.chat-jump` "New message" with `appIcon('back')` rotated −90° (down), same geometry as the Social pill but `background:var(--chat-accent); color:var(--chat-accent-ink)`, `position:sticky; bottom:12px`, centred. Tap scrolls to the bottom.
 - Opening the conversation scrolls to the newest message (or the first unread, if any, with the separator "New" in teal above it) and marks incoming messages viewed.
 - Polling 4 s while open and visible (SPEC).
@@ -739,14 +739,14 @@ This deliberately differs from the reference app: there, direction is an arrow-v
 
 | `LastMessage` (kind, mine, viewed) | Glyph (`appIcon`) | Words in the list | Colour of words |
 | --- | --- | --- | --- |
-| text, mine, not viewed | `status-text-sent` (check) | Sent | `--c-400` |
-| text, mine, viewed | `status-text-opened` (= `status-opened`) | Opened | `--c-400` |
+| text, mine, not viewed | `status-text-sent` (check) | Not seen yet | `--c-400` |
+| text, mine, viewed | `status-text-opened` (= `status-opened`) | They've seen it | `--c-400` |
 | text, theirs, not viewed | `status-text-new` (solid circle) | New message (2+: "N new messages") | teal, 600 |
-| text, theirs, viewed | `status-text-received` (ring + dot) | Received | `--c-400` |
-| snap, mine, not opened | `status-snap-sent` (check) | Photo sent | `--c-400` |
-| snap, mine, opened | `status-snap-opened` | Photo opened | `--c-400` |
+| text, theirs, viewed | `status-text-received` (ring + dot) | You've seen it | `--c-400` |
+| snap, mine, not opened | `status-snap-sent` (check) | Photo not seen yet | `--c-400` |
+| snap, mine, opened | `status-snap-opened` | They've seen your photo | `--c-400` |
 | snap, theirs, not opened | `status-snap-new` (solid diamond) | New photo | amber, 600 |
-| snap, theirs, opened | `status-snap-received` | Photo viewed | `--c-400` |
+| snap, theirs, opened | `status-snap-received` | You've seen their photo | `--c-400` |
 | system | `timer` | Chat settings changed | `--c-400` |
 | none yet (new friendship) | `status-text-received` | You're now friends | `--c-400` |
 | outgoing request | `status-request` | Request sent | `--c-400` |
@@ -819,10 +819,10 @@ Active only when: Social is mounted, no dialog is open, no modifier (Ctrl, Meta,
 | Key | Action |
 | --- | --- |
 | `j` / `k` | Focus next / previous post (`scrollIntoView({block:'nearest'})`, instant) |
-| `o` or `Enter` (on a focused post) | Open the thread |
-| `n` | New post (compose sheet; the inline composer from 1100) |
-| `l` | Like or unlike the focused post |
+| `Enter` (on a focused post) | Open the thread |
 | `r` | Reply to the focused post |
+| `p` | New post (compose sheet; the inline composer from 1100) |
+| `h` | Like or unlike the focused post |
 | `/` | Focus search (route to search if needed) |
 | `?` | Shortcut help sheet `#social-shortcuts` |
 | `Esc` | Close the open sheet (existing) |
@@ -852,7 +852,7 @@ Curves are existing tokens only: `--ease-out` `cubic-bezier(.23,1,.32,1)` (enter
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Like pulse | Pointer tap on Like when it becomes liked (tens/day) | Feedback | WAAPI on the icon: `transform: scale(.8)→scale(1)`; plus a 1.5px rose ring `span` behind it: `transform: scale(.6)→scale(1.25)`, `opacity: .5→0` | icon 180 ms `--ease-out`; ring 280 ms `--ease-out` | A new tap cancels both (`anim.cancel()`) and applies the new state at once | — | No pulse; fill swap only |
 | 2 | Unlike | Tap on a liked Like (tens/day) | — (state change) | none | — | — | — | — |
-| 3 | Like via `l` key, any j/k move | Keyboard (100+/day) | none: keyboard disqualifies motion | none; focus moves instantly | — | — | — | — |
+| 3 | Like via `h` key, any j/k move | Keyboard (100+/day) | none: keyboard disqualifies motion | none; focus moves instantly | — | — | — | — |
 | 4 | Count roll | Your own like/unlike changes the visible count by ±1 (tens/day) | State indication | WAAPI on two stacked spans in an `overflow:hidden` box (height 1em): old `translateY(0)→(-100%)` + `opacity 1→0`; new `translateY(100%)→0` + `opacity 0→1` (reverse direction for −1) | 160 ms `--ease-out` | Cancel running roll, show the final number | — | Text swaps instantly |
 | 5 | New-posts / new-message pill | Pill appears after a poll (occasional) | Spatial consistency (content is above / below) | CSS transition on `opacity` and `transform: translateY(-8px)→0` (Social, from above); `translateY(8px)→0` (Chat jump pill, from below); enter via `@starting-style` | enter 200 ms `--ease-out`; exit 150 ms `--ease-out` back to the start offset | Transition retargets | Leaves the way it came | Appears and disappears instantly (the shell reset removes the transition); no fallback needed |
 | 6 | Composer ring progress | Every keystroke (100+/day) | none | `stroke-dashoffset` set directly, no transition | — | — | — | — |
