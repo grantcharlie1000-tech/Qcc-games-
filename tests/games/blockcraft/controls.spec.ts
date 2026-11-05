@@ -67,12 +67,21 @@ test('keyboard and mouse: walk, sprint, jump, fly, hotbar, F1/F3 and text fields
 
   // Space jumps; a quick double tap starts creative flight, then holding Space rises above the trees.
   await page.keyboard.down('Space');expect(await watchJump(page)).toBe(true);await page.keyboard.up('Space');
+  // The engine's window is 7 ticks of *simulated* time (flyTimer), and each rendered frame advances the simulation by at
+  // most 0.1 s however slow it renders. Playwright round trips between taps cost an unbounded number of slow frames, so
+  // the take-off wait and the second tap happen inside one page task: the second tap is dispatched in the animation
+  // frame that first sees the player airborne, and is consumed by the very next frame.
   for(let attempt=0;attempt<4&&!await state(page,'flying');attempt++){
-    // The second tap comes after the take-off (flight on the ground ends at once, as in vanilla), however slow the frames
-    // are: two taps read in the same frame would both land before the jump.
-    await page.keyboard.press('Space');
-    await page.waitForFunction(()=>!(window as unknown as {blockcraft:Engine}).blockcraft.player.state.onGround,undefined,{timeout:3000}).catch(()=>{});
-    await page.keyboard.press('Space');await page.waitForTimeout(800);
+    await page.evaluate(async()=>{
+      const player=(window as unknown as {blockcraft:Engine}).blockcraft.player.state;
+      const frame=()=>new Promise<void>(r=>requestAnimationFrame(()=>r()));
+      const tap=()=>{for(const type of ['keydown','keyup'])window.dispatchEvent(new KeyboardEvent(type,{code:'Space',key:' ',bubbles:true,cancelable:true}));};
+      while(!player.onGround)await frame();// a jump (and so a take-off) needs the ground
+      tap();
+      while(player.onGround)await frame();// the jump has happened: flight on the ground would end at once
+      tap();
+    });
+    await page.waitForFunction(()=>(window as unknown as {blockcraft:Engine}).blockcraft.player.state.flying===true,undefined,{timeout:5000}).catch(()=>{});
   }
   expect(await state(page,'flying')).toBe(true);
   const flyY=await state(page,'y') as number;
