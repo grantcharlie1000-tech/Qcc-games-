@@ -85,6 +85,14 @@ for(const width of [390,1440])test(`profile sticky tabs hide scrolled reply frag
    scroller.scrollTop+=el.getBoundingClientRect().top-scroller.getBoundingClientRect().top-20;
   });
   await expect.poll(async()=>Math.round((await tabs.boundingBox())!.y)).toBe(top);
+  if(index===0){
+   console.log('PROFILE_GEOMETRY',JSON.stringify(await tabs.evaluate(el=>{
+    const css=getComputedStyle(el),pseudo=getComputedStyle(el,'::before'),root=el.closest('.social-view')!;
+    return {className:el.className,top:css.top,rect:el.getBoundingClientRect().toJSON(),root:root.getBoundingClientRect().toJSON(),pseudo:{content:pseudo.content,height:pseudo.height,top:pseudo.top,bottom:pseudo.bottom,background:pseudo.backgroundColor},hit:document.elementFromPoint(el.getBoundingClientRect().x+100,30)?.outerHTML};
+   })));
+   const rect=(await tabs.boundingBox())!;
+   console.log('PROFILE_CROP_PNG',(await page.screenshot({clip:{x:rect.x,y:0,width:rect.width,height:150}})).toString('base64'));
+  }
   // The middle of the floating toolbar must not reveal a detached author or image
   // above the tabs. Exclude the intentionally visible back/settings controls.
   await expect.poll(async()=>{
@@ -109,7 +117,7 @@ for(const width of [390,1440])test(`profile sticky tabs hide scrolled reply frag
  await expect(page.getByRole('heading',{name:'Settings',level:1})).toBeVisible();
  await page.evaluate(h=>{location.hash=h;},`#/social/u/${a.name}/replies`);
  await expect(cards).toHaveCount(12);await headerVisible();
- await page.getByRole('link',{name:'Back to feed',exact:true}).click();
+ await page.getByRole('button',{name:'Back to feed',exact:true}).click();
  await expect(page.locator('.social-profile')).toHaveCount(0);
 });
 
