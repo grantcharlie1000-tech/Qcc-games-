@@ -1,0 +1,12 @@
+/* Keep the site's native glass, typography, responsive sheet and motion rules. */
+#christmas-welcome{position:relative;width:min(400px,calc(100% - 32px));padding:0;overflow:visible;text-align:center}
+/* The snow's edge uses the sheet's own radius, so both corners stay aligned at every width. */
+#christmas-welcome::before{content:'';display:block;position:absolute;inset:-1px -1px auto;width:auto;height:32px;margin:0;opacity:1;box-sizing:border-box;border:6px solid #fafdff;border-bottom:0;border-radius:var(--sheet-radius) var(--sheet-radius) 0 0;background:none;pointer-events:none;mask-image:linear-gradient(#000 45%,transparent 100%)}
+/* Snow rests above the sheet, rather than hanging into the message. */
+#christmas-welcome .christmas-snow{position:absolute;left:16px;bottom:calc(100% - 7px);width:calc(100% - 32px);height:42px;pointer-events:none;filter:drop-shadow(0 2px 1px #00233620)}
+#christmas-welcome .christmas-welcome-content{padding:24px 16px 16px;max-height:calc(100dvh - 88px);overflow:auto;border-radius:inherit}
+#christmas-welcome h2{margin:0 0 10px;font:650 23px/1.25 var(--font-sans);letter-spacing:-.02em}
+#christmas-welcome p{margin:0 0 20px;color:var(--sheet-muted);font-size:16px;line-height:1.5}
+#christmas-welcome form{margin:0}
+#christmas-welcome .game-button{width:100%;min-height:48px}
+@media(forced-colors:active){#christmas-welcome .christmas-snow,#christmas-welcome::before{display:none}}

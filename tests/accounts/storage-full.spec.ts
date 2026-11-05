@@ -10,6 +10,7 @@ async function setup(context:BrowserContext,account=true){
   if(account)localStorage.setItem('pocket-arcade:v1:accounts:session',JSON.stringify({token:'acct_'+'a'.repeat(64),username:'Ada'}));
   localStorage.setItem('pocket-arcade:v1:save:snake',JSON.stringify(save));
   localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');
+  localStorage.setItem('qcc:christmas-welcome:2026:ada','seen');
   sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');
  },{account,save});
  await context.route('**/.netlify/functions/accounts**',async route=>{
