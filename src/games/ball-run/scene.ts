@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import {registerGlassFrameSource,notifyGlassFrame} from '../../ui/glass-frame-source';
 import { rollAngle } from './roll';
 import { RetainedInstances } from './instances';
+import { christmas } from '../../festive/festive';
 import { CONFIG, DYING_DURATION, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
@@ -22,10 +23,19 @@ export interface BallRunScene {
   dispose(): void;
 }
 
-const PALETTE = {
+const ORIGINAL_PALETTE = {
   void: 0x000000, track: 0x333b74, grid: 0x929bfb, sphere: 0xe500b1, block: 0xb51cfa, boost: 0x00e7ef,
   tower: 0x232764, towerLine: 0x8890f2, white: 0xffffff,
 };
+/** Christmas: a snowy night. Only colours and light change; every mesh, pool and transform is shared
+ * with the original, so draw calls and collision boxes are identical. Icy road with snow lane lines,
+ * frosted slate towers fading into a midnight fog, festive blocks and evergreen-and-gold boost gates. */
+const FESTIVE_PALETTE: typeof ORIGINAL_PALETTE = {
+  void: 0x13284f, track: 0x4f8fc0, grid: 0xeaf5ff, sphere: 0xd8263a, block: 0xd8263a, boost: 0xf4c430,
+  tower: 0xffffff, towerLine: 0xaec6e0, white: 0xffffff,
+};
+/** Festive obstacles: red, green, gold and a deeper red, keyed by id as before; sliders stay distinct in snow white. */
+const FESTIVE_BLOCKS = [0xd8263a, 0x2c9a55, 0xe9b949, 0xb81d30], FESTIVE_SLIDER = 0xf2f7ff;
 const TILES = 420, LINES = 3400, BLOCKS = 320, CYAN = 200, TRAIL = 18, BURST = 40, BURST_REDUCED = 14;
 /** Road drawn behind the origin; the camera sits 3.6 m back. */
 const BEHIND = 6;
@@ -53,7 +63,9 @@ const BALL_LIMIT = CITY_INNER - RADIUS - .05, CAMERA_LIMIT = CITY_INNER - 1.2;
 const HEIGHTS = [40, 27, 47, 33, 53, 30, 44, 36], JITTER = [0, .5, .2, .8, .1, .6, .3, .9], DEPTHS = [6, 5, 6.5, 5.5, 6, 4.5, 6.5, 5];
 
 /** Linear RGB multipliers per box face, in BoxGeometry order: +x, -x, +y, -y, +z, -z. */
-const SIDE_LIGHT = [1.35, 3, .9], FACE_LIGHT = [SIDE_LIGHT, SIDE_LIGHT, [1.6, 5, 1], [.3, .3, .3], [1, 1, 1], [.5, .5, .5]];
+const ORIGINAL_SIDE_LIGHT = [1.35, 3, .9], ORIGINAL_FACE_LIGHT = [ORIGINAL_SIDE_LIGHT, ORIGINAL_SIDE_LIGHT, [1.6, 5, 1], [.3, .3, .3], [1, 1, 1], [.5, .5, .5]];
+/** Christmas: neutral shading (frosty tops, shaded sides), so red, green and gold keep their hue. */
+const FESTIVE_SIDE_LIGHT = [.62, .64, .72], FESTIVE_FACE_LIGHT = [FESTIVE_SIDE_LIGHT, FESTIVE_SIDE_LIGHT, [1.45, 1.5, 1.65], [.3, .3, .3], [1, 1, 1], [.5, .5, .5]];
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const blankSample = (): TrackSample => ({ center: 0, width: 0, elevation: 0, gradient: 0, bank: 0, ground: true, tunnel: false, kind: 'warmup', segment: 0 });
@@ -66,6 +78,38 @@ function unit(a: number, b: number): number {
   return ((h ^ h >>> 15) >>> 0) / 4294967296;
 }
 
+/** Christmas tower faces, 64x256: canvas top is the top of every face. Deterministic, built once per mount. */
+function frostedTowerTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 256;
+  const ink = canvas.getContext('2d')!;
+  const wall = ink.createLinearGradient(0, 0, 0, 256);
+  // Tower bases sit 14 m below the road, so the snow fades up from well above the base to reach road level.
+  wall.addColorStop(0, '#22385e'); wall.addColorStop(.42, '#2c4874'); wall.addColorStop(.6, '#5478a5'); wall.addColorStop(.78, '#b4cce5'); wall.addColorStop(1, '#f2f8fe');
+  ink.fillStyle = wall; ink.fillRect(0, 0, 64, 256);
+  // Warm windows, sparse, on a regular grid so they sit like rooms between the ledges. Faces are
+  // far taller than wide, so a 6x3 texel window lands roughly square on the wall.
+  for (let row = 2; row < 21; row++) for (let col = 0; col < 8; col++) {
+    const u = unit(row, col);
+    if (u > .09) continue;
+    ink.fillStyle = u < .035 ? '#ffd27a' : u < .065 ? '#ffb95e' : '#fff0c2';
+    ink.fillRect(col * 8 + 1, row * 8 + 3, 6, 3);
+  }
+  // Snow drifted against the base, with a soft wavy crest.
+  ink.fillStyle = '#f4f9ff';
+  ink.beginPath(); ink.moveTo(0, 256);
+  for (let x = 0; x <= 64; x += 8) ink.lineTo(x, 238 + 5 * Math.sin(x * .3) + 3 * unit(x, 7));
+  ink.lineTo(64, 256); ink.closePath(); ink.fill();
+  // Snow cap along the roof edge.
+  ink.fillRect(0, 0, 64, 4);
+  ink.fillStyle = '#d6e6f5'; ink.fillRect(0, 4, 64, 2);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  // Crisp window edges up close instead of smeared slits; distance still uses mipmaps.
+  texture.magFilter = THREE.NearestFilter;
+  return texture;
+}
+
 /** Writes the box transform in the snapped road group's local coordinates. */
 export function setObstacleTransform(target: THREE.Object3D, pose: ObstaclePose, origin: number): void {
   target.position.set(pose.x, pose.y + SLOPE * origin, -(pose.distance - origin));
@@ -76,6 +120,9 @@ export function setObstacleTransform(target: THREE.Object3D, pose: ObstaclePose,
 /** Throws when a WebGL 2 renderer cannot be created. */
 export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): BallRunScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'low-power' });
+  // The theme is read once at mount; only colour values differ between the branches.
+  const festive = christmas(), PALETTE = festive ? FESTIVE_PALETTE : ORIGINAL_PALETTE;
+  const SIDE_LIGHT = festive ? FESTIVE_SIDE_LIGHT : ORIGINAL_SIDE_LIGHT, FACE_LIGHT = festive ? FESTIVE_FACE_LIGHT : ORIGINAL_FACE_LIGHT;
   let resolutionCap = 1.5, pixelRatio = Math.min(window.devicePixelRatio || 1, resolutionCap), viewWidth = 0, viewHeight = 0;
   renderer.setPixelRatio(pixelRatio);
   renderer.setClearColor(PALETTE.void);
@@ -149,15 +196,21 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const cyan = pool(box, basic({ color: PALETTE.boost }), CYAN, road);
   const tileCache = new RetainedInstances(tiles), gridCache = new RetainedInstances(grid),
     blockCache = new RetainedInstances(blocks), cyanCache = new RetainedInstances(cyan);
-  const blockShades = [0xb51cfa, 0xab18f0, 0xbb2cff, 0xa414e6].map(c => new THREE.Color(c));
+  const blockShades = (festive ? FESTIVE_BLOCKS : [0xb51cfa, 0xab18f0, 0xbb2cff, 0xa414e6]).map(c => new THREE.Color(c));
   // Tunnel walls and their posts are seen side-on, so divide out the side light.
   const sideLit = (hex: number) => { const c = new THREE.Color(hex); c.r /= SIDE_LIGHT[0]; c.g /= SIDE_LIGHT[1]; c.b /= SIDE_LIGHT[2]; return c; };
-  const sliderColor = new THREE.Color(PALETTE.sphere), wallColor = sideLit(0xb41edc), postColor = sideLit(0xff5ad9);
+  const sliderColor = new THREE.Color(festive ? FESTIVE_SLIDER : PALETTE.sphere),
+    wallColor = sideLit(festive ? 0x1f7a42 : 0xb41edc), postColor = sideLit(festive ? 0xe9b949 : 0xff5ad9);
 
   // A pooled city corridor: dark faces behind genuine grid lines, built once.
   const city = new THREE.Group();
   scene.add(city);
-  const towerMaterial = basic({ color: PALETTE.tower });
+  // Christmas: one small canvas texture on the same material turns the towers into frosted buildings
+  // (snow cap, deep winter-blue walls with a few warm lit windows, snow drifted against the base). The
+  // white grid lines over it read as snow on the ledges. No geometry or draw call is added.
+  let towerTexture: THREE.CanvasTexture | undefined;
+  if (festive) towerTexture = frostedTowerTexture();
+  const towerMaterial = basic(towerTexture ? { color: PALETTE.tower, map: towerTexture } : { color: PALETTE.tower });
   // Bias the filled faces behind their wire grid to prevent coplanar flicker.
   towerMaterial.polygonOffset = true;
   towerMaterial.polygonOffsetFactor = 1;
@@ -216,21 +269,32 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const surface = document.createElement('canvas');
   surface.width = 128; surface.height = 64;
   const ink = surface.getContext('2d')!;
-  ink.fillStyle = '#ffffff'; ink.fillRect(0, 0, 128, 64);
-  ink.fillStyle = '#9a5aa0'; ink.fillRect(0, 26, 128, 12);
-  ink.fillStyle = '#7c4684';
-  for (const x of [0, 32, 64, 96, 128]) ink.fillRect(x - 3.5, 0, 7, 64);
+  if (festive) {
+    // A red glass bauble: a gold equator band with darker trim, and fine gold meridians so roll stays visible.
+    ink.fillStyle = '#c8182e'; ink.fillRect(0, 0, 128, 64);
+    ink.fillStyle = '#e9b949';
+    for (const x of [0, 32, 64, 96, 128]) ink.fillRect(x - 1.5, 0, 3, 64);
+    ink.fillStyle = '#f2c14e'; ink.fillRect(0, 26, 128, 12);
+    ink.fillStyle = '#a87b1e'; ink.fillRect(0, 25, 128, 1.5); ink.fillRect(0, 37.5, 128, 1.5);
+  } else {
+    ink.fillStyle = '#ffffff'; ink.fillRect(0, 0, 128, 64);
+    ink.fillStyle = '#9a5aa0'; ink.fillRect(0, 26, 128, 12);
+    ink.fillStyle = '#7c4684';
+    for (const x of [0, 32, 64, 96, 128]) ink.fillRect(x - 3.5, 0, 7, 64);
+  }
   const ballTexture = new THREE.CanvasTexture(surface);
   ballTexture.colorSpace = THREE.SRGBColorSpace;
-  const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, map: ballTexture, specular: 0xc070c0, shininess: 36 });
+  const ballMaterial = festive
+    ? new THREE.MeshPhongMaterial({ color: PALETTE.white, map: ballTexture, specular: 0xfff1e0, shininess: 90 })
+    : new THREE.MeshPhongMaterial({ color: PALETTE.sphere, map: ballTexture, specular: 0xc070c0, shininess: 36 });
   materials.push(ballMaterial);
   const ball = new THREE.Mesh(sphere, ballMaterial);
   scene.add(ball);
   // Overhead light gives the soft upper highlight; a dark ground colour gives the deep-purple underside.
-  scene.add(new THREE.HemisphereLight(0xff9fe8, 0x0c0014, 1.2));
-  const key = new THREE.DirectionalLight(0xffffff, 1.9);
+  scene.add(festive ? new THREE.HemisphereLight(0xd6e8ff, 0x14060a, 1.1) : new THREE.HemisphereLight(0xff9fe8, 0x0c0014, 1.2));
+  const key = new THREE.DirectionalLight(0xffffff, festive ? 1.6 : 1.9);
   key.position.set(0, 10, .5);
-  const rim = new THREE.DirectionalLight(0x9c5aff, 1.2);
+  const rim = new THREE.DirectionalLight(festive ? 0x8ec3ff : 0x9c5aff, 1.2);
   rim.position.set(4, 1, -5);
   scene.add(key, rim);
 
@@ -729,6 +793,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
     ballTexture.dispose();
+    towerTexture?.dispose();
     renderer.dispose();
     renderer.forceContextLoss();
     scene.clear();
