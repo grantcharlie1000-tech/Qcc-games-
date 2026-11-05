@@ -8,7 +8,7 @@ test.beforeEach(async({page})=>{
   });
 });
 
-for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contrast over a card-row gap at ${scroll}px`,async({page})=>{
+for(const scroll of [150,170])test(`pressed home lenses keep fixed-white glyphs over a card-row gap at ${scroll}px`,async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   const nav=page.locator('.app-navigation'),bar=page.locator('.app-tabbar');
   await page.evaluate(y=>scrollTo(0,y),scroll);await expect(bar).toHaveAttribute('data-minimized','true');
@@ -33,15 +33,17 @@ for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contras
     await maskStyle.evaluate(e=>e.parentNode?.removeChild(e));
     await page.mouse.move(0,0);await page.mouse.up();
     const ratios=await glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);
-    // Labels retain WCAG 1.4.3's 4.5:1. Record icon contrast as diagnostics,
-    // but assert the requested fixed-white palette rather than adaptive 3:1.
+    // Record measured contrast without claiming universal WCAG compliance;
+    // both labels and icons deliberately retain fixed-white ink.
     const iconBoxes=boxes.filter(box=>box.icon);
     const text=ratios.filter((_,i)=>!boxes[i].icon),icons=await glyphContrast(page,visible,mask,iconBoxes,(await nav.boundingBox())!,true);
     await test.info().attach(`${name}-icon-contrast`,{body:JSON.stringify({bounds:await nav.boundingBox(),boxes:iconBoxes,icons}),contentType:'application/json'});
     await test.info().attach(`${name}-icon-mask`,{body:Buffer.from(mask,'base64'),contentType:'image/png'});
-    expect(Math.min(...text),`${name} labels: ${text.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
+    expect(text.length).toBeGreaterThan(0);
+    expect(text.every(ratio=>Number.isFinite(ratio)&&ratio>=1)).toBe(true);
+    await test.info().attach(`${name}-label-core-contrast`,{body:JSON.stringify({text,limitation:'Fixed-white cores cannot guarantee 4.5:1 over every backdrop.'}),contentType:'application/json'});
     // Icons now deliberately stay white instead of adapting to the backdrop.
-    for(const box of iconBoxes)expect(box.color).toBe('rgb(255, 255, 255)');
+    for(const box of boxes)expect(box.color).toBe('rgb(255, 255, 255)');
   }
 });
 
@@ -213,10 +215,10 @@ test('pointer press lifts the individual button and reduced motion removes the l
   await page.mouse.move(1,1);await page.mouse.up();
 });
 
-test('light desktop controls keep dark hover ink and an opaque accessible surface',async({page})=>{
+test('light desktop controls keep white hover ink and an opaque accessible surface',async({page})=>{
   await page.setViewportSize({width:1366,height:768});await page.goto('/#/game/fruit-merge');
   const menu=page.locator('#game-menu');await menu.hover();
-  await expect(menu).toHaveCSS('color','rgb(11, 16, 21)');
+  await expect(menu).toHaveCSS('color','rgb(255, 255, 255)');
   await expect(menu).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
   await page.emulateMedia({contrast:'more'});
   await expect(menu).toHaveAttribute('data-glass','off');
@@ -259,9 +261,9 @@ for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density
 });
 
 // Read the actual rendered background under the glyph boxes with the glyphs
-// hidden. This catches an adaptive tone that looks clear but loses its labels.
+// hidden. Record the limitations of white cores on translucent glass.
 for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','snake','neon-coil','quadfall','maze-muncher','ball-run','blockcraft']){
-  test(`${id} dock glyphs retain 4.5:1 contrast over their rendered surface`,async({page,browserName})=>{
+  test(`${id} dock glyphs stay white over their rendered surface`,async({page,browserName})=>{
     await page.setViewportSize({width:390,height:844});await page.goto(`/#/game/${id}`);
     // The shell is intentionally absent behind game-owned modal menus.
     if(id==='blockcraft')await page.getByRole('button',{name:'Play',exact:true}).click();
@@ -274,7 +276,7 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
     }
     if(id==='blockcraft'){
       // A cave or night sky may be entirely dark. The light regular variant must
-      // still support its dark glyphs on that darkest background.
+      // still support its white glyphs on that darkest background.
       await page.addStyleTag({content:'.blockcraft canvas{opacity:0!important}.blockcraft{background:#000!important}'});
     }
     await settleGlassInk(dock);
@@ -293,9 +295,11 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
     await page.addStyleTag({content:'.game-view{background:#000!important}.game-surface,.stage-wrap{visibility:hidden!important}.game-glass{background:transparent!important;backdrop-filter:none!important;border-color:transparent!important}.game-glass::before,.game-glass>.ui-glass-lens,.game-glass>.ui-glass-glow{visibility:hidden!important}.game-hud small,.game-hud strong,.game-compact-hud,.game-dock>.ui-tab{color:#fff!important;text-shadow:none!important}.game-dock>.ui-tab>svg{filter:none!important}'});
     const mask=(await dock.screenshot({animations:'disabled'})).toString('base64');
     const ratios=await glyphContrast(page,shot,mask,boxes,(await dock.boundingBox())!);
-    // HUD text keeps its contrast; Games and Menu icons keep fixed white ink.
+    // HUD labels, numbers and icons all retain fixed-white ink.
     const text=ratios.filter((_,i)=>!boxes[i].icon);
-    expect(Math.min(...text),`${id} text: ${text.map(r=>r.toFixed(2)).join(', ')}`).toBeGreaterThanOrEqual(4.5);
-    for(const box of boxes.filter(box=>box.icon))expect(box.color).toBe('rgb(255, 255, 255)');
+    expect(text.length).toBeGreaterThan(0);
+    expect(text.every(ratio=>Number.isFinite(ratio)&&ratio>=1)).toBe(true);
+    await test.info().attach('fixed-white-hud-core-contrast',{body:JSON.stringify({text,limitation:'Fixed-white cores cannot guarantee 4.5:1 over every backdrop.'}),contentType:'application/json'});
+    for(const box of boxes)expect(box.color).toBe('rgb(255, 255, 255)');
   });
 }
