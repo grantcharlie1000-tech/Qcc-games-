@@ -32,12 +32,15 @@ export type BoxExtents = { halfWidth: number; bottom: number; top: number; front
 export type PitchTable = readonly (readonly [number, number, number, number, number, number, number])[];
 export type Body = { readonly steerResponse: number; readonly bankDrift: number } & ({ readonly kind: 'ball' } | { readonly kind: 'box'; readonly table: PitchTable });
 export const BALL: Body = { kind: 'ball', steerResponse: STEER_RESPONSE, bankDrift: BANK_DRIFT };
-/** The sleigh's pitch is a function of the run's state, shared by the simulation and the drawing so both agree:
- * on the road it lies on the road's slope; in the air its nose follows its flight path. Within ±PITCH_LIMIT,
- * which is past the steepest road (0.44 rad). */
+/** The sleigh's pitch is a function of the run's state, shared by the simulation and the drawing so both agree.
+ * On the road it lies on the road: `slope` is the surface's slope along the course at the sleigh's own x
+ * (model.ts surfaceSlope; off the centre line it differs from the centre's where a bank changes). In the air
+ * its nose follows its flight path along the course: its climb less what its sideways motion climbs across the
+ * bank, so the pitch runs on unbroken when it leaves a bank sideways. Within ±PITCH_LIMIT (the steepest road in
+ * the courses measures 0.443 rad; the generator's crests allow about 0.453, where the clamp is under 1 mm). */
 export const PITCH_LIMIT = .45;
-export function sleighPitch(grounded: boolean, gradient: number, vy: number, speed: number): number {
-  const p = grounded || !(speed > 0) ? Math.atan(gradient) : Math.atan2(vy, speed);
+export function sleighPitch(grounded: boolean, slope: number, vy: number, vx: number, bank: number, speed: number): number {
+  const p = grounded || !(speed > 0) ? Math.atan(slope) : Math.atan2(vy + Math.tan(bank) * vx, speed);
   return Math.min(PITCH_LIMIT, Math.max(-PITCH_LIMIT, p));
 }
 /** The sleigh's box at each pitch: it holds everything drawn of the sleigh in that pitch interval, under every

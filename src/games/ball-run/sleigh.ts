@@ -279,9 +279,10 @@ export const SLEIGH_POSE = { carve: .04, squash: .1, stretch: .008, roll: .14 } 
 const X_AXIS = new THREE.Vector3(1, 0, 0), Z_AXIS = new THREE.Vector3(0, 0, 1), UP = new THREE.Vector3();
 const settled = new THREE.Quaternion(), banked = new THREE.Quaternion(), carved = new THREE.Quaternion();
 const contactNow = new THREE.Vector3(), contactAt = new THREE.Vector3();
-/** Poses a sleigh whose position is the ball's centre, exactly as the road tiles under it are posed: pitched by
- * `attitude`, then banked by `lean` (scene.ts piece() uses the same order), so it sits flush on the road with no
- * yaw against it. Then the carve lean (an extra roll about its own length) and its spring's squash (1 - squash of
+/** Poses a sleigh whose position is the ball's centre on the road surface the simulation uses: pitched by
+ * `attitude` (that surface's slope along the course under it), then banked by `lean` (its bank), with no yaw.
+ * (scene.ts piece() pitches and banks the road tiles in the same order, but also yaws them along a bend, which
+ * leans them slightly off that surface on bends, as it always did under the ball.) Then the carve lean (an extra roll about its own length) and its spring's squash (1 - squash of
  * its height). It is moved so its runners stay on the road: the ball's centre stands RADIUS above the road
  * vertically, which on a pitched road is RADIUS·cos(pitch) from it, so the sleigh is first seated by the
  * difference along the road's normal; then a carve tips it onto its inside runner (lifting the outside one) and

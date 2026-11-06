@@ -27,6 +27,19 @@ const restOn = (s: TrackSample, x: number) => s.elevation - (x - s.center) * Mat
  * top spans the full course width; the generator's inset is only a route safety margin. */
 const hasSupport = (s: TrackSample, x: number) => s.ground && Math.abs(x - RADIUS * Math.sin(s.bank) - s.center) <= s.width / 2;
 
+const slopeProbe = blankSample();
+/** The road surface's slope along the course at world x: a difference over half a metre of road that exists
+ * (one-sided at the very start and at a drop's edge, never across a gap). Off the centre line it differs from
+ * the centre's where the bank changes. */
+export function surfaceSlope(course: Course, distance: number, x: number): number {
+  const h = .25;
+  let a = Math.max(0, distance - h), b = distance + h;
+  if (!course.sample(a, slopeProbe).ground) a = distance;
+  if (!course.sample(b, slopeProbe).ground) b = distance;
+  if (b - a < 1e-6) return course.sample(distance, slopeProbe).gradient;
+  return (course.surfaceHeight(b, x) - course.surfaceHeight(a, x)) / (b - a);
+}
+
 export function createRun(seed: number, run: number, difficulty: Difficulty): Run {
   const course = getCourse(seed, difficulty), s = course.sample(0);
   return {
@@ -174,7 +187,8 @@ export function step(run: Run, input: number, dt: number, body: Body = BALL): vo
   sweep[0] = e0; sweep[1] = run.elapsed; sweep[2] = x0; sweep[3] = h0; sweep[4] = d0; sweep[5] = run.x; sweep[6] = run.height; sweep[7] = run.distance;
   if (body.kind === 'box') {
     // The sleigh's pitch at the start and end of the step, by the rule the drawing uses (config.ts sleighPitch).
-    const p0 = sleighPitch(grounded0, before.gradient, vy0, v), p1 = sleighPitch(run.grounded, s.gradient, run.vy, course.speed(run.distance));
+    const p0 = sleighPitch(grounded0, grounded0 ? surfaceSlope(course, d0, x0) : 0, vy0, vx0, before.bank, v);
+    const p1 = sleighPitch(run.grounded, run.grounded ? surfaceSlope(course, run.distance, run.x) : 0, run.vy, run.vx, s.bank, course.speed(run.distance));
     boxExtents(body.table, p0, p1, stepBox);
   }
   const behindReach = body.kind === 'box' ? stepBox.back : RADIUS, aheadReach = body.kind === 'box' ? stepBox.front : RADIUS;

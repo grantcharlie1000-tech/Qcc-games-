@@ -7,7 +7,7 @@ import {
 } from '../../../src/games/ball-run/config';
 import { sweepSphereBox } from '../../../src/core/collision';
 import { getCourse } from '../../../src/games/ball-run/course';
-import { createRun, runSpeed, step } from '../../../src/games/ball-run/model';
+import { createRun, runSpeed, step, surfaceSlope } from '../../../src/games/ball-run/model';
 
 const blankSample = (): TrackSample => ({ center: 0, width: 0, elevation: 0, gradient: 0, bank: 0, ground: true, tunnel: false, kind: 'warmup', segment: 0 });
 const blankPose = (): ObstaclePose => ({ x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 });
@@ -214,7 +214,10 @@ class Window {
       if (BODY.kind === 'box') {
         let lo = Infinity, hi = -Infinity;
         for (let d = pose.distance - pose.halfDepth - 1; d <= pose.distance + pose.halfDepth + 1; d += .25) {
-          const p = Math.atan(course.sample(d, this.probe).gradient); lo = Math.min(lo, p); hi = Math.max(hi, p);
+          // The surface's slope along the course anywhere across the road (off the centre line it differs where
+          // the bank changes), as model.ts takes it at the sleigh's own x.
+          const s = course.sample(d, this.probe), c = s.center, w = s.width / 2;
+          for (let k = -2; k <= 2; k++) { const p = Math.atan(surfaceSlope(course, d, c + w * k / 2)); lo = Math.min(lo, p); hi = Math.max(hi, p); }
         }
         boxExtents(BODY.table, lo, hi, this.extents);
         ahead = Math.max(0, this.extents.front - RADIUS); behind = Math.max(0, this.extents.back - RADIUS); beside = Math.max(0, this.extents.halfWidth - RADIUS);

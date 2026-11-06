@@ -5,7 +5,7 @@ import { createSleigh, SLEIGH_COLORS, SLEIGH_POSE, placeOnRunners } from '../../
 import { SNOW_DEPTH, SNOW_EDGE, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from '../../../src/games/ball-run/snow';
 import { CLEAR, getCourse } from '../../../src/games/ball-run/course';
 import { createSnowfall, SNOWFALL_BOX, SNOWFALL_FLAKES, SNOWFALL_PERIOD } from '../../../src/games/ball-run/snowfall';
-import { createRun, step } from '../../../src/games/ball-run/model';
+import { createRun, step, surfaceSlope } from '../../../src/games/ball-run/model';
 import { BALL, CONFIG, PITCH_LIMIT, RADIUS, SLEIGH_BODY, SLOPE, STEP, boxExtents, largestBox, sleighPitch, type BoxExtents, type Obstacle, type ObstaclePose } from '../../../src/games/ball-run/config';
 import { placeRun } from './bot';
 
@@ -133,8 +133,10 @@ describe('Ball Run Christmas sleigh collision', () => {
     // The union over a range takes every row it touches.
     const k = boxExtents(body.table, -.12, .03, { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 }), rows = body.table.filter(r => r[1] >= -.12 && r[0] <= .03);
     expect(k.back).toBe(Math.max(...rows.map(r => r[6]))); expect(k.halfWidth).toBe(Math.max(...rows.map(r => r[2])));
-    expect(sleighPitch(true, Math.tan(.6), 0, 20)).toBe(PITCH_LIMIT);
-    expect(sleighPitch(false, 0, -6, 20)).toBeCloseTo(Math.atan2(-6, 20), 12);
+    expect(sleighPitch(true, Math.tan(.6), 0, 0, 0, 20)).toBe(PITCH_LIMIT);
+    expect(sleighPitch(false, 0, -6, 0, 0, 20)).toBeCloseTo(Math.atan2(-6, 20), 12);
+    // In the air, what its sideways motion climbs across a bank is not its nose's climb.
+    expect(sleighPitch(false, 0, -6 - Math.tan(.3) * 4, 4, .3, 20)).toBeCloseTo(Math.atan2(-6, 20), 12);
   });
 
   it('holds everything drawn of it, snugly, in every row: any pitch in it, bank, block roll, carve and squash', { timeout: 120000 }, () => {
@@ -194,7 +196,7 @@ describe('Ball Run Christmas sleigh collision', () => {
       run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank) + (air ? 1.5 : 0); run.vy = air ? -6 : s.gradient * view.speed;
       scene.render(view);
       if (i % 9) continue;
-      const pitch = sleighPitch(run.grounded, s.gradient, run.vy, course.speed(distance));
+      const pitch = sleighPitch(run.grounded, run.grounded ? surfaceSlope(course, distance, run.x) : 0, run.vy, run.vx, s.bank, course.speed(distance));
       boxExtents(body.table, pitch, pitch, k);
       if (Math.abs(pitch) > .25) steep++;
       const sleigh = captured.scene!.getObjectByName('sleigh')!;
@@ -446,39 +448,70 @@ describe('Ball Run Christmas scene', () => {
   /** The sleigh's pitch as drawn: its forward axis's climb (the bank and carve turn about that axis's own line). */
   const pitchOf = (sleigh: THREE.Object3D) => Math.asin(new THREE.Vector3(0, 0, -1).applyQuaternion(sleigh.quaternion).y);
 
-  it('rides a whole course with its runners on the road, steep crests and dips included, posed as the tiles are', () => {
-    const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
-    let banked = 0, steep = 0, squashed = 0;
-    for (const [seed, difficulty] of [[7, 'medium'], [8, 'hard']] as const) {
+  it('rides whole courses with its runners on the road, across the whole width, on steep crests, dips and bank changes', () => {
+    // Steering slowly across the road, so the bank's twist where it starts and ends is felt off the centre line.
+    const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => true });
+    let banked = 0, steep = 0, worst = 0;
+    for (const [seed, difficulty] of [[7, 'medium'], [8, 'hard'], [2, 'hard']] as const) {
       const course = getCourse(seed, difficulty), run = createRun(seed, 1, difficulty), view = { run, course, speed: 0 };
       run.grounded = true;
       for (let distance = 0; distance < 2500; distance += .5) {
         const s = course.sample(distance);
         if (!s.ground) { scene.reset(); continue; }
         view.speed = course.speed(distance);
-        run.distance = distance; run.x = s.center; run.elapsed += .5 / view.speed; run.vx = 0;
-        run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank); run.vy = s.gradient * view.speed;
+        run.distance = distance; run.elapsed += .5 / view.speed;
+        run.x = s.center + Math.sin(distance / 23) * (s.width / 2 - .45); run.vx = 0;
+        run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank); run.vy = 0;
         scene.render(view);
         const sleigh = captured.scene!.getObjectByName('sleigh')!;
-        expect(sleigh.visible).toBe(true);
-        // Its pitch is the road's slope and it is banked as the road: no yaw against the road at all.
-        expect(pitchOf(sleigh)).toBeCloseTo(sleighPitch(true, s.gradient, run.vy, view.speed), 9);
+        // Its pitch is the surface's slope under it, and it has no yaw (its nose lies along the course).
+        expect(pitchOf(sleigh)).toBeCloseTo(sleighPitch(true, surfaceSlope(course, distance, run.x), 0, 0, 0, view.speed), 9);
+        expect(Math.abs(pitchOf(sleigh))).toBeLessThan(PITCH_LIMIT);
         expect(Math.abs(new THREE.Vector3(0, 0, -1).applyQuaternion(sleigh.quaternion).x)).toBeLessThan(1e-9);
-        // Both runners' contacts under its centre lie on the real road surface, however steep.
+        // Both runners lie on the real road surface along their glide (from under the dash to under the backrest).
         sleigh.updateMatrix();
-        for (const side of [-1, 1]) {
-          const contact = new THREE.Vector3(side * .25, -RADIUS, 0).applyMatrix4(sleigh.matrix);
+        for (const side of [-1, 1]) for (const z of [-.15, 0, .15, .3]) {
+          const contact = new THREE.Vector3(side * .25, -RADIUS, z).applyMatrix4(sleigh.matrix);
           const road = roadAt(course, distance - contact.z, contact.x) + SLOPE * distance;
-          expect(Math.abs(contact.y - road), `seed ${seed} at ${distance}, runner ${side}`).toBeLessThan(.004);
+          worst = Math.max(worst, Math.abs(contact.y - road));
+          expect(Math.abs(contact.y - road), `seed ${seed} at ${distance}, runner ${side} z ${z}`).toBeLessThan(.005);
         }
         if (Math.abs(s.bank) > .1) banked++;
         if (Math.abs(Math.atan(s.gradient)) > .25) steep++;
-        if (sleigh.scale.y < .999) squashed++;
       }
       scene.reset();
     }
-    expect(banked).toBeGreaterThan(0); expect(steep).toBeGreaterThan(0); expect(squashed).toBeGreaterThan(0);
+    expect(banked).toBeGreaterThan(0); expect(steep).toBeGreaterThan(0);
     scene.dispose();
+  });
+
+  it('keeps its nose nearly steady through real steps when it leaves a bank sideways or lands', { timeout: 120000 }, () => {
+    // The simulation itself, with hard steering reversals over banked road, so it is thrown off banks.
+    let launches = 0, landings = 0, takeoffJump = 0, landingJump = 0;
+    for (let seed = 1; seed <= 12; seed++) for (const difficulty of ['medium', 'hard'] as const) for (const period of [6, 12, 24]) {
+      const course = getCourse(seed, difficulty);
+      for (let d = 200; d < 3000; d += 1) {
+        const s = course.sample(d);
+        if (Math.abs(s.bank) < .15 || !s.ground) continue;
+        const run = placeRun(seed, difficulty, d, s.center);
+        let last = NaN, wasGrounded = true;
+        for (let n = 0; n < 240 && run.phase === 'running'; n++) {
+          step(run, Math.sign(Math.sin(n / period)), STEP, SLEIGH_BODY);
+          const pitch = sleighPitch(run.grounded, run.grounded ? surfaceSlope(course, run.distance, run.x) : 0, run.vy, run.vx, course.sample(run.distance).bank, course.speed(run.distance));
+          if (!Number.isNaN(last) && run.grounded !== wasGrounded) {
+            if (!run.grounded) { launches++; takeoffJump = Math.max(takeoffJump, Math.abs(pitch - last)); }
+            else { landings++; landingJump = Math.max(landingJump, Math.abs(pitch - last)); }
+          }
+          last = pitch; wasGrounded = run.grounded;
+        }
+        d += 60;
+      }
+    }
+    // What is left is one step of gravity bending the path and the road's slope over that step: under 3° either way
+    // (it was up to 7° when the flight path still counted its climb across the bank). The spring cushions a landing.
+    expect(launches).toBeGreaterThan(10); expect(landings).toBeGreaterThan(0);
+    expect(takeoffJump).toBeLessThan(.05);
+    expect(landingJump).toBeLessThan(.06);
   });
 
   it('leans at most 0.04 rad into a carve on its inside runner, and in the air points its nose along its flight path', () => {
@@ -512,7 +545,7 @@ describe('Ball Run Christmas scene', () => {
       run.distance = 420 + i * .5; run.elapsed += .5 / view.speed; run.vx = 0;
       run.height = course.surfaceHeight(run.distance, run.x) + 3; run.vy = -6 - i * .2;
       scene.render(view);
-      expect(pitchOf(sleigh())).toBeCloseTo(sleighPitch(false, 0, run.vy, course.speed(run.distance)), 9);
+      expect(pitchOf(sleigh())).toBeCloseTo(sleighPitch(false, 0, run.vy, run.vx, course.sample(run.distance).bank, course.speed(run.distance)), 9);
     }
     // Off the road's edge and falling past it: banked as the road under it, as its collision box is.
     for (let i = 1; i <= 10; i++) {
@@ -546,7 +579,7 @@ describe('Ball Run Christmas scene', () => {
     run.grounded = false; run.distance += .5; run.elapsed += .5 / view.speed; run.height += 3; run.vy = -8;
     scene.render(view);
     // The pitch is what it collides with, so it is the same under Reduce motion.
-    expect(pitchOf(sleigh())).toBeCloseTo(sleighPitch(false, 0, -8, course.speed(run.distance)), 9);
+    expect(pitchOf(sleigh())).toBeCloseTo(sleighPitch(false, 0, -8, run.vx, course.sample(run.distance).bank, course.speed(run.distance)), 9);
     scene.dispose();
   });
 });

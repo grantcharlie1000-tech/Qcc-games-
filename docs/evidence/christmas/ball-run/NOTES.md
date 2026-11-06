@@ -43,13 +43,16 @@ neon corridor. Under the Christmas theme it adds just two things:
     the collision always agree; each step uses the rows its pitch passes through. Each row holds everything drawn
     of the sleigh in its pitch range under every bank, carve lean, squash, and a difference up to 0.14 rad
     between its bank and the roll of the block it meets (a block is rolled with the bank at its own centre; the
-    courses' worst is about 0.13), measured on the real vertices plus 3 mm. Tests check every row against the
+    bound is 0.12 under the block plus the bank's fastest change over the box's reach, about 0.136), measured on the real vertices plus 3 mm. Tests check every row against the
     vertices, tie the 0.14 to the courses' own data, and render the real scene on banks, steep road and in the
     air to check the sleigh lies inside its box. The user chose this over a fixed box after a review found the
     runners sinking up to 8.6 cm on steep crests, when the pitch was clamped to fit a fixed box.
-    The sleigh is posed exactly as the road tiles (pitch, then bank) and seated on the pitched road, so its
-    runners stay on the road at any slope (a test runs two whole courses and checks them against the real
-    road surface) and it has no yaw against the road. To keep courses passable it was made about 16% shorter,
+    The sleigh lies on the road surface the simulation uses: pitched by that surface's slope under it, then
+    banked, with no yaw, and seated on it, so its runners stay on the road at any slope and anywhere across the
+    road, bank changes included (a test runs three whole courses across the road's width and checks the runners
+    along their length against the real surface, within 5 mm). The drawn road tiles are yawed along a bend and
+    so lean slightly off that surface on bends, as they always did under the ball; on the sharpest bend the
+    drawn road's edge stands a few centimetres off it. To keep courses passable it was made about 16% shorter,
     pressed toward its front; on ordinary road its box lies inside the 0.44 m clearance the course generator
     keeps round the ball, and on steeper road passability is shown by the bot (below), not proved.
     A tight cut the ball would have grazed past now crashes, as it looks like it should.
@@ -61,8 +64,10 @@ neon corridor. Under the Christmas theme it adds just two things:
   - Its scores go on the same leaderboards and records as the ball's: the user chose to share them, knowing the
     sleigh handles and collides differently.
   - It moves as a body. On the road it lies on the road exactly, at any slope; in the air its nose points along
-    its flight path (the same pitch the collision uses, so it has no rotational lag: a landing is a quick
-    snap, cushioned by the spring). A damped spring on its runners (about 3.5 Hz) squashes it about the
+    its flight path along the course, less what its sideways motion climbs across a bank (the same pitch the
+    collision uses, so there is no rotational lag). Taking off or landing, the nose settles by under 3° in one
+    frame (one step of gravity and the road's slope over that step; a test bounds it), and the spring
+    cushions the landing. A damped spring on its runners (about 3.5 Hz) squashes it about the
     runners on landings and bumps and lets it rebound. It leans into a carve (at most 0.04 rad), tipping onto
     its inside runner. It never turns about its own up axis. A new run, restore or teleport snaps straight to
     the road. Under Reduce motion there is no spring or carve lean (its pitch, which is what it collides with,

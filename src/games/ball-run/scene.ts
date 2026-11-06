@@ -11,6 +11,7 @@ import { christmas } from '../../festive/festive';
 import { createSleigh, placeOnRunners, SLEIGH_COLORS, SLEIGH_POSE, SLEIGH_RUNNER_X } from './sleigh';
 import { SNOW_DEPTH, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from './snow';
 import { createSnowfall } from './snowfall';
+import { surfaceSlope } from './model';
 import { BALL, CONFIG, DYING_DURATION, GRAVITY, boxExtents, largestBox, sleighPitch, type BoxExtents, SLEIGH_BODY, type Body, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
@@ -144,7 +145,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // as the rendered block is used for its diagnostic wireframe.
   let hitboxes: THREE.InstancedMesh | undefined, hitball: THREE.Mesh | undefined;
   const debugBox: BoxExtents = { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 };
-  const pitchNow = (run: Run): [number, number] => { const p = sleighPitch(run.grounded, track(run.distance, S).gradient, run.vy, course.speed(run.distance)); return [p, p]; };
+  const pitchNow = (run: Run): [number, number] => { const p = sleighPitch(run.grounded, run.grounded ? surfaceSlope(course, run.distance, run.x) : 0, run.vy, run.vx, track(run.distance, S).bank, course.speed(run.distance)); return [p, p]; };
   if (import.meta.env.DEV) {
     let enabled = new URLSearchParams(window.location.search).get('hitboxes') === '1';
     try { enabled ||= window.localStorage.getItem('ballrun:hitboxes') === '1'; } catch { /* storage can be unavailable */ }
@@ -549,8 +550,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
 
   // The sleigh moves as a body, not a rolling ball. The simulation (model.ts) owns where it is and what it hits,
   // and both use one rule for its pitch (config.ts sleighPitch), so what is drawn is what collides:
-  // - On the road it lies on the road exactly, posed as the tiles under it are (pitch, then bank; placeOnRunners),
-  //   its runners seated on the road at any slope.
+  // - On the road it lies on the surface the simulation uses (its slope under the sleigh, then its bank;
+  //   placeOnRunners), its runners seated on it at any slope and anywhere across the road.
   // - In the air its nose follows its flight path.
   // On top of that, presentation only, within what SLEIGH_BODY's table allows (tests measure it on the real
   // vertices): it leans into a carve from its sideways acceleration (at most 0.04 rad), tipping onto its inside
@@ -563,7 +564,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     void bx;
     track(run.distance, S);
     const dt = continuous && run.elapsed >= lastElapsed ? Math.min(.05, run.elapsed - lastElapsed) : 0;
-    const attitude = sleighPitch(run.grounded, S.gradient, run.vy, course.speed(run.distance));
+    const attitude = sleighPitch(run.grounded, run.grounded ? surfaceSlope(course, run.distance, run.x) : 0, run.vy, run.vx, S.bank, course.speed(run.distance));
     if (!continuous) carve = squash = squashRate = 0;
     else if (dt > 0) {
       if (!reduced) {
