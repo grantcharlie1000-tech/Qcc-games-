@@ -16,7 +16,7 @@ const sleigh=`<svg class="santa-banner-icon" viewBox="0 0 48 32" aria-hidden="tr
 export function mountSantaBanner(grid:Element):void{
   stop?.();stop=undefined;
   const link=document.createElement('a');
-  link.className='santa-banner';link.href='#/santa';
+  link.className='santa-banner';link.href='#/santa';link.tabIndex=0;
   link.innerHTML=`${sleigh}<span class="santa-banner-text"><span class="santa-banner-title">Santa Tracker</span><span class="santa-banner-line"></span></span><span class="santa-banner-time" aria-hidden="true"></span><span class="santa-banner-go" aria-hidden="true">›</span>`;
   link.hidden=true;
   grid.before(link);

@@ -1,12 +1,14 @@
 import type { Board, Pour } from './rules';
 import { boardKey, cloneBoard, legalPours, pour, won } from './rules';
 import { LEVELS } from './levels';
-import { solve } from './solver';
+import { hintFor } from './hint';
+import type { Hint, HintInput } from './hint';
+export { hintFor } from './hint';
+export type { Hint } from './hint';
 /** Best clear of one level: fewest pours, then fewest assists (hints and undos). */
 export interface Best { pours: number; assists: number }
 /** `best` is campaign progress keyed by level index: it survives restarts and level switches. */
 export interface State { version: 1; level: number; tubes: Board; history: Board[]; assists: number; best: Record<string, Best> }
-export type Hint = {kind:'pour';from:number;to:number;remaining:number} | {kind:'undo';steps:number} | {kind:'done'};
 const freshState = (level: number, best: Record<string, Best> = {}): State => ({ version: 1, level, tubes: cloneBoard(LEVELS[level].board), history: [], assists: 0, best: { ...best } });
 /** Base grows with colours and scramble depth; par is the shipped witness length. Each assist costs a tenth of base from the bonus. */
 export function levelPoints(level: number, best: Best): number {
@@ -63,16 +65,6 @@ export function readSnapshot(data: unknown): State | null {
   }
   return recordWin({ version:1, level, tubes:cloneBoard(value.tubes), history:value.history.map(cloneBoard), assists:count(value.assists, 1e6) ? value.assists : 0, best:readBest(value.best) });
 }
-export function hintFor(state: State): Hint {
-  if (won(state.tubes)) return { kind:'done' };
-  const path = solve(state.tubes);
-  if (path?.length) return { kind:'pour', from:path[0][0], to:path[0][1], remaining:path.length };
-  for (let i = state.history.length - 1; i >= 0; i--) {
-    if (solve(state.history[i])) return { kind:'undo', steps:state.history.length - i };
-  }
-  // Valid states always have their reverse-constructed start in their history.
-  return { kind:'undo', steps:state.history.length };
-}
 export class Session {
   state: State;
   paused = false;
@@ -100,6 +92,8 @@ export class Session {
     this.state = { ...this.state, tubes:cloneBoard(tubes), history, assists:this.state.assists + 1 };
     return true;
   }
-  hint(): Hint { if (!won(this.state.tubes)) this.state = { ...this.state, assists:this.state.assists + 1 }; return hintFor(this.state); }
+  prepareHint(): HintInput { return { tubes:this.state.tubes, history:this.state.history }; }
+  chargeHint(): void { if (!won(this.state.tubes)) this.state = { ...this.state, assists:this.state.assists + 1 }; }
+  hint(): Hint { this.chargeHint(); return hintFor(this.prepareHint()); }
   restart(): void { this.pending = null; this.state = freshState(this.state.level, this.state.best); }
 }
