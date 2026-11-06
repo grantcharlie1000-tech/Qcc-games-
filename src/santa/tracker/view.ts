@@ -46,7 +46,7 @@ export class FlatMapRenderer implements TrackerRenderer {
     const [x,y]=project(Math.min(state.lat,84),state.lon);
     this.svg.querySelector('.trk-sleigh')!.setAttribute('transform',`translate(${x.toFixed(1)} ${y.toFixed(1)})`);
     // Travelled line through visited stops; a new segment starts where it would wrap round the date line.
-    const points=[...this.route.slice(1,Math.max(1,state.visited+1)),...(state.visited>=1&&!state.landed?[{lat:state.lat,lon:state.lon}]:[])];
+    const points=[...this.route.slice(1,Math.min(this.route.length-1,Math.max(1,state.visited+1))),...(state.visited>=1&&!state.landed?[{lat:state.lat,lon:state.lon}]:[])];
     let d='',prev:number|undefined;
     for(const p of points){const [px,py]=project(p.lat,p.lon);d+=`${prev===undefined||Math.abs(px-prev)>W/2?'M':'L'}${px.toFixed(1)} ${py.toFixed(1)}`;prev=px;}
     this.svg.querySelector('.trk-travelled')!.setAttribute('d',d);
@@ -61,6 +61,7 @@ export class FlatMapRenderer implements TrackerRenderer {
 export class TrackerPanel {
   private renderer:TrackerRenderer;
   private lastVisited=-2;
+  private lastDeparture=NaN;
   constructor(private root:HTMLElement,private deps:{reducedMotion:()=>boolean}){
     root.innerHTML=`<section class="trk" aria-labelledby="trk-title">
       <h2 id="trk-title" class="sr-only">Santa’s simulated flight</h2>
@@ -78,9 +79,9 @@ export class TrackerPanel {
     const state=positionAt(nowMs,departureMs);
     this.renderer.update(state);
     (this.root.querySelector('.trk-progress span') as HTMLElement).style.transform=`scaleX(${state.progress.toFixed(4)})`;
-    if(state.visited===this.lastVisited&&this.root.querySelector('.trk-now')!.textContent)return;
+    if(state.visited===this.lastVisited&&departureMs===this.lastDeparture)return;
     // Status text changes only at each stop, so the live region speaks once per city.
-    this.lastVisited=state.visited;
+    this.lastVisited=state.visited;this.lastDeparture=departureMs;
     const here=ROUTE[Math.max(0,state.visited)];
     const home=!state.next;
     this.root.querySelector('.trk-now')!.textContent=home

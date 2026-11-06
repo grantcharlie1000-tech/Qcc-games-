@@ -100,14 +100,30 @@ describe('trusted clock',()=>{
     expect(clock.check()).toBe(true); // asks for a resync
     expect(clock.now()).toBe(before+1000);
   });
-  it('adds sleep time when the monotonic timer paused, until a resync confirms it',()=>{
+  it('holds a forward jump for the server, and adds it as sleep only if the resync fails',()=>{
     const {s,sources}=fake(Date.UTC(2026,10,6));const clock=new TrustedClock(sources);
     clock.adopt('Fri, 06 Nov 2026 00:00:00 GMT',0,0);
     const before=clock.now();
-    s.wall+=600_000; // ten minutes asleep: wall advanced, monotonic did not
+    s.wall+=600_000; // ten minutes asleep (or the clock moved on): wall advanced, monotonic did not
     expect(clock.check()).toBe(true);
-    expect(clock.now()).toBe(before+600_000);
+    expect(clock.now()).toBe(before); // a clock moved forward does not move the countdown
     expect(clock.check()).toBe(false);
+    clock.syncFailed(); // offline: the best guess is that it was sleep
+    expect(clock.now()).toBe(before+600_000);
+  });
+  it('lets the server sample decide after a forward jump',()=>{
+    const {s,sources}=fake(Date.UTC(2026,10,6));const clock=new TrustedClock(sources);
+    clock.adopt('Fri, 06 Nov 2026 00:00:00 GMT',0,0);
+    s.wall+=600_000;clock.check();
+    s.mono=50;clock.adopt('Fri, 06 Nov 2026 00:10:00 GMT',0,50); // the server says ten minutes really passed
+    clock.syncFailed(); // nothing left pending, so nothing is added twice
+    expect(clock.now()).toBe(Date.UTC(2026,10,6,0,10)+525);
+  });
+  it('adds sleep time at once when there is no server anchor',()=>{
+    const {s,sources}=fake(1000);const clock=new TrustedClock(sources);
+    s.wall+=600_000;
+    expect(clock.check()).toBe(true);
+    expect(clock.now()).toBe(601_000);
   });
   it('tolerates normal timer jitter',()=>{
     const {s,sources}=fake(0);const clock=new TrustedClock(sources);

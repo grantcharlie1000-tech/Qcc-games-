@@ -283,8 +283,11 @@ async function route(){
     const name=appRoute==='social'?'Social':appRoute==='chat'?'Chat':'the Santa Tracker';
     content.innerHTML=`<div class="loading"><p>Opening ${name}…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;
     try{
-      const view:AppView=appRoute==='santa'?new (await import('./santa/view')).SantaView(content,{reducedMotion:()=>preferences.reducedMotion})
-        :new (appRoute==='social'?(await import('./social/view')).SocialView:(await import('./chat/view')).ChatView)(content,appDeps());
+      // Constructors write into #content, so check the navigation is still current before building.
+      const make:()=>AppView=appRoute==='santa'?(SantaView=>()=>new SantaView(content,{reducedMotion:()=>preferences.reducedMotion}))((await import('./santa/view')).SantaView)
+        :(ViewClass=>()=>new ViewClass(content,appDeps()))(appRoute==='social'?(await import('./social/view')).SocialView:(await import('./chat/view')).ChatView);
+      if(token!==generation)return;
+      const view=make();
       if(token!==generation){view.dispose();return;}
       appView=view;appKind=appRoute;document.body.classList.add(`${appRoute}-active`);
       view.navigate(location.hash);

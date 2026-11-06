@@ -69,7 +69,12 @@ export class SantaView implements AppView {
 
   navigate(hash:string):void{
     // Test parameters are relative to the trusted clock, so wait for it first.
-    void time.ready().then(()=>{if(!this.disposed&&time.applyTestParams(hash))this.render();});
+    // The parameters are then removed from the address, so a refresh resumes the stored test instead of restarting it.
+    void time.ready().then(()=>{
+      if(this.disposed||!time.applyTestParams(hash))return;
+      if(location.hash===hash)history.replaceState(null,'',location.pathname+location.search+'#/santa');
+      this.render();
+    });
     this.start();
   }
   pause():void{this.stopTicker?.();this.stopTicker=undefined;}
@@ -105,7 +110,7 @@ export class SantaView implements AppView {
     }else{
       this.tracker?.update(now,dep);
     }
-    this.renderInfo(dep,config,fromFile);
+    this.renderInfo(dep,config,fromFile,current);
   }
 
   private showPhase(next:SantaPhase){
@@ -138,7 +143,7 @@ export class SantaView implements AppView {
     }
   }
 
-  private renderInfo(dep:number,config:ReturnType<typeof time.current>['config'],fromFile:boolean){
+  private renderInfo(dep:number,config:ReturnType<typeof time.current>['config'],fromFile:boolean,now:SantaPhase){
     const estimated=config.status==='estimated';
     const set=(name:string,text:string)=>{const el=this.field(name);if(el.textContent!==text)el.textContent=text;};
     set('season',String(config.season));
@@ -147,7 +152,9 @@ export class SantaView implements AppView {
     set('local',localWhen(dep));set('utc',utcWhen(dep));set('zone',visitorZone());
     const range=config.uncertaintyMinutes?` (give or take ${config.uncertaintyMinutes>=60?`${Math.round(config.uncertaintyMinutes/60)} hour${config.uncertaintyMinutes>=120?'s':''}`:`${config.uncertaintyMinutes} minutes`})`:'';
     set('confidence',`${config.confidence[0].toUpperCase()}${config.confidence.slice(1)}${range}`);
-    set('message',estimated
+    set('message',now!=='countdown'
+      ?`Santa left the North Pole on ${localWhen(dep)} your time (${utcWhen(dep)})${estimated?', our estimated departure, as NORAD had not published a time':''}. The flight shown here is QCC’s simulation.`
+      :estimated
       ?`Santa is expected to leave the North Pole on ${localWhen(dep)} your time. That is ${utcWhen(dep)}, when Christmas Day begins in Kiribati, the first place on Earth to reach midnight. NORAD has not published a departure time for ${config.season}, so this is our estimate from past years. We will update it if NORAD publishes one.`
       :`Santa leaves the North Pole on ${localWhen(dep)} your time (${utcWhen(dep)}).`);
     const centre=config.references.filter(ref=>ref.kind==='tracking-centre'&&ref.utc);

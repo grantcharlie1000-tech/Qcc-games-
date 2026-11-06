@@ -47,3 +47,31 @@ test('a malformed config keeps the built-in estimate',async({page})=>{
   await expect(page.locator('[data-field="utc"]')).toHaveText(/10:00 UTC/);
   await expect(page.locator('[data-field="updated"]')).toContainText('Built-in estimate');
 });
+
+test('backing out before the tracker loads leaves the library intact',async({page})=>{
+  await page.goto('/#/collection');
+  await expect(page.locator('.game-grid')).toBeVisible();
+  // Hold the lazy module so the user can leave before it arrives.
+  let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});
+  await page.route(/\/src\/santa\/view\.ts/,async route=>{await held;await route.continue();});
+  await page.evaluate(()=>{location.hash='#/santa';});
+  await expect(page.locator('.loading')).toContainText('Santa Tracker');
+  await page.evaluate(()=>{location.hash='#/collection';});
+  await expect(page.locator('.game-grid')).toBeVisible();
+  release();
+  await page.waitForTimeout(800);
+  await expect(page.locator('.game-grid')).toBeVisible();
+  await expect(page.locator('.santa-page')).toHaveCount(0);
+});
+
+test('test parameters leave the address, so a refresh resumes the same test',async({page})=>{
+  await page.goto('/#/santa?test=30');
+  await expect(page.locator('.santa-test')).toBeVisible();
+  await expect(page).toHaveURL(/#\/santa$/);
+  const before=Number(await page.locator('[data-unit="seconds"]').textContent());
+  await page.waitForTimeout(2100);
+  await page.reload();
+  await expect(page.locator('[data-unit="seconds"]')).not.toHaveText('--');
+  const after=Number(await page.locator('[data-unit="seconds"]').textContent());
+  expect(after).toBeLessThan(before);
+});

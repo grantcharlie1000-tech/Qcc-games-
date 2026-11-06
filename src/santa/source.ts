@@ -55,25 +55,32 @@ export function clockInfo(){return clock.info();}
 function emit(){for(const listener of listeners)listener();}
 
 /** Fetches the config; its response's Date header also anchors the clock. */
-async function sync(withConfig:boolean):Promise<void>{
+/**
+ * Fetches the config; its response's Date header also anchors the clock. Every sync re-reads
+ * the config, so a page left open for days picks up a corrected or official time.
+ */
+async function sync():Promise<void>{
   const url=new URL(CONFIG_PATH,document.baseURI);
   const sent=performance.now();
+  // AbortSignal.timeout is missing on older Safari and Chromebooks.
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
   try{
-    const response=await fetch(url,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(8000)});
+    const response=await fetch(url,{cache:'no-store',credentials:'omit',signal:controller.signal});
     const received=performance.now();
-    clock.adopt(response.headers.get('Date'),sent,received);
+    if(!clock.adopt(response.headers.get('Date'),sent,received))clock.syncFailed();
     lastSync=received;
-    if(withConfig&&response.ok){
+    if(response.ok){
       const parsed=parseConfig(await response.json().catch(()=>undefined));
       if(parsed){config=parsed;configFromFile=true;}
     }
-  }catch{/* offline or blocked: keep the fallback config and device-anchored clock */}
+  }catch{clock.syncFailed();/* offline or blocked: keep the current config and clock */}
+  finally{clearTimeout(timer);}
   emit();
 }
 
 /** Loads once; later calls return the same promise. */
 export function ready():Promise<void>{
-  loading??=sync(true);
+  loading??=sync();
   return loading;
 }
 
@@ -87,7 +94,7 @@ export function subscribe(listener:()=>void):()=>void{
 /** Called by tickers each tick: catches sleep and device clock changes, and refreshes the server anchor now and then. */
 export function maintain():void{
   const jumped=clock.check();
-  if(jumped||performance.now()-lastSync>RESYNC_MS){lastSync=performance.now();void sync(false);}
+  if(jumped||performance.now()-lastSync>RESYNC_MS){lastSync=performance.now();void sync();}
 }
 
 if(typeof document!=='undefined'){
@@ -95,7 +102,7 @@ if(typeof document!=='undefined'){
     if(document.hidden){hiddenAt=performance.now();return;}
     if(!listeners.size)return;
     const jumped=clock.check();
-    if(jumped||performance.now()-hiddenAt>RESYNC_AFTER_HIDDEN_MS)void sync(false);
+    if(jumped||performance.now()-hiddenAt>RESYNC_AFTER_HIDDEN_MS)void sync();
     emit();
   });
 }

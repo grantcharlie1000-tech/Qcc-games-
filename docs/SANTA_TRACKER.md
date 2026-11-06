@@ -30,7 +30,10 @@ Edit `public/santa/departure.json` and redeploy. It is served with `Cache-Contro
 ## Time handling
 
 - `src/santa/clock.ts` `TrustedClock` anchors to the HTTP `Date` header of the no-store config request. It adds 0.5 s for the header's whole-second truncation and half the round trip. It then advances with `performance.now()`, which is monotonic, so device clock changes, time zones and daylight saving do not affect it.
-- Each tick calls `check()`. If wall and monotonic elapsed times diverge by more than 2 s (sleep, or the user changing the clock), it adjusts and resyncs with the server. It also resyncs after the tab has been hidden for more than 60 s, and every 30 minutes.
+- Each tick calls `check()`. If wall and monotonic elapsed times diverge by more than 2 s (sleep, or the user changing the clock), it keeps the monotonic time and resyncs with the server.
+- A forward jump is applied only if that resync fails (offline). In that case it is treated as sleep, because device clocks keep counting while asleep.
+- The clock also resyncs after the tab has been hidden for more than 60 s, and every 30 minutes.
+- Every sync re-reads `departure.json`, so an open page picks up a corrected time.
 - If the server cannot be reached, the device clock is used, and the page says so.
 - `src/santa/ticker.ts` recomputes from the clock on every tick and fires just after each second boundary. Timers stop while the tab is hidden. Missed or throttled ticks therefore never accumulate error.
 - Everything is UTC epoch milliseconds. Local times are shown with `Intl.DateTimeFormat`, which applies the visitor's zone and DST for that instant.
@@ -61,4 +64,6 @@ The scene is one inline SVG with CSS animations on transform and opacity only. F
   - The server clock beats a device clock set to 2030.
   - Test mode reaches zero, switches to the tracker and survives a reload.
   - A malformed config falls back to the built-in estimate.
+  - Backing out before the page loads leaves the library intact.
+  - A refresh resumes the same test countdown.
 - Screenshots: `docs/evidence/santa-tracker/` at desktop 1366×900 (Europe/London) and iPhone 13 (Pacific/Auckland).
