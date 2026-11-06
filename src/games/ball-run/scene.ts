@@ -251,7 +251,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   rim.position.set(4, 1, -5);
   scene.add(key, rim);
   if (festive) {
-    // Only the sleigh and the snow are lit, so these change nothing else. The camera sees the
+    // Only the sleigh is lit (everything else, snow included, is unlit), so these change nothing else. The camera sees the
     // sleigh's back, which the overhead key barely reaches: a soft fill from behind lights it.
     const fill = new THREE.DirectionalLight(0xfff4ea, 1.1);
     fill.position.set(-1.5, 3, 5);
@@ -500,7 +500,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
 
   function placeBlock(o: Obstacle): void {
     const slot = blockCache.keep(o.id), fresh = blockCache.fresh;
-    const capSlot = snowCache ? snowCache.keep(o.id) : -1, capFresh = !!snowCache?.fresh;
+    // A cap only exists on a drawn block (gate walls share the block pool, so it can fill first).
+    const capSlot = snowCache && slot >= 0 ? snowCache.keep(o.id) : -1, capFresh = !!snowCache?.fresh;
     const moveBlock = slot >= 0 && (fresh || !!o.slide), moveCap = capSlot >= 0 && (capFresh || !!o.slide);
     if (!moveBlock && !moveCap) return;
     course.pose(o, frameElapsed, pose);
@@ -527,23 +528,19 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     place(hitboxes, debugCount++);
   }
 
-  // The sleigh's attitude: it heads where it is going and, on the ground, lies on the road's slope
-  // and bank (the same angles as the road tiles under it). In the air it holds its attitude and
-  // dips its nose. Changes ease in over about a metre of travel, so a bend or a dodge reads as a
-  // turn; a new run, restore or teleport snaps straight to the target.
-  let heading = 0, attitude = 0, lean = 0;
-  function steer(run: Run, bx: number, forward: number, sideways: number, continuous: boolean): void {
+  // The sleigh's attitude: on the road it lies on the slope and bank (the same angles as the road tiles
+  // under it); in the air, or off the road's edge, it holds the attitude it had. It never turns about y,
+  // like the blocks, so it never reaches wider or further forward than the ball it replaces. Changes ease
+  // in over about a metre of travel; a new run, restore or teleport snaps straight to the road.
+  let attitude = 0, lean = 0;
+  function steer(run: Run, bx: number, forward: number, continuous: boolean): void {
     track(run.distance, S);
     const ground = S.elevation - (bx - S.center) * Math.tan(S.bank);
-    const grounded = S.ground && run.height - RADIUS - ground < .06;
-    const yawTarget = continuous && forward > 1e-4 ? clamp(-Math.atan2(sideways, forward), -.5, .5) : continuous ? heading : 0;
-    const pitchTarget = grounded ? Math.atan(S.gradient) : continuous ? Math.min(attitude, Math.atan(S.gradient)) - .12 : Math.atan(S.gradient);
-    const bankTarget = grounded || !continuous ? S.bank : lean * .9;
-    const k = continuous ? 1 - Math.exp(-forward / .9) : 1;
-    heading += (yawTarget - heading) * k;
-    attitude += (clamp(pitchTarget, -.6, .4) - attitude) * k;
-    lean += (bankTarget - lean) * k;
-    ball.rotation.set(attitude, heading, -lean, 'YXZ');
+    const onRoad = S.ground && Math.abs(bx - S.center) <= S.width / 2 && run.height - RADIUS - ground < .06;
+    const k = !continuous ? 1 : onRoad ? 1 - Math.exp(-forward / .9) : 0;
+    attitude += (clamp(Math.atan(S.gradient), -.6, .4) - attitude) * k;
+    lean += (S.bank - lean) * k;
+    ball.rotation.set(attitude, 0, -lean, 'YXZ');
   }
 
   // Trail history: past ball positions every 0.5 m of travel, newest last.
@@ -691,7 +688,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     ball.position.set(bx, run.height + SLOPE * distance, 0);
     const forward = distance - rollDistance, sideways = bx - rollPosition;
     const continuous = !changedCourse && run.seed === rollSeed && run.run === rollRun && forward >= 0 && forward <= 3 && Math.abs(sideways) <= 3;
-    if (sleigh) steer(run, bx, forward, sideways, continuous);
+    if (sleigh) steer(run, bx, forward, continuous);
     else if (continuous) {
       // The road approaches +z; forward motion takes the top toward -z, sideways toward x.
       rollStep.setFromAxisAngle(rollX, -rollAngle(forward));

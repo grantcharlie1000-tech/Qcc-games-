@@ -152,6 +152,37 @@ describe('Ball Run Christmas scene', () => {
       }
     }
     expect(bankedChecks).toBeGreaterThan(0);
+    scene.dispose();
+  });
+
+  it('never turns about y while dodging, so it stays within the ball\'s width, and holds its attitude in the air and off the edge', () => {
+    const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
+    const course = getCourse(7, 'medium'), run = createRun(7, 1, 'medium'), view = { run, course, speed: 0 };
+    const sleigh = () => captured.scene!.getObjectByName('sleigh')!;
+    // A hard dodge: two metres sideways per metre forward.
+    for (let i = 0; i <= 40; i++) {
+      const distance = 400 + i * .25, s = course.sample(distance);
+      run.distance = distance; run.x = s.center + Math.sin(i / 3) * Math.min(1.5, s.width / 2 - RADIUS);
+      run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank);
+      scene.render(view);
+      expect(sleigh().rotation.y).toBe(0);
+    }
+    const held = sleigh().rotation.clone();
+    // Launched 3 m above the road: the attitude holds.
+    for (let i = 1; i <= 20; i++) {
+      run.distance = 410 + i * .5; run.height = course.surfaceHeight(run.distance, run.x) + 3;
+      scene.render(view);
+      expect(sleigh().rotation.x).toBe(held.x);
+      expect(sleigh().rotation.z).toBe(held.z);
+    }
+    // Off the road's edge and falling past it: still held, though the road plane extends under it.
+    for (let i = 1; i <= 10; i++) {
+      run.distance = 421 + i * .5; const s = course.sample(run.distance);
+      run.x = s.center + s.width / 2 + 1; run.height = course.surfaceHeight(run.distance, s.center) - .5 * i;
+      scene.render(view);
+      expect(sleigh().rotation.x).toBe(held.x);
+      expect(sleigh().rotation.z).toBe(held.z);
+    }
     const spheres = captured.scene!.children.filter(c => c instanceof THREE.Mesh && c.geometry instanceof THREE.SphereGeometry && !(c instanceof THREE.InstancedMesh));
     expect(spheres).toHaveLength(0);
     scene.dispose();

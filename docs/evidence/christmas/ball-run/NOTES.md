@@ -18,9 +18,10 @@ neon corridor. Under the Christmas theme it adds just two things:
   exactly `2 × RADIUS` (0.76 m, the ball's diameter) wide, centred on the ball, with the runners exactly on the
   ball's ground contact. Nothing reaches further forward than the ball's front, so a crash never shows it
   inside a block. Collision still uses the ball's sphere. It is six merged meshes (one per material).
-  - It does not roll. It heads where it is moving, sits on the road's slope and bank (the same angles as the
-    road tiles) and dips its nose in the air. Changes ease in over about a metre of travel; a new run, restore
-    or teleport snaps straight to the target.
+  - It does not roll. On the road it sits on the slope and bank (the same angles as the road tiles). In the air
+    or off the road's edge it holds its attitude. It never turns about y, like the blocks, so a dodge never
+    swings its corners wider or further forward than the ball. Changes ease in over about a metre of travel;
+    a new run, restore or teleport snaps straight to the road. About 15,000 triangles in six draw calls.
   - The back panel stops just above the seat, so the chase camera (behind and only a little above) sees the hat.
   - The block crash bursts into the sleigh's red, gold and white instead of magenta and cyan.
   - Only the sleigh is lit in this scene, so under the theme the pink hemisphere light becomes neutral and a soft
@@ -32,7 +33,7 @@ outline in cyan: the sleigh's sides land exactly on it), `sleigh-three-quarter.p
 The `detail-*` images belong to the earlier skin.
 
 Tests: `tests/games/ball-run/christmas.test.ts` checks the sleigh's exact width, centring, ground contact, forward
-reach and hat placement, and its disposal. It checks every snow cap in the festive scene against the collision pose: count
+reach and hat placement, and its disposal; that it never yaws while dodging and holds its attitude in the air and off the edge. It checks every snow cap in the festive scene against the collision pose: count
 equal to the obstacles, on the top face, along the block's banked up axis, overhang and depth, sliders included.
 With the theme off it checks the original ball, no snow and no sleigh. `play.spec.ts` is back to its original
 contrast check, because the bars are lavender again.

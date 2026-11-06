@@ -109,7 +109,7 @@ function scroll(cu: number, cv: number, x: number, r0: number, r1: number, turns
     const t = k / 48, a = Math.PI * .5 + t * turns * Math.PI * 2, r = r0 + (r1 - r0) * t;
     points.push(at(cu + r * Math.cos(a), cv + r * Math.sin(a), x));
   }
-  return tube(points, .009, 96);
+  return tube(points, .009, 48);
 }
 
 /** Santa's hat: a fur brim, a red cone that droops over to one side, and a pompom. Its base is at the origin. */
@@ -149,13 +149,13 @@ export function createSleigh(): Sleigh {
   const rim = along(curves.slice(0, 8));
   for (const side of [-1, 1]) {
     body.push(across(shape, side > 0 ? PANEL_IN : -PANEL_OUT, side > 0 ? PANEL_OUT : -PANEL_IN, .006));
-    gold.push(tube(rim.map(p => at(p.x, p.y, side * TRIM_X)), TRIM, 220));
+    gold.push(tube(rim.map(p => at(p.x, p.y, side * TRIM_X)), TRIM, 120));
     // Scrollwork: a large curl on the bow and a small one under the backrest's curl.
     gold.push(scroll(.15, .3, side * PANEL_OUT, .085, .018, 1.6), scroll(-.43, .3, side * PANEL_OUT, .05, .012, 1.4));
     // Runner: a curled tail, a long straight glide and a tall curl in front of the bow, on three struts.
     const runner: [number, number][] = [[-.47, .085], [-.5, .062], [-.497, .032], [-.46, RUNNER], [-.3, RUNNER], [0, RUNNER], [.14, RUNNER],
       [.24, .034], [.31, .075], [.348, .14], [.352, .208], [.328, .255], [.29, .27], [.265, .245], [.278, .216], [.305, .222]];
-    gold.push(tube(runner.map(([u, v]) => at(u, v, side * RUNNER_X)), RUNNER, 160));
+    gold.push(tube(runner.map(([u, v]) => at(u, v, side * RUNNER_X)), RUNNER, 96));
     for (const u of [-.38, -.12, .1]) {
       const strut = new THREE.CylinderGeometry(.014, .014, BOTTOM - RUNNER + .01, 10);
       strut.translate(side * RUNNER_X, (BOTTOM + RUNNER) / 2 - RADIUS, -u);
