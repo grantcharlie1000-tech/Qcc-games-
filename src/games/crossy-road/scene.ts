@@ -150,6 +150,10 @@ class Pool {
   private originX = 0;
   private matrixDirty = false;
   private colorDirty = false;
+  private matrixFirst = Infinity;
+  private matrixLast = -1;
+  private colorFirst = Infinity;
+  private colorLast = -1;
   private readonly rm = { start: 0, count: 0 };
   private readonly rc = { start: 0, count: 0 };
 
@@ -189,7 +193,7 @@ class Pool {
     }
   }
 
-  begin(originX = 0): void { this.originX = originX; this.n = 0; this.matrixDirty = this.colorDirty = false; }
+  begin(originX = 0): void { this.originX = originX; this.n = 0; this.matrixDirty = this.colorDirty = false; this.matrixFirst = this.colorFirst = Infinity; this.matrixLast = this.colorLast = -1; }
 
   put(x: number, y: number, z: number, sx: number, sy: number, sz: number, yaw: number, pi: number, k: number): void {
     x -= this.originX;
@@ -204,6 +208,7 @@ class Pool {
       m[o+8]=sz*sn; m[o+9]=0; m[o+10]=sz*c; m[o+11]=0;
       m[o+12]=x; m[o+13]=y; m[o+14]=z; m[o+15]=1;
       this.matrixDirty = true;
+      this.matrixFirst=Math.min(this.matrixFirst,n);this.matrixLast=n;
     }
     this.tint(n, pi, k);
     this.n = n + 1;
@@ -216,6 +221,7 @@ class Pool {
     const q=n*3,p=pi*3;
     this.c[q]=PAL[p]*k; this.c[q+1]=PAL[p+1]*k; this.c[q+2]=PAL[p+2]*k;
     this.colorDirty=true;
+    this.colorFirst=Math.min(this.colorFirst,n);this.colorLast=n;
   }
 
   putMatrix(matrix: THREE.Matrix4, pi: number, k: number): void {
@@ -224,7 +230,7 @@ class Pool {
     const o=n*16, values=matrix.elements;
     for(let i=0;i<16;i++){
       const value=Math.fround(values[i] - (i === 12 ? this.originX : 0));
-      if(this.m[o+i]!==value){this.m[o+i]=value;this.matrixDirty=true;}
+      if(this.m[o+i]!==value){this.m[o+i]=value;this.matrixDirty=true;this.matrixFirst=Math.min(this.matrixFirst,n);this.matrixLast=n;}
     }
     this.previous[n*9]=NaN;
     this.tint(n,pi,k);
@@ -236,15 +242,15 @@ class Pool {
     mesh.count=n; mesh.visible=n>0;
     if(this.shadow){this.shadow.count=n;this.shadow.visible=n>0&&this.shadowOpacity>0;}
     if(!n)return;
-    if(this.matrixDirty){this.rm.count=n*16;mesh.instanceMatrix.needsUpdate=true;}
-    if(this.colorDirty){this.rc.count=n*3;mesh.instanceColor!.needsUpdate=true;}
+    if(this.matrixDirty){this.rm.start=this.matrixFirst*16;this.rm.count=(this.matrixLast-this.matrixFirst+1)*16;mesh.instanceMatrix.needsUpdate=true;}
+    if(this.colorDirty){this.rc.start=this.colorFirst*3;this.rc.count=(this.colorLast-this.colorFirst+1)*3;mesh.instanceColor!.needsUpdate=true;}
   }
 
   dispose(): void { this.shadow?.dispose(); this.mesh.dispose(); }
 }
 
-/** Gives an attribute one update range for good, so an upload sends only the first `count` values (the
- * caller resizes the range each frame). Three empties the range list after every upload, which frees
+/** Gives an attribute one update range for good, so an upload sends only the selected values (the
+ * caller updates the range each frame). Three empties the range list after every upload, which frees
  * and reallocates the list's storage each frame, so `clearUpdateRanges` is made a no-op here. */
 function keepRange(attribute: THREE.BufferAttribute, range: { start: number; count: number }): void {
   attribute.updateRanges.push(range);
