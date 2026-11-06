@@ -42,8 +42,8 @@ const module: GameModule = {
       uiAt = -Infinity;
     }
     const events = new AbortController(), signal = events.signal;
-    let state = createArena(), paused = false, disposed = false, savedRun = false, frame = 0, last: number | null = null;
-    let uiAt = -Infinity, lastScore = -1, lastPhase = '', seed = state.seed, keyBoost = false, buttonBoost = false;
+    let state = createArena(), paused = false, disposed = false, savedRun = false, frame: number | null = null, last: number | null = null;
+    let uiAt = -Infinity, cpuReportAt = -Infinity, lastScore = -1, lastPhase = '', seed = state.seed, keyBoost = false, buttonBoost = false;
     // Every source only proposes a target heading; the model's shared turn law does the rest.
     let steering: 'pointer' | 'keyboard' | 'stick' = 'keyboard', pointer: { x: number; y: number } | null = null, touchId: number | null = null;
     let boostId: number | null = null, stickHold: number | undefined;
@@ -105,11 +105,11 @@ const module: GameModule = {
       }
       context.setStatus(paused ? 'Arena paused.' : state.phase === 'dead' ? state.cause : state.phase === 'ready' ? 'Ready' : `${score} mass. Rank ${place}.`);
     }
-    function reset() { seed = (seed + 0x9e3779b9) >>> 0; state = createArena(seed); savedRun = false; last = null; clearInput(); update(0, true); renderer.draw(state, 1, context.settings.reducedMotion); persist(); }
+    function reset() { cancelFrame(); seed = (seed + 0x9e3779b9) >>> 0; state = createArena(seed); savedRun = false; last = null; clearInput(); update(0, true); renderer.draw(state, 1, context.settings.reducedMotion); persist(); }
     function begin() {
       if (paused || disposed) return;
       if (state.phase === 'dead') reset();
-      state.phase = 'running'; savedRun = false; last = null; clearInput(); update(0, true); persist(); context.sound('tap'); canvas.focus({ preventScroll: true });
+      state.phase = 'running'; savedRun = false; last = null; clearInput(); update(0, true); persist(); context.sound('tap'); canvas.focus({ preventScroll: true }); scheduleFrame();
     }
     const local = (event: PointerEvent) => { const rect = canvas.getBoundingClientRect(); return { x: event.clientX - rect.left, y: event.clientY - rect.top }; };
     function setPointer(event: PointerEvent) { pointer = local(event); steering = 'pointer'; }
@@ -161,7 +161,10 @@ const module: GameModule = {
       else if (steering === 'keyboard') angle = keyboard.target();
       return { angle, boost: keyBoost || buttonBoost };
     }
+    function cancelFrame() { if (frame !== null) cancelAnimationFrame(frame); frame = null; }
+    function scheduleFrame() { if (frame === null && !disposed && !paused && state.phase === 'running') frame = requestAnimationFrame(loop); }
     function loop(now: number) {
+      frame = null;
       if (disposed) return;
       const began = performance.now(), oldPhase = state.phase;
       if (!paused && state.phase === 'running') { if (last !== null) advanceArena(state, now - last, controls()); last = now; }
@@ -171,21 +174,21 @@ const module: GameModule = {
       if (!paused && state.phase === 'running') update(now);
       else if (oldPhase !== state.phase) update(now, true);
       frameCosts.push(performance.now() - began); if (frameCosts.length > 180) frameCosts.shift();
-      if (state.ticks % 60 === 0 && frameCosts.length) { const sorted = [...frameCosts].sort((a, b) => a - b); root.dataset.cpuP95 = sorted[Math.floor(sorted.length * .95)].toFixed(2); }
-      frame = requestAnimationFrame(loop);
+      if (now - cpuReportAt >= 1000) { cpuReportAt = now; const sorted = [...frameCosts].sort((a, b) => a - b); root.dataset.cpuP95 = sorted[Math.floor(sorted.length * .95)].toFixed(2); }
+      scheduleFrame();
     }
-    resize(); update(0, true); frame = requestAnimationFrame(loop);
+    resize(); update(0, true);
     return {
-      pause() { paused = true; last = null; clearInput(); update(0, true); renderer.draw(state, 1, context.settings.reducedMotion); },
-      resume() { paused = false; last = null; clearInput(); update(0, true); },
+      pause() { paused = true; cancelFrame(); last = null; clearInput(); update(0, true); renderer.draw(state, 1, context.settings.reducedMotion); },
+      resume() { paused = false; last = null; clearInput(); update(0, true); scheduleFrame(); },
       restart() { reset(); },
       serialize() { return snapshot(state); },
       restore(data) {
         const restored = restoreArena(data); if (!restored) return;
-        state = restored; seed = state.seed; savedRun = state.phase === 'running' || (state.phase === 'ready' && state.ticks > 0);
+        cancelFrame(); state = restored; seed = state.seed; savedRun = state.phase === 'running' || (state.phase === 'ready' && state.ticks > 0);
         if (savedRun) state.phase = 'ready'; last = null; clearInput(); update(0, true); renderer.draw(state, 1, context.settings.reducedMotion);
       },
-      dispose() { disposed = true; releaseGlass(); boostGlass.dispose(); clearInput(); events.abort(); observer.disconnect(); rankingLayout.dispose(); sheet.dispose(); pauseSheet.dispose(); cancelAnimationFrame(frame); root.remove(); }
+      dispose() { disposed = true; cancelFrame(); releaseGlass(); boostGlass.dispose(); clearInput(); events.abort(); observer.disconnect(); rankingLayout.dispose(); sheet.dispose(); pauseSheet.dispose(); root.remove(); }
     };
   }
 };
