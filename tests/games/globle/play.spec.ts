@@ -68,8 +68,15 @@ test('spelling corrections submit a guess on click and keyboard activation', asy
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
   await expect(page.locator('.gl-win-text')).toContainText('You found it in 2 guesses.');
   await page.reload();
-  await expect(page.locator('.gl-guess[data-id=DEU]')).toBeVisible();
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
+  // The winning card replaces the floating summaries to avoid dock overlap,
+  // but both guesses must survive reload and the result must remain visible.
+  await expect(page.locator('.gl-guess[data-id=DEU]')).toHaveCount(1);
+  await expect(page.locator('.gl-guess[data-id=FRA]')).toHaveCount(1);
+  await expect(page.locator('.gl-history')).toBeHidden();
+  await expect(page.locator('.gl-win-text')).toBeVisible();
+  await expect(page.locator('.gl-win-text')).toContainText('You found it in 2 guesses.');
+  expect(await count(page)).toBe('2');
 });
 
 test('complete winning round with neighbours, aliases, duplicates and invalid entries', async ({page}) => {
@@ -164,6 +171,7 @@ test('tiny countries, markers and saved-game restoration across reloads and mode
 });
 
 test('mouse drag, wheel zoom and fly-to with no hover reveal or document scroll', async ({page}) => {
+  await page.clock.install();
   await page.setViewportSize({width: 1366, height: 768});
   await practice(page, 'JPN');
   await guess(page, 'Argentina');
@@ -177,12 +185,17 @@ test('mouse drag, wheel zoom and fly-to with no hover reveal or document scroll'
   expect(await page.locator('.globle').getAttribute('data-guesses')).toBe('1');
   const visibleText = await page.locator('.gl-globe-wrap').innerText();
   expect(visibleText).not.toMatch(/Chile|Brazil|Bolivia|Uruguay|Paraguay/);
-  // Start a drag immediately after a new guess: manual control interrupts the flight.
+  // Fix the flight age rather than racing protocol/input latency on software GL.
+  // Keep real mouse input and the real flight, but interrupt it at 200/1100ms.
+  // pauseAt fast-forwards rather than waiting; leave ample protocol headroom.
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 60_000));
   await guess(page, 'Germany');
+  await page.clock.runFor(200);
   await page.mouse.move(cx, cy);
   await page.mouse.down();
   await page.mouse.move(cx - 150, cy, {steps: 8});
   await page.mouse.up();
+  await page.clock.resume();
   const dragged = await view(page);
   expect(Math.abs(dragged.lat - 51)).toBeGreaterThan(5); // never reached Germany's framing
   const before = dragged;
