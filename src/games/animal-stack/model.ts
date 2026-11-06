@@ -62,7 +62,7 @@ export class AnimalWorld {
     const supported = new Set<Matter.Body>([this.platform]);
     // Engine pairs omit sleeping contacts; query geometry so sleeping foundations still support newcomers.
     const bodies=[this.platform,...this.animals.map(a=>a.body)];
-    const contacts=this.animals.flatMap(a=>a.body.parts.slice(1).flatMap(part=>Query.collides(part,bodies.filter(b=>b!==a.body))));
+    const contacts=this.animals.flatMap(a=>{const others=bodies.filter(b=>b!==a.body);return a.body.parts.slice(1).flatMap(part=>Query.collides(part,others));});
     for (let pass=0;pass<=this.animals.length;pass++) {
       let changed=false;
       for (const pair of contacts) {
