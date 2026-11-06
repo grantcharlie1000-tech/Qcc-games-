@@ -1,5 +1,44 @@
 # Ball Run — Christmas skin
 
+## Revision: original scene, snow-capped obstacles and Santa's sleigh
+
+This revision replaces the whole skin described further down. The festive palette, frosted tower texture,
+bauble ball, star layer and `christmas.css` are gone: with the theme on or off, Ball Run draws its original
+neon corridor. Under the Christmas theme it adds just two things:
+
+- **Snow on the obstacles** (`src/games/ball-run/snow.ts`): a light covering, 7.5 cm at the crest, on top of every
+  obstacle (static blocks and sliders, not gate walls). One instanced pool draws all the caps, so the theme adds
+  one draw call. Each cap is a soft, slightly lumpy mound that overhangs the block by 3 cm, with a rounded lip
+  that hangs over the edge. Like the blocks, it is unlit: white-to-lavender shading is baked into vertex colours.
+  Caps follow banked blocks and moving sliders, and they share the block cache's begin, end and reset path.
+  Collision is unchanged.
+- **Santa's sleigh in place of the ball** (`src/games/ball-run/sleigh.ts`): a red sleigh with a scrolled bow,
+  gold trim and scrollwork, curled gold runners on struts, green velvet cushions and Santa's hat (fur brim,
+  drooping cone, pompom) on the seat. Santa is not in it. Its measured vertices are normalised so the sleigh is
+  exactly `2 × RADIUS` (0.76 m, the ball's diameter) wide, centred on the ball, with the runners exactly on the
+  ball's ground contact. Nothing reaches further forward than the ball's front, so a crash never shows it
+  inside a block. Collision still uses the ball's sphere. It is six merged meshes (one per material).
+  - It does not roll. It heads where it is moving, sits on the road's slope and bank (the same angles as the
+    road tiles) and dips its nose in the air. Changes ease in over about a metre of travel; a new run, restore
+    or teleport snaps straight to the target.
+  - The back panel stops just above the seat, so the chase camera (behind and only a little above) sees the hat.
+  - The block crash bursts into the sleigh's red, gold and white instead of magenta and cyan.
+  - Only the sleigh is lit in this scene, so under the theme the pink hemisphere light becomes neutral and a soft
+    fill from behind lights the sleigh's back. Nothing else changes.
+
+Evidence: `sleigh-chase.png` (mobile chase view), `sleigh-width-top.png` (straight down, with the ball's
+outline in cyan: the sleigh's sides land exactly on it), `sleigh-three-quarter.png`, `sleigh-side.png`,
+`snow-closeup.png`, `crash-burst.png`. `after-mobile.png` and `after-desktop.png` now show this revision.
+The `detail-*` images belong to the earlier skin.
+
+Tests: `tests/games/ball-run/christmas.test.ts` checks the sleigh's exact width, centring, ground contact, forward
+reach and hat placement, and its disposal. It checks every snow cap in the festive scene against the collision pose: count
+equal to the obstacles, on the top face, along the block's banked up axis, overhang and depth, sliders included.
+With the theme off it checks the original ball, no snow and no sleigh. `play.spec.ts` is back to its original
+contrast check, because the bars are lavender again.
+
+## Earlier skin (superseded)
+
 ## Skills invoked
 - `using-superpowers`: session workflow.
 - `game-development` (Skill tool). I read its nested guides `.agents/skills/game-development/3d-games/SKILL.md` and `game-art/SKILL.md` in full.

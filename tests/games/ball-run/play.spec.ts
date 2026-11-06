@@ -116,7 +116,7 @@ async function expectReadableLabel(button:Locator){
   expect(measured.edge,'label edge against the fill').toBeGreaterThanOrEqual(3);expect(measured.label,'label against its edge').toBeGreaterThanOrEqual(7);
   expect(measured.shadows,'an edge on every side').toBeGreaterThanOrEqual(8);
 }
-/** The speed readout crosses a gate's arch bars: lavender #929bfb, or near-white #eaf5ff under the Christmas theme (scene.ts's grid colour). Its text is opaque and
+/** The speed readout crosses a gate's arch bars, lavender #929bfb (scene.ts's grid colour). Its text is opaque and
  * outlined on all eight sides by a hard, opaque edge: the edge stands out from the bars, and the text from its edge. */
 async function expectReadableSpeed(page:Page){
   const measured=await game(page).locator('.br-speed').evaluate(e=>{
@@ -128,8 +128,7 @@ async function expectReadableSpeed(page:Page){
       return {colour,x,y,blur};
     }).filter(s=>s.blur===0&&s.colour[3]===1&&(s.x!==0||s.y!==0));
     const sides=new Set(edges.map(s=>`${Math.sign(s.x)},${Math.sign(s.y)}`)).size,edge=edges[0]?.colour??[0,0,0,0];
-    const bar=document.documentElement.dataset.festive==='christmas'?[234,245,255]:[146,155,251];
-    return {alpha:text[3],sides,bars:ratio(edge,bar),text:ratio(text,edge)};
+    return {alpha:text[3],sides,bars:ratio(edge,[146,155,251]),text:ratio(text,edge)};
   });
   expect(measured.alpha,'opaque text').toBe(1);expect(measured.sides,'an edge on every side').toBe(8);
   expect(measured.bars,'edge against the arch bars').toBeGreaterThanOrEqual(4.5);expect(measured.text,'text against its edge').toBeGreaterThanOrEqual(7);
