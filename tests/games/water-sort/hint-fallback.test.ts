@@ -113,17 +113,18 @@ describe('fallback cancellation and lifetime', () => {
     slicedClock();
     const pour = vi.spyOn(rules, 'pour');
     const search = new HintSearch(failWorker);
-    const result = search.run(input);
+    const result = search.run(new Session(76).prepareHint());
     let delivered = false; void result.then(() => { delivered = true; });
     for (let i = 0; i < 5; i++) await vi.advanceTimersToNextTimerAsync();
     expect(pour.mock.calls.length).toBeGreaterThan(0);
     expect(delivered).toBe(false);
-    const calls = pour.mock.calls.length;
-    setTimeout(() => search.cancel(), 0);
+    let callsAtCancel = -1;
+    setTimeout(() => { search.cancel(); callsAtCancel = pour.mock.calls.length; }, 0);
     await vi.runAllTimersAsync();
     expect(await result).toEqual({kind:'cancelled'});
-    // At most the one already queued slice may precede the cancellation task.
-    expect(pour.mock.calls.length).toBeLessThanOrEqual(calls + 1);
+    // No generator work may run after the cancellation task.
+    expect(callsAtCancel).toBeGreaterThan(0);
+    expect(pour.mock.calls.length).toBe(callsAtCancel);
     expect(vi.getTimerCount()).toBe(0);
   });
   it('also yields with a coarse/frozen clock', async () => {

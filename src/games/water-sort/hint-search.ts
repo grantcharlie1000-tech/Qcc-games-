@@ -29,6 +29,7 @@ function readHint(value: unknown, input: HintInput): Hint | null {
 }
 
 export class HintSearch {
+  private generation = 0;
   private active: { cancel(): void } | null = null;
 
   constructor(
@@ -42,7 +43,9 @@ export class HintSearch {
   }
 
   run(input: HintInput): Promise<HintResult> {
+    const generation = ++this.generation;
     this.cancel();
+    if (generation !== this.generation) return Promise.resolve({ kind: 'cancelled' });
     return new Promise(resolve => {
       let worker: HintWorker | null = null;
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -91,6 +94,7 @@ export class HintSearch {
         if (settled || fallingBack) return;
         fallingBack = true;
         stopWorker();
+        if (settled) return;
         fallbackSearch = hintFallback(input);
         const tick = () => {
           fallbackTimer = undefined;
@@ -100,12 +104,14 @@ export class HintSearch {
             // Elapsed-time slice, with an operation ceiling for coarse clocks.
             // This is not a total-search timeout or a new node budget.
             for (let work = 0; work < 16384; work++) {
+              if (settled || !fallbackSearch) return;
               const next = fallbackSearch.next();
+              if (settled) return;
               if (next.done) {
                 finish({ kind: 'hint', hint: next.value });
                 return;
               }
-              if (performance.now() - started >= 4) break;
+              if ((work & 31) === 31 && performance.now() - started >= 4) break;
             }
             fallbackTimer = setTimeout(tick, 0);
           } catch { finish({ kind: 'failed', reason }); }
@@ -117,6 +123,7 @@ export class HintSearch {
       this.active = job;
       try {
         worker = this.createWorker();
+        if (settled) { stopWorker(); return; }
         worker.addEventListener('message', onMessage);
         worker.addEventListener('error', onError);
         worker.addEventListener('messageerror', onError);
