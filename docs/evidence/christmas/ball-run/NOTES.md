@@ -50,9 +50,11 @@ neon corridor. Under the Christmas theme it adds just two things:
     The sleigh lies on the road surface the simulation uses: pitched by that surface's slope under it, then
     banked, with no yaw, and seated on it, so its runners stay on the road at any slope and anywhere across the
     road, bank changes included (a test runs three whole courses across the road's width and checks the runners
-    along their length against the real surface, within 5 mm). The drawn road tiles are yawed along a bend and
-    so lean slightly off that surface on bends, as they always did under the ball; on the sharpest bend the
-    drawn road's edge stands a few centimetres off it. To keep courses passable it was made about 16% shorter,
+    along their length against the real surface, within 5 mm). Under the theme the road's tiles and cross
+    lines are drawn on that same surface (each tile a sheared box spanning the road along its bank): the
+    original drawing yaws its tiles along a bend, which leans them up to about 10 cm off it at the road's edge
+    on the sharpest bend, a mismatch a ball hides and a sleigh does not. A test reads the drawn tiles on that
+    bend and finds them within 8 mm of the surface (with the theme off, unchanged, still centimetres off). To keep courses passable it was made about 16% shorter,
     pressed toward its front; on ordinary road its box lies inside the 0.44 m clearance the course generator
     keeps round the ball, and on steeper road passability is shown by the bot (below), not proved.
     A tight cut the ball would have grazed past now crashes, as it looks like it should.
@@ -65,9 +67,11 @@ neon corridor. Under the Christmas theme it adds just two things:
     sleigh handles and collides differently.
   - It moves as a body. On the road it lies on the road exactly, at any slope; in the air its nose points along
     its flight path along the course, less what its sideways motion climbs across a bank (the same pitch the
-    collision uses, so there is no rotational lag). Taking off or landing, the nose settles by under 3° in one
-    frame (one step of gravity and the road's slope over that step; a test bounds it), and the spring
-    cushions the landing. A damped spring on its runners (about 3.5 Hz) squashes it about the
+    collision uses, so there is no rotational lag). Within 2.5 m of the road below it flares onto the road's
+    slope, eased in and out (over a drop's gap, toward a level running from the lip to the landing), so it
+    takes off and lands with no jump: measured through the real simulation over whole courses, under 0.01 rad
+    at take-off and landing and under 0.03 rad in any one step of flight (a landing after a drop jumped 0.33
+    rad before). The spring cushions the landing. A damped spring on its runners (about 3.5 Hz) squashes it about the
     runners on landings and bumps and lets it rebound. It leans into a carve (at most 0.04 rad), tipping onto
     its inside runner. It never turns about its own up axis. A new run, restore or teleport snaps straight to
     the road. Under Reduce motion there is no spring or carve lean (its pitch, which is what it collides with,

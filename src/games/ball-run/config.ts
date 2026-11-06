@@ -35,12 +35,20 @@ export const BALL: Body = { kind: 'ball', steerResponse: STEER_RESPONSE, bankDri
 /** The sleigh's pitch is a function of the run's state, shared by the simulation and the drawing so both agree.
  * On the road it lies on the road: `slope` is the surface's slope along the course at the sleigh's own x
  * (model.ts surfaceSlope; off the centre line it differs from the centre's where a bank changes). In the air
- * its nose follows its flight path along the course: its climb less what its sideways motion climbs across the
- * bank, so the pitch runs on unbroken when it leaves a bank sideways. Within ±PITCH_LIMIT (the steepest road in
- * the courses measures 0.443 rad; the generator's crests allow about 0.453, where the clamp is under 1 mm). */
-export const PITCH_LIMIT = .45;
-export function sleighPitch(grounded: boolean, slope: number, vy: number, vx: number, bank: number, speed: number): number {
-  const p = grounded || !(speed > 0) ? Math.atan(slope) : Math.atan2(vy + Math.tan(bank) * vx, speed);
+ * its nose follows its flight path along the course (its climb less what its sideways motion climbs across the
+ * bank). Within FLARE of the road below (`above`, metres above where it would rest; model.ts heightAboveRest,
+ * which has no step at a drop's edges) it
+ * blends from that flight path to the road's slope, so it leaves the road and lands on it with no jump: it
+ * flares in over the last 2.5 m. Within ±PITCH_LIMIT (the steepest road in the courses measures 0.443 rad; the
+ * generator's crests allow about 0.453, where the clamp is under 1 mm). */
+export const PITCH_LIMIT = .45, FLARE = 2.5;
+export function sleighPitch(grounded: boolean, slope: number, vy: number, vx: number, bank: number, speed: number, above: number): number {
+  let p = Math.atan(slope);
+  if (!grounded && speed > 0) {
+    // Eased in and out (smoothstep), so the nose turns gently through the flare and comes to rest on the road.
+    const flight = Math.atan2(vy + Math.tan(bank) * vx, speed), t = Math.min(1, Math.max(0, above / FLARE)), w = t * t * (3 - 2 * t);
+    p = w >= 1 ? flight : p + (flight - p) * w;
+  }
   return Math.min(PITCH_LIMIT, Math.max(-PITCH_LIMIT, p));
 }
 /** The sleigh's box at each pitch: it holds everything drawn of the sleigh in that pitch interval, under every

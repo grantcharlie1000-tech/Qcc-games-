@@ -11,7 +11,7 @@ import { christmas } from '../../festive/festive';
 import { createSleigh, placeOnRunners, SLEIGH_COLORS, SLEIGH_POSE, SLEIGH_RUNNER_X } from './sleigh';
 import { SNOW_DEPTH, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from './snow';
 import { createSnowfall } from './snowfall';
-import { surfaceSlope } from './model';
+import { heightAboveRest, surfaceSlope } from './model';
 import { BALL, CONFIG, DYING_DURATION, GRAVITY, boxExtents, largestBox, sleighPitch, type BoxExtents, SLEIGH_BODY, type Body, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
@@ -145,7 +145,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // as the rendered block is used for its diagnostic wireframe.
   let hitboxes: THREE.InstancedMesh | undefined, hitball: THREE.Mesh | undefined;
   const debugBox: BoxExtents = { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 };
-  const pitchNow = (run: Run): [number, number] => { const p = sleighPitch(run.grounded, run.grounded ? surfaceSlope(course, run.distance, run.x) : 0, run.vy, run.vx, track(run.distance, S).bank, course.speed(run.distance)); return [p, p]; };
+  const pitchNow = (run: Run): [number, number] => { const p = drawnPitch(run); return [p, p]; };
   if (import.meta.env.DEV) {
     let enabled = new URLSearchParams(window.location.search).get('hitboxes') === '1';
     try { enabled ||= window.localStorage.getItem('ballrun:hitboxes') === '1'; } catch { /* storage can be unavailable */ }
@@ -194,7 +194,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const from = new THREE.Vector3(), to = new THREE.Vector3(), direction = new THREE.Vector3(), forward = new THREE.Vector3(0, 0, -1);
   /** Bar cross-sections (width, height). */
   const laneLine = new THREE.Vector2(LINE_WIDTH, LINE_HEIGHT), centerLine = new THREE.Vector2(CENTER_WIDTH, LINE_HEIGHT),
-    archBar = new THREE.Vector2(BAR, BAR), entranceBar = new THREE.Vector2(ENTRANCE_BAR, ENTRANCE_BAR), chevron = new THREE.Vector2(.24, LINE_HEIGHT);
+    crossSection = new THREE.Vector2(CROSS_WIDTH, LINE_HEIGHT), archBar = new THREE.Vector2(BAR, BAR), entranceBar = new THREE.Vector2(ENTRANCE_BAR, ENTRANCE_BAR), chevron = new THREE.Vector2(.24, LINE_HEIGHT);
+  const tileAcross = new THREE.Vector3(), tileAlong = new THREE.Vector3(), tileUp = new THREE.Vector3(), tileMatrix = new THREE.Matrix4();
   const place = (mesh: THREE.InstancedMesh, index: number) => {
     transform.updateMatrix();
     mesh.setMatrixAt(index, transform.matrix);
@@ -339,13 +340,27 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     track((lo + hi) / 2, M);
     const length = hi - lo, dc = B.center - A.center, de = B.elevation - A.elevation;
     const yaw = -Math.atan2(dc, length), pitch = Math.atan2(de, Math.hypot(dc, length));
-    const nx = Math.sin(M.bank) * TILE_DEPTH / 2, ny = Math.cos(M.bank) * TILE_DEPTH / 2;
-    position.set((A.center + B.center) / 2 - nx, (A.elevation + B.elevation) / 2 + yRef - ny, -((lo + hi) / 2 - builtOrigin));
-    rotation.set(pitch, yaw, -M.bank, 'YXZ');
-    // Width is measured in world x, as are lane lines and contact. Rolling a tile
-    // must not shrink its visible width relative to those shared course bounds.
-    scale.set(M.width / Math.cos(M.bank), TILE_DEPTH, Math.hypot(dc, de, length) + .01);
-    place(tiles, tileIndex);
+    if (festive) {
+      // Christmas: the tile's top is exactly the surface the simulation uses (y = elevation - (x - centre)·tan(bank)
+      // across the course at each distance), so the sleigh's flat runners sit on what is drawn on bends too. The
+      // yawed, rolled tile below leans off that surface on a bend (by up to about 9 cm at the road's edge), which
+      // a ball hides and a sleigh does not. A sheared box: across in world x along the bank, along the centre line.
+      const reach = (Math.hypot(dc, de, length) + .01) / Math.hypot(dc, de, length);
+      tileAcross.set(M.width, -M.width * Math.tan(M.bank), 0);
+      tileAlong.set(dc * reach, de * reach, -length * reach);
+      tileUp.crossVectors(tileAcross, tileAlong).normalize().multiplyScalar(TILE_DEPTH);
+      tileMatrix.makeBasis(tileAcross, tileUp, tileAlong).setPosition(
+        (A.center + B.center) / 2 - tileUp.x / 2, (A.elevation + B.elevation) / 2 + yRef - tileUp.y / 2, -((lo + hi) / 2 - builtOrigin) - tileUp.z / 2);
+      tiles.setMatrixAt(tileIndex, tileMatrix);
+    } else {
+      const nx = Math.sin(M.bank) * TILE_DEPTH / 2, ny = Math.cos(M.bank) * TILE_DEPTH / 2;
+      position.set((A.center + B.center) / 2 - nx, (A.elevation + B.elevation) / 2 + yRef - ny, -((lo + hi) / 2 - builtOrigin));
+      rotation.set(pitch, yaw, -M.bank, 'YXZ');
+      // Width is measured in world x, as are lane lines and contact. Rolling a tile
+      // must not shrink its visible width relative to those shared course bounds.
+      scale.set(M.width / Math.cos(M.bank), TILE_DEPTH, Math.hypot(dc, de, length) + .01);
+      place(tiles, tileIndex);
+    }
     tileCache.changed(tileIndex);
     // Counted, not for-of, which allocated an iterator per tile.
     for (let k = 0; k < LANES.length; k++) {
@@ -369,11 +384,19 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     if (!S.ground || lineCount >= LINES) return;
     const slot = gridCache.keep(key);
     if (slot < 0) return;
-    track(d + .5, M);
-    position.set(S.center, S.elevation + yRef + LIFT, -(d - builtOrigin));
-    rotation.set(Math.atan(S.gradient), -Math.atan2(M.center - S.center, .5), -S.bank, 'YXZ');
-    scale.set(S.width + LINE_WIDTH, LINE_HEIGHT, CROSS_WIDTH);
-    place(grid, slot);
+    if (festive) {
+      // Christmas: straight across the simulated surface, from edge to edge, like the tiles under it.
+      const half = (S.width + LINE_WIDTH) / 2, z = -(d - builtOrigin);
+      from.set(S.center - half, surfaceY(S, S.center - half) + LIFT, z);
+      to.set(S.center + half, surfaceY(S, S.center + half) + LIFT, z);
+      bar(grid, slot, crossSection);
+    } else {
+      track(d + .5, M);
+      position.set(S.center, S.elevation + yRef + LIFT, -(d - builtOrigin));
+      rotation.set(Math.atan(S.gradient), -Math.atan2(M.center - S.center, .5), -S.bank, 'YXZ');
+      scale.set(S.width + LINE_WIDTH, LINE_HEIGHT, CROSS_WIDTH);
+      place(grid, slot);
+    }
     gridCache.changed(slot);
     lineCount++;
   }
@@ -560,11 +583,17 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // snaps it to the road. Under Reduce motion there is no spring or carve lean.
   const SPRING = 2 * Math.PI * 3.5, DAMPING = .32, { squash: SQUASH, stretch: STRETCH, carve: CARVE } = SLEIGH_POSE;
   let carve = 0, squash = 0, squashRate = 0, lastElapsed = NaN, lastVx = 0, lastVy = 0, wasGrounded = true;
+  /** The pitch model.ts collides with at the end of the step this frame shows (config.ts sleighPitch). */
+  function drawnPitch(run: Run): number {
+    track(run.distance, S);
+    return sleighPitch(run.grounded, surfaceSlope(course, run.distance, run.x), run.vy, run.vx, S.bank, course.speed(run.distance), run.grounded ? 0 : heightAboveRest(course, run.distance, run.x, run.height));
+  }
+
   function steer(run: Run, bx: number, continuous: boolean, reduced: boolean): void {
     void bx;
     track(run.distance, S);
     const dt = continuous && run.elapsed >= lastElapsed ? Math.min(.05, run.elapsed - lastElapsed) : 0;
-    const attitude = sleighPitch(run.grounded, run.grounded ? surfaceSlope(course, run.distance, run.x) : 0, run.vy, run.vx, S.bank, course.speed(run.distance));
+    const attitude = drawnPitch(run);
     if (!continuous) carve = squash = squashRate = 0;
     else if (dt > 0) {
       if (!reduced) {

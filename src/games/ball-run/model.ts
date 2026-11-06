@@ -29,15 +29,51 @@ const hasSupport = (s: TrackSample, x: number) => s.ground && Math.abs(x - RADIU
 
 const slopeProbe = blankSample();
 /** The road surface's slope along the course at world x: a difference over half a metre of road that exists
- * (one-sided at the very start and at a drop's edge, never across a gap). Off the centre line it differs from
- * the centre's where the bank changes. */
+ * (one-sided at the very start and at a drop's edge, never across a gap; over a gap, the lip road's slope turning
+ * to the landing road's). Off the centre line it differs from the centre's where the bank changes. */
 export function surfaceSlope(course: Course, distance: number, x: number): number {
   const h = .25;
+  // Over a drop's gap: the lip road's slope at its edge, turning to the landing road's across the gap, so it has
+  // no step at either edge and is never steeper than either road (the gap itself is a cliff, not a slope).
+  if (!course.sample(distance, slopeProbe).ground) {
+    gapEdges(course, distance);
+    const t = gapLand > gapLip ? (distance - gapLip) / (gapLand - gapLip) : 1, from = surfaceSlope(course, gapLip, x), to = surfaceSlope(course, gapLand, x);
+    return from + (to - from) * t;
+  }
   let a = Math.max(0, distance - h), b = distance + h;
   if (!course.sample(a, slopeProbe).ground) a = distance;
   if (!course.sample(b, slopeProbe).ground) b = distance;
   if (b - a < 1e-6) return course.sample(distance, slopeProbe).gradient;
   return (course.surfaceHeight(b, x) - course.surfaceHeight(a, x)) / (b - a);
+}
+
+const gapProbe = blankSample(), lipProbe = blankSample();
+/** The edges of the drop's gap at `distance` (which must be in it): the lip's end and the landing's start. */
+let gapLip = 0, gapLand = 0;
+function gapEdges(course: Course, distance: number): void {
+  // Step out to ground (gaps are a few metres), then bisect.
+  let lo = distance, hi = distance;
+  for (let k = 0; k < 160 && !course.sample(lo, lipProbe).ground; k++) lo -= .5;
+  for (let k = 0; k < 160 && !course.sample(hi, lipProbe).ground; k++) hi += .5;
+  let a = lo, b = distance;
+  for (let i = 0; i < 20; i++) { const m = (a + b) / 2; if (course.sample(m, lipProbe).ground) a = m; else b = m; }
+  gapLip = a;
+  a = distance; b = hi;
+  for (let i = 0; i < 20; i++) { const m = (a + b) / 2; if (course.sample(m, lipProbe).ground) b = m; else a = m; }
+  gapLand = b;
+}
+/** How far a body at (distance, x, height) is above where it would rest, for the sleigh's landing flare. On the
+ * road that is the road; over a drop's gap (where the course reports the landing road's level, a step below the
+ * lip) it is a level that runs from the lip's road, carried on at its slope, to the landing road, in proportion
+ * across the gap, so it has no step at either edge. Deterministic; it allocates nothing. */
+export function heightAboveRest(course: Course, distance: number, x: number, height: number): number {
+  const s = course.sample(distance, gapProbe);
+  if (s.ground) return height - restOn(s, x);
+  const landing = restOn(s, x);
+  gapEdges(course, distance);
+  course.sample(gapLip, lipProbe);
+  const lipRest = restOn(lipProbe, x) + lipProbe.gradient * (distance - gapLip), t = gapLand > gapLip ? (distance - gapLip) / (gapLand - gapLip) : 1;
+  return height - (lipRest + (landing - lipRest) * t);
 }
 
 export function createRun(seed: number, run: number, difficulty: Difficulty): Run {
@@ -187,8 +223,8 @@ export function step(run: Run, input: number, dt: number, body: Body = BALL): vo
   sweep[0] = e0; sweep[1] = run.elapsed; sweep[2] = x0; sweep[3] = h0; sweep[4] = d0; sweep[5] = run.x; sweep[6] = run.height; sweep[7] = run.distance;
   if (body.kind === 'box') {
     // The sleigh's pitch at the start and end of the step, by the rule the drawing uses (config.ts sleighPitch).
-    const p0 = sleighPitch(grounded0, grounded0 ? surfaceSlope(course, d0, x0) : 0, vy0, vx0, before.bank, v);
-    const p1 = sleighPitch(run.grounded, run.grounded ? surfaceSlope(course, run.distance, run.x) : 0, run.vy, run.vx, s.bank, course.speed(run.distance));
+    const p0 = sleighPitch(grounded0, surfaceSlope(course, d0, x0), vy0, vx0, before.bank, v, grounded0 ? 0 : heightAboveRest(course, d0, x0, h0));
+    const p1 = sleighPitch(run.grounded, surfaceSlope(course, run.distance, run.x), run.vy, run.vx, s.bank, course.speed(run.distance), run.grounded ? 0 : heightAboveRest(course, run.distance, run.x, run.height));
     boxExtents(body.table, p0, p1, stepBox);
   }
   const behindReach = body.kind === 'box' ? stepBox.back : RADIUS, aheadReach = body.kind === 'box' ? stepBox.front : RADIUS;
