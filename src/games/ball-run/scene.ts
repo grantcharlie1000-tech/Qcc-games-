@@ -84,7 +84,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'low-power' });
   // Christmas, read once at mount, keeps the original scene and adds only two things: a little snow
   // on top of each obstacle (one extra instanced pool) and Santa's sleigh in place of the ball.
-  const festive = christmas();
+  const festive = christmas(), body: Body = festive ? SLEIGH_BODY : BALL;
   let resolutionCap = 1.5, pixelRatio = Math.min(window.devicePixelRatio || 1, resolutionCap), viewWidth = 0, viewHeight = 0;
   renderer.setPixelRatio(pixelRatio);
   renderer.setClearColor(PALETTE.void);
@@ -150,7 +150,14 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       const wire = basic({ color: 0x00ff00, wireframe: true, depthTest: false });
       hitboxes = pool(box, wire, BLOCKS, road);
       hitboxes.renderOrder = 100;
-      hitball = new THREE.Mesh(sphere, wire);
+      // What the simulation collides as: the ball's sphere, or the sleigh's box (SLEIGH_BODY) under the theme.
+      if (festive && SLEIGH_BODY.kind === 'box') {
+        const b = SLEIGH_BODY, hull = new THREE.BoxGeometry(2 * b.halfWidth, b.top - b.bottom, b.front + b.back);
+        // Centred where model.ts centres it: up by (top + bottom) / 2 and forward (-z) by (front - back) / 2.
+        hull.translate(0, (b.top + b.bottom) / 2, -(b.front - b.back) / 2);
+        geometries.push(hull);
+        hitball = new THREE.Mesh(hull, wire);
+      } else hitball = new THREE.Mesh(sphere, wire);
       hitball.renderOrder = 100;
       scene.add(hitball);
     }
@@ -165,6 +172,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const cyan = pool(box, basic({ color: PALETTE.boost }), CYAN, road);
   // Christmas: snow falling through the canyon, one draw call placed entirely by its shader (snowfall.ts).
   const snowfall = festive ? createSnowfall() : undefined;
+  let snowClock = 0, snowFrame = NaN;
   if (snowfall) scene.add(snowfall.points);
   const tileCache = new RetainedInstances(tiles), gridCache = new RetainedInstances(grid),
     blockCache = new RetainedInstances(blocks), cyanCache = new RetainedInstances(cyan);
@@ -585,7 +593,16 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     // Squashed about the runners: they stay on the road while the body sinks and springs back.
     ball.scale.set(1, 1 - squash, 1);
     ball.position.y -= RADIUS * squash;
+    if (carve !== 0) {
+      // A carve tips the sleigh onto its inside runner and lifts the outside one, so the lean pivots about the
+      // inside runner's contact line (rotating about the centre would sink that runner into the road). The
+      // pivot's offset is worked out without the carve, then turned into the scene by the rest of the attitude.
+      const px = -Math.sign(carve) * SLEIGH_RUNNER_X, py = -RADIUS * (1 - squash), c = Math.cos(carve), sn = Math.sin(carve);
+      pivot.set(px - (px * c - py * sn), py - (px * sn + py * c), 0).applyEuler(uncarved.set(attitude, 0, -lean, 'YXZ'));
+      ball.position.add(pivot);
+    }
   }
+  const pivot = new THREE.Vector3(), uncarved = new THREE.Euler();
 
   // Trail history: past ball positions every 0.5 m of travel, newest last.
   const history = new Float64Array(TRAIL * 3);
@@ -735,7 +752,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     if (hitboxes) {
       debugCount = 0;
       // Include the full previous sweep query, even behind the visible road.
-      course.forEachObstacle(distance - CONFIG.hard.maxSpeed * .05 - RADIUS - course.maxDepth, distance + RADIUS + course.maxDepth, placeHitbox);
+      // The same reach model.ts queries with: the ball's radius, or the sleigh box's back and front.
+      const behind = body.kind === 'box' ? body.back : RADIUS, ahead = body.kind === 'box' ? body.front : RADIUS;
+      course.forEachObstacle(distance - CONFIG.hard.maxSpeed * .05 - behind - course.maxDepth, distance + ahead + course.maxDepth, placeHitbox);
       commit(hitboxes, debugCount);
     }
     if (hitball) hitball.position.set(run.x, run.height + SLOPE * distance, 0);
@@ -798,7 +817,12 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     if (snowfall) {
       // Reduce motion: no falling or streaming snow (the caps on the blocks stay).
       snowfall.points.visible = !reduced;
-      if (!reduced) snowfall.update(camera.position, distance, SLOPE * distance, performance.now() / 1000);
+      // The snow's clock advances by the real time between drawn frames, at most 1/20 s, so a pause or a
+      // backgrounded tab never makes it jump.
+      const now = performance.now() / 1000;
+      snowClock += Number.isFinite(snowFrame) ? clamp(now - snowFrame, 0, .05) : 0;
+      snowFrame = now;
+      if (!reduced) snowfall.update(camera.position, distance, SLOPE * distance, snowClock);
     }
 
     drawFrame();
@@ -862,5 +886,5 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // and compiles every material, so the first boost or crash never stalls on a shader
   // compile and the geometry count is the same from the first frame.
   drawFrame();
-  return { resize, setResolutionCap, render, reset, stats, body: festive ? SLEIGH_BODY : BALL, dispose };
+  return { resize, setResolutionCap, render, reset, stats, body, dispose };
 }

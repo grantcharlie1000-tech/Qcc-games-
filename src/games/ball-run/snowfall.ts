@@ -10,8 +10,10 @@
 import * as THREE from 'three';
 
 /** The box of snow around the camera (metres): across, up, along the course. */
-export const SNOWFALL_BOX = new THREE.Vector3(13, 10, 42);
-export const SNOWFALL_FLAKES = 1400;
+/** Wide enough for the whole canyon (walls at ±5.6 m) wherever the camera follows to (up to ±4.4 m), and tall
+ * enough that its top is well above the view; flakes fade in near the top and side faces, so no edge shows. */
+export const SNOWFALL_BOX = new THREE.Vector3(22, 20, 42);
+export const SNOWFALL_FLAKES = 3600;
 
 const vertexShader = /* glsl */ `
 uniform float uTime, uTravel, uLift, uViewport;
@@ -27,14 +29,17 @@ void main() {
   p.y += -fall * uTime + uLift;
   p.z += uTravel;
   // Wrapped into the box around the camera, which sits near its back face (the road ahead fills the rest).
-  vec3 lo = uOrigin - vec3(.5 * uBox.x, .45 * uBox.y, uBox.z - 4.0);
-  p = lo + mod(p - lo, uBox);
+  vec3 lo = uOrigin - vec3(.5 * uBox.x, .35 * uBox.y, uBox.z - 4.0);
+  vec3 q = mod(p - lo, uBox);
+  p = lo + q;
+  // Fade in over the last metres before the top and side faces, where flakes wrap, so no plane or wall shows.
+  float edges = smoothstep(0.0, 4.0, uBox.y - q.y) * smoothstep(0.0, 3.0, q.x) * smoothstep(0.0, 3.0, uBox.x - q.x);
   vec4 mv = viewMatrix * vec4(p, 1.0);
   float depth = -mv.z;
   gl_Position = projectionMatrix * mv;
   // 7–10 cm flakes, sized by perspective and clamped to 2..11 device pixels.
   gl_PointSize = clamp((.07 + .03 * seed.w) * projectionMatrix[1][1] * uViewport * .5 / max(depth, .01), 2.0, 11.0);
-  vFade = smoothstep(.6, 1.6, depth) * (1.0 - smoothstep(uBox.z * .6, uBox.z - 4.0, depth));
+  vFade = edges * smoothstep(.6, 1.6, depth) * (1.0 - smoothstep(uBox.z * .6, uBox.z - 4.0, depth));
 }`;
 
 const fragmentShader = /* glsl */ `
@@ -48,7 +53,8 @@ void main() {
 
 export interface Snowfall {
   readonly points: THREE.Points;
-  /** Per frame: the camera position, the run's distance (m) and the time (s). */
+  /** Per frame: the camera position, the run's distance (m), the world's lift (m) and the snow's own clock (s),
+   * which only advances while frames are drawn (so a pause never makes the snow jump). */
   update(origin: THREE.Vector3, distance: number, lift: number, time: number): void;
   /** The drawing buffer's height in device pixels, for the flakes' perspective size. */
   setViewport(height: number): void;
@@ -81,7 +87,9 @@ export function createSnowfall(count = SNOWFALL_FLAKES): Snowfall {
       // Wrapped well inside float precision on long runs: the box repeats every uBox metres anyway.
       uniforms.uTravel.value = distance % SNOWFALL_BOX.z;
       uniforms.uLift.value = lift % SNOWFALL_BOX.y;
-      uniforms.uTime.value = time % 3600;
+      // Each flake falls at its own speed, so the clock cannot wrap without a jump; a day of play keeps float
+      // precision to millimetres, so it wraps only after one.
+      uniforms.uTime.value = time % 86400;
     },
     setViewport(height) { uniforms.uViewport.value = height; },
     dispose() { geometry.dispose(); material.dispose(); },

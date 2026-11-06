@@ -6,10 +6,12 @@ This revision replaces the whole skin described further down. The festive palett
 bauble ball, star layer and `christmas.css` are gone: with the theme on or off, Ball Run draws its original
 neon corridor. Under the Christmas theme it adds just two things:
 
-- **Falling snow** (`src/games/ball-run/snowfall.ts`): 1,400 flakes in one `THREE.Points` draw call. Every flake
+- **Falling snow** (`src/games/ball-run/snowfall.ts`): 3,600 flakes in one `THREE.Points` draw call. Every flake
   is placed by the vertex shader from a fixed seed, the clock and the distance travelled, so the CPU writes four
   uniforms a frame. Flakes are world-fixed (they fall, sway and stream past at the game's speed), wrapped in a
-  13 × 10 × 42 m box round the camera, sized by perspective but clamped to 2–11 device pixels, and faded at the
+  22 × 20 × 42 m box round the camera (it spans the canyon wherever the camera goes, and flakes fade in near its
+  top and sides, so no ceiling or wall shows), with its own clock that stops while no frames are drawn (no jump
+  after a pause), sized by perspective but clamped to 2–11 device pixels, and faded at the
   lens and in the distance. Hidden under Reduce motion. Measured: 9 draw calls and 7 geometries with the theme.
 - **Snow on the obstacles** (`src/games/ball-run/snow.ts`): a light covering, 7.5 cm at the crest, on top of every
   obstacle (static blocks and sliders, not gate walls). One instanced pool draws all the caps, so the theme adds
@@ -18,7 +20,7 @@ neon corridor. Under the Christmas theme it adds just two things:
   wall: each vertex has a unit anchor plus an inset in metres, and a small vertex-shader change divides that
   inset by the instance's scale. The baked shading is computed in metres, so it is right on every size. The cap is closed underneath, so no sight line under a tall block's lip sees through it. Like the blocks, it is unlit: white-to-lavender shading is baked into vertex colours.
   Caps follow banked blocks and moving sliders, and they share the block cache's begin, end and reset path.
-  Collision is unchanged.
+  The caps take no part in collision.
 - **Santa's sleigh in place of the ball** (`src/games/ball-run/sleigh.ts`): a red sleigh with a scrolled dash and backrest,
   gold trim and scrollwork, curled gold runners on struts, green velvet cushions and Santa's hat (fur brim,
   drooping cone, pompom) on the seat. Santa is not in it. Its measured vertices are normalised so the sleigh is
@@ -33,7 +35,7 @@ neon corridor. Under the Christmas theme it adds just two things:
   steepest climb (a test checks this).
   - It collides as itself. A review found that its corners, outside the ball's circle, could show passing
     through a block for 1–3 frames when a player cut tightly past one. At the user's choice the simulation now
-    collides as the sleigh's box (`SLEIGH_BODY`: ±0.38 m across, 0.35 m ahead of and 0.42 m behind the centre,
+    collides as the sleigh's box (`SLEIGH_BODY`: ±0.38 m across, 0.375 m ahead of and 0.42 m behind the centre,
     ground to hat) whenever the sleigh is drawn; with the theme off it is still the ball's sphere. To keep
     every seeded course passable, the sleigh was made about 16% shorter, pressed toward its front, so that box
     fits inside the 0.44 m clearance the course generator keeps round the ball on every side. A tight cut the
@@ -73,9 +75,9 @@ reach and hat placement, and its disposal; that it never yaws while dodging and 
 equal to the obstacles, on the top face, along the block's banked up axis, overhang and depth, sliders included.
 It also fails on any folded or inside-out triangle in the sleigh (each face must turn the way its normals do), and
 it finds every part, the hat included, by its vertex colour. `play.spec.ts`'s GPU-resource test runs with the theme
-on, which is the default. It keeps the original 11 draw-call cap. Its geometry cap is 6 with the theme
+on, which is the default. It keeps the original 11 draw-call cap. Its geometry cap is 7 with the theme
 (box, city lines, snow cap, glint, and the sleigh's two meshes; the ball's sphere is not used) and 4 without.
-Measured in the browser: 8 draw calls and 6 geometries with the theme, 6 and 3 without.
+Measured in the browser: 9 draw calls and 7 geometries with the theme (the falling snow adds one of each), 6 and 3 without.
 With the theme off it checks the original ball, no snow and no sleigh. `play.spec.ts` is back to its original
 contrast check, because the bars are lavender again.
 

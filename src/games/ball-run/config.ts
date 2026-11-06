@@ -23,10 +23,13 @@ export const BANK_DRIFT = 6;
  * curls to its backrest, measured from the centre along the course (sleigh.ts builds the model inside this box;
  * a test holds them together). It handles like a sleigh: its runners take longer to carve a new line and keep
  * sliding sideways after the steering lets go (a slower response, so momentum carries), and it slides further
- * down a bank. course.ts's clearance and reach margins cover both; a test drives every course with it. */
+ * down a bank. The box lies inside course.ts's clearance on every side, so the generator's own guarantee
+ * covers it. The handling is covered by the generator's reach margin (it relies on 70% of the lateral
+ * authority and ignores the steering lag): that is shown by test, not proved; sleigh-courses.test.ts drives
+ * the bot, planning with this body, through every course it checks. */
 export type Body = { readonly steerResponse: number; readonly bankDrift: number } & ({ readonly kind: 'ball' } | { readonly kind: 'box'; readonly halfWidth: number; readonly bottom: number; readonly top: number; readonly front: number; readonly back: number });
 export const BALL: Body = { kind: 'ball', steerResponse: STEER_RESPONSE, bankDrift: BANK_DRIFT };
-export const SLEIGH_BODY: Body = { kind: 'box', halfWidth: RADIUS, bottom: -RADIUS, top: .2, front: .35, back: .42, steerResponse: 8, bankDrift: BANK_DRIFT * 1.2 };
+export const SLEIGH_BODY: Body = { kind: 'box', halfWidth: RADIUS, bottom: -RADIUS, top: .2, front: .375, back: .42, steerResponse: 8, bankDrift: BANK_DRIFT * 1.2 };
 /** The generator only relies on this fraction of the ball's lateral authority. */
 export const REACH_SAFETY = .7;
 /** Clear, wide, straight opening (m). */

@@ -43,8 +43,10 @@ describe('Ball Run Christmas sleigh model', () => {
     expect(box.max.z - box.min.z).toBeLessThan(4 * RADIUS);
   });
 
-  it('stays behind the ball\'s front while pitched on the steepest climb or dip, as steer() tilts it', () => {
-    // The steepest road gradient across the courses tilts it about 0.185 rad; this allows 0.2 either way.
+  it('stays inside its collision box\'s front while pitched as far as steer() ever tilts it (0.2 rad)', () => {
+    // The steepest road gradient across the courses tilts it about 0.185 rad; steer() clamps pitch to 0.2.
+    if (SLEIGH_BODY.kind !== 'box') throw new Error('the sleigh collides as a box');
+    const front = SLEIGH_BODY.front;
     const v = new THREE.Vector3(), q = new THREE.Quaternion(), x = new THREE.Vector3(1, 0, 0);
     for (const pitch of [-.2, -.1, .1, .2]) {
       q.setFromAxisAngle(x, pitch);
@@ -53,7 +55,7 @@ describe('Ball Run Christmas sleigh model', () => {
         const p = mesh.geometry.getAttribute('position');
         for (let i = 0; i < p.count; i++) reach = Math.max(reach, -v.fromBufferAttribute(p, i).applyQuaternion(q).z);
       }
-      expect(reach, `pitch ${pitch}`).toBeLessThanOrEqual(RADIUS);
+      expect(reach, `pitch ${pitch}`).toBeLessThanOrEqual(front);
     }
   });
 
@@ -115,7 +117,8 @@ describe('Ball Run Christmas sleigh collision', () => {
     const sides: [number, number][] = [[drawn.max.x, body.halfWidth], [-drawn.min.x, body.halfWidth], [drawn.min.y, body.bottom], [drawn.max.y, body.top], [-drawn.min.z, body.front], [drawn.max.z, body.back]];
     expect(drawn.max.x).toBeCloseTo(body.halfWidth, 6);
     expect(drawn.min.y).toBeCloseTo(body.bottom, 6);
-    for (const [model, box] of sides) expect(Math.abs(model - box)).toBeLessThanOrEqual(.01 + 1e-9);
+    // Snug on every side; the front leaves room for the nose to pitch up 0.2 rad on a climb without leaving the box.
+    for (const [model, box] of sides) expect(Math.abs(model - box), `${model} vs ${box}`).toBeLessThanOrEqual((box === body.front ? .035 : .01) + 1e-9);
     expect(-drawn.min.z).toBeLessThanOrEqual(body.front); expect(drawn.max.z).toBeLessThanOrEqual(body.back); expect(drawn.max.y).toBeLessThanOrEqual(body.top);
   });
 
@@ -170,7 +173,7 @@ describe('Ball Run Christmas snowfall', () => {
     const u = (a.points.material as THREE.ShaderMaterial).uniforms;
     expect(u.uOrigin.value.toArray()).toEqual([1, 2, 3.6]);
     // Long runs stay in float precision: the shader's wrap makes these equivalent to the raw values.
-    expect(u.uTravel.value).toBeLessThan(u.uBox.value.z); expect(u.uLift.value).toBeLessThan(u.uBox.value.y); expect(u.uTime.value).toBeLessThan(3600);
+    expect(u.uTravel.value).toBeLessThan(u.uBox.value.z); expect(u.uLift.value).toBeLessThan(u.uBox.value.y); expect(u.uTime.value).toBeLessThan(86400);
     const dispose = [vi.spyOn(a.points.geometry, 'dispose'), vi.spyOn(a.points.material as THREE.Material, 'dispose')];
     a.dispose(); b.dispose();
     for (const spy of dispose) expect(spy).toHaveBeenCalledOnce();
@@ -349,6 +352,12 @@ describe('Ball Run Christmas scene', () => {
       const carve = sleigh().rotation.z + s.bank;
       expect(Math.abs(carve)).toBeLessThanOrEqual(.04 + .02);
       if (Math.abs(carve) > .01) leaned++;
+      // It tips onto its inside runner: neither runner's contact ever goes below the banked road.
+      sleigh().updateMatrix();
+      for (const side of [-1, 1]) {
+        const contact = new THREE.Vector3(side * .25, -RADIUS, 0).applyMatrix4(sleigh().matrix);
+        expect(contact.y, `runner ${side} at ${distance}`).toBeGreaterThanOrEqual(course.surfaceHeight(distance, contact.x) + SLOPE * distance - .002);
+      }
     }
     expect(leaned).toBeGreaterThan(0);
     // Launched 3 m above the road and falling at 6 m/s: the nose turns down toward the flight path, no

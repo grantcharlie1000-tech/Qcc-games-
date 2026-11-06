@@ -1,8 +1,8 @@
 /** Christmas: Santa's sleigh, drawn in place of the ball. Santa is out on his rounds; only his hat is
- * left on the seat. The sleigh is a presentation model only: collision still uses the ball's sphere,
- * so it is built exactly one ball wide (2 × RADIUS, the gold trim on each side is the widest point),
- * its runners touch the ground where the ball does (RADIUS below the centre) and nothing reaches
- * further forward than the ball's front, so a crash never shows the sleigh inside a block.
+ * left on the seat. It is built exactly one ball wide (2 × RADIUS, the gold trim on each side is the
+ * widest point), its runners touch the ground where the ball does (RADIUS below the centre), and it fits
+ * inside the box the simulation collides it as (config.ts SLEIGH_BODY), even pitched as far as the scene
+ * ever tilts it, so a crash never shows it inside a block.
  *
  * Local frame: the origin is the ball's centre, +y is up and -z is forward. Parts that share a
  * finish are merged and coloured per vertex, so the whole sleigh is two draw calls. */
