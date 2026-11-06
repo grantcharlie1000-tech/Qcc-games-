@@ -22,7 +22,9 @@ const module:GameModule={
   const rows=Array.from({length:SIZE},()=>{const row=document.createElement('div');row.className='cb-row';row.setAttribute('role','row');board.append(row);return row;});
   const cells=Array.from({length:SIZE*SIZE},(_,i)=>{const c=document.createElement('button');c.className='cb-cell';c.type='button';c.dataset.cell=String(i);c.setAttribute('role','gridcell');c.setAttribute('aria-rowindex',String(Math.floor(i/SIZE)+1));c.setAttribute('aria-colindex',String(i%SIZE+1));c.id=`cb-cell-${i}`;rows[Math.floor(i/SIZE)].append(c);return c;});
   const slots=Array.from({length:3},(_,i)=>{const b=document.createElement('button');b.type='button';b.className='cb-piece';b.dataset.slot=String(i);tray.append(b);return b;});
-  function active(){return !paused&&!disposed&&hasMove(state);}
+  let checkedState:typeof state|undefined,canMove=false;
+  function movesAvailable(){if(checkedState!==state){checkedState=state;canMove=hasMove(state);}return canMove;}
+  function active(){return !paused&&!disposed&&movesAvailable();}
   function draw(){
    root.classList.toggle('cb-patterns',context.settings.colorBlind);root.classList.toggle('cb-reduced',context.settings.reducedMotion);root.dataset.moves=String(state.moves);root.dataset.score=String(state.score);root.dataset.combo=String(state.combo);
    const shape=selected===null?null:state.tray[selected];const valid=preview&&shape!==null&&shape!==undefined&&canPlace(state.board,shape,cursor.x,cursor.y)&&active();
@@ -36,7 +38,7 @@ const module:GameModule={
     cells[i].setAttribute('aria-label',`Row ${Math.floor(i/SIZE)+1}, column ${i%SIZE+1}, ${value?colorName(value):'empty'}${ghost?', placement preview':''}`);
    }
    for(let i=0;i<3;i++){
-    const p=state.tray[i],b=slots[i];b.classList.toggle('cb-dragging',drag?.slot===i);b.disabled=p===null||paused||!hasMove(state);b.setAttribute('aria-pressed',String(selected===i));
+    const p=state.tray[i],b=slots[i];b.classList.toggle('cb-dragging',drag?.slot===i);b.disabled=p===null||paused||!movesAvailable();b.setAttribute('aria-pressed',String(selected===i));
     if(p===null){b.innerHTML='';b.setAttribute('aria-label',`Piece ${i+1} placed`);continue;}
     const shape=SHAPES[p],w=Math.max(...shape.map(c=>c[0]))+1,h=Math.max(...shape.map(c=>c[1]))+1;
     b.setAttribute('aria-label',`Piece ${i+1}: ${NAMES[p]}, ${shape.length} blocks, ${colorName(colorOf(p))}`);
@@ -45,10 +47,10 @@ const module:GameModule={
    }
    if(state.score!==publishedScore){context.setScore(state.score);publishedScore=state.score;}
    if(state.lines!==publishedLines){context.setLevel(`${state.lines} lines`);publishedLines=state.lines;}
-   const status=paused?'Paused':hasMove(state)?`${state.moves} ${state.moves===1?'piece':'pieces'} placed · ${state.tray.filter(p=>p!==null).length} left in tray`:'No pieces fit.';
+   const status=paused?'Paused':movesAvailable()?`${state.moves} ${state.moves===1?'piece':'pieces'} placed · ${state.tray.filter(p=>p!==null).length} left in tray`:'No pieces fit.';
    if(status!==publishedStatus){context.setStatus(status);publishedStatus=status;}
    if(preview&&cursor.x>=0&&cursor.x<SIZE&&cursor.y>=0&&cursor.y<SIZE)board.setAttribute('aria-activedescendant',`cb-cell-${cursor.y*SIZE+cursor.x}`);else board.removeAttribute('aria-activedescendant');
-   if(!hasMove(state)){feedback.textContent=`No pieces fit · ${state.score} points`;root.classList.add('cb-over');}else root.classList.remove('cb-over');
+   if(!movesAvailable()){feedback.textContent=`No pieces fit · ${state.score} points`;root.classList.add('cb-over');}else root.classList.remove('cb-over');
   }
   function choose(slot:number){if(!active()||state.tray[slot]===null)return;ignoreClick=false;selected=slot;preview=false;context.sound('tap');feedback.textContent=`${NAMES[state.tray[slot]!]} selected`;draw();}
   function commit(animate=true){if(!active()||selected===null)return false;const result=place(state,selected,cursor.x,cursor.y);
@@ -56,7 +58,7 @@ const module:GameModule={
    state=result.state;selected=null;preview=false;
    if(animate)celebrate(result.cleared,result.gained,result.lines);
    const message=result.lines?`${result.lines} ${result.lines===1?'line':'lines'} cleared! Streak ${state.combo} · +${result.gained}`:`+${result.gained}`;
-   feedback.textContent=message;context.announce(message);context.sound(result.lines?'success':'tap');if(!hasMove(state)){context.sound('lose');context.announce('No remaining pieces fit. Your run is over.');}
+   feedback.textContent=message;context.announce(message);context.sound(result.lines?'success':'tap');if(!movesAvailable()){context.sound('lose');context.announce('No remaining pieces fit. Your run is over.');}
    context.save(state);draw();return true;
   }
   function reduced(){return context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;}
