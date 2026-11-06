@@ -159,9 +159,9 @@ Built by four parallel agents from one shared brief (each confined to its own ga
 | ![](./ball-run/before-mobile.png) | ![](./ball-run/after-mobile.png) |
 | ![](./ball-run/before-desktop.png) | ![](./ball-run/after-desktop.png) |
 
-- **Changes:** Icy-blue road with snow-white lines, frosted snow-dusted towers with warm lit windows (one 64×256 canvas texture on the existing tower material), a deep winter-blue sky with a static CSS star layer, red/green/gold blocks, white sliders, evergreen-and-gold boost gates and a glossy red bauble ball with gold bands.
+- **Changes (revised):** The original neon corridor is restored. Under the theme, a light covering of snow sits on top of every obstacle (one instanced pool, unlit, baked shading), and the ball is replaced by Santa's sleigh. Santa is not in it, but his hat is on the seat. The sleigh is exactly one ball wide (0.76 m), stands where the ball's base does, follows the road's slope and bank instead of rolling, and the crash bursts in its red, gold and white. Collision is unchanged. The first version of this skin (icy road, frosted towers, bauble ball) was withdrawn; see [`ball-run/NOTES.md`](ball-run/NOTES.md).
 - **Skills:** game-development + 3d-games + game-art, systematic-debugging, verification-before-completion. Details in [`ball-run/NOTES.md`](ball-run/NOTES.md).
-- **Notes and tests:** Only materials, colours, textures and fog change: geometry, ball radius, collision, pools, draw calls and resolution tiers are identical. I sent the first version back because the surroundings still read as the original wireframe city; the snow pass fixed that. Unit 113/113.
+- **Notes and tests:** Collision, ball radius, pools and resolution tiers are identical. The theme adds one snow pool and the sleigh's six meshes. `christmas.test.ts` pins the sleigh's width and the snow caps to the collision poses.
 
 ### Animal Stack (`animal-stack`)
 
@@ -285,14 +285,14 @@ Each of the 12 failures was run again, one worker, on this branch and on the ori
 - **Pre-existing flaky test:** Tetris `the most recently pressed direction wins while both are held` relies on Playwright's flowing fake clock and the game's auto-shift, so any latency between steps moves the piece twice. It fails on the original code too (1 of 10 runs in a sample). Profiling found no festive cost: no long tasks after Start in 12 runs, identical frame pacing (16.7 ms median, 16.8 ms p95) and lower main-thread load than the original theme.
 - **Original-palette assertions (fixed):** three `see-through-material` tests assert the original cards' exact colours. Two are pinned to the original theme; the Corn test now runs in both themes, checking the original panel colours only for the original theme and the opaque tip with at least 4.5:1 text contrast in both. The suite now passes 16/16.
 
-Other tests that measure the original artwork's exact pixels were pinned the same way (`neon-coil/visual.spec.ts`, `animal-stack/tall-framing.spec.ts`); Animal Stack also gained a festive framing test, and Ball Run's speed-readout contrast check now measures against the active theme's bar colour. `tests/e2e/festive.spec.ts` mounts all 21 games with the theme on, checks the menu switch leaves saves and scores alone, and switches the theme both ways inside Pac-Man.
+Other tests that measure the original artwork's exact pixels were pinned the same way (`neon-coil/visual.spec.ts`, `animal-stack/tall-framing.spec.ts`); Animal Stack also gained a festive framing test, and Ball Run's speed-readout contrast check measured against the active theme's bar colour (reverted once the revised Ball Run skin restored the original lavender bars). `tests/e2e/festive.spec.ts` mounts all 21 games with the theme on, checks the menu switch leaves saves and scores alone, and switches the theme both ways inside Pac-Man.
 
 ### Independent code review
 
 A separate reviewer read the whole diff. Verdict: no critical issues; gameplay state, physics, saves, scores and input untouched; theme-off paths identical to the original. Fixed from its findings:
 
 - Switching the theme mid-game could leave mixed artwork (Pac-Man's walls lost their colour). The shell now saves and remounts the open game when the switch changes, through the normal navigation path.
-- Ball Run had gold obstacles beside gold boost gates. Obstacles are now reds and greens only; gold means boost.
+- Ball Run had gold obstacles beside gold boost gates. Obstacles became reds and greens only (since superseded: the revised skin keeps the original colours and adds snow caps and a sleigh).
 - Slipline's idle green and blocked red now differ by 3.2:1 in lightness (the original lavender and red: 3.0:1).
 - Block Blast hides its ribbon when colour-blind glyphs are on; Block Blast and Water Sort read festive colour names to screen readers.
 - Suika's ornament cache is bounded to two scales; Pac-Man hides its antennae by class; an unused helper was removed.
@@ -301,7 +301,7 @@ Declined, with reasons: per-frame drawing in Flappy Bird (measured 0.22 ms per f
 
 ### Performance
 
-Measured per game where the skin draws every frame: Flappy Bird 0.22 ms per frame against 0.70 ms for the original; Claimline 21–24 ms against 22 ms under the same load (after caching fixed an early 37 ms version); Suika level with the original after caching (an early version ran at about 4 fps in the software-rendered test browser); Tetris identical frame pacing with lower main-thread load; Block Fill about 2 ms more per move from larger SVG markup, frame time unchanged; Ball Run adds one 64×256 texture and no draw calls. No game adds particle systems, blur filters or snowfall.
+Measured per game where the skin draws every frame: Flappy Bird 0.22 ms per frame against 0.70 ms for the original; Claimline 21–24 ms against 22 ms under the same load (after caching fixed an early 37 ms version); Suika level with the original after caching (an early version ran at about 4 fps in the software-rendered test browser); Tetris identical frame pacing with lower main-thread load; Block Fill about 2 ms more per move from larger SVG markup, frame time unchanged; Ball Run (revised) adds one instanced snow pool and the sleigh's six merged meshes in place of the ball, with no textures. No game adds particle systems, blur filters or snowfall.
 
 ### Restoring the original look
 

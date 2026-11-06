@@ -8,6 +8,8 @@ import {registerGlassFrameSource,notifyGlassFrame} from '../../ui/glass-frame-so
 import { rollAngle } from './roll';
 import { RetainedInstances } from './instances';
 import { christmas } from '../../festive/festive';
+import { createSleigh, SLEIGH_COLORS, SLEIGH_RUNNER_X } from './sleigh';
+import { SNOW_DEPTH, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from './snow';
 import { CONFIG, DYING_DURATION, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
@@ -23,20 +25,10 @@ export interface BallRunScene {
   dispose(): void;
 }
 
-const ORIGINAL_PALETTE = {
+const PALETTE = {
   void: 0x000000, track: 0x333b74, grid: 0x929bfb, sphere: 0xe500b1, block: 0xb51cfa, boost: 0x00e7ef,
   tower: 0x232764, towerLine: 0x8890f2, white: 0xffffff,
 };
-/** Christmas: a snowy night. Only colours and light change; every mesh, pool and transform is shared
- * with the original, so draw calls and collision boxes are identical. Icy road with snow lane lines,
- * frosted slate towers fading into a midnight fog, festive blocks and evergreen-and-gold boost gates. */
-const FESTIVE_PALETTE: typeof ORIGINAL_PALETTE = {
-  void: 0x13284f, track: 0x4f8fc0, grid: 0xeaf5ff, sphere: 0xd8263a, block: 0xd8263a, boost: 0xf4c430,
-  tower: 0xffffff, towerLine: 0xaec6e0, white: 0xffffff,
-};
-/** Festive obstacles: red, green, gold and a deeper red, keyed by id as before; sliders stay distinct in snow white. */
-// Obstacles stay in reds and greens; gold is reserved for boost (gates, chevrons, trail), as the original keeps purple obstacles apart from cyan boost.
-const FESTIVE_BLOCKS = [0xd8263a, 0x2c9a55, 0xb81d30, 0x1f7a42], FESTIVE_SLIDER = 0xf2f7ff;
 const TILES = 420, LINES = 3400, BLOCKS = 320, CYAN = 200, TRAIL = 18, BURST = 40, BURST_REDUCED = 14;
 /** Road drawn behind the origin; the camera sits 3.6 m back. */
 const BEHIND = 6;
@@ -64,9 +56,7 @@ const BALL_LIMIT = CITY_INNER - RADIUS - .05, CAMERA_LIMIT = CITY_INNER - 1.2;
 const HEIGHTS = [40, 27, 47, 33, 53, 30, 44, 36], JITTER = [0, .5, .2, .8, .1, .6, .3, .9], DEPTHS = [6, 5, 6.5, 5.5, 6, 4.5, 6.5, 5];
 
 /** Linear RGB multipliers per box face, in BoxGeometry order: +x, -x, +y, -y, +z, -z. */
-const ORIGINAL_SIDE_LIGHT = [1.35, 3, .9], ORIGINAL_FACE_LIGHT = [ORIGINAL_SIDE_LIGHT, ORIGINAL_SIDE_LIGHT, [1.6, 5, 1], [.3, .3, .3], [1, 1, 1], [.5, .5, .5]];
-/** Christmas: neutral shading (frosty tops, shaded sides), so red, green and gold keep their hue. */
-const FESTIVE_SIDE_LIGHT = [.62, .64, .72], FESTIVE_FACE_LIGHT = [FESTIVE_SIDE_LIGHT, FESTIVE_SIDE_LIGHT, [1.45, 1.5, 1.65], [.3, .3, .3], [1, 1, 1], [.5, .5, .5]];
+const SIDE_LIGHT = [1.35, 3, .9], FACE_LIGHT = [SIDE_LIGHT, SIDE_LIGHT, [1.6, 5, 1], [.3, .3, .3], [1, 1, 1], [.5, .5, .5]];
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const blankSample = (): TrackSample => ({ center: 0, width: 0, elevation: 0, gradient: 0, bank: 0, ground: true, tunnel: false, kind: 'warmup', segment: 0 });
@@ -79,38 +69,6 @@ function unit(a: number, b: number): number {
   return ((h ^ h >>> 15) >>> 0) / 4294967296;
 }
 
-/** Christmas tower faces, 64x256: canvas top is the top of every face. Deterministic, built once per mount. */
-function frostedTowerTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 64; canvas.height = 256;
-  const ink = canvas.getContext('2d')!;
-  const wall = ink.createLinearGradient(0, 0, 0, 256);
-  // Tower bases sit 14 m below the road, so the snow fades up from well above the base to reach road level.
-  wall.addColorStop(0, '#22385e'); wall.addColorStop(.42, '#2c4874'); wall.addColorStop(.6, '#5478a5'); wall.addColorStop(.78, '#b4cce5'); wall.addColorStop(1, '#f2f8fe');
-  ink.fillStyle = wall; ink.fillRect(0, 0, 64, 256);
-  // Warm windows, sparse, on a regular grid so they sit like rooms between the ledges. Faces are
-  // far taller than wide, so a 6x3 texel window lands roughly square on the wall.
-  for (let row = 2; row < 21; row++) for (let col = 0; col < 8; col++) {
-    const u = unit(row, col);
-    if (u > .09) continue;
-    ink.fillStyle = u < .035 ? '#ffd27a' : u < .065 ? '#ffb95e' : '#fff0c2';
-    ink.fillRect(col * 8 + 1, row * 8 + 3, 6, 3);
-  }
-  // Snow drifted against the base, with a soft wavy crest.
-  ink.fillStyle = '#f4f9ff';
-  ink.beginPath(); ink.moveTo(0, 256);
-  for (let x = 0; x <= 64; x += 8) ink.lineTo(x, 238 + 5 * Math.sin(x * .3) + 3 * unit(x, 7));
-  ink.lineTo(64, 256); ink.closePath(); ink.fill();
-  // Snow cap along the roof edge.
-  ink.fillRect(0, 0, 64, 4);
-  ink.fillStyle = '#d6e6f5'; ink.fillRect(0, 4, 64, 2);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  // Crisp window edges up close instead of smeared slits; distance still uses mipmaps.
-  texture.magFilter = THREE.NearestFilter;
-  return texture;
-}
-
 /** Writes the box transform in the snapped road group's local coordinates. */
 export function setObstacleTransform(target: THREE.Object3D, pose: ObstaclePose, origin: number): void {
   target.position.set(pose.x, pose.y + SLOPE * origin, -(pose.distance - origin));
@@ -121,9 +79,9 @@ export function setObstacleTransform(target: THREE.Object3D, pose: ObstaclePose,
 /** Throws when a WebGL 2 renderer cannot be created. */
 export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): BallRunScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'low-power' });
-  // The theme is read once at mount; only colour values differ between the branches.
-  const festive = christmas(), PALETTE = festive ? FESTIVE_PALETTE : ORIGINAL_PALETTE;
-  const SIDE_LIGHT = festive ? FESTIVE_SIDE_LIGHT : ORIGINAL_SIDE_LIGHT, FACE_LIGHT = festive ? FESTIVE_FACE_LIGHT : ORIGINAL_FACE_LIGHT;
+  // Christmas, read once at mount, keeps the original scene and adds only two things: a little snow
+  // on top of each obstacle (one extra instanced pool) and Santa's sleigh in place of the ball.
+  const festive = christmas();
   let resolutionCap = 1.5, pixelRatio = Math.min(window.devicePixelRatio || 1, resolutionCap), viewWidth = 0, viewHeight = 0;
   renderer.setPixelRatio(pixelRatio);
   renderer.setClearColor(PALETTE.void);
@@ -194,24 +152,25 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       scene.add(hitball);
     }
   }
+  let snow: THREE.InstancedMesh | undefined, snowCache: RetainedInstances | undefined;
+  if (festive) {
+    const cap = snowCapGeometry(), snowMaterial = snowCapMaterial();
+    geometries.push(cap); materials.push(snowMaterial);
+    snow = pool(cap, snowMaterial, BLOCKS, road);
+    snowCache = new RetainedInstances(snow);
+  }
   const cyan = pool(box, basic({ color: PALETTE.boost }), CYAN, road);
   const tileCache = new RetainedInstances(tiles), gridCache = new RetainedInstances(grid),
     blockCache = new RetainedInstances(blocks), cyanCache = new RetainedInstances(cyan);
-  const blockShades = (festive ? FESTIVE_BLOCKS : [0xb51cfa, 0xab18f0, 0xbb2cff, 0xa414e6]).map(c => new THREE.Color(c));
+  const blockShades = [0xb51cfa, 0xab18f0, 0xbb2cff, 0xa414e6].map(c => new THREE.Color(c));
   // Tunnel walls and their posts are seen side-on, so divide out the side light.
   const sideLit = (hex: number) => { const c = new THREE.Color(hex); c.r /= SIDE_LIGHT[0]; c.g /= SIDE_LIGHT[1]; c.b /= SIDE_LIGHT[2]; return c; };
-  const sliderColor = new THREE.Color(festive ? FESTIVE_SLIDER : PALETTE.sphere),
-    wallColor = sideLit(festive ? 0x1f7a42 : 0xb41edc), postColor = sideLit(festive ? 0xe9b949 : 0xff5ad9);
+  const sliderColor = new THREE.Color(PALETTE.sphere), wallColor = sideLit(0xb41edc), postColor = sideLit(0xff5ad9);
 
   // A pooled city corridor: dark faces behind genuine grid lines, built once.
   const city = new THREE.Group();
   scene.add(city);
-  // Christmas: one small canvas texture on the same material turns the towers into frosted buildings
-  // (snow cap, deep winter-blue walls with a few warm lit windows, snow drifted against the base). The
-  // white grid lines over it read as snow on the ledges. No geometry or draw call is added.
-  let towerTexture: THREE.CanvasTexture | undefined;
-  if (festive) towerTexture = frostedTowerTexture();
-  const towerMaterial = basic(towerTexture ? { color: PALETTE.tower, map: towerTexture } : { color: PALETTE.tower });
+  const towerMaterial = basic({ color: PALETTE.tower });
   // Bias the filled faces behind their wire grid to prevent coplanar flicker.
   towerMaterial.polygonOffset = true;
   towerMaterial.polygonOffsetFactor = 1;
@@ -266,47 +225,57 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   materials.push(cityLines.material as THREE.Material);
   city.add(cityLines);
 
-  // Tinted bands make rotation visible while retaining the original Phong colour and light.
-  const surface = document.createElement('canvas');
-  surface.width = 128; surface.height = 64;
-  const ink = surface.getContext('2d')!;
-  if (festive) {
-    // A red glass bauble: a gold equator band with darker trim, and fine gold meridians so roll stays visible.
-    ink.fillStyle = '#c8182e'; ink.fillRect(0, 0, 128, 64);
-    ink.fillStyle = '#e9b949';
-    for (const x of [0, 32, 64, 96, 128]) ink.fillRect(x - 1.5, 0, 3, 64);
-    ink.fillStyle = '#f2c14e'; ink.fillRect(0, 26, 128, 12);
-    ink.fillStyle = '#a87b1e'; ink.fillRect(0, 25, 128, 1.5); ink.fillRect(0, 37.5, 128, 1.5);
-  } else {
+  // Christmas: the sleigh stands where the ball's centre is and is exactly one ball wide; it follows the
+  // road's slope and bank instead of rolling. The ball's texture and material are then never built.
+  const sleigh = festive ? createSleigh() : undefined;
+  let ballTexture: THREE.CanvasTexture | undefined, ball: THREE.Object3D;
+  if (sleigh) ball = sleigh.group;
+  else {
+    // Tinted bands make rotation visible while retaining the original Phong colour and light.
+    const surface = document.createElement('canvas');
+    surface.width = 128; surface.height = 64;
+    const ink = surface.getContext('2d')!;
     ink.fillStyle = '#ffffff'; ink.fillRect(0, 0, 128, 64);
     ink.fillStyle = '#9a5aa0'; ink.fillRect(0, 26, 128, 12);
     ink.fillStyle = '#7c4684';
     for (const x of [0, 32, 64, 96, 128]) ink.fillRect(x - 3.5, 0, 7, 64);
+    ballTexture = new THREE.CanvasTexture(surface);
+    ballTexture.colorSpace = THREE.SRGBColorSpace;
+    const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, map: ballTexture, specular: 0xc070c0, shininess: 36 });
+    materials.push(ballMaterial);
+    ball = new THREE.Mesh(sphere, ballMaterial);
   }
-  const ballTexture = new THREE.CanvasTexture(surface);
-  ballTexture.colorSpace = THREE.SRGBColorSpace;
-  const ballMaterial = festive
-    ? new THREE.MeshPhongMaterial({ color: PALETTE.white, map: ballTexture, specular: 0xfff1e0, shininess: 90 })
-    : new THREE.MeshPhongMaterial({ color: PALETTE.sphere, map: ballTexture, specular: 0xc070c0, shininess: 36 });
-  materials.push(ballMaterial);
-  const ball = new THREE.Mesh(sphere, ballMaterial);
   scene.add(ball);
   // Overhead light gives the soft upper highlight; a dark ground colour gives the deep-purple underside.
-  scene.add(festive ? new THREE.HemisphereLight(0xd6e8ff, 0x14060a, 1.1) : new THREE.HemisphereLight(0xff9fe8, 0x0c0014, 1.2));
-  const key = new THREE.DirectionalLight(0xffffff, festive ? 1.6 : 1.9);
+  // Christmas: a neutral sky so the sleigh's red, gold and white fur keep their colour (the ball's pink sky would tint them).
+  scene.add(festive ? new THREE.HemisphereLight(0xfff6f2, 0x1a0c22, 1.15) : new THREE.HemisphereLight(0xff9fe8, 0x0c0014, 1.2));
+  const key = new THREE.DirectionalLight(0xffffff, 1.9);
   key.position.set(0, 10, .5);
-  const rim = new THREE.DirectionalLight(festive ? 0x8ec3ff : 0x9c5aff, 1.2);
+  const rim = new THREE.DirectionalLight(0x9c5aff, 1.2);
   rim.position.set(4, 1, -5);
   scene.add(key, rim);
+  if (festive) {
+    // Only the sleigh is lit (everything else, snow included, is unlit), so these change nothing else. The camera sees the
+    // sleigh's back, which the overhead key barely reaches: a soft fill from behind lights it.
+    const fill = new THREE.DirectionalLight(0xfff4ea, 1.1);
+    fill.position.set(-1.5, 3, 5);
+    scene.add(fill);
+  }
 
   // Speed Up trail and the block-death burst: one pooled mesh each, hidden when unused.
   // The cyan trail ties acceleration to the gate, distinct from the magenta ball. Instances
   // have no alpha of their own, so older spheres darken toward the road colour and shrink.
   const trailMaterial = basic({ color: PALETTE.white, transparent: true, depthWrite: false });
-  const trail = pool(sphere, trailMaterial, TRAIL, scene, true);
+  // Christmas: a trail of balls behind the sleigh would read as left-over balls, so the same pool draws
+  // cyan glints (small diamonds, still the boost's colour) that stream from the runners like sleigh dust.
+  let sparkle: THREE.BufferGeometry | undefined;
+  if (festive) { sparkle = new THREE.OctahedronGeometry(RADIUS * .55, 0); geometries.push(sparkle); }
+  const trail = pool(sparkle ?? sphere, trailMaterial, TRAIL, scene, true);
   const burstMaterial = basic({ color: PALETTE.white, transparent: true });
   const burst = pool(box, burstMaterial, BURST, scene, true);
-  const burstColors = [new THREE.Color(PALETTE.sphere), new THREE.Color(PALETTE.boost), new THREE.Color(PALETTE.white)];
+  const burstColors = festive
+    ? [new THREE.Color(SLEIGH_COLORS.body), new THREE.Color(SLEIGH_COLORS.gold), new THREE.Color(PALETTE.white)]
+    : [new THREE.Color(PALETTE.sphere), new THREE.Color(PALETTE.boost), new THREE.Color(PALETTE.white)];
   const trailColor = new THREE.Color(PALETTE.boost), trailFaded = new THREE.Color(PALETTE.track), tint = new THREE.Color();
 
   const stats: SceneStats = { calls: 0, geometries: 0, aspect: 1, ballScreenX: .5, ballScreenY: .5 };
@@ -539,12 +508,24 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
 
   function placeBlock(o: Obstacle): void {
     const slot = blockCache.keep(o.id), fresh = blockCache.fresh;
-    if (slot < 0 || (!fresh && !o.slide)) return;
+    // A cap only exists on a drawn block (gate walls share the block pool, so it can fill first).
+    const capSlot = snowCache && slot >= 0 ? snowCache.keep(o.id) : -1, capFresh = !!snowCache?.fresh;
+    const moveBlock = slot >= 0 && (fresh || !!o.slide), moveCap = capSlot >= 0 && (capFresh || !!o.slide);
+    if (!moveBlock && !moveCap) return;
     course.pose(o, frameElapsed, pose);
     setObstacleTransform(transform, pose, builtOrigin);
-    place(blocks, slot);
-    if (fresh) blocks.setColorAt(slot, o.kind === 'slider' ? sliderColor : blockShades[o.id % blockShades.length]);
-    blockCache.changed(slot, fresh);
+    if (moveBlock) {
+      place(blocks, slot);
+      if (fresh) blocks.setColorAt(slot, o.kind === 'slider' ? sliderColor : blockShades[o.id % blockShades.length]);
+      blockCache.changed(slot, fresh);
+    }
+    if (moveCap) {
+      // The cap sits on the block's (banked) top face and moves with a slider.
+      scale.set(2 * (pose.halfWidth + SNOW_OVERHANG), SNOW_DEPTH, 2 * (pose.halfDepth + SNOW_OVERHANG));
+      transform.translateY(pose.halfHeight - SNOW_SINK);
+      place(snow!, capSlot);
+      snowCache!.changed(capSlot);
+    }
   }
 
   let debugCount = 0;
@@ -553,6 +534,21 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     course.pose(o, frameElapsed, pose);
     setObstacleTransform(transform, pose, builtOrigin);
     place(hitboxes, debugCount++);
+  }
+
+  // The sleigh's attitude: on the road it lies on the slope and bank (the same angles as the road tiles
+  // under it); in the air, or off the road's edge, it holds the attitude it had. It never turns about y,
+  // like the blocks, so it never reaches wider or further forward than the ball it replaces. Changes ease
+  // in over about a metre of travel; a new run, restore or teleport snaps straight to the road.
+  let attitude = 0, lean = 0;
+  function steer(run: Run, bx: number, forward: number, continuous: boolean): void {
+    track(run.distance, S);
+    const ground = S.elevation - (bx - S.center) * Math.tan(S.bank);
+    const onRoad = S.ground && Math.abs(bx - S.center) <= S.width / 2 && run.height - RADIUS - ground < .06;
+    const k = !continuous ? 1 : onRoad ? 1 - Math.exp(-forward / .9) : 0;
+    attitude += (clamp(Math.atan(S.gradient), -.6, .4) - attitude) * k;
+    lean += (S.bank - lean) * k;
+    ball.rotation.set(attitude, 0, -lean, 'YXZ');
   }
 
   // Trail history: past ball positions every 0.5 m of travel, newest last.
@@ -591,11 +587,25 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       const age = (z - TRAIL_NEAR) / (far - TRAIL_NEAR);
       // Shrinks on screen too: samples nearer the camera are scaled down by their distance.
       const size = (.42 - .32 * age) * Math.min(1, 4 * (1 - age)) * clamp(Math.hypot(CAMERA_BACK - z, up) / ballRange, 0, 1);
+      tint.copy(trailColor).lerp(trailFaded, .6 * age);
+      scale.setScalar(size);
+      if (sparkle) {
+        // One glint behind each runner, at runner height, turned by its distance along the course so the
+        // pair twinkles as it recedes. At most 6 samples show, so the 12 glints fit the 18-instance pool.
+        // On a banked road each runner sits higher or lower than the centre by the bank, so its glints do too.
+        const tilt = Math.tan(track(history[slot * 3], S).bank);
+        for (let side = -1; side <= 1 && shown < TRAIL; side += 2) {
+          position.set(history[slot * 3 + 1] + side * SLEIGH_RUNNER_X, history[slot * 3 + 2] + lift - RADIUS * .72 - side * SLEIGH_RUNNER_X * tilt, z);
+          rotation.set(.6, history[slot * 3] * 2.4 + side, 0, 'YXZ');
+          place(trail, shown);
+          trail.setColorAt(shown++, tint);
+        }
+        continue;
+      }
       position.set(history[slot * 3 + 1], history[slot * 3 + 2] + lift, z);
       rotation.set(0, 0, 0, 'YXZ');
-      scale.setScalar(size);
       place(trail, shown);
-      trail.setColorAt(shown++, tint.copy(trailColor).lerp(trailFaded, .6 * age));
+      trail.setColorAt(shown++, tint);
     }
     commit(trail, shown);
   }
@@ -672,10 +682,11 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     const roadBase = Math.floor(distance / 256) * 256;
     if (roadBase !== builtOrigin || changedCourse || Math.abs(origin - scannedOrigin) > 16) {
       builtOrigin = roadBase; yRef = SLOPE * roadBase;
-      tileCache.reset(); gridCache.reset(); cyanCache.reset(); blockCache.reset(); gates.clear();
+      tileCache.reset(); gridCache.reset(); cyanCache.reset(); blockCache.reset(); snowCache?.reset(); gates.clear();
       scannedOrigin = NaN;
     }
     blockCache.begin();
+    snowCache?.begin();
     if (origin !== scannedOrigin) build(origin, range);
     else gates.forEach(keepWalls);
     road.position.set(0, (distance - builtOrigin) * SLOPE, distance - builtOrigin);
@@ -684,6 +695,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     frameElapsed = run.elapsed;
     course.forEachObstacle(origin - BEHIND, origin + range, placeBlock);
     blockCache.end();
+    snowCache?.end();
     if (hitboxes) {
       debugCount = 0;
       // Include the full previous sweep query, even behind the visible road.
@@ -697,7 +709,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     const bx = clamp(run.x, -BALL_LIMIT, BALL_LIMIT);
     ball.position.set(bx, run.height + SLOPE * distance, 0);
     const forward = distance - rollDistance, sideways = bx - rollPosition;
-    if (!changedCourse && run.seed === rollSeed && run.run === rollRun && forward >= 0 && forward <= 3 && Math.abs(sideways) <= 3) {
+    const continuous = !changedCourse && run.seed === rollSeed && run.run === rollRun && forward >= 0 && forward <= 3 && Math.abs(sideways) <= 3;
+    if (sleigh) steer(run, bx, forward, continuous);
+    else if (continuous) {
       // The road approaches +z; forward motion takes the top toward -z, sideways toward x.
       rollStep.setFromAxisAngle(rollX, -rollAngle(forward));
       ball.quaternion.premultiply(rollStep);
@@ -793,8 +807,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     for (const mesh of pools) mesh.dispose();
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
-    ballTexture.dispose();
-    towerTexture?.dispose();
+    ballTexture?.dispose();
+    sleigh?.dispose();
     renderer.dispose();
     renderer.forceContextLoss();
     scene.clear();

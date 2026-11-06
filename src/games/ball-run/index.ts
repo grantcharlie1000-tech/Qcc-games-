@@ -8,7 +8,6 @@ import { commitScore, emptyRecords, nextTarget, viewRecords, type RecordView, ty
 import { createScene, type BallRunScene, type FrameView } from './scene';
 import { AdaptiveResolution } from './resolution';
 import './style.css';
-import './christmas.css';
 
 type Panel = 'setup' | 'continue' | 'over' | 'lost' | null;
 type Scope = 'today' | 'week' | 'allTime';

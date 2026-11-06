@@ -1,5 +1,64 @@
 # Ball Run — Christmas skin
 
+## Revision: original scene, snow-capped obstacles and Santa's sleigh
+
+This revision replaces the whole skin described further down. The festive palette, frosted tower texture,
+bauble ball, star layer and `christmas.css` are gone: with the theme on or off, Ball Run draws its original
+neon corridor. Under the Christmas theme it adds just two things:
+
+- **Snow on the obstacles** (`src/games/ball-run/snow.ts`): a light covering, 7.5 cm at the crest, on top of every
+  obstacle (static blocks and sliders, not gate walls). One instanced pool draws all the caps, so the theme adds
+  one draw call. Each cap is a soft, slightly lumpy mound that overhangs the block by 3 cm, with a rounded lip
+  that hangs over the edge. The rounded edge band is 15 cm wide on every obstacle, from a 0.3 m post to a 14 m
+  wall: each vertex has a unit anchor plus an inset in metres, and a small vertex-shader change divides that
+  inset by the instance's scale. The baked shading is computed in metres, so it is right on every size. Like the blocks, it is unlit: white-to-lavender shading is baked into vertex colours.
+  Caps follow banked blocks and moving sliders, and they share the block cache's begin, end and reset path.
+  Collision is unchanged.
+- **Santa's sleigh in place of the ball** (`src/games/ball-run/sleigh.ts`): a red sleigh with a scrolled dash and backrest,
+  gold trim and scrollwork, curled gold runners on struts, green velvet cushions and Santa's hat (fur brim,
+  drooping cone, pompom) on the seat. Santa is not in it. Its measured vertices are normalised so the sleigh is
+  exactly `2 × RADIUS` (0.76 m, the ball's diameter) wide, centred on the ball, with the runners exactly on the
+  ball's ground contact. Nothing reaches further forward than the ball's front, so a crash never shows it
+  inside a block. Collision still uses the ball's sphere. It is two merged meshes coloured per vertex: glossy (lacquered red body and
+  gold) and matte (velvet, floor, hat and fur). The gold rim runs in one closed loop round each whole side
+  panel. Its corners and the runner and hat bends are all rounded wider than the tube is thick, so no trim
+  creases or ends open. The side panels have no bevel, because a bevel beside the trim showed as a pale seam.
+  - It does not roll. On the road it sits on the slope and bank (the same angles as the road tiles). In the air
+    or off the road's edge it holds its attitude. It never turns about y, like the blocks, so a dodge never
+    swings its corners wider or further forward than the ball. Changes ease in over about a metre of travel;
+    a new run, restore or teleport snaps straight to the road. About 20,000 triangles in two draw calls.
+  - It points away from the camera. The raised backrest, whose tall side curls roll back over the rear corners,
+    is nearest the camera. The low scrolled dash and the tall gold runner curls are at the far end. Between the
+    backrest curls the back panel stops lower, so the chase camera (behind and only a little above) sees the
+    whole hat on the seat. An earlier version had its tallest curl at the front and a low back. From behind
+    that read as a sleigh facing the camera.
+  - The block crash bursts into the sleigh's red, gold and white instead of the ball's magenta and cyan, so it is
+    the sleigh that breaks apart.
+  - The Speed Up trail, a line of shrinking balls behind the ball, would read as left-over balls behind a
+    sleigh. Under the theme the same pool draws small cyan diamond glints instead, one stream behind each runner
+    at runner height (following the road's bank), twinkling as they recede. They keep the boost's cyan and the trail's timing and fade.
+  - The ball's canvas texture and material are not built under the theme.
+  - Only the sleigh is lit in this scene, so under the theme the pink hemisphere light becomes neutral and a soft
+    fill from behind lights the sleigh's back. Nothing else changes.
+
+Evidence: `sleigh-chase.png` (mobile chase view), `sleigh-width-top.png` (straight down, with the ball's
+outline in cyan: the sleigh's sides land exactly on it), `sleigh-three-quarter.png`, `sleigh-side.png`,
+`snow-closeup.png`, `snow-wall-and-block.png`, `crash-burst.png`, `boost-glints.png`. `after-mobile.png` and `after-desktop.png` now show this revision.
+The `detail-*` images belong to the earlier skin.
+
+Tests: `tests/games/ball-run/christmas.test.ts` checks the sleigh's exact width, centring, ground contact, forward
+reach and hat placement, and its disposal; that it never yaws while dodging and holds its attitude in the air and off the edge. It checks every snow cap in the festive scene against the collision pose: count
+equal to the obstacles, on the top face, along the block's banked up axis, overhang and depth, sliders included.
+It also fails on any folded or inside-out triangle in the sleigh (each face must turn the way its normals do), and
+it finds every part, the hat included, by its vertex colour. `play.spec.ts`'s GPU-resource test runs with the theme
+on, which is the default. It keeps the original 11 draw-call cap. Its geometry cap is 6 with the theme
+(box, city lines, snow cap, glint, and the sleigh's two meshes; the ball's sphere is not used) and 4 without.
+Measured in the browser: 8 draw calls and 6 geometries with the theme, 6 and 3 without.
+With the theme off it checks the original ball, no snow and no sleigh. `play.spec.ts` is back to its original
+contrast check, because the bars are lavender again.
+
+## Earlier skin (superseded)
+
 ## Skills invoked
 - `using-superpowers`: session workflow.
 - `game-development` (Skill tool). I read its nested guides `.agents/skills/game-development/3d-games/SKILL.md` and `game-art/SKILL.md` in full.
