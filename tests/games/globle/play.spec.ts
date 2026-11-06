@@ -68,8 +68,15 @@ test('spelling corrections submit a guess on click and keyboard activation', asy
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
   await expect(page.locator('.gl-win-text')).toContainText('You found it in 2 guesses.');
   await page.reload();
-  await expect(page.locator('.gl-guess[data-id=DEU]')).toBeVisible();
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
+  // The winning card replaces the floating summaries to avoid dock overlap,
+  // but both guesses must survive reload and the result must remain visible.
+  await expect(page.locator('.gl-guess[data-id=DEU]')).toHaveCount(1);
+  await expect(page.locator('.gl-guess[data-id=FRA]')).toHaveCount(1);
+  await expect(page.locator('.gl-history')).toBeHidden();
+  await expect(page.locator('.gl-win-text')).toBeVisible();
+  await expect(page.locator('.gl-win-text')).toContainText('You found it in 2 guesses.');
+  expect(await count(page)).toBe('2');
 });
 
 test('complete winning round with neighbours, aliases, duplicates and invalid entries', async ({page}) => {

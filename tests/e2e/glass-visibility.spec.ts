@@ -10,6 +10,9 @@ for(const route of ['color-connect','crossy-road'])test(`game glass retains fros
   const controls=page.locator('.game-dock>.arcade-glass');
   await expect(controls).toHaveCount(3);
   for(const control of await controls.all()){
+    // Game chrome mounts before the asynchronous material layers are attached.
+    await expect(control).toHaveAttribute('data-glass',/^(backdrop|frost)$/);
+    await expect(control.locator(':scope>.ui-glass-glow')).toHaveCount(1);
     const material=await control.evaluate(e=>({
       shadow:getComputedStyle(e,'::before').boxShadow,
       fill:getComputedStyle(e,'::before').backgroundColor,

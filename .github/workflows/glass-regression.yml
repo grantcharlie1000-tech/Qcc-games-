@@ -9,6 +9,10 @@ on:
       - 'src/games/globle/**'
       - 'tests/e2e/glass-visibility.spec.ts'
       - 'tests/e2e/clear-ink-adaptation.spec.ts'
+      - 'tests/e2e/game-control-surfaces.spec.ts'
+      - 'tests/e2e/live-glass.spec.ts'
+      - 'tests/e2e/see-through-material.spec.ts'
+      - 'tests/games/globle/**'
       - '.github/workflows/glass-regression.yml'
 permissions:
   contents: read
@@ -37,9 +41,11 @@ jobs:
             sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
       - run: npx playwright install --with-deps ${{ matrix.browser }}
-      - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/e2e/glass-visibility.spec.ts tests/e2e/clear-ink-adaptation.spec.ts tests/games/globle/menus.spec.ts --workers=1 --reporter=list
+      - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/e2e/glass-visibility.spec.ts tests/e2e/clear-ink-adaptation.spec.ts tests/e2e/game-control-surfaces.spec.ts tests/e2e/live-glass.spec.ts tests/e2e/see-through-material.spec.ts tests/games/globle/ --workers=1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: glass-${{ matrix.browser }}
-          path: test-results
+          path: |
+            test-results
+            playwright-report

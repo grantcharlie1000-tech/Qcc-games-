@@ -250,7 +250,7 @@ async function statisticsContrast(page:Page){
   }
 }
 
-for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} transmits uniform dark and light artwork through its intended tint without added white`,async({page})=>{
+for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} transmits uniform dark and light artwork through ${surface==='dock'?'its faint directional sheen':'its intended tint without added white'}`,async({page})=>{
   // Study makes the arcade shell inert and keeps its island minimized (as at
   // 0f3d109), and the uniform art layer then covers it; Games shows the shell.
   // The sheet is the home sheet: over a live game, the WebGL lens samples the
@@ -289,12 +289,14 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} tra
       return y>216/24389?116*Math.cbrt(y)-16:24389/27*y;
     };
     const levels:number[]=[],original:number[]=[],added:number[]=[];
+    let region={w:0,h:0,x0:0,x1:0,y0:0,y1:0};
     // Measure the clear centre. The separately tested convex edge intentionally
     // displaces source detail and is not a claim of zero optical displacement.
     for(const {glass,source} of pairs){
     const a=await decode(glass),b=await decode(source);
     const x0=surface==='menu'?Math.ceil(a.w*.42):20,x1=surface==='menu'?Math.floor(a.w*.58):a.w-20;
     const y0=surface==='sheet'?20:Math.ceil(a.h*.45),y1=surface==='sheet'?a.h-20:Math.floor(a.h*.55);
+    region={w:a.w,h:a.h,x0,x1,y0,y1};
     for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
       const l=lightness(a.data,(y*a.w+x)*4),s=lightness(b.data,(y*b.w+x)*4);
       levels.push(l);original.push(s);added.push(Math.max(0,l-s));
@@ -302,12 +304,13 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} tra
     }
     const mean=(a:number[])=>a.reduce((s,v)=>s+v,0)/a.length;
     const sd=(a:number[])=>{const m=mean(a);return Math.sqrt(mean(a.map(v=>(v-m)**2)));};
-    return {lift:mean(added),retention:sd(original)>1?sd(levels)/sd(original):null,samples:levels.length};
+    return {lift:mean(added),retention:sd(original)>1?sd(levels)/sd(original):null,samples:levels.length,region};
   },{pairs,surface});
   expect(measured.samples).toBeGreaterThan(20);
   expect(measured.lift,JSON.stringify(measured)).toBeLessThanOrEqual(2);
-  // Model #92's literal recipes independently: clear dock .20/saturate(1.08),
-  // navigation .36/saturate(1.4)/brightness(.94), sheets .58/saturate(1.5).
+  // Model the literal recipes independently: dock .20/saturate(1.08) beneath
+  // its directional sheen, navigation .36/saturate(1.4)/brightness(.94),
+  // sheets .58/saturate(1.5). Keep the sheen, glow and rim in the actual shot.
   // Some Linux WebKit builds paint no backdrop filters at all (see clear-glass);
   // there only the fill applies. That is checked on an independent CSS page.
   const filtered=await backdropFiltersRender(page);
@@ -315,7 +318,9 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} tra
   const navigation=surface==='bar'||surface==='menu';
   const tone=filtered?{saturate:surface==='sheet'?1.5:navigation?1.4:1.08,brightness:navigation?.94:1,contrast:1}:{saturate:1,brightness:1,contrast:1};
   const fill=surface==='sheet'?{rgb:[12,16,22],alpha:.58}:{rgb:FILL_RGB,alpha:navigation?.36:FILL_ALPHA};
-  if(measured.retention!==null)expect(Math.abs(measured.retention-expectedRetention(['#152431','#f8e6c0'],tone,fill)),JSON.stringify(measured)).toBeLessThanOrEqual(.03);
+  expect(measured.retention,'Dark and light source artwork must have measurable contrast').not.toBeNull();
+  const expected=expectedRetention(['#152431','#f8e6c0'],tone,fill,surface==='dock'?measured.region:undefined);
+  expect(Math.abs(measured.retention!-expected),JSON.stringify({...measured,expected})).toBeLessThanOrEqual(.03);
 });
 
 async function backdropFiltersRender(page:Page){
@@ -327,18 +332,38 @@ async function backdropFiltersRender(page:Page){
   }finally{await reference.close();}
 }
 
-function expectedRetention(colors:string[],tone:{saturate:number;brightness:number;contrast:number},fill:{rgb:number[];alpha:number}){
+function expectedRetention(colors:string[],tone:{saturate:number;brightness:number;contrast:number},fill:{rgb:number[];alpha:number},dockRegion?:{w:number;h:number;x0:number;x1:number;y0:number;y1:number}){
   const lightness=(rgb:number[])=>{
     const y=rgb.reduce((sum,v,c)=>{const s=v/255;return sum+[.2126,.7152,.0722][c]*(s<=.04045?s/12.92:((s+.055)/1.055)**2.4);},0);
     return y>216/24389?116*Math.cbrt(y)-16:24389/27*y;
   };
-  const [a,b]=colors.map(hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)));
+  const source=colors.map(hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)));
   // Filter Effects: saturate matrix, then brightness, then contrast, then the fill.
   const s=tone.saturate,matrix=[[.213+.787*s,.715-.715*s,.072-.072*s],[.213-.213*s,.715+.285*s,.072-.072*s],[.213-.213*s,.715-.715*s,.072+.928*s]];
   const clamp=(v:number)=>Math.min(1,Math.max(0,v));
   const filtered=(rgb:number[])=>matrix.map(row=>clamp(row.reduce((sum,k,j)=>sum+k*rgb[j]/255,0))).map(v=>255*clamp((v*tone.brightness-.5)*tone.contrast+.5));
-  const through=(rgb:number[])=>filtered(rgb).map((v,c)=>v*(1-fill.alpha)+fill.rgb[c]*fill.alpha);
-  return Math.abs(lightness(through(b))-lightness(through(a)))/Math.abs(lightness(b)-lightness(a));
+  // The 135deg white gradient paints over the tinted backdrop. Evaluate its
+  // literal .10 / .025 at 45% / .065 stops at every sampled pixel centre,
+  // rather than assuming uniform alpha across a wide HUD or fitting the shot.
+  const sheen:number[]=[];
+  if(dockRegion){
+    const {w,h,x0,x1,y0,y1}=dockRegion;
+    for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
+      const position=(x+.5+y+.5)/(w+h);
+      sheen.push(position<.45?.10+(.025-.10)*position/.45:.025+(.065-.025)*(position-.45)/.55);
+    }
+  }else sheen.push(0);
+  const original:number[]=[],transmitted:number[]=[];
+  for(const rgb of source){
+    const tinted=filtered(rgb).map((v,c)=>v*(1-fill.alpha)+fill.rgb[c]*fill.alpha);
+    for(const alpha of sheen){
+      original.push(lightness(rgb));
+      transmitted.push(lightness(tinted.map(v=>v*(1-alpha)+255*alpha)));
+    }
+  }
+  const mean=(a:number[])=>a.reduce((sum,v)=>sum+v,0)/a.length;
+  const sd=(a:number[])=>{const m=mean(a);return Math.sqrt(mean(a.map(v=>(v-m)**2)));};
+  return sd(transmitted)/sd(original);
 }
 
 async function pinArticleNavigation(page:Page){
