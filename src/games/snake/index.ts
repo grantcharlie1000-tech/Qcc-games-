@@ -1,13 +1,14 @@
 import type {GameModule} from '../../core/types';
-import {createState,enqueue,start as startRun,restoreState,type Direction} from './model';
+import {createState,enqueue,start as startRun,restoreState,advance,length,SIZE,type Direction} from './model';
 import {drawGarden} from './art';
-import {advancePresentation,createPresentation,restorePresentation,savePresentation} from './presentation';
+import {buildSpine,createView,eatDelay,tickView,DEATH_CARD_MS,WIN_CARD_MS,type SnakeView} from './presentation';
 import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import './style.css';
 import './christmas.css';
+const SWIPE_PX=20;
 const module:GameModule={
  id:'snake',title:'Snake',cover:'game-art/snake/cover.svg',
- rules:'Guide the snake with arrow keys, WASD or swipes. It moves smoothly at one square every 0.16 seconds. Turns queue for the center of the next square, with at most two saved turns and no reversal. Once a leg starts, a later turn cannot redirect it, even to avoid a wall. Touch apples for 10 points each and grow one segment. Your tail stays in place briefly as you grow. Touching a wall or your body ends the run. A moving tail is safe only if it clears before your head touches it; growth keeps it in place longer. Earn all 256 segments to win. Pause freezes travel, effects and controls. Older grid saves wait for Continue saved run; your progress is kept and turns use the new timing.',
+ rules:'Steer with the arrow keys, WASD or swipes; the first direction starts the run. The snake moves one square every 0.135 seconds. Up to three turns are buffered, and a turn pressed just after the head passes a square still turns at that square. Eat apples for 10 points; each one adds a segment. Hitting a wall or your own body ends the run, though the snake pauses for one beat against an obstacle so a quick turn can still save it. Your tail moves out of the way as you advance, unless you have just eaten. Fill the whole 16 by 16 garden to win. Pause freezes play and animation.',
  mount(container,context){
   container.innerHTML=`<div class="snake-game"><div class="snake-garden"><canvas class="snake-canvas" width="480" height="480" tabindex="0" role="img" aria-label="Snake garden. Use arrow keys, WASD or swipe to steer."></canvas><div class="snake-card"><strong>Apple appetite</strong><p hidden></p><button class="game-button snake-start">Start slithering</button></div></div></div>`;
   const root=container.querySelector<HTMLElement>('.snake-game')!;
@@ -15,55 +16,64 @@ const module:GameModule={
   const card=root.querySelector<HTMLElement>('.snake-card')!,heading=card.querySelector('strong')!,message=card.querySelector('p')!,start=card.querySelector<HTMLButtonElement>('button')!;
   const available=container.parentElement!;
   const motionQuery=matchMedia('(prefers-reduced-motion: reduce)');
-  let state=createState(),view=createPresentation(),paused=false,disposed=false,frame:number|null=null,last:number|null=null;
-  let lastReduced=false,lastDpr=window.devicePixelRatio||1,dirty=true;
+  let state=createState(),view:SnakeView=createView(),paused=false,disposed=false,frame:number|null=null,last:number|null=null;
+  let best=context.highScore,revealed=true;
   const events=new AbortController();
   let gesture:{x:number;y:number;id:number}|null=null;
   const reduced=()=>context.settings.reducedMotion||motionQuery.matches;
   function render(){
-   const reduce=reduced();lastReduced=reduce;lastDpr=window.devicePixelRatio||1;dirty=false;
+   const reduce=reduced();
    root.dataset.reducedMotion=String(reduce);
    drawGarden(canvas,state,view,reduce);
    notifyGlassFrame(canvas);
-   const h=state.body[0],format=(n:number)=>Number(n.toFixed(3));
-   canvas.setAttribute('aria-label',`Snake garden. Head column ${format(h.x+1)}, row ${format(h.y+1)}. Length ${state.segments}. ${state.food?`Apple column ${state.food.x+1}, row ${state.food.y+1}.`:''} Turns apply at the next square’s center. Use arrows, WASD or swipe.`);
+   const h=state.body[0];
+   canvas.setAttribute('aria-label',`Snake garden. Head column ${h.x+1}, row ${h.y+1}. Length ${length(state)}. ${state.food?`Apple column ${state.food.x+1}, row ${state.food.y+1}.`:''} Use arrows, WASD or swipe.`);
   }
   function resize(){
    if(disposed)return;
    const size=Math.max(1,Math.min(728,available.clientWidth,available.clientHeight));
    root.style.setProperty('--snake-board-size',`${size}px`);
-   dirty=true;render();
+   render();
   }
   const observer=new ResizeObserver(resize);observer.observe(available);
-  // The shared glass lens samples each drawn frame; repaint draws the current state only.
   const releaseGlass=registerGlassFrameSource(canvas,()=>{if(!disposed)render();});
+  const finished=()=>state.phase==='lost'||state.phase==='won';
+  /** Result cards wait for the death/win animation, except under reduced motion. */
+  function cardDue(){
+   if(!finished())return true;
+   if(reduced()||view.endedAt===null)return true;
+   return view.clock-view.endedAt>=(state.phase==='won'?WIN_CARD_MS:DEATH_CARD_MS);
+  }
   function update(){
-   context.setScore(state.score);context.setLevel(`Length ${state.segments}`);
-   const finished=state.phase==='lost'||state.phase==='won';
-   message.hidden=!finished;
-   card.hidden=state.phase==='running'&&!state.migration?.held;
-   if(state.migration?.held){
-    heading.textContent='Welcome back';message.textContent='';start.textContent='Continue saved run';
-   }else if(state.phase==='ready'){
-    heading.textContent='Apple appetite';message.textContent='';start.textContent='Start slithering';
-   }else if(finished){
+   context.setScore(state.score);context.setLevel(`Length ${length(state)}`);
+   const done=finished(),wasRevealed=revealed;
+   revealed=cardDue();
+   message.hidden=!done;
+   card.hidden=state.phase==='running'||!revealed;
+   if(state.phase==='ready'){heading.textContent='Apple appetite';start.textContent='Start slithering';}
+   else if(done){
     heading.textContent=state.phase==='won'?'Garden complete!':'One more apple?';
-    message.textContent=`${state.score} points · ${state.segments} segments`;
+    message.textContent=`${state.score>best&&state.score>0?'New best! ':''}${state.score} points · length ${length(state)}`;
     start.textContent='Play again';
    }
    start.disabled=paused;
-   context.setStatus(paused?'Paused':finished?(state.phase==='won'?'All 256 segments earned. You win!':'Run ended.'):state.phase==='ready'?'Ready':'Playing');
-   dirty=true;
+   if(done&&revealed&&!wasRevealed&&!paused&&root.contains(document.activeElement))start.focus({preventScroll:true});
+   context.setStatus(paused?'Paused':done?(state.phase==='won'?`All ${SIZE*SIZE} squares filled. You win!`:'Run ended.'):state.phase==='ready'?'Ready':'Playing');
   }
-  function snapshot(){return JSON.parse(JSON.stringify({...state,presentation:savePresentation(view)})) as unknown;}
-  function serialize(){advanceTo(performance.now());if(dirty&&!disposed)render();return snapshot();}
+  function snapshot(){const {undo:_undo,...rest}=state;return JSON.parse(JSON.stringify(rest)) as unknown;}
+  function serialize(){advanceTo(performance.now());return snapshot();}
   function persist(){context.save(snapshot());}
-  function reset(){state=createState();view=createPresentation();last=null;gesture=null;update();persist();}
+  function reset(){state=createState();const clock=view.clock;view=createView();view.clock=clock;view.foodBorn=clock;best=context.highScore;last=null;gesture=null;revealed=true;update();persist();}
+  function begin(d?:Direction):boolean{
+   if(!startRun(state,d))return false;
+   best=context.highScore;last=performance.now();context.sound('tap');afterModelChange(state.score,'ready');return true;
+  }
   function action(d:Direction){
    if(paused||disposed)return;advanceTo(performance.now());
-   if(state.phase==='lost'||state.phase==='won'){render();return;}
-   if(state.phase==='ready'||state.migration?.held){if(!startRun(state,d))return;last=performance.now();}
-   else enqueue(state,d);update();render();
+   if(finished())return;
+   if(state.phase==='ready'){begin(d);}
+   else{const score=state.score,phase=state.phase;enqueue(state,d);afterModelChange(score,phase);}
+   update();render();
   }
   const keys:Record<string,Direction>={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',a:'left',s:'down',d:'right'};
   window.addEventListener('keydown',event=>{
@@ -71,49 +81,64 @@ const module:GameModule={
    const d=keys[event.key]??keys[event.key.toLowerCase()];if(d){event.preventDefault();action(d);}
   },{signal:events.signal});
   start.addEventListener('click',()=>{
-   if(paused)return;if(state.phase==='lost'||state.phase==='won')reset();
-   startRun(state);last=performance.now();context.sound('tap');update();render();canvas.focus({preventScroll:true});
+   if(paused)return;if(finished())reset();
+   begin();update();render();canvas.focus({preventScroll:true});
   },{signal:events.signal});
   canvas.addEventListener('pointerdown',event=>{
    if(paused||!event.isPrimary)return;
    gesture={x:event.clientX,y:event.clientY,id:event.pointerId};canvas.setPointerCapture(event.pointerId);canvas.focus({preventScroll:true});
   },{signal:events.signal});
-  canvas.addEventListener('pointerup',event=>{
+  // Swipes turn as soon as the finger has travelled far enough; one drag can make several turns.
+  canvas.addEventListener('pointermove',event=>{
    if(!gesture||gesture.id!==event.pointerId)return;
-   const dx=event.clientX-gesture.x,dy=event.clientY-gesture.y;gesture=null;
-   if(Math.max(Math.abs(dx),Math.abs(dy))<18)return;
-   action(Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up');
+   const dx=event.clientX-gesture.x,dy=event.clientY-gesture.y,ax=Math.abs(dx),ay=Math.abs(dy);
+   if(Math.max(ax,ay)<SWIPE_PX||Math.max(ax,ay)<1.3*Math.min(ax,ay))return;
+   gesture.x=event.clientX;gesture.y=event.clientY;
+   action(ax>ay?dx>0?'right':'left':dy>0?'down':'up');
   },{signal:events.signal});
-  const cancelGesture=()=>{gesture=null;};
-  canvas.addEventListener('pointercancel',cancelGesture,{signal:events.signal});
-  canvas.addEventListener('lostpointercapture',cancelGesture,{signal:events.signal});
-  motionQuery.addEventListener('change',()=>{dirty=true;},{signal:events.signal});
-  function advanceTo(now:number){
-   if(disposed||paused||state.phase!=='running'||state.migration?.held)return;
-   now=Math.max(now,last??now);
-   const score=state.score,phase=state.phase,ticks=state.ticks;
-   if(last!==null)advancePresentation(state,view,Math.max(0,now-last));
-   last=now;
-   if(state.ticks!==ticks||state.score!==score||state.phase!==phase){
-    if(state.score!==score){context.sound('success');context.announce(`Apple! ${state.score} points.`);}
-    if(state.phase!==phase){context.sound(state.phase==='won'?'success':'lose');context.announce(state.phase==='won'?'You earned all 256 segments!':`Run ended. ${state.score} points.`);persist();}
-    update();
+  const endGesture=()=>{gesture=null;};
+  canvas.addEventListener('pointerup',endGesture,{signal:events.signal});
+  canvas.addEventListener('pointercancel',endGesture,{signal:events.signal});
+  canvas.addEventListener('lostpointercapture',endGesture,{signal:events.signal});
+  function afterModelChange(score:number,phase:string){
+   if(state.score>score){
+    const at=view.clock+(reduced()?0:eatDelay(state));view.eats.push({at,cell:{...state.eaten!}});view.foodBorn=at;
+    context.sound('success');context.announce(`Apple! ${state.score} points.`);
    }
-   dirty=true;
+   if(state.phase!==phase&&finished()){
+    view.endedAt=view.clock;revealed=false;
+    context.sound(state.phase==='won'?'success':'lose');
+    context.announce(state.phase==='won'?'You filled the garden!':`Run ended. ${state.score} points.`);persist();
+   }
+   if(state.score!==score||state.phase!==phase)update();
   }
+  function advanceTo(now:number){
+   if(disposed||paused||state.phase!=='running'){last=null;return;}
+   const dt=last===null?0:Math.max(0,now-last);last=Math.max(last??now,now);
+   const score=state.score,phase=state.phase;
+   advance(state,dt);afterModelChange(score,phase);
+  }
+  let lastFrame:number|null=null;
   function loop(now:number){
    if(disposed)return;
-   advanceTo(now);
-   if(dirty||lastReduced!==reduced()||lastDpr!==(window.devicePixelRatio||1))render();
+   if(!paused){
+    const dt=lastFrame===null?0:Math.min(100,Math.max(0,now-lastFrame));
+    advanceTo(now);
+    const spine=buildSpine(state);tickView(view,state,spine.head,spine.tangent,dt,reduced());
+    if(!revealed&&cardDue())update();
+   }
+   lastFrame=paused?null:now;
+   render();
    frame=requestAnimationFrame(loop);
   }
-  update();resize();render();frame=requestAnimationFrame(loop);
+  update();resize();frame=requestAnimationFrame(loop);
   return {
    pause(){advanceTo(performance.now());paused=true;last=null;gesture=null;update();render();},
-   resume(){paused=false;last=state.phase==='running'&&!state.migration?.held?performance.now():null;update();},restart(){reset();},serialize,
+   resume(){paused=false;last=state.phase==='running'?performance.now():null;update();},
+   restart(){reset();},serialize,
    restore(data){
     const valid=restoreState(data);
-    if(valid){state=valid;view=restorePresentation(state,(data as {presentation?:unknown}).presentation,(data as {version?:unknown}).version===1);last=state.phase==='running'&&!state.migration?.held?performance.now():null;gesture=null;update();render();}
+    if(valid){state=valid;view=createView(state);revealed=true;last=state.phase==='running'?performance.now():null;gesture=null;best=context.highScore;update();render();}
    },
    dispose(){disposed=true;releaseGlass();events.abort();observer.disconnect();if(frame!==null)cancelAnimationFrame(frame);container.replaceChildren();}
   };

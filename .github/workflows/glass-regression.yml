@@ -7,6 +7,10 @@ on:
       - 'src/game-viewport.css'
       - 'src/ui/glass*.ts'
       - 'src/games/globle/**'
+      - 'src/games/snake/**'
+      - 'src/games/fruit-merge/**'
+      - 'tests/e2e/apple-glass.spec.ts'
+      - 'tests/e2e/arcade-sheets.spec.ts'
       - 'tests/e2e/glass-visibility.spec.ts'
       - 'tests/e2e/clear-ink-adaptation.spec.ts'
       - 'tests/e2e/game-control-surfaces.spec.ts'
@@ -23,7 +27,8 @@ jobs:
   glass:
     name: Glass controls (${{ matrix.browser }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Includes both original/festive surfaces and the latest Snake integration.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -41,7 +46,7 @@ jobs:
             sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
       - run: npx playwright install --with-deps ${{ matrix.browser }}
-      - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/e2e/glass-visibility.spec.ts tests/e2e/clear-ink-adaptation.spec.ts tests/e2e/game-control-surfaces.spec.ts tests/e2e/live-glass.spec.ts tests/e2e/see-through-material.spec.ts tests/games/globle/ --workers=1
+      - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/e2e/glass-visibility.spec.ts tests/e2e/clear-ink-adaptation.spec.ts tests/e2e/game-control-surfaces.spec.ts tests/e2e/live-glass.spec.ts tests/e2e/see-through-material.spec.ts tests/e2e/apple-glass.spec.ts tests/e2e/arcade-sheets.spec.ts tests/games/globle/ tests/games/snake/ tests/games/neon-coil/play.spec.ts --workers=1
       - uses: actions/upload-artifact@v4
         if: always()
         with:

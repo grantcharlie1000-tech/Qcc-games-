@@ -1,4 +1,4 @@
-import {test,expect} from '../fixtures';
+import {test,expect,originalTheme} from '../fixtures';
 import {HIDDEN_INK,glyphContrast,settleGlassInk} from '../glass-contrast';
 
 const forcedFallback=process.env.ARCADE_GLASS_FALLBACK==='1';
@@ -119,10 +119,13 @@ for(const preference of ['media','class'])test(`home companion preserves reduced
   await page.mouse.move(0,0);await page.mouse.up();
 });
 
-for(const width of [390,1366]){
-  test(`three independent glass objects float over the game surface at ${width}px`,async({page,browserName})=>{
+// Original Suika art is light; its Christmas night sky intentionally uses dark glass.
+for(const [theme,tone] of [['original','light'],['christmas','dark']] as const)for(const width of [390,1366]){
+  test(`three independent glass objects float over the ${theme} Suika surface at ${width}px`,async({page,context,browserName})=>{
+    if(theme==='original')await originalTheme(context);
     await page.setViewportSize({width,height:width===390?844:768});
     await page.goto('/#/game/fruit-merge');
+    await expect(page.locator('html')).toHaveAttribute('data-festive',theme==='original'?'off':'christmas');
     const dock=page.getByRole('navigation',{name:'Game controls'});
     const objects=dock.locator(':scope > .arcade-glass');
     await expect(objects).toHaveCount(3);
@@ -135,7 +138,7 @@ for(const width of [390,1366]){
     for(const b of boxes){expect(b.y).toBeGreaterThanOrEqual(surface.y);expect(b.bottom).toBeLessThanOrEqual(surface.y+surface.height);}
     const drop=(await page.locator('.fm-board').boundingBox())!;await expect(page.locator('.fm-drop')).toHaveCount(0);
     expect(drop.y+drop.height).toBeLessThanOrEqual(boxes[0].y-8);
-    await expect(page.locator('.game-view')).toHaveAttribute('data-glass-tone','light');
+    await expect(page.locator('.game-view')).toHaveAttribute('data-glass-tone',tone);
     for(const object of await objects.all())await expect(object).toHaveAttribute('data-glass',browserName==='chromium'?'backdrop':'frost');
     await expect(dock).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
   });
@@ -154,7 +157,8 @@ for(const width of [390,1366]){
   });
 }
 
-test('surface tone follows the game and glyphs have no heavy halo',async({page})=>{
+test('original surface tone follows the game and glyphs have no heavy halo',async({page,context})=>{
+  await originalTheme(context);
   for(const [id,tone] of [['fruit-merge','light'],['neon-coil','dark'],['quadfall','dark']]){
     await page.goto(`/#/game/${id}`);
     await expect(page.locator('.game-view')).toHaveAttribute('data-glass-tone',tone);
@@ -215,15 +219,28 @@ test('pointer press lifts the individual button and reduced motion removes the l
   await page.mouse.move(1,1);await page.mouse.up();
 });
 
-test('light desktop controls keep white hover ink and an opaque accessible surface',async({page})=>{
+for(const [theme,tone,fill,ink] of [
+  ['original','light','rgb(241, 243, 245)','rgb(11, 16, 21)'],
+  ['christmas','dark','rgb(32, 38, 43)','rgb(255, 255, 255)'],
+] as const)test(`${theme} Suika desktop controls keep white hover ink and an opaque accessible surface`,async({page,context})=>{
+  if(theme==='original')await originalTheme(context);
   await page.setViewportSize({width:1366,height:768});await page.goto('/#/game/fruit-merge');
+  await expect(page.locator('html')).toHaveAttribute('data-festive',theme==='original'?'off':'christmas');
+  await expect(page.locator('.game-view')).toHaveAttribute('data-glass-tone',tone);
   const menu=page.locator('#game-menu');await menu.hover();
   await expect(menu).toHaveCSS('color','rgb(255, 255, 255)');
+  await expect(menu.locator('svg')).toHaveCSS('color','rgb(255, 255, 255)');
+  await expect(page.locator('.game-hud strong')).toHaveCSS('color','rgb(255, 255, 255)');
   await expect(menu).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
   await page.emulateMedia({contrast:'more'});
-  await expect(menu).toHaveAttribute('data-glass','off');
-  await expect(menu).toHaveCSS('background-color','rgb(241, 243, 245)');
-  await expect(menu).toHaveCSS('color','rgb(11, 16, 21)');
+  const objects=page.locator('.game-dock > .arcade-glass');await expect(objects).toHaveCount(3);
+  for(const object of await objects.all()){
+    await expect(object).toHaveAttribute('data-glass','off');
+    await expect(object).toHaveCSS('background-color',fill);
+    await expect(object).toHaveCSS('color',ink);
+  }
+  await expect(menu.locator('svg')).toHaveCSS('color',ink);
+  await expect(page.locator('.game-hud strong')).toHaveCSS('color',ink);
 });
 
 for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density}`,()=>{
