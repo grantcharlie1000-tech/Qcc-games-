@@ -78,8 +78,23 @@ function across(shape: THREE.Shape, x0: number, x1: number, bevel = 0): THREE.Bu
   return smooth;
 }
 
+/** A smooth tube through the points. An open tube gets a rounded cap on each end, so no end is left hollow. */
 function tube(points: THREE.Vector3[], radius: number, segments = 64, closed = false): THREE.BufferGeometry {
-  return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points, closed, 'centripetal'), segments, radius, 10, closed);
+  const curve = new THREE.CatmullRomCurve3(points, closed, 'centripetal');
+  const body = new THREE.TubeGeometry(curve, segments, radius, 10, closed);
+  if (closed) return body;
+  const parts = [body, new THREE.IcosahedronGeometry(radius, 2), new THREE.IcosahedronGeometry(radius, 2)];
+  parts[1].translate(...curve.getPoint(0).toArray());
+  parts[2].translate(...curve.getPoint(1).toArray());
+  const flat = parts.map(g => {
+    const f = g.index ? g.toNonIndexed() : g;
+    if (f !== g) g.dispose();
+    for (const name of Object.keys(f.attributes)) if (name !== 'position' && name !== 'normal') f.deleteAttribute(name);
+    return f;
+  });
+  const g = mergeGeometries(flat)!;
+  for (const f of flat) f.dispose();
+  return g;
 }
 
 /** A tube whose radius follows `radius(t)` along the curve; the hat's drooping cone. */
@@ -106,6 +121,13 @@ function taperedTube(curve: THREE.Curve<THREE.Vector3>, segments: number, sides:
   g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   g.setIndex(indices);
   g.computeVertexNormals();
+  // Each ring's first and last vertex are the same point, smoothed separately: share one normal so no seam shows.
+  const n = g.getAttribute('normal') as THREE.BufferAttribute, v = new THREE.Vector3(), w = new THREE.Vector3();
+  for (let i = 0; i <= segments; i++) {
+    const a = i * (sides + 1), b = a + sides;
+    v.fromBufferAttribute(n, a).add(w.fromBufferAttribute(n, b)).normalize();
+    n.setXYZ(a, v.x, v.y, v.z); n.setXYZ(b, v.x, v.y, v.z);
+  }
   return g;
 }
 
@@ -169,7 +191,7 @@ export function createSleigh(): Sleigh {
     gold.push(scroll(.16, .22, side * PANEL_OUT, .07, .015, 1.6), scroll(-.39, .2, side * PANEL_OUT, .05, .012, 1.4));
     // Runner: a curled tail, a long straight glide and a tall curl rising in front of the dash, on three struts.
     const runner: [number, number][] = [[-.45, .085], [-.48, .062], [-.477, .032], [-.44, RUNNER], [-.3, RUNNER], [0, RUNNER], [.14, RUNNER],
-      [.235, .034], [.3, .08], [.34, .16], [.352, .25], [.34, .33], [.305, .385], [.26, .39], [.23, .355], [.236, .31], [.27, .295], [.3, .315]];
+      [.235, .034], [.29, .08], [.323, .16], [.333, .25], [.32, .325], [.288, .375], [.248, .38], [.22, .35], [.226, .31], [.256, .295], [.283, .312]];
     gold.push(tube(runner.map(([u, v]) => at(u, v, side * RUNNER_X)), RUNNER, 96));
     for (const u of [-.38, -.12, .1]) {
       const strut = new THREE.CylinderGeometry(.014, .014, BOTTOM - RUNNER + .01, 10);
@@ -200,8 +222,11 @@ export function createSleigh(): Sleigh {
   velvet.push(seat, back);
   // The hat on the front of the seat, leaning back a little, its tip drooping toward the camera's right.
   const hatParts = hat();
-  const place = new THREE.Matrix4().compose(new THREE.Vector3(-.05, BOTTOM + .03 + SEAT - .006 - RADIUS, .15),
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(.1, -.4, -.04)), new THREE.Vector3(HAT, HAT, HAT));
+  // Upright, so the brim sits flush on the cushion all round (its underside 1.5 mm into it), and far enough
+  // back that the whole brim is on the seat.
+  const brimUnder = (.03 - .034) * HAT, seatTop = BOTTOM + .03 + SEAT - RADIUS;
+  const place = new THREE.Matrix4().compose(new THREE.Vector3(-.05, seatTop - brimUnder - .0015, .19),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -.4, 0)), new THREE.Vector3(HAT, HAT, HAT));
   for (const g of hatParts.red) { g.applyMatrix4(place); red.push(g); }
   for (const g of hatParts.fur) { g.applyMatrix4(place); fur.push(g); }
 

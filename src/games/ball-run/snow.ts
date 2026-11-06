@@ -76,6 +76,10 @@ export function snowCapGeometry(): THREE.BufferGeometry {
     // The rim runs clockwise seen from above (+x right, +z toward the viewer), so this winding faces outward.
     indices.push(top0, top1, low0, top1, low1, low0);
   }
+  // Underneath: closed with a flat face at the lip's bottom, so no sight line under a tall block's lip sees through.
+  const centre = positions.length / 3;
+  positions.push(0, LIP, 0); insets.push(0, 0);
+  for (let k = 0; k < rim.length; k++) indices.push(centre, base + k, base + (k + 1) % rim.length);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   g.setAttribute('inset', new THREE.Float32BufferAttribute(insets, 2));

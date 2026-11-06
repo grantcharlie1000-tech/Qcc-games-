@@ -11,7 +11,7 @@ neon corridor. Under the Christmas theme it adds just two things:
   one draw call. Each cap is a soft, slightly lumpy mound that overhangs the block by 3 cm, with a rounded lip
   that hangs over the edge. The rounded edge band is 15 cm wide on every obstacle, from a 0.3 m post to a 14 m
   wall: each vertex has a unit anchor plus an inset in metres, and a small vertex-shader change divides that
-  inset by the instance's scale. The baked shading is computed in metres, so it is right on every size. Like the blocks, it is unlit: white-to-lavender shading is baked into vertex colours.
+  inset by the instance's scale. The baked shading is computed in metres, so it is right on every size. The cap is closed underneath, so no sight line under a tall block's lip sees through it. Like the blocks, it is unlit: white-to-lavender shading is baked into vertex colours.
   Caps follow banked blocks and moving sliders, and they share the block cache's begin, end and reset path.
   Collision is unchanged.
 - **Santa's sleigh in place of the ball** (`src/games/ball-run/sleigh.ts`): a red sleigh with a scrolled dash and backrest,
@@ -22,7 +22,10 @@ neon corridor. Under the Christmas theme it adds just two things:
   inside a block. Collision still uses the ball's sphere. It is two merged meshes coloured per vertex: glossy (lacquered red body and
   gold) and matte (velvet, floor, hat and fur). The gold rim runs in one closed loop round each whole side
   panel. Its corners and the runner and hat bends are all rounded wider than the tube is thick, so no trim
-  creases or ends open. The side panels have no bevel, because a bevel beside the trim showed as a pale seam.
+  creases or ends open. The side panels have no bevel, because a bevel beside the trim showed as a pale seam. Every open tube (runners, scrolls,
+  back rails) ends in a rounded cap. The hat stands upright, flush on the cushion with its whole brim on the
+  seat. The front runner curls stay behind the ball's front even with the sleigh pitched 0.2 rad on the
+  steepest climb (a test checks this).
   - It does not roll. On the road it sits on the slope and bank (the same angles as the road tiles). In the air
     or off the road's edge it holds its attitude. It never turns about y, like the blocks, so a dodge never
     swings its corners wider or further forward than the ball. Changes ease in over about a metre of travel;

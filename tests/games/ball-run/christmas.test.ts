@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { createScene } from '../../../src/games/ball-run/scene';
 import { createSleigh, SLEIGH_COLORS } from '../../../src/games/ball-run/sleigh';
-import { SNOW_DEPTH, SNOW_EDGE, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry } from '../../../src/games/ball-run/snow';
+import { SNOW_DEPTH, SNOW_EDGE, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from '../../../src/games/ball-run/snow';
 import { getCourse } from '../../../src/games/ball-run/course';
 import { createRun } from '../../../src/games/ball-run/model';
 import { RADIUS, SLOPE, type Obstacle, type ObstaclePose } from '../../../src/games/ball-run/config';
@@ -39,6 +39,20 @@ describe('Ball Run Christmas sleigh model', () => {
     expect(box.min.z).toBeGreaterThanOrEqual(-RADIUS);
     expect(box.max.y).toBeLessThan(RADIUS);
     expect(box.max.z - box.min.z).toBeLessThan(4 * RADIUS);
+  });
+
+  it('stays behind the ball\'s front while pitched on the steepest climb or dip, as steer() tilts it', () => {
+    // The steepest road gradient across the courses tilts it about 0.185 rad; this allows 0.2 either way.
+    const v = new THREE.Vector3(), q = new THREE.Quaternion(), x = new THREE.Vector3(1, 0, 0);
+    for (const pitch of [-.2, -.1, .1, .2]) {
+      q.setFromAxisAngle(x, pitch);
+      let reach = 0;
+      for (const mesh of sleigh.group.children as THREE.Mesh[]) {
+        const p = mesh.geometry.getAttribute('position');
+        for (let i = 0; i < p.count; i++) reach = Math.max(reach, -v.fromBufferAttribute(p, i).applyQuaternion(q).z);
+      }
+      expect(reach, `pitch ${pitch}`).toBeLessThanOrEqual(RADIUS);
+    }
   });
 
   it('carries Santa\'s hat but no Santa, in two draw calls coloured per vertex', () => {
@@ -105,12 +119,25 @@ describe('Ball Run Christmas snow cap', () => {
     expect(brightest).toBeGreaterThan(2.7);
     // The lip hangs straight down at the cap's full size, so it is outside the block's faces at any width.
     const pos = g.getAttribute('position');
-    for (let i = 0; i < pos.count; i++) if (pos.getY(i) < 0) expect(Math.max(Math.abs(pos.getX(i)), Math.abs(pos.getZ(i)))).toBeCloseTo(.5, 6);
+    // (The last vertex is the centre of the flat face that closes the underside.)
+    for (let i = 0; i < pos.count - 1; i++) if (pos.getY(i) < 0) expect(Math.max(Math.abs(pos.getX(i)), Math.abs(pos.getZ(i)))).toBeCloseTo(.5, 6);
+    // That underside faces down.
+    const index = g.getIndex()!, p0 = new THREE.Vector3(), p1 = new THREE.Vector3(), p2 = new THREE.Vector3();
+    let undersides = 0;
+    for (let t = 0; t < index.count; t += 3) {
+      if (index.getX(t) !== pos.count - 1) continue;
+      // As drawn (anchor × size + inset), since the edge band is collapsed in the unit anchors.
+      const offset = g.getAttribute('inset'), drawn = (v: THREE.Vector3, k: number) => v.set(pos.getX(k) * 1.2 + offset.getX(k), pos.getY(k), pos.getZ(k) * 1.2 + offset.getY(k));
+      drawn(p0, index.getX(t)); drawn(p1, index.getX(t + 1)); drawn(p2, index.getX(t + 2));
+      expect(p1.sub(p0).cross(p2.sub(p0)).y).toBeLessThan(0);
+      undersides++;
+    }
+    expect(undersides).toBeGreaterThan(20);
     expect(g.getAttribute('normal')).toBeUndefined();
     // The rounded edge is the same width in metres on every block: drawn as the shader does (anchor × size +
     // inset), every vertex below the crest lies within SNOW_EDGE of the cap's edge, on a 0.36 m post and a 14 m wall.
     const inset = g.getAttribute('inset');
-    for (const [w, d] of [[.36, .66], [1.2, 1.2], [4.05, 14.05]]) for (let i = 0; i < pos.count; i++) {
+    for (const [w, d] of [[.36, .66], [1.2, 1.2], [4.05, 14.05]]) for (let i = 0; i < pos.count - 1; i++) {
       const x = pos.getX(i) * w + inset.getX(i), z = pos.getZ(i) * d + inset.getY(i);
       expect(Math.abs(x)).toBeLessThanOrEqual(w / 2 + 1e-6); expect(Math.abs(z)).toBeLessThanOrEqual(d / 2 + 1e-6);
       const fromEdge = Math.min(w / 2 - Math.abs(x), d / 2 - Math.abs(z));
@@ -119,6 +146,19 @@ describe('Ball Run Christmas snow cap', () => {
     // A few centimetres: a light covering, not a drift.
     expect(SNOW_DEPTH).toBeLessThanOrEqual(.08);
     g.dispose();
+  });
+});
+
+describe('Ball Run Christmas snow shader', () => {
+  it('applies the metric inset to three.js\'s own basic vertex shader, after the instance-free transform', () => {
+    const material = snowCapMaterial(), shader = { vertexShader: THREE.ShaderLib.basic.vertexShader, fragmentShader: '', uniforms: {} } as unknown as THREE.WebGLProgramParametersWithUniforms;
+    expect(shader.vertexShader).toContain('#include <begin_vertex>');
+    material.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
+    expect(shader.vertexShader).toContain('attribute vec2 inset;');
+    expect(shader.vertexShader).toContain('transformed.xz += inset / vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[2].xyz));');
+    expect(shader.vertexShader.indexOf('#include <begin_vertex>')).toBeLessThan(shader.vertexShader.indexOf('transformed.xz += inset'));
+    expect(shader.vertexShader.indexOf('transformed.xz += inset')).toBeLessThan(shader.vertexShader.indexOf('#include <project_vertex>'));
+    material.dispose();
   });
 });
 
@@ -136,7 +176,7 @@ describe('Ball Run Christmas scene', () => {
         run.distance = distance; run.elapsed = elapsed; run.height = course.surfaceHeight(distance, run.x) + RADIUS;
         view.speed = course.speed(distance);
         scene.render(view);
-        const road = captured.scene!.children[0], snow = road.children[3] as THREE.InstancedMesh;
+        const road = captured.scene!.children[0], snow = road.children.find(c => c instanceof THREE.InstancedMesh && c.geometry.getAttribute('inset')) as THREE.InstancedMesh;
         expect(snow.material).toBeInstanceOf(THREE.MeshBasicMaterial);
         expect(snow.geometry.getAttribute('inset')).toBeDefined();
         const caps: { position: THREE.Vector3; up: THREE.Vector3; size: THREE.Vector3 }[] = [];
