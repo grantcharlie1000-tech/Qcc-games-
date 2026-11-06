@@ -1,8 +1,16 @@
-/* Suika Game, Christmas: snowy board, red ledge, festive "Up next" label. Presentation only. */
-:root[data-festive="christmas"] .fm-board{background:#f8f6f1;box-shadow:0 7px 0 #a81b2d,0 9px 17px #3a0b1420}
-:root[data-festive="christmas"] .fm-board:focus-visible{outline-color:#1f7a42}
-:root[data-festive="christmas"] .fm-eyebrow{color:#b8202f}
-:root[data-festive="christmas"] .fm-banner{color:#a81b2d}
-/* The shell continues the board's 32px check outside the canvas (game-chrome.ts
-   alignSurface sets its size and position inline); swap in the same tile, frosted. */
-:root[data-festive="christmas"] .game-view[data-game-id=fruit-merge] .game-surface{background-image:url("./christmas-snow-tile.svg")!important}
+/* Suika Game, Christmas: a snowy night around a candlelit glass basket. Presentation only. */
+:root[data-festive="christmas"] .game-view[data-game-id=fruit-merge]{--game-surface:radial-gradient(ellipse 120% 70% at 50% 0%,#1e3d70 0%,#122752 45%,#0a1530 100%)}
+/* game-chrome.ts alignSurface sets a check pattern inline; the night sky replaces it. */
+:root[data-festive="christmas"] .game-view[data-game-id=fruit-merge] .game-surface{background-image:radial-gradient(ellipse 120% 70% at 50% 0%,#1e3d70 0%,#122752 45%,#0a1530 100%)!important;background-size:100% 100%!important;background-position:center!important;overflow:hidden}
+/* Two still layers of snow at different scales for depth; the board's own snowfall supplies the motion and pauses with the game. */
+:root[data-festive="christmas"] .game-view[data-game-id=fruit-merge] .game-surface::before,
+:root[data-festive="christmas"] .game-view[data-game-id=fruit-merge] .game-surface::after{content:"";position:absolute;inset:0;background:url("./christmas-snow-tile.svg") 0 0/320px 320px;pointer-events:none}
+:root[data-festive="christmas"] .game-view[data-game-id=fruit-merge] .game-surface::after{background-size:210px 210px;background-position:90px 40px;opacity:.45}
+
+:root[data-festive="christmas"] .fm-board{background:#13295a;border-radius:22px;box-shadow:0 0 0 1px rgb(255 255 255 / .08),0 0 0 5px rgb(248 221 138 / .14),0 22px 44px -10px rgb(0 0 0 / .6),0 0 70px rgb(255 196 120 / .13)}
+:root[data-festive="christmas"] .fm-board:focus-visible{outline:3px solid #f8dd8a}
+:root[data-festive="christmas"] .fm-next{padding:3px 14px 3px 4px;border-radius:999px;background:linear-gradient(180deg,rgb(255 255 255 / .14),rgb(255 255 255 / .05));box-shadow:inset 0 1px 0 rgb(255 255 255 / .25),inset 0 0 0 1px rgb(255 255 255 / .1),0 6px 18px -6px rgb(0 0 0 / .5)}
+:root[data-festive="christmas"] .fm-next canvas{filter:drop-shadow(0 0 8px rgb(255 214 140 / .35))}
+:root[data-festive="christmas"] .game-view[data-game-id=fruit-merge] .fm-eyebrow{color:#f8dd8a}
+:root[data-festive="christmas"] .game-view[data-game-id=fruit-merge] .fm-next-name{color:#fff8ec;text-shadow:0 1px 2px rgb(0 0 0 / .4)}
+:root[data-festive="christmas"] .fm-banner{color:#ffd27a;text-shadow:0 1px 3px rgb(0 0 0 / .5)}
