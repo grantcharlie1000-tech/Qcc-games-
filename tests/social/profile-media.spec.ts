@@ -48,6 +48,8 @@ async function connect(context:BrowserContext,uploads=true){
 }
 async function open(page:Page,username:string){
  await page.goto('/');const dialog=page.locator('#accounts-dialog');await expect(dialog).toBeVisible();
+ // These feature fixtures represent an established player; welcome behavior has its own suite.
+ await page.evaluate(name=>localStorage.setItem('qcc:christmas-welcome:2026:'+name.toLowerCase(),'seen'),username);
  await dialog.getByLabel('Username',{exact:true}).fill(username);await dialog.getByLabel('Password',{exact:true}).fill(password);
  await dialog.locator('form').getByRole('button',{name:'Log in',exact:true}).click();await expect(dialog).toBeHidden();
  await page.evaluate(()=>{location.hash='#/social/settings';});await expect(page.getByRole('heading',{name:'Settings',level:1})).toBeVisible();

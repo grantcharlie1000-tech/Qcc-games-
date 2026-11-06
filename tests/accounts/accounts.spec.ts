@@ -22,6 +22,7 @@ async function signIn(page:Page,username:string,signup=false){
  await dialog.getByLabel('Username',{exact:true}).fill(username);await dialog.getByLabel('Password',{exact:true}).fill('long enough password');
  if(signup)await dialog.getByLabel('Confirm password',{exact:true}).fill('long enough password');
  await dialog.locator('form').getByRole('button',{name:signup?'Create account':'Log in',exact:true}).click();await expect(dialog).not.toBeVisible();await expect(dialog.getByLabel('Password',{exact:true})).toHaveValue('');await expect(dialog.getByLabel('Confirm password',{exact:true})).toHaveValue('');
+ await page.getByRole('dialog',{name:'Merry Christmas!'}).getByRole('button',{name:'Got it'}).click();
 }
 
 test('entry offers guest play before the Study chooser and remembers the choice',async({page,context})=>{
@@ -73,7 +74,7 @@ test('logout in another tab preserves Study and returns to a fresh guest game',a
 test('keyboard-only signup and Escape still open Study while playing',async({page,context})=>{
  await connect(context);await page.goto('/#/game/fruit-merge');const dialog=page.locator('#accounts-dialog');await dialog.getByRole('button',{name:'Sign up',exact:true}).focus();await page.keyboard.press('Enter');
  await dialog.getByLabel('Username',{exact:true}).focus();await page.keyboard.type(`Keys_${Date.now()}`);await page.keyboard.press('Tab');await page.keyboard.type('long enough password');await page.keyboard.press('Tab');await page.keyboard.type('long enough password');await page.keyboard.press('Enter');
- await expect(dialog).not.toBeVisible();await expect(page.locator('.fm-board')).toBeVisible();await page.keyboard.press('Escape');const selected=await page.evaluate(()=>sessionStorage.getItem('pocket-arcade:study:v1:topic'));expect(selected).toMatch(/^(quanta|aeon|essay):close-reading$/);const article=articleById(selected!);expect(article).toBeDefined();await expect(page.locator('#study-topic')).toHaveValue('close-reading');await expect(page.locator('#study-title')).toHaveText(article!.title);
+ await expect(dialog).not.toBeVisible();await page.getByRole('dialog',{name:'Merry Christmas!'}).getByRole('button',{name:'Got it'}).press('Enter');await expect(page.locator('.fm-board')).toBeVisible();await page.keyboard.press('Escape');const selected=await page.evaluate(()=>sessionStorage.getItem('pocket-arcade:study:v1:topic'));expect(selected).toMatch(/^(quanta|aeon|essay):close-reading$/);const article=articleById(selected!);expect(article).toBeDefined();await expect(page.locator('#study-topic')).toHaveValue('close-reading');await expect(page.locator('#study-title')).toHaveText(article!.title);
 });
 
 test('guest entry and account form fit a 320px touch screen',async({browser})=>{
