@@ -5,13 +5,6 @@
  * reveal them); see SPEC.md before changing one. */
 
 export const RADIUS = .38;
-/** What hits the blocks. The ball is a sphere of RADIUS. Christmas's sleigh hits as the box it fills: exactly
- * one ball wide, from its runners (RADIUS below the centre) to its hat, and from its front runner curls to its
- * backrest, measured from the centre along the course (sleigh.ts builds the model inside this box; a test
- * holds them together). Without this, its corners passed through blocks that the sphere only grazed. */
-export type Body = { readonly kind: 'ball' } | { readonly kind: 'box'; readonly halfWidth: number; readonly bottom: number; readonly top: number; readonly front: number; readonly back: number };
-export const BALL: Body = { kind: 'ball' };
-export const SLEIGH_BODY: Body = { kind: 'box', halfWidth: RADIUS, bottom: -RADIUS, top: .2, front: .35, back: .42 };
 /** Snappier than Earth gravity so flights read clearly at arcade speeds. */
 export const GRAVITY = 20;
 /** The course descends along this base slope; features return to it. */
@@ -24,6 +17,16 @@ export const COURSE_REVISION = 3;
 export const STEER_RESPONSE = 10;
 /** Lateral drift on a banked surface, in m/s per unit sin(bank), toward the low side. */
 export const BANK_DRIFT = 6;
+/** What the player is: what hits the blocks, and how it handles. The ball is a sphere of RADIUS that answers
+ * the steering at STEER_RESPONSE and drifts down banks at BANK_DRIFT. Christmas's sleigh hits as the box it
+ * fills: exactly one ball wide, from its runners (RADIUS below the centre) to its hat, and from its front runner
+ * curls to its backrest, measured from the centre along the course (sleigh.ts builds the model inside this box;
+ * a test holds them together). It handles like a sleigh: its runners take longer to carve a new line and keep
+ * sliding sideways after the steering lets go (a slower response, so momentum carries), and it slides further
+ * down a bank. course.ts's clearance and reach margins cover both; a test drives every course with it. */
+export type Body = { readonly steerResponse: number; readonly bankDrift: number } & ({ readonly kind: 'ball' } | { readonly kind: 'box'; readonly halfWidth: number; readonly bottom: number; readonly top: number; readonly front: number; readonly back: number });
+export const BALL: Body = { kind: 'ball', steerResponse: STEER_RESPONSE, bankDrift: BANK_DRIFT };
+export const SLEIGH_BODY: Body = { kind: 'box', halfWidth: RADIUS, bottom: -RADIUS, top: .2, front: .35, back: .42, steerResponse: 8, bankDrift: BANK_DRIFT * 1.2 };
 /** The generator only relies on this fraction of the ball's lateral authority. */
 export const REACH_SAFETY = .7;
 /** Clear, wide, straight opening (m). */

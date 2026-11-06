@@ -143,9 +143,10 @@ describe('Ball Run Christmas sleigh collision', () => {
         step(asBall, 0, STEP, BALL); step(asSleigh, 0, STEP, body);
         expect(asBall.phase).toBe('running');
         expect(asSleigh.phase).toBe('dying'); expect(asSleigh.reason).toBe('block');
-        // Ahead of the block by more than the backrest, the sleigh runs on exactly as the ball does.
+        // Ahead of the block by more than the backrest, the box changes nothing: the sleigh runs on exactly as a
+        // round body with the sleigh's handling does.
         const clear = placeRun(seed, 'medium', o.distance + o.depth / 2 + body.back + .05, p.x), ball = { ...clear };
-        step(clear, 0, STEP, body); step(ball, 0, STEP, BALL);
+        step(clear, 0, STEP, body); step(ball, 0, STEP, { ...BALL, steerResponse: body.steerResponse, bankDrift: body.bankDrift });
         expect(clear).toEqual(ball);
         if (++checked >= 6) break;
       }
@@ -301,62 +302,101 @@ describe('Ball Run Christmas scene', () => {
     scene.dispose();
   });
 
-  it('draws the sleigh, not the ball, at the ball\'s position, standing on the road and following its bank', () => {
+  it('draws the sleigh, not the ball, at the ball\'s position, its runners on the road and following its bank', () => {
     const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
     const course = getCourse(7, 'medium'), run = createRun(7, 1, 'medium'), view = { run, course, speed: 0 };
-    let bankedChecks = 0;
+    let bankedChecks = 0, squashed = 0, lastHeight = NaN;
     for (let distance = 0; distance < 1500; distance += .5) {
       const s = course.sample(distance);
       if (!s.ground) continue;
-      run.distance = distance; run.x = s.center; run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank);
       view.speed = course.speed(distance);
+      run.distance = distance; run.x = s.center; run.elapsed += .5 / view.speed;
+      run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank);
+      run.vy = Number.isNaN(lastHeight) ? 0 : (run.height - lastHeight) * view.speed / .5; lastHeight = run.height;
       scene.render(view);
       const sleigh = captured.scene!.getObjectByName('sleigh')!;
       expect(sleigh.visible).toBe(true);
       expect(sleigh.position.x).toBeCloseTo(run.x, 6);
-      expect(sleigh.position.y).toBeCloseTo(run.height + SLOPE * distance, 6);
+      // The spring squashes the body about its runners: they stay exactly where the ball touches the road.
+      expect(sleigh.position.y - RADIUS * sleigh.scale.y).toBeCloseTo(run.height + SLOPE * distance - RADIUS, 6);
+      expect(sleigh.scale.y).toBeGreaterThanOrEqual(.9 - 1e-9); expect(sleigh.scale.y).toBeLessThanOrEqual(1.008 + 1e-9);
+      if (sleigh.scale.y < .999) squashed++;
       if (Math.abs(s.bank) > .1 && distance > 2) {
-        // After travelling along the road it has eased onto the bank.
+        // It has settled onto the bank (no sideways motion here, so no carve lean).
         expect(Math.abs(-sleigh.rotation.z - s.bank)).toBeLessThan(.08);
         bankedChecks++;
       }
     }
     expect(bankedChecks).toBeGreaterThan(0);
+    // Crests, dips and drops on the way squash it at least sometimes.
+    expect(squashed).toBeGreaterThan(0);
     scene.dispose();
   });
 
-  it('never turns about y while dodging, so it stays within the ball\'s width, and holds its attitude in the air and off the edge', () => {
+  it('never turns about y, leans at most 0.04 rad into a carve, and in the air turns its nose toward its flight path', () => {
     const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
-    const course = getCourse(7, 'medium'), run = createRun(7, 1, 'medium'), view = { run, course, speed: 0 };
+    const course = getCourse(7, 'medium'), run = createRun(7, 1, 'medium'), view = { run, course, speed: course.speed(400) };
     const sleigh = () => captured.scene!.getObjectByName('sleigh')!;
-    // A hard dodge: two metres sideways per metre forward.
-    for (let i = 0; i <= 40; i++) {
-      const distance = 400 + i * .25, s = course.sample(distance);
-      run.distance = distance; run.x = s.center + Math.sin(i / 3) * Math.min(1.5, s.width / 2 - RADIUS);
-      run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank);
+    // A hard dodge, side to side.
+    let leaned = 0;
+    for (let i = 0; i <= 80; i++) {
+      const distance = 400 + i * .25, s = course.sample(distance), reach = Math.min(1.5, s.width / 2 - RADIUS);
+      run.distance = distance; run.elapsed += .25 / view.speed;
+      run.x = s.center + Math.sin(i / 3) * reach; run.vx = Math.cos(i / 3) * reach / 3 * view.speed / .25;
+      run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank); run.vy = 0;
       scene.render(view);
       expect(sleigh().rotation.y).toBe(0);
+      const carve = sleigh().rotation.z + s.bank;
+      expect(Math.abs(carve)).toBeLessThanOrEqual(.04 + .02);
+      if (Math.abs(carve) > .01) leaned++;
     }
-    const held = sleigh().rotation.clone();
-    // Launched 3 m above the road: the attitude holds.
-    for (let i = 1; i <= 20; i++) {
-      run.distance = 410 + i * .5; run.height = course.surfaceHeight(run.distance, run.x) + 3;
+    expect(leaned).toBeGreaterThan(0);
+    // Launched 3 m above the road and falling at 6 m/s: the nose turns down toward the flight path, no
+    // further than 0.2 rad, and the bank it had holds.
+    let pitch = sleigh().rotation.x;
+    for (let i = 1; i <= 30; i++) {
+      run.distance = 420 + i * .5; run.elapsed += .5 / view.speed; run.vx = 0;
+      run.height = course.surfaceHeight(run.distance, run.x) + 3; run.vy = -6;
       scene.render(view);
-      expect(sleigh().rotation.x).toBe(held.x);
-      expect(sleigh().rotation.z).toBe(held.z);
+      const x = sleigh().rotation.x;
+      expect(x).toBeLessThanOrEqual(pitch + 1e-9);
+      expect(x).toBeGreaterThanOrEqual(-.2 - 1e-9);
+      pitch = x;
     }
-    // Off the road's edge and falling past it: still held, though the road plane extends under it.
+    expect(pitch).toBeLessThan(Math.atan2(-6, view.speed) / 2);
+    // Off the road's edge and falling past it: the bank still holds, though the road plane extends under it
+    // (taken after the flight, by which time the carve lean from the dodge has relaxed).
+    const bank = sleigh().rotation.z;
     for (let i = 1; i <= 10; i++) {
-      run.distance = 421 + i * .5; const s = course.sample(run.distance);
-      run.x = s.center + s.width / 2 + 1; run.height = course.surfaceHeight(run.distance, s.center) - .5 * i;
+      run.distance = 436 + i * .5; run.elapsed += .5 / view.speed; const s = course.sample(run.distance);
+      run.x = s.center + s.width / 2 + 1; run.height = course.surfaceHeight(run.distance, s.center) - .5 * i; run.vy = -8;
       scene.render(view);
-      expect(sleigh().rotation.x).toBe(held.x);
-      expect(sleigh().rotation.z).toBe(held.z);
+      expect(sleigh().rotation.z).toBeCloseTo(bank, 4);
+      expect(Math.abs(sleigh().rotation.x)).toBeLessThanOrEqual(.2 + 1e-9);
     }
     // No ball anywhere: not the ball itself, and the Speed Up trail draws diamond glints, not spheres.
     const spheres = captured.scene!.children.filter(c => c instanceof THREE.Mesh && c.geometry instanceof THREE.SphereGeometry);
     expect(spheres).toHaveLength(0);
     expect(captured.scene!.children.some(c => c instanceof THREE.InstancedMesh && c.geometry instanceof THREE.OctahedronGeometry)).toBe(true);
+    scene.dispose();
+  });
+
+  it('under Reduce motion follows the road without springing, leaning into carves or pitching in flight', () => {
+    const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => true });
+    const course = getCourse(7, 'medium'), run = createRun(7, 1, 'medium'), view = { run, course, speed: course.speed(400) };
+    const sleigh = () => captured.scene!.getObjectByName('sleigh')!;
+    for (let i = 0; i <= 40; i++) {
+      const distance = 400 + i * .25, s = course.sample(distance);
+      run.distance = distance; run.elapsed += .25 / view.speed; run.x = s.center + Math.sin(i / 3); run.vx = 20 * Math.cos(i / 3);
+      run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank); run.vy = i % 2 ? 4 : -4;
+      scene.render(view);
+      expect(sleigh().scale.y).toBe(1);
+      expect(sleigh().rotation.z).toBeCloseTo(-s.bank, 1);
+    }
+    const before = sleigh().rotation.x;
+    run.distance += .5; run.elapsed += .5 / view.speed; run.height += 3; run.vy = -8;
+    scene.render(view);
+    expect(sleigh().rotation.x).toBe(before);
     scene.dispose();
   });
 });

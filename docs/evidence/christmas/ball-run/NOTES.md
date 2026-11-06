@@ -6,6 +6,11 @@ This revision replaces the whole skin described further down. The festive palett
 bauble ball, star layer and `christmas.css` are gone: with the theme on or off, Ball Run draws its original
 neon corridor. Under the Christmas theme it adds just two things:
 
+- **Falling snow** (`src/games/ball-run/snowfall.ts`): 1,400 flakes in one `THREE.Points` draw call. Every flake
+  is placed by the vertex shader from a fixed seed, the clock and the distance travelled, so the CPU writes four
+  uniforms a frame. Flakes are world-fixed (they fall, sway and stream past at the game's speed), wrapped in a
+  13 × 10 × 42 m box round the camera, sized by perspective but clamped to 2–11 device pixels, and faded at the
+  lens and in the distance. Hidden under Reduce motion. Measured: 9 draw calls and 7 geometries with the theme.
 - **Snow on the obstacles** (`src/games/ball-run/snow.ts`): a light covering, 7.5 cm at the crest, on top of every
   obstacle (static blocks and sliders, not gate walls). One instanced pool draws all the caps, so the theme adds
   one draw call. Each cap is a soft, slightly lumpy mound that overhangs the block by 3 cm, with a rounded lip
@@ -33,10 +38,17 @@ neon corridor. Under the Christmas theme it adds just two things:
     every seeded course passable, the sleigh was made about 16% shorter, pressed toward its front, so that box
     fits inside the 0.44 m clearance the course generator keeps round the ball on every side. A tight cut the
     ball would have grazed past now crashes, as it looks like it should.
-  - It does not roll. On the road it sits on the slope and bank (the same angles as the road tiles). In the air
-    or off the road's edge it holds its attitude. It never turns about y, like the blocks, so a dodge never
-    swings its corners wider or further forward than the ball. Changes ease in over about a metre of travel;
-    a new run, restore or teleport snaps straight to the road. About 20,000 triangles in two draw calls.
+  - It handles like a sleigh (the user chose real handling plus body motion): its steering response is 8/s
+    against the ball's 10/s, so momentum carries through a carve and it slides on after the steering lets go,
+    and it drifts 20% further down banks. A 6/s response was tried first; the bot found a few slaloms it could
+    not make, so it was softened until every course passed. The bot now plans with the body's own handling
+    and box (`useBody`), and `sleigh-courses.test.ts` drives 110 runs per difficulty as the sleigh.
+  - It moves as a body. On the road it sits on the slope and bank (the same angles as the road tiles). A damped
+    spring on its runners (about 3.5 Hz) squashes it about the runners on landings and bumps and lets it
+    rebound. It leans into a carve (at most 0.04 rad). In the air its nose turns toward its flight path with
+    some rotational inertia (within ±0.2 rad, where the front still stays behind the ball's front). It never
+    turns about y, like the blocks. A new run, restore or teleport snaps straight to the road. Under Reduce
+    motion there is no spring, carve lean or flight pitch. About 20,000 triangles in two draw calls.
   - It points away from the camera. The raised backrest, whose tall side curls roll back over the rear corners,
     is nearest the camera. The low scrolled dash and the tall gold runner curls are at the far end. Between the
     backrest curls the back panel stops lower, so the chase camera (behind and only a little above) sees the

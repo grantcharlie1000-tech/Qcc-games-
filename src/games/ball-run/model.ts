@@ -42,10 +42,10 @@ export function runSpeed(run: Run): number {
 }
 
 /** Analytic first-order response toward input × lateral, exact for any dt. */
-export function steer(body: { x: number; vx: number }, input: number, dt: number, lateral: number): void {
-  const target = clamp(input, -1, 1) * lateral, decay = Math.exp(-STEER_RESPONSE * dt), old = body.vx;
+export function steer(body: { x: number; vx: number }, input: number, dt: number, lateral: number, response = STEER_RESPONSE): void {
+  const target = clamp(input, -1, 1) * lateral, decay = Math.exp(-response * dt), old = body.vx;
   body.vx = target + (old - target) * decay;
-  body.x += target * dt + (old - target) * (1 - decay) / STEER_RESPONSE;
+  body.x += target * dt + (old - target) * (1 - decay) / response;
 }
 
 // Step scratch: reused so a step allocates nothing in steady state.
@@ -132,8 +132,8 @@ export function step(run: Run, input: number, dt: number, body: Body = BALL): vo
   course.sample(d0, before);
   const rest0 = restOn(before, x0);
 
-  steer(run, input, dt, lateralSpeed(v));
-  run.x += BANK_DRIFT * Math.sin(before.bank) * dt;
+  steer(run, input, dt, lateralSpeed(v), body.steerResponse);
+  run.x += body.bankDrift * Math.sin(before.bank) * dt;
   run.distance = d0 + v * dt;
   run.elapsed = e0 + dt;
   run.speedUpTime = Math.max(0, speedUp0 - dt);

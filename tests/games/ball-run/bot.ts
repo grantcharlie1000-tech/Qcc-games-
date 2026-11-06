@@ -2,8 +2,8 @@
  * course generator's reachability code: it plans its own interval reachability over
  * the course's public API, then drives the real simulation through `step`. */
 import {
-  BANK_DRIFT, CONFIG, EDGE_SUPPORT, RADIUS, STEER_RESPONSE, STEP, lateralSpeed,
-  type Course, type Difficulty, type Obstacle, type ObstaclePose, type Run, type SegmentKind, type TrackSample,
+  BALL, BANK_DRIFT, CONFIG, EDGE_SUPPORT, RADIUS, STEER_RESPONSE, STEP, lateralSpeed,
+  type Body, type Course, type Difficulty, type Obstacle, type ObstaclePose, type Run, type SegmentKind, type TrackSample,
 } from '../../../src/games/ball-run/config';
 import { sweepSphereBox } from '../../../src/core/collision';
 import { getCourse } from '../../../src/games/ball-run/course';
@@ -130,8 +130,10 @@ const HARD = TIERS.length - 1;
  * real round contact with a block's corner). */
 const X_MARGINS = [{ clear: RADIUS + .05, edge: EDGE_SUPPORT + .05 }, { clear: RADIUS + .01, edge: EDGE_SUPPORT + .01 }] as const;
 const REPLAN = 6;
-/** Steering lag (s): x trails p by about this long. */
-const LAG = 1 / STEER_RESPONSE;
+/** The body the bot drives: the ball unless a test switches to another (useBody), with its steering lag
+ * (s, x trails p by about this long) and bank drift. */
+let BODY: Body = BALL, LAG = 1 / STEER_RESPONSE, DRIFT = BANK_DRIFT;
+export function useBody(body: Body): void { BODY = body; LAG = 1 / body.steerResponse; DRIFT = body.bankDrift; }
 /** Search budget: candidates tried per point. */
 const BUDGET = 40;
 /** Repairs tried by the shooting search before it falls back to the depth-first search. */
@@ -202,7 +204,9 @@ class Window {
         const a = course.pose(o, quarter, pose).x, b = course.pose(o, quarter + o.slide.period / 2, pose).x;
         lo = Math.min(a, b); hi = Math.max(a, b);
       }
-      blocks.push({ from: pose.distance - pose.halfDepth, to: pose.distance + pose.halfDepth, lo: lo - out, hi: hi + out });
+      // A box body (the sleigh) reaches further than the ball behind or ahead of its centre: grow the block by the difference.
+      const ahead = BODY.kind === 'box' ? Math.max(0, BODY.front - RADIUS) : 0, behind = BODY.kind === 'box' ? Math.max(0, BODY.back - RADIUS) : 0;
+      blocks.push({ from: pose.distance - pose.halfDepth - ahead, to: pose.distance + pose.halfDepth + behind, lo: lo - out, hi: hi + out });
     });
     // Points: every whole metre, and where each widened block starts and ends, for x and (one lag earlier) for p.
     const at = this.at;
@@ -227,7 +231,7 @@ class Window {
       this.roadC[i] = s.center; this.roadW[i] = s.width; this.roadT[i] = s.tunnel ? 1 : 0; this.bank[i] = s.bank;
       course.sample(this.check[i] = at[i] + LAG * v, s);
       this.center[i] = s.center; this.width[i] = s.width; this.tunnel[i] = s.tunnel ? 1 : 0;
-      this.offset[i] = -LAG * BANK_DRIFT * Math.sin(s.bank);
+      this.offset[i] = -LAG * DRIFT * Math.sin(s.bank);
       // Blocks whose rounded footprint the step ending here can touch.
       let near = 0;
       const a = i ? at[i - 1] : at[i], c = X_MARGINS[0].clear;
@@ -237,7 +241,7 @@ class Window {
       this.nearCount[i] = near;
       if (i === 0) continue;
       const dd = at[i] - at[i - 1];
-      this.shift[i] = BANK_DRIFT * Math.sin(this.bank[i - 1]) * dd / v;
+      this.shift[i] = DRIFT * Math.sin(this.bank[i - 1]) * dd / v;
       for (let t = 0; t < TIERS.length; t++) this.reach[t][i] = TIERS[t].authority * lateralSpeed(v) * dd / v;
     }
     // Backward viability, hardest tier first so softer tiers can fall back to it where they find no room.
@@ -353,7 +357,7 @@ class Planner {
       at[n] = w.at[j]; this.speed[n] = w.speed[j]; this.bank[n] = w.bank[j];
       if (n === 1) {
         const dd = at[1] - d0, v = this.speed[1];
-        this.shift[1] = BANK_DRIFT * Math.sin(this.bank[0]) * dd / v;
+        this.shift[1] = DRIFT * Math.sin(this.bank[0]) * dd / v;
         for (let t = 0; t < TIERS.length; t++) this.reach[t][1] = TIERS[t].authority * lateralSpeed(v) * dd / v;
       } else {
         this.shift[n] = w.shift[j];
@@ -546,7 +550,7 @@ class Planner {
 
   /** Exact x after fraction f of the step to point k, while p moves linearly from p0 to p1. */
   private follow(k: number, x0: number, p0: number, p1: number, f: number): number {
-    const dt = (this.at[k] - this.at[k - 1]) / this.speed[k], drift = BANK_DRIFT * Math.sin(this.bank[k - 1]);
+    const dt = (this.at[k] - this.at[k - 1]) / this.speed[k], drift = DRIFT * Math.sin(this.bank[k - 1]);
     const slope = dt > 0 ? (p1 - p0) / dt : 0, decay = Math.exp(-f * dt / LAG);
     return p0 + slope * f * dt - LAG * slope + LAG * drift + (x0 - p0 + LAG * slope - LAG * drift) * decay;
   }
@@ -564,7 +568,8 @@ class Planner {
     for (let i = 0; i < w.nearCount[j]; i++) {
       const block = w.blocks[w.near[j * MAX_SPANS + i]];
       this.box[0] = (block.lo + block.hi) / 2; this.box[1] = (block.from + block.to) / 2;
-      const square = margin === 0 ? c : 0, round = c - square;
+      // A box body has square corners, so its clearance is square at every margin.
+      const square = margin === 0 || BODY.kind === 'box' ? c : 0, round = c - square;
       this.half[0] = (block.hi - block.lo) / 2 + square; this.half[1] = (block.to - block.from) / 2 + square;
       if (sweepSphereBox(a, m, this.box, this.half, round) || sweepSphereBox(m, b, this.box, this.half, round)) {
         // Leave by the nearer side that is on the road.
@@ -671,8 +676,8 @@ export function driveBot(run: Run, metres: number, observe?: (run: Run) => void)
       if (!planner.plan(run, course)) botStats.failedPlans++;
     }
     // p moves at exactly the commanded lateral speed plus drift: put it on the line after this step.
-    const v = runSpeed(run), p = run.x + LAG * run.vx, drift = BANK_DRIFT * Math.sin(course.sample(run.distance, sample).bank);
-    step(run, clamp(((planner.lineAt(run.distance + v * STEP) - p) / STEP - drift) / lateralSpeed(v), -1, 1), STEP);
+    const v = runSpeed(run), p = run.x + LAG * run.vx, drift = DRIFT * Math.sin(course.sample(run.distance, sample).bank);
+    step(run, clamp(((planner.lineAt(run.distance + v * STEP) - p) / STEP - drift) / lateralSpeed(v), -1, 1), STEP, BODY);
     steps++;
     observe?.(run);
   }
