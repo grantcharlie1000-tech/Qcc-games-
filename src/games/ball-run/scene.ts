@@ -10,6 +10,7 @@ import { RetainedInstances } from './instances';
 import { christmas } from '../../festive/festive';
 import { createSleigh, SLEIGH_COLORS, SLEIGH_RUNNER_X } from './sleigh';
 import { SNOW_DEPTH, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from './snow';
+import { createSnowfall } from './snowfall';
 import { BALL, CONFIG, DYING_DURATION, SLEIGH_BODY, type Body, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
@@ -162,6 +163,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     snowCache = new RetainedInstances(snow);
   }
   const cyan = pool(box, basic({ color: PALETTE.boost }), CYAN, road);
+  // Christmas: snow falling through the canyon, one draw call placed entirely by its shader (snowfall.ts).
+  const snowfall = festive ? createSnowfall() : undefined;
+  if (snowfall) scene.add(snowfall.points);
   const tileCache = new RetainedInstances(tiles), gridCache = new RetainedInstances(grid),
     blockCache = new RetainedInstances(blocks), cyanCache = new RetainedInstances(cyan);
   const blockShades = [0xb51cfa, 0xab18f0, 0xbb2cff, 0xa414e6].map(c => new THREE.Color(c));
@@ -761,6 +765,11 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     if (camera.fov !== fov || camera.far !== far) { camera.fov = fov; camera.far = far; camera.updateProjectionMatrix(); }
     fog.near = 60 + speed;
     fog.far = 150 + 1.6 * speed;
+    if (snowfall) {
+      // Reduce motion: no falling or streaming snow (the caps on the blocks stay).
+      snowfall.points.visible = !reduced;
+      if (!reduced) snowfall.update(camera.position, distance, SLOPE * distance, performance.now() / 1000);
+    }
 
     drawFrame();
     projection.copy(ball.position).project(camera);
@@ -778,6 +787,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       viewWidth = width; viewHeight = height;
       renderer.setSize(width, height, false);
     }
+    snowfall?.setViewport(height * ratio);
     camera.aspect = width / height;
     // 1 (the plan's FOV unchanged) up to aspect 1.15, where the widest 74° vertical is 82° horizontally.
     fovFit = Math.min(1, Math.tan(THREE.MathUtils.DEG2RAD * H_FOV_CAP / 2) / (camera.aspect * Math.tan(THREE.MathUtils.DEG2RAD * (FOV + FOV_GAIN) / 2)));
@@ -811,6 +821,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     for (const material of materials) material.dispose();
     ballTexture?.dispose();
     sleigh?.dispose();
+    snowfall?.dispose();
     renderer.dispose();
     renderer.forceContextLoss();
     scene.clear();

@@ -4,6 +4,7 @@ import { createScene } from '../../../src/games/ball-run/scene';
 import { createSleigh, SLEIGH_COLORS } from '../../../src/games/ball-run/sleigh';
 import { SNOW_DEPTH, SNOW_EDGE, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from '../../../src/games/ball-run/snow';
 import { CLEAR, getCourse } from '../../../src/games/ball-run/course';
+import { createSnowfall, SNOWFALL_FLAKES } from '../../../src/games/ball-run/snowfall';
 import { createRun, step } from '../../../src/games/ball-run/model';
 import { BALL, RADIUS, SLEIGH_BODY, SLOPE, STEP, type Obstacle, type ObstaclePose } from '../../../src/games/ball-run/config';
 import { placeRun } from './bot';
@@ -153,6 +154,28 @@ describe('Ball Run Christmas sleigh collision', () => {
   });
 });
 
+describe('Ball Run Christmas snowfall', () => {
+  it('is one point cloud placed by its shader: fixed seeds, and per frame only uniforms change', () => {
+    const a = createSnowfall(), b = createSnowfall();
+    expect(a.points).toBeInstanceOf(THREE.Points);
+    const seeds = a.points.geometry.getAttribute('seed') as THREE.BufferAttribute;
+    expect(seeds.count).toBe(SNOWFALL_FLAKES);
+    expect(Array.from(seeds.array)).toEqual(Array.from((b.points.geometry.getAttribute('seed') as THREE.BufferAttribute).array));
+    for (let i = 0; i < seeds.array.length; i++) { expect(seeds.array[i]).toBeGreaterThanOrEqual(0); expect(seeds.array[i]).toBeLessThan(1); }
+    const version = seeds.version, position = (a.points.geometry.getAttribute('position') as THREE.BufferAttribute).version;
+    a.update(new THREE.Vector3(1, 2, 3.6), 123456.7, 9876.5, 4000.25);
+    expect(seeds.version).toBe(version);
+    expect((a.points.geometry.getAttribute('position') as THREE.BufferAttribute).version).toBe(position);
+    const u = (a.points.material as THREE.ShaderMaterial).uniforms;
+    expect(u.uOrigin.value.toArray()).toEqual([1, 2, 3.6]);
+    // Long runs stay in float precision: the shader's wrap makes these equivalent to the raw values.
+    expect(u.uTravel.value).toBeLessThan(u.uBox.value.z); expect(u.uLift.value).toBeLessThan(u.uBox.value.y); expect(u.uTime.value).toBeLessThan(3600);
+    const dispose = [vi.spyOn(a.points.geometry, 'dispose'), vi.spyOn(a.points.material as THREE.Material, 'dispose')];
+    a.dispose(); b.dispose();
+    for (const spy of dispose) expect(spy).toHaveBeenCalledOnce();
+  });
+});
+
 describe('Ball Run Christmas snow cap', () => {
   it('is a unit mound on y = 0 whose lip hangs a little below it, with baked white-to-lavender shading', () => {
     const g = snowCapGeometry();
@@ -263,6 +286,21 @@ describe('Ball Run Christmas scene', () => {
     scene.dispose();
   });
 
+  it('snows in one draw call while moving, and not at all under Reduce motion', () => {
+    let reduced = false;
+    const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => reduced });
+    const course = getCourse(11, 'medium'), run = createRun(11, 1, 'medium');
+    run.distance = 300; run.height = course.surfaceHeight(300, run.x) + RADIUS;
+    scene.render({ run, course, speed: course.speed(300) });
+    const flakes = captured.scene!.children.filter(c => c instanceof THREE.Points);
+    expect(flakes).toHaveLength(1);
+    expect(flakes[0].visible).toBe(true);
+    reduced = true;
+    scene.render({ run, course, speed: course.speed(300) });
+    expect(flakes[0].visible).toBe(false);
+    scene.dispose();
+  });
+
   it('draws the sleigh, not the ball, at the ball\'s position, standing on the road and following its bank', () => {
     const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
     const course = getCourse(7, 'medium'), run = createRun(7, 1, 'medium'), view = { run, course, speed: 0 };
@@ -332,6 +370,7 @@ describe('Ball Run with the theme off', () => {
     run.distance = 300; run.height = course.surfaceHeight(300, run.x) + RADIUS;
     scene.render({ run, course, speed: course.speed(300) });
     expect(captured.scene!.getObjectByName('sleigh')).toBeUndefined();
+    expect(captured.scene!.children.some(c => c instanceof THREE.Points)).toBe(false);
     const balls = captured.scene!.children.filter(c => c instanceof THREE.Mesh && !(c instanceof THREE.InstancedMesh) && c.geometry instanceof THREE.SphereGeometry);
     expect(balls).toHaveLength(1);
     expect(captured.scene!.children.some(c => c instanceof THREE.InstancedMesh && c.geometry instanceof THREE.SphereGeometry)).toBe(true);
