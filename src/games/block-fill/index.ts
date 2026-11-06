@@ -12,6 +12,12 @@ const game:GameModule={
   mount(container,context){
     let state=initialState(), paused=false, disposed=false, selected:number|undefined, recovery=0;
     let activePointer:number|undefined, previous:Point|undefined;
+    // This mount owns the current deterministic level; callers only read its arrays.
+    let cachedLevel={index:state.level,value:generateLevel(state.level)};
+    function getLevel(index=state.level){
+      if(cachedLevel.index!==index) cachedLevel={index,value:generateLevel(index)};
+      return cachedLevel.value;
+    }
     const abort=new AbortController(), options={signal:abort.signal};
     const root=document.createElement('section');root.className='bf-game';
     root.innerHTML=`<div class="bf-heading"><div><h2>Fill the garden</h2></div><div class="bf-counter" aria-live="polite"></div></div><div class="bf-board-wrap"><svg class="bf-board" xmlns="http://www.w3.org/2000/svg" tabindex="0" role="img" aria-label="Block Fill board. Use arrow keys to trace, Backspace to undo, H for hint."></svg></div><div class="bf-message" role="status"></div><div class="bf-actions"><button class="game-button secondary" data-action="undo">Undo</button><button class="game-button" data-action="hint">Hint</button><button class="game-button secondary" data-action="reset">Reset path</button></div><button class="game-button bf-next" hidden>Next garden <span aria-hidden="true">→</span></button>`;
@@ -25,7 +31,7 @@ const game:GameModule={
       activePointer=undefined;previous=undefined;
     }
     function render(note?:string){
-      const level=generateLevel(state.level),complete=solved(level,state.path),size=level.size*64+24,head=state.path.at(-1)!;
+      const level=getLevel(),complete=solved(level,state.path),size=level.size*64+24,head=state.path.at(-1)!;
       const xy=(c:number)=>`${12+(c%level.size)*64+32},${12+Math.floor(c/level.size)*64+32}`;
       const trail=state.path.map(xy).join(' ');
       board.setAttribute('viewBox',`0 0 ${size} ${size}`);
@@ -48,14 +54,16 @@ const game:GameModule={
     }
     function update(path:number[],note?:string){
       if(path===state.path) return;
-      const wasComplete=solved(generateLevel(state.level),state.path);
-      state=recordWin({...state,path,rewarded:state.rewarded||solved(generateLevel(state.level),path),steps:state.steps+Math.max(0,path.length-state.path.length)});selected=undefined;recovery=0;render(note);context.save(snapshot());
-      if(solved(generateLevel(state.level),path)&&!wasComplete){context.sound('success');context.announce('Garden complete. All squares covered.');}
+      const wasComplete=solved(getLevel(),state.path);
+      const complete=solved(getLevel(),path);
+      const next={...state,path,rewarded:state.rewarded||complete,steps:state.steps+Math.max(0,path.length-state.path.length)};
+      state=complete?recordWin(next):next;selected=undefined;recovery=0;render(note);context.save(snapshot());
+      if(complete&&!wasComplete){context.sound('success');context.announce('Garden complete. All squares covered.');}
     }
-    function move(cell:number){if(paused||disposed)return;update(step(generateLevel(state.level),state.path,cell));}
+    function move(cell:number){if(paused||disposed)return;update(step(getLevel(),state.path,cell));}
     function doHint(){
       if(paused||disposed)return;
-      const level=generateLevel(state.level),h=hint(level,state.path);selected=undefined;recovery=0;
+      const level=getLevel(),h=hint(level,state.path);selected=undefined;recovery=0;
       if(h.kind!=='done'){state={...state,hints:state.hints+1};context.save(snapshot());}
       if(h.kind==='step'){selected=h.cell;render(`Try the marked square: row ${Math.floor(h.cell/level.size)+1}, column ${h.cell%level.size+1}.`);}
       else if(h.kind==='backtrack'){recovery=h.count;render(`${h.proven?'This trail cannot finish.':'A verified route is available after undoing.'} Undo ${recovery} ${recovery===1?'square':'squares'} for a solvable position.`);}
@@ -66,30 +74,30 @@ const game:GameModule={
       if(paused||disposed)return;
       const action=(event.target as HTMLElement).closest<HTMLButtonElement>('[data-action]')?.dataset.action;
       if(action==='undo')update(undo(state.path));
-      if(action==='reset')update([generateLevel(state.level).start]);
+      if(action==='reset')update([getLevel().start]);
       if(action==='hint')doHint();
     },options);
-    next.addEventListener('click',()=>{if(!paused&&solved(generateLevel(state.level),state.path)&&state.level<LEVEL_COUNT-1){state={...state,level:state.level+1,path:[generateLevel(state.level+1).start],rewarded:false,steps:0,hints:0};selected=undefined;render();context.save(snapshot());board.focus();}},options);
-    const point=(e:PointerEvent):Point=>{const rect=board.getBoundingClientRect(),s=generateLevel(state.level).size,logical=s*64+24;return{x:((e.clientX-rect.left)/rect.width*logical-12)/64,y:((e.clientY-rect.top)/rect.height*logical-12)/64};};
+    next.addEventListener('click',()=>{if(!paused&&solved(getLevel(),state.path)&&state.level<LEVEL_COUNT-1){state={...state,level:state.level+1,path:[getLevel(state.level+1).start],rewarded:false,steps:0,hints:0};selected=undefined;render();context.save(snapshot());board.focus();}},options);
+    const point=(e:PointerEvent):Point=>{const rect=board.getBoundingClientRect(),s=getLevel().size,logical=s*64+24;return{x:((e.clientX-rect.left)/rect.width*logical-12)/64,y:((e.clientY-rect.top)/rect.height*logical-12)/64};};
     board.addEventListener('pointerdown',e=>{
       if(paused||disposed||activePointer!==undefined||e.button!==0)return;
       e.preventDefault();board.focus();activePointer=e.pointerId;previous=point(e);board.setPointerCapture(e.pointerId);
-      for(const c of sampleSegment(previous,previous,generateLevel(state.level).size))move(c);
+      for(const c of sampleSegment(previous,previous,getLevel().size))move(c);
     },options);
     board.addEventListener('pointermove',e=>{
       if(paused||activePointer!==e.pointerId||!previous)return;
       const events=e.getCoalescedEvents?.()??[];
-      for(const sample of [...events,e]){const p=point(sample);for(const c of sampleSegment(previous,p,generateLevel(state.level).size))move(c);previous=p;}
+      for(const sample of [...events,e]){const p=point(sample);for(const c of sampleSegment(previous,p,getLevel().size))move(c);previous=p;}
     },options);
     board.addEventListener('pointerup',stopPointer,options);board.addEventListener('pointercancel',stopPointer,options);board.addEventListener('lostpointercapture',()=>{activePointer=undefined;previous=undefined;},options);
     board.addEventListener('keydown',e=>{
       if(paused||disposed||document.querySelector('dialog[open]'))return;
-      const size=generateLevel(state.level).size,head=state.path.at(-1)!;
+      const size=getLevel().size,head=state.path.at(-1)!;
       const delta:Record<string,number>={ArrowUp:-size,ArrowRight:1,ArrowDown:size,ArrowLeft:-1};
       if(e.key in delta){e.preventDefault();move(head+delta[e.key]!);}
       else if(e.key==='Backspace'){e.preventDefault();update(undo(state.path));}
       else if(e.key.toLowerCase()==='h'){e.preventDefault();doHint();}
-      else if(e.key==='Home'){e.preventDefault();update([generateLevel(state.level).start]);}
+      else if(e.key==='Home'){e.preventDefault();update([getLevel().start]);}
     },options);
     render();
     return {

@@ -22,3 +22,8 @@
 
 [functions]
   external_node_modules = ["sharp"]
+
+[[headers]]
+  for = "/santa/departure.json"
+  [headers.values]
+    Cache-Control = "no-store"

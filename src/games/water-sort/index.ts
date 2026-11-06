@@ -2,6 +2,7 @@ import type { GameModule } from '../../core/types';
 import { LEVELS } from './levels';
 import { cloneBoard, pour, won } from './rules';
 import { campaignScore, readSnapshot, Session } from './session';
+import { HintSearch } from './hint-search';
 import { bandsFor, liquidArt, liquidColour, tubeArt } from './art';
 import { liquidLayers, pourFrame, rotatePoint, spillAngle } from './geometry';
 import {mountCompactHud,mountDockActions} from '../../ui/game-controls-adapter';
@@ -26,6 +27,8 @@ const module:GameModule={
     const hud=mountCompactHud(container);
     const next=root.querySelector<HTMLButtonElement>('[data-action=next]')!;
     let focusAfterPour:number|null=null;
+    const hintSearch=new HintSearch();
+    let hintRequest:object|null=null;
     let selected:number|null=null,hint:ReturnType<Session['hint']>|null=null;
     let message='',disposed=false,raf=0,lastFrame=0,celebrate:number|null=null;
     let pointer:{id:number;x:number;y:number;from:number;target:HTMLElement}|null=null,suppressClick=false;
@@ -71,7 +74,7 @@ const module:GameModule={
       tubes.innerHTML=`<div class="ws-row">${buttons.slice(0,count).join('')}</div><div class="ws-row">${buttons.slice(count).join('')}</div>`;
       if(focused!==undefined&&!busy&&!session.paused)tubes.querySelector<HTMLButtonElement>(`[data-tube="${focused}"]`)?.focus({preventScroll:true});
       undo.disabled=session.paused||busy||!state.history.length;undo.classList.toggle('ws-undo-hint',hint?.kind==='undo');
-      hintButton.disabled=session.paused||busy||complete;
+      renderHintButton();
       hud.set(`Level ${state.level+1}`);
       next.hidden=!complete;next.disabled=session.paused;next.textContent=state.level===LEVELS.length-1?'Play again':'Next level';
       root.querySelector<HTMLElement>('.ws-victory')!.hidden=!complete;
@@ -143,7 +146,7 @@ const module:GameModule={
     function animate(){if(session.pending&&!session.paused&&!raf){lastFrame=performance.now();paintPour();raf=requestAnimationFrame(frame);}}
     function choose(index:number,keyboard=false){
       if(disposed||session.paused||session.pending||won(session.state.tubes))return;
-      hint=null;celebrate=null;
+      cancelHint();hint=null;celebrate=null;
       if(selected===null){
         if(!session.state.tubes[index].length){tell('Empty tube.');render();return;}
         selected=index;tell(`Tube ${index+1} selected.`);
@@ -160,15 +163,43 @@ const module:GameModule={
       }
       context.sound('tap');render();
     }
-    function reset(level=session.state.level){clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level,session.state.best).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('');render(true);}
+    function reset(level=session.state.level){cancelHint();clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level,session.state.best).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('');render(true);}
+    function renderHintButton(){
+      hintButton.disabled=session.paused||!!session.pending||won(session.state.tubes);
+      hintButton.setAttribute('aria-disabled',String(hintRequest!==null));
+      hintButton.setAttribute('aria-busy',String(hintRequest!==null));
+      hintButton.title=hintRequest?'Finding a hint...':'Hint';
+    }
+    function cancelHint(){
+      if(hintRequest===null)return;
+      hintRequest=null;hintSearch.cancel();message='';
+      renderHintButton();
+      root.querySelector('.ws-message')!.textContent='';
+      context.setStatus('');
+    }
     function useAction(kind:'undo'|'hint'){
-      if(session.paused||session.pending)return;
-      if(kind==='undo'&&session.undo()){selected=null;hint=null;celebrate=null;tell('Pour undone.');render(true);}
-      else if(kind==='hint'&&!won(session.state.tubes)){
-        selected=null;hint=session.hint();
-        if(hint.kind==='pour')tell(`Hint: pour tube ${hint.from+1} into tube ${hint.to+1}. ${hint.remaining} pours from a solution.`);
-        else if(hint.kind==='undo')tell(`Undo ${hint.steps} ${hint.steps===1?'pour':'pours'} to reach a winning route.`);
-        render();
+      if(disposed||session.paused||session.pending)return;
+      if(kind==='undo'&&session.state.history.length){
+        cancelHint();
+        if(session.undo()){selected=null;hint=null;celebrate=null;tell('Pour undone.');render(true);}
+      }else if(kind==='hint'&&!won(session.state.tubes)&&hintRequest===null){
+        selected=null;hint=null;
+        const input=session.prepareHint(),state=session.state,request={};
+        hintRequest=request;
+        tell('Finding a hint. Selecting a tube cancels the search.');render();
+        void hintSearch.run(input).then(result=>{
+          if(disposed||hintRequest!==request||session.state!==state||session.paused||session.pending)return;
+          hintRequest=null;
+          if(result.kind==='hint'){
+            session.chargeHint();
+            hint=result.hint;
+            if(hint.kind==='pour')tell(`Hint: pour tube ${hint.from+1} into tube ${hint.to+1}. ${hint.remaining} pours from a solution.`);
+            else if(hint.kind==='undo')tell(`Try undoing ${hint.steps} ${hint.steps===1?'pour':'pours'} to recover a route. Search limits may hide another route.`);
+          }else if(result.kind==='failed'){
+            tell(result.reason==='timeout'?'Hint search took too long. Keep playing or try again.':'Hint unavailable. Keep playing or try again.');
+          }
+          render();
+        });
       }
     }
     next.addEventListener('click',()=>{if(!session.paused&&!session.pending&&won(session.state.tubes))reset((session.state.level+1)%LEVELS.length)},{signal:abort.signal});
@@ -181,9 +212,10 @@ const module:GameModule={
     },{signal:abort.signal});
     root.addEventListener('keydown',event=>{
       const button=(event.target as Element).closest<HTMLElement>('[data-tube]');if(!button)return;
-      if(event.key==='Escape'){selected=null;clearPointer(true);tell('Selection cleared.');render();return;}
+      if(event.key==='Escape'){cancelHint();selected=null;clearPointer(true);tell('Selection cleared.');render();return;}
       if(event.repeat&&(event.key==='Enter'||event.key===' ')){event.preventDefault();return;}
       if(session.paused||session.pending)return;
+      if(event.key==='Enter'||event.key===' ')cancelHint();
       if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){
         event.preventDefault();const cols=root.dataset.layout==='single'?session.state.tubes.length:Math.ceil(session.state.tubes.length/2),delta=event.key==='ArrowLeft'?-1:event.key==='ArrowRight'?1:event.key==='ArrowUp'?-cols:cols;
         const index=(Number(button.dataset.tube)+delta+session.state.tubes.length)%session.state.tubes.length;
@@ -195,6 +227,7 @@ const module:GameModule={
     root.addEventListener('pointerdown',event=>{
       suppressClick=false;const target=(event.target as Element).closest<HTMLElement>('[data-tube]');
       if(!event.isPrimary||event.button!==0||!target||pointer||session.paused||session.pending)return;
+      cancelHint();
       try{
         target.setPointerCapture(event.pointerId);
         pointer={id:event.pointerId,x:event.clientX,y:event.clientY,from:Number(target.dataset.tube),target};
@@ -224,10 +257,10 @@ const module:GameModule={
     const observer=new ResizeObserver(()=>{clearPointer(true);fit();});observer.observe(field);
     render();
     return{
-      pause(){session.paused=true;clearPointer(true);cancelAnimationFrame(raf);raf=0;render();},
+      pause(){cancelHint();session.paused=true;clearPointer(true);cancelAnimationFrame(raf);raf=0;render();},
       resume(){session.paused=false;render();animate();},restart(){reset();},serialize:snapshot,
-      restore(data){const restored=readSnapshot(data);if(!restored)return;clearPointer(true);clearAnimation();session.pending=null;session.state=restored;focusAfterPour=null;selected=null;hint=null;celebrate=null;message='Your colours are right where you left them.';render();},
-      dispose(){clearPointer(true);disposed=true;clearAnimation();observer.disconnect();abort.abort();hud.dispose();actions.dispose();root.remove();},
+      restore(data){const restored=readSnapshot(data);if(!restored)return;cancelHint();clearPointer(true);clearAnimation();session.pending=null;session.state=restored;focusAfterPour=null;selected=null;hint=null;celebrate=null;message='Your colours are right where you left them.';render();},
+      dispose(){cancelHint();clearPointer(true);disposed=true;clearAnimation();observer.disconnect();abort.abort();hud.dispose();actions.dispose();root.remove();},
     };
   },
 };

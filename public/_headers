@@ -16,3 +16,6 @@
 
 /deploy-info.json
   Cache-Control: no-store
+
+/santa/departure.json
+  Cache-Control: no-store

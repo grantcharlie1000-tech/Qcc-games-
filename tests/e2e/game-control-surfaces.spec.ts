@@ -2,13 +2,15 @@ import {test,expect} from '../fixtures';
 
 test.describe.configure({timeout:90000});
 
-// These are decorative dock rims, not focus outlines. The underlying shared
-// lens and all native hit targets stay in place when the extra boxes go away.
+// The separate dock panel stays transparent. Its individual glass controls
+// retain fine optical highlights, distinct from accessible focus outlines.
 for(const viewport of [{width:390,height:844},{width:1440,height:900}]){
   test(`Globle dock has clear glass without separate painted boxes at ${viewport.width}px`,async({page})=>{
     await page.setViewportSize(viewport);
     await page.goto('/#/game/globle');
     const dock=page.locator('.game-dock');
+    await expect(dock).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+    await expect(dock).toHaveCSS('box-shadow','none');
     const controls=dock.locator(':scope>.arcade-glass.game-glass');
     await expect(controls).toHaveCount(3);
     await expect(page.locator('.game-compact-hud')).toContainText('Daily');
@@ -17,8 +19,9 @@ for(const viewport of [{width:390,height:844},{width:1440,height:900}]){
       await expect(control).toHaveAttribute('data-glass',/^(backdrop|frost)$/);
       await expect(control).toHaveCSS('border-top-width','0px');
       await expect(control).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
-      await expect.poll(()=>control.evaluate(el=>getComputedStyle(el,'::before').boxShadow)).toBe('none');
-      await expect(control.locator(':scope>.ui-glass-glow')).toHaveCSS('background-image','none');
+      await expect.poll(()=>control.evaluate(el=>getComputedStyle(el,'::before').boxShadow)).not.toBe('none');
+      await expect.poll(()=>control.evaluate(el=>getComputedStyle(el,'::before').backgroundImage)).toContain('linear-gradient');
+      await expect(control.locator(':scope>.ui-glass-glow')).not.toHaveCSS('background-image','none');
       const material=await control.evaluate(el=>{
         const lens=el.querySelector('.ui-glass-lens'),live=el.querySelector('.ui-glass-gl');
         return {mode:el.getAttribute('data-glass'),tint:getComputedStyle(el,'::before').backgroundColor,
@@ -31,10 +34,12 @@ for(const viewport of [{width:390,height:844},{width:1440,height:900}]){
       expect(bounds.height).toBeGreaterThanOrEqual(44);
       expect(bounds.width).toBeGreaterThanOrEqual(44);
     }
-    // Fine-pointer hover must not paint the box back around the Menu control.
+    // Fine-pointer hover retains the glass rather than adding an opaque box.
     const menu=page.locator('#game-menu');
     await menu.hover();
-    await expect.poll(()=>menu.evaluate(el=>getComputedStyle(el,'::before').boxShadow)).toBe('none');
+    await expect(menu).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+    await expect(menu).toHaveCSS('border-top-width','0px');
+    await expect.poll(()=>menu.evaluate(el=>getComputedStyle(el,'::before').backgroundImage)).toContain('linear-gradient');
     await page.mouse.move(0,0);
     // The screenshot's country-field ring is intentional and remains visible.
     await page.getByRole('textbox',{name:'Country name',exact:true}).focus();

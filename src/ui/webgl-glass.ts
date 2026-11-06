@@ -6,7 +6,7 @@
 // small staging canvas (1-1.5 px per CSS px), upload it once with
 // texSubImage2D, draw every lens into one atlas, and copy each atlas slot into
 // the lens's own output canvas, which sits under the surface's DOM content.
-// There is no second requestAnimationFrame and no pixel readback.
+// There is no second requestAnimationFrame; crop changes trigger an opacity readback.
 // Anything unexpected (no WebGL2, context loss, tainted source, accessibility
 // or motion preferences) deactivates the lens; the surface keeps its CSS blur.
 import './webgl-glass.css';

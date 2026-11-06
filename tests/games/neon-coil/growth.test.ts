@@ -1,5 +1,8 @@
-import { expect, test } from 'vitest';
+import { afterEach, expect, test } from 'vitest';
 import { createArena, stepArena, bodyLength, restoreArena, snapshot, SPEED, STEP, type Arena } from '../../../src/games/neon-coil/model';
+
+// Long synchronous simulations otherwise starve Vitest's worker RPC across the entire file.
+afterEach(() => new Promise<void>(resolve => setImmediate(resolve)));
 
 function quiet(): Arena {
   const s=createArena(); s.phase='running';

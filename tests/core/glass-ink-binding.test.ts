@@ -83,18 +83,19 @@ const expectNoAdaptiveInk=(element:TestElement)=>{
 };
 
 describe('glass ink binding',()=>{
-  it('leaves SVG and CSS icons untouched while labels adapt to changing backdrops',()=>{
+  it('leaves SVG and CSS icons untouched while labels stay white across changing backdrops',()=>{
     const view=fixture();view.flush();
-    for(const [brightness,color,textured] of [[0,'#fff',false],[255,'#0b1015',false],[0,'#fff',true]] as const){
+    for(const [brightness,color,textured] of [[0,'#fff',false],[255,'#fff',false],[0,'#fff',true]] as const){
       view.change(brightness,false,textured);
       expect(ink(view.label)).toBe(color);
-      expect(view.label.hasAttribute('data-glass-halo')).toBe(textured);
+      expect(view.label.hasAttribute('data-glass-halo')).toBe(textured||brightness===255);
+      expect(view.label.style.getPropertyValue('--glass-local-halo')).toBe(textured||brightness===255?'rgb(0 0 0 / .8)':'transparent');
       expectNoAdaptiveInk(view.svg);expectNoAdaptiveInk(view.chevrons);
     }
   });
   it.each(['off','contrast'])('clears adaptive label colors in %s accessibility mode',mode=>{
     const view=fixture();view.flush();view.change(255);
-    expect(ink(view.label)).toBe('#0b1015');
+    expect(ink(view.label)).toBe('#fff');
     if(mode==='off')view.bar.dataset.glass='off';
     view.change(255,mode==='contrast');
     expectNoAdaptiveInk(view.label);expectNoAdaptiveInk(view.svg);expectNoAdaptiveInk(view.chevrons);

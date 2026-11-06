@@ -363,7 +363,7 @@ test('a fine pointer lights up a tab and leaves the current lozenge alone',async
  expect(await alpha(study)).toBe(0);
  await study.hover();
  await expect.poll(()=>alpha(study)).toBeCloseTo(0.06,2);
- expect(await study.evaluate(element=>getComputedStyle(element).color)).toBe('rgb(11, 16, 21)');
+ expect(await study.evaluate(element=>getComputedStyle(element).color)).toBe('rgb(255, 255, 255)');
  // Hover colour and background change at once: a tab never transitions them, only its transform and its label fade.
  // The exact list: a tab moves its transform and fades its label, and its colour and background change at once.
  expect(await study.evaluate(element=>getComputedStyle(element).transitionProperty)).toBe('transform, opacity');
