@@ -412,6 +412,22 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       if (slot < 0) return;
       from.set(ax, surfaceY(A, ax) + LIFT, -(lo - builtOrigin));
       to.set(bx, surfaceY(B, bx) + LIFT, -(hi - builtOrigin));
+      if (festive) {
+        // Christmas: the tile under it bends with the road's crest or dip, so the line does too: two halves that
+        // meet on the true surface at the tile's middle (keys lineKey + 8 + k hold the second halves).
+        const mx = M.center + lane * M.width, half = gridCache.keep(lineKey + 8 + k);
+        to.set(mx, surfaceY(M, mx) + LIFT, -((lo + hi) / 2 - builtOrigin));
+        bar(grid, slot, lane === 0 ? centerLine : laneLine);
+        gridCache.changed(slot);
+        lineCount++;
+        if (half < 0 || lineCount >= LINES) return;
+        from.copy(to);
+        to.set(bx, surfaceY(B, bx) + LIFT, -(hi - builtOrigin));
+        bar(grid, half, lane === 0 ? centerLine : laneLine);
+        gridCache.changed(half);
+        lineCount++;
+        continue;
+      }
       bar(grid, slot, lane === 0 ? centerLine : laneLine);
       gridCache.changed(slot);
       lineCount++;
@@ -566,7 +582,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       const lod = step === .5 ? 0 : step === 1 ? 1 : 2, tileKey = a * 8 + lod, lineKey = a * 128 + lod * 16;
       if (tileCache.has(tileKey) && gridCache.has(lineKey + 4)) {
         tileCache.keep(tileKey); tileCount++;
-        for (let k = 0; k < LANES.length; k++) { gridCache.keep(lineKey + k); lineCount++; }
+        for (let k = 0; k < LANES.length; k++) { gridCache.keep(lineKey + k); lineCount++; if (festive) { gridCache.keep(lineKey + 8 + k); lineCount++; } }
         a = b;
         continue;
       }

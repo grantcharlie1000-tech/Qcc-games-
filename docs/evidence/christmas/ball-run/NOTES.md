@@ -62,8 +62,10 @@ neon corridor. Under the Christmas theme it adds just two things:
     2 m tiles): each tile is a subdivided box whose top face the vertex shader bends by the tile's twist (fitted
     over its four corners where they really are) and by its curve along its length (fitted at its middle),
     carried in its instance colour, which the tile cache already moves with it; the colour is not applied, the
-    road keeps its exact colour. Measured over 30 courses: within 1.2 mm of the surface near the player and
-    7 mm on the far 2 m tiles. To keep courses passable it was made about 16%
+    road keeps its exact colour. Measured over 36 courses, including the GPU's interpolation between a tile's
+    vertices: within 2 mm of the surface near the player and 6 mm on the far 2 m tiles. The lane lines are
+    drawn in two halves meeting on the surface at each tile's middle, so they bend with it (a straight line sank
+    up to 3.2 cm into a far tile bent over a crest); their ends and middles lie within 8 mm of their place. To keep courses passable it was made about 16%
     shorter,
     pressed toward its front; on ordinary road its box lies inside the 0.44 m clearance the course generator
     keeps round the ball, and on steeper road passability is shown by the bot (below), not proved.
@@ -91,8 +93,9 @@ neon corridor. Under the Christmas theme it adds just two things:
   - It points away from the camera. The raised backrest, whose tall side curls roll back over the rear corners,
     is nearest the camera. The low scrolled dash and the tall gold runner curls are at the far end. Between the
     backrest curls the back panel and its bolster stop just above the seat, so the chase camera (behind and only
-    a little above) sees the whole hat on the seat, its fur brim included (a review found the brim half hidden
-    when the panel stood higher). An earlier version had its tallest curl at the front and a low back. From behind
+    a little above) sees the whole hat on the seat, its fur brim included, on ordinary road (a review found the
+    brim half hidden when the panel stood higher); on the steepest descents (pitch -0.3 and steeper, a few per
+    cent of the road) the rail still hides part of the brim's lower edge. An earlier version had its tallest curl at the front and a low back. From behind
     that read as a sleigh facing the camera.
   - The block crash bursts into the sleigh's red, gold and white instead of the ball's magenta and cyan, so it is
     the sleigh that breaks apart.

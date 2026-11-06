@@ -492,6 +492,42 @@ describe('Ball Run Christmas scene', () => {
     return worst;
   }
 
+  it('lays the lane lines on the road surface, bending with the far tiles over crests and dips, within the line budget', () => {
+    const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
+    let ends = 0, worst = 0, most = 0;
+    for (const [seed, difficulty, distance] of [[10, 'medium', 1087], [7, 'hard', 1100], [2, 'hard', 1450], [28, 'easy', 95]] as const) {
+      const course = getCourse(seed, difficulty), run = createRun(seed, 1, difficulty), m = new THREE.Matrix4();
+      run.distance = distance; run.height = course.surfaceHeight(distance, run.x) + RADIUS;
+      // At the top speed the view reaches furthest (260 m), the most lines the road ever needs.
+      scene.reset(); scene.render({ run, course, speed: 70 });
+      const road = captured.scene!.children[0], grid = road.children[1] as THREE.InstancedMesh;
+      most = Math.max(most, grid.count);
+      const across = new THREE.Vector3(), up = new THREE.Vector3(), along = new THREE.Vector3(), centre = new THREE.Vector3(), end = new THREE.Vector3();
+      for (let i = 0; i < grid.count; i++) {
+        grid.getMatrixAt(i, m);
+        m.extractBasis(across, up, along);
+        // A lane line: long along the course, narrow across, lying on the road (not an arch bar overhead).
+        if (along.length() < .2 || across.length() > .2 || Math.abs(along.clone().normalize().z) < .9) continue;
+        centre.setFromMatrixPosition(m).add(road.position);
+        for (const side of [-.5, 0, .5]) {
+          end.copy(centre).addScaledVector(along, side);
+          const d = distance - end.z;
+          if (d < distance - 5 || !course.sample(d).ground || course.sample(d).tunnel) continue;
+          const lift = end.y - (roadAt(course, d, end.x) + SLOPE * distance);
+          if (lift > .5) continue; // an arch's long bar over a gate
+          worst = Math.max(worst, Math.abs(lift - .02));
+          ends++;
+        }
+      }
+    }
+    expect(ends).toBeGreaterThan(1000);
+    // Every end and middle sits LIFT (2 cm) above the true surface, to within a centimetre, far tiles over crests
+    // included (a straight 2 m line sank up to 3.2 cm into the tile bent over a crest).
+    expect(worst).toBeLessThan(.01);
+    expect(most).toBeLessThan(3400);
+    scene.dispose();
+  });
+
   it('lays every cross line flat on the road, at a drop\'s lip too', () => {
     // A cross line within half a metre of a gap once took its slope from the gap (metres lower) and stood up.
     const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
