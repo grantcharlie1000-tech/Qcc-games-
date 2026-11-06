@@ -446,8 +446,15 @@ describe('Ball Run Christmas scene', () => {
     scene.render({ run, course, speed: course.speed(distance) });
     const road = captured.scene!.children[0], tiles = road.children[0] as THREE.InstancedMesh, m = new THREE.Matrix4(), v = new THREE.Vector3();
     let worst = 0, bends = 0;
+    // Every tile and line is a right-handed box: a mirrored instance would be drawn inside out (its top face culled).
+    const grid = road.children[1] as THREE.InstancedMesh;
+    for (let i = 0; i < tiles.count; i++) { tiles.getMatrixAt(i, m); expect(m.determinant()).toBeGreaterThan(0); }
+    for (let i = 0; i < grid.count; i++) { grid.getMatrixAt(i, m); expect(m.determinant()).toBeGreaterThan(0); }
     for (let i = 0; i < tiles.count; i++) {
       tiles.getMatrixAt(i, m);
+      // Its top face's outward normal points up.
+      const n = new THREE.Vector3(0, 1, 0).applyMatrix3(new THREE.Matrix3().getNormalMatrix(m));
+      expect(n.y).toBeGreaterThan(0);
       for (const [u, w] of [[-.5, -.5], [.5, -.5], [-.5, .5], [.5, .5], [0, 0]]) {
         v.set(u, .5, w).applyMatrix4(m).add(road.position);
         const d = distance - v.z;
@@ -558,8 +565,9 @@ describe('Ball Run Christmas scene', () => {
       }
     }
     expect(takeoffs).toBeGreaterThan(50); expect(landings).toBeGreaterThan(50);
-    // Measured: under 0.01 rad (0.6°) at take-off and landing, and under 0.03 rad (1.7°) in any one step of
-    // flight, as the nose flares onto the road over the last 2.5 m. (Landing after a drop jumped 0.33 rad before.)
+    // Measured here and in a wider survey (side falls, the speed cap): under 0.015 rad at take-off and landing,
+    // under 0.04 rad in any one step of flight, as the nose flares onto the road over the last 2.5 m. (Landing
+    // after a drop jumped 0.33 rad before.)
     expect(worstTakeoff).toBeLessThan(.02);
     expect(worstLanding).toBeLessThan(.02);
     expect(worstInFlight).toBeLessThan(.04);

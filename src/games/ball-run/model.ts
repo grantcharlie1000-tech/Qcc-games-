@@ -65,7 +65,8 @@ function gapEdges(course: Course, distance: number): void {
 /** How far a body at (distance, x, height) is above where it would rest, for the sleigh's landing flare. On the
  * road that is the road; over a drop's gap (where the course reports the landing road's level, a step below the
  * lip) it is a level that runs from the lip's road, carried on at its slope, to the landing road, in proportion
- * across the gap, so it has no step at either edge. Deterministic; it allocates nothing. */
+ * across the gap, so it has no step at either edge. Deterministic, with no allocation of its own (over a gap
+ * it samples the course about fifty times to find the gap's edges, which is where course.ts allocates). */
 export function heightAboveRest(course: Course, distance: number, x: number, height: number): number {
   const s = course.sample(distance, gapProbe);
   if (s.ground) return height - restOn(s, x);

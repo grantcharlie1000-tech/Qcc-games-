@@ -194,7 +194,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const from = new THREE.Vector3(), to = new THREE.Vector3(), direction = new THREE.Vector3(), forward = new THREE.Vector3(0, 0, -1);
   /** Bar cross-sections (width, height). */
   const laneLine = new THREE.Vector2(LINE_WIDTH, LINE_HEIGHT), centerLine = new THREE.Vector2(CENTER_WIDTH, LINE_HEIGHT),
-    crossSection = new THREE.Vector2(CROSS_WIDTH, LINE_HEIGHT), archBar = new THREE.Vector2(BAR, BAR), entranceBar = new THREE.Vector2(ENTRANCE_BAR, ENTRANCE_BAR), chevron = new THREE.Vector2(.24, LINE_HEIGHT);
+    archBar = new THREE.Vector2(BAR, BAR), entranceBar = new THREE.Vector2(ENTRANCE_BAR, ENTRANCE_BAR), chevron = new THREE.Vector2(.24, LINE_HEIGHT);
   const tileAcross = new THREE.Vector3(), tileAlong = new THREE.Vector3(), tileUp = new THREE.Vector3(), tileMatrix = new THREE.Matrix4();
   const place = (mesh: THREE.InstancedMesh, index: number) => {
     transform.updateMatrix();
@@ -334,21 +334,25 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     return s.elevation - (x - s.center) * Math.tan(s.bank) + yRef;
   }
 
-  /** One tile from lo to hi (rolled with the bank, pitched and yawed along the road) plus its lane lines.
+  /** One tile from lo to hi (rolled with the bank, pitched and yawed along the road; under the theme, sheared
+   * onto the simulated surface instead) plus its lane lines.
    * A and B already hold the track at lo and hi. */
   function piece(lo: number, hi: number, tileIndex: number, lineKey: number): void {
     track((lo + hi) / 2, M);
     const length = hi - lo, dc = B.center - A.center, de = B.elevation - A.elevation;
     const yaw = -Math.atan2(dc, length), pitch = Math.atan2(de, Math.hypot(dc, length));
     if (festive) {
-      // Christmas: the tile's top is exactly the surface the simulation uses (y = elevation - (x - centre)·tan(bank)
-      // across the course at each distance), so the sleigh's flat runners sit on what is drawn on bends too. The
-      // yawed, rolled tile below leans off that surface on a bend (by up to about 9 cm at the road's edge), which
-      // a ball hides and a sleigh does not. A sheared box: across in world x along the bank, along the centre line.
+      // Christmas: the tile's top lies on the surface the simulation uses (y = elevation - (x - centre)·tan(bank)
+      // across the course at each distance, with the bank at the tile's middle), so the sleigh's flat runners sit
+      // on what is drawn on bends too. The original tile, yawed along a bend and then rolled, leans off that
+      // surface on a bend (by up to about 10 cm at the road's edge), which a ball hides and a sleigh does not.
+      // A sheared box: across in world x along the bank, along the centre line (pointing back, toward +z, so the
+      // basis is right-handed: a mirrored instance matrix would turn the box inside out, and three.js only
+      // corrects the face winding for a mirrored object, not a mirrored instance).
       const reach = (Math.hypot(dc, de, length) + .01) / Math.hypot(dc, de, length);
       tileAcross.set(M.width, -M.width * Math.tan(M.bank), 0);
-      tileAlong.set(dc * reach, de * reach, -length * reach);
-      tileUp.crossVectors(tileAcross, tileAlong).normalize().multiplyScalar(TILE_DEPTH);
+      tileAlong.set(-dc * reach, -de * reach, length * reach);
+      tileUp.crossVectors(tileAlong, tileAcross).normalize().multiplyScalar(TILE_DEPTH);
       tileMatrix.makeBasis(tileAcross, tileUp, tileAlong).setPosition(
         (A.center + B.center) / 2 - tileUp.x / 2, (A.elevation + B.elevation) / 2 + yRef - tileUp.y / 2, -((lo + hi) / 2 - builtOrigin) - tileUp.z / 2);
       tiles.setMatrixAt(tileIndex, tileMatrix);
@@ -385,11 +389,15 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     const slot = gridCache.keep(key);
     if (slot < 0) return;
     if (festive) {
-      // Christmas: straight across the simulated surface, from edge to edge, like the tiles under it.
-      const half = (S.width + LINE_WIDTH) / 2, z = -(d - builtOrigin);
-      from.set(S.center - half, surfaceY(S, S.center - half) + LIFT, z);
-      to.set(S.center + half, surfaceY(S, S.center + half) + LIFT, z);
-      bar(grid, slot, crossSection);
+      // Christmas: straight across the simulated surface, edge to edge, lying on it like the tiles: across along
+      // the bank, its width along the road's own direction (its slope and bend), its height along the surface's
+      // normal; right-handed, as the tiles are.
+      track(d + .5, M);
+      tileAcross.set(S.width + LINE_WIDTH, -(S.width + LINE_WIDTH) * Math.tan(S.bank), 0);
+      tileAlong.set(-(M.center - S.center), -(M.elevation - S.elevation), .5).normalize().multiplyScalar(CROSS_WIDTH);
+      tileUp.crossVectors(tileAlong, tileAcross).normalize().multiplyScalar(LINE_HEIGHT);
+      tileMatrix.makeBasis(tileAcross, tileUp, tileAlong).setPosition(S.center, surfaceY(S, S.center) + LIFT, -(d - builtOrigin));
+      grid.setMatrixAt(slot, tileMatrix);
     } else {
       track(d + .5, M);
       position.set(S.center, S.elevation + yRef + LIFT, -(d - builtOrigin));

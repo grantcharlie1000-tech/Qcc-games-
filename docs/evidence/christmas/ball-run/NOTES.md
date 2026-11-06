@@ -51,10 +51,15 @@ neon corridor. Under the Christmas theme it adds just two things:
     banked, with no yaw, and seated on it, so its runners stay on the road at any slope and anywhere across the
     road, bank changes included (a test runs three whole courses across the road's width and checks the runners
     along their length against the real surface, within 5 mm). Under the theme the road's tiles and cross
-    lines are drawn on that same surface (each tile a sheared box spanning the road along its bank): the
-    original drawing yaws its tiles along a bend, which leans them up to about 10 cm off it at the road's edge
-    on the sharpest bend, a mismatch a ball hides and a sleigh does not. A test reads the drawn tiles on that
-    bend and finds them within 8 mm of the surface (with the theme off, unchanged, still centimetres off). To keep courses passable it was made about 16% shorter,
+    lines are drawn on that same surface (each tile a right-handed sheared box spanning the road along its
+    bank at the tile's middle; cross lines lie on it the same way): the original drawing yaws its tiles along
+    a bend, which leans them up to about 10 cm off it at the road's edge on the sharpest bend, a mismatch a
+    ball hides and a sleigh does not. A test reads the drawn tiles on that bend and finds them within 8 mm of
+    the surface (with the theme off, unchanged, still centimetres off), and checks no tile or line is mirrored
+    (an earlier version's were, which drew them inside out). Where a bank changes, a flat tile cannot follow
+    the twist: near the player (0.5 m tiles) its corner is within about 1.5 cm, the far 1 m and 2 m tiles
+    within about 2.5 and 5.5 cm, as with the original tiles. To keep courses passable it was made about 16%
+    shorter,
     pressed toward its front; on ordinary road its box lies inside the 0.44 m clearance the course generator
     keeps round the ball, and on steeper road passability is shown by the bot (below), not proved.
     A tight cut the ball would have grazed past now crashes, as it looks like it should.
@@ -65,14 +70,15 @@ neon corridor. Under the Christmas theme it adds just two things:
     and box (`useBody`), and `sleigh-courses.test.ts` drives 110 runs per difficulty as the sleigh.
   - Its scores go on the same leaderboards and records as the ball's: the user chose to share them, knowing the
     sleigh handles and collides differently.
-  - It moves as a body. On the road it lies on the road exactly, at any slope; in the air its nose points along
-    its flight path along the course, less what its sideways motion climbs across a bank (the same pitch the
-    collision uses, so there is no rotational lag). Within 2.5 m of the road below it flares onto the road's
-    slope, eased in and out (over a drop's gap, toward a level running from the lip to the landing), so it
-    takes off and lands with no jump: measured through the real simulation over whole courses, under 0.01 rad
-    at take-off and landing and under 0.03 rad in any one step of flight (a landing after a drop jumped 0.33
-    rad before). The spring cushions the landing. A damped spring on its runners (about 3.5 Hz) squashes it about the
-    runners on landings and bumps and lets it rebound. It leans into a carve (at most 0.04 rad), tipping onto
+  - It moves as a body. On the road it lies on the road exactly, at any slope; in the air its nose blends
+    between the road's slope and its flight path along the course (less what its sideways motion climbs across
+    a bank): within 2.5 m of the road below (over a drop's gap, a level running from the lip to the landing) it
+    is eased toward the road's slope, and only higher does it follow the flight path, which most hops never
+    reach. It is the same pitch the collision uses, so there is no rotational lag, and it takes off and lands
+    with no jump: measured through the real simulation over whole courses, side falls and steering throws,
+    under 0.015 rad at take-off and landing and under 0.04 rad in any one step of flight (a landing after a drop jumped 0.33 rad before; on a drop the nose
+    now dips to about -0.31 and settles to the road's slope at touchdown). A damped spring on its runners (about
+    3.5 Hz) squashes it about the runners on landings and bumps and lets it rebound. It leans into a carve (at most 0.04 rad), tipping onto
     its inside runner. It never turns about its own up axis. A new run, restore or teleport snaps straight to
     the road. Under Reduce motion there is no spring or carve lean (its pitch, which is what it collides with,
     is the same). About 20,000 triangles in two draw calls.
