@@ -45,6 +45,8 @@ neon corridor. Under the Christmas theme it adds just two things:
     and it drifts 20% further down banks. A 6/s response was tried first; the bot found a few slaloms it could
     not make, so it was softened until every course passed. The bot now plans with the body's own handling
     and box (`useBody`), and `sleigh-courses.test.ts` drives 110 runs per difficulty as the sleigh.
+  - Its scores go on the same leaderboards and records as the ball's: the user chose to share them, knowing the
+    sleigh handles and collides differently.
   - It moves as a body. On the road it sits on the slope and bank (the same angles as the road tiles). A damped
     spring on its runners (about 3.5 Hz) squashes it about the runners on landings and bumps and lets it
     rebound. It leans into a carve (at most 0.04 rad). In the air its nose turns toward its flight path with
