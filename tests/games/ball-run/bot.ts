@@ -204,9 +204,11 @@ class Window {
         const a = course.pose(o, quarter, pose).x, b = course.pose(o, quarter + o.slide.period / 2, pose).x;
         lo = Math.min(a, b); hi = Math.max(a, b);
       }
-      // A box body (the sleigh) reaches further than the ball behind or ahead of its centre: grow the block by the difference.
+      // A box body (the sleigh) reaches further than the ball behind, ahead of or beside its centre: grow the block
+      // by the difference, so every clearance below (all measured from RADIUS) applies to the box.
       const ahead = BODY.kind === 'box' ? Math.max(0, BODY.front - RADIUS) : 0, behind = BODY.kind === 'box' ? Math.max(0, BODY.back - RADIUS) : 0;
-      blocks.push({ from: pose.distance - pose.halfDepth - ahead, to: pose.distance + pose.halfDepth + behind, lo: lo - out, hi: hi + out });
+      const beside = BODY.kind === 'box' ? Math.max(0, BODY.halfWidth - RADIUS) : 0;
+      blocks.push({ from: pose.distance - pose.halfDepth - ahead, to: pose.distance + pose.halfDepth + behind, lo: lo - out - beside, hi: hi + out + beside });
     });
     // Points: every whole metre, and where each widened block starts and ends, for x and (one lag earlier) for p.
     const at = this.at;

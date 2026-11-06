@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { createScene } from '../../../src/games/ball-run/scene';
-import { createSleigh, SLEIGH_COLORS } from '../../../src/games/ball-run/sleigh';
+import { createSleigh, SLEIGH_COLORS, SLEIGH_POSE, placeOnRunners } from '../../../src/games/ball-run/sleigh';
 import { SNOW_DEPTH, SNOW_EDGE, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from '../../../src/games/ball-run/snow';
 import { CLEAR, getCourse } from '../../../src/games/ball-run/course';
-import { createSnowfall, SNOWFALL_FLAKES } from '../../../src/games/ball-run/snowfall';
+import { createSnowfall, SNOWFALL_BOX, SNOWFALL_FLAKES, SNOWFALL_PERIOD } from '../../../src/games/ball-run/snowfall';
 import { createRun, step } from '../../../src/games/ball-run/model';
 import { BALL, RADIUS, SLEIGH_BODY, SLOPE, STEP, type Obstacle, type ObstaclePose } from '../../../src/games/ball-run/config';
 import { placeRun } from './bot';
@@ -41,22 +41,6 @@ describe('Ball Run Christmas sleigh model', () => {
     expect(box.min.z).toBeGreaterThanOrEqual(-RADIUS);
     expect(box.max.y).toBeLessThan(RADIUS);
     expect(box.max.z - box.min.z).toBeLessThan(4 * RADIUS);
-  });
-
-  it('stays inside its collision box\'s front while pitched as far as steer() ever tilts it (0.2 rad)', () => {
-    // The steepest road gradient across the courses tilts it about 0.185 rad; steer() clamps pitch to 0.2.
-    if (SLEIGH_BODY.kind !== 'box') throw new Error('the sleigh collides as a box');
-    const front = SLEIGH_BODY.front;
-    const v = new THREE.Vector3(), q = new THREE.Quaternion(), x = new THREE.Vector3(1, 0, 0);
-    for (const pitch of [-.2, -.1, .1, .2]) {
-      q.setFromAxisAngle(x, pitch);
-      let reach = 0;
-      for (const mesh of sleigh.group.children as THREE.Mesh[]) {
-        const p = mesh.geometry.getAttribute('position');
-        for (let i = 0; i < p.count; i++) reach = Math.max(reach, -v.fromBufferAttribute(p, i).applyQuaternion(q).z);
-      }
-      expect(reach, `pitch ${pitch}`).toBeLessThanOrEqual(front);
-    }
   });
 
   it('carries Santa\'s hat but no Santa, in two draw calls coloured per vertex', () => {
@@ -111,15 +95,29 @@ describe('Ball Run Christmas sleigh collision', () => {
   if (SLEIGH_BODY.kind !== 'box') throw new Error('the sleigh collides as a box');
   const body = SLEIGH_BODY;
 
-  it('is the box the drawn sleigh fills, to within a centimetre on every side, so what is seen is what hits', () => {
-    const drawn = new THREE.Box3().setFromObject(createSleigh().group);
-    // Forward is -z in the model and +distance in the simulation.
-    const sides: [number, number][] = [[drawn.max.x, body.halfWidth], [-drawn.min.x, body.halfWidth], [drawn.min.y, body.bottom], [drawn.max.y, body.top], [-drawn.min.z, body.front], [drawn.max.z, body.back]];
-    expect(drawn.max.x).toBeCloseTo(body.halfWidth, 6);
-    expect(drawn.min.y).toBeCloseTo(body.bottom, 6);
-    // Snug on every side; the front leaves room for the nose to pitch up 0.2 rad on a climb without leaving the box.
-    for (const [model, box] of sides) expect(Math.abs(model - box), `${model} vs ${box}`).toBeLessThanOrEqual((box === body.front ? .035 : .01) + 1e-9);
-    expect(-drawn.min.z).toBeLessThanOrEqual(body.front); expect(drawn.max.z).toBeLessThanOrEqual(body.back); expect(drawn.max.y).toBeLessThanOrEqual(body.top);
+  it('holds everything drawn of it under every pose the scene gives it, snugly, so what is seen is what hits', () => {
+    // Every combination of the scene's limits (pitch, carve lean, squash and stretch), posed exactly as
+    // scene.ts poses it, in the box's own frame (banked as the road, which the sleigh always is).
+    const sleigh = createSleigh().group, v = new THREE.Vector3(), reach = { side: 0, bottom: 0, top: -1, front: 0, back: 0 };
+    for (let k = -8; k <= 8; k++) for (const carve of [-1, -.5, 0, .5, 1]) for (const squash of [-SLEIGH_POSE.stretch, 0, SLEIGH_POSE.squash / 2, SLEIGH_POSE.squash]) {
+      const pitch = SLEIGH_POSE.pitch * k / 8, lean = SLEIGH_POSE.carve * carve;
+      sleigh.position.set(0, 0, 0); sleigh.rotation.set(pitch, 0, lean, 'YXZ'); sleigh.scale.set(1, 1 - squash, 1);
+      placeOnRunners(sleigh, pitch, 0, lean, squash);
+      sleigh.updateMatrix();
+      for (const mesh of sleigh.children as THREE.Mesh[]) {
+        const p = mesh.geometry.getAttribute('position');
+        for (let i = 0; i < p.count; i++) {
+          v.fromBufferAttribute(p, i).applyMatrix4(sleigh.matrix);
+          reach.side = Math.max(reach.side, Math.abs(v.x)); reach.bottom = Math.min(reach.bottom, v.y); reach.top = Math.max(reach.top, v.y);
+          reach.front = Math.max(reach.front, -v.z); reach.back = Math.max(reach.back, v.z);
+        }
+      }
+    }
+    const pairs: [string, number, number][] = [['side', reach.side, body.halfWidth], ['bottom', -reach.bottom, -body.bottom], ['top', reach.top, body.top], ['front', reach.front, body.front], ['back', reach.back, body.back]];
+    for (const [name, drawn, box] of pairs) {
+      expect(drawn, name).toBeLessThanOrEqual(box);
+      expect(box - drawn, `${name} snug`).toBeLessThanOrEqual(.006);
+    }
   });
 
   it('fits inside the clearance the course generator keeps round the ball, so every course stays passable', () => {
@@ -173,10 +171,43 @@ describe('Ball Run Christmas snowfall', () => {
     const u = (a.points.material as THREE.ShaderMaterial).uniforms;
     expect(u.uOrigin.value.toArray()).toEqual([1, 2, 3.6]);
     // Long runs stay in float precision: the shader's wrap makes these equivalent to the raw values.
-    expect(u.uTravel.value).toBeLessThan(u.uBox.value.z); expect(u.uLift.value).toBeLessThan(u.uBox.value.y); expect(u.uTime.value).toBeLessThan(86400);
+    expect(u.uTravel.value).toBeLessThan(u.uBox.value.z); expect(u.uLift.value).toBeLessThan(u.uBox.value.y); expect(u.uTime.value).toBeLessThan(SNOWFALL_PERIOD);
     const dispose = [vi.spyOn(a.points.geometry, 'dispose'), vi.spyOn(a.points.material as THREE.Material, 'dispose')];
     a.dispose(); b.dispose();
     for (const spy of dispose) expect(spy).toHaveBeenCalledOnce();
+  });
+});
+
+describe('Ball Run Christmas snowfall clock', () => {
+  it('wraps its period with no jump: every flake falls whole box heights and sways whole cycles per period', () => {
+    const seeds = createSnowfall().points.geometry.getAttribute('seed') as THREE.BufferAttribute;
+    for (let i = 0; i < seeds.count; i++) {
+      // The shader's own formulas (snowfall.ts).
+      const w = seeds.getW(i), fall = .7 + .05 * Math.floor(w * 12.999), sway = 2 * Math.PI * Math.floor((.6 + w) * SNOWFALL_PERIOD / (2 * Math.PI)) / SNOWFALL_PERIOD;
+      const heights = fall * SNOWFALL_PERIOD / SNOWFALL_BOX.y, cycles = sway * SNOWFALL_PERIOD / (2 * Math.PI);
+      expect(Math.abs(heights - Math.round(heights))).toBeLessThan(1e-9);
+      expect(Math.abs(cycles - Math.round(cycles))).toBeLessThan(1e-9);
+      expect(fall).toBeGreaterThanOrEqual(.7); expect(fall).toBeLessThanOrEqual(1.3 + 1e-9);
+    }
+  });
+
+  it('only advances by the real time between drawn frames, at most 1/20 s, so a pause never makes it jump', () => {
+    stubDocument('christmas');
+    let now = 1000;
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
+    const course = getCourse(11, 'medium'), run = createRun(11, 1, 'medium');
+    run.distance = 300; run.height = course.surfaceHeight(300, run.x) + RADIUS;
+    const view = { run, course, speed: course.speed(300) };
+    scene.render(view);
+    const time = () => ((captured.scene!.children.find(c => c instanceof THREE.Points) as THREE.Points).material as THREE.ShaderMaterial).uniforms.uTime.value as number;
+    const start = time();
+    now += 16; scene.render(view);
+    expect(time() - start).toBeCloseTo(.016, 6);
+    // A ten-minute pause (no frames drawn), then the next frame: the snow moves on by one frame at most.
+    now += 600000; scene.render(view);
+    expect(time() - start).toBeCloseTo(.066, 6);
+    scene.dispose(); clock.mockRestore();
   });
 });
 
@@ -319,9 +350,14 @@ describe('Ball Run Christmas scene', () => {
       scene.render(view);
       const sleigh = captured.scene!.getObjectByName('sleigh')!;
       expect(sleigh.visible).toBe(true);
-      expect(sleigh.position.x).toBeCloseTo(run.x, 6);
-      // The spring squashes the body about its runners: they stay exactly where the ball touches the road.
-      expect(sleigh.position.y - RADIUS * sleigh.scale.y).toBeCloseTo(run.height + SLOPE * distance - RADIUS, 6);
+      expect(sleigh.position.x).toBeCloseTo(run.x, 2);
+      // The spring squashes the body about its runners: the contact under its centre stays exactly where it
+      // would be unsquashed (where the ball touches the road), along the sleigh's own banked up axis.
+      sleigh.updateMatrix();
+      const contact = new THREE.Vector3(0, -RADIUS, 0).applyMatrix4(sleigh.matrix);
+      const unsquashed = new THREE.Object3D();
+      unsquashed.position.set(run.x, run.height + SLOPE * distance, 0); unsquashed.rotation.copy(sleigh.rotation); unsquashed.updateMatrix();
+      expect(contact.distanceTo(new THREE.Vector3(0, -RADIUS, 0).applyMatrix4(unsquashed.matrix))).toBeLessThan(1e-6);
       expect(sleigh.scale.y).toBeGreaterThanOrEqual(.9 - 1e-9); expect(sleigh.scale.y).toBeLessThanOrEqual(1.008 + 1e-9);
       if (sleigh.scale.y < .999) squashed++;
       if (Math.abs(s.bank) > .1 && distance > 2) {
@@ -373,14 +409,13 @@ describe('Ball Run Christmas scene', () => {
       pitch = x;
     }
     expect(pitch).toBeLessThan(Math.atan2(-6, view.speed) / 2);
-    // Off the road's edge and falling past it: the bank still holds, though the road plane extends under it
-    // (taken after the flight, by which time the carve lean from the dodge has relaxed).
-    const bank = sleigh().rotation.z;
+    // Off the road's edge and falling past it: it stays banked as the road under it (the frame it collides in),
+    // and its pitch stays within its limit.
     for (let i = 1; i <= 10; i++) {
       run.distance = 436 + i * .5; run.elapsed += .5 / view.speed; const s = course.sample(run.distance);
       run.x = s.center + s.width / 2 + 1; run.height = course.surfaceHeight(run.distance, s.center) - .5 * i; run.vy = -8;
       scene.render(view);
-      expect(sleigh().rotation.z).toBeCloseTo(bank, 4);
+      expect(sleigh().rotation.z).toBeCloseTo(-s.bank, 3);
       expect(Math.abs(sleigh().rotation.x)).toBeLessThanOrEqual(.2 + 1e-9);
     }
     // No ball anywhere: not the ball itself, and the Speed Up trail draws diamond glints, not spheres.

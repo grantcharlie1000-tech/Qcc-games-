@@ -14,26 +14,32 @@ import * as THREE from 'three';
  * enough that its top is well above the view; flakes fade in near the top and side faces, so no edge shows. */
 export const SNOWFALL_BOX = new THREE.Vector3(22, 20, 42);
 export const SNOWFALL_FLAKES = 3600;
+/** Fall speeds come in steps of 0.05 m/s and sway frequencies in whole cycles of this period, so after it every
+ * flake is exactly where it started: the clock wraps here with no jump, and stays small enough for full precision. */
+export const SNOWFALL_PERIOD = SNOWFALL_BOX.y / .05;
 
 const vertexShader = /* glsl */ `
-uniform float uTime, uTravel, uLift, uViewport;
+uniform float uTime, uTravel, uLift, uViewport, uPeriod;
 uniform vec3 uOrigin, uBox;
 attribute vec4 seed;
 varying float vFade;
 #include <common>
 void main() {
   // A world-fixed flake: falling about 1 m/s, swaying, and carried with the world as the run advances.
-  float fall = .7 + .6 * seed.w;
+  // 0.7 to 1.3 m/s in steps of 0.05, so each falls a whole number of box heights per period.
+  float fall = .7 + .05 * floor(seed.w * 12.999);
+  // About 0.6 to 1.6 rad/s, rounded to whole cycles per period.
+  float sway = 6.2831853 * floor((.6 + seed.w) * uPeriod / 6.2831853) / uPeriod;
   vec3 p = seed.xyz * uBox;
-  p.x += .35 * sin(uTime * (.6 + seed.w) + seed.w * 40.0);
+  p.x += .35 * sin(uTime * sway + seed.w * 40.0);
   p.y += -fall * uTime + uLift;
   p.z += uTravel;
   // Wrapped into the box around the camera, which sits near its back face (the road ahead fills the rest).
   vec3 lo = uOrigin - vec3(.5 * uBox.x, .35 * uBox.y, uBox.z - 4.0);
   vec3 q = mod(p - lo, uBox);
   p = lo + q;
-  // Fade in over the last metres before the top and side faces, where flakes wrap, so no plane or wall shows.
-  float edges = smoothstep(0.0, 4.0, uBox.y - q.y) * smoothstep(0.0, 3.0, q.x) * smoothstep(0.0, 3.0, uBox.x - q.x);
+  // Fade in over the last metres before the top, bottom and side faces, where flakes wrap, so no plane or wall shows.
+  float edges = smoothstep(0.0, 4.0, uBox.y - q.y) * smoothstep(0.0, 2.0, q.y) * smoothstep(0.0, 3.0, q.x) * smoothstep(0.0, 3.0, uBox.x - q.x);
   vec4 mv = viewMatrix * vec4(p, 1.0);
   float depth = -mv.z;
   gl_Position = projectionMatrix * mv;
@@ -72,7 +78,7 @@ export function createSnowfall(count = SNOWFALL_FLAKES): Snowfall {
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('seed', new THREE.BufferAttribute(seeds, 4));
   const uniforms = {
-    uTime: { value: 0 }, uTravel: { value: 0 }, uLift: { value: 0 }, uViewport: { value: 800 },
+    uTime: { value: 0 }, uPeriod: { value: SNOWFALL_PERIOD }, uTravel: { value: 0 }, uLift: { value: 0 }, uViewport: { value: 800 },
     uOrigin: { value: new THREE.Vector3() }, uBox: { value: SNOWFALL_BOX.clone() },
   };
   const material = new THREE.ShaderMaterial({ uniforms, vertexShader, fragmentShader, transparent: true, depthWrite: false });
@@ -87,9 +93,8 @@ export function createSnowfall(count = SNOWFALL_FLAKES): Snowfall {
       // Wrapped well inside float precision on long runs: the box repeats every uBox metres anyway.
       uniforms.uTravel.value = distance % SNOWFALL_BOX.z;
       uniforms.uLift.value = lift % SNOWFALL_BOX.y;
-      // Each flake falls at its own speed, so the clock cannot wrap without a jump; a day of play keeps float
-      // precision to millimetres, so it wraps only after one.
-      uniforms.uTime.value = time % 86400;
+      // Seamless: after a period every flake is back where it started (see SNOWFALL_PERIOD).
+      uniforms.uTime.value = time % SNOWFALL_PERIOD;
     },
     setViewport(height) { uniforms.uViewport.value = height; },
     dispose() { geometry.dispose(); material.dispose(); },

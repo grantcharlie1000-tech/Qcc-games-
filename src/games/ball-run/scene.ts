@@ -8,7 +8,7 @@ import {registerGlassFrameSource,notifyGlassFrame} from '../../ui/glass-frame-so
 import { rollAngle } from './roll';
 import { RetainedInstances } from './instances';
 import { christmas } from '../../festive/festive';
-import { createSleigh, SLEIGH_COLORS, SLEIGH_RUNNER_X } from './sleigh';
+import { createSleigh, placeOnRunners, SLEIGH_COLORS, SLEIGH_POSE, SLEIGH_RUNNER_X } from './sleigh';
 import { SNOW_DEPTH, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from './snow';
 import { createSnowfall } from './snowfall';
 import { BALL, CONFIG, DYING_DURATION, GRAVITY, SLEIGH_BODY, type Body, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
@@ -551,29 +551,31 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   }
 
   // The sleigh moves as a body, not a rolling ball. All of it is presentation: the simulation (model.ts) owns
-  // where it is and what it hits, and every motion here is clamped to stay inside that collision box.
-  // - On the road it lies on the slope and bank (the same angles as the road tiles under it).
-  // - In the air its nose follows its flight path, turning with some rotational inertia, within ±0.2 rad
-  //   (a test holds the front inside the ball's front at that pitch).
-  // - It leans into a carve, from its sideways acceleration (at most 0.04 rad).
+  // where it is and what it hits. SLEIGH_BODY is sized to hold everything drawn of it under every pose here
+  // (a test measures that on the real vertices), and it is always banked exactly as the road under it, which is
+  // the frame model.ts collides it in.
+  // - On the road its pitch follows the slope (the same angle as the road tiles under it).
+  // - In the air its nose follows its flight path, turning with some rotational inertia, within ±0.2 rad.
+  // - It leans into a carve, from its sideways acceleration (at most 0.04 rad), tipping onto its inside runner.
   // - Its runners ride a damped spring (about 3.5 Hz, lightly damped): a landing or a bump squashes it about
-  //   its runners and it rebounds, never stretching above its height.
+  //   its runners and it rebounds, barely stretching.
   // It never turns about y, like the blocks. A new run, restore or teleport snaps it straight to the road.
   // Under Reduce motion there is no spring, carve lean or flight pitch: it follows the road and holds in the air.
-  const SPRING = 2 * Math.PI * 3.5, DAMPING = .32, SQUASH = .1, STRETCH = .008, CARVE = .04, PITCH = .2;
+  const SPRING = 2 * Math.PI * 3.5, DAMPING = .32, { squash: SQUASH, stretch: STRETCH, carve: CARVE, pitch: PITCH } = SLEIGH_POSE;
   let attitude = 0, lean = 0, carve = 0, squash = 0, squashRate = 0, lastElapsed = NaN, lastVx = 0, lastVy = 0, wasOnRoad = true;
   function steer(run: Run, bx: number, continuous: boolean, speed: number, reduced: boolean): void {
     track(run.distance, S);
     const ground = S.elevation - (bx - S.center) * Math.tan(S.bank);
     const onRoad = S.ground && Math.abs(bx - S.center) <= S.width / 2 && run.height - RADIUS - ground < .06;
     const dt = continuous && run.elapsed >= lastElapsed ? Math.min(.05, run.elapsed - lastElapsed) : 0;
+    // Banked exactly as the road under it, on the road or in the air: the same frame model.ts collides it in.
+    lean = S.bank;
     if (!continuous) {
-      attitude = clamp(Math.atan(S.gradient), -PITCH, PITCH); lean = S.bank; carve = squash = squashRate = 0;
+      attitude = clamp(Math.atan(S.gradient), -PITCH, PITCH); carve = squash = squashRate = 0;
     } else if (dt > 0) {
       const flight = !reduced && !onRoad && speed > 0 ? Math.atan2(run.vy, speed) : attitude;
       const pitchTarget = clamp(onRoad ? Math.atan(S.gradient) : flight, -PITCH, PITCH);
       attitude += (pitchTarget - attitude) * (1 - Math.exp(-(onRoad ? 14 : 5) * dt));
-      if (onRoad) lean += (S.bank - lean) * (1 - Math.exp(-14 * dt));
       if (!reduced) {
         // Lean into the carve: half the angle a body would take against its sideways acceleration.
         const sideways = (run.vx - lastVx) / dt;
@@ -590,19 +592,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     }
     lastElapsed = run.elapsed; lastVx = run.vx; lastVy = run.vy; wasOnRoad = onRoad;
     ball.rotation.set(attitude, 0, -lean + carve, 'YXZ');
-    // Squashed about the runners: they stay on the road while the body sinks and springs back.
     ball.scale.set(1, 1 - squash, 1);
-    ball.position.y -= RADIUS * squash;
-    if (carve !== 0) {
-      // A carve tips the sleigh onto its inside runner and lifts the outside one, so the lean pivots about the
-      // inside runner's contact line (rotating about the centre would sink that runner into the road). The
-      // pivot's offset is worked out without the carve, then turned into the scene by the rest of the attitude.
-      const px = -Math.sign(carve) * SLEIGH_RUNNER_X, py = -RADIUS * (1 - squash), c = Math.cos(carve), sn = Math.sin(carve);
-      pivot.set(px - (px * c - py * sn), py - (px * sn + py * c), 0).applyEuler(uncarved.set(attitude, 0, -lean, 'YXZ'));
-      ball.position.add(pivot);
-    }
+    placeOnRunners(ball, attitude, lean, carve, squash);
   }
-  const pivot = new THREE.Vector3(), uncarved = new THREE.Euler();
+
 
   // Trail history: past ball positions every 0.5 m of travel, newest last.
   const history = new Float64Array(TRAIL * 3);
@@ -757,7 +750,11 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       course.forEachObstacle(distance - CONFIG.hard.maxSpeed * .05 - behind - course.maxDepth, distance + ahead + course.maxDepth, placeHitbox);
       commit(hitboxes, debugCount);
     }
-    if (hitball) hitball.position.set(run.x, run.height + SLOPE * distance, 0);
+    if (hitball) {
+      hitball.position.set(run.x, run.height + SLOPE * distance, 0);
+      // model.ts collides in the road's banked frame, so the drawn hull rolls with the bank too.
+      hitball.rotation.set(0, 0, -track(distance, S).bank);
+    }
 
     const broken = run.reason === 'block' && (run.phase === 'dying' || run.phase === 'over');
     ball.visible = !broken;

@@ -10,8 +10,9 @@ neon corridor. Under the Christmas theme it adds just two things:
   is placed by the vertex shader from a fixed seed, the clock and the distance travelled, so the CPU writes four
   uniforms a frame. Flakes are world-fixed (they fall, sway and stream past at the game's speed), wrapped in a
   22 × 20 × 42 m box round the camera (it spans the canyon wherever the camera goes, and flakes fade in near its
-  top and sides, so no ceiling or wall shows), with its own clock that stops while no frames are drawn (no jump
-  after a pause), sized by perspective but clamped to 2–11 device pixels, and faded at the
+  top, bottom and sides, so no ceiling, floor or wall shows), with its own clock that stops while no frames are
+  drawn (no jump after a pause) and wraps every 400 s with no jump (fall speeds and sway frequencies are
+  quantised to whole box heights and cycles per period), sized by perspective but clamped to 2–11 device pixels, and faded at the
   lens and in the distance. Hidden under Reduce motion. Measured: 9 draw calls and 7 geometries with the theme.
 - **Snow on the obstacles** (`src/games/ball-run/snow.ts`): a light covering, 7.5 cm at the crest, on top of every
   obstacle (static blocks and sliders, not gate walls). One instanced pool draws all the caps, so the theme adds
@@ -35,11 +36,14 @@ neon corridor. Under the Christmas theme it adds just two things:
   steepest climb (a test checks this).
   - It collides as itself. A review found that its corners, outside the ball's circle, could show passing
     through a block for 1–3 frames when a player cut tightly past one. At the user's choice the simulation now
-    collides as the sleigh's box (`SLEIGH_BODY`: ±0.38 m across, 0.375 m ahead of and 0.42 m behind the centre,
-    ground to hat) whenever the sleigh is drawn; with the theme off it is still the ball's sphere. To keep
-    every seeded course passable, the sleigh was made about 16% shorter, pressed toward its front, so that box
-    fits inside the 0.44 m clearance the course generator keeps round the ball on every side. A tight cut the
-    ball would have grazed past now crashes, as it looks like it should.
+    collides as the sleigh's box whenever the sleigh is drawn; with the theme off it is still the ball's sphere.
+    The box (`SLEIGH_BODY`: ±0.40 m across, 0.375 m ahead of and 0.425 m behind the centre, 0.435 m below to
+    0.245 m above it) is the envelope of everything drawn of the sleigh under every pose the scene gives it
+    (pitch ±0.2 rad, carve lean ±0.04 rad, squash and stretch), measured on its real vertices to within 6 mm.
+    The sleigh is always banked exactly as the road under it, the frame the box collides in, so what is seen is
+    what hits. To keep every seeded course passable, the sleigh was made about 16% shorter, pressed toward its
+    front, so the box fits inside the 0.44 m clearance the course generator keeps round the ball on every side.
+    A tight cut the ball would have grazed past now crashes, as it looks like it should.
   - It handles like a sleigh (the user chose real handling plus body motion): its steering response is 8/s
     against the ball's 10/s, so momentum carries through a carve and it slides on after the steering lets go,
     and it drifts 20% further down banks. A 6/s response was tried first; the bot found a few slaloms it could

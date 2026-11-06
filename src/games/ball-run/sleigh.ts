@@ -1,8 +1,9 @@
 /** Christmas: Santa's sleigh, drawn in place of the ball. Santa is out on his rounds; only his hat is
  * left on the seat. It is built exactly one ball wide (2 × RADIUS, the gold trim on each side is the
- * widest point), its runners touch the ground where the ball does (RADIUS below the centre), and it fits
- * inside the box the simulation collides it as (config.ts SLEIGH_BODY), even pitched as far as the scene
- * ever tilts it, so a crash never shows it inside a block.
+ * widest point) and its runners touch the ground where the ball does (RADIUS below the centre). The box
+ * the simulation collides it as (config.ts SLEIGH_BODY) holds all of it under every pose the scene gives it
+ * (SLEIGH_POSE, placed by placeOnRunners; a test measures that on the real vertices), so a crash never
+ * shows it inside a block.
  *
  * Local frame: the origin is the ball's centre, +y is up and -z is forward. Parts that share a
  * finish are merged and coloured per vertex, so the whole sleigh is two draw calls. */
@@ -227,7 +228,7 @@ export function createSleigh(): Sleigh {
   // backrest ends 5 mm inside the box's back. Every course the ball can finish, the sleigh can too.
   const frame = new THREE.Box3(), piece = new THREE.Box3();
   for (const g of [...body, ...gold, ...velvet, ...floor]) { g.computeBoundingBox(); frame.union(piece.copy(g.boundingBox!)); }
-  const front = frame.min.z, press = (SLEIGH_BODY.kind === 'box' ? SLEIGH_BODY.back - .005 - front : 0) / (frame.max.z - front);
+  const front = frame.min.z, press = (SLEIGH_BODY.kind === 'box' ? SLEIGH_BODY.back - .01 - front : 0) / (frame.max.z - front);
   for (const g of [...body, ...gold, ...velvet, ...floor]) { g.translate(0, 0, -front); g.scale(1, 1, press); g.translate(0, 0, front); g.computeBoundingBox(); }
   const hatParts = hat();
   // Upright, so the brim sits flush on the cushion all round (its underside 1.5 mm into it), centred on the
@@ -263,4 +264,23 @@ export function createSleigh(): Sleigh {
     group,
     dispose() { for (const g of geometries) g.dispose(); for (const m of materials) m.dispose(); },
   };
+}
+
+/** The furthest the scene ever poses the sleigh (scene.ts steer()): pitch and carve lean in radians, and its
+ * spring's squash and stretch as a share of its height. SLEIGH_BODY holds it under all of them. */
+export const SLEIGH_POSE = { pitch: .2, carve: .04, squash: .1, stretch: .008 } as const;
+
+const fixedPose = new THREE.Euler(), fullPose = new THREE.Euler(), contactNow = new THREE.Vector3(), contactAt = new THREE.Vector3();
+/** Moves a sleigh whose position is the ball's centre so its runners stay where the ball meets the road while it
+ * is pitched (`attitude`), banked (`lean`), leaning into a carve (`carve`, an extra roll) and squashed by its
+ * spring (`squash`, scale 1 - squash in y). Without the carve and the squash, the contact under the centre is
+ * where the ball's is. The carve tips it onto its inside runner (it lifts the outside one), so that runner's
+ * contact stays put; the squash keeps the contact on the road along the sleigh's own up axis, banked or not.
+ * Allocates nothing. Expects rotation and scale to be set already. */
+export function placeOnRunners(sleigh: THREE.Object3D, attitude: number, lean: number, carve: number, squash: number): void {
+  const px = carve === 0 ? 0 : -Math.sign(carve) * SLEIGH_RUNNER_X;
+  // Where that contact would be with no carve and no squash, and where it is now: move the sleigh by the difference.
+  contactAt.set(px, -RADIUS, 0).applyEuler(fixedPose.set(attitude, 0, -lean, 'YXZ'));
+  contactNow.set(px, -RADIUS * (1 - squash), 0).applyEuler(fullPose.set(attitude, 0, -lean + carve, 'YXZ'));
+  sleigh.position.add(contactAt).sub(contactNow);
 }
