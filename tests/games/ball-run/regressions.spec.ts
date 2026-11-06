@@ -1,6 +1,6 @@
 import {gameAction,pauseGame,resumeGame} from '../../game-menu';
 import { test, expect, type Page } from '../../fixtures';
-import { CONFIG, DIFFICULTIES, RADIUS, STEP, STEER_RESPONSE, lateralSpeed, type Run } from '../../../src/games/ball-run/config';
+import { BALL, CONFIG, DIFFICULTIES, RADIUS, SLEIGH_BODY, STEP, lateralSpeed, type Run } from '../../../src/games/ball-run/config';
 import { getCourse } from '../../../src/games/ball-run/course';
 import { createRun } from '../../../src/games/ball-run/model';
 import { emptyRecords } from '../../../src/games/ball-run/records';
@@ -41,10 +41,12 @@ for (const difficulty of DIFFICULTIES) {
     // Match a near-edge excursion to the current steering authority and the
     // response lag, instead of reusing a frame count from the slower course.
     const course = getCourse(1, difficulty), halfWidth = course.sample(0).width / 2;
-    const reverse = Math.floor(((halfWidth - .04) / lateralSpeed(course.speed(0)) + Math.log(2) / STEER_RESPONSE) / STEP);
-    const turningFrames = Math.ceil(Math.log(2) / STEER_RESPONSE / STEP);
     await page.setViewportSize({ width: 390, height: 844 });
     await open(page, createRun(1, 1, difficulty));
+    // The player handles as the body the theme draws: the ball, or the Christmas sleigh (a slower steering response).
+    const response = (await page.evaluate(() => document.documentElement.dataset.festive === 'christmas') ? SLEIGH_BODY : BALL).steerResponse;
+    const reverse = Math.floor(((halfWidth - .04) / lateralSpeed(course.speed(0)) + Math.log(2) / response) / STEP);
+    const turningFrames = Math.ceil(Math.log(2) / response / STEP);
     await gameAction(page,'Enter full screen');
     await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(true);
     await expect(page.locator('#pause-overlay')).toBeHidden();

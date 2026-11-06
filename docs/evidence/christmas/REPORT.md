@@ -159,9 +159,9 @@ Built by four parallel agents from one shared brief (each confined to its own ga
 | ![](./ball-run/before-mobile.png) | ![](./ball-run/after-mobile.png) |
 | ![](./ball-run/before-desktop.png) | ![](./ball-run/after-desktop.png) |
 
-- **Changes (revised):** The original neon corridor is restored. Under the theme, a light covering of snow sits on top of every obstacle (one instanced pool, unlit, baked shading), and the ball is replaced by Santa's sleigh. Santa is not in it, but his hat is on the seat. The sleigh is exactly one ball wide (0.76 m), stands where the ball's base does, follows the road's slope and bank instead of rolling, and the crash bursts in its red, gold and white. Collision is unchanged. The first version of this skin (icy road, frosted towers, bauble ball) was withdrawn; see [`ball-run/NOTES.md`](ball-run/NOTES.md).
+- **Changes (revised):** The original neon corridor is restored. Under the theme, a light covering of snow sits on top of every obstacle (one instanced pool, unlit, baked shading), and the ball is replaced by Santa's sleigh. Santa is not in it, but his hat is on the seat. The sleigh is exactly one ball wide (0.76 m), stands where the ball's base does, follows the road's slope and bank instead of rolling, and the crash bursts in its red, gold and white. Snow also falls (one draw call, placed by its shader). The sleigh handles like a sleigh and collides as its own box; every course stays passable (see the notes). The first version of this skin (icy road, frosted towers, bauble ball) was withdrawn; see [`ball-run/NOTES.md`](ball-run/NOTES.md).
 - **Skills:** game-development + 3d-games + game-art, systematic-debugging, verification-before-completion. Details in [`ball-run/NOTES.md`](ball-run/NOTES.md).
-- **Notes and tests:** Collision, ball radius, pools and resolution tiers are identical. The theme adds one snow pool and the sleigh's six meshes. `christmas.test.ts` pins the sleigh's width and the snow caps to the collision poses.
+- **Notes and tests:** With the theme off, collision, ball radius, pools and resolution tiers are identical. The theme adds one snow pool, the falling snow and the sleigh's two meshes. `christmas.test.ts` pins the sleigh's width and the snow caps to the collision poses.
 
 ### Animal Stack (`animal-stack`)
 
@@ -301,7 +301,7 @@ Declined, with reasons: per-frame drawing in Flappy Bird (measured 0.22 ms per f
 
 ### Performance
 
-Measured per game where the skin draws every frame: Flappy Bird 0.22 ms per frame against 0.70 ms for the original; Claimline 21–24 ms against 22 ms under the same load (after caching fixed an early 37 ms version); Suika level with the original after caching (an early version ran at about 4 fps in the software-rendered test browser); Tetris identical frame pacing with lower main-thread load; Block Fill about 2 ms more per move from larger SVG markup, frame time unchanged; Ball Run (revised) adds one instanced snow pool and the sleigh's six merged meshes in place of the ball, with no textures. No game adds particle systems, blur filters or snowfall.
+Measured per game where the skin draws every frame: Flappy Bird 0.22 ms per frame against 0.70 ms for the original; Claimline 21–24 ms against 22 ms under the same load (after caching fixed an early 37 ms version); Suika level with the original after caching (an early version ran at about 4 fps in the software-rendered test browser); Tetris identical frame pacing with lower main-thread load; Block Fill about 2 ms more per move from larger SVG markup, frame time unchanged; Ball Run (revised) adds one instanced snow pool, the sleigh's two merged meshes in place of the ball and one shader-driven falling-snow draw call (the CPU writes four uniforms a frame), with no textures. No other game adds particle systems, blur filters or snowfall.
 
 ### Restoring the original look
 

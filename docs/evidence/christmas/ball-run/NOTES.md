@@ -6,31 +6,96 @@ This revision replaces the whole skin described further down. The festive palett
 bauble ball, star layer and `christmas.css` are gone: with the theme on or off, Ball Run draws its original
 neon corridor. Under the Christmas theme it adds just two things:
 
+- **Falling snow** (`src/games/ball-run/snowfall.ts`): 3,600 flakes in one `THREE.Points` draw call. Every flake
+  is placed by the vertex shader from a fixed seed, the clock and the distance travelled, so the CPU writes four
+  uniforms a frame. Flakes are world-fixed (they fall, sway and stream past at the game's speed), wrapped in a
+  22 × 20 × 42 m box round the camera (it spans the canyon wherever the camera goes, and flakes fade in near its
+  top, bottom and sides, so no ceiling, floor or wall shows), with its own clock that stops while no frames are
+  drawn (no jump after a pause) and wraps every 400 s with no jump (fall speeds and sway frequencies are
+  quantised to whole box heights and cycles per period), sized by perspective but clamped to 2–11 device pixels, and faded at the
+  lens and in the distance. Hidden under Reduce motion. Measured: 9 draw calls and 8 geometries with the theme.
 - **Snow on the obstacles** (`src/games/ball-run/snow.ts`): a light covering, 7.5 cm at the crest, on top of every
   obstacle (static blocks and sliders, not gate walls). One instanced pool draws all the caps, so the theme adds
   one draw call. Each cap is a soft, slightly lumpy mound that overhangs the block by 3 cm, with a rounded lip
   that hangs over the edge. The rounded edge band is 15 cm wide on every obstacle, from a 0.3 m post to a 14 m
   wall: each vertex has a unit anchor plus an inset in metres, and a small vertex-shader change divides that
-  inset by the instance's scale. The baked shading is computed in metres, so it is right on every size. Like the blocks, it is unlit: white-to-lavender shading is baked into vertex colours.
+  inset by the instance's scale. The baked shading is computed in metres, so it is right on every size. The cap is closed underneath, so no sight line under a tall block's lip sees through it. Like the blocks, it is unlit: white-to-lavender shading is baked into vertex colours.
   Caps follow banked blocks and moving sliders, and they share the block cache's begin, end and reset path.
-  Collision is unchanged.
+  The caps take no part in collision.
 - **Santa's sleigh in place of the ball** (`src/games/ball-run/sleigh.ts`): a red sleigh with a scrolled dash and backrest,
   gold trim and scrollwork, curled gold runners on struts, green velvet cushions and Santa's hat (fur brim,
   drooping cone, pompom) on the seat. Santa is not in it. Its measured vertices are normalised so the sleigh is
   exactly `2 × RADIUS` (0.76 m, the ball's diameter) wide, centred on the ball, with the runners exactly on the
   ball's ground contact. Nothing reaches further forward than the ball's front, so a crash never shows it
-  inside a block. Collision still uses the ball's sphere. It is two merged meshes coloured per vertex: glossy (lacquered red body and
+  inside a block. It collides as the box it fills (see below). It is two merged meshes coloured per vertex: glossy (lacquered red body and
   gold) and matte (velvet, floor, hat and fur). The gold rim runs in one closed loop round each whole side
   panel. Its corners and the runner and hat bends are all rounded wider than the tube is thick, so no trim
-  creases or ends open. The side panels have no bevel, because a bevel beside the trim showed as a pale seam.
-  - It does not roll. On the road it sits on the slope and bank (the same angles as the road tiles). In the air
-    or off the road's edge it holds its attitude. It never turns about y, like the blocks, so a dodge never
-    swings its corners wider or further forward than the ball. Changes ease in over about a metre of travel;
-    a new run, restore or teleport snaps straight to the road. About 20,000 triangles in two draw calls.
+  creases or ends open. The side panels have no bevel, because a bevel beside the trim showed as a pale seam. Every open tube (runners, scrolls,
+  back rails) ends in a rounded cap. The hat stands upright, flush on the cushion with its whole brim on the
+  seat. The front runner curls stay behind the ball's front even with the sleigh pitched 0.2 rad on the
+  steepest climb (a test checks this).
+  - It collides as itself. A review found that its corners, outside the ball's circle, could show passing
+    through a block for 1–3 frames when a player cut tightly past one. At the user's choice the simulation now
+    collides as the sleigh's box whenever the sleigh is drawn; with the theme off it is still the ball's sphere.
+    The box depends on the sleigh's pitch (`SLEIGH_BODY`: one row per 0.05 rad from -0.45 to 0.45; on ordinary
+    road about 0.43 m to each side and behind, 0.34 m ahead). The pitch is one rule the simulation and the
+    drawing share (`sleighPitch`: the road's slope on the road, the flight path in the air), so the drawing and
+    the collision always agree; each step uses the rows its pitch passes through. Each row holds everything drawn
+    of the sleigh in its pitch range under every bank, carve lean, squash, and a difference up to 0.14 rad
+    between its bank and the roll of the block it meets (a block is rolled with the bank at its own centre; the
+    bound is 0.12 under the block plus the bank's fastest change over the box's reach, about 0.136), measured on the real vertices plus 3 mm. Tests check every row against the
+    vertices, tie the 0.14 to the courses' own data, and render the real scene on banks, steep road and in the
+    air to check the sleigh lies inside its box. The user chose this over a fixed box after a review found the
+    runners sinking up to 8.6 cm on steep crests, when the pitch was clamped to fit a fixed box.
+    The sleigh lies on the road surface the simulation uses: pitched by that surface's slope under it, then
+    banked, with no yaw, and seated on it, so its runners stay on the road at any slope and anywhere across the
+    road, bank changes included (a test runs three whole courses across the road's width and checks the runners
+    along their length against the real surface, within 5 mm). Under the theme the road's tiles and cross
+    lines are drawn on that same surface (each tile a right-handed sheared box spanning the road along its
+    bank at the tile's middle; cross lines lie on it the same way): the original drawing yaws its tiles along
+    a bend, which leans them up to about 10 cm off it at the road's edge on the sharpest bend, a mismatch a
+    ball hides and a sleigh does not. A test reads the drawn tiles on that bend and finds them within 8 mm of
+    the surface (with the theme off, unchanged, still centimetres off), and checks no tile or line is mirrored
+    (an earlier version's were, which drew them inside out). Where a bank changes, the road over a tile is
+    twisted (a bilinear patch), which a flat tile cannot follow (a flat tile was up to 1.4 cm off near the
+    player and 5.6 cm far off), nor the road's curve along a long tile at a crest or dip (up to 3 cm on the far
+    2 m tiles): each tile is a subdivided box whose top face the vertex shader bends by the tile's twist (fitted
+    over its four corners where they really are) and by its curve along its length (fitted at its middle),
+    carried in its instance colour, which the tile cache already moves with it; the colour is not applied, the
+    road keeps its exact colour. Measured over 36 courses, including the GPU's interpolation between a tile's
+    vertices: within 2 mm of the surface near the player and 6 mm on the far 2 m tiles. The lane lines are
+    drawn in two halves meeting on the surface at each tile's middle, so they bend with it (a straight line sank
+    up to 3.2 cm into a far tile bent over a crest); their ends and middles lie within 8 mm of their place. To keep courses passable it was made about 16%
+    shorter,
+    pressed toward its front; on ordinary road its box lies inside the 0.44 m clearance the course generator
+    keeps round the ball, and on steeper road passability is shown by the bot (below), not proved.
+    A tight cut the ball would have grazed past now crashes, as it looks like it should.
+  - It handles like a sleigh (the user chose real handling plus body motion): its steering response is 8/s
+    against the ball's 10/s, so momentum carries through a carve and it slides on after the steering lets go,
+    and it drifts 20% further down banks. A 6/s response was tried first; the bot found a few slaloms it could
+    not make, so it was softened until every course passed. The bot now plans with the body's own handling
+    and box (`useBody`), and `sleigh-courses.test.ts` drives 110 runs per difficulty as the sleigh.
+  - Its scores go on the same leaderboards and records as the ball's: the user chose to share them, knowing the
+    sleigh handles and collides differently.
+  - It moves as a body. On the road it lies on the road exactly, at any slope; in the air its nose blends
+    between the road's slope and its flight path along the course (less what its sideways motion climbs across
+    a bank): within 2.5 m of the road below (over a drop's gap, a level running from the lip to the landing) it
+    is eased toward the road's slope, and only higher does it follow the flight path, which most hops never
+    reach. It is the same pitch the collision uses, so there is no rotational lag, and it takes off and lands
+    with no jump: measured through the real simulation over whole courses, side falls and steering throws,
+    under 0.015 rad at take-off and landing and under 0.04 rad in any one step of flight (0.042 at worst, in a
+    losing fall off the road's side over a gap; a landing after a drop jumped 0.33 rad before; on a drop the nose
+    now dips to about -0.31 and settles to the road's slope at touchdown). A damped spring on its runners (about
+    3.5 Hz) squashes it about the runners on landings and bumps and lets it rebound. It leans into a carve (at most 0.04 rad), tipping onto
+    its inside runner. It never turns about its own up axis. A new run, restore or teleport snaps straight to
+    the road. Under Reduce motion there is no spring or carve lean (its pitch, which is what it collides with,
+    is the same). About 20,000 triangles in two draw calls.
   - It points away from the camera. The raised backrest, whose tall side curls roll back over the rear corners,
     is nearest the camera. The low scrolled dash and the tall gold runner curls are at the far end. Between the
-    backrest curls the back panel stops lower, so the chase camera (behind and only a little above) sees the
-    whole hat on the seat. An earlier version had its tallest curl at the front and a low back. From behind
+    backrest curls the back panel and its bolster stop just above the seat, so the chase camera (behind and only
+    a little above) sees the whole hat on the seat, its fur brim included, on ordinary road (a review found the
+    brim half hidden when the panel stood higher); on the steepest descents (pitch -0.3 and steeper, a few per
+    cent of the road) the rail still hides part of the brim's lower edge. An earlier version had its tallest curl at the front and a low back. From behind
     that read as a sleigh facing the camera.
   - The block crash bursts into the sleigh's red, gold and white instead of the ball's magenta and cyan, so it is
     the sleigh that breaks apart.
@@ -51,9 +116,10 @@ reach and hat placement, and its disposal; that it never yaws while dodging and 
 equal to the obstacles, on the top face, along the block's banked up axis, overhang and depth, sliders included.
 It also fails on any folded or inside-out triangle in the sleigh (each face must turn the way its normals do), and
 it finds every part, the hat included, by its vertex colour. `play.spec.ts`'s GPU-resource test runs with the theme
-on, which is the default. It keeps the original 11 draw-call cap. Its geometry cap is 6 with the theme
-(box, city lines, snow cap, glint, and the sleigh's two meshes; the ball's sphere is not used) and 4 without.
-Measured in the browser: 8 draw calls and 6 geometries with the theme, 6 and 3 without.
+on, which is the default. It keeps the original 11 draw-call cap. Its geometry cap is 8 with the theme
+(box, city lines, snow cap, glint, falling snow, twisted road tile, and the sleigh's two meshes; the ball's
+sphere is not used) and 4 without. Measured in the browser: 9 draw calls and 8 geometries with the theme, 6 and
+3 without.
 With the theme off it checks the original ball, no snow and no sleigh. `play.spec.ts` is back to its original
 contrast check, because the bars are lavender again.
 
