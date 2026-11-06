@@ -11,7 +11,7 @@ import { christmas } from '../../festive/festive';
 import { createSleigh, placeOnRunners, SLEIGH_COLORS, SLEIGH_POSE, SLEIGH_RUNNER_X } from './sleigh';
 import { SNOW_DEPTH, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from './snow';
 import { createSnowfall } from './snowfall';
-import { BALL, CONFIG, DYING_DURATION, GRAVITY, SLEIGH_BODY, type Body, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
+import { BALL, CONFIG, DYING_DURATION, GRAVITY, boxExtents, largestBox, sleighPitch, type BoxExtents, SLEIGH_BODY, type Body, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
 export interface FrameView { run: Run; course: Course; speed: number }
@@ -143,6 +143,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // Vite removes this branch from production. The same instance transform used
   // as the rendered block is used for its diagnostic wireframe.
   let hitboxes: THREE.InstancedMesh | undefined, hitball: THREE.Mesh | undefined;
+  const debugBox: BoxExtents = { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 };
+  const pitchNow = (run: Run): [number, number] => { const p = sleighPitch(run.grounded, track(run.distance, S).gradient, run.vy, course.speed(run.distance)); return [p, p]; };
   if (import.meta.env.DEV) {
     let enabled = new URLSearchParams(window.location.search).get('hitboxes') === '1';
     try { enabled ||= window.localStorage.getItem('ballrun:hitboxes') === '1'; } catch { /* storage can be unavailable */ }
@@ -151,13 +153,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       hitboxes = pool(box, wire, BLOCKS, road);
       hitboxes.renderOrder = 100;
       // What the simulation collides as: the ball's sphere, or the sleigh's box (SLEIGH_BODY) under the theme.
-      if (festive && SLEIGH_BODY.kind === 'box') {
-        const b = SLEIGH_BODY, hull = new THREE.BoxGeometry(2 * b.halfWidth, b.top - b.bottom, b.front + b.back);
-        // Centred where model.ts centres it: up by (top + bottom) / 2 and forward (-z) by (front - back) / 2.
-        hull.translate(0, (b.top + b.bottom) / 2, -(b.front - b.back) / 2);
-        geometries.push(hull);
-        hitball = new THREE.Mesh(hull, wire);
-      } else hitball = new THREE.Mesh(sphere, wire);
+      // (The sleigh's box changes with its pitch, so it is a unit box sized and placed every frame.)
+      hitball = new THREE.Mesh(festive ? box : sphere, wire);
       hitball.renderOrder = 100;
       scene.add(hitball);
     }
@@ -550,51 +547,43 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     place(hitboxes, debugCount++);
   }
 
-  // The sleigh moves as a body, not a rolling ball. All of it is presentation: the simulation (model.ts) owns
-  // where it is and what it hits. It is posed bank outermost (placeOnRunners), banked exactly as the road under
-  // it, as model.ts rolls its box; SLEIGH_BODY holds everything drawn of it under every pose here, and under a
-  // difference of up to SLEIGH_POSE.roll between that bank and the roll of a block it meets (tests measure both
-  // on the real vertices).
-  // - On the road its pitch follows the slope (the same angle as the road tiles under it).
-  // - In the air its nose follows its flight path, turning with some rotational inertia, within ±0.2 rad.
-  // - It leans into a carve, from its sideways acceleration (at most 0.04 rad), tipping onto its inside runner.
-  // - Its runners ride a damped spring (about 3.5 Hz, lightly damped): a landing or a bump squashes it about
-  //   its runners and it rebounds, barely stretching.
-  // It never turns about y, like the blocks. A new run, restore or teleport snaps it straight to the road.
-  // Under Reduce motion there is no spring, carve lean or flight pitch: it follows the road and holds in the air.
-  const SPRING = 2 * Math.PI * 3.5, DAMPING = .32, { squash: SQUASH, stretch: STRETCH, carve: CARVE, pitch: PITCH } = SLEIGH_POSE;
-  let attitude = 0, lean = 0, carve = 0, squash = 0, squashRate = 0, lastElapsed = NaN, lastVx = 0, lastVy = 0, wasOnRoad = true;
-  function steer(run: Run, bx: number, continuous: boolean, speed: number, reduced: boolean): void {
+  // The sleigh moves as a body, not a rolling ball. The simulation (model.ts) owns where it is and what it hits,
+  // and both use one rule for its pitch (config.ts sleighPitch), so what is drawn is what collides:
+  // - On the road it lies on the road exactly, posed as the tiles under it are (pitch, then bank; placeOnRunners),
+  //   its runners seated on the road at any slope.
+  // - In the air its nose follows its flight path.
+  // On top of that, presentation only, within what SLEIGH_BODY's table allows (tests measure it on the real
+  // vertices): it leans into a carve from its sideways acceleration (at most 0.04 rad), tipping onto its inside
+  // runner, and its runners ride a damped spring (about 3.5 Hz, lightly damped) that a landing or a bump squashes
+  // and that rebounds, barely stretching. It never turns about its own up axis. A new run, restore or teleport
+  // snaps it to the road. Under Reduce motion there is no spring or carve lean.
+  const SPRING = 2 * Math.PI * 3.5, DAMPING = .32, { squash: SQUASH, stretch: STRETCH, carve: CARVE } = SLEIGH_POSE;
+  let carve = 0, squash = 0, squashRate = 0, lastElapsed = NaN, lastVx = 0, lastVy = 0, wasGrounded = true;
+  function steer(run: Run, bx: number, continuous: boolean, reduced: boolean): void {
+    void bx;
     track(run.distance, S);
-    const ground = S.elevation - (bx - S.center) * Math.tan(S.bank);
-    const onRoad = S.ground && Math.abs(bx - S.center) <= S.width / 2 && run.height - RADIUS - ground < .06;
     const dt = continuous && run.elapsed >= lastElapsed ? Math.min(.05, run.elapsed - lastElapsed) : 0;
-    // Banked exactly as the road under it, on the road or in the air, as model.ts rolls its collision box.
-    lean = S.bank;
-    if (!continuous) {
-      attitude = clamp(Math.atan(S.gradient), -PITCH, PITCH); carve = squash = squashRate = 0;
-    } else if (dt > 0) {
-      const flight = !reduced && !onRoad && speed > 0 ? Math.atan2(run.vy, speed) : attitude;
-      const pitchTarget = clamp(onRoad ? Math.atan(S.gradient) : flight, -PITCH, PITCH);
-      attitude += (pitchTarget - attitude) * (1 - Math.exp(-(onRoad ? 14 : 5) * dt));
+    const attitude = sleighPitch(run.grounded, S.gradient, run.vy, course.speed(run.distance));
+    if (!continuous) carve = squash = squashRate = 0;
+    else if (dt > 0) {
       if (!reduced) {
         // Lean into the carve: half the angle a body would take against its sideways acceleration.
         const sideways = (run.vx - lastVx) / dt;
         carve += (clamp(-.5 * Math.atan(sideways / GRAVITY), -CARVE, CARVE) - carve) * (1 - Math.exp(-10 * dt));
         // The runners' spring: a landing kicks it by the speed of the impact; on the road, the surface's
         // vertical acceleration (a bump or a dip) pushes it.
-        if (onRoad && !wasOnRoad) squashRate += clamp((run.vy - lastVy) * .05, 0, .8);
-        else if (onRoad) squashRate += clamp((run.vy - lastVy) * .02, -.1, .1);
+        if (run.grounded && !wasGrounded) squashRate += clamp((run.vy - lastVy) * .05, 0, .8);
+        else if (run.grounded) squashRate += clamp((run.vy - lastVy) * .02, -.1, .1);
         for (let n = 0, h = dt / 4; n < 4; n++) {
           squashRate += (-SPRING * SPRING * squash - 2 * DAMPING * SPRING * squashRate) * h;
           squash = clamp(squash + squashRate * h, -STRETCH, SQUASH);
         }
       } else { carve = squash = squashRate = 0; }
     }
-    lastElapsed = run.elapsed; lastVx = run.vx; lastVy = run.vy; wasOnRoad = onRoad;
-    placeOnRunners(ball, attitude, lean, carve, squash);
+    lastElapsed = run.elapsed; lastVx = run.vx; lastVy = run.vy; wasGrounded = run.grounded;
+    // Banked exactly as the road under it, on the road or in the air, as model.ts rolls its collision box.
+    placeOnRunners(ball, attitude, S.bank, carve, squash);
   }
-
 
   // Trail history: past ball positions every 0.5 m of travel, newest last.
   const history = new Float64Array(TRAIL * 3);
@@ -745,14 +734,21 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       debugCount = 0;
       // Include the full previous sweep query, even behind the visible road.
       // The same reach model.ts queries with: the ball's radius, or the sleigh box's back and front.
-      const behind = body.kind === 'box' ? body.back : RADIUS, ahead = body.kind === 'box' ? body.front : RADIUS;
+      if (body.kind === 'box') largestBox(body.table, debugBox);
+      const behind = body.kind === 'box' ? debugBox.back : RADIUS, ahead = body.kind === 'box' ? debugBox.front : RADIUS;
       course.forEachObstacle(distance - CONFIG.hard.maxSpeed * .05 - behind - course.maxDepth, distance + ahead + course.maxDepth, placeHitbox);
       commit(hitboxes, debugCount);
     }
     if (hitball) {
       hitball.position.set(run.x, run.height + SLOPE * distance, 0);
-      // model.ts collides in the road's banked frame, so the drawn hull rolls with the bank too.
-      hitball.rotation.set(0, 0, -track(distance, S).bank);
+      track(distance, S);
+      if (body.kind === 'box') {
+        // The box model.ts uses at this pitch, centred where it centres it, rolled with the bank as it is.
+        const k = boxExtents(body.table, ...pitchNow(run), debugBox);
+        hitball.rotation.set(0, 0, -S.bank);
+        hitball.scale.set(2 * k.halfWidth, k.top - k.bottom, k.front + k.back);
+        hitball.position.add(new THREE.Vector3(0, (k.top + k.bottom) / 2, -(k.front - k.back) / 2).applyEuler(hitball.rotation));
+      }
     }
 
     const broken = run.reason === 'block' && (run.phase === 'dying' || run.phase === 'over');
@@ -761,7 +757,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     ball.position.set(bx, run.height + SLOPE * distance, 0);
     const forward = distance - rollDistance, sideways = bx - rollPosition;
     const continuous = !changedCourse && run.seed === rollSeed && run.run === rollRun && forward >= 0 && forward <= 3 && Math.abs(sideways) <= 3;
-    if (sleigh) steer(run, bx, continuous, speed, reduced);
+    if (sleigh) steer(run, bx, continuous, reduced);
     else if (continuous) {
       // The road approaches +z; forward motion takes the top toward -z, sideways toward x.
       rollStep.setFromAxisAngle(rollX, -rollAngle(forward));

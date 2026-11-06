@@ -10,12 +10,14 @@
 import * as THREE from 'three';
 import { mergeGeometries, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { RADIUS, SLEIGH_BODY } from './config';
+import { RADIUS } from './config';
 
 /** Side panels: inner and outer face (|x|); the gold trim tube is centred on the outer face. */
 const PANEL_IN = .318, TRIM = .018, TRIM_X = RADIUS - TRIM, PANEL_OUT = TRIM_X + .002;
 export const SLEIGH_RUNNER_X = .25;
 const RUNNER_X = SLEIGH_RUNNER_X, RUNNER = .02, INNER = 2 * PANEL_IN + .004;
+/** How far behind the ball's centre the level sleigh's backrest ends (see the compaction in createSleigh). */
+const REST_BACK = .415;
 const BOTTOM = .12, BACK = .035, BACK_TOP = .33, SEAT = .1, HAT = 1.15;
 
 export const SLEIGH_COLORS = { body: 0xc8102e, gold: 0xe7b53c, velvet: 0x1d6b3c, floor: 0x5b1a12, hat: 0xd61f33, fur: 0xf8f6f0 } as const;
@@ -222,13 +224,13 @@ export function createSleigh(): Sleigh {
   back.translate(0, .29 - RADIUS, .43);
   velvet.push(seat, back);
   // The hat on the front of the seat, leaning back a little, its tip drooping toward the camera's right.
-  // The sleigh collides as the box it fills (SLEIGH_BODY), and the course generator keeps every path at least
-  // RADIUS + 6 cm from a block along the course as well as across it. So the sleigh is drawn compact enough to
-  // fit that: its length, front runner curls kept where they are, is pressed toward the front until the
-  // backrest ends 1 cm inside the box's back (room for its pitch and squash).
+  // The sleigh collides as the box it fills (config.ts SLEIGH_BODY), and the course generator keeps every path
+  // at least RADIUS + 6 cm from a block along the course as well as across it. So the sleigh is drawn compact:
+  // its length, front runner curls kept where they are, is pressed toward the front until the backrest ends
+  // REST_BACK behind the centre, so that on ordinary road its box stays inside that clearance.
   const frame = new THREE.Box3(), piece = new THREE.Box3();
   for (const g of [...body, ...gold, ...velvet, ...floor]) { g.computeBoundingBox(); frame.union(piece.copy(g.boundingBox!)); }
-  const front = frame.min.z, press = (SLEIGH_BODY.kind === 'box' ? SLEIGH_BODY.back - .01 - front : 0) / (frame.max.z - front);
+  const front = frame.min.z, press = (REST_BACK - front) / (frame.max.z - front);
   for (const g of [...body, ...gold, ...velvet, ...floor]) { g.translate(0, 0, -front); g.scale(1, 1, press); g.translate(0, 0, front); g.computeBoundingBox(); }
   const hatParts = hat();
   // Upright, so the brim sits flush on the cushion all round (its underside 1.5 mm into it), centred on the
@@ -266,32 +268,31 @@ export function createSleigh(): Sleigh {
   };
 }
 
-/** The furthest the scene ever poses the sleigh (scene.ts steer()): pitch and carve lean in radians, and its
- * spring's squash and stretch as a share of its height. `roll` is the largest difference SLEIGH_BODY allows
- * between the bank under the sleigh (which it is drawn with) and the roll of a block it meets (model.ts rolls
- * the box with the block, which course.ts poses with the bank at its own centre and rejects where the bank
- * under it varies by more than 0.12 rad; measured worst over every place the sleigh can touch a block: 0.097).
- * SLEIGH_BODY holds the sleigh under all of these together. */
-export const SLEIGH_POSE = { pitch: .2, carve: .04, squash: .1, stretch: .008, roll: .12 } as const;
+/** The furthest the scene ever poses the sleigh beyond its pitch (which config.ts sleighPitch gives, within
+ * ±PITCH_LIMIT): its carve lean in radians, its spring's squash and stretch as a share of its height, and `roll`,
+ * the largest difference allowed between the bank under the sleigh (which it is drawn with) and the roll of a
+ * block it meets (model.ts rolls the box with the block, which course.ts poses with the bank at its own centre and
+ * rejects where the bank under its footprint varies by more than 0.12 rad; past the footprint, out to the box's
+ * reach, the bank can change by about 0.014 rad more). SLEIGH_BODY's table holds it under all of these together. */
+export const SLEIGH_POSE = { carve: .04, squash: .1, stretch: .008, roll: .14 } as const;
 
-const X_AXIS = new THREE.Vector3(1, 0, 0), Z_AXIS = new THREE.Vector3(0, 0, 1);
-const banked = new THREE.Quaternion(), pitched = new THREE.Quaternion(), carved = new THREE.Quaternion(), settled = new THREE.Quaternion();
+const X_AXIS = new THREE.Vector3(1, 0, 0), Z_AXIS = new THREE.Vector3(0, 0, 1), UP = new THREE.Vector3();
+const settled = new THREE.Quaternion(), banked = new THREE.Quaternion(), carved = new THREE.Quaternion();
 const contactNow = new THREE.Vector3(), contactAt = new THREE.Vector3();
-/** Poses a sleigh whose position is the ball's centre. Its rotation is bank outermost, then pitch, then the
- * carve lean: banked as the road under it about the course's axis, as model.ts rolls its collision box, so in
- * the box's own frame what is left is only pitch and carve (and any difference between this bank and the
- * roll of the block it meets), the poses SLEIGH_BODY is measured to hold. Its spring squashes it to
- * 1 - squash of its height. It is then moved so its runners stay where the ball meets the road: without a
- * carve the contact under its centre; with one, its inside runner's (it tips onto that runner and lifts the
- * outside one), along its own up axis, banked or not. Allocates nothing. */
+/** Poses a sleigh whose position is the ball's centre, exactly as the road tiles under it are posed: pitched by
+ * `attitude`, then banked by `lean` (scene.ts piece() uses the same order), so it sits flush on the road with no
+ * yaw against it. Then the carve lean (an extra roll about its own length) and its spring's squash (1 - squash of
+ * its height). It is moved so its runners stay on the road: the ball's centre stands RADIUS above the road
+ * vertically, which on a pitched road is RADIUS·cos(pitch) from it, so the sleigh is first seated by the
+ * difference along the road's normal; then a carve tips it onto its inside runner (lifting the outside one) and
+ * the squash keeps that contact (or the one under its centre) where it was, along its own up axis.
+ * Allocates nothing. */
 export function placeOnRunners(sleigh: THREE.Object3D, attitude: number, lean: number, carve: number, squash: number): void {
-  banked.setFromAxisAngle(Z_AXIS, -lean);
-  settled.copy(banked).multiply(pitched.setFromAxisAngle(X_AXIS, attitude));
+  settled.setFromAxisAngle(X_AXIS, attitude).multiply(banked.setFromAxisAngle(Z_AXIS, -lean));
   sleigh.quaternion.copy(settled).multiply(carved.setFromAxisAngle(Z_AXIS, carve));
   sleigh.scale.set(1, 1 - squash, 1);
   const px = carve === 0 ? 0 : -Math.sign(carve) * SLEIGH_RUNNER_X;
-  // Where that contact would be with no carve and no squash, and where it is now: move the sleigh by the difference.
   contactAt.set(px, -RADIUS, 0).applyQuaternion(settled);
   contactNow.set(px, -RADIUS * (1 - squash), 0).applyQuaternion(sleigh.quaternion);
-  sleigh.position.add(contactAt).sub(contactNow);
+  sleigh.position.add(contactAt).sub(contactNow).add(UP.set(0, 1, 0).applyQuaternion(settled).multiplyScalar(RADIUS * (1 - Math.cos(attitude))));
 }

@@ -2,7 +2,7 @@
  * course generator's reachability code: it plans its own interval reachability over
  * the course's public API, then drives the real simulation through `step`. */
 import {
-  BALL, BANK_DRIFT, CONFIG, EDGE_SUPPORT, RADIUS, STEER_RESPONSE, STEP, lateralSpeed,
+  BALL, BANK_DRIFT, CONFIG, boxExtents, type BoxExtents, EDGE_SUPPORT, RADIUS, STEER_RESPONSE, STEP, lateralSpeed,
   type Body, type Course, type Difficulty, type Obstacle, type ObstaclePose, type Run, type SegmentKind, type TrackSample,
 } from '../../../src/games/ball-run/config';
 import { sweepSphereBox } from '../../../src/core/collision';
@@ -191,6 +191,8 @@ class Window {
   private readonly tl = new Float64Array(MAX_SPANS * 3);
   private readonly th = new Float64Array(MAX_SPANS * 3);
 
+  private readonly probe = blankSample();
+  private readonly extents: BoxExtents = { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 };
   build(course: Course, from: number, to: number): void {
     const pose = this.pose, blocks = this.blocks, reachOut = TIERS[0].clear;
     this.from = from; this.to = to;
@@ -205,9 +207,18 @@ class Window {
         lo = Math.min(a, b); hi = Math.max(a, b);
       }
       // A box body (the sleigh) reaches further than the ball behind, ahead of or beside its centre: grow the block
-      // by the difference, so every clearance below (all measured from RADIUS) applies to the box.
-      const ahead = BODY.kind === 'box' ? Math.max(0, BODY.front - RADIUS) : 0, behind = BODY.kind === 'box' ? Math.max(0, BODY.back - RADIUS) : 0;
-      const beside = BODY.kind === 'box' ? Math.max(0, BODY.halfWidth - RADIUS) : 0;
+      // by the difference, so every clearance below (all measured from RADIUS) applies to the box. Its size depends
+      // on its pitch, which on the road is the road's slope: take the box for every slope over the block and a
+      // metre either side.
+      let ahead = 0, behind = 0, beside = 0;
+      if (BODY.kind === 'box') {
+        let lo = Infinity, hi = -Infinity;
+        for (let d = pose.distance - pose.halfDepth - 1; d <= pose.distance + pose.halfDepth + 1; d += .25) {
+          const p = Math.atan(course.sample(d, this.probe).gradient); lo = Math.min(lo, p); hi = Math.max(hi, p);
+        }
+        boxExtents(BODY.table, lo, hi, this.extents);
+        ahead = Math.max(0, this.extents.front - RADIUS); behind = Math.max(0, this.extents.back - RADIUS); beside = Math.max(0, this.extents.halfWidth - RADIUS);
+      }
       blocks.push({ from: pose.distance - pose.halfDepth - ahead, to: pose.distance + pose.halfDepth + behind, lo: lo - out - beside, hi: hi + out + beside });
     });
     // Points: every whole metre, and where each widened block starts and ends, for x and (one lag earlier) for p.

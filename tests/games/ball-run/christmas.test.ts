@@ -6,7 +6,7 @@ import { SNOW_DEPTH, SNOW_EDGE, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowC
 import { CLEAR, getCourse } from '../../../src/games/ball-run/course';
 import { createSnowfall, SNOWFALL_BOX, SNOWFALL_FLAKES, SNOWFALL_PERIOD } from '../../../src/games/ball-run/snowfall';
 import { createRun, step } from '../../../src/games/ball-run/model';
-import { BALL, RADIUS, SLEIGH_BODY, SLOPE, STEP, type Obstacle, type ObstaclePose } from '../../../src/games/ball-run/config';
+import { BALL, CONFIG, PITCH_LIMIT, RADIUS, SLEIGH_BODY, SLOPE, STEP, boxExtents, largestBox, sleighPitch, type BoxExtents, type Obstacle, type ObstaclePose } from '../../../src/games/ball-run/config';
 import { placeRun } from './bot';
 
 const captured = vi.hoisted(() => ({ scene: null as THREE.Scene | null }));
@@ -95,39 +95,94 @@ describe('Ball Run Christmas sleigh collision', () => {
   if (SLEIGH_BODY.kind !== 'box') throw new Error('the sleigh collides as a box');
   const body = SLEIGH_BODY;
 
-  it('holds everything drawn of it under every pose the scene gives it, snugly, so what is seen is what hits', () => {
-    // Every combination of the scene's limits (pitch, carve lean, squash and stretch) and of a difference up to
-    // SLEIGH_POSE.roll between the bank it is drawn with and a block's roll, posed by placeOnRunners exactly as
-    // scene.ts poses it, in the frame model.ts collides it in (rolled by the block's bank).
-    const sleigh = createSleigh().group, v = new THREE.Vector3(), reach = { side: 0, bottom: 0, top: -1, front: 0, back: 0 };
-    for (let k = -8; k <= 8; k++) for (const carve of [-1, -.5, 0, .5, 1]) for (const squash of [-SLEIGH_POSE.stretch, 0, SLEIGH_POSE.squash / 2, SLEIGH_POSE.squash]) for (const roll of [-1, -.5, 0, .5, 1]) {
-      const pitch = SLEIGH_POSE.pitch * k / 8;
-      sleigh.position.set(0, 0, 0);
-      placeOnRunners(sleigh, pitch, SLEIGH_POSE.roll * roll, SLEIGH_POSE.carve * carve, squash);
-      sleigh.updateMatrix();
-      for (const mesh of sleigh.children as THREE.Mesh[]) {
-        const p = mesh.geometry.getAttribute('position');
-        for (let i = 0; i < p.count; i++) {
-          v.fromBufferAttribute(p, i).applyMatrix4(sleigh.matrix);
-          reach.side = Math.max(reach.side, Math.abs(v.x)); reach.bottom = Math.min(reach.bottom, v.y); reach.top = Math.max(reach.top, v.y);
-          reach.front = Math.max(reach.front, -v.z); reach.back = Math.max(reach.back, v.z);
-        }
-      }
+  // The sleigh's real vertices, and those extreme in some direction (any box face the poses below can turn
+  // toward picks one of them), for searching many poses quickly.
+  const vertices: THREE.Vector3[] = [];
+  for (const mesh of createSleigh().group.children as THREE.Mesh[]) {
+    const p = mesh.geometry.getAttribute('position');
+    for (let i = 0; i < p.count; i++) vertices.push(new THREE.Vector3().fromBufferAttribute(p, i));
+  }
+  const extremes = (() => {
+    const picked = new Set<number>(), d = new THREE.Vector3();
+    for (let k = 0; k < 2000; k++) {
+      const u = 2 * (k + .5) / 2000 - 1, phi = k * 2.399963;
+      d.set(Math.sqrt(1 - u * u) * Math.cos(phi), u, Math.sqrt(1 - u * u) * Math.sin(phi));
+      let best = 0, top = -Infinity;
+      for (let i = 0; i < vertices.length; i++) { const v = vertices[i].dot(d); if (v > top) { top = v; best = i; } }
+      picked.add(best);
     }
-    const pairs: [string, number, number][] = [['side', reach.side, body.halfWidth], ['bottom', -reach.bottom, -body.bottom], ['top', reach.top, body.top], ['front', reach.front, body.front], ['back', reach.back, body.back]];
-    for (const [name, drawn, box] of pairs) {
-      expect(drawn, name).toBeLessThanOrEqual(box);
-      expect(box - drawn, `${name} snug`).toBeLessThanOrEqual(.005);
+    return [...picked].map(i => vertices[i]);
+  })();
+  /** The furthest the posed sleigh reaches, in the frame of a block whose roll is `roll`. */
+  function reach(points: THREE.Vector3[], pitch: number, bank: number, roll: number, carve: number, squash: number, into: BoxExtents): void {
+    const sleigh = new THREE.Object3D(), unroll = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll), v = new THREE.Vector3();
+    placeOnRunners(sleigh, pitch, bank, carve, squash);
+    sleigh.updateMatrix();
+    for (const point of points) {
+      v.copy(point).applyMatrix4(sleigh.matrix).applyQuaternion(unroll);
+      into.halfWidth = Math.max(into.halfWidth, Math.abs(v.x)); into.bottom = Math.min(into.bottom, v.y); into.top = Math.max(into.top, v.y);
+      into.front = Math.max(into.front, -v.z); into.back = Math.max(into.back, v.z);
+    }
+  }
+  const empty = (): BoxExtents => ({ halfWidth: 0, bottom: 0, top: -1, front: 0, back: 0 });
+
+  it('has a box for every pitch the sleigh can take, from -PITCH_LIMIT to PITCH_LIMIT, row after row', () => {
+    expect(body.table[0][0]).toBeCloseTo(-PITCH_LIMIT, 9);
+    expect(body.table[body.table.length - 1][1]).toBeCloseTo(PITCH_LIMIT, 9);
+    for (let i = 1; i < body.table.length; i++) expect(body.table[i][0]).toBeCloseTo(body.table[i - 1][1], 9);
+    // The union over a range takes every row it touches.
+    const k = boxExtents(body.table, -.12, .03, { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 }), rows = body.table.filter(r => r[1] >= -.12 && r[0] <= .03);
+    expect(k.back).toBe(Math.max(...rows.map(r => r[6]))); expect(k.halfWidth).toBe(Math.max(...rows.map(r => r[2])));
+    expect(sleighPitch(true, Math.tan(.6), 0, 20)).toBe(PITCH_LIMIT);
+    expect(sleighPitch(false, 0, -6, 20)).toBeCloseTo(Math.atan2(-6, 20), 12);
+  });
+
+  it('holds everything drawn of it, snugly, in every row: any pitch in it, bank, block roll, carve and squash', { timeout: 120000 }, () => {
+    // Pitch across the row; the bank up to the steepest road's; the block's roll up to SLEIGH_POSE.roll from that
+    // bank; the carve lean and the spring both ways. Posed by placeOnRunners exactly as scene.ts poses it.
+    const maxBank = Math.max(CONFIG.easy.maxBank, CONFIG.medium.maxBank, CONFIG.hard.maxBank);
+    for (const row of body.table) {
+      const drawn = empty();
+      for (let a = 0; a <= 6; a++) for (const bank of [-1, -.5, 0, .5, 1]) for (const roll of [-1, -.5, 0, .5, 1]) for (const carve of [-1, 0, 1]) for (const squash of [-SLEIGH_POSE.stretch, SLEIGH_POSE.squash]) {
+        const pitch = row[0] + (row[1] - row[0]) * a / 6, b = maxBank * bank;
+        reach(extremes, pitch, b, b - SLEIGH_POSE.roll * roll, SLEIGH_POSE.carve * carve, squash, drawn);
+      }
+      // And every vertex, at the row's ends and the extreme bank, roll and carve.
+      for (const pitch of [row[0], row[1]]) for (const bank of [-1, 1]) for (const roll of [-1, 1]) for (const carve of [-1, 1]) {
+        reach(vertices, pitch, maxBank * bank, maxBank * bank - SLEIGH_POSE.roll * roll, SLEIGH_POSE.carve * carve, SLEIGH_POSE.squash, drawn);
+      }
+      const name = `pitch ${row[0]}..${row[1]}`;
+      const pairs: [string, number, number][] = [['side', drawn.halfWidth, row[2]], ['bottom', -drawn.bottom, -row[3]], ['top', drawn.top, row[4]], ['front', drawn.front, row[5]], ['back', drawn.back, row[6]]];
+      for (const [face, model, box] of pairs) {
+        expect(model, `${name} ${face}`).toBeLessThanOrEqual(box);
+        expect(box - model, `${name} ${face} snug`).toBeLessThanOrEqual(.006);
+      }
     }
   });
 
-  it('is drawn in the box\'s frame on banked road: its vertices, taken into that frame, stay inside the box', { timeout: 60000 }, () => {
-    // End to end through the real scene, on a course's banked stretches, while dodging and in the air.
+  it('allows for every difference the courses have between the bank under it and the roll of a block it meets', { timeout: 120000 }, () => {
+    // course.ts poses a block with the bank at its own centre and keeps the bank under its footprint within
+    // 0.12 rad of it; the sleigh can touch it from past the footprint too, out to its box's reach.
+    const largest = largestBox(body.table, { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 }), pose: ObstaclePose = { x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 };
+    let worst = 0;
+    for (const difficulty of ['easy', 'medium', 'hard'] as const) for (let seed = 1; seed <= 25; seed++) {
+      const course = getCourse(seed, difficulty);
+      course.forEachObstacle(0, 3000, o => {
+        course.pose(o, 0, pose);
+        for (let d = o.distance - o.depth / 2 - largest.front; d <= o.distance + o.depth / 2 + largest.back; d += .05) worst = Math.max(worst, Math.abs(course.sample(d).bank - pose.roll));
+      });
+    }
+    expect(worst).toBeGreaterThan(.05);
+    expect(worst).toBeLessThanOrEqual(SLEIGH_POSE.roll);
+  });
+
+  it('is drawn in its box\'s frame through the real scene: on banks, dodging and in the air, inside the box for its pitch', { timeout: 60000 }, () => {
     stubDocument('christmas');
     const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
     const course = getCourse(7, 'hard'), run = createRun(7, 1, 'hard'), view = { run, course, speed: 0 };
     const local = new THREE.Vector3(), centre = new THREE.Vector3(), unroll = new THREE.Quaternion(), Z = new THREE.Vector3(0, 0, 1);
-    let banked = 0;
+    const k: BoxExtents = { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 };
+    let checked = 0, steep = 0;
     for (let i = 0; i < 3000; i++) {
       const distance = 100 + i * .5, s = course.sample(distance);
       if (!s.ground) continue;
@@ -135,43 +190,56 @@ describe('Ball Run Christmas sleigh collision', () => {
       run.distance = distance; run.elapsed += .5 / view.speed;
       run.x = s.center + Math.sin(i / 7) * (s.width / 2 - .5); run.vx = Math.cos(i / 7) * (s.width / 2 - .5) / 7 * view.speed / .5;
       const air = i % 40 > 30;
-      run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank) + (air ? 1.5 : 0); run.vy = air ? -6 : 0;
+      run.grounded = !air;
+      run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank) + (air ? 1.5 : 0); run.vy = air ? -6 : s.gradient * view.speed;
       scene.render(view);
-      if (Math.abs(s.bank) < .1 || i % 9) continue;
+      if (i % 9) continue;
+      const pitch = sleighPitch(run.grounded, s.gradient, run.vy, course.speed(distance));
+      boxExtents(body.table, pitch, pitch, k);
+      if (Math.abs(pitch) > .25) steep++;
       const sleigh = captured.scene!.getObjectByName('sleigh')!;
       sleigh.updateMatrix();
       centre.set(run.x, run.height + SLOPE * distance, 0);
       unroll.setFromAxisAngle(Z, s.bank);
+      const drawn = empty();
       for (const mesh of sleigh.children as THREE.Mesh[]) {
         const p = mesh.geometry.getAttribute('position');
-        for (let k = 0; k < p.count; k += 17) {
-          local.fromBufferAttribute(p, k).applyMatrix4(sleigh.matrix).sub(centre).applyQuaternion(unroll);
-          expect(Math.abs(local.x)).toBeLessThanOrEqual(body.halfWidth); expect(local.y).toBeGreaterThanOrEqual(body.bottom);
-          expect(local.y).toBeLessThanOrEqual(body.top); expect(-local.z).toBeLessThanOrEqual(body.front); expect(local.z).toBeLessThanOrEqual(body.back);
+        for (let n = 0; n < p.count; n += 5) {
+          local.fromBufferAttribute(p, n).applyMatrix4(sleigh.matrix).sub(centre).applyQuaternion(unroll);
+          drawn.halfWidth = Math.max(drawn.halfWidth, Math.abs(local.x)); drawn.bottom = Math.min(drawn.bottom, local.y); drawn.top = Math.max(drawn.top, local.y);
+          drawn.front = Math.max(drawn.front, -local.z); drawn.back = Math.max(drawn.back, local.z);
         }
       }
-      banked++;
+      const at = `at ${distance}`;
+      expect(drawn.halfWidth, at).toBeLessThanOrEqual(k.halfWidth); expect(drawn.bottom, at).toBeGreaterThanOrEqual(k.bottom); expect(drawn.top, at).toBeLessThanOrEqual(k.top);
+      expect(drawn.front, at).toBeLessThanOrEqual(k.front); expect(drawn.back, at).toBeLessThanOrEqual(k.back);
+      checked++;
     }
-    expect(banked).toBeGreaterThan(20);
+    expect(checked).toBeGreaterThan(100);
+    expect(steep).toBeGreaterThan(0);
     scene.dispose();
   });
 
-  it('fits inside the clearance the course generator keeps round the ball, so every course stays passable', () => {
-    expect(body.halfWidth).toBeLessThanOrEqual(CLEAR);
-    expect(body.front).toBeLessThanOrEqual(CLEAR);
-    expect(body.back).toBeLessThanOrEqual(CLEAR);
+  it('on ordinary road (pitch within ±0.149) fits inside the clearance the course generator keeps round the ball', () => {
+    // There the generator's own guarantee covers it. On steeper road the box reaches past it; passability there
+    // is shown by sleigh-courses.test.ts, not proved.
+    const k = boxExtents(body.table, -.149, .149, { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 });
+    expect(k.halfWidth).toBeLessThanOrEqual(CLEAR);
+    expect(k.front).toBeLessThanOrEqual(CLEAR);
+    expect(k.back).toBeLessThanOrEqual(CLEAR);
   });
 
   it('hits a block its backrest overlaps that the ball has already cleared, and nothing else changes', () => {
     let checked = 0;
+    const k: BoxExtents = { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 };
     for (const seed of [11, 42, 7]) {
       const course = getCourse(seed, 'medium'), blocks: Obstacle[] = [];
       course.forEachObstacle(200, 2000, o => { if (o.kind === 'block' && !o.slide) blocks.push(o); });
       for (const o of blocks) {
         const p = course.pose(o, 0, { x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 });
-        // Centre 0.40 m past the block's back face, straight in line with it: the sphere (0.38) is clear,
-        // the sleigh's backrest (0.42 behind the centre) is still over the block.
-        const d = o.distance + o.depth / 2 + .4, s = course.sample(d);
+        // Centre 0.39 m past the block's back face, straight in line with it: the sphere (0.38) is clear, the
+        // sleigh's backrest (about 0.43 behind the centre on ordinary road) is still over the block.
+        const d = o.distance + o.depth / 2 + .39, s = course.sample(d);
         if (!s.ground || s.tunnel || Math.abs(p.x - s.center) > s.width / 2 - .5) continue;
         let nearby = 0;
         course.forEachObstacle(d - 3, d + 3, () => nearby++);
@@ -180,9 +248,10 @@ describe('Ball Run Christmas sleigh collision', () => {
         step(asBall, 0, STEP, BALL); step(asSleigh, 0, STEP, body);
         expect(asBall.phase).toBe('running');
         expect(asSleigh.phase).toBe('dying'); expect(asSleigh.reason).toBe('block');
-        // Ahead of the block by more than the backrest, the box changes nothing: the sleigh runs on exactly as a
-        // round body with the sleigh's handling does.
-        const clear = placeRun(seed, 'medium', o.distance + o.depth / 2 + body.back + .05, p.x), ball = { ...clear };
+        // Past the block by more than the backrest reaches at any pitch there, the box changes nothing: the
+        // sleigh runs on exactly as a round body with the sleigh's handling does.
+        boxExtents(body.table, -PITCH_LIMIT, PITCH_LIMIT, k);
+        const clear = placeRun(seed, 'medium', o.distance + o.depth / 2 + k.back + .05, p.x), ball = { ...clear };
         step(clear, 0, STEP, body); step(ball, 0, STEP, { ...BALL, steerResponse: body.steerResponse, bankDrift: body.bankDrift });
         expect(clear).toEqual(ball);
         if (++checked >= 6) break;
@@ -372,91 +441,86 @@ describe('Ball Run Christmas scene', () => {
     scene.dispose();
   });
 
-  it('draws the sleigh, not the ball, at the ball\'s position, its runners on the road and following its bank', () => {
+  /** The road's height as the scene draws it: before the start line it continues the warm-up's straight slope. */
+  const roadAt = (course: ReturnType<typeof getCourse>, d: number, x: number) => course.surfaceHeight(d, x) - (d < 0 ? SLOPE * d : 0);
+  /** The sleigh's pitch as drawn: its forward axis's climb (the bank and carve turn about that axis's own line). */
+  const pitchOf = (sleigh: THREE.Object3D) => Math.asin(new THREE.Vector3(0, 0, -1).applyQuaternion(sleigh.quaternion).y);
+
+  it('rides a whole course with its runners on the road, steep crests and dips included, posed as the tiles are', () => {
     const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
-    const course = getCourse(7, 'medium'), run = createRun(7, 1, 'medium'), view = { run, course, speed: 0 };
-    let bankedChecks = 0, squashed = 0, lastHeight = NaN;
-    for (let distance = 0; distance < 1500; distance += .5) {
-      const s = course.sample(distance);
-      if (!s.ground) continue;
-      view.speed = course.speed(distance);
-      run.distance = distance; run.x = s.center; run.elapsed += .5 / view.speed;
-      run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank);
-      run.vy = Number.isNaN(lastHeight) ? 0 : (run.height - lastHeight) * view.speed / .5; lastHeight = run.height;
-      scene.render(view);
-      const sleigh = captured.scene!.getObjectByName('sleigh')!;
-      expect(sleigh.visible).toBe(true);
-      expect(sleigh.position.x).toBeCloseTo(run.x, 2);
-      // The spring squashes the body about its runners: the contact under its centre stays exactly where it
-      // would be unsquashed (where the ball touches the road), along the sleigh's own banked up axis.
-      sleigh.updateMatrix();
-      const contact = new THREE.Vector3(0, -RADIUS, 0).applyMatrix4(sleigh.matrix);
-      const unsquashed = new THREE.Object3D();
-      unsquashed.position.set(run.x, run.height + SLOPE * distance, 0); unsquashed.rotation.copy(sleigh.rotation); unsquashed.updateMatrix();
-      expect(contact.distanceTo(new THREE.Vector3(0, -RADIUS, 0).applyMatrix4(unsquashed.matrix))).toBeLessThan(1e-6);
-      expect(sleigh.scale.y).toBeGreaterThanOrEqual(.9 - 1e-9); expect(sleigh.scale.y).toBeLessThanOrEqual(1.008 + 1e-9);
-      if (sleigh.scale.y < .999) squashed++;
-      if (Math.abs(s.bank) > .1 && distance > 2) {
-        // Banked exactly as the road (no sideways motion here, so no carve lean): its sideways axis lies along
-        // the banked road.
-        const across = new THREE.Vector3(1, 0, 0).applyQuaternion(sleigh.quaternion);
-        expect(Math.atan2(-across.y, Math.hypot(across.x, across.z))).toBeCloseTo(s.bank, 3);
-        bankedChecks++;
+    let banked = 0, steep = 0, squashed = 0;
+    for (const [seed, difficulty] of [[7, 'medium'], [8, 'hard']] as const) {
+      const course = getCourse(seed, difficulty), run = createRun(seed, 1, difficulty), view = { run, course, speed: 0 };
+      run.grounded = true;
+      for (let distance = 0; distance < 2500; distance += .5) {
+        const s = course.sample(distance);
+        if (!s.ground) { scene.reset(); continue; }
+        view.speed = course.speed(distance);
+        run.distance = distance; run.x = s.center; run.elapsed += .5 / view.speed; run.vx = 0;
+        run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank); run.vy = s.gradient * view.speed;
+        scene.render(view);
+        const sleigh = captured.scene!.getObjectByName('sleigh')!;
+        expect(sleigh.visible).toBe(true);
+        // Its pitch is the road's slope and it is banked as the road: no yaw against the road at all.
+        expect(pitchOf(sleigh)).toBeCloseTo(sleighPitch(true, s.gradient, run.vy, view.speed), 9);
+        expect(Math.abs(new THREE.Vector3(0, 0, -1).applyQuaternion(sleigh.quaternion).x)).toBeLessThan(1e-9);
+        // Both runners' contacts under its centre lie on the real road surface, however steep.
+        sleigh.updateMatrix();
+        for (const side of [-1, 1]) {
+          const contact = new THREE.Vector3(side * .25, -RADIUS, 0).applyMatrix4(sleigh.matrix);
+          const road = roadAt(course, distance - contact.z, contact.x) + SLOPE * distance;
+          expect(Math.abs(contact.y - road), `seed ${seed} at ${distance}, runner ${side}`).toBeLessThan(.004);
+        }
+        if (Math.abs(s.bank) > .1) banked++;
+        if (Math.abs(Math.atan(s.gradient)) > .25) steep++;
+        if (sleigh.scale.y < .999) squashed++;
       }
+      scene.reset();
     }
-    expect(bankedChecks).toBeGreaterThan(0);
-    // Crests, dips and drops on the way squash it at least sometimes.
-    expect(squashed).toBeGreaterThan(0);
+    expect(banked).toBeGreaterThan(0); expect(steep).toBeGreaterThan(0); expect(squashed).toBeGreaterThan(0);
     scene.dispose();
   });
 
-  it('never turns about y, leans at most 0.04 rad into a carve, and in the air turns its nose toward its flight path', () => {
+  it('leans at most 0.04 rad into a carve on its inside runner, and in the air points its nose along its flight path', () => {
     const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
     const course = getCourse(7, 'medium'), run = createRun(7, 1, 'medium'), view = { run, course, speed: course.speed(400) };
     const sleigh = () => captured.scene!.getObjectByName('sleigh')!;
-    // A hard dodge, side to side.
+    run.grounded = true;
     let leaned = 0;
     for (let i = 0; i <= 80; i++) {
       const distance = 400 + i * .25, s = course.sample(distance), reach = Math.min(1.5, s.width / 2 - RADIUS);
       run.distance = distance; run.elapsed += .25 / view.speed;
       run.x = s.center + Math.sin(i / 3) * reach; run.vx = Math.cos(i / 3) * reach / 3 * view.speed / .25;
-      run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank); run.vy = 0;
+      run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank); run.vy = s.gradient * view.speed;
       scene.render(view);
-      // No yaw: in the road's banked frame its forward axis has no sideways part.
-      const ahead = new THREE.Vector3(0, 0, -1).applyQuaternion(sleigh().quaternion).applyAxisAngle(new THREE.Vector3(0, 0, 1), s.bank);
-      expect(Math.abs(ahead.x)).toBeLessThan(1e-9);
-      const carve = sleigh().rotation.z + s.bank;
-      expect(Math.abs(carve)).toBeLessThanOrEqual(.04 + .02);
-      if (Math.abs(carve) > .01) leaned++;
-      // It tips onto its inside runner: neither runner's contact ever goes below the banked road.
+      // The carve: its sideways axis turned past the road's bank, about its own length.
+      const across = new THREE.Vector3(1, 0, 0).applyQuaternion(sleigh().quaternion), flat = new THREE.Vector3(1, 0, 0).applyQuaternion(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitchOf(sleigh())).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -s.bank)));
+      const carve = across.angleTo(flat);
+      expect(carve).toBeLessThanOrEqual(.04 + 1e-6);
+      if (carve > .01) leaned++;
+      // It tips onto its inside runner: neither runner's contact goes below the road.
       sleigh().updateMatrix();
       for (const side of [-1, 1]) {
         const contact = new THREE.Vector3(side * .25, -RADIUS, 0).applyMatrix4(sleigh().matrix);
-        expect(contact.y, `runner ${side} at ${distance}`).toBeGreaterThanOrEqual(course.surfaceHeight(distance, contact.x) + SLOPE * distance - .002);
+        expect(contact.y, `runner ${side} at ${distance}`).toBeGreaterThanOrEqual(roadAt(course, distance - contact.z, contact.x) + SLOPE * distance - .003);
       }
     }
     expect(leaned).toBeGreaterThan(0);
-    // Launched 3 m above the road and falling at 6 m/s: the nose turns down toward the flight path, no
-    // further than 0.2 rad, and the bank it had holds.
-    let pitch = sleigh().rotation.x;
-    for (let i = 1; i <= 30; i++) {
+    // Launched and falling at 6 m/s: its nose points along its flight path.
+    run.grounded = false;
+    for (let i = 1; i <= 20; i++) {
       run.distance = 420 + i * .5; run.elapsed += .5 / view.speed; run.vx = 0;
-      run.height = course.surfaceHeight(run.distance, run.x) + 3; run.vy = -6;
+      run.height = course.surfaceHeight(run.distance, run.x) + 3; run.vy = -6 - i * .2;
       scene.render(view);
-      const x = sleigh().rotation.x;
-      expect(x).toBeLessThanOrEqual(pitch + 1e-9);
-      expect(x).toBeGreaterThanOrEqual(-.2 - 1e-9);
-      pitch = x;
+      expect(pitchOf(sleigh())).toBeCloseTo(sleighPitch(false, 0, run.vy, course.speed(run.distance)), 9);
     }
-    expect(pitch).toBeLessThan(Math.atan2(-6, view.speed) / 2);
-    // Off the road's edge and falling past it: it stays banked as the road under it (the frame it collides in),
-    // and its pitch stays within its limit.
+    // Off the road's edge and falling past it: banked as the road under it, as its collision box is.
     for (let i = 1; i <= 10; i++) {
       run.distance = 436 + i * .5; run.elapsed += .5 / view.speed; const s = course.sample(run.distance);
       run.x = s.center + s.width / 2 + 1; run.height = course.surfaceHeight(run.distance, s.center) - .5 * i; run.vy = -8;
       scene.render(view);
-      expect(sleigh().rotation.z).toBeCloseTo(-s.bank, 3);
-      expect(Math.abs(sleigh().rotation.x)).toBeLessThanOrEqual(.2 + 1e-9);
+      const across = new THREE.Vector3(1, 0, 0).applyQuaternion(sleigh().quaternion);
+      expect(Math.atan2(-across.y, Math.hypot(across.x, across.z))).toBeCloseTo(s.bank, 1);
     }
     // No ball anywhere: not the ball itself, and the Speed Up trail draws diamond glints, not spheres.
     const spheres = captured.scene!.children.filter(c => c instanceof THREE.Mesh && c.geometry instanceof THREE.SphereGeometry);
@@ -465,22 +529,24 @@ describe('Ball Run Christmas scene', () => {
     scene.dispose();
   });
 
-  it('under Reduce motion follows the road without springing, leaning into carves or pitching in flight', () => {
+  it('under Reduce motion keeps its pose (the road\'s, or its flight path\'s) without springing or leaning into carves', () => {
     const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => true });
     const course = getCourse(7, 'medium'), run = createRun(7, 1, 'medium'), view = { run, course, speed: course.speed(400) };
     const sleigh = () => captured.scene!.getObjectByName('sleigh')!;
+    run.grounded = true;
     for (let i = 0; i <= 40; i++) {
       const distance = 400 + i * .25, s = course.sample(distance);
       run.distance = distance; run.elapsed += .25 / view.speed; run.x = s.center + Math.sin(i / 3); run.vx = 20 * Math.cos(i / 3);
       run.height = course.surfaceHeight(distance, run.x) + RADIUS / Math.cos(s.bank); run.vy = i % 2 ? 4 : -4;
       scene.render(view);
       expect(sleigh().scale.y).toBe(1);
-      expect(sleigh().rotation.z).toBeCloseTo(-s.bank, 1);
+      const across = new THREE.Vector3(1, 0, 0).applyQuaternion(sleigh().quaternion);
+      expect(Math.atan2(-across.y, Math.hypot(across.x, across.z))).toBeCloseTo(s.bank, 6);
     }
-    const before = sleigh().rotation.x;
-    run.distance += .5; run.elapsed += .5 / view.speed; run.height += 3; run.vy = -8;
+    run.grounded = false; run.distance += .5; run.elapsed += .5 / view.speed; run.height += 3; run.vy = -8;
     scene.render(view);
-    expect(sleigh().rotation.x).toBe(before);
+    // The pitch is what it collides with, so it is the same under Reduce motion.
+    expect(pitchOf(sleigh())).toBeCloseTo(sleighPitch(false, 0, -8, course.speed(run.distance)), 9);
     scene.dispose();
   });
 });

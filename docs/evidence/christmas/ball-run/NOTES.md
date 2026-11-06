@@ -37,15 +37,21 @@ neon corridor. Under the Christmas theme it adds just two things:
   - It collides as itself. A review found that its corners, outside the ball's circle, could show passing
     through a block for 1–3 frames when a player cut tightly past one. At the user's choice the simulation now
     collides as the sleigh's box whenever the sleigh is drawn; with the theme off it is still the ball's sphere.
-    The box (`SLEIGH_BODY`: ±0.425 m across, 0.375 m ahead of and 0.425 m behind the centre, 0.465 m below to
-    0.25 m above it) is the envelope of everything drawn of the sleigh under every pose the scene gives it
-    (pitch ±0.2 rad, carve lean ±0.04 rad, squash and stretch), measured on its real vertices to within 5 mm.
-    The sleigh is posed bank outermost, banked exactly as the road under it, as model.ts rolls the box. A block
-    is rolled with the bank at its own centre, which on a long block over a bank change can differ from the
-    bank under the sleigh (measured worst 0.097 rad; the generator rejects blocks where it varies by more than
-    0.12); the box also holds the sleigh under a difference of up to 0.12 rad, so what is seen is what hits.
-    A test also renders the real scene on banked road and checks every sampled vertex lies inside the box. To keep every seeded course passable, the sleigh was made about 16% shorter, pressed toward its
-    front, so the box fits inside the 0.44 m clearance the course generator keeps round the ball on every side.
+    The box depends on the sleigh's pitch (`SLEIGH_BODY`: one row per 0.05 rad from -0.45 to 0.45; on ordinary
+    road about 0.43 m to each side and behind, 0.34 m ahead). The pitch is one rule the simulation and the
+    drawing share (`sleighPitch`: the road's slope on the road, the flight path in the air), so the drawing and
+    the collision always agree; each step uses the rows its pitch passes through. Each row holds everything drawn
+    of the sleigh in its pitch range under every bank, carve lean, squash, and a difference up to 0.14 rad
+    between its bank and the roll of the block it meets (a block is rolled with the bank at its own centre; the
+    courses' worst is about 0.13), measured on the real vertices plus 3 mm. Tests check every row against the
+    vertices, tie the 0.14 to the courses' own data, and render the real scene on banks, steep road and in the
+    air to check the sleigh lies inside its box. The user chose this over a fixed box after a review found the
+    runners sinking up to 8.6 cm on steep crests, when the pitch was clamped to fit a fixed box.
+    The sleigh is posed exactly as the road tiles (pitch, then bank) and seated on the pitched road, so its
+    runners stay on the road at any slope (a test runs two whole courses and checks them against the real
+    road surface) and it has no yaw against the road. To keep courses passable it was made about 16% shorter,
+    pressed toward its front; on ordinary road its box lies inside the 0.44 m clearance the course generator
+    keeps round the ball, and on steeper road passability is shown by the bot (below), not proved.
     A tight cut the ball would have grazed past now crashes, as it looks like it should.
   - It handles like a sleigh (the user chose real handling plus body motion): its steering response is 8/s
     against the ball's 10/s, so momentum carries through a carve and it slides on after the steering lets go,
@@ -54,12 +60,13 @@ neon corridor. Under the Christmas theme it adds just two things:
     and box (`useBody`), and `sleigh-courses.test.ts` drives 110 runs per difficulty as the sleigh.
   - Its scores go on the same leaderboards and records as the ball's: the user chose to share them, knowing the
     sleigh handles and collides differently.
-  - It moves as a body. On the road it sits on the slope and bank (the same angles as the road tiles). A damped
-    spring on its runners (about 3.5 Hz) squashes it about the runners on landings and bumps and lets it
-    rebound. It leans into a carve (at most 0.04 rad). In the air its nose turns toward its flight path with
-    some rotational inertia (within ±0.2 rad, where the front still stays behind the ball's front). It never
-    turns about y, like the blocks. A new run, restore or teleport snaps straight to the road. Under Reduce
-    motion there is no spring, carve lean or flight pitch. About 20,000 triangles in two draw calls.
+  - It moves as a body. On the road it lies on the road exactly, at any slope; in the air its nose points along
+    its flight path (the same pitch the collision uses, so it has no rotational lag: a landing is a quick
+    snap, cushioned by the spring). A damped spring on its runners (about 3.5 Hz) squashes it about the
+    runners on landings and bumps and lets it rebound. It leans into a carve (at most 0.04 rad), tipping onto
+    its inside runner. It never turns about its own up axis. A new run, restore or teleport snaps straight to
+    the road. Under Reduce motion there is no spring or carve lean (its pitch, which is what it collides with,
+    is the same). About 20,000 triangles in two draw calls.
   - It points away from the camera. The raised backrest, whose tall side curls roll back over the rear corners,
     is nearest the camera. The low scrolled dash and the tall gold runner curls are at the far end. Between the
     backrest curls the back panel stops lower, so the chase camera (behind and only a little above) sees the

@@ -3,7 +3,7 @@
  * chooses its lateral line. Collision uses the same obstacle poses as rendering. */
 import { sweepSphereBox } from '../../core/collision';
 import {
-  BALL, BANK_DRIFT, COURSE_REVISION, DYING_DURATION, FALL_DEPTH, GATE_FEEDBACK, GATE_WALL_HEIGHT, GRAVITY, RADIUS, STEER_RESPONSE,
+  BALL, BANK_DRIFT, COURSE_REVISION, boxExtents, sleighPitch, type BoxExtents, DYING_DURATION, FALL_DEPTH, GATE_FEEDBACK, GATE_WALL_HEIGHT, GRAVITY, RADIUS, STEER_RESPONSE,
   isDifficulty, lateralSpeed,
   type Body, type Course, type Difficulty, type Obstacle, type ObstaclePose, type Phase, type Run, type TrackSample,
 } from './config';
@@ -56,10 +56,12 @@ const sweepFrom = [0, 0, 0], sweepTo = [0, 0, 0], origin = [0, 0, 0] as const, h
 const sweep = new Float64Array(8);
 let hitCourse: Course, hit = false, hitFraction = 1, hitBody: Body = BALL;
 const sweepMid = [0, 0, 0];
-/** The sleigh's box, swept as a point against the block grown by the box's half sizes. Its centre sits off
- * the ball's centre: up by (top + bottom) / 2 and along the course by (front - back) / 2. Both offsets are
- * in the road's banked frame, which a block shares (it is rolled by the bank) and so does the sleigh. */
+/** The sleigh's box for this step (the union over the pitches it passes through), swept as a point against the
+ * block grown by the box's half sizes. Its centre sits off the ball's centre: up by (top + bottom) / 2 and along
+ * the course by (front - back) / 2, in the block's rolled frame (the table allows for the sleigh's own bank
+ * differing from the block's roll). */
 const boxCenter = [0, 0, 0], grown = [0, 0, 0];
+const stepBox: BoxExtents = { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 };
 
 /** Moves world point (x, y, d) into the frame of a box posed at `p` (rolled about the forward axis). */
 function local(p: ObstaclePose, x: number, y: number, d: number, out: number[]): void {
@@ -78,9 +80,9 @@ function testBlock(o: Obstacle): void {
   half[0] = p.halfWidth; half[1] = p.halfHeight; half[2] = p.halfDepth;
   const b = hitBody;
   if (b.kind === 'box') {
-    const up = (b.top + b.bottom) / 2, along = (b.front - b.back) / 2;
+    const k = stepBox, up = (k.top + k.bottom) / 2, along = (k.front - k.back) / 2;
     sweepFrom[1] += up; sweepFrom[2] += along; sweepTo[1] += up; sweepTo[2] += along;
-    grown[0] = half[0] + b.halfWidth; grown[1] = half[1] + (b.top - b.bottom) / 2; grown[2] = half[2] + (b.front + b.back) / 2;
+    grown[0] = half[0] + k.halfWidth; grown[1] = half[1] + (k.top - k.bottom) / 2; grown[2] = half[2] + (k.front + k.back) / 2;
     if (!sweepSphereBox(sweepFrom, sweepTo, origin, grown, 0)) return;
     hit = true;
     let lo = 0, hi = 1;
@@ -170,7 +172,12 @@ export function step(run: Run, input: number, dt: number, body: Body = BALL): vo
 
   hitCourse = course; hit = false; hitFraction = 1; hitBody = body;
   sweep[0] = e0; sweep[1] = run.elapsed; sweep[2] = x0; sweep[3] = h0; sweep[4] = d0; sweep[5] = run.x; sweep[6] = run.height; sweep[7] = run.distance;
-  const behindReach = body.kind === 'box' ? body.back : RADIUS, aheadReach = body.kind === 'box' ? body.front : RADIUS;
+  if (body.kind === 'box') {
+    // The sleigh's pitch at the start and end of the step, by the rule the drawing uses (config.ts sleighPitch).
+    const p0 = sleighPitch(grounded0, before.gradient, vy0, v), p1 = sleighPitch(run.grounded, s.gradient, run.vy, course.speed(run.distance));
+    boxExtents(body.table, p0, p1, stepBox);
+  }
+  const behindReach = body.kind === 'box' ? stepBox.back : RADIUS, aheadReach = body.kind === 'box' ? stepBox.front : RADIUS;
   course.forEachObstacle(d0 - behindReach - course.maxDepth, run.distance + aheadReach + course.maxDepth, testBlock);
   if (hit) {
     // Stop at the first contact along the same swept path that decided the hit.
