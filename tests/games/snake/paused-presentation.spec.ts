@@ -88,3 +88,38 @@ test('app motion setting repaints Snake while its settings sheet is open',async(
   await expect(root).toHaveAttribute('data-reduced-motion','false');
   expect(await save()).toBe(frozen);
 });
+
+test('paused Snake repaints when the system motion preference changes without a frame',async({page})=>{
+  await page.addInitScript(()=>{
+    const original=window.matchMedia.bind(window),target=new EventTarget();
+    const motion={matches:false,media:'(prefers-reduced-motion: reduce)',onchange:null,
+      addEventListener:target.addEventListener.bind(target),removeEventListener:target.removeEventListener.bind(target),
+      dispatchEvent:target.dispatchEvent.bind(target),
+      addListener:(listener:EventListener)=>target.addEventListener('change',listener),
+      removeListener:(listener:EventListener)=>target.removeEventListener('change',listener)};
+    (window as unknown as {snakeMotion:typeof motion}).snakeMotion=motion;
+    window.matchMedia=(query:string)=>query===motion.media?motion as unknown as MediaQueryList:original(query);
+  });
+  await page.clock.install({time:new Date('2026-10-19T09:00:00Z')});
+  await page.clock.pauseAt(new Date('2026-10-19T09:00:01Z'));
+  await page.goto('/#/game/snake');
+  await page.getByRole('button',{name:'Start slithering',exact:true}).click();
+  await page.clock.runFor(200);
+  await pauseGame(page);
+  const root=page.locator('.snake-game');
+  const save=()=>page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:save:snake'));
+  const frozen=await save();
+  await expect(root).toHaveAttribute('data-reduced-motion','false');
+  await page.evaluate(()=>{
+    const motion=(window as unknown as {snakeMotion:{matches:boolean;dispatchEvent(event:Event):boolean}}).snakeMotion;
+    motion.matches=true;motion.dispatchEvent(new Event('change'));
+  });
+  await expect(root).toHaveAttribute('data-reduced-motion','true');
+  expect(await save()).toBe(frozen);
+  await page.evaluate(()=>{
+    const motion=(window as unknown as {snakeMotion:{matches:boolean;dispatchEvent(event:Event):boolean}}).snakeMotion;
+    motion.matches=false;motion.dispatchEvent(new Event('change'));
+  });
+  await expect(root).toHaveAttribute('data-reduced-motion','false');
+  expect(await save()).toBe(frozen);
+});

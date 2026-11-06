@@ -37,6 +37,7 @@ const module:GameModule={
    canvas.setAttribute('aria-label',`Snake garden. Head column ${h.x+1}, row ${h.y+1}. Length ${length(state)}. ${state.food?`Apple column ${state.food.x+1}, row ${state.food.y+1}.`:''} Use arrows, WASD or swipe.`);
   }
   const repaintPaused=()=>{if(paused&&!disposed)render();};
+  motionQuery.addEventListener('change',repaintPaused,{signal:events.signal});
   document.fonts?.addEventListener('loadingdone',repaintPaused,{signal:events.signal});
   document.fonts?.addEventListener('loadingerror',repaintPaused,{signal:events.signal});
   canvas.addEventListener('contextrestored',repaintPaused,{signal:events.signal});
