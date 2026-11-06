@@ -460,13 +460,15 @@ describe('Ball Run Christmas scene', () => {
   });
 
   /** How far the drawn road tiles' tops stand off the simulated surface, worst over the tiles near the player. */
-  function tileError(): number {
-    const course = getCourse(28, 'easy'), run = createRun(28, 1, 'easy'), distance = 95;
+  /** How far the drawn road tiles' tops stand off the simulated surface, over every tile in view: each tile's top
+   * grid point is placed as the GPU does (its instance matrix, after the shader's twist of the top face). */
+  function tileError(seed: number, difficulty: 'easy' | 'medium' | 'hard', distance: number, want: (course: ReturnType<typeof getCourse>, d: number) => boolean, reachAhead = 30): number {
+    const course = getCourse(seed, difficulty), run = createRun(seed, 1, difficulty);
     run.distance = distance; run.height = course.surfaceHeight(distance, run.x) + RADIUS;
     const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
     scene.render({ run, course, speed: course.speed(distance) });
     const road = captured.scene!.children[0], tiles = road.children[0] as THREE.InstancedMesh, m = new THREE.Matrix4(), v = new THREE.Vector3();
-    let worst = 0, bends = 0;
+    let worst = 0, wanted = 0;
     // Every tile and line is a right-handed box: a mirrored instance would be drawn inside out (its top face culled).
     const grid = road.children[1] as THREE.InstancedMesh;
     for (let i = 0; i < tiles.count; i++) { tiles.getMatrixAt(i, m); expect(m.determinant()).toBeGreaterThan(0); }
@@ -476,15 +478,16 @@ describe('Ball Run Christmas scene', () => {
       // Its top face's outward normal points up.
       const n = new THREE.Vector3(0, 1, 0).applyMatrix3(new THREE.Matrix3().getNormalMatrix(m));
       expect(n.y).toBeGreaterThan(0);
-      for (const [u, w] of [[-.5, -.5], [.5, -.5], [-.5, .5], [.5, .5], [0, 0]]) {
-        v.set(u, .5, w).applyMatrix4(m).add(road.position);
+      const twist = tiles.instanceColor ? tiles.instanceColor.getX(i) : 0;
+      for (const u of [-.5, -.25, 0, .25, .5]) for (const w of [-.5, -.25, 0, .25, .5]) {
+        v.set(u, .5 + twist * u * w * 4, w).applyMatrix4(m).add(road.position);
         const d = distance - v.z;
-        if (d < distance || d > distance + 30) continue;
-        if (Math.abs(course.sample(d).center - course.sample(d + 1).center) > .02) bends++;
+        if (d < distance || d > distance + reachAhead || !course.sample(d).ground) continue;
+        if (want(course, d)) wanted++;
         worst = Math.max(worst, Math.abs(v.y - (course.surfaceHeight(d, v.x) + SLOPE * distance)));
       }
     }
-    expect(bends).toBeGreaterThan(0);
+    expect(wanted).toBeGreaterThan(0);
     scene.dispose();
     return worst;
   }
@@ -520,9 +523,18 @@ describe('Ball Run Christmas scene', () => {
     scene.dispose();
   });
 
-  it('draws the road\'s tiles on the surface it simulates, on bends too, so the runners sit on what is drawn', () => {
-    // On easy seed 28's sharp bend the original tiles (yawed, then rolled) lean off that surface by several cm.
-    expect(tileError()).toBeLessThan(.008);
+  it('draws the road\'s tiles on the surface it simulates, on bends and where the bank changes, so the runners sit on it', () => {
+    // On easy seed 28's sharp bend the original tiles (yawed, then rolled) lean off that surface by several cm, and
+    // where hard seed 5's bank changes a flat tile could not follow its twist (up to 1.4 cm near, 5.6 cm far).
+    const bend = (c: ReturnType<typeof getCourse>, d: number) => Math.abs(c.sample(d + .5).center - c.sample(d - .5).center) > .05;
+    const bankChanging = (c: ReturnType<typeof getCourse>, d: number) => Math.abs(c.sample(d + .25).bank - c.sample(d - .25).bank) > .005;
+    expect(tileError(28, 'easy', 95, bend)).toBeLessThan(.008);
+    expect(tileError(5, 'hard', 300, bankChanging)).toBeLessThan(.004);
+    // The far 1 m and 2 m tiles (60 m and more ahead) too: a flat 2 m tile was up to 5.6 cm off where the bank
+    // changes. What is left (about 1.1 cm) is the road's curve along a 2 m tile, a fraction of a pixel that far off
+    // (a screen pixel spans about 4 cm of road at 60 m on a phone).
+    const far = Math.max(tileError(5, 'hard', 150, bankChanging, 200), tileError(10, 'hard', 60, bankChanging, 200));
+    expect(far).toBeLessThan(.015);
   });
 
   it('snows in one draw call while moving, and not at all under Reduce motion', () => {

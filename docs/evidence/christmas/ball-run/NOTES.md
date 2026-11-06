@@ -13,7 +13,7 @@ neon corridor. Under the Christmas theme it adds just two things:
   top, bottom and sides, so no ceiling, floor or wall shows), with its own clock that stops while no frames are
   drawn (no jump after a pause) and wraps every 400 s with no jump (fall speeds and sway frequencies are
   quantised to whole box heights and cycles per period), sized by perspective but clamped to 2–11 device pixels, and faded at the
-  lens and in the distance. Hidden under Reduce motion. Measured: 9 draw calls and 7 geometries with the theme.
+  lens and in the distance. Hidden under Reduce motion. Measured: 9 draw calls and 8 geometries with the theme.
 - **Snow on the obstacles** (`src/games/ball-run/snow.ts`): a light covering, 7.5 cm at the crest, on top of every
   obstacle (static blocks and sliders, not gate walls). One instanced pool draws all the caps, so the theme adds
   one draw call. Each cap is a soft, slightly lumpy mound that overhangs the block by 3 cm, with a rounded lip
@@ -56,9 +56,12 @@ neon corridor. Under the Christmas theme it adds just two things:
     a bend, which leans them up to about 10 cm off it at the road's edge on the sharpest bend, a mismatch a
     ball hides and a sleigh does not. A test reads the drawn tiles on that bend and finds them within 8 mm of
     the surface (with the theme off, unchanged, still centimetres off), and checks no tile or line is mirrored
-    (an earlier version's were, which drew them inside out). Where a bank changes, a flat tile cannot follow
-    the twist: near the player (0.5 m tiles) its corner is within about 1.5 cm, the far 1 m and 2 m tiles
-    within about 2.8 and 5.6 cm, as with the original tiles. To keep courses passable it was made about 16%
+    (an earlier version's were, which drew them inside out). Where a bank changes, the road over a tile is
+    twisted (a bilinear patch), which a flat tile cannot follow (a flat tile was up to 1.4 cm off near the
+    player and 5.6 cm far off): each tile is a subdivided box whose top face the vertex shader bends by the
+    tile's twist (carried in its instance colour, which the tile cache already moves with it; the colour is not
+    applied). Measured on the drawn tiles there: under 4 mm near the player, and about 1.1 cm on the far 2 m
+    tiles from the road's curve along them, a fraction of a pixel that far off. To keep courses passable it was made about 16%
     shorter,
     pressed toward its front; on ordinary road its box lies inside the 0.44 m clearance the course generator
     keeps round the ball, and on steeper road passability is shown by the bot (below), not proved.
@@ -107,9 +110,10 @@ reach and hat placement, and its disposal; that it never yaws while dodging and 
 equal to the obstacles, on the top face, along the block's banked up axis, overhang and depth, sliders included.
 It also fails on any folded or inside-out triangle in the sleigh (each face must turn the way its normals do), and
 it finds every part, the hat included, by its vertex colour. `play.spec.ts`'s GPU-resource test runs with the theme
-on, which is the default. It keeps the original 11 draw-call cap. Its geometry cap is 7 with the theme
-(box, city lines, snow cap, glint, and the sleigh's two meshes; the ball's sphere is not used) and 4 without.
-Measured in the browser: 9 draw calls and 7 geometries with the theme (the falling snow adds one of each), 6 and 3 without.
+on, which is the default. It keeps the original 11 draw-call cap. Its geometry cap is 8 with the theme
+(box, city lines, snow cap, glint, falling snow, twisted road tile, and the sleigh's two meshes; the ball's
+sphere is not used) and 4 without. Measured in the browser: 9 draw calls and 8 geometries with the theme, 6 and
+3 without.
 With the theme off it checks the original ball, no snow and no sleigh. `play.spec.ts` is back to its original
 contrast check, because the bars are lavender again.
 

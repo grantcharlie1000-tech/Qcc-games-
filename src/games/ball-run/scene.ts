@@ -138,7 +138,28 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // Road, gates and blocks share one group placed relative to the origin.
   const road = new THREE.Group();
   scene.add(road);
-  const tiles = pool(box, basic({ color: PALETTE.track }), TILES, road);
+  // Christmas: a tile's top follows the simulated road's twist where the bank changes (that surface is a bilinear
+  // patch over a tile, which a flat box cannot match): a subdivided box whose top face the vertex shader bends by
+  // each instance's twist, carried in its instance colour (which RetainedInstances already moves and uploads
+  // with its matrix); the colour itself is not applied. Theme off keeps the original flat tiles.
+  let tileGeometry = box;
+  const tileMaterial = basic({ color: PALETTE.track });
+  if (festive) {
+    tileGeometry = new THREE.BoxGeometry(1, 1, 1, 4, 1, 4);
+    geometries.push(tileGeometry);
+    tileMaterial.onBeforeCompile = shader => {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+#ifdef USE_INSTANCING_COLOR
+	if ( position.y > 0.0 ) transformed.y += instanceColor.r * position.x * position.z * 4.0;
+#endif`)
+        .replace('#include <color_vertex>', `#if defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )
+	vColor = vec3( 1.0 );
+#endif`);
+    };
+    tileMaterial.customProgramCacheKey = () => 'ball-run-twisted-tile';
+  }
+  const tiles = pool(tileGeometry, tileMaterial, TILES, road, festive);
   const grid = pool(box, basic({ color: PALETTE.grid }), LINES, road);
   const blocks = pool(box, basic({ color: PALETTE.white, vertexColors: true }), BLOCKS, road, true);
   // Vite removes this branch from production. The same instance transform used
@@ -195,7 +216,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   /** Bar cross-sections (width, height). */
   const laneLine = new THREE.Vector2(LINE_WIDTH, LINE_HEIGHT), centerLine = new THREE.Vector2(CENTER_WIDTH, LINE_HEIGHT),
     archBar = new THREE.Vector2(BAR, BAR), entranceBar = new THREE.Vector2(ENTRANCE_BAR, ENTRANCE_BAR), chevron = new THREE.Vector2(.24, LINE_HEIGHT);
-  const tileAcross = new THREE.Vector3(), tileAlong = new THREE.Vector3(), tileUp = new THREE.Vector3(), tileMatrix = new THREE.Matrix4();
+  const tileTwist = new THREE.Color(), tileAcross = new THREE.Vector3(), tileAlong = new THREE.Vector3(), tileUp = new THREE.Vector3(), tileMatrix = new THREE.Matrix4();
   const place = (mesh: THREE.InstancedMesh, index: number) => {
     transform.updateMatrix();
     mesh.setMatrixAt(index, transform.matrix);
@@ -356,6 +377,13 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       tileMatrix.makeBasis(tileAcross, tileUp, tileAlong).setPosition(
         (A.center + B.center) / 2 - tileUp.x / 2, (A.elevation + B.elevation) / 2 + yRef - tileUp.y / 2, -((lo + hi) / 2 - builtOrigin) - tileUp.z / 2);
       tiles.setMatrixAt(tileIndex, tileMatrix);
+      // The twist: how far the true surface stands off this flat tile at its (+across, back) corner, measured along
+      // the tile's own up axis in its local units; the shader bends the top face by it, bilinearly, so all four
+      // corners lie on the surface (A holds the track at lo, the back end).
+      const cornerX = (A.center + B.center) / 2 + (tileAcross.x + tileAlong.x) / 2;
+      const flat = (A.elevation + B.elevation) / 2 + yRef + (tileAcross.y + tileAlong.y) / 2;
+      const twist = (A.elevation - (cornerX - A.center) * Math.tan(A.bank) + yRef - flat) / tileUp.y;
+      tiles.setColorAt(tileIndex, tileTwist.setRGB(twist, 0, 0, THREE.LinearSRGBColorSpace));
     } else {
       const nx = Math.sin(M.bank) * TILE_DEPTH / 2, ny = Math.cos(M.bank) * TILE_DEPTH / 2;
       position.set((A.center + B.center) / 2 - nx, (A.elevation + B.elevation) / 2 + yRef - ny, -((lo + hi) / 2 - builtOrigin));
@@ -365,7 +393,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       scale.set(M.width / Math.cos(M.bank), TILE_DEPTH, Math.hypot(dc, de, length) + .01);
       place(tiles, tileIndex);
     }
-    tileCache.changed(tileIndex);
+    tileCache.changed(tileIndex, festive);
     // Counted, not for-of, which allocated an iterator per tile.
     for (let k = 0; k < LANES.length; k++) {
       if (lineCount >= LINES) return;
