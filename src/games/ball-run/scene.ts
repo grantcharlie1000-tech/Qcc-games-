@@ -313,7 +313,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const trailColor = new THREE.Color(PALETTE.boost), trailFaded = new THREE.Color(PALETTE.track), tint = new THREE.Color();
 
   const stats: SceneStats = { calls: 0, geometries: 0, aspect: 1, ballScreenX: .5, ballScreenY: .5 };
-  const A = blankSample(), B = blankSample(), M = blankSample(), S = blankSample();
+  const A = blankSample(), B = blankSample(), M = blankSample(), S = blankSample(), T = blankSample();
   const pose: ObstaclePose = { x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 };
   const projection = new THREE.Vector3();
   const rollX = new THREE.Vector3(1, 0, 0), rollZ = new THREE.Vector3(0, 0, 1), rollStep = new THREE.Quaternion();
@@ -377,13 +377,19 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       tileMatrix.makeBasis(tileAcross, tileUp, tileAlong).setPosition(
         (A.center + B.center) / 2 - tileUp.x / 2, (A.elevation + B.elevation) / 2 + yRef - tileUp.y / 2, -((lo + hi) / 2 - builtOrigin) - tileUp.z / 2);
       tiles.setMatrixAt(tileIndex, tileMatrix);
-      // The twist: how far the true surface stands off this flat tile at its (+across, back) corner, measured along
-      // the tile's own up axis in its local units; the shader bends the top face by it, bilinearly, so all four
-      // corners lie on the surface (A holds the track at lo, the back end).
-      const cornerX = (A.center + B.center) / 2 + (tileAcross.x + tileAlong.x) / 2;
-      const flat = (A.elevation + B.elevation) / 2 + yRef + (tileAcross.y + tileAlong.y) / 2;
-      const twist = (A.elevation - (cornerX - A.center) * Math.tan(A.bank) + yRef - flat) / tileUp.y;
-      tiles.setColorAt(tileIndex, tileTwist.setRGB(twist, 0, 0, THREE.LinearSRGBColorSpace));
+      // The twist: the bilinear part of how far the true surface stands off this flat tile, fitted over its four
+      // top corners where they really are (each sampled at its own distance and x), measured along the tile's own
+      // up axis in its local units. The shader bends the top face by it (+ at (+across, back) and (-across, front),
+      // - at the other two), so the corners lie on the surface as nearly as a bilinear patch allows.
+      let twist = 0;
+      const midX = (A.center + B.center) / 2, midY = (A.elevation + B.elevation) / 2 + yRef, midZ = -((lo + hi) / 2 - builtOrigin);
+      for (let su = -1; su <= 1; su += 2) for (let sw = -1; sw <= 1; sw += 2) {
+        const x = midX + (su * tileAcross.x + sw * tileAlong.x) / 2, y = midY + (su * tileAcross.y + sw * tileAlong.y) / 2;
+        const z = midZ + (su * tileAcross.z + sw * tileAlong.z) / 2;
+        track(builtOrigin - z, T);
+        twist += su * sw * (T.elevation - (x - T.center) * Math.tan(T.bank) + yRef - y);
+      }
+      tiles.setColorAt(tileIndex, tileTwist.setRGB(twist / 4 / tileUp.y, 0, 0, THREE.LinearSRGBColorSpace));
     } else {
       const nx = Math.sin(M.bank) * TILE_DEPTH / 2, ny = Math.cos(M.bank) * TILE_DEPTH / 2;
       position.set((A.center + B.center) / 2 - nx, (A.elevation + B.elevation) / 2 + yRef - ny, -((lo + hi) / 2 - builtOrigin));

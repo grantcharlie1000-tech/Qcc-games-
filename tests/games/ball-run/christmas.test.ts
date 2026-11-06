@@ -531,10 +531,12 @@ describe('Ball Run Christmas scene', () => {
     expect(tileError(28, 'easy', 95, bend)).toBeLessThan(.008);
     expect(tileError(5, 'hard', 300, bankChanging)).toBeLessThan(.004);
     // The far 1 m and 2 m tiles (60 m and more ahead) too: a flat 2 m tile was up to 5.6 cm off where the bank
-    // changes. What is left (about 1.1 cm) is the road's curve along a 2 m tile, a fraction of a pixel that far off
-    // (a screen pixel spans about 4 cm of road at 60 m on a phone).
+    // changes. What is left is the road's curve along a 2 m tile at a crest or dip (up to about 3 cm over 30
+    // courses; hard seed 2 near 1593 m is the worst), under a pixel that far off (a screen pixel spans about 4 cm
+    // of road at 60 m on a phone, more beyond).
     const far = Math.max(tileError(5, 'hard', 150, bankChanging, 200), tileError(10, 'hard', 60, bankChanging, 200));
     expect(far).toBeLessThan(.015);
+    expect(tileError(2, 'hard', 1450, () => true, 200)).toBeLessThan(.035);
   });
 
   it('snows in one draw call while moving, and not at all under Reduce motion', () => {

@@ -59,9 +59,10 @@ neon corridor. Under the Christmas theme it adds just two things:
     (an earlier version's were, which drew them inside out). Where a bank changes, the road over a tile is
     twisted (a bilinear patch), which a flat tile cannot follow (a flat tile was up to 1.4 cm off near the
     player and 5.6 cm far off): each tile is a subdivided box whose top face the vertex shader bends by the
-    tile's twist (carried in its instance colour, which the tile cache already moves with it; the colour is not
-    applied). Measured on the drawn tiles there: under 4 mm near the player, and about 1.1 cm on the far 2 m
-    tiles from the road's curve along them, a fraction of a pixel that far off. To keep courses passable it was made about 16%
+    tile's twist (fitted over its four corners where they really are; carried in its instance colour, which the
+    tile cache already moves with it; the colour is not applied, the road keeps its exact colour). Measured over
+    30 courses: within 2 mm of the surface near the player, and up to about 3 cm on the far 2 m tiles 60 m and
+    more ahead, from the road's curve along a 2 m tile at a crest or dip, under a pixel that far off. To keep courses passable it was made about 16%
     shorter,
     pressed toward its front; on ordinary road its box lies inside the 0.44 m clearance the course generator
     keeps round the ball, and on steeper road passability is shown by the bot (below), not proved.
