@@ -551,9 +551,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   }
 
   // The sleigh moves as a body, not a rolling ball. All of it is presentation: the simulation (model.ts) owns
-  // where it is and what it hits. SLEIGH_BODY is sized to hold everything drawn of it under every pose here
-  // (a test measures that on the real vertices), and it is always banked exactly as the road under it, which is
-  // the frame model.ts collides it in.
+  // where it is and what it hits. It is posed bank outermost (placeOnRunners), banked exactly as the road under
+  // it, as model.ts rolls its box; SLEIGH_BODY holds everything drawn of it under every pose here, and under a
+  // difference of up to SLEIGH_POSE.roll between that bank and the roll of a block it meets (tests measure both
+  // on the real vertices).
   // - On the road its pitch follows the slope (the same angle as the road tiles under it).
   // - In the air its nose follows its flight path, turning with some rotational inertia, within ±0.2 rad.
   // - It leans into a carve, from its sideways acceleration (at most 0.04 rad), tipping onto its inside runner.
@@ -568,7 +569,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     const ground = S.elevation - (bx - S.center) * Math.tan(S.bank);
     const onRoad = S.ground && Math.abs(bx - S.center) <= S.width / 2 && run.height - RADIUS - ground < .06;
     const dt = continuous && run.elapsed >= lastElapsed ? Math.min(.05, run.elapsed - lastElapsed) : 0;
-    // Banked exactly as the road under it, on the road or in the air: the same frame model.ts collides it in.
+    // Banked exactly as the road under it, on the road or in the air, as model.ts rolls its collision box.
     lean = S.bank;
     if (!continuous) {
       attitude = clamp(Math.atan(S.gradient), -PITCH, PITCH); carve = squash = squashRate = 0;
@@ -591,8 +592,6 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       } else { carve = squash = squashRate = 0; }
     }
     lastElapsed = run.elapsed; lastVx = run.vx; lastVy = run.vy; wasOnRoad = onRoad;
-    ball.rotation.set(attitude, 0, -lean + carve, 'YXZ');
-    ball.scale.set(1, 1 - squash, 1);
     placeOnRunners(ball, attitude, lean, carve, squash);
   }
 

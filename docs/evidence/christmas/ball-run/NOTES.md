@@ -37,11 +37,14 @@ neon corridor. Under the Christmas theme it adds just two things:
   - It collides as itself. A review found that its corners, outside the ball's circle, could show passing
     through a block for 1–3 frames when a player cut tightly past one. At the user's choice the simulation now
     collides as the sleigh's box whenever the sleigh is drawn; with the theme off it is still the ball's sphere.
-    The box (`SLEIGH_BODY`: ±0.40 m across, 0.375 m ahead of and 0.425 m behind the centre, 0.435 m below to
-    0.245 m above it) is the envelope of everything drawn of the sleigh under every pose the scene gives it
-    (pitch ±0.2 rad, carve lean ±0.04 rad, squash and stretch), measured on its real vertices to within 6 mm.
-    The sleigh is always banked exactly as the road under it, the frame the box collides in, so what is seen is
-    what hits. To keep every seeded course passable, the sleigh was made about 16% shorter, pressed toward its
+    The box (`SLEIGH_BODY`: ±0.425 m across, 0.375 m ahead of and 0.425 m behind the centre, 0.465 m below to
+    0.25 m above it) is the envelope of everything drawn of the sleigh under every pose the scene gives it
+    (pitch ±0.2 rad, carve lean ±0.04 rad, squash and stretch), measured on its real vertices to within 5 mm.
+    The sleigh is posed bank outermost, banked exactly as the road under it, as model.ts rolls the box. A block
+    is rolled with the bank at its own centre, which on a long block over a bank change can differ from the
+    bank under the sleigh (measured worst 0.097 rad; the generator rejects blocks where it varies by more than
+    0.12); the box also holds the sleigh under a difference of up to 0.12 rad, so what is seen is what hits.
+    A test also renders the real scene on banked road and checks every sampled vertex lies inside the box. To keep every seeded course passable, the sleigh was made about 16% shorter, pressed toward its
     front, so the box fits inside the 0.44 m clearance the course generator keeps round the ball on every side.
     A tight cut the ball would have grazed past now crashes, as it looks like it should.
   - It handles like a sleigh (the user chose real handling plus body motion): its steering response is 8/s

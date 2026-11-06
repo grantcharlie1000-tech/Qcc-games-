@@ -30,9 +30,10 @@ export const BANK_DRIFT = 6;
 export type Body = { readonly steerResponse: number; readonly bankDrift: number } & ({ readonly kind: 'ball' } | { readonly kind: 'box'; readonly halfWidth: number; readonly bottom: number; readonly top: number; readonly front: number; readonly back: number });
 export const BALL: Body = { kind: 'ball', steerResponse: STEER_RESPONSE, bankDrift: BANK_DRIFT };
 /** The sleigh's box holds everything drawn of it under every pose the scene gives it (pitch within ±0.2 rad,
- * a carve lean within ±0.04 rad, its spring's squash and stretch), measured on its real vertices to within a few
- * millimetres (christmas.test.ts). Its front, back and sides all lie inside course.ts's CLEAR. */
-export const SLEIGH_BODY: Body = { kind: 'box', halfWidth: .4, bottom: -.435, top: .245, front: .375, back: .425, steerResponse: 8, bankDrift: BANK_DRIFT * 1.2 };
+ * a carve lean within ±0.04 rad, its spring's squash and stretch) and any difference up to 0.12 rad between
+ * the bank it is drawn with and the roll of the block it meets (sleigh.ts SLEIGH_POSE), measured on its real
+ * vertices to within 5 mm (christmas.test.ts). Its front, back and sides all lie inside course.ts's CLEAR. */
+export const SLEIGH_BODY: Body = { kind: 'box', halfWidth: .425, bottom: -.465, top: .25, front: .375, back: .425, steerResponse: 8, bankDrift: BANK_DRIFT * 1.2 };
 /** The generator only relies on this fraction of the ball's lateral authority. */
 export const REACH_SAFETY = .7;
 /** Clear, wide, straight opening (m). */
