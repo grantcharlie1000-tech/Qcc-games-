@@ -394,7 +394,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       // normal; right-handed, as the tiles are.
       track(d + .5, M);
       tileAcross.set(S.width + LINE_WIDTH, -(S.width + LINE_WIDTH) * Math.tan(S.bank), 0);
-      tileAlong.set(-(M.center - S.center), -(M.elevation - S.elevation), .5).normalize().multiplyScalar(CROSS_WIDTH);
+      // Its slope is the road's gradient at d, not a difference to d + 0.5, which at a drop's lip lands in the gap
+      // (the landing road's level, metres lower) and would stand the line up like a wall.
+      tileAlong.set(-(M.center - S.center), -S.gradient * .5, .5).normalize().multiplyScalar(CROSS_WIDTH);
       tileUp.crossVectors(tileAlong, tileAcross).normalize().multiplyScalar(LINE_HEIGHT);
       tileMatrix.makeBasis(tileAcross, tileUp, tileAlong).setPosition(S.center, surfaceY(S, S.center) + LIFT, -(d - builtOrigin));
       grid.setMatrixAt(slot, tileMatrix);

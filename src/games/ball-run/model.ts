@@ -49,8 +49,11 @@ export function surfaceSlope(course: Course, distance: number, x: number): numbe
 
 const gapProbe = blankSample(), lipProbe = blankSample();
 /** The edges of the drop's gap at `distance` (which must be in it): the lip's end and the landing's start. */
-let gapLip = 0, gapLand = 0;
+let gapLip = 0, gapLand = 0, gapCourse: Course | null = null;
 function gapEdges(course: Course, distance: number): void {
+  // A step asks about the same gap several times (its pitch at both ends, slope and height): reuse it.
+  if (course === gapCourse && distance > gapLip && distance < gapLand) return;
+  gapCourse = course;
   // Step out to ground (gaps are a few metres), then bisect.
   let lo = distance, hi = distance;
   for (let k = 0; k < 160 && !course.sample(lo, lipProbe).ground; k++) lo -= .5;
@@ -65,8 +68,9 @@ function gapEdges(course: Course, distance: number): void {
 /** How far a body at (distance, x, height) is above where it would rest, for the sleigh's landing flare. On the
  * road that is the road; over a drop's gap (where the course reports the landing road's level, a step below the
  * lip) it is a level that runs from the lip's road, carried on at its slope, to the landing road, in proportion
- * across the gap, so it has no step at either edge. Deterministic, with no allocation of its own (over a gap
- * it samples the course about fifty times to find the gap's edges, which is where course.ts allocates). */
+ * across the gap, so it has no step at either edge. Deterministic, with no allocation of its own (over a gap it
+ * samples the course about fifty times to find a new gap's edges, once per gap, which is where course.ts
+ * allocates). */
 export function heightAboveRest(course: Course, distance: number, x: number, height: number): number {
   const s = course.sample(distance, gapProbe);
   if (s.ground) return height - restOn(s, x);

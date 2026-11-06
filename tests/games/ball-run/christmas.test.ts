@@ -468,6 +468,34 @@ describe('Ball Run Christmas scene', () => {
     return worst;
   }
 
+  it('lays every cross line flat on the road, at a drop\'s lip too', () => {
+    // A cross line within half a metre of a gap once took its slope from the gap (metres lower) and stood up.
+    const scene = createScene({ clientWidth: 390, clientHeight: 844 } as HTMLCanvasElement, { reducedMotion: () => false });
+    let lines = 0, lips = 0;
+    for (const [seed, difficulty, from] of [[8, 'hard', 200], [11, 'medium', 2380], [3, 'easy', 300]] as const) {
+      const course = getCourse(seed, difficulty), run = createRun(seed, 1, difficulty), m = new THREE.Matrix4();
+      for (let distance = from; distance < from + 400; distance += 50) {
+        run.distance = distance; run.height = course.surfaceHeight(distance, run.x) + RADIUS;
+        scene.reset(); scene.render({ run, course, speed: course.speed(distance) });
+        const road = captured.scene!.children[0], grid = road.children[1] as THREE.InstancedMesh;
+        const across = new THREE.Vector3(), up = new THREE.Vector3(), along = new THREE.Vector3();
+        for (let i = 0; i < grid.count; i++) {
+          grid.getMatrixAt(i, m);
+          m.extractBasis(across, up, along);
+          // A cross line spans the road (its across axis is metres long, nearly level); its height stands up.
+          if (across.length() < 3 || Math.abs(across.y) > across.length() * .5) continue;
+          lines++;
+          const d = distance - (m.elements[14] + road.position.z);
+          if (!course.sample(d + .5).ground) lips++;
+          expect(up.clone().normalize().y, `cross line at ${d}`).toBeGreaterThan(.9);
+          expect(Math.abs(along.clone().normalize().y), `cross line at ${d}`).toBeLessThan(.5);
+        }
+      }
+    }
+    expect(lines).toBeGreaterThan(100); expect(lips).toBeGreaterThan(0);
+    scene.dispose();
+  });
+
   it('draws the road\'s tiles on the surface it simulates, on bends too, so the runners sit on what is drawn', () => {
     // On easy seed 28's sharp bend the original tiles (yawed, then rolled) lean off that surface by several cm.
     expect(tileError()).toBeLessThan(.008);

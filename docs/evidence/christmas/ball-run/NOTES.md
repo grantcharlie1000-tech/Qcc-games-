@@ -58,7 +58,7 @@ neon corridor. Under the Christmas theme it adds just two things:
     the surface (with the theme off, unchanged, still centimetres off), and checks no tile or line is mirrored
     (an earlier version's were, which drew them inside out). Where a bank changes, a flat tile cannot follow
     the twist: near the player (0.5 m tiles) its corner is within about 1.5 cm, the far 1 m and 2 m tiles
-    within about 2.5 and 5.5 cm, as with the original tiles. To keep courses passable it was made about 16%
+    within about 2.8 and 5.6 cm, as with the original tiles. To keep courses passable it was made about 16%
     shorter,
     pressed toward its front; on ordinary road its box lies inside the 0.44 m clearance the course generator
     keeps round the ball, and on steeper road passability is shown by the bot (below), not proved.
@@ -76,7 +76,8 @@ neon corridor. Under the Christmas theme it adds just two things:
     is eased toward the road's slope, and only higher does it follow the flight path, which most hops never
     reach. It is the same pitch the collision uses, so there is no rotational lag, and it takes off and lands
     with no jump: measured through the real simulation over whole courses, side falls and steering throws,
-    under 0.015 rad at take-off and landing and under 0.04 rad in any one step of flight (a landing after a drop jumped 0.33 rad before; on a drop the nose
+    under 0.015 rad at take-off and landing and under 0.04 rad in any one step of flight (0.042 at worst, in a
+    losing fall off the road's side over a gap; a landing after a drop jumped 0.33 rad before; on a drop the nose
     now dips to about -0.31 and settles to the road's slope at touchdown). A damped spring on its runners (about
     3.5 Hz) squashes it about the runners on landings and bumps and lets it rebound. It leans into a carve (at most 0.04 rad), tipping onto
     its inside runner. It never turns about its own up axis. A new run, restore or teleport snaps straight to
