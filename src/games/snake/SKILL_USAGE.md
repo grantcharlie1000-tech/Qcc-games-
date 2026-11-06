@@ -19,6 +19,7 @@ Independently inventoried with `rg --files .agents/skills -g SKILL.md` before im
 
 ## v3 rework (grid model, animations)
 
+- `.agents/skills/svg-skill/SKILL.md`: the head and jaw are SVG path data (Path2D on canvas); the pose sheet was validated with `xmllint` and `scripts/validate.sh`.
 - `.agents/skills/game-development/SKILL.md` and `.agents/skills/animate/SKILL.md` guided the design: fixed-tick logic with interpolated rendering, an input buffer, and purposeful, short, interruptible effects that are disabled under reduced motion.
 
 # Gaps and browser documentation actually read

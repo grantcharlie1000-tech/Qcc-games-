@@ -1,5 +1,6 @@
 /** Presentation-only state and geometry. Nothing here affects gameplay; all clocks freeze while paused. */
 import {SIZE,TICK_MS,vector,type Cell,type SnakeState} from './model';
+import {easeOutStrong} from './head';
 
 export const EAT_FX_MS=650, SPAWN_POP_MS=260, DEATH_CARD_MS=700, WIN_CARD_MS=500, BULGE_SIGMA=.6;
 export interface EatEffect{at:number;cell:Cell}
@@ -15,6 +16,7 @@ export function createView(s?:SnakeState):SnakeView{
 }
 export const easeOutBack=(t:number)=>{const c=1.70158,u=t-1;return 1+(c+1)*u*u*u+c*u*u;};
 export const easeOutCubic=(t:number)=>1-(1-t)**3;
+export const smoothstep=(t:number)=>t*t*(3-2*t);
 export const easeOutQuad=(t:number)=>1-(1-t)*(1-t);
 const clamp=(n:number,lo=0,hi=1)=>Math.max(lo,Math.min(hi,n));
 
@@ -70,16 +72,22 @@ export function bulge(s:number,positions:number[],total:number):number{
 /** Mouth opening 0..1 from the visual head's distance to the apple, then a quick chomp after eating. */
 /** An eat waiting for the drawn head to reach the apple it already consumed in the model. */
 export function pendingEat(view:SnakeView):EatEffect|undefined{const e=view.eats.at(-1);return e&&e.at>view.clock?e:undefined;}
-/** Delay from a model eat until the drawn head touches the apple (about a third of the way into the cell). */
-export function eatDelay(s:SnakeState):number{return Math.max(0,TICK_MS*.35-s.elapsed);}
-export function mouth(s:SnakeState,view:SnakeView,head:Cell,reduced:boolean):number{
+/** Delay from a model eat until the drawn head touches the apple (the apple is half inside the open mouth). */
+export function eatDelay(s:SnakeState):number{return Math.max(0,TICK_MS*.55-s.elapsed);}
+/**
+ * Mouth opening 0..1. Opening is driven by position (the last three squares before an apple that
+ * lies ahead), so it is continuous and naturally reverses if the snake turns away; after a bite the
+ * jaw snaps shut in 150 ms on a strong ease-out.
+ */
+export function mouth(s:SnakeState,view:SnakeView,head:Cell,reduced:boolean,angle=view.angle):number{
  if(reduced||s.phase==='lost')return 0;
  const pending=pendingEat(view),last=view.eats.at(-1),age=last&&!pending?view.clock-last.at:Infinity;
- if(age<150)return 1-easeOutQuad(age/150);
+ if(age<150)return 1-easeOutStrong(age/150);
  const target=pending?.cell??s.food;
  if(!target||(s.phase!=='running'&&!pending))return 0;
- const d=Math.hypot(target.x-head.x,target.y-head.y);
- return easeOutQuad(clamp((3-d)/1.6));
+ const dx=target.x-head.x,dy=target.y-head.y,d=Math.hypot(dx,dy);
+ const facing=d<1e-6?1:clamp(((dx*Math.cos(angle)+dy*Math.sin(angle))/d-.3)/.5);
+ return smoothstep(clamp((3-d)/1.6))*facing;
 }
 export function chompScale(view:SnakeView,reduced:boolean):number{
  const last=view.eats.at(-1);if(reduced||!last||last.at>view.clock)return 1;

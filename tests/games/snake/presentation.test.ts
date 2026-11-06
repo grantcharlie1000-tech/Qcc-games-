@@ -39,3 +39,18 @@ describe('snake presentation',()=>{
   expect(deathFx(v,s,true)).toMatchObject({dx:0,dy:0,flash:0});
  });
 });
+
+import {headPose,easeOutStrong} from '../../../src/games/snake/head';
+describe('snake head geometry',()=>{
+ it('is closed at rest and grows a jaw wider than the head as it opens',()=>{
+  expect(headPose(0,10).jaw).toBeNull();
+  const half=headPose(.5,10),full=headPose(1,10);
+  for(const p of [half,full])for(const d of [p.jaw,p.cavity,p.fangs])expect(d).toMatch(/^M[-\d. ]+[AQ]/);
+  expect(full.cavityBox!.ry).toBeGreaterThan(half.cavityBox!.ry);
+  // Fully open, the jaw reaches past the head's half-width of 10.
+  const ry=Number(full.jaw!.match(/A[\d.]+ ([\d.]+)/)![1]);expect(ry).toBeGreaterThan(10);
+ });
+ it('uses the strong ease-out curve for the snap shut',()=>{
+  expect(easeOutStrong(0)).toBe(0);expect(easeOutStrong(1)).toBe(1);expect(easeOutStrong(.25)).toBeGreaterThan(.7);
+ });
+});

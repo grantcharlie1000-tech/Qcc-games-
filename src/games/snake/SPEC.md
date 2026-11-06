@@ -18,7 +18,7 @@ Goal: a Snake that plays and feels like the familiar search-engine Snake (smooth
 - Animations (all on a presentation clock that freezes while paused):
   - apple pops in with an overshoot (260 ms);
   - eyes track the apple and blink every 2.5–5.5 s; the head turns smoothly;
-  - the snout hinges open into a D-shaped jaw (rim, dark inside, two fangs) over the last three squares before an apple, then snaps shut (150 ms) with a head squash (160 ms). The visual eat waits until the drawn head reaches the apple;
+  - the head opens a jaw built from shared SVG path data (`head.ts`, previewed in `public/game-art/snake/mouth-poses.svg`). The jaw is an ellipse that grows from under the head, with one continuous outline, a dark mouth and two fangs. Opening follows position: it uses smoothstep over the last three squares, and only when the apple is ahead, so it reverses naturally if you turn away. The apple slides into the open mouth before it is swallowed, and the jaw snaps shut in 150 ms on cubic-bezier(0.23,1,0.32,1) with a head squash (160 ms). The visual eat waits until the drawn head reaches the apple;
   - a swallow bulge travels down the body; fruit flecks burst (320 ms) and a "+10" rises (600 ms);
   - on the ready card the snake flicks its tongue;
   - on death: X eyes, a short decaying board shake (280 ms), a soft flash (120 ms), the body dims, and the result card appears after 700 ms ("New best!" when beaten).

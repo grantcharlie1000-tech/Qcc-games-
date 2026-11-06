@@ -16,7 +16,7 @@ test('first key starts, eating scores, pause freezes, reload continues, death sh
  await expect(page.getByRole('button',{name:'Start slithering'})).toBeVisible();
  await headAt(page,5,8);
  await page.keyboard.press('ArrowRight');await expect(page.locator('.snake-card')).toBeHidden();await headAt(page,6,8);
- await page.clock.runFor(T*6+5);
+ await page.clock.runFor(T*6+40);
  await expect(page.locator('#game-score strong')).toHaveText('10');await expect(page.locator('#game-level')).toContainText('Length 5');
  await page.clock.runFor(60);await page.keyboard.press('ArrowUp');await page.clock.runFor(T);
  await pauseGame(page);

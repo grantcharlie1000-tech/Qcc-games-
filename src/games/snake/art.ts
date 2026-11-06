@@ -1,5 +1,6 @@
 import {SIZE,type SnakeState} from './model';
 import {pendingEat,buildSpine,bulge,bulgePositions,blink,chompScale,deathFx,EAT_FX_MS,foodScale,mouth,taper,tongue,easeOutCubic,type Spine,type SnakeView} from './presentation';
+import {headPose} from './head';
 import {christmas} from '../../festive/festive';
 import {drawBauble,drawSantaHat,drawSnowflake,XMAS} from '../../festive/art';
 const FESTIVE_FOOD=[XMAS.red,XMAS.gold,XMAS.green,'#2f7fd1'] as const;
@@ -33,6 +34,7 @@ export function drawGarden(canvas:HTMLCanvasElement,state:SnakeState,view:SnakeV
  const fx=deathFx(view,state,reduced);
  g.setTransform(pixels/BOARD,0,0,pixels/BOARD,0,0);
  g.translate(fx.dx,fx.dy);
+ const world=g.getTransform();
  const circle=(x:number,y:number,r:number,color:string|CanvasGradient)=>{g.fillStyle=color;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();};
  const xmas=christmas();
  // Grass, extended past the edges so a shake never exposes blank pixels.
@@ -48,22 +50,21 @@ export function drawGarden(canvas:HTMLCanvasElement,state:SnakeState,view:SnakeV
  // Apple (or bauble) with a springy pop-in.
  // Until the drawn head reaches an apple the model already ate, keep showing that apple.
  const pending=pendingEat(view),apple=pending?.cell??state.food;
- if(apple){
-  const k=pending?1:foodScale(view,reduced),r=FOOD_R;
-  if(k>0){
-   g.save();g.translate(px(apple.x),px(apple.y));
-   g.fillStyle=xmas?'#27466a2e':'#25472425';g.beginPath();g.ellipse(0,r+2,r*Math.min(1,k),2,0,0,Math.PI*2);g.fill();
-   g.scale(k,k);
-   if(xmas)drawBauble(g,0,0,r,festiveFood(apple));
-   else{
-    g.strokeStyle='#70462e';g.lineWidth=1.8;g.lineCap='round';g.beginPath();g.moveTo(0,-r+1);g.lineTo(1,-r-4);g.stroke();
-    g.fillStyle='#36783e';g.beginPath();g.ellipse(4,-r-2,3,1.8,-.4,0,Math.PI*2);g.fill();
-    const red=g.createRadialGradient(-r*.3,-r*.4,0,0,0,r);red.addColorStop(0,'#ffb386');red.addColorStop(.4,'#ef6552');red.addColorStop(1,'#bd303c');
-    circle(0,0,r,red);circle(-r*.35,-r*.35,1.4,'#ffe4c8');
-   }
-   g.restore();
+ function drawApple(cell:{x:number;y:number},k:number,shadow=true){
+  const r=FOOD_R;
+  g.save();g.translate(px(cell.x),px(cell.y));
+  if(shadow){g.fillStyle=xmas?'#27466a2e':'#25472425';g.beginPath();g.ellipse(0,r+2,r*Math.min(1,k),2,0,0,Math.PI*2);g.fill();}
+  g.scale(k,k);
+  if(xmas)drawBauble(g,0,0,r,festiveFood(cell));
+  else{
+   g.strokeStyle='#70462e';g.lineWidth=1.8;g.lineCap='round';g.beginPath();g.moveTo(0,-r+1);g.lineTo(1,-r-4);g.stroke();
+   g.fillStyle='#36783e';g.beginPath();g.ellipse(4,-r-2,3,1.8,-.4,0,Math.PI*2);g.fill();
+   const red=g.createRadialGradient(-r*.3,-r*.4,0,0,0,r);red.addColorStop(0,'#ffb386');red.addColorStop(.4,'#ef6552');red.addColorStop(1,'#bd303c');
+   circle(0,0,r,red);circle(-r*.35,-r*.35,1.4,'#ffe4c8');
   }
+  g.restore();
  }
+ if(apple){const k=pending?1:foodScale(view,reduced);if(k>0)drawApple(apple,k);}
  // Body: shadow, outline, gradient fill, highlight; widths taper to the tail and bulge after a swallow.
  const bulges=bulgePositions(view,reduced),total=spine.length;
  const widths=spine.points.map(p=>TUBE*taper(p.s,total)*bulge(p.s,bulges,total));
@@ -88,23 +89,22 @@ export function drawGarden(canvas:HTMLCanvasElement,state:SnakeState,view:SnakeV
  if(lost&&!reduced)push=.08;
  g.save();g.translate(hx+Math.cos(view.angle)*push*CELL,hy+Math.sin(view.angle)*push*CELL);g.rotate(view.angle);g.scale(scale,scale);
  const R=HEAD_R;
- const head=g.createRadialGradient(-2,-3,1,0,0,R);head.addColorStop(0,xmas?'#8fdc9f':'#c8e98a');head.addColorStop(.65,xmas?'#3aa760':'#9bd367');head.addColorStop(1,xmas?XMAS.greenDeep:'#66a94e');
- // Seen from above, the snout hinges open into a D-shaped jaw wider than the head:
- // a coloured rim around a dark inside, with two small fangs at the hinge corners.
- const outline=xmas?XMAS.greenDeep:'#36733d',hinge=R*.3;
- g.save();
- if(open>.02){g.beginPath();g.rect(-R-4,-R-4,hinge+(R+4-hinge)*(1-open)+R+4,R*2+8);g.clip();}
- g.fillStyle=outline;g.beginPath();g.arc(0,0,R+1,0,Math.PI*2);g.fill();
- g.fillStyle=head;g.beginPath();g.arc(0,0,R,0,Math.PI*2);g.fill();
- g.restore();
- if(open>.02){
-  const rx=R*1.05*open,ry=R*(1+.3*open);
-  const half=(x:number,a:number,b:number,color:string|CanvasGradient)=>{g.fillStyle=color;g.beginPath();g.ellipse(x,0,a,b,0,-Math.PI/2,Math.PI/2);g.closePath();g.fill();};
-  half(hinge,rx+1.5,ry+1.5,outline);
-  half(hinge,rx,ry,head);
-  half(hinge,rx*.68,ry*.78,'#244734');
-  g.fillStyle='#fbffe8';const f=3.2*open,fy=ry*.78;
-  for(const s of [-1,1]){g.beginPath();g.moveTo(hinge,s*fy);g.lineTo(hinge+f*1.1,s*fy);g.lineTo(hinge+.3,s*(fy-f*1.3));g.closePath();g.fill();}
+ // The head shading widens with the jaw so the opened silhouette reads as one shape, not a disc on a slab.
+ const head=g.createRadialGradient(-2,-3,1,0,0,R*(1+.45*open));head.addColorStop(0,xmas?'#8fdc9f':'#c8e98a');head.addColorStop(.65,xmas?'#3aa760':'#9bd367');head.addColorStop(1,xmas?XMAS.greenDeep:'#66a94e');
+ const outline=xmas?XMAS.greenDeep:'#36733d',pose=headPose(open,R);
+ const jaw=pose.jaw?new Path2D(pose.jaw):null,skull=new Path2D();skull.arc(0,0,R,0,Math.PI*2);
+ // Outline pass for every part first, then fills, so head and jaw share one continuous rim.
+ g.strokeStyle=outline;g.lineWidth=2.4;g.lineJoin='round';
+ for(const part of jaw?[skull,jaw]:[skull]){g.fillStyle=outline;g.fill(part);g.stroke(part);}
+ g.fillStyle=head;if(jaw)g.fill(jaw);g.fill(skull);
+ if(pose.cavity){
+  const cavity=new Path2D(pose.cavity);
+  const inside=g.createRadialGradient(pose.cavityBox!.cx-pose.cavityBox!.rx*.4,0,0,pose.cavityBox!.cx,0,pose.cavityBox!.ry*1.2);
+  inside.addColorStop(0,'#1a3826');inside.addColorStop(1,'#2f5a3d');
+  g.fillStyle=inside;g.fill(cavity);
+  // An apple the head is reaching shows inside the open mouth.
+  if(pending){g.save();g.clip(cavity);g.setTransform(world);drawApple(pending.cell,1,false);g.restore();}
+  g.fillStyle='#fbffe8';g.fill(new Path2D(pose.fangs!));
  }
  if(flick>0){
   g.strokeStyle='#bd303c';g.lineWidth=1.6;g.lineCap='round';const L=R+.25*CELL*flick;
