@@ -15,27 +15,29 @@ import { RADIUS } from './config';
 const PANEL_IN = .318, TRIM = .018, TRIM_X = RADIUS - TRIM, PANEL_OUT = TRIM_X + .002;
 export const SLEIGH_RUNNER_X = .25;
 const RUNNER_X = SLEIGH_RUNNER_X, RUNNER = .02, INNER = 2 * PANEL_IN + .004;
-const BOTTOM = .12, BACK_TOP = .27, BACK = .035, SEAT = .08, HAT = 1.15;
+const BOTTOM = .12, BACK = .035, BACK_TOP = .33, SEAT = .1, HAT = 1.15;
 
 export const SLEIGH_COLORS = { body: 0xc8102e, gold: 0xe7b53c, velvet: 0x1d6b3c, floor: 0x5b1a12, hat: 0xd61f33, fur: 0xf8f6f0 } as const;
 
 /** (u, v) is (forward, up) from the bottom of the runners. */
 const at = (u: number, v: number, x: number) => new THREE.Vector3(x, v - RADIUS, -u);
 
-/** The side profile: a low seat rail between a scrolled bow and a curled backrest. Counter-clockwise. */
+/** The side profile, front to the right: a low scrolled dash at the front, a low seat rail, and a raised
+ * backrest at the rear whose top rolls back over the rear edge. Seen by the chase camera from behind, the
+ * backrest is nearest and the dash and the tall runner curls are furthest, so the sleigh plainly drives away
+ * from the camera. The backrest stays low enough that the camera sees the hat over it. Counter-clockwise. */
 function profile(): THREE.Shape {
   const s = new THREE.Shape();
-  s.moveTo(-.46, BOTTOM);
+  s.moveTo(-.44, BOTTOM);
   s.lineTo(.06, BOTTOM);
-  s.bezierCurveTo(.2, BOTTOM, .27, .22, .26, .34);
-  s.quadraticCurveTo(.255, .46, .16, .46);
-  s.quadraticCurveTo(.09, .46, .07, .36);
-  s.quadraticCurveTo(.05, .28, -.04, .28);
-  s.lineTo(-.24, .28);
-  // The backrest stays low so the chase camera, behind and above, sees the hat over it.
-  s.quadraticCurveTo(-.355, .28, -.395, .355);
-  s.quadraticCurveTo(-.425, .41, -.51, .4);
-  s.quadraticCurveTo(-.51, .25, -.46, BOTTOM);
+  s.bezierCurveTo(.17, BOTTOM, .25, .18, .25, .26);
+  s.quadraticCurveTo(.25, .335, .18, .335);
+  s.quadraticCurveTo(.12, .335, .11, .285);
+  s.quadraticCurveTo(.1, .25, .04, .25);
+  s.lineTo(-.26, .25);
+  s.quadraticCurveTo(-.38, .25, -.42, .35);
+  s.quadraticCurveTo(-.445, .435, -.53, .425);
+  s.quadraticCurveTo(-.5, .28, -.44, BOTTOM);
   return s;
 }
 
@@ -151,11 +153,11 @@ export function createSleigh(): Sleigh {
   for (const side of [-1, 1]) {
     body.push(across(shape, side > 0 ? PANEL_IN : -PANEL_OUT, side > 0 ? PANEL_OUT : -PANEL_IN, .006));
     gold.push(tube(rim.map(p => at(p.x, p.y, side * TRIM_X)), TRIM, 120));
-    // Scrollwork: a large curl on the bow and a small one under the backrest's curl.
-    gold.push(scroll(.15, .3, side * PANEL_OUT, .085, .018, 1.6), scroll(-.43, .3, side * PANEL_OUT, .05, .012, 1.4));
-    // Runner: a curled tail, a long straight glide and a tall curl in front of the bow, on three struts.
-    const runner: [number, number][] = [[-.47, .085], [-.5, .062], [-.497, .032], [-.46, RUNNER], [-.3, RUNNER], [0, RUNNER], [.14, RUNNER],
-      [.24, .034], [.31, .075], [.348, .14], [.352, .208], [.328, .255], [.29, .27], [.265, .245], [.278, .216], [.305, .222]];
+    // Scrollwork: a curl on the dash and one under the backrest.
+    gold.push(scroll(.16, .22, side * PANEL_OUT, .07, .015, 1.6), scroll(-.39, .2, side * PANEL_OUT, .05, .012, 1.4));
+    // Runner: a curled tail, a long straight glide and a tall curl rising in front of the dash, on three struts.
+    const runner: [number, number][] = [[-.45, .085], [-.48, .062], [-.477, .032], [-.44, RUNNER], [-.3, RUNNER], [0, RUNNER], [.14, RUNNER],
+      [.235, .034], [.3, .08], [.34, .16], [.35, .25], [.335, .33], [.3, .38], [.262, .382], [.244, .35], [.258, .318], [.288, .325]];
     gold.push(tube(runner.map(([u, v]) => at(u, v, side * RUNNER_X)), RUNNER, 96));
     for (const u of [-.38, -.12, .1]) {
       const strut = new THREE.CylinderGeometry(.014, .014, BOTTOM - RUNNER + .01, 10);
@@ -163,29 +165,29 @@ export function createSleigh(): Sleigh {
       gold.push(strut);
     }
   }
-  // Between the sides: the bow (front band), a low back panel and the floor. The camera follows from behind
-  // and only a little above, so the back stops just over the seat and the hat on the seat stays in view; the
-  // side panels' scrolls still curl up at the back corners.
+  // Between the sides: the dash (front band), the back panel and the floor. The side panels carry the tall
+  // backrest curls at the near corners; between them the back panel stops lower, so the chase camera, behind
+  // and only a little above, sees the whole hat over it.
   body.push(across(band(along(curves.slice(1, 4)), .035), -INNER / 2, INNER / 2));
   const backEdge = along(curves.slice(8, 9), 64), cut = backEdge.findIndex(p => p.y <= BACK_TOP);
   const a = backEdge[cut - 1], b = backEdge[cut], top = a.clone().lerp(b, (a.y - BACK_TOP) / (a.y - b.y));
   body.push(across(band([top, ...backEdge.slice(cut)], BACK), -INNER / 2, INNER / 2));
-  floor.push(across(new THREE.Shape([new THREE.Vector2(-.44, BOTTOM), new THREE.Vector2(.1, BOTTOM), new THREE.Vector2(.1, BOTTOM + .03), new THREE.Vector2(-.44, BOTTOM + .03)]), -INNER / 2, INNER / 2));
+  floor.push(across(new THREE.Shape([new THREE.Vector2(-.42, BOTTOM), new THREE.Vector2(.1, BOTTOM), new THREE.Vector2(.1, BOTTOM + .03), new THREE.Vector2(-.42, BOTTOM + .03)]), -INNER / 2, INNER / 2));
   // Gold on the back, where the camera sees the sleigh: a rounded rail capping the panel and a band below it.
   const rail = top.x + BACK / 2;
   gold.push(tube([at(rail, BACK_TOP, -INNER / 2), at(rail, BACK_TOP, 0), at(rail, BACK_TOP, INNER / 2)], BACK / 2 + .004, 8));
-  const band17 = backEdge.reduce((p, q) => Math.abs(q.y - .18) < Math.abs(p.y - .18) ? q : p);
-  gold.push(tube([at(band17.x - .002, .18, -INNER / 2), at(band17.x - .002, .18, 0), at(band17.x - .002, .18, INNER / 2)], .011, 8));
-  // Green velvet: a seat cushion and a low back cushion leaning on the back panel.
-  const seat = new RoundedBoxGeometry(INNER - .012, SEAT, .38, 3, .03);
-  seat.translate(0, BOTTOM + .03 + SEAT / 2 - RADIUS, .26);
-  const back = new RoundedBoxGeometry(INNER - .012, .1, .055, 3, .024);
-  back.rotateX(-.2);
-  back.translate(0, .262 - RADIUS, .425);
+  const low = backEdge.reduce((p, q) => Math.abs(q.y - .2) < Math.abs(p.y - .2) ? q : p);
+  gold.push(tube([at(low.x - .002, .2, -INNER / 2), at(low.x - .002, .2, 0), at(low.x - .002, .2, INNER / 2)], .011, 8));
+  // Green velvet: a seat cushion and a back cushion leaning on the backrest.
+  const seat = new RoundedBoxGeometry(INNER - .012, SEAT, .42, 3, .03);
+  seat.translate(0, BOTTOM + .03 + SEAT / 2 - RADIUS, .23);
+  const back = new RoundedBoxGeometry(INNER - .012, .1, .05, 3, .022);
+  back.rotateX(-.25);
+  back.translate(0, .29 - RADIUS, .41);
   velvet.push(seat, back);
   // The hat on the front of the seat, leaning back a little, its tip drooping toward the camera's right.
   const hatParts = hat();
-  const place = new THREE.Matrix4().compose(new THREE.Vector3(-.05, BOTTOM + .03 + SEAT - .006 - RADIUS, .17),
+  const place = new THREE.Matrix4().compose(new THREE.Vector3(-.05, BOTTOM + .03 + SEAT - .006 - RADIUS, .15),
     new THREE.Quaternion().setFromEuler(new THREE.Euler(.1, -.4, -.04)), new THREE.Vector3(HAT, HAT, HAT));
   for (const g of hatParts.red) { g.applyMatrix4(place); red.push(g); }
   for (const g of hatParts.fur) { g.applyMatrix4(place); fur.push(g); }
