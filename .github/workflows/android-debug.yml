@@ -33,7 +33,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      # Ubuntu GitHub-hosted runners already include Android SDK command-line tools.
+      # setup-android@v3 tries to install retired `sdkmanager tools` and fails.
       - name: Install project dependencies
         run: npm ci
       - name: Build and verify web bundle
