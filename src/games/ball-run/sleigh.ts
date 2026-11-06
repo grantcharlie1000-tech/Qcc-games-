@@ -13,7 +13,8 @@ import { RADIUS } from './config';
 
 /** Side panels: inner and outer face (|x|); the gold trim tube is centred on the outer face. */
 const PANEL_IN = .318, TRIM = .018, TRIM_X = RADIUS - TRIM, PANEL_OUT = TRIM_X + .002;
-const RUNNER_X = .25, RUNNER = .02, INNER = 2 * PANEL_IN + .004;
+export const SLEIGH_RUNNER_X = .25;
+const RUNNER_X = SLEIGH_RUNNER_X, RUNNER = .02, INNER = 2 * PANEL_IN + .004;
 const BOTTOM = .12, BACK_TOP = .27, BACK = .035, SEAT = .08, HAT = 1.15;
 
 export const SLEIGH_COLORS = { body: 0xc8102e, gold: 0xe7b53c, velvet: 0x1d6b3c, floor: 0x5b1a12, hat: 0xd61f33, fur: 0xf8f6f0 } as const;

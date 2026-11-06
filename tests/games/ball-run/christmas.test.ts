@@ -183,8 +183,10 @@ describe('Ball Run Christmas scene', () => {
       expect(sleigh().rotation.x).toBe(held.x);
       expect(sleigh().rotation.z).toBe(held.z);
     }
-    const spheres = captured.scene!.children.filter(c => c instanceof THREE.Mesh && c.geometry instanceof THREE.SphereGeometry && !(c instanceof THREE.InstancedMesh));
+    // No ball anywhere: not the ball itself, and the Speed Up trail draws diamond glints, not spheres.
+    const spheres = captured.scene!.children.filter(c => c instanceof THREE.Mesh && c.geometry instanceof THREE.SphereGeometry);
     expect(spheres).toHaveLength(0);
+    expect(captured.scene!.children.some(c => c instanceof THREE.InstancedMesh && c.geometry instanceof THREE.OctahedronGeometry)).toBe(true);
     scene.dispose();
   });
 });
@@ -200,6 +202,7 @@ describe('Ball Run with the theme off', () => {
     expect(captured.scene!.getObjectByName('sleigh')).toBeUndefined();
     const balls = captured.scene!.children.filter(c => c instanceof THREE.Mesh && !(c instanceof THREE.InstancedMesh) && c.geometry instanceof THREE.SphereGeometry);
     expect(balls).toHaveLength(1);
+    expect(captured.scene!.children.some(c => c instanceof THREE.InstancedMesh && c.geometry instanceof THREE.SphereGeometry)).toBe(true);
     const road = captured.scene!.children[0];
     // tiles, grid, blocks, cyan: the original four pools.
     expect(road.children).toHaveLength(4);

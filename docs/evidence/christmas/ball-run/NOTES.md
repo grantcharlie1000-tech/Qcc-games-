@@ -23,13 +23,18 @@ neon corridor. Under the Christmas theme it adds just two things:
     swings its corners wider or further forward than the ball. Changes ease in over about a metre of travel;
     a new run, restore or teleport snaps straight to the road. About 15,000 triangles in six draw calls.
   - The back panel stops just above the seat, so the chase camera (behind and only a little above) sees the hat.
-  - The block crash bursts into the sleigh's red, gold and white instead of magenta and cyan.
+  - The block crash bursts into the sleigh's red, gold and white instead of the ball's magenta and cyan, so it is
+    the sleigh that breaks apart.
+  - The Speed Up trail, a line of shrinking balls behind the ball, would read as left-over balls behind a
+    sleigh. Under the theme the same pool draws small cyan diamond glints instead, one stream behind each runner
+    at runner height, twinkling as they recede. They keep the boost's cyan and the trail's timing and fade.
+  - The ball's canvas texture and material are not built under the theme.
   - Only the sleigh is lit in this scene, so under the theme the pink hemisphere light becomes neutral and a soft
     fill from behind lights the sleigh's back. Nothing else changes.
 
 Evidence: `sleigh-chase.png` (mobile chase view), `sleigh-width-top.png` (straight down, with the ball's
 outline in cyan: the sleigh's sides land exactly on it), `sleigh-three-quarter.png`, `sleigh-side.png`,
-`snow-closeup.png`, `crash-burst.png`. `after-mobile.png` and `after-desktop.png` now show this revision.
+`snow-closeup.png`, `crash-burst.png`, `boost-glints.png`. `after-mobile.png` and `after-desktop.png` now show this revision.
 The `detail-*` images belong to the earlier skin.
 
 Tests: `tests/games/ball-run/christmas.test.ts` checks the sleigh's exact width, centring, ground contact, forward

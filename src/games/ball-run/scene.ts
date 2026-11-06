@@ -8,7 +8,7 @@ import {registerGlassFrameSource,notifyGlassFrame} from '../../ui/glass-frame-so
 import { rollAngle } from './roll';
 import { RetainedInstances } from './instances';
 import { christmas } from '../../festive/festive';
-import { createSleigh, SLEIGH_COLORS } from './sleigh';
+import { createSleigh, SLEIGH_COLORS, SLEIGH_RUNNER_X } from './sleigh';
 import { SNOW_DEPTH, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry } from './snow';
 import { CONFIG, DYING_DURATION, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
@@ -225,22 +225,26 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   materials.push(cityLines.material as THREE.Material);
   city.add(cityLines);
 
-  // Tinted bands make rotation visible while retaining the original Phong colour and light.
-  const surface = document.createElement('canvas');
-  surface.width = 128; surface.height = 64;
-  const ink = surface.getContext('2d')!;
-  ink.fillStyle = '#ffffff'; ink.fillRect(0, 0, 128, 64);
-  ink.fillStyle = '#9a5aa0'; ink.fillRect(0, 26, 128, 12);
-  ink.fillStyle = '#7c4684';
-  for (const x of [0, 32, 64, 96, 128]) ink.fillRect(x - 3.5, 0, 7, 64);
-  const ballTexture = new THREE.CanvasTexture(surface);
-  ballTexture.colorSpace = THREE.SRGBColorSpace;
-  const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, map: ballTexture, specular: 0xc070c0, shininess: 36 });
-  materials.push(ballMaterial);
-  // Christmas: the sleigh stands where the ball's centre is and is exactly one ball wide; it steers and
-  // follows the road's slope and bank instead of rolling.
+  // Christmas: the sleigh stands where the ball's centre is and is exactly one ball wide; it follows the
+  // road's slope and bank instead of rolling. The ball's texture and material are then never built.
   const sleigh = festive ? createSleigh() : undefined;
-  const ball: THREE.Object3D = sleigh ? sleigh.group : new THREE.Mesh(sphere, ballMaterial);
+  let ballTexture: THREE.CanvasTexture | undefined, ball: THREE.Object3D;
+  if (sleigh) ball = sleigh.group;
+  else {
+    // Tinted bands make rotation visible while retaining the original Phong colour and light.
+    const surface = document.createElement('canvas');
+    surface.width = 128; surface.height = 64;
+    const ink = surface.getContext('2d')!;
+    ink.fillStyle = '#ffffff'; ink.fillRect(0, 0, 128, 64);
+    ink.fillStyle = '#9a5aa0'; ink.fillRect(0, 26, 128, 12);
+    ink.fillStyle = '#7c4684';
+    for (const x of [0, 32, 64, 96, 128]) ink.fillRect(x - 3.5, 0, 7, 64);
+    ballTexture = new THREE.CanvasTexture(surface);
+    ballTexture.colorSpace = THREE.SRGBColorSpace;
+    const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, map: ballTexture, specular: 0xc070c0, shininess: 36 });
+    materials.push(ballMaterial);
+    ball = new THREE.Mesh(sphere, ballMaterial);
+  }
   scene.add(ball);
   // Overhead light gives the soft upper highlight; a dark ground colour gives the deep-purple underside.
   // Christmas: a neutral sky so the sleigh's red, gold and white fur keep their colour (the ball's pink sky would tint them).
@@ -262,7 +266,11 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // The cyan trail ties acceleration to the gate, distinct from the magenta ball. Instances
   // have no alpha of their own, so older spheres darken toward the road colour and shrink.
   const trailMaterial = basic({ color: PALETTE.white, transparent: true, depthWrite: false });
-  const trail = pool(sphere, trailMaterial, TRAIL, scene, true);
+  // Christmas: a trail of balls behind the sleigh would read as left-over balls, so the same pool draws
+  // cyan glints (small diamonds, still the boost's colour) that stream from the runners like sleigh dust.
+  let sparkle: THREE.BufferGeometry | undefined;
+  if (festive) { sparkle = new THREE.OctahedronGeometry(RADIUS * .55, 0); geometries.push(sparkle); }
+  const trail = pool(sparkle ?? sphere, trailMaterial, TRAIL, scene, true);
   const burstMaterial = basic({ color: PALETTE.white, transparent: true });
   const burst = pool(box, burstMaterial, BURST, scene, true);
   const burstColors = festive
@@ -579,11 +587,23 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       const age = (z - TRAIL_NEAR) / (far - TRAIL_NEAR);
       // Shrinks on screen too: samples nearer the camera are scaled down by their distance.
       const size = (.42 - .32 * age) * Math.min(1, 4 * (1 - age)) * clamp(Math.hypot(CAMERA_BACK - z, up) / ballRange, 0, 1);
+      tint.copy(trailColor).lerp(trailFaded, .6 * age);
+      scale.setScalar(size);
+      if (sparkle) {
+        // One glint behind each runner, at runner height, turned by its distance along the course so the
+        // pair twinkles as it recedes. At most 6 samples show, so the 12 glints fit the 18-instance pool.
+        for (let side = -1; side <= 1 && shown < TRAIL; side += 2) {
+          position.set(history[slot * 3 + 1] + side * SLEIGH_RUNNER_X, history[slot * 3 + 2] + lift - RADIUS * .72, z);
+          rotation.set(.6, history[slot * 3] * 2.4 + side, 0, 'YXZ');
+          place(trail, shown);
+          trail.setColorAt(shown++, tint);
+        }
+        continue;
+      }
       position.set(history[slot * 3 + 1], history[slot * 3 + 2] + lift, z);
       rotation.set(0, 0, 0, 'YXZ');
-      scale.setScalar(size);
       place(trail, shown);
-      trail.setColorAt(shown++, tint.copy(trailColor).lerp(trailFaded, .6 * age));
+      trail.setColorAt(shown++, tint);
     }
     commit(trail, shown);
   }
@@ -785,7 +805,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     for (const mesh of pools) mesh.dispose();
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
-    ballTexture.dispose();
+    ballTexture?.dispose();
     sleigh?.dispose();
     renderer.dispose();
     renderer.forceContextLoss();
