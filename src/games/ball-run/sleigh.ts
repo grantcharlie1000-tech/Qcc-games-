@@ -162,7 +162,8 @@ export function createSleigh(): Sleigh {
   // trim end is left open; the shared start and end point is dropped so the loop closes smoothly.
   const rim = along(curves).slice(0, -1);
   for (const side of [-1, 1]) {
-    body.push(across(shape, side > 0 ? PANEL_IN : -PANEL_OUT, side > 0 ? PANEL_OUT : -PANEL_IN, .006));
+    // No bevel: the gold rim covers the panel's whole outline, and a bevel showed as a pale seam beside it.
+    body.push(across(shape, side > 0 ? PANEL_IN : -PANEL_OUT, side > 0 ? PANEL_OUT : -PANEL_IN));
     gold.push(tube(rim.map(p => at(p.x, p.y, side * TRIM_X)), TRIM, 160, true));
     // Scrollwork: a curl on the dash and one under the backrest.
     gold.push(scroll(.16, .22, side * PANEL_OUT, .07, .015, 1.6), scroll(-.39, .2, side * PANEL_OUT, .05, .012, 1.4));

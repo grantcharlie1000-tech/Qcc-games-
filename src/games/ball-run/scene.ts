@@ -9,7 +9,7 @@ import { rollAngle } from './roll';
 import { RetainedInstances } from './instances';
 import { christmas } from '../../festive/festive';
 import { createSleigh, SLEIGH_COLORS, SLEIGH_RUNNER_X } from './sleigh';
-import { SNOW_DEPTH, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry } from './snow';
+import { SNOW_DEPTH, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from './snow';
 import { CONFIG, DYING_DURATION, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
@@ -154,7 +154,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   }
   let snow: THREE.InstancedMesh | undefined, snowCache: RetainedInstances | undefined;
   if (festive) {
-    const cap = snowCapGeometry(), snowMaterial = new THREE.MeshBasicMaterial({ color: PALETTE.white, vertexColors: true });
+    const cap = snowCapGeometry(), snowMaterial = snowCapMaterial();
     geometries.push(cap); materials.push(snowMaterial);
     snow = pool(cap, snowMaterial, BLOCKS, road);
     snowCache = new RetainedInstances(snow);

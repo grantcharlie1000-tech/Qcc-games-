@@ -9,7 +9,9 @@ neon corridor. Under the Christmas theme it adds just two things:
 - **Snow on the obstacles** (`src/games/ball-run/snow.ts`): a light covering, 7.5 cm at the crest, on top of every
   obstacle (static blocks and sliders, not gate walls). One instanced pool draws all the caps, so the theme adds
   one draw call. Each cap is a soft, slightly lumpy mound that overhangs the block by 3 cm, with a rounded lip
-  that hangs over the edge. Like the blocks, it is unlit: white-to-lavender shading is baked into vertex colours.
+  that hangs over the edge. The rounded edge band is 15 cm wide on every obstacle, from a 0.3 m post to a 14 m
+  wall: each vertex has a unit anchor plus an inset in metres, and a small vertex-shader change divides that
+  inset by the instance's scale. The baked shading is computed in metres, so it is right on every size. Like the blocks, it is unlit: white-to-lavender shading is baked into vertex colours.
   Caps follow banked blocks and moving sliders, and they share the block cache's begin, end and reset path.
   Collision is unchanged.
 - **Santa's sleigh in place of the ball** (`src/games/ball-run/sleigh.ts`): a red sleigh with a scrolled dash and backrest,
@@ -20,7 +22,7 @@ neon corridor. Under the Christmas theme it adds just two things:
   inside a block. Collision still uses the ball's sphere. It is two merged meshes coloured per vertex: glossy (lacquered red body and
   gold) and matte (velvet, floor, hat and fur). The gold rim runs in one closed loop round each whole side
   panel. Its corners and the runner and hat bends are all rounded wider than the tube is thick, so no trim
-  creases or ends open.
+  creases or ends open. The side panels have no bevel, because a bevel beside the trim showed as a pale seam.
   - It does not roll. On the road it sits on the slope and bank (the same angles as the road tiles). In the air
     or off the road's edge it holds its attitude. It never turns about y, like the blocks, so a dodge never
     swings its corners wider or further forward than the ball. Changes ease in over about a metre of travel;
@@ -41,7 +43,7 @@ neon corridor. Under the Christmas theme it adds just two things:
 
 Evidence: `sleigh-chase.png` (mobile chase view), `sleigh-width-top.png` (straight down, with the ball's
 outline in cyan: the sleigh's sides land exactly on it), `sleigh-three-quarter.png`, `sleigh-side.png`,
-`snow-closeup.png`, `crash-burst.png`, `boost-glints.png`. `after-mobile.png` and `after-desktop.png` now show this revision.
+`snow-closeup.png`, `snow-wall-and-block.png`, `crash-burst.png`, `boost-glints.png`. `after-mobile.png` and `after-desktop.png` now show this revision.
 The `detail-*` images belong to the earlier skin.
 
 Tests: `tests/games/ball-run/christmas.test.ts` checks the sleigh's exact width, centring, ground contact, forward

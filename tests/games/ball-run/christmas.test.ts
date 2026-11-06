@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { createScene } from '../../../src/games/ball-run/scene';
 import { createSleigh, SLEIGH_COLORS } from '../../../src/games/ball-run/sleigh';
-import { SNOW_DEPTH, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry } from '../../../src/games/ball-run/snow';
+import { SNOW_DEPTH, SNOW_EDGE, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry } from '../../../src/games/ball-run/snow';
 import { getCourse } from '../../../src/games/ball-run/course';
 import { createRun } from '../../../src/games/ball-run/model';
 import { RADIUS, SLOPE, type Obstacle, type ObstaclePose } from '../../../src/games/ball-run/config';
@@ -107,6 +107,15 @@ describe('Ball Run Christmas snow cap', () => {
     const pos = g.getAttribute('position');
     for (let i = 0; i < pos.count; i++) if (pos.getY(i) < 0) expect(Math.max(Math.abs(pos.getX(i)), Math.abs(pos.getZ(i)))).toBeCloseTo(.5, 6);
     expect(g.getAttribute('normal')).toBeUndefined();
+    // The rounded edge is the same width in metres on every block: drawn as the shader does (anchor × size +
+    // inset), every vertex below the crest lies within SNOW_EDGE of the cap's edge, on a 0.36 m post and a 14 m wall.
+    const inset = g.getAttribute('inset');
+    for (const [w, d] of [[.36, .66], [1.2, 1.2], [4.05, 14.05]]) for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i) * w + inset.getX(i), z = pos.getZ(i) * d + inset.getY(i);
+      expect(Math.abs(x)).toBeLessThanOrEqual(w / 2 + 1e-6); expect(Math.abs(z)).toBeLessThanOrEqual(d / 2 + 1e-6);
+      const fromEdge = Math.min(w / 2 - Math.abs(x), d / 2 - Math.abs(z));
+      if (pos.getY(i) < .99 - .11) expect(fromEdge, `${w}x${d}`).toBeLessThanOrEqual(SNOW_EDGE + 1e-6);
+    }
     // A few centimetres: a light covering, not a drift.
     expect(SNOW_DEPTH).toBeLessThanOrEqual(.08);
     g.dispose();
@@ -129,6 +138,7 @@ describe('Ball Run Christmas scene', () => {
         scene.render(view);
         const road = captured.scene!.children[0], snow = road.children[3] as THREE.InstancedMesh;
         expect(snow.material).toBeInstanceOf(THREE.MeshBasicMaterial);
+        expect(snow.geometry.getAttribute('inset')).toBeDefined();
         const caps: { position: THREE.Vector3; up: THREE.Vector3; size: THREE.Vector3 }[] = [];
         for (let i = 0; i < snow.count; i++) {
           snow.getMatrixAt(i, matrix);
