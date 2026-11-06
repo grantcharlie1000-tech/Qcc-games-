@@ -25,10 +25,27 @@ afterEach(()=>{
 });
 
 describe('Santa clock synchronization',()=>{
-  it('starts one request when a ticker subscribes and immediately maintains the clock',async()=>{
+  it('recovers the departure and server clock when the first startup request fails transiently',async()=>{
+    fetchTime.mockImplementationOnce(()=>Promise.reject(new Error('temporary network failure')))
+      .mockImplementationOnce(()=>Promise.resolve(new Response(JSON.stringify({
+        schema:1,season:2026,departureUtc:'2026-12-24T11:00:00Z',status:'estimated',
+      }),{status:200,headers:{Date:new Date(start).toUTCString(),'Content-Type':'application/json'}})));
+    const time=await import('../../src/santa/source');
     const {startTicker}=await import('../../src/santa/ticker');
     const stop=startTicker(()=>{});
-    expect(fetchTime).toHaveBeenCalledTimes(1);
+    try{
+      for(let i=0;i<20;i++)await Promise.resolve();
+      expect(fetchTime).toHaveBeenCalledTimes(2);
+      expect(time.current().fromFile).toBe(true);
+      expect(time.departure()).toBe(Date.UTC(2026,11,24,11));
+      expect(time.clockInfo().source).toBe('server');
+    }finally{stop();}
+  });
+
+  it('starts the initial and maintenance requests when a ticker subscribes',async()=>{
+    const {startTicker}=await import('../../src/santa/ticker');
+    const stop=startTicker(()=>{});
+    expect(fetchTime).toHaveBeenCalledTimes(2);
     stop();
   });
 
@@ -38,7 +55,7 @@ describe('Santa clock synchronization',()=>{
     time.maintain();
     vi.setSystemTime(start+5000);
     time.maintain();
-    expect(fetchTime).toHaveBeenCalledTimes(2);
+    expect(fetchTime).toHaveBeenCalledTimes(3);
     stop();
   });
 
@@ -51,9 +68,9 @@ describe('Santa clock synchronization',()=>{
     fail(new Error('offline'));
     await time.ready();
     mono=29*60*1000;vi.setSystemTime(start+mono);time.maintain();
-    expect(fetchTime).toHaveBeenCalledTimes(1);
-    mono=30*60*1000+1;vi.setSystemTime(start+mono);time.maintain();
     expect(fetchTime).toHaveBeenCalledTimes(2);
+    mono=30*60*1000+1;vi.setSystemTime(start+mono);time.maintain();
+    expect(fetchTime).toHaveBeenCalledTimes(3);
     stop();
   });
 });

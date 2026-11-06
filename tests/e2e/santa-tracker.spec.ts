@@ -1,6 +1,6 @@
 import {test,expect} from '../fixtures';
 
-test('the homepage starts one countdown request while its first response is pending',async({page})=>{
+test('the homepage starts countdown requests while its first response is pending',async({page})=>{
   await page.clock.setSystemTime(new Date('2026-10-19T09:00:00Z'));
   await page.addInitScript(()=>{
     const original=window.fetch.bind(window);
@@ -17,7 +17,7 @@ test('the homepage starts one countdown request while its first response is pend
   try{
     await page.goto('/#/collection');
     await expect(page.locator('.santa-banner')).toBeVisible();
-    expect(await page.evaluate(()=>(window as unknown as {santaFetches:number}).santaFetches)).toBe(1);
+    expect(await page.evaluate(()=>(window as unknown as {santaFetches:number}).santaFetches)).toBe(2);
   }finally{
     const response=page.waitForResponse('**/santa/departure.json');
     release();

@@ -15,7 +15,6 @@ let config:DepartureConfig=FALLBACK_CONFIG;
 let configFromFile=false;
 const clock=new TrustedClock();
 let loading:Promise<void>|undefined;
-let initialPending=false;
 let lastSync=-Infinity,hiddenAt=0;
 const listeners=new Set<()=>void>();
 
@@ -81,10 +80,7 @@ async function sync():Promise<void>{
 
 /** Loads once; later calls return the same promise. */
 export function ready():Promise<void>{
-  if(!loading){
-    initialPending=true;
-    loading=sync().finally(()=>{initialPending=false;});
-  }
+  loading??=sync();
   return loading;
 }
 
@@ -98,10 +94,7 @@ export function subscribe(listener:()=>void):()=>void{
 /** Called by tickers each tick: catches sleep and device clock changes, and refreshes the server anchor now and then. */
 export function maintain():void{
   const jumped=clock.check();
-  if(jumped||performance.now()-lastSync>RESYNC_MS){
-    lastSync=performance.now();
-    if(jumped||!initialPending)void sync();
-  }
+  if(jumped||performance.now()-lastSync>RESYNC_MS){lastSync=performance.now();void sync();}
 }
 
 if(typeof document!=='undefined'){
