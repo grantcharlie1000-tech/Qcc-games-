@@ -1,7 +1,8 @@
 import './theme.css';
 import './festive/christmas.css';
 import {ChristmasWelcome} from './festive/welcome';
-import {applyFestiveTheme,setFestiveTheme,storedFestiveTheme} from './festive/festive';
+import {applyFestiveTheme,christmas,setFestiveTheme,storedFestiveTheme} from './festive/festive';
+import {mountSantaBanner} from './santa/banner';
 import './movies/style.css';
 import type {MoviesView} from './movies/view';
 import type {MovieStorage} from './movies/storage';
@@ -82,8 +83,8 @@ let focusLabelBeforeStudy:string|null=null;
 let accountRoutePending=false;
 let libraryScroll={x:0,y:0};
 let movies:MoviesView|undefined;
-// QCC Social or QCC Chat: one lazy view at a time, replaced when the other app opens.
-let appView:AppView|undefined,appKind:'social'|'chat'|undefined;
+// QCC Social, QCC Chat or the Santa Tracker: one lazy view at a time, replaced when another opens.
+let appView:AppView|undefined,appKind:'social'|'chat'|'santa'|undefined;
 // The saved Movies data is one copy for the page, so it outlives each MoviesView and keeps unsaved changes across a visit to the games.
 let movieStorage:MovieStorage|undefined;
 let movieScroll={x:0,y:0};
@@ -133,7 +134,7 @@ function setChromeInert(value:boolean):void{
 }
 function leave(saveProgress=true){
   movies?.dispose();movies=undefined;
-  appView?.dispose();appView=undefined;appKind=undefined;document.body.classList.remove('social-active','chat-active');
+  appView?.dispose();appView=undefined;appKind=undefined;document.body.classList.remove('social-active','chat-active','santa-active');
   setChromeInert(false);
   tabbar.reset();
   detachFullscreen?.();detachFullscreen=undefined;
@@ -157,6 +158,8 @@ function library(){
   const filtered=onlyFavourites||search!=='';
   // The notice text is user input, so it is filled in with textContent below, never through this template.
   content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
+  // The compact Santa countdown belongs to the seasonal theme and the unfiltered library.
+  if(!filtered&&christmas())mountSantaBanner(content.querySelector('.game-grid')!);
   if(filtered){
     content.querySelector<HTMLElement>('.library-filter-text')!.textContent=filterNotice();
     content.querySelector('[data-action="show-all"]')!.addEventListener('click',showAllGames);
@@ -267,7 +270,7 @@ async function route(){
     }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Movies &amp; TV could not load.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
     return;
   }
-  const appRoute=/^#\/(social|chat)(\/|$)/.exec(location.hash)?.[1] as 'social'|'chat'|undefined;
+  const appRoute=/^#\/(social|chat|santa)(\/|\?|$)/.exec(location.hash)?.[1] as 'social'|'chat'|'santa'|undefined;
   if(appRoute){
     if(appView&&appKind===appRoute){appView.navigate(location.hash);return;}
     if(!activeId&&!movies&&!appView)movieScroll={x:scrollX,y:scrollY};
@@ -277,16 +280,15 @@ async function route(){
     if(launcher.sheet.open)launcher.sheet.close();
     const token=++generation;leave();
     setChromeInert(true);
-    const name=appRoute==='social'?'Social':'Chat';
+    const name=appRoute==='social'?'Social':appRoute==='chat'?'Chat':'the Santa Tracker';
     content.innerHTML=`<div class="loading"><p>Opening ${name}…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;
     try{
-      const ViewClass=appRoute==='social'?(await import('./social/view')).SocialView:(await import('./chat/view')).ChatView;
-      if(token!==generation)return;
-      const view=new ViewClass(content,appDeps());
+      const view:AppView=appRoute==='santa'?new (await import('./santa/view')).SantaView(content,{reducedMotion:()=>preferences.reducedMotion})
+        :new (appRoute==='social'?(await import('./social/view')).SocialView:(await import('./chat/view')).ChatView)(content,appDeps());
       if(token!==generation){view.dispose();return;}
       appView=view;appKind=appRoute;document.body.classList.add(`${appRoute}-active`);
       view.navigate(location.hash);
-    }catch{if(token===generation)content.innerHTML=`<div class="game-error"><p>${name} couldn’t open. Check your connection and try again.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;}
+    }catch{if(token===generation)content.innerHTML=`<div class="game-error"><p>${name[0].toUpperCase()+name.slice(1)} couldn’t open. Check your connection and try again.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;}
     return;
   }
   const wasInMovies=!!movies,wasInApp=!!appView;
@@ -457,7 +459,7 @@ function dialogClosed(){
   const resume=pausedForDialog;pausedForDialog=false;
   if(resume&&!study.isOpen&&!document.hidden)setPaused(false);
 }
-menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!appView&&!/^#\/(movies|social|chat)(\/|$)/.test(location.hash)&&!study.isOpen)library();});
+menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!appView&&!/^#\/(movies|social|chat|santa)(\/|\?|$)/.test(location.hash)&&!study.isOpen)library();});
 rulesDialog.addEventListener('close',dialogClosed);
 leaderboards.root.addEventListener('close',dialogClosed);
 document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
@@ -522,7 +524,7 @@ function finishEntry(){
 }
 function updateAccountMenu(){
  const session=accounts.session();
- document.querySelector('#account-summary')!.textContent=session?`Signed in as ${session.username}`:appKind?'Not signed in':'Playing as guest';
+ document.querySelector('#account-summary')!.textContent=session?`Signed in as ${session.username}`:appKind&&appKind!=='santa'?'Not signed in':'Playing as guest';
  document.querySelector<HTMLElement>('#open-accounts')!.hidden=!!session;
  document.querySelector<HTMLElement>('#logout-account')!.hidden=!session;
  document.querySelector<HTMLElement>('#switch-account')!.hidden=!session;
