@@ -72,9 +72,24 @@ for(const width of [320,390,1366]){
     expect(b.width).toBe(b.height);expect(b.width).toBeGreaterThanOrEqual(48);
     await bar.getByRole('button',{name:'Study',exact:true}).focus();
     await page.keyboard.press('Tab');await expect(menu).toBeFocused();
-    await page.keyboard.press('Tab');await expect(page.locator('.game-card').first()).toBeFocused();
+    await page.keyboard.press('Tab');
+    const santa=page.locator('.santa-banner');
+    if(await santa.isVisible()){
+      await expect(santa).toBeFocused();
+      await page.keyboard.press('Tab');
+    }
+    await expect(page.locator('.game-card').first()).toBeFocused();
   });
 }
+
+test('home keyboard navigation reaches games when the seasonal banner is absent',async({page,context})=>{
+  await originalTheme(context);
+  await page.goto('/');
+  await expect(page.locator('.santa-banner')).toHaveCount(0);
+  await page.getByRole('button',{name:'Open menu',exact:true}).focus();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('.game-card').first()).toBeFocused();
+});
 
 test('the companion Menu hides and restores with the home island and keyboard focus',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');
