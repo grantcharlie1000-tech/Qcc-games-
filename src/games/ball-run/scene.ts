@@ -592,8 +592,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       if (sparkle) {
         // One glint behind each runner, at runner height, turned by its distance along the course so the
         // pair twinkles as it recedes. At most 6 samples show, so the 12 glints fit the 18-instance pool.
+        // On a banked road each runner sits higher or lower than the centre by the bank, so its glints do too.
+        const tilt = Math.tan(track(history[slot * 3], S).bank);
         for (let side = -1; side <= 1 && shown < TRAIL; side += 2) {
-          position.set(history[slot * 3 + 1] + side * SLEIGH_RUNNER_X, history[slot * 3 + 2] + lift - RADIUS * .72, z);
+          position.set(history[slot * 3 + 1] + side * SLEIGH_RUNNER_X, history[slot * 3 + 2] + lift - RADIUS * .72 - side * SLEIGH_RUNNER_X * tilt, z);
           rotation.set(.6, history[slot * 3] * 2.4 + side, 0, 'YXZ');
           place(trail, shown);
           trail.setColorAt(shown++, tint);

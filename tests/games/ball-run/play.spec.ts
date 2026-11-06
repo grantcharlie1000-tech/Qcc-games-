@@ -583,7 +583,10 @@ test('repeated restarts release held input and reuse the same GPU resources',asy
   }
   await page.keyboard.down('ArrowRight');await page.getByRole('button',{name:'Play',exact:true}).click();await waitDistance(page,2);await page.keyboard.up('ArrowRight');
   await expect(root).toHaveAttribute('data-x','0.000');await expect(root).toHaveAttribute('data-geometries',geometries!);
-  expect(Number(await root.getAttribute('data-draw-calls'))).toBeLessThanOrEqual(11);expect(Number(geometries)).toBeLessThanOrEqual(4);
+  // The Christmas theme (the default) stays within the same draw-call budget. Its geometry is the snow cap, the boost glint
+  // and the sleigh's two merged meshes in place of the ball's sphere: box, city lines and those four.
+  const festive=await page.evaluate(()=>document.documentElement.dataset.festive==='christmas');
+  expect(Number(await root.getAttribute('data-draw-calls'))).toBeLessThanOrEqual(11);expect(Number(geometries)).toBeLessThanOrEqual(festive?6:4);
   await evidence(page,`procedural-restart.png`);
 });
 

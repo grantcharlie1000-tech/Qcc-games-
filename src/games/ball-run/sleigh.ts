@@ -5,7 +5,7 @@
  * further forward than the ball's front, so a crash never shows the sleigh inside a block.
  *
  * Local frame: the origin is the ball's centre, +y is up and -z is forward. Parts that share a
- * material are merged, so the whole sleigh is six draw calls. */
+ * finish are merged and coloured per vertex, so the whole sleigh is two draw calls. */
 import * as THREE from 'three';
 import { mergeGeometries, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
@@ -28,7 +28,7 @@ const at = (u: number, v: number, x: number) => new THREE.Vector3(x, v - RADIUS,
  * from the camera. The backrest stays low enough that the camera sees the hat over it. Counter-clockwise. */
 function profile(): THREE.Shape {
   const s = new THREE.Shape();
-  s.moveTo(-.44, BOTTOM);
+  s.moveTo(-.41, BOTTOM);
   s.lineTo(.06, BOTTOM);
   s.bezierCurveTo(.17, BOTTOM, .25, .18, .25, .26);
   s.quadraticCurveTo(.25, .335, .18, .335);
@@ -36,8 +36,12 @@ function profile(): THREE.Shape {
   s.quadraticCurveTo(.1, .25, .04, .25);
   s.lineTo(-.26, .25);
   s.quadraticCurveTo(-.38, .25, -.42, .35);
-  s.quadraticCurveTo(-.445, .435, -.53, .425);
-  s.quadraticCurveTo(-.5, .28, -.44, BOTTOM);
+  s.quadraticCurveTo(-.445, .435, -.51, .43);
+  // Rounded, not sharp, at the backrest's rolled tip and the bottom rear corner, so the gold trim that runs
+  // round the whole panel bends wider than it is thick and never creases.
+  s.quadraticCurveTo(-.56, .43, -.545, .38);
+  s.quadraticCurveTo(-.505, .27, -.447, .155);
+  s.quadraticCurveTo(-.432, BOTTOM, -.41, BOTTOM);
   return s;
 }
 
@@ -118,8 +122,9 @@ function scroll(cu: number, cv: number, x: number, r0: number, r1: number, turns
 /** Santa's hat: a fur brim, a red cone that droops over to one side, and a pompom. Its base is at the origin. */
 function hat(): { red: THREE.BufferGeometry[]; fur: THREE.BufferGeometry[] } {
   const spine = new THREE.CubicBezierCurve3(
-    new THREE.Vector3(0, .01, 0), new THREE.Vector3(0, .27, 0), new THREE.Vector3(.1, .33, 0), new THREE.Vector3(.17, .13, 0));
-  const cone = taperedTube(spine, 36, 20, t => .092 * (1 - t) ** 1.15 + .011);
+    new THREE.Vector3(0, .01, 0), new THREE.Vector3(.01, .26, 0), new THREE.Vector3(.13, .34, 0), new THREE.Vector3(.18, .13, 0));
+  // Tapers fast enough that the cone stays thinner than its bend is tight, so the inside of the fold never creases.
+  const cone = taperedTube(spine, 48, 20, t => .092 * (1 - t) ** 1.6 + .011);
   const brim = new THREE.TorusGeometry(.098, .034, 12, 32);
   brim.rotateX(Math.PI / 2);
   brim.translate(0, .03, 0);
@@ -129,14 +134,19 @@ function hat(): { red: THREE.BufferGeometry[]; fur: THREE.BufferGeometry[] } {
   return { red: [cone], fur: [brim, pompom] };
 }
 
-function merged(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  const ready = parts.map(g => {
+/** Merges coloured groups of parts into one geometry, each part painted its group's colour per vertex. */
+function merged(groups: [THREE.BufferGeometry[], number][]): THREE.BufferGeometry {
+  const ready = groups.flatMap(([parts, hex]) => parts.map(g => {
     const flat = g.index ? g.toNonIndexed() : g;
     if (flat !== g) g.dispose();
     for (const name of Object.keys(flat.attributes)) if (name !== 'position' && name !== 'normal') flat.deleteAttribute(name);
     if (!flat.getAttribute('normal')) flat.computeVertexNormals();
+    // Vertex colours are linear, as THREE.Color stores them.
+    const c = new THREE.Color(hex), count = flat.getAttribute('position').count, colors = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) c.toArray(colors, i * 3);
+    flat.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     return flat;
-  });
+  }));
   const g = mergeGeometries(ready)!;
   for (const part of ready) part.dispose();
   return g;
@@ -148,16 +158,17 @@ export function createSleigh(): Sleigh {
   const shape = profile(), curves = shape.curves;
   const body: THREE.BufferGeometry[] = [], gold: THREE.BufferGeometry[] = [], velvet: THREE.BufferGeometry[] = [], floor: THREE.BufferGeometry[] = [];
   const red: THREE.BufferGeometry[] = [], fur: THREE.BufferGeometry[] = [];
-  // Rim: the bottom edge, up the bow, along the seat rail and over the backrest (the back edge is the band below).
-  const rim = along(curves.slice(0, 8));
+  // Rim: one closed loop round the whole side panel (bottom, dash, seat rail, backrest and rear edge), so no
+  // trim end is left open; the shared start and end point is dropped so the loop closes smoothly.
+  const rim = along(curves).slice(0, -1);
   for (const side of [-1, 1]) {
     body.push(across(shape, side > 0 ? PANEL_IN : -PANEL_OUT, side > 0 ? PANEL_OUT : -PANEL_IN, .006));
-    gold.push(tube(rim.map(p => at(p.x, p.y, side * TRIM_X)), TRIM, 120));
+    gold.push(tube(rim.map(p => at(p.x, p.y, side * TRIM_X)), TRIM, 160, true));
     // Scrollwork: a curl on the dash and one under the backrest.
     gold.push(scroll(.16, .22, side * PANEL_OUT, .07, .015, 1.6), scroll(-.39, .2, side * PANEL_OUT, .05, .012, 1.4));
     // Runner: a curled tail, a long straight glide and a tall curl rising in front of the dash, on three struts.
     const runner: [number, number][] = [[-.45, .085], [-.48, .062], [-.477, .032], [-.44, RUNNER], [-.3, RUNNER], [0, RUNNER], [.14, RUNNER],
-      [.235, .034], [.3, .08], [.34, .16], [.35, .25], [.335, .33], [.3, .38], [.262, .382], [.244, .35], [.258, .318], [.288, .325]];
+      [.235, .034], [.3, .08], [.34, .16], [.352, .25], [.34, .33], [.305, .385], [.26, .39], [.23, .355], [.236, .31], [.27, .295], [.3, .315]];
     gold.push(tube(runner.map(([u, v]) => at(u, v, side * RUNNER_X)), RUNNER, 96));
     for (const u of [-.38, -.12, .1]) {
       const strut = new THREE.CylinderGeometry(.014, .014, BOTTOM - RUNNER + .01, 10);
@@ -169,7 +180,7 @@ export function createSleigh(): Sleigh {
   // backrest curls at the near corners; between them the back panel stops lower, so the chase camera, behind
   // and only a little above, sees the whole hat over it.
   body.push(across(band(along(curves.slice(1, 4)), .035), -INNER / 2, INNER / 2));
-  const backEdge = along(curves.slice(8, 9), 64), cut = backEdge.findIndex(p => p.y <= BACK_TOP);
+  const backEdge = along(curves.slice(9, 11), 64), cut = backEdge.findIndex(p => p.y <= BACK_TOP);
   const a = backEdge[cut - 1], b = backEdge[cut], top = a.clone().lerp(b, (a.y - BACK_TOP) / (a.y - b.y));
   body.push(across(band([top, ...backEdge.slice(cut)], BACK), -INNER / 2, INNER / 2));
   floor.push(across(new THREE.Shape([new THREE.Vector2(-.42, BOTTOM), new THREE.Vector2(.1, BOTTOM), new THREE.Vector2(.1, BOTTOM + .03), new THREE.Vector2(-.42, BOTTOM + .03)]), -INNER / 2, INNER / 2));
@@ -182,8 +193,9 @@ export function createSleigh(): Sleigh {
   const seat = new RoundedBoxGeometry(INNER - .012, SEAT, .42, 3, .03);
   seat.translate(0, BOTTOM + .03 + SEAT / 2 - RADIUS, .23);
   const back = new RoundedBoxGeometry(INNER - .012, .1, .05, 3, .022);
-  back.rotateX(-.25);
-  back.translate(0, .29 - RADIUS, .41);
+  // Leans back with the panel (whose rear edge slopes back as it rises), resting against it.
+  back.rotateX(.25);
+  back.translate(0, .29 - RADIUS, .43);
   velvet.push(seat, back);
   // The hat on the front of the seat, leaning back a little, its tip drooping toward the camera's right.
   const hatParts = hat();
@@ -194,13 +206,12 @@ export function createSleigh(): Sleigh {
 
   const group = new THREE.Group();
   group.name = 'sleigh';
+  // Two draw calls: the lacquered body and gold share one glossy material, and the soft velvet, floor, hat
+  // and fur share one matte one, each part coloured per vertex. The theme then stays within the game's
+  // original draw-call budget.
   const parts: [THREE.BufferGeometry, THREE.Material][] = [
-    [merged(body), new THREE.MeshPhongMaterial({ color: SLEIGH_COLORS.body, specular: 0x6a3a3a, shininess: 70 })],
-    [merged(gold), new THREE.MeshPhongMaterial({ color: SLEIGH_COLORS.gold, specular: 0xfff0b8, shininess: 90 })],
-    [merged(velvet), new THREE.MeshPhongMaterial({ color: SLEIGH_COLORS.velvet, specular: 0x112211, shininess: 8 })],
-    [merged(floor), new THREE.MeshPhongMaterial({ color: SLEIGH_COLORS.floor, specular: 0x000000, shininess: 4 })],
-    [merged(red), new THREE.MeshPhongMaterial({ color: SLEIGH_COLORS.hat, specular: 0x331111, shininess: 10 })],
-    [merged(fur), new THREE.MeshLambertMaterial({ color: SLEIGH_COLORS.fur })],
+    [merged([[body, SLEIGH_COLORS.body], [gold, SLEIGH_COLORS.gold]]), new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0x5a4c3c, shininess: 48 })],
+    [merged([[velvet, SLEIGH_COLORS.velvet], [floor, SLEIGH_COLORS.floor], [red, SLEIGH_COLORS.hat], [fur, SLEIGH_COLORS.fur]]), new THREE.MeshLambertMaterial({ vertexColors: true })],
   ];
   // Tubes are polygons, so the drawn trim falls a fraction of a millimetre inside its true radius. Measure
   // the finished vertices and make the sleigh exactly one ball wide, centred, with the runners on the ground.

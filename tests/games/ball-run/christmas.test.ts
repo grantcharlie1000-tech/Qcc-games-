@@ -41,17 +41,45 @@ describe('Ball Run Christmas sleigh model', () => {
     expect(box.max.z - box.min.z).toBeLessThan(4 * RADIUS);
   });
 
-  it('carries Santa\'s hat but no Santa: six merged meshes, one per material', () => {
+  it('carries Santa\'s hat but no Santa, in two draw calls coloured per vertex', () => {
     const meshes = sleigh.group.children as THREE.Mesh[];
-    expect(meshes).toHaveLength(6);
-    const colours = meshes.map(m => (m.material as THREE.MeshPhongMaterial).color.getHex());
-    expect(colours).toEqual([SLEIGH_COLORS.body, SLEIGH_COLORS.gold, SLEIGH_COLORS.velvet, SLEIGH_COLORS.floor, SLEIGH_COLORS.hat, SLEIGH_COLORS.fur]);
-    // The hat (red cone, white brim and pompom) sits on the seat, inside the sleigh's walls.
-    const hat = new THREE.Box3().setFromObject(meshes[4]).union(new THREE.Box3().setFromObject(meshes[5]));
+    expect(meshes).toHaveLength(2);
+    const linear = (hex: number) => new THREE.Color(hex);
+    const found = new Map<number, THREE.Box3>();
+    for (const mesh of meshes) {
+      expect((mesh.material as THREE.Material & { vertexColors: boolean }).vertexColors).toBe(true);
+      const p = mesh.geometry.getAttribute('position'), c = mesh.geometry.getAttribute('color'), v = new THREE.Vector3();
+      for (let i = 0; i < p.count; i++) for (const hex of Object.values(SLEIGH_COLORS)) {
+        const k = linear(hex);
+        if (Math.abs(c.getX(i) - k.r) + Math.abs(c.getY(i) - k.g) + Math.abs(c.getZ(i) - k.b) > 1e-5) continue;
+        if (!found.has(hex)) found.set(hex, new THREE.Box3());
+        found.get(hex)!.expandByPoint(v.fromBufferAttribute(p, i));
+      }
+    }
+    // Every part is present: body, gold, velvet, floor, the hat's red cone and its white fur.
+    expect([...found.keys()].sort()).toEqual(Object.values(SLEIGH_COLORS).sort());
+    // The hat sits on the seat, inside the sleigh's walls, and its brim and pompom are on it.
+    const hat = found.get(SLEIGH_COLORS.hat)!.clone().union(found.get(SLEIGH_COLORS.fur)!);
     expect(hat.min.x).toBeGreaterThan(box.min.x + .03);
     expect(hat.max.x).toBeLessThan(box.max.x - .03);
     expect(hat.min.y).toBeGreaterThan(-RADIUS + .2);
-    for (const mesh of meshes) expect(mesh.geometry.getAttribute('position').count).toBeGreaterThan(0);
+  });
+
+  it('has no folded or inside-out triangles: every face turns the way its smoothed normals do', () => {
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), face = new THREE.Vector3(), normal = new THREE.Vector3(), t = new THREE.Vector3();
+    for (const mesh of sleigh.group.children as THREE.Mesh[]) {
+      const p = mesh.geometry.getAttribute('position'), n = mesh.geometry.getAttribute('normal');
+      let inverted = 0;
+      for (let i = 0; i < p.count; i += 3) {
+        a.fromBufferAttribute(p, i); b.fromBufferAttribute(p, i + 1); c.fromBufferAttribute(p, i + 2);
+        face.subVectors(b, a).cross(t.subVectors(c, a));
+        if (face.lengthSq() < 1e-14) continue;
+        normal.set(0, 0, 0);
+        for (let k = 0; k < 3; k++) normal.add(t.fromBufferAttribute(n, i + k));
+        if (face.dot(normal) < 0) inverted++;
+      }
+      expect(inverted, (mesh.material as THREE.Material).type).toBe(0);
+    }
   });
 
   it('disposes every geometry and material it made', () => {
