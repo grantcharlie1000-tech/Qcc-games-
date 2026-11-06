@@ -3,9 +3,10 @@ import * as THREE from 'three';
 import { createScene } from '../../../src/games/ball-run/scene';
 import { createSleigh, SLEIGH_COLORS } from '../../../src/games/ball-run/sleigh';
 import { SNOW_DEPTH, SNOW_EDGE, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from '../../../src/games/ball-run/snow';
-import { getCourse } from '../../../src/games/ball-run/course';
-import { createRun } from '../../../src/games/ball-run/model';
-import { RADIUS, SLOPE, type Obstacle, type ObstaclePose } from '../../../src/games/ball-run/config';
+import { CLEAR, getCourse } from '../../../src/games/ball-run/course';
+import { createRun, step } from '../../../src/games/ball-run/model';
+import { BALL, RADIUS, SLEIGH_BODY, SLOPE, STEP, type Obstacle, type ObstaclePose } from '../../../src/games/ball-run/config';
+import { placeRun } from './bot';
 
 const captured = vi.hoisted(() => ({ scene: null as THREE.Scene | null }));
 // Only browser/GPU boundaries are replaced, as in scene-cache.test.ts.
@@ -100,6 +101,55 @@ describe('Ball Run Christmas sleigh model', () => {
     const own = createSleigh(), spies = (own.group.children as THREE.Mesh[]).flatMap(m => [vi.spyOn(m.geometry, 'dispose'), vi.spyOn(m.material as THREE.Material, 'dispose')]);
     own.dispose();
     for (const spy of spies) expect(spy).toHaveBeenCalledOnce();
+  });
+});
+
+describe('Ball Run Christmas sleigh collision', () => {
+  if (SLEIGH_BODY.kind !== 'box') throw new Error('the sleigh collides as a box');
+  const body = SLEIGH_BODY;
+
+  it('is the box the drawn sleigh fills, to within a centimetre on every side, so what is seen is what hits', () => {
+    const drawn = new THREE.Box3().setFromObject(createSleigh().group);
+    // Forward is -z in the model and +distance in the simulation.
+    const sides: [number, number][] = [[drawn.max.x, body.halfWidth], [-drawn.min.x, body.halfWidth], [drawn.min.y, body.bottom], [drawn.max.y, body.top], [-drawn.min.z, body.front], [drawn.max.z, body.back]];
+    expect(drawn.max.x).toBeCloseTo(body.halfWidth, 6);
+    expect(drawn.min.y).toBeCloseTo(body.bottom, 6);
+    for (const [model, box] of sides) expect(Math.abs(model - box)).toBeLessThanOrEqual(.01 + 1e-9);
+    expect(-drawn.min.z).toBeLessThanOrEqual(body.front); expect(drawn.max.z).toBeLessThanOrEqual(body.back); expect(drawn.max.y).toBeLessThanOrEqual(body.top);
+  });
+
+  it('fits inside the clearance the course generator keeps round the ball, so every course stays passable', () => {
+    expect(body.halfWidth).toBeLessThanOrEqual(CLEAR);
+    expect(body.front).toBeLessThanOrEqual(CLEAR);
+    expect(body.back).toBeLessThanOrEqual(CLEAR);
+  });
+
+  it('hits a block its backrest overlaps that the ball has already cleared, and nothing else changes', () => {
+    let checked = 0;
+    for (const seed of [11, 42, 7]) {
+      const course = getCourse(seed, 'medium'), blocks: Obstacle[] = [];
+      course.forEachObstacle(200, 2000, o => { if (o.kind === 'block' && !o.slide) blocks.push(o); });
+      for (const o of blocks) {
+        const p = course.pose(o, 0, { x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 });
+        // Centre 0.40 m past the block's back face, straight in line with it: the sphere (0.38) is clear,
+        // the sleigh's backrest (0.42 behind the centre) is still over the block.
+        const d = o.distance + o.depth / 2 + .4, s = course.sample(d);
+        if (!s.ground || s.tunnel || Math.abs(p.x - s.center) > s.width / 2 - .5) continue;
+        let nearby = 0;
+        course.forEachObstacle(d - 3, d + 3, () => nearby++);
+        if (nearby !== 1) continue;
+        const asBall = placeRun(seed, 'medium', d, p.x), asSleigh = placeRun(seed, 'medium', d, p.x);
+        step(asBall, 0, STEP, BALL); step(asSleigh, 0, STEP, body);
+        expect(asBall.phase).toBe('running');
+        expect(asSleigh.phase).toBe('dying'); expect(asSleigh.reason).toBe('block');
+        // Ahead of the block by more than the backrest, the sleigh runs on exactly as the ball does.
+        const clear = placeRun(seed, 'medium', o.distance + o.depth / 2 + body.back + .05, p.x), ball = { ...clear };
+        step(clear, 0, STEP, body); step(ball, 0, STEP, BALL);
+        expect(clear).toEqual(ball);
+        if (++checked >= 6) break;
+      }
+    }
+    expect(checked).toBeGreaterThanOrEqual(3);
   });
 });
 

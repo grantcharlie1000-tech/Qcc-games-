@@ -10,7 +10,7 @@ import { RetainedInstances } from './instances';
 import { christmas } from '../../festive/festive';
 import { createSleigh, SLEIGH_COLORS, SLEIGH_RUNNER_X } from './sleigh';
 import { SNOW_DEPTH, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from './snow';
-import { CONFIG, DYING_DURATION, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
+import { BALL, CONFIG, DYING_DURATION, SLEIGH_BODY, type Body, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
 export interface FrameView { run: Run; course: Course; speed: number }
@@ -22,6 +22,8 @@ export interface BallRunScene {
   /** Forgets frame-to-frame state (trail history, cached road) before a new or restored run. */
   reset(): void;
   readonly stats: SceneStats;
+  /** What the drawn player is, so the simulation collides as what is seen: the ball, or the sleigh's box. */
+  readonly body: Body;
   dispose(): void;
 }
 
@@ -819,5 +821,5 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // and compiles every material, so the first boost or crash never stalls on a shader
   // compile and the geometry count is the same from the first frame.
   drawFrame();
-  return { resize, setResolutionCap, render, reset, stats, dispose };
+  return { resize, setResolutionCap, render, reset, stats, body: festive ? SLEIGH_BODY : BALL, dispose };
 }

@@ -5,6 +5,13 @@
  * reveal them); see SPEC.md before changing one. */
 
 export const RADIUS = .38;
+/** What hits the blocks. The ball is a sphere of RADIUS. Christmas's sleigh hits as the box it fills: exactly
+ * one ball wide, from its runners (RADIUS below the centre) to its hat, and from its front runner curls to its
+ * backrest, measured from the centre along the course (sleigh.ts builds the model inside this box; a test
+ * holds them together). Without this, its corners passed through blocks that the sphere only grazed. */
+export type Body = { readonly kind: 'ball' } | { readonly kind: 'box'; readonly halfWidth: number; readonly bottom: number; readonly top: number; readonly front: number; readonly back: number };
+export const BALL: Body = { kind: 'ball' };
+export const SLEIGH_BODY: Body = { kind: 'box', halfWidth: RADIUS, bottom: -RADIUS, top: .2, front: .35, back: .42 };
 /** Snappier than Earth gravity so flights read clearly at arcade speeds. */
 export const GRAVITY = 20;
 /** The course descends along this base slope; features return to it. */

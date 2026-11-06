@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { mergeGeometries, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { RADIUS } from './config';
+import { RADIUS, SLEIGH_BODY } from './config';
 
 /** Side panels: inner and outer face (|x|); the gold trim tube is centred on the outer face. */
 const PANEL_IN = .318, TRIM = .018, TRIM_X = RADIUS - TRIM, PANEL_OUT = TRIM_X + .002;
@@ -191,7 +191,7 @@ export function createSleigh(): Sleigh {
     gold.push(scroll(.16, .22, side * PANEL_OUT, .07, .015, 1.6), scroll(-.39, .2, side * PANEL_OUT, .05, .012, 1.4));
     // Runner: a curled tail, a long straight glide and a tall curl rising in front of the dash, on three struts.
     const runner: [number, number][] = [[-.45, .085], [-.48, .062], [-.477, .032], [-.44, RUNNER], [-.3, RUNNER], [0, RUNNER], [.14, RUNNER],
-      [.235, .034], [.29, .08], [.323, .16], [.333, .25], [.32, .325], [.288, .375], [.248, .38], [.22, .35], [.226, .31], [.256, .295], [.283, .312]];
+      [.232, .034], [.282, .08], [.313, .16], [.323, .25], [.311, .325], [.281, .372], [.243, .377], [.217, .348], [.223, .31], [.251, .295], [.276, .311]];
     gold.push(tube(runner.map(([u, v]) => at(u, v, side * RUNNER_X)), RUNNER, 96));
     for (const u of [-.38, -.12, .1]) {
       const strut = new THREE.CylinderGeometry(.014, .014, BOTTOM - RUNNER + .01, 10);
@@ -221,11 +221,19 @@ export function createSleigh(): Sleigh {
   back.translate(0, .29 - RADIUS, .43);
   velvet.push(seat, back);
   // The hat on the front of the seat, leaning back a little, its tip drooping toward the camera's right.
+  // The sleigh collides as the box it fills (SLEIGH_BODY), and the course generator keeps every path at least
+  // RADIUS + 6 cm from a block along the course as well as across it. So the sleigh is drawn compact enough to
+  // fit that: its length, front runner curls kept where they are, is pressed toward the front until the
+  // backrest ends 5 mm inside the box's back. Every course the ball can finish, the sleigh can too.
+  const frame = new THREE.Box3(), piece = new THREE.Box3();
+  for (const g of [...body, ...gold, ...velvet, ...floor]) { g.computeBoundingBox(); frame.union(piece.copy(g.boundingBox!)); }
+  const front = frame.min.z, press = (SLEIGH_BODY.kind === 'box' ? SLEIGH_BODY.back - .005 - front : 0) / (frame.max.z - front);
+  for (const g of [...body, ...gold, ...velvet, ...floor]) { g.translate(0, 0, -front); g.scale(1, 1, press); g.translate(0, 0, front); g.computeBoundingBox(); }
   const hatParts = hat();
-  // Upright, so the brim sits flush on the cushion all round (its underside 1.5 mm into it), and far enough
-  // back that the whole brim is on the seat.
+  // Upright, so the brim sits flush on the cushion all round (its underside 1.5 mm into it), centred on the
+  // seat so the whole brim is on it.
   const brimUnder = (.03 - .034) * HAT, seatTop = BOTTOM + .03 + SEAT - RADIUS;
-  const place = new THREE.Matrix4().compose(new THREE.Vector3(-.05, seatTop - brimUnder - .0015, .19),
+  const place = new THREE.Matrix4().compose(new THREE.Vector3(-.05, seatTop - brimUnder - .0015, (seat.boundingBox!.min.z + seat.boundingBox!.max.z) / 2),
     new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -.4, 0)), new THREE.Vector3(HAT, HAT, HAT));
   for (const g of hatParts.red) { g.applyMatrix4(place); red.push(g); }
   for (const g of hatParts.fur) { g.applyMatrix4(place); fur.push(g); }

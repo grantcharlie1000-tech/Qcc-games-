@@ -23,8 +23,12 @@ export function reachStep(speed: number, metres: number): number {
 }
 
 const ROAD_AHEAD = 400, ROWS_AHEAD = 300, LOOK_AHEAD = 300, CACHE_SIZE = 6, ATTEMPTS = 6;
-/** Ball-centre clearance from a box face, and the margin kept inside the road edge. */
-const CLEAR = RADIUS + .06, EDGE_MARGIN = EDGE_SUPPORT + .12;
+/** Ball-centre clearance from a box face, and the margin kept inside the road edge. The generator treats the
+ * player as a point and grows every block by CLEAR across and along the course, so any body inside a box of
+ * half size CLEAR round the ball's centre (the Christmas sleigh's, config.ts SLEIGH_BODY) passes wherever the
+ * ball can. */
+export const CLEAR = RADIUS + .06;
+const EDGE_MARGIN = EDGE_SUPPORT + .12;
 /** Narrowest reachable set allowed beside any block. */
 const MIN_ROUTE = .25;
 /** Least time from a row's last block to the next row: the tightest spacing inside a pattern. */

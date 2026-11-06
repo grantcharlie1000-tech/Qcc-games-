@@ -3,9 +3,9 @@
  * chooses its lateral line. Collision uses the same obstacle poses as rendering. */
 import { sweepSphereBox } from '../../core/collision';
 import {
-  BANK_DRIFT, COURSE_REVISION, DYING_DURATION, FALL_DEPTH, GATE_FEEDBACK, GATE_WALL_HEIGHT, GRAVITY, RADIUS, STEER_RESPONSE,
+  BALL, BANK_DRIFT, COURSE_REVISION, DYING_DURATION, FALL_DEPTH, GATE_FEEDBACK, GATE_WALL_HEIGHT, GRAVITY, RADIUS, STEER_RESPONSE,
   isDifficulty, lateralSpeed,
-  type Course, type Difficulty, type Obstacle, type ObstaclePose, type Phase, type Run, type TrackSample,
+  type Body, type Course, type Difficulty, type Obstacle, type ObstaclePose, type Phase, type Run, type TrackSample,
 } from './config';
 import { getCourse } from './course';
 import { emptyRecords, restoreRecords, type Records } from './records';
@@ -54,8 +54,12 @@ const sweepFrom = [0, 0, 0], sweepTo = [0, 0, 0], origin = [0, 0, 0] as const, h
 /** The step being tested against blocks: elapsed before and after, then the ball's old and new
  * x, height and distance. A typed array, because module-level number variables box every write. */
 const sweep = new Float64Array(8);
-let hitCourse: Course, hit = false, hitFraction = 1;
+let hitCourse: Course, hit = false, hitFraction = 1, hitBody: Body = BALL;
 const sweepMid = [0, 0, 0];
+/** The sleigh's box, swept as a point against the block grown by the box's half sizes. Its centre sits off
+ * the ball's centre: up by (top + bottom) / 2 and along the course by (front - back) / 2. Both offsets are
+ * in the road's banked frame, which a block shares (it is rolled by the bank) and so does the sleigh. */
+const boxCenter = [0, 0, 0], grown = [0, 0, 0];
 
 /** Moves world point (x, y, d) into the frame of a box posed at `p` (rolled about the forward axis). */
 function local(p: ObstaclePose, x: number, y: number, d: number, out: number[]): void {
@@ -72,6 +76,22 @@ function testBlock(o: Obstacle): void {
   local(poseA, sweep[2], sweep[3], sweep[4], sweepFrom);
   local(p, sweep[5], sweep[6], sweep[7], sweepTo);
   half[0] = p.halfWidth; half[1] = p.halfHeight; half[2] = p.halfDepth;
+  const b = hitBody;
+  if (b.kind === 'box') {
+    const up = (b.top + b.bottom) / 2, along = (b.front - b.back) / 2;
+    sweepFrom[1] += up; sweepFrom[2] += along; sweepTo[1] += up; sweepTo[2] += along;
+    grown[0] = half[0] + b.halfWidth; grown[1] = half[1] + (b.top - b.bottom) / 2; grown[2] = half[2] + (b.front + b.back) / 2;
+    if (!sweepSphereBox(sweepFrom, sweepTo, origin, grown, 0)) return;
+    hit = true;
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 40; i++) {
+      const t = (lo + hi) / 2;
+      for (let axis = 0; axis < 3; axis++) boxCenter[axis] = sweepFrom[axis] + (sweepTo[axis] - sweepFrom[axis]) * t;
+      if (sweepSphereBox(sweepFrom, boxCenter, origin, grown, 0)) hi = t; else lo = t;
+    }
+    hitFraction = Math.min(hitFraction, hi);
+    return;
+  }
   // Swept bounding-box rejection first: the exact test allocates.
   let gap = 0;
   for (let axis = 0; axis < 3; axis++) {
@@ -100,8 +120,9 @@ function die(run: Run, reason: 'block' | 'fall', score: number): void {
   run.score = Math.min(MAX_SCORE, Math.floor(score));
 }
 
-/** Advances a run by dt seconds. Ignores non-finite input, and dt outside (0, 0.05]. */
-export function step(run: Run, input: number, dt: number): void {
+/** Advances a run by dt seconds. Ignores non-finite input, and dt outside (0, 0.05]. `body` is what hits the
+ * blocks: the ball unless the Christmas sleigh is drawn (everything else, the road and the gates, is the same). */
+export function step(run: Run, input: number, dt: number, body: Body = BALL): void {
   if (!(dt > 0 && dt <= .05) || !Number.isFinite(input)) return;
   if (run.phase === 'dying') { stepDying(run, dt); return; }
   if (run.phase !== 'running') return;
@@ -147,9 +168,10 @@ export function step(run: Run, input: number, dt: number): void {
     run.vy -= GRAVITY * dt;
   }
 
-  hitCourse = course; hit = false; hitFraction = 1;
+  hitCourse = course; hit = false; hitFraction = 1; hitBody = body;
   sweep[0] = e0; sweep[1] = run.elapsed; sweep[2] = x0; sweep[3] = h0; sweep[4] = d0; sweep[5] = run.x; sweep[6] = run.height; sweep[7] = run.distance;
-  course.forEachObstacle(d0 - RADIUS - course.maxDepth, run.distance + RADIUS + course.maxDepth, testBlock);
+  const behindReach = body.kind === 'box' ? body.back : RADIUS, aheadReach = body.kind === 'box' ? body.front : RADIUS;
+  course.forEachObstacle(d0 - behindReach - course.maxDepth, run.distance + aheadReach + course.maxDepth, testBlock);
   if (hit) {
     // Stop at the first contact along the same swept path that decided the hit.
     const t = hitFraction;

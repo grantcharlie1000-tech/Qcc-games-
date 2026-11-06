@@ -19,13 +19,20 @@ neon corridor. Under the Christmas theme it adds just two things:
   drooping cone, pompom) on the seat. Santa is not in it. Its measured vertices are normalised so the sleigh is
   exactly `2 × RADIUS` (0.76 m, the ball's diameter) wide, centred on the ball, with the runners exactly on the
   ball's ground contact. Nothing reaches further forward than the ball's front, so a crash never shows it
-  inside a block. Collision still uses the ball's sphere. It is two merged meshes coloured per vertex: glossy (lacquered red body and
+  inside a block. It collides as the box it fills (see below). It is two merged meshes coloured per vertex: glossy (lacquered red body and
   gold) and matte (velvet, floor, hat and fur). The gold rim runs in one closed loop round each whole side
   panel. Its corners and the runner and hat bends are all rounded wider than the tube is thick, so no trim
   creases or ends open. The side panels have no bevel, because a bevel beside the trim showed as a pale seam. Every open tube (runners, scrolls,
   back rails) ends in a rounded cap. The hat stands upright, flush on the cushion with its whole brim on the
   seat. The front runner curls stay behind the ball's front even with the sleigh pitched 0.2 rad on the
   steepest climb (a test checks this).
+  - It collides as itself. A review found that its corners, outside the ball's circle, could show passing
+    through a block for 1–3 frames when a player cut tightly past one. At the user's choice the simulation now
+    collides as the sleigh's box (`SLEIGH_BODY`: ±0.38 m across, 0.35 m ahead of and 0.42 m behind the centre,
+    ground to hat) whenever the sleigh is drawn; with the theme off it is still the ball's sphere. To keep
+    every seeded course passable, the sleigh was made about 16% shorter, pressed toward its front, so that box
+    fits inside the 0.44 m clearance the course generator keeps round the ball on every side. A tight cut the
+    ball would have grazed past now crashes, as it looks like it should.
   - It does not roll. On the road it sits on the slope and bank (the same angles as the road tiles). In the air
     or off the road's edge it holds its attitude. It never turns about y, like the blocks, so a dodge never
     swings its corners wider or further forward than the ball. Changes ease in over about a metre of travel;
