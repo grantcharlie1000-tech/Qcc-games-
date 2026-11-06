@@ -18,7 +18,7 @@ export const SLEIGH_RUNNER_X = .25;
 const RUNNER_X = SLEIGH_RUNNER_X, RUNNER = .02, INNER = 2 * PANEL_IN + .004;
 /** How far behind the ball's centre the level sleigh's backrest ends (see the compaction in createSleigh). */
 const REST_BACK = .415;
-const BOTTOM = .12, BACK = .035, BACK_TOP = .33, SEAT = .1, HAT = 1.15;
+const BOTTOM = .12, BACK = .035, BACK_TOP = .28, SEAT = .1, HAT = 1.15;
 
 export const SLEIGH_COLORS = { body: 0xc8102e, gold: 0xe7b53c, velvet: 0x1d6b3c, floor: 0x5b1a12, hat: 0xd61f33, fur: 0xf8f6f0 } as const;
 
@@ -218,10 +218,11 @@ export function createSleigh(): Sleigh {
   // Green velvet: a seat cushion and a back cushion leaning on the backrest.
   const seat = new RoundedBoxGeometry(INNER - .012, SEAT, .42, 3, .03);
   seat.translate(0, BOTTOM + .03 + SEAT / 2 - RADIUS, .23);
-  const back = new RoundedBoxGeometry(INNER - .012, .1, .05, 3, .022);
+  // A low bolster, no taller than the back panel, so it does not hide the hat's brim from the chase camera.
+  const back = new RoundedBoxGeometry(INNER - .012, .06, .05, 3, .02);
   // Leans back with the panel (whose rear edge slopes back as it rises), resting against it.
   back.rotateX(.25);
-  back.translate(0, .29 - RADIUS, .43);
+  back.translate(0, .25 - RADIUS, .43);
   velvet.push(seat, back);
   // The hat on the front of the seat, leaning back a little, its tip drooping toward the camera's right.
   // The sleigh collides as the box it fills (config.ts SLEIGH_BODY), and the course generator keeps every path

@@ -138,10 +138,11 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // Road, gates and blocks share one group placed relative to the origin.
   const road = new THREE.Group();
   scene.add(road);
-  // Christmas: a tile's top follows the simulated road's twist where the bank changes (that surface is a bilinear
-  // patch over a tile, which a flat box cannot match): a subdivided box whose top face the vertex shader bends by
-  // each instance's twist, carried in its instance colour (which RetainedInstances already moves and uploads
-  // with its matrix); the colour itself is not applied. Theme off keeps the original flat tiles.
+  // Christmas: a tile's top follows the simulated road where it twists (the bank changing) and where it curves
+  // along the course (a crest or a dip), which a flat box cannot: a subdivided box whose top face the vertex shader
+  // bends by each instance's twist (red) and along-curve (green), carried in its instance colour (which
+  // RetainedInstances already moves and uploads with its matrix); the colour itself is not applied. Theme off
+  // keeps the original flat tiles.
   let tileGeometry = box;
   const tileMaterial = basic({ color: PALETTE.track });
   if (festive) {
@@ -151,7 +152,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       shader.vertexShader = shader.vertexShader
         .replace('#include <begin_vertex>', `#include <begin_vertex>
 #ifdef USE_INSTANCING_COLOR
-	if ( position.y > 0.0 ) transformed.y += instanceColor.r * position.x * position.z * 4.0;
+	if ( position.y > 0.0 ) transformed.y += instanceColor.r * position.x * position.z * 4.0 + instanceColor.g * ( 1.0 - 4.0 * position.z * position.z );
 #endif`)
         .replace('#include <color_vertex>', `#if defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )
 	vColor = vec3( 1.0 );
@@ -389,7 +390,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
         track(builtOrigin - z, T);
         twist += su * sw * (T.elevation - (x - T.center) * Math.tan(T.bank) + yRef - y);
       }
-      tiles.setColorAt(tileIndex, tileTwist.setRGB(twist / 4 / tileUp.y, 0, 0, THREE.LinearSRGBColorSpace));
+      // The road's curve along the tile (a crest or a dip): how far the true surface at the tile's middle stands off
+      // the flat top there, bent in as a parabola along its length (zero at both ends, where the tiles meet).
+      const sag = (M.elevation - (midX - M.center) * Math.tan(M.bank) + yRef - midY) / tileUp.y;
+      tiles.setColorAt(tileIndex, tileTwist.setRGB(twist / 4 / tileUp.y, sag, 0, THREE.LinearSRGBColorSpace));
     } else {
       const nx = Math.sin(M.bank) * TILE_DEPTH / 2, ny = Math.cos(M.bank) * TILE_DEPTH / 2;
       position.set((A.center + B.center) / 2 - nx, (A.elevation + B.elevation) / 2 + yRef - ny, -((lo + hi) / 2 - builtOrigin));

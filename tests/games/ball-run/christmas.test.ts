@@ -478,9 +478,9 @@ describe('Ball Run Christmas scene', () => {
       // Its top face's outward normal points up.
       const n = new THREE.Vector3(0, 1, 0).applyMatrix3(new THREE.Matrix3().getNormalMatrix(m));
       expect(n.y).toBeGreaterThan(0);
-      const twist = tiles.instanceColor ? tiles.instanceColor.getX(i) : 0;
+      const twist = tiles.instanceColor ? tiles.instanceColor.getX(i) : 0, sag = tiles.instanceColor ? tiles.instanceColor.getY(i) : 0;
       for (const u of [-.5, -.25, 0, .25, .5]) for (const w of [-.5, -.25, 0, .25, .5]) {
-        v.set(u, .5 + twist * u * w * 4, w).applyMatrix4(m).add(road.position);
+        v.set(u, .5 + twist * u * w * 4 + sag * (1 - 4 * w * w), w).applyMatrix4(m).add(road.position);
         const d = distance - v.z;
         if (d < distance || d > distance + reachAhead || !course.sample(d).ground) continue;
         if (want(course, d)) wanted++;
@@ -531,12 +531,10 @@ describe('Ball Run Christmas scene', () => {
     expect(tileError(28, 'easy', 95, bend)).toBeLessThan(.008);
     expect(tileError(5, 'hard', 300, bankChanging)).toBeLessThan(.004);
     // The far 1 m and 2 m tiles (60 m and more ahead) too: a flat 2 m tile was up to 5.6 cm off where the bank
-    // changes. What is left is the road's curve along a 2 m tile at a crest or dip (up to about 3 cm over 30
-    // courses; hard seed 2 near 1593 m is the worst), under a pixel that far off (a screen pixel spans about 4 cm
-    // of road at 60 m on a phone, more beyond).
-    const far = Math.max(tileError(5, 'hard', 150, bankChanging, 200), tileError(10, 'hard', 60, bankChanging, 200));
-    expect(far).toBeLessThan(.015);
-    expect(tileError(2, 'hard', 1450, () => true, 200)).toBeLessThan(.035);
+    // changes, and up to 3 cm at a crest or dip (hard seed 2 near 1593 m), which the tiles' bend along their length
+    // now follows: measured over 30 courses, 7 mm at worst.
+    const far = Math.max(tileError(5, 'hard', 150, bankChanging, 200), tileError(10, 'hard', 60, bankChanging, 200), tileError(2, 'hard', 1450, () => true, 200));
+    expect(far).toBeLessThan(.01);
   });
 
   it('snows in one draw call while moving, and not at all under Reduce motion', () => {

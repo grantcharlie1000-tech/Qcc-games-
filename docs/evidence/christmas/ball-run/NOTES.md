@@ -58,11 +58,12 @@ neon corridor. Under the Christmas theme it adds just two things:
     the surface (with the theme off, unchanged, still centimetres off), and checks no tile or line is mirrored
     (an earlier version's were, which drew them inside out). Where a bank changes, the road over a tile is
     twisted (a bilinear patch), which a flat tile cannot follow (a flat tile was up to 1.4 cm off near the
-    player and 5.6 cm far off): each tile is a subdivided box whose top face the vertex shader bends by the
-    tile's twist (fitted over its four corners where they really are; carried in its instance colour, which the
-    tile cache already moves with it; the colour is not applied, the road keeps its exact colour). Measured over
-    30 courses: within 2 mm of the surface near the player, and up to about 3 cm on the far 2 m tiles 60 m and
-    more ahead, from the road's curve along a 2 m tile at a crest or dip, under a pixel that far off. To keep courses passable it was made about 16%
+    player and 5.6 cm far off), nor the road's curve along a long tile at a crest or dip (up to 3 cm on the far
+    2 m tiles): each tile is a subdivided box whose top face the vertex shader bends by the tile's twist (fitted
+    over its four corners where they really are) and by its curve along its length (fitted at its middle),
+    carried in its instance colour, which the tile cache already moves with it; the colour is not applied, the
+    road keeps its exact colour. Measured over 30 courses: within 1.2 mm of the surface near the player and
+    7 mm on the far 2 m tiles. To keep courses passable it was made about 16%
     shorter,
     pressed toward its front; on ordinary road its box lies inside the 0.44 m clearance the course generator
     keeps round the ball, and on steeper road passability is shown by the bot (below), not proved.
@@ -89,8 +90,9 @@ neon corridor. Under the Christmas theme it adds just two things:
     is the same). About 20,000 triangles in two draw calls.
   - It points away from the camera. The raised backrest, whose tall side curls roll back over the rear corners,
     is nearest the camera. The low scrolled dash and the tall gold runner curls are at the far end. Between the
-    backrest curls the back panel stops lower, so the chase camera (behind and only a little above) sees the
-    whole hat on the seat. An earlier version had its tallest curl at the front and a low back. From behind
+    backrest curls the back panel and its bolster stop just above the seat, so the chase camera (behind and only
+    a little above) sees the whole hat on the seat, its fur brim included (a review found the brim half hidden
+    when the panel stood higher). An earlier version had its tallest curl at the front and a low back. From behind
     that read as a sleigh facing the camera.
   - The block crash bursts into the sleigh's red, gold and white instead of the ball's magenta and cyan, so it is
     the sleigh that breaks apart.
