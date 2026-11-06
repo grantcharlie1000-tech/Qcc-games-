@@ -29,14 +29,15 @@ export function snowCapGeometry(): THREE.BufferGeometry {
     const a = j * (N + 1) + i, b = a + N + 1;
     indices.push(a, b, a + 1, b, b + 1, a + 1);
   }
-  // The lip: the grid's rim drawn down past the block's top edge, pulled in slightly at the bottom.
+  // The lip: the grid's rim drawn straight down past the block's top edge. It stays at the cap's full size, so
+  // on any width it hangs outside the block's faces (the overhang is a fixed 3 cm, not a share of the width).
   const rim: number[] = [];
   for (let i = 0; i < N; i++) rim.push(i);
   for (let j = 0; j < N; j++) rim.push(j * (N + 1) + N);
   for (let i = N; i > 0; i--) rim.push(N * (N + 1) + i);
   for (let j = N; j > 0; j--) rim.push(j * (N + 1));
   const base = positions.length / 3;
-  for (const v of rim) positions.push(positions[v * 3] * .985, LIP, positions[v * 3 + 2] * .985);
+  for (const v of rim) positions.push(positions[v * 3], LIP, positions[v * 3 + 2]);
   for (let k = 0; k < rim.length; k++) {
     const next = (k + 1) % rim.length, top0 = rim[k], top1 = rim[next], low0 = base + k, low1 = base + next;
     // The rim runs clockwise seen from above (+x right, +z toward the viewer), so this winding faces outward.
@@ -61,5 +62,7 @@ export function snowCapGeometry(): THREE.BufferGeometry {
   }
   real.dispose();
   g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  // The material is unlit, so the normals were only needed for the baked shading.
+  g.deleteAttribute('normal');
   return g;
 }

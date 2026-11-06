@@ -75,6 +75,10 @@ describe('Ball Run Christmas snow cap', () => {
     let brightest = 0;
     for (let i = 0; i < colors.count; i++) brightest = Math.max(brightest, colors.getX(i) + colors.getY(i) + colors.getZ(i));
     expect(brightest).toBeGreaterThan(2.7);
+    // The lip hangs straight down at the cap's full size, so it is outside the block's faces at any width.
+    const pos = g.getAttribute('position');
+    for (let i = 0; i < pos.count; i++) if (pos.getY(i) < 0) expect(Math.max(Math.abs(pos.getX(i)), Math.abs(pos.getZ(i)))).toBeCloseTo(.5, 6);
+    expect(g.getAttribute('normal')).toBeUndefined();
     // A few centimetres: a light covering, not a drift.
     expect(SNOW_DEPTH).toBeLessThanOrEqual(.08);
     g.dispose();
