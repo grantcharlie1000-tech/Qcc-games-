@@ -68,18 +68,41 @@ describe('Ball Run Christmas sleigh model', () => {
   it('has no folded or inside-out triangles: every face turns the way its smoothed normals do', () => {
     const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), face = new THREE.Vector3(), normal = new THREE.Vector3(), t = new THREE.Vector3();
     for (const mesh of sleigh.group.children as THREE.Mesh[]) {
-      const p = mesh.geometry.getAttribute('position'), n = mesh.geometry.getAttribute('normal');
+      const p = mesh.geometry.getAttribute('position'), n = mesh.geometry.getAttribute('normal'), index = mesh.geometry.getIndex();
+      const count = index?.count ?? p.count;
+      expect(count).toBeGreaterThan(0);
+      expect(count % 3).toBe(0);
+      expect(n.count).toBe(p.count);
+      expect(mesh.geometry.getAttribute('color').count).toBe(p.count);
+      for (const attribute of [p,n,mesh.geometry.getAttribute('color')]) {
+        expect(Array.from(attribute.array).every(Number.isFinite)).toBe(true);
+      }
       let inverted = 0;
-      for (let i = 0; i < p.count; i += 3) {
-        a.fromBufferAttribute(p, i); b.fromBufferAttribute(p, i + 1); c.fromBufferAttribute(p, i + 2);
+      let invalid = 0;
+      for (let i = 0; i < count; i += 3) {
+        const vertex = (offset: number) => index ? index.getX(i + offset) : i + offset;
+        if ([vertex(0), vertex(1), vertex(2)].some(v => !Number.isInteger(v) || v < 0 || v >= p.count)) { invalid++; continue; }
+        a.fromBufferAttribute(p, vertex(0)); b.fromBufferAttribute(p, vertex(1)); c.fromBufferAttribute(p, vertex(2));
+        if (![a.x,a.y,a.z,b.x,b.y,b.z,c.x,c.y,c.z].every(Number.isFinite)) { invalid++; continue; }
         face.subVectors(b, a).cross(t.subVectors(c, a));
         if (face.lengthSq() < 1e-14) continue;
         normal.set(0, 0, 0);
-        for (let k = 0; k < 3; k++) normal.add(t.fromBufferAttribute(n, i + k));
+        for (let k = 0; k < 3; k++) normal.add(t.fromBufferAttribute(n, vertex(k)));
+        if (![normal.x,normal.y,normal.z].every(Number.isFinite)) { invalid++; continue; }
         if (face.dot(normal) < 0) inverted++;
       }
+      expect(invalid, (mesh.material as THREE.Material).type).toBe(0);
       expect(inverted, (mesh.material as THREE.Material).type).toBe(0);
     }
+  });
+
+  it('keeps the sleigh geometry within its buffer budget', () => {
+    const bytes = (sleigh.group.children as THREE.Mesh[]).reduce((total, mesh) => {
+      const geometry = mesh.geometry;
+      return total + Object.values(geometry.attributes).reduce((sum, attribute) => sum + attribute.array.byteLength, 0)
+        + (geometry.index?.array.byteLength ?? 0);
+    }, 0);
+    expect(bytes).toBeLessThan(1_100_000);
   });
 
   it('disposes every geometry and material it made', () => {

@@ -137,8 +137,13 @@ function hat(): { red: THREE.BufferGeometry[]; fur: THREE.BufferGeometry[] } {
 /** Merges coloured groups of parts into one geometry, each part painted its group's colour per vertex. */
 function merged(groups: [THREE.BufferGeometry[], number][]): THREE.BufferGeometry {
   const ready = groups.flatMap(([parts, hex]) => parts.map(g => {
-    const flat = g.index ? g.toNonIndexed() : g;
-    if (flat !== g) g.dispose();
+    const flat = g;
+    if (!flat.index) {
+      const count = flat.getAttribute('position').count;
+      const indices = count <= 65535 ? new Uint16Array(count) : new Uint32Array(count);
+      for (let i = 0; i < count; i++) indices[i] = i;
+      flat.setIndex(new THREE.BufferAttribute(indices, 1));
+    }
     for (const name of Object.keys(flat.attributes)) if (name !== 'position' && name !== 'normal') flat.deleteAttribute(name);
     if (!flat.getAttribute('normal')) flat.computeVertexNormals();
     // Vertex colours are linear, as THREE.Color stores them.
