@@ -66,3 +66,36 @@ What I checked:
 ## Known limitations
 - Toppers (loops, caps, holly) can visually overlap a neighbour's body, as the original stems did.
 - The rules text still says "watermelon".
+
+## Polish pass (night scene, motion, sharpness)
+The first skin read as washed out: pale board, flat white basket, no motion. This pass is still presentation only (`engine.ts` untouched).
+
+### Blurry rendering: root cause and fix
+The board canvas's backing store was always 360 × devicePixelRatio (capped at 2), whatever size the board was shown at. The board is shown wider than 360 CSS px (about 530 px on a 1440×900 desktop; about 370 px on 3× phones, which need about 1110 device px), so the browser stretched a low-resolution bitmap and every ornament looked soft, even though the vector art is clean. `index.ts` now sizes the backing store from the board's on-screen width × devicePixelRatio, capped at 3×. The ratio is a multiple of 1/30, so the store stays exactly 12k × 17k px and the board keeps its 360:510 shape. The cached ornament sprites already key on device pixels, so they follow automatically. The "Up next" preview is sized the same way. This also sharpens the original fruit theme.
+
+### Look
+- Night sky with stars, a crescent moon and warm out-of-focus lights; snow on the ground.
+- The basket is now translucent frosted glass with a candlelit glow, a diagonal sheen, frost in the corners and an inner shadow. It has a candy-cane frame with diagonal stripes, and a pine garland with small baubles, a snow cap and holly.
+- The light string scallops across the top; the waiting ornament hangs from it on a gold thread.
+- Ornaments gained a glassy rim reflection and a softer specular highlight.
+- The danger line is now a gold bead chain that pulses red while the pile is too high.
+- Surround: the midnight gradient with still snow at two scales; the dock uses dark-tone glass (`festiveDarkSurfaces`). The "Up next" label sits in a glass pill.
+
+### Motion (all off under reduced motion)
+- Snowfall drifts behind the glass, and bulb halos twinkle in a slow chase.
+- The hanging ornament swings against your aim and then settles into an idle sway. After a drop, the next one slides down its thread.
+- Merges show a coloured glow, an expanding gold ring and spinning star sparkles. The new ornament springs in (outBack scale) and its "+points" label pops in gold.
+- A glint now and then travels across the pile.
+- The surround's snow is deliberately still. An endless CSS animation would keep running behind the pause menu and would break the suite's "animations settled" checks.
+
+### Performance
+- Static layers (sky, basket and wire) are painted once per pixel ratio.
+- Snow, halos, sparkles and glints are cached sprites drawn with `drawImage`.
+- The merge pop scales the context and does not rasterise new sprite sizes.
+
+### Tests
+| Check | Result |
+| --- | --- |
+| `npx tsc --noEmit` | clean |
+| `npx vitest run tests/games/fruit-merge tests/core/festive.test.ts` | 22/22 |
+| Playwright (Chromium): `tests/games/fruit-merge`, `tests/e2e/festive.spec.ts`, `viewport.spec.ts`, `glass-menus.spec.ts`, `see-through-material.spec.ts` | 79/79 |

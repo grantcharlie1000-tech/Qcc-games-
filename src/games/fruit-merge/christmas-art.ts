@@ -5,7 +5,7 @@
  * way the original fruit stems and leaves did. Each tier has its own colour
  * family AND its own motif, so tiers stay distinct without relying on hue.
  */
-import {XMAS,withAlpha,drawSnowflake,drawSnowCap,drawLightString,roundRect} from '../../festive/art';
+import {XMAS,BULBS,withAlpha,hash,drawSnowflake,drawSnowCap,drawBulb,drawBauble,roundRect} from '../../festive/art';
 
 type Ctx=CanvasRenderingContext2D;
 interface Ornament {name:string;color:string;deep:string;cap:'bell'|'holly'|'cap'|'none'|'crown'}
@@ -124,7 +124,12 @@ function paintLighting(c:Ctx,tier:number){
  c.fillStyle=light;c.fillRect(-40,-40,80,80);
  const shade=c.createRadialGradient(-10,-12,8,0,0,41);shade.addColorStop(0,withAlpha(o.deep,0));shade.addColorStop(.55,withAlpha(o.deep,0));shade.addColorStop(1,withAlpha(o.deep,.62));
  c.fillStyle=shade;c.fillRect(-40,-40,80,80);
- c.fillStyle='rgba(255,255,255,.72)';c.beginPath();c.ellipse(-15,-19,11,5.5,-.65,0,Math.PI*2);c.fill();
+ // Reflected light along the lower right rim reads as glass rather than paint.
+ c.strokeStyle='rgba(255,255,255,.38)';c.lineWidth=3;c.lineCap='round';c.beginPath();c.arc(0,0,33,.15,1.35);c.stroke();
+ c.strokeStyle='rgba(255,236,190,.22)';c.lineWidth=6;c.beginPath();c.arc(0,0,31,.25,1.2);c.stroke();
+ const spec=c.createRadialGradient(-15,-19,0,-15,-19,13);spec.addColorStop(0,'rgba(255,255,255,.95)');spec.addColorStop(.6,'rgba(255,255,255,.55)');spec.addColorStop(1,'rgba(255,255,255,0)');
+ c.fillStyle=spec;c.beginPath();c.ellipse(-15,-19,13,7,-.65,0,Math.PI*2);c.fill();
+ c.fillStyle='rgba(255,255,255,.95)';c.beginPath();c.ellipse(-17,-21,4.5,2.2,-.65,0,Math.PI*2);c.fill();
  c.fillStyle='rgba(255,255,255,.5)';c.beginPath();c.arc(-25,-6,2.4,0,Math.PI*2);c.fill();
  c.restore();
  // The rim stroke is inset so the silhouette is exactly the physics circle.
@@ -148,47 +153,220 @@ function sprite(kind:'turn'|'light',tier:number,pixels:number){
  return s;
 }
 
-export function drawOrnament(c:Ctx,tier:number,x:number,y:number,r:number,angle=0,number=false){
+/** `scale` enlarges the picture only (used by the merge pop) and reuses the sprites cached for radius r. */
+export function drawOrnament(c:Ctx,tier:number,x:number,y:number,r:number,angle=0,number=false,scale=1){
  const m=c.getTransform(),pixels=Math.max(1,Math.round(r*Math.hypot(m.a,m.b)*2)/2);
  const turn=sprite('turn',tier,pixels),light=sprite('light',tier,pixels),span=turn.width/2*r/pixels;
- c.save();c.translate(x,y);
+ c.save();c.translate(x,y);if(scale!==1)c.scale(scale,scale);
  c.rotate(angle);c.drawImage(turn,-span,-span,span*2,span*2);c.rotate(-angle);
  c.drawImage(light,-span,-span,span*2,span*2);
  if(number){c.rotate(angle);c.scale(r/40,r/40);c.fillStyle='#fff8de';c.strokeStyle='#41333e';c.lineWidth=1;c.beginPath();c.arc(23,-23,10,0,Math.PI*2);c.fill();c.stroke();c.fillStyle='#41333e';c.font='bold 12px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(String(tier+1),23,-22);}
  c.restore();
 }
 
-/** The basket's surroundings: the original 32px checkerboard geometry, re-coloured as frosted snow with flakes. */
-export const SNOW_BASE='#f8f6f1';
-const SNOW_CHECK='#e8eff5';
-function drawSnowBoard(c:Ctx,width:number,height:number){
- c.fillStyle=SNOW_BASE;c.fillRect(0,0,width,height);
- c.fillStyle=SNOW_CHECK;for(let y=90;y<height;y+=32)for(let x=0;x<width;x+=32)if((x/32+(y-90)/32)%2===0)c.fillRect(x,y,32,32);
- for(let y=90;y<height;y+=64)for(let x=32;x<width;x+=64)drawSnowflake(c,x+16,y+16,5.5,'#a9c2d6',.7);
+/* ------------------------------------------------------------------------
+ * The scene: a snowy night outside a frosted, candlelit window-basket.
+ * Static layers are painted once per pixel ratio and stamped; the moving
+ * parts (snow, twinkling bulbs, glints, merge bursts, the hanging ornament's
+ * swing) are a handful of cached sprites drawn per frame, which stays cheap
+ * on software-GL canvases.
+ * ---------------------------------------------------------------------- */
+const BASKET={x:12,y:96,w:336,h:402,radii:[10,10,23,23]};
+const BULB_COUNT=9;
+const ease={outBack:(t:number)=>{const s=1.70158;return 1+(s+1)*(t-1)**3+s*(t-1)**2;},out:(t:number)=>1-(1-t)**3};
+
+function canvasOf(w:number,h:number){const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));return c;}
+
+/** Where the light string's bulbs hang: a scalloped wire across the top of the board. */
+function bulbPoint(i:number,width:number){const x=(i+.5)*width/BULB_COUNT;return {x,y:13};}
+function wireY(x:number,width:number){const span=width/BULB_COUNT,t=((x%span)+span)%span/span;return 3+Math.sin(t*Math.PI)*9;}
+
+function paintSky(g:Ctx,width:number,height:number){
+ const sky=g.createLinearGradient(0,0,0,height);sky.addColorStop(0,'#0a1532');sky.addColorStop(.45,'#13295a');sky.addColorStop(1,'#20457c');
+ g.fillStyle=sky;g.fillRect(0,0,width,height);
+ // A low moon glow behind the drop zone, then a crescent.
+ const glow=g.createRadialGradient(306,46,4,306,46,90);glow.addColorStop(0,'rgba(255,240,200,.32)');glow.addColorStop(1,'rgba(255,240,200,0)');
+ g.fillStyle=glow;g.fillRect(0,0,width,180);
+ g.save();g.beginPath();g.arc(306,46,13,0,Math.PI*2);g.clip();g.beginPath();g.arc(306,46,13,0,Math.PI*2);g.arc(313,40,11.5,0,Math.PI*2);g.fillStyle='#fff4d6';g.fill('evenodd');g.restore();
+ // Stars, deterministic.
+ for(let i=0;i<70;i++){const x=hash(i*3+1)*width,y=hash(i*3+2)*height*.9,s=.5+hash(i*3+3)*1.1;g.fillStyle=`rgba(255,255,255,${.25+hash(i*7)*.55})`;g.beginPath();g.arc(x,y,s,0,Math.PI*2);g.fill();}
+ for(const [x,y] of [[40,40],[222,30],[150,62],[338,84]] as const){g.fillStyle='rgba(255,250,230,.85)';star(g,x,y,3.4,.9,4,0);g.fill();}
+ // Warm out-of-focus lights.
+ for(let i=0;i<9;i++){const x=hash(i+40)*width,y=60+hash(i+50)*(height-80),r=10+hash(i+60)*18,col=BULBS[i%BULBS.length]!;
+  const b=g.createRadialGradient(x,y,0,x,y,r);b.addColorStop(0,withAlpha(col,.22));b.addColorStop(1,withAlpha(col,0));g.fillStyle=b;g.fillRect(x-r,y-r,r*2,r*2);}
+ // Snow on the ground beneath the basket.
+ g.fillStyle='#e9f1fa';g.beginPath();g.moveTo(0,height);g.lineTo(0,494);for(let x=0;x<=width;x+=30)g.quadraticCurveTo(x+15,486+hash(x)*6,x+30,494);g.lineTo(width,height);g.closePath();g.fill();
 }
 
-/** Snowy basket: evergreen frame, frosted interior, snow on the rim and a holly sprig in each top corner. */
-function drawFestiveBasket(c:Ctx){
- c.fillStyle='#fdfeff';c.strokeStyle=XMAS.greenDeep;c.lineWidth=5;c.beginPath();c.roundRect(12,96,336,402,[10,10,23,23]);c.fill();c.stroke();
- c.strokeStyle=XMAS.goldLight;c.lineWidth=1.4;c.beginPath();c.roundRect(16.5,100.5,327,393,[7,7,19,19]);c.stroke();
- drawSnowCap(c,10,95,340,6,7);
- for(const [hx,flip] of [[24,1],[336,-1]] as const){c.save();c.translate(hx,94);c.scale(flip,1);hollyLeaf(c,0,0,17,-2.7,XMAS.green);hollyLeaf(c,0,0,17,-.25,'#36b065');berry(c,-2,1,3.6);berry(c,4,2,3.6);berry(c,1,-4,3.6);c.restore();}
-}
-/** The basket's lip along the floor: a red ribbon with a gold edge. */
-export function drawFestiveRim(c:Ctx,floor:number){
- c.lineCap='round';c.strokeStyle=XMAS.redDeep;c.lineWidth=8;c.beginPath();c.moveTo(17,floor+7);c.quadraticCurveTo(180,floor+15,343,floor+7);c.stroke();
- c.strokeStyle=XMAS.goldLight;c.lineWidth=3;c.beginPath();c.moveTo(20,floor+5);c.lineTo(340,floor+5);c.stroke();
+function paintWire(g:Ctx,width:number){
+ g.strokeStyle='#0f2a1c';g.lineWidth=1.6;g.beginPath();for(let x=-2;x<=width+2;x+=2){const y=wireY(x,width);if(x<=-2)g.moveTo(x,y);else g.lineTo(x,y);}g.stroke();
+ for(let i=0;i<BULB_COUNT;i++){const p=bulbPoint(i,width);drawBulb(g,p.x,p.y-1,7,BULBS[i%BULBS.length]!,Math.PI/2,false);}
 }
 
-/** Board, lights and basket never change during play: paint them once per pixel ratio. */
-let backdrop:{canvas:HTMLCanvasElement;key:string}|undefined;
-export function festiveBackdrop(width:number,height:number,ratio:number){
- const key=`${width}x${height}@${ratio}`;
- if(backdrop?.key!==key){
-  const canvas=document.createElement('canvas');canvas.width=Math.round(width*ratio);canvas.height=Math.round(height*ratio);
-  const g=canvas.getContext('2d')!;g.setTransform(ratio,0,0,ratio,0,0);
-  drawSnowBoard(g,width,height);drawLightString(g,-8,3,width+8,3,10,6.5,7,1);drawFestiveBasket(g);
-  backdrop={canvas,key};
+function basketPath(g:Ctx,inset=0){const {x,y,w,h,radii}=BASKET;g.roundRect(x+inset,y+inset,w-inset*2,h-inset*2,radii.map(r=>Math.max(0,r-inset)));}
+
+/** Pine needles along a gentle curve, with small baubles tucked in. */
+function paintGarland(g:Ctx){
+ const y0=95,at=(x:number)=>y0+Math.sin(x/34)*1.6;
+ for(let layer=0;layer<3;layer++){
+  const col=['#0d3b24','#17603a','#2a8a52'][layer]!;g.strokeStyle=col;g.lineWidth=1.6;g.lineCap='round';g.beginPath();
+  for(let x=8;x<=352;x+=2.2){const k=x*13+layer*977,a=(hash(k)-.5)*2.6+(hash(k+1)>.5?Math.PI:0),len=5+hash(k+2)*4-layer;const y=at(x)+(hash(k+3)-.5)*4;g.moveTo(x,y);g.lineTo(x+Math.cos(a)*len,y+Math.sin(a)*len*.8);}
+  g.stroke();
  }
- return backdrop.canvas;
+ drawSnowCap(g,8,92,344,4.5,11);
+ const cols=[XMAS.red,XMAS.gold,'#2f8fe0',XMAS.red,'#b45cd6',XMAS.gold,'#2f8fe0'];
+ for(let i=0;i<7;i++){const x=64+i*39;drawBauble(g,x,at(x)+6,4.4,cols[i]!,undefined,(hash(i+90)-.5)*.5);}
+}
+
+function paintFrost(g:Ctx){
+ const {x,y,w,h}=BASKET;
+ for(const [cx,cy,r] of [[x,y,110],[x+w,y,110],[x,y+h,90],[x+w,y+h,90]] as const){const f=g.createRadialGradient(cx,cy,0,cx,cy,r);f.addColorStop(0,'rgba(255,255,255,.75)');f.addColorStop(.5,'rgba(240,248,255,.25)');f.addColorStop(1,'rgba(240,248,255,0)');g.fillStyle=f;g.fillRect(cx-r,cy-r,r*2,r*2);}
+ for(let i=0;i<26;i++){const corner=i%4,cx=corner%2?x+w-12-hash(i)*48:x+12+hash(i)*48,cy=corner<2?y+16+hash(i+30)*44:y+h-14-hash(i+30)*38;drawSnowflake(g,cx,cy,2+hash(i+60)*3.5,'#ffffff',.55+hash(i+70)*.35);}
+}
+
+function paintBasket(g:Ctx){
+ const {x,y,w,h}=BASKET;
+ // Frosted glass: translucent so the falling snow shows faintly behind it.
+ g.save();g.beginPath();basketPath(g,4.5);g.clip();
+ const glass=g.createLinearGradient(0,y,0,y+h);glass.addColorStop(0,'rgba(226,238,250,.86)');glass.addColorStop(.55,'rgba(244,246,248,.9)');glass.addColorStop(1,'rgba(255,243,224,.95)');
+ g.fillStyle=glass;g.fillRect(x,y,w,h);
+ const candle=g.createRadialGradient(180,y+h,10,180,y+h,260);candle.addColorStop(0,'rgba(255,200,120,.32)');candle.addColorStop(1,'rgba(255,200,120,0)');g.fillStyle=candle;g.fillRect(x,y,w,h);
+ // A soft diagonal reflection across the glass.
+ g.save();g.translate(x+60,y);g.rotate(.32);const sheen=g.createLinearGradient(0,0,46,0);sheen.addColorStop(0,'rgba(255,255,255,0)');sheen.addColorStop(.5,'rgba(255,255,255,.35)');sheen.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=sheen;g.fillRect(0,-40,46,h+80);g.fillRect(58,-40,12,h+80);g.restore();
+ paintFrost(g);
+ // Inner shadow so the glass reads as recessed.
+ g.strokeStyle='rgba(40,60,100,.16)';g.lineWidth=7;g.beginPath();basketPath(g,4.5);g.stroke();
+ g.restore();
+ // Candy-cane frame: white band with diagonal red stripes, outlined.
+ g.save();g.beginPath();basketPath(g,-4.5);basketPath(g,4.5);g.clip('evenodd');
+ g.fillStyle='#fffaf2';g.fillRect(0,0,360,520);
+ g.fillStyle=XMAS.red;for(let k=-520;k<720;k+=16){g.beginPath();g.moveTo(k,0);g.lineTo(k+8,0);g.lineTo(k+8-520,520);g.lineTo(k-520,520);g.closePath();g.fill();}
+ const shade=g.createLinearGradient(0,0,360,0);shade.addColorStop(0,'rgba(0,0,0,.12)');shade.addColorStop(.5,'rgba(255,255,255,.12)');shade.addColorStop(1,'rgba(0,0,0,.14)');g.fillStyle=shade;g.fillRect(0,0,360,520);
+ g.restore();
+ g.lineWidth=1.4;g.strokeStyle='#6e1220';g.beginPath();basketPath(g,-4.5);g.stroke();g.beginPath();basketPath(g,4.5);g.stroke();
+ g.strokeStyle='rgba(255,255,255,.55)';g.lineWidth=1;g.beginPath();basketPath(g,-3);g.stroke();
+ g.strokeStyle=XMAS.goldLight;g.lineWidth=1.2;g.beginPath();basketPath(g,6.5);g.stroke();
+ paintGarland(g);
+ for(const [hx,flip] of [[22,1],[338,-1]] as const){g.save();g.translate(hx,96);g.scale(flip,1);hollyLeaf(g,0,0,19,-2.7,XMAS.green);hollyLeaf(g,0,0,19,-.25,'#36b065');berry(g,-2,1,3.8);berry(g,4,2,3.8);berry(g,1,-4,3.8);g.restore();}
+}
+
+/** The basket's lip along the floor: a red velvet ribbon with gold piping and a bow at the centre. */
+export function drawFestiveRim(c:Ctx,floor:number){
+ c.lineCap='round';c.strokeStyle=XMAS.redDark;c.lineWidth=10;c.beginPath();c.moveTo(17,floor+7);c.quadraticCurveTo(180,floor+15,343,floor+7);c.stroke();
+ c.strokeStyle=XMAS.red;c.lineWidth=7;c.beginPath();c.moveTo(17,floor+6);c.quadraticCurveTo(180,floor+14,343,floor+6);c.stroke();
+ c.strokeStyle=XMAS.goldLight;c.lineWidth=2.4;c.beginPath();c.moveTo(20,floor+3.5);c.quadraticCurveTo(180,floor+11,340,floor+3.5);c.stroke();
+}
+
+/* Cached sprites ---------------------------------------------------------- */
+const fx=new Map<string,HTMLCanvasElement>();
+function cached(key:string,size:number,paint:(g:Ctx,s:number)=>void){
+ let s=fx.get(key);if(!s){s=canvasOf(size,size);const g=s.getContext('2d')!;paint(g,size);fx.set(key,s);}return s;
+}
+const flakeSprite=()=>cached('flake',32,(g,s)=>{const r=s/2,f=g.createRadialGradient(r,r,0,r,r,r);f.addColorStop(0,'rgba(255,255,255,1)');f.addColorStop(.35,'rgba(255,255,255,.85)');f.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=f;g.fillRect(0,0,s,s);});
+const glowSprite=(color:string)=>cached(`glow:${color}`,64,(g,s)=>{const r=s/2,f=g.createRadialGradient(r,r,0,r,r,r);f.addColorStop(0,withAlpha(color,.85));f.addColorStop(.25,withAlpha(color,.4));f.addColorStop(1,withAlpha(color,0));g.fillStyle=f;g.fillRect(0,0,s,s);});
+const sparkleSprite=(color:string)=>cached(`spark:${color}`,48,(g,s)=>{const r=s/2,f=g.createRadialGradient(r,r,0,r,r,r*.6);f.addColorStop(0,withAlpha(color,.7));f.addColorStop(1,withAlpha(color,0));g.fillStyle=f;g.fillRect(0,0,s,s);
+ g.fillStyle='#ffffff';star(g,r,r,r*.95,r*.14,4,0);g.fill();g.fillStyle=color;star(g,r,r,r*.55,r*.1,4,Math.PI/4);g.globalAlpha=.9;g.fill();g.globalAlpha=1;g.fillStyle='#ffffff';g.beginPath();g.arc(r,r,r*.12,0,Math.PI*2);g.fill();});
+
+interface Layers {key:string;sky:HTMLCanvasElement;basket:HTMLCanvasElement}
+let layers:Layers|undefined;
+function sceneLayers(width:number,height:number,ratio:number){
+ const key=`${width}x${height}@${ratio}`;
+ if(layers?.key!==key){
+  const make=(paint:(g:Ctx)=>void)=>{const c=canvasOf(width*ratio,height*ratio),g=c.getContext('2d')!;g.setTransform(ratio,0,0,ratio,0,0);paint(g);return c;};
+  layers={key,sky:make(g=>{paintSky(g,width,height);}),basket:make(g=>{paintBasket(g);paintWire(g,width);})};
+ }
+ return layers;
+}
+/** Kept for callers that only want the still picture (the board, lights and basket). */
+export function festiveBackdrop(width:number,height:number,ratio:number){
+ const l=sceneLayers(width,height,ratio),c=canvasOf(width*ratio,height*ratio),g=c.getContext('2d')!;g.drawImage(l.sky,0,0);g.drawImage(l.basket,0,0);return c;
+}
+
+/* The animated scene --------------------------------------------------------- */
+interface Flake {x:number;y:number;r:number;speed:number;drift:number;phase:number;alpha:number}
+interface Burst {x:number;y:number;r:number;tier:number;age:number;sparks:{a:number;v:number;spin:number;size:number;color:string}[]}
+interface Glint {x:number;y:number;size:number;age:number}
+interface Hanging {tier:number;x:number;y:number;r:number;alpha:number;number:boolean}
+interface SceneFruit {id:number;tier:number;x:number;y:number;r:number}
+
+export class FestiveScene {
+ private time=0;private flakes:Flake[]=[];private bursts:Burst[]=[];private glints:Glint[]=[];private pops=new Map<number,number>();
+ private swing=0;private swingV=0;private lastAim:number|undefined;private glintClock=0;private glintSeed=1;
+ constructor(private width:number,private height:number){
+  for(let i=0;i<54;i++){const near=hash(i+400)>.72;this.flakes.push({x:hash(i+100)*width,y:hash(i+200)*height,r:near?2.2+hash(i+300)*1.6:.9+hash(i+300)*1.2,speed:near?.75+hash(i+500)*.35:.3+hash(i+500)*.3,drift:4+hash(i+600)*10,phase:hash(i+700)*Math.PI*2,alpha:near?.9:.55+hash(i+800)*.3});}
+ }
+ reset(){this.bursts=[];this.glints=[];this.pops.clear();this.swing=0;this.swingV=0;this.lastAim=undefined;}
+ /** One fixed physics step (ms). `fruits` lets the scene pick ornaments to glint. */
+ step(dt:number,aim:number,fruits:readonly SceneFruit[],still:boolean){
+  this.time+=dt;
+  if(still){this.bursts=[];this.glints=[];this.pops.clear();this.swing=0;this.swingV=0;this.lastAim=aim;return;}
+  for(const f of this.flakes){f.y+=f.speed*dt/16.7;if(f.y>this.height+4){f.y=-4;f.x=(f.x+97)%this.width;}}
+  // The hanging ornament swings against the aim's motion, then settles with a gentle idle sway.
+  const moved=this.lastAim===undefined?0:aim-this.lastAim;this.lastAim=aim;
+  this.swingV+=-moved*.0045-this.swing*.035;this.swingV*=.9;this.swing=Math.max(-.5,Math.min(.5,this.swing+this.swingV));
+  for(const b of this.bursts)b.age+=dt;this.bursts=this.bursts.filter(b=>b.age<700);
+  for(const g of this.glints)g.age+=dt;this.glints=this.glints.filter(g=>g.age<650);
+  for(const [id,t] of this.pops)if(this.time-t>420)this.pops.delete(id);
+  this.glintClock+=dt;
+  if(this.glintClock>520&&fruits.length){this.glintClock=0;const f=fruits[Math.floor(hash(this.glintSeed++)*fruits.length)]!;if(f.r>=18)this.glints.push({x:f.x-f.r*.38,y:f.y-f.r*.47,size:Math.min(16,6+f.r*.14),age:0});}
+ }
+ merged(x:number,y:number,tier:number,r:number,id:number|undefined){
+  if(id!==undefined)this.pops.set(id,this.time);
+  const palette=[ORNAMENTS[tier]!.color,XMAS.goldLight,'#ffffff'];
+  const sparks=Array.from({length:12},(_,i)=>({a:i*Math.PI/6+hash(this.time+i)*.4,v:.9+hash(this.time*3+i)*.8,spin:(hash(i+this.time)-.5)*.02,size:7+hash(this.time+i*7)*7,color:palette[i%3]!}));
+  this.bursts.push({x,y,r,tier,age:0,sparks});if(this.bursts.length>8)this.bursts.shift();
+ }
+ /** Visual scale for a freshly merged ornament: it springs out of the flash. */
+ scale(id:number){const t=this.pops.get(id);if(t===undefined)return 1;const p=Math.min(1,(this.time-t)/380);return .55+.45*ease.outBack(p);}
+ /** Sky, snow, twinkling lights and the glass basket. */
+ drawBack(c:Ctx,ratio:number,reduced:boolean){
+  const l=sceneLayers(this.width,this.height,ratio);
+  c.drawImage(l.sky,0,0,this.width,this.height);
+  const flake=flakeSprite();
+  for(const f of this.flakes){const x=f.x+(reduced?0:Math.sin(this.time*.0011+f.phase)*f.drift);c.globalAlpha=f.alpha;c.drawImage(flake,x-f.r*1.6,f.y-f.r*1.6,f.r*3.2,f.r*3.2);}
+  c.globalAlpha=1;
+  c.drawImage(l.basket,0,0,this.width,this.height);
+  // Bulb halos twinkle in a slow chase.
+  c.globalCompositeOperation='lighter';
+  for(let i=0;i<BULB_COUNT;i++){const p=bulbPoint(i,this.width),col=BULBS[i%BULBS.length]!,tw=reduced?.75:.55+.45*(.5+.5*Math.sin(this.time*.003-i*.9));c.globalAlpha=tw;const s=24+tw*10;c.drawImage(glowSprite(col),p.x-s/2,p.y+4-s/2,s,s);}
+  c.globalCompositeOperation='source-over';c.globalAlpha=1;
+ }
+ /** The danger line as a gold bead-chain; it glows red while a pile sits above it. */
+ drawDanger(c:Ctx,left:number,right:number,y:number,hot:boolean){
+  if(hot){const pulse=.5+.5*Math.sin(this.time*.012);c.fillStyle=`rgba(232,50,63,${.12+.14*pulse})`;c.fillRect(left,y-6,right-left,12);}
+  c.fillStyle=hot?'#e8323f':'rgba(200,150,60,.75)';for(let x=left+4;x<=right-4;x+=7){c.beginPath();c.arc(x,y,hot?1.8:1.4,0,Math.PI*2);c.fill();}
+ }
+ /** The ornament waiting to drop, hung from the light string on a gold thread. */
+ drawHanging(c:Ctx,h:Hanging,reduced:boolean,paint:(c:Ctx,tier:number,x:number,y:number,r:number,angle:number,number:boolean)=>void){
+  const angle=reduced?0:this.swing+Math.sin(this.time*.0019)*.035;
+  const top=wireY(h.x,this.width)+1,hookOffset=h.r*1.33;
+  const len=Math.max(4,h.y-hookOffset-top);
+  const hx=h.x+Math.sin(angle)*len,hy=top+Math.cos(angle)*len;
+  const cx=hx+Math.sin(angle)*hookOffset,cy=hy+Math.cos(angle)*hookOffset;
+  c.globalAlpha=h.alpha;c.strokeStyle=XMAS.goldDeep;c.lineWidth=1.1;c.beginPath();c.moveTo(h.x,top);c.lineTo(hx,hy);c.stroke();
+  paint(c,h.tier,cx,cy,h.r,-angle,h.number);c.globalAlpha=1;
+ }
+ /** Merge bursts and the little glints that travel across the pile. */
+ drawFront(c:Ctx){
+  c.globalCompositeOperation='lighter';
+  for(const b of this.bursts){
+   const p=b.age/700,col=ORNAMENTS[b.tier]!.color;
+   if(p<.45){const q=p/.45,s=b.r*(1.6+q*1.4);c.globalAlpha=(1-q)*.85;c.drawImage(glowSprite(col),b.x-s,b.y-s,s*2,s*2);}
+   c.globalAlpha=Math.max(0,1-p*1.4);c.strokeStyle=XMAS.goldLight;c.lineWidth=3*(1-p)+.5;c.beginPath();c.arc(b.x,b.y,b.r*(1+ease.out(p)*.7),0,Math.PI*2);c.stroke();
+   for(const s of b.sparks){const d=b.r*.6+ease.out(p)*(b.r*.9+34*s.v),x=b.x+Math.cos(s.a)*d,y=b.y+Math.sin(s.a)*d+p*p*30,size=s.size*(1-p*.7);
+    c.globalAlpha=Math.max(0,1-p);c.save();c.translate(x,y);c.rotate(s.spin*b.age);c.drawImage(sparkleSprite(s.color),-size,-size,size*2,size*2);c.restore();}
+  }
+  for(const g of this.glints){const p=g.age/650,k=Math.sin(p*Math.PI),s=g.size*k;c.globalAlpha=k;c.save();c.translate(g.x,g.y);c.rotate(p*1.2);c.drawImage(sparkleSprite('#fff4c2'),-s,-s,s*2,s*2);c.restore();}
+  c.globalCompositeOperation='source-over';c.globalAlpha=1;
+ }
+}
+
+/** The floating "+points" label: gold, outlined, with a quick pop. */
+export function drawFestiveFlash(c:Ctx,text:string,x:number,y:number,life:number){
+ const age=750-life,pop=age<160?.6+.4*ease.outBack(age/160):1;
+ c.save();c.globalAlpha=Math.min(1,life/200);c.translate(x,y);c.scale(pop,pop);
+ c.font='900 22px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';c.lineJoin='round';
+ c.strokeStyle=XMAS.redDark;c.lineWidth=6;c.strokeText(text,0,0);
+ const g=c.createLinearGradient(0,-11,0,11);g.addColorStop(0,'#fff6cf');g.addColorStop(.5,XMAS.goldLight);g.addColorStop(1,XMAS.gold);c.fillStyle=g;c.fillText(text,0,0);
+ c.restore();
 }

@@ -43,7 +43,7 @@ const surfaceSources:Partial<Record<GameId,string>>={
 };
 const lightSurfaces=new Set<GameId>(['fruit-merge','tower','flappy-bird','animal-stack','blockcraft']);
 // Christmas skins that turn a light surface into a night scene keep dark-tone glass.
-const festiveDarkSurfaces=new Set<GameId>(['tower']);
+const festiveDarkSurfaces=new Set<GameId>(['tower','fruit-merge']);
 
 export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLElement,activate:(action:()=>void)=>void):void;dispose():void}{
   const dock=view.querySelector<HTMLElement>('.game-dock')!;

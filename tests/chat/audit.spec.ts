@@ -11,6 +11,7 @@ async function setup(context:BrowserContext,{signedIn=true,request=false,unread=
  const messages=[{id:'1',kind:'text',mine:true,body:'A delivered message',snap:null,createdAt:at,viewedAt:null,saved:false}];
  await context.addInitScript(signed=>{
   localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');
+  localStorage.setItem('qcc:christmas-welcome:2026:audit_me','seen');
   sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');
   if(signed)localStorage.setItem('pocket-arcade:v1:accounts:session',JSON.stringify({username:'audit_me',token:'acct_'+'a'.repeat(64)}));
  },signedIn);

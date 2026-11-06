@@ -1,5 +1,6 @@
 import './theme.css';
 import './festive/christmas.css';
+import {ChristmasWelcome} from './festive/welcome';
 import {applyFestiveTheme,setFestiveTheme,storedFestiveTheme} from './festive/festive';
 import './movies/style.css';
 import type {MoviesView} from './movies/view';
@@ -65,6 +66,11 @@ const accounts=new AccountsClient();
 const launcher=new AppsLauncher({accounts,chat:new ChatClient(()=>accounts.session()?.token??null),reducedMotion:()=>preferences.reducedMotion});
 void launcher.probe();
 const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry);
+const christmasWelcome=new ChristmasWelcome(()=>{
+  void route().then(()=>{
+    if(!activeId&&!movies&&!appView&&!study.isOpen&&!document.querySelector('dialog[open]'))document.querySelector<HTMLElement>('.game-card')?.focus({preventScroll:true});
+  });
+});
 const leaderboards=new LeaderboardView(()=>{pausedForDialog=false;if(activeId)setPaused(true);accountView.open();});
 let gameMenu:HTMLDialogElement|undefined;
 let gameChrome:ReturnType<typeof bindGameChrome>|undefined;
@@ -232,7 +238,13 @@ function appDeps():AppDeps{
     openApps:trigger=>launcher.open(trigger??undefined),appsBadge:launcher.subscribe,refreshAppsBadge:()=>launcher.refresh()};
 }
 async function route(){
-  if(!initialized)return;
+  if(!initialized||christmasWelcome.root.open)return;
+  const username=accounts.session()?.username;
+  if(username&&!study.isOpen&&!document.querySelector('dialog[open]')&&christmasWelcome.shouldShow(username)){
+    // Finish entry/Study first. Do not start a game behind the welcome. Dismissal
+    // routes the latest hash, including Back/Forward used while the sheet is open.
+    ++generation;leave();library();christmasWelcome.open(username);return;
+  }
   tabbar.reset();
   accountRoutePending=false;
   // Explicit browser/hash navigation leaves the reading view as well as the old game.
@@ -485,7 +497,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance){
 window.addEventListener('keydown',event=>{
   // Inert affects DOM targets, not document/window listeners retained by games.
   // Stop their handlers while preserving native reading/keyboard defaults.
-  if(accountView.root.open||document.querySelector('dialog.movies-warning[open]'))return;
+  if(accountView.root.open||christmasWelcome.root.open||document.querySelector('dialog.movies-warning[open]'))return;
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(event.key==='Escape'&&(menu.open||launcher.sheet.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open||document.querySelector('dialog.apps-sheet[open],.apps-popover')))return;
   // The inline Social composer owns Escape while its mention picker is open.
@@ -520,7 +532,7 @@ function updateAccountMenu(){
  for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#colour','colorBlind']] as const)document.querySelector<HTMLInputElement>(selector)!.checked=preferences[key];
  document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);
 }
-accounts.beforeIdentityChange=()=>{generation++;leave(false);};
+accounts.beforeIdentityChange=()=>{generation++;if(christmasWelcome.root.open)christmasWelcome.root.close();leave(false);};
 let displayedAccount=accounts.session()?.token;
 accounts.onChange(()=>{
  const identity=accounts.session()?.token,changed=identity!==displayedAccount;displayedAccount=identity;
