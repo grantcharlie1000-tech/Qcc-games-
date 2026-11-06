@@ -165,7 +165,8 @@ const module:GameModule={
     }
     function reset(level=session.state.level){cancelHint();clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level,session.state.best).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('');render(true);}
     function renderHintButton(){
-      hintButton.disabled=session.paused||!!session.pending||won(session.state.tubes)||hintRequest!==null;
+      hintButton.disabled=session.paused||!!session.pending||won(session.state.tubes);
+      hintButton.setAttribute('aria-disabled',String(hintRequest!==null));
       hintButton.setAttribute('aria-busy',String(hintRequest!==null));
       hintButton.title=hintRequest?'Finding a hint...':'Hint';
     }
@@ -185,7 +186,7 @@ const module:GameModule={
         selected=null;hint=null;
         const input=session.prepareHint(),state=session.state,request={};
         hintRequest=request;
-        tell('Finding a hint. You can keep playing.');render();
+        tell('Finding a hint. Selecting a tube cancels the search.');render();
         void hintSearch.run(input).then(result=>{
           if(disposed||hintRequest!==request||session.state!==state||session.paused||session.pending)return;
           hintRequest=null;

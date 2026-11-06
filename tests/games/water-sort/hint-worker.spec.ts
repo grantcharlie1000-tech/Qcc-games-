@@ -14,6 +14,7 @@ test('cancelled searches cannot change the board or charge an assist',async({pag
   await page.goto('/#/game/water-sort');
   const hint=page.getByRole('button',{name:'Hint',exact:true});
   await hint.click();await expect(hint).toBeDisabled();
+  await expect(page.locator('.ws-message')).toHaveText('Finding a hint. Selecting a tube cancels the search.');
   await page.locator('[data-tube="0"]').click();
   expect(await page.evaluate(()=>(window as unknown as {hintWorkers:{terminated:boolean}[]}).hintWorkers[0].terminated)).toBe(true);
   await page.evaluate(()=>(window as unknown as {hintWorkers:EventTarget[]}).hintWorkers[0].dispatchEvent(new MessageEvent('message',{data:{kind:'pour',from:0,to:2,remaining:1}})));

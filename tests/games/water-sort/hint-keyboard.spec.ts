@@ -1,6 +1,34 @@
 import {expect,test} from '../../fixtures';
 import {pauseGame} from '../../game-menu';
 
+test('Hint keeps keyboard focus while a search is pending and after it completes',async({page})=>{
+  await page.addInitScript(()=>{
+    class DelayedWorker extends EventTarget {
+      constructor(){super();(window as unknown as {hintWorkers:DelayedWorker[]}).hintWorkers.push(this);}
+      postMessage(){} terminate(){}
+    }
+    (window as unknown as {hintWorkers:DelayedWorker[]}).hintWorkers=[];
+    (window as unknown as {Worker:typeof DelayedWorker}).Worker=DelayedWorker;
+  });
+  await page.goto('/#/game/water-sort');
+  const hint=page.getByRole('button',{name:'Hint',exact:true});
+  await hint.focus();
+  await page.keyboard.press('Enter');
+  await expect(hint).toHaveAttribute('aria-busy','true');
+  await expect(hint).toBeFocused();
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(()=>(window as unknown as {hintWorkers:EventTarget[]}).hintWorkers.length)).toBe(1);
+  await page.evaluate(async()=>{
+    const {hintFor}=await import(String('/src/games/water-sort/hint.ts'));
+    const tubes=[...document.querySelectorAll<HTMLElement>('.ws-tube')].map(e=>e.dataset.colours?e.dataset.colours.split(',').map(Number):[]);
+    const result=hintFor({tubes,history:[]});
+    (window as unknown as {hintWorkers:EventTarget[]}).hintWorkers[0].dispatchEvent(new MessageEvent('message',{data:result}));
+  });
+  await expect(page.locator('.ws-hint-from')).toHaveCount(1);
+  await expect(hint).toHaveAttribute('aria-busy','false');
+  await expect(hint).toBeFocused();
+});
+
 test('holding Space cancels a pending hint without losing native activation',async({page})=>{
   await page.addInitScript(()=>{
     class DelayedWorker extends EventTarget {
