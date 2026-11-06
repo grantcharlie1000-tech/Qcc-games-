@@ -58,11 +58,13 @@ function gapEdges(course: Course, distance: number): void {
   let lo = distance, hi = distance;
   for (let k = 0; k < 160 && !course.sample(lo, lipProbe).ground; k++) lo -= .5;
   for (let k = 0; k < 160 && !course.sample(hi, lipProbe).ground; k++) hi += .5;
+  // Bisected down to adjacent floating-point numbers, so each edge is the one exact boundary, whichever point of
+  // the gap first asked (a step, or the drawing between steps): the result never depends on call order.
   let a = lo, b = distance;
-  for (let i = 0; i < 20; i++) { const m = (a + b) / 2; if (course.sample(m, lipProbe).ground) a = m; else b = m; }
+  for (let i = 0; i < 80; i++) { const m = (a + b) / 2; if (m === a || m === b) break; if (course.sample(m, lipProbe).ground) a = m; else b = m; }
   gapLip = a;
   a = distance; b = hi;
-  for (let i = 0; i < 20; i++) { const m = (a + b) / 2; if (course.sample(m, lipProbe).ground) b = m; else a = m; }
+  for (let i = 0; i < 80; i++) { const m = (a + b) / 2; if (m === a || m === b) break; if (course.sample(m, lipProbe).ground) b = m; else a = m; }
   gapLand = b;
 }
 /** How far a body at (distance, x, height) is above where it would rest, for the sleigh's landing flare. On the

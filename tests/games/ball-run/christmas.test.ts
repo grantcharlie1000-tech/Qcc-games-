@@ -273,6 +273,27 @@ describe('Ball Run Christmas sleigh collision', () => {
   });
 });
 
+describe('Ball Run Christmas sleigh over a drop\'s gap', () => {
+  it('measures the gap the same way whichever point of it is asked about first, so call order never matters', () => {
+    let gaps = 0;
+    for (const [seed, difficulty] of [[11, 'medium'], [8, 'hard'], [1, 'easy']] as const) {
+      const course = getCourse(seed, difficulty), found: number[] = [];
+      for (let d = 100; d < 4000 && found.length < 4; d += .25) if (!course.sample(d).ground && course.sample(d - .25).ground) found.push(d);
+      for (const start of found) {
+        const points = [start + .01, start + .7, start + 1.4, start + 2.1].filter(d => !course.sample(d).ground), reference: number[] = [];
+        for (let first = 0; first < points.length; first++) {
+          // Fill the cache from another gap, then from this gap's `first` point, then ask about every point.
+          heightAboveRest(course, found.find(g => g !== start)!, 0, 0); heightAboveRest(course, points[first], .3, 0);
+          const values = points.flatMap(d => [heightAboveRest(course, d, .3, 1), surfaceSlope(course, d, .3)]);
+          if (first === 0) reference.push(...values); else expect(values).toEqual(reference);
+        }
+        gaps++;
+      }
+    }
+    expect(gaps).toBeGreaterThan(4);
+  });
+});
+
 describe('Ball Run Christmas snowfall', () => {
   it('is one point cloud placed by its shader: fixed seeds, and per frame only uniforms change', () => {
     const a = createSnowfall(), b = createSnowfall();
@@ -487,7 +508,10 @@ describe('Ball Run Christmas scene', () => {
           lines++;
           const d = distance - (m.elements[14] + road.position.z);
           if (!course.sample(d + .5).ground) lips++;
-          expect(up.clone().normalize().y, `cross line at ${d}`).toBeGreaterThan(.9);
+          // Its height stands along the road surface's own normal (from the course's slope and bank at d), to 0.5°.
+          const sd = course.sample(d), ahead = course.sample(d + .01), behind = course.sample(d - .01);
+          const normal = new THREE.Vector3().crossVectors(new THREE.Vector3((behind.center - ahead.center) / .02, -sd.gradient, 1), new THREE.Vector3(1, -Math.tan(sd.bank), 0)).normalize();
+          expect(up.clone().normalize().angleTo(normal), `cross line at ${d}`).toBeLessThan(.5 * Math.PI / 180);
           expect(Math.abs(along.clone().normalize().y), `cross line at ${d}`).toBeLessThan(.5);
         }
       }
