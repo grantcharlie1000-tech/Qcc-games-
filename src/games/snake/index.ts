@@ -3,6 +3,7 @@ import {createState,enqueue,start as startRun,restoreState,advance,length,SIZE,t
 import {drawGarden} from './art';
 import {buildSpine,createView,eatDelay,tickView,DEATH_CARD_MS,WIN_CARD_MS,type SnakeView} from './presentation';
 import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
+import {christmas} from '../../festive/festive';
 import './style.css';
 import './christmas.css';
 const SWIPE_PX=20;
@@ -21,14 +22,24 @@ const module:GameModule={
   const events=new AbortController();
   let gesture:{x:number;y:number;id:number}|null=null;
   const reduced=()=>context.settings.reducedMotion||motionQuery.matches;
+  type PaintInputs=readonly [boolean,boolean,boolean,number,number,FontFaceSetLoadStatus|'unavailable'];
+  let painted:PaintInputs|null=null;
+  function paintInputs():PaintInputs{
+   return [reduced(),context.settings.colorBlind,christmas(),canvas.getBoundingClientRect().width,window.devicePixelRatio||1,document.fonts?.status??'unavailable'];
+  }
   function render(){
    const reduce=reduced();
    root.dataset.reducedMotion=String(reduce);
    drawGarden(canvas,state,view,reduce);
+   painted=paused?paintInputs():null;
    notifyGlassFrame(canvas);
    const h=state.body[0];
    canvas.setAttribute('aria-label',`Snake garden. Head column ${h.x+1}, row ${h.y+1}. Length ${length(state)}. ${state.food?`Apple column ${state.food.x+1}, row ${state.food.y+1}.`:''} Use arrows, WASD or swipe.`);
   }
+  const repaintPaused=()=>{if(paused&&!disposed)render();};
+  document.fonts?.addEventListener('loadingdone',repaintPaused,{signal:events.signal});
+  document.fonts?.addEventListener('loadingerror',repaintPaused,{signal:events.signal});
+  canvas.addEventListener('contextrestored',repaintPaused,{signal:events.signal});
   function resize(){
    if(disposed)return;
    const size=Math.max(1,Math.min(728,available.clientWidth,available.clientHeight));
@@ -63,7 +74,7 @@ const module:GameModule={
   function snapshot(){const {undo:_undo,...rest}=state;return JSON.parse(JSON.stringify(rest)) as unknown;}
   function serialize(){advanceTo(performance.now());return snapshot();}
   function persist(){context.save(snapshot());}
-  function reset(){state=createState();const clock=view.clock;view=createView();view.clock=clock;view.foodBorn=clock;best=context.highScore;last=null;gesture=null;revealed=true;update();persist();}
+  function reset(){painted=null;state=createState();const clock=view.clock;view=createView();view.clock=clock;view.foodBorn=clock;best=context.highScore;last=null;gesture=null;revealed=true;update();persist();}
   function begin(d?:Direction):boolean{
    if(!startRun(state,d))return false;
    best=context.highScore;last=performance.now();context.sound('tap');afterModelChange(state.score,'ready');return true;
@@ -128,7 +139,8 @@ const module:GameModule={
     if(!revealed&&cardDue())update();
    }
    lastFrame=paused?null:now;
-   render();
+   const inputs=paused?paintInputs():null;
+   if(!paused||painted===null||inputs?.some((value,index)=>value!==painted?.[index]))render();
    frame=requestAnimationFrame(loop);
   }
   update();resize();frame=requestAnimationFrame(loop);

@@ -1,0 +1,90 @@
+import {test,expect} from '../../fixtures';
+import {appSettings,backToGames,pauseGame,resumeGame} from '../../game-menu';
+
+test('paused Snake reflects presentation changes while its saved game remains frozen',async({page})=>{
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.clock.install({time:new Date('2026-10-19T09:00:00Z')});
+  await page.clock.pauseAt(new Date('2026-10-19T09:00:01Z'));
+  await page.goto('/#/game/snake');
+  await page.getByRole('button',{name:'Start slithering',exact:true}).click();
+  await page.clock.runFor(200);
+  await pauseGame(page);
+  const save=()=>page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:save:snake'));
+  const frozen=await save();
+  const root=page.locator('.snake-game'),canvas=page.locator('.snake-canvas');
+  const pausedPixels=await canvas.evaluate(node=>(node as HTMLCanvasElement).toDataURL());
+  await page.clock.runFor(500);
+  expect(await canvas.evaluate(node=>(node as HTMLCanvasElement).toDataURL())).toBe(pausedPixels);
+  expect(await save()).toBe(frozen);
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.clock.runFor(50);
+  await expect(root).toHaveAttribute('data-reduced-motion','true');
+  expect(await save()).toBe(frozen);
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.clock.runFor(50);
+  await expect(root).toHaveAttribute('data-reduced-motion','false');
+  await page.evaluate(()=>{document.documentElement.dataset.festive='';});
+  await page.clock.runFor(50);
+  const normal=await canvas.evaluate(node=>(node as HTMLCanvasElement).toDataURL());
+  await page.evaluate(()=>{document.documentElement.dataset.festive='christmas';});
+  await page.clock.runFor(50);
+  expect(await canvas.evaluate(node=>(node as HTMLCanvasElement).toDataURL())).not.toBe(normal);
+  const glassNotifications=await page.evaluate(async()=>{
+    const modulePath='/src/ui/glass-frame-source.ts';
+    const glass=await import(modulePath);
+    const node=document.querySelector<HTMLCanvasElement>('.snake-canvas')!;
+    let count=0;const release=glass.onGlassFrame(node,()=>count++);
+    glass.requestGlassFrame(node);release();return count;
+  });
+  expect(glassNotifications).toBe(1);
+  const recoveryNotifications=await page.evaluate(async()=>{
+    const modulePath='/src/ui/glass-frame-source.ts';
+    const glass=await import(modulePath);
+    const node=document.querySelector<HTMLCanvasElement>('.snake-canvas')!;
+    let count=0;const release=glass.onGlassFrame(node,()=>count++);
+    document.fonts?.dispatchEvent(new Event('loadingdone'));
+    node.dispatchEvent(new Event('contextrestored'));
+    release();return {count,hasFonts:!!document.fonts};
+  });
+  expect(recoveryNotifications.count).toBe(recoveryNotifications.hasFonts?2:1);
+  const oldWidth=await canvas.evaluate(node=>(node as HTMLCanvasElement).width);
+  await page.setViewportSize({width:390,height:844});
+  await page.clock.runFor(50);
+  expect(await canvas.evaluate(node=>(node as HTMLCanvasElement).width)).not.toBe(oldWidth);
+  expect(await save()).toBe(frozen);
+  await resumeGame(page);
+  await page.clock.runFor(300);
+  await pauseGame(page);
+  expect(await save()).not.toBe(frozen);
+  await page.evaluate(async()=>{
+    const modulePath='/src/ui/glass-frame-source.ts';
+    const glass=await import(modulePath),node=document.querySelector<HTMLCanvasElement>('.snake-canvas')!;
+    let notifications=0;const release=glass.onGlassFrame(node,()=>notifications++);
+    (window as unknown as {checkSnakeDisposal:()=>number}).checkSnakeDisposal=()=>{
+      notifications=0;
+      document.fonts?.dispatchEvent(new Event('loadingdone'));
+      node.dispatchEvent(new Event('contextrestored'));
+      const result=notifications;release();return result;
+    };
+  });
+  await backToGames(page);
+  await expect(root).toHaveCount(0);
+  expect(await page.evaluate(()=>(window as unknown as {checkSnakeDisposal:()=>number}).checkSnakeDisposal())).toBe(0);
+});
+
+test('app motion setting repaints Snake while its settings sheet is open',async({page})=>{
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.clock.install();
+  await page.goto('/#/game/snake');
+  await page.getByRole('button',{name:'Start slithering',exact:true}).click();
+  await page.clock.runFor(200);
+  await appSettings(page);
+  const root=page.locator('.snake-game');
+  const save=()=>page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:save:snake'));
+  const frozen=await save();
+  await page.locator('#motion').check();await page.clock.runFor(50);
+  await expect(root).toHaveAttribute('data-reduced-motion','true');
+  await page.locator('#motion').uncheck();await page.clock.runFor(50);
+  await expect(root).toHaveAttribute('data-reduced-motion','false');
+  expect(await save()).toBe(frozen);
+});
