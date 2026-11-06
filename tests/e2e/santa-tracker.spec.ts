@@ -1,5 +1,30 @@
 import {test,expect} from '../fixtures';
 
+test('the homepage starts one countdown request while its first response is pending',async({page})=>{
+  await page.clock.setSystemTime(new Date('2026-10-19T09:00:00Z'));
+  await page.addInitScript(()=>{
+    const original=window.fetch.bind(window);
+    (window as unknown as {santaFetches:number}).santaFetches=0;
+    window.fetch=(input:RequestInfo|URL,init?:RequestInit)=>{
+      const url=new URL(typeof input==='string'?input:input instanceof Request?input.url:input.toString(),location.href);
+      if(url.pathname.endsWith('/santa/departure.json'))(window as unknown as {santaFetches:number}).santaFetches++;
+      return original(input,init);
+    };
+  });
+  let release!:()=>void;
+  const held=new Promise<void>(resolve=>{release=resolve;});
+  await page.route('**/santa/departure.json',async route=>{await held;await route.continue();});
+  try{
+    await page.goto('/#/collection');
+    await expect(page.locator('.santa-banner')).toBeVisible();
+    expect(await page.evaluate(()=>(window as unknown as {santaFetches:number}).santaFetches)).toBe(1);
+  }finally{
+    const response=page.waitForResponse('**/santa/departure.json');
+    release();
+    await response;
+  }
+});
+
 test('the homepage countdown links to the full Santa Tracker',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/#/collection');
