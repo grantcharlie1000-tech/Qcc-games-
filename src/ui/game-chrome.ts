@@ -20,7 +20,8 @@ const fields:Record<GameId,Field[]>={
   'corn-clicker':[{label:'Kernels',source:'.cc-kernels-num'},{label:'Per second',source:'.cc-cps'}],
   slipline:[{label:'',source:'.sl-level'},{label:'',source:'.sl-hearts',attribute:'aria-label'}],
   quadfall:[score,level], claimline:[score,level], fivefold:[{label:'',source:'.ff-puzzle'}],
-  'crossy-road':[score], 'quad-clash':[score,level]
+  'crossy-road':[score], 'quad-clash':[score,level],
+  'femboy-obby':[{label:'Stage',source:'.fo-stage'},{label:'Stars',source:'.fo-time',labelSource:'.fo-time-label'}]
 };
 
 type Choice={selector:string;label?:string};
