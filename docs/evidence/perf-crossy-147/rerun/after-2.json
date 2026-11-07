@@ -1,0 +1,406 @@
+{
+  "measuredAt": "2026-11-07T01:09:53.661Z",
+  "commit": "a7a400ee653bfe1dd4603c11cb36f59f531baddc",
+  "browser": "156.0.8078.0",
+  "renderer": "ANGLE SwiftShader (software GPU)",
+  "durationMs": 15000,
+  "profileMs": 3000,
+  "seed": 11,
+  "method": "Production preview; 2s warmup; 15s unprofiled rAF; separate 3s CDP CPU profile. Real key/button input, automatic retry after deaths. Crossy begins from the same revision 4 save; retries use the current generator revision. Heap measured after forced GC, outside rAF timing. One browser/page at a time.",
+  "results": [
+    {
+      "game": "crossy-road",
+      "profile": "phone",
+      "name": "phone",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "deviceScaleFactor": 3,
+      "cpuRate": 4,
+      "frames": 203,
+      "elapsedMs": 15016,
+      "avgFps": 13.52,
+      "p95Ms": 166.6,
+      "p99Ms": 216.7,
+      "longFramesOver33ms": 185,
+      "renderedFrames": 201,
+      "phases": {
+        "dying": 76,
+        "over": 7,
+        "ready": 16,
+        "running": 105
+      },
+      "drawCalls": {
+        "mean": 32.5,
+        "p95": 39,
+        "max": 42
+      },
+      "triangles": {
+        "mean": 37724.29,
+        "p95": 66024,
+        "max": 69464
+      },
+      "geometries": {
+        "mean": 23.72,
+        "p95": 24,
+        "max": 24
+      },
+      "textures": {
+        "mean": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "resolution": [
+        {
+          "ms": 0,
+          "ratio": 2
+        },
+        {
+          "ms": 1533.3000000000002,
+          "ratio": 1.5
+        },
+        {
+          "ms": 4416.499999999999,
+          "ratio": 1
+        }
+      ],
+      "heap": {
+        "beforeBytes": 5483344,
+        "afterBytes": 5929568,
+        "retainedGrowthBytes": 446224,
+        "uncollectedBytes": 6304996
+      },
+      "mainThread": {
+        "TaskDuration": 4.47,
+        "ScriptDuration": 2.63,
+        "LayoutDuration": 0.13,
+        "RecalcStyleDuration": 0.96,
+        "LayoutCount": 70,
+        "RecalcStyleCount": 131
+      },
+      "cpuProfile": "after-2-crossy-road-phone.cpuprofile.json.gz",
+      "hotspots": [
+        {
+          "function": "(idle)",
+          "selfMs": 2235.95,
+          "source": "(idle)"
+        },
+        {
+          "function": "(program)",
+          "selfMs": 453.62,
+          "source": "(program)"
+        },
+        {
+          "function": "get offsetWidth",
+          "selfMs": 122.61,
+          "source": "get offsetWidth"
+        },
+        {
+          "function": "s",
+          "selfMs": 89.53,
+          "source": "../../src/ui/glass-ink.ts:49:18"
+        },
+        {
+          "function": "elementsFromPoint",
+          "selfMs": 32.18,
+          "source": "elementsFromPoint"
+        },
+        {
+          "function": "q",
+          "selfMs": 22,
+          "source": "../../src/ui/glass-ink.ts:102:12"
+        },
+        {
+          "function": "setLevel",
+          "selfMs": 15.71,
+          "source": "../../src/main.ts:389:7"
+        },
+        {
+          "function": "bindVertexArray",
+          "selfMs": 14.83,
+          "source": "bindVertexArray"
+        },
+        {
+          "function": "focus",
+          "selfMs": 14.66,
+          "source": "focus"
+        },
+        {
+          "function": "querySelectorAll",
+          "selfMs": 12.59,
+          "source": "querySelectorAll"
+        },
+        {
+          "function": "(garbage collector)",
+          "selfMs": 10.89,
+          "source": "(garbage collector)"
+        },
+        {
+          "function": "o",
+          "selfMs": 10.71,
+          "source": "../../node_modules/three/build/three.module.js:1599:11"
+        },
+        {
+          "function": "bufferSubData",
+          "selfMs": 10.51,
+          "source": "bufferSubData"
+        },
+        {
+          "function": "ke",
+          "selfMs": 9.43,
+          "source": "../../src/games/crossy-road/index.ts:111:12"
+        },
+        {
+          "function": "dt",
+          "selfMs": 9.3,
+          "source": "../../src/games/crossy-road/index.ts:228:12"
+        },
+        {
+          "function": "b",
+          "selfMs": 8.9,
+          "source": "../../src/ui/glass-ink.ts:71:14"
+        },
+        {
+          "function": "requestAnimationFrame",
+          "selfMs": 8.46,
+          "source": "requestAnimationFrame"
+        },
+        {
+          "function": "setValue",
+          "selfMs": 8.16,
+          "source": "../../node_modules/three/build/three.module.js:5410:2"
+        },
+        {
+          "function": "on",
+          "selfMs": 8.01,
+          "source": "../../src/games/crossy-road/scene.ts:834:12"
+        },
+        {
+          "function": "jr",
+          "selfMs": 7.2,
+          "source": "../../node_modules/three/build/three.module.js:16549:12"
+        },
+        {
+          "function": "matchMedia",
+          "selfMs": 6.88,
+          "source": "matchMedia"
+        },
+        {
+          "function": "rn",
+          "selfMs": 6.78,
+          "source": "../../src/games/crossy-road/scene.ts:853:12"
+        },
+        {
+          "function": "qn",
+          "selfMs": 6.73,
+          "source": "../../src/games/crossy-road/rules.ts:84:17"
+        },
+        {
+          "function": "d",
+          "selfMs": 6.55,
+          "source": "../../src/ui/glass-ink.ts:67:21"
+        },
+        {
+          "function": "renderBufferDirect",
+          "selfMs": 6.36,
+          "source": "../../node_modules/three/build/three.module.js:15935:29"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "game": "crossy-road",
+      "profile": "desktop",
+      "name": "desktop",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "deviceScaleFactor": 1,
+      "cpuRate": 1,
+      "frames": 96,
+      "elapsedMs": 15016,
+      "avgFps": 6.39,
+      "p95Ms": 283.3,
+      "p99Ms": 400,
+      "longFramesOver33ms": 90,
+      "renderedFrames": 97,
+      "phases": {
+        "dying": 27,
+        "over": 2,
+        "ready": 8,
+        "running": 60
+      },
+      "drawCalls": {
+        "mean": 39.57,
+        "p95": 45,
+        "max": 45
+      },
+      "triangles": {
+        "mean": 123936.43,
+        "p95": 220406,
+        "max": 224192
+      },
+      "geometries": {
+        "mean": 23.58,
+        "p95": 24,
+        "max": 24
+      },
+      "textures": {
+        "mean": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "resolution": [
+        {
+          "ms": 0,
+          "ratio": 1
+        }
+      ],
+      "heap": {
+        "beforeBytes": 5293620,
+        "afterBytes": 5691784,
+        "retainedGrowthBytes": 398164,
+        "uncollectedBytes": 5947916
+      },
+      "mainThread": {
+        "TaskDuration": 0.63,
+        "ScriptDuration": 0.39,
+        "LayoutDuration": 0.02,
+        "RecalcStyleDuration": 0.11,
+        "LayoutCount": 39,
+        "RecalcStyleCount": 60
+      },
+      "cpuProfile": "after-2-crossy-road-desktop.cpuprofile.json.gz",
+      "hotspots": [
+        {
+          "function": "(idle)",
+          "selfMs": 2918.36,
+          "source": "(idle)"
+        },
+        {
+          "function": "(program)",
+          "selfMs": 92.33,
+          "source": "(program)"
+        },
+        {
+          "function": "q",
+          "selfMs": 18.15,
+          "source": "../../src/ui/glass-ink.ts:102:12"
+        },
+        {
+          "function": "elementsFromPoint",
+          "selfMs": 14.07,
+          "source": "elementsFromPoint"
+        },
+        {
+          "function": "ao",
+          "selfMs": 4.08,
+          "source": "../../src/ui/glass-ink.ts:152:10"
+        },
+        {
+          "function": "getAttributes",
+          "selfMs": 3.5,
+          "source": "../../node_modules/three/build/three.module.js:6607:23"
+        },
+        {
+          "function": "s",
+          "selfMs": 2.61,
+          "source": "../../src/ui/glass-ink.ts:49:18"
+        },
+        {
+          "function": "requestAnimationFrame",
+          "selfMs": 2.15,
+          "source": "requestAnimationFrame"
+        },
+        {
+          "function": "(garbage collector)",
+          "selfMs": 1.17,
+          "source": "(garbage collector)"
+        },
+        {
+          "function": "a",
+          "selfMs": 1.1,
+          "source": "../../node_modules/three/build/three.module.js:241:11"
+        },
+        {
+          "function": "o",
+          "selfMs": 1.09,
+          "source": "../../node_modules/three/build/three.module.js:7936:11"
+        },
+        {
+          "function": "Ie",
+          "selfMs": 1.09,
+          "source": "../../src/games/crossy-road/index.ts:152:12"
+        },
+        {
+          "function": "b",
+          "selfMs": 1.08,
+          "source": "../../src/ui/glass-ink.ts:71:14"
+        },
+        {
+          "function": "s",
+          "selfMs": 1.08,
+          "source": "../../src/ui/glass-ink.ts:49:18"
+        },
+        {
+          "function": "querySelector",
+          "selfMs": 1.08,
+          "source": "querySelector"
+        },
+        {
+          "function": "Le",
+          "selfMs": 1.07,
+          "source": "../../src/games/crossy-road/index.ts:136:12"
+        },
+        {
+          "function": "dispatchEvent",
+          "selfMs": 1.06,
+          "source": "dispatchEvent"
+        },
+        {
+          "function": "f",
+          "selfMs": 1.06,
+          "source": "../../src/ui/glass-ink.ts:80:15"
+        },
+        {
+          "function": "querySelectorAll",
+          "selfMs": 0.95,
+          "source": "querySelectorAll"
+        },
+        {
+          "function": "drive",
+          "selfMs": 0.68,
+          "source": "drive"
+        },
+        {
+          "function": "Nr",
+          "selfMs": 0.62,
+          "source": "../../src/ui/focus.ts:21:10"
+        },
+        {
+          "function": "compareDocumentPosition",
+          "selfMs": 0.6,
+          "source": "compareDocumentPosition"
+        },
+        {
+          "function": "l",
+          "selfMs": 0.41,
+          "source": "../../node_modules/three/build/three.module.js:3878:11"
+        },
+        {
+          "function": "uniformMatrix4fv",
+          "selfMs": 0.24,
+          "source": "uniformMatrix4fv"
+        },
+        {
+          "function": "to",
+          "selfMs": 0.1,
+          "source": "../../src/ui/glass-ink.ts:44:10"
+        }
+      ],
+      "errors": []
+    }
+  ]
+}

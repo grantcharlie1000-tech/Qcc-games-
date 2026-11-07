@@ -26,7 +26,11 @@ For the baseline report, the harness loaded unchanged `scene.ts` and `models.ts`
 
 The focused `Crossy Road performance` workflow runs all Crossy gameplay/lifecycle tests in Chromium and WebKit plus shared ink regressions. A new test records the unchanged HUD with pixel sampling enabled and disabled in the same frozen scene, compares computed ink and pixels, and uploads both screenshots. A separate job builds the PR base and candidate and alternates three production benchmarks on the same runner, including phone CPU throttling. It does not deploy.
 
-Local fresh browser profiling was attempted but could not start Chromium: its IPC socket was prohibited by this executor even after an approved escalated run. The available cloud browser could not reach the isolated local preview. Browser visual parity, real before/after FPS and real-device testing therefore remain pending CI or a supported browser-capable executor. Do not describe them as passed before inspecting those results.
+[Focused CI run 42322117235](https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/42322117235) passed on production-code-equivalent commit `1e2fa05`: 74 Chromium tests, 73 WebKit tests plus one pre-existing unsupported native-touch skip. The new HUD comparison passed in both engines: score updates and resizing work, the optimized path makes no canvas copies, and re-enabling the original sampler preserves computed appearance and frozen mobile HUD pixels within the stated tolerance. This covers one controlled HUD view, not every possible visual or accessibility state. Shared ink regressions and existing gameplay, context-loss, restart, pause and rendering tests also passed.
+
+[Fresh production evidence](../../../docs/evidence/perf-crossy-147/README.md) contains three alternating before/after runs on one CI SwiftShader software-GPU runner. Median phone p95 frame time changed from 366.7 to 183.3 ms; desktop from 666.7 to 350.1 ms. The dominant synchronous readback hotspot disappears from all six candidate CPU profiles. The phone reaches lower adaptive resolution sooner, and wall-clock input produces different scene mixtures, so these whole-system figures are not equal-resolution or real-device performance claims.
+
+Local Chromium IPC remained prohibited even after an approved escalated attempt, and the separate cloud browser could not reach the isolated local preview. CI supplied browser validation instead. Hardware-GPU desktop and physical-phone measurements remain outstanding. The full repository browser suite is tracked separately from the focused results above.
 
 ## Local checks
 
@@ -37,4 +41,4 @@ Local fresh browser profiling was attempted but could not start Chromium: its IP
 - New tests were observed failing before the fixes: redundant sampling-context creation, static terrain uploads during animation, and internal voxel faces retained. They pass after the fixes.
 - An earlier unconstrained full-suite run had 4,683 passes and one unrelated `tests/social/server.test.ts` pagination timeout at its 5-second limit. The complete two-worker rerun above passed without changing that test.
 - Independent review found no blocking production defect. Its camera-stability concern in the screenshot test was corrected by resetting to a frozen seeded view before either capture.
-- Browser tests were discovered successfully (74 focused Chromium cases), but local browser execution remains blocked as described above. CI status is separate from these local checks.
+- Browser tests were discovered successfully (74 focused Chromium cases). Local execution is blocked as described above; the focused CI browser results are recorded separately above.
