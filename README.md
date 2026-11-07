@@ -90,7 +90,7 @@ Femboy Frosthop is an original pastel Christmas obby in Three.js: 30 fixed stage
 
 ## QCC Results Desk
 
-The **Election 2026** strip at the top of the games library (or Menu → **Election results**) opens `#/election`, live results for the 2026 New Zealand general election from the Electoral Commission's public feed: the chamber with left and right blocs, party votes and seats, a coalition builder, all 71 electorates with filters, who is in on each party's list, and an as-it-happens feed. A same-origin Pages Function reads the feed. See [Results Desk](docs/ELECTION.md).
+The **Election 2026** strip in the middle of the games library (or Menu → **Election results**) opens `#/election`, live results for the 2026 New Zealand general election from the Electoral Commission's public feed: the chamber with left and right blocs, party votes and seats, a coalition builder, all 71 electorates with filters, who is in on each party's list, and an as-it-happens feed. A same-origin Pages Function reads the feed. See [Results Desk](docs/ELECTION.md).
 
 ## Wordle
 

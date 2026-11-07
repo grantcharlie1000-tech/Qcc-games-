@@ -23,6 +23,8 @@ test('Results Desk opens from the Menu and shows seats, electorates and members'
   await expect(banner).toHaveAttribute('data-state','live');
   await expect(banner.locator('.eb-line')).toHaveText('National reach 2 of 3 seats with 40.0% of voting places counted: a majority of one.');
   await expect(banner.locator('.eb-seats i')).toHaveCount(2);
+  // It sits in the middle of the games: a full-width row straight after the twelfth card.
+  expect(await banner.evaluate(e=>[...e.parentElement!.children].indexOf(e))).toBe(12);
   await banner.click();
   await expect(page).toHaveURL(/#\/election$/);
   await page.goBack();

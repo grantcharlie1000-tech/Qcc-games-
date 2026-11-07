@@ -4,13 +4,14 @@ import {blocOf,counting,formatPct,headline,partyColour,type ElectionBundle} from
 /** The library strip shows until shortly after the official results (27 November 2026). */
 const SHOW_UNTIL=Date.parse('2026-12-01T00:00:00+13:00');
 const REFRESH_MS=60_000;
+const AFTER_CARDS=12;
 const esc=(text:string)=>text.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]!);
 let stop:(()=>void)|undefined;
 /** The last results seen this page load: a remounted strip paints them at once, so its height never changes under a restored scroll. */
 let last:ElectionBundle|undefined;
 
 /**
- * Adds a one-tap way into Results Desk above the game grid: the live headline, how much is counted and a seat strip.
+ * Adds a one-tap way into Results Desk in the middle of the game grid: the live headline, how much is counted and a seat strip.
  * It reads the cheap summary part of `/api/election` (no electorate files) once a minute while the library is showing.
  */
 export function mountElectionBanner(grid:Element,now=Date.now()):void{
@@ -19,10 +20,12 @@ export function mountElectionBanner(grid:Element,now=Date.now()):void{
   const link=document.createElement('a');
   link.className='election-banner';link.href='#/election';link.dataset.state='loading';
   link.innerHTML=`<span class="eb-badge"><i aria-hidden="true"></i><span data-field="badge">Live</span></span>
-    <span class="eb-text"><span class="eb-title">Election 2026 · Results Desk</span><span class="eb-line" data-field="line">Live results from the Electoral Commission</span></span>
-    <span class="eb-seats" aria-hidden="true"></span>
-    <span class="eb-count" data-field="count"></span><span class="eb-go" aria-hidden="true">›</span>`;
-  grid.before(link);
+    <span class="eb-title">Election 2026</span><span class="eb-line" data-field="line">Live results from the Electoral Commission</span>
+    <span class="eb-count" data-field="count"></span><span class="eb-go" aria-hidden="true">›</span>
+    <span class="eb-seats" aria-hidden="true"></span>`;
+  // A full-width row in the middle of the games. Twelve fills whole rows at every grid width (2, 3, 4 and 6 columns).
+  const cards=grid.querySelectorAll(':scope > .game-card');
+  if(cards.length>AFTER_CARDS)cards[AFTER_CARDS-1].after(link);else grid.append(link);
   const field=(name:string)=>link.querySelector<HTMLElement>(`[data-field="${name}"]`)!;
   let timer:number|undefined,abort:AbortController|undefined;
   const paint=(b:ElectionBundle)=>{
