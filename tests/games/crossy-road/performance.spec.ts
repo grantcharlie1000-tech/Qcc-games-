@@ -105,7 +105,9 @@ test('HUD preserves its sampled appearance without copying or reading the Crossy
     }) as typeof original;
   });
   const errors=await openGame(page);
-  const label=page.locator('#game-score strong');
+  // The visible dock mirrors the game's hidden source score.
+  const label=page.locator('.game-hud-item strong');
+  await expect(label).toBeVisible();
   await expect(label).toHaveCSS('color','rgb(255, 255, 255)');
   await expect(label).toHaveAttribute('data-glass-halo','');
   // Exercise score and resize invalidation while the scene is deterministic.
