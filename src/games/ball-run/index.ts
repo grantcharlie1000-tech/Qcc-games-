@@ -8,7 +8,6 @@ import { commitScore, emptyRecords, nextTarget, viewRecords, type RecordView, ty
 import { createScene, type BallRunScene, type FrameView } from './scene';
 import { AdaptiveResolution } from './resolution';
 import './style.css';
-import './christmas.css';
 
 type Panel = 'setup' | 'continue' | 'over' | 'lost' | null;
 type Scope = 'today' | 'week' | 'allTime';
@@ -292,7 +291,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     accumulator += delta;
     while (accumulator >= STEP && active()) {
       const phase = run.phase, gate = run.gateIndex;
-      step(run, input(), STEP);
+      step(run, input(), STEP, scene.body);
       accumulator -= STEP;
       if (run.gateIndex !== gate) boostText = gateText();
       if (phase === 'running' && run.phase === 'dying') died();

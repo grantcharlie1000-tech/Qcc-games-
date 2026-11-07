@@ -24,20 +24,33 @@ async function capture(page:Page,path:string){await page.evaluate(()=>document.g
 const saved=(page:Page):Promise<State>=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)!).data,SAVE);
 
 for(const viewport of [{width:390,height:844},{width:1366,height:768}])test(`preview, release, label and score settle at ${viewport.width}px`,async({page})=>{
+ // Control elapsed time: a busy CI worker may delay the first real frame past the 300 ms count-up.
+ await page.clock.install({time:new Date('2026-01-01T00:00:00Z')});await page.clock.pauseAt(new Date('2026-01-01T01:00:00Z'));
  await page.setViewportSize(viewport);await open(page);const root=page.locator('.cb-game');
  await dragTo(page,0,5);
  await expect(page.locator('.cb-ghost')).toHaveCount(9);await expect(page.locator('.cb-line-preview')).toHaveCount(24);await expect(page.locator('.cb-board')).toHaveClass(/cb-preview-rainbow/);
  await page.screenshot({path:`${EVIDENCE}/rewards-preview-${viewport.width}.png`});
  // Record every value the dock's score source shows while the total counts up.
  await page.evaluate(()=>{const w=window as unknown as {cbShown:string[]};w.cbShown=[];const el=document.querySelector('.cb-score-total')!;new MutationObserver(()=>w.cbShown.push(el.textContent!)).observe(el,{childList:true,characterData:true,subtree:true});});
+ // WAAPI uses the document timeline, not Playwright's JS clock. Freeze effects in the
+ // same pointerup dispatch, after the root creates them, before a busy worker can miss them.
+ await page.evaluate(()=>document.addEventListener('pointerup',()=>{
+  for(const animation of document.querySelector('.cb-effects')!.getAnimations({subtree:true})){
+   animation.pause();animation.currentTime=Math.min(100,Number(animation.effect!.getComputedTiming().endTime)/2);
+  }
+ },{once:true}));
  await page.mouse.up();
  // State commits before presentation: 9 + 20·3² + 40·3 colours gone (1, 2 and the piece's 3).
  await expect(root).toHaveAttribute('data-score','309');await expect(root).toHaveAttribute('data-combo','1');
+ await expect(page.locator('.cb-score-total')).toHaveText('0');
+ await page.clock.runFor(100);
+ const intermediate=Number(await page.locator('.cb-score-total').textContent());expect(intermediate).toBeGreaterThan(0);expect(intermediate).toBeLessThan(309);
  await expect(page.locator('.cb-label strong')).toHaveText('3 colours gone!');await expect(page.locator('.cb-label small')).toHaveText('+309');
  await expect(page.locator('.cb-sweep.cb-rainbow')).toHaveCount(3);
  await capture(page,`${EVIDENCE}/rewards-release-${viewport.width}.png`);
  await expect(page.locator('.cb-breakdown')).toHaveText('+309 = 9 blocks + 180 lines + 120 colour');
  await expect(page.locator('.cb-combo')).toBeVisible();await expect(page.locator('.cb-combo-label')).toHaveText('Combo 1');await expect(page.locator('.cb-pips .cb-pip-on')).toHaveCount(2);
+ await page.clock.runFor(300);
  await expect(page.locator('.cb-effects')).toBeEmpty();await expect(page.locator('.cb-score-total')).toHaveText('309');await expect(page.locator('.game-hud')).toContainText('309');
  const shown=(await page.evaluate(()=>(window as unknown as {cbShown:string[]}).cbShown)).map(Number);expect(shown.some(v=>v>0&&v<309),`intermediate totals: ${shown.join(', ')}`).toBe(true);expect(shown.at(-1)).toBe(309);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

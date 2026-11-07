@@ -3,9 +3,9 @@
  * chooses its lateral line. Collision uses the same obstacle poses as rendering. */
 import { sweepSphereBox } from '../../core/collision';
 import {
-  BANK_DRIFT, COURSE_REVISION, DYING_DURATION, FALL_DEPTH, GATE_FEEDBACK, GATE_WALL_HEIGHT, GRAVITY, RADIUS, STEER_RESPONSE,
+  BALL, BANK_DRIFT, COURSE_REVISION, boxExtents, sleighPitch, type BoxExtents, DYING_DURATION, FALL_DEPTH, GATE_FEEDBACK, GATE_WALL_HEIGHT, GRAVITY, RADIUS, STEER_RESPONSE,
   isDifficulty, lateralSpeed,
-  type Course, type Difficulty, type Obstacle, type ObstaclePose, type Phase, type Run, type TrackSample,
+  type Body, type Course, type Difficulty, type Obstacle, type ObstaclePose, type Phase, type Run, type TrackSample,
 } from './config';
 import { getCourse } from './course';
 import { emptyRecords, restoreRecords, type Records } from './records';
@@ -27,6 +27,62 @@ const restOn = (s: TrackSample, x: number) => s.elevation - (x - s.center) * Mat
  * top spans the full course width; the generator's inset is only a route safety margin. */
 const hasSupport = (s: TrackSample, x: number) => s.ground && Math.abs(x - RADIUS * Math.sin(s.bank) - s.center) <= s.width / 2;
 
+const slopeProbe = blankSample();
+/** The road surface's slope along the course at world x: a difference over half a metre of road that exists
+ * (one-sided at the very start and at a drop's edge, never across a gap; over a gap, the lip road's slope turning
+ * to the landing road's). Off the centre line it differs from the centre's where the bank changes. */
+export function surfaceSlope(course: Course, distance: number, x: number): number {
+  const h = .25;
+  // Over a drop's gap: the lip road's slope at its edge, turning to the landing road's across the gap, so it has
+  // no step at either edge and is never steeper than either road (the gap itself is a cliff, not a slope).
+  if (!course.sample(distance, slopeProbe).ground) {
+    gapEdges(course, distance);
+    const t = gapLand > gapLip ? (distance - gapLip) / (gapLand - gapLip) : 1, from = surfaceSlope(course, gapLip, x), to = surfaceSlope(course, gapLand, x);
+    return from + (to - from) * t;
+  }
+  let a = Math.max(0, distance - h), b = distance + h;
+  if (!course.sample(a, slopeProbe).ground) a = distance;
+  if (!course.sample(b, slopeProbe).ground) b = distance;
+  if (b - a < 1e-6) return course.sample(distance, slopeProbe).gradient;
+  return (course.surfaceHeight(b, x) - course.surfaceHeight(a, x)) / (b - a);
+}
+
+const gapProbe = blankSample(), lipProbe = blankSample();
+/** The edges of the drop's gap at `distance` (which must be in it): the lip's end and the landing's start. */
+let gapLip = 0, gapLand = 0, gapCourse: Course | null = null;
+function gapEdges(course: Course, distance: number): void {
+  // A step asks about the same gap several times (its pitch at both ends, slope and height): reuse it.
+  if (course === gapCourse && distance > gapLip && distance < gapLand) return;
+  gapCourse = course;
+  // Step out to ground (gaps are a few metres), then bisect.
+  let lo = distance, hi = distance;
+  for (let k = 0; k < 160 && !course.sample(lo, lipProbe).ground; k++) lo -= .5;
+  for (let k = 0; k < 160 && !course.sample(hi, lipProbe).ground; k++) hi += .5;
+  // Bisected down to adjacent floating-point numbers, so each edge is the one exact boundary, whichever point of
+  // the gap first asked (a step, or the drawing between steps): the result never depends on call order.
+  let a = lo, b = distance;
+  for (let i = 0; i < 80; i++) { const m = (a + b) / 2; if (m === a || m === b) break; if (course.sample(m, lipProbe).ground) a = m; else b = m; }
+  gapLip = a;
+  a = distance; b = hi;
+  for (let i = 0; i < 80; i++) { const m = (a + b) / 2; if (m === a || m === b) break; if (course.sample(m, lipProbe).ground) b = m; else a = m; }
+  gapLand = b;
+}
+/** How far a body at (distance, x, height) is above where it would rest, for the sleigh's landing flare. On the
+ * road that is the road; over a drop's gap (where the course reports the landing road's level, a step below the
+ * lip) it is a level that runs from the lip's road, carried on at its slope, to the landing road, in proportion
+ * across the gap, so it has no step at either edge. Deterministic, with no allocation of its own (over a gap it
+ * samples the course about fifty times to find a new gap's edges, once per gap, which is where course.ts
+ * allocates). */
+export function heightAboveRest(course: Course, distance: number, x: number, height: number): number {
+  const s = course.sample(distance, gapProbe);
+  if (s.ground) return height - restOn(s, x);
+  const landing = restOn(s, x);
+  gapEdges(course, distance);
+  course.sample(gapLip, lipProbe);
+  const lipRest = restOn(lipProbe, x) + lipProbe.gradient * (distance - gapLip), t = gapLand > gapLip ? (distance - gapLip) / (gapLand - gapLip) : 1;
+  return height - (lipRest + (landing - lipRest) * t);
+}
+
 export function createRun(seed: number, run: number, difficulty: Difficulty): Run {
   const course = getCourse(seed, difficulty), s = course.sample(0);
   return {
@@ -42,10 +98,10 @@ export function runSpeed(run: Run): number {
 }
 
 /** Analytic first-order response toward input × lateral, exact for any dt. */
-export function steer(body: { x: number; vx: number }, input: number, dt: number, lateral: number): void {
-  const target = clamp(input, -1, 1) * lateral, decay = Math.exp(-STEER_RESPONSE * dt), old = body.vx;
+export function steer(body: { x: number; vx: number }, input: number, dt: number, lateral: number, response = STEER_RESPONSE): void {
+  const target = clamp(input, -1, 1) * lateral, decay = Math.exp(-response * dt), old = body.vx;
   body.vx = target + (old - target) * decay;
-  body.x += target * dt + (old - target) * (1 - decay) / STEER_RESPONSE;
+  body.x += target * dt + (old - target) * (1 - decay) / response;
 }
 
 // Step scratch: reused so a step allocates nothing in steady state.
@@ -54,8 +110,14 @@ const sweepFrom = [0, 0, 0], sweepTo = [0, 0, 0], origin = [0, 0, 0] as const, h
 /** The step being tested against blocks: elapsed before and after, then the ball's old and new
  * x, height and distance. A typed array, because module-level number variables box every write. */
 const sweep = new Float64Array(8);
-let hitCourse: Course, hit = false, hitFraction = 1;
+let hitCourse: Course, hit = false, hitFraction = 1, hitBody: Body = BALL;
 const sweepMid = [0, 0, 0];
+/** The sleigh's box for this step (the union over the pitches it passes through), swept as a point against the
+ * block grown by the box's half sizes. Its centre sits off the ball's centre: up by (top + bottom) / 2 and along
+ * the course by (front - back) / 2, in the block's rolled frame (the table allows for the sleigh's own bank
+ * differing from the block's roll). */
+const boxCenter = [0, 0, 0], grown = [0, 0, 0];
+const stepBox: BoxExtents = { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 };
 
 /** Moves world point (x, y, d) into the frame of a box posed at `p` (rolled about the forward axis). */
 function local(p: ObstaclePose, x: number, y: number, d: number, out: number[]): void {
@@ -72,6 +134,22 @@ function testBlock(o: Obstacle): void {
   local(poseA, sweep[2], sweep[3], sweep[4], sweepFrom);
   local(p, sweep[5], sweep[6], sweep[7], sweepTo);
   half[0] = p.halfWidth; half[1] = p.halfHeight; half[2] = p.halfDepth;
+  const b = hitBody;
+  if (b.kind === 'box') {
+    const k = stepBox, up = (k.top + k.bottom) / 2, along = (k.front - k.back) / 2;
+    sweepFrom[1] += up; sweepFrom[2] += along; sweepTo[1] += up; sweepTo[2] += along;
+    grown[0] = half[0] + k.halfWidth; grown[1] = half[1] + (k.top - k.bottom) / 2; grown[2] = half[2] + (k.front + k.back) / 2;
+    if (!sweepSphereBox(sweepFrom, sweepTo, origin, grown, 0)) return;
+    hit = true;
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 40; i++) {
+      const t = (lo + hi) / 2;
+      for (let axis = 0; axis < 3; axis++) boxCenter[axis] = sweepFrom[axis] + (sweepTo[axis] - sweepFrom[axis]) * t;
+      if (sweepSphereBox(sweepFrom, boxCenter, origin, grown, 0)) hi = t; else lo = t;
+    }
+    hitFraction = Math.min(hitFraction, hi);
+    return;
+  }
   // Swept bounding-box rejection first: the exact test allocates.
   let gap = 0;
   for (let axis = 0; axis < 3; axis++) {
@@ -100,8 +178,9 @@ function die(run: Run, reason: 'block' | 'fall', score: number): void {
   run.score = Math.min(MAX_SCORE, Math.floor(score));
 }
 
-/** Advances a run by dt seconds. Ignores non-finite input, and dt outside (0, 0.05]. */
-export function step(run: Run, input: number, dt: number): void {
+/** Advances a run by dt seconds. Ignores non-finite input, and dt outside (0, 0.05]. `body` is what hits the
+ * blocks: the ball unless the Christmas sleigh is drawn (everything else, the road and the gates, is the same). */
+export function step(run: Run, input: number, dt: number, body: Body = BALL): void {
   if (!(dt > 0 && dt <= .05) || !Number.isFinite(input)) return;
   if (run.phase === 'dying') { stepDying(run, dt); return; }
   if (run.phase !== 'running') return;
@@ -111,8 +190,8 @@ export function step(run: Run, input: number, dt: number): void {
   course.sample(d0, before);
   const rest0 = restOn(before, x0);
 
-  steer(run, input, dt, lateralSpeed(v));
-  run.x += BANK_DRIFT * Math.sin(before.bank) * dt;
+  steer(run, input, dt, lateralSpeed(v), body.steerResponse);
+  run.x += body.bankDrift * Math.sin(before.bank) * dt;
   run.distance = d0 + v * dt;
   run.elapsed = e0 + dt;
   run.speedUpTime = Math.max(0, speedUp0 - dt);
@@ -147,9 +226,16 @@ export function step(run: Run, input: number, dt: number): void {
     run.vy -= GRAVITY * dt;
   }
 
-  hitCourse = course; hit = false; hitFraction = 1;
+  hitCourse = course; hit = false; hitFraction = 1; hitBody = body;
   sweep[0] = e0; sweep[1] = run.elapsed; sweep[2] = x0; sweep[3] = h0; sweep[4] = d0; sweep[5] = run.x; sweep[6] = run.height; sweep[7] = run.distance;
-  course.forEachObstacle(d0 - RADIUS - course.maxDepth, run.distance + RADIUS + course.maxDepth, testBlock);
+  if (body.kind === 'box') {
+    // The sleigh's pitch at the start and end of the step, by the rule the drawing uses (config.ts sleighPitch).
+    const p0 = sleighPitch(grounded0, surfaceSlope(course, d0, x0), vy0, vx0, before.bank, v, grounded0 ? 0 : heightAboveRest(course, d0, x0, h0));
+    const p1 = sleighPitch(run.grounded, surfaceSlope(course, run.distance, run.x), run.vy, run.vx, s.bank, course.speed(run.distance), run.grounded ? 0 : heightAboveRest(course, run.distance, run.x, run.height));
+    boxExtents(body.table, p0, p1, stepBox);
+  }
+  const behindReach = body.kind === 'box' ? stepBox.back : RADIUS, aheadReach = body.kind === 'box' ? stepBox.front : RADIUS;
+  course.forEachObstacle(d0 - behindReach - course.maxDepth, run.distance + aheadReach + course.maxDepth, testBlock);
   if (hit) {
     // Stop at the first contact along the same swept path that decided the hit.
     const t = hitFraction;

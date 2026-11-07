@@ -91,3 +91,7 @@ Photos are re-encoded server-side with Sharp to WebP and stored through a `Media
 Chat messages expire per conversation retention; an hourly scheduled function purges them and stale pending uploads.
 The Pages proxy allowlist includes the three routes, and the migration needs owner approval before it is applied.
 See [the spec](docs/social-chat/SPEC.md), [deployment](docs/social-chat/DEPLOYMENT.md) and the [moderation runbook](docs/social-chat/MODERATION.md).
+
+## Santa Tracker
+
+`src/santa/` is the Santa Tracker at `#/santa`. It is lazily loaded through the same single-view slot as Social and Chat. While the Christmas theme is on, a compact countdown sits above the game grid (`banner.ts`). The departure instant is configured in `public/santa/departure.json` (no-store), and the countdown runs on a server-anchored monotonic clock, not on device time. At the departure time the page loads the simulated tracker (`tracker/`). That tracker is QCC's simulation, not NORAD data. Research, configuration, test mode and the globe plan are described in [docs/SANTA_TRACKER.md](docs/SANTA_TRACKER.md).

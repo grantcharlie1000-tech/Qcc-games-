@@ -15,6 +15,7 @@ async function open(page:Page) {
 }
 async function hintPour(page:Page) {
   await page.getByRole('button',{name:'Hint',exact:true}).click();
+  await expect(page.locator('.ws-hint-from')).toHaveCount(1);
   const from=Number(await page.locator('.ws-hint-from').getAttribute('data-tube'));
   const to=Number(await page.locator('.ws-hint-to').getAttribute('data-tube'));
   await tube(page,from).click(); await tube(page,to).click();

@@ -1,6 +1,8 @@
 import {test,expect} from '../fixtures';
 
-// The clear glass: an rgb(8 12 18 / .20) fill over the live backdrop, which the SVG-filter material also saturates by 1.08.
+// The dock retains its rgb(8 12 18 / .20) fill over the live backdrop, which
+// the SVG-filter material also saturates by 1.08. Its faint white sheen paints
+// above that fill, not in place of it. Keep this reference independent of CSS.
 const FILL=.2,VEIL=[8,12,18];
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
 
@@ -40,10 +42,20 @@ for(const id of ['snake','quadfall','maze-muncher','neon-coil'])test(`${id} glas
       const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();
       const c=document.createElement('canvas');c.width=image.width;c.height=image.height;
       const ctx=c.getContext('2d')!;ctx.drawImage(image,0,0);
-      return [...ctx.getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data].slice(0,3);
+      const x=Math.floor(c.width/2),y=Math.floor(c.height/2);
+      return {rgb:[...ctx.getImageData(x,y,1,1).data].slice(0,3),x,y,width:c.width,height:c.height};
     },png);
+    // For a 135deg gradient, projection onto its full corner-to-corner line
+    // is (x+y)/(width+height). Sample pixel centres, including rectangular
+    // controls. The specified white alpha stops are .10, .025 at 45%, .065.
+    const position=(sampled.x+.5+sampled.y+.5)/(sampled.width+sampled.height);
+    const sheen=position<.45?.10+(.025-.10)*position/.45:.025+(.065-.025)*(position-.45)/.55;
     const lum=.2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];
-    for(let channel=0;channel<3;channel++)expect(Math.abs(sampled[channel]-((lum+SATURATE*(rgb[channel]-lum))*(1-FILL)+VEIL[channel]*FILL)),`${id}: ${sampled} through ${rgb}`).toBeLessThanOrEqual(3);
+    for(let channel=0;channel<3;channel++){
+      const tinted=(lum+SATURATE*(rgb[channel]-lum))*(1-FILL)+VEIL[channel]*FILL;
+      const expected=tinted*(1-sheen)+255*sheen;
+      expect(Math.abs(sampled.rgb[channel]-expected),`${id}: ${sampled.rgb} through ${rgb}, sheen ${sheen}`).toBeLessThanOrEqual(3);
+    }
   }
   expect(await maps()).toEqual(before);
 });

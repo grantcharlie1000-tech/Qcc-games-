@@ -1,0 +1,46 @@
+name: Block Blast regression
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/games/color-blocks/**'
+      - 'src/ui/game-chrome.ts'
+      - 'tests/games/color-blocks/**'
+      - 'tests/e2e/liquid-glass.spec.ts'
+      - '.github/workflows/color-blocks-regression.yml'
+permissions:
+  contents: read
+concurrency:
+  group: color-blocks-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  color-blocks:
+    name: Block Blast (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      # Fast feedback on gameplay and the timing regressions; the full browser suite remains unchanged.
+      - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/games/color-blocks/ tests/e2e/liquid-glass.spec.ts --workers=1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: color-blocks-${{ matrix.browser }}
+          path: |
+            test-results
+            playwright-report

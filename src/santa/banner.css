@@ -1,0 +1,17 @@
+/* The homepage's compact Santa countdown: one row above the game grid, aligned with its padding. */
+.santa-banner{display:flex;align-items:center;gap:12px;margin:10px 11px 0;padding:10px 14px 10px 12px;border:var(--card-border-width,6px) solid var(--rim,#2c2d2c);border-radius:24px;background:#0b1733 var(--xmas-stars,none) 0 0/200px 200px;color:#fff;box-shadow:var(--card-shadow);transition:transform 140ms var(--ease-out)}
+.santa-banner[hidden]{display:none}
+.santa-banner-icon{width:48px;height:32px;flex-shrink:0}
+.santa-banner-text{display:flex;flex-direction:column;min-width:0;flex:1}
+.santa-banner-title{font-size:18px;line-height:1.1;text-transform:uppercase;color:#f8dd8a}
+.santa-banner-line{font:14px/1.35 system-ui,sans-serif;color:#d9e3f1}
+.santa-banner-time{font-size:clamp(17px,4.6vw,24px);font-variant-numeric:tabular-nums;white-space:nowrap}
+.santa-banner-time[hidden]{display:none}
+.santa-banner-go{font-size:30px;line-height:1;color:#f8dd8a}
+.santa-banner:active{transform:scale(.985)}
+@media(hover:hover) and (pointer:fine){.santa-banner:hover{transform:translateY(-2px)}}
+@media(max-width:479px){.santa-banner{flex-wrap:wrap;row-gap:4px}.santa-banner-text{flex-basis:calc(100% - 100px)}.santa-banner-time{order:3;flex-basis:100%;padding-left:60px}.santa-banner-go{order:2}}
+@media(min-width:620px){.santa-banner{margin:15px 15px 0}}
+/* Matches the grid: 1500px wide at most, with 18px padding. */
+@media(min-width:1240px){.santa-banner{margin:16px max(18px,calc((100% - 1464px)/2)) 0}}
+@media(prefers-reduced-motion:reduce){.santa-banner{transition:none}.santa-banner:hover,.santa-banner:active{transform:none}}

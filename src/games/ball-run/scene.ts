@@ -8,7 +8,11 @@ import {registerGlassFrameSource,notifyGlassFrame} from '../../ui/glass-frame-so
 import { rollAngle } from './roll';
 import { RetainedInstances } from './instances';
 import { christmas } from '../../festive/festive';
-import { CONFIG, DYING_DURATION, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
+import { createSleigh, placeOnRunners, SLEIGH_COLORS, SLEIGH_POSE, SLEIGH_RUNNER_X } from './sleigh';
+import { SNOW_DEPTH, SNOW_OVERHANG, SNOW_SINK, snowCapGeometry, snowCapMaterial } from './snow';
+import { createSnowfall } from './snowfall';
+import { heightAboveRest, surfaceSlope } from './model';
+import { BALL, CONFIG, DYING_DURATION, GRAVITY, boxExtents, largestBox, sleighPitch, type BoxExtents, SLEIGH_BODY, type Body, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
 export interface FrameView { run: Run; course: Course; speed: number }
@@ -20,23 +24,15 @@ export interface BallRunScene {
   /** Forgets frame-to-frame state (trail history, cached road) before a new or restored run. */
   reset(): void;
   readonly stats: SceneStats;
+  /** What the drawn player is, so the simulation collides as what is seen: the ball, or the sleigh's box. */
+  readonly body: Body;
   dispose(): void;
 }
 
-const ORIGINAL_PALETTE = {
+const PALETTE = {
   void: 0x000000, track: 0x333b74, grid: 0x929bfb, sphere: 0xe500b1, block: 0xb51cfa, boost: 0x00e7ef,
   tower: 0x232764, towerLine: 0x8890f2, white: 0xffffff,
 };
-/** Christmas: a snowy night. Only colours and light change; every mesh, pool and transform is shared
- * with the original, so draw calls and collision boxes are identical. Icy road with snow lane lines,
- * frosted slate towers fading into a midnight fog, festive blocks and evergreen-and-gold boost gates. */
-const FESTIVE_PALETTE: typeof ORIGINAL_PALETTE = {
-  void: 0x13284f, track: 0x4f8fc0, grid: 0xeaf5ff, sphere: 0xd8263a, block: 0xd8263a, boost: 0xf4c430,
-  tower: 0xffffff, towerLine: 0xaec6e0, white: 0xffffff,
-};
-/** Festive obstacles: red, green, gold and a deeper red, keyed by id as before; sliders stay distinct in snow white. */
-// Obstacles stay in reds and greens; gold is reserved for boost (gates, chevrons, trail), as the original keeps purple obstacles apart from cyan boost.
-const FESTIVE_BLOCKS = [0xd8263a, 0x2c9a55, 0xb81d30, 0x1f7a42], FESTIVE_SLIDER = 0xf2f7ff;
 const TILES = 420, LINES = 3400, BLOCKS = 320, CYAN = 200, TRAIL = 18, BURST = 40, BURST_REDUCED = 14;
 /** Road drawn behind the origin; the camera sits 3.6 m back. */
 const BEHIND = 6;
@@ -64,9 +60,7 @@ const BALL_LIMIT = CITY_INNER - RADIUS - .05, CAMERA_LIMIT = CITY_INNER - 1.2;
 const HEIGHTS = [40, 27, 47, 33, 53, 30, 44, 36], JITTER = [0, .5, .2, .8, .1, .6, .3, .9], DEPTHS = [6, 5, 6.5, 5.5, 6, 4.5, 6.5, 5];
 
 /** Linear RGB multipliers per box face, in BoxGeometry order: +x, -x, +y, -y, +z, -z. */
-const ORIGINAL_SIDE_LIGHT = [1.35, 3, .9], ORIGINAL_FACE_LIGHT = [ORIGINAL_SIDE_LIGHT, ORIGINAL_SIDE_LIGHT, [1.6, 5, 1], [.3, .3, .3], [1, 1, 1], [.5, .5, .5]];
-/** Christmas: neutral shading (frosty tops, shaded sides), so red, green and gold keep their hue. */
-const FESTIVE_SIDE_LIGHT = [.62, .64, .72], FESTIVE_FACE_LIGHT = [FESTIVE_SIDE_LIGHT, FESTIVE_SIDE_LIGHT, [1.45, 1.5, 1.65], [.3, .3, .3], [1, 1, 1], [.5, .5, .5]];
+const SIDE_LIGHT = [1.35, 3, .9], FACE_LIGHT = [SIDE_LIGHT, SIDE_LIGHT, [1.6, 5, 1], [.3, .3, .3], [1, 1, 1], [.5, .5, .5]];
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const blankSample = (): TrackSample => ({ center: 0, width: 0, elevation: 0, gradient: 0, bank: 0, ground: true, tunnel: false, kind: 'warmup', segment: 0 });
@@ -79,38 +73,6 @@ function unit(a: number, b: number): number {
   return ((h ^ h >>> 15) >>> 0) / 4294967296;
 }
 
-/** Christmas tower faces, 64x256: canvas top is the top of every face. Deterministic, built once per mount. */
-function frostedTowerTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 64; canvas.height = 256;
-  const ink = canvas.getContext('2d')!;
-  const wall = ink.createLinearGradient(0, 0, 0, 256);
-  // Tower bases sit 14 m below the road, so the snow fades up from well above the base to reach road level.
-  wall.addColorStop(0, '#22385e'); wall.addColorStop(.42, '#2c4874'); wall.addColorStop(.6, '#5478a5'); wall.addColorStop(.78, '#b4cce5'); wall.addColorStop(1, '#f2f8fe');
-  ink.fillStyle = wall; ink.fillRect(0, 0, 64, 256);
-  // Warm windows, sparse, on a regular grid so they sit like rooms between the ledges. Faces are
-  // far taller than wide, so a 6x3 texel window lands roughly square on the wall.
-  for (let row = 2; row < 21; row++) for (let col = 0; col < 8; col++) {
-    const u = unit(row, col);
-    if (u > .09) continue;
-    ink.fillStyle = u < .035 ? '#ffd27a' : u < .065 ? '#ffb95e' : '#fff0c2';
-    ink.fillRect(col * 8 + 1, row * 8 + 3, 6, 3);
-  }
-  // Snow drifted against the base, with a soft wavy crest.
-  ink.fillStyle = '#f4f9ff';
-  ink.beginPath(); ink.moveTo(0, 256);
-  for (let x = 0; x <= 64; x += 8) ink.lineTo(x, 238 + 5 * Math.sin(x * .3) + 3 * unit(x, 7));
-  ink.lineTo(64, 256); ink.closePath(); ink.fill();
-  // Snow cap along the roof edge.
-  ink.fillRect(0, 0, 64, 4);
-  ink.fillStyle = '#d6e6f5'; ink.fillRect(0, 4, 64, 2);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  // Crisp window edges up close instead of smeared slits; distance still uses mipmaps.
-  texture.magFilter = THREE.NearestFilter;
-  return texture;
-}
-
 /** Writes the box transform in the snapped road group's local coordinates. */
 export function setObstacleTransform(target: THREE.Object3D, pose: ObstaclePose, origin: number): void {
   target.position.set(pose.x, pose.y + SLOPE * origin, -(pose.distance - origin));
@@ -121,9 +83,9 @@ export function setObstacleTransform(target: THREE.Object3D, pose: ObstaclePose,
 /** Throws when a WebGL 2 renderer cannot be created. */
 export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): BallRunScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'low-power' });
-  // The theme is read once at mount; only colour values differ between the branches.
-  const festive = christmas(), PALETTE = festive ? FESTIVE_PALETTE : ORIGINAL_PALETTE;
-  const SIDE_LIGHT = festive ? FESTIVE_SIDE_LIGHT : ORIGINAL_SIDE_LIGHT, FACE_LIGHT = festive ? FESTIVE_FACE_LIGHT : ORIGINAL_FACE_LIGHT;
+  // Christmas, read once at mount, keeps the original scene and adds only two things: a little snow
+  // on top of each obstacle (one extra instanced pool) and Santa's sleigh in place of the ball.
+  const festive = christmas(), body: Body = festive ? SLEIGH_BODY : BALL;
   let resolutionCap = 1.5, pixelRatio = Math.min(window.devicePixelRatio || 1, resolutionCap), viewWidth = 0, viewHeight = 0;
   renderer.setPixelRatio(pixelRatio);
   renderer.setClearColor(PALETTE.void);
@@ -176,12 +138,36 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // Road, gates and blocks share one group placed relative to the origin.
   const road = new THREE.Group();
   scene.add(road);
-  const tiles = pool(box, basic({ color: PALETTE.track }), TILES, road);
+  // Christmas: a tile's top follows the simulated road where it twists (the bank changing) and where it curves
+  // along the course (a crest or a dip), which a flat box cannot: a subdivided box whose top face the vertex shader
+  // bends by each instance's twist (red) and along-curve (green), carried in its instance colour (which
+  // RetainedInstances already moves and uploads with its matrix); the colour itself is not applied. Theme off
+  // keeps the original flat tiles.
+  let tileGeometry = box;
+  const tileMaterial = basic({ color: PALETTE.track });
+  if (festive) {
+    tileGeometry = new THREE.BoxGeometry(1, 1, 1, 4, 1, 4);
+    geometries.push(tileGeometry);
+    tileMaterial.onBeforeCompile = shader => {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+#ifdef USE_INSTANCING_COLOR
+	if ( position.y > 0.0 ) transformed.y += instanceColor.r * position.x * position.z * 4.0 + instanceColor.g * ( 1.0 - 4.0 * position.z * position.z );
+#endif`)
+        .replace('#include <color_vertex>', `#if defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )
+	vColor = vec3( 1.0 );
+#endif`);
+    };
+    tileMaterial.customProgramCacheKey = () => 'ball-run-twisted-tile';
+  }
+  const tiles = pool(tileGeometry, tileMaterial, TILES, road, festive);
   const grid = pool(box, basic({ color: PALETTE.grid }), LINES, road);
   const blocks = pool(box, basic({ color: PALETTE.white, vertexColors: true }), BLOCKS, road, true);
   // Vite removes this branch from production. The same instance transform used
   // as the rendered block is used for its diagnostic wireframe.
   let hitboxes: THREE.InstancedMesh | undefined, hitball: THREE.Mesh | undefined;
+  const debugBox: BoxExtents = { halfWidth: 0, bottom: 0, top: 0, front: 0, back: 0 };
+  const pitchNow = (run: Run): [number, number] => { const p = drawnPitch(run); return [p, p]; };
   if (import.meta.env.DEV) {
     let enabled = new URLSearchParams(window.location.search).get('hitboxes') === '1';
     try { enabled ||= window.localStorage.getItem('ballrun:hitboxes') === '1'; } catch { /* storage can be unavailable */ }
@@ -189,29 +175,36 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       const wire = basic({ color: 0x00ff00, wireframe: true, depthTest: false });
       hitboxes = pool(box, wire, BLOCKS, road);
       hitboxes.renderOrder = 100;
-      hitball = new THREE.Mesh(sphere, wire);
+      // What the simulation collides as: the ball's sphere, or the sleigh's box (SLEIGH_BODY) under the theme.
+      // (The sleigh's box changes with its pitch, so it is a unit box sized and placed every frame.)
+      hitball = new THREE.Mesh(festive ? box : sphere, wire);
       hitball.renderOrder = 100;
       scene.add(hitball);
     }
   }
+  let snow: THREE.InstancedMesh | undefined, snowCache: RetainedInstances | undefined;
+  if (festive) {
+    const cap = snowCapGeometry(), snowMaterial = snowCapMaterial();
+    geometries.push(cap); materials.push(snowMaterial);
+    snow = pool(cap, snowMaterial, BLOCKS, road);
+    snowCache = new RetainedInstances(snow);
+  }
   const cyan = pool(box, basic({ color: PALETTE.boost }), CYAN, road);
+  // Christmas: snow falling through the canyon, one draw call placed entirely by its shader (snowfall.ts).
+  const snowfall = festive ? createSnowfall() : undefined;
+  let snowClock = 0, snowFrame = NaN;
+  if (snowfall) scene.add(snowfall.points);
   const tileCache = new RetainedInstances(tiles), gridCache = new RetainedInstances(grid),
     blockCache = new RetainedInstances(blocks), cyanCache = new RetainedInstances(cyan);
-  const blockShades = (festive ? FESTIVE_BLOCKS : [0xb51cfa, 0xab18f0, 0xbb2cff, 0xa414e6]).map(c => new THREE.Color(c));
+  const blockShades = [0xb51cfa, 0xab18f0, 0xbb2cff, 0xa414e6].map(c => new THREE.Color(c));
   // Tunnel walls and their posts are seen side-on, so divide out the side light.
   const sideLit = (hex: number) => { const c = new THREE.Color(hex); c.r /= SIDE_LIGHT[0]; c.g /= SIDE_LIGHT[1]; c.b /= SIDE_LIGHT[2]; return c; };
-  const sliderColor = new THREE.Color(festive ? FESTIVE_SLIDER : PALETTE.sphere),
-    wallColor = sideLit(festive ? 0x1f7a42 : 0xb41edc), postColor = sideLit(festive ? 0xe9b949 : 0xff5ad9);
+  const sliderColor = new THREE.Color(PALETTE.sphere), wallColor = sideLit(0xb41edc), postColor = sideLit(0xff5ad9);
 
   // A pooled city corridor: dark faces behind genuine grid lines, built once.
   const city = new THREE.Group();
   scene.add(city);
-  // Christmas: one small canvas texture on the same material turns the towers into frosted buildings
-  // (snow cap, deep winter-blue walls with a few warm lit windows, snow drifted against the base). The
-  // white grid lines over it read as snow on the ledges. No geometry or draw call is added.
-  let towerTexture: THREE.CanvasTexture | undefined;
-  if (festive) towerTexture = frostedTowerTexture();
-  const towerMaterial = basic(towerTexture ? { color: PALETTE.tower, map: towerTexture } : { color: PALETTE.tower });
+  const towerMaterial = basic({ color: PALETTE.tower });
   // Bias the filled faces behind their wire grid to prevent coplanar flicker.
   towerMaterial.polygonOffset = true;
   towerMaterial.polygonOffsetFactor = 1;
@@ -224,6 +217,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   /** Bar cross-sections (width, height). */
   const laneLine = new THREE.Vector2(LINE_WIDTH, LINE_HEIGHT), centerLine = new THREE.Vector2(CENTER_WIDTH, LINE_HEIGHT),
     archBar = new THREE.Vector2(BAR, BAR), entranceBar = new THREE.Vector2(ENTRANCE_BAR, ENTRANCE_BAR), chevron = new THREE.Vector2(.24, LINE_HEIGHT);
+  const tileTwist = new THREE.Color(), tileAcross = new THREE.Vector3(), tileAlong = new THREE.Vector3(), tileUp = new THREE.Vector3(), tileMatrix = new THREE.Matrix4();
   const place = (mesh: THREE.InstancedMesh, index: number) => {
     transform.updateMatrix();
     mesh.setMatrixAt(index, transform.matrix);
@@ -266,51 +260,61 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   materials.push(cityLines.material as THREE.Material);
   city.add(cityLines);
 
-  // Tinted bands make rotation visible while retaining the original Phong colour and light.
-  const surface = document.createElement('canvas');
-  surface.width = 128; surface.height = 64;
-  const ink = surface.getContext('2d')!;
-  if (festive) {
-    // A red glass bauble: a gold equator band with darker trim, and fine gold meridians so roll stays visible.
-    ink.fillStyle = '#c8182e'; ink.fillRect(0, 0, 128, 64);
-    ink.fillStyle = '#e9b949';
-    for (const x of [0, 32, 64, 96, 128]) ink.fillRect(x - 1.5, 0, 3, 64);
-    ink.fillStyle = '#f2c14e'; ink.fillRect(0, 26, 128, 12);
-    ink.fillStyle = '#a87b1e'; ink.fillRect(0, 25, 128, 1.5); ink.fillRect(0, 37.5, 128, 1.5);
-  } else {
+  // Christmas: the sleigh stands where the ball's centre is and is exactly one ball wide; it follows the
+  // road's slope and bank instead of rolling. The ball's texture and material are then never built.
+  const sleigh = festive ? createSleigh() : undefined;
+  let ballTexture: THREE.CanvasTexture | undefined, ball: THREE.Object3D;
+  if (sleigh) ball = sleigh.group;
+  else {
+    // Tinted bands make rotation visible while retaining the original Phong colour and light.
+    const surface = document.createElement('canvas');
+    surface.width = 128; surface.height = 64;
+    const ink = surface.getContext('2d')!;
     ink.fillStyle = '#ffffff'; ink.fillRect(0, 0, 128, 64);
     ink.fillStyle = '#9a5aa0'; ink.fillRect(0, 26, 128, 12);
     ink.fillStyle = '#7c4684';
     for (const x of [0, 32, 64, 96, 128]) ink.fillRect(x - 3.5, 0, 7, 64);
+    ballTexture = new THREE.CanvasTexture(surface);
+    ballTexture.colorSpace = THREE.SRGBColorSpace;
+    const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, map: ballTexture, specular: 0xc070c0, shininess: 36 });
+    materials.push(ballMaterial);
+    ball = new THREE.Mesh(sphere, ballMaterial);
   }
-  const ballTexture = new THREE.CanvasTexture(surface);
-  ballTexture.colorSpace = THREE.SRGBColorSpace;
-  const ballMaterial = festive
-    ? new THREE.MeshPhongMaterial({ color: PALETTE.white, map: ballTexture, specular: 0xfff1e0, shininess: 90 })
-    : new THREE.MeshPhongMaterial({ color: PALETTE.sphere, map: ballTexture, specular: 0xc070c0, shininess: 36 });
-  materials.push(ballMaterial);
-  const ball = new THREE.Mesh(sphere, ballMaterial);
   scene.add(ball);
   // Overhead light gives the soft upper highlight; a dark ground colour gives the deep-purple underside.
-  scene.add(festive ? new THREE.HemisphereLight(0xd6e8ff, 0x14060a, 1.1) : new THREE.HemisphereLight(0xff9fe8, 0x0c0014, 1.2));
-  const key = new THREE.DirectionalLight(0xffffff, festive ? 1.6 : 1.9);
+  // Christmas: a neutral sky so the sleigh's red, gold and white fur keep their colour (the ball's pink sky would tint them).
+  scene.add(festive ? new THREE.HemisphereLight(0xfff6f2, 0x1a0c22, 1.15) : new THREE.HemisphereLight(0xff9fe8, 0x0c0014, 1.2));
+  const key = new THREE.DirectionalLight(0xffffff, 1.9);
   key.position.set(0, 10, .5);
-  const rim = new THREE.DirectionalLight(festive ? 0x8ec3ff : 0x9c5aff, 1.2);
+  const rim = new THREE.DirectionalLight(0x9c5aff, 1.2);
   rim.position.set(4, 1, -5);
   scene.add(key, rim);
+  if (festive) {
+    // Only the sleigh is lit (everything else, snow included, is unlit), so these change nothing else. The camera sees the
+    // sleigh's back, which the overhead key barely reaches: a soft fill from behind lights it.
+    const fill = new THREE.DirectionalLight(0xfff4ea, 1.1);
+    fill.position.set(-1.5, 3, 5);
+    scene.add(fill);
+  }
 
   // Speed Up trail and the block-death burst: one pooled mesh each, hidden when unused.
   // The cyan trail ties acceleration to the gate, distinct from the magenta ball. Instances
   // have no alpha of their own, so older spheres darken toward the road colour and shrink.
   const trailMaterial = basic({ color: PALETTE.white, transparent: true, depthWrite: false });
-  const trail = pool(sphere, trailMaterial, TRAIL, scene, true);
+  // Christmas: a trail of balls behind the sleigh would read as left-over balls, so the same pool draws
+  // cyan glints (small diamonds, still the boost's colour) that stream from the runners like sleigh dust.
+  let sparkle: THREE.BufferGeometry | undefined;
+  if (festive) { sparkle = new THREE.OctahedronGeometry(RADIUS * .55, 0); geometries.push(sparkle); }
+  const trail = pool(sparkle ?? sphere, trailMaterial, TRAIL, scene, true);
   const burstMaterial = basic({ color: PALETTE.white, transparent: true });
   const burst = pool(box, burstMaterial, BURST, scene, true);
-  const burstColors = [new THREE.Color(PALETTE.sphere), new THREE.Color(PALETTE.boost), new THREE.Color(PALETTE.white)];
+  const burstColors = festive
+    ? [new THREE.Color(SLEIGH_COLORS.body), new THREE.Color(SLEIGH_COLORS.gold), new THREE.Color(PALETTE.white)]
+    : [new THREE.Color(PALETTE.sphere), new THREE.Color(PALETTE.boost), new THREE.Color(PALETTE.white)];
   const trailColor = new THREE.Color(PALETTE.boost), trailFaded = new THREE.Color(PALETTE.track), tint = new THREE.Color();
 
   const stats: SceneStats = { calls: 0, geometries: 0, aspect: 1, ballScreenX: .5, ballScreenY: .5 };
-  const A = blankSample(), B = blankSample(), M = blankSample(), S = blankSample();
+  const A = blankSample(), B = blankSample(), M = blankSample(), S = blankSample(), T = blankSample();
   const pose: ObstaclePose = { x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 };
   const projection = new THREE.Vector3();
   const rollX = new THREE.Vector3(1, 0, 0), rollZ = new THREE.Vector3(0, 0, 1), rollStep = new THREE.Quaternion();
@@ -352,20 +356,54 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     return s.elevation - (x - s.center) * Math.tan(s.bank) + yRef;
   }
 
-  /** One tile from lo to hi (rolled with the bank, pitched and yawed along the road) plus its lane lines.
+  /** One tile from lo to hi (rolled with the bank, pitched and yawed along the road; under the theme, sheared
+   * onto the simulated surface instead) plus its lane lines.
    * A and B already hold the track at lo and hi. */
   function piece(lo: number, hi: number, tileIndex: number, lineKey: number): void {
     track((lo + hi) / 2, M);
     const length = hi - lo, dc = B.center - A.center, de = B.elevation - A.elevation;
     const yaw = -Math.atan2(dc, length), pitch = Math.atan2(de, Math.hypot(dc, length));
-    const nx = Math.sin(M.bank) * TILE_DEPTH / 2, ny = Math.cos(M.bank) * TILE_DEPTH / 2;
-    position.set((A.center + B.center) / 2 - nx, (A.elevation + B.elevation) / 2 + yRef - ny, -((lo + hi) / 2 - builtOrigin));
-    rotation.set(pitch, yaw, -M.bank, 'YXZ');
-    // Width is measured in world x, as are lane lines and contact. Rolling a tile
-    // must not shrink its visible width relative to those shared course bounds.
-    scale.set(M.width / Math.cos(M.bank), TILE_DEPTH, Math.hypot(dc, de, length) + .01);
-    place(tiles, tileIndex);
-    tileCache.changed(tileIndex);
+    if (festive) {
+      // Christmas: the tile's top lies on the surface the simulation uses (y = elevation - (x - centre)·tan(bank)
+      // across the course at each distance, with the bank at the tile's middle), so the sleigh's flat runners sit
+      // on what is drawn on bends too. The original tile, yawed along a bend and then rolled, leans off that
+      // surface on a bend (by up to about 10 cm at the road's edge), which a ball hides and a sleigh does not.
+      // A sheared box: across in world x along the bank, along the centre line (pointing back, toward +z, so the
+      // basis is right-handed: a mirrored instance matrix would turn the box inside out, and three.js only
+      // corrects the face winding for a mirrored object, not a mirrored instance).
+      const reach = (Math.hypot(dc, de, length) + .01) / Math.hypot(dc, de, length);
+      tileAcross.set(M.width, -M.width * Math.tan(M.bank), 0);
+      tileAlong.set(-dc * reach, -de * reach, length * reach);
+      tileUp.crossVectors(tileAlong, tileAcross).normalize().multiplyScalar(TILE_DEPTH);
+      tileMatrix.makeBasis(tileAcross, tileUp, tileAlong).setPosition(
+        (A.center + B.center) / 2 - tileUp.x / 2, (A.elevation + B.elevation) / 2 + yRef - tileUp.y / 2, -((lo + hi) / 2 - builtOrigin) - tileUp.z / 2);
+      tiles.setMatrixAt(tileIndex, tileMatrix);
+      // The twist: the bilinear part of how far the true surface stands off this flat tile, fitted over its four
+      // top corners where they really are (each sampled at its own distance and x), measured along the tile's own
+      // up axis in its local units. The shader bends the top face by it (+ at (+across, back) and (-across, front),
+      // - at the other two), so the corners lie on the surface as nearly as a bilinear patch allows.
+      let twist = 0;
+      const midX = (A.center + B.center) / 2, midY = (A.elevation + B.elevation) / 2 + yRef, midZ = -((lo + hi) / 2 - builtOrigin);
+      for (let su = -1; su <= 1; su += 2) for (let sw = -1; sw <= 1; sw += 2) {
+        const x = midX + (su * tileAcross.x + sw * tileAlong.x) / 2, y = midY + (su * tileAcross.y + sw * tileAlong.y) / 2;
+        const z = midZ + (su * tileAcross.z + sw * tileAlong.z) / 2;
+        track(builtOrigin - z, T);
+        twist += su * sw * (T.elevation - (x - T.center) * Math.tan(T.bank) + yRef - y);
+      }
+      // The road's curve along the tile (a crest or a dip): how far the true surface at the tile's middle stands off
+      // the flat top there, bent in as a parabola along its length (zero at both ends, where the tiles meet).
+      const sag = (M.elevation - (midX - M.center) * Math.tan(M.bank) + yRef - midY) / tileUp.y;
+      tiles.setColorAt(tileIndex, tileTwist.setRGB(twist / 4 / tileUp.y, sag, 0, THREE.LinearSRGBColorSpace));
+    } else {
+      const nx = Math.sin(M.bank) * TILE_DEPTH / 2, ny = Math.cos(M.bank) * TILE_DEPTH / 2;
+      position.set((A.center + B.center) / 2 - nx, (A.elevation + B.elevation) / 2 + yRef - ny, -((lo + hi) / 2 - builtOrigin));
+      rotation.set(pitch, yaw, -M.bank, 'YXZ');
+      // Width is measured in world x, as are lane lines and contact. Rolling a tile
+      // must not shrink its visible width relative to those shared course bounds.
+      scale.set(M.width / Math.cos(M.bank), TILE_DEPTH, Math.hypot(dc, de, length) + .01);
+      place(tiles, tileIndex);
+    }
+    tileCache.changed(tileIndex, festive);
     // Counted, not for-of, which allocated an iterator per tile.
     for (let k = 0; k < LANES.length; k++) {
       if (lineCount >= LINES) return;
@@ -374,6 +412,22 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       if (slot < 0) return;
       from.set(ax, surfaceY(A, ax) + LIFT, -(lo - builtOrigin));
       to.set(bx, surfaceY(B, bx) + LIFT, -(hi - builtOrigin));
+      if (festive) {
+        // Christmas: the tile under it bends with the road's crest or dip, so the line does too: two halves that
+        // meet on the true surface at the tile's middle (keys lineKey + 8 + k hold the second halves).
+        const mx = M.center + lane * M.width, half = gridCache.keep(lineKey + 8 + k);
+        to.set(mx, surfaceY(M, mx) + LIFT, -((lo + hi) / 2 - builtOrigin));
+        bar(grid, slot, lane === 0 ? centerLine : laneLine);
+        gridCache.changed(slot);
+        lineCount++;
+        if (half < 0 || lineCount >= LINES) return;
+        from.copy(to);
+        to.set(bx, surfaceY(B, bx) + LIFT, -(hi - builtOrigin));
+        bar(grid, half, lane === 0 ? centerLine : laneLine);
+        gridCache.changed(half);
+        lineCount++;
+        continue;
+      }
       bar(grid, slot, lane === 0 ? centerLine : laneLine);
       gridCache.changed(slot);
       lineCount++;
@@ -388,11 +442,25 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     if (!S.ground || lineCount >= LINES) return;
     const slot = gridCache.keep(key);
     if (slot < 0) return;
-    track(d + .5, M);
-    position.set(S.center, S.elevation + yRef + LIFT, -(d - builtOrigin));
-    rotation.set(Math.atan(S.gradient), -Math.atan2(M.center - S.center, .5), -S.bank, 'YXZ');
-    scale.set(S.width + LINE_WIDTH, LINE_HEIGHT, CROSS_WIDTH);
-    place(grid, slot);
+    if (festive) {
+      // Christmas: straight across the simulated surface, edge to edge, lying on it like the tiles: across along
+      // the bank, its width along the road's own direction (its slope and bend), its height along the surface's
+      // normal; right-handed, as the tiles are.
+      track(d + .5, M);
+      tileAcross.set(S.width + LINE_WIDTH, -(S.width + LINE_WIDTH) * Math.tan(S.bank), 0);
+      // Its slope is the road's gradient at d, not a difference to d + 0.5, which at a drop's lip lands in the gap
+      // (the landing road's level, metres lower) and would stand the line up like a wall.
+      tileAlong.set(-(M.center - S.center), -S.gradient * .5, .5).normalize().multiplyScalar(CROSS_WIDTH);
+      tileUp.crossVectors(tileAlong, tileAcross).normalize().multiplyScalar(LINE_HEIGHT);
+      tileMatrix.makeBasis(tileAcross, tileUp, tileAlong).setPosition(S.center, surfaceY(S, S.center) + LIFT, -(d - builtOrigin));
+      grid.setMatrixAt(slot, tileMatrix);
+    } else {
+      track(d + .5, M);
+      position.set(S.center, S.elevation + yRef + LIFT, -(d - builtOrigin));
+      rotation.set(Math.atan(S.gradient), -Math.atan2(M.center - S.center, .5), -S.bank, 'YXZ');
+      scale.set(S.width + LINE_WIDTH, LINE_HEIGHT, CROSS_WIDTH);
+      place(grid, slot);
+    }
     gridCache.changed(slot);
     lineCount++;
   }
@@ -514,7 +582,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       const lod = step === .5 ? 0 : step === 1 ? 1 : 2, tileKey = a * 8 + lod, lineKey = a * 128 + lod * 16;
       if (tileCache.has(tileKey) && gridCache.has(lineKey + 4)) {
         tileCache.keep(tileKey); tileCount++;
-        for (let k = 0; k < LANES.length; k++) { gridCache.keep(lineKey + k); lineCount++; }
+        for (let k = 0; k < LANES.length; k++) { gridCache.keep(lineKey + k); lineCount++; if (festive) { gridCache.keep(lineKey + 8 + k); lineCount++; } }
         a = b;
         continue;
       }
@@ -539,12 +607,24 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
 
   function placeBlock(o: Obstacle): void {
     const slot = blockCache.keep(o.id), fresh = blockCache.fresh;
-    if (slot < 0 || (!fresh && !o.slide)) return;
+    // A cap only exists on a drawn block (gate walls share the block pool, so it can fill first).
+    const capSlot = snowCache && slot >= 0 ? snowCache.keep(o.id) : -1, capFresh = !!snowCache?.fresh;
+    const moveBlock = slot >= 0 && (fresh || !!o.slide), moveCap = capSlot >= 0 && (capFresh || !!o.slide);
+    if (!moveBlock && !moveCap) return;
     course.pose(o, frameElapsed, pose);
     setObstacleTransform(transform, pose, builtOrigin);
-    place(blocks, slot);
-    if (fresh) blocks.setColorAt(slot, o.kind === 'slider' ? sliderColor : blockShades[o.id % blockShades.length]);
-    blockCache.changed(slot, fresh);
+    if (moveBlock) {
+      place(blocks, slot);
+      if (fresh) blocks.setColorAt(slot, o.kind === 'slider' ? sliderColor : blockShades[o.id % blockShades.length]);
+      blockCache.changed(slot, fresh);
+    }
+    if (moveCap) {
+      // The cap sits on the block's (banked) top face and moves with a slider.
+      scale.set(2 * (pose.halfWidth + SNOW_OVERHANG), SNOW_DEPTH, 2 * (pose.halfDepth + SNOW_OVERHANG));
+      transform.translateY(pose.halfHeight - SNOW_SINK);
+      place(snow!, capSlot);
+      snowCache!.changed(capSlot);
+    }
   }
 
   let debugCount = 0;
@@ -553,6 +633,50 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     course.pose(o, frameElapsed, pose);
     setObstacleTransform(transform, pose, builtOrigin);
     place(hitboxes, debugCount++);
+  }
+
+  // The sleigh moves as a body, not a rolling ball. The simulation (model.ts) owns where it is and what it hits,
+  // and both use one rule for its pitch (config.ts sleighPitch), so what is drawn is what collides:
+  // - On the road it lies on the surface the simulation uses (its slope under the sleigh, then its bank;
+  //   placeOnRunners), its runners seated on it at any slope and anywhere across the road.
+  // - In the air its nose follows its flight path.
+  // On top of that, presentation only, within what SLEIGH_BODY's table allows (tests measure it on the real
+  // vertices): it leans into a carve from its sideways acceleration (at most 0.04 rad), tipping onto its inside
+  // runner, and its runners ride a damped spring (about 3.5 Hz, lightly damped) that a landing or a bump squashes
+  // and that rebounds, barely stretching. It never turns about its own up axis. A new run, restore or teleport
+  // snaps it to the road. Under Reduce motion there is no spring or carve lean.
+  const SPRING = 2 * Math.PI * 3.5, DAMPING = .32, { squash: SQUASH, stretch: STRETCH, carve: CARVE } = SLEIGH_POSE;
+  let carve = 0, squash = 0, squashRate = 0, lastElapsed = NaN, lastVx = 0, lastVy = 0, wasGrounded = true;
+  /** The pitch model.ts collides with at the end of the step this frame shows (config.ts sleighPitch). */
+  function drawnPitch(run: Run): number {
+    track(run.distance, S);
+    return sleighPitch(run.grounded, surfaceSlope(course, run.distance, run.x), run.vy, run.vx, S.bank, course.speed(run.distance), run.grounded ? 0 : heightAboveRest(course, run.distance, run.x, run.height));
+  }
+
+  function steer(run: Run, bx: number, continuous: boolean, reduced: boolean): void {
+    void bx;
+    track(run.distance, S);
+    const dt = continuous && run.elapsed >= lastElapsed ? Math.min(.05, run.elapsed - lastElapsed) : 0;
+    const attitude = drawnPitch(run);
+    if (!continuous) carve = squash = squashRate = 0;
+    else if (dt > 0) {
+      if (!reduced) {
+        // Lean into the carve: half the angle a body would take against its sideways acceleration.
+        const sideways = (run.vx - lastVx) / dt;
+        carve += (clamp(-.5 * Math.atan(sideways / GRAVITY), -CARVE, CARVE) - carve) * (1 - Math.exp(-10 * dt));
+        // The runners' spring: a landing kicks it by the speed of the impact; on the road, the surface's
+        // vertical acceleration (a bump or a dip) pushes it.
+        if (run.grounded && !wasGrounded) squashRate += clamp((run.vy - lastVy) * .05, 0, .8);
+        else if (run.grounded) squashRate += clamp((run.vy - lastVy) * .02, -.1, .1);
+        for (let n = 0, h = dt / 4; n < 4; n++) {
+          squashRate += (-SPRING * SPRING * squash - 2 * DAMPING * SPRING * squashRate) * h;
+          squash = clamp(squash + squashRate * h, -STRETCH, SQUASH);
+        }
+      } else { carve = squash = squashRate = 0; }
+    }
+    lastElapsed = run.elapsed; lastVx = run.vx; lastVy = run.vy; wasGrounded = run.grounded;
+    // Banked exactly as the road under it, on the road or in the air, as model.ts rolls its collision box.
+    placeOnRunners(ball, attitude, S.bank, carve, squash);
   }
 
   // Trail history: past ball positions every 0.5 m of travel, newest last.
@@ -591,11 +715,25 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       const age = (z - TRAIL_NEAR) / (far - TRAIL_NEAR);
       // Shrinks on screen too: samples nearer the camera are scaled down by their distance.
       const size = (.42 - .32 * age) * Math.min(1, 4 * (1 - age)) * clamp(Math.hypot(CAMERA_BACK - z, up) / ballRange, 0, 1);
+      tint.copy(trailColor).lerp(trailFaded, .6 * age);
+      scale.setScalar(size);
+      if (sparkle) {
+        // One glint behind each runner, at runner height, turned by its distance along the course so the
+        // pair twinkles as it recedes. At most 6 samples show, so the 12 glints fit the 18-instance pool.
+        // On a banked road each runner sits higher or lower than the centre by the bank, so its glints do too.
+        const tilt = Math.tan(track(history[slot * 3], S).bank);
+        for (let side = -1; side <= 1 && shown < TRAIL; side += 2) {
+          position.set(history[slot * 3 + 1] + side * SLEIGH_RUNNER_X, history[slot * 3 + 2] + lift - RADIUS * .72 - side * SLEIGH_RUNNER_X * tilt, z);
+          rotation.set(.6, history[slot * 3] * 2.4 + side, 0, 'YXZ');
+          place(trail, shown);
+          trail.setColorAt(shown++, tint);
+        }
+        continue;
+      }
       position.set(history[slot * 3 + 1], history[slot * 3 + 2] + lift, z);
       rotation.set(0, 0, 0, 'YXZ');
-      scale.setScalar(size);
       place(trail, shown);
-      trail.setColorAt(shown++, tint.copy(trailColor).lerp(trailFaded, .6 * age));
+      trail.setColorAt(shown++, tint);
     }
     commit(trail, shown);
   }
@@ -672,10 +810,11 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     const roadBase = Math.floor(distance / 256) * 256;
     if (roadBase !== builtOrigin || changedCourse || Math.abs(origin - scannedOrigin) > 16) {
       builtOrigin = roadBase; yRef = SLOPE * roadBase;
-      tileCache.reset(); gridCache.reset(); cyanCache.reset(); blockCache.reset(); gates.clear();
+      tileCache.reset(); gridCache.reset(); cyanCache.reset(); blockCache.reset(); snowCache?.reset(); gates.clear();
       scannedOrigin = NaN;
     }
     blockCache.begin();
+    snowCache?.begin();
     if (origin !== scannedOrigin) build(origin, range);
     else gates.forEach(keepWalls);
     road.position.set(0, (distance - builtOrigin) * SLOPE, distance - builtOrigin);
@@ -684,20 +823,36 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     frameElapsed = run.elapsed;
     course.forEachObstacle(origin - BEHIND, origin + range, placeBlock);
     blockCache.end();
+    snowCache?.end();
     if (hitboxes) {
       debugCount = 0;
       // Include the full previous sweep query, even behind the visible road.
-      course.forEachObstacle(distance - CONFIG.hard.maxSpeed * .05 - RADIUS - course.maxDepth, distance + RADIUS + course.maxDepth, placeHitbox);
+      // The same reach model.ts queries with: the ball's radius, or the sleigh box's back and front.
+      if (body.kind === 'box') largestBox(body.table, debugBox);
+      const behind = body.kind === 'box' ? debugBox.back : RADIUS, ahead = body.kind === 'box' ? debugBox.front : RADIUS;
+      course.forEachObstacle(distance - CONFIG.hard.maxSpeed * .05 - behind - course.maxDepth, distance + ahead + course.maxDepth, placeHitbox);
       commit(hitboxes, debugCount);
     }
-    if (hitball) hitball.position.set(run.x, run.height + SLOPE * distance, 0);
+    if (hitball) {
+      hitball.position.set(run.x, run.height + SLOPE * distance, 0);
+      track(distance, S);
+      if (body.kind === 'box') {
+        // The box model.ts uses at this pitch, centred where it centres it, rolled with the bank as it is.
+        const k = boxExtents(body.table, ...pitchNow(run), debugBox);
+        hitball.rotation.set(0, 0, -S.bank);
+        hitball.scale.set(2 * k.halfWidth, k.top - k.bottom, k.front + k.back);
+        hitball.position.add(new THREE.Vector3(0, (k.top + k.bottom) / 2, -(k.front - k.back) / 2).applyEuler(hitball.rotation));
+      }
+    }
 
     const broken = run.reason === 'block' && (run.phase === 'dying' || run.phase === 'over');
     ball.visible = !broken;
     const bx = clamp(run.x, -BALL_LIMIT, BALL_LIMIT);
     ball.position.set(bx, run.height + SLOPE * distance, 0);
     const forward = distance - rollDistance, sideways = bx - rollPosition;
-    if (!changedCourse && run.seed === rollSeed && run.run === rollRun && forward >= 0 && forward <= 3 && Math.abs(sideways) <= 3) {
+    const continuous = !changedCourse && run.seed === rollSeed && run.run === rollRun && forward >= 0 && forward <= 3 && Math.abs(sideways) <= 3;
+    if (sleigh) steer(run, bx, continuous, reduced);
+    else if (continuous) {
       // The road approaches +z; forward motion takes the top toward -z, sideways toward x.
       rollStep.setFromAxisAngle(rollX, -rollAngle(forward));
       ball.quaternion.premultiply(rollStep);
@@ -745,6 +900,16 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     if (camera.fov !== fov || camera.far !== far) { camera.fov = fov; camera.far = far; camera.updateProjectionMatrix(); }
     fog.near = 60 + speed;
     fog.far = 150 + 1.6 * speed;
+    if (snowfall) {
+      // Reduce motion: no falling or streaming snow (the caps on the blocks stay).
+      snowfall.points.visible = !reduced;
+      // The snow's clock advances by the real time between drawn frames, at most 1/20 s, so a pause or a
+      // backgrounded tab never makes it jump.
+      const now = performance.now() / 1000;
+      snowClock += Number.isFinite(snowFrame) ? clamp(now - snowFrame, 0, .05) : 0;
+      snowFrame = now;
+      if (!reduced) snowfall.update(camera.position, distance, SLOPE * distance, snowClock);
+    }
 
     drawFrame();
     projection.copy(ball.position).project(camera);
@@ -762,6 +927,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       viewWidth = width; viewHeight = height;
       renderer.setSize(width, height, false);
     }
+    snowfall?.setViewport(height * ratio);
     camera.aspect = width / height;
     // 1 (the plan's FOV unchanged) up to aspect 1.15, where the widest 74° vertical is 82° horizontally.
     fovFit = Math.min(1, Math.tan(THREE.MathUtils.DEG2RAD * H_FOV_CAP / 2) / (camera.aspect * Math.tan(THREE.MathUtils.DEG2RAD * (FOV + FOV_GAIN) / 2)));
@@ -793,8 +959,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     for (const mesh of pools) mesh.dispose();
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
-    ballTexture.dispose();
-    towerTexture?.dispose();
+    ballTexture?.dispose();
+    sleigh?.dispose();
+    snowfall?.dispose();
     renderer.dispose();
     renderer.forceContextLoss();
     scene.clear();
@@ -805,5 +972,5 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // and compiles every material, so the first boost or crash never stalls on a shader
   // compile and the geometry count is the same from the first frame.
   drawFrame();
-  return { resize, setResolutionCap, render, reset, stats, dispose };
+  return { resize, setResolutionCap, render, reset, stats, body, dispose };
 }
