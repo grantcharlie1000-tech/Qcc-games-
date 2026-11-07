@@ -795,7 +795,7 @@ test('section rails keep their ids unique and show their names as text',async({p
  await expect(page.getByRole('heading',{name:'Second rail',exact:true})).toBeVisible();
  await expect(page.locator('[data-rail="popular"]')).toHaveCount(1);
  await expect(page.locator('[data-rail="popular-2"]')).toHaveCount(1);
- const first=page.locator('.movies-shelf h2').first();
+ const first=page.locator('[data-rail="popular"] h2');
  await expect(first).toHaveText('<b>Bold</b> rail');
  expect(await first.evaluate(h=>h.querySelector('b'))).toBeNull();
 });
@@ -2245,7 +2245,7 @@ test('the footer keeps the privacy copy and clears saved data',async({page})=>{
  await expect(links).toHaveText(['Home','Movies','TV Shows','My list']);
  expect(await links.evaluateAll(list=>list.map(link=>link.getAttribute('href')))).toEqual(['#/movies','#/movies/browse/movie','#/movies/browse/tv','#/movies/list']);
  await expect(footer.locator(':scope>strong')).toHaveText('Your screen. Your privacy.');
- await expect(footer.locator('p').nth(0)).toHaveText('My list and playback progress stay on this device. Full-catalog searches go through QCC’s metadata service to TMDB. Real posters and backdrops load from TMDB; its image server receives ordinary image requests.');
+ await expect(footer.locator('p').nth(0)).toHaveText('My list and resume positions stay on this device. When contributions are on, QCC receives a movie ID and a short-lived movie-specific token after sustained playback to build Popular in Marlborough. Turn contributions off in Menu. The service also processes connection information for abuse protection. Full-catalog searches go through QCC’s metadata service to TMDB. Real posters and backdrops load from TMDB; its image server receives ordinary image requests.');
  await expect(footer.locator('p').nth(1)).toHaveText('Starter selection · Real title artwork from TMDB. Original summaries. Ratings are not supplied. This is not a live trending feed.');
  await expect(footer.locator('p').filter({hasText:'Streaming is provided by an external service.'})).toHaveText('Streaming is provided by an external service. QCC does not verify its availability or distribution rights. Movies are excluded from game offline downloads.');
  const clear=footer.getByRole('button',{name:'Clear my list & watch history',exact:true});
@@ -2263,7 +2263,7 @@ test('the footer second paragraph takes the TMDB line once the API supplies titl
  await page.goto('/#/movies');
  await expect(page.getByRole('heading',{name:'Trending now',exact:true})).toBeVisible();
  const paragraphs=page.locator('footer.movies-footer p');
- await expect(paragraphs.nth(0)).toHaveText(/^My list and playback progress stay on this device\./);
+ await expect(paragraphs.nth(0)).toHaveText(/^My list and resume positions stay on this device\./);
  await expect(paragraphs.nth(1)).toHaveText('Search and metadata use the TMDB database. This product uses the TMDB API but is not endorsed or certified by TMDB.');
 });
 
