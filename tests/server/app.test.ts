@@ -123,6 +123,26 @@ describe('social, chat, media and the purge cron',()=>{
    expect(log).toHaveBeenCalledOnce();expect(String(log.mock.calls[0]![0])).toMatch(/^QCC chat purge: \d+ expired messages deleted, \d+ orphaned media removed\.$/);
   }finally{log.mockRestore();}
  });
+ it('routes Predictions and keeps it disabled until the flag is set',async()=>{
+  expect(routeOf('/api/predictions')).toBe('predictions');expect(routeOf('/.netlify/functions/predictions')).toBe('predictions');
+  expect(routeOf('/api/predictions-grants')).toBe('predictions-grants');expect(RATE_LIMITS.predictions).toBe(600);
+  const me=await get(make(),'/api/predictions?action=me');
+  expect(me.status).toBe(200);expect(await me.json()).toMatchObject({enabled:false,signedIn:false});
+  const list=await get(make(),'/.netlify/functions/predictions?action=markets');
+  expect(list.status).toBe(503);expect(await list.json()).toMatchObject({error:'predictions_disabled'});
+ });
+ it('requires the Bearer CRON_SECRET for /api/predictions-grants and does nothing while disabled',async()=>{
+  const a=make({CRON_SECRET:CRON});
+  expect((await get(a,'/api/predictions-grants')).status).toBe(401);
+  expect((await get(a,'/api/predictions-grants',{headers:{Authorization:'Bearer wrong'}})).status).toBe(401);
+  expect((await get(a,'/api/predictions-grants',{method:'POST',headers:{Authorization:'Bearer '+CRON}})).status).toBe(401);
+  const log=vi.spyOn(console,'log').mockImplementation(()=>{});
+  try{
+   const r=await get(a,'/api/predictions-grants',{headers:{Authorization:'Bearer '+CRON}});
+   expect(r.status).toBe(200);expect(await r.json()).toEqual({ok:true,accounts:0,grants:0,failed:0,stopped:false});
+   expect(String(log.mock.calls[0]![0])).toMatch(/^QCC predictions grants: 0 issued across 0 accounts, 0 failed\.$/);
+  }finally{log.mockRestore();}
+ });
 });
 
 describe('frontend API base',()=>{

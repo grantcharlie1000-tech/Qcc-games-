@@ -1,8 +1,8 @@
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {readdirSync,readFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import pg from 'pg';
+import {LocalDB,createLocalPool} from '../support/local-db';
 import type {Database} from '../../src/leaderboard/server';
 import {createPredictionsHandler} from '../../src/predictions/server';
 
@@ -13,24 +13,24 @@ import {createPredictionsHandler} from '../../src/predictions/server';
  * and the concurrency suite is skipped (and says so).
  */
 export const REAL_PG=process.env.QCC_TEST_PG_URL??'';
-type Pool=ReturnType<typeof getDatabase>['pool'];
+type Pool=pg.Pool;
 export interface TestDb {pool:Pool;db:Database;real:boolean;stop():Promise<void>}
-const MIGRATIONS='netlify/database/migrations';
+const MIGRATIONS='db/migrations';
 export async function startDb():Promise<TestDb> {
  if(REAL_PG){
   const name='predictions_'+randomBytes(6).toString('hex');
-  const admin=getDatabase({connectionString:REAL_PG}).pool;
+  const admin=new pg.Pool({connectionString:REAL_PG});
   await admin.query(`CREATE DATABASE ${name}`);
   const url=new URL(REAL_PG);url.pathname='/'+name;
-  const pool=getDatabase({connectionString:url.toString()}).pool;
+  const pool=new pg.Pool({connectionString:url.toString(),max:20});
   // DROP … WITH (FORCE) terminates any idle pooled connection; that is expected during teardown.
   pool.on('error',()=>{});
   for(const file of readdirSync(MIGRATIONS).filter(f=>f.endsWith('.sql')).sort())await pool.query(readFileSync(join(MIGRATIONS,file),'utf8'));
   return {pool,db:bound(pool),real:true,async stop(){await pool.end();await admin.query(`DROP DATABASE ${name} WITH (FORCE)`);await admin.end();}};
  }
- const local=new NetlifyDB({logger:()=>{}});
+ const local=new LocalDB();
  const connectionString=await local.start();await local.applyMigrations(MIGRATIONS);
- const pool=getDatabase({connectionString}).pool;
+ const pool=createLocalPool(connectionString);
  return {pool,db:bound(pool),real:false,async stop(){await pool.end();await local.stop();}};
 }
 const bound=(pool:Pool):Database=>({query:(text:string,values?:unknown[])=>pool.query(text,values),connect:()=>pool.connect()} as unknown as Database);
