@@ -69,7 +69,10 @@ test('Tetris schedules frames only during an active run across lifecycle transit
 
 test('line-clear animation freezes during pause and resumes afterwards',async({page})=>{
   await page.emulateMedia({reducedMotion:'no-preference'});
-  await page.clock.install();
+  // Keep awaited UI actions from consuming the 320 ms clear animation.
+  // Only the explicit runFor calls below may advance this simulation.
+  await page.clock.install({time:new Date('2026-10-27T10:00:00Z')});
+  await page.clock.pauseAt(new Date('2026-10-27T10:00:01Z'));
   await page.addInitScript(()=>{
     const board=Array.from({length:22},()=>Array(10).fill(null));
     board[21]=Array.from({length:10},(_,x)=>x===5?null:'O');

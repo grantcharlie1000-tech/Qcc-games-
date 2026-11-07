@@ -30,6 +30,10 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/games/crossy-road/ tests/e2e/canvas-ink-capture.spec.ts tests/e2e/clear-ink-adaptation.spec.ts --workers=1
+      - name: Repeat the paused Quadfall timing regressions
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: quadfall-timing-report
+        run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/games/quadfall/scheduling.spec.ts tests/games/quadfall/play.spec.ts --grep 'line-clear animation|the most recently pressed direction' --repeat-each=10 --workers=1 --output=quadfall-timing-results
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -37,6 +41,8 @@ jobs:
           path: |
             test-results
             playwright-report
+            quadfall-timing-report
+            quadfall-timing-results
   benchmark:
     name: Crossy production before and after
     runs-on: ubuntu-latest
