@@ -34,6 +34,10 @@ jobs:
         env:
           PLAYWRIGHT_HTML_OUTPUT_DIR: quadfall-timing-report
         run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/games/quadfall/scheduling.spec.ts tests/games/quadfall/play.spec.ts --grep 'line-clear animation|the most recently pressed direction' --repeat-each=10 --workers=1 --output=quadfall-timing-results
+      - name: Repeat the account paint capture regression
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: account-paint-report
+        run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/e2e/closed-account-paint.spec.ts --repeat-each=10 --workers=1 --output=account-paint-results
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -43,6 +47,8 @@ jobs:
             playwright-report
             quadfall-timing-report
             quadfall-timing-results
+            account-paint-report
+            account-paint-results
   benchmark:
     name: Crossy production before and after
     runs-on: ubuntu-latest
