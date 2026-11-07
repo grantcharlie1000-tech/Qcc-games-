@@ -16,8 +16,16 @@ async function fixtureBundle(){
 test('Results Desk opens from the Menu and shows seats, electorates and members',async({page,context})=>{
   await originalTheme(context);
   const bundle=await fixtureBundle();
-  await page.route('**/api/election',route=>route.fulfill({json:bundle}));
+  await page.route(url=>url.pathname.endsWith('/api/election'),route=>route.fulfill({json:bundle}));
   await page.goto('./');
+  // The library's live strip is the quick way in; the Menu has an entry too.
+  const banner=page.locator('.election-banner');
+  await expect(banner).toHaveAttribute('data-state','live');
+  await expect(banner.locator('.eb-line')).toHaveText('National reach 2 of 3 seats with 40.0% of voting places counted: a majority of one.');
+  await expect(banner.locator('.eb-seats i')).toHaveCount(2);
+  await banner.click();
+  await expect(page).toHaveURL(/#\/election$/);
+  await page.goBack();
   await page.locator('.app-navigation [data-action="menu"]').click();
   await page.locator('#open-election').click();
   await expect(page).toHaveURL(/#\/election$/);
@@ -28,10 +36,22 @@ test('Results Desk opens from the Menu and shows seats, electorates and members'
 
   // Coalition builder: Labour alone is short.
   await page.locator('.el-toggle[data-party="13"]').click();
-  await expect(page.locator('.el-majority [role=status]')).toContainText('1 of 3 seats · 1 short of a majority');
+  await expect(page.locator('.el-majority p')).toContainText('1 of 3 seats · 1 short of a majority');
+  await expect(page.locator('[data-field="live"][role=status]')).toContainText('1 short of a majority');
 
   await page.locator('[data-tab="electorates"]').click();
   await expect(page.locator('a.el-row')).toHaveCount(2);
+  // A background update repaints the rows but leaves the search box and its text alone.
+  const search=page.locator('[data-filter="query"]');
+  await search.fill('Auck');await expect(page.locator('a.el-row')).toHaveCount(1);
+  bundle.updated='2026-11-07T20:45:00';
+  // Returning to a visible tab runs the same background refresh as the timer.
+  const refreshed=page.waitForResponse(r=>r.url().includes('/api/election?part=2'));
+  await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+  await refreshed;
+  await expect(page.locator('.el-meta')).toContainText('8:45 pm');
+  await expect(search).toBeFocused();await expect(search).toHaveValue('Auck');await expect(page.locator('a.el-row')).toHaveCount(1);
+  await search.fill('');
   await page.locator('[data-kind="maori"]').click();
   await expect(page.locator('a.el-row')).toHaveText([/Waiariki/]);
   await page.locator('[data-kind="all"]').click();
@@ -48,7 +68,7 @@ test('Results Desk opens from the Menu and shows seats, electorates and members'
 
 test('Results Desk explains a feed failure and retries',async({page})=>{
   let fail=true;
-  await page.route('**/api/election',async route=>fail?route.fulfill({status:502,json:{error:'The Electoral Commission results feed is not answering right now.'}}):route.fulfill({json:await fixtureBundle()}));
+  await page.route(url=>url.pathname.endsWith('/api/election'),async route=>fail?route.fulfill({status:502,json:{error:'The Electoral Commission results feed is not answering right now.'}}):route.fulfill({json:await fixtureBundle()}));
   await page.goto('./#/election');
   await expect(page.locator('.el-status')).toHaveAttribute('data-state','error');
   await expect(page.locator('.el-empty')).toContainText('not answering');

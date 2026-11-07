@@ -167,10 +167,11 @@ export function whoIsIn(bundle:ElectionBundle):PartyMembers[]{
 /** Events between two bundles: lead changes, electorates that finish, and counting milestones. */
 export interface FeedEvent {at:string;kind:'lead'|'final'|'milestone';text:string;electorate?:number}
 export function diffEvents(before:ElectionBundle|undefined,after:ElectionBundle,partyAbbrev:(id:number)=>string):FeedEvent[]{
-  if(!before||before.updated===after.updated)return [];
+  // Only a newer update can produce events: an older or repeated bundle (another server's cache) would replay or reverse them.
+  if(!before||!after.updated||after.updated<=before.updated)return [];
   const out:FeedEvent[]=[],at=after.updated,old=new Map(before.electorates.map(e=>[e.id,e]));
   for(const e of after.electorates){
-    const prev=old.get(e.id);if(!prev)continue;
+    const prev=old.get(e.id);if(!prev||!e.available||!prev.available)continue;
     const a=lead(prev).leader,b=lead(e).leader;
     if(b&&a&&a.id!==b.id)out.push({at,kind:'lead',electorate:e.id,text:`${candidateName(b.name)} (${partyAbbrev(b.party)}) takes the lead in ${e.name} from ${candidateName(a.name)} (${partyAbbrev(a.party)}).`});
     else if(b&&!a)out.push({at,kind:'lead',electorate:e.id,text:`First votes in ${e.name}: ${candidateName(b.name)} (${partyAbbrev(b.party)}) leads.`});
@@ -205,4 +206,13 @@ export function tileCodes(electorates:{id:number;name:string}[]):Map<number,stri
     for(const ids of clashes)for(const id of ids)extra.set(id,extra.get(id)!+1);
   }
   return out;
+}
+
+/** Joins the two halves of the feed. The first part carries the summary; each part carries its own electorates. */
+export function mergeParts(parts:ElectionBundle[]):ElectionBundle{
+  const [head,...rest]=parts;
+  const electorates=new Map<number,FeedElectorate>();
+  for(const part of parts)for(const e of part.electorates)electorates.set(e.id,e);
+  const newest=[head,...rest].reduce((a,b)=>b.updated>a.updated?b:a);
+  return {...head,updated:newest.updated,electorates:[...electorates.values()].sort((a,b)=>a.id-b.id)};
 }

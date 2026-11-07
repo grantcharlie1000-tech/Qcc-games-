@@ -6,8 +6,8 @@
  */
 export const FEED_BASE='https://media.election.net.nz/xml';
 const FRESH_MS=15_000;
-const UPSTREAM_TIMEOUT_MS=8_000;
-const CONCURRENCY=12;
+const UPSTREAM_TIMEOUT_MS=6_000;
+const CONCURRENCY=18;
 const MAX_ELECTORATES=80;
 const JSON_HEADERS={
   'content-type':'application/json; charset=utf-8',
@@ -34,6 +34,15 @@ export interface ElectionBundle {
   lists:Record<number,{id:number;name:string;rank:number}[]>;
 }
 type Fetcher=(input:RequestInfo|URL,init?:RequestInit)=>Promise<Response>;
+/**
+ * Which electorates a request covers. Cloudflare's free plan allows 50 subrequests per invocation, and the whole
+ * feed is 5 + 71 files, so the browser asks for `part=1` and `part=2` and merges them. `summary` reads no electorate
+ * files (the library banner). Without a part, everything is fetched at once (dev and tests).
+ */
+export type FeedPart='all'|'summary'|'1'|'2';
+export const SPLIT_AT=36;
+const inPart=(part:FeedPart,id:number)=>part==='all'||(part==='1'?id<=SPLIT_AT:part==='2'?id>SPLIT_AT:false);
+export const partOf=(url:URL):FeedPart|undefined=>{const p=url.searchParams.get('part');return p===null?'all':p==='summary'||p==='1'||p==='2'?p:undefined;};
 
 const ENTITIES:Record<string,string>={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'"};
 export function decode(text:string):string{
@@ -109,7 +118,7 @@ async function pool<T,R>(items:T[],limit:number,run:(item:T)=>Promise<R>):Promis
 }
 
 /** Builds one bundle. `previous` fills in any electorate whose file failed this time. */
-export async function buildBundle(fetcher:Fetcher=fetch,previous?:ElectionBundle,now=new Date()):Promise<ElectionBundle>{
+export async function buildBundle(fetcher:Fetcher=fetch,previous?:ElectionBundle,now=new Date(),part:FeedPart='all'):Promise<ElectionBundle>{
   const [electionXml,partiesXml,electoratesXml,candidatesXml,statsXml]=await Promise.all([
     getText(fetcher,'election.xml'),getText(fetcher,'parties.xml'),getText(fetcher,'electorates.xml'),getText(fetcher,'candidates.xml'),
     getText(fetcher,'statistics.xml').catch(()=>''),
@@ -119,7 +128,7 @@ export async function buildBundle(fetcher:Fetcher=fetch,previous?:ElectionBundle
   const parties:FeedParty[]=parseParties(partiesXml).map(p=>{const s=status.get(p.id);return {...p,votes:s?.votes??0,percent:s?.percent??0,listSeats:s?.listSeats??0,electorateSeats:s?.electorateSeats??0,seats:s?.seats??0};})
     .filter(p=>p.registered||p.votes>0||p.seats>0||candidates.some(c=>c.party===p.id&&c.electorate>0));
   const prior=new Map(previous?.electorates.map(e=>[e.id,e]));
-  const electorates=await pool(names,CONCURRENCY,async({id,name}):Promise<FeedElectorate>=>{
+  const electorates=await pool(names.filter(n=>inPart(part,n.id)),CONCURRENCY,async({id,name}):Promise<FeedElectorate>=>{
     const pad=String(id).padStart(2,'0'),standing=candidates.filter(c=>c.electorate===id);
     const base={id,name,kind:MAORI.has(name)?'maori' as const:'general' as const};
     try{
@@ -143,25 +152,31 @@ export async function buildBundle(fetcher:Fetcher=fetch,previous?:ElectionBundle
       electoratesFinal:election.electoratesFinal,electoratesPercent:election.electoratesPercent,specialVotes:election.specialVotes,electors:extra.electors},
     parties:parties.sort((a,b)=>b.votes-a.votes||b.seats-a.seats||a.name.localeCompare(b.name)),
     electorates,
-    lists:Object.fromEntries(parties.filter(p=>p.seats>0).map(p=>[p.id,candidates.filter(c=>c.party===p.id&&c.listNo>0).sort((a,b)=>a.listNo-b.listNo).slice(0,60).map(c=>({id:c.id,name:c.name,rank:c.listNo}))])),
+    lists:Object.fromEntries(parties.filter(p=>p.seats>0).map(p=>[p.id,candidates.filter(c=>c.party===p.id&&c.listNo>0).sort((a,b)=>a.listNo-b.listNo)
+      // Enough names to fill every list seat even if each electorate winner is ranked above them, plus the next in line.
+      .slice(0,p.seats+1).map(c=>({id:c.id,name:c.name,rank:c.listNo}))])),
   };
 }
 
-/** A per-isolate memo: many visitors refreshing at once share one upstream round. */
+/** A per-isolate memo per part: many visitors refreshing at once share one upstream round. */
 export function createElectionHandler(fetcher:Fetcher=fetch,clock:()=>number=Date.now){
-  let cached:{at:number;bundle:ElectionBundle}|undefined;
-  let inflight:Promise<ElectionBundle>|undefined;
+  const cached=new Map<FeedPart,{at:number;bundle:ElectionBundle}>();
+  const inflight=new Map<FeedPart,Promise<ElectionBundle>>();
   return async function handle(request:Request):Promise<Response>{
     if(request.method!=='GET'&&request.method!=='HEAD')return Response.json({error:'method not allowed'},{status:405,headers:{...JSON_HEADERS,'cache-control':'no-store',allow:'GET, HEAD'}});
-    if(cached&&clock()-cached.at<FRESH_MS)return Response.json(cached.bundle,{headers:JSON_HEADERS});
+    const part=partOf(new URL(request.url));
+    if(!part)return Response.json({error:'unknown part'},{status:400,headers:{...JSON_HEADERS,'cache-control':'no-store'}});
+    const hit=cached.get(part);
+    if(hit&&clock()-hit.at<FRESH_MS)return Response.json(hit.bundle,{headers:JSON_HEADERS});
     try{
-      inflight??=buildBundle(fetcher,cached?.bundle,new Date(clock())).finally(()=>{inflight=undefined;});
-      const bundle=await inflight;
-      cached={at:clock(),bundle};
+      let pending=inflight.get(part);
+      if(!pending){pending=buildBundle(fetcher,hit?.bundle,new Date(clock()),part).finally(()=>inflight.delete(part));inflight.set(part,pending);}
+      const bundle=await pending;
+      cached.set(part,{at:clock(),bundle});
       return Response.json(bundle,{headers:JSON_HEADERS});
     }catch{
       // A stale bundle beats an error page while the feed hiccups.
-      if(cached)return Response.json(cached.bundle,{headers:{...JSON_HEADERS,'cache-control':'no-store','x-qcc-stale':'1'}});
+      if(hit)return Response.json(hit.bundle,{headers:{...JSON_HEADERS,'cache-control':'no-store','x-qcc-stale':'1'}});
       return Response.json({error:'The Electoral Commission results feed is not answering right now.'},{status:502,headers:{...JSON_HEADERS,'cache-control':'no-store'}});
     }
   };

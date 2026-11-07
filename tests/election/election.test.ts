@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {buildBundle,createElectionHandler,decode,parseCandidates,parseElection,parseElectorateResult,parseParties,type ElectionBundle} from '../../server/election-feed';
-import {addTrendPoint,contrast,inkOn,partyColour,candidateName,diffEvents,filterElectorates,headline,hemicycle,lead,majority,tileCodes,whoIsIn} from '../../src/election/model';
+import {mergeParts,addTrendPoint,contrast,inkOn,partyColour,candidateName,diffEvents,filterElectorates,headline,hemicycle,lead,majority,tileCodes,whoIsIn} from '../../src/election/model';
 
 // The 2026 electorate names exactly as the Electoral Commission feed lists them.
 const NAMES:string[]=["Auckland Central", "Banks Peninsula", "Botany", "Christchurch Central", "Christchurch East", "Coromandel", "Dunedin", "East Cape", "East Coast Bays", "Epsom", "Glendene", "Hamilton East", "Hamilton West", "Henderson", "Hutt South", "Ilam", "Invercargill", "Kaikōura", "Kaipara ki Mahurangi", "Kapiti", "Kenepuru", "Māngere", "Manurewa", "Maungakiekie", "Mt Albert", "Mt Maunganui", "Mt Roskill", "Napier", "Nelson", "New Plymouth", "North Shore", "Northcote", "Northland", "Ōtāhuhu", "Pakuranga", "Palmerston North", "Papakura", "Port Waikato", "Rangitata", "Rangitīkei", "Remutaka", "Rotorua", "Selwyn", "Southland", "Taieri", "Takanini", "Tāmaki", "Taranaki-King Country", "Taupō", "Tauranga", "Tukituki", "Upper Harbour", "Waikato", "Waimakariri", "Wairarapa", "Waitākere", "Waitaki", "Wellington Bays", "Wellington North", "West Coast-Tasman", "Whanganui", "Whangaparāoa", "Whangārei", "Wigram", "Hauraki-Waikato", "Ikaroa-Rāwhiti", "Tāmaki Makaurau", "Te Tai Hauāuru", "Te Tai Tokerau", "Te Tai Tonga", "Waiariki"];
@@ -54,6 +54,22 @@ describe('Electoral Commission feed parsing',()=>{
     expect(stale.status).toBe(200);expect(stale.headers.get('x-qcc-stale')).toBe('1');
     expect((await createElectionHandler(async()=>{throw new Error('down');})(new Request('http://x/'))).status).toBe(502);
     expect((await handle(new Request('http://x/',{method:'POST'}))).status).toBe(405);
+    expect((await handle(new Request('http://x/api/election?part=9'))).status).toBe(400);
+  });
+  it('splits electorates into parts that each stay under 50 upstream requests',async()=>{
+    const seen:string[]=[];
+    const counting=async(url:RequestInfo|URL)=>{seen.push(String(url));return fetcher(url);};
+    const summary=await buildBundle(counting,undefined,new Date(),'summary');
+    expect(summary.electorates).toEqual([]);expect(seen.filter(u=>/\/e\d\d\//.test(u))).toEqual([]);
+    expect((await buildBundle(fetcher,undefined,new Date(),'1')).electorates.map(e=>e.id)).toEqual([1,2]);
+    expect((await buildBundle(fetcher,undefined,new Date(),'2')).electorates).toEqual([]);
+    // 5 shared files plus at most 35 or 36 electorate files.
+    expect(5+36).toBeLessThan(50);
+    const [a,b]=[await buildBundle(fetcher),await buildBundle(fetcher)];
+    b.updated='2026-11-07T20:31:00';b.electorates=[{...b.electorates[1],votesCast:9}];a.electorates=[a.electorates[0]];
+    const merged=mergeParts([a,b]);
+    expect(merged.electorates.map(e=>[e.id,e.votesCast])).toEqual([[1,200],[2,9]]);
+    expect(merged.updated).toBe('2026-11-07T20:31:00');
   });
 });
 
@@ -97,6 +113,11 @@ describe('Results model',()=>{
     expect(events.map(e=>e.kind)).toEqual(['lead','milestone']);
     expect(events[0].text).toContain("Sam O'Brien (LAB) takes the lead in Auckland Central");
     expect(diffEvents(before,before,()=>'')).toEqual([]);
+    // An older bundle (another server's cache) reverses nothing.
+    expect(diffEvents(after,before,()=>'')).toEqual([]);
+    // An electorate whose file failed is not a lead change.
+    const missing:ElectionBundle=structuredClone(after);missing.updated='2026-11-07T20:50:00';missing.electorates[0].available=false;missing.electorates[0].candidates.forEach(c=>c.votes=0);
+    expect(diffEvents(after,missing,()=>'').filter(e=>e.kind==='lead')).toEqual([]);
   });
   it('records one trend point per feed update',async()=>{
     const b=await bundle();let h=addTrendPoint([],b);h=addTrendPoint(h,b);

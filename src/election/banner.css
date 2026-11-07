@@ -1,0 +1,23 @@
+/* The library's way into Results Desk: one card-rimmed row above the game grid, like the Santa countdown. */
+.election-banner{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-areas:"badge text count go" "seats seats seats seats";align-items:center;gap:8px 12px;margin:10px 11px 0;padding:12px 14px 12px 12px;border:var(--card-border-width,6px) solid var(--rim,#2c2d2c);border-radius:24px;background:#000;color:#fff;box-shadow:var(--card-shadow);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;transition:transform 140ms var(--ease-out)}
+.eb-badge{grid-area:badge;display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:#d4003a;font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase}
+.eb-badge i{width:7px;height:7px;border-radius:50%;background:#fff}
+.election-banner[data-state="live"] .eb-badge i{animation:eb-pulse 1.6s ease-in-out infinite}
+.election-banner[data-state="final"] .eb-badge{background:#fff;color:#000}
+.election-banner[data-state="final"] .eb-badge i{background:#00a36f}
+.election-banner:is([data-state="waiting"],[data-state="loading"]) .eb-badge{background:#3f3f46}
+.eb-text{grid-area:text;display:grid;gap:2px;min-width:0}
+.eb-title{font-family:Arcade,'Arial Rounded MT Bold',sans-serif;font-size:17px;line-height:1.1;text-transform:uppercase;color:#ffe0a4}
+.eb-line{min-height:2.7em;font-size:14px;line-height:1.35;color:#e4e4e7;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.eb-count{grid-area:count;min-height:1.2em;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.eb-go{grid-area:go;font-size:30px;line-height:1;color:#ffe0a4}
+.eb-seats{grid-area:seats;display:flex;gap:2px;height:8px;border-radius:999px;overflow:hidden;background:#27272a}
+.eb-seats i{display:block;min-width:2px}
+.election-banner:active{transform:scale(.985)}
+@media(hover:hover) and (pointer:fine){.election-banner:hover{transform:translateY(-2px)}}
+@media(max-width:479px){.election-banner{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"badge count go" "text text text" "seats seats seats"}}
+@media(min-width:620px){.election-banner{margin:15px 15px 0}}
+@media(min-width:1240px){.election-banner{margin:16px max(18px,calc((100% - 1464px)/2)) 0}}
+@keyframes eb-pulse{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.election-banner{transition:none}.election-banner:hover,.election-banner:active{transform:none}.eb-badge i{animation:none!important}}
+.reduce-motion .eb-badge i{animation:none!important}

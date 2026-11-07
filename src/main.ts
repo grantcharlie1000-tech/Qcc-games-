@@ -3,6 +3,7 @@ import './festive/christmas.css';
 import {ChristmasWelcome} from './festive/welcome';
 import {applyFestiveTheme,christmas,setFestiveTheme,storedFestiveTheme} from './festive/festive';
 import {mountSantaBanner} from './santa/banner';
+import {mountElectionBanner} from './election/banner';
 import './movies/style.css';
 import type {MoviesView} from './movies/view';
 import type {MovieStorage} from './movies/storage';
@@ -159,6 +160,8 @@ function library(){
   // The notice text is user input, so it is filled in with textContent below, never through this template.
   content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" tabindex="0" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
   // The compact Santa countdown belongs to the seasonal theme and the unfiltered library.
+  // Results Desk's live strip comes first, so it is the top of the library while the count is on.
+  if(!filtered)mountElectionBanner(content.querySelector('.game-grid')!);
   if(!filtered&&christmas())mountSantaBanner(content.querySelector('.game-grid')!);
   if(filtered){
     content.querySelector<HTMLElement>('.library-filter-text')!.textContent=filterNotice();
@@ -498,6 +501,8 @@ festiveInput.addEventListener('change',()=>{
 
 window.addEventListener('hashchange',()=>void route());
 window.addEventListener('pagehide',()=>{save();movies?.pause();appView?.pause();void accounts.flush(true,false).catch(()=>{});});
+// A page restored from the back/forward cache missed its pagehide resume: live results start refreshing again.
+window.addEventListener('pageshow',event=>{if(event.persisted&&appKind==='election'&&!study.isOpen)appView?.resume();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance){instance.dismissMenu?.();pausedForDialog=false;setPaused(true);}});
 // Capture on window precedes native dialog cancellation and game-local Escape handlers.
 window.addEventListener('keydown',event=>{

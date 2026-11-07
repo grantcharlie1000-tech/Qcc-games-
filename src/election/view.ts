@@ -1,7 +1,7 @@
 import './style.css';
 import type {AppView} from '../apps/types';
 import {
-  tileCodes,addTrendPoint,blocOf,blocSeats,BLOCS,candidateName,counting,countStatus,diffEvents,electorateLeads,feedTime,filterElectorates,formatInt,formatPct,headline,hemicycle,inkOn,INDEPENDENT,lead,majority,
+  mergeParts,tileCodes,addTrendPoint,blocOf,blocSeats,BLOCS,candidateName,counting,countStatus,diffEvents,electorateLeads,feedTime,filterElectorates,formatInt,formatPct,headline,hemicycle,inkOn,INDEPENDENT,lead,majority,
   partyColour,totalSeats,validTrend,whoIsIn,type CountStatus,type ElectionBundle,type ElectorateFilter,type FeedElectorate,type FeedEvent,type FeedParty,type SortKey,type TrendPoint,
 } from './model';
 
@@ -59,14 +59,15 @@ export class ElectionView implements AppView {
         <p class="el-meta" data-field="meta">Results from the Electoral Commission</p>
         <div class="el-stats" data-field="stats"></div>
       </header>
-      <div class="el-tabs" role="tablist" aria-label="Results views">
-        <a class="ui-pill" role="tab" href="#/election" data-tab="overview">Votes &amp; seats</a>
-        <a class="ui-pill" role="tab" href="#/election/electorates" data-tab="electorates">Electorates</a>
-        <a class="ui-pill" role="tab" href="#/election/members" data-tab="members">Who’s in</a>
-        <a class="ui-pill" role="tab" href="#/election/trends" data-tab="trends">As it happens</a>
-      </div>
+      <nav class="el-tabs" aria-label="Results views">
+        <a class="ui-pill" href="#/election" data-tab="overview">Votes &amp; seats</a>
+        <a class="ui-pill" href="#/election/electorates" data-tab="electorates">Electorates</a>
+        <a class="ui-pill" href="#/election/members" data-tab="members">Who’s in</a>
+        <a class="ui-pill" href="#/election/trends" data-tab="trends">As it happens</a>
+      </nav>
       <div class="el-error" role="alert" hidden></div>
-      <main class="el-panel" data-field="panel" tabindex="-1"></main>
+      <div class="el-panel" data-field="panel" tabindex="-1"></div>
+      <p class="sr-only" role="status" data-field="live"></p>
       <p class="el-foot">Unofficial. Preliminary election-night counts from the <a href="https://electionresults.govt.nz/" target="_blank" rel="noopener noreferrer">Electoral Commission</a>; official results follow once special votes are counted. Seats include any overhang. Trend lines are recorded on this device while the page is open.</p>
     </article>`;
     this.page=root.querySelector('.election-page')!;
@@ -89,7 +90,6 @@ export class ElectionView implements AppView {
     this.tab=e||path==='electorates'?'electorates':path==='trends'?'trends':path==='members'?'members':'overview';
     for(const link of this.page.querySelectorAll<HTMLElement>('[data-tab]')){
       const on=link.dataset.tab===this.tab;
-      link.setAttribute('aria-selected',String(on));
       if(on)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
     }
     this.renderPanel(true);
@@ -117,11 +117,19 @@ export class ElectionView implements AppView {
     this.loading=true;this.renderStatus();
     try{
       // A plain timer rather than AbortSignal.any, which older Safari lacks.
-      const timeout=window.setTimeout(()=>{timedOut=true;abort.abort();},20000);
-      const response=await fetch(ENDPOINT,{signal:abort.signal,headers:{accept:'application/json'}}).finally(()=>clearTimeout(timeout));
-      const body=await response.json().catch(()=>null);
-      if(!response.ok||!body||!Array.isArray(body.parties)||!Array.isArray(body.electorates))throw new Error(body?.error||'The results feed did not answer.');
+      const timeout=window.setTimeout(()=>{timedOut=true;abort.abort();},25000);
+      // Two halves, so each server request stays within Cloudflare's subrequest limit.
+      const read=async(part:string):Promise<ElectionBundle>=>{
+        const response=await fetch(`${ENDPOINT}?part=${part}`,{signal:abort.signal,headers:{accept:'application/json'}});
+        const body=await response.json().catch(()=>null);
+        if(!response.ok||!body||!Array.isArray(body.parties)||!Array.isArray(body.electorates))throw new Error(body?.error||'The results feed did not answer.');
+        return body as ElectionBundle;
+      };
+      const parts=await Promise.all([read('1'),read('2')]).finally(()=>clearTimeout(timeout));
       if(abort.signal.aborted||this.disposed)return;
+      const body=mergeParts(parts);
+      // A response from an older cache must not roll the page back.
+      if(this.bundle&&body.updated<this.bundle.updated){this.error='';return;}
       const previous=this.bundle,before=previous?.updated;
       this.bundle=body as ElectionBundle;this.error='';
       const fresh=diffEvents(previous,this.bundle,id=>this.party(id)?.abbrev??'IND');
@@ -129,7 +137,11 @@ export class ElectionView implements AppView {
       this.saved.trend=addTrendPoint(this.saved.trend,this.bundle);this.persist();
       this.renderShell();
       // Keep the reader's place: a background update repaints only when the feed has moved on.
-      if(manual||before!==this.bundle.updated)this.renderPanel(false);
+      if(manual||before!==this.bundle.updated){
+        // In the electorate list, repaint only the rows so the search box keeps focus and what has been typed.
+        if(!manual&&this.tab==='electorates'&&this.detail===undefined&&this.page.querySelector('[data-field="rows"]'))this.renderRows();
+        else this.renderPanel(false);
+      }
     }catch(error){
       // Superseded by a newer refresh, or the view closed: nothing to report.
       if(this.disposed||this.abort!==abort||abort.signal.aborted&&!timedOut)return;
@@ -194,7 +206,7 @@ export class ElectionView implements AppView {
     const dots=hemicycle(seats||120);
     let i=0;const fills:string[]=[];
     for(const p of order)for(let n=0;n<p.seats;n++)fills[i++]=partyColour(p);
-    const svg=`<svg class="el-house" viewBox="0 -24 360 214" role="img" aria-label="${seats?`Parliament of ${seats} seats. ${order.map(p=>`${p.name} ${p.seats}`).join(', ')}.`:'Seats will appear once votes are counted.'}">${dots.map((d,k)=>`<circle cx="${d.x.toFixed(1)}" cy="${d.y.toFixed(1)}" r="${d.r.toFixed(1)}" fill="${fills[k]??'#27272a'}"/>`).join('')}${seats?`<text x="180" y="-12" text-anchor="middle" class="el-house-label">${need} TO GOVERN</text><line x1="180" x2="180" y1="-6" y2="4" class="el-house-tick"/>`:''}<text x="180" y="168" text-anchor="middle" class="el-house-total">${blocs.other||seats||'—'}</text><text x="180" y="184" text-anchor="middle" class="el-house-label">${blocs.other?'UNALIGNED':'SEATS'}</text></svg>`;
+    const svg=`<svg class="el-house" viewBox="0 -24 360 214" role="img" aria-label="${seats?`Parliament of ${seats} seats. ${esc(order.map(p=>`${p.name} ${p.seats}`).join(', '))}.`:'Seats will appear once votes are counted.'}">${dots.map((d,k)=>`<circle cx="${d.x.toFixed(1)}" cy="${d.y.toFixed(1)}" r="${d.r.toFixed(1)}" fill="${fills[k]??'#27272a'}"/>`).join('')}${seats?`<text x="180" y="-12" text-anchor="middle" class="el-house-label">${need} TO GOVERN</text><line x1="180" x2="180" y1="-6" y2="4" class="el-house-tick"/>`:''}<text x="180" y="168" text-anchor="middle" class="el-house-total">${blocs.other||seats||'—'}</text><text x="180" y="184" text-anchor="middle" class="el-house-label">${blocs.other?'UNALIGNED':'SEATS'}</text></svg>`;
     const blocText=(bloc:'left'|'right')=>order.filter(p=>blocOf(p.abbrev)===bloc).map(p=>p.abbrev==='TPMAO'?'Te Pāti Māori':p.abbrev==='GP'?'Greens':p.name.replace(/ Party$| New Zealand$/,'')).join(', ');
     const shown=b.parties.filter(p=>p.seats>0||p.percent>=1);
     const rest=b.parties.filter(p=>!shown.includes(p));
@@ -227,7 +239,7 @@ export class ElectionView implements AppView {
       <div class="el-coalition-parties">${seated.length?seated.map(p=>`<button type="button" class="el-toggle" data-party="${p.id}" aria-pressed="${chosen.includes(p)}" style="--pc:${partyColour(p)};--pi:${inkOn(partyColour(p))}"><span class="el-swatch"></span>${esc(p.abbrev)}<strong>${p.seats}</strong></button>`).join(''):'<p class="el-muted">Parties appear here once seats are allocated.</p>'}</div>
       <div class="el-majority" data-won="${won}">
         <div class="el-majority-bar"><span style="width:${width}%">${chosen.map(p=>`<i style="flex:${p.seats};--pc:${partyColour(p)}"></i>`).join('')}</span><b style="left:${seats?need/seats*100:50}%" aria-hidden="true"></b></div>
-        <p role="status"><strong>${sum}</strong> of ${seats||'—'} seats · ${chosen.length?won?`a majority with ${sum-need+1} to spare`:`${need-sum} short of a majority`:'no parties selected'}</p>
+        <p><strong>${sum}</strong> of ${seats||'—'} seats · ${chosen.length?won?`a majority with ${sum-need+1} to spare`:`${need-sum} short of a majority`:'no parties selected'}</p>
       </div>
     </section>`;
   }
@@ -278,7 +290,7 @@ export class ElectionView implements AppView {
         <span class="el-row-lead">${l?`${this.chip(l.party)}<span>${esc(candidateName(l.name))}</span>`:'<span class="el-muted">Awaiting votes</span>'}</span>
         <span class="el-row-margin el-num">${l?`+${formatInt(row.margin)}<small>${formatPct(row.marginPercent)}</small>`:'—'}</span>
         <span class="el-row-count"><span class="el-meter"><span style="width:${e.placesPercent}%"></span></span><small>${formatPct(e.placesPercent,0)}</small></span>
-        <span class="sr-only">${l?`, ${p?.name??'Independent'}, ahead by ${formatInt(row.margin)} votes`:''}, ${formatPct(e.placesPercent,0)} of voting places counted</span>
+        <span class="sr-only">${l?`, ${esc(p?.name??'Independent')}, ahead by ${formatInt(row.margin)} votes`:''}, ${formatPct(e.placesPercent,0)} of voting places counted</span>
       </a>`;}).join(''):'<p class="el-empty">No electorates match these filters.</p>';
   }
   private electorate(id:number):string{
@@ -299,7 +311,7 @@ export class ElectionView implements AppView {
       </dl>
       ${e.available?'':'<p class="el-note">This electorate’s results file did not answer. Showing candidates only.</p>'}
       <div class="el-detail-grid">
-        <div><h3 class="el-sub">Candidate vote</h3><ol class="el-bars">${e.candidates.map((c,i)=>`<li><span class="el-bars-label">${i===0&&c.votes>0?'<span class="el-lead-mark" aria-label="Leading">●</span>':''}${esc(candidateName(c.name))} ${this.chip(c.party)}</span><span class="el-bar"><span style="width:${c.votes/max*100}%;--pc:${partyColour(this.party(c.party)??INDEPENDENT)}"></span></span><span class="el-num">${formatInt(c.votes)}<small>${cTotal?formatPct(c.votes/cTotal*100):''}</small></span></li>`).join('')}</ol></div>
+        <div><h3 class="el-sub">Candidate vote</h3><ol class="el-bars">${e.candidates.map((c,i)=>`<li><span class="el-bars-label">${i===0&&c.votes>0?'<span class="el-lead-mark" aria-hidden="true">●</span><span class="sr-only">Leading: </span>':''}${esc(candidateName(c.name))} ${this.chip(c.party)}</span><span class="el-bar"><span style="width:${c.votes/max*100}%;--pc:${partyColour(this.party(c.party)??INDEPENDENT)}"></span></span><span class="el-num">${formatInt(c.votes)}<small>${cTotal?formatPct(c.votes/cTotal*100):''}</small></span></li>`).join('')}</ol></div>
         <div><h3 class="el-sub">Party vote here</h3>${e.partyVotes.length?`<ol class="el-bars">${e.partyVotes.slice(0,10).map(v=>{const p=this.party(v.party);return `<li><span class="el-bars-label">${esc(p?.name??`Party ${v.party}`)}</span><span class="el-bar"><span style="width:${v.votes/pMax*100}%;--pc:${partyColour(p)}"></span></span><span class="el-num">${formatInt(v.votes)}<small>${pTotal?formatPct(v.votes/pTotal*100):''}</small></span></li>`;}).join('')}</ol>`:'<p class="el-muted">No party votes counted yet.</p>'}</div>
       </div>
     </section>`;
@@ -347,7 +359,7 @@ export class ElectionView implements AppView {
     return `<section class="el-card" aria-labelledby="el-trend-title"><div class="el-card-head"><h2 id="el-trend-title">Vote share over time</h2></div>${chart}
       ${ids.length?`<p class="el-legend">${ids.map(id=>{const p=this.party(id);return `<span><span class="el-swatch" style="--pc:${partyColour(p)}"></span>${esc(p?.name??'')}</span>`;}).join('')}</p>`:''}</section>
     <section class="el-card" aria-labelledby="el-feed-title"><div class="el-card-head"><h2 id="el-feed-title">As it happens</h2><p class="el-card-note">Lead changes, finished electorates and count milestones, noticed while this page is open</p></div>
-      ${this.saved.events.length?`<ol class="el-feed">${[...this.saved.events].reverse().slice(0,30).map(ev=>`<li data-kind="${ev.kind}"><time>${esc(feedTime(ev.at).replace(' NZ time',''))}</time>${ev.electorate?`<a href="#/election/e/${ev.electorate}">${esc(ev.text)}</a>`:`<span>${esc(ev.text)}</span>`}</li>`).join('')}</ol>`:'<p class="el-muted">Nothing yet. Events appear here as the next updates arrive.</p>'}
+      ${this.saved.events.length?`<ol class="el-feed">${[...this.saved.events].reverse().slice(0,30).map(ev=>`<li data-kind="${ev.kind}"><time>${esc(feedTime(ev.at).replace(' NZ time',''))}</time>${Number.isInteger(ev.electorate)?`<a href="#/election/e/${ev.electorate}">${esc(ev.text)}</a>`:`<span>${esc(ev.text)}</span>`}</li>`).join('')}</ol>`:'<p class="el-muted">Nothing yet. Events appear here as the next updates arrive.</p>'}
     </section>
     ${this.pace()}
     <div class="el-two">
@@ -375,6 +387,8 @@ export class ElectionView implements AppView {
       this.saved.coalition=[...set];this.persist();
       const card=toggle.closest('.el-card')!,b=this.bundle!,seats=totalSeats(b);
       card.outerHTML=this.coalition(b.parties.filter(p=>p.seats>0),seats,majority(seats));
+      // One persistent live region announces the new total; the card itself is rebuilt.
+      this.field('live').textContent=this.page.querySelector('.el-majority p')?.textContent??'';
       this.page.querySelector<HTMLElement>(`.el-toggle[data-party="${id}"]`)?.focus();
       return;
     }
