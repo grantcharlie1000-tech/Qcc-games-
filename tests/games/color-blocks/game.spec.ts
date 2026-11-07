@@ -2,7 +2,7 @@ import {appSettings,backToGames,gameAction,pauseGame} from '../../game-menu';
 import {test,expect,type Page} from '../../fixtures';
 import {createGame,type State} from '../../../src/games/color-blocks/model';
 const SAVE='pocket-arcade:v1:save:color-blocks';
-const fixture=():State=>({...createGame(42),tray:[5,12,0],board:Array(64).fill(0)});
+const fixture=():State=>({...createGame(42),tray:[5,12,0],colors:[6,6,1],board:Array(64).fill(0),seed:0});
 async function open(page:Page,s=fixture()){
  await page.addInitScript(({key,snapshot})=>{if(!sessionStorage.getItem('cb-fixture-ready')){localStorage.clear();localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');localStorage.setItem(key,JSON.stringify({version:1,data:snapshot}));sessionStorage.setItem('cb-fixture-ready','yes');}},{key:SAVE,snapshot:s});
  await page.goto('/#/game/color-blocks');await expect(page.locator('.cb-cell')).toHaveCount(64);
@@ -42,12 +42,12 @@ test('keyboard aims, places and shows rules; pause blocks input, save reloads, r
  await pauseGame(page);await gameAction(page,'Restart game');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');expect(await occupied(page)).toEqual([]);
 });
 test('line crossing clears together and the board survives when a later tray piece fits',async({page})=>{
- const s=fixture();s.tray=[0,1,2];for(let x=1;x<8;x++)s.board[x]=1;for(let y=1;y<8;y++)s.board[y*8]=2;await open(page,s);
- await page.locator('#game-stage').focus();await page.keyboard.press('1');await page.keyboard.press('Enter');expect(await occupied(page)).toEqual([]);await expect(page.locator('#game-score')).toContainText('41');await expect(page.locator('.cb-game')).toHaveAttribute('data-combo','1');await expect(page.locator('.cb-feedback')).toContainText('2 lines cleared');
+ const s=fixture();s.tray=[0,1,2];s.colors=[3,3,3];for(let x=1;x<8;x++)s.board[x]=1;for(let y=1;y<8;y++)s.board[y*8]=2;await open(page,s);
+ await page.locator('#game-stage').focus();await page.keyboard.press('1');await page.keyboard.press('Enter');expect(await occupied(page)).toEqual([]);await expect(page.locator('#game-score')).toContainText('401');await expect(page.locator('.cb-breakdown')).toHaveText('+401 = 1 block + 80 lines + 120 colour + 200 all clear');await expect(page.locator('.cb-game')).toHaveAttribute('data-combo','1');await expect(page.locator('.cb-feedback')).toContainText('2 lines cleared');
 });
 test('a blocked first piece does not end the run; a genuinely blocked tray does',async({page})=>{
  const s=fixture();s.board=Array.from({length:64},(_,i)=>(i%8+Math.floor(i/8))%2===0?1:0);s.tray=[5,null,0];await open(page,s);await expect(page.locator('.cb-game')).not.toHaveClass(/cb-over/);
- await page.locator('#game-stage').focus();await page.keyboard.press('3');await page.keyboard.press('ArrowRight');await page.keyboard.press('Enter');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');await expect(page.locator('.cb-game')).toHaveClass(/cb-over/);await expect(page.locator('#game-status')).toContainText('No pieces fit');await expect(page.locator('.cb-feedback')).toBeVisible();await gameAction(page,'Restart game');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');await expect(page.locator('.cb-game')).not.toHaveClass(/cb-over/);await expect(page.locator('.cb-board')).toHaveAttribute('aria-disabled','false');await expect(page.locator('.cb-board')).toBeFocused();
+ await page.locator('#game-stage').focus();await page.keyboard.press('3');await page.keyboard.press('ArrowRight');await page.keyboard.press('Enter');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');await expect(page.locator('.cb-game')).toHaveClass(/cb-over/);await expect(page.locator('#game-status')).toContainText('No pieces fit');await expect(page.locator('.cb-result')).toBeVisible();await expect(page.locator('.cb-result-stats')).toContainText('Best combo');await gameAction(page,'Restart game');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');await expect(page.locator('.cb-game')).not.toHaveClass(/cb-over/);await expect(page.locator('.cb-board')).toHaveAttribute('aria-disabled','false');await expect(page.locator('.cb-board')).toBeFocused();
 });
 test('colourblind patterns, reduced motion and malformed save are handled through the shell',async({page})=>{
  await open(page);await appSettings(page);await page.locator('#colour').check();await page.locator('#motion').check();await page.getByRole('button',{name:'Close menu',exact:true}).click();await expect(page.locator('.cb-game')).toHaveClass(/cb-patterns/);await expect(page.locator('.cb-game')).toHaveClass(/cb-reduced/);
