@@ -8,18 +8,22 @@ await database.applyMigrations('netlify/database/migrations');
 const pool=getDatabase({connectionString}).pool;
 // pg.Pool.query needs `this`; hand handlers a bound view.
 const db={query:(text,values)=>pool.query(text,values),connect:()=>pool.connect()};
+// Predictions is off by default (as in production). QCC_PREDICTIONS=on enables it locally and loads the
+// visibly marked development fixtures; see docs/PREDICTIONS.md.
+if(process.env.QCC_PREDICTIONS==='on')await (await import('./predictions-fixtures.mjs')).seedPredictions(pool);
 const server=await createServer({server:{port:Number(process.env.PORT||4173)},plugins:[{
  name:'local-leaderboard',configureServer(vite){
   vite.middlewares.use(async(req,res,next)=>{
-   const route=/^\/\.netlify\/functions\/(accounts|leaderboard|social|chat|media)(?:[?#]|$)/.exec(req.url||'')?.[1];
+   const route=/^\/\.netlify\/functions\/(accounts|leaderboard|social|chat|media|predictions)(?:[?#]|$)/.exec(req.url||'')?.[1];
    if(!route)return next();
    try{
     const {MAX_BODY_BYTES}=await vite.ssrLoadModule('/src/accounts/shared.ts');
-    const mediaStore=route==='accounts'||route==='leaderboard'?null:(await vite.ssrLoadModule('/src/media/store.ts')).createFileStore('.netlify/local-media');
+    const mediaStore=route==='accounts'||route==='leaderboard'||route==='predictions'?null:(await vite.ssrLoadModule('/src/media/store.ts')).createFileStore('.netlify/local-media');
     let handle;
     if(route==='accounts')handle=(await vite.ssrLoadModule('/src/accounts/server.ts')).createAccountsHandler(db);
     else if(route==='leaderboard')handle=(await vite.ssrLoadModule('/src/leaderboard/server.ts')).createLeaderboardHandler(db);
     else if(route==='social')handle=(await vite.ssrLoadModule('/src/social/server.ts')).createSocialHandler(db,mediaStore);
+    else if(route==='predictions')handle=(await vite.ssrLoadModule('/src/predictions/server.ts')).createPredictionsHandler(db);
     else if(route==='chat')handle=(await vite.ssrLoadModule('/src/chat/server.ts')).createChatHandler(db,mediaStore);
     else handle=(await vite.ssrLoadModule('/src/media/server.ts')).createMediaHandler(db,mediaStore);
     const cap=route==='media'?4194304:route==='leaderboard'?2048:MAX_BODY_BYTES;
