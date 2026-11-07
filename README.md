@@ -1,6 +1,6 @@
 # Pocket Arcade
 
-A static, private browser arcade with twenty-one playable games: **Suika Game, Water Sort, Block Blast, Stack, Snake, Slither.io, Minesweeper, Solitaire, Block Fill, Flow Free, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Minecraft, Pac-Man, Corn Clicker, Slipline, Tetris and Wordle**. Original SVG covers, a compact portrait-card library, favourites and local saves. The site requires a network connection; service-worker caching and offline downloads are retired. No advertisements or currency. Accounts are optional for play and required for publishing leaderboard scores. Gameplay stays local; optional shared leaderboards use a Netlify score service, and Pool and Minecraft can be played online between devices ([setup](docs/MULTIPLAYER.md)).
+A static, private browser arcade with twenty-five playable games: **Block Blast, Water Sort, Suika Game, Stack, Flappy Bird, Ball Run, Animal Stack, Snake, Slither.io, Minesweeper, Solitaire, Block Fill, Flow Free, Pool, Globle, Minecraft, Pac-Man, Corn Clicker, Slipline, Tetris, Wordle, Claimline, Crossy Road, Quad Clash and Femboy Frosthop**. Original SVG covers, a compact portrait-card library, favourites and local saves. The site requires a network connection; service-worker caching and offline downloads are retired. No advertisements or currency. Accounts are optional for play and required for publishing leaderboard scores. Gameplay stays local; optional shared leaderboards use a score service reached through the Cloudflare Pages proxy, and Pool and Minecraft can be played online between devices ([setup](docs/MULTIPLAYER.md)).
 
 The latest [gameplay correction record](docs/GAMEPLAY_CORRECTIONS.md) includes the four referenced scenes, six Animal Stack cutouts, actual interaction recordings and viewport checks.
 
@@ -48,10 +48,10 @@ Movies & TV uses a streaming-style design system. Its tokens and shared `ui-` co
 
 ## Deploy the same output
 
-`npm run build` creates `dist/` with relative asset paths, hash routes and a service worker scoped to the directory in which it is served. The unchanged build supports an origin root and a repository subpath.
+`npm run build` creates `dist/` with relative asset paths, hash routes and a `sw.js` recovery worker that removes old service workers and caches; offline play is retired. The unchanged build supports an origin root and a repository subpath.
 
 - **Cloudflare Pages (live):** the existing project is `nceastudy`. The [workflow](.github/workflows/pages.yml) publishes verified `main` builds using repository Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. It includes the Pages Functions and checks the public release commit. See [Cloudflare deployment](docs/CLOUDFLARE_PAGES.md).
-- **Netlify:** import this repository. [netlify.toml](netlify.toml) sets `npm run build`, publishes `dist/`, selects Node 22 and sets security headers. The shared score function and `netlify/database/migrations/` are deployed alongside the site. Netlify provisions the database from the installed `@netlify/database` integration; no browser API keys or manually configured application secrets are needed. Database availability and usage follow the site’s Netlify plan.
+- **Netlify (legacy, not used for production):** [netlify.toml](netlify.toml) and the `netlify/` functions remain in the repository for reference. Production no longer publishes there; see [Netlify deployment evidence](docs/NETLIFY_DEPLOYMENT.md).
 - **Other static hosting:** serve `dist/` over HTTPS. No SPA rewrite is necessary because navigation uses `#/game/<id>`.
 
 Shared online leaderboards require the configured backend and database. Cloudflare Pages uses the existing API proxy; static-only hosting without that proxy cannot serve shared scores. See [leaderboard setup and verification](docs/LEADERBOARDS.md).
@@ -83,6 +83,11 @@ TMDB and the streaming servers receive ordinary image and playback requests. Ext
 **Slipline** is a deterministic arrow-extraction puzzle: clear each route in its direction, avoid blocked moves, and preserve hearts through an endless campaign.
 
 Tetris is a falling-piece puzzle: arrange seven kinds of quads, clear lines, and build a local best score.
+
+## Femboy Frosthop
+
+Femboy Frosthop is an original pastel Christmas obby in Three.js: 30 fixed stages across six zones, with gift hops, beams, sweeper arms, lifts and trays, conveyor belts, ice, crumbling cookies, spring pads and snowballs. A fully clothed androgynous avatar wears oversized jumpers, striped socks over tights and cat-ear hats; each cleared zone unlocks an outfit. Stages end on checkpoint pads and every stage has one optional star. The leaderboard ranks time to completion: every run from the stage 1 start line to the finish is timed (including the first campaign run), stored as `2147483647 − milliseconds` so faster runs rank higher; only unpaused, unassisted complete runs are submitted. A Time Trial for quick retries opens after the first finish. See [its spec](src/games/femboy-obby/SPEC.md) and [test results](tests/games/femboy-obby/TEST_RESULTS.md).
+
 
 ## Wordle
 

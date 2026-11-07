@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "season": 2026,
+  "departureUtc": "2026-12-24T10:00:00Z",
+  "status": "estimated",
+  "label": "Estimated departure",
+  "confidence": "medium",
+  "uncertaintyMinutes": 60,
+  "source": "QCC estimate from NORAD Tracks Santa's published 2025 schedule and press coverage of the 2025 flight. NORAD has not published a 2026 departure time.",
+  "method": "Christmas Day begins first at UTC+14 (Kiritimati, Kiribati) at 10:00 UTC on 24 December. In 2025 NORAD's countdown reached zero at 09:00 UTC, when its website tracking opened, and NORAD announced the departure at about 11:00 UTC. 10:00 UTC is the midpoint and matches the first midnight.",
+  "references": [
+    {
+      "label": "NORAD website tracking opens (historical: 2:00 a.m. MST, 24 December)",
+      "utc": "2026-12-24T09:00:00Z",
+      "kind": "tracking-centre",
+      "url": "https://www.dvidshub.net/feature/NORADTracksSanta"
+    },
+    {
+      "label": "NORAD Tracks Santa Operations Center and phone lines open (historical: 4:00 a.m. MST, 24 December)",
+      "utc": "2026-12-24T11:00:00Z",
+      "kind": "tracking-centre",
+      "url": "https://www.noradsanta.org/en/noradhq"
+    },
+    {
+      "label": "2025 coverage of NORAD's countdown and departure announcement",
+      "kind": "historical",
+      "url": "https://www.techradar.com/news/live/santa-tracker-2025-live"
+    }
+  ],
+  "updated": "2026-11-06"
+}

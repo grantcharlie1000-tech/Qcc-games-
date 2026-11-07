@@ -7,6 +7,13 @@ import { boardKey, cloneBoard, pour, won } from '../../../src/games/water-sort/r
 import { independentSolve } from './independent-solver';
 
 describe('soluble level construction and search', () => {
+  it('does not treat a budget-limited miss as proof that a board is unsolvable', () => {
+    const board = [[0,0,0],[1,1,1,0],[1],[]];
+    const next = pour(board, 1, 0)!.board;
+    expect(solve(board, 2)).toBeNull();
+    expect(solve(next, 2)).toEqual([[1,2]]);
+    expect(solve(board)).toEqual([[1,0],[1,2]]);
+  });
   it('stops generating children once the queued-state budget is full', () => {
     const expansions = vi.spyOn(rules, 'legalPours');
     try {

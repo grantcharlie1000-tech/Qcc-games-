@@ -2,7 +2,6 @@ import {canvasInk,syncCanvasInkSource} from './canvas-ink';
 import {backgroundPaint,colorPaint} from './glass-background';
 type RGB=readonly [number,number,number];
 type Paint={rgb:RGB;alpha:number};
-const INK:RGB=[11,16,21];
 const UNKNOWN:RGB[]=[[0,0,0],[255,255,255]];
 const IMAGE_SIZE=256;
 const isUnknown=(samples:readonly RGB[])=>samples.length===2&&samples[0].every(v=>v===0)&&samples[1].every(v=>v===255);
@@ -10,38 +9,16 @@ type ImagePixels={data:Uint8ClampedArray};
 const luminance=(rgb:RGB)=>rgb.reduce((sum,v,i)=>sum+(v/255<=.04045?v/3294.6:((v/255+.055)/1.055)**2.4)*[.2126,.7152,.0722][i],0);
 const CLEAR_FILL:RGB=[8,12,18];
 const CLEAR_VEIL=.2,NAV_VEIL=.36;
-const HALO_DARK='rgb(0 0 0 / .8)',HALO_LIGHT='rgb(255 255 255 / .75)';
+const HALO_DARK='rgb(0 0 0 / .8)';
 const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,number,number];
-/** Choose plain foreground ink for the clear material. Blur softens detail;
- * neither the material nor its glyphs gain an opaque contrast outline. Where
- * neither ink reaches 4.5:1 over the sampled backdrop (busy or mixed art), the
- * glyph gets a soft opposite-tone halo; over even art it stays transparent. */
-export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false,textured=false,veil=CLEAR_VEIL):{color:string;halo:string}{
+/** Keep the glyph itself white. Sample only to decide whether a soft dark
+ * shadow is needed over bright or busy artwork; never invert labels or scores.
+ * Opaque accessibility surfaces bypass this function in the binding below. */
+export function glassInk(samples:readonly RGB[],_preferred?:'light'|'dark',selection:boolean|'dark'=false,textured=false,veil=CLEAR_VEIL):{color:string;halo:string}{
   const colors=samples.length?samples:[[25,29,28] as RGB];
-  // Model the fill: the clear fill (--glass-clear-fill, rgb(8 12 18 / .20)) or
-  // the bottom navigation's frosted tint (section-navigation.css, alpha .36).
   const backgrounds=colors.map(rgb=>luminance(mix(rgb,CLEAR_FILL,veil))*(selection==='dark'?.91:selection?.99:1));
-  const dark=luminance(INK);
-  const darkContrast=Math.min(...backgrounds.map(bg=>(Math.max(bg,dark)+.05)/(Math.min(bg,dark)+.05)));
   const lightContrast=Math.min(...backgrounds.map(bg=>1.05/(bg+.05)));
-  let color=darkContrast>=lightContrast?'#0b1015':'#fff';
-  // Point samples of images, canvases and gradients can miss detail that the
-  // light blur still shows under a glyph, so textured backdrops always keep the
-  // halo. Over art the ink already suits, the opposite-tone halo is unobtrusive.
-  // Flat backdrops keep a small margin (4.75 for 4.5:1) for what this model
-  // omits: navigation's tone curve and faint control fills under a glyph.
-  const legible=!textured&&Math.max(darkContrast,lightContrast)>=4.75;
-  if(!legible){
-    const unknown=colors.length===2&&colors[0].every(v=>v===0)&&colors[1].every(v=>v===255);
-    if(unknown&&preferred)color=preferred==='light'?'#fff':'#0b1015';
-    else{
-      // Known mixed artwork still has a local luminance. A route preference
-      // must not force white ink over its resolvable bright portions.
-      const mean=backgrounds.reduce((sum,value)=>sum+value,0)/backgrounds.length;
-      color=(mean+.05)/(dark+.05)>=1.05/(mean+.05)?'#0b1015':'#fff';
-    }
-  }
-  return {color,halo:legible?'transparent':color==='#fff'?HALO_DARK:HALO_LIGHT};
+  return {color:'#fff',halo:!textured&&lightContrast>=4.75?'transparent':HALO_DARK};
 }
 
 // Cache one small image readback per source, never per sample or scroll frame.
@@ -166,7 +143,6 @@ function sampler(){
 const bindings=new Set<HTMLElement>();
 let frame=0;
 let liveTimer:ReturnType<typeof setTimeout>|undefined;
-const pendingInk=new WeakMap<HTMLElement,{color:string;count:number}>();
 let observer:MutationObserver|undefined;
 let density:MediaQueryList|undefined;
 /** Retained for existing sheet callers; icons now use their original strokes. */
@@ -193,13 +169,13 @@ function update(){
     const box=rect(bar);if(!box.width||!box.height||style(bar).visibility==='hidden')continue;
     const mini=bar.parentElement?.querySelector<HTMLElement>('.ui-tabbar-mini');
     const minimized=bar.hasAttribute('data-minimized')&&!bar.parentElement?.matches(':has(:focus-visible)');
-    const targets=bar.matches('.ui-glass-sheet')?[bar]:minimized?(mini?[mini]:[]):bar.matches('.ui-tab,.floating-glass-group')?[bar]:[...bar.querySelectorAll<HTMLElement>('.ui-tab,.game-hud-item')];
+    const targets=bar.matches('.ui-glass-sheet')?[bar]:minimized?(mini?[mini]:[]):bar.matches('.ui-tab,.floating-glass-group,.game-hud')?[bar]:[...bar.querySelectorAll<HTMLElement>('.ui-tab,.game-hud-item')];
     for(const target of targets){
       if(style(target).visibility==='hidden'||style(target).opacity==='0')continue;
       const glyphs=[...target.querySelectorAll<HTMLElement>('svg,span:not(.ui-glass-lens,.ui-glass-glow),small,strong,kbd')].filter(e=>!e.querySelector('svg,span,small,strong,kbd')&&!e.closest('.ui-brand-tile,.apps-badge'));
       // The unread badge (.apps-badge) keeps its own fill and ink, so it is not a glyph.
       // Retain the existing sample area for labels, including their icons, so
-      // label contrast does not change. Icons themselves keep fixed white ink.
+      // the local text shadow follows the artwork. Every glyph stays white.
       const groups=new Map<Element,HTMLElement[]>();
       for(const glyph of glyphs){
         // Destructive labels keep their warning colour; icon colour belongs to CSS.
@@ -231,9 +207,6 @@ function update(){
     if(!ink){glyph.style.removeProperty('--glass-adaptive-ink');glyph.style.removeProperty('--glass-local-halo');glyph.removeAttribute('data-glass-halo');glyph.querySelector(':scope > .glass-vector-halo')?.remove();continue;}
     if(!glyph.classList.contains('glass-ink'))glyph.classList.add('glass-ink');
     const previous=glyph.style.getPropertyValue('--glass-adaptive-ink');
-    if(previous&&previous!==ink.color&&glyph.closest('.game-view')){
-      const pending=pendingInk.get(glyph);if(pending?.color!==ink.color){pendingInk.set(glyph,{color:ink.color,count:1});continue;}
-    }else pendingInk.delete(glyph);
     if(previous!==ink.color)glyph.style.setProperty('--glass-adaptive-ink',ink.color);
     if(glyph.style.getPropertyValue('--glass-local-halo')!==ink.halo)glyph.style.setProperty('--glass-local-halo',ink.halo);
     const halo=ink.halo!=='transparent';

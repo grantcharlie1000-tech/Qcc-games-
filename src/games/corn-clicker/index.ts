@@ -1,6 +1,7 @@
 import type {GameModule} from '../../core/types';
 import {CornClicker} from './ui';
 import './style.css';
+import './christmas.css';
 
 const game:GameModule={
   id:'corn-clicker',

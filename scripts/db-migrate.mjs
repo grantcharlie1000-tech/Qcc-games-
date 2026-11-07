@@ -8,7 +8,7 @@ const quote=value=>'"'+value.replaceAll('"','""')+'"';
 const canonical=name=>name.endsWith('.sql')?name.slice(0,-4):name;
 const LOCK=728192104;
 /** Migrations that need the owner's explicit go-ahead per deployment. A pending gated migration fails the run unless listed in QCC_APPROVED_MIGRATIONS. */
-export const GATED_MIGRATIONS=['20261105090000_social_chat'];
+export const GATED_MIGRATIONS=['20261105090000_social_chat','20261108090000_predictions'];
 export const APPROVAL_ENV='QCC_APPROVED_MIGRATIONS';
 export class MigrationApprovalError extends Error{}
 const parseList=value=>new Set((Array.isArray(value)?value:String(value??'').split(',')).map(item=>String(item).trim()).filter(Boolean).map(canonical));

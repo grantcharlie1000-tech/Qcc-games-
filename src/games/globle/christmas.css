@@ -1,0 +1,5 @@
+/* Globle, Christmas: a starry winter sky behind the (now transparent) globe canvas, and ornaments hanging in the top corners, layered behind the globe so they only show around it. The globe and its clue colours are unchanged. */
+:root[data-festive="christmas"] .gl-globe-wrap{background:var(--xmas-stars) center/220px 220px,var(--xmas-snowflakes) center/260px 260px,radial-gradient(ellipse at 50% 120%,#1d3a6e,#0b1733 55%,#060d20);isolation:isolate}
+:root[data-festive="christmas"] .gl-globe-wrap::before,:root[data-festive="christmas"] .gl-globe-wrap::after{content:'';position:absolute;top:0;width:clamp(78px,15vw,150px);aspect-ratio:150/190;background:url("./ornaments.svg") top/contain no-repeat;pointer-events:none;z-index:-1;filter:drop-shadow(0 4px 6px #0008)}
+:root[data-festive="christmas"] .gl-globe-wrap::before{left:4px}
+:root[data-festive="christmas"] .gl-globe-wrap::after{right:4px;transform:scaleX(-1)}

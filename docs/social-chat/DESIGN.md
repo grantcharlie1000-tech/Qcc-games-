@@ -292,7 +292,7 @@ phone 390×844                                 desktop 1440×900 (≥1100)
 ```
 grid: 44px | 1fr, gap 12, padding 12px 16px, border-bottom 1px var(--line)
 (av44)  Display name  @handle · 3m                         [···]
-        Replying to @sam                                  (feed only, 14 --c-400; @sam violet)
+        In reply to @sam                                  (feed only, 14 --c-400; @sam violet)
         Body text, pre-wrap, links/mentions in violet
         [media grid, margin-top 10]
         [↩ 2]      [♡ 14]      [⋰]                        (actions, margin-top 2)
@@ -354,9 +354,9 @@ phone
 
 - Page heading: `h1.apps-title-sm` "Post" (20/1.3/700, `padding:4px 16px 8px`), focus target on route entry.
 - Ancestors: post cards with `padding-bottom:0` and a connector: `::before` on the avatar column, `left:37px` (16 + 22 − 1), `top:60px; bottom:-4px; width:2px; background:var(--line-strong); border-radius:1px`, running from below the avatar to the next avatar. A tombstoned ancestor keeps the line.
-- Focused post: header is two lines (name 16/700, then `@handle`), no "Replying to" line, body 17/1.45, full timestamp `time` 14 `--c-400` (en-NZ, e.g. "4:12 pm · 3 Nov 2026"), counts row between two hairlines (`padding:12px 0`), actions row with 44px buttons spread across. `tabindex=-1`, `scroll-margin-top:var(--app-top)`; the view scrolls it into place on load.
+- Focused post: header is two lines (name 16/700, then `@handle`), no "In reply to" line, body 17/1.45, full timestamp `time` 14 `--c-400` (en-NZ, e.g. "4:12 pm · 3 Nov 2026"), counts row between two hairlines (`padding:12px 0`), actions row with 44px buttons spread across. `tabindex=-1`, `scroll-margin-top:var(--app-top)`; the view scrolls it into place on load.
 - Reply prompt row: 32px avatar + `button.social-reply-prompt` styled as a field (`min-height:44px; border-radius:22px; padding:0 16px; background:rgb(255 255 255 / .06); color:var(--c-400); text-align:left`) "Write a reply". Phone (<640): opens the compose sheet in reply mode. From 640: expands in place into the composer (5.6) with "Reply" as the submit label.
-- Replies: direct replies, paged 20, "Show more replies" secondary button. Each reply is a normal post card without the "Replying to" line.
+- Replies: direct replies, paged 20, "Show more replies" secondary button. Each reply is a normal post card without the "In reply to" line.
 
 ### 5.6 Composer (sheet `#social-compose`, or inline)
 
@@ -394,7 +394,7 @@ phone 390
 │▓▓▓▓▓▓▓▓▓▓▓▓ banner ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
 │ (avatar 80)            [Follow] (···)│   avatar overlaps banner by 40, 4px ring var(--c-bg)
 │ Display Name                       │   22/1.2/800
-│ @sam  [Follows you]                │   15 --c-400; chip
+│ @sam  [Your follower]                │   15 --c-400; chip
 │ Bio text up to 160 chars…          │   15/1.45
 │ Member since March 2026            │   14 --c-400, no icon
 │ 12 following   30 followers        │   numbers 600 --c-100, words --c-400
@@ -406,7 +406,7 @@ phone 390
 - Banner `div.social-banner`: `aspect-ratio:3/1; max-height:200px; background:linear-gradient(135deg, var(--social-accent-soft), transparent 70%), var(--c-900)` when empty; `img` cover when set. From 640 it sits inside the 600px column with `border-radius:0` (column edges carry the line).
 - Head block `padding:0 16px 12px`. Avatar 80 (96 from 640), `margin-top:-40px` (−48), `box-shadow:0 0 0 4px var(--c-bg)`.
 - Actions (right of the avatar row, `align-self:end`): own profile "Edit profile" secondary (to settings); others: "Follow" primary / "Following" secondary (`aria-pressed`); tapping "Following" unfollows at once (no hover-label swap). More (`apps-icon-btn`, `aria-label="More options for @sam"`): "Copy profile link", "Block @sam" (danger, confirm).
-- "Follows you" chip: `.ui-chip` look but `font:600 11px/1.4 var(--font-sans); text-transform:none; letter-spacing:0; color:var(--c-300); background:var(--c-900)`.
+- "Your follower" chip: `.ui-chip` look but `font:600 11px/1.4 var(--font-sans); text-transform:none; letter-spacing:0; color:var(--c-300); background:var(--c-900)`.
 - Member since: `Intl.DateTimeFormat('en-NZ',{month:'long',year:'numeric'})` → "Member since March 2026".
 - Counts: plain text, not links (no follower lists in SPEC).
 - Tabs (3.5): Posts, Replies, Photos ⚑. Photos tab shows a 3-column grid of photo tiles (`aspect-ratio:1; gap:2px`) linking to their posts.
@@ -419,7 +419,7 @@ phone 390
 - Field row (sticky, `top:var(--app-top)`, `padding:8px 16px; background:rgb(0 0 0 / .86); backdrop-filter:blur(12px)`): `input[type=search]` `height:44px; border-radius:999px; padding:0 44px 0 42px; background:rgb(255 255 255 / .08); border:1px solid transparent; font:16px/1 var(--font-sans); color:#fff`, `appIcon('search')` 18px at `left:14px`, clear button 44px at the right when not empty (`aria-label="Clear search"`). Placeholder "Search people and posts". `aria-controls` the results.
 - Under it, `.apps-segmented` (plain, no glass): "People" | "Posts". Default People; the choice is in the hash (`in=`).
 - Debounce 300 ms; people from 1 character, posts from 2. Update the hash with `history.replaceState`.
-- People rows: 40px avatar, name 15/600, `@handle` 14 `--c-400`, optional "Follows you" chip; whole row links to the profile; a "Follow"/"Following" small pill at the right (separate tab stop).
+- People rows: 40px avatar, name 15/600, `@handle` 14 `--c-400`, optional "Your follower" chip; whole row links to the profile; a "Follow"/"Following" small pill at the right (separate tab stop).
 - Posts: normal post cards.
 - A visually hidden `role=status` announces "8 people found" / "No posts match “zz”".
 - `/` focuses the field from anywhere in Social (11.3).
@@ -480,11 +480,11 @@ phone 390×844
 │ (av) Mere                          │
 │      ● New message · 5m            │
 │ (av) Tama                          │
-│      ◌ Sent · 1h                   │
+│      ◌ Not seen yet · 1h           │
 │ (av) Ana                           │
-│      ✓ Opened · 3h                 │
+│      ✓ They've seen it · 3h        │
 │ (av) Rangi                         │
-│      ◉ Received · Mon              │
+│      ◉ You've seen it · Mon        │
 │ (av) Kiri                          │
 │      [req] Request sent            │
 │ Friends only. Not end-to-end       │  footer note 13 --c-400
@@ -530,15 +530,15 @@ phone 390×844 (island hidden)
 │        I saved the answers [pin] Saved│  saved message (teal tint)
 │ (av20) You · 4:05 pm               │  --c-300
 │        Yes, after tea              │
-│        ◇ Photo · Opened            │  my snap, opened
+│        ◇ Photo · They've seen it   │  my snap, opened
 │   [timer] You set messages to      │  system line
 │        disappear 7 days after sending.│
 │ (av20) Sam · 4:10 pm               │
 │        ┌──────────────────────┐    │  incoming snap tile (amber)
-│        │ ◆ Photo · Tap to view│    │
+│        │ ◆ Photo · Open once│    │
 │        │   View once          │    │
 │        └──────────────────────┘    │
-│                    ✓ Opened        │  receipt under my last message
+│                    ✓ They've seen it │  receipt under my last message
 │ ────────────────────────────────── │
 │ (cam) [ Message Sam           ] (send)│  composer, safe-area bottom
 └────────────────────────────────────┘
@@ -555,13 +555,13 @@ phone 390×844 (island hidden)
   - Hover (fine pointer) / `:focus-within`: `background:rgb(255 255 255 / .04)` and the options button appears (`button.chat-msg-more`, 32×32 visual, 44 hit, `position:absolute; right:-6px; top:-6px`, `appIcon('more')` 16px, `aria-label="Message options"`). On coarse pointers the button is not shown; tapping the message opens the menu.
   - **Saved**: `background:var(--chat-saved-bg); box-shadow:inset 0 0 0 1px var(--chat-saved-edge)`, and a trailing `span.chat-saved` (`appIcon('saved')` 14px + "Saved" 12/600, teal, `margin-left:6px`, nowrap). The word "Saved" is real text, so it is announced.
   - Press and hold 500 ms on a text message toggles Save (SPEC). Movement over 8px cancels the hold. Snaps cannot be saved.
-  - Menu (`#chat-message-menu` sheet on phone, popover on fine pointers), 44px rows: "Save in chat" / "Unsave" (`save`/`saved`; text messages only), "Copy text", "Unsend" (mine, `trash`, danger, no confirm; shows the notice "Message unsent." with no undo), "Report message" (theirs, `report`, opens 7.3).
+  - Menu (`#chat-message-menu` sheet on phone, popover on fine pointers), 44px rows: "Keep message" / "Let it disappear" (`save`/`saved`; text messages only), "Copy text", "Unsend" (mine, `trash`, danger, no confirm; shows the notice "Message unsent." with no undo), "Report message" (theirs, `report`, opens 7.3).
 - **Snap items** `button.chat-snap` (incoming unopened) or `div.chat-snap` (others): `display:inline-flex; gap:10px; align-items:center; min-height:52px; padding:10px 14px; border-radius:16px; font:600 15px/1.2 var(--font-sans)`.
-  - Incoming, unopened: `border:1.5px solid var(--chat-snap); background:rgb(255 185 0 / .08); color:#fff`; `status-snap-new` 20px amber; "Photo · Tap to view", second line "View once" 12/400 `--c-400`. `aria-label="Photo from Sam. View once. Opens now and is deleted after you close it."`
+  - Incoming, unopened: `border:1.5px solid var(--chat-snap); background:rgb(255 185 0 / .08); color:#fff`; `status-snap-new` 20px amber; "Photo · Open once", second line "View once" 12/400 `--c-400`. `aria-label="Photo from Sam. View once. Opens now and is deleted after you close it."`
   - Incoming, opened: `status-snap-received` 18px, "Photo opened" 14/400 `--c-400`, no border.
-  - Mine, unopened: `status-snap-sent` 18px amber, "Photo · Sent". Mine, opened: `status-snap-opened`, "Photo · Opened".
+  - Mine, unopened: `status-snap-sent` 18px amber, "Photo · Not seen yet". Mine, opened: `status-snap-opened`, "Photo · They've seen it". Theirs, opened: "Photo · You've seen it".
 - **System line** `div.chat-system` (retention changes): centred, `appIcon('timer')` 14 + text 13/1.45 `--c-400`, `margin:14px auto`. Copy in 7.2.
-- **Receipt** under your last message, right-aligned in the group: glyph 14px + "Sent" / "Opened" 12px `--c-400`. Only on the last of your messages.
+- **Receipt** under your last message, right-aligned in the group: glyph 14px + "Not seen yet" / "They've seen it" 12px `--c-400`. Only on the last of your messages.
 - **Jump pill**: when a message arrives and the reader is more than 120px from the bottom: `button.chat-jump` "New message" with `appIcon('back')` rotated −90° (down), same geometry as the Social pill but `background:var(--chat-accent); color:var(--chat-accent-ink)`, `position:sticky; bottom:12px`, centred. Tap scrolls to the bottom.
 - Opening the conversation scrolls to the newest message (or the first unread, if any, with the separator "New" in teal above it) and marks incoming messages viewed.
 - Polling 4 s while open and visible (SPEC).
@@ -595,7 +595,7 @@ Full-screen dialog: `width:100vw; height:100dvh; max-width:none; max-height:none
 └────────────────────────────────────┘
 ```
 
-- Opening: tapping the snap tile is the confirmation (the tile says "Tap to view"). The dialog opens with "Opening photo…" (15px `--c-300`, centred, `role=status`), then calls `open_snap`. The timer starts only when the image has decoded.
+- Opening: tapping the snap tile is the confirmation (the tile says "Open once"). The dialog opens with "Opening photo…" (15px `--c-300`, centred, `role=status`), then calls `open_snap`. The timer starts only when the image has decoded.
 - **Countdown**: ⚑ `SNAP_VIEW_SECONDS = 10` (a UI constant in the Chat view module, not in `shared.ts`). The countdown is drawn as a ring around the close button, not as a separate pie: `button.chat-snap-close` 44×44 circle `background:rgb(255 255 255 / .14)` with `appIcon('close')` 20px, wrapped by `svg.chat-snap-ring` 52×52 (`viewBox="0 0 52 52"`): track `circle r=24 stroke=rgb(255 255 255 / .22) stroke-width=2.5`, progress `circle r=24 stroke=#fff stroke-width=2.5 stroke-linecap=round` rotated −90°, `stroke-dasharray=150.8`, offset from 0 to 150.8 over the view time. Beside it, the seconds "8s" (13/1 `--font-mono`, `#fff`, `aria-hidden`); a visually hidden `role=status` says "10 seconds" at the start and "3 seconds left" once.
 - Closing: tap anywhere on the photo, the close button, Escape, or the timer reaching 0. Then the image `src` is revoked (`URL.revokeObjectURL`), the element removed, the row and thread item switch to opened, and focus returns to the thread item (now "Photo opened").
 - `pause()` (tab hidden, Study, pagehide) closes the viewer: the photo is gone, as if closed.
@@ -739,14 +739,14 @@ This deliberately differs from the reference app: there, direction is an arrow-v
 
 | `LastMessage` (kind, mine, viewed) | Glyph (`appIcon`) | Words in the list | Colour of words |
 | --- | --- | --- | --- |
-| text, mine, not viewed | `status-text-sent` (check) | Sent | `--c-400` |
-| text, mine, viewed | `status-text-opened` (= `status-opened`) | Opened | `--c-400` |
+| text, mine, not viewed | `status-text-sent` (check) | Not seen yet | `--c-400` |
+| text, mine, viewed | `status-text-opened` (= `status-opened`) | They've seen it | `--c-400` |
 | text, theirs, not viewed | `status-text-new` (solid circle) | New message (2+: "N new messages") | teal, 600 |
-| text, theirs, viewed | `status-text-received` (ring + dot) | Received | `--c-400` |
-| snap, mine, not opened | `status-snap-sent` (check) | Photo sent | `--c-400` |
-| snap, mine, opened | `status-snap-opened` | Photo opened | `--c-400` |
+| text, theirs, viewed | `status-text-received` (ring + dot) | You've seen it | `--c-400` |
+| snap, mine, not opened | `status-snap-sent` (check) | Photo not seen yet | `--c-400` |
+| snap, mine, opened | `status-snap-opened` | They've seen your photo | `--c-400` |
 | snap, theirs, not opened | `status-snap-new` (solid diamond) | New photo | amber, 600 |
-| snap, theirs, opened | `status-snap-received` | Photo viewed | `--c-400` |
+| snap, theirs, opened | `status-snap-received` | You've seen their photo | `--c-400` |
 | system | `timer` | Chat settings changed | `--c-400` |
 | none yet (new friendship) | `status-text-received` | You're now friends | `--c-400` |
 | outgoing request | `status-request` | Request sent | `--c-400` |
@@ -819,10 +819,10 @@ Active only when: Social is mounted, no dialog is open, no modifier (Ctrl, Meta,
 | Key | Action |
 | --- | --- |
 | `j` / `k` | Focus next / previous post (`scrollIntoView({block:'nearest'})`, instant) |
-| `o` or `Enter` (on a focused post) | Open the thread |
-| `n` | New post (compose sheet; the inline composer from 1100) |
-| `l` | Like or unlike the focused post |
+| `Enter` (on a focused post) | Open the thread |
 | `r` | Reply to the focused post |
+| `p` | New post (compose sheet; the inline composer from 1100) |
+| `h` | Like or unlike the focused post |
 | `/` | Focus search (route to search if needed) |
 | `?` | Shortcut help sheet `#social-shortcuts` |
 | `Esc` | Close the open sheet (existing) |
@@ -852,7 +852,7 @@ Curves are existing tokens only: `--ease-out` `cubic-bezier(.23,1,.32,1)` (enter
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Like pulse | Pointer tap on Like when it becomes liked (tens/day) | Feedback | WAAPI on the icon: `transform: scale(.8)→scale(1)`; plus a 1.5px rose ring `span` behind it: `transform: scale(.6)→scale(1.25)`, `opacity: .5→0` | icon 180 ms `--ease-out`; ring 280 ms `--ease-out` | A new tap cancels both (`anim.cancel()`) and applies the new state at once | — | No pulse; fill swap only |
 | 2 | Unlike | Tap on a liked Like (tens/day) | — (state change) | none | — | — | — | — |
-| 3 | Like via `l` key, any j/k move | Keyboard (100+/day) | none: keyboard disqualifies motion | none; focus moves instantly | — | — | — | — |
+| 3 | Like via `h` key, any j/k move | Keyboard (100+/day) | none: keyboard disqualifies motion | none; focus moves instantly | — | — | — | — |
 | 4 | Count roll | Your own like/unlike changes the visible count by ±1 (tens/day) | State indication | WAAPI on two stacked spans in an `overflow:hidden` box (height 1em): old `translateY(0)→(-100%)` + `opacity 1→0`; new `translateY(100%)→0` + `opacity 0→1` (reverse direction for −1) | 160 ms `--ease-out` | Cancel running roll, show the final number | — | Text swaps instantly |
 | 5 | New-posts / new-message pill | Pill appears after a poll (occasional) | Spatial consistency (content is above / below) | CSS transition on `opacity` and `transform: translateY(-8px)→0` (Social, from above); `translateY(8px)→0` (Chat jump pill, from below); enter via `@starting-style` | enter 200 ms `--ease-out`; exit 150 ms `--ease-out` back to the start offset | Transition retargets | Leaves the way it came | Appears and disappears instantly (the shell reset removes the transition); no fallback needed |
 | 6 | Composer ring progress | Every keystroke (100+/day) | none | `stroke-dashoffset` set directly, no transition | — | — | — | — |
@@ -860,8 +860,8 @@ Curves are existing tokens only: `--ease-out` `cubic-bezier(.23,1,.32,1)` (enter
 | 8 | Send message (own) | Send in Chat (tens/day) | Spatial consistency (it came from the composer) | WAAPI on the new `.chat-msg`: `opacity 0→1`, `transform: translateY(8px)→0` | 180 ms `--ease-out` | If another message is sent during it, let both run (each is independent) | — | Appears in place |
 | 9 | Incoming message | Poll adds messages while the reader is at the bottom (tens/day) | Preventing a jarring change | WAAPI per new group/message: `opacity 0→1`, `transform: translateY(6px)→0`; several at once stagger 40 ms, max 3 animated, rest instant | 200 ms `--ease-out` | Late arrivals start their own; nothing waits | — | Appear instantly |
 | 10 | Own new post in feed | Publish succeeds (occasional) | Spatial consistency | WAAPI on the article: `opacity 0→1`, `transform: translateY(-6px)→0` | 200 ms `--ease-out` | — | — | Instant |
-| 11 | Snap viewer open | Tap "Tap to view" (occasional) | Spatial consistency | Dialog `opacity 0→1` 160 ms; image `transform: scale(.96)→1` + `opacity 0→1` after decode | 220 ms `--ease-out` | Closing during it cancels and closes | see 13 | Opacity 0→1 over 120 ms via WAAPI (allowed: opacity only) |
-| 12 | Snap countdown ring | While a snap is shown (occasional) | State indication (time left) | CSS transition on `stroke-dashoffset` from 0 to 150.8, started after decode | `SNAP_VIEW_SECONDS` × 1000 ms `linear` (progress never eases) | Closing early removes the element | — | No sweep: set the offset once per second (stepped), the "8s" text counts down |
+| 11 | Snap viewer open | Tap "Open once" (occasional) | Spatial consistency | Dialog `opacity 0→1` 160 ms; image `transform: scale(.96)→1` + `opacity 0→1` after decode | 220 ms `--ease-out` | Closing during it cancels and closes | see 13 | Opacity 0→1 over 120 ms via WAAPI (allowed: opacity only) |
+| 12 | Snap countdown dots | While a snap is shown (occasional) | State indication (time left) | CSS transition on `stroke-dashoffset` from 0 to 150.8, started after decode | `SNAP_VIEW_SECONDS` × 1000 ms `linear` (progress never eases) | Closing early removes the element | — | No sweep: set the offset once per second (stepped), the "8s" text counts down |
 | 13 | Snap viewer close | Tap, Esc, timer end (occasional) | Exit | WAAPI on the dialog: `opacity 1→0`, image `transform: scale(1)→(.98)`; then `close()` | 160 ms `--ease-out` | A second close request is ignored | — | Close instantly |
 | 14 | Launcher, compose, report, info, confirm, send-photo sheets | Open/close (occasional) | Spatial consistency | Existing `.ui-glass-sheet` rules (opacity 180 ms; scale/translate 320 ms `--ease-glass-pop`; exit 180 ms `--ease-out`; backdrop fade). No new motion | as theme.css | as theme.css | as theme.css | as theme.css (and the shell reset) |
 | 15 | Message menu popover (fine pointer) | Click "Message options" (tens/day) | Spatial consistency | CSS transition `opacity` + `transform: scale(.97)→1`, `transform-origin` at the trigger corner | 150 ms `--ease-out`; exit 120 ms | Retargets | Same path back | Instant |
@@ -927,4 +927,4 @@ Play rows 1, 4, 5, 11–13, 17 and 18 at 4× slow-down in the DevTools Animation
 - **Snap view time** (10 s) and the **Social poll interval** (60 s) are designer choices; SPEC is silent on both.
 - **Helpline numbers** in the self-harm card (111, 1737, Youthline 0800 376 633) must be checked before release.
 - **Report from the chat info sheet** needs a list of the friend's recent messages; if the API cannot list them cheaply, keep reporting only in the message menu and remove the info-sheet button.
-- **Save in chat** shows "Saved" without saying who saved it, because `MessageView.saved` is a boolean.
+- **Keep message** shows "Saved" without saying who saved it, because `MessageView.saved` is a boolean.

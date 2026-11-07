@@ -22,7 +22,7 @@ async function connect(context: BrowserContext, username: string, posts: { game:
   expect(response.status).toBe(201);
   const session = await response.json();
   await seedStudyTopic(context);
-  await context.addInitScript(s => localStorage.setItem('pocket-arcade:v1:accounts:session', JSON.stringify(s)), session);
+  await context.addInitScript(s => {localStorage.setItem('pocket-arcade:v1:accounts:session', JSON.stringify(s));localStorage.setItem('qcc:christmas-welcome:2026:'+s.username.toLowerCase(),'seen');}, session);
   await context.route(/\/\.netlify\/functions\/(leaderboard|accounts)/, async route => {
     const req = route.request();
     const result = await (req.url().includes('/accounts') ? accounts : handle)(new Request(req.url(), { method: req.method(), headers: req.headers(), body: ['POST','PUT'].includes(req.method()) ? req.postData() : undefined }));

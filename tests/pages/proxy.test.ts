@@ -9,7 +9,7 @@ function context(path:string,init:RequestInit={},env:{QCC_API_ORIGIN?:string;QCC
 }
 afterEach(()=>{vi.unstubAllGlobals();vi.restoreAllMocks();vi.useRealTimers();});
 describe('Pages API proxy',()=>{
- it.each(['accounts','leaderboard','turn','social','chat','media'])('proxies the allowed %s route',async route=>{
+ it.each(['accounts','leaderboard','turn','social','chat','media','predictions'])('proxies the allowed %s route',async route=>{
   const fetcher=vi.fn(async(_request:Request)=>new Response('upstream'));vi.stubGlobal('fetch',fetcher);
   const response=await onRequest(context(prefix+route));
   expect(response.status).toBe(200);expect(await response.text()).toBe('upstream');

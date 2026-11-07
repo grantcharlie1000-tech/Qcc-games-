@@ -1,4 +1,8 @@
 import './theme.css';
+import './festive/christmas.css';
+import {ChristmasWelcome} from './festive/welcome';
+import {applyFestiveTheme,christmas,setFestiveTheme,storedFestiveTheme} from './festive/festive';
+import {mountSantaBanner} from './santa/banner';
 import './movies/style.css';
 import type {MoviesView} from './movies/view';
 import type {MovieStorage} from './movies/storage';
@@ -33,7 +37,12 @@ import {LeaderboardView} from './leaderboard/view';
 import {LeaderboardSidebar} from './leaderboard/sidebar';
 import {SCORED_GAMES,MINESWEEPER_RANKINGS,scoredGame} from './leaderboard/shared';
 import {formatScore} from './leaderboard/format';
+// Predictions ships dark: the Menu entry appears only in development or a build with VITE_QCC_PREDICTIONS=on, and the
+// server refuses every action until predictions_config.enabled is set. A direct #/predictions link shows "not open yet".
+const PREDICTIONS_MENU=import.meta.env.DEV||import.meta.env.VITE_QCC_PREDICTIONS==='on';
 
+// Before any game mounts: games read the seasonal theme when they draw.
+applyFestiveTheme();
 void retireOffline();
 
 const icon=(name:string)=>{
@@ -44,7 +53,7 @@ const icon=(name:string)=>{
 trackInputMode();
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<main id="content"></main>
-<dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
+<dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label><label><span>Christmas theme</span><input type="checkbox" id="festive"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button>${PREDICTIONS_MENU?'<a id="open-predictions" class="game-button secondary predictions-menu-button" href="#/predictions">Predictions <span class="predictions-menu-note">Free credits</span></a>':''}<button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog" class="ui-glass-sheet" aria-labelledby="rules-title"><form method="dialog" class="dialog-head"><h2 id="rules-title">How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
 const navigation=createSectionNavigation('app');
 navigation.bar.innerHTML=`<a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('games')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv" aria-label="TV Shows">${uiIcon('tv')}<span class="tab-tv">TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button>`;
@@ -61,6 +70,11 @@ const accounts=new AccountsClient();
 const launcher=new AppsLauncher({accounts,chat:new ChatClient(()=>accounts.session()?.token??null),reducedMotion:()=>preferences.reducedMotion});
 void launcher.probe();
 const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry);
+const christmasWelcome=new ChristmasWelcome(()=>{
+  void route().then(()=>{
+    if(!activeId&&!movies&&!appView&&!study.isOpen&&!document.querySelector('dialog[open]'))document.querySelector<HTMLElement>('.game-card')?.focus({preventScroll:true});
+  });
+});
 const leaderboards=new LeaderboardView(()=>{pausedForDialog=false;if(activeId)setPaused(true);accountView.open();});
 let gameMenu:HTMLDialogElement|undefined;
 let gameChrome:ReturnType<typeof bindGameChrome>|undefined;
@@ -72,18 +86,18 @@ let focusLabelBeforeStudy:string|null=null;
 let accountRoutePending=false;
 let libraryScroll={x:0,y:0};
 let movies:MoviesView|undefined;
-// QCC Social or QCC Chat: one lazy view at a time, replaced when the other app opens.
-let appView:AppView|undefined,appKind:'social'|'chat'|undefined;
+// QCC Social, QCC Chat or the Santa Tracker: one lazy view at a time, replaced when another opens.
+let appView:AppView|undefined,appKind:'social'|'chat'|'santa'|'predictions'|undefined;
 // The saved Movies data is one copy for the page, so it outlives each MoviesView and keeps unsaved changes across a visit to the games.
 let movieStorage:MovieStorage|undefined;
 let movieScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
-const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft','crossy-road','quad-clash']);
+const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft','crossy-road','quad-clash','femboy-obby']);
 // Responsive layouts fill the standard stage; scaling their whole UI would shrink labels and controls.
 const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','claimline']);
 // Shell score/best text; Claimline's integer score is its peak share in hundredths of a percent.
-const metricText=(id:GameId,score:number)=>id==='claimline'?formatScore(id,score):String(Math.floor(score));
+const metricText=(id:GameId,score:number)=>id==='claimline'||id==='femboy-obby'?formatScore(id,score):String(Math.floor(score));
 
 function syncViewportLock(){
   const playing=!!activeId&&!document.body.classList.contains('study-active');
@@ -123,7 +137,7 @@ function setChromeInert(value:boolean):void{
 }
 function leave(saveProgress=true){
   movies?.dispose();movies=undefined;
-  appView?.dispose();appView=undefined;appKind=undefined;document.body.classList.remove('social-active','chat-active');
+  appView?.dispose();appView=undefined;appKind=undefined;document.body.classList.remove('social-active','chat-active','santa-active','predictions-active');
   setChromeInert(false);
   tabbar.reset();
   detachFullscreen?.();detachFullscreen=undefined;
@@ -146,7 +160,9 @@ function library(){
   const items=games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.toLowerCase()));
   const filtered=onlyFavourites||search!=='';
   // The notice text is user input, so it is filled in with textContent below, never through this template.
-  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
+  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" tabindex="0" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
+  // The compact Santa countdown belongs to the seasonal theme and the unfiltered library.
+  if(!filtered&&christmas())mountSantaBanner(content.querySelector('.game-grid')!);
   if(filtered){
     content.querySelector<HTMLElement>('.library-filter-text')!.textContent=filterNotice();
     content.querySelector('[data-action="show-all"]')!.addEventListener('click',showAllGames);
@@ -228,7 +244,13 @@ function appDeps():AppDeps{
     openApps:trigger=>launcher.open(trigger??undefined),appsBadge:launcher.subscribe,refreshAppsBadge:()=>launcher.refresh()};
 }
 async function route(){
-  if(!initialized)return;
+  if(!initialized||christmasWelcome.root.open)return;
+  const username=accounts.session()?.username;
+  if(username&&!study.isOpen&&!document.querySelector('dialog[open]')&&christmasWelcome.shouldShow(username)){
+    // Finish entry/Study first. Do not start a game behind the welcome. Dismissal
+    // routes the latest hash, including Back/Forward used while the sheet is open.
+    ++generation;leave();library();christmasWelcome.open(username);return;
+  }
   tabbar.reset();
   accountRoutePending=false;
   // Explicit browser/hash navigation leaves the reading view as well as the old game.
@@ -251,7 +273,7 @@ async function route(){
     }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Movies &amp; TV could not load.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
     return;
   }
-  const appRoute=/^#\/(social|chat)(\/|$)/.exec(location.hash)?.[1] as 'social'|'chat'|undefined;
+  const appRoute=/^#\/(social|chat|santa|predictions)(\/|\?|$)/.exec(location.hash)?.[1] as 'social'|'chat'|'santa'|'predictions'|undefined;
   if(appRoute){
     if(appView&&appKind===appRoute){appView.navigate(location.hash);return;}
     if(!activeId&&!movies&&!appView)movieScroll={x:scrollX,y:scrollY};
@@ -261,16 +283,19 @@ async function route(){
     if(launcher.sheet.open)launcher.sheet.close();
     const token=++generation;leave();
     setChromeInert(true);
-    const name=appRoute==='social'?'Social':'Chat';
+    const name=appRoute==='social'?'Social':appRoute==='chat'?'Chat':appRoute==='predictions'?'Predictions':'the Santa Tracker';
     content.innerHTML=`<div class="loading"><p>Opening ${name}…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;
     try{
-      const ViewClass=appRoute==='social'?(await import('./social/view')).SocialView:(await import('./chat/view')).ChatView;
+      // Constructors write into #content, so check the navigation is still current before building.
+      const make:()=>AppView=appRoute==='predictions'?(PredictionsView=>()=>new PredictionsView(content,appDeps()))((await import('./predictions/view')).PredictionsView)
+        :appRoute==='santa'?(SantaView=>()=>new SantaView(content,{reducedMotion:()=>preferences.reducedMotion}))((await import('./santa/view')).SantaView)
+        :(ViewClass=>()=>new ViewClass(content,appDeps()))(appRoute==='social'?(await import('./social/view')).SocialView:(await import('./chat/view')).ChatView);
       if(token!==generation)return;
-      const view=new ViewClass(content,appDeps());
+      const view=make();
       if(token!==generation){view.dispose();return;}
       appView=view;appKind=appRoute;document.body.classList.add(`${appRoute}-active`);
       view.navigate(location.hash);
-    }catch{if(token===generation)content.innerHTML=`<div class="game-error"><p>${name} couldn’t open. Check your connection and try again.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;}
+    }catch{if(token===generation)content.innerHTML=`<div class="game-error"><p>${name[0].toUpperCase()+name.slice(1)} couldn’t open. Check your connection and try again.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;}
     return;
   }
   const wasInMovies=!!movies,wasInApp=!!appView;
@@ -441,7 +466,7 @@ function dialogClosed(){
   const resume=pausedForDialog;pausedForDialog=false;
   if(resume&&!study.isOpen&&!document.hidden)setPaused(false);
 }
-menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!appView&&!/^#\/(movies|social|chat)(\/|$)/.test(location.hash)&&!study.isOpen)library();});
+menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!appView&&!/^#\/(movies|social|chat|santa|predictions)(\/|\?|$)/.test(location.hash)&&!study.isOpen)library();});
 rulesDialog.addEventListener('close',dialogClosed);
 leaderboards.root.addEventListener('close',dialogClosed);
 document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
@@ -466,15 +491,23 @@ for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#c
   });
 }
 document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);
+// The Christmas theme is presentation only: it is stored outside saves and sync, and games pick up a change as they draw.
+const festiveInput=document.querySelector<HTMLInputElement>('#festive')!;festiveInput.checked=storedFestiveTheme()==='christmas';
+festiveInput.addEventListener('change',()=>{
+  setFestiveTheme(festiveInput.checked?'christmas':'off');announce(festiveInput.checked?'Christmas theme on':'Christmas theme off');
+  // Games build some artwork at mount, so an open game is saved and remounted (the same path as navigation) to show one theme throughout.
+  if(activeId)void route();
+});
 
 window.addEventListener('hashchange',()=>void route());
 window.addEventListener('pagehide',()=>{save();movies?.pause();appView?.pause();void accounts.flush(true,false).catch(()=>{});});
+// A page restored from the back/forward cache missed its pagehide resume: live results start refreshing again.
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance){instance.dismissMenu?.();pausedForDialog=false;setPaused(true);}});
 // Capture on window precedes native dialog cancellation and game-local Escape handlers.
 window.addEventListener('keydown',event=>{
   // Inert affects DOM targets, not document/window listeners retained by games.
   // Stop their handlers while preserving native reading/keyboard defaults.
-  if(accountView.root.open||document.querySelector('dialog.movies-warning[open]'))return;
+  if(accountView.root.open||christmasWelcome.root.open||document.querySelector('dialog.movies-warning[open]'))return;
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(event.key==='Escape'&&(menu.open||launcher.sheet.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open||document.querySelector('dialog.apps-sheet[open],.apps-popover')))return;
   // The inline Social composer owns Escape while its mention picker is open.
@@ -499,7 +532,7 @@ function finishEntry(){
 }
 function updateAccountMenu(){
  const session=accounts.session();
- document.querySelector('#account-summary')!.textContent=session?`Signed in as ${session.username}`:appKind?'Not signed in':'Playing as guest';
+ document.querySelector('#account-summary')!.textContent=session?`Signed in as ${session.username}`:appKind&&appKind!=='santa'?'Not signed in':'Playing as guest';
  document.querySelector<HTMLElement>('#open-accounts')!.hidden=!!session;
  document.querySelector<HTMLElement>('#logout-account')!.hidden=!session;
  document.querySelector<HTMLElement>('#switch-account')!.hidden=!session;
@@ -509,7 +542,7 @@ function updateAccountMenu(){
  for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#colour','colorBlind']] as const)document.querySelector<HTMLInputElement>(selector)!.checked=preferences[key];
  document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);
 }
-accounts.beforeIdentityChange=()=>{generation++;leave(false);};
+accounts.beforeIdentityChange=()=>{generation++;if(christmasWelcome.root.open)christmasWelcome.root.close();leave(false);};
 let displayedAccount=accounts.session()?.token;
 accounts.onChange(()=>{
  const identity=accounts.session()?.token,changed=identity!==displayedAccount;displayedAccount=identity;

@@ -1,0 +1,53 @@
+name: Christmas welcome regression
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/festive/**'
+      - 'src/main.ts'
+      - 'tests/core/christmas-welcome.test.ts'
+      - 'tests/e2e/christmas-welcome.spec.ts'
+      - 'tests/accounts/**'
+      - 'tests/apps/**'
+      - 'tests/chat/**'
+      - 'tests/social/**'
+      - '.github/workflows/christmas-welcome.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: christmas-welcome-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  welcome:
+    name: Christmas welcome (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npx vitest run tests/core/christmas-welcome.test.ts tests/core/festive.test.ts --maxWorkers=1
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify welcome and account entry
+        run: xvfb-run -a npx playwright test tests/e2e/christmas-welcome.spec.ts tests/accounts/accounts.spec.ts tests/accounts/storage-full.spec.ts tests/apps tests/chat tests/social --project=${{ matrix.browser }} --workers=1 --reporter=list
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: christmas-welcome-${{ matrix.browser }}
+          path: |
+            test-results
+            playwright-report

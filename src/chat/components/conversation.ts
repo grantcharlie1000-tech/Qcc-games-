@@ -314,7 +314,7 @@ export class ConversationScreen implements Screen {
  private addSaved(entry:HTMLElement):void {
   entry.classList.add('is-saved');
   if(entry.querySelector('.chat-saved'))return;
-  const saved=el('span','chat-saved');saved.innerHTML=`${appIcon('saved')}<span>Saved</span>`;
+  const saved=el('span','chat-saved');saved.innerHTML=`${appIcon('saved')}<span>Kept</span>`;
   entry.querySelector('.chat-msg')?.append(saved);
  }
  private buildSnap(m:MessageView):HTMLElement {
@@ -322,13 +322,13 @@ export class ConversationScreen implements Screen {
   const name=this.friend.displayName;
   if(!m.mine&&!opened){
    const button=el('button','chat-snap is-new');button.type='button';
-   button.setAttribute('aria-label',`Photo from ${name}. View once. Opens now and is deleted after you close it.`);
-   button.innerHTML=`<span class="chat-glyph" data-family="snap">${appIcon('status-snap-new')}</span><span class="chat-snap-text"><span class="chat-snap-title">Photo · Tap to view</span><span class="chat-snap-sub">View once</span></span>`;
+   button.setAttribute('aria-label',`Photo from ${name}. Open once. It's deleted when you close it.`);
+   button.innerHTML=`<span class="chat-glyph" data-family="snap">${appIcon('status-snap-new')}</span><span class="chat-snap-text"><span class="chat-snap-title">Photo · Open once</span><span class="chat-snap-sub">Deleted when you close it</span></span>`;
    return button;
   }
   const box=el('div',`chat-snap${opened?' is-opened':''}`);
   const icon=m.mine?(opened?'status-snap-opened':'status-snap-sent'):'status-snap-received';
-  const words=m.mine?(opened?'Photo · Opened':'Photo · Sent'):'Photo opened';
+  const words=m.mine?(opened?"Photo · They've seen it":'Photo · Not seen yet'):"Photo · You've seen it";
   box.innerHTML=`<span class="chat-glyph" data-family="snap">${appIcon(icon)}</span><span class="chat-snap-text"></span>`;
   box.querySelector('.chat-snap-text')!.textContent=words;
   return box;
@@ -339,7 +339,7 @@ export class ConversationScreen implements Screen {
   const state=`${m.kind}:${done}`;if(receipt.dataset.state===state)return;receipt.dataset.state=state;
   const icon=m.kind==='snap'?(done?'status-snap-opened':'status-snap-sent'):(done?'status-text-opened':'status-text-sent');
   receipt.innerHTML=`<span class="chat-glyph" data-family="${m.kind==='snap'?'snap':'text'}">${appIcon(icon)}</span><span></span>`;
-  receipt.querySelector('span:last-child')!.textContent=done?'Opened':'Sent';
+  receipt.querySelector('span:last-child')!.textContent=done?"They've seen it":'Not seen yet';
  }
  /** Receipts and the empty note: run after any structural change. */
  private afterChange():void {
@@ -517,7 +517,7 @@ export class ConversationScreen implements Screen {
  private menuItems(item:Item):MenuItem[] {
   const m=item.m,items:MenuItem[]=[];
   if(m.kind==='text'){
-   items.push({label:m.saved?'Unsave':'Save in chat',icon:m.saved?'saved':'save',run:()=>void this.toggleSave(item)});
+   items.push({label:m.saved?'Let it disappear':'Keep message',icon:m.saved?'saved':'save',run:()=>void this.toggleSave(item)});
    items.push({label:'Copy text',icon:'copy',run:()=>void this.copy(item)});
   }
   if(m.mine)items.push({label:'Unsend',icon:'trash',danger:true,run:()=>void this.unsend(item)});
@@ -534,7 +534,7 @@ export class ConversationScreen implements Screen {
    const message=await this.ctx.client.save(item.id,next);
    if(this.disposed)return;
    const current=this.byId.get(item.id);if(current)this.update(current,message);
-   this.ctx.announce(next?'Saved in chat.':'Removed from saved.');
+   this.ctx.announce(next?'Message kept.':'Message no longer kept.');
   }catch(error){
    if(this.disposed)return;
    if(isGone(error)){this.removeItem(item.id);this.ctx.notify('That message is gone.',{icon:'info'});return;}

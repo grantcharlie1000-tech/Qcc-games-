@@ -75,7 +75,7 @@ test('Corn Clicker ranks lifetime kernels and shows them in the game number form
   if(route.request().method()==='POST')posted.push(route.request().postDataJSON());
   return route.fulfill({json:{entries:[{rank:1,playerId:'e'.repeat(64),name:'Cob Baron',score:126600}],player:null}});
  });
- await page.addInitScript(()=>localStorage.setItem('pocket-arcade:v1:accounts:session',JSON.stringify({token:'acct_'+'f'.repeat(64),username:'Ada'})));
+ await page.addInitScript(()=>{localStorage.setItem('pocket-arcade:v1:accounts:session',JSON.stringify({token:'acct_'+'f'.repeat(64),username:'Ada'}));localStorage.setItem('qcc:christmas-welcome:2026:ada','seen');});
  await page.goto('/#/game/corn-clicker');await expect(page.locator('#game-stage .loading')).toHaveCount(0);
  for(let i=0;i<3;i++)await page.getByRole('button',{name:/^Harvest the cob/}).click();
  await expand(page);await expect(page.locator('#leaderboard-game')).toHaveValue('corn-clicker');

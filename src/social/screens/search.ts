@@ -127,7 +127,7 @@ export class SearchScreen implements Screen {
  private decorate(profile:ProfileView):void {
   const li=[...this.results.querySelectorAll<HTMLElement>('.social-person')].find(el=>el.dataset.username===profile.username);
   if(!li||li.querySelector('.social-follow'))return;
-  if(profile.followsYou){const chip=document.createElement('span');chip.className='social-chip';chip.textContent='Follows you';li.querySelector('.social-person-text')!.append(chip);}
+  if(profile.followsYou){const chip=document.createElement('span');chip.className='social-chip';chip.textContent='Your follower';li.querySelector('.social-person-text')!.append(chip);}
   if(profile.mine)return;
   const button=document.createElement('button');button.type='button';button.className='ui-btn small apps-pill social-follow';
   let on=profile.followedByMe,busy=false;

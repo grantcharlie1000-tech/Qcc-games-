@@ -1,12 +1,12 @@
 # Pocket Arcade architecture
 
-Twenty-two games: Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft, Maze Muncher, Corn Clicker, Slipline, Quadfall, Fivefold, Claimline. No factory game, currency, ads, tracking or runtime CDN. Username/password accounts are optional; guests keep local-only saves. External requests are limited to optional account/save sync and the shared leaderboard (same origin), the Movies & TV images and streaming players described below, and, only when a player opens online play in Pool or Blockcraft, PeerJS Cloud signalling plus a same-origin TURN credential function (see [online multiplayer](docs/MULTIPLAYER.md)).
+Twenty-five games: Color Blocks, Water Sort, Fruit Merge, Tower, Flappy Bird, Ball Run, Animal Stack, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Pool, Globle, Blockcraft, Maze Muncher, Corn Clicker, Slipline, Quadfall, Fivefold, Claimline, Crossy Road, Quad Clash, Femboy Frosthop. No factory game, currency, ads, tracking or runtime CDN. Username/password accounts are optional; guests keep local-only saves. External requests are limited to optional account/save sync and the shared leaderboard (same origin), the Movies & TV images and streaming players described below, and, only when a player opens online play in Pool or Blockcraft, PeerJS Cloud signalling plus a same-origin TURN credential function (see [online multiplayer](docs/MULTIPLAYER.md)).
 
 ## Static shell
 
 Vite 7, strict TypeScript, semantic DOM/CSS; no application framework. Hash routes `#/game/<id>` work at the origin root and any repository subpath. Vite's relative base `./` is authoritative. All assets use `import.meta.env.BASE_URL` or relative imports. Locally bundled Lilita One (OFL) supplies the bold, playful lettering. The nine user-provided images, inspected as the contact sheet and detailed originals under `/workspace/arcade-references`, set portrait proportions, dark rims, two-column mobile layout, saturated artwork and minimal header. The original wallet and advertising control was removed, and the later top bar too. The library has no header. A glass tab bar at the bottom holds Games, Movies, TV Shows, My list, Study and Menu, and favourites and search live in the Menu sheet.
 
-`src/core/catalog.ts` contains twenty-two cards and lazy game loaders. A game imports no other game. Matter.js is only imported by physics games; Three.js only by Ball Run, Globle and Blockcraft; globe.gl only by Globle. Blockcraft also starts module Web Workers (`src/games/blockcraft/world/worker.ts`, emitted as a hashed same-origin asset and included in the offline pack) for terrain generation, and falls back to time-sliced main-thread generation if workers are unavailable. `src/main.ts` owns routes, lifecycle, toolbar, pause overlay, rules dialog, autosave, settings, sound and favourites.
+`src/core/catalog.ts` contains twenty-five cards and lazy game loaders. A game imports no other game. Matter.js is only imported by physics games; Three.js only by Ball Run, Globle, Blockcraft, Crossy Road, Quad Clash and Femboy Frosthop; globe.gl only by Globle. Blockcraft also starts module Web Workers (`src/games/blockcraft/world/worker.ts`, emitted as a hashed same-origin asset) for terrain generation, and falls back to time-sliced main-thread generation if workers are unavailable. `src/main.ts` owns routes, lifecycle, toolbar, pause overlay, rules dialog, autosave, settings, sound and favourites.
 
 Shared presentation for Movies & TV and the tab bar: `src/theme.css` holds the design tokens and the `ui-` components, and it is imported first. `src/ui/` holds the icons, image load states, rail scrolling, the tab bar that minimizes into a capsule on scroll, the glass island (its pill, press and lens), the sheet helpers and the input mode that decides whether focus rings show (`focus.ts`). Games keep their own styles.
 
@@ -30,7 +30,7 @@ Tiny snapshots/settings/scores use versioned localStorage envelopes and memory f
 
 ## Offline
 
-Production service worker uses scope relative to the deployment base. Shell cache fills on visit; the explicit menu action caches every production chunk, cover, font and shell file using a generated content-hashed manifest and shows progress. An active-worker version handshake prevents mixing a waiting release with an older tab. Updates wait for older tabs to close before activation; only then are stale caches from the same scope removed. Cache read/write failures cannot turn a successful online fetch into a gameplay failure. Offline depends on a successful prior download, origin, device and browser storage policy; no policy bypass is promised.
+Offline play is retired: the site needs a network connection, and service-worker caching and offline downloads are no longer provided. At startup `src/core/offline.ts` unregisters existing service workers and deletes only CacheStorage caches whose names start with `pocket-arcade`; saves, preferences, accounts and unrelated caches are left alone. `public/sw.js` stays at its original URL as a self-unregistering recovery (kill-switch) worker, so returning browsers remove their old worker and caches.
 
 ## Isolation and integration
 
@@ -38,7 +38,7 @@ Parent branch `work` owns shared files, lockfile and deployment. Each SOL specia
 
 ## Deployment
 
-`npm run build` typechecks, bundles and generates the complete offline manifest. `dist/` can be mounted at `/` or `/Qcc-games-/` unchanged. Netlify serves the static output under netlify.toml. GitHub Pages Actions verifies tests then uploads dist. Hash routes require no fallback rewrite. HTTPS/localhost is necessary for service workers. Deployment URLs are reported only after actual publication and verification.
+`npm run build` typechecks, bundles and runs the service-worker kill-switch check. `dist/` can be mounted at `/` or `/Qcc-games-/` unchanged. Production is the Cloudflare Pages project `nceastudy` (https://nceastudy.pages.dev), published from `main` by [.github/workflows/pages.yml](.github/workflows/pages.yml); see [Cloudflare Pages publishing](docs/CLOUDFLARE_PAGES.md). Netlify files (`netlify.toml`, `netlify/`) are legacy and not used for production. Hash routes require no fallback rewrite. HTTPS/localhost is necessary for service workers. Deployment URLs are reported only after actual publication and verification.
 
 ## Referenced gameplay corrections
 
@@ -88,6 +88,10 @@ Claimline is a canvas territory-capture game against six local bots in one circu
 
 `src/games/quad-clash/` is an original first-person arena shooter on the QCC campus against seven bots (see its [SPEC](src/games/quad-clash/SPEC.md)). It is a full-bleed Three.js reference game like Crossy Road. The match simulation (`sim.ts`, `bots.ts`, `physics.ts`, `nav.ts`) is pure and deterministic at 60 Hz, and the whole running match is saved in the shell snapshot. Desktop play uses pointer lock: Esc frees the mouse and pauses through `context.setPaused`. Touch play has its own stick and buttons. Its score is match points, and it is on the shared leaderboard once `20261104090000_quad_clash_score.sql` is applied (until then submissions queue and retry).
 
+## Femboy Frosthop
+
+`src/games/femboy-obby/` is a third-person Christmas obby (see its [SPEC](src/games/femboy-obby/SPEC.md)). It is a full-bleed Three.js reference game. `sim.ts` is a pure fixed-60 Hz kinematic controller over axis-aligned box colliders that match the visible tops; `stages.ts` authors the fixed `frosthop-v1` course of 30 stages. Campaign progress, stars and outfits live in the shell snapshot. Every run from the stage 1 start line (campaign or Time Trial) is timed by wall clock and latches to casual on pause, hidden tab, restore or gentle help. Its leaderboard score is `2147483647 − milliseconds` (decoded in `src/leaderboard/format.ts`); it is on the shared board once `20261107090000_femboy_obby_score.sql` is applied (until then submissions queue, as for Claimline). Repeated props are instanced per zone, and six selected Kenney Holiday Kit models (CC0) load lazily from `public/game-art/femboy-obby/models/` with procedural fallbacks.
+
 ## QCC Social and QCC Chat
 
 Social (posts, follows, likes, reports) and Chat (mutual-friend 1:1 text and view-once photo snaps) need a signed-in QCC account. Handlers live in `src/social/`, `src/chat/` and `src/media/`, with pure policy in each `shared.ts`/`policy.ts`, and are served as same-origin routes `social`, `chat` and `media`, by Netlify Functions or by the Vercel backend (`server/app.ts`).
@@ -95,3 +99,12 @@ Photos are re-encoded server-side with Sharp to WebP and stored through a `Media
 Chat messages expire per conversation retention; an hourly scheduled function (Vercel cron `/api/chat-purge` on the backend) purges them and stale pending uploads.
 The Pages proxy allowlist includes the three routes, and the migration needs owner approval before it is applied.
 See [the spec](docs/social-chat/SPEC.md), [deployment](docs/social-chat/DEPLOYMENT.md) and the [moderation runbook](docs/social-chat/MODERATION.md).
+
+
+## Predictions
+
+`src/predictions/` is a free play-credit forecasting feature at `#/predictions`, lazily loaded through the same single-view slot as Social. A weekly 10-credit allowance (Monday 00:00 Pacific/Auckland), a binary LMSR market maker in BigInt fixed point, a double-entry append-only journal whose triggers are the only writers of balances, exactly-once trades by operation key, moderated questions and one independently reviewed settlement per market. It ships dark: the migration needs approval and `predictions_config.enabled` defaults to false. See [docs/PREDICTIONS.md](docs/PREDICTIONS.md).
+
+## Santa Tracker
+
+`src/santa/` is the Santa Tracker at `#/santa`. It is lazily loaded through the same single-view slot as Social and Chat. While the Christmas theme is on, a compact countdown sits above the game grid (`banner.ts`). The departure instant is configured in `public/santa/departure.json` (no-store), and the countdown runs on a server-anchored monotonic clock, not on device time. At the departure time the page loads the simulated tracker (`tracker/`). That tracker is QCC's simulation, not NORAD data. Research, configuration, test mode and the globe plan are described in [docs/SANTA_TRACKER.md](docs/SANTA_TRACKER.md).

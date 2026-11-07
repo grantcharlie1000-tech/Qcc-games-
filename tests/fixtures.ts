@@ -22,3 +22,7 @@ export const test=base.extend({
 export async function keyboardMode(page:Page){await page.evaluate(()=>(document.activeElement??document.body).dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true})));}
 export {expect};
 export type {Page} from '@playwright/test';
+/** Pins a test to the original (non-seasonal) artwork; for tests that assert the original pixel colours. */
+export async function originalTheme(context:BrowserContext){
+  await context.addInitScript(()=>{if(window!==window.top)return;try{localStorage.setItem('qcc:festive','off');}catch{/* blocked storage keeps the default */}});
+}

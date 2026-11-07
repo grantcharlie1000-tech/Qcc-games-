@@ -4,8 +4,12 @@ import {LABELS,emptyStats,readStats,recordStart,recordWin,competitiveScore,winSc
 import {read,write} from '../../core/storage';
 import {playSound} from '../../core/audio';
 import './style.css';
+import './christmas.css';
+import {christmas} from '../../festive/festive';
 const art=new URL('game-art/minesweeper/',new URL(import.meta.env.BASE_URL,document.baseURI)).href;
-const image=(name:string)=>`<img src="${art}${name}.svg" alt="" draggable="false">`;
+// Christmas art: candy-cane flags, coal for mines and a glowing lump for the triggered one.
+const festiveArt:Record<string,string>={flag:new URL('./xmas-flag.svg',import.meta.url).href,mine:new URL('./xmas-coal.svg',import.meta.url).href,exploded:new URL('./xmas-coal-lit.svg',import.meta.url).href};
+const image=(name:string)=>christmas()&&festiveArt[name]?`<img src="${festiveArt[name]}" alt="" draggable="false">`:`<img src="${art}${name}.svg" alt="" draggable="false">`;
 const game:GameModule={
  id:'minesweeper',title:'Minesweeper',cover:'game-art/minesweeper/cover.svg',
  rules:'Reveal all safe cells to clear the field. Numbers count mines in the eight surrounding cells. Empty areas open automatically. Your first reveal and its neighbours are always mine-free. Flags left means mine total minus placed flags, not confirmed safe information. You can win without placing any flags.\n\nMouse: left-click to reveal, right-click to flag. Click a revealed number to chord when its adjacent flag count matches. Incorrect flags can cause a loss.\n\nTouch: choose Reveal or Flag, then tap. Optionally hold to flag. Drag to pan a large board; pinch or use − / + to zoom. Moving or using two fingers cancels the tap.\n\nKeyboard: focus a tile, use arrows or Home/End to move; Enter/Space reveals or chords, F flags, C chords. Shortcuts apply only to the focused board.\n\nThe timer starts on the first reveal. Pause and background tabs stop the timer and hide the board. Returning to a saved game excludes time away. Only unassisted wins enter personal bests and online rankings. The score board awards 0, 10,000 or 20,000 base points for Easy, Medium or Hard, plus speed points based on elapsed time. Faster wins score more. Separate Easy, Medium and Hard boards rank fastest times. Practice gives visible-information hints and undo; it never enters competitive records. Sound is optional and starts off.',
@@ -56,7 +60,7 @@ const game:GameModule={
     const visual=`${state}:${wrong}:${i===board.exploded}`;
     if(button.dataset.visual!==visual){button.dataset.visual=visual;button.dataset.state=state;
      button.className=`ms-tile ms-n${open?board.cells[i]:0}${i===board.exploded?' ms-exploded':''}${wrong?' ms-wrong':''}${(Math.floor(i/width)+i%width)%2?' ms-alternate':''}`;
-     if(mine)button.innerHTML=image('mine');else if(board.flags[i])button.innerHTML=`${image('flag')}${wrong?'<span class="ms-cross" aria-hidden="true">×</span>':''}`;else button.textContent=open&&board.cells[i]>0?String(board.cells[i]):'';
+     if(mine)button.innerHTML=image(i===board.exploded&&christmas()?'exploded':'mine');else if(board.flags[i])button.innerHTML=`${image('flag')}${wrong?'<span class="ms-cross" aria-hidden="true">×</span>':''}`;else button.textContent=open&&board.cells[i]>0?String(board.cells[i]):'';
     }
     button.classList.toggle('ms-hinted',hinted===i);
     const label=mine?(i===board.exploded?'Triggered mine':'Mine'):open?(board.cells[i]>0?`${board.cells[i]} adjacent mines`:'Empty'):board.flags[i]?(wrong?'Incorrect flag':'Flagged'):'Covered';

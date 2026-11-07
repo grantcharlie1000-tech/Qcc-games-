@@ -1,18 +1,18 @@
 import {captureAuditEvidence} from '../helpers/audit-evidence';
 import {test,expect,type BrowserContext,type Page} from '@playwright/test';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import type {Pool} from 'pg';
+import {LocalDB,createLocalPool} from '../support/local-db';
 import sharp from 'sharp';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {createSocialHandler} from '../../src/social/server';
 import {createMediaHandler} from '../../src/media/server';
 import {createMemoryStore} from '../../src/media/store';
 
-const database=new NetlifyDB({logger:()=>{}}),store=createMemoryStore();
-let pool:ReturnType<typeof getDatabase>['pool'];
+const database=new LocalDB(),store=createMemoryStore();
+let pool:Pool;
 let accounts:ReturnType<typeof createAccountsHandler>,social:ReturnType<typeof createSocialHandler>,withoutUploads:typeof social,media:ReturnType<typeof createMediaHandler>;
 test.beforeAll(async()=>{
- const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;
+ const connectionString=await database.start();await database.applyMigrations('db/migrations');pool=createLocalPool(connectionString);
  const db={query:(text:string,values?:unknown[])=>pool.query(text,values),connect:()=>pool.connect()} as never;
  accounts=createAccountsHandler(pool);social=createSocialHandler(db,store);withoutUploads=createSocialHandler(db,null);media=createMediaHandler(db,store);
 });
@@ -48,6 +48,8 @@ async function connect(context:BrowserContext,uploads=true){
 }
 async function open(page:Page,username:string){
  await page.goto('/');const dialog=page.locator('#accounts-dialog');await expect(dialog).toBeVisible();
+ // These feature fixtures represent an established player; welcome behavior has its own suite.
+ await page.evaluate(name=>localStorage.setItem('qcc:christmas-welcome:2026:'+name.toLowerCase(),'seen'),username);
  await dialog.getByLabel('Username',{exact:true}).fill(username);await dialog.getByLabel('Password',{exact:true}).fill(password);
  await dialog.locator('form').getByRole('button',{name:'Log in',exact:true}).click();await expect(dialog).toBeHidden();
  await page.evaluate(()=>{location.hash='#/social/settings';});await expect(page.getByRole('heading',{name:'Settings',level:1})).toBeVisible();

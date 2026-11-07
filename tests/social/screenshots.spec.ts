@@ -43,6 +43,8 @@ async function guest(page:Page){
 }
 async function logIn(page:Page,username:string){
  const dialog=page.locator('#accounts-dialog');await expect(dialog).toBeVisible();
+ // These feature fixtures represent an established player; welcome behavior has its own suite.
+ await page.evaluate(name=>localStorage.setItem('qcc:christmas-welcome:2026:'+name.toLowerCase(),'seen'),username);
  await dialog.getByLabel('Username',{exact:true}).fill(username);await dialog.getByLabel('Password',{exact:true}).fill(PASSWORD);
  await dialog.locator('form').getByRole('button',{name:'Log in',exact:true}).click();await expect(dialog).not.toBeVisible();
 }
@@ -105,7 +107,7 @@ for(const size of [{name:'phone',width:390,height:844},{name:'desktop',width:144
  // Composer near the limit, with one photo ready and one failed.
  await page.evaluate(h=>{location.hash=h;},'#/social');
  await expect(page.locator('.social-post').first()).toBeVisible();
- if(size.width>=1100){await page.keyboard.press('n');await page.locator('.social-inline textarea').fill('x');}
+ if(size.width>=1100){await page.keyboard.press('p');await page.locator('.social-inline textarea').fill('x');}
  else await page.getByRole('button',{name:'New post'}).click();
  const scope=size.width>=1100?page.locator('.social-inline'):page.locator('#social-compose');
  await scope.locator('textarea').fill(Array.from('Kia ora koutou! Our class is running a beach clean-up at Ōhope this Saturday from 9 am. Bring gloves, a hat, water and a bag for rubbish. We will meet by the surf club and finish with a sausage sizzle around midday. Everyone is welcome, bring whānau and friends too. Ka pai!!! See you there. See you all there, bring a friend, bring your whanau, and thanks for helping out this year.').slice(0,273).join(''));

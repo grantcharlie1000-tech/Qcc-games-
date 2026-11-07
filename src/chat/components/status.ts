@@ -10,11 +10,11 @@ export function rowStatus(row:ConversationRow):RowStatus {
  if(!last)return {icon:'status-text-received',family:'text',words:"You're now friends",emphasis:false};
  if(last.kind==='system')return {icon:'timer',family:'system',words:'Chat settings changed',emphasis:false};
  if(last.kind==='snap'){
-  if(last.mine)return last.viewed?{icon:'status-snap-opened',family:'snap',words:'Photo opened',emphasis:false}:{icon:'status-snap-sent',family:'snap',words:'Photo sent',emphasis:false};
-  return last.viewed?{icon:'status-snap-received',family:'snap',words:'Photo viewed',emphasis:false}:{icon:'status-snap-new',family:'snap',words:'New photo',emphasis:true};
+  if(last.mine)return last.viewed?{icon:'status-snap-opened',family:'snap',words:"They've seen your photo",emphasis:false}:{icon:'status-snap-sent',family:'snap',words:'Photo not seen yet',emphasis:false};
+  return last.viewed?{icon:'status-snap-received',family:'snap',words:"You've seen their photo",emphasis:false}:{icon:'status-snap-new',family:'snap',words:'New photo',emphasis:true};
  }
- if(last.mine)return last.viewed?{icon:'status-text-opened',family:'text',words:'Opened',emphasis:false}:{icon:'status-text-sent',family:'text',words:'Sent',emphasis:false};
- if(last.viewed)return {icon:'status-text-received',family:'text',words:'Received',emphasis:false};
+ if(last.mine)return last.viewed?{icon:'status-text-opened',family:'text',words:"They've seen it",emphasis:false}:{icon:'status-text-sent',family:'text',words:'Not seen yet',emphasis:false};
+ if(last.viewed)return {icon:'status-text-received',family:'text',words:"You've seen it",emphasis:false};
  return {icon:'status-text-new',family:'text',words:row.unread>1?`${row.unread} new messages`:'New message',emphasis:true};
 }
 export const REQUEST_STATUS:RowStatus={icon:'status-request',family:'request',words:'Request sent',emphasis:false};

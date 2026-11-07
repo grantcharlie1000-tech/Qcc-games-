@@ -1,0 +1,7 @@
+/* Snake, Christmas: a candy-cane frame around a snowy board. Presentation only. */
+:root[data-festive="christmas"] .snake-garden{border-color:#f4ece0;background:var(--xmas-candy-stripe);box-shadow:0 5px 0 #6e1220,0 12px 28px #071d2135}
+:root[data-festive="christmas"] .snake-canvas{box-shadow:0 0 0 2px #f4ece0}
+:root[data-festive="christmas"] .snake-card{background:#0b1f3a9e}
+:root[data-festive="christmas"] .snake-card strong{text-shadow:0 3px #6e1220}
+:root[data-festive="christmas"] .snake-card .game-button{background:var(--xmas-red);color:#fff8ef}
+:root[data-festive="christmas"] .game-view[data-game-id=snake]{--game-surface:var(--xmas-snowflakes) center top/180px 180px,linear-gradient(#0f3b2a,#082619)}

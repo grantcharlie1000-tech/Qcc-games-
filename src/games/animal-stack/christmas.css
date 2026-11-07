@@ -1,0 +1,7 @@
+/* Animal Stack, Christmas: winter sky and snowfield around the scene, readable status, gold sparkle. Presentation only. */
+/* Same vertical stops as SKY_STOPS in christmas-art.ts, so the canvas meets the surround without a seam. */
+:root[data-festive="christmas"] .game-view[data-game-id=animal-stack]{--scene-bg:var(--xmas-snowflakes-light) center top/170px 170px no-repeat,linear-gradient(#86bfe3 0%,#c6e2f4 55%,#e8f3fb 79%,#f7fbff 79%,#dbe7f2 100%)}
+:root[data-festive="christmas"] .animal-stack{background:#c6e2f4}
+:root[data-festive="christmas"] .animal-stack__status{color:#173a5c;text-shadow:0 1px 0 #ffffffb0}
+:root[data-festive="christmas"] .animal-stack canvas:focus-visible{outline-color:#1f5f8b99}
+:root[data-festive="christmas"] .animal-stack__bubble{background:#e9b949;box-shadow:18px -13px 0 #d8263a,-18px -6px 0 #e9b949,26px 9px 0 #2c9a55,-25px 17px 0 #d8263a}

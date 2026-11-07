@@ -1,0 +1,36 @@
+/* Pac-Man, Christmas: a snowy night maze, snowball dots, bauble power pellets and
+   snowman chasers. Presentation only; every shape keeps its original geometry. */
+:root[data-festive="christmas"] .game-view[data-game-id=maze-muncher]{--game-surface:var(--xmas-snowflakes) center top/180px 180px,linear-gradient(#0b1733,#060d20)}
+:root[data-festive="christmas"] .mm-frame{background:#0b1733;box-shadow:0 0 0 2px var(--xmas-red),0 0 0 4px #f4ece0,0 12px 28px #02041a80}
+:root[data-festive="christmas"] .mm-svg>rect:first-of-type{fill:#060d20}
+:root[data-festive="christmas"] .mm-wall{fill:#1d4775;stroke:none}
+:root[data-festive="christmas"] .xm-snow{fill:#f6faff}
+:root[data-festive="christmas"] .xm-wall-rim{fill:none;stroke:#bfe3f5;stroke-width:1.1;stroke-linejoin:round;transition:stroke .12s linear}
+:root[data-festive="christmas"] .mm-flash .mm-wall{fill:#2c5d96}
+:root[data-festive="christmas"] .mm-flash .xm-wall-rim{stroke:#ffffff;stroke-width:1.5}
+:root[data-festive="christmas"] .mm-door{fill:var(--xmas-red)}
+:root[data-festive="christmas"] .mm-dot{fill:#f6faff}
+:root[data-festive="christmas"] .mm-berry{stroke:#06102a;stroke-width:.4}
+:root[data-festive="christmas"] .xm-cap{fill:var(--xmas-gold);stroke:var(--xmas-gold-deep);stroke-width:.35}
+/* The cap blinks with its bauble, exactly like the original power berry. */
+:root[data-festive="christmas"] .mm-playing:not(.mm-reduced) .xm-cap{animation:mm-blink .34s steps(1,end) infinite}
+:root[data-festive="christmas"] .mm-paused .xm-cap{animation-play-state:paused}
+/* Snowmen: white bodies, beanie and scarf in each chaser's own colour. */
+:root[data-festive="christmas"] .mm-wisp-flame{fill:#f6faff;stroke:#8fa6c8;stroke-width:.45}
+:root[data-festive="christmas"] .mm-spark{fill:#dfe9f7;opacity:.85}
+:root[data-festive="christmas"] .xm-accent{fill:var(--mm-wisp);stroke:#06102a;stroke-width:.3}
+:root[data-festive="christmas"] .xm-buttons{fill:#1b1d24}
+:root[data-festive="christmas"] .mm-scared .mm-wisp-flame{fill:#2b3cff;stroke:#16208f}
+:root[data-festive="christmas"] .mm-scared .mm-spark{fill:#7f8cff}
+:root[data-festive="christmas"] .mm-scared .xm-accent{fill:#16208f}
+:root[data-festive="christmas"] .mm-scared .xm-buttons{fill:#ffd0b0}
+:root[data-festive="christmas"] .mm-ending .mm-wisp-flame{fill:#f2f2ff;stroke:#ff3b5c}
+:root[data-festive="christmas"] .mm-ending .xm-accent{fill:#ff3b5c}
+:root[data-festive="christmas"] .mm-ending .xm-buttons{fill:#ff3b5c}
+:root[data-festive="christmas"] .mm-ending-calm .mm-wisp-flame{stroke:#f2f2ff;stroke-width:1.2}
+:root[data-festive="christmas"] .mm-colorblind .mm-wisp-flame{stroke:#05071a;stroke-width:.8}
+:root[data-festive="christmas"] .mm-card{background:#060d20d6}
+:root[data-festive="christmas"] .mm-card strong{color:var(--xmas-snow);text-shadow:0 3px var(--xmas-red)}
+:root[data-festive="christmas"] .mm-card .game-button{background:var(--xmas-red);color:#fff8ef}
+/* The Santa hat replaces the antennae (hidden by class, so the original markup stays intact). */
+:root[data-festive="christmas"] .mm-antenna,:root[data-festive="christmas"] .mm-antenna-tip{display:none}

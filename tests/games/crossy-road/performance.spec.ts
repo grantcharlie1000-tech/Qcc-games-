@@ -1,5 +1,7 @@
 import {test,expect} from '../../fixtures';
+import sharp from 'sharp';
 import {openGame,hook} from './helpers';
+import {AdaptiveResolution} from '../../../src/games/crossy-road/quality';
 
 test('crisp directional shadows keep the reference contrast without an offscreen shadow texture',async({page})=>{
   await openGame(page,{viewport:{width:390,height:844}});
@@ -82,7 +84,60 @@ test.describe('mobile adaptive resolution',()=>{
     });
     await page.waitForFunction(()=>document.querySelector<HTMLElement>('.crossy-road')?.dataset.perfDone==='true');
     // The budget starts at DPR 2 (780 px wide at 390 CSS px); two bad seconds drop it to DPR 1.5 and the next level needs four more.
-    expect(await page.locator('.hw-canvas').evaluate((c:HTMLCanvasElement)=>c.width)).toBe(585);
+    // The run is 140 frames x 40 ms = 5.6 s: past the first drop (2 s) but short of the second (6 s). Coupling: one more slow window
+    // (>= 6 s of bad frames, i.e. 150 frames) would give DPR 1 = 390 px. Assert that schedule from quality.ts itself, at both edges,
+    // so the 585 px expectation is derived from the controller rather than a bare constant.
+    const schedule=(frames:number)=>{const r=new AdaptiveResolution();for(let i=0;i<frames;i++)r.observe(.04);return r.cap;};
+    expect(schedule(139)).toBe(1.5);expect(schedule(140)).toBe(1.5);expect(schedule(150)).toBe(1);
+    expect(await page.locator('.hw-canvas').evaluate((c:HTMLCanvasElement)=>c.width)).toBe(390*schedule(140));
     expect((await hook(page).state()).maxRow).toBeGreaterThan(25);
   });
+});
+
+test('HUD preserves its sampled appearance without copying or reading the Crossy GPU canvas',async({page})=>{
+  await page.addInitScript(()=>{
+    const original=CanvasRenderingContext2D.prototype.drawImage;
+    (window as unknown as {crossyHudCopies:number}).crossyHudCopies=0;
+    CanvasRenderingContext2D.prototype.drawImage=(function(this:CanvasRenderingContext2D,...args:Parameters<typeof original>){
+      if(args[0] instanceof HTMLCanvasElement && args[0].matches('.hw-canvas'))
+        (window as unknown as {crossyHudCopies:number}).crossyHudCopies++;
+      return original.apply(this,args);
+    }) as typeof original;
+  });
+  const errors=await openGame(page);
+  // The visible dock mirrors the game's hidden source score.
+  const label=page.locator('.game-hud-item strong');
+  await expect(label).toBeVisible();
+  await expect(label).toHaveCSS('color','rgb(255, 255, 255)');
+  await expect(label).toHaveAttribute('data-glass-halo','');
+  // Exercise score and resize invalidation while the scene is deterministic.
+  await page.locator('.hw-canvas').press('ArrowUp');
+  await hook(page).advance(.2);
+  await expect(label).not.toHaveText('0');
+  await page.setViewportSize({width:390,height:844});
+  await expect(label).toHaveAttribute('data-glass-halo','');
+  expect(await page.evaluate(()=>(window as unknown as {crossyHudCopies:number}).crossyHudCopies)).toBe(0);
+  // Reset snaps the camera; both captures now share exactly the same frozen pose.
+  await hook(page).setSeed(11);
+  const dock=page.locator('.game-dock');
+  const optimized=await dock.screenshot({animations:'disabled'});
+  const appearance=()=>page.locator('.game-dock .glass-ink').evaluateAll(labels=>labels.map(label=>{
+    const style=getComputedStyle(label);return {text:label.textContent,color:style.color,shadow:style.textShadow};
+  }));
+  const optimizedAppearance=await appearance();
+  // Re-enable the original pixel-sampling path in the same frozen scene.
+  await page.evaluate(()=>{
+    document.querySelector<HTMLCanvasElement>('.hw-canvas')!.dataset.glassInk='sample';
+    dispatchEvent(new Event('resize'));
+  });
+  await expect.poll(()=>page.evaluate(()=>(window as unknown as {crossyHudCopies:number}).crossyHudCopies)).toBeGreaterThan(0);
+  expect(await appearance()).toEqual(optimizedAppearance);
+  const sampled=await dock.screenshot({animations:'disabled'});
+  await test.info().attach('hud-optimized',{body:optimized,contentType:'image/png'});
+  await test.info().attach('hud-original-sampling',{body:sampled,contentType:'image/png'});
+  const a=await sharp(optimized).ensureAlpha().raw().toBuffer(),b=await sharp(sampled).ensureAlpha().raw().toBuffer();
+  expect(a.length).toBe(b.length);
+  let changed=0;for(let i=0;i<a.length;i+=4)if(Math.max(Math.abs(a[i]-b[i]),Math.abs(a[i+1]-b[i+1]),Math.abs(a[i+2]-b[i+2]))>8)changed++;
+  expect(changed/(a.length/4)).toBeLessThan(.001);
+  expect(errors).toEqual([]);
 });

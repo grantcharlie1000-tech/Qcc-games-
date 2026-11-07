@@ -1,12 +1,13 @@
 import type {GameId} from '../core/types';
 import {bindGlass} from './glass';
+import {christmas} from '../festive/festive';
 
 type Field={label:string;source:string;attribute?:string;labelSource?:string};
 const score:Field={label:'Score',source:'#game-score strong'};
 const level:Field={label:'',source:'#game-level'};
 /** Read the game's existing presentation. Models and the frozen context API remain the owners of state. */
 const fields:Record<GameId,Field[]>={
-  'fruit-merge':[score], 'water-sort':[level], 'color-blocks':[score],
+  'fruit-merge':[score], 'water-sort':[level], 'color-blocks':[{label:'Score',source:'.cb-score-total'}],
   tower:[{label:'Floors',source:'.tower-height'},{label:'Streak',source:'.tower-combo'}],
   snake:[score], 'neon-coil':[{label:'Mass',source:'.nc-mass'}],
   minesweeper:[{label:'Flags',source:'.ms-count'},{label:'Time',source:'.ms-time'}],
@@ -19,7 +20,8 @@ const fields:Record<GameId,Field[]>={
   'corn-clicker':[{label:'Kernels',source:'.cc-kernels-num'},{label:'Per second',source:'.cc-cps'}],
   slipline:[{label:'',source:'.sl-level'},{label:'',source:'.sl-hearts',attribute:'aria-label'}],
   quadfall:[score,level], claimline:[score,level], fivefold:[{label:'',source:'.ff-puzzle'}],
-  'crossy-road':[score], 'quad-clash':[score,level]
+  'crossy-road':[score], 'quad-clash':[score,level],
+  'femboy-obby':[{label:'Stage',source:'.fo-stage'},{label:'Stars',source:'.fo-time',labelSource:'.fo-time-label'}]
 };
 
 type Choice={selector:string;label?:string};
@@ -41,11 +43,13 @@ const surfaceSources:Partial<Record<GameId,string>>={
   fivefold:'.ff',quadfall:'.qf-game',slipline:'.sl-game'
 };
 const lightSurfaces=new Set<GameId>(['fruit-merge','tower','flappy-bird','animal-stack','blockcraft']);
+// Christmas skins that turn a light surface into a night scene keep dark-tone glass.
+const festiveDarkSurfaces=new Set<GameId>(['tower','fruit-merge']);
 
 export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLElement,activate:(action:()=>void)=>void):void;dispose():void}{
   const dock=view.querySelector<HTMLElement>('.game-dock')!;
   const hud=dock.querySelector<HTMLElement>('.game-hud')!;
-  view.dataset.glassTone=lightSurfaces.has(id)?'light':'dark';
+  view.dataset.glassTone=lightSurfaces.has(id)&&!(christmas()&&festiveDarkSurfaces.has(id))?'light':'dark';
   // Presentation only: the games retain their native dialog lifecycle and actions.
   for(const panel of view.querySelectorAll<HTMLElement>('.ms-settings,.ff-dialog')){
     panel.classList.add('arcade-sheet');
@@ -60,6 +64,7 @@ export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLEle
     surface.style.backgroundImage=style.backgroundImage;
     surface.style.backgroundSize=style.backgroundSize;
     surface.style.backgroundPosition=style.backgroundPosition;
+    surface.style.backgroundRepeat=style.backgroundRepeat;
   }
   // Continue Fruit Merge's existing 32px checkerboard outside its basket. Its
   // artwork is painted into a 360px canvas; align the CSS continuation to that

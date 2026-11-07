@@ -244,7 +244,7 @@ export function createChatHandler(db:Database,store:MediaStore|null):(request:Re
   if(typeof data.on!=='boolean')throw bad();
   return tx(async q=>{
    const message=await memberMessage(q,me,id,{friends:true,lock:true});
-   if(message.kind!=='text')throw bad('Only text messages can be saved.');
+   if(message.kind!=='text')throw bad('Only text messages can be kept.');
    const result=data.on
     ?await q(`UPDATE chat_messages SET saved_at=now(),expires_at=now()+interval '90 days' WHERE id=$1::bigint
       RETURNING id,kind,sender_id,body,${ts('created_at')} AS created_at,${ts('viewed_at')} AS viewed_at,saved_at IS NOT NULL AS saved`,[id])

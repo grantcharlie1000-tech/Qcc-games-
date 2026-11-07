@@ -7,6 +7,13 @@ export const tier=(n:number)=>n<4?'EASY':n<10?'MEDIUM':n<20?'HARD':'EXTRA HARD';
 export const sizeFor=(n:number)=>n<4?7+n-1:n<10?10+Math.floor((n-4)/2):n<20?13+Math.floor((n-10)/2):Math.min(26,18+Math.floor((n-20)/3));
 export function cells(a:Arrow):Point[]{const out:Point[]=[];for(let i=1;i<a.vertices.length;i++){const [x,y]=a.vertices[i-1], [xx,yy]=a.vertices[i],dx=Math.sign(xx-x),dy=Math.sign(yy-y),len=Math.abs(xx-x)+Math.abs(yy-y);for(let j=0;j<len;j++)out.push([x+dx*j,y+dy*j])}out.push(a.vertices[a.vertices.length-1]);return out}
 export function free(board:Board,a:Arrow,active:string[]):boolean{const occupied=new Set(board.arrows.filter(b=>b.id!==a.id&&active.includes(b.id)).flatMap(b=>cells(b).map(p=>p.join(','))));let [x,y]=a.vertices[a.vertices.length-1];const [dx,dy]=a.exitHeading;while((x+=dx)>=0&&x<board.size&&(y+=dy)>=0&&y<board.size)if(occupied.has(`${x},${y}`))return false;return true}
+export function availability(board:Board,active:string[]):Map<string,boolean>{
+ const activeIds=new Set(active),owners=new Map<string,Set<string>>();
+ for(const a of board.arrows)if(activeIds.has(a.id))for(const p of cells(a)){const key=p.join(',');let group=owners.get(key);if(!group){group=new Set();owners.set(key,group);}group.add(a.id);}
+ const result=new Map<string,boolean>();
+ for(const a of board.arrows)if(activeIds.has(a.id)){let [x,y]=a.vertices[a.vertices.length-1],clear=true;const [dx,dy]=a.exitHeading;while((x+=dx)>=0&&x<board.size&&(y+=dy)>=0&&y<board.size){const group=owners.get(`${x},${y}`);if(group)for(const id of group)if(id!==a.id){clear=false;break;}if(!clear)break;}result.set(a.id,clear);}
+ return result;
+}
 const cache=new Map<number,Board>();
 export function generate(level:number):Board{
  const cached=cache.get(level);if(cached)return cached;

@@ -3,6 +3,8 @@
  * canvas, turned into a PNG data URL and shown scaled up with `image-rendering: pixelated`.
  */
 import {COB,SKINS,PRODUCERS,GOLDEN,PEST,SCARECROW,PLANT,VARIETIES,KERNEL,SEED,BUTTER,MOUSE,SPARKLE,type Sprite} from './sprites';
+import {christmas} from '../../festive/festive';
+import {COB_XMAS,GOLDEN_XMAS,festiveSceneUrl} from './christmas-art';
 
 export type ProducerId='farmhand'|'patch'|'field'|'tractor'|'combine'|'greenhouse'|'irrigation'|'factory'|'lab'|'hydroponic'|'robot'|'weather'|'megafarm'|'orbital'|'lunar'|'cloner'|'time'|'dimension'|'singularity'|'corniverse';
 export type SkinId='classic'|'butter'|'ruby'|'bluemoon'|'prism'|'frost'|'midnight'|'golden';
@@ -26,9 +28,9 @@ export function spriteUrl(sprite:Sprite,key:string,overrides:Record<string,strin
 const img=(url:string,w:number,h:number,cls='')=>`<img class="px${cls?' '+cls:''}" src="${url}" width="${w}" height="${h}" alt="" draggable="false">`;
 const sprite=(s:Sprite,key:string,overrides?:Record<string,string>,cls?:string)=>img(spriteUrl(s,key,overrides),s.w,s.h,cls);
 
-export const cobArt=(skin:SkinId,face=false)=>face?`<img class="cc-cob-img" data-skin="${skin}" src="${import.meta.env.BASE_URL}game-art/corn-clicker/face.webp" width="600" height="800" alt="" draggable="false">`:sprite(COB,'cob-'+skin,SKINS[skin],'cc-cob-img');
+export const cobArt=(skin:SkinId,face=false)=>face?`<img class="cc-cob-img" data-skin="${skin}" src="${import.meta.env.BASE_URL}game-art/corn-clicker/face.webp" width="600" height="800" alt="" draggable="false">`:christmas()?sprite(COB_XMAS,'cob-xmas-'+skin,SKINS[skin],'cc-cob-img'):sprite(COB,'cob-'+skin,SKINS[skin],'cc-cob-img');
 export const producerArt=(id:ProducerId)=>sprite(PRODUCERS[id],'p-'+id);
-export const goldenArt=()=>sprite(GOLDEN,'golden');
+export const goldenArt=()=>christmas()?sprite(GOLDEN_XMAS,'golden-xmas'):sprite(GOLDEN,'golden');
 export const pestArt=()=>sprite(PEST,'pest');
 export const scarecrowArt=(hat:'straw'|'top'|'wizard')=>sprite(SCARECROW[hat],'crow-'+hat);
 export const plantArt=(variety:VarietyId,stage:0|1|2|3)=>stage===3?sprite(PLANT[3],'plant-'+variety,VARIETIES[variety]):sprite(PLANT[stage],'plant-'+stage);
@@ -49,6 +51,7 @@ const SCENES:Record<Stage,{sky:string[];far:string;near:string;ground:string[]}>
 };
 function lcg(seed:number){let s=seed>>>0;return ()=>((s=Math.imul(s,1664525)+1013904223>>>0)/4294967296);}
 export function sceneUrl(stage:Stage):string {
+  if(christmas())return festiveSceneUrl(stage);
   const key='scene-'+stage,cached=urls.get(key);if(cached!==undefined)return cached;
   const W=192,H=120,made=canvas(W,H);if(!made)return '';
   const [c,ctx]=made,t=SCENES[stage],rand=lcg(stage*977+5);

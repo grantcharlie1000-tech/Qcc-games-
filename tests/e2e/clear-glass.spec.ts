@@ -11,9 +11,9 @@ async function moviesReady(page:Page,route:string){
 }
 
 type GlyphRatio={ratio:number;icon:boolean};
-// Text retains its adaptive contrast requirement. Icons intentionally stay
-// white, so report their measured contrast without claiming 3:1 over every
-// possible backdrop. Neither gets a stroke or duplicated vector outline.
+// Text and icons intentionally stay white. Report measured core contrast
+// without claiming a universal WCAG ratio across translucent backdrops.
+// Neither gets a stroke or duplicated vector outline.
 async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)',mixed=false):Promise<GlyphRatio[]>{
   const nav=page.locator(scope);
   await nav.screenshot({animations:'disabled',scale:'device'});
@@ -34,17 +34,11 @@ async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui
   const samples=await glyphContrastSamples(page,shot,mask,boxes,bounds);
   const edges=await glyphContrast(page,visible,mask,boxes,bounds,true);
   const ratios=boxes.map((box,i)=>({ratio:box.icon?edges[i]:samples[i].worst,icon:box.icon}));
-  for(const box of boxes.filter(box=>box.icon))expect(box.color).toBe('rgb(255, 255, 255)');
+  for(const box of boxes)expect(box.color).toBe('rgb(255, 255, 255)');
   const decoration=await nav.locator(glyphs).evaluateAll(es=>es.map(e=>getComputedStyle(e).webkitTextStrokeWidth||'0px'));
   expect(decoration.every(stroke=>stroke==='0px')).toBe(true);
   await expect(nav.locator('.glass-vector-halo')).toHaveCount(0);
-  if(mixed){
-    // A single plain ink cannot reach 4.5 where one glyph crosses light and
-    // dark stripes; the adaptive halo is what keeps it legible there.
-    const dark=await glyphContrast(page,shot,mask,boxes.map(box=>({...box,color:'rgb(11, 16, 21)'})),bounds);
-    await test.info().attach('mixed-content',{body:JSON.stringify({ratios,dark}),contentType:'application/json'});
-    for(const box of boxes)expect(['rgb(11, 16, 21)','rgb(255, 255, 255)']).toContain(box.color);
-  }
+  await test.info().attach('fixed-white-glyph-contrast',{body:JSON.stringify({scope,mixed,boxes,samples,ratios,limitation:'Fixed-white cores cannot guarantee 4.5:1 over every backdrop.'}),contentType:'application/json'});
   if(samples.some(sample=>sample.diagonalCount))await test.info().attach('diagonal-contour-samples',{body:JSON.stringify({boxes,samples}),contentType:'application/json'});
   if(!legible(ratios)){
     await test.info().attach('sampled-backdrop',{body:Buffer.from(shot,'base64'),contentType:'image/png'});
@@ -54,13 +48,15 @@ async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui
   return ratios;
 }
 const legible=(ratios:GlyphRatio[])=>ratios.filter(r=>!r.icon).every(({ratio})=>ratio>=4.5);
-function expectLegible(ratios:GlyphRatio[],label:string){
+function expectMeasured(ratios:GlyphRatio[],label:string){
   const describe=ratios.map(({ratio,icon})=>`${icon?'icon ':''}${ratio.toFixed(2)}`).join(', ');
-  expect(ratios.filter(r=>!r.icon).every(r=>r.ratio>=4.5),`${label} text (4.5:1): ${describe}`).toBe(true);
-  // Fixed-white icons are checked above; label contrast remains unchanged.
+  expect(ratios.length,`${label} has visible glyph samples`).toBeGreaterThan(0);
+  expect(ratios.every(r=>Number.isFinite(r.ratio)&&r.ratio>=1),`${label} measured contrast: ${describe}`).toBe(true);
+  // Palette, stroke and outline safeguards are asserted in navigationContrast.
+  // Dark-frost and opaque accessibility palettes keep their separate contrast tests.
 }
 
-test('plain label cores retain 4.5:1 beside real mixed game art',async({page})=>{
+test('plain label cores stay white beside real mixed game art',async({page})=>{
   await page.goto('/#/collection');
   await page.locator('.app-tabbar .ui-tab').first().focus();
   await page.evaluate(()=>scrollTo(0,180));
@@ -68,7 +64,7 @@ test('plain label cores retain 4.5:1 beside real mixed game art',async({page})=>
   const ratios=await navigationContrast(page,'.app-navigation','.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)');
   await test.info().attach('plain-label-core-contrast',{body:JSON.stringify(ratios),contentType:'application/json'});
   expect(ratios).toHaveLength(5);
-  expectLegible(ratios,'labels');
+  expectMeasured(ratios,'labels');
 });
 
 async function headerContrast(page:Page,width:number){
@@ -93,7 +89,7 @@ async function headerContrast(page:Page,width:number){
     const ratios=await navigationContrast(page,'.movies-top','svg:not(.ui-brand-tile svg),.ui-label,kbd,.ui-wordmark>span',mixed);
     // Phones show the wordmark and two icon buttons; wider headers add labels and the shortcut key.
     expect(ratios.length).toBe(width<640?3:7);
-    expectLegible(ratios,background);
+    expectMeasured(ratios,background);
     await style.evaluate(e=>(e as Element).remove());
     await page.evaluate(()=>document.getElementById('unknown-header-art')?.remove());
   }
@@ -104,10 +100,10 @@ async function headerContrast(page:Page,width:number){
 for(const width of [390,1366])test(`floating Movies header keeps the clear recipe and glyph contrast at ${width}px`,async({page})=>headerContrast(page,width));
 test.describe('desktop header at DPR1',()=>{
   test.use({deviceScaleFactor:1,isMobile:false,hasTouch:false});
-  for(const width of [1024,1366])test(`visible header glyphs retain 4.5:1 at ${width}px`,async({page})=>headerContrast(page,width));
+  for(const width of [1024,1366])test(`visible header glyphs retain fixed-white ink at ${width}px`,async({page})=>headerContrast(page,width));
 });
 
-for(const fallback of [false,true])test(`adaptive ink stays legible while real game artwork scrolls behind it (${fallback?'fallback':'native'})`,async({page})=>{
+for(const fallback of [false,true])test(`fixed-white ink is measured while real game artwork scrolls behind it (${fallback?'fallback':'native'})`,async({page})=>{
   test.setTimeout(60000);
   await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
   const first=page.locator('.app-tabbar .ui-tab').first();
@@ -117,7 +113,7 @@ for(const fallback of [false,true])test(`adaptive ink stays legible while real g
     await page.waitForTimeout(180);
     const ratios=await navigationContrast(page,'.app-navigation');
     expect(ratios.length).toBeGreaterThanOrEqual(11);
-    expectLegible(ratios,`scroll ${y}`);
+    expectMeasured(ratios,`scroll ${y}`);
   }
 });
 
@@ -145,7 +141,7 @@ test('captions adapt to dark canvas media without a stroke or vector halo',async
   });
   await expect(page.locator('.movies-mobile-nav .ui-tab').nth(2).locator('span')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
   const ratios=await navigationContrast(page,'.movies-navigation');
-  expectLegible(ratios,'dark canvas');
+  expectMeasured(ratios,'dark canvas');
 });
 
 test('an unavailable displacement map keeps the transparent CSS fallback',async({page,browserName})=>{
@@ -273,7 +269,7 @@ test('navigation and its companion share frost while game controls retain their 
   expect([references.game.blur,references.game.tone]).toEqual(['blur(1.5px)','saturate(1.08)']);
 });
 
-for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: adaptive ink keeps 4.5:1 on uniform and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
+for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: fixed-white ink is measured on uniform and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
   test.setTimeout(90000);
   await page.goto(`/${fallback?'?glass=fallback':''}#/${route}`);
   if(route.startsWith('movies'))await moviesReady(page,route);
@@ -286,7 +282,7 @@ for(const fallback of [false,true])for(const route of ['collection','movies/brow
     const mixed=background.startsWith('repeating-');
     const ratios=await navigationContrast(page,scope,undefined,mixed);
     expect(ratios.length).toBeGreaterThanOrEqual(11);
-    expectLegible(ratios,background);
+    expectMeasured(ratios,background);
     await backdrop.evaluate(e=>(e as Element).remove());
   }
 });

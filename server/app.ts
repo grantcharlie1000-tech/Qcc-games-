@@ -1,5 +1,5 @@
-// Host-neutral QCC backend: one fetch-style router for accounts, leaderboards, TURN credentials and the movies
-// catalog. Runs on Vercel (api/[route].ts), as a plain Node server (server/node.ts), or behind any Web-standard host.
+// Host-neutral QCC backend: one fetch-style router for accounts, leaderboards, TURN credentials, the movies
+// catalog, Social/Chat/media and Predictions. Runs on Vercel (api/[route].ts), as a plain Node server (server/node.ts), or behind any Web-standard host.
 // Server-only: never import this module from src/.
 import type {Database} from '../src/leaderboard/server';
 import {createAccountsHandler} from '../src/accounts/server';
@@ -7,6 +7,7 @@ import {createLeaderboardHandler} from '../src/leaderboard/server';
 import {createSocialHandler} from '../src/social/server';
 import {createChatHandler,purgeExpiredChat} from '../src/chat/server';
 import {createMediaHandler} from '../src/media/server';
+import {createPredictionsHandler,runGrantJob} from '../src/predictions/server';
 import {purgePendingMedia,sweepOrphanMedia,PURGE_BATCH_SIZE,type MediaStore} from '../src/media/store';
 import {vercelBlobMediaStore} from './media-store';
 import {createTurnHandler} from '../src/multiplayer/turn-server';
@@ -15,7 +16,7 @@ import {createGuardedHandler,isWriteFrozen} from '../netlify/lib/runtime.mts';
 import {storageFullResponse} from '../src/accounts/storage-errors';
 import {createHash,timingSafeEqual} from 'node:crypto';
 
-export type Route='accounts'|'leaderboard'|'turn'|'movies'|'social'|'chat'|'media';
+export type Route='accounts'|'leaderboard'|'turn'|'movies'|'social'|'chat'|'media'|'predictions';
 type Env=Record<string,string|undefined>;
 export interface AppOptions{
  env?:Env;
@@ -27,7 +28,7 @@ export interface AppOptions{
  mediaStore?:()=>Promise<MediaStore|null>;
 }
 // Same per-IP windows as the old Netlify rate-limit rules (requests per 60 s, per instance).
-export const RATE_LIMITS:Record<Route,number>={accounts:600,leaderboard:300,turn:20,movies:600,social:600,chat:600,media:1200};
+export const RATE_LIMITS:Record<Route,number>={accounts:600,leaderboard:300,turn:20,movies:600,social:600,chat:600,media:1200,predictions:600};
 const ALLOW_HEADERS='Authorization, Content-Type, X-QCC-Sync';
 const ALLOW_METHODS='GET, POST, PUT, DELETE, OPTIONS';
 
@@ -57,11 +58,11 @@ export function originAllowed(origin:string,list:string|undefined):boolean{
  return false;
 }
 
-export function routeOf(pathname:string):Route|'health'|'chat-purge'|undefined{
+export function routeOf(pathname:string):Route|'health'|'chat-purge'|'predictions-grants'|undefined{
  const match=pathname.match(/^\/(?:api|\.netlify\/functions)\/([a-z-]+)\/?$/);
  const name=match?.[1];
  if(name==='movies'||name==='movies-search')return 'movies';
- if(name==='accounts'||name==='leaderboard'||name==='turn'||name==='social'||name==='chat'||name==='media'||name==='health'||name==='chat-purge')return name;
+ if(name==='accounts'||name==='leaderboard'||name==='turn'||name==='social'||name==='chat'||name==='media'||name==='predictions'||name==='health'||name==='chat-purge'||name==='predictions-grants')return name;
  return undefined;
 }
 
@@ -92,7 +93,8 @@ export function createApp(options:AppOptions={}){
      builtAt=now();builtWithoutStore=!blobs&&(route==='social'||route==='chat'||route==='media');
      const maxTotalBytes=Number(env.QCC_MEDIA_MAX_TOTAL_BYTES)||undefined;
      const factory=route==='accounts'?createAccountsHandler:route==='leaderboard'?createLeaderboardHandler:route==='social'?(db:Database)=>createSocialHandler(db,blobs)
-      :route==='chat'?(db:Database)=>createChatHandler(db,blobs):(db:Database)=>createMediaHandler(db,blobs,{maxTotalBytes});
+      :route==='chat'?(db:Database)=>createChatHandler(db,blobs):route==='predictions'?(db:Database)=>createPredictionsHandler(db)
+      :(db:Database)=>createMediaHandler(db,blobs,{maxTotalBytes});
      guarded=createGuardedHandler(database(),factory,{allowMissingMarker:false,context,env:env as NodeJS.ProcessEnv,now});
     }
     return await guarded(request);}
@@ -123,6 +125,26 @@ export function createApp(options:AppOptions={}){
    return await guardedPurge(request);
   }catch{console.error('QCC chat purge failed.');return Response.json({error:'Purge failed.'},{status:500,headers:{'Cache-Control':'no-store'}});}
  }
+ let guardedGrants:((request:Request)=>Promise<Response>)|undefined;
+ /**
+  * Vercel cron: issue missing weekly Predictions allowances (Monday 00:00 Pacific/Auckland weeks). Uses the same
+  * idempotent grant operation as wallet reads and trades, so a missed, late or repeated run neither skips nor
+  * doubles a grant; accounts not reached before the time budget are repaired lazily on their next visit.
+  * Does nothing while Predictions is disabled, not launched, or writes are frozen. Bearer CRON_SECRET only.
+  */
+ async function predictionsGrants(request:Request):Promise<Response>{
+  const secret=env.CRON_SECRET,supplied=request.headers.get('authorization')??'';
+  if(!secret||request.method!=='GET'||!timingSafeEqual(digest('Bearer '+secret),digest(supplied)))return Response.json({error:'Unauthorized.'},{status:401,headers:{'Cache-Control':'no-store'}});
+  const deadline=now()+PURGE_BUDGET_MS;
+  try{
+   guardedGrants??=createGuardedHandler(database(),db=>async()=>{
+    const result=await runGrantJob(db,{deadline,now});
+    console.log(`QCC predictions grants: ${result.grants} issued across ${result.accounts} accounts, ${result.failed} failed${result.stopped?', stopped at the time budget':''}.`);
+    return Response.json({ok:true,...result},{headers:{'Cache-Control':'no-store'}});
+   },{allowMissingMarker:false,context,env:env as NodeJS.ProcessEnv,now});
+   return await guardedGrants(request);
+  }catch{console.error('QCC predictions grants failed.');return Response.json({error:'Grant job failed.'},{status:500,headers:{'Cache-Control':'no-store'}});}
+ }
  const hits=new Map<string,number[]>();
  function limited(key:string,limit:number):boolean{
   const t=now(),recent=(hits.get(key)??[]).filter(at=>t-at<60_000);
@@ -150,6 +172,7 @@ export function createApp(options:AppOptions={}){
   if(request.method==='OPTIONS')return finish(new Response(null,{status:204,headers:{'Access-Control-Allow-Methods':ALLOW_METHODS,'Access-Control-Allow-Headers':ALLOW_HEADERS,'Access-Control-Max-Age':'86400','Cache-Control':'no-store'}}));
   if(route==='health')return finish(Response.json({ok:true},{headers:{'Cache-Control':'no-store'}}));
   if(route==='chat-purge')return finish(await chatPurge(request));
+  if(route==='predictions-grants')return finish(await predictionsGrants(request));
   const ip=clientIp||'unknown';
   if(limited(route+'|'+ip,RATE_LIMITS[route]))return finish(Response.json({error:'Too many requests. Try again in a minute.'},{status:429,headers:{'Retry-After':'60','Cache-Control':'no-store'}}));
   // The handlers reject any Origin that differs from the request URL. The allow-list check above already ran,

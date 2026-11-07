@@ -8,6 +8,7 @@ import {bindGlass} from '../../ui/glass';
 import {mountCompactHud} from '../../ui/game-controls-adapter';
 import {openSheet} from '../../ui/sheet';
 import './style.css';
+import './christmas.css';
 
 const km = (value: number) => `${value.toLocaleString('en-NZ')} km`;
 const escapeHtml = (text: string) => text.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);

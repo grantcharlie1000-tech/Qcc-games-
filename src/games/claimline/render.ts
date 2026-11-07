@@ -1,5 +1,8 @@
 import { ARENA_R, CENTER, GRID, HUMAN, PLAYER_COUNT, type GameEvent, type Player, type World } from './types';
 import { ownerLoops } from './outline';
+import { christmas } from '../../festive/festive';
+import { FESTIVE_LOOK, bulbSprite, snowPattern, drawLightTrail, drawCandyRing } from './christmas-render';
+import { drawSantaHat } from '../../festive/art';
 
 /** Owner colours by player id (index 0 is unused). */
 export const PALETTE = ['#000000', '#ff4d6a', '#4b8dff', '#23b67f', '#ffad1f', '#9a5cff', '#00b3d6', '#ff7a3d'];
@@ -20,6 +23,11 @@ export const RIM = PALETTE.map(c => shade(c, -0.35));
 export const OUTLINE = PALETTE.map(c => shade(c, -0.2));
 const PASTEL = PALETTE.map(c => shade(c, 0.55));
 const TRAIL_EDGE = PALETTE.map(c => shade(c, -0.05));
+
+/** Colours a renderer paints with; the Christmas skin swaps in FESTIVE_LOOK. */
+export interface Look { palette: readonly string[]; rim: readonly string[]; outline: readonly string[]; pastel: readonly string[]; trailEdge: readonly string[]; outside: string; inside: string; edge: string; dots: string; shadow: string }
+const ORIGINAL_LOOK: Look = { palette: PALETTE, rim: RIM, outline: OUTLINE, pastel: PASTEL, trailEdge: TRAIL_EDGE, outside: OUTSIDE, inside: INSIDE, edge: EDGE, dots: 'rgba(46,107,90,.2)', shadow: 'rgba(46,107,90,.16)' };
+export const lookFor = (festive: boolean): Look => festive ? FESTIVE_LOOK : ORIGINAL_LOOK;
 
 /** Colour-independent player marks on a 24 x 24 box, as SVG path data usable by both Path2D and inline SVG. */
 const star = (() => {
@@ -43,8 +51,10 @@ export const MARKS: readonly string[] = [
 const markPaths = MARKS.map(d => (d ? new Path2D(d) : null));
 
 /** Inline SVG for HUD rows. Constants only, so safe to inject. */
-export const markSvg = (id: number) =>
-  `<svg class="cl-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="${MARKS[id]}" fill="${PALETTE[id]}" fill-rule="evenodd" stroke="${RIM[id]}" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"/></svg>`;
+export const markSvg = (id: number) => {
+  const look = lookFor(christmas());
+  return `<svg class="cl-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="${MARKS[id]}" fill="${look.palette[id]}" fill-rule="evenodd" stroke="${look.rim[id]}" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"/></svg>`;
+};
 
 interface Fx {
   kind: 'flash' | 'burst';
@@ -87,6 +97,10 @@ function cellsTile(cells: number[], color: string): { tile: HTMLCanvasElement; x
 
 export function createRenderer(canvas: HTMLCanvasElement): Renderer {
   const ctx = canvas.getContext('2d')!;
+  // Theme is fixed for the life of this renderer (one mount); textures are built once.
+  const festive = christmas(), look = lookFor(festive);
+  const bulbs = festive ? look.palette.map((c, id) => (id ? bulbSprite(c) : null)) : [];
+  let snow: ReturnType<typeof snowPattern> | null = null;
   const view = { width: 1, height: 1, headScreen: { x: 0.5, y: 0.5 } };
   let dpr = 1;
   let cache: HTMLCanvasElement | null = null;
@@ -126,12 +140,12 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
     }
     // All rims first so one owner's shadow never paints over a neighbour's fill.
     c.save(); c.translate(0, 0.35);
-    for (const { id, path } of paths) { c.fillStyle = RIM[id]; c.fill(path, 'evenodd'); }
+    for (const { id, path } of paths) { c.fillStyle = look.rim[id]; c.fill(path, 'evenodd'); }
     c.restore();
     c.lineJoin = 'round'; c.lineWidth = 0.12;
     for (const { id, path } of paths) {
-      c.fillStyle = PALETTE[id]; c.fill(path, 'evenodd');
-      c.strokeStyle = OUTLINE[id]; c.stroke(path);
+      c.fillStyle = look.palette[id]; c.fill(path, 'evenodd');
+      c.strokeStyle = look.outline[id]; c.stroke(path);
     }
     c.restore();
   }
@@ -140,20 +154,22 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
     for (const e of events) {
       if (e.kind === 'capture' || e.kind === 'takeover') {
         const attacker = e.kind === 'capture' ? e.id : e.to;
-        const box = cellsTile(e.cells, e.kind === 'capture' ? '#ffffff' : PALETTE[attacker]);
+        const box = cellsTile(e.cells, e.kind === 'capture' ? '#ffffff' : look.palette[attacker]);
         if (!box) continue;
-        fx.push({ kind: 'flash', born: -1, life: e.kind === 'capture' ? 220 : 300, color: PALETTE[attacker], x: box.x, y: box.y, w: box.w, h: box.h, tile: box.tile, alpha: e.kind === 'capture' ? 0.85 : 0.7 });
+        fx.push({ kind: 'flash', born: -1, life: e.kind === 'capture' ? 220 : 300, color: look.palette[attacker], x: box.x, y: box.y, w: box.w, h: box.h, tile: box.tile, alpha: e.kind === 'capture' ? 0.85 : 0.7 });
       } else if (e.kind === 'defeat') {
-        fx.push({ kind: 'burst', born: -1, life: 400, color: PALETTE[e.id], x: e.x, y: e.y, w: 0, h: 0, tile: null, alpha: 1 });
+        fx.push({ kind: 'burst', born: -1, life: 400, color: look.palette[e.id], x: e.x, y: e.y, w: 0, h: 0, tile: null, alpha: 1 });
       }
     }
     if (fx.length > FX_LIMIT) fx = fx.slice(fx.length - FX_LIMIT);
   }
 
-  const trailColor = (id: number) => PASTEL[id];
+  const trailColor = (id: number) => look.pastel[id];
 
+  const bounds = { x0: 0, y0: 0, x1: 0, y1: 0 };
   function drawTrail(p: Player, hx: number, hy: number, cell: number) {
     if (p.trail.length < 2) return;
+    if (festive) { drawLightTrail(ctx, p.trail, hx, hy, cell, look.trailEdge[p.id], look.pastel[p.id], bulbs[p.id]!, bounds); return; }
     ctx.beginPath();
     ctx.moveTo(p.trail[0], p.trail[1]);
     for (let i = 2; i < p.trail.length; i += 2) ctx.lineTo(p.trail[i], p.trail[i + 1]);
@@ -174,7 +190,7 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
     ctx.moveTo(s, 0); ctx.lineTo(-s * 0.75, s * 0.8); ctx.lineTo(-s * 0.75, -s * 0.8); ctx.closePath();
     if (human) { ctx.lineWidth = 0.95; ctx.strokeStyle = INK; ctx.stroke(); }
     ctx.lineWidth = human ? 0.6 : 0.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
-    ctx.lineWidth = 0.3; ctx.strokeStyle = PALETTE[p.id]; ctx.fillStyle = PALETTE[p.id]; ctx.stroke(); ctx.fill();
+    ctx.lineWidth = 0.3; ctx.strokeStyle = look.palette[p.id]; ctx.fillStyle = look.palette[p.id]; ctx.stroke(); ctx.fill();
     // Eyes look forward.
     ctx.fillStyle = '#ffffff';
     for (const side of [-1, 1]) { ctx.beginPath(); ctx.arc(s * 0.2, side * 0.3, 0.19, 0, Math.PI * 2); ctx.fill(); }
@@ -238,20 +254,31 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
     }
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = OUTSIDE; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = look.outside; ctx.fillRect(0, 0, w, h);
     ctx.setTransform(dpr * cell, 0, 0, dpr * cell, tx * dpr, ty * dpr);
     const vx0 = camX - w / 2 / cell - 1, vx1 = camX + w / 2 / cell + 1, vy0 = camY - h / 2 / cell - 1, vy1 = camY + h / 2 / cell + 1;
 
+    if (festive) {
+      // Outside: a cached snowflake texture at device resolution, anchored to the world origin.
+      const px = cell * dpr;
+      if (!snow || snow.px !== px) snow = snowPattern(ctx, px);
+      if (snow.pattern) {
+        snow.pattern.setTransform(new DOMMatrix([1, 0, 0, 1, Math.round(tx * dpr), Math.round(ty * dpr)]));
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = snow.pattern; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.setTransform(dpr * cell, 0, 0, dpr * cell, tx * dpr, ty * dpr);
+      }
+    } else {
     // Outside stripes (world-anchored diagonals).
     ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 0.9; ctx.lineCap = 'butt';
     ctx.beginPath();
     for (let c = Math.floor((vx0 + vy0) / 3) * 3; c <= vx1 + vy1; c += 3) { ctx.moveTo(c - vy0, vy0); ctx.lineTo(c - vy1, vy1); }
     ctx.stroke();
+    }
 
     // Arena floor with a faint dot grid.
-    ctx.fillStyle = INSIDE;
+    ctx.fillStyle = look.inside;
     ctx.beginPath(); ctx.arc(CENTER, CENTER, ARENA_R, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(46,107,90,.2)';
+    ctx.fillStyle = look.dots;
     for (let gy = Math.ceil(vy0 / 4) * 4; gy <= vy1; gy += 4) {
       for (let gx = Math.ceil(vx0 / 4) * 4; gx <= vx1; gx += 4) {
         if (Math.hypot(gx - CENTER, gy - CENTER) < ARENA_R - 1) ctx.fillRect(gx - 0.08, gy - 0.08, 0.16, 0.16);
@@ -262,16 +289,26 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
     if (cache) ctx.drawImage(cache, 0, 0, GRID, GRID);
 
     // Clear outer edge with a soft inner shadow line.
-    ctx.strokeStyle = 'rgba(46,107,90,.16)'; ctx.lineWidth = 1.1;
+    ctx.strokeStyle = look.shadow; ctx.lineWidth = 1.1;
     ctx.beginPath(); ctx.arc(CENTER, CENTER, ARENA_R - 0.75, 0, Math.PI * 2); ctx.stroke();
+    // The candy ring is only stroked while the arena edge can be on screen.
+    if (festive) { if (Math.hypot(camX - CENTER, camY - CENTER) + Math.hypot(w, h) / 2 / cell > ARENA_R - 1) drawCandyRing(ctx, CENTER, CENTER, ARENA_R + 0.2); }
+    else {
     ctx.strokeStyle = EDGE; ctx.lineWidth = 0.45;
     ctx.beginPath(); ctx.arc(CENTER, CENTER, ARENA_R + 0.2, 0, Math.PI * 2); ctx.stroke();
+    }
 
+    bounds.x0 = vx0; bounds.y0 = vy0; bounds.x1 = vx1; bounds.y1 = vy1;
     const pos = (p: Player) => ({ x: p.px + (p.x - p.px) * a, y: p.py + (p.y - p.py) * a });
     const living = world.players.filter(p => p.alive);
     for (const p of living) { const q = pos(p); drawTrail(p, q.x, q.y, cell); }
     for (const p of living) { if (p.id !== HUMAN) { const q = pos(p); drawHead(p, q.x, q.y); } }
-    if (human.alive) { const q = pos(human); drawHead(human, q.x, q.y); }
+    if (human.alive) {
+      const q = pos(human); drawHead(human, q.x, q.y);
+      // Only the player wears a Santa hat, upright above the head, so You is easy to find.
+      // drawSantaHat works in pixel-sized units, so draw it in a 1/24-cell frame.
+      if (festive) { ctx.save(); ctx.translate(q.x, q.y - 0.88); ctx.scale(1 / 24, 1 / 24); drawSantaHat(ctx, 0, 0, 30, 0, -0.7); ctx.restore(); }
+    }
     if (!reducedMotion) drawEffects(nowMs);
 
     // Bot name labels in screen space so text stays crisp.

@@ -3,6 +3,11 @@ import {FruitEngine,TIERS,WIDTH,HEIGHT,LEFT,RIGHT,FLOOR,DANGER,STEP} from './eng
 import {drawFruit} from './art';
 import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import './style.css';
+import './christmas.css';
+import {christmas} from '../../festive/festive';
+import {ornamentName,ornamentColor,drawOrnament,drawFestiveRim,drawFestiveFlash,FestiveScene} from './christmas-art';
+// Display names follow the active theme; rules and saves only ever use tier numbers.
+const tierName=(tier:number)=>christmas()?ornamentName(tier):TIERS[tier].name;
 interface Spark {x:number;y:number;vx:number;vy:number;life:number;color:string}
 const module:GameModule={
  id:'fruit-merge',title:'Suika Game',cover:'game-art/fruit-merge/cover.svg',
@@ -13,21 +18,23 @@ const module:GameModule={
   const preview=root.querySelector<HTMLCanvasElement>('.fm-next canvas')!,pc=preview.getContext('2d')!,nextLabel=root.querySelector<HTMLElement>('.fm-next-name')!,count=root.querySelector<HTMLElement>('.fm-count')!,banner=root.querySelector<HTMLElement>('.fm-banner')!;
   const physics=new FruitEngine();let paused=false,disposed=false,raf=0,last=0,accumulator=0,previousScore=-1,previousNext=-1,previousCount=-1,previousStatus='',previousLevel=-1,didLose=false,dirty=false;
   let sparks:Spark[]=[];let flash:{x:number;y:number;text:string;life:number}|undefined;
+  // Christmas only: snow, twinkling lights, the swinging ornament and merge bursts. Purely visual.
+  const scene=christmas()?new FestiveScene(WIDTH,HEIGHT):undefined;
   const available=container.parentElement!;
   function resize(){
    // The loss/warning banner can wrap in landscape. Reserve its measured height.
    const chrome=root.querySelector<HTMLElement>('.fm-top')!.offsetHeight+banner.offsetHeight;
    const width=Math.max(1,Math.min(available.clientWidth,(available.clientHeight-chrome)*WIDTH/HEIGHT));
-   root.style.setProperty('--fm-width',`${width}px`);
+   root.style.setProperty('--fm-width',`${width}px`);previousNext=-1;
   }
   const observer=new ResizeObserver(resize);observer.observe(available);observer.observe(banner);
   const report=()=>{
    if(previousScore!==physics.score){previousScore=physics.score;context.setScore(physics.score);}
-   if(previousNext!==physics.next){previousNext=physics.next;nextLabel.textContent=TIERS[physics.next].name;pc.clearRect(0,0,104,104);drawFruit(pc,physics.next,52,57,35,0,true);}
+   if(previousNext!==physics.next){previousNext=physics.next;nextLabel.textContent=tierName(physics.next);drawPreview();}
    if(previousCount!==physics.fruits.size){previousCount=physics.fruits.size;count.textContent=`${physics.fruits.size} fruit${physics.fruits.size===1?'':'s'} in basket`;}
    let highest=0,danger=0;for(const f of physics.fruits.values()){highest=Math.max(highest,f.tier);danger=Math.max(danger,f.danger);}
-   if(previousLevel!==highest){previousLevel=highest;context.setLevel(TIERS[highest].name);}
-   const status=physics.lost?'Basket full':danger>200?'Pile too high':TIERS[physics.current].name;
+   if(previousLevel!==highest){previousLevel=highest;context.setLevel(tierName(highest));}
+   const status=physics.lost?'Basket full':danger>200?'Pile too high':tierName(physics.current);
    if(previousStatus!==status){previousStatus=status;context.setStatus(status);}
    banner.textContent=physics.lost?'Basket full':danger>200?`Above line · ${Math.max(0,(2000-danger)/1000).toFixed(1)}s`:'';
    canvas.setAttribute('aria-busy',String(!physics.ready&&!physics.lost));
@@ -35,11 +42,25 @@ const module:GameModule={
    if(physics.lost&&!didLose){didLose=true;context.sound('lose');context.announce(`Basket full. Final score ${physics.score}.`);context.save(physics.snapshot());}
   };
   physics.onMerge=m=>{
-   context.sound('success');context.announce(`${TIERS[m.tier].name}! ${m.points} points${m.combo>1?`, combo ${m.combo}`:''}.`);dirty=true;
-   if(!context.settings.reducedMotion){flash={x:m.x,y:m.y-20,text:m.combo>1?`+${m.points} ×${Math.min(4,m.combo)}`:`+${m.points}`,life:750};for(let n=0;n<10;n++){const angle=n*Math.PI/5;sparks.push({x:m.x,y:m.y,vx:Math.cos(angle)*(1.2+n%3),vy:Math.sin(angle)*2-1,life:450,color:TIERS[m.tier].color});}if(sparks.length>100)sparks=sparks.slice(-100);}
+   context.sound('success');context.announce(`${tierName(m.tier)}! ${m.points} points${m.combo>1?`, combo ${m.combo}`:''}.`);dirty=true;
+   if(!context.settings.reducedMotion){if(scene){const born=[...physics.fruits.values()].pop();scene.merged(m.x,m.y,m.tier,TIERS[m.tier].r,born?.tier===m.tier?born.id:undefined);flash={x:m.x,y:m.y-20,text:m.combo>1?`+${m.points} ×${Math.min(4,m.combo)}`:`+${m.points}`,life:750};return;}flash={x:m.x,y:m.y-20,text:m.combo>1?`+${m.points} ×${Math.min(4,m.combo)}`:`+${m.points}`,life:750};for(let n=0;n<10;n++){const angle=n*Math.PI/5;sparks.push({x:m.x,y:m.y,vx:Math.cos(angle)*(1.2+n%3),vy:Math.sin(angle)*2-1,life:450,color:christmas()?ornamentColor(m.tier):TIERS[m.tier].color});}if(sparks.length>100)sparks=sparks.slice(-100);}
   };
+  // Match the backing store to the board's size on screen, so ornaments are rasterised at
+  // the resolution they are shown at instead of being stretched. The ratio is a multiple of
+  // 1/30 so the backing store stays exactly 12k × 17k pixels (360:510, which sets the board's
+  // height), and the steps are coarse enough that tiny layout changes do not reallocate it; capped at 3.
+  function pixelRatio(){
+   const shown=canvas.clientWidth||WIDTH,device=window.devicePixelRatio||1;
+   return Math.min(90,Math.max(30,Math.ceil(shown*device/12)))/30;
+  }
+  function drawPreview(){
+   const shown=preview.clientWidth||52,size=Math.min(312,Math.max(104,Math.ceil(shown*(window.devicePixelRatio||1)/52)*52));
+   if(preview.width!==size){preview.width=preview.height=size;}
+   pc.setTransform(size/104,0,0,size/104,0,0);pc.clearRect(0,0,104,104);drawFruit(pc,physics.next,52,57,35,0,true);
+  }
   function draw(){
-   const ratio=Math.min(window.devicePixelRatio||1,2);const w=Math.round(WIDTH*ratio),h=Math.round(HEIGHT*ratio);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}c.setTransform(ratio,0,0,ratio,0,0);c.clearRect(0,0,WIDTH,HEIGHT);
+   const ratio=pixelRatio();const w=Math.round(WIDTH*ratio),h=Math.round(HEIGHT*ratio);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}c.setTransform(ratio,0,0,ratio,0,0);c.clearRect(0,0,WIDTH,HEIGHT);
+   if(scene){drawFestive(ratio,context.settings.reducedMotion);notifyGlassFrame(canvas);return;}
    c.fillStyle='#fff2ca';c.fillRect(0,0,WIDTH,HEIGHT);
    c.fillStyle='#eed6a842';for(let y=90;y<HEIGHT;y+=32)for(let x=0;x<WIDTH;x+=32)if((x/32+(y-90)/32)%2===0){c.fillRect(x,y,32,32);}
    // The basket is quiet and light so fruit silhouettes carry the scene.
@@ -58,11 +79,29 @@ const module:GameModule={
    if(flash){c.globalAlpha=Math.min(1,flash.life/200);c.font='bold 21px sans-serif';c.textAlign='center';c.strokeStyle='#fff9e8';c.lineWidth=5;c.strokeText(flash.text,flash.x,flash.y);c.fillStyle='#975c39';c.fillText(flash.text,flash.x,flash.y);c.globalAlpha=1;}
    notifyGlassFrame(canvas);
   }
+  function drawFestive(ratio:number,reduced:boolean){
+   const s=scene!;s.drawBack(c,ratio,reduced);
+   s.drawDanger(c,LEFT+3,RIGHT-3,DANGER,[...physics.fruits.values()].some(f=>f.danger>200));
+   if(!physics.lost){
+    const r=TIERS[physics.current].r;c.strokeStyle='rgba(120,150,190,.45)';c.setLineDash([2,6]);c.lineCap='round';c.lineWidth=1.6;c.beginPath();c.moveTo(physics.aim,62+r);c.lineTo(physics.aim,FLOOR-3);c.stroke();c.setLineDash([]);
+    c.fillStyle='rgba(90,120,170,.22)';c.beginPath();c.ellipse(physics.aim,FLOOR-4,r*.7,4,0,0,Math.PI*2);c.fill();
+   }
+   for(const f of physics.fruits.values())drawOrnament(c,f.tier,f.body.position.x,f.body.position.y,TIERS[f.tier].r,f.body.angle,context.settings.colorBlind,s.scale(f.id));
+   drawFestiveRim(c,FLOOR);
+   if(!physics.lost){
+    // After a drop the next ornament slides down its thread and fades in.
+    const p=Math.min(1,Math.max(0,(physics.time-physics.lastDrop)/450)),k=reduced?1:1-(1-p)**3;
+    s.drawHanging(c,{tier:physics.current,x:physics.aim,y:58-(1-k)*26,r:TIERS[physics.current].r,alpha:physics.ready?1:.35+.45*k,number:context.settings.colorBlind},reduced,drawOrnament);
+   }
+   if(reduced)flash=undefined;
+   s.drawFront(c);
+   if(flash)drawFestiveFlash(c,flash.text,flash.x,flash.y,flash.life);
+  }
   // The shared glass lens samples each drawn frame; repaint redraws the current state only.
   const releaseGlass=registerGlassFrameSource(canvas,()=>{if(!disposed)draw();});
   function frame(now:number){
    raf=0;if(disposed||paused)return;if(!last)last=now;const elapsed=Math.min(100,Math.max(0,now-last));last=now;
-   if(!paused){accumulator+=elapsed;while(accumulator>=STEP){physics.step();for(const p of sparks){p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.life-=STEP;}sparks=sparks.filter(p=>p.life>0);if(flash){flash.life-=STEP;flash.y-=.35;if(flash.life<=0)flash=undefined;}accumulator-=STEP;}report();if(dirty){dirty=false;context.save(physics.snapshot());}}
+   if(!paused){accumulator+=elapsed;while(accumulator>=STEP){physics.step();scene?.step(STEP,physics.aim,[...physics.fruits.values()].map(f=>({id:f.id,tier:f.tier,x:f.body.position.x,y:f.body.position.y,r:TIERS[f.tier].r})),context.settings.reducedMotion);for(const p of sparks){p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.life-=STEP;}sparks=sparks.filter(p=>p.life>0);if(flash){flash.life-=STEP;flash.y-=.35;if(flash.life<=0)flash=undefined;}accumulator-=STEP;}report();if(dirty){dirty=false;context.save(physics.snapshot());}}
    draw();if(!paused&&!disposed)raf=requestAnimationFrame(frame);
   }
   function doDrop(){if(paused||disposed)return;if(physics.drop()){context.sound('tap');report();context.save(physics.snapshot());draw();}else if(!physics.lost){context.announce('Wait for room at the top of the basket.');}}
@@ -78,9 +117,9 @@ const module:GameModule={
   return {
    pause(){if(paused||disposed)return;paused=true;cancelAnimationFrame(raf);raf=0;pointer=undefined;last=0;accumulator=0;report();},
    resume(){if(!paused||disposed)return;paused=false;last=0;accumulator=0;report();raf=requestAnimationFrame(frame);},
-   restart(){physics.restart();sparks=[];flash=undefined;didLose=false;dirty=false;last=0;accumulator=0;previousNext=-1;report();draw();context.save(physics.snapshot());},
+   restart(){physics.restart();scene?.reset();sparks=[];flash=undefined;didLose=false;dirty=false;last=0;accumulator=0;previousNext=-1;report();draw();context.save(physics.snapshot());},
    serialize(){return physics.snapshot();},
-   restore(data:unknown){if(physics.restore(data)){sparks=[];flash=undefined;didLose=physics.lost;dirty=false;last=0;accumulator=0;previousNext=-1;report();draw();}},
+   restore(data:unknown){if(physics.restore(data)){scene?.reset();sparks=[];flash=undefined;didLose=physics.lost;dirty=false;last=0;accumulator=0;previousNext=-1;report();draw();}},
    dispose(){if(disposed)return;disposed=true;releaseGlass();observer.disconnect();cancelAnimationFrame(raf);canvas.removeEventListener('pointerdown',pointerDown);canvas.removeEventListener('pointermove',pointerMove);canvas.removeEventListener('pointerup',pointerUp);canvas.removeEventListener('pointercancel',pointerCancel);canvas.removeEventListener('keydown',key);physics.dispose();sparks=[];root.remove();}
   };
  }
