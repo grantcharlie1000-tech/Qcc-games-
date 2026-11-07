@@ -7,7 +7,7 @@ const score:Field={label:'Score',source:'#game-score strong'};
 const level:Field={label:'',source:'#game-level'};
 /** Read the game's existing presentation. Models and the frozen context API remain the owners of state. */
 const fields:Record<GameId,Field[]>={
-  'fruit-merge':[score], 'water-sort':[level], 'color-blocks':[score],
+  'fruit-merge':[score], 'water-sort':[level], 'color-blocks':[{label:'Score',source:'.cb-score-total'}],
   tower:[{label:'Floors',source:'.tower-height'},{label:'Streak',source:'.tower-combo'}],
   snake:[score], 'neon-coil':[{label:'Mass',source:'.nc-mass'}],
   minesweeper:[{label:'Flags',source:'.ms-count'},{label:'Time',source:'.ms-time'}],

@@ -12,3 +12,31 @@
 /* The in-flow dock reserves its own row, so the board needs no header offset. */
 .cb-game{container-type:size;padding:8px 0;gap:16px}
 .cb-board-frame,.cb-tray{width:min(calc(100% - 16px),calc((100cqh - 76px)*.8))}
+
+/* Reward systems: combo pips, breakdown, new best, line-clear preview and the effects layer. */
+.cb-game{--cb-ease:cubic-bezier(.23,1,.32,1)}
+.cb-board-frame,.cb-tray{width:min(calc(100% - 16px),calc((100cqh - 112px)*.8))}
+.cb-hud-row{flex:none;display:flex;align-items:center;gap:8px;width:min(calc(100% - 16px),calc((100cqh - 112px)*.8));height:22px;font-size:12px;line-height:1;color:#d9c8e8;white-space:nowrap}
+.cb-combo{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:11px;background:#4a2f63;color:#fff0b3}.cb-combo[hidden],.cb-best[hidden]{display:none}
+.cb-combo-label{font-weight:800;letter-spacing:.02em}.cb-pips{display:inline-flex;gap:3px}.cb-pips i{width:6px;height:6px;border-radius:50%;background:#ffffff2e}.cb-pips i.cb-pip-on{background:#9ff0c4}
+.cb-breakdown{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:center;font-variant-numeric:tabular-nums}
+.cb-best{padding:4px 8px;border-radius:11px;background:#5b4210;color:#ffd75e;font-weight:800}
+.cb-score-wrap{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.cb-cell.cb-line-preview{background:#5a3f6e;box-shadow:inset 0 0 0 1px #ffe9a8,0 0 8px #ffd36e88;z-index:1}.cb-cell.cb-line-preview svg{opacity:1}
+.cb-preview-rainbow .cb-cell.cb-line-preview{box-shadow:inset 0 0 0 1px #fff,0 0 10px #8ff3ff}
+.cb-shard{position:absolute;width:12.5%;height:12.5%;pointer-events:none}.cb-shard svg{display:block;width:100%;height:100%}
+.cb-sweep{position:absolute;display:block;background:linear-gradient(90deg,#fff6db00,#fff6db 30%,#fff 50%,#fff6db 70%,#fff6db00);box-shadow:0 0 14px #e6b3ff}
+.cb-sweep-row{left:0;width:100%;height:12.5%}.cb-sweep-col{top:0;height:100%;width:12.5%;background:linear-gradient(180deg,#fff6db00,#fff6db 30%,#fff 50%,#fff6db 70%,#fff6db00)}
+.cb-sweep.cb-rainbow{background:linear-gradient(90deg,#ff5b8a,#ffcf4a,#6dff9e,#55d6ff,#b77bff,#ff5b8a);box-shadow:0 0 18px #fff8}
+.cb-spark{position:absolute;width:5px;height:5px;border-radius:50%;background:#fff3c4;box-shadow:0 0 6px #ffe7a0}
+.cb-label{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;white-space:nowrap;pointer-events:none;z-index:4}
+.cb-label strong{font-size:clamp(22px,7cqw,34px);font-weight:900;color:#fff4c4;-webkit-text-stroke:1px #3a1d4f;text-shadow:0 3px 0 #2a1438,0 0 14px #ffcf6a88}
+.cb-label small{font-size:13px;font-weight:800;color:#e9d6ff;text-shadow:0 1px 2px #12091f}
+.cb-label-big strong{font-size:clamp(28px,9cqw,44px)}
+.cb-rainbow-text strong{background:linear-gradient(90deg,#ff7aa2,#ffd45a,#7dffb0,#6fdcff,#c79bff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 3px 0 #2a1438) drop-shadow(0 0 10px #ffcf6a66)}
+.cb-score-pop{left:auto;top:auto;transform:none;font-size:14px;margin-top:-6px}
+.cb-result{position:absolute;inset:18% 10%;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px;border-radius:14px;background:#25192ef2;box-shadow:0 10px 30px #0009;color:#f4edfa;text-align:center}.cb-result[hidden]{display:none}
+.cb-result>strong{font-size:15px;color:#ffd4dd}.cb-result-score{font-size:40px;font-weight:900;color:#fff0b3;font-variant-numeric:tabular-nums}.cb-result-note{font-size:13px;color:#d9c8e8}
+.cb-result-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;margin:6px 0;font-size:12px}.cb-result-stats div{display:flex;flex-direction:column}.cb-result-stats dt{color:#bfa9d3}.cb-result-stats dd{margin:0;font-weight:800;font-size:15px}
+.cb-again{margin-top:4px;min-height:44px;padding:0 22px;border:0;border-radius:22px;background:#f7c531;color:#271f4c;font-weight:900;font-size:15px;cursor:pointer}.cb-again:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.cb-over .cb-feedback{clip:rect(0,0,0,0);width:1px;height:1px;padding:0;margin:-1px}

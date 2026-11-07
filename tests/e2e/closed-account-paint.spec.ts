@@ -31,21 +31,48 @@ for(const fallback of [false,true])for(const close of ['guest','escape'] as cons
     await page.evaluate(()=>{for(const a of document.getAnimations()){a.pause();a.currentTime=90;}});
     await expect(dialog).toBeHidden();await expect(dialog).toHaveCSS('backdrop-filter','none');
     expect(await page.evaluate(()=>[310,512,720].some(x=>!!document.elementFromPoint(x,574)?.closest('#accounts-dialog')))).toBe(false);
-    const options={clip:{x:305,y:550,width:420,height:27},animations:'allow' as const};
+    const region={x:305,y:550,width:420,height:27};
+    // Capture the viewport, then crop decoded pixels. Cropped Chromium captures
+    // changed the same artwork edge pixel at (668,550) when the already-hidden
+    // dialog was forced to display:none, in both live and fallback glass modes.
+    // Keep the ROI away from the capture boundary in both the actual and control
+    // images, rather than dropping the edge pixel or widening the tolerance.
+    const viewport=page.viewportSize()!;
+    const options={animations:'allow' as const};
     const actual=await page.screenshot(options);
     const hidden=await page.addStyleTag({content:'#accounts-dialog,#accounts-dialog::backdrop{display:none!important}'});
     const without=await page.screenshot(options);await hidden.evaluate(e=>e.parentNode?.removeChild(e));
-    // The live glass under the tab bar re-rasterises with a few levels of dither between any two screenshots,
-    // so compare with a tolerance far below what a retained white rectangle would add.
-    const strayPixels=await page.evaluate(async([a,b])=>{
+    // Live glass can re-rasterise with a few levels of dither. Retain the original
+    // channel tolerance and require zero pixels above it throughout the same ROI.
+    const countStrayPixels=(first:Buffer,second:Buffer)=>page.evaluate(async({a,b,region,viewport})=>{
       const load=async(data:string)=>{const image=new Image();image.src='data:image/png;base64,'+data;await image.decode();
-        const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
-        const ctx=canvas.getContext('2d')!;ctx.drawImage(image,0,0);return ctx.getImageData(0,0,canvas.width,canvas.height).data;};
+        if(viewport.width<region.x+region.width||viewport.height<region.y+region.height)throw new Error('Screenshot does not cover account paint region');
+        // Screenshot pixels follow the device scale (Safari is 2x). Map both
+        // edges per axis, then copy at native resolution without resampling.
+        const scaleX=image.width/viewport.width,scaleY=image.height/viewport.height;
+        const x=Math.round(region.x*scaleX),y=Math.round(region.y*scaleY);
+        const width=Math.round((region.x+region.width)*scaleX)-x;
+        const height=Math.round((region.y+region.height)*scaleY)-y;
+        const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+        const ctx=canvas.getContext('2d')!;ctx.drawImage(image,x,y,width,height,0,0,width,height);
+        return ctx.getImageData(0,0,canvas.width,canvas.height).data;};
       const [first,second]=[await load(a),await load(b)];let stray=first.length===second.length?0:Infinity;
       for(let i=0;i<first.length&&stray!==Infinity;i+=4)if(Math.max(Math.abs(first[i]-second[i]),Math.abs(first[i+1]-second[i+1]),Math.abs(first[i+2]-second[i+2]))>24)stray++;
       return stray;
-    },[actual.toString('base64'),without.toString('base64')]);
-    expect(strayPixels,'closed account tree adds no pixels to the reported white-rectangle region').toBe(0);
+    },{a:first.toString('base64'),b:second.toString('base64'),region,viewport});
+    expect(await countStrayPixels(actual,without),'closed account tree adds no pixels to the reported white-rectangle region').toBe(0);
+    // Negative control: prove the identical capture/crop/comparison path still
+    // rejects a retained white rectangle instead of merely hiding the regression.
+    const retained=await page.evaluateHandle(({x,y,width,height})=>{
+      const element=document.createElement('div');element.setAttribute('aria-hidden','true');
+      Object.assign(element.style,{position:'fixed',left:`${x}px`,top:`${y}px`,width:`${width}px`,height:`${height}px`,
+        background:'#fff',zIndex:'2147483647',pointerEvents:'none'});
+      document.body.append(element);return element;
+    },region);
+    try{
+      const withRectangle=await page.screenshot(options);
+      expect(await countStrayPixels(withRectangle,without),'paint detector rejects a retained white rectangle').toBeGreaterThan(0);
+    }finally{await retained.evaluate(e=>e.remove());await retained.dispose();}
     await page.evaluate(()=>{for(const a of document.getAnimations())a.finish();});
     await page.reload();await expect(page.locator('.game-card').first()).toBeVisible();await expect(dialog).toBeHidden();
     await expect(dialog).toHaveCSS('backdrop-filter','none');
