@@ -100,6 +100,10 @@ See [the spec](docs/social-chat/SPEC.md), [deployment](docs/social-chat/DEPLOYME
 
 `src/election/` is the live election results page at `#/election`, lazily loaded through the same single-view slot as Social, Chat and the Santa Tracker. `server/election-feed.ts` reads the Electoral Commission's XML feed, which has no CORS headers, and condenses it into one JSON bundle at the same-origin `/api/election` (`functions/api/election.ts` on Pages, a Vite middleware in dev), with a 15-second per-isolate memo and a stale fallback. `model.ts` is pure and unit tested; trends and the event feed are recorded in `localStorage` (`qcc:election:v1`). See [docs/ELECTION.md](docs/ELECTION.md).
 
+## Predictions
+
+`src/predictions/` is a free play-credit forecasting feature at `#/predictions`, lazily loaded through the same single-view slot as Social. A weekly 10-credit allowance (Monday 00:00 Pacific/Auckland), a binary LMSR market maker in BigInt fixed point, a double-entry append-only journal whose triggers are the only writers of balances, exactly-once trades by operation key, moderated questions and one independently reviewed settlement per market. It ships dark: the migration needs approval and `predictions_config.enabled` defaults to false. See [docs/PREDICTIONS.md](docs/PREDICTIONS.md).
+
 ## Santa Tracker
 
 `src/santa/` is the Santa Tracker at `#/santa`. It is lazily loaded through the same single-view slot as Social and Chat. While the Christmas theme is on, a compact countdown sits above the game grid (`banner.ts`). The departure instant is configured in `public/santa/departure.json` (no-store), and the countdown runs on a server-anchored monotonic clock, not on device time. At the departure time the page loads the simulated tracker (`tracker/`). That tracker is QCC's simulation, not NORAD data. Research, configuration, test mode and the globe plan are described in [docs/SANTA_TRACKER.md](docs/SANTA_TRACKER.md).

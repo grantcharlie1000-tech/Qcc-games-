@@ -2,7 +2,7 @@ import {uiIcon} from './icons';
 import './section-navigation.css';
 
 /** Shared shell geometry and semantics; each owner supplies its destinations/actions. */
-export function createSectionNavigation(scope:'app'|'movies'|'social'|'chat'){
+export function createSectionNavigation(scope:'app'|'movies'|'social'|'chat'|'predictions'){
   const root=document.createElement('nav');
   root.className=`${scope}-navigation section-navigation`;
   root.setAttribute('aria-label','Sections');
