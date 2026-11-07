@@ -2,7 +2,7 @@ import {imageAsset} from './model';
 import type {Title} from './model';
 import {STREAM_PROVIDERS,START_THRESHOLD} from './provider';
 import type {StreamProviderId} from './provider';
-// Separate namespace. Never use game saves, scores, sync, or analytics.
+// Separate namespace. Watch history is never used for game saves, scores, sync or popularity reporting.
 export const MOVIES_KEY='qcc:movies:v1';
 export interface TitleSnapshot {id:string;kind:'movie'|'tv';name:string;year:number;poster:string;backdrop?:string}
 export interface MediaMeta {duration?:number;updated:number}
