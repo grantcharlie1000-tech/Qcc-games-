@@ -1,4 +1,6 @@
 import {COLS, ROWS, MAZE, FRUIT, GHOSTS, DEATH_FREEZE, DEATH_TICKS, fruitFor, levelSpec, type Dir, type Fruit, type GhostName, type State} from './model';
+import {christmas} from '../../festive/festive';
+import {BAUBLE_COLORS, festiveDefs, hatMarkup, snowPath, snowmanMarkup} from './christmas-art';
 
 /** Board units: one tile is 8 units; the maze is 224 × 248 with an 18-unit tray for lives and fruit below. */
 export const TILE = 8, WIDTH = COLS * TILE, MAZE_HEIGHT = ROWS * TILE, HEIGHT = MAZE_HEIGHT + 18;
@@ -99,7 +101,7 @@ export function fruitMarkup(kind: Fruit): string {
 function nibMarkup(prefix: string) {
   return `<g class="mm-nib-feet"><ellipse class="mm-foot-a" cx="-2.6" cy="5.6" rx="2.1" ry="1.3" fill="#0f7f6a"/><ellipse class="mm-foot-b" cx="2" cy="5.6" rx="2.1" ry="1.3" fill="#0f7f6a"/></g>
 <path class="mm-antenna" d="M0-5.5Q.5-8.5 2.6-9.2M-2.4-5Q-3-8.5-1-9.6" fill="none" stroke="#0f7f6a" stroke-width=".9" stroke-linecap="round"/>
-<circle cx="2.6" cy="-9.2" r="1.15" fill="#ffe14d"/><circle cx="-1" cy="-9.6" r="1.15" fill="#ffe14d"/>
+<circle class="mm-antenna-tip" cx="2.6" cy="-9.2" r="1.15" fill="#ffe14d"/><circle class="mm-antenna-tip" cx="-1" cy="-9.6" r="1.15" fill="#ffe14d"/>
 <path class="mm-nib-head" d="" fill="url(#${prefix}-nib)"/>
 <path class="mm-nib-jaw" d="" fill="#14a487"/>
 <path class="mm-nib-mouth" d="" fill="#0b2a33"/>
@@ -148,35 +150,48 @@ export interface Board {
 const ROTATE: Record<Dir, string> = {right: '', left: ' scale(-1 1)', up: ' rotate(-90)', down: ' rotate(90)'};
 
 export function createBoard(prefix = 'mm'): Board {
+  // Christmas skin: same elements and geometry, festive markup layered around them.
+  const xmas = christmas();
   const svg = el('svg', {viewBox: `0 0 ${WIDTH} ${HEIGHT}`, class: 'mm-svg', role: 'img', 'aria-label': 'Pac-Man board'});
-  svg.innerHTML = `<defs>
+  svg.innerHTML = `<defs>${xmas ? festiveDefs(prefix) + `<clipPath id="${prefix}-wallclip"><path d="${wallPath()}"/></clipPath>` : ''}
 <radialGradient id="${prefix}-nib" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#8dffe0"/><stop offset=".55" stop-color="#3fe0bd"/><stop offset="1" stop-color="#14a487"/></radialGradient>
 <filter id="${prefix}-glow" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 </defs>
 <rect width="${WIDTH}" height="${HEIGHT}" fill="#05071a"/>
-<g class="mm-maze"><path class="mm-wall" d="${wallPath()}"/><rect class="mm-door" x="${13 * TILE}" y="${12 * TILE + 3}" width="${2 * TILE}" height="2" rx="1"/></g>
+<g class="mm-maze"><path class="mm-wall" d="${wallPath()}"/>${xmas ? `<path class="xm-snow" d="${snowPath()}" clip-path="url(#${prefix}-wallclip)"/><path class="xm-wall-rim" d="${wallPath()}"/>` : ''}<rect class="mm-door" x="${13 * TILE}" y="${12 * TILE + 3}" width="${2 * TILE}" height="2" rx="1"/></g>
 <g class="mm-dots"></g><g class="mm-fruit"></g><g class="mm-ghosts"></g><g class="mm-player"></g>
 <text class="mm-banner" x="${WIDTH / 2}" y="${18 * TILE + 7}" text-anchor="middle"></text>
 <text class="mm-popup" text-anchor="middle"></text>
 <g class="mm-tray" transform="translate(0 ${MAZE_HEIGHT})"><g class="mm-lives"></g><g class="mm-levels"></g></g>`;
   const dotLayer = svg.querySelector('.mm-dots')!, fruitLayer = svg.querySelector<SVGGElement>('.mm-fruit')!;
   const dots: (SVGCircleElement | null)[] = [];
+  const caps: (SVGPathElement | null)[] = [];
+  let baubles = 0;
   const layout = MAZE.join('');
   for (let i = 0; i < layout.length; i++) {
     const k = layout[i];
-    if (k !== '.' && k !== 'o') {dots.push(null); continue;}
+    if (k !== '.' && k !== 'o') {dots.push(null); caps.push(null); continue;}
     const x = (i % COLS) * TILE + TILE / 2, y = Math.floor(i / COLS) * TILE + TILE / 2;
-    dots.push(el('circle', k === 'o' ? {cx: x, cy: y, r: 3.4, class: 'mm-berry'} : {cx: x, cy: y, r: 1.1, class: 'mm-dot'}, dotLayer));
+    const dot = el('circle', k === 'o' ? {cx: x, cy: y, r: 3.4, class: 'mm-berry'} : {cx: x, cy: y, r: 1.1, class: 'mm-dot'}, dotLayer);
+    dots.push(dot);
+    // Baubles: the power berry circle is the glass; a gold cap and loop sit just above it.
+    if (xmas && k === 'o') {
+      const n = baubles++ % BAUBLE_COLORS.length;
+      dot.style.fill = `url(#${prefix}-bauble-${n})`;
+      caps.push(el('path', {class: 'xm-cap', d: `M${x - 1.1} ${y - 3.1}h2.2v-1.1h-2.2ZM${x} ${y - 4.2}a.7 .7 0 1 1 0 -1.4a.7 .7 0 1 1 0 1.4`}, dotLayer));
+    } else caps.push(null);
   }
   const player = el('g', {class: 'mm-nib'}, svg.querySelector('.mm-player')!);
   const nibPose = el('g', {}, player);
-  nibPose.innerHTML = nibMarkup(prefix);
+  nibPose.innerHTML = xmas
+    ? nibMarkup(prefix) + hatMarkup(-.9, -5, 6.6, -.2, -.75)
+    : nibMarkup(prefix);
   const burst = el('g', {class: 'mm-burst'}, player);
   for (let i = 0; i < 8; i++) el('line', {x1: 0, y1: -3, x2: 0, y2: -7, transform: `rotate(${i * 45})`}, burst);
   const ghostLayer = svg.querySelector('.mm-ghosts')!;
   const wisps = GHOSTS.map(name => {
     const g = el('g', {class: `mm-wisp mm-wisp-${name}`, style: `--mm-wisp:${GHOST_COLORS[name]}`}, ghostLayer);
-    g.innerHTML = wispMarkup(name);
+    g.innerHTML = xmas ? snowmanMarkup(name) : wispMarkup(name);
     return g;
   });
   const banner = svg.querySelector<SVGTextElement>('.mm-banner')!, popup = svg.querySelector<SVGTextElement>('.mm-popup')!;
@@ -187,7 +202,7 @@ export function createBoard(prefix = 'mm'): Board {
     svg.classList.toggle('mm-reduced', reduced);
     svg.classList.toggle('mm-colorblind', colorBlind);
     if (s.dots !== lastDots) {
-      for (let i = 0; i < s.dots.length; i++) {const d = dots[i]; if (d) d.style.display = s.dots[i] === ' ' ? 'none' : '';}
+      for (let i = 0; i < s.dots.length; i++) {const d = dots[i]; if (d) d.style.display = s.dots[i] === ' ' ? 'none' : ''; const c = caps[i]; if (c) c.style.display = s.dots[i] === ' ' ? 'none' : '';}
       lastDots = s.dots;
     }
     // Clearing a level: the walls blink white four times (one steady change with reduced motion).
@@ -239,7 +254,7 @@ export function createBoard(prefix = 'mm'): Board {
       node.classList.toggle('mm-ending', g.frightened && !eyes && flashing && !reduced);
       node.classList.toggle('mm-ending-calm', g.frightened && !eyes && s.fright <= spec.flashes * 28 && reduced);
       const sway = reduced ? 0 : Math.sin((s.tick + i * 7) / 6) * 1.2;
-      node.querySelector('.mm-wisp-flame')!.setAttribute('d', flamePath(sway));
+      if (!xmas) node.querySelector('.mm-wisp-flame')!.setAttribute('d', flamePath(sway));
       const look = {up: [0, -1.4], down: [0, 1.4], left: [-1.4, 0], right: [1.4, 0]}[g.dir];
       node.querySelectorAll('.mm-wisp-pupil').forEach(pupil => pupil.setAttribute('transform', `translate(${look[0]} ${look[1]})`));
     });
@@ -255,7 +270,7 @@ export function createBoard(prefix = 'mm'): Board {
 
     // Tray: spare lives on the left, recent bonus fruit on the right.
     if (s.lives !== lastLives) {
-      lives.innerHTML = Array.from({length: Math.min(s.lives, 5)}, (_, i) => `<g transform="translate(${16 + i * 16} 9) scale(.78)"><circle r="6.2" fill="url(#${prefix}-nib)"/><path d="M-1.2 .9 6 -.3 5.6 2.6Z" fill="#0b2a33"/><circle cx="1.4" cy="-2.6" r="1.9" fill="#fff"/><circle cx="2.1" cy="-2.4" r="1" fill="#0b2a33"/></g>`).join('');
+      lives.innerHTML = Array.from({length: Math.min(s.lives, 5)}, (_, i) => `<g transform="translate(${16 + i * 16} 9) scale(.78)"><circle r="6.2" fill="url(#${prefix}-nib)"/><path d="M-1.2 .9 6 -.3 5.6 2.6Z" fill="#0b2a33"/><circle cx="1.4" cy="-2.6" r="1.9" fill="#fff"/><circle cx="2.1" cy="-2.4" r="1" fill="#0b2a33"/>${xmas ? hatMarkup(-.9, -5, 6.6, -.2, -.75) : ''}</g>`).join('');
       lastLives = s.lives;
     }
     if (s.level !== lastLevel) {

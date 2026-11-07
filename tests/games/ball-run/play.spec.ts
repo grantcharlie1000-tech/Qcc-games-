@@ -545,9 +545,11 @@ test('lost WebGL visibly saves and remains stopped until exit and re-entry',asyn
   const distance=(await saved(page)).run.distance;
   await frames(page,10);expect((await saved(page)).run.distance).toBe(distance);
   await backToGames(page);await page.getByRole('link',{name:'Play Ball Run',exact:true}).click();
-  // Re-entry rebuilds the WebGL scene, which can outlast the 7s expect window under software GL in CI: wait for the game to show its saved-run panel, then check the control is exposed.
-  await page.waitForFunction(()=>document.querySelector('.ball-run .br-continue:not([hidden])')!==null);
-  await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeVisible();expect(await data(page,'distance')).toBeCloseTo(distance,2);
+  // Measured (chromium, SwiftShader, scratch probe, 1x/4x/6x CPU throttle): re-entry to Continue takes 3.0-4.9 s on the lost-context path and
+  // the same on a normal one. ~2.6 s of it is the synchronous webgl2 getContext() inside createScene; the game chunk is already cached and the
+  // save read is negligible. The shell's remaining ~0.7 s is restore()->screen(). That outlasts the default 7 s expect window under load, so give
+  // the Continue control its own explicit 20 s bound instead of an unbounded wait.
+  await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeVisible({timeout:20_000});expect(await data(page,'distance')).toBeCloseTo(distance,2);
 });
 
 test('losing WebGL while a panel control has focus moves focus to the message',async({page})=>{
@@ -581,7 +583,11 @@ test('repeated restarts release held input and reuse the same GPU resources',asy
   }
   await page.keyboard.down('ArrowRight');await page.getByRole('button',{name:'Play',exact:true}).click();await waitDistance(page,2);await page.keyboard.up('ArrowRight');
   await expect(root).toHaveAttribute('data-x','0.000');await expect(root).toHaveAttribute('data-geometries',geometries!);
-  expect(Number(await root.getAttribute('data-draw-calls'))).toBeLessThanOrEqual(11);expect(Number(geometries)).toBeLessThanOrEqual(4);
+  // The Christmas theme (the default) stays within the same draw-call budget. Its geometry is the snow cap, the boost glint,
+  // the falling snow, the twisted road tile and the sleigh's two merged meshes in place of the ball's sphere: box, city
+  // lines and those six.
+  const festive=await page.evaluate(()=>document.documentElement.dataset.festive==='christmas');
+  expect(Number(await root.getAttribute('data-draw-calls'))).toBeLessThanOrEqual(11);expect(Number(geometries)).toBeLessThanOrEqual(festive?8:4);
   await evidence(page,`procedural-restart.png`);
 });
 

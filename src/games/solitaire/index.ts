@@ -1,6 +1,7 @@
 import type { GameModule, GameContext } from '../../core/types';
 import { deal, act, undo, restore, hint, score, won, move, movable, rank, suit, red, type Session, type Source, type Target, type Action } from './model';
 import './solitaire.css';
+import './christmas.css';
 const symbols=['♣','♥','♠','♦'];
 const suits=['clubs','hearts','spades','diamonds'];
 const ranks=['','A','2','3','4','5','6','7','8','9','10','J','Q','K'];

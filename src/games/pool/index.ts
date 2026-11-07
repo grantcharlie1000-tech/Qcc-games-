@@ -10,6 +10,7 @@ import {RoomDialog,inviteCodeFromHash,relayOnlyFromHash} from '../../multiplayer
 import type {Room} from '../../multiplayer/room';
 import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import './style.css';
+import './christmas.css';
 
 export const rules=`Eight-ball. Pocket all of your group — solids (1–7) or stripes (9–15) — then pocket the 8 in the pocket you call.
 Aim: drag on the table (the cue points at your finger), use the fine-aim wheel, or the mouse wheel. Shoot: pull the cue in the power bar down and let go; drag it back to the top to cancel. Spin: tap the cue-ball button and place the dot for follow, draw or side.

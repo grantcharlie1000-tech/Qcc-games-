@@ -1,0 +1,46 @@
+{
+ "source": "NCEA_Study_Predictions_Complete_Pack verification/mechanics_golden_verified.json (80-digit Decimal reference model, 7 Nov 2026)",
+ "b_credits": "20",
+ "golden_purchases": [
+  {
+   "budget_credits": "0.5",
+   "executed_microshares": 987804,
+   "executed_debit_microcredits": 500000,
+   "executed_yes_percent": "51.234504056940400770347221150160602838210604688440765683762611637364454029877164",
+   "immediate_sell_all_proceeds_credits": "0.499999",
+   "void_payout_microcredits": 493902
+  },
+  {
+   "budget_credits": "1",
+   "executed_microshares": 1952371,
+   "executed_debit_microcredits": 1000000,
+   "executed_yes_percent": "52.438527585887631356074244473742735183231323561315418815769694299009255078131343",
+   "immediate_sell_all_proceeds_credits": "0.999999",
+   "void_payout_microcredits": 976185
+  },
+  {
+   "budget_credits": "2",
+   "executed_microshares": 3818056,
+   "executed_debit_microcredits": 2000000,
+   "executed_yes_percent": "54.758128381591345898489809186714693687986106690417434526336820778518982912824695",
+   "immediate_sell_all_proceeds_credits": "1.999999",
+   "void_payout_microcredits": 1909028
+  },
+  {
+   "budget_credits": "5",
+   "executed_microshares": 8996666,
+   "executed_debit_microcredits": 5000000,
+   "executed_yes_percent": "61.059959879968331728388128708083302028945351827003808616628289688757262374069889",
+   "immediate_sell_all_proceeds_credits": "4.999999",
+   "void_payout_microcredits": 4498333
+  },
+  {
+   "budget_credits": "10",
+   "executed_microshares": 16635931,
+   "executed_debit_microcredits": 10000000,
+   "executed_yes_percent": "69.673466681552898799079766727629902162162078608290815967529540510488076127837019",
+   "immediate_sell_all_proceeds_credits": "9.999999",
+   "void_payout_microcredits": 8317965
+  }
+ ]
+}

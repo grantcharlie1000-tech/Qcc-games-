@@ -1,0 +1,25 @@
+/*
+ * Shared Christmas tokens and textures. Every rule is scoped under
+ * :root[data-festive="christmas"] (see festive.ts), so switching the theme off
+ * restores the original look without touching saves or scores.
+ * Textures are tiny inline SVG tiles: no image files and no animation.
+ */
+:root[data-festive="christmas"]{
+  --xmas-red:#d8263a;--xmas-red-deep:#a81b2d;--xmas-red-dark:#6e1220;
+  --xmas-green:#2c9a55;--xmas-green-deep:#1f7a42;--xmas-evergreen:#0f3b2a;--xmas-evergreen-deep:#082619;
+  --xmas-gold:#e9b949;--xmas-gold-light:#f8dd8a;--xmas-gold-deep:#a87b1e;
+  --xmas-fur:#fff6e6;--xmas-snow:#f6faff;--xmas-snow-shade:#d9e3f1;
+  --xmas-ice:#bfe3f5;--xmas-ice-deep:#5fa8d3;--xmas-midnight:#0b1733;--xmas-midnight-deep:#060d20;
+  /* Scattered snowflakes and specks for dark backgrounds (160px tile). */
+  --xmas-snowflakes:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-width='1.4' opacity='.34'%3E%3Cpath d='M30 22v16M23 26l14 8M23 34l14-8'/%3E%3Cpath d='M118 92v12M113 95l10 6M113 101l10-6'/%3E%3Cpath d='M70 128v10M66 130l8 6M66 136l8-6'/%3E%3C/g%3E%3Cg fill='%23ffffff' opacity='.28'%3E%3Ccircle cx='92' cy='30' r='1.6'/%3E%3Ccircle cx='140' cy='48' r='1.2'/%3E%3Ccircle cx='52' cy='76' r='1.4'/%3E%3Ccircle cx='12' cy='110' r='1.1'/%3E%3Ccircle cx='150' cy='140' r='1.5'/%3E%3Ccircle cx='100' cy='150' r='1'/%3E%3C/g%3E%3C/svg%3E");
+  /* The same flakes in a soft blue-grey for light, snowy backgrounds. */
+  --xmas-snowflakes-light:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%238fb3cf' stroke-linecap='round' stroke-width='1.4' opacity='.38'%3E%3Cpath d='M30 22v16M23 26l14 8M23 34l14-8'/%3E%3Cpath d='M118 92v12M113 95l10 6M113 101l10-6'/%3E%3Cpath d='M70 128v10M66 130l8 6M66 136l8-6'/%3E%3C/g%3E%3C/svg%3E");
+  /* Night sky stars for midnight backgrounds (200px tile). */
+  --xmas-stars:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cg fill='%23fff8dc'%3E%3Ccircle cx='20' cy='30' r='1.1' opacity='.8'/%3E%3Ccircle cx='76' cy='12' r='.8' opacity='.6'/%3E%3Ccircle cx='150' cy='40' r='1.3' opacity='.85'/%3E%3Ccircle cx='110' cy='88' r='.7' opacity='.5'/%3E%3Ccircle cx='182' cy='120' r='1' opacity='.7'/%3E%3Ccircle cx='40' cy='140' r='.9' opacity='.6'/%3E%3Ccircle cx='96' cy='176' r='1.2' opacity='.75'/%3E%3Ccircle cx='160' cy='186' r='.7' opacity='.5'/%3E%3Cpath d='M58 70l1.4 3.6 3.6 1.4-3.6 1.4L58 80l-1.4-3.6-3.6-1.4 3.6-1.4z' opacity='.9'/%3E%3C/g%3E%3C/svg%3E");
+  /* A strand of lights: dark wire with five coloured bulbs per 200px. Tile horizontally. */
+  --xmas-light-strand:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 30'%3E%3Cpath d='M0 6q20 8 40 0t40 0 40 0 40 0 40 0' fill='none' stroke='%231d3527' stroke-width='2'/%3E%3Cg stroke='%231d3527' stroke-width='1'%3E%3Crect x='17' y='8' width='6' height='5' rx='1' fill='%23355040'/%3E%3Crect x='57' y='8' width='6' height='5' rx='1' fill='%23355040'/%3E%3Crect x='97' y='8' width='6' height='5' rx='1' fill='%23355040'/%3E%3Crect x='137' y='8' width='6' height='5' rx='1' fill='%23355040'/%3E%3Crect x='177' y='8' width='6' height='5' rx='1' fill='%23355040'/%3E%3C/g%3E%3Cellipse cx='20' cy='19' rx='4.6' ry='6.6' fill='%23e8323f'/%3E%3Cellipse cx='60' cy='19' rx='4.6' ry='6.6' fill='%23f4c430'/%3E%3Cellipse cx='100' cy='19' rx='4.6' ry='6.6' fill='%232fb35a'/%3E%3Cellipse cx='140' cy='19' rx='4.6' ry='6.6' fill='%232f8fe0'/%3E%3Cellipse cx='180' cy='19' rx='4.6' ry='6.6' fill='%23f07f2b'/%3E%3Cg fill='%23ffffff' opacity='.55'%3E%3Cellipse cx='18.5' cy='16.5' rx='1.4' ry='2.2'/%3E%3Cellipse cx='58.5' cy='16.5' rx='1.4' ry='2.2'/%3E%3Cellipse cx='98.5' cy='16.5' rx='1.4' ry='2.2'/%3E%3Cellipse cx='138.5' cy='16.5' rx='1.4' ry='2.2'/%3E%3Cellipse cx='178.5' cy='16.5' rx='1.4' ry='2.2'/%3E%3C/g%3E%3C/svg%3E");
+  /* A holly sprig: two leaves and three berries (64px). */
+  --xmas-holly:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M30 34c-4-8-14-12-24-10 3 3 2 6 6 7-3 2-3 5 1 7 3-1 6 1 7 4 3-4 7-5 10-8z' fill='%232c9a55' stroke='%231f6a3c' stroke-width='1.5' stroke-linejoin='round'/%3E%3Cpath d='M34 34c4-8 14-12 24-10-3 3-2 6-6 7 3 2 3 5-1 7-3-1-6 1-7 4-3-4-7-5-10-8z' fill='%2339ad63' stroke='%231f6a3c' stroke-width='1.5' stroke-linejoin='round'/%3E%3Ccircle cx='27' cy='38' r='5' fill='%23d8263a'/%3E%3Ccircle cx='37' cy='38' r='5' fill='%23c41e33'/%3E%3Ccircle cx='32' cy='30' r='5' fill='%23e33a4c'/%3E%3Ccircle cx='30.5' cy='28.5' r='1.4' fill='%23fff' opacity='.7'/%3E%3C/svg%3E");
+  /* Candy-cane diagonal stripes (16px tile) for borders and accents. */
+  --xmas-candy-stripe:repeating-linear-gradient(135deg,#f8f3ea 0 6px,#d8263a 6px 12px);
+}

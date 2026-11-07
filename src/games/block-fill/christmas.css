@@ -1,0 +1,6 @@
+/* Block Fill, Christmas: a frozen pond at night under faint snowflakes. Presentation only. */
+:root[data-festive="christmas"] .bf-game{background:var(--xmas-snowflakes) center top/180px 180px,linear-gradient(#1b4170,#0f2748 55%,#0b1733);color:#f4f9ff}
+:root[data-festive="christmas"] .bf-board-wrap{background:#123058;border-color:#0a1a33;box-shadow:inset 0 3px 8px #030a1855,0 0 0 1px #bfe3f533}
+:root[data-festive="christmas"] .bf-message{color:#e6f3ff}
+:root[data-festive="christmas"] .bf-actions .game-button.secondary{background:#1f7a42;color:#fff8e6;border-color:#0f3b2a;box-shadow:0 3px #082619}
+:root[data-festive="christmas"] .bf-complete .bf-board-wrap{border-color:#e9b949}

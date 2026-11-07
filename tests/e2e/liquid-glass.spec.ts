@@ -71,6 +71,32 @@ const seekIsland=(page:Page,ms:number)=>page.evaluate(time=>{
   }
   return paused;
 },ms);
+// Capture the morph in the browser, before Playwright's attribute polling can outlast its 300 ms duration.
+// Observing the state change also catches delayed transitions before they start, so every sampled frame
+// uses the same origin. Keep the normal scroll handler and real CSS transitions under test.
+async function scrollAndPauseIsland(page:Page,y:number){
+  await settledBoxes(page);
+  const paused=await page.evaluate(top=>new Promise<number>(resolve=>{
+    const bar=document.querySelector('.app-tabbar')!;
+    const observer=new MutationObserver(()=>{
+      observer.disconnect();
+      // Flush the changed styles so the transitions exist before the next painted frame.
+      void document.body.offsetHeight;
+      let count=0;
+      for(const animation of document.getAnimations()){
+        const target=(animation.effect as KeyframeEffect|null)?.target;
+        if(!(animation instanceof CSSTransition)||!(target instanceof Element)||!target.closest('.app-tabbar,.ui-tabbar-mini'))continue;
+        animation.pause();
+        animation.currentTime=0;
+        count++;
+      }
+      resolve(count);
+    });
+    observer.observe(bar,{attributes:true,attributeFilter:['data-minimized']});
+    window.scrollTo(0,top);
+  }),y);
+  expect(paused,'the scroll must create real island transitions').toBeGreaterThan(0);
+}
 // The island's and the capsule's boxes, once no transition runs on either.
 async function settledBoxes(page:Page){
   const bar=page.locator('.app-tabbar'),capsule=page.locator('.ui-tabbar-mini');
@@ -281,7 +307,7 @@ test('the minimize morph has no blank frame: at every moment the island or its c
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
-  await page.evaluate(()=>window.scrollTo(0,400));
+  await scrollAndPauseIsland(page,400);
   await expect(bar).toHaveAttribute('data-minimized','true');
   const frames:number[]=[];
   for(let ms=0;ms<=300;ms+=20){
@@ -302,7 +328,7 @@ test('the expand morph has no blank frame either',async({page})=>{
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>capsuleShown(page)).toBe(1);
-  await page.evaluate(()=>window.scrollTo(0,368));
+  await scrollAndPauseIsland(page,368);
   await expect(bar).not.toHaveAttribute('data-minimized');
   const frames:number[]=[];
   for(let ms=0;ms<=300;ms+=20){
@@ -681,23 +707,23 @@ test('leaving Movies removes the filter the Movies island added',async({page,bro
 // A tab's computed colour and weight.
 const tabInk=(locator:Locator)=>locator.evaluate(el=>{const style=getComputedStyle(el);return {color:style.color,weight:style.fontWeight};});
 
-test('the arcade light island uses dark ink and a bold current tab',async({page})=>{
+test('the arcade light island uses white ink and a bold current tab',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toHaveAttribute('data-glass-tone','light');
-  expect(await tabInk(bar.getByRole('link',{name:'Movies',exact:true}))).toEqual({color:'rgb(11, 16, 21)',weight:'500'});
-  expect(await tabInk(bar.getByRole('link',{name:'Games',exact:true}))).toEqual({color:'rgb(11, 16, 21)',weight:'700'});
+  expect(await tabInk(bar.getByRole('link',{name:'Movies',exact:true}))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
+  expect(await tabInk(bar.getByRole('link',{name:'Games',exact:true}))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
 });
 
-test('the Movies island uses the same dark ink and bold selection as Games',async({page})=>{
+test('the Movies island uses the same white ink and bold selection as Games',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   await expect(bar).toBeVisible();
   // The failed rails draw the starter line, and that draw rebuilds the nav, so the tabs are read once the line is there.
   await expect(page.locator('.movies-rails-status')).toBeVisible();
-  await expect.poll(()=>tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'500'});
-  await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'700'});
+  await expect.poll(()=>tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
+  await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
 });
 
 test('the navigation glass keeps its frosted backdrop, dark tint and clean glyphs',async({page})=>{

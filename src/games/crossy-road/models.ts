@@ -44,6 +44,8 @@ const BOTTOM_SHADE = 0.86;
  * bottom vertices of every side face are multiplied by `bottomShade`. */
 export function voxel(parts: readonly Part[], bottomShade = BOTTOM_SHADE): THREE.BufferGeometry {
   const n = parts.length;
+  // Build bounds once, not once for every face/occluder pair at scene startup.
+  const bounds = parts.map(([x, y, z, w, h, d]) => [x-w/2, y, z-d/2, x+w/2, y+h, z+d/2]);
   const position = new Float32Array(n * 72), normal = new Float32Array(n * 72), color = new Float32Array(n * 72);
   const index = new Uint16Array(n * 36);
   let v = 0, ii = 0;
@@ -54,7 +56,17 @@ export function voxel(parts: readonly Part[], bottomShade = BOTTOM_SHADE): THREE
     if (typeof side === 'number') { scratch.set(side); sr = scratch.r; sg = scratch.g; sb = scratch.b; } else { sr = side[0]; sg = side[1]; sb = side[2]; }
     const hx = w / 2, hy = h / 2, hz = d / 2, cy = py + hy, cs = Math.cos(rotZ), sn = Math.sin(rotZ), cx = Math.cos(rotX), sx = Math.sin(rotX);
     for (let f = 0; f < 6; f++) {
+      // Reject only whole, axis-aligned faces covered by another solid. Keep
+      // partial faces, rotated boxes and coincident outer paint layers intact.
       const face = FACES[f];
+      if (!rotZ && !rotX && parts.some((other, q) => {
+        if (q === p || other[7] || other[8]) return false;
+        const box = bounds[p], cover = bounds[q];
+        const axis = f < 2 ? 0 : f < 4 ? 1 : 2, sign = face[axis], plane = box[axis + (sign > 0 ? 3 : 0)], eps = 1e-7;
+        if (sign > 0 ? cover[axis] > plane + eps || cover[axis+3] <= plane + eps : cover[axis+3] < plane - eps || cover[axis] >= plane - eps) return false;
+        for (let a = 0; a < 3; a++) if (a !== axis && (cover[a] > box[a] + eps || cover[a+3] < box[a+3] - eps)) return false;
+        return true;
+      })) continue;
       for (let k = 0; k < 4; k++) {
         const lx = face[3 + k * 3] * hx, ly = face[4 + k * 3] * hy, lz = face[5 + k * 3] * hz;
         const shade = face[4 + k * 3] < 0 ? bottomShade : 1, o = v * 3;
@@ -76,10 +88,10 @@ export function voxel(parts: readonly Part[], bottomShade = BOTTOM_SHADE): THREE
     }
   }
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(position, 3));
-  geometry.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(color, 3));
-  geometry.setIndex(new THREE.BufferAttribute(index, 1));
+  geometry.setAttribute('position', new THREE.BufferAttribute(position.slice(0, v * 3), 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(normal.slice(0, v * 3), 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(color.slice(0, v * 3), 3));
+  geometry.setIndex(new THREE.BufferAttribute(index.slice(0, ii), 1));
   geometry.computeBoundingSphere();
   return geometry;
 }

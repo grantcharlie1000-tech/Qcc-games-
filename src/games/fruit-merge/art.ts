@@ -1,6 +1,9 @@
 import {TIERS} from './engine';
+import {christmas} from '../../festive/festive';
+import {drawOrnament} from './christmas-art';
 /** Original vector-like fruit portraits. No downloaded images or emoji. */
 export function drawFruit(c:CanvasRenderingContext2D,tier:number,x:number,y:number,r:number,angle=0,number=false){
+ if(christmas()){drawOrnament(c,tier,x,y,r,angle,number);return;}
  const t=TIERS[tier];c.save();c.translate(x,y);c.rotate(angle);c.scale(r/40,r/40);
  c.fillStyle=t.edge;c.beginPath();c.ellipse(1,4,39,39,0,0,Math.PI*2);c.fill();
  const gradient=c.createRadialGradient(-14,-18,3,8,10,50);gradient.addColorStop(0,t.color);gradient.addColorStop(.65,t.color);gradient.addColorStop(1,t.edge);

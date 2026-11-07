@@ -1,0 +1,3 @@
+/* Slither, Christmas: the player's ranking row matches the candy-cane skin. Presentation only. */
+:root[data-festive="christmas"] .nc-ranking .is-you,:root[data-festive="christmas"] .nc-you{color:#ffd9de}
+:root[data-festive="christmas"] .nc-ranking{background:#08132bd0}

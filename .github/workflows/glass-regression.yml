@@ -1,0 +1,56 @@
+name: Liquid Glass regression
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/theme.css'
+      - 'src/game-viewport.css'
+      - 'src/ui/glass*.ts'
+      - 'src/games/globle/**'
+      - 'src/games/snake/**'
+      - 'src/games/fruit-merge/**'
+      - 'tests/e2e/apple-glass.spec.ts'
+      - 'tests/e2e/arcade-sheets.spec.ts'
+      - 'tests/e2e/glass-visibility.spec.ts'
+      - 'tests/e2e/clear-ink-adaptation.spec.ts'
+      - 'tests/e2e/game-control-surfaces.spec.ts'
+      - 'tests/e2e/live-glass.spec.ts'
+      - 'tests/e2e/see-through-material.spec.ts'
+      - 'tests/games/globle/**'
+      - '.github/workflows/glass-regression.yml'
+permissions:
+  contents: read
+concurrency:
+  group: glass-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  glass:
+    name: Glass controls (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    # Includes both original/festive surfaces and the latest Snake integration.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/e2e/glass-visibility.spec.ts tests/e2e/clear-ink-adaptation.spec.ts tests/e2e/game-control-surfaces.spec.ts tests/e2e/live-glass.spec.ts tests/e2e/see-through-material.spec.ts tests/e2e/apple-glass.spec.ts tests/e2e/arcade-sheets.spec.ts tests/games/globle/ tests/games/snake/ tests/games/neon-coil/play.spec.ts --workers=1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: glass-${{ matrix.browser }}
+          path: |
+            test-results
+            playwright-report

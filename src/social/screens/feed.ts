@@ -51,7 +51,7 @@ export class FeedScreen implements Screen {
   prompt.addEventListener('click',expand);
   this.column.append(row);
  }
- /** Opens the inline composer when there is one (shortcut n at 1100px and up). */
+ /** Opens the inline composer when there is one (shortcut p at 1100px and up). */
  openInline():boolean{const prompt=this.column.querySelector<HTMLButtonElement>('.social-inline-prompt');if(!prompt||prompt.hidden){this.column.querySelector<HTMLTextAreaElement>('.social-inline textarea')?.focus();return !!prompt;}prompt.click();return true;}
  posted(post:PostView):void {
   if(this.tab==='discover'&&post.replyTo)return;

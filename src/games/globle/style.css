@@ -1,7 +1,7 @@
 .globle{--gl-muted:#b9beb8;position:relative;height:100%;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:6px;min-height:0;color:#f1eee5;font:14px/1.35 var(--font-sans,system-ui,sans-serif);touch-action:manipulation}
 .globle.gl-keyboard{height:min(100%,var(--gl-available,100%))}
-.gl-top{display:flex;gap:8px;align-items:center;flex:none;padding-top:6px}
-.gl-form{display:flex;flex:1;gap:6px;min-width:0}
+.gl-top{position:relative;z-index:3;display:flex;gap:8px;align-items:center;flex:none;padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left));pointer-events:none}
+.gl-form{pointer-events:auto;display:flex;flex:1;gap:6px;min-width:0}
 .gl-modes,.gl-summary[hidden]{display:none}
 .gl-search{position:relative;display:flex;flex:1;min-width:0;border-radius:999px}
 .gl-search .gl-input{position:relative;z-index:3;flex:1;width:0;min-width:0;min-height:48px;border:0;border-radius:999px;background:transparent;color:var(--glass-ink,#fff);font:400 17px/1.3 var(--font-sans,system-ui,sans-serif);padding:10px 16px;box-shadow:none;outline:none}
@@ -9,22 +9,22 @@
 .gl-search:focus-within{outline:3px solid var(--glass-ink,#fff);outline-offset:2px}
 .gl-input:disabled{opacity:.6}
 .gl-submit.ui-tab{position:relative;display:flex;flex:0 0 auto;align-items:center;justify-content:center;min-height:48px;height:48px;min-width:84px;padding:0 18px;border:0;border-radius:999px;font:600 15px/1 var(--font-sans,system-ui,sans-serif)}
-.gl-message{margin:0;min-height:19px;font-size:14px;color:var(--gl-muted)}
+.gl-message{position:relative;z-index:3;align-self:center;max-width:calc(100% - 24px);margin:0;padding:6px 12px;border-radius:14px;background:rgb(13 23 38 / .65);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);min-height:19px;font-size:14px;color:#fff}
 .gl-message:empty{display:none}
 .gl-message[data-tone=error]{color:#ffb4a8}
 .gl-message[data-tone=win]{color:#8ee39e;font-weight:600}
 .gl-correction{border:0;background:none;color:inherit;font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px;min-height:44px}
 .gl-correction:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:4px}
-.gl-main{position:relative;flex:1 1 auto;min-height:0}
-.gl-globe-wrap{position:absolute;inset:0;min-height:0;min-width:0;border-radius:16px;overflow:hidden;background:#0d1726}
+.gl-main{position:absolute;inset:0;min-height:0}
+.gl-globe-wrap{position:absolute;inset:0;min-height:0;min-width:0;border-radius:0;overflow:hidden;background:#0d1726}
 .gl-globe{position:absolute;inset:0;touch-action:none;outline:none;cursor:grab;user-select:none;-webkit-user-select:none}
 .gl-globe:active{cursor:grabbing}
 .gl-globe:focus-visible{box-shadow:inset 0 0 0 3px #fff;border-radius:16px}
 .gl-globe canvas{display:block}
-.gl-chip{position:absolute;left:10px;top:10px;margin:0;padding:6px 10px;border-radius:999px;color:var(--glass-ink,#fff);font:500 12px/1.25 var(--font-sans,system-ui,sans-serif);pointer-events:none;max-width:calc(100% - 20px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gl-chip{position:absolute;left:max(10px,env(safe-area-inset-left));bottom:calc(72px + env(safe-area-inset-bottom));top:auto;margin:0;padding:6px 10px;border-radius:999px;color:var(--glass-ink,#fff);font:500 12px/1.25 var(--font-sans,system-ui,sans-serif);pointer-events:none;max-width:calc(100% - 20px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gl-chip[hidden]{display:none}
 .gl-fallback{position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:24px;text-align:center;color:var(--gl-muted)}
-.gl-history{position:absolute;bottom:10px;right:10px;width:min(260px,calc(100% - 20px));max-height:30%;z-index:2;list-style:none;margin:0;padding:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:4px;touch-action:pan-y}
+.gl-history{position:absolute;bottom:calc(108px + env(safe-area-inset-bottom));right:max(10px,env(safe-area-inset-right));width:min(260px,calc(100% - 20px));max-height:30%;z-index:2;list-style:none;margin:0;padding:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:4px;touch-action:pan-y}
 .gl-history:empty{display:none}
 .gl-guess{display:grid;grid-template-columns:18px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:8px;align-items:center;padding:5px 8px;border-radius:10px;background:rgb(13 23 38 / .82);font-size:12px}
 .gl-guess[data-latest=true]{box-shadow:inset 0 0 0 2px #ffffff55}
@@ -43,9 +43,12 @@
 .gl-options .gl-close{font:400 28px/1 var(--font-sans,system-ui,sans-serif)}
 
 /* The original result section survives outside the removed information card. */
-.gl-win{position:absolute;bottom:12px;left:12px;z-index:3;max-width:min(330px,calc(100% - 24px));box-sizing:border-box;background:#16361f;border:2px solid #2fa84f;border-radius:14px;padding:10px;text-align:center}
+.gl-win{position:absolute;bottom:calc(72px + env(safe-area-inset-bottom));left:12px;z-index:3;max-width:min(330px,calc(100% - 24px));box-sizing:border-box;background:#16361f;border:2px solid #2fa84f;border-radius:14px;padding:10px;text-align:center}
 .gl-win[hidden]{display:none}
 .gl-win h2{margin:0 0 4px;font:800 22px Arcade,sans-serif;color:#8ee39e}.gl-win p{margin:0 0 8px}
 
 /* Preserve the original card while meeting the minimum touch target. */
 .gl-win .gl-again{min-height:44px}
+
+/* The result replaces the overlapping round summaries; guesses remain saved. */
+.globle[data-won=true] :is(.gl-chip,.gl-history){display:none}

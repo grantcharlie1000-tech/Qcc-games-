@@ -1,0 +1,5 @@
+/* Tetris, Christmas: a snowy winter night around the board, frosted panels and gold trim. Presentation only. */
+:root[data-festive="christmas"] .qf-game{background:var(--xmas-snowflakes) center top/180px 180px,linear-gradient(#123259,#0b1d3a 60%,#081428) center/100% 100%;border-color:#2a4a72}
+:root[data-festive="christmas"] .qf-board{background:#0c1a33;outline-color:var(--xmas-gold);box-shadow:0 0 0 6px #0b1d3a,0 0 0 7px #f6faff55,0 12px 30px #0006}
+:root[data-festive="christmas"] .qf-panel{background:#16305a;border-color:#3d6595}
+:root[data-festive="christmas"] .qf-panel b{color:var(--xmas-gold-light)}

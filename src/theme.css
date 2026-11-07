@@ -386,11 +386,15 @@
   --glass-glyph:none;--glass-glyph-icon:none;
   color:var(--glass-ink);text-shadow:none;
 }
-/* Ink and accessibility solids may adapt; the optical material never changes
-   with route or game tone. */
+/* Normal glass always uses white ink. Only opaque accessibility palettes
+   adopt a matching dark foreground on light routes. */
 :is(.arcade-glass,.arcade-glass-mini)[data-glass-tone=light],[data-glass-tone=light] .arcade-glass{
-  --glass-ink:#0b1015;--glass-solid:#f1f3f5;
+  --glass-solid:#f1f3f5;
 }
+/* Keep the light opaque palette readable when glass is disabled. */
+:where(.arcade-glass,.arcade-glass-mini):where([data-glass-tone=light])[data-glass=off],
+:where([data-glass-tone=light]) .arcade-glass:where([data-glass=off]),
+:where(.section-navigation:has(.arcade-glass[data-glass-tone=light][data-glass=off]))>.arcade-glass-mini{--glass-ink:#0b1015}
 .section-tabbar.arcade-glass{--glass-radius:32px}
 .section-menu.arcade-glass{--glass-radius:calc(var(--home-action)/2)}
 .arcade-glass::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:var(--glass-tint);box-shadow:var(--glass-rim-edge),var(--glass-glow),var(--glass-lift);transition:opacity 100ms var(--ease)}
@@ -420,9 +424,8 @@
    backdrop filter paints a square under the button), white ink as the sheet. */
 .ui-glass-sheet .arcade-glass>.ui-glass-lens{display:none!important}
 .ui-glass-sheet .arcade-glass{--glass-ink:#fff}
-/* Plain adaptive ink; no stroke or duplicated icon outline. glass-ink.ts sets
-   --glass-local-halo only where neither ink reaches 4.5:1 over the sampled
-   backdrop; elsewhere it is transparent and the glyph renders plain. */
+/* White foreground, no stroke or duplicated icon outline. Only its soft dark
+   shadow responds to bright or textured backdrops. */
 .arcade-glass .glass-ink,.ui-tabbar-mini .glass-ink{
   color:var(--glass-adaptive-ink,var(--glass-ink));background:none;box-shadow:none;
   -webkit-text-stroke:0;paint-order:stroke fill;
@@ -436,8 +439,7 @@
 .glass-vector-halo{display:none}
 .arcade-glass[data-glass=off] .glass-ink,.section-tabbar[data-glass=off]~.ui-tabbar-mini .glass-ink{color:var(--glass-ink);background:none;box-shadow:none;text-shadow:none;-webkit-text-stroke:0}
 .arcade-glass[data-glass=off] .glass-vector-halo,.section-tabbar[data-glass=off]~.ui-tabbar-mini .glass-vector-halo{display:none}
-/* Icons keep one white foreground regardless of the artwork behind the glass.
-   Text labels retain their separate adaptive contrast treatment. */
+/* All glass content keeps white foreground regardless of the backdrop. */
 .arcade-glass svg:not(.ui-brand-tile svg),.ui-tabbar-mini svg,.arcade-glass .nc-chevrons{color:var(--glass-icon-ink,#fff)}
 /* Opaque accessibility palettes still use their matching readable foreground. */
 .arcade-glass[data-glass=off],.section-tabbar[data-glass=off]~.ui-tabbar-mini{--glass-icon-ink:var(--glass-ink)}

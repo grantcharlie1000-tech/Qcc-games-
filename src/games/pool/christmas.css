@@ -1,0 +1,4 @@
+/* Pool, Christmas: a dark evergreen room under faint snowflakes around the table. Presentation only;
+ * the balls, HUD layout and controls keep their original look. */
+:root[data-festive="christmas"] body.in-game .game-view[data-game-id=pool]{background:var(--xmas-snowflakes) center top/220px 220px,radial-gradient(120% 90% at 50% 45%,#173a29 0%,#0b2318 55%,#06140d 100%)}
+:root[data-festive="christmas"] .pool-player.pool-active{border-color:rgba(233,185,73,.75);box-shadow:0 0 0 1px rgba(216,38,58,.35),0 6px 22px rgba(233,185,73,.16)}

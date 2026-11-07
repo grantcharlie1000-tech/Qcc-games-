@@ -17,6 +17,79 @@ export const COURSE_REVISION = 3;
 export const STEER_RESPONSE = 10;
 /** Lateral drift on a banked surface, in m/s per unit sin(bank), toward the low side. */
 export const BANK_DRIFT = 6;
+/** What the player is: what hits the blocks, and how it handles. The ball is a sphere of RADIUS that answers
+ * the steering at STEER_RESPONSE and drifts down banks at BANK_DRIFT. Christmas's sleigh hits as a box round its
+ * centre whose size depends on its pitch (see SLEIGH_BODY). It handles like a sleigh: its runners take longer to
+ * carve a new line and keep sliding sideways after the steering lets go (a slower response, so momentum
+ * carries), and it slides further down a bank. On ordinary road its box lies inside course.ts's clearance, so
+ * the generator's own guarantee covers it there; on the steepest grades it reaches past it, and the generator
+ * relies on 70% of the lateral authority and ignores steering lag, so passability as the sleigh is shown by
+ * test, not proved: sleigh-courses.test.ts drives the bot, planning with this body, through every course it
+ * checks. */
+export type BoxExtents = { halfWidth: number; bottom: number; top: number; front: number; back: number };
+/** One row per pitch interval: [from, to, halfWidth, bottom, top, front, back] (radians; metres from the ball's
+ * centre, front ahead and back behind it along the course, in the frame rolled by the block's bank). */
+export type PitchTable = readonly (readonly [number, number, number, number, number, number, number])[];
+export type Body = { readonly steerResponse: number; readonly bankDrift: number } & ({ readonly kind: 'ball' } | { readonly kind: 'box'; readonly table: PitchTable });
+export const BALL: Body = { kind: 'ball', steerResponse: STEER_RESPONSE, bankDrift: BANK_DRIFT };
+/** The sleigh's pitch is a function of the run's state, shared by the simulation and the drawing so both agree.
+ * On the road it lies on the road: `slope` is the surface's slope along the course at the sleigh's own x
+ * (model.ts surfaceSlope; off the centre line it differs from the centre's where a bank changes). In the air
+ * its nose follows its flight path along the course (its climb less what its sideways motion climbs across the
+ * bank). Within FLARE of the road below (`above`, metres above where it would rest; model.ts heightAboveRest,
+ * which has no step at a drop's edges) it
+ * blends from that flight path to the road's slope, so it leaves the road and lands on it with no jump: it
+ * flares in over the last 2.5 m. Within ±PITCH_LIMIT (the steepest road in the courses measures 0.443 rad; the
+ * generator's crests allow about 0.453, where the clamp is under 1 mm). */
+export const PITCH_LIMIT = .45, FLARE = 2.5;
+export function sleighPitch(grounded: boolean, slope: number, vy: number, vx: number, bank: number, speed: number, above: number): number {
+  let p = Math.atan(slope);
+  if (!grounded && speed > 0) {
+    // Eased in and out (smoothstep), so the nose turns gently through the flare and comes to rest on the road.
+    const flight = Math.atan2(vy + Math.tan(bank) * vx, speed), t = Math.min(1, Math.max(0, above / FLARE)), w = t * t * (3 - 2 * t);
+    p = w >= 1 ? flight : p + (flight - p) * w;
+  }
+  return Math.min(PITCH_LIMIT, Math.max(-PITCH_LIMIT, p));
+}
+/** The sleigh's box at each pitch: it holds everything drawn of the sleigh in that pitch interval, under every
+ * bank up to the steepest road's, a carve lean, its spring's squash and stretch, and a difference between its
+ * bank and a block's roll (sleigh.ts SLEIGH_POSE), measured on the real vertices plus 3 mm (christmas.test.ts
+ * checks every row). Around ordinary road (pitch about -0.12) it is about 0.43 m to each side and behind, and
+ * 0.34 m ahead of the centre. */
+export const SLEIGH_BODY: Body = { kind: 'box', steerResponse: 8, bankDrift: BANK_DRIFT * 1.2, table: [
+  [-0.45, -0.4, 0.474, -0.444, 0.336, 0.342, 0.490],
+  [-0.4, -0.35, 0.467, -0.444, 0.314, 0.340, 0.482],
+  [-0.35, -0.3, 0.460, -0.444, 0.292, 0.340, 0.473],
+  [-0.3, -0.25, 0.452, -0.444, 0.280, 0.340, 0.463],
+  [-0.25, -0.2, 0.444, -0.442, 0.269, 0.341, 0.450],
+  [-0.2, -0.15, 0.436, -0.439, 0.258, 0.341, 0.438],
+  [-0.15, -0.1, 0.431, -0.434, 0.248, 0.342, 0.434],
+  [-0.1, -0.05, 0.428, -0.428, 0.238, 0.344, 0.430],
+  [-0.05, 0, 0.425, -0.421, 0.228, 0.345, 0.425],
+  [0, 0.05, 0.428, -0.429, 0.219, 0.357, 0.425],
+  [0.05, 0.1, 0.434, -0.441, 0.211, 0.368, 0.432],
+  [0.1, 0.15, 0.439, -0.451, 0.204, 0.379, 0.438],
+  [0.15, 0.2, 0.444, -0.460, 0.198, 0.390, 0.443],
+  [0.2, 0.25, 0.448, -0.468, 0.192, 0.400, 0.449],
+  [0.25, 0.3, 0.452, -0.474, 0.187, 0.409, 0.453],
+  [0.3, 0.35, 0.455, -0.478, 0.192, 0.417, 0.458],
+  [0.35, 0.4, 0.459, -0.481, 0.210, 0.424, 0.462],
+  [0.4, 0.45, 0.465, -0.483, 0.229, 0.429, 0.466],
+] };
+/** The box a step needs while the pitch moves between `a` and `b`: the union of every row the range touches. */
+export function boxExtents(table: PitchTable, a: number, b: number, out: BoxExtents): BoxExtents {
+  const lo = Math.max(table[0][0], Math.min(a, b)), hi = Math.min(table[table.length - 1][1], Math.max(a, b));
+  out.halfWidth = out.top = out.front = out.back = -Infinity; out.bottom = Infinity;
+  for (let i = 0; i < table.length; i++) {
+    const row = table[i];
+    if (row[1] < lo || row[0] > hi) continue;
+    out.halfWidth = Math.max(out.halfWidth, row[2]); out.bottom = Math.min(out.bottom, row[3]); out.top = Math.max(out.top, row[4]);
+    out.front = Math.max(out.front, row[5]); out.back = Math.max(out.back, row[6]);
+  }
+  return out;
+}
+/** The largest box the sleigh has at any pitch (the whole table). */
+export function largestBox(table: PitchTable, out: BoxExtents): BoxExtents { return boxExtents(table, -Infinity, Infinity, out); }
 /** The generator only relies on this fraction of the ball's lateral authority. */
 export const REACH_SAFETY = .7;
 /** Clear, wide, straight opening (m). */

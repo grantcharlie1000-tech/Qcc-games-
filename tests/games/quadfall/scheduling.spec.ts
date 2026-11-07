@@ -1,0 +1,96 @@
+import {test, expect} from '../../fixtures';
+import {pauseGame,resumeGame} from '../../game-menu';
+import type {GameModule} from '../../../src/core/types';
+import type {State} from '../../../src/games/quadfall/model';
+
+test('Tetris schedules frames only during an active run across lifecycle transitions', async ({page}) => {
+  await page.route('**/__qcc-test-blank__',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));
+  await page.goto('/__qcc-test-blank__');
+  const checks=await page.evaluate(async () => {
+    const path='/src/games/quadfall/index.ts';
+    const modelPath='/src/games/quadfall/model.ts';
+    const game:{default:GameModule}=await import(path);
+    const model:typeof import('../../../src/games/quadfall/model')=await import(modelPath);
+    const host=document.createElement('div');document.body.append(host);
+    const request=window.requestAnimationFrame,cancel=window.cancelAnimationFrame;
+    const originalNow=Object.getOwnPropertyDescriptor(performance,'now');
+    const pending=new Map<number,FrameRequestCallback>();let id=0,now=0,max=0;
+    const checks:string[]=[];
+    const check=(name:string,ok:boolean)=>{if(!ok)throw new Error(name);checks.push(name);};
+    window.requestAnimationFrame=fn=>{const key=id++;pending.set(key,fn);max=Math.max(max,pending.size);return key;};
+    window.cancelAnimationFrame=key=>{pending.delete(key);};
+    Object.defineProperty(performance,'now',{configurable:true,value:()=>now});
+    let instance:Awaited<ReturnType<GameModule['mount']>>|undefined;
+    try {
+      instance=await game.default.mount(host,{id:'quadfall',settings:{sound:false,reducedMotion:true,colorBlind:false,autoNextEpisode:false},highScore:0,setScore(){},setLevel(){},setStatus(){},announce(){},save(){},sound(){}});
+      const button=host.querySelector<HTMLButtonElement>('.qf-card button')!;
+      const state=()=>instance!.serialize() as State;
+      const fire=(delta:number)=>{check('one frame before callback',pending.size===1);const pair=pending.entries().next().value;if(!pair)throw new Error('missing frame');pending.delete(pair[0]);now+=delta;pair[1](now);};
+      check('ready is idle',pending.size===0);
+      button.click();check('start schedules frame zero',pending.size===1&&pending.has(0));
+      const initial=state();fire(10);fire(1000);check('simulation advances',state().fall>initial.fall||state().active.y>initial.active.y);
+      window.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));
+      const left=state().active.x;fire(200);check('held key repeats with one frame',state().active.x<left&&pending.size===1);
+      window.dispatchEvent(new KeyboardEvent('keyup',{key:'ArrowLeft',bubbles:true}));
+      const right=host.querySelector<HTMLButtonElement>('[data-action="right"]')!;right.setPointerCapture=()=>{};
+      right.dispatchEvent(new PointerEvent('pointerdown',{pointerId:1,isPrimary:true,button:0,bubbles:true}));
+      const position=state().active.x;fire(200);check('held pad repeats with one frame',state().active.x>position&&pending.size===1);
+      right.dispatchEvent(new PointerEvent('pointerup',{pointerId:1,isPrimary:true,bubbles:true}));
+      instance.pause();instance.pause();check('pause cancels frame',pending.size===0);
+      const frozen=JSON.stringify(state());now+=10000;check('pause preserves state',JSON.stringify(state())===frozen);
+      instance.resume();instance.resume();check('resume schedules one frame',pending.size===1);
+      fire(16);check('first resumed frame does not include paused time',JSON.stringify(state())===frozen);
+      instance.restart();check('restart returns to idle',state().phase==='ready'&&pending.size===0);
+      const saved=model.createState(1);saved.phase='running';instance.restore(saved);
+      check('restored run waits for Continue',pending.size===0&&button.textContent==='Continue');
+      button.click();check('Continue starts one frame',pending.size===1);
+      instance.restore({...model.createState(2),phase:'lost'});check('lost restore cancels frame',pending.size===0);
+      button.click();check('Play again restarts scheduling',pending.size===1);
+      const blocked=model.createState(3);blocked.phase='running';blocked.active={id:'O',x:3,y:19,r:0};
+      for(let y=0;y<=3;y++)for(let x=3;x<=6;x++)blocked.board[y][x]='O';
+      instance.restore(blocked);button.click();check('blocked run starts',pending.size===1);
+      window.dispatchEvent(new KeyboardEvent('keydown',{key:' ',bubbles:true}));
+      check('gameplay loss stops scheduling',state().phase==='lost'&&pending.size===0);
+      button.click();check('Play again after gameplay loss schedules',pending.size===1);
+      const automatic=model.createState(4);automatic.phase='running';automatic.active={id:'O',x:3,y:20,r:0};automatic.lock=499;
+      for(let y=0;y<=3;y++)for(let x=3;x<=6;x++)automatic.board[y][x]='O';
+      check('automatic-loss fixture passes save validation',model.restoreState(automatic)!==null);
+      instance.restore(automatic);check('automatic-loss fixture restored',state().active.id==='O'&&state().active.y===20&&state().lock===499&&pending.size===0);
+      button.click();fire(16);fire(10);
+      check('gravity loss stops frames',state().phase==='lost'&&pending.size===0&&host.querySelector('.qf-game')?.getAttribute('data-phase')==='lost');
+      button.click();check('replay after gravity loss schedules once',state().phase==='running'&&pending.size===1);
+      instance.dispose();instance=undefined;check('dispose cancels frame',pending.size===0);
+      check('never more than one frame',max<=1);
+      return checks;
+    }finally{instance?.dispose();window.requestAnimationFrame=request;window.cancelAnimationFrame=cancel;if(originalNow)Object.defineProperty(performance,'now',originalNow);else delete (performance as {now?:()=>number}).now;host.remove();}
+  });
+  expect(checks).toContain('dispose cancels frame');
+});
+
+test('line-clear animation freezes during pause and resumes afterwards',async({page})=>{
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  // Keep awaited UI actions from consuming the 320 ms clear animation.
+  // Only the explicit runFor calls below may advance this simulation.
+  await page.clock.install({time:new Date('2026-10-27T10:00:00Z')});
+  await page.clock.pauseAt(new Date('2026-10-27T10:00:01Z'));
+  await page.addInitScript(()=>{
+    const board=Array.from({length:22},()=>Array(10).fill(null));
+    board[21]=Array.from({length:10},(_,x)=>x===5?null:'O');
+    const data={version:1,seed:1,board,active:{id:'I',x:3,y:18,r:1},queue:['O','T','S','Z','J','L'],bag:[],held:null,holdUsed:false,score:0,lines:0,phase:'running',fall:0,lock:0,resets:0,locks:0};
+    localStorage.setItem('pocket-arcade:v1:save:quadfall',JSON.stringify({version:1,data,updated:Date.now()}));
+  });
+  await page.goto('/#/game/quadfall');
+  await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await page.keyboard.press('Space');
+  const game=page.locator('.qf-game'),canvas=page.locator('.qf-canvas');
+  await expect(game).toHaveAttribute('data-lines','1');
+  await page.clock.runFor(100);
+  await pauseGame(page);
+  const paused=await canvas.evaluate(node=>(node as HTMLCanvasElement).toDataURL());
+  await page.clock.runFor(600);
+  expect(await canvas.evaluate(node=>(node as HTMLCanvasElement).toDataURL())).toBe(paused);
+  await expect(game).toHaveAttribute('data-lines','1');
+  await resumeGame(page);
+  await page.clock.runFor(400);
+  expect(await canvas.evaluate(node=>(node as HTMLCanvasElement).toDataURL())).not.toBe(paused);
+});

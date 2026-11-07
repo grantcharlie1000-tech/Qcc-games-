@@ -59,7 +59,7 @@ export class PostCard {
   if(variant==='focused'){head.classList.add('is-stacked');head.append(name,handle,more);}else head.append(name,handle,dot,time,more);
   main.append(head);
   if(variant==='feed'&&post.replyTo&&post.replyToUsername){
-   const replying=document.createElement('p');replying.className='social-replying';replying.append('Replying to ');
+   const replying=document.createElement('p');replying.className='social-replying';replying.insertAdjacentHTML('beforeend',appIcon('reply'));replying.append('In reply to ');
    const link=document.createElement('a');link.href=`#/social/u/${encodeURIComponent(post.replyToUsername)}`;link.textContent=`@${post.replyToUsername}`;replying.append(link);main.append(replying);
   }
   if(post.hidden&&post.mine){

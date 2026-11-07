@@ -1,0 +1,10 @@
+/* Water Sort, Christmas: a wine-red night with stars, frosted glass and a strand of lights. Presentation only. */
+:root[data-festive="christmas"] .ws-game{background:var(--xmas-stars) center top/220px 220px,linear-gradient(#3d0c1b,#2a0814 55%,#1b0610) center/100% 100%}
+:root[data-festive="christmas"] .ws-game::before{content:'';position:absolute;left:0;right:0;top:0;height:22px;z-index:1;pointer-events:none;background:var(--xmas-light-strand) repeat-x center top/146px 22px;filter:drop-shadow(0 0 4px rgba(255,214,120,.35))}
+:root[data-festive="christmas"] .ws-outline{stroke:#e6eef8}
+:root[data-festive="christmas"] .ws-legal .ws-outline{stroke:#ffffff}
+:root[data-festive="christmas"] .ws-selected .ws-outline{stroke:var(--xmas-gold-light)}
+:root[data-festive="christmas"] .ws-selected::after{background:var(--xmas-gold-light)}
+:root[data-festive="christmas"] .ws-victory{background:#2a0814d9}
+:root[data-festive="christmas"] .ws-victory-mark{border-color:var(--xmas-gold-light);color:var(--xmas-gold-light)}
+:root[data-festive="christmas"] .ws-level option,:root[data-festive="christmas"] .ws-difficulty option{background:#2a0814}

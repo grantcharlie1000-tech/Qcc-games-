@@ -163,7 +163,7 @@ test('the library retains original grid Snake and opens Slither.io separately', 
   await expect(page.getByRole('link', { name: 'Play Snake', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Play Snake', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Start slithering', exact: true })).toBeVisible();
-  await page.keyboard.press('ArrowRight'); await page.clock.runFor(690);
+  await page.keyboard.press('ArrowRight'); await page.clock.runFor(860); // grid Snake eats its first apple on the seventh 135 ms step
   await expect(page.locator('#game-score strong')).toHaveText('10');
   await expect(page.locator('.snake-game')).toHaveCount(1); await expect(game(page)).toHaveCount(0);
   await backToGames(page);

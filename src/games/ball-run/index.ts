@@ -291,7 +291,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     accumulator += delta;
     while (accumulator >= STEP && active()) {
       const phase = run.phase, gate = run.gateIndex;
-      step(run, input(), STEP);
+      step(run, input(), STEP, scene.body);
       accumulator -= STEP;
       if (run.gateIndex !== gate) boostText = gateText();
       if (phase === 'running' && run.phase === 'dying') died();

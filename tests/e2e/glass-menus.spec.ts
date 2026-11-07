@@ -20,6 +20,10 @@ async function settledBox(sheet:Locator){
   return box;
 }
 // The origin the sheet grows from, as the two numbers in its --sheet-origin custom property.
+// sheetOrigin() rounds to whole pixels and measures the sheet with integer offset* values, while the
+// test measures fractional bounding boxes. Snapping the sheet offset (under 1 px; engines may truncate)
+// plus the final Math.round (0.5 px) can differ from the exact centre by up to 1.5 px.
+const ORIGIN_TOLERANCE=1.5;
 async function originOf(sheet:Locator){
   const value=await sheet.evaluate(el=>el.style.getPropertyValue('--sheet-origin'));
   const [x,y]=value.split(' ').map(part=>parseFloat(part));
@@ -108,8 +112,8 @@ test('the menu grows from the control that opened it in the island and in-game d
   const box=await settledBox(menu);
   const fromIsland=await originOf(menu);
   // The origin is the tab's centre measured from the sheet's corner. The companion Menu sits beside the five-tab island, at the bottom right.
-  expect(Math.abs(fromIsland.x-(tab.x+tab.width/2-box.x))).toBeLessThanOrEqual(1);
-  expect(Math.abs(fromIsland.y-(tab.y+tab.height/2-box.y))).toBeLessThanOrEqual(1);
+  expect(Math.abs(fromIsland.x-(tab.x+tab.width/2-box.x))).toBeLessThanOrEqual(ORIGIN_TOLERANCE);
+  expect(Math.abs(fromIsland.y-(tab.y+tab.height/2-box.y))).toBeLessThanOrEqual(ORIGIN_TOLERANCE);
   expect(fromIsland.x).toBeGreaterThan(box.width*0.75);
   expect(fromIsland.y).toBeGreaterThan(box.height*0.75);
   await page.keyboard.press('Escape');
@@ -126,8 +130,8 @@ test('the menu grows from the control that opened it in the island and in-game d
   // The compact game group anchors the sheet at the actual Menu centre.
   const expectedX=Math.min(Math.max(gameMenu.x+gameMenu.width/2-gameBox.x,0),gameBox.width);
   const expectedY=Math.min(Math.max(gameMenu.y+gameMenu.height/2-gameBox.y,0),gameBox.height);
-  expect(Math.abs(fromGame.x-expectedX)).toBeLessThanOrEqual(1);
-  expect(Math.abs(fromGame.y-expectedY)).toBeLessThanOrEqual(1);
+  expect(Math.abs(fromGame.x-expectedX)).toBeLessThanOrEqual(ORIGIN_TOLERANCE);
+  expect(Math.abs(fromGame.y-expectedY)).toBeLessThanOrEqual(ORIGIN_TOLERANCE);
   expect(fromGame.x).toBeGreaterThan(gameBox.width*0.5);
   expect(fromGame.y).toBeGreaterThan(gameBox.height*0.75);
 });

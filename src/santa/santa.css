@@ -1,0 +1,108 @@
+/* QCC Santa Tracker (#/santa). Colours are the site's Christmas palette, set here so the page
+   looks the same with the seasonal theme on or off. Motion: transform and opacity only. */
+.santa-page{--sp-red:#d8263a;--sp-gold:#e9b949;--sp-gold-light:#f8dd8a;--sp-snow:#f6faff;--sp-ink:#f1eee5;--sp-muted:#c0c6d4;--sp-card:#121a33;--sp-line:#ffffff1f;
+  max-width:1080px;margin:0 auto;padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));color:var(--sp-ink)}
+.santa-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px}
+.santa-back{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px 0 10px;border-radius:999px;background:#ffffff14;color:var(--sp-ink);font-size:16px}
+.santa-back svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.santa-brand{margin:0;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--sp-gold-light)}
+.santa-test{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin:0 0 10px;padding:10px 14px;border:2px dashed var(--sp-gold);border-radius:14px;background:#2a2410;font:14px/1.4 system-ui,sans-serif;color:var(--sp-gold-light)}
+.santa-test .game-button{min-height:36px;padding:6px 12px;font-size:14px}
+
+/* Hero: the scene fills the card and the countdown sits over its sky. */
+/* The copy sits on the sky above the scene (never over it), so nothing overlaps the digits at any width. */
+.santa-hero{position:relative;isolation:isolate;overflow:hidden;border:6px solid #2c2d2c;border-radius:30px;background:#050b1f;display:flex;flex-direction:column}
+.santa-scene{position:relative;overflow:hidden;aspect-ratio:800/420;min-height:230px;max-height:440px;margin-top:-12px}
+.santa-scene-art{position:absolute;inset:0;width:100%;height:100%;display:block;-webkit-mask-image:linear-gradient(transparent,#000 70px);mask-image:linear-gradient(transparent,#000 70px)}
+.santa-hero-copy{position:relative;z-index:1;order:-1;padding:22px 16px 0;text-align:center;text-shadow:0 2px 10px #050b1fcc}
+.santa-hero>.santa-snowfall-wrap{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none}
+.santa-eyebrow{margin:0 0 6px;font:700 13px/1.2 system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--sp-gold-light)}
+.santa-hero h1{margin:0 0 16px;font-size:clamp(24px,6.4vw,40px);line-height:1.08;font-weight:800;color:#fff}
+.santa-countdown{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(6px,2vw,14px);max-width:620px;margin:0 auto}
+.santa-countdown[hidden]{display:none}
+.santa-unit{display:flex;flex-direction:column;align-items:center;gap:4px;padding:clamp(8px,2.4vw,16px) 2px clamp(8px,2vw,12px);border-radius:18px;background:#0b1430c7;box-shadow:inset 0 0 0 1.5px #ffffff26,0 8px 24px -10px #000}
+.santa-digits{font-size:clamp(32px,10.5vw,72px);line-height:1;font-weight:800;font-variant-numeric:tabular-nums;color:#fff;min-width:2ch}
+.santa-unit:first-child .santa-digits{color:var(--sp-gold-light)}
+.santa-unit-label{font:700 clamp(10px,2.6vw,13px)/1 system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--sp-muted)}
+.santa-chip{display:inline-block;max-width:100%;margin:14px auto 0;padding:7px 14px;border-radius:999px;background:#0b1430d9;box-shadow:inset 0 0 0 1px #ffffff2e;font:14px/1.35 system-ui,sans-serif;color:var(--sp-ink);text-shadow:none}
+.santa-chip strong{font-weight:650;color:#fff}
+.santa-chip-dot{display:inline-block;vertical-align:1px;margin-right:6px;width:8px;height:8px;border-radius:50%;background:var(--sp-gold);box-shadow:0 0 0 3px #e9b94940}
+
+/* Info card. */
+.santa-info,.santa-flight{margin:14px 0 0;padding:18px 16px;border-radius:24px;background:var(--sp-card);box-shadow:inset 0 0 0 1px var(--sp-line)}
+.santa-flight[hidden]{display:none}
+.santa-info h2{margin:0 0 8px;font-size:22px;color:#fff}
+.santa-info p,.santa-info li,.santa-disclaimer{font:16px/1.55 system-ui,sans-serif;color:var(--sp-muted)}
+.santa-info p{margin:0 0 12px}
+.santa-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:14px 0}
+.santa-facts div{padding:10px 12px;border-radius:14px;background:#ffffff0d}
+.santa-facts dt{font:700 12px/1.3 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--sp-gold-light)}
+.santa-facts dd{margin:4px 0 0;font:16px/1.4 system-ui,sans-serif;color:#fff;overflow-wrap:anywhere}
+.santa-norad{padding:10px 12px;border-left:4px solid var(--sp-gold);border-radius:4px 12px 12px 4px;background:#e9b94914}
+.santa-norad:empty,.santa-clock:empty{display:none}
+.santa-clock{font-size:14px!important}
+.santa-source summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font:600 15px/1.3 system-ui,sans-serif;color:#fff}
+.santa-source ul{margin:0 0 10px;padding-left:20px}
+.santa-info a,.santa-disclaimer a{color:var(--sp-gold-light);text-decoration:underline;text-underline-offset:2px}
+.santa-updated{font-size:13px!important}
+.santa-disclaimer{margin:16px 4px 0;font-size:14px;text-align:center}
+.santa-flight-error{margin:0;color:#ffb6a5;font:16px/1.5 system-ui,sans-serif}
+
+/* Scene motion. Each animated group is its own small layer; nothing animates layout or paint. */
+.santa-snowfall{position:absolute;left:0;right:0;top:-160px;height:calc(100% + 160px);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cg fill='%23fff'%3E%3Ccircle cx='14' cy='20' r='2'/%3E%3Ccircle cx='70' cy='8' r='1.4'/%3E%3Ccircle cx='120' cy='40' r='2.2'/%3E%3Ccircle cx='40' cy='76' r='1.6'/%3E%3Ccircle cx='96' cy='96' r='1.3'/%3E%3Ccircle cx='146' cy='120' r='1.8'/%3E%3Ccircle cx='24' cy='130' r='1.2'/%3E%3Ccircle cx='76' cy='150' r='2'/%3E%3C/g%3E%3C/svg%3E") 0 0/160px 160px;opacity:.75;pointer-events:none;will-change:transform}
+.santa-hero[data-motion="on"] .santa-snowfall{animation:sp-snow 9s linear infinite}
+.santa-scene[data-motion="on"] .sp-aurora{animation:sp-aurora 10s ease-in-out infinite alternate}
+.santa-scene[data-motion="on"] .sp-aurora-2{animation-duration:13s;animation-delay:-4s}
+.santa-scene[data-motion="on"] .sp-twinkle{animation:sp-blink 2.4s ease-in-out infinite}
+.santa-scene[data-motion="on"] .sp-twinkle-2{animation-delay:-1.1s}
+.santa-scene[data-motion="on"] .sp-light{animation:sp-blink 1.6s steps(2,jump-none) infinite}
+.santa-scene[data-motion="on"] .sp-window{animation:sp-flicker 3.2s ease-in-out infinite}
+.santa-scene[data-motion="on"] .sp-smoke{animation:sp-smoke 4.5s linear infinite}
+.santa-scene[data-motion="on"] .sp-smoke-2{animation-delay:-1.5s}
+.santa-scene[data-motion="on"] .sp-smoke-3{animation-delay:-3s}
+.santa-scene[data-motion="on"] .sp-nose{animation:sp-blink 1.4s ease-in-out infinite}
+.santa-scene[data-motion="on"] .sp-head{animation:sp-nod 5s ease-in-out infinite}
+.santa-scene[data-motion="on"] .sp-star{animation:sp-blink 3s ease-in-out infinite}
+.sp-smoke,.sp-head,.sp-aurora{transform-box:fill-box;transform-origin:50% 100%}
+.sp-smoke{opacity:0}
+.santa-scene[data-motion="off"] .sp-smoke{opacity:.7;transform:translate(6px,-14px) scale(1.2)}
+.santa-scene[data-motion="off"] .sp-smoke-2{opacity:.45;transform:translate(14px,-34px) scale(1.5)}
+.santa-scene[data-motion="off"] .sp-smoke-3{opacity:0}
+.santa-hero[data-visible="false"] *{animation-play-state:paused!important}
+@keyframes sp-snow{to{transform:translateY(160px)}}
+@keyframes sp-aurora{from{opacity:.55;transform:translateX(-14px) scaleY(.92)}to{opacity:1;transform:translateX(14px) scaleY(1.08)}}
+@keyframes sp-blink{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes sp-flicker{0%,100%{opacity:1}45%{opacity:.86}55%{opacity:.95}}
+@keyframes sp-smoke{0%{opacity:0;transform:translate(0,0) scale(.7)}15%{opacity:.75}100%{opacity:0;transform:translate(18px,-60px) scale(1.9)}}
+@keyframes sp-nod{0%,70%,100%{transform:rotate(0)}80%{transform:rotate(-6deg)}90%{transform:rotate(3deg)}}
+/* Reduced motion, from the OS or QCC's own setting: a still scene (the site's global rule would otherwise make infinite loops flicker). */
+@media(prefers-reduced-motion:reduce){.santa-scene *,.santa-snowfall{animation:none!important}}
+.reduce-motion .santa-scene *,.reduce-motion .santa-snowfall{animation:none!important}
+.santa-hero[data-motion="off"] .santa-snowfall{animation:none}
+
+/* Simulated tracker. */
+.trk-status p{margin:0 0 6px;font:16px/1.5 system-ui,sans-serif;color:var(--sp-muted)}
+.trk-status .trk-now{font:700 19px/1.35 system-ui,sans-serif;color:#fff}
+.trk-progress{height:8px;margin:12px 0;border-radius:99px;background:#ffffff14;overflow:hidden}
+.trk-progress span{display:block;height:100%;background:linear-gradient(90deg,var(--sp-red),var(--sp-gold));transform-origin:0 50%;transform:scaleX(0);transition:transform 900ms linear}
+.trk-still .trk-progress span{transition:none}
+.trk-map{display:block;width:100%;height:auto}
+.trk-ocean{fill:#0b1f45}
+.trk-grid{fill:none;stroke:#ffffff17;stroke-width:1}
+.trk-stop{fill:#7d8db5}
+.trk-stop.is-visited{fill:var(--sp-gold)}
+.trk-travelled{fill:none;stroke:var(--sp-gold);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:6 5}
+.trk-sleigh-dot{fill:var(--sp-red);stroke:#fff;stroke-width:2}
+.trk-sleigh-glow{fill:#d8263a55}
+.trk-note{margin:10px 0;font:14px/1.5 system-ui,sans-serif;color:var(--sp-muted)}
+.trk-stops{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px}
+.trk-stops li{display:grid;grid-template-columns:1fr auto;gap:0 10px;padding:8px 12px;border-radius:12px;background:#ffffff0a;font:15px/1.35 system-ui,sans-serif;color:var(--sp-muted)}
+.trk-stops li span:first-child{color:#fff}
+.trk-stops .trk-country{grid-column:1;font-size:13px}
+.trk-stops time{grid-column:2;grid-row:1/3;align-self:center;font-variant-numeric:tabular-nums}
+.trk-stops li.is-visited{opacity:.6}
+.trk-stops li.is-next{box-shadow:inset 0 0 0 2px var(--sp-gold);background:#e9b9491a}
+
+@media(min-width:620px){.santa-page{padding-top:max(16px,env(safe-area-inset-top))}.santa-hero{border-width:7px;border-radius:36px}.santa-hero-copy{padding-top:34px}.santa-scene{margin-top:-40px}.santa-info,.santa-flight{padding:22px 24px}}
+@media(max-width:359px){.santa-unit{border-radius:12px}.santa-unit-label{letter-spacing:.04em}}
+@media(forced-colors:active){.santa-scene,.santa-snowfall-wrap{display:none}.santa-hero{background:Canvas}.santa-unit{border:1px solid CanvasText}}

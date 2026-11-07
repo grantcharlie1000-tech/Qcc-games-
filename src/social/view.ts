@@ -318,10 +318,9 @@ export class SocialView implements AppView {
     const next=event.key==='j'?list[Math.min(list.length-1,at+1)]:list[Math.max(0,at<0?0:at-1)];
     if(!next)return;event.preventDefault();next.focus({preventScroll:true});next.scrollIntoView({block:'nearest',behavior:'instant' as ScrollBehavior});return;
    }
-   case 'o':{const card=cardOf(current());if(card){event.preventDefault();card.open();}return;}
-   case 'l':{const card=cardOf(current());if(card){event.preventDefault();void card.toggleLike(true);}return;}
+   case 'h':{const card=cardOf(current());if(card){event.preventDefault();void card.toggleLike(true);}return;}
    case 'r':{const card=cardOf(current());if(card){event.preventDefault();card.reply();}return;}
-   case 'n':{
+   case 'p':{
     event.preventDefault();
     if(this.screen instanceof FeedScreen&&this.screen.tab==='following'&&matchMedia('(min-width:1100px)').matches&&this.screen.openInline())return;
     this.openCompose({trigger:document.activeElement});return;

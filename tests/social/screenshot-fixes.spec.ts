@@ -46,6 +46,8 @@ async function guest(page:Page){
 }
 async function logIn(page:Page,username:string){
  const dialog=page.locator('#accounts-dialog');await expect(dialog).toBeVisible();
+ // These feature fixtures represent an established player; welcome behavior has its own suite.
+ await page.evaluate(name=>localStorage.setItem('qcc:christmas-welcome:2026:'+name.toLowerCase(),'seen'),username);
  await dialog.getByLabel('Username',{exact:true}).fill(username);await dialog.getByLabel('Password',{exact:true}).fill(PASSWORD);
  await dialog.locator('form').getByRole('button',{name:'Log in',exact:true}).click();await expect(dialog).not.toBeVisible();
 }

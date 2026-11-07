@@ -2,6 +2,7 @@ import type {GameModule} from '../../core/types';
 import {createState, restoreState, start, steer, step, tileOf, TICKS_PER_SECOND, type Dir, type GameEvent} from './model';
 import {createBoard} from './art';
 import './style.css';
+import './christmas.css';
 
 const TICK_MS = 1000 / TICKS_PER_SECOND;
 const module: GameModule = {

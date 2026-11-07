@@ -1,11 +1,14 @@
-import {test,expect} from '../fixtures';
+import {test,expect,originalTheme} from '../fixtures';
 import {gameAction,openGameMenu} from '../game-menu';
 import {HIDDEN_INK,glyphContrast,settleGlassInk} from '../glass-contrast';
 
-for(const [id,tone] of [['snake','dark'],['fruit-merge','light']] as const){
-  test(`${id} menu and its submenus use a neutral glass sheet and retain modal focus`,async({page})=>{
+// Cover both Suika palettes: its original artwork is light, its Christmas sky is dark.
+for(const [id,theme,tone] of [['snake','christmas','dark'],['fruit-merge','original','light'],['fruit-merge','christmas','dark']] as const){
+  test(`${id} ${theme} menu and its submenus use a neutral glass sheet and retain modal focus`,async({page,context})=>{
+    if(theme==='original')await originalTheme(context);
     await page.setViewportSize({width:390,height:844});
     await page.goto(`/#/game/${id}`);
+    await expect(page.locator('html')).toHaveAttribute('data-festive',theme==='original'?'off':'christmas');
     await openGameMenu(page);
     const menu=page.locator('#game-options');
     await expect(menu).toHaveAttribute('data-glass-tone',tone);
@@ -94,8 +97,9 @@ for(const feature of ['prefers-reduced-transparency','prefers-contrast','forced-
   });
 }
 
-for(const view of ['home','accounts','snake','fruit-merge']){
-  test(`${view} sheet text keeps 4.5:1 contrast over the rendered backdrop`,async({page})=>{
+for(const [view,theme] of [['home','christmas'],['accounts','christmas'],['snake','christmas'],['fruit-merge','original'],['fruit-merge','christmas']] as const){
+  test(`${view} ${theme} sheet text keeps 4.5:1 contrast over the rendered backdrop`,async({page,context})=>{
+    if(theme==='original')await originalTheme(context);
     await page.setViewportSize({width:390,height:844});
     const home=['home','accounts'].includes(view);
     await page.goto(home?'/#/collection':`/#/game/${view}`);
