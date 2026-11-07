@@ -142,10 +142,13 @@ test('Time Trial: unlocked after the campaign; pausing makes it casual for good;
   s = await state(page);
   expect(s.trial).toMatchObject({ eligible: false, reason: 'paused' });
   await expect(page.locator('.game-hud')).toContainText('Casual');
-  // Setup: jump to the last stage (test hook), then play it with real keys to the finish.
+  // Setup: jump to the last stage (test hook) and drop the player onto the edge of the finish podium (the stage's
+  // obstacles are covered by the course tests), then walk onto it with real keys.
   await page.evaluate(() => window.__frosthopTest!.teleport(29));
+  const podium = (await course(page)).stages[29].route.at(-1)!;
+  await page.evaluate(p => window.__frosthopTest!.place((p.x0 + p.x1) / 2, p.top + 0.6, p.z1 - 0.8), podium);
   await page.locator('.fo-canvas').focus();
-  await playStraight(page, 30, 30);
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(700); await page.keyboard.up('KeyW');
   await expect(page.locator('.fo-result')).toBeVisible();
   await expect(page.locator('.fo-r-time')).toHaveText(/^\d+:\d{2}\.\d{2}$/);
   await expect(page.locator('.fo-r-status')).toHaveText('Casual');

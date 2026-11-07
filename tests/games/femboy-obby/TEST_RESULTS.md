@@ -1,5 +1,22 @@
 # Femboy Frosthop — test results
 
+## frosthop-v2: harder course (7 November 2026)
+
+All 30 stages were redesigned to be much harder, and the obstacle pool grew: kill bricks (strips, checkerboards, sliders, pop-up pistons), fairy-light panels that are solid only while lit, swinging pendulums, 3- and 4-arm sweepers, low jump-rope sweepers, pusher blocks and sideways conveyors joined the original set.
+
+| Command | Result |
+| --- | --- |
+| `npx tsc --noEmit` | passes |
+| `npx vitest run tests/games/femboy-obby` | 3 files, 89 tests, all passing (adds kill brick, panel, pendulum, multi-arm and jump-rope tests, a difficulty test, and the new teaching order) |
+| `npx vitest run` (whole repository) | 240 files, 4789 tests, all passing |
+| `ARCADE_URL=http://127.0.0.1:5291 CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test tests/games/femboy-obby --project=chromium --trace off` | 10 of 11 pass. The portrait touch test fails in this container; it fails the same way 3 out of 3 times on the unchanged pre-v2 code, so it is not caused by this change |
+
+- **Every stage is still beatable:** the autopilot plays all 30 stages with zero deaths at normal speed, and eight hazard stages with gentle help on. It now jumps kill bricks, times jumps over low sweeper arms, leans against conveyor belts, and only commits to a landing it can stand on for half a second (so a sliding spike or a panel about to go dark counts as a failed landing).
+- **Draw calls** stay under 80 at every zone: each sweeper and each pendulum is one merged mesh.
+- **Time Trial e2e:** stage 30 can no longer be cleared by holding W, so the test now drops the player onto the finish podium's edge after teleporting (the stage's obstacles are covered by the course tests).
+
+## frosthop-v1 (original course)
+
 Recorded 7 November 2026 on the `claude/modest-carson-vvksac` branch, in a Linux cloud container. "Browser" below means **Chromium 153 headless with SwiftShader (CPU) WebGL** through the real shell at `/#/game/femboy-obby`. No physical phone, tablet or GPU was available. WebKit was not run.
 
 ## Commands and outcomes

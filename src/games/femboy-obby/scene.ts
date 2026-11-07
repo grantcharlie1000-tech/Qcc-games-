@@ -7,7 +7,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { notifyGlassFrame, registerGlassFrameSource } from '../../ui/glass-frame-source';
 import { CRUMBLE, PLAYER } from './config';
 import { createAvatar } from './avatar';
-import { motionFraction, snowballAt, solidOffset, sweeperAngle } from './sim';
+import { blinkState, motionFraction, pendulumAngle, snowballAt, solidOffset, sweeperAngle } from './sim';
 import { PAL, ZONES, zoneOf } from './stages';
 import type { Outfit } from './progress';
 import type { Course, Decor, Run, Solid } from './types';
@@ -160,6 +160,27 @@ function solidParts(s: Solid, under = true): Geo[] {
       break;
     }
     case 'post': break; // drawn by the instanced lamp-post decor at the same size
+    case 'spike': {
+      // Kill brick: a dark base under a bed of candy-red spikes (shape, not only colour, marks the danger).
+      const base = h * 0.45;
+      p.push(bx(-w, w, -h, -h + base, -d, d, s.accent));
+      p.push(bx(-w - 0.02, w + 0.02, -h + base - 0.08, -h + base, -d - 0.02, d + 0.02, PAL.gold));
+      const nx = Math.max(1, Math.round((w * 2) / 0.55)), nz = Math.max(1, Math.round((d * 2) / 0.55));
+      const cw = (w * 2) / nx, cd = (d * 2) / nz, r = Math.min(cw, cd) * 0.62, ch = h - base;
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+        p.push(prim(new THREE.ConeGeometry(r, ch, 4), s.color, -w + cw * (i + 0.5), -ch / 2, -d + cd * (j + 0.5), 0, Math.PI / 4, 0));
+      }
+      break;
+    }
+    case 'blink': {
+      // Fairy-light panel: a gold pane in a lilac frame with a bulb at each corner.
+      p.push(bx(-w, w, -h, 0, -d, d, s.color));
+      p.push(bx(-w - 0.05, w + 0.05, -h, -h + 0.14, -d - 0.05, d + 0.05, s.accent));
+      p.push(bx(-w - 0.03, -w + 0.16, -0.12, 0.006, -d, d, s.accent), bx(w - 0.16, w + 0.03, -0.12, 0.006, -d, d, s.accent));
+      p.push(bx(-w, w, -0.12, 0.006, -d - 0.03, -d + 0.16, s.accent), bx(-w, w, -0.12, 0.006, d - 0.16, d + 0.03, s.accent));
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) p.push(prim(new THREE.IcosahedronGeometry(0.16, 0), PAL.snow, sx * (w - 0.08), 0.02, sz * (d - 0.08), 0, 0, 0, false));
+      break;
+    }
     case 'conveyor': {
       p.push(bx(-w, w, -h, -0.05, -d, d, s.color));
       for (const z of [-d + 0.3, d - 0.3]) p.push(prim(new THREE.CylinderGeometry(0.3, 0.3, w * 2, 8), PAL.ink, 0, -0.35, z, 0, 0, Math.PI / 2));
@@ -227,7 +248,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
   };
   // Static course, merged per zone.
   const zoneMeshes: THREE.Mesh[] = [];
-  const dynamic = (s: Solid) => !!s.motion || s.surface === 'crumble' || s.surface === 'conveyor';
+  const dynamic = (s: Solid) => !!s.motion || !!s.blink || s.surface === 'crumble' || s.surface === 'conveyor';
   for (let z = 0; z < 6; z++) {
     const parts: Geo[] = [];
     for (const s of course.solids) {
@@ -235,6 +256,9 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
       if (Math.min(5, Math.floor((Math.max(1, s.stage) - 1) / 5)) !== z) continue;
       const top = s.y + s.hy;
       for (const g of solidParts(s, clearBelow(s))) { g.translate(s.x, top, s.z); parts.push(g); }
+    }
+    for (const pd of course.pendulums) if (zoneOf(pd.stage) === ZONES[z]) {
+      parts.push(bx(pd.x - (pd.axis === 'x' ? 0.25 : 0.7), pd.x + (pd.axis === 'x' ? 0.25 : 0.7), pd.y, pd.y + 0.3, pd.z - (pd.axis === 'x' ? 0.7 : 0.25), pd.z + (pd.axis === 'x' ? 0.7 : 0.25), PAL.gold));
     }
     // Snowball chutes and warning signs.
     for (const b of course.snowballs) if (zoneOf(b.stage) === ZONES[z]) {
@@ -249,7 +273,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
   }
 
   // Moving, crumbling and conveyor solids: one mesh each, local geometry.
-  interface Dyn { solid: Solid; mesh: THREE.Object3D }
+  interface Dyn { solid: Solid; mesh: THREE.Object3D; mat?: THREE.MeshLambertMaterial }
   const dyn: Dyn[] = [];
   const stripeTex = own(canvasTexture(64, 64, g => { g.fillStyle = hex(PAL.gold); g.fillRect(0, 0, 64, 64); g.fillStyle = hex(PAL.ink); for (let i = -64; i < 128; i += 32) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 16, 0); g.lineTo(i + 80, 64); g.lineTo(i + 64, 64); g.closePath(); g.fill(); } }));
   stripeTex.wrapS = stripeTex.wrapT = THREE.RepeatWrapping;
@@ -264,7 +288,9 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
   for (const s of course.solids) {
     if (!dynamic(s)) continue;
     const group = new THREE.Group();
-    group.add(new THREE.Mesh(own(mergeAll(solidParts(s))), s.surface === 'crumble' ? crumbleMat : vc));
+    // Each fairy-light panel fades on its own clock, so it has its own material.
+    const mat = s.blink ? own(new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, emissive: 0x3a2a08 })) : undefined;
+    group.add(new THREE.Mesh(own(mergeAll(solidParts(s))), s.surface === 'crumble' ? crumbleMat : mat ?? vc));
     if (s.surface === 'conveyor') {
       const tex = own(arrowTex.clone());
       tex.repeat.set(Math.round(s.hx * 2 / 1.5), Math.round(s.hz * 2 / 1.5));
@@ -279,7 +305,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
     }
     group.matrixAutoUpdate = true;
     scene.add(group);
-    dyn.push({ solid: s, mesh: group });
+    dyn.push({ solid: s, mesh: group, mat });
   }
 
   // Hazards.
@@ -287,17 +313,21 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
   const sweepers = course.sweepers.map(w => {
     const g = new THREE.Group();
     g.position.set(w.x, w.y, w.z);
+    // All arms in one merged mesh (one draw call), spread evenly round the hub to match the simulation, with
+    // gold/ink hazard bands so they read as dangerous without relying on colour alone.
+    const parts: Geo[] = [];
+    const n = Math.max(2, Math.round(w.length / 0.45));
     for (let a = 0; a < w.arms; a++) {
-      const arm = new THREE.Mesh(own(new THREE.BoxGeometry(w.length, 0.5, 0.5)), hazardMat);
-      arm.position.x = (a ? -1 : 1) * w.length / 2;
-      g.add(arm);
-      const tip = new THREE.Mesh(own(new THREE.ConeGeometry(0.42, 0.6, 3)), own(new THREE.MeshLambertMaterial({ color: PAL.candy })));
-      tip.position.set((a ? -1 : 1) * (w.length + 0.15), 0, 0); tip.rotation.z = (a ? 1 : -1) * Math.PI / 2;
-      g.add(tip);
+      const turn = (2 * Math.PI * a) / w.arms;
+      const armParts: Geo[] = [];
+      for (let i = 0; i < n; i++) armParts.push(bx((w.length * i) / n, (w.length * (i + 1)) / n, -0.25, 0.25, -0.25, 0.25, i % 2 ? PAL.ink : PAL.gold));
+      armParts.push(prim(new THREE.ConeGeometry(0.42, 0.6, 3), PAL.candy, w.length + 0.15, 0, 0, 0, 0, -Math.PI / 2));
+      for (const ap of armParts) { ap.rotateY(turn); parts.push(ap); }
     }
+    g.add(new THREE.Mesh(own(mergeAll(parts)), vc));
     const ring = new THREE.Mesh(own(new THREE.RingGeometry(w.length - 0.12, w.length + 0.12, 48)), own(new THREE.MeshBasicMaterial({ color: PAL.ink, transparent: true, opacity: 0.28, depthWrite: false })));
     ring.rotation.x = -Math.PI / 2;
-    ring.position.set(w.x, w.y - 0.79, w.z);
+    ring.position.set(w.x, (w.floor ?? w.y - 0.8) + 0.01, w.z);
     scene.add(g, ring);
     return { w, g, ring };
   });
@@ -311,6 +341,24 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
     g.add(ball, band);
     scene.add(g);
     return { b, g };
+  });
+
+  // Pendulums: a ribbon cord from a gold anchor down to a striped bauble.
+  // One merged mesh per pendulum (one draw call); its gold anchor is part of the zone's static mesh.
+  const pendulums = course.pendulums.map(pd => {
+    const g = new THREE.Group();
+    g.position.set(pd.x, pd.y, pd.z);
+    const r = pd.radius, L = pd.length;
+    const parts: Geo[] = [
+      prim(new THREE.CylinderGeometry(0.06, 0.06, L - r, 6), PAL.maroon, 0, -(L - r) / 2, 0),
+      prim(new THREE.IcosahedronGeometry(r, 1), PAL.candy, 0, -L, 0),
+      prim(new THREE.TorusGeometry(r * 1.0, r * 0.16, 4, 12), PAL.gold, 0, -L, 0, 0, pd.axis === 'x' ? 0 : Math.PI / 2, 0),
+      prim(new THREE.TorusGeometry(r * 0.75, r * 0.13, 4, 12), PAL.ink, 0, -L - r * 0.62, 0, Math.PI / 2, 0, 0),
+      prim(new THREE.CylinderGeometry(0.22, 0.22, 0.3, 8), PAL.gold, 0, -L + r + 0.08, 0),
+    ];
+    g.add(new THREE.Mesh(own(mergeAll(parts)), vc));
+    scene.add(g);
+    return { pd, g };
   });
 
   // Checkpoint emblems and stars (instanced).
@@ -497,7 +545,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
     for (let st = Math.max(0, stage - 1); st <= Math.min(course.byStage.length - 1, stage + 2); st++) {
       for (const id of course.byStage[st]) {
         const s = course.solids[id];
-        if (s.surface === 'post' || s.hx < 0.6 || s.hz < 0.6) continue;
+        if (s.surface === 'post' || s.surface === 'spike' || s.blink || s.hx < 0.6 || s.hz < 0.6) continue;
         const o = solidOffset(s, lastView?.mt ?? 0);
         const x0 = o.x - s.hx, x1 = o.x + s.hx, y1 = o.y, y0 = o.y - 2 * s.hy, z0 = o.z - s.hz, z1 = o.z + s.hz;
         let tmin = 0, tmax = best;
@@ -520,6 +568,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
       for (const id of course.byStage[st]) {
         const s = course.solids[id];
         if (s.surface === 'crumble' && run.crumble.find(c => c.id === id)?.phase === 2) continue;
+        if (s.surface === 'spike' || (s.blink && blinkState(s, mt) === 'dark')) continue;
         const o = solidOffset(s, mt);
         if (o.y <= y + 0.05 && o.y > best && x + PLAYER.halfWidth * 0.5 > o.x - s.hx && x - PLAYER.halfWidth * 0.5 < o.x + s.hx && z + PLAYER.halfWidth * 0.5 > o.z - s.hz && z - PLAYER.halfWidth * 0.5 < o.z + s.hz) best = o.y;
       }
@@ -562,6 +611,14 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
         crumbleMat.opacity = 1;
         d.mesh.scale.setScalar(1 - k * 0.06);
       }
+      if (d.mat) {
+        // Dark panels stay as a faint ghost so you can see where they will light; a flicker (or, with reduced
+        // motion, a steady dim) warns that a lit panel is about to go dark.
+        const state = blinkState(d.solid, v.mt);
+        d.mat.opacity = state === 'dark' ? 0.16 : state === 'warn' ? (v.reduced ? 0.55 : Math.sin(v.mt * 34) > 0 ? 0.9 : 0.35) : 1;
+        d.mat.depthWrite = state !== 'dark';
+        d.mat.emissive.setHex(state === 'lit' ? 0x3a2a08 : 0x000000);
+      }
     }
     for (const b of beltMats) {
       const belt = b.solid.belt!;
@@ -571,6 +628,13 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
       const near = s.w.stage >= stage - 1 && s.w.stage <= stage + 3;
       s.g.visible = s.ring.visible = near;
       if (near) s.g.rotation.y = sweeperAngle(s.w, v.mt);
+    }
+    for (const s of pendulums) {
+      const near = s.pd.stage >= stage - 1 && s.pd.stage <= stage + 3;
+      s.g.visible = near;
+      if (!near) continue;
+      const a = pendulumAngle(s.pd, v.mt);
+      if (s.pd.axis === 'x') s.g.rotation.z = a; else s.g.rotation.x = -a;
     }
     for (const s of snowballs) {
       const near = s.b.stage >= stage - 1 && s.b.stage <= stage + 3;

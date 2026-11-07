@@ -1,7 +1,7 @@
 /** Femboy Frosthop's fixed-step kinematic controller and course rules. Pure and deterministic: the same course,
  * starting state and intents always produce the same run, whatever the display refresh rate. */
-import { ASSIST_SPEED, CRUMBLE, HAZARD_GRACE, MAX_FRAME, MOVE, PLAYER, RESPAWN_DELAY, STAR_RADIUS, STEP } from './config';
-import type { Course, Intent, Player, Run, Snowball, Solid, Sweeper } from './types';
+import { ASSIST_SPEED, BLINK_WARN, CRUMBLE, HAZARD_GRACE, MAX_FRAME, MOVE, PLAYER, RESPAWN_DELAY, STAR_RADIUS, STEP } from './config';
+import type { Course, DeathCause, Intent, Pendulum, Player, Run, Snowball, Solid, Sweeper } from './types';
 
 const EPS = 1e-6;
 const HW = PLAYER.halfWidth, H = PLAYER.height;
@@ -43,6 +43,26 @@ export function solidOffset(s: Solid, t: number, out = scratch): { x: number; y:
 /** Note: solidOffset reports the TOP surface height in y, which is what riders care about. */
 
 export function sweeperAngle(w: Sweeper, t: number): number { return w.phase + w.omega * t; }
+
+/** Where a fairy-light panel is in its cycle: lit (solid), flickering (still solid, about to go) or dark. */
+export function blinkState(s: Solid, t: number): 'lit' | 'warn' | 'dark' {
+  if (!s.blink) return 'lit';
+  const { on, off, phase } = s.blink, cycle = on + off;
+  const u = (((t + phase) % cycle) + cycle) % cycle;
+  return u >= on ? 'dark' : u >= on - BLINK_WARN ? 'warn' : 'lit';
+}
+
+/** Swing angle of a pendulum at motion time t (0 = hanging straight down). */
+export function pendulumAngle(p: Pendulum, t: number): number { return p.amp * Math.sin(p.omega * t + p.phase); }
+const bobScratch = { x: 0, y: 0, z: 0 };
+/** Centre of a pendulum's bauble at motion time t. Returns a shared scratch object: copy what you need. */
+export function pendulumBob(p: Pendulum, t: number, out = bobScratch): { x: number; y: number; z: number } {
+  const a = pendulumAngle(p, t), side = Math.sin(a) * p.length;
+  out.x = p.x + (p.axis === 'x' ? side : 0);
+  out.y = p.y - Math.cos(a) * p.length;
+  out.z = p.z + (p.axis === 'z' ? side : 0);
+  return out;
+}
 const ballScratch = { x: 0, y: 0, z: 0, active: false };
 /** Position of a snowball at motion time t. Returns a shared scratch object: copy what you need. */
 export function snowballAt(b: Snowball, t: number, out = ballScratch): { x: number; y: number; z: number; active: boolean } {
@@ -77,7 +97,10 @@ export function createRun(course: Course, options: RunOptions = {}): Run {
   };
 }
 
+/** Whether a solid can be stood on right now. Kill bricks never can; dark fairy-light panels can't. */
 export function isSolidActive(run: Run, s: Solid): boolean {
+  if (s.surface === 'spike') return false;
+  if (s.blink && blinkState(s, run.mt) === 'dark') return false;
   if (s.surface !== 'crumble') return true;
   const c = run.crumble.find(t => t.id === s.id);
   return !c || c.phase !== 2;
@@ -116,7 +139,7 @@ function approach(v: number, target: number, maxDelta: number): number {
   return v < target ? Math.min(target, v + maxDelta) : Math.max(target, v - maxDelta);
 }
 
-function kill(run: Run, cause: 'fall' | 'sweeper' | 'snowball'): void {
+function kill(run: Run, cause: DeathCause): void {
   run.dead = RESPAWN_DELAY;
   run.deaths++; run.stageFails++;
   run.events.push({ type: 'death', cause });
@@ -260,7 +283,30 @@ export function step(run: Run, course: Course, intent: Intent): void {
     const at = snowballAt(b, t1);
     if (at.active && boxSphere(p, at.x, at.y, at.z, b.radius * HAZARD_GRACE)) { kill(run, 'snowball'); return; }
   }
+  for (const q of course.pendulums) {
+    if (Math.abs(q.stage - (run.checkpoint + 1)) > 1) continue;
+    const at = pendulumBob(q, t1);
+    if (boxSphere(p, at.x, at.y, at.z, q.radius * HAZARD_GRACE)) { kill(run, 'pendulum'); return; }
+  }
+  if (touchesSpike(course, run, t1)) { kill(run, 'spike'); return; }
   if (p.y < course.killY[run.checkpoint]) kill(run, 'fall');
+}
+
+/** Kill bricks hurt on contact, with a small forgiving margin on every side. */
+const SPIKE_MARGIN = 0.08;
+function touchesSpike(course: Course, run: Run, t: number): boolean {
+  const p = run.player, cp = run.checkpoint;
+  for (let st = Math.max(0, cp - 1); st <= Math.min(course.byStage.length - 1, cp + 2); st++) {
+    for (const id of course.byStage[st]) {
+      const s = course.solids[id];
+      if (s.surface !== 'spike') continue;
+      const o = solidOffset(s, t, tb);
+      if (p.x + HW > o.x - s.hx + SPIKE_MARGIN && p.x - HW < o.x + s.hx - SPIKE_MARGIN
+        && p.z + HW > o.z - s.hz + SPIKE_MARGIN && p.z - HW < o.z + s.hz - SPIKE_MARGIN
+        && p.y < o.y - SPIKE_MARGIN && p.y + H > o.y - 2 * s.hy + SPIKE_MARGIN) return true;
+    }
+  }
+  return false;
 }
 
 function moveAxis(p: Player, boxes: Box[], axis: 'x' | 'z', d: number, wasGrounded: boolean): void {
@@ -317,7 +363,9 @@ export function sweeperHits(w: Sweeper, t: number, p: Player): boolean {
   const ux = Math.cos(a), uz = -Math.sin(a);
   const reach = w.radius * HAZARD_GRACE + HW * HAZARD_GRACE;
   for (let arm = 0; arm < w.arms; arm++) {
-    const sx = arm ? -ux : ux, sz = arm ? -uz : uz;
+    // Arms are spread evenly around the hub.
+    const off = (2 * Math.PI * arm) / w.arms, c = Math.cos(off), s = Math.sin(off);
+    const sx = ux * c + uz * s, sz = -ux * s + uz * c;
     const rx = p.x - w.x, rz = p.z - w.z;
     const k = Math.max(0, Math.min(w.length, rx * sx + rz * sz));
     const qx = w.x + sx * k, qz = w.z + sz * k;

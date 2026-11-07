@@ -59,20 +59,47 @@ describe('stage data', () => {
     const moving = (stage: number) => course.solids.some(s => s.stage === stage && s.motion);
     const sweep = (stage: number) => course.sweepers.some(w => w.stage === stage);
     const snow = (stage: number) => course.snowballs.some(w => w.stage === stage);
-    const order = { moving: first(moving), conveyor: first(has('conveyor')), ice: first(has('ice')), crumble: first(has('crumble')), spring: first(has('spring')), sweeper: first(sweep), snowball: first(snow) };
-    expect(order).toEqual({ sweeper: 8, moving: 11, conveyor: 13, ice: 16, snowball: 18, crumble: 19, spring: 22 });
+    const spike = (stage: number) => course.solids.some(s => s.stage === stage && s.surface === 'spike');
+    const blink = (stage: number) => course.solids.some(s => s.stage === stage && !!s.blink);
+    const pend = (stage: number) => course.pendulums.some(p => p.stage === stage);
+    const order = { moving: first(moving), conveyor: first(has('conveyor')), ice: first(has('ice')), crumble: first(has('crumble')), spring: first(has('spring')), sweeper: first(sweep), snowball: first(snow), spike: first(spike), blink: first(blink), pendulum: first(pend) };
+    expect(order).toEqual({ spike: 3, moving: 4, sweeper: 6, pendulum: 9, conveyor: 11, blink: 13, ice: 16, snowball: 17, crumble: 18, spring: 21 });
     // A stage that introduces a family contains no other non-static family.
-    const families = [moving, has('conveyor'), has('ice'), has('crumble'), has('spring'), sweep, snow];
+    const families = [moving, has('conveyor'), has('ice'), has('crumble'), has('spring'), sweep, snow, spike, blink, pend];
     for (const intro of Object.values(order)) expect(families.filter(f => f(intro)).length, `stage ${intro}`).toBe(1);
-    // Stage 1 is plain hops.
-    expect(families.some(f => f(1))).toBe(false);
+    // Stages 1 and 2 are plain jumping; each zone finale mixes at least three families.
+    expect(families.some(f => f(1) || f(2))).toBe(false);
+    for (const finale of [10, 15, 20, 30]) expect(families.filter(f => f(finale)).length, `stage ${finale}`).toBeGreaterThanOrEqual(3);
+  });
+
+  test('the course is hard: long gaps, small landings, and a big pool of obstacles', () => {
+    // Edge-to-edge gaps between consecutive route solids moving forward (static ones only).
+    const gaps: number[] = [];
+    for (const st of course.stages) {
+      const ids = [course.checkpoints[st.index - 1].solid, ...st.route.map(r => r.id)];
+      for (let i = 1; i < ids.length; i++) {
+        const a = course.solids[ids[i - 1]], b = course.solids[ids[i]];
+        if (a.motion || b.motion) continue;
+        const g = (a.z - a.hz) - (b.z + b.hz);
+        if (g > 0.5) gaps.push(g);
+      }
+    }
+    // The original course kept gaps to 1.6–3.0 with most near 2; now half are 2.4+ and the mean is well above 2.3.
+    expect(gaps.filter(g => g >= 2.4).length / gaps.length).toBeGreaterThan(0.5);
+    expect(gaps.reduce((a, g) => a + g, 0) / gaps.length).toBeGreaterThan(2.3);
+    expect(Math.max(...gaps)).toBeLessThanOrEqual(3.2 + 1e-9);
+    expect(course.solids.filter(s => s.surface === 'spike').length).toBeGreaterThanOrEqual(20);
+    expect(course.pendulums.length).toBeGreaterThanOrEqual(12);
+    expect(course.solids.filter(s => s.blink).length).toBeGreaterThanOrEqual(15);
+    expect(new Set(course.sweepers.map(w => w.arms))).toEqual(new Set([2, 3, 4]));
+    expect(course.sweepers.some(w => w.y - (w.floor ?? 0) < 0.5)).toBe(true); // jump-rope arms
   });
 
   test('ids are unique and hazards belong to stages', () => {
     expect(new Set(course.solids.map(s => s.id)).size).toBe(course.solids.length);
     for (const w of course.sweepers) expect(w.stage).toBeGreaterThan(0);
     for (const b of course.snowballs) expect(b.stage).toBeGreaterThan(0);
-    expect(course.version).toBe('frosthop-v1');
+    expect(course.version).toBe('frosthop-v2');
   });
 });
 
@@ -83,7 +110,7 @@ describe('every stage is completable with ordinary controls', () => {
     expect(result.seconds).toBeLessThan(40);
   });
 
-  test.each([8, 12, 19, 22, 25, 29])('stage %i with assistance on', stage => {
+  test.each([6, 8, 12, 13, 22, 24, 26, 29])('stage %i with assistance on', stage => {
     expect(playStage(course, stage, { assist: true }).ok).toBe(true);
   });
 });
