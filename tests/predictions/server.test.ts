@@ -94,6 +94,14 @@ describe('weekly allowance',()=>{
   expect(weeks).not.toContain(weekStartDate(now-2.5*week));// wholly suspended
   await enable(t.pool);await ledgerOk();
  });
+ it('a suspension made with the documented SQL cannot be undone by joining again',async()=>{
+  const u=await user('suspended');await api.post('join',u,{});
+  await t.pool.query('UPDATE predictions_eligibility SET eligible_until=now() WHERE account_id=$1 AND eligible_until IS NULL',[u.id]);
+  expect((await api.post('join',u,{})).status).toBe(403);
+  expect((await api.get('me',u)).body.eligible).toBe(false);
+  await t.pool.query(`INSERT INTO predictions_eligibility(account_id,method,note) VALUES ($1,'operator','restored')`,[u.id]);
+  expect((await api.get('me',u)).body.eligible).toBe(true);
+ });
  it('the scheduled job and lazy repair converge on the same records',async()=>{
   const u=await user('job');await api.post('join',u,{});
   const before=await balance(u);
@@ -295,6 +303,8 @@ describe('resolution and settlement',()=>{
   await api.post('pause',mod,{marketId:market,on:true,note:'Investigating an early leak.'});
   expect((await buy(bob,market,'yes',500_000)).body.error).toBe('market_closed');
   expect((await api.get('market',bob,{id:market})).body.state).toBe('paused');
+  // Before the close time a paused market may only be proposed as VOID.
+  expect((await api.post('propose',resolver,{marketId:market,outcome:'yes',evidence:'Organiser notice confirms it.',sourceChecked:'Noticeboard'})).status).toBe(409);
   await api.post('pause',mod,{marketId:market,on:false,note:'Resolved; no leak.'});
   expect((await buy(bob,market,'yes',500_000)).status).toBe(200);
  });

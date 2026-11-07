@@ -22,6 +22,7 @@ describe.skipIf(!REAL_PG)('predictions concurrency (real PostgreSQL)',()=>{
  const quote=async(u:User,marketId:string,side:'yes'|'no',amount:number)=>(await api.post('quote',u,{marketId,side,op:'buy',amount,toleranceBp:500})).body;
  beforeAll(async()=>{
   t=await startDb();api=client(t.db);await enable(t.pool);
+  await t.pool.query('UPDATE predictions_config SET max_open_markets=1000');
   mod=await makeUser(t.pool,'race_mod');
   await t.pool.query(`INSERT INTO predictions_roles(account_id,role,granted_by) VALUES ($1,'moderator','test')`,[mod.id]);
  },60000);
@@ -84,6 +85,17 @@ describe.skipIf(!REAL_PG)('predictions concurrency (real PostgreSQL)',()=>{
    expect(await balance(u)).toBe(weeks*10_000_000);
    expect(weeks).toBeGreaterThanOrEqual(5);
   }
+ });
+ it('two moderators approving at once cannot exceed the open-market budget',async()=>{
+  const mod2=await makeUser(t.pool,'race_budget_mod');
+  await t.pool.query(`INSERT INTO predictions_roles(account_id,role,granted_by) VALUES ($1,'moderator','test')`,[mod2.id]);
+  const open=(await t.pool.query(`SELECT count(*)::int AS n FROM predictions_markets WHERE state IN ('open','paused') AND NOT fixture`)).rows[0].n;
+  await t.pool.query('UPDATE predictions_config SET max_open_markets=$1',[open+1]);
+  const a=await user('budget_a'),b=await user('budget_b');
+  const [sa,sb]=[await api.post('submit',a,draft()),await api.post('submit',b,draft())];
+  const results=await Promise.all([api.post('review',mod,{marketId:sa.body.id,decision:'approve'}),api.post('review',mod2,{marketId:sb.body.id,decision:'approve'})]);
+  expect(results.map(r=>r.status).sort()).toEqual([200,409]);
+  await t.pool.query('UPDATE predictions_config SET max_open_markets=1000');
  });
  it('two moderators finalising at once settle exactly once',async()=>{
   const mod2=await makeUser(t.pool,'race_mod2'),res=await makeUser(t.pool,'race_res');

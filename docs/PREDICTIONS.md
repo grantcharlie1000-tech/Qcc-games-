@@ -39,8 +39,8 @@ the Menu entry only appears in development builds or a build with `VITE_QCC_PRED
 - **Allowance.** One operation (`repairGrants`) is used by the hourly job, wallet reads and trades. It locks the
   wallet and issues every missing week that overlaps an eligibility interval, never before `launch_at`, with
   `PRIMARY KEY (account_id, week_start)` as the final guard. Joining is the eligibility event (an explicit opt-in
-  that accepts the rules); visiting never creates entitlement. An operator-ended interval is a suspension that only
-  an operator can lift.
+  that accepts the rules); visiting never creates entitlement. Any ended interval is a suspension that only an
+  operator can lift (people cannot end their own eligibility).
 - **Trades.** Quote (30 s, bound to account, market, side, op, amount, rules hash, pricing version, tolerance) →
   execute with an operation key. In one transaction: lock market, replay a committed key, re-check eligibility,
   status and server time, lock wallet, recompute, enforce the minimum output, check funds/ownership and the 25-credit
@@ -59,7 +59,7 @@ the Menu entry only appears in development builds or a build with `VITE_QCC_PRED
 - A **resolver or moderator** with no trades in the market and who is not its author proposes YES/NO/VOID with
   evidence. Anyone eligible except the proposer can challenge for 24 hours. A **different moderator** with no
   position finalises; a challenged result needs a decision note and may be overturned.
-- Moderators can pause a market (integrity pause stops trading; it never settles) and see reports.
+- Moderators can pause a market (integrity pause stops trading; before the close time it can only be proposed as VOID, through the same review) and see reports.
 - School-only questions are visible and tradable only to accounts with current eligibility, enforced in SQL.
 - Every moderation, resolution and eligibility action is written to the append-only `predictions_audit`.
 
@@ -67,8 +67,9 @@ Roles and suspensions are operator SQL, like the Social runbook:
 
 ```sql
 INSERT INTO predictions_roles(account_id,role,granted_by) SELECT id,'moderator','<your name>' FROM accounts WHERE lower(username)=lower('<username>');
--- Suspend: end the current interval with an operator record.
+-- Suspend: end the current interval. Any ended interval blocks re-joining; only an operator can restore access.
 UPDATE predictions_eligibility SET eligible_until=now() WHERE account_id='<id>' AND eligible_until IS NULL;
+-- Restore: INSERT INTO predictions_eligibility(account_id,method,note) VALUES ('<id>','operator','<reason>');
 INSERT INTO predictions_audit(actor,action,note) VALUES ('<your name>','suspend','<account id>: <reason>');
 -- Emergency: stop all new trades but keep reads, positions and the ledger.
 UPDATE predictions_config SET trading_paused=true;
@@ -91,13 +92,13 @@ without `QCC_TEST_PG_URL`; PGlite is a single session and cannot prove row locks
 - `tests/predictions/lmsr.test.ts` (17): golden values, exp/ln accuracy, symmetry, complete-set cost, monotonicity,
   no profitable round trip, extreme prices, no shorting, void aggregation, 4,000-step 25-wallet simulation with
   conservation and YES/NO/void solvency after every step.
-- `tests/predictions/server.test.ts` (19, PGlite and PostgreSQL 16): flag off, guest/school visibility, cross-origin,
+- `tests/predictions/server.test.ts` (20, PGlite and PostgreSQL 16): flag off, suspension via the runbook SQL, guest/school visibility, cross-origin,
   grant once, missed weeks / pre-launch / suspended weeks, job + lazy repair convergence, DST week boundaries
   (27 Sep 2026, 4 Apr 2027) matching SQL, golden purchase + replay + key conflict + receipt ownership, sell-back,
   stale quote, expiry, insufficient credits, position cap, close race, global pause, draft validation, duplicates,
   pending cap, author/role checks, frozen terms, append-only and balanced journal, payout once + reserve release +
   realised P/L, dispute → independent void, integrity pause. Ledger reconciliation after each scenario.
-- `tests/predictions/concurrency.test.ts` (6, PostgreSQL 16 only): one wallet buying two markets at once, the same
+- `tests/predictions/concurrency.test.ts` (7, PostgreSQL 16 only): two moderators approving against the open-market budget, one wallet buying two markets at once, the same
   key five times at once, twelve wallets on one market, trade vs close, two grant jobs + lazy repairs, two moderators
   finalising at once.
 - Browser (Chromium, local stack): two accounts completed join → buy YES 2.00 (3.818056 shares, 54.76%) → buy NO 3.00

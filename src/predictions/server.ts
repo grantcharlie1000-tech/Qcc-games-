@@ -137,11 +137,11 @@ export async function runGrantJob(db:Database):Promise<{accounts:number;grants:n
 const MARKET_COLUMNS=`m.id,m.question,m.category,m.audience,m.state,m.fixture,m.outcome,m.q_yes,m.q_no,m.liquidity_b,m.reserve,m.version,m.rules_hash,
  m.yes_rule,m.no_rule,m.void_rule,m.source,m.source_fallback,m.disclosure,m.author_id,m.review_note,
  ${ts('m.close_at')} AS close_at,${ts('m.resolve_at')} AS resolve_at,${ts('m.published_at')} AS published_at,${ts('m.created_at')} AS created_at,
- m.close_at<=now() AS past_close,
+ m.close_at<=clock_timestamp() AS past_close,
  (SELECT count(DISTINCT t.account_id)::int FROM predictions_trades t WHERE t.market_id=m.id) AS traders,
  (SELECT count(*)::int FROM predictions_trades t WHERE t.market_id=m.id) AS trades`;
 /** Audience predicate: school-only markets need a currently eligible member; fixtures only when configured. */
-const visibleTo=(viewer:string)=>`(m.audience='public' OR EXISTS(SELECT 1 FROM predictions_eligibility ve WHERE ve.account_id=${viewer} AND ve.eligible_until IS NULL))
+const visibleTo=(viewer:string)=>`(m.audience='public' OR EXISTS(SELECT 1 FROM predictions_eligibility ve WHERE ve.account_id=${viewer} AND ve.eligible_from<=now() AND ve.eligible_until IS NULL))
  AND (NOT m.fixture OR (SELECT show_fixtures FROM predictions_config WHERE id))`;
 const PUBLISHED=`m.state IN ('open','paused','proposed','disputed','resolved','void')`;
 function stateOf(row:Row):MarketState {return row.state==='open'&&row.past_close?'closed':row.state as StoredState;}
@@ -334,8 +334,9 @@ export function createPredictionsHandler(db:Database):(request:Request)=>Promise
    await query('SELECT account_id FROM predictions_wallets WHERE account_id=$1 FOR UPDATE',[account.id]);
    const open=await query('SELECT 1 FROM predictions_eligibility WHERE account_id=$1 AND eligible_until IS NULL',[account.id]);
    if(!open.rows.length){
-    const suspended=await query(`SELECT 1 FROM predictions_eligibility WHERE account_id=$1 AND method='operator' AND eligible_until IS NOT NULL ORDER BY eligible_until DESC LIMIT 1`,[account.id]);
-    // An operator-ended interval is a suspension: only an operator can restore it.
+    // People cannot end their own eligibility, so any ended interval (whatever its method) was ended by an operator:
+    // it is a suspension, and only an operator can restore it by inserting a new open interval.
+    const suspended=await query(`SELECT 1 FROM predictions_eligibility WHERE account_id=$1 AND eligible_until IS NOT NULL LIMIT 1`,[account.id]);
     if(suspended.rows.length)throw fail(403,'forbidden','Your Predictions access is paused. Ask a moderator.');
     await query(`INSERT INTO predictions_eligibility(account_id,method,note) VALUES ($1,'opt_in','Accepted the Predictions rules')`,[account.id]);
     await audit(query,account,'join',null);
@@ -400,7 +401,7 @@ export function createPredictionsHandler(db:Database):(request:Request)=>Promise
     if(!await isEligible(query,account.id))throw fail(403,'not_eligible');
     assertTradable(row,cfg);
     await repairGrants(query,account.id);// locks the wallet (step 2 of the lock order)
-    const q=(await query(`SELECT *,expires_at<=now() AS expired FROM predictions_quotes WHERE id=$1 AND account_id=$2 AND market_id=$3`,[quoteId,account.id,marketId])).rows[0];
+    const q=(await query(`SELECT *,expires_at<=clock_timestamp() AS expired FROM predictions_quotes WHERE id=$1 AND account_id=$2 AND market_id=$3`,[quoteId,account.id,marketId])).rows[0];
     if(!q)throw fail(409,'quote_expired');
     if(q.expired)throw fail(409,'quote_expired');
     if(q.rules_hash!==row.rules_hash||num(q.pricing_version)!==PRICING_VERSION)throw fail(409,'quote_expired');
@@ -517,6 +518,8 @@ export function createPredictionsHandler(db:Database):(request:Request)=>Promise
      return {ok:true,state};
     }
     if(row.past_close||Date.parse(row.close_at)<Date.now()+10*60_000)throw fail(409,'invalid_state','Trading would close too soon. Request a later close time.');
+    // Serialise approvals so concurrent moderators cannot both pass the open-market budget check.
+    await query('SELECT id FROM predictions_config WHERE id FOR UPDATE');
     const open=(await query(`SELECT count(*)::int AS n FROM predictions_markets WHERE state IN ('open','paused') AND NOT fixture`)).rows[0].n;
     if(!row.fixture&&open>=cfg.maxOpen)throw fail(409,'too_many_open','The open-question budget is full. Resolve some first.');
     // Freeze the rules and fund the reserve from the treasury in the same transaction as publication.
@@ -544,6 +547,8 @@ export function createPredictionsHandler(db:Database):(request:Request)=>Promise
    if(!row)throw notFound();
    const state=stateOf(row);
    if(state!=='closed'&&state!=='paused')throw fail(409,'invalid_state','Results can be proposed only after trading closes.');
+   // A market paused before its close time can only be voided (through the same review); YES/NO waits for the close.
+   if(state==='paused'&&!row.past_close&&outcome!=='void')throw fail(409,'invalid_state','Before the close time, a paused question can only be proposed as VOID.');
    if(await conflicted(query,marketId,account.id))throw fail(403,'conflict_of_interest');
    const resolutionId=randomUUID();
    await query(`INSERT INTO predictions_resolutions(id,market_id,outcome,evidence,source_checked,proposer_id,challenge_until) VALUES ($1,$2,$3,$4,$5,$6,now()+($7*interval '1 hour'))`,
