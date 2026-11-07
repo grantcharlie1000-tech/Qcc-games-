@@ -80,9 +80,9 @@ function mergeAll(parts: Geo[]): Geo {
 const darker = (c: number, k: number) => new THREE.Color(c).multiplyScalar(k).getHex();
 
 /** Visual for one solid in local coordinates: origin at the centre of its top face. Tops match colliders exactly. */
-function solidParts(s: Solid): Geo[] {
+function solidParts(s: Solid, under = true): Geo[] {
   const w = s.hx, d = s.hz, h = s.hy * 2, p: Geo[] = [];
-  const cliff = (color: number) => p.push(prim(new THREE.ConeGeometry(Math.max(w, d) * 1.05, Math.max(2.5, Math.max(w, d) * 1.3), 5), color, 0, -h - Math.max(2.5, Math.max(w, d) * 1.3) / 2, 0, Math.PI, Math.PI / 5));
+  const cliff = (color: number) => under && p.push(prim(new THREE.ConeGeometry(Math.max(w, d) * 1.05, Math.max(2.5, Math.max(w, d) * 1.3), 5), color, 0, -h - Math.max(2.5, Math.max(w, d) * 1.3) / 2, 0, Math.PI, Math.PI / 5));
   switch (s.surface) {
     case 'gift': case 'lift': {
       p.push(bx(-w, w, -h, -0.3, -d, d, s.color));
@@ -117,8 +117,8 @@ function solidParts(s: Solid): Geo[] {
     case 'ornament': {
       p.push(bx(-w, w, -h, 0, -d, d, s.color));
       p.push(bx(-w - 0.04, w + 0.04, -h, -h + 0.18, -d - 0.04, d + 0.04, PAL.gold));
-      const r = Math.min(w, d) * 0.85;
-      p.push(prim(new THREE.IcosahedronGeometry(r, 1), s.color === PAL.gold ? PAL.lilac : s.color, 0, -h - r * 0.95, 0));
+      const r = Math.min(1.6, Math.min(w, d) * 0.85);
+      if (under) p.push(prim(new THREE.IcosahedronGeometry(r, 1), s.color === PAL.gold ? PAL.lilac : s.color, 0, -h - r * 0.95, 0));
       p.push(prim(new THREE.CylinderGeometry(0.25, 0.25, 0.3, 8), PAL.gold, 0, -h - 0.1, 0));
       break;
     }
@@ -213,6 +213,18 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
   const own = <T extends { dispose(): void }>(x: T) => { disposables.push(x); return x; };
   const vc = own(new THREE.MeshLambertMaterial({ vertexColors: true }));
 
+  /** Underside decoration (cliffs, hanging baubles) only where nothing the player uses sits below it. */
+  const clearBelow = (s: Solid) => {
+    const bottom = s.y - s.hy;
+    for (const o of course.solids) {
+      if (o === s || o.surface === 'post' || Math.abs(o.stage - s.stage) > 1) continue;
+      const m = o.motion, ox0 = o.x - o.hx + Math.min(0, m?.dx ?? 0), ox1 = o.x + o.hx + Math.max(0, m?.dx ?? 0);
+      const oz0 = o.z - o.hz + Math.min(0, m?.dz ?? 0), oz1 = o.z + o.hz + Math.max(0, m?.dz ?? 0);
+      const otop = o.y + o.hy + Math.max(0, m?.dy ?? 0);
+      if (ox1 > s.x - s.hx - 1.5 && ox0 < s.x + s.hx + 1.5 && oz1 > s.z - s.hz - 1.5 && oz0 < s.z + s.hz + 1.5 && otop < bottom + 0.01 && otop > bottom - 10) return false;
+    }
+    return true;
+  };
   // Static course, merged per zone.
   const zoneMeshes: THREE.Mesh[] = [];
   const dynamic = (s: Solid) => !!s.motion || s.surface === 'crumble' || s.surface === 'conveyor';
@@ -222,7 +234,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
       if (dynamic(s)) continue;
       if (Math.min(5, Math.floor((Math.max(1, s.stage) - 1) / 5)) !== z) continue;
       const top = s.y + s.hy;
-      for (const g of solidParts(s)) { g.translate(s.x, top, s.z); parts.push(g); }
+      for (const g of solidParts(s, clearBelow(s))) { g.translate(s.x, top, s.z); parts.push(g); }
     }
     // Snowball chutes and warning signs.
     for (const b of course.snowballs) if (zoneOf(b.stage) === ZONES[z]) {
@@ -378,7 +390,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
     ['flag', mergeAll([bx(-0.06, 0.06, 0, 3, -0.06, 0.06, PAL.ink), prim(new THREE.ConeGeometry(0.6, 1.2, 3), 0xffffff, 0.5, 2.5, 0, 0, 0, -Math.PI / 2)])],
     // Checkpoint lamp posts: a candy-striped pole exactly the size of its 0.28 × 1.6 collider, with a lamp on top.
     ['lamp', mergeAll([...Array.from({ length: 6 }, (_, i) => bx(-0.14, 0.14, i * 0.22, (i + 1) * 0.22, -0.14, 0.14, i % 2 ? PAL.candy : PAL.cream)), bx(-0.14, 0.14, 1.32, 1.6, -0.14, 0.14, PAL.gold), prim(new THREE.ConeGeometry(0.2, 0.18, 4), PAL.maroon, 0, 1.69, 0, 0, Math.PI / 4)])],
-    ['banner', mergeAll([bx(-4.55, -4.3, 0, 4.6, -0.12, 0.12, PAL.candy), bx(4.3, 4.55, 0, 4.6, -0.12, 0.12, PAL.candy), bx(-4.55, 4.55, 4.6, 5.0, -0.1, 0.1, PAL.maroon), bx(-4.5, 4.5, 0.01, 0.03, -0.25, 0.25, PAL.snow)])],
+    ['banner', mergeAll([bx(-4.55, -4.3, 0, 4.6, -0.12, 0.12, PAL.candy), bx(4.3, 4.55, 0, 4.6, -0.12, 0.12, PAL.candy), prim(new THREE.ConeGeometry(0.35, 0.5, 4), PAL.gold, -4.42, 4.85, 0, 0, Math.PI / 4), prim(new THREE.ConeGeometry(0.35, 0.5, 4), PAL.gold, 4.42, 4.85, 0, 0, Math.PI / 4), bx(-4.3, 4.3, 0.004, 0.012, -0.25, 0.25, PAL.maroon)])],
     // Fallbacks for the Kenney props until (or unless) the models load.
     ['tree', mergeAll([prim(new THREE.ConeGeometry(1, 2.2, 6), PAL.mintDeep, 0, 1.6, 0), prim(new THREE.ConeGeometry(0.7, 0.5, 6), PAL.snow, 0, 2.6, 0), bx(-0.15, 0.15, 0, 0.5, -0.15, 0.15, PAL.wood)])],
     ['gift', mergeAll([bx(-0.6, 0.6, 0, 1.1, -0.6, 0.6, 0xffffff), bx(-0.15, 0.15, 0, 1.12, -0.62, 0.62, PAL.maroon)])],

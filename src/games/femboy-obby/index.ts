@@ -33,11 +33,11 @@ const TEMPLATE = `<canvas class="fo-canvas" tabindex="0" aria-label="Femboy Fros
 </div>
 <div class="fo-touch" hidden><div class="fo-stick" hidden><i></i></div></div>
 <button type="button" class="fo-jump" aria-label="Jump" hidden>${ICON.jump}<span>Jump</span></button>
-<section class="fo-suggest ui-glass-sheet" role="status" hidden>
+<section class="fo-suggest" role="status" hidden>
   <p>Tricky stage? Gentle help slows hazards and moving platforms.</p>
   <div class="fo-actions"><button type="button" class="game-button fo-help-on">Turn on gentle help</button><button type="button" class="game-button secondary fo-help-no">No thanks</button></div>
 </section>
-<section class="fo-panel ui-glass-sheet" aria-labelledby="fo-panel-title" hidden>
+<section class="fo-panel" aria-labelledby="fo-panel-title" hidden>
   <header><h2 id="fo-panel-title">Wardrobe &amp; help</h2><button type="button" class="game-button secondary fo-close">Done</button></header>
   <fieldset class="fo-outfits"><legend>Outfit</legend></fieldset>
   <label class="fo-check"><input type="checkbox" class="fo-bow"> <span>Ribbon bow <small class="fo-bow-note">Reach the first checkpoint</small></span></label>
@@ -49,7 +49,7 @@ const TEMPLATE = `<canvas class="fo-canvas" tabindex="0" aria-label="Femboy Fros
     <p class="fo-trial-note"></p>
   </div>
 </section>
-<section class="fo-result ui-glass-sheet" aria-labelledby="fo-result-title" hidden>
+<section class="fo-result" aria-labelledby="fo-result-title" hidden>
   <h2 id="fo-result-title" tabindex="-1">Star-top finish!</h2>
   <p class="fo-result-sub"></p>
   <dl class="fo-result-stats"><div><dt>Time</dt><dd class="fo-r-time">—</dd></div><div><dt>Stars</dt><dd class="fo-r-stars">0/30</dd></div><div><dt>Run</dt><dd class="fo-r-status">—</dd></div></dl>
@@ -80,11 +80,11 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let mode: Mode = 'campaign';
   let run: Run = createRun(course, { stars: progress.stars });
   let trial: Trial | null = null;
-  let paused = false, disposed = false, lost = false, finished = false;
+  let paused = false, disposed = false, lost = false, finished = false, finalMs: number | null = null;
   let frameId = 0, last = 0, renderCarry = 0, lowQuality = false;
   const stepper = new Stepper();
   const prev = { x: 0, y: 0, z: 0 };
-  let squash = 0, hudAt = 0, toastTimer = 0, suggestedFor = -1, lastStage = -1;
+  let squash = 0, hudAt = 0, toastTimer = 0, suggestedFor = -1, lastStage = -1, deathAt = 0, respawnAt = 0;
 
   const input = createInput({
     root, canvas, signal,
@@ -111,7 +111,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     input.clear();
     input.setLook(course.checkpoints[at].yaw, PITCH.rest);
     scene.snapCamera();
-    finished = false;
+    finished = false; finalMs = null;
     result.hidden = true; suggest.hidden = true;
     lastStage = -1;
     hud(true);
@@ -156,7 +156,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     let label: string, value: string;
     if (mode === 'trial' && trial) {
       label = trial.eligible ? 'Ranked' : 'Casual';
-      value = trial.started ? formatTime(trialElapsed(trial, now())) : 'Ready';
+      value = finalMs !== null ? formatTime(finalMs) : trial.started ? formatTime(trialElapsed(trial, now())) : 'Ready';
     } else { label = 'Stars'; value = `${progress.stars.length}/30`; }
     if (q('.fo-time-label').textContent !== label) q('.fo-time-label').textContent = label;
     if (q('.fo-time').textContent !== value) q('.fo-time').textContent = value;
@@ -177,10 +177,12 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
         case 'land': squash = 1; break;
         case 'spring': squash = 1; context.sound('tap'); break;
         case 'death':
+          deathAt = now();
           context.sound('lose');
           if (run.stageFails >= 3 && !progress.help && suggestedFor !== stageNo()) { suggestedFor = stageNo(); suggest.hidden = false; }
           break;
         case 'respawn':
+          respawnAt = now();
           input.setLook(course.checkpoints[run.checkpoint].yaw, PITCH.rest);
           scene.snapCamera(); snapPrev();
           break;
@@ -257,7 +259,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     if (!trial) return;
     const r = finishTrial(trial, now());
     if (!r) return;
-    finished = true;
+    finished = true; finalMs = r.ms;
+    hud();
     const p = course.checkpoints[LAST];
     scene.burst('finish', p.x, p.y, p.z);
     let sub: string;
@@ -425,14 +428,14 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     const count = () => { frames++; if (!disposed) countId = requestAnimationFrame(count); };
     countId = requestAnimationFrame(count);
     const api = {
-      state: () => ({ mode, paused, finished, checkpoint: run.checkpoint, stage: stageNo(), deaths: run.deaths, steps: run.steps, x: run.player.x, y: run.player.y, z: run.player.z, grounded: run.player.grounded, support: run.player.support, yaw: input.state.yaw, progress: { ...progress, stars: [...progress.stars] }, trial: trial ? { ...trial } : null, panel: !panel.hidden, result: !result.hidden, suggest: !suggest.hidden }),
+      state: () => ({ mode, paused, finished, checkpoint: run.checkpoint, stage: stageNo(), deaths: run.deaths, steps: run.steps, x: run.player.x, y: run.player.y, z: run.player.z, grounded: run.player.grounded, support: run.player.support, yaw: input.state.yaw, progress: { ...progress, stars: [...progress.stars] }, trial: trial ? { ...trial } : null, panel: !panel.hidden, result: !result.hidden, suggest: !suggest.hidden, deathAt, respawnAt, assist: run.assist }),
       /** Testing only: put the player on a checkpoint as if they had just respawned there (marks a trial casual). */
-      teleport: (index: number) => { if (trial) markCasual(trial, 'restored'); progress.checkpoint = Math.max(progress.checkpoint, index); if (index >= LAST) progress.complete = true; newRun(index); },
+      teleport: (index: number) => { const t = trial; if (t) markCasual(t, 'restored'); progress.checkpoint = Math.max(progress.checkpoint, index); if (index >= LAST) progress.complete = true; newRun(index); if (t) { t.checkpoint = index; run.startCrossed = true; } },
       place: (x: number, y: number, z: number, yaw?: number) => { run.player.x = x; run.player.y = y; run.player.z = z; run.player.grounded = false; snapPrev(); if (yaw !== undefined) input.setLook(yaw, PITCH.rest); scene.snapCamera(); },
       look: (yaw: number, pitch: number = PITCH.rest) => input.setLook(yaw, pitch),
       stats: () => ({ ...scene.stats }),
       frames: () => frames,
-      course: () => ({ checkpoints: course.checkpoints, stars: course.stars, stages: course.stages.map(s => ({ index: s.index, name: s.name, zone: s.zone })) }),
+      course: () => ({ checkpoints: course.checkpoints, stars: course.stars, stages: course.stages.map(s => ({ index: s.index, name: s.name, zone: s.zone, route: [{ id: course.checkpoints[s.index - 1].solid }, ...s.route].map(r => { const o = course.solids[r.id]; return { id: r.id, x0: o.x - o.hx, x1: o.x + o.hx, z0: o.z - o.hz, z1: o.z + o.hz, top: o.y + o.hy, surface: o.surface }; }) })) }),
     };
     (window as unknown as { __frosthopTest?: typeof api }).__frosthopTest = api;
     removeHook = () => { cancelAnimationFrame(countId); delete (window as unknown as { __frosthopTest?: unknown }).__frosthopTest; };

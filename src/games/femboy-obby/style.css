@@ -28,7 +28,7 @@
 .femboy-obby .fo-outfit.is-locked{opacity:.5;cursor:not-allowed}
 .femboy-obby .fo-outfit.is-locked b::after{content:' 🔒︎';font-weight:400}
 .femboy-obby .fo-outfit small,.femboy-obby .fo-check small{display:block;color:#5b6276;font-size:11.5px}
-.femboy-obby .fo-swatch{flex:0 0 26px;height:30px;border-radius:8px;background:linear-gradient(var(--c) 0 28%,var(--a) 28% 72%,repeating-linear-gradient(var(--b) 0 3px,#fbefe0 3px 6px) 72% 100%);border:1px solid rgba(38,50,72,.25)}
+.femboy-obby .fo-swatch{flex:0 0 26px;height:30px;border-radius:8px;background:linear-gradient(var(--c) 0 30%,var(--a) 30% 70%,transparent 70%),repeating-linear-gradient(var(--b) 0 3px,#fbefe0 3px 6px);border:1px solid rgba(38,50,72,.25)}
 .femboy-obby .fo-check{display:flex;gap:10px;align-items:flex-start;margin:10px 0;font-size:14px;cursor:pointer}
 .femboy-obby .fo-check input{width:20px;height:20px;margin-top:1px;accent-color:#d9668f}
 .femboy-obby .fo-stage-pick{display:flex;flex-direction:column;gap:4px;font-size:13px;margin-bottom:8px}

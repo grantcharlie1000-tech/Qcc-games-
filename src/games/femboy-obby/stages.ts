@@ -445,8 +445,8 @@ export function buildCourse(): Course {
   const podium = b.checkpoint({ gap: 1.6, w: 10, d: 10, rise: 0.6 });
   b.star(b.next({ from: f2, dir: 'left', gap: 2.2, w: 2, d: 2, rise: 0.8, off: true, color: PAL.gold }));
   const p = b.solids[podium];
-  b.deco('sleigh', p.x + 2.2, b.top(podium), p.z - 2.6, 1.6, 0, PAL.maroon);
-  b.deco('tree', p.x - 3.2, b.top(podium), p.z - 3.2, 1.6, 0, PAL.mint);
+  b.deco('sleigh', p.x + 3.1, b.top(podium), p.z - 3.6, 1.1, 0, PAL.maroon);
+  b.deco('tree', p.x - 3.7, b.top(podium), p.z - 3.7, 1.0, 0, PAL.mint);
   b.end('Star-top Finish');
 
   scenery(b);
