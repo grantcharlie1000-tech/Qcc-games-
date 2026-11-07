@@ -7,6 +7,7 @@ on:
       - 'src/ui/game-chrome.ts'
       - 'tests/games/color-blocks/**'
       - 'tests/e2e/liquid-glass.spec.ts'
+      - 'tests/e2e/closed-account-paint.spec.ts'
       - '.github/workflows/color-blocks-regression.yml'
 permissions:
   contents: read
@@ -35,6 +36,10 @@ jobs:
             sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
       - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Repeat closed account paint regression
+        run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/e2e/closed-account-paint.spec.ts --repeat-each=10 --workers=1 --output=test-results-paint
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report-paint
       # Fast feedback on gameplay and the timing regressions; the full browser suite remains unchanged.
       - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/games/color-blocks/ tests/e2e/liquid-glass.spec.ts --workers=1
       - uses: actions/upload-artifact@v4
@@ -44,3 +49,5 @@ jobs:
           path: |
             test-results
             playwright-report
+            test-results-paint
+            playwright-report-paint
