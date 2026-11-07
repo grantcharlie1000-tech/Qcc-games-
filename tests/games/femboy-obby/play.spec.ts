@@ -1,10 +1,11 @@
 import { test, expect, type Page } from '../../fixtures';
 import { devices } from '@playwright/test';
+import { gameAction } from '../../game-menu';
 
 /** Real-browser checks through the shell at /#/game/femboy-obby. Movement uses Playwright keyboard and CDP touch input;
  * the dev hook only reads state, except where a test says it sets up a position. */
 interface Route { id: number; x0: number; x1: number; z0: number; z1: number; top: number; surface: string }
-interface HookState { mode: string; paused: boolean; finished: boolean; checkpoint: number; stage: number; deaths: number; steps: number; x: number; y: number; z: number; grounded: boolean; support: number; yaw: number; progress: { checkpoint: number; stars: string[]; outfit: string; bow: boolean; help: boolean; complete: boolean; bestTrialMs: number | null }; trial: { started: boolean; eligible: boolean; reason: string | null; checkpoint: number } | null; panel: boolean; result: boolean; suggest: boolean; deathAt: number; respawnAt: number; assist: boolean }
+interface HookState { mode: string; paused: boolean; finished: boolean; checkpoint: number; stage: number; deaths: number; steps: number; x: number; y: number; z: number; grounded: boolean; support: number; yaw: number; progress: { checkpoint: number; stars: string[]; outfit: string; bow: boolean; help: boolean; complete: boolean; bestTrialMs: number | null }; trial: { started: boolean; eligible: boolean; reason: string | null; checkpoint: number } | null; panel: boolean; result: boolean; suggest: boolean; deathAt: number; respawnAt: number; jumps: number; assist: boolean }
 interface Hook { state(): HookState; teleport(i: number): void; place(x: number, y: number, z: number, yaw?: number): void; look(yaw: number, pitch?: number): void; stats(): { calls: number; triangles: number; geometries: number; textures: number }; frames(): number; course(): { checkpoints: { index: number; x: number; y: number; z: number }[]; stars: { id: string; x: number; y: number; z: number; stage: number }[]; stages: { index: number; name: string; route: Route[] }[] } }
 declare global { interface Window { __frosthopTest?: Hook } }
 
@@ -41,18 +42,21 @@ async function playStraight(page: Page, stage: number, target: number) {
   } finally { await page.keyboard.up('KeyW'); }
 }
 
-test('keyboard play: walk, jump the stage 1 gift gaps and reach the first checkpoint, which grants the bow', async ({ page }) => {
+test('keyboard play: the first campaign run is timed and ranked from the start line; jumping the stage 1 gaps reaches checkpoint 1 and the bow', async ({ page }) => {
   const errors = await open(page);
-  expect(await state(page)).toMatchObject({ mode: 'campaign', checkpoint: 0, stage: 1 });
+  expect(await state(page)).toMatchObject({ mode: 'campaign', checkpoint: 0, stage: 1, trial: { started: false, eligible: true } });
   await expect(page.locator('.game-hud')).toContainText('1/30');
+  await expect(page.locator('.game-hud')).toContainText('Ranked');
   await playStraight(page, 1, 1);
   const s = await state(page);
   expect(s.checkpoint).toBe(1);
+  expect(s.trial).toMatchObject({ started: true, eligible: true, checkpoint: 1 });
+  await expect(page.locator('.game-hud')).toContainText(/\d:\d{2}\.\d{2}/);
   expect(s.progress).toMatchObject({ checkpoint: 1, bow: true });
   await expect(page.locator('.game-hud')).toContainText('2/30');
   // Saved immediately with the new checkpoint.
   const saved = await page.evaluate(k => JSON.parse(localStorage.getItem(k) ?? 'null'), SAVE_KEY);
-  expect(saved?.data).toMatchObject({ v: 1, mode: 'campaign', at: 1, progress: { checkpoint: 1, bow: true } });
+  expect(saved?.data).toMatchObject({ v: 1, mode: 'campaign', at: 1, progress: { checkpoint: 1, bow: true }, trial: { started: true, checkpoint: 1 } });
   expect(errors).toEqual([]);
 });
 
@@ -66,8 +70,9 @@ test('a fall returns you to your checkpoint within 0.6 s with control restored',
   expect(s.respawnAt - s.deathAt).toBeLessThan(600);
   expect(s).toMatchObject({ x: 0, z: 3, grounded: true, checkpoint: 0 });
   // Control is back: W moves again.
-  await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW');
-  expect((await state(page)).z).toBeLessThan(2.5);
+  await page.keyboard.down('KeyW');
+  await page.waitForFunction(() => window.__frosthopTest!.state().z < 2.5, null, { timeout: 5000 });
+  await page.keyboard.up('KeyW');
   await page.screenshot({ path: EVIDENCE + 'checkpoint-and-recovery.png' });
   expect(errors).toEqual([]);
 });
@@ -77,7 +82,7 @@ test('a star is collected once, survives a reload, and the wardrobe equips unloc
   const star = (await course(page)).stars[0];
   await page.evaluate(p => window.__frosthopTest!.place(p.x, p.y - 1.2, p.z), star); // setup: drop onto the star's ledge
   await page.waitForFunction(() => window.__frosthopTest!.state().progress.stars.length === 1);
-  await expect(page.locator('.game-hud')).toContainText('1/30');
+  expect((await state(page)).progress.stars).toHaveLength(1);
   await page.reload();
   await page.waitForFunction(() => window.__frosthopTest !== undefined && window.__frosthopTest.state().steps > 2, null, { timeout: 20000 });
   expect((await state(page)).progress.stars).toEqual([star.id]);
@@ -96,7 +101,9 @@ test('a star is collected once, survives a reload, and the wardrobe equips unloc
 
 test('Escape opens Study with progress saved and paused; returning resumes the same game', async ({ page }) => {
   const errors = await open(page);
-  await page.keyboard.down('KeyW'); await page.waitForTimeout(400); await page.keyboard.up('KeyW');
+  await page.keyboard.down('KeyW');
+  await page.waitForFunction(() => window.__frosthopTest!.state().z < 2);
+  await page.keyboard.up('KeyW');
   await page.waitForTimeout(400); // let the run come to rest
   const before = await state(page);
   expect(before.z).toBeLessThan(2.5);
@@ -146,6 +153,19 @@ test('Time Trial: unlocked after the campaign; pausing makes it casual for good;
   await page.screenshot({ path: EVIDENCE + 'campaign-and-trial-results.png' });
   // A casual time never reaches the score record.
   expect(await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:femboy-obby'))).toBeNull();
+  expect(errors).toEqual([]);
+});
+
+test('Restart from the shell menu gives a fresh timed run that is still ranked', async ({ page }) => {
+  const errors = await open(page);
+  await page.keyboard.down('KeyW');
+  await page.waitForFunction(() => window.__frosthopTest!.state().trial?.started === true);
+  await page.keyboard.up('KeyW');
+  await gameAction(page, 'Restart game');
+  await page.waitForFunction(() => !window.__frosthopTest!.state().paused);
+  const s = await state(page);
+  expect(s).toMatchObject({ checkpoint: 0, z: 3, trial: { started: false, eligible: true, reason: null } });
+  await expect(page.locator('.game-hud')).toContainText('Ranked');
   expect(errors).toEqual([]);
 });
 
@@ -219,10 +239,11 @@ test.describe('touch', () => {
     await send('touchStart', [stick]);
     await send('touchStart', [stick, look]);
     for (let i = 1; i <= 8; i++) { await send('touchMove', [{ ...stick, y: stick.y - i * 8 }, { ...look, x: look.x - i * 6 }]); await page.waitForTimeout(30); }
-    // Third finger on Jump while still moving and looking.
+    // Third finger on Jump while still moving and looking: a real jump, well before the plaza edge (z = -5.5).
     const jp = { x: jump.x + jump.width / 2, y: jump.y + jump.height / 2, id: 3 };
     await send('touchStart', [{ ...stick, y: stick.y - 64 }, { ...look, x: look.x - 48 }, jp]);
-    await page.waitForFunction(() => !window.__frosthopTest!.state().grounded, null, { timeout: 3000 });
+    await page.waitForFunction(j => window.__frosthopTest!.state().jumps > j, before.jumps, { timeout: 3000 });
+    expect((await state(page)).z).toBeGreaterThan(-5);
     await send('touchEnd', [{ ...stick, y: stick.y - 64 }, { ...look, x: look.x - 48 }]);
     await page.waitForTimeout(500);
     await send('touchEnd', []);

@@ -335,7 +335,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
   const emblemsOff = new THREE.InstancedMesh(emblemGeo, emblemOff, course.checkpoints.length);
   emblemsOn.frustumCulled = emblemsOff.frustumCulled = false;
   scene.add(emblemsOn, emblemsOff);
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3(), eu = new THREE.Euler();
   let emblemState = '';
   const glow: { index: number; t: number }[] = [];
 
@@ -406,7 +406,10 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
   for (const [kind, file] of Object.entries(KENNEY) as [Decor['kind'], string][]) {
     if (!byKind.has(kind)) continue;
     loader.loadAsync(base + file).then(gltf => {
-      if (disposed) return;
+      if (disposed) {
+        gltf.scene.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.isMesh) { mesh.geometry.dispose(); const m = mesh.material as THREE.MeshStandardMaterial; m.map?.dispose(); m.dispose(); } });
+        return;
+      }
       const parts: Geo[] = [];
       gltf.scene.updateMatrixWorld(true);
       let map: THREE.Texture | null = null;
@@ -595,7 +598,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
     const spin = v.reduced ? 0 : v.mt * 1.6;
     for (const st of course.stars) {
       if (v.stars.has(st.id) || Math.abs(st.stage - stage) > 3) continue;
-      q.setFromEuler(new THREE.Euler(0, spin, 0));
+      q.setFromEuler(eu.set(0, spin, 0));
       m4.compose(v3.set(st.x, st.y + (v.reduced ? 0 : Math.sin(v.mt * 2 + st.stage) * 0.08), st.z), q, s3.setScalar(1));
       stars.setMatrixAt(n++, m4);
     }
@@ -633,20 +636,21 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
     camera.lookAt(camTarget.x - dx * 2.5, camTarget.y - 0.2, camTarget.z - dz * 2.5);
     snap = false;
     far.position.set(camera.position.x, 0, camera.position.z);
-    valley.position.set(camera.position.x, course.killY[Math.max(0, Math.min(course.killY.length - 1, v.reached))] - 10, camera.position.z);
+    // Below the fail plane of the stage being played (not the furthest stage reached), so it is never a floor.
+    valley.position.set(camera.position.x, course.killY[Math.max(0, Math.min(course.killY.length - 1, v.stage))] - 10, camera.position.z);
 
     // Effects.
     let si = 0;
     for (const p of sparkPool) {
       if (p.life > 0) { p.life -= v.dt; p.vy -= 6 * v.dt; p.x += p.vx * v.dt; p.y += p.vy * v.dt; p.z += p.vz * v.dt; }
-      m4.compose(v3.set(p.x, p.y, p.z), q.setFromEuler(new THREE.Euler(p.spin, p.life * 8, 0)), s3.setScalar(p.life > 0 ? Math.min(1, p.life * 2) : 0));
+      m4.compose(v3.set(p.x, p.y, p.z), q.setFromEuler(eu.set(p.spin, p.life * 8, 0)), s3.setScalar(p.life > 0 ? Math.min(1, p.life * 2) : 0));
       sparks.setMatrixAt(si++, m4);
     }
     sparks.instanceMatrix.needsUpdate = true;
     let ci = 0;
     for (const p of confettiPool) {
       if (p.life > 0) { p.life -= v.dt; p.vy = Math.max(-2.5, p.vy - 9 * v.dt); p.x += p.vx * v.dt; p.y += p.vy * v.dt; p.z += p.vz * v.dt; p.spin += v.dt * 6; }
-      m4.compose(v3.set(p.x, p.y, p.z), q.setFromEuler(new THREE.Euler(p.spin, p.spin * 0.7, 0)), s3.setScalar(p.life > 0 ? 1 : 0));
+      m4.compose(v3.set(p.x, p.y, p.z), q.setFromEuler(eu.set(p.spin, p.spin * 0.7, 0)), s3.setScalar(p.life > 0 ? 1 : 0));
       confetti.setMatrixAt(ci++, m4);
     }
     confetti.instanceMatrix.needsUpdate = true;

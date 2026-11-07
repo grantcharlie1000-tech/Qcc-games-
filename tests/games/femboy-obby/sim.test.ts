@@ -218,6 +218,18 @@ describe('moving surfaces', () => {
     expect(Math.abs(drift)).toBeGreaterThan(Math.abs(v) * air * STEP * 0.5);
   });
 
+  test('on the take-off step the platform moves the rider exactly once', () => {
+    const c = course([tray({ hx: 20, x: 0, motion: { dx: 8, dy: 0, dz: 0, period: 6, phase: 0, dwell: 0 } })]);
+    const r = createRun(c);
+    r.player.z = -7; r.player.x = 0;
+    run(c, 90, IDLE, r);
+    const x0 = r.player.x, t0 = r.mt;
+    step(r, c, { ...IDLE, jump: true });
+    const platform = solidOffset(c.solids[1], t0 + STEP).x - solidOffset(c.solids[1], t0).x;
+    expect(r.events.some(e => e.type === 'jump')).toBe(true);
+    expect(r.player.x - x0).toBeCloseTo(platform, 6);
+  });
+
   test('a conveyor carries a grounded player and stops when contact ends', () => {
     const belt = solid(1, 0, 0, -8, 6, 6, { surface: 'conveyor', belt: { x: 2, z: 0 } });
     const c = course([belt]);

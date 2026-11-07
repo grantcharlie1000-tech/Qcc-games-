@@ -62,7 +62,8 @@ export function readProgress(value: unknown, course: Course): Progress {
   p.checkpoint = int(v.checkpoint, 0, last, 0);
   const known = new Set(course.stars.map(s => s.id));
   p.stars = Array.isArray(v.stars) ? [...new Set(v.stars.filter((id): id is string => typeof id === 'string' && known.has(id)))] : [];
-  p.complete = v.complete === true || p.checkpoint === last;
+  // Completion is derived from the furthest checkpoint, not trusted from the save on its own.
+  p.complete = p.checkpoint === last;
   p.help = v.help === true;
   const best = v.bestTrialMs;
   p.bestTrialMs = typeof best === 'number' && Number.isInteger(best) && best > 0 && best < 1e8 && p.complete ? best : null;
@@ -78,7 +79,7 @@ export interface Snapshot { progress: Progress; mode: Mode; at: number; trial?: 
 export function writeSnapshot(progress: Progress, mode: Mode, at: number, trial: Trial | null, now: number) {
   return {
     v: SNAPSHOT_VERSION, progress: { ...progress, stars: [...progress.stars] }, mode, at,
-    trial: mode === 'trial' && trial ? { started: trial.started, elapsed: trial.started ? Math.round(trial.elapsedBefore + now - trial.startAt) : 0, checkpoint: trial.checkpoint } : undefined,
+    trial: trial ? { started: trial.started, elapsed: trial.started ? Math.round(trial.elapsedBefore + now - trial.startAt) : 0, checkpoint: trial.checkpoint } : undefined,
   };
 }
 
@@ -88,15 +89,23 @@ export function readSnapshot(value: unknown, course: Course): Snapshot | null {
   if (v.v !== SNAPSHOT_VERSION) return null;
   const progress = readProgress(v.progress, course);
   const last = course.checkpoints.length - 1;
-  if (v.mode === 'trial' && progress.complete && v.trial && typeof v.trial === 'object') {
+  /** A timed run (Time Trial or a campaign run from stage 1) always comes back casual, never ahead of its position. */
+  const timer = (at: number) => {
+    if (!v.trial || typeof v.trial !== 'object') return undefined;
     const t = v.trial as Record<string, unknown>;
     const trial = createTrial(false, last);
     trial.started = t.started === true;
     trial.elapsedBefore = trial.started ? int(t.elapsed, 0, 1e8, 0) : 0;
-    trial.checkpoint = int(t.checkpoint, 0, last, 0);
+    trial.checkpoint = Math.min(at, int(t.checkpoint, 0, last, 0));
     trial.eligible = false;
     trial.reason = 'restored';
-    return { progress, mode: 'trial', at: trial.checkpoint, trial };
+    return trial;
+  };
+  if (v.mode === 'trial' && progress.complete && v.trial && typeof v.trial === 'object') {
+    const at = int((v.trial as Record<string, unknown>).checkpoint, 0, last, 0);
+    return { progress, mode: 'trial', at, trial: timer(at) };
   }
-  return { progress, mode: 'campaign', at: int(v.at, 0, progress.checkpoint, progress.checkpoint) };
+  const at = int(v.at, 0, progress.checkpoint, progress.checkpoint);
+  const trial = v.mode === 'campaign' ? timer(at) : undefined;
+  return trial ? { progress, mode: 'campaign', at, trial } : { progress, mode: 'campaign', at };
 }

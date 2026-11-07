@@ -86,7 +86,7 @@ Tetris is a falling-piece puzzle: arrange seven kinds of quads, clear lines, and
 
 ## Femboy Frosthop
 
-Femboy Frosthop is an original pastel Christmas obby in Three.js: 30 fixed stages across six zones, with gift hops, beams, sweeper arms, lifts and trays, conveyor belts, ice, crumbling cookies, spring pads and snowballs. A fully clothed androgynous avatar wears oversized jumpers, striped socks over tights and cat-ear hats; each cleared zone unlocks an outfit. Stages end on checkpoint pads, every stage has one optional star, and a separate Time Trial opens after the campaign. Its leaderboard score is `2147483647 − milliseconds`, so faster runs rank higher; only unpaused, unassisted complete runs are submitted. See [its spec](src/games/femboy-obby/SPEC.md) and [test results](tests/games/femboy-obby/TEST_RESULTS.md).
+Femboy Frosthop is an original pastel Christmas obby in Three.js: 30 fixed stages across six zones, with gift hops, beams, sweeper arms, lifts and trays, conveyor belts, ice, crumbling cookies, spring pads and snowballs. A fully clothed androgynous avatar wears oversized jumpers, striped socks over tights and cat-ear hats; each cleared zone unlocks an outfit. Stages end on checkpoint pads and every stage has one optional star. The leaderboard ranks time to completion: every run from the stage 1 start line to the finish is timed (including the first campaign run), stored as `2147483647 − milliseconds` so faster runs rank higher; only unpaused, unassisted complete runs are submitted. A Time Trial for quick retries opens after the first finish. See [its spec](src/games/femboy-obby/SPEC.md) and [test results](tests/games/femboy-obby/TEST_RESULTS.md).
 
 ## Wordle
 

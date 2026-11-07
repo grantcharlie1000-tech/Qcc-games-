@@ -452,7 +452,8 @@ export function buildCourse(): Course {
   scenery(b);
   return assembleCourse({
     solids: b.solids, checkpoints: b.checkpoints, sweepers: b.sweepers, snowballs: b.snowballs, stars: b.stars, stages: b.stages, decor: b.decor,
-    startLine: { z: 1, x0: -4.5, x1: 4.5 },
+    // The plaza is ±4.5 wide; a player still standing on its edge has their centre up to a half-width beyond it.
+    startLine: { z: 1, x0: -4.85, x1: 4.85 },
   });
 }
 

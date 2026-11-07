@@ -41,7 +41,7 @@ const TEMPLATE = `<canvas class="fo-canvas" tabindex="0" aria-label="Femboy Fros
   <header><h2 id="fo-panel-title">Wardrobe &amp; help</h2><button type="button" class="game-button secondary fo-close">Done</button></header>
   <fieldset class="fo-outfits"><legend>Outfit</legend></fieldset>
   <label class="fo-check"><input type="checkbox" class="fo-bow"> <span>Ribbon bow <small class="fo-bow-note">Reach the first checkpoint</small></span></label>
-  <label class="fo-check"><input type="checkbox" class="fo-help"> <span>Gentle help <small>Slows every hazard and moving platform. A Time Trial with help on is casual (not ranked).</small></span></label>
+  <label class="fo-check"><input type="checkbox" class="fo-help"> <span>Gentle help <small>Slows every hazard and moving platform. A timed run with help on is casual (not ranked).</small></span></label>
   <label class="fo-check"><input type="checkbox" class="fo-low"> <span>Low graphics <small>30 frames a second and a smaller picture. Does not change the game.</small></span></label>
   <div class="fo-modes"><h3>Play</h3>
     <label class="fo-stage-pick"><span>Go to stage</span><select class="game-select fo-stage-select"></select></label>
@@ -84,7 +84,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let frameId = 0, last = 0, renderCarry = 0, lowQuality = false;
   const stepper = new Stepper();
   const prev = { x: 0, y: 0, z: 0 };
-  let squash = 0, hudAt = 0, toastTimer = 0, suggestedFor = -1, lastStage = -1, deathAt = 0, respawnAt = 0;
+  let squash = 0, hudAt = 0, toastTimer = 0, suggestedFor = -1, lastStage = -1, deathAt = 0, respawnAt = 0, jumps = 0;
 
   const input = createInput({
     root, canvas, signal,
@@ -117,9 +117,19 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     hud(true);
   }
 
+  /** Every run that begins at the stage 1 start line is timed for the leaderboard; later stages are untimed practice. */
+  function timer(at: number): Trial | null {
+    // A brand-new attempt is not touched by a pause that happened before it existed (the shell pauses while its
+    // menu is open, then restarts); any pause after this point latches it as usual.
+    return at === 0 ? createTrial(progress.help, LAST) : null;
+  }
+  /** Mark the current timed run casual unless it has already finished. */
+  function casual(reason: CasualReason) { if (trial && !finished) markCasual(trial, reason); }
+
   function startCampaign(at: number) {
-    mode = 'campaign'; trial = null;
+    mode = 'campaign';
     newRun(Math.max(0, Math.min(progress.checkpoint, at)));
+    trial = timer(run.checkpoint);
     const st = course.stages[stageNo() - 1];
     context.setStatus(`Campaign: stage ${st.index}, ${st.name}.`);
     context.announce(`Stage ${st.index}: ${st.name}.`);
@@ -129,10 +139,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     if (!progress.complete) return;
     mode = 'trial';
     newRun(0);
-    trial = createTrial(progress.help, LAST);
-    if (paused) markCasual(trial, 'paused');
+    trial = timer(0);
     context.setStatus('Time Trial ready. The clock starts when you cross the start line.');
-    context.announce(trial.eligible ? 'Time Trial. The clock starts at the start line.' : 'Time Trial, casual because gentle help is on.');
+    context.announce(trial?.eligible ? 'Time Trial. The clock starts at the start line.' : 'Time Trial, casual because gentle help is on.');
     toast('Time Trial · cross the line to start');
   }
 
@@ -154,7 +163,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     const stageText = `${n}/30`;
     if (force || q('.fo-stage').textContent !== stageText) q('.fo-stage').textContent = stageText;
     let label: string, value: string;
-    if (mode === 'trial' && trial) {
+    if (trial) {
       label = trial.eligible ? 'Ranked' : 'Casual';
       value = finalMs !== null ? formatTime(finalMs) : trial.started ? formatTime(trialElapsed(trial, now())) : 'Ready';
     } else { label = 'Stars'; value = `${progress.stars.length}/30`; }
@@ -173,13 +182,16 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   function handle(events: SimEvent[]) {
     for (const e of events) {
       switch (e.type) {
-        case 'jump': context.sound('tap'); break;
+        case 'jump': jumps++; context.sound('tap'); break;
         case 'land': squash = 1; break;
         case 'spring': squash = 1; context.sound('tap'); break;
         case 'death':
           deathAt = now();
           context.sound('lose');
-          if (run.stageFails >= 3 && !progress.help && suggestedFor !== stageNo()) { suggestedFor = stageNo(); suggest.hidden = false; }
+          if (run.stageFails >= 3 && !progress.help && suggestedFor !== stageNo()) {
+            suggestedFor = stageNo(); suggest.hidden = false;
+            q('.fo-suggest p').textContent = trial?.eligible && !finished ? 'Tricky stage? Gentle help slows hazards and moving platforms. It makes this timed run casual (not ranked).' : 'Tricky stage? Gentle help slows hazards and moving platforms.';
+          }
           break;
         case 'respawn':
           respawnAt = now();
@@ -187,7 +199,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
           scene.snapCamera(); snapPrev();
           break;
         case 'start-line':
-          if (mode === 'trial' && trial) { startTrial(trial, now()); context.announce(trial.eligible ? 'Go! The clock is running.' : 'Go! Casual run.'); toast('Go!'); }
+          if (trial) { startTrial(trial, now()); context.announce(trial.eligible ? 'Go! The clock is running.' : 'Go! Casual run.'); toast('Go!'); }
           break;
         case 'star': {
           if (!progress.stars.includes(e.id)) progress.stars.push(e.id);
@@ -216,8 +228,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     scene.burst('checkpoint', cp.x, cp.y, cp.z);
     context.sound('success');
     suggest.hidden = true;
+    if (trial?.started) trialCheckpoint(trial, index);
     if (mode === 'trial' && trial) {
-      trialCheckpoint(trial, index);
       if (index === LAST) return trialDone();
       context.announce(`Checkpoint ${index}.`);
       persist();
@@ -237,32 +249,11 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     context.announce(`Checkpoint ${index} reached.${names.length ? ` Unlocked ${names.join(' and ')}.` : ''} Stage ${index + 1}: ${next.name}.`);
   }
 
-  function campaignDone(unlocked: string[]) {
-    finished = true;
-    const p = course.checkpoints[LAST];
-    scene.burst('finish', p.x, p.y, p.z);
-    q('#fo-result-title').textContent = 'Star-top finish!';
-    q('.fo-result-sub').textContent = 'You crossed all six zones. The Time Trial is open.';
-    q('.fo-r-time').textContent = `${run.deaths} falls`;
-    q('.fo-r-time').previousElementSibling!.textContent = 'Retries';
-    q('.fo-r-stars').textContent = `${progress.stars.length}/30`;
-    q('.fo-r-status').textContent = 'Campaign';
-    const un = q('.fo-result-unlock');
-    un.hidden = !unlocked.length; un.textContent = unlocked.length ? `New: ${unlocked.join(', ')}` : '';
-    q('.fo-r-trial').hidden = false;
-    showResult();
-    context.setStatus('Campaign complete! Time Trial unlocked.');
-    context.announce('Campaign complete. You reached the star-top finish. Time Trial unlocked.');
-  }
-
-  function trialDone() {
-    if (!trial) return;
-    const r = finishTrial(trial, now());
-    if (!r) return;
-    finished = true; finalMs = r.ms;
-    hud();
-    const p = course.checkpoints[LAST];
-    scene.burst('finish', p.x, p.y, p.z);
+  /** Finish a timed run: rank it only when it is complete and eligible. Returns the shown time and a sentence. */
+  function recordTime(): { ms: number; eligible: boolean; sub: string } | null {
+    const r = trial ? finishTrial(trial, now()) : null;
+    if (!r || !trial) return null;
+    finalMs = r.ms;
     let sub: string;
     if (r.eligible) {
       const best = progress.bestTrialMs;
@@ -270,6 +261,42 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       context.setScore(encodeTime(r.ms));
       sub = best === null || r.ms < best ? 'A new personal best, sent to the leaderboard.' : `Your best is ${formatTime(best)}.`;
     } else sub = `Casual run (${REASONS[trial.reason ?? 'paused']}), so this time is not ranked.`;
+    hud();
+    return { ...r, sub };
+  }
+
+  function campaignDone(unlocked: string[]) {
+    finished = true;
+    const p = course.checkpoints[LAST];
+    scene.burst('finish', p.x, p.y, p.z);
+    const timed = recordTime();
+    q('#fo-result-title').textContent = 'Star-top finish!';
+    q('.fo-result-sub').textContent = timed ? `You crossed all six zones. ${timed.sub}` : 'You crossed all six zones. Play again from stage 1 for a ranked time.';
+    q('.fo-r-time').previousElementSibling!.textContent = timed ? 'Time' : 'Retries';
+    q('.fo-r-time').textContent = timed ? formatTime(timed.ms) : `${run.deaths} falls`;
+    q('.fo-r-stars').textContent = `${progress.stars.length}/30`;
+    q('.fo-r-status').textContent = timed ? (timed.eligible ? 'Ranked' : 'Casual') : 'Untimed';
+    const un = q('.fo-result-unlock');
+    un.hidden = !unlocked.length; un.textContent = unlocked.length ? `New: ${unlocked.join(', ')}` : '';
+    q('.fo-r-trial').hidden = false;
+    q('.fo-r-trial').textContent = 'Time Trial';
+    showResult();
+    persist();
+    context.setStatus(timed ? `Campaign complete in ${formatTime(timed.ms)}. ${timed.eligible ? 'Ranked.' : 'Casual.'}` : 'Campaign complete!');
+    context.announce(`Campaign complete. You reached the star-top finish${timed ? ` in ${formatTime(timed.ms)}. ${timed.sub}` : '.'} Time Trial unlocked.`);
+  }
+
+  function trialDone() {
+    const r = recordTime();
+    if (!r) {
+      toast('This run skipped the start line, so it is not timed');
+      context.announce('Finish reached, but this run skipped the start line, so it is not timed.');
+      return;
+    }
+    finished = true;
+    const p = course.checkpoints[LAST];
+    scene.burst('finish', p.x, p.y, p.z);
+    const sub = r.sub;
     q('#fo-result-title').textContent = 'Time Trial complete!';
     q('.fo-result-sub').textContent = sub;
     q('.fo-r-time').previousElementSibling!.textContent = 'Time';
@@ -308,7 +335,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     const dt = last ? Math.min(0.25, (t - last) / 1000) : 0;
     last = t;
     input.frame(dt);
-    stepper.advance(dt, () => {
+    const held = !panel.hidden || !result.hidden;
+    if (held) stepper.reset();
+    else stepper.advance(dt, () => {
       snapPrev();
       step(run, course, intent());
       if (run.events.length) handle(run.events);
@@ -362,8 +391,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     sel.disabled = mode !== 'campaign';
     q<HTMLButtonElement>('.fo-trial').disabled = !progress.complete;
     q('.fo-campaign').hidden = mode !== 'trial';
-    q('.fo-trial-note').textContent = !progress.complete ? 'Finish the campaign to open the Time Trial.'
-      : `Time Trial: a fresh run from the start line, with checkpoints in order and the clock running through falls. Pausing, hiding the tab, restoring a save or gentle help makes it casual.${progress.bestTrialMs ? ` Best: ${formatTime(progress.bestTrialMs)}.` : ''}`;
+    q('.fo-trial-note').textContent = !progress.complete ? 'Every run from stage 1 to the finish is timed for the leaderboard. Finish once to open the Time Trial for quick retries.'
+      : `Time Trial: a fresh run from the start line that skips nothing, with the clock running through falls. Pausing, hiding the tab, restoring a save or gentle help makes it casual.${progress.bestTrialMs ? ` Best: ${formatTime(progress.bestTrialMs)}.` : ''}`;
   }
   function openPanel() {
     if (lost) return;
@@ -383,7 +412,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   function setHelp(on: boolean) {
     progress.help = on;
     run.assist = on;
-    if (on && trial) markCasual(trial, 'assist');
+    if (on) casual('assist');
     context.announce(on ? 'Gentle help on.' : 'Gentle help off.');
     persist();
   }
@@ -403,7 +432,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   q('.fo-r-more').addEventListener('click', () => { result.hidden = true; finished = false; canvas.focus({ preventScroll: true }); }, { signal });
 
   // ---------- lifecycle plumbing ----------
-  document.addEventListener('visibilitychange', () => { if (document.hidden && trial) markCasual(trial, 'hidden'); }, { signal });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) casual('hidden'); }, { signal });
   canvas.addEventListener('webglcontextlost', e => {
     if (disposed) return;
     e.preventDefault();
@@ -428,7 +457,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     const count = () => { frames++; if (!disposed) countId = requestAnimationFrame(count); };
     countId = requestAnimationFrame(count);
     const api = {
-      state: () => ({ mode, paused, finished, checkpoint: run.checkpoint, stage: stageNo(), deaths: run.deaths, steps: run.steps, x: run.player.x, y: run.player.y, z: run.player.z, grounded: run.player.grounded, support: run.player.support, yaw: input.state.yaw, progress: { ...progress, stars: [...progress.stars] }, trial: trial ? { ...trial } : null, panel: !panel.hidden, result: !result.hidden, suggest: !suggest.hidden, deathAt, respawnAt, assist: run.assist }),
+      state: () => ({ mode, paused, finished, checkpoint: run.checkpoint, stage: stageNo(), deaths: run.deaths, steps: run.steps, x: run.player.x, y: run.player.y, z: run.player.z, grounded: run.player.grounded, support: run.player.support, yaw: input.state.yaw, progress: { ...progress, stars: [...progress.stars] }, trial: trial ? { ...trial } : null, panel: !panel.hidden, result: !result.hidden, suggest: !suggest.hidden, deathAt, respawnAt, jumps, assist: run.assist }),
       /** Testing only: put the player on a checkpoint as if they had just respawned there (marks a trial casual). */
       teleport: (index: number) => { const t = trial; if (t) markCasual(t, 'restored'); progress.checkpoint = Math.max(progress.checkpoint, index); if (index >= LAST) progress.complete = true; newRun(index); if (t) { t.checkpoint = index; run.startCrossed = true; } },
       place: (x: number, y: number, z: number, yaw?: number) => { run.player.x = x; run.player.y = y; run.player.z = z; run.player.grounded = false; snapPrev(); if (yaw !== undefined) input.setLook(yaw, PITCH.rest); scene.snapCamera(); },
@@ -443,6 +472,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
 
   applyOutfit();
   newRun(0);
+  trial = timer(0);
   context.setStatus('Hop from gift to gift. Reach each checkpoint pad.');
 
   const instance: GameInstance = {
@@ -451,7 +481,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     pause() {
       if (disposed || paused) return;
       paused = true;
-      if (trial) markCasual(trial, document.hidden ? 'hidden' : 'paused');
+      casual(document.hidden ? 'hidden' : 'paused');
       cancel(); input.clear();
     },
     resume() {
@@ -463,12 +493,13 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     restart() {
       if (disposed || lost) return false;
       if (mode === 'trial') startTrialMode();
-      else startCampaign(run.checkpoint);
+      else startCampaign(run.checkpoint >= LAST ? 0 : run.checkpoint);
       if (paused) draw(0);
       return true;
     },
     serialize() {
-      return writeSnapshot(progress, mode, mode === 'trial' && trial ? trial.checkpoint : run.checkpoint, trial, now());
+      const live = finished ? null : trial;
+      return writeSnapshot(progress, live ? mode : 'campaign', mode === 'trial' && live ? live.checkpoint : run.checkpoint, live, now());
     },
     restore(value) {
       if (disposed) return;
@@ -483,8 +514,10 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
         trial.startAt = now();
         if (snap.at > 0) run.startCrossed = true;
       } else {
-        mode = 'campaign'; trial = null;
+        mode = 'campaign';
         newRun(snap.at);
+        trial = snap.trial ?? null;
+        if (trial) { trial.startAt = now(); if (snap.at > 0 || trial.started) run.startCrossed = true; }
       }
       const st = course.stages[stageNo() - 1];
       context.setStatus(`Welcome back: stage ${st.index}, ${st.name}.`);
@@ -511,7 +544,7 @@ const game: GameModule = Object.freeze({
   id: ID,
   title: 'Femboy Frosthop',
   cover: 'game-art/femboy-obby/cover.svg',
-  rules: 'Femboy Frosthop is a Christmas obby: a 3D obstacle course of 30 stages across six zones (Giftwrap Gardens, Candy Cane Catwalk, Cozy Knit Workshop, Peppermint Ice Rink, Ornament Skyway and North Pole Runway). Hop across gifts, beams, moving lifts and trays, conveyor belts, slippery ice, crumbling cookies and spring pads, and dodge striped sweeper arms and rolling snowballs. Each stage ends on a broad checkpoint pad with a mint emblem; landing on it saves your place, and a fall or a hazard puts you back on your last checkpoint straight away. Every stage hides one optional star; stars never block your way. The first checkpoint gives you a ribbon bow, each cleared zone unlocks a new outfit for your wardrobe, and all 30 stars unlock one more. Gentle help, in the wardrobe panel, slows every hazard and moving platform. Finish the campaign to open the Time Trial: a fresh run from the start line, timed from crossing the line to the final checkpoint, with the clock running through falls. Pausing, hiding the tab, restoring a save or using gentle help makes that run casual, and only ranked runs reach the leaderboard (faster is better). Desktop: W A S D or the arrow keys move, Space jumps, drag with the mouse or trackpad to look around, Q and E turn the camera and C recentres it. Touch: drag on the left to move, drag on the right to look, and tap Jump. Esc opens Study Mode as usual.',
+  rules: 'Femboy Frosthop is a Christmas obby: a 3D obstacle course of 30 stages across six zones (Giftwrap Gardens, Candy Cane Catwalk, Cozy Knit Workshop, Peppermint Ice Rink, Ornament Skyway and North Pole Runway). Hop across gifts, beams, moving lifts and trays, conveyor belts, slippery ice, crumbling cookies and spring pads, and dodge striped sweeper arms and rolling snowballs. Each stage ends on a broad checkpoint pad with a mint emblem; landing on it saves your place, and a fall or a hazard puts you back on your last checkpoint straight away. Every stage hides one optional star; stars never block your way. The first checkpoint gives you a ribbon bow, each cleared zone unlocks a new outfit for your wardrobe, and all 30 stars unlock one more. Gentle help, in the wardrobe panel, slows every hazard and moving platform. The leaderboard ranks time to completion: every run that starts at the stage 1 start line is timed from crossing the line to the final checkpoint, with the clock running through falls, including your first campaign run. Starting from a later stage is untimed practice. Finishing once opens the Time Trial for quick fresh attempts. Pausing, hiding the tab, restoring a save or using gentle help makes that run casual, and only ranked runs reach the leaderboard (faster is better). Desktop: W A S D or the arrow keys move, Space jumps, drag with the mouse or trackpad to look around, Q and E turn the camera and C recentres it. Touch: drag on the left to move, drag on the right to look, and tap Jump. Esc opens Study Mode as usual.',
   mount,
 });
 export default game;

@@ -41,13 +41,14 @@ export function createInput(o: {
   const blocked = (e: Event) => typing(e.target) || !!document.querySelector('dialog[open]') || !o.active() || (e.target instanceof Element && e.target !== document.body && !root.contains(e.target) && !(e.target instanceof HTMLElement && e.target.id === 'game-stage'));
 
   function syncKeys() {
-    if (stick.id >= 0) return;
     const has = (k: string[]) => k.some(c => held.has(c));
+    // Jump is independent of movement: it updates even while the touch stick is held.
+    state.jump = has(KEYS.jump) || jumpTouch;
+    if (stick.id >= 0) return;
     state.ix = (has(KEYS.right) ? 1 : 0) - (has(KEYS.left) ? 1 : 0);
     state.iy = (has(KEYS.up) ? 1 : 0) - (has(KEYS.down) ? 1 : 0);
     const m = Math.hypot(state.ix, state.iy);
     if (m > 1) { state.ix /= m; state.iy /= m; }
-    state.jump = has(KEYS.jump) || jumpTouch;
   }
   const all = Object.values(KEYS).flat();
   window.addEventListener('keydown', e => {

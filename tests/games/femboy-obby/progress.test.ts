@@ -53,8 +53,18 @@ describe('saved progress', () => {
     expect(snap.mode).toBe('trial');
     expect(snap.trial).toMatchObject({ eligible: false, reason: 'restored', checkpoint: 4, started: true });
     expect(snap.trial!.elapsedBefore).toBe(61000);
-    // A trial save without a completed campaign is not a trial.
+    // A trial save without a completed campaign is not a Time Trial; it resumes as a campaign run.
     expect(readSnapshot({ v: SNAPSHOT_VERSION, progress: { checkpoint: 3 }, mode: 'trial', at: 2, trial: { started: true, elapsed: 1 } }, course)!.mode).toBe('campaign');
+  });
+
+  test('a timed campaign run from stage 1 is saved and restores as a casual timed run at the same checkpoint', () => {
+    const snap = readSnapshot({ v: SNAPSHOT_VERSION, progress: { checkpoint: 6 }, mode: 'campaign', at: 6, trial: { started: true, elapsed: 42000, checkpoint: 6 } }, course)!;
+    expect(snap).toMatchObject({ mode: 'campaign', at: 6 });
+    expect(snap.trial).toMatchObject({ started: true, eligible: false, reason: 'restored', checkpoint: 6, elapsedBefore: 42000 });
+    // The timer can never be ahead of the run's own position.
+    expect(readSnapshot({ v: SNAPSHOT_VERSION, progress: { checkpoint: 6 }, mode: 'campaign', at: 2, trial: { started: true, elapsed: 5, checkpoint: 9 } }, course)!.trial!.checkpoint).toBe(2);
+    // An untimed campaign save stays untimed.
+    expect(readSnapshot({ v: SNAPSHOT_VERSION, progress: { checkpoint: 6 }, mode: 'campaign', at: 6 }, course)!.trial).toBeUndefined();
   });
 });
 

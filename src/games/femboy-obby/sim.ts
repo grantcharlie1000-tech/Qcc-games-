@@ -43,12 +43,15 @@ export function solidOffset(s: Solid, t: number, out = scratch): { x: number; y:
 /** Note: solidOffset reports the TOP surface height in y, which is what riders care about. */
 
 export function sweeperAngle(w: Sweeper, t: number): number { return w.phase + w.omega * t; }
-export function snowballAt(b: Snowball, t: number, out = scratch): { x: number; y: number; z: number; active: boolean } {
+const ballScratch = { x: 0, y: 0, z: 0, active: false };
+/** Position of a snowball at motion time t. Returns a shared scratch object: copy what you need. */
+export function snowballAt(b: Snowball, t: number, out = ballScratch): { x: number; y: number; z: number; active: boolean } {
   const cycle = b.travel + b.gap;
   const u = (((t + b.phase) % cycle) + cycle) % cycle / b.travel;
   const k = Math.min(1, u);
   out.x = b.ax + (b.bx - b.ax) * k; out.y = b.ay + (b.by - b.ay) * k; out.z = b.az + (b.bz - b.az) * k;
-  return Object.assign(out, { active: u <= 1 });
+  out.active = u <= 1;
+  return out;
 }
 
 // ---------- run state ----------
@@ -80,26 +83,30 @@ export function isSolidActive(run: Run, s: Solid): boolean {
   return !c || c.phase !== 2;
 }
 
-/** Solids that can touch the player: the current, previous and next stages only. */
-function nearby(course: Course, run: Run): number[] {
-  const cp = run.checkpoint, out: number[] = [];
-  for (let s = Math.max(0, cp - 1); s <= Math.min(course.byStage.length - 1, cp + 2); s++) out.push(...course.byStage[s]);
-  return out;
-}
-
 interface Box { id: number; x0: number; x1: number; y0: number; y1: number; z0: number; z1: number; vx: number; vy: number; vz: number }
 
-function boxesAt(course: Course, run: Run, ids: number[], t0: number, t1: number): Box[] {
-  const out: Box[] = [];
-  const a = { x: 0, y: 0, z: 0 }, b = { x: 0, y: 0, z: 0 };
-  for (const id of ids) {
-    const s = course.solids[id];
-    if (!isSolidActive(run, s)) continue;
-    solidOffset(s, t1, b);
-    if (s.motion) solidOffset(s, t0, a); else { a.x = b.x; a.y = b.y; a.z = b.z; }
-    out.push({ id, x0: b.x - s.hx, x1: b.x + s.hx, y0: b.y - 2 * s.hy, y1: b.y, z0: b.z - s.hz, z1: b.z + s.hz, vx: (b.x - a.x) / STEP, vy: (b.y - a.y) / STEP, vz: (b.z - a.z) / STEP });
+// Reused every step so the hot path allocates nothing. step() is never re-entered, so one pool is enough.
+const pool: Box[] = [];
+const live: Box[] = [];
+const ta = { x: 0, y: 0, z: 0 }, tb = { x: 0, y: 0, z: 0 };
+
+/** Collision boxes for the solids that can touch the player: the current, previous and next stages only. */
+function boxesAt(course: Course, run: Run, t0: number, t1: number): Box[] {
+  live.length = 0;
+  const cp = run.checkpoint;
+  for (let st = Math.max(0, cp - 1); st <= Math.min(course.byStage.length - 1, cp + 2); st++) {
+    for (const id of course.byStage[st]) {
+      const s = course.solids[id];
+      if (!isSolidActive(run, s)) continue;
+      solidOffset(s, t1, tb);
+      if (s.motion) solidOffset(s, t0, ta); else { ta.x = tb.x; ta.y = tb.y; ta.z = tb.z; }
+      const box = pool[live.length] ?? (pool[live.length] = { id: 0, x0: 0, x1: 0, y0: 0, y1: 0, z0: 0, z1: 0, vx: 0, vy: 0, vz: 0 });
+      box.id = id; box.x0 = tb.x - s.hx; box.x1 = tb.x + s.hx; box.y0 = tb.y - 2 * s.hy; box.y1 = tb.y; box.z0 = tb.z - s.hz; box.z1 = tb.z + s.hz;
+      box.vx = (tb.x - ta.x) / STEP; box.vy = (tb.y - ta.y) / STEP; box.vz = (tb.z - ta.z) / STEP;
+      live.push(box);
+    }
   }
-  return out;
+  return live;
 }
 
 const overlapsXZ = (p: Player, b: Box, m = 0) => p.x + HW - m > b.x0 && p.x - HW + m < b.x1 && p.z + HW - m > b.z0 && p.z - HW + m < b.z1;
@@ -147,14 +154,13 @@ export function step(run: Run, course: Course, intent: Intent): void {
   }
 
   const p = run.player;
-  const ids = nearby(course, run);
-  const boxes = boxesAt(course, run, ids, t0, t1);
-  const byId = (id: number) => boxes.find(b => b.id === id);
+  const boxes = boxesAt(course, run, t0, t1);
   const wasGrounded = p.grounded, prevSupport = p.support;
   const prevZ = p.z;
 
   // 1. Carry: a grounded rider moves with the platform it stands on.
-  let support = p.grounded ? byId(p.support) : undefined;
+  let support: Box | undefined;
+  if (p.grounded) for (const b of boxes) if (b.id === p.support) { support = b; break; }
   if (p.grounded && !support) p.grounded = false;
   if (support) {
     p.x += support.vx * STEP; p.z += support.vz * STEP;
@@ -174,6 +180,7 @@ export function step(run: Run, course: Course, intent: Intent): void {
   if (Math.hypot(mx, mz) > 0.15) p.facing = Math.atan2(-mx, -mz);
 
   // 3. Jump: buffered press, coyote window, one inheritance of platform velocity.
+  let tookOff = false;
   const pressed = intent.jump && !p.jumpHeld;
   p.jumpHeld = intent.jump;
   if (pressed) p.buffer = MOVE.buffer;
@@ -182,7 +189,7 @@ export function step(run: Run, course: Course, intent: Intent): void {
   if (p.buffer > 0 && p.coyote > 0 && p.vy <= EPS) {
     p.vy = MOVE.jump;
     if (support) { p.ex = support.vx; p.ez = support.vz; }
-    p.grounded = false; p.coyote = 0; p.buffer = 0;
+    p.grounded = false; p.coyote = 0; p.buffer = 0; tookOff = true;
     run.events.push({ type: 'jump' });
     p.cut = true;
   } else if (p.cut && !intent.jump && p.vy > 0) {
@@ -194,7 +201,9 @@ export function step(run: Run, course: Course, intent: Intent): void {
   else p.vy = 0;
 
   // 5. Swept movement in bounded substeps, resolving one axis at a time.
-  const dx = (p.vx + p.ex) * STEP, dy = p.vy * STEP, dz = (p.vz + p.ez) * STEP;
+  // The carry above already moved the rider with the platform this step; inherited velocity applies from the next.
+  const ex = tookOff ? 0 : p.ex, ez = tookOff ? 0 : p.ez;
+  const dx = (p.vx + ex) * STEP, dy = p.vy * STEP, dz = (p.vz + ez) * STEP;
   const n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) / 0.15));
   let landed: Box | undefined;
   for (let i = 0; i < n; i++) {
@@ -285,15 +294,14 @@ function moveY(p: Player, boxes: Box[], d: number): Box | 'ceiling' | undefined 
 function depenetrate(p: Player, boxes: Box[]): void {
   for (const b of boxes) {
     if (!overlaps(p, b)) continue;
-    const pushes = [
-      { a: 'x' as const, v: b.x0 - HW - EPS, d: Math.abs(p.x + HW - b.x0) },
-      { a: 'x' as const, v: b.x1 + HW + EPS, d: Math.abs(b.x1 - (p.x - HW)) },
-      { a: 'z' as const, v: b.z0 - HW - EPS, d: Math.abs(p.z + HW - b.z0) },
-      { a: 'z' as const, v: b.z1 + HW + EPS, d: Math.abs(b.z1 - (p.z - HW)) },
-      { a: 'y' as const, v: b.y1, d: Math.abs(b.y1 - p.y) },
-    ];
-    pushes.sort((u, v) => u.d - v.d);
-    p[pushes[0].a] = pushes[0].v;
+    // Push out along the shallowest of the five directions (no upward push through a ceiling).
+    let axis: 'x' | 'y' | 'z' = 'y', value = b.y1, depth = Math.abs(b.y1 - p.y);
+    const consider = (a: 'x' | 'z', v: number, d: number) => { if (d < depth) { axis = a; value = v; depth = d; } };
+    consider('x', b.x0 - HW - EPS, Math.abs(p.x + HW - b.x0));
+    consider('x', b.x1 + HW + EPS, Math.abs(b.x1 - (p.x - HW)));
+    consider('z', b.z0 - HW - EPS, Math.abs(p.z + HW - b.z0));
+    consider('z', b.z1 + HW + EPS, Math.abs(b.z1 - (p.z - HW)));
+    p[axis] = value;
   }
 }
 
