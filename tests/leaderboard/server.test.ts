@@ -123,3 +123,17 @@ it.each([
  if(status===507)expect(await response.json()).toEqual({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'});
  expect((await pool.query('SELECT * FROM arcade_scores')).rows).toHaveLength(0);
 });
+
+
+it('accepts Frosthop completions and ranks the fastest time first without replacing a personal best with a slower run',async()=>{
+ const ada=await signup('Frost_Ada'),bo=await signup('Frost_Bo');
+ const base=2147483647;
+ expect((await submit(ada,'ignored',base-120000,'femboy-obby')).status).toBe(200);
+ expect((await submit(bo,'ignored',base-90000,'femboy-obby')).status).toBe(200);
+ expect((await submit(bo,'ignored',base-180000,'femboy-obby')).status).toBe(200);
+ const response=await handle(new Request(endpoint+'?game=femboy-obby&view=public'));
+ expect(response.status).toBe(200);
+ expect((await response.json()).entries.map((e:any)=>[e.name,e.score])).toEqual([['Frost_Bo',base-90000],['Frost_Ada',base-120000]]);
+ expect((await handle(new Request(endpoint+'?game=femboy-obby&view=personal',{headers:{Authorization:'Bearer '+ada}}))).status).toBe(200);
+ expect((await submit('a'.repeat(64),'Guest',base-60000,'femboy-obby')).status).toBe(401);
+});
