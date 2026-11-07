@@ -1,5 +1,7 @@
 import type {GameId} from '../core/types';
-export const SCORED_GAMES:readonly GameId[]=['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','corn-clicker','slipline','quadfall','claimline','crossy-road','quad-clash'];
+// The API branch can support new boards without importing their frontend game modules.
+export type ScoredGameId=GameId|'femboy-obby';
+export const SCORED_GAMES:readonly ScoredGameId[]=['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','corn-clicker','slipline','quadfall','claimline','crossy-road','quad-clash','femboy-obby'];
 /**
  * Error code the server returns (HTTP 409) when the database does not accept a game's scores yet: its game_id is
  * missing from the arcade_scores_game_id_check constraint until that game's migration is applied. Clients keep
@@ -7,8 +9,8 @@ export const SCORED_GAMES:readonly GameId[]=['fruit-merge','water-sort','color-b
  */
 export const LEADERBOARD_NOT_OPEN='leaderboard-not-open';
 export const MINESWEEPER_RANKINGS=['minesweeper-easy','minesweeper-medium','minesweeper-hard','minesweeper-score'] as const;
-export type LeaderboardKey=GameId|typeof MINESWEEPER_RANKINGS[number];
-export const scoredGame=(value:unknown):value is LeaderboardKey=>typeof value==='string'&&(SCORED_GAMES.includes(value as GameId)||MINESWEEPER_RANKINGS.includes(value as typeof MINESWEEPER_RANKINGS[number]));
+export type LeaderboardKey=ScoredGameId|typeof MINESWEEPER_RANKINGS[number];
+export const scoredGame=(value:unknown):value is LeaderboardKey=>typeof value==='string'&&(SCORED_GAMES.includes(value as ScoredGameId)||MINESWEEPER_RANKINGS.includes(value as typeof MINESWEEPER_RANKINGS[number]));
 export const validScore=(value:unknown):value is number=>typeof value==='number'&&Number.isInteger(value)&&value>0&&value<=2147483647;
 export const validName=(value:unknown):value is string=>typeof value==='string'&&value===value.trim()&&value.length>=2&&value.length<=24&&!/[\p{C}<>]/u.test(value);
 export interface Entry {rank:number;playerId:string;name:string;score:number;account?:boolean}
