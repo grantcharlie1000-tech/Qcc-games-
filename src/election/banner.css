@@ -1,0 +1,23 @@
+/* The library's way into Results Desk: a slim full-width row inside the game grid, in the card rim style.
+   Every line is clamped to one line, so its height never changes when results arrive (restored scroll stays exact). */
+.election-banner{position:relative;grid-column:1/-1;display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto;grid-template-areas:"badge title line count go";align-items:center;gap:4px 12px;overflow:hidden;padding:10px 14px 14px 12px;border:var(--card-border-width,6px) solid var(--rim,#2c2d2c);border-radius:22px;background:#000;color:#fff;box-shadow:var(--card-shadow);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;transition:transform 140ms var(--ease-out)}
+.eb-badge{grid-area:badge;display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:#d4003a;font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase}
+.eb-badge i{width:7px;height:7px;border-radius:50%;background:#fff}
+.election-banner[data-state="live"] .eb-badge i{animation:eb-pulse 1.6s ease-in-out infinite}
+.election-banner[data-state="final"] .eb-badge{background:#fff;color:#000}
+.election-banner[data-state="final"] .eb-badge i{background:#00a36f}
+.election-banner:is([data-state="waiting"],[data-state="loading"]) .eb-badge{background:#3f3f46}
+.eb-title{grid-area:title;font-family:Arcade,'Arial Rounded MT Bold',sans-serif;font-size:17px;line-height:1.2;text-transform:uppercase;color:#ffe0a4;white-space:nowrap}
+.eb-line{grid-area:line;min-width:0;font-size:14px;line-height:1.35;color:#e4e4e7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eb-count{grid-area:count;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.eb-go{grid-area:go;font-size:26px;line-height:1;color:#ffe0a4}
+/* The seat strip runs along the bottom edge. */
+.eb-seats{position:absolute;left:12px;right:12px;bottom:5px;display:flex;gap:2px;height:4px;border-radius:999px;overflow:hidden;background:#27272a}
+.eb-seats i{display:block;min-width:2px}
+.election-banner:active{transform:scale(.99)}
+@media(hover:hover) and (pointer:fine){.election-banner:hover{transform:translateY(-2px)}}
+/* Narrow screens: badge, title, count and arrow on top; the headline on one line below. */
+@media(max-width:619px){.election-banner{grid-template-columns:auto auto minmax(0,1fr) auto;grid-template-areas:"badge title count go" "line line line line";padding:8px 12px 13px 10px;border-radius:20px}.eb-count{justify-self:end}.eb-title{font-size:16px}.eb-line{font-size:13px}}
+@keyframes eb-pulse{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.election-banner{transition:none}.election-banner:hover,.election-banner:active{transform:none}.eb-badge i{animation:none!important}}
+.reduce-motion .eb-badge i{animation:none!important}
