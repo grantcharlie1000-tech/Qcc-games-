@@ -191,7 +191,7 @@ export class ListScreen implements Screen {
  private readonly detach:()=>void;
  private active:string|null=null;
  private shown:'loading'|'rows'|'empty'|'error'='loading';
- constructor(private readonly ctx:ChatContext,host:HTMLElement,private readonly store:ListStore) {
+ constructor(ctx:ChatContext,host:HTMLElement,private readonly store:ListStore) {
   this.el.className='chat-list-screen';
   this.h1.className='chat-title';this.h1.tabIndex=-1;this.h1.textContent='Chats';
   this.incoming=new IncomingRequests(ctx,store,'chat-requests-h');

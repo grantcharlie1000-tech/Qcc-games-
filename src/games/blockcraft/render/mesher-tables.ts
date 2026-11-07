@@ -90,7 +90,7 @@ export const TRANSLUCENT_CUBE=new Uint8Array(256);
 
 /** Boundary face profiles: two partial shapes whose touching faces have the same non-zero profile hide both faces
  *  (snow beside snow, same-half slabs, aligned stairs). Opaque cubes are handled by OPAQUE; 0 never culls. */
-export const P_NONE=0,P_FULL=1,P_LOWER=2,P_UPPER=3,P_SNOW=4,P_FARMLAND=5,P_BED=6,P_CACTUS=7,
+export const P_FULL=1,P_LOWER=2,P_UPPER=3,P_SNOW=4,P_FARMLAND=5,P_BED=6,P_CACTUS=7,
   /** Stairs sides: lower half plus the upper half on the +x / -x / +z / -z side. */
   P_STAIRS_XP=8,P_STAIRS_XN=9,P_STAIRS_ZP=10,P_STAIRS_ZN=11;
 export const PROFILE=new Uint8Array(256*6);

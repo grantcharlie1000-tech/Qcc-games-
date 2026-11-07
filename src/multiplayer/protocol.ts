@@ -45,11 +45,9 @@ export type Envelope=
   |{t:'bye';reason:string}
   |{t:'game';d:unknown};
 
-const TYPES=new Set(['hello','welcome','reject','roster','pause','ping','pong','bye','game']);
 export function parseEnvelope(value:unknown):Envelope|null{
   if(!value||typeof value!=='object')return null;
   const v=value as Record<string,unknown>;
-  if(typeof v.t!=='string'||!TYPES.has(v.t))return null;
   switch(v.t){
     case 'hello':return Number.isInteger(v.protocol)&&typeof v.game==='string'&&typeof v.version==='string'&&typeof v.name==='string'&&v.version.length<=64&&v.game.length<=32?v as Envelope:null;
     case 'welcome':return Number.isInteger(v.seat)&&typeof v.you==='string'&&Array.isArray(v.players)&&typeof v.paused==='boolean'&&v.players.every(validRoster)?v as Envelope:null;

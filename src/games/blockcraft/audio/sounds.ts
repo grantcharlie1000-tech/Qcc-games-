@@ -100,7 +100,7 @@ const clamp01=(v:number)=>v<0?0:v>1?1:v;
 const finiteVec=(v:Vec3|null|undefined):v is Vec3=>!!v&&typeof v==='object'&&Number.isFinite(v.x)&&Number.isFinite(v.y)&&Number.isFinite(v.z);
 
 export class SoundEngine implements SoundService{
-  private ctx:AudioContext|null=null;private master:GainNode|null=null;private limiter:DynamicsCompressorNode|null=null;
+  private ctx:AudioContext|null=null;private master:GainNode|null=null;
   private bank:NoiseBank|null=null;
   private voices:Voice[]=[];private dying:Voice[]=[];
   private rain:RainBed|null=null;private underwater:UnderwaterBed|null=null;private music:Music|null=null;
@@ -179,7 +179,7 @@ export class SoundEngine implements SoundService{
     this.disposed=true;
     for(const off of this.offs)off();
     this.offs=[];
-    const c=this.ctx;this.ctx=null;this.master=null;this.limiter=null;this.bank=null;this.live=false;
+    const c=this.ctx;this.ctx=null;this.master=null;this.bank=null;this.live=false;
     if(c){try{void c.close().catch(()=>{});}catch{/* already closed */}}
     try{this.game.root.dataset.audio='closed';}catch{/* no root */}
   }
@@ -330,7 +330,7 @@ export class SoundEngine implements SoundService{
         const lim=c.createDynamicsCompressor();
         lim.threshold.setValueAtTime(-10,c.currentTime);lim.knee.setValueAtTime(8,c.currentTime);lim.ratio.setValueAtTime(8,c.currentTime);
         lim.attack.setValueAtTime(.003,c.currentTime);lim.release.setValueAtTime(.2,c.currentTime);
-        master.connect(lim);tail=lim;this.limiter=lim;
+        master.connect(lim);tail=lim;
       }
       tail.connect(c.destination);
       this.ctx=c;this.master=master;this.bank=createNoiseBank(c,this.rand);

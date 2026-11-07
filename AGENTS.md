@@ -14,6 +14,7 @@ At the beginning of a project work session, load `using-superpowers` and use its
 | Game design and development | `.agents/skills/game-development/SKILL.md`, then its relevant subdirectory |
 | Phaser 4 engine setup and subsystems | `.agents/skills/game-setup-and-config/SKILL.md`, then the relevant Phaser skills such as `scenes`, `loading-assets`, `physics-arcade`, or `physics-matter` |
 | Planning, implementation, debugging and verification | `.agents/skills/using-superpowers/SKILL.md`, then the applicable Superpowers skill |
+| Codebase simplification and dead-code cleanup | `.agents/skills/reclaim-code-entropy/SKILL.md` |
 | Independent code review | `.agents/skills/requesting-code-review/SKILL.md` |
 | Evaluating and applying review feedback | `.agents/skills/receiving-code-review/SKILL.md` |
 

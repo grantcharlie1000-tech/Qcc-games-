@@ -28,7 +28,6 @@ function normal(q:Quad){
   const a=q[0],b=q[1],c=q[2],ux=b.x-a.x,uy=b.y-a.y,uz=b.z-a.z,vx=c.x-a.x,vy=c.y-a.y,vz=c.z-a.z;
   return [uy*vz-uz*vy,uz*vx-ux*vz,ux*vy-uy*vx];
 }
-const centroid=(q:Quad)=>[0,1,2].map(i=>q.reduce((s,v)=>s+[v.x,v.y,v.z][i],0)/4);
 /** Face index (+x,-x,+y,-y,+z,-z) of an axis-aligned quad from its winding. */
 function faceOf(q:Quad){
   const n=normal(q),a=n.map(Math.abs),i=a.indexOf(Math.max(...a));

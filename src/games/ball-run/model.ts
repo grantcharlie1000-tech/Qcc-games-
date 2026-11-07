@@ -3,7 +3,7 @@
  * chooses its lateral line. Collision uses the same obstacle poses as rendering. */
 import { sweepSphereBox } from '../../core/collision';
 import {
-  BALL, BANK_DRIFT, COURSE_REVISION, boxExtents, sleighPitch, type BoxExtents, DYING_DURATION, FALL_DEPTH, GATE_FEEDBACK, GATE_WALL_HEIGHT, GRAVITY, RADIUS, STEER_RESPONSE,
+  BALL, COURSE_REVISION, boxExtents, sleighPitch, type BoxExtents, DYING_DURATION, FALL_DEPTH, GATE_FEEDBACK, GATE_WALL_HEIGHT, GRAVITY, RADIUS, STEER_RESPONSE,
   isDifficulty, lateralSpeed,
   type Body, type Course, type Difficulty, type Obstacle, type ObstaclePose, type Phase, type Run, type TrackSample,
 } from './config';

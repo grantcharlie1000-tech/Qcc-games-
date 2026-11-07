@@ -135,10 +135,6 @@ function boxesAt(course: Course, run: Run, t0: number, t1: number): Box[] {
 const overlapsXZ = (p: Player, b: Box, m = 0) => p.x + HW - m > b.x0 && p.x - HW + m < b.x1 && p.z + HW - m > b.z0 && p.z - HW + m < b.z1;
 const overlaps = (p: Player, b: Box) => overlapsXZ(p, b) && p.y + H > b.y0 + EPS && p.y < b.y1 - EPS;
 
-function approach(v: number, target: number, maxDelta: number): number {
-  return v < target ? Math.min(target, v + maxDelta) : Math.max(target, v - maxDelta);
-}
-
 function kill(run: Run, cause: DeathCause): void {
   run.dead = RESPAWN_DELAY;
   run.deaths++; run.stageFails++;

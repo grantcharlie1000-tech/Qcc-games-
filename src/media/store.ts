@@ -39,14 +39,14 @@ const expired=(deadline?:number)=>deadline!==undefined&&Date.now()>=deadline;
 async function deleteBlobs(store:MediaStore,id:string):Promise<boolean> {
  try{for(const variant of ['full','thumb'] as const)await store.delete(mediaKey(id,variant));return true;}catch{return false;}
 }
-/** Deletes blobs of the given ids with bounded parallelism (allSettled, never throws). Returns the ids whose blobs are gone; failed or not-attempted ids (store missing, deadline passed) are left out so the caller keeps their rows. */
+/** Deletes blobs of the given ids with bounded parallelism. Returns the ids whose blobs are gone; failed or not-attempted ids (store missing, deadline passed) are left out so the caller keeps their rows. */
 export async function deleteBlobsFor(store:MediaStore|null,ids:string[],deadline?:number):Promise<string[]> {
  if(!store)return [];
  const done:string[]=[];
  for(let i=0;i<ids.length&&!expired(deadline);i+=BLOB_DELETE_CONCURRENCY){
   const chunk=ids.slice(i,i+BLOB_DELETE_CONCURRENCY);
-  const results=await Promise.allSettled(chunk.map(id=>deleteBlobs(store,id)));
-  results.forEach((result,index)=>{if(result.status==='fulfilled'&&result.value)done.push(chunk[index]!);});
+  const results=await Promise.all(chunk.map(id=>deleteBlobs(store,id)));
+  results.forEach((deleted,index)=>{if(deleted)done.push(chunk[index]!);});
  }
  return done;
 }

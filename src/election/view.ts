@@ -37,7 +37,7 @@ export class ElectionView implements AppView {
   private error='';
   private loading=false;
 
-  constructor(private root:HTMLElement,private deps:{reducedMotion:()=>boolean}){
+  constructor(root:HTMLElement,deps:{reducedMotion:()=>boolean}){
     root.innerHTML=`<article class="election-page" aria-labelledby="el-title">
       <nav class="el-top">
         <a class="el-back" href="#/collection">${icon(ICONS.back)}<span>Games</span></a>

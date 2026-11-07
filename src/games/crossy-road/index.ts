@@ -87,7 +87,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let run: RunState = createRun(world.seed);
   /** paused: by the shell. held: a restored run waits for Continue. frozen: the dev test hook steps time itself. */
   let paused = false, held = false, frozen = false, disposed = false, lost = false;
-  let frameId = 0, last = 0, acc = 0, frames = 0, shown: Layer = null;
+  let frameId = 0, last = 0, acc = 0, frames = 0;
   let resetInput = () => {};
   let best = Math.max(0, Math.floor(context.highScore) || 0), bestAtStart = best, announcedBest = false, warned = false;
   let reportedScore = -1, reportedRow = -1, nextBell = 0;
@@ -226,7 +226,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   }
 
   function show(next: Layer) {
-    shown = next;
     layer.hidden = next === null;
     for (const [name, card] of Object.entries(cards)) card.hidden = name !== next;
     // The playfield is a Tab stop only while it takes input.

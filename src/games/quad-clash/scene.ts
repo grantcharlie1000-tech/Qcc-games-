@@ -110,7 +110,7 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean;
   scene.add(hemi, sun, sun.target);
 
   const kit = createKit(finish=>gunTexture(finish,aniso));
-  const crest = crestTexture(), dot = dotTexture(), flashTex = flashTexture();
+  const dot = dotTexture(), flashTex = flashTexture();
   const flashMat = new THREE.SpriteMaterial({ map: flashTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
   const effects = createEffects(dot);
   effects.setBudget(profile.effects);
@@ -481,7 +481,7 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean;
     const map = getMap(v.m.settings.map), spot = map.zones[0];
     if (!hero || heroColor !== show.color) {
       if (hero) { disposeOwned(hero.group); heroRoot.remove(hero.group); }
-      hero = buildFighter(kit, show.color, crest, flashMat);
+      hero = buildFighter(kit, show.color, flashMat);
       heroColor = show.color;
       hero.group.position.y = 0.22;
       heroRoot.add(hero.group);
@@ -531,7 +531,7 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean;
         scene.add(arena.group);
       }
       for (const f of m.fighters) {
-        const fm = buildFighter(kit, fighterColor(m, f), crest, flashMat);
+        const fm = buildFighter(kit, fighterColor(m, f), flashMat);
         fighterModels.push(fm);
         fighterRoot.add(fm.group);
       }
@@ -646,7 +646,7 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean;
       if (arena) { arena.dispose(); arena = null; }
       effects.dispose();
       kit.dispose();
-      crest.dispose(); dot.dispose(); flashTex.dispose(); flashMat.dispose(); sleeveMat.dispose();
+      dot.dispose(); flashTex.dispose(); flashMat.dispose(); sleeveMat.dispose();
       zoneWall.geometry.dispose(); zoneRing.geometry.dispose(); beacon.geometry.dispose(); zoneWallMat.dispose(); zoneRingMat.dispose();
       renderer.dispose();
       renderer.forceContextLoss();

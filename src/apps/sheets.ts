@@ -68,7 +68,7 @@ export function reportSheet(options:ReportOptions):Promise<boolean> {
  const q=<T extends Element>(s:string)=>body.querySelector<T>(s)!;
  const send=q<HTMLButtonElement>('[data-action=send]'),note=q<HTMLTextAreaElement>('textarea'),counter=q('.apps-counter'),help=q<HTMLElement>('.apps-help'),slot=q('.apps-notice-slot');
  help.textContent=SELF_HARM_HELP;
- let ready=options.prefix?options.prefix(q('.apps-report-prefix'),()=>update()):()=>true;
+ const ready=options.prefix?options.prefix(q('.apps-report-prefix'),()=>update()):()=>true;
  const category=()=>body.querySelector<HTMLInputElement>('input[name=report-category]:checked')?.value as ReportCategory|undefined;
  function update(){
   help.hidden=category()!=='self-harm';
@@ -101,6 +101,5 @@ export function reportSheet(options:ReportOptions):Promise<boolean> {
   dialog.addEventListener('close',()=>resolve(sent),{once:true});
   showSheet(dialog,options.trigger);
   (body.querySelector<HTMLElement>('.apps-report-prefix input')??body.querySelector<HTMLElement>('input[name=report-category]'))?.focus();
-  void ready;
  });
 }

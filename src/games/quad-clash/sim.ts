@@ -1,7 +1,7 @@
 /** The Quad Clash match simulation: movement, weapons, grenades, rockets, damage, streaks, pickups, objectives and the
  * end of a match. Deterministic for a given seed and sequence of intents. No DOM, audio or Three.js. */
 import {
-  BODY, BOT_NAMES, BOOST_TIME, DROP_LIFETIME, GRENADE, HITBOX, MAX_GRENADES, MODES, PICKUP_RESPAWN, POINTS, PRIMARIES, RESPAWN_TIME,
+  BODY, BOT_NAMES, BOOST_TIME, DROP_LIFETIME, GRENADE, HITBOX, MAX_GRENADES, MODES, PICKUP_RESPAWN, POINTS, RESPAWN_TIME,
   SAVE_VERSION, SHIELD_TIME, SPAWN_PROTECT, STREAKS, WEAPONS, isPrimary, type PrimaryId, type Weapon, type WeaponId, DIFFICULTIES, MODE_IDS,
 } from './config';
 import { getMap, isMapId, type MapDef } from './map';
@@ -65,7 +65,7 @@ function chooseSpawn(m: Match, f: Fighter) {
       if (g === f || !g.alive) continue;
       const d = Math.hypot(g.x - s.x, g.z - s.z);
       if (d < 1.6) crowd = true;
-      if (enemies(m, f, g)) near = Math.min(near, d);
+      if (enemies(f, g)) near = Math.min(near, d);
     }
     return { s, score: crowd ? -1 : near };
   }).sort((a, b) => b.score - a.score);
@@ -200,7 +200,7 @@ function weapons(m: Match, w: World, f: Fighter, intent: Intent, dt: number) {
 const dir = { x: 0, y: 0, z: 0 };
 const hit: RayHit = { t: 0, nx: 0, ny: 0, nz: 0 };
 
-export function spreadOf(m: Match, f: Fighter, wpn: Weapon = weaponOf(f)) {
+export function spreadOf(f: Fighter, wpn: Weapon = weaponOf(f)) {
   const moving = Math.hypot(f.vx, f.vz) > 1.5;
   return (f.ads ? wpn.ads : wpn.hip) * (moving ? 1.5 : 1) * (f.grounded ? 1 : 1.8) + f.bloom;
 }
@@ -208,7 +208,7 @@ export function spreadOf(m: Match, f: Fighter, wpn: Weapon = weaponOf(f)) {
 function fireOnce(m: Match, w: World, f: Fighter, wpn: Weapon) {
   f.protectUntil = 0;
   f.mag[f.slot]--;
-  const spread = spreadOf(m, f, wpn);
+  const spread = spreadOf(f, wpn);
   f.bloom = Math.min(0.06, f.bloom + wpn.bloom);
   const ox = f.x, oy = eyeY(f), oz = f.z;
   m.events.push({ type: 'shot', owner: f.id, weapon: wpn.id });
@@ -233,7 +233,7 @@ function fireOnce(m: Match, w: World, f: Fighter, wpn: Weapon) {
     const wall = rayWorld(w, ox, oy, oz, dx, dy, dz, wpn.range, hit);
     let best = wall ? wall.t : wpn.range, target: Fighter | null = null, head = false;
     for (const g of m.fighters) {
-      if (!g.alive || !enemies(m, f, g)) continue;
+      if (!g.alive || !enemies(f, g)) continue;
       const th = rayEllipsoid(ox, oy, oz, dx, dy, dz, g.x, g.y + HITBOX.headY, g.z, HITBOX.headR, HITBOX.headRY, HITBOX.headRZ);
       if (th >= 0 && th < best) { best = th; target = g; head = true; }
       const tb = rayBox(ox, oy, oz, dx, dy, dz, g.x - BODY.radius, g.y, g.z - BODY.radius, g.x + BODY.radius, g.y + HITBOX.bodyTop, g.z + BODY.radius);
@@ -266,7 +266,7 @@ function throwGrenade(m: Match, f: Fighter) {
 export function damage(m: Match, target: Fighter, attacker: Fighter, amount: number, weapon: WeaponId | 'grenade', head: boolean, x: number, y: number, z: number): number {
   if (!target.alive || m.over || amount <= 0) return 0;
   if (m.t < target.protectUntil) return 0;
-  if (target !== attacker && !enemies(m, attacker, target)) return 0;
+  if (target !== attacker && !enemies(attacker, target)) return 0;
   const shielded = m.t < target.shieldUntil;
   if (shielded) amount *= 0.5;
   target.health -= amount;
@@ -360,7 +360,7 @@ function projectiles(m: Match, w: World, dt: number) {
         let best = wall ? wall.t : Infinity;
         const owner = m.fighters[p.owner];
         for (const g of m.fighters) {
-          if (!g.alive || (g.id === p.owner && p.age < 0.3) || (owner && g.id !== p.owner && !enemies(m, owner, g))) continue;
+          if (!g.alive || (g.id === p.owner && p.age < 0.3) || (owner && g.id !== p.owner && !enemies(owner, g))) continue;
           const tb = rayBox(p.x, p.y, p.z, dx, dy, dz, g.x - BODY.radius, g.y, g.z - BODY.radius, g.x + BODY.radius, g.y + BODY.height, g.z + BODY.radius);
           if (tb >= 0 && tb <= len && tb < best) best = tb;
         }
@@ -406,7 +406,7 @@ export function explode(m: Match, w: World, x: number, y: number, z: number, rad
     if (!clearLine(w, x, y, z, g.x, cy, g.z) && !clearLine(w, x, y, z, g.x, g.y + HITBOX.headY, g.z)) continue;
     const k = 1 - d / radius;
     // Knock back the owner (rocket jumps are allowed) and enemies without a spawn shield; teammates are untouched.
-    const shove = g === owner || (!!owner && enemies(m, owner, g) && m.t >= g.protectUntil);
+    const shove = g === owner || (!!owner && enemies(owner, g) && m.t >= g.protectUntil);
     if (shove) {
     const dx = g.x - x, dz = g.z - z, dl = Math.hypot(dx, dz) || 1;
     g.vx += (dx / dl) * 8 * k; g.vz += (dz / dl) * 8 * k; g.vy = Math.max(g.vy, 6.5 * k); g.grounded = false;
@@ -539,5 +539,3 @@ export function restore(value: unknown): Match | null {
   }
   return m;
 }
-
-export const PRIMARY_LIST = PRIMARIES;

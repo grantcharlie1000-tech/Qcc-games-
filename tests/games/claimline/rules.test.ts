@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { capture, percent, recount, setOwner, step } from '../../../src/games/claimline/model';
 import { CENTER, GRID, HUMAN, type World } from '../../../src/games/claimline/types';
-import { at, centre, discCells, drain, follow, put, scene } from './harness';
+import { at, centre, drain, follow, put, scene } from './harness';
 
 const captures = (world: World) => drain(world).filter(e => e.kind === 'capture');
 const intersects = (a: number[], b: number[]) => {

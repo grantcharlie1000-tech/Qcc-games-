@@ -400,7 +400,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       const th = raySphere(ox, oy, oz, d.x, d.y, d.z, g.x, g.y + HITBOX.headY, g.z, HITBOX.headR + 0.1);
       const tb = rayBox(ox, oy, oz, d.x, d.y, d.z, g.x - BODY.radius, g.y, g.z - BODY.radius, g.x + BODY.radius, g.y + BODY.height, g.z + BODY.radius);
       const t = th >= 0 ? (tb >= 0 ? Math.min(th, tb) : th) : tb;
-      if (t >= 0 && t < bestT) { bestT = t; name = g.name; friendly = !enemies(m, you, g); }
+      if (t >= 0 && t < bestT) { bestT = t; name = g.name; friendly = !enemies(you, g); }
     }
     aimName = name; aimFriendly = friendly;
   }
@@ -418,7 +418,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     };
     input.state.lookDX = 0; input.state.lookDY = 0;
     scene.render(view);
-    if (phase !== 'menu') hud.update(m, { spread: spreadOf(m, you), ads: adsBlend, scoped: wpn.id === 'valedictorian' && adsBlend > 0.85, aimName, aimFriendly, damageDir: null, board: input.state.board, dt, reduced: reduced() });
+    if (phase !== 'menu') hud.update(m, { spread: spreadOf(you), ads: adsBlend, scoped: wpn.id === 'valedictorian' && adsBlend > 0.85, aimName, aimFriendly, damageDir: null, board: input.state.board, dt, reduced: reduced() });
     if (phase === 'playing') report();
     setData('phase', phase);
     setData('alive', String(you.alive));
