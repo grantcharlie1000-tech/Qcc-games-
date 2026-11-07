@@ -1,0 +1,85 @@
+name: Crossy Road performance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/games/crossy-road/**'
+      - 'src/ui/canvas-ink.ts'
+      - 'tests/games/crossy-road/**'
+      - '.github/workflows/crossy-performance.yml'
+permissions:
+  contents: read
+concurrency:
+  group: crossy-perf-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  crossy:
+    name: Crossy gameplay and HUD (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/games/crossy-road/ tests/e2e/canvas-ink-capture.spec.ts tests/e2e/clear-ink-adaptation.spec.ts --workers=1
+      - name: Repeat the paused Quadfall timing regressions
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: quadfall-timing-report
+        run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/games/quadfall/scheduling.spec.ts tests/games/quadfall/play.spec.ts --grep 'line-clear animation|the most recently pressed direction' --repeat-each=10 --workers=1 --output=quadfall-timing-results
+      - name: Repeat the account paint capture regression
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: account-paint-report
+        run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/e2e/closed-account-paint.spec.ts --repeat-each=10 --workers=1 --output=account-paint-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crossy-${{ matrix.browser }}
+          path: |
+            test-results
+            playwright-report
+            quadfall-timing-report
+            quadfall-timing-results
+            account-paint-report
+            account-paint-results
+  benchmark:
+    name: Crossy production before and after
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Build the PR base and candidate independently
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/crossy-base" "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/crossy-base/node_modules"
+          (cd "$RUNNER_TEMP/crossy-base" && npm run build)
+          npm run build
+      - name: Alternate three production runs on the same runner
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/crossy-benchmark"
+          for run in 1 2 3; do
+            (cd "$RUNNER_TEMP/crossy-base" && node scripts/perf/crossy-ballrun.mjs --crossy-only --output "$GITHUB_WORKSPACE/crossy-benchmark/before-$run.json")
+            node scripts/perf/crossy-ballrun.mjs --crossy-only --output "$GITHUB_WORKSPACE/crossy-benchmark/after-$run.json"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crossy-production-benchmarks
+          path: crossy-benchmark
