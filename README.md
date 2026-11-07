@@ -1,6 +1,6 @@
 # Pocket Arcade
 
-A static, private browser arcade with twenty-four playable games: **Block Blast, Water Sort, Suika Game, Stack, Flappy Bird, Ball Run, Animal Stack, Snake, Slither.io, Minesweeper, Solitaire, Block Fill, Flow Free, Pool, Globle, Minecraft, Pac-Man, Corn Clicker, Slipline, Tetris, Wordle, Claimline, Crossy Road and Quad Clash**. Original SVG covers, a compact portrait-card library, favourites and local saves. The site requires a network connection; service-worker caching and offline downloads are retired. No advertisements or currency. Accounts are optional for play and required for publishing leaderboard scores. Gameplay stays local; optional shared leaderboards use a score service reached through the Cloudflare Pages proxy, and Pool and Minecraft can be played online between devices ([setup](docs/MULTIPLAYER.md)).
+A static, private browser arcade with twenty-five playable games: **Block Blast, Water Sort, Suika Game, Stack, Flappy Bird, Ball Run, Animal Stack, Snake, Slither.io, Minesweeper, Solitaire, Block Fill, Flow Free, Pool, Globle, Minecraft, Pac-Man, Corn Clicker, Slipline, Tetris, Wordle, Claimline, Crossy Road, Quad Clash and Femboy Frosthop**. Original SVG covers, a compact portrait-card library, favourites and local saves. The site requires a network connection; service-worker caching and offline downloads are retired. No advertisements or currency. Accounts are optional for play and required for publishing leaderboard scores. Gameplay stays local; optional shared leaderboards use a score service reached through the Cloudflare Pages proxy, and Pool and Minecraft can be played online between devices ([setup](docs/MULTIPLAYER.md)).
 
 The latest [gameplay correction record](docs/GAMEPLAY_CORRECTIONS.md) includes the four referenced scenes, six Animal Stack cutouts, actual interaction recordings and viewport checks.
 
@@ -83,6 +83,10 @@ TMDB and the streaming servers receive ordinary image and playback requests. Ext
 **Slipline** is a deterministic arrow-extraction puzzle: clear each route in its direction, avoid blocked moves, and preserve hearts through an endless campaign.
 
 Tetris is a falling-piece puzzle: arrange seven kinds of quads, clear lines, and build a local best score.
+
+## Femboy Frosthop
+
+Femboy Frosthop is an original pastel Christmas obby in Three.js: 30 fixed stages across six zones, with gift hops, beams, sweeper arms, lifts and trays, conveyor belts, ice, crumbling cookies, spring pads and snowballs. A fully clothed androgynous avatar wears oversized jumpers, striped socks over tights and cat-ear hats; each cleared zone unlocks an outfit. Stages end on checkpoint pads and every stage has one optional star. The leaderboard ranks time to completion: every run from the stage 1 start line to the finish is timed (including the first campaign run), stored as `2147483647 − milliseconds` so faster runs rank higher; only unpaused, unassisted complete runs are submitted. A Time Trial for quick retries opens after the first finish. See [its spec](src/games/femboy-obby/SPEC.md) and [test results](tests/games/femboy-obby/TEST_RESULTS.md).
 
 ## Wordle
 

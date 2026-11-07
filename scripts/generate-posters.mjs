@@ -22,6 +22,8 @@ const C = {
   sky: '#55b9ea', blue: '#3f7ee8', navy: '#283a6e', purple: '#8a5ae8', pink: '#f05fa6', magenta: '#c548d8',
   dirt: '#93603a', wood: '#b07a45', dkwood: '#7a4f2b', felt: '#2f9a63', stone: '#8d96a6', slate: '#5f6a80',
   dark: '#2b2f45', ink: '#1d1a2c', black: '#26232f', grey: '#9aa1ae', water: '#4aa6e0', glass: '#dff3ff',
+  blush: '#f4a9c6', rose: '#e47ca4', maroon: '#7c2445', skin: '#f7d3b8', hair: '#80502f', tights: '#3e2f3c',
+  lilac: '#c4b2ec', mint: '#a9dcc0', ice: '#aebde8',
 };
 // Backdrop hue and title accent per game. Card colours in src/core/catalog.ts derive from these.
 export const POSTERS = {
@@ -49,6 +51,7 @@ export const POSTERS = {
   'claimline':    {hue: 330, accent: C.pink,   title: 'A voxel arena of coloured territories with a trail looping out'},
   'crossy-road':  {hue: 200, accent: C.red,    title: 'A voxel chicken in a Santa hat hopping across snow, road and river'},
   'quad-clash':   {hue: 22,  accent: C.yellow, title: 'A blocky egg fighter in a yellow headband holding a pencil blaster'},
+  'femboy-obby':  {hue: 256, accent: C.pink,   title: 'A blocky boy in a pink cat-ear beanie and snowflake jumper hopping across gift boxes in the snow'},
 };
 
 // ---------- colour ----------
@@ -511,6 +514,59 @@ art['quad-clash'] = s => {
   for (let x = 4; x < 13; x++) s.set(x, 8, 4, x < 5 ? C.pink : x < 6 ? C.grey : x < 12 ? C.yellow : C.wood);
   s.set(13, 8, 4, C.black);
   s.box(1, 1, 1, 1, 1, 2, C.teal).set(1, 1, 3, C.dkwood);
+};
+
+art['femboy-obby'] = s => {
+  // Obby platforms floating in the snow: pink gift boxes with cream lids and maroon ribbons.
+  const gift = (x0, y0, z0, w, d, h, rx, ry, paper = C.blush) => {
+    s.box(x0, y0, z0, w, d, h - 1, (x, y) => x === rx || y === ry ? C.maroon : paper);
+    s.box(x0, y0, z0 + h - 1, w, d, 1, (x, y) => x === rx || y === ry ? C.maroon : C.cream);
+  };
+  const bow = (x, y, z) => s.set(x - 1, y, z, C.maroon).set(x + 1, y, z, C.maroon).set(x, y - 1, z, C.maroon).set(x, y + 1, z, C.maroon);
+  gift(-2, 0, -3, 12, 9, 3, 8, 6); bow(8, 6, 0);
+  // Two more gifts stepping away on the left, linked by a candy-cane beam.
+  gift(-10, 4, -4, 5, 5, 4, -8, 6); bow(-8, 6, 0);
+  gift(-14, -6, -2, 5, 5, 6, -12, -4, C.lilac); bow(-12, -4, 4);
+  for (let y = -1; y < 4; y++) s.box(-10, y, -1, 2, 1, 1, y % 2 ? C.rose : C.white);
+  // A small floating snow island with a snowy pine and a gold star.
+  island(s, 11, -7, 7, 7, C.snow, C.ice, 2, 0);
+  const PINE = {top: C.white, left: C.dkgreen, right: C.dkgreen};
+  for (const [z, r] of [[1, 3], [2, 2], [3, 2], [4, 1], [5, 1], [6, 1], [7, 0], [8, 0]]) s.box(14 - r, -4 - r, z, 2 * r + 1, 2 * r + 1, 1, PINE);
+  s.box(14, -4, 9, 1, 1, 3, C.gold).set(13, -4, 10, C.gold).set(15, -4, 10, C.gold);
+
+
+  // Avatar, facing +y (the bright left face), feet at z = 0, body across x 0..7.
+  for (const bx of [0, 5]) s.box(bx, 1, 0, 3, 5, 2, C.cream).box(bx, 1, 2, 3, 4, 1, C.paper);
+  for (const lx of [1, 5]) for (let z = 3; z < 7; z++) s.box(lx, 2, z, 2, 2, 1, z % 2 ? C.rose : C.paper);
+  for (const lx of [1, 5]) s.box(lx, 2, 7, 2, 2, 4, C.tights);
+  // Oversized jumper: ribbed hem, a maroon bow and a snowflake, puffy sleeves.
+  s.box(-1, 0, 11, 10, 6, 1, C.rose).box(-1, 0, 12, 10, 6, 7, C.blush).box(1, 1, 19, 6, 4, 1, C.rose);
+  for (const [sx, dir] of [[-2, -1], [9, 1]]) {
+    const y0 = dir < 0 ? 2 : 1; // the far (left) sleeve sits forward so it shows beside the body
+    s.box(sx, y0, 14, 1, 4, 5, C.blush).box(sx + dir, y0, 10, 1, 4, 6, C.blush);
+    s.box(sx + dir, y0, 9, 1, 4, 1, C.rose).box(sx + dir, y0 + 1, 8, 1, 2, 1, C.skin);
+  }
+  const FLAKE = ['1001001', '0101010', '0011100', '1111111', '0011100', '0101010', '1001001'];
+  const front = (x, y, z, rows, colour, px) => s.paint(null, [x, y + .002, z], [px, 0, 0], [0, 0, -px], rows, colour);
+  front(2.75, 6, 18.9, ['1100011', '1110111', '1111111', '1110111', '1100011', '0010100', '0100010'], C.maroon, 2.5 / 7);
+  front(2, 6, 16.2, FLAKE, C.white, 4 / 7);
+  s.right(10, 2.5, 12.5, FLAKE, C.white, 3 / 7);
+  // Head with brown hair: fringe, side locks, eyes and blush.
+  s.box(0, 0, 20, 8, 7, 6, (x, y, z) => y < 2 || ((x === 0 || x === 7) && (z > 21 || y < 6)) ? C.hair : C.skin);
+  for (const [x, z] of [[1, 25], [2, 25], [4, 25], [5, 25], [6, 25], [1, 24], [6, 24]]) s.set(x, 6, z, C.hair);
+  const EYE = ['0110', '1111', '1011', '1111', '1111', '0110'];
+  front(2, 7, 24, EYE, C.ink, 1 / 4); front(5, 7, 24, EYE, C.ink, 1 / 4);
+  front(1, 7, 22.4, ['0111', '1110'], C.rose, 1 / 4); front(6, 7, 22.4, ['0111', '1110'], C.rose, 1 / 4);
+  front(3.5, 7, 21.7, ['101', '010'], C.maroon, 1 / 3);
+  // Snug pink cat-ear beanie: rolled cuff, dome, two pointed ears with pink insides and a cream pompom.
+  s.box(0, 0, 26, 8, 7, 1, C.rose).box(0, 0, 27, 8, 7, 2, C.blush).box(1, 1, 29, 6, 5, 1, C.blush);
+  for (const [x, y] of [[7, 6], [7, 0], [0, 0]]) s.set(x, y, 28, null); // rounded crown
+  // Ears lean outwards: rows of 3, 3, 2 and 1 voxels, the right ear inset one column from the hat's side.
+  for (const [x0, out] of [[0, -1], [4, 1]]) {
+    [3, 3, 2, 1].forEach((w, i) => s.box(out < 0 ? x0 : x0 + 3 - w, 5, 29 + i, w, 2, 1, C.blush));
+    front(x0 + (out < 0 ? .25 : .75), 7, 32, out < 0 ? ['100', '110', '111', '111'] : ['001', '011', '111', '111'], C.rose, 2 / 3);
+  }
+  s.ball(3.5, 3, 30.6, 1.6, C.paper);
 };
 
 // ---------- backdrop and assembly ----------
