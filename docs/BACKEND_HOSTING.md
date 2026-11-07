@@ -13,6 +13,8 @@ An explicit `VITE_QCC_API_BASE` build setting can instead point it directly at t
 | `/api/social` | `/.netlify/functions/social` | Postgres (text works without a blob store) |
 | `/api/chat` | `/.netlify/functions/chat` | Postgres (text works without a blob store) |
 | `/api/media` | `/.netlify/functions/media` | Postgres and Vercel Blob (`BLOB_READ_WRITE_TOKEN`; 503 `media_not_configured` without it) |
+| `/api/predictions` | `/.netlify/functions/predictions` | Postgres and the gated `20261108090000_predictions` migration; refuses everything but `me` until `predictions_config.enabled` |
+| `/api/predictions-grants` | scheduled function `predictions-grants` | Vercel Cron with `CRON_SECRET`; does nothing until Predictions is enabled and launched |
 | `/api/chat-purge` | scheduled function `chat-purge` | Vercel Cron with `CRON_SECRET` (401 without the Bearer header) |
 | `/api/movies` | `/api/movies` | TMDB read token (503 without it) |
 | `/api/health` | none | nothing |
@@ -68,6 +70,12 @@ rows, so no blob is orphaned. It skips while writes are frozen. It passes throug
 **Schedule: daily (`7 3 * * *`).** Vercel Hobby only allows cron jobs that run once per day, and a more frequent expression fails
 the deployment. Reads already filter on `expires_at`, so expired messages are never served between runs; only the row and blob
 deletion is delayed by up to a day. `vercel.json` has a single `api/[route].js` function (`maxDuration: 10`), so the cron path has no function config of its own and relies on the 7 s deadline. On a Pro plan change the schedule to `7 * * * *` for the hourly purge the docs describe.
+
+`vercel.json` also registers `/api/predictions-grants` at **`17 12 * * *`** (daily, Hobby-safe): 12:17 UTC is just after Monday
+00:00 in Auckland in both NZDT (11:00 UTC) and NZST (12:00 UTC). It uses the same Bearer `CRON_SECRET` check and environment guard,
+runs `runGrantJob` (one short transaction per account) inside the 7 s budget, and logs only counts. Grants are idempotent and also
+repaired lazily on every wallet read and trade, so a late, missed or repeated run can neither skip nor double an allowance. It does
+nothing while Predictions is disabled, not launched or write-frozen. See [Predictions](PREDICTIONS.md).
 
 Uploads send the raw image bytes with their `Content-Type`. The Vercel request body limit is 4.5 MB and `MAX_UPLOAD_BYTES` is
 4 MiB, so uploads fit; `maxDuration` stays at 10 s. Sharp stays an external `node_modules` dependency (`--packages=external`),
@@ -231,7 +239,7 @@ migration, game-save model cap or live database was changed.
 
 ### Migration approval gate
 
-`scripts/db-migrate.mjs` keeps a list of gated migrations (currently `20261105090000_social_chat`). If a gated migration is
+`scripts/db-migrate.mjs` keeps a list of gated migrations (currently `20261105090000_social_chat` and `20261108090000_predictions`). If a gated migration is
 **pending** and not listed in `QCC_APPROVED_MIGRATIONS` (comma-separated ids), the run fails before applying anything and the
 message names the migration and the variable. Already-applied migrations are not affected, and `--status` and `--dry-run` still work.
 After approving, the owner sets `QCC_APPROVED_MIGRATIONS=20261105090000_social_chat` **separately** for production and for preview

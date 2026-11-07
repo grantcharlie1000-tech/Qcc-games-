@@ -3,7 +3,6 @@ import './festive/christmas.css';
 import {ChristmasWelcome} from './festive/welcome';
 import {applyFestiveTheme,christmas,setFestiveTheme,storedFestiveTheme} from './festive/festive';
 import {mountSantaBanner} from './santa/banner';
-import {mountElectionBanner} from './election/banner';
 import './movies/style.css';
 import type {MoviesView} from './movies/view';
 import type {MovieStorage} from './movies/storage';
@@ -54,7 +53,7 @@ const icon=(name:string)=>{
 trackInputMode();
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<main id="content"></main>
-<dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label><label><span>Christmas theme</span><input type="checkbox" id="festive"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><a id="open-election" class="game-button secondary election-menu-button" href="#/election">Election results <span class="election-menu-live">Live</span></a>${PREDICTIONS_MENU?'<a id="open-predictions" class="game-button secondary predictions-menu-button" href="#/predictions">Predictions <span class="predictions-menu-note">Free credits</span></a>':''}<button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
+<dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label><label><span>Christmas theme</span><input type="checkbox" id="festive"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button>${PREDICTIONS_MENU?'<a id="open-predictions" class="game-button secondary predictions-menu-button" href="#/predictions">Predictions <span class="predictions-menu-note">Free credits</span></a>':''}<button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog" class="ui-glass-sheet" aria-labelledby="rules-title"><form method="dialog" class="dialog-head"><h2 id="rules-title">How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
 const navigation=createSectionNavigation('app');
 navigation.bar.innerHTML=`<a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('games')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv" aria-label="TV Shows">${uiIcon('tv')}<span class="tab-tv">TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button>`;
@@ -88,7 +87,7 @@ let accountRoutePending=false;
 let libraryScroll={x:0,y:0};
 let movies:MoviesView|undefined;
 // QCC Social, QCC Chat or the Santa Tracker: one lazy view at a time, replaced when another opens.
-let appView:AppView|undefined,appKind:'social'|'chat'|'santa'|'election'|'predictions'|undefined;
+let appView:AppView|undefined,appKind:'social'|'chat'|'santa'|'predictions'|undefined;
 // The saved Movies data is one copy for the page, so it outlives each MoviesView and keeps unsaved changes across a visit to the games.
 let movieStorage:MovieStorage|undefined;
 let movieScroll={x:0,y:0};
@@ -138,7 +137,7 @@ function setChromeInert(value:boolean):void{
 }
 function leave(saveProgress=true){
   movies?.dispose();movies=undefined;
-  appView?.dispose();appView=undefined;appKind=undefined;document.body.classList.remove('social-active','chat-active','santa-active','election-active','predictions-active');
+  appView?.dispose();appView=undefined;appKind=undefined;document.body.classList.remove('social-active','chat-active','santa-active','predictions-active');
   setChromeInert(false);
   tabbar.reset();
   detachFullscreen?.();detachFullscreen=undefined;
@@ -163,8 +162,6 @@ function library(){
   // The notice text is user input, so it is filled in with textContent below, never through this template.
   content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" tabindex="0" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
   // The compact Santa countdown belongs to the seasonal theme and the unfiltered library.
-  // Results Desk's live strip: a full-width row in the middle of the games while the count is on.
-  if(!filtered)mountElectionBanner(content.querySelector('.game-grid')!);
   if(!filtered&&christmas())mountSantaBanner(content.querySelector('.game-grid')!);
   if(filtered){
     content.querySelector<HTMLElement>('.library-filter-text')!.textContent=filterNotice();
@@ -276,7 +273,7 @@ async function route(){
     }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Movies &amp; TV could not load.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
     return;
   }
-  const appRoute=/^#\/(social|chat|santa|election|predictions)(\/|\?|$)/.exec(location.hash)?.[1] as 'social'|'chat'|'santa'|'election'|'predictions'|undefined;
+  const appRoute=/^#\/(social|chat|santa|predictions)(\/|\?|$)/.exec(location.hash)?.[1] as 'social'|'chat'|'santa'|'predictions'|undefined;
   if(appRoute){
     if(appView&&appKind===appRoute){appView.navigate(location.hash);return;}
     if(!activeId&&!movies&&!appView)movieScroll={x:scrollX,y:scrollY};
@@ -286,12 +283,11 @@ async function route(){
     if(launcher.sheet.open)launcher.sheet.close();
     const token=++generation;leave();
     setChromeInert(true);
-    const name=appRoute==='social'?'Social':appRoute==='chat'?'Chat':appRoute==='election'?'Results Desk':appRoute==='predictions'?'Predictions':'the Santa Tracker';
+    const name=appRoute==='social'?'Social':appRoute==='chat'?'Chat':appRoute==='predictions'?'Predictions':'the Santa Tracker';
     content.innerHTML=`<div class="loading"><p>Opening ${name}…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;
     try{
       // Constructors write into #content, so check the navigation is still current before building.
       const make:()=>AppView=appRoute==='predictions'?(PredictionsView=>()=>new PredictionsView(content,appDeps()))((await import('./predictions/view')).PredictionsView)
-        :appRoute==='election'?(ElectionView=>()=>new ElectionView(content,{reducedMotion:()=>preferences.reducedMotion}))((await import('./election/view')).ElectionView)
         :appRoute==='santa'?(SantaView=>()=>new SantaView(content,{reducedMotion:()=>preferences.reducedMotion}))((await import('./santa/view')).SantaView)
         :(ViewClass=>()=>new ViewClass(content,appDeps()))(appRoute==='social'?(await import('./social/view')).SocialView:(await import('./chat/view')).ChatView);
       if(token!==generation)return;
@@ -470,7 +466,7 @@ function dialogClosed(){
   const resume=pausedForDialog;pausedForDialog=false;
   if(resume&&!study.isOpen&&!document.hidden)setPaused(false);
 }
-menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!appView&&!/^#\/(movies|social|chat|santa|election|predictions)(\/|\?|$)/.test(location.hash)&&!study.isOpen)library();});
+menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!appView&&!/^#\/(movies|social|chat|santa|predictions)(\/|\?|$)/.test(location.hash)&&!study.isOpen)library();});
 rulesDialog.addEventListener('close',dialogClosed);
 leaderboards.root.addEventListener('close',dialogClosed);
 document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
@@ -506,7 +502,6 @@ festiveInput.addEventListener('change',()=>{
 window.addEventListener('hashchange',()=>void route());
 window.addEventListener('pagehide',()=>{save();movies?.pause();appView?.pause();void accounts.flush(true,false).catch(()=>{});});
 // A page restored from the back/forward cache missed its pagehide resume: live results start refreshing again.
-window.addEventListener('pageshow',event=>{if(event.persisted&&appKind==='election'&&!study.isOpen)appView?.resume();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance){instance.dismissMenu?.();pausedForDialog=false;setPaused(true);}});
 // Capture on window precedes native dialog cancellation and game-local Escape handlers.
 window.addEventListener('keydown',event=>{
@@ -537,7 +532,7 @@ function finishEntry(){
 }
 function updateAccountMenu(){
  const session=accounts.session();
- document.querySelector('#account-summary')!.textContent=session?`Signed in as ${session.username}`:appKind&&appKind!=='santa'&&appKind!=='election'?'Not signed in':'Playing as guest';
+ document.querySelector('#account-summary')!.textContent=session?`Signed in as ${session.username}`:appKind&&appKind!=='santa'?'Not signed in':'Playing as guest';
  document.querySelector<HTMLElement>('#open-accounts')!.hidden=!!session;
  document.querySelector<HTMLElement>('#logout-account')!.hidden=!session;
  document.querySelector<HTMLElement>('#switch-account')!.hidden=!session;

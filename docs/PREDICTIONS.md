@@ -18,8 +18,9 @@ the Menu entry only appears in development builds or a build with `VITE_QCC_PRED
 | `src/predictions/shared.ts` | API types, limits, draft validation, prohibited-subject screen, credit formatting. |
 | `src/predictions/server.ts` | The `/.netlify/functions/predictions` handler, the grant operation and the settlement engine. |
 | `src/predictions/{client,model,view}.ts`, `style.css` | Lazy-loaded browser feature (Explore, market, ticket, review sheet, My calls, Rankings, Ask, Review queue). |
-| `netlify/database/migrations/20261108090000_predictions.sql` | Schema, append-only journal, balance and freeze triggers. **Needs owner approval.** |
-| `netlify/functions/predictions.mts`, `predictions-grants.mts` | Netlify adapters: request handler and the hourly grant job. |
+| `db/migrations/20261108090000_predictions.sql` | Schema, append-only journal, balance and freeze triggers. Gated: **needs owner approval** (`QCC_APPROVED_MIGRATIONS`). |
+| `server/app.ts` | Backend routes `/api/predictions` and the `CRON_SECRET` cron `/api/predictions-grants` (daily 12:17 UTC, in `vercel.json`). |
+| `netlify/functions/predictions.mts`, `predictions-grants.mts` | Legacy Netlify adapters for the same handler and job. |
 | `functions/_middleware.ts` | Pages proxy allowlist now includes `predictions`. |
 | `scripts/predictions-fixtures.mjs` | Development-only fixtures, each flagged `fixture=true` and labelled in the UI. |
 
@@ -36,7 +37,7 @@ the Menu entry only appears in development builds or a build with `VITE_QCC_PRED
 - **Ledger.** `predictions_journal` + `predictions_postings` is double-entry: every transaction sums to zero (deferred
   constraint trigger), rows are append-only (update/delete triggers), and wallet/reserve balances are maintained
   *only* by the posting trigger with `CHECK (balance >= 0)`. Corrections are new entries.
-- **Allowance.** One operation (`repairGrants`) is used by the hourly job, wallet reads and trades. It locks the
+- **Allowance.** One operation (`repairGrants`) is used by the scheduled job, wallet reads and trades. It locks the
   wallet and issues every missing week that overlaps an eligibility interval, never before `launch_at`, with
   `PRIMARY KEY (account_id, week_start)` as the final guard. Joining is the eligibility event (an explicit opt-in
   that accepts the rules); visiting never creates entitlement. Any ended interval is a suspension that only an
@@ -116,10 +117,10 @@ island on Safari, low-end device frame timing, and anything on the production ba
    If credits ever buy anything, reassess first.
 2. **Eligibility.** The account system does not prove one person per account, and "school only" currently means
    "has joined Predictions". Decide on a proportionate school-membership check before issuing large subsidies.
-3. **Backend.** Production API runs on the separate Vercel backend (`docs/BACKEND_HOSTING.md`). Port
-   `src/predictions/server.ts` into its router as the `predictions` route with the existing guarded handler, and run
-   `runGrantJob` from an authenticated hourly cron there. A Pages deploy alone will not make trading work.
-4. **Migration.** Apply `20261108090000_predictions.sql` to Preview first, then Production.
+3. **Backend.** Done on `infra/backend-move`: `server/app.ts` serves `/api/predictions` and runs the daily
+   `/api/predictions-grants` cron (`docs/BACKEND_HOSTING.md`). The Pages proxy already allows `predictions`.
+4. **Migration.** With approval, set `QCC_APPROVED_MIGRATIONS=20261108090000_predictions` for Preview, run
+   `npm run db:migrate`, check, then repeat for Production. The gate refuses it otherwise.
 5. **Launch.** `UPDATE predictions_config SET enabled=true, launch_at=now();` (keep `show_fixtures=false`), grant
    reviewer roles, publish 8–12 reviewed questions, then build the frontend with `VITE_QCC_PREDICTIONS=on`.
 

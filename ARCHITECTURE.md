@@ -100,9 +100,6 @@ Chat messages expire per conversation retention; an hourly scheduled function (V
 The Pages proxy allowlist includes the three routes, and the migration needs owner approval before it is applied.
 See [the spec](docs/social-chat/SPEC.md), [deployment](docs/social-chat/DEPLOYMENT.md) and the [moderation runbook](docs/social-chat/MODERATION.md).
 
-## QCC Results Desk
-
-`src/election/` is the live election results page at `#/election`, lazily loaded through the same single-view slot as Social, Chat and the Santa Tracker. `server/election-feed.ts` reads the Electoral Commission's XML feed, which has no CORS headers, and condenses it into one JSON bundle at the same-origin `/api/election` (`functions/api/election.ts` on Pages, a Vite middleware in dev), with a 15-second per-isolate memo and a stale fallback. `model.ts` is pure and unit tested; trends and the event feed are recorded in `localStorage` (`qcc:election:v1`). See [docs/ELECTION.md](docs/ELECTION.md).
 
 ## Predictions
 

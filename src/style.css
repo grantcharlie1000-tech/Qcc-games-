@@ -54,8 +54,5 @@ html:has(body:is(.social-active,.chat-active):not(.in-game)){scroll-padding-bott
 .menu-brand{display:inline-flex;align-items:center;gap:8px}
 .menu-brand .mauri-mark{width:24px;height:24px;flex-shrink:0}
 
-/* Menu entry for QCC Results Desk (#/election). */
-.election-menu-button{width:100%;margin:0 0 8px;gap:10px}
-.election-menu-live{padding:3px 7px;border-radius:999px;background:#d4003a;color:#fff;font:700 10px/1 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase}
 .predictions-menu-button{width:100%;margin:0 0 8px;gap:10px}
 .predictions-menu-note{padding:3px 7px;border-radius:999px;background:#00d492;color:#03231b;font:700 10px/1 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
