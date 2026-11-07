@@ -240,7 +240,7 @@ export interface FighterModel {
 }
 
 /** A broad, smooth eggshell with a simple face and a narrow house-colour ring. */
-export function buildFighter(kit: ModelKit, color: number, crest: THREE.Texture, flashMat: THREE.SpriteMaterial): FighterModel {
+export function buildFighter(kit: ModelKit, color: number, flashMat: THREE.SpriteMaterial): FighterModel {
   const group = new THREE.Group();
   const body = new THREE.Group();
   body.position.y = 0.84;

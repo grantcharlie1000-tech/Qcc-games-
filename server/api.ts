@@ -26,14 +26,19 @@ export function sameOrigin(request:Request):boolean {
  const origin=request.headers.get('origin');
  return !origin||origin===new URL(request.url).origin;
 }
-/** Counts one event for `subject` in a fixed window and throws 429 once `limit` is exceeded. Mirrors `consume` in accounts/server. */
-export async function rateLimit(query:Database['query'],subject:string,limit:number,seconds:number):Promise<void> {
+/** Counts one event in a fixed window. Authentication also needs the count before deciding its response. */
+export async function consumeAttempt(query:Database['query'],subject:string,seconds=900):Promise<{attempts:number;retry:number}> {
  const result=await query(`INSERT INTO account_attempts(subject,attempts) VALUES ($1,1)
   ON CONFLICT(subject) DO UPDATE SET attempts=CASE WHEN account_attempts.started_at<=now()-($2*interval '1 second') THEN 1 ELSE account_attempts.attempts+1 END,
   started_at=CASE WHEN account_attempts.started_at<=now()-($2*interval '1 second') THEN now() ELSE account_attempts.started_at END
   RETURNING attempts,greatest(1,ceil(extract(epoch FROM started_at+($2*interval '1 second')-now())))::int AS retry`,[subject,seconds]);
  const row=result.rows[0];
- if(Number(row.attempts)>limit)throw new HttpError(429,'rate_limited','Too many requests. Try again later.',{'Retry-After':String(Number(row.retry))});
+ return {attempts:Number(row.attempts),retry:Number(row.retry)};
+}
+/** Counts one event for `subject` in a fixed window and throws 429 once `limit` is exceeded. */
+export async function rateLimit(query:Database['query'],subject:string,limit:number,seconds:number):Promise<void> {
+ const {attempts,retry}=await consumeAttempt(query,subject,seconds);
+ if(attempts>limit)throw new HttpError(429,'rate_limited','Too many requests. Try again later.',{'Retry-After':String(retry)});
 }
 export function errorResponse(error:unknown,fallback:string):Response {
  if(error instanceof HttpError)return respond({error:error.code,message:error.message},error.status,error.headers);

@@ -1,4 +1,4 @@
-import {appSettings,gameAction,pauseGame,resumeGame,startGame} from '../game-menu';
+import {appSettings,gameAction,resumeGame,startGame} from '../game-menu';
 import {GAME_IDS} from '../../src/core/types';
 import {guestTest as test,expect} from '../fixtures';
 import type {Page} from '@playwright/test';

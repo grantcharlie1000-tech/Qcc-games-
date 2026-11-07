@@ -32,7 +32,6 @@ export class ProfileScreen implements Screen {
   void this.load();
  }
  focusTarget():HTMLElement|null{return this.target;}
- get shown():ProfileView|undefined{return this.profile;}
  private async load():Promise<void> {
   try{
    const profile=await this.ctx.client.profile(this.username,this.controller.signal);
@@ -63,7 +62,7 @@ export class ProfileScreen implements Screen {
   catch(error){this.ctx.fail(error,`Couldn't unblock @${this.username}. Try again.`,()=>void this.unblock());}
  }
  private render(profile:ProfileView):void {
-  const header=new ProfileHeader(this.ctx,profile,()=>{});
+  const header=new ProfileHeader(this.ctx,profile);
   this.root.replaceChildren(header.el);
   this.target=header.el.querySelector('h1');
   const tabs:ProfileTab[]=profile.mine?['posts','replies','photos','likes']:['posts','replies','photos'];
@@ -97,16 +96,14 @@ export class ProfileScreen implements Screen {
   const label=LABEL[tab],empty=()=>profile.mine&&tab==='posts'
    ?emptyState({title:'Your story starts here',text:'Share an update, a question, or a photo with other QCC players.',action:{label:'Write your first post',run:()=>this.ctx.openCompose(),primary:true}})
    :emptyState({title:tab==='posts'?'No posts yet':tab==='replies'?'No replies yet':tab==='photos'?'No photos yet':'No likes yet'});
-  const list=this.list=new PostList({ctx:this.ctx,label,loading:'Loading posts…',empty,
-   card:tab==='photos'?undefined:undefined,
-   load:(cursor,signal)=>this.ctx.client.posts(profile.username,KIND[tab],cursor,signal)});
   if(tab==='photos')this.panel.classList.add('is-photos');else this.panel.classList.remove('is-photos');
   if(tab==='photos'){this.photoGrid(profile);return;}
-  this.list=list;this.panel.append(list.el);void list.start();
+  const list=this.list=new PostList({ctx:this.ctx,label,loading:'Loading posts…',empty,
+   load:(cursor,signal)=>this.ctx.client.posts(profile.username,KIND[tab],cursor,signal)});
+  this.panel.append(list.el);void list.start();
  }
  /** Photos tab: a 3-column grid of tiles that each link to their post. */
  private photoGrid(profile:ProfileView):void {
-  this.list=undefined;
   const ctl=this.photoCtl=new AbortController();
   const grid=document.createElement('div');grid.className='social-photo-grid';
   const status=document.createElement('div');this.panel.append(grid,status);

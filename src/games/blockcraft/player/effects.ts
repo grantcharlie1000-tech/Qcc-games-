@@ -4,13 +4,6 @@
 // What each effect does is applied by the survival service through the `apply` callback of tick().
 import type {EffectName,StatusEffect} from '../engine/contracts';
 
-export const EFFECT_NAMES=['regeneration','absorption','hunger','poison','saturation','speed','slowness','night_vision','fire_resistance'] as const satisfies readonly EffectName[];
-type MissingEffect=Exclude<EffectName,typeof EFFECT_NAMES[number]>;
-/** Fails to compile when data/items.ts gains an EffectName this module does not handle. */
-export const EFFECTS_COMPLETE:[MissingEffect] extends [never]?true:never=true;
-const NAMES=new Set<string>(EFFECT_NAMES);
-export const isEffectName=(name:unknown):name is EffectName=>typeof name==='string'&&NAMES.has(name);
-
 /** Display data (vanilla colours since 1.19.4) for the HUD and inventory. */
 export const EFFECT_INFO:Record<EffectName,{readonly displayName:string;readonly beneficial:boolean;readonly color:number}>={
   regeneration:{displayName:'Regeneration',beneficial:true,color:0xcd5cab},
@@ -22,6 +15,8 @@ export const EFFECT_INFO:Record<EffectName,{readonly displayName:string;readonly
   slowness:{displayName:'Slowness',beneficial:false,color:0x8bafe0},
   night_vision:{displayName:'Night Vision',beneficial:true,color:0xc2ff66},
   fire_resistance:{displayName:'Fire Resistance',beneficial:true,color:0xff9900}};
+export const EFFECT_NAMES=Object.keys(EFFECT_INFO) as readonly EffectName[];
+export const isEffectName=(name:unknown):name is EffectName=>typeof name==='string'&&Object.hasOwn(EFFECT_INFO,name);
 /** Highest level accepted (vanilla amplifier 0..254). */
 export const MAX_EFFECT_LEVEL=255;
 /** Longest duration accepted, in ticks (about 14 hours). */

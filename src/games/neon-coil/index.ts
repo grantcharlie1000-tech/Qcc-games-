@@ -2,7 +2,7 @@ import type { GameModule } from '../../core/types';
 import { inJoystickZone, KeyboardSteering, pointerAngle } from './input';
 import { createJoystick } from './joystick';
 import { bindGamePauseSheet, createGameSheet } from '../../ui/game-sheet';
-import { advanceArena, BOT_COUNT, createArena, MIN_MASS, ranking, restoreArena, snapshot, STEP, type Arena } from './model';
+import { advanceArena, BOT_COUNT, createArena, MIN_MASS, ranking, restoreArena, snapshot, STEP } from './model';
 import { createRenderer } from './render';
 import { skinFor } from './skin';
 import {compactMass,mountDockRanking} from './dock-ranking';

@@ -52,7 +52,7 @@ export class SettingsScreen implements Screen {
   const {panel:profilePanel}=this.section('Profile','set-profile');
   const state={avatar:undefined as string|null|undefined,banner:undefined as string|null|undefined};
   const form=document.createElement('form');form.className='social-form';form.noValidate=true;
-  const field=(label:string,control:HTMLElement,max:number,id:string)=>{
+  const field=(label:string,control:HTMLElement,id:string)=>{
    const wrap=document.createElement('div');wrap.className='social-field';
    const l=document.createElement('label');l.htmlFor=id;l.textContent=label;control.id=id;
    const counter=document.createElement('span');counter.className='apps-counter';counter.setAttribute('aria-hidden','true');
@@ -61,7 +61,7 @@ export class SettingsScreen implements Screen {
   };
   const name=document.createElement('input');name.type='text';name.className='apps-field';name.value=profile.displayName===profile.username?'':profile.displayName;name.autocomplete='off';
   const bio=document.createElement('textarea');bio.className='apps-field';bio.rows=3;bio.value=profile.bio;
-  const nameField=field('Display name',name,DISPLAY_NAME_MAX,'set-name'),bioField=field('Bio',bio,BIO_MAX,'set-bio');
+  const nameField=field('Display name',name,'set-name'),bioField=field('Bio',bio,'set-bio');
   const save=document.createElement('button');save.type='submit';save.className='ui-btn primary apps-pill';save.textContent='Save';
   const notice=document.createElement('div');notice.className='social-composer-notice';
   const media_=this.mediaBlock(profile,media,state,()=>update());

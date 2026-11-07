@@ -1,6 +1,6 @@
 // Shared "can this block stay here" rules for placement (interaction), pop-off (ticks) and
 // decoration (terrain). Pure and worker-safe: imports only data/.
-import {BLOCK_BY_NAME,FACING_VECTOR,FULL_CUBE,OPAQUE,SOLID,blockDef,isWater,AIR,type BlockId} from '../data/blocks';
+import {FACING_VECTOR,FULL_CUBE,OPAQUE,SOLID,blockDef,isWater,AIR,type BlockId} from '../data/blocks';
 import type {BlockSource} from './contracts';
 
 const SOIL=new Set(['grass_block','dirt','coarse_dirt','podzol','mycelium','farmland']);
@@ -50,5 +50,3 @@ export function canSurvive(world:BlockSource,id:BlockId,x:number,y:number,z:numb
     case 'bed':return SOLID[below]===1;
   }
 }
-export const isSoil=(id:BlockId)=>SOIL.has(family(id));
-export const SAND_ID=BLOCK_BY_NAME.get('sand')!.id;

@@ -1,8 +1,6 @@
 import { ARENA_R, CENTER, GRID } from './types';
 
 /** Pure grid and swept-circle geometry shared by the model, bots and tests. */
-export const cellIndex = (cx: number, cy: number): number => cy * GRID + cx;
-
 /** Index of the cell containing the point, or -1 when it lies off the grid. */
 export function cellOf(x: number, y: number): number {
   const cx = Math.floor(x), cy = Math.floor(y);

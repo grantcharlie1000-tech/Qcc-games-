@@ -94,7 +94,7 @@ class Builder {
     }
   }
 
-  begin(index: number, zone: ZoneId, name: string): void { this.stage = index; this.zone = zone; this.route = []; }
+  begin(index: number, zone: ZoneId): void { this.stage = index; this.zone = zone; this.route = []; }
 
   end(name: string): void {
     this.stages.push({ index: this.stage, zone: this.zone, name, checkpoint: this.stage, route: this.route });
@@ -201,7 +201,7 @@ export function buildCourse(): Course {
   const R = (id: number) => b.solids[id];
 
   // ---------- Giftwrap Gardens ----------
-  b.begin(1, 'giftwrap', 'Present Hops');
+  b.begin(1, 'giftwrap');
   b.next({ gap: 2.2, w: 3, d: 3 });
   b.next({ gap: 2.4, w: 2.6, d: 2.6, dx: 0.4, color: PAL.cream });
   const g3 = b.next({ gap: 2.4, w: 2.6, d: 2.6, dx: -0.4 });
@@ -211,7 +211,7 @@ export function buildCourse(): Course {
   b.star(b.next({ from: g3, dir: 'right', gap: 3.0, w: 1.6, d: 1.6, h: 2.4, rise: 0.4, off: true, color: PAL.lilac }));
   b.end('Present Hops');
 
-  b.begin(2, 'giftwrap', 'Ribbon Steps');
+  b.begin(2, 'giftwrap');
   b.next({ gap: 1.8, w: 2.4, d: 2.2, rise: 0.8, color: PAL.cream });
   b.next({ gap: 2.0, w: 2.2, d: 2.2, rise: 0.8, dx: 1.2 });
   b.next({ gap: 2.0, w: 2.2, d: 2.2, rise: 0.8, dx: -1.2, color: PAL.cream });
@@ -222,7 +222,7 @@ export function buildCourse(): Course {
   b.star(b.next({ from: rb, dir: 'right', gap: 3.0, w: 1.4, d: 1.4, h: 1.4, rise: 0.6, off: true, color: PAL.mint }));
   b.end('Ribbon Steps');
 
-  b.begin(3, 'giftwrap', 'Hot Cocoa Hops');
+  b.begin(3, 'giftwrap');
   const slab = b.next({ gap: 2.2, w: 4, d: 13, h: 1.2, surface: 'snow', color: PAL.blush, accent: PAL.snow });
   b.strip(slab, 3, 1.0);
   b.strip(slab, -2.5, 1.2, 0.7);
@@ -234,7 +234,7 @@ export function buildCourse(): Course {
   b.star(b.next({ from: sb, dir: 'left', gap: 2.8, w: 1.6, d: 1.6, h: 1.2, rise: 1.0, off: true, surface: 'snow', color: PAL.lilac, accent: PAL.snow }));
   b.end('Hot Cocoa Hops');
 
-  b.begin(4, 'giftwrap', 'Snowflake Drift');
+  b.begin(4, 'giftwrap');
   b.next({ gap: 2.0, w: 3, d: 3, surface: 'tray', h: 0.8, motion: { dx: 6, period: 4.5, dwell: 0.6 } });
   const sd = b.next({ gap: 2.2, w: 3, d: 3, h: 1.2, dx: 6, surface: 'snow', color: PAL.ice, accent: PAL.snow });
   b.next({ gap: 2.0, w: 2.6, d: 2.6, surface: 'tray', h: 0.8, motion: { dx: -6, period: 4, dwell: 0.5 } });
@@ -244,7 +244,7 @@ export function buildCourse(): Course {
   b.star(b.next({ from: sd, dir: 'right', gap: 3.0, w: 1.6, d: 1.6, h: 1.2, off: true, surface: 'snow', color: PAL.lilac, accent: PAL.snow }));
   b.end('Snowflake Drift');
 
-  b.begin(5, 'giftwrap', 'Gift Garden Finale');
+  b.begin(5, 'giftwrap');
   b.next({ gap: 2.6, w: 2.6, d: 2.6 });
   const gs = b.next({ gap: 2.8, w: 4, d: 10, h: 1.2, surface: 'snow', color: PAL.blush, accent: PAL.snow });
   b.spike(gs, { ox: -1.4, oz: 2.2, w: 1.2, d: 1.2, h: 0.9, motion: { dx: 2.8, period: 1.8, dwell: 0.15 } });
@@ -258,7 +258,7 @@ export function buildCourse(): Course {
   b.end('Gift Garden Finale');
 
   // ---------- Candy Cane Catwalk ----------
-  b.begin(6, 'candycane', 'Peppermint Sweepers');
+  b.begin(6, 'candycane');
   const sw1 = b.next({ gap: 2.0, w: 9, d: 9, dx: 3.2, through: true });
   b.sweeper(sw1, { length: 4.2, omega: -2.6, arms: 2 });
   b.next({ gap: 2.4, w: 2.4, d: 2.4, dx: -3.2, color: PAL.blush });
@@ -268,7 +268,7 @@ export function buildCourse(): Course {
   b.star(b.next({ from: sw2, dir: 'left', gap: 2.8, w: 1.8, d: 1.8, off: true, color: PAL.blush }));
   b.end('Peppermint Sweepers');
 
-  b.begin(7, 'candycane', 'Candy Cane Balance');
+  b.begin(7, 'candycane');
   const cb1 = b.next({ gap: 2.4, w: 0.9, d: 11, h: 0.7 });
   b.strip(cb1, 1.5, 0.6);
   const cb2 = b.next({ gap: 2.6, w: 0.9, d: 9, h: 0.7, dx: 0.3 });
@@ -282,7 +282,7 @@ export function buildCourse(): Course {
   b.deco('cane', R(cb1).x + 2.2, b.top(cb1) - 6, R(cb1).z, 2.2, 0, PAL.candy);
   b.end('Candy Cane Balance');
 
-  b.begin(8, 'candycane', 'Jump Rope');
+  b.begin(8, 'candycane');
   const jr1 = b.next({ gap: 2.2, w: 9, d: 9, dx: 3.2, through: true });
   b.sweeper(jr1, { length: 4.3, omega: 2.2, arms: 2, height: 0.35 });
   b.next({ gap: 2.4, w: 2.4, d: 2.4, dx: -3.2, color: PAL.blush });
@@ -292,7 +292,7 @@ export function buildCourse(): Course {
   b.star(jr2, 1.4, -2, 2);
   b.end('Jump Rope');
 
-  b.begin(9, 'candycane', 'Bauble Swing');
+  b.begin(9, 'candycane');
   const bs1 = b.next({ gap: 2.4, w: 1.6, d: 12, h: 0.7 });
   b.pendulum(bs1, { oz: 3.6, omega: 2.4 });
   b.pendulum(bs1, { oz: 0, omega: 2.0, phase: 1.2 });
@@ -305,7 +305,7 @@ export function buildCourse(): Course {
   b.star(bs1, 1.4);
   b.end('Bauble Swing');
 
-  b.begin(10, 'candycane', 'Candy Crossing');
+  b.begin(10, 'candycane');
   b.next({ gap: 2.6, w: 2.4, d: 2.4 });
   const cc = b.next({ gap: 2.4, w: 10, d: 10, dx: 3, through: true });
   b.sweeper(cc, { length: 4.7, omega: -1.7, arms: 4 });
@@ -319,7 +319,7 @@ export function buildCourse(): Course {
   b.end('Candy Crossing');
 
   // ---------- Cozy Knit Workshop ----------
-  b.begin(11, 'knit', 'Gift Conveyor');
+  b.begin(11, 'knit');
   b.next({ gap: 2.0, w: 4, d: 12, surface: 'conveyor', belt: { x: 0, z: 3.4 }, through: true });
   b.next({ gap: 2.4, w: 2.2, d: 2.2 });
   const gc2 = b.next({ gap: 2.4, w: 2.4, d: 8, surface: 'conveyor', belt: { x: 2.2, z: 0 }, through: true });
@@ -329,7 +329,7 @@ export function buildCourse(): Course {
   b.star(gc2, 1.3, -0.6, -2.5);
   b.end('Gift Conveyor');
 
-  b.begin(12, 'knit', 'Stocking Shuttle');
+  b.begin(12, 'knit');
   b.next({ gap: 2.0, w: 3, d: 3, surface: 'tray', h: 0.8, motion: { dx: 7, period: 5, dwell: 0.6 } });
   const ss2 = b.next({ gap: 2.2, w: 3, d: 3, dx: 7, surface: 'tray', h: 0.8, motion: { dx: -7, period: 5, dwell: 0.6, phase: 2.5 } });
   b.next({ gap: 2.0, w: 2.6, d: 2.6, dx: -7, surface: 'lift', h: 1, motion: { dy: 3, period: 4, dwell: 0.5 } });
@@ -338,14 +338,14 @@ export function buildCourse(): Course {
   b.star(b.next({ from: ss2, dir: 'left', gap: 2.6, w: 1.6, d: 1.6, off: true, color: PAL.mint }));
   b.end('Stocking Shuttle');
 
-  b.begin(13, 'knit', 'Fairy Lights');
+  b.begin(13, 'knit');
   for (let i = 0; i < 6; i++) b.next({ gap: 2.2, w: 2.6, d: 2.6, dx: i % 2 ? 0.8 : -0.8, surface: 'blink', blink: { on: 2.2, off: 1.3, phase: -0.9 * i } });
   const fl = b.cursor;
   b.checkpoint({ gap: 2.2 });
   b.star(b.next({ from: fl - 2, dir: 'left', gap: 2.6, w: 1.8, d: 1.8, surface: 'blink', blink: { on: 1.6, off: 1.6, phase: 0 }, off: true }));
   b.end('Fairy Lights');
 
-  b.begin(14, 'knit', 'Yarn Pushers');
+  b.begin(14, 'knit');
   const yp = b.next({ gap: 2.2, w: 1.4, d: 12, h: 0.8 });
   for (const [oz, ph] of [[3.6, 0], [0, 0.8], [-3.6, 1.6]] as const) {
     const s = R(yp);
@@ -358,7 +358,7 @@ export function buildCourse(): Course {
   b.star(yp, 1.3, 0, -5.4);
   b.end('Yarn Pushers');
 
-  b.begin(15, 'knit', 'Wrapping Line');
+  b.begin(15, 'knit');
   const wl = b.next({ gap: 2.2, w: 3, d: 10, surface: 'conveyor', belt: { x: 0, z: 3.0 }, through: true });
   b.spike(wl, { ox: -1.0, oz: 1.5, w: 1.0, d: 1.0, h: 0.7, motion: { dx: 2.0, period: 1.8, dwell: 0.2 } });
   b.next({ gap: 2.4, w: 2.4, d: 2.4, surface: 'blink', blink: { on: 2.0, off: 1.2, phase: 0 } });
@@ -370,7 +370,7 @@ export function buildCourse(): Course {
   b.end('Wrapping Line');
 
   // ---------- Peppermint Ice Rink ----------
-  b.begin(16, 'rink', 'First Frost');
+  b.begin(16, 'rink');
   b.next({ gap: 2.0, w: 6, d: 4 });
   b.next({ gap: 2.6, w: 3, d: 5, surface: 'ice', through: true });
   const ff2 = b.next({ gap: 2.8, w: 2.6, d: 5, dx: 1.2, surface: 'ice', through: true });
@@ -380,7 +380,7 @@ export function buildCourse(): Course {
   b.star(b.next({ from: ff2, dir: 'right', gap: 2.8, w: 1.6, d: 1.6, off: true, surface: 'ice' }));
   b.end('First Frost');
 
-  b.begin(17, 'rink', 'Snowball Barrage');
+  b.begin(17, 'rink');
   const sl1 = b.next({ gap: 2.0, w: 5, d: 14, through: true });
   b.snowball(sl1, 4.5, { travel: 1.3, gap: 1.6, phase: 0 });
   b.snowball(sl1, 1.5, { travel: 1.2, gap: 1.9, phase: 0.8 });
@@ -395,7 +395,7 @@ export function buildCourse(): Course {
   b.star(sl2, 1.3, 1.2, 1.5);
   b.end('Snowball Barrage');
 
-  b.begin(18, 'rink', 'Crumble Cookies');
+  b.begin(18, 'rink');
   b.next({ gap: 2.2, w: 2.4, d: 2.4, surface: 'crumble', h: 0.6 });
   b.next({ gap: 2.4, w: 2.4, d: 2.4, dx: 1.4, surface: 'crumble', h: 0.6 });
   const ck3 = b.next({ gap: 2.6, w: 2.2, d: 2.2, dx: -1.4, surface: 'crumble', h: 0.6 });
@@ -406,7 +406,7 @@ export function buildCourse(): Course {
   b.star(b.next({ from: ck3, dir: 'right', gap: 2.8, w: 1.6, d: 1.6, surface: 'crumble', h: 0.6, off: true }));
   b.end('Crumble Cookies');
 
-  b.begin(19, 'rink', 'Mint Slalom');
+  b.begin(19, 'rink');
   const ms = b.next({ gap: 2.0, w: 5, d: 17, surface: 'ice', through: true });
   b.spike(ms, { ox: -1.25, oz: 5.5, w: 2.5, d: 1 });
   b.spike(ms, { ox: 1.25, oz: 0, w: 2.5, d: 1 });
@@ -417,7 +417,7 @@ export function buildCourse(): Course {
   b.star(ms, 1.4, 1.6, -6);
   b.end('Mint Slalom');
 
-  b.begin(20, 'rink', 'Frost Fair Finale');
+  b.begin(20, 'rink');
   const fi = b.next({ gap: 2.2, w: 3, d: 8, surface: 'ice', through: true });
   b.snowball(fi, 0, { travel: 1.1, gap: 1.4, phase: 0.5 });
   b.next({ gap: 2.6, w: 2.4, d: 2.4, surface: 'crumble', h: 0.6 });
@@ -430,7 +430,7 @@ export function buildCourse(): Course {
   b.end('Frost Fair Finale');
 
   // ---------- Ornament Skyway ----------
-  b.begin(21, 'skyway', 'Spring Star');
+  b.begin(21, 'skyway');
   b.next({ gap: 2.2, w: 2.4, d: 2.4, surface: 'spring', h: 0.6 });
   b.next({ gap: 2.4, w: 3, d: 3, rise: 3.6, color: PAL.lilac });
   b.next({ gap: 2.4, w: 2, d: 2, surface: 'spring', h: 0.6 });
@@ -441,7 +441,7 @@ export function buildCourse(): Course {
   b.star(b.next({ from: sp2, dir: 'right', gap: 3.0, w: 1.4, d: 1.4, rise: 0.4, off: true, color: PAL.gold }));
   b.end('Spring Star');
 
-  b.begin(22, 'skyway', 'Bauble Rhythm');
+  b.begin(22, 'skyway');
   const br1 = b.next({ gap: 2.2, w: 2.6, d: 2.6, surface: 'blink', blink: { on: 2.2, off: 1.2, phase: 0 } });
   b.pendulum(br1, { oz: -2.4, omega: 2.3 });
   const br2 = b.next({ gap: 2.2, w: 2.6, d: 2.6, surface: 'blink', blink: { on: 2.2, off: 1.2, phase: -0.9 } });
@@ -452,7 +452,7 @@ export function buildCourse(): Course {
   b.star(br2, 1.3);
   b.end('Bauble Rhythm');
 
-  b.begin(23, 'skyway', 'Ribbon Carousel');
+  b.begin(23, 'skyway');
   b.next({ gap: 2.4, w: 2.6, d: 2.6, color: PAL.mint });
   const car = b.next({ gap: 2.4, w: 10, d: 10, dx: 3, through: true });
   b.sweeper(car, { length: 4.7, omega: -1.9, arms: 4, phase: 0.4 });
@@ -464,7 +464,7 @@ export function buildCourse(): Course {
   b.star(car, 1.4, -2.5, -2.5);
   b.end('Ribbon Carousel');
 
-  b.begin(24, 'skyway', 'Fairy-light Bridge');
+  b.begin(24, 'skyway');
   // A cookie only holds you for a moment, so each one is hopped straight through to the panel after it.
   b.next({ gap: 2.4, w: 2.2, d: 2.2, surface: 'crumble', h: 0.5, through: true });
   b.next({ gap: 2.6, w: 2.2, d: 2.2, surface: 'blink', blink: { on: 1.8, off: 1.0, phase: 0 } });
@@ -475,7 +475,7 @@ export function buildCourse(): Course {
   b.star(b.next({ from: fb2, dir: 'left', gap: 3.0, w: 1.4, d: 1.4, off: true, color: PAL.gold }));
   b.end('Fairy-light Bridge');
 
-  b.begin(25, 'skyway', 'Cloud Ribbon');
+  b.begin(25, 'skyway');
   b.next({ gap: 2.2, w: 2.4, d: 2.4, surface: 'spring', h: 0.6 });
   const deck = b.next({ gap: 2.4, w: 4, d: 6, rise: 3.4, color: PAL.lilac });
   b.strip(deck, 0, 1.0);
@@ -487,7 +487,7 @@ export function buildCourse(): Course {
   b.end('Cloud Ribbon');
 
   // ---------- North Pole Runway ----------
-  b.begin(26, 'northpole', 'Chalet Rooftops');
+  b.begin(26, 'northpole');
   const r1 = b.next({ gap: 2.8, w: 3.4, d: 3.4, h: 1.6 });
   b.spike(r1, { w: 3.4, d: 1.0, h: 1.0, motion: { dy: -1.05, period: 2.4, dwell: 0.5 } });
   const r2 = b.next({ gap: 3.0, w: 3.4, d: 4.6, h: 1.6, dx: 1 });
@@ -499,7 +499,7 @@ export function buildCourse(): Course {
   b.star(b.next({ from: r2, dir: 'right', gap: 3.2, w: 1.6, d: 1.6, h: 1.6, off: true }));
   b.end('Chalet Rooftops');
 
-  b.begin(27, 'northpole', 'Chimney Slalom');
+  b.begin(27, 'northpole');
   const chs: number[] = [];
   for (let i = 0; i < 5; i++) {
     const prev = b.cursor;
@@ -511,7 +511,7 @@ export function buildCourse(): Course {
   b.star(chs[2], 1.4);
   b.end('Chimney Slalom');
 
-  b.begin(28, 'northpole', 'Sleigh Loading Bay');
+  b.begin(28, 'northpole');
   const lb = b.next({ gap: 2.2, w: 5, d: 10, surface: 'conveyor', belt: { x: 0, z: 3.2 }, through: true });
   b.snowball(lb, 2, { travel: 1.0, gap: 1.6, phase: 0, span: 6 });
   b.snowball(lb, -2, { travel: 1.0, gap: 1.6, phase: 1.1, span: 6 });
@@ -523,7 +523,7 @@ export function buildCourse(): Course {
   b.star(b.next({ from: top28, dir: 'left', gap: 3.0, w: 1.4, d: 1.4, off: true }));
   b.end('Sleigh Loading Bay');
 
-  b.begin(29, 'northpole', 'Final Ribbon');
+  b.begin(29, 'northpole');
   const frb = b.next({ gap: 2.4, w: 0.9, d: 12, h: 0.7, surface: 'ribbon' });
   b.strip(frb, 3.5, 0.6);
   b.strip(frb, -1.5, 0.6);
@@ -538,7 +538,7 @@ export function buildCourse(): Course {
   b.star(frb, 1.3, 0, -3.5);
   b.end('Final Ribbon');
 
-  b.begin(30, 'northpole', 'Star-top Finish');
+  b.begin(30, 'northpole');
   b.next({ gap: 2.6, w: 2.4, d: 2.4, rise: 0.8, surface: 'gift', color: PAL.blush });
   b.next({ gap: 2.6, w: 2.4, d: 2.4, rise: 0.8, surface: 'gift', color: PAL.lilac });
   b.next({ gap: 2.4, w: 2, d: 2, surface: 'spring', h: 0.6 });

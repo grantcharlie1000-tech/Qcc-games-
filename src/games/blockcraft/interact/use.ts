@@ -2,7 +2,7 @@
 // flint and steel, spawn eggs, seeds, axe scraping, placement) and item use in the air (buckets, food, milk, bows,
 // shields, throwables, lily pads).
 import {hasAuthority} from '../engine/players';
-import {AIR,B,COLLISION_BOXES,FACING_VECTOR,FULL_CUBE,OPAQUE,blockDef,blockId,familyStates,isLiquid,stateFor,type BlockDef,type BlockId,type WoodType} from '../data/blocks';
+import {AIR,B,COLLISION_BOXES,FACING_VECTOR,FULL_CUBE,OPAQUE,blockDef,blockId,familyStates,stateFor,type BlockDef,type BlockId,type WoodType} from '../data/blocks';
 import {BIOMES} from '../data/biomes';
 import {itemDef,stack,type ItemDef,type ItemStack} from '../data/items';
 import {chestBlocked} from '../ui/screen-chest';

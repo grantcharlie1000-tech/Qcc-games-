@@ -62,7 +62,7 @@ export class TrackerPanel {
   private renderer:TrackerRenderer;
   private lastVisited=-2;
   private lastDeparture=NaN;
-  constructor(private root:HTMLElement,private deps:{reducedMotion:()=>boolean}){
+  constructor(private root:HTMLElement,deps:{reducedMotion:()=>boolean}){
     root.innerHTML=`<section class="trk" aria-labelledby="trk-title">
       <h2 id="trk-title" class="sr-only">Santa’s simulated flight</h2>
       <div class="trk-status" role="status" aria-live="polite" aria-atomic="true"><p class="trk-now"></p><p class="trk-next"></p></div>

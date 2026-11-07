@@ -136,4 +136,4 @@ export function random(m: Match): number {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
-export const enemies = (m: Match, a: Fighter, b: Fighter) => a.id !== b.id && a.team !== b.team;
+export const enemies = (a: Fighter, b: Fighter) => a.id !== b.id && a.team !== b.team;

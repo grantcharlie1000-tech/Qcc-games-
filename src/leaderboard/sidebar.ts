@@ -25,7 +25,7 @@ export class LeaderboardSidebar {
     ${game==='minesweeper'?`<div class="lb-segments" role="radiogroup" aria-label="Ranking">${MINESWEEPER_RANKINGS.map((key,i)=>`<button type="button" role="radio" data-key="${key}" aria-checked="${key===this.key}" tabindex="${key===this.key?0:-1}">${['Easy','Med','Hard','Score'][i]}</button>`).join('')}</div>`:''}
     <p class="lb-status muted" role="status"></p>
     <div class="lb-scroll" tabindex="0" role="region" aria-label="Top scores"><table class="lb-table"><caption class="sr-only">Top scores</caption><colgroup><col class="lb-c-rank"><col><col class="lb-c-score"></colgroup><thead class="sr-only"><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Score</th></tr></thead><tbody></tbody></table></div>
-    <div class="lb-actions"><button class="lb-open" type="button"></button><button class="lb-refresh" type="button" aria-label="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.5 9a7 7 0 0 1 12-2L20 12M4 12l2.5 5a7 7 0 0 0 12-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    <div class="lb-actions"><button class="lb-open" type="button">All rankings</button><button class="lb-refresh" type="button" aria-label="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.5 9a7 7 0 0 1 12-2L20 12M4 12l2.5 5a7 7 0 0 0 12-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
    </div>`;
   this.root.querySelector('.lb-head small')!.textContent=title;
   // Keep all focused-list keydowns out of game shortcuts, including Shift before
@@ -63,7 +63,6 @@ export class LeaderboardSidebar {
   const hadFocus=this.root.contains(document.activeElement);
   toggle.setAttribute('aria-expanded',String(open));toggle.hidden=open;panel.hidden=!open;this.root.classList.toggle('open',open);
   if(remember)store.write('leaderboard:panel-open',open);
-  this.label();
   if(hadFocus)(open?this.root.querySelector<HTMLElement>('.lb-collapse'):toggle)!.focus();
   const fresh=this.lastLoaded&&Date.now()-this.lastLoaded<=180000;
   this.visibility();if(open&&this.active()&&fresh)void this.refresh();
@@ -72,7 +71,6 @@ export class LeaderboardSidebar {
  private offline(){this.paint(this.sync.cached(this.key));this.status('Offline · showing saved rankings.');}
  private active(){return !this.disposed&&this.wide.matches&&this.expanded&&!document.hidden&&navigator.onLine;}
  private online=()=>{void this.refresh();};
- private label(){this.root.querySelector('.lb-open')!.textContent='All rankings';}
  private status(text:string){this.root.querySelector('.lb-status')!.textContent=text;}
  private paint(board:Board|null){
   const body=this.root.querySelector('tbody')!;body.replaceChildren();
@@ -84,7 +82,7 @@ export class LeaderboardSidebar {
  private async refresh(){
   if(!this.active())return;
   if(this.busy){this.refreshPending=true;return;}
-  const request=++this.request;this.label();
+  const request=++this.request;
   this.busy=true;
   if(!this.root.querySelector('tbody')!.childElementCount)this.status('Loading…');
   try{const board=await this.sync.load(this.key);if(this.disposed||request!==this.request)return;this.paint(board);this.lastLoaded=Date.now();

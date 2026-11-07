@@ -3,7 +3,6 @@ import {captureAuditEvidence} from '../helpers/audit-evidence';
 import {test,expect,type BrowserContext,type Page} from '@playwright/test';
 import {NetlifyDB} from '@netlify/database-dev';
 import {getDatabase} from '@netlify/database';
-import sharp from 'sharp';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {createChatHandler} from '../../src/chat/server';
 import {createSocialHandler} from '../../src/social/server';
@@ -41,9 +40,6 @@ const call=(handle:(request:Request)=>Promise<Response>,action:string,token:stri
 async function signup(name:string):Promise<string>{
  const response=await call(accounts,'signup',null,{username:name,password:PASSWORD});expect(response.status).toBe(201);return (await response.json()).token;
 }
-async function guest(page:Page){
- const dialog=page.locator('#accounts-dialog');await expect(dialog).toBeVisible();await dialog.getByRole('button',{name:'Play as guest',exact:true}).click();await expect(dialog).not.toBeVisible();
-}
 async function logIn(page:Page,username:string){
  const dialog=page.locator('#accounts-dialog');await expect(dialog).toBeVisible();
  // These feature fixtures represent an established player; welcome behavior has its own suite.
@@ -60,7 +56,6 @@ async function open(page:Page,name:string,hash='#/social'){
  await expect(page.locator('section.social-view')).toBeVisible();
 }
 const view=(page:Page)=>page.locator('section.social-view');
-const png=(width=600,height=400,color='#a684ff')=>sharp({create:{width,height,channels:3,background:color}}).png().toBuffer();
 
 
 test('composer always shows a count and offers safe keyboard mentions',async({page,context})=>{

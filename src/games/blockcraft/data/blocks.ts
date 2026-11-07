@@ -150,15 +150,8 @@ export function facingFromYaw(yaw:number):Facing{
   const a=((yaw%(Math.PI*2))+Math.PI*2)%(Math.PI*2),q=Math.round(a/(Math.PI/2))%4;
   return (['south','east','north','west'] as Facing[])[q];
 }
-/** The direction the player looks along (the opposite of facingFromYaw). */
-export const lookFacing=(yaw:number):Facing=>opposite(facingFromYaw(yaw));
 export const rotateCW=(f:Facing):Facing=>({north:'east',east:'south',south:'west',west:'north'} as const)[f];
 export const opposite=(f:Facing):Facing=>({north:'south',south:'north',east:'west',west:'east'} as const)[f];
-/** Offset of the block a state rests on: below for floor blocks, behind for wall_torch/ladder. */
-export function supportOffset(d:BlockDef):[number,number,number]{
-  if(d.support==='wall'&&d.facing){const [fx,fz]=FACING_VECTOR[d.facing];return[-fx,0,-fz];}
-  return[0,-1,0];
-}
 
 // ---- Definitions --------------------------------------------------------------------------
 define('air',{shape:'air',solid:false,opaque:false,hardness:0,replaceable:true,item:null,sound:'stone'});

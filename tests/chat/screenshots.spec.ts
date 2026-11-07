@@ -49,8 +49,6 @@ async function logIn(page:Page,username:string){
  await dialog.getByLabel('Username',{exact:true}).fill(username);await dialog.getByLabel('Password',{exact:true}).fill(PASSWORD);
  await dialog.locator('form').getByRole('button',{name:'Log in',exact:true}).click();await expect(dialog).not.toBeVisible();
 }
-const stamp=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-async function user(prefix:string){const name=`${prefix}_${stamp()}`.slice(0,24);return {name,token:await signup(name)};}
 type User={name:string;token:string};
 async function befriend(a:User,b:User){
  expect((await call(chat,'request',a.token,{username:b.name})).status).toBe(200);
@@ -82,7 +80,8 @@ for(const size of [{name:'phone',width:390,height:844},{name:'desktop',width:144
  const suffix=size.name.slice(0,1)+Math.random().toString(36).slice(2,4);
  const me=await named('Tama_'+suffix);
  const F=async(n:string)=>{const f=await named(`${n}_${suffix}`);await befriend(me,f);return f;};
- const textSent=await F('Tane'),textOpened=await F('Ana'),textNew=await F('Sam'),textSeen=await F('Rangi'),snapSent=await F('Hemi'),snapOpened=await F('Kiri'),snapNew=await F('Mere'),snapSeen=await F('Wiki'),system=await F('Nikau'),fresh=await F('Piripi');
+ const textSent=await F('Tane'),textOpened=await F('Ana'),textNew=await F('Sam'),textSeen=await F('Rangi'),snapSent=await F('Hemi'),snapOpened=await F('Kiri'),snapNew=await F('Mere'),snapSeen=await F('Wiki'),system=await F('Nikau');
+ await F('Piripi');
  await say(me,textSent,'Are you coming to hoops?');
  await say(me,textOpened,'Quiz answers are in the doc');await messages(textOpened,me);
  await say(textNew,me,'Did you finish the maths?');await say(textNew,me,'Call me after tea');

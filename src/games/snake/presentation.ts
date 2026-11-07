@@ -17,7 +17,6 @@ export function createView(s?:SnakeState):SnakeView{
 export const easeOutBack=(t:number)=>{const c=1.70158,u=t-1;return 1+(c+1)*u*u*u+c*u*u;};
 export const easeOutCubic=(t:number)=>1-(1-t)**3;
 export const smoothstep=(t:number)=>t*t*(3-2*t);
-export const easeOutQuad=(t:number)=>1-(1-t)*(1-t);
 const clamp=(n:number,lo=0,hi=1)=>Math.max(lo,Math.min(hi,n));
 
 /** Interpolation progress for the current step. Ready/held/ended snakes rest on their head cell. */

@@ -109,7 +109,6 @@ export function backgroundPaint(style:CSSStyleDeclaration,box:DOMRect,x:number,y
       const paint=point(g,px,py,w,h),weight=wx*wy/16;
       alpha+=paint.alpha*weight;for(let c=0;c<3;c++)rgb[c]+=paint.rgb[c]*paint.alpha*weight;
     }
-    const layer:BackgroundPaint={alpha,rgb:rgb.map(v=>alpha?v/alpha:0) as [number,number,number]};
     const a=alpha+result.alpha*(1-alpha);
     result={alpha:a,rgb:rgb.map((v,c)=>a?(v+result.rgb[c]*result.alpha*(1-alpha))/a:0) as [number,number,number]};
   }
