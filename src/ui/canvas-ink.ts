@@ -7,7 +7,7 @@ let scratch:HTMLCanvasElement|undefined;
 let ctx:CanvasRenderingContext2D|null|undefined;
 let observed:HTMLCanvasElement|null=null,unobserve:(()=>void)|undefined;
 function capture(source:HTMLCanvasElement):void{
- if(document.hidden||lostSources.has(source)||performance.now()-(cache.get(source)?.at??-Infinity)<120)return;
+ if(source.dataset.glassInk==='textured'||document.hidden||lostSources.has(source)||performance.now()-(cache.get(source)?.at??-Infinity)<120)return;
  scratch??=document.createElement('canvas');if(ctx===undefined)ctx=scratch.getContext('2d',{willReadFrequently:true});
  if(!ctx||!source.width||!source.height)return;
  const scale=128/Math.max(source.width,source.height),width=Math.max(1,Math.round(source.width*scale)),height=Math.max(1,Math.round(source.height*scale));
@@ -22,6 +22,7 @@ function capture(source:HTMLCanvasElement):void{
 }
 /** Subscribe only to the current visible game; no discarded WebGL buffer reads. */
 export function syncCanvasInkSource(source:HTMLCanvasElement|null):void{
+ if(source?.dataset.glassInk==='textured')source=null;
  if(source===observed)return;unobserve?.();unobserve=undefined;observed=source;
  // getContext('2d') is null for a WebGL canvas and never creates a context on a 2D one.
  if(source&&hasGlassFrameSource(source)&&!source.getContext('2d')){
@@ -35,6 +36,9 @@ export function syncCanvasInkSource(source:HTMLCanvasElement|null):void{
 }
 /** One tiny readback per live source per 120ms, shared by all visible glyphs. */
 export function canvasInk(area:DOMRect,source:HTMLCanvasElement):RGB[]|null{
+ // Textured backgrounds already select the same white ink + halo regardless
+ // of pixel color. Skip only this redundant readback, not Liquid Glass rendering.
+ if(source.dataset.glassInk==='textured')return null;
  scratch??=document.createElement('canvas');
  if(ctx===undefined)ctx=scratch.getContext('2d',{willReadFrequently:true});
  if(!ctx||!source.width||!source.height||lostSources.has(source)||source.closest('[hidden]'))return null;

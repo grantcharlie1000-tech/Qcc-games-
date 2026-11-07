@@ -30,7 +30,7 @@ function devSeed(): number | null {
   return match ? Number(match[1]) >>> 0 : null;
 }
 
-const TEMPLATE = `<canvas class="hw-canvas" tabindex="0" aria-label="Crossy Road playfield. Arrow keys or W A S D hop one tile. Tap to hop forward, or swipe to hop that way."></canvas>
+const TEMPLATE = `<canvas class="hw-canvas" data-glass-ink="textured" tabindex="0" aria-label="Crossy Road playfield. Arrow keys or W A S D hop one tile. Tap to hop forward, or swipe to hop that way."></canvas>
 <div class="hw-layer" hidden>
   <section class="hw-card ui-glass-sheet hw-over" aria-labelledby="hw-over-title" hidden>
     <h2 class="hw-title" id="hw-over-title">Game over</h2>

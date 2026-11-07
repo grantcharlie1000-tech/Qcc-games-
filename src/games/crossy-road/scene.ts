@@ -144,6 +144,7 @@ class Pool {
   shadowFloor: number;
   shadowOpacity = 1;
   n = 0;
+  cached = false;
   private readonly m: Float32Array;
   private readonly c: Float32Array;
   private readonly previous: Float64Array;
@@ -328,6 +329,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   // Pools: ground details first, then objects (casters), then the effects drawn last.
   const ground = pool(box, lit, 6400, false, true);
+  const waterFx = pool(box, lit, 640);
   const trees = [0, 1, 2, 3].map(v => pool(geo(treeGeometry(v)), lit, 320, true));
   const rocks = [0, 1, 2].map(v => pool(geo(rockGeometry(v)), lit, 160, true));
   const carBody = cars.map(g => pool(g, painted, 160, true));
@@ -345,6 +347,8 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const halos = pool(geo(signalHaloGeometry()), haloMaterial, 48, false, false, 6);
   const fx = pool(box, unlit, 96);
   const flakes = pool(box, unlit, FLAKES_HIGH, false, false, 4);
+
+  for (const p of [ground, ...trees, ...rocks, lilies, posts]) p.cached = true;
 
   // The bird and the UFO use the same pooled transforms and projected shadows.
   const playerPool = pool(geo(chickenGeometry().scale(0.78, 1, 0.78)), playerMaterial, 1, true);
@@ -366,6 +370,11 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   /** Smoothed focus (row and x), the look-at point on the ground, and the shake offset. */
   let snap = true, focusRow = 0, focusX = 4, lookX = 4, lookZ = 0, shakeX = 0, shakeY = 0;
   let rowLo = 0, rowHi = 0, renderOriginX = 0;
+  // Fixed storage: static instance buffers survive ordinary animated frames.
+  // Rebuild only at visible cell boundaries or when the world/lanes change.
+  const visibleLanes: (Lane | undefined)[] = new Array(MAX_ROWS + 2);
+  const staticWindows = new Int32Array(MAX_ROWS * 2);
+  let staticRowLo = NaN, staticRowHi = NaN, staticOrigin = NaN, rebuildStatic = true;
   /** The frame being drawn. */
   let now = 0, anim = 0, reduced = false, colorBlind = false;
   /** The row being drawn: its z and the world x window that can be on screen. */
@@ -453,8 +462,8 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   function windowFor(row: number): void {
     curZ = -row * ROW_DEPTH;
     const off = (curZ - lookZ) * RZ;
-    winLo = lookX + (-fit.halfWidth - off) / RX - MARGIN;
-    winHi = lookX + (fit.halfWidth - off) / RX + MARGIN;
+    winLo = Math.floor(lookX + (-fit.halfWidth - off) / RX - MARGIN);
+    winHi = Math.ceil(lookX + (fit.halfWidth - off) / RX + MARGIN);
   }
 
   // Lane drawing --------------------------------------------------------------------
@@ -475,6 +484,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   }
 
   function drawGrass(lane: GrassLane, row: number): void {
+    if (!rebuildStatic) return;
     band(C_GRASS + lane.shade, -0.5, 0.5, curZ, ROW_DEPTH);
     for(let c=Math.floor(winLo);c<=Math.ceil(winHi);c++) {
       const o=obstacleAt(lane,c), variant=obstacleVariant(lane,c);
@@ -505,8 +515,8 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   };
 
   function drawRoad(lane: RoadLane, ahead: Lane): void {
-    band(C_ROAD, -0.5, 0.5, curZ, ROW_DEPTH);
-    if (ahead.kind === 'road') {
+    if (rebuildStatic) band(C_ROAD, -0.5, 0.5, curZ, ROW_DEPTH);
+    if (rebuildStatic && ahead.kind === 'road') {
       // Muted, one-tile dashes on a two-tile repeat, only between road lanes.
       const zb = curZ - ROW_DEPTH / 2;
       for (let k = Math.ceil(winLo / 2) * 2; k <= winHi; k += 2) ground.put(k, 0, zb, 0.98, 0.012, 0.065, 0, C_DASH, 1);
@@ -522,12 +532,14 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   };
 
   function drawWater(lane: RiverLane | LilyLane, row: number, ahead: Lane, behind: Lane): void {
-    band(C_WATER, WATER_Y - 0.6, 0.6, curZ, ROW_DEPTH, C_WATER_EDGE, 1);
-    // Both shorelines end at the exact half-cell boundary. The soil wall and
-    // narrow rim stay inside this water cell; adjacent road/rail strips remain whole.
-    for (let side = -1; side <= 1; side += 2) if (!isWater(side < 0 ? ahead : behind)) {
-      band(C_DIRT, WATER_Y, -WATER_Y, curZ + side * (ROW_DEPTH / 2 - 0.006), 0.012);
-      band(C_RIPPLE, WATER_Y, 0.008, curZ + side * (ROW_DEPTH / 2 - 0.028), 0.025);
+    if (rebuildStatic) {
+      band(C_WATER, WATER_Y - 0.6, 0.6, curZ, ROW_DEPTH, C_WATER_EDGE, 1);
+      // Both shorelines end at the exact half-cell boundary. The soil wall and
+      // narrow rim stay inside this water cell; adjacent road/rail strips remain whole.
+      for (let side = -1; side <= 1; side += 2) if (!isWater(side < 0 ? ahead : behind)) {
+        band(C_DIRT, WATER_Y, -WATER_Y, curZ + side * (ROW_DEPTH / 2 - 0.006), 0.012);
+        band(C_RIPPLE, WATER_Y, 0.008, curZ + side * (ROW_DEPTH / 2 - 0.028), 0.025);
+      }
     }
     // A few light ripples drifting slowly, repeating every 14 tiles.
     for (let k = 0; k < 1; k++) {
@@ -535,19 +547,19 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       const speed = (0.1 + 0.18 * ((h >>> 10) & 255) / 255) * ((h >>> 18) & 1 ? -1 : 1);
       const at = ((((h & 1023) / 1024) * 14 + speed * anim) % 14 + 14) % 14;
       for (let x = at + Math.ceil((winLo - len - at) / 14) * 14; x <= winHi + len; x += 14)
-        ground.put(x, WATER_Y, zz, len, 0.008, 0.035, 0, C_RIPPLE, 1);
+        waterFx.put(x, WATER_Y, zz, len, 0.008, 0.035, 0, C_RIPPLE, 1);
     }
     const flow = lane.kind === 'river' ? lane.dir * 0.35 : 0.12;
     const foamAt = (hash(Math.floor(row / 2), 823) % 90) / 10 + anim * flow;
     for (let x = foamAt + Math.ceil((winLo - foamAt) / 9) * 9; x <= winHi; x += 9) {
       const k = 1, shape = hash(row, 825);
-      ground.put(x, WATER_Y + 0.002, curZ - 0.27 * ROW_DEPTH, 0.60 + (shape & 3) * 0.05, 0.012, 0.28 * ROW_DEPTH, 0, C_FOAM, k);
-      ground.put(x - 0.12, WATER_Y + 0.002, curZ - 0.02 * ROW_DEPTH, 0.75 + ((shape >>> 2) & 3) * 0.035, 0.012, 0.32 * ROW_DEPTH, 0, C_FOAM, k);
-      ground.put(x + 0.07, WATER_Y + 0.002, curZ + 0.24 * ROW_DEPTH, 0.50 + ((shape >>> 4) & 3) * 0.03, 0.012, 0.24 * ROW_DEPTH, 0, C_FOAM, k);
+      waterFx.put(x, WATER_Y + 0.002, curZ - 0.27 * ROW_DEPTH, 0.60 + (shape & 3) * 0.05, 0.012, 0.28 * ROW_DEPTH, 0, C_FOAM, k);
+      waterFx.put(x - 0.12, WATER_Y + 0.002, curZ - 0.02 * ROW_DEPTH, 0.75 + ((shape >>> 2) & 3) * 0.035, 0.012, 0.32 * ROW_DEPTH, 0, C_FOAM, k);
+      waterFx.put(x + 0.07, WATER_Y + 0.002, curZ + 0.24 * ROW_DEPTH, 0.50 + ((shape >>> 4) & 3) * 0.03, 0.012, 0.24 * ROW_DEPTH, 0, C_FOAM, k);
     }
     if (lane.kind === 'river') {
       forEachMover(lane, now, winLo, winHi, onLog);
-    } else {
+    } else if (rebuildStatic) {
       for (let c = Math.floor(winLo); c <= Math.ceil(winHi); c++) if (lilyAt(lane,c)) lilies.put(c, PAD_BASE, curZ, 1, 1, 1, ((hash(row, c) % 7) - 3) * 0.035, C_WHITE, 1);
     }
   }
@@ -559,7 +571,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     if (x < winLo - 1 || x > winHi + 1) return;
     // Beside the track, on the near edge, so a passing train never clips it.
     const z = curZ + ROW_DEPTH / 2 - 0.05, face = curZ + ROW_DEPTH / 2 - 0.007;
-    posts.put(x, 0, z, 1, 1, 1, 0, C_WHITE, 1);
+    if (rebuildStatic) posts.put(x, 0, z, 1, 1, 1, 0, C_WHITE, 1);
     for (let side = 0; side < 2; side++) {
       const lx = x + (side === 0 ? -SIGNAL_LAMP_X : SIGNAL_LAMP_X), lit = on && side === phase;
       const s = lit ? 1.08 + (colorBlind ? 0.25 : 0) : 0.9;
@@ -586,34 +598,36 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   }
 
   function drawRail(lane: RailLane): void {
-    band(C_BALLAST, -0.5, 0.5, curZ, ROW_DEPTH);
-    // Snowy shoulders either side of the track bed.
-    band(C_SNOW, 0, 0.02, curZ - ROW_DEPTH / 2 + 0.17, 0.34);
-    band(C_SNOW, 0, 0.02, curZ + ROW_DEPTH / 2 - 0.1, 0.2);
-    // A raised gravel bed in two steps, so its edges catch the light like a real ballast shoulder.
-    const tz = curZ + TRAFFIC_ROW_Z;
-    band(C_BED, 0, BED_LOW, tz, 0.96);
-    band(C_BED + 1, BED_LOW, BED_TOP - BED_LOW, tz, 0.8);
-    for (let x = Math.ceil(winLo); x <= winHi; x++) {
-      const h = hash(lane.row, x + 3000);
-      // Chunky sleepers every half tile on the bed, each with a dark tie plate under both rails.
-      for (const sx of [x - 0.25, x + 0.25]) {
-        ground.put(sx, BED_TOP, tz, 0.17, SLEEPER_H, 0.72, 0, C_SLEEPER, 1);
-        for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) ground.put(sx, BED_TOP + SLEEPER_H, tz + rz, 0.19, 0.008, 0.12, 0, C_PLATE, 1);
+    if (rebuildStatic) {
+      band(C_BALLAST, -0.5, 0.5, curZ, ROW_DEPTH);
+      // Snowy shoulders either side of the track bed.
+      band(C_SNOW, 0, 0.02, curZ - ROW_DEPTH / 2 + 0.17, 0.34);
+      band(C_SNOW, 0, 0.02, curZ + ROW_DEPTH / 2 - 0.1, 0.2);
+      // A raised gravel bed in two steps, so its edges catch the light like a real ballast shoulder.
+      const tz = curZ + TRAFFIC_ROW_Z;
+      band(C_BED, 0, BED_LOW, tz, 0.96);
+      band(C_BED + 1, BED_LOW, BED_TOP - BED_LOW, tz, 0.8);
+      for (let x = Math.ceil(winLo); x <= winHi; x++) {
+        const h = hash(lane.row, x + 3000);
+        // Chunky sleepers every half tile on the bed, each with a dark tie plate under both rails.
+        for (const sx of [x - 0.25, x + 0.25]) {
+          ground.put(sx, BED_TOP, tz, 0.17, SLEEPER_H, 0.72, 0, C_SLEEPER, 1);
+          for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) ground.put(sx, BED_TOP + SLEEPER_H, tz + rz, 0.19, 0.008, 0.12, 0, C_PLATE, 1);
+        }
+        // Gravel speckles between the sleepers.
+        ground.put(x + 0.02 + ((h >>> 16) & 3) * 0.03, BED_TOP, tz + (((h >>> 18) & 15) / 15 - 0.5) * 0.6, 0.06, 0.012, 0.05, 0, C_GRAVEL + ((h >>> 22) & 1), 1);
+        ground.put(x + 0.5 + ((h >>> 23) & 3) * 0.02, BED_TOP, tz + (((h >>> 25) & 15) / 15 - 0.5) * 0.6, 0.05, 0.01, 0.06, 0, C_GRAVEL + ((h >>> 29) & 1), 1);
+        // Snow settles on most sleepers and drifts between some of them.
+        if ((h & 3) !== 0) ground.put(x + 0.25, BED_TOP + SLEEPER_H, tz + (((h >>> 2) & 7) - 3.5) * 0.02, 0.15, 0.016, 0.22 + ((h >>> 5) & 3) * 0.05, 0, C_SNOW, 1);
+        if (((h >>> 8) & 3) === 0) ground.put(x + 0.5, BED_TOP, tz + (((h >>> 10) & 7) - 3.5) * 0.04, 0.26 + ((h >>> 13) & 3) * 0.08, 0.025, 0.16, 0, C_SNOW, 1);
       }
-      // Gravel speckles between the sleepers.
-      ground.put(x + 0.02 + ((h >>> 16) & 3) * 0.03, BED_TOP, tz + (((h >>> 18) & 15) / 15 - 0.5) * 0.6, 0.06, 0.012, 0.05, 0, C_GRAVEL + ((h >>> 22) & 1), 1);
-      ground.put(x + 0.5 + ((h >>> 23) & 3) * 0.02, BED_TOP, tz + (((h >>> 25) & 15) / 15 - 0.5) * 0.6, 0.05, 0.01, 0.06, 0, C_GRAVEL + ((h >>> 29) & 1), 1);
-      // Snow settles on most sleepers and drifts between some of them.
-      if ((h & 3) !== 0) ground.put(x + 0.25, BED_TOP + SLEEPER_H, tz + (((h >>> 2) & 7) - 3.5) * 0.02, 0.15, 0.016, 0.22 + ((h >>> 5) & 3) * 0.05, 0, C_SNOW, 1);
-      if (((h >>> 8) & 3) === 0) ground.put(x + 0.5, BED_TOP, tz + (((h >>> 10) & 7) - 3.5) * 0.04, 0.26 + ((h >>> 13) & 3) * 0.08, 0.025, 0.16, 0, C_SNOW, 1);
-    }
-    // Each rail: a wide foot, a narrow web and a polished head standing on the plates.
-    const foot = BED_TOP + SLEEPER_H + 0.008;
-    for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) {
-      band(C_STEEL, foot, 0.008, tz + rz, 0.1);
-      band(C_STEEL, foot + 0.008, RAIL_TOP - foot - 0.03, tz + rz, 0.035);
-      band(C_RAIL_HEAD, RAIL_TOP - 0.022, 0.022, tz + rz, 0.075);
+      // Each rail: a wide foot, a narrow web and a polished head standing on the plates.
+      const foot = BED_TOP + SLEEPER_H + 0.008;
+      for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) {
+        band(C_STEEL, foot, 0.008, tz + rz, 0.1);
+        band(C_STEEL, foot + 0.008, RAIL_TOP - foot - 0.03, tz + rz, 0.035);
+        band(C_RAIL_HEAD, RAIL_TOP - 0.022, 0.022, tz + rz, 0.075);
+      }
     }
     curRail=lane;
     forEachTrain(lane, now, winLo, winHi, onTrain);
@@ -844,20 +858,29 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     colorBlind = frame.colorBlind;
     anim = reduced ? 0 : now;
     aim(frame);
-    for (let i = 0; i < pools.length; i++) pools[i].begin(renderOriginX);
-    let behind = world.lane(rowLo - 1), lane = world.lane(rowLo);
+    rebuildStatic = rowLo !== staticRowLo || rowHi !== staticRowHi || renderOriginX !== staticOrigin;
+    for (let row = rowLo - 1; row <= rowHi + 1; row++) {
+      const i = row - rowLo + 1, lane = world.lane(row);
+      if (visibleLanes[i] !== lane) rebuildStatic = true;
+      visibleLanes[i] = lane;
+      if (row < rowLo || row > rowHi) continue;
+      windowFor(row);
+      const offset = (row - rowLo) * 2;
+      if (staticWindows[offset] !== winLo || staticWindows[offset + 1] !== winHi) rebuildStatic = true;
+      staticWindows[offset] = winLo; staticWindows[offset + 1] = winHi;
+    }
+    staticRowLo = rowLo; staticRowHi = rowHi; staticOrigin = renderOriginX;
+    for (const p of pools) if (!p.cached || rebuildStatic) p.begin(renderOriginX);
     for (let row = rowLo; row <= rowHi; row++) {
-      const ahead = world.lane(row + 1);
-      drawRow(lane, row, ahead, behind);
-      behind = lane;
-      lane = ahead;
+      const i = row - rowLo + 1;
+      drawRow(visibleLanes[i]!, row, visibleLanes[i + 1]!, visibleLanes[i - 1]!);
     }
     actors(frame);
     snowfall();
     if(beam.visible)beam.position.x-=renderOriginX;
     if(spot.visible)spot.position.x-=renderOriginX;
     if(shade.visible)shade.position.x-=renderOriginX;
-    for (let i = 0; i < pools.length; i++) pools[i].commit();
+    for (const p of pools) if (!p.cached || rebuildStatic) p.commit();
     renderer.render(scene, camera);
     const info = renderer.info;
     stats.calls = info.render.calls;
@@ -869,6 +892,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   function reset(): void {
     snap = true;
+    staticRowLo = NaN;
     deathT = NaN;
   }
 
