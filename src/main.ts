@@ -29,6 +29,7 @@ import {retireOffline} from './core/offline';
 import {StudyView} from './study/view';
 import {integrationEnabled} from './study/whetu-integration';
 import {StudyPairingClient} from './study/whetu-pairing';
+import './study/whetu.css';
 import {fitGameStage} from './core/viewport-fit';
 import {attachFullscreen,syncPlaySurface} from './core/play-surface';
 import {AccountsClient} from './accounts/client';
@@ -46,6 +47,9 @@ const PREDICTIONS_MENU=import.meta.env.VITE_QCC_PREDICTIONS!=='off';
 // Remains off until the separate private runtime, verified account linking,
 // same-origin routing and embedded-auth browser checks have all passed.
 const WHETU_STUDY=integrationEnabled(import.meta.env.VITE_QCC_WHETU_STUDY);
+// Incident containment: Study must not gate ordinary QCC authentication while its connection is paused.
+// Re-enable only with a server-verified, Study-scoped identity transition.
+const WHETU_STUDY_PAUSED=true;
 
 // Before any game mounts: games read the seasonal theme when they draw.
 applyFestiveTheme();
@@ -72,8 +76,8 @@ const rulesDialog=document.querySelector<HTMLDialogElement>('#rules-dialog')!;
 const tabbar=autoHideTabbar(document.querySelector<HTMLElement>('.app-tabbar')!,window);
 bindGlass(document.querySelector<HTMLElement>('.app-menu')!);
 const preferences=store.settings();
-const accounts:AccountsClient=new AccountsClient(undefined,undefined,WHETU_STUDY?{strictIdentityChanges:true,beforeIdentityCommit:nextSession=>{closeWhetuForIdentityChange();return studyPairing!.select(nextSession?.token);}}:{});
-const studyPairing:StudyPairingClient|undefined=WHETU_STUDY?new StudyPairingClient(()=>accounts.session()?.token):undefined;
+const accounts:AccountsClient=new AccountsClient(undefined,undefined,WHETU_STUDY&&!WHETU_STUDY_PAUSED?{strictIdentityChanges:true,beforeIdentityCommit:nextSession=>{closeWhetuForIdentityChange();return studyPairing!.select(nextSession?.token);}}:{});
+const studyPairing:StudyPairingClient|undefined=WHETU_STUDY&&!WHETU_STUDY_PAUSED?new StudyPairingClient(()=>accounts.session()?.token):undefined;
 const launcher=new AppsLauncher({accounts,chat:new ChatClient(()=>accounts.session()?.token??null),reducedMotion:()=>preferences.reducedMotion});
 void launcher.probe();
 const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);closeWhetuForIdentityChange();},finishEntry);
@@ -279,6 +283,15 @@ async function route(){
   // Explicit browser/hash navigation leaves the reading view as well as the old game.
   if(study.isOpen){study.hide();showArcade();resumeAfterStudy=false;focusBeforeStudy=null;focusLabelBeforeStudy=null;}
   if(WHETU_STUDY&&location.hash==='#/study'){
+    if(WHETU_STUDY_PAUSED){
+      ++generation;leave();if(menu.open)menu.close();
+      document.body.classList.add('whetu-study-active');
+      document.querySelector('.app-tabbar a[href="#/collection"]')?.removeAttribute('aria-current');
+      document.querySelector('.app-tabbar [data-action="study"]')?.setAttribute('aria-current','page');
+      content.innerHTML='<section class="whetu-study" aria-labelledby="whetu-study-title"><header class="whetu-study-heading"><p class="whetu-study-eyebrow">Study</p><h1 id="whetu-study-title" tabindex="-1">Study with Whetū</h1></header><div class="whetu-study-state" role="status"><p>Whetū is temporarily paused while we fix the connection. Your NCEAStudy account and saved progress are unchanged.</p><a class="game-button secondary" href="#/collection">Back to games</a></div></section>';
+      content.querySelector<HTMLElement>('h1')?.focus({preventScroll:true});
+      return;
+    }
     // Closing an old frame is insufficient if Back/hash navigation can reopen
     // it before pending authentication, selection or revocation has settled.
     if(whetuIdentityPending()){showWhetuIdentityHold();return;}
