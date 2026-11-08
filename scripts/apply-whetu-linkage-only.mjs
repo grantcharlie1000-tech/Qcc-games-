@@ -31,9 +31,11 @@ async function inspect(client){
    WHERE table_schema='public' AND table_name=$1 ORDER BY ordinal_position`,[table])).rows
    .map(c=>`${c.column_name}:${c.data_type}${c.is_nullable==='YES'?'?':''}`).join(',');
   requireState(columns===TABLES[table].columns,'Unexpected linkage columns');
+  // PostgreSQL 18+ also catalogs NOT NULL as contype='n'. Exact column
+  // nullability is already verified above; every OTHER constraint stays counted.
   const constraints=(await client.query(`SELECT contype,count(*)::int AS count,bool_and(convalidated) AS valid
-   FROM pg_constraint WHERE conrelid=('public.'||$1)::regclass GROUP BY contype`,[table])).rows;
-  requireState(constraints.length===Object.keys(TABLES[table].constraints).length&&constraints.every(c=>c.valid&&TABLES[table].constraints[c.contype]===c.count),'Unexpected linkage constraints');
+   FROM pg_constraint WHERE conrelid=('public.'||$1)::regclass AND contype<>'n' GROUP BY contype`,[table])).rows;
+  requireState(constraints.length===Object.keys(TABLES[table].constraints).length&&constraints.every(c=>c.valid&&TABLES[table].constraints[c.contype]===c.count),'Unexpected linkage constraints on '+table+': '+constraints.map(c=>String(c.contype)+':'+c.count).sort().join(','));
   const publicGrants=(await client.query(`SELECT count(*)::int AS count FROM pg_class c
    JOIN pg_namespace n ON n.oid=c.relnamespace
    CROSS JOIN LATERAL aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a
@@ -66,6 +68,9 @@ async function main(){
   await client.query('SELECT pg_advisory_xact_lock($1)',[728192104]);
   const marker=(await client.query('SELECT name FROM public.qcc_environment WHERE id=true FOR SHARE')).rows;
   requireState(marker.length===1&&marker[0].name==='production','Production database marker mismatch');
+  const version=(await client.query('SHOW server_version_num')).rows[0].server_version_num;
+  requireState(/^\d{5,6}$/.test(version),'Unknown PostgreSQL server version');
+  console.log('WHETU_LINKAGE_CATALOG_VERSION: '+version+'; NOT NULL checked via exact column metadata.');
   const required=(await client.query(`SELECT c.relname,pg_get_userbyid(c.relowner)=current_user AS owned
    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public'
    AND c.relkind='r' AND c.relname=ANY($1::text[])`,[['accounts','account_sessions','account_saves','qcc_schema_migrations']])).rows;
@@ -81,6 +86,7 @@ async function main(){
    console.log('WHETU_LINKAGE_SCHEMA_ALREADY_APPLIED: exact migration, empty linkage tables, constraints and RLS verified.');
   }else{
    requireState(objects.length===0,'Unexpected pre-existing Study objects; refusing changes');
+   console.log('WHETU_LINKAGE_NO_PREEXISTING_OBJECTS: no Study objects or migration record; prior guarded transaction left no linkage schema.');
    const tableNames=(await client.query(`SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename<>'qcc_schema_migrations' ORDER BY tablename`)).rows.map(r=>r.tablename);
    const before=await counts(client,tableNames);
    console.log('WHETU_LINKAGE_TARGET_VERIFIED: existing qcc-games-api production Neon database and owner role; exact additive migration only.');
