@@ -12,15 +12,20 @@ beforeAll(async()=>{db=createLocalPool(await local.start());await local.applyMig
 afterAll(async()=>{await db?.end();await local.stop();});
 beforeEach(async()=>{await db.query('TRUNCATE arcade_players,account_attempts CASCADE');sent=[];browserCookie='';});
 async function account(username='Alice'){
- const response=await createAccountsHandler(db)(new Request(origin+'/accounts?action=signup',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({username,password:'a test password'})}));
- expect(response.status).toBe(201);return response.json() as Promise<{token:string;username:string}>;
+ const response=await createAccountsHandler(db,{trustedStudyProxy:()=>true})(new Request(origin+'/accounts?action=signup',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({username,password:'a test password'})}));
+ // Additional account fixtures model signup in a separate browser; keep this browser’s current proof.
+ expect(response.status).toBe(201);if(!browserCookie)browserCookie=cookie(response,'__Host-nceastudy_browser')!;return response.json() as Promise<{token:string;username:string}>;
+}
+async function login(username:string){
+ const response=await createAccountsHandler(db,{trustedStudyProxy:()=>true})(new Request(origin+'/accounts?action=login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({username,password:'a test password'})}));
+ expect(response.status).toBe(200);browserCookie=cookie(response,'__Host-nceastudy_browser')!;return response.json() as Promise<{token:string;username:string}>;
 }
 function request(action:string,body:unknown={},cookies='sb-project-auth-token=cookie-value',token?:string,internal=false){
  return new Request('https://backend.test/.netlify/functions/study-link?action='+action,{method:'POST',headers:{'Content-Type':'application/json',Cookie:[browserCookie,cookies].filter(Boolean).join('; '),...(internal?{'X-QCC-Whetu-Service-Secret':secret}:{Origin:origin,'Sec-Fetch-Site':'same-origin'}),...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});
 }
-async function select(handle:ReturnType<typeof createStudyLinkHandler>,token?:string){const response=await handle(request('select',{},undefined,token));expect(response.status).toBe(200);browserCookie=cookie(response,'__Host-nceastudy_browser')!;}
+async function select(handle:ReturnType<typeof createStudyLinkHandler>,token?:string){const response=await handle(request('select',{},undefined,token));expect(response.status).toBe(200);expect(response.headers.getSetCookie()).toEqual([]);}
 const cookie=(response:Response,name:string)=>response.headers.getSetCookie().find(value=>value.startsWith(name+'='))?.split(';')[0];
-it('real QCC auth -> intent -> verified runtime boundary -> durable link/context -> gated API -> cancellation',async()=>{
+it('real auth links durable context; unauthenticated selection cannot cancel it or alter saves',async()=>{
  const user=await account();
  await db.query("INSERT INTO account_saves(account_id,key,value,updated) SELECT id,'settings','{\"sound\":true}'::jsonb,1 FROM accounts WHERE username='Alice'");
  const saves=(await db.query('SELECT * FROM account_saves')).rows;
@@ -38,8 +43,8 @@ it('real QCC auth -> intent -> verified runtime boundary -> durable link/context
  expect((await db.query('SELECT * FROM account_saves')).rows).toEqual(saves);
  expect(sent.length).toBeGreaterThan(0);
  for(const remote of sent){expect(remote.headers.get('authorization')).toBeNull();expect(remote.headers.get('cookie')).toBe('sb-project-auth-token=cookie-value');}
- const cancelled=await handle(request('select',{},active));expect(cancelled.status).toBe(200);
- expect((await handle(request('verify',{},active,undefined,true))).status).toBe(401);
+ const rejected=await handle(request('select',{},active));expect(rejected.status).toBe(401);expect(rejected.headers.getSetCookie()).toEqual([]);
+ expect((await handle(request('verify',{},active,undefined,true))).status).toBe(200);
  expect((await db.query('SELECT * FROM qcc_study_links')).rows).toHaveLength(1);
  expect((await db.query('SELECT * FROM account_saves')).rows).toEqual(saves);
 });
@@ -93,16 +98,18 @@ it('real account switching revokes the old workspace before publishing the new l
  }finally{client.dispose();}
 });
 
-it('server selection rejects old in-flight confirms after a switch even while original bearer remains valid',async()=>{
+it('fresh authentication rotates browser proof and rejects old in-flight confirms without revoking QCC sessions',async()=>{
  const alice=await account(),bob=await account('Bob'),handle=createStudyLinkHandler(db,{env,fetcher:identityFetch});
  await select(handle,alice.token);
  const start=await handle(request('start',{consent:true},undefined,alice.token));const original=(await start.clone().json()).intent;
  const pending=cookie(start,'__Host-nceastudy_pair')+'; sb-project-auth-token=cookie-value';
  const review=await handle(request('review',{},pending));const details=await review.json();
- await select(handle,bob.token);
- expect((await db.query('SELECT * FROM account_sessions')).rows).toHaveLength(2);
+ expect((await handle(request('select',{},undefined,bob.token))).status).toBe(409);
+ const fresh=await login('Bob');await select(handle,fresh.token);
+ expect((await db.query('SELECT * FROM account_sessions')).rows).toHaveLength(3);
+ expect((await handle(request('select',{},undefined,alice.token))).status).toBe(409);
  expect((await handle(request('confirm',{consent:true,challenge:details.challenge},pending,alice.token))).status).toBe(409);
- expect((await db.query('SELECT state FROM qcc_study_pairing_intents WHERE digest=$1',[original])).rows[0].state).toBe('cancelled');
+ expect((await db.query('SELECT state FROM qcc_study_pairing_intents WHERE digest=$1',[original])).rows[0].state).toBe('pending');
  expect((await db.query('SELECT * FROM qcc_study_links')).rows).toHaveLength(0);
 });
 
@@ -118,23 +125,26 @@ it('view-scoped cancellation preserves a newer context created by another tab an
  expect((await handle(request('verify',{},active,undefined,true))).status).toBe(200);
 });
 
-it('a new browser selection invalidates old contexts without waiting for old session logout or expiry',async()=>{
+it('fresh authentication makes old contexts unusable with the new cookie without deleting the old session',async()=>{
  const alice=await account(),bob=await account('Bob'),handle=createStudyLinkHandler(db,{env,fetcher:identityFetch});await select(handle,alice.token);
  const start=await handle(request('start',{consent:true},undefined,alice.token));const pending=cookie(start,'__Host-nceastudy_pair')+'; sb-project-auth-token=cookie-value';
  const review=await handle(request('review',{},pending));const details=await review.json();const confirm=await handle(request('confirm',{consent:true,challenge:details.challenge},pending,alice.token));const active=cookie(confirm,'__Host-nceastudy_context')+'; sb-project-auth-token=cookie-value';
  expect((await handle(request('verify',{},active,undefined,true))).status).toBe(200);
- await select(handle,bob.token);
- expect((await db.query('SELECT * FROM account_sessions')).rows).toHaveLength(2);
+ expect((await handle(request('select',{},undefined,bob.token))).status).toBe(409);
+ const fresh=await login('Bob');await select(handle,fresh.token);
+ expect((await db.query('SELECT * FROM account_sessions')).rows).toHaveLength(3);
+ expect((await handle(request('select',{},undefined,alice.token))).status).toBe(409);
  expect((await handle(request('verify',{},active,undefined,true))).status).toBe(401);
  expect((await db.query('SELECT * FROM qcc_study_links')).rows).toHaveLength(1);
 });
 
-it('status rejects a different bearer session for the same account until browser selection acknowledges it',async()=>{
+it('status and selection reject a different bearer session without auth-minted browser authority',async()=>{
  const alice=await account(),handle=createStudyLinkHandler(db,{env,fetcher:identityFetch});await select(handle,alice.token);
  const start=await handle(request('start',{consent:true},undefined,alice.token));const pending=cookie(start,'__Host-nceastudy_pair')+'; sb-project-auth-token=cookie-value';
  const review=await handle(request('review',{},pending));const details=await review.json();const confirm=await handle(request('confirm',{consent:true,challenge:details.challenge},pending,alice.token));const active=cookie(confirm,'__Host-nceastudy_context')+'; sb-project-auth-token=cookie-value';
  const login=await createAccountsHandler(db)(new Request(origin+'/accounts?action=login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({username:'Alice',password:'a test password'})}));const second=await login.json();
  expect((await handle(request('status',{},active,second.token))).status).toBe(401);
+ expect((await handle(request('select',{},active,second.token))).status).toBe(409);
  expect((await handle(request('status',{},active,alice.token))).status).toBe(200);
 });
 
