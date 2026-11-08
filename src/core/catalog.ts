@@ -25,7 +25,8 @@ export const games: GameInfo[] = [
 {id:'claimline',title:'Claimline',color:'#4c1f36',ink:'#fff3df',accent:'#f05fa6'},
 {id:'crossy-road',title:'Crossy Road',color:'#1f3d4c',ink:'#fff3df',accent:'#e8474f'},
 {id:'quad-clash',title:'Quad Clash',color:'#4c301f',ink:'#fff3df',accent:'#f7c531'},
-{id:'femboy-obby',title:'Femboy Frosthop',color:'#2b1f4c',ink:'#fff3df',accent:'#f05fa6'}
+{id:'femboy-obby',title:'Femboy Frosthop',color:'#2b1f4c',ink:'#fff3df',accent:'#f05fa6'},
+{id:'drift-club',title:'Drift Club',color:'#1f4a4c',ink:'#fff3df',accent:'#f7c531'}
 ];
 const modules = import.meta.glob<{default:GameModule}>('../games/*/index.ts');
 export async function loadGame(id:GameId):Promise<GameModule> {

@@ -102,7 +102,7 @@ let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft','crossy-road','quad-clash','femboy-obby']);
 // Responsive layouts fill the standard stage; scaling their whole UI would shrink labels and controls.
-const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','claimline']);
+const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','claimline','drift-club']);
 // Shell score/best text; Claimline's integer score is its peak share in hundredths of a percent.
 const metricText=(id:GameId,score:number)=>id==='claimline'||id==='femboy-obby'?formatScore(id,score):String(Math.floor(score));
 
