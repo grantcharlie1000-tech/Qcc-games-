@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { assembleCourse } from '../../../src/games/femboy-obby/course';
-import { createRun, step, solidOffset, Stepper, isSolidActive } from '../../../src/games/femboy-obby/sim';
+import { blinkState, createRun, step, solidOffset, Stepper, isSolidActive, pendulumBob, sweeperHits } from '../../../src/games/femboy-obby/sim';
 import { MOVE, PLAYER, RESPAWN_DELAY, STEP } from '../../../src/games/femboy-obby/config';
 import type { Course, Intent, Run, Solid } from '../../../src/games/femboy-obby/types';
 
@@ -372,5 +372,71 @@ describe('assistance', () => {
     const a = run(c, 120, IDLE, createRun(c, { assist: true })), b = run(c, 120, IDLE);
     expect(a.mt).toBeLessThan(b.mt);
     expect(b.mt).toBeCloseTo(2, 6);
+  });
+});
+
+describe('obstacles added for the harder course', () => {
+  test('a kill brick is not solid and sends you back on contact; standing beside it is safe', () => {
+    const floor = solid(1, 0, 0, -8, 4, 10);
+    const spike = solid(2, 0, 0.55, -8, 4, 0.8, { surface: 'spike', hy: 0.275, y: 0.275 });
+    const c = course([floor, spike]);
+    const near = createRun(c);
+    near.player.z = -6.6; near.player.support = 1;
+    run(c, 120, IDLE, near);
+    expect(near.deaths).toBe(0);
+    expect(isSolidActive(near, c.solids[2])).toBe(false);
+    const r = run(c, 120, (rr) => (rr.deaths ? IDLE : FWD));
+    expect(r.deaths).toBe(1);
+  });
+
+  test('a running jump clears a kill-brick strip', () => {
+    const floor = solid(1, 0, 0, -8, 4, 14);
+    const spike = solid(2, 0, 0.55, -6, 4, 0.8, { surface: 'spike', hy: 0.275, y: 0.275 });
+    const c = course([floor, spike]);
+    const r = run(c, 150, (rr) => ({ mx: 0, mz: -1, jump: rr.player.z < -4.6 && rr.player.z > -5.2 }));
+    expect(r.deaths).toBe(0);
+    expect(r.player.z).toBeLessThan(-9);
+  });
+
+  test('a fairy-light panel holds you while lit and drops you when it goes dark', () => {
+    const panel = solid(1, 0, 0, -8, 3, 3, { surface: 'blink', blink: { on: 1, off: 1, phase: 0 } });
+    const c = course([panel]);
+    expect(blinkState(c.solids[1], 0.1)).toBe('lit');
+    expect(blinkState(c.solids[1], 0.6)).toBe('warn');
+    expect(blinkState(c.solids[1], 1.5)).toBe('dark');
+    const r = createRun(c);
+    r.player.z = -8; r.player.support = 1;
+    run(c, 50, IDLE, r);
+    expect(r.player.grounded).toBe(true);
+    run(c, 30, IDLE, r);
+    expect(r.player.grounded).toBe(false);
+    expect(r.player.y).toBeLessThan(-0.1);
+  });
+
+  test('a pendulum bauble swings through chest height and knocks you out at the bottom of its arc', () => {
+    const pd = { id: 0, stage: 1, x: 0, y: 5.5, z: -2, length: 4.5, radius: 0.75, amp: 0.95, omega: 2, phase: 0, axis: 'x' as const };
+    expect(pendulumBob(pd, 0)).toMatchObject({ x: 0, z: -2 });
+    expect(pendulumBob(pd, 0).y).toBeCloseTo(1, 9);
+    expect(Math.abs(pendulumBob(pd, Math.PI / 4).x)).toBeGreaterThan(3);
+    const c = course([], { pendulums: [pd] });
+    const r = createRun(c);
+    r.player.z = -2;
+    step(r, c, IDLE);
+    expect(r.events).toContainEqual({ type: 'death', cause: 'pendulum' });
+    const safe = createRun(c);
+    safe.player.z = 1.5;
+    run(c, 300, IDLE, safe);
+    expect(safe.deaths).toBe(0);
+  });
+
+  test('sweeper arms are spread evenly round the hub; low arms can be jumped', () => {
+    const base = { id: 0, stage: 1, x: 0, y: 0.8, z: 0, length: 3, radius: 0.32, omega: 1, phase: 0 };
+    const p = { x: 0, y: 0, z: -2 } as Parameters<typeof sweeperHits>[2];
+    expect(sweeperHits({ ...base, arms: 1 }, 0, p)).toBe(false);
+    expect(sweeperHits({ ...base, arms: 4 }, 0, p)).toBe(true);
+    expect(sweeperHits({ ...base, arms: 3 }, 0, { ...p, x: -1, z: 1.732 })).toBe(true);
+    const low = { ...base, arms: 1 as const, y: 0.35 };
+    expect(sweeperHits(low, 0, { ...p, x: 2, z: 0 })).toBe(true);
+    expect(sweeperHits(low, 0, { ...p, x: 2, z: 0, y: 0.8 })).toBe(false);
   });
 });

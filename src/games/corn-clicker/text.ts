@@ -1,6 +1,6 @@
 /** Player-facing descriptions generated from the data tables, so tooltips always match the rules. */
 import {format,type Big,type NumberStyle} from './big';
-import {producerById,GOLDEN,FESTIVALS,type Upgrade,type Requirement,type PermUpgrade,type Achievement} from './data';
+import {producerById,GOLDEN,type Upgrade,type Requirement} from './data';
 
 export function duration(seconds:number):string {
   const s=Math.max(0,Math.ceil(seconds));
@@ -49,12 +49,7 @@ export function requirementText(r:Requirement,style:NumberStyle):string {
     case 'achievements':return `earn ${r.count} achievements`;
   }
 }
-export function permRequirement(p:PermUpgrade,name:(id:string)=>string):string {return p.requires?`Requires ${name(p.requires)}.`:'';}
-export function achievementTarget(a:Achievement,style:NumberStyle):string {
-  return a.check.type==='runEarned'||a.check.type==='cps'||a.check.type==='clickEarned'?format(a.check.target,style):a.check.target.toLocaleString('en-GB');
-}
-export function goldenResult(kind:'lucky'|'bumper'|'storm',amount:Big|undefined,style:NumberStyle,seconds:number):string {
+export function goldenResult(kind:'lucky'|'bumper'|'storm',amount:Big|undefined,style:NumberStyle):string {
   if(kind==='lucky')return `Lucky! +${format(amount??0,style)}`;
   return kind==='bumper'?`Bumper Crop! ×${GOLDEN.effects.bumper.mult} production`:`Kernel Storm! ×${GOLDEN.effects.storm.mult} clicks`;
 }
-export const festivalText=(id:keyof typeof FESTIVALS)=>`${FESTIVALS[id].name}: ${FESTIVALS[id].desc}`;

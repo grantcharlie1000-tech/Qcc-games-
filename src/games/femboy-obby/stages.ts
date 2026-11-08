@@ -1,8 +1,8 @@
-/** The frosthop-v1 course: 30 authored stages in six zones. Forward is -z. Every surface is an axis-aligned box whose
+/** The frosthop-v2 course: 30 authored stages in six zones. Forward is -z. Every surface is an axis-aligned box whose
  * visible top matches its collider; decorations never collide. Gaps were tuned against the measured jump envelope
  * (a running jump clears 4 units edge to edge between equal heights; 5.4 does not): early gaps 1.6–2.2, later 2.4–3.0. */
 import { assembleCourse } from './course';
-import type { Checkpoint, Course, Decor, Motion, Snowball, Solid, StageInfo, Star, Surface, Sweeper, ZoneId, ZoneInfo } from './types';
+import type { Checkpoint, Course, Decor, Motion, Pendulum, Snowball, Solid, StageInfo, Star, Surface, Sweeper, ZoneId, ZoneInfo } from './types';
 
 export const PAL = {
   snow: 0xf7f6f2, blush: 0xf2afc8, pink: 0xe98aae, rose: 0xd9668f, maroon: 0x6e203c, mint: 0xb9dfc9, mintDeep: 0x7fc4a4,
@@ -23,6 +23,7 @@ type Dir = 'fwd' | 'right' | 'left';
 interface Next {
   dir?: Dir; gap: number; w: number; d: number; h?: number; rise?: number; dx?: number; dz?: number;
   surface?: Surface; color?: number; accent?: number; motion?: Partial<Motion> & { period: number }; belt?: { x: number; z: number };
+  blink?: { on: number; off: number; phase: number };
   through?: boolean; off?: boolean; from?: number;
 }
 
@@ -40,6 +41,7 @@ class Builder {
   checkpoints: Checkpoint[] = [];
   sweepers: Sweeper[] = [];
   snowballs: Snowball[] = [];
+  pendulums: Pendulum[] = [];
   stars: Star[] = [];
   stages: StageInfo[] = [];
   decor: Decor[] = [];
@@ -60,14 +62,14 @@ class Builder {
     const from = this.solids[o.from ?? this.cursor];
     const look = ZONE_LOOK[this.zone];
     const surface = o.surface ?? look.surface;
-    const h = o.h ?? (surface === 'gift' ? Math.min(4, Math.min(o.w, o.d)) : surface === 'ornament' ? 0.5 : 0.9);
+    const h = o.h ?? (surface === 'gift' ? Math.min(4, Math.min(o.w, o.d)) : surface === 'ornament' || surface === 'blink' ? 0.5 : 0.9);
     const dir = o.dir ?? 'fwd';
     let x: number, z: number;
     if (dir === 'fwd') { z = from.z - from.hz - o.gap - o.d / 2; x = from.x + (o.dx ?? 0); }
     else { const sgn = dir === 'right' ? 1 : -1; x = from.x + sgn * (from.hx + o.gap + o.w / 2); z = from.z + (o.dz ?? 0); }
     const top = from.y + from.hy + (o.rise ?? 0);
     const motion = o.motion ? { dx: 0, dy: 0, dz: 0, phase: 0, dwell: 0.8, ...o.motion } : undefined;
-    const id = this.add({ surface, x, y: top - h / 2, z, hx: o.w / 2, hy: h / 2, hz: o.d / 2, motion, belt: o.belt, color: o.color ?? defaultColor(surface, look.color), accent: o.accent ?? defaultAccent(surface, look.accent) });
+    const id = this.add({ surface, x, y: top - h / 2, z, hx: o.w / 2, hy: h / 2, hz: o.d / 2, motion, belt: o.belt, blink: o.blink, color: o.color ?? defaultColor(surface, look.color), accent: o.accent ?? defaultAccent(surface, look.accent) });
     // A spring never holds you, so it is always passed through.
     if (!o.off) { this.route.push(o.through || surface === 'spring' ? { id, through: true } : { id }); this.cursor = id; }
     return id;
@@ -92,7 +94,7 @@ class Builder {
     }
   }
 
-  begin(index: number, zone: ZoneId, name: string): void { this.stage = index; this.zone = zone; this.route = []; }
+  begin(index: number, zone: ZoneId): void { this.stage = index; this.zone = zone; this.route = []; }
 
   end(name: string): void {
     this.stages.push({ index: this.stage, zone: this.zone, name, checkpoint: this.stage, route: this.route });
@@ -104,11 +106,27 @@ class Builder {
     this.stars.push({ id: `frosthop-v1:stage-${String(this.stage).padStart(2, '0')}:star`, stage: this.stage, x: s.x + ox, y: s.y + s.hy + dy, z: s.z + oz });
   }
 
-  sweeper(on: number, o: { length: number; omega: number; phase?: number; arms?: 1 | 2; height?: number }): void {
-    const s = this.solids[on], top = s.y + s.hy;
+  sweeper(on: number, o: { length: number; omega: number; phase?: number; arms?: 1 | 2 | 3 | 4; height?: number; ox?: number; oz?: number }): void {
+    const s = this.solids[on], top = s.y + s.hy, x = s.x + (o.ox ?? 0), z = s.z + (o.oz ?? 0);
     // A hub post at the pivot collides exactly like it looks.
-    this.add({ surface: 'candy', x: s.x, y: top + 0.75, z: s.z, hx: 0.45, hy: 0.75, hz: 0.45, color: PAL.maroon, accent: PAL.cream });
-    this.sweepers.push({ id: this.sweepers.length, stage: this.stage, x: s.x, y: top + (o.height ?? 0.8), z: s.z, length: o.length, radius: 0.32, omega: o.omega, phase: o.phase ?? 0, arms: o.arms ?? 1 });
+    this.add({ surface: 'candy', x, y: top + 0.75, z, hx: 0.45, hy: 0.75, hz: 0.45, color: PAL.maroon, accent: PAL.cream });
+    this.sweepers.push({ id: this.sweepers.length, stage: this.stage, x, y: top + (o.height ?? 0.8), z, length: o.length, radius: 0.32, omega: o.omega, phase: o.phase ?? 0, arms: o.arms ?? 1, floor: top });
+  }
+
+  /** A kill brick sitting on a solid's top, offset from its centre. Never part of the route. */
+  spike(on: number, o: { ox?: number; oz?: number; w: number; d: number; h?: number; motion?: Partial<Motion> & { period: number } }): number {
+    const s = this.solids[on], top = s.y + s.hy, h = o.h ?? 0.55;
+    const motion = o.motion ? { dx: 0, dy: 0, dz: 0, phase: 0, dwell: 0.4, ...o.motion } : undefined;
+    return this.add({ surface: 'spike', x: s.x + (o.ox ?? 0), y: top + h / 2, z: s.z + (o.oz ?? 0), hx: o.w / 2, hy: h / 2, hz: o.d / 2, motion, color: PAL.candy, accent: PAL.maroon });
+  }
+
+  /** A full-width kill-brick strip across a forward path (jump it). */
+  strip(on: number, oz: number, d = 0.8, h = 0.55): number { return this.spike(on, { oz, w: this.solids[on].hx * 2, d, h }); }
+
+  /** A bauble pendulum swinging across a solid; its lowest point is at chest height above the top. */
+  pendulum(on: number, o: { ox?: number; oz?: number; length?: number; amp?: number; omega: number; phase?: number; axis?: 'x' | 'z'; radius?: number }): void {
+    const s = this.solids[on], top = s.y + s.hy, length = o.length ?? 4.5;
+    this.pendulums.push({ id: this.pendulums.length, stage: this.stage, x: s.x + (o.ox ?? 0), y: top + 1.0 + length, z: s.z + (o.oz ?? 0), length, radius: o.radius ?? 0.75, amp: o.amp ?? 0.95, omega: o.omega, phase: o.phase ?? 0, axis: o.axis ?? 'x' });
   }
 
   snowball(on: number, oz: number, o: { travel: number; gap: number; phase: number; span?: number }): void {
@@ -127,6 +145,7 @@ function defaultColor(surface: Surface, zone: number): number {
     case 'spring': return PAL.mint;
     case 'lift': case 'tray': return PAL.pink;
     case 'ribbon': return PAL.blush;
+    case 'blink': return PAL.gold;
     default: return zone;
   }
 }
@@ -138,6 +157,7 @@ function defaultAccent(surface: Surface, zone: number): number {
     case 'spring': return PAL.gold;
     case 'lift': case 'tray': return PAL.maroon;
     case 'ribbon': return PAL.maroon;
+    case 'blink': return PAL.lilacDeep;
     default: return zone;
   }
 }
@@ -175,275 +195,360 @@ export function buildCourse(): Course {
   b.deco('banner', 0, 0, 1, 1, 0, PAL.gold); // start banner over the start line (decor sits above head height)
   b.deco('tree', -6.5, -9, 0, 1.4, 0, PAL.mint);
 
+  // Difficulty: gaps run 2.2–3.4 against a 4-unit running reach, landings shrink to 2–2.6 units, and every stage after
+  // the opener mixes at least two obstacles. New families (kill bricks, fairy-light panels, pendulums, jump-rope and
+  // multi-arm sweepers, pushers, sideways belts, pistons) are each introduced alone before they are combined.
+  const R = (id: number) => b.solids[id];
+
   // ---------- Giftwrap Gardens ----------
-  b.begin(1, 'giftwrap', 'Present Hops');
-  b.next({ gap: 1.6, w: 4, d: 4 });
-  const g2 = b.next({ gap: 1.8, w: 4, d: 4, dx: 0.6 });
-  b.next({ gap: 2.0, w: 4, d: 4, dx: -0.6 });
-  b.checkpoint({ gap: 1.8 });
-  b.star(b.next({ from: g2, dir: 'right', gap: 1.9, w: 2.4, d: 2.4, h: 2.4, off: true, color: PAL.lilac }));
+  b.begin(1, 'giftwrap');
+  b.next({ gap: 2.2, w: 3, d: 3 });
+  b.next({ gap: 2.4, w: 2.6, d: 2.6, dx: 0.4, color: PAL.cream });
+  const g3 = b.next({ gap: 2.4, w: 2.6, d: 2.6, dx: -0.4 });
+  b.next({ gap: 2.6, w: 2.4, d: 2.4, color: PAL.lilac });
+  b.next({ gap: 2.6, w: 2.4, d: 2.4, dx: 0.3 });
+  b.checkpoint({ gap: 2.4 });
+  b.star(b.next({ from: g3, dir: 'right', gap: 3.0, w: 1.6, d: 1.6, h: 2.4, rise: 0.4, off: true, color: PAL.lilac }));
   b.end('Present Hops');
 
-  b.begin(2, 'giftwrap', 'Ribbon Steps');
-  b.next({ gap: 1.3, w: 3.6, d: 3, rise: 0.8, color: PAL.cream });
-  b.next({ gap: 1.4, w: 3.6, d: 3, rise: 0.8 });
-  const s3 = b.next({ gap: 1.4, w: 3.6, d: 3, rise: 0.8, color: PAL.cream });
-  b.next({ gap: 1.6, w: 3.6, d: 3, rise: 0.8 });
-  b.checkpoint({ gap: 1.6, rise: 0.6 });
-  b.star(b.next({ from: s3, dir: 'left', gap: 1.0, w: 2.2, d: 2.2, h: 2.2, rise: 1.2, off: true, color: PAL.mint }));
+  b.begin(2, 'giftwrap');
+  b.next({ gap: 1.8, w: 2.4, d: 2.2, rise: 0.8, color: PAL.cream });
+  b.next({ gap: 2.0, w: 2.2, d: 2.2, rise: 0.8, dx: 1.2 });
+  b.next({ gap: 2.0, w: 2.2, d: 2.2, rise: 0.8, dx: -1.2, color: PAL.cream });
+  const rb = b.next({ gap: 2.4, w: 1.0, d: 8, h: 0.6, surface: 'ribbon' });
+  b.next({ gap: 2.6, w: 2.2, d: 2.2, rise: 0.6 });
+  b.next({ gap: 2.6, w: 0.9, d: 6, h: 0.6, surface: 'ribbon', dx: 0.6 });
+  b.checkpoint({ gap: 2.4 });
+  b.star(b.next({ from: rb, dir: 'right', gap: 3.0, w: 1.4, d: 1.4, h: 1.4, rise: 0.6, off: true, color: PAL.mint }));
   b.end('Ribbon Steps');
 
-  b.begin(3, 'giftwrap', 'Bow Bridge');
-  b.next({ gap: 1.8, w: 3, d: 4, surface: 'ribbon', h: 0.6, through: true });
-  b.next({ gap: 0, w: 3, d: 0.5, rise: 0.6, h: 0.6, surface: 'ribbon', color: PAL.maroon, accent: PAL.blush, through: true });
-  b.next({ gap: 0, w: 3, d: 4, rise: -0.6, surface: 'ribbon', h: 0.6, through: true });
-  const h2 = b.next({ gap: 0, w: 3, d: 0.5, rise: 0.6, h: 0.6, surface: 'ribbon', color: PAL.maroon, accent: PAL.blush, through: true });
-  b.next({ gap: 0, w: 3, d: 4, rise: -0.6, surface: 'ribbon', h: 0.6, through: true });
-  b.checkpoint({ gap: 0 });
-  b.star(h2, 1.8);
-  b.end('Bow Bridge');
+  b.begin(3, 'giftwrap');
+  const slab = b.next({ gap: 2.2, w: 4, d: 13, h: 1.2, surface: 'snow', color: PAL.blush, accent: PAL.snow });
+  b.strip(slab, 3, 1.0);
+  b.strip(slab, -2.5, 1.2, 0.7);
+  const sb = b.next({ gap: 2.6, w: 5, d: 14, h: 1.2, surface: 'snow', color: PAL.cream, accent: PAL.snow });
+  b.spike(sb, { ox: -1.25, oz: 4.5, w: 2.5, d: 1.2 });
+  b.spike(sb, { ox: 1.25, oz: -1.0, w: 2.5, d: 1.2 });
+  b.next({ gap: 2.8, w: 2.4, d: 2.4 });
+  b.checkpoint({ gap: 2.6 });
+  b.star(b.next({ from: sb, dir: 'left', gap: 2.8, w: 1.6, d: 1.6, h: 1.2, rise: 1.0, off: true, surface: 'snow', color: PAL.lilac, accent: PAL.snow }));
+  b.end('Hot Cocoa Hops');
 
-  b.begin(4, 'giftwrap', 'Snowflake Islands');
-  b.next({ gap: 2.0, w: 5, d: 5, h: 1.2, dx: 2.5, surface: 'snow', color: PAL.ice, accent: PAL.snow });
-  b.next({ gap: 2.0, w: 5, d: 5, h: 1.2, dx: 3.5, surface: 'snow', color: PAL.ice, accent: PAL.snow });
-  const i3 = b.next({ gap: 2.0, w: 5, d: 5, h: 1.2, dx: 3.0, surface: 'snow', color: PAL.ice, accent: PAL.snow });
-  b.next({ gap: 2.2, w: 5, d: 5, h: 1.2, dx: 1.0, surface: 'snow', color: PAL.ice, accent: PAL.snow });
-  b.checkpoint({ gap: 2.0, dx: -1 });
-  b.star(b.next({ from: i3, dir: 'right', gap: 2.6, w: 3, d: 3, h: 1.2, rise: 0.4, off: true, surface: 'snow', color: PAL.lilac, accent: PAL.snow }));
-  b.end('Snowflake Islands');
+  b.begin(4, 'giftwrap');
+  b.next({ gap: 2.0, w: 3, d: 3, surface: 'tray', h: 0.8, motion: { dx: 6, period: 4.5, dwell: 0.6 } });
+  const sd = b.next({ gap: 2.2, w: 3, d: 3, h: 1.2, dx: 6, surface: 'snow', color: PAL.ice, accent: PAL.snow });
+  b.next({ gap: 2.0, w: 2.6, d: 2.6, surface: 'tray', h: 0.8, motion: { dx: -6, period: 4, dwell: 0.5 } });
+  b.next({ gap: 2.2, w: 3, d: 3, h: 1.2, dx: -6, surface: 'snow', color: PAL.ice, accent: PAL.snow });
+  b.next({ gap: 1.6, w: 2.6, d: 2.6, surface: 'tray', h: 0.8, motion: { dz: -6, period: 4.5, dwell: 0.6 } });
+  b.checkpoint({ gap: 7.6 });
+  b.star(b.next({ from: sd, dir: 'right', gap: 3.0, w: 1.6, d: 1.6, h: 1.2, off: true, surface: 'snow', color: PAL.lilac, accent: PAL.snow }));
+  b.end('Snowflake Drift');
 
-  b.begin(5, 'giftwrap', 'Gift Garden Finale');
-  b.next({ gap: 2.2, w: 3.6, d: 3.6 });
-  b.next({ gap: 2.2, w: 3.6, d: 3.6, color: PAL.cream });
-  b.next({ gap: 1.6, w: 3.6, d: 3.6, rise: 0.9 });
-  const beam = b.next({ gap: 2.0, w: 2, d: 8, h: 0.6, surface: 'ribbon' });
-  b.checkpoint({ gap: 2.0, w: 9, d: 9 });
-  b.star(b.next({ from: beam, dir: 'left', gap: 2.4, w: 1.4, d: 4, h: 0.6, off: true, surface: 'ribbon', color: PAL.lilac }));
+  b.begin(5, 'giftwrap');
+  b.next({ gap: 2.6, w: 2.6, d: 2.6 });
+  const gs = b.next({ gap: 2.8, w: 4, d: 10, h: 1.2, surface: 'snow', color: PAL.blush, accent: PAL.snow });
+  b.spike(gs, { ox: -1.4, oz: 2.2, w: 1.2, d: 1.2, h: 0.9, motion: { dx: 2.8, period: 1.8, dwell: 0.15 } });
+  b.spike(gs, { ox: 1.4, oz: -2.2, w: 1.2, d: 1.2, h: 0.9, motion: { dx: -2.8, period: 1.8, dwell: 0.15, phase: 0.6 } });
+  b.next({ gap: 2.4, w: 2.6, d: 2.6, surface: 'tray', h: 0.8, motion: { dx: 5, period: 3.6, dwell: 0.4 } });
+  b.next({ gap: 2.6, w: 2.6, d: 2.6, dx: 5 });
+  const fb = b.next({ gap: 2.8, w: 1.0, d: 7, h: 0.6, surface: 'ribbon' });
+  b.strip(fb, 0, 0.7);
+  b.checkpoint({ gap: 2.6, w: 9, d: 9 });
+  b.star(gs, 1.7, 1.2, 0);
   b.end('Gift Garden Finale');
 
   // ---------- Candy Cane Catwalk ----------
-  b.begin(6, 'candycane', 'Peppermint Path');
-  b.next({ gap: 2.2, w: 3.2, d: 3.2, dx: 1.5 });
-  const pp = b.next({ gap: 2.4, w: 3.2, d: 3.2, dx: -1.5 });
-  b.next({ gap: 2.4, w: 3.2, d: 3.2, dx: -1.5 });
-  b.next({ gap: 2.2, w: 3.2, d: 3.2, dx: 1.5 });
-  b.checkpoint({ gap: 2.0 });
-  b.star(b.next({ from: pp, dir: 'left', gap: 2.6, w: 2.4, d: 2.4, off: true }));
-  b.end('Peppermint Path');
+  b.begin(6, 'candycane');
+  const sw1 = b.next({ gap: 2.0, w: 9, d: 9, dx: 3.2, through: true });
+  b.sweeper(sw1, { length: 4.2, omega: -2.6, arms: 2 });
+  b.next({ gap: 2.4, w: 2.4, d: 2.4, dx: -3.2, color: PAL.blush });
+  const sw2 = b.next({ gap: 2.4, w: 9, d: 9, dx: -3.2, through: true });
+  b.sweeper(sw2, { length: 4.2, omega: 3.0, arms: 2, phase: 1 });
+  b.checkpoint({ gap: 2.4, dx: 3.2 });
+  b.star(b.next({ from: sw2, dir: 'left', gap: 2.8, w: 1.8, d: 1.8, off: true, color: PAL.blush }));
+  b.end('Peppermint Sweepers');
 
-  b.begin(7, 'candycane', 'Candy Cane Balance');
-  const bal = b.next({ gap: 2.0, w: 1.2, d: 10, h: 0.7 });
-  b.checkpoint({ gap: 2.0 });
-  b.star(b.next({ from: bal, dir: 'right', gap: 2.4, w: 2, d: 2, rise: 0.3, off: true, color: PAL.blush }));
-  b.deco('cane', b.solids[bal].x + 2.2, b.top(bal) - 6, b.solids[bal].z, 2.2, 0, PAL.candy);
+  b.begin(7, 'candycane');
+  const cb1 = b.next({ gap: 2.4, w: 0.9, d: 11, h: 0.7 });
+  b.strip(cb1, 1.5, 0.6);
+  const cb2 = b.next({ gap: 2.6, w: 0.9, d: 9, h: 0.7, dx: 0.3 });
+  b.strip(cb2, 0.5, 0.6);
+  b.next({ gap: 2.6, w: 0.9, d: 7, h: 0.7, dx: -0.3 });
+  const cb4 = b.next({ gap: 2.6, w: 0.8, d: 14, h: 0.7, dx: 0.2 });
+  b.strip(cb4, 4, 0.6);
+  b.strip(cb4, -1.5, 0.6);
+  b.checkpoint({ gap: 2.6 });
+  b.star(b.next({ from: cb2, dir: 'left', gap: 2.8, w: 1.4, d: 1.4, rise: 0.6, off: true, color: PAL.blush }));
+  b.deco('cane', R(cb1).x + 2.2, b.top(cb1) - 6, R(cb1).z, 2.2, 0, PAL.candy);
   b.end('Candy Cane Balance');
 
-  b.begin(8, 'candycane', 'Peppermint Sweeper');
-  const sw = b.next({ gap: 1.6, w: 9, d: 9, dx: 3, through: true });
-  b.sweeper(sw, { length: 4.2, omega: 1.05 });
-  b.checkpoint({ gap: 1.6, dx: -3 });
-  b.star(b.next({ from: sw, dir: 'right', gap: 2.2, w: 2.2, d: 2.2, off: true, color: PAL.blush }));
-  b.end('Peppermint Sweeper');
+  b.begin(8, 'candycane');
+  const jr1 = b.next({ gap: 2.2, w: 9, d: 9, dx: 3.2, through: true });
+  b.sweeper(jr1, { length: 4.3, omega: 2.2, arms: 2, height: 0.35 });
+  b.next({ gap: 2.4, w: 2.4, d: 2.4, dx: -3.2, color: PAL.blush });
+  const jr2 = b.next({ gap: 2.4, w: 9, d: 9, dx: -3.2, through: true });
+  b.sweeper(jr2, { length: 4.3, omega: -1.8, arms: 3, height: 0.35, phase: 0.5 });
+  b.checkpoint({ gap: 2.4, dx: 3.2 });
+  b.star(jr2, 1.4, -2, 2);
+  b.end('Jump Rope');
 
-  b.begin(9, 'candycane', 'Ribbon Zigzag');
-  b.next({ gap: 1.8, w: 1.4, d: 7, h: 0.7, through: true });
-  b.next({ gap: 0, w: 3.6, d: 3.6, h: 0.9, dx: 1.1, color: PAL.blush });
-  b.next({ gap: 0, dir: 'right', w: 7, d: 1.4, h: 0.7, dz: 0, through: true });
-  const zz = b.next({ gap: 0, dir: 'right', w: 3.6, d: 3.6, h: 0.9, color: PAL.blush });
-  b.checkpoint({ gap: 2.0 });
-  b.star(b.next({ from: zz, dir: 'right', gap: 2.4, w: 2, d: 2, off: true, color: PAL.lilac }));
-  b.end('Ribbon Zigzag');
+  b.begin(9, 'candycane');
+  const bs1 = b.next({ gap: 2.4, w: 1.6, d: 12, h: 0.7 });
+  b.pendulum(bs1, { oz: 3.6, omega: 2.4 });
+  b.pendulum(bs1, { oz: 0, omega: 2.0, phase: 1.2 });
+  b.pendulum(bs1, { oz: -3.6, omega: 2.6, phase: 2.5 });
+  b.next({ gap: 2.6, w: 2.6, d: 2.6, color: PAL.blush });
+  const bs2 = b.next({ gap: 2.6, w: 1.4, d: 8, h: 0.7 });
+  b.pendulum(bs2, { oz: 1.8, omega: 2.8 });
+  b.pendulum(bs2, { oz: -1.8, omega: 2.8, phase: 1.6 });
+  b.checkpoint({ gap: 2.4 });
+  b.star(bs1, 1.4);
+  b.end('Bauble Swing');
 
-  b.begin(10, 'candycane', 'Candy Crossing');
-  const cx = b.next({ gap: 1.6, w: 9, d: 9, dx: -3, through: true });
-  b.sweeper(cx, { length: 4.2, omega: 1.25, phase: 2 });
-  b.next({ gap: 1.6, w: 4, d: 4, dx: 3, color: PAL.blush });
-  b.next({ gap: 2.6, w: 3.2, d: 3.2 });
-  b.next({ gap: 2.6, w: 3.2, d: 3.2 });
-  b.checkpoint({ gap: 2.0 });
-  b.star(b.next({ from: cx, dir: 'left', gap: 2.2, w: 2.2, d: 2.2, off: true, color: PAL.blush }));
+  b.begin(10, 'candycane');
+  b.next({ gap: 2.6, w: 2.4, d: 2.4 });
+  const cc = b.next({ gap: 2.4, w: 10, d: 10, dx: 3, through: true });
+  b.sweeper(cc, { length: 4.7, omega: -1.7, arms: 4 });
+  const ccb = b.next({ gap: 2.4, w: 1.4, d: 8, h: 0.7, dx: -3 });
+  b.pendulum(ccb, { oz: 1.6, omega: 2.6 });
+  b.pendulum(ccb, { oz: -2.0, omega: 2.6, phase: 1.6 });
+  const cce = b.next({ gap: 2.8, w: 2.6, d: 6, color: PAL.blush });
+  b.strip(cce, 0.8, 0.8);
+  b.checkpoint({ gap: 2.6 });
+  b.star(b.next({ from: cc, dir: 'right', gap: 2.6, w: 1.8, d: 1.8, off: true, color: PAL.blush }));
   b.end('Candy Crossing');
 
   // ---------- Cozy Knit Workshop ----------
-  b.begin(11, 'knit', 'Present Lift');
-  b.next({ gap: 1.4, w: 4, d: 4, surface: 'lift', h: 1, motion: { dy: 4.5, period: 7, dwell: 1.2 } });
-  const lt = b.next({ gap: 1.0, w: 6, d: 4, rise: 4.5 });
-  b.checkpoint({ gap: 2.0 });
-  b.star(b.next({ from: lt, dir: 'right', gap: 1.6, w: 2, d: 2, rise: 1.0, off: true, color: PAL.mint }));
-  b.end('Present Lift');
-
-  b.begin(12, 'knit', 'Stocking Shuttle');
-  const tr = b.next({ gap: 1.0, w: 4, d: 4, surface: 'tray', h: 0.8, motion: { dx: 9, period: 8, dwell: 1.4 } });
-  b.next({ gap: 1.0, w: 6, d: 4, dx: 9 });
-  b.checkpoint({ gap: 2.0 });
-  b.star(b.next({ from: tr, dir: 'left', gap: 2.6, w: 2, d: 2, off: true, color: PAL.mint }));
-  b.end('Stocking Shuttle');
-
-  b.begin(13, 'knit', 'Gift Conveyor');
-  const belt = b.next({ gap: 1.6, w: 6, d: 10, surface: 'conveyor', belt: { x: 0, z: 2.4 }, through: true });
-  for (const sx of [-1, 1]) b.add({ surface: 'knit', x: b.solids[belt].x + sx * 3.25, y: b.top(belt) + 0.35, z: b.solids[belt].z, hx: 0.25, hy: 0.35, hz: 5, color: PAL.mintDeep, accent: PAL.cream });
-  b.checkpoint({ gap: 0 });
-  b.star(belt, 1.3, 1.8, 2.5);
+  b.begin(11, 'knit');
+  b.next({ gap: 2.0, w: 4, d: 12, surface: 'conveyor', belt: { x: 0, z: 3.4 }, through: true });
+  b.next({ gap: 2.4, w: 2.2, d: 2.2 });
+  const gc2 = b.next({ gap: 2.4, w: 2.4, d: 8, surface: 'conveyor', belt: { x: 2.2, z: 0 }, through: true });
+  b.next({ gap: 2.4, w: 2.2, d: 2.2 });
+  b.next({ gap: 2.4, w: 3, d: 6, surface: 'conveyor', belt: { x: -1.8, z: 2.6 }, through: true });
+  b.checkpoint({ gap: 2.4 });
+  b.star(gc2, 1.3, -0.6, -2.5);
   b.end('Gift Conveyor');
 
-  b.begin(14, 'knit', 'Yarn Shuttle');
-  b.next({ gap: 1.0, w: 4, d: 4, surface: 'tray', h: 0.8, motion: { dx: -8, period: 8, dwell: 1.4 } });
-  const isl = b.next({ gap: 1.0, w: 5, d: 4, dx: -8 });
-  b.next({ gap: 1.0, w: 4, d: 4, surface: 'tray', h: 0.8, motion: { dz: -7, period: 8, dwell: 1.4 } });
-  b.checkpoint({ gap: 8.0, dx: 0 });
-  b.star(b.next({ from: isl, dir: 'left', gap: 2.4, w: 2, d: 2, rise: 0.5, off: true, color: PAL.mint }));
-  b.end('Yarn Shuttle');
+  b.begin(12, 'knit');
+  b.next({ gap: 2.0, w: 3, d: 3, surface: 'tray', h: 0.8, motion: { dx: 7, period: 5, dwell: 0.6 } });
+  const ss2 = b.next({ gap: 2.2, w: 3, d: 3, dx: 7, surface: 'tray', h: 0.8, motion: { dx: -7, period: 5, dwell: 0.6, phase: 2.5 } });
+  b.next({ gap: 2.0, w: 2.6, d: 2.6, dx: -7, surface: 'lift', h: 1, motion: { dy: 3, period: 4, dwell: 0.5 } });
+  b.next({ gap: 2.0, w: 2.6, d: 2.6, rise: 3, surface: 'tray', h: 0.8, motion: { dz: -5, period: 4.4, dwell: 0.5 } });
+  b.checkpoint({ gap: 6.6 });
+  b.star(b.next({ from: ss2, dir: 'left', gap: 2.6, w: 1.6, d: 1.6, off: true, color: PAL.mint }));
+  b.end('Stocking Shuttle');
 
-  b.begin(15, 'knit', 'Wrapping Line');
-  const wb = b.next({ gap: 1.6, w: 6, d: 8, surface: 'conveyor', belt: { x: 0, z: 2.8 }, through: true });
-  for (const sx of [-1, 1]) b.add({ surface: 'knit', x: b.solids[wb].x + sx * 3.25, y: b.top(wb) + 0.35, z: b.solids[wb].z, hx: 0.25, hy: 0.35, hz: 4, color: PAL.mintDeep, accent: PAL.cream });
-  const rest = b.next({ gap: 0, w: 6, d: 3.5 });
-  b.next({ gap: 1.2, w: 4, d: 4, surface: 'lift', h: 1, motion: { dy: 4, period: 7, dwell: 1.2, phase: 2 } });
-  b.next({ gap: 1.0, w: 6, d: 4, rise: 4 });
-  b.checkpoint({ gap: 2.0 });
-  b.star(b.next({ from: rest, dir: 'right', gap: 2.4, w: 2, d: 2, rise: 0.4, off: true, color: PAL.mint }));
+  b.begin(13, 'knit');
+  for (let i = 0; i < 6; i++) b.next({ gap: 2.2, w: 2.6, d: 2.6, dx: i % 2 ? 0.8 : -0.8, surface: 'blink', blink: { on: 2.2, off: 1.3, phase: -0.9 * i } });
+  const fl = b.cursor;
+  b.checkpoint({ gap: 2.2 });
+  b.star(b.next({ from: fl - 2, dir: 'left', gap: 2.6, w: 1.8, d: 1.8, surface: 'blink', blink: { on: 1.6, off: 1.6, phase: 0 }, off: true }));
+  b.end('Fairy Lights');
+
+  b.begin(14, 'knit');
+  const yp = b.next({ gap: 2.2, w: 1.4, d: 12, h: 0.8 });
+  for (const [oz, ph] of [[3.6, 0], [0, 0.8], [-3.6, 1.6]] as const) {
+    const s = R(yp);
+    b.add({ surface: 'knit', x: s.x - 1.35, y: b.top(yp) + 1.2, z: s.z + oz, hx: 0.55, hy: 1.2, hz: 0.6, motion: { dx: 2.7, dy: 0, dz: 0, period: 2.4, dwell: 0.35, phase: ph }, color: PAL.mintDeep, accent: PAL.cream });
+  }
+  b.next({ gap: 2.6, w: 2.4, d: 2.4, color: PAL.mint });
+  b.next({ gap: 2.0, w: 2.6, d: 2.6, surface: 'tray', h: 0.8, motion: { dx: -6, period: 4, dwell: 0.5 } });
+  b.next({ gap: 2.2, w: 2.6, d: 2.6, dx: -6 });
+  b.checkpoint({ gap: 2.6, dx: 2 });
+  b.star(yp, 1.3, 0, -5.4);
+  b.end('Yarn Pushers');
+
+  b.begin(15, 'knit');
+  const wl = b.next({ gap: 2.2, w: 3, d: 10, surface: 'conveyor', belt: { x: 0, z: 3.0 }, through: true });
+  b.spike(wl, { ox: -1.0, oz: 1.5, w: 1.0, d: 1.0, h: 0.7, motion: { dx: 2.0, period: 1.8, dwell: 0.2 } });
+  b.next({ gap: 2.4, w: 2.4, d: 2.4, surface: 'blink', blink: { on: 2.0, off: 1.2, phase: 0 } });
+  const wl2 = b.next({ gap: 2.4, w: 2.4, d: 2.4, surface: 'blink', blink: { on: 2.0, off: 1.2, phase: -1.0 } });
+  b.next({ gap: 2.4, w: 2.4, d: 2.4, surface: 'blink', blink: { on: 2.0, off: 1.2, phase: -2.0 } });
+  b.next({ gap: 2.4, w: 3, d: 8, surface: 'conveyor', belt: { x: 1.6, z: 2.0 }, through: true });
+  b.checkpoint({ gap: 2.2 });
+  b.star(wl2, 1.3);
   b.end('Wrapping Line');
 
   // ---------- Peppermint Ice Rink ----------
-  b.begin(16, 'rink', 'First Frost');
-  b.next({ gap: 1.8, w: 6, d: 4 });
-  const ice1 = b.next({ gap: 0, w: 4, d: 9, surface: 'ice', through: true });
-  b.next({ gap: 0, w: 6, d: 6 });
-  b.checkpoint({ gap: 1.8 });
-  b.star(ice1, 1.2);
+  b.begin(16, 'rink');
+  b.next({ gap: 2.0, w: 6, d: 4 });
+  b.next({ gap: 2.6, w: 3, d: 5, surface: 'ice', through: true });
+  const ff2 = b.next({ gap: 2.8, w: 2.6, d: 5, dx: 1.2, surface: 'ice', through: true });
+  b.next({ gap: 2.8, w: 2.4, d: 6, dx: -1.2, surface: 'ice', through: true });
+  b.next({ gap: 2.4, w: 1.2, d: 8, surface: 'ice', through: true });
+  b.checkpoint({ gap: 2.4 });
+  b.star(b.next({ from: ff2, dir: 'right', gap: 2.8, w: 1.6, d: 1.6, off: true, surface: 'ice' }));
   b.end('First Frost');
 
-  b.begin(17, 'rink', 'Mint Slalom');
-  const ia = b.next({ gap: 1.8, w: 3.4, d: 7, surface: 'ice', through: true });
-  for (const sx of [-1, 1]) b.next({ from: ia, dir: sx > 0 ? 'right' : 'left', gap: 0, w: 2.5, d: 7, off: true });
-  const ib = b.next({ gap: 0, w: 8, d: 3.4, dx: 2.3, surface: 'ice', through: true });
-  const ic = b.next({ gap: 0, w: 3.4, d: 7, dx: 2.3, surface: 'ice', through: true });
-  for (const sx of [-1, 1]) b.next({ from: ic, dir: sx > 0 ? 'right' : 'left', gap: 0, w: 2.5, d: 7, off: true });
-  b.checkpoint({ gap: 1.6 });
-  b.star(ib, 1.2, -2.5);
-  b.end('Mint Slalom');
-
-  b.begin(18, 'rink', 'Snowball Lane');
-  const lane1 = b.next({ gap: 1.6, w: 5, d: 6, through: true });
-  b.snowball(lane1, 0, { travel: 1.6, gap: 2.2, phase: 0 });
-  const alcove = b.next({ gap: 0, w: 9, d: 4, color: PAL.mint });
-  const lane2 = b.next({ gap: 0, w: 5, d: 6, through: true });
-  b.snowball(lane2, 0, { travel: 1.5, gap: 2.4, phase: 1.3 });
+  b.begin(17, 'rink');
+  const sl1 = b.next({ gap: 2.0, w: 5, d: 14, through: true });
+  b.snowball(sl1, 4.5, { travel: 1.3, gap: 1.6, phase: 0 });
+  b.snowball(sl1, 1.5, { travel: 1.2, gap: 1.9, phase: 0.8 });
+  b.snowball(sl1, -1.5, { travel: 1.4, gap: 1.5, phase: 1.7 });
+  b.snowball(sl1, -4.5, { travel: 1.2, gap: 1.8, phase: 0.4 });
+  b.next({ gap: 2.4, w: 3, d: 3, color: PAL.mint });
+  const sl2 = b.next({ gap: 2.4, w: 4, d: 10, through: true });
+  b.snowball(sl2, 3, { travel: 1.0, gap: 1.4, phase: 0.3 });
+  b.snowball(sl2, 0, { travel: 1.0, gap: 1.3, phase: 1.1 });
+  b.snowball(sl2, -3, { travel: 0.9, gap: 1.5, phase: 0.6 });
   b.checkpoint({ gap: 0 });
-  b.star(alcove, 1.3, 3.4);
-  b.end('Snowball Lane');
+  b.star(sl2, 1.3, 1.2, 1.5);
+  b.end('Snowball Barrage');
 
-  b.begin(19, 'rink', 'Crumble Cookies');
-  b.next({ gap: 1.8, w: 3, d: 3, surface: 'crumble', h: 0.6 });
-  const c2 = b.next({ gap: 1.8, w: 3, d: 3, surface: 'crumble', h: 0.6 });
-  b.next({ gap: 1.8, w: 3, d: 3, surface: 'crumble', h: 0.6 });
-  b.checkpoint({ gap: 1.8 });
-  b.star(b.next({ from: c2, dir: 'right', gap: 2.2, w: 2.2, d: 2.2, off: true }));
+  b.begin(18, 'rink');
+  b.next({ gap: 2.2, w: 2.4, d: 2.4, surface: 'crumble', h: 0.6 });
+  b.next({ gap: 2.4, w: 2.4, d: 2.4, dx: 1.4, surface: 'crumble', h: 0.6 });
+  const ck3 = b.next({ gap: 2.6, w: 2.2, d: 2.2, dx: -1.4, surface: 'crumble', h: 0.6 });
+  b.next({ gap: 2.4, w: 2.2, d: 2.2, rise: 0.6, surface: 'crumble', h: 0.6 });
+  b.next({ gap: 2.8, w: 2.2, d: 2.2, dx: 1.4, surface: 'crumble', h: 0.6 });
+  b.next({ gap: 2.8, w: 2.0, d: 2.0, dx: -1.4, surface: 'crumble', h: 0.6 });
+  b.checkpoint({ gap: 2.6 });
+  b.star(b.next({ from: ck3, dir: 'right', gap: 2.8, w: 1.6, d: 1.6, surface: 'crumble', h: 0.6, off: true }));
   b.end('Crumble Cookies');
 
-  b.begin(20, 'rink', 'Frost Fair Finale');
-  b.next({ gap: 1.8, w: 4, d: 8, surface: 'ice', through: true });
-  const ffr = b.next({ gap: 0, w: 6, d: 5 });
-  b.next({ gap: 2.0, w: 3, d: 3, surface: 'crumble', h: 0.6 });
-  b.next({ gap: 2.0, w: 3, d: 3, surface: 'crumble', h: 0.6 });
-  b.checkpoint({ gap: 2.0 });
-  b.star(b.next({ from: ffr, dir: 'left', gap: 2.4, w: 2, d: 2, off: true, color: PAL.mint }));
+  b.begin(19, 'rink');
+  const ms = b.next({ gap: 2.0, w: 5, d: 17, surface: 'ice', through: true });
+  b.spike(ms, { ox: -1.25, oz: 5.5, w: 2.5, d: 1 });
+  b.spike(ms, { ox: 1.25, oz: 0, w: 2.5, d: 1 });
+  b.spike(ms, { ox: -1.25, oz: -5.5, w: 2.5, d: 1 });
+  b.next({ gap: 2.6, w: 2.4, d: 4, surface: 'ice', through: true });
+  b.next({ gap: 2.6, w: 2.4, d: 4, dx: 1, surface: 'ice', through: true });
+  b.checkpoint({ gap: 2.4 });
+  b.star(ms, 1.4, 1.6, -6);
+  b.end('Mint Slalom');
+
+  b.begin(20, 'rink');
+  const fi = b.next({ gap: 2.2, w: 3, d: 8, surface: 'ice', through: true });
+  b.snowball(fi, 0, { travel: 1.1, gap: 1.4, phase: 0.5 });
+  b.next({ gap: 2.6, w: 2.4, d: 2.4, surface: 'crumble', h: 0.6 });
+  const fc = b.next({ gap: 2.6, w: 2.4, d: 2.4, dx: 1.2, surface: 'crumble', h: 0.6 });
+  const fbr = b.next({ gap: 2.6, w: 1.6, d: 9, dx: -1.2, surface: 'ice', through: true });
+  b.pendulum(fbr, { oz: 2, omega: 2.4 });
+  b.pendulum(fbr, { oz: -2, omega: 2.4, phase: 1.5 });
+  b.checkpoint({ gap: 2.4 });
+  b.star(b.next({ from: fc, dir: 'left', gap: 2.8, w: 1.6, d: 1.6, off: true, color: PAL.mint }));
   b.end('Frost Fair Finale');
 
   // ---------- Ornament Skyway ----------
-  b.begin(21, 'skyway', 'Bauble Balcony');
-  b.next({ gap: 2.0, w: 3.2, d: 3.2, rise: 0.7 });
-  const bb2 = b.next({ gap: 2.0, w: 3.2, d: 3.2, rise: 0.7, dx: 1.2, color: PAL.mint });
-  b.next({ gap: 2.2, w: 3.2, d: 3.2, rise: 0.7, dx: -1.2, color: PAL.blush });
-  b.next({ gap: 2.2, w: 3.2, d: 3.2, rise: 0.7 });
-  b.checkpoint({ gap: 2.0 });
-  b.star(b.next({ from: bb2, dir: 'right', gap: 2.4, w: 2.2, d: 2.2, rise: 0.7, off: true, color: PAL.gold }));
-  b.end('Bauble Balcony');
-
-  b.begin(22, 'skyway', 'Spring Star');
-  b.next({ gap: 2.0, w: 3, d: 3, surface: 'spring', h: 0.6 });
-  const balcony = b.next({ gap: 2.0, w: 7, d: 6, rise: 3.6, color: PAL.lilac });
-  b.checkpoint({ gap: 1.8 });
-  b.star(balcony, 1.3, 2.4, 1.5);
+  b.begin(21, 'skyway');
+  b.next({ gap: 2.2, w: 2.4, d: 2.4, surface: 'spring', h: 0.6 });
+  b.next({ gap: 2.4, w: 3, d: 3, rise: 3.6, color: PAL.lilac });
+  b.next({ gap: 2.4, w: 2, d: 2, surface: 'spring', h: 0.6 });
+  const sp2 = b.next({ gap: 2.6, w: 2.6, d: 2.6, rise: 3.6, color: PAL.mint });
+  b.next({ gap: 2.6, w: 2, d: 2, dx: 1.5, surface: 'spring', h: 0.6 });
+  b.next({ gap: 2.8, w: 2.4, d: 2.4, dx: -1.5, rise: 3.2, color: PAL.blush });
+  b.checkpoint({ gap: 2.6, rise: -1 });
+  b.star(b.next({ from: sp2, dir: 'right', gap: 3.0, w: 1.4, d: 1.4, rise: 0.4, off: true, color: PAL.gold }));
   b.end('Spring Star');
 
-  b.begin(23, 'skyway', 'Ribbon Carousel');
-  b.next({ gap: 2.0, w: 3.4, d: 3.4, color: PAL.mint });
-  const car = b.next({ gap: 1.4, w: 9, d: 9, dx: 3, through: true });
-  b.sweeper(car, { length: 4.2, omega: 0.75, arms: 2, phase: 0.6 });
-  b.next({ gap: 1.4, w: 3.4, d: 3.4, dx: -3, color: PAL.blush });
-  b.checkpoint({ gap: 2.0 });
-  b.star(b.next({ from: car, dir: 'right', gap: 2.2, w: 2.2, d: 2.2, off: true, color: PAL.gold }));
+  b.begin(22, 'skyway');
+  const br1 = b.next({ gap: 2.2, w: 2.6, d: 2.6, surface: 'blink', blink: { on: 2.2, off: 1.2, phase: 0 } });
+  b.pendulum(br1, { oz: -2.4, omega: 2.3 });
+  const br2 = b.next({ gap: 2.2, w: 2.6, d: 2.6, surface: 'blink', blink: { on: 2.2, off: 1.2, phase: -0.9 } });
+  const br3 = b.next({ gap: 2.2, w: 2.6, d: 2.6, surface: 'blink', blink: { on: 2.2, off: 1.2, phase: -1.8 } });
+  b.pendulum(br3, { oz: -2.4, omega: 2.5, phase: 1 });
+  b.next({ gap: 2.4, w: 2.6, d: 2.6, surface: 'blink', blink: { on: 2.2, off: 1.2, phase: -2.7 } });
+  b.checkpoint({ gap: 2.2 });
+  b.star(br2, 1.3);
+  b.end('Bauble Rhythm');
+
+  b.begin(23, 'skyway');
+  b.next({ gap: 2.4, w: 2.6, d: 2.6, color: PAL.mint });
+  const car = b.next({ gap: 2.4, w: 10, d: 10, dx: 3, through: true });
+  b.sweeper(car, { length: 4.7, omega: -1.9, arms: 4, phase: 0.4 });
+  b.next({ gap: 2.2, w: 2.6, d: 2.6, dx: -3, surface: 'tray', h: 0.8, motion: { dx: -5, period: 4, dwell: 0.5 } });
+  b.next({ gap: 2.4, w: 2.6, d: 2.6, dx: -5, color: PAL.blush });
+  const car2 = b.next({ gap: 2.4, w: 9, d: 9, dx: 3.2, through: true });
+  b.sweeper(car2, { length: 4.3, omega: 1.6, arms: 3, height: 0.35 });
+  b.checkpoint({ gap: 2.4, dx: -3.2 });
+  b.star(car, 1.4, -2.5, -2.5);
   b.end('Ribbon Carousel');
 
-  b.begin(24, 'skyway', 'Fairy-light Bridge');
-  b.next({ gap: 1.6, w: 2.6, d: 2.6, surface: 'crumble', h: 0.5 });
-  b.next({ gap: 1.6, w: 2.6, d: 2.6, surface: 'crumble', h: 0.5 });
-  const fl3 = b.next({ gap: 1.6, w: 2.6, d: 2.6, surface: 'crumble', h: 0.5 });
-  b.next({ gap: 1.6, w: 2.6, d: 2.6, surface: 'crumble', h: 0.5 });
-  b.checkpoint({ gap: 1.8 });
-  b.star(b.next({ from: fl3, dir: 'left', gap: 2.4, w: 2, d: 2, off: true, color: PAL.gold }));
+  b.begin(24, 'skyway');
+  // A cookie only holds you for a moment, so each one is hopped straight through to the panel after it.
+  b.next({ gap: 2.4, w: 2.2, d: 2.2, surface: 'crumble', h: 0.5, through: true });
+  b.next({ gap: 2.6, w: 2.2, d: 2.2, surface: 'blink', blink: { on: 1.8, off: 1.0, phase: 0 } });
+  b.next({ gap: 2.6, w: 2.2, d: 2.2, dx: 1, surface: 'crumble', h: 0.5, through: true });
+  const fb2 = b.next({ gap: 2.6, w: 2.2, d: 2.2, dx: -1, surface: 'blink', blink: { on: 1.8, off: 1.0, phase: -1.3 } });
+  b.next({ gap: 2.8, w: 2.2, d: 2.2, surface: 'crumble', h: 0.5 });
+  b.checkpoint({ gap: 2.4 });
+  b.star(b.next({ from: fb2, dir: 'left', gap: 3.0, w: 1.4, d: 1.4, off: true, color: PAL.gold }));
   b.end('Fairy-light Bridge');
 
-  b.begin(25, 'skyway', 'Cloud Ribbon');
-  b.next({ gap: 2.0, w: 3, d: 3, surface: 'spring', h: 0.6 });
-  const deck = b.next({ gap: 2.0, w: 7, d: 5, rise: 3.4, color: PAL.lilac });
-  b.next({ gap: 1.0, w: 4, d: 4, surface: 'tray', h: 0.8, motion: { dz: -7, period: 8, dwell: 1.4 } });
-  b.checkpoint({ gap: 8.0 });
-  b.star(deck, 1.3, -2.4);
+  b.begin(25, 'skyway');
+  b.next({ gap: 2.2, w: 2.4, d: 2.4, surface: 'spring', h: 0.6 });
+  const deck = b.next({ gap: 2.4, w: 4, d: 6, rise: 3.4, color: PAL.lilac });
+  b.strip(deck, 0, 1.0);
+  b.next({ gap: 2.0, w: 2.6, d: 2.6, surface: 'tray', h: 0.8, motion: { dz: -6, period: 4.2, dwell: 0.5 } });
+  b.next({ gap: 7.8, w: 2.6, d: 2.6, surface: 'tray', h: 0.8, motion: { dx: 6, period: 4, dwell: 0.5 } });
+  b.next({ gap: 2.2, w: 2.6, d: 2.6, dx: 6, color: PAL.mint });
+  b.checkpoint({ gap: 2.4, dx: -2.5 });
+  b.star(deck, 1.3, 1.4, 2);
   b.end('Cloud Ribbon');
 
   // ---------- North Pole Runway ----------
-  b.begin(26, 'northpole', 'Chalet Rooftops');
-  b.next({ gap: 2.2, w: 5, d: 5, h: 1.6 });
-  b.next({ gap: 2.0, w: 2.6, d: 2.6, surface: 'gift', color: PAL.blush, accent: PAL.maroon });
-  const roof2 = b.next({ gap: 2.0, w: 5, d: 5, h: 1.6, dx: 1 });
-  b.next({ gap: 2.0, w: 2.6, d: 2.6, surface: 'gift', color: PAL.lilac, accent: PAL.maroon });
-  b.next({ gap: 2.0, w: 5, d: 5, h: 1.6, dx: -1 });
-  b.checkpoint({ gap: 2.2 });
-  b.star(b.next({ from: roof2, dir: 'right', gap: 2.6, w: 2.4, d: 2.4, h: 1.6, off: true }));
+  b.begin(26, 'northpole');
+  const r1 = b.next({ gap: 2.8, w: 3.4, d: 3.4, h: 1.6 });
+  b.spike(r1, { w: 3.4, d: 1.0, h: 1.0, motion: { dy: -1.05, period: 2.4, dwell: 0.5 } });
+  const r2 = b.next({ gap: 3.0, w: 3.4, d: 4.6, h: 1.6, dx: 1 });
+  b.spike(r2, { ox: -1.2, w: 1.0, d: 1.4, h: 0.8, motion: { dx: 2.4, period: 1.6, dwell: 0.1 } });
+  const r3 = b.next({ gap: 3.2, w: 3.4, d: 3.4, h: 1.6, dx: -1 });
+  b.spike(r3, { w: 3.4, d: 1.0, h: 1.0, motion: { dy: -1.05, period: 2.4, dwell: 0.5, phase: 1.2 } });
+  b.next({ gap: 3.0, w: 2.8, d: 2.8, surface: 'gift', color: PAL.lilac, accent: PAL.maroon });
+  b.checkpoint({ gap: 3.0 });
+  b.star(b.next({ from: r2, dir: 'right', gap: 3.2, w: 1.6, d: 1.6, h: 1.6, off: true }));
   b.end('Chalet Rooftops');
 
-  b.begin(27, 'northpole', 'Chimney Slalom');
-  const ch: number[] = [];
-  for (const [i, dx] of [[0, 1.5], [1, -1.5], [2, 1.5], [3, -1.5]] as const) {
-    const id = b.next({ gap: 2.6, w: 4.4, d: 4.4, dx });
-    ch.push(id);
-    const s = b.solids[id], cxs = dx > 0 ? 1 : -1;
-    void i;
-    b.add({ surface: 'roof', x: s.x + cxs * 1.5, y: b.top(id) + 0.7, z: s.z, hx: 0.55, hy: 0.7, hz: 0.55, color: PAL.maroon, accent: PAL.snow });
+  b.begin(27, 'northpole');
+  const chs: number[] = [];
+  for (let i = 0; i < 5; i++) {
+    const prev = b.cursor;
+    const id = b.next({ gap: 2.6, w: 2.4, d: 2.4, dx: i % 2 ? -1.2 : 1.2 });
+    chs.push(id);
+    if (i > 0) b.pendulum(prev, { oz: -(R(prev).hz + 1.3), omega: 2.2 + i * 0.1, phase: i });
   }
-  b.checkpoint({ gap: 2.4 });
-  b.star(ch[2], 1.4, -0.8);
+  b.checkpoint({ gap: 2.6 });
+  b.star(chs[2], 1.4);
   b.end('Chimney Slalom');
 
-  b.begin(28, 'northpole', 'Sleigh Loading Bay');
-  const lb = b.next({ gap: 1.6, w: 6, d: 8, surface: 'conveyor', belt: { x: 0, z: 2.6 }, through: true });
-  for (const sx of [-1, 1]) b.add({ surface: 'knit', x: b.solids[lb].x + sx * 3.25, y: b.top(lb) + 0.35, z: b.solids[lb].z, hx: 0.25, hy: 0.35, hz: 4, color: PAL.maroon, accent: PAL.cream });
-  const wait = b.next({ gap: 0, w: 6, d: 3.5 });
-  b.next({ gap: 1.2, w: 4, d: 4, surface: 'lift', h: 1, motion: { dy: 4, period: 7, dwell: 1.4, phase: 1 } });
-  b.next({ gap: 1.0, w: 6, d: 4, rise: 4 });
-  b.checkpoint({ gap: 2.0 });
-  b.star(b.next({ from: wait, dir: 'left', gap: 2.4, w: 2, d: 2, rise: 0.5, off: true, color: PAL.gold }));
+  b.begin(28, 'northpole');
+  const lb = b.next({ gap: 2.2, w: 5, d: 10, surface: 'conveyor', belt: { x: 0, z: 3.2 }, through: true });
+  b.snowball(lb, 2, { travel: 1.0, gap: 1.6, phase: 0, span: 6 });
+  b.snowball(lb, -2, { travel: 1.0, gap: 1.6, phase: 1.1, span: 6 });
+  b.next({ gap: 0, w: 3, d: 2.5 });
+  b.next({ gap: 2.2, w: 2.6, d: 2.6, surface: 'lift', h: 1, motion: { dy: 4, period: 4.5, dwell: 0.6, phase: 1 } });
+  const top28 = b.next({ gap: 2.2, w: 2.6, d: 2.6, rise: 4 });
+  b.next({ gap: 2.4, w: 3, d: 8, surface: 'conveyor', belt: { x: -2.0, z: 1.4 }, through: true });
+  b.checkpoint({ gap: 2.2 });
+  b.star(b.next({ from: top28, dir: 'left', gap: 3.0, w: 1.4, d: 1.4, off: true }));
   b.end('Sleigh Loading Bay');
 
-  b.begin(29, 'northpole', 'Final Ribbon');
-  b.next({ gap: 1.8, w: 1.4, d: 7, h: 0.7, surface: 'ribbon' });
-  const fr = b.next({ gap: 1.6, w: 9, d: 9, dx: 3, through: true });
-  b.sweeper(fr, { length: 4.2, omega: 1.1, phase: 1 });
-  b.next({ gap: 1.6, w: 4, d: 4, dx: -3 });
-  b.next({ gap: 2.8, w: 3.4, d: 3.4 });
-  b.next({ gap: 2.8, w: 3.4, d: 3.4 });
-  b.checkpoint({ gap: 2.0 });
-  b.star(b.next({ from: fr, dir: 'right', gap: 2.2, w: 2.2, d: 2.2, off: true, color: PAL.gold }));
+  b.begin(29, 'northpole');
+  const frb = b.next({ gap: 2.4, w: 0.9, d: 12, h: 0.7, surface: 'ribbon' });
+  b.strip(frb, 3.5, 0.6);
+  b.strip(frb, -1.5, 0.6);
+  const fsw = b.next({ gap: 2.4, w: 9, d: 9, dx: 3.2, through: true });
+  b.sweeper(fsw, { length: 4.3, omega: -3.0, arms: 2 });
+  b.next({ gap: 2.4, w: 2.2, d: 2.2, dx: -3.2, color: PAL.blush });
+  const fjr = b.next({ gap: 2.4, w: 9, d: 9, dx: -3.2, through: true });
+  b.sweeper(fjr, { length: 4.3, omega: -2.4, arms: 2, height: 0.35 });
+  b.next({ gap: 2.4, w: 2.2, d: 2.2, dx: 3.2, surface: 'blink', blink: { on: 1.8, off: 1.0, phase: 0 } });
+  b.next({ gap: 2.6, w: 2.2, d: 2.2, surface: 'blink', blink: { on: 1.8, off: 1.0, phase: -1.0 } });
+  b.checkpoint({ gap: 2.4 });
+  b.star(frb, 1.3, 0, -3.5);
   b.end('Final Ribbon');
 
-  b.begin(30, 'northpole', 'Star-top Finish');
-  b.next({ gap: 1.6, w: 4, d: 3, rise: 0.8, surface: 'gift', color: PAL.blush });
-  const f2 = b.next({ gap: 1.6, w: 4, d: 3, rise: 0.8, surface: 'gift', color: PAL.lilac });
-  b.next({ gap: 1.6, w: 4, d: 3, rise: 0.8, surface: 'gift', color: PAL.mint });
-  const podium = b.checkpoint({ gap: 1.6, w: 10, d: 10, rise: 0.6 });
-  b.star(b.next({ from: f2, dir: 'left', gap: 2.2, w: 2, d: 2, rise: 0.8, off: true, color: PAL.gold }));
+  b.begin(30, 'northpole');
+  b.next({ gap: 2.6, w: 2.4, d: 2.4, rise: 0.8, surface: 'gift', color: PAL.blush });
+  b.next({ gap: 2.6, w: 2.4, d: 2.4, rise: 0.8, surface: 'gift', color: PAL.lilac });
+  b.next({ gap: 2.4, w: 2, d: 2, surface: 'spring', h: 0.6 });
+  const hi = b.next({ gap: 2.6, w: 2.6, d: 6, rise: 3.6, surface: 'gift', color: PAL.mint });
+  b.pendulum(hi, { omega: 2.6 });
+  b.next({ gap: 2.2, w: 2.4, d: 2.4, surface: 'tray', h: 0.8, motion: { dx: 5, period: 3.6, dwell: 0.4 } });
+  b.next({ gap: 2.6, w: 2.2, d: 2.2, dx: 5, surface: 'crumble', h: 0.6, through: true });
+  b.next({ gap: 2.6, w: 2.2, d: 2.2, dx: -2, surface: 'blink', blink: { on: 1.8, off: 1.0, phase: 0 } });
+  const podium = b.checkpoint({ gap: 2.6, w: 10, d: 10, rise: 0.6 });
+  b.star(b.next({ from: hi, dir: 'left', gap: 3.0, w: 1.4, d: 1.4, rise: 0.6, off: true, color: PAL.gold }));
   const p = b.solids[podium];
   b.deco('sleigh', p.x + 3.1, b.top(podium), p.z - 3.6, 1.1, 0, PAL.maroon);
   b.deco('tree', p.x - 3.7, b.top(podium), p.z - 3.7, 1.0, 0, PAL.mint);
@@ -451,7 +556,7 @@ export function buildCourse(): Course {
 
   scenery(b);
   return assembleCourse({
-    solids: b.solids, checkpoints: b.checkpoints, sweepers: b.sweepers, snowballs: b.snowballs, stars: b.stars, stages: b.stages, decor: b.decor,
+    solids: b.solids, checkpoints: b.checkpoints, sweepers: b.sweepers, snowballs: b.snowballs, pendulums: b.pendulums, stars: b.stars, stages: b.stages, decor: b.decor,
     // The plaza is ±4.5 wide; a player still standing on its edge has their centre up to a half-width beyond it.
     startLine: { z: 1, x0: -4.85, x1: 4.85 },
   });

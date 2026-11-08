@@ -1,5 +1,5 @@
 // Plants: grass, ferns, flowers, mushrooms, sugar cane, lily pads, cactus, pumpkin, melon, moss and crops.
-import {type Painter,type RGBA,T,CLEAR,rgb,grey,shade,ramp,pick,hash,valueNoise,fbm,contrast,cached,bitmap,drawn,rng} from './tiles-core';
+import {type Painter,type RGBA,T,rgb,grey,shade,ramp,pick,hash,valueNoise,fbm,contrast,cached,bitmap,drawn,rng} from './tiles-core';
 
 // ---- Biome-tinted plants (painted grey) ---------------------------------------------------------
 /** Short grass: a tuft of tapering blades, dark at the roots and lighter toward the tips. */

@@ -2,7 +2,11 @@
 
 export type Surface =
   | 'snow' | 'gift' | 'candy' | 'ribbon' | 'knit' | 'ornament' | 'roof'
-  | 'ice' | 'conveyor' | 'crumble' | 'spring' | 'checkpoint' | 'lift' | 'tray' | 'post';
+  | 'ice' | 'conveyor' | 'crumble' | 'spring' | 'checkpoint' | 'lift' | 'tray' | 'post'
+  /** Kill brick: never solid, touching it sends you back to your checkpoint. */
+  | 'spike'
+  /** Fairy-light panel that is solid only while lit (see Solid.blink). */
+  | 'blink';
 
 export type ZoneId = 'giftwrap' | 'candycane' | 'knit' | 'rink' | 'skyway' | 'northpole';
 
@@ -18,12 +22,19 @@ export interface Solid {
   hx: number; hy: number; hz: number;
   motion?: Motion;
   belt?: { x: number; z: number };
+  /** Lit (solid) for `on` seconds, then dark for `off` seconds, offset by `phase`, in motion time. */
+  blink?: { on: number; off: number; phase: number };
   /** Base colour (0xRRGGBB) and accent for the renderer; collision ignores them. */
   color: number;
   accent: number;
 }
 
-export interface Sweeper { id: number; stage: number; x: number; y: number; z: number; length: number; radius: number; omega: number; phase: number; arms: 1 | 2 }
+export interface Sweeper { id: number; stage: number; x: number; y: number; z: number; length: number; radius: number; omega: number; phase: number; arms: 1 | 2 | 3 | 4;
+  /** Top of the floor the hub stands on (for the swept-circle marker). */
+  floor?: number }
+
+/** A weighted bauble swinging from a fixed pivot: angle = amp·sin(omega·t + phase), swinging along x or z. */
+export interface Pendulum { id: number; stage: number; x: number; y: number; z: number; length: number; radius: number; amp: number; omega: number; phase: number; axis: 'x' | 'z' }
 
 export interface Snowball { id: number; stage: number; ax: number; ay: number; az: number; bx: number; by: number; bz: number; radius: number; travel: number; gap: number; phase: number }
 
@@ -50,6 +61,7 @@ export interface Course {
   solids: Solid[];
   sweepers: Sweeper[];
   snowballs: Snowball[];
+  pendulums: Pendulum[];
   checkpoints: Checkpoint[];
   stars: Star[];
   stages: StageInfo[];
@@ -78,13 +90,15 @@ export interface Player {
   facing: number;
 }
 
+export type DeathCause = 'fall' | 'sweeper' | 'snowball' | 'spike' | 'pendulum';
+
 export type CrumblePhase = 0 | 1 | 2; // idle, warning, gone
 
 export type SimEvent =
   | { type: 'jump' }
   | { type: 'land'; surface: Surface }
   | { type: 'spring' }
-  | { type: 'death'; cause: 'fall' | 'sweeper' | 'snowball' }
+  | { type: 'death'; cause: DeathCause }
   | { type: 'respawn' }
   | { type: 'checkpoint'; index: number }
   | { type: 'star'; id: string; stage: number }

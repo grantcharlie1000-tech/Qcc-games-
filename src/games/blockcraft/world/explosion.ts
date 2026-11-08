@@ -28,7 +28,6 @@ const RAYS=(()=>{
   }
   return new Float64Array(out);
 })();
-export const RAY_COUNT=RAYS.length/3;
 const STEP=.3,DECAY=.22500001;
 const passSolid=(id:number)=>!SOLID[id];
 

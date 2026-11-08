@@ -5,8 +5,8 @@ import { BODY, HITBOX, HOUSES, PRIMARIES } from '../../../src/games/quad-clash/c
 
 describe('egg fighters', () => {
   test('the visible shell fits movement bounds and covers the aiming and headshot region', () => {
-    const kit = createKit(), crest = new THREE.Texture(), flash = new THREE.SpriteMaterial();
-    const f = buildFighter(kit, HOUSES[0].color, crest, flash);
+    const kit = createKit(), flash = new THREE.SpriteMaterial();
+    const f = buildFighter(kit, HOUSES[0].color, flash);
     const shell = f.body.children[0] as THREE.Mesh;
     f.group.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(shell);
@@ -24,13 +24,13 @@ describe('egg fighters', () => {
     }
     const ray = new THREE.Raycaster(new THREE.Vector3(0, HITBOX.headY, -2), new THREE.Vector3(0, 0, 1));
     expect(ray.intersectObject(shell).length).toBeGreaterThan(0);
-    disposeOwned(f.group); kit.dispose(); crest.dispose(); flash.dispose();
+    disposeOwned(f.group); kit.dispose(); flash.dispose();
   });
 
   test('house colours remain visible and every primary can be swapped on the same egg', () => {
-    const kit = createKit(), crest = new THREE.Texture(), flash = new THREE.SpriteMaterial();
+    const kit = createKit(), flash = new THREE.SpriteMaterial();
     for (const h of HOUSES) {
-      const f = buildFighter(kit, h.color, crest, flash);
+      const f = buildFighter(kit, h.color, flash);
       expect((f.feet[0].material as THREE.MeshStandardMaterial).color.getHex()).toBe(h.color);
       for (const id of PRIMARIES) {
         setFighterGun(kit, f, id);
@@ -39,7 +39,7 @@ describe('egg fighters', () => {
       }
       disposeOwned(f.group);
     }
-    kit.dispose(); crest.dispose(); flash.dispose();
+    kit.dispose(); flash.dispose();
   });
 });
 

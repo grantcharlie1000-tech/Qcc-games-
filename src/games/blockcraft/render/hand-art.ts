@@ -12,7 +12,7 @@ import type {ChunkMesh} from '../engine/contracts';
 export const HAND_SLOT=16,HAND_SLOTS=3,HAND_SHEET_WIDTH=HAND_SLOT*HAND_SLOTS,HAND_SHEET_HEIGHT=HAND_SLOT;
 export const SLOT_ARM=0,SLOT_MAIN=1,SLOT_OFF=2;
 /** Texture codes of the hand buffer's misc.y. */
-export const HAND_TEX_SHEET=0,HAND_TEX_ATLAS=1,HAND_TEX_TRANSLUCENT=2;
+export const HAND_TEX_ATLAS=1,HAND_TEX_TRANSLUCENT=2;
 /** Room for two extruded sprites (2 faces + up to 64 edge quads per row run) and the arm. */
 export const MAX_HAND_QUADS=2400;
 

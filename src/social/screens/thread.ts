@@ -21,7 +21,7 @@ export class ThreadScreen implements Screen {
  private disposed=false;
  private root=document.createElement('div');
  private target:HTMLElement|null=null;
- constructor(private readonly ctx:SocialContext,private readonly column:HTMLElement,private readonly id:string) {
+ constructor(private readonly ctx:SocialContext,column:HTMLElement,private readonly id:string) {
   this.root.className='social-thread';column.append(this.root);
   this.root.append(skeletonPosts(3,'Loading post…'));
   void this.load();
@@ -47,7 +47,7 @@ export class ThreadScreen implements Screen {
  private render(thread:ThreadView):void {
   this.root.replaceChildren();
   for(const post of thread.ancestors){const card=new PostCard(this.ctx,post,{variant:'ancestor',onRemoved:()=>this.ctx.refresh()});this.cards.push(card);this.root.append(card.el);}
-  const focused=this.focused=new PostCard(this.ctx,thread.post,{variant:'focused',onReply:()=>this.reply(),onRemoved:(post,reason)=>{if(reason==='deleted')this.ctx.go(thread.post.replyTo?`#/social/post/${thread.post.replyTo}`:'#/social');}});
+  const focused=this.focused=new PostCard(this.ctx,thread.post,{variant:'focused',onReply:()=>this.reply(),onRemoved:(_post,reason)=>{if(reason==='deleted')this.ctx.go(thread.post.replyTo?`#/social/post/${thread.post.replyTo}`:'#/social');}});
   this.cards.push(focused);this.root.append(focused.el);this.target=focused.el;
   this.root.append(this.promptRow(),this.replies);
   this.replies.className='social-replies';this.replies.setAttribute('role','feed');this.replies.setAttribute('aria-label','Replies');
@@ -75,7 +75,7 @@ export class ThreadScreen implements Screen {
   const known=new Set(this.cards.map(c=>c.post.id));
   for(const post of page.items){
    if(known.has(post.id))continue;
-   const card=new PostCard(this.ctx,post,{variant:'reply',position:this.cards.length,onRemoved:(removed)=>{card.el.remove();card.dispose();this.focused?.bumpReplies(-1);}});
+   const card=new PostCard(this.ctx,post,{variant:'reply',position:this.cards.length,onRemoved:()=>{card.el.remove();card.dispose();this.focused?.bumpReplies(-1);}});
    this.cards.push(card);this.replies.append(card.el);
   }
   this.moreButton?.remove();this.moreButton=undefined;

@@ -16,7 +16,7 @@ import {TabGuard,readDiskSave,revisionOf,addBackup,listBackups} from './persiste
 import {Sfx,type Cue} from './audio';
 import {GardenView} from './garden-view';
 import {cornScore} from './score';
-import {duration,longDuration,effectText,requirementText,achievementTarget,goldenResult,festivalText} from './text';
+import {duration,longDuration,effectText,requirementText,goldenResult} from './text';
 
 type Sub='farm'|'garden'|'goals'|'stats'|'replant'|'options';
 type Top='cob'|'shop'|'farm';
@@ -291,7 +291,6 @@ export class CornClicker {
     // Several achievements at once (e.g. after time away) share one notification.
     const earned=events.filter(e=>e.type==='achievement');
     if(earned.length>1){
-      const names=earned.map(e=>achievementById.get((e as {id:string}).id)!.name);
       this.toast(`${earned.length} achievements unlocked!`,'achievement');
       this.play('achievement');this.skinToast();this.requestSave();
     }
@@ -534,8 +533,7 @@ export class CornClicker {
     if(button)this.burst(button,12);
     const event=this.game.collectGolden();
     if(event?.type!=='golden')return;
-    const seconds=event.kind==='lucky'?0:this.game.s.golden.effects[event.kind]?.remaining??0;
-    const text=goldenResult(event.kind,event.amount,this.style(),seconds)+(event.twin?' Twin!':'');
+    const text=goldenResult(event.kind,event.amount,this.style())+(event.twin?' Twin!':'');
     this.toast(text,'gold');this.announce(text);this.play('golden');
     this.drainEvents();this.updateGolden();this.updateBuffs();this.requestSave();
   }
@@ -842,7 +840,7 @@ export class CornClicker {
 
   // ───────────────────────── Replant ─────────────────────────
   private updateReplant(){
-    const g=this.game,s=g.s,style=this.style(),available=g.seedsAvailable(),next=g.nextSeedProgress();
+    const g=this.game,s=g.s,available=g.seedsAvailable(),next=g.nextSeedProgress();
     const bonusNow=s.seedsClaimed*PRESTIGE.bonusPerSeed*100,bonusAfter=(s.seedsClaimed+available)*PRESTIGE.bonusPerSeed*100;
     const paths:[PermPath,string][]=[['active','Clicking'],['idle','Idle'],['golden','Golden'],['general','Farm']];
     const html=`<div class="cc-seed-head"><span class="cc-seed-icon">${this.icon('seed',seedArt)}</span><div class="cc-grow">
@@ -863,7 +861,7 @@ export class CornClicker {
     }
   }
   private confirmReplant(){
-    const g=this.game,available=g.seedsAvailable(),style=this.style();
+    const g=this.game,available=g.seedsAvailable();
     if(available<1)return;
     this.confirm(`Replant for ${available} Golden Seed${available===1?'':'s'}?`,
       `Production bonus +${(g.s.seedsClaimed*PRESTIGE.bonusPerSeed*100).toFixed(0)}% → +${((g.s.seedsClaimed+available)*PRESTIGE.bonusPerSeed*100).toFixed(0)}%. Kernels, producers and upgrades reset.`,

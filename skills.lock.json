@@ -88,6 +88,14 @@
       "skills": [
         "game-development"
       ]
+    },
+    {
+      "repository": "Yevanchen/reclaim-code-entropy",
+      "commit": "9e6482e45814076b9710b55c8dcbb064ba4b7977",
+      "license": "MIT",
+      "skills": [
+        "reclaim-code-entropy"
+      ]
     }
   ],
   "files": [
@@ -1095,6 +1103,36 @@
       "upstreamBlobSha": "950da7b74bf6dbed6b8726d12ddadd65a9f5fda7",
       "sha256": "091df1629510af1b92fc4abd6f96732ebedb4cb2c0f3457e8f2740b0504a2438",
       "size": 6203,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/reclaim-code-entropy/LICENSE",
+      "sourceRepository": "Yevanchen/reclaim-code-entropy",
+      "sourceCommit": "9e6482e45814076b9710b55c8dcbb064ba4b7977",
+      "sourcePath": "LICENSE",
+      "upstreamBlobSha": "893d0d0184d412618dfaa565c2e069453dde03dc",
+      "sha256": "20635c95b42b8d2fd6639ca5834d02526bacc9374570afbdfaeb56b31369d574",
+      "size": 1066,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/reclaim-code-entropy/SKILL.md",
+      "sourceRepository": "Yevanchen/reclaim-code-entropy",
+      "sourceCommit": "9e6482e45814076b9710b55c8dcbb064ba4b7977",
+      "sourcePath": "skills/reclaim-code-entropy/SKILL.md",
+      "upstreamBlobSha": "7df5538fde80eedafde3db6e72d39815699c4f77",
+      "sha256": "d3099852c5e3abdb46f7b9f9bf9189d924145bbaede78d982e35757a452c958e",
+      "size": 9573,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/reclaim-code-entropy/agents/openai.yaml",
+      "sourceRepository": "Yevanchen/reclaim-code-entropy",
+      "sourceCommit": "9e6482e45814076b9710b55c8dcbb064ba4b7977",
+      "sourcePath": "skills/reclaim-code-entropy/agents/openai.yaml",
+      "upstreamBlobSha": "27b6516e3b92e1edd580af996089d330c7fb7ed9",
+      "sha256": "70e14d46f6aad89e73000c600a2db0d4f58a77948d84ab10ff586fc18a102120",
+      "size": 260,
       "mode": "100644"
     },
     {

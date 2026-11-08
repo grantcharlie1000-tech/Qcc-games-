@@ -1,7 +1,7 @@
 import type {GameModule} from '../../core/types';
 import {create,reveal,flag,chord,restore as restoreBoard,LEVELS,type Board,type Level} from './model';
 import {LABELS,emptyStats,readStats,recordStart,recordWin,competitiveScore,winScore,SCORE_TIERS,rankingKey,formatTime,hint} from './practice';
-import {read,write} from '../../core/storage';
+import {read} from '../../core/storage';
 import {playSound} from '../../core/audio';
 import './style.css';
 import './christmas.css';

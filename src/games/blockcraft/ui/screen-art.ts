@@ -121,7 +121,6 @@ export const FLAME_PALETTE:Palette={K:'#7a1f04',r:'#c8360c',o:'#f2711c',y:'#ffc9
 export const flat=(grid:Grid,colour:string):Palette=>Object.fromEntries([...new Set(grid.join(''))].filter(c=>c!=='.').map(c=>[c,colour]));
 
 // ---- Creative scrollbar ------------------------------------------------------------------------------------------
-export const KNOB_WIDTH=12,KNOB_HEIGHT=15;
 export const KNOB_GRID:Grid=['KKKKKKKKKKKK','KWWWWWWWWWGK',...Array.from({length:11},()=>'KWGGGGGGGGSK'),'KGSSSSSSSSSK','KKKKKKKKKKKK'];
 export const KNOB_PALETTES={
   enabled:{K:'#000000',W:'#ffffff',G:'#c6c6c6',S:'#555555'},

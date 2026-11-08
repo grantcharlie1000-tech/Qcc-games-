@@ -17,7 +17,7 @@ import type {MovieStorage} from './storage';
 import {MOVIES_KEY,snapshotOf,keepsResume} from './storage';
 import type {ContinueItem,TitleSnapshot} from './storage';
 import {formatClock,formatRuntime,initials} from './format';
-import {answersRequest,cachedJson,SEARCH_STALE} from './query';
+import {cachedJson,SEARCH_STALE} from './query';
 import {movieJson,movieNetworkMessage,MovieNetworkError} from './network';
 import {PlaybackSupervisor,clearFailures,failedProviders} from './playback';
 import {moviePopularity,POPULARITY_ENDPOINT,parsePopularIds} from './popularity';
@@ -188,14 +188,12 @@ export class MoviesView {
  private popularState:'loading'|'ready'|'error'='loading';
  private popularRequested=false;
  private popularLoading=false;
- private rails:Rail[]=[];
- private railsError=false;
- private railsRequest=0;
- private railsAbort?:AbortController;
- // Set once the home has asked for its rails. A failed request is asked again only through Retry.
- private railsRequested=false;
- // Each section has its own rails, asked the first time it shows.
- private sectionRails:Record<'movie'|'tv',SectionRails>={movie:{rails:[],error:false,empty:false,requested:false,request:0},tv:{rails:[],error:false,empty:false,requested:false,request:0}};
+ // Home, Movies and TV each own their loaded rails and request lifecycle.
+ private sectionRails:Record<'home'|'movie'|'tv',SectionRails>={
+  home:{rails:[],error:false,empty:false,requested:false,request:0},
+  movie:{rails:[],error:false,empty:false,requested:false,request:0},
+  tv:{rails:[],error:false,empty:false,requested:false,request:0},
+ };
  // The full-catalog request the remote titles answer, and the request the page wants now. Pages and earlier results belong to the request they answer.
  private remoteKey='';
  private remoteWanted='';
@@ -294,7 +292,7 @@ export class MoviesView {
   this.remoteLoading=true;this.remoteError='';this.renderBrowseState();
   try{
    const {data}=await cachedJson('/api/movies?'+new URLSearchParams({...request.params,page:String(page)}),controller.signal,{staleTime:SEARCH_STALE});
-   if(id!==this.searchRequest||!answersRequest(this.remoteRequest()?.key,request.key))return;
+   if(id!==this.searchRequest||this.remoteRequest()?.key!==request.key)return;
    const parsed=parseCatalog({titles:data.titles,source:'tmdb'},true);
    this.remoteTitles=parsed.titles;this.remoteKey=request.key;
    for(const title of parsed.titles)this.dynamicIds.add(title.id);
@@ -302,35 +300,17 @@ export class MoviesView {
    this.remotePages=Number.isInteger(data.totalPages)?Math.max(1,Math.min(500,data.totalPages)):1;
    this.remoteLoading=false;this.renderBrowseState();
   }catch(error){
-   if(id!==this.searchRequest||!answersRequest(this.remoteRequest()?.key,request.key)||controller.signal.aborted)return;
+   if(id!==this.searchRequest||this.remoteRequest()?.key!==request.key||controller.signal.aborted)return;
    // Titles from an earlier request go when this one fails. A later page of the same request keeps its results.
    if(this.remoteKey!==request.key){this.remoteTitles=[];this.remoteKey='';}
    this.remoteLoading=false;this.remoteError=movieNetworkMessage(error,request.family==='g'?'Genre results':'Full catalog search');this.renderBrowseState();
   }
  }
- // The home asks once for all of its rails. A response that arrives after a title opened updates the state only.
- // The home asks for its rails once: when the view opens on a section, or the first time Home is shown.
- private requestHomeRails(){if(!this.railsRequested)void this.fetchRails();}
- // A section asks for its rails the first time it shows. Only Retry asks again after a failure.
- private requestSectionRails(){const kind=this.kind;if((kind==='movie'||kind==='tv')&&!this.sectionRails[kind].requested)void this.fetchSectionRails(kind);}
- // Retry asks again for the rails of the page on screen.
- private retryRails(){const kind=this.kind;if(kind==='movie'||kind==='tv')void this.fetchSectionRails(kind);else void this.fetchRails();}
- private async fetchRails(){
-  this.railsRequested=true;const request=++this.railsRequest;
-  this.railsAbort?.abort();const controller=this.railsAbort=new AbortController();
-  try{
-   const {data}=await cachedJson('/api/movies?rails=home',controller.signal);
-   if(request!==this.railsRequest)return;
-   const rails=parseRails(data);
-   this.rails=rails;this.railsError=rails.length===0;
-   for(const rail of rails)for(const title of rail.titles)this.dynamicIds.add(title.id);
-  }catch{
-   if(request!==this.railsRequest||controller.signal.aborted)return;
-   this.rails=[];this.railsError=true;
-  }
-  this.renderBrowseState();
- }
- private async fetchSectionRails(kind:'movie'|'tv'){
+ // Each section asks once. Retry explicitly replaces only that section's request.
+ private requestHomeRails(){if(!this.sectionRails.home.requested)void this.fetchRails('home');}
+ private requestSectionRails(){const kind=this.kind;if((kind==='movie'||kind==='tv')&&!this.sectionRails[kind].requested)void this.fetchRails(kind);}
+ private retryRails(){void this.fetchRails(this.kind==='movie'||this.kind==='tv'?this.kind:'home');}
+ private async fetchRails(kind:'home'|'movie'|'tv'){
   const state=this.sectionRails[kind];
   state.requested=true;const request=++state.request;
   state.abort?.abort();const controller=state.abort=new AbortController();
@@ -601,7 +581,7 @@ export class MoviesView {
   return `${popular}${status}${titles.length?`<div class="movies-results-grid ui-grid">${titles.map(t=>this.card(t)).join('')}</div>`:''}`;
  }
  // The rails of Home and of both sections.
- private railTitles(){return [{id:'popular-marlborough',title:'Popular in Marlborough',titles:this.popularTitles},...this.rails,...this.sectionRails.movie.rails,...this.sectionRails.tv.rails].flatMap(rail=>rail.titles);}
+ private railTitles(){return [...this.popularTitles,...Object.values(this.sectionRails).flatMap(section=>section.rails.flatMap(rail=>rail.titles))];}
  // Every title the page has loaded from the bundled catalog or from a rail.
  private loadedTitles(){return [...this.catalog.titles,...this.railTitles()];}
  // Every title the page can name by id: the bundled catalog, the rails, the search results and any loaded related titles.
@@ -612,7 +592,7 @@ export class MoviesView {
  // The featured title is the first rail title, else the first bundled title. Play starts the first loaded episode of a series;
  // without a loaded episode it opens the title page, so no play route ever lacks a season and an episode.
  private hero(){
-  const hero=this.rails[0]?.titles[0]??this.catalog.titles[0];
+  const hero=this.sectionRails.home.rails[0]?.titles[0]??this.catalog.titles[0];
   if(!hero)return '';
   const isTv=hero.kind==='tv',name=escape(hero.name);
   const season=hero.seasons.find(s=>s.episodes.length),episode=season?.episodes[0];
@@ -660,8 +640,9 @@ export class MoviesView {
   const shelves:string[]=[this.popularRail()];
   const continued=this.continueRail();if(continued)shelves.push(continued);
   const saved=this.listRail();if(saved)shelves.push(saved);
-  if(this.railsError)shelves.push('<p class="movies-rails-status" role="status" tabindex="-1">Showing the starter selection. The full catalog is unavailable right now. <button class="ui-btn secondary small" data-action="retry-rails">Retry</button></p>');
-  if(this.rails.length){for(const rail of this.rails)shelves.push(this.shelf(unique(rail.id),rail.title,rail.titles));}
+  const home=this.sectionRails.home;
+  if(home.error||home.empty)shelves.push('<p class="movies-rails-status" role="status" tabindex="-1">Showing the starter selection. The full catalog is unavailable right now. <button class="ui-btn secondary small" data-action="retry-rails">Retry</button></p>');
+  if(home.rails.length){for(const rail of home.rails)shelves.push(this.shelf(unique(rail.id),rail.title,rail.titles));}
   else for(const [name,titles,note] of this.starterRails())if(titles.length)shelves.push(this.shelf(unique(slug(name)),name,titles,note));
   return shelves.join('');
  }
@@ -1350,5 +1331,5 @@ export class MoviesView {
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
  private releaseMedia(){this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  private endSession(){moviePopularity.reset();this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
- dispose(){moviePopularity.stop();this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.menuGlass.dispose();this.headerGlass?.dispose();this.yieldGuard.disconnect();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
+ dispose(){moviePopularity.stop();this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.menuGlass.dispose();this.headerGlass?.dispose();this.yieldGuard.disconnect();this.abort.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }

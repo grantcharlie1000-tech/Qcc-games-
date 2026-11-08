@@ -230,7 +230,7 @@ export class GuestSession{
   }
   frame(){
     if(!this.ready)return;
-    const game=this.game,now=performance.now();
+    const now=performance.now();
     if(now-this.lastSent>=SEND_MS){this.lastSent=now;this.report();}
     if(now-this.lastSave>=10_000){this.lastSave=now;this.sendSave();}
     this.syncContainers();

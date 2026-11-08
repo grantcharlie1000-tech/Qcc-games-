@@ -1,12 +1,13 @@
 /** Course assembly: derived lookups (solids per stage, fail planes) from authored parts. */
 import { COURSE_VERSION } from './config';
-import type { Checkpoint, Course, Decor, Snowball, Solid, StageInfo, Star, Sweeper } from './types';
+import type { Checkpoint, Course, Decor, Pendulum, Snowball, Solid, StageInfo, Star, Sweeper } from './types';
 
 export interface CourseParts {
   solids: Solid[];
   checkpoints: Checkpoint[];
   sweepers?: Sweeper[];
   snowballs?: Snowball[];
+  pendulums?: Pendulum[];
   stars?: Star[];
   stages?: StageInfo[];
   decor?: Decor[];
@@ -29,6 +30,7 @@ export function assembleCourse(parts: CourseParts): Course {
   const lowest = (stage: number) => {
     let low = Infinity;
     for (const id of byStage[stage] ?? []) {
+      if (solids[id].surface === 'spike') continue;
       const s = solids[id], top = s.y + s.hy;
       low = Math.min(low, top, top + (s.motion?.dy ?? 0));
     }
@@ -46,6 +48,7 @@ export function assembleCourse(parts: CourseParts): Course {
     solids,
     sweepers: parts.sweepers ?? [],
     snowballs: parts.snowballs ?? [],
+    pendulums: parts.pendulums ?? [],
     checkpoints,
     stars: parts.stars ?? [],
     stages,

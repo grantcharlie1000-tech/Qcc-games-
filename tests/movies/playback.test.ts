@@ -11,8 +11,7 @@ function fakeClock(){
  const timers=new Map<number,{due:number;run:()=>void}>();
  const next=(end:number)=>[...timers].map(([id,timer])=>({id,...timer})).filter(timer=>timer.due<=end).sort((a,b)=>a.due-b.due)[0];
  const clock:Clock={
-  set(run,ms){timers.set(++lastId,{due:now+ms,run});return lastId;},
-  clear(id){timers.delete(id);},
+  set(run,ms){const id=++lastId;timers.set(id,{due:now+ms,run});return()=>{timers.delete(id);};},
   now:()=>now,
  };
  return {

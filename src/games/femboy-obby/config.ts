@@ -1,5 +1,5 @@
-/** Fixed simulation constants for the frosthop-v1 ranked board. Changing any of them changes ranked times. */
-export const COURSE_VERSION = 'frosthop-v1';
+/** Fixed simulation constants for the frosthop-v2 ranked board. Changing any of them changes ranked times. */
+export const COURSE_VERSION = 'frosthop-v2';
 export const STEP = 1 / 60;
 /** Bounded catch-up: at most this much real time is simulated per frame. */
 export const MAX_FRAME = 0.25;
@@ -28,3 +28,5 @@ export const RESPAWN_DELAY = 0.35;
 export const STAR_RADIUS = 0.75;
 /** Hazard contacts are forgiving: only this fraction of the visible size hurts. */
 export const HAZARD_GRACE = 0.8;
+/** A fairy-light panel flickers for this long before it goes dark. */
+export const BLINK_WARN = 0.6;

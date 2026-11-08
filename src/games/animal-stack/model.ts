@@ -2,7 +2,7 @@ import Matter from 'matter-js';
 import { SHAPES } from './shapes';
 import { SPECIES } from './species';
 import { compoundBody } from './body';
-const { Bodies, Body, Composite, Engine, Events, Sleeping, Query, Vertices } = Matter;
+const { Bodies, Body, Composite, Engine, Events, Sleeping, Query } = Matter;
 export const WIDTH = 360, HEIGHT = 2000/3, FLOOR = HEIGHT*.73, LIMIT = 40;
 export const KINDS = Object.keys(SPECIES) as (keyof typeof SPECIES)[];
 export type Kind = keyof typeof SPECIES;

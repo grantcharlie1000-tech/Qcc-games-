@@ -48,7 +48,7 @@ function sees(m: Match, f: Fighter, g: Fighter): boolean {
 function perceive(m: Match, f: Fighter, ai: Ai) {
   let best: Fighter | null = null, bestD = Infinity;
   for (const g of m.fighters) {
-    if (!g.alive || !enemies(m, f, g)) continue;
+    if (!g.alive || !enemies(f, g)) continue;
     const dx = g.x - f.x, dz = g.z - f.z, d = Math.hypot(dx, dz, g.y - f.y);
     if (d > 65) continue;
     const facing = Math.abs(wrapAngle(Math.atan2(-dx, -dz) - f.yaw)) < 0.9;
@@ -106,7 +106,7 @@ function chooseGoal(m: Match, nav: Nav, f: Fighter, ai: Ai): number {
     if (n && (Math.hypot(n.x-f.x,n.z-f.z)>1.2 || Math.abs(n.y-f.y)>0.7)) return n.id;
   }
   // Hunt: head toward a random living enemy's area, or roam.
-  const foes = m.fighters.filter(g => g.alive && enemies(m, f, g));
+  const foes = m.fighters.filter(g => g.alive && enemies(f, g));
   if (foes.length && random(m) < 0.7) {
     const g = foes[Math.floor(random(m) * foes.length)];
     const n = nearestNode(nav, g.x + (random(m) - 0.5) * 8, g.y + 0.2, g.z + (random(m) - 0.5) * 8, true);

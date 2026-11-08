@@ -1,6 +1,6 @@
 import {gameAction,pauseGame,resumeGame} from '../../game-menu';
 import { test, expect, type Page } from '../../fixtures';
-import { BALL, CONFIG, DIFFICULTIES, RADIUS, SLEIGH_BODY, STEP, lateralSpeed, type Run } from '../../../src/games/ball-run/config';
+import { BALL, DIFFICULTIES, SLEIGH_BODY, STEP, lateralSpeed, type Run } from '../../../src/games/ball-run/config';
 import { getCourse } from '../../../src/games/ball-run/course';
 import { createRun } from '../../../src/games/ball-run/model';
 import { emptyRecords } from '../../../src/games/ball-run/records';

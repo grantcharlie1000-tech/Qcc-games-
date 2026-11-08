@@ -45,7 +45,6 @@ export class UploadItem {
  private readonly previewUrl:string;
  private controller:AbortController|null=null;
  private badgeTimer:number|undefined;
- private lastPercent=-1;
  private disposed=false;
  constructor(private readonly file:Blob,private readonly options:UploadItemOptions) {
   this.el.className='apps-upload';this.el.setAttribute('role','group');
@@ -67,7 +66,7 @@ export class UploadItem {
  async start():Promise<void> {
   this.controller?.abort();
   const controller=this.controller=new AbortController();
-  this.failure=null;this.mediaId=null;this.progress=0;this.lastPercent=-1;this.setStage('compressing');
+  this.failure=null;this.mediaId=null;this.progress=0;this.setStage('compressing');
   try{
    const blob=await prepareImage(this.file,this.options.purpose,controller.signal);
    if(controller.signal.aborted||this.disposed)return;

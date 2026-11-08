@@ -1,5 +1,5 @@
 import type {GameModule} from '../../core/types';
-import {createGame,nextRack,shoot,advance,placeCue,validPlacement,restoreGame,legalFirst,isOnEight,groupOf,groupLabel,remaining,other,
+import {createGame,nextRack,shoot,advance,placeCue,validPlacement,restoreGame,legalFirst,isOnEight,groupLabel,remaining,
   type PoolState,type Difficulty,type Mode} from './game';
 import {R,L,W,DT,POCKETS,POCKET_NAMES,trace,type Impact} from './physics';
 import {plan,thinkTime,type Plan} from './ai';
@@ -21,8 +21,6 @@ Your turn continues while you legally pot your own group. When your group is cle
 Keyboard: ← → aim (Shift for fine), ↑ ↓ power, Enter or Space shoots, W A S D set spin, X centres spin, P changes the called pocket, H moves the cue ball when you have ball in hand (arrows, then Enter).
 Play the computer (easy, medium or hard), pass the device for two players, or play online with Multiplayer.`;
 
-/** Online names come from another device: never markup. */
-const escapeHtml=(t:string)=>t.replace(/[&<>"']/g,c=>`&#${c.charCodeAt(0)};`);
 type Guide='full'|'short'|'off';
 
 const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',rules,mount(container,context){

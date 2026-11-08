@@ -581,12 +581,6 @@ export function ufoShadowGeometry(): THREE.BufferGeometry {
   return radial([[0, 0.42], [0.55, 0.34], [1, 0]], 28, 0x0b1410);
 }
 
-/** The soft dark ellipse under the bird: a disc of radius 1 in the xz plane at y = 0, darkest (alpha
- * 0.58) in the middle and fading to nothing at the rim; scale it to the bird's footprint. */
-export function dropShadowGeometry(): THREE.BufferGeometry {
-  return radial([[0, 0.58], [0.5, 0.5], [1, 0]], 24, 0x0b1410);
-}
-
 /** A soft red ground spill; the small solid bulb is rendered separately. */
 export function signalGlowGeometry(): THREE.BufferGeometry {
   return radial([[0, 0.34], [0.38, 0.24], [1, 0]], 24, 0xff1532);

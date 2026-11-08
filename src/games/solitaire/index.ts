@@ -1,4 +1,4 @@
-import type { GameModule, GameContext } from '../../core/types';
+import type { GameModule } from '../../core/types';
 import { deal, act, undo, restore, hint, score, won, move, movable, rank, suit, red, type Session, type Source, type Target, type Action } from './model';
 import './solitaire.css';
 import './christmas.css';

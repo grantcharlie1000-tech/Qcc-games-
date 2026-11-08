@@ -3,7 +3,7 @@ import { angleTo, buildMask, cellOf, distToSegment, sweepHit } from '../../../sr
 import {
   advance, createWorld, eliminate, percent, placePlayer, ranking, recount, restoreWorld, setOwner, snapshot, start, step
 } from '../../../src/games/claimline/model';
-import { ARENA_R, CENTER, GRID, HEAD_EDGE_R, HIT_R, HUMAN, MAX_FRAME, PLAYER_COUNT, SPEED, STEP, type World } from '../../../src/games/claimline/types';
+import { CENTER, GRID, HEAD_EDGE_R, HIT_R, HUMAN, MAX_FRAME, PLAYER_COUNT, SPEED, STEP, type World } from '../../../src/games/claimline/types';
 import { at, drain, put, scene } from './harness';
 
 describe('sweepHit (analytic swept circle vs capsule)', () => {

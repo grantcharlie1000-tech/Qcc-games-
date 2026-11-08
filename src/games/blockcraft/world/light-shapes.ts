@@ -42,11 +42,6 @@ export function faceQuadrants(boxes:readonly number[],face:number):number{
   return mask;
 }
 
-/** True when light cannot cross from a cell of class `from` to its neighbour of class `to` through `face` of `from`. */
-export function facesOcclude(from:number,to:number,face:number):boolean{
-  return (CLASS_FACES[from*6+face]|CLASS_FACES[to*6+(face^1)])===15;
-}
-
 {
   const signatures=new Map<string,number>();
   for(const d of BLOCKS){

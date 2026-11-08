@@ -2,8 +2,9 @@
 
 The browser calls same-origin `/.netlify/functions/accounts`,
 `/.netlify/functions/leaderboard`, `/.netlify/functions/turn`, `/.netlify/functions/social`,
-`/.netlify/functions/chat` and `/.netlify/functions/media`. Root
-`functions/_middleware.ts` proxies exactly those six paths. It does not depend
+`/.netlify/functions/chat`, `/.netlify/functions/media` and
+`/.netlify/functions/predictions` (see [Predictions](PREDICTIONS.md); its backend route is not deployed yet). Root
+`functions/_middleware.ts` proxies exactly those seven paths. It does not depend
 on a `functions/.netlify` dot-folder. Unknown or deeper legacy paths return 404.
 `/api/movies` runs `functions/api/movies.ts` and `server/movies-catalog.ts` on
 Pages, through the middleware's `next()`.

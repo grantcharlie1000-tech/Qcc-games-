@@ -2,7 +2,7 @@ import {describe,expect,test} from 'vitest';
 import {BLOCKS,BLOCK_COUNT,TILE_NAMES,blockId,blockDef,B,OPAQUE,familyStates,stateFor} from '../../../src/games/blockcraft/data/blocks';
 import {ITEMS,ITEM_SPRITES,parseStack,itemForBlock,requireItem} from '../../../src/games/blockcraft/data/items';
 import {BIOMES} from '../../../src/games/blockcraft/data/biomes';
-import {CS,CH,CHUNK_LIMIT,CHUNK_VOLUME,LAYER,PAD_VOLUME,voxelIndex,chunkKey,keyX,keyZ} from '../../../src/games/blockcraft/engine/constants';
+import {CS,CH,CHUNK_LIMIT,CHUNK_VOLUME,LAYER,PAD_VOLUME,chunkKey,keyX,keyZ} from '../../../src/games/blockcraft/engine/constants';
 import {VoxelWorld,MAX_EDITS} from '../../../src/games/blockcraft/world/world';
 import {moveBody,raycast,bodyCollides,rayBox,bedStandUp} from '../../../src/games/blockcraft/engine/physics';
 import {EventBus} from '../../../src/games/blockcraft/engine/events';

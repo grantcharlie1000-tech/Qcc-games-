@@ -94,7 +94,7 @@ export class SearchScreen implements Screen {
   }else{
    if(!posts.length){this.results.replaceChildren(this.none(`No posts match “${q}”.`));this.status.textContent=`No posts match “${q}”`;return;}
    const feed=document.createElement('div');feed.className='social-feed';
-   posts.forEach((post,i)=>{const card=new PostCard(this.ctx,post,{position:i+1,onRemoved:removed=>{card.el.remove();}});this.cards.push(card);feed.append(card.el);});
+   posts.forEach((post,i)=>{const card=new PostCard(this.ctx,post,{position:i+1,onRemoved:()=>{card.el.remove();}});this.cards.push(card);feed.append(card.el);});
    this.results.replaceChildren(feed);this.status.textContent=`${posts.length} ${posts.length===1?'post':'posts'} found`;
   }
  }
