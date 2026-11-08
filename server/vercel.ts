@@ -25,11 +25,15 @@ const handle=(incoming:Request)=>{
  const supplied=headers.get('x-qcc-proxy-secret')??'',claimedIp=headers.get('x-qcc-client-ip')??'';
  // Fixed-size digests allow a timing-safe comparison even for different secret lengths.
  const authenticated=!!expected&&timingSafeEqual(digest(expected),digest(supplied));
+ const publicOrigin=headers.get('x-qcc-public-origin');
+ const studyAccountOrigin=authenticated&&process.env.QCC_NCEASTUDY_ORIGIN&&publicOrigin===process.env.QCC_NCEASTUDY_ORIGIN?publicOrigin:undefined;
+ for(const name of [...headers.keys()])if(name.startsWith('x-qcc-internal-'))headers.delete(name);
+ headers.delete('x-qcc-public-origin');
  const proxyIp=authenticated&&!claimedIp.includes('%')&&isIP(claimedIp)?claimedIp:'';
  headers.delete('x-nf-client-connection-ip');
  headers.delete('x-qcc-client-ip');headers.delete('x-qcc-proxy-secret');
  if(proxyIp)headers.set('x-nf-client-connection-ip',proxyIp);
  const fallback=headers.get('x-real-ip')??headers.get('x-forwarded-for')?.split(',')[0].trim()??'';
- return app(new Request(request,{headers}),proxyIp||fallback);
+ return app(new Request(request,{headers}),proxyIp||fallback,{studyAccountOrigin});
 };
 export {handle as GET,handle as POST,handle as PUT,handle as DELETE,handle as OPTIONS};

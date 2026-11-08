@@ -44,7 +44,8 @@ function sameContent(key:string,a:unknown,b:unknown):boolean {
  }
  return stableText(a)===stableText(b);
 }
-export function createAccountsHandler(db:Database){
+export interface AccountsHandlerOptions {trustedStudyProxy?:(request:Request)=>boolean}
+export function createAccountsHandler(db:Database,options:AccountsHandlerOptions={}){
  const pending=new Map<string,Promise<void>>();
  async function lock(key:string){
   const previous=pending.get(key);let release!:()=>void;
@@ -65,6 +66,23 @@ export function createAccountsHandler(db:Database){
  async function session(query:(text:string,values?:unknown[])=>Promise<unknown>,accountId:string){
   const token='acct_'+randomBytes(32).toString('hex');
   await query(`INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES ($1,$2,now()+interval '60 days')`,[sha(token),accountId]);return token;
+ }
+ // Study is optional: a failed insert still rotates to an unusable proof.
+ // The response is not returned until the surrounding authentication COMMIT succeeds.
+ async function studyAuthority(query:Database['query'],request:Request,accountId:string,token:string):Promise<Record<string,string>>{
+  if(!options.trustedStudyProxy?.(request))return {};
+  const proof=randomBytes(32).toString('hex');
+  await query('SAVEPOINT study_authority');
+  try{
+   const settings=(await query("SELECT current_setting('statement_timeout') AS statement_timeout,current_setting('lock_timeout') AS lock_timeout")).rows[0];
+   await query("SET LOCAL statement_timeout='1s'; SET LOCAL lock_timeout='500ms'");
+   await query('INSERT INTO qcc_study_browsers(digest,epoch,qcc_account_id,qcc_session_hash) VALUES($1,0,$2,$3)',[sha(proof),accountId,sha(token)]);
+   await query("SELECT set_config('statement_timeout',$1,true),set_config('lock_timeout',$2,true)",[settings.statement_timeout,settings.lock_timeout]);
+  }catch{
+   await query('ROLLBACK TO SAVEPOINT study_authority');
+  }
+  await query('RELEASE SAVEPOINT study_authority');
+  return {'Set-Cookie':`__Host-nceastudy_browser=${proof}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`};
  }
  return async function handle(request:Request):Promise<Response>{
   const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
@@ -107,7 +125,7 @@ export function createAccountsHandler(db:Database){
       return respond({error:'Username or password is incorrect.'},401);
      }
      await query('DELETE FROM account_attempts WHERE subject=$1',[subject]);
-     const token=await session(query,account.id);return respond({token,username:account.username});
+     const token=await session(query,account.id);const authority=await studyAuthority(query,request,account.id,token);return respond({token,username:account.username},200,authority);
     }
     const attempt=await consume(query,ipSubject,3600);if(attempt.attempts>60)return respond({error:'Too many attempts. Try again later.'},429,{'Retry-After':String(attempt.retry)});
     if((await query('SELECT id FROM accounts WHERE lower(username)=lower($1)',[data.username])).rows.length)return respond({error:'That username is already taken.'},409);
@@ -118,7 +136,7 @@ export function createAccountsHandler(db:Database){
      await client.query('INSERT INTO arcade_players(id,name) VALUES ($1,$2)',[playerId,data.username]);
      await client.query('INSERT INTO accounts(id,username,password_hash,player_id) VALUES ($1,$2,$3,$4)',[id,data.username,passwordHash,playerId]);
      // Legacy guestToken is accepted for compatibility, but guest scores stay separate.
-     const token=await session(client.query.bind(client),id);await client.query('RELEASE SAVEPOINT signup');return respond({token,username:data.username},201);
+     const token=await session(client.query.bind(client),id);const authority=await studyAuthority(query,request,id,token);await client.query('RELEASE SAVEPOINT signup');return respond({token,username:data.username},201,authority);
     }catch(error){await client.query('ROLLBACK TO SAVEPOINT signup').catch(()=>{});if((error as {code?:string}).code==='23505')return respond({error:'That username is already taken.'},409);throw error;}
     }catch(error){failed=true;if(auth)await auth.query('ROLLBACK').catch(()=>{});throw error;}
     finally{

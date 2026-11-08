@@ -45,17 +45,13 @@ export function createStudyLinkHandler(db:Database,options:{env?:Record<string,s
     const data=await readJson(request,2048);if(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).length)return respond({error:'Invalid request.'},400);
     const clientIp=request.headers.get('x-nf-client-connection-ip')?.trim()||'unknown';
     await rateLimit(db.query.bind(db),'study-selection-ip:'+sha(clientIp),120,60);
-    const current=request.headers.has('authorization')?await qcc.fromBearer(request):null;
-    if(request.headers.has('authorization')&&!current)return respond({error:'Unauthorized.'},401);
-    const existing=contextProof(request,'__Host-nceastudy_browser');
-    if(!existing&&(request.headers.get('cookie')??'').split(';').some(value=>value.trim().startsWith('__Host-nceastudy_browser=')))return respond({error:'Invalid browser proof.'},409);
-    const browser=existing??randomBytes(32).toString('hex');
-    const selected=await store.selectBrowser({digest:sha(browser),qccAccountId:current?.accountId??null,qccSessionHash:current?.sessionHash??null,now:now()});
-    if(!selected)return respond({error:'Selection could not be verified.'},401);
-    const response=respond({selected:true});
-    response.headers.append('Set-Cookie',`__Host-nceastudy_browser=${browser}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`);
-    if(selected.changed){for(const name of ['__Host-nceastudy_pair','__Host-nceastudy_context'])response.headers.append('Set-Cookie',`${name}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`);}
-    return response;
+    const current=await qcc.fromBearer(request);
+    if(!current)return respond({error:'Unauthorized.'},401);
+    const browser=contextProof(request,'__Host-nceastudy_browser');
+    if(!browser)return respond({error:'Sign in again before opening Study.'},409);
+    const selected=await store.selectBrowser({digest:sha(browser),qccAccountId:current.accountId,qccSessionHash:current.sessionHash,now:now()});
+    if(!selected)return respond({error:'Sign in again before opening Study.'},409);
+    return respond({selected:true});
    }
    if(action==='verify'||action==='status'){
     if(request.method!=='POST')return respond({error:'Method not allowed.'},405);
