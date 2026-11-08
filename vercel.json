@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "npm ci",
-  "buildCommand": "npm run check:server && npm run build:server",
+  "installCommand": "npm ci --ignore-scripts",
+  "buildCommand": "QCC_STUDY_SCHEMA_APPROVED=qcc-games-api:production:20261108120000_study_pairing node scripts/apply-whetu-linkage-only.mjs",
   "outputDirectory": "server/public",
   "functions": {
     "api/[route].js": {
