@@ -3,7 +3,7 @@ import type {SocialContext,Screen} from '../context';
 import {isAuthError} from '../context';
 import type {Page,PostView} from '../shared';
 import type {ThreadView} from '../client';
-import {PostCard} from '../components/post-card';
+import {PostCard,likeGeneration,likesSettled} from '../components/post-card';
 import {Composer} from '../components/composer';
 import {skeletonPosts,loadFailed,emptyState} from '../components/states';
 
@@ -29,9 +29,17 @@ export class ThreadScreen implements Screen {
  focusTarget():HTMLElement|null{return this.target;}
  private async load():Promise<void> {
   try{
-   const thread=await this.ctx.client.thread(this.id,this.controller.signal);
-   if(this.disposed)return;
-   this.render(thread);
+   // The feed like is optimistic. A thread read beside that POST would keep the old count.
+   let thread:ThreadView|undefined;
+   for(let attempt=0;attempt<3;attempt++){
+    await likesSettled(this.id);
+    if(this.disposed)return;
+    const seen=likeGeneration(this.id);
+    thread=await this.ctx.client.thread(this.id,this.controller.signal);
+    if(this.disposed)return;
+    if(likeGeneration(this.id)===seen){this.render(thread);return;}
+   }
+   if(thread)this.render(thread);
   }catch(error){
    if(this.disposed||this.controller.signal.aborted)return;
    if(isAuthError(error)){this.ctx.signedOut();return;}

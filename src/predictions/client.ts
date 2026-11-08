@@ -1,5 +1,5 @@
 import {AppApi} from '../apps/api';
-import type {DraftInput,EvidenceItem,MarketDetail,MarketSummary,Me,Operation,Outcome,Portfolio,Quote,RankingRow,Receipt,ReportReason,ReviewQueue,Side,Submission} from './shared';
+import type {Dashboard,DraftInput,EvidenceItem,MarketDetail,MarketSummary,Me,Operation,Outcome,Portfolio,Quote,RankingRow,Receipt,ReportReason,Side,Submission} from './shared';
 export const PREDICTIONS_ENDPOINT='/.netlify/functions/predictions';
 export interface MarketQuery {view?:string;category?:string;q?:string}
 /** Browser client. Every credit-changing call is a server action; nothing here computes a balance. */
@@ -15,21 +15,18 @@ export class PredictionsClient {
  portfolio(signal?:AbortSignal){return this.api.get<Portfolio>('portfolio',{},signal);}
  rankings(signal?:AbortSignal){return this.api.get<{items:RankingRow[]}>('rankings',{},signal);}
  mine(signal?:AbortSignal){return this.api.get<{items:Submission[]}>('mine',{},signal);}
- queue(signal?:AbortSignal){return this.api.get<ReviewQueue>('queue',{},signal);}
+ dashboard(signal?:AbortSignal){return this.api.get<Dashboard>('dashboard',{},signal);}
  receipt(key:string,signal?:AbortSignal){return this.api.get<Receipt>('receipt',{key},signal);}
  join(){return this.api.post<Me>('join',{});}
  quote(input:{marketId:string;side:Side;op:Operation;amount:number;toleranceBp?:number},signal?:AbortSignal){return this.api.post<Quote>('quote',input,signal);}
  execute(input:{marketId:string;quoteId:string;operationKey:string}){return this.api.post<{receipt:Receipt;replayed:boolean}>('execute',input);}
- submit(draft:DraftInput&{id?:string}){return this.api.post<Submission>('submit',draft);}
- review(marketId:string,decision:'approve'|'reject'|'changes',note:string){return this.api.post<{ok:true}>('review',{marketId,decision,note});}
- propose(marketId:string,outcome:Outcome,evidence:string,sourceChecked:string){return this.api.post<unknown>('propose',{marketId,outcome,evidence,sourceChecked});}
- dispute(marketId:string,reason:string){return this.api.post<{ok:true}>('dispute',{marketId,reason});}
- finalise(marketId:string,outcome?:Outcome,note?:string){return this.api.post<{ok:true;outcome:Outcome}>('finalise',{marketId,...(outcome?{outcome}:{}),...(note?{note}:{})});}
+ submit(draft:DraftInput){return this.api.post<Submission>('submit',draft);}
+ authorise(marketId:string,outcome:Outcome,note:string,link:string){return this.api.post<{ok:true;outcome:Outcome;paid:number}>('authorise',{marketId,outcome,note,...(link?{link}:{})});}
  pause(marketId:string,on:boolean,note:string){return this.api.post<{ok:true}>('pause',{marketId,on,note});}
  evidence(marketId:string,body:string,link:string){return this.api.post<EvidenceItem>('evidence',{marketId,body,link});}
  report(marketId:string,reason:ReportReason,note:string){return this.api.post<{ok:true}>('report',{marketId,reason,note});}
 }
-/** A fresh operation key per reviewed prediction; reused only to retry or look up that same prediction. */
+/** A fresh operation key per prediction; reused only to retry or look up that same prediction. */
 export function operationKey():string {
  const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);
  return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');

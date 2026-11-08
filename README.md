@@ -88,9 +88,10 @@ Tetris is a falling-piece puzzle: arrange seven kinds of quads, clear lines, and
 
 Femboy Frosthop is an original pastel Christmas obby in Three.js: 30 fixed stages across six zones, with gift hops, beams, sweeper arms, lifts and trays, conveyor belts, ice, crumbling cookies, spring pads and snowballs. A fully clothed androgynous avatar wears oversized jumpers, striped socks over tights and cat-ear hats; each cleared zone unlocks an outfit. Stages end on checkpoint pads and every stage has one optional star. The leaderboard ranks time to completion: every run from the stage 1 start line to the finish is timed (including the first campaign run), stored as `2147483647 − milliseconds` so faster runs rank higher; only unpaused, unassisted complete runs are submitted. A Time Trial for quick retries opens after the first finish. See [its spec](src/games/femboy-obby/SPEC.md) and [test results](tests/games/femboy-obby/TEST_RESULTS.md).
 
+
 ## QCC Results Desk
 
-The **Election 2026** strip in the middle of the games library (or Menu → **Election results**) opens `#/election`, live results for the 2026 New Zealand general election from the Electoral Commission's public feed: the chamber with left and right blocs, party votes and seats, a coalition builder, all 71 electorates with filters, who is in on each party's list, and an as-it-happens feed. A same-origin Pages Function reads the feed. See [Results Desk](docs/ELECTION.md).
+**Menu → Election results** opens `#/election`, results for the 2026 New Zealand general election from the Electoral Commission's public feed: the chamber, party votes and seats, a coalition builder, electorates, list members and an as-it-happens feed. The games library no longer shows that strip; its middle row opens Predictions. A same-origin Pages Function reads the feed. If the feed does not answer, the page says so. See [Results Desk](docs/ELECTION.md).
 
 ## Wordle
 
