@@ -95,6 +95,12 @@ it('keeps the Minesweeper score ranking separate from legacy and time scores',as
 });
 
 it('keeps the Claimline leaderboard closed without changing the schema or other games',async()=>{
+ const {rows:[{definition}]}=await pool.query("SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='arcade_scores'::regclass AND conname='arcade_scores_game_id_check'");
+ // Simulate an older deployed schema whose Claimline board has not opened.
+ const {rows:[{allowed}]}=await pool.query("SELECT pg_get_expr(conbin,conrelid) AS allowed FROM pg_constraint WHERE conrelid='arcade_scores'::regclass AND conname='arcade_scores_game_id_check'");
+ await pool.query('ALTER TABLE arcade_scores DROP CONSTRAINT arcade_scores_game_id_check');
+ await pool.query(`ALTER TABLE arcade_scores ADD CONSTRAINT arcade_scores_game_id_check CHECK ((${allowed}) AND game_id <> 'claimline')`);
+ try{
  const token=await signup('Early_Bird');
  const response=await submit(token,'ignored',1234,'claimline');
  expect(response.status).toBe(409);
@@ -103,6 +109,10 @@ it('keeps the Claimline leaderboard closed without changing the schema or other 
  expect((await submit(token,'ignored',40,'snake')).status).toBe(200);
  const empty=await handle(new Request(endpoint+'?game=claimline&view=public'));
  expect(empty.status).toBe(200);expect((await empty.json()).entries).toEqual([]);
+ }finally{
+  await pool.query('ALTER TABLE arcade_scores DROP CONSTRAINT arcade_scores_game_id_check');
+  await pool.query('ALTER TABLE arcade_scores ADD CONSTRAINT arcade_scores_game_id_check '+definition);
+ }
 });
 
 it.each([
