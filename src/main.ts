@@ -27,6 +27,8 @@ import * as store from './core/storage';
 import {playSound} from './core/audio';
 import {retireOffline} from './core/offline';
 import {StudyView} from './study/view';
+import {integrationEnabled} from './study/whetu-integration';
+import {StudyPairingClient} from './study/whetu-pairing';
 import {fitGameStage} from './core/viewport-fit';
 import {attachFullscreen,syncPlaySurface} from './core/play-surface';
 import {AccountsClient} from './accounts/client';
@@ -41,6 +43,9 @@ import {formatScore} from './leaderboard/format';
 // Predictions ships dark: the Menu entry appears only in development or a build with VITE_QCC_PREDICTIONS=on, and the
 // server refuses every action until predictions_config.enabled is set. A direct #/predictions link shows "not open yet".
 const PREDICTIONS_MENU=import.meta.env.DEV||import.meta.env.VITE_QCC_PREDICTIONS==='on';
+// Remains off until the separate private runtime, verified account linking,
+// same-origin routing and embedded-auth browser checks have all passed.
+const WHETU_STUDY=integrationEnabled(import.meta.env.VITE_QCC_WHETU_STUDY);
 
 // Before any game mounts: games read the seasonal theme when they draw.
 applyFestiveTheme();
@@ -67,10 +72,11 @@ const rulesDialog=document.querySelector<HTMLDialogElement>('#rules-dialog')!;
 const tabbar=autoHideTabbar(document.querySelector<HTMLElement>('.app-tabbar')!,window);
 bindGlass(document.querySelector<HTMLElement>('.app-menu')!);
 const preferences=store.settings();
-const accounts=new AccountsClient();
+const accounts:AccountsClient=new AccountsClient(undefined,undefined,WHETU_STUDY?{strictIdentityChanges:true,beforeIdentityCommit:nextSession=>{closeWhetuForIdentityChange();return studyPairing!.select(nextSession?.token);}}:{});
+const studyPairing:StudyPairingClient|undefined=WHETU_STUDY?new StudyPairingClient(()=>accounts.session()?.token):undefined;
 const launcher=new AppsLauncher({accounts,chat:new ChatClient(()=>accounts.session()?.token??null),reducedMotion:()=>preferences.reducedMotion});
 void launcher.probe();
-const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry);
+const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);closeWhetuForIdentityChange();},finishEntry);
 const christmasWelcome=new ChristmasWelcome(()=>{
   void route().then(()=>{
     if(!activeId&&!movies&&!appView&&!study.isOpen&&!document.querySelector('dialog[open]'))document.querySelector<HTMLElement>('.game-card')?.focus({preventScroll:true});
@@ -84,11 +90,11 @@ let onlyFavourites=false, search='', instance:GameInstance|undefined, activeId:G
 let paused=false, generation=0, autosave:number|undefined, pausedForDialog=false;
 let initialized=false, resumeAfterStudy=false, focusBeforeStudy:HTMLElement|null=null, scrollBeforeStudy={x:0,y:0};
 let focusLabelBeforeStudy:string|null=null;
-let accountRoutePending=false;
+let accountRoutePending=false,signingOut=false;
 let libraryScroll={x:0,y:0};
 let movies:MoviesView|undefined;
 // QCC Social, QCC Chat or the Santa Tracker: one lazy view at a time, replaced when another opens.
-let appView:AppView|undefined,appKind:'social'|'chat'|'santa'|'election'|'predictions'|undefined;
+let appView:AppView|undefined,appKind:'social'|'chat'|'santa'|'election'|'predictions'|'study'|undefined;
 // The saved Movies data is one copy for the page, so it outlives each MoviesView and keeps unsaved changes across a visit to the games.
 let movieStorage:MovieStorage|undefined;
 let movieScroll={x:0,y:0};
@@ -136,9 +142,22 @@ function setChromeInert(value:boolean):void{
   chrome.toggleAttribute('data-view-hidden',value);
   chrome.inert=value||chrome.hasAttribute('data-sheet-hidden');
 }
+/** Close private documents before any potentially slow account transition. */
+function closeWhetuForIdentityChange(){
+  if(WHETU_STUDY&&(appKind==='study'||location.hash==='#/study'))showWhetuIdentityHold();
+}
+function whetuIdentityPending(){return signingOut||(accountView.root.open&&accountView.isBusy);}
+function showWhetuIdentityHold(){
+  generation++;leave(false);
+  document.querySelector('.app-tabbar a[href="#/collection"]')?.removeAttribute('aria-current');
+  document.querySelector('.app-tabbar [data-action="study"]')?.setAttribute('aria-current','page');
+  content.innerHTML='<section class="game-error"><h1>Study connection paused</h1><p>Finish your account change in the account menu or sign-in screen. Return to Study afterwards to check the current connection.</p><button type="button" class="game-button secondary">Return to Study</button></section>';
+  content.querySelector('button')!.addEventListener('click',()=>void route());
+}
 function leave(saveProgress=true){
   movies?.dispose();movies=undefined;
-  appView?.dispose();appView=undefined;appKind=undefined;document.body.classList.remove('social-active','chat-active','santa-active','election-active','predictions-active');
+  appView?.dispose();appView=undefined;appKind=undefined;document.body.classList.remove('social-active','chat-active','santa-active','election-active','predictions-active','whetu-study-active');
+  if(WHETU_STUDY){document.querySelector('.app-tabbar [data-action="study"]')?.removeAttribute('aria-current');document.querySelector('.app-tabbar a[href="#/collection"]')?.setAttribute('aria-current','page');}
   setChromeInert(false);
   tabbar.reset();
   detachFullscreen?.();detachFullscreen=undefined;
@@ -191,6 +210,7 @@ function setPaused(value:boolean):boolean {
   return value?save():true;
 }
 function updateStudySummary(){
+  if(WHETU_STUDY){document.querySelector('#study-menu-summary')!.textContent='Study with Whetū. Your NCEAStudy account is required.';return;}
   const topic=study.session.topic();
   document.querySelector('#study-menu-summary')!.textContent=topic
     ?`${topic.subtitle}. Press Esc during a game to pause and read.`
@@ -258,6 +278,28 @@ async function route(){
   accountRoutePending=false;
   // Explicit browser/hash navigation leaves the reading view as well as the old game.
   if(study.isOpen){study.hide();showArcade();resumeAfterStudy=false;focusBeforeStudy=null;focusLabelBeforeStudy=null;}
+  if(WHETU_STUDY&&location.hash==='#/study'){
+    // Closing an old frame is insufficient if Back/hash navigation can reopen
+    // it before pending authentication, selection or revocation has settled.
+    if(whetuIdentityPending()){showWhetuIdentityHold();return;}
+    if(menu.open)menu.close();
+    if(appView&&appKind==='study'){appView.navigate(location.hash);return;}
+    if(rulesDialog.open)rulesDialog.close();
+    if(leaderboards.root.open)leaderboards.root.close();
+    if(launcher.sheet.open)launcher.sheet.close();
+    const token=++generation;leave();
+    content.innerHTML='<div class="loading"><p>Opening Study…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';
+    try{
+      const {WhetuStudyView}=await import('./study/whetu-view');if(token!==generation)return;
+      if(whetuIdentityPending()){showWhetuIdentityHold();return;}
+      appView=new WhetuStudyView(content,{signedIn:()=>!!accounts.session(),openAccounts:()=>accountView.open(),pairing:studyPairing!});appKind='study';
+      document.body.classList.add('whetu-study-active');
+      document.querySelector('.app-tabbar a[href="#/collection"]')?.removeAttribute('aria-current');
+      document.querySelector('.app-tabbar [data-action="study"]')?.setAttribute('aria-current','page');
+      appView.navigate(location.hash);window.scrollTo(0,0);
+    }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Study could not open. Try again.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
+    return;
+  }
   const isMovies=location.hash==='#/movies'||location.hash.startsWith('#/movies/');
   if(isMovies){
     if(movies){movies.navigate(location.hash);return;}
@@ -271,7 +313,7 @@ async function route(){
     try{
       const [{MoviesView},storage]=await Promise.all([import('./movies/view'),import('./movies/storage')]);if(token!==generation)return;
       movieStorage??=new storage.MovieStorage();
-      movies=new MoviesView(content,movieStorage,openStudy,()=>preferences.reducedMotion,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}},openMenu);
+      movies=new MoviesView(content,movieStorage,advance=>advance?openStudy(true):openStudyEntry(),()=>preferences.reducedMotion,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}},openMenu);
       movies.navigate(location.hash);
     }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Movies &amp; TV could not load.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
     return;
@@ -458,19 +500,20 @@ async function route(){
 function openMenu(trigger?:Element|null){
   const context=appKind??'games';
   menu.dataset.context=context;
-  menu.querySelector('#menu-title span')!.textContent=context==='games'?'Mauri Study Notes':`QCC ${context==='chat'?'Chat':'Social'} settings`;
+  menu.querySelector('#menu-title span')!.textContent=context==='games'?'Mauri Study Notes':context==='study'?'Whetū Study settings':`QCC ${context==='chat'?'Chat':'Social'} settings`;
   updateAccountMenu();
   pausedForDialog=!!activeId&&!paused;if(activeId)setPaused(true);
   openSheet(menu,trigger);
 }
 document.querySelector('.app-navigation [data-action="menu"]')!.addEventListener('click',event=>openMenu(event.currentTarget as Element));
-document.querySelector('.app-tabbar [data-action="study"]')!.addEventListener('click',()=>openStudy());
+function openStudyEntry(){if(WHETU_STUDY){if(location.hash==='#/study')void route();else location.hash='#/study';}else openStudy();}
+document.querySelector('.app-tabbar [data-action="study"]')!.addEventListener('click',openStudyEntry);
 function dialogClosed(){
   if(menu.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open||accountView.root.open)return;
   const resume=pausedForDialog;pausedForDialog=false;
   if(resume&&!study.isOpen&&!document.hidden)setPaused(false);
 }
-menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!appView&&!/^#\/(movies|social|chat|santa|election|predictions)(\/|\?|$)/.test(location.hash)&&!study.isOpen)library();});
+menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!appView&&!/^#\/(movies|social|chat|santa|election|predictions|study)(\/|\?|$)/.test(location.hash)&&!study.isOpen)library();});
 rulesDialog.addEventListener('close',dialogClosed);
 leaderboards.root.addEventListener('close',dialogClosed);
 document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
@@ -479,7 +522,7 @@ document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
   leaderboards.open(activeId);pausedForDialog=resume;
 });
 document.querySelector('.rules-done')!.addEventListener('click',()=>rulesDialog.close());
-document.querySelector('#open-study')!.addEventListener('click',()=>openStudy());
+document.querySelector('#open-study')!.addEventListener('click',openStudyEntry);
 document.querySelector<HTMLInputElement>('#favourites-only')!.addEventListener('change',event=>{
   onlyFavourites=(event.target as HTMLInputElement).checked;
   if(activeId||movies||appView)location.hash=collectionHash;else library();
@@ -527,7 +570,7 @@ window.addEventListener('keydown',event=>{
 window.addEventListener('keyup',event=>{if(study.isOpen)event.stopImmediatePropagation();},{capture:true});
 updateStudySummary();
 function beginStudy(){
- if(study.session.topic()){initialized=true;showArcade();void route();}
+ if(WHETU_STUDY||study.session.topic()){initialized=true;showArcade();void route();}
  else {hideArcade();study.showPicker();}
 }
 function finishEntry(){
@@ -558,16 +601,17 @@ accounts.onChange(()=>{
 });
 document.querySelector('#sync-account')!.addEventListener('click',()=>{save();void Promise.all([accounts.flush(),leaderboards.sync.flush()]).catch(()=>{});});
 document.querySelector('#open-accounts')!.addEventListener('click',()=>{menu.close();accountView.open();});
-let signingOut=false;
 async function logoutAccount(switching=false){
  if(signingOut)return;signingOut=true;
  const buttons=['#logout-account','#switch-account'].map(id=>document.querySelector<HTMLButtonElement>(id)!);
  for(const button of buttons)button.disabled=true;
  try{
   if(activeId)setPaused(true);
-  await accounts.logout();menu.close();
+  closeWhetuForIdentityChange();
+  await accounts.logout();signingOut=false;menu.close();
   if(switching)accountView.open();else finishEntry();
- }finally{signingOut=false;for(const button of buttons)button.disabled=false;}
+ }catch(error){accounts.message=error instanceof Error?error.message:'Could not sign out securely. Try again.';updateAccountMenu();}
+ finally{signingOut=false;for(const button of buttons)button.disabled=false;}
 }
 document.querySelector('#logout-account')!.addEventListener('click',()=>void logoutAccount());
 document.querySelector('#switch-account')!.addEventListener('click',()=>void logoutAccount(true));

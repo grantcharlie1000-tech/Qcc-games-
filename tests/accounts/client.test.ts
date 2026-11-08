@@ -128,3 +128,147 @@ describe('account client',()=>{
  });
 
 });
+
+describe('integration-safe identity transitions',()=>{
+ it('keeps the current account and saves when strict sign-out cannot revoke the server session',async()=>{
+  const f=fixture(),c=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{}});
+  try{
+   await c.authenticate('signup','Ada','password1');f.storage.write('best:snake',42);f.offline(true);
+   await expect(c.logout()).rejects.toThrow('could not be verified');
+   expect(c.session()).toEqual({token,username:'Ada'});expect(f.storage.read('best:snake',0)).toBe(42);
+   f.offline(false);await c.logout();expect(c.session()).toBeNull();
+  }finally{c.dispose();}
+ });
+ it('does not commit local sign-out until the exact outgoing session revocation is acknowledged',async()=>{
+  const f=fixture();let begin!:()=>void,finish!:()=>void;
+  const begun=new Promise<void>(resolve=>{begin=resolve;});
+  const pending=new Promise<void>(resolve=>{finish=resolve;});let delay=false;
+  const fetcher=(async(url:any,init:any)=>{if(delay&&String(url).includes('action=logout')){begin();await pending;}return f.fetcher(url,init);}) as typeof fetch;
+  const c=new AccountsClient(f.storage,fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{}});let changed=0;c.beforeIdentityChange=()=>{changed++;};
+  try{
+   await c.authenticate('signup','Ada','password1');changed=0;delay=true;const logout=c.logout();await begun;
+   expect(c.session()?.token).toBe(token);expect(changed).toBe(0);
+   finish();await logout;expect(c.session()).toBeNull();expect(changed).toBe(1);
+  }finally{finish();c.dispose();}
+ });
+ it('a successful HTTP response without a confirmed logout body is not revocation proof',async()=>{
+  const f=fixture();let malformed=false;
+  const fetcher=(async(url:any,init:any)=>malformed&&String(url).includes('action=logout')?Response.json({notRevoked:true}):f.fetcher(url,init)) as typeof fetch;
+  const c=new AccountsClient(f.storage,fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{}});
+  try{await c.authenticate('signup','Ada','password1');malformed=true;await expect(c.logout()).rejects.toThrow('could not be verified');expect(c.session()?.token).toBe(token);}
+  finally{c.dispose();}
+ });
+ it('blocks guest login when residual integration context cannot be invalidated',async()=>{
+  const f=fixture();f.storage.write('best:snake',19);
+  const c=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{throw Error('context still active');}});
+  try{await expect(c.authenticate('signup','Ada','password1')).rejects.toThrow('could not be verified');expect(c.session()).toBeNull();expect(f.storage.read('best:snake',0)).toBe(19);}
+  finally{c.dispose();}
+ });
+ it('blocks account switching and preserves original saves when strict outgoing revocation fails',async()=>{
+  const f=fixture();let failLogout=false;
+  const fetcher=(async(url:any,init:any)=>failLogout&&String(url).includes('action=logout')?Response.json({error:'unavailable'},{status:503}):f.fetcher(url,init)) as typeof fetch;
+  const c=new AccountsClient(f.storage,fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{}});
+  try{
+   await c.authenticate('signup','Ada','password1');f.storage.write('best:snake',55);failLogout=true;
+   await expect(c.authenticate('login','Bob','password1')).rejects.toThrow('could not be verified');
+   expect(c.session()).toEqual({token,username:'Ada'});expect(f.storage.read('best:snake',0)).toBe(55);
+  }finally{c.dispose();}
+ });
+ it('strict blocking integration cleanup must finish before identity writes',async()=>{
+  const f=fixture();let rejectCleanup=false;
+  const c=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{if(rejectCleanup)throw Error('cleanup failed');}});
+  try{
+   await c.authenticate('signup','Ada','password1');rejectCleanup=true;
+   await expect(c.logout()).rejects.toThrow('could not be verified');expect(c.session()?.token).toBe(token);
+  }finally{c.dispose();}
+ });
+ it('a failed strict transition cannot publish a different identity to another tab',async()=>{
+  const f=fixture(),first=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{}}),second=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{}});
+  try{
+   await first.authenticate('signup','Ada','password1');await second.ready();f.offline(true);await expect(first.logout()).rejects.toThrow();
+   expect(first.session()).toEqual(second.session());expect(second.session()?.token).toBe(token);
+  }finally{first.dispose();second.dispose();}
+ });
+});
+
+describe('strict cross-tab identity adoption',()=>{
+ it('quarantines an external identity until integration cleanup and outgoing revocation are confirmed',async()=>{
+  const f=fixture();let blocking=false,release!:()=>void;
+  const pending=new Promise<void>(resolve=>{release=resolve;});
+  const c=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{if(blocking)await pending;}});
+  try{
+   await c.authenticate('signup','Ada','password1');blocking=true;
+   f.values.set('accounts:session',{token:'acct_'+'b'.repeat(64),username:'Bob'});
+   (c as any).storageChanged({key:'pocket-arcade:v1:accounts:session'});
+   expect(c.session()).toBeNull();
+   release();await (c as any).externalIdentityFlight;
+   expect(c.session()?.username).toBe('Bob');
+  }finally{release();c.dispose();}
+ });
+ it('does not expose an externally selected account when server invalidation is unavailable',async()=>{
+  const f=fixture();let fail=false;
+  const c=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{if(fail)throw Error('offline');}});
+  try{
+   await c.authenticate('signup','Ada','password1');fail=true;
+   f.values.set('accounts:session',{token:'acct_'+'b'.repeat(64),username:'Bob'});f.values.set('best:snake',12);
+   (c as any).storageChanged({key:'pocket-arcade:v1:accounts:session'});await (c as any).externalIdentityFlight;
+   expect(c.session()).toBeNull();expect(f.storage.read('best:snake',0)).toBe(12);expect(c.message).toContain('could not be verified');
+  }finally{c.dispose();}
+ });
+ it('never replaces a concurrent stored identity while initial-login cleanup awaits the server',async()=>{
+  const f=fixture();
+  const c=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{f.values.set('accounts:session',{token:'acct_'+'b'.repeat(64),username:'Bob'});}});
+  try{await expect(c.authenticate('signup','Ada','password1')).rejects.toThrow('could not be verified');expect(f.storage.read<any>('accounts:session',null).username).toBe('Bob');}
+  finally{c.dispose();}
+ });
+});
+
+describe('persistent strict transition barrier',()=>{
+ it('a reload cannot bypass a failed external identity cleanup',async()=>{
+  const f=fixture();let fail=false;
+  const first=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{if(fail)throw Error('offline');}});
+  await first.authenticate('signup','Ada','password1');fail=true;f.values.set('accounts:session',{token:'acct_'+'b'.repeat(64),username:'Bob'});
+  (first as any).storageChanged({key:'pocket-arcade:v1:accounts:session'});await (first as any).externalIdentityFlight;first.dispose();
+  const reloaded=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{}});
+  try{
+   expect(reloaded.session()).toBeNull();reloaded.start();await (reloaded as any).externalIdentityFlight;
+   expect(reloaded.session()?.username).toBe('Bob');expect(f.storage.read('accounts:identity-pending',false)).toBe(false);
+  }finally{reloaded.dispose();}
+ });
+ it('retries a quarantined identity after reconnect without deleting its saved data',async()=>{
+  const f=fixture();let fail=false;
+  const c=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{if(fail)throw Error('offline');}});
+  try{
+   await c.authenticate('signup','Ada','password1');fail=true;f.values.set('accounts:session',{token:'acct_'+'b'.repeat(64),username:'Bob'});f.values.set('best:snake',29);
+   (c as any).storageChanged({key:'pocket-arcade:v1:accounts:session'});await (c as any).externalIdentityFlight;expect(c.session()).toBeNull();
+   fail=false;(c as any).online();await (c as any).externalIdentityFlight;
+   expect(c.session()?.username).toBe('Bob');expect(f.storage.read('best:snake',0)).toBe(29);
+  }finally{c.dispose();}
+ });
+ it('strict mode without a confirmed-cleanup guard cannot silently commit an identity',async()=>{
+  const f=fixture(),c=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true});
+  try{await expect(c.authenticate('signup','Ada','password1')).rejects.toThrow('could not be verified');expect(c.session()).toBeNull();}
+  finally{c.dispose();}
+ });
+});
+
+
+describe('server-authoritative strict startup',()=>{
+ it('cannot bypass startup reconciliation when durable barrier writes fail',async()=>{
+  const f=fixture();f.values.set('accounts:session',{token:'acct_'+'b'.repeat(64),username:'Bob'});
+  const storage={...f.storage,write:(key:string,value:unknown)=>key==='accounts:identity-pending'?false:f.storage.write(key,value)};
+  const first=new AccountsClient(storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async()=>{throw Error('server unavailable');}});
+  try{expect(first.session()).toBeNull();await expect(first.ready()).rejects.toThrow('could not be verified');expect(first.session()).toBeNull();}
+  finally{first.dispose();}
+  let selected:string|undefined;
+  const reloaded=new AccountsClient(storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async next=>{selected=next?.username;}});
+  try{expect(reloaded.session()).toBeNull();await reloaded.ready();expect(selected).toBe('Bob');expect(reloaded.session()?.username).toBe('Bob');}
+  finally{reloaded.dispose();}
+ });
+ it('server startup selection receives the actual stored session before it is exposed',async()=>{
+  const f=fixture();f.values.set('accounts:session',{token,username:'Ada'});let finish!:()=>void;const pending=new Promise<void>(resolve=>{finish=resolve;});let seen:string|undefined;
+  const c=new AccountsClient(f.storage,f.fetcher,{strictIdentityChanges:true,beforeIdentityCommit:async next=>{seen=next?.token;await pending;}});
+  try{const ready=c.ready();expect(c.session()).toBeNull();expect(seen).toBe(token);finish();await ready;expect(c.session()?.token).toBe(token);}
+  finally{finish();c.dispose();}
+ });
+});
