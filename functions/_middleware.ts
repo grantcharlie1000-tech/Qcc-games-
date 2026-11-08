@@ -1,6 +1,8 @@
+import {routeWhetuIntegration,type WhetuIntegrationEnv} from '../server/whetu-integration';
+
 interface ProxyContext {
  request:Request;
- env:{QCC_API_ORIGIN?:string;QCC_PROXY_SECRET?:string};
+ env:WhetuIntegrationEnv;
  next:()=>Promise<Response>;
 }
 
@@ -21,6 +23,7 @@ const error=(message:string,status:number)=>Response.json({error:message},{statu
 // public/_routes.json invokes this middleware for PREFIX and native /api routes;
 // next() leaves /api/movies to its own Function and static requests stay free.
 export async function onRequest({request,env,next}:ProxyContext):Promise<Response> {
+ const study=await routeWhetuIntegration(request,env);if(study)return study;
  const url=new URL(request.url);
  if(!url.pathname.startsWith(PREFIX))return next();
  if(!ROUTES.has(url.pathname.slice(PREFIX.length)))return error('not found',404);
