@@ -28,7 +28,8 @@ export class StudyPairingClient implements StudyPairing {
   try{
    // Keep a real Origin on same-origin POSTs under the page's no-referrer policy.
    // Only our origin (never its path) may be sent as Referer to this fixed host.
-   const response=await this.fetcher(BASE+action,{
+   // Native browser fetch requires its global receiver, not this client instance.
+   const response=await this.fetcher.call(globalThis,BASE+action,{
     method:'POST',headers:{Accept:'application/json','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
     body:JSON.stringify(body),credentials:'same-origin',mode:'same-origin',referrerPolicy:'strict-origin',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(10_000),...(action==='cancel'?{keepalive:true}:{}),
    });
