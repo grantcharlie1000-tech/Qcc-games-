@@ -1,0 +1,23 @@
+{
+  "naturalStageClear": true,
+  "submissions": [
+    {
+      "status": 200,
+      "game": "last-light",
+      "score": 1603940,
+      "name": "Light_mw8eso04"
+    }
+  ],
+  "leaderboard": {
+    "status": 200,
+    "rank": 1,
+    "score": 1603940
+  },
+  "cloudSave": {
+    "status": 200,
+    "stage": 0,
+    "phase": "cleared",
+    "best": 1603940
+  },
+  "errors": []
+}

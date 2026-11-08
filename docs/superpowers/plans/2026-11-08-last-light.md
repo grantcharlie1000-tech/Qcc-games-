@@ -1,0 +1,9 @@
+# Last Light implementation
+
+Add an original Canvas 2D platformer to QCC's existing TypeScript game lifecycle. Follow the compact, textured pixel-art direction of the supplied poteto.com reference without reusing its assets. A linear 40-stage campaign crosses five worlds, eight stages each. Introduce running/jumping, coyote time, variable jump height, wall jumps, air dash, checkpoints, moving platforms, crumbling floors, springs, ice, conveyors, keys and gates, saws and timed lasers progressively. Support keyboard and simultaneous touch controls, reduced decorative motion, pause/resume, and validated saves.
+
+Implement fixed stage definitions and a deterministic 120 Hz simulation independently of drawing. Render original pixel scenery and a courier carrying the last light. Use responsive logical camera dimensions without stretching the world. Provide an entry screen, controls, stage results and campaign completion, plus the shared shell's leaderboard/account controls.
+
+Rank cleared stages first; within equal progression, favor sparks, speed and fewer deaths. Submit only at stage completion, retaining each account's best through the existing shared service. Add the game to catalog, stable navigation, score allowlist and a new additive database migration. Preserve existing games and scores. Hosted schema changes follow the existing migration/deploy process; all database verification here uses a disposable local database.
+
+Verification: typecheck and production build; simulation tests for collision, jumps/dash, hazards/checkpoints, sequential progression, score ordering and save validation; traversal checks across all fixed stages; real local Postgres ranking and cloud-save round trips; browser checks for keyboard, touch, pause/restore, navigation and responsive screenshots. Finish with independent code review.

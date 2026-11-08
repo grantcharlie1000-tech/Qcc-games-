@@ -1,6 +1,7 @@
 import './theme.css';
 import './festive/christmas.css';
 import {ChristmasWelcome} from './festive/welcome';
+import {mountChristmasMusic} from './festive/music';
 import {applyFestiveTheme,christmas,setFestiveTheme,storedFestiveTheme} from './festive/festive';
 import {mountSantaBanner} from './santa/banner';
 import {mountPredictionsStrip} from './predictions/library-strip';
@@ -76,6 +77,7 @@ const rulesDialog=document.querySelector<HTMLDialogElement>('#rules-dialog')!;
 const tabbar=autoHideTabbar(document.querySelector<HTMLElement>('.app-tabbar')!,window);
 bindGlass(document.querySelector<HTMLElement>('.app-menu')!);
 const preferences=store.settings();
+let christmasMusic:ReturnType<typeof mountChristmasMusic>|undefined;
 const accounts:AccountsClient=new AccountsClient(undefined,undefined,WHETU_STUDY&&!WHETU_STUDY_PAUSED?{strictIdentityChanges:true,beforeIdentityCommit:nextSession=>{closeWhetuForIdentityChange();return studyPairing!.select(nextSession?.token);}}:{});
 const studyPairing:StudyPairingClient|undefined=WHETU_STUDY&&!WHETU_STUDY_PAUSED?new StudyPairingClient(()=>accounts.session()?.token):undefined;
 const launcher=new AppsLauncher({accounts,chat:new ChatClient(()=>accounts.session()?.token??null),reducedMotion:()=>preferences.reducedMotion});
@@ -104,7 +106,7 @@ let movieStorage:MovieStorage|undefined;
 let movieScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
-const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft','crossy-road','quad-clash','femboy-obby']);
+const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft','crossy-road','quad-clash','femboy-obby','last-light']);
 // Responsive layouts fill the standard stage; scaling their whole UI would shrink labels and controls.
 const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','claimline','drift-club']);
 // Shell score/best text; Claimline's integer score is its peak share in hundredths of a percent.
@@ -222,11 +224,13 @@ function updateStudySummary(){
 }
 function showArcade(){
   app.inert=false;app.removeAttribute('aria-hidden');document.body.classList.remove('study-active');
+  christmasMusic?.sync();
   syncViewportLock();
 }
 function hideArcade(){
   // Visibility preserves the game's layout/canvas dimensions; inert removes all input.
   document.body.classList.add('study-active');app.inert=true;app.setAttribute('aria-hidden','true');
+  christmasMusic?.sync();
   syncViewportLock();
 }
 function studyMessage(saved:boolean):string {
@@ -547,14 +551,14 @@ for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#c
   const input=document.querySelector<HTMLInputElement>(selector)!;input.checked=preferences[key];
   input.addEventListener('change',()=>{
     preferences[key]=input.checked;store.write('settings',preferences);
-    document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);storageStatus();
+    document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);storageStatus();christmasMusic?.sync();
   });
 }
 document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);
 // The Christmas theme is presentation only: it is stored outside saves and sync, and games pick up a change as they draw.
 const festiveInput=document.querySelector<HTMLInputElement>('#festive')!;festiveInput.checked=storedFestiveTheme()==='christmas';
 festiveInput.addEventListener('change',()=>{
-  setFestiveTheme(festiveInput.checked?'christmas':'off');announce(festiveInput.checked?'Christmas theme on':'Christmas theme off');
+  setFestiveTheme(festiveInput.checked?'christmas':'off');christmasMusic?.sync();announce(festiveInput.checked?'Christmas theme on':'Christmas theme off');
   // Games build some artwork at mount, so an open game is saved and remounted (the same path as navigation) to show one theme throughout.
   if(activeId)void route();
 });
@@ -601,7 +605,7 @@ function updateAccountMenu(){
  document.querySelector('#account-sync-status')!.textContent=accounts.message;
  Object.assign(preferences,store.settings());
  for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#colour','colorBlind']] as const)document.querySelector<HTMLInputElement>(selector)!.checked=preferences[key];
- document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);
+ document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);christmasMusic?.sync();
 }
 accounts.beforeIdentityChange=()=>{generation++;if(christmasWelcome.root.open)christmasWelcome.root.close();leave(false);};
 let displayedAccount=accounts.session()?.token;
@@ -628,6 +632,8 @@ async function logoutAccount(switching=false){
 }
 document.querySelector('#logout-account')!.addEventListener('click',()=>void logoutAccount());
 document.querySelector('#switch-account')!.addEventListener('click',()=>void logoutAccount(true));
+christmasMusic=mountChristmasMusic({sound:()=>preferences.sound,studying:()=>study.isOpen||document.body.classList.contains('study-active')});
+if(import.meta.hot)import.meta.hot.dispose(()=>christmasMusic?.dispose());
 accounts.start(false);updateAccountMenu();
 if(accounts.session()||store.read('accounts:guest',false))beginStudy();
 else accountView.open();

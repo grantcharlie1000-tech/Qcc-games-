@@ -1,4 +1,5 @@
-import {afterEach,beforeEach,describe,expect,test} from 'vitest';
+import {afterEach,beforeEach,describe,expect,test,vi} from 'vitest';
+import * as festive from '../../../src/festive/festive';
 import {createFakeGame,fakeContext,type FakeGame} from './helpers/fake-game';
 import {createSounds,createSoundEngine,MAX_VOICES,MASTER_LEVEL,type SoundEngine} from '../../../src/games/blockcraft/audio/sounds';
 import {B} from '../../../src/games/blockcraft/data/blocks';
@@ -531,4 +532,14 @@ describe('service shape',()=>{
     expect(()=>service.play('click')).not.toThrow();
     service.dispose?.();
   });
+});
+
+
+test('the app Christmas score replaces only local music, preserving effects',()=>{
+ const flag=vi.spyOn(festive,'christmas').mockReturnValue(false);
+ try{
+  const c=start();for(let i=0;i<2400&&!engine.voiceNames().includes('music');i++){engine.tick?.();c.currentTime+=.05;}
+  expect(engine.voiceNames()).toContain('music');flag.mockReturnValue(true);engine.tick?.();expect(engine.voiceNames()).not.toContain('music');
+  for(let i=0;i<100;i++){engine.tick?.();c.currentTime+=.05;}expect(engine.voiceNames()).not.toContain('music');engine.play('click');expect(engine.voiceNames()).toContain('click');
+ }finally{flag.mockRestore();}
 });

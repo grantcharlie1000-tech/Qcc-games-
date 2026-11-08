@@ -87,9 +87,9 @@ describe('weekly allowance',()=>{
   await api.get('me',u);
   const weeks=(await t.pool.query(`SELECT to_char(week_start,'YYYY-MM-DD') AS w FROM predictions_grants WHERE account_id=$1 ORDER BY 1`,[u.id])).rows.map((r:any)=>r.w);
   // Existing join grant (this week) + launch week + the week eligibility ended in + the two weeks since re-enabling.
-  const expected=new Set([weekStartDate(now),weekStartDate(now-4.2*week),weekStartDate(now-3.5*week-1),weekStartDate(now-1.2*week)]);
+  const expected=new Set([weekStartDate(now),weekStartDate(now-4.2*week),weekStartDate(now-3.5*week-1),weekStartDate(now-1.2*week),weekStartDate(now-week)]);
   expect(new Set(weeks)).toEqual(expected);
-  expect(weeks).not.toContain(weekStartDate(now-5*week));// before launch
+  expect(weeks).not.toContain(weekStartDate(now-5.2*week));// the calendar week before the launch week
   expect(weeks).not.toContain(weekStartDate(now-2.5*week));// wholly suspended
   await enable(t.pool);await ledgerOk();
  });
