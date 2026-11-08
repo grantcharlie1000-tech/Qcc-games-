@@ -1,6 +1,7 @@
 -- SCHEMA CHANGE: NEEDS CHARLIE APPROVAL before application. Never run against a remote DB from this task.
 -- Predictions: free play-credit binary markets (LMSR), weekly allowance, double-entry credit journal,
--- moderated questions, independent resolution and exactly-once settlement. Credits have no cash value and
+-- questions that open as soon as they are submitted, moderator-authorised results and exactly-once settlement.
+-- Credits have no cash value and
 -- cannot be bought, transferred, redeemed or cashed out; nothing in this schema links them to anything that can.
 -- Amounts are integer micro-units: 1 credit = 1,000,000 microcredits; 1 share = 1,000,000 microshares.
 -- The feature ships DISABLED: predictions_config.enabled defaults to false and launch_at to NULL (no grants).
@@ -16,18 +17,17 @@ CREATE TABLE predictions_config (
  weekly_grant bigint NOT NULL DEFAULT 10000000 CHECK (weekly_grant>0 AND weekly_grant<=100000000),
  market_reserve bigint NOT NULL DEFAULT 14000000 CHECK (market_reserve>0),
  liquidity_b bigint NOT NULL DEFAULT 20000000 CHECK (liquidity_b>0),
- max_open_markets integer NOT NULL DEFAULT 12 CHECK (max_open_markets>=0),
- challenge_hours integer NOT NULL DEFAULT 24 CHECK (challenge_hours BETWEEN 1 AND 336),
+ max_open_markets integer NOT NULL DEFAULT 60 CHECK (max_open_markets>=0),
  -- The reserve funding needs b ln 2 at most; refuse a configuration that could leave a market underfunded.
  CHECK (market_reserve*1000000 >= liquidity_b*693148),
  updated_at timestamptz NOT NULL DEFAULT now()
 );
 INSERT INTO predictions_config(id) VALUES (true);
 
--- Moderators review/publish/finalise; resolvers propose results. Granted by an operator in SQL (see docs/PREDICTIONS.md).
+-- Moderators authorise results and payouts from the dashboard. Granted by an operator in SQL (see docs/PREDICTIONS.md).
 CREATE TABLE predictions_roles (
  account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
- role text NOT NULL CHECK (role IN ('moderator','resolver')),
+ role text NOT NULL CHECK (role IN ('moderator')),
  granted_by text NOT NULL CHECK (char_length(granted_by) BETWEEN 1 AND 60),
  granted_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY (account_id,role)
@@ -57,7 +57,7 @@ CREATE TABLE predictions_wallets (
 CREATE TABLE predictions_markets (
  id uuid PRIMARY KEY,
  author_id uuid NULL REFERENCES accounts(id) ON DELETE SET NULL,
- state text NOT NULL DEFAULT 'pending' CHECK (state IN ('pending','changes_requested','rejected','open','paused','proposed','disputed','resolved','void')),
+ state text NOT NULL DEFAULT 'open' CHECK (state IN ('open','paused','resolved','void')),
  fixture boolean NOT NULL DEFAULT false,
  category text NOT NULL CHECK (category IN ('school','local','sport','games','technology','culture','science','community')),
  audience text NOT NULL CHECK (audience IN ('school','public')),
@@ -72,7 +72,7 @@ CREATE TABLE predictions_markets (
  resolve_at timestamptz NOT NULL,
  liquidity_b bigint NOT NULL CHECK (liquidity_b>0),
  pricing_version smallint NOT NULL DEFAULT 1,
- rules_hash text NULL CHECK (rules_hash IS NULL OR rules_hash ~ '^[a-f0-9]{64}$'),
+ rules_hash text NOT NULL CHECK (rules_hash ~ '^[a-f0-9]{64}$'),
  q_yes bigint NOT NULL DEFAULT 0 CHECK (q_yes>=0),
  q_no bigint NOT NULL DEFAULT 0 CHECK (q_no>=0),
  -- Cache of the market's 'reserve' postings, maintained by the posting trigger.
@@ -80,31 +80,27 @@ CREATE TABLE predictions_markets (
  version bigint NOT NULL DEFAULT 0,
  sequence bigint NOT NULL DEFAULT 0,
  outcome text NULL CHECK (outcome IN ('yes','no','void')),
- review_note varchar(400) NULL,
- reviewed_by uuid NULL,
- published_at timestamptz NULL,
+ published_at timestamptz NOT NULL DEFAULT now(),
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
  question_key text GENERATED ALWAYS AS (regexp_replace(lower(question),'[^a-z0-9]+','','g')) STORED,
  CHECK (resolve_at>=close_at),
- CHECK ((state IN ('resolved','void'))=(outcome IS NOT NULL)),
- CHECK (state IN ('pending','changes_requested','rejected') OR (rules_hash IS NOT NULL AND published_at IS NOT NULL))
+ CHECK ((state IN ('resolved','void'))=(outcome IS NOT NULL))
 );
--- One live question per wording; resolved/void/rejected wordings may be asked again.
-CREATE UNIQUE INDEX predictions_markets_question ON predictions_markets(question_key) WHERE state NOT IN ('rejected','resolved','void');
+-- One live question per wording; resolved/void wordings may be asked again.
+CREATE UNIQUE INDEX predictions_markets_question ON predictions_markets(question_key) WHERE state NOT IN ('resolved','void');
 CREATE INDEX predictions_markets_list ON predictions_markets(state,audience,close_at);
 CREATE INDEX predictions_markets_author ON predictions_markets(author_id,created_at DESC);
 
--- Published terms are frozen: economic and resolution fields cannot change once a market leaves review.
+-- A question opens the moment it is submitted, so its terms are frozen from the first row: economic and resolution
+-- fields can never change afterwards, and a settled market cannot change outcome.
 CREATE FUNCTION predictions_freeze_rules() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
- IF OLD.state NOT IN ('pending','changes_requested','rejected') AND (
-   NEW.question IS DISTINCT FROM OLD.question OR NEW.yes_rule IS DISTINCT FROM OLD.yes_rule OR NEW.no_rule IS DISTINCT FROM OLD.no_rule
+ IF NEW.question IS DISTINCT FROM OLD.question OR NEW.yes_rule IS DISTINCT FROM OLD.yes_rule OR NEW.no_rule IS DISTINCT FROM OLD.no_rule
    OR NEW.void_rule IS DISTINCT FROM OLD.void_rule OR NEW.source IS DISTINCT FROM OLD.source OR NEW.source_fallback IS DISTINCT FROM OLD.source_fallback
    OR NEW.disclosure IS DISTINCT FROM OLD.disclosure OR NEW.close_at IS DISTINCT FROM OLD.close_at OR NEW.resolve_at IS DISTINCT FROM OLD.resolve_at
    OR NEW.liquidity_b IS DISTINCT FROM OLD.liquidity_b OR NEW.pricing_version IS DISTINCT FROM OLD.pricing_version
-   OR NEW.rules_hash IS DISTINCT FROM OLD.rules_hash OR NEW.category IS DISTINCT FROM OLD.category OR NEW.audience IS DISTINCT FROM OLD.audience
-   OR NEW.state IN ('pending','changes_requested','rejected')) THEN
+   OR NEW.rules_hash IS DISTINCT FROM OLD.rules_hash OR NEW.category IS DISTINCT FROM OLD.category OR NEW.audience IS DISTINCT FROM OLD.audience THEN
   RAISE EXCEPTION 'predictions: published market terms are frozen' USING ERRCODE='P0001';
  END IF;
  IF OLD.state IN ('resolved','void') AND (NEW.state IS DISTINCT FROM OLD.state OR NEW.outcome IS DISTINCT FROM OLD.outcome) THEN
@@ -230,28 +226,17 @@ CREATE TABLE predictions_trades (
 );
 CREATE TRIGGER predictions_trades_append_only BEFORE UPDATE OR DELETE ON predictions_trades FOR EACH ROW EXECUTE FUNCTION predictions_immutable();
 
+-- One moderator authorisation per market: the outcome, the moderator's note and (for global questions) the evidence link.
+-- UNIQUE(market_id) makes a second authorisation impossible; the settlement below pays it exactly once.
 CREATE TABLE predictions_resolutions (
  id uuid PRIMARY KEY,
- market_id uuid NOT NULL REFERENCES predictions_markets(id),
+ market_id uuid NOT NULL UNIQUE REFERENCES predictions_markets(id),
  outcome text NOT NULL CHECK (outcome IN ('yes','no','void')),
- evidence varchar(1000) NOT NULL,
- source_checked varchar(300) NOT NULL,
- proposer_id uuid NOT NULL,
- proposed_at timestamptz NOT NULL DEFAULT now(),
- challenge_until timestamptz NOT NULL,
- status text NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed','disputed','accepted','overturned')),
- dispute_reason varchar(500) NULL,
- disputed_by uuid NULL,
- disputed_at timestamptz NULL,
- reviewer_id uuid NULL,
- reviewed_at timestamptz NULL,
- review_note varchar(500) NULL,
- final_outcome text NULL CHECK (final_outcome IN ('yes','no','void')),
- CHECK (challenge_until>proposed_at),
- CHECK ((status IN ('accepted','overturned'))=(final_outcome IS NOT NULL AND reviewer_id IS NOT NULL)),
- CHECK (reviewer_id IS NULL OR reviewer_id<>proposer_id)
+ note varchar(1000) NOT NULL CHECK (char_length(btrim(note))>0),
+ link varchar(300) NULL CHECK (link IS NULL OR link ~ '^https://[^\s<>"]+$'),
+ authorised_by uuid NULL REFERENCES accounts(id) ON DELETE SET NULL,
+ authorised_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE UNIQUE INDEX predictions_resolutions_active ON predictions_resolutions(market_id) WHERE status IN ('proposed','disputed');
 
 -- Exactly one economic settlement per market, and one claim per holder in it.
 CREATE TABLE predictions_settlements (
