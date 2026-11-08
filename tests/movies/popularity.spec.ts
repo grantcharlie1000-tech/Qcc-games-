@@ -1,4 +1,18 @@
 import {readFileSync} from 'node:fs';
+function fulfillMedia(path:string,contentType:string){
+ const body=readFileSync(path);
+ return async(route:import('@playwright/test').Route)=>{
+  const range=route.request().headers().range;
+  if(range){
+   const match=/bytes=(\d+)-(\d*)/.exec(range);
+   const start=Number(match?.[1]??0);
+   const end=match?.[2]?Number(match[2]):body.length-1;
+   await route.fulfill({status:206,headers:{'content-type':contentType,'accept-ranges':'bytes','content-range':`bytes ${start}-${end}/${body.length}`,'content-length':String(end-start+1)},body:body.subarray(start,end+1)});
+   return;
+  }
+  await route.fulfill({status:200,headers:{'content-type':contentType,'accept-ranges':'bytes','content-length':String(body.length)},body});
+ };
+}
 import {test,expect} from '../fixtures';
 import type {Page} from '@playwright/test';
 import {MoviePopularity} from '../../src/movies/popularity';
@@ -29,20 +43,16 @@ test('empty and unavailable states never substitute TMDB trending or starter tit
  await page.route(ENDPOINT,r=>r.fulfill({status:503,json:{error:'not_configured'}}));await page.reload();
  await expect(rail).toContainText('Popular picks are unavailable right now.');await expect(rail.locator('[data-title]')).toHaveCount(0);
 });
-test('counts advancing playback once, ignores ready messages and seeks, and stops after opt-out',async({page})=>{
+test('historical FrameXTV fixture messages do not contribute',async({page})=>{
  await setup(page);const posts:unknown[]=[];
  await page.route(ENDPOINT,async route=>{if(route.request().method()==='POST')posts.push(route.request().postDataJSON());await route.fulfill({json:{titleIds:[],windowDays:7}});});
  await page.goto('/#/movies/movie-157336/play');await expect(page.locator('.movies-provider-frame')).toBeVisible();
  await page.clock.install();
  const frame=()=>page.frame({url:/framextv/})!;
  const report=async(time:number)=>{await frame().evaluate(time=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:time,duration:6000},'*'),time);await page.waitForTimeout(20);};
- await frame().evaluate(()=>parent.postMessage({event:'frameXTV:ready'},'*'));await report(0);await report(3000);expect(posts).toHaveLength(0);
+ await frame().evaluate(()=>parent.postMessage({event:'frameXTV:ready'},'*'));await report(0);await report(3000);
  for(let i=0;i<=12;i++){await page.clock.runFor(5000);await report(3000+i*5);}
- await expect.poll(()=>posts.length).toBe(1);expect(posts[0]).toMatchObject({titleId:'movie-157336'});expect(Object.keys(posts[0] as object).sort()).toEqual(['titleId','token']);
- await page.locator('.movies-menu').click();await page.getByRole('checkbox',{name:'Contribute to Popular in Marlborough'}).uncheck();await page.getByRole('button',{name:'Close menu',exact:true}).click();
- await page.goto('/#/movies/movie-329865/play');await expect(page.locator('.movies-provider-frame')).toBeVisible();
- for(let i=0;i<=12;i++){await page.clock.runFor(5000);await report(i*5);}
- expect(posts).toHaveLength(1);
+ expect(posts).toEqual([]);
 });
 
 for(const width of [390,1440])test(`popularity toggle shares the settings group at ${width}px`,async({page})=>{
@@ -77,16 +87,50 @@ test('archive playback and parent-page messages do not contribute',async({page})
  await page.waitForTimeout(50);expect(posts).toEqual([]);
 });
 
-test('a short real video element does not count',async({page},info)=>{
- info.skip(info.project.name==='webkit','WebKit crashed opening this fixture video in this environment. Chromium plays the real element.');
+test('a real local video counts only 60 seconds of advancing playback',async({page})=>{
+ test.setTimeout(150_000);
  await setup(page);const posts:unknown[]=[];
  await page.route(ENDPOINT,async route=>{if(route.request().method()==='POST')posts.push(route.request().postDataJSON());await route.fulfill({json:{titleIds:[],windowDays:7}});});
- await page.route('**/movies/licenses.json',route=>route.fulfill({json:[{key:'movie-157336',path:'movies/media/popularity-sample.mp4',license:'CC0-1.0',credit:'TEST FIXTURE silent clip',evidence:'docs/rights/popularity-sample.md',reviewed:true,territory:'Worldwide',expires:'2099-01-01'}]}));
- await page.route('**/movies/media/popularity-sample.mp4',route=>route.fulfill({contentType:'video/mp4',path:'tests/movies/fixtures/popularity-sample.mp4'}));
+ await page.route('**/movies/licenses.json',route=>route.fulfill({json:[{key:'movie-157336',path:'movies/media/popularity-minute.webm',license:'CC0-1.0',credit:'TEST FIXTURE generated silent clip',evidence:'docs/rights/popularity-sample.md',reviewed:true,territory:'Worldwide',expires:'2099-01-01'}]}));
+ await page.route('**/movies/media/popularity-minute.webm',fulfillMedia('tests/movies/fixtures/popularity-minute.webm','video/webm'));
  await page.goto('/#/movies/movie-157336/play');
  const video=page.locator('video');await expect(video).toBeVisible();
- const played=await video.evaluate(async element=>{const node=element as HTMLVideoElement;try{await node.play();}catch{return {played:false,time:node.currentTime};}await new Promise(resolve=>setTimeout(resolve,1500));return {played:!node.paused,time:node.currentTime,updates:node.played.length};});
- expect(played.time).toBeGreaterThan(0);expect(posts).toEqual([]);
+ await video.evaluate(node=>new Promise<void>(resolve=>{const element=node as HTMLVideoElement;if(element.readyState>=1)resolve();else element.addEventListener('loadedmetadata',()=>resolve(),{once:true});}));
+ const restored=await video.evaluate(node=>new Promise<number>((resolve,reject)=>{
+  const element=node as HTMLVideoElement;
+  const timer=setTimeout(()=>reject(new Error('restore timed out')),5000);
+  element.addEventListener('seeked',()=>{clearTimeout(timer);resolve(element.currentTime);},{once:true});
+  element.currentTime=40;
+ }));
+ expect(restored).toBeGreaterThan(30);expect(posts).toEqual([]);
+ await video.evaluate(node=>new Promise<void>((resolve,reject)=>{
+  const element=node as HTMLVideoElement;
+  const timer=setTimeout(()=>reject(new Error('return timed out')),5000);
+  element.addEventListener('seeked',()=>{clearTimeout(timer);resolve();},{once:true});
+  element.currentTime=0;
+ }));
+ await video.evaluate(node=>(node as HTMLVideoElement).play());
+ await expect.poll(()=>video.evaluate(node=>(node as HTMLVideoElement).currentTime)).toBeGreaterThan(2);
+ await video.evaluate(node=>(node as HTMLVideoElement).pause());
+ await page.waitForTimeout(1000);expect(posts).toEqual([]);
+ const jumped=await video.evaluate(node=>new Promise<number>((resolve,reject)=>{
+  const element=node as HTMLVideoElement;
+  const timer=setTimeout(()=>reject(new Error('seek timed out')),5000);
+  element.addEventListener('seeked',()=>{clearTimeout(timer);resolve(element.currentTime);},{once:true});
+  element.currentTime=30;
+ }));
+ expect(jumped).toBeGreaterThan(20);expect(posts).toEqual([]);
+ await video.evaluate(node=>new Promise<void>((resolve,reject)=>{
+  const element=node as HTMLVideoElement;
+  const timer=setTimeout(()=>reject(new Error('rewind timed out')),5000);
+  element.addEventListener('seeked',()=>{clearTimeout(timer);resolve();},{once:true});
+  element.currentTime=0;
+ }));
+ await video.evaluate(node=>(node as HTMLVideoElement).play());
+ await expect.poll(()=>video.evaluate(node=>(node as HTMLVideoElement).currentTime),{timeout:90_000}).toBeGreaterThan(61);
+ await expect.poll(()=>posts.length,{timeout:5_000}).toBe(1);
+ expect(posts[0]).toMatchObject({titleId:'movie-157336'});
+ expect(Object.keys(posts[0] as object).sort()).toEqual(['titleId','token']);
 });
 
 test('opt-out reaches another tab immediately, survives reload, and clear history leaves it off',async({page,context})=>{

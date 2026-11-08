@@ -1,6 +1,7 @@
 import {afterAll, describe, expect, it} from 'vitest';
 import {MoviePopularity, parsePopularIds} from '../../src/movies/popularity';
-import {startIsolatedPopularity} from './popularity-d1';
+import {POPULARITY_D1_COMPATIBILITY_DATE, startIsolatedPopularity} from './popularity-d1';
+import {startLocalCleanup} from '../../scripts/movie-popularity-cleanup-local.mjs';
 
 const preview=await startIsolatedPopularity();
 afterAll(()=>preview.dispose());
@@ -55,5 +56,17 @@ describe('isolated local D1 preview',()=>{
   expect((await counts()).daily.some(row=>row.title_id==='movie-11')).toBe(false);
   expect((await counts()).tokens[0].n).toBe(6);
   await preview.call(new Request('http://pop.test/__isolated_preview/sql',{method:'POST',body:'DROP TRIGGER fail_count;'}));
+ });
+ it('runs scheduled cleanup with no collection flag and no popularity route',async()=>{
+  expect(POPULARITY_D1_COMPATIBILITY_DATE).toBe('2026-11-04');
+  const preview=await startLocalCleanup();
+  try{
+   expect((await preview.call(new Request('http://cleanup.local/__local/schema',{method:'POST'}))).ok).toBe(true);
+   const at=Date.UTC(2026,10,6,12),day=Math.floor(at/86400000);
+   expect((await preview.call(new Request('http://cleanup.local/__local/sql',{method:'POST',body:`INSERT INTO movie_popularity_tokens (title_id, day, token_hash, expires_at) VALUES ('movie-9', ${day-8}, 'expired-hash', ${at})`}))).ok).toBe(true);
+   expect((await preview.call(new Request('http://cleanup.local/api/movie-popularity'))).status).toBe(404);
+   expect((await preview.call(new Request(`http://cleanup.local/cdn-cgi/local/scheduled?cron=${encodeURIComponent('15 * * * *')}&time=${at+8*86400000}`))).status).toBe(200);
+   expect(await (await preview.call(new Request('http://cleanup.local/__local/counts'))).json()).toEqual({tokens:0,daily:0,rate:0});
+  }finally{await preview.dispose();}
  });
 });

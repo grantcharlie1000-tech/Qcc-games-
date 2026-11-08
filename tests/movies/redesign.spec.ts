@@ -2253,7 +2253,7 @@ test('the footer keeps the privacy copy and clears saved data',async({page})=>{
  await clear.click();
  await expect.poll(()=>page.evaluate(()=>localStorage.getItem('qcc:movies:v1'))).toBe('{"list":[],"progress":{},"titles":{},"meta":{}}');
  await expect(clear).toBeFocused();
- await expect(footer.locator('.movies-storage')).toHaveText('Saved only on this device.');
+ await expect(footer.locator('.movies-storage')).toHaveText('My list and resume positions are saved on this device.');
 });
 
 // render() rewrites the second footer paragraph once the API supplies titles, so the footer must keep that paragraph at index 1.

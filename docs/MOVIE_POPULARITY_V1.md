@@ -5,28 +5,24 @@
 - A matching poster rail at the top of Movies Home and the Movies section, named **Popular in Marlborough**, with “Across QCC · Past 7 days”. It links through the existing title and playback flows.
 - Real aggregate IDs only. Empty, loading and unavailable states, plus retry. No fabricated local activity and no substitution of TMDB trending results.
 - **Menu → Contribute to Popular in Marlborough**, enabled by default per browser. No new popup. Opt-out stops future reporting without hiding discovery; existing totals are unchanged.
-- Conservative 60-second advancing playback qualification for supported FrameXTV messages and licensed native video. A card click, initial resume timestamp, ready message, seek, hidden tab or unsupported Archive player does not qualify.
+- Conservative 60-second advancing playback qualification for a licensed local video element. FrameXTV messages, a card click, an initial resume timestamp, a ready message, a seek, a hidden tab, and an Archive player do not qualify.
 - Separate daily random browser seed, per-movie derived tokens, no account or history upload, no new persistent title-history list. Pending hashing is invalidated on stopping/opt-out. Samples are dropped on network failure rather than queued or backfilled.
 - Disabled-by-default Pages/D1 backend with atomic dedup and aggregation, daily five-report suppression, seven-calendar-day ranking, no public counts, body/origin validation and short-lived IP-based rate limiting.
 - Updated existing privacy copy and documentation. My list and resume positions remain device-local; the new aggregate transmission is described accurately.
 
 ## Playback contract
 
-Supported inputs, and only these, can advance the 60-second clock:
+The only input that can advance the 60-second clock is a same-page `<video>` `timeupdate` while the element is playing, not seeking, the tab is visible, and Study or Menu has not suspended the page. The position must move forward in step with elapsed time. Restoring a saved position, a click, a seek, and a paused `timeupdate` do not qualify.
 
-- A same-page `<video>` `timeupdate` while the element is playing, not seeking, the tab is visible, and Study or Menu has not suspended the page. The position must move forward in step with elapsed time. Restoring a saved position, a click, and a paused `timeupdate` do not qualify.
-- A `frameXTV:timeupdate` message whose `source` is the current FrameXTV iframe and whose `origin` is `https://framextv.cc` or `https://framextv.xyz`. `frameXTV:ready` does not qualify.
+FrameXTV messages do **not** count. On 2026-11-08 the rendered public page `https://framextv.cc/api` (title “API & Embed Documentation — FrameXTV”) shows a postMessage example that listens for `event.data.event === 'frameXTV:timeupdate'` and reads `currentTime` and `duration`. That is documentation, not a player session. The same day’s shell script `/assets/index-BrAnuREQ.js` contains `__syncxtv` and does not contain `frameXTV:timeupdate`. No embed was played: the documented embeds point at third-party movie and TV streams, and this check did not open one. Until a real player is observed emitting the documented event, FrameXTV is unsupported for this count. Local resume may still read the documented shape; popularity does not.
 
-Ignored, and therefore not counted:
+Also ignored:
 
-- Internet Archive embeds. They have no supported progress message.
+- Internet Archive embeds.
 - Messages posted by the parent page, an old iframe, or any other origin.
-- The `__syncxtv` hello object found in the public `framextv.cc` script.
 - VidLink, VixSrc, and VidSrc, which are not playback providers in this app.
 
-**What was checked against the live provider:** on 2026-11-07, `https://framextv.cc/api` and `https://framextv.cc/embed/157336` returned the site shell. The script `/assets/index-BrAnuREQ.js` contains `__syncxtv` / `type: "hello"` and does **not** contain `frameXTV:timeupdate`, `frameXTV:ready`, or `frameXTV:ended`. The player was not executed, and its anti-automation guard was not bypassed. The historical message names come from `docs/superpowers/plans/2026-10-28-streaming-redesign.md`. Until a real FrameXTV playback session is observed emitting those messages, FrameXTV contributions are an **unverified blocker**. Mismatched messages are ignored, so the live player is not silently counted under a guessed protocol.
-
-Synthetic tests post those historical messages from a fixture iframe. They do not prove the provider sends them. A separate browser test plays a two-second **TEST FIXTURE** H.264 file in the real `<video>` element and checks that it does not contribute. It does not play for 60 seconds. The 60-second rule is covered by unit tests of the same sampler the video listener calls.
+Chromium and WebKit each played a generated 75-second silent VP8 fixture in the app’s `<video>` element. A paused restore to 40 seconds, a paused seek to 30 seconds, and a pause did not contribute. Playback that then advanced past 61 seconds sent one movie id and token. The fixture is not a copyrighted film. WebKit’s first attempt crashed because GStreamer reported `autoaudiosink` missing; installing `gstreamer1.0-plugins-good` fixed that in this environment. Playwright’s WebKit build reported H.264 as unsupported (`MEDIA_ERR_SRC_NOT_SUPPORTED`, code 4) and did not crash on that file.
 
 ## Limitations and release gate
 
@@ -79,13 +75,12 @@ Checked against `origin/main` `673201b7955d7dd89f39c92926139982a686d41b` (the PR
 What this run verified:
 
 - Node SQLite runs the production schema, the insert trigger, rollback, the 2,000-attempt shared-address ceiling, and scheduled cleanup while collection is disabled and while the tables are empty. An in-window aggregate is kept.
-- Local workerd D1 (Miniflare, compatibility date `2026-08-06`, memory only) runs playback qualification, contribution, duplicate tokens, the five-report threshold, ranking, batch rollback, and the disabled-handler versus scheduled-cleanup split. The browser then renders that ranking. This is not remote D1 and not the Pages compatibility date `2026-11-04`.
-- Chromium played a two-second fixture MP4 in the real `<video>` element and did not contribute. WebKit crashed opening that fixture, so WebKit native playback is not verified. The 60-second rule is unit-tested on the sampler the video listener calls.
-- Chromium and WebKit ran `tests/movies/popularity.spec.ts`: 21 passed, 1 skipped. Archive and parent-page messages did not contribute. Opt-out updated the other tab, survived reload, and stayed off after Clear my list & watch history.
-- `npm test`: 245 files passed, 1 skipped; 4,862 tests passed, 7 skipped. `npm run build` passed, including the service-worker kill switch. The rights registry reported 0 approved local files.
+- Local workerd D1 (Miniflare `5.20261104.0-beta`, compatibility date `2026-11-04`, memory only, `dev.remote: false`) runs playback qualification, contribution, duplicate tokens, the five-report threshold, ranking, batch rollback, and scheduled cleanup with the collection flag absent. The browser then renders that ranking. This is not remote D1.
+- Chromium and WebKit each played a generated 75-second silent VP8 file in the real `<video>` element. A paused restore, a paused seek, and a pause did not contribute. Advancing past 61 seconds sent one report. Historical FrameXTV fixture messages did not contribute. Opt-out updated the other tab, survived reload, and stayed off after Clear my list & watch history.
+- `npx tsc --noEmit` passed. `npm test`: 245 files passed, 1 skipped; 4,863 tests passed, 7 skipped. The skipped file is `tests/predictions/concurrency.test.ts`, which requires `QCC_TEST_PG_URL`.
+- `npx playwright test tests/movies --project=chromium --project=webkit`: 674 passed, 2 skipped, 2 failed. Both failures were `the footer keeps the privacy copy and clears saved data`, which still expected main’s “Saved only on this device.” The page says “My list and resume positions are saved on this device.” That assertion was updated and then passed on Chromium and WebKit. The two skips are conditional fullscreen or Chromium-only glass checks, not popularity failures. On `origin/main` the footer line and the assertion still say “Saved only on this device.”, so this was not a preexisting main failure.
 
 What remains unverified, and blocks enablement:
 
-- A live FrameXTV session. The public script fetched on 2026-11-07 does not contain `frameXTV:timeupdate`. Synthetic fixture messages are not that contract.
-- Remote D1, the cleanup cron actually running, and the account's log and Time Travel settings.
-- The full Movies browser suite. Only `tests/movies/popularity.spec.ts` was run here.
+- A live FrameXTV player. The rendered API page documents `frameXTV:timeupdate`; the fetched shell script does not contain that name. No embed was played. Popularity does not count those messages.
+- Remote D1, a deployed cleanup cron, and the account's log and Time Travel settings. `node scripts/movie-popularity-cleanup-local.mjs` is a local in-memory run only.

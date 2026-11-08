@@ -1061,7 +1061,9 @@ export class MoviesView {
   this.frameReported=true;
   this.supervisor?.message('progress');
   if(signal.kind==='ended'){this.episodeEnded();return;}
-  moviePopularity.sample(this.route.id??'',signal.currentTime,performance.now(),!this.suspended&&!document.hidden&&!this.root.closest('[inert]'));
+  // FrameXTV progress still updates the local resume position. It does not count toward
+  // Popular in Marlborough: the live player contract has not been verified, and the
+  // historical message shape must not be treated as one.
   this.frameTime=signal.currentTime;
   if(signal.duration)this.frameDuration=signal.duration;
   // A report more than 5 seconds before the end ends a finished state. A report without a duration uses the one known for this frame.

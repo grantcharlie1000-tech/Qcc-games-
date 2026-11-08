@@ -54,4 +54,12 @@ Collection stays off unless `MOVIE_POPULARITY_ENABLED=true`, `MOVIE_POPULARITY_D
 
 `npm test -- tests/movies/popularity-api.test.ts` uses Node's real in-memory SQLite to execute the production schema, unique constraints, trigger, rate-limit UPSERT, transactional batches, ranking and cleanup. It exercises concurrent duplicate calls, per-title isolation, low-count suppression, ordering/limits, expiration, validation and generic error responses. It is not a live Cloudflare D1 deployment test.
 
-`tests/movies/popularity-d1.test.ts` runs the same handler inside local workerd (Miniflare, compatibility date `2026-08-06`, `d1Persist: false`). D1's `exec()` treats each newline as a separate statement, so the test applies `docs/movie-popularity-schema.sql` one statement at a time with `prepare().run()`, keeping each trigger body intact. That is not `wrangler d1 execute`, and it is not a remote database. The Pages workflow's compatibility date is `2026-11-04`, which this workerd binary cannot start. Remote D1 remains an acceptance gate.
+`tests/movies/popularity-d1.test.ts` runs the same handler inside local workerd (Miniflare `5.20261104.0-beta`, compatibility date `2026-11-04`, `dev.remote: false`). That is the compatibility date in `.github/workflows/pages.yml`. Miniflare 4.20260730.0 rejected `2026-11-04` because its workerd only accepted dates through `2026-08-06`. D1's `exec()` treats each newline as a separate statement, so the test applies `docs/movie-popularity-schema.sql` one statement at a time with `prepare().run()`, keeping each trigger body intact. That is not `wrangler d1 execute`, and it is not a remote database. Remote D1 remains an acceptance gate.
+
+Local cleanup, with no collection flag and no remote database:
+
+```sh
+node scripts/movie-popularity-cleanup-local.mjs
+```
+
+That command applies the schema to a throwaway in-memory D1 database and dispatches the worker's `scheduled` handler through Miniflare's `/cdn-cgi/local/scheduled` path. It does not read `MOVIE_POPULARITY_ENABLED`. The worker file is outside `functions/`, so Pages does not publish it. Do not point this command at a remote database or add a Wrangler cron.
