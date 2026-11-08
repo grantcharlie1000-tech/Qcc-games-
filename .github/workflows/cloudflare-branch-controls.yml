@@ -1,0 +1,26 @@
+name: Inspect Cloudflare branch controls
+on:
+  push:
+    branches: [ops/cloudflare-production-branch]
+    paths: ['.github/workflows/cloudflare-branch-controls.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read branch configuration only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID, token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!/^[a-f0-9]{32}$/i.test(account||'')||!token)throw new Error('Missing Cloudflare configuration');
+          const res=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/pages/projects/nceastudy`,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(15000)});
+          if(!res.ok)throw new Error(`Cloudflare lookup HTTP ${res.status}`);
+          const body=await res.json(),p=body.result,c=p?.source?.config;
+          if(!body.success||p?.name!=='nceastudy'||p.subdomain!=='nceastudy.pages.dev')throw new Error('Unexpected Pages project');
+          console.log(JSON.stringify({name:p.name,production_branch:p.production_branch,source_type:p.source?.type,owner:c?.owner,repo_name:c?.repo_name,production_deployments_enabled:c?.production_deployments_enabled,deployments_enabled:c?.deployments_enabled,preview_deployment_setting:c?.preview_deployment_setting,preview_branch_includes:c?.preview_branch_includes,preview_branch_excludes:c?.preview_branch_excludes,build_config:{build_command:p.build_config?.build_command,destination_dir:p.build_config?.destination_dir,root_dir:p.build_config?.root_dir},canonical_deployment:{id:p.canonical_deployment?.id,branch:p.canonical_deployment?.deployment_trigger?.metadata?.branch,commit:p.canonical_deployment?.deployment_trigger?.metadata?.commit_hash}},null,2));
+          JS
