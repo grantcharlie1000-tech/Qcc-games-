@@ -1,0 +1,84 @@
+{
+  "pageExact": [
+    "/nceastudy",
+    "/nceastudy/google",
+    "/nceastudy/billing",
+    "/nceastudy/billing/return"
+  ],
+  "pages": [
+    "/questions",
+    "/signup",
+    "/login",
+    "/auth",
+    "/forgot-password",
+    "/reset-password",
+    "/logout",
+    "/account",
+    "/onboarding",
+    "/progress",
+    "/revision",
+    "/welcome",
+    "/pricing",
+    "/help",
+    "/support",
+    "/privacy",
+    "/terms",
+    "/start"
+  ],
+  "apiPrefixes": [
+    "/api/auth",
+    "/api/account",
+    "/api/devices",
+    "/api/onboarding",
+    "/api/questions",
+    "/api/tutor-uploads",
+    "/api/preferences",
+    "/api/flashcards",
+    "/api/onboarding-feedback",
+    "/api/monitoring"
+  ],
+  "apiExact": [
+    "/api/integrations/nceastudy",
+    "/api/mark",
+    "/api/model-answer",
+    "/api/mock-exam",
+    "/api/practise-progress",
+    "/api/progress",
+    "/api/quota",
+    "/api/study-session",
+    "/api/target-grade",
+    "/api/chat",
+    "/api/plan",
+    "/api/feedback",
+    "/api/diagnostic",
+    "/api/error-report",
+    "/api/events",
+    "/api/billing/portal",
+    "/api/checkout"
+  ],
+  "assetPrefixes": [
+    "/_next",
+    "/_content",
+    "/icons",
+    "/images",
+    "/og"
+  ],
+  "assetExact": [
+    "/file.svg",
+    "/globe.svg",
+    "/next.svg",
+    "/vercel.svg",
+    "/window.svg",
+    "/favicon.ico",
+    "/apple-icon.png"
+  ],
+  "denied": [
+    "/factory",
+    "/api/factory",
+    "/internal",
+    "/api/internal",
+    "/api/guest-mark",
+    "/api/guest-session",
+    "/api/integrations/nceastudy/identity"
+  ]
+}

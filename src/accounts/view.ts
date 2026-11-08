@@ -4,6 +4,7 @@ import './style.css';
 export class AccountsView {
  readonly root=document.createElement('dialog');
  private signup=false;private busy=false;
+ get isBusy(){return this.busy;}
  constructor(readonly client:AccountsClient,private prepare:()=>void,private done:()=>void){
   this.root.id='accounts-dialog';this.root.classList.add('ui-glass-sheet');this.root.setAttribute('aria-labelledby','accounts-title');
   this.root.innerHTML=`<h2 id="accounts-title">Play your way</h2><p class="account-intro">Use an optional account to carry game saves and scores across devices, or play locally as a guest.</p>
