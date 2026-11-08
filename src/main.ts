@@ -557,7 +557,7 @@ window.addEventListener('keydown',event=>{
   // Stop their handlers while preserving native reading/keyboard defaults.
   if(accountView.root.open||christmasWelcome.root.open||document.querySelector('dialog.movies-warning[open]'))return;
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
-  if(event.key==='Escape'&&(menu.open||launcher.sheet.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open||document.querySelector('dialog.apps-sheet[open],.apps-popover')))return;
+  if(event.key==='Escape'&&(menu.open||launcher.sheet.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open||document.querySelector('dialog.apps-sheet[open],dialog.pr-sheet[open],.apps-popover')))return;
   // The inline Social composer owns Escape while its mention picker is open.
   // Let its target handler dismiss suggestions before the shell opens Study.
   if(!study.isOpen&&event.key==='Escape'&&event.target instanceof Element&&event.target.matches('.social-textarea[aria-expanded="true"]'))return;
