@@ -18,17 +18,16 @@ test('Results Desk opens from the Menu and shows seats, electorates and members'
   const bundle=await fixtureBundle();
   await page.route(url=>url.pathname.endsWith('/api/election'),route=>route.fulfill({json:bundle}));
   await page.goto('./');
-  // The library's live strip is the quick way in; the Menu has an entry too.
-  const banner=page.locator('.election-banner');
-  await expect(banner).toHaveAttribute('data-state','live');
-  await expect(banner.locator('.eb-line')).toHaveText('National reach 2 of 3 seats with 40.0% of voting places counted: a majority of one.');
-  await expect(banner.locator('.eb-seats i')).toHaveCount(2);
-  // It sits in the middle of the games: a full-width row straight after the twelfth card.
-  expect(await banner.evaluate(e=>[...e.parentElement!.children].indexOf(e))).toBe(12);
-  await banner.click();
-  await expect(page).toHaveURL(/#\/election$/);
+  // The games library row is Predictions. Election stays in the Menu.
+  const strip=page.locator('.predictions-banner');
+  await expect(strip).toBeVisible();
+  await expect(page.locator('.election-banner')).toHaveCount(0);
+  expect(await strip.evaluate(e=>[...e.parentElement!.children].indexOf(e))).toBe(12);
+  await strip.click();
+  await expect(page).toHaveURL(/#\/predictions$/);
   await page.goBack();
   await page.locator('.app-navigation [data-action="menu"]').click();
+  await expect(page.locator('#open-election')).toHaveAttribute('href','#/election');
   await page.locator('#open-election').click();
   await expect(page).toHaveURL(/#\/election$/);
   await expect(page.locator('.el-status')).toHaveAttribute('data-state','live');

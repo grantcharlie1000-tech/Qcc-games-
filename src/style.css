@@ -5,7 +5,7 @@
 .dialog-head h2{min-width:0;overflow-wrap:break-word}
 
 /* Glass island tab bar (theme.css .ui-tabbar): where it shows, and the room it needs at the bottom. */
-body.in-game .app-navigation,body.movies-active .app-navigation,body.social-active .app-navigation,body.chat-active .app-navigation,body.predictions-active .app-navigation{display:none}
+body.in-game .app-navigation,body.movies-active .app-navigation,body.social-active .app-navigation,body.chat-active .app-navigation,body.election-active .app-navigation,body.predictions-active .app-navigation{display:none}
 .app-navigation[data-view-hidden]{display:none}
 body:not(.in-game):not(.movies-active) #content{padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
 html:has(body:not(.in-game):not(.movies-active)){scroll-padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
@@ -54,7 +54,6 @@ html:has(body:is(.social-active,.chat-active):not(.in-game)){scroll-padding-bott
 .menu-brand{display:inline-flex;align-items:center;gap:8px}
 .menu-brand .mauri-mark{width:24px;height:24px;flex-shrink:0}
 
-/* Menu entry for QCC Results Desk (#/election). */
 .election-menu-button{width:100%;margin:0 0 8px;gap:10px}
 .election-menu-live{padding:3px 7px;border-radius:999px;background:#d4003a;color:#fff;font:700 10px/1 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase}
 .predictions-menu-button{width:100%;margin:0 0 8px;gap:10px}

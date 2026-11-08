@@ -7,7 +7,7 @@ transferred, gifted, redeemed or exchanged for anything of value, and nothing in
 that can. Built from the *NCEA Study Predictions* reference pack (7 November 2026).
 
 **Status: built and tested locally, shipped dark.** The migration is not applied anywhere; the server flag is off;
-the Menu entry only appears in development builds or a build with `VITE_QCC_PREDICTIONS=on`.
+the Menu entry shows by default (a build with `VITE_QCC_PREDICTIONS=off` hides it), and until the server flag is on the page only says it is not open yet.
 
 ## Where things live
 
@@ -160,7 +160,6 @@ on the production backend.
    `runGrantJob` from an authenticated hourly cron there. A Pages deploy alone will not make trading work.
 4. **Migration.** Apply `20261108090000_predictions.sql` to Preview first, then Production.
 5. **Launch.** `UPDATE predictions_config SET enabled=true, launch_at=now();` (keep `show_fixtures=false`), grant
-   the moderator role (SQL above) to the accounts that will authorise results, then build the frontend with
-   `VITE_QCC_PREDICTIONS=on`. Questions open as soon as people ask them, so decide who watches the dashboard's reports.
+   the moderator role (SQL above) to the accounts that will authorise results. The Menu entry and the games-library row show unless the build sets `VITE_QCC_PREDICTIONS=off`. Questions open as soon as people ask them, so decide who watches the dashboard's reports.
 
 Outbox rows are written with every ledger change; no delivery worker exists yet because the app has no push channel.
