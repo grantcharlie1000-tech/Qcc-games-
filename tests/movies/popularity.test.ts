@@ -1,5 +1,6 @@
 import {describe,it,expect,vi} from 'vitest';
-import {PlaybackEvidence,MoviePopularity,POPULARITY_SETTINGS_KEY,POPULARITY_DEDUP_KEY} from '../../src/movies/popularity';
+import {PlaybackEvidence,MoviePopularity,POPULARITY_SETTINGS_KEY,POPULARITY_DEDUP_KEY,popularityStorageChangeStopsReporting} from '../../src/movies/popularity';
+import {MovieStorage,MOVIES_KEY} from '../../src/movies/storage';
 function memory(){const data=new Map<string,string>();return {getItem:(key:string)=>data.get(key)??null,setItem:(key:string,value:string)=>{data.set(key,value);},removeItem:(key:string)=>{data.delete(key);}};}
 function setup(){const storage=memory(),fetch=vi.fn<typeof globalThis.fetch>(async()=>new Response(null,{status:204}));let now=Date.UTC(2026,10,7,12);let random=0;const client=new MoviePopularity(()=>storage,fetch as typeof globalThis.fetch,()=>now,()=> (++random).toString(16).padStart(32,'0'));client.available=true;return {client,storage,fetch,advance:(ms:number)=>{now+=ms;}};}
 async function play(client:MoviePopularity,id='movie-157336'){for(let i=0;i<=60;i++)await client.sample(id,i,i*1000,true);}
@@ -19,7 +20,29 @@ describe('movie contributions',()=>{
    expect(fetch).not.toHaveBeenCalled();
   }finally{digest.mockRestore();}
  });
- it('defaults on, sends only a movie ID and title-specific token after sustained playback, once per day',async()=>{const {client,fetch}=setup();expect(client.enabled).toBe(true);await play(client);await flush();expect(fetch).toHaveBeenCalledTimes(1);expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toEqual({titleId:'movie-157336',token:expect.stringMatching(/^[a-f0-9]{32}$/)});expect(fetch.mock.calls[0][1]).toMatchObject({credentials:'omit',referrerPolicy:'no-referrer'});client.reset();await play(client);await flush();expect(fetch).toHaveBeenCalledTimes(1);});
+ it('defaults on, sends only a movie ID and title-specific token after sustained playback, once per day',async()=>{const {client,storage,fetch}=setup();expect(storage.getItem(POPULARITY_SETTINGS_KEY)).toBeNull();expect(client.enabled).toBe(true);await play(client);await flush();expect(fetch).toHaveBeenCalledTimes(1);expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toEqual({titleId:'movie-157336',token:expect.stringMatching(/^[a-f0-9]{32}$/)});expect(fetch.mock.calls[0][1]).toMatchObject({credentials:'omit',referrerPolicy:'no-referrer'});client.reset();await play(client);await flush();expect(fetch).toHaveBeenCalledTimes(1);});
+ it('aborts an in-flight report on opt-out and does not send it again',async()=>{
+  const {client,fetch}=setup();let signal:AbortSignal|undefined;
+  fetch.mockImplementation((_url,init)=>new Promise((_resolve,reject)=>{signal=init?.signal??undefined;signal?.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')));}));
+  const pending=play(client);await vi.waitFor(()=>expect(fetch).toHaveBeenCalledTimes(1));
+  expect(client.setEnabled(false)).toEqual({enabled:false,saved:true});expect(signal?.aborted).toBe(true);await pending;
+  client.setEnabled(true);await play(client);await flush();expect(fetch).toHaveBeenCalledTimes(1);
+ });
+ it('stops reporting when another tab changes the preference and fails closed if storage cannot be read',async()=>{
+  expect(popularityStorageChangeStopsReporting(POPULARITY_SETTINGS_KEY)).toBe(true);expect(popularityStorageChangeStopsReporting(null)).toBe(true);expect(popularityStorageChangeStopsReporting('qcc:movies:v1')).toBe(false);
+  const {client,storage,fetch}=setup();let signal:AbortSignal|undefined;
+  fetch.mockImplementation((_url,init)=>new Promise((_resolve,reject)=>{signal=init?.signal??undefined;signal?.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')));}));
+  const pending=play(client);await vi.waitFor(()=>expect(fetch).toHaveBeenCalledTimes(1));
+  storage.setItem(POPULARITY_SETTINGS_KEY,'false');if(popularityStorageChangeStopsReporting(POPULARITY_SETTINGS_KEY))client.stop();
+  expect(signal?.aborted).toBe(true);await pending;expect(client.enabled).toBe(false);
+  const denied={getItem(){throw new Error('denied');},setItem(){throw new Error('denied');},removeItem(){}};
+  const blocked=new MoviePopularity(()=>denied);expect(blocked.enabled).toBe(false);expect(blocked.setEnabled(true)).toEqual({enabled:false,saved:false});
+ });
+ it('keeps the contribution preference when watch history is cleared',()=>{
+  const store=memory();store.setItem(POPULARITY_SETTINGS_KEY,'false');store.setItem(POPULARITY_DEDUP_KEY,JSON.stringify({seed:'ab'.repeat(16),day:1}));store.setItem(MOVIES_KEY,JSON.stringify({list:['movie-1'],progress:{'movie-1':40},titles:{},meta:{}}));
+  const movies=new MovieStorage(()=>store as unknown as Storage);movies.clear();
+  expect(store.getItem(POPULARITY_SETTINGS_KEY)).toBe('false');expect(store.getItem(POPULARITY_DEDUP_KEY)).toContain('ab');expect(movies.data.list).toEqual([]);expect(movies.data.progress).toEqual({});
+ });
  it('does not upload old history or TV, and fails closed when the service is unavailable',async()=>{const {client,storage,fetch}=setup();storage.setItem('qcc:movies:v1',JSON.stringify({progress:{'movie-157336':5000}}));expect(fetch).not.toHaveBeenCalled();await play(client,'tv-1');client.available=false;await play(client);await flush();expect(fetch).not.toHaveBeenCalled();});
  it('opt-out clears short-lived tokens, persists across reload, and requires fresh playback after opt-in',async()=>{const {client,storage,fetch}=setup();await play(client);await flush();client.setEnabled(false);expect(storage.getItem(POPULARITY_DEDUP_KEY)).toBeNull();expect(new MoviePopularity(()=>storage).enabled).toBe(false);await play(client,'movie-2');client.setEnabled(true);client.sample('movie-2',61,61000,true);await flush();expect(fetch).toHaveBeenCalledTimes(1);});
  it.each([true,false])('reports failed preference persistence separately from disabled state when wanted=%s',wanted=>{const storage=memory();storage.setItem(POPULARITY_SETTINGS_KEY,'true');storage.setItem=()=>{throw new Error('full');};const client=new MoviePopularity(()=>storage);expect(client.setEnabled(wanted)).toEqual({enabled:false,saved:false});expect(client.enabled).toBe(false);expect(new MoviePopularity(()=>storage).enabled).toBe(true);});

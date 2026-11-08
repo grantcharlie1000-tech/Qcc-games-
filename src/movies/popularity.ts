@@ -75,6 +75,8 @@ export class MoviePopularity {
  }
 }
 export const moviePopularity=new MoviePopularity();
+/** Another tab, or a cleared storage event, must stop reporting immediately. A missing key is storage being cleared. */
+export const popularityStorageChangeStopsReporting=(key:string|null)=>key===POPULARITY_SETTINGS_KEY||key===null;
 
 export function parsePopularIds(value:unknown):string[]{
  if(!value||typeof value!=='object'||!('titleIds' in value)||!Array.isArray(value.titleIds))throw new Error('Invalid popularity response');

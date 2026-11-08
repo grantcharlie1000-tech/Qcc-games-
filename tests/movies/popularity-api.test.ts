@@ -1,7 +1,8 @@
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import {afterEach, describe, expect, it} from 'vitest';
-import {handleMoviePopularity, type PopularityDatabase, type PopularityStatement} from '../../server/movie-popularity';
+import {handleMoviePopularity, POPULARITY_POST_LIMIT, type PopularityDatabase, type PopularityStatement} from '../../server/movie-popularity';
+import {onMoviePopularityScheduled} from '../../workers/movie-popularity-cleanup';
 import {onRequest} from '../../functions/api/movie-popularity';
 
 // D1 adapter backed by real SQLite: runs the production schema, trigger and transactions.
@@ -70,18 +71,40 @@ describe('movie popularity aggregate API',()=>{
  it('requires same-origin JSON POST, valid exact schema and a trusted platform IP',async()=>{
   const {env}=database();
   for(const headers of ([{origin:'https://evil.test'},{origin:''},{'content-type':'text/plain'},{'cf-connecting-ip':''}] as Record<string,string>[]))expect((await handleMoviePopularity(post(1,'movie-7',headers),env,now)).status).toBeGreaterThanOrEqual(400);
-  for(const value of [{titleId:'tv-1',token:token(1)},{titleId:'movie-0',token:token(1)},{titleId:'movie-7',token:'a'},{titleId:'movie-7',token:token(1),history:[]}]){
+  for(const value of [{titleId:'tv-1',token:token(1)},{titleId:'movie-0',token:token(1)},{titleId:'movie-7',token:'a'},{titleId:'movie-7',token:'A'.repeat(32)},{titleId:'movie-7',token:token(1),history:[]}]){
    const req=post();expect((await handleMoviePopularity(new Request(req,{body:JSON.stringify(value)}),env,now)).status).toBe(400);
   }
   expect((await handleMoviePopularity(new Request(post(),{body:' '.repeat(1025)}),env,now)).status).toBe(413);
   expect((await handleMoviePopularity(new Request(get(),{method:'DELETE'}),env,now)).status).toBe(405);
  });
- it('throttles atomically per hour without retaining IP/title associations',async()=>{
-  const {env,sql}=database();for(let n=1;n<=120;n++)expect((await handleMoviePopularity(post(n),env,now)).status).toBe(204);
-  expect((await handleMoviePopularity(post(121),env,now)).status).toBe(429);
-  expect(sql.prepare('SELECT views FROM movie_popularity_daily').get()?.views).toBe(120);
-  const rate=sql.prepare('SELECT * FROM movie_popularity_rate').all();expect(rate).toHaveLength(1);expect(JSON.stringify(rate)).not.toMatch(/192\.0\.2\.1|movie-7/);
-  expect((await handleMoviePopularity(post(121),env,now+3600000)).status).toBe(204);
+ it('throttles one shared address per hour without a device identifier',async()=>{
+  const {env,sql}=database();
+  for(let n=1;n<=POPULARITY_POST_LIMIT;n++)expect((await handleMoviePopularity(post(n),env,now)).status).toBe(204);
+  expect((await handleMoviePopularity(post(POPULARITY_POST_LIMIT+1),env,now)).status).toBe(429);
+  expect(sql.prepare('SELECT views FROM movie_popularity_daily WHERE title_id=?').get('movie-7')?.views).toBe(POPULARITY_POST_LIMIT);
+  expect((await handleMoviePopularity(post(POPULARITY_POST_LIMIT+2,'movie-8',{'cf-connecting-ip':'192.0.2.2'}),env,now)).status).toBe(204);
+  const rate=sql.prepare('SELECT * FROM movie_popularity_rate').all();expect(rate).toHaveLength(2);expect(JSON.stringify(rate)).not.toMatch(/192\.0\.2\.1|192\.0\.2\.2|movie-7|movie-8/);
+  expect(rate.every(row=>Number(row.attempts)<=POPULARITY_POST_LIMIT+1)).toBe(true);
+  expect((await handleMoviePopularity(post(POPULARITY_POST_LIMIT+1),env,now+3600000)).status).toBe(204);
+ },20000);
+ it('cleans with no traffic and while collection is disabled, and does not log failures',async()=>{
+  const {env,sql}=database();const disabled={...env,MOVIE_POPULARITY_ENABLED:'false' as const};
+  const day=Math.floor(now/86400000);
+  sql.prepare('INSERT INTO movie_popularity_tokens VALUES (?, ?, ?, ?)').run('movie-7',day-8,'hashed-token',now);
+  sql.prepare('INSERT INTO movie_popularity_rate VALUES (?, ?, ?)').run('hashed-bucket',4,now);
+  sql.prepare('INSERT INTO movie_popularity_daily VALUES (?, ?, ?)').run('movie-8',day+8,6);
+  expect((await handleMoviePopularity(get(),disabled,now+8*86400000)).status).toBe(503);
+  expect(sql.prepare('SELECT COUNT(*) n FROM movie_popularity_tokens').get()?.n).toBe(1);
+  expect(sql.prepare('SELECT views FROM movie_popularity_daily WHERE title_id=?').get('movie-7')?.views).toBe(1);
+  const empty=database();await onMoviePopularityScheduled({scheduledTime:now,cron:'15 * * * *'},{MOVIE_POPULARITY_DB:empty.env.MOVIE_POPULARITY_DB,MOVIE_POPULARITY_ENABLED:'false'},{waitUntil(){}});
+  expect(empty.sql.prepare('SELECT COUNT(*) n FROM movie_popularity_daily').get()?.n).toBe(0);
+  await onMoviePopularityScheduled({scheduledTime:now+8*86400000,cron:'15 * * * *'},{MOVIE_POPULARITY_DB:env.MOVIE_POPULARITY_DB},{waitUntil(){}});
+  expect(sql.prepare('SELECT COUNT(*) n FROM movie_popularity_tokens').get()?.n).toBe(0);
+  expect(sql.prepare('SELECT COUNT(*) n FROM movie_popularity_rate').get()?.n).toBe(0);
+  expect(sql.prepare('SELECT title_id, day, views FROM movie_popularity_daily').all()).toEqual([{title_id:'movie-8',day:day+8,views:6}]);
+  await onMoviePopularityScheduled({scheduledTime:now,cron:'15 * * * *'},{},{waitUntil(){}});
+  sql.exec('DROP TABLE movie_popularity_tokens');
+  await expect(onMoviePopularityScheduled({scheduledTime:now,cron:'15 * * * *'},env,{waitUntil(){}})).rejects.toThrow(/^movie_popularity_cleanup_failed$/);
  });
  it('Pages adapter fails closed and datastore errors do not disclose details',async()=>{
   expect((await onRequest({request:get(),env:{}})).status).toBe(503);

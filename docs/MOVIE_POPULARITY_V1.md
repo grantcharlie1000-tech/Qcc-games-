@@ -10,6 +10,24 @@
 - Disabled-by-default Pages/D1 backend with atomic dedup and aggregation, daily five-report suppression, seven-calendar-day ranking, no public counts, body/origin validation and short-lived IP-based rate limiting.
 - Updated existing privacy copy and documentation. My list and resume positions remain device-local; the new aggregate transmission is described accurately.
 
+## Playback contract
+
+Supported inputs, and only these, can advance the 60-second clock:
+
+- A same-page `<video>` `timeupdate` while the element is playing, not seeking, the tab is visible, and Study or Menu has not suspended the page. The position must move forward in step with elapsed time. Restoring a saved position, a click, and a paused `timeupdate` do not qualify.
+- A `frameXTV:timeupdate` message whose `source` is the current FrameXTV iframe and whose `origin` is `https://framextv.cc` or `https://framextv.xyz`. `frameXTV:ready` does not qualify.
+
+Ignored, and therefore not counted:
+
+- Internet Archive embeds. They have no supported progress message.
+- Messages posted by the parent page, an old iframe, or any other origin.
+- The `__syncxtv` hello object found in the public `framextv.cc` script.
+- VidLink, VixSrc, and VidSrc, which are not playback providers in this app.
+
+**What was checked against the live provider:** on 2026-11-07, `https://framextv.cc/api` and `https://framextv.cc/embed/157336` returned the site shell. The script `/assets/index-BrAnuREQ.js` contains `__syncxtv` / `type: "hello"` and does **not** contain `frameXTV:timeupdate`, `frameXTV:ready`, or `frameXTV:ended`. The player was not executed, and its anti-automation guard was not bypassed. The historical message names come from `docs/superpowers/plans/2026-10-28-streaming-redesign.md`. Until a real FrameXTV playback session is observed emitting those messages, FrameXTV contributions are an **unverified blocker**. Mismatched messages are ignored, so the live player is not silently counted under a guessed protocol.
+
+Synthetic tests post those historical messages from a fixture iframe. They do not prove the provider sends them. A separate browser test plays a two-second **TEST FIXTURE** H.264 file in the real `<video>` element and checks that it does not contribute. It does not play for 60 seconds. The 60-second rule is covered by unit tests of the same sampler the video listener calls.
+
 ## Limitations and release gate
 
 This is an **undeployed prototype**, not a verified live feature. It estimates eligible daily browser reports, not distinct people or verified students. It does not collect location or verify Marlborough membership. Client playback signals can be forged; actual FrameXTV availability and message behavior have not been live-tested. Unsupported streams are not counted.
@@ -43,7 +61,7 @@ The popularity switch originally occupied a separate settings group, which intro
 
 A running production-build check in isolated Chrome contexts measured both 390 px and 1440 px viewports before and after the fix. The row gap changed from 14 px to 0 px, the shared divider from 0 px to 1 px, and the checkbox right-edge difference remained 0 px. Default-on and switching off both passed. Actual revised screenshots were captured. Two geometry regression cases were added to `tests/movies/popularity.spec.ts`; the local browser measurement used the same assertions against the built app. The broader playback browser suite is still not claimed passed.
 
-The corrected code passes the full 236-file / 4,696-test unit suite and production build. These checks preceded the final menu-copy removal below. Nothing has been deployed.
+The corrected code passes the full unit suite and production build recorded below. These checks preceded the final menu-copy removal. Nothing has been deployed.
 
 
 ## Follow-up: remove the expanded settings explanation
@@ -53,3 +71,21 @@ Removed both requested paragraphs under the contribution switch and the now-unus
 The final code was checked against `main` at `05214cd0619e940242269d45f28888347fe9bea9`. Publication is limited to a draft PR, with backend enablement and live provider verification still gated as above.
 
 Final verification after the removal and persistence-failure fix: **236 unit-test files / 4,699 tests passed**, the **25 focused client/API/privacy tests passed**, the production build and TypeScript passed, and all **3 noindex checks passed**. The three new preference-save regressions were observed failing before the fix, then passing. Independent follow-up review found no remaining blocker for draft PR publication. Full browser-suite, live-provider and live-D1 validation remain release gates, not claimed passes.
+
+## Follow-up: isolated D1, cleanup, and playback contract
+
+Checked against `origin/main` `673201b7955d7dd89f39c92926139982a686d41b` (the PR 153 cleanup merge). Election results, Predictions, and the shared rail lifecycle stay. This follow-up does not deploy, create a database, or set `MOVIE_POPULARITY_ENABLED`.
+
+What this run verified:
+
+- Node SQLite runs the production schema, the insert trigger, rollback, the 2,000-attempt shared-address ceiling, and scheduled cleanup while collection is disabled and while the tables are empty. An in-window aggregate is kept.
+- Local workerd D1 (Miniflare, compatibility date `2026-08-06`, memory only) runs playback qualification, contribution, duplicate tokens, the five-report threshold, ranking, batch rollback, and the disabled-handler versus scheduled-cleanup split. The browser then renders that ranking. This is not remote D1 and not the Pages compatibility date `2026-11-04`.
+- Chromium played a two-second fixture MP4 in the real `<video>` element and did not contribute. WebKit crashed opening that fixture, so WebKit native playback is not verified. The 60-second rule is unit-tested on the sampler the video listener calls.
+- Chromium and WebKit ran `tests/movies/popularity.spec.ts`: 21 passed, 1 skipped. Archive and parent-page messages did not contribute. Opt-out updated the other tab, survived reload, and stayed off after Clear my list & watch history.
+- `npm test`: 245 files passed, 1 skipped; 4,862 tests passed, 7 skipped. `npm run build` passed, including the service-worker kill switch. The rights registry reported 0 approved local files.
+
+What remains unverified, and blocks enablement:
+
+- A live FrameXTV session. The public script fetched on 2026-11-07 does not contain `frameXTV:timeupdate`. Synthetic fixture messages are not that contract.
+- Remote D1, the cleanup cron actually running, and the account's log and Time Travel settings.
+- The full Movies browser suite. Only `tests/movies/popularity.spec.ts` was run here.

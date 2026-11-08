@@ -7,7 +7,7 @@ import {mountElectionBanner} from './election/banner';
 import './movies/style.css';
 import type {MoviesView} from './movies/view';
 import type {MovieStorage} from './movies/storage';
-import {moviePopularity,POPULARITY_SETTINGS_KEY} from './movies/popularity';
+import {moviePopularity,popularityStorageChangeStopsReporting} from './movies/popularity';
 import {collectionHash,entryHash,entryFromHash} from './core/navigation';
 import mauriMark from './assets/mauri-mark.svg?raw';
 import {uiIcon} from './ui/icons';
@@ -503,7 +503,7 @@ popularityInput.addEventListener('change',()=>{
  popularityInput.checked=preference.enabled;
  if(!preference.saved)announce('Browser storage is unavailable. Contributions are off for this visit.');
 });
-window.addEventListener('storage',event=>{if(event.key===POPULARITY_SETTINGS_KEY||event.key===null){moviePopularity.stop();popularityInput.checked=moviePopularity.enabled;}});
+window.addEventListener('storage',event=>{if(popularityStorageChangeStopsReporting(event.key)){moviePopularity.stop();popularityInput.checked=moviePopularity.enabled;}});
 // The Christmas theme is presentation only: it is stored outside saves and sync, and games pick up a change as they draw.
 const festiveInput=document.querySelector<HTMLInputElement>('#festive')!;festiveInput.checked=storedFestiveTheme()==='christmas';
 festiveInput.addEventListener('change',()=>{

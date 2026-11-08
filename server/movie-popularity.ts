@@ -2,6 +2,8 @@
 export interface PopularityStatement {
  bind(...values:(string|number)[]):PopularityStatement;
  all<T=Record<string,unknown>>():Promise<{results:T[]}>;
+ /** D1 schema statements. The request handler uses all(), not run(). */
+ run?():Promise<unknown>;
 }
 export interface PopularityDatabase {
  prepare(query:string):PopularityStatement;
@@ -14,6 +16,22 @@ export interface PopularityEnv {
  MOVIE_POPULARITY_SECRET?:string;
 }
 const DAY=86400000,HOUR=3600000,MAX_BODY=1024;
+/** Valid-schema POSTs allowed for one trusted platform address during one UTC hour.
+ * A school often shares one public address. This ceiling leaves room for a few
+ * hundred people to report several titles in that hour. It is not split by device,
+ * account, or any identifier that would outlive the hour. One client on that
+ * address can still consume the whole ceiling. */
+export const POPULARITY_POST_LIMIT=2000;
+/** Deletes expired dedup tokens, hourly rate buckets and daily rows outside the 7-day window.
+ * Safe to run with no traffic and while collection is disabled. It does not read the enable flag or the secret. */
+export function cleanupMoviePopularity(db:PopularityDatabase,now=Date.now()){
+ const day=Math.floor(now/DAY);
+ return db.batch([
+  db.prepare('DELETE FROM movie_popularity_tokens WHERE expires_at <= ?').bind(now),
+  db.prepare('DELETE FROM movie_popularity_rate WHERE expires_at <= ?').bind(now),
+  db.prepare('DELETE FROM movie_popularity_daily WHERE day < ?').bind(day-6),
+ ]);
+}
 const headers={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer'};
 function reply(status:number,error?:string){return error?Response.json({error},{status,headers}):new Response(null,{status,headers});}
 
@@ -41,14 +59,10 @@ export async function handleMoviePopularity(request:Request,env:PopularityEnv,no
    let data:unknown;try{data=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}catch{return reply(400,'invalid_event');}
    if(!data||typeof data!=='object'||Array.isArray(data))return reply(400,'invalid_event');
    const value=data as Record<string,unknown>;
-   if(Object.keys(value).length!==2||typeof value.titleId!=='string'||!/^movie-[1-9][0-9]{0,9}$/.test(value.titleId)||typeof value.token!=='string'||!/[a-f0-9]{32}/.test(value.token)||value.token.length!==32)return reply(400,'invalid_event');
+   if(Object.keys(value).length!==2||typeof value.titleId!=='string'||!/^movie-[1-9][0-9]{0,9}$/.test(value.titleId)||typeof value.token!=='string'||!/^[a-f0-9]{32}$/.test(value.token))return reply(400,'invalid_event');
    event={titleId:value.titleId,token:value.token};
   }
-  await db.batch([
-   db.prepare('DELETE FROM movie_popularity_tokens WHERE expires_at <= ?').bind(now),
-   db.prepare('DELETE FROM movie_popularity_rate WHERE expires_at <= ?').bind(now),
-   db.prepare('DELETE FROM movie_popularity_daily WHERE day < ?').bind(day-6),
-  ]);
+  await cleanupMoviePopularity(db,now);
   if(!event){
    // Suppress EACH day before summing. Daily token rotation cannot establish distinct weekly people.
    const {results}=await db.prepare(`SELECT title_id FROM movie_popularity_daily
@@ -61,9 +75,9 @@ export async function handleMoviePopularity(request:Request,env:PopularityEnv,no
   // Separate hourly namespace: no title, token, or raw IP in this table; no cross-hour identifier.
   const ipHash=await hash(`rate:${hour}:${ip}`);
   const {results}=await db.prepare(`INSERT INTO movie_popularity_rate (bucket_hash, attempts, expires_at) VALUES (?, 1, ?)
-   ON CONFLICT(bucket_hash) DO UPDATE SET attempts = MIN(attempts + 1, 121) RETURNING attempts`).bind(ipHash,(hour+1)*HOUR).all<{attempts:number}>();
+   ON CONFLICT(bucket_hash) DO UPDATE SET attempts = MIN(attempts + 1, ${POPULARITY_POST_LIMIT+1}) RETURNING attempts`).bind(ipHash,(hour+1)*HOUR).all<{attempts:number}>();
   if(!results.length)return reply(503,'popularity_unavailable');
-  if(results[0].attempts>120)return reply(429,'rate_limited');
+  if(results[0].attempts>POPULARITY_POST_LIMIT)return reply(429,'rate_limited');
   const tokenHash=await hash(`view:${day}:${event.titleId}:${event.token}`);
   // The schema trigger increments only after a successful insert, in the same SQLite transaction.
   await db.batch([db.prepare(`INSERT OR IGNORE INTO movie_popularity_tokens (title_id, day, token_hash, expires_at)
