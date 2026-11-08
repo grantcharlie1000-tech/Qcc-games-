@@ -1,5 +1,6 @@
 import {beforeAll,afterAll,beforeEach,describe,it,expect,vi} from 'vitest';
 import {createHash} from 'node:crypto';
+import {readFile} from 'node:fs/promises';
 import {LocalDB,createLocalPool} from '../support/local-db';
 import type {Pool} from 'pg';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
@@ -94,15 +95,33 @@ it('keeps the Minesweeper score ranking separate from legacy and time scores',as
  expect((await (await handle(new Request(endpoint+'?game=minesweeper'))).json()).entries).toHaveLength(0);
 });
 
-it('keeps the Claimline leaderboard closed without changing the schema or other games',async()=>{
- const token=await signup('Early_Bird');
- const response=await submit(token,'ignored',1234,'claimline');
- expect(response.status).toBe(409);
- expect(await response.json()).toEqual({error:'This leaderboard opens soon. Your score stays on this device.',code:'leaderboard-not-open'});
- expect((await pool.query("SELECT * FROM arcade_scores WHERE game_id='claimline'")).rows).toHaveLength(0);
- expect((await submit(token,'ignored',40,'snake')).status).toBe(200);
- const empty=await handle(new Request(endpoint+'?game=claimline&view=public'));
- expect(empty.status).toBe(200);expect((await empty.json()).entries).toEqual([]);
+it('accepts Claimline peak shares once its migration is applied',async()=>{
+ const token=await signup('Claimer');
+ expect((await submit(token,'ignored',1234,'claimline')).status).toBe(200);
+ await submit(token,'ignored',900,'claimline');
+ const board=await (await handle(new Request(endpoint+'?game=claimline'))).json();
+ expect(board.entries.map((e:any)=>[e.name,e.score])).toEqual([['Claimer',1234]]);
+});
+
+it('answers not-open (409) while the database does not list Claimline yet, without touching other games',async()=>{
+ // The moved quad-clash migration is what lists Claimline. Drop only that game from the throwaway test database, then put the committed constraint back.
+ const migration=await readFile('db/migrations/20261104090000_quad_clash_score.sql','utf8');
+ await pool.query(migration.replace(",'claimline'",''));
+ try{
+  const token=await signup('Early_Bird');
+  const response=await submit(token,'ignored',1234,'claimline');
+  expect(response.status).toBe(409);
+  expect(await response.json()).toEqual({error:'This leaderboard opens soon. Your score stays on this device.',code:'leaderboard-not-open'});
+  expect((await pool.query("SELECT * FROM arcade_scores WHERE game_id='claimline'")).rows).toHaveLength(0);
+  expect((await submit(token,'ignored',40,'snake')).status).toBe(200);
+  const empty=await handle(new Request(endpoint+'?game=claimline&view=public'));
+  expect(empty.status).toBe(200);expect((await empty.json()).entries).toEqual([]);
+  await pool.query('ALTER TABLE arcade_scores ADD CONSTRAINT claimline_probe CHECK (score < 1000000) NOT VALID');
+  try{expect((await submit(token,'ignored',2000000,'snake')).status).toBe(503);}
+  finally{await pool.query('ALTER TABLE arcade_scores DROP CONSTRAINT claimline_probe');}
+ }finally{await pool.query(migration);}
+ const token=await signup('After_Migration');
+ expect((await submit(token,'ignored',777,'claimline')).status).toBe(200);
 });
 
 it.each([
