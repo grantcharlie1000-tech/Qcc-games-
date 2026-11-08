@@ -1,8 +1,8 @@
 # Predictions
 
 Free play-credit forecasting markets at `#/predictions`. Every eligible account gets 10 credits each Monday
-(00:00 Pacific/Auckland), buys YES or NO shares in reviewed questions, can sell while trading is open, and is paid
-once after an independently reviewed result. Credits are **not** money: they cannot be bought, cashed out,
+(00:00 Pacific/Auckland), buys YES or NO shares in questions that open the moment they are asked, can sell while
+trading is open, and is paid once a moderator authorises the result from the dashboard. Credits are **not** money: they cannot be bought, cashed out,
 transferred, gifted, redeemed or exchanged for anything of value, and nothing in the code links them to anything
 that can. Built from the *NCEA Study Predictions* reference pack (7 November 2026).
 
@@ -17,7 +17,7 @@ the Menu entry only appears in development builds or a build with `VITE_QCC_PRED
 | `src/predictions/week.ts` | Auckland calendar weeks for display; the database computes the authoritative weeks the same way. |
 | `src/predictions/shared.ts` | API types, limits, draft validation, prohibited-subject screen, credit formatting. |
 | `src/predictions/server.ts` | The `/.netlify/functions/predictions` handler, the grant operation and the settlement engine. |
-| `src/predictions/{client,model,view}.ts`, `style.css` | Lazy-loaded browser feature (Explore, market, ticket, review sheet, My calls, Rankings, Ask, Review queue). |
+| `src/predictions/{client,model,view}.ts`, `style.css` | Lazy-loaded browser feature (Explore, market, ticket, My calls, Rankings, Ask, moderator Dashboard at `#/predictions/dashboard`). |
 | `netlify/database/migrations/20261108090000_predictions.sql` | Schema, append-only journal, balance and freeze triggers. **Needs owner approval.** |
 | `netlify/functions/predictions.mts`, `predictions-grants.mts` | Netlify adapters: request handler and the hourly grant job. |
 | `functions/_middleware.ts` | Pages proxy allowlist now includes `predictions`. |
@@ -42,31 +42,67 @@ the Menu entry only appears in development builds or a build with `VITE_QCC_PRED
   that accepts the rules); visiting never creates entitlement. Any ended interval is a suspension that only an
   operator can lift (people cannot end their own eligibility).
 - **Trades.** Quote (30 s, bound to account, market, side, op, amount, rules hash, pricing version, tolerance) →
-  execute with an operation key. In one transaction: lock market, replay a committed key, re-check eligibility,
-  status and server time, lock wallet, recompute, enforce the minimum output, check funds/ownership and the 25-credit
-  per-question cap, post, update shares, write the receipt and an outbox row. `UNIQUE(account_id, operation_key)` +
-  request hash makes retries exactly-once; a different payload under the same key is a 409. Lock order everywhere:
-  markets (by id) → wallets (by account id) → positions; deadlocks/serialisation failures retry.
-- **Settlement.** `predictions_settlements.market_id` is the primary key, so a second economic settlement is
-  impossible. Holder snapshots become `predictions_claims` (one per account), each paid with its own journal entry.
+  execute with an operation key. Pressing **Predict** (or **Sell**) places the prediction immediately: there is no
+  review or confirm step. The quote still protects the price: if it expired or the price moved past the tolerance,
+  nothing is spent and the person is offered a fresh price. In one transaction: lock market, replay a committed key,
+  re-check eligibility, status and server time, lock wallet, recompute, enforce the minimum output, check
+  funds/ownership and the 25-credit per-question cap, post, update shares, write the receipt and an outbox row.
+  `UNIQUE(account_id, operation_key)` + request hash makes retries exactly-once; a different payload under the same key
+  is a 409. Lock order everywhere: markets (by id) → wallets (by account id) → positions; deadlocks/serialisation
+  failures retry.
+- **Settlement.** `predictions_resolutions.market_id` is unique (one authorisation per market) and
+  `predictions_settlements.market_id` is the primary key, so a second economic settlement is impossible. Holder
+  snapshots become `predictions_claims` (one per account), each paid with its own journal entry.
 
-## Governance, as implemented
+## Questions: nothing waits for review
 
-- Anyone eligible can submit (6/day, 3 pending at once). The server validates lengths, dates, category, audience,
-  source, a prohibited-subject screen (bodies, relationships, health, discipline, grades, harm) and duplicate wording.
-- Only a **moderator who is not the author** can approve; approval freezes the rules (hash shown on the page) and funds
-  the reserve atomically. A trigger refuses any later change to economic or resolution terms.
-- A **resolver or moderator** with no trades in the market and who is not its author proposes YES/NO/VOID with
-  evidence. Anyone eligible except the proposer can challenge for 24 hours. A **different moderator** with no
-  position finalises; a challenged result needs a decision note and may be overturned.
-- Moderators can pause a market (integrity pause stops trading; before the close time it can only be proposed as VOID, through the same review) and see reports.
-- School-only questions are visible and tradable only to accounts with current eligibility, enforced in SQL.
-- Every moderation, resolution and eligibility action is written to the append-only `predictions_audit`.
+A question opens the moment it is submitted. There is no approval queue and no "waiting for review" state.
 
-Roles and suspensions are operator SQL, like the Social runbook:
+- Anyone eligible can ask (6/day, 3 open at once per author, 60 open overall; `max_open_markets`). In one transaction the
+  server validates the draft, hashes and freezes the rules (hash shown on the page), opens the market and funds its
+  14-credit reserve from the treasury. A trigger refuses any later change to economic or resolution terms.
+- Safety still applies, because nobody reads a question before it opens: lengths, dates, category, audience, a
+  prohibited-subject screen and duplicate wording are enforced by the server. Harm to people and sexual content are
+  refused for every question; school-life subjects (bodies, relationships, health, discipline, grades, crime) are also
+  refused for **local** questions. Anyone eligible can report a question; moderators see reports on the dashboard and
+  can pause trading or void the question.
+
+### Global and local questions
+
+`isGlobal(category, audience)` in `shared.ts` decides, everywhere (form, server, dashboard):
+
+| | Local | Global |
+| --- | --- | --- |
+| Which | audience *School members only*, or category *School* or *Marlborough* | everything else (public Sport, Games, Technology, Culture, Science, Community) |
+| Source when asking | free text (who or what confirms it); no link needed | must be a valid `https://` link |
+| Evidence to authorise YES or NO | note only; link optional | note **and** a valid `https://` link |
+| VOID | note only | note only |
+
+"Valid link" means a well-formed `https://` URL (no credentials, no spaces, a real hostname, under 300 characters). The
+server never fetches links, so a person or agent still has to open it and check it says what the note claims.
+
+## Moderator dashboard (authorising results and payouts)
+
+`#/predictions/dashboard` (a **Dashboard** tab and an Explore chip, shown only to moderators; the server enforces the
+role on every call). It lists every question whose trading has closed (and every paused question), with the YES, NO and
+VOID rules and source, who holds shares, and **exactly what each outcome would pay**. A moderator picks YES, NO or VOID,
+writes what happened, adds the evidence link where required, and presses **Authorise**. In one transaction that records
+the authorisation against their account, pays every holder once and returns the unused reserve to the treasury.
+The dashboard also shows open reports, totals, and the most recent authorisations (who, what, how much, the evidence).
+
+- A question can be authorised only after trading closes, except that a question paused before its close can only be voided.
+- A moderator who **created or traded** a question cannot authorise it; another moderator (or agent account) must.
+- A second authorisation of the same question is refused (`already_settled`). Results cannot be changed after payout.
+- Moderators can also pause and resume trading from a question page.
+- The agent route is the same HTTP API with an account session: `GET ?action=dashboard`, `POST ?action=authorise`
+  with `{marketId, outcome, note, link?}`. Give each agent its own account (and role) so every payout is attributable.
+
+Roles and suspensions are operator SQL, like the Social runbook. Moderator access is granted to an existing account;
+no credentials are stored in the code or this repository:
 
 ```sql
 INSERT INTO predictions_roles(account_id,role,granted_by) SELECT id,'moderator','<your name>' FROM accounts WHERE lower(username)=lower('<username>');
+-- Remove: DELETE FROM predictions_roles WHERE account_id=(SELECT id FROM accounts WHERE lower(username)=lower('<username>'));
 -- Suspend: end the current interval. Any ended interval blocks re-joining; only an operator can restore access.
 UPDATE predictions_eligibility SET eligible_until=now() WHERE account_id='<id>' AND eligible_until IS NULL;
 -- Restore: INSERT INTO predictions_eligibility(account_id,method,note) VALUES ('<id>','operator','<reason>');
@@ -92,20 +128,23 @@ without `QCC_TEST_PG_URL`; PGlite is a single session and cannot prove row locks
 - `tests/predictions/lmsr.test.ts` (17): golden values, exp/ln accuracy, symmetry, complete-set cost, monotonicity,
   no profitable round trip, extreme prices, no shorting, void aggregation, 4,000-step 25-wallet simulation with
   conservation and YES/NO/void solvency after every step.
-- `tests/predictions/server.test.ts` (20, PGlite and PostgreSQL 16): flag off, suspension via the runbook SQL, guest/school visibility, cross-origin,
-  grant once, missed weeks / pre-launch / suspended weeks, job + lazy repair convergence, DST week boundaries
-  (27 Sep 2026, 4 Apr 2027) matching SQL, golden purchase + replay + key conflict + receipt ownership, sell-back,
-  stale quote, expiry, insufficient credits, position cap, close race, global pause, draft validation, duplicates,
-  pending cap, author/role checks, frozen terms, append-only and balanced journal, payout once + reserve release +
-  realised P/L, dispute → independent void, integrity pause. Ledger reconciliation after each scenario.
-- `tests/predictions/concurrency.test.ts` (7, PostgreSQL 16 only): two moderators approving against the open-market budget, one wallet buying two markets at once, the same
-  key five times at once, twelve wallets on one market, trade vs close, two grant jobs + lazy repairs, two moderators
-  finalising at once.
-- Browser (Chromium, local stack): two accounts completed join → buy YES 2.00 (3.818056 shares, 54.76%) → buy NO 3.00
-  → sell half → ask → moderator approve → propose → challenge, with no horizontal overflow at 320/390/768/1440.
+- `tests/predictions/server.test.ts` (PGlite and PostgreSQL 16): flag off, suspension via the runbook SQL, guest/school
+  visibility, cross-origin, grant once, missed weeks / pre-launch / suspended weeks, job + lazy repair convergence, DST
+  week boundaries, golden purchase + replay + key conflict + receipt ownership, sell-back, stale quote, expiry,
+  insufficient credits, position cap, close race, global pause; questions open at once, frozen and funded, validation,
+  duplicates, per-author and overall caps, global links required and local ones not, the prohibited-subject screen;
+  authorisation by moderators only, payout once, reserve release, global evidence link, void, conflict of interest, the
+  dashboard's exposure figures and pause.
+- `tests/predictions/concurrency.test.ts` (PostgreSQL 16 only, skipped otherwise): one wallet buying two markets at once,
+  the same key five times at once, twelve wallets on one market, trade vs close, two grant jobs + lazy repairs, two
+  submissions against the open-question budget, two moderators authorising at once.
+- Browser (Chromium, local stack): join → Predict places immediately (golden 2.00 credits → 3.818056 shares) → sell →
+  ask a local and a global question → moderator authorises from the dashboard, with no horizontal overflow at
+  320/390/768/1440 on every Predictions page.
 
 **Not verified here:** Safari/WebKit and Firefox (not installed in this environment), real refraction of the glass
-island on Safari, low-end device frame timing, and anything on the production backend.
+island on Safari, low-end device frame timing, the real-PostgreSQL concurrency suite (no server available), and anything
+on the production backend.
 
 ## Before it can go live (each needs Charlie's approval)
 
@@ -121,6 +160,7 @@ island on Safari, low-end device frame timing, and anything on the production ba
    `runGrantJob` from an authenticated hourly cron there. A Pages deploy alone will not make trading work.
 4. **Migration.** Apply `20261108090000_predictions.sql` to Preview first, then Production.
 5. **Launch.** `UPDATE predictions_config SET enabled=true, launch_at=now();` (keep `show_fixtures=false`), grant
-   reviewer roles, publish 8–12 reviewed questions, then build the frontend with `VITE_QCC_PREDICTIONS=on`.
+   the moderator role (SQL above) to the accounts that will authorise results, then build the frontend with
+   `VITE_QCC_PREDICTIONS=on`. Questions open as soon as people ask them, so decide who watches the dashboard's reports.
 
 Outbox rows are written with every ledger change; no delivery worker exists yet because the app has no push channel.
