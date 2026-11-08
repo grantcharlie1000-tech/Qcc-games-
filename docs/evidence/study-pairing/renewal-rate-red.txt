@@ -1,0 +1,66 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/study/pairing-backend.test.ts
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-backend-integration
+
+ ❯ tests/study/pairing-backend.test.ts (11 tests | 2 failed) 3212ms
+   ✓ real QCC auth -> intent -> verified runtime boundary -> durable link/context -> gated API -> cancellation 213ms
+   ✓ currently selected QCC bearer must match start even while original session is still valid 161ms
+   ✓ acknowledged outgoing-session revocation invalidates Whetū context without any cancel request 174ms
+   ✓ real account switching revokes the old workspace before publishing the new local identity 231ms
+   ✓ server selection rejects old in-flight confirms after a switch even while original bearer remains valid 166ms
+   ✓ view-scoped cancellation preserves a newer context created by another tab and never clears cookies 130ms
+   ✓ a new browser selection invalidates old contexts without waiting for old session logout or expiry 185ms
+   ✓ status rejects a different bearer session for the same account until browser selection acknowledges it 157ms
+   ✓ status renews only an existing consented pair using live older sessions, without relinking 121ms
+   × status reuses an already valid context instead of writing on every poll 117ms
+     → expected [ Array(1) ] to deeply equal []
+   × missing-cookie context renewal has a bounded durable per-browser budget 189ms
+     → expected 200 to be 429 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/study/pairing-backend.test.ts > status reuses an already valid context instead of writing on every poll
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "__Host-nceastudy_context=62e955e94374f4b05f7f2504fb8c7d106044c18ff66d3df292969de7c025a861; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=900",
++ ]
+
+ ❯ tests/study/pairing-backend.test.ts:160:160
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/study/pairing-backend.test.ts > missing-cookie context renewal has a bounded durable per-browser budget
+AssertionError: expected 200 to be 429 // Object.is equality
+
+- Expected
++ Received
+
+- 429
++ 200
+
+ ❯ tests/study/pairing-backend.test.ts:169:103
+    167|  const review=await handle(request('review',{},pending));const details…
+    168|  for(let i=0;i<12;i++)expect((await handle(request('status',{},'sb-pro…
+    169|  expect((await handle(request('status',{},'sb-project-auth-token=cooki…
+       |                                                                                                       ^
+    170|  expect((await db.query('SELECT * FROM qcc_study_contexts')).rows).toH…
+    171| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 9 passed (11)
+   Start at  13:37:12
+   Duration  3.72s (transform 177ms, setup 0ms, collect 229ms, tests 3.21s, environment 0ms, prepare 58ms)
+

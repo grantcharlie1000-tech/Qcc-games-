@@ -1,0 +1,17 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/study/pairing-ingress.test.ts
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-backend-integration
+
+ ✓ tests/study/pairing-ingress.test.ts (7 tests) 5466ms
+   ✓ authenticated verification retains a 6000/minute per-application service ceiling across egress IPs  972ms
+   ✓ 30 students can complete the actual six-call pairing flow behind a single NAT  2977ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  14:03:24
+   Duration  6.20s (transform 316ms, setup 0ms, collect 444ms, tests 5.47s, environment 0ms, prepare 78ms)
+

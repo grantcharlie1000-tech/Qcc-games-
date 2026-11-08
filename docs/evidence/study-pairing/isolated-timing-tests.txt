@@ -1,0 +1,24 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/games/ball-run/christmas.test.ts tests/games/color-blocks/fair-deal.test.ts
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-backend-integration
+
+ ✓ tests/games/color-blocks/fair-deal.test.ts (10 tests) 7877ms
+   ✓ constructive tray generation with a stored witness > replays every stored witness across reproducible sparse and dense boards  3722ms
+   ✓ constructive tray generation with a stored witness > replays every tray witness from its deal-time board through thirty complete hands per seed  2287ms
+   ✓ constructive tray generation with a stored witness > applies a mild repeat penalty without forbidding repeats  1507ms
+ ✓ tests/games/ball-run/christmas.test.ts (28 tests) 8733ms
+   ✓ Ball Run Christmas sleigh collision > holds everything drawn of it, snugly, in every row: any pitch in it, bank, block roll, carve and squash  596ms
+   ✓ Ball Run Christmas sleigh collision > is drawn in its box's frame through the real scene: on banks, dodging and in the air, inside the box for its pitch  536ms
+   ✓ Ball Run Christmas scene > draws the road's tiles on the surface it simulates, on bends and where the bank changes, so the runners sit on it  461ms
+   ✓ Ball Run Christmas scene > rides whole courses with its runners on the road, across the whole width, on steep crests, dips and bank changes  3243ms
+   ✓ Ball Run Christmas scene > keeps its nose steady through real steps: taking off and landing over drops, crests and banks  2474ms
+
+ Test Files  2 passed (2)
+      Tests  38 passed (38)
+   Start at  13:37:24
+   Duration  9.78s (transform 384ms, setup 0ms, collect 935ms, tests 16.61s, environment 0ms, prepare 110ms)
+
