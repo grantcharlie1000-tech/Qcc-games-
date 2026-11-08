@@ -17,6 +17,7 @@ const INDEXES=['qcc_study_pairing_browser','qcc_study_pairing_expiry','qcc_study
 const quote=s=>'"'+s.replaceAll('"','""')+'"';
 class GuardRefusal extends Error{}
 function requireState(ok,message){if(!ok)throw new GuardRefusal(message);}
+const outcome={commitAttempted:false,committed:false,verified:false};
 
 async function inspect(client){
  const result=await client.query(`SELECT c.relname,c.relkind,c.relrowsecurity,
@@ -87,7 +88,8 @@ async function main(){
    await inspect(client);
    requireState(before===await counts(client,tableNames),'Existing table row counts changed; rolling back');
    await client.query('INSERT INTO public.qcc_schema_migrations(name,checksum) VALUES ($1,$2)',[NAME,CHECKSUM]);
-   await client.query('COMMIT');committed=true;
+   outcome.commitAttempted=true;
+   await client.query('COMMIT');committed=true;outcome.committed=true;
    console.log('WHETU_LINKAGE_SCHEMA_COMMITTED: four empty metadata tables, indexes, constraints and RLS; existing public-table row counts unchanged in transaction snapshot.');
   }
   // Fresh post-commit observation, not an application test or traffic cutover.
@@ -96,11 +98,12 @@ async function main(){
   const recorded=(await client.query('SELECT checksum FROM public.qcc_schema_migrations WHERE name=$1',[NAME])).rows;
   requireState(recorded.length===1&&recorded[0].checksum===CHECKSUM,'Post-commit migration record mismatch');
   await client.query('COMMIT');
+  outcome.verified=true;
   console.log('WHETU_LINKAGE_SCHEMA_POSTCOMMIT_VERIFIED: production API deployment remains unchanged; no application tests or other migrations run.');
  }catch(error){
   if(client)await client.query('ROLLBACK').catch(()=>{});
   // Never print raw driver errors: they may include connection details or data.
-  console.error(committed?'WHETU_LINKAGE_COMMITTED_BUT_POSTCHECK_FAILED: do not retry blindly.':'WHETU_LINKAGE_NOT_COMMITTED: refused or rolled back; no other migrations executed.');
+  console.error(committed?'WHETU_LINKAGE_COMMITTED_BUT_POSTCHECK_FAILED: do not retry blindly.':outcome.commitAttempted?'WHETU_LINKAGE_COMMIT_OUTCOME_UNKNOWN: acknowledgement lost; inspect production schema/history before any retry.':'WHETU_LINKAGE_NOT_COMMITTED: refused or rolled back; no other migrations executed.');
   const reason=error instanceof GuardRefusal?error.message:'Database operation failed; credential/data details suppressed'+(/^[A-Z0-9]{5}$/.test(error?.code??'')?' (SQLSTATE '+error.code+')':'');
   throw new GuardRefusal(reason);
  }finally{client?.release();await pool.end();}
@@ -108,4 +111,4 @@ async function main(){
  console.log('WHETU_OPERATOR_JOB_COMPLETE_NO_DEPLOY: intentionally stopping before Vercel publishes any deployment.');
  process.exitCode=78;
 }
-main().catch(error=>{if(error instanceof GuardRefusal)console.error('WHETU_LINKAGE_GUARD: '+error.message);else console.error('WHETU_LINKAGE_PREFLIGHT_FAILED: configuration or source unavailable; no database mutation attempted.');process.exitCode=1;});
+main().catch(error=>{if(error instanceof GuardRefusal)console.error('WHETU_LINKAGE_GUARD: '+error.message);else if(outcome.commitAttempted)console.error('WHETU_LINKAGE_FINALIZER_FAILED_AFTER_COMMIT_ATTEMPT: do not retry blindly; committed='+outcome.committed+'; postcheckVerified='+outcome.verified);else console.error('WHETU_LINKAGE_PREFLIGHT_OR_CONNECTION_FAILED: no write COMMIT attempted; raw details suppressed.');process.exitCode=1;});
