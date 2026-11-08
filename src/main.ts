@@ -76,7 +76,8 @@ const rulesDialog=document.querySelector<HTMLDialogElement>('#rules-dialog')!;
 const tabbar=autoHideTabbar(document.querySelector<HTMLElement>('.app-tabbar')!,window);
 bindGlass(document.querySelector<HTMLElement>('.app-menu')!);
 const preferences=store.settings();
-const accounts:AccountsClient=new AccountsClient(undefined,undefined,WHETU_STUDY&&!WHETU_STUDY_PAUSED?{strictIdentityChanges:true,beforeIdentityCommit:nextSession=>{closeWhetuForIdentityChange();return studyPairing!.select(nextSession?.token);}}:{});
+// Only QCC's own session revocation gates an explicit logout; Study never gates login or startup.
+const accounts:AccountsClient=new AccountsClient(undefined,undefined,WHETU_STUDY?{confirmedServerLogout:true}:{});
 const studyPairing:StudyPairingClient|undefined=WHETU_STUDY&&!WHETU_STUDY_PAUSED?new StudyPairingClient(()=>accounts.session()?.token):undefined;
 const launcher=new AppsLauncher({accounts,chat:new ChatClient(()=>accounts.session()?.token??null),reducedMotion:()=>preferences.reducedMotion});
 void launcher.probe();

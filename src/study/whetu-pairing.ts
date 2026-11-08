@@ -4,6 +4,8 @@ const UNAVAILABLE='Account linking could not be checked. Try again.';
 const CHANGED='Account changed. Start again.';
 export interface StudyPairReview {qccUsername:string;whetuLabel:string;challenge:string}
 export interface StudyPairing {
+ /** Study-only admission: checks the current QCC session against server-owned browser authority. */
+ activate():Promise<void>;
  status():Promise<boolean>;
  start():Promise<void>;
  review():Promise<StudyPairReview>;
@@ -81,7 +83,9 @@ export class StudyPairingClient implements StudyPairing {
  }
  /** Scoped cleanup cannot revoke another tab's context or clear its cookies. */
  cancel():Promise<void>{this.cancelRequired=true;return this.serial(()=>this.cancelIntent());}
- /** Called before local identity commits and at startup, never from the iframe. */
+ /** Never runs during QCC startup/login. Only the host's Study entry may select its current session. */
+ activate():Promise<void>{return this.select(this.token());}
+ /** Selection verifies immutable server authority; it cannot create/rebind a browser session. */
  select(nextToken?:string|null):Promise<void>{
   const selected=nextToken??null;
   if(selected!==null&&!/^acct_[a-f0-9]{64}$/.test(selected))return Promise.reject(new StudyPairingError(UNAVAILABLE,401));

@@ -1,4 +1,4 @@
-import {routeWhetuIntegration,type WhetuIntegrationEnv} from '../server/whetu-integration';
+import {readSetCookies,routeWhetuIntegration,type WhetuIntegrationEnv} from '../server/whetu-integration';
 
 interface ProxyContext {
  request:Request;
@@ -33,6 +33,9 @@ export async function onRequest({request,env,next}:ProxyContext):Promise<Respons
   const origin=new URL(configured);
   if(!['https:','http:'].includes(origin.protocol)||origin.username||origin.password||origin.pathname!=='/'||origin.search||origin.hash)throw new Error('Invalid backend origin');
   const headers=allowedHeaders(request.headers,REQUEST_HEADERS);
+  // This fixed origin is server-owned context, never a browser-supplied header.
+  const studyAuth=env.QCC_WHETU_INTEGRATION==='on'&&env.WHETU_PUBLIC_ORIGIN===url.origin&&url.pathname===PREFIX+'accounts';
+  if(studyAuth)headers.set('X-QCC-Public-Origin',url.origin);
   // Only Cloudflare's visitor IP and the server binding may populate these.
   const ip=request.headers.get('CF-Connecting-IP')?.trim();
   if(ip)headers.set('X-QCC-Client-IP',ip);
@@ -42,6 +45,16 @@ export async function onRequest({request,env,next}:ProxyContext):Promise<Respons
    // Node's Web Request requires this for streams; the Workers runtime ignores it.
    duplex:'half'
   } as RequestInit));
-  return new Response(upstream.body,{status:upstream.status,statusText:upstream.statusText,headers:allowedHeaders(upstream.headers,RESPONSE_HEADERS)});
+  const responseHeaders=allowedHeaders(upstream.headers,RESPONSE_HEADERS);
+  if(studyAuth&&['login','signup'].includes(url.searchParams.get('action')??'')&&[200,201].includes(upstream.status)){
+   for(const cookie of readSetCookies(upstream.headers)){
+    // Exactly one existing host-only authority cookie, not arbitrary backend cookies.
+    if(!/^__Host-nceastudy_browser=[a-f0-9]{64};/i.test(cookie)||/;\s*domain\s*=/i.test(cookie)
+     ||!/;\s*path=\/\s*(?:;|$)/i.test(cookie)||!/;\s*secure\s*(?:;|$)/i.test(cookie)
+     ||!/;\s*httponly\s*(?:;|$)/i.test(cookie)||!/;\s*samesite=strict\s*(?:;|$)/i.test(cookie))continue;
+    responseHeaders.append('Set-Cookie',cookie);
+   }
+  }
+  return new Response(upstream.body,{status:upstream.status,statusText:upstream.statusText,headers:responseHeaders});
  }catch{return error('backend unavailable',502);}
 }

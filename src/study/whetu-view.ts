@@ -73,13 +73,19 @@ export class WhetuStudyView implements AppView {
    await probeIntegration(fetch,this.abort.signal);
    if(!this.current(epoch)){if(!this.disposed&&epoch===this.epoch){this.busy=false;void this.open();}return;}
    clearTimeout(this.timeout);this.timeout=undefined;this.abort=undefined;
+   this.message('Checking your secure Study session…');
+   await this.deps.pairing.activate();
+   if(!this.current(epoch))return;
    this.message('Checking your verified account link…');
    const linked=await this.deps.pairing.status();
    if(!this.current(epoch))return;
    this.busy=false;if(linked)this.openFrame();else this.offerSetup();
-  }catch{
+  }catch(error){
    if(this.disposed||epoch!==this.epoch)return;
-   this.invalidate();this.unavailable();
+   this.invalidate();
+   if(error instanceof StudyPairingError&&error.status===401){
+    this.message('Sign in to NCEAStudy again to refresh your secure Study connection. Your account and progress are unchanged.',{label:'Sign in to NCEAStudy',action:()=>this.deps.openAccounts()},{label:'Back to games',action:()=>{location.hash='#/collection';}});
+   }else this.unavailable();
   }
  }
  private offerSetup(){
