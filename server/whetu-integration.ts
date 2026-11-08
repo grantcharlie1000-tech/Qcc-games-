@@ -53,13 +53,30 @@ function runtimePath(path:string):boolean {
   ||routes.assetPrefixes.some(prefix=>matches(path,prefix))||routes.assetExact.includes(path);
 }
 
+// TEMPORARY public-readiness diagnosis. Never inspect credentials or private routes.
+async function logPublicReadinessDiagnostic(response:Response){
+ const detail:Record<string,unknown>={stage:'runtime-response',status:response.status,marker:response.headers.get('X-Whetu-Integration')===INTEGRATION};
+ if(detail.marker&&/^application\/json(?:;|$)/i.test(response.headers.get('Content-Type')??'')){
+  const reader=response.clone().body?.getReader();let text='',bytes=0;
+  try{
+   if(reader){const decoder=new TextDecoder();for(;;){const chunk=await reader.read();if(chunk.done)break;bytes+=chunk.value.byteLength;if(bytes>16_384){void reader.cancel().catch(()=>{});break;}text+=decoder.decode(chunk.value,{stream:true});}text+=decoder.decode();}
+   if(bytes<=16_384){const data=JSON.parse(text);detail.ready=data?.ready===true;
+    const reasons=['integration-disabled','integration-not-configured','account-link-protocol-unavailable','backend-capabilities-unavailable'];
+    detail.reason=reasons.includes(data?.reason)?data.reason:data?.reason?'unrecognized-public-reason':null;
+    detail.contract=data?.integration===INTEGRATION&&data?.framePath==='/nceastudy'&&data?.accountLink==='verified-explicit-v1'&&typeof data?.revision==='string'&&/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(data.revision)&&data?.authentication?.embeddedPassword===true&&data?.authentication?.embeddedSignup===true&&data?.authentication?.externalProviderHandoff===true&&Array.isArray(data?.excludedSubjects)&&data.excludedSubjects.includes('history')&&data.excludedSubjects.includes('l2-history');
+   }else detail.reason='public-manifest-over-limit';
+  }catch{detail.reason='public-manifest-unreadable';}finally{reader?.releaseLock();}
+ }
+ console.info('QCC_WHETU_PUBLIC_READINESS',JSON.stringify(detail));
+}
+
 /**
  * Dedicated service binding only, never a user-configurable HTTP proxy.
  * A null result leaves all existing QCC behavior exactly with the old router.
  */
 export async function routeWhetuIntegration(request:Request,env:WhetuIntegrationEnv):Promise<Response|null> {
  if(env.QCC_WHETU_INTEGRATION!=='on')return null;
- const url=new URL(request.url),link=url.pathname.startsWith(LINK_PREFIX);
+ const url=new URL(request.url),link=url.pathname.startsWith(LINK_PREFIX),readiness=request.method==='GET'&&url.pathname==='/api/integrations/nceastudy';
  if(routes.denied.some(prefix=>matches(url.pathname,prefix))||(matches(url.pathname,'/nceastudy')&&!routes.pageExact.includes(url.pathname)))return error(404,'not found');
  if(!link&&!runtimePath(url.pathname))return null;
  const billingPage=url.pathname===BILLING_PAGE||url.pathname===BILLING_RETURN,publicReturn=url.pathname===BILLING_RETURN;
@@ -69,7 +86,7 @@ export async function routeWhetuIntegration(request:Request,env:WhetuIntegration
  const origin=exactHttpsOrigin(env.WHETU_PUBLIC_ORIGIN),family=env.WHETU_SUPABASE_COOKIE??'';
  if(!origin||origin!==url.origin||!/^sb-[a-z0-9-]+-auth-token$/.test(family)||family.length>120)return error(503,'integration not configured');
  if(link)return proxyLink(request,env,origin,family);
- if(!env.WHETU_INTEGRATION)return error(503,'private runtime not configured');
+ if(!env.WHETU_INTEGRATION){if(readiness)console.info('QCC_WHETU_PUBLIC_READINESS',JSON.stringify({stage:'missing-service-binding'}));return error(503,'private runtime not configured');}
  if(!['GET','HEAD','OPTIONS'].includes(request.method)&&request.headers.get('Origin')!==origin)return error(403,'request not allowed');
  const immutable=url.pathname.startsWith('/_next/static/');
  const allowedCookie=(name:string)=>familyCookie(name,family,true)||['kk_device','kk_password_recovery',CONTEXT_COOKIE,BROWSER_COOKIE].includes(name);
@@ -86,6 +103,7 @@ export async function routeWhetuIntegration(request:Request,env:WhetuIntegration
   // Marking/tutor bodies can legitimately stream longer than the header budget.
   // The original caller's abort still propagates, but this deadline must not.
   clearTimeout(deadline);
+  if(readiness)await logPublicReadinessDiagnostic(upstream);
   if(upstream.headers.get('X-Whetu-Integration')!==INTEGRATION){await upstream.body?.cancel();return error(502,'unexpected private runtime');}
   const responseHeaders=copyHeaders(upstream.headers,RESPONSE_HEADERS);
   if(publicReturn&&((upstream.status>=300&&upstream.status<400)||upstream.headers.has('Location')||upstream.headers.has('X-Action-Redirect'))){
@@ -107,7 +125,7 @@ export async function routeWhetuIntegration(request:Request,env:WhetuIntegration
   }
   if(!immutable){responseHeaders.set('Cache-Control','private, no-store');if(!publicReturn)approvedSetCookies(upstream.headers,responseHeaders,runtimeOwnedCookie);}
   return new Response(upstream.body,{status:upstream.status,statusText:upstream.statusText,headers:responseHeaders});
- }catch{return error(502,'private runtime unavailable');}finally{clearTimeout(deadline);}
+ }catch{if(readiness)console.info('QCC_WHETU_PUBLIC_READINESS',JSON.stringify({stage:'service-binding-failed'}));return error(502,'private runtime unavailable');}finally{clearTimeout(deadline);}
 }
 
 async function proxyLink(request:Request,env:WhetuIntegrationEnv,origin:string,family:string):Promise<Response>{
