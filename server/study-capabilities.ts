@@ -39,9 +39,9 @@ async function schemaCompatible(db:Database):Promise<boolean>{
   const columns=(await client.query(`SELECT table_name,column_name,data_type,is_nullable FROM information_schema.columns
    WHERE table_schema='public' AND table_name=ANY($1::text[]) ORDER BY table_name,ordinal_position`,[names])).rows;
   const constraints=(await client.query(`SELECT c.relname,k.contype,k.convalidated,k.condeferrable,
-   ARRAY(SELECT a.attname FROM unnest(k.conkey) WITH ORDINALITY v(num,ord) JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum=v.num ORDER BY v.ord) AS columns,
+   ARRAY(SELECT a.attname::text FROM unnest(k.conkey) WITH ORDINALITY v(num,ord) JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum=v.num ORDER BY v.ord) AS columns,
    fn.nspname AS foreign_schema,fc.relname AS foreign_table,
-   ARRAY(SELECT a.attname FROM unnest(k.confkey) WITH ORDINALITY v(num,ord) JOIN pg_attribute a ON a.attrelid=fc.oid AND a.attnum=v.num ORDER BY v.ord) AS foreign_columns,
+   ARRAY(SELECT a.attname::text FROM unnest(k.confkey) WITH ORDINALITY v(num,ord) JOIN pg_attribute a ON a.attrelid=fc.oid AND a.attnum=v.num ORDER BY v.ord) AS foreign_columns,
    k.confdeltype,k.confupdtype,ki.indisvalid AS key_valid,ki.indisready AS key_ready,ki.indimmediate AS key_immediate
    FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace
    LEFT JOIN pg_index ki ON ki.indexrelid=k.conindid
@@ -60,7 +60,7 @@ async function schemaCompatible(db:Database):Promise<boolean>{
    if(keys.sort().join('|')!==[...expected.keys].sort().join('|'))return false;
   }
   const indexes=(await client.query(`SELECT ic.relname,c.relname AS table_name,i.indisvalid,i.indisready,i.indisunique,i.indpred IS NULL AS whole,i.indexprs IS NULL AS plain,
-   ARRAY(SELECT a.attname FROM unnest(i.indkey) WITH ORDINALITY v(num,ord) JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum=v.num ORDER BY v.ord) AS columns
+   ARRAY(SELECT a.attname::text FROM unnest(i.indkey) WITH ORDINALITY v(num,ord) JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum=v.num ORDER BY v.ord) AS columns
    FROM pg_index i JOIN pg_class ic ON ic.oid=i.indexrelid JOIN pg_class c ON c.oid=i.indrelid JOIN pg_namespace n ON n.oid=c.relnamespace
    WHERE n.nspname='public' AND ic.relname=ANY($1::text[])`,[Object.keys(INDEXES)])).rows;
   if(indexes.length!==Object.keys(INDEXES).length)return false;
