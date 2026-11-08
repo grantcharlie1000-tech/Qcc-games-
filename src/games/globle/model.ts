@@ -70,10 +70,6 @@ export function guessColour(id: string, answer: string, colorBlind: boolean): st
   return rgb(stops[stops.length - 1][1]);
 }
 const rgb = ([r, g, b]: [number, number, number]) => '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-export const legend = (colorBlind: boolean) => {
-  const p = PALETTES[colorBlind ? 'colorBlind' : 'standard'];
-  return [{label: 'Far', colour: rgb(p.stops[3][1])}, {label: 'Closer', colour: rgb(p.stops[2][1])}, {label: 'Very close', colour: rgb(p.stops[0][1])}, {label: 'Neighbour', colour: p.neighbour}, {label: 'Correct', colour: p.correct}];
-};
 
 /** Lowercase, accent-free, punctuation-free text for name matching. */
 export function normalize(text: string): string {

@@ -1,5 +1,5 @@
 /** Eight-ball rules and game state. Pure and deterministic: no DOM, no clocks. */
-import {R,L,W,HEAD_X,FOOT_X,POCKETS,POCKET_NAMES,MAX_SPEED,emptyLog,strike,step,type Ball,type ShotLog,type Impact} from './physics';
+import {R,L,W,HEAD_X,FOOT_X,POCKETS,POCKET_NAMES,emptyLog,strike,step,type Ball,type ShotLog,type Impact} from './physics';
 
 export type Group='solids'|'stripes';
 export type Difficulty='easy'|'medium'|'hard';
@@ -36,8 +36,6 @@ export interface PoolState{
 export const groupOf=(id:number):Group|null=>id>=1&&id<=7?'solids':id>=9&&id<=15?'stripes':null;
 export const groupLabel=(g:Group)=>g==='solids'?'Solids':'Stripes';
 export const other=(t:0|1)=>(1-t) as 0|1;
-export const ballOf=(s:PoolState,id:number)=>s.balls[id];
-export const cueBall=(s:PoolState)=>s.balls[0];
 
 /** Small seeded generator (mulberry32). */
 export function rng(seed:number){
@@ -233,9 +231,6 @@ export function resolve(s:PoolState){
   }
 }
 
-/** Estimated cue speed for a given power, for UI copy. */
-export const speedFor=(power:number)=>power*MAX_SPEED;
-
 /** Snapshots are untrusted: validate every field before use. */
 export function restoreGame(data:unknown):PoolState|null{
   if(!data||typeof data!=='object')return null;
@@ -291,4 +286,3 @@ export function restoreGame(data:unknown):PoolState|null{
     potted:[...s.potted as number[]],foul:s.foul as string|null,message:s.message,log,shooter:s.shooter as 0|1,onEight:s.onEight
   };
 }
-export const clone=(s:PoolState):PoolState=>restoreGame(JSON.parse(JSON.stringify(s)))??JSON.parse(JSON.stringify(s));

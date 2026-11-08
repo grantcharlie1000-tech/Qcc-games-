@@ -85,7 +85,7 @@ describe('generated trees',()=>{
         const logs:number[][]=[],leaves:number[][]=[];
         planTree(tree.kind,tree.x,tree.y,tree.z,mulberry32(tree.seed),{log:(a,b,c)=>logs.push([a,b,c]),leaf:(a,b,c)=>leaves.push([a,b,c])},tree.wide);
         const chunksTouched=new Set([...logs,...leaves].map(([a,,c])=>Math.floor(a/CS)+','+Math.floor(c/CS)));if(chunksTouched.size>1)crossing++;
-        for(const [a,b,c] of [...logs,...leaves])expect(Math.max(Math.abs(a-tree.x),Math.abs(c-tree.z))).toBeLessThanOrEqual(TREE_REACH);
+        for(const [a,,c] of [...logs,...leaves])expect(Math.max(Math.abs(a-tree.x),Math.abs(c-tree.z))).toBeLessThanOrEqual(TREE_REACH);
         for(const [a,b,c] of logs)if(b<CH)expect(isLog(w.get(a,b,c)),`log of ${tree.kind} at ${a},${b},${c}: ${blockDef(w.get(a,b,c)).name}`).toBe(true);
         for(const [a,b,c] of leaves)if(b<CH)expect(w.get(a,b,c),`leaf of ${tree.kind} at ${a},${b},${c}`).not.toBe(AIR);
       }

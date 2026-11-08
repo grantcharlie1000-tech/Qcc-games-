@@ -25,7 +25,7 @@ export class SantaView implements AppView {
   private refsHtml='';
   private readonly page:HTMLElement;
 
-  constructor(private root:HTMLElement,private deps:{reducedMotion:()=>boolean}){
+  constructor(root:HTMLElement,private deps:{reducedMotion:()=>boolean}){
     root.innerHTML=`<article class="santa-page" aria-labelledby="santa-title">
       <nav class="santa-top"><a class="santa-back" href="#/collection"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 5-7 7 7 7M5 12h14"/></svg><span>Games</span></a><p class="santa-brand">QCC Santa Tracker</p></nav>
       <div class="santa-test" hidden role="status"><span></span><button type="button" class="game-button secondary" data-action="exit-test">Exit test mode</button></div>

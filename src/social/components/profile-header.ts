@@ -7,7 +7,6 @@ import {ApiError} from '../../apps/api';
 import type {SocialContext} from '../context';
 import type {ProfileView} from '../shared';
 import {openMenu} from './menus';
-import {postLink} from './post-card';
 import {copySocialLink} from './copy-link';
 
 export const profileLink=(username:string):string=>`${location.origin}${location.pathname}#/social/u/${encodeURIComponent(username)}`;
@@ -18,7 +17,7 @@ export class ProfileHeader {
  private follow:HTMLButtonElement|null=null;
  private followers:HTMLElement|null=null;
  private seq=0;
- constructor(private readonly ctx:SocialContext,public profile:ProfileView,private readonly changed:()=>void) {
+ constructor(private readonly ctx:SocialContext,public profile:ProfileView) {
   const p=profile;
   this.el.className='social-profile-head';
   const banner=document.createElement('div');banner.className='social-banner';
@@ -70,7 +69,7 @@ export class ProfileHeader {
   try{
    const result=await this.ctx.client.follow(before.username,on);
    if(seq!==this.seq)return;
-   this.profile={...this.profile,followedByMe:result.followedByMe,followers:result.followers};this.sync();this.changed();
+   this.profile={...this.profile,followedByMe:result.followedByMe,followers:result.followers};this.sync();
   }catch(error){
    if(seq!==this.seq)return;
    this.profile=before;this.sync();
@@ -94,4 +93,3 @@ export class ProfileHeader {
   catch(error){this.ctx.fail(error,`Couldn't block @${username}. Try again.`,()=>void this.block(trigger));}
  }
 }
-void postLink;

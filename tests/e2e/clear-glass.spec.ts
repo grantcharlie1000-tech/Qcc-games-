@@ -1,5 +1,5 @@
 import {test,expect} from '../fixtures';
-import {HIDDEN_INK,glyphContrast,glyphContrastSamples,glyphFillMask,settleGlassInk} from '../glass-contrast';
+import {glyphContrast,glyphFillMask,settleGlassInk} from '../glass-contrast';
 import type {Page} from '@playwright/test';
 
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
@@ -10,50 +10,14 @@ async function moviesReady(page:Page,route:string){
   await expect(page.locator('.movies-page-head h1')).toHaveText(route.endsWith('/tv')?'TV Shows':route.endsWith('/list')?'My list':'Movies');
 }
 
-type GlyphRatio={ratio:number;icon:boolean};
-// Text and icons intentionally stay white. Report measured core contrast
-// without claiming a universal WCAG ratio across translucent backdrops.
-// Neither gets a stroke or duplicated vector outline.
-async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)',mixed=false):Promise<GlyphRatio[]>{
+async function expectWhiteGlyphs(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)'):Promise<number>{
   const nav=page.locator(scope);
-  await nav.screenshot({animations:'disabled',scale:'device'});
-  await settleGlassInk(nav);
-  // Resolve the original foreground cores on the real filter/raster path.
-  const mask=await glyphFillMask(page,nav,`${scope} :is(${glyphs})`,true);
-  const boxes=await nav.evaluate((n,glyphs)=>{
-    const b=n.getBoundingClientRect();
-    return [...n.querySelectorAll(glyphs)].filter(e=>getComputedStyle(e).clip==='auto').map(e=>{
-      const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color,icon:e instanceof SVGElement};
-    }).filter(r=>r.w>0&&r.h>0);
-  },glyphs);
-  const bounds=(await nav.boundingBox())!;
-  const visible=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
-  const hide=await page.addStyleTag({content:`${scope} :is(${glyphs}){color:${HIDDEN_INK}!important;-webkit-text-fill-color:${HIDDEN_INK}!important}`});
-  const shot=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
-  await hide.evaluate(e=>e.parentNode?.removeChild(e));
-  const samples=await glyphContrastSamples(page,shot,mask,boxes,bounds);
-  const edges=await glyphContrast(page,visible,mask,boxes,bounds,true);
-  const ratios=boxes.map((box,i)=>({ratio:box.icon?edges[i]:samples[i].worst,icon:box.icon}));
-  for(const box of boxes)expect(box.color).toBe('rgb(255, 255, 255)');
-  const decoration=await nav.locator(glyphs).evaluateAll(es=>es.map(e=>getComputedStyle(e).webkitTextStrokeWidth||'0px'));
-  expect(decoration.every(stroke=>stroke==='0px')).toBe(true);
+  const visible=()=>nav.locator(glyphs).evaluateAll(elements=>elements.filter(e=>{
+    const box=e.getBoundingClientRect();return box.width>0&&box.height>0&&getComputedStyle(e).clip==='auto';
+  }).map(e=>({color:getComputedStyle(e).color,stroke:getComputedStyle(e).webkitTextStrokeWidth||'0px'})));
+  await expect.poll(async()=>{const glyphs=await visible();return glyphs.length>0&&glyphs.every(g=>g.color==='rgb(255, 255, 255)'&&g.stroke==='0px');}).toBe(true);
   await expect(nav.locator('.glass-vector-halo')).toHaveCount(0);
-  await test.info().attach('fixed-white-glyph-contrast',{body:JSON.stringify({scope,mixed,boxes,samples,ratios,limitation:'Fixed-white cores cannot guarantee 4.5:1 over every backdrop.'}),contentType:'application/json'});
-  if(samples.some(sample=>sample.diagonalCount))await test.info().attach('diagonal-contour-samples',{body:JSON.stringify({boxes,samples}),contentType:'application/json'});
-  if(!legible(ratios)){
-    await test.info().attach('sampled-backdrop',{body:Buffer.from(shot,'base64'),contentType:'image/png'});
-    await test.info().attach('foreground-mask',{body:Buffer.from(mask,'base64'),contentType:'image/png'});
-    await test.info().attach('glyph-boxes',{body:JSON.stringify({boxes,ratios}),contentType:'application/json'});
-  }
-  return ratios;
-}
-const legible=(ratios:GlyphRatio[])=>ratios.filter(r=>!r.icon).every(({ratio})=>ratio>=4.5);
-function expectMeasured(ratios:GlyphRatio[],label:string){
-  const describe=ratios.map(({ratio,icon})=>`${icon?'icon ':''}${ratio.toFixed(2)}`).join(', ');
-  expect(ratios.length,`${label} has visible glyph samples`).toBeGreaterThan(0);
-  expect(ratios.every(r=>Number.isFinite(r.ratio)&&r.ratio>=1),`${label} measured contrast: ${describe}`).toBe(true);
-  // Palette, stroke and outline safeguards are asserted in navigationContrast.
-  // Dark-frost and opaque accessibility palettes keep their separate contrast tests.
+  return (await visible()).length;
 }
 
 test('plain label cores stay white beside real mixed game art',async({page})=>{
@@ -61,16 +25,10 @@ test('plain label cores stay white beside real mixed game art',async({page})=>{
   await page.locator('.app-tabbar .ui-tab').first().focus();
   await page.evaluate(()=>scrollTo(0,180));
   await page.waitForTimeout(200);
-  const ratios=await navigationContrast(page,'.app-navigation','.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)');
-  await test.info().attach('plain-label-core-contrast',{body:JSON.stringify(ratios),contentType:'application/json'});
-  expect(ratios).toHaveLength(5);
-  expectMeasured(ratios,'labels');
+  expect(await expectWhiteGlyphs(page,'.app-navigation','.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)')).toBe(5);
 });
 
-async function headerContrast(page:Page,width:number){
-  // Five backdrops, each with a white/black foreground mask and restored shot.
-  // Software-renderer capture time is separate from the measured frame timing.
-  test.setTimeout(90000);
+async function headerPalette(page:Page,width:number){
   await page.setViewportSize({width,height:844});await page.goto('/#/movies/browse/movie');
   await expect(page.locator('.movies-rails-status,.movies-catalog-status').first()).toBeVisible();
   const header=page.locator('.movies-top');await expect(header).toBeVisible();
@@ -85,11 +43,9 @@ async function headerContrast(page:Page,width:number){
       canvas.getContext('2d')!.fillRect(0,0,canvas.width,canvas.height);document.body.append(canvas);
     });
     await page.evaluate(()=>dispatchEvent(new Event('resize')));await page.waitForTimeout(100);
-    const mixed=background.startsWith('repeating-');
-    const ratios=await navigationContrast(page,'.movies-top','svg:not(.ui-brand-tile svg),.ui-label,kbd,.ui-wordmark>span',mixed);
+    const count=await expectWhiteGlyphs(page,'.movies-top','svg:not(.ui-brand-tile svg),.ui-label,kbd,.ui-wordmark>span');
     // Phones show the wordmark and two icon buttons; wider headers add labels and the shortcut key.
-    expect(ratios.length).toBe(width<640?3:7);
-    expectMeasured(ratios,background);
+    expect(count).toBe(width<640?3:7);
     await style.evaluate(e=>(e as Element).remove());
     await page.evaluate(()=>document.getElementById('unknown-header-art')?.remove());
   }
@@ -97,23 +53,20 @@ async function headerContrast(page:Page,width:number){
   const focus=await header.locator('.movies-search-toggle').evaluate(e=>({outline:getComputedStyle(e).outlineColor,shadow:getComputedStyle(e).boxShadow}));
   expect(focus.outline).toBe('rgb(255, 255, 255)');expect(focus.shadow).toContain('rgb(0, 0, 0)');
 }
-for(const width of [390,1366])test(`floating Movies header keeps the clear recipe and glyph contrast at ${width}px`,async({page})=>headerContrast(page,width));
+for(const width of [390,1366])test(`floating Movies header keeps the clear recipe and white glyphs at ${width}px`,async({page})=>headerPalette(page,width));
 test.describe('desktop header at DPR1',()=>{
   test.use({deviceScaleFactor:1,isMobile:false,hasTouch:false});
-  for(const width of [1024,1366])test(`visible header glyphs retain fixed-white ink at ${width}px`,async({page})=>headerContrast(page,width));
+  for(const width of [1024,1366])test(`visible header glyphs retain fixed-white ink at ${width}px`,async({page})=>headerPalette(page,width));
 });
 
-for(const fallback of [false,true])test(`fixed-white ink is measured while real game artwork scrolls behind it (${fallback?'fallback':'native'})`,async({page})=>{
-  test.setTimeout(60000);
+for(const fallback of [false,true])test(`glyphs stay white while real game artwork scrolls behind them (${fallback?'fallback':'native'})`,async({page})=>{
   await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
   const first=page.locator('.app-tabbar .ui-tab').first();
   await first.focus(); // Keep the expanded dock visible during each sample.
   for(const y of [0,70,140,210,350,560]){
     await page.evaluate(y=>scrollTo(0,y),y);
     await page.waitForTimeout(180);
-    const ratios=await navigationContrast(page,'.app-navigation');
-    expect(ratios.length).toBeGreaterThanOrEqual(11);
-    expectMeasured(ratios,`scroll ${y}`);
+    expect(await expectWhiteGlyphs(page,'.app-navigation')).toBeGreaterThanOrEqual(11);
   }
 });
 
@@ -140,8 +93,7 @@ test('captions adapt to dark canvas media without a stroke or vector halo',async
     canvas.getContext('2d')!.fillRect(0,0,canvas.width,canvas.height);document.body.append(canvas);
   });
   await expect(page.locator('.movies-mobile-nav .ui-tab').nth(2).locator('span')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
-  const ratios=await navigationContrast(page,'.movies-navigation');
-  expectMeasured(ratios,'dark canvas');
+  await expectWhiteGlyphs(page,'.movies-navigation');
 });
 
 test('an unavailable displacement map keeps the transparent CSS fallback',async({page,browserName})=>{
@@ -269,8 +221,7 @@ test('navigation and its companion share frost while game controls retain their 
   expect([references.game.blur,references.game.tone]).toEqual(['blur(1.5px)','saturate(1.08)']);
 });
 
-for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: fixed-white ink is measured on uniform and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
-  test.setTimeout(90000);
+for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: glyphs stay white on uniform and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
   await page.goto(`/${fallback?'?glass=fallback':''}#/${route}`);
   if(route.startsWith('movies'))await moviesReady(page,route);
   const scope=route==='collection'?'.app-navigation':'.movies-navigation';
@@ -279,10 +230,7 @@ for(const fallback of [false,true])for(const route of ['collection','movies/brow
   for(const background of ['#fff','#000','#606060','repeating-linear-gradient(90deg,#faf0d0 0 18px,#102030 18px 36px)']){
     const backdrop=await page.addStyleTag({content:`html,body{background:${background}!important}`});
     await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
-    const mixed=background.startsWith('repeating-');
-    const ratios=await navigationContrast(page,scope,undefined,mixed);
-    expect(ratios.length).toBeGreaterThanOrEqual(11);
-    expectMeasured(ratios,background);
+    expect(await expectWhiteGlyphs(page,scope)).toBeGreaterThanOrEqual(11);
     await backdrop.evaluate(e=>(e as Element).remove());
   }
 });

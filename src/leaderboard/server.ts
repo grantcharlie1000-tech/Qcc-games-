@@ -3,6 +3,7 @@ import {resolveAccount} from '../accounts/server';
 import {writeFrozen,readOnlyResponse} from '../accounts/write-freeze';
 import {isStorageFullError,storageFullResponse} from '../../server/storage-full';
 import {scoredGame,validScore,LEADERBOARD_NOT_OPEN,type Board,type Entry} from './shared';
+import {HttpError,readJson,sameOrigin} from '../../server/api';
 /** A Postgres check_violation of the game list constraint: the code knows this game but the database does not yet. */
 const gameNotOpen=(error:unknown)=>{const e=error as {code?:unknown;constraint?:unknown;message?:unknown}|null;return !!e&&e.code==='23514'&&(e.constraint==='arcade_scores_game_id_check'||String(e.message).includes('arcade_scores_game_id_check'));};
 export interface Database {
@@ -55,14 +56,13 @@ export function createLeaderboardHandler(db:Database){
    }
    if(await writeFrozen(db))return readOnlyResponse();
    if(!/^Bearer acct_[a-f0-9]{64}$/.test(request.headers.get('authorization')??''))return respond({error:'Log in to submit leaderboard scores.'},401);
-   const origin=request.headers.get('origin');
-   if(origin&&origin!==new URL(request.url).origin)return respond({error:'This request is not allowed.'},403);
+   if(!sameOrigin(request))return respond({error:'This request is not allowed.'},403);
    if(!request.headers.get('content-type')?.startsWith('application/json'))return respond({error:'Send JSON.'},415);
-   if(Number(request.headers.get('content-length'))>2048)return respond({error:'Request too large.'},413);
-   // Bound the streamed body too; Content-Length can be omitted or forged.
-   const reader=request.body?.getReader();let size=0,text='';const decoder=new TextDecoder();
-   if(reader)try{for(;;){const chunk=await reader.read();if(chunk.done)break;size+=chunk.value.length;if(size>2048){await reader.cancel();return respond({error:'Request too large.'},413);}text+=decoder.decode(chunk.value,{stream:true});}text+=decoder.decode();}finally{reader.releaseLock();}
-   let data:any;try{data=JSON.parse(text);}catch{return respond({error:'Invalid JSON.'},400);}
+   let data:any;
+   try{data=await readJson(request,2048);}catch(error){
+    if(error instanceof HttpError)return respond({error:error.message},error.status);
+    throw error;
+   }
    if(!data||typeof data!=='object'||Array.isArray(data)||!scoredGame(data.game)||!validScore(data.score))return respond({error:'Use a valid game and a positive whole score.'},400);
    const client=await db.connect();
    try{

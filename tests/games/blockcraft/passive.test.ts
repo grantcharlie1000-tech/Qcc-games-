@@ -71,8 +71,6 @@ function setup(options:{biome?:string;random?:()=>number;mode?:'survival'|'creat
 const tick=(h:Harness,n=1)=>h.game.runTicks(n,[h.game.entities]);
 const navigations=(h:Harness,e:Entity)=>h.calls.filter(c=>c.id===e.id&&(c.fn==='navigate'||c.fn==='moveToward'));
 const hurt=(h:Harness,e:Entity,source:DamageSource={kind:'player',byPlayer:true})=>h.kind(e.kind).hurt?.(e,h.game,source,1);
-/** Sequence random: replays the given values (then 0.5). */
-const sequence=(...values:number[])=>{let i=0;return()=>i<values.length?values[i++]:.5;};
 
 describe('passive kinds',()=>{
   test('register cow, pig, sheep, chicken and rabbit with vanilla sizes, health, sounds and spawn settings',()=>{

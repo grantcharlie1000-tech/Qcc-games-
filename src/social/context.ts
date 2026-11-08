@@ -39,5 +39,4 @@ export interface Screen {
  /** Where focus goes after the route renders. */
  focusTarget?():HTMLElement|null;
 }
-export const noopScreen:Screen={dispose(){}};
 export const isAuthError=(error:unknown):boolean=>(error as {status?:number}|undefined)?.status===401;

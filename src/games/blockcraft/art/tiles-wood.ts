@@ -1,5 +1,5 @@
 // Wood tiles for every tree type: bark, log rings, planks, leaves and saplings.
-import {type Painter,type RGBA,rgb,grey,shade,ramp,pick,hash,valueNoise,fbm,contrast,cached,bitmap} from './tiles-core';
+import {type Painter,type RGBA,rgb,grey,shade,ramp,pick,hash,valueNoise,contrast,cached,bitmap} from './tiles-core';
 import type {WoodType} from '../data/blocks';
 
 interface WoodStyle{

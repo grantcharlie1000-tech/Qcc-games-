@@ -1,7 +1,5 @@
 import {ApiError,errorFromBody,NETWORK_MESSAGE,TIMEOUT_MESSAGE} from '../apps/api';
-import {fitWithin} from '../apps/image';
 import {screenOriginal,canSendAsIs,fitForPurpose,encodeAttempts} from './plan';
-export {fitWithin};
 import {POLICIES,MAX_UPLOAD_BYTES,validMediaId,type Purpose} from './policy';
 export type UploadStage='compressing'|'uploading'|'processing'|'ready'|'failed';
 export interface UploadResult {id:string;width:number;height:number;thumb:boolean}

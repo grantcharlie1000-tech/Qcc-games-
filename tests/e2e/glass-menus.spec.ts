@@ -1,4 +1,4 @@
-import {appSettings,gameAction} from '../game-menu';
+import {gameAction} from '../game-menu';
 import {test,expect} from '../fixtures';
 import type {Locator,Page} from '@playwright/test';
 

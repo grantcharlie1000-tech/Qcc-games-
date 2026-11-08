@@ -19,7 +19,6 @@ export const shade=(c:RGBA,k:number):RGBA=>[clamp(c[0]*k),clamp(c[1]*k),clamp(c[
 export const mix=(a:RGBA,b:RGBA,t:number):RGBA=>[clamp(a[0]+(b[0]-a[0])*t),clamp(a[1]+(b[1]-a[1])*t),clamp(a[2]+(b[2]-a[2])*t),clamp((a[3]??255)+((b[3]??255)-(a[3]??255))*t)];
 export const withAlpha=(c:RGBA,a:number):RGBA=>[c[0],c[1],c[2],a];
 /** Luma-preserving greyscale (for biome-tinted tiles). */
-export const toGrey=(c:RGBA):RGBA=>grey(.299*c[0]+.587*c[1]+.114*c[2],c[3]??255);
 /** A palette of shades from dark to light. */
 export const ramp=(...hexes:number[]):RGBA[]=>hexes.map(h=>rgb(h));
 /** Picks a shade from a ramp with t in [0,1]. */

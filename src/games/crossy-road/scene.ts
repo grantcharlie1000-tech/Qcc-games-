@@ -14,7 +14,7 @@ import * as THREE from 'three';
 import {carImpact, ufoFlight} from './motion';
 import {obstacleAt, obstacleVariant, lilyAt} from './terrain';
 import {
-  BAND_MAX, BAND_MIN, COLS, DEATH_TIME, DEATH_TIME_REDUCED, EDGE_COLS, HOP_TIME, IDLE_LIMIT, IDLE_WARN, RENDER_X_MAX, RENDER_X_MIN, SAFE_LAG, SQUASH_TIME,
+  DEATH_TIME, DEATH_TIME_REDUCED, HOP_TIME, IDLE_LIMIT, IDLE_WARN, SAFE_LAG, SQUASH_TIME,
   TRAIN_PALETTE, VEHICLE_PALETTE, LOG_PALETTE, ROW_DEPTH, TRAFFIC_ROW_Z, TRAIN_BASE_Y, clamp, lerp,
   type CarStyle, type Death, type Dir, type GrassLane, type CrossyRoadScene, type Lane, type LilyLane, type Mover, type Quality, type RailLane, type RiverLane, type RoadLane, type SceneFrame, type SceneStats,
 } from './config';
@@ -87,11 +87,7 @@ const PAL = (() => {
 })();
 
 /** Lane colour multiplier for the zones outside the band, and for decor standing in them. */
-const DARK = 0.80, EDGE_SHADE = 0.85;
-/** The darker zones either side of the band run out to the render span's edges, so no view (even one following a player
- * swept to the band's edge on a wide screen) reaches the end of a lane. */
-const LEFT_ZONE_W = BAND_MIN - (RENDER_X_MIN - 0.5), LEFT_ZONE_X = (RENDER_X_MIN - 0.5 + BAND_MIN) / 2;
-const RIGHT_ZONE_W = RENDER_X_MAX + 0.5 - BAND_MAX, RIGHT_ZONE_X = (BAND_MAX + RENDER_X_MAX + 0.5) / 2;
+const DARK = 0.80;
 const CLEAR_COLOR = 0x2a3447;
 
 // Geometry constants -----------------------------------------------------------

@@ -48,7 +48,6 @@ export class ConversationScreen implements Screen {
  private input!:HTMLTextAreaElement;
  private sendButton!:HTMLButtonElement;
  private cameraButton:HTMLButtonElement|undefined;
- private fileInput:HTMLInputElement|undefined;
  private countEl!:HTMLElement;
  private intro:HTMLElement|undefined;
  private emptyNote:HTMLElement|undefined;
@@ -142,7 +141,7 @@ export class ConversationScreen implements Screen {
   c.innerHTML=`<span class="chat-count" aria-hidden="true"></span><div class="chat-composer-row"><button type="button" class="chat-camera" aria-label="Send a photo">${appIcon('camera')}</button><textarea class="chat-field" rows="1" enterkeyhint="send" autocomplete="off" autocapitalize="sentences"></textarea><button type="submit" class="chat-send" aria-label="Send message" disabled>${appIcon('send')}</button></div><span class="sr-only chat-helper" role="status"></span>`;
   this.input=c.querySelector('textarea')!;this.sendButton=c.querySelector<HTMLButtonElement>('.chat-send')!;const camera=this.cameraButton=c.querySelector<HTMLButtonElement>('.chat-camera')!;this.countEl=c.querySelector('.chat-count')!;
   this.input.placeholder=`Message ${this.username}`;this.input.setAttribute('aria-label',`Message to ${this.username}`);
-  const fileInput=this.fileInput=el('input');fileInput.type='file';fileInput.accept='image/*';fileInput.hidden=true;fileInput.tabIndex=-1;fileInput.setAttribute('aria-hidden','true');
+  const fileInput=el('input');fileInput.type='file';fileInput.accept='image/*';fileInput.hidden=true;fileInput.tabIndex=-1;fileInput.setAttribute('aria-hidden','true');
   c.append(fileInput);
   this.syncCamera();
   camera.addEventListener('click',()=>fileInput.click());
@@ -435,10 +434,9 @@ export class ConversationScreen implements Screen {
   this.input.value='';this.syncComposer();
   const id=`p${++this.pendingSeq}`;
   const view:MessageView={id,kind:'text',mine:true,body,snap:null,createdAt:new Date().toISOString(),viewedAt:null,saved:false};
-  const item=this.insert(view,{animate:true,pending:true,body});
+  this.insert(view,{animate:true,pending:true,body});
   this.afterChange();this.scrollToBottom(false);
   const pending:Pending={id,body,state:'sending'};this.pendings.set(id,pending);
-  void item;
   this.enqueue(pending);
  }
  private enqueue(pending:Pending):void{this.queue=this.queue.then(()=>this.deliver(pending));}

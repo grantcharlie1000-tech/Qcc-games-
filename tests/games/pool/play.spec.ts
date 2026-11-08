@@ -1,5 +1,5 @@
 import {test,expect,type Page} from '../../fixtures';
-import {gameAction,openGameMenu} from '../../game-menu';
+import {openGameMenu} from '../../game-menu';
 import {powerShot,poolState,poolAim,seedPool,tableToScreen} from './helpers';
 import {createGame,type PoolState} from '../../../src/games/pool/game';
 import {R,L,W,POCKETS} from '../../../src/games/pool/physics';

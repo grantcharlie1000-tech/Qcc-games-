@@ -45,13 +45,12 @@ export class PredictionsView implements AppView {
  private abort:AbortController|undefined;
  private generation=0;
  private disposed=false;
- private paused=false;
  private detail:MarketDetail|null=null;
  private ticket:Ticket|null=null;
  private flow:TradeFlow;
  private searchTimer:number|undefined;
 
- constructor(private readonly container:HTMLElement,private readonly deps:AppDeps){
+ constructor(container:HTMLElement,private readonly deps:AppDeps){
   this.client=new PredictionsClient(()=>deps.accounts.session()?.token??null);
   const root=this.root;
   root.className='pr-view';root.setAttribute('aria-labelledby','pr-brand');
@@ -96,8 +95,8 @@ export class PredictionsView implements AppView {
   }
   void this.show(true);
  }
- pause():void{this.paused=true;this.ticket?.cancel();}
- resume():void{this.paused=false;}
+ pause():void{this.ticket?.cancel();}
+ resume():void{}
  dispose():void{
   if(this.disposed)return;
   this.disposed=true;this.generation++;this.abort?.abort();this.ticket?.cancel();this.flow.dispose();

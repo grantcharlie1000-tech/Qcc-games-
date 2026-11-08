@@ -66,7 +66,6 @@ export class SocialView implements AppView {
  private readonly notices=document.createElement('div');
  private readonly fab=document.createElement('button');
  private topGlass:{dispose():void}|undefined;
- private segmented:Segmented|undefined;
  private screen:Screen|undefined;
  private route:Route={kind:'feed',tab:'following'};
  private me:SocialMe|null=null;
@@ -261,7 +260,7 @@ export class SocialView implements AppView {
   this.root.dataset.route=route.kind;
  }
  private buildTop():void {
-  this.topGlass?.dispose();this.segmented=undefined;
+  this.topGlass?.dispose();
   const route=this.route,me=this.myName(),signedIn=this.signedIn();
   const brand=`<a class="apps-brand arcade-glass floating-glass-group" data-glass-tone="light" href="#/social" aria-label="QCC Social home"><span class="apps-brand-mark">${appIcon('social-tile')}</span><span class="apps-wordmark"><span class="wm-short">Social</span><span class="wm-long">QCC Social</span></span></a>`;
   const back=(label:string,title='')=>`<div class="apps-back-group arcade-glass floating-glass-group" data-glass-tone="light"><button type="button" class="apps-back-btn" data-action="back" aria-label="${label}">${appIcon('back')}</button>${title?`<h1 class="apps-top-title" tabindex="-1">${title}</h1>`:''}</div>`;
@@ -275,7 +274,7 @@ export class SocialView implements AppView {
   const feed=signedIn&&route.kind==='feed';
   this.topbar.innerHTML=`<div class="ui-header-inner">${left}${right}${feed?'<div class="apps-seg-group arcade-glass floating-glass-group" data-glass-tone="light"></div>':''}</div>`;
   if(feed){
-   const seg=this.segmented=new Segmented({items:[{id:'following',label:'Following'},{id:'discover',label:'Discover'}],selected:route.tab,label:'Feed',
+   const seg=new Segmented({items:[{id:'following',label:'Following'},{id:'discover',label:'Discover'}],selected:route.tab,label:'Feed',
     onSelect:id=>{this.go(id==='discover'?'#/social/discover':'#/social');},
     onReselect:()=>{(this.screen as FeedScreen|undefined)?.toTop?.();this.root.scrollTo({top:0,behavior:this.ctx.reduced()?'auto':'smooth'});}});
    this.topbar.querySelector('.apps-seg-group')!.append(seg.el);

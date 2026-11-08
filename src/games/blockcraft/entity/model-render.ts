@@ -17,7 +17,7 @@ import {CH,quadIndices} from '../engine/constants';
 import {spriteTexturePixels,spriteTextureSize} from '../art/items';
 import {LIGHT_GLSL,type RenderUniforms} from '../render/sky';
 import type {AnimationState,ChunkMesh,Entity,EntityKind,Game,PartPose,SharedUniforms} from '../engine/contracts';
-import {FLAG_EMISSIVE,QuadWriter,compileModel,diffuse,entityMatrix,mat,packAtlas,paintOrb,writeModel,type AtlasLayout,type CompiledModel,type Region} from './model';
+import {FLAG_EMISSIVE,QuadWriter,compileModel,entityMatrix,mat,packAtlas,paintOrb,writeModel,type AtlasLayout,type CompiledModel,type Region} from './model';
 import {xpIcon} from './items';
 import {wrapAngle} from './ai';
 

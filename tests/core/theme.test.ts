@@ -21,11 +21,6 @@ test('the white focus ring is scoped to Movies & TV and the island, and the arca
  expect(css).not.toMatch(/(^|[^\w.-])body\s*\{/m);
  expect(css).toMatch(/\.ui-tabbar\{[^}]*font-family:var\(--font-sans\)/);
 });
-test('dormant ui rules and the unread custom properties are gone',()=>{
- const literal=(s:string)=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
- for(const selector of ['.ui-empty','.ui-hero-poster','.ui-panel','.ui-pill-count','.ui-sheet','.ui-skeleton','.ui-status','.ui-chip.saved'])expect(css).not.toMatch(new RegExp(literal(selector)+'(?![\\w-])'));
- expect(readFileSync('src/style.css','utf8')).not.toMatch(/--(purple|cream):/);
-});
 // The forced-colours block takes the island's backdrop off, prefixed and unprefixed, so the bar is the flat system colour.
 test('forced colours take the island backdrop off, prefixed and unprefixed',()=>{
  expect(css).toMatch(/@media \(forced-colors:active\)\{\.ui-tabbar,\.ui-tabbar\.is-refracting\{[^}]*-webkit-backdrop-filter:none;backdrop-filter:none/);

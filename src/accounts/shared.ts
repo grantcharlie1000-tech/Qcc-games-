@@ -43,6 +43,5 @@ export function validSaves(value:unknown):value is Saves {
 
 /** Revisions travel as decimal strings; Postgres bigint exceeds JavaScript precision. */
 export type SaveRevisions=Record<string,string>;
-export interface SyncV2Request {cursor:string;bases:SaveRevisions;saves:Saves}
 export interface SyncV2Response {protocolVersion:2;cursor:string;saves:Saves;revisions:SaveRevisions;acks:SaveRevisions;conflicts:Saves}
 export const validRevision=(value:unknown):value is string=>typeof value==='string'&&/^(0|[1-9][0-9]{0,18})$/.test(value)&&BigInt(value)<=9223372036854775807n;
