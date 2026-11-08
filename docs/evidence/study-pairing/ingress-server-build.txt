@@ -1,0 +1,10 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 build:server
+> esbuild server/node.ts server/vercel.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outdir=dist-server --out-extension:.js=.mjs
+
+
+  dist-server/node.mjs    224.8kb
+  dist-server/vercel.mjs  224.1kb
+
+⚡ Done in 25ms

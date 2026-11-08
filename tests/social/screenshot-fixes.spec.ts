@@ -1,19 +1,19 @@
 import {expectSheetIconPalette} from '../helpers/glass-icon-palette';
 import {captureAuditEvidence} from '../helpers/audit-evidence';
 import {test,expect,type BrowserContext,type Page} from '@playwright/test';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import type {Pool} from 'pg';
+import {LocalDB,createLocalPool} from '../support/local-db';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {createChatHandler} from '../../src/chat/server';
 import {createSocialHandler} from '../../src/social/server';
 import {createMediaHandler} from '../../src/media/server';
 import {createMemoryStore} from '../../src/media/store';
 
-const database=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
+const database=new LocalDB();let pool:Pool;
 let accounts:ReturnType<typeof createAccountsHandler>,chat:ReturnType<typeof createChatHandler>,social:ReturnType<typeof createSocialHandler>,media:ReturnType<typeof createMediaHandler>;
 let mediaDelay=0;
 test.beforeAll(async()=>{
- const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;
+ const connectionString=await database.start();await database.applyMigrations('db/migrations');pool=createLocalPool(connectionString);
  const store=createMemoryStore();const db={query:(text:string,values?:unknown[])=>pool.query(text,values),connect:()=>pool.connect()} as never;
  accounts=createAccountsHandler(pool);chat=createChatHandler(db,store);social=createSocialHandler(db,store);media=createMediaHandler(db,store);
 });

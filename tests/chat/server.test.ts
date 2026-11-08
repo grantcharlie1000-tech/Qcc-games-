@@ -1,14 +1,14 @@
 import {beforeAll,afterAll,describe,it,expect} from 'vitest';
 import {randomUUID,randomBytes,createHash} from 'node:crypto';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool} from 'pg';
 import {createChatHandler,purgeExpiredChat} from '../../src/chat/server';
 import {createMemoryStore} from '../../src/media/store';
 import type {Database} from '../../src/leaderboard/server';
-const local=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
+const local=new LocalDB();let pool:Pool;
 const query=(text:string,values?:unknown[])=>pool.query(text,values);
 const db:Database={query:(text,values)=>pool.query(text,values) as any,connect:()=>pool.connect() as any};
-beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;},30000);
+beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('db/migrations');pool=createLocalPool(connectionString);},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});
 let n=0;
 async function account(name?:string){

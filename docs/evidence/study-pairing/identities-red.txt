@@ -1,0 +1,56 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/study/pairing-identities.test.ts
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-backend-integration
+
+ ❯ tests/study/pairing-identities.test.ts (3 tests | 2 failed) 11ms
+   × identity backchannel forwards only exact Supabase cookie family, never bearer or QCC proof 7ms
+     → expected undefined to be 'issuer:user' // Object.is equality
+   ✓ identity backchannel rejects missing cookies/config, duplicate cookies and malformed responses 1ms
+   × QCC bearer adapter hashes exact bearer and exposes canonical immutable identity only 2ms
+     → expected null to deeply equal { accountId: 'id', …(3) }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/study/pairing-identities.test.ts > identity backchannel forwards only exact Supabase cookie family, never bearer or QCC proof
+AssertionError: expected undefined to be 'issuer:user' // Object.is equality
+
+- Expected: 
+"issuer:user"
+
++ Received: 
+undefined
+
+ ❯ tests/study/pairing-identities.test.ts:9:26
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/study/pairing-identities.test.ts > QCC bearer adapter hashes exact bearer and exposes canonical immutable identity only
+AssertionError: expected null to deeply equal { accountId: 'id', …(3) }
+
+- Expected: 
+{
+  "accountId": "id",
+  "authenticatedAt": 1000,
+  "sessionHash": "f2298e9bd2905e15e0cfb538d7b1acb57f2d2632b7eb1929068862a5f47a3191",
+  "username": "Alice",
+}
+
++ Received: 
+null
+
+ ❯ tests/study/pairing-identities.test.ts:27:113
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed (3)
+   Start at  12:42:14
+   Duration  280ms (transform 43ms, setup 0ms, collect 36ms, tests 11ms, environment 0ms, prepare 64ms)
+

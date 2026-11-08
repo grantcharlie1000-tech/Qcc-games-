@@ -1,0 +1,193 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/accounts/client.test.ts
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-integration
+
+ ❯ tests/accounts/client.test.ts (23 tests | 7 failed) 136ms
+   ✓ account client > pushes only dirty keys and pulls when clean 10ms
+   ✓ account client > batches genuine changes for three minutes without postponing sustained changes 5ms
+   ✓ account client > keeps idle tabs silent and flushes dirty data once on hiding 2ms
+   ✓ account client > does not dirty identical snapshots when JSONB changes property order 1ms
+   ✓ account client > keeps guest scored runs separate on signup and restores them on logout 3ms
+   ✓ account client > does not import guest saves on login and retries offline changes 3ms
+   ✓ account client > restores unsent progress only after authenticating to the same account 2ms
+   ✓ account client > ignores delayed sync after logout and removes the local token even offline 1ms
+   ✓ account client > ignores a real delayed response after another tab changes identity 1ms
+   ✓ account client > serializes concurrent logouts and leaves no synced account staging 1ms
+   ✓ account client > skips oversized keys while syncing others, stages them privately and bounds pagehide batches 57ms
+   ✓ account client > invalidates cached session and save memory when another tab removes disk values 1ms
+   ✓ account client > loads a new identity despite an older epoch flight and ignores the old response 1ms
+   ✓ account client > preserves the guest and revokes a new session if initial login pull fails 2ms
+   ✓ account client > keeps a mature oversized guest snapshot locally on signup and stages it for the same account 29ms
+   ✓ account client > preserves unsent leaderboard scores and retry deadlines across account cleanup 2ms
+   × integration-safe identity transitions > keeps the current account and saves when strict sign-out cannot revoke the server session 7ms
+     → promise resolved "undefined" instead of rejecting
+   × integration-safe identity transitions > does not commit local sign-out until the exact outgoing session revocation is acknowledged 2ms
+     → expected undefined to be 'acct_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…' // Object.is equality
+   × integration-safe identity transitions > a successful HTTP response without a confirmed logout body is not revocation proof 1ms
+     → promise resolved "undefined" instead of rejecting
+   × integration-safe identity transitions > blocks guest login when residual integration context cannot be invalidated 1ms
+     → promise resolved "undefined" instead of rejecting
+   × integration-safe identity transitions > blocks account switching and preserves original saves when strict outgoing revocation fails 2ms
+     → promise resolved "undefined" instead of rejecting
+   × integration-safe identity transitions > strict blocking integration cleanup must finish before identity writes 1ms
+     → promise resolved "undefined" instead of rejecting
+   × integration-safe identity transitions > a failed strict transition cannot publish a different identity to another tab 1ms
+     → promise resolved "undefined" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/accounts/client.test.ts > integration-safe identity transitions > keeps the current account and saves when strict sign-out cannot revoke the server session
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/accounts/client.test.ts:137:27
+    135|   try{
+    136|    await c.authenticate('signup','Ada','password1');f.storage.write('b…
+    137|    await expect(c.logout()).rejects.toThrow('could not be verified');
+       |                           ^
+    138|    expect(c.session()).toEqual({token,username:'Ada'});expect(f.storag…
+    139|    f.offline(false);await c.logout();expect(c.session()).toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  tests/accounts/client.test.ts > integration-safe identity transitions > does not commit local sign-out until the exact outgoing session revocation is acknowledged
+AssertionError: expected undefined to be 'acct_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…' // Object.is equality
+
+- Expected: 
+"acct_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
++ Received: 
+undefined
+
+ ❯ tests/accounts/client.test.ts:150:31
+    148|   try{
+    149|    await c.authenticate('signup','Ada','password1');changed=0;delay=tr…
+    150|    expect(c.session()?.token).toBe(token);expect(changed).toBe(0);
+       |                               ^
+    151|    finish();await logout;expect(c.session()).toBeNull();expect(changed…
+    152|   }finally{finish();c.dispose();}
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  tests/accounts/client.test.ts > integration-safe identity transitions > a successful HTTP response without a confirmed logout body is not revocation proof
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/accounts/client.test.ts:158:94
+    156|   const fetcher=(async(url:any,init:any)=>malformed&&String(url).inclu…
+    157|   const c=new AccountsClient(f.storage,fetcher,{strictIdentityChanges:…
+    158|   try{await c.authenticate('signup','Ada','password1');malformed=true;…
+       |                                                                                              ^
+    159|   finally{c.dispose();}
+    160|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  tests/accounts/client.test.ts > integration-safe identity transitions > blocks guest login when residual integration context cannot be invalidated
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/accounts/client.test.ts:164:62
+    162|   const f=fixture();f.storage.write('best:snake',19);
+    163|   const c=new AccountsClient(f.storage,f.fetcher,{strictIdentityChange…
+    164|   try{await expect(c.authenticate('signup','Ada','password1')).rejects…
+       |                                                              ^
+    165|   finally{c.dispose();}
+    166|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  tests/accounts/client.test.ts > integration-safe identity transitions > blocks account switching and preserves original saves when strict outgoing revocation fails
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/accounts/client.test.ts:173:58
+    171|   try{
+    172|    await c.authenticate('signup','Ada','password1');f.storage.write('b…
+    173|    await expect(c.authenticate('login','Bob','password1')).rejects.toT…
+       |                                                          ^
+    174|    expect(c.session()).toEqual({token,username:'Ada'});expect(f.storag…
+    175|   }finally{c.dispose();}
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  tests/accounts/client.test.ts > integration-safe identity transitions > strict blocking integration cleanup must finish before identity writes
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/accounts/client.test.ts:182:27
+    180|   try{
+    181|    await c.authenticate('signup','Ada','password1');rejectCleanup=true;
+    182|    await expect(c.logout()).rejects.toThrow('could not be verified');e…
+       |                           ^
+    183|   }finally{c.dispose();}
+    184|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  tests/accounts/client.test.ts > integration-safe identity transitions > a failed strict transition cannot publish a different identity to another tab
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/accounts/client.test.ts:188:100
+    186|   const f=fixture(),first=new AccountsClient(f.storage,f.fetcher,{stri…
+    187|   try{
+    188|    await first.authenticate('signup','Ada','password1');f.offline(true…
+       |                                                                                                    ^
+    189|    expect(first.session()).toEqual(second.session());expect(second.ses…
+    190|   }finally{first.dispose();second.dispose();}
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 16 passed (23)
+   Start at  12:55:14
+   Duration  504ms (transform 94ms, setup 0ms, collect 112ms, tests 136ms, environment 0ms, prepare 64ms)
+

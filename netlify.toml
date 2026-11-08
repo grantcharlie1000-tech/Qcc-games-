@@ -1,6 +1,12 @@
 [build]
   command = "npm run build"
   publish = "dist"
+[context.production]
+  command = "npm run db:migrate -- --expect-env production && npm run build"
+[context.deploy-preview]
+  command = "npm run db:migrate -- --expect-env preview && npm run build"
+[context.branch-deploy]
+  command = "npm run db:migrate -- --expect-env preview && npm run build"
 [build.environment]
   NODE_VERSION = "22"
 [[headers]]

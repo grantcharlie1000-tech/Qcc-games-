@@ -1,4 +1,5 @@
 import {GAME_IDS} from '../core/types';
+import {STORAGE_FULL_MESSAGE} from '../core/storage-full';
 // Keep requests below Vercel Hobby's 4.5 MB hard limit and give each account a
 // bounded share of the 0.5 GB Neon Free budget. These are logical UTF-8 JSON
 // bytes; database indexes/row overhead still consume additional project storage.
@@ -10,6 +11,8 @@ export const MAX_KEEPALIVE_BODY_BYTES=60000;
 // Reserve space for cursor/revisions growing between precomputed sync batches.
 export const SYNC_BATCH_HEADROOM_BYTES=2048;
 export const jsonBytes=(value:unknown)=>new TextEncoder().encode(JSON.stringify(value)).length;
+export const STORAGE_QUOTA={error:'storage_quota',message:'Your saves are over the 2 MB limit.'} as const;
+export const STORAGE_FULL={error:'storage_full',message:STORAGE_FULL_MESSAGE} as const;
 export const SAVE_KEYS:readonly string[]=['settings','favourites',...GAME_IDS.flatMap(id=>['best:'+id,'save:'+id]),...['easy','medium','hard','score'].map(level=>'best:minesweeper-'+level)];
 export interface SaveRecord {value:unknown;updated:number}
 export type Saves=Record<string,SaveRecord>;

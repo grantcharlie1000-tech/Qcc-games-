@@ -1,9 +1,10 @@
+import {apiUrl} from '../core/api';
 import * as store from '../core/storage';
 import {STORAGE_FULL_MESSAGE} from '../core/storage-full';
 import {contentHash,stableText} from '../core/content';
 import {mergeSaves} from './merge';
 import {scoredGame} from '../leaderboard/shared';
-import {SAVE_KEYS,MAX_BODY_BYTES,MAX_KEEPALIVE_BODY_BYTES,SYNC_BATCH_HEADROOM_BYTES,jsonBytes,validSave,validRevision,validSessionToken,validUsername,validPassword,type Saves,type SaveRecord,type SaveRevisions,type SyncV2Response} from './shared';
+import {SAVE_KEYS,MAX_BODY_BYTES,MAX_KEEPALIVE_BODY_BYTES,SYNC_BATCH_HEADROOM_BYTES,STORAGE_QUOTA,STORAGE_FULL,jsonBytes,validSave,validRevision,validSessionToken,validUsername,validPassword,type Saves,type SaveRecord,type SaveRevisions,type SyncV2Response} from './shared';
 export interface Session {token:string;username:string}
 export interface AccountStorage {
  read<T>(key:string,fallback:T):T;write(key:string,value:unknown):boolean;
@@ -18,7 +19,7 @@ export interface AccountIdentityPolicy {
 export const SAFE_IDENTITY_CHANGE_ERROR='Account change could not be verified. Your account and saves stay on this browser. Reconnect and try again.';
 export const SYNC_BATCH_MS=3*60*1000;
 export const SYNC_STALE_MS=3*60*1000;
-const endpoint='/.netlify/functions/accounts',sessionKey='accounts:session',identityBarrierKey='accounts:identity-pending';
+const endpoint=apiUrl('accounts'),sessionKey='accounts:session',identityBarrierKey='accounts:identity-pending';
 interface SyncState {cursor:string;revisions:SaveRevisions;hashes:Record<string,string>;pending:string[];batchAt:number;attempt:number;retryAt:number;lastPull:number;blocked:boolean}
 const emptyState=():SyncState=>({cursor:'0',revisions:{},hashes:{},pending:[],batchAt:0,attempt:0,retryAt:0,lastPull:0,blocked:false});
 const hidden=()=>typeof document!=='undefined'&&document.hidden;
@@ -114,7 +115,14 @@ export class AccountsClient {
  private async response(action:string,method:string,body:unknown,token?:string,keepalive=false){
   const response=await this.fetcher(`${endpoint}?action=${action}`,{method,headers:{...(action.startsWith('sync')?{'X-QCC-Sync':'2'}:{}),...(token?{Authorization:`Bearer ${token}`}:{}) ,...(body!==undefined?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{}),cache:'no-store',signal:AbortSignal.timeout(8000),keepalive});
   if(!response.ok){
-   let text=response.status===507?STORAGE_FULL_MESSAGE:'Accounts are unavailable. Your progress stays on this browser.';try{const data=await response.json();if(response.status===507||data.error==='storage_full')text=STORAGE_FULL_MESSAGE;else if(typeof data.error==='string')text=data.error==='read_only'?'Cloud saves are temporarily read only. Your progress is queued on this browser.':data.error;}catch{}
+   let text=response.status===507?STORAGE_FULL_MESSAGE:'Accounts are unavailable. Your progress stays on this browser.';
+   try{
+    const data=await response.json();
+    const storageError=data.error==='storage_quota'?STORAGE_QUOTA:data.error==='storage_full'?STORAGE_FULL:undefined;
+    if(response.status===507||data.error==='storage_full')text=STORAGE_FULL_MESSAGE;
+    else if(storageError)text=typeof data.message==='string'?data.message:storageError.message;
+    else if(typeof data.error==='string')text=data.error==='read_only'?'Cloud saves are temporarily read only. Your progress is queued on this browser.':data.error;
+   }catch{}
    const retry=response.headers.get('Retry-After'),seconds=retry!==null?Number(retry):NaN;
    const retryAt=retry===null?0:Number.isFinite(seconds)?Date.now()+Math.max(0,seconds)*1000:Math.max(0,Date.parse(retry)||0);
    throw new AccountRequestError(text,[429,502,503,507].includes(response.status),retryAt,response.status);
@@ -142,7 +150,7 @@ export class AccountsClient {
   if(initial)this.reconcile(initial,{});
   this.apply(mergeSaves(this.collect(),mergeSaves(imported,staged)));this.track();
   this.storage.write('accounts:guest',true);this.message='';this.emit();
-  try{await this.flush(false,false);}catch(error){this.message=error instanceof AccountRequestError&&error.status===507?error.message:'Signed in. Playing locally until your saves can sync.';this.emit();}
+  try{await this.flush(false,false);}catch{/* Sync already reported the error and retained pending local saves. */}
  }
  private staged(value:unknown):Saves {
   const result:Saves={};if(!value||typeof value!=='object'||Array.isArray(value))return result;

@@ -14,7 +14,7 @@ Same-origin Functions, all under `/.netlify/functions/`:
 
 The media limit is high because image GETs (avatars, post photos) share the bucket and a school's students usually share one NAT IP. Uploads are limited separately to 60/day per account, and public GETs are cacheable.
 
-`netlify/functions/chat-purge.mts` is a scheduled function (`@hourly`). It deletes expired chat messages and their snap media, stale pending uploads, and orphaned media (attached rows older than an hour that nothing references, `sweepOrphanMedia`), in batches (up to 20 rounds per run). Blobs are deleted before rows, so a failed blob delete leaves the row for the next run. It logs only counts.
+`netlify/functions/chat-purge.mts` is a scheduled function (`@hourly`). It deletes expired chat messages and their snap media, stale pending uploads, and orphaned media (attached rows older than an hour that nothing references, `sweepOrphanMedia`), in batches of 50 under a 7 s time budget (blobs deleted 8 at a time). It checks the database environment marker first and skips while writes are frozen. Without a media store it deletes only text and system messages, keeping snaps and their media for a later run. Blobs are deleted before rows, so a failed blob delete leaves the row for the next run. It logs only counts.
 
 ## Cloudflare Pages proxy
 
@@ -22,13 +22,24 @@ The media limit is high because image GETs (avatars, post photos) share the buck
 
 ## Database migration (owner approval required)
 
-`netlify/database/migrations/20261105090000_social_chat.sql` creates the Social, Chat and media tables. **Do not apply it without the owner's approval.** Apply it separately to the production database and to the preview database, and confirm each before the matching deploy goes live. The handlers answer 503 until the tables exist.
+`db/migrations/20261105090000_social_chat.sql` creates the Social, Chat and media tables. **Do not apply it without the owner's approval.** On the standalone Neon backend, apply it with the migration tooling (`npm run db:status`, then `npm run db:migrate -- --expect-env <production|preview>`; see [DATABASE.md](../DATABASE.md)). Run it separately for the production database and for the preview database, and confirm each before the matching deploy goes live. The handlers answer 503 until the tables exist.
+
+**Approval gate:** `scripts/db-migrate.mjs` refuses to apply this migration (the Netlify build fails, nothing is applied) unless `QCC_APPROVED_MIGRATIONS` contains `20261105090000_social_chat`. After approving, the owner sets that variable separately for production and for preview; unset, the gate stays closed. Already-applied databases are unaffected.
 
 ## Media storage
 
 Netlify uses a Netlify Blobs store named `qcc-media` (strong consistency) through `netlify/lib/media-store.mts` (`@netlify/blobs` 11.1.7, lazily imported). If Blobs is unavailable, the adapter returns `null`. Media actions then answer 503 `media_not_configured`, the UI hides photo buttons, and text keeps working. Only processed WebP derivatives are stored.
 
-The separately deployed Vercel backend (`infra/backend-move`) must add the same three handlers (`social`, `chat`, `media`) and a `MediaStore` adapter. The store is an owner decision (for example Vercel Blob or Cloudflare R2). Until then media stays disabled on that path while text works. It must also run the hourly purge (a cron calling `purgeExpiredChat`, `purgePendingMedia` and, hourly only, `sweepOrphanMedia`).
+### Vercel backend (implemented)
+
+The Vercel backend serves `/api/social`, `/api/chat` and `/api/media` from `server/app.ts` and stores photos through `server/media-store.ts` (Vercel Blob, `@vercel/blob` 2.8.2). To turn it on:
+
+1. Get the owner's approval, then apply `20261105090000_social_chat.sql` to production and, separately, to preview.
+2. Create a Vercel Blob store and connect it to the project (this sets `BLOB_READ_WRITE_TOKEN`).
+3. Set `CRON_SECRET` and `QCC_MEDIA_MAX_TOTAL_BYTES` (required; about 80% of the plan's storage). Media stays disabled (503 `media_not_configured`) while text works unless both the token and the budget are set.
+4. Deploy. `vercel.json` registers the purge cron for `/api/chat-purge` (Bearer `CRON_SECRET`; 401 otherwise).
+
+Privacy: blobs are private (`access: 'private'`), have no public URL, and are served only through the authenticated media handler. The purge runs **daily** (`7 3 * * *`) because Vercel Hobby allows only daily cron; use `7 * * * *` on Pro for the hourly cadence above. Expired messages are filtered at read time, so the delay only postpones deletion. Details are in [BACKEND_HOSTING.md](../BACKEND_HOSTING.md#qcc-social-chat-and-media-on-vercel).
 
 ## Deleting an account directly in SQL
 
@@ -46,11 +57,14 @@ Snaps the account's friends sent into their shared conversations cascade with th
 
 | Variable | Meaning |
 | --- | --- |
-| `QCC_MEDIA_MAX_TOTAL_BYTES` | Global media budget in bytes. Default 2 GiB. Uploads return 507 above it. |
+| `QCC_MEDIA_MAX_TOTAL_BYTES` | Global media budget in bytes. Vercel backend: required to enable media (no default). Elsewhere default 2 GiB. Uploads return 507 above it. |
+| `QCC_APPROVED_MIGRATIONS` | Owner-set, per deployment context. Comma list of gated migration ids allowed to apply, e.g. `20261105090000_social_chat`. |
+| `BLOB_READ_WRITE_TOKEN` | Vercel backend only. Enables the Vercel Blob media store. |
+| `CRON_SECRET` | Vercel backend only. Bearer secret for `/api/chat-purge`. |
 
 ## Sharp runtime
 
-Photo processing uses Sharp (lazy-imported on the first upload). It needs its native binary at runtime: the linux-x64 prebuilt package. `netlify.toml` sets `[functions] external_node_modules = ["sharp"]` so the bundler leaves Sharp and its native package in `node_modules`. After deploy, check that an upload works. A bundle without the native binary fails uploads only. If that happens, add the platform package to `included_files`.
+Photo processing uses Sharp (lazy-imported on the first upload). It needs its native binary at runtime: the linux-x64 prebuilt package. `netlify.toml` sets `[functions] external_node_modules = ["sharp"]` so the bundler leaves Sharp and its native package in `node_modules`. After deploy, check that an upload works. A bundle without the native binary fails uploads only. If that happens, add the platform package to `included_files`. On Vercel, Sharp stays external in the esbuild bundle and `npm ci` installs it, so nothing extra is needed.
 
 ## Verify after deploy
 
@@ -64,7 +78,7 @@ code "$SITE/.netlify/functions/media?action=get&id=m_000000000000000000000000000
 code "$SITE/.netlify/functions/social/extra"            # expect 404 (route not allowed)
 ```
 
-Then sign in, post, upload a photo, and send a snap between two test accounts. Check the Netlify function log for the hourly `QCC chat purge` line.
+Then sign in, post, upload a photo, and send a snap between two test accounts. Check the Netlify function log for the hourly `QCC chat purge` line (on Vercel, the daily cron's `QCC chat purge` line in the function logs for `/api/chat-purge`; a `skipped` warning means the environment check failed or writes are frozen).
 
 ## Local development
 

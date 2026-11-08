@@ -1,0 +1,99 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/study/pairing-ingress.test.ts
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-backend-integration
+
+ ❯ tests/study/pairing-ingress.test.ts (6 tests | 4 failed) 3477ms
+   × authenticated classroom verification is not grouped under one Cloudflare egress IP budget 57ms
+     → expected 429 to be 401 // Object.is equality
+   ✓ bad or missing service secrets retain the original 120/minute IP limit 46ms
+   ✓ service budget exemption cannot be obtained with another method or extra action parameters 19ms
+   × authenticated verification keeps a separate 300/minute browser proof budget 24ms
+     → expected 429 to be 401 // Object.is equality
+   × authenticated verification retains a 6000/minute service-wide ceiling across egress IPs 370ms
+     → expected 429 to be 401 // Object.is equality
+   × 30 students can complete the actual six-call pairing flow behind a single NAT 1684ms
+     → expected 429 to be 200 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/study/pairing-ingress.test.ts > authenticated classroom verification is not grouped under one Cloudflare egress IP budget
+AssertionError: expected 429 to be 401 // Object.is equality
+
+- Expected
++ Received
+
+- 401
++ 429
+
+ ❯ tests/study/pairing-ingress.test.ts:17:27
+     15|  for(let student=0;student<30;student++)for(let request=0;request<10;r…
+     16|   const response=await handle(verification((student+1).toString(16).pa…
+     17|   expect(response.status).toBe(401);expect(await response.json()).toEq…
+       |                           ^
+     18|  }
+     19| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/study/pairing-ingress.test.ts > authenticated verification keeps a separate 300/minute browser proof budget
+AssertionError: expected 429 to be 401 // Object.is equality
+
+- Expected
++ Received
+
+- 401
++ 429
+
+ ❯ tests/study/pairing-ingress.test.ts:36:92
+     34| it('authenticated verification keeps a separate 300/minute browser pro…
+     35|  const handle=make(),browser='b'.repeat(64);
+     36|  for(let i=0;i<300;i++)expect((await handle(verification(browser),'198…
+       |                                                                                            ^
+     37|  expect((await handle(verification(browser),'198.51.100.1')).status).t…
+     38| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/study/pairing-ingress.test.ts > authenticated verification retains a 6000/minute service-wide ceiling across egress IPs
+AssertionError: expected 429 to be 401 // Object.is equality
+
+- Expected
++ Received
+
+- 401
++ 429
+
+ ❯ tests/study/pairing-ingress.test.ts:41:94
+     39| it('authenticated verification retains a 6000/minute service-wide ceil…
+     40|  const handle=make();
+     41|  for(let i=0;i<6000;i++)expect((await handle(verification(),'198.51.10…
+       |                                                                                              ^
+     42|  expect((await handle(verification(),'203.0.113.99')).status).toBe(429…
+     43| },15000);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  tests/study/pairing-ingress.test.ts > 30 students can complete the actual six-call pairing flow behind a single NAT
+AssertionError: expected 429 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 429
+
+ ❯ tests/study/pairing-ingress.test.ts:61:41
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 2 passed (6)
+   Start at  13:57:38
+   Duration  4.18s (transform 301ms, setup 0ms, collect 418ms, tests 3.48s, environment 0ms, prepare 68ms)
+

@@ -1,7 +1,7 @@
 import {test,expect,type BrowserContext,type Page,type Locator} from '@playwright/test';
 import {mkdirSync} from 'node:fs';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool} from 'pg';
 import sharp from 'sharp';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {createChatHandler} from '../../src/chat/server';
@@ -14,11 +14,11 @@ import {createMemoryStore} from '../../src/media/store';
 // then a reduced-motion pass checks, for both triggers, that nothing moves and only the allowed opacity fades run.
 test.skip(!process.env.MOTION_SHOTS,'set MOTION_SHOTS=1 to regenerate the motion evidence');
 const OUT='docs/evidence/social-chat/motion';
-const database=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
+const database=new LocalDB();let pool:Pool;
 let accounts:ReturnType<typeof createAccountsHandler>,chat:ReturnType<typeof createChatHandler>,social:ReturnType<typeof createSocialHandler>,media:ReturnType<typeof createMediaHandler>;
 test.beforeAll(async()=>{
  mkdirSync(OUT,{recursive:true});
- const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;
+ const connectionString=await database.start();await database.applyMigrations('db/migrations');pool=createLocalPool(connectionString);
  const store=createMemoryStore();const db={query:(text:string,values?:unknown[])=>pool.query(text,values),connect:()=>pool.connect()} as never;
  accounts=createAccountsHandler(pool);chat=createChatHandler(db,store);social=createSocialHandler(db,store);media=createMediaHandler(db,store);
 });

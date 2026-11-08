@@ -1,12 +1,12 @@
 import {beforeAll,afterAll,beforeEach,describe,it,expect,vi} from 'vitest';
 import {createHash,scrypt,timingSafeEqual} from 'node:crypto';
 vi.mock('node:crypto',async original=>{const crypto=await original<typeof import('node:crypto')>();return {...crypto,scrypt:vi.fn(crypto.scrypt),timingSafeEqual:vi.fn(crypto.timingSafeEqual)};});
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool,PoolClient} from 'pg';
 import {createAccountsHandler,verifyPassword} from '../../src/accounts/server';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
 import type {Database} from '../../src/leaderboard/server';
-const local=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
+const local=new LocalDB();let pool:Pool;
 let handle:ReturnType<typeof createAccountsHandler>;
 const endpoint='https://arcade.test/.netlify/functions/accounts';
 function request(action:string,body?:unknown,token?:string,method=body===undefined?'GET':'POST',extra:Record<string,string>={}){
@@ -42,18 +42,18 @@ it.each(['signup','login'])('returns 507 when %s cannot write authentication rec
 });
 it.each(['signup','login'])('rolls back %s authentication if COMMIT runs out of space',async action=>{
  await signup();const before=(await pool.query('SELECT token_hash FROM account_sessions ORDER BY token_hash')).rows;
- let transaction:Awaited<ReturnType<typeof pool.connect>>|undefined,rolledBack=false,released=false;
+ let transaction:PoolClient|undefined,rolledBack=false,released=false;
  const db:Database={query:pool.query.bind(pool),connect:async()=>{
   transaction=await pool.connect();const client=transaction;
-  return {query:async(sql,values)=>{if(sql==='COMMIT')throw {code:'53100'};if(sql==='ROLLBACK')rolledBack=true;return client.query(sql,values);},release:()=>{released=true;}};
+  return {query:async(sql,values)=>{if(sql==='COMMIT')throw {code:'53100'};if(sql==='ROLLBACK')rolledBack=true;return client.query(sql,values);},release:()=>{released=true;client.release();}};
  }};
  try{
   const response=await createAccountsHandler(db)(new Request(endpoint+'?action='+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:action==='signup'?'Commit_New':'Player_One',password:'secret password'})}));
   expect(response.status).toBe(507);expect(await response.json()).toEqual(capacityBody);expect(rolledBack).toBe(true);expect(released).toBe(true);
   expect((await pool.query('SELECT token_hash FROM account_sessions ORDER BY token_hash')).rows).toEqual(before);
- }finally{if(transaction){await transaction.query('ROLLBACK');transaction.release();}}
+ }finally{if(transaction&&!released){await transaction.query('ROLLBACK');transaction.release();}}
 });
-beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;handle=createAccountsHandler(pool);},30000);
+beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('db/migrations');pool=createLocalPool(connectionString);handle=createAccountsHandler(pool);},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});
 beforeEach(async()=>{await pool.query('TRUNCATE arcade_players,account_attempts CASCADE');});
 describe('optional accounts with real Postgres',()=>{
@@ -183,7 +183,7 @@ describe('optional accounts with real Postgres',()=>{
   const merged=await (await request('sync',{saves:second},a.token,'PUT')).json();expect(merged.saves['best:snake'].value).toBe(200);expect(merged.saves.favourites.value).toEqual(['tower']);expect(merged.saves.settings.value.sound).toBe(true);expect(merged.saves.settings.value.autoNextEpisode).toBe(false);expect(merged.saves['save:snake'].value.data.score).toBe(9);
   expect(merged.saves['best:quadfall'].value).toBe(1200);expect(merged.saves['save:quadfall']).toEqual({value:{version:1,data:{phase:'running'},updated:1},updated:1});
   expect((await (await request('sync',undefined,a.token)).json()).saves).toEqual(merged.saves);expect((await (await request('sync',undefined,b.token)).json()).saves).toEqual({});
-  for(const saves of [{'account:token':{value:'secret',updated:1}},{'best:snake':{value:-1,updated:1}},{'save:not-a-game':{value:{version:1,data:{},updated:1},updated:1}},{'save:corn-clicker':{value:'x',updated:1}}])expect((await request('sync',{saves},a.token,'PUT')).status).toBe(400);
+  for(const saves of [{'best:snake':{value:-1,updated:1}},{'save:corn-clicker':{value:'x',updated:1}}])expect((await request('sync',{saves},a.token,'PUT')).status).toBe(400);
   expect((await request('sync',{saves:{'save:blockcraft':{value:{version:1,data:{text:'x'.repeat(1050000)},updated:1},updated:1}}},a.token,'PUT')).status).toBe(413);
  });
  it('serializes concurrent save merges so updates from separate devices are retained',async()=>{

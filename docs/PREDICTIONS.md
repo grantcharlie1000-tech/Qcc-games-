@@ -17,9 +17,10 @@ the Menu entry shows by default (a build with `VITE_QCC_PREDICTIONS=off` hides i
 | `src/predictions/week.ts` | Auckland calendar weeks for display; the database computes the authoritative weeks the same way. |
 | `src/predictions/shared.ts` | API types, limits, draft validation, prohibited-subject screen, credit formatting. |
 | `src/predictions/server.ts` | The `/.netlify/functions/predictions` handler, the grant operation and the settlement engine. |
-| `src/predictions/{client,model,view}.ts`, `style.css` | Lazy-loaded browser feature (Explore, market, ticket, My calls, Rankings, Ask, moderator Dashboard at `#/predictions/dashboard`). |
-| `netlify/database/migrations/20261108090000_predictions.sql` | Schema, append-only journal, balance and freeze triggers. **Needs owner approval.** |
-| `netlify/functions/predictions.mts`, `predictions-grants.mts` | Netlify adapters: request handler and the hourly grant job. |
+| `src/predictions/{client,model,view}.ts`, `style.css` | Lazy-loaded browser feature (Explore, market, ticket, review sheet, My calls, Rankings, Ask, Review queue, moderator Dashboard at `#/predictions/dashboard`). |
+| `db/migrations/20261108090000_predictions.sql` | Schema, append-only journal, balance and freeze triggers. Gated: **needs owner approval** (`QCC_APPROVED_MIGRATIONS`). |
+| `server/app.ts` | Backend routes `/api/predictions` and the `CRON_SECRET` cron `/api/predictions-grants` (daily 12:17 UTC, in `vercel.json`). |
+| `netlify/functions/predictions.mts`, `predictions-grants.mts` | Legacy Netlify adapters for the same handler and job. |
 | `functions/_middleware.ts` | Pages proxy allowlist now includes `predictions`. |
 | `scripts/predictions-fixtures.mjs` | Development-only fixtures, each flagged `fixture=true` and labelled in the UI. |
 
@@ -36,7 +37,7 @@ the Menu entry shows by default (a build with `VITE_QCC_PREDICTIONS=off` hides i
 - **Ledger.** `predictions_journal` + `predictions_postings` is double-entry: every transaction sums to zero (deferred
   constraint trigger), rows are append-only (update/delete triggers), and wallet/reserve balances are maintained
   *only* by the posting trigger with `CHECK (balance >= 0)`. Corrections are new entries.
-- **Allowance.** One operation (`repairGrants`) is used by the hourly job, wallet reads and trades. It locks the
+- **Allowance.** One operation (`repairGrants`) is used by the scheduled job, wallet reads and trades. It locks the
   wallet and issues every missing week that overlaps an eligibility interval, never before `launch_at`, with
   `PRIMARY KEY (account_id, week_start)` as the final guard. Joining is the eligibility event (an explicit opt-in
   that accepts the rules); visiting never creates entitlement. Any ended interval is a suspension that only an
@@ -155,10 +156,10 @@ on the production backend.
    If credits ever buy anything, reassess first.
 2. **Eligibility.** The account system does not prove one person per account, and "school only" currently means
    "has joined Predictions". Decide on a proportionate school-membership check before issuing large subsidies.
-3. **Backend.** Production API runs on the separate Vercel backend (`docs/BACKEND_HOSTING.md`). Port
-   `src/predictions/server.ts` into its router as the `predictions` route with the existing guarded handler, and run
-   `runGrantJob` from an authenticated hourly cron there. A Pages deploy alone will not make trading work.
-4. **Migration.** Apply `20261108090000_predictions.sql` to Preview first, then Production.
+3. **Backend.** Done on `infra/backend-move`: `server/app.ts` serves `/api/predictions` and runs the daily
+   `/api/predictions-grants` cron (`docs/BACKEND_HOSTING.md`). The Pages proxy already allows `predictions`.
+4. **Migration.** With approval, set `QCC_APPROVED_MIGRATIONS=20261108090000_predictions` for Preview, run
+   `npm run db:migrate`, check, then repeat for Production. The gate refuses it otherwise.
 5. **Launch.** `UPDATE predictions_config SET enabled=true, launch_at=now();` (keep `show_fixtures=false`), grant
    the moderator role (SQL above) to the accounts that will authorise results. The Menu entry and the games-library row show unless the build sets `VITE_QCC_PREDICTIONS=off`. Questions open as soon as people ask them, so decide who watches the dashboard's reports.
 

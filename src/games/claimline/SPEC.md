@@ -45,7 +45,7 @@ Bot names and scores never leave the match.
 
 Claimline is a scored game on the shared leaderboard and uses the existing Leaderboards dialog and `LeaderboardSync` as-is. The submitted score is the human's peak share in hundredths of a percent, shown as a percentage by `formatScore`. Bots are never submitted.
 
-The production database only accepts `claimline` scores after `netlify/database/migrations/20261102090000_claimline_leaderboard.sql` adds it to `arcade_scores_game_id_check`. Until then:
+This branch keeps the Claimline leaderboard closed: the existing `arcade_scores_game_id_check` rejects its scores, and no Claimline migration or schema change is included. Claimline account saves remain supported. While the leaderboard is closed:
 
 - **Server.** An insert that fails that specific constraint (`23514` on `arcade_scores_game_id_check`) gets a 409 with `code: 'leaderboard-not-open'`. Every other failure is still the generic 503. Reads work and return an empty board.
 - **Client.** `LeaderboardSync` parks only that game for 15 minutes, keeps its best queued, raises no error and applies no shared backoff, and goes on sending other games' scores. A fresh page load retries straight away.

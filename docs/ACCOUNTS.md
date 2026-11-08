@@ -12,7 +12,7 @@ A session is stored through core/storage. Logout removes its raw token immediate
 
 ## Sync
 
-The allowlist consists of `best:<game>`, `save:<game>`, settings and favourites. Corn Clicker's main farm is already `save:corn-clicker` in the shell namespace, so it follows the same sync path. Its tab lock and rolling backups are never synced. Movies, Study session choices, offline metadata and leaderboard browser tokens are excluded.
+The allowlist consists of `best:<game>`, `save:<game>`, settings and favourites. It includes Crossy Road and the current game catalog. Unsupported keys (including future game ids) are dropped before validation and never written; supported keys in the same upload still sync. An otherwise valid favourites record containing an unknown game id is also skipped as a whole, preserving the stored list without acknowledging a different value. Malformed envelopes, revisions and supported save values still return 400. Corn Clicker's main farm is already `save:corn-clicker` in the shell namespace, so it follows the same sync path. Its tab lock and rolling backups are never synced. Movies, Study session choices, offline metadata and leaderboard browser tokens are excluded.
 
 Each transfer record contains `{value,updated}`. Best scores merge by maximum; favourites, settings and game snapshots by latest timestamp. Equal timestamps have a deterministic JSON lexical tie break. Snapshot envelope timestamps must equal record timestamps. Old snapshots without timestamps acquire zero, so a dated server snapshot wins. Settings/best/favourite writes persist update timestamps. Favourites can be removed on any device; a newer removal wins on every subsequent sync. Guest favourites are imported only at sign-up.
 
@@ -22,7 +22,7 @@ Pending keys, revisions, content fingerprints and retry deadlines persist by acc
 
 ## Measured size limits
 
-A record is limited to **1 MiB of UTF-8 JSON**; streamed request bodies are limited to **1 MiB**, including envelope overhead, and total account saves to **2 MiB of compact UTF-8 JSON** across all keys. A record must also fit the request envelope and 2 KiB batching headroom. An oversized/incompatible key stays local and produces a menu notice; other keys still sync. Quota-rejected uploads remain staged locally. Existing over-quota data stays readable and non-growing updates are allowed. The unchanged database text cap allows Postgres JSON formatting expansion. See [the audit and backend mirror requirements](BACKEND_HOSTING.md); live Vercel enforcement needs that separate mirror.
+A record is limited to **1 MiB of UTF-8 JSON**; streamed request bodies are limited to **1 MiB**, including envelope overhead, and total account saves to **2 MiB of compact UTF-8 JSON** across all keys. A record must also fit the request envelope and 2 KiB batching headroom. An oversized/incompatible key stays local and produces a menu notice; other keys still sync. Quota-rejected uploads remain staged locally. Existing over-quota data stays readable and non-growing updates are allowed. The unchanged database text cap allows Postgres JSON formatting expansion. See [backend hosting and the limit audit](BACKEND_HOSTING.md). These limits are shared by the Pages client and this branch's Vercel backend; deployment is separate from this merge.
 
 Measured on the actual serializers with fixed clock `1793000000000` and seed 1, including shell and transfer envelopes:
 
@@ -46,3 +46,7 @@ Passwords use Node scrypt with N=16384, r=8, p=1, a random 16-byte salt and 64-b
 Persistent database counters allow ten failed logins per trimmed, case-insensitive username and 100 failed logins per platform client IP in 15 minutes. Successful logins do not increment counters and reset the username counter. Sign-ups allow 60 attempts per IP per hour. Transaction-scoped database locks serialize concurrent checks before password derivation, so parallel requests cannot bypass a limit. Limits return 429 and Retry-After; Netlify allows 600 account requests per IP per minute. Expired sessions and old attempt counters are deleted opportunistically during authentication. Taken usernames are checked before scrypt, with the unique index still handling concurrent sign-ups. State-changing requests check origin, require JSON and bound streamed body bytes; auth bodies are limited to 2 KiB. SQL is parameterized; save merges take a per-account transaction lock. Tables revoke all public grants.
 
 Account leaderboard entries display a text “account” marker in both leaderboard views, including their accessible cell text. Historical guest rows keep their existing nicknames; this policy change does not delete or rewrite them. The marker distinguishes account identities without treating a matching nickname as ownership.
+
+## Database maintenance
+
+Accounts use the server-only standalone Neon pool and the same environment/freeze guard as leaderboards. During maintenance, writes (including login and logout) return retryable 503 `read_only`; existing authenticated reads remain available and queued local progress is retained. See [database operations](DATABASE.md).

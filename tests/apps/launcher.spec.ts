@@ -1,16 +1,16 @@
 import {test,expect,type BrowserContext,type Page} from '@playwright/test';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool} from 'pg';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {createChatHandler} from '../../src/chat/server';
 import {createSocialHandler} from '../../src/social/server';
 import {createMemoryStore} from '../../src/media/store';
 import {seedStudyTopic} from '../fixtures';
 
-const database=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
+const database=new LocalDB();let pool:Pool;
 let accounts:ReturnType<typeof createAccountsHandler>,chat:ReturnType<typeof createChatHandler>,social:ReturnType<typeof createSocialHandler>;
 test.beforeAll(async()=>{
- const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;
+ const connectionString=await database.start();await database.applyMigrations('db/migrations');pool=createLocalPool(connectionString);
  const store=createMemoryStore();const db={query:(text:string,values?:unknown[])=>pool.query(text,values),connect:()=>pool.connect()} as never;
  accounts=createAccountsHandler(pool);chat=createChatHandler(db,store);social=createSocialHandler(db,store);
 });

@@ -1,13 +1,11 @@
 // Vite plus the real leaderboard/accounts handlers and a local Postgres-compatible database.
 import {createServer} from 'vite';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
-const database=new NetlifyDB({directory:'.netlify/local-leaderboard',logger:()=>{}});
+import {LocalDB,createLocalPool} from '../tests/support/local-db.mjs';
+const database=new LocalDB({directory:'.netlify/local-leaderboard'});
 const connectionString=await database.start();
-await database.applyMigrations('netlify/database/migrations');
-const pool=getDatabase({connectionString}).pool;
-// pg.Pool.query needs `this`; hand handlers a bound view.
-const db={query:(text,values)=>pool.query(text,values),connect:()=>pool.connect()};
+await database.applyMigrations('db/migrations');
+const pool=createLocalPool(connectionString);
+const handles=new Map();
 // Predictions is off by default (as in production). QCC_PREDICTIONS=on enables it locally and loads the
 // visibly marked development fixtures; see docs/PREDICTIONS.md.
 if(process.env.QCC_PREDICTIONS==='on')await (await import('./predictions-fixtures.mjs')).seedPredictions(pool);
@@ -19,13 +17,19 @@ const server=await createServer({server:{port:Number(process.env.PORT||4173)},pl
    try{
     const {MAX_BODY_BYTES}=await vite.ssrLoadModule('/src/accounts/shared.ts');
     const mediaStore=route==='accounts'||route==='leaderboard'||route==='predictions'?null:(await vite.ssrLoadModule('/src/media/store.ts')).createFileStore('.netlify/local-media');
-    let handle;
-    if(route==='accounts')handle=(await vite.ssrLoadModule('/src/accounts/server.ts')).createAccountsHandler(db);
-    else if(route==='leaderboard')handle=(await vite.ssrLoadModule('/src/leaderboard/server.ts')).createLeaderboardHandler(db);
-    else if(route==='social')handle=(await vite.ssrLoadModule('/src/social/server.ts')).createSocialHandler(db,mediaStore);
-    else if(route==='predictions')handle=(await vite.ssrLoadModule('/src/predictions/server.ts')).createPredictionsHandler(db);
-    else if(route==='chat')handle=(await vite.ssrLoadModule('/src/chat/server.ts')).createChatHandler(db,mediaStore);
-    else handle=(await vite.ssrLoadModule('/src/media/server.ts')).createMediaHandler(db,mediaStore);
+    if(!handles.has(route)){
+     const {createGuardedHandler}=await vite.ssrLoadModule('/netlify/lib/runtime.mts');
+     const factory=({
+      accounts:async()=>(await vite.ssrLoadModule('/src/accounts/server.ts')).createAccountsHandler,
+      leaderboard:async()=>(await vite.ssrLoadModule('/src/leaderboard/server.ts')).createLeaderboardHandler,
+      social:async()=>{const f=(await vite.ssrLoadModule('/src/social/server.ts')).createSocialHandler;return db=>f(db,mediaStore);},
+      chat:async()=>{const f=(await vite.ssrLoadModule('/src/chat/server.ts')).createChatHandler;return db=>f(db,mediaStore);},
+      predictions:async()=>(await vite.ssrLoadModule('/src/predictions/server.ts')).createPredictionsHandler,
+      media:async()=>{const f=(await vite.ssrLoadModule('/src/media/server.ts')).createMediaHandler;return db=>f(db,mediaStore);}
+     })[route];
+     handles.set(route,createGuardedHandler(pool,await factory(),{allowMissingMarker:false}));
+    }
+    const handle=handles.get(route);
     const cap=route==='media'?4194304:route==='leaderboard'?2048:MAX_BODY_BYTES;
     const chunks=[];let length=0;
     for await(const chunk of req){length+=chunk.length;if(length>cap){res.writeHead(413,{'Cache-Control':'no-store'});res.end('Request too large');return;}chunks.push(chunk);}

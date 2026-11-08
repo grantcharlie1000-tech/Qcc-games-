@@ -3,14 +3,14 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {randomUUID,randomBytes} from 'node:crypto';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool} from 'pg';
 import {createFileStore,createMemoryStore,attachMedia,deleteMediaObjects,purgePendingMedia,sweepOrphanMedia} from '../../src/media/store';
 import {setBlock,isBlockedEitherWay,accountByUsername} from '../../src/social/blocks';
 import {HttpError,readJson} from '../../server/api';
-const local=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
+const local=new LocalDB();let pool:Pool;
 const query=(text:string,values?:unknown[])=>pool.query(text,values);
-beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;},30000);
+beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('db/migrations');pool=createLocalPool(connectionString);},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});
 async function account(name:string){
  const id=randomUUID(),player=randomBytes(32).toString('hex');

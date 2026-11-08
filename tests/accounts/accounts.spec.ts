@@ -1,13 +1,13 @@
 import {test,expect,type BrowserContext,type Page} from '@playwright/test';
 import {appSettings as menu,gameAction,pauseGame} from '../game-menu';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool} from 'pg';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
 import {articleById} from '../../src/study/articles';
-const database=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
+const database=new LocalDB();let pool:Pool;
 let accounts:ReturnType<typeof createAccountsHandler>,leaderboard:ReturnType<typeof createLeaderboardHandler>;
-test.beforeAll(async()=>{const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;accounts=createAccountsHandler(pool);leaderboard=createLeaderboardHandler(pool);});
+test.beforeAll(async()=>{const connectionString=await database.start();await database.applyMigrations('db/migrations');pool=createLocalPool(connectionString);accounts=createAccountsHandler(pool);leaderboard=createLeaderboardHandler(pool);});
 test.afterAll(async()=>{await pool?.end();await database.stop();});
 async function connect(context:BrowserContext,topic=true){
  if(topic)await context.addInitScript(()=>{if(window!==window.top)return;localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});
@@ -24,6 +24,25 @@ async function signIn(page:Page,username:string,signup=false){
  await dialog.locator('form').getByRole('button',{name:signup?'Create account':'Log in',exact:true}).click();await expect(dialog).not.toBeVisible();await expect(dialog.getByLabel('Password',{exact:true})).toHaveValue('');await expect(dialog.getByLabel('Confirm password',{exact:true})).toHaveValue('');
  await page.getByRole('dialog',{name:'Merry Christmas!'}).getByRole('button',{name:'Got it'}).click();
 }
+
+for(const failure of [
+ {status:413,error:'storage_quota',message:'Your saves are over the 2 MB limit.'},
+ {status:507,error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},
+])test(`shows ${failure.error} in the account panel and keeps the local save after reload`,async({page,context})=>{
+ await connect(context);await page.goto('/');await signIn(page,`Storage_${failure.status}`,true);
+ await context.route('**/.netlify/functions/accounts**',async route=>{
+  if(route.request().method()==='PUT')await route.fulfill({status:failure.status,contentType:'application/json',body:JSON.stringify({error:failure.error,message:failure.message})});
+  else await route.fallback();
+ });
+ const save={version:1,data:{peakShare:4321,seed:12},updated:10};
+ await page.evaluate(value=>localStorage.setItem('pocket-arcade:v1:save:claimline',JSON.stringify(value)),save);
+ await menu(page);await page.getByRole('button',{name:'Sync now',exact:true}).click();
+ await expect(page.locator('#account-sync-status')).toHaveText(failure.message);
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:claimline')!))).toEqual(save);
+ await page.reload();
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:claimline')!))).toEqual(save);
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:accounts:pending:'+JSON.parse(localStorage.getItem('pocket-arcade:v1:accounts:session')!).username.toLowerCase())!)['save:claimline'].value)).toEqual(save);
+});
 
 test('entry offers guest play before the Study chooser and remembers the choice',async({page,context})=>{
  await connect(context,false);await page.goto('/');const dialog=page.locator('#accounts-dialog');await expect(dialog).toBeVisible();

@@ -1,4 +1,4 @@
-import {getDatabase} from '@netlify/database';
+import {getPool} from '../lib/db.mts';
 import {boundDatabase,assertEnvironment} from '../lib/runtime.mts';
 import type {Config} from '@netlify/functions';
 import {runGrantJob} from '../../src/predictions/server';
@@ -7,7 +7,7 @@ import {runGrantJob} from '../../src/predictions/server';
 // runGrantJob does nothing while the feature is disabled, not launched, or writes are frozen. Logs counts only.
 export default async ()=>{
  try{
-  const pool=getDatabase().pool,db=boundDatabase(pool);
+  const pool=getPool(),db=boundDatabase(pool);
   try{await assertEnvironment(pool,{allowMissingMarker:false});}
   catch{console.warn('QCC predictions grants skipped: environment check failed.');return new Response(null,{status:200});}
   const result=await runGrantJob(db);

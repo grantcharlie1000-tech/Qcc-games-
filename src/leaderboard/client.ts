@@ -1,3 +1,4 @@
+import {apiUrl} from '../core/api';
 import * as store from '../core/storage';
 import {STORAGE_FULL_MESSAGE} from '../core/storage-full';
 import {validUsername} from '../accounts/shared';
@@ -21,7 +22,7 @@ export class LeaderboardSync {
  /** Games parked after a not-open answer, with the time they may be tried again. Scores stay pending meanwhile. */
  private parked:Record<string,number>={};
  private timer:ReturnType<typeof setTimeout>|undefined;private inFlight:Promise<void>|null=null;
- readonly endpoint='/.netlify/functions/leaderboard';
+ readonly endpoint=apiUrl('leaderboard');
  constructor(private storage:Storage=store,private fetcher:typeof fetch=globalThis.fetch.bind(globalThis)){
   this.refreshIdentity();
   if(typeof document!=='undefined')document.addEventListener('visibilitychange',this.visibility);

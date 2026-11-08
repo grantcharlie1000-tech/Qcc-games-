@@ -19,7 +19,7 @@ Steps and validation:
 2. Add a parameterized Postgres repository/handler with positive integer score,
    supported game, nickname, bearer and payload validation. Exercise two independent
    identities, lower-score updates, game isolation, invalid requests and origins
-   against the actual local Netlify database and migration.
+   against the local database and migration (historically NetlifyDB; now the PGlite harness in `tests/support/local-db.ts`).
 3. Add opt-in score sync and menu dialog with request cancellation by generation,
    player highlighting, refresh and offline cached display. Bind native fetch,
    retain pending improvements through in-flight updates and retry after reconnect.

@@ -1,12 +1,11 @@
 import {afterAll,beforeAll,beforeEach,describe,expect,it,vi} from 'vitest';
 import {createHash} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {AccountsClient,type AccountStorage} from '../../src/accounts/client';
-const local=new NetlifyDB({logger:()=>{}});
-let pool:ReturnType<typeof getDatabase>['pool'],handle:ReturnType<typeof createAccountsHandler>;
+const local=new LocalDB();
+let pool:ReturnType<typeof createLocalPool>,handle:ReturnType<typeof createAccountsHandler>;
 const endpoint='https://arcade.test/.netlify/functions/accounts';
 const snapshot=(data:unknown,updated=1)=>({value:{version:1,data,updated},updated});
 async function request(action:string,token?:string,body?:unknown,v2=false,cursor='0'){
@@ -15,10 +14,78 @@ async function request(action:string,token?:string,body?:unknown,v2=false,cursor
 }
 async function signup(){const response=await request('signup',undefined,{username:'Sync_User',password:'secret password'});expect(response.status).toBe(201);return response.json() as Promise<{token:string}>;}
 async function sync(token:string,saves:unknown,cursor='0',bases:Record<string,string>={}){const response=await request('sync',token,{cursor,bases,saves},true);expect(response.status).toBe(200);return response.json();}
-beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;handle=createAccountsHandler(pool);},30000);
+beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('db/migrations');pool=createLocalPool(connectionString);handle=createAccountsHandler(pool);},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});
 beforeEach(async()=>{vi.unstubAllEnvs();await pool.query('TRUNCATE arcade_players,account_attempts CASCADE');});
 describe('incremental accounts sync against Postgres',()=>{
+ it.each([false,true])('ignores unsupported keys and future game ids while saving supported keys with v2=%s',async v2=>{
+  const {token}=await signup();
+  const supported={'best:snake':{value:42,updated:1},'save:tower':snapshot({level:3})};
+  // More future keys than the current catalog must not trip the supported-key count cap.
+  const unknown={...Object.fromEntries(Array.from({length:100},(_,i)=>['best:future-game-'+i,{value:99,updated:1}])),
+   'save:future-game':snapshot({level:8}),'save:future-malformed':null,'account:token':{value:'unsupported',updated:1}};
+  const saves={...supported,...unknown},bases=Object.fromEntries(Object.keys(saves).map(key=>[key,'0']));
+  const response=await request('sync',token,v2?{cursor:'0',bases,saves}:{saves},v2);
+  expect(response.status).toBe(200);
+  const result=await response.json();
+  if(v2)expect(result).toEqual({protocolVersion:2,cursor:'2',saves:{},revisions:{'best:snake':'1','save:tower':'2'},acks:{'best:snake':'1','save:tower':'2'},conflicts:{}});
+  else expect(result.saves).toEqual(supported);
+  expect((await(await request('sync',token)).json()).saves).toEqual(supported);
+  expect((await pool.query('SELECT key FROM account_saves ORDER BY key')).rows).toEqual([{key:'best:snake'},{key:'save:tower'}]);
+ });
+ it.each([false,true])('does not write or advance revisions for an unsupported-only upload with v2=%s',async v2=>{
+  const {token}=await signup(),saves={'best:future-game':{value:99,updated:1}};
+  const response=await request('sync',token,v2?{cursor:'0',bases:{'best:future-game':'0'},saves}:{saves},v2);
+  expect(response.status).toBe(200);
+  const state=await(await request('sync',token,undefined,true)).json();
+  expect(state).toEqual({protocolVersion:2,cursor:'0',saves:{},revisions:{},acks:{},conflicts:{}});
+  expect((await pool.query('SELECT key FROM account_saves')).rows).toEqual([]);
+ });
+ it('ignores an unsupported base revision without a corresponding save',async()=>{
+  const {token}=await signup();
+  const response=await request('sync',token,{cursor:'0',bases:{'best:future-game':'7'},saves:{'best:snake':{value:42,updated:1}}},true);
+  expect(response.status).toBe(200);expect((await response.json()).acks).toEqual({'best:snake':'1'});
+ });
+ it.each([false,true])('skips favourites with unknown game ids without blocking other saves with v2=%s',async v2=>{
+  const {token}=await signup();await sync(token,{favourites:{value:['tower'],updated:1}});
+  const saves={favourites:{value:['snake','future-game'],updated:2},'best:snake':{value:42,updated:1}};
+  const response=await request('sync',token,v2?{cursor:'0',bases:{},saves}:{saves},v2);
+  expect(response.status).toBe(200);
+  if(v2)expect((await response.json()).acks).toEqual({'best:snake':'2'});
+  const expected={favourites:{value:['tower'],updated:1},'best:snake':{value:42,updated:1}};
+  expect((await(await request('sync',token)).json()).saves).toEqual(expected);
+  const futureOnly={favourites:{value:['future-game'],updated:3}};
+  expect((await request('sync',token,v2?{cursor:'2',bases:{favourites:'1'},saves:futureOnly}:{saves:futureOnly},v2)).status).toBe(200);
+  const state=await(await request('sync',token,undefined,true)).json();
+  expect(state.cursor).toBe('2');expect(state.saves).toEqual(expected);
+ });
+ it.each([false,true])('syncs Crossy Road snapshots and best scores with v2=%s',async v2=>{
+  const {token}=await signup(),saves={'best:crossy-road':{value:123,updated:1},'save:crossy-road':snapshot({steps:123,seed:42})};
+  const response=await request('sync',token,v2?{cursor:'0',bases:{'best:crossy-road':'0','save:crossy-road':'0'},saves}:{saves},v2);
+  expect(response.status).toBe(200);
+  if(v2)expect((await response.json()).acks).toEqual({'best:crossy-road':'1','save:crossy-road':'2'});
+  else expect((await response.json()).saves).toEqual(saves);
+  expect((await(await request('sync',token)).json()).saves).toEqual(saves);
+ });
+ it.each([false,true])('still rejects malformed sync bodies and supported values atomically with v2=%s',async v2=>{
+  const {token}=await signup();
+  for(const saves of [null,[],42,{'best:snake':{value:-1,updated:1},'best:tower':{value:10,updated:1},'best:future-game':{value:99,updated:1}},
+   {favourites:{value:['future-game',42],updated:1},'best:snake':{value:42,updated:1}},
+   {favourites:{value:['future-game'],updated:-1},'best:snake':{value:42,updated:1}}]){
+   expect((await request('sync',token,v2?{cursor:'0',bases:{},saves}:{saves},v2)).status).toBe(400);
+  }
+  expect((await pool.query('SELECT key FROM account_saves')).rows).toEqual([]);
+ });
+ it.each([false,true])('accepts Claimline saves and bests with v2=%s while its leaderboard remains closed',async v2=>{
+  const {token}=await signup();
+  const saves={'save:claimline':snapshot({peakShare:1234,seed:42}),'best:claimline':{value:1234,updated:1}};
+  const response=await request('sync',token,v2?{cursor:'0',bases:{},saves}:{saves},v2);
+  expect(response.status).toBe(200);
+  if(v2)expect((await response.json()).acks).toEqual({'save:claimline':'1','best:claimline':'2'});
+  else expect((await response.json()).saves).toEqual(saves);
+  expect((await (await request('sync',token)).json()).saves).toEqual(saves);
+  expect((await pool.query("SELECT * FROM arcade_scores WHERE game_id='claimline'")).rows).toHaveLength(0);
+ });
  it('accepts exactly 1 MiB of streamed JSON and rejects the next byte and oversized Content-Length',async()=>{
   const {token}=await signup(),json=JSON.stringify({cursor:'0',bases:{},saves:{'best:snake':{value:1,updated:1}}});
   const send=(body:string,extra:Record<string,string>={})=>handle(new Request(endpoint+'?action=sync',{method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json','X-QCC-Sync':'2',...extra},body}));
@@ -35,7 +102,7 @@ describe('incremental accounts sync against Postgres',()=>{
   const saves={'best:snake':{value:99,updated:1},'save:pool':snapshot('x'.repeat(700000))};
   const response=await request('sync',token,v2?{cursor:state.cursor,bases:{},saves}:{saves},v2);
   expect(response.status).toBe(413);expect(response.headers.get('Cache-Control')).toBe('no-store');
-  expect(await response.json()).toMatchObject({error:expect.stringContaining('2 MiB')});
+  expect(await response.json()).toEqual({error:'storage_quota',message:'Your saves are over the 2 MB limit.'});
   const after=await(await request('sync',token,undefined,true)).json();
   expect(after.cursor).toBe(state.cursor);expect(after.saves).toEqual(state.saves);
   const other=await request('signup',undefined,{username:'Other_User',password:'secret password'});expect(other.status).toBe(201);
@@ -78,7 +145,7 @@ describe('incremental accounts sync against Postgres',()=>{
   try{
    await client.authenticate('login','Sync_User','secret password');
    storage.write('save:snake',snapshot('x'.repeat(900000),2).value);
-   if(initiallyBlocked){await expect(client.flush()).rejects.toThrow('2 MiB');expect(storage.read<any>('accounts:sync:sync_user',{}).blocked).toBe(true);statuses.length=0;}
+   if(initiallyBlocked){await expect(client.flush()).rejects.toThrow('2 MB');expect(storage.read<any>('accounts:sync:sync_user',{}).blocked).toBe(true);statuses.length=0;}
    storage.write('save:pool',snapshot('x'.repeat(300000),2).value);
    await client.flush();
    expect(statuses).toEqual([413,200,200]);
@@ -170,7 +237,7 @@ describe('incremental accounts sync against Postgres',()=>{
  it('rejects malformed cursors and bases while preserving the write record cap',async()=>{
   const {token}=await signup();
   for(const cursor of ['-1','1e2','01','9007199254740992000000000000000000000000'])expect((await request('sync',token,undefined,true,cursor)).status).toBe(400);
-  for(const body of [{cursor:0,bases:{},saves:{}},{cursor:'0',bases:{favourites:0},saves:{}},{cursor:'0',bases:{bad:'1'},saves:{}}])expect((await request('sync',token,body,true)).status).toBe(400);
+  for(const body of [{cursor:0,bases:{},saves:{}},{cursor:'0',bases:{favourites:0},saves:{}},{cursor:'0',bases:{'best:future-game':0},saves:{}}])expect((await request('sync',token,body,true)).status).toBe(400);
   expect((await request('sync',token,{cursor:'0',bases:{},saves:{'save:blockcraft':snapshot({world:'x'.repeat(1100000)})}},true)).status).toBe(413);
  });
  it('throttles last_used writes but checks revocation and expiry on every read',async()=>{
@@ -204,7 +271,7 @@ describe('incremental accounts sync against Postgres',()=>{
   await pool.query('DROP FUNCTION account_save_revision()');
   await pool.query('ALTER TABLE account_saves DROP COLUMN revision');
   await pool.query('ALTER TABLE accounts DROP COLUMN sync_revision');
-  const migration=await readFile('netlify/database/migrations/20261028003000_account_sync_revisions.sql','utf8');
+  const migration=await readFile('db/migrations/20261028003000_account_sync_revisions.sql','utf8');
   await pool.query(migration);await pool.query(migration);
   expect((await pool.query('SELECT account_id,key,value,updated FROM account_saves ORDER BY key')).rows).toEqual(before);
   const pulled=await (await request('sync',token,undefined,true)).json();expect(pulled.cursor).toBe('2');expect(pulled.revisions).toEqual({'best:snake':'1',favourites:'2'});

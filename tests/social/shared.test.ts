@@ -1,12 +1,12 @@
 import {beforeAll,afterAll,describe,it,expect} from 'vitest';
 import {randomUUID} from 'node:crypto';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool} from 'pg';
 import {codePoints,validPostBody} from '../../src/social/shared';
 import {validMediaId} from '../../src/media/policy';
 import {cursorEncode,cursorDecode,rateLimit,HttpError} from '../../server/api';
-const local=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
-beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;},30000);
+const local=new LocalDB();let pool:Pool;
+beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('db/migrations');pool=createLocalPool(connectionString);},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});
 describe('social shared contracts',()=>{
  it('counts code points, not UTF-16 units',()=>{expect(codePoints('😀'.repeat(280))).toBe(280);});

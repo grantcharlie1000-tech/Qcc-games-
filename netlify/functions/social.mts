@@ -1,4 +1,4 @@
-import {getDatabase} from '@netlify/database';
+import {getPool} from '../lib/db.mts';
 import {createGuardedHandler} from '../lib/runtime.mts';
 import {netlifyMediaStore} from '../lib/media-store.mts';
 import type {Config} from '@netlify/functions';
@@ -7,7 +7,7 @@ import {isStorageFullError,storageFullResponse} from '../../server/storage-full'
 let handle:((request:Request)=>Promise<Response>)|undefined;
 export default async (request:Request)=>{
  try{
-  if(!handle){const store=await netlifyMediaStore();handle=createGuardedHandler(getDatabase().pool,db=>createSocialHandler(db,store),{allowMissingMarker:true});}
+  if(!handle){const store=await netlifyMediaStore();handle=createGuardedHandler(getPool(),db=>createSocialHandler(db,store),{allowMissingMarker:false});}
   return await handle(request);
  }catch(error){if(isStorageFullError(error))return storageFullResponse();return Response.json({error:'Social temporarily unavailable.'},{status:503,headers:{'Cache-Control':'no-store'}});}
 };

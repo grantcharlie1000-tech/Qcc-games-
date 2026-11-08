@@ -109,6 +109,9 @@ describe('weekly allowance',()=>{
   await api.get('me',u);
   expect(await balance(u)).toBe(before);
  });
+ it('the grant job stops cleanly at its time budget',async()=>{
+  expect(await runGrantJob(t.db,{deadline:0,now:()=>1})).toMatchObject({grants:0,stopped:true});
+ });
  it('database week boundaries match the TypeScript Auckland calendar across both DST changes',async()=>{
   const instants=['2026-09-26T10:59:59Z','2026-09-26T11:00:00Z','2026-09-27T10:59:59.999Z','2026-09-27T11:00:00Z','2026-09-27T13:59:00Z',
    '2027-04-03T10:59:59Z','2027-04-04T11:59:59.999Z','2027-04-04T12:00:00Z','2027-04-04T13:00:00Z','2026-12-31T23:30:00Z'];

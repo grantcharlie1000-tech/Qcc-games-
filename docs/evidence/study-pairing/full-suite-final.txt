@@ -1,0 +1,456 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-backend-integration
+
+stdout | tests/games/blockcraft/light.test.ts > performance > computes generated terrain in at most 3 ms per chunk on average
+light, generated terrain: 1.57, 1.51, 1.96, 2.64, 2.33, 2.30, 2.36 ms per chunk (best 1.51)
+
+stdout | tests/games/blockcraft/light.test.ts > performance > stays within the budget in cave-riddled terrain with lava lakes
+light, caves (9% of the underground carved): 2.56, 3.62, 2.14, 1.74, 2.54, 2.53, 2.44 ms per chunk (best 1.74)
+
+ ❯ tests/leaderboard/server.test.ts (24 tests | 1 failed) 5582ms
+   ✓ returns 507 and preserves the previous leaderboard best on capacity failure: {"code":"53100"} 196ms
+   ✓ returns 507 and preserves the previous leaderboard best on capacity failure: {"code":"53400"} 119ms
+   ✓ returns 507 and preserves the previous leaderboard best on capacity failure: {} 138ms
+   ✓ returns 507 if a public leaderboard read hits the project size limit 46ms
+   ✓ preserves capacity errors and the old score when leaderboard COMMIT and rollback cleanup fail 110ms
+   ✓ shared leaderboard with real Postgres > ranks Tetris scores and retains each player’s best 181ms
+   ✓ shared leaderboard with real Postgres > accepts signed-in Slipline scores 172ms
+   ✓ shared leaderboard with real Postgres > shares ranked personal bests between accounts without duplicating updates 258ms
+   ✓ shared leaderboard with real Postgres > isolates games and uses the account username instead of a supplied nickname 209ms
+   ✓ shared leaderboard with real Postgres > still reads existing guest records without changing them or treating a nickname as account ownership 30ms
+   ✓ shared leaderboard with real Postgres > rejects invalid authenticated submissions {"game":"globle","score":12} 101ms
+   ✓ shared leaderboard with real Postgres > rejects invalid authenticated submissions {"game":"snake","score":-1} 113ms
+   ✓ shared leaderboard with real Postgres > rejects invalid authenticated submissions {"game":"snake","score":1.5} 87ms
+   ✓ shared leaderboard with real Postgres > rejects missing sessions, foreign origins and oversized bodies 113ms
+   ✓ isolates all three Minesweeper difficulty boards and ranks milliseconds 167ms
+   ✓ public v2 boards are cacheable and never resolve a session or return personal fields 159ms
+   ✓ personal v2 reads validate the account and are always private 167ms
+   ✓ equal and lower scores never rewrite the score or player row 153ms
+   ✓ freeze rejects leaderboard writes before opening a transaction while public reads stay available 150ms
+   ✓ keeps the Minesweeper score ranking separate from legacy and time scores 136ms
+   × keeps the Claimline leaderboard closed without changing the schema or other games 149ms
+     → expected 200 to be 409 // Object.is equality
+   ✓ rolls back failed score writes without hiding capacity errors: {"error":{"code":"53100"},"cleanupFails":false,"status":507} 114ms
+   ✓ rolls back failed score writes without hiding capacity errors: {"error":{"code":"53400"},"cleanupFails":true,"status":507} 98ms
+   ✓ rolls back failed score writes without hiding capacity errors: {"error":{"code":"23514","constraint":"another_check"},"cleanupFails":false,"status":503} 113ms
+ ✓ tests/games/blockcraft/light.test.ts (24 tests) 6115ms
+   ✓ sky light > leaves shade the ground under a tree  310ms
+   ✓ shapes, borders and missing chunks > slabs, stairs, snow and farmland block light through their full faces only  301ms
+   ✓ shapes, borders and missing chunks > missing neighbours are opaque except for open sky above the world  378ms
+   ✓ shapes, borders and missing chunks > matches a brute-force flood fill on random worlds  1284ms
+   ✓ shapes, borders and missing chunks > padded border values equal what each neighbour computes for itself  329ms
+   ✓ shapes, borders and missing chunks > results do not depend on earlier calls (scratch state is reset)  326ms
+   ✓ incremental relight > relightPadded matches a full recompute after edits  870ms
+   ✓ performance > computes generated terrain in at most 3 ms per chunk on average  418ms
+   ✓ performance > stays within the budget in cave-riddled terrain with lava lakes  536ms
+   ✓ performance > grows the queue pool exactly once, straight to its bound, for a world dense with emitters and stays exact  329ms
+ ✓ tests/games/blockcraft/terrain-trees.test.ts (16 tests) 9247ms
+   ✓ tree shapes > every shape stays within reach, keeps every leaf within decay distance and connects every log to the trunk  344ms
+   ✓ generated trees > every tree kind of every biome is generated  378ms
+   ✓ generated trees > trees are complete across chunk borders: every planned log and leaf exists in the world  1743ms
+   ✓ generated trees > no floating trees: every log and leaf connects to a grounded trunk; leaves stay within decay distance  1810ms
+   ✓ generated trees > 2x2 trunks also stand on uneven ground, reaching down to it: dark forests are dense under a closed canopy  481ms
+   ✓ vegetation > every plant and snow layer can survive where it was generated  648ms
+   ✓ vegetation > cacti are 1-3 tall with no solid neighbours; sugar cane is 1-3 tall beside water; lily pads float on swamp water  1594ms
+   ✓ growTree > refuses without room and leaves the world unchanged  348ms
+   ✓ growTree > an oak sapling grows a big oak about one time in ten  914ms
+ ✓ tests/accounts/server.test.ts (29 tests) 9364ms
+   ✓ optional accounts with real Postgres > logs in case-insensitively, rejects wrong passwords and hashes unknown usernames too  367ms
+   ✓ optional accounts with real Postgres > limits normalized username failures, IP failures and hourly signups separately  3209ms
+   ✓ optional accounts with real Postgres > enforces failure and signup boundaries for concurrent requests  306ms
+ ✓ tests/accounts/server-v2.test.ts (34 tests) 9893ms
+   ✓ incremental accounts sync against Postgres > bounds cumulative storage across batches and rolls back the entire rejected v2=false upload  505ms
+   ✓ incremental accounts sync against Postgres > bounds cumulative storage across batches and rolls back the entire rejected v2=true upload  509ms
+   ✓ incremental accounts sync against Postgres > accepts exactly 2 MiB per account, counts replacement bytes and rejects one additional byte  443ms
+   ✓ incremental accounts sync against Postgres > checks merge winners and semantic no-ops before applying the storage quota  380ms
+   ✓ incremental accounts sync against Postgres > serializes concurrent requests so independent new keys cannot exceed the account quota  306ms
+   ✓ incremental accounts sync against Postgres > lets a shrinking later batch free quota for an earlier pending save, initially blocked=false  754ms
+   ✓ incremental accounts sync against Postgres > lets a shrinking later batch free quota for an earlier pending save, initially blocked=true  769ms
+   ✓ incremental accounts sync against Postgres > keeps over-quota legacy data readable and permits non-growing updates without deleting saves  366ms
+ ✓ tests/games/ball-run/course.test.ts (23 tests) 10901ms
+   ✓ Ball Run course generator > is identical for a seed and difficulty however far ahead or in what order it is queried  2787ms
+   ✓ Ball Run course generator > keeps the road continuous, centred within the canyon and inside its width and bank limits  1492ms
+   ✓ Ball Run course generator > opens with a clear, flat, straight warm-up on the centre line  767ms
+   ✓ Ball Run course generator > uses the whole track vocabulary and schedules a gate every gate.interval seconds of running, deferring one past a flight  2367ms
+   ✓ Ball Run course generator > builds the segments between gates in the proportions of CONFIG.segments  724ms
+   ✓ Ball Run course generator > keeps every block on the road and out of the warm-up, gate run-outs, ribbons, drops and crest tops  323ms
+   ✓ Ball Run course generator > makes every drop clearable at the speed there, block-free until past the landing, and landable on its pad at the speed cap  453ms
+   ✓ Ball Run course generator > keeps every block out of every predicted flight, from 5 m before take-off to 12 m past landing  356ms
+   ✓ Ball Run course generator > composes rows from many patterns, with sliders only on Medium and Hard, differently for every seed  301ms
+   ✓ Ball Run course generator > poses each block on the road surface it stands on, sliding blocks within their sweep  442ms
+ ✓ tests/chat/server.test.ts (22 tests) 4242ms
+   ✓ chat handler > message rate limit 31st in a minute → 429  368ms
+stdout | tests/games/blockcraft/terrain.test.ts > performance > generate() averages at most 4 ms per chunk
+terrain generate(): 1.49 / 1.68 / 1.82 ms per chunk (rounds of 64 chunks)
+
+ ✓ tests/games/blockcraft/terrain.test.ts (30 tests) 5262ms
+   ✓ terrain determinism > the same seed and chunk always give the same blocks and biomes; seeds differ  871ms
+   ✓ terrain determinism > biomeAt and heightAt agree with generate  519ms
+   ✓ robustness > NaN, infinite or out-of-range coordinates never change later results  369ms
+   ✓ heights > mushroom islands are rolling hills above the sea, ringed by ocean  453ms
+   ✓ caves and layers > caves never breach ocean or river floors  378ms
+   ✓ caves and layers > jagged bedrock at y 0-4 and deepslate below y 8 blending into stone by y 16  606ms
+   ✓ performance > generate() averages at most 4 ms per chunk  327ms
+ ✓ tests/games/water-sort/session.test.ts (90 tests) 10271ms
+   ✓ Water Sort finite-state lifecycle > offers a valid solution or finite recovery from reachable level 67 states  303ms
+   ✓ Water Sort finite-state lifecycle > offers a valid solution or finite recovery from reachable level 68 states  344ms
+   ✓ Water Sort finite-state lifecycle > offers a valid solution or finite recovery from reachable level 70 states  385ms
+   ✓ Water Sort finite-state lifecycle > offers a valid solution or finite recovery from reachable level 71 states  365ms
+   ✓ Water Sort finite-state lifecycle > offers a valid solution or finite recovery from reachable level 72 states  312ms
+   ✓ Water Sort finite-state lifecycle > offers a valid solution or finite recovery from reachable level 73 states  349ms
+   ✓ Water Sort finite-state lifecycle > offers a valid solution or finite recovery from reachable level 74 states  460ms
+   ✓ Water Sort finite-state lifecycle > offers a valid solution or finite recovery from reachable level 75 states  713ms
+   ✓ Water Sort finite-state lifecycle > offers a valid solution or finite recovery from reachable level 76 states  640ms
+ ✓ tests/social/server.test.ts (24 tests) 3561ms
+   ✓ social handler > paginates likes and thread replies and breaks created_at ties by id  551ms
+ ✓ tests/games/blockcraft/passive.test.ts (96 tests) 4161ms
+   ✓ simulation > a herd on a plateau ringed by a 10-deep pit, with a lava pool, never falls or walks into lava, within the AI budget (seed 11)  1285ms
+   ✓ simulation > a herd on a plateau ringed by a 10-deep pit, with a lava pool, never falls or walks into lava, within the AI budget (seed 19)  1140ms
+ ✓ tests/games/blockcraft/player.test.ts (69 tests) 5355ms
+   ✓ walking speeds (vanilla 4.317 / 5.612 / 1.295 m/s) > cannot sprint while sneaking, when hungry, or without moving forward  359ms
+   ✓ falling, landing and safety > walking off a 3-high ledge never hurts and a 4-high one always costs half a heart, whatever the step phase  535ms
+ ✓ tests/games/water-sort/solver.test.ts (157 tests) 12739ms
+   ✓ soluble level construction and search > finds legal decreasing hint routes from level 71  300ms
+   ✓ soluble level construction and search > finds legal decreasing hint routes from level 72  340ms
+   ✓ soluble level construction and search > finds legal decreasing hint routes from level 73  330ms
+   ✓ soluble level construction and search > finds legal decreasing hint routes from level 74  497ms
+   ✓ soluble level construction and search > finds legal decreasing hint routes from level 75  569ms
+   ✓ soluble level construction and search > finds legal decreasing hint routes from level 76  614ms
+ ✓ tests/games/crossy-road/generator.test.ts (93 tests) 22907ms
+   ✓ logBridgeOk > agrees with the literal definition on 300 random pairs, whether they bridge or not  2149ms
+   ✓ CrossyRoad worlds over 2000 seeds x 400 rows > every river block has grass immediately before and after it across all 2,000 seeds  1636ms
+   ✓ CrossyRoad worlds over 2000 seeds x 400 rows > time-sampled checks on the first 200 seeds > F3: at every 0.05 s over 20 s some column sits in a vehicle-free stretch of at least 2.5 tiles  5100ms
+   ✓ CrossyRoad worlds over 2000 seeds x 400 rows > time-sampled checks on the first 200 seeds > F5: whenever a train overlaps the band the light was already on WARN_FLOOR seconds earlier  2257ms
+ ✓ tests/games/quad-clash/bots.test.ts (12 tests) 6523ms
+   ✓ bots > identical seeds and inputs give identical matches  329ms
+   ✓ bots > a brawl match on quad plays out: bots move, fight and rarely get stuck  424ms
+   ✓ bots > a quad match on quad plays out: bots move, fight and rarely get stuck  914ms
+   ✓ bots > a quad match on field plays out: bots move, fight and rarely get stuck  614ms
+   ✓ bots > a brawl match on campus plays out: bots move, fight and rarely get stuck  731ms
+   ✓ bots > a house match on campus plays out: bots move, fight and rarely get stuck  858ms
+   ✓ bots > a quad match on campus plays out: bots move, fight and rarely get stuck  1054ms
+   ✓ bots > harder bots win more fights than easy bots  1307ms
+ ✓ tests/games/blockcraft/weather.test.ts (39 tests) 2792ms
+   ✓ lightning > thunderstorms strike near the player at the vanilla rate; never in snowy biomes or plain rain  942ms
+ ✓ tests/accounts/storage.test.ts (16 tests) 5854ms
+   ✓ per-account stored save quota > accepts exactly 2 MiB then rejects one more byte across separate v2=false syncs  515ms
+   ✓ per-account stored save quota > accepts exactly 2 MiB then rejects one more byte across separate v2=true syncs  370ms
+   ✓ per-account stored save quota > counts UTF-8 bytes of untouched records and rejects a multi-key batch atomically  313ms
+   ✓ per-account stored save quota > counts replacements once and measures the winning merge rather than stale submissions  623ms
+   ✓ per-account stored save quota > permits reads of legacy oversized accounts and a replacement that brings them below the cap  350ms
+   ✓ per-account stored save quota > isolates account totals  324ms
+ ✓ tests/social/store.test.ts (22 tests) 2521ms
+ ✓ tests/games/ball-run/bot.test.ts (8 tests) 4206ms
+   ✓ Ball Run look-ahead bot > survives 3000 m from the start on 12 easy seeds  1522ms
+   ✓ Ball Run look-ahead bot > survives 3000 m from the start on 12 medium seeds  1098ms
+   ✓ Ball Run look-ahead bot > survives 3000 m from the start on 12 hard seeds  889ms
+ ✓ tests/media/server.test.ts (14 tests) 2451ms
+ ✓ tests/media/process.test.ts (19 tests) 5159ms
+   ✓ processImage > rotates, caps the edge, strips EXIF and GPS and stays under 1 MiB  1059ms
+   ✓ processImage > rejects images over the pixel limit  988ms
+   ✓ Whetū acceptance cases (kiakura tests/tutorPhotoProcessing.test.ts, adapted) > keeps a smooth page at the top quality step, at the full edge, inside the target  362ms
+   ✓ Whetū acceptance cases (kiakura tests/tutorPhotoProcessing.test.ts, adapted) > holds a busy, noisy photo under the hard maximum without dropping below the floor edge  1947ms
+ ✓ tests/games/slipline/model.test.ts (6 tests) 4251ms
+   ✓ Slipline model > generates deterministic, disjoint, solvable boards  4241ms
+ ✓ tests/games/crossy-road/terrain.test.ts (4 tests) 2793ms
+   ✓ all grass clusters have reachable openings across negative and positive horizontal chunks  2787ms
+ ✓ tests/games/blockcraft/survival.test.ts (60 tests) 1932ms
+ ✓ tests/games/crossy-road/revision6.test.ts (5 tests) 4191ms
+   ✓ revision six: random traffic and logs > mixes vehicle models and paints within lanes, with long irregular repeats that keep every crossing gap  2333ms
+   ✓ revision six: random traffic and logs > gives logs irregular lengths and gaps, bounded so a fixed column waits at most RIVER_WAIT for a log  1246ms
+   ✓ revision six: random traffic and logs > adjacent log rows slide past each other, so a rider always reaches a landing on the next row within 3 s  440ms
+ ✓ tests/games/blockcraft/hostile.test.ts (54 tests) 1940ms
+ ✓ tests/games/ball-run/long-play.test.ts (3 tests) 4725ms
+   ✓ Ball Run combined boost/contact endurance > easy: drives from rest through stacked boosts, flights and 4 km at the cap  1506ms
+   ✓ Ball Run combined boost/contact endurance > medium: drives from rest through stacked boosts, flights and 4 km at the cap  1369ms
+   ✓ Ball Run combined boost/contact endurance > hard: drives from rest through stacked boosts, flights and 4 km at the cap  1849ms
+ ✓ tests/games/blockcraft/item-art.test.ts (29 tests) 1444ms
+   ✓ item sprites > sprites are 16×16 pixel art: hard alpha, transparent background, several colours  605ms
+   ✓ item icons > icon generation produces distinct images  461ms
+ ✓ tests/games/corn-clicker/pacing.test.ts (4 tests) 24853ms
+   ✓ pacing > active play: frequent purchases, garden and a worthwhile first Replant in 1–3 hours, then a faster second run  8597ms
+   ✓ pacing > constant garden farming helps without collapsing the first-Replant pacing  12629ms
+   ✓ pacing > idle play with occasional clicks still reaches a first Golden Seed within three hours  3576ms
+ ✓ tests/games/crossy-road/variety.test.ts (5 tests) 3005ms
+   ✓ revision five terrain > varies hazard transitions and independent directions while bounding terrain clusters  499ms
+   ✓ revision five terrain > leaves road crossing gaps and a provable landing interval on every adjacent river pair  2289ms
+ ✓ tests/games/claimline/model.test.ts (21 tests) 1743ms
+   ✓ bots > [13] a seeded 60 s run with six bots stays consistent, bots capture land, targets are finite and replans are 5-10 Hz  808ms
+   ✓ snapshot > [14a] snapshot -> restoreWorld round-trips through JSON and then continues identically for 120 steps  328ms
+ ✓ tests/leaderboard/account-only.test.ts (5 tests) 3113ms
+   ✓ derives ownership and public name from the validated session even when client identifiers are spoofed  314ms
+   ✓ checks revocation after a slow request body arrives before writing any score  350ms
+ ✓ tests/netlify/bound-pool.test.ts (4 tests) 2401ms
+ ✓ tests/games/campaign-difficulty.test.ts (3 tests) 3872ms
+   ✓ 50 genuinely distinct water boards progress from 14 to 21 optimal pours  3268ms
+   ✓ 20 distinct larger connection boards have real full-coverage solutions  594ms
+ ✓ tests/database/runtime.test.ts (16 tests) 2711ms
+ ✓ tests/games/pool/ai.test.ts (5 tests) 3499ms
+   ✓ computer opponent > plays a legal safety when nothing is pottable and never picks an illegal first ball  540ms
+   ✓ computer opponent > plays whole racks to a finish at every level  2781ms
+ ✓ tests/games/blockcraft/companions-wolf.test.ts (40 tests) 974ms
+ ✓ tests/database/social-chat-migration.test.ts (4 tests) 2157ms
+ ✓ tests/games/globle/model.test.ts (18 tests) 1249ms
+   ✓ playable list and bundled geography > is symmetric, non-negative and zero only on the diagonal or a shared border  1155ms
+ ✓ tests/core/glass.test.ts (38 tests) 1340ms
+ ✓ tests/server/app.test.ts (18 tests) 2661ms
+ ✓ tests/games/pool/online.test.ts (4 tests) 1250ms
+   ✓ online pool > plays a complete rack with both devices agreeing on every settled state  1229ms
+ ✓ tests/games/neon-coil/remake.test.ts (29 tests) 1649ms
+   ✓ render radius ≡ collision radius > contact happens exactly where the drawn discs touch at mass 30  386ms
+   ✓ render radius ≡ collision radius > contact happens exactly where the drawn discs touch at mass 300  330ms
+ ✓ tests/database/migrate.test.ts (8 tests) 2477ms
+   ✓ applies every migration to empty DB, then no-op with strict marker  321ms
+ ✓ tests/games/blockcraft/mesher.test.ts (50 tests) 1038ms
+   ✓ mesh layout > generated terrain follows the MeshPart layout and stays in bounds  366ms
+ ✓ tests/games/ball-run/model.test.ts (31 tests) 1380ms
+ ✓ tests/games/blockcraft/ticks-blocks.test.ts (21 tests) 2163ms
+   ✓ fire > fire on bare stone burns out  313ms
+   ✓ fire > fire spreads to and destroys flammable blocks  501ms
+   ✓ fire > a burnt block becomes fire only where fire can stay, else air  473ms
+ ✓ tests/games/blockcraft/ticks-growth.test.ts (25 tests) 1487ms
+   ✓ leaf decay > felling one of two overlapping trees leaves no floating leaves and keeps the linked ones  343ms
+ ✓ tests/games/blockcraft/entities-contract.test.ts (23 tests) 1971ms
+   ✓ animal ground > sand rabbits in deserts, mooshrooms on mycelium and animals on snowy grass  579ms
+   ✓ animal ground > sand outside sandy biomes and stone are not animal ground  311ms
+ ✓ tests/social/shared.test.ts (6 tests) 2284ms
+ ✓ tests/games/blockcraft/monsters-enderman.test.ts (41 tests) 923ms
+ ✓ tests/study/pairing-store.test.ts (16 tests) 3208ms
+stdout | tests/games/blockcraft/ticks-service.test.ts > determinism and budget > block ticks stay within 1 ms per tick on average in a large busy world
+block ticks: 0.396 ms per tick, 1350 random ticks per tick
+
+ ✓ tests/games/blockcraft/ticks-service.test.ts (11 tests) 1340ms
+   ✓ determinism and budget > the same seed gives the same world  407ms
+   ✓ determinism and budget > block ticks stay within 1 ms per tick on average in a large busy world  436ms
+ ✓ tests/accounts/sync-v2-client.test.ts (25 tests) 871ms
+   ✓ v2 durable sync scheduling > does not transfer a two megabyte existing world when only a small score changes  440ms
+ ✓ tests/games/blockcraft/interaction-use.test.ts (45 tests) 511ms
+ ✓ tests/games/blockcraft/core.test.ts (17 tests) 703ms
+ ✓ tests/games/blockcraft/entities-spawning.test.ts (11 tests) 1144ms
+ ✓ tests/games/blockcraft/hostile-projectiles.test.ts (26 tests) 639ms
+ ✓ tests/study/pairing-backend.test.ts (2 tests) 2139ms
+ ✓ tests/games/snake/model.test.ts (38 tests) 635ms
+   ✓ Snake continuous authoritative model > completes a full-garden cycle at all 256 earned segments with large and mixed frame partitions  512ms
+ ✓ tests/games/blockcraft/monsters-slime.test.ts (29 tests) 706ms
+ ✓ tests/games/crossy-road/rules.test.ts (281 tests) 411ms
+   ✓ every state the rules can reach survives a JSON round trip > serialize then JSON then restore returns the same snapshot at every step of 150 random runs  304ms
+ ✓ tests/games/neon-coil/model.test.ts (14 tests) 832ms
+   ✓ continuous local arena > equal elapsed time and inputs produce the same fixed-step world at 30, 60 and 120 Hz  541ms
+ ✓ tests/games/blockcraft/entities-combat.test.ts (19 tests) 640ms
+ ✓ tests/games/blockcraft/weather-cycle.test.ts (11 tests) 870ms
+   ✓ weather cycle (vanilla ServerLevel.advanceWeatherCycle) > thunder flag runs 3600..15600 ticks and some rain spells become thunderstorms  376ms
+ ✓ tests/games/blockcraft/art.test.ts (37 tests) 459ms
+ ✓ tests/games/color-connect/model.test.ts (11 tests) 644ms
+   ✓ Flow Free rules > constructs seeded full-coverage witnesses and independently solves every shipped board  623ms
+ ✓ tests/games/ball-run/records.test.ts (19 tests) 728ms
+ ✓ tests/games/blockcraft/sounds-synth.test.ts (201 tests) 384ms
+ ✓ tests/games/blockcraft/renderer-particles.test.ts (20 tests) 492ms
+ ✓ tests/movies/validate.test.ts (2 tests) 1082ms
+   ✓ rejects missing, unknown or incomplete archive source declarations at build time  878ms
+ ✓ tests/games/blockcraft/weather-render.test.ts (10 tests) 501ms
+ ✓ tests/games/flappy-bird/model.test.ts (7 tests) 714ms
+   ✓ Flappy Bird original reed flight > generates reproducible bounded gates with enough travel time and variation  500ms
+ ✓ tests/games/color-blocks/fair-deal.test.ts (8 tests) 467ms
+ ✓ tests/games/blockcraft/interaction-mining.test.ts (21 tests) 149ms
+ ✓ tests/games/blockcraft/entities-ai.test.ts (20 tests) 814ms
+   ✓ steering helpers > unreachable goals stay within the node budget per tick, read few cells and keep the AI time budget  303ms
+ ✓ tests/games/ball-run/regressions.test.ts (11 tests) 491ms
+ ✓ tests/accounts/client.test.ts (16 tests) 159ms
+ ✓ tests/games/blockcraft/inventory-slots.test.ts (31 tests) 209ms
+ ✓ tests/games/blockcraft/sounds-voice.test.ts (161 tests) 476ms
+ ✓ tests/games/blockcraft/hud.test.ts (54 tests) 187ms
+ ✓ tests/games/quad-clash/physics-index.test.ts (4 tests) 223ms
+ ✓ tests/games/solitaire/rules.test.ts (21 tests) 516ms
+   ✓ hints make progress without repeating positions > never revisits a position while following hints on seeded deals  374ms
+ ✓ tests/games/block-fill/logic.test.ts (8 tests) 475ms
+   ✓ current-prefix search evidence > provides verified legal hints at every prefix of every shipped witness and restores completed games  404ms
+ ✓ tests/games/quad-clash/models.test.ts (3 tests) 311ms
+ ✓ tests/games/crossy-road/fidelity.test.ts (6 tests) 396ms
+ ✓ tests/games/blockcraft/sounds.test.ts (44 tests) 294ms
+ ✓ tests/games/blockcraft/ticks-fluids.test.ts (11 tests) 539ms
+ ✓ tests/games/crossy-road/geometry.test.ts (10 tests) 340ms
+ ✓ tests/games/color-blocks/model.test.ts (10 tests) 347ms
+   ✓ long seeded runs > keeps valid saves and deterministic future deals across many tray boundaries  334ms
+ ✓ tests/games/blockcraft/renderer-hand.test.ts (21 tests) 152ms
+ ✓ tests/games/blockcraft/crafting-blockentities.test.ts (26 tests) 222ms
+ ✓ tests/games/quad-clash/combat.test.ts (27 tests) 96ms
+ ✓ tests/database/connection.test.ts (2 tests) 525ms
+   ✓ build migration fails without production URL; preview opt-out requires explicit flag and context  521ms
+ ✓ tests/movies/catalog-api.test.ts (38 tests) 100ms
+ ✓ tests/games/blockcraft/companions-model.test.ts (10 tests) 107ms
+ ✓ tests/games/blockcraft/ticks-explosion.test.ts (11 tests) 354ms
+ ✓ tests/games/animal-stack/model.test.ts (13 tests) 181ms
+ ✓ tests/games/blockcraft/entities-physics.test.ts (13 tests) 286ms
+ ✓ tests/games/corn-clicker/model.test.ts (33 tests) 89ms
+ ✓ tests/games/blockcraft/advancements.test.ts (62 tests) 95ms
+ ✓ tests/games/blockcraft/entities-persist.test.ts (7 tests) 324ms
+ ✓ tests/games/animal-stack/framing.test.ts (5 tests) 311ms
+ ✓ tests/games/blockcraft/entities-items.test.ts (11 tests) 280ms
+ ✓ tests/games/ball-run/scene-cache.test.ts (2 tests) 110ms
+ ✓ tests/games/ball-run/performance.test.ts (4 tests) 214ms
+ ✓ tests/games/blockcraft/companions-squid.test.ts (8 tests) 214ms
+ ✓ tests/games/quad-clash/world.test.ts (21 tests) 322ms
+ ✓ tests/games/blockcraft/screens-art.test.ts (22 tests) 77ms
+ ✓ tests/games/blockcraft/entities-model.test.ts (12 tests) 182ms
+ ✓ tests/games/claimline/rules.test.ts (11 tests) 140ms
+ ✓ tests/games/ball-run/hitboxes.test.ts (3 tests) 102ms
+ ✓ tests/games/blockcraft/interaction-loot.test.ts (17 tests) 131ms
+ ✓ tests/games/blockcraft/entities-store.test.ts (5 tests) 246ms
+ ✓ tests/games/pool/rules.test.ts (12 tests) 128ms
+ ✓ tests/apps/clients.test.ts (17 tests) 129ms
+ ✓ tests/games/fruit-merge/engine.test.ts (16 tests) 121ms
+ ✓ tests/movies/storage.test.ts (40 tests) 83ms
+ ✓ tests/games/blockcraft/interaction-placement.test.ts (19 tests) 153ms
+ ✓ tests/games/blockcraft/crafting.test.ts (27 tests) 59ms
+ ✓ tests/leaderboard/client.test.ts (23 tests) 70ms
+ ✓ tests/games/crossy-road/input.test.ts (135 tests) 41ms
+ ✓ tests/games/blockcraft/inventory-ui.test.ts (24 tests) 50ms
+ ✓ tests/server/vercel.test.ts (18 tests) 25ms
+ ✓ tests/games/pool/physics.test.ts (9 tests) 56ms
+ ✓ tests/games/blockcraft/net.test.ts (16 tests) 73ms
+ ✓ tests/games/claimline/score.test.ts (3 tests) 25ms
+ ✓ tests/games/blockcraft/player-controls.test.ts (21 tests) 15ms
+ ✓ tests/games/blockcraft/inventory-pointer.test.ts (24 tests) 22ms
+ ✓ tests/core/posters.test.ts (48 tests) 105ms
+ ✓ tests/games/blockcraft/monsters-models.test.ts (15 tests) 49ms
+ ✓ tests/games/blockcraft/art-mipmaps.test.ts (2 tests) 71ms
+ ✓ tests/games/blockcraft/renderer-core.test.ts (16 tests) 111ms
+ ✓ tests/games/maze-muncher/model.test.ts (13 tests) 57ms
+ ✓ tests/games/minesweeper/practice.test.ts (7 tests) 40ms
+ ✓ tests/games/minesweeper/model.test.ts (19 tests) 61ms
+ ✓ tests/pages/proxy.test.ts (30 tests) 47ms
+ ✓ tests/games/neon-coil/skin.test.ts (4 tests) 47ms
+ ✓ tests/games/blockcraft/interaction-combat.test.ts (15 tests) 109ms
+ ✓ tests/games/crossy-road/audio.test.ts (11 tests) 16ms
+ ✓ tests/games/crossy-road/lanes.test.ts (36 tests) 20ms
+ ✓ tests/accounts/merge.test.ts (6 tests) 10ms
+ ✓ tests/games/tower/model.test.ts (15 tests) 35ms
+ ✓ tests/multiplayer/turn.test.ts (6 tests) 16ms
+ ✓ tests/movies/pages-api.test.ts (26 tests) 30ms
+ ✓ tests/movies/query.test.ts (16 tests) 48ms
+ ✓ tests/study/pairing-core.test.ts (15 tests) 39ms
+ ✓ tests/server/storage-errors.test.ts (12 tests) 27ms
+ ✓ tests/multiplayer/room.test.ts (10 tests) 26ms
+ ✓ tests/games/animal-stack/correction.test.ts (5 tests) 17ms
+ ✓ tests/games/blockcraft/inventory.test.ts (22 tests) 20ms
+ ✓ tests/games/fivefold/model.test.ts (11 tests) 57ms
+ ✓ tests/games/blockcraft/renderer-sky.test.ts (22 tests) 14ms
+ ✓ tests/games/quadfall/model.test.ts (33 tests) 18ms
+ ✓ tests/games/blockcraft/spawn-restore.test.ts (1 test) 36ms
+ ✓ tests/games/claimline/outline.test.ts (9 tests) 34ms
+ ✓ tests/database/storage-full.test.ts (16 tests) 17ms
+ ✓ tests/core/storage.test.ts (10 tests) 12ms
+ ✓ tests/social/client.test.ts (12 tests) 27ms
+ ✓ tests/leaderboard/format.test.ts (2 tests) 21ms
+ ✓ tests/social/mentions.test.ts (8 tests) 26ms
+ ✓ tests/games/campaign-expansion.test.ts (3 tests) 13ms
+ ✓ tests/apps/text.test.ts (15 tests) 18ms
+ ✓ tests/study/pairing-identities.test.ts (3 tests) 20ms
+ ✓ tests/games/crossy-road/streaming.test.ts (16 tests) 27ms
+ ✓ tests/core/glass-ink-binding.test.ts (3 tests) 19ms
+ ✓ tests/movies/import.test.ts (2 tests) 36ms
+ ✓ tests/study/pairing-route.test.ts (3 tests) 26ms
+ ✓ tests/core/theme.test.ts (11 tests) 9ms
+ ✓ tests/games/block-fill/score.test.ts (4 tests) 23ms
+ ✓ tests/games/water-sort/geometry.test.ts (5 tests) 14ms
+ ✓ tests/games/quad-clash/performance.test.ts (10 tests) 18ms
+ ✓ tests/core/study-long-reading.test.ts (22 tests) 14ms
+ ✓ tests/core/study.test.ts (6 tests) 17ms
+ ✓ tests/movies/playback.test.ts (18 tests) 28ms
+ ✓ tests/core/update.test.ts (4 tests) 13ms
+ ✓ tests/games/snake/presentation.test.ts (7 tests) 26ms
+ ✓ tests/movies/provider.test.ts (11 tests) 9ms
+ ✓ tests/movies/model.test.ts (31 tests) 15ms
+ ✓ tests/games/blockcraft/random-golden.test.ts (52 tests) 9ms
+ ✓ tests/games/blockcraft/advancements-toast-art.test.ts (4 tests) 9ms
+ ✓ tests/games/water-sort/score.test.ts (6 tests) 10ms
+ ✓ tests/core/offline-worker.test.ts (4 tests) 10ms
+ ✓ tests/core/glass-lens-profile.test.ts (7 tests) 12ms
+ ✓ tests/server/media-store.test.ts (5 tests) 18ms
+ ✓ tests/games/blockcraft/survival-effects.test.ts (10 tests) 8ms
+ ✓ tests/core/study-expansion.test.ts (3 tests) 24ms
+ ✓ tests/netlify/media-store.test.ts (1 test) 29ms
+ ✓ tests/core/study-media.test.ts (1 test) 10ms
+ ✓ tests/games/globle/random-golden.test.ts (19 tests) 13ms
+ ✓ tests/core/offline-updates.test.ts (7 tests) 8ms
+ ✓ tests/core/study-fictional-ads.test.ts (5 tests) 23ms
+ ✓ tests/navigation.test.ts (2 tests) 7ms
+ ✓ tests/games/crossy-road/camera.test.ts (22 tests) 6ms
+ ✓ tests/ui/modal-navigation.test.ts (11 tests) 10ms
+ ✓ tests/social/copy-link.test.ts (2 tests) 13ms
+ ✓ tests/core/tabbar.test.ts (16 tests) 12ms
+ ✓ tests/ui/load-deadline.test.ts (4 tests) 17ms
+ ✓ tests/helpers/audit-evidence.test.ts (4 tests) 11ms
+ ✓ tests/media/plan.test.ts (14 tests) 16ms
+ ✓ tests/movies/privacy.test.ts (3 tests) 8ms
+ ✓ tests/core/settled-resize.test.ts (6 tests) 7ms
+ ✓ tests/core/random.test.ts (14 tests) 5ms
+ ✓ tests/games/blockcraft/survival-rules.test.ts (13 tests) 15ms
+ ✓ tests/games/crossy-road/integration.test.ts (2 tests) 4ms
+ ✓ tests/core/images.test.ts (8 tests) 6ms
+ ✓ tests/games/color-blocks/input.test.ts (5 tests) 5ms
+ ✓ tests/games/solitaire/random-golden.test.ts (3 tests) 5ms
+ ✓ tests/games/color-connect/score.test.ts (4 tests) 8ms
+ ✓ tests/core/play-surface.test.ts (5 tests) 7ms
+ ✓ tests/movies/format.test.ts (12 tests) 10ms
+ ✓ tests/core/rails.test.ts (5 tests) 5ms
+ ✓ tests/games/blockcraft/sounds-spatial.test.ts (8 tests) 6ms
+ ✓ tests/movies/legacy-styles.test.ts (12 tests) 8ms
+ ✓ tests/games/water-sort/rules.test.ts (10 tests) 4ms
+ ✓ tests/netlify/assert-environment.test.ts (3 tests) 10ms
+ ✓ tests/games/crossy-road/allocation.test.ts (2 tests) 4ms
+ ✓ tests/core/glass-ink.test.ts (8 tests) 6ms
+ ✓ tests/core/branding.test.ts (1 test) 4ms
+ ✓ tests/media/sniff.test.ts (3 tests) 4ms
+ ✓ tests/games/crossy-road/quality.test.ts (6 tests) 10ms
+ ✓ tests/games/crossy-road/motion.test.ts (4 tests) 4ms
+ ✓ tests/core/focus.test.ts (5 tests) 3ms
+ ✓ tests/core/catalog-invariant.test.ts (1 test) 3ms
+ ✓ tests/multiplayer/framing-boundary.test.ts (2 tests) 3ms
+ ✓ tests/games/ball-run/roll.test.ts (3 tests) 3ms
+ ✓ tests/apps/icons.test.ts (3 tests) 7ms
+ ✓ tests/core/sheet.test.ts (4 tests) 2ms
+ ✓ tests/games/animal-stack/input.test.ts (4 tests) 3ms
+ ✓ tests/games/blockcraft/settings-report.test.ts (2 tests) 3ms
+ ✓ tests/games/neon-coil/growth.test.ts (9 tests) 57490ms
+   ✓ real body grows well beyond the former 1,930-pixel limit with bounded history  11940ms
+   ✓ 5000000-mass wide-left routes keep every emitted snapshot restorable  6810ms
+   ✓ 5000000-mass wide-right routes keep every emitted snapshot restorable  6937ms
+   ✓ 5000000-mass figure-eight routes keep every emitted snapshot restorable  6364ms
+   ✓ 1000000000-mass wide-left routes keep every emitted snapshot restorable  7944ms
+   ✓ 1000000000-mass wide-right routes keep every emitted snapshot restorable  6877ms
+   ✓ 1000000000-mass figure-eight routes keep every emitted snapshot restorable  6910ms
+   ✓ Astra’s translated five-million-mass route preserves saves at tick 7,984  3681ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/leaderboard/server.test.ts > keeps the Claimline leaderboard closed without changing the schema or other games
+AssertionError: expected 200 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 200
+
+ ❯ tests/leaderboard/server.test.ts:100:26
+     98|  const token=await signup('Early_Bird');
+     99|  const response=await submit(token,'ignored',1234,'claimline');
+    100|  expect(response.status).toBe(409);
+       |                          ^
+    101|  expect(await response.json()).toEqual({error:'This leaderboard opens …
+    102|  expect((await pool.query("SELECT * FROM arcade_scores WHERE game_id='…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 230 passed (231)
+      Tests  1 failed | 4535 passed (4536)
+   Start at  12:47:14
+   Duration  58.08s (transform 12.25s, setup 0ms, collect 54.17s, tests 332.08s, environment 42ms, prepare 17.00s)
+

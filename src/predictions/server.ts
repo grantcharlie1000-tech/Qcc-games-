@@ -122,15 +122,18 @@ export async function repairGrants(query:Query,accountId:string):Promise<number>
  return weeks.length;
 }
 /** Scheduled job: one short transaction per eligible account, so one failure never blocks the rest. */
-export async function runGrantJob(db:Database):Promise<{accounts:number;grants:number;failed:number}> {
- const cfg=await config(db.query);
- if(!cfg.enabled||!cfg.launched||await writeFrozen(db))return {accounts:0,grants:0,failed:0};
+export async function runGrantJob(db:Database,options:{deadline?:number;now?:()=>number}={}):Promise<{accounts:number;grants:number;failed:number;stopped:boolean}> {
+ const cfg=await config(db.query),now=options.now??Date.now;
+ if(!cfg.enabled||!cfg.launched||await writeFrozen(db))return {accounts:0,grants:0,failed:0,stopped:false};
+ // Only accounts eligible now or missing a grant are visited; settled accounts cost one indexed lookup each.
  const accounts=(await db.query('SELECT DISTINCT e.account_id FROM predictions_eligibility e JOIN predictions_wallets w ON w.account_id=e.account_id ORDER BY 1')).rows;
- let grants=0,failed=0;
+ let grants=0,failed=0,stopped=false;
  for(const row of accounts){
+  // Hosts kill functions at their time limit; stop cleanly and let lazy repair finish the rest.
+  if(options.deadline!==undefined&&now()>=options.deadline){stopped=true;break;}
   try{grants+=await transaction(db,query=>repairGrants(query,row.account_id));}catch{failed++;}
  }
- return {accounts:accounts.length,grants,failed};
+ return {accounts:accounts.length,grants,failed,stopped};
 }
 
 // ---- Market reading ----

@@ -1,0 +1,42 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/server/response-headers.test.ts
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-backend-integration
+
+ ❯ tests/server/response-headers.test.ts (1 test | 1 failed) 13ms
+   × Node adapter preserves independent Set-Cookie headers for transaction clear plus context creation 12ms
+     → expected '__Host-nceastudy_context=random; Path…' to deeply equal [ …(2) ]
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/server/response-headers.test.ts > Node adapter preserves independent Set-Cookie headers for transaction clear plus context creation
+AssertionError: expected '__Host-nceastudy_context=random; Path…' to deeply equal [ …(2) ]
+
+- Expected: 
+[
+  "__Host-nceastudy_pair=; Path=/; HttpOnly; Secure; Max-Age=0",
+  "__Host-nceastudy_context=random; Path=/; HttpOnly; Secure; Max-Age=900",
+]
+
++ Received: 
+"__Host-nceastudy_context=random; Path=/; HttpOnly; Secure; Max-Age=900"
+
+ ❯ tests/server/response-headers.test.ts:8:32
+      6|  response.headers.append('Set-Cookie','__Host-nceastudy_context=random…
+      7|  const headers=nodeResponseHeaders(response);
+      8|  expect(headers['set-cookie']).toEqual(['__Host-nceastudy_pair=; Path=…
+       |                                ^
+      9|  expect(headers['content-type']).toBe('application/json');
+     10| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  12:47:53
+   Duration  576ms (transform 72ms, setup 0ms, collect 55ms, tests 13ms, environment 0ms, prepare 119ms)
+

@@ -1,6 +1,7 @@
 import {createHash,randomBytes,randomUUID,scrypt,timingSafeEqual} from 'node:crypto';
 import type {Database} from '../leaderboard/server';
-import {validUsername,validPassword,validSaves,MAX_BODY_BYTES,MAX_AUTH_BODY_BYTES,MAX_USER_BYTES,jsonBytes,SAVE_KEYS,validRevision,type Saves,type SyncV2Response} from './shared';
+import {validUsername,validPassword,validSave,validSaves,MAX_BODY_BYTES,MAX_AUTH_BODY_BYTES,MAX_USER_BYTES,STORAGE_QUOTA,jsonBytes,SAVE_KEYS,validRevision,type Saves,type SyncV2Response} from './shared';
+import {GAME_IDS} from '../core/types';
 import {mergeSaves} from './merge';
 import {stableText} from '../core/content';
 import {writeFrozen,readOnlyResponse} from './write-freeze';
@@ -106,7 +107,10 @@ export function createAccountsHandler(db:Database){
      const token=await session(client.query.bind(client),id);await client.query('RELEASE SAVEPOINT signup');return respond({token,username:data.username},201);
     }catch(error){await client.query('ROLLBACK TO SAVEPOINT signup').catch(()=>{});if((error as {code?:string}).code==='23505')return respond({error:'That username is already taken.'},409);throw error;}
     }catch(error){failed=true;if(auth)await auth.query('ROLLBACK').catch(()=>{});throw error;}
-    finally{try{if(auth&&!failed)try{await auth.query('COMMIT');}catch(error){await auth.query('ROLLBACK').catch(()=>{});throw error;}}finally{auth?.release();for(const release of releases.reverse())release();}}
+    finally{
+     try{if(auth&&!failed)try{await auth.query('COMMIT');}catch(error){await auth.query('ROLLBACK').catch(()=>{});throw error;}}
+     finally{auth?.release();for(const release of releases.reverse())release();}
+    }
    }
    if(action==='logout'){
     if(!data||typeof data!=='object'||Array.isArray(data))return respond({error:'Invalid logout request.'},400);
@@ -123,16 +127,30 @@ export function createAccountsHandler(db:Database){
    }
    const v2=request.headers.get('X-QCC-Sync')==='2';
    const cursor=request.method==='GET'?(new URL(request.url).searchParams.get('cursor')??'0'):data?.cursor;
-   if(v2&&(!validRevision(cursor)||(request.method==='PUT'&&(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).length!==3||!Object.hasOwn(data,'saves')||!data.bases||typeof data.bases!=='object'||Array.isArray(data.bases)||Object.entries(data.bases).some(([key,revision])=>!SAVE_KEYS.includes(key)||!validRevision(revision))))))return respond({error:'Invalid sync cursor or revisions.'},400);
+   if(v2&&(!validRevision(cursor)||(request.method==='PUT'&&(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).length!==3||!Object.hasOwn(data,'saves')||!data.bases||typeof data.bases!=='object'||Array.isArray(data.bases)||Object.values(data.bases).some(revision=>!validRevision(revision))))))return respond({error:'Invalid sync cursor or revisions.'},400);
    if(request.method==='GET'&&!v2)return respond({saves:savesFrom((await db.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1',[account.id])).rows)});
-   if(request.method==='PUT'&&(!data||typeof data!=='object'||(!v2&&Object.keys(data).length!==1)||!validSaves(data.saves)))return respond({error:'Invalid save keys or values. Oversized saves stay on this device.'},400);
+   let submitted:Saves={};
+   if(request.method==='PUT'){
+    if(!data||typeof data!=='object'||Array.isArray(data)||(!v2&&Object.keys(data).length!==1)||!data.saves||typeof data.saves!=='object'||Array.isArray(data.saves))return respond({error:'Invalid sync body.'},400);
+    // Newer clients can know games this backend has not deployed yet. Drop
+    // unsupported keys before validation/quota checks; never write or ack them.
+    const supported=Object.fromEntries(Object.entries(data.saves).filter(([key])=>SAVE_KEYS.includes(key)));
+    const favourites=supported.favourites;
+    if(favourites&&typeof favourites==='object'&&!Array.isArray(favourites)){
+     const record=favourites as Record<string,unknown>;
+     // Skip the whole incompatible list so we neither erase stored favourites
+     // nor acknowledge a value different from the one the client submitted.
+     if(Array.isArray(record.value)&&record.value.every(id=>typeof id==='string')&&record.value.some(id=>!GAME_IDS.some(game=>game===id))&&validSave('favourites',{...record,value:[]}))delete supported.favourites;
+    }
+    if(!validSaves(supported))return respond({error:'Invalid save values. Oversized saves stay on this device.'},400);
+    submitted=supported;
+   }
    const release=await lock('sync:'+account.id);let client:Awaited<ReturnType<Database['connect']>>|undefined;
    try{
     client=await db.connect();
     const frozenRead=request.method==='GET'&&await writeFrozen(db);
     await client.query(frozenRead?'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY':'BEGIN');
     await client.query('SELECT id FROM accounts WHERE id=$1'+(frozenRead?'':' FOR UPDATE'),[account.id]);
-    const submitted:Saves=request.method==='PUT'?data.saves:{};
     const keys=Object.keys(submitted);
     if(keys.length){
      // Account row lock above serializes quota checks across processes and v1/v2
@@ -177,7 +195,7 @@ export function createAccountsHandler(db:Database){
    }catch(error){if(client)await client.query('ROLLBACK').catch(()=>{});throw error;}finally{client?.release();release();}
   }catch(error){
    if(isStorageFullError(error))return storageFullResponse();
-   if(error==='storage_quota')return respond({error:'Account storage exceeds 2 MiB. Your progress stays on this device. Save a smaller world and sync again.'},413);
+   if(error==='storage_quota')return respond(STORAGE_QUOTA,413);
    if(error===413)return respond({error:'Request too large.'},413);
    if(error===400)return respond({error:'Invalid JSON.'},400);
    return respond({error:'Accounts are temporarily unavailable. Your progress stays on this device.'},503);

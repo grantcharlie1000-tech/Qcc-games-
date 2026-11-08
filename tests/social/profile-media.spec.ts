@@ -1,18 +1,18 @@
 import {captureAuditEvidence} from '../helpers/audit-evidence';
 import {test,expect,type BrowserContext,type Page} from '@playwright/test';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import type {Pool} from 'pg';
+import {LocalDB,createLocalPool} from '../support/local-db';
 import sharp from 'sharp';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {createSocialHandler} from '../../src/social/server';
 import {createMediaHandler} from '../../src/media/server';
 import {createMemoryStore} from '../../src/media/store';
 
-const database=new NetlifyDB({logger:()=>{}}),store=createMemoryStore();
-let pool:ReturnType<typeof getDatabase>['pool'];
+const database=new LocalDB(),store=createMemoryStore();
+let pool:Pool;
 let accounts:ReturnType<typeof createAccountsHandler>,social:ReturnType<typeof createSocialHandler>,withoutUploads:typeof social,media:ReturnType<typeof createMediaHandler>;
 test.beforeAll(async()=>{
- const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;
+ const connectionString=await database.start();await database.applyMigrations('db/migrations');pool=createLocalPool(connectionString);
  const db={query:(text:string,values?:unknown[])=>pool.query(text,values),connect:()=>pool.connect()} as never;
  accounts=createAccountsHandler(pool);social=createSocialHandler(db,store);withoutUploads=createSocialHandler(db,null);media=createMediaHandler(db,store);
 });

@@ -1,23 +1,19 @@
 import { test, expect, seedStudyTopic } from '../../fixtures';
 import { appSettings } from '../../game-menu';
 import type { BrowserContext, Page } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
-import { NetlifyDB } from '@netlify/database-dev';
-import { getDatabase } from '@netlify/database';
+import { LocalDB, createLocalPool } from '../../support/local-db';
 import { createLeaderboardHandler } from '../../../src/leaderboard/server';
 import { createAccountsHandler } from '../../../src/accounts/server';
 
 // The real leaderboard and accounts handlers run against a throwaway local Postgres built from the repo migrations.
-const database = new NetlifyDB({ logger: () => {} });
-let pool: ReturnType<typeof getDatabase>['pool'];
+const database = new LocalDB();
+let pool: ReturnType<typeof createLocalPool>;
 let handle: ReturnType<typeof createLeaderboardHandler>, accounts: ReturnType<typeof createAccountsHandler>;
-let migration = '';
 test.beforeAll(async () => {
   const connectionString = await database.start();
-  await database.applyMigrations('netlify/database/migrations');
-  pool = getDatabase({ connectionString }).pool;
+  await database.applyMigrations('db/migrations');
+  pool = createLocalPool(connectionString);
   handle = createLeaderboardHandler(pool); accounts = createAccountsHandler(pool);
-  migration = await readFile('netlify/database/migrations/20261102090000_claimline_leaderboard.sql', 'utf8');
 });
 test.afterAll(async () => { await pool?.end(); await database.stop(); });
 
@@ -29,7 +25,7 @@ async function connect(context: BrowserContext, username: string, posts: { game:
   await context.addInitScript(s => {localStorage.setItem('pocket-arcade:v1:accounts:session', JSON.stringify(s));localStorage.setItem('qcc:christmas-welcome:2026:'+s.username.toLowerCase(),'seen');}, session);
   await context.route(/\/\.netlify\/functions\/(leaderboard|accounts)/, async route => {
     const req = route.request();
-    const result = await (req.url().includes('/accounts') ? accounts : handle)(new Request(req.url(), { method: req.method(), headers: req.headers(), body: req.method() === 'POST' ? req.postData() : undefined }));
+    const result = await (req.url().includes('/accounts') ? accounts : handle)(new Request(req.url(), { method: req.method(), headers: req.headers(), body: ['POST','PUT'].includes(req.method()) ? req.postData() : undefined }));
     if (req.url().includes('/leaderboard') && req.method() === 'POST') posts.push({ ...req.postDataJSON(), status: result.status });
     await route.fulfill({ status: result.status, headers: Object.fromEntries(result.headers), body: await result.text() });
   });
@@ -37,9 +33,8 @@ async function connect(context: BrowserContext, username: string, posts: { game:
 }
 const pending = (page: Page, user: string) => page.evaluate(u => JSON.parse(localStorage.getItem('pocket-arcade:v1:leaderboard:pending:account:' + u) ?? '{}'), user.toLowerCase());
 
-test('before the migration a Claimline peak stays queued quietly, and it syncs by itself once the database accepts it', async ({ browser }) => {
+test('Claimline keeps its peak queued quietly across reloads while its leaderboard remains closed', async ({ browser }) => {
   test.setTimeout(90000);
-  await pool.query(migration.replace(",'claimline'", '')); // production as it stands before the migration
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const posts: { game: string; score: number; status: number }[] = [];
   try {
@@ -74,20 +69,16 @@ test('before the migration a Claimline peak stays queued quietly, and it syncs b
     expect(posts.length).toBe(before); // parked: not posted again on every refresh
     expect(errors).toEqual([]);
 
-    // The migration lands (here: on the throwaway test database). No code changes; the next page load sends the queue.
-    await pool.query(migration);
+    // A reload may retry, but never opens the board or discards the queued/local peak.
     const queued = (await pending(page, user)).claimline as number;
     await page.reload();
-    await expect.poll(() => posts.filter(p => p.game === 'claimline' && p.status === 200).length).toBeGreaterThan(0);
-    await expect.poll(async () => (await pending(page, user)).claimline).toBeUndefined();
-    expect(posts.filter(p => p.status === 200).at(-1)).toMatchObject({ game: 'claimline', score: queued });
-    await appSettings(page); await page.locator('#open-leaderboards').click();
-    await expect(page.locator('#leaderboard-game')).toHaveValue('claimline');
-    const you = page.locator('#leaderboard-dialog tr.lb-you');
-    await expect(you).toContainText('Loop_Ada'); await expect(you).toContainText(/\d+\.\d\d%/);
+    await expect.poll(() => posts.length).toBeGreaterThan(before);
+    expect(posts.every(p => p.status === 409)).toBe(true);
+    expect((await pending(page, user)).claimline).toBeGreaterThanOrEqual(queued);
+    expect(Number(await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:claimline')))).toBeGreaterThanOrEqual(queued);
+    expect((await pool.query("SELECT * FROM arcade_scores WHERE game_id='claimline'")).rows).toHaveLength(0);
     expect(errors).toEqual([]);
   } finally {
     await context.close();
-    await pool.query(migration);
   }
 });

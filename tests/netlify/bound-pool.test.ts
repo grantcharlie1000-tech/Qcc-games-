@@ -1,7 +1,7 @@
 import {beforeAll,afterAll,describe,it,expect} from 'vitest';
 import {randomUUID,randomBytes,createHash} from 'node:crypto';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool} from 'pg';
 import type {Database} from '../../src/leaderboard/server';
 import {createSocialHandler} from '../../src/social/server';
 import {createChatHandler,purgeExpiredChat} from '../../src/chat/server';
@@ -9,13 +9,13 @@ import {createMediaHandler} from '../../src/media/server';
 import {createMemoryStore,purgePendingMedia,sweepOrphanMedia} from '../../src/media/store';
 import {createGuardedHandler,boundDatabase} from '../../netlify/lib/runtime.mts';
 // A real pg.Pool: `query` is a class method that needs `this`, so unbound calls like rateLimit(db.query,...) throw.
-const local=new NetlifyDB({logger:()=>{}});let real:ReturnType<typeof getDatabase>['pool'];
+const local=new LocalDB();let real:Pool;
 class StrictPool {
  async query(text:string,values?:unknown[]){if(this!==strict)throw new TypeError('unbound query');return real.query(text,values);}
  async connect(){if(this!==strict)throw new TypeError('unbound connect');return real.connect();}
 }
 const strict=new StrictPool() as unknown as Database;
-beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('netlify/database/migrations');real=getDatabase({connectionString}).pool;},30000);
+beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('db/migrations');real=createLocalPool(connectionString);},30000);
 afterAll(async()=>{await real?.end();await local.stop();});
 async function account(){
  const name='bp_'+randomBytes(4).toString('hex'),id=randomUUID(),player=randomBytes(32).toString('hex'),token='acct_'+randomBytes(32).toString('hex');

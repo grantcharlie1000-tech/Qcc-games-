@@ -1,0 +1,26 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/study tests/accounts/client.test.ts tests/accounts/sync-v2-client.test.ts tests/server/app.test.ts tests/server/response-headers.test.ts tests/server/vercel.test.ts tests/database/migrate.test.ts
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-backend-integration
+
+ ✓ tests/study/pairing-core.test.ts (15 tests) 36ms
+ ✓ tests/server/vercel.test.ts (18 tests) 34ms
+ ✓ tests/accounts/client.test.ts (31 tests) 248ms
+ ✓ tests/study/pairing-identities.test.ts (3 tests) 35ms
+ ✓ tests/study/pairing-route.test.ts (5 tests) 47ms
+ ✓ tests/accounts/sync-v2-client.test.ts (25 tests) 609ms
+ ✓ tests/server/response-headers.test.ts (1 test) 5ms
+ ✓ tests/database/migrate.test.ts (8 tests) 2583ms
+   ✓ applies every migration to empty DB, then no-op with strict marker  359ms
+ ✓ tests/server/app.test.ts (20 tests) 2355ms
+ ✓ tests/study/pairing-store.test.ts (27 tests) 4142ms
+ ✓ tests/study/pairing-backend.test.ts (11 tests) 4128ms
+
+ Test Files  11 passed (11)
+      Tests  164 passed (164)
+   Start at  13:38:31
+   Duration  4.79s (transform 1.56s, setup 0ms, collect 3.05s, tests 14.22s, environment 3ms, prepare 1.01s)
+

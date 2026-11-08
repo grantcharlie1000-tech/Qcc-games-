@@ -1,0 +1,19 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/study
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-backend-integration
+
+ ✓ tests/study/pairing-identities.test.ts (3 tests) 22ms
+ ✓ tests/study/pairing-core.test.ts (15 tests) 40ms
+ ✓ tests/study/pairing-route.test.ts (3 tests) 21ms
+ ✓ tests/study/pairing-backend.test.ts (2 tests) 1478ms
+ ✓ tests/study/pairing-store.test.ts (16 tests) 1932ms
+
+ Test Files  5 passed (5)
+      Tests  39 passed (39)
+   Start at  12:46:25
+   Duration  2.37s (transform 436ms, setup 0ms, collect 766ms, tests 3.49s, environment 1ms, prepare 314ms)
+

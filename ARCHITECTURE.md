@@ -76,13 +76,17 @@ The player is a cross-origin iframe with the sandbox `allow-scripts allow-same-o
 
 Fivefold fills the stage with a responsive DOM board and keyboard. Its deterministic model stores both modes, seeded practice and statistics in the host snapshot; daily puzzles use the Auckland calendar. See [its spec](src/games/fivefold/SPEC.md).
 
+## Server database boundary
+
+The account and leaderboard function entry points use `netlify/lib/db.mts` (server-only pg pool) and `netlify/lib/runtime.mts` (environment marker guard). A single policy in `src/accounts/write-freeze.ts` combines the cached database flag with the emergency environment override for both handlers; frozen authenticated reads skip session touches and use read-only sync snapshots. Handlers retain their injected pool contract. Standalone Neon schema migrations are explicit, transactional and tracked in `qcc_schema_migrations`, adopting all restored Netlify tracker names (including sync revisions and runtime flags) without replay; see [database operations](docs/DATABASE.md). Browser builds and GitHub Pages CI need no database credentials.
+
 ## Claimline
 
-Claimline is a canvas territory-capture game against six local bots in one circular arena. It fills the stage, and its score is the human's peak share in hundredths of a percent, shown as a percentage. It is a scored game on the shared leaderboard. Until the `20261102090000_claimline_leaderboard.sql` migration is applied in production, the server answers its score submissions with 409 `leaderboard-not-open`. `LeaderboardSync` then keeps the score queued for that game only and retries quietly, so the board starts filling by itself once the migration lands. See [its spec](src/games/claimline/SPEC.md).
+Claimline is a canvas territory-capture game against six local bots in one circular arena. It fills the stage, and its score is the human's peak share in hundredths of a percent, shown as a percentage. Account sync accepts its saves and best scores. Its leaderboard remains closed: no Claimline schema change or migration is included. Score submissions receive 409 `leaderboard-not-open`, and the client retains them locally. See [its spec](src/games/claimline/SPEC.md).
 
 ## Quad Clash
 
-`src/games/quad-clash/` is an original first-person arena shooter on the QCC campus against seven bots (see its [SPEC](src/games/quad-clash/SPEC.md)). It is a full-bleed Three.js reference game like Crossy Road. The match simulation (`sim.ts`, `bots.ts`, `physics.ts`, `nav.ts`) is pure and deterministic at 60 Hz, and the whole running match is saved in the shell snapshot. Desktop play uses pointer lock: Esc frees the mouse and pauses through `context.setPaused`. Touch play has its own stick and buttons. Its score is match points, and it is on the shared leaderboard once `20261104090000_quad_clash_score.sql` is applied (until then submissions queue, as described for Claimline).
+`src/games/quad-clash/` is an original first-person arena shooter on the QCC campus against seven bots (see its [SPEC](src/games/quad-clash/SPEC.md)). It is a full-bleed Three.js reference game like Crossy Road. The match simulation (`sim.ts`, `bots.ts`, `physics.ts`, `nav.ts`) is pure and deterministic at 60 Hz, and the whole running match is saved in the shell snapshot. Desktop play uses pointer lock: Esc frees the mouse and pauses through `context.setPaused`. Touch play has its own stick and buttons. Its score is match points, and it is on the shared leaderboard once `20261104090000_quad_clash_score.sql` is applied (until then submissions queue and retry).
 
 ## Femboy Frosthop
 
@@ -90,9 +94,9 @@ Claimline is a canvas territory-capture game against six local bots in one circu
 
 ## QCC Social and QCC Chat
 
-Social (posts, follows, likes, reports) and Chat (mutual-friend 1:1 text and view-once photo snaps) need a signed-in QCC account. Handlers live in `src/social/`, `src/chat/` and `src/media/`, with pure policy in each `shared.ts`/`policy.ts`, and are served as same-origin Functions `social`, `chat` and `media`.
-Photos are re-encoded server-side with Sharp to WebP and stored through a `MediaStore` (Netlify Blobs on Netlify, files under `.netlify/local-media` in `dev:online`, memory in tests). Without a store, text keeps working and photo buttons are hidden.
-Chat messages expire per conversation retention; an hourly scheduled function purges them and stale pending uploads.
+Social (posts, follows, likes, reports) and Chat (mutual-friend 1:1 text and view-once photo snaps) need a signed-in QCC account. Handlers live in `src/social/`, `src/chat/` and `src/media/`, with pure policy in each `shared.ts`/`policy.ts`, and are served as same-origin routes `social`, `chat` and `media`, by Netlify Functions or by the Vercel backend (`server/app.ts`).
+Photos are re-encoded server-side with Sharp to WebP and stored through a `MediaStore` (Netlify Blobs on Netlify, Vercel Blob on the Vercel backend (`server/media-store.ts`), files under `.netlify/local-media` in `dev:online`, memory in tests). Without a store, text keeps working and photo buttons are hidden.
+Chat messages expire per conversation retention; an hourly scheduled function (Vercel cron `/api/chat-purge` on the backend) purges them and stale pending uploads.
 The Pages proxy allowlist includes the three routes, and the migration needs owner approval before it is applied.
 See [the spec](docs/social-chat/SPEC.md), [deployment](docs/social-chat/DEPLOYMENT.md) and the [moderation runbook](docs/social-chat/MODERATION.md).
 

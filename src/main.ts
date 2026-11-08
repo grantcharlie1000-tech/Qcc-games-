@@ -318,7 +318,7 @@ async function route(){
     }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Movies &amp; TV could not load.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
     return;
   }
-  const appRoute=/^#\/(social|chat|santa|election|predictions)(\/|\?|$)/.exec(location.hash)?.[1] as 'social'|'chat'|'santa'|'election'|'predictions'|undefined;
+  const appRoute=/^#\/(social|chat|santa|predictions)(\/|\?|$)/.exec(location.hash)?.[1] as 'social'|'chat'|'santa'|'predictions'|undefined;
   if(appRoute){
     if(appView&&appKind===appRoute){appView.navigate(location.hash);return;}
     if(!activeId&&!movies&&!appView)movieScroll={x:scrollX,y:scrollY};
@@ -328,12 +328,11 @@ async function route(){
     if(launcher.sheet.open)launcher.sheet.close();
     const token=++generation;leave();
     setChromeInert(true);
-    const name=appRoute==='social'?'Social':appRoute==='chat'?'Chat':appRoute==='election'?'Results Desk':appRoute==='predictions'?'Predictions':'the Santa Tracker';
+    const name=appRoute==='social'?'Social':appRoute==='chat'?'Chat':appRoute==='predictions'?'Predictions':'the Santa Tracker';
     content.innerHTML=`<div class="loading"><p>Opening ${name}…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;
     try{
       // Constructors write into #content, so check the navigation is still current before building.
       const make:()=>AppView=appRoute==='predictions'?(PredictionsView=>()=>new PredictionsView(content,appDeps()))((await import('./predictions/view')).PredictionsView)
-        :appRoute==='election'?(ElectionView=>()=>new ElectionView(content,{reducedMotion:()=>preferences.reducedMotion}))((await import('./election/view')).ElectionView)
         :appRoute==='santa'?(SantaView=>()=>new SantaView(content,{reducedMotion:()=>preferences.reducedMotion}))((await import('./santa/view')).SantaView)
         :(ViewClass=>()=>new ViewClass(content,appDeps()))(appRoute==='social'?(await import('./social/view')).SocialView:(await import('./chat/view')).ChatView);
       if(token!==generation)return;
@@ -549,7 +548,6 @@ festiveInput.addEventListener('change',()=>{
 window.addEventListener('hashchange',()=>void route());
 window.addEventListener('pagehide',()=>{save();movies?.pause();appView?.pause();void accounts.flush(true,false).catch(()=>{});});
 // A page restored from the back/forward cache missed its pagehide resume: live results start refreshing again.
-window.addEventListener('pageshow',event=>{if(event.persisted&&appKind==='election'&&!study.isOpen)appView?.resume();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance){instance.dismissMenu?.();pausedForDialog=false;setPaused(true);}});
 // Capture on window precedes native dialog cancellation and game-local Escape handlers.
 window.addEventListener('keydown',event=>{
@@ -580,7 +578,7 @@ function finishEntry(){
 }
 function updateAccountMenu(){
  const session=accounts.session();
- document.querySelector('#account-summary')!.textContent=session?`Signed in as ${session.username}`:appKind&&appKind!=='santa'&&appKind!=='election'?'Not signed in':'Playing as guest';
+ document.querySelector('#account-summary')!.textContent=session?`Signed in as ${session.username}`:appKind&&appKind!=='santa'?'Not signed in':'Playing as guest';
  document.querySelector<HTMLElement>('#open-accounts')!.hidden=!!session;
  document.querySelector<HTMLElement>('#logout-account')!.hidden=!session;
  document.querySelector<HTMLElement>('#switch-account')!.hidden=!session;

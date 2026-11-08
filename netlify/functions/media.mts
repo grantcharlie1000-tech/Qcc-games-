@@ -1,4 +1,4 @@
-import {getDatabase} from '@netlify/database';
+import {getPool} from '../lib/db.mts';
 import {createGuardedHandler} from '../lib/runtime.mts';
 import {netlifyMediaStore} from '../lib/media-store.mts';
 import type {Config} from '@netlify/functions';
@@ -10,7 +10,7 @@ export default async (request:Request)=>{
   if(!handle){
    const store=await netlifyMediaStore();
    const maxTotalBytes=Number(process.env.QCC_MEDIA_MAX_TOTAL_BYTES)||undefined;
-   handle=createGuardedHandler(getDatabase().pool,db=>createMediaHandler(db,store,{maxTotalBytes}),{allowMissingMarker:true});
+   handle=createGuardedHandler(getPool(),db=>createMediaHandler(db,store,{maxTotalBytes}),{allowMissingMarker:false});
   }
   return await handle(request);
  }catch(error){if(isStorageFullError(error))return storageFullResponse();return Response.json({error:'Media temporarily unavailable.'},{status:503,headers:{'Cache-Control':'no-store'}});}

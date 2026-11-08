@@ -1,4 +1,128 @@
-# Cloudflare Pages → Vercel API
+# Backend hosting off Netlify
+
+The static site (Vite, `dist/`) and the backend now deploy separately. The frontend uses same-origin API paths through the Cloudflare Pages proxy by default.
+An explicit `VITE_QCC_API_BASE` build setting can instead point it directly at the backend.
+
+## What the backend serves
+
+| Route | Old Netlify path | Needs |
+| --- | --- | --- |
+| `/api/accounts` | `/.netlify/functions/accounts` | Postgres |
+| `/api/leaderboard` | `/.netlify/functions/leaderboard` | Postgres |
+| `/api/turn` | `/.netlify/functions/turn` | Cloudflare Realtime TURN key (503 without it) |
+| `/api/social` | `/.netlify/functions/social` | Postgres (text works without a blob store) |
+| `/api/chat` | `/.netlify/functions/chat` | Postgres (text works without a blob store) |
+| `/api/media` | `/.netlify/functions/media` | Postgres and Vercel Blob (`BLOB_READ_WRITE_TOKEN`; 503 `media_not_configured` without it) |
+| `/api/predictions` | `/.netlify/functions/predictions` | Postgres and the gated `20261108090000_predictions` migration; refuses everything but `me` until `predictions_config.enabled` |
+| `/api/predictions-grants` | scheduled function `predictions-grants` | Vercel Cron with `CRON_SECRET`; does nothing until Predictions is enabled and launched |
+| `/api/chat-purge` | scheduled function `chat-purge` | Vercel Cron with `CRON_SECRET` (401 without the Bearer header) |
+| `/api/movies` | `/api/movies` | TMDB read token (503 without it) |
+| `/api/health` | none | nothing |
+
+PeerJS signalling uses the public `0.peerjs.com` server, so it does not depend on the host.
+`server/app.ts` provides the parts Netlify used to supply:
+- a CORS allow-list
+- per-IP rate limits (accounts 600/min, leaderboard 300/min, turn 20/min, movies 600/min, social 600/min, chat 600/min, media 1200/min, per warm instance)
+- standard `CDN-Cache-Control` headers
+- the deploy-context mapping for the database guard
+
+## Vercel (Hobby, free, no card) + Neon (Free, no card)
+
+1. Neon: sign in with GitHub, create a Free project, and copy the **pooled** connection string.
+2. Load the data: follow the `qcc-neon-cutover` runbook to copy the old Netlify Database into Neon, then run
+   `npm run db:migrate`. This writes to production, so get Charlie's go-ahead first.
+3. Vercel: sign in with GitHub and import the repo. Leave the build settings alone, because `vercel.json` sets them.
+4. Set these environment variables in Vercel (names only):
+   - `DATABASE_URL`
+   - `QCC_ALLOWED_ORIGINS`, e.g. `https://qcc-games.pages.dev,https://*.qcc-games.pages.dev`
+   - `TMDB_READ_TOKEN`
+   - `CLOUDFLARE_TURN_KEY_ID`
+   - `CLOUDFLARE_TURN_API_TOKEN`
+   - `BLOB_READ_WRITE_TOKEN` (created by connecting a Vercel Blob store to the project). Photos turn on only when this **and** `QCC_MEDIA_MAX_TOTAL_BYTES` are both set
+   - `CRON_SECRET` (any long random value; Vercel sends it as `Authorization: Bearer ...` to the purge cron)
+   - `QCC_MEDIA_MAX_TOTAL_BYTES` (global media budget in bytes; required for photos, no default, so pick about 80% of your Blob plan's storage; `0` or an invalid value keeps photos off)
+   - `QCC_APPROVED_MIGRATIONS` (owner only; see below. Leave unset until the owner has approved the migration)
+   - `QCC_PROXY_SECRET` when requests arrive through the trusted Cloudflare Pages proxy (server-only)
+   - Optional: `QCC_DEPLOY_CONTEXT`, `QCC_DB_EXPECTED_ENV`, `QCC_WRITE_FREEZE`
+5. Pages frontend: configure `QCC_API_ORIGIN` and the matching `QCC_PROXY_SECRET` runtime bindings as below.
+   For a direct browser connection, set `VITE_QCC_API_BASE=https://<project>.vercel.app` and rebuild; the build
+   adds that origin to `connect-src` in `dist/_headers`.
+
+`VERCEL_ENV` maps to the database guard like this: production → `production`, preview → `deploy-preview`.
+The database marker row (`qcc_environment`) must match.
+
+### QCC Social, Chat and media on Vercel
+
+`server/app.ts` serves `social`, `chat` and `media` through the same guarded handler as accounts. `server/media-store.ts`
+(`vercelBlobMediaStore`) is the `MediaStore`: it returns `null`, which disables photos while text keeps working, unless
+`BLOB_READ_WRITE_TOKEN` and an explicit `QCC_MEDIA_MAX_TOTAL_BYTES` are both set (without them uploads answer 503 `media_not_configured`). A
+`null` store is re-checked after 60 s, so fixing the env does not need a cold start. Objects are written as **private** Vercel Blobs (`access: 'private'`, pathname
+`qcc-media/<key>`, no random suffix), so they have no public URL and are only readable with the store token. Writes use `allowOverwrite:false` and reads use the Blob cache (`useCache:true`; keys are random and immutable, and
+authorization runs against the database before any read). Photos reach
+users only through the authenticated `/api/media` handler, which also decides who may see each one. This needs
+`@vercel/blob` 2.x; an older SDK without private access must not be used.
+
+`vercel.json` registers a cron for `/api/chat-purge`. The route returns 401 unless the request carries
+`Authorization: Bearer $CRON_SECRET`, and runs `purgeExpiredChat`, `purgePendingMedia` and `sweepOrphanMedia` in small batches (50 rows)
+under a 7 s time budget, deleting each batch's blobs 8 at a time and keeping the rows of failed deletes. A run that hits the budget stops cleanly and the
+next run continues. With no media store configured the purge deletes only text and system messages and keeps snap rows and media
+rows, so no blob is orphaned. It skips while writes are frozen. It passes through the same database environment guard as the other routes and logs only counts.
+**Schedule: daily (`7 3 * * *`).** Vercel Hobby only allows cron jobs that run once per day, and a more frequent expression fails
+the deployment. Reads already filter on `expires_at`, so expired messages are never served between runs; only the row and blob
+deletion is delayed by up to a day. `vercel.json` has a single `api/[route].js` function (`maxDuration: 10`), so the cron path has no function config of its own and relies on the 7 s deadline. On a Pro plan change the schedule to `7 * * * *` for the hourly purge the docs describe.
+
+`vercel.json` also registers `/api/predictions-grants` at **`17 12 * * *`** (daily, Hobby-safe): 12:17 UTC is just after Monday
+00:00 in Auckland in both NZDT (11:00 UTC) and NZST (12:00 UTC). It uses the same Bearer `CRON_SECRET` check and environment guard,
+runs `runGrantJob` (one short transaction per account) inside the 7 s budget, and logs only counts. Grants are idempotent and also
+repaired lazily on every wallet read and trade, so a late, missed or repeated run can neither skip nor double an allowance. It does
+nothing while Predictions is disabled, not launched or write-frozen. See [Predictions](PREDICTIONS.md).
+
+Uploads send the raw image bytes with their `Content-Type`. The Vercel request body limit is 4.5 MB and `MAX_UPLOAD_BYTES` is
+4 MiB, so uploads fit; `maxDuration` stays at 10 s. Sharp stays an external `node_modules` dependency (`--packages=external`),
+and Vercel installs dependencies with `npm ci`, so its linux-x64 prebuilt binary is present and `includeFiles` needs no change.
+Check one real upload after the first deploy.
+
+### Client IPs through the Pages proxy
+
+Set a matching `QCC_PROXY_SECRET` on Vercel and the trusted proxy; keep it out of `VITE_*` variables and
+browser code. The proxy must overwrite `X-QCC-Proxy-Secret` with that secret and `X-QCC-Client-IP` with the
+client IP supplied by Cloudflare, rather than forwarding values from the browser.
+
+The Vercel adapter compares fixed-size secret digests with a constant-time comparison and accepts only a
+single valid IPv4/IPv6 address. A verified address replaces `x-nf-client-connection-ip` for accounts and is
+also used by the router's per-IP rate limits. Without a configured secret, with a mismatch, or with an invalid
+address, the adapter strips both incoming client-IP headers and keeps the existing Vercel IP fallback for
+router rate limits (`x-real-ip`, then the first `x-forwarded-for` address). Proxy headers, including the secret,
+are removed before routing. This trust mechanism applies to the Vercel entry point.
+
+### Save storage on the free tiers
+
+Shared limits in `src/accounts/shared.ts` allow 1 MiB per submitted save record, 1 MiB per sync request, and
+2 MiB total per account. The total counts compact UTF-8 JSON bytes of the full `{key:{value,updated}}` map,
+including settings, favourites, best scores and game snapshots. It uses the final merged records and includes
+keys omitted from the request. Account row locks serialize concurrent uploads across backend instances.
+These limits budget for Neon Free's 0.5 GB storage and Vercel Hobby's 4.5 MB request-body limit.
+
+Uploads that would exceed the total are rolled back and return HTTP 413 with
+`{"error":"storage_quota","message":"Your saves are over the 2 MB limit."}`. Existing oversized accounts
+remain readable and can upload non-growing replacements, including reductions that remain over the cap; no data is removed.
+
+Postgres capacity failures (`53100`, `53400`) and Neon project-size-limit errors return HTTP 507 with
+`{"error":"storage_full","message":"Storage is full right now. Your progress is kept on this device."}`.
+The client displays these messages, retains unsynced progress locally, and retries temporary capacity
+failures with backoff. The client tries later shrinking batches and makes at most one further pass over deferred quota rejections after progress, then waits for manual recovery. Crossy Road and all current game saves are accepted. Unknown save keys and future game keys are ignored in both sync versions, including unknown v2 base keys; they create no rows or revisions. Otherwise valid favourites records containing unknown game ids are also skipped without modifying the stored list. Invalid JSON, envelopes, revision values and recognized save values still return 400. Claimline saves are accepted; its leaderboard
+remains closed and this change includes no database migration or schema change.
+
+## Any Node host
+
+```sh
+npm ci && npm run build:server
+PORT=8787 DATABASE_URL=... QCC_ALLOWED_ORIGINS=... npm run start:server
+```
+
+Set `QCC_TRUST_PROXY=1` when the server runs behind a proxy that sets `X-Forwarded-For`.
+
+## Cloudflare Pages frontend → Vercel API
 
 The browser calls same-origin `/.netlify/functions/accounts`,
 `/.netlify/functions/leaderboard`, `/.netlify/functions/turn`, `/.netlify/functions/social`,
@@ -85,11 +209,11 @@ Signup's initial failed sync also retains the capacity notice.
 
 ## Save/body limit audit retained from the preceding branch change
 
-| Limit | Backend ref before mirroring | This branch |
+| Limit | Earlier backend limit | Merged limit |
 | --- | --- | --- |
 | `MAX_KEY_BYTES`, UTF-8 JSON transfer record | 1 MiB | 1 MiB |
 | `MAX_BODY_BYTES`, full streamed sync request | 2 MiB | 1 MiB |
-| All keys stored for one account | Unbounded | `MAX_USER_BYTES=2 MiB` |
+| All keys stored for one account | 2 MiB of records | `MAX_USER_BYTES=2 MiB` |
 | Ordinary client batch, including cursor/revisions | Below 2 MiB − 2,048 bytes | Below 1 MiB − `SYNC_BATCH_HEADROOM_BYTES=2048` |
 | Keepalive request | Below 60,000 bytes | `MAX_KEEPALIVE_BODY_BYTES=60000` |
 | Auth JSON body | 2,048 bytes | `MAX_AUTH_BODY_BYTES=2048` |
@@ -113,100 +237,11 @@ the backend router retain accounts 600, leaderboard 300, TURN 20 requests/IP/min
 TURN additionally allows 6 credential requests/client/minute. No schema,
 migration, game-save model cap or live database was changed.
 
-## Exact equivalent change on `origin/infra/backend-move`
+### Migration approval gate
 
-Read-only comparison ref: **`56628e66b5569ab0575b98b0b570336c0c43ceff`**. That
-branch was not checked out, modified or pushed. Deploying this Pages branch
-alone does not update the Vercel handlers. Apply the following in a separate
-backend change; do not wholesale merge the frontend/game history.
-
-1. Add **`src/core/storage-full.ts`** and **`server/storage-full.ts`** unchanged.
-   Port the capacity checks before generic catches in **`src/accounts/server.ts`**,
-   **`src/leaderboard/server.ts`**, **`netlify/lib/runtime.mts`**,
-   **`netlify/functions/accounts.mts`**, and **`netlify/functions/leaderboard.mts`**.
-   Port the rollback/error-preservation and authentication COMMIT cleanup changes.
-   Preserve the backend's existing game list and migration layout.
-2. **`server/app.ts`** has an additional lazy database/factory catch in `build()`
-   absent from this Pages checkout. Import
-   `isStorageFullError, storageFullResponse` from `./storage-full`; change that
-   `catch` to `catch(error)` and return `storageFullResponse()` when classification
-   matches, before its existing generic 503. Do the same in **`server/node.ts`**'s
-   outer catch before its existing 500 fallback, writing the response status,
-   headers and JSON body. Vercel delegates to `createApp`; **`server/vercel.ts`**
-   needs no separate capacity catch.
-3. Port the account-client 507 parsing/retry, initial-signup and sign-out notices in
-   **`src/accounts/client.ts`**; preserve its `apiUrl('accounts')` endpoint/import.
-   Port 507 handling, status notifications and notice recovery in
-   **`src/leaderboard/client.ts`**; preserve `apiUrl('leaderboard')`. Port the
-   status rendering/subscription changes in **`src/leaderboard/view.ts`** and
-   **`src/leaderboard/sidebar.ts`**. Do not import Claimline's unrelated behavior
-   when transferring these hunks.
-4. That backend ref still implements `fetchTmdb` inside
-   **`netlify/functions/movies-search.mts`**. Change its `redirect: 'error'` to
-   `redirect: 'manual'` and retain `if (!result.ok)` before JSON parsing. This is
-   equivalent to this branch's **`server/movies-catalog.ts`** change; no Pages
-   movies adapter is needed on the backend.
-5. Mirror the preceding quota change too: **`src/accounts/shared.ts`** gets
-   `MAX_BODY_BYTES=1024*1024`, `MAX_USER_BYTES=2*1024*1024`,
-   `MAX_AUTH_BODY_BYTES=2048`, `MAX_KEEPALIVE_BODY_BYTES=60000`,
-   `SYNC_BATCH_HEADROOM_BYTES=2048` and `jsonBytes`; keep `MAX_KEY_BYTES=1024*1024`.
-   Port **`src/accounts/server.ts`**'s locked all-key merge/quota/no-op check and
-   legacy non-growing allowance. Port **`src/accounts/client.ts`**'s batching,
-   unsendable-record notice, 502 retry, integer retry deadlines and bounded 413
-   recovery. **`scripts/leaderboard-dev.mjs`** must use the shared cap while
-   preserving its backend-specific environment setup. Update **`docs/ACCOUNTS.md`**
-   and **`docs/SYNC.md`** to the current limits.
-6. Port the capacity regressions from **`tests/database/storage-full.test.ts`**,
-   **`tests/accounts/server.test.ts`**, **`tests/accounts/sync-v2-client.test.ts`**,
-   **`tests/accounts/storage-full.spec.ts`**, **`tests/leaderboard/server.test.ts`**
-   and **`tests/leaderboard/client.test.ts`**. Keep backend fixture migrations at
-   `db/migrations` (this branch uses `netlify/database/migrations`). Also port
-   the preceding quota/server-v2 regressions and 413 expectation. Add equivalent
-   manual-redirect/non-2xx tests in **`tests/movies/catalog-api.test.ts`** against
-   its existing movies handler; omit the Pages-only middleware/adapter import.
-   Extend **`tests/server/app.test.ts`** to cover a database-factory capacity
-   exception, matching environment/flags failures, and the trusted-IP cases below.
-
-### Required backend handling of the new trusted-IP headers
-
-Set the same server-only **`QCC_PROXY_SECRET`** on the Vercel backend's matching
-Production and Preview environments. The Pages IP header must be authenticated
-before either the outer router or account auth limiter trusts it. The backend
-ref currently ignores `X-QCC-Client-IP` and reads a different, spoofable legacy
-header for account throttling. Make this precise change in **`server/app.ts`**:
-
-- Import `timingSafeEqual` from `node:crypto` and `isIP` from `node:net`. Accept
-  `request.headers.get('X-QCC-Client-IP')` only when `isIP(value)` is nonzero and
-  a nonempty configured `env.QCC_PROXY_SECRET` equals `X-QCC-Proxy-Secret` using
-  equal-length buffers and `timingSafeEqual`. Never log either secret.
-- Before the `limited()` call, choose `ip = authenticatedProxyIp || clientIp ||
-  'unknown'`. Use this IP for both the existing router limiter and TURN handler.
-- Before invoking the inner handler, clone the headers. Remove
-  `X-QCC-Proxy-Secret`, `X-QCC-Client-IP` and visitor `X-Nf-Client-Connection-Ip`.
-  Set `X-Nf-Client-Connection-Ip` to the chosen IP for the unchanged account
-  signup/login limiter. Preserve the existing approved-Origin removal for
-  direct cross-origin requests; Pages itself sends no Origin.
-- Test valid/missing/wrong secret, malformed/comma-separated IP, forged legacy
-  headers, IPv4/IPv6, separate visitors' rate-limit buckets and direct requests'
-  platform-IP fallback. Unauthenticated custom headers must never change a
-  rate-limit subject. **`server/vercel.ts`** and **`server/node.ts`** can retain
-  their platform/socket IP arguments: the shared router selects the trusted IP.
-
-Vercel's existing `vercel.json` rewrite from `/.netlify/functions/:route` to
-`/api/:route` remains. Use a reachable production origin without an intervening
-login/protection redirect. Keep backend `DATABASE_URL`, TURN credentials,
-strict database environment markers and optional `QCC_WRITE_FREEZE` controls.
-`QCC_ALLOWED_ORIGINS` remains relevant for browsers using that branch's explicit
-API base directly; Pages server requests have no Origin and do not need a CORS
-allowlist entry. Keep the Paper.io/Claimline leaderboard migration off that
-backend; do not add its table/constraint change as part of this work.
-
-## Verification
-
-Local regression tests exercise the real handlers with isolated local Postgres,
-capacity errors injected at writes/commits, runtime/adapter failures, browser
-notices/retained progress, proxy headers/streams and the Pages movies route.
-Typecheck, full Vitest, production build, built routing-manifest comparison and
-independent code review are recorded in the follow-up implementation plan.
-Live Pages/Vercel configuration, trusted-IP backend deployment and the live Neon
-project were not changed or claimed verified.
+`scripts/db-migrate.mjs` keeps a list of gated migrations (currently `20261105090000_social_chat` and `20261108090000_predictions`). If a gated migration is
+**pending** and not listed in `QCC_APPROVED_MIGRATIONS` (comma-separated ids), the run fails before applying anything and the
+message names the migration and the variable. Already-applied migrations are not affected, and `--status` and `--dry-run` still work.
+After approving, the owner sets `QCC_APPROVED_MIGRATIONS=20261105090000_social_chat` **separately** for production and for preview
+(or on a manual run), applies it, then removes the value if they want the gate back. `netlify.toml` still runs `db:migrate` in every context;
+the gate is what stops an unapproved migration there.

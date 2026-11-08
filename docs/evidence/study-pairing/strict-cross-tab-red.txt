@@ -1,0 +1,112 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/accounts/client.test.ts
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-integration
+
+ ❯ tests/accounts/client.test.ts (26 tests | 3 failed) 140ms
+   ✓ account client > pushes only dirty keys and pulls when clean 8ms
+   ✓ account client > batches genuine changes for three minutes without postponing sustained changes 5ms
+   ✓ account client > keeps idle tabs silent and flushes dirty data once on hiding 2ms
+   ✓ account client > does not dirty identical snapshots when JSONB changes property order 1ms
+   ✓ account client > keeps guest scored runs separate on signup and restores them on logout 3ms
+   ✓ account client > does not import guest saves on login and retries offline changes 4ms
+   ✓ account client > restores unsent progress only after authenticating to the same account 2ms
+   ✓ account client > ignores delayed sync after logout and removes the local token even offline 1ms
+   ✓ account client > ignores a real delayed response after another tab changes identity 1ms
+   ✓ account client > serializes concurrent logouts and leaves no synced account staging 1ms
+   ✓ account client > skips oversized keys while syncing others, stages them privately and bounds pagehide batches 61ms
+   ✓ account client > invalidates cached session and save memory when another tab removes disk values 1ms
+   ✓ account client > loads a new identity despite an older epoch flight and ignores the old response 1ms
+   ✓ account client > preserves the guest and revokes a new session if initial login pull fails 1ms
+   ✓ account client > keeps a mature oversized guest snapshot locally on signup and stages it for the same account 28ms
+   ✓ account client > preserves unsent leaderboard scores and retry deadlines across account cleanup 1ms
+   ✓ integration-safe identity transitions > keeps the current account and saves when strict sign-out cannot revoke the server session 1ms
+   ✓ integration-safe identity transitions > does not commit local sign-out until the exact outgoing session revocation is acknowledged 1ms
+   ✓ integration-safe identity transitions > a successful HTTP response without a confirmed logout body is not revocation proof 1ms
+   ✓ integration-safe identity transitions > blocks guest login when residual integration context cannot be invalidated 0ms
+   ✓ integration-safe identity transitions > blocks account switching and preserves original saves when strict outgoing revocation fails 1ms
+   ✓ integration-safe identity transitions > strict blocking integration cleanup must finish before identity writes 0ms
+   ✓ integration-safe identity transitions > a failed strict transition cannot publish a different identity to another tab 1ms
+   × strict cross-tab identity adoption > quarantines an external identity until integration cleanup and outgoing revocation are confirmed 7ms
+     → expected { …(2) } to be null
+   × strict cross-tab identity adoption > does not expose an externally selected account when server invalidation is unavailable 1ms
+     → expected { …(2) } to be null
+   × strict cross-tab identity adoption > never replaces a concurrent stored identity while initial-login cleanup awaits the server 2ms
+     → promise resolved "undefined" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/accounts/client.test.ts > strict cross-tab identity adoption > quarantines an external identity until integration cleanup and outgoing revocation are confirmed
+AssertionError: expected { …(2) } to be null
+
+- Expected: 
+null
+
++ Received: 
+{
+  "token": "acct_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "username": "Bob",
+}
+
+ ❯ tests/accounts/client.test.ts:203:24
+    201|    f.values.set('accounts:session',{token:'acct_'+'b'.repeat(64),usern…
+    202|    (c as any).storageChanged({key:'pocket-arcade:v1:accounts:session'}…
+    203|    expect(c.session()).toBeNull();
+       |                        ^
+    204|    release();await (c as any).externalIdentityFlight;
+    205|    expect(c.session()?.username).toBe('Bob');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/accounts/client.test.ts > strict cross-tab identity adoption > does not expose an externally selected account when server invalidation is unavailable
+AssertionError: expected { …(2) } to be null
+
+- Expected: 
+null
+
++ Received: 
+{
+  "token": "acct_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "username": "Bob",
+}
+
+ ❯ tests/accounts/client.test.ts:215:24
+    213|    f.values.set('accounts:session',{token:'acct_'+'b'.repeat(64),usern…
+    214|    (c as any).storageChanged({key:'pocket-arcade:v1:accounts:session'}…
+    215|    expect(c.session()).toBeNull();expect(f.storage.read('best:snake',0…
+       |                        ^
+    216|   }finally{c.dispose();}
+    217|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/accounts/client.test.ts > strict cross-tab identity adoption > never replaces a concurrent stored identity while initial-login cleanup awaits the server
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/accounts/client.test.ts:221:62
+    219|   const f=fixture();
+    220|   const c=new AccountsClient(f.storage,f.fetcher,{strictIdentityChange…
+    221|   try{await expect(c.authenticate('signup','Ada','password1')).rejects…
+       |                                                              ^
+    222|   finally{c.dispose();}
+    223|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 23 passed (26)
+   Start at  12:56:54
+   Duration  525ms (transform 121ms, setup 0ms, collect 146ms, tests 140ms, environment 0ms, prepare 64ms)
+

@@ -1,6 +1,6 @@
 import {afterEach,expect,it,vi} from 'vitest';
-vi.mock('@netlify/database',()=>({getDatabase:vi.fn()}));
-import {getDatabase} from '@netlify/database';
+vi.mock('../../netlify/lib/db.mts',()=>({getPool:vi.fn()}));
+import {getPool} from '../../netlify/lib/db.mts';
 import accounts from '../../netlify/functions/accounts.mts';
 import leaderboard from '../../netlify/functions/leaderboard.mts';
 import {createGuardedHandler} from '../../netlify/lib/runtime.mts';
@@ -29,7 +29,7 @@ it('translates capacity errors from the runtime flags check after environment va
  expect(response.status).toBe(507);expect(await response.json()).toEqual(body);
 });
 it.each([['accounts',accounts],['leaderboard',leaderboard]] as const)('translates %s adapter initialization capacity errors',async(_name,handle)=>{
- vi.mocked(getDatabase).mockImplementation(()=>{throw {code:'53400',message:'private connection string'};});
+ vi.mocked(getPool).mockImplementation(()=>{throw {code:'53400',message:'private connection string'};});
  const response=await handle(new Request('https://qcc.test/api'));
  expect(response.status).toBe(507);expect(await response.json()).toEqual(body);
 });

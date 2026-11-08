@@ -1,0 +1,76 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/study/pairing-route.test.ts
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-backend-integration
+
+ ❯ tests/study/pairing-route.test.ts (3 tests | 3 failed) 11ms
+   × unconfigured/default-off pairing route refuses without touching database 8ms
+     → expected 503 to be 404 // Object.is equality
+   × backend route pins public configured Origin despite upstream URL origin 1ms
+     → expected 503 to be 403 // Object.is equality
+   × backend route refuses extra query data and unauthenticated internal context verification 1ms
+     → expected 503 to be 400 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/study/pairing-route.test.ts > unconfigured/default-off pairing route refuses without touching database
+AssertionError: expected 503 to be 404 // Object.is equality
+
+- Expected
++ Received
+
+- 404
++ 503
+
+ ❯ tests/study/pairing-route.test.ts:7:72
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/study/pairing-route.test.ts > backend route pins public configured Origin despite upstream URL origin
+AssertionError: expected 503 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 503
+
+ ❯ tests/study/pairing-route.test.ts:10:103
+      8| });
+      9| it('backend route pins public configured Origin despite upstream URL o…
+     10|  expect((await createStudyLinkHandler(db,{env})(request('action=start'…
+       |                                                                                                       ^
+     11|  expect((await createStudyLinkHandler(db,{env})(request('action=start'…
+     12| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/study/pairing-route.test.ts > backend route refuses extra query data and unauthenticated internal context verification
+AssertionError: expected 503 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 503
+
+ ❯ tests/study/pairing-route.test.ts:15:70
+     13| it('backend route refuses extra query data and unauthenticated interna…
+     14|  const handle=createStudyLinkHandler(db,{env});
+     15|  expect((await handle(request('action=start&token=secret'))).status).t…
+       |                                                                      ^
+     16|  expect((await handle(request('action=verify'))).status).toBe(401);
+     17| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  12:43:06
+   Duration  286ms (transform 37ms, setup 0ms, collect 34ms, tests 11ms, environment 0ms, prepare 63ms)
+
