@@ -95,6 +95,9 @@ test('the games library opens Predictions, and the Menu still opens Election whe
   await expect(strip).toBeVisible();
   await expect(page.locator('.election-banner')).toHaveCount(0);
   await expect(strip).toHaveAttribute('href','#/predictions');
+  await expect(strip.locator('.pb-line')).toHaveCount(0);
+  await expect(strip).not.toContainText('No cash value');
+  await expect(strip.locator('.pb-title')).toHaveText('Predictions');
   expect(await strip.evaluate(element=>[...element.parentElement!.children].indexOf(element))).toBe(12);
   await strip.scrollIntoViewIfNeeded();
   await page.screenshot({path:testInfo.outputPath(`games-predictions-${size.name}-${testInfo.project.name}.png`)});

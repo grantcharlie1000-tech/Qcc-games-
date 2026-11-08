@@ -12,7 +12,7 @@ export function mountPredictionsStrip(grid:Element):void{
   link.className='predictions-banner';
   link.href='#/predictions';
   link.setAttribute('aria-label','Predictions. Free credits with no cash value. Open questions.');
-  link.innerHTML=`<span class="pb-badge">Free credits</span><span class="pb-title">Predictions</span><span class="pb-line">Free credits. No cash value.</span><span class="pb-go" aria-hidden="true">›</span>`;
+  link.innerHTML=`<span class="pb-badge">Free credits</span><span class="pb-title">Predictions</span><span class="pb-go" aria-hidden="true">›</span>`;
   const cards=grid.querySelectorAll(':scope > .game-card');
   if(cards.length>AFTER_CARDS)cards[AFTER_CARDS-1].after(link);else grid.append(link);
 }
