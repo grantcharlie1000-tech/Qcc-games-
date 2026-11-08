@@ -277,11 +277,6 @@ function sceneLayers(width:number,height:number,ratio:number){
  }
  return layers;
 }
-/** Kept for callers that only want the still picture (the board, lights and basket). */
-export function festiveBackdrop(width:number,height:number,ratio:number){
- const l=sceneLayers(width,height,ratio),c=canvasOf(width*ratio,height*ratio),g=c.getContext('2d')!;g.drawImage(l.sky,0,0);g.drawImage(l.basket,0,0);return c;
-}
-
 /* The animated scene --------------------------------------------------------- */
 interface Flake {x:number;y:number;r:number;speed:number;drift:number;phase:number;alpha:number}
 interface Burst {x:number;y:number;r:number;tier:number;age:number;sparks:{a:number;v:number;spin:number;size:number;color:string}[]}

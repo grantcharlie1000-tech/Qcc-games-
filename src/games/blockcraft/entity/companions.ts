@@ -8,9 +8,6 @@ import type {Game} from '../engine/contracts';
 import {wireOwnerEvents,wolfKind} from './companions-wolf';
 import {squidKind} from './companions-squid';
 
-/** Kinds registered here (see the shared entity kinds in engine/contracts.ts). */
-export const COMPANION_KINDS=['wolf','squid'] as const;
-
 export function registerCompanionMobs(game:Game):void{
   game.entities.register(wolfKind(game));
   game.entities.register(squidKind(game));

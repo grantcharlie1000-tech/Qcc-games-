@@ -20,8 +20,6 @@ export function fitView(width:number,height:number,dpr:number,force?:boolean):Vi
 }
 export function toScreen(v:View,x:number,y:number){return v.portrait?{x:v.ox+y*v.scale,y:v.oy-x*v.scale}:{x:v.ox+x*v.scale,y:v.oy+y*v.scale};}
 export function toWorld(v:View,sx:number,sy:number){return v.portrait?{x:(v.oy-sy)/v.scale,y:(sx-v.ox)/v.scale}:{x:(sx-v.ox)/v.scale,y:(sy-v.oy)/v.scale};}
-/** Screen-space bounds of the playing surface (for overlays). */
-export function feltRect(v:View){const a=toScreen(v,0,0),b=toScreen(v,L,W);return {left:Math.min(a.x,b.x),top:Math.min(a.y,b.y),right:Math.max(a.x,b.x),bottom:Math.max(a.y,b.y)};}
 function worldTransform(c:CanvasRenderingContext2D,v:View){
   const k=v.scale*v.dpr;
   if(v.portrait)c.setTransform(0,-k,k,0,v.ox*v.dpr,v.oy*v.dpr);else c.setTransform(k,0,0,k,v.ox*v.dpr,v.oy*v.dpr);

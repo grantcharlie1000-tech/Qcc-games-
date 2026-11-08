@@ -13,6 +13,7 @@ Project workspace with SVG, animation, game development, Phaser engine, Superpow
 | Game engine | Official Phaser 4 skill pack: 28 subsystem skills | [phaserjs/phaser](https://github.com/phaserjs/phaser/tree/02d8931b626d9764c133cbb3fbf99966c03c757c/skills) |
 | Development workflow | The Superpowers skill collection | [obra/superpowers](https://github.com/obra/superpowers) |
 | Code review | Superpowers `requesting-code-review` and `receiving-code-review`, including the reviewer template | [obra/superpowers](https://github.com/obra/superpowers) |
+| Code cleanup | `reclaim-code-entropy` | [Yevanchen/reclaim-code-entropy](https://github.com/Yevanchen/reclaim-code-entropy) |
 
 ## Use
 

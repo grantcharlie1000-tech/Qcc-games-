@@ -65,6 +65,7 @@ export function client(db:Database){
  };
 }
 export const opKey=()=>randomBytes(12).toString('hex');
+/** A local (school) question: no link needed. */
 export function draft(overrides:Record<string,unknown>={}){
  const close=new Date(Date.now()+3*86_400_000).toISOString(),resolve=new Date(Date.now()+4*86_400_000).toISOString();
  return {question:`Will the library quiz night run on its scheduled day ${randomBytes(3).toString('hex')}?`,category:'school',audience:'public',
@@ -98,4 +99,10 @@ export async function unfrozen(pool:Pool,sql:string,values:unknown[]){
   await client.query(sql,values);
   await client.query('COMMIT');
  }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+}
+/** A global question: public audience, non-local category, so the source must be a link. */
+export function globalDraft(overrides:Record<string,unknown>={}){
+ return draft({category:'sport',audience:'public',question:`Will the home side win this weekend's rugby fixture ${randomBytes(3).toString('hex')}?`,
+  yesRule:'The organiser reports a home-side win after full time.',noRule:'The organiser reports a draw or an away win.',voidRule:'The match is abandoned and not completed within 7 days.',
+  source:'https://www.example.org/results/match-centre',...overrides});
 }

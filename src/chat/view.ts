@@ -107,7 +107,7 @@ export class ChatView implements AppView {
   root.focus({preventScroll:true});
  }
  navigate(hash:string):void{this.hash=hash;this.show();}
- pause():void{this.paused=true;this.store.pause();this.screen?.pause?.();this.listScreen?.pause?.();closeAppSheets();}
+ pause():void{this.paused=true;this.store.pause();this.screen?.pause?.();this.listScreen?.pause?.();closeChatMenus();closeAppSheets();}
  resume():void{this.paused=false;this.store.resume();this.screen?.resume?.();}
  dispose():void {
   if(this.disposed)return;

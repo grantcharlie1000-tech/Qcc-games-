@@ -11,7 +11,7 @@ import {cleanJson} from '../entity/entities';
 import {blockXp,canHarvest} from '../interact/loot';
 import {AVATAR_KIND,NameTags,SEAT_COLOURS} from './avatar';
 import {SHARED_SETTINGS,WORLD_GENERATION_VERSION,isBlockPos,isCoord,packState,parseSelf,parseSlotName,stackOrNull,validFlat,
-  type PlayerState,type SelfReport,type SlotName} from './protocol';
+  type PlayerState,type SelfReport} from './protocol';
 import {REFUSAL_TEXT,RateLimit,checkEdits,type EditRefusal} from './validate';
 import type {NetHooks} from './net';
 

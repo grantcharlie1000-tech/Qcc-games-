@@ -2,15 +2,11 @@ import type {StreamProviderId} from './provider';
 
 export const LOAD_TIMEOUT=15000,READY_TIMEOUT=12000,FAILURE_TTL=300000;
 export type AttemptState='idle'|'connecting'|'loaded'|'ready'|'playing'|'failed';
-export interface Clock{set(fn:()=>void,ms:number):number;clear(id:number):void;now():number}
+export interface Clock{set(fn:()=>void,ms:number):()=>void;now():number}
 export interface SupervisorEvents{status(state:AttemptState,provider:StreamProviderId):void;exhausted(failed:StreamProviderId):void;working(provider:StreamProviderId):void}
 
-// Timer handles stay inside this module, so the Clock contract can use plain numbers.
-const timers=new Map<number,ReturnType<typeof setTimeout>>();
-let lastTimer=0;
 const systemClock:Clock={
- set(fn,ms){const id=++lastTimer;timers.set(id,setTimeout(()=>{timers.delete(id);fn();},ms));return id;},
- clear(id){clearTimeout(timers.get(id));timers.delete(id);},
+ set(fn,ms){const timer=setTimeout(fn,ms);return()=>clearTimeout(timer);},
  now:()=>Date.now(),
 };
 
@@ -36,7 +32,7 @@ export class PlaybackSupervisor{
  // Whether this attempt has reported playback. A failed attempt that played is a stream that stopped, not one that never started.
  played=false;
  private announced=false;
- private timer?:number;
+ private cancelTimer?:()=>void;
  constructor(private key:string,private events:SupervisorEvents,private clock:Clock=systemClock){}
 
  start(provider:StreamProviderId){
@@ -84,10 +80,10 @@ export class PlaybackSupervisor{
  // Status events go out after the timers are armed, so a listener that calls back in cannot leave a stale watchdog behind.
  private arm(ms:number,run:()=>void){
   this.disarm();
-  this.timer=this.clock.set(()=>{this.timer=undefined;run();},ms);
+  this.cancelTimer=this.clock.set(()=>{this.cancelTimer=undefined;run();},ms);
  }
  private disarm(){
-  if(this.timer!==undefined)this.clock.clear(this.timer);
-  this.timer=undefined;
+  this.cancelTimer?.();
+  this.cancelTimer=undefined;
  }
 }

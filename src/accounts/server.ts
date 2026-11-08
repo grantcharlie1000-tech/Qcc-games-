@@ -6,6 +6,7 @@ import {mergeSaves} from './merge';
 import {stableText} from '../core/content';
 import {writeFrozen,readOnlyResponse} from './write-freeze';
 import {isStorageFullError,storageFullResponse} from '../../server/storage-full';
+import {HttpError,readJson,respond,sameOrigin,consumeAttempt} from '../../server/api';
 const sha=(value:string)=>createHash('sha256').update(value).digest('hex');
 const DUMMY='scrypt$16384$8$1$00000000000000000000000000000000$'+'00'.repeat(64);
 const derive=(password:string,salt:Buffer,N:number,r:number,p:number)=>new Promise<Buffer>((resolve,reject)=>scrypt(password,salt,64,{N,r,p,maxmem:64*1024*1024},(error,key)=>error?reject(error):resolve(key)));
@@ -29,12 +30,6 @@ export async function resolveAccount(db:Pick<Database,'query'>,request:Request,l
   WHERE token_hash=$1 AND expires_at>now() AND last_used<now()-interval '1 hour'`,[hash]);
  return {id:account.id,username:account.username,playerId:account.playerId};
 }
-async function readJson(request:Request,limit:number){
- if(Number(request.headers.get('content-length'))>limit)throw 413;
- const reader=request.body?.getReader();const decoder=new TextDecoder();let size=0,text='';
- if(reader)try{for(;;){const chunk=await reader.read();if(chunk.done)break;size+=chunk.value.length;if(size>limit){await reader.cancel();throw 413;}text+=decoder.decode(chunk.value,{stream:true});}text+=decoder.decode();}finally{reader.releaseLock();}
- try{return JSON.parse(text);}catch{throw 400;}
-}
 const savesFrom=(rows:any[]):Saves=>Object.fromEntries(rows.map(row=>[row.key,{value:row.value,updated:Number(row.updated)}]));
 const sameRecord=(a:{value:unknown;updated:number},b:{value:unknown;updated:number})=>a.updated===b.updated&&stableText(a.value)===stableText(b.value);
 function sameContent(key:string,a:unknown,b:unknown):boolean {
@@ -55,20 +50,11 @@ export function createAccountsHandler(db:Database){
   const result=await query("SELECT greatest(1,ceil(extract(epoch FROM started_at+($2*interval '1 second')-now())))::int AS retry FROM account_attempts WHERE subject=$1 AND attempts>=$3 AND started_at>now()-($2*interval '1 second')",[subject,seconds,limit]);
   return Number(result.rows[0]?.retry??0);
  }
- async function consume(query:Database['query'],subject:string,seconds=900){
-  const result=await query(`INSERT INTO account_attempts(subject,attempts) VALUES ($1,1)
-   ON CONFLICT(subject) DO UPDATE SET attempts=CASE WHEN account_attempts.started_at<=now()-($2*interval '1 second') THEN 1 ELSE account_attempts.attempts+1 END,
-   started_at=CASE WHEN account_attempts.started_at<=now()-($2*interval '1 second') THEN now() ELSE account_attempts.started_at END
-   RETURNING attempts,greatest(1,ceil(extract(epoch FROM started_at+($2*interval '1 second')-now())))::int AS retry`,[subject,seconds]);
-  return {attempts:Number(result.rows[0].attempts),retry:Number(result.rows[0].retry)};
- }
  async function session(query:(text:string,values?:unknown[])=>Promise<unknown>,accountId:string){
   const token='acct_'+randomBytes(32).toString('hex');
   await query(`INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES ($1,$2,now()+interval '60 days')`,[sha(token),accountId]);return token;
  }
  return async function handle(request:Request):Promise<Response>{
-  const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
-  const respond=(body:unknown,status=200,extra:Record<string,string>={})=>Response.json(body,{status,headers:{...headers,...extra}});
   const action=new URL(request.url).searchParams.get('action');
   const allowed=action==='me'?['GET']:action==='sync'?['GET','PUT']:['signup','login','logout'].includes(action??'')?['POST']:[];
   if(!allowed.length)return respond({error:'Unknown account action.'},404);
@@ -77,9 +63,9 @@ export function createAccountsHandler(db:Database){
    if(request.method!=='GET'&&await writeFrozen(db))return readOnlyResponse();
    let data:any;
    if(request.method!=='GET'){
-    const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return respond({error:'This request is not allowed.'},403);
+    if(!sameOrigin(request))return respond({error:'This request is not allowed.'},403);
     if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type')??''))return respond({error:'Send JSON.'},415);
-    try{data=await readJson(request,action==='sync'?MAX_BODY_BYTES:MAX_AUTH_BODY_BYTES);}catch(error){throw error===413?413:400;}
+    try{data=await readJson(request,action==='sync'?MAX_BODY_BYTES:MAX_AUTH_BODY_BYTES);}catch(error){throw error instanceof HttpError&&error.status===413?413:400;}
    }
    if(action==='signup'||action==='login'){
     const ip=request.headers.get('x-nf-client-connection-ip')?.trim()||'unknown';
@@ -102,14 +88,14 @@ export function createAccountsHandler(db:Database){
      const retry=await limited(query,subject,10);if(retry)return respond({error:'Too many attempts. Try again later.'},429,{'Retry-After':String(retry)});
      const account=(await query('SELECT id,username,password_hash FROM accounts WHERE lower(username)=lower($1)',[data.username])).rows[0];
      if(!await verifyPassword(data.password,account?.password_hash??null)){
-      const user=await consume(query,subject),ip=await consume(query,ipSubject);
+      const user=await consumeAttempt(query,subject),ip=await consumeAttempt(query,ipSubject);
       if(user.attempts>10||ip.attempts>100)return respond({error:'Too many attempts. Try again later.'},429,{'Retry-After':String(Math.max(user.retry,ip.retry))});
       return respond({error:'Username or password is incorrect.'},401);
      }
      await query('DELETE FROM account_attempts WHERE subject=$1',[subject]);
      const token=await session(query,account.id);return respond({token,username:account.username});
     }
-    const attempt=await consume(query,ipSubject,3600);if(attempt.attempts>60)return respond({error:'Too many attempts. Try again later.'},429,{'Retry-After':String(attempt.retry)});
+    const attempt=await consumeAttempt(query,ipSubject,3600);if(attempt.attempts>60)return respond({error:'Too many attempts. Try again later.'},429,{'Retry-After':String(attempt.retry)});
     if((await query('SELECT id FROM accounts WHERE lower(username)=lower($1)',[data.username])).rows.length)return respond({error:'That username is already taken.'},409);
     const passwordHash=await hashPassword(data.password),id=randomUUID(),playerId=randomBytes(32).toString('hex');
     const client=auth;

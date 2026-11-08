@@ -509,6 +509,68 @@ test('a failed rapid second like rolls back to the last confirmed state',async({
  expect(row.rows[0].n).toBe(1);
 });
 
+test('a like still in flight is on the thread after it settles, and unlike clears that count',async({page,context})=>{
+ await connect(context);const a=await user('lt');
+ const made=await post(a.token,'thread like');
+ await open(page,a.name);
+ const card=page.locator('.social-post').filter({hasText:'thread like'});
+ let release!:(status:number)=>void;
+ const held=new Promise<number>(resolve=>{release=resolve;});
+ let first=true;
+ await page.route('**/.netlify/functions/social?action=like',async route=>{
+  if(first){first=false;const status=await held;if(status!==200){await route.fulfill({status,contentType:'application/json',body:JSON.stringify({error:'boom'})});return;}}
+  await route.fallback();
+ });
+ await card.getByRole('button',{name:/^Like,/}).click();
+ await expect(card.getByRole('button',{name:'Like, 1 like'})).toHaveAttribute('aria-pressed','true');
+ await card.locator('.social-body').click();
+ await expect(page).toHaveURL(new RegExp(`#/social/post/${made.id}$`));
+ // The thread must not paint the pre-like snapshot while the POST is held.
+ await expect(page.locator('.social-thread .apps-skeletons')).toBeVisible();
+ await expect(page.locator('.social-counts')).toHaveCount(0);
+ release(200);
+ await expect(page.locator('.social-counts')).toContainText('1 like');
+ const focused=page.locator('.social-post.is-focused');
+ await expect(focused.getByRole('button',{name:'Like, 1 like'})).toHaveAttribute('aria-pressed','true');
+ const stored=await pool.query('SELECT count(*)::int AS n FROM social_likes WHERE post_id=$1',[made.id]);
+ expect(stored.rows[0].n).toBe(1);
+ const unliked=page.waitForResponse(r=>r.url().includes('action=like')&&r.request().method()==='POST'&&(r.request().postData()??'').includes('"on":false'));
+ await focused.getByRole('button',{name:'Like, 1 like'}).click();
+ await unliked;
+ await expect(page.locator('.social-counts')).toContainText('0 likes');
+ await expect(focused.getByRole('button',{name:'Like, 0 likes'})).toHaveAttribute('aria-pressed','false');
+});
+
+test('a like that fails while the thread is opening rolls back, and Try again updates that thread',async({page,context})=>{
+ await connect(context);const a=await user('lf');
+ const made=await post(a.token,'thread fail');
+ await open(page,a.name);
+ const card=page.locator('.social-post').filter({hasText:'thread fail'});
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let first=true;
+ await page.route('**/.netlify/functions/social?action=like',async route=>{
+  if(first){first=false;await held;await route.fulfill({status:500,contentType:'application/json',body:JSON.stringify({error:'boom'})});return;}
+  await route.fallback();
+ });
+ await card.getByRole('button',{name:/^Like,/}).click();
+ await expect(card.getByRole('button',{name:'Like, 1 like'})).toHaveAttribute('aria-pressed','true');
+ await card.locator('.social-body').click();
+ await expect(page).toHaveURL(new RegExp(`#/social/post/${made.id}$`));
+ await expect(page.locator('.social-counts')).toHaveCount(0);
+ release();
+ await expect(page.getByText("Couldn't like that. Try again.")).toBeVisible();
+ await expect(page.locator('.social-counts')).toContainText('0 likes');
+ await expect(page.locator('.social-post.is-focused').getByRole('button',{name:'Like, 0 likes'})).toHaveAttribute('aria-pressed','false');
+ const retried=page.waitForResponse(r=>r.url().includes('action=like')&&r.request().method()==='POST'&&(r.request().postData()??'').includes('"on":true')&&r.status()===200);
+ await page.getByRole('button',{name:'Try again',exact:true}).click();
+ await retried;
+ await expect(page.locator('.social-counts')).toContainText('1 like');
+ await expect(page.locator('.social-post.is-focused').getByRole('button',{name:'Like, 1 like'})).toHaveAttribute('aria-pressed','true');
+ const stored=await pool.query('SELECT count(*)::int AS n FROM social_likes WHERE post_id=$1',[made.id]);
+ expect(stored.rows[0].n).toBe(1);
+});
+
 test('user text from profiles and search renders as text',async({page,context})=>{
  await connect(context);const a=await user('xs');
  const evil='<img src=x onerror=window.__xss=1>';

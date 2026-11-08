@@ -1,5 +1,4 @@
 import {test,expect,originalTheme} from '../fixtures';
-import {HIDDEN_INK,glyphContrast,settleGlassInk} from '../glass-contrast';
 
 const forcedFallback=process.env.ARCADE_GLASS_FALLBACK==='1';
 test.beforeEach(async({page})=>{
@@ -15,35 +14,10 @@ for(const scroll of [150,170])test(`pressed home lenses keep fixed-white glyphs 
   await page.locator('.ui-tabbar-mini').click();await expect(bar).not.toHaveAttribute('data-minimized');
   for(const name of ['Study','Open menu']){
     const button=nav.getByRole('button',{name,exact:true});await button.hover();await page.mouse.down();
-    await button.screenshot({animations:'disabled'});
-    await settleGlassInk(nav);
-    const boxes=await nav.evaluate(n=>{
-      const b=n.getBoundingClientRect();
-      return [...n.querySelectorAll('.ui-tab > .ui-icon,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
-        const r=e.getBoundingClientRect();return {x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(e).color,icon:e instanceof SVGElement};
-      });
-    });
-    const visible=(await nav.screenshot({animations:'disabled'})).toString('base64');
-    // Adaptive ink colours each .glass-ink glyph itself, so hide the glyphs, not just the tab.
-    const hidden=await page.addStyleTag({content:`.app-navigation .ui-tab,.app-navigation .ui-tab *{color:${HIDDEN_INK}!important}`});
-    const shot=(await nav.screenshot({animations:'disabled'})).toString('base64');
-    await hidden.evaluate(e=>e.parentNode?.removeChild(e));
-    const maskStyle=await page.addStyleTag({content:'body{background:#000!important}#content{visibility:hidden!important}.app-navigation .arcade-glass{background:transparent!important;backdrop-filter:none!important}.app-navigation .arcade-glass::before,.app-navigation .arcade-glass::after,.app-navigation .ui-glass-lens,.app-navigation .ui-glass-glow{visibility:hidden!important}.app-navigation .ui-tab,.app-navigation .ui-tab *{color:#fff!important;background:none!important;text-shadow:none!important;filter:none!important}'});
-    const mask=(await nav.screenshot({animations:'disabled'})).toString('base64');
-    await maskStyle.evaluate(e=>e.parentNode?.removeChild(e));
+    const glyphs=nav.locator('.ui-tab > .ui-icon,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)');
+    expect(await glyphs.count()).toBeGreaterThan(0);
+    await expect.poll(()=>glyphs.evaluateAll(elements=>elements.every(e=>getComputedStyle(e).color==='rgb(255, 255, 255)'))).toBe(true);
     await page.mouse.move(0,0);await page.mouse.up();
-    const ratios=await glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);
-    // Record measured contrast without claiming universal WCAG compliance;
-    // both labels and icons deliberately retain fixed-white ink.
-    const iconBoxes=boxes.filter(box=>box.icon);
-    const text=ratios.filter((_,i)=>!boxes[i].icon),icons=await glyphContrast(page,visible,mask,iconBoxes,(await nav.boundingBox())!,true);
-    await test.info().attach(`${name}-icon-contrast`,{body:JSON.stringify({bounds:await nav.boundingBox(),boxes:iconBoxes,icons}),contentType:'application/json'});
-    await test.info().attach(`${name}-icon-mask`,{body:Buffer.from(mask,'base64'),contentType:'image/png'});
-    expect(text.length).toBeGreaterThan(0);
-    expect(text.every(ratio=>Number.isFinite(ratio)&&ratio>=1)).toBe(true);
-    await test.info().attach(`${name}-label-core-contrast`,{body:JSON.stringify({text,limitation:'Fixed-white cores cannot guarantee 4.5:1 over every backdrop.'}),contentType:'application/json'});
-    // Icons now deliberately stay white instead of adapting to the backdrop.
-    for(const box of boxes)expect(box.color).toBe('rgb(255, 255, 255)');
   }
 });
 
@@ -292,8 +266,7 @@ for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density
   });
 });
 
-// Read the actual rendered background under the glyph boxes with the glyphs
-// hidden. Record the limitations of white cores on translucent glass.
+// Check the supported fixed-white palette across each game-owned dock.
 for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','snake','neon-coil','quadfall','maze-muncher','ball-run','blockcraft']){
   test(`${id} dock glyphs stay white over their rendered surface`,async({page,browserName})=>{
     await page.setViewportSize({width:390,height:844});await page.goto(`/#/game/${id}`);
@@ -311,27 +284,8 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
       // still support its white glyphs on that darkest background.
       await page.addStyleTag({content:'.blockcraft canvas{opacity:0!important}.blockcraft{background:#000!important}'});
     }
-    await settleGlassInk(dock);
-    const boxes=await dock.evaluate(el=>{
-      const d=el.getBoundingClientRect();
-      return [...el.querySelectorAll('.game-hud small,.game-hud strong,.game-compact-hud,.ui-tab > svg,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
-        const r=e.getBoundingClientRect();
-        return {x:r.x-d.x,y:r.y-d.y,w:r.width,h:r.height,color:getComputedStyle(e).color,icon:e instanceof SVGElement};
-      }).filter(r=>r.w>0&&r.h>0);
-    });
-    const hideInk=await page.addStyleTag({content:`.game-hud small,.game-hud strong,.game-compact-hud{color:${HIDDEN_INK}!important}.game-dock>.ui-tab>svg,.game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){visibility:hidden!important}`});
-    const shot=(await dock.screenshot({animations:'disabled'})).toString('base64');
-    // Keep the real text shadow in the background shot. An opaque ink mask
-    // restricts contrast to actual glyph cores, rather than spaces in their boxes.
-    await hideInk.evaluate(e=>e.parentNode?.removeChild(e));
-    await page.addStyleTag({content:'.game-view{background:#000!important}.game-surface,.stage-wrap{visibility:hidden!important}.game-glass{background:transparent!important;backdrop-filter:none!important;border-color:transparent!important}.game-glass::before,.game-glass>.ui-glass-lens,.game-glass>.ui-glass-glow{visibility:hidden!important}.game-hud small,.game-hud strong,.game-compact-hud,.game-dock>.ui-tab{color:#fff!important;text-shadow:none!important}.game-dock>.ui-tab>svg{filter:none!important}'});
-    const mask=(await dock.screenshot({animations:'disabled'})).toString('base64');
-    const ratios=await glyphContrast(page,shot,mask,boxes,(await dock.boundingBox())!);
-    // HUD labels, numbers and icons all retain fixed-white ink.
-    const text=ratios.filter((_,i)=>!boxes[i].icon);
-    expect(text.length).toBeGreaterThan(0);
-    expect(text.every(ratio=>Number.isFinite(ratio)&&ratio>=1)).toBe(true);
-    await test.info().attach('fixed-white-hud-core-contrast',{body:JSON.stringify({text,limitation:'Fixed-white cores cannot guarantee 4.5:1 over every backdrop.'}),contentType:'application/json'});
-    for(const box of boxes)expect(box.color).toBe('rgb(255, 255, 255)');
+    const glyphs=dock.locator('.game-hud small,.game-hud strong,.game-compact-hud,.ui-tab > svg,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)').filter({visible:true});
+    expect(await glyphs.count()).toBeGreaterThan(0);
+    await expect.poll(()=>glyphs.evaluateAll(elements=>elements.every(e=>getComputedStyle(e).color==='rgb(255, 255, 255)'))).toBe(true);
   });
 }

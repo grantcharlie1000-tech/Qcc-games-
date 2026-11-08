@@ -21,6 +21,27 @@ export interface PostCardOptions {
 const cards=new WeakMap<HTMLElement,PostCard>();
 export const cardOf=(el:Element|null):PostCard|undefined=>{const article=el?.closest<HTMLElement>('article.social-post');return article?cards.get(article):undefined;};
 let serial=0;
+interface LikeState {liked:boolean;likes:number}
+interface LikeFlight {
+ confirmed:LikeState;intent:LikeState;pumping:boolean;
+ pending?:Promise<void>;resolve?:()=>void;
+}
+/** One in-flight like per post. It outlives the card that started it, so a thread opened mid-request cannot keep the pre-like snapshot. */
+const flights=new Map<string,LikeFlight>();
+const liveCards=new Map<string,Set<PostCard>>();
+const likeEpoch=new Map<string,number>();
+const bumpLikeEpoch=(id:string)=>likeEpoch.set(id,(likeEpoch.get(id)??0)+1);
+export const likeGeneration=(id:string)=>likeEpoch.get(id)??0;
+/** Resolves immediately when this post has no like request still settling. */
+export function likesSettled(id:string):Promise<void> {
+ const flight=flights.get(id);
+ if(!flight||(!flight.pumping&&flight.intent.liked===flight.confirmed.liked&&flight.intent.likes===flight.confirmed.likes))return Promise.resolve();
+ return flight.pending??Promise.resolve();
+}
+function finishFlight(id:string,flight:LikeFlight):void {
+ if(flight.pumping||flight.intent.liked!==flight.confirmed.liked||flight.intent.likes!==flight.confirmed.likes)return;
+ flight.resolve?.();flight.pending=undefined;flight.resolve=undefined;flights.delete(id);
+}
 export const postLink=(id:string):string=>`${location.origin}${location.pathname}#/social/post/${id}`;
 
 /** One post. Owns its optimistic like (with rollback), the count roll and the like pulse; everything it paints from user text goes through textContent or renderRichText. */
@@ -30,12 +51,15 @@ export class PostCard {
  private countBox!:HTMLElement;
  private likeIcon!:HTMLElement;
  private running:Animation[]=[];
- private pumping=false;
  private confirmed={liked:false,likes:0};
  private readonly live=()=>this.ctx.reduced();
  constructor(private readonly ctx:SocialContext,public post:PostView,private readonly options:PostCardOptions={}) {
   cards.set(this.el,this);
-  this.confirmed={liked:post.liked,likes:post.likes};
+  const flight=flights.get(post.id);
+  // A request already in flight is ahead of a snapshot fetched beside it.
+  if(flight){this.post={...post,liked:flight.intent.liked,likes:Math.max(0,flight.intent.likes)};this.confirmed={...flight.confirmed};}
+  else this.confirmed={liked:post.liked,likes:post.likes};
+  const set=liveCards.get(post.id)??new Set<PostCard>();set.add(this);liveCards.set(post.id,set);
   this.build();
  }
  get variant():PostVariant{return this.options.variant??'feed';}
@@ -134,6 +158,7 @@ export class PostCard {
  private apply(liked:boolean,likes:number,animate:boolean):void {
   const previous=this.post.likes;
   this.post={...this.post,liked,likes:Math.max(0,likes)};
+  if(!this.countBox)return;
   for(const a of this.running)a.cancel();this.running=[];
   this.countBox.querySelector('.old')?.remove();
   const cur=this.countBox.querySelector<HTMLElement>('.cur')!;
@@ -155,28 +180,48 @@ export class PostCard {
   const b=motion(ring,[{transform:'scale(.6)',opacity:.5},{transform:'scale(1.25)',opacity:0}],{duration:280,easing:EASE_OUT},this.live);
   for(const x of [a,b])if(x)this.running.push(x);
  }
+ private ensureFlight():LikeFlight {
+  let flight=flights.get(this.post.id);
+  if(!flight){flight={confirmed:{...this.confirmed},intent:{liked:this.post.liked,likes:this.post.likes},pumping:false};flights.set(this.post.id,flight);}
+  return flight;
+ }
+ /** Paints `flight.intent` on every live card for this post, including one whose feed row has already been removed. */
+ private publish(flight:LikeFlight,animate:boolean):void {
+  const seen=new Set<PostCard>(liveCards.get(this.post.id));seen.add(this);
+  for(const card of seen){
+   card.confirmed={...flight.confirmed};
+   card.apply(flight.intent.liked,flight.intent.likes,animate&&card===this&&card.el.isConnected);
+  }
+ }
  /** Optimistic like. Sends the intended state, not a delta; rolls back on failure. Keyboard use gets no motion (DESIGN 12.1 row 3). */
  async toggleLike(keyboard:boolean):Promise<void> {
-  const want=!this.post.liked;
-  this.apply(want,this.post.likes+(want?1:-1),!keyboard);
-  if(want&&!keyboard)this.pulse();
+  const flight=this.ensureFlight();
+  const want=!flight.intent.liked;
+  flight.intent={liked:want,likes:Math.max(0,flight.intent.likes+(want?1:-1))};
+  this.publish(flight,!keyboard);
+  if(want&&!keyboard&&this.el.isConnected)this.pulse();
   // One request at a time: while one is in flight a further tap only changes the wanted state, and the loop sends it afterwards.
-  if(this.pumping)return;
-  this.pumping=true;
+  if(flight.pumping)return;
+  if(!flight.pending)flight.pending=new Promise(resolve=>{flight.resolve=resolve;});
+  flight.pumping=true;
   try{
-   while(this.post.liked!==this.confirmed.liked){
+   while(flight.intent.liked!==flight.confirmed.liked){
+    const sending=flight.intent.liked;
+    bumpLikeEpoch(this.post.id);
     try{
-     const result=await this.ctx.client.like(this.post.id,this.post.liked);
-     this.confirmed={liked:result.liked,likes:result.likes};
-     if(this.post.liked===result.liked&&this.post.likes!==result.likes)this.apply(result.liked,result.likes,false);
+     const result=await this.ctx.client.like(this.post.id,sending);
+     flight.confirmed={liked:result.liked,likes:result.likes};
+     if(flight.intent.liked===result.liked&&flight.intent.likes!==result.likes)flight.intent={liked:result.liked,likes:result.likes};
+     this.publish(flight,false);
     }catch(error){
-     this.apply(this.confirmed.liked,this.confirmed.likes,false);
+     flight.intent={...flight.confirmed};
+     this.publish(flight,false);
      if(error instanceof ApiError&&error.status===429)this.ctx.notify(error.message,{role:'alert'});
      else this.ctx.fail(error,"Couldn't like that. Try again.",()=>void this.toggleLike(false));
      break;
     }
    }
-  }finally{this.pumping=false;}
+  }finally{flight.pumping=false;finishFlight(this.post.id,flight);}
  }
  reply():void{if(this.options.onReply)this.options.onReply(this.post);else this.ctx.openCompose({replyTo:this.post,trigger:this.el.querySelector('[data-action=reply]')});}
  open():void{if(this.post.deleted)return;this.ctx.go(`#/social/post/${this.post.id}`);}
@@ -226,5 +271,8 @@ export class PostCard {
  bumpReplies(by:number):void{this.post={...this.post,replies:Math.max(0,this.post.replies+by)};if(!this.post.deleted)this.syncText();}
  /** Entry motion for an own new post (DESIGN 12.1 row 10). */
  enter():void{motion(this.el,[{opacity:0,transform:'translateY(-6px)'},{opacity:1,transform:'none'}],{duration:200,easing:EASE_OUT},this.live);}
- dispose():void{for(const a of this.running)a.cancel();this.running=[];cards.delete(this.el);}
+ dispose():void{
+  for(const a of this.running)a.cancel();this.running=[];cards.delete(this.el);
+  const set=liveCards.get(this.post.id);set?.delete(this);if(set&&set.size===0)liveCards.delete(this.post.id);
+ }
 }

@@ -101,6 +101,10 @@ The Pages proxy allowlist includes the three routes, and the migration needs own
 See [the spec](docs/social-chat/SPEC.md), [deployment](docs/social-chat/DEPLOYMENT.md) and the [moderation runbook](docs/social-chat/MODERATION.md).
 
 
+## QCC Results Desk
+
+`src/election/` is the election results page at `#/election`, opened from the Menu and lazily loaded through the same single-view slot as Social, Chat and the Santa Tracker. The games library row in that slot is Predictions, not the election strip. `server/election-feed.ts` reads the Electoral Commission's public XML feed, which has no CORS headers, and condenses it into one JSON bundle at the same-origin `/api/election` (`functions/api/election.ts` on Pages, a Vite middleware in dev). If that read fails, the page says the feed is unavailable and does not fill in results. See [docs/ELECTION.md](docs/ELECTION.md).
+
 ## Predictions
 
 `src/predictions/` is a free play-credit forecasting feature at `#/predictions`, lazily loaded through the same single-view slot as Social. A weekly 10-credit allowance (Monday 00:00 Pacific/Auckland), a binary LMSR market maker in BigInt fixed point, a double-entry append-only journal whose triggers are the only writers of balances, exactly-once trades by operation key, moderated questions and one independently reviewed settlement per market. It ships dark: the migration needs approval and `predictions_config.enabled` defaults to false. See [docs/PREDICTIONS.md](docs/PREDICTIONS.md).

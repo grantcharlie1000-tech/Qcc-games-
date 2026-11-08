@@ -23,6 +23,7 @@ import {boxCollides,collidesAt,rayBox} from '../engine/physics';
 import type {BlockSource,DamageSource,EffectName,Entity,EntityKind,Game,ItemStack,ParticleOptions,PlayerView} from '../engine/contracts';
 import {KNOCKBACK,triangle} from './hostile-ai';
 import {arrowModel} from './hostile-models';
+import {isEffectName} from '../player/effects';
 
 /** Per-tick motion constants in blocks/tick (multiply velocities by 1/20 to use them). */
 export const ARROW_PHYSICS={gravity:.05,drag:.99,waterDrag:.6} as const;
@@ -33,11 +34,9 @@ export const ARROW_DESPAWN=1200;
 export const ARROW_SHAKE=7;
 /** Vanilla Projectile.shoot spread per unit of inaccuracy. */
 export const SPREAD=.0172275;
-export const PROJECTILE_KINDS=['arrow','snowball','egg','ender_pearl'] as const;
 const TICK=1/20;
 /** Particle options reused every tick (bubbles in water, the critical arrow trail): no allocation per projectile. */
 const TRAIL:Readonly<ParticleOptions>={count:2,spread:.1};
-const EFFECTS:readonly EffectName[]=['regeneration','absorption','hunger','poison','saturation','speed','slowness','night_vision','fire_resistance'];
 
 /** Arrow damage (AbstractArrow.onHitEntity): ceil(speed × base), plus random(n/2 + 2) for a critical arrow. */
 export function arrowDamage(speed:number,base:number,crit:boolean,random:()=>number):number{
@@ -122,7 +121,7 @@ function cleanArrow(d:Record<string,unknown>){
   cleanOwner(d);
   d.damage=typeof d.damage==='number'&&Number.isFinite(d.damage)&&d.damage>=0&&d.damage<=1000?d.damage:2;
   d.pickup=d.pickup===true;d.crit=d.crit===true;d.inGround=d.inGround===true;
-  if(!EFFECTS.includes(d.effect as EffectName))delete d.effect;
+  if(!isEffectName(d.effect))delete d.effect;
   if(!(Number.isInteger(d.effectSeconds)&&(d.effectSeconds as number)>=1&&(d.effectSeconds as number)<=600))delete d.effectSeconds;
   if(!(Number.isInteger(d.shake)&&(d.shake as number)>0&&(d.shake as number)<=ARROW_SHAKE))delete d.shake;
 }

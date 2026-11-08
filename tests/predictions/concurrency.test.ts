@@ -16,7 +16,7 @@ describe.skipIf(!REAL_PG)('predictions concurrency (real PostgreSQL)',()=>{
  const open=async()=>{
   const author=await user('author');
   const sub=await api.post('submit',author,draft());
-  await api.post('review',mod,{marketId:sub.body.id,decision:'approve'});return sub.body.id as string;
+  return sub.body.id as string;
  };
  const balance=async(u:User)=>Number((await t.pool.query('SELECT balance FROM predictions_wallets WHERE account_id=$1',[u.id])).rows[0].balance);
  const quote=async(u:User,marketId:string,side:'yes'|'no',amount:number)=>(await api.post('quote',u,{marketId,side,op:'buy',amount,toleranceBp:500})).body;
@@ -86,28 +86,24 @@ describe.skipIf(!REAL_PG)('predictions concurrency (real PostgreSQL)',()=>{
    expect(weeks).toBeGreaterThanOrEqual(5);
   }
  });
- it('two moderators approving at once cannot exceed the open-market budget',async()=>{
-  const mod2=await makeUser(t.pool,'race_budget_mod');
-  await t.pool.query(`INSERT INTO predictions_roles(account_id,role,granted_by) VALUES ($1,'moderator','test')`,[mod2.id]);
+ it('two submissions at once cannot exceed the open-question budget',async()=>{
   const open=(await t.pool.query(`SELECT count(*)::int AS n FROM predictions_markets WHERE state IN ('open','paused') AND NOT fixture`)).rows[0].n;
   await t.pool.query('UPDATE predictions_config SET max_open_markets=$1',[open+1]);
   const a=await user('budget_a'),b=await user('budget_b');
-  const [sa,sb]=[await api.post('submit',a,draft()),await api.post('submit',b,draft())];
-  const results=await Promise.all([api.post('review',mod,{marketId:sa.body.id,decision:'approve'}),api.post('review',mod2,{marketId:sb.body.id,decision:'approve'})]);
+  const results=await Promise.all([api.post('submit',a,draft()),api.post('submit',b,draft())]);
   expect(results.map(r=>r.status).sort()).toEqual([200,409]);
   await t.pool.query('UPDATE predictions_config SET max_open_markets=1000');
  });
- it('two moderators finalising at once settle exactly once',async()=>{
-  const mod2=await makeUser(t.pool,'race_mod2'),res=await makeUser(t.pool,'race_res');
-  await t.pool.query(`INSERT INTO predictions_roles(account_id,role,granted_by) VALUES ($1,'moderator','test'),($2,'resolver','test')`,[mod2.id,res.id]);
+ it('two moderators authorising at once settle exactly once',async()=>{
+  const mod2=await makeUser(t.pool,'race_mod2');
+  await t.pool.query(`INSERT INTO predictions_roles(account_id,role,granted_by) VALUES ($1,'moderator','test')`,[mod2.id]);
   const m=await open(),u=await user('holder');
   const q=await quote(u,m,'yes',3_000_000);
   const bought=await api.post('execute',u,{marketId:m,quoteId:q.id,operationKey:opKey()});
   await unfrozen(t.pool,`UPDATE predictions_markets SET close_at=now()-interval '1 second',resolve_at=now() WHERE id=$1`,[m]);
-  await api.post('propose',res,{marketId:m,outcome:'yes',evidence:'Official result posted on the noticeboard.',sourceChecked:'Noticeboard'});
-  await t.pool.query(`UPDATE predictions_resolutions SET challenge_until=proposed_at+interval '1 millisecond' WHERE market_id=$1`,[m]);
   const before=await balance(u);
-  const results=await Promise.all([api.post('finalise',mod,{marketId:m}),api.post('finalise',mod2,{marketId:m})]);
+  const note='Official result posted on the noticeboard.';
+  const results=await Promise.all([api.post('authorise',mod,{marketId:m,outcome:'yes',note}),api.post('authorise',mod2,{marketId:m,outcome:'yes',note})]);
   expect(results.map(r=>r.status).sort()).toEqual([200,409]);
   expect(await balance(u)).toBe(before+bought.body.receipt.shares);
   expect((await t.pool.query(`SELECT count(*)::int AS n FROM predictions_journal WHERE market_id=$1 AND kind='payout'`,[m])).rows[0].n).toBe(1);

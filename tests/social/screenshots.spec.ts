@@ -38,9 +38,6 @@ const call=(handle:(request:Request)=>Promise<Response>,action:string,token:stri
 async function signup(name:string):Promise<string>{
  const response=await call(accounts,'signup',null,{username:name,password:PASSWORD});expect(response.status).toBe(201);return (await response.json()).token;
 }
-async function guest(page:Page){
- const dialog=page.locator('#accounts-dialog');await expect(dialog).toBeVisible();await dialog.getByRole('button',{name:'Play as guest',exact:true}).click();await expect(dialog).not.toBeVisible();
-}
 async function logIn(page:Page,username:string){
  const dialog=page.locator('#accounts-dialog');await expect(dialog).toBeVisible();
  // These feature fixtures represent an established player; welcome behavior has its own suite.
@@ -56,8 +53,6 @@ async function open(page:Page,name:string,hash='#/social'){
  await page.evaluate(h=>{location.hash=h;},hash);
  await expect(page.locator('section.social-view')).toBeVisible();
 }
-const view=(page:Page)=>page.locator('section.social-view');
-const png=(width=600,height=400,color='#a684ff')=>sharp({create:{width,height,channels:3,background:color}}).png().toBuffer();
 
 
 // Evidence screenshots for the design review (docs/evidence/social-chat/social-*.png). Run with SOCIAL_SHOTS=1.

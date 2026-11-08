@@ -1,31 +1,30 @@
 import {beforeAll,afterAll,beforeEach,describe,it,expect,vi} from 'vitest';
-import {startDb,makeUser,enable,client,opKey,draft,reconcile,unfrozen,type TestDb,type User} from './db';
+import {startDb,makeUser,enable,client,opKey,draft,globalDraft,reconcile,unfrozen,type TestDb,type User} from './db';
 import {runGrantJob} from '../../src/predictions/server';
 import {weekStartDate} from '../../src/predictions/week';
 
 // The PGlite fallback is several times slower than a real server.
 vi.setConfig({testTimeout:30000});
 let t:TestDb,api:ReturnType<typeof client>;
-let mod:User,mod2:User,resolver:User,alice:User,bob:User,guestless:User;
+let mod:User,mod2:User,alice:User,bob:User,guestless:User;
 let n=0;
 const user=(prefix:string)=>makeUser(t.pool,`${prefix}_${++n}`);
 beforeAll(async()=>{
  t=await startDb();api=client(t.db);
  await enable(t.pool);
- mod=await user('mod');mod2=await user('mod');resolver=await user('res');
- for(const [u,role] of [[mod,'moderator'],[mod2,'moderator'],[resolver,'resolver']] as const)
-  await t.pool.query(`INSERT INTO predictions_roles(account_id,role,granted_by) VALUES ($1,$2,'test')`,[u.id,role]);
+ mod=await user('mod');mod2=await user('mod');
+ for(const u of [mod,mod2])await t.pool.query(`INSERT INTO predictions_roles(account_id,role,granted_by) VALUES ($1,'moderator','test')`,[u.id]);
  alice=await user('alice');bob=await user('bob');guestless=await user('nojoin');
- for(const u of [mod,mod2,resolver,alice,bob])expect((await api.post('join',u,{})).status).toBe(200);
+ for(const u of [mod,mod2,alice,bob])expect((await api.post('join',u,{})).status).toBe(200);
 },60000);
 afterAll(async()=>{await t?.stop();});
 
+/** Submitting opens the question immediately: there is no review step. */
 async function openMarket(overrides:Record<string,unknown>={},by?:User):Promise<string> {
  const author=by??await user('author');await api.post('join',author,{});
  const sub=await api.post('submit',author,draft(overrides));
  expect(sub.status).toBe(200);
- const approved=await api.post('review',mod,{marketId:sub.body.id,decision:'approve'});
- expect(approved.body).toMatchObject({ok:true,state:'open'});
+ expect(sub.body.state).toBe('open');
  return sub.body.id;
 }
 async function buy(u:User,marketId:string,side:'yes'|'no',amount:number,key=opKey()){
@@ -205,8 +204,21 @@ describe('quotes and execution',()=>{
  });
 });
 
-describe('questions and moderation',()=>{
- it('validates drafts server-side, blocks personal subjects and duplicates, caps pending submissions',async()=>{
+describe('questions',()=>{
+ it('a submitted question opens at once, funded with 14 credits and frozen, with no review',async()=>{
+  const u=await user('author');await api.post('join',u,{});
+  const sub=await api.post('submit',u,draft());
+  expect(sub.status).toBe(200);expect(sub.body.state).toBe('open');
+  expect((await api.get('markets',alice)).body.items.map((m:{id:string})=>m.id)).toContain(sub.body.id);
+  const row=(await t.pool.query('SELECT state,reserve,rules_hash,published_at FROM predictions_markets WHERE id=$1',[sub.body.id])).rows[0];
+  expect(row.state).toBe('open');expect(row.reserve).toBe('14000000');expect(row.rules_hash).toMatch(/^[a-f0-9]{64}$/);expect(row.published_at).not.toBeNull();
+  // The stored hash is the hash of the rules a reader sees.
+  const detail=(await api.get('market',alice,{id:sub.body.id})).body;
+  expect(detail.rulesHash).toBe(row.rules_hash);
+  await expect(t.pool.query(`UPDATE predictions_markets SET yes_rule='changed after publication' WHERE id=$1`,[sub.body.id])).rejects.toMatchObject({code:'P0001'});
+  await ledgerOk();
+ });
+ it('validates drafts server-side, blocks personal subjects and duplicates, caps open questions per author',async()=>{
   const u=await user('author');await api.post('join',u,{});
   expect((await api.post('submit',u,draft({question:'Will Sam get a girlfriend before the ball?'}))).body.error).toBe('invalid_draft');
   expect((await api.post('submit',u,draft({closeAt:new Date(Date.now()+60_000).toISOString()}))).body.error).toBe('invalid_draft');
@@ -214,28 +226,31 @@ describe('questions and moderation',()=>{
   expect((await api.post('submit',u,d)).status).toBe(200);
   expect((await api.post('submit',bob,{...d,question:d.question.toUpperCase()})).body.error).toBe('duplicate_question');
   await api.post('submit',u,draft());await api.post('submit',u,draft());
-  expect((await api.post('submit',u,draft())).body.error).toBe('too_many_pending');
+  expect((await api.post('submit',u,draft())).body.error).toBe('too_many_open_authored');
  });
- it('only a moderator who is not the author can publish; approval freezes rules and funds 14 credits',async()=>{
-  const sub=await api.post('submit',mod,draft());
-  expect((await api.post('review',alice,{marketId:sub.body.id,decision:'approve'})).status).toBe(403);
-  expect((await api.post('review',mod,{marketId:sub.body.id,decision:'approve'})).body.error).toBe('conflict_of_interest');
-  expect((await api.post('review',mod2,{marketId:sub.body.id,decision:'approve'})).body.state).toBe('open');
-  const row=(await t.pool.query('SELECT reserve,rules_hash FROM predictions_markets WHERE id=$1',[sub.body.id])).rows[0];
-  expect(row.reserve).toBe('14000000');expect(row.rules_hash).toMatch(/^[a-f0-9]{64}$/);
-  await expect(t.pool.query(`UPDATE predictions_markets SET yes_rule='changed after publication' WHERE id=$1`,[sub.body.id])).rejects.toMatchObject({code:'P0001'});
-  await expect(t.pool.query(`UPDATE predictions_markets SET state='pending' WHERE id=$1`,[sub.body.id])).rejects.toMatchObject({code:'P0001'});
+ it('the question budget stops new questions once it is full',async()=>{
+  const open=(await t.pool.query(`SELECT count(*)::int AS n FROM predictions_markets WHERE state IN ('open','paused') AND NOT fixture`)).rows[0].n;
+  await t.pool.query('UPDATE predictions_config SET max_open_markets=$1',[open]);
+  const u=await user('late');await api.post('join',u,{});
+  expect((await api.post('submit',u,draft())).body.error).toBe('too_many_open');
+  await t.pool.query('UPDATE predictions_config SET max_open_markets=60');
  });
- it('changes requested lets the author edit and resubmit; rejection is final',async()=>{
-  const u=await user('editor');await api.post('join',u,{});
-  const sub=await api.post('submit',u,draft());
-  expect((await api.post('review',mod,{marketId:sub.body.id,decision:'changes'})).status).toBe(400);// note required
-  await api.post('review',mod,{marketId:sub.body.id,decision:'changes',note:'Name the exact noticeboard.'});
-  const mine=(await api.get('mine',u)).body.items[0];
-  expect(mine).toMatchObject({state:'changes_requested',reviewNote:'Name the exact noticeboard.'});
-  expect((await api.post('submit',u,{...draft(),id:sub.body.id})).body.state).toBe('pending');
-  await api.post('review',mod,{marketId:sub.body.id,decision:'reject',note:'Outcome is already known.'});
-  expect((await api.post('submit',u,{...draft(),id:sub.body.id})).status).toBe(409);
+ it('a global question needs a valid https source link; a local one does not',async()=>{
+  const u=await user('author');await api.post('join',u,{});
+  for(const source of ['Super Rugby match centre','http://www.example.org/results','https://user:pw@example.org/results','https://nodots/results','javascript:alert(1)','https://example.org/a b'])
+   expect((await api.post('submit',u,globalDraft({source}))).body.error,source).toBe('invalid_draft');
+  const ok=await api.post('submit',u,globalDraft({source:'https://www.example.org/results/match-centre'}));
+  expect(ok.status).toBe(200);
+  expect((await api.get('market',u,{id:ok.body.id})).body.rules.source).toBe('https://www.example.org/results/match-centre');
+  // Local and school questions take plain wording and no link.
+  expect((await api.post('submit',u,draft({source:'School office noticeboard'}))).status).toBe(200);
+  expect((await api.post('submit',u,draft({category:'local',audience:'public',source:'The council roadworks page'}))).status).toBe(200);
+ });
+ it('harm and sexual subjects are blocked everywhere; school-life words only on local questions',async()=>{
+  const u=await user('screen');await api.post('join',u,{});
+  expect((await api.post('submit',u,globalDraft({question:'Will the prime minister die before the election result?'}))).body.error).toBe('invalid_draft');
+  expect((await api.post('submit',u,draft({question:'Will the ninth grade results be published before term ends?'}))).body.error).toBe('invalid_draft');
+  expect((await api.post('submit',u,globalDraft({question:`Will the police commissioner announce a new rugby safety rule ${Date.now()}?`}))).status).toBe(200);
  });
  it('the journal is append-only and every transaction must balance',async()=>{
   await expect(t.pool.query(`UPDATE predictions_journal SET reason='x'`)).rejects.toMatchObject({code:'P0001'});
@@ -250,65 +265,108 @@ describe('questions and moderation',()=>{
  });
 });
 
-describe('resolution and settlement',()=>{
- async function closedMarketWithTrades(){
-  const market=await openMarket();
+describe('authorising results and payouts',()=>{
+ async function closedMarketWithTrades(overrides:Record<string,unknown>={},global=false){
+  const author=await user('author');await api.post('join',author,{});
+  const sub=await api.post('submit',author,global?globalDraft(overrides):draft(overrides));expect(sub.status).toBe(200);
+  const market=sub.body.id as string;
   const alice=await funded('yesbuyer'),bob=await funded('nobuyer');
   const a=await buy(alice,market,'yes',2_000_000),b=await buy(bob,market,'no',3_000_000);
   expect(a.status).toBe(200);expect(b.status).toBe(200);
   await unfrozen(t.pool,`UPDATE predictions_markets SET close_at=now()-interval '1 second',resolve_at=now() WHERE id=$1`,[market]);
-  return {market,alice,bob,yes:a.body.receipt.shares as number,no:b.body.receipt.shares as number};
+  return {market,author,alice,bob,yes:a.body.receipt.shares as number,no:b.body.receipt.shares as number};
  }
- it('pays winners exactly once after the challenge window, then releases the unused reserve',async()=>{
+ it('only a moderator can authorise; a local question needs no link; winners are paid once and the reserve is released',async()=>{
   const {market,alice,bob,yes}=await closedMarketWithTrades();
-  // A trader cannot resolve their own market; the author cannot either.
-  expect((await api.post('propose',alice,{marketId:market,outcome:'yes',evidence:'Organiser notice says it ran.',sourceChecked:'Noticeboard'})).status).toBe(403);
-  const proposed=await api.post('propose',resolver,{marketId:market,outcome:'yes',evidence:'Organiser notice confirms it ran on the day.',sourceChecked:'Library noticeboard, 5pm'});
-  expect(proposed.body.status).toBe('proposed');
-  expect((await api.post('finalise',mod,{marketId:market})).body.error).toBe('invalid_state');// window still open
-  await t.pool.query(`UPDATE predictions_resolutions SET challenge_until=proposed_at+interval '1 millisecond' WHERE market_id=$1`,[market]);
+  expect((await api.post('authorise',alice,{marketId:market,outcome:'yes',note:'The noticeboard says it ran.'})).status).toBe(403);
+  expect((await api.post('authorise',null,{marketId:market,outcome:'yes',note:'The noticeboard says it ran.'})).status).toBe(401);
+  expect((await api.post('authorise',mod,{marketId:market,outcome:'maybe',note:'The noticeboard says it ran.'})).status).toBe(400);
+  expect((await api.post('authorise',mod,{marketId:market,outcome:'yes',note:'ok'})).status).toBe(400);// a real note is required
   const aliceBefore=await balance(alice),bobBefore=await balance(bob);
-  expect((await api.post('finalise',resolver,{marketId:market})).status).toBe(403);// resolvers cannot finalise
-  const done=await api.post('finalise',mod,{marketId:market});
-  expect(done.body).toMatchObject({ok:true,outcome:'yes'});
+  const done=await api.post('authorise',mod,{marketId:market,outcome:'yes',note:'The school noticeboard confirms the quiz ran on the day.'});
+  expect(done.body).toMatchObject({ok:true,outcome:'yes',paid:2});
   expect(await balance(alice)).toBe(aliceBefore+yes);
   expect(await balance(bob)).toBe(bobBefore);
-  expect((await api.post('finalise',mod2,{marketId:market})).body.error).toBe('already_settled');
+  // Second authorisation, by anyone, changes nothing.
+  expect((await api.post('authorise',mod2,{marketId:market,outcome:'no',note:'Trying to flip the result after payout.'})).body.error).toBe('already_settled');
   expect((await api.post('settle',mod,{marketId:market})).body.paid).toBe(0);
   expect(await balance(alice)).toBe(aliceBefore+yes);
   const s=(await t.pool.query('SELECT released,completed_at FROM predictions_settlements WHERE market_id=$1',[market])).rows[0];
   expect(s.completed_at).not.toBeNull();
   expect((await t.pool.query('SELECT reserve FROM predictions_markets WHERE id=$1',[market])).rows[0].reserve).toBe('0');
   const detail=(await api.get('market',alice,{id:market})).body;
-  expect(detail).toMatchObject({state:'resolved',outcome:'yes',settlement:{myPayout:yes,completed:true}});
-  // Realised P/L: payout minus the 2 credits spent.
+  expect(detail).toMatchObject({state:'resolved',outcome:'yes',settlement:{myPayout:yes,completed:true},resolution:{outcome:'yes',link:null}});
   expect((await api.get('portfolio',alice)).body.positions.find((p:any)=>p.market.id===market).realised).toBe(yes-2_000_000);
   await ledgerOk();
  });
- it('a dispute moves the decision to an independent reviewer, who can void; void pays floor(shares/2)',async()=>{
-  const {market,alice,bob,yes,no}=await closedMarketWithTrades();
-  await api.post('propose',resolver,{marketId:market,outcome:'no',evidence:'Looks like it was moved to Friday.',sourceChecked:'Noticeboard'});
-  expect((await api.post('dispute',resolver,{marketId:market,reason:'I proposed it but changed my mind'})).status).toBe(403);
-  expect((await api.post('dispute',bob,{marketId:market,reason:'The notice says postponed, which the rules make void.'})).status).toBe(200);
-  expect((await api.get('market',bob,{id:market})).body.state).toBe('disputed');
-  expect((await api.post('finalise',mod,{marketId:market,outcome:'void'})).status).toBe(400);// a note is required
-  const aliceBefore=await balance(alice),bobBefore=await balance(bob);
-  expect((await api.post('finalise',mod,{marketId:market,outcome:'void',note:'Postponed beyond the window: void per the frozen rule.'})).body.outcome).toBe('void');
-  expect(await balance(alice)).toBe(aliceBefore+Math.floor(yes/2));
-  expect(await balance(bob)).toBe(bobBefore+Math.floor(no/2));
-  const resolution=(await api.get('market',bob,{id:market})).body.resolution;
-  expect(resolution).toMatchObject({status:'overturned',finalOutcome:'void'});
+ it('a global YES or NO needs a valid https evidence link; VOID needs only a note',async()=>{
+  const {market,yes,alice}=await closedMarketWithTrades({},true);
+  const note='The competition match centre lists the final score.';
+  expect((await api.post('authorise',mod,{marketId:market,outcome:'yes',note})).body.error).toBe('link_required');
+  expect((await api.post('authorise',mod,{marketId:market,outcome:'yes',note,link:'http://www.example.org/result'})).status).toBe(400);
+  expect((await api.post('authorise',mod,{marketId:market,outcome:'yes',note,link:'not a link'})).status).toBe(400);
+  expect((await t.pool.query('SELECT count(*)::int AS n FROM predictions_settlements WHERE market_id=$1',[market])).rows[0].n).toBe(0);
+  const before=await balance(alice);
+  const ok=await api.post('authorise',mod,{marketId:market,outcome:'yes',note,link:'https://www.example.org/results/final'});
+  expect(ok.body).toMatchObject({ok:true,outcome:'yes'});
+  expect(await balance(alice)).toBe(before+yes);
+  expect((await api.get('market',alice,{id:market})).body.resolution).toMatchObject({link:'https://www.example.org/results/final'});
+  // A global question can still be voided without a link.
+  const second=await closedMarketWithTrades({},true);
+  expect((await api.post('authorise',mod,{marketId:second.market,outcome:'void',note:'The match was abandoned and not replayed.'})).body.outcome).toBe('void');
   await ledgerOk();
  });
- it('an integrity pause stops trading without settling',async()=>{
+ it('void pays floor(shares/2) to each holder',async()=>{
+  const {market,alice,bob,yes,no}=await closedMarketWithTrades();
+  const aliceBefore=await balance(alice),bobBefore=await balance(bob);
+  expect((await api.post('authorise',mod,{marketId:market,outcome:'void',note:'Postponed beyond the window: void per the frozen rule.'})).body.outcome).toBe('void');
+  expect(await balance(alice)).toBe(aliceBefore+Math.floor(yes/2));
+  expect(await balance(bob)).toBe(bobBefore+Math.floor(no/2));
+  await ledgerOk();
+ });
+ it('cannot authorise before trading closes, or a question you created or traded',async()=>{
+  const open=await openMarket();
+  expect((await api.post('authorise',mod,{marketId:open,outcome:'yes',note:'Trying to settle an open question.'})).body.error).toBe('invalid_state');
+  const author=await user('modauthor');await api.post('join',author,{});
+  await t.pool.query(`INSERT INTO predictions_roles(account_id,role,granted_by) VALUES ($1,'moderator','test')`,[author.id]);
+  const own=(await api.post('submit',author,draft())).body.id as string;
+  await unfrozen(t.pool,`UPDATE predictions_markets SET close_at=now()-interval '1 second',resolve_at=now() WHERE id=$1`,[own]);
+  expect((await api.post('authorise',author,{marketId:own,outcome:'yes',note:'My own question, my own result.'})).body.error).toBe('conflict_of_interest');
+  const traded=await openMarket();
+  await buy(mod2,traded,'yes',500_000);
+  await unfrozen(t.pool,`UPDATE predictions_markets SET close_at=now()-interval '1 second',resolve_at=now() WHERE id=$1`,[traded]);
+  expect((await api.post('authorise',mod2,{marketId:traded,outcome:'yes',note:'I hold a position in this one.'})).body.error).toBe('conflict_of_interest');
+  expect((await api.post('authorise',mod,{marketId:traded,outcome:'yes',note:'A moderator with no position confirms it.'})).status).toBe(200);
+ });
+ it('the dashboard lists closed questions with what each outcome pays, and is moderator-only',async()=>{
+  const {market,yes,no,author}=await closedMarketWithTrades();
+  expect((await api.get('dashboard',alice)).status).toBe(403);
+  expect((await api.get('dashboard',null)).status).toBe(401);
+  const view=(await api.get('dashboard',mod)).body;
+  const item=view.toAuthorise.find((m:any)=>m.id===market);
+  expect(item).toMatchObject({state:'closed',global:false,canAuthorise:true,exposure:{holders:2,yesPayout:yes,noPayout:no,voidPayout:Math.floor(yes/2)+Math.floor(no/2)}});
+  // The author sees the same queue only if they are a moderator, and then cannot authorise their own question.
+  await t.pool.query(`INSERT INTO predictions_roles(account_id,role,granted_by) VALUES ($1,'moderator','test')`,[author.id]);
+  expect((await api.get('dashboard',author)).body.toAuthorise.find((m:any)=>m.id===market).canAuthorise).toBe(false);
+  await t.pool.query(`DELETE FROM predictions_roles WHERE account_id=$1`,[author.id]);
+  await api.post('authorise',mod,{marketId:market,outcome:'no',note:'The notice says it moved to Friday.'});
+  const after=(await api.get('dashboard',mod)).body;
+  expect(after.toAuthorise.find((m:any)=>m.id===market)).toBeUndefined();
+  expect(after.recent[0]).toMatchObject({marketId:market,outcome:'no',totalPayout:no,claims:2,authorisedBy:mod.username});
+ });
+ it('an integrity pause stops trading without settling; before the close only VOID can be authorised',async()=>{
   const market=await openMarket();
   expect((await api.post('pause',alice,{marketId:market,on:true,note:'nope'})).status).toBe(403);
   await api.post('pause',mod,{marketId:market,on:true,note:'Investigating an early leak.'});
   expect((await buy(bob,market,'yes',500_000)).body.error).toBe('market_closed');
   expect((await api.get('market',bob,{id:market})).body.state).toBe('paused');
-  // Before the close time a paused market may only be proposed as VOID.
-  expect((await api.post('propose',resolver,{marketId:market,outcome:'yes',evidence:'Organiser notice confirms it.',sourceChecked:'Noticeboard'})).status).toBe(409);
+  expect((await api.post('authorise',mod,{marketId:market,outcome:'yes',note:'Organiser notice confirms it.'})).body.error).toBe('invalid_state');
   await api.post('pause',mod,{marketId:market,on:false,note:'Resolved; no leak.'});
   expect((await buy(bob,market,'yes',500_000)).status).toBe(200);
+  // A paused question can be voided and refunds half a credit per share.
+  const second=await openMarket();await buy(bob,second,'yes',500_000);
+  await api.post('pause',mod,{marketId:second,on:true,note:'Reported as unsuitable.'});
+  expect((await api.post('authorise',mod,{marketId:second,outcome:'void',note:'Withdrawn as unsuitable; void.'})).body.outcome).toBe('void');
+  await ledgerOk();
  });
 });

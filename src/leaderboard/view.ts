@@ -1,5 +1,4 @@
 import {games} from '../core/catalog';
-import type {GameId} from '../core/types';
 import {LeaderboardSync} from './client';
 import {scoredGame,MINESWEEPER_RANKINGS,type LeaderboardKey,type Board} from './shared';
 import {formatScore} from './format';

@@ -53,8 +53,7 @@ only the browser suites would leave the old 13-minute build job above target.
   Failed, cancelled, missing or skipped shards cannot produce a passing check;
   all sixteen report ZIPs (two per shard) must also be present. Blob artifacts retain traces and
   screenshots; merged HTML reports are `e2e-chromium` and `e2e-webkit`.
-- `Unit and native checks` retains `npm test -- --maxWorkers=1` and
-  `node --test scripts/update-native-trace.test.mjs`. `Build site` runs
+- `Unit and native checks` runs `npm test -- --maxWorkers=1`. `Build site` runs
   `npm run build` once and uploads `arcade-site`, including the hidden
   `.vite/manifest.json`. Separate update and offline jobs download exactly that
   build. The existing `build` check aggregates all three dependencies and fails

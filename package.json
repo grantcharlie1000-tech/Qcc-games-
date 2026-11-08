@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "node scripts/movies-validate.mjs && tsc --noEmit && vite build && node scripts/verify-sw-kill-switch.mjs && node scripts/check-client-db-boundary.mjs && node scripts/pages-headers.mjs",
+    "build": "node scripts/movies-validate.mjs && tsc --noEmit && vite build && node scripts/prepare-whetu-host.mjs && node scripts/verify-sw-kill-switch.mjs && node scripts/check-client-db-boundary.mjs && node scripts/pages-headers.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:e2e": "playwright test",
@@ -41,6 +41,7 @@
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "@types/three": "^0.180.0",
+    "happy-dom": "21.0.4",
     "pg-gateway": "^0.3.0-beta.4",
     "typescript": "^5.9.3",
     "vite": "^7.1.9",
