@@ -59,7 +59,7 @@ async function signedIn(context:BrowserContext){
  },{username:USERNAME,token:TOKEN});
 }
 
-test('the Menu opens Predictions for a synthetic account and has no election entry',async({page,context},testInfo)=>{
+test('the Menu opens Predictions for a synthetic account and still lists Election',async({page,context},testInfo)=>{
  await signedIn(context);
  const api=await installFixtures(context,page);
  await page.setViewportSize({width:390,height:844});
@@ -70,8 +70,8 @@ test('the Menu opens Predictions for a synthetic account and has no election ent
  await expect(menu.locator('#open-predictions')).toHaveAttribute('href','#/predictions');
  await expect(menu.locator('#open-predictions')).toContainText('Predictions');
  await expect(menu.locator('#open-predictions')).toContainText('Free credits');
- await expect(menu.locator('#open-election')).toHaveCount(0);
- await expect(menu.getByRole('link',{name:/Election/i})).toHaveCount(0);
+ await expect(menu.locator('#open-election')).toHaveAttribute('href','#/election');
+ await expect(menu.locator('#open-election')).toContainText('Election results');
  await expect(menu.locator('#account-summary')).toHaveText(`Signed in as ${USERNAME}`);
  await menu.locator('#open-predictions').scrollIntoViewIfNeeded();
  await page.screenshot({path:testInfo.outputPath(`predictions-menu-${testInfo.project.name}.png`)});
@@ -85,17 +85,36 @@ test('the Menu opens Predictions for a synthetic account and has no election ent
  api.expectLocalOnly();
 });
 
-test('a direct election address returns to the games library',async({page,context},testInfo)=>{
+test('the games library opens Predictions, and the Menu still opens Election when its feed is down',async({page,context},testInfo)=>{
  const api=await installFixtures(context,page);
- await page.setViewportSize({width:390,height:844});
- await page.goto('/#/election');
- await expect(page).toHaveURL(/#\/collection$/);
- await expect(page.locator('.game-card').first()).toBeVisible();
- await expect(page.locator('.election-page,.election-banner,#open-election')).toHaveCount(0);
- await expect(page.getByText(/Results Desk|Election 2026/)).toHaveCount(0);
- await page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true}).click();
- await expect(page.locator('#open-predictions')).toBeVisible();
- await expect(page.locator('#open-election')).toHaveCount(0);
- if(testInfo.project.name==='chromium')await page.screenshot({path:testInfo.outputPath('election-retired-library.png')});
+ await page.route(url=>url.pathname.endsWith('/api/election'),route=>route.fulfill({status:502,json:{error:'The Electoral Commission results feed is not answering right now.'}}));
+ for(const size of [{width:390,height:844,name:'phone'},{width:1366,height:900,name:'desktop'}] as const){
+  await page.setViewportSize({width:size.width,height:size.height});
+  await page.goto('/');
+  const strip=page.locator('.predictions-banner');
+  await expect(strip).toBeVisible();
+  await expect(page.locator('.election-banner')).toHaveCount(0);
+  await expect(strip).toHaveAttribute('href','#/predictions');
+  expect(await strip.evaluate(element=>[...element.parentElement!.children].indexOf(element))).toBe(12);
+  await strip.scrollIntoViewIfNeeded();
+  await page.screenshot({path:testInfo.outputPath(`games-predictions-${size.name}-${testInfo.project.name}.png`)});
+  await strip.click();
+  await expect(page).toHaveURL(/#\/predictions$/);
+  await expect(page.getByRole('heading',{name:'Explore',exact:true})).toBeVisible();
+  await page.screenshot({path:testInfo.outputPath(`predictions-from-games-${size.name}-${testInfo.project.name}.png`)});
+  await page.goto('/');
+  await page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true}).click();
+  const menu=page.locator('#menu');
+  await expect(menu.locator('#open-election')).toBeVisible();
+  await expect(menu.locator('#open-predictions')).toBeVisible();
+  await menu.locator('#open-predictions').scrollIntoViewIfNeeded();
+  await page.screenshot({path:testInfo.outputPath(`menu-election-${size.name}-${testInfo.project.name}.png`)});
+  await menu.locator('#open-election').click();
+  await expect(page).toHaveURL(/#\/election$/);
+  await expect(page.locator('.el-status')).toHaveAttribute('data-state','error');
+  await expect(page.locator('.el-empty')).toContainText('not answering');
+  await expect(page.locator('.el-tile,.el-house')).toHaveCount(0);
+  await page.screenshot({path:testInfo.outputPath(`election-unavailable-${size.name}-${testInfo.project.name}.png`)});
+ }
  api.expectLocalOnly();
 });
