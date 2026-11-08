@@ -6,8 +6,8 @@ export type Route=
  |{kind:'market';id:string;side:'yes'|'no'|null}
  |{kind:'calls'}
  |{kind:'rankings'}
- |{kind:'ask';id:string|null}
- |{kind:'review'}
+ |{kind:'ask'}
+ |{kind:'dashboard'}
  |{kind:'missing'};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const VIEWS=[['all','All open'],['closing','Closing this week'],['new','Recently added'],['school','Your school'],['waiting','Waiting for result'],['resolved','Resolved']] as const;
@@ -22,9 +22,8 @@ export function parseRoute(hash:string):Route {
  if(head==='m'&&second&&UUID.test(second)&&parts.length===2){const side=params.get('side');return {kind:'market',id:second.toLowerCase(),side:side==='yes'||side==='no'?side:null};}
  if(head==='calls'&&parts.length===1)return {kind:'calls'};
  if(head==='rankings'&&parts.length===1)return {kind:'rankings'};
- if(head==='ask'&&parts.length===1)return {kind:'ask',id:null};
- if(head==='ask'&&second&&UUID.test(second)&&parts.length===2)return {kind:'ask',id:second.toLowerCase()};
- if(head==='review'&&parts.length===1)return {kind:'review'};
+ if(head==='ask'&&parts.length===1)return {kind:'ask'};
+ if(head==='dashboard'&&parts.length===1)return {kind:'dashboard'};
  return {kind:'missing'};
 }
 export function exploreHash(view:string,category:string,q:string):string {
