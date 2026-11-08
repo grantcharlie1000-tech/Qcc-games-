@@ -1,45 +1,28 @@
-name: Configure Cloudflare branch controls
+name: Stop obsolete main publisher
 on:
   push:
     branches: [ops/cloudflare-production-branch]
     paths: ['.github/workflows/cloudflare-branch-controls.yml']
 permissions:
   contents: read
+  actions: write
 jobs:
-  inspect:
+  cancel:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
-      - name: Update branch settings without deploying
+      - name: Cancel old main deployment workflow
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           node --input-type=module <<'JS'
-          const account=process.env.CLOUDFLARE_ACCOUNT_ID, token=process.env.CLOUDFLARE_API_TOKEN;
-          if(!/^[a-f0-9]{32}$/i.test(account||'')||!token)throw new Error('Missing Cloudflare configuration');
-          const res=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/pages/projects/nceastudy`,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(15000)});
-          if(!res.ok)throw new Error(`Cloudflare lookup HTTP ${res.status}`);
-          const body=await res.json(),p=body.result,c=p?.source?.config;
-          if(!body.success||p?.name!=='nceastudy'||p.subdomain!=='nceastudy.pages.dev')throw new Error('Unexpected Pages project');
-          if(p.source?.type!=='github'||c?.owner!=='grantcharlie1000-tech'||c?.repo_name!=='Qcc-games-')throw new Error('Unexpected Git integration');
-          if(!['main','production'].includes(p.production_branch))throw new Error('Production branch changed unexpectedly');
-          const url=`https://api.cloudflare.com/client/v4/accounts/${account}/pages/projects/nceastudy`;
-          const config={production_branch:'production',production_deployments_enabled:true};
-          if(c.preview_deployment_setting!=='none'){
-            config.preview_deployment_setting='custom';
-            config.preview_branch_includes=c.preview_deployment_setting==='all'?['*']:(c.preview_branch_includes||[]);
-            config.preview_branch_excludes=[...new Set([...(c.preview_branch_excludes||[]),'main'])];
-          }
-          const update=await fetch(url,{method:'PATCH',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({production_branch:'production',source:{type:'github',config}}),signal:AbortSignal.timeout(15000)});
-          if(!update.ok)throw new Error(`Cloudflare update HTTP ${update.status}`);
-          if(!(await update.json()).success)throw new Error('Cloudflare rejected branch update');
-          const verify=await fetch(url,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(15000)});
-          if(!verify.ok)throw new Error(`Verification HTTP ${verify.status}`);
-          const after=(await verify.json()).result,ac=after.source?.config;
-          if(after.production_branch!=='production'||ac?.production_branch!=='production'||ac.production_deployments_enabled!==true||ac.deployments_enabled===false)throw new Error('Production branch settings were not applied');
-          if(ac.preview_deployment_setting!=='none'&&!(ac.preview_deployment_setting==='custom'&&ac.preview_branch_excludes.includes('main')))throw new Error('Main preview builds are not excluded');
-          if(JSON.stringify(after.build_config)!==JSON.stringify(p.build_config)||JSON.stringify(after.deployment_configs)!==JSON.stringify(p.deployment_configs))throw new Error('Unrelated build/runtime configuration changed');
-          if(after.canonical_deployment?.id!==p.canonical_deployment?.id)throw new Error('Live deployment changed concurrently; inspect before proceeding');
-          console.log(JSON.stringify({project:after.name,production_branch:after.production_branch,production_deployments_enabled:ac.production_deployments_enabled,preview_deployment_setting:ac.preview_deployment_setting,preview_branch_includes:ac.preview_branch_includes,preview_branch_excludes:ac.preview_branch_excludes,unchanged_live_deployment:after.canonical_deployment?.id,unchanged_live_commit:after.canonical_deployment?.deployment_trigger?.metadata?.commit_hash},null,2));
+          const url='https://api.github.com/repos/grantcharlie1000-tech/Qcc-games-/actions/runs/42444637987';
+          const headers={Authorization:`Bearer ${process.env.GH_TOKEN}`,Accept:'application/vnd.github+json'};
+          const res=await fetch(url,{headers}); if(!res.ok)throw new Error(`Run lookup HTTP ${res.status}`);
+          const run=await res.json();
+          if(run.head_branch!=='main'||run.head_sha!=='f909eb126255b135e0ad592fa126d9d4b23c3260'||run.name!=='Verify and deploy arcade')throw new Error('Unexpected run');
+          if(run.status==='completed'){console.log('Already completed:',run.conclusion);process.exit(0);}
+          const cancel=await fetch(url+'/cancel',{method:'POST',headers});
+          if(!cancel.ok)throw new Error(`Cancel HTTP ${cancel.status}`);
+          console.log('Cancellation accepted for obsolete main publishing workflow 42444637987');
           JS
