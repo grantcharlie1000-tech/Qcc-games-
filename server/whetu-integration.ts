@@ -57,15 +57,17 @@ function runtimePath(path:string):boolean {
 async function logPublicReadinessDiagnostic(response:Response){
  const detail:Record<string,unknown>={stage:'runtime-response',status:response.status,marker:response.headers.get('X-Whetu-Integration')===INTEGRATION};
  if(detail.marker&&/^application\/json(?:;|$)/i.test(response.headers.get('Content-Type')??'')){
-  const reader=response.clone().body?.getReader();let text='',bytes=0;
-  try{
+  const reader=response.clone().body?.getReader();let text='',bytes=0,timer:ReturnType<typeof setTimeout>|undefined;
+  const read=async()=>{
    if(reader){const decoder=new TextDecoder();for(;;){const chunk=await reader.read();if(chunk.done)break;bytes+=chunk.value.byteLength;if(bytes>16_384){void reader.cancel().catch(()=>{});break;}text+=decoder.decode(chunk.value,{stream:true});}text+=decoder.decode();}
    if(bytes<=16_384){const data=JSON.parse(text);detail.ready=data?.ready===true;
     const reasons=['integration-disabled','integration-not-configured','account-link-protocol-unavailable','backend-capabilities-unavailable'];
     detail.reason=reasons.includes(data?.reason)?data.reason:data?.reason?'unrecognized-public-reason':null;
     detail.contract=data?.integration===INTEGRATION&&data?.framePath==='/nceastudy'&&data?.accountLink==='verified-explicit-v1'&&typeof data?.revision==='string'&&/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(data.revision)&&data?.authentication?.embeddedPassword===true&&data?.authentication?.embeddedSignup===true&&data?.authentication?.externalProviderHandoff===true&&Array.isArray(data?.excludedSubjects)&&data.excludedSubjects.includes('history')&&data.excludedSubjects.includes('l2-history');
    }else detail.reason='public-manifest-over-limit';
-  }catch{detail.reason='public-manifest-unreadable';}finally{reader?.releaseLock();}
+  };
+  try{await Promise.race([read(),new Promise<never>((_,reject)=>{timer=setTimeout(()=>{detail.reason='public-manifest-timeout';void reader?.cancel().catch(()=>{});reject(new Error('public diagnostic deadline'));},500);})]);}
+  catch{detail.reason??='public-manifest-unreadable';}finally{clearTimeout(timer);try{reader?.releaseLock();}catch{/* Cancel only the clone; never block the original response. */}}
  }
  console.info('QCC_WHETU_PUBLIC_READINESS',JSON.stringify(detail));
 }
