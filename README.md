@@ -1,6 +1,6 @@
 # Pocket Arcade
 
-A static, private browser arcade with twenty-five playable games: **Block Blast, Water Sort, Suika Game, Stack, Flappy Bird, Ball Run, Animal Stack, Snake, Slither.io, Minesweeper, Solitaire, Block Fill, Flow Free, Pool, Globle, Minecraft, Pac-Man, Corn Clicker, Slipline, Tetris, Wordle, Claimline, Crossy Road, Quad Clash and Femboy Frosthop**. Original SVG covers, a compact portrait-card library, favourites and local saves. The site requires a network connection; service-worker caching and offline downloads are retired. No advertisements or currency. Accounts are optional for play and required for publishing leaderboard scores. Gameplay stays local; optional shared leaderboards use a score service reached through the Cloudflare Pages proxy, and Pool and Minecraft can be played online between devices ([setup](docs/MULTIPLAYER.md)).
+A static, private browser arcade with twenty-seven playable games: **Block Blast, Water Sort, Suika Game, Stack, Flappy Bird, Ball Run, Animal Stack, Snake, Slither.io, Minesweeper, Solitaire, Block Fill, Flow Free, Pool, Globle, Minecraft, Pac-Man, Corn Clicker, Slipline, Tetris, Wordle, Claimline, Crossy Road, Quad Clash, Femboy Frosthop, Drift Club and Last Light**. Original SVG covers, a compact portrait-card library, favourites and local saves. The site requires a network connection; service-worker caching and offline downloads are retired. No advertisements or currency. Accounts are optional for play and required for publishing leaderboard scores. Gameplay stays local; optional shared leaderboards use a score service reached through the Cloudflare Pages proxy, and Pool and Minecraft can be played online between devices ([setup](docs/MULTIPLAYER.md)).
 
 The latest [gameplay correction record](docs/GAMEPLAY_CORRECTIONS.md) includes the four referenced scenes, six Animal Stack cutouts, actual interaction recordings and viewport checks.
 
@@ -52,13 +52,13 @@ Movies & TV uses a streaming-style design system. Its tokens and shared `ui-` co
 
 `npm run build` creates `dist/` with relative asset paths, hash routes and a `sw.js` recovery worker that removes old service workers and caches; offline play is retired. The unchanged build supports an origin root and a repository subpath.
 
-- **Cloudflare Pages (live):** the existing project is `nceastudy`. The [workflow](.github/workflows/pages.yml) publishes verified `main` builds using repository Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. It includes the Pages Functions and checks the public release commit. See [Cloudflare deployment](docs/CLOUDFLARE_PAGES.md).
+- **Cloudflare Pages (live):** the existing project is `nceastudy`. Cloudflare Git integration publishes the `production` branch. The [manual recovery workflow](.github/workflows/publish-arcade.yml) uses repository Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, includes the Pages Functions and checks the public release commit. See [Cloudflare deployment](docs/CLOUDFLARE_PAGES.md).
 - **Netlify (legacy, not used for production):** [netlify.toml](netlify.toml) and the `netlify/` functions remain in the repository for reference. Production no longer publishes there; see [Netlify deployment evidence](docs/NETLIFY_DEPLOYMENT.md).
 - **Other static hosting:** serve `dist/` over HTTPS. No SPA rewrite is necessary because navigation uses `#/game/<id>`.
 
 Shared online leaderboards require the configured backend and database. Cloudflare Pages uses the existing API proxy; static-only hosting without that proxy cannot serve shared scores. See [leaderboard setup and verification](docs/LEADERBOARDS.md).
 
-The live arcade is **[NCEA Study on Cloudflare Pages](https://nceastudy.pages.dev)** (`nceastudy`). The verified `main` build publishes through GitHub Actions once its Cloudflare deployment secrets are configured; [Cloudflare setup and release verification](docs/CLOUDFLARE_PAGES.md) describe that path. [Netlify deployment evidence](docs/NETLIFY_DEPLOYMENT.md) records earlier releases on the separate Netlify site.
+The live arcade is **[NCEA Study on Cloudflare Pages](https://nceastudy.pages.dev)** (`nceastudy`). The `production` branch publishes through Cloudflare Git integration; [Cloudflare setup and release verification](docs/CLOUDFLARE_PAGES.md) describe that path. [Netlify deployment evidence](docs/NETLIFY_DEPLOYMENT.md) records earlier releases on the separate Netlify site.
 
 ## Code and artwork
 

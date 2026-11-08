@@ -1,0 +1,30 @@
+import {test,expect} from '../../fixtures';
+const route='/?festive=off#/game/drift-club';
+test('play, pause, save, restart, independent local modes and modal keyboard focus',async({page})=>{
+  await page.goto(route);
+  const court=page.locator('.dc'),fire=page.getByRole('button',{name:'Slide puck'}),canvas=page.locator('.dc-canvas');
+  await expect(court).toHaveAttribute('data-throws','0');await canvas.focus();await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.dc-angle-val')).toHaveText('+1°');await page.keyboard.press('Space');
+  await expect(court).toHaveAttribute('data-throws','1');await page.locator('#game-menu').click();
+  await expect(page.locator('#game-options')).toBeVisible();await expect(page.locator('.dc-shoot')).toBeDisabled();
+  await page.locator('#pause-game').click();await expect(fire).toBeEnabled();
+  await page.getByRole('button',{name:'Pass & play'}).click();await expect(court).toHaveAttribute('data-throws','0');
+  await fire.click();await expect(page.locator('.dc-player')).toHaveText('Blue to shoot');await page.reload();
+  await expect(page.locator('.dc-player')).toHaveText('Blue to shoot');
+  await page.getByRole('button',{name:'Solo tour'}).click();await expect(court).toHaveAttribute('data-throws','1');
+  await page.getByRole('button',{name:'Online',exact:true}).click();await page.getByRole('button',{name:'Join by code'}).focus();await page.keyboard.press('Tab');
+  await expect(page.getByLabel('Close multiplayer menu')).toBeFocused();await page.keyboard.press('Escape');
+  await expect(page.locator('.mp-overlay')).toBeHidden();await expect(court).toBeVisible();
+  await page.locator('#game-menu').click();await page.locator('#restart-game').click();await expect(court).toHaveAttribute('data-throws','0');
+});
+test('phone drag, theme switch and landscape controls stay reachable',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/?festive=christmas#/game/drift-club');
+  await expect(page.locator('.dc-course')).toHaveText('Candlelight Pier');
+  const canvas=page.locator('.dc-canvas'),box=(await canvas.boundingBox())!;
+  const x=box.x+box.width/2,y=box.y+box.height*.42;
+  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x-12,y+92,{steps:6});await page.mouse.up();
+  await expect(page.locator('.dc')).toHaveAttribute('data-throws','1');
+  await page.goto(route);await expect(page.locator('.dc-course')).toHaveText('Sunset Pier');
+  await expect(page.locator('.dc')).toHaveAttribute('data-throws','1');
+  await page.setViewportSize({width:844,height:390});await expect(page.locator('.dc-shoot')).toBeInViewport({ratio:1});
+});

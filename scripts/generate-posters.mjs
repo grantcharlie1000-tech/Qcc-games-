@@ -52,6 +52,7 @@ export const POSTERS = {
   'crossy-road':  {hue: 200, accent: C.red,    title: 'A voxel chicken in a Santa hat hopping across snow, road and river'},
   'quad-clash':   {hue: 22,  accent: C.yellow, title: 'A blocky egg fighter in a yellow headband holding a pencil blaster'},
   'femboy-obby':  {hue: 256, accent: C.pink,   title: 'A blocky boy in a pink cat-ear beanie and snowflake jumper hopping across gift boxes in the snow'},
+  'drift-club':   {hue: 183, accent: C.yellow, title: 'A voxel harbour shuffleboard with coral and blue pucks, a bullseye and a striped lighthouse'},
 };
 
 // ---------- colour ----------
@@ -347,6 +348,28 @@ art['color-connect'] = s => {
   const flows = [[C.red, [[0, 0], [0, 1], [0, 2], [0, 3], [1, 3]]], [C.yellow, [[1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [5, 1], [5, 2]]], [C.teal, [[1, 1], [2, 1], [3, 1], [3, 2], [3, 3], [3, 4], [2, 4]]],
     [C.blue, [[0, 6], [1, 6], [2, 6], [3, 6], [4, 6], [5, 6], [6, 6], [6, 5]]], [C.pink, [[1, 2], [2, 2]]], [C.orange, [[0, 5], [1, 5], [2, 5], [3, 5], [4, 5], [4, 4], [5, 4], [5, 3], [6, 3]]]];
   for (const [c, pts] of flows) pts.forEach(([x, y], i) => (i === 0 || i === pts.length - 1) ? s.box(x, y, 1, 1, 1, 2, shift(c, 6)) : s.set(x, y, 1, c));
+};
+
+art['drift-club'] = s => {
+  // The striped beacon and stubby pucks should still read at two-column phone size.
+  island(s, 0, 0, 17, 9, C.cream, C.dkwood);
+  for (let x = 0; x < 17; x++) {
+    for (const y of [0, 8]) s.set(x, y, 1, x % 4 === 0 ? C.mint : C.teal);
+    for (let y = 1; y < 8; y++) {
+      const d = Math.hypot(x - 4, y - 4);
+      const colour = d < .9 ? C.yellow : d < 1.8 ? C.teal : d < 2.8 ? C.red : d < 3.4 ? C.white : y % 2 ? C.cream : '#e3c897';
+      s.set(x, y, 0, colour);
+    }
+  }
+  s.box(0, -2, 0, 4, 3, 1, C.wood);
+  for (let z = 1; z <= 6; z++) s.box(1, -2, z, 2, 2, 1, Math.floor((z-1)/2)%2 ? C.red : C.cream);
+  s.box(0, -3, 7, 4, 4, 1, C.navy).box(1, -2, 8, 2, 2, 1, C.yellow);
+  s.box(0, -3, 9, 4, 4, 1, C.red).box(1, -2, 10, 2, 2, 1, C.red);
+  for (const [x, y, colour] of [[8, 3, C.sky], [13, 5, C.red]]) {
+    s.box(x-1, y, 1, 3, 1, 1, colour).box(x, y-1, 1, 1, 3, 1, colour);
+    s.top(x, y, 2, ICON.dot, C.cream, .24);
+  }
+  for (const x of [10, 11]) s.floor(x, 5, 1, ICON.dot, C.wood);
 };
 
 art['pool'] = s => {

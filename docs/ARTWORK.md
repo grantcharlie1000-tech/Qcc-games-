@@ -1,6 +1,6 @@
 # Library posters
 
-Every game's library poster (`public/game-art/<id>/cover.svg`) comes from one generator, so the 25 posters read as a single set:
+Every game's library poster (`public/game-art/<id>/cover.svg`) comes from one generator, so the posters read as a single set:
 
 ```sh
 node scripts/generate-posters.mjs              # every poster, then syncs the card colours in src/core/catalog.ts
