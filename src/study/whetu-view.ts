@@ -83,7 +83,7 @@ export class WhetuStudyView implements AppView {
   }catch(error){
    if(this.disposed||epoch!==this.epoch)return;
    this.invalidate();
-   if(error instanceof StudyPairingError&&error.status===401){
+   if(error instanceof StudyPairingError&&[401,409].includes(error.status)){
     this.message('Sign in to NCEAStudy again to refresh your secure Study connection. Your account and progress are unchanged.',{label:'Sign in to NCEAStudy',action:()=>this.deps.openAccounts()},{label:'Back to games',action:()=>{location.hash='#/collection';}});
    }else this.unavailable();
   }

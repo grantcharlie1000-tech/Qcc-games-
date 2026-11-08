@@ -47,13 +47,27 @@ export async function onRequest({request,env,next}:ProxyContext):Promise<Respons
   } as RequestInit));
   const responseHeaders=allowedHeaders(upstream.headers,RESPONSE_HEADERS);
   if(studyAuth&&['login','signup'].includes(url.searchParams.get('action')??'')&&[200,201].includes(upstream.status)){
-   for(const cookie of readSetCookies(upstream.headers)){
-    // Exactly one existing host-only authority cookie, not arbitrary backend cookies.
-    if(!/^__Host-nceastudy_browser=[a-f0-9]{64};/i.test(cookie)||/;\s*domain\s*=/i.test(cookie)
-     ||!/;\s*path=\/\s*(?:;|$)/i.test(cookie)||!/;\s*secure\s*(?:;|$)/i.test(cookie)
-     ||!/;\s*httponly\s*(?:;|$)/i.test(cookie)||!/;\s*samesite=strict\s*(?:;|$)/i.test(cookie))continue;
-    responseHeaders.append('Set-Cookie',cookie);
+   let cookies:string[]=[];try{cookies=readSetCookies(upstream.headers);}catch{/* Never make optional Study cookie handling block QCC login. */}
+   const authority=cookies.filter(cookie=>cookie.slice(0,cookie.indexOf('='))==='__Host-nceastudy_browser');
+   let approved:string|undefined;
+   if(authority.length===1){
+    const [value,...attributes]=authority[0]!.split(';').map(part=>part.trim());
+    const fields=new Map<string,string>();let valid=true;
+    for(const attribute of attributes){
+     const equal=attribute.indexOf('='),name=(equal<0?attribute:attribute.slice(0,equal)).toLowerCase(),setting=equal<0?'':attribute.slice(equal+1);
+     if(fields.has(name)||!['path','secure','httponly','samesite','max-age'].includes(name)){valid=false;break;}
+     fields.set(name,setting);
+    }
+    if(valid&&/^__Host-nceastudy_browser=[a-f0-9]{64}$/.test(value!)&&fields.size===5&&fields.get('path')==='/'
+     &&fields.get('secure')===''&&fields.get('httponly')===''&&fields.get('samesite')?.toLowerCase()==='strict'&&fields.get('max-age')==='2592000')approved=authority[0];
    }
+   if(!approved){
+    // Old/malformed/ambiguous backend responses cannot retain a previous account's authority.
+    // This fresh, unbound proof has no database row: QCC succeeds, only Study fails closed.
+    const unbound=Array.from(crypto.getRandomValues(new Uint8Array(32)),n=>n.toString(16).padStart(2,'0')).join('');
+    approved=`__Host-nceastudy_browser=${unbound}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`;
+   }
+   responseHeaders.append('Set-Cookie',approved);
   }
   return new Response(upstream.body,{status:upstream.status,statusText:upstream.statusText,headers:responseHeaders});
  }catch{return error('backend unavailable',502);}

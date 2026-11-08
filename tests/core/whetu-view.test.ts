@@ -2,7 +2,7 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import type {Window as HappyWindow} from 'happy-dom';
 import {WhetuStudyView} from '../../src/study/whetu-view';
-import type {StudyPairing} from '../../src/study/whetu-pairing';
+import {StudyPairingError,type StudyPairing} from '../../src/study/whetu-pairing';
 
 const ready={integration:'nceastudy-whetu-v1',ready:true,framePath:'/nceastudy',excludedSubjects:['history','l2-history'],authentication:{embeddedPassword:true,embeddedSignup:true,externalProviderHandoff:true},accountLink:'verified-explicit-v1',revision:'a'.repeat(40)};
 const response=(body:unknown=ready)=>Response.json(body,{headers:{'Cache-Control':'private, no-store'}});
@@ -14,7 +14,7 @@ beforeEach(()=>{
  settings.enableIframePageLoading=true;
  settings.fetch.interceptor={beforeAsyncRequest:async()=>new Promise(()=>{})};
 });
-function pair(){return {status:vi.fn(async()=>true),start:vi.fn(async()=>{}),review:vi.fn(async()=>({qccUsername:'StudyPlayer',whetuLabel:'student@example.test',challenge:'b'.repeat(64)})),confirm:vi.fn(async(_challenge:string)=>{}),cancel:vi.fn(async()=>{})};}
+function pair(){return {activate:vi.fn(async()=>{}),status:vi.fn(async()=>true),start:vi.fn(async()=>{}),review:vi.fn(async()=>({qccUsername:'StudyPlayer',whetuLabel:'student@example.test',challenge:'b'.repeat(64)})),confirm:vi.fn(async(_challenge:string)=>{}),cancel:vi.fn(async()=>{})};}
 function make(signedIn=()=>true,pairing:StudyPairing=pair()){
  const container=document.createElement('main');document.body.append(container);const openAccounts=vi.fn();
  const view=new WhetuStudyView(container,{signedIn,openAccounts,pairing});views.push(view);view.navigate('#/study');
@@ -28,6 +28,14 @@ function frameLoaded(frame:HTMLIFrameElement,marker=true){
 afterEach(()=>{for(const view of views.splice(0))view.dispose();document.body.replaceChildren();vi.useRealTimers();vi.unstubAllGlobals();});
 
 describe('first-party Study host lifecycle and explicit linking',()=>{
+ it('keeps missing browser authority inside Study without creating a frame or changing QCC identity',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async()=>response()));const pairing=pair();
+  pairing.activate.mockRejectedValueOnce(new StudyPairingError('Sign in again before opening Study.',409));
+  const {container,openAccounts}=make(()=>true,pairing);
+  await vi.waitFor(()=>expect(container.textContent).toContain('Sign in to NCEAStudy again'));
+  expect(container.querySelector('iframe')).toBeNull();expect(pairing.status).not.toHaveBeenCalled();expect(pairing.start).not.toHaveBeenCalled();
+  container.querySelector<HTMLButtonElement>('button')!.click();expect(openAccounts).toHaveBeenCalledOnce();
+ });
  it('requires a QCC account before probing or creating any iframe',()=>{
   const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
   const {container,openAccounts}=make(()=>false);
