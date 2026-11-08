@@ -3,14 +3,15 @@ import {afterEach,describe,expect,it,vi} from 'vitest';
 // Observe the adapter's request boundary; route/DB behavior is covered by app.test.ts.
 vi.mock('../../server/app',()=>({createApp:()=>async(request:Request,ip:string)=>Response.json({
  ip,netlifyIp:request.headers.get('x-nf-client-connection-ip'),proxyIp:request.headers.get('x-qcc-client-ip'),
- secret:request.headers.get('x-qcc-proxy-secret'),body:request.method==='PUT'?await request.text():null,
+ secret:request.headers.get('x-qcc-proxy-secret'),body:['POST','PUT'].includes(request.method)?await request.text():null,
+ url:request.url,method:request.method,origin:request.headers.get('origin'),cookie:request.headers.get('cookie'),
 })}));
 vi.mock('node:crypto',async original=>{
  const crypto=await original<typeof import('node:crypto')>();
  return {...crypto,timingSafeEqual:vi.fn(crypto.timingSafeEqual)};
 });
 import {timingSafeEqual} from 'node:crypto';
-import {GET,PUT} from '../../server/vercel';
+import {GET,POST,PUT} from '../../server/vercel';
 
 afterEach(()=>{vi.unstubAllEnvs();vi.clearAllMocks();});
 const call=async(headers:Record<string,string>)=>(await GET(new Request('https://backend.test/api/accounts?action=me',{headers}))).json();
@@ -50,5 +51,45 @@ describe('Vercel proxy IP boundary',()=>{
   const request=new Request('https://backend.test/api/accounts?action=sync',{method:'PUT',headers:{'X-QCC-Proxy-Secret':'test-proxy-key','X-QCC-Client-IP':'198.51.100.7','x-nf-client-connection-ip':'spoofed'},body:'{"saves":{}}'});
   expect(await(await PUT(request)).json()).toMatchObject({netlifyIp:'198.51.100.7',body:'{"saves":{}}'});
   expect(request.headers.get('x-nf-client-connection-ip')).toBe('spoofed');
+ });
+});
+
+
+describe('Vercel Study route metadata',()=>{
+ it.each(['/api/study-link','/.netlify/functions/study-link','/api/study-link/'])('strips only the matching capture for %s',async path=>{
+  const data=await(await GET(new Request('https://backend.test'+path+'?action=select&route=study-link'))).json();
+  expect(new URL(data.url).pathname).toBe(path);
+  expect(new URL(data.url).search).toBe('?action=select');
+ });
+ it.each([
+  '?action=select&route=accounts',
+  '?action=select&route=study-link&route=study-link',
+  '?action=select&route=',
+  '?action=select&Route=study-link',
+ ])('preserves invalid metadata for strict handler rejection: %s',async search=>{
+  const data=await(await GET(new Request('https://backend.test/api/study-link'+search))).json();
+  expect(new URL(data.url).search).toBe(search);
+ });
+ it.each([
+  ['?action=select&route=study-link&unexpected=1','?action=select&unexpected=1'],
+  ['?action=select&action=verify&route=study-link','?action=select&action=verify'],
+ ])('does not discard application query pollution: %s',async(search,expected)=>{
+  const data=await(await GET(new Request('https://backend.test/api/study-link'+search))).json();
+  expect(new URL(data.url).search).toBe(expected);
+  expect(new URL(data.url).searchParams.size).toBe(2);
+ });
+ it.each(['/api/accounts','/api/study-link/other','/other/study-link'])('does not normalize any other route: %s',async path=>{
+  const data=await(await GET(new Request('https://backend.test'+path+'?action=select&route=study-link'))).json();
+  expect(new URL(data.url).search).toBe('?action=select&route=study-link');
+ });
+ it('preserves POST method, body, identity headers and original headers',async()=>{
+  const request=new Request('https://backend.test/api/study-link?action=select&route=study-link',{
+   method:'POST',headers:{'Content-Type':'application/json',Origin:'https://nceastudy.pages.dev',Cookie:'__Host-nceastudy_browser=fixture'},body:'{}',
+  });
+  const data=await(await POST(request)).json();
+  expect(data).toMatchObject({method:'POST',body:'{}',origin:'https://nceastudy.pages.dev',cookie:'__Host-nceastudy_browser=fixture'});
+  expect(new URL(data.url).search).toBe('?action=select');
+  expect(new URL(request.url).search).toBe('?action=select&route=study-link');
+  expect(request.headers.get('origin')).toBe('https://nceastudy.pages.dev');
  });
 });
