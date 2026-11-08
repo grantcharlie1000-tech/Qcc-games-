@@ -179,12 +179,17 @@ export function createApp(options:AppOptions={}){
   const ip=clientIp||'unknown';
   const rejectBudget=()=>finish(Response.json({error:'Too many requests. Try again in a minute.'},{status:429,headers:{'Retry-After':'60','Cache-Control':'no-store'}}));
   const verifyAction=route==='study-link'&&url.searchParams.get('action')==='verify';
+  const capabilityAction=route==='study-link'&&url.searchParams.get('action')==='capabilities';
+  if(capabilityAction&&!studyServiceAuthorized(request,env)){
+   if(limited('study-capabilities:untrusted|'+ip,120))return rejectBudget();
+   return finish(Response.json({error:'Unauthorized.'},{status:401,headers:{'Cache-Control':'no-store'}}));
+  }
   // The private runtime has no end-user trusted IP. Do not pool its entire
   // classroom behind Cloudflare egress under the former browser IP ceiling.
   // Authenticate BEFORE choosing this lane; invalid secrets never get it.
-  const internalVerify=verifyAction&&request.method==='POST'&&url.searchParams.size===1&&studyServiceAuthorized(request,env);
-  if(internalVerify){
-   if(limited('study-verify:service',6000))return rejectBudget();
+  const internalStudy=(verifyAction||capabilityAction)&&request.method==='POST'&&url.searchParams.size===1&&studyServiceAuthorized(request,env);
+  if(internalStudy){
+   if(limited(capabilityAction?'study-capabilities:service':'study-verify:service',capabilityAction?300:6000))return rejectBudget();
    const browser=studyBrowserProof(request);
    if(browser&&limited('study-verify:browser:'+digest(browser).toString('hex'),300))return rejectBudget();
   }else if(limited(verifyAction?'study-verify:untrusted|'+ip:route+'|'+ip,verifyAction?120:RATE_LIMITS[route]))return rejectBudget();

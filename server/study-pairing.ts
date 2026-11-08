@@ -6,6 +6,7 @@ import {createQccIdentityVerifier,createWhetuIdentityVerifier} from './study-pai
 import {createPostgresPairingStore} from './study-pairing-store';
 import {readJson,rateLimit,errorResponse} from './api';
 import {studyServiceAuthorized} from './study-service-auth';
+import {createStudyCapabilitiesChecker} from './study-capabilities';
 const sha=(value:string)=>createHash('sha256').update(value).digest('hex');
 function contextProof(request:Request,name='__Host-nceastudy_context'):string|null{
  const parts=(request.headers.get('cookie')??'').split(';').map(value=>value.trim()).filter(value=>value.startsWith(name+'='));
@@ -17,14 +18,26 @@ export function createStudyLinkHandler(db:Database,options:{env?:Record<string,s
  const enabled=env.QCC_WHETU_PAIRING==='on',origin=env.QCC_NCEASTUDY_ORIGIN;
  const respond=(body:unknown,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'}});
  const qcc=createQccIdentityVerifier(db),whetu=createWhetuIdentityVerifier(env,options.fetcher),store=createPostgresPairingStore(db);
+ const capabilities=createStudyCapabilitiesChecker(db,env,now);
  let core:ReturnType<typeof createPairingHandler>|undefined;
  return async(request:Request):Promise<Response>=>{
   if(!enabled)return respond({error:'Not found.'},404);
   if(!origin)return respond({error:'Integration not configured.'},503);
   try{const configured=new URL(origin);if(configured.protocol!=='https:'||configured.origin!==origin)return respond({error:'Integration not configured.'},503);}catch{return respond({error:'Integration not configured.'},503);}
   const url=new URL(request.url),action=url.searchParams.get('action');
-  if(url.searchParams.size!==1||!['select','start','review','confirm','cancel','status','verify'].includes(action??''))return respond({error:'Invalid integration action.'},400);
+  if(url.searchParams.size!==1||!['select','start','review','confirm','cancel','status','verify','capabilities'].includes(action??''))return respond({error:'Invalid integration action.'},400);
   try{
+   if(action==='capabilities'){
+    if(request.method!=='POST')return respond({error:'Method not allowed.'},405);
+    if(!studyServiceAuthorized(request,env))return respond({error:'Unauthorized.'},401);
+    // Internal compatibility requests carry no browser identity or Origin.
+    if(['cookie','authorization','origin','sec-fetch-site'].some(name=>request.headers.has(name)))return respond({error:'Request not allowed.'},403);
+    if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type')??''))return respond({error:'Send JSON.'},415);
+    const data=await readJson(request,256);
+    if(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).length)return respond({error:'Invalid request.'},400);
+    const result=await capabilities();
+    return result?respond(result):respond({error:'Integration not configured.'},503);
+   }
    if(action==='select'){
     if(request.method!=='POST')return respond({error:'Method not allowed.'},405);
     if(request.headers.get('origin')!==origin||request.headers.has('sec-fetch-site')&&request.headers.get('sec-fetch-site')!=='same-origin')return respond({error:'Request not allowed.'},403);
