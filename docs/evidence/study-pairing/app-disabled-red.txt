@@ -1,0 +1,43 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/study/pairing-route.test.ts
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-backend-integration
+
+ ❯ tests/study/pairing-route.test.ts (5 tests | 1 failed) 29ms
+   ✓ unconfigured/default-off pairing route refuses without touching database 6ms
+   ✓ backend route pins public configured Origin despite upstream URL origin 11ms
+   ✓ backend route refuses extra query data and unauthenticated internal context verification 1ms
+   ✓ shared app replaces spoofed durable-budget IP with its authoritative adapter client IP 6ms
+   × shared app default-off does not initialize its database 4ms
+     → expected 503 to be 404 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/study/pairing-route.test.ts > shared app default-off does not initialize its database
+AssertionError: expected 503 to be 404 // Object.is equality
+
+- Expected
++ Received
+
+- 404
++ 503
+
+ ❯ tests/study/pairing-route.test.ts:36:43
+     34| it('shared app default-off does not initialize its database',async()=>{
+     35|  const handle=createApp({env:{QCC_ALLOWED_ORIGINS:'https://study.test'…
+     36|  expect((await handle(request())).status).toBe(404);
+       |                                           ^
+     37| });
+     38| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  12:49:03
+   Duration  560ms (transform 222ms, setup 0ms, collect 292ms, tests 29ms, environment 0ms, prepare 59ms)
+

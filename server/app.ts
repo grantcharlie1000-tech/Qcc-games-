@@ -2,6 +2,8 @@
 // catalog, Social/Chat/media and Predictions. Runs on Vercel (api/[route].ts), as a plain Node server (server/node.ts), or behind any Web-standard host.
 // Server-only: never import this module from src/.
 import type {Database} from '../src/leaderboard/server';
+import {createStudyLinkHandler} from './study-pairing';
+import {studyServiceAuthorized,studyBrowserProof} from './study-service-auth';
 import {createAccountsHandler} from '../src/accounts/server';
 import {createLeaderboardHandler} from '../src/leaderboard/server';
 import {createSocialHandler} from '../src/social/server';
@@ -16,7 +18,7 @@ import {createGuardedHandler,isWriteFrozen} from '../netlify/lib/runtime.mts';
 import {storageFullResponse} from '../src/accounts/storage-errors';
 import {createHash,timingSafeEqual} from 'node:crypto';
 
-export type Route='accounts'|'leaderboard'|'turn'|'movies'|'social'|'chat'|'media'|'predictions';
+export type Route='study-link'|'accounts'|'leaderboard'|'turn'|'movies'|'social'|'chat'|'media'|'predictions';
 type Env=Record<string,string|undefined>;
 export interface AppOptions{
  env?:Env;
@@ -28,7 +30,7 @@ export interface AppOptions{
  mediaStore?:()=>Promise<MediaStore|null>;
 }
 // Same per-IP windows as the old Netlify rate-limit rules (requests per 60 s, per instance).
-export const RATE_LIMITS:Record<Route,number>={accounts:600,leaderboard:300,turn:20,movies:600,social:600,chat:600,media:1200,predictions:600};
+export const RATE_LIMITS:Record<Route,number>={'study-link':600,accounts:600,leaderboard:300,turn:20,movies:600,social:600,chat:600,media:1200,predictions:600};
 const ALLOW_HEADERS='Authorization, Content-Type, X-QCC-Sync';
 const ALLOW_METHODS='GET, POST, PUT, DELETE, OPTIONS';
 
@@ -62,7 +64,7 @@ export function routeOf(pathname:string):Route|'health'|'chat-purge'|'prediction
  const match=pathname.match(/^\/(?:api|\.netlify\/functions)\/([a-z-]+)\/?$/);
  const name=match?.[1];
  if(name==='movies'||name==='movies-search')return 'movies';
- if(name==='accounts'||name==='leaderboard'||name==='turn'||name==='social'||name==='chat'||name==='media'||name==='predictions'||name==='health'||name==='chat-purge'||name==='predictions-grants')return name;
+ if(name==='study-link'||name==='accounts'||name==='leaderboard'||name==='turn'||name==='social'||name==='chat'||name==='media'||name==='predictions'||name==='health'||name==='chat-purge'||name==='predictions-grants')return name;
  return undefined;
 }
 
@@ -92,7 +94,7 @@ export function createApp(options:AppOptions={}){
      const blobs=route==='social'||route==='chat'||route==='media'?await mediaStore():null;
      builtAt=now();builtWithoutStore=!blobs&&(route==='social'||route==='chat'||route==='media');
      const maxTotalBytes=Number(env.QCC_MEDIA_MAX_TOTAL_BYTES)||undefined;
-     const factory=route==='accounts'?createAccountsHandler:route==='leaderboard'?createLeaderboardHandler:route==='social'?(db:Database)=>createSocialHandler(db,blobs)
+     const factory=route==='study-link'?(db:Database)=>createStudyLinkHandler(db,{env,fetcher,now}):route==='accounts'?createAccountsHandler:route==='leaderboard'?createLeaderboardHandler:route==='social'?(db:Database)=>createSocialHandler(db,blobs)
       :route==='chat'?(db:Database)=>createChatHandler(db,blobs):route==='predictions'?(db:Database)=>createPredictionsHandler(db)
       :(db:Database)=>createMediaHandler(db,blobs,{maxTotalBytes});
      guarded=createGuardedHandler(database(),factory,{allowMissingMarker:false,context,env:env as NodeJS.ProcessEnv,now});
@@ -169,16 +171,33 @@ export function createApp(options:AppOptions={}){
   };
   if(!route)return finish(Response.json({error:'Not found.'},{status:404,headers:{'Cache-Control':'no-store'}}));
   if(!allowed)return finish(Response.json({error:'This request is not allowed.'},{status:403,headers:{'Cache-Control':'no-store'}}));
+  if(route==='study-link'&&env.QCC_WHETU_PAIRING!=='on')return finish(Response.json({error:'Not found.'},{status:404,headers:{'Cache-Control':'no-store'}}));
   if(request.method==='OPTIONS')return finish(new Response(null,{status:204,headers:{'Access-Control-Allow-Methods':ALLOW_METHODS,'Access-Control-Allow-Headers':ALLOW_HEADERS,'Access-Control-Max-Age':'86400','Cache-Control':'no-store'}}));
   if(route==='health')return finish(Response.json({ok:true},{headers:{'Cache-Control':'no-store'}}));
   if(route==='chat-purge')return finish(await chatPurge(request));
   if(route==='predictions-grants')return finish(await predictionsGrants(request));
   const ip=clientIp||'unknown';
-  if(limited(route+'|'+ip,RATE_LIMITS[route]))return finish(Response.json({error:'Too many requests. Try again in a minute.'},{status:429,headers:{'Retry-After':'60','Cache-Control':'no-store'}}));
+  const rejectBudget=()=>finish(Response.json({error:'Too many requests. Try again in a minute.'},{status:429,headers:{'Retry-After':'60','Cache-Control':'no-store'}}));
+  const verifyAction=route==='study-link'&&url.searchParams.get('action')==='verify';
+  // The private runtime has no end-user trusted IP. Do not pool its entire
+  // classroom behind Cloudflare egress under the former browser IP ceiling.
+  // Authenticate BEFORE choosing this lane; invalid secrets never get it.
+  const internalVerify=verifyAction&&request.method==='POST'&&url.searchParams.size===1&&studyServiceAuthorized(request,env);
+  if(internalVerify){
+   if(limited('study-verify:service',6000))return rejectBudget();
+   const browser=studyBrowserProof(request);
+   if(browser&&limited('study-verify:browser:'+digest(browser).toString('hex'),300))return rejectBudget();
+  }else if(limited(verifyAction?'study-verify:untrusted|'+ip:route+'|'+ip,verifyAction?120:RATE_LIMITS[route]))return rejectBudget();
   // The handlers reject any Origin that differs from the request URL. The allow-list check above already ran,
   // so pass an allowed cross-origin call through without its Origin header.
   let inner=request;
-  if(origin&&!sameOrigin){const headers=new Headers(request.headers);headers.delete('origin');inner=new Request(request,{headers});}
+  if(origin&&!sameOrigin&&route!=='study-link'){const headers=new Headers(request.headers);headers.delete('origin');inner=new Request(request,{headers});}
+  if(route==='study-link'){
+   // Only the host adapter's authenticated clientIp may drive the durable budget.
+   const headers=new Headers(inner.headers);headers.delete('x-nf-client-connection-ip');
+   if(clientIp)headers.set('x-nf-client-connection-ip',clientIp);
+   inner=new Request(inner,{headers});
+  }
   return finish(await handler(route)(inner,ip));
  };
 }

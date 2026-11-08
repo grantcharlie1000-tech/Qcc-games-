@@ -10,9 +10,16 @@ export interface AccountStorage {
  read<T>(key:string,fallback:T):T;write(key:string,value:unknown):boolean;
  remove?(key:string):boolean;invalidate?(key:string):void;keys?():string[];subscribe?(listener:(key:string)=>void):()=>void;
 }
+export interface AccountIdentityPolicy {
+ /** Integrated workspaces must not outlive a local logout/account switch. */
+ strictIdentityChanges?:boolean;
+ /** Must resolve only after confirmed server-side integration context cleanup. */
+ beforeIdentityCommit?:(nextSession:Session|null)=>Promise<void>;
+}
+export const SAFE_IDENTITY_CHANGE_ERROR='Account change could not be verified. Your account and saves stay on this browser. Reconnect and try again.';
 export const SYNC_BATCH_MS=3*60*1000;
 export const SYNC_STALE_MS=3*60*1000;
-const endpoint=apiUrl('accounts'),sessionKey='accounts:session';
+const endpoint=apiUrl('accounts'),sessionKey='accounts:session',identityBarrierKey='accounts:identity-pending';
 interface SyncState {cursor:string;revisions:SaveRevisions;hashes:Record<string,string>;pending:string[];batchAt:number;attempt:number;retryAt:number;lastPull:number;blocked:boolean}
 const emptyState=():SyncState=>({cursor:'0',revisions:{},hashes:{},pending:[],batchAt:0,attempt:0,retryAt:0,lastPull:0,blocked:false});
 const hidden=()=>typeof document!=='undefined'&&document.hidden;
@@ -31,12 +38,15 @@ export class AccountsClient {
  private listeners=new Set<()=>void>();private muted=false;private epoch=0;private started=false;
  private timer:ReturnType<typeof setTimeout>|undefined;private unsubscribe:(()=>void)|undefined;
  private inFlight:Promise<void>|null=null;private flightEpoch=-1;private pullRequested=false;
+ private identityQuarantined=false;private externalIdentityFlight:Promise<void>|null=null;
  private knownToken:string|null;private state=emptyState();private loggingOut:Promise<void>|null=null;
- constructor(private storage:AccountStorage=store,private fetcher:typeof fetch=globalThis.fetch.bind(globalThis)){
-  this.knownToken=this.session()?.token??null;this.loadState();
+ constructor(private storage:AccountStorage=store,private fetcher:typeof fetch=globalThis.fetch.bind(globalThis),private identityPolicy:AccountIdentityPolicy={}){
+  this.identityQuarantined=identityPolicy.strictIdentityChanges===true;
+  this.knownToken=this.identityQuarantined?null:this.readSession()?.token??null;this.loadState();
   this.unsubscribe=storage.subscribe?.(key=>{if(!this.muted&&SAVE_KEYS.includes(key)&&this.session()){this.track(key);this.schedule();}});
  }
- session():Session|null {
+ session():Session|null {return this.identityQuarantined?null:this.readSession();}
+ private readSession():Session|null {
   const value=this.storage.read<Session|null>(sessionKey,null);
   return value&&validSessionToken(value.token)&&validUsername(value.username)?value:null;
  }
@@ -120,6 +130,7 @@ export class AccountsClient {
   return response;
  }
  async authenticate(action:'signup'|'login',username:string,password:string):Promise<void>{
+  await this.ready();
   if(!validUsername(username)||!validPassword(password))throw new Error('Use a username of 3–24 letters, digits, underscores, hyphens or dots, and a password of 8–128 characters.');
   const epoch=this.epoch;
   const response=await this.response(action,'POST',{username,password});
@@ -127,7 +138,10 @@ export class AccountsClient {
   let initial:SyncV2Response|undefined;
   if(action==='login')try{initial=readResult(await(await this.response('sync&cursor=0','GET',undefined,session.token)).json());}catch(error){void this.revoke(session.token).catch(()=>{});throw error;}
   if(epoch!==this.epoch){void this.revoke(session.token).catch(()=>{});throw new Error('Account changed. Please try again.');}
-  if(this.session())await this.logout();
+  try{
+   if(this.session()){await this.logout();if(this.session()||this.identityQuarantined)throw this.identityChangeFailed();}
+   const before=this.epoch;await this.prepareIdentityCommit(session);if(before!==this.epoch||this.readSession())throw this.identityChangeFailed();
+  }catch(error){void this.revoke(session.token).catch(()=>{});throw error;}
   this.beforeIdentityChange();this.epoch++;this.backup();const imported=action==='signup'?Object.fromEntries(Object.entries(this.collect()).filter(([key])=>!scoredGame(key.slice(key.indexOf(':')+1)))):{};
   const staged=this.staged(this.storage.read<Saves>('accounts:pending:'+session.username.toLowerCase(),{}));
   this.clear();this.storage.write(sessionKey,{token:session.token,username:session.username});this.knownToken=session.token;this.loadState();
@@ -147,9 +161,25 @@ export class AccountsClient {
   const unsent:Saves={};for(const [key,record] of Object.entries(this.collect()))if(fingerprint(key,record)!==this.state.hashes[key])unsent[key]=record;
   const key='accounts:pending:'+username.toLowerCase();if(Object.keys(unsent).length)this.storage.write(key,unsent);else this.remove(key);
  }
- private async revoke(token:string){
+ private identityChangeFailed():Error {
+  this.message=SAFE_IDENTITY_CHANGE_ERROR;this.emit();return new Error(SAFE_IDENTITY_CHANGE_ERROR);
+ }
+ private async prepareIdentityCommit(nextSession:Session|null):Promise<void> {
+  if(!this.identityPolicy.strictIdentityChanges)return;
+  try{
+   if(!this.identityPolicy.beforeIdentityCommit)throw new Error('Missing integration transition guard.');
+   await this.identityPolicy.beforeIdentityCommit(nextSession);
+  }catch{throw this.identityChangeFailed();}
+ }
+ private async revoke(token:string,confirmed=false){
   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token))),n=>n.toString(16).padStart(2,'0')).join('');
-  const queue=this.storage.read<string[]>('accounts:revocations',[]);this.storage.write('accounts:revocations',[...new Set([...queue,hash])]);await this.revocations();
+  const queue=this.storage.read<string[]>('accounts:revocations',[]);this.storage.write('accounts:revocations',[...new Set([...queue,hash])]);
+  if(!confirmed){await this.revocations();return;}
+  // Do not let an unrelated old queued request block this exact outgoing
+  // session. A 2xx fallback document or unverified body is not revocation proof.
+  const response=await this.response('logout','POST',{sessionHash:hash});
+  const result=await response.json();if(!result||result.ok!==true)throw new Error('Session revocation was not confirmed.');
+  this.storage.write('accounts:revocations',this.storage.read<string[]>('accounts:revocations',[]).filter(value=>value!==hash));
  }
  private async revocations(){
   for(const hash of this.storage.read<string[]>('accounts:revocations',[])){
@@ -163,11 +193,18 @@ export class AccountsClient {
   this.loggingOut=this.signOut().finally(()=>{this.loggingOut=null;});return this.loggingOut;
  }
  private async signOut():Promise<void>{
-  const epoch=this.epoch,session=this.session();if(!session){this.guest();return;}
+  await this.ready();
+  const epoch=this.epoch,session=this.session();if(!session){await this.prepareIdentityCommit(null);this.guest();return;}
   try{await this.flush(false,false);}catch{/* Durable pending progress is staged before clearing this identity. */}
   if(epoch!==this.epoch||this.session()?.token!==session.token)return;
+  if(this.identityPolicy.strictIdentityChanges){
+   await this.prepareIdentityCommit(null);
+   if(epoch!==this.epoch||this.session()?.token!==session.token)throw this.identityChangeFailed();
+   try{await this.revoke(session.token,true);}catch{throw this.identityChangeFailed();}
+   if(epoch!==this.epoch||this.session()?.token!==session.token)throw this.identityChangeFailed();
+  }
   this.beforeIdentityChange();this.stage(session.username);this.epoch++;clearTimeout(this.timer);this.clear();this.remove(sessionKey);this.knownToken=null;this.state=emptyState();this.restoreGuest();this.guest();this.message='';this.emit();
-  try{await this.revoke(session.token);}catch(error){this.message=error instanceof AccountRequestError&&error.status===507?error.message:'Logged out on this browser. Server sign-out will retry when online.';this.emit();}
+  if(!this.identityPolicy.strictIdentityChanges)try{await this.revoke(session.token);}catch(error){this.message=error instanceof AccountRequestError&&error.status===507?error.message:'Logged out on this browser. Server sign-out will retry when online.';this.emit();}
  }
  /** Manual calls pull too; scheduled/lifecycle callers explicitly request dirty-only work. */
  flush(keepalive=false,pull=true):Promise<void>{
@@ -250,16 +287,49 @@ export class AccountsClient {
    throw error;
   }
  }
- private online=()=>{if(hidden())return;void this.revocations().catch(()=>{});void this.flush(false,true).catch(()=>{});};
+ private beginExternalIdentityChange(token:string|null):void {
+  const previous=this.knownToken,epoch=++this.epoch;
+  this.identityQuarantined=true;this.storage.write(identityBarrierKey,true);
+  this.beforeIdentityChange();this.pullRequested=false;clearTimeout(this.timer);this.state=emptyState();this.emit();
+  const flight=(async()=>{
+   try{
+    await this.prepareIdentityCommit(this.readSession());
+    if(previous)await this.revoke(previous,true);
+    if(epoch!==this.epoch)return;
+    if((this.readSession()?.token??null)!==token){this.beginExternalIdentityChange(this.readSession()?.token??null);return;}
+    this.remove(identityBarrierKey);this.identityQuarantined=false;this.knownToken=token;this.loadState();this.message='';this.emit();
+    if(token&&!hidden())void this.flush(false,true).catch(()=>{});
+   }catch{if(epoch===this.epoch)this.identityChangeFailed();}
+  })();
+  this.externalIdentityFlight=flight;
+  void flight.then(()=>{if(this.externalIdentityFlight===flight)this.externalIdentityFlight=null;});
+ }
+ /** Startup always reconciles with the server, even if local barrier storage failed. */
+ async ready():Promise<void> {
+  if(!this.identityPolicy.strictIdentityChanges||!this.identityQuarantined)return;
+  if(!this.externalIdentityFlight)this.beginExternalIdentityChange(this.readSession()?.token??null);
+  const flight=this.externalIdentityFlight;await flight;
+  if(this.identityQuarantined){
+   if(this.externalIdentityFlight&&this.externalIdentityFlight!==flight){await this.ready();return;}
+   throw this.identityChangeFailed();
+  }
+ }
+ private online=()=>{
+  if(hidden())return;
+  if(this.identityQuarantined){void this.ready().catch(()=>{});return;}
+  void this.revocations().catch(()=>{});void this.flush(false,true).catch(()=>{});
+ };
  private pagehide=()=>{queueMicrotask(()=>void this.flush(true,false).catch(()=>{}));};
  private storageChanged=(event:StorageEvent)=>{
   if(event.key?.startsWith('pocket-arcade:v1:')){const key=event.key.slice('pocket-arcade:v1:'.length);if(SAVE_KEYS.includes(key)||key.startsWith('updated:')){this.storage.invalidate?.(key);if(this.session()){this.track();this.schedule();}return;}}
   if(event.key!==`pocket-arcade:v1:${sessionKey}`&&event.key!==null)return;
   for(const key of [sessionKey,...SAVE_KEYS,...SAVE_KEYS.map(k=>'updated:'+k),'corn-clicker:backups','corn-clicker:lock',...(this.storage.keys?.()??[]).filter(k=>k.startsWith('leaderboard:cache:')||k.includes(':account:'))])this.storage.invalidate?.(key);
-  const token=this.session()?.token??null;if(token===this.knownToken)return;
+  const token=this.readSession()?.token??null;if(token===this.knownToken&&!this.identityQuarantined)return;
+  if(this.identityPolicy.strictIdentityChanges){this.beginExternalIdentityChange(token);return;}
   this.beforeIdentityChange();this.knownToken=token;this.epoch++;this.pullRequested=false;this.loadState();clearTimeout(this.timer);this.emit();if(token&&!hidden())void this.flush(false,true).catch(()=>{});
  };
  private visibility=()=>{
+  if(!hidden()&&this.identityQuarantined){this.online();return;}
   clearTimeout(this.timer);if(hidden())this.pagehide();
   else if(Date.now()-this.state.lastPull>SYNC_STALE_MS)void this.flush(false,true).catch(()=>{});else this.schedule();
  };

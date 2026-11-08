@@ -3,6 +3,7 @@
 import {createServer} from 'node:http';
 import {createApp} from './app';
 import {poolFromEnv} from './db';
+import {nodeResponseHeaders} from './response-headers';
 
 const app=createApp({database:()=>poolFromEnv()});
 const trustProxy=/^(1|true|yes)$/i.test(process.env.QCC_TRUST_PROXY??'');
@@ -17,7 +18,7 @@ const server=createServer(async(req,res)=>{
   const request=new Request(url,{method:req.method,headers,body:hasBody?Buffer.concat(chunks):undefined});
   const forwarded=trustProxy?String(req.headers['x-forwarded-for']??'').split(',')[0].trim():'';
   const response=await app(request,forwarded||req.socket.remoteAddress||'');
-  res.writeHead(response.status,Object.fromEntries(response.headers));
+  res.writeHead(response.status,nodeResponseHeaders(response));
   res.end(Buffer.from(await response.arrayBuffer()));
  }catch{res.writeHead(500,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end('{"error":"Server error."}');}
 });

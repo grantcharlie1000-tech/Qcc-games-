@@ -1,0 +1,96 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/study/pairing-backend.test.ts tests/study/pairing-store.test.ts
+
+
+ RUN  v3.2.7 /workspace/scratch/ad657793fb20/qcc-whetu-backend-integration
+
+ ❯ tests/study/pairing-backend.test.ts (10 tests | 1 failed) 3285ms
+   ✓ real QCC auth -> intent -> verified runtime boundary -> durable link/context -> gated API -> cancellation 234ms
+   ✓ currently selected QCC bearer must match start even while original session is still valid 185ms
+   ✓ acknowledged outgoing-session revocation invalidates Whetū context without any cancel request 233ms
+   ✓ real account switching revokes the old workspace before publishing the new local identity 211ms
+   ✓ server selection rejects old in-flight confirms after a switch even while original bearer remains valid 165ms
+   ✓ view-scoped cancellation preserves a newer context created by another tab and never clears cookies 121ms
+   ✓ a new browser selection invalidates old contexts without waiting for old session logout or expiry 175ms
+   ✓ status rejects a different bearer session for the same account until browser selection acknowledges it 204ms
+   ✓ status renews only an existing consented pair using live older sessions, without relinking 130ms
+   × status reuses an already valid context instead of writing on every poll 128ms
+     → expected [ Array(1) ] to deeply equal []
+ ❯ tests/study/pairing-store.test.ts (27 tests | 1 failed) 3794ms
+   ✓ persists hash-only intent and immutable review binding 98ms
+   ✓ limits per-account intent starts atomically without writing extra intent 85ms
+   ✓ commits link and context once; replay cannot issue a second context 71ms
+   ✓ cancellation, expired intent, wrong challenge and wrong subject never commit 80ms
+   ✓ rechecks QCC session revocation, expiry, and authentication age inside commit 74ms
+   ✓ rejects stale/future Whetū proof and excessive context lifetime using DB time, not caller now 83ms
+   ✓ one-to-one conflicts preserve existing links and game saves 119ms
+   ✓ context requires exact Whetū identity, live QCC session and active mapping; revoke preserves link 83ms
+   ✓ expired context and revoked QCC sessions cannot access linked workspace 65ms
+   ✓ migration is locally idempotent; public and unprivileged roles cannot read identity tables 56ms
+   ✓ context write failure rolls back link insertion and intent consumption together 58ms
+   ✓ cancelling an already consumed transaction preserves its immutable link 61ms
+   ✓ RLS denies identity rows even if a client role is accidentally granted SELECT 59ms
+   ✓ authentication expiring during link insertion rolls back all pairing writes 174ms
+   ✓ fresh explicit proofs can renew context for the exact immutable pair without rewriting link time 84ms
+   ✓ another QCC account cannot claim an already-bound Whetū subject 69ms
+   ✓ same browser selection is idempotent and preserves active context across reload 68ms
+   ✓ server browser selection rejects both stale intents and old context without client markers or session deletion 91ms
+   ✓ same-account new session changes epoch and rejects same-user Whetū session replay 81ms
+   ✓ cancel is browser scoped and never deletes an existing context 97ms
+   ✓ invalid session selection cannot retarget or invalidate the current browser 53ms
+   ✓ queued selection then stale confirm cannot recreate an old context (single-connection local engine) 56ms
+   ✓ returning live old-auth session renews consented pair without rewriting link or existing context 57ms
+   ✓ renewal requires exact live browser selection and existing immutable mapping 72ms
+   ✓ renewal binds the currently verified Whetū session, not an older session for the same user 78ms
+   ✓ session expiration during renewal insertion rolls back the new context only 177ms
+   × renewal prunes expired contexts only for its own browser and preserves active contexts 60ms
+     → expected [ …(3) ] to deeply equal [ …(2) ]
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/study/pairing-backend.test.ts > status reuses an already valid context instead of writing on every poll
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "__Host-nceastudy_context=63124c8708000d4b0af8f85b7951b39fc8dbb37944522a4723915061580068b0; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=900",
++ ]
+
+ ❯ tests/study/pairing-backend.test.ts:160:160
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/study/pairing-store.test.ts > renewal prunes expired contexts only for its own browser and preserves active contexts
+AssertionError: expected [ …(3) ] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+  [
+    "3bc45646fd4c1ac1dd6ce02e00bbe2a9106bb0cbf3adec47e39e41288b68c0d6",
++   "5525d37942110f375abef14ad50214f51e3ce4af6c25c870043c33c9f0a77b4c",
+    "89886dd2af6471984e8e7ce341741b79350f9821fd1e7a9e6c552fb1b8a50a44",
+  ]
+
+ ❯ tests/study/pairing-store.test.ts:217:119
+    215|  await pool.query('UPDATE qcc_study_contexts SET expires_at=0 WHERE di…
+    216|  const next=renewal(input);expect(await store.renewContext(next)).toBe…
+    217|  expect((await pool.query('SELECT digest FROM qcc_study_contexts ORDER…
+       |                                                                                                                       ^
+    218| });
+    219| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 35 passed (37)
+   Start at  13:36:34
+   Duration  4.27s (transform 315ms, setup 0ms, collect 440ms, tests 7.08s, environment 0ms, prepare 162ms)
+

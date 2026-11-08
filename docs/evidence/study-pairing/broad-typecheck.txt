@@ -1,0 +1,9 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pocket-offline-arcade@1.0.0 check
+> tsc --noEmit
+
+tests/social/profile-media.spec.ts(3,25): error TS2307: Cannot find module '@netlify/database-dev' or its corresponding type declarations.
+tests/social/profile-media.spec.ts(4,27): error TS2307: Cannot find module '@netlify/database' or its corresponding type declarations.
+tests/social/screenshot-fixes.spec.ts(4,25): error TS2307: Cannot find module '@netlify/database-dev' or its corresponding type declarations.
+tests/social/screenshot-fixes.spec.ts(5,27): error TS2307: Cannot find module '@netlify/database' or its corresponding type declarations.
