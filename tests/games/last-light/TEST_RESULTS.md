@@ -15,7 +15,7 @@ Started `npm run dev:online` with its local Postgres-compatible database and all
 
 [Desktop entry](../../../docs/evidence/last-light/desktop-entry.png) · [Desktop play](../../../docs/evidence/last-light/desktop-play.png) · [Phone play](../../../docs/evidence/last-light/phone-play.png) · [Landscape Frostline](../../../docs/evidence/last-light/landscape-play.png)
 
-All database checks used disposable/local data. Hosted deployment and the included `20261108223000_last_light_score.sql` migration have not been applied remotely. Route verification covers adjacent real physics trajectories; it does not claim a human playthrough of all 40 stages.
+All database checks used disposable/local data. At the time of the original implementation checks, hosted deployment and the included migration had not been applied remotely. See the release follow-up below. Route verification covers adjacent real physics trajectories; it does not claim a human playthrough of all 40 stages.
 
 ## Courier animation follow-up
 
@@ -34,3 +34,16 @@ Composed the original “A Light Left On”: 32 bars at 108 BPM, 71.111111 secon
 The renderer measured peak 0.86, RMS 0.12565 and loop boundary difference 0.000457. Independent Chromium verification decoded the MP3 to exactly 71.111111 seconds with boundary difference 0.000761; pause/blur preserved position, and leaving stopped sources and closed the context without browser errors. The source score/asset test checks all 32 bars, timing, pitch bounds and measured audio. Native browser tests cover opt-in behavior, real decoding/looping, pause/resume, mute, new-run rewind, exit cleanup, and an audio download finishing while paused.
 
 Soundtrack verification passed: production build; 54 score/physics tests; all 8 Last Light browser tests. The built MP3 matches the source asset byte for byte.
+
+## Production integration follow-up
+
+The release preserves the latest production login/Study safeguards and Drift Club's public reference 26. Last Light is reference 27, bringing the library to 27 games.
+
+- Full integrated unit run: **5,033 passed, 7 skipped** across 253 passing files and one skipped concurrency file.
+- Integrated production build: passed.
+- Chromium: **14 passed**, covering Last Light gameplay, courier animation, original music, Christmas music policy and existing Drift Club behavior.
+- Backend release checks: **35 passed**, including signed-in rankings, best-score preservation, cloud saves, marker mismatch, repeat migration and preservation of restricted predecessor constraints.
+- Independent release integration review: no outstanding findings.
+- [API release #158](https://github.com/grantcharlie1000-tech/Qcc-games-/pull/158) deployed revision `5f154ec30699e3c48aef7e372d07efb650328205`. Its production build applied only `20261108223000_last_light_score`; the live Pages proxy returned HTTP 200 for Last Light and existing Snake boards, and HTTP 401 for an unauthenticated score submission. Vercel reported no runtime errors after deployment.
+
+Frontend release and publication are tracked in [production release #159](https://github.com/grantcharlie1000-tech/Qcc-games-/pull/159).
