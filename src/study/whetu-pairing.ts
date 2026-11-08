@@ -24,9 +24,11 @@ export class StudyPairingClient implements StudyPairing {
  }
  private async raw(action:string,body:unknown,token?:string|null):Promise<Record<string,unknown>>{
   try{
+   // Keep a real Origin on same-origin POSTs under the page's no-referrer policy.
+   // Only our origin (never its path) may be sent as Referer to this fixed host.
    const response=await this.fetcher(BASE+action,{
     method:'POST',headers:{Accept:'application/json','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
-    body:JSON.stringify(body),credentials:'same-origin',mode:'same-origin',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(10_000),...(action==='cancel'?{keepalive:true}:{}),
+    body:JSON.stringify(body),credentials:'same-origin',mode:'same-origin',referrerPolicy:'strict-origin',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(10_000),...(action==='cancel'?{keepalive:true}:{}),
    });
    if(!response.ok)throw new StudyPairingError(UNAVAILABLE,response.status);
    const text=await response.text();if(text.length>8192)throw new StudyPairingError(UNAVAILABLE);
