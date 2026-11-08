@@ -54,9 +54,15 @@ test('every Christmas CSS override is scoped to the festive attribute, so turnin
   }
 });
 
-test('Crossy Road, Blockcraft and Quad Clash do not use the shared festive layer',()=>{
+test('Crossy Road, Blockcraft and Quad Clash keep their original visuals',()=>{
   for(const id of ['crossy-road','blockcraft','quad-clash']){
     const files=readdirSync(`src/games/${id}`,{recursive:true,encoding:'utf8'}).filter(f=>/\.(ts|css)$/.test(f));
-    for(const f of files){const text=readFileSync(`src/games/${id}/${f}`,'utf8');expect(text,`${id}/${f}`).not.toMatch(/festive|christmas\.css/);}
+    for(const f of files){
+      const text=readFileSync(`src/games/${id}/${f}`,'utf8');
+      expect(text,`${id}/${f}`).not.toMatch(/christmas\.css/);
+      // Minecraft's audio service yields background music to the app theme.
+      if(id==='blockcraft'&&f==='audio/sounds.ts')continue;
+      expect(text,`${id}/${f}`).not.toMatch(/festive/);
+    }
   }
 });

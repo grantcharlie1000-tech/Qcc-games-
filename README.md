@@ -32,6 +32,8 @@ Choose one of **20 NCEA study topics** on the first visit in a tab, then open th
 
 Use **Menu** on the glass island at the bottom for Study Mode, search, favourites, sound, motion and colour-blind settings. Sound starts muted. Games offer a shared back, pause, restart and rules toolbar, plus their own controls. Mouse and trackpad use the same pointer controls; suitable games also accept keyboard and touch input.
 
+With **Sound** and **Christmas theme** enabled, the original “Snowfall on the Square” Christmas waltz plays across the app. It pauses for Study Mode, video and background tabs, and resumes its place when you return. See [the score, playback policy and verification](docs/CHRISTMAS_MUSIC.md).
+
 Scores, settings, favourites and compact game snapshots stay in this browser's local storage. If storage is blocked or full, play continues in memory and the menu explains that progress cannot be retained. Signed-in accounts can sync supported game snapshots between devices. Open **Menu → Leaderboards** to view shared scores for the fifteen scored games. Log in to publish personal bests; account scores queue offline until the connection returns. Guest scores and runs stay local and are not automatically imported into public rankings. Globle retains its own statistics and has no score leaderboard; Pac-Man keeps a local best score only; Corn Clicker keeps its own farm save, backups and statistics, and ranks lifetime kernels harvested on the leaderboards. Restart starts a new run; leaving a game saves its current state. A hidden tab pauses real-time play.
 
 The app loads from the network. The recovery worker remains at the previous `sw.js` URL so returning browsers can remove their old worker and caches. App startup also unregisters existing workers and deletes only CacheStorage caches whose names start with `pocket-arcade`. Unrelated caches, saved games, preferences, accounts and cookies remain in their existing storage.
@@ -88,6 +90,10 @@ Tetris is a falling-piece puzzle: arrange seven kinds of quads, clear lines, and
 
 Femboy Frosthop is an original pastel Christmas obby in Three.js: 30 fixed stages across six zones, with gift hops, beams, sweeper arms, lifts and trays, conveyor belts, ice, crumbling cookies, spring pads and snowballs. A fully clothed androgynous avatar wears oversized jumpers, striped socks over tights and cat-ear hats; each cleared zone unlocks an outfit. Stages end on checkpoint pads and every stage has one optional star. The leaderboard ranks time to completion: every run from the stage 1 start line to the finish is timed (including the first campaign run), stored as `2147483647 − milliseconds` so faster runs rank higher; only unpaused, unassisted complete runs are submitted. A Time Trial for quick retries opens after the first finish. See [its spec](src/games/femboy-obby/SPEC.md) and [test results](tests/games/femboy-obby/TEST_RESULTS.md).
 
+
+## Last Light
+
+Last Light is an original pixel-art 2D platformer with 40 linear stages across five worlds. Run, wall jump and dash through moving platforms, collapsing floors, springs, belts, ice, keys, saws and timed lasers. Keyboard and simultaneous touch controls share the same simulation; checkpoint progress saves locally and through QCC accounts. The shared leaderboard ranks cleared stages first, then sparks, speed and fewer deaths. See [its spec](src/games/last-light/SPEC.md) and [verification](tests/games/last-light/TEST_RESULTS.md). The included `20261108223000_last_light_score.sql` migration enables its board through the normal deployment process.
 
 ## QCC Results Desk
 

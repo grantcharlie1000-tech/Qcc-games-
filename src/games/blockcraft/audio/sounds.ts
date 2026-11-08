@@ -26,6 +26,7 @@
 //    (death screen, loading).
 // Recipes carry vanilla's event volume and pitch as defaults; as in vanilla playSound(sound, volume, pitch), a
 // caller's volume or pitch replaces them (resolveLevels). Unknown names are ignored, nothing here ever throws.
+import {christmas} from '../../../festive/festive';
 import type {Game,SoundName,SoundService,System,Vec3} from '../engine/contracts';
 import {composePiece,caveSpec,moodSoundPosition,moodStep,underwaterLoopSpec,underwaterSpec,MUSIC_FIRST_DELAY,MUSIC_GAP,
   UNDERWATER_CHANCES,UNDERWATER_FADE_TICKS,type Piece,type UnderwaterSound} from './ambience';
@@ -518,6 +519,8 @@ export class SoundEngine implements SoundService{
   // ---- Music -----------------------------------------------------------------------------------
   private delay([min,max]:readonly [number,number]){return Math.ceil(min+this.rand()*(max-min))+1;}
   private musicTick(){
+    // The app's seasonal score owns background music; keep ambience and effects.
+    if(christmas()){if(this.music){this.removeVoice(this.music.voice,.08);this.music=null;}this.musicAway=-1;return;}
     const c=this.ctx;
     if(!c)return;
     this.sync();
