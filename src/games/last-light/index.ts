@@ -1,3 +1,5 @@
+import {artReady} from './generated-art';
+import {clearTerrainCache} from './terrain';
 import type {GameModule,GameContext,GameInstance} from '../../core/types';
 import {LEVELS,LEVEL_COUNT,WORLDS} from './levels';
 import {createRun,step,nextStage,respawn,serialize,restore,formatTime,nearby,checkpointsFor,checkpointIndexFor,escapeLead,STEP,type Input} from './model';
@@ -184,6 +186,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  const resize=new ResizeObserver(()=>{
   const r=canvas.getBoundingClientRect();if(r.width&&r.height){scene.resize(r.width,r.height);paint();}
  });resize.observe(root);resize.observe(dock);resize.observe(canvas);
+ artReady.then(()=>{if(!disposed){clearTerrainCache();paint();}});
  report();show('intro');
  return {
   openMenu(){if(!overlay){show('menu');save();}else show(run.phase==='cleared'?'clear':run.phase==='complete'?'complete':'menu');},

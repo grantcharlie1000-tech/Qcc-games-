@@ -5,9 +5,9 @@ type Cast = 'gardener'|'worker'|'elder'|'keeper'|'child';
 interface Palette {cloth:string;light:string;shade:string;skin:string;cheek:string;hair:string;hairLight:string;accent:string}
 const INK='#15232c', LEATHER='#654e43', SOLE='#b3a48a';
 const PALETTES:Record<Cast,Palette>={
- gardener:{cloth:'#79866a',light:'#b0b28a',shade:'#485f51',skin:'#dba986',cheek:'#b57e67',hair:'#655047',hairLight:'#92725c',accent:'#d8c298'},
+ gardener:{cloth:'#6a7750',light:'#a1aa74',shade:'#3c5141',skin:'#dba986',cheek:'#b57e67',hair:'#655047',hairLight:'#92725c',accent:'#d8c298'},
  worker:{cloth:'#667f87',light:'#9eb2b0',shade:'#3c555f',skin:'#be8d70',cheek:'#95624f',hair:'#403e3c',hairLight:'#6b6051',accent:'#c7a16f'},
- elder:{cloth:'#7e7186',light:'#bba5b2',shade:'#4f4c60',skin:'#e2b999',cheek:'#b78675',hair:'#b8b7ab',hairLight:'#e5ddc4',accent:'#c9b59b'},
+ elder:{cloth:'#947449',light:'#c6a572',shade:'#655243',skin:'#e2b999',cheek:'#b78675',hair:'#b8b7ab',hairLight:'#e5ddc4',accent:'#c9b59b'},
  keeper:{cloth:'#536d79',light:'#96aca6',shade:'#304853',skin:'#d9b291',cheek:'#aa7b69',hair:'#acb0a0',hairLight:'#e0ddc5',accent:'#b9986d'},
  child:{cloth:'#9b795b',light:'#c5a781',shade:'#64594c',skin:'#e6b996',cheek:'#bd8872',hair:'#634638',hairLight:'#a1764c',accent:'#c97769'},
 };
@@ -114,6 +114,17 @@ export function person(c:CanvasRenderingContext2D,x:number,y:number,t:number,col
   rect(c,LEATHER,-9,-17+bob,5,9);rect(c,'#c29d73',-8,-16+bob,4,3);rect(c,'#e2c28a',-7,-12+bob,1,1);
   bone(c,-5,-20+bob,4,-10+bob,2,LEATHER);rect(c,'#d9b588',2,-12+bob,2,2);
  }
+ // Large folds first, then sparse seam and wear clusters from the model sheet.
+ // These marks follow the garment rather than sprinkling noise over the silhouette.
+ rect(c,p.shade,-3,hem-6+bob,2,5);rect(c,p.light,-2,hem-5+bob,1,3);
+ rect(c,p.accent,-6,hem+bob,3,1);rect(c,p.light,3,hem-1+bob,2,1);
+ rect(c,'#d4bb8b',-4,shoulder+3+bob,1,1);rect(c,p.accent,1,shoulder+8+bob,1,1);
+ if(kind==='elder'){
+  // The reference's plum shawl drapes over an ochre work coat.
+  rect(c,'#4b3d48',-9,-27+bob,14,4);rect(c,'#8a6b70',-8,-27+bob,11,2);
+  rect(c,'#b4988d',-7,-27+bob,7,1);rect(c,'#6d545d',-8,-24+bob,5,6);
+  for(let i=0;i<4;i++)rect(c,'#b4988d',-8+i*2,-21-i+bob,1,2);
+ }
  face(c,p,kind,bob,blink);
  if(kind==='gardener'){
   rect(c,INK,-8,-36+bob,14,5);rect(c,'#b8a477',-7,-35+bob,12,4);rect(c,'#e0ca98',-5,-36+bob,8,2);
@@ -135,6 +146,7 @@ export function person(c:CanvasRenderingContext2D,x:number,y:number,t:number,col
  arm(c,p,6,shoulder+1+bob,9,shoulder+6+bob-gesture*2,handX,handY);
  if(kind==='elder'){
   rect(c,INK,11,handY,3,-handY);rect(c,'#a48a67',11,handY+1,1,-handY-1);rect(c,'#d2b58a',10,handY-1,3,1);rect(c,'#53545b',11,-2,3,2);
+  if(!moving){rect(c,INK,10,-9,10,9);rect(c,'#a58a59',11,-8,8,7);for(let i=0;i<4;i++)rect(c,i%2?'#d0b681':'#796749',11+i*2,-7,1,7);rect(c,'#cbb37b',11,-8,8,1);}
  }else if(kind==='gardener'){
   // Hand-held terracotta pot and a three-leaf seedling.
   rect(c,INK,handX-3,handY+2,8,7);rect(c,'#b07859',handX-2,handY+3,6,5);rect(c,'#e0a477',handX-2,handY+3,2,4);rect(c,'#d39b70',handX-3,handY+2,8,1);

@@ -24,5 +24,18 @@ test('district vistas have distinct silhouettes and parallax; depth fog leaves w
   const s=createRun();const fill=()=>{c.fillStyle='#203040';c.fillRect(0,0,640,360);};fill();const upper=hash(0,200),lower=hash(280,80);drawDepthFog(c,LEVELS[0],s,0,0,640,360,true);const fog={upper:hash(0,200)===upper,lower:hash(280,80)!==lower};
   const first=hash();s.clock=20;fill();drawDepthFog(c,LEVELS[0],s,0,0,640,360,true);const frozen=hash()===first;fill();const waterBefore=hash();drawDepthFog(c,LEVELS[2],s,0,0,640,360,false);return {vistas,paintings,portrait,fog,frozen,waterClear:hash()===waterBefore};
  });
- expect(result.paintings).toEqual([true,true,true]);expect(result.portrait).toEqual([true,true,true]);expect(new Set(result.vistas.map(v=>v.still)).size).toBe(5);for(const v of result.vistas){expect(v.still).not.toBe(v.moved);expect(v.unchanged).toBe(true);}expect(result.fog).toEqual({upper:true,lower:true});expect(result.frozen).toBe(true);expect(result.waterClear).toBe(true);
+ expect(result.paintings).toEqual([true,true,true]);expect(result.portrait).toEqual([true,true,true]);expect(new Set(result.vistas.map(v=>v.still)).size).toBe(5);for(const v of result.vistas){expect(v.still).not.toBe(v.moved);expect(v.unchanged).toBe(true);}expect(result.fog).toEqual({upper:true,lower:false});expect(result.frozen).toBe(true);expect(result.waterClear).toBe(true);
+});
+
+
+test('fog follows the world cutoff through camera movement and resizing',async({page})=>{
+ await page.goto('/#/game/last-light');
+ const result=await page.evaluate(async()=>{
+  const [{drawDepthFog,depthFogBounds},{LEVELS},{createRun}]=await Promise.all(['/src/games/last-light/world.ts','/src/games/last-light/levels.ts','/src/games/last-light/model.ts'].map(p=>import(p)));
+  const l=LEVELS[0],s=createRun(),bounds=depthFogBounds(l);
+  function sample(cy:number,height:number){const canvas=document.createElement('canvas');canvas.width=200;canvas.height=height;const c=canvas.getContext('2d')!;c.fillStyle='#203040';c.fillRect(0,0,200,height);c.save();c.translate(0,-cy);drawDepthFog(c,l,s,0,cy,200,height,true);c.restore();return {above:[...c.getImageData(100,bounds.start-3-cy,1,1).data],below:[...c.getImageData(100,bounds.start+60-cy,1,1).data]};}
+  const a=sample(bounds.start-130,240),b=sample(bounds.start-60,320);
+  return {a,b,cutoffBelowAllLandings:bounds.start>Math.max(...l.platforms.map((p:any)=>p.y+p.h))};
+ });
+ expect(result.a.above).toEqual(result.b.above);for(let i=0;i<4;i++)expect(Math.abs(result.a.below[i]-result.b.below[i])).toBeLessThanOrEqual(1);expect(result.a.above).toEqual([32,48,64,255]);expect(result.a.below).not.toEqual(result.a.above);expect(result.cutoffBelowAllLandings).toBe(true);
 });

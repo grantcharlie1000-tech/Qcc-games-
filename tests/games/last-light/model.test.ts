@@ -1,3 +1,4 @@
+import {DEATH_DURATION} from '../../../src/games/last-light/death';
 import {describe,it,expect} from 'vitest';
 import {LEVELS,LEVEL_COUNT} from '../../../src/games/last-light/levels';
 import {createRun,step,nextStage,respawn,serialize,restore,rankScore,platformAt,laserActive,PLAYER_H,type Run,type Input} from '../../../src/games/last-light/model';
@@ -50,7 +51,7 @@ describe('Last Light physics and campaign',()=>{
   const s=grounded(0);s.x=500;s.y=LEVELS[0].height+100;const impact={x:s.x,y:s.y};
   const event=step(s,idle);expect(event.death).toBe(true);expect(event.deathCause).toBe('fall');
   expect(event.deathPose?.x).toBe(impact.x);expect(event.deathPose!.y).toBeGreaterThanOrEqual(impact.y);
-  expect(s.x).toBe(LEVELS[0].spawn.x);expect(s.respawn).toBeCloseTo(.35);expect(s.deaths).toBe(1);
+  expect(s.x).toBe(LEVELS[0].spawn.x);expect(s.respawn).toBeCloseTo(DEATH_DURATION);expect(s.deaths).toBe(1);
  });
  it('leaves a single outgoing spike patch on short landing decks',()=>{
   for(const l of LEVELS)for(const p of l.platforms.filter(p=>p.w<=180)){
