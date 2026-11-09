@@ -1,0 +1,22 @@
+name: Verify Study authority integration
+on:
+  push:
+    branches:
+      - integration/study-authority-lastlight-20261109
+permissions:
+  contents: read
+jobs:
+  backend-study-authority:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Test Study authority, pairing, ingress and store
+        run: npm test -- --maxWorkers=1 tests/study/immutable-authority.test.ts tests/study/pairing-backend.test.ts tests/study/pairing-ingress.test.ts tests/study/pairing-store.test.ts
+      - run: npm run check:server
+      - run: npm run build:server

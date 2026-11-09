@@ -46,7 +46,7 @@ it('authenticated verification retains a 6000/minute per-application service cei
 const local=new LocalDB();let pool:Database&{end():Promise<void>};
 beforeAll(async()=>{pool=createLocalPool(await local.start());await local.applyMigrations('db/migrations');await pool.query("INSERT INTO qcc_environment(name) VALUES('development') ON CONFLICT(id) DO UPDATE SET name=excluded.name");},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});
-it('30 students can complete the actual six-call pairing flow behind a single NAT',async()=>{
+it('30 students can authenticate and complete pairing behind one NAT without anonymous selection authority',async()=>{
  const handle=createApp({env:{...env,WHETU_NCEASTUDY_RUNTIME_ORIGIN:'https://runtime.test',WHETU_SUPABASE_AUTH_COOKIE:'sb-project-auth-token'},database:()=>pool,fetcher:async(input,init)=>{
   const request=new Request(input,init),student=request.headers.get('cookie')?.match(/sb-project-auth-token=(\d+)/)?.[1];
   return Response.json({subject:'https://project.test#student-'+student,sessionId:String(student).padStart(8,'0')+'-1111-4111-8111-111111111111',label:'Student '+student,authenticatedAt:Date.now()-1000,ownershipVerified:true});
@@ -59,9 +59,13 @@ it('30 students can complete the actual six-call pairing flow behind a single NA
    for(const cookie of response.headers.getSetCookie()){const [pair]=cookie.split(';'),at=pair!.indexOf('=');cookies.set(pair!.slice(0,at),pair!.slice(at+1));}
    return response;
   };
-  expect((await call('select')).status).toBe(200);
-  const signup=await handle(new Request(api+'/api/accounts?action=signup',{method:'POST',headers:{Origin:site,'Content-Type':'application/json'},body:JSON.stringify({username:'Student_'+student,password:'synthetic classroom password'})}),ip);
+  const anonymous=await call('select');expect(anonymous.status).toBe(401);expect(anonymous.headers.getSetCookie()).toEqual([]);
+  const signup=await handle(new Request(api+'/api/accounts?action=signup',{method:'POST',headers:{Origin:site,'Content-Type':'application/json'},body:JSON.stringify({username:'Student_'+student,password:'synthetic classroom password'})}),ip,{studyAccountOrigin:site});
   expect(signup.status).toBe(201);const {token}=await signup.json();
+  // The trusted host adapter supplies provenance; successful auth, not selection, mints this proof.
+  const authority=signup.headers.getSetCookie();expect(authority).toHaveLength(1);
+  for(const cookie of authority){const [pair]=cookie.split(';'),at=pair!.indexOf('=');cookies.set(pair!.slice(0,at),pair!.slice(at+1));}
+  expect(cookies.get('__Host-nceastudy_browser')).toMatch(/^[a-f0-9]{64}$/);
   expect((await call('select',{},token)).status).toBe(200);
   expect((await call('start',{consent:true},token)).status).toBe(201);
   const review=await call('review',{},token);expect(review.status).toBe(200);const {challenge}=await review.json();

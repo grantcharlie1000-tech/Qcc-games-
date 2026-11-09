@@ -94,7 +94,7 @@ export function createApp(options:AppOptions={}){
      const blobs=route==='social'||route==='chat'||route==='media'?await mediaStore():null;
      builtAt=now();builtWithoutStore=!blobs&&(route==='social'||route==='chat'||route==='media');
      const maxTotalBytes=Number(env.QCC_MEDIA_MAX_TOTAL_BYTES)||undefined;
-     const factory=route==='study-link'?(db:Database)=>createStudyLinkHandler(db,{env,fetcher,now}):route==='accounts'?createAccountsHandler:route==='leaderboard'?createLeaderboardHandler:route==='social'?(db:Database)=>createSocialHandler(db,blobs)
+     const factory=route==='study-link'?(db:Database)=>createStudyLinkHandler(db,{env,fetcher,now}):route==='accounts'?(db:Database)=>createAccountsHandler(db,{trustedStudyProxy:request=>env.QCC_WHETU_PAIRING==='on'&&request.headers.get('x-qcc-internal-study-account-origin')===env.QCC_NCEASTUDY_ORIGIN}):route==='leaderboard'?createLeaderboardHandler:route==='social'?(db:Database)=>createSocialHandler(db,blobs)
       :route==='chat'?(db:Database)=>createChatHandler(db,blobs):route==='predictions'?(db:Database)=>createPredictionsHandler(db)
       :(db:Database)=>createMediaHandler(db,blobs,{maxTotalBytes});
      guarded=createGuardedHandler(database(),factory,{allowMissingMarker:false,context,env:env as NodeJS.ProcessEnv,now});
@@ -155,7 +155,15 @@ export function createApp(options:AppOptions={}){
   if(hits.size>10_000)for(const [k,list] of hits)if(!list.some(at=>t-at<60_000))hits.delete(k);
   return false;
  }
- return async function handle(request:Request,clientIp=''):Promise<Response>{
+ return async function handle(request:Request,clientIp='',trusted:{studyAccountOrigin?:string}={}):Promise<Response>{
+  const sanitized=new Headers(request.headers);
+  for(const name of [...sanitized.keys()])if(name.startsWith('x-qcc-internal-'))sanitized.delete(name);
+  sanitized.delete('x-qcc-public-origin');
+  if(env.QCC_WHETU_PAIRING==='on'&&env.QCC_NCEASTUDY_ORIGIN&&trusted.studyAccountOrigin===env.QCC_NCEASTUDY_ORIGIN){
+   const parsed=new URL(request.url);
+   if(routeOf(parsed.pathname)==='accounts')sanitized.set('x-qcc-internal-study-account-origin',trusted.studyAccountOrigin);
+  }
+  request=new Request(request,{headers:sanitized});
   const url=new URL(request.url),route=routeOf(url.pathname),origin=request.headers.get('origin');
   const sameOrigin=origin===url.origin,allowed=!origin||sameOrigin||originAllowed(origin,env.QCC_ALLOWED_ORIGINS);
   const cors:Record<string,string>=origin&&allowed&&!sameOrigin?{'Access-Control-Allow-Origin':origin,'Access-Control-Expose-Headers':'Retry-After'}:{};

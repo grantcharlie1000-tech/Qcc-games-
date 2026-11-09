@@ -26,20 +26,15 @@ export function createPostgresPairingStore(db:Database):PairingStore {
    return row?{digest:row.digest,epoch:String(row.epoch),qccAccountId:row.qcc_account_id,qccSessionHash:row.qcc_session_hash}:null;
   },
   async selectBrowser(input){
-   if(!digest(input.digest)||(input.qccAccountId===null)!==(input.qccSessionHash===null)||input.qccSessionHash!==null&&!digest(input.qccSessionHash))return null;
-   return transaction(async query=>{
-    await query('INSERT INTO qcc_study_browsers(digest,epoch) VALUES($1,0) ON CONFLICT DO NOTHING',[input.digest]);
-    const row=(await query('SELECT * FROM qcc_study_browsers WHERE digest=$1 FOR UPDATE',[input.digest])).rows[0];
-    if(input.qccSessionHash!==null){
-     const valid=await query('SELECT token_hash FROM account_sessions WHERE token_hash=$1 AND account_id=$2 AND expires_at>clock_timestamp() AND created_at<=clock_timestamp() FOR UPDATE',[input.qccSessionHash,input.qccAccountId]);
-     if(!valid.rows.length)return null;
-    }
-    if(row.qcc_account_id===input.qccAccountId&&row.qcc_session_hash===input.qccSessionHash)return {epoch:String(row.epoch),changed:false};
-    const updated=(await query('UPDATE qcc_study_browsers SET epoch=epoch+1,qcc_account_id=$2,qcc_session_hash=$3 WHERE digest=$1 RETURNING epoch',[input.digest,input.qccAccountId,input.qccSessionHash])).rows[0];
-    await query("UPDATE qcc_study_pairing_intents SET state='cancelled' WHERE browser_digest=$1 AND state='pending'",[input.digest]);
-    await query('DELETE FROM qcc_study_contexts WHERE browser_digest=$1',[input.digest]);
-    return {epoch:String(updated.epoch),changed:true};
-   });
+   // Browser authority is minted only by successful QCC authentication.
+   // Selection cannot create, rebind or clear another tab's authority.
+   if(!digest(input.digest)||!input.qccAccountId||!input.qccSessionHash||!digest(input.qccSessionHash))return null;
+   const row=(await db.query(`SELECT b.epoch FROM qcc_study_browsers b
+    JOIN account_sessions s ON s.account_id=b.qcc_account_id AND s.token_hash=b.qcc_session_hash
+    WHERE b.digest=$1 AND b.qcc_account_id=$2 AND b.qcc_session_hash=$3
+     AND s.expires_at>clock_timestamp() AND s.created_at<=clock_timestamp()`,
+    [input.digest,input.qccAccountId,input.qccSessionHash])).rows[0];
+   return row?{epoch:String(row.epoch),changed:false}:null;
   },
   async create(intent){
    return transaction(async query=>{

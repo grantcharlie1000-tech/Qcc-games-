@@ -17,8 +17,12 @@ beforeEach(async()=>{
  await pool.query('INSERT INTO arcade_players(id,name) VALUES($1,$2)',[player,'Student']);
  await pool.query("INSERT INTO accounts(id,username,password_hash,player_id) VALUES($1,'Student','scrypt$fixture',$2)",[accountId,player]);
  await pool.query("INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES($1,$2,now()+interval '1 day')",[sessionHash,accountId]);
- browserDigest=hash();browserEpoch=(await store.selectBrowser({digest:browserDigest,qccAccountId:accountId,qccSessionHash:sessionHash,now:Date.now()}))!.epoch;
+ browserDigest=hash();browserEpoch=await mintBrowser(browserDigest);
 });
+// Fixture equivalent of the row minted only by successful QCC authentication.
+async function mintBrowser(digest:string,account=accountId,session=sessionHash){
+ await pool.query('INSERT INTO qcc_study_browsers(digest,epoch,qcc_account_id,qcc_session_hash) VALUES($1,0,$2,$3)',[digest,account,session]);return '0';
+}
 function intent():PairingIntent {const now=Date.now();return {digest:hash(),browserDigest,browserEpoch,scope:'qcc:whetu:link:v1',returnPath:'/nceastudy',qccAccountId:accountId,qccSessionHash:sessionHash,qccConsentedAt:now,expiresAt:now+300000,state:'pending'};}
 async function reviewed(subject='project:user') {
  const i=intent();expect(await store.create(i)).toBe('created');const challengeDigest=hash();
@@ -120,7 +124,7 @@ it('fresh explicit proofs can renew context for the exact immutable pair without
 it('another QCC account cannot claim an already-bound Whetū subject',async()=>{
  const a=await reviewed();expect(await store.commit(a)).toBe('linked');
  const player=hash();accountId=randomUUID();sessionHash=hash();await pool.query("INSERT INTO arcade_players(id,name) VALUES($1,'Second')",[player]);await pool.query("INSERT INTO accounts(id,username,password_hash,player_id) VALUES($1,'Second','scrypt$fixture',$2)",[accountId,player]);await pool.query("INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES($1,$2,now()+interval '1 day')",[sessionHash,accountId]);
- browserEpoch=(await store.selectBrowser({digest:browserDigest,qccAccountId:accountId,qccSessionHash:sessionHash,now:Date.now()}))!.epoch;
+ browserDigest=hash();browserEpoch=await mintBrowser(browserDigest);
  const b=await reviewed();expect(await store.commit(b)).toBe('conflict');expect((await pool.query('SELECT * FROM qcc_study_links')).rows).toHaveLength(1);expect((await store.read(b.digest))?.state).toBe('pending');
 });
 it('same browser selection is idempotent and preserves active context across reload',async()=>{
@@ -130,32 +134,35 @@ it('same browser selection is idempotent and preserves active context across rel
  expect(await reloaded.getBrowser(browserDigest)).toEqual({digest:browserDigest,epoch:browserEpoch,qccAccountId:accountId,qccSessionHash:sessionHash});
  expect(await reloaded.verifyContext({...input,digest:input.contextDigest})).not.toBeNull();
 });
-it('server browser selection rejects both stale intents and old context without client markers or session deletion',async()=>{
+it('selection cannot clear immutable authority, cancel pending intents or delete active contexts',async()=>{
  const active=await reviewed();expect(await store.commit(active)).toBe('linked');
- const [first,second]=await Promise.all([reviewed(),reviewed()]);
- const switched=await store.selectBrowser({digest:browserDigest,qccAccountId:null,qccSessionHash:null,now:0});
- expect(switched).toEqual({epoch:String(BigInt(browserEpoch)+1n),changed:true});
+ const pending=await reviewed(),before=await store.getBrowser(browserDigest);
+ expect(await store.selectBrowser({digest:browserDigest,qccAccountId:null,qccSessionHash:null,now:0})).toBeNull();
+ expect(await store.getBrowser(browserDigest)).toEqual(before);
  expect((await pool.query('SELECT * FROM account_sessions')).rows).toHaveLength(1);
- const reloaded=createPostgresPairingStore(pool);
- expect(await reloaded.commit(first)).toBe('invalid');expect(await reloaded.commit(second)).toBe('invalid');
- expect(await reloaded.verifyContext({...active,digest:active.contextDigest})).toBeNull();
- expect(await reloaded.create(intent())).toBe('invalid');
- expect((await store.read(first.digest))?.state).toBe('cancelled');
+ expect((await store.read(pending.digest))?.state).toBe('pending');
+ expect(await store.verifyContext({...active,digest:active.contextDigest})).not.toBeNull();
+ expect(await store.commit(pending)).toBe('linked');
 });
-it('same-account new session changes epoch and rejects same-user Whetū session replay',async()=>{
+it('new authentication needs fresh authority; selection cannot rebind an old proof or replay Whetū sessions',async()=>{
  const input=await reviewed();
  expect(await store.review({...input,whetuSessionId:'different-session'})).toBe(false);
  expect(await store.commit({...input,whetuSessionId:'different-session'})).toBe('invalid');
  expect(await store.commit(input)).toBe('linked');
  expect(await store.verifyContext({...input,digest:input.contextDigest,whetuSessionId:'different-session'})).toBeNull();
  const next=hash();await pool.query("INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES($1,$2,now()+interval '1 day')",[next,accountId]);
- expect(await store.selectBrowser({digest:browserDigest,qccAccountId:accountId,qccSessionHash:next,now:0})).toEqual({epoch:String(BigInt(browserEpoch)+1n),changed:true});
+ expect(await store.selectBrowser({digest:browserDigest,qccAccountId:accountId,qccSessionHash:next,now:0})).toBeNull();
+ expect(await store.verifyContext({...input,digest:input.contextDigest})).not.toBeNull();
+ const fresh=hash();await mintBrowser(fresh,accountId,next);
+ expect(await store.selectBrowser({digest:fresh,qccAccountId:accountId,qccSessionHash:next,now:0})).toEqual({epoch:'0',changed:false});
+ expect(await store.verifyContext({...input,digest:input.contextDigest,browserDigest:fresh})).toBeNull();
+ await pool.query('DELETE FROM account_sessions WHERE token_hash=$1',[sessionHash]);
  expect(await store.verifyContext({...input,digest:input.contextDigest})).toBeNull();
 });
 it('cancel is browser scoped and never deletes an existing context',async()=>{
  const active=await reviewed();expect(await store.commit(active)).toBe('linked');
  const pending=await reviewed();const other=hash();
- await store.selectBrowser({digest:other,qccAccountId:accountId,qccSessionHash:sessionHash,now:0});
+ await mintBrowser(other);
  await store.cancel(pending.digest,other);expect((await store.read(pending.digest))?.state).toBe('pending');
  await store.cancel(pending.digest,browserDigest);expect((await store.read(pending.digest))?.state).toBe('cancelled');
  await store.cancel(active.digest,browserDigest);
@@ -168,12 +175,17 @@ it('invalid session selection cannot retarget or invalidate the current browser'
  expect((await store.getBrowser(browserDigest))?.epoch).toBe(browserEpoch);
  expect(await store.verifyContext({...active,digest:active.contextDigest})).not.toBeNull();
 });
-it('queued selection then stale confirm cannot recreate an old context (single-connection local engine)',async()=>{
+it('queued unauthenticated selection cannot cancel another tab’s valid confirm',async()=>{
  const input=await reviewed();
  const selecting=store.selectBrowser({digest:browserDigest,qccAccountId:null,qccSessionHash:null,now:0});
  const confirming=store.commit(input);
- expect(await selecting).toMatchObject({changed:true});expect(await confirming).toBe('invalid');
- expect((await pool.query('SELECT * FROM qcc_study_contexts')).rows).toEqual([]);
+ expect(await selecting).toBeNull();expect(await confirming).toBe('linked');
+ expect((await pool.query('SELECT * FROM qcc_study_contexts')).rows).toHaveLength(1);
+});
+it('selection cannot create authority for even a live session',async()=>{
+ const unknown=hash();
+ expect(await store.selectBrowser({digest:unknown,qccAccountId:accountId,qccSessionHash:sessionHash,now:0})).toBeNull();
+ expect(await store.getBrowser(unknown)).toBeNull();
 });
 function renewal(input:Awaited<ReturnType<typeof reviewed>>) {
  return {...input,qccAccountId:accountId,qccSessionHash:sessionHash,contextDigest:hash(),contextExpiresAt:Date.now()+900000};
@@ -213,8 +225,8 @@ it('renewal prunes expired contexts only for its own browser and preserves activ
  const input=await reviewed();expect(await store.commit(input)).toBe('linked');
  const keep=renewal(input);expect(await store.renewContext(keep)).toBe(true);
  await pool.query('UPDATE qcc_study_contexts SET expires_at=0 WHERE digest=$1',[input.contextDigest]);
- const otherBrowser=hash(),otherContext=hash();const selected=await store.selectBrowser({digest:otherBrowser,qccAccountId:accountId,qccSessionHash:sessionHash,now:0});
- await pool.query('INSERT INTO qcc_study_contexts(digest,qcc_account_id,qcc_session_hash,whetu_subject,expires_at,browser_digest,browser_epoch,whetu_session_id) VALUES($1,$2,$3,$4,0,$5,$6,$7)',[otherContext,accountId,sessionHash,input.whetuSubject,otherBrowser,selected!.epoch,input.whetuSessionId]);
+ const otherBrowser=hash(),otherContext=hash();const otherEpoch=await mintBrowser(otherBrowser);
+ await pool.query('INSERT INTO qcc_study_contexts(digest,qcc_account_id,qcc_session_hash,whetu_subject,expires_at,browser_digest,browser_epoch,whetu_session_id) VALUES($1,$2,$3,$4,0,$5,$6,$7)',[otherContext,accountId,sessionHash,input.whetuSubject,otherBrowser,otherEpoch,input.whetuSessionId]);
  const next=renewal(input);expect(await store.renewContext(next)).toBe(true);
  expect((await pool.query('SELECT digest FROM qcc_study_contexts ORDER BY digest')).rows.map(row=>row.digest).sort()).toEqual([keep.contextDigest,next.contextDigest,otherContext].sort());
 });
