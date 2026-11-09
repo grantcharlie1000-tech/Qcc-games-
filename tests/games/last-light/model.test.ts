@@ -46,6 +46,18 @@ describe('Last Light physics and campaign',()=>{
   s.x=spark.x-8;s.y=spark.y-12;step(s,idle);expect(s.sparks).toBe(1);step(s,idle);expect(s.sparks).toBe(1);expect(s.memories).toEqual([24]);
   s.x=l.exit.x;s.y=l.exit.y+25;s.vx=0;s.vy=0;expect(step(s,idle).clear).toBe(true);expect(s.phase).toBe('cleared');
  });
+ it('retains the impact pose for a visible death before the checkpoint rekindles',()=>{
+  const s=grounded(0);s.x=500;s.y=LEVELS[0].height+100;const impact={x:s.x,y:s.y};
+  const event=step(s,idle);expect(event.death).toBe(true);expect(event.deathCause).toBe('fall');
+  expect(event.deathPose?.x).toBe(impact.x);expect(event.deathPose!.y).toBeGreaterThanOrEqual(impact.y);
+  expect(s.x).toBe(LEVELS[0].spawn.x);expect(s.respawn).toBeCloseTo(.35);expect(s.deaths).toBe(1);
+ });
+ it('leaves a single outgoing spike patch on short landing decks',()=>{
+  for(const l of LEVELS)for(const p of l.platforms.filter(p=>p.w<=180)){
+   const spikes=l.hazards.filter(h=>h.kind==='spikes'&&h.y+h.h===p.y&&h.x>=p.x&&h.x+h.w<=p.x+p.w);
+   expect(spikes.length,`level ${l.id+1}, ledge ${p.id}`).toBeLessThanOrEqual(1);
+  }
+ });
  it('never skips a stage and completes exactly at stage 40',()=>{
   const s=createRun();expect(nextStage(s)).toBe(false);
   for(let stage=0;stage<LEVEL_COUNT;stage++){

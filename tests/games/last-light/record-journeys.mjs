@@ -34,7 +34,7 @@ function advance(s,to,deep=false,from=s.ground,direction){
    if(approach){for(let i=0;i<8&&alive;i++)alive=act(base,{...idle,move:dir},prefix);}
    if(!alive)break;
    if(base.ground!==sourceGround&&base.coyote<=0&&a.kind!=='spring')break;
-   for(const dashAt of [-1,32,44,20,56])for(const hold of [65,12,32,0])for(const aim of to===from?(dir>0?[.75,.9,.6]:[.25,.1,.4]):[.25,.7,.5]){
+   for(const dashAt of (s.stage===1&&to<=3?[-1]:[-1,32,44,20,56]))for(const hold of [65,12,32,0])for(const aim of to===from?(dir>0?[.75,.9,.6]:[.25,.1,.4]):[.25,.7,.5]){
     const q=structuredClone(base),inputs=[...prefix];let reached=false;
     for(let f=0;f<220;f++){
      if(!act(q,{move:toward(q,b,aim),jump:f<hold,dash:f===dashAt},inputs))break;

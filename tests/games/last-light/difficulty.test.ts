@@ -15,7 +15,7 @@ describe('Last Light required control choices',()=>{
   await new Promise(resolve=>setTimeout(resolve,0));
   const route=minimumHopChanges(level,fullAudit?POLICY_PHASES:[0,1.8]);
   expect(Number.isFinite(route.changes),'No route found by the local audit; inspect the continuous witness').toBe(true);
-  const required=level.id===0?1:level.id<8?2:3;
+  const required=level.id<=1?1:level.id<8?2:3;
   if(fullAudit)console.info(JSON.stringify({chapter:level.id+1,required,changes:route.changes,path:route.path,changedEdges:route.changedEdges}));
   expect(route.changes,`The tested graph needs ${route.changes} policy departures along ${route.path.join(' → ')}`).toBeGreaterThanOrEqual(required);
  },30000);

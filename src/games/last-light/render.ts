@@ -1,5 +1,7 @@
+import {DeathAnimation} from './death-art';
 import {drawArchitecture} from './architecture';
-import {drawEmitter} from './hazard-art';
+import {drawCrumblingHazard} from './crumble-art';
+import {drawEmitter,drawSpikes} from './hazard-art';
 import {LEVELS,WORLDS,type Level} from './levels';
 import {platformAt,hazardAt,hazardActive,hazardWarning,checkpointsFor,checkpointIndexFor,stationAt,type Events,type Run} from './model';
 import {characterColor,rescueNameFor} from './story';
@@ -95,32 +97,43 @@ export class Scene {
  private ctx:CanvasRenderingContext2D;
  private readonly courier=new Courier();
  private readonly effects=new Effects();
+ private readonly death=new DeathAnimation();
+ private cssWidth=0;private cssHeight=0;private lookAhead=24;
+ get dying(){return this.death.active;}
  private source:Run|undefined;private stage=-1;private deaths=-1;
  private trace:{x:number;y:number}[]=[];private traceTime=0;
  width=640;height=480;cameraX=0;cameraY=0;
  constructor(readonly canvas:HTMLCanvasElement){const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)throw Error('Canvas 2D is unavailable.');this.ctx=ctx;}
  resize(width:number,height:number){
-  const scale=height>width?Math.max(1,width/430):Math.max(1,Math.min(height/360,width/640,2.5));
+  if(width===this.cssWidth&&height===this.cssHeight)return;this.cssWidth=width;this.cssHeight=height;
+  const scale=height>width?Math.max(1,width/430):Math.max(1,Math.round(Math.min(height/360,width/640,2.5)));
   this.width=Math.max(200,Math.floor(width/scale));this.height=Math.max(160,Math.floor(height/scale));
   this.canvas.width=this.width;this.canvas.height=this.height;this.ctx.imageSmoothingEnabled=false;
   if(this.source){const target=this.target(this.source);this.cameraX=target.x;this.cameraY=target.y;}
  }
  step(s:Run,events:Events,dt:number){
-  this.sync(s);this.effects.step(s,events,dt);
+  if(events.death&&events.deathPose){this.death.begin(events.deathPose,this.cameraX,this.cameraY);this.sync(s,true);}
+  else {this.sync(s);const wasImpact=this.death.impact;this.death.step(dt);if(wasImpact&&!this.death.impact){const target=this.target(s);this.cameraX=target.x;this.cameraY=target.y;}}
+  this.effects.step(s,events,dt);
   this.courier.tick(s,events,dt);this.traceTime+=dt;
   if(this.traceTime>.035){this.traceTime=0;this.trace.push({x:s.x+8,y:s.y+24});if(this.trace.length>20)this.trace.shift();}
+  if(this.death.impact)return;
+  this.lookAhead+=(s.facing*24-this.lookAhead)*(1-Math.exp(-dt*5));
   const target=this.target(s);this.cameraX+=(target.x-this.cameraX)*(1-Math.exp(-dt*8));this.cameraY+=(target.y-this.cameraY)*(1-Math.exp(-dt*7));
  }
- private sync(s:Run){
+ private sync(s:Run,keepDeath=false){
   if(this.source===s&&this.stage===s.stage&&this.deaths===s.deaths)return;
-  const target=this.target(s);this.cameraX=target.x;this.cameraY=target.y;this.trace=[];this.traceTime=0;this.effects.reset();this.source=s;this.stage=s.stage;this.deaths=s.deaths;clearTerrainCache();
+  const changedLevel=this.source!==s||this.stage!==s.stage;
+  if(!keepDeath){this.death.reset();this.lookAhead=s.facing*24;const target=this.target(s);this.cameraX=target.x;this.cameraY=target.y;}
+  this.trace=[];this.traceTime=0;this.effects.reset();this.source=s;this.stage=s.stage;this.deaths=s.deaths;
+  if(changedLevel)clearTerrainCache();
  }
- private target(s:Run,reduced=false){const l=LEVELS[s.stage],cleared=s.phase!=='playing',offset=completionOffset(s,reduced);const x=cleared?l.exit.x+19+offset.x:s.x+8,y=cleared?l.exit.y+25+offset.y:s.y;return {x:Math.max(0,Math.min(Math.max(0,l.width-this.width),x-this.width*(cleared?.52:.43)+(cleared?0:s.facing*24))),y:Math.max(-170,Math.min(Math.max(0,l.height-this.height),y-this.height*.57))};}
- draw(s:Run,reduced:boolean){
+ private target(s:Run,reduced=false){const l=LEVELS[s.stage],cleared=s.phase!=='playing',offset=completionOffset(s,reduced);const x=cleared?l.exit.x+19+offset.x:s.x+8,y=cleared?l.exit.y+25+offset.y:s.y;return {x:Math.max(0,Math.min(Math.max(0,l.width-this.width),x-this.width*(cleared?.52:.43)+(cleared?0:this.lookAhead))),y:Math.max(-170,Math.min(Math.max(0,l.height-this.height),y-this.height*.57))};}
+ draw(actual:Run,reduced:boolean){
+  this.sync(actual);const s=this.death.impact?this.death.pose!:actual;
   const c=this.ctx,l=LEVELS[s.stage],theme=WORLDS[l.world],w=this.width,h=this.height;
-  this.sync(s);
-  if(reduced){const target=this.target(s,true);this.cameraX=target.x;this.cameraY=target.y;}
-  const cx=Math.floor(this.cameraX),cy=Math.floor(this.cameraY),t=reduced?0:s.clock,elapsed=s.phase==='playing'?0:reduced?2.8:2.8-s.cinematic;
+  if(reduced&&!this.death.impact){const target=this.target(s,true);this.cameraX=target.x;this.cameraY=target.y;}
+  const cx=Math.floor(this.death.impact?this.death.cameraX:this.cameraX),cy=Math.floor(this.death.impact?this.death.cameraY:this.cameraY),t=reduced?0:s.clock,elapsed=s.phase==='playing'?0:reduced?2.8:2.8-s.cinematic;
   drawSky(c,l,s,w,h,cx,cy,reduced);
   drawEndingSky(c,w,h,s);
   c.save();c.translate(-cx,-cy);
@@ -138,9 +151,9 @@ export class Scene {
   }
   for(const hazard of l.hazards){
    const r=hazardAt(hazard,s.clock);if(r.x<cx-70||r.x>cx+w+70)continue;
-   if(hazard.kind==='spikes'){
-    c.fillStyle='#252936';c.fillRect(r.x-2,r.y+r.h-2,r.w+4,5);
-    for(let x=r.x;x<r.x+r.w;x+=8){c.fillStyle='#d4b3a5';c.beginPath();c.moveTo(x,r.y+r.h);c.lineTo(x+4,r.y);c.lineTo(x+8,r.y+r.h);c.fill();c.fillStyle='#906f73';c.fillRect(x+4,r.y+5,2,r.h-5);}
+   const support=hazard.platform===undefined?undefined:s.crumbles[hazard.platform];
+   if(support!==undefined&&support<=0){drawCrumblingHazard(c,hazard,support,reduced,r);continue;}
+   if(hazard.kind==='spikes'){drawSpikes(c,r);
    }else if(hazard.kind==='saw'){drawGear(c,r.x+r.w/2,r.y+r.h/2,12,hazardActive(hazard,s)?t*4:0,hazardActive(hazard,s)?'#d3b8b3':'#586c71');}
    else{
     const on=hazardActive(hazard,s),stopped=hazard.disabledBy!==undefined&&s.activated.includes(hazard.disabledBy),warning=hazardWarning(hazard,s);
@@ -162,13 +175,14 @@ export class Scene {
     else smallStation(c,x,y,theme.accent,lit,plan.art);
     c.restore();
    }
-   if(!lit&&plan.marker){const m=plan.marker;pixel(c,'#172b36',m.x+dx,m.y+dy,m.w,m.h);c.fillStyle=theme.accent;c.font='9px monospace';c.textAlign='center';c.fillText(kind==='survivor'?'…':'E',Math.round(m.x+m.w/2+dx),Math.round(m.y+9+dy));c.textAlign='start';}
+   if(!lit&&plan.marker){const m=plan.marker;pixel(c,'#172b36',m.x+dx,m.y+dy,m.w,m.h);c.fillStyle=theme.accent;c.font='9px monospace';c.textAlign='center';c.fillText(kind==='survivor'?'…':'↵',Math.round(m.x+m.w/2+dx),Math.round(m.y+9+dy));c.textAlign='start';}
   }
   if(l.goal==='rescue'&&s.activated.length){const follower=this.trace[0]??{x:s.x-18,y:s.y+24};person(c,follower.x,follower.y,t,characterColor(rescueNameFor(s.stage),l.world),Math.abs(s.vx)>20?Math.sign(s.vx):0,Math.sign(s.vx)||s.facing);}
   this.effects.draw(c,cx,cy,w,h,theme.accent,reduced);
   c.save();
   if(s.phase!=='playing'&&!reduced){const offset=completionOffset(s,reduced);c.translate(offset.x,offset.y);}
-  this.courier.draw(c,s,theme.accent,reduced);c.restore();c.restore();
+  if(!this.death.impact)this.courier.draw(c,s,theme.accent,reduced);c.restore();c.restore();
+  this.death.drawBody(c,cx,cy,reduced);this.death.drawTransition(c,w,h,actual,cx,cy,reduced);
   drawDawn(c,w,h,s,reduced);
   if(s.phase!=='playing'&&s.cinematic>0){c.fillStyle='#10202a';c.fillRect(0,0,w,32);c.fillRect(0,h-38,w,38);}
   c.fillStyle='#0b111329';c.fillRect(0,h-8,w,8);

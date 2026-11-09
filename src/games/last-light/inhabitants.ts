@@ -7,8 +7,8 @@ const INK='#15232c', LEATHER='#654e43', SOLE='#b3a48a';
 const PALETTES:Record<Cast,Palette>={
  gardener:{cloth:'#79866a',light:'#b0b28a',shade:'#485f51',skin:'#dba986',cheek:'#b57e67',hair:'#655047',hairLight:'#92725c',accent:'#d8c298'},
  worker:{cloth:'#667f87',light:'#9eb2b0',shade:'#3c555f',skin:'#be8d70',cheek:'#95624f',hair:'#403e3c',hairLight:'#6b6051',accent:'#c7a16f'},
- elder:{cloth:'#977a86',light:'#c5a5a7',shade:'#64556a',skin:'#e2b999',cheek:'#b78675',hair:'#b8b7ab',hairLight:'#e5ddc4',accent:'#c9b59b'},
- keeper:{cloth:'#637d91',light:'#a2bac2',shade:'#394e66',skin:'#d4b29c',cheek:'#ac8079',hair:'#544946',hairLight:'#8b796c',accent:'#d8cbb1'},
+ elder:{cloth:'#7e7186',light:'#bba5b2',shade:'#4f4c60',skin:'#e2b999',cheek:'#b78675',hair:'#b8b7ab',hairLight:'#e5ddc4',accent:'#c9b59b'},
+ keeper:{cloth:'#536d79',light:'#96aca6',shade:'#304853',skin:'#d9b291',cheek:'#aa7b69',hair:'#acb0a0',hairLight:'#e0ddc5',accent:'#b9986d'},
  child:{cloth:'#9b795b',light:'#c5a781',shade:'#64594c',skin:'#e6b996',cheek:'#bd8872',hair:'#634638',hairLight:'#a1764c',accent:'#c97769'},
 };
 function rect(c:CanvasRenderingContext2D,fill:string,x:number,y:number,w:number,h:number){c.fillStyle=fill;c.fillRect(Math.round(x),Math.round(y),w,h);}
@@ -40,10 +40,14 @@ function face(c:CanvasRenderingContext2D,p:Palette,kind:Cast,by:number,blink:boo
  if(kind==='elder'){
   rect(c,INK,-8,top+2+by,4,5);rect(c,p.hair,-7,top+2+by,3,4);rect(c,p.hairLight,-7,top+2+by,2,1);
   rect(c,p.hair,-5,top+2+by,2,6);rect(c,p.hairLight,-5,top+2+by,1,4);
-  rect(c,'#b9a17f',1,top+4+by,6,3);rect(c,p.skin,2,top+5+by,3,1);rect(c,INK,3,top+5+by,1,1);rect(c,'#e6d8b2',1,top+4+by,5,1);
+  rect(c,'#d1bc94',1,top+4+by,5,1);rect(c,'#a08d77',1,top+5+by,1,2);rect(c,'#a08d77',5,top+5+by,1,2);rect(c,INK,3,top+5+by,1,1);rect(c,p.skin,2,top+6+by,3,1);
   rect(c,p.cheek,1,top+7+by,2,1);
  }else if(kind==='keeper'){
-  rect(c,p.hair,0,top+8+by,6,3);rect(c,p.hairLight,1,top+9+by,4,1);rect(c,p.skin,2,top+7+by,3,1);
+  // Grey sideburn, a shaped moustache and a small beard frame the face,
+  // leaving the cheek and mouth readable instead of a rectangular mask.
+  rect(c,p.hair,-3,top+5+by,2,4);rect(c,p.hairLight,-3,top+5+by,1,2);
+  rect(c,p.hair,1,top+8+by,2,2);rect(c,p.hair,4,top+8+by,2,2);rect(c,p.skin,3,top+8+by,1,1);
+  rect(c,p.cheek,2,top+10+by,3,1);rect(c,p.hair,0,top+10+by,2,2);rect(c,p.hair,2,top+11+by,3,1);rect(c,p.hairLight,0,top+10+by,1,1);
  }else if(kind==='child'){
   rect(c,p.hair,-6,top-1+by,10,3);rect(c,p.hair,4,top+1+by,3,2);rect(c,p.hairLight,-4,top-1+by,4,1);rect(c,p.hair,-7,top+2+by,3,4);
  }
@@ -96,11 +100,16 @@ export function person(c:CanvasRenderingContext2D,x:number,y:number,t:number,col
   rect(c,p.shade,-9,-26+bob,16,4);rect(c,p.light,-8,-25+bob,14,2);rect(c,p.cloth,-8,-23+bob,6,5);
   rect(c,p.light,-7,-23+bob,3,4);rect(c,p.light,-6,-19+bob,3,3);rect(c,p.light,-5,-16+bob,2,2);
   rect(c,p.accent,-8,-24+bob,2,1);rect(c,p.accent,-6,-21+bob,2,1);rect(c,p.accent,-4,-18+bob,2,1);
-  rect(c,'#d8bd81',2,-23+bob,2,2);rect(c,p.accent,0,-18+bob,1,1);rect(c,p.accent,0,-14+bob,1,1);
+  rect(c,'#d8bd81',2,-23+bob,2,2);rect(c,p.accent,0,-18+bob,1,1);rect(c,p.accent,0,-14+bob,1,1);rect(c,p.shade,2,-15+bob,4,3);rect(c,p.light,2,-15+bob,4,1);rect(c,p.shade,-7,-11+bob,5,3);rect(c,p.light,-7,-11+bob,1,2);
  }else if(kind==='keeper'){
-  rect(c,p.accent,-8,-27+bob,16,4);rect(c,'#f0dfbc',-6,-27+bob,11,2);rect(c,'#a79a89',-7,-24+bob,3,2);rect(c,'#a79a89',4,-24+bob,3,2);
-  rect(c,p.accent,-6,-10+bob,12,2);rect(c,LEATHER,-6,-16+bob,13,2);rect(c,'#ddc292',1,-16+bob,2,2);
-  rect(c,'#b8b7a0',1,-22+bob,1,5);rect(c,p.shade,-5,-20+bob,4,3);rect(c,p.light,-5,-20+bob,4,1);
+  // Weathered working coat, narrow rust scarf, leather belt and patched
+  // pocket replace the broad ceremonial collar and square uniform panels.
+  rect(c,INK,-7,-26+bob,13,3);rect(c,'#ac7770',-6,-26+bob,10,2);rect(c,'#dbab8d',-5,-26+bob,5,1);
+  rect(c,'#815b5e',-5,-24+bob,3,9);rect(c,'#ba8a7a',-5,-24+bob,1,7);
+  rect(c,p.light,1,-24+bob,2,4);rect(c,p.shade,0,-23+bob,1,10);rect(c,p.light,0,-20+bob,1,1);rect(c,p.accent,0,-16+bob,1,1);
+  rect(c,LEATHER,-6,-13+bob,13,2);rect(c,'#d4ba87',1,-13+bob,2,2);
+  rect(c,p.shade,-6,-20+bob,4,4);rect(c,p.light,-6,-20+bob,4,1);rect(c,'#8b998e',-5,-17+bob,2,1);
+  rect(c,p.cloth,-7,-11+bob,5,3);rect(c,p.shade,2,-11+bob,4,2);rect(c,p.light,-7,-11+bob,1,3);
  }else{
   rect(c,LEATHER,-9,-17+bob,5,9);rect(c,'#c29d73',-8,-16+bob,4,3);rect(c,'#e2c28a',-7,-12+bob,1,1);
   bone(c,-5,-20+bob,4,-10+bob,2,LEATHER);rect(c,'#d9b588',2,-12+bob,2,2);
@@ -113,8 +122,10 @@ export function person(c:CanvasRenderingContext2D,x:number,y:number,t:number,col
   rect(c,INK,-7,-36+bob,13,4);rect(c,p.shade,-6,-35+bob,11,3);rect(c,p.light,-5,-35+bob,8,1);rect(c,INK,2,-32+bob,8,2);rect(c,p.cloth,3,-32+bob,6,1);
   rect(c,'#ad936a',-5,-33+bob,8,2);rect(c,'#d5c69b',-4,-33+bob,2,1);rect(c,'#d5c69b',0,-33+bob,2,1);
  }else if(kind==='keeper'){
-  rect(c,INK,-7,-37+bob,13,5);rect(c,p.shade,-6,-36+bob,11,4);rect(c,p.light,-5,-36+bob,8,1);rect(c,p.cloth,-6,-34+bob,11,2);
-  rect(c,p.accent,-7,-33+bob,13,2);rect(c,p.accent,-6,-31+bob,2,5);
+  // Soft, asymmetric flat cap with a short brim, seam and worn crown.
+  rect(c,INK,-5,-38+bob,8,2);rect(c,INK,-7,-36+bob,13,4);rect(c,p.shade,-6,-36+bob,11,3);
+  rect(c,p.cloth,-4,-37+bob,7,3);rect(c,p.light,-4,-37+bob,5,1);rect(c,'#718980',-5,-35+bob,6,1);
+  rect(c,INK,1,-33+bob,8,2);rect(c,p.shade,2,-33+bob,6,1);rect(c,p.accent,4,-33+bob,2,1);
  }else if(child){
   const tail=t===0?0:Math.round(Math.sin(t*4)*1);
   rect(c,INK,-7,-21+bob,13,3);rect(c,p.accent,-6,-21+bob,12,2);rect(c,'#e8ae87',0,-21+bob,5,1);rect(c,p.accent,-6,-20+bob,3,6);rect(c,p.accent,-8,-16+bob+tail,4,2);

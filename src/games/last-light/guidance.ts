@@ -58,7 +58,7 @@ function movementHint(run:Run,level:Level,index:number):string {
  if(surface==='belt')return 'The belt pushes you. Adjust your run before jumping.';
  if(level.id===0&&index<5)return 'Hold Space to jump higher. Land to refill your dash.';
  if(!run.dashReady&&!run.grounded)return 'Land on a ledge to refill your air dash.';
- return 'Follow the pale route on the map. Side paths hold optional memories.';
+ return 'Read the ledges ahead. Side paths hold optional memories.';
 }
 
 /** Platforming has one objective. Story encounters and useful machinery are

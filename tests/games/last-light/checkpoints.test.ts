@@ -32,6 +32,12 @@ describe('longer chapter progress',()=>{
   const loaded=restore(serialize(s))!;expect(loaded.activated).toEqual([0]);expect(hazardActive(vent,loaded)).toBe(false);
   Object.assign(loaded,{x:500,y:350});expect(step(loaded,idle).death).not.toBe(true);
  });
+ it('drops a supported hazard with its crumbled floor and restores it with the floor',()=>{
+  const h={kind:'spikes' as const,platform:1,x:370,y:390,w:24,h:10};LEVELS[0].hazards=[h];LEVELS[0].platforms[1].kind='crumble';
+  const run=createRun();stand(run,1);expect(hazardActive(h,run)).toBe(true);run.crumbles[1]=-.1;expect(hazardActive(h,run)).toBe(false);
+  Object.assign(run,{x:370,y:380,grounded:false,ground:-1});expect(step(run,idle).death).not.toBe(true);
+  delete run.crumbles[1];expect(hazardActive(h,run)).toBe(true);
+ });
  it('keeps earlier preview progress when a hidden escape lamp is removed',()=>{
   levels[0]={...levels[0],goal:'escape',stations:[]};
   const saved={...serialize(createRun()),checkpoint:true,activated:[0]};delete saved.layoutVersion;delete saved.checkpointIndex;

@@ -1,4 +1,5 @@
-import {WORLDS,type Level,type Platform,type Rect} from './levels';
+import {drawCrumble} from './crumble-art';
+import {type Level,type Platform,type Rect} from './levels';
 import {PLAYER_H,PLAYER_W,type Run} from './model';
 import {goalComposition,stationArtBounds,stationComposition} from './composition';
 import {paintMaterial,paintFoundation} from './materials';
@@ -54,35 +55,9 @@ function tile(p:Platform,l:Level):HTMLCanvasElement {
 }
 export function clearTerrainCache(){cache.clear();boundsCache=new WeakMap();}
 export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:number,s:Run,l:Level,reduced:boolean){
- const theme=WORLDS[l.world],timer=s.crumbles[p.id];x=Math.round(x);y=Math.round(y);
- if(timer!==undefined&&timer<=0){
-  const elapsed=-timer;
-  c.strokeStyle=theme.edge+'40';c.setLineDash([3,5]);c.strokeRect(x,y,p.w,28);c.setLineDash([]);
-  const art=tile(p,l),count=Math.ceil(p.w/27),piece=p.w/count;
-  for(let i=0;i<count;i++){
-   const n=noise(i,p.id),sx=Math.floor(i*piece),sw=Math.ceil((i+1)*piece)-sx;
-   if(elapsed<1.15){
-    const fall=reduced?15:elapsed*32+elapsed*elapsed*235,side=reduced?0:(i-(count-1)/2)*elapsed*21;
-    c.save();c.globalAlpha=Math.max(0,1-elapsed/1.15);c.translate(x+sx+sw/2+side,y+fall+(i%3)*5);
-    if(!reduced)c.rotate((n-.5)*elapsed*2.6);
-    c.drawImage(art,4+sx,8,sw,34,-sw/2,0,sw-2,34);c.restore();
-   }
-   if(elapsed>2){
-    const rebuild=Math.max(0,Math.min(1,(elapsed-2-i/count*.12)/.36));
-    c.save();c.globalAlpha=rebuild;c.drawImage(art,4+sx,8,sw,40,x+sx,y+(reduced?0:(1-rebuild)*(1-rebuild)*26),sw,40);c.restore();
-    if(rebuild>0&&rebuild<1){c.fillStyle='#dfceaa';c.fillRect(x+sx,y,sw-1,1);}
-   }
-  }
-  return;
- }
- const delay=p.crumbleDelay??.85,stress=timer===undefined?0:Math.max(0,Math.min(1,1-timer/delay));
- const shake=timer!==undefined&&!reduced?Math.sin(s.clock*61)*stress*2:0;
- c.drawImage(tile(p,l),x-4+Math.round(shake),y-8);
- if(timer!==undefined){
-  c.strokeStyle='#211e2c';c.lineWidth=1+stress*2;
-  for(let i=14;i<p.w;i+=26){c.beginPath();c.moveTo(x+i,y+1);c.lineTo(x+i-4,y+8+stress*5);c.lineTo(x+i+4,y+13+stress*6);c.lineTo(x+i-1,y+15+stress*13);c.stroke();}
-  if(!reduced)for(let i=0;i<9;i++){const age=(s.clock*2+i*.13)%1;c.globalAlpha=(1-age)*stress;c.fillStyle='#d7c6a3';c.fillRect(x+noise(i,p.id)*p.w,y+22+age*age*54,2,2);}c.globalAlpha=1;
- }
+ const timer=s.crumbles[p.id];x=Math.round(x);y=Math.round(y);
+ if(p.kind==='crumble'&&timer!==undefined){drawCrumble(c,p,tile(p,l),x,y,timer,reduced);return;}
+ c.drawImage(tile(p,l),x-4,y-8);
  if(p.kind==='belt'){
   c.fillStyle='#302e38';c.fillRect(x,y+3,p.w,13);const shift=reduced?0:(s.clock*35*(p.direction??1))%18;
   for(let i=-18;i<p.w+18;i+=18){const xx=x+i+shift;if(xx<x||xx+8>x+p.w)continue;c.strokeStyle='#dbc697';c.beginPath();c.moveTo(xx,y+6);c.lineTo(xx+6,y+9);c.lineTo(xx,y+12);c.stroke();}

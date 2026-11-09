@@ -6,7 +6,7 @@ export type Surface='stone'|'crumble'|'moving'|'spring'|'ice'|'belt';
 export type Setting='roofs'|'canal'|'tower'|'garden'|'factory'|'cavern'|'bridge'|'sky';
 export type Goal='shelter'|'rescue'|'relay'|'ferry'|'engine'|'escape'|'signal'|'dawn';
 export interface Platform extends Rect {id:number;kind:Surface;travel?:number;speed?:number;direction?:number;axis?:'x'|'y';branch?:boolean;crumbleDelay?:number}
-export interface Hazard extends Rect {kind:'spikes'|'saw'|'laser'|'steam';travel?:number;period?:number;offset?:number;disabledBy?:number;duty?:number}
+export interface Hazard extends Rect {platform?:number;kind:'spikes'|'saw'|'laser'|'steam';travel?:number;period?:number;offset?:number;disabledBy?:number;duty?:number}
 export interface Pickup {x:number;y:number;kind:'spark'|'key'|'dash';id:number}
 export interface Station {id:number;platform:number;x:number;y:number;kind:'lamp'|'survivor'|'valve'|'bell';label:string}
 export interface Checkpoint {x:number;y:number;platform:number}

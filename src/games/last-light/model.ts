@@ -10,7 +10,7 @@ export interface Run {
  time:number;stageTime:number;deaths:number;stageDeaths:number;sparks:number;collected:number[];key:boolean;checkpoint:boolean;checkpointIndex:number;clock:number;respawn:number;
  crumbles:Record<number,number>;best:number;activated:number[];heard:number[];memories:number[];previousInteract:boolean;cinematic:number;threat:number;chasing:boolean;ending:'share'|'home'|null;
 }
-export interface Events {jump?:boolean;dash?:boolean;land?:boolean;pickup?:boolean;checkpoint?:boolean;death?:boolean;clear?:boolean;interact?:boolean;message?:string}
+export interface Events {jump?:boolean;dash?:boolean;land?:boolean;pickup?:boolean;checkpoint?:boolean;death?:boolean;deathPose?:Run;deathCause?:string;clear?:boolean;interact?:boolean;message?:string}
 export const overlap=(a:Rect,b:Rect)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 export function createRun():Run {const p=LEVELS[0].spawn;return {version:2,stage:0,cleared:0,phase:'playing',...p,vx:0,vy:0,facing:1,grounded:false,ground:-1,wall:0,coyote:0,buffer:0,dashLeft:0,dashReady:true,previousJump:false,previousDash:false,time:0,stageTime:0,deaths:0,stageDeaths:0,sparks:0,collected:[],key:false,checkpoint:false,checkpointIndex:-1,clock:0,respawn:0,crumbles:{},best:0,activated:[],heard:[],memories:[],previousInteract:false,cinematic:0,threat:-300,chasing:false,ending:null};}
@@ -20,10 +20,11 @@ export function hazardAt(h:Hazard,t:number):Rect {return {...h,x:h.x+(h.kind==='
 const hazardCycle=(h:Hazard,t:number)=>{const period=h.period??3;return ((t+(h.offset??0))%period+period)%period;};
 export const laserActive=(h:Hazard,t:number)=>!['laser','steam'].includes(h.kind)||hazardCycle(h,t)<(h.period??3)*(h.duty??.55);
 /** Powered machinery has a visible, persistent response to its control wheel. */
-export const hazardActive=(h:Hazard,s:Run)=>(h.disabledBy===undefined||!s.activated.includes(h.disabledBy))&&laserActive(h,s.clock);
+const supportGone=(h:Hazard,s:Run)=>h.platform!==undefined&&s.crumbles[h.platform]!==undefined&&s.crumbles[h.platform]<=0;
+export const hazardActive=(h:Hazard,s:Run)=>!supportGone(h,s)&&(h.disabledBy===undefined||!s.activated.includes(h.disabledBy))&&laserActive(h,s.clock);
 /** Amber emitters announce the end of a safe interval before collision returns. */
 export function hazardWarning(h:Hazard,s:Run):boolean {
- if(!['laser','steam'].includes(h.kind)||(h.disabledBy!==undefined&&s.activated.includes(h.disabledBy))||laserActive(h,s.clock))return false;
+ if(supportGone(h,s)||!['laser','steam'].includes(h.kind)||(h.disabledBy!==undefined&&s.activated.includes(h.disabledBy))||laserActive(h,s.clock))return false;
  const period=h.period??3,warning=Math.min(.55,period*(1-(h.duty??.55))*.5);
  return period-hazardCycle(h,s.clock)<=warning;
 }
@@ -104,9 +105,12 @@ export function step(s:Run,input:Input,dt=STEP):Events {
  }
  const player={x:s.x+2,y:s.y+2,w:PLAYER_W-4,h:PLAYER_H-2};
  if(level.goal==='escape'){if(s.x>(checkpointFor(s,level)?.x??level.spawn.x)+120)s.chasing=true;if(s.chasing)s.threat+=pursuitSpeed(level,s)*dt;}
- if(s.y>level.height+32||(level.water!==null&&s.y+PLAYER_H>level.water)||(level.goal==='escape'&&s.x+PLAYER_W<s.threat)||level.hazards.some(h=>hazardActive(h,s)&&overlap(player,hazardAt(h,s.clock)))){
+ const hit=level.hazards.find(h=>hazardActive(h,s)&&overlap(player,hazardAt(h,s.clock))),fell=s.y>level.height+32,drowned=level.water!==null&&s.y+PLAYER_H>level.water,caught=level.goal==='escape'&&s.x+PLAYER_W<s.threat;
+ if(fell||drowned||caught||hit){
+  events.deathPose={...s,crumbles:{...s.crumbles}};events.deathCause=hit?.kind??(drowned?'water':caught?'dark':'fall');
   respawn(s);events.death=true;return events;
  }
+
  for(const p of level.pickups)if(!s.collected.includes(p.id)&&overlap(player,{x:p.x-9,y:p.y-12,w:18,h:24})){
   s.collected.push(p.id);if(p.kind==='spark'){s.sparks++;s.memories.push(s.stage*3+p.id);events.message=`Memory ${p.id+1}/3 · ${memoryFor(s.stage,p.id)}`;}else if(p.kind==='key')s.key=true;else s.dashReady=true;events.pickup=true;
  }

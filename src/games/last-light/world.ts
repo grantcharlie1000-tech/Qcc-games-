@@ -7,7 +7,7 @@ import {skyline,tree,cat,washing,settingDetails} from './environment-art';
 import {person} from './inhabitants';
 import {landmarks,atmosphere} from './environment-landmarks';
 export {person} from './inhabitants';
-const TALK_LABEL=typeof matchMedia==='function'&&matchMedia('(any-pointer:coarse)').matches?'HELP · TALK':'E · TALK';
+const TALK_LABEL=typeof matchMedia==='function'&&matchMedia('(any-pointer:coarse)').matches?'TAP · TALK':'ENTER · TALK';
 type DressingKind='resident'|'washing'|'tree'|'cat'|'lantern';
 export interface WorldDressing {readonly kind:DressingKind;readonly platform:number;readonly x:number;readonly y:number;readonly bounds:Readonly<Rect>}
 // One authored domestic moment per chapter. Empty chapters leave room for the
@@ -110,9 +110,9 @@ export function drawLife(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:n
   const {kind,x,y,bounds}=item;
   if(bounds.x+bounds.w<cx-8||bounds.x>cx+w+8||bounds.y+bounds.h<cy-8||bounds.y>cy+h+8)continue;
   c.save();
-  // Incidental life recedes as the courier approaches, preserving their outline.
-  const distance=Math.hypot(s.x+8-x,(s.y+24-y)*1.8),near=Math.max(0,Math.min(1,(distance-22)/62));
-  c.globalAlpha=(kind==='tree'?.68:kind==='resident'?.76:.72)*near*near*(3-2*near);
+  // Residents and fixtures stay present when approached. The courier is
+  // drawn afterward, so their silhouette remains readable without erasing life.
+  c.globalAlpha=kind==='tree'?.68:kind==='resident'?.9:.82;
   if(kind==='resident'){
    const drift=reduced?0:Math.sin(t*.3+l.id)*7,velocity=reduced?0:Math.cos(t*.3+l.id);
    person(c,x+drift,y,t,l.world===1?'#8f9c70':l.world===2?'#b79871':'#7f9daa',velocity*.3,Math.sign(velocity)||1);

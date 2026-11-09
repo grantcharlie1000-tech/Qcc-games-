@@ -14,19 +14,20 @@ export function drawEmitter(c:C,h:Hazard,r:Rect,on:boolean,warning:boolean,stopp
  box(c,lamp,r.x-3,floor+1,3,2);
  if(h.kind==='steam'){
   for(let x=r.x+3;x<r.x+r.w-2;x+=4)box(c,'#8e9a8a',x,floor-4,1,3);
-  if(on){
+  const period=h.period??3,cycle=((t+(h.offset??0))%period+period)%period,offAge=cycle-period*(h.duty??.55),tail=!on&&!stopped&&offAge>=0&&offAge<.32?1-offAge/.32:0;
+  if(on||tail>0){
    // Scanline wisps retain the full dangerous height. Core width follows the
    // collision volume; translucent curls extend a few pixels beyond it.
    for(let y=0;y<r.h;y+=2){
-    const age=y/r.h,swirl=Math.sin(y*.16-t*9)*(.5+age*3),width=r.w*(.55+age*.45);
-    c.globalAlpha=.36+Math.sin(y*.09-t*7)*.1;
+    const age=y/r.h;if(!on&&age<(1-tail)*.9)continue;const end=Math.max(0,Math.min(1,(1-age)/.3)),feather=end*end*(3-2*end)*(on?1:tail);const swirl=Math.sin(y*.16-t*9)*(.5+age*3),width=r.w*(.55+age*.45);
+    c.globalAlpha=(.36+Math.sin(y*.09-t*7)*.1)*feather;
     box(c,'#d4d8ca',mid-width/2+swirl,floor-y-5,Math.ceil(width),2);
-    c.globalAlpha=.15*(1-age*.5);
+    c.globalAlpha=.15*(1-age*.5)*feather;
     box(c,'#f2e6ca',mid-width/2-3+Math.sin(y*.21-t*6)*4,floor-y-5,Math.ceil(width+6),2);
    }
    for(let i=0;i<9;i++){
     const a=(t*1.4+i/9)%1,y=floor-6-a*(r.h-8),x=mid+Math.sin(a*9+i)*r.w*.3;
-    c.globalAlpha=(1-a)*.42;c.strokeStyle='#fff0cf';c.lineWidth=1;
+    if(!on&&a<(1-tail)*.9)continue;c.globalAlpha=(1-a)*.42*(on?1:tail);c.strokeStyle='#fff0cf';c.lineWidth=1;
     c.beginPath();c.moveTo(x-2,y+5);c.lineTo(x-4,y+2);c.lineTo(x-3,y-2);c.lineTo(x+1,y-4);c.stroke();
    }
   }else if(warning){
@@ -50,4 +51,9 @@ export function drawEmitter(c:C,h:Hazard,r:Rect,on:boolean,warning:boolean,stopp
   }else if(warning){box(c,'#ffd181',mid-2,r.y-2,4,3);box(c,'#ffd181',mid-2,floor-6,4,3);}
  }
  c.restore();
+}
+
+export function drawSpikes(c:C,r:Rect){
+ c.fillStyle='#252936';c.fillRect(r.x-2,r.y+r.h-2,r.w+4,5);
+ for(let x=r.x;x<r.x+r.w;x+=8){c.fillStyle='#d4b3a5';c.beginPath();c.moveTo(x,r.y+r.h);c.lineTo(x+4,r.y);c.lineTo(x+8,r.y+r.h);c.fill();c.fillStyle='#906f73';c.fillRect(x+4,r.y+5,2,r.h-5);}
 }

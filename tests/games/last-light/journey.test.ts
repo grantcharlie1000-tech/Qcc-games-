@@ -10,6 +10,15 @@ describe('Last Light continuous journeys',()=>{
   expect(journeys.map(journey=>journey.stage)).toEqual(LEVELS.map(level=>level.id));
  });
 
+ it('starts level 2 with three broad catches reachable without a dash',()=>{
+  const run=createRun();run.stage=1;run.cleared=1;respawn(run,false);let reached=false;
+  outer:for(const [count,bits] of journeys.find(row=>row.stage===1)!.blocks)for(let frame=0;frame<count;frame++){
+   expect(bits&8,'No dash is needed for the opening three catches').toBe(0);
+   const event=step(run,{move:(bits&3)-1,jump:!!(bits&4),dash:false});expect(event.death).not.toBe(true);
+   if(run.ground===3){reached=true;break outer;}
+  }
+  expect(reached).toBe(true);expect(run.stageDeaths).toBe(0);
+ });
  for(const level of LEVELS)it(`${level.id+1}: a continuous journey reaches the exit without a setback`,()=>{
   const witness=journeys.find(journey=>journey.stage===level.id)!;
   const run=createRun();run.stage=level.id;run.cleared=level.id;respawn(run,false);

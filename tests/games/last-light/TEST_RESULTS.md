@@ -1,3 +1,18 @@
+# Last Light HUD, controls and effects follow-up — 9 November 2026
+
+- **309 relevant unit checks pass** in the Last Light and poster suites. All forty continuous journeys remain finishable without interactions. Level 2's regenerated opening witness reaches its first three broad catches with jump only and no dash; the complete level also clears through real arrow/Right Shift browser events.
+- **28 Chromium checks pass**, covering the single glass HUD row at 1896, 1280, 844, 390 and 320px widths, arrow-cluster menu navigation, optional Enter interaction, End retry, Delete pause, Page Down journal, visible death feedback, scene persistence at close range, touch and complete level 1/2 input replays. The final crumble renderer was checked again after its fracture spacing adjustment.
+- The glass controls occupy one **44px row**, with the canvas beginning at **56px**. The old measured top reservation was 222px on desktop and 220–238px on phones. The map and map shortcuts are removed; details sit in pause/journal screens.
+- A Chromium 180-frame sample reduced idle DOM mutations from **5,071 to 184** and layout passes from **184 to 3**. A moving sample reduced layout passes from **183 to 8** and total task work from about **1.78s to 1.08s**. Both moving samples maintained a 16.7ms median frame interval; these are local measurements, not a guarantee for every device.
+- Retries retain terrain textures, unchanged viewport dimensions do not reset the canvas/camera, and camera look-ahead eases through turns. Death presents the impact, textured fragments and checkpoint rekindle during the existing **0.35s** respawn delay.
+- Short decks retain one outgoing spike patch rather than two cramped patches. Level 2's opening has 160/160/180px landing decks; later platforming remains challenging. Its focused six-phase policy check passes the deliberately gentler opening requirement.
+- Nearby residents, trees and dressing no longer fade out. Older keeper/elder sprites were revised. Visual inspection covers the textured irregular crumble fragments, falling supported obstacles, reconstruction and the steam plume's feathered top and residual tail. A physics regression verifies that hazards stop colliding with their crumbled support and return with it.
+- Production build passes TypeScript, Vite, host preparation and service-worker retirement; the pre-existing bundle-size advisory remains. No backend or database changes are part of this follow-up.
+
+---
+
+## Historical platforming-first revision
+
 # Last Light platforming-first revision — 9 November 2026
 
 The current revision prioritizes movement and timing. Every exit works without interaction; story, machinery and the final narrative choice are optional. Results appear immediately. Mounted steam/electrical emitters, compact pressure regulators and world-space building construction replace the confusing isolated fixtures.

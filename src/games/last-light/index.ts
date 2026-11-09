@@ -1,40 +1,40 @@
 import type {GameModule,GameContext,GameInstance} from '../../core/types';
 import {LEVELS,LEVEL_COUNT,WORLDS} from './levels';
-import {createRun,step,nextStage,respawn,serialize,restore,formatTime,nearby,platformAt,stationAt,hazardAt,checkpointsFor,checkpointIndexFor,escapeLead,STEP,type Input} from './model';
+import {createRun,step,nextStage,respawn,serialize,restore,formatTime,nearby,checkpointsFor,checkpointIndexFor,escapeLead,STEP,type Input} from './model';
 import {CHAPTERS,ENDINGS,speakerFor,memoryFor} from './story';
-import {missionGuidance,stationAction,targetBearing} from './guidance';
+import {missionGuidance} from './guidance';
 import {Scene} from './render';
 import {LanternMusic} from './music';
 import {christmas} from '../../festive/festive';
 import {mountCompactHud} from '../../ui/game-controls-adapter';
 import './style.css';
-type Overlay='intro'|'continue'|'clear'|'complete'|'choice'|'menu'|'help'|'confirm'|'map'|'journal'|null;
+type Overlay='intro'|'continue'|'clear'|'complete'|'choice'|'menu'|'help'|'confirm'|'journal'|null;
 function mount(container:HTMLElement,context:GameContext):GameInstance {
  const root=document.createElement('section');root.className='ll-game';root.setAttribute('aria-label','Last Light platformer');
- root.innerHTML=`<canvas class="ll-canvas" tabindex="0" role="application" aria-label="Last Light. Arrows or A D to run, Space to jump, Shift or X to dash, E to interact, M for map, J for journal." aria-describedby="ll-help"></canvas>
- <div class="ll-hud"><div class="ll-top"><div class="ll-location"><span class="ll-world"></span><strong class="ll-stage"></strong></div><div class="ll-stats"><span title="Memory sparks">✦ <b class="ll-sparks">0</b></span><span title="Setbacks">↻ <b class="ll-deaths">0</b></span><span class="ll-time">0:00</span></div></div>
- <div class="ll-progress" aria-hidden="true"><i></i></div><div class="ll-quest"><span class="ll-objective"></span><span class="ll-task-progress"></span></div>
- <div class="ll-wayfinding"><span class="ll-sector"></span><span class="ll-bearing"></span></div>
- <p class="ll-guidance-hint"></p>
- <nav class="ll-tools" aria-label="Journey tools"><button data-ui="map">Map <kbd>M</kbd></button><button data-ui="journal">Journal <kbd>J</kbd></button></nav></div>
+ root.innerHTML=`<canvas class="ll-canvas" tabindex="0" role="application" aria-label="Last Light. Left and Right arrows run, Up jumps, Right Shift dashes, Enter to interact, Delete to pause, End to retry, Page Down for journal." aria-describedby="ll-help"></canvas>
+ <div class="ll-hud"><strong class="ll-stage"></strong><div class="ll-stats"><span class="ll-spark-stat" title="Memory sparks">✦ <b class="ll-sparks">0</b></span><span title="Setbacks">↻ <b class="ll-deaths">0</b></span><span class="ll-time">0:00</span></div><span class="ll-task-progress" hidden></span></div>
  <button class="ll-prompt" data-ui="interact" hidden></button><p class="ll-notice" role="status"></p>
  <aside class="ll-dialogue" hidden aria-label="Conversation"><div><strong class="ll-speaker"></strong><button data-ui="dismiss" aria-label="Dismiss conversation">×</button></div><p></p><small class="ll-dialogue-hint">PAUSED · MOVE TO CONTINUE</small></aside>
  <div class="ll-cinematic" hidden><span></span><p></p><small>SPACE / E TO CONTINUE</small></div>
  <div class="ll-touch" role="group" aria-label="Game controls"><div><button data-action="left" aria-label="Move left">←</button><button data-action="right" aria-label="Move right">→</button></div><div><button data-action="dash" aria-label="Dash">⇢<small>DASH</small></button><button data-action="jump" aria-label="Jump">↑<small>JUMP</small></button></div></div>
- <div class="ll-overlay"><div class="ll-card"></div></div><p id="ll-help" class="sr-only">Reach the exit in every level. Conversations, memories and machinery are optional. E interacts when a prompt appears. Map: M. Journal: J. Hold jump for height. Dash once in the air; landing refills it. Jump while touching a wall to wall jump. Flags save your place. P pauses. R returns to the checkpoint and counts a setback.</p>`;
+ <div class="ll-overlay"><div class="ll-card"></div></div><p id="ll-help" class="sr-only">Reach the exit in every level. Conversations, memories and machinery are optional. Enter or E interacts when a prompt appears. Journal: Page Down or J. Hold jump for height. Dash once in the air; landing refills it. Jump while touching a wall to wall jump. Flags save your place. Delete or P pauses. End or R returns to the checkpoint and counts a setback.</p>`;
  container.append(root);
- const q=<T extends Element>(selector:string)=>root.querySelector<T>(selector)!;
+ const q=<T extends Element>(selector:string)=>(root.querySelector<T>(selector)??hudContent.querySelector<T>(selector))!;
  const canvas=q<HTMLCanvasElement>('.ll-canvas'),card=q<HTMLElement>('.ll-card'),layer=q<HTMLElement>('.ll-overlay');
  const music=new LanternMusic(),scene=new Scene(canvas),hud=mountCompactHud(container),abort=new AbortController(),{signal}=abort;
- let run=createRun(),overlay:Overlay='intro',paused=false,disposed=false,frame=0,last=0,acc=0,noticeUntil=0,dialogueUntil=0,dialogueBlocking=false,previousHud='',previousSecond=-1,mapSector:number|null=null,previousSector='';
+ const hudContent=root.querySelector<HTMLElement>('.ll-hud')!,dock=container.closest('.game-view')!.querySelector<HTMLElement>('.game-dock')!;
+ const levelLabel=document.createElement('span'),scoreLabel=document.createElement('span');scoreLabel.className='ll-score';hud.element.replaceChildren(levelLabel,scoreLabel);hud.element.after(hudContent);
+ const text=(el:HTMLElement,value:string)=>{if(el.textContent!==value)el.textContent=value;};
+ const data=(key:string,value:string)=>{if(root.dataset[key]!==value)root.dataset[key]=value;};
+ let run=createRun(),overlay:Overlay='intro',paused=false,disposed=false,frame=0,last=0,acc=0,noticeUntil=0,dialogueUntil=0,dialogueBlocking=false,previousHud='',previousSecond=-1,previousSector='';
  const keys=new Set<string>(),touches=new Map<number,string>();let jumpQueued=false,dashQueued=false,interactQueued=false;
  const touchMode=()=>matchMedia('(any-pointer: coarse)').matches;
- const instructions=(text:string)=>touchMode()?text.replace(/A \/ D runs/g,'Hold ← or → to run').replace(/hold Space to jump/g,'hold JUMP to jump').replace(/\bE\b/g,'Tap').replace(/\bSpace\b/g,'JUMP').replace(/\bShift\b/g,'DASH').replace(/\bX\b/g,'DASH'):text;
+ const instructions=(text:string)=>touchMode()?text.replace(/Arrows move; hold Up to jump/g,'Hold ← or → to run; hold JUMP to jump').replace(/Tap Up/g,'Tap JUMP').replace(/Right Shift/g,'DASH').replace(/A \/ D runs/g,'Hold ← or → to run').replace(/hold Space to jump/g,'hold JUMP to jump').replace(/\bE\b/g,'Tap').replace(/\bSpace\b/g,'JUMP').replace(/\bShift\b/g,'DASH').replace(/\bX\b/g,'DASH'):text.replace(/\bSpace\b/g,'↑').replace(/\bX\b/g,'Right Shift').replace(/\bE\b/g,'Enter');
  const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
  const resetInput=()=>{keys.clear();touches.clear();jumpQueued=false;dashQueued=false;interactQueued=false;root.querySelectorAll('[data-held]').forEach(b=>b.removeAttribute('data-held'));run.previousJump=false;run.previousDash=false;run.previousInteract=false;};
  const input=():Input=>{
   const actions=new Set(touches.values()),left=actions.has('left')||keys.has('ArrowLeft')||keys.has('KeyA'),right=actions.has('right')||keys.has('ArrowRight')||keys.has('KeyD');
-  return {move:Number(right)-Number(left),jump:jumpQueued||actions.has('jump')||['Space','ArrowUp','KeyW'].some(k=>keys.has(k)),dash:dashQueued||actions.has('dash')||['ShiftLeft','ShiftRight','KeyX'].some(k=>keys.has(k)),interact:interactQueued||actions.has('interact')||keys.has('KeyE')};
+  return {move:Number(right)-Number(left),jump:jumpQueued||actions.has('jump')||['Space','ArrowUp','KeyW'].some(k=>keys.has(k)),dash:dashQueued||actions.has('dash')||['ShiftLeft','ShiftRight','KeyX'].some(k=>keys.has(k)),interact:interactQueued||actions.has('interact')||keys.has('KeyE')||keys.has('Enter')};
  };
  const active=()=>!paused&&!overlay&&!disposed&&!document.hidden;
  function stop(){if(frame)cancelAnimationFrame(frame);frame=0;last=0;acc=0;resetInput();}
@@ -49,47 +49,24 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  }
  function paint(){
   if(disposed)return;scene.draw(run,reduced());music.sync(active()&&run.phase==='playing',context.settings.sound&&!christmas());
-  root.dataset.reducedMotion=String(reduced());root.dataset.phase=run.phase;root.dataset.stage=String(run.stage+1);root.dataset.overlay=overlay??'none';root.dataset.paused=String(paused);root.dataset.cinematic=String(run.cinematic>0);
-  if(import.meta.env.DEV){root.dataset.x=run.x.toFixed(2);root.dataset.y=run.y.toFixed(2);root.dataset.ground=String(run.ground);root.dataset.dash=String(run.dashReady);root.dataset.elapsed=String(Math.floor(run.time));root.dataset.activated=run.activated.join(',');}
-  const level=LEVELS[run.stage],theme=WORLDS[level.world];root.style.setProperty('--ll-accent',theme.accent);
-  const text=`${run.stage+1} / ${LEVEL_COUNT} · ${run.best.toLocaleString()} pts`;
-  if(text!==previousHud){previousHud=text;hud.set(text,`Level ${run.stage+1} of ${LEVEL_COUNT}. ${run.best} points`);}
-  q<HTMLElement>('.ll-world').textContent=`${String(level.world+1).padStart(2,'0')} / ${theme.name}`;
-  q<HTMLElement>('.ll-stage').textContent=level.name;
-  q<HTMLElement>('.ll-sparks').textContent=String(run.sparks);q<HTMLElement>('.ll-deaths').textContent=String(run.deaths);
-  const guidance=missionGuidance(run),bearing=targetBearing(run,guidance.target),target=guidance.target;
-  q<HTMLElement>('.ll-objective').textContent=instructions(guidance.action);
+  data('reducedMotion',String(reduced()));data('phase',run.phase);data('stage',String(run.stage+1));data('overlay',overlay??'none');data('paused',String(paused));data('cinematic',String(run.cinematic>0));data('death',String(scene.dying));
+  if(import.meta.env.DEV){data('x',run.x.toFixed(2));data('y',run.y.toFixed(2));data('ground',String(run.ground));data('dash',String(run.dashReady));data('elapsed',String(Math.floor(run.time)));data('activated',run.activated.join(','));}
+  const level=LEVELS[run.stage],theme=WORLDS[level.world];if(root.style.getPropertyValue('--ll-accent')!==theme.accent){root.style.setProperty('--ll-accent',theme.accent);hudContent.style.setProperty('--ll-accent',theme.accent);}
+  const label=`${run.stage+1} / ${LEVEL_COUNT} · ${run.best.toLocaleString()} pts`;
+  if(label!==previousHud){previousHud=label;text(levelLabel,`${run.stage+1} / ${LEVEL_COUNT}`);text(scoreLabel,` · ${run.best.toLocaleString()} pts`);hud.element.setAttribute('aria-label',`Level ${run.stage+1} of ${LEVEL_COUNT}. ${run.best} points`);}
+  text(q<HTMLElement>('.ll-stage'),level.name);
+  text(q<HTMLElement>('.ll-sparks'),String(run.sparks));text(q<HTMLElement>('.ll-deaths'),String(run.deaths));
   const progress=q<HTMLElement>('.ll-task-progress'),chase=level.goal==='escape'&&run.phase==='playing',lead=escapeLead(run);
-  progress.textContent=chase?(run.chasing?`Dark · ${Math.ceil(lead/10)} m`:'Leave the safe start'):run.phase==='playing'?`FLAG ${checkpointIndexFor(run)+1}/${checkpointsFor(level).length}`:'COMPLETE';
-  progress.dataset.danger=String(chase&&run.chasing&&lead<250);
-  progress.setAttribute('aria-label',chase&&run.chasing?`The dark is ${Math.ceil(lead/10)} metres behind you`:progress.textContent);
-  q<HTMLElement>('.ll-sector').textContent=`${guidance.sector.index+1}/${guidance.sector.total} · ${guidance.sector.name}`;
-  q<HTMLElement>('.ll-guidance-hint').textContent=instructions(guidance.hint);
-  const offscreen=target.x<scene.cameraX+24||target.x>scene.cameraX+scene.width-24||target.y<scene.cameraY+24||target.y>scene.cameraY+scene.height-24;
-  const compass=q<HTMLElement>('.ll-bearing');compass.textContent=offscreen?`${bearing.arrow} ${bearing.distance} m`:'◆ In view';compass.setAttribute('aria-label',`${target.label}: ${offscreen?bearing.label:'in view'}`);compass.title=`${target.label} · Direct bearing. Use the map for the route.`;
-  const prompt=q<HTMLButtonElement>('.ll-prompt');prompt.textContent=run.phase==='playing'?instructions(nearby(run)):'';prompt.hidden=!prompt.textContent;
-  const second=Math.floor(run.time/1000);if(second!==previousSecond){previousSecond=second;q<HTMLElement>('.ll-time').textContent=formatTime(run.time);}
-  q<HTMLElement>('.ll-progress i').style.width=`${100*run.cleared/LEVEL_COUNT}%`;
+  if(progress.hidden===chase)progress.hidden=!chase;text(progress,run.chasing?`Dark · ${Math.ceil(lead/10)} m`:'Escape');
+  const danger=String(chase&&run.chasing&&lead<250);if(progress.dataset.danger!==danger)progress.dataset.danger=danger;
+  data('chase',String(chase));hudContent.hidden=!!overlay;
+  const prompt=q<HTMLButtonElement>('.ll-prompt');text(prompt,run.phase==='playing'?instructions(nearby(run)):'');if(prompt.hidden!==!prompt.textContent)prompt.hidden=!prompt.textContent;
+  const second=Math.floor(run.time/1000);if(second!==previousSecond){previousSecond=second;text(q<HTMLElement>('.ll-time'),formatTime(run.time));}
   if(noticeUntil&&run.clock>noticeUntil){q<HTMLElement>('.ll-notice').textContent='';noticeUntil=0;}
   if(dialogueUntil&&run.clock>dialogueUntil){q<HTMLElement>('.ll-dialogue').hidden=true;dialogueUntil=0;}
-  const cinematic=q<HTMLElement>('.ll-cinematic');cinematic.hidden=run.cinematic<=0;
-  q<HTMLElement>('.ll-cinematic small').textContent=touchMode()?'TAP AN ACTION TO CONTINUE':'SPACE / E TO CONTINUE';
+  const cinematic=q<HTMLElement>('.ll-cinematic');if(cinematic.hidden!==(run.cinematic<=0))cinematic.hidden=run.cinematic<=0;
+  text(q<HTMLElement>('.ll-cinematic small'),touchMode()?'TAP AN ACTION TO CONTINUE':'SPACE / E TO CONTINUE');
   if(run.cinematic>0){q<HTMLElement>('.ll-cinematic span').textContent=CHAPTERS[run.stage].outcome;q<HTMLElement>('.ll-cinematic p').textContent=CHAPTERS[run.stage].after;}
- }
- function mapHtml(){
-  const l=LEVELS[run.stage],guidance=missionGuidance(run),positions=l.platforms.map(p=>platformAt(p,run.clock)),checkpoints=checkpointsFor(l),sector=mapSector===null?undefined:l.sectors?.[mapSector];
-  const sectorPlatforms=sector?positions.slice(Math.max(0,sector.platform-1),Math.min(l.mainCount,(l.sectors?.[mapSector!+1]?.platform??l.mainCount)+1)):positions;
-  const minX=Math.min(...sectorPlatforms.map(p=>p.x))-60,maxX=Math.max(...sectorPlatforms.map(p=>p.x+p.w))+90;
-  const minY=Math.min(...sectorPlatforms.map(p=>p.y))-190,height=Math.max(...sectorPlatforms.map(p=>p.y+120))-minY;
-  const main=positions.slice(0,l.mainCount).map(p=>`${p.x+p.w/2},${p.y-5}`).join(' ');
-  const width=Math.max(700,Math.min(1600,(maxX-minX)*.48));
-  const platforms=l.platforms.map((p,i)=>{const r=positions[i];return `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="14" fill="${p.branch?'#627c87':'#d4c8a4'}"><title>${p.branch?'Optional path':`Route ledge ${i+1}`} · ${p.kind}</title></rect>`;}).join('');
-  const sectors=(l.sectors??[]).map((section,i)=>{const p=positions[section.platform];return `<text x="${p.x}" y="${p.y-110}" font-size="29" fill="#a8b5ae">${i+1} · ${section.name}</text>`;}).join('');
-  const hazards=l.hazards.map(h=>{const r=hazardAt(h,run.clock),disabled=h.disabledBy!==undefined&&run.activated.includes(h.disabledBy);return `<path d="M${r.x+r.w/2} ${r.y-8}l-15 27h30z" fill="${disabled?'#6e957e':'#df8d7a'}"><title>${h.kind}${disabled?' · machinery stopped':' hazard'}</title></path>`;}).join('');
-  const flags=checkpoints.map((cp,i)=>`<path d="M${cp.x} ${cp.y}v-56h34l-10 16h-24" fill="none" stroke="${i<=checkpointIndexFor(run)?'#c2d99a':'#819a9c'}" stroke-width="5"><title>Checkpoint ${i+1}${i<=checkpointIndexFor(run)?' saved':''}</title></path>`).join('');
-  const stations=l.stations.map(p=>{const at=stationAt(p,l,run.clock),done=run.activated.includes(p.id),selected=guidance.target.id===p.id;return `<circle cx="${at.x}" cy="${at.y-32}" r="25" fill="${done?'#c2d99a':'#dc9e7b'}" stroke="${selected?'#fff1c8':'#172b36'}" stroke-width="${selected?7:3}"/><text x="${at.x}" y="${at.y-22}" text-anchor="middle" font-size="29" font-weight="bold" fill="#182330">${done?'✓':'·'}</text><title>${stationAction(p)} ${p.label}${done?' · done':''}</title>`;}).join('');
-  const memories=l.pickups.filter(p=>p.kind==='spark'&&!run.collected.includes(p.id)).map(p=>`<path d="M${p.x} ${p.y-12}l9 12-9 12-9-12z" fill="#d9bb77"><title>Optional memory</title></path>`).join('');
-  return `<div class="ll-map-viewport" tabindex="0" aria-label="Route map. Scroll to explore." data-focus-x="${(run.x+8-minX)/(maxX-minX)}" data-focus-y="${(run.y+12-minY)/height}"><svg class="ll-map" style="width:${width}px" viewBox="${minX} ${minY} ${maxX-minX} ${height}" role="img" aria-label="Map showing alternate routes, optional encounters, checkpoints, hazards, exit and your position"><polyline points="${main}" fill="none" stroke="#d4c8a450" stroke-width="7" stroke-dasharray="14 12"/>${platforms}${sectors}${hazards}${flags}${memories}${stations}<path d="M${l.exit.x} ${l.exit.y}v56h38v-56z" fill="#f3c77a" stroke="#f3c77a" stroke-width="4"/><text x="${l.exit.x+19}" y="${l.exit.y-15}" text-anchor="middle" font-size="29" fill="#f3c77a">EXIT</text><circle cx="${run.x+8}" cy="${run.y+12}" r="18" fill="#91d8e2" stroke="#152834" stroke-width="5"/><text x="${run.x+8}" y="${run.y-17}" text-anchor="middle" font-size="30" font-weight="bold" fill="#91d8e2">YOU</text></svg></div>`;
  }
  const button=(action:string,label:string,secondary=false)=>`<button class="ll-button${secondary?' ll-secondary':''}" data-do="${action}">${label}</button>`;
  const eyebrow=(text:string)=>`<p class="ll-eyebrow">${text}</p>`;
@@ -97,36 +74,28 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
 
   overlay=next;stop();layer.hidden=!next;canvas.tabIndex=next?-1:0;q<HTMLElement>('.ll-dialogue').hidden=true;
   if(!next){card.replaceChildren();paint();schedule();canvas.focus({preventScroll:true});return;}
-  const level=LEVELS[run.stage],guidance=missionGuidance(run);let html='';
-  if(next==='intro')html=`${eyebrow('A PRECISION PLATFORMER')}<h1><span class="sr-only">Last Light</span><img src="${import.meta.env.BASE_URL}game-art/last-light/title.svg" alt="" width="190" height="130"></h1><p class="ll-story">Forty levels. One goal.<br>Reach the exit.</p><p class="ll-description">${instructions('A / D runs; hold Space to jump.')}<br>${instructions('Tap for a short hop. X dashes in the air.')}<br>Brake for small ledges. Flags save your place.</p>${button('play','Play →')}${button('help','How to play',true)}<details class="ll-score-breakdown"><summary>The story · optional</summary><p>Mira didn’t come home. She left you a lantern. Follow her trail through a city waiting for dawn. Conversations and hidden memories tell her story; none are required to finish a level.</p></details><p class="ll-footnote">PRECISION · MOMENTUM · TIMING</p>`;
+  const level=LEVELS[run.stage];let html='';
+  if(next==='intro')html=`${eyebrow('A PRECISION PLATFORMER')}<h1><span class="sr-only">Last Light</span><img src="${import.meta.env.BASE_URL}game-art/last-light/title.svg" alt="" width="190" height="130"></h1><p class="ll-story">Forty levels. One goal.<br>Reach the exit.</p><p class="ll-description">${instructions('Arrows move; hold Up to jump.')}<br>${instructions('Tap Up for a short hop. Right Shift dashes.')}<br>Brake for small ledges. Flags save your place.</p>${button('play','Play →')}${button('help','How to play',true)}<details class="ll-score-breakdown"><summary>The story · optional</summary><p>Mira didn’t come home. She left you a lantern. Follow her trail through a city waiting for dawn. Conversations and hidden memories tell her story; none are required to finish a level.</p></details><p class="ll-footnote">PRECISION · MOMENTUM · TIMING</p>`;
   if(next==='continue')html=`${eyebrow('PICK UP WHERE YOU LEFT OFF')}<h2>Welcome back.</h2><p>Level ${run.stage+1} · ${level.name}<br>${run.cleared} levels cleared · ${run.best.toLocaleString()} points</p><p class="ll-map-objective"><strong>Objective</strong>Reach the exit</p>${button('play','Continue →')}${button('help','Controls',true)}${button('confirm','Start a new run',true)}`;
   if(next==='clear'||next==='complete'){
    const ending=run.ending?ENDINGS[run.ending]:null;
    html=`${eyebrow(next==='complete'?'40 / 40 · CAMPAIGN COMPLETE':`${String(run.stage+1).padStart(2,'0')} / 40 · ${WORLDS[level.world].name}`)}<h2>${next==='complete'?'All forty cleared.':'Level clear.'}</h2><div class="ll-results"><span>MEMORIES<strong>${run.collected.filter(id=>id<3).length}/3</strong></span><span>LEVEL TIME<strong>${formatTime(run.stageTime)}</strong></span><span>POINTS<strong>${run.best.toLocaleString()}</strong></span></div><details class="ll-score-breakdown"><summary>Where your points came from</summary><p>${run.cleared} levels × 1,000 = ${(run.cleared*1000).toLocaleString()}<br>${run.sparks} sparks × 100 = ${(run.sparks*100).toLocaleString()}<br>Pace bonus = ${Math.max(0,run.best-run.cleared*1000-run.sparks*100).toLocaleString()}<br>Each level banks its own bonus: up to 250, −2 per active second, −25 per setback. Previously earned points stay yours.</p></details>${next==='clear'?button('next','Next level →'):button('confirm','Start another run →')}${next==='complete'?button('ending','Read the story ending',true):''}${ending?`<details class="ll-score-breakdown"><summary>${ending.title}</summary><p>${ending.text}</p></details>`:''}${button('journal','Read the journal',true)}${button('rankings','View leaderboard',true)}`;
   }
   if(next==='choice')html=`${eyebrow('OPTIONAL · THE LAST PAGE')}<h2>What do we<br>leave alight?</h2><p class="ll-story">At the end of the city, Mira stands beside you. Below, windows wait for dawn.</p><p>Share the flame with every district now, or bring it home and let neighbour light neighbour.</p>${button('share','Share the flame →')}${button('home','Carry it home →',true)}${button('results','Back to results',true)}<p class="ll-small">Both roads lead home. Your campaign is already complete.</p>`;
-  if(next==='menu')html=`${eyebrow('TAKE A BREATHER')}<h2>The light can wait.</h2><p>Level ${run.stage+1} · ${level.name}</p>${button('play','Resume →')}${button('map','Route map',true)}${button('journal','Mira’s journal',true)}${button('help','How to play',true)}${button('rankings','Leaderboard',true)}${button('confirm','Start a new run',true)}`;
-  if(next==='map'){
-   const sectors=level.sectors??[],controls=sectors.map((s,i)=>`<button data-do="map-sector" data-sector="${i}" aria-pressed="${mapSector===i}">${i+1} · ${s.name}${i===guidance.sector.index?' · You':''}</button>`).join('');
-   const stops=level.stations.map(p=>{const done=run.activated.includes(p.id),nextStop=guidance.target.id===p.id,area=sectors.filter(s=>s.platform<=p.platform).at(-1)?.name;return `<li data-state="${done?'done':nextStop?'next':'pending'}"><span>${done?'✓':'·'}</span><div>${stationAction(p)} ${p.label}<small>${done?'Used':'Optional'}${area?` · ${area}`:''}${done?'':' · E to interact'}</small></div></li>`;}).join('');
-   html=`${eyebrow('THE ROUTE')}<h2>${level.name}</h2><p class="ll-map-objective"><strong>Objective</strong>Reach the gold exit. No story tasks required.</p><div class="ll-map-sectors" role="group" aria-label="Map section">${controls}<button data-do="map-sector" data-sector="all" aria-pressed="${mapSector===null}">Overview</button></div>${mapHtml()}<p class="ll-map-key">Pan to explore · Blue YOU · Gold EXIT · Flags save progress<br>Pale dotted line: main route · Blue-grey ledges and sparks: optional<br>Red triangles: hazards · Small circles: optional encounters</p><details class="ll-score-breakdown"><summary>Optional encounters & machinery</summary><ul class="ll-connections">${instructions(stops)}</ul></details><p class="ll-small">${instructions(guidance.hint)}</p>${button('back','Resume →')}`;
-  }
+  if(next==='menu')html=`${eyebrow('TAKE A BREATHER')}<h2>The light can wait.</h2><p>Level ${run.stage+1} · ${level.name}<br>${WORLDS[level.world].name} · ${missionGuidance(run).sector.name}</p><p class="ll-small">✦ ${run.sparks} memories · ↻ ${run.deaths} setbacks · ${formatTime(run.time)}<br>Checkpoint ${Math.max(0,checkpointIndexFor(run)+1)}/${checkpointsFor(level).length} · ${run.best.toLocaleString()} points</p>${button('play','Resume →')}${button('journal','Mira’s journal',true)}${button('help','How to play',true)}${button('rankings','Leaderboard',true)}${button('confirm','Start a new run',true)}`;
   if(next==='journal'){
    const pages=CHAPTERS.map((c,i)=>({c,i,found:run.memories.filter(id=>Math.floor(id/3)===i)})).filter(p=>p.found.length||run.heard.includes(p.i));
    html=`${eyebrow(`${run.memories.length} FRAGMENTS · ${run.heard.length} CONVERSATIONS`)}<h2>The things<br>we carry.</h2><p class="ll-small">Mira’s trail, and the people you met along the way.</p><div class="ll-journal" tabindex="0" aria-label="Journal entries">${pages.length?pages.map(({c,i,found})=>`<article><h3>${String(i+1).padStart(2,'0')} · ${c.name}</h3>${run.heard.includes(i)?`<p><strong>${speakerFor(i)}</strong> — ${c.line}</p>`:''}${found.map(id=>`<p class="ll-memory">✦ ${id%3+1}/3 · ${memoryFor(i,id%3)}</p>`).join('')}</article>`).join(''):'<p>Talk to someone with E, or follow a hidden path to find a memory spark. Your discoveries will stay here.</p>'}</div>${button('back','Back →')}`;
   }
   if(next==='help'){
-   const controls=touchMode()?'<dt>← →</dt><dd>Run · hold a direction</dd><dt>JUMP</dt><dd>Hold for height</dd><dt>DASH</dt><dd>Air dash · land to recharge</dd><dt>Prompt</dt><dd>Tap to interact · optional</dd><dt>Map / Journal</dt><dd>Tap the buttons above the scene</dd><dt>Jump at a wall</dt><dd>Kick away from it</dd>':'<dt>← → / A D</dt><dd>Run</dd><dt>Space / ↑ / W</dt><dd>Jump · hold for height</dd><dt>Shift / X</dt><dd>Air dash · land to recharge</dd><dt>E</dt><dd>Interact · optional</dd><dt>M / J</dt><dd>Map / journal</dd><dt>Jump at a wall</dt><dd>Kick away from it</dd><dt>R / P</dt><dd>Retry checkpoint / pause</dd>';
-   html=`${eyebrow('SMALL COURIER. MANY ROADS.')}<h2>Find your footing.</h2><dl class="ll-controls-list">${controls}</dl><p class="ll-small">${instructions('Reach the gold exit. Hold jump for height, tap for short hops, and release direction to brake onto narrow ledges. Dash once per landing. The map shows the route and flags save your place. Conversations, side paths and machinery are optional; a wheel shuts down its nearby steam line.')}</p><p class="ll-small">Cracked floors shake, fracture and fall. Springs launch, belts push, ice slides. Vent grates warn amber before steam erupts; electrical gates pulse between their mounted emitters. In escape chapters the dark follows, so reach the shelter without stopping for switches.</p><p class="ll-small">1,000 points per chapter, 100 per spark, up to 250 per chapter in pace bonuses. On touch screens, hold movement and action buttons together.</p>${button('back','Got it →')}`;
+   const controls=touchMode()?'<dt>← →</dt><dd>Run · hold a direction</dd><dt>JUMP</dt><dd>Hold for height</dd><dt>DASH</dt><dd>Air dash · land to recharge</dd><dt>Prompt</dt><dd>Tap to interact · optional</dd><dt>Journal</dt><dd>Open Menu, then Mira’s journal</dd><dt>Jump at a wall</dt><dd>Kick away from it</dd>':'<dt>← → / A D</dt><dd>Run</dd><dt>Space / ↑ / W</dt><dd>Jump · hold for height</dd><dt>Right Shift / X</dt><dd>Air dash · land to recharge</dd><dt>Enter / E</dt><dd>Interact · optional</dd><dt>Page Down / J</dt><dd>Journal</dd><dt>Jump at a wall</dt><dd>Kick away from it</dd><dt>End / Delete</dt><dd>Retry checkpoint / pause</dd><dt>Menu arrows / Enter</dt><dd>Select / confirm</dd>';
+   html=`${eyebrow('SMALL COURIER. MANY ROADS.')}<h2>Find your footing.</h2><dl class="ll-controls-list">${controls}</dl><p class="ll-small">${instructions('Reach the gold exit. Hold jump for height, tap for short hops, and release direction to brake onto narrow ledges. Dash once per landing. Flags save your place. Conversations, side paths and machinery are optional; a wheel shuts down its nearby steam line.')}</p><p class="ll-small">Cracked floors shake, fracture and fall. Springs launch, belts push, ice slides. Vent grates warn amber before steam erupts; electrical gates pulse between their mounted emitters. In escape chapters the dark follows, so reach the shelter without stopping for switches.</p><p class="ll-small">1,000 points per chapter, 100 per spark, up to 250 per chapter in pace bonuses. On touch screens, hold movement and action buttons together.</p>${button('back','Got it →')}`;
   }
   if(next==='confirm')html=`${eyebrow('A FRESH START')}<h2>Begin again?</h2><p>This replaces your current journey and journal. Your personal best stays saved.</p>${button('fresh','Start new run')}${button('back','Keep this journey',true)}`;
   card.innerHTML=html;layer.scrollTop=0;paint();queueMicrotask(()=>{
    if(disposed||overlay!==next)return;
-   card.querySelector<HTMLButtonElement>(next==='map'?'[aria-pressed="true"]':'button')?.focus({preventScroll:true});
-   const sectionTabs=card.querySelector<HTMLElement>('.ll-map-sectors'),selected=sectionTabs?.querySelector<HTMLElement>('[aria-pressed="true"]');
-   if(sectionTabs&&selected)sectionTabs.scrollLeft=selected.offsetLeft-sectionTabs.offsetLeft-12;
-   const viewport=card.querySelector<HTMLElement>('.ll-map-viewport'),map=card.querySelector<SVGElement>('.ll-map');
-   if(viewport&&map){viewport.scrollLeft=Number(viewport.dataset.focusX)*map.clientWidth-viewport.clientWidth*.4;viewport.scrollTop=Number(viewport.dataset.focusY)*map.clientHeight-viewport.clientHeight*.6;}
+   card.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true});
+
   });
  }
  function report(){context.setLevel(`Level ${run.stage+1} / ${LEVEL_COUNT}`);context.setScore(run.best);}
@@ -149,7 +118,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
    }
    if(events.interact||events.pickup)save();
    if(events.checkpoint){notice(`Checkpoint ${checkpointIndexFor(run)+1}/${checkpointsFor(LEVELS[run.stage]).length} saved · ${missionGuidance(run).sector.name}`);save();context.sound('success');}
-   if(events.death){notice(`${run.checkpoint?`Back at checkpoint ${checkpointIndexFor(run)+1}.`:'Back at the chapter start.'} ${missionGuidance(run).hint}`);q<HTMLElement>('.ll-dialogue').hidden=true;context.sound('lose');save();}
+   if(events.death){notice(`${events.deathCause==='fall'?'Fell':events.deathCause==='spikes'?'Spikes':events.deathCause==='dark'?'Caught by the dark':'Hit'} · ${run.checkpoint?`Checkpoint ${checkpointIndexFor(run)+1}`:'Level start'}`);q<HTMLElement>('.ll-dialogue').hidden=true;context.sound('lose');save();}
    if(events.clear){q<HTMLElement>('.ll-dialogue').hidden=true;context.sound('success');report();save();context.announce('Level clear');context.setStatus(run.phase==='complete'?'All forty levels cleared.':'Level clear.');}
    const guidance=missionGuidance(run),sectorKey=`${run.stage}:${guidance.sector.index}`;
    if(run.grounded&&sectorKey!==previousSector){
@@ -167,15 +136,14 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  }
  function retry(){if(run.phase!=='playing')return;q<HTMLElement>('.ll-dialogue').hidden=true;respawn(run);resetInput();notice(`${run.checkpoint?`Checkpoint ${checkpointIndexFor(run)+1}`:'Chapter start'} · ${missionGuidance(run).action}`);save();paint();}
  let returnTo:Overlay='intro';
- function openTool(next:'map'|'journal'){returnTo=overlay;if(next==='map')mapSector=missionGuidance(run).sector.index;show(next);}
- root.addEventListener('click',event=>{const action=(event.target as Element).closest<HTMLElement>('[data-ui]')?.dataset.ui;if(!action||paused)return;if(action==='interact'&&active()){interactQueued=true;canvas.focus({preventScroll:true});}else if(action==='dismiss'){q<HTMLElement>('.ll-dialogue').hidden=true;canvas.focus();}else if(action==='map'||action==='journal')openTool(action);},{signal});
+ function openTool(next:'journal'){returnTo=overlay;show(next);}
+ root.addEventListener('click',event=>{const action=(event.target as Element).closest<HTMLElement>('[data-ui]')?.dataset.ui;if(!action||paused)return;if(action==='interact'&&active()){interactQueued=true;canvas.focus({preventScroll:true});}else if(action==='dismiss'){q<HTMLElement>('.ll-dialogue').hidden=true;canvas.focus();}else if(action==='journal')openTool(action);},{signal});
  card.addEventListener('click',event=>{
   const action=(event.target as Element).closest<HTMLElement>('[data-do]')?.dataset.do;if(!action||paused)return;
   if(action==='play')play();
-  else if(action==='map-sector'){const selected=(event.target as Element).closest<HTMLElement>('[data-sector]')?.dataset.sector;mapSector=selected==='all'?null:Number(selected);show('map');}
   else if(action==='next'){if(nextStage(run)){save();report();play();}}
   else if(action==='help'||action==='confirm'){returnTo=overlay;show(action==='help'?'help':'confirm');}
-  else if(action==='map'||action==='journal')openTool(action);
+  else if(action==='journal')openTool(action);
   else if(action==='back'){show(returnTo);}
   else if(action==='fresh'){music.reset();run=createRun();previousSecond=-1;save();report();play();}
   else if(action==='ending')show('choice');
@@ -185,13 +153,23 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  },{signal});
  window.addEventListener('keydown',event=>{
   const target=event.target as HTMLElement;
-  if(disposed||target.closest('dialog,input,textarea,select,[contenteditable=true]')||!container.contains(target))return;
-  if(event.code==='KeyP'&&!event.repeat){event.preventDefault();if(paused)context.setPaused?.(false);else if(overlay==='menu')play();else if(!overlay)show('menu');return;}
-  if(['KeyM','KeyJ'].includes(event.code)&&!event.repeat&&!paused){event.preventDefault();const next=event.code==='KeyM'?'map':'journal';if(overlay===next)show(returnTo);else if(!overlay||overlay==='menu')openTool(next);return;}
+  if(disposed||target.closest('dialog,input,textarea,select,[contenteditable=true]')||!container.closest('.game-view')?.contains(target))return;
+  if(['KeyP','Delete','Escape'].includes(event.code)&&!event.repeat){event.preventDefault();if(paused)context.setPaused?.(false);else if(overlay==='menu')play();else if(!overlay)show('menu');else if(overlay==='journal'||overlay==='help'||overlay==='confirm')show(returnTo);return;}
+  if(['KeyJ','PageDown'].includes(event.code)&&!event.repeat&&!paused){event.preventDefault();if(overlay==='journal')show(returnTo);else if(!overlay||overlay==='menu')openTool('journal');return;}
+  if(overlay){
+   if(event.code==='Enter'&&!event.repeat){const focused=target.closest<HTMLElement>('button,summary'),choice=focused&&card.contains(focused)?focused:card.querySelector<HTMLElement>('button');if(choice){event.preventDefault();choice.click();}return;}
+   if(['ArrowUp','ArrowDown'].includes(event.code)){
+    event.preventDefault();
+    if(overlay==='journal'){card.querySelector('.ll-journal')?.scrollBy({top:event.code==='ArrowDown'?72:-72});return;}
+    const choices=[...card.querySelectorAll<HTMLElement>('button,summary')].filter(el=>el.getClientRects().length),current=Math.max(0,choices.indexOf(document.activeElement as HTMLElement)),direction=event.code==='ArrowDown'?1:-1;
+    const next=choices[(current+direction+choices.length)%choices.length];next?.focus({preventScroll:true});next?.scrollIntoView({block:'nearest'});return;
+   }
+  }
   if(!active())return;
+  if(event.code==='Enter'&&target.closest('button,a,summary'))return;
   if(run.phase!=='playing'&&['Space','KeyE'].includes(event.code)){event.preventDefault();run.cinematic=0;show(run.phase==='complete'?'complete':'clear');return;}
-  if(['ArrowLeft','ArrowRight','KeyA','KeyD','Space','ArrowUp','KeyW','ShiftLeft','ShiftRight','KeyX','KeyE'].includes(event.code)){event.preventDefault();keys.add(event.code);if(!event.repeat){if(['Space','ArrowUp','KeyW'].includes(event.code))jumpQueued=true;if(['ShiftLeft','ShiftRight','KeyX'].includes(event.code))dashQueued=true;if(event.code==='KeyE')interactQueued=true;}}
-  if(event.code==='KeyR'&&!event.repeat){event.preventDefault();retry();}
+  if(['ArrowLeft','ArrowRight','KeyA','KeyD','Space','ArrowUp','KeyW','ShiftLeft','ShiftRight','KeyX','KeyE','Enter'].includes(event.code)){event.preventDefault();keys.add(event.code);if(!event.repeat){if(['Space','ArrowUp','KeyW'].includes(event.code))jumpQueued=true;if(['ShiftLeft','ShiftRight','KeyX'].includes(event.code))dashQueued=true;if(event.code==='KeyE'||event.code==='Enter')interactQueued=true;}}
+  if(['KeyR','End'].includes(event.code)&&!event.repeat){event.preventDefault();retry();}
  },{signal});
  window.addEventListener('keyup',event=>{keys.delete(event.code);},{signal});
  for(const b of root.querySelectorAll<HTMLButtonElement>('[data-action]')){
@@ -203,19 +181,19 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  document.addEventListener('visibilitychange',()=>{if(document.hidden){resetInput();if(!overlay)show('menu');save();}},{signal});
  root.addEventListener('pointerdown',()=>music.unlock(),{signal});root.addEventListener('keydown',()=>music.unlock(),{signal});
  const resize=new ResizeObserver(()=>{
-  const header=q<HTMLElement>('.ll-hud').getBoundingClientRect(),bounds=root.getBoundingClientRect();
-  root.style.setProperty('--ll-scene-top',`${Math.ceil(header.bottom-bounds.top+6)}px`);
+  const bounds=root.getBoundingClientRect(),bar=dock.getBoundingClientRect(),top=`${Math.ceil(bar.bottom-bounds.top+4)}px`;
+  if(root.style.getPropertyValue('--ll-scene-top')!==top)root.style.setProperty('--ll-scene-top',top);
   const r=canvas.getBoundingClientRect();if(r.width&&r.height){scene.resize(r.width,r.height);paint();}
- });resize.observe(root);resize.observe(q('.ll-hud'));resize.observe(canvas);
+ });resize.observe(root);resize.observe(dock);resize.observe(canvas);
  report();show('intro');
  return {
   openMenu(){if(!overlay){show('menu');save();}else show(run.phase==='cleared'?'clear':run.phase==='complete'?'complete':'menu');},
-  dismissMenu(){if(['menu','help','confirm','map','journal'].includes(overlay??'')){if(overlay==='menu')play();else show(returnTo);return true;}return false;},
+  dismissMenu(){if(['menu','help','confirm','journal'].includes(overlay??'')){if(overlay==='menu')play();else show(returnTo);return true;}return false;},
   pause(){paused=true;stop();save();paint();},resume(){paused=false;paint();schedule();},
   restart(){if(run.phase!=='playing'||overlay==='intro'||overlay==='continue')return false;retry();if(overlay)show(null);return false;},
   serialize:()=>serialize(run),restore(value){const restored=restore(value);if(!restored)return;music.reset();run=restored;previousSecond=-1;report();show(run.phase==='complete'?'complete':run.phase==='cleared'?'clear':'continue');},
-  dispose(){disposed=true;stop();music.dispose();abort.abort();resize.disconnect();hud.dispose();root.remove();},
+  dispose(){disposed=true;stop();music.dispose();abort.abort();resize.disconnect();hudContent.remove();hud.dispose();root.remove();},
  };
 }
-const game:GameModule={id:'last-light',title:'Last Light',cover:'game-art/last-light/cover.svg',rules:'A precision platformer across forty levels and five districts. Reach each gold exit. A/D or arrows run; hold Space, W or Up for height, tap for short hops. Shift or X air dashes; landing refills it. Release direction to brake onto small ledges. Jump at walls to kick away. Flags save progress; R retries (+1 setback), P pauses. M opens the route map, J the optional journal. E interacts when a prompt appears. Conversations, memory sparks and machinery never lock the exit. Cracked floors fracture and fall; vent grates warn amber before firing. Springs launch, belts push, ice slides. In escape levels the dark pursues you. On touch screens, hold movement and jump or dash together. 1,000 points per level, 100 per spark, plus a pace bonus up to 250 per level, reduced by 2 per active second and 25 per setback.',mount};
+const game:GameModule={id:'last-light',title:'Last Light',cover:'game-art/last-light/cover.svg',rules:'A precision platformer across forty levels and five districts. Reach each gold exit. Left/Right arrows run; hold Up for height, tap Up for short hops. Right Shift air dashes; landing refills it. Release direction to brake onto small ledges. Jump at walls to kick away. Flags save progress; End or R retries (+1 setback), Delete or P pauses. Page Down or J opens the optional journal. Enter or E interacts when a prompt appears. Conversations, memory sparks and machinery never lock the exit. Cracked floors fracture and fall; vent grates warn amber before firing. Springs launch, belts push, ice slides. In escape levels the dark pursues you. On touch screens, hold movement and jump or dash together. 1,000 points per level, 100 per spark, plus a pace bonus up to 250 per level, reduced by 2 per active second and 25 per setback.',mount};
 export default game;
