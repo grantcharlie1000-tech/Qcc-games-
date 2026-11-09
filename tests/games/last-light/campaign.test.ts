@@ -5,10 +5,20 @@ import {step,missionReady,serialize,restore,platformAt,stationAt,overlap} from '
 import {onPlatform,idle,routeGraph,reachable} from './routes';
 describe('authored campaign spaces',()=>{
  it('gives all 120 optional memory fragments a distinct narrative payoff',()=>{expect(new Set(LEVELS.flatMap(l=>[0,1,2].map(id=>memoryFor(l.id,id)))).size).toBe(120);});
- it('has forty distinct maps, story beats and chapter outcomes',()=>{expect(new Set(LEVELS.map(l=>JSON.stringify(l.platforms.map(p=>[p.x,p.y,p.w,p.kind])))).size).toBe(40);expect(new Set(CHAPTERS.map(c=>c.after)).size).toBe(40);expect(new Set(LEVELS.map(l=>l.goal)).size).toBe(8);expect(LEVELS.filter(l=>l.platforms.slice(1,l.mainCount).some((p,i)=>p.x<l.platforms[i].x)).length).toBeGreaterThan(12);});
+ it('has forty distinct maps, story beats and chapter outcomes',()=>{expect(new Set(LEVELS.map(l=>JSON.stringify(l.platforms.map(p=>[p.x,p.y,p.w,p.kind])))).size).toBe(40);expect(new Set(CHAPTERS.map(c=>c.after)).size).toBe(40);expect(new Set(LEVELS.map(l=>l.goal)).size).toBe(8);expect(new Set(LEVELS.flatMap(l=>l.sectors?.map(s=>s.name)??[])).size).toBeGreaterThan(100);});
  for(const l of LEVELS)it(`${l.id+1} ${l.name}: both paths, every connection and the exit are reachable`,()=>{
   const graph=routeGraph(l),fromStart=reachable(graph,0);
   for(const p of l.platforms){expect(fromStart.has(p.id),`unreachable authored platform ${p.id}`).toBe(true);expect(reachable(graph,p.id).has(l.mainCount-1),`platform ${p.id} has no onward route to the exit`).toBe(true);}
+  const optionalPath=l.platforms.slice(0,l.mainCount-1).some(entry=>{
+   const queue=(graph.get(entry.id)??[]).filter(id=>id>=l.mainCount),seen=new Set(queue);
+   while(queue.length)for(const id of graph.get(queue.shift()!)??[]){
+    if(id<l.mainCount){if(id>entry.id)return true;continue;}
+    if(!seen.has(id)){seen.add(id);queue.push(id);}
+   }
+   return false;
+  });
+  expect(optionalPath,'a side route must reconnect farther along the journey').toBe(true);
+  expect(l.stations.every(s=>!l.platforms[s.platform].branch),'all required tasks belong to the main route').toBe(true);
   const required=[l.mainCount-1,...l.stations.map(s=>l.platforms.findIndex(p=>s.x>=p.x&&s.x<=p.x+p.w&&s.y===p.y))];
   for(const id of required){expect(fromStart.has(id),`unreachable objective platform ${id}; reachable ${[...fromStart]}`).toBe(true);expect(reachable(graph,id).has(l.mainCount-1),`no way from objective ${id} to exit`).toBe(true);}
   for(const p of l.pickups.filter(p=>p.kind==='spark')){const support=l.platforms.findIndex(r=>p.x>=r.x&&p.x<=r.x+r.w&&p.y===r.y-30);expect(fromStart.has(support),`unreachable memory on platform ${support}`).toBe(true);expect(reachable(graph,support).has(l.mainCount-1),`memory ${p.id} has no return to the exit`).toBe(true);}

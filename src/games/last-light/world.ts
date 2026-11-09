@@ -27,7 +27,7 @@ function dressingClear(l:Level,b:Readonly<Rect>,support:number):boolean{
  if(l.platforms.some(p=>{if(p.id===support)return false;const dx=p.kind==='moving'&&p.axis!=='y'?p.travel??0:0,dy=p.kind==='moving'&&p.axis==='y'?p.travel??0:0;return overlaps(b,{x:p.x-dx-8,y:p.y-dy-9,w:p.w+dx*2+16,h:p.h+dy*2+49});}))return false;
  const e=l.exit;if(overlaps(b,{x:e.x-74,y:e.y-56,w:e.w+148,h:e.h+76}))return false;
  if(overlaps(b,{x:l.spawn.x-44,y:l.spawn.y-44,w:104,h:88})||overlaps(b,{x:124,y:l.platforms[0].y-62,w:82,h:64}))return false;
- if(overlaps(b,{x:l.checkpoint.x-24,y:l.checkpoint.y-66,w:72,h:70}))return false;
+ if((l.checkpoints??[l.checkpoint]).some(cp=>overlaps(b,{x:cp.x-24,y:cp.y-66,w:72,h:70})))return false;
  if(l.pickups.some(p=>overlaps(b,{x:p.x-30,y:p.y-31,w:60,h:62})))return false;
  if(l.stations.some(s=>{const p=l.platforms.find(p=>p.id===s.platform),dx=p?.kind==='moving'&&p.axis!=='y'?p.travel??0:0,dy=p?.kind==='moving'&&p.axis==='y'?p.travel??0:0;return overlaps(b,{x:s.x-dx-62,y:s.y-dy-115,w:124+dx*2,h:130+dy*2});}))return false;
  return !l.hazards.some(h=>{const travel=h.travel??0;return overlaps(b,{x:h.x-travel-30,y:h.y-30,w:h.w+travel*2+60,h:h.h+60});});

@@ -1,4 +1,22 @@
-# Last Light overhaul verification — 9 November 2026
+# Last Light journey rebuild verification — 9 November 2026
+
+The play-test follow-up replaces the short maps and unclear objective flow. The isolated deployment target is [Last Light play-test](https://last-light-playtest.nceastudy.pages.dev/#/game/last-light); its source revision is checked through `deploy-info.json`. Production and the shared database remain separate.
+
+- Final production build: **PASS**, including TypeScript, Vite, Whetū host preparation and service-worker retirement. The existing unrelated large-bundle advisory remains.
+- Final regression command `npx vitest run tests/games/last-light tests/core/posters.test.ts tests/core/storage.test.ts tests/accounts tests/leaderboard`: **498/498 pass in 20 files**, including real local Postgres account and ranking checks.
+- Chromium suite against a Vite server with hot reload disabled: **18/18 pass**. The opening is completed through ordinary keyboard actions; phone multi-touch, conversation, map, journal, save restore, ending, artwork states and audio lifecycle pass.
+- New journey coverage: **73 checks pass**. All forty recorded 120 Hz input witnesses complete every required objective with zero setbacks. The witnesses move only through legal inputs, without teleporting between platforms. [record-journeys.mjs](record-journeys.mjs) regenerates them; [journey.test.ts](journey.test.ts) independently replays them.
+- The original preview's scripted median clear was **4.863 seconds**; the rebuilt median is **22.783 seconds**, with a **14.300–28.392 second** range. Total active scripted campaign traversal rises from **3m38s to 15m10s**. These are automated routes, not estimates of average human completion time.
+- Tower shortcut searches cover all eight tower chapters. The shortest goal routes found by the real-trajectory graph retain their complete main routes. Other chapters also have conservative minimum-travel checks that ignore obstacles and allow constant maximum movement speed.
+- The campaign has **916 main ledges, 160 named encounter sectors, 131 safe flags, 270 hazards, 120 memories and twelve extended alternate paths**. All 876 intended main connections and 52 alternate-chain connections pass physics checks. All optional memories have an onward route; alternate paths preserve access to required tasks.
+- The full **122 campaign regressions** and **44 composition regressions** pass, including terrain headroom, pickup/fixture clearance, mission persistence and all forty exit conditions.
+- Additional browser input replays clear chapters **2, 20 and 40** with zero setbacks or page errors. They use actual DOM keyboard events, dismiss conversations through their UI button, and control animation-frame timing for deterministic verification; physics and rendering run through the real game instance.
+- Independent 320px, 390px and desktop review confirms named next-action guidance, wheel shutdown feedback, rescue/exit transitions, map section selection and native touch panning. Native touch play crosses the first six opening landings, including its first long dash crossing, without a setback. Earlier clipping and hint-label issues were corrected and rechecked.
+- Save regressions cover the latest reached flag, backtracking without checkpoint rollback, machinery state persistence, old one-flag saves and removal of the obsolete hidden escape-lamp requirement without discarding chapter progress.
+
+No live database migration is part of this journey revision. Shared server-side score storage still requires the separately documented backend release; guest play saves locally.
+
+## Historical first-overhaul verification
 
 Current source is on `improve/last-light-world`, based on the existing Last Light release. No live deployment or production database write was performed.
 

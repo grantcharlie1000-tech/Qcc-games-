@@ -39,7 +39,7 @@ export function terrainArtBounds(p:Platform,l:Level):Rect {
    blockers.push(padded(stationArtBounds(l,station),8));const marker=stationComposition(l,station).marker;
    if(marker){const platform=l.platforms.find(q=>q.id===station.platform);blockers.push(padded(platform?swept(platform,marker):marker,8));}
   }
-  blockers.push({x:l.checkpoint.x-8,y:l.checkpoint.y-58,w:40,h:66});
+  for(const cp of l.checkpoints??[l.checkpoint])blockers.push({x:cp.x-8,y:cp.y-58,w:40,h:66});
   if(!blockers.some(r=>overlaps(support,r)))bounds={...body,h:p.h+28};
  }
  levelCache.set(p,bounds);return bounds;

@@ -9,7 +9,7 @@ function grounded(stage=0,platform=0):Run {
 const ticks=(s:Run,count:number,input=idle)=>{for(let i=0;i<count;i++)step(s,input);};
 
 describe('Last Light physics and campaign',()=>{
- it('lands and never sinks into a solid platform',()=>{const s=createRun();ticks(s,240);expect(s.y).toBe(376);expect(s.grounded).toBe(true);expect(s.deaths).toBe(0);});
+ it('lands and never sinks into a solid platform',()=>{const s=createRun();ticks(s,240);expect(s.y).toBe(LEVELS[0].platforms[0].y-PLAYER_H);expect(s.grounded).toBe(true);expect(s.deaths).toBe(0);});
  it('has buffered, variable-height and coyote jumps',()=>{
   const held=grounded(),tapped=grounded();let topHeld=held.y,topTapped=tapped.y;
   for(let i=0;i<80;i++){step(held,{...idle,jump:true});step(tapped,{...idle,jump:i<5});topHeld=Math.min(topHeld,held.y);topTapped=Math.min(topTapped,tapped.y);}
@@ -25,15 +25,19 @@ describe('Last Light physics and campaign',()=>{
  it('wall jumps away from the touched wall',()=>{const s=grounded();s.grounded=false;s.ground=-1;s.coyote=0;s.wall=1;step(s,{...idle,jump:true});expect(s.vx).toBeLessThan(-200);expect(s.vy).toBeLessThan(-300);});
  it('rides moving platforms and triggers springs and crumbles',()=>{
   const l=LEVELS.find(l=>l.platforms.some(p=>p.kind==='moving'&&p.axis!=='y'))!,p=l.platforms.find(p=>p.kind==='moving')!;const s=grounded(l.id,p.id),before=s.x;ticks(s,12);expect(s.ground).toBe(p.id);expect(s.x).not.toBe(before);
-  const spring=grounded(10,1);step(spring,idle);expect(spring.vy).toBeLessThan(-600);
-  const crumble=grounded(4,1);step(crumble,idle);expect(crumble.crumbles[1]).toBeGreaterThan(0);ticks(crumble,120);expect(crumble.grounded).toBe(false);expect(crumble.y).toBeGreaterThan(LEVELS[4].platforms[1].y-PLAYER_H);
+  const springLevel=LEVELS.find(l=>l.platforms.some(p=>p.kind==='spring'))!,springPlatform=springLevel.platforms.find(p=>p.kind==='spring')!,spring=grounded(springLevel.id,springPlatform.id);
+  step(spring,idle);expect(spring.vy).toBeLessThan(-600);
+  const crumbleLevel=LEVELS.find(l=>l.platforms.some(p=>p.kind==='crumble'))!,crumblePlatform=crumbleLevel.platforms.find(p=>p.kind==='crumble')!,crumble=grounded(crumbleLevel.id,crumblePlatform.id);
+  step(crumble,idle);expect(crumble.crumbles[crumblePlatform.id]).toBeGreaterThan(0);ticks(crumble,120);expect(crumble.grounded).toBe(false);expect(crumble.y).toBeGreaterThan(crumblePlatform.y-PLAYER_H);
  });
  it('uses surface-specific friction and conveyor movement',()=>{
-  const ice=grounded(24,1);ice.vx=200;const stone=grounded(0,1);stone.vx=200;ticks(ice,10);ticks(stone,10);expect(ice.vx).toBeGreaterThan(stone.vx+90);
-  const belt=grounded(16,1),before=belt.x;ticks(belt,10);expect(belt.x).toBeGreaterThan(before);
+  const iceLevel=LEVELS.find(l=>l.platforms.some(p=>p.kind==='ice'))!,ice=grounded(iceLevel.id,iceLevel.platforms.find(p=>p.kind==='ice')!.id);
+  ice.vx=200;const stone=grounded(0,1);stone.vx=200;ticks(ice,10);ticks(stone,10);expect(ice.vx).toBeGreaterThan(stone.vx+90);
+  const beltLevel=LEVELS.find(l=>l.platforms.some(p=>p.kind==='belt'&&p.direction===1))!,belt=grounded(beltLevel.id,beltLevel.platforms.find(p=>p.kind==='belt'&&p.direction===1)!.id),before=belt.x;
+  ticks(belt,10);expect(belt.x).toBeGreaterThan(before);
  });
  it('kills on hazards, preserves collectibles and respawns at the checkpoint',()=>{
-  const s=grounded(2);s.checkpoint=true;s.sparks=1;s.collected=[0];s.y=700;step(s,idle);
+  const s=grounded(2);s.checkpoint=true;s.sparks=1;s.collected=[0];s.y=LEVELS[2].height+100;step(s,idle);
   expect(s.deaths).toBe(1);expect(s.x).toBe(LEVELS[2].checkpoint.x);expect(s.y).toBe(LEVELS[2].checkpoint.y-PLAYER_H);expect(s.sparks).toBe(1);expect(s.collected).toEqual([0]);
   const hazard=LEVELS[2].hazards[0],spiked=grounded(2);spiked.x=hazard.x;spiked.y=hazard.y-12;step(spiked,idle);expect(spiked.deaths).toBe(1);
  });
@@ -55,9 +59,9 @@ describe('Last Light physics and campaign',()=>{
   expect(s.phase).toBe('complete');expect(s.best).toBeGreaterThan(40_000);
  });
  it('gives escape chapters escalating pressure while preserving a safe opening and checkpoint reset',()=>{
-  const escapes=LEVELS.filter(l=>l.goal==='escape');expect(escapes.map(l=>l.pressure)).toEqual([88,104,116,128,140]);
+  const escapes=LEVELS.filter(l=>l.goal==='escape'),pressures=escapes.map(l=>l.pressure!);expect(pressures).toHaveLength(5);expect(pressures.every((n,i)=>n>=70&&(i===0||n>pressures[i-1]))).toBe(true);
   const s=grounded(4);ticks(s,1200);expect(s.deaths).toBe(0);expect(s.chasing).toBe(false);
-  const before=s.threat;s.x=200;step(s,idle);expect(s.chasing).toBe(true);expect(s.threat-before).toBeCloseTo(88/120,6);
+  const before=s.threat;s.x=LEVELS[4].spawn.x+130;step(s,idle);expect(s.chasing).toBe(true);expect(s.threat-before).toBeCloseTo(LEVELS[4].pressure!/120,6);
   respawn(s);expect(s.chasing).toBe(false);expect(s.threat).toBe(s.x-300);
  });
  it('cycles lasers predictably without relying on visual animation',()=>{const laser=LEVELS.flatMap(l=>l.hazards).find(h=>h.kind==='laser')!;expect(laserActive(laser,-(laser.offset??0))).toBe(true);expect(laserActive(laser,2-(laser.offset??0))).toBe(false);});

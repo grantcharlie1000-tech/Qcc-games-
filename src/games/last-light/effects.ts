@@ -1,5 +1,5 @@
 import {LEVELS,type Level} from './levels';
-import {stationAt,type Events,type Run} from './model';
+import {checkpointFor,stationAt,type Events,type Run} from './model';
 import {goalComposition,completionMotion} from './composition';
 type Mark={x:number;y:number;age:number;kind:'dust'|'spark'|'connection'};
 /** Presentation-only, bounded marks. Simulation events are the sole clock source. */
@@ -12,7 +12,7 @@ export class Effects {
   if(e.land)this.marks.push({x:s.x+8,y:s.y+24,age:0,kind:'dust'});
   if(e.pickup)this.marks.push({x:s.x+8,y:s.y+10,age:0,kind:'spark'});
   if(e.interact){const l=LEVELS[s.stage],id=s.activated[s.activated.length-1],station=l.stations.find(p=>p.id===id);if(station&&Math.abs(s.x+8-stationAt(station,l,s.clock).x)<48){const at=stationAt(station,l,s.clock);this.marks.push({x:at.x,y:at.y-35,age:0,kind:'connection'});}}
-  if(e.checkpoint)this.marks.push({x:LEVELS[s.stage].checkpoint.x,y:LEVELS[s.stage].checkpoint.y-40,age:0,kind:'connection'});
+  if(e.checkpoint){const cp=checkpointFor(s);if(cp)this.marks.push({x:cp.x,y:cp.y-40,age:0,kind:'connection'});}
   if(this.marks.length>16)this.marks.splice(0,this.marks.length-16);
  }
  draw(c:CanvasRenderingContext2D,cx:number,cy:number,w:number,h:number,color:string,reduced:boolean){

@@ -1,5 +1,5 @@
 import {LEVELS,WORLDS,type Level} from './levels';
-import {platformAt,hazardAt,laserActive,missionReady,stationAt,type Events,type Run} from './model';
+import {platformAt,hazardAt,hazardActive,checkpointsFor,checkpointIndexFor,missionReady,stationAt,type Events,type Run} from './model';
 import {characterColor,rescueNameFor} from './story';
 import {lantern,doorway,valve,bell,ferry,signalDish,lifeTree} from './props';
 import {Courier} from './courier';
@@ -128,19 +128,24 @@ export class Scene {
   // Mission architecture sits behind every collectible, hazard and character.
   // Its footprint is chosen before drawing, using the exact interaction anchor.
   drawGoal(c,l,s,reduced);drawCompletion(c,l,s,theme.accent,reduced);
-  const cp=l.checkpoint;c.fillStyle='#b7bda7';c.fillRect(cp.x,cp.y-48,2,48);c.fillStyle=s.checkpoint?'#d8e5a0':'#859da3';
-  c.beginPath();c.moveTo(cp.x+2,cp.y-46);c.lineTo(cp.x+23,cp.y-44+(reduced?0:Math.sin(t*3)*2));c.lineTo(cp.x+17,cp.y-34);c.lineTo(cp.x+2,cp.y-34);c.fill();
+  for(const [index,cp] of checkpointsFor(l).entries()){
+   if(cp.x<cx-35||cp.x>cx+w+35||cp.y<cy-20||cp.y>cy+h+60)continue;
+   c.fillStyle='#b7bda7';c.fillRect(cp.x,cp.y-48,2,48);c.fillStyle=index<=checkpointIndexFor(s,l)?'#d8e5a0':'#859da3';
+   c.beginPath();c.moveTo(cp.x+2,cp.y-46);c.lineTo(cp.x+23,cp.y-44+(reduced?0:Math.sin(t*3)*2));c.lineTo(cp.x+17,cp.y-34);c.lineTo(cp.x+2,cp.y-34);c.fill();
+  }
   for(const hazard of l.hazards){
    const r=hazardAt(hazard,s.clock);if(r.x<cx-70||r.x>cx+w+70)continue;
    if(hazard.kind==='spikes'){
     c.fillStyle='#252936';c.fillRect(r.x-2,r.y+r.h-2,r.w+4,5);
     for(let x=r.x;x<r.x+r.w;x+=8){c.fillStyle='#d4b3a5';c.beginPath();c.moveTo(x,r.y+r.h);c.lineTo(x+4,r.y);c.lineTo(x+8,r.y+r.h);c.fill();c.fillStyle='#906f73';c.fillRect(x+4,r.y+5,2,r.h-5);}
-   }else if(hazard.kind==='saw'){drawGear(c,r.x+r.w/2,r.y+r.h/2,12,t*4,'#d3b8b3');}
+   }else if(hazard.kind==='saw'){drawGear(c,r.x+r.w/2,r.y+r.h/2,12,hazardActive(hazard,s)?t*4:0,hazardActive(hazard,s)?'#d3b8b3':'#586c71');}
    else{
-    const on=laserActive(hazard,s.clock);c.fillStyle='#6c6970';c.fillRect(r.x-5,r.y+r.h-4,r.w+10,6);
+    const on=hazardActive(hazard,s),stopped=hazard.disabledBy!==undefined&&s.activated.includes(hazard.disabledBy);
+    c.fillStyle=stopped?'#63847b':'#6c6970';c.fillRect(r.x-5,r.y+r.h-4,r.w+10,6);
+    if(stopped){c.fillStyle='#b8dc9e';c.fillRect(r.x+3,r.y+r.h-3,10,2);}
     if(hazard.kind==='steam'){
-     c.fillStyle=on?'#e4d7c572':'#e4d7c523';for(let i=0;i<(on?7:2);i++){const age=reduced?i/7:(t*1.7+i*.14)%1;c.fillRect(r.x-3-age*8,r.y+r.h-age*r.h,15+age*16,6);}
-    }else{c.fillStyle=on?'#ed927c45':'#d3e3ae22';c.fillRect(r.x-3,r.y,r.w+6,r.h);c.fillStyle=on?'#ffe1a6':'#b3b99c44';c.fillRect(r.x+6,r.y,2,r.h);c.fillStyle=on?'#e3aa7b':'#9bbb9f';c.fillRect(r.x+4,r.y-4,6,3);}
+     c.fillStyle=on?'#e4d7c572':'#e4d7c523';for(let i=0;i<(stopped?0:on?7:2);i++){const age=reduced?i/7:(t*1.7+i*.14)%1;c.fillRect(r.x-3-age*8,r.y+r.h-age*r.h,15+age*16,6);}
+    }else if(!stopped){c.fillStyle=on?'#ed927c45':'#d3e3ae22';c.fillRect(r.x-3,r.y,r.w+6,r.h);c.fillStyle=on?'#ffe1a6':'#b3b99c44';c.fillRect(r.x+6,r.y,2,r.h);c.fillStyle=on?'#e3aa7b':'#9bbb9f';c.fillRect(r.x+4,r.y-4,6,3);}
    }
   }
   for(const p of l.pickups){if(s.collected.includes(p.id))continue;const y=p.y+Math.round(Math.sin(t*3+p.id)*3);

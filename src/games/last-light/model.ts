@@ -1,4 +1,4 @@
-import {LEVELS,LEVEL_COUNT,type Rect,type Platform,type Hazard,type Station,type Level} from './levels';
+import {LEVELS,LEVEL_COUNT,type Rect,type Platform,type Hazard,type Station,type Level,type Checkpoint} from './levels';
 import {CHAPTERS,speakerFor,memoryFor} from './story';
 import {normalizeLastLightScore,LAST_LIGHT_MAX_SCORE} from '../../core/last-light-score';
 export const STEP=1/120,PLAYER_W=16,PLAYER_H=24;
@@ -7,17 +7,26 @@ export type Phase='playing'|'cleared'|'complete';
 export interface Run {
  version:2;stage:number;cleared:number;phase:Phase;x:number;y:number;vx:number;vy:number;facing:number;grounded:boolean;ground:number;wall:number;
  coyote:number;buffer:number;dashLeft:number;dashReady:boolean;previousJump:boolean;previousDash:boolean;
- time:number;stageTime:number;deaths:number;stageDeaths:number;sparks:number;collected:number[];key:boolean;checkpoint:boolean;clock:number;respawn:number;
+ time:number;stageTime:number;deaths:number;stageDeaths:number;sparks:number;collected:number[];key:boolean;checkpoint:boolean;checkpointIndex:number;clock:number;respawn:number;
  crumbles:Record<number,number>;best:number;activated:number[];heard:number[];memories:number[];previousInteract:boolean;cinematic:number;threat:number;chasing:boolean;ending:'share'|'home'|null;
 }
 export interface Events {jump?:boolean;dash?:boolean;land?:boolean;pickup?:boolean;checkpoint?:boolean;death?:boolean;clear?:boolean;interact?:boolean;message?:string}
 export const overlap=(a:Rect,b:Rect)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
-export function createRun():Run {const p=LEVELS[0].spawn;return {version:2,stage:0,cleared:0,phase:'playing',...p,vx:0,vy:0,facing:1,grounded:false,ground:-1,wall:0,coyote:0,buffer:0,dashLeft:0,dashReady:true,previousJump:false,previousDash:false,time:0,stageTime:0,deaths:0,stageDeaths:0,sparks:0,collected:[],key:false,checkpoint:false,clock:0,respawn:0,crumbles:{},best:0,activated:[],heard:[],memories:[],previousInteract:false,cinematic:0,threat:-300,chasing:false,ending:null};}
+export function createRun():Run {const p=LEVELS[0].spawn;return {version:2,stage:0,cleared:0,phase:'playing',...p,vx:0,vy:0,facing:1,grounded:false,ground:-1,wall:0,coyote:0,buffer:0,dashLeft:0,dashReady:true,previousJump:false,previousDash:false,time:0,stageTime:0,deaths:0,stageDeaths:0,sparks:0,collected:[],key:false,checkpoint:false,checkpointIndex:-1,clock:0,respawn:0,crumbles:{},best:0,activated:[],heard:[],memories:[],previousInteract:false,cinematic:0,threat:-300,chasing:false,ending:null};}
 export function platformAt(p:Platform,t:number):Rect {const shift=p.kind==='moving'?Math.sin(t*(p.speed??1)+p.id)*(p.travel??0):0;return {x:p.x+(p.axis!=='y'?shift:0),y:p.y+(p.axis==='y'?shift:0),w:p.w,h:p.h};}
 export function stationAt(station:Station,level:Level,t:number){const p=level.platforms[station.platform],r=platformAt(p,t);return {x:station.x+r.x-p.x,y:station.y+r.y-p.y};}
 export function hazardAt(h:Hazard,t:number):Rect {return {...h,x:h.x+(h.kind==='saw'?Math.sin(t*2*Math.PI/(h.period??3)+(h.offset??0))*(h.travel??0):0)};}
 export const laserActive=(h:Hazard,t:number)=>!['laser','steam'].includes(h.kind)||(t+(h.offset??0))%(h.period??3)<(h.period??3)*.55;
+/** Powered machinery has a visible, persistent response to its control wheel. */
+export const hazardActive=(h:Hazard,s:Run)=>(h.disabledBy===undefined||!s.activated.includes(h.disabledBy))&&laserActive(h,s.clock);
+export const checkpointsFor=(level:Level):readonly Checkpoint[]=>level.checkpoints?.length?level.checkpoints:[level.checkpoint];
+export function checkpointIndexFor(s:Run,level=LEVELS[s.stage]):number {
+ if(!s.checkpoint)return -1;
+ if(s.checkpointIndex>=0&&s.checkpointIndex<checkpointsFor(level).length)return s.checkpointIndex;
+ return Math.max(0,checkpointsFor(level).findIndex(p=>p.platform===level.checkpoint.platform));
+}
+export function checkpointFor(s:Run,level=LEVELS[s.stage]):Checkpoint|undefined {return checkpointsFor(level)[checkpointIndexFor(s,level)];}
 export function rankScore(cleared:number,sparks:number,milliseconds:number,deaths:number){
  if(cleared<=0)return 0;
  const stages=clamp(Math.floor(cleared),0,LEVEL_COUNT),memories=clamp(Math.floor(sparks),0,stages*3);
@@ -26,12 +35,12 @@ export function rankScore(cleared:number,sparks:number,milliseconds:number,death
 export const scoreFor=(s:Run)=>s.best;
 export function respawn(s:Run,penalty=true){
  if(penalty){s.deaths++;s.stageDeaths++;}
- const level=LEVELS[s.stage],p=s.checkpoint?{x:level.checkpoint.x,y:level.checkpoint.y-PLAYER_H}:level.spawn;
+ const level=LEVELS[s.stage],cp=checkpointFor(s,level),p=cp?{x:cp.x,y:cp.y-PLAYER_H}:level.spawn;
  Object.assign(s,p,{vx:0,vy:0,grounded:false,ground:-1,wall:0,coyote:0,buffer:0,dashLeft:0,dashReady:true,respawn:penalty?.35:0,crumbles:{},previousJump:false,previousDash:false,previousInteract:false,threat:p.x-300,chasing:false});
 }
 export function nextStage(s:Run):boolean {
  if(s.phase!=='cleared'||s.stage>=LEVEL_COUNT-1)return false;
- s.stage++;s.phase='playing';s.stageTime=0;s.stageDeaths=0;s.clock=0;s.key=false;s.checkpoint=false;s.collected=[];s.activated=[];s.cinematic=0;respawn(s,false);return true;
+ s.stage++;s.phase='playing';s.stageTime=0;s.stageDeaths=0;s.clock=0;s.key=false;s.checkpoint=false;s.checkpointIndex=-1;s.collected=[];s.activated=[];s.cinematic=0;respawn(s,false);return true;
 }
 /** Fixed-step simulation. Input edge detection lives here so replays and touch share the same physics. */
 export function step(s:Run,input:Input,dt=STEP):Events {
@@ -80,18 +89,19 @@ export function step(s:Run,input:Input,dt=STEP):Events {
   }else if(s.vy<0&&previousY>=r.y+r.h-.5){s.y=r.y+r.h;s.vy=0;s.dashLeft=0;}
  }
  const player={x:s.x+2,y:s.y+2,w:PLAYER_W-4,h:PLAYER_H-2};
- if(level.goal==='escape'){if(s.x>(s.checkpoint?level.checkpoint.x:level.spawn.x)+120)s.chasing=true;if(s.chasing)s.threat+=(level.pressure??48)*dt;}
- if(s.y>level.height+32||(level.water!==null&&s.y+PLAYER_H>level.water)||(level.goal==='escape'&&s.x+PLAYER_W<s.threat)||level.hazards.some(h=>laserActive(h,s.clock)&&overlap(player,hazardAt(h,s.clock)))){
+ if(level.goal==='escape'){if(s.x>(checkpointFor(s,level)?.x??level.spawn.x)+120)s.chasing=true;if(s.chasing)s.threat+=(level.pressure??48)*dt;}
+ if(s.y>level.height+32||(level.water!==null&&s.y+PLAYER_H>level.water)||(level.goal==='escape'&&s.x+PLAYER_W<s.threat)||level.hazards.some(h=>hazardActive(h,s)&&overlap(player,hazardAt(h,s.clock)))){
   respawn(s);events.death=true;return events;
  }
  for(const p of level.pickups)if(!s.collected.includes(p.id)&&overlap(player,{x:p.x-9,y:p.y-12,w:18,h:24})){
   s.collected.push(p.id);if(p.kind==='spark'){s.sparks++;s.memories.push(s.stage*3+p.id);events.message=`Memory ${p.id+1}/3 · ${memoryFor(s.stage,p.id)}`;}else if(p.kind==='key')s.key=true;else s.dashReady=true;events.pickup=true;
  }
- const cp=level.checkpoint;
- if(!s.checkpoint&&s.grounded&&s.ground===cp.platform&&s.x+PLAYER_W>=cp.x){s.checkpoint=true;events.checkpoint=true;}
+ if(s.grounded)for(const [index,cp] of checkpointsFor(level).entries()){
+  if(index>checkpointIndexFor(s,level)&&s.ground===cp.platform&&s.x+PLAYER_W>=cp.x){s.checkpoint=true;s.checkpointIndex=index;events.checkpoint=true;}
+ }
  if(interactPressed){
   const station=level.stations.find(p=>{const at=stationAt(p,level,s.clock);return !s.activated.includes(p.id)&&Math.abs(s.x+8-at.x)<48&&Math.abs(s.y+PLAYER_H-at.y)<44;});
-  if(station){s.activated.push(station.id);events.interact=true;events.message=station.kind==='survivor'?`${station.label}: I’m with you. Lead the way.`:`${station.label} restored. ${s.activated.length} / ${level.stations.length}`;}
+  if(station){s.activated.push(station.id);events.interact=true;events.message=station.kind==='survivor'?`${station.label}: I’m with you. Lead the way.`:station.kind==='valve'?`${station.label} open.${level.hazards.some(h=>h.disabledBy===station.id)?' Linked machinery is safe.':''} ${s.activated.length} / ${level.stations.length}`:`${station.label} restored. ${s.activated.length} / ${level.stations.length}`;}
   else if(Math.abs(s.x-152)<60&&Math.abs(s.y+PLAYER_H-level.spawn.y-PLAYER_H)<48){if(!s.heard.includes(s.stage))s.heard.push(s.stage);events.interact=true;events.message=`${speakerFor(s.stage)}: “${CHAPTERS[s.stage].line}”`;}
  }
  if(missionReady(s)&&overlap(player,level.exit)){
@@ -108,10 +118,10 @@ export function nearby(s:Run):string {
  if(overlap({x:s.x-20,y:s.y,w:56,h:24},level.exit)&&!missionReady(s))return `${level.stations.length-s.activated.length} more ${level.goal==='rescue'?'person to find':'connections needed'} · M shows the map`;
  return '';
 }
-export interface Save {version:1|2;stage:number;cleared:number;phase:Phase;time:number;stageTime:number;deaths:number;stageDeaths?:number;sparks:number;collected:number[];key:boolean;checkpoint:boolean;best:number;activated?:number[];heard?:number[];memories?:number[];ending?:'share'|'home'|null}
+export interface Save {version:1|2;layoutVersion?:2;stage:number;cleared:number;phase:Phase;time:number;stageTime:number;deaths:number;stageDeaths?:number;sparks:number;collected:number[];key:boolean;checkpoint:boolean;checkpointIndex?:number;best:number;activated?:number[];heard?:number[];memories?:number[];ending?:'share'|'home'|null}
 export function serialize(s:Run):Save {
  const {version,stage,cleared,phase,time,stageTime,deaths,stageDeaths,sparks,collected,key,checkpoint,best,activated,heard,memories,ending}=s;
- return {version,stage,cleared,phase,time:Math.floor(time),stageTime:Math.floor(stageTime),deaths,stageDeaths,sparks,collected:[...collected],key,checkpoint,best,activated:[...activated],heard:[...heard],memories:[...memories],ending};
+ return {version,layoutVersion:2,stage,cleared,phase,time:Math.floor(time),stageTime:Math.floor(stageTime),deaths,stageDeaths,sparks,collected:[...collected],key,checkpoint,checkpointIndex:checkpointIndexFor(s),best,activated:[...activated],heard:[...heard],memories:[...memories],ending};
 }
 export function restore(value:unknown):Run|null {
  if(!value||typeof value!=='object')return null;const v=value as Save;
@@ -120,7 +130,9 @@ export function restore(value:unknown):Run|null {
  if(v.cleared!==v.stage+(finished?1:0)||(v.phase==='complete')!==(v.cleared===LEVEL_COUNT))return null;
  if(![v.time,v.stageTime,v.deaths,v.sparks,v.best].every(n=>Number.isSafeInteger(n)&&n>=0)||v.time>31_536_000_000||v.stageTime>v.time||v.deaths>1e7||v.sparks>(v.stage+1)*3||v.best>(v.version===1?40_999_999:LAST_LIGHT_MAX_SCORE))return null;
  if(v.stageDeaths!==undefined&&(!Number.isSafeInteger(v.stageDeaths)||v.stageDeaths<0||v.stageDeaths>v.deaths))return null;
- const level=LEVELS[v.stage],legacy=v.version===1;
+ const level=LEVELS[v.stage],legacy=v.version===1,previousLayout=!legacy&&v.layoutVersion===undefined;
+ if(v.layoutVersion!==undefined&&v.layoutVersion!==2)return null;
+ if(!legacy&&v.checkpointIndex!==undefined&&(!Number.isInteger(v.checkpointIndex)||v.checkpointIndex< -1||v.checkpointIndex>=checkpointsFor(level).length||!v.checkpoint&&v.checkpointIndex!==-1))return null;
  if(typeof v.key!=='boolean'||typeof v.checkpoint!=='boolean'||!Array.isArray(v.collected)||v.collected.length>5||new Set(v.collected).size!==v.collected.length||!v.collected.every(id=>Number.isInteger(id)&&id>=0&&id<5))return null;
  if(!legacy&&(!v.collected.every(id=>level.pickups.some(p=>p.id===id))||v.key))return null;
  const legacySparkIds=level.world===0?[0,1,2]:level.world===1?[0,1,3]:[0,2,4];
@@ -130,10 +142,13 @@ export function restore(value:unknown):Run|null {
  const collected=legacy?v.collected.flatMap(id=>legacySparkIds.includes(id)?[legacySparkIds.indexOf(id)]:level.world>=2&&id===1?[3]:[]):[...v.collected];
  if(v.sparks<currentSparks||v.sparks>v.stage*3+currentSparks)return null;
  const ids=(values:unknown,max:number):values is number[]=>Array.isArray(values)&&values.length<=max&&new Set(values).size===values.length&&values.every(id=>Number.isInteger(id)&&id>=0&&id<max);
- if(!legacy&&(!ids(v.activated,level.stations.length)||!ids(v.heard,LEVEL_COUNT)||!ids(v.memories,LEVEL_COUNT*3)||v.heard!.some(id=>id>v.stage)||v.memories!.some(id=>id>=3*(v.stage+1))||v.memories!.length>v.sparks||![null,'share','home'].includes(v.ending??null)||(v.ending!=null&&v.phase!=='complete')))return null;
+ const previousStationCount=level.goal==='shelter'?0:['relay','signal','dawn'].includes(level.goal)?3:level.goal==='engine'?2:1;
+ if(!legacy&&(!ids(v.activated,previousLayout?previousStationCount:level.stations.length)||!ids(v.heard,LEVEL_COUNT)||!ids(v.memories,LEVEL_COUNT*3)||v.heard!.some(id=>id>v.stage)||v.memories!.some(id=>id>=3*(v.stage+1))||v.memories!.length>v.sparks||![null,'share','home'].includes(v.ending??null)||(v.ending!=null&&v.phase!=='complete')))return null;
  if(v.best>(legacy?(v.cleared?v.cleared*1_000_000+999_999:0):v.cleared*1550))return null;
  const s=createRun();
  Object.assign(s,{stage:v.stage,cleared:v.cleared,phase:v.phase,time:v.time,stageTime:v.stageTime,deaths:v.deaths,stageDeaths:legacy?0:v.stageDeaths??0,sparks:v.sparks,collected,key:false,checkpoint:v.checkpoint,best:normalizeLastLightScore(v.best)+(legacy?(v.sparks-(finished?0:currentSparks))*100:0),activated:legacy?(finished?level.stations.map(p=>p.id):[]):[...v.activated!],heard:legacy?[]:[...v.heard!],memories:legacy?[]:[...v.memories!],ending:legacy?null:v.ending??null});
+ if(previousLayout)s.activated=finished?level.stations.map(p=>p.id):s.activated.filter(id=>level.stations.some(station=>station.id===id));
+ s.checkpointIndex=v.checkpoint&&!legacy&&v.checkpointIndex!==undefined?v.checkpointIndex:checkpointIndexFor(s,level);
  respawn(s,false);return s;
 }
 export function formatTime(ms:number){const sec=Math.floor(ms/1000);return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;}

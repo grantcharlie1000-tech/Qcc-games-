@@ -49,7 +49,7 @@ export function foregroundFits(l:Level,bounds:Rect,support=-1,station=-1,goal=fa
  if(l.hazards.some(h=>{const travel=h.kind==='saw'?(h.travel??0):0;return overlaps(bounds,{x:h.x-travel-7,y:h.y-7,w:h.w+travel*2+14,h:h.h+14});}))return false;
  if(l.pickups.some(p=>overlaps(bounds,{x:p.x-14,y:p.y-19,w:28,h:38})))return false;
  if(l.stations.some(s=>s.id!==station&&overlaps(bounds,movingBounds(l,s.platform,translate(STATION_FOOTPRINTS[s.kind],s.x,s.y)))))return false;
- if(overlaps(bounds,{x:l.checkpoint.x-4,y:l.checkpoint.y-50,w:30,h:50}))return false;
+ if((l.checkpoints??[l.checkpoint]).some(cp=>overlaps(bounds,{x:cp.x-4,y:cp.y-50,w:30,h:50})))return false;
  if(overlaps(bounds,{x:l.spawn.x-10,y:l.spawn.y-14,w:36,h:38}))return false;
  if(!goal&&overlaps(bounds,expand(l.exit,5)))return false;
  return true;

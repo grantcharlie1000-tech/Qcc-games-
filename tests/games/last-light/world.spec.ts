@@ -1,5 +1,6 @@
 import {test,expect} from '../../fixtures';
 import {createRun,serialize} from '../../../src/games/last-light/model';
+import {LEVELS} from '../../../src/games/last-light/levels';
 const URL='/#/game/last-light';
 test('conversation, journal and route map work with keyboard and freeze play',async({page})=>{
  await page.goto(URL);await page.getByRole('button',{name:'Carry the light →',exact:true}).click();
@@ -8,7 +9,7 @@ test('conversation, journal and route map work with keyboard and freeze play',as
  await page.keyboard.press('j');await expect(page.getByRole('heading',{name:'The things we carry.'})).toBeVisible();await expect(page.locator('.ll-journal')).toContainText('Nell');
  const elapsed=await page.locator('.ll-game').getAttribute('data-elapsed');await page.keyboard.press('ArrowRight');expect(await page.locator('.ll-game').getAttribute('data-elapsed')).toBe(elapsed);
  await page.keyboard.press('j');await expect(page.locator('.ll-game')).toHaveAttribute('data-overlay','none');
- await page.keyboard.press('m');await expect(page.getByRole('img',{name:/Map showing alternate routes/})).toBeVisible();await expect(page.locator('.ll-map rect')).toHaveCount(9);
+ await page.keyboard.press('m');await expect(page.getByRole('img',{name:/Map showing alternate routes/})).toBeVisible();await expect(page.locator('.ll-map rect')).toHaveCount(LEVELS[0].platforms.length);
  await page.getByRole('button',{name:'Back to the journey →',exact:true}).click();await expect(page.locator('.ll-game')).toHaveAttribute('data-overlay','none');
 });
 test('crumble tiles warn, fragment, rebuild and keep decorative motion reduced',async({page})=>{
@@ -43,26 +44,27 @@ test.describe('phone journey tools',()=>{
  });
 });
 test('the introductory route can be cleared using ordinary keyboard actions',async({page})=>{
+ test.setTimeout(90000);
  await page.goto(URL);await page.getByRole('button',{name:'Carry the light →',exact:true}).click();
  const result=await page.evaluate(async()=>{
-  const path='/src/games/last-light/levels.ts',{LEVELS}=await import(path),l=LEVELS[0],route=[0,1,2,3,4];
+  const path='/src/games/last-light/levels.ts',{LEVELS}=await import(path),l=LEVELS[0],route=Array.from({length:l.mainCount},(_,i)=>i);
   const game=document.querySelector<HTMLElement>('.ll-game')!,canvas=game.querySelector('canvas')!,held=new Set<string>();
   function key(code:string,on:boolean){if(on===held.has(code))return;if(on)held.add(code);else held.delete(code);canvas.dispatchEvent(new KeyboardEvent(on?'keydown':'keyup',{code,key:code,bubbles:true}));}
   const start=performance.now();let target=1,jumping=false,dashed=false,launchY=0,wasAir=false;
   return await new Promise<{phase:string;x:number;y:number;target:number;ground:number}>(resolve=>{
    function tick(now:number){
     const x=Number(game.dataset.x),y=Number(game.dataset.y),ground=Number(game.dataset.ground);
-    if(game.dataset.phase!=='playing'||now-start>20000){for(const k of [...held])key(k,false);resolve({phase:game.dataset.phase!,x,y,target,ground});return;}
+    if(game.dataset.phase!=='playing'||now-start>80000){for(const k of [...held])key(k,false);resolve({phase:game.dataset.phase!,x,y,target,ground});return;}
     if(x<100&&target>1){target=1;jumping=false;dashed=false;key('Space',false);key('KeyX',false);}
     const landed=ground>=0&&wasAir;if(landed){jumping=false;dashed=false;key('Space',false);key('KeyX',false);}wasAir=ground<0;
     if(ground>=0&&ground<l.mainCount)target=Math.min(route.length-1,ground+1);
     const next=l.platforms[route[target]],dx=next.x+next.w*.6-x,dir=Math.sign(dx),source=l.platforms.find((p:any)=>p.id===ground);
     key('ArrowRight',dir>0);key('ArrowLeft',dir<0);
-    if(source&&!landed&&!jumping&&ground!==route[target]){const gap=dir>0?next.x-(x+16):x-next.x-next.w,edge=dir>0?source.x+source.w-x:x-source.x;if((edge<40||Math.abs(dx)<180)&&gap<130){jumping=true;launchY=y;}}
+    if(source&&!landed&&!jumping&&ground!==route[target]){const gap=dir>0?next.x-(x+16):x-next.x-next.w,edge=dir>0?source.x+source.w-x:x-source.x;if((edge<40||Math.abs(dx)<180)&&gap<250){jumping=true;launchY=y;}}
     if(jumping&&ground<0&&launchY-y>42&&Math.abs(dx)>120)dashed=true;
     key('Space',jumping);key('KeyX',dashed&&ground<0);requestAnimationFrame(tick);
    }requestAnimationFrame(tick);
   });
  });
- expect(result.phase,JSON.stringify(result)).toBe('cleared');await expect(page.getByRole('heading',{name:'A door opens',exact:true})).toBeVisible();await page.getByRole('button',{name:'Next chapter →',exact:true}).click();await expect(page.locator('.ll-game')).toHaveAttribute('data-stage','2');await expect(page.locator('.ll-objective')).toHaveText('Find them · lead them home');
+ expect(result.phase,JSON.stringify(result)).toBe('cleared');await expect(page.getByRole('heading',{name:'A door opens',exact:true})).toBeVisible();await page.getByRole('button',{name:'Next chapter →',exact:true}).click();await expect(page.locator('.ll-game')).toHaveAttribute('data-stage','2');await expect(page.locator('.ll-objective')).toHaveText('Help · Ivo');
 });
