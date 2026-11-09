@@ -3,6 +3,14 @@ beforeEach(()=>vi.useFakeTimers());afterEach(()=>vi.useRealTimers());
 import {LeaderboardSync,NOT_OPEN_RETRY_MS} from '../../src/leaderboard/client';
 import {LEADERBOARD_NOT_OPEN} from '../../src/leaderboard/shared';
 function memory(account=true){const map=new Map<string,unknown>();if(account)map.set('accounts:session',{token:'acct_'+'a'.repeat(64),username:'Ada'});return {read:<T>(key:string,fallback:T)=>(map.get(key)??fallback) as T,write:(key:string,value:unknown)=>{map.set(key,structuredClone(value));return true;}};}
+it('displays readable Last Light scores from legacy online and cached boards',async()=>{
+ const storage=memory(),player={rank:1,playerId:'a'.repeat(64),name:'Ada',score:20600000,account:true},legacy={entries:[player],player};
+ const sync=new LeaderboardSync(storage,(async()=>Response.json(legacy)) as typeof fetch);
+ storage.write('leaderboard:cache:last-light:account:ada',legacy);storage.write('leaderboard:cache:snake:account:ada',legacy);
+ expect(sync.cached('last-light')?.entries[0].score).toBe(20000);expect(sync.cached('snake')?.entries[0].score).toBe(20600000);
+ const board=await sync.load('last-light');expect(board.entries[0].score).toBe(20000);expect(board.player?.score).toBe(20000);
+ expect(storage.read<any>('leaderboard:cache:last-light:account:ada',null).entries[0].score).toBe(20000);sync.dispose();
+});
 it('exposes storage-full errors and retains queued scores across reload until a successful retry',async()=>{
  const storage=memory();let full=true;const fetcher=vi.fn(async()=>full?Response.json({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},{status:507}):Response.json({}));
  const sync=new LeaderboardSync(storage,fetcher as typeof fetch);sync.queue('snake',100);

@@ -9,6 +9,11 @@ export const SCORE_BATCH_MS=5000;
 /** A game whose board the database does not accept yet is parked this long before one quiet retry (see LEADERBOARD_NOT_OPEN). */
 export const NOT_OPEN_RETRY_MS=900000;
 interface Retry {attempt:number;nextAt:number}
+function readableBoard(game:string,board:Board|null):Board|null {
+ if(game!=='last-light'||!board)return board;
+ const entry=(value:Board['entries'][number])=>({...value,score:normalizeLastLightScore(value.score)});
+ return {entries:board.entries.map(entry),player:board.player?entry(board.player):null};
+}
 export class LeaderboardSync {
  needsLogin=false;message='';
  private identity='';private scope='';private flightToken:string|undefined;
@@ -115,11 +120,11 @@ export class LeaderboardSync {
   if(publicResponse.status===507||personalResponse?.status===507){this.setMessage(STORAGE_FULL_MESSAGE);throw new Error(STORAGE_FULL_MESSAGE);}
   if(!publicResponse.ok||(personalResponse&&!personalResponse.ok))throw new Error('Online leaderboard is temporarily unavailable.');
   const publicBoard=await publicResponse.json(),personal=personalResponse?await personalResponse.json():{player:null};
-  const board=readBoard({entries:publicBoard?.entries,player:personal?.player});
+  const board=readableBoard(game,readBoard({entries:publicBoard?.entries,player:personal?.player}));
   if(this.profile()?.token!==profile?.token)throw new Error('Player changed. Refresh scores.');
   if(!board)throw new Error('The leaderboard response could not be read.');
   this.storage.write('leaderboard:cache:'+game+this.scope,board);if(!Object.keys(this.pending).length)this.setMessage('');return board;
  }
- cached(game:string):Board|null{this.refreshIdentity();return readBoard(this.storage.read('leaderboard:cache:'+game+this.scope,null));}
+ cached(game:string):Board|null{this.refreshIdentity();return readableBoard(game,readBoard(this.storage.read('leaderboard:cache:'+game+this.scope,null)));}
  dispose(){this.disposed=true;if(this.timer)clearTimeout(this.timer);this.timer=undefined;if(typeof document!=='undefined')document.removeEventListener('visibilitychange',this.visibility);}
 }
