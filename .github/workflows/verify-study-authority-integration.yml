@@ -17,6 +17,6 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Test Study authority, pairing, ingress and store
-        run: npm test -- --maxWorkers=1 tests/study/immutable-authority.test.ts tests/study/pairing-backend.test.ts tests/study/pairing-ingress.test.ts tests/study/pairing-store.test.ts
+        run: npm test -- --maxWorkers=1 tests/server/app.test.ts tests/server/vercel.test.ts tests/study tests/accounts/server-v2.test.ts
       - run: npm run check:server
       - run: npm run build:server
