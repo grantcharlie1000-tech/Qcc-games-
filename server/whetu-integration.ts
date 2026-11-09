@@ -58,8 +58,9 @@ function runtimePath(path:string):boolean {
  * A null result leaves all existing QCC behavior exactly with the old router.
  */
 export async function routeWhetuIntegration(request:Request,env:WhetuIntegrationEnv):Promise<Response|null> {
- if(env.QCC_WHETU_INTEGRATION!=='on')return null;
- const url=new URL(request.url),link=url.pathname.startsWith(LINK_PREFIX);
+ const url=new URL(request.url);
+ if(env.QCC_WHETU_INTEGRATION!=='on')return url.pathname==='/api/integrations/nceastudy'?error(503,'integration unavailable'):null;
+ const link=url.pathname.startsWith(LINK_PREFIX);
  if(routes.denied.some(prefix=>matches(url.pathname,prefix))||(matches(url.pathname,'/nceastudy')&&!routes.pageExact.includes(url.pathname)))return error(404,'not found');
  if(!link&&!runtimePath(url.pathname))return null;
  const billingPage=url.pathname===BILLING_PAGE||url.pathname===BILLING_RETURN,publicReturn=url.pathname===BILLING_RETURN;

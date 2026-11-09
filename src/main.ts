@@ -50,7 +50,7 @@ const PREDICTIONS_MENU=import.meta.env.VITE_QCC_PREDICTIONS!=='off';
 const WHETU_STUDY=integrationEnabled(import.meta.env.VITE_QCC_WHETU_STUDY);
 // Incident containment: Study must not gate ordinary QCC authentication while its connection is paused.
 // Re-enable only with a server-verified, Study-scoped identity transition.
-const WHETU_STUDY_PAUSED=true;
+const WHETU_STUDY_PAUSED=false;
 
 // Before any game mounts: games read the seasonal theme when they draw.
 applyFestiveTheme();
@@ -78,7 +78,8 @@ const tabbar=autoHideTabbar(document.querySelector<HTMLElement>('.app-tabbar')!,
 bindGlass(document.querySelector<HTMLElement>('.app-menu')!);
 const preferences=store.settings();
 let christmasMusic:ReturnType<typeof mountChristmasMusic>|undefined;
-const accounts:AccountsClient=new AccountsClient(undefined,undefined,WHETU_STUDY&&!WHETU_STUDY_PAUSED?{strictIdentityChanges:true,beforeIdentityCommit:nextSession=>{closeWhetuForIdentityChange();return studyPairing!.select(nextSession?.token);}}:{});
+// Only QCC's own session revocation gates an explicit logout; Study never gates login or startup.
+const accounts:AccountsClient=new AccountsClient(undefined,undefined,WHETU_STUDY?{confirmedServerLogout:true}:{});
 const studyPairing:StudyPairingClient|undefined=WHETU_STUDY&&!WHETU_STUDY_PAUSED?new StudyPairingClient(()=>accounts.session()?.token):undefined;
 const launcher=new AppsLauncher({accounts,chat:new ChatClient(()=>accounts.session()?.token??null),reducedMotion:()=>preferences.reducedMotion});
 void launcher.probe();

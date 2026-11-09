@@ -19,6 +19,15 @@ describe('dedicated first-party Whetū service routing',()=>{
    expect(await routeWhetuIntegration(request('/nceastudy'),{...configured(binding),QCC_WHETU_INTEGRATION:flag})).toBeNull();
   }expect(binding.fetch).not.toHaveBeenCalled();
  });
+ it('returns explicit no-store JSON for readiness while the integration gate is off',async()=>{
+  const binding={fetch:vi.fn()};
+  const result=await routeWhetuIntegration(request('/api/integrations/nceastudy'),{...configured(binding),QCC_WHETU_INTEGRATION:'off'});
+  expect(result?.status).toBe(503);
+  expect(result?.headers.get('Cache-Control')).toContain('no-store');
+  expect(result?.headers.get('Content-Type')).toMatch(/application\/json/i);
+  expect(await result?.json()).toMatchObject({integration:'nceastudy-whetu-v1',ready:false});
+  expect(binding.fetch).not.toHaveBeenCalled();
+ });
  it.each(['/','/assets/app.js','/game-art/snake/cover.webp','/study/photos/image.webp','/api/movies','/api/election','/.netlify/functions/accounts','/cdn-cgi/whetu-private-bank.json'])('does not take ownership of QCC route %s',async path=>{
   const binding={fetch:vi.fn()};expect(await routeWhetuIntegration(request(path),configured(binding))).toBeNull();expect(binding.fetch).not.toHaveBeenCalled();
  });

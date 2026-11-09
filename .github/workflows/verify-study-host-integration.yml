@@ -1,0 +1,24 @@
+name: Verify Study host integration
+on:
+  push:
+    branches: [integration/study-host-ready-20261109]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --maxWorkers=1
+      - run: npm run check
+      - run: npm run build
+        env:
+          VITE_QCC_WHETU_STUDY: on
+      - run: npx playwright install --with-deps chromium
+      - run: xvfb-run -a env VITE_QCC_WHETU_STUDY=on npm run test:e2e -- --project=chromium tests/accounts/accounts.spec.ts --grep='two browsers carry account scores|logout in another tab' --reporter=list

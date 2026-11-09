@@ -10,6 +10,8 @@ export interface AccountStorage {
  remove?(key:string):boolean;invalidate?(key:string):void;keys?():string[];subscribe?(listener:(key:string)=>void):()=>void;
 }
 export interface AccountIdentityPolicy {
+ /** Require QCC's own exact-session revocation before explicit logout/switch, without any Study dependency. */
+ confirmedServerLogout?:boolean;
  /** Integrated workspaces must not outlive a local logout/account switch. */
  strictIdentityChanges?:boolean;
  /** Must resolve only after confirmed server-side integration context cleanup. */
@@ -192,11 +194,13 @@ export class AccountsClient {
   if(this.identityPolicy.strictIdentityChanges){
    await this.prepareIdentityCommit(null);
    if(epoch!==this.epoch||this.session()?.token!==session.token)throw this.identityChangeFailed();
+  }
+  if(this.identityPolicy.strictIdentityChanges||this.identityPolicy.confirmedServerLogout){
    try{await this.revoke(session.token,true);}catch{throw this.identityChangeFailed();}
    if(epoch!==this.epoch||this.session()?.token!==session.token)throw this.identityChangeFailed();
   }
   this.beforeIdentityChange();this.stage(session.username);this.epoch++;clearTimeout(this.timer);this.clear();this.remove(sessionKey);this.knownToken=null;this.state=emptyState();this.restoreGuest();this.guest();this.message='';this.emit();
-  if(!this.identityPolicy.strictIdentityChanges)try{await this.revoke(session.token);}catch(error){this.message=error instanceof AccountRequestError&&error.status===507?error.message:'Logged out on this browser. Server sign-out will retry when online.';this.emit();}
+  if(!this.identityPolicy.strictIdentityChanges&&!this.identityPolicy.confirmedServerLogout)try{await this.revoke(session.token);}catch(error){this.message=error instanceof AccountRequestError&&error.status===507?error.message:'Logged out on this browser. Server sign-out will retry when online.';this.emit();}
  }
  /** Manual calls pull too; scheduled/lifecycle callers explicitly request dirty-only work. */
  flush(keepalive=false,pull=true):Promise<void>{
