@@ -24,7 +24,11 @@ jobs:
       - run: npm ci
       # Deliberately build without pre-build tests/type checks for this release.
       - name: Build production app
-        run: npx vite build
+        env:
+          VITE_QCC_WHETU_STUDY: 'on'
+        run: |
+          npx vite build
+          node scripts/prepare-whetu-host.mjs
       - name: Prepare Cloudflare Pages production bundle
         if: github.ref == 'refs/heads/production' && github.event_name != 'pull_request'
         env:
