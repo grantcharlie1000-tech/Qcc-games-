@@ -15,8 +15,8 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  <div class="ll-hud"><strong class="ll-stage"></strong><div class="ll-stats"><span class="ll-spark-stat" title="Memory sparks">✦ <b class="ll-sparks">0</b></span><span title="Setbacks">↻ <b class="ll-deaths">0</b></span><span class="ll-time">0:00</span></div><span class="ll-task-progress" hidden></span></div>
  <button class="ll-prompt" data-ui="interact" hidden></button><p class="ll-notice" role="status"></p>
  <aside class="ll-dialogue" hidden aria-label="Conversation"><div><strong class="ll-speaker"></strong><button data-ui="dismiss" aria-label="Dismiss conversation">×</button></div><p></p><small class="ll-dialogue-hint">PAUSED · MOVE TO CONTINUE</small></aside>
- <div class="ll-cinematic" hidden><span></span><p></p><small>SPACE / E TO CONTINUE</small></div>
- <div class="ll-touch" role="group" aria-label="Game controls"><div><button data-action="left" aria-label="Move left">←</button><button data-action="right" aria-label="Move right">→</button></div><div><button data-action="dash" aria-label="Dash">⇢<small>DASH</small></button><button data-action="jump" aria-label="Jump">↑<small>JUMP</small></button></div></div>
+ <div class="ll-cinematic" hidden><small>ENTER · SKIP</small></div>
+ <div class="ll-touch" role="group" aria-label="Game controls"><div><button data-action="left" aria-label="Move left">←</button><button data-action="right" aria-label="Move right">→</button><button data-action="down" aria-label="Drop through grate" hidden>↓</button></div><div><button data-action="dash" aria-label="Dash">⇢<small>DASH</small></button><button data-action="jump" aria-label="Jump">↑<small>JUMP</small></button></div></div>
  <div class="ll-overlay"><div class="ll-card"></div></div><p id="ll-help" class="sr-only">Reach the exit in every level. Conversations, memories and machinery are optional. Enter or E interacts when a prompt appears. Journal: Page Down or J. Hold jump for height. Dash once in the air; landing refills it. Jump while touching a wall to wall jump. Flags save your place. Delete or P pauses. End or R returns to the checkpoint and counts a setback.</p>`;
  container.append(root);
  const q=<T extends Element>(selector:string)=>(root.querySelector<T>(selector)??hudContent.querySelector<T>(selector))!;
@@ -27,14 +27,14 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  const text=(el:HTMLElement,value:string)=>{if(el.textContent!==value)el.textContent=value;};
  const data=(key:string,value:string)=>{if(root.dataset[key]!==value)root.dataset[key]=value;};
  let run=createRun(),overlay:Overlay='intro',paused=false,disposed=false,frame=0,last=0,acc=0,noticeUntil=0,dialogueUntil=0,dialogueBlocking=false,previousHud='',previousSecond=-1,previousSector='';
- const keys=new Set<string>(),touches=new Map<number,string>();let jumpQueued=false,dashQueued=false,interactQueued=false;
+ const keys=new Set<string>(),touches=new Map<number,string>();let jumpQueued=false,dashQueued=false,interactQueued=false,dropQueued=false;
  const touchMode=()=>matchMedia('(any-pointer: coarse)').matches;
  const instructions=(text:string)=>touchMode()?text.replace(/Arrows move; hold Up to jump/g,'Hold ← or → to run; hold JUMP to jump').replace(/Tap Up/g,'Tap JUMP').replace(/Right Shift/g,'DASH').replace(/A \/ D runs/g,'Hold ← or → to run').replace(/hold Space to jump/g,'hold JUMP to jump').replace(/\bE\b/g,'Tap').replace(/\bSpace\b/g,'JUMP').replace(/\bShift\b/g,'DASH').replace(/\bX\b/g,'DASH'):text.replace(/\bSpace\b/g,'↑').replace(/\bX\b/g,'Right Shift').replace(/\bE\b/g,'Enter');
  const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
- const resetInput=()=>{keys.clear();touches.clear();jumpQueued=false;dashQueued=false;interactQueued=false;root.querySelectorAll('[data-held]').forEach(b=>b.removeAttribute('data-held'));run.previousJump=false;run.previousDash=false;run.previousInteract=false;};
+ const resetInput=()=>{keys.clear();touches.clear();jumpQueued=false;dashQueued=false;interactQueued=false;dropQueued=false;root.querySelectorAll('[data-held]').forEach(b=>b.removeAttribute('data-held'));run.previousJump=false;run.previousDash=false;run.previousInteract=false;};
  const input=():Input=>{
   const actions=new Set(touches.values()),left=actions.has('left')||keys.has('ArrowLeft')||keys.has('KeyA'),right=actions.has('right')||keys.has('ArrowRight')||keys.has('KeyD');
-  return {move:Number(right)-Number(left),jump:jumpQueued||actions.has('jump')||['Space','ArrowUp','KeyW'].some(k=>keys.has(k)),dash:dashQueued||actions.has('dash')||['ShiftLeft','ShiftRight','KeyX'].some(k=>keys.has(k)),interact:interactQueued||actions.has('interact')||keys.has('KeyE')||keys.has('Enter')};
+  return {move:Number(right)-Number(left),jump:jumpQueued||actions.has('jump')||['Space','ArrowUp','KeyW'].some(k=>keys.has(k)),drop:dropQueued||actions.has('down')||keys.has('ArrowDown'),dash:dashQueued||actions.has('dash')||['ShiftLeft','ShiftRight','KeyX'].some(k=>keys.has(k)),interact:interactQueued||actions.has('interact')||keys.has('KeyE')||keys.has('Enter')};
  };
  const active=()=>!paused&&!overlay&&!disposed&&!document.hidden;
  function stop(){if(frame)cancelAnimationFrame(frame);frame=0;last=0;acc=0;resetInput();}
@@ -49,8 +49,9 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  }
  function paint(){
   if(disposed)return;scene.draw(run,reduced());music.sync(active()&&run.phase==='playing',context.settings.sound&&!christmas());
-  data('reducedMotion',String(reduced()));data('phase',run.phase);data('stage',String(run.stage+1));data('overlay',overlay??'none');data('paused',String(paused));data('cinematic',String(run.cinematic>0));data('death',String(scene.dying));
+  data('reducedMotion',String(reduced()));data('phase',run.phase);data('stage',String(run.stage+1));data('overlay',overlay??'none');data('paused',String(paused));data('cinematic',String(run.cinematic>0));data('death',String(scene.dying));data('petting',String(!!run.pet));
   if(import.meta.env.DEV){data('x',run.x.toFixed(2));data('y',run.y.toFixed(2));data('ground',String(run.ground));data('dash',String(run.dashReady));data('elapsed',String(Math.floor(run.time)));data('activated',run.activated.join(','));}
+  const down=q<HTMLButtonElement>('[data-action=down]'),canDrop=run.grounded&&LEVELS[run.stage].platforms[run.ground]?.kind==='grate';if(down.hidden===canDrop)down.hidden=!canDrop;
   const level=LEVELS[run.stage],theme=WORLDS[level.world];if(root.style.getPropertyValue('--ll-accent')!==theme.accent){root.style.setProperty('--ll-accent',theme.accent);hudContent.style.setProperty('--ll-accent',theme.accent);}
   const label=`${run.stage+1} / ${LEVEL_COUNT} · ${run.best.toLocaleString()} pts`;
   if(label!==previousHud){previousHud=label;text(levelLabel,`${run.stage+1} / ${LEVEL_COUNT}`);text(scoreLabel,` · ${run.best.toLocaleString()} pts`);hud.element.setAttribute('aria-label',`Level ${run.stage+1} of ${LEVEL_COUNT}. ${run.best} points`);}
@@ -65,8 +66,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
   if(noticeUntil&&run.clock>noticeUntil){q<HTMLElement>('.ll-notice').textContent='';noticeUntil=0;}
   if(dialogueUntil&&run.clock>dialogueUntil){q<HTMLElement>('.ll-dialogue').hidden=true;dialogueUntil=0;}
   const cinematic=q<HTMLElement>('.ll-cinematic');if(cinematic.hidden!==(run.cinematic<=0))cinematic.hidden=run.cinematic<=0;
-  text(q<HTMLElement>('.ll-cinematic small'),touchMode()?'TAP AN ACTION TO CONTINUE':'SPACE / E TO CONTINUE');
-  if(run.cinematic>0){q<HTMLElement>('.ll-cinematic span').textContent=CHAPTERS[run.stage].outcome;q<HTMLElement>('.ll-cinematic p').textContent=CHAPTERS[run.stage].after;}
+  text(q<HTMLElement>('.ll-cinematic small'),touchMode()?'TAP AN ACTION · SKIP':'ENTER · SKIP');
  }
  const button=(action:string,label:string,secondary=false)=>`<button class="ll-button${secondary?' ll-secondary':''}" data-do="${action}">${label}</button>`;
  const eyebrow=(text:string)=>`<p class="ll-eyebrow">${text}</p>`;
@@ -89,7 +89,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
   }
   if(next==='help'){
    const controls=touchMode()?'<dt>← →</dt><dd>Run · hold a direction</dd><dt>JUMP</dt><dd>Hold for height</dd><dt>DASH</dt><dd>Air dash · land to recharge</dd><dt>Prompt</dt><dd>Tap to interact · optional</dd><dt>Journal</dt><dd>Open Menu, then Mira’s journal</dd><dt>Jump at a wall</dt><dd>Kick away from it</dd>':'<dt>← → / A D</dt><dd>Run</dd><dt>Space / ↑ / W</dt><dd>Jump · hold for height</dd><dt>Right Shift / X</dt><dd>Air dash · land to recharge</dd><dt>Enter / E</dt><dd>Interact · optional</dd><dt>Page Down / J</dt><dd>Journal</dd><dt>Jump at a wall</dt><dd>Kick away from it</dd><dt>End / Delete</dt><dd>Retry checkpoint / pause</dd><dt>Menu arrows / Enter</dt><dd>Select / confirm</dd>';
-   html=`${eyebrow('SMALL COURIER. MANY ROADS.')}<h2>Find your footing.</h2><dl class="ll-controls-list">${controls}</dl><p class="ll-small">${instructions('Reach the gold exit. Hold jump for height, tap for short hops, and release direction to brake onto narrow ledges. Dash once per landing. Flags save your place. Conversations, side paths and machinery are optional; a wheel shuts down its nearby steam line.')}</p><p class="ll-small">Cracked floors shake, fracture and fall. Springs launch, belts push, ice slides. Vent grates warn amber before steam erupts; electrical gates pulse between their mounted emitters. In escape chapters the dark follows, so reach the shelter without stopping for switches.</p><p class="ll-small">1,000 points per chapter, 100 per spark, up to 250 per chapter in pace bonuses. On touch screens, hold movement and action buttons together.</p>${button('back','Got it →')}`;
+   html=`${eyebrow('SMALL COURIER. MANY ROADS.')}<h2>Find your footing.</h2><dl class="ll-controls-list">${controls}</dl><p class="ll-small">${instructions('Reach the gold exit. Hold jump for height, tap for short hops, and release direction to brake onto narrow ledges. Dash once per landing. Flags save your place. Stand beside a cat and press Enter to pet it; move or jump to stop. Exit animations can be skipped with Enter. Conversations, side paths and machinery are optional; a wheel shuts down its nearby steam line.')}</p><p class="ll-small">Stomp patrol machines from above or dash through them; side contact hurts. Metal grates can be jumped through from below; press ↓ to drop. Presses flash amber before falling. Cracked floors shake, fracture and fall. Springs launch, belts push, ice slides. Vent grates warn amber before steam erupts; electrical gates pulse between their mounted emitters. In escape chapters the dark follows, so reach the shelter without stopping for switches.</p><p class="ll-small">1,000 points per chapter, 100 per spark, up to 250 per chapter in pace bonuses. On touch screens, hold movement and action buttons together.</p>${button('back','Got it →')}`;
   }
   if(next==='confirm')html=`${eyebrow('A FRESH START')}<h2>Begin again?</h2><p>This replaces your current journey and journal. Your personal best stays saved.</p>${button('fresh','Start new run')}${button('back','Keep this journey',true)}`;
   card.innerHTML=html;layer.scrollTop=0;paint();queueMicrotask(()=>{
@@ -109,8 +109,9 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
   const interval=last?Math.max(0,(now-last)/1000):0,simulated=Math.min(interval,.1);
   if(run.phase==='playing'){run.time+=(interval-simulated)*1000;run.stageTime+=(interval-simulated)*1000;}acc+=simulated;last=now;
   while(acc>=STEP&&active()){
-   acc-=STEP;const events=step(run,controls);scene.step(run,events,STEP);jumpQueued=false;dashQueued=false;interactQueued=false;
-   if(events.jump||events.dash||events.pickup)context.sound('tap');
+   acc-=STEP;const events=step(run,controls);scene.step(run,events,STEP);jumpQueued=false;dashQueued=false;interactQueued=false;dropQueued=false;
+   if(events.stomp)context.sound('tap');
+   if(events.jump||events.dash||events.pickup||events.pet||events.enemy)context.sound('tap');
    if(events.message){
     if(events.pickup)notice('Memory saved · J to read');
     else if(events.interact&&events.message.includes(':'))dialogue(events.message,true);
@@ -118,7 +119,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
    }
    if(events.interact||events.pickup)save();
    if(events.checkpoint){notice(`Checkpoint ${checkpointIndexFor(run)+1}/${checkpointsFor(LEVELS[run.stage]).length} saved · ${missionGuidance(run).sector.name}`);save();context.sound('success');}
-   if(events.death){notice(`${events.deathCause==='fall'?'Fell':events.deathCause==='spikes'?'Spikes':events.deathCause==='dark'?'Caught by the dark':'Hit'} · ${run.checkpoint?`Checkpoint ${checkpointIndexFor(run)+1}`:'Level start'}`);q<HTMLElement>('.ll-dialogue').hidden=true;context.sound('lose');save();}
+   if(events.death){notice(`${events.deathCause==='fall'?'Fell':events.deathCause==='spikes'?'Spikes':events.deathCause==='dark'?'Caught by the dark':events.deathCause==='enemy'?'Enemy contact':events.deathCause==='crusher'?'Crushed':'Hit'} · ${run.checkpoint?`Checkpoint ${checkpointIndexFor(run)+1}`:'Level start'}`);q<HTMLElement>('.ll-dialogue').hidden=true;context.sound('lose');save();}
    if(events.clear){q<HTMLElement>('.ll-dialogue').hidden=true;context.sound('success');report();save();context.announce('Level clear');context.setStatus(run.phase==='complete'?'All forty levels cleared.':'Level clear.');}
    const guidance=missionGuidance(run),sectorKey=`${run.stage}:${guidance.sector.index}`;
    if(run.grounded&&sectorKey!==previousSector){
@@ -167,13 +168,13 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
   }
   if(!active())return;
   if(event.code==='Enter'&&target.closest('button,a,summary'))return;
-  if(run.phase!=='playing'&&['Space','KeyE'].includes(event.code)){event.preventDefault();run.cinematic=0;show(run.phase==='complete'?'complete':'clear');return;}
-  if(['ArrowLeft','ArrowRight','KeyA','KeyD','Space','ArrowUp','KeyW','ShiftLeft','ShiftRight','KeyX','KeyE','Enter'].includes(event.code)){event.preventDefault();keys.add(event.code);if(!event.repeat){if(['Space','ArrowUp','KeyW'].includes(event.code))jumpQueued=true;if(['ShiftLeft','ShiftRight','KeyX'].includes(event.code))dashQueued=true;if(event.code==='KeyE'||event.code==='Enter')interactQueued=true;}}
+  if(run.phase!=='playing'&&!event.repeat&&['Space','KeyE','Enter'].includes(event.code)){event.preventDefault();run.cinematic=0;show(run.phase==='complete'?'complete':'clear');return;}
+  if(['ArrowDown','ArrowLeft','ArrowRight','KeyA','KeyD','Space','ArrowUp','KeyW','ShiftLeft','ShiftRight','KeyX','KeyE','Enter'].includes(event.code)){event.preventDefault();keys.add(event.code);if(!event.repeat){if(['Space','ArrowUp','KeyW'].includes(event.code))jumpQueued=true;if(['ShiftLeft','ShiftRight','KeyX'].includes(event.code))dashQueued=true;if(event.code==='ArrowDown')dropQueued=true;if(event.code==='KeyE'||event.code==='Enter')interactQueued=true;}}
   if(['KeyR','End'].includes(event.code)&&!event.repeat){event.preventDefault();retry();}
  },{signal});
  window.addEventListener('keyup',event=>{keys.delete(event.code);},{signal});
  for(const b of root.querySelectorAll<HTMLButtonElement>('[data-action]')){
-  b.addEventListener('pointerdown',event=>{if(!active()||event.button!==0)return;event.preventDefault();if(run.phase!=='playing'){run.cinematic=0;show(run.phase==='complete'?'complete':'clear');return;}b.setPointerCapture(event.pointerId);touches.set(event.pointerId,b.dataset.action!);if(b.dataset.action==='jump')jumpQueued=true;if(b.dataset.action==='dash')dashQueued=true;if(b.dataset.action==='interact')interactQueued=true;b.dataset.held='true';},{signal});
+  b.addEventListener('pointerdown',event=>{if(!active()||event.button!==0)return;event.preventDefault();if(run.phase!=='playing'){run.cinematic=0;show(run.phase==='complete'?'complete':'clear');return;}b.setPointerCapture(event.pointerId);touches.set(event.pointerId,b.dataset.action!);if(b.dataset.action==='jump')jumpQueued=true;if(b.dataset.action==='dash')dashQueued=true;if(b.dataset.action==='interact')interactQueued=true;if(b.dataset.action==='down')dropQueued=true;b.dataset.held='true';},{signal});
   const release=(event:PointerEvent)=>{touches.delete(event.pointerId);if(![...touches.values()].includes(b.dataset.action!))b.removeAttribute('data-held');};
   b.addEventListener('pointerup',release,{signal});b.addEventListener('pointercancel',release,{signal});b.addEventListener('lostpointercapture',release,{signal});
  }
@@ -181,8 +182,6 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  document.addEventListener('visibilitychange',()=>{if(document.hidden){resetInput();if(!overlay)show('menu');save();}},{signal});
  root.addEventListener('pointerdown',()=>music.unlock(),{signal});root.addEventListener('keydown',()=>music.unlock(),{signal});
  const resize=new ResizeObserver(()=>{
-  const bounds=root.getBoundingClientRect(),bar=dock.getBoundingClientRect(),top=`${Math.ceil(bar.bottom-bounds.top+4)}px`;
-  if(root.style.getPropertyValue('--ll-scene-top')!==top)root.style.setProperty('--ll-scene-top',top);
   const r=canvas.getBoundingClientRect();if(r.width&&r.height){scene.resize(r.width,r.height);paint();}
  });resize.observe(root);resize.observe(dock);resize.observe(canvas);
  report();show('intro');

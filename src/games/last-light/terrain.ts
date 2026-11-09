@@ -56,6 +56,11 @@ function tile(p:Platform,l:Level):HTMLCanvasElement {
 export function clearTerrainCache(){cache.clear();boundsCache=new WeakMap();}
 export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:number,s:Run,l:Level,reduced:boolean){
  const timer=s.crumbles[p.id];x=Math.round(x);y=Math.round(y);
+ if(p.kind==='grate'){
+  c.fillStyle='#162c37';c.fillRect(x-2,y-2,p.w+4,4);c.fillStyle='#b5b7a0';c.fillRect(x,y,p.w,1);c.fillStyle='#697f7c';c.fillRect(x,y+1,p.w,2);
+  for(let xx=x+3;xx<x+p.w-3;xx+=8){c.fillStyle='#1a303b';c.fillRect(xx,y+3,3,8);c.fillStyle='#78928a';c.fillRect(xx,y+3,1,7);c.fillStyle='#b2b49a';c.fillRect(xx,y+4,1,2);}
+  c.fillStyle='#334f55';c.fillRect(x,y+10,p.w,2);return;
+ }
  if(p.kind==='crumble'&&timer!==undefined){drawCrumble(c,p,tile(p,l),x,y,timer,reduced);return;}
  c.drawImage(tile(p,l),x-4,y-8);
  if(p.kind==='belt'){

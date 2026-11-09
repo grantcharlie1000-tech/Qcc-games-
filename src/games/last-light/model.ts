@@ -1,22 +1,27 @@
 import {LEVELS,LEVEL_COUNT,type Rect,type Platform,type Hazard,type Station,type Level,type Checkpoint} from './levels';
 import {CHAPTERS,speakerFor,memoryFor} from './story';
+import {enemyAt} from './enemies';
+import {pressAt} from './press';
+import {nearbyAnimal} from './habitats';
+import {PET_DURATION,type Petting} from './affection';
+import {clearDuration} from './departure';
 import {normalizeLastLightScore,LAST_LIGHT_MAX_SCORE} from '../../core/last-light-score';
 export const STEP=1/120,PLAYER_W=16,PLAYER_H=24;
-export interface Input {move:number;jump:boolean;dash:boolean;interact?:boolean}
+export interface Input {move:number;jump:boolean;dash:boolean;interact?:boolean;drop?:boolean}
 export type Phase='playing'|'cleared'|'complete';
 export interface Run {
  version:2;stage:number;cleared:number;phase:Phase;x:number;y:number;vx:number;vy:number;facing:number;grounded:boolean;ground:number;wall:number;
  coyote:number;buffer:number;dashLeft:number;dashReady:boolean;previousJump:boolean;previousDash:boolean;
  time:number;stageTime:number;deaths:number;stageDeaths:number;sparks:number;collected:number[];key:boolean;checkpoint:boolean;checkpointIndex:number;clock:number;respawn:number;
- crumbles:Record<number,number>;best:number;activated:number[];heard:number[];memories:number[];previousInteract:boolean;cinematic:number;threat:number;chasing:boolean;ending:'share'|'home'|null;
+ crumbles:Record<number,number>;best:number;activated:number[];heard:number[];memories:number[];previousInteract:boolean;cinematic:number;defeated:Record<number,number>;dropLeft:number;pet:Petting|null;threat:number;chasing:boolean;ending:'share'|'home'|null;
 }
-export interface Events {jump?:boolean;dash?:boolean;land?:boolean;pickup?:boolean;checkpoint?:boolean;death?:boolean;deathPose?:Run;deathCause?:string;clear?:boolean;interact?:boolean;message?:string}
+export interface Events {jump?:boolean;dash?:boolean;land?:boolean;pickup?:boolean;checkpoint?:boolean;death?:boolean;deathPose?:Run;deathCause?:string;clear?:boolean;pet?:boolean;enemy?:boolean;stomp?:boolean;interact?:boolean;message?:string}
 export const overlap=(a:Rect,b:Rect)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
-export function createRun():Run {const p=LEVELS[0].spawn;return {version:2,stage:0,cleared:0,phase:'playing',...p,vx:0,vy:0,facing:1,grounded:false,ground:-1,wall:0,coyote:0,buffer:0,dashLeft:0,dashReady:true,previousJump:false,previousDash:false,time:0,stageTime:0,deaths:0,stageDeaths:0,sparks:0,collected:[],key:false,checkpoint:false,checkpointIndex:-1,clock:0,respawn:0,crumbles:{},best:0,activated:[],heard:[],memories:[],previousInteract:false,cinematic:0,threat:-300,chasing:false,ending:null};}
+export function createRun():Run {const p=LEVELS[0].spawn;return {version:2,stage:0,cleared:0,phase:'playing',...p,vx:0,vy:0,facing:1,grounded:false,ground:-1,wall:0,coyote:0,buffer:0,dashLeft:0,dashReady:true,previousJump:false,previousDash:false,time:0,stageTime:0,deaths:0,stageDeaths:0,sparks:0,collected:[],key:false,checkpoint:false,checkpointIndex:-1,clock:0,respawn:0,crumbles:{},best:0,activated:[],heard:[],memories:[],previousInteract:false,cinematic:0,defeated:{},dropLeft:0,pet:null,threat:-300,chasing:false,ending:null};}
 export function platformAt(p:Platform,t:number):Rect {const shift=p.kind==='moving'?Math.sin(t*(p.speed??1)+p.id)*(p.travel??0):0;return {x:p.x+(p.axis!=='y'?shift:0),y:p.y+(p.axis==='y'?shift:0),w:p.w,h:p.h};}
 export function stationAt(station:Station,level:Level,t:number){const p=level.platforms[station.platform],r=platformAt(p,t);return {x:station.x+r.x-p.x,y:station.y+r.y-p.y};}
-export function hazardAt(h:Hazard,t:number):Rect {return {...h,x:h.x+(h.kind==='saw'?Math.sin(t*2*Math.PI/(h.period??3)+(h.offset??0))*(h.travel??0):0)};}
+export function hazardAt(h:Hazard,t:number):Rect {if(h.kind==='crusher')return pressAt(h,t);return {...h,x:h.x+(h.kind==='saw'?Math.sin(t*2*Math.PI/(h.period??3)+(h.offset??0))*(h.travel??0):0)};}
 const hazardCycle=(h:Hazard,t:number)=>{const period=h.period??3;return ((t+(h.offset??0))%period+period)%period;};
 export const laserActive=(h:Hazard,t:number)=>!['laser','steam'].includes(h.kind)||hazardCycle(h,t)<(h.period??3)*(h.duty??.55);
 /** Powered machinery has a visible, persistent response to its control wheel. */
@@ -51,7 +56,7 @@ export const scoreFor=(s:Run)=>s.best;
 export function respawn(s:Run,penalty=true){
  if(penalty){s.deaths++;s.stageDeaths++;}
  const level=LEVELS[s.stage],cp=checkpointFor(s,level),p=cp?{x:cp.x,y:cp.y-PLAYER_H}:level.spawn;
- Object.assign(s,p,{vx:0,vy:0,grounded:false,ground:-1,wall:0,coyote:0,buffer:0,dashLeft:0,dashReady:true,respawn:penalty?.35:0,crumbles:{},previousJump:false,previousDash:false,previousInteract:false,threat:p.x-300,chasing:false});
+ Object.assign(s,p,{vx:0,vy:0,grounded:false,ground:-1,wall:0,coyote:0,buffer:0,dashLeft:0,dashReady:true,respawn:penalty?.35:0,crumbles:{},previousJump:false,previousDash:false,previousInteract:false,defeated:{},dropLeft:0,pet:null,threat:p.x-300,chasing:false});
 }
 export function nextStage(s:Run):boolean {
  if(s.phase!=='cleared'||s.stage>=LEVEL_COUNT-1)return false;
@@ -69,7 +74,10 @@ export function step(s:Run,input:Input,dt=STEP):Events {
  s.buffer=jumpPressed?.12:Math.max(0,s.buffer-dt);s.coyote=s.grounded?.1:Math.max(0,s.coyote-dt);
  const oldGround=level.platforms.find(p=>p.id===s.ground);
  if(s.grounded&&oldGround?.kind==='moving'){const before=platformAt(oldGround,oldClock),after=platformAt(oldGround,s.clock);s.x+=after.x-before.x;s.y+=after.y-before.y;}
+ s.dropLeft=Math.max(0,s.dropLeft-dt);
+ if(input.drop&&s.grounded&&oldGround?.kind==='grate'){s.dropLeft=.2;s.y+=2;s.grounded=false;s.ground=-1;s.coyote=0;s.pet=null;}
  const move=clamp(input.move,-1,1);if(move)s.facing=Math.sign(move);
+ if(s.pet&&(move||jumpPressed||dashPressed||!s.grounded||s.clock-s.pet.started>=PET_DURATION))s.pet=null;
  if(s.buffer>0&&(s.coyote>0||s.wall!==0)){
   s.vy=-420;if(!s.grounded&&s.coyote<=0&&s.wall){s.vx=-s.wall*270;s.facing=-s.wall;}
   s.grounded=false;s.ground=-1;s.coyote=0;s.buffer=0;events.jump=true;
@@ -88,14 +96,14 @@ export function step(s:Run,input:Input,dt=STEP):Events {
  if(level.gate&&!s.key)bodies.push({p:{...level.gate,id:-2,kind:'stone'},r:level.gate});
  const previousX=s.x,previousY=s.y;
  s.x+=s.vx*dt+(s.grounded&&oldGround?.kind==='belt'?(oldGround.direction??1)*85*dt:0);s.x=clamp(s.x,0,level.width-PLAYER_W);s.wall=0;
- for(const {r} of bodies)if(overlap({x:s.x,y:s.y,w:PLAYER_W,h:PLAYER_H},r)){
+ for(const {p,r} of bodies)if(p.kind!=='grate'&&overlap({x:s.x,y:s.y,w:PLAYER_W,h:PLAYER_H},r)){
   if(previousX+PLAYER_W<=r.x+.1){s.x=r.x-PLAYER_W;s.wall=1;}
   else if(previousX>=r.x+r.w-.1){s.x=r.x+r.w;s.wall=-1;}
   else continue;
   s.vx=0;s.dashLeft=0;
  }
  s.y+=s.vy*dt;const wasGrounded=s.grounded;s.grounded=false;s.ground=-1;
- for(const {p,r} of bodies)if(overlap({x:s.x,y:s.y,w:PLAYER_W,h:PLAYER_H},r)){
+ for(const {p,r} of bodies)if(!(p.kind==='grate'&&(s.dropLeft>0||s.vy<0))&&overlap({x:s.x,y:s.y,w:PLAYER_W,h:PLAYER_H},r)){
   if(s.vy>=0&&previousY+PLAYER_H<=r.y+.5){
    s.y=r.y-PLAYER_H;s.vy=0;s.grounded=true;s.ground=p.id;s.dashReady=true;s.dashLeft=0;
    if(!wasGrounded)events.land=true;
@@ -103,11 +111,22 @@ export function step(s:Run,input:Input,dt=STEP):Events {
    if(p.kind==='spring'){s.vy=-620;s.grounded=false;s.ground=-1;events.jump=true;}
   }else if(s.vy<0&&previousY>=r.y+r.h-.5){s.y=r.y+r.h;s.vy=0;s.dashLeft=0;}
  }
+ // Enemy contact is swept at the feet, so a fast descending stomp cannot tunnel.
+ let enemyHit=false;
+ for(const enemy of level.enemies??[]){
+  if(s.defeated[enemy.id]!==undefined)continue;
+  const at=enemyAt(enemy,s.clock),body={x:s.x+2,y:s.y+2,w:PLAYER_W-4,h:PLAYER_H-2};
+  const stomp=s.vy>0&&previousY+PLAYER_H<=at.y+7&&s.y+PLAYER_H>=at.y&&s.x+PLAYER_W-2>at.x&&s.x+2<at.x+at.w;
+  if(stomp||overlap(body,at)&&s.dashLeft>0){
+   s.defeated[enemy.id]=s.clock;events.enemy=true;s.pet=null;
+   if(stomp){s.y=at.y-PLAYER_H;s.vy=input.jump?-420:-310;s.grounded=false;s.ground=-1;s.dashReady=true;events.stomp=true;}
+  }else if(overlap(body,at))enemyHit=true;
+ }
  const player={x:s.x+2,y:s.y+2,w:PLAYER_W-4,h:PLAYER_H-2};
  if(level.goal==='escape'){if(s.x>(checkpointFor(s,level)?.x??level.spawn.x)+120)s.chasing=true;if(s.chasing)s.threat+=pursuitSpeed(level,s)*dt;}
  const hit=level.hazards.find(h=>hazardActive(h,s)&&overlap(player,hazardAt(h,s.clock))),fell=s.y>level.height+32,drowned=level.water!==null&&s.y+PLAYER_H>level.water,caught=level.goal==='escape'&&s.x+PLAYER_W<s.threat;
- if(fell||drowned||caught||hit){
-  events.deathPose={...s,crumbles:{...s.crumbles}};events.deathCause=hit?.kind??(drowned?'water':caught?'dark':'fall');
+ if(fell||drowned||caught||hit||enemyHit){
+  events.deathPose={...s,crumbles:{...s.crumbles}};events.deathCause=hit?.kind??(enemyHit?'enemy':drowned?'water':caught?'dark':'fall');
   respawn(s);events.death=true;return events;
  }
 
@@ -119,11 +138,13 @@ export function step(s:Run,input:Input,dt=STEP):Events {
  }
  if(interactPressed){
   const station=level.stations.find(p=>{const at=stationAt(p,level,s.clock);return !s.activated.includes(p.id)&&Math.abs(s.x+8-at.x)<48&&Math.abs(s.y+PLAYER_H-at.y)<44;});
+  const animal=nearbyAnimal(level,s);
   if(station){s.activated.push(station.id);events.interact=true;events.message=station.kind==='survivor'?`${station.label}: I’m with you. Lead the way.`:station.kind==='valve'?`${station.label} open.${level.hazards.some(h=>h.disabledBy===station.id)?' Linked machinery shut down.':''}`:station.kind==='bell'?'Departure bell rung.':`${station.label} lit.`;}
+  else if(animal&&!s.pet){s.pet={platform:animal.platform,x:animal.x,y:animal.y,started:s.clock};s.facing=Math.sign(animal.x-s.x-8)||s.facing;events.pet=true;}
   else if(Math.abs(s.x-152)<60&&Math.abs(s.y+PLAYER_H-level.spawn.y-PLAYER_H)<48){if(!s.heard.includes(s.stage))s.heard.push(s.stage);events.interact=true;events.message=`${speakerFor(s.stage)}: “${CHAPTERS[s.stage].line}”`;}
  }
  if(overlap(player,level.exit)){
-  s.cleared=s.stage+1;s.phase=s.cleared===LEVEL_COUNT?'complete':'cleared';s.best+=rankScore(1,s.collected.filter(id=>id<3).length,s.stageTime,s.stageDeaths);s.cinematic=0;events.clear=true;
+  s.cleared=s.stage+1;s.phase=s.cleared===LEVEL_COUNT?'complete':'cleared';s.best+=rankScore(1,s.collected.filter(id=>id<3).length,s.stageTime,s.stageDeaths);s.cinematic=clearDuration(level);s.pet=null;events.clear=true;
  }
  return events;
 }
@@ -133,6 +154,8 @@ export function nearby(s:Run):string {
  const level=LEVELS[s.stage];
  const station=level.stations.find(p=>{const at=stationAt(p,level,s.clock);return !s.activated.includes(p.id)&&Math.abs(s.x+8-at.x)<48&&Math.abs(s.y+PLAYER_H-at.y)<44;});
  if(station)return `E · ${station.kind==='survivor'?'Help':station.kind==='valve'?'Turn':station.kind==='bell'?'Ring':'Light'} ${station.label} · optional`;
+ if(s.pet)return '';
+ if(nearbyAnimal(level,s))return 'E · Pet cat';
  if(Math.abs(s.x-152)<60&&Math.abs(s.y-level.spawn.y)<48)return `E · Talk to ${speakerFor(s.stage)} · optional`;
  return '';
 }

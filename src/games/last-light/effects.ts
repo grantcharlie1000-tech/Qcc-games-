@@ -1,6 +1,7 @@
 import {LEVELS,type Level} from './levels';
 import {checkpointFor,stationAt,type Events,type Run} from './model';
-import {goalComposition,completionMotion} from './composition';
+import {clearDuration,departureProgress,departureOffset} from './departure';
+import {goalComposition} from './composition';
 type Mark={x:number;y:number;age:number;kind:'dust'|'spark'|'connection'};
 /** Presentation-only, bounded marks. Simulation events are the sole clock source. */
 export class Effects {
@@ -26,18 +27,12 @@ export class Effects {
   }c.restore();
  }
 }
-export function completionTravel(s:Run,reduced:boolean){const p=Math.max(0,Math.min(1,(2.8-s.cinematic)/2.8));return reduced?0:p*p*(3-2*p);}
-const motionCache=new WeakMap<Run,{stage:number;x:number;y:number;offset:{x:number;y:number}}>();
-export function completionOffset(s:Run,reduced:boolean){
- if(reduced||s.phase==='playing')return {x:0,y:0};
- let cached=motionCache.get(s);
- if(!cached||cached.stage!==s.stage||cached.x!==s.x||cached.y!==s.y){cached={stage:s.stage,x:s.x,y:s.y,offset:completionMotion(LEVELS[s.stage],{x:s.x-10,y:s.y-12,w:36,h:38})};motionCache.set(s,cached);}
- const p=completionTravel(s,false);return {x:cached.offset.x*p,y:cached.offset.y*p};
-}
+export function completionTravel(s:Run,reduced:boolean){const p=departureProgress(LEVELS[s.stage],s);return reduced?0:p*p*(3-2*p);}
+export function completionOffset(s:Run,reduced:boolean){return departureOffset(LEVELS[s.stage],s,reduced);}
 /** Each restored system has a visual consequence, rather than a shared confetti burst. */
 export function drawCompletion(c:CanvasRenderingContext2D,l:Level,s:Run,color:string,reduced:boolean){
  if(s.phase==='playing')return;
- const art=goalComposition(l),x=art.x,y=art.y,p=reduced?1:completionTravel(s,false),t=reduced?1:2.8-s.cinematic,offset=completionOffset(s,reduced);
+ const art=goalComposition(l),x=art.x,y=art.y,p=reduced?1:completionTravel(s,false),t=reduced?1:clearDuration(l)-s.cinematic,offset=completionOffset(s,reduced);
  c.save();c.strokeStyle=color;c.fillStyle=color;c.lineWidth=1;
  if(l.goal!=='escape'&&l.goal!=='ferry'){c.beginPath();c.rect(art.bounds.x,art.bounds.y,art.bounds.w,art.bounds.h);c.clip();}
  if(l.goal==='shelter'||l.goal==='rescue'){
@@ -45,12 +40,15 @@ export function drawCompletion(c:CanvasRenderingContext2D,l:Level,s:Run,color:st
   // Interior window light and the shelter's welcoming hearth smoke.
   c.globalAlpha=.7;c.fillRect(x-9,y-35,18,2);
   for(let i=0;i<5;i++){c.globalAlpha=.12*(1-i/6);c.fillRect(x+28-i*2,y-80-i*10-(reduced?0:p*12),9+i*3,3);}
+  // The two door leaves close only after the courier has crossed the sill.
+  const close=Math.max(0,Math.min(1,(t-.68)/.32));c.globalAlpha=1;c.fillStyle='#6b5141';c.fillRect(x-11,y-43,Math.round(11*close),42);c.fillRect(x+11-Math.round(11*close),y-43,Math.round(11*close),42);
+  c.fillStyle='#bd9869';c.fillRect(x-10,y-42,Math.round(10*close),2);c.fillRect(x+10-Math.round(10*close),y-42,Math.round(10*close),2);
   if(l.goal==='rescue'){c.globalAlpha=.8;c.fillRect(x-5,y-20,3,12);c.fillRect(x+4,y-22,3,14);}
  }else if(l.goal==='ferry'){
   // Wake separates from the accelerating hull; dock mooring drops slack.
   if(art.art==='ferry'||art.art==='airship'){
-   c.globalAlpha=.4;for(let i=0;i<7;i++){const trail=i*17;c.fillRect(x+offset.x-trail-40,y+10+i%2*3,12+i*3,1);}
-   c.globalAlpha=.65;c.beginPath();c.moveTo(x-43,y-2);c.quadraticCurveTo(x-22,y+14,x+8,y+8);c.stroke();
+   if(t>.62){c.globalAlpha=Math.min(.5,(t-.62)*.7);for(let i=0;i<7;i++){const trail=i*12;c.fillRect(x+offset.x-trail-40,(l.water??y+offset.y+9)+i%2*3,10+i*2,1);}}
+   if(t<.62){c.globalAlpha=.65*(1-t/.62);c.beginPath();c.moveTo(l.exit.x+l.exit.w+6,y-5);c.quadraticCurveTo(x-59,y+10,x-52,y-4);c.stroke();}
   }
  }else if(l.goal==='engine'){
   c.globalAlpha=.55;for(const dx of [-23,23]){c.fillRect(x+dx,y-85,1,77+offset.y);for(let i=0;i<4;i++)c.fillRect(x+dx-3,y-12+offset.y+i*5,7,1);}
@@ -69,6 +67,8 @@ export function drawCompletion(c:CanvasRenderingContext2D,l:Level,s:Run,color:st
  }else if(l.goal==='signal'){
   c.beginPath();c.rect(art.bounds.x,art.bounds.y,art.bounds.w,art.bounds.h);c.clip();
   const antenna=art.art==='signal'?y-60:y-24;
+  // A native-pixel scan climbs the console before the transmitter answers.
+  c.globalAlpha=.8;c.fillRect(x-10,y-8-Math.round(p*19),20,2);
   c.globalAlpha=.55;for(let i=0;i<3;i++){const r=5+i*7+(reduced?0:t*4%7);c.beginPath();c.arc(x,antenna,r,.2,1.2);c.stroke();}
  }else if(l.goal==='escape'){
   // A diagonal curtain of masonry falls behind the safe doorway.

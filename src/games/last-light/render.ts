@@ -1,3 +1,5 @@
+import {drawEnemy,drawPress} from './enemy-art';
+import {clearDuration,departurePose} from './departure';
 import {DeathAnimation} from './death-art';
 import {drawArchitecture} from './architecture';
 import {drawCrumblingHazard} from './crumble-art';
@@ -50,7 +52,7 @@ function smallStation(c:C,x:number,y:number,color:string,lit:boolean,art:Station
   pixel(c,'#1b2b35',-7,-27,14,18);pixel(c,'#b89b65',-6,-26,12,17);pixel(c,'#e5ce94',-5,-25,3,14);pixel(c,'#c3a466',-10,-12,20,4);pixel(c,lit?color:'#7e6552',-2,-8,4,4);pixel(c,'#21333c',-14,0,28,2);
  }c.restore();
 }
-function smallGoal(c:C,p:GoalComposition,color:string,ready:boolean){
+function smallGoal(c:C,p:GoalComposition,color:string,ready:boolean,lift=0){
  const {x,y,art}=p;
  if(art==='smallRelay'){relayCabinet(c,x,y,color,ready,false,true);return;}
  c.save();c.translate(Math.round(x),Math.round(y));
@@ -65,7 +67,7 @@ function smallGoal(c:C,p:GoalComposition,color:string,ready:boolean){
   for(let i=0;i<3;i++)pixel(c,'#193844',-9+i*4,-13-i,2,4+i);pixel(c,'#b4bca0',8,-17,5,5);pixel(c,'#253c47',9,-16,3,3);pixel(c,'#9e8d70',11,-29,2,9);pixel(c,ready?color:'#83938b',9,-30,6,2);
  }else if(art==='smallEngine'){
   for(const xx of [-22,18]){pixel(c,'#22323e',xx,-47,5,48);pixel(c,'#9a9b88',xx,-47,1,46);}
-  pixel(c,'#1e303c',-23,-48,46,5);pixel(c,'#b6a481',-21,-48,42,1);drawGear(c,0,-31,12,0,ready?color:'#9a8d76');pixel(c,'#4b626b',-23,-8,46,10);pixel(c,'#a0b19b',-22,-8,44,2);
+  pixel(c,'#1e303c',-23,-48,46,5);pixel(c,'#b6a481',-21,-48,42,1);drawGear(c,0,-31,12,0,ready?color:'#9a8d76');pixel(c,'#4b626b',-23,-8+lift,46,10);pixel(c,'#a0b19b',-22,-8+lift,44,2);
  }else{
   pixel(c,'#1b2d38',-12,-5,24,7);pixel(c,'#98a38b',-11,-5,22,1);pixel(c,'#5e7476',-8,-21,16,16);pixel(c,'#bdab7c',-9,-24,18,4);pixel(c,ready?color:'#405f69',-5,-19,10,10);pixel(c,'#d5dbc0',-4,-19,2,7);pixel(c,'#233d48',-7,-8,14,3);
  }c.restore();
@@ -73,8 +75,16 @@ function smallGoal(c:C,p:GoalComposition,color:string,ready:boolean){
 function drawGoal(c:C,l:Level,s:Run,reduced:boolean){
  const p=goalComposition(l),{x,y,art,bounds}=p,theme=WORLDS[l.world],ready=true,t=reduced?0:s.clock;
  const offset=completionOffset(s,reduced),shift=offset.x;
- c.save();c.translate(shift,0);c.beginPath();c.rect(bounds.x,bounds.y,bounds.w,bounds.h);c.clip();
- if(art==='ferry'||art==='airship')ferry(c,x,y-3-(reduced?0:Math.sin(t*2)*2),theme.accent,art==='airship');
+ if(l.berth){
+  const post=l.exit.x+l.exit.w+1;pixel(c,'#1a2e38',post,y-17,5,20);pixel(c,'#9c9e7a',post,y-17,5,2);pixel(c,'#617a77',post+1,y-14,1,15);
+  if(s.phase==='playing'){c.strokeStyle='#a79874';c.lineWidth=1;c.beginPath();c.moveTo(post+2,y-10);c.quadraticCurveTo(x-62,y+5,x-52,y-4);c.stroke();}
+ }
+ c.save();c.translate(shift,art==='ferry'||art==='airship'?offset.y:0);c.beginPath();c.rect(bounds.x,bounds.y,bounds.w,bounds.h);c.clip();
+ if(art==='ferry'||art==='airship'){
+  ferry(c,x,y-3-(reduced?0:Math.sin(t*2)*2),theme.accent,art==='airship');
+  // The waterline masks the submerged lower hull, with a broken reflection.
+  if(l.water!==null){pixel(c,'#153440',x-62,l.water,125,17);for(let i=0;i<5;i++)pixel(c,theme.edge+'88',x-47+i*22,l.water+(i%2),13,1);}
+ }
  else if(art==='engine'){
   c.strokeStyle='#ac9978';c.lineWidth=2;c.strokeRect(x-26,y-88,52,88);pixel(c,'#5a5a5d',x-27,y-8+offset.y,54,8);drawGear(c,x,y-76,15,ready?t*.7:0,ready?theme.accent:'#8c8d88');
  }else if(art==='doorway'||art==='escape'){
@@ -85,7 +95,7 @@ function drawGoal(c:C,l:Level,s:Run,reduced:boolean){
  else if(art==='relay'||art==='gardenRelay')relayCabinet(c,x,y,theme.accent,ready,art==='gardenRelay');
  else if(art==='dawn'){
   pixel(c,'#354b56',x-10,y-32,20,32);pixel(c,'#91a2a0',x-10,y-32,20,3);pixel(c,'#536b72',x-7,y-28,3,26);pixel(c,'#b39b74',x-15,y-5,30,5);lantern(c,x,y-55,theme.accent,ready);
- }else smallGoal(c,p,theme.accent,ready);
+ }else smallGoal(c,p,theme.accent,ready,offset.y);
  c.restore();
  if(s.phase==='playing'&&p.marker){
   const m=p.marker,mx=Math.round(m.x+m.w/2),my=Math.round(m.y+m.h/2);pixel(c,'#172b36',m.x,m.y,m.w,m.h);
@@ -133,13 +143,20 @@ export class Scene {
   this.sync(actual);const s=this.death.impact?this.death.pose!:actual;
   const c=this.ctx,l=LEVELS[s.stage],theme=WORLDS[l.world],w=this.width,h=this.height;
   if(reduced&&!this.death.impact){const target=this.target(s,true);this.cameraX=target.x;this.cameraY=target.y;}
-  const cx=Math.floor(this.death.impact?this.death.cameraX:this.cameraX),cy=Math.floor(this.death.impact?this.death.cameraY:this.cameraY),t=reduced?0:s.clock,elapsed=s.phase==='playing'?0:reduced?2.8:2.8-s.cinematic;
+  const cx=Math.floor(this.death.impact?this.death.cameraX:this.cameraX),cy=Math.floor(this.death.impact?this.death.cameraY:this.cameraY),t=reduced?0:s.clock,elapsed=s.phase==='playing'?0:reduced?clearDuration(l):clearDuration(l)-s.cinematic;
   drawSky(c,l,s,w,h,cx,cy,reduced);
   drawEndingSky(c,w,h,s);
   c.save();c.translate(-cx,-cy);
   drawArchitecture(c,l,cx,cy,w,h);
   if(l.setting==='bridge'){c.strokeStyle=theme.edge+'77';c.lineWidth=2;c.beginPath();c.moveTo(24,470);for(let x=24;x<l.width;x+=20)c.lineTo(x,410+Math.sin(x/l.width*Math.PI)*90);c.stroke();}
   for(const p of l.platforms){const r=platformAt(p,s.clock);if(r.x+r.w<cx-60||r.x>cx+w+60||r.y>cy+h+60||r.y<cy-220)continue;const visual=l.goal==='escape'&&s.phase!=='playing'&&p.kind==='crumble'&&elapsed>p.id*.12?{...s,crumbles:{...s.crumbles,[p.id]:-(elapsed-p.id*.12)}}:s;drawPlatform(c,p,r.x,r.y,visual,l,reduced);}
+  for(let i=1;i<l.mainCount-1;i++){
+   const p=l.platforms[i],next=l.platforms[i+1],before=l.platforms[i-1],dir=Math.sign(next.x+next.w/2-p.x-p.w/2),incoming=Math.sign(p.x+p.w/2-before.x-before.w/2);
+   if(dir===incoming||p.kind==='moving'||p.kind==='crumble'||!dir||p.x+p.w<cx||p.x>cx+w)continue;
+   const mx=Math.round(p.x+p.w*(dir>0?.82:.18)),my=p.y-6;
+   if(l.hazards.some(h=>Math.abs(h.x-mx)<42)||l.stations.some(a=>Math.abs(a.x-mx)<40&&a.platform===p.id))continue;
+   pixel(c,theme.accent+'aa',mx-4,my-1,8,2);pixel(c,theme.accent+'aa',mx+dir*2,my-3,2,6);pixel(c,theme.accent+'aa',mx+dir*4,my-1,2,2);
+  }
   drawLife(c,l,s,cx,cy,w,h,reduced);
   // Mission architecture sits behind every collectible, hazard and character.
   // Its footprint is chosen before drawing, using the exact interaction anchor.
@@ -153,13 +170,15 @@ export class Scene {
    const r=hazardAt(hazard,s.clock);if(r.x<cx-70||r.x>cx+w+70)continue;
    const support=hazard.platform===undefined?undefined:s.crumbles[hazard.platform];
    if(support!==undefined&&support<=0){drawCrumblingHazard(c,hazard,support,reduced,r);continue;}
-   if(hazard.kind==='spikes'){drawSpikes(c,r);
+   if(hazard.kind==='crusher'){drawPress(c,hazard,s,reduced);
+   }else if(hazard.kind==='spikes'){drawSpikes(c,r);
    }else if(hazard.kind==='saw'){drawGear(c,r.x+r.w/2,r.y+r.h/2,12,hazardActive(hazard,s)?t*4:0,hazardActive(hazard,s)?'#d3b8b3':'#586c71');}
    else{
     const on=hazardActive(hazard,s),stopped=hazard.disabledBy!==undefined&&s.activated.includes(hazard.disabledBy),warning=hazardWarning(hazard,s);
     drawEmitter(c,hazard,r,on,warning,stopped,t,reduced);
    }
   }
+  for(const enemy of l.enemies??[]){const margin=enemy.travel+28;if(enemy.x+margin<cx||enemy.x-margin>cx+w)continue;drawEnemy(c,enemy,s,reduced);}
   for(const p of l.pickups){if(s.collected.includes(p.id))continue;const y=p.y+Math.round(Math.sin(t*3+p.id)*3);
    c.fillStyle=(p.kind==='dash'?'#a9d9ef':theme.accent)+'12';c.beginPath();c.moveTo(p.x,y-15);c.lineTo(p.x+12,y);c.lineTo(p.x,y+15);c.lineTo(p.x-12,y);c.fill();c.fillStyle=p.kind==='dash'?'#9ed6ee':theme.accent;
    c.beginPath();c.moveTo(p.x,y-8);c.lineTo(p.x+6,y);c.lineTo(p.x,y+8);c.lineTo(p.x-6,y);c.fill();c.fillStyle='#fff4d1';c.fillRect(p.x-1,y-4,2,5);
@@ -177,14 +196,13 @@ export class Scene {
    }
    if(!lit&&plan.marker){const m=plan.marker;pixel(c,'#172b36',m.x+dx,m.y+dy,m.w,m.h);c.fillStyle=theme.accent;c.font='9px monospace';c.textAlign='center';c.fillText(kind==='survivor'?'…':'↵',Math.round(m.x+m.w/2+dx),Math.round(m.y+9+dy));c.textAlign='start';}
   }
-  if(l.goal==='rescue'&&s.activated.length){const follower=this.trace[0]??{x:s.x-18,y:s.y+24};person(c,follower.x,follower.y,t,characterColor(rescueNameFor(s.stage),l.world),Math.abs(s.vx)>20?Math.sign(s.vx):0,Math.sign(s.vx)||s.facing);}
+  if(l.goal==='rescue'&&s.activated.length){const follower=this.trace[0]??{x:s.x-18,y:s.y+24};c.save();if(s.phase!=='playing'){const pose=departurePose(l,s,reduced);c.translate(pose.x-s.x,pose.y-s.y);c.globalAlpha=Math.min(1,pose.opacity*1.4);}person(c,follower.x,follower.y,t,characterColor(rescueNameFor(s.stage),l.world),Math.abs(s.vx)>20?Math.sign(s.vx):0,Math.sign(s.vx)||s.facing);c.restore();}
   this.effects.draw(c,cx,cy,w,h,theme.accent,reduced);
   c.save();
-  if(s.phase!=='playing'&&!reduced){const offset=completionOffset(s,reduced);c.translate(offset.x,offset.y);}
-  if(!this.death.impact)this.courier.draw(c,s,theme.accent,reduced);c.restore();c.restore();
+  const departure=s.phase!=='playing'?departurePose(l,s,reduced):null;
+  if(departure){c.translate(departure.x-s.x,departure.y-s.y);c.globalAlpha=departure.opacity;}
+  if(!this.death.impact)this.courier.draw(c,s,theme.accent,reduced,departure??undefined);c.restore();c.restore();
   this.death.drawBody(c,cx,cy,reduced);this.death.drawTransition(c,w,h,actual,cx,cy,reduced);
   drawDawn(c,w,h,s,reduced);
-  if(s.phase!=='playing'&&s.cinematic>0){c.fillStyle='#10202a';c.fillRect(0,0,w,32);c.fillRect(0,h-38,w,38);}
-  c.fillStyle='#0b111329';c.fillRect(0,h-8,w,8);
  }
 }

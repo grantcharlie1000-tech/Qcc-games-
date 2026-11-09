@@ -11,7 +11,7 @@ export function jumpBetween(l:Level,from:number,to:number):Jump|null {
  // coarse search bound; every retained edge still needs a real trajectory.
  if(b.y<a.y-190||b.y>a.y+210||Math.max(a.x-b.x-b.w,b.x-a.x-a.w)>260)return null;
  const dir=b.x+b.w/2>=a.x+a.w/2?1:-1;
- for(const clock of (a.branch||a.kind==='spring'?[0,.6,1.2,1.8,2.4,3]:[0,1.8]))for(const portion of [0,.25,.5,.75,1])for(const hold of [65,8,0])for(const dashAt of [-1,24,40,56]){
+ for(const clock of (a.branch||a.kind==='spring'?[0,.6,1.2,1.8,2.4,3]:[0,1.8]))for(const portion of [0,.25,.5,.75,1])for(const hold of [65,8,0])for(const dashAt of [-1,24,40,56])for(const aim of a.kind==='spring'?[.25,.5,.7]:[.5]){
   const s=onPlatform(l.id,from,clock),r=platformAt(a,clock);s.x=r.x-PLAYER_W+2+(r.w+PLAYER_W-4)*portion;s.vx=dir*220;s.facing=dir;
   // A spring is entered by falling onto it, not by standing on it and pressing
   // ordinary jump (which replaces its stronger bounce with a normal impulse).
@@ -21,7 +21,7 @@ export function jumpBetween(l:Level,from:number,to:number):Jump|null {
   }
   const start=structuredClone(s),inputs:Input[]=[];
   for(let frame=0;frame<180;frame++){
-   const target=platformAt(b,s.clock),dx=target.x+target.w/2-(s.x+8),move=Math.abs(dx)<10?0:Math.sign(dx);
+   const target=platformAt(b,s.clock),dx=target.x+target.w*aim-(s.x+8),move=Math.abs(dx)<10?0:Math.sign(dx);
    const input={move,jump:frame<hold,dash:frame===dashAt};inputs.push(input);const ev=step(s,input);
    if(ev.death)break;
    if((s.grounded&&s.ground===b.id)||(b.kind==='spring'&&s.vy< -600&&Math.abs(s.y+PLAYER_H-target.y)<12))return {start,inputs};

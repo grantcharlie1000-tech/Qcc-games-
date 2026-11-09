@@ -1,6 +1,7 @@
+import {petPose} from './affection';
 import {PLAYER_H,PLAYER_W,type Events,type Run} from './model';
 
-export type CourierAction='idle'|'run'|'rise'|'fall'|'wall'|'dash'|'land'|'respawn'|'celebrate'|'brake'|'interact';
+export type CourierAction='idle'|'run'|'rise'|'fall'|'wall'|'dash'|'land'|'respawn'|'celebrate'|'brake'|'interact'|'pet';
 interface Particle {x:number;y:number;vx:number;vy:number;life:number;duration:number;kind:'dust'|'ember'}
 interface Echo {x:number;y:number;facing:number;life:number}
 interface Stride {back:readonly[number,number,number,number];front:readonly[number,number,number,number];bob:number;arm:number}
@@ -77,14 +78,15 @@ export class Courier {
   if(s.respawn>0)return 'respawn';
   if(s.phase!=='playing')return 'celebrate';
   if(s.dashLeft>0)return 'dash';
+  if(s.pet)return 'pet';
   if(s.grounded){if(s.previousInteract)return 'interact';if(s.facing*s.vx< -35)return 'brake';if(this.landing>0)return 'land';return Math.abs(s.vx)>20?'run':'idle';}
   if(s.wall&&s.vy>=0)return 'wall';
   if(s.clock===0)return 'idle';
   return s.vy< -25?'rise':'fall';
  }
- draw(c:CanvasRenderingContext2D,s:Run,accent:string,reduced:boolean){
+ draw(c:CanvasRenderingContext2D,s:Run,accent:string,reduced:boolean,presentation?:{action:CourierAction;facing:number;settle?:number}){
   this.sync(s);
-  const action=this.action(s),face=action==='wall'?s.wall:s.facing;
+  const affection=petPose(s,reduced),action=presentation?.action??this.action(s),face=presentation?.facing??affection?.facing??(action==='wall'?s.wall:s.facing),pet=affection?.weight??0;
   if(!reduced){
    for(const echo of this.echoes)if(echo.life>0){
     c.save();c.globalAlpha=echo.life/.13*.20;c.translate(Math.round(echo.x+8),Math.round(echo.y+24));c.scale(echo.facing,1);
@@ -94,18 +96,18 @@ export class Courier {
   }
   const airborne=!s.grounded&&s.clock>0&&s.respawn===0;
   c.fillStyle='#0c142244';c.fillRect(Math.round(s.x-3),Math.round(s.y+24),22,2);
-  c.save();c.globalAlpha=s.respawn>0&&!reduced?Math.max(.3,1-s.respawn/.35):1;
-  const squash=action==='land'&&!reduced?this.landing/.18*this.impact:0;
+  c.save();c.globalAlpha*=s.respawn>0&&!reduced?Math.max(.3,1-s.respawn/.35):1;
+  const squash=action==='land'&&!reduced?(presentation?.settle??this.landing/.18*this.impact):0;
   c.translate(Math.round(s.x+PLAYER_W/2),Math.round(s.y+PLAYER_H));c.scale(face*(1+squash*.1),1-squash*.08);c.translate(-12,-34);
   const gait=this.gait*8,frame=STRIDES[Math.floor(gait)%STRIDES.length],next=STRIDES[(Math.floor(gait)+1)%STRIDES.length],blend=gait%1;
   const interpolate=(a:readonly number[],b:readonly number[])=>a.map((v,i)=>v+(b[i]-v)*blend) as unknown as Stride['front'];
   const stride:Stride=action==='run'?{front:interpolate(frame.front,next.front),back:interpolate(frame.back,next.back),bob:frame.bob+(next.bob-frame.bob)*blend,arm:frame.arm+(next.arm-frame.arm)*blend}:STILL;
   const bob=reduced?0:action==='run'?stride.bob:action==='idle'?Math.round(Math.sin(s.clock*2.7)*.6):0;
-  const crouch=action==='land'&&!reduced?Math.ceil(2*this.landing/.18):0;
-  const lean=action==='dash'?3:action==='rise'?1:action==='wall'?2:action==='brake'?-2:action==='run'?1:0;
+  const crouch=action==='pet'?Math.round(pet*5):action==='land'&&!reduced?Math.ceil(2*(presentation?.settle??this.landing/.18)):0;
+  const lean=action==='pet'?Math.round(pet*3):action==='dash'?3:action==='rise'?1:action==='wall'?2:action==='brake'?-2:action==='run'?1:0;
   const by=bob+crouch;
-  const back=action==='land'?[7,28,5,33]:action==='brake'?[8,28,5,33]:action==='interact'?[9,28,7,33]:action==='rise'?[8,25,4,28]:action==='fall'?[8,27,6,31]:action==='dash'?[6,26,1,29]:action==='wall'?[8,27,5,32]:stride.back;
-  const front=action==='land'?[17,28,19,33]:action==='brake'?[17,27,21,33]:action==='interact'?[16,28,16,33]:action==='rise'?[16,25,17,29]:action==='fall'?[16,28,18,33]:action==='dash'?[16,28,21,31]:action==='wall'?[19,25,22,28]:stride.front;
+  const back=action==='pet'?[7,29,5,33]:action==='land'?[7,28,5,33]:action==='brake'?[8,28,5,33]:action==='interact'?[9,28,7,33]:action==='rise'?[8,25,4,28]:action==='fall'?[8,27,6,31]:action==='dash'?[6,26,1,29]:action==='wall'?[8,27,5,32]:stride.back;
+  const front=action==='pet'?[18,29,20,33]:action==='land'?[17,28,19,33]:action==='brake'?[17,27,21,33]:action==='interact'?[16,28,16,33]:action==='rise'?[16,25,17,29]:action==='fall'?[16,28,18,33]:action==='dash'?[16,28,21,31]:action==='wall'?[19,25,22,28]:stride.front;
   this.leg(c,10,24+crouch,back,true); // rear leg sits behind the coat and satchel
   // The scarf narrows toward its tip. Its wave travels away from the knot,
   // while local-space inertia keeps turns readable in either direction.
@@ -149,11 +151,12 @@ export class Courier {
   else this.rect(c,'#aa796b',16+lean,12+by,2,1);this.rect(c,COLORS.scarfShade,7+lean,13+by,12,3);this.rect(c,COLORS.scarf,9+lean,13+by,11,2);this.rect(c,COLORS.scarfLight,13+lean,13+by,6,1);
   // The forward glove carries a lantern; running swings the arm and chain.
   let handX=21+lean+(action==='run'?stride.arm:0),handY=21+by;
-  if(action==='rise'){handX=22;handY=17;}else if(action==='fall'){handX=23;handY=19;}else if(action==='dash'){handX=25;handY=18;}else if(action==='wall'){handX=24;handY=11;}else if(action==='celebrate'){handX=22;handY=7;}else if(action==='interact'){handX=23;handY=13;}else if(action==='brake'){handX=20;handY=18;}else if(action==='land'){handX=22;handY=20+by;}
+  if(action==='pet'){handX=21+lean+pet*(Math.abs(s.pet!.x-s.x-8)-22-lean)+(affection?.stroke??0)*2;handY=21+by-pet*12;}else if(action==='rise'){handX=22;handY=17;}else if(action==='fall'){handX=23;handY=19;}else if(action==='dash'){handX=25;handY=18;}else if(action==='wall'){handX=24;handY=11;}else if(action==='celebrate'){handX=22;handY=7;}else if(action==='interact'){handX=23;handY=13;}else if(action==='brake'){handX=20;handY=18;}else if(action==='land'){handX=22;handY=20+by;}
   this.line(c,17+lean,16+by,handX-1,handY-1,4,COLORS.outline);this.line(c,17+lean,16+by,handX-1,handY-1,2,COLORS.clothLight);
-  this.rect(c,COLORS.leather,handX-2,handY-1,4,3);this.rect(c,COLORS.leatherLight,handX,handY-1,2,1);
+  this.rect(c,action==='pet'?COLORS.skin:COLORS.leather,handX-2,handY-1,4,3);this.rect(c,COLORS.leatherLight,handX,handY-1,2,1);
   const swing=reduced?0:action==='run'?Math.round(Math.sin(this.gait*Math.PI*2)*2):0;
-  const lx=handX+swing+(reduced?0:Math.round(this.lantern)),ly=handY+3;
+  const lx=action==='pet'?handX+(4-handX)*pet:handX+swing+(reduced?0:Math.round(this.lantern)),ly=action==='pet'?handY+3+(23-handY)*pet:handY+3;
+  if(action==='pet'){this.line(c,9+lean,17+by,lx,ly-3,4,COLORS.outline);this.line(c,9+lean,17+by,lx,ly-3,2,COLORS.clothShade);this.rect(c,COLORS.leather,lx-2,ly-3,4,3);}
   this.rect(c,COLORS.outline,lx-3,ly-1,7,10);this.rect(c,COLORS.metal,lx-1,ly-3,3,1);this.rect(c,COLORS.leatherLight,lx-2,ly-2,1,3);this.rect(c,COLORS.leatherLight,lx+2,ly-2,1,3);
   this.rect(c,accent+'14',lx-8,ly-5,17,17);this.rect(c,accent+'25',lx-4,ly-1,9,10);
   this.rect(c,COLORS.metal,lx-2,ly+1,5,6);this.rect(c,accent,lx-1,ly+2,3,4);this.rect(c,'#fff3ce',lx,ly+2+(reduced?0:Math.floor(s.clock*9)%2),1,3);

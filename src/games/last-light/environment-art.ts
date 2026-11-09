@@ -6,7 +6,24 @@ function poly(c:C,color:string,points:number[]){c.fillStyle=color;c.beginPath();
 /** Leaf clusters have a dark silhouette, an irregular lit crown and individual leaf tips. */
 function crown(c:C,x:number,y:number,scale:number,lit:boolean){c.save();c.translate(Math.round(x),Math.round(y));c.scale(scale,scale);poly(c,lit?'#294d43':'#25483f',[-18,5,-23,-1,-20,-9,-13,-11,-11,-17,-3,-19,3,-16,10,-18,18,-12,17,-6,24,-3,21,4,12,9,-7,11]);poly(c,lit?'#567e50':'#355e48',[-18,-7,-11,-10,-10,-15,-2,-16,3,-13,9,-15,17,-10,12,-6,15,-2,5,1,-2,-3,-9,0]);for(let j=0;j<8;j++){const xx=noise(j,6)*27-14,yy=noise(j,2)*17-14;poly(c,lit?'#8eaa68':'#4c7755',[xx,yy,xx+5,yy-2,xx+7,yy,xx+3,yy+2]);}c.restore();}
 export function tree(c:C,x:number,y:number,t:number,seed:number,scale=1,lit=true){c.save();c.translate(x,y);c.scale(scale,scale);const sway=Math.sin(t*.85+seed)*1.3;poly(c,'#223831',[-8,0,-4,-35,-7,-64,-2,-77,4,-69,5,-35,10,0]);poly(c,lit?'#7e7953':'#59674d',[-4,-2,-1,-36,-4,-66,-1,-71,1,-35,5,-2]);box(c,lit?'#bbb47a':'#7a8b62',-2,-30,1,23);for(let j=0;j<5;j++){const side=j%2?1:-1,yy=-28-j*9;poly(c,'#665f43',[0,yy+5,side*26,yy-18,side*27,yy-22,0,yy]);}for(const [xx,yy,s] of [[-24,-49,.75],[23,-54,.8],[-24,-70,.85],[21,-76,.85],[0,-90,1],[-5,-66,.9]])crown(c,xx+sway,yy,s,lit);for(let j=0;j<4;j++){box(c,lit?'#d9c599':'#7b9262',-17+j*11,-67-noise(j,seed)*17,2,2);}poly(c,'#456b48',[-14,0,-10,-9,-4,-4,0,-10,5,-4,10,-8,15,0]);c.restore();}
-export function cat(c:C,x:number,y:number,t:number,alert:boolean){c.save();c.translate(Math.round(x),Math.round(y));if(alert)c.scale(-1,1);const blink=t>0&&t%6>5.8;poly(c,'#182631',[-12,-1,-12,-8,-8,-12,1,-12,4,-17,4,-23,8,-20,13,-22,15,-16,14,-9,9,-7,9,-1]);poly(c,'#b89370',[-11,-3,-10,-8,-6,-10,3,-10,5,-17,8,-18,12,-18,13,-14,10,-10,6,-7,7,-3]);box(c,'#e3c99b',5,-14,7,4);box(c,'#6e6558',-7,-10,2,6);box(c,'#6e6558',-2,-10,2,5);box(c,'#e3c99b',-10,-3,5,2);box(c,'#e3c99b',5,-3,5,2);box(c,'#20313a',11,-16,2,blink?1:2);box(c,'#e6dc91',11,-16,1,1);box(c,'#9d7268',13,-12,2,1);box(c,'#cbbda1',14,-11,4,1);const flick=Math.round(Math.sin(t*2)*2);poly(c,'#182631',[-10,-3,-17,-4,-21,-9,-21,-16+flick,-18,-17+flick,-17,-10,-13,-8,-10,-8]);poly(c,'#b89370',[-11,-5,-16,-6,-19,-10,-19,-15+flick,-18,-10,-14,-7,-11,-7]);c.restore();}
+export function cat(c:C,x:number,y:number,t:number,alert:boolean,affection=0,reduced=false){
+ c.save();c.translate(Math.round(x),Math.round(y));if(alert)c.scale(-1,1);
+ const p=affection,lean=reduced?p:Math.round(Math.sin(t*3)*p),blink=p>0||t>0&&t%6>5.8;
+ poly(c,'#182631',[-12,-1,-12,-8-p,-8,-12-p,1,-12-p,7,-8,9,-1]);
+ poly(c,'#b89370',[-11,-3,-10,-8-p,-6,-10-p,3,-10-p,6,-7,7,-3]);
+ box(c,'#d2b187',-8,-10-p,9,2);for(const xx of [-7,-2])box(c,'#6e6558',xx,-10-p,2,5);
+ box(c,'#e3c99b',-10,-3,5,2);box(c,'#e3c99b',5,-3,5,2);
+ c.save();c.translate(-p*2,lean-p);
+ poly(c,'#182631',[3,-10,4,-17,4+p,-23+p*2,8,-20,13,-22+p*2,15,-16,14,-9,9,-7]);
+ poly(c,'#b89370',[5,-11,5,-17,8,-18,12,-18,13,-14,10,-10,6,-7]);
+ box(c,'#dfb69a',5,-20+p,2,3);box(c,'#e3c99b',5,-14,7,4);box(c,'#d2b187',6,-18,6,2);
+ box(c,'#20313a',10,-16,3,blink?1:2);if(!blink)box(c,'#e6dc91',11,-16,1,1);
+ box(c,'#9d7268',13,-12,2,1);box(c,'#cbbda1',14,-11,4,1);if(p)box(c,'#cbbda1',13,-9,4,1);c.restore();
+ const flick=reduced?0:Math.round(Math.sin(t*(p?4:2))*(p?3:2));
+ poly(c,'#182631',[-10,-3,-17,-4,-21,-9,-21,-16+flick-p*3,-18,-17+flick-p*3,-17,-10,-13,-8,-10,-8]);
+ poly(c,'#b89370',[-11,-5,-16,-6,-19,-10,-19,-15+flick-p*3,-18,-10,-14,-7,-11,-7]);
+ box(c,'#e3c99b',-20,-15+flick-p*3,2,3);c.restore();
+}
 export function washing(c:C,x:number,y:number,width:number,t:number){box(c,'#243743',x,y-58,3,58);box(c,'#7a8b87',x,y-58,1,56);box(c,'#243743',x+width,y-54,3,54);c.strokeStyle='#839b91';c.lineWidth=1;c.beginPath();c.moveTo(x,y-57);c.quadraticCurveTo(x+width*.5,y-49,x+width,y-53);c.stroke();for(let i=0;i<4;i++){const xx=x+13+i*(width-24)/4,yy=y-55+Math.sin(i)*2,sw=Math.round(Math.sin(t*1.8+i)),color=i%2?'#876d73':'#6e8d89';if(i%2===0){poly(c,'#263b46',[xx-3,yy,xx+3,yy,xx+5,yy+2,xx+9,yy,xx+15,yy+3,xx+13+sw,yy+8,xx+11+sw,yy+7,xx+11+sw,yy+20,xx+1+sw,yy+19,xx+1,yy+7,xx-3,yy+8]);poly(c,color,[xx-2,yy+1,xx+3,yy+1,xx+6,yy+4,xx+9,yy+1,xx+14,yy+4,xx+12,yy+7,xx+10,yy+6,xx+10+sw,yy+18,xx+2+sw,yy+18,xx+2,yy+5,xx-2,yy+7]);}else{box(c,'#273846',xx,yy,14,25);box(c,color,xx+1,yy+1,12,23);box(c,'#d3b4a366',xx+2,yy+2,2,20);box(c,'#674c6055',xx+8,yy+3,2,19);box(c,'#e1c9ae',xx+1,yy+21,12,1);}box(c,'#d6bd8d',xx+2,yy-2,2,4);box(c,'#d6bd8d',xx+10,yy-2,2,4);}}
 /** World architecture is authored at three depth scales; detailing falls off with distance. */
 export function skyline(c:C,l:Level,w:number,h:number,cx:number,cy:number,t:number,warm:number){const theme=WORLDS[l.world];

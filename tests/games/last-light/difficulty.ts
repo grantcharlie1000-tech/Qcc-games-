@@ -10,8 +10,8 @@ import {routeGraph} from './routes';
  * proof: journey.test.ts independently replays complete legal input runs. */
 export const POLICY_PHASES=[0,.6,1.2,1.8,2.4,3] as const;
 export function repeatedHopGraph(level:Level,phases:readonly number[]=POLICY_PHASES):Map<number,number[]> {
- const graph=new Map<number,number[]>(),hazards=level.hazards;
- level.hazards=[];
+ const graph=new Map<number,number[]>(),hazards=level.hazards,enemies=level.enemies;
+ level.hazards=[];level.enemies=[];
  try {
   for(const source of level.platforms){
    const found=new Set<number>();
@@ -47,7 +47,7 @@ export function repeatedHopGraph(level:Level,phases:readonly number[]=POLICY_PHA
    }
    graph.set(source.id,[...found]);
   }
- } finally {level.hazards=hazards;}
+ } finally {level.hazards=hazards;level.enemies=enemies;}
  return graph;
 }
 

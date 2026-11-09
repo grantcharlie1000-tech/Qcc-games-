@@ -17,12 +17,12 @@ function fixture(level=3):Level {
  const base=LEVELS[level];return {...base,exit:{x:364.5,y:406,w:38,h:56},platforms:[
   {id:0,x:260,y:462,w:190,h:28,kind:'stone'},
   {id:1,x:280,y:344,w:180,h:28,kind:'stone'},
- ],stations:[],pickups:[],hazards:[],checkpoint:{x:35,y:400,platform:9},spawn:{x:50,y:376},width:800,height:650,mainCount:1};
+ ],stations:[],pickups:[],hazards:[],enemies:[],checkpoints:[],checkpoint:{x:35,y:400,platform:9},spawn:{x:50,y:376},width:800,height:650,mainCount:1};
 }
 describe('foreground composition',()=>{
  for(const l of LEVELS)it(`chapter ${l.id+1} reserves real terrain, pickups and mission silhouettes`,()=>{
   const goal=goalComposition(l),targets=[{name:'goal',bounds:goal.bounds,support:goal.support,marker:goal.marker},...l.stations.map(s=>({name:`station ${s.id}`,bounds:stationArtBounds(l,s),support:s.platform,marker:stationComposition(l,s).marker}))];
-  expect(goal.x).toBe(l.exit.x+l.exit.w/2);expect(goal.y).toBe(l.exit.y+l.exit.h);
+  expect(goal.x).toBe(l.berth?.x??l.exit.x+l.exit.w/2);expect(goal.y).toBe(l.exit.y+l.exit.h);
   for(const target of targets){
    expect(terrainHits(l,target.bounds,target.support),`${target.name} intersects terrain`).toEqual([]);
    for(const item of l.pickups)expect(intersects(target.bounds,{x:item.x-14,y:item.y-19,w:28,h:38}),`${target.name} obscures spark ${item.id}`).toBe(false);
@@ -55,7 +55,7 @@ describe('foreground composition',()=>{
     if(motion.x)expect(terrainHits(l,{...plan.bounds,w:plan.bounds.w+motion.x},plan.support),`chapter ${l.id+1} ferry travel`).toEqual([]);
    }
   }
-  const tight={...fixture(),goal:'engine' as const};expect(goalComposition(tight).art).toBe('smallEngine');expect(completionMotion(tight,{x:370,y:426,w:36,h:38})).toEqual({x:0,y:0});
+  const tight={...fixture(),goal:'engine' as const};expect(goalComposition(tight).art).toBe('smallEngine');expect(completionMotion(tight,{x:370,y:426,w:36,h:38})).toEqual({x:0,y:-24});
  });
  it('presentation motion is repeatable, frozen when reduced, and never changes Run',()=>{
   const s=createRun();s.stage=6;s.phase='cleared';s.cinematic=.8;s.x=LEVELS[6].exit.x;s.y=LEVELS[6].exit.y+32;const before=JSON.stringify(s);

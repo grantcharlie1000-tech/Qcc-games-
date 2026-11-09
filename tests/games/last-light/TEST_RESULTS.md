@@ -1,3 +1,17 @@
+# Last Light vertical routes, interactions and departures — 9 November 2026
+
+- **329 game/poster unit checks pass** across 13 files. All 40 chapters have independently replayed, continuous 120 Hz input recordings with interaction disabled and zero deaths. The rebuilt vertical chapters (4, 11, 19, 27 and 35) also pass the same minimum movement-policy changes as the rest of their districts. The broader six-phase campaign audit below is historical; this release runs the two-phase audit on 11 representatives including all five rebuilt layouts.
+- **34 Chromium checks pass** in one serial run. Coverage includes real Enter and contextual-button petting, immediate jump cancellation, keyboard/touch grate drops, animation frames for all eight exit types plus airships, reduced-motion/pause stability, new enemy and press art, death feedback, saves, menus, phone controls and complete real-keyboard level 1/2 clears. The pet input replay batches canvas rendering to avoid overwhelming Chromium's graphics queue.
+- **Full-screen canvas** bounds match the game view at 1896×900, 1280×800, 844×390, 390×844 and 320×568. The 44px glass island floats above the world; no top/bottom canvas reservation or cinematic letterboxing remains. The compact row shows progress, points and sparks, with details in pause/results. The collapsed leaderboard control hides during active play.
+- **Readable encounters:** every transit deck under 200px has at most one hazard/enemy, including mixed steam/electrical fixtures. New crawlers and flying moth machines can be stomped or dashed through; side contact causes a setback. Defeats do not award points or persist into retries. Presses share a single warning/position function between physics and art. Grates catch downward feet, allow upward passage and accept Down to drop.
+- **Physical departures:** completion banks score once and freezes active time before a 1.05–1.65s skippable animation. Ferries board and sail, airships board and rise away, shelters close after entry, lifts carry the courier, and relay/tree, signal, escape and dawn exits show distinct consequences. All canal ferries float beyond a solid descending quay; the lower hull is submerged. Reduced motion keeps quiet static poses.
+- **Animal interaction:** every placed cat is reachable from either side. The courier crouches, reaches with a free hand, strokes and recovers; the cat leans, closes its eyes and curls its tail. Movement, jump, dash, death and retry cancel without locking controls. Petting is transient and grants no score or quest progress.
+- **Build and checks pass:** TypeScript, Vite production build, host preparation, retired service-worker validation and diff whitespace. The existing unrelated chunk-size advisory remains. No production/backend/database changes. Work performed solo.
+
+---
+
+## Previous HUD and effects revision
+
 # Last Light HUD, controls and effects follow-up — 9 November 2026
 
 - **309 relevant unit checks pass** in the Last Light and poster suites. All forty continuous journeys remain finishable without interactions. Level 2's regenerated opening witness reaches its first three broad catches with jump only and no dash; the complete level also clears through real arrow/Right Shift browser events.

@@ -15,6 +15,7 @@ export interface CampaignRoute {
  checkpoints:readonly number[];
  sectors:readonly (readonly [number,string])[];
  hazards:readonly HazardPlacement[];
+ enemies?:readonly {ledge:number;at:number;kind:'crawler'|'moth';travel:number;period?:number;offset?:number}[];
  pressure?:number;
  wind?:number;
 }
@@ -34,3 +35,5 @@ export const spike=(ledge:number,at=.5,width=26):HazardPlacement=>({ledge,at,kin
 export const steam=(ledge:number,at=.5,height=88,offset=0,period=3.2,disabledBy?:number,duty?:number):HazardPlacement=>({ledge,at,kind:'steam',height,width:18,period,offset,disabledBy,duty});
 export const laser=(ledge:number,at=.5,height=110,offset=0,period=3.4,disabledBy?:number,duty?:number):HazardPlacement=>({ledge,at,kind:'laser',height,width:18,period,offset,disabledBy,duty});
 export const saw=(ledge:number,at=.5,travel=26,offset=0,period=3):HazardPlacement=>({ledge,at,kind:'saw',height:24,width:24,travel,period,offset});
+
+export const press=(ledge:number,at=.5,offset=0,period=3.2):HazardPlacement=>({ledge,at,kind:'crusher',height:112,width:30,travel:94,period,offset});

@@ -65,6 +65,8 @@ for(const stage of [0,1])test(`level ${stage+1} clears with arrows and nearby ke
    for(let remaining=frames;remaining>0;){const count=Math.min(10,remaining);(window as any).__tick(count);remaining-=count;}
   }
   const result={phase:game.dataset.phase,deaths:Number(document.querySelector('.ll-deaths')!.textContent),activated:game.dataset.activated};
+  for(const keyCode of [...held])key(keyCode,false);
+  for(let i=0;i<24;i++)(window as any).__tick(10);
   (window as any).__releaseFrames();return result;
  },stage);
  expect(result).toEqual({phase:'cleared',deaths:0,activated:''});

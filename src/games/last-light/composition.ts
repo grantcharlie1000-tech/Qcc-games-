@@ -1,3 +1,4 @@
+import {enemyBounds} from './enemies';
 import type {Level,Platform,Rect,Station} from './levels';
 
 /** Visible silhouettes, measured from the authored one-pixel art. Anchors are
@@ -46,7 +47,8 @@ function movingBounds(l:Level,support:number,r:Rect):Rect {
 export function foregroundFits(l:Level,bounds:Rect,support=-1,station=-1,goal=false):boolean {
  if(bounds.x<4||bounds.x+bounds.w>l.width-4)return false;
  if(l.platforms.some(p=>p.id!==support&&overlaps(bounds,platformArtEnvelope(p))))return false;
- if(l.hazards.some(h=>{const travel=h.kind==='saw'?(h.travel??0):0;return overlaps(bounds,{x:h.x-travel-7,y:h.y-7,w:h.w+travel*2+14,h:h.h+14});}))return false;
+ if((l.enemies??[]).some(e=>overlaps(bounds,expand(enemyBounds(e),5))))return false;
+ if(l.hazards.some(h=>{const travel=h.kind==='saw'?(h.travel??0):0;return overlaps(bounds,{x:h.x-travel-7,y:h.y-7,w:h.w+travel*2+14,h:h.h+(h.kind==='crusher'?(h.travel??94):0)+14});}))return false;
  if(l.pickups.some(p=>overlaps(bounds,{x:p.x-14,y:p.y-19,w:28,h:38})))return false;
  if(l.stations.some(s=>s.id!==station&&overlaps(bounds,movingBounds(l,s.platform,translate(STATION_FOOTPRINTS[s.kind],s.x,s.y)))))return false;
  if((l.checkpoints??[l.checkpoint]).some(cp=>overlaps(bounds,{x:cp.x-4,y:cp.y-50,w:30,h:50})))return false;
@@ -64,7 +66,7 @@ function markerFor(l:Level,bounds:Rect,support:number,station=-1,goal=false):Rec
 }
 export function goalComposition(l:Level):GoalComposition {
  const cached=goalCache.get(l);if(cached)return cached;
- const x=l.exit.x+l.exit.w/2,y=l.exit.y+l.exit.h,support=supportAt(l,x,y);
+ const x=l.berth?.x??l.exit.x+l.exit.w/2,y=l.berth?.y??l.exit.y+l.exit.h,support=supportAt(l,l.exit.x+l.exit.w/2,l.exit.y+l.exit.h);
  let choices:GoalArt[];
  switch(l.goal){
   case 'relay':choices=l.world===1||l.setting==='garden'?['lifeTree','gardenRelay','smallRelay','beacon']:['relay','smallRelay','beacon'];break;
@@ -77,7 +79,7 @@ export function goalComposition(l:Level):GoalComposition {
  }
  const art=choices.find(kind=>foregroundFits(l,translate(GOAL_FOOTPRINTS[kind],x,y),support,-1,true))??'beacon';
  const bounds=translate(GOAL_FOOTPRINTS[art],x,y),clear=foregroundFits(l,bounds,support,-1,true);
- const plan={x,y,bounds,art,support,clear,marker:markerFor(l,bounds,support,-1,true)};
+ const plan={x,y,bounds,art,support,clear,marker:l.berth?{x:l.exit.x+10,y:y-48,w:18,h:12}:markerFor(l,bounds,support,-1,true)};
  goalCache.set(l,plan);return plan;
 }
 export function goalArtBounds(l:Level):Rect{return goalComposition(l).bounds;}
@@ -94,9 +96,9 @@ export function stationArtBounds(l:Level,s:Station):Rect{return movingBounds(l,s
 /** Completion travel is another visible footprint. Compact fixtures stay put;
  * full ferries/lifts move only as far as both their art and the courier fit. */
 export function completionMotion(l:Level,courier:Rect):{x:number;y:number} {
- const p=goalComposition(l),boat=p.art==='ferry'||p.art==='airship',lift=p.art==='engine';
+ const p=goalComposition(l),boat=p.art==='ferry'||p.art==='airship',lift=p.art==='engine'||p.art==='smallEngine';
  if(!boat&&!lift)return {x:0,y:0};
- const max=boat?150:82;
+ const max=boat?150:p.art==='smallEngine'?24:82;
  for(let amount=max;amount>0;amount--){
   const actor=boat?{...courier,w:courier.w+amount}:{...courier,y:courier.y-amount,h:courier.h+amount};
   if(!foregroundFits(l,actor,p.support,-1,true))continue;

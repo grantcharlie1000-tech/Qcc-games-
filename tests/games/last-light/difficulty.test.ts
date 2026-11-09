@@ -11,7 +11,7 @@ describe('Last Light required control choices',()=>{
  // baseline fails these bounds even though all its journeys are playable.
  // The full six-phase audit covers every chapter when authoring changes.
  // These representatives keep the normal test run focused and repeatable.
- for(const level of fullAudit?LEVELS:[0,7,16,24,32,39].map(id=>LEVELS[id]))it(`${level.id+1}: the tested start-to-exit graph rejects repeated midair hops`,async()=>{
+ for(const level of fullAudit?LEVELS:[0,3,7,10,16,18,24,26,32,34,39].map(id=>LEVELS[id]))it(`${level.id+1}: the tested start-to-exit graph rejects repeated midair hops`,async()=>{
   await new Promise(resolve=>setTimeout(resolve,0));
   const route=minimumHopChanges(level,fullAudit?POLICY_PHASES:[0,1.8]);
   expect(Number.isFinite(route.changes),'No route found by the local audit; inspect the continuous witness').toBe(true);

@@ -1,4 +1,4 @@
-import {WORLDS,type Level,type Rect} from './levels';
+import {WORLDS,type Level} from './levels';
 import type {Run} from './model';
 import {lantern} from './props';
 import {noise} from './terrain';
@@ -8,56 +8,9 @@ import {person} from './inhabitants';
 import {landmarks,atmosphere} from './environment-landmarks';
 export {person} from './inhabitants';
 const TALK_LABEL=typeof matchMedia==='function'&&matchMedia('(any-pointer:coarse)').matches?'TAP · TALK':'ENTER · TALK';
-type DressingKind='resident'|'washing'|'tree'|'cat'|'lantern';
-export interface WorldDressing {readonly kind:DressingKind;readonly platform:number;readonly x:number;readonly y:number;readonly bounds:Readonly<Rect>}
-// One authored domestic moment per chapter. Empty chapters leave room for the
-// chase, isolation or finale. The location is a preference, never permission to
-// occupy an interaction, a pickup's approach, or the underside of another ledge.
-const HABITATS:readonly ([DressingKind,number,boolean]|null)[]=[
- ['washing',.46,true],['resident',.78,true],['cat',.42,true],['washing',.7,true],null,null,['lantern',.72,true],null,
- ['tree',.73,false],['resident',.5,true],['tree',.63,true],['cat',.71,true],null,['resident',.56,true],null,['tree',.43,true],
- ['resident',.58,true],null,['resident',.45,true],null,['lantern',.65,true],['cat',.51,true],null,null,
- ['resident',.57,true],null,null,null,['resident',.48,true],['tree',.6,true],null,null,
- ['resident',.53,true],null,['cat',.65,true],null,['resident',.66,true],['lantern',.55,true],null,null,
-];
-const dressingCache=new WeakMap<Level,readonly WorldDressing[]>();
-const overlaps=(a:Readonly<Rect>,b:Readonly<Rect>)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
-/** Conservative swept envelopes, including the visible platform foundations. */
-function dressingClear(l:Level,b:Readonly<Rect>,support:number):boolean{
- if(l.platforms.some(p=>{if(p.id===support)return false;const dx=p.kind==='moving'&&p.axis!=='y'?p.travel??0:0,dy=p.kind==='moving'&&p.axis==='y'?p.travel??0:0;return overlaps(b,{x:p.x-dx-8,y:p.y-dy-9,w:p.w+dx*2+16,h:p.h+dy*2+49});}))return false;
- const e=l.exit;if(overlaps(b,{x:e.x-74,y:e.y-56,w:e.w+148,h:e.h+76}))return false;
- if(overlaps(b,{x:l.spawn.x-44,y:l.spawn.y-44,w:104,h:88})||overlaps(b,{x:124,y:l.platforms[0].y-62,w:82,h:64}))return false;
- if((l.checkpoints??[l.checkpoint]).some(cp=>overlaps(b,{x:cp.x-24,y:cp.y-66,w:72,h:70})))return false;
- if(l.pickups.some(p=>overlaps(b,{x:p.x-30,y:p.y-31,w:60,h:62})))return false;
- if(l.stations.some(s=>{const p=l.platforms.find(p=>p.id===s.platform),dx=p?.kind==='moving'&&p.axis!=='y'?p.travel??0:0,dy=p?.kind==='moving'&&p.axis==='y'?p.travel??0:0;return overlaps(b,{x:s.x-dx-62,y:s.y-dy-115,w:124+dx*2,h:130+dy*2});}))return false;
- return !l.hazards.some(h=>{const travel=h.travel??0;return overlaps(b,{x:h.x-travel-30,y:h.y-30,w:h.w+travel*2+60,h:h.h+60});});
-}
-/** Stable, cached scene dressing; rendering never changes the run or level. */
-export function worldDressing(l:Level):readonly WorldDressing[]{
- const cached=dressingCache.get(l);if(cached)return cached;
- const preferred=HABITATS[l.id],result:WorldDressing[]=[];
- if(preferred){
-  const [kind,position,branch]=preferred;
-  const width=kind==='washing'?112:kind==='tree'?66:kind==='resident'?56:kind==='cat'?52:42;
-  const height=kind==='washing'?68:kind==='tree'?77:kind==='lantern'?65:kind==='cat'?29:46;
-  const platforms=l.platforms.filter(p=>p.id!==0&&p.kind==='stone'&&p.w>=width+40).sort((a,b)=>{
-   const score=(p:typeof a)=>Math.abs(p.x+p.w*.5-l.width*position)+(p.branch===branch?0:240);
-   return score(a)-score(b)||a.id-b.id;
-  });
-  for(const p of platforms){
-   // Stay back from takeoff edges. The outer third opposite the next main
-   // landing gets first refusal; dressing never spans an entire landing.
-   const next=l.platforms.find(q=>q.id===p.id+1&&!q.branch),away=next&&next.x<p.x?.68:.32;
-   for(const fraction of [away,1-away,.5]){
-    const x=Math.round(p.x+p.w*fraction),bounds=Object.freeze({x:x-width/2,y:p.y-height,w:width,h:height});
-    if(bounds.x<p.x+20||bounds.x+bounds.w>p.x+p.w-20||!dressingClear(l,bounds,p.id))continue;
-    result.push(Object.freeze({kind,platform:p.id,x,y:p.y,bounds}));break;
-   }
-   if(result.length)break;
-  }
- }
- const plan=Object.freeze(result);dressingCache.set(l,plan);return plan;
-}
+export {worldDressing} from './habitats';
+import {worldDressing,nearbyAnimal} from './habitats';
+import {petPose} from './affection';
 function gear(c:CanvasRenderingContext2D,x:number,y:number,r:number,t:number,color:string){c.save();c.translate(x,y);c.rotate(t);c.strokeStyle=color;c.lineWidth=5;c.beginPath();c.arc(0,0,r,0,Math.PI*2);c.stroke();for(let i=0;i<10;i++){c.rotate(Math.PI/5);c.fillStyle=color;c.fillRect(-3,-r-5,6,10);if(i%2===0)c.fillRect(-2,-r,4,r);}c.fillStyle='#1e2634';c.fillRect(-5,-5,10,10);c.restore();}
 export function drawSky(c:CanvasRenderingContext2D,l:Level,s:Run,w:number,h:number,cx:number,cy:number,reduced:boolean){
  const theme=WORLDS[l.world],t=reduced?0:s.clock,warm=Math.min(1,(s.stage%8+s.activated.length/3)/8);
@@ -118,7 +71,15 @@ export function drawLife(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:n
    person(c,x+drift,y,t,l.world===1?'#8f9c70':l.world===2?'#b79871':'#7f9daa',velocity*.3,Math.sign(velocity)||1);
   }else if(kind==='tree')tree(c,x,y,t*.45,l.id,.62,false);
   else if(kind==='washing')washing(c,x-48,y,96,t*.45);
-  else if(kind==='cat')cat(c,x,y,t*.7,s.x>x);
+  else if(kind==='cat'){
+   const affection=s.pet?.platform===item.platform?petPose(s,reduced):null;
+   cat(c,x,y,t*.7,s.x<x,affection?.contact??0,reduced);
+   if(nearbyAnimal(l,s)===item&&!s.pet){c.fillStyle=theme.accent;c.font='8px monospace';c.textAlign='center';c.fillText(TALK_LABEL.startsWith('TAP')?'TAP · PET':'ENTER · PET',x,y-33);c.textAlign='start';}
+   if(affection&&affection.contact>0&&!reduced){
+    // Two small pixel hearts lift from the cat, then fade before the recovery.
+    for(let i=0;i<2;i++){const p=Math.max(0,Math.min(1,(affection.age-.28-i*.23)/.6));if(p<=0||p>=1)continue;c.globalAlpha=(1-p)*.8;c.fillStyle='#edaa92';const hx=Math.round(x-4+i*10),hy=Math.round(y-27-p*11);c.fillRect(hx,hy,2,2);c.fillRect(hx+3,hy,2,2);c.fillRect(hx+1,hy+2,3,2);c.fillRect(hx+2,hy+4,1,1);}
+   }
+  }
   else{
    c.fillStyle='#233945';c.fillRect(x-2,y-43,4,43);c.fillStyle='#758b85';c.fillRect(x-1,y-38,1,35);c.fillStyle='#9f9e82';c.fillRect(x-5,y-3,10,3);lantern(c,x,y-46,theme.accent,false);
   }

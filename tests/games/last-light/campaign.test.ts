@@ -39,11 +39,11 @@ describe('authored campaign spaces',()=>{
  });
 });
 describe('optional encounters and exits',()=>{
- for(const l of LEVELS)it(`${l.id+1}: saves optional encounters and clears immediately`,()=>{
+ for(const l of LEVELS)it(`${l.id+1}: banks completion before a short departure`,()=>{
   const s=onPlatform(l.id),e=l.exit;
   for(const station of l.stations){Object.assign(s,{x:station.x-8,y:station.y-24,vx:0,vy:0});step(s,idle);const event=step(s,{...idle,interact:true});expect(event.interact,`station ${station.id}`).toBe(true);expect(s.activated).toContain(station.id);}
   expect(encountersComplete(s)).toBe(true);expect(restore(serialize(s))?.activated).toEqual(s.activated);
-  Object.assign(s,{x:e.x,y:e.y+24,vx:0,vy:0});expect(step(s,idle).clear).toBe(true);expect(s.cinematic).toBe(0);
+  Object.assign(s,{x:e.x,y:e.y+24,vx:0,vy:0});expect(step(s,idle).clear).toBe(true);expect(s.cinematic).toBeGreaterThan(0);
   const time=s.time;for(let i=0;i<360;i++)step(s,idle);expect(s.time).toBe(time);expect(s.cinematic).toBe(0);
  });
 });
