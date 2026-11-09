@@ -115,7 +115,7 @@ export function step(s:Run,input:Input,dt=STEP):Events {
  }
  if(interactPressed){
   const station=level.stations.find(p=>{const at=stationAt(p,level,s.clock);return !s.activated.includes(p.id)&&Math.abs(s.x+8-at.x)<48&&Math.abs(s.y+PLAYER_H-at.y)<44;});
-  if(station){s.activated.push(station.id);events.interact=true;events.message=station.kind==='survivor'?`${station.label}: I’m with you. Lead the way.`:station.kind==='valve'?`${station.label} open.${level.hazards.some(h=>h.disabledBy===station.id)?' Linked steam line shut down.':''}`:station.kind==='bell'?'Departure bell rung.':`${station.label} lit.`;}
+  if(station){s.activated.push(station.id);events.interact=true;events.message=station.kind==='survivor'?`${station.label}: I’m with you. Lead the way.`:station.kind==='valve'?`${station.label} open.${level.hazards.some(h=>h.disabledBy===station.id)?' Linked machinery shut down.':''}`:station.kind==='bell'?'Departure bell rung.':`${station.label} lit.`;}
   else if(Math.abs(s.x-152)<60&&Math.abs(s.y+PLAYER_H-level.spawn.y-PLAYER_H)<48){if(!s.heard.includes(s.stage))s.heard.push(s.stage);events.interact=true;events.message=`${speakerFor(s.stage)}: “${CHAPTERS[s.stage].line}”`;}
  }
  if(overlap(player,level.exit)){
