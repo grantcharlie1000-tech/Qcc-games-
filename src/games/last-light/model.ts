@@ -22,9 +22,25 @@ const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 export function createRun():Run {const p=LEVELS[0].spawn;return {version:2,stage:0,cleared:0,phase:'playing',...p,vx:0,vy:0,facing:1,grounded:false,ground:-1,wall:0,coyote:0,buffer:0,dashLeft:0,dashReady:true,previousJump:false,previousDash:false,time:0,stageTime:0,deaths:0,stageDeaths:0,sparks:0,collected:[],key:false,checkpoint:false,checkpointIndex:-1,clock:0,respawn:0,crumbles:{},best:0,activated:[],heard:[],memories:[],previousInteract:false,cinematic:0,defeated:{},dropLeft:0,pet:null,threat:-300,chasing:false,ending:null};}
 export function platformAt(p:Platform,t:number):Rect {const shift=p.kind==='moving'?Math.sin(t*(p.speed??1)+p.id)*(p.travel??0):0;return {x:p.x+(p.axis!=='y'?shift:0),y:p.y+(p.axis==='y'?shift:0),w:p.w,h:p.h};}
 export function stationAt(station:Station,level:Level,t:number){const p=level.platforms[station.platform],r=platformAt(p,t);return {x:station.x+r.x-p.x,y:station.y+r.y-p.y};}
-export function hazardAt(h:Hazard,t:number):Rect {if(h.kind==='crusher')return pressAt(h,t);return {...h,x:h.x+(h.kind==='saw'?Math.sin(t*2*Math.PI/(h.period??3)+(h.offset??0))*(h.travel??0):0)};}
+export function hazardAt(h:Hazard,t:number):Rect {
+ if(h.kind==='crusher')return pressAt(h,t);
+ // A winding-down vent sinks toward its grate; collision follows the plume so
+ // a jump timed to the visible top of the steam is a fair jump.
+ if(h.kind==='steam'){const fade=hazardFade(h,t),height=h.h*(1-fade);return {...h,y:h.y+h.h-height,h:height};}
+ return {...h,x:h.x+(h.kind==='saw'?Math.sin(t*2*Math.PI/(h.period??3)+(h.offset??0))*(h.travel??0):0)};
+}
 const hazardCycle=(h:Hazard,t:number)=>{const period=h.period??3;return ((t+(h.offset??0))%period+period)%period;};
 export const laserActive=(h:Hazard,t:number)=>!['laser','steam'].includes(h.kind)||hazardCycle(h,t)<(h.period??3)*(h.duty??.55);
+/** Length of the loss-of-intensity tell at the end of a laser or steam burst. */
+export const hazardWindDown=(h:Hazard)=>Math.min(.6,(h.period??3)*(h.duty??.55)*.35);
+/** 0 while a cycling hazard is at full strength, rising to 1 as it shuts off.
+ * Steam sinks to the floor over this window and lasers flicker, so players
+ * can read when the safe interval is about to open. */
+export function hazardFade(h:Hazard,t:number):number {
+ if(!['laser','steam'].includes(h.kind)||!laserActive(h,t))return 0;
+ const remaining=(h.period??3)*(h.duty??.55)-hazardCycle(h,t),window=hazardWindDown(h);
+ return remaining>=window?0:1-remaining/window;
+}
 /** Powered machinery has a visible, persistent response to its control wheel. */
 const supportGone=(h:Hazard,s:Run)=>h.platform!==undefined&&s.crumbles[h.platform]!==undefined&&s.crumbles[h.platform]<=0;
 export const hazardActive=(h:Hazard,s:Run)=>!supportGone(h,s)&&(h.disabledBy===undefined||!s.activated.includes(h.disabledBy))&&laserActive(h,s.clock);
@@ -39,6 +55,16 @@ export function hazardWarning(h:Hazard,s:Run):boolean {
 export function pursuitSpeed(level:Level,s:Run):number {
  const distance=s.x-s.threat,target=620-level.world*60;
  return Math.min(440,(level.pressure??48)+Math.max(0,distance-target)*1.8);
+}
+/** Top of the nearest standing surface under the courier, for the ground shadow. */
+export function surfaceBelow(s:Run,level=LEVELS[s.stage]):number|undefined {
+ const feet=s.y+PLAYER_H;let top:number|undefined;
+ for(const p of level.platforms){
+  if(s.crumbles[p.id]!==undefined&&s.crumbles[p.id]<=0)continue;
+  const r=platformAt(p,s.clock);
+  if(r.x<s.x+PLAYER_W&&r.x+r.w>s.x&&r.y>=feet-1&&(top===undefined||r.y<top))top=r.y;
+ }
+ return top;
 }
 export const escapeLead=(s:Run)=>Math.max(0,s.x+PLAYER_W-s.threat);
 export const checkpointsFor=(level:Level):readonly Checkpoint[]=>level.checkpoints?.length?level.checkpoints:[level.checkpoint];

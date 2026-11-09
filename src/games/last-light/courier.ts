@@ -95,7 +95,6 @@ export class Courier {
    for(const p of this.particles)if(p.life>0){c.save();c.globalAlpha=p.life/p.duration*.6;c.fillStyle=p.kind==='dust'?'#c4b6a1':accent;c.fillRect(Math.round(p.x),Math.round(p.y),p.kind==='dust'?2:1,p.kind==='dust'?1:2);c.restore();}
   }
   const airborne=!s.grounded&&s.clock>0&&s.respawn===0;
-  c.fillStyle='#0c142244';c.fillRect(Math.round(s.x-3),Math.round(s.y+24),22,2);
   c.save();c.globalAlpha*=s.respawn>0&&!reduced?Math.max(.3,1-s.respawn/.35):1;
   const squash=action==='land'&&!reduced?(presentation?.settle??this.landing/.18*this.impact):0;
   c.translate(Math.round(s.x+PLAYER_W/2),Math.round(s.y+PLAYER_H));c.scale(face*(1+squash*.1),1-squash*.08);c.translate(-12,-34);
@@ -168,6 +167,16 @@ export class Courier {
   this.rect(c,COLORS.metal,lx-2,ly+1,5,6);this.rect(c,accent,lx-1,ly+2,3,4);this.rect(c,'#fff3ce',lx,ly+2+(reduced?0:Math.floor(s.clock*9)%2),1,3);
   this.rect(c,COLORS.leather,lx-3,ly,7,1);this.rect(c,COLORS.leather,lx-3,ly+7,7,1);this.rect(c,'#fff0bd',18+lean,10+by,1,2);
   c.restore();
+ }
+ /** Contact shadow cast onto the surface below rather than pinned to the
+  * feet: it stays on the ground during jumps, narrowing and fading with height. */
+ drawShadow(c:CanvasRenderingContext2D,s:Run,surface:number|undefined){
+  if(surface===undefined)return;
+  const height=Math.max(0,surface-(s.y+PLAYER_H)),reach=150;
+  if(height>=reach)return;
+  const k=1-height/reach,width=Math.max(6,Math.round(22*(.45+.55*k)));
+  c.save();c.globalAlpha*=.35+.65*k;c.fillStyle='#0c142244';
+  c.fillRect(Math.round(s.x+PLAYER_W/2-width/2),Math.round(surface),width,2);c.restore();
  }
  private leg(c:CanvasRenderingContext2D,hipX:number,hipY:number,joints:readonly number[],rear:boolean){
   const [kx,ky,fx,fy]=joints;

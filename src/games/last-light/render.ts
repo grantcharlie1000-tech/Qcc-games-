@@ -6,7 +6,7 @@ import {drawArchitecture} from './architecture';
 import {drawCrumblingHazard} from './crumble-art';
 import {drawEmitter,drawSpikes} from './hazard-art';
 import {LEVELS,WORLDS,type Level} from './levels';
-import {platformAt,hazardAt,hazardActive,hazardWarning,checkpointsFor,checkpointIndexFor,stationAt,type Events,type Run} from './model';
+import {platformAt,hazardAt,hazardActive,hazardWarning,hazardFade,surfaceBelow,PLAYER_H,checkpointsFor,checkpointIndexFor,stationAt,type Events,type Run} from './model';
 import {characterColor,rescueNameFor} from './story';
 import {lantern,doorway,valve,bell,ferry,signalDish,lifeTree} from './props';
 import {Courier} from './courier';
@@ -181,7 +181,7 @@ export class Scene {
    }else if(hazard.kind==='saw'){drawGear(c,r.x+r.w/2,r.y+r.h/2,12,hazardActive(hazard,s)?t*4:0,hazardActive(hazard,s)?'#d3b8b3':'#586c71');}
    else{
     const on=hazardActive(hazard,s),stopped=hazard.disabledBy!==undefined&&s.activated.includes(hazard.disabledBy),warning=hazardWarning(hazard,s);
-    drawEmitter(c,hazard,r,on,warning,stopped,t,reduced);
+    drawEmitter(c,hazard,r,on,warning,stopped,t,reduced,on?hazardFade(hazard,s.clock):0);
    }
   }
   for(const enemy of l.enemies??[]){const margin=enemy.travel+28;if(enemy.x+margin<cx||enemy.x-margin>cx+w)continue;drawEnemy(c,enemy,s,reduced);}
@@ -207,7 +207,7 @@ export class Scene {
   c.save();
   const departure=s.phase!=='playing'?departurePose(l,s,reduced,this):null;
   if(departure){c.translate(departure.x-s.x,departure.y-s.y);c.globalAlpha=departure.opacity;}
-  if(!this.death.impact)this.courier.draw(c,s,theme.accent,reduced,departure??undefined);c.restore();
+  if(!this.death.impact){this.courier.drawShadow(c,s,departure?s.y+PLAYER_H:surfaceBelow(s,l));this.courier.draw(c,s,theme.accent,reduced,departure??undefined);}c.restore();
   if(l.goal==='engine')drawLift(c,l,s,theme.accent,reduced,this,true);else drawServiceDoor(c,l,s,theme.accent,true);
   c.restore();
   this.death.drawBody(c,cx,cy,reduced);this.death.drawTransition(c,w,h,actual,cx,cy,reduced);
