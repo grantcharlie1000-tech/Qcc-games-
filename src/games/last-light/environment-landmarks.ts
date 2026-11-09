@@ -33,16 +33,7 @@ export function landmarks(c:C,l:Level,cx:number,cy:number,w:number,h:number,t:nu
    for(let k=1;k<8;k++){const f=k/8,xx=x+9+span*f,yy=base-103+242*f*(1-f);rect(c,a.edge+'17',xx,yy,1,base+90-yy);}
   }
  }
- if(l.setting==='garden'&&visible(365,310)){
-  const x=520,y=188; // Central conservatory rotunda, partly reclaimed by the canopy.
-  arch(c,x-127,y,254,355,'#355c4b55');
-  c.strokeStyle='#a2b68b44';c.lineWidth=2;c.beginPath();c.arc(x,y+127,127,Math.PI,0);c.stroke();
-  for(const offset of [-88,0,88]){c.beginPath();c.moveTo(x+offset,y+127);c.quadraticCurveTo(x+offset*.5,y+4,x,y);c.stroke();rect(c,'#819e7738',x+offset,y+127,2,227);}
-  for(const yy of [y+128,y+350])rect(c,'#8da67d33',x-121,yy,242,1);
-  shape(c,'#afc7a310',[x-112,y+113,x-60,y+51,x-68,y+237,x-118,y+279]);
-  rect(c,'#294d42',x-13,y-14,26,17);rect(c,'#a4b18a66',x-18,y-16,36,3);shape(c,'#547f5d',[x-22,y-17,x,y-34,x+22,y-17]);
-  for(const offset of [-101,91]){const xx=x+offset;line(c,'#365a4066',2,[xx,y+85,xx-7,y+107,xx+2,y+138,xx-5,y+168]);for(let j=0;j<4;j++)shape(c,'#64875555',[xx-4,y+100+j*13,xx-14,y+92+j*13,xx-20,y+96+j*13,xx-11,y+102+j*13]);}
- }
+
  if(l.setting==='factory'&&visible(320,260)){
   const x=390,y=215;
   shape(c,'#3d353f',[x-48,y+20,x-38,y-9,x-17,y-25,x+27,y-25,x+48,y-9,x+58,y+20,x+58,y+228,x+43,y+244,x-32,y+244,x-48,y+228]);
@@ -66,14 +57,7 @@ export function landmarks(c:C,l:Level,cx:number,cy:number,w:number,h:number,t:nu
   // Light enters one fissure, giving the cave a destination and asymmetric composition.
   const x=370;if(visible(x-50,350)){shape(c,a.edge+'06',[x-12,-100,x+12,-100,x+300,650,x-120,650]);shape(c,a.accent+'06',[x-8,-100,x+8,-100,x+180,650,x-35,650]);for(let j=0;j<9;j++){const yy=120+j*50,xx=x+Math.sin(j*2+t*.15)*23+j*8;rect(c,a.edge+'55',xx,yy+(t*4+j*13)%35,1,2);}}
  }
- if(l.setting==='sky'&&visible(l.width*.66-100,220)){
-  const x=l.width*.66,y=143;
-  // A slender astronomical instrument, with no deck or bright horizontal cap
-  // that could be mistaken for one of the courier's floating platforms.
-  c.strokeStyle=a.edge+'44';c.lineWidth=2;c.beginPath();c.ellipse(x,y,77,47,-.5,0,Math.PI*2);c.stroke();c.strokeStyle=a.accent+'33';c.lineWidth=1;c.beginPath();c.ellipse(x,y,37,77,-.5,0,Math.PI*2);c.stroke();
-  for(let j=0;j<8;j++){const angle=j*Math.PI/4;line(c,a.edge+'33',1,[x+Math.cos(angle)*69,y+Math.sin(angle)*42,x+Math.cos(angle)*76,y+Math.sin(angle)*47]);}
-  rect(c,a.far,x-10,y+17,20,300);rect(c,a.edge+'1a',x-9,y+18,2,298);line(c,a.edge+'22',2,[x-51,y+35,x,y+116,x+61,y-29]);
- }
+
  c.restore();
  // Height-dependent haze separates architecture from the actual walkable surfaces.
  const mist=c.createLinearGradient(0,cy*.55+h*.62,0,cy*.55+h);mist.addColorStop(0,a.sky+'00');mist.addColorStop(1,a.sky+'55');c.fillStyle=mist;c.fillRect(left,cy*.55+h*.62,w,h*.38);

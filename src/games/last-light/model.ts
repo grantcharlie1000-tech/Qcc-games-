@@ -4,6 +4,7 @@ import {enemyAt} from './enemies';
 import {pressAt} from './press';
 import {nearbyAnimal} from './habitats';
 import {PET_DURATION,type Petting} from './affection';
+import {DEATH_DURATION,type DeathCause} from './death';
 import {clearDuration} from './departure';
 import {normalizeLastLightScore,LAST_LIGHT_MAX_SCORE} from '../../core/last-light-score';
 export const STEP=1/120,PLAYER_W=16,PLAYER_H=24;
@@ -15,7 +16,7 @@ export interface Run {
  time:number;stageTime:number;deaths:number;stageDeaths:number;sparks:number;collected:number[];key:boolean;checkpoint:boolean;checkpointIndex:number;clock:number;respawn:number;
  crumbles:Record<number,number>;best:number;activated:number[];heard:number[];memories:number[];previousInteract:boolean;cinematic:number;defeated:Record<number,number>;dropLeft:number;pet:Petting|null;threat:number;chasing:boolean;ending:'share'|'home'|null;
 }
-export interface Events {jump?:boolean;dash?:boolean;land?:boolean;pickup?:boolean;checkpoint?:boolean;death?:boolean;deathPose?:Run;deathCause?:string;clear?:boolean;pet?:boolean;enemy?:boolean;stomp?:boolean;interact?:boolean;message?:string}
+export interface Events {jump?:boolean;dash?:boolean;land?:boolean;pickup?:boolean;checkpoint?:boolean;death?:boolean;deathPose?:Run;deathCause?:DeathCause;deathHit?:Rect;deathEnemy?:'crawler'|'moth';clear?:boolean;pet?:boolean;enemy?:boolean;stomp?:boolean;interact?:boolean;message?:string}
 export const overlap=(a:Rect,b:Rect)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 export function createRun():Run {const p=LEVELS[0].spawn;return {version:2,stage:0,cleared:0,phase:'playing',...p,vx:0,vy:0,facing:1,grounded:false,ground:-1,wall:0,coyote:0,buffer:0,dashLeft:0,dashReady:true,previousJump:false,previousDash:false,time:0,stageTime:0,deaths:0,stageDeaths:0,sparks:0,collected:[],key:false,checkpoint:false,checkpointIndex:-1,clock:0,respawn:0,crumbles:{},best:0,activated:[],heard:[],memories:[],previousInteract:false,cinematic:0,defeated:{},dropLeft:0,pet:null,threat:-300,chasing:false,ending:null};}
@@ -56,7 +57,7 @@ export const scoreFor=(s:Run)=>s.best;
 export function respawn(s:Run,penalty=true){
  if(penalty){s.deaths++;s.stageDeaths++;}
  const level=LEVELS[s.stage],cp=checkpointFor(s,level),p=cp?{x:cp.x,y:cp.y-PLAYER_H}:level.spawn;
- Object.assign(s,p,{vx:0,vy:0,grounded:false,ground:-1,wall:0,coyote:0,buffer:0,dashLeft:0,dashReady:true,respawn:penalty?.35:0,crumbles:{},previousJump:false,previousDash:false,previousInteract:false,defeated:{},dropLeft:0,pet:null,threat:p.x-300,chasing:false});
+ Object.assign(s,p,{vx:0,vy:0,grounded:false,ground:-1,wall:0,coyote:0,buffer:0,dashLeft:0,dashReady:true,respawn:penalty?DEATH_DURATION:0,crumbles:{},previousJump:false,previousDash:false,previousInteract:false,defeated:{},dropLeft:0,pet:null,threat:p.x-300,chasing:false});
 }
 export function nextStage(s:Run):boolean {
  if(s.phase!=='cleared'||s.stage>=LEVEL_COUNT-1)return false;
@@ -112,7 +113,7 @@ export function step(s:Run,input:Input,dt=STEP):Events {
   }else if(s.vy<0&&previousY>=r.y+r.h-.5){s.y=r.y+r.h;s.vy=0;s.dashLeft=0;}
  }
  // Enemy contact is swept at the feet, so a fast descending stomp cannot tunnel.
- let enemyHit=false;
+ let enemyHit=false,enemyContact:Rect|undefined,enemyKind:'crawler'|'moth'|undefined;
  for(const enemy of level.enemies??[]){
   if(s.defeated[enemy.id]!==undefined)continue;
   const at=enemyAt(enemy,s.clock),body={x:s.x+2,y:s.y+2,w:PLAYER_W-4,h:PLAYER_H-2};
@@ -120,13 +121,13 @@ export function step(s:Run,input:Input,dt=STEP):Events {
   if(stomp||overlap(body,at)&&s.dashLeft>0){
    s.defeated[enemy.id]=s.clock;events.enemy=true;s.pet=null;
    if(stomp){s.y=at.y-PLAYER_H;s.vy=input.jump?-420:-310;s.grounded=false;s.ground=-1;s.dashReady=true;events.stomp=true;}
-  }else if(overlap(body,at))enemyHit=true;
+  }else if(overlap(body,at)){enemyHit=true;enemyContact=at;enemyKind=enemy.kind;}
  }
  const player={x:s.x+2,y:s.y+2,w:PLAYER_W-4,h:PLAYER_H-2};
  if(level.goal==='escape'){if(s.x>(checkpointFor(s,level)?.x??level.spawn.x)+120)s.chasing=true;if(s.chasing)s.threat+=pursuitSpeed(level,s)*dt;}
  const hit=level.hazards.find(h=>hazardActive(h,s)&&overlap(player,hazardAt(h,s.clock))),fell=s.y>level.height+32,drowned=level.water!==null&&s.y+PLAYER_H>level.water,caught=level.goal==='escape'&&s.x+PLAYER_W<s.threat;
  if(fell||drowned||caught||hit||enemyHit){
-  events.deathPose={...s,crumbles:{...s.crumbles}};events.deathCause=hit?.kind??(enemyHit?'enemy':drowned?'water':caught?'dark':'fall');
+  events.deathPose={...s,crumbles:{...s.crumbles},defeated:{...s.defeated}};events.deathHit=hit?hazardAt(hit,s.clock):enemyHit?enemyContact:drowned?{x:s.x-20,y:level.water!,w:56,h:2}:caught?{x:s.threat-16,y:s.y,w:16,h:24}:undefined;events.deathEnemy=enemyHit&&!hit?enemyKind:undefined;events.deathCause=hit?.kind??(enemyHit?'enemy':drowned?'water':caught?'dark':'fall');
   respawn(s);events.death=true;return events;
  }
 

@@ -48,10 +48,10 @@ describe('physical level departures',()=>{
    for(let i=l.mainCount-3;i<l.mainCount;i++)expect(l.platforms[i].y-l.platforms[i-1].y).toBe(56);
   }
  });
- it('banks the score once, freezes active time and finishes every departure in under two seconds',()=>{
+ it('banks the score once, freezes active time and finishes every short departure',()=>{
   for(const l of LEVELS){const s=createRun();Object.assign(s,{stage:l.id,cleared:l.id,x:l.exit.x,y:l.exit.y+24});expect(step(s,idle).clear).toBe(true);
-   const time=s.time,stageTime=s.stageTime,score=s.best;expect(s.cinematic).toBe(clearDuration(l));expect(s.cinematic).toBeLessThan(2);
-   for(let i=0;i<240;i++)expect(step(s,{move:1,jump:true,dash:true,interact:true}).clear).not.toBe(true);
+   const time=s.time,stageTime=s.stageTime,score=s.best;expect(s.cinematic).toBe(clearDuration(l));expect(s.cinematic).toBeLessThan(l.goal==='engine'?2.3:2);
+   for(let i=0;i<300;i++)expect(step(s,{move:1,jump:true,dash:true,interact:true}).clear).not.toBe(true);
    expect(s.cinematic).toBe(0);expect(s.time).toBe(time);expect(s.stageTime).toBe(stageTime);expect(s.best).toBe(score);
   }
  });
@@ -62,7 +62,7 @@ describe('physical level departures',()=>{
    s.cinematic=clearDuration(l)-.22;expect(departureOffset(l,s,false)).toEqual({x:0,y:0});expect(departurePose(l,s,false).y).toBeLessThan(s.y-12);
    s.cinematic=clearDuration(l)-.62;expect(departurePose(l,s,false).x+8).toBeCloseTo(art.x-34);expect(departureOffset(l,s,false).x).toBeCloseTo(0);
    s.cinematic=.1;const offset=departureOffset(l,s,false);expect(offset.x).toBeGreaterThan(60);expect(departurePose(l,s,false).x+8).toBeCloseTo(art.x-34+offset.x);
-   expect(departurePose(l,s,true)).toMatchObject({x:s.x,y:s.y,opacity:1});
+   expect(departurePose(l,s,true)).toMatchObject({x:s.x,y:s.y});expect(departurePose(l,s,true).opacity).toBeLessThan(1);
   }
  });
  it('walks into shelters and fades through the threshold without moving physics',()=>{

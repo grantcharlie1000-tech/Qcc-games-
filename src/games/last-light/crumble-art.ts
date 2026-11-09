@@ -62,3 +62,6 @@ export function drawCrumblingHazard(c:C,h:Hazard,timer:number,reduced:boolean,po
   drawEmitter(c,{...h,offset:0},position,false,false,false,off,false);c.restore();
  }
 }
+
+// Shared by saw deaths: the courier's real texture tears into irregular chips.
+export {bake as bakeFracture,pieces as drawFracturePieces};

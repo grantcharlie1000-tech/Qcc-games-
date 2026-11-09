@@ -22,22 +22,25 @@ export function drawArchitecture(c:C,l:Level,cx:number,cy:number,w:number,h:numb
  const theme=WORLDS[l.world],industrial=l.setting==='factory'||l.setting==='tower',tile=masonry(l.world,industrial);
  c.save();
  const pattern=c.createPattern(tile,'repeat');
- const visible=l.platforms.slice(0,l.mainCount).filter(p=>p.x+p.w>cx-200&&p.x<cx+w+200&&p.y+250>cy&&p.y<cy+h+100);
+ const visible=l.platforms.slice(0,l.mainCount).filter(p=>p.x+p.w>cx-200&&p.x<cx+w+200&&p.y<cy+h+100);
  // Tall tower backplanes connect the switchbacks, rather than making a
  // separate floating prop behind each landing.
  if(l.setting==='tower'||l.setting==='factory'||l.setting==='cavern'){
-  const top=Math.min(...l.platforms.map(p=>p.y))-110;
-  c.fillStyle=pattern!;c.fillRect(cx,Math.max(cy,top),w,cy+h-Math.max(cy,top));
-  c.fillStyle='#101f2b45';c.fillRect(cx,Math.max(cy,top),w,cy+h-Math.max(cy,top));
-  for(let x=Math.floor(cx/240)*240;x<cx+w;x+=240){
-   c.fillStyle=theme.near;c.fillRect(x,Math.max(cy,top),7,cy+h-Math.max(cy,top));
-   c.fillStyle=theme.edge+'18';c.fillRect(x,Math.max(cy,top),1,cy+h-Math.max(cy,top));
-   for(let y=Math.floor(cy/160)*160;y<cy+h;y+=160){c.fillStyle='#14273388';c.fillRect(x+37,y+12,78,92);c.fillStyle=theme.near+'88';c.fillRect(x+72,y+12,3,92);c.fillRect(x+37,y+57,78,3);}
+  const top=Math.max(cy,Math.min(...l.platforms.map(p=>p.y))-110),bottom=cy+h;
+  // Recessed bays expose the distant city/cavern. Full-screen opaque brick
+  // used to flatten every parallax plane into one uninterrupted wall.
+  for(let x=Math.floor(cx/240)*240-240;x<cx+w;x+=240){
+   c.fillStyle=pattern!;c.fillRect(x,top,28,bottom-top);c.fillStyle=theme.near;c.fillRect(x+2,top,5,bottom-top);c.fillStyle=theme.edge+'22';c.fillRect(x+2,top,1,bottom-top);
+   for(let y=Math.floor(top/160)*160;y<bottom;y+=160){
+    c.fillStyle=pattern!;c.fillRect(x+28,y,212,24);c.fillStyle=theme.near;c.fillRect(x+28,y+22,212,5);c.fillStyle=theme.edge+'27';c.fillRect(x+28,y+22,212,1);
+    c.fillStyle='#152b354d';c.fillRect(x+36,y+32,194,117);
+    c.fillStyle=theme.near+'aa';c.fillRect(x+126,y+28,4,122);c.fillRect(x+31,y+88,204,3);c.fillStyle=theme.edge+'20';c.fillRect(x+126,y+29,1,120);
+   }
   }
  }
  for(const p of visible){
   if(p.kind==='moving'||p.kind==='crumble')continue;
-  const bottom=p.y+p.h,depth=l.setting==='sky'||l.setting==='bridge'?Math.max(220,cy+h-bottom+80):200;
+  const bottom=p.y+p.h,depth=l.water===null?Math.max(220,cy+h-bottom+96):200;
   if(l.setting!=='tower'&&l.setting!=='factory'&&l.setting!=='cavern'&&l.setting!=='bridge'){
    c.fillStyle=pattern!;c.fillRect(p.x+3,bottom,p.w-6,depth);
    c.fillStyle='#101f2b35';c.fillRect(p.x+3,bottom,p.w-6,depth);
@@ -56,9 +59,11 @@ export function drawArchitecture(c:C,l:Level,cx:number,cy:number,w:number,h:numb
    const dir=x<p.x+p.w/2?1:-1;c.strokeStyle=theme.near;c.lineWidth=3;c.beginPath();c.moveTo(x,bottom+36);c.lineTo(x+dir*Math.min(30,p.w/3),bottom+2);c.stroke();
   }
   if(industrial&&p.w>=200){
-   c.fillStyle='#192d37';c.fillRect(p.x+p.w-26,bottom,8,116);c.fillStyle='#60727470';c.fillRect(p.x+p.w-24,bottom,2,114);
-   for(let y=bottom+12;y<bottom+116;y+=32){c.fillStyle='#334c55';c.fillRect(p.x+p.w-28,y,12,4);}
+   c.fillStyle='#192d37';c.fillRect(p.x+p.w-26,bottom,8,depth);c.fillStyle='#60727470';c.fillRect(p.x+p.w-24,bottom,2,depth-2);
+   for(let y=bottom+12;y<Math.min(bottom+depth,cy+h+12);y+=32){c.fillStyle='#334c55';c.fillRect(p.x+p.w-28,y,12,4);}
   }
  }
  c.restore();
 }
+
+export {masonry as architectureMasonry};

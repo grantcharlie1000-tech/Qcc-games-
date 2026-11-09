@@ -49,7 +49,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  }
  function paint(){
   if(disposed)return;scene.draw(run,reduced());music.sync(active()&&run.phase==='playing',context.settings.sound&&!christmas());
-  data('reducedMotion',String(reduced()));data('phase',run.phase);data('stage',String(run.stage+1));data('overlay',overlay??'none');data('paused',String(paused));data('cinematic',String(run.cinematic>0));data('death',String(scene.dying));data('petting',String(!!run.pet));
+  data('reducedMotion',String(reduced()));data('phase',run.phase);data('stage',String(run.stage+1));data('overlay',overlay??'none');data('paused',String(paused));data('cinematic',String(run.cinematic>0));data('death',String(scene.dying));data('deathCause',scene.deathCause);data('petting',String(!!run.pet));
   if(import.meta.env.DEV){data('x',run.x.toFixed(2));data('y',run.y.toFixed(2));data('ground',String(run.ground));data('dash',String(run.dashReady));data('elapsed',String(Math.floor(run.time)));data('activated',run.activated.join(','));}
   const down=q<HTMLButtonElement>('[data-action=down]'),canDrop=run.grounded&&LEVELS[run.stage].platforms[run.ground]?.kind==='grate';if(down.hidden===canDrop)down.hidden=!canDrop;
   const level=LEVELS[run.stage],theme=WORLDS[level.world];if(root.style.getPropertyValue('--ll-accent')!==theme.accent){root.style.setProperty('--ll-accent',theme.accent);hudContent.style.setProperty('--ll-accent',theme.accent);}
@@ -119,7 +119,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
    }
    if(events.interact||events.pickup)save();
    if(events.checkpoint){notice(`Checkpoint ${checkpointIndexFor(run)+1}/${checkpointsFor(LEVELS[run.stage]).length} saved · ${missionGuidance(run).sector.name}`);save();context.sound('success');}
-   if(events.death){notice(`${events.deathCause==='fall'?'Fell':events.deathCause==='spikes'?'Spikes':events.deathCause==='dark'?'Caught by the dark':events.deathCause==='enemy'?'Enemy contact':events.deathCause==='crusher'?'Crushed':'Hit'} · ${run.checkpoint?`Checkpoint ${checkpointIndexFor(run)+1}`:'Level start'}`);q<HTMLElement>('.ll-dialogue').hidden=true;context.sound('lose');save();}
+   if(events.death){notice(`${({fall:'Fell',spikes:'Spikes',saw:'Saw strike',laser:'Electrocuted',steam:'Scalded',water:'Water',dark:'Caught by the dark',enemy:'Enemy contact',crusher:'Crushed'})[events.deathCause??'fall']} · ${run.checkpoint?`Checkpoint ${checkpointIndexFor(run)+1}`:'Level start'}`);q<HTMLElement>('.ll-dialogue').hidden=true;context.sound('lose');save();}
    if(events.clear){q<HTMLElement>('.ll-dialogue').hidden=true;context.sound('success');report();save();context.announce('Level clear');context.setStatus(run.phase==='complete'?'All forty levels cleared.':'Level clear.');}
    const guidance=missionGuidance(run),sectorKey=`${run.stage}:${guidance.sector.index}`;
    if(run.grounded&&sectorKey!==previousSector){

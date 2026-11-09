@@ -107,3 +107,19 @@ export function completionMotion(l:Level,courier:Rect):{x:number;y:number} {
  }
  return {x:0,y:0};
 }
+
+const serviceDoors=new WeakMap<Level,{x:number;y:number;side:number}|null>();
+/** A real onward threshold accompanies machinery exits. It uses unused space
+ * on the destination deck, with its complete silhouette checked up front. */
+export function serviceDoor(l:Level):{x:number;y:number;side:number}|null {
+ if(!['relay','signal','dawn'].includes(l.goal))return null;
+ if(serviceDoors.has(l))return serviceDoors.get(l)!;
+ const goal=goalComposition(l),p=l.platforms[l.mainCount-1];
+ for(const side of [1,-1]){
+  const x=side>0?p.x+p.w-24:p.x+24,bounds={x:x-28,y:p.y-58,w:56,h:60};
+  if(overlaps(expand(goal.bounds,7),bounds)||!foregroundFits(l,bounds,p.id,-1,true))continue;
+  const door={x,y:p.y,side};serviceDoors.set(l,door);return door;
+ }
+ // Compact hatch on the outgoing lip if a tall fixture occupies the back wall.
+ const door={x:p.x+p.w-18,y:p.y,side:1};serviceDoors.set(l,door);return door;
+}

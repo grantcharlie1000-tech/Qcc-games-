@@ -1,5 +1,6 @@
+import {drawLift,drawServiceDoor,drawExitConnection} from './exit-art';
 import {drawEnemy,drawPress} from './enemy-art';
-import {clearDuration,departurePose} from './departure';
+import {clearDuration,departurePose,departureVisibility} from './departure';
 import {DeathAnimation} from './death-art';
 import {drawArchitecture} from './architecture';
 import {drawCrumblingHazard} from './crumble-art';
@@ -10,7 +11,7 @@ import {characterColor,rescueNameFor} from './story';
 import {lantern,doorway,valve,bell,ferry,signalDish,lifeTree} from './props';
 import {Courier} from './courier';
 import {drawPlatform,clearTerrainCache} from './terrain';
-import {drawSky,drawLife,drawGear,person} from './world';
+import {drawSky,drawLife,drawGear,person,drawDepthFog} from './world';
 import {Effects,completionOffset,drawCompletion,drawDawn,drawEndingSky} from './effects';
 import {goalComposition,stationComposition,type GoalComposition,type StationArt} from './composition';
 type C=CanvasRenderingContext2D;
@@ -72,15 +73,17 @@ function smallGoal(c:C,p:GoalComposition,color:string,ready:boolean,lift=0){
   pixel(c,'#1b2d38',-12,-5,24,7);pixel(c,'#98a38b',-11,-5,22,1);pixel(c,'#5e7476',-8,-21,16,16);pixel(c,'#bdab7c',-9,-24,18,4);pixel(c,ready?color:'#405f69',-5,-19,10,10);pixel(c,'#d5dbc0',-4,-19,2,7);pixel(c,'#233d48',-7,-8,14,3);
  }c.restore();
 }
-function drawGoal(c:C,l:Level,s:Run,reduced:boolean){
+function drawGoal(c:C,l:Level,s:Run,reduced:boolean,view:{width:number;height:number}){
  const p=goalComposition(l),{x,y,art,bounds}=p,theme=WORLDS[l.world],ready=true,t=reduced?0:s.clock;
- const offset=completionOffset(s,reduced),shift=offset.x;
+ const offset=completionOffset(s,reduced,view),shift=offset.x;
  if(l.berth){
   const post=l.exit.x+l.exit.w+1;pixel(c,'#1a2e38',post,y-17,5,20);pixel(c,'#9c9e7a',post,y-17,5,2);pixel(c,'#617a77',post+1,y-14,1,15);
   if(s.phase==='playing'){c.strokeStyle='#a79874';c.lineWidth=1;c.beginPath();c.moveTo(post+2,y-10);c.quadraticCurveTo(x-62,y+5,x-52,y-4);c.stroke();}
  }
+ if(l.goal==='engine'){drawLift(c,l,s,theme.accent,reduced,view);}else{
  c.save();c.translate(shift,art==='ferry'||art==='airship'?offset.y:0);c.beginPath();c.rect(bounds.x,bounds.y,bounds.w,bounds.h);c.clip();
  if(art==='ferry'||art==='airship'){
+  c.globalAlpha*=departureVisibility(s,reduced);
   ferry(c,x,y-3-(reduced?0:Math.sin(t*2)*2),theme.accent,art==='airship');
   // The waterline masks the submerged lower hull, with a broken reflection.
   if(l.water!==null){pixel(c,'#153440',x-62,l.water,125,17);for(let i=0;i<5;i++)pixel(c,theme.edge+'88',x-47+i*22,l.water+(i%2),13,1);}
@@ -96,7 +99,7 @@ function drawGoal(c:C,l:Level,s:Run,reduced:boolean){
  else if(art==='dawn'){
   pixel(c,'#354b56',x-10,y-32,20,32);pixel(c,'#91a2a0',x-10,y-32,20,3);pixel(c,'#536b72',x-7,y-28,3,26);pixel(c,'#b39b74',x-15,y-5,30,5);lantern(c,x,y-55,theme.accent,ready);
  }else smallGoal(c,p,theme.accent,ready,offset.y);
- c.restore();
+ c.restore();}
  if(s.phase==='playing'&&p.marker){
   const m=p.marker,mx=Math.round(m.x+m.w/2),my=Math.round(m.y+m.h/2);pixel(c,'#172b36',m.x,m.y,m.w,m.h);
   if(ready){pixel(c,theme.accent,mx-4,my-1,8,2);pixel(c,theme.accent,mx+2,my-3,2,6);pixel(c,theme.accent,mx+4,my-1,2,2);}
@@ -108,8 +111,10 @@ export class Scene {
  private readonly courier=new Courier();
  private readonly effects=new Effects();
  private readonly death=new DeathAnimation();
+ private exitCamera:{x:number;y:number}|null=null;
  private cssWidth=0;private cssHeight=0;private lookAhead=24;
  get dying(){return this.death.active;}
+ get deathCause(){return this.death.active?this.death.cause:'';}
  private source:Run|undefined;private stage=-1;private deaths=-1;
  private trace:{x:number;y:number}[]=[];private traceTime=0;
  width=640;height=480;cameraX=0;cameraY=0;
@@ -122,8 +127,9 @@ export class Scene {
   if(this.source){const target=this.target(this.source);this.cameraX=target.x;this.cameraY=target.y;}
  }
  step(s:Run,events:Events,dt:number){
-  if(events.death&&events.deathPose){this.death.begin(events.deathPose,this.cameraX,this.cameraY);this.sync(s,true);}
+  if(events.death&&events.deathPose){this.death.begin(events.deathPose,this.cameraX,this.cameraY,events.deathCause,events.deathHit,events.deathEnemy);this.sync(s,true);}
   else {this.sync(s);const wasImpact=this.death.impact;this.death.step(dt);if(wasImpact&&!this.death.impact){const target=this.target(s);this.cameraX=target.x;this.cameraY=target.y;}}
+  if(events.clear)this.exitCamera={x:this.cameraX,y:this.cameraY};
   this.effects.step(s,events,dt);
   this.courier.tick(s,events,dt);this.traceTime+=dt;
   if(this.traceTime>.035){this.traceTime=0;this.trace.push({x:s.x+8,y:s.y+24});if(this.trace.length>20)this.trace.shift();}
@@ -133,12 +139,12 @@ export class Scene {
  }
  private sync(s:Run,keepDeath=false){
   if(this.source===s&&this.stage===s.stage&&this.deaths===s.deaths)return;
-  const changedLevel=this.source!==s||this.stage!==s.stage;
+  const changedLevel=this.source!==s||this.stage!==s.stage;if(changedLevel)this.exitCamera=null;
   if(!keepDeath){this.death.reset();this.lookAhead=s.facing*24;const target=this.target(s);this.cameraX=target.x;this.cameraY=target.y;}
   this.trace=[];this.traceTime=0;this.effects.reset();this.source=s;this.stage=s.stage;this.deaths=s.deaths;
-  if(changedLevel)clearTerrainCache();
+  if(changedLevel){clearTerrainCache();this.exitCamera=null;}
  }
- private target(s:Run,reduced=false){const l=LEVELS[s.stage],cleared=s.phase!=='playing',offset=completionOffset(s,reduced);const x=cleared?l.exit.x+19+offset.x:s.x+8,y=cleared?l.exit.y+25+offset.y:s.y;return {x:Math.max(0,Math.min(Math.max(0,l.width-this.width),x-this.width*(cleared?.52:.43)+(cleared?0:this.lookAhead))),y:Math.max(-170,Math.min(Math.max(0,l.height-this.height),y-this.height*.57))};}
+ private target(s:Run,reduced=false){if(s.phase!=='playing'&&this.exitCamera){const lift=!reduced&&LEVELS[s.stage].goal==='engine'?completionOffset(s,false,this).y:0;return {x:this.exitCamera.x,y:this.exitCamera.y+lift};}const l=LEVELS[s.stage],cleared=s.phase!=='playing',offset=['ferry','engine'].includes(l.goal)?{x:0,y:0}:completionOffset(s,reduced,this);const x=cleared?l.exit.x+19+offset.x:s.x+8,y=cleared?l.exit.y+25+offset.y:s.y;return {x:Math.max(0,Math.min(Math.max(0,l.width-this.width),x-this.width*(cleared?.52:.43)+(cleared?0:this.lookAhead))),y:Math.max(-170,Math.min(Math.max(0,l.height-this.height),y-this.height*.57))};}
  draw(actual:Run,reduced:boolean){
   this.sync(actual);const s=this.death.impact?this.death.pose!:actual;
   const c=this.ctx,l=LEVELS[s.stage],theme=WORLDS[l.world],w=this.width,h=this.height;
@@ -147,8 +153,8 @@ export class Scene {
   drawSky(c,l,s,w,h,cx,cy,reduced);
   drawEndingSky(c,w,h,s);
   c.save();c.translate(-cx,-cy);
-  drawArchitecture(c,l,cx,cy,w,h);
-  if(l.setting==='bridge'){c.strokeStyle=theme.edge+'77';c.lineWidth=2;c.beginPath();c.moveTo(24,470);for(let x=24;x<l.width;x+=20)c.lineTo(x,410+Math.sin(x/l.width*Math.PI)*90);c.stroke();}
+  drawArchitecture(c,l,cx,cy,w,h);drawDepthFog(c,l,s,cx,cy,w,h,reduced);
+
   for(const p of l.platforms){const r=platformAt(p,s.clock);if(r.x+r.w<cx-60||r.x>cx+w+60||r.y>cy+h+60||r.y<cy-220)continue;const visual=l.goal==='escape'&&s.phase!=='playing'&&p.kind==='crumble'&&elapsed>p.id*.12?{...s,crumbles:{...s.crumbles,[p.id]:-(elapsed-p.id*.12)}}:s;drawPlatform(c,p,r.x,r.y,visual,l,reduced);}
   for(let i=1;i<l.mainCount-1;i++){
    const p=l.platforms[i],next=l.platforms[i+1],before=l.platforms[i-1],dir=Math.sign(next.x+next.w/2-p.x-p.w/2),incoming=Math.sign(p.x+p.w/2-before.x-before.w/2);
@@ -160,7 +166,7 @@ export class Scene {
   drawLife(c,l,s,cx,cy,w,h,reduced);
   // Mission architecture sits behind every collectible, hazard and character.
   // Its footprint is chosen before drawing, using the exact interaction anchor.
-  drawGoal(c,l,s,reduced);drawCompletion(c,l,s,theme.accent,reduced);
+  drawGoal(c,l,s,reduced,this);drawCompletion(c,l,s,theme.accent,reduced,this);drawServiceDoor(c,l,s,theme.accent);drawExitConnection(c,l,s,theme.accent,cy,reduced);
   for(const [index,cp] of checkpointsFor(l).entries()){
    if(cp.x<cx-35||cp.x>cx+w+35||cp.y<cy-20||cp.y>cy+h+60)continue;
    c.fillStyle='#b7bda7';c.fillRect(cp.x,cp.y-48,2,48);c.fillStyle=index<=checkpointIndexFor(s,l)?'#d8e5a0':'#859da3';
@@ -196,12 +202,19 @@ export class Scene {
    }
    if(!lit&&plan.marker){const m=plan.marker;pixel(c,'#172b36',m.x+dx,m.y+dy,m.w,m.h);c.fillStyle=theme.accent;c.font='9px monospace';c.textAlign='center';c.fillText(kind==='survivor'?'…':'↵',Math.round(m.x+m.w/2+dx),Math.round(m.y+9+dy));c.textAlign='start';}
   }
-  if(l.goal==='rescue'&&s.activated.length){const follower=this.trace[0]??{x:s.x-18,y:s.y+24};c.save();if(s.phase!=='playing'){const pose=departurePose(l,s,reduced);c.translate(pose.x-s.x,pose.y-s.y);c.globalAlpha=Math.min(1,pose.opacity*1.4);}person(c,follower.x,follower.y,t,characterColor(rescueNameFor(s.stage),l.world),Math.abs(s.vx)>20?Math.sign(s.vx):0,Math.sign(s.vx)||s.facing);c.restore();}
+  if(l.goal==='rescue'&&s.activated.length){const follower=this.trace[0]??{x:s.x-18,y:s.y+24};c.save();if(s.phase!=='playing'){const pose=departurePose(l,s,reduced,this);c.translate(pose.x-s.x,pose.y-s.y);c.globalAlpha=Math.min(1,pose.opacity*1.4);}person(c,follower.x,follower.y,t,characterColor(rescueNameFor(s.stage),l.world),Math.abs(s.vx)>20?Math.sign(s.vx):0,Math.sign(s.vx)||s.facing);c.restore();}
   this.effects.draw(c,cx,cy,w,h,theme.accent,reduced);
   c.save();
-  const departure=s.phase!=='playing'?departurePose(l,s,reduced):null;
+  const departure=s.phase!=='playing'?departurePose(l,s,reduced,this):null;
   if(departure){c.translate(departure.x-s.x,departure.y-s.y);c.globalAlpha=departure.opacity;}
-  if(!this.death.impact)this.courier.draw(c,s,theme.accent,reduced,departure??undefined);c.restore();c.restore();
+  if(!departure&&!reduced&&s.vy>480&&s.y>l.height-80){
+   // Start the fatal tumble while the courier is still visible; do not pop a
+   // fallen sprite back above the bottom edge when the death event arrives.
+   const roll=Math.min(1,(s.y-l.height+80)/110)*s.facing*.9;c.translate(s.x+8,s.y+24);c.rotate(roll);c.translate(-s.x-8,-s.y-24);
+  }
+  if(!this.death.impact)this.courier.draw(c,s,theme.accent,reduced,departure??undefined);c.restore();
+  if(l.goal==='engine')drawLift(c,l,s,theme.accent,reduced,this,true);else drawServiceDoor(c,l,s,theme.accent,true);
+  c.restore();
   this.death.drawBody(c,cx,cy,reduced);this.death.drawTransition(c,w,h,actual,cx,cy,reduced);
   drawDawn(c,w,h,s,reduced);
  }
