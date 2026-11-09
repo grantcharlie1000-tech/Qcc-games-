@@ -23,6 +23,32 @@ function fixture(){
 }
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
 describe('account client',()=>{
+ it('never quarantines QCC startup or login behind Study when only server logout confirmation is enabled',async()=>{
+  const f=fixture(),c=new AccountsClient(f.storage,f.fetcher,{confirmedServerLogout:true});
+  try{
+   await c.ready();expect(f.fetcher).not.toHaveBeenCalled();
+   await c.authenticate('login','Ada','password1');expect(c.session()?.username).toBe('Ada');
+   expect((f.fetcher as any).mock.calls.every(([url]:[unknown])=>String(url).startsWith('/.netlify/functions/accounts?'))).toBe(true);
+  }finally{c.dispose();}
+ });
+ it('keeps an exact outgoing QCC session and its saves when confirmed server logout is unavailable',async()=>{
+  const f=fixture();f.values.set('accounts:session',{token,username:'Ada'});f.values.set('best:snake',42);
+  const c=new AccountsClient(f.storage,f.fetcher,{confirmedServerLogout:true});f.offline(true);
+  try{
+   await expect(c.logout()).rejects.toThrow('Account change could not be verified');
+   expect(c.session()).toEqual({token,username:'Ada'});expect(f.values.get('best:snake')).toBe(42);
+  }finally{c.dispose();}
+ });
+ it('does not revoke a token merely observed during an external A-B-A storage transition',async()=>{
+  const f=fixture();f.values.set('accounts:session',{token,username:'Ada'});
+  const c=new AccountsClient(f.storage,f.fetcher,{confirmedServerLogout:true});
+  try{
+   f.values.set('accounts:session',{token:'acct_'+'b'.repeat(64),username:'Bob'});(c as any).storageChanged({key:'pocket-arcade:v1:accounts:session'});
+   f.values.set('accounts:session',{token,username:'Ada'});(c as any).storageChanged({key:'pocket-arcade:v1:accounts:session'});
+   await Promise.resolve();expect(c.session()?.token).toBe(token);
+   expect((f.fetcher as any).mock.calls.some(([url]:[unknown])=>new URL(String(url),'https://test').searchParams.get('action')==='logout')).toBe(false);
+  }finally{c.dispose();}
+ });
  it('pushes only dirty keys and pulls when clean',async()=>{
   const f=fixture(),c=new AccountsClient(f.storage,f.fetcher);f.storage.write('save:snake',{version:1,data:{score:1},updated:1});await c.authenticate('signup','Ada','password1');
   f.storage.write('best:tower',10);await c.flush();expect(JSON.parse((f.fetcher as any).mock.calls.at(-1)[1].body).saves).toEqual({'best:tower':{value:10,updated:0}});

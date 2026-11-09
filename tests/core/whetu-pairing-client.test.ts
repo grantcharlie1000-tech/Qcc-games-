@@ -2,8 +2,22 @@ import {afterEach,describe,expect,it,vi} from 'vitest';
 import {StudyPairingClient} from '../../src/study/whetu-pairing';
 const TOKEN='acct_'+'a'.repeat(64),CHALLENGE='b'.repeat(64),INTENT='c'.repeat(64);
 const action=(url:RequestInfo|URL)=>String(url).split('/').pop();
-afterEach(()=>vi.restoreAllMocks());
+afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
 describe('host-owned verified account pairing client',()=>{
+ it('uses the browser global receiver for default fetch throughout pairing',async()=>{
+  const calls:string[]=[];
+  vi.stubGlobal('fetch',async function(this:unknown,url:RequestInfo|URL){
+   if(this!==globalThis)throw new TypeError('Illegal invocation');
+   const name=action(url)!;calls.push(name);
+   return Response.json(name==='select'?{selected:true}:name==='status'?{linked:true,verified:true}:name==='start'?{started:true,expiresIn:300,intent:INTENT}:name==='review'?{qccUsername:'StudyPlayer',whetuLabel:'Student',challenge:CHALLENGE}:name==='confirm'?{linked:true}:{cancelled:true});
+  });
+  const client=new StudyPairingClient(()=>TOKEN);
+  await expect(client.activate()).resolves.toBeUndefined();
+  await expect(client.status()).resolves.toBe(true);
+  await client.start();await client.review();await client.confirm(CHALLENGE);await client.cancel();
+  expect(calls).toEqual(['select','status','start','review','confirm','cancel']);
+ });
+
  it('refuses protocol calls until the current browser selection has a server acknowledgement',async()=>{
   const fetcher=vi.fn(async()=>Response.json({selected:true}));const client=new StudyPairingClient(()=>TOKEN,fetcher);
   await expect(client.status()).rejects.toThrow('Account changed. Start again.');expect(fetcher).not.toHaveBeenCalled();
