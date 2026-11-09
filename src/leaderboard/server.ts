@@ -1,3 +1,4 @@
+import {normalizeLastLightScore,LAST_LIGHT_MAX_SCORE} from '../core/last-light-score';
 import {createHash} from 'node:crypto';
 import {resolveAccount} from '../accounts/server';
 import {writeFrozen,readOnlyResponse} from '../accounts/write-freeze';
@@ -15,7 +16,7 @@ export function createLeaderboardHandler(db:Database){
   // Guests retain nickname deduplication. Account identities stand alone, so a same-named
   // guest cannot replace an account's personal score or steal its highlighting.
   const result=await db.query(`WITH identities AS (
-   SELECT s.player_id,p.name,s.score,s.reached_at,a.id IS NOT NULL AS account,
+   SELECT s.player_id,p.name,CASE WHEN s.game_id='last-light' AND s.score BETWEEN 1000000 AND 40999999 THEN (s.score/1000000)*1000 ELSE s.score END AS score,s.reached_at,a.id IS NOT NULL AS account,
     CASE WHEN a.id IS NULL THEN 'guest:'||lower(p.name) ELSE 'account:'||a.id::text END AS identity
    FROM arcade_scores s JOIN arcade_players p ON p.id=s.player_id LEFT JOIN accounts a ON a.player_id=p.id WHERE s.game_id=$1
   ),best AS (
@@ -64,6 +65,7 @@ export function createLeaderboardHandler(db:Database){
     throw error;
    }
    if(!data||typeof data!=='object'||Array.isArray(data)||!scoredGame(data.game)||!validScore(data.score))return respond({error:'Use a valid game and a positive whole score.'},400);
+   if(data.game==='last-light'){data.score=normalizeLastLightScore(data.score);if(data.score>LAST_LIGHT_MAX_SCORE)return respond({error:'Last Light scores cannot exceed 62,000 points.'},400);}
    const client=await db.connect();
    try{
     await client.query('BEGIN');
@@ -74,7 +76,7 @@ export function createLeaderboardHandler(db:Database){
     await client.query(`INSERT INTO arcade_players(id,name) VALUES ($1,$2) ON CONFLICT(id) DO UPDATE SET name=excluded.name WHERE arcade_players.name IS DISTINCT FROM excluded.name`,[playerId,account.username]);
     await client.query(`INSERT INTO arcade_scores(game_id,player_id,score) VALUES ($1,$2,$3)
      ON CONFLICT(game_id,player_id) DO UPDATE SET score=excluded.score,reached_at=now()
-     WHERE excluded.score>arcade_scores.score`,[data.game,playerId,data.score]);
+     WHERE excluded.score>CASE WHEN arcade_scores.game_id='last-light' AND arcade_scores.score BETWEEN 1000000 AND 40999999 THEN (arcade_scores.score/1000000)*1000 ELSE arcade_scores.score END`,[data.game,playerId,data.score]);
     await client.query('COMMIT');
    }catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}finally{client.release();}
    return respond(await board(data.game,playerId));

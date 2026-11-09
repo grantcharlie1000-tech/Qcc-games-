@@ -1,3 +1,4 @@
+import {normalizeLastLightScore} from '../core/last-light-score';
 import * as store from '../core/storage';
 import {STORAGE_FULL_MESSAGE} from '../core/storage-full';
 import {validUsername} from '../accounts/shared';
@@ -8,6 +9,11 @@ export const SCORE_BATCH_MS=5000;
 /** A game whose board the database does not accept yet is parked this long before one quiet retry (see LEADERBOARD_NOT_OPEN). */
 export const NOT_OPEN_RETRY_MS=900000;
 interface Retry {attempt:number;nextAt:number}
+function readableBoard(game:string,board:Board|null):Board|null {
+ if(game!=='last-light'||!board)return board;
+ const entry=(value:Board['entries'][number])=>({...value,score:normalizeLastLightScore(value.score)});
+ return {entries:board.entries.map(entry),player:board.player?entry(board.player):null};
+}
 export class LeaderboardSync {
  needsLogin=false;message='';
  private identity='';private scope='';private flightToken:string|undefined;
@@ -39,13 +45,14 @@ export class LeaderboardSync {
   this.pending={};this.sent={};this.parked={};
   const retry=this.storage.read<Retry|null>('leaderboard:retry'+this.scope,null);
   this.retry=retry&&Number.isInteger(retry.attempt)&&retry.attempt>=0&&Number.isFinite(retry.nextAt)?retry:{attempt:0,nextAt:0};
-  for(const [key,score] of Object.entries(this.storage.read('leaderboard:pending'+this.scope,{})??{}))if(scoredGame(key)&&validScore(score))this.pending[key]=score;
-  for(const [key,score] of Object.entries(this.storage.read('leaderboard:sent'+this.scope,{})??{}))if(scoredGame(key)&&validScore(score))this.sent[key]=score;
+  for(const [key,score] of Object.entries(this.storage.read('leaderboard:pending'+this.scope,{})??{}))if(scoredGame(key)&&validScore(score))this.pending[key]=key==='last-light'?normalizeLastLightScore(score):score;
+  for(const [key,score] of Object.entries(this.storage.read('leaderboard:sent'+this.scope,{})??{}))if(scoredGame(key)&&validScore(score))this.sent[key]=key==='last-light'?normalizeLastLightScore(score):score;
   this.setMessage('');
   this.schedule();
  }
  profile():Profile|null{this.refreshIdentity();return this.rawProfile();}
  queue(game:string,score:number):void{
+  if(game==='last-light')score=normalizeLastLightScore(score);
   if(!this.profile()||!scoredGame(game)||!validScore(score)||score<=Math.max(this.pending[game]??0,this.sent[game]??0))return;
   this.pending[game]=score;this.storage.write('leaderboard:pending'+this.scope,this.pending);
   this.schedule();
@@ -113,11 +120,11 @@ export class LeaderboardSync {
   if(publicResponse.status===507||personalResponse?.status===507){this.setMessage(STORAGE_FULL_MESSAGE);throw new Error(STORAGE_FULL_MESSAGE);}
   if(!publicResponse.ok||(personalResponse&&!personalResponse.ok))throw new Error('Online leaderboard is temporarily unavailable.');
   const publicBoard=await publicResponse.json(),personal=personalResponse?await personalResponse.json():{player:null};
-  const board=readBoard({entries:publicBoard?.entries,player:personal?.player});
+  const board=readableBoard(game,readBoard({entries:publicBoard?.entries,player:personal?.player}));
   if(this.profile()?.token!==profile?.token)throw new Error('Player changed. Refresh scores.');
   if(!board)throw new Error('The leaderboard response could not be read.');
   this.storage.write('leaderboard:cache:'+game+this.scope,board);if(!Object.keys(this.pending).length)this.setMessage('');return board;
  }
- cached(game:string):Board|null{this.refreshIdentity();return readBoard(this.storage.read('leaderboard:cache:'+game+this.scope,null));}
+ cached(game:string):Board|null{this.refreshIdentity();return readableBoard(game,readBoard(this.storage.read('leaderboard:cache:'+game+this.scope,null)));}
  dispose(){this.disposed=true;if(this.timer)clearTimeout(this.timer);this.timer=undefined;if(typeof document!=='undefined')document.removeEventListener('visibilitychange',this.visibility);}
 }

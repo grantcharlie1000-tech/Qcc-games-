@@ -1,6 +1,7 @@
 import {createHash,randomBytes,randomUUID,scrypt,timingSafeEqual} from 'node:crypto';
 import type {Database} from '../leaderboard/server';
 import {validUsername,validPassword,validSaves,MAX_BODY_BYTES,MAX_AUTH_BODY_BYTES,MAX_USER_BYTES,jsonBytes,SAVE_KEYS,validRevision,type Saves,type SyncV2Response} from './shared';
+import {normalizeLastLightScore} from '../core/last-light-score';
 import {mergeSaves} from './merge';
 import {stableText} from '../core/content';
 import {writeFrozen,readOnlyResponse} from './write-freeze';
@@ -142,7 +143,10 @@ export function createAccountsHandler(db:Database){
      for(const key of keys){
       const before=old[key];
       // Keep semantic no-ops from manufacturing timestamps (including snapshot envelopes).
-      if(before&&(key.startsWith('best:')?(submitted[key]!.value as number)<=(before.value as number):sameContent(key,before.value,submitted[key]!.value)))saves[key]=before;
+      const normalize=(value:unknown)=>key==='best:last-light'?normalizeLastLightScore(value as number):value as number;
+      const migrating=key==='best:last-light'&&before&&normalize(before.value)!==before.value;
+      const unchanged=before&&(key.startsWith('best:')?normalize(submitted[key]!.value)<=normalize(before.value):sameContent(key,before.value,submitted[key]!.value));
+      if(unchanged&&!migrating)saves[key]=before;
      }
      const size=jsonBytes(saves);
      // Preserve legacy over-quota accounts and permit updates that do not grow

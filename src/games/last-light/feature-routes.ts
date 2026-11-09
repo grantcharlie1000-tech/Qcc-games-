@@ -1,0 +1,73 @@
+import {spike,steam,laser,press,type CampaignRoute} from './campaign-types';
+
+/** Signature spaces, authored in travel order. These are physical multi-storey
+ * routes, not a height offset applied to the old horizontal obstacle pattern. */
+export const FEATURE_ROUTES:Readonly<Record<number,CampaignRoute>>={
+ // Four overlapping streets: climb the grates, reverse across the skyline,
+ // descend the west stair, then dash beneath the street already crossed.
+ 3:{setting:'roofs',goal:'relay',
+  route:'24,850,300,s;534,850,100,s;658,850,100,g;968,786,140,g;1248,722,260,s;1748,722,100,c,,,0.62;1872,722,120,s;2232,658,280,b;1904,530,120,g;1584,466,130,s;1204,402,240,s;924,466,120,c,,,0.62;644,530,140,g;344,594,160,s;24,658,180,b;244,530,120,g;464,466,100,c,,,0.62;694,402,120,g;424,338,140,s;24,274,280,s',
+  branches:'662,914,110,s;1930,594,90,s;1534,786,100,s',memories:[0,1,2],
+  stations:[[4,'Bakery light'],[10,'Market light'],[13,'West street light']],
+  checkpoints:[4,6,10,13],sectors:[[0,'The grate stair'],[4,'Above the bakery'],[7,'The skyline turn'],[10,'Westward descent'],[14,'The west roof launch']],
+  hazards:[spike(6,.75,24),steam(9,.75,96,.3,3),spike(11,.75,22),spike(16,.75,22),spike(18,.25,24)],
+  enemies:[{ledge:4,at:.8,kind:'crawler',travel:18,period:3.8},{ledge:10,at:.8,kind:'moth',travel:16,period:3.2}],
+ },
+ // Launch up the orchard terraces, cross the canopy to the left, then make a
+ // controlled descent through the open grates into the lower greenhouse.
+ 10:{setting:'garden',goal:'relay',
+  route:'24,1100,300,s;534,1100,100,s;658,1100,95,b;963,972,130,s;1243,908,280,s;1703,844,100,c,,,0.56;1827,844,95,b;2132,716,120,s;2422,652,280,s;2142,588,100,g;2018,588,100,s;1508,524,300,s;1188,588,140,c,,,0.56;868,652,140,g;528,716,180,s;188,780,140,b;468,652,110,g;768,588,110,c,,,0.56;1078,524,140,b;1408,396,340,s',
+  branches:'704,1172,64,s;2262,780,100,s;996,716,100,s',memories:[0,1,2],
+  stations:[[4,'Orchard lamp'],[8,'Canopy lamp'],[14,'Glasshouse lamp']],checkpoints:[4,8,11,14],
+  sectors:[[0,'Root-level launch'],[4,'The spring canopy'],[8,'Across the treetops'],[11,'Through the greenhouse'],[15,'The final spring']],
+  hazards:[spike(3,.75,22),steam(7,.75,96,1,3),spike(10,.25,22),spike(12,.25,22),spike(17,.75,22)],
+  enemies:[{ledge:8,at:.78,kind:'crawler',travel:26,period:3.5},{ledge:13,at:.5,kind:'moth',travel:27,period:3.8}],
+ },
+ // A press floor opens into a lift shaft; the return runs above the machines
+ // before falling into a conveyor intake with a visible landing beneath it.
+ 18:{setting:'factory',goal:'relay',
+  route:'24,1064,360,s;574,1000,300,s;1054,944,120,>;1198,944,100,g;1508,880,120,l,24,1.1;1798,816,300,s;2338,816,100,c,,,0.56;2462,816,100,g;2822,752,130,s;3192,688,320,s;2832,624,120,g;2688,624,120,s;2148,560,300,s;1828,624,120,c,,,0.56;1478,688,120,g;1158,624,150,s;828,560,140,>;498,496,320,s;168,432,100,b;448,304,120,g;718,240,160,s;1048,176,360,s',
+  branches:'948,1064,100,s;2522,880,100,s;1642,944,84,s',memories:[0,1,2],
+  stations:[[5,'Workshop relay'],[12,'Upper feed relay'],[17,'Intake relay']],checkpoints:[1,5,9,12,17],
+  sectors:[[0,'The first press'],[2,'Lift shaft'],[9,'Upper pressure walk'],[12,'Over the machines'],[17,'Conveyor intake']],
+  hazards:[press(1,.6,.3,3.4),spike(2,.75,22),laser(8,.75,104,.4,3),press(9,.6,1,3.2),spike(11,.75,22),steam(15,.75,96,.8,3),spike(20,.75,22)],
+  enemies:[{ledge:5,at:.73,kind:'crawler',travel:26,period:3.5},{ledge:14,at:.5,kind:'moth',travel:24,period:3.4}],
+ },
+ // Alternating shelves wrap around a frozen hollow: climb, reverse, drop into
+ // its middle, then leap back out through the right-hand ice chute.
+ 26:{setting:'cavern',goal:'signal',
+  route:'24,1080,360,s;574,1080,100,i;698,1080,110,g;1018,1016,120,s;1318,952,280,s;1778,888,100,i;1902,888,100,c,,,0.5;2212,824,120,g;2512,760,300,s;2202,696,100,i;2058,696,120,g;1548,632,300,s;1248,696,120,g;948,760,140,i;618,824,180,s;278,760,160,g;588,696,120,s;898,632,140,i;1218,568,100,c,,,0.5;1498,504,120,b;1808,376,140,b;2148,248,340,s',
+  branches:'704,1144,100,s;2034,936,64,s;1058,824,100,s',memories:[0,1,2],
+  stations:[[4,'Lower lens'],[11,'Hollow lens'],[14,'Return lens']],checkpoints:[4,8,11,15],
+  sectors:[[0,'The frozen hollow'],[4,'Ascending shelves'],[8,'Over the crevasse'],[11,'The inside turn'],[15,'Ice chute']],
+  hazards:[steam(3,.75,100,.3,2.9),spike(5,.75,22),spike(10,.25,22),steam(13,.75,100,1,2.9),spike(17,.75,22),spike(20,.75,22)],
+  enemies:[{ledge:8,at:.73,kind:'crawler',travel:28,period:3.2},{ledge:16,at:.5,kind:'moth',travel:24,period:3.4}],wind:-12,
+ },
+ // Two towers share an air bridge. The route goes up one, down the inside,
+ // then spring-launches onto the other instead of repeating a flat sky run.
+ 34:{setting:'sky',goal:'relay',
+  route:'24,1100,320,s;534,1100,96,i;830,1036,96,g;950,1036,100,l,18,1.15;1260,972,260,s;1690,908,80,c,,,0.5;1980,844,96,g;2100,844,110,b;2420,716,300,s;2100,652,96,g;1810,588,110,i;1676,588,110,s;1186,524,280,s;886,556,110,c,,,0.5;576,620,120,g;246,684,160,b;526,556,100,g;826,492,110,i;1136,428,96,c,,,0.5;1412,364,110,g;1712,300,130,s;2042,236,340,s',
+  branches:'970,1138,64,b;1590,972,100,s;1902,364,100,s',memories:[0,1,2],
+  stations:[[4,'South tower lamp'],[12,'Air bridge lamp'],[8,'North tower lamp']],checkpoints:[4,8,12,16],
+  sectors:[[0,'The south tower'],[4,'The outside ascent'],[8,'Air bridge'],[11,'Inside the tower'],[15,'North tower launch']],
+  hazards:[spike(1,.75,22),laser(6,.75,108,.6,3),spike(10,.75,22),steam(13,.75,108,1,3),spike(17,.75,22),spike(20,.75,22)],
+  enemies:[{ledge:8,at:.75,kind:'crawler',travel:24,period:3.2},{ledge:12,at:.8,kind:'moth',travel:20,period:3}],wind:24,
+ },
+};
+
+/** Other chapters receive distinct encounters at explicitly chosen quiet ledges.
+ * Enemy sweeps never cover flags, conversations, cats or the exit. */
+export const ENCOUNTER_ADDITIONS:Readonly<Record<number,{enemies?:CampaignRoute['enemies'];presses?:CampaignRoute['hazards']}>>={
+ 0:{enemies:[{ledge:4,at:.71,kind:'crawler',travel:24,period:4.2}]},
+ 6:{presses:[press(15,.72,.4,3.6)]},
+ 8:{enemies:[{ledge:15,at:.72,kind:'crawler',travel:22,period:3.8}]},
+ 12:{enemies:[{ledge:15,at:.72,kind:'moth',travel:26,period:3.7}]},
+ 14:{presses:[press(5,.73,.5,3.4)]},
+ 16:{presses:[press(11,.72,.5,3.2)]},
+ 20:{enemies:[{ledge:17,at:.73,kind:'crawler',travel:28,period:3.4}]},
+ 23:{enemies:[{ledge:17,at:.72,kind:'moth',travel:24,period:3.2}]},
+ 24:{enemies:[{ledge:11,at:.75,kind:'crawler',travel:26,period:3.2}]},
+ 29:{enemies:[{ledge:17,at:.73,kind:'moth',travel:26,period:3.4}]},
+ 32:{enemies:[{ledge:19,at:.73,kind:'crawler',travel:28,period:3}]},
+ 36:{presses:[press(13,.73,.7,3)]},
+};

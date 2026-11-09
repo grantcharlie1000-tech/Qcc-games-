@@ -1,7 +1,7 @@
 import {test,expect} from '../../fixtures';
 
 test('courier renders distinct movement frames, freezes on pause, honors reduced motion and clears retries',async({page})=>{
- await page.goto('/#/game/last-light');await expect(page.getByRole('button',{name:'Carry the light →'})).toBeVisible();
+ await page.goto('/#/game/last-light');await expect(page.getByRole('button',{name:'Play →'})).toBeVisible();
  const result=await page.evaluate(async()=>{
   const courierPath='/src/games/last-light/courier.ts',modelPath='/src/games/last-light/model.ts';
   const {Courier}=await import(courierPath),{createRun,respawn}=await import(modelPath);
