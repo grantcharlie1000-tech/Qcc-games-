@@ -1,6 +1,6 @@
 import {afterEach,beforeEach,describe,expect,it} from 'vitest';
 import {LEVELS,type Level} from '../../../src/games/last-light/levels';
-import {checkpointFor,createRun,hazardActive,restore,serialize,step,type Run} from '../../../src/games/last-light/model';
+import {checkpointFor,createRun,hazardActive,hazardWarning,laserActive,restore,serialize,step,type Run} from '../../../src/games/last-light/model';
 
 const levels=LEVELS as Level[],original=LEVELS[0],idle={move:0,jump:false,dash:false};
 beforeEach(()=>{
@@ -37,5 +37,27 @@ describe('longer chapter progress',()=>{
   const saved={...serialize(createRun()),checkpoint:true,activated:[0]};delete saved.layoutVersion;delete saved.checkpointIndex;
   const loaded=restore(saved);expect(loaded).not.toBeNull();expect(loaded?.checkpoint).toBe(true);expect(loaded?.activated).toEqual([]);expect(loaded?.x).toBe(344);
   expect(restore({...saved,layoutVersion:2})).toBeNull();
+ });
+ it('uses the authored collapse warning and gate crossing window',()=>{
+  LEVELS[0].platforms[1].kind='crumble';LEVELS[0].platforms[1].crumbleDelay=.5;
+  const s=createRun();stand(s,1);step(s,idle);expect(s.crumbles[1]).toBe(.5);
+  for(let frame=0;frame<62;frame++)step(s,idle);
+  expect(s.crumbles[1]).toBeLessThan(0);expect(s.ground).not.toBe(1);
+  const gate={kind:'laser' as const,x:0,y:0,w:18,h:140,period:2,duty:.75};
+  expect(laserActive(gate,1.4)).toBe(true);expect(laserActive(gate,1.6)).toBe(false);
+  expect(laserActive({...gate,duty:undefined},1.4)).toBe(false);
+  s.clock=1.8;expect(hazardWarning(gate,s)).toBe(true);expect(hazardActive(gate,s)).toBe(false);
+  s.clock=2;expect(hazardWarning(gate,s)).toBe(false);expect(hazardActive(gate,s)).toBe(true);
+  s.activated=[0];expect(hazardWarning({...gate,disabledBy:0},s)).toBe(false);
+ });
+ it('keeps the dark following when it falls far behind without teleporting',()=>{
+  const level=LEVELS[0];Object.assign(level,{goal:'escape',pressure:100,width:4000,platforms:[{id:0,x:0,y:400,w:4000,h:28,kind:'stone'}],checkpoints:[],checkpoint:{x:3000,y:400,platform:0},exit:{x:3900,y:344,w:38,h:56}});
+  const near=createRun(),far=createRun();for(const s of [near,far])Object.assign(s,{x:1000,y:376,ground:0,grounded:true,chasing:true});
+  near.threat=600;far.threat=-400;const beforeNear=near.threat,beforeFar=far.threat;
+  step(near,idle);step(far,idle);
+  expect(far.threat-beforeFar).toBeGreaterThan((near.threat-beforeNear)*2);
+  expect(far.threat-beforeFar).toBeLessThan(4);expect(far.deaths).toBe(0);
+  near.threat=near.x+8;let caught=false;for(let i=0;i<120;i++)if(step(near,idle).death){caught=true;break;}
+  expect(caught,'stopping near the wall is still fatal').toBe(true);
  });
 });

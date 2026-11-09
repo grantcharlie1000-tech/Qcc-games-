@@ -7,9 +7,11 @@ export interface Jump {start:Run;inputs:Input[]}
  * other ledges, surface friction, moving platforms, wind and live hazards. */
 export function jumpBetween(l:Level,from:number,to:number):Jump|null {
  const a=l.platforms[from],b=l.platforms[to];
- if(b.y<a.y-190||b.y>a.y+210||Math.max(a.x-b.x-b.w,b.x-a.x-a.w)>210)return null;
+ // Late dash and coyote takeoffs can cross more than210px. This is only a
+ // coarse search bound; every retained edge still needs a real trajectory.
+ if(b.y<a.y-190||b.y>a.y+210||Math.max(a.x-b.x-b.w,b.x-a.x-a.w)>260)return null;
  const dir=b.x+b.w/2>=a.x+a.w/2?1:-1;
- for(const clock of [0,1.8])for(const portion of [0,.25,.5,.75,1])for(const hold of [65,8,0])for(const dashAt of [-1,24,40]){
+ for(const clock of (a.branch||a.kind==='spring'?[0,.6,1.2,1.8,2.4,3]:[0,1.8]))for(const portion of [0,.25,.5,.75,1])for(const hold of [65,8,0])for(const dashAt of [-1,24,40,56]){
   const s=onPlatform(l.id,from,clock),r=platformAt(a,clock);s.x=r.x-PLAYER_W+2+(r.w+PLAYER_W-4)*portion;s.vx=dir*220;s.facing=dir;
   // A spring is entered by falling onto it, not by standing on it and pressing
   // ordinary jump (which replaces its stronger bounce with a normal impulse).

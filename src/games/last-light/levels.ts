@@ -5,8 +5,8 @@ export interface Rect {x:number;y:number;w:number;h:number}
 export type Surface='stone'|'crumble'|'moving'|'spring'|'ice'|'belt';
 export type Setting='roofs'|'canal'|'tower'|'garden'|'factory'|'cavern'|'bridge'|'sky';
 export type Goal='shelter'|'rescue'|'relay'|'ferry'|'engine'|'escape'|'signal'|'dawn';
-export interface Platform extends Rect {id:number;kind:Surface;travel?:number;speed?:number;direction?:number;axis?:'x'|'y';branch?:boolean}
-export interface Hazard extends Rect {kind:'spikes'|'saw'|'laser'|'steam';travel?:number;period?:number;offset?:number;disabledBy?:number}
+export interface Platform extends Rect {id:number;kind:Surface;travel?:number;speed?:number;direction?:number;axis?:'x'|'y';branch?:boolean;crumbleDelay?:number}
+export interface Hazard extends Rect {kind:'spikes'|'saw'|'laser'|'steam';travel?:number;period?:number;offset?:number;disabledBy?:number;duty?:number}
 export interface Pickup {x:number;y:number;kind:'spark'|'key'|'dash';id:number}
 export interface Station {id:number;platform:number;x:number;y:number;kind:'lamp'|'survivor'|'valve'|'bell';label:string}
 export interface Checkpoint {x:number;y:number;platform:number}
@@ -23,8 +23,8 @@ export const WORLDS=[
 const SURFACES:Record<string,Surface>={s:'stone',c:'crumble',m:'moving',l:'moving',b:'spring',i:'ice','>':'belt','<':'belt'};
 function parse(text:string,offset=0,branch=false):Platform[]{
  return text.split(';').filter(Boolean).map((row,i)=>{
-  const [x,y,w,code='s',travel,speed]=row.split(',');
-  return {id:offset+i,x:+x,y:+y,w:+w,h:28,kind:SURFACES[code],axis:code==='l'?'y':'x',travel:travel===undefined?(code==='l'?24:28):+travel,speed:speed===undefined?.9:+speed,direction:code==='<'?-1:1,branch};
+  const [x,y,w,code='s',travel,speed,crumbleDelay]=row.split(',');
+  return {id:offset+i,x:+x,y:+y,w:+w,h:28,kind:SURFACES[code],axis:code==='l'?'y':'x',travel:travel?+travel:code==='l'?24:28,speed:speed?+speed:.9,direction:code==='<'?-1:1,branch,crumbleDelay:crumbleDelay?+crumbleDelay:undefined};
  });
 }
 export const LEVEL_COUNT=40;

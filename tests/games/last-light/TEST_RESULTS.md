@@ -1,3 +1,24 @@
+# Last Light platforming-first revision — 9 November 2026
+
+The current revision prioritizes movement and timing. Every exit works without interaction; story, machinery and the final narrative choice are optional. Results appear immediately. Mounted steam/electrical emitters, compact pressure regulators and world-space building construction replace the confusing isolated fixtures.
+
+- `npm run build`: **PASS**, including TypeScript, Vite, host preparation and service-worker retirement. The existing unrelated bundle-size advisory remains.
+- Regression command `npx vitest run tests/games/last-light tests/core/posters.test.ts tests/core/storage.test.ts tests/accounts tests/leaderboard`: **472/472 pass in 21 files**. Includes local Postgres account, save and ranking checks. The campaign, composition, checkpoint, guidance and continuous-journey subset also passed separately: **220/220**.
+- Full six-phase difficulty audit: **40/40 pass**. The sampled start-to-exit graph includes optional routes and deliberately ignores hazards when probing a repeated full jump/midair-dash policy. The tutorial requires at least one control change, the remaining Quarter levels at least two and all later levels at least three. Focused checks confirm the final optional-memory adjustments in levels 12 and 38. This bounded audit is not an exhaustive proof over every possible technique.
+- All forty legal-input recordings complete through the actual **120 Hz model with interaction disabled and zero deaths**. Every route starts at the real spawn and moves solely through input; checkpoints, positions, speeds and encounter state are never assigned during traversal. Independent replay verifies every recording.
+- Chromium UI coverage: **18 cases pass** across the UI suite and the independently rerun opening replay. Keyboard movement/dash/retry/pause, phone multi-touch and cancellation, maps, journal, optional dialogue, saves, results-first ending, artwork states and audio lifecycle pass. The opening replay sends DOM keyboard events to the actual game instance, preserves each 120 Hz input step and batches rendering through the real fixed-step loop to avoid flooding the browser graphics queue.
+- All **122 campaign checks** and **44 composition checks** pass, including optional memory return routes, headroom, fixtures and moving sweeps. Optional discoveries do not create exit requirements.
+- All paired timed barriers are visible from their stable approach in the 320px and 390px camera audit. Gate emitters show an amber warning before collision resumes. Safe, active, warning and disabled steam states were inspected, along with crumble fracture/fall/rebuild and pursuit HUD states.
+- The campaign retains **916 main ledges** and has **408 authored hazards**. Transit ledges below 200px have a **96px median**, with final precision catches as small as **40px**; flags and observation decks remain broad. The previous campaign's permissive constant-hop policy cleared 32 complete levels and admitted every local main transition, which exposed the earlier difficulty problem.
+- Current expert scripted clears span **15.208–28.983 seconds**, median **24.058 seconds**, totalling **15m51s**. These recordings demonstrate playability, not an average human completion time or a subjective difficulty rating.
+- Desktop, 320px and 390px visual checks cover connected masonry/supports, mounted machinery, readable play space and optional contextual interaction. The voxel poster remains covered by the poster regression suite. Physical-device and WebKit testing were not performed.
+
+Publication uses the existing isolated [Last Light playtest](https://last-light-playtest.nceastudy.pages.dev/#/game/last-light) and verifies its source revision through `deploy-info.json`. Production and the separately documented shared-score database migration remain separate.
+
+---
+
+## Historical journey rebuild verification
+
 # Last Light journey rebuild verification — 9 November 2026
 
 The play-test follow-up replaces the short maps and unclear objective flow. The isolated deployment target is [Last Light play-test](https://last-light-playtest.nceastudy.pages.dev/#/game/last-light); its source revision is checked through `deploy-info.json`. Production and the shared database remain separate.

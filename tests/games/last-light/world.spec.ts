@@ -3,14 +3,14 @@ import {createRun,serialize} from '../../../src/games/last-light/model';
 import {LEVELS} from '../../../src/games/last-light/levels';
 const URL='/#/game/last-light';
 test('conversation, journal and route map work with keyboard and freeze play',async({page})=>{
- await page.goto(URL);await page.getByRole('button',{name:'Carry the light →',exact:true}).click();
+ await page.goto(URL);await page.getByRole('button',{name:'Play →',exact:true}).click();
  await page.keyboard.down('ArrowRight');await expect.poll(async()=>Number(await page.locator('.ll-game').getAttribute('data-x'))).toBeGreaterThan(118);await page.keyboard.up('ArrowRight');await page.keyboard.press('e');
  await expect(page.locator('.ll-dialogue')).toBeVisible();await expect(page.locator('.ll-dialogue')).toContainText('Your sister Mira');
  await page.keyboard.press('j');await expect(page.getByRole('heading',{name:'The things we carry.'})).toBeVisible();await expect(page.locator('.ll-journal')).toContainText('Nell');
  const elapsed=await page.locator('.ll-game').getAttribute('data-elapsed');await page.keyboard.press('ArrowRight');expect(await page.locator('.ll-game').getAttribute('data-elapsed')).toBe(elapsed);
  await page.keyboard.press('j');await expect(page.locator('.ll-game')).toHaveAttribute('data-overlay','none');
  await page.keyboard.press('m');await expect(page.getByRole('img',{name:/Map showing alternate routes/})).toBeVisible();await expect(page.locator('.ll-map rect')).toHaveCount(LEVELS[0].platforms.length);
- await page.getByRole('button',{name:'Back to the journey →',exact:true}).click();await expect(page.locator('.ll-game')).toHaveAttribute('data-overlay','none');
+ await page.getByRole('button',{name:'Resume →',exact:true}).click();await expect(page.locator('.ll-game')).toHaveAttribute('data-overlay','none');
 });
 test('crumble tiles warn, fragment, rebuild and keep decorative motion reduced',async({page})=>{
  await page.goto(URL);
@@ -30,41 +30,44 @@ test('crumble tiles warn, fragment, rebuild and keep decorative motion reduced',
 for(const stage of [0,8,16,24,32,39])test(`chapter ${stage+1} scene is playable and has no console errors`,async({page})=>{
  const s=createRun();s.stage=stage;s.cleared=stage;const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  if(stage)await page.addInitScript(data=>localStorage.setItem('pocket-arcade:v1:save:last-light',JSON.stringify({version:1,data,updated:1})),serialize(s));
- await page.goto(URL);await page.getByRole('button',{name:stage?'Continue the journey →':'Carry the light →',exact:true}).click();await expect(page.locator('.ll-quest')).toBeVisible();
+ await page.goto(URL);await page.getByRole('button',{name:stage?'Continue →':'Play →',exact:true}).click();await expect(page.locator('.ll-quest')).toBeVisible();
  await page.locator('.ll-canvas').screenshot({path:`work/last-light/chapter-${stage+1}.png`});
  await page.keyboard.press('m');await expect(page.locator('.ll-map')).toBeVisible();expect(errors).toEqual([]);
 });
 test.describe('phone journey tools',()=>{
  test.use({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
- test('five controls fit and interaction/map buttons stay usable',async({page})=>{
-  await page.goto(URL);await page.getByRole('button',{name:'Carry the light →',exact:true}).click();await expect(page.getByRole('button',{name:'Interact',exact:true})).toBeVisible();
+ test('movement controls fit and contextual interaction stays usable',async({page})=>{
+  await page.goto(URL);await page.getByRole('button',{name:'Play →',exact:true}).click();
   const right=page.getByRole('button',{name:'Move right',exact:true}),box=(await right.boundingBox())!;await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await expect.poll(async()=>Number(await page.locator('.ll-game').getAttribute('data-x'))).toBeGreaterThan(118);await page.mouse.up();
-  await page.getByRole('button',{name:'Interact',exact:true}).tap();await expect(page.locator('.ll-dialogue')).toBeVisible();
+  await page.locator('.ll-prompt').tap();await expect(page.locator('.ll-dialogue')).toBeVisible();
   await page.screenshot({path:'work/last-light/phone-dialogue.png'});await page.getByRole('button',{name:'Map',exact:true}).click();await expect(page.locator('.ll-map')).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(390);
  });
 });
-test('the introductory route can be cleared using ordinary keyboard actions',async({page})=>{
+test('the introductory route clears through real keyboard events without story interactions',async({page})=>{
  test.setTimeout(90000);
- await page.goto(URL);await page.getByRole('button',{name:'Carry the light →',exact:true}).click();
- const result=await page.evaluate(async()=>{
-  const path='/src/games/last-light/levels.ts',{LEVELS}=await import(path),l=LEVELS[0],route=Array.from({length:l.mainCount},(_,i)=>i);
-  const game=document.querySelector<HTMLElement>('.ll-game')!,canvas=game.querySelector('canvas')!,held=new Set<string>();
-  function key(code:string,on:boolean){if(on===held.has(code))return;if(on)held.add(code);else held.delete(code);canvas.dispatchEvent(new KeyboardEvent(on?'keydown':'keyup',{code,key:code,bubbles:true}));}
-  const start=performance.now();let target=1,jumping=false,dashed=false,launchY=0,wasAir=false;
-  return await new Promise<{phase:string;x:number;y:number;target:number;ground:number}>(resolve=>{
-   function tick(now:number){
-    const x=Number(game.dataset.x),y=Number(game.dataset.y),ground=Number(game.dataset.ground);
-    if(game.dataset.phase!=='playing'||now-start>80000){for(const k of [...held])key(k,false);resolve({phase:game.dataset.phase!,x,y,target,ground});return;}
-    if(x<100&&target>1){target=1;jumping=false;dashed=false;key('Space',false);key('KeyX',false);}
-    const landed=ground>=0&&wasAir;if(landed){jumping=false;dashed=false;key('Space',false);key('KeyX',false);}wasAir=ground<0;
-    if(ground>=0&&ground<l.mainCount)target=Math.min(route.length-1,ground+1);
-    const next=l.platforms[route[target]],dx=next.x+next.w*.6-x,dir=Math.sign(dx),source=l.platforms.find((p:any)=>p.id===ground);
-    key('ArrowRight',dir>0);key('ArrowLeft',dir<0);
-    if(source&&!landed&&!jumping&&ground!==route[target]){const gap=dir>0?next.x-(x+16):x-next.x-next.w,edge=dir>0?source.x+source.w-x:x-source.x;if((edge<40||Math.abs(dx)<180)&&gap<250){jumping=true;launchY=y;}}
-    if(jumping&&ground<0&&launchY-y>42&&Math.abs(dx)>120)dashed=true;
-    key('Space',jumping);key('KeyX',dashed&&ground<0);requestAnimationFrame(tick);
-   }requestAnimationFrame(tick);
-  });
+ await page.goto(URL);await expect(page.getByRole('button',{name:'Play →',exact:true})).toBeVisible();
+ await page.evaluate(()=>{
+  const nativeFrame=window.requestAnimationFrame.bind(window),nativeCancel=window.cancelAnimationFrame.bind(window);
+  let stamp=1000000,next=1;const callbacks=new Map<number,FrameRequestCallback>();
+  (window as any).__releaseFrames=()=>{window.requestAnimationFrame=nativeFrame;window.cancelAnimationFrame=nativeCancel;for(const cb of callbacks.values())nativeFrame(cb);callbacks.clear();};
+  window.requestAnimationFrame=callback=>{const id=next++;callbacks.set(id,callback);return id;};window.cancelAnimationFrame=id=>{callbacks.delete(id);};
+  (window as any).__tick=(frames=1)=>{stamp+=8.334*frames;const pending=[...callbacks.values()];callbacks.clear();for(const callback of pending)callback(stamp);};
  });
- expect(result.phase,JSON.stringify(result)).toBe('cleared');await expect(page.getByRole('heading',{name:'A door opens',exact:true})).toBeVisible();await page.getByRole('button',{name:'Next chapter →',exact:true}).click();await expect(page.locator('.ll-game')).toHaveAttribute('data-stage','2');await expect(page.locator('.ll-objective')).toHaveText('Help · Ivo');
+ await page.getByRole('button',{name:'Play →',exact:true}).click();
+ const result=await page.evaluate(async()=>{
+  const path='/tests/games/last-light/journeys.json',witness=(await import(path)).default.find((w:any)=>w.stage===0);
+  const game=document.querySelector<HTMLElement>('.ll-game')!,canvas=game.querySelector('canvas')!,held=new Set<string>();
+  function key(code:string,on:boolean){if(on===held.has(code))return;on?held.add(code):held.delete(code);canvas.dispatchEvent(new KeyboardEvent(on?'keydown':'keyup',{code,key:code,bubbles:true}));}
+  (window as any).__tick();
+  // Keep every legal 120 Hz input step while rendering several physics
+  // steps per frame, as the real fixed-step loop does on slower displays.
+  for(const [frames,bits] of witness.blocks){
+   const move=(bits&3)-1;key('ArrowRight',move>0);key('ArrowLeft',move<0);key('Space',!!(bits&4));key('KeyX',!!(bits&8));
+   for(let remaining=frames;remaining>0;){const count=Math.min(10,remaining);(window as any).__tick(count);remaining-=count;}
+  }
+  const result={phase:game.dataset.phase,deaths:Number(game.querySelector('.ll-deaths')!.textContent),activated:game.dataset.activated};
+  (window as any).__releaseFrames();return result;
+ });
+ expect(result).toEqual({phase:'cleared',deaths:0,activated:''});
+ await expect(page.getByRole('heading',{name:'Level clear.',exact:true})).toBeVisible();await page.getByRole('button',{name:'Next level →',exact:true}).click();await expect(page.locator('.ll-game')).toHaveAttribute('data-stage','2');await expect(page.locator('.ll-objective')).toHaveText('Reach the exit');
 });

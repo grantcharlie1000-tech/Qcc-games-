@@ -17,9 +17,23 @@ export function createRun():Run {const p=LEVELS[0].spawn;return {version:2,stage
 export function platformAt(p:Platform,t:number):Rect {const shift=p.kind==='moving'?Math.sin(t*(p.speed??1)+p.id)*(p.travel??0):0;return {x:p.x+(p.axis!=='y'?shift:0),y:p.y+(p.axis==='y'?shift:0),w:p.w,h:p.h};}
 export function stationAt(station:Station,level:Level,t:number){const p=level.platforms[station.platform],r=platformAt(p,t);return {x:station.x+r.x-p.x,y:station.y+r.y-p.y};}
 export function hazardAt(h:Hazard,t:number):Rect {return {...h,x:h.x+(h.kind==='saw'?Math.sin(t*2*Math.PI/(h.period??3)+(h.offset??0))*(h.travel??0):0)};}
-export const laserActive=(h:Hazard,t:number)=>!['laser','steam'].includes(h.kind)||(t+(h.offset??0))%(h.period??3)<(h.period??3)*.55;
+const hazardCycle=(h:Hazard,t:number)=>{const period=h.period??3;return ((t+(h.offset??0))%period+period)%period;};
+export const laserActive=(h:Hazard,t:number)=>!['laser','steam'].includes(h.kind)||hazardCycle(h,t)<(h.period??3)*(h.duty??.55);
 /** Powered machinery has a visible, persistent response to its control wheel. */
 export const hazardActive=(h:Hazard,s:Run)=>(h.disabledBy===undefined||!s.activated.includes(h.disabledBy))&&laserActive(h,s.clock);
+/** Amber emitters announce the end of a safe interval before collision returns. */
+export function hazardWarning(h:Hazard,s:Run):boolean {
+ if(!['laser','steam'].includes(h.kind)||(h.disabledBy!==undefined&&s.activated.includes(h.disabledBy))||laserActive(h,s.clock))return false;
+ const period=h.period??3,warning=Math.min(.55,period*(1-(h.duty??.55))*.5);
+ return period-hazardCycle(h,s.clock)<=warning;
+}
+/** The dark moves continuously. If a sprint leaves it far away, it accelerates
+ * toward the encounter instead of becoming irrelevant for the rest of a stage. */
+export function pursuitSpeed(level:Level,s:Run):number {
+ const distance=s.x-s.threat,target=620-level.world*60;
+ return Math.min(440,(level.pressure??48)+Math.max(0,distance-target)*1.8);
+}
+export const escapeLead=(s:Run)=>Math.max(0,s.x+PLAYER_W-s.threat);
 export const checkpointsFor=(level:Level):readonly Checkpoint[]=>level.checkpoints?.length?level.checkpoints:[level.checkpoint];
 export function checkpointIndexFor(s:Run,level=LEVELS[s.stage]):number {
  if(!s.checkpoint)return -1;
@@ -84,12 +98,12 @@ export function step(s:Run,input:Input,dt=STEP):Events {
   if(s.vy>=0&&previousY+PLAYER_H<=r.y+.5){
    s.y=r.y-PLAYER_H;s.vy=0;s.grounded=true;s.ground=p.id;s.dashReady=true;s.dashLeft=0;
    if(!wasGrounded)events.land=true;
-   if(p.kind==='crumble'&&s.crumbles[p.id]===undefined)s.crumbles[p.id]=.85;
+   if(p.kind==='crumble'&&s.crumbles[p.id]===undefined)s.crumbles[p.id]=p.crumbleDelay??.85;
    if(p.kind==='spring'){s.vy=-620;s.grounded=false;s.ground=-1;events.jump=true;}
   }else if(s.vy<0&&previousY>=r.y+r.h-.5){s.y=r.y+r.h;s.vy=0;s.dashLeft=0;}
  }
  const player={x:s.x+2,y:s.y+2,w:PLAYER_W-4,h:PLAYER_H-2};
- if(level.goal==='escape'){if(s.x>(checkpointFor(s,level)?.x??level.spawn.x)+120)s.chasing=true;if(s.chasing)s.threat+=(level.pressure??48)*dt;}
+ if(level.goal==='escape'){if(s.x>(checkpointFor(s,level)?.x??level.spawn.x)+120)s.chasing=true;if(s.chasing)s.threat+=pursuitSpeed(level,s)*dt;}
  if(s.y>level.height+32||(level.water!==null&&s.y+PLAYER_H>level.water)||(level.goal==='escape'&&s.x+PLAYER_W<s.threat)||level.hazards.some(h=>hazardActive(h,s)&&overlap(player,hazardAt(h,s.clock)))){
   respawn(s);events.death=true;return events;
  }
@@ -101,21 +115,21 @@ export function step(s:Run,input:Input,dt=STEP):Events {
  }
  if(interactPressed){
   const station=level.stations.find(p=>{const at=stationAt(p,level,s.clock);return !s.activated.includes(p.id)&&Math.abs(s.x+8-at.x)<48&&Math.abs(s.y+PLAYER_H-at.y)<44;});
-  if(station){s.activated.push(station.id);events.interact=true;events.message=station.kind==='survivor'?`${station.label}: I’m with you. Lead the way.`:station.kind==='valve'?`${station.label} open.${level.hazards.some(h=>h.disabledBy===station.id)?' Linked machinery is safe.':''} ${s.activated.length} / ${level.stations.length}`:`${station.label} restored. ${s.activated.length} / ${level.stations.length}`;}
+  if(station){s.activated.push(station.id);events.interact=true;events.message=station.kind==='survivor'?`${station.label}: I’m with you. Lead the way.`:station.kind==='valve'?`${station.label} open.${level.hazards.some(h=>h.disabledBy===station.id)?' Linked steam line shut down.':''}`:station.kind==='bell'?'Departure bell rung.':`${station.label} lit.`;}
   else if(Math.abs(s.x-152)<60&&Math.abs(s.y+PLAYER_H-level.spawn.y-PLAYER_H)<48){if(!s.heard.includes(s.stage))s.heard.push(s.stage);events.interact=true;events.message=`${speakerFor(s.stage)}: “${CHAPTERS[s.stage].line}”`;}
  }
- if(missionReady(s)&&overlap(player,level.exit)){
-  s.cleared=s.stage+1;s.phase=s.cleared===LEVEL_COUNT?'complete':'cleared';s.best+=rankScore(1,s.collected.filter(id=>id<3).length,s.stageTime,s.stageDeaths);s.cinematic=2.8;events.clear=true;
+ if(overlap(player,level.exit)){
+  s.cleared=s.stage+1;s.phase=s.cleared===LEVEL_COUNT?'complete':'cleared';s.best+=rankScore(1,s.collected.filter(id=>id<3).length,s.stageTime,s.stageDeaths);s.cinematic=0;events.clear=true;
  }
  return events;
 }
-export const missionReady=(s:Run)=>LEVELS[s.stage].stations.every(p=>s.activated.includes(p.id));
+/** Optional encounter completion is separate from the platforming exit. */
+export const encountersComplete=(s:Run)=>LEVELS[s.stage].stations.every(p=>s.activated.includes(p.id));
 export function nearby(s:Run):string {
  const level=LEVELS[s.stage];
  const station=level.stations.find(p=>{const at=stationAt(p,level,s.clock);return !s.activated.includes(p.id)&&Math.abs(s.x+8-at.x)<48&&Math.abs(s.y+PLAYER_H-at.y)<44;});
- if(station)return `E · ${station.kind==='survivor'?'Help':station.kind==='valve'?'Turn':station.kind==='bell'?'Ring':'Light'} ${station.label}`;
- if(Math.abs(s.x-152)<60&&Math.abs(s.y-level.spawn.y)<48)return `E · Talk to ${speakerFor(s.stage)}`;
- if(overlap({x:s.x-20,y:s.y,w:56,h:24},level.exit)&&!missionReady(s))return `${level.stations.length-s.activated.length} more ${level.goal==='rescue'?'person to find':'connections needed'} · M shows the map`;
+ if(station)return `E · ${station.kind==='survivor'?'Help':station.kind==='valve'?'Turn':station.kind==='bell'?'Ring':'Light'} ${station.label} · optional`;
+ if(Math.abs(s.x-152)<60&&Math.abs(s.y-level.spawn.y)<48)return `E · Talk to ${speakerFor(s.stage)} · optional`;
  return '';
 }
 export interface Save {version:1|2;layoutVersion?:2;stage:number;cleared:number;phase:Phase;time:number;stageTime:number;deaths:number;stageDeaths?:number;sparks:number;collected:number[];key:boolean;checkpoint:boolean;checkpointIndex?:number;best:number;activated?:number[];heard?:number[];memories?:number[];ending?:'share'|'home'|null}

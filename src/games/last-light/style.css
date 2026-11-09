@@ -18,7 +18,7 @@
 .ll-guidance-hint{grid-column:1 / -1;margin:0;color:#b3c1bc;font:10px/1.5 ui-monospace,monospace;max-width:85ch}
 .ll-notice{position:absolute;bottom:var(--ll-context-bottom);left:160px;right:160px;margin:0 auto;max-width:600px;text-align:center;pointer-events:none;font:11px/1.8 ui-monospace,monospace;color:var(--ll-muted)}
 .ll-tools{grid-column:2;grid-row:1 / span 2;align-self:end;display:flex;gap:8px;pointer-events:auto}.ll-tools button{background:#14212d80;border:1px solid #c7d0bd44;border-radius:1px;color:#e1e4d5;padding:10px 12px;min-height:44px;font:11px ui-monospace,monospace;cursor:pointer}.ll-tools kbd{color:var(--ll-accent);margin-left:8px;font:inherit}
-.ll-prompt{position:absolute;left:50%;transform:translateX(-50%);bottom:var(--ll-context-bottom);margin:0;padding:9px 14px;background:#14212df2;border:1px solid #d3d9b955;max-width:90%;text-align:center;color:var(--ll-accent);font:11px/1.5 ui-monospace,monospace;pointer-events:none}.ll-prompt:empty,.ll-notice:empty{display:none}
+.ll-prompt{position:absolute;left:50%;transform:translateX(-50%);bottom:var(--ll-context-bottom);margin:0;padding:9px 14px;background:#14212df2;border:1px solid #d3d9b955;max-width:90%;text-align:center;color:var(--ll-accent);font:11px/1.5 ui-monospace,monospace;pointer-events:auto;cursor:pointer;min-height:44px}.ll-prompt:empty,.ll-notice:empty{display:none}
 .ll-game:has(.ll-prompt:not(:empty)) .ll-notice{visibility:hidden}
 /* Reading surfaces use the same ruled, ink-and-lamplight language as the city. */
 .ll-overlay{position:absolute;inset:0;display:grid;grid-template-columns:minmax(0,1fr);place-items:center;overflow:auto;padding:100px 28px 36px;background:#101d2bd9;z-index:3;overscroll-behavior:contain;scrollbar-color:#788b8c #14212d;touch-action:pan-y}
@@ -98,3 +98,6 @@ body.in-game .game-view[data-game-id=last-light] .game-dock{position:absolute;le
 @media(prefers-reduced-motion:reduce){.ll-button{transition:none}.ll-button:active{transform:none}}
 .ll-game[data-reduced-motion=true] .ll-button{transition:none}.ll-game[data-reduced-motion=true] .ll-button:active{transform:none}
 .ll-dialogue-hint{display:block;margin-top:16px;padding-top:12px;border-top:1px solid #b5c3b42b;font:8px/1.5 ui-monospace,monospace;letter-spacing:.1em;color:#aebdb5}
+.ll-task-progress[data-danger=true]{color:#ffc1a6}
+
+.ll-prompt[hidden]{display:none}.ll-prompt:focus-visible{outline:2px solid var(--ll-accent);outline-offset:3px}

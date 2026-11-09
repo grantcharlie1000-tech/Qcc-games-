@@ -52,14 +52,21 @@ export function doorway(c:C,x:number,y:number,color:string,open:boolean){
 
 /** Valve center anchor; pipework extends 25px below. */
 export function valve(c:C,x:number,y:number,color:string,active=false){
- begin(c,x,y);r(c,P.ink,-6,-27,13,53);r(c,P.iron,-4,-26,9,51);r(c,P.steel,-3,-25,2,49);
- for(const yy of [-24,20]){r(c,P.ink,-9,yy,19,6);r(c,P.steel,-8,yy+1,17,2);r(c,P.iron,-8,yy+3,17,2);bolt(c,-7,yy+1);bolt(c,5,yy+1);}
- // A real six-spoke casting, dark inner openings and raised outer rim.
- disk(c,P.ink,0,0,22);disk(c,P.goldDark,0,0,20);disk(c,active?P.steel:P.gold,0,-1,19);disk(c,P.goldLight,-1,-2,17);disk(c,P.ink,0,0,15);
- for(let i=0;i<6;i++){const a=i*Math.PI/3;const xx=Math.round(Math.cos(a)*16),yy=Math.round(Math.sin(a)*16);line(c,P.goldDark,-1,0,xx,yy,4);line(c,active?P.edge:P.goldLight,-1,-1,xx,yy,2);}
- for(let i=0;i<8;i++){const a=i*Math.PI/4;bolt(c,Math.round(Math.cos(a)*18)-1,Math.round(Math.sin(a)*18)-1);}
- disk(c,P.ink,0,0,7);disk(c,P.iron,0,0,5);r(c,P.steel,-3,-3,5,2);r(c,active?color:P.gold,-2,-1,5,3);r(c,P.goldLight,-1,-1,2,1);
- r(c,P.ink,11,-29,13,7);r(c,active?color:'#b9745c',13,-27,9,3);r(c,P.edge,14,-27,2,1);c.restore();
+ begin(c,x,y);
+ // Compact regulator fixed to an iron pedestal. The handwheel is scaled to
+ // a person's hand rather than becoming an enormous disconnected emblem.
+ r(c,P.ink,-17,-24,35,47);r(c,P.iron,-15,-22,31,44);r(c,P.steel,-15,-22,2,43);
+ r(c,P.deep,-11,-17,23,29);r(c,P.woodDark,-10,-16,21,27);
+ r(c,P.ink,-21,20,43,7);r(c,P.steel,-19,20,39,2);r(c,P.iron,-19,22,39,3);
+ for(const xx of [-13,11])for(const yy of [-20,15])bolt(c,xx,yy);
+ r(c,P.ink,-4,5,9,15);r(c,P.goldDark,-3,6,7,13);r(c,P.goldLight,-3,6,2,13);
+ disk(c,P.ink,0,-4,12);disk(c,P.goldDark,0,-4,11);disk(c,active?P.steel:P.gold,0,-5,10);disk(c,P.ink,0,-4,8);
+ for(let i=0;i<5;i++){const a=i*Math.PI*2/5;line(c,P.goldDark,0,-3,Math.cos(a)*9,-4+Math.sin(a)*9,2);line(c,active?P.edge:P.goldLight,0,-4,Math.cos(a)*9,-5+Math.sin(a)*9);}
+ disk(c,P.ink,0,-4,4);r(c,P.steel,-2,-6,5,4);r(c,P.goldLight,-2,-6,3,1);
+ // Glass pressure gauge and a copper return line terminate at the deck.
+ r(c,P.ink,5,-29,12,8);r(c,P.edge,6,-28,9,5);r(c,P.deep,7,-27,7,3);r(c,active?color:'#c4936a',8,-27,4,1);
+ r(c,P.goldDark,17,-9,5,32);r(c,P.goldLight,17,-8,1,29);r(c,P.iron,15,13,9,4);
+ c.restore();
 }
 
 /** Bell center/floor anchor; 48px tall. */

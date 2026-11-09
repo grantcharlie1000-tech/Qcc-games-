@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {LEVELS} from '../../../src/games/last-light/levels';
 import {CHAPTERS,memoryFor} from '../../../src/games/last-light/story';
-import {step,missionReady,serialize,restore,platformAt,stationAt,overlap} from '../../../src/games/last-light/model';
+import {step,encountersComplete,serialize,restore,platformAt,stationAt,overlap} from '../../../src/games/last-light/model';
 import {onPlatform,idle,routeGraph,reachable} from './routes';
 describe('authored campaign spaces',()=>{
  it('gives all 120 optional memory fragments a distinct narrative payoff',()=>{expect(new Set(LEVELS.flatMap(l=>[0,1,2].map(id=>memoryFor(l.id,id)))).size).toBe(120);});
@@ -38,13 +38,12 @@ describe('authored campaign spaces',()=>{
   }
  });
 });
-describe('mission interactions',()=>{
- for(const l of LEVELS)it(`${l.id+1}: requires its own mission, then saves and clears`,()=>{
-  const s=onPlatform(l.id),e=l.exit;Object.assign(s,{x:e.x,y:e.y+24,grounded:false});
-  if(l.stations.length){step(s,idle);expect(s.phase).toBe('playing');}
+describe('optional encounters and exits',()=>{
+ for(const l of LEVELS)it(`${l.id+1}: saves optional encounters and clears immediately`,()=>{
+  const s=onPlatform(l.id),e=l.exit;
   for(const station of l.stations){Object.assign(s,{x:station.x-8,y:station.y-24,vx:0,vy:0});step(s,idle);const event=step(s,{...idle,interact:true});expect(event.interact,`station ${station.id}`).toBe(true);expect(s.activated).toContain(station.id);}
-  expect(missionReady(s)).toBe(true);expect(restore(serialize(s))?.activated).toEqual(s.activated);
-  Object.assign(s,{x:e.x,y:e.y+24,vx:0,vy:0});expect(step(s,idle).clear).toBe(true);expect(s.cinematic).toBeGreaterThan(0);
+  expect(encountersComplete(s)).toBe(true);expect(restore(serialize(s))?.activated).toEqual(s.activated);
+  Object.assign(s,{x:e.x,y:e.y+24,vx:0,vy:0});expect(step(s,idle).clear).toBe(true);expect(s.cinematic).toBe(0);
   const time=s.time;for(let i=0;i<360;i++)step(s,idle);expect(s.time).toBe(time);expect(s.cinematic).toBe(0);
  });
 });

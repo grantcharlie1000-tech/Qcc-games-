@@ -41,17 +41,15 @@ describe('Last Light physics and campaign',()=>{
   expect(s.deaths).toBe(1);expect(s.x).toBe(LEVELS[2].checkpoint.x);expect(s.y).toBe(LEVELS[2].checkpoint.y-PLAYER_H);expect(s.sparks).toBe(1);expect(s.collected).toEqual([0]);
   const hazard=LEVELS[2].hazards[0],spiked=grounded(2);spiked.x=hazard.x;spiked.y=hazard.y-12;step(spiked,idle);expect(spiked.deaths).toBe(1);
  });
- it('collects memories once and requires restored connections before leaving',()=>{
+ it('collects memories once and clears without optional encounters',()=>{
   const s=grounded(8),l=LEVELS[8],spark=l.pickups.find(p=>p.kind==='spark')!;
   s.x=spark.x-8;s.y=spark.y-12;step(s,idle);expect(s.sparks).toBe(1);step(s,idle);expect(s.sparks).toBe(1);expect(s.memories).toEqual([24]);
-  s.x=l.exit.x;s.y=l.exit.y+25;step(s,idle);expect(s.phase).toBe('playing');
-  for(const station of l.stations){s.x=station.x-8;s.y=station.y-24;s.vx=0;s.vy=0;step(s,idle);expect(step(s,{...idle,interact:true}).interact).toBe(true);}
   s.x=l.exit.x;s.y=l.exit.y+25;s.vx=0;s.vy=0;expect(step(s,idle).clear).toBe(true);expect(s.phase).toBe('cleared');
  });
  it('never skips a stage and completes exactly at stage 40',()=>{
   const s=createRun();expect(nextStage(s)).toBe(false);
   for(let stage=0;stage<LEVEL_COUNT;stage++){
-   expect(s.stage).toBe(stage);const l=LEVELS[stage];s.activated=l.stations.map(p=>p.id);s.x=l.exit.x;s.y=l.exit.y+25;
+   expect(s.stage).toBe(stage);const l=LEVELS[stage];s.x=l.exit.x;s.y=l.exit.y+25;
    expect(step(s,idle).clear,`stage ${stage+1}`).toBe(true);expect(s.cleared).toBe(stage+1);
    const elapsed=s.time;step(s,{move:1,jump:true,dash:true});expect(s.time).toBe(elapsed);
    expect(nextStage(s)).toBe(stage<LEVEL_COUNT-1);

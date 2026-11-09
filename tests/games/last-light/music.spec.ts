@@ -18,16 +18,16 @@ const sources=(page:Page)=>page.evaluate(()=>(window as any).__llMusic.map((s:an
 const soundOn=(page:Page)=>page.addInitScript(()=>localStorage.setItem('pocket-arcade:v1:settings',JSON.stringify({sound:true})));
 
 test('music is opt-in and makes no asset request while Sound is off',async({page})=>{
- let requests=0;page.on('request',r=>{if(r.url().includes('/audio/a-light-left-on.mp3'))requests++;});await capture(page);await page.goto(url);await page.getByRole('button',{name:'Carry the light →'}).click();await page.waitForTimeout(400);
+ let requests=0;page.on('request',r=>{if(r.url().includes('/audio/a-light-left-on.mp3'))requests++;});await capture(page);await page.goto(url);await page.getByRole('button',{name:'Play →'}).click();await page.waitForTimeout(400);
  expect(await sources(page)).toHaveLength(0);expect(requests).toBe(0);
 });
 
 test('native audio decodes and loops, follows pause and Sound, resumes its place, rewinds a new run and closes on leave',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await capture(page);await soundOn(page);await page.goto(url);
- expect(await sources(page)).toHaveLength(0);await page.getByRole('button',{name:'Carry the light →'}).click();
+ expect(await sources(page)).toHaveLength(0);await page.getByRole('button',{name:'Play →'}).click();
  await expect.poll(async()=>(await sources(page)).length).toBe(1);expect((await sources(page))[0]).toMatchObject({loop:true,stopped:false,offset:0});expect((await sources(page))[0].duration).toBeCloseTo(71.1111,2);
  await page.waitForTimeout(220);await page.keyboard.press('p');await expect.poll(async()=>(await sources(page))[0].stopped).toBe(true);
- await page.getByRole('button',{name:'Back to the journey →'}).click();await expect.poll(async()=>(await sources(page)).length).toBe(2);expect((await sources(page))[1].offset).toBeGreaterThan(.1);
+ await page.getByRole('button',{name:'Resume →'}).click();await expect.poll(async()=>(await sources(page)).length).toBe(2);expect((await sources(page))[1].offset).toBeGreaterThan(.1);
  await appSettings(page);await page.locator('#sound').uncheck();await page.locator('#menu').getByRole('button',{name:'Close menu',exact:true}).click();await page.waitForTimeout(200);
  expect(await sources(page)).toHaveLength(2);expect((await sources(page)).every((s:any)=>s.stopped)).toBe(true);
  await appSettings(page);await page.locator('#sound').check();await page.locator('#menu').getByRole('button',{name:'Close menu',exact:true}).click();await expect.poll(async()=>(await sources(page)).length).toBe(3);
@@ -38,7 +38,7 @@ test('native audio decodes and loops, follows pause and Sound, resumes its place
 test('an audio download finishing while paused stays silent until Continue',async({page,context})=>{
  let release!:()=>void,requested=false;const gate=new Promise<void>(resolve=>{release=resolve;});
  await context.route('**/audio/a-light-left-on.mp3',async route=>{requested=true;await gate;await route.continue();});
- await capture(page);await soundOn(page);await page.goto(url);await page.getByRole('button',{name:'Carry the light →'}).click();await expect.poll(()=>requested).toBe(true);await page.keyboard.press('p');
+ await capture(page);await soundOn(page);await page.goto(url);await page.getByRole('button',{name:'Play →'}).click();await expect.poll(()=>requested).toBe(true);await page.keyboard.press('p');
  const response=page.waitForResponse(r=>r.url().includes('/audio/a-light-left-on.mp3'));release();await response;await page.waitForTimeout(250);expect(await sources(page)).toHaveLength(0);
- await page.getByRole('button',{name:'Back to the journey →'}).click();await expect.poll(async()=>(await sources(page)).length).toBe(1);expect((await sources(page))[0].offset).toBe(0);
+ await page.getByRole('button',{name:'Resume →'}).click();await expect.poll(async()=>(await sources(page)).length).toBe(1);expect((await sources(page))[0].offset).toBe(0);
 });

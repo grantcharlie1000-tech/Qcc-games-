@@ -2,52 +2,30 @@ import {describe,it,expect} from 'vitest';
 import {LEVELS} from '../../../src/games/last-light/levels';
 import {createRun,type Run} from '../../../src/games/last-light/model';
 import {missionGuidance,routeIndex,targetBearing} from '../../../src/games/last-light/guidance';
-import {DESTINATIONS,rescueNameFor} from '../../../src/games/last-light/story';
+import {DESTINATIONS} from '../../../src/games/last-light/story';
 
 function atStage(stage:number):Run {
  const run=createRun();Object.assign(run,{stage,cleared:stage,...LEVELS[stage].spawn});return run;
 }
 
 describe('Last Light mission guidance',()=>{
- it('names the destination from the beginning in shelter and escape chapters',()=>{
-  for(const level of LEVELS.filter(l=>l.goal==='shelter'||l.goal==='escape')){
-   const guidance=missionGuidance(atStage(level.id));
-   expect(guidance.phase,level.name).toBe('exit');
-   expect(guidance.action).toContain(DESTINATIONS[level.id]);
-   expect(guidance.total).toBe(0);expect(guidance.target.id).toBeNull();
-  }
- });
- it('replaces the final mechanism task with an explicit exit objective in every chapter',()=>{
-  expect(DESTINATIONS).toHaveLength(LEVELS.length);
+ it('always points to the exit before any optional encounter',()=>{
   for(const level of LEVELS){
-   const run=atStage(level.id);run.activated=level.stations.map(s=>s.id);
-   const guidance=missionGuidance(run);
-   expect(guidance.phase,level.name).toBe('exit');expect(guidance.action).toContain(DESTINATIONS[level.id]);
+   const run=atStage(level.id),guidance=missionGuidance(run);
+   expect(guidance.phase).toBe('exit');expect(guidance.action).toBe('Reach the exit');
+   expect(guidance.target.id).toBeNull();expect(guidance.target.label).toContain(DESTINATIONS[level.id]);
    expect(guidance.target.x).toBeGreaterThanOrEqual(level.exit.x);
    expect(guidance.target.x).toBeLessThanOrEqual(level.exit.x+level.exit.w);
-   expect(guidance.target.id).toBeNull();
   }
  });
- it('keeps numbering consistent when lights are activated out of order',()=>{
-  const level=LEVELS.find(l=>l.goal==='relay')!,run=atStage(level.id);
-  run.activated=[level.stations[2].id];
-  const first=missionGuidance(run);expect(first.completed).toBe(1);expect(first.total).toBe(3);
-  expect(first.target.id).toBe(level.stations[0].id);expect(first.action).toContain('Light 1/3');
-  run.activated.push(level.stations[0].id);
-  const second=missionGuidance(run);expect(second.target.id).toBe(level.stations[1].id);expect(second.action).toContain('Light 2/3');
-  run.activated.push(level.stations[1].id);
-  expect(missionGuidance(run).action).toContain('All 3 lights lit');
- });
- it('changes a rescue from finding the named person to leading them to safety',()=>{
-  const level=LEVELS.find(l=>l.goal==='rescue')!,run=atStage(level.id);
-  expect(missionGuidance(run).action).toBe(`Help · ${rescueNameFor(level.id)}`);
-  run.activated=[level.stations[0].id];
-  expect(missionGuidance(run).action).toBe(`Lead ${rescueNameFor(level.id)} to ${DESTINATIONS[level.id]}`);
- });
- it('reports opened wheels and the named boarding destination after a bell',()=>{
-  for(const goal of ['engine','ferry'] as const){
-   const level=LEVELS.find(l=>l.goal===goal)!,run=atStage(level.id);run.activated=level.stations.map(s=>s.id);
-   expect(missionGuidance(run).action).toContain(goal==='engine'?'Both wheels open':'Bell rung · Board');
+ it('never redirects the objective when optional encounters are completed out of order',()=>{
+  for(const level of LEVELS){
+   const run=atStage(level.id),original=missionGuidance(run).target;
+   for(const station of [...level.stations].reverse()){
+    run.activated.push(station.id);const guidance=missionGuidance(run);
+    expect(guidance.action).toBe('Reach the exit');expect(guidance.target).toEqual(original);
+    expect(guidance.completed).toBe(run.activated.length);
+   }
   }
  });
  it('follows travel order through a tower that turns left instead of using x as progress',()=>{
@@ -67,9 +45,17 @@ describe('Last Light mission guidance',()=>{
   expect(targetBearing({x:0,y:0},{x:8,y:-88}).arrow).toBe('↑');
   expect(targetBearing({x:0,y:0},{x:-92,y:112}).arrow).toBe('↙');
  });
+ it('asks for a held jump rather than a short tap onto a raised narrow landing',()=>{
+  const run=atStage(0);run.ground=0;
+  const level={...LEVELS[0],mainCount:2,hazards:[],platforms:[
+   {id:0,x:24,y:400,w:240,h:28,kind:'stone' as const},
+   {id:1,x:330,y:344,w:96,h:28,kind:'stone' as const},
+  ]};
+  const hint=missionGuidance(run,level).hint;expect(hint).toMatch(/Hold Space/);expect(hint).not.toContain('short hop');
+ });
  it('points to the finished destination after a restored clear even if old station state is absent',()=>{
   const level=LEVELS.find(l=>l.goal==='signal')!,run=atStage(level.id);run.phase='cleared';
   const guidance=missionGuidance(run);expect(guidance.phase).toBe('complete');expect(guidance.target.id).toBeNull();
-  expect(guidance.action).toBe(`Reached ${DESTINATIONS[level.id]}`);
+  expect(guidance.action).toBe('Level complete');
  });
 });

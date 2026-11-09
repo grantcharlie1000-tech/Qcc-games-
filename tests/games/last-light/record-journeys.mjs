@@ -18,11 +18,8 @@ const idle={move:0,jump:false,dash:false,interact:false};
 const mask=s=>s.activated.reduce((n,i)=>n|(1<<i),0);
 const stateKey=s=>`${s.ground}:${Math.round(s.x/24)}:${Math.round(s.vx/100)}:${Math.round((s.clock%3.2)/.25)}:${mask(s)}`;
 let budget=0;
-function act(s,input,inputs){budget++;const a={...input,interact:Math.floor(s.clock*120)%12===0};const ev=step(s,a);inputs.push(a);return !ev.death;}
+function act(s,input,inputs){budget++;const a={...input,interact:false};const ev=step(s,a);inputs.push(a);return !ev.death;}
 function toward(s,p,aim=.5){const r=platformAt(p,s.clock),d=r.x+r.w*aim-(s.x+8);return Math.abs(d)<8?0:Math.sign(d);}
-function use(s,l,p,inputs){const stations=l.stations.filter(st=>st.platform===p.id&&!s.activated.includes(st.id));if(!stations.length)return true;
- for(let f=0;f<160&&stations.some(st=>!s.activated.includes(st.id));f++){const st=stations.find(st=>!s.activated.includes(st.id)),at=stationAt(st,l,s.clock),dx=at.x-(s.x+8);if(!act(s,{...idle,move:Math.abs(dx)<14?0:Math.sign(dx)},inputs)||s.phase!=='playing'&&s.phase!=='cleared')return false;}
- return stations.every(st=>s.activated.includes(st.id));}
 function advance(s,to,deep=false,from=s.ground,direction){
  const l=LEVELS[s.stage],b=l.platforms[to],a=l.platforms[from],sourceGround=from,dir=direction??(Math.sign(b.x+b.w/2-(s.x+8))||s.facing),solutions=[],seen=new Set();
  if(!a)return [];
@@ -46,7 +43,14 @@ function advance(s,to,deep=false,from=s.ground,direction){
      if(f>15&&q.grounded&&q.ground!==sourceGround&&q.ground!==to)break;
      if(q.phase!=='playing')break;
     }
-    if(reached&&use(q,l,b,inputs)){
+    if(reached){
+     // A one-frame touchdown at an emitter edge is not a usable landing.
+     // Check that the courier can brake on the host deck before extending
+     // this candidate into the next jump. No state is assigned or corrected.
+     if(l.hazards.some(h=>['steam','laser'].includes(h.kind)&&h.x<b.x+b.w&&h.x+h.w>b.x)&&b.kind!=='crumble'){
+      let stable=true;for(let i=0;i<4;i++)if(!act(q,idle,inputs)||q.ground!==to){stable=false;break;}
+      if(!stable)continue;
+     }
      const key=stateKey(q);if(seen.has(key))continue;seen.add(key);solutions.push({s:q,inputs,to,waiting,approach,hold,dashAt});
      if(solutions.length>=12)return solutions.sort((a,b)=>a.s.clock-b.s.clock);
      if(++atThisPhase>=3)continue waits;

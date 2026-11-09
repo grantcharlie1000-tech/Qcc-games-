@@ -1,12 +1,12 @@
 import {LEVELS,type Level,type Station} from './levels';
 import type {Run} from './model';
-import {DESTINATIONS,rescueNameFor} from './story';
+import {DESTINATIONS} from './story';
 
 export interface MissionTarget {
  id:number|null;label:string;x:number;y:number;platform:number|null;
 }
 export interface MissionGuidance {
- phase:'station'|'exit'|'complete';action:string;target:MissionTarget;
+ phase:'exit'|'complete';action:string;target:MissionTarget;
  completed:number;total:number;hint:string;routeProgress:number;
  sector:{name:string;index:number;total:number};
 }
@@ -32,16 +32,23 @@ function movementHint(run:Run,level:Level,index:number):string {
  const current=level.platforms[index],next=index+1<level.mainCount?level.platforms[index+1]:undefined,after=index+2<level.mainCount?level.platforms[index+2]:undefined;
  const gap=next?Math.max(next.x-current.x-current.w,current.x-next.x-next.w,0):0;
  const nextGap=next&&after?Math.max(after.x-next.x-next.w,next.x-after.x-after.w,0):0;
- const dashHint='Long gap ahead: hold Space, then press X in the air. Land to refill your dash.';
+ const dashHint=next&&next.w<=125?'Long gap: hold Space, then press X. Release direction to brake onto the small landing.':'Long gap ahead: hold Space, then press X in the air. Land to refill your dash.';
+ if(next?.kind==='crumble')return gap>130||nextGap>130?'Cracked landing ahead. Hold Space and press X for the long gap; jump again before it breaks.':'Cracked landing ahead. Keep moving and jump before it breaks.';
  if(gap>130)return dashHint;
- if(next?.kind==='crumble')return nextGap>130?'Cracked landing ahead. Jump again before it breaks; press X in the air for the long gap.':'Cracked landing ahead. Keep moving and jump before it breaks.';
  if(next?.kind==='ice')return 'Ice ahead. Brake before the next edge; momentum carries you.';
  if(next?.kind==='moving')return 'Moving landing ahead. Wait for it to approach, then jump.';
  if(nextGap>130)return dashHint;
  const hazard=next&&level.hazards.find(h=>h.x+h.w>next.x&&h.x<next.x+next.w&&h.y+h.h<=next.y+4&&(h.disabledBy===undefined||!run.activated.includes(h.disabledBy)));
- if(hazard?.kind==='steam'||hazard?.kind==='laser')return 'A barrier pulses ahead. Wait on safe ground; cross when it fades.';
+ if(hazard?.kind==='steam'||hazard?.kind==='laser'){
+  const paired=next&&level.hazards.filter(h=>h.x+h.w>next.x&&h.x<next.x+next.w&&['steam','laser'].includes(h.kind)&&(h.disabledBy===undefined||!run.activated.includes(h.disabledBy))).length>1;
+  return paired?'Read both barrier pulses from safe ground. Cross when the whole opening is clear.':'A barrier pulses ahead. Wait on safe ground; cross when it fades.';
+ }
  if(hazard?.kind==='spikes')return 'Spikes ahead. Jump over them and land on clear ground.';
  if(hazard?.kind==='saw')return 'A moving saw guards the next ledge. Watch its pass before jumping.';
+ if(next&&next.w<=125&&gap<=125){
+  if(current.kind==='spring')return 'Spring launch ahead. Steer and brake toward the small landing.';
+  return next.y<current.y-24?'Hold Space for the higher ledge. Release direction to brake onto the small landing.':'Tap Space for the short hop. Release direction to brake; save X for long gaps.';
+ }
  if(level.goal==='escape')return 'Keep ahead of the dark. Reach the shelter; no switches block the way.';
  const surface=current?.kind;
  if(surface==='ice')return 'Ice carries your speed. Brake before the next edge.';
@@ -54,24 +61,18 @@ function movementHint(run:Run,level:Level,index:number):string {
  return 'Follow the pale route on the map. Side paths hold optional memories.';
 }
 
-/** One source for the persistent HUD, map checklist and world objective. The
- * first unfinished station is a suggestion; other stations remain usable. */
+/** Platforming has one objective. Story encounters and useful machinery are
+ * optional; their state never redirects the compass or locks the exit. */
 export function missionGuidance(run:Run,level:Level=LEVELS[run.stage]):MissionGuidance {
  const completed=level.stations.filter(s=>run.activated.includes(s.id)).length,total=level.stations.length;
- const station=run.phase==='playing'?level.stations.find(s=>!run.activated.includes(s.id)):undefined;
  const index=routeIndex(run,level),sectors=level.sectors?.length?level.sectors:[{name:level.name,platform:0}];
  const sectorIndex=sectors.reduce((current,s,i)=>s.platform<=index?i:current,0);
  const sector={name:sectors[sectorIndex].name,index:sectorIndex,total:sectors.length};
  const destination=DESTINATIONS[level.id];
- const target:MissionTarget=station?{id:station.id,label:station.label,x:station.x,y:station.y-24,platform:station.platform}:{id:null,label:destination,x:level.exit.x+level.exit.w/2,y:level.exit.y+level.exit.h/2,platform:level.mainCount-1};
+ const target:MissionTarget={id:null,label:`Exit · ${destination}`,x:level.exit.x+level.exit.w/2,y:level.exit.y+level.exit.h/2,platform:level.mainCount-1};
  const routeProgress=run.phase==='playing'?index/Math.max(1,level.mainCount-1):1;
- if(run.phase!=='playing')return {phase:'complete',action:`Reached ${destination}`,target,completed,total,sector,routeProgress,hint:'Chapter complete. Continue when you are ready.'};
- if(station){
-  const verb=stationAction(station),order=total>1?` ${station.id+1}/${total}`:'';
-  return {phase:'station',action:`${verb}${order} · ${station.label}`,target,completed,total,sector,routeProgress,hint:movementHint(run,level,index)};
- }
- const action=level.goal==='rescue'?`Lead ${rescueNameFor(level.id)} to ${destination}`:level.goal==='ferry'?`Bell rung · Board ${destination}`:total?`${level.goal==='engine'?'Both wheels open':`All ${total} lights lit`} · Reach ${destination}`:`Reach ${destination}`;
- return {phase:'exit',action,target,completed,total,sector,routeProgress,hint:movementHint(run,level,index)};
+ if(run.phase!=='playing')return {phase:'complete',action:'Level complete',target,completed,total,sector,routeProgress,hint:'Continue to the next level when you are ready.'};
+ return {phase:'exit',action:'Reach the exit',target,completed,total,sector,routeProgress,hint:movementHint(run,level,index)};
 }
 
 /** The bearing is a compass, not a suggested jump. Ten world pixels represent

@@ -1,5 +1,7 @@
+import {drawArchitecture} from './architecture';
+import {drawEmitter} from './hazard-art';
 import {LEVELS,WORLDS,type Level} from './levels';
-import {platformAt,hazardAt,hazardActive,checkpointsFor,checkpointIndexFor,missionReady,stationAt,type Events,type Run} from './model';
+import {platformAt,hazardAt,hazardActive,hazardWarning,checkpointsFor,checkpointIndexFor,stationAt,type Events,type Run} from './model';
 import {characterColor,rescueNameFor} from './story';
 import {lantern,doorway,valve,bell,ferry,signalDish,lifeTree} from './props';
 import {Courier} from './courier';
@@ -67,7 +69,7 @@ function smallGoal(c:C,p:GoalComposition,color:string,ready:boolean){
  }c.restore();
 }
 function drawGoal(c:C,l:Level,s:Run,reduced:boolean){
- const p=goalComposition(l),{x,y,art,bounds}=p,theme=WORLDS[l.world],ready=missionReady(s),t=reduced?0:s.clock;
+ const p=goalComposition(l),{x,y,art,bounds}=p,theme=WORLDS[l.world],ready=true,t=reduced?0:s.clock;
  const offset=completionOffset(s,reduced),shift=offset.x;
  c.save();c.translate(shift,0);c.beginPath();c.rect(bounds.x,bounds.y,bounds.w,bounds.h);c.clip();
  if(art==='ferry'||art==='airship')ferry(c,x,y-3-(reduced?0:Math.sin(t*2)*2),theme.accent,art==='airship');
@@ -122,6 +124,7 @@ export class Scene {
   drawSky(c,l,s,w,h,cx,cy,reduced);
   drawEndingSky(c,w,h,s);
   c.save();c.translate(-cx,-cy);
+  drawArchitecture(c,l,cx,cy,w,h);
   if(l.setting==='bridge'){c.strokeStyle=theme.edge+'77';c.lineWidth=2;c.beginPath();c.moveTo(24,470);for(let x=24;x<l.width;x+=20)c.lineTo(x,410+Math.sin(x/l.width*Math.PI)*90);c.stroke();}
   for(const p of l.platforms){const r=platformAt(p,s.clock);if(r.x+r.w<cx-60||r.x>cx+w+60||r.y>cy+h+60||r.y<cy-220)continue;const visual=l.goal==='escape'&&s.phase!=='playing'&&p.kind==='crumble'&&elapsed>p.id*.12?{...s,crumbles:{...s.crumbles,[p.id]:-(elapsed-p.id*.12)}}:s;drawPlatform(c,p,r.x,r.y,visual,l,reduced);}
   drawLife(c,l,s,cx,cy,w,h,reduced);
@@ -140,12 +143,8 @@ export class Scene {
     for(let x=r.x;x<r.x+r.w;x+=8){c.fillStyle='#d4b3a5';c.beginPath();c.moveTo(x,r.y+r.h);c.lineTo(x+4,r.y);c.lineTo(x+8,r.y+r.h);c.fill();c.fillStyle='#906f73';c.fillRect(x+4,r.y+5,2,r.h-5);}
    }else if(hazard.kind==='saw'){drawGear(c,r.x+r.w/2,r.y+r.h/2,12,hazardActive(hazard,s)?t*4:0,hazardActive(hazard,s)?'#d3b8b3':'#586c71');}
    else{
-    const on=hazardActive(hazard,s),stopped=hazard.disabledBy!==undefined&&s.activated.includes(hazard.disabledBy);
-    c.fillStyle=stopped?'#63847b':'#6c6970';c.fillRect(r.x-5,r.y+r.h-4,r.w+10,6);
-    if(stopped){c.fillStyle='#b8dc9e';c.fillRect(r.x+3,r.y+r.h-3,10,2);}
-    if(hazard.kind==='steam'){
-     c.fillStyle=on?'#e4d7c572':'#e4d7c523';for(let i=0;i<(stopped?0:on?7:2);i++){const age=reduced?i/7:(t*1.7+i*.14)%1;c.fillRect(r.x-3-age*8,r.y+r.h-age*r.h,15+age*16,6);}
-    }else if(!stopped){c.fillStyle=on?'#ed927c45':'#d3e3ae22';c.fillRect(r.x-3,r.y,r.w+6,r.h);c.fillStyle=on?'#ffe1a6':'#b3b99c44';c.fillRect(r.x+6,r.y,2,r.h);c.fillStyle=on?'#e3aa7b':'#9bbb9f';c.fillRect(r.x+4,r.y-4,6,3);}
+    const on=hazardActive(hazard,s),stopped=hazard.disabledBy!==undefined&&s.activated.includes(hazard.disabledBy),warning=hazardWarning(hazard,s);
+    drawEmitter(c,hazard,r,on,warning,stopped,t,reduced);
    }
   }
   for(const p of l.pickups){if(s.collected.includes(p.id))continue;const y=p.y+Math.round(Math.sin(t*3+p.id)*3);
@@ -163,7 +162,7 @@ export class Scene {
     else smallStation(c,x,y,theme.accent,lit,plan.art);
     c.restore();
    }
-   if(!lit&&plan.marker){const m=plan.marker;pixel(c,'#172b36',m.x+dx,m.y+dy,m.w,m.h);c.fillStyle=theme.accent;c.font='9px monospace';c.textAlign='center';c.fillText(kind==='survivor'?'!':String(id+1),Math.round(m.x+m.w/2+dx),Math.round(m.y+9+dy));c.textAlign='start';}
+   if(!lit&&plan.marker){const m=plan.marker;pixel(c,'#172b36',m.x+dx,m.y+dy,m.w,m.h);c.fillStyle=theme.accent;c.font='9px monospace';c.textAlign='center';c.fillText(kind==='survivor'?'…':'E',Math.round(m.x+m.w/2+dx),Math.round(m.y+9+dy));c.textAlign='start';}
   }
   if(l.goal==='rescue'&&s.activated.length){const follower=this.trace[0]??{x:s.x-18,y:s.y+24};person(c,follower.x,follower.y,t,characterColor(rescueNameFor(s.stage),l.world),Math.abs(s.vx)>20?Math.sign(s.vx):0,Math.sign(s.vx)||s.facing);}
   this.effects.draw(c,cx,cy,w,h,theme.accent,reduced);

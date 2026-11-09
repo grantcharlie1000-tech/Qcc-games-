@@ -75,10 +75,11 @@ export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:nu
   }
   return;
  }
- const shake=timer!==undefined&&!reduced?Math.sin(s.clock*61)*Math.min(2,(.85-timer)*3):0;
+ const delay=p.crumbleDelay??.85,stress=timer===undefined?0:Math.max(0,Math.min(1,1-timer/delay));
+ const shake=timer!==undefined&&!reduced?Math.sin(s.clock*61)*stress*2:0;
  c.drawImage(tile(p,l),x-4+Math.round(shake),y-8);
  if(timer!==undefined){
-  const stress=1-timer/.85;c.strokeStyle='#211e2c';c.lineWidth=1+stress*2;
+  c.strokeStyle='#211e2c';c.lineWidth=1+stress*2;
   for(let i=14;i<p.w;i+=26){c.beginPath();c.moveTo(x+i,y+1);c.lineTo(x+i-4,y+8+stress*5);c.lineTo(x+i+4,y+13+stress*6);c.lineTo(x+i-1,y+15+stress*13);c.stroke();}
   if(!reduced)for(let i=0;i<9;i++){const age=(s.clock*2+i*.13)%1;c.globalAlpha=(1-age)*stress;c.fillStyle='#d7c6a3';c.fillRect(x+noise(i,p.id)*p.w,y+22+age*age*54,2,2);}c.globalAlpha=1;
  }
