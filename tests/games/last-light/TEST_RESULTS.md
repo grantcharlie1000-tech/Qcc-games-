@@ -1,3 +1,26 @@
+# Last Light overhaul verification — 9 November 2026
+
+Current source is on `improve/last-light-world`, based on the existing Last Light release. No live deployment or production database write was performed.
+
+- `npm run build`: PASS. TypeScript, production Vite output, Whetū preparation and the retired-service-worker verification all pass. Existing unrelated large-bundle advisory remains.
+- `npx vitest run tests/games/last-light tests/core/posters.test.ts tests/core/storage.test.ts tests/accounts tests/leaderboard`: **411/411 tests pass across 17 files**, including real local Postgres migrations, account/cloud-save merges and public/personal ranking behavior.
+- `npx playwright test tests/games/last-light --project=chromium --workers=1 --reporter=list`: **18/18 pass**. Includes actual keyboard completion of the opening stage, jump/dash/retry/pause, simultaneous native touch/cancel, resize, save restore, new-run confirmation, final choice, conversation/journal/map, material collapse/rebuild, character poses, reduced motion and native music lifecycle.
+- All 40 campaign routes: actual 120 Hz trajectories reach every platform, mission connection and optional memory, with a return path to the exit. Physics checks were strengthened rather than relaxed for the layout revision.
+- **44 composition tests** independently compare foreground artwork and markers with terrain art/sweeps, hazards, pickups and other mission objects. Includes the original cramped Chapter 4 fixture, compact/tree selection and completion-travel bounds.
+- Art review: all 40 maps checked at spawn/checkpoint/exit; detailed actual-pixel terrain audit covers 416 platforms. No remaining foreground-through-terrain, physical platform overlap or sub-32-pixel shared-column squeeze. Sparse dressing reserves all critical approaches. Nine goal-art variants pass solid-pixel clipping checks.
+- Responsive UI: 320×568, 390×844, 844×390 and 1280×800 reviewed. Dialogue pauses reading time; automatic memory pickups do not interrupt movement. All 40 narrow-phone hints fit the reserved footer, at least 8 pixels outside gameplay and 12 pixels above controls.
+- Difficulty review: 129 authored hazards, escalating 11/23/28/31/36 by district; special surfaces increase from 40 to 106. Four intended launches require dash in sampled trajectories. Every platform width and the tutorial layout are preserved. All checkpoints are stationary stone.
+- Five escape chapters have continuous, full-objective, zero-death solutions under their escalating 88–140 px/s pursuit. Those solutions were also replayed through the actual Chromium keyboard handlers/render loop: five clears, no browser errors. Timed waits and air braking remain necessary.
+- Legacy progress: original interleaved spark/key/dash IDs map correctly; stage/checkpoint/time/setbacks remain. Last Light million-scale local/cloud/server bests convert without changing other games. Per-chapter banking prevents a slow later chapter from removing earlier earned bonuses.
+- Original voxel cover uses the shared poster generator and passes all artwork markup/frame checks.
+- Independent Astra art/composition and challenge reviews have no outstanding blocking findings. Scratch screenshots, audits and replay data are retained under ignored `work/last-light/`.
+
+The all-game database migration test allows 15 seconds for its 27 authenticated submissions, avoiding a 5-second test timeout during concurrent build/browser load. The final complete regression run passed. Browser validation used Chromium and emulated phone input; physical-device and WebKit testing were not performed.
+
+---
+
+## Historical verification of the original implementation
+
 # Last Light verification — 8 November 2026
 
 - `npm run build`: passed, including TypeScript, Vite production output, Whetū host preparation and the service-worker retirement check. Vite retains the project's existing large-chunk advisory.

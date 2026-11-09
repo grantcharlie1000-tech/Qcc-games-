@@ -27,7 +27,7 @@ export const games: GameInfo[] = [
 {id:'quad-clash',title:'Quad Clash',color:'#4c301f',ink:'#fff3df',accent:'#f7c531'},
 {id:'femboy-obby',title:'Femboy Frosthop',color:'#2b1f4c',ink:'#fff3df',accent:'#f05fa6'},
 {id:'drift-club',title:'Drift Club',color:'#1f4a4c',ink:'#fff3df',accent:'#f7c531'},
-{id:'last-light',title:'Last Light',color:'#232b3b',ink:'#f5eedc',accent:'#f3c77a'}
+{id:'last-light',title:'Last Light',color:'#1f304c',ink:'#fff3df',accent:'#e9b023'}
 ];
 const modules = import.meta.glob<{default:GameModule}>('../games/*/index.ts');
 export async function loadGame(id:GameId):Promise<GameModule> {

@@ -10,8 +10,8 @@ async function play(page:Page){await page.getByRole('button',{name:'Carry the li
 test('catalog, keyboard jumping/dashing, checkpoint retry and pause lifecycle',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/#/collection');await expect(page.getByRole('link',{name:/Last Light/}).first()).toBeVisible();await open(page);await play(page);
- const x=await number(page,'x');await page.keyboard.down('ArrowRight');await page.waitForTimeout(200);await page.keyboard.up('ArrowRight');expect(await number(page,'x')).toBeGreaterThan(x+15);
- const y=await number(page,'y');await page.keyboard.down('Space');await page.waitForTimeout(120);expect(await number(page,'y')).toBeLessThan(y-20);await page.keyboard.up('Space');
+ const x=await number(page,'x');await page.keyboard.down('ArrowRight');await expect.poll(()=>number(page,'x'),{intervals:[16,32,50,100]}).toBeGreaterThan(x+15);await page.keyboard.up('ArrowRight');
+ const y=await number(page,'y');await page.keyboard.down('Space');await expect.poll(()=>number(page,'y'),{intervals:[16,32,50,100]}).toBeLessThan(y-20);await page.keyboard.up('Space');
  await page.keyboard.press('x');await expect(game(page)).toHaveAttribute('data-dash','false');
  await page.keyboard.press('p');await expect(game(page)).toHaveAttribute('data-overlay','menu');const time=await number(page,'elapsed');await page.waitForTimeout(250);expect(await number(page,'elapsed')).toBe(time);
  await page.keyboard.press('p');await expect(game(page)).toHaveAttribute('data-overlay','none');
@@ -34,13 +34,13 @@ test('saved progress resumes safely, help returns to the journey, and new run as
 test('cleared stages unlock only the next stage, and the last stage has a real ending',async({page})=>{
  const s=createRun();s.phase='cleared';s.cleared=1;s.time=12000;s.stageTime=12000;s.sparks=0;s.best=rankScore(1,0,12000,0);
  await page.addInitScript(data=>localStorage.setItem('pocket-arcade:v1:save:last-light',JSON.stringify({version:1,data,updated:1})),serialize(s));
- await page.goto(URL);await expect(page.getByRole('heading',{name:'A little brighter.'})).toBeVisible();await page.getByRole('button',{name:'Next stage →'}).click();await expect(game(page)).toHaveAttribute('data-stage','2');
+ await page.goto(URL);await expect(page.getByRole('heading',{name:'A door opens'})).toBeVisible();await page.getByRole('button',{name:'Next chapter →'}).click();await expect(game(page)).toHaveAttribute('data-stage','2');
  await page.keyboard.press('p');
  const finished={...serialize(s),stage:39,cleared:40,phase:'complete',best:rankScore(40,0,12000,0)};
  await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:last-light',JSON.stringify({version:1,data,updated:Date.now()+10000})),finished);
  // Navigate away first: the old instance saves on leave. Install the end-state after disposal.
  await page.goto('/#/collection');await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:last-light',JSON.stringify({version:1,data,updated:Date.now()+10000})),finished);await page.goto(URL);
- await expect(page.getByRole('heading',{name:'You brought back the dawn.'})).toBeVisible();await expect(page.getByRole('button',{name:'View leaderboard'})).toBeVisible();await expect(page.getByRole('button',{name:'Next stage →'})).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'What do we leave alight?'})).toBeVisible();await page.getByRole('button',{name:'Share the flame →'}).click();await expect(page.getByRole('heading',{name:'A thousand little dawns.'})).toBeVisible();await expect(page.getByRole('button',{name:'View leaderboard'})).toBeVisible();await expect(page.getByRole('button',{name:'Next chapter →'})).toHaveCount(0);
 });
 
 test.describe('touch and responsive layout',()=>{
@@ -52,7 +52,7 @@ test.describe('touch and responsive layout',()=>{
   const client=await page.context().newCDPSession(page),right=(await page.getByRole('button',{name:'Move right',exact:true}).boundingBox())!,jump=(await page.getByRole('button',{name:'Jump',exact:true}).boundingBox())!;
   const a={x:right.x+right.width/2,y:right.y+right.height/2,id:11},b={x:jump.x+jump.width/2,y:jump.y+jump.height/2,id:12};
   await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[a,b]});
-  await page.waitForTimeout(200);expect(await number(page,'x')).toBeGreaterThan(x+10);expect(await number(page,'y')).toBeLessThan(355);
+  await expect.poll(async()=>({moved:(await number(page,'x'))>x+10,airborne:(await number(page,'y'))<355}),{intervals:[16,32,50,100]}).toEqual({moved:true,airborne:true});
   await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[b]});await client.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
   await expect(page.locator('.ll-touch [data-held]')).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(390);

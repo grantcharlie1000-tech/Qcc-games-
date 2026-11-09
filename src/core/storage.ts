@@ -1,4 +1,5 @@
 import type { GameId, Settings } from './types';
+import {normalizeLastLightScore} from './last-light-score';
 import {stableText} from './content';
 const prefix = 'pocket-arcade:v1:';
 const memory = new Map<string, unknown>();
@@ -35,7 +36,7 @@ export function write(key:string,value:unknown):boolean {
 }
 export function probeStorage():boolean { try { localStorage.setItem(prefix+'probe','1'); localStorage.removeItem(prefix+'probe'); } catch { retained=false; } return retained; }
 export function settings():Settings { return {...{sound:false,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,colorBlind:false,autoNextEpisode:true},...read<Partial<Settings>>('settings',{})}; }
-export function highScore(id:GameId):number { const score=read('best:'+id,0);return typeof score==='number'&&Number.isFinite(score)?score:0; }
+export function highScore(id:GameId):number { const score=read('best:'+id,0);if(typeof score!=='number'||!Number.isFinite(score))return 0;const normalized=id==='last-light'?normalizeLastLightScore(score):score;if(normalized!==score)write('best:'+id,normalized);return normalized; }
 export function recordScore(id:GameId,score:number):number { const old=highScore(id),best=Math.max(old,Number.isFinite(score)?score:0);if(best>old)write('best:'+id,best);return best; }
 export function saveGame(id:GameId,data:unknown):boolean {
  const key='save:'+id,old=read<{version:number;data:unknown;updated?:number}|null>(key,null);

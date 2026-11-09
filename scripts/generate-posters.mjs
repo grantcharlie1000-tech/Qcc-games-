@@ -52,6 +52,7 @@ export const POSTERS = {
   'crossy-road':  {hue: 200, accent: C.red,    title: 'A voxel chicken in a Santa hat hopping across snow, road and river'},
   'quad-clash':   {hue: 22,  accent: C.yellow, title: 'A blocky egg fighter in a yellow headband holding a pencil blaster'},
   'femboy-obby':  {hue: 256, accent: C.pink,   title: 'A blocky boy in a pink cat-ear beanie and snowflake jumper hopping across gift boxes in the snow'},
+  'last-light': {hue: 218, accent: C.gold, title: 'A voxel courier holding a golden lantern on a broken rooftop above a sleeping city'},
   'drift-club':   {hue: 183, accent: C.yellow, title: 'A voxel harbour shuffleboard with coral and blue pucks, a bullseye and a striped lighthouse'},
 };
 
@@ -590,6 +591,40 @@ art['femboy-obby'] = s => {
     front(x0 + (out < 0 ? .25 : .75), 7, 32, out < 0 ? ['100', '110', '111', '111'] : ['001', '011', '111', '111'], C.rose, 2 / 3);
   }
   s.ball(3.5, 3, 30.6, 1.6, C.paper);
+};
+
+// Last Light uses the same voxel renderer, projection and face shading as the library.
+art['last-light'] = s => {
+ const coat='#698e87',scarf='#b75f62',stone='#6f7d8e',roof='#9b7168';
+ island(s,-8,-7,17,15,stone,'#3b4a62',3,0);
+ // Missing corner, broken stepping stones, gutter and moss along the rooftop.
+ for(let x=-8;x<9;x++)for(let y=-7;y<8;y++)if((x+y)%4===0)s.set(x,y,0,'#8997a3');
+ s.box(-8,-7,1,17,2,2,roof).box(-8,-5,1,2,11,2,roof);
+ for(let x=-6;x<8;x+=3)s.box(x,-7,3,2,2,1,'#bf9380');
+ s.box(7,-6,1,2,3,2,'#7b9982').box(-7,3,1,2,3,1,'#789c79');
+ island(s,10,-11,5,5,stone,'#3b4a62',3,3);island(s,15,-14,4,4,stone,'#3b4a62',2,7);
+ // A little city and a tall window, kept behind the courier.
+ s.box(-7,-6,3,4,3,10,'#44566f').box(-7,-6,13,4,3,1,'#8793a0');
+ s.box(-2,-6,3,4,3,6,'#4b5f76').box(-2,-6,9,4,3,1,'#8b95a2');
+ s.box(-6,-2,4,2,1,3,C.gold).box(-1,-2,4,2,1,2,'#a9baa8');
+ // Hooded courier: boots, layered coat, satchel, face and red scarf.
+ s.box(0,2,1,2,4,2,'#5c483c').box(4,2,1,2,4,2,'#5c483c');
+ s.box(0,2,3,2,2,4,'#364657').box(4,2,3,2,2,4,'#364657');
+ s.box(-1,1,7,8,5,7,coat).box(-1,1,7,8,5,1,'#3f615f');
+ s.box(-2,2,8,2,4,5,'#8c6548').box(-2,2,12,2,4,1,'#bb8e61');
+ s.box(0,1,14,6,5,6,coat).box(1,5,15,5,1,4,C.skin);
+ s.box(0,1,20,6,5,1,'#92b6a2').box(0,1,15,1,5,5,'#a1c1aa');
+ s.set(4,5,17,C.ink).set(5,5,17,C.ink).box(1,4,18,4,2,1,'#5c4a40');
+ s.box(-1,1,13,8,5,1,scarf).box(-4,1,13,4,2,1,scarf).box(-6,0,14,3,2,1,'#d28c74');
+ s.box(6,2,9,2,3,5,coat).box(8,3,10,2,2,2,C.skin);
+ // Lantern with a solid voxel frame, honey glass and a bright flame.
+ s.box(9,3,9,4,4,1,'#71563c').box(9,3,4,4,4,1,'#71563c');
+ s.box(10,4,5,2,2,4,C.gold).set(10,5,7,C.cream).set(11,5,7,C.paper);
+ for(const [x,y] of [[9,3],[12,3],[9,6],[12,6]])s.box(x,y,5,1,1,4,'#c0a16c');
+ s.box(10,4,10,2,2,1,'#c0a16c');
+ // Floating memory sparks share the lantern's warm colour.
+ s.set(12,-7,12,C.gold).set(13,-7,13,C.cream).set(12,-7,14,C.gold);
+ s.set(-10,3,9,C.gold).set(-10,3,10,C.cream);
 };
 
 // ---------- backdrop and assembly ----------

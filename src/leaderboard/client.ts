@@ -1,3 +1,4 @@
+import {normalizeLastLightScore} from '../core/last-light-score';
 import * as store from '../core/storage';
 import {STORAGE_FULL_MESSAGE} from '../core/storage-full';
 import {validUsername} from '../accounts/shared';
@@ -39,13 +40,14 @@ export class LeaderboardSync {
   this.pending={};this.sent={};this.parked={};
   const retry=this.storage.read<Retry|null>('leaderboard:retry'+this.scope,null);
   this.retry=retry&&Number.isInteger(retry.attempt)&&retry.attempt>=0&&Number.isFinite(retry.nextAt)?retry:{attempt:0,nextAt:0};
-  for(const [key,score] of Object.entries(this.storage.read('leaderboard:pending'+this.scope,{})??{}))if(scoredGame(key)&&validScore(score))this.pending[key]=score;
-  for(const [key,score] of Object.entries(this.storage.read('leaderboard:sent'+this.scope,{})??{}))if(scoredGame(key)&&validScore(score))this.sent[key]=score;
+  for(const [key,score] of Object.entries(this.storage.read('leaderboard:pending'+this.scope,{})??{}))if(scoredGame(key)&&validScore(score))this.pending[key]=key==='last-light'?normalizeLastLightScore(score):score;
+  for(const [key,score] of Object.entries(this.storage.read('leaderboard:sent'+this.scope,{})??{}))if(scoredGame(key)&&validScore(score))this.sent[key]=key==='last-light'?normalizeLastLightScore(score):score;
   this.setMessage('');
   this.schedule();
  }
  profile():Profile|null{this.refreshIdentity();return this.rawProfile();}
  queue(game:string,score:number):void{
+  if(game==='last-light')score=normalizeLastLightScore(score);
   if(!this.profile()||!scoredGame(game)||!validScore(score)||score<=Math.max(this.pending[game]??0,this.sent[game]??0))return;
   this.pending[game]=score;this.storage.write('leaderboard:pending'+this.scope,this.pending);
   this.schedule();
