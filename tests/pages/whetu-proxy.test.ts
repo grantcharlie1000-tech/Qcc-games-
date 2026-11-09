@@ -24,7 +24,7 @@ describe('dedicated first-party Whetū service routing',()=>{
   const result=await routeWhetuIntegration(request('/api/integrations/nceastudy'),{...configured(binding),QCC_WHETU_INTEGRATION:'off'});
   expect(result?.status).toBe(503);
   expect(result?.headers.get('Cache-Control')).toContain('no-store');
-  expect(result?.headers.get('Content-Type')).toMatch(/application\\/json/i);
+  expect(result?.headers.get('Content-Type')).toMatch(/application\/json/i);
   expect(await result?.json()).toMatchObject({integration:'nceastudy-whetu-v1',ready:false});
   expect(binding.fetch).not.toHaveBeenCalled();
  });
