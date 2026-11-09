@@ -18,7 +18,7 @@ export function drawSky(c:CanvasRenderingContext2D,l:Level,s:Run,w:number,h:numb
  const gradient=c.createLinearGradient(0,0,0,h);gradient.addColorStop(0,s.ending?'#485572':theme.sky);gradient.addColorStop(.65,s.ending?'#967b89':theme.far);gradient.addColorStop(1,s.ending?'#d4ab8b':theme.sky);c.fillStyle=gradient;c.fillRect(0,0,w,h);
  for(let i=0;i<(l.setting==='cavern'?0:28);i++){c.fillStyle=i%9===0?theme.accent+'66':'#dfe6dc36';c.fillRect(Math.floor(noise(i,12)*w),Math.floor(noise(i,3)*h*.56),1,1);}
  const mx=Math.round(w*.8-cx*.025),my=Math.round(Math.max(100,h*.24-cy*.03));
- if(l.setting!=='cavern'&&![1,3,4].includes(l.world)){
+ if(l.setting!=='cavern'){
   const halo=c.createRadialGradient(mx,my,12,mx,my,83);halo.addColorStop(0,theme.accent+'13');halo.addColorStop(1,theme.accent+'00');c.fillStyle=halo;c.fillRect(mx-83,my-83,166,166);
   // Scanline silhouette gives the moon the same pixel language as the foreground.
   for(let yy=-21;yy<=21;yy++){const span=Math.floor(Math.sqrt(441-yy*yy));const cut=Math.abs(yy+5)<20?9-Math.sqrt(400-(yy+5)*(yy+5)):99;c.fillStyle=yy>10?'#bbc8c2':'#e1e5d2';const right=Math.min(span,Math.floor(cut));if(right>-span)c.fillRect(mx-span,my+yy,right+span,1);}
@@ -26,7 +26,7 @@ export function drawSky(c:CanvasRenderingContext2D,l:Level,s:Run,w:number,h:numb
  }
 
  atmosphere(c,l,w,h,cx,t);
- drawVistas(c,l,w,h,cx,cy);
+ drawVistas(c,l,w,h,cx,cy,t);
  // A location-specific midground makes a tower, canal and greenhouse read as different spaces.
  c.save();c.translate(-cx*.65,-cy*.55);c.globalAlpha=.64;
  if(l.setting==='tower'){

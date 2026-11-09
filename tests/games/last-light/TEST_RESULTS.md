@@ -1,3 +1,15 @@
+# Last Light native scenery and material cohesion — 9 November 2026
+
+- Removed the shipped panoramic background image. The generated concept images are references only. Mossworks, Frostline and Afterglow now assemble separate native-pixel trees, glasshouses, mountains, monasteries, observatories, spires and viaducts, using the foreground's palettes and pixel shading. Mist passes between distant scenery and closer landmarks. Camera projection uses several horizontal and vertical depth factors; portrait views frame the native landmarks above the route.
+- Foreground facades gain bevelled/chipped brick faces, recessed windows, shutters, mullions, sills and attached downpipes. Terrain polygons and material lines rasterise on the hard pixel grid used by the courier and fixtures. All detail remains inside the existing construction surfaces; collision, routes and score are unchanged.
+- **343 game/poster unit checks pass** across 14 files, including all forty continuous no-death, interaction-free journeys. **41 Chromium checks pass in one serial run** on the final native-scene source. The new scenery regression observes separate drawable objects at at least three distinct parallax speeds in each of the three rebuilt districts; it would reject a single moving panorama. Five district hashes, portrait framing, pause/reduced motion, untouched level data, depth fog, all death causes, phone/desktop departures and real keyboard clears remain covered.
+- The initial detailed painting buffers stalled the software graphics path during mountain creation. CPU-backed static caches resolved that failure: the complete affected 17-case subset passes, followed by all 41 browser checks. Textures paint once into cached buffers; the live world blits them. No panoramic image is downloaded. This is local Chromium verification, not a physical-device performance guarantee.
+- **Production build passes**, including strict TypeScript, Vite, host preparation and retired-service-worker checks. Diff whitespace checks pass. Work performed solo, targeting the existing isolated playtest.
+
+---
+
+## Superseded panoramic scenery pass
+
 # Last Light district scenery, death feedback and onward departures — 9 November 2026
 
 - **343 game/poster unit checks pass** across 14 files. All forty continuous 120 Hz journeys still finish without interactions or deaths. Routes, collision rules, scoring and the existing 0.35s retry delay are unchanged. The bounded difficulty audit continues to sample 11 representatives, including the five rebuilt vertical routes; the broader historical six-phase report below was not repeated.

@@ -3,8 +3,8 @@ type C=CanvasRenderingContext2D;
 // Every mark belongs to a construction feature: joints, bevels, grain or weather runoff.
 // Coordinates are native game pixels; the uninterrupted y=0 lip is the collision plane.
 function rect(c:C,color:string,x:number,y:number,w:number,h:number){c.fillStyle=color;c.fillRect(x,y,w,h);}
-function shape(c:C,color:string,points:number[]){c.fillStyle=color;c.beginPath();c.moveTo(points[0],points[1]);for(let i=2;i<points.length;i+=2)c.lineTo(points[i],points[i+1]);c.closePath();c.fill();}
-function line(c:C,color:string,points:number[]){c.strokeStyle=color;c.lineWidth=1;c.beginPath();c.moveTo(points[0]+.5,points[1]+.5);for(let i=2;i<points.length;i+=2)c.lineTo(points[i]+.5,points[i+1]+.5);c.stroke();}
+function shape(c:C,color:string,p:number[]){let low=Infinity,high=-Infinity;for(let i=1;i<p.length;i+=2){low=Math.min(low,p[i]);high=Math.max(high,p[i]);}for(let y=Math.ceil(low);y<high;y++){const xs:number[]=[];for(let i=0,j=p.length-2;i<p.length;j=i,i+=2)if((p[i+1]<=y&&p[j+1]>y)||(p[j+1]<=y&&p[i+1]>y))xs.push(p[i]+(y-p[i+1])*(p[j]-p[i])/(p[j+1]-p[i+1]));xs.sort((a,b)=>a-b);for(let i=0;i+1<xs.length;i+=2)rect(c,color,Math.ceil(xs[i]),y,Math.floor(xs[i+1])-Math.ceil(xs[i])+1,1);}}
+function line(c:C,color:string,p:number[]){for(let i=2;i<p.length;i+=2){let x=Math.round(p[i-2]),y=Math.round(p[i-1]);const xx=Math.round(p[i]),yy=Math.round(p[i+1]),dx=Math.abs(xx-x),sx=x<xx?1:-1,dy=-Math.abs(yy-y),sy=y<yy?1:-1;let e=dx+dy;for(;;){rect(c,color,x,y,1,1);if(x===xx&&y===yy)break;const q=e*2;if(q>=dy){e+=dy;x+=sx;}if(q<=dx){e+=dx;y+=sy;}}}}
 function roof(c:C,w:number,id:number){
  rect(c,'#705344',0,0,w,14);rect(c,'#354249',0,9,w,19);rect(c,'#5d5143',1,14,w-2,13);
  // Broad timber courses and occasional joints, not a bright grid on every shelf.

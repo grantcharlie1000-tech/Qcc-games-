@@ -41,7 +41,7 @@ function bridge(c:C,y:number,world:number){
 }
 function bake(world:number,layer:number,cavern:boolean){
  const key=`${world}/${layer}/${cavern}`,old=cache.get(key);if(old)return old;
- const canvas=document.createElement('canvas');canvas.width=WIDTH;canvas.height=HEIGHT;const c=canvas.getContext('2d')!,a=WORLDS[world];c.imageSmoothingEnabled=false;
+ const canvas=document.createElement('canvas');canvas.width=WIDTH;canvas.height=HEIGHT;const c=canvas.getContext('2d',{willReadFrequently:true})!,a=WORLDS[world];c.imageSmoothingEnabled=false;
  if(cavern){
   for(let i=0;i<8;i++){const x=i*145-40,tip=45+hash(i,world)*150;poly(c,a.far,[x-50,0,x+118,0,x+91,tip-37,x+61,tip+12,x+39,tip-18,x+14,tip+31]);poly(c,a.edge+'18',[x+39,0,x+41,tip-20,x+54,tip+2,x+49,0]);}
   for(let i=0;i<6;i++){const x=i*194-30,y=175+hash(i,12)*80;poly(c,a.far,[x-67,HEIGHT,x-33,y+35,x-8,y-24,x+17,y-78,x+43,y+11,x+81,HEIGHT]);poly(c,a.near,[x+17,y-78,x+11,y+44,x+40,HEIGHT,x+81,HEIGHT,x+43,y+11]);}
@@ -62,8 +62,8 @@ function bake(world:number,layer:number,cavern:boolean){
 }
 /** Cached native-resolution vistas use different silhouettes, light and scale
  * on two parallax planes. There is no per-frame pixel processing or blur. */
-export function drawVistas(c:C,l:Level,w:number,h:number,cx:number,cy:number){
- if(drawDistrictVistas(c,l,w,h,cx,cy))return;
+export function drawVistas(c:C,l:Level,w:number,h:number,cx:number,cy:number,time=0){
+ if(drawDistrictVistas(c,l,w,h,cx,cy,time))return;
  const cavern=l.setting==='cavern';
  for(let layer=0;layer<2;layer++){
   const art=bake(l.world,layer,cavern),factor=layer?.25:.1,shift=Math.floor(cx*factor),y=Math.round(h*(layer?.82:.68)-HEIGHT+42-cy*(layer?.15:.07)),first=Math.floor(shift/WIDTH);

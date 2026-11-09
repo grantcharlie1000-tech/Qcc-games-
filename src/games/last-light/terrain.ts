@@ -48,7 +48,7 @@ export function terrainArtBounds(p:Platform,l:Level):Rect {
 function tile(p:Platform,l:Level):HTMLCanvasElement {
  const bounds=terrainArtBounds(p,l),key=`${l.id}/${l.world}/${l.setting}/${p.kind}/${p.id}/${p.w}/${p.h}/${bounds.h}`;let canvas=cache.get(key);if(canvas)return canvas;
  canvas=document.createElement('canvas');canvas.width=p.w+8;canvas.height=bounds.h+8;
- const c=canvas.getContext('2d')!;c.translate(4,8);
+ const c=canvas.getContext('2d',{willReadFrequently:true})!;c.translate(4,8);
  paintFoundation(c,p,l,bounds.h);
  paintMaterial(c,p,l);
  cache.set(key,canvas);if(cache.size>100)cache.delete(cache.keys().next().value!);return canvas;
