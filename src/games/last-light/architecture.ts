@@ -1,15 +1,17 @@
+import {materialTile} from './generated-art';
 import {WORLDS,type Level} from './levels';
 import {facadeWindow} from './facade-art';
 type C=CanvasRenderingContext2D;
 const tiles=new Map<string,HTMLCanvasElement>();
 function masonry(world:number,industrial:boolean){
- const key=`${world}/${industrial}`;let tile=tiles.get(key);if(tile)return tile;
+ const key=`${world}/${industrial}/${Boolean(materialTile(industrial?'patina':'limestone',world,true))}`;let tile=tiles.get(key);if(tile)return tile;
  tile=document.createElement('canvas');tile.width=96;tile.height=48;
  const c=tile.getContext('2d',{willReadFrequently:true})!,theme=WORLDS[world];c.fillStyle=theme.far;c.fillRect(0,0,96,48);
+ const sampled=materialTile(industrial?'patina':'limestone',world,true);if(sampled){c.fillStyle=c.createPattern(sampled,'repeat')!;c.fillRect(0,0,96,48);}
  // Deep mortar and occasional chipped faces, drawn at the courier's native
  // texel scale. Cache only the small repeating material, never whole levels.
  for(let row=0;row<4;row++)for(let col=-1;col<5;col++){
-  const x=col*24+(row%2)*12,y=row*12;c.fillStyle=theme.near+'a0';c.fillRect(x+1,y+1,22,10);
+  const x=col*24+(row%2)*12,y=row*12;c.fillStyle=theme.near+'30';c.fillRect(x+1,y+1,22,10);
   c.fillStyle=theme.edge+'25';c.fillRect(x+2,y+1,19,1);c.fillRect(x+2,y+2,1,7);c.fillStyle='#14243065';c.fillRect(x+2,y+10,21,1);c.fillRect(x+22,y+3,1,7);
   if((row+col)%3===0){c.fillStyle=theme.edge+'20';c.fillRect(x+6,y+4,5,1);c.fillStyle=theme.sky+'80';c.fillRect(x+17,y+7,3,1);}
   if((row+col)%4===0){c.fillStyle=theme.sky+'80';c.fillRect(x+19,y+1,2,2);c.fillStyle=theme.edge+'35';c.fillRect(x+18,y+3,2,1);}
@@ -41,8 +43,29 @@ export function drawArchitecture(c:C,l:Level,cx:number,cy:number,w:number,h:numb
   }
  }
  for(const p of visible){
-  if(p.kind==='moving'||p.kind==='crumble')continue;
-  const bottom=p.y+p.h,depth=l.water===null?Math.max(220,cy+h-bottom+96):200;
+  if(p.kind==='moving'){
+   const travel=p.travel??0,vertical=p.axis==='y',x=p.x+p.w/2,y=p.y+p.h/2;
+   c.fillStyle='#152c36';c.fillRect(vertical?x-3:p.x-travel-6,vertical?p.y-travel-8:y-3,vertical?6:p.w+travel*2+12,vertical?travel*2+28:6);
+   c.fillStyle=theme.edge+'55';c.fillRect(vertical?x-1:p.x-travel-4,vertical?p.y-travel-7:y-1,vertical?1:p.w+travel*2+8,vertical?travel*2+26:1);
+   for(const sign of [-1,1]){const xx=vertical?x:p.x+p.w/2+sign*(p.w/2+travel+4),yy=vertical?y+sign*(travel+12):y;c.fillStyle=theme.near;c.fillRect(xx-4,yy-4,8,8);c.fillStyle=theme.edge+'66';c.fillRect(xx-2,yy-2,2,2);}continue;
+  }
+  if(p.kind==='crumble')continue;
+  const bottom=p.y+p.h,depth=Math.max(28,(l.water??l.height+48)-bottom);
+  if(l.world===3&&l.setting!=='tower'&&l.setting!=='factory'){
+   // Glacier shoulders meet the collision slab, then taper into the world fog.
+   // They remain recessed and darker than the ice lip, like the town's cliffs.
+   c.save();c.beginPath();c.moveTo(p.x+3,bottom);c.lineTo(p.x+p.w-3,bottom);c.lineTo(p.x+p.w-8,bottom+depth*.37);c.lineTo(p.x+p.w-19,bottom+depth);c.lineTo(p.x+14,bottom+depth);c.lineTo(p.x+6,bottom+depth*.3);c.closePath();c.clip();
+   c.fillStyle='#2d475e';c.fillRect(p.x,bottom,p.w,depth);
+   const rock=materialTile('slate',l.world,true);if(rock){c.globalAlpha=.58;c.fillStyle=c.createPattern(rock,'repeat')!;c.fillRect(p.x,bottom,p.w,depth);c.globalAlpha=1;}
+   // Broad offset strata and branching fractures avoid repeated hanging bars.
+   for(let row=0;row<depth/43;row++)for(let col=-1;col<p.w/67;col++){
+    const xx=p.x+col*67+(row%2)*31,yy=bottom+17+row*43,span=37+(row+col+p.id+8)%4*7;
+    c.fillStyle='#152e4280';c.fillRect(xx,yy,span,2);c.fillStyle='#7294a54a';c.fillRect(xx+2,yy+2,span-7,1);
+    const joint=xx+span-3;c.fillStyle='#1c354b';c.fillRect(joint,yy,2,12);c.fillRect(joint-4,yy+10,5,2);c.fillRect(joint-4,yy+10,2,17);
+    if((row+col+p.id)%3===0){c.fillStyle='#688a9b44';c.fillRect(xx+7,yy-8,15,2);c.fillRect(xx+11,yy-6,22,1);}
+   }
+   c.fillStyle='#8baebe33';c.fillRect(p.x+4,bottom,4,Math.min(depth,49));c.fillStyle='#142b4380';c.fillRect(p.x+p.w-15,bottom,15,depth);c.restore();
+  }
   if(l.setting!=='tower'&&l.setting!=='factory'&&l.setting!=='cavern'&&l.setting!=='bridge'){
    c.fillStyle=pattern!;c.fillRect(p.x+3,bottom,p.w-6,depth);
    c.fillStyle='#101f2b35';c.fillRect(p.x+3,bottom,p.w-6,depth);
@@ -57,6 +80,7 @@ export function drawArchitecture(c:C,l:Level,cx:number,cy:number,w:number,h:numb
   }
   // Brackets touch the underside of the real deck. Subdued iron stays
   // behind every jump, actor and hazard, with no false bright landing tops.
+  if(l.world===3&&l.setting!=='tower'&&l.setting!=='factory')continue;
   const xs=p.w<100?[p.x+p.w/2]:[p.x+13,p.x+p.w-16];
   for(const x of xs){
    c.strokeStyle=theme.near;c.lineWidth=4;c.beginPath();c.moveTo(x,bottom);c.lineTo(x,bottom+depth);c.stroke();

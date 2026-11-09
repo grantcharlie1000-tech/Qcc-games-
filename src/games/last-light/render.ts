@@ -207,11 +207,6 @@ export class Scene {
   c.save();
   const departure=s.phase!=='playing'?departurePose(l,s,reduced,this):null;
   if(departure){c.translate(departure.x-s.x,departure.y-s.y);c.globalAlpha=departure.opacity;}
-  if(!departure&&!reduced&&s.vy>480&&s.y>l.height-80){
-   // Start the fatal tumble while the courier is still visible; do not pop a
-   // fallen sprite back above the bottom edge when the death event arrives.
-   const roll=Math.min(1,(s.y-l.height+80)/110)*s.facing*.9;c.translate(s.x+8,s.y+24);c.rotate(roll);c.translate(-s.x-8,-s.y-24);
-  }
   if(!this.death.impact)this.courier.draw(c,s,theme.accent,reduced,departure??undefined);c.restore();
   if(l.goal==='engine')drawLift(c,l,s,theme.accent,reduced,this,true);else drawServiceDoor(c,l,s,theme.accent,true);
   c.restore();

@@ -1,3 +1,4 @@
+import {surfaceTexture} from './generated-art';
 import type {Level,Platform} from './levels';
 type C=CanvasRenderingContext2D;
 // Every mark belongs to a construction feature: joints, bevels, grain or weather runoff.
@@ -83,6 +84,10 @@ export function paintMaterial(c:C,p:Platform,l:Level){
  else if(l.world===2)iron(c,p.w);
  else if(l.world===0&&l.setting!=='cavern'&&l.setting!=='canal')roof(c,p.w,p.id);
  else masonry(c,p.w,p.id,l.world===4,false);
+ const material=p.kind==='crumble'?'limestone':l.world===3||p.kind==='ice'?'slate':l.world===2?'patina':l.world===0?'slate':l.world===1?'moss':'limestone';
+ surfaceTexture(c,material,l.world,p.w,p.h,l.world===3?.18:.38);
+ // The authored lip, mechanisms and fissures retain their clear silhouettes.
+ rect(c,l.world===3?'#c1e3e9':l.world===1?'#a8bf8b':l.world===2?'#c9a16f':'#a9afa0',0,0,p.w,1);
  if(l.setting==='garden')moss(c,p.w,p.id);
  c.restore();
 }

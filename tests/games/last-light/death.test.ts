@@ -19,8 +19,15 @@ describe('death causes and impact context',()=>{
   (LEVELS as Level[])[0]=fixture;
   try{const event=step(s,idle);expect(event.deathCause).toBe(cause);expect(event.death).toBe(true);expect(s.respawn).toBe(DEATH_DURATION);expect(s.deaths).toBe(1);expect(event.deathPose?.x).toBe(124);expect(event.deathPose?.respawn).toBe(0);expect(s.x).toBe(20);expect(s.y).toBe(20);
    if(cause!=='fall')expect(event.deathHit).toBeDefined();if(cause==='water')expect(event.deathHit?.y).toBe(125);if(cause==='enemy')expect(event.deathEnemy).toBe('crawler');
-   for(let i=0;i<43;i++)step(s,idle);expect(s.respawn).toBe(0);expect(s.deaths).toBe(1);
+   for(let i=0;i<Math.ceil(DEATH_DURATION/STEP)+1;i++)step(s,idle);expect(s.respawn).toBe(0);expect(s.deaths).toBe(1);
   }finally{(LEVELS as Level[])[0]=original;}
+ });
+ it('begins a fall while its pose is visible and below every real landing',()=>{
+  for(const level of LEVELS){
+   expect(level.height-40).toBeGreaterThan(Math.max(...level.platforms.map(p=>p.y+p.h))+60);
+  }
+  const s=createRun();s.x=400;s.y=LEVELS[0].height-39;s.vy=200;
+  const event=step(s,idle);expect(event.deathCause).toBe('fall');expect(event.deathPose!.y).toBeLessThan(LEVELS[0].height);expect(s.respawn).toBe(DEATH_DURATION);
  });
  it('has one explicit animation cause for every deadly source',()=>{const kinds=new Set<DeathCause>(LEVELS.flatMap(l=>l.hazards.map(h=>h.kind)));for(const kind of ['water','fall','enemy','dark'] as const)kinds.add(kind);for(const kind of kinds)expect(DEATH_CAUSES).toContain(kind);expect(DEATH_CAUSES).toHaveLength(9);});
 });

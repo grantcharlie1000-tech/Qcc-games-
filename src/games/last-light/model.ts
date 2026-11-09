@@ -125,7 +125,9 @@ export function step(s:Run,input:Input,dt=STEP):Events {
  }
  const player={x:s.x+2,y:s.y+2,w:PLAYER_W-4,h:PLAYER_H-2};
  if(level.goal==='escape'){if(s.x>(checkpointFor(s,level)?.x??level.spawn.x)+120)s.chasing=true;if(s.chasing)s.threat+=pursuitSpeed(level,s)*dt;}
- const hit=level.hazards.find(h=>hazardActive(h,s)&&overlap(player,hazardAt(h,s.clock))),fell=s.y>level.height+32,drowned=level.water!==null&&s.y+PLAYER_H>level.water,caught=level.goal==='escape'&&s.x+PLAYER_W<s.threat;
+ // Begin the fall reaction while the courier is still in the last 40 world
+ // pixels, always well below the lowest landing. Offscreen deaths had no pose.
+ const hit=level.hazards.find(h=>hazardActive(h,s)&&overlap(player,hazardAt(h,s.clock))),fell=s.y>level.height-40,drowned=level.water!==null&&s.y+PLAYER_H>level.water,caught=level.goal==='escape'&&s.x+PLAYER_W<s.threat;
  if(fell||drowned||caught||hit||enemyHit){
   events.deathPose={...s,crumbles:{...s.crumbles},defeated:{...s.defeated}};events.deathHit=hit?hazardAt(hit,s.clock):enemyHit?enemyContact:drowned?{x:s.x-20,y:level.water!,w:56,h:2}:caught?{x:s.threat-16,y:s.y,w:16,h:24}:undefined;events.deathEnemy=enemyHit&&!hit?enemyKind:undefined;events.deathCause=hit?.kind??(enemyHit?'enemy':drowned?'water':caught?'dark':'fall');
   respawn(s);events.death=true;return events;

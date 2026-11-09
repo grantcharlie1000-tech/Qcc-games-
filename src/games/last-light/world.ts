@@ -1,3 +1,4 @@
+import {drawReferenceVistas} from './generated-art';
 import {WORLDS,type Level} from './levels';
 import type {Run} from './model';
 import {lantern} from './props';
@@ -26,7 +27,7 @@ export function drawSky(c:CanvasRenderingContext2D,l:Level,s:Run,w:number,h:numb
  }
 
  atmosphere(c,l,w,h,cx,t);
- drawVistas(c,l,w,h,cx,cy,t);
+ if(!drawReferenceVistas(c,l,w,h,cx,cy))drawVistas(c,l,w,h,cx,cy,t);
  // A location-specific midground makes a tower, canal and greenhouse read as different spaces.
  c.save();c.translate(-cx*.65,-cy*.55);c.globalAlpha=.64;
  if(l.setting==='tower'){
@@ -40,7 +41,7 @@ export function drawSky(c:CanvasRenderingContext2D,l:Level,s:Run,w:number,h:numb
  c.restore();
  // Birds circle the skyline; their wingbeat and drifting cloud banks freeze when paused.
  if(l.world!==2&&l.setting!=='cavern')for(let i=0;i<3;i++){const x=((i*197+t*(7+i)-cx*.18)%(w+100)+w+100)%(w+100)-50,y=110+noise(i,l.id)*64+Math.sin(t*.5+i)*2;c.strokeStyle=theme.edge+'55';c.lineWidth=1;const wing=reduced?1:Math.sin(t*4+i)*2;c.beginPath();c.moveTo(x-3,y-wing);c.lineTo(x,y);c.lineTo(x+3,y-wing);c.stroke();}
- c.fillStyle=theme.sky+'44';c.fillRect(0,h*.86,w,h*.14);
+
 }
 export function drawLife(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:number,w:number,h:number,reduced:boolean){
  const theme=WORLDS[l.world],t=reduced?0:s.clock;
@@ -106,15 +107,20 @@ export function drawLife(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:n
 }
 export function drawGear(c:CanvasRenderingContext2D,x:number,y:number,r:number,t:number,color:string){gear(c,x,y,r,t,color);}
 
-/** Depth haze sits behind every collision deck, hazard and actor. Structural
- * columns continue below the view, so fog conceals distance rather than a cut. */
+/** The fog bank belongs to the bottom of the authored world. Panning or
+ * resizing never drags it into a different part of a jump. Water has its own edge. */
+export function depthFogBounds(l:Level){
+ const bottom=Math.max(...l.platforms.map(p=>p.y+p.h));
+ return {start:Math.max(bottom+28,l.height-112),end:l.height+48};
+}
 export function drawDepthFog(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:number,w:number,h:number,reduced:boolean){
  if(l.water!==null)return;
- const color=l.world===3?'#acc5d1':l.world===1?'#6b8b84':l.world===2?'#696677':l.world===4?'#8c849e':'#7d929e',start=cy+h*.64;
- const fade=c.createLinearGradient(0,start,0,cy+h);fade.addColorStop(0,color+'00');fade.addColorStop(.46,color+'26');fade.addColorStop(1,color+'a3');
- c.save();c.fillStyle=fade;c.fillRect(cx,start,w,cy+h-start);
- // Quiet broad wisps break up the horizon. No moving haze covers gameplay.
+ const {start,end}=depthFogBounds(l),visibleBottom=cy+h;if(visibleBottom<=start)return;
+ const color=l.world===3?'#7b9aad':l.world===1?'#345b58':l.world===2?'#4c414f':l.world===4?'#655877':'#40566c';
+ const fade=c.createLinearGradient(0,start,0,end);fade.addColorStop(0,color+'00');fade.addColorStop(.48,color+'58');fade.addColorStop(1,color+'e8');
+ c.save();c.fillStyle=fade;c.fillRect(cx,start,w,Math.max(0,visibleBottom-start));
+ // Broken wisps live at fixed world elevations and scroll with the scenery.
  const t=reduced?0:s.clock;
- for(let i=0;i<4;i++){const yy=cy+h*(.76+i*.065),drift=reduced?0:Math.sin(t*.2+i)*9,xx=cx-w*.2+(i%2)*w*.14+drift;c.globalAlpha=.025;c.fillStyle=color;c.fillRect(Math.round(xx),Math.round(yy),Math.round(w*1.2),3+i*2);}
+ for(let i=0;i<3;i++){const yy=start+38+i*31,drift=reduced?0:Math.sin(t*.16+i)*12;for(let x=Math.floor(cx/180)*180-180;x<cx+w;x+=180){c.globalAlpha=.05;c.fillStyle=color;c.fillRect(Math.round(x+drift+i*17),yy,128+i*8,2+i);}}
  c.restore();
 }

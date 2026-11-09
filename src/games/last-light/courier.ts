@@ -1,7 +1,7 @@
 import {petPose} from './affection';
 import {PLAYER_H,PLAYER_W,type Events,type Run} from './model';
 
-export type CourierAction='idle'|'run'|'rise'|'fall'|'wall'|'dash'|'land'|'respawn'|'celebrate'|'brake'|'interact'|'pet';
+export type CourierAction='idle'|'run'|'rise'|'fall'|'wall'|'dash'|'land'|'respawn'|'celebrate'|'brake'|'interact'|'pet'|'hurt'|'brace';
 interface Particle {x:number;y:number;vx:number;vy:number;life:number;duration:number;kind:'dust'|'ember'}
 interface Echo {x:number;y:number;facing:number;life:number}
 interface Stride {back:readonly[number,number,number,number];front:readonly[number,number,number,number];bob:number;arm:number}
@@ -16,7 +16,7 @@ const STRIDES:readonly Stride[]=[
  {back:[13,28,11,32],front:[12,27,15,30],bob:-1,arm:-2},
 ];
 const STILL:Stride={back:[9,28,8,33],front:[15,28,15,33],bob:0,arm:0};
-const COLORS={outline:'#15202b',deep:'#293d48',hood:'#658c86',hoodLight:'#a5c3ac',hoodShade:'#3c615f',cloth:'#547e76',clothLight:'#87aa91',clothShade:'#304e50',stitch:'#b8b897',skin:'#e6c5a4',skinShade:'#ba8d77',hair:'#57443c',scarf:'#bb615e',scarfLight:'#ec9b79',scarfShade:'#803f4c',leather:'#725446',leatherLight:'#ac8260',trousers:'#394755',trouserLight:'#687484',sole:'#b8a68a',metal:'#e4c18b'};
+const COLORS={outline:'#15202b',deep:'#293d48',hood:'#52766f',hoodLight:'#92ac8c',hoodShade:'#324f50',cloth:'#466b64',clothLight:'#8a9e7d',clothShade:'#2c4748',stitch:'#b8b897',skin:'#e6c5a4',skinShade:'#ba8d77',hair:'#57443c',scarf:'#b36449',scarfLight:'#e5a36a',scarfShade:'#783e3b',leather:'#725446',leatherLight:'#ac8260',trousers:'#394755',trouserLight:'#687484',sole:'#b8a68a',metal:'#e4c18b'};
 
 /** Presentation state only: it never changes collision, input, scores or saved progress. */
 export class Courier {
@@ -103,11 +103,11 @@ export class Courier {
   const interpolate=(a:readonly number[],b:readonly number[])=>a.map((v,i)=>v+(b[i]-v)*blend) as unknown as Stride['front'];
   const stride:Stride=action==='run'?{front:interpolate(frame.front,next.front),back:interpolate(frame.back,next.back),bob:frame.bob+(next.bob-frame.bob)*blend,arm:frame.arm+(next.arm-frame.arm)*blend}:STILL;
   const bob=reduced?0:action==='run'?stride.bob:action==='idle'?Math.round(Math.sin(s.clock*2.7)*.6):0;
-  const crouch=action==='pet'?Math.round(pet*5):action==='land'&&!reduced?Math.ceil(2*(presentation?.settle??this.landing/.18)):0;
-  const lean=action==='pet'?Math.round(pet*3):action==='dash'?3:action==='rise'?1:action==='wall'?2:action==='brake'?-2:action==='run'?1:0;
+  const crouch=action==='brace'?7:action==='hurt'?3:action==='pet'?Math.round(pet*5):action==='land'&&!reduced?Math.ceil(2*(presentation?.settle??this.landing/.18)):0;
+  const lean=action==='hurt'?-3:action==='brace'?1:action==='pet'?Math.round(pet*3):action==='dash'?3:action==='rise'?1:action==='wall'?2:action==='brake'?-2:action==='run'?1:0;
   const by=bob+crouch;
-  const back=action==='pet'?[7,29,5,33]:action==='land'?[7,28,5,33]:action==='brake'?[8,28,5,33]:action==='interact'?[9,28,7,33]:action==='rise'?[8,25,4,28]:action==='fall'?[8,27,6,31]:action==='dash'?[6,26,1,29]:action==='wall'?[8,27,5,32]:stride.back;
-  const front=action==='pet'?[18,29,20,33]:action==='land'?[17,28,19,33]:action==='brake'?[17,27,21,33]:action==='interact'?[16,28,16,33]:action==='rise'?[16,25,17,29]:action==='fall'?[16,28,18,33]:action==='dash'?[16,28,21,31]:action==='wall'?[19,25,22,28]:stride.front;
+  const back=action==='brace'?[5,30,4,33]:action==='hurt'?[7,27,3,32]:action==='pet'?[7,29,5,33]:action==='land'?[7,28,5,33]:action==='brake'?[8,28,5,33]:action==='interact'?[9,28,7,33]:action==='rise'?[8,25,4,28]:action==='fall'?[8,27,6,31]:action==='dash'?[6,26,1,29]:action==='wall'?[8,27,5,32]:stride.back;
+  const front=action==='brace'?[20,30,22,33]:action==='hurt'?[18,29,21,33]:action==='pet'?[18,29,20,33]:action==='land'?[17,28,19,33]:action==='brake'?[17,27,21,33]:action==='interact'?[16,28,16,33]:action==='rise'?[16,25,17,29]:action==='fall'?[16,28,18,33]:action==='dash'?[16,28,21,31]:action==='wall'?[19,25,22,28]:stride.front;
   this.leg(c,10,24+crouch,back,true); // rear leg sits behind the coat and satchel
   // The scarf narrows toward its tip. Its wave travels away from the knot,
   // while local-space inertia keeps turns readable in either direction.
@@ -138,20 +138,26 @@ export class Courier {
   this.rect(c,COLORS.metal,13+lean,19+by,3,2);this.rect(c,COLORS.deep,14+lean,19+by,1,1);
   this.rect(c,COLORS.leather,9+lean,23+by,8,2);this.rect(c,COLORS.metal,14+lean,23+by,2,1);
   this.leg(c,14,24+crouch,front,false);
+  // Reference-led tailoring: folded pocket, cuff patch and warm metal catches.
+  this.rect(c,'#2c4748',10+lean,20+by,3,3);this.rect(c,'#a9ae86',10+lean,20+by,3,1);
+  this.rect(c,'#b69768',8+lean,25+by,1,1);this.rect(c,'#b69768',11+lean,26+by,1,1);
+  this.rect(c,'#3b5550',16+lean,21+by,1,3);
+  this.rect(c,'#cfb180',2+lean,18+by,1,1);this.rect(c,'#cfb180',2+lean,23+by,1,1);this.rect(c,'#403d35',7+lean,23+by,1,2);
   // Hood has a scalloped silhouette, rim stitches, a shaded face and loose hair.
   this.rect(c,COLORS.outline,8+lean,0+by,7,2);this.rect(c,COLORS.outline,6+lean,2+by,12,2);this.rect(c,COLORS.outline,4+lean,3+by,16,9);this.rect(c,COLORS.outline,6+lean,12+by,13,3);
   this.rect(c,COLORS.hoodShade,5+lean,4+by,14,9);this.rect(c,COLORS.hood,8+lean,1+by,7,3);this.rect(c,COLORS.hood,7+lean,3+by,10,2);
   this.rect(c,COLORS.hood,5+lean,5+by,6,7);this.rect(c,COLORS.hoodLight,7+lean,3+by,8,1);this.rect(c,COLORS.hoodLight,5+lean,5+by,2,4);
-  this.rect(c,COLORS.deep,10+lean,5+by,10,8);this.rect(c,COLORS.skinShade,12+lean,6+by,7,7);this.rect(c,COLORS.skin,13+lean,6+by,6,5);
+  this.rect(c,'#b78e57',10+lean,4+by,9,1);this.rect(c,'#d9b876',10+lean,5+by,1,7);
+  this.rect(c,COLORS.deep,11+lean,5+by,9,8);this.rect(c,COLORS.skinShade,12+lean,6+by,7,7);this.rect(c,COLORS.skin,13+lean,6+by,6,5);
   this.rect(c,COLORS.skin,19+lean,8+by,2,2);this.rect(c,COLORS.hair,11+lean,5+by,7,2);this.rect(c,COLORS.hair,11+lean,7+by,2,3);
   const blink=!reduced&&action==='idle'&&s.clock%4.8>4.65;
   this.rect(c,COLORS.outline,17+lean,(blink?9:8)+by,2,blink?1:2);if(!blink)this.rect(c,'#f4e6cb',18+lean,8+by,1,1);
-  if(action==='dash'||action==='brake')this.rect(c,COLORS.hair,16+lean,7+by,3,1);
+  if(action==='dash'||action==='brake'||action==='hurt'||action==='brace')this.rect(c,COLORS.hair,16+lean,7+by,3,1);
   if(action==='celebrate'||action==='interact')this.rect(c,COLORS.skinShade,17+lean,11+by,2,1);
   else this.rect(c,'#aa796b',16+lean,12+by,2,1);this.rect(c,COLORS.scarfShade,7+lean,13+by,12,3);this.rect(c,COLORS.scarf,9+lean,13+by,11,2);this.rect(c,COLORS.scarfLight,13+lean,13+by,6,1);
   // The forward glove carries a lantern; running swings the arm and chain.
   let handX=21+lean+(action==='run'?stride.arm:0),handY=21+by;
-  if(action==='pet'){handX=21+lean+pet*(Math.abs(s.pet!.x-s.x-8)-22-lean)+(affection?.stroke??0)*2;handY=21+by-pet*12;}else if(action==='rise'){handX=22;handY=17;}else if(action==='fall'){handX=23;handY=19;}else if(action==='dash'){handX=25;handY=18;}else if(action==='wall'){handX=24;handY=11;}else if(action==='celebrate'){handX=22;handY=7;}else if(action==='interact'){handX=23;handY=13;}else if(action==='brake'){handX=20;handY=18;}else if(action==='land'){handX=22;handY=20+by;}
+  if(action==='hurt'){handX=19;handY=15+by;}else if(action==='brace'){handX=23;handY=18+by;}else if(action==='pet'){handX=21+lean+pet*(Math.abs(s.pet!.x-s.x-8)-22-lean)+(affection?.stroke??0)*2;handY=21+by-pet*12;}else if(action==='rise'){handX=22;handY=17;}else if(action==='fall'){handX=23;handY=19;}else if(action==='dash'){handX=25;handY=18;}else if(action==='wall'){handX=24;handY=11;}else if(action==='celebrate'){handX=22;handY=7;}else if(action==='interact'){handX=23;handY=13;}else if(action==='brake'){handX=20;handY=18;}else if(action==='land'){handX=22;handY=20+by;}
   this.line(c,17+lean,16+by,handX-1,handY-1,4,COLORS.outline);this.line(c,17+lean,16+by,handX-1,handY-1,2,COLORS.clothLight);
   this.rect(c,action==='pet'?COLORS.skin:COLORS.leather,handX-2,handY-1,4,3);this.rect(c,COLORS.leatherLight,handX,handY-1,2,1);
   const swing=reduced?0:action==='run'?Math.round(Math.sin(this.gait*Math.PI*2)*2):0;

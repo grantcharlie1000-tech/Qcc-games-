@@ -59,8 +59,7 @@ export function landmarks(c:C,l:Level,cx:number,cy:number,w:number,h:number,t:nu
  }
 
  c.restore();
- // Height-dependent haze separates architecture from the actual walkable surfaces.
- const mist=c.createLinearGradient(0,cy*.55+h*.62,0,cy*.55+h);mist.addColorStop(0,a.sky+'00');mist.addColorStop(1,a.sky+'55');c.fillStyle=mist;c.fillRect(left,cy*.55+h*.62,w,h*.38);
+
 }
 
 export function atmosphere(c:C,l:Level,w:number,h:number,cx:number,t:number){
