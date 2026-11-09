@@ -3,7 +3,7 @@ type C=CanvasRenderingContext2D;
 const box=(c:C,k:string,x:number,y:number,w:number,h:number)=>{c.fillStyle=k;c.fillRect(Math.round(x),Math.round(y),w,h);};
 /** Emitters share the deck's iron, brass and occlusion palette. Vapor has no
  * horizontal shelves: its moving, ragged contour reads as a jet from a grate. */
-export function drawEmitter(c:C,h:Hazard,r:Rect,on:boolean,warning:boolean,stopped:boolean,time:number,reduced:boolean){
+export function drawEmitter(c:C,h:Hazard,r:Rect,on:boolean,warning:boolean,stopped:boolean,time:number,reduced:boolean,fade=0){
  const floor=r.y+r.h,mid=r.x+r.w/2,t=reduced?0:time;
  c.save();
  // A flanged pipe enters the deck, with fasteners and a recessed mouth.
@@ -14,12 +14,14 @@ export function drawEmitter(c:C,h:Hazard,r:Rect,on:boolean,warning:boolean,stopp
  box(c,lamp,r.x-3,floor+1,3,2);
  if(h.kind==='steam'){
   for(let x=r.x+3;x<r.x+r.w-2;x+=4)box(c,'#8e9a8a',x,floor-4,1,3);
-  const period=h.period??3,cycle=((t+(h.offset??0))%period+period)%period,offAge=cycle-period*(h.duty??.55),tail=!on&&!stopped&&offAge>=0&&offAge<.32?1-offAge/.32:0;
-  if(on||tail>0){
+  // While winding down, r is the shrinking collision volume, so the plume
+  // visibly sinks to the grate and thins before the vent shuts off.
+  const strength=1-fade*.45;
+  if(on&&r.h>1){
    // Scanline wisps retain the full dangerous height. Core width follows the
    // collision volume; translucent curls extend a few pixels beyond it.
    for(let y=0;y<r.h;y+=2){
-    const age=y/r.h;if(!on&&age<(1-tail)*.9)continue;const end=Math.max(0,Math.min(1,(1-age)/.3)),feather=end*end*(3-2*end)*(on?1:tail);const swirl=Math.sin(y*.16-t*9)*(.5+age*3),width=r.w*(.55+age*.45);
+    const age=y/r.h;const end=Math.max(0,Math.min(1,(1-age)/.3)),feather=end*end*(3-2*end)*strength;const swirl=Math.sin(y*.16-t*9)*(.5+age*3),width=r.w*(.55+age*.45);
     c.globalAlpha=(.36+Math.sin(y*.09-t*7)*.1)*feather;
     box(c,'#d4d8ca',mid-width/2+swirl,floor-y-5,Math.ceil(width),2);
     c.globalAlpha=.15*(1-age*.5)*feather;
@@ -27,7 +29,7 @@ export function drawEmitter(c:C,h:Hazard,r:Rect,on:boolean,warning:boolean,stopp
    }
    for(let i=0;i<9;i++){
     const a=(t*1.4+i/9)%1,y=floor-6-a*(r.h-8),x=mid+Math.sin(a*9+i)*r.w*.3;
-    if(!on&&a<(1-tail)*.9)continue;c.globalAlpha=(1-a)*.42*(on?1:tail);c.strokeStyle='#fff0cf';c.lineWidth=1;
+    c.globalAlpha=(1-a)*.42*strength;c.strokeStyle='#fff0cf';c.lineWidth=1;
     c.beginPath();c.moveTo(x-2,y+5);c.lineTo(x-4,y+2);c.lineTo(x-3,y-2);c.lineTo(x+1,y-4);c.stroke();
    }
   }else if(warning){
@@ -43,11 +45,14 @@ export function drawEmitter(c:C,h:Hazard,r:Rect,on:boolean,warning:boolean,stopp
   box(c,'#172c36',r.x-2,r.y-6,r.w+9,6);box(c,'#8c9b8c',r.x-1,r.y-6,r.w+7,1);
   box(c,'#b19b74',r.x+3,r.y-4,r.w-6,3);box(c,'#b19b74',r.x+3,floor-5,r.w-6,3);
   if(on){
-   c.globalAlpha=.15;box(c,'#f7bd8d',r.x,r.y,r.w,r.h);c.globalAlpha=1;
+   // Near the end of a burst the beam stutters, dropping out more often as
+   // shut-off approaches. Reduced motion dims it steadily instead.
+   const beam=fade<=0?1:reduced?1-fade*.6:((time*(11+fade*9)+h.x*.013)%1)<fade*.75?.18:1-fade*.25;
+   c.globalAlpha=.15*beam;box(c,'#f7bd8d',r.x,r.y,r.w,r.h);c.globalAlpha=beam;
    c.strokeStyle='#ffd6aa';c.lineWidth=2;c.beginPath();c.moveTo(mid,r.y);
    for(let y=5;y<r.h;y+=5)c.lineTo(mid+Math.sin(y*1.7+Math.floor(t*16))*(r.w*.32),r.y+y);
    c.lineTo(mid,floor-4);c.stroke();
-   box(c,'#fff1ce',mid-2,r.y,4,3);box(c,'#fff1ce',mid-2,floor-8,4,3);
+   box(c,'#fff1ce',mid-2,r.y,4,3);box(c,'#fff1ce',mid-2,floor-8,4,3);c.globalAlpha=1;
   }else if(warning){box(c,'#ffd181',mid-2,r.y-2,4,3);box(c,'#ffd181',mid-2,floor-6,4,3);}
  }
  c.restore();
