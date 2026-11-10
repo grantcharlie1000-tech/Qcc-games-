@@ -92,7 +92,7 @@ export function drawLife(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:n
   }
   c.restore();
  }
- if(l.goal==='engine'&&s.activated.length){
+ if(l.goal==='engine'&&s.activated.length&&!set){
   for(const station of l.stations){if(!s.activated.includes(station.id))continue;const x=station.x,y=station.y;
    c.strokeStyle=l.world===1?'#9bc5b277':'#d3c6a477';c.lineWidth=2;c.beginPath();c.moveTo(x,y-10);c.lineTo(x+45,y-10);c.lineTo(x+45,y+70);c.stroke();
    for(let i=0;i<12;i++){const drop=reduced?i/12:(t*.7+i/12)%1;c.fillStyle=l.world===1?'#bddfc780':'#d3d6c755';c.fillRect(x+43+(l.world===1?0:Math.sin(drop*7)*8),y+drop*66,2,l.world===1?5:2);}

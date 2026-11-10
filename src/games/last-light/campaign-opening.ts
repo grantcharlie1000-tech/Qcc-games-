@@ -92,20 +92,21 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   hazards:[steam(1,.5,96,0,3.2),steam(2,.8,96,.8,3),steam(6,.5,96,0,3),steam(7,.5,96,1.5,3),steam(9,.7,80,.4,3),spike(12,.8,22),steam(14,.75,96,1,3)],
  },
  // 07 · The Counterweight
- // A service tower's lift shaft. Cages ride visible rails: one carries you
- // 300 px up from the pit, the next sets you down 96 px from a landing at the
- // top of its travel. Each counterweight drops through a 120 px bay on a
- // fixed, telegraphed cycle (ENCOUNTER_ADDITIONS[6]). The test dashes 184 px
- // off a cage onto the landing beside the second bay; steam leaves only the
- // machine-room pipe, which the return wheel can shut. Iron landings climb
- // to the lift crown. Cage indices matter: rail phase follows platform id.
+ // The hoist tower: one brick shaft, two lift wells, the pit under both.
+ // Cages ride guide rails on cables from the crown (their phase follows
+ // platform id and a 3.6 s cycle, so each is low when boarded and high when
+ // left). Landings are iron floors on girders across the shaft; ladders are
+ // gratings on the side walls. A counterweight drops through two landings
+ // on a telegraphed cycle (ENCOUNTER_ADDITIONS[6]) and is harmless raised.
+ // Three dashes cross a well with nothing under them. Each brake wheel
+ // shuts one steam vent further up.
  {
   setting:'tower',goal:'engine',
-  route:'24,1100,240,s;312,1100,120,s;468,950,100,l,150,1.5;604,800,240,s;908,800,120,s;1064,736,100,l,64,1.58;1260,672,240,s;1596,672,120,s;1812,632,240,s;2116,608,100,l,24,1.1;2400,584,120,s;2550,584,120,s;2766,584,160,s;2990,520,120,g;2990,456,120,g;2990,392,120,g;3174,328,340,s',
-  branches:'380,1036,52,s;380,950,60,s;3530,264,60,s',memories:[0,1,2],
-  stations:[[6,"Intake wheel"],[8,"Return wheel"]],
-  checkpoints:[3,6,8,16],sectors:[[0,"The lift pit"],[3,"Cage to landing"],[6,"Counterweight walk"],[8,"The machine room"],[16,"The lift crown"]],
-  hazards:[steam(12,.5,96,.4,2.8,1)],
+  route:'24,1500,208,s;242,1400,100,l,100,1.745;352,1300,240,s;712,1300,176,s;760,1236,128,g;760,1172,128,g;352,1140,240,s;242,1040,100,l,100,1.745;24,940,208,s;72,876,128,g;72,812,128,g;352,780,240,s;602,700,100,l,80,1.745;712,620,176,s;760,556,128,g;760,492,128,g;352,460,240,s',
+  branches:'24,1300,208,s;24,1140,208,s;352,620,240,s',memories:[0,1,2],
+  stations:[[6,"Lower brake wheel"],[11,"Upper brake wheel"]],
+  checkpoints:[2,3,6,8,11,13],sectors:[[0,"The lift pit"],[2,"Counterweight walk"],[4,"The ladder"],[6,"The brake room"],[8,"The west landing"],[11,"The machine room"],[13,"Under the winding gear"],[16,"The lift crown"]],
+  hazards:[steam(13,.5,96,.4,2.8,0),steam(16,.8,96,0,3,1)],
  },
  // 08 · The Quarter’s Reply
  // A bridge between two built banks with its middle span fallen: a test of

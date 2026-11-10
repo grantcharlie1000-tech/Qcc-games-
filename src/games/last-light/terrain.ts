@@ -79,7 +79,7 @@ export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:nu
  if(set){
   // A set's landings are parts of its building: the tile is the floor, tread,
   // roof or hull itself, and anything that travels with it is drawn first.
-  set.mover?.(c,p,x,y,l,s.clock,reduced);
+  if(p.kind==='moving')set.mover?.(c,p,x,y,l,s.clock,reduced);
   if(p.kind==='crumble'&&timer!==undefined){drawCrumble(c,p,tile(p,l),x,y,timer,reduced);return;}
   c.drawImage(tile(p,l),x-4,y-8);return;
  }
