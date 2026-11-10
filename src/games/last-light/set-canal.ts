@@ -4,15 +4,17 @@ import {platformAt} from './model';
 import {goalComposition} from './composition';
 import {departureOffset,departureVisibility} from './departure';
 import {ferry} from './props';
-import {box,enginesArt,hash,masonry,moon,nightSky,stroke,visible,wall,type C} from './quarter-kit';
+import {box,hash,masonry,stroke,visible,wall,type C} from './quarter-kit';
+import {MID,MID_SCALE,drawRow,farRoof,headTowers,lotEdge,moon,nightSky,row,townHouse,windowColumns,windowLit,windowX,type Scale,type Tone} from './quarter-distance';
 import type {QuarterSet} from './quarter-sets';
 
-/** Level 3 · one canal, seen from its near quay. Across the water stands the
- * far bank: an unbroken terrace of dark houses, no two alike, with the
- * towers behind them. Everything you stand on is in or beside that water: a
+/** Level 3 · one canal, seen from its near quay. Across a width of water
+ * stands the far bank: a terrace of houses on their own quay, no two alike,
+ * with the next street's roofs and the towers behind them, and all of it
+ * lying broken on the water in front. Everything you stand on is in or beside that water: a
  * granite quay built down into it, a cluster of mooring piles, a timber
  * staging, a moored lighter, a barge on its rope, a raft on a chain. */
-export const FAR=34;
+export const FAR=72;
 type Role='quay'|'piles'|'staging'|'boat'|'barge'|'stage'|'spar'|'bridge';
 function role(p:Platform,l:Level):Role{
  if(p.kind==='moving')return 'barge';
@@ -30,58 +32,100 @@ export function sheet(c:C,x:number,w:number,from:number,to:number,far:number){
 }
 /** Ripples are short dashes on rows that widen toward the viewer. */
 export function ripples(c:C,left:number,right:number,from:number,to:number,far:number,t:number){
- for(let row=0;row<12;row++){
-  const y=far+3+row*row*1.9+row*3;if(y<from)continue;if(y>=to)break;
-  const step=38+row*9,drift=Math.sin(t*.55+row*1.3)*4,length=5+row*2;
+ for(let row=0;row<26;row++){
+  const y=Math.round(far+3+row*row*.5+row*6);if(y<from)continue;if(y>=to)break;
+  const step=30+row*7,drift=Math.sin(t*.55+row*1.3)*4,length=4+row*1.4;
   for(let i=Math.floor((left-drift)/step)-1;i*step<right+step;i++){
-   const v=hash(i,row,17),x=i*step+v*step*.8+drift;if(x+length<left||x>right)continue;
-   box(c,v>.55?'#3d6470':'#2a4b58',x,y,Math.round(length*(.6+v)),1);
+   const v=hash(i,row,17),x=i*step+v*step*.8+drift;if(x+length*1.6<left||x>right)continue;
+   box(c,v>.8?'#4f7a85':v>.45?'#335865':'#264754',x,y,Math.round(length*(.6+v)),1);
   }
  }
 }
-const HOUSE_TONES=['#1a2330','#1d2734','#202b39'];
-/** The far bank is built house by house from the house's own number, so it
- * never repeats and has no tile edge to show. */
-export function farBank(c:C,w:number,cx:number,fy:number,t:number){
- const shift=cx*.35,cell=58,first=Math.floor(shift/cell)-1;
- for(let i=first;i*cell-shift<w;i++){
-  const x=Math.round(i*cell-shift),side=hash(i,7)>.87;
-  if(side){
-   // A side canal runs back between two houses, under a humped footbridge.
-   box(c,'#1a2330',x,fy-16,cell,3);box(c,'#1a2330',x+6,fy-19,cell-12,3);box(c,'#1a2330',x+16,fy-21,cell-32,2);
-   box(c,'#243040',x+16,fy-21,cell-32,1);for(let k=4;k<cell;k+=9)box(c,'#1a2330',x+k,fy-25+Math.round(Math.abs(k-cell/2)/7),1,6);
-   continue;
+/** What stands in the water lies on it: a dark length under a wall or a hull, torn by the ripples. */
+export function shadowOnWater(c:C,x:number,w:number,water:number,t:number){
+ box(c,'#0a161d99',x+1,water+1,w-2,5);
+ for(let k=0;k<4;k++){const len=Math.round(w*(.82-k*.17));box(c,'#0a161d80',x+Math.round((w-len)*hash(Math.round(x),k,73))+Math.round(Math.sin(t*1.2+k*1.7+x*.05)*(1+k)),water+7+k*4,len,k<2?2:1);}
+}
+const BANK:Tone={walls:['#1a2330','#1d2734','#202b39','#211f2a','#1c242b'],edge:'#2a3647',shade:'#121924',roof:'#263447',course:'#1f2b3c',ridge:'#384962',glass:'#0f1621',pane:'#1b2a3c',lit:'#a8763f',glow:'#e0ab5c'};
+const BANK_SCALE:Scale={unit:17,ww:6,wh:9,pitch:13,lit:.09};
+const LOT=50,BANK_SEED=21,BANK_H=160,BEHIND_H=190,BEHIND='#222e44';
+const seedOf=(i:number)=>i*13+5,tallOf=(i:number)=>54+Math.floor(hash(i,1,53)*62);
+/** Now and then a side canal runs back between two houses, under a humped footbridge. */
+const sideCanal=(i:number)=>hash(i,7,3)>.93;
+const bankRow=row(LOT,BANK_SEED,BANK_H,(c,i,w,h)=>{
+ if(!sideCanal(i)){townHouse(c,w,h-tallOf(i),h,seedOf(i),BANK,BANK_SCALE,true);return;}
+ box(c,'#1c3644',0,h-4,w,4);box(c,'#2a4b58',2,h-3,Math.round(w*.4),1);
+ for(let x=0;x<w;x++){const k=(x+.5)/w*2-1,rise=Math.round(8*(1-k*k));box(c,'#1a2330',x,h-8-rise,1,3+Math.round(rise*.2));box(c,'#2a3647',x,h-8-rise,1,1);if(x%5===2)box(c,'#1a2330',x,h-13-rise,1,5);box(c,'#232e3e',x,h-13-rise,1,1);}
+},()=>BANK.shade);
+/** The next street back: roofs over the bank's own, and now and then a church or a dome. */
+const behindRow=row(44,22,BEHIND_H,(c,i,w,h)=>{const top=h-74-Math.floor(hash(i,1,57)*76);if(hash(i,2,57)>.78)farRoof(c,w,top,h,i+400,BEHIND,'#2b3a54','#b98a4a');else townHouse(c,w,top,h,i*3+2,MID,MID_SCALE);},()=>BEHIND);
+let quayLine=0;
+const bankBase=()=>quayLine;
+/** A reflection breaks up the further it lies from the bank: depth below the quay, and how much of the width is left. */
+const BROKEN=[[2,.9],[5,.74],[9,.5],[14,.3]] as const;
+/** The far quay itself, what is moored at it, and the bank lying on the water:
+ * each house's dark front, and under every lit window its own wavering light. */
+function farShore(c:C,w:number,cx:number,fy:number,t:number){
+ const shift=Math.round(cx*.35);
+ for(let i=Math.floor(shift/LOT)-2;;i++){
+  const x0=lotEdge(i,LOT,BANK_SEED)-shift;if(x0>=w)break;const wide=lotEdge(i+1,LOT,BANK_SEED)-shift-x0;if(x0+wide<=0)continue;
+  if(sideCanal(i)){for(let k=0;k<3;k++)box(c,'#12232e',x0+3+k*3+Math.round(Math.sin(t*1.1+k+i)*2),fy+2+k*4,wide-6-k*6,1);continue;}
+  // Quay wall, a mooring ring, and sometimes a skiff tied up or a dead lamp.
+  box(c,'#18212c',x0,fy-8,wide,8);box(c,'#2c394a',x0,fy-8,wide,1);box(c,'#10171f',x0,fy-1,wide,1);for(let x=x0+7+i%5;x<x0+wide-2;x+=16)box(c,'#10171f',x,fy-6,1,4);
+  const v=hash(i,8,3);
+  if(v>.72&&wide>34){const bx=x0+5+Math.floor(v*8);box(c,'#0f161d',bx,fy-3,24,4);box(c,'#34414f',bx-1,fy-4,26,1);box(c,'#0f161d',bx+10,fy-9,1,5);}
+  else if(v<.3){const lx=x0+Math.round(wide*.5);box(c,'#10171f',lx,fy-25,1,17);box(c,'#10171f',lx-1,fy-28,3,4);box(c,'#232f3e',lx,fy-27,1,2);}
+  // The house stands on its head in the water: a dark front as deep as the house is tall, breaking up below.
+  const tall=tallOf(i),seed=seedOf(i),deep=Math.round(tall*.3);
+  box(c,'#12232e',x0,fy,wide,deep);
+  for(const [at,keep] of BROKEN){const len=Math.round(wide*keep),slip=Math.round(Math.sin(t*1.1+at*.9+i)*2);box(c,'#12232e',x0+Math.round((wide-len)*hash(i,at,71))+slip,fy+deep+at-1,len,at>8?1:2);}
+  for(let col=0,cols=windowColumns(wide,BANK_SCALE);col<cols;col++)for(let r=0;5+r*17+9<tall-17;r++){
+   if(!windowLit(seed,col,r,BANK_SCALE))continue;
+   const x=x0+windowX(wide,BANK_SCALE,col),y=fy+Math.round((tall-5-r*17)*.3);
+   for(let d=0;d<4;d++)box(c,d?'#a8763f':'#d9a25a',x+Math.round(Math.sin(t*1.5+d*1.9+col+i)*1.4),y+d*3-3,6-d,1);
   }
-  const tall=56+Math.floor(hash(i,1)*52),top=fy-8-tall,tone=HOUSE_TONES[Math.floor(hash(i,2)*3)],kind=Math.floor(hash(i,3)*3);
-  box(c,tone,x,top,cell,tall);box(c,'#141b25',x,top,1,tall);
-  if(kind===0){for(let k=0;k<5;k++)box(c,tone,x+5+k*5,top-4-k*4,cell-10-k*10,4);}
-  else if(kind===1){box(c,tone,x-1,top-3,cell+2,3);box(c,'#263243',x-1,top-3,cell+2,1);box(c,tone,x+40,top-14,8,11);}
-  else{box(c,tone,x+8,top-6,cell-16,6);box(c,tone,x+18,top-12,cell-36,6);box(c,'#263243',x+18,top-12,cell-36,1);}
-  for(let row=0;top+10+row*17<fy-26;row++)for(let col=0;col<3;col++){
-   const wx=x+9+col*15,wy=top+10+row*17,lit=hash(i*31+col,row,9)>.93;
-   box(c,'#111823',wx,wy,7,10);
-   if(lit){box(c,'#a8763f',wx+1,wy+1,5,8);box(c,'#e0ab5c',wx+2,wy+4,2,4);for(let k=0;k<5;k++)box(c,'#b0813f55',wx+1+Math.round(Math.sin(t*1.4+k+i)*1.2),fy+3+k*5,5-k%2*2,2);}
-  }
-  box(c,'#111823',x+22,fy-22,10,14);
  }
- // The far quay wall and its dark reflection lie along the whole bank.
- box(c,'#18212c',0,fy-8,w,8);box(c,'#263243',0,fy-8,w,1);box(c,'#13232e',0,fy,w,7);
+}
+/** Moonlight lies on the canal in a path of glints, narrow at the far bank and broad at your feet. */
+export function moonPath(c:C,mx:number,from:number,to:number,far:number,t:number){
+ for(let k=0;k<16;k++){
+  const y=Math.round(far+4+k*k*.9+k*5);if(y<from)continue;if(y>=to)break;
+  const wide=6+k*3,slip=Math.round(Math.sin(t*1.2+k*1.9)*(1+k*.3));
+  box(c,k<5?'#c5d2c98c':'#c5d2c966',mx-Math.round(wide/2)+slip,y,wide,1);
+  if(k>2)box(c,'#c5d2c93d',mx-wide+slip*2+k%3*5,y+2,Math.round(wide*.6),1);
+  if(k>5)box(c,'#c5d2c92e',mx+Math.round(wide*.4)-slip,y-2,Math.round(wide*.5),1);
+ }
+}
+/** A lamp near the water lies on it too: a warm column that wavers and thins. */
+export function lampOnWater(c:C,x:number,water:number,height:number,t:number){
+ const reach=Math.max(3,8-Math.floor(height/14));
+ for(let d=0;d<reach;d++)box(c,d<2?'#f3c77a70':'#d9a25a4d',x-3+Math.round(Math.sin(t*1.6+d*1.7+x*.1)*(1+d*.4)),water+2+d*4+Math.round(height*.1),7-Math.min(4,d),1);
 }
 function sky(c:C,l:Level,w:number,h:number,cx:number,cy:number,t:number,ending:boolean){
- const fy=Math.round(l.water!-FAR-cy);
- nightSky(c,w,h,ending);moon(c,Math.round(w*.78-cx*.02),Math.max(60,fy-200));
- const tx=Math.round(w*.3-cx*.05);c.drawImage(enginesArt(),tx,fy-150);
- farBank(c,w,cx,fy,t);
- if(fy<h){sheet(c,0,w,fy+7,h,fy);c.save();c.translate(-cx,-cy);ripples(c,cx,cx+w,l.water!-FAR+3,l.water!,l.water!-FAR,t);c.restore();}
+ const fy=Math.round(l.water!-FAR-cy);quayLine=fy-8;
+ nightSky(c,w,h,ending,cx,t);moon(c,Math.round(w*.78-cx*.02),Math.max(46,fy-178));
+ c.drawImage(headTowers(),Math.round(w*.28-cx*.05),fy-232);
+ drawRow(c,behindRow,w,cx*.2,bankBase,quayLine);
+ drawRow(c,bankRow,w,cx*.35,bankBase,quayLine);
+ if(fy>=h)return;
+ sheet(c,0,w,fy,h,fy);farShore(c,w,cx,fy,t);
+ c.save();c.translate(-cx,-cy);ripples(c,cx,cx+w,l.water!-FAR+3,l.water!,l.water!-FAR,t);moonPath(c,cx+Math.round(w*.78-cx*.02),l.water!-FAR,l.water!,l.water!-FAR,t);c.restore();
 }
 export function weed(c:C,x:number,w:number,water:number,seed:number){
- // The wet band: darker stone, then weed in uneven tufts hanging to the water.
- box(c,'#0a141a8c',x,water-11,w,11);
- for(let i=0;i*7<w-4;i++){const v=hash(i,seed,5);if(v<.35)continue;const tall=2+Math.floor(v*7);box(c,v>.7?'#3a5a44':'#2c4739',x+2+i*7,water-tall,3+Math.floor(v*3),tall);if(v>.85)box(c,'#52745a',x+3+i*7,water-tall,1,2);}
+ // The tide has left the bottom courses dark, a stone at a time. Weed hangs
+ // from a joint here and there in tufts, never in a row.
+ for(let i=0;i*16<w;i++){const deep=5+Math.floor(hash(i,seed,5)*4)*2;box(c,'#0a141a73',x+i*16,water-deep,Math.min(16,w-i*16),deep);}
+ for(let i=0;i*23<w-10;i++){
+  const v=hash(i,seed,6);if(v<.6)continue;
+  const at=x+3+i*23+Math.floor(hash(i,seed,8)*12),strands=2+Math.floor(v*3);
+  for(let k=0;k<strands;k++){const hang=3+Math.floor(hash(i*5+k,seed,9)*8);box(c,k%2?'#2c4739':'#35543f',at+k*2,water-hang,1+k%2,hang);}
+  box(c,'#4c6c52',at+1,water-5,1,2);
+ }
 }
 function pile(c:C,x:number,top:number,water:number){
  box(c,'#17110d',x,top,10,water+40-top);box(c,'#4b3a2b',x+1,top,7,water+40-top);box(c,'#6a5440',x+2,top,2,water+40-top);
- box(c,'#0a141a80',x,water-9,10,9);box(c,'#2c4739',x,water-4,10,4);box(c,'#3a5a44',x+2,water-6,4,3);
+ // Wet to the tide line, with a rag of weed on the side the current leaves alone.
+ box(c,'#0a141a80',x,water-9-x%3*2,10,9+x%3*2);if(x%4<2){box(c,'#2c4739',x+6,water-5-x%3,2,5+x%3);box(c,'#35543f',x+8,water-3,1,3);}
 }
 const spans=new WeakMap<Level,{x0:number;x1:number;a0:number;a1:number}|null>();
 /** The stepped footbridge: its landings are the treads, one arch carries them. */
@@ -154,13 +198,17 @@ function mooring(p:Platform,l:Level){
  }
  return tie;
 }
-function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
+function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,s?:Run){
  const top=l.water!,far=top-FAR,bottom=cy+vh+24;if(bottom<=top)return;
  sheet(c,cx-24,vw+48,top,bottom,far);
  ripples(c,cx-24,cx+vw+24,top,bottom,far,t);
  for(let x=Math.floor((cx-24)/22)*22;x<cx+vw+24;x+=22){const wave=Math.round(Math.sin(t*1.7+x*.21));box(c,'#5a8a94',x+3,top+wave,11,1);}
- // Moonlight lies on the water in a broken path under the moon.
- const mx=Math.round(cx+vw*.78-cx*.02);for(let k=0;k<9;k++){const y=top+4+k*k*1.6+k*4;if(y>bottom)break;box(c,'#c5d2c966',mx-6-k+Math.round(Math.sin(t*1.2+k*1.9)*3),y,10+k*2,1);}
+ for(const p of l.platforms){const kind=role(p,l);if(kind==='barge'||kind==='boat'||p.x+p.w<cx-24||p.x>cx+vw+24)continue;if(kind==='quay'||kind==='bridge'||kind==='stage')shadowOnWater(c,p.x,p.w,top,t);}
+ moonPath(c,cx+Math.round(vw*.78-cx*.02),top,bottom,far,t);
+ if(!s)return;
+ // The lantern you carry and every jar still burning lie on the water under them.
+ if(top-s.y<150&&s.y<top)lampOnWater(c,Math.round(s.x+8+s.facing*7),top,top-s.y-24,t);
+ for(const p of l.pickups)if(p.kind==='spark'&&p.x>cx-20&&p.x<cx+vw+20&&top-p.y<150&&!s.collected.includes(p.id))lampOnWater(c,Math.round(p.x),top,top-p.y,t);
 }
 export function hull(c:C,w:number,deep:number){
  // A timber hull seen side on: sheer strake, planked sides, the turn of the bilge.

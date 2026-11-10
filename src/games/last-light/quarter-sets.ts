@@ -28,7 +28,7 @@ export interface QuarterSet {
  /** A lamp or wheel as the fixture it is in this place, at its live position. */
  station?(c:C,l:Level,s:Station,x:number,y:number,lit:boolean,t:number):void;
  /** Water that belongs to the place; replaces the generic waterline. */
- water?(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number):void;
+ water?(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,s?:Run):void;
 }
 // Built on first use: sets and the modules that ask for them import each other.
 let sets:Readonly<Record<number,QuarterSet>>|undefined;

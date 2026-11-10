@@ -1,8 +1,9 @@
 import type {Level,Platform,Station} from './levels';
 import {platformAt,type Run} from './model';
-import {box,enginesArt,hash,masonry,moon,nightSky,stroke,visible,wall,type C} from './quarter-kit';
+import {box,hash,masonry,stroke,visible,wall,type C} from './quarter-kit';
+import {headTowers,moon,nightSky} from './quarter-distance';
 import type {QuarterSet} from './quarter-sets';
-import {FAR,farBank,hull,quayTile,ripples,sheet,weed} from './set-canal';
+import {hull,quayTile,ripples,sheet,weed} from './set-canal';
 
 /** Level 8 · the old bridge to the garden bank, seen from the river. Its
  * arches have gone; what stands is what you cross. A length of roadway is
@@ -11,7 +12,7 @@ import {FAR,farBank,hull,quayTile,ripples,sheet,weed} from './set-canal';
  * is a pier's cutwater, a cracked plank is a builders' trestle in the river,
  * a punt runs on a rope between two stumps, iron landings are a scaffold or
  * the gatehouse stair. The river is under all of it. */
-const DECK=560;
+const DECK=560,FAR=34;
 const stack=()=>masonry('roofs/stack',32,16,16,8,{mortar:'#1a1415',stones:['#4a3330','#503733','#563b35'],lip:'#644640',chip:'#6e4e46'});
 const house=()=>masonry('bridge/house',96,48,48,24,{mortar:'#22221f',stones:['#3a3a34','#3d3d37','#40403a'],lip:'#49493f',chip:'#515146'});
 type Role='road'|'house'|'stack'|'cutwater'|'plank'|'punt'|'iron'|'gate';
@@ -123,9 +124,8 @@ function exit(c:C,l:Level,s:Run,t:number,front:boolean){
 }
 function sky(c:C,l:Level,w:number,h:number,cx:number,cy:number,t:number,ending:boolean){
  const fy=Math.round(l.water!-FAR-cy);
- nightSky(c,w,h,ending);moon(c,Math.round(w*.76-cx*.02),Math.max(56,fy-250));
- c.drawImage(enginesArt(),Math.round(w*.34-cx*.04),fy-200,96,225);
- farBank(c,w,cx,fy,t);
- if(fy<h){sheet(c,0,w,fy+7,h,fy);c.save();c.translate(-cx,-cy);ripples(c,cx,cx+w,l.water!-FAR+3,l.water!,l.water!-FAR,t);c.restore();}
+ nightSky(c,w,h,ending,cx,t);moon(c,Math.round(w*.76-cx*.02),Math.max(56,fy-250));
+ c.drawImage(headTowers(),Math.round(w*.34-cx*.04),fy-240);
+ if(fy<h){sheet(c,0,w,fy,h,fy);c.save();c.translate(-cx,-cy);ripples(c,cx,cx+w,l.water!-FAR+3,l.water!,l.water!-FAR,t);c.restore();}
 }
 export const bridge:QuarterSet={sky,back,deck,exit,water,station,depth:(p,l)=>role(p,l)==='punt'?10:0};

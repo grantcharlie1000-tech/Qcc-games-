@@ -1,7 +1,7 @@
 import type {Level,Platform} from './levels';
 import type {Run} from './model';
 import {box,hash,masonry,sprite,stroke,visible,wall,type C} from './quarter-kit';
-import {drawRow,farRoof,headTowers,moon,nightSky,row,townHouse,type Scale,type Tone} from './quarter-distance';
+import {MID,MID_SCALE,drawRow,farRoof,headTowers,moon,nightSky,row,townHouse,type Scale,type Tone} from './quarter-distance';
 import type {QuarterSet} from './quarter-sets';
 
 /** Levels 4 and 5 · the roofs of the Quarter. Every building stands on its
@@ -177,8 +177,7 @@ function exit(c:C,l:Level,s:Run,t:number,front:boolean){
  * them; and the ridge of the far city under the towers. Each row follows the
  * climb of the roofs in front of it, so the Quarter rises as you do. */
 const NEAR:Tone={walls:['#1a222e','#1d2531','#201f28','#1c2228'],edge:'#2c3848',shade:'#111822',roof:'#263345',course:'#1f2a3a',ridge:'#3b4c64',glass:'#0e151f',pane:'#1c2b3d',lit:'#b07d40',glow:'#eab968'};
-const MID:Tone={walls:['#1e293b','#202c3f','#1c2637','#22293a'],edge:'#2c3a52',shade:'#172030',roof:'#27354b',course:'#212d41',ridge:'#35465f',glass:'#141c2a',pane:'#1f2c40',lit:'#a7773f',glow:'#dba659'};
-const NEAR_SCALE:Scale={unit:26,ww:8,wh:12,pitch:17,lit:.1},MID_SCALE:Scale={unit:14,ww:3,wh:5,pitch:8,lit:.07};
+const NEAR_SCALE:Scale={unit:26,ww:8,wh:12,pitch:17,lit:.1};
 const NEAR_HEAD=58,MID_HEAD=32,FAR_HEAD=36,FAR_WALL='#243148';
 const nearRow=row(104,11,NEAR_HEAD+230,(c,i,w,h)=>townHouse(c,w,NEAR_HEAD,h,i*7+3,NEAR,NEAR_SCALE),i=>NEAR.walls[Math.floor(hash(i*7+3,2,5)*NEAR.walls.length)]);
 const midRow=row(58,12,MID_HEAD+150,(c,i,w,h)=>townHouse(c,w,MID_HEAD,h,i*5+1,MID,MID_SCALE),i=>MID.walls[Math.floor(hash(i*5+1,2,5)*MID.walls.length)]);

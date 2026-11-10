@@ -149,6 +149,9 @@ export function farRoof(c:C,w:number,top:number,bottom:number,seed:number,wall:s
  }else if(kind===5){box(c,wall,2,top-4,w-4,4);box(c,rim,2,top-4,w-4,1);}
  for(let i=0;i<w/9;i++)if(hash(seed,i,29)>.9)box(c,light,2+Math.floor(hash(seed,i,31)*(w-4)),top+3+Math.floor(hash(seed,i,37)*Math.max(1,Math.min(30,bottom-top-6))),1,2);
 }
+/** Houses two streets off: smaller, bluer, and only their windows warm. */
+export const MID:Tone={walls:['#1e293b','#202c3f','#1c2637','#22293a'],edge:'#2c3a52',shade:'#172030',roof:'#27354b',course:'#212d41',ridge:'#35465f',glass:'#141c2a',pane:'#1f2c40',lit:'#a7773f',glow:'#dba659'};
+export const MID_SCALE:Scale={unit:14,ww:3,wh:5,pitch:8,lit:.07};
 /** Where lot `i` of a row begins. Lots abut, and their widths wander. */
 export const lotEdge=(i:number,lot:number,seed:number)=>Math.round(i*lot+(hash(i,seed,97)-.5)*lot*.62);
 /** A row of houses at one distance. Each is painted once into a canvas the
