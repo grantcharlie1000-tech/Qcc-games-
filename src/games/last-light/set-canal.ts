@@ -69,7 +69,8 @@ function farShore(c:C,w:number,cx:number,fy:number,t:number){
  const shift=Math.round(cx*.35);
  for(let i=Math.floor(shift/LOT)-2;;i++){
   const x0=lotEdge(i,LOT,BANK_SEED)-shift;if(x0>=w)break;const wide=lotEdge(i+1,LOT,BANK_SEED)-shift-x0;if(x0+wide<=0)continue;
-  if(sideCanal(i)){for(let k=0;k<3;k++)box(c,'#12232e',x0+3+k*3+Math.round(Math.sin(t*1.1+k+i)*2),fy+2+k*4,wide-6-k*6,1);continue;}
+  // Over a side canal it is the street behind that lies on the water, under the footbridge.
+  if(sideCanal(i)){box(c,'#12232e',x0,fy,wide,22);for(const [at,keep] of BROKEN){const len=Math.round(wide*keep),slip=Math.round(Math.sin(t*1.1+at*.9+i)*2);box(c,'#12232e',x0+Math.round((wide-len)*hash(i,at,71))+slip,fy+21+at,len,at>8?1:2);}continue;}
   // Quay wall, a mooring ring, and sometimes a skiff tied up or a dead lamp.
   box(c,'#18212c',x0,fy-8,wide,8);box(c,'#2c394a',x0,fy-8,wide,1);box(c,'#10171f',x0,fy-1,wide,1);for(let x=x0+7+i%5;x<x0+wide-2;x+=16)box(c,'#10171f',x,fy-6,1,4);
   const v=hash(i,8,3);
