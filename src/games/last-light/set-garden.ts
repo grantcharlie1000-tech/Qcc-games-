@@ -254,7 +254,7 @@ function mover9(c:C,p:Platform,x:number,y:number,l:Level){
 export const gardenBank:QuarterSet={sky:sky9,back:back9,deck:deck9,exit:exit9,station:station9,mover:mover9,depth:p=>role9(p)==='launder'?8:0};
 
 // ───────── Level 10 · the reed beds and the sunken garden ─────────
-const R10=['path','landing','stone','punt','pile','pile','board','board','stage','rung','rung','rung','roof','post','stone','punt','islet','bough','bough','pier','wall','beam','beam','plinth','island','urn','bowl','wall','board','sluice','cascade','cascade','cascade','bank'] as const;
+const R10=['path','landing','stone','punt','pile','pile','board','board','stage','rung','rung','rung','roof','post','stone','punt','islet','bough','bough','pier','wall','beam','beam','plinth','island','urn','bowl','wall','urn','beam','punt','stone','board','board','sluice','cascade','cascade','cascade','bank'] as const;
 const B10=['arm','arm','stone','stone','shelf'] as const;
 type R10T=typeof R10[number]|typeof B10[number];
 const role10=(p:Platform,l:Level):R10T=>p.branch?B10[p.id-l.mainCount]??'stone':R10[p.id]??'stone';

@@ -214,14 +214,16 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
  // water-gate pier and the sunken garden's wall. The sunken garden is flooded to its coping:
  // the pergola's beams on their columns, or the stones under them, cross to
  // the plinth and Pip's summerhouse. The fountain's two bowls are the step
- // for the dash to the east wall; a last duckboard and the sluice lead to
- // the cascade, dry now, which climbs to the upper bank and the orchard gate.
+ // for the dash to the east wall. Beyond it is the lily court: an urn's
+ // pedestal, one more length of pergola, a third punt, and two duckboards
+ // to the sluice. The cascade, dry now, climbs from there to the upper bank
+ // and the orchard gate.
  {
   setting:'canal',goal:'rescue',water:760,
-  route:'24,560,300,s;388,640,80,s;540,712,64,s;684,728,96,m,30,1;890,712,56,s;1020,712,56,s;1150,716,72,c,,,0.5,12;1290,716,72,c,,,0.5,12;1430,696,120,s;1610,648,56,g;1610,584,56,g;1610,520,56,g;1666,456,180,s;2060,640,56,s;2190,712,64,s;2330,728,96,m,40,1.2;2520,712,60,s;2540,648,64,g;2540,584,64,g;2820,632,56,s;2950,680,150,s;3160,632,110,s,,,,8;3330,632,110,s,,,,8;3500,656,48,s;3620,696,260,s;3950,656,56,s;4070,600,48,s;4330,656,150,s;4540,716,72,c,,,0.5,12;4680,696,64,s;4810,640,80,s;4890,584,80,s,,,,84;4970,528,80,s,,,,140;5050,472,320,s,,,,196',
+  route:'24,560,300,s;388,640,80,s;540,712,64,s;684,728,96,m,30,1;890,712,56,s;1020,712,56,s;1150,716,72,c,,,0.5,12;1290,716,72,c,,,0.5,12;1430,696,120,s;1610,648,56,g;1610,584,56,g;1610,520,56,g;1666,456,180,s;2060,640,56,s;2190,712,64,s;2330,728,96,m,40,1.2;2520,712,60,s;2540,648,64,g;2540,584,64,g;2820,632,56,s;2950,680,150,s;3160,632,110,s,,,,8;3330,632,110,s,,,,8;3500,656,48,s;3620,696,260,s;3950,656,56,s;4070,600,48,s;4330,656,150,s;4560,640,48,s;4680,600,110,s,,,,8;4870,728,96,m,34,1.3;5060,712,60,s;5190,716,72,c,,,0.5,12;5330,716,72,c,,,0.5,12;5470,696,64,s;5600,640,80,s;5680,584,80,s,,,,84;5760,528,80,s,,,,140;5840,472,320,s,,,,196',
   branches:'770,656,44,g;2236,640,48,g;3190,716,56,s;3350,716,56,s;3630,632,48,g',memories:[0,1,4],
   stations:[[24,"Pip"]],exit:.6,
-  checkpoints:[1,8,12,16,20,24,27],sectors:[[0,"The glasshouse path"],[1,"The water stairs"],[3,"The reed beds"],[8,"The eel stage"],[12,"The boathouse"],[16,"The drowned willow"],[20,"The sunken garden"],[24,"Pip’s summerhouse"],[25,"The fountain"],[27,"The east wall"],[30,"The cascade"],[33,"The orchard gate"]],
+  checkpoints:[1,8,12,16,20,24,27,31],sectors:[[0,"The glasshouse path"],[1,"The water stairs"],[3,"The reed beds"],[8,"The eel stage"],[12,"The boathouse"],[16,"The drowned willow"],[20,"The sunken garden"],[24,"Pip’s summerhouse"],[25,"The fountain"],[27,"The east wall"],[28,"The lily court"],[35,"The cascade"],[38,"The orchard gate"]],
   hazards:[],
  },
  // 11 · The Orchard Circuit
