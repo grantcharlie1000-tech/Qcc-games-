@@ -7,7 +7,7 @@ import {box,hash,sprite,type C} from './quarter-kit';
 
 const grads=new WeakMap<C,{h:number;ending:boolean;g:CanvasGradient}>();
 /** Height in the sky, length and number of each cloud bank. */
-const CLOUDS=[[.07,150,5],[.13,270,1],[.22,180,2],[.3,330,3],[.39,220,4]] as const;
+const CLOUDS=[[.07,150,5],[.13,270,1],[.22,180,2],[.3,330,3],[.39,220,4],[.47,390,6],[.54,290,7]] as const;
 function cloud(seed:number,W:number){
  return sprite(`sky/cloud/${seed}`,W,20,c=>{
   // Night stratus: long flat streaks stepped at both ends, moonlit along the top.
@@ -29,7 +29,7 @@ export function nightSky(c:C,w:number,h:number,ending:boolean,cx=0,t=0){
   if(v>.92){if(Math.sin(t*1.7+i)>.8)continue;c.fillStyle='#e9ecd9';c.fillRect(x,y,1,1);c.fillStyle='#dfe6dc3d';c.fillRect(x-1,y,3,1);c.fillRect(x,y-1,1,3);}
   else{c.fillStyle=v>.55?'#dfe6dc7a':v<.06?'#f3c77a70':'#dfe6dc38';c.fillRect(x,y,1,1);}
  }
- for(const [at,W,seed] of CLOUDS){const span=w+W+90,x=(((hash(seed,4,9)*span-cx*.012*seed-t*(.8+seed*.35))%span)+span)%span-W;c.drawImage(cloud(seed,W),Math.round(x),Math.round(h*at));}
+ for(const [at,W,seed] of CLOUDS){const span=w+W+90,x=(((hash(seed,4,9)*span-cx*.012*seed-t*(.8+seed%5*.35))%span)+span)%span-W;c.drawImage(cloud(seed,W),Math.round(x),Math.round(h*at));}
 }
 /** The moon: a crescent with the rest of its disc in earthshine, in a halo. */
 export function moon(c:C,mx:number,my:number){
@@ -81,8 +81,8 @@ function pane(c:C,x:number,y:number,s:Scale,k:Tone,lit:boolean,shut:boolean){
 /** One town house filling its lot: eaves at `top`, wall down to `bottom`.
  * The roof it carries, its chimneys, how its windows are set out and which
  * of them are lit all come from the house's own number. */
-export function townHouse(c:C,w:number,top:number,bottom:number,seed:number,k:Tone,s:Scale,door=false){
- const wall=k.walls[Math.floor(hash(seed,2,5)*k.walls.length)],kind=w<s.pitch*1.6?[0,2,4][Math.floor(hash(seed,3,5)*3)]:w>s.pitch*5?[1,2,3,1][Math.floor(hash(seed,3,5)*4)]:Math.floor(hash(seed,3,5)*6),u=s.unit,flip=hash(seed,4,5)>.5;
+export function townHouse(c:C,w:number,top:number,bottom:number,seed:number,k:Tone,s:Scale,door=false,shape=-1){
+ const wall=k.walls[Math.floor(hash(seed,2,5)*k.walls.length)],kind=shape>=0?shape:w<s.pitch*1.6?[0,2,4][Math.floor(hash(seed,3,5)*3)]:w>s.pitch*5?[1,2,3,1][Math.floor(hash(seed,3,5)*4)]:Math.floor(hash(seed,3,5)*6),u=s.unit,flip=hash(seed,4,5)>.5;
  box(c,wall,0,top,w,bottom-top);
  let attic=0;
  if(kind===0){
