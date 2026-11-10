@@ -4,16 +4,18 @@ import {spike,steam,type CampaignRoute} from './campaign-types';
  * Each route has authored encounter and rest beats, with every task on the road. */
 export const OPENING_ROUTES:readonly CampaignRoute[]=[
  // 01 · The Window Left Open
- // One terrace to Nell’s door. Alleys teach the run-up jump over lean-tos and a
+ // One terrace to Nell’s window, and on down to the bell tower's door. Alleys teach the run-up jump over lean-tos and a
  // back yard; a dormer eave then rewards a short hop (a full jump clips its
  // edge and drops you into the yard, which only climbs back toward roof 5).
  // The first tooth and the only lethal drops wait across the street.
  {
   setting:'roofs',goal:'shelter',
-  route:'24,440,300,s;372,440,180,s;616,440,200,s;912,440,160,s;1184,408,180,s;1484,408,140,s;1720,408,200,s;1992,344,300,s;2420,344,96,s;2628,344,200,s;2892,344,340,s',
+  // Past Nell's window the roofs step down to the bell tower: a shop, a
+  // wash-house, then the top of the tower's forecourt steps and its door.
+  route:'24,440,300,s;372,440,180,s;616,440,200,s;912,440,160,s;1184,408,180,s;1484,408,140,s;1720,408,200,s;1992,344,300,s;2420,344,96,s;2628,344,200,s;2892,344,340,s;3300,404,120,s;3480,452,96,s;3640,500,200,s',
   branches:'300,500,140,s;520,500,140,s;828,488,72,s;912,500,452,s;1364,468,60,s;1424,500,496,s;1688,321,172,e;1920,452,160,s',memories:[1,2,6],
   stations:[],
-  checkpoints:[2,5,7,10],sectors:[[0,"Our roof"],[2,"Washing lines"],[5,"Low eaves"],[7,"The street"],[10,"Nell’s window"]],
+  checkpoints:[2,5,7,10],sectors:[[0,"Our roof"],[2,"Washing lines"],[5,"Low eaves"],[7,"The street"],[10,"Nell’s window"],[11,"Down to the tower"]],
   hazards:[spike(7,.5,22),spike(9,.72,22),spike(9,.89,22)],
  },
  // 02 · A Bell Above the Rain

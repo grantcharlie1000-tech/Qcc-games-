@@ -1,6 +1,6 @@
 import {WORLDS,type Level,type Platform} from './levels';
 import type {Run} from './model';
-import {box,enginesArt,fill,hash,masonry,noise,seamless,sprite,visible,type C,type Courses} from './quarter-kit';
+import {box,enginesArt,fill,hash,masonry,noise,panel,seamless,sprite,stroke,visible,type C,type Courses,type Work} from './quarter-kit';
 import {quarterSet} from './quarter-sets';
 
 /** The Old Quarter is drawn as one built place. Every landing continues into
@@ -81,6 +81,8 @@ function plan(l:Level):Plan{
  const houses:House[]=[],sheds:Shed[]=[],shores:Shed[]=[],rails:Rail[]=[];
  const grates=l.platforms.filter(p=>p.kind==='grate');
  for(const p of l.platforms.slice(0,l.mainCount)){
+  // Level 1's last landing is the bell tower's forecourt, not a house roof.
+  if(l.id===0&&p.id===l.mainCount-1)continue;
   if(p.kind==='stone')houses.push({x:p.x,w:p.w,top:p.y+p.h,id:p.id});
   // One wall behind a whole stack of iron balconies, a storey above the top.
   else if(p.kind==='grate'&&!grates.some(q=>q.x===p.x&&q.w===p.w&&q.y<p.y))houses.push({x:p.x-28,w:p.w+56,top:p.y-60,id:p.id});
@@ -159,6 +161,47 @@ function roofs(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
  for(const s of pl.sheds)shed(c,s,cx,cy,vw,vh);
  for(const s of pl.shores)shores(c,s,cx,cy,vw,vh);
  rails(c,pl.rails,cx,cy,vw,vh);
+ if(l.id===0){nellsWindow(c,l,cx,cy,vw,vh);towerFoot(c,l,pl,cx,cy,vw,vh);}
+}
+/** Nell's dormer on her roof, where level 1 used to end: the casement open, the lamp lit, Nell at it. */
+function nellsWindow(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
+ const roof=l.platforms[10],x=Math.round(roof.x+roof.w*.55),y=roof.y;if(!visible(x-6,y-52,48,52,cx,cy,vw,vh))return;
+ box(c,'#10161d',x-4,y-38,44,38);box(c,'#3b2e30',x-2,y-36,40,36);
+ for(let k=0;k<12;k++){box(c,'#10161d',x-6+k*2,y-40-k,48-k*4,2);box(c,'#4a3b38',x-5+k*2,y-40-k,46-k*4,1);}
+ box(c,'#0d1218',x+6,y-30,24,26);box(c,'#f0c47a',x+8,y-28,20,22);box(c,'#fff0c4',x+12,y-24,8,14);
+ box(c,'#2a2019',x+17,y-28,2,22);box(c,'#2a2019',x+8,y-18,20,2);
+ // Nell at the glass, and the casement swung out.
+ box(c,'#2b2522',x+18,y-24,8,18);box(c,'#3b3330',x+19,y-27,6,5);box(c,'#4a3423',x+30,y-30,6,26);box(c,'#6b4a2e',x+31,y-29,4,24);
+ box(c,'#56626d',x+4,y-4,28,3);box(c,'#78848e',x+4,y-4,28,1);
+}
+/** The bell tower at the end of Nell's street, from outside: the face the
+ * same weathered stone as from the canal, its door at the top of the
+ * forecourt steps. The street at the foot of the steps is the black's. */
+const TOWER_OUT:Work={course:16,short:22,long:54,mortar:'#19212a',stones:['#29333f','#2c3642','#2f3946','#27313c'],lip:'#3a4654',shade:'#212a34',chip:'#46525f'};
+const FORECOURT:Work={course:12,short:18,long:40,mortar:'#151c24',stones:['#28323d','#2b3540','#2e3843'],lip:'#3a4654',shade:'#1f2832',chip:'#46525f'};
+function towerFoot(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
+ const court=l.platforms[l.mainCount-1],x0=court.x+44,x1=l.width+40,top=-240,foot=court.y;
+ if(visible(x0-20,top,x1-x0+20,foot-top,cx,cy,vw,vh)){
+  c.drawImage(panel('tower/l1/face',x1-x0,foot-top,TOWER_OUT,71),x0,top);
+  // The corner: quoins long and short by turns, standing proud of the face.
+  for(let y=top+2,k=0;y<foot-12;y+=16,k++){const wide=k%2?18:10;box(c,'#36414c',x0,y+1,wide,14);box(c,'#4a5662',x0,y+1,wide,1);box(c,'#1c242d',x0,y+15,wide,1);box(c,'#4a5662',x0,y+1,1,14);}
+  box(c,'#10161d',x0-2,top,2,foot-top);
+  // A string course over the door storey, and the plinth the tower stands on.
+  box(c,'#1a222b',x0-3,foot-150,x1-x0+3,8);box(c,'#4c5864',x0-3,foot-149,x1-x0+3,5);box(c,'#6b7782',x0-3,foot-149,x1-x0+3,1);
+  box(c,'#1a222b',x0-6,foot-14,x1-x0+6,14);box(c,'#46525f',x0-5,foot-13,x1-x0+5,12);box(c,'#6b7782',x0-5,foot-13,x1-x0+5,1);
+  // The slit windows of the stair inside, one over the other.
+  for(const y of [foot-250,foot-410])for(const x of [x0+120]){box(c,'#0d1116',x,y,10,44);box(c,'#3e4a57',x-4,y-6,18,6);box(c,'#56636f',x-4,y-6,18,1);box(c,'#46525f',x-4,y+44,18,4);box(c,'#141c2c',x+2,y+2,6,40);}
+ }
+ // The forecourt: a retaining wall down to the street, with its steps going down into the black on the left.
+ const wall0=court.x,wall1=x1,bottom=pl.street+40;
+ if(visible(wall0-90,court.y,wall1-wall0+90,bottom-court.y,cx,cy,vw,vh)){
+  c.drawImage(panel('tower/l1/court',wall1-wall0,bottom-court.y-28,FORECOURT,73),wall0,court.y+28);
+  // Past the landing the forecourt's paving runs on under the tower to the edge of the street.
+  const past=court.x+court.w;box(c,'#1a222b',past,court.y,wall1-past,28);box(c,'#5d676e',past,court.y,wall1-past,8);box(c,'#8a949b',past,court.y,wall1-past,1);box(c,'#3a444b',past,court.y+8,wall1-past,1);
+  box(c,'#10161d',wall0,court.y+28,2,bottom-court.y-28);
+  for(let k=0;k<7;k++){const sx=wall0-12-k*12,sy=court.y+28+k*16;box(c,'#1a222b',sx,sy,14+k*12,16);box(c,'#46525f',sx,sy,12,14);box(c,'#6b7782',sx,sy,12,1);box(c,'#2c353f',sx,sy+13,12,1);}
+  stroke(c,'#141b21',wall0-4,court.y-22,wall0-88,court.y+90,2);for(let k=0;k<4;k++)box(c,'#141b21',wall0-4-k*28,court.y-22+k*37,2,22);
+ }
 }
 
 function tower(c:C,l:Level,pl:Plan,clock:number,cx:number,cy:number,vw:number,vh:number){
