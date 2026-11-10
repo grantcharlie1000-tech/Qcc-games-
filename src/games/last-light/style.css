@@ -121,3 +121,9 @@ body.in-game .game-view[data-game-id=last-light] .game-compact-hud{gap:10px;font
 .ll-touch button[data-action=down][hidden]{display:none}
 
 body.in-game:has(.game-view[data-game-id=last-light] .ll-game[data-overlay=none]) .lb-sidebar:not(.open){display:none}
+
+/* Opening speech stays readable while running; it never captures input. */
+.ll-opening{position:absolute;top:calc(var(--ll-scene-top) + 64px);left:50%;transform:translateX(-50%);width:min(620px,calc(100% - 32px));box-sizing:border-box;margin:0;padding:10px 14px;background:#14212df2;border-left:3px solid var(--ll-accent);pointer-events:none;z-index:2}
+.ll-opening[hidden]{display:none}.ll-opening strong{color:var(--ll-accent);font:700 11px/1.5 ui-monospace,monospace}.ll-opening p{margin:4px 0 0;color:var(--ll-paper);font:12px/1.6 ui-monospace,monospace}
+.ll-game:has(.ll-dialogue:not([hidden])) .ll-opening{visibility:hidden}
+@media(max-width:480px){.ll-opening{padding:8px 10px}.ll-opening p{font-size:11px;line-height:1.5}}

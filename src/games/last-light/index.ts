@@ -16,6 +16,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  root.innerHTML=`<canvas class="ll-canvas" tabindex="0" role="application" aria-label="Last Light. Left and Right arrows run, Up jumps, Right Shift dashes, Enter to interact, Delete to pause, End to retry, Page Down for journal." aria-describedby="ll-help"></canvas>
  <div class="ll-hud"><strong class="ll-stage"></strong><div class="ll-stats"><span class="ll-spark-stat" title="Memory sparks">✦ <b class="ll-sparks">0</b></span><span title="Setbacks">↻ <b class="ll-deaths">0</b></span><span class="ll-time">0:00</span></div><span class="ll-task-progress" hidden></span></div>
  <button class="ll-prompt" data-ui="interact" hidden></button><p class="ll-notice" role="status"></p>
+ <aside class="ll-opening" hidden role="status"><strong></strong><p></p></aside>
  <aside class="ll-dialogue" hidden aria-label="Conversation"><div><strong class="ll-speaker"></strong><button data-ui="dismiss" aria-label="Dismiss conversation">×</button></div><p></p><small class="ll-dialogue-hint">PAUSED · MOVE TO CONTINUE</small></aside>
  <div class="ll-cinematic" hidden><small>ENTER · SKIP</small></div>
  <div class="ll-touch" role="group" aria-label="Game controls"><div><button data-action="left" aria-label="Move left">←</button><button data-action="right" aria-label="Move right">→</button><button data-action="down" aria-label="Drop through grate" hidden>↓</button></div><div><button data-action="dash" aria-label="Dash">⇢<small>DASH</small></button><button data-action="jump" aria-label="Jump">↑<small>JUMP</small></button></div></div>
@@ -28,7 +29,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  const levelLabel=document.createElement('span'),scoreLabel=document.createElement('span');scoreLabel.className='ll-score';hud.element.replaceChildren(levelLabel,scoreLabel);hud.element.after(hudContent);
  const text=(el:HTMLElement,value:string)=>{if(el.textContent!==value)el.textContent=value;};
  const data=(key:string,value:string)=>{if(root.dataset[key]!==value)root.dataset[key]=value;};
- let run=createRun(),overlay:Overlay='intro',paused=false,disposed=false,frame=0,last=0,acc=0,noticeUntil=0,dialogueUntil=0,dialogueBlocking=false,dialogueArmed=false,dialogueShown=0,previousHud='',previousSecond=-1,previousSector='';
+ let run=createRun(),overlay:Overlay='intro',paused=false,disposed=false,frame=0,last=0,acc=0,noticeUntil=0,dialogueUntil=0,dialogueBlocking=false,dialogueArmed=false,dialogueShown=0,previousHud='',previousSecond=-1,previousSector='',openingStage=-1,openingUntil=0;
  const keys=new Set<string>(),touches=new Map<number,string>();let jumpQueued=false,dashQueued=false,interactQueued=false,dropQueued=false;
  const touchMode=()=>matchMedia('(any-pointer: coarse)').matches;
  const instructions=(text:string)=>touchMode()?text.replace(/Arrows move; hold Up to jump/g,'Hold ← or → to run; hold JUMP to jump').replace(/Tap Up/g,'Tap JUMP').replace(/Right Shift/g,'DASH').replace(/A \/ D runs/g,'Hold ← or → to run').replace(/hold Space to jump/g,'hold JUMP to jump').replace(/\bE\b/g,'Tap').replace(/\bSpace\b/g,'JUMP').replace(/\bShift\b/g,'DASH').replace(/\bX\b/g,'DASH'):text.replace(/\bSpace\b/g,'↑').replace(/\bX\b/g,'Right Shift').replace(/\bE\b/g,'Enter');
@@ -67,6 +68,8 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
   const second=Math.floor(run.time/1000);if(second!==previousSecond){previousSecond=second;text(q<HTMLElement>('.ll-time'),formatTime(run.time));}
   if(noticeUntil&&run.clock>noticeUntil){q<HTMLElement>('.ll-notice').textContent='';noticeUntil=0;}
   if(dialogueUntil&&run.clock>dialogueUntil){q<HTMLElement>('.ll-dialogue').hidden=true;dialogueUntil=0;}
+  const opening=q<HTMLElement>('.ll-opening'),hideOpening=!!overlay||run.phase!=='playing'||run.clock>=openingUntil;
+  if(opening.hidden!==hideOpening)opening.hidden=hideOpening;
   const cinematic=q<HTMLElement>('.ll-cinematic');if(cinematic.hidden!==(run.cinematic<=0))cinematic.hidden=run.cinematic<=0;
   text(q<HTMLElement>('.ll-cinematic small'),touchMode()?'TAP AN ACTION · SKIP':'ENTER · SKIP');
  }
@@ -81,7 +84,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
   if(next==='continue')html=`${eyebrow('PICK UP WHERE YOU LEFT OFF')}<h2>Welcome back.</h2><p>Level ${run.stage+1} · ${level.name}<br>${run.cleared} levels cleared · ${run.best.toLocaleString()} points</p><p class="ll-map-objective"><strong>Objective</strong>Reach the exit</p>${button('play','Continue →')}${button('help','Controls',true)}${button('confirm','Start a new run',true)}`;
   if(next==='clear'||next==='complete'){
    const ending=run.ending?ENDINGS[run.ending]:null;
-   html=`${eyebrow(next==='complete'?'40 / 40 · CAMPAIGN COMPLETE':`${String(run.stage+1).padStart(2,'0')} / 40 · ${WORLDS[level.world].name}`)}<h2>${next==='complete'?'All forty cleared.':'Level clear.'}</h2>${next==='clear'&&run.stage<8?`<p class="ll-story">${CHAPTERS[run.stage].after}</p>`:''}<div class="ll-results"><span>MEMORIES<strong>${run.collected.filter(id=>id<3).length}/3</strong></span><span>LEVEL TIME<strong>${formatTime(run.stageTime)}</strong></span><span>POINTS<strong>${run.best.toLocaleString()}</strong></span></div><details class="ll-score-breakdown"><summary>Where your points came from</summary><p>${run.cleared} levels × 1,000 = ${(run.cleared*1000).toLocaleString()}<br>${run.sparks} sparks × 100 = ${(run.sparks*100).toLocaleString()}<br>Pace bonus = ${Math.max(0,run.best-run.cleared*1000-run.sparks*100).toLocaleString()}<br>Each level banks its own bonus: up to 250, −2 per active second, −25 per setback. Previously earned points stay yours.</p></details>${next==='clear'?button('next','Next level →'):button('confirm','Start another run →')}${next==='complete'?button('ending','Read the story ending',true):''}${ending?`<details class="ll-score-breakdown"><summary>${ending.title}</summary><p>${ending.text}</p></details>`:''}${button('journal','Read the journal',true)}${button('rankings','View leaderboard',true)}`;
+   html=`${eyebrow(next==='complete'?'40 / 40 · CAMPAIGN COMPLETE':`${String(run.stage+1).padStart(2,'0')} / 40 · ${WORLDS[level.world].name}`)}<h2>${next==='complete'?'All forty cleared.':'Level clear.'}</h2><p class="ll-story">${CHAPTERS[run.stage].after}</p><div class="ll-results"><span>MEMORIES<strong>${run.collected.filter(id=>id<3).length}/3</strong></span><span>LEVEL TIME<strong>${formatTime(run.stageTime)}</strong></span><span>POINTS<strong>${run.best.toLocaleString()}</strong></span></div><details class="ll-score-breakdown"><summary>Where your points came from</summary><p>${run.cleared} levels × 1,000 = ${(run.cleared*1000).toLocaleString()}<br>${run.sparks} sparks × 100 = ${(run.sparks*100).toLocaleString()}<br>Pace bonus = ${Math.max(0,run.best-run.cleared*1000-run.sparks*100).toLocaleString()}<br>Each level banks its own bonus: up to 250, −2 per active second, −25 per setback. Previously earned points stay yours.</p></details>${next==='clear'?button('next','Next level →'):button('confirm','Start another run →')}${next==='complete'?button('ending','Read the story ending',true):''}${ending?`<details class="ll-score-breakdown"><summary>${ending.title}</summary><p>${ending.text}</p></details>`:''}${button('journal','Read the journal',true)}${button('rankings','View leaderboard',true)}`;
   }
   if(next==='choice')html=`${eyebrow('OPTIONAL · THE LAST PAGE')}<h2>What do we<br>leave alight?</h2><p class="ll-story">At the end of the city, Mira stands beside you. Below, windows wait for dawn.</p><p>Share the flame with every district now, or bring it home and let neighbour light neighbour.</p>${button('share','Share the flame →')}${button('home','Carry it home →',true)}${button('results','Back to results',true)}<p class="ll-small">Both roads lead home. Your campaign is already complete.</p>`;
   if(next==='menu')html=`${eyebrow('TAKE A BREATHER')}<h2>The light can wait.</h2><p>Level ${run.stage+1} · ${level.name}<br>${WORLDS[level.world].name} · ${missionGuidance(run).sector.name}</p><p class="ll-small">✦ ${run.sparks} memories · ↻ ${run.deaths} setbacks · ${formatTime(run.time)}<br>Checkpoint ${Math.max(0,checkpointIndexFor(run)+1)}/${checkpointsFor(level).length} · ${run.best.toLocaleString()} points</p>${button('play','Resume →')}${button('journal','Mira’s journal',true)}${button('help','How to play',true)}${button('rankings','Leaderboard',true)}${button('confirm','Start a new run',true)}`;
@@ -138,7 +141,12 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  }
  function play(){
   if(run.phase==='cleared'){show('clear');return;}if(run.phase==='complete'){show('complete');return;}
-  const guidance=missionGuidance(run);previousSector=`${run.stage}:${guidance.sector.index}`;show(null);notice(run.stage<8&&run.stageTime<1500&&!run.checkpoint?LEVELS[run.stage].hint:guidance.hint);context.setStatus(guidance.action);report();
+  if(openingStage!==run.stage){
+   openingStage=run.stage;openingUntil=run.clock+Math.max(14,CHAPTERS[run.stage].line.length/12);
+   text(q<HTMLElement>('.ll-opening strong'),speakerFor(run.stage));text(q<HTMLElement>('.ll-opening p'),CHAPTERS[run.stage].line);
+   context.announce(`${speakerFor(run.stage)}: ${CHAPTERS[run.stage].line}`);
+  }
+  const guidance=missionGuidance(run);previousSector=`${run.stage}:${guidance.sector.index}`;show(null);notice(run.stageTime<1500&&!run.checkpoint?LEVELS[run.stage].hint:guidance.hint);context.setStatus(guidance.action);report();
  }
  function retry(){if(run.phase!=='playing')return;q<HTMLElement>('.ll-dialogue').hidden=true;respawn(run);resetInput();notice(`${run.checkpoint?`Checkpoint ${checkpointIndexFor(run)+1}`:'Chapter start'} · ${missionGuidance(run).action}`);save();paint();}
  let returnTo:Overlay='intro';
@@ -151,7 +159,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
   else if(action==='help'||action==='confirm'){returnTo=overlay;show(action==='help'?'help':'confirm');}
   else if(action==='journal')openTool(action);
   else if(action==='back'){show(returnTo);}
-  else if(action==='fresh'){music.reset();run=createRun();previousSecond=-1;save();report();play();}
+  else if(action==='fresh'){music.reset();run=createRun();openingStage=-1;previousSecond=-1;save();report();play();}
   else if(action==='ending')show('choice');
   else if(action==='results')show('complete');
   else if(action==='rankings')context.openRankings?.('last-light');
@@ -196,7 +204,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
   dismissMenu(){if(['menu','help','confirm','journal'].includes(overlay??'')){if(overlay==='menu')play();else show(returnTo);return true;}return false;},
   pause(){paused=true;stop();save();paint();},resume(){paused=false;paint();schedule();},
   restart(){if(run.phase!=='playing'||overlay==='intro'||overlay==='continue')return false;retry();if(overlay)show(null);return false;},
-  serialize:()=>serialize(run),restore(value){const restored=restore(value);if(!restored)return;music.reset();run=restored;previousSecond=-1;report();show(run.phase==='complete'?'complete':run.phase==='cleared'?'clear':'continue');},
+  serialize:()=>serialize(run),restore(value){const restored=restore(value);if(!restored)return;music.reset();run=restored;openingStage=-1;previousSecond=-1;report();show(run.phase==='complete'?'complete':run.phase==='cleared'?'clear':'continue');},
   dispose(){disposed=true;stop();music.dispose();abort.abort();resize.disconnect();hudContent.remove();hud.dispose();root.remove();},
  };
 }
