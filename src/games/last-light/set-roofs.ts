@@ -17,7 +17,7 @@ import type {QuarterSet} from './quarter-sets';
 interface Building {x0:number;x1:number;top:number;style:number}
 const BUILDINGS:Readonly<Record<number,readonly Building[]>>={
  3:[{x0:440,x1:560,top:1004,style:2},{x0:600,x1:760,top:924,style:1},{x0:816,x1:1140,top:1124,style:0},{x0:1188,x1:1696,top:740,style:1},{x0:1832,x1:2128,top:772,style:2},{x0:2128,x1:2448,top:644,style:0},{x0:2656,x1:3016,top:612,style:1},{x0:3088,x1:3376,top:676,style:2},{x0:3528,x1:3960,top:356,style:0}],
- 4:[{x0:0,x1:324,top:620,style:1},{x0:428,x1:608,top:620,style:2},{x0:892,x1:1110,top:588,style:0},{x0:1340,x1:1490,top:572,style:1},{x0:1560,x1:1776,top:668,style:2},{x0:1776,x1:2036,top:540,style:0},{x0:2452,x1:2660,top:476,style:1},{x0:2990,x1:3130,top:476,style:2},{x0:3430,x1:3800,top:412,style:0}],
+ 4:[{x0:0,x1:324,top:620,style:0},{x0:428,x1:608,top:620,style:2},{x0:892,x1:1110,top:588,style:0},{x0:1340,x1:1490,top:572,style:1},{x0:1560,x1:1776,top:668,style:2},{x0:1776,x1:2036,top:540,style:0},{x0:2452,x1:2660,top:476,style:1},{x0:2990,x1:3130,top:476,style:2},{x0:3430,x1:3800,top:412,style:0},{x0:3864,x1:3976,top:476,style:2},{x0:4200,x1:4280,top:604,style:1}],
 };
 const STYLES=[
  {key:'roofs/brick',mortar:'#1c1719',stones:['#33282a','#382b2c','#3c2f2e'],lip:'#463735',chip:'#4f3f3b',block:16,row:8,trim:'#5b4a44',trimLit:'#7d6a5e',shade:'#201a1c'},
@@ -160,7 +160,7 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
  }
  // A house you have carried the lantern past lights its own windows.
  for(const b of buildings)facade(c,b,street,courier>b.x1-20,cx,cy,vw,vh);
- canalCut(c,l,street,t,cx,cy,vw,vh);
+ canalCut(c,l,street,t,cx,cy,vw,vh);routePlaces(c,l,street,cx,cy,vw,vh);
  for(const p of l.platforms){
   if(!visible(p.x-10,p.y-20,p.w+20,street-p.y+20,cx,cy,vw,vh))continue;
   if(p.kind==='crumble')shoring(c,p,street);
@@ -173,8 +173,8 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
 }
 function deck(c:C,p:Platform,l:Level){
  const w=p.w,b=plan(l).byPlatform.get(p.id);
- if(CUTS[l.id]&&p.id===0){
-  // The market stairs' landing: a granite coping on the quay wall.
+ if(CUTS[l.id]&&p.id===0||STAIRS[l.id]?.culvert&&p.id===l.mainCount-1){
+  // The market stairs' landing, or the culvert headwall: a granite coping on the wall.
   box(c,'#1a2129',-2,0,w+4,10);box(c,'#7d878c',-2,0,w+4,8);box(c,'#aab3b3',-2,0,w+4,2);box(c,'#5d676e',-2,7,w+4,1);for(let x=38;x<w-10;x+=52)box(c,'#565f66',x,2,1,6);
   return;
  }
@@ -208,23 +208,65 @@ function deck(c:C,p:Platform,l:Level){
  // The walked edge of a roof is its coping, paler than the cornice below it.
  box(c,'#aab3b3',0,0,w,1);
 }
-function exit(c:C,l:Level,s:Run,t:number,front:boolean){
- if(front)return;
- const x=Math.round(l.exit.x+l.exit.w/2),y=l.exit.y+l.exit.h,end=l.platforms[l.mainCount-1],open=s.phase!=='playing';let right=end.x+end.w;
- // The roof stair-house: brick walls under a flat lead cap, and its door standing open on a lit stair.
+/** A roof stair-house: brick walls under a flat lead cap, its door on a lit stair. `open` stands the leaf back; a shut door shows light only at its seams. */
+function stairHouse(c:C,x:number,y:number,end:Platform,open:boolean,glow:boolean){
+ let right=end.x+end.w;
  const west=x-end.x<end.w/2,left=west?end.x:x-34,width=(west?x+34:right)-left,top=y-84;right=left+width;
  wall(c,'roofs/stack',stackTile,left,top+8,width,76);box(c,'#120e0f',left,top+8,2,76);box(c,'#120e0f',right-2,top+8,2,76);
  box(c,'#1a1415',left-4,top,width+8,9);box(c,'#6c7378',left-4,top,width+8,5);box(c,'#9aa2a4',left-4,top,width+8,2);
- box(c,'#f3c77a12',x-36,y-76,72,76);
- box(c,'#120e0f',x-21,y-62,42,62);box(c,'#7a5a50',x-21,y-62,42,3);box(c,'#3a2826',x-19,y-59,3,59);box(c,'#3a2826',x+16,y-59,3,59);
- box(c,'#c98f4b',x-16,y-58,32,58);box(c,'#f0c47a',x-10,y-56,20,56);box(c,'#fff0c4',x-5,y-48,10,48);
- // Stair treads going down into the house, and the leaf folded back.
- for(let i=0;i<4;i++)box(c,'#a8743c',x-10+i*2,y-10-i*9,20-i*4,2);
- box(c,'#3b2a1d',x-16,y-58,7,58);box(c,'#5d4129',x-15,y-57,5,57);box(c,'#262d33',x-16,y-44,7,2);box(c,'#262d33',x-16,y-16,7,2);
- if(open)box(c,'#fff0c466',x-10,y-56,20,56);
- box(c,'#f3c77a44',x-22,y-1,44,1);
+ if(open){
+  box(c,'#f3c77a12',x-36,y-76,72,76);
+  box(c,'#120e0f',x-21,y-62,42,62);box(c,'#7a5a50',x-21,y-62,42,3);box(c,'#3a2826',x-19,y-59,3,59);box(c,'#3a2826',x+16,y-59,3,59);
+  box(c,'#c98f4b',x-16,y-58,32,58);box(c,'#f0c47a',x-10,y-56,20,56);box(c,'#fff0c4',x-5,y-48,10,48);
+  // Stair treads going down into the house, and the leaf folded back.
+  for(let i=0;i<4;i++)box(c,'#a8743c',x-10+i*2,y-10-i*9,20-i*4,2);
+  box(c,'#3b2a1d',x-16,y-58,7,58);box(c,'#5d4129',x-15,y-57,5,57);box(c,'#262d33',x-16,y-44,7,2);box(c,'#262d33',x-16,y-16,7,2);
+  if(glow)box(c,'#fff0c466',x-10,y-56,20,56);
+  box(c,'#f3c77a44',x-22,y-1,44,1);
+ }else{
+  // Shut: the leaf in its frame, lamplight only along the sill and the meeting edge.
+  box(c,'#120e0f',x-21,y-62,42,62);box(c,'#7a5a50',x-21,y-62,42,3);box(c,'#3a2826',x-19,y-59,3,59);box(c,'#3a2826',x+16,y-59,3,59);
+  box(c,'#3b2a1d',x-16,y-58,32,58);box(c,'#5d4129',x-15,y-57,30,56);for(const yy of [y-46,y-24])box(c,'#3b2a1d',x-13,yy,26,1);
+  box(c,'#262d33',x+9,y-32,3,4);box(c,'#f0c47a88',x-16,y-2,32,1);box(c,'#f0c47a55',x+15,y-56,1,54);
+  if(glow){box(c,'#2a2019',x-24,y-36,48,4);box(c,'#57432f',x-24,y-36,48,1);}
+ }
  // A small window and a vent on the rest of the wall.
  const side=west?-1:1;if(width>110){c.drawImage(sash(1),x+side*49-9,y-56);if(width>170){box(c,'#120e0f',x+side*95-11,y-50,22,16);for(let yy=y-48;yy<y-36;yy+=4)box(c,'#3a2d2b',x+side*95-9,yy,18,2);}}
+}
+/** Level 5's places on its route: the east street stair-house it starts at, Tomas's barred stair, and the culvert headwall in the lane. */
+const STAIRS:Readonly<Record<number,{start?:boolean;tomas?:number;culvert?:boolean}>>={4:{start:true,tomas:22,culvert:true}};
+function routePlaces(c:C,l:Level,street:number,cx:number,cy:number,vw:number,vh:number){
+ const k=STAIRS[l.id];if(!k)return;
+ const first=l.platforms[0];if(k.start&&visible(first.x,first.y-90,140,90,cx,cy,vw,vh))stairHouse(c,first.x+30,first.y,first,true,false);
+ if(k.tomas!==undefined){const p=l.platforms[k.tomas];if(visible(p.x,p.y-90,p.w,90,cx,cy,vw,vh))stairHouse(c,Math.round(p.x+p.w*.72+19),p.y,p,false,true);}
+ if(k.culvert){
+  // The headwall over the culvert's outfall: dressed stone from the lane up to its coping, the arched mouth at its foot.
+  const p=l.platforms[l.mainCount-1],x0=p.x,x1=p.x+p.w,mid=Math.round(x0+p.w*.62),r=40;
+  if(visible(x0,p.y,p.w,street-p.y+40,cx,cy,vw,vh)){
+   c.drawImage(panel(`roofs/headwall/${l.id}`,p.w,street+40-p.y-8,HEADWALL,77),x0,p.y+8);box(c,'#0d1117',x0,p.y+8,2,street-p.y);box(c,'#0d1117',x1-2,p.y+8,2,street-p.y);
+   for(let px=mid-r-8;px<mid+r+8;px++){const d=px+.5-mid,top=street-26-Math.round(Math.sqrt(Math.max(0,(r+8)**2-d*d)));box(c,'#46525f',px,top,1,street-top);if(Math.abs(d)<r){const inner=street-26-Math.round(Math.sqrt(r*r-d*d));box(c,'#05080b',px,inner,1,street-inner);}}
+   for(let k2=1;k2<9;k2++){const g=Math.PI*k2/9;stroke(c,'#1a222b',mid-Math.cos(g)*r,street-26-Math.sin(g)*r,mid-Math.cos(g)*(r+8),street-26-Math.sin(g)*(r+8));}
+   for(const side of [-1,1]){const jx=side<0?mid-r-8:mid+r;box(c,'#46525f',jx,street-26,8,26);box(c,'#1a222b',jx,street-14,8,1);}
+   // The grille stands open on its hinge, and the culvert's water runs out across the lane.
+   for(let k2=0;k2<6;k2++)box(c,'#1c2228',mid+r+10+k2*5,street-58,2,58);box(c,'#1c2228',mid+r+8,street-58,30,2);box(c,'#1c2228',mid+r+8,street-30,30,2);
+   box(c,'#10222c',mid-r,street-4,r*2,4);box(c,'#2f5560',mid-r+6,street-4,r*2-12,1);
+  }
+ }
+}
+const HEADWALL:Work={course:14,short:24,long:52,mortar:'#151c24',stones:['#2b3540','#2e3843','#313b46'],lip:'#3c4854',shade:'#212a34',chip:'#46525f'};
+function exit(c:C,l:Level,s:Run,t:number,front:boolean){
+ if(front)return;
+ const x=Math.round(l.exit.x+l.exit.w/2),y=l.exit.y+l.exit.h,end=l.platforms[l.mainCount-1],open=s.phase!=='playing';
+ if(!STAIRS[l.id]?.culvert){stairHouse(c,x,y,end,true,open);return;}
+ // The culvert steps: a gate in the headwall's parapet, and stone steps going down inside it to the mouth.
+ box(c,'#f3c77a0c',x-30,y-64,60,64);
+ for(const side of [-1,1]){const px=x+side*24-(side<0?10:0);box(c,'#1a222b',px,y-40,10,40);box(c,'#46525f',px+1,y-39,8,38);box(c,'#6b7782',px+1,y-39,8,1);box(c,'#56626e',px-1,y-44,12,5);box(c,'#7a8690',px-1,y-44,12,1);}
+ box(c,'#05080b',x-14,y-36,28,36);for(let i=0;i<4;i++){box(c,'#2c353f',x-14,y-30+i*8,28-i*3,3);box(c,'#46525f',x-14,y-30+i*8,28-i*3,1);}
+ // The gate stands open against the parapet.
+ box(c,'#1c2228',x-14,y-36,2,36);for(let k=0;k<4;k++)box(c,'#1c2228',x-28-k*2,y-34+k*2,2,32-k*4);box(c,'#1c2228',x-30,y-34,18,2);box(c,'#1c2228',x-30,y-12,18,2);
+ if(open)box(c,'#f3c77a22',x-14,y-36,28,36);
+ // A lamp bracket over the gate, unlit like every lamp in the lane.
+ box(c,'#141b21',x+30,y-60,2,22);box(c,'#141b21',x+22,y-60,10,2);box(c,'#141b21',x+19,y-58,7,9);box(c,'#232e37',x+20,y-57,5,6);
 }
 /** Past the roofs you walk are the roofs you do not: the row across the
  * street, whose eaves stay below your own; the next streets' roofs behind
