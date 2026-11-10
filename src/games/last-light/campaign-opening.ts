@@ -167,16 +167,22 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
  // houses stand on theirs, with a chimney stack as a step at the gable. A
  // rook walks each house roof. The middle is the test: two trestle planks,
  // a dash to a stump, down to a cutwater, a punt on a rope, and a scaffold
- // back up to the roadway. The gatehouse stair climbs to the lookout and
- // the garden gate. Three bridge lamps are optional.
+ // back up to the roadway. Past the far roadway a second span is down, at
+ // the mill pier: the mill's roof and stack, a long jump to a pier stump,
+ // then the starlings at the waterline with a cracked plank and a second
+ // punt between them, and a scaffold back up to the last span. The
+ // gatehouse on the garden bank is one building and its bridge gate is
+ // barred: a scaffold on its wall walk climbs to the tower top, the tool
+ // house against its garden side is the way down, and the garden gate is
+ // in the wall along the bank. Three bridge lamps are optional.
  {
-  setting:'bridge',goal:'signal',water:760,exit:.6,
-  route:'24,560,232,s;344,600,64,s;480,560,96,c,,,0.7;640,496,160,s;800,432,48,s,,,,64;1024,560,300,s;1420,560,120,s;1636,560,240,s;1972,496,200,s;2172,432,48,s,,,,64;2300,560,160,s;2500,560,100,c,,,0.7;2630,560,96,c,,,0.7;2930,560,96,s;3080,656,96,s;3236,716,110,m,30,1;3436,700,96,s;3436,636,96,g;3436,572,96,g;3566,560,240,s;3902,496,180,s;4082,432,48,s,,,,64;4266,496,120,s;4426,432,110,g;4426,368,110,g;4576,320,300,s',
-  branches:'1556,656,72,s;1556,608,72,g;3700,700,96,s;4426,304,110,g',memories:[1,2,3],
-  stations:[[7,"Quarter lamp"],[19,"Bridge lamp"],[22,"Garden gate lamp"]],
-  checkpoints:[3,7,10,13,19,22],sectors:[[0,"The hoist house door"],[1,"The approach arches"],[3,"The toll house"],[5,"Bridge approach"],[8,"The first bridge house"],[10,"Broken middle span"],[14,"Down at the piers"],[19,"The far roadway"],[22,"Garden lookout"]],
+  setting:'bridge',goal:'signal',water:760,exit:.57,
+  route:'24,560,232,s;344,600,64,s;480,560,96,c,,,0.7;640,496,160,s;800,432,48,s,,,,64;1024,560,300,s;1420,560,120,s;1636,560,240,s;1972,496,200,s;2172,432,48,s,,,,64;2300,560,160,s;2500,560,100,c,,,0.7;2630,560,96,c,,,0.7;2930,560,96,s;3080,656,96,s;3236,716,110,m,30,1;3436,700,96,s;3436,636,96,g;3436,572,96,g;3566,560,240,s;3902,560,96,s;4070,496,150,s;4220,432,48,s,,,,64;4488,560,56,s;4610,668,90,s;4760,700,56,c,,,0.5;4876,716,96,m,34,1.1;5066,668,90,s;5066,604,90,g;5066,540,90,g;5186,560,200,s;5482,496,180,s;5662,432,48,s,,,,64;5806,496,310,s;6006,432,110,g;6006,368,110,g;6132,320,244,s;6392,424,104,s;6384,560,520,s',
+  branches:'1556,656,72,s;1556,608,72,g;3700,700,96,s;6006,304,110,g',memories:[1,2,3],
+  stations:[[7,"Quarter lamp"],[19,"Bridge lamp"],[33,"Garden gate lamp"]],
+  checkpoints:[3,7,10,13,19,24,30,33,36],sectors:[[0,"The hoist house door"],[1,"The approach arches"],[3,"The toll house"],[5,"Bridge approach"],[8,"The first bridge house"],[10,"Broken middle span"],[14,"Down at the piers"],[19,"The far roadway"],[20,"The mill pier"],[24,"The starlings"],[30,"The last span"],[33,"The gatehouse"],[37,"The garden side"],[38,"The garden gate"]],
   hazards:[spike(6,.8,22),spike(10,.5,22)],
-  enemies:[{ledge:8,at:.5,kind:'crawler',travel:60,period:4.2},{ledge:20,at:.5,kind:'crawler',travel:50,period:3.8}],
+  enemies:[{ledge:8,at:.5,kind:'crawler',travel:60,period:4.2},{ledge:31,at:.5,kind:'crawler',travel:50,period:3.8}],
  },
  // 09 · Water for the Living
  {

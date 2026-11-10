@@ -27,8 +27,11 @@ function role(p:Platform,l:Level):Role{
  if(p.x>=gate(l))return 'gate';
  return p.y>DECK+40?'cutwater':p.y<DECK-20?'house':'road';
 }
-/** The last four landings are the gatehouse on the garden bank: its wall walk, its stair and its lookout. */
-const gate=(l:Level)=>l.platforms[l.mainCount-4].x;
+/** The last six landings are the gatehouse on the garden bank and what stands behind it: its wall walk, the two
+ * lifts of the scaffold on that walk, the tower top, the tool house against its garden side, and the bank path. */
+const GATE_PARTS=6;
+const gate=(l:Level)=>l.platforms[l.mainCount-GATE_PARTS].x;
+function gateParts(l:Level){const n=l.mainCount;return {fore:l.platforms[n-6],top:l.platforms[n-3],bothy:l.platforms[n-2],path:l.platforms[n-1],lifts:l.platforms.filter(p=>p.kind==='grate'&&p.x>=gate(l)).sort((a,b)=>b.y-a.y)};}
 function pier(c:C,x:number,w:number,top:number,water:number,haunch:boolean){
  // The pier, then on each side the stump of the arch it used to carry.
  const mid=x+w/2,half=Math.min(30,w/2);
@@ -71,42 +74,118 @@ function framed(c:C,x:number,y:number,w:number,h:number,lit:boolean){
 function quoins(c:C,x:number,from:number,to:number,dir:number){
  for(let y=from,k=0;y<to;y+=16,k++){const wide=k%2?16:9,at=dir>0?x:x-wide;box(c,'#3a4652',at,y+1,wide,14);box(c,'#4c5864',at,y+1,wide,1);box(c,'#1c242d',at,y+15,wide,1);}
 }
-/** The gatehouse on the garden bank is one building: the forebuilding whose
- * roof is the wall walk, the stair turret its iron landings are bolted to,
- * under a slated cone, and the gate tower whose top is the lookout. Every
- * part stands on its own footing in the river. */
+/** The gatehouse on the garden bank is one building in one stone: a lower range whose roof is the wall walk, and
+ * the gate tower at its east end, standing on one plinth in the river with the bridge's last arch under the range.
+ * The same string course runs round both at the roadway's level. The builders' scaffold stands on the wall walk
+ * against the tower's west face and is tied into it at every lift. East of the tower is the garden bank: a tool
+ * house against the tower, the bank path on its river wall, and the garden wall along the back of the path. */
 function gatehouse(c:C,l:Level,water:number,s?:Run){
- const fore=l.platforms.find(p=>role(p,l)==='gate')!,end=l.platforms[l.mainCount-1],stairs=l.platforms.filter(p=>role(p,l)==='stair');
- const t0=fore.x+fore.w+20,t1=end.x,top=Math.min(...stairs.map(p=>p.y))-56,foot=water+40,lit=!!s&&s.x>end.x;
- // The forebuilding.
- c.drawImage(panel(`bridge/fore/${l.id}`,t0-fore.x,foot-fore.y-8,ASHLAR,fore.x),fore.x,fore.y+8);quoins(c,fore.x,fore.y+8,water,1);box(c,'#0f161d',fore.x,fore.y+8,1,foot-fore.y);
- framed(c,fore.x+40,fore.y+60,16,26,lit);framed(c,fore.x+40,fore.y+130,16,26,false);
- // The stair turret, its cone, and the landings bolted to it with their ladders.
- c.drawImage(panel(`bridge/turret/${l.id}`,t1-t0,foot-top,ASHLAR,t0+3),t0,top);quoins(c,t0,top,water,1);box(c,'#0f161d',t0,top,1,foot-top);box(c,'#0f161d',t1-2,top,2,foot-top);
- box(c,'#1a222b',t0-6,top-4,t1-t0+12,6);box(c,'#56626e',t0-6,top-4,t1-t0+12,4);box(c,'#7a8690',t0-6,top-4,t1-t0+12,1);
- const mid=(t0+t1)/2,half=(t1-t0)/2+4;for(let y=0;y<70;y++){const w=Math.round(half*(1-y/70));if(w<1)break;box(c,(y>>2)%2?'#3a4652':'#36414c',mid-w,top-4-y,w*2,1);box(c,'#55616d',mid-w,top-4-y,2,1);}
- box(c,'#1a222b',mid-1,top-82,2,12);
- for(const p of stairs){
-  for(const x of [p.x+6,p.x+p.w-10]){stroke(c,'#1a2228',x+2,p.y+12,x+2+(x<p.x+p.w/2?-1:1)*0,p.y+34,2);stroke(c,'#1a2228',x+2,p.y+34,x+(x<p.x+p.w/2?14:-10),p.y+12,2);box(c,'#56646b',x,p.y+33,5,3);}
-  box(c,'#1a2228',p.x,p.y-16,p.w,2);box(c,'#56646b',p.x,p.y-16,p.w,1);for(let x=p.x+1;x<p.x+p.w;x+=12)box(c,'#1a2228',x,p.y-14,1,14);
-  const below=stairs.find(q=>q.y>p.y&&q.y-p.y<=80)??(p.y<fore.y?null:null);
-  if(below){const x=p.x+Math.round(p.w/2)-6;box(c,'#1a2228',x,p.y+12,2,below.y-p.y-12);box(c,'#1a2228',x+10,p.y+12,2,below.y-p.y-12);for(let y=p.y+17;y<below.y;y+=7)box(c,'#3a464d',x+2,y,8,1);}
+ const {fore,top,bothy,path,lifts}=gateParts(l),foot=water+40,g0=fore.x,t0=top.x-8,t1=top.x+top.w+8,x1=l.width+40,lit=!!s&&s.x>top.x;
+ // The garden beyond the wall: cypresses and round-headed trees on the bank, dark against the sky.
+ for(let x=t1+70,k=0;x<x1;k++){const v=hash(k,5,91),foot2=path.y-40;
+  if(v<.5){const tall=70+Math.floor(v*120);for(let y=0;y<tall;y++){const half=Math.max(1,Math.round(9*Math.sin(Math.PI*Math.min(1,(y+6)/tall)**.7)));box(c,y%7<3?'#1b2b2c':'#182728',x-half,foot2-tall+y,half*2,1);}box(c,'#2a3f3c',x+3,foot2-tall+14,2,tall-30);}
+  else{const r=16+Math.floor(v*14);box(c,'#141d1f',x-2,foot2-r,4,r);for(let y=-r;y<=r;y++){const sx=Math.floor(Math.sqrt(r*r-y*y));box(c,(y+r)%9<4?'#1b2b2c':'#182728',x-sx,foot2-r*2+y,sx*2,1);}box(c,'#2a3f3c',x+4,foot2-r*3+6,Math.max(3,r-8),1);box(c,'#2a3f3c',x+r-6,foot2-r*2-4,3,3);}
+  x+=34+Math.floor(hash(k,6,91)*44);}
+ // The lower range, from under the wall walk down into the river.
+ c.drawImage(panel(`bridge/gate/range/${l.id}`,t0-g0,foot-fore.y-8,ASHLAR,g0),g0,fore.y+8);
+ // The gate tower, from under its parapet walk to the river.
+ c.drawImage(panel(`bridge/gate/tower/${l.id}`,t1-t0,foot-top.y-8,ASHLAR,t0+7),t0,top.y+8);
+ quoins(c,g0,fore.y+10,water,1);box(c,'#0f161d',g0,fore.y+8,1,foot-fore.y);
+ quoins(c,t0,top.y+22,fore.y+4,1);box(c,'#0f161d',t0,top.y+8,1,fore.y-top.y);quoins(c,t1,top.y+22,path.y-4,-1);box(c,'#0f161d',t1-1,top.y+8,1,path.y-top.y);
+ // Under the tower's parapet walk a corbel table carries it out over the face; the far parapet's merlons stand behind the walk.
+ for(let x=t0+4;x<t1-10;x+=16){box(c,'#1a222b',x,top.y+8,10,12);box(c,'#46525f',x+1,top.y+8,8,7);box(c,'#3a4652',x+2,top.y+15,6,4);box(c,'#6b7782',x+1,top.y+8,8,1);}
+ for(let x=top.x+6;x<top.x+top.w-18;x+=34){box(c,'#28323d',x,top.y-18,20,18);box(c,'#3a4653',x,top.y-18,20,2);box(c,'#1c242d',x+19,top.y-16,1,16);}
+ box(c,'#28323d',top.x,top.y-6,top.w,6);box(c,'#3a4653',top.x,top.y-6,top.w,1);
+ // String courses the stonework stops against: one right round both parts at the roadway, two more up the tower.
+ for(const [y,a] of [[DECK,g0],[top.y+112,t0],[water-84,g0]] as const){box(c,'#1a222b',a-2,y,t1-a+4,7);box(c,'#46525f',a-2,y+1,t1-a+4,4);box(c,'#6b7782',a-2,y+1,t1-a+4,1);}
+ // Windows in frames, on sills: three to the range over the roadway, two storeys to the tower, loops below.
+ for(let x=g0+44;x<t0-40;x+=84)framed(c,x,fore.y+24,14,22,false);
+ for(const x of [t0+52,t0+150])framed(c,x,top.y+42,18,36,lit&&x===t0+52);
+ for(const x of [t0+52,t0+150])framed(c,x,top.y+142,18,40,false);
+ for(const x of [t0+60,t0+158]){box(c,'#0d1218',x,DECK+30,6,26);box(c,'#46525f',x-3,DECK+26,12,4);box(c,'#46525f',x-3,DECK+56,12,3);}
+ // The bridge's last arch survives under the range, and the river goes through it.
+ const ax=Math.round((g0+t0)/2)-10,ar=Math.min(96,Math.round((t0-g0)/2)-40),spring=water-10;
+ for(let px=ax-ar-9;px<ax+ar+9;px++){const d=px+.5-ax,outer=spring-Math.round(Math.sqrt(Math.max(0,(ar+9)**2-d*d))*.62);box(c,'#4c5864',px,outer,1,spring-outer+50);box(c,'#6b7782',px,outer,1,1);if(Math.abs(d)<ar){const inner=spring-Math.round(Math.sqrt(ar*ar-d*d)*.62);box(c,'#0a1016',px,inner,1,foot-inner);box(c,'#141d26',px,inner,1,4);}}
+ for(let k=1;k<12;k++){const g=Math.PI*k/12;stroke(c,'#1a222b',ax-Math.cos(g)*ar,spring-Math.sin(g)*ar*.62,ax-Math.cos(g)*(ar+8),spring-Math.sin(g)*(ar+8)*.62);}
+ box(c,'#7d8791',ax-5,spring-Math.round((ar+9)*.62)-3,10,12);box(c,'#a3adb5',ax-5,spring-Math.round((ar+9)*.62)-3,10,1);
+ // One plinth under the whole building, wet to the tide line.
+ box(c,'#1a222b',g0-4,water-26,t1-g0+8,6);box(c,'#46525f',g0-4,water-26,t1-g0+8,4);box(c,'#6b7782',g0-4,water-26,t1-g0+8,1);weed(c,g0,t1-g0,water,7);
+ // The bridge gate is in the range's west end, across the roadway, and it is barred: its hood and a lamp bracket show at the corner.
+ box(c,'#1a222b',g0-10,DECK-58,12,6);box(c,'#56626e',g0-10,DECK-58,12,2);stroke(c,'#1a222b',g0-9,DECK-52,g0,DECK-40,2);box(c,'#141b21',g0-8,DECK-52,2,10);box(c,'#141b21',g0-11,DECK-42,8,10);box(c,'#232e37',g0-10,DECK-41,6,7);
+ // The scaffold: two standards off sole plates on the wall walk, a ledger and a tie into the tower at every lift, braced, with its ladders.
+ if(lifts.length){
+  const pole='#2a231d',edge='#5d4f40',a=lifts[0].x+3,b=lifts[0].x+lifts[0].w-7,head=lifts.at(-1)!.y-22;
+  for(const x of [a,b]){box(c,pole,x,head,4,fore.y-head);box(c,edge,x,head,1,fore.y-head);box(c,pole,x-4,fore.y-3,12,3);box(c,edge,x-4,fore.y-3,12,1);}
+  let below=fore.y;
+  for(const [i,p] of lifts.entries()){
+   box(c,pole,a,p.y+11,b-a+4,3);box(c,edge,a,p.y+11,b-a+4,1);
+   // The tie: a tube from the inner standard into a ring bolt in the tower's face.
+   box(c,pole,b+4,p.y+14,t0-b-4,3);box(c,edge,b+4,p.y+14,t0-b-4,1);box(c,'#59666b',t0-1,p.y+12,4,7);
+   stroke(c,pole,i%2?a+2:b+2,p.y+14,i%2?b+2:a+2,below-2,2);
+   box(c,pole,a,p.y-18,b-a+4,2);box(c,edge,a,p.y-18,b-a+4,1);
+   const lx=i%2?b-22:a+10;box(c,pole,lx,p.y-10,2,below-p.y+10);box(c,pole,lx+9,p.y-10,2,below-p.y+10);for(let y=p.y+16;y<below-2;y+=7)box(c,edge,lx+2,y,7,1);
+   below=p.y;
+  }
  }
- for(let y=top+30;y<water-40;y+=64)box(c,'#0d1218',t1-26,y,8,22);
- // The gate tower under the lookout: storeys of framed windows over a plinth in the river.
- const x1=l.width+40;c.drawImage(panel(`bridge/tower/${l.id}`,x1-t1,foot-end.y-8,ASHLAR,t1+7),t1,end.y+8);quoins(c,t1,end.y+8,water,1);box(c,'#0f161d',t1,end.y+8,1,foot-end.y);
- for(const y of [end.y+110,end.y+230,end.y+350]){if(y+8>water-30)continue;box(c,'#1a222b',t1,y,x1-t1,7);box(c,'#46525f',t1,y+1,x1-t1,4);box(c,'#6b7782',t1,y+1,x1-t1,1);}
- for(let y=end.y+40,k=0;y<water-80;y+=120,k++)for(let x=t1+60;x<x1-40;x+=110)framed(c,x,y,18,34,lit&&k===0);
- box(c,'#1a222b',fore.x-4,water-26,x1-fore.x+4,6);box(c,'#46525f',fore.x-4,water-26,x1-fore.x+4,4);weed(c,fore.x,x1-fore.x,water,7);
+ // The garden side: the bank's river wall under the path, and the garden wall along the back of it.
+ c.drawImage(panel(`bridge/gate/bank/${l.id}`,x1-t1,foot-path.y-8,ASHLAR,t1+13),t1,path.y+8);box(c,'#1a222b',t1,water-26,x1-t1,6);box(c,'#46525f',t1,water-26,x1-t1,4);weed(c,t1,x1-t1,water,11);
+ const end=path.x+path.w;gardenWall(c,bothy.x+bothy.w+2,end,path.y,l.exit.x+l.exit.w/2);
+ // The path stops where the garden wall turns and comes forward to the river: a tall return wall, buttressed at its corner.
+ const rt=path.y-150;c.drawImage(panel(`bridge/gate/return/${l.id}`,x1-end,path.y+8-rt,GARDEN_WALL,end+3),end,rt);
+ box(c,'#1a2129',end-3,rt-6,x1-end+3,7);box(c,'#6d777e',end-3,rt-6,x1-end+3,5);box(c,'#9aa3a5',end-3,rt-6,x1-end+3,1);
+ for(let y=rt+2,k=0;y<path.y+8;y+=13,k++){const wide=k%2?16:10;box(c,'#46525f',end,y,wide,12);box(c,'#6b7782',end,y,wide,1);box(c,'#2c353f',end,y+12,wide,1);}
+ box(c,'#0f161d',end-1,rt,1,path.y+8-rt);
+ for(let px=0;px<56;px++){const d=(px+.5-28)/28,head=rt+40-Math.round(16*Math.sqrt(Math.max(0,1-d*d)));box(c,'#4d3c3a',end+30+px,head-3,1,3);box(c,'#1f181a',end+30+px,head,1,path.y-20-head);}
+ box(c,'#6d777e',end+26,path.y-20,64,4);box(c,'#9aa3a5',end+26,path.y-20,64,1);
+ // The tool house leans against the tower: rendered walls from its eaves to the path, a plank door, one small light.
+ const b0=t1,b1=bothy.x+bothy.w;c.drawImage(panel(`bridge/gate/bothy/${l.id}`,b1-b0,path.y-bothy.y-28,HOUSE,bothy.x),b0,bothy.y+28);box(c,'#15150f',b1-2,bothy.y+28,2,path.y-bothy.y-28);
+ for(let y=bothy.y-2;y>bothy.y-30;y--){const k=(bothy.y-2-y)/28,xa=b0,xb=Math.round(b1-6-k*(b1-b0-18));box(c,((y>>2)&1)?'#3c4650':'#353f49',xa,y,xb-xa,1);if(y%6===0)for(let x=xa+3+((y/6|0)%2)*5;x<xb-3;x+=10)box(c,'#2a333c',x,y,1,6);}
+ box(c,'#56626d',b0,bothy.y-31,Math.round((b1-b0)*.16)+8,2);
+ const dx=b0+18;box(c,'#15150f',dx-3,path.y-48,26,48);box(c,'#3b2a1d',dx,path.y-45,20,45);for(const x of [dx+6,dx+13])box(c,'#2b1e14',x,path.y-45,1,45);box(c,'#262d33',dx,path.y-34,20,2);box(c,'#262d33',dx,path.y-12,20,2);box(c,'#7d7458',dx+15,path.y-24,2,3);
+ framed(c,b0+62,bothy.y+48,14,18,false);
 }
-/** The hoist tower at the bridgehead, from outside: level 7's hoist house door
- * opens onto the approach roadway, the tower going on down into the river. */
+/** The garden wall along the bank: brick between stone piers under a coping, and the gate's two tall piers where it opens. */
+const GARDEN_WALL:Work={course:7,short:11,long:17,mortar:'#191417',stones:['#3a2d2e','#3e3031','#423334','#382b2c'],lip:'#4d3c3a',shade:'#2c2224',chip:'#564440'};
+export function gardenWall(c:C,from:number,to:number,ground:number,gateX:number){
+ const top=ground-58;
+ for(const [a,b] of [[from,gateX-34],[gateX+34,to]] as const){
+  if(b-a<8)continue;
+  c.drawImage(panel(`garden/wall/${Math.round(a)}/${Math.round(b-a)}`,b-a,ground-top-6,GARDEN_WALL,Math.round(a)),a,top+6);
+  box(c,'#1a2129',a-1,top,b-a+2,7);box(c,'#6d777e',a-1,top,b-a+2,5);box(c,'#9aa3a5',a-1,top,b-a+2,1);box(c,'#120e11',a,top+7,b-a,2);
+  // A stone pier every few yards, and ivy over the coping here and there.
+  for(let x=Math.ceil((a+60)/150)*150;x<b-20;x+=150){box(c,'#1a222b',x,top-4,14,ground-top+4);box(c,'#46525f',x+1,top-3,12,ground-top+3);box(c,'#6b7782',x+1,top-3,12,1);box(c,'#2c353f',x+12,top-2,1,ground-top+2);}
+  for(let x=Math.ceil((a+20)/97)*97,k=0;x<b-30;x+=97,k++){const v=hash(x,3,77);if(v<.45)continue;for(let i=0;i<5;i++){const hang=8+Math.floor(hash(x,i,78)*30);box(c,i%2?'#2c4739':'#3a5a44',x+i*5,top,4,hang);box(c,'#52745a',x+i*5+1,top+Math.floor(hang*.5),2,2);}}
+ }
+}
+/** The garden gate: two tall stone piers with ball caps, an iron overthrow with a green lamp, the leaves standing open. */
+export function gardenGate(c:C,x:number,ground:number,open:boolean){
+ box(c,'#8fd39a0c',x-46,ground-112,92,112);
+ // Through the gate: the garden path going on between hedges.
+ box(c,'#101a1c',x-26,ground-64,52,64);box(c,'#1b2b2c',x-26,ground-64,12,64);box(c,'#1b2b2c',x+14,ground-64,12,64);box(c,'#2a3a36',x-14,ground-18,28,18);box(c,'#34453f',x-10,ground-8,20,8);
+ if(open)box(c,'#d8f0c822',x-26,ground-64,52,64);
+ for(const side of [-1,1]){
+  const px=side<0?x-40:x+26;box(c,'#1a222b',px-1,ground-78,16,78);box(c,'#4c5864',px,ground-77,14,77);box(c,'#6b7782',px,ground-77,1,77);box(c,'#2c353f',px+13,ground-76,1,76);
+  for(let y=ground-64;y<ground;y+=13)box(c,'#2c353f',px,y,14,1);
+  box(c,'#1a222b',px-3,ground-84,20,7);box(c,'#6d777e',px-3,ground-84,20,5);box(c,'#9aa3a5',px-3,ground-84,20,1);
+  for(let yy=-6;yy<=6;yy++){const sx=Math.floor(Math.sqrt(36-yy*yy));box(c,yy<-2?'#7a8690':'#56626e',px+7-sx,ground-91+yy,sx*2,1);}
+  // The leaf stands open against its pier: bars, a dog rail and spear heads.
+  const lx=side<0?x-26:x+14;box(c,'#141b21',lx,ground-58,12,2);box(c,'#141b21',lx,ground-20,12,2);for(let k=0;k<4;k++){box(c,'#141b21',lx+k*3+1,ground-64,1,62);box(c,'#3d4a51',lx+k*3+1,ground-64,1,2);}
+ }
+ // The overthrow: a flat iron arch from pier to pier with the lamp hung at its crown, the only one lit on this bank.
+ for(let px=x-26;px<x+26;px++){const d=(px+.5-x)/26,y=ground-86-Math.round(12*Math.sqrt(Math.max(0,1-d*d)));box(c,'#141b21',px,y,1,2);if((px-x)%6===0)box(c,'#141b21',px,y+2,1,ground-78-y-2);}
+ box(c,'#141b21',x-5,ground-98,10,14);box(c,'#8fd39a',x-3,ground-96,6,10);box(c,'#d8f0c8',x-1,ground-94,2,5);box(c,'#3d4a51',x-6,ground-100,12,2);box(c,'#8fd39a18',x-18,ground-110,36,36);
+}
+/** The hoist tower at the bridgehead, from outside: level 7's hoist house door opens onto the approach roadway, and
+ * the tower goes on down into the river. Both its corners show, under the roof the hoist house stands under. */
 function hoistTower(c:C,l:Level,water:number){
- const road=l.platforms[0],x1=130,top=road.y-118,foot=water+40,dx=58,dy=road.y;
- c.drawImage(panel(`bridge/hoist/${l.id}`,x1,foot-top,TOWER,11),0,top);box(c,'#0f161d',x1-2,top,2,foot-top);
- for(let y=top+6,k=0;y<foot;y+=12,k++){const wide=k%2?14:8;box(c,'#59453f',x1-wide,y,wide,10);box(c,'#6d5850',x1-wide,y,wide,1);}
- // Its parapet over the hoist house roof.
- box(c,'#2a2224',-4,top-6,x1+8,8);box(c,'#7a665e',-4,top-6,x1+8,1);box(c,'#120e10',-4,top+2,x1+8,1);
+ const road=l.platforms[0],x0=14,x1=130,top=road.y-128,foot=water+40,dx=58,dy=road.y;
+ c.drawImage(panel(`bridge/hoist/${l.id}`,x1-x0,foot-top,TOWER,11),x0,top);box(c,'#0f161d',x1-2,top,2,foot-top);box(c,'#0f161d',x0,top,1,foot-top);
+ for(let y=top+6,k=0;y<foot;y+=12,k++){const wide=k%2?14:8;box(c,'#59453f',x1-wide,y,wide,10);box(c,'#6d5850',x1-wide,y,wide,1);box(c,'#59453f',x0,y,k%2?8:14,10);box(c,'#6d5850',x0,y,k%2?8:14,1);}
+ // Its roof: slates up to a ridge, on a stone eaves course.
+ for(let y=0;y<34;y++){const inset=Math.round(y*1.2);box(c,(y>>2)%2?'#202a37':'#1d2633',x0-4+inset,top-8-y,x1-x0+8-inset*2,1);box(c,'#3a4a5e',x0-4+inset,top-8-y,2,1);}
+ box(c,'#2a2224',x0-6,top-8,x1-x0+12,8);box(c,'#7a665e',x0-6,top-8,x1-x0+12,1);box(c,'#120e10',x0-6,top,x1-x0+12,1);
+ // A band at the hoist house floor, and one framed light over the door.
+ box(c,'#2a2224',x0,dy-2,x1-x0,5);box(c,'#6d5850',x0,dy-2,x1-x0,1);framed(c,dx-8,top+18,16,20,true);
  // The door out of the hoist house, from the roadway side: the same jambs, lintel and threshold, the hoist house lamp inside.
  box(c,'#08090c',dx-30,dy-82,60,82);box(c,'#141210',dx-19,dy-70,38,70);box(c,'#f3c77a18',dx-19,dy-70,38,70);box(c,'#f3c77a',dx+6,dy-56,6,8);box(c,'#141b21',dx+8,dy-70,2,14);
  for(let k=0;k<6;k++){const yy=dy-70+k*12;box(c,k%2?'#6b625c':'#5d5550',dx-30,yy,11,11);box(c,k%2?'#5d5550':'#6b625c',dx+19,yy,11,11);box(c,'#8a817a',dx-30,yy,11,1);box(c,'#8a817a',dx+19,yy,11,1);}
@@ -126,14 +205,26 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
    // The parapet on the far side of the roadway.
    box(c,'#232d38',p.x,p.y-12,p.w,12);box(c,'#3a4653',p.x,p.y-12,p.w,2);for(let x=p.x+6;x<p.x+p.w-4;x+=12)box(c,'#161d26',x,p.y-8,5,6);
   }else if(kind==='house'){
-   // A bridge house on its own pier: a rendered front, shuttered windows, the roadway arch under it.
-   // Its stack stands on its gable: the house's own wall rises under it from the roadway, so the chimney is part of the house.
-   const stack=l.platforms.find(q=>role(q,l)==='stack'&&(q.x===p.x+p.w||q.x+q.w===p.x)),x0=Math.min(p.x,stack?.x??p.x),x1=Math.max(p.x+p.w,stack?stack.x+stack.w:0);
+   // A bridge house on its own pier, and it is a house: a slated roof rising behind its eaves to a ridge, a stack that
+   // comes up through that roof at the gable and is the gable wall below it, a rendered front with framed lights and a door.
+   const stack=l.platforms.find(q=>role(q,l)==='stack'&&(q.x===p.x+p.w||q.x+q.w===p.x)),x0=Math.min(p.x,stack?.x??p.x),x1=Math.max(p.x+p.w,stack?stack.x+stack.w:0),east=!stack||stack.x>p.x;
+   const ridge=p.y-34;
+   for(let y=ridge;y<p.y;y++){
+    // The slope stops square against the gable the stack stands in, and is hipped at the other end.
+    const hip=Math.round((p.y-y)*.9),a=east?p.x+hip:(stack?stack.x+stack.w:p.x),b=east?(stack?stack.x:p.x+p.w):p.x+p.w-hip;
+    box(c,((y-ridge)/6|0)%2?'#3a444e':'#343e48',a,y,b-a,1);if((y-ridge)%6===0)for(let x=a+2+(((y-ridge)/6|0)%2)*5;x<b-2;x+=10)box(c,'#272f38',x,y,1,6);
+    box(c,'#4b5661',east?a:b-1,y,1,1);
+   }
+   {const a=east?p.x+31:(stack?stack.x+stack.w:p.x),b=east?(stack?stack.x:p.x+p.w):p.x+p.w-31;box(c,'#1c242c',a,ridge-3,b-a,4);box(c,'#5a6671',a,ridge-3,b-a,1);for(let x=a+8;x<b-4;x+=14)box(c,'#1c242c',x,ridge-2,1,3);}
+   // Lead flashing where the slope meets the stack.
+   if(stack){const fx=east?stack.x-3:stack.x+stack.w;for(let y=ridge+2;y<p.y;y+=5){box(c,'#6c7378',fx,y,3,4);box(c,'#9aa2a4',fx,y,3,1);}}
    c.drawImage(panel(`bridge/house/${p.id}`,x1-x0,DECK-p.y-28,HOUSE,p.id*13),x0,p.y+28);
-   if(stack){c.drawImage(panel(`bridge/gable/${stack.id}`,stack.w,28,HOUSE,stack.id),stack.x,p.y);box(c,'#15150f',stack.x===p.x+p.w?p.x+p.w:stack.x+stack.w-1,p.y,1,28);for(let k=0;k<5;k++)box(c,'#2f2f29',stack.x===p.x+p.w?stack.x+k*2:stack.x+stack.w-2-k*2,p.y+28-k*6,2,6);}
-   box(c,'#15150f',x0,stack&&stack.x<p.x?p.y:p.y+28,2,DECK-p.y-(stack&&stack.x<p.x?0:28));box(c,'#15150f',x1-2,stack&&stack.x>p.x?p.y:p.y+28,2,DECK-p.y-(stack&&stack.x>p.x?0:28));
-   const lit=!!s&&s.x>p.x+p.w;for(let x=p.x+22;x<p.x+p.w-30;x+=46){box(c,'#0f141b',x,p.y+38,16,20);box(c,lit?'#b98443':'#18232f',x+2,p.y+40,12,16);box(c,'#0f141b',x+7,p.y+40,2,16);box(c,'#566068',x-1,p.y+58,18,2);}
-   {const st=l.platforms.find(q=>role(q,l)==='stack'&&(q.x===p.x+p.w||q.x+q.w===p.x)),a=Math.min(p.x,st?.x??p.x),b=Math.max(p.x+p.w,st?st.x+st.w:0);box(c,'#232d38',a,DECK,b-a,8);pier(c,a,b-a,DECK+8,water,true);}
+   if(stack){c.drawImage(panel(`bridge/gable/${stack.id}`,stack.w,28,HOUSE,stack.id),stack.x,p.y);box(c,'#15150f',east?stack.x:stack.x+stack.w-1,p.y,1,28);}
+   box(c,'#15150f',x0,stack&&!east?p.y:p.y+28,2,DECK-p.y-(stack&&!east?0:28));box(c,'#15150f',x1-2,stack&&east?p.y:p.y+28,2,DECK-p.y-(stack&&east?0:28));
+   const lit=!!s&&s.x>p.x+p.w,door=east?p.x+14:p.x+p.w-34;
+   for(let x=p.x+(east?52:16),k=0;x<p.x+p.w-(east?16:54);x+=40,k++)framed(c,x,p.y+37,12,15,lit&&k%2===0);
+   box(c,'#15150f',door-2,p.y+31,24,DECK-p.y-31);box(c,'#3b2a1d',door,p.y+34,20,DECK-p.y-34);box(c,'#5d4129',door+1,p.y+35,18,3);for(const x of [door+6,door+13])box(c,'#2b1e14',x,p.y+38,1,DECK-p.y-38);box(c,'#a9905f',door+15,p.y+48,2,2);
+   box(c,'#232d38',x0,DECK,x1-x0,8);box(c,'#3a4653',x0,DECK,x1-x0,1);pier(c,x0,x1-x0,DECK+8,water,true);
   }else if(kind==='cutwater'){
    wall(c,'canal/quay',quayTile,p.x,p.y+8,p.w,water+40-p.y-8);box(c,'#0f161d',p.x,p.y+8,2,water+40-p.y);box(c,'#0f161d',p.x+p.w-2,p.y+8,2,water+40-p.y);weed(c,p.x,p.w,water,p.id);
   }else if(kind==='plank')trestle(c,p,water);
@@ -159,7 +250,23 @@ function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
 }
 function deck(c:C,p:Platform,l:Level){
  const w=p.w,kind=role(p,l);
- if(kind==='iron'||kind==='stair'){box(c,'#12191e',-2,0,w+4,12);box(c,'#aab3ae',0,0,w,1);box(c,'#5d6b70',0,1,w,2);for(let x=3;x<w-3;x+=8){box(c,'#1c272d',x,3,3,7);box(c,'#6d7d80',x,3,1,6);}box(c,'#2f3d43',0,10,w,2);return;}
+ if(kind==='stair'){
+  // A lift of the scaffold: three boards on putlogs, toe board behind.
+  box(c,'#17110d',-1,0,w+2,12);box(c,'#6b523a',0,0,w,7);box(c,'#b2946d',0,0,w,2);for(let x=9+p.id%4;x<w-3;x+=13)box(c,'#3d2e22',x,2,1,5);
+  box(c,'#2a231d',0,7,w,4);box(c,'#5d4f40',0,7,w,1);for(let x=6;x<w-6;x+=22)box(c,'#17110d',x,8,5,3);return;
+ }
+ if(kind==='gate'&&p===gateParts(l).bothy){
+  // The tool house's eaves: slate over a timber plate, like the bridge houses'.
+  box(c,'#15110e',-3,0,w+6,28);for(let row=0;row<2;row++)for(let x=-((row*7)%14);x<w;x+=14){box(c,hash(x,row,p.id)>.5?'#55606b':'#4b5661',Math.max(-3,x),row*7,13,7);box(c,'#6f7b86',Math.max(-3,x),row*7,13,1);}
+  box(c,'#98a3ab',-3,0,w+6,1);box(c,'#3a2d23',-3,14,w+6,8);box(c,'#57432f',-3,14,w+6,1);for(let x=4;x<w-4;x+=16)box(c,'#241b15',x,17,6,5);box(c,'#15110e',-3,22,w+6,6);return;
+ }
+ if(kind==='gate'&&p===gateParts(l).path){
+  // The bank path: rolled gravel between a stone kerb on the river wall and the foot of the garden wall.
+  box(c,'#1a2129',-2,0,w+4,10);box(c,'#6f6a5c',-2,0,w+4,8);box(c,'#9a9482',-2,0,w+4,2);box(c,'#57534a',-2,7,w+4,1);
+  for(let x=3;x<w-3;x+=7){const v=hash(x,p.id,5);box(c,v>.5?'#857f6e':'#5f5a4e',x+Math.floor(v*3),3+Math.floor(v*3),2,1);}
+  return;
+ }
+ if(kind==='iron'){box(c,'#12191e',-2,0,w+4,12);box(c,'#aab3ae',0,0,w,1);box(c,'#5d6b70',0,1,w,2);for(let x=3;x<w-3;x+=8){box(c,'#1c272d',x,3,3,7);box(c,'#6d7d80',x,3,1,6);}box(c,'#2f3d43',0,10,w,2);return;}
  if(kind==='plank'){
   box(c,'#17110d',0,0,w,22);box(c,'#6b523a',0,0,w,8);box(c,'#b2946d',0,0,w,2);for(let x=9+p.id%4;x<w-3;x+=13)box(c,'#3d2e22',x,2,1,6);
   for(let x=14;x<w-10;x+=30)stroke(c,'#2a1f17',x,1,x+6,7);box(c,'#33261d',0,8,w,12);box(c,'#4a3828',0,8,w,1);return;
@@ -186,20 +293,8 @@ function station(c:C,l:Level,s:Station,x:number,y:number,lit:boolean){
 }
 function exit(c:C,l:Level,s:Run,t:number,front:boolean){
  if(front)return;
- const x=Math.round(l.exit.x+l.exit.w/2),y=l.exit.y+l.exit.h,end=l.platforms[l.mainCount-1],right=end.x+end.w,open=s.phase!=='playing';
- // The garden gate: a round-headed door in the gatehouse turret, a green lamp over it.
- const left=x-44;c.drawImage(panel(`bridge/gateroom/${l.id}`,right-left+60,104,ASHLAR,left),left,y-104);quoins(c,left,y-104,y,1);box(c,'#0f161d',left,y-104,1,104);
- for(let xx=left;xx<right+60;xx+=24){box(c,'#2f3a45',xx,y-116,14,12);box(c,'#414d59',xx,y-116,14,2);}
- box(c,'#f3c77a10',x-40,y-84,80,84);
- box(c,'#0f161d',x-24,y-62,48,62);box(c,'#0f161d',x-19,y-69,38,8);box(c,'#0f161d',x-12,y-74,24,6);
- box(c,'#55616d',x-22,y-60,5,60);box(c,'#55616d',x+17,y-60,5,60);box(c,'#55616d',x-17,y-67,34,6);box(c,'#55616d',x-10,y-72,20,5);
- box(c,'#c98f4b',x-17,y-58,34,58);box(c,'#c98f4b',x-12,y-63,24,6);box(c,'#f0c47a',x-10,y-56,20,56);box(c,'#fff0c4',x-4,y-48,8,48);
- box(c,'#2d4a35',x-17,y-58,7,58);box(c,'#3f6247',x-16,y-57,5,57);box(c,'#1a2228',x-17,y-42,7,2);box(c,'#1a2228',x-17,y-16,7,2);
- if(open)box(c,'#fff0c466',x-10,y-56,20,56);
- box(c,'#7d878c',x-26,y-3,52,3);box(c,'#f3c77a44',x-22,y-1,44,1);
- box(c,'#141b21',x-5,y-92,10,14);box(c,'#8fd39a',x-3,y-90,6,10);box(c,'#d8f0c8',x-1,y-88,2,5);box(c,'#8fd39a18',x-16,y-102,32,32);
- // Ivy from the garden side has come over the wall.
- for(let i=0;i<9;i++){const v=hash(i,3,77),xx=x+34+i*9;if(xx>right+50)break;box(c,v>.5?'#3a5a44':'#2c4739',xx,y-104,5,10+Math.floor(v*38));box(c,'#52745a',xx+1,y-104+Math.floor(v*20),2,3);}
+ // The garden gate, in the wall along the bank.
+ gardenGate(c,Math.round(l.exit.x+l.exit.w/2),l.exit.y+l.exit.h,s.phase!=='playing');
 }
 /** The river upstream, painted once in lengths: the far ridge on the horizon,
  * then, standing nearer in the water, the Quarter's embankment, the bridge

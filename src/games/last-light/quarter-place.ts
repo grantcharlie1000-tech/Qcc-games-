@@ -253,9 +253,13 @@ function bellLane(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
   const stop=lean.x+lean.w+2;
   for(let k=0;x0-8*(k+1)>=stop;k++){const sx=x0-8*(k+1),sy=top+16*k;box(c,'#141b23',sx,sy,8,lane-sy);box(c,'#3a4652',sx,sy,8,3);box(c,'#56626e',sx,sy,8,1);box(c,'#232c36',sx,sy+3,7,13);}
   stroke(c,'#141b21',x0-3,top-24,stop,top-24+(x0-3-stop)*2,2);for(let x=x0-4;x>stop+6;x-=16)box(c,'#141b21',x,top-24+(x0-3-x)*2,2,24);
-  // Past the landing the forecourt's flags run on under the tower to the edge of the view.
-  const past=court.x+court.w;box(c,'#1a2028',past,top,x1-past,19);for(let x=past;x<x1;x+=31){box(c,(x>>3)%2?'#4b555e':'#454f58',x,top+2,30,8);box(c,'#5d676f',x,top+2,30,1);}
-  box(c,'#8a949b',past,top,x1-past,2);box(c,'#6b757d',past,top+2,x1-past,1);box(c,'#1a222b',past,top+10,x1-past,9);box(c,'#3a4652',past,top+11,x1-past,6);box(c,'#56626e',past,top+11,x1-past,1);box(c,'#10161d',past,top+17,x1-past,2);
+  // The forecourt stops against the tower's stair turret, which stands out from the face on its own footing.
+  const past=court.x+court.w,tt=top-132;
+  c.drawImage(panel('lane/turret',x1-past,lane-tt,TOWER_OUT,83),past,tt);box(c,'#10161d',past-1,tt,1,lane-tt);
+  for(let y=tt+2,k=0;y<lane;y+=16,k++){const wide=k%2?18:10;box(c,'#3a4652',past,y+1,wide,14);box(c,'#4f5b67',past,y+1,wide,1);box(c,'#1c242d',past,y+15,wide,1);}
+  box(c,'#1a222b',past-4,tt-8,x1-past+4,9);box(c,'#56626e',past-4,tt-8,x1-past+4,6);box(c,'#7a8690',past-4,tt-8,x1-past+4,1);
+  box(c,'#1a222b',past-3,top-14,x1-past+3,14);box(c,'#46525f',past-2,top-13,x1-past+2,12);box(c,'#6b7782',past-2,top-13,x1-past+2,1);
+  {const x=past+52,y=top-96;box(c,'#0d1116',x,y,10,44);box(c,'#3e4a57',x-4,y-6,18,6);box(c,'#56636f',x-4,y-6,18,1);box(c,'#46525f',x-5,y+44,20,4);box(c,'#6b7782',x-5,y+44,20,1);box(c,'#141c2c',x+2,y+2,6,40);}
   // One street lamp on the forecourt, dark like every lamp in the Quarter tonight.
   const lx=court.x+36;box(c,'#141b21',lx-1,top-62,3,62);box(c,'#3d4a51',lx,top-62,1,62);box(c,'#141b21',lx-4,top-4,9,4);box(c,'#141b21',lx-5,top-76,11,14);box(c,'#232e37',lx-3,top-74,7,10);box(c,'#3d4a51',lx-5,top-78,11,2);
  }
