@@ -1,6 +1,6 @@
 import type {Level,Platform,Station} from './levels';
 import {platformAt,type Run} from './model';
-import {box,hash,masonry,sprite,stroke,visible,wall,type C} from './quarter-kit';
+import {box,hash,masonry,panel,sprite,stroke,visible,wall,type C,type Work} from './quarter-kit';
 import {MID,MID_SCALE,farRoof,headTowers,lotEdge,moon,nightSky,townHouse,type Scale,type Tone} from './quarter-distance';
 import type {QuarterSet} from './quarter-sets';
 import {hull,moonPath,quayTile,ripples,shadowOnWater,sheet,weed} from './set-canal';
@@ -17,10 +17,13 @@ import {hull,moonPath,quayTile,ripples,shadowOnWater,sheet,weed} from './set-can
  * other. */
 const DECK=560;
 const stack=()=>masonry('roofs/stack',32,16,16,8,{mortar:'#1a1415',stones:['#4a3330','#503733','#563b35'],lip:'#644640',chip:'#6e4e46'});
-const house=()=>masonry('bridge/house',96,48,48,24,{mortar:'#22221f',stones:['#3a3a34','#3d3d37','#40403a'],lip:'#49493f',chip:'#515146'});
-type Role='road'|'house'|'stack'|'cutwater'|'plank'|'punt'|'iron'|'gate';
+/** Built work, laid per wall: a bridge house's render over rubble, the gatehouse's ashlar, and the hoist tower's brick. */
+const HOUSE:Work={course:12,short:30,long:62,mortar:'#22221f',stones:['#3a3a34','#3d3d37','#40403a','#37372f'],lip:'#49493f',shade:'#2f2f29',chip:'#515146'};
+const ASHLAR:Work={course:16,short:24,long:56,mortar:'#151d26',stones:['#2c3742','#303b46','#343f4a','#29343f'],lip:'#3e4a56',shade:'#24303a',chip:'#475460'};
+const TOWER:Work={course:8,short:10,long:18,mortar:'#1b1719',stones:['#40312f','#453432','#4a3835','#3d2f2d'],lip:'#59453f',shade:'#33282a',chip:'#634e47'};
+type Role='road'|'house'|'stack'|'cutwater'|'plank'|'punt'|'iron'|'gate'|'stair';
 function role(p:Platform,l:Level):Role{
- if(p.kind==='moving')return 'punt';if(p.kind==='grate')return 'iron';if(p.kind==='crumble')return 'plank';if(p.h>28)return 'stack';
+ if(p.kind==='moving')return 'punt';if(p.kind==='grate')return p.x>=gate(l)?'stair':'iron';if(p.kind==='crumble')return 'plank';if(p.h>28)return 'stack';
  if(p.x>=gate(l))return 'gate';
  return p.y>DECK+40?'cutwater':p.y<DECK-20?'house':'road';
 }
@@ -57,17 +60,66 @@ function trestle(c:C,p:Platform,water:number){
  for(let y=p.y+52,i=0;y<water-10;y+=56,i++){box(c,pole,p.x+8,y,p.w-16,3);if(y+56<water)stroke(c,pole,i%2?p.x+10:p.x+p.w-12,y+3,i%2?p.x+p.w-12:p.x+10,y+56,2);}
  box(c,pole,p.x+2,p.y+20,p.w-4,4);box(c,lit,p.x+2,p.y+20,p.w-4,1);
 }
+/** A window with a frame: a stone surround, a sill that throws water off, glazing bars, and a lamp behind some. */
+function framed(c:C,x:number,y:number,w:number,h:number,lit:boolean){
+ box(c,'#1a222b',x-5,y-6,w+10,h+11);box(c,'#56626e',x-4,y-5,w+8,4);box(c,'#7a8690',x-4,y-5,w+8,1);box(c,'#46525f',x-4,y-1,4,h);box(c,'#46525f',x+w,y-1,4,h);
+ box(c,lit?'#8f6a3c':'#141e2b',x,y-1,w,h);if(lit){box(c,'#c99a55',x+2,y+1,w-4,h-6);box(c,'#e3b160',x+3,y+h-12,w-6,6);}
+ box(c,'#0d1218',x+Math.floor(w/2)-1,y-1,2,h);box(c,'#0d1218',x,y+Math.floor(h/2)-1,w,2);
+ box(c,'#56626e',x-6,y+h-1,w+12,4);box(c,'#7a8690',x-6,y+h-1,w+12,1);box(c,'#1a222b',x-6,y+h+3,w+12,1);
+}
+/** Quoins down a corner of the gatehouse: long and short by turns, proud of the face. */
+function quoins(c:C,x:number,from:number,to:number,dir:number){
+ for(let y=from,k=0;y<to;y+=16,k++){const wide=k%2?16:9,at=dir>0?x:x-wide;box(c,'#3a4652',at,y+1,wide,14);box(c,'#4c5864',at,y+1,wide,1);box(c,'#1c242d',at,y+15,wide,1);}
+}
+/** The gatehouse on the garden bank is one building: the forebuilding whose
+ * roof is the wall walk, the stair turret its iron landings are bolted to,
+ * under a slated cone, and the gate tower whose top is the lookout. Every
+ * part stands on its own footing in the river. */
+function gatehouse(c:C,l:Level,water:number,s?:Run){
+ const fore=l.platforms.find(p=>role(p,l)==='gate')!,end=l.platforms[l.mainCount-1],stairs=l.platforms.filter(p=>role(p,l)==='stair');
+ const t0=fore.x+fore.w+20,t1=end.x,top=Math.min(...stairs.map(p=>p.y))-56,foot=water+40,lit=!!s&&s.x>end.x;
+ // The forebuilding.
+ c.drawImage(panel(`bridge/fore/${l.id}`,t0-fore.x,foot-fore.y-8,ASHLAR,fore.x),fore.x,fore.y+8);quoins(c,fore.x,fore.y+8,water,1);box(c,'#0f161d',fore.x,fore.y+8,1,foot-fore.y);
+ framed(c,fore.x+40,fore.y+60,16,26,lit);framed(c,fore.x+40,fore.y+130,16,26,false);
+ // The stair turret, its cone, and the landings bolted to it with their ladders.
+ c.drawImage(panel(`bridge/turret/${l.id}`,t1-t0,foot-top,ASHLAR,t0+3),t0,top);quoins(c,t0,top,water,1);box(c,'#0f161d',t0,top,1,foot-top);box(c,'#0f161d',t1-2,top,2,foot-top);
+ box(c,'#1a222b',t0-6,top-4,t1-t0+12,6);box(c,'#56626e',t0-6,top-4,t1-t0+12,4);box(c,'#7a8690',t0-6,top-4,t1-t0+12,1);
+ const mid=(t0+t1)/2,half=(t1-t0)/2+4;for(let y=0;y<70;y++){const w=Math.round(half*(1-y/70));if(w<1)break;box(c,(y>>2)%2?'#3a4652':'#36414c',mid-w,top-4-y,w*2,1);box(c,'#55616d',mid-w,top-4-y,2,1);}
+ box(c,'#1a222b',mid-1,top-82,2,12);
+ for(const p of stairs){
+  for(const x of [p.x+6,p.x+p.w-10]){stroke(c,'#1a2228',x+2,p.y+12,x+2+(x<p.x+p.w/2?-1:1)*0,p.y+34,2);stroke(c,'#1a2228',x+2,p.y+34,x+(x<p.x+p.w/2?14:-10),p.y+12,2);box(c,'#56646b',x,p.y+33,5,3);}
+  box(c,'#1a2228',p.x,p.y-16,p.w,2);box(c,'#56646b',p.x,p.y-16,p.w,1);for(let x=p.x+1;x<p.x+p.w;x+=12)box(c,'#1a2228',x,p.y-14,1,14);
+  const below=stairs.find(q=>q.y>p.y&&q.y-p.y<=80)??(p.y<fore.y?null:null);
+  if(below){const x=p.x+Math.round(p.w/2)-6;box(c,'#1a2228',x,p.y+12,2,below.y-p.y-12);box(c,'#1a2228',x+10,p.y+12,2,below.y-p.y-12);for(let y=p.y+17;y<below.y;y+=7)box(c,'#3a464d',x+2,y,8,1);}
+ }
+ for(let y=top+30;y<water-40;y+=64)box(c,'#0d1218',t1-26,y,8,22);
+ // The gate tower under the lookout: storeys of framed windows over a plinth in the river.
+ const x1=l.width+40;c.drawImage(panel(`bridge/tower/${l.id}`,x1-t1,foot-end.y-8,ASHLAR,t1+7),t1,end.y+8);quoins(c,t1,end.y+8,water,1);box(c,'#0f161d',t1,end.y+8,1,foot-end.y);
+ for(const y of [end.y+110,end.y+230,end.y+350]){if(y+8>water-30)continue;box(c,'#1a222b',t1,y,x1-t1,7);box(c,'#46525f',t1,y+1,x1-t1,4);box(c,'#6b7782',t1,y+1,x1-t1,1);}
+ for(let y=end.y+40,k=0;y<water-80;y+=120,k++)for(let x=t1+60;x<x1-40;x+=110)framed(c,x,y,18,34,lit&&k===0);
+ box(c,'#1a222b',fore.x-4,water-26,x1-fore.x+4,6);box(c,'#46525f',fore.x-4,water-26,x1-fore.x+4,4);weed(c,fore.x,x1-fore.x,water,7);
+}
+/** The hoist tower at the bridgehead, from outside: level 7's hoist house door
+ * opens onto the approach roadway, the tower going on down into the river. */
+function hoistTower(c:C,l:Level,water:number){
+ const road=l.platforms[0],x1=130,top=road.y-118,foot=water+40,dx=58,dy=road.y;
+ c.drawImage(panel(`bridge/hoist/${l.id}`,x1,foot-top,TOWER,11),0,top);box(c,'#0f161d',x1-2,top,2,foot-top);
+ for(let y=top+6,k=0;y<foot;y+=12,k++){const wide=k%2?14:8;box(c,'#59453f',x1-wide,y,wide,10);box(c,'#6d5850',x1-wide,y,wide,1);}
+ // Its parapet over the hoist house roof.
+ box(c,'#2a2224',-4,top-6,x1+8,8);box(c,'#7a665e',-4,top-6,x1+8,1);box(c,'#120e10',-4,top+2,x1+8,1);
+ // The door out of the hoist house, from the roadway side: the same jambs, lintel and threshold, the hoist house lamp inside.
+ box(c,'#08090c',dx-30,dy-82,60,82);box(c,'#141210',dx-19,dy-70,38,70);box(c,'#f3c77a18',dx-19,dy-70,38,70);box(c,'#f3c77a',dx+6,dy-56,6,8);box(c,'#141b21',dx+8,dy-70,2,14);
+ for(let k=0;k<6;k++){const yy=dy-70+k*12;box(c,k%2?'#6b625c':'#5d5550',dx-30,yy,11,11);box(c,k%2?'#5d5550':'#6b625c',dx+19,yy,11,11);box(c,'#8a817a',dx-30,yy,11,1);box(c,'#8a817a',dx+19,yy,11,1);}
+ box(c,'#2a2224',dx-34,dy-84,68,14);box(c,'#6b625c',dx-33,dy-83,66,12);box(c,'#8a817a',dx-33,dy-83,66,1);box(c,'#7d746d',dx-6,dy-86,12,15);box(c,'#a39b92',dx-6,dy-86,12,1);
+ box(c,'#3b2a1d',dx-19,dy-70,9,70);box(c,'#5d4129',dx-18,dy-69,7,68);
+}
 function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock:number,s?:Run){
  const water=l.water!,east=gate(l),end=l.platforms[l.mainCount-1];
- // The gatehouse on the garden bank: one wall from its lookout down into the river.
- if(visible(east-10,end.y-120,l.width-east+20,water-end.y+200,cx,cy,vw,vh)){
-  for(const p of l.platforms)if(role(p,l)==='gate'){wall(c,'canal/quay',quayTile,p.x,p.y+8,p.x===east?l.width-p.x+40:p.w+60,water+40-p.y-8);box(c,'#0f161d',p.x,p.y+8,2,water+40-p.y);}
-  for(let y=end.y+60;y<water-60;y+=70)for(let x=end.x+30;x<end.x+end.w;x+=70){box(c,'#0d1218',x,y,10,26);box(c,'#1a2633',x+2,y+2,6,22);}
-  weed(c,east,l.width-east+40,water,7);
- }
+ if(visible(east-10,end.y-200,l.width-east+60,water-end.y+280,cx,cy,vw,vh))gatehouse(c,l,water,s);
+ if(visible(0,l.platforms[0].y-150,140,water-l.platforms[0].y+190,cx,cy,vw,vh))hoistTower(c,l,water);
  for(const f of fallen(l))if(visible(f.x,water-20,f.w,40,cx,cy,vw,vh))rubble(c,f.x,f.w,water);
  for(const p of l.platforms){
-  const kind=role(p,l);if(kind==='gate'||!visible(p.x-70,p.y-80,p.w+140,water+80-p.y+80,cx,cy,vw,vh))continue;
+  const kind=role(p,l);if(kind==='gate'||kind==='stair'||!visible(p.x-70,p.y-80,p.w+140,water+80-p.y+80,cx,cy,vw,vh))continue;
   if(kind==='road'){
    if(p.id===0){wall(c,'canal/quay',quayTile,0,p.y+8,p.x+p.w,water+40-p.y-8);box(c,'#0f161d',p.x+p.w-2,p.y+8,2,water+40-p.y);weed(c,0,p.x+p.w,water,1);}
    else pier(c,p.x,p.w,p.y+8,water,true);
@@ -75,9 +127,13 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
    box(c,'#232d38',p.x,p.y-12,p.w,12);box(c,'#3a4653',p.x,p.y-12,p.w,2);for(let x=p.x+6;x<p.x+p.w-4;x+=12)box(c,'#161d26',x,p.y-8,5,6);
   }else if(kind==='house'){
    // A bridge house on its own pier: a rendered front, shuttered windows, the roadway arch under it.
-   wall(c,'bridge/house',house,p.x,p.y+28,p.w,DECK-p.y-28);box(c,'#15150f',p.x,p.y+28,2,DECK-p.y-28);box(c,'#15150f',p.x+p.w-2,p.y+28,2,DECK-p.y-28);
+   // Its stack stands on its gable: the house's own wall rises under it from the roadway, so the chimney is part of the house.
+   const stack=l.platforms.find(q=>role(q,l)==='stack'&&(q.x===p.x+p.w||q.x+q.w===p.x)),x0=Math.min(p.x,stack?.x??p.x),x1=Math.max(p.x+p.w,stack?stack.x+stack.w:0);
+   c.drawImage(panel(`bridge/house/${p.id}`,x1-x0,DECK-p.y-28,HOUSE,p.id*13),x0,p.y+28);
+   if(stack){c.drawImage(panel(`bridge/gable/${stack.id}`,stack.w,28,HOUSE,stack.id),stack.x,p.y);box(c,'#15150f',stack.x===p.x+p.w?p.x+p.w:stack.x+stack.w-1,p.y,1,28);for(let k=0;k<5;k++)box(c,'#2f2f29',stack.x===p.x+p.w?stack.x+k*2:stack.x+stack.w-2-k*2,p.y+28-k*6,2,6);}
+   box(c,'#15150f',x0,stack&&stack.x<p.x?p.y:p.y+28,2,DECK-p.y-(stack&&stack.x<p.x?0:28));box(c,'#15150f',x1-2,stack&&stack.x>p.x?p.y:p.y+28,2,DECK-p.y-(stack&&stack.x>p.x?0:28));
    const lit=!!s&&s.x>p.x+p.w;for(let x=p.x+22;x<p.x+p.w-30;x+=46){box(c,'#0f141b',x,p.y+38,16,20);box(c,lit?'#b98443':'#18232f',x+2,p.y+40,12,16);box(c,'#0f141b',x+7,p.y+40,2,16);box(c,'#566068',x-1,p.y+58,18,2);}
-   box(c,'#232d38',p.x,DECK,p.w,8);pier(c,p.x,p.w,DECK+8,water,true);
+   {const st=l.platforms.find(q=>role(q,l)==='stack'&&(q.x===p.x+p.w||q.x+q.w===p.x)),a=Math.min(p.x,st?.x??p.x),b=Math.max(p.x+p.w,st?st.x+st.w:0);box(c,'#232d38',a,DECK,b-a,8);pier(c,a,b-a,DECK+8,water,true);}
   }else if(kind==='cutwater'){
    wall(c,'canal/quay',quayTile,p.x,p.y+8,p.w,water+40-p.y-8);box(c,'#0f161d',p.x,p.y+8,2,water+40-p.y);box(c,'#0f161d',p.x+p.w-2,p.y+8,2,water+40-p.y);weed(c,p.x,p.w,water,p.id);
   }else if(kind==='plank')trestle(c,p,water);
@@ -103,7 +159,7 @@ function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
 }
 function deck(c:C,p:Platform,l:Level){
  const w=p.w,kind=role(p,l);
- if(kind==='iron'){box(c,'#12191e',-2,0,w+4,12);box(c,'#aab3ae',0,0,w,1);box(c,'#5d6b70',0,1,w,2);for(let x=3;x<w-3;x+=8){box(c,'#1c272d',x,3,3,7);box(c,'#6d7d80',x,3,1,6);}box(c,'#2f3d43',0,10,w,2);return;}
+ if(kind==='iron'||kind==='stair'){box(c,'#12191e',-2,0,w+4,12);box(c,'#aab3ae',0,0,w,1);box(c,'#5d6b70',0,1,w,2);for(let x=3;x<w-3;x+=8){box(c,'#1c272d',x,3,3,7);box(c,'#6d7d80',x,3,1,6);}box(c,'#2f3d43',0,10,w,2);return;}
  if(kind==='plank'){
   box(c,'#17110d',0,0,w,22);box(c,'#6b523a',0,0,w,8);box(c,'#b2946d',0,0,w,2);for(let x=9+p.id%4;x<w-3;x+=13)box(c,'#3d2e22',x,2,1,6);
   for(let x=14;x<w-10;x+=30)stroke(c,'#2a1f17',x,1,x+6,7);box(c,'#33261d',0,8,w,12);box(c,'#4a3828',0,8,w,1);return;
@@ -132,7 +188,7 @@ function exit(c:C,l:Level,s:Run,t:number,front:boolean){
  if(front)return;
  const x=Math.round(l.exit.x+l.exit.w/2),y=l.exit.y+l.exit.h,end=l.platforms[l.mainCount-1],right=end.x+end.w,open=s.phase!=='playing';
  // The garden gate: a round-headed door in the gatehouse turret, a green lamp over it.
- const left=x-44;wall(c,'canal/quay',quayTile,left,y-104,right-left+60,104);box(c,'#0f161d',left,y-104,2,104);
+ const left=x-44;c.drawImage(panel(`bridge/gateroom/${l.id}`,right-left+60,104,ASHLAR,left),left,y-104);quoins(c,left,y-104,y,1);box(c,'#0f161d',left,y-104,1,104);
  for(let xx=left;xx<right+60;xx+=24){box(c,'#2f3a45',xx,y-116,14,12);box(c,'#414d59',xx,y-116,14,2);}
  box(c,'#f3c77a10',x-40,y-84,80,84);
  box(c,'#0f161d',x-24,y-62,48,62);box(c,'#0f161d',x-19,y-69,38,8);box(c,'#0f161d',x-12,y-74,24,6);
