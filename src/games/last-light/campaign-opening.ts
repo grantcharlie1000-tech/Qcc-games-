@@ -117,15 +117,20 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
  // down into it, gratings hang from the vault. Steam leaves joints on the
  // mains: one to watch, one at the far end of a landing, a pair out of
  // phase past the stopped pumps, one in the lower duct under a grating. A
- // broken flange, a dash to a venting main and a ladder of gratings lead up
- // the shaft to the street stairwell. Three wall lamps are optional.
+ // broken flange and a dash to a venting main lead to the sluice chamber.
+ // Past it the inspection walk has rusted through: three lengths of it are
+ // left hanging over the water, each good for a moment, with the sluice
+ // gate's frame standing between them. A venting main, two hung gratings
+ // and a dash to the pipe bridge cross the junction, and a ladder of
+ // gratings climbs the shaft to the street stairwell. Three wall lamps are
+ // optional.
  {
   setting:'cavern',goal:'signal',water:700,
-  route:'24,380,192,s;264,436,96,s;408,500,80,g;264,564,72,s;408,628,96,s;584,660,260,s;900,632,240,s;1200,632,150,s;1420,660,200,s;1676,604,96,g;1820,548,96,g;1980,548,180,s;2230,580,120,s;2410,612,120,g;2410,676,300,s;2790,660,180,s;3040,620,110,s;3230,572,100,s;3420,540,96,g;3716,540,160,s;3960,596,200,s;4200,548,110,g;4200,484,110,g;4200,420,110,g;4360,372,300,s',
-  branches:'908,568,80,g;2570,612,100,g;4200,356,110,g',memories:[0,1,2],
+  route:'24,380,192,s;264,436,96,s;408,500,80,g;264,564,72,s;408,628,96,s;584,660,260,s;900,632,240,s;1200,632,150,s;1420,660,200,s;1676,604,96,g;1820,548,96,g;1980,548,180,s;2230,580,120,s;2410,612,120,g;2410,676,300,s;2790,660,180,s;3040,620,110,s;3230,572,100,s;3420,540,96,g;3716,540,160,s;3960,596,200,s;4230,596,72,c,,,0.5,12;4366,596,72,c,,,0.5,12;4510,572,48,s,,,,128;4640,596,72,c,,,0.5,12;4790,580,150,s;5010,524,96,g;5176,468,96,g;5502,500,110,s;5690,596,200,s;5930,548,110,g;5930,484,110,g;5930,420,110,g;6090,372,300,s',
+  branches:'908,568,80,g;2570,612,100,g;5930,356,110,g',memories:[0,1,2],
   stations:[[8,"Culvert lamp"],[15,"Duct lamp"],[20,"Shaft lamp"]],
-  checkpoints:[3,8,15,20,24],sectors:[[0,"The culvert mouth"],[1,"The outfall stair"],[5,"The water main"],[8,"Sleeping pumps"],[13,"The lower duct"],[15,"The broken flange"],[20,"Street foundations"]],
-  hazards:[steam(6,.5,96,0,3.2),steam(7,.8,96,.8,3),steam(11,.5,96,0,3),steam(12,.5,96,1.5,3),steam(14,.7,80,.4,3),spike(17,.8,22),steam(19,.75,96,1,3)],
+  checkpoints:[3,8,15,20,25,29,33],sectors:[[0,"The culvert mouth"],[1,"The outfall stair"],[5,"The water main"],[8,"Sleeping pumps"],[13,"The lower duct"],[15,"The broken flange"],[20,"The sluice chamber"],[21,"The rusted walk"],[25,"The junction"],[28,"The pipe bridge"],[29,"Street foundations"]],
+  hazards:[steam(6,.5,96,0,3.2),steam(7,.8,96,.8,3),steam(11,.5,96,0,3),steam(12,.5,96,1.5,3),steam(14,.7,80,.4,3),spike(17,.8,22),steam(19,.75,96,1,3),steam(25,.62,96,.5,2.8)],
  },
  // 07 · The Counterweight
  // The hoist tower: one brick shaft, two lift wells, the pit under both.

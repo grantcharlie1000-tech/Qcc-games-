@@ -1,6 +1,6 @@
 import type {Level,Platform,Station} from './levels';
 import type {Run} from './model';
-import {box,hash,masonry,panel,seamless,sprite,stroke,visible,wall,type C,type Work} from './quarter-kit';
+import {box,hash,lay,masonry,panel,seamless,sprite,stroke,visible,wall,type C,type Work} from './quarter-kit';
 import {lampOnWater} from './set-canal';
 import type {QuarterSet} from './quarter-sets';
 
@@ -53,9 +53,9 @@ const CROWN=300,STREET=368,RISE=118,MOUTH_TOP=150;
  * ended on, then the outfall shaft its stair goes down, then the vault. */
 const HEAD0=24,HEAD1=216,SHAFT1=528,SHAFT_TOP=300;
 /** Where a branch culvert opens off the far wall: its centre, its width, and which way it bends out of sight. */
-const MOUTHS:readonly (readonly [number,number,number])[]=[[860,150,0],[1735,170,1],[3190,150,-1],[3610,180,0]];
+const MOUTHS:readonly (readonly [number,number,number])[]=[[860,150,0],[1735,170,1],[3190,150,-1],[3610,180,0],[4975,130,-1],[5385,170,0]];
 /** Where a grating in the street lets the night down, with rungs up to it. */
-const GRATINGS=[1080,1465,2004,2520,2960,3400,3890];
+const GRATINGS=[1080,1465,2004,2520,2960,3400,3890,4300,4700,5600];
 const inMouth=(x:number,w:number)=>MOUTHS.some(([m,wide])=>x+w>m-wide/2-14&&x<m+wide/2+14);
 /** A branch culvert seen from its mouth: section after section of the same
  * vault, each smaller and darker than the last, sliding aside where it bends;
@@ -76,10 +76,47 @@ const mouth=(w:number,bend:number)=>sprite(`culvert/mouth/${w}/${bend}`,w+24,MOU
  box(c,'#31425d',at-1,foot-Math.round(RISE*s)+5,2,Math.round(RISE*s)-6);box(c,'#3f6660',at-4,foot-1,8,1);
  box(c,'#6d5a52',mx-5,base-RISE-13,10,14);box(c,'#8a746a',mx-5,base-RISE-13,10,1);box(c,'#191417',mx-5,base-RISE,10,1);
 });
-type Role='bench'|'main'|'grating'|'headwall'|'landing';
-const role=(p:Platform,l:Level):Role=>p.kind==='grate'?'grating':p.x<HEAD1&&!p.branch?'headwall':p.x+p.w<=SHAFT1&&!p.branch?'landing':p.w>=170&&l.water!-p.y<=48||p.id===l.mainCount-1?'bench':'main';
+type Role='bench'|'main'|'grating'|'headwall'|'landing'|'walk'|'penstock';
+const role=(p:Platform,l:Level):Role=>p.kind==='crumble'?'walk':p.h>28?'penstock':p.kind==='grate'?'grating':p.x<HEAD1&&!p.branch?'headwall':p.x+p.w<=SHAFT1&&!p.branch?'landing':p.w>=170&&l.water!-p.y<=48||p.id===l.mainCount-1?'bench':'main';
 /** The soffit of the vault: one height along the tunnel, opening into the stair shaft at either end. */
 const soffit=(l:Level,x:number)=>x<SHAFT1?SHAFT_TOP:x>l.platforms[l.mainCount-1].x-190?l.platforms[l.mainCount-1].y-170:l.water!-300;
+/** A shaft is a built room. Its far wall is laid bay by bay between brick piers and lift by lift between the stone
+ * bands its landings stand on: small brick at the head, heavier and damper toward the water. Every course stops at a
+ * pier, a band or a corner; some bays hold a blind arch; and both corners show the side walls' returns in shadow. */
+const LIFT_MID:Work={course:8,short:12,long:18,mortar:'#171317',stones:['#2c2427','#2f2629','#32292b','#2a2225'],lip:'#3a2f31',shade:'#221c1e',chip:'#3f3335'};
+const LIFT_FOOT:Work={course:10,short:16,long:28,mortar:'#111013',stones:['#24201f','#272221','#2a2423','#211d1c'],lip:'#322b29',shade:'#1b1817',chip:'#372f2c'};
+const RECESS:Work={course:8,short:12,long:18,mortar:'#0d0b0e',stones:['#1b171a','#1d181b','#1f1a1d'],lip:'#241e21',shade:'#151215',chip:'#282124'};
+const RET=18,PW=16;
+const recess=(w:number,h:number)=>sprite(`culvert/recess/${w}/${h}`,w,h,c=>{
+ lay(c,w,h,RECESS,w*3+h);
+ const r=w/2,rise=Math.min(22,Math.round(r*.45));
+ for(let x=0;x<w;x++){const d=(x+.5-r)/r,head=Math.round(rise*(1-Math.sqrt(Math.max(0,1-d*d))));c.clearRect(x,0,1,head);box(c,'#3a2f31',x,head,1,5);box(c,'#4d3c3a',x,head,1,1);box(c,'#070608',x,head+5,1,3);if(x%6===3)box(c,'#171317',x,head,1,5);}
+ box(c,'#070608',0,rise,3,h-rise);box(c,'#0b090c',3,rise+3,2,h-rise-3);box(c,'#3a2f31',w-1,rise,1,h-rise);
+ box(c,'#4d4642',0,h-5,w,5);box(c,'#6b625c',0,h-5,w,1);box(c,'#1d181c',0,h-1,w,1);
+});
+function shaftRoom(c:C,key:string,x0:number,x1:number,top:number,bottom:number,bands:readonly number[],seed:number,from:number,to:number){
+ const inner0=x0+RET,inner1=x1-RET,n=Math.max(1,Math.round((inner1-inner0)/132)),bay=(inner1-inner0-PW*(n-1))/n;
+ const lines=[top,...[...new Set(bands)].filter(y=>y>top+24&&y<bottom-24).sort((a,b)=>a-b),bottom];
+ for(let i=0;i<lines.length-1;i++){
+  const a=lines[i]+(i?6:0),b=lines[i+1];if(b<=a||b<from||a>to)continue;
+  const depth=(a-top)/(bottom-top),work=depth>.62?LIFT_FOOT:depth>.28?LIFT_MID:UPRIGHT;
+  for(let j=0;j<n;j++){
+   const bx=Math.round(inner0+j*(bay+PW)),bw=Math.round(inner0+j*(bay+PW)+bay)-bx;
+   c.drawImage(panel(`${key}/bay/${i}/${j}`,bw,b-a,work,seed+i*17+j*5),bx,a);
+   if(b-a>=92&&bw>=70&&(i+j+seed)%2===0)c.drawImage(recess(bw-36,Math.min(b-a-26,150)),bx+18,a+14);
+   if(j<n-1){const px=bx+bw;c.drawImage(panel(`${key}/pier/${i}/${j}`,PW,b-a,RIBFACE,seed+i*3+j),px,a);box(c,'#57443f',px,a,1,b-a);box(c,'#0b090c',px+PW,a,2,b-a);box(c,'#0b090c66',px+PW+2,a,5,b-a);}
+  }
+  for(const side of [0,1])c.drawImage(panel(`${key}/ret/${side}/${i}`,RET,b-a,RIBSIDE,seed+side*7+i),side?inner1:x0,a);
+  box(c,'#070608',inner0,a,2,b-a);box(c,'#3a2f31',inner0+2,a,1,b-a);box(c,'#070608',inner1-2,a,2,b-a);
+ }
+ for(const y of lines.slice(1,-1)){
+  if(y+8<from||y>to)continue;
+  // A stone band right round the shaft: the brick above and below stops against it, and it caps each pier's lift.
+  box(c,'#1d181c',x0,y,x1-x0,6);box(c,'#4d4642',x0,y,x1-x0,4);box(c,'#6b625c',x0,y,x1-x0,1);box(c,'#0b090c',x0,y+6,x1-x0,2);
+  for(let j=0;j<n-1;j++){const px=Math.round(inner0+j*(bay+PW)+bay);box(c,'#57514d',px-2,y-2,PW+4,9);box(c,'#77706b',px-2,y-2,PW+4,1);box(c,'#0b090c',px-2,y+7,PW+4,1);}
+  for(let x=x0+RET+9;x<x1-RET;x+=37)box(c,'#3b3531',x,y+1,1,3);
+ }
+}
 function pump(c:C,x:number,water:number,t:number){
  // A beam pump on a brick plinth: cylinder, flywheel, and a rocking beam that has stopped.
  c.drawImage(panel(`culvert/plinth/${x}`,150,60,BRICK,x),x-10,water-36);box(c,'#5a4744',x-12,water-40,154,5);
@@ -97,7 +134,7 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
  }
  if(left<SHAFT1)outfall(c,l,t,cx,cy,vw,vh);
  // The stair shaft at the far end stands upright in ordinary courses from the water to its own head.
- if(right>shaft){const x0=Math.floor(shaft/32)*32,end=l.platforms[l.mainCount-1].y-170;c.drawImage(panel(`culvert/endshaft/${l.id}`,l.width+64-x0,water+90-end,UPRIGHT,13),x0,end);}
+ if(right>shaft){const x0=Math.floor(shaft/32)*32,end=l.platforms[l.mainCount-1].y-170;shaftRoom(c,`culvert/endshaft/${l.id}`,x0,l.width,end,water+90,[end+60,water-200,water-72],13,top,cy+vh+24);}
  // The flood has stained the bottom courses a brick at a time.
  for(let x=Math.floor(left/16)*16;x<right;x+=16){const v=hash(x>>4,7,31);box(c,'#070d0c80',x,water-10-Math.floor(v*4)*4,16,10+Math.floor(v*4)*4);}
  // Where the wall has been rebuilt the brick is newer and redder.
@@ -156,6 +193,17 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
  for(const p of l.platforms){
   const kind=role(p,l);if(!visible(p.x-16,p.y-320,p.w+32,water+380-p.y,cx,cy,vw,vh))continue;
   if(kind==='headwall')continue;
+  if(kind==='walk'){
+   // What is left of the inspection walk: a length of rusted grating still on its two hangers from the vault.
+   for(const x of [p.x+6,p.x+p.w-8]){const s=soffit(l,x);box(c,'#1a1210',x,s,2,p.y-s);box(c,'#6a4532',x,s,1,p.y-s);box(c,'#1a1210',x-2,s,6,4);box(c,'#1a1210',x-1,p.y-3,4,4);}
+   continue;
+  }
+  if(kind==='penstock'){
+   // The sluice gate: its frame stands in the water on a brick sill, and its two lifting screws rise through the headstock.
+   for(const x of [p.x+3,p.x+p.w-6]){box(c,'#0d1216',x,p.y-30,3,30);box(c,'#5a686b',x,p.y-30,1,30);for(let y=p.y-28;y<p.y-2;y+=4)box(c,'#34424a',x,y,3,1);box(c,'#0d1216',x-2,p.y-34,7,5);box(c,'#7d8c8e',x-2,p.y-34,7,1);}
+   c.drawImage(panel(`culvert/sill/${p.id}`,p.w+56,74,BRICK,p.id*7),p.x-28,water-14);box(c,'#5a4744',p.x-30,water-18,p.w+60,5);box(c,'#6b5651',p.x-30,water-18,p.w+60,1);
+   continue;
+  }
   if(kind==='landing'){
    // A stone landing of the outfall stair, on corbels stepped out of the shaft's wall.
    for(let x=p.x+6;x<p.x+p.w-12;x+=30){box(c,'#191417',x,p.y+26,14,14);box(c,'#6b625c',x+1,p.y+27,12,6);box(c,'#4d4642',x+3,p.y+33,8,5);box(c,'#8a817a',x+1,p.y+27,12,1);}
@@ -195,7 +243,7 @@ function outfall(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
  }
  // The shaft: upright brick from the water to its slab, a doorway west onto the headwall walk, an arch east into the vault.
  if(visible(HEAD1,SHAFT_TOP-20,SHAFT1-HEAD1+40,water+90-SHAFT_TOP,cx,cy,vw,vh)){
-  c.drawImage(panel('culvert/shaft',SHAFT1-HEAD1,water+90-SHAFT_TOP,UPRIGHT,29),HEAD1,SHAFT_TOP);
+  shaftRoom(c,'culvert/shaft',HEAD1,SHAFT1,SHAFT_TOP,water+90,l.platforms.filter(p=>role(p,l)==='landing').map(p=>p.y+40),29,top,bottom);
   box(c,'#0e1216',HEAD1-8,SHAFT_TOP-26,SHAFT1-HEAD1+48,26);box(c,'#2a3036',HEAD1-8,SHAFT_TOP-4,SHAFT1-HEAD1+48,4);box(c,'#3d454c',HEAD1-8,SHAFT_TOP-26,SHAFT1-HEAD1+48,1);
   if(top<SHAFT_TOP-26)box(c,'#141c2c',HEAD1,top,SHAFT1-HEAD1+40,SHAFT_TOP-26-top);
   // West doorway: dressed jambs and a lintel the shaft's courses stop against.
@@ -222,6 +270,22 @@ function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,s?:R
 }
 function deck(c:C,p:Platform,l:Level){
  const w=p.w,kind=role(p,l);
+ if(kind==='walk'){
+  // Rusted bar grating: bars gone here and there, the frame scaled red.
+  box(c,'#1a1210',-2,0,w+4,12);box(c,'#9a6a4a',0,0,w,1);box(c,'#6a4532',0,1,w,2);
+  for(let x=3;x<w-3;x+=8){if(hash(x,p.id,9)>.72)continue;box(c,'#2a1c16',x,3,3,7);box(c,'#7a4f36',x,3,1,6);}
+  box(c,'#3a2820',0,10,w,2);box(c,'#1a1210',Math.round(w*.3),0,6,3);
+  return;
+ }
+ if(kind==='penstock'){
+  // The sluice: a headstock on two guide channels, the cast door between them stopped a little way up.
+  for(const x of [0,w-8]){box(c,'#0d1216',x,10,8,p.h-10);box(c,'#26333a',x+1,10,5,p.h-10);box(c,'#4f5f66',x+1,10,1,p.h-10);}
+  box(c,'#161d22',8,22,w-16,p.h-48);box(c,'#2c383f',9,23,w-18,p.h-50);box(c,'#4f5f66',9,23,w-18,1);
+  for(let y=34;y<p.h-34;y+=18){box(c,'#161d22',9,y,w-18,2);box(c,'#4f5f66',9,y+2,w-18,1);}
+  box(c,'#6a4532',14,26,2,44);box(c,'#6a4532',w-19,44,2,52);box(c,'#05080b',8,p.h-26,w-16,26);
+  box(c,'#0d1216',-2,0,w+4,12);box(c,'#3f4c52',-1,1,w+2,9);box(c,'#7d8c8e',-1,0,w+2,2);box(c,'#26333a',-1,9,w+2,2);for(const x of [10,w-12])box(c,'#7d8c8e',x,4,2,2);
+  return;
+ }
  if(kind==='grating'){
   box(c,'#12191e',-2,0,w+4,12);box(c,'#aab3ae',0,0,w,1);box(c,'#5d6b70',0,1,w,2);
   for(let x=3;x<w-3;x+=8){box(c,'#1c272d',x,3,3,7);box(c,'#6d7d80',x,3,1,6);}
