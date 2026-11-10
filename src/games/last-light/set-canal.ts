@@ -15,7 +15,7 @@ import type {QuarterSet} from './quarter-sets';
  * granite quay built down into it, a cluster of mooring piles, a timber
  * staging, a moored lighter, a barge on its rope, a raft on a chain. */
 export const FAR=72;
-type Role='quay'|'piles'|'staging'|'boat'|'barge'|'stage'|'spar'|'bridge'|'tower';
+type Role='quay'|'piles'|'staging'|'boat'|'barge'|'stage'|'spar'|'bridge'|'tower'|'pontoon'|'wreck'|'cabin'|'mast'|'beacon';
 /** Level 3 opens on the bell tower that level 2 climbed: it stands with its
  * foot in the canal at the head of the quay. Everything before the first
  * quay is on it, or (standing clear of it in the water) the dolphin at its foot. */
@@ -26,8 +26,24 @@ function towerEnd(l:Level){
  if(x===undefined){const quay=l.platforms.slice(0,l.mainCount).find(p=>p.kind!=='moving'&&l.water!-p.y>=44&&l.water!-p.y<60);x=quay?.x??0;towerEnds.set(l,x);}
  return x;
 }
+/** The lighter sunk by the head in the long reach: its wheelhouse is the one tall solid on the canal. */
+const cabins=new WeakMap<Level,Platform|null>();
+function cabinOf(l:Level){
+ let made=cabins.get(l);
+ if(made===undefined){made=l.platforms.slice(0,l.mainCount).find(p=>p.kind==='stone'&&p.h>28&&p.x>towerEnd(l))??null;cabins.set(l,made);}
+ return made;
+}
+const WRECK_W=340;
 function role(p:Platform,l:Level):Role{
  if(p.x<towerEnd(l)&&!p.branch)return p.x+p.w<=FOOT_X?'tower':'piles';
+ if(p.kind==='crumble')return 'pontoon';
+ const cabin=cabinOf(l);
+ if(cabin&&!p.branch){
+  if(p===cabin)return 'cabin';
+  if(p.kind==='stone'&&p.x+p.w===cabin.x)return 'wreck';
+  if(p.kind==='grate'&&p.x>cabin.x&&p.x<cabin.x+WRECK_W-80)return 'mast';
+  if(p.kind==='stone'&&l.water!-p.y>=60&&p.x>cabin.x&&p.x<cabin.x+560)return 'beacon';
+ }
  if(p.kind==='moving')return 'barge';
  if(p.kind==='grate')return 'spar';
  if(p.id===l.mainCount-1)return 'stage';
@@ -145,7 +161,7 @@ export function lampOnWater(c:C,x:number,water:number,height:number,t:number){
 /** How far each distant layer follows the camera. The far side of the canal
  * is a long way off: walking the quay barely moves it, the way the moon barely
  * moves. Only what you stand on is locked to the world. */
-const MOON_PAN=.01,TOWER_PAN=.015,BEHIND_PAN=.02,BANK_PAN=.03;
+const MOON_PAN=.01,TOWER_PAN=.012,BEHIND_PAN=.016,BANK_PAN=.02;
 /** The canal between the banks: a row at the far bank moves with the bank, a row at your feet with the quay. */
 const waterPan=(y:number,far:number,near:number)=>{const k=Math.max(0,Math.min(1,(y-far)/(near-far)));return BANK_PAN+(1-BANK_PAN)*k*k*k;};
 function sky(c:C,l:Level,w:number,h:number,cx:number,cy:number,t:number,ending:boolean){
@@ -363,6 +379,34 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
   }else if(kind==='stage'){
    // The ferry stage floats between two guide piles, under a gangway from the quay.
    for(const x of [p.x+6,p.x+p.w-16]){pile(c,x,p.y-34,water);box(c,'#59666b',x-1,p.y-30,12,2);}
+  }else if(kind==='pontoon'){
+   // A section of the old pontoon: chained to whatever stands either side of it, the chain hanging into the water.
+   for(const side of [-1,1]){
+    let edge:number|null=null;
+    for(const q of l.platforms)if(q!==p&&q.kind!=='moving'&&!q.branch&&water-q.y<60){const at=side<0?q.x+q.w:q.x,gap=side<0?p.x-at:at-p.x-p.w;if(gap>0&&gap<=110&&(edge===null||gap<Math.abs((side<0?p.x:p.x+p.w)-edge)))edge=at;}
+    if(edge===null)continue;
+    const from=side<0?p.x:p.x+p.w,steps=Math.max(4,Math.round(Math.abs(edge-from)/5));
+    for(let i=0;i<=steps;i++){const k=i/steps;box(c,i%2?'#59666b':'#2c353b',from+(edge-from)*k,p.y+5+Math.sin(k*Math.PI)*5,3,2);}
+   }
+  }else if(kind==='cabin'){
+   // The lighter lies sunk by the head: her stern and wheelhouse stand clear, her deck runs down into the canal.
+   const x0=p.x-80,y0=p.y+p.h-2;c.drawImage(wreckHull(),x0,y0);
+   const mast=l.platforms.filter(q=>role(q,l)==='mast').sort((a,b)=>a.y-b.y);
+   if(mast.length){
+    // Her derrick mast still stands, stepped through the fore deck, with the two crosstrees left on it and its stays.
+    const mx=Math.round(mast[0].x+mast[0].w/2),head=mast[0].y-34,foot=y0+sheer(mx-x0)+2;
+    stroke(c,'#3a3027',mx,head+6,p.x+p.w-4,p.y+2,1);stroke(c,'#3a3027',mx,head+6,Math.min(x0+WRECK_W-30,mx+96),y0+sheer(Math.min(WRECK_W-30,mx+96-x0)),1);
+    box(c,'#17110d',mx-4,head,8,foot-head);box(c,'#4b3a2b',mx-3,head,5,foot-head);box(c,'#6a5440',mx-2,head,2,foot-head);box(c,'#17110d',mx-5,head-3,10,4);
+    for(let y=head+24;y<foot;y+=44){box(c,'#232c33',mx-4,y,8,3);box(c,'#59666b',mx-4,y,8,1);}
+    for(const q of mast){stroke(c,'#2a2119',mx,q.y+30,q.x+4,q.y+11,2);stroke(c,'#2a2119',mx,q.y+30,q.x+q.w-5,q.y+11,2);}
+    // The derrick boom came down across the fore deck when she settled.
+    stroke(c,'#17110d',mx+6,foot-30,mx+110,y0+sheer(Math.min(WRECK_W-1,mx+110-x0))-4,4);stroke(c,'#6a5440',mx+6,foot-31,mx+110,y0+sheer(Math.min(WRECK_W-1,mx+110-x0))-5,1);
+   }
+  }else if(kind==='beacon'){
+   // A channel beacon: three long piles hooped and cross-braced, a stage on their heads, its lamp dark.
+   for(const x of [p.x+3,Math.round(p.x+p.w/2)-5,p.x+p.w-13])pile(c,x,top-4,water);
+   for(let y=p.y+40,k=0;y<water-30;y+=52,k++){stroke(c,'#2a2119',p.x+8,y,p.x+p.w-8,y+40,2);stroke(c,'#2a2119',p.x+p.w-8,y,p.x+8,y+40,2);box(c,'#232c33',p.x+2,y-6,p.w-4,4);box(c,'#59666b',p.x+2,y-6,p.w-4,1);}
+   box(c,'#141b21',p.x+4,p.y-30,3,30);box(c,'#3d4a51',p.x+5,p.y-30,1,30);box(c,'#141b21',p.x,p.y-44,11,14);box(c,'#232e37',p.x+2,p.y-42,7,10);box(c,'#3d4a51',p.x,p.y-46,11,2);
   }else if(kind==='spar'){
    // A channel marker: one tall post, a cross-spar and a dark lamp.
    const x=Math.round(p.x+p.w/2)-4;pile(c,x,p.y-6,water);box(c,'#141b21',x-2,p.y-22,13,16);box(c,'#232e37',x,p.y-20,9,12);box(c,'#3d4a51',x-3,p.y-24,15,2);
@@ -376,6 +420,22 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
   const steps=Math.max(4,Math.round(Math.abs(end-tie.x)/3));for(let i=0;i<=steps;i++){const k=i/steps;box(c,'#8a7a5a',tie.x+(end-tie.x)*k,tie.y+(at.y-2-tie.y)*k+Math.sin(k*Math.PI)*sag,2,1);}
  }
 }
+/** How far the wreck's deck has gone down, along her length from the stern. */
+const sheer=(x:number)=>x<170?2:2+Math.round((x-170)*28/(WRECK_W-170));
+const wreckHull=()=>sprite('canal/wreck',WRECK_W,74,c=>{
+ for(let x=0;x<WRECK_W;x++){
+  // A raked transom at the stern; the planking runs with the sheer, darker at the turn of the bilge.
+  const top=sheer(x)+(x<8?(8-x)*2:0);box(c,'#2c2119',x,top,1,74-top);
+  for(let k=1;k<10;k++)box(c,'#1c1511',x,sheer(x)+k*6+3,1,1);
+  if(x>=8){box(c,'#14100d',x,sheer(x)+2,1,1);box(c,'#7a6048',x,sheer(x),1,2);box(c,'#b2946d',x,sheer(x),1,1);}
+ }
+ // Butts in the planking, the rubbing strake, and the plank she was stove in by.
+ for(let x=14;x<WRECK_W-6;x+=37)for(let k=0;k<9;k++)if((x/37+k)%3<1)box(c,'#1c1511',x+k*5%23,sheer(x)+k*6+4,1,5);
+ for(let x=10;x<WRECK_W;x++)box(c,'#3d2e22',x,sheer(x)+9,1,2);
+ box(c,'#0b0d0f',236,sheer(236)+12,22,9);box(c,'#14100d',240,sheer(240)+10,12,3);box(c,'#4b3a2b',258,sheer(258)+13,7,2);
+ // The rudder head and its tiller, lashed.
+ box(c,'#14100d',2,sheer(0)-12,5,30);box(c,'#6a5440',3,sheer(0)-12,2,28);box(c,'#14100d',4,sheer(0)-14,30,4);box(c,'#7a6048',5,sheer(0)-14,28,1);
+});
 const moorings=new WeakMap<Platform,{x:number;y:number}|null>();
 function mooring(p:Platform,l:Level){
  let tie=moorings.get(p);
@@ -391,7 +451,7 @@ function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,s?:R
  sheet(c,cx-24,vw+48,top,bottom,far);
  ripples(c,cx-24,cx+vw+24,top,bottom,far,t);
  for(let x=Math.floor((cx-24)/22)*22;x<cx+vw+24;x+=22){const wave=Math.round(Math.sin(t*1.7+x*.21));box(c,'#5a8a94',x+3,top+wave,11,1);}
- for(const p of l.platforms){const kind=role(p,l);if(p.x+p.w<cx-24||p.x>cx+vw+24)continue;if(kind==='quay'||kind==='stage')shadowOnWater(c,p.x,p.w,top,t);}
+ for(const p of l.platforms){const kind=role(p,l);if(p.x+p.w<cx-24||p.x>cx+vw+24)continue;if(kind==='quay'||kind==='stage'||kind==='beacon')shadowOnWater(c,p.x,p.w,top,t);else if(kind==='cabin')shadowOnWater(c,p.x-80,WRECK_W-90,top,t);}
  // The tower stands in the canal and lies on it, dark, with its water gate a deeper dark.
  if(towerEnd(l)>0&&cx<FOOT_X+24){shadowOnWater(c,TX0,TX1-TX0,top,t);shadowOnWater(c,TX1,FOOT_X-TX1,top,t);}
  // The footbridge lies on the water pier by pier; under its arches the canal is open.
@@ -409,13 +469,39 @@ export function hull(c:C,w:number,deep:number){
 }
 function deck(c:C,p:Platform,l:Level){
  const w=p.w,kind=role(p,l);
+ if(kind==='pontoon'){
+  // Rotten deck boards on a rail, across two cask floats. A board has gone already.
+  box(c,'#15100c',-1,0,w+2,6);box(c,'#57493a',0,0,w,5);box(c,'#8a7a62',0,0,w,2);box(c,'#6a5b48',0,2,w,1);
+  for(let x=5+p.id%4;x<w-3;x+=8)box(c,'#231a14',x,2,1,3);
+  box(c,'#15100c',Math.round(w*.52),0,7,5);box(c,'#4a5a44',6,1,9,1);
+  box(c,'#2c2119',0,5,w,5);box(c,'#3d2e22',0,5,w,1);
+  for(const x of [4,w-24]){box(c,'#17110d',x,9,20,13);box(c,'#4b3a2b',x+1,10,18,11);box(c,'#6a5440',x+1,10,18,2);box(c,'#232c33',x+4,9,2,13);box(c,'#232c33',x+14,9,2,13);}
+  return;
+ }
+ if(kind==='wreck'){
+  // The lighter's stern deck: the hull under it is drawn with the rest of her.
+  box(c,'#14100d',-2,0,w+2,4);box(c,'#6b523a',-1,0,w+1,3);box(c,'#b2946d',-1,0,w+1,1);for(let x=9;x<w-2;x+=11)box(c,'#3d2e22',x,1,1,2);
+  for(const x of [10,26]){box(c,'#14100d',x,-6,6,6);box(c,'#7a6048',x+1,-6,4,1);}
+  return;
+ }
+ if(kind==='cabin'){
+  // Her wheelhouse: matchboard under a tarred roof, the glass out of one light, the door swollen shut.
+  box(c,'#17110d',0,0,w,p.h);
+  for(let x=1;x<w-1;x+=7){box(c,hash(x,3,5)>.5?'#3f3227':'#3a2d23',x,7,6,p.h-7);box(c,'#4d3d2f',x,7,1,p.h-7);}
+  box(c,'#14100d',-3,0,w+6,8);box(c,'#3d444a',-3,0,w+6,6);box(c,'#7d878c',-3,0,w+6,1);box(c,'#262d33',-3,6,w+6,2);
+  box(c,'#14100d',10,16,30,22);box(c,'#1a2633',12,18,12,18);box(c,'#0b1016',26,18,12,18);box(c,'#26384a',13,19,4,7);box(c,'#1a2633',26,30,5,6);box(c,'#4d3d2f',9,38,32,2);
+  box(c,'#14100d',52,14,26,p.h-14);box(c,'#33261d',54,16,22,p.h-16);box(c,'#4a3828',54,16,22,1);box(c,'#33261d',64,16,1,p.h-16);box(c,'#a9905f',57,40,2,3);
+  box(c,'#0a141a73',0,p.h-9,w,9);box(c,'#2c4739',3,p.h-5,5,5);
+  return;
+ }
+ if(kind==='mast'){box(c,'#17110d',-1,0,w+2,12);box(c,'#6b523a',0,0,w,8);box(c,'#b2946d',0,0,w,2);box(c,'#33261d',0,8,w,3);for(const x of [3,w-6]){box(c,'#232c33',x,0,3,11);box(c,'#59666b',x,0,1,11);}return;}
  if(kind==='quay'||kind==='bridge'){
   // A granite coping on coursed stone; the rest of the wall is drawn behind.
   box(c,'#1a2129',-2,0,w+4,10);box(c,'#7d878c',-2,0,w+4,8);box(c,'#aab3b3',-2,0,w+4,2);box(c,'#5d676e',-2,7,w+4,1);
   for(let x=38+p.id%3*9;x<w-10;x+=52)box(c,'#565f66',x,2,1,6);
   return;
  }
- if(kind==='piles'){
+ if(kind==='piles'||kind==='beacon'){
   // Three pile heads bound with an iron hoop.
   for(const x of [3,Math.round(w/2)-5,w-13]){box(c,'#17110d',x,0,10,28);box(c,'#4b3a2b',x+1,2,7,26);box(c,'#6a5440',x+2,2,2,26);box(c,'#9a7f5f',x,0,10,2);box(c,'#7a6048',x+1,2,8,1);}
   box(c,'#17110d',0,3,w,7);box(c,'#6b523a',0,3,w,5);box(c,'#b2946d',0,0,w,2);box(c,'#8d704f',0,2,w,1);
@@ -466,4 +552,4 @@ function exit(c:C,l:Level,s:Run,t:number,front:boolean,reduced:boolean,view:{wid
  for(let i=0;i<6;i++)box(c,'#5a8a94',left+6+i*22,top+Math.round(Math.sin(t*1.7+i)),11,1);
  for(let k=0;k<4;k++)box(c,'#f3c77a44',x+24+offset.x+Math.round(Math.sin(t*1.3+k)*2),top+4+k*5,6-k,1);
 }
-export const canalQuay:QuarterSet={sky,back,deck,exit,water,depth:(p,l)=>role(p,l)==='boat'||role(p,l)==='barge'?10:0};
+export const canalQuay:QuarterSet={sky,back,deck,exit,water,depth:(p,l)=>{const kind=role(p,l);return kind==='boat'||kind==='barge'||kind==='pontoon'?10:0;}};

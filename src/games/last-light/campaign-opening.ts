@@ -50,8 +50,8 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
  // door, at the top. The tower stands with its foot in the canal, and its
  // outside stair is iron flights bolted to the face, most treads gone, with
  // landings on the clock hood and over the boat door. Off the stair's foot a
- // bracket, the cutwater and a dolphin of piles cross open water to the
- // stone quay; a miss there drowns. Then the canal, as it was:
+ // bracket, the cutwater and one dolphin of piles cross open water to the
+ // stone quay in two long jumps; a miss there drowns. Then the canal, as it was:
  // One canal, travelled along its near quay. Everything stood on is a quay
  // built down into the water, a cluster of mooring piles, a timber staging
  // or a boat; the water under all of it is lethal. A barge tied off the
@@ -59,14 +59,19 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
  // is the first lethal dash (onto a moored lighter), two barges out of
  // phase ask for a timed dash, a bolt stands on one pile cap, and a raft on
  // a chain crosses a basin; a fast barge, a second bolt and a dash onto the
- // coal lighter lead to Ada's quay. A stepped footbridge over the last side
- // canal comes down, 56 px a landing, to the ferry stage at the waterline.
+ // coal lighter lead on. Past the lighter is the long reach: an old pontoon
+ // whose rotten sections break up under you between two dolphins, then a
+ // lighter sunk by the head. Its wheelhouse roof and the two crosstrees left
+ // on its mast are the climb; the dash off the masthead is to a beacon's
+ // stage, and a last pontoon section and a raft on its chain reach Ada's
+ // quay. A stepped footbridge over the last side canal comes down, 56 px a
+ // landing, to the ferry stage at the waterline.
  {
   setting:'canal',goal:'ferry',
-  route:'24,96,256,s;304,152,48,g;192,212,64,g;56,268,104,s;200,332,48,g;304,392,48,g;200,452,56,g;24,508,128,s;216,572,48,g;280,652,120,s;472,700,56,s;600,744,300,s;932,770,112,m,20,.9;1076,744,240,s;1384,760,56,s;1508,756,56,s;1644,770,100,m,28,1;1836,744,260,s;2156,760,120,s;2472,770,120,s;2656,760,56,s;2780,744,220,s;3072,770,100,m,20,1.1;3376,770,110,m,16,1.3;3568,760,96,s;3728,744,200,s;4000,760,56,s;4124,756,56,s;4276,770,120,m,48,.8;4524,760,56,s;4664,770,96,m,36,1.4;4916,760,96,s;5076,756,48,s;5296,770,120,s;5480,744,200,s;5680,680,72,s;5752,616,160,s;5912,672,72,s;5984,728,72,s;6072,784,180,s',
-  branches:'1328,772,48,s;2600,772,48,s;4204,700,44,g',memories:[0,1,2],
+  route:'24,96,256,s;304,152,48,g;192,212,64,g;56,268,104,s;200,332,48,g;304,392,48,g;200,452,56,g;24,508,128,s;216,572,48,g;280,652,120,s;540,708,44,s;750,744,300,s;1082,770,112,m,20,.9;1226,744,240,s;1534,760,56,s;1658,756,56,s;1794,770,100,m,28,1;1986,744,260,s;2306,760,120,s;2622,770,120,s;2806,760,56,s;2930,744,220,s;3222,770,100,m,20,1.1;3526,770,110,m,16,1.3;3718,760,96,s;3878,744,200,s;4150,760,56,s;4274,756,56,s;4426,770,120,m,48,.8;4674,760,56,s;4814,770,96,m,36,1.4;5066,760,96,s;5226,756,48,s;5446,770,120,s;5666,758,48,s;5786,780,56,c,,,0.45,12;5922,780,56,c,,,0.45,12;6066,780,56,c,,,0.45,12;6218,758,48,s;6386,770,72,s;6458,706,88,s,,,,64;6578,650,56,g;6578,586,56,g;6842,574,44,s;6986,780,56,c,,,0.45,12;7130,772,96,m,44,1.1;7326,744,200,s;7526,680,72,s;7598,616,160,s;7758,672,72,s;7830,728,72,s;7918,784,180,s',
+  branches:'1478,772,48,s;2750,772,48,s;4354,700,44,g',memories:[0,1,2],
   stations:[],
-  checkpoints:[3,7,13,17,21,25,31,34],sectors:[[0,"The gallery"],[1,"The outside stair"],[3,"The clock hood"],[7,"The tower foot"],[11,"Stone quay"],[13,"Mooring piles"],[17,"The staging"],[21,"Two barges"],[25,"The chain raft"],[31,"The coal lighter"],[34,"Ada’s crossing"]],
+  checkpoints:[3,7,13,17,21,25,31,38,46],sectors:[[0,"The gallery"],[1,"The outside stair"],[3,"The clock hood"],[7,"The tower foot"],[11,"Stone quay"],[13,"Mooring piles"],[17,"The staging"],[21,"Two barges"],[25,"The chain raft"],[31,"The coal lighter"],[34,"The old pontoon"],[39,"The wreck"],[43,"The beacon"],[46,"Ada’s crossing"]],
   hazards:[spike(24,.78,22),spike(31,.8,22)],
  },
  // 04 · Windows, Not Stars
