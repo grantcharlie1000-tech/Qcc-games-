@@ -82,13 +82,20 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   hazards:[steam(1,.5,96,0,3.2),steam(2,.86,96,.8,3),steam(4,.5,96,0,3),steam(5,.5,96,1.5,3),steam(7,.93,96,.4,3),spike(9,.86,22)],
  },
  // 07 · The Counterweight
+ // A service tower's lift shaft. Cages ride visible rails: one carries you
+ // 300 px up from the pit, the next sets you down 96 px from a landing at the
+ // top of its travel. Each counterweight drops through a 120 px bay on a
+ // fixed, telegraphed cycle (ENCOUNTER_ADDITIONS[6]). The test dashes 184 px
+ // off a cage onto the landing beside the second bay; steam leaves only the
+ // machine-room pipe, which the return wheel can shut. Iron landings climb
+ // to the lift crown. Cage indices matter: rail phase follows platform id.
  {
   setting:'tower',goal:'engine',
-  route:'24,650,300,s;534,650,100,s;664,650,100,s;974,634,100,s;1274,562,140,s;1579,514,300,s;2029,514,320,s;2534,474,145,s;2759,498,100,c,,,0.62;3059,450,165,s;3394,450,300,s;3904,450,100,s;4034,450,100,s;4344,378,165,s;4679,362,320,s;5154,322,260,s;5604,346,105,c,,,0.62;5789,298,125,c,,,0.62;6114,298,165,s;6464,298,300,s;6934,250,145,s;7239,210,340,s',
-  branches:'1127,626,94;3674,514,94;5967,362,94',memories:[0,1,2],
-  stations:[[6,"Intake wheel"],[14,"Return wheel"]],
-  checkpoints:[5,10,15,19],sectors:[[0,"Weight room stair"],[5,"The intake wheel"],[10,"Counterweight walk"],[15,"The lift crown"]],
-  hazards:[spike(2,.28,24),spike(2,.75,24),steam(3,.74,120,.4,2.7),spike(4,.75,24),steam(7,.72,124,.6,2.7,0),spike(9,.28,26),spike(9,.75,26),steam(12,.75,124,1.4,2.6),spike(13,.28,26),spike(13,.75,26),steam(16,.75,124,1.8,2.7,1),spike(18,.28,26),spike(18,.75,26),spike(20,.75,26)],
+  route:'24,1100,240,s;312,1100,120,s;468,950,100,l,150,1.5;604,800,240,s;908,800,120,s;1064,736,100,l,64,1.58;1260,672,240,s;1596,672,120,s;1812,632,240,s;2116,608,100,l,24,1.1;2400,584,120,s;2550,584,120,s;2766,584,160,s;2990,520,120,g;2990,456,120,g;2990,392,120,g;3174,328,340,s',
+  branches:'380,1036,52,s;380,950,60,s;3530,264,60,s',memories:[0,1,2],
+  stations:[[6,"Intake wheel"],[8,"Return wheel"]],
+  checkpoints:[3,6,8,16],sectors:[[0,"The lift pit"],[3,"Cage to landing"],[6,"Counterweight walk"],[8,"The machine room"],[16,"The lift crown"]],
+  hazards:[steam(12,.5,96,.4,2.8,1)],
  },
  // 08 · The Quarter’s Reply
  {

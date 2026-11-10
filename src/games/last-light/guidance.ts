@@ -56,7 +56,7 @@ function movementHint(run:Run,level:Level,index:number):string {
   return next.y<current.y-24?'Hold Space for the higher ledge. Release direction to brake onto the small landing.':'Tap Space for the short hop. Release direction to brake; save X for long gaps.';
  }
  if(next&&level.platforms.some(p=>p.h<=10&&p.x<Math.max(current.x+current.w,next.x)&&p.x+p.w>Math.min(current.x+current.w,next.x)&&current.y-(p.y+p.h)>=77&&current.y-(p.y+p.h)<=103))return 'Low eave ahead. Tap Space to slip under it. A full jump hits the beam.';
- if(next&&current.y-next.y>=48&&gap<=90&&next.w>125)return level.setting==='roofs'?'Hold Space for the chimney step.':'Hold Space for the high step.';
+ if(next&&current.kind!=='moving'&&current.y-next.y>=48&&gap<=90&&next.w>125)return level.setting==='roofs'?'Hold Space for the chimney step.':'Hold Space for the high step.';
  if(level.goal==='escape')return 'Keep ahead of the dark. Reach the shelter; no switches block the way.';
  const surface=current?.kind;
  if(surface==='ice')return 'Ice carries your speed. Brake before the next edge.';
