@@ -75,7 +75,7 @@ export const FEATURE_ROUTES:Readonly<Record<number,CampaignRoute>>={
 /** Other chapters receive distinct encounters at explicitly chosen quiet ledges.
  * Enemy sweeps never cover flags, conversations, cats or the exit. */
 export const ENCOUNTER_ADDITIONS:Readonly<Record<number,{enemies?:CampaignRoute['enemies'];presses?:CampaignRoute['hazards']}>>={
- 6:{presses:[press(2,.5,.4,3.6),press(6,.2,1.1,3.4)]},
+ 6:{presses:[press(2,.5,.4,3.6),press(6,.2,1.1,3.4),press(20,.3,.2,3.2)]},
  8:{enemies:[{ledge:15,at:.72,kind:'crawler',travel:22,period:3.8}]},
  12:{enemies:[{ledge:15,at:.72,kind:'moth',travel:26,period:3.7}]},
  14:{presses:[press(5,.73,.5,3.4)]},

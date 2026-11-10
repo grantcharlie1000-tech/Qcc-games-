@@ -3,8 +3,6 @@ import type {Run} from './model';
 import {goalComposition,serviceDoor} from './composition';
 export interface DepartureView {width:number;height:number;cameraX?:number;cameraY?:number}
 const DEFAULT_VIEW={width:640,height:360};
-/** How far the Old Quarter's counterweight lift rides from its landing to the hoist house floor. */
-export const HOIST_RIDE=280;
 export const clearDuration=(l:Level)=>l.goal==='ferry'?1.95:l.goal==='engine'?2.2:['relay','signal','dawn'].includes(l.goal)?1.65:1.25;
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));
 const smooth=(v:number)=>{const p=clamp(v);return p*p*(3-2*p);};
@@ -15,8 +13,7 @@ export function departureOffset(l:Level,s:Run,reduced:boolean,view:DepartureView
  if(reduced||s.phase==='playing')return {x:0,y:0};
  const elapsed=clearDuration(l)-s.cinematic,art=goalComposition(l);
  if(l.goal==='ferry'){const p=clamp((elapsed-.62)/(clearDuration(l)-.62)),travel=p*p;const distance=view.cameraX===undefined?view.width+180:Math.max(160,view.cameraX+view.width+80-art.x);return {x:distance*travel,y:(l.setting==='sky'?-view.height*.36*travel:0)||0};}
- // The Old Quarter's hoist rides to a hoist house built a fixed storey above its lift landing, so it never outruns the building.
- if(l.goal==='engine'){const p=smooth((elapsed-.52)/.92),distance=l.world===0?HOIST_RIDE:Math.max(280,view.height*.75);return {x:0,y:-distance*p||0};}
+ if(l.goal==='engine'){const p=smooth((elapsed-.52)/.92),distance=Math.max(280,view.height*.75);return {x:0,y:-distance*p||0};}
  return {x:0,y:0};
 }
 /** Presentation only: progress/score were banked at the trigger. */

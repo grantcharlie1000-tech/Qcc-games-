@@ -22,6 +22,8 @@ export interface CampaignRoute {
  exit?:number;
  /** A lethal waterline at this world y, for a flooded pit or a river under a span. */
  water?:number;
+ /** What the optional fixtures are, where the way out does not say: brake or irrigation wheels beside a door. */
+ stationKind?:'lamp'|'valve'|'bell';
 }
 export interface HazardPlacement {
  ledge:number;

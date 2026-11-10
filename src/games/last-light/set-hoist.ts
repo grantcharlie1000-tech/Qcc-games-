@@ -1,8 +1,8 @@
 import type {Level,Platform,Station} from './levels';
 import type {Run} from './model';
 import {box,hash,lay,panel,sprite,stroke,visible,type C,type Work} from './quarter-kit';
+import {lantern} from './props';
 import type {QuarterSet} from './quarter-sets';
-import {HOIST_RIDE,departureOffset,departureVisibility} from './departure';
 
 /** Level 7 · the Quarter's hoist tower, seen in section. Two lift wells run
  * the height of one brick shaft. Each cage rides a pair of guide rails on a
@@ -16,7 +16,7 @@ import {HOIST_RIDE,departureOffset,departureVisibility} from './departure';
  * pair of guides against that wall; and the wall itself is the tower's own:
  * brick piers, a string course to every storey, and between the piers tall
  * iron-framed windows with the night behind them, or arches bricked up. */
-const L=24,CROWN=250,BACK=12,RETURN=22,STOREY=180,BAY=160,PIER=20;
+const L=24,CROWN=250,BACK=12,RETURN=22,STOREY=180,BAY=160,PIER=20,WALL=28;
 /** The shaft is built, not tiled: the far wall is laid cell by cell between
  * its piers and string courses, each pier and each corner return storey by
  * storey, and the cut walls between the floors whose girders they carry. */
@@ -24,10 +24,40 @@ const FAR:Work={course:6,short:10,long:16,mortar:'#0f0d12',stones:['#19151b','#1
 const PIERS:Work={course:8,short:10,long:18,mortar:'#131016',stones:['#231d23','#251e24','#272026','#211b21'],lip:'#2d252b',shade:'#1d181d',chip:'#31282e'};
 const SIDES:Work={course:16,short:5,long:10,mortar:'#0d0b0f',stones:['#17131a','#18141b','#1a151c'],lip:'#1e181f',shade:'#131017',chip:'#211b22'};
 const CUTS:Work={course:14,short:10,long:28,mortar:'#1b1719',stones:['#40312f','#453432','#4a3835','#3d2f2d'],lip:'#59453f',shade:'#33282a',chip:'#634e47'};
-/** The hoist house stands one lift ride above the lift landing at the top of
- * the shaft: its floor, its roof over that, and the parapet the cut walls stop at. */
-const houseFloor=(l:Level)=>l.platforms[l.mainCount-1].y-8-HOIST_RIDE;
-const roofOf=(l:Level)=>houseFloor(l)-112;
+/** The hoist house is the top of the tower: its floor is the last landing, the
+ * way out is the door in its far wall, and its roof stands on the two cut walls. */
+const houseFloor=(l:Level)=>l.platforms[l.mainCount-1].y;
+const roofOf=(l:Level)=>houseFloor(l)-150;
+const RISE=112;
+/** A blind panel: a shallow arched recess in a bay with no window, in darker brick set back from the face. */
+const RECESS:Work={course:6,short:10,long:16,mortar:'#0a090c',stones:['#131015','#151217','#161318'],lip:'#19151a',shade:'#0f0d11',chip:'#1b171c'};
+const blind=()=>sprite('hoist/blind',92,118,c=>{
+ lay(c,92,118,RECESS,77);
+ for(let x=0;x<92;x++){const d=(x+.5-46)/46,head=Math.round(20*(1-Math.sqrt(Math.max(0,1-d*d))));c.clearRect(x,0,1,head);box(c,'#2d252b',x,head,1,5);box(c,'#3a3036',x,head,1,1);box(c,'#050608',x,head+5,1,3);if(x%6===2)box(c,'#131016',x,head,1,5);}
+ box(c,'#050608',0,20,3,98);box(c,'#2d252b',91,20,1,98);box(c,'#2d252b',0,113,92,5);box(c,'#3a3036',0,113,92,1);box(c,'#08090c',0,117,92,1);
+});
+/** What a window is built into: a ring of brick on edge over it, toothed jambs in the pier brick, and a stone sill on two corbels. */
+const dressing=()=>sprite('hoist/dressing',84,134,c=>{
+ for(let x=0;x<84;x++){const d=(x+.5-42)/42,head=42-Math.round(42*Math.sqrt(Math.max(0,1-d*d)));box(c,(x>>2)%2?'#2b2329':'#251e24',x,head,1,10);box(c,'#352b31',x,head,1,1);if(x%4===0)box(c,'#131016',x,head,1,10);}
+ for(let y=42,k=0;y<120;y+=8,k++){const wide=k%2?10:6;box(c,'#251e24',0,y,wide,7);box(c,'#2d252b',0,y,wide,1);box(c,'#251e24',84-wide,y,wide,7);box(c,'#2d252b',84-wide,y,wide,1);}
+ box(c,'#3a3036',2,120,80,6);box(c,'#4a3f45',2,120,80,1);box(c,'#08090c',2,126,80,1);for(const x of [10,66]){box(c,'#2d252b',x,127,8,6);box(c,'#3a3036',x,127,8,1);}
+});
+const houseRoof=(w:number)=>sprite(`hoist/roof/${w}`,w+40,RISE+14,c=>{
+ const mid=(w+40)/2;
+ for(let y=0;y<RISE;y++){
+  // Slates outside, the principal rafter inside each slope, the roof space dark between them.
+  const half=Math.round((w/2+10)*y/RISE)+6;
+  box(c,(y>>2)%2?'#1c2532':'#1a2330',mid-half-8,y,8,1);box(c,'#3a4a5e',mid-half-8,y,1,1);box(c,(y>>2)%2?'#1c2532':'#1a2330',mid+half,y,8,1);box(c,'#2c394a',mid+half+7,y,1,1);
+  if(half>8){box(c,'#0a0c10',mid-half,y,half*2,1);box(c,'#17110d',mid-half,y,7,1);box(c,'#33261d',mid-half+6,y,1,1);box(c,'#17110d',mid+half-7,y,7,1);}
+  if(y%10===5&&half>20)box(c,'#0e1116',mid-half+7,y,half*2-14,1);
+ }
+ // The tie beam on the wall plates, the king post off it, a strut each side, and the purlins the common rafters lie on.
+ box(c,'#17110d',14,RISE,w+12,11);box(c,'#3d2e22',14,RISE,w+12,1);box(c,'#2b2018',14,RISE+1,w+12,3);box(c,'#0a0c10',14,RISE+11,w+12,3);
+ box(c,'#17110d',mid-5,10,10,RISE-10);box(c,'#3d2e22',mid-5,10,2,RISE-10);
+ for(const side of [-1,1]){stroke(c,'#17110d',mid+side*5,RISE-6,mid+side*Math.round(w*.24),Math.round(RISE*.52),4);stroke(c,'#3d2e22',mid+side*5,RISE-7,mid+side*Math.round(w*.24),Math.round(RISE*.52)-1,1);
+  for(const k of [.3,.55,.8]){const y=Math.round(RISE*k),x=mid+side*(Math.round((w/2+10)*k)-4);box(c,'#231a14',x-5,y,10,7);box(c,'#3d2e22',x-5,y,10,1);}}
+ for(let x=24;x<w+16;x+=64){box(c,'#59666b',x,RISE+3,3,3);}
+});
 /** Window openings through the cut walls: [side, head, sill]. */
 const OPENINGS:readonly (readonly [0|1,number,number])[]=[[0,1196,1248],[0,676,728],[1,1036,1088],[1,316,368]];
 /** A window of the far wall: a round-headed opening, iron glazing bars, and
@@ -57,7 +87,7 @@ const info=new WeakMap<Level,{right:number;wells:{x:number;w:number}[];floors:nu
 function plan(l:Level){
  let made=info.get(l);if(made)return made;
  const wells:{x:number;w:number}[]=[];for(const p of l.platforms)if(p.kind==='moving'&&!wells.some(w=>w.x===p.x))wells.push({x:p.x,w:p.w});
- made={right:Math.max(...l.platforms.map(p=>p.x+p.w)),wells,floors:[...new Set(l.platforms.filter(p=>p.kind==='stone').map(p=>p.y))]};info.set(l,made);return made;
+ made={right:Math.max(...l.platforms.map(p=>p.x+p.w)),wells,floors:[...new Set(l.platforms.filter(p=>p.kind==='stone'&&p.h>12).map(p=>p.y))]};info.set(l,made);return made;
 }
 function sheave(c:C,x:number,y:number,turn:number){
  for(let yy=-13;yy<=13;yy++){const out=Math.floor(Math.sqrt(169-yy*yy)),hole=Math.abs(yy)<10?Math.floor(Math.sqrt(100-yy*yy)):0;box(c,'#151b20',x-out,y+yy,out*2,1);if(hole)box(c,'#241d22',x-hole,y+yy,hole*2,1);}
@@ -78,13 +108,19 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
  for(let y=pit-Math.ceil((pit-top)/STOREY)*STOREY;y<low;y+=STOREY){
   if(y<ROOF)continue;const storey=Math.round((pit-y)/STOREY);
   for(let x=L+RETURN+PIER,bay=0;x+BAY-PIER<=right-RETURN;x+=BAY,bay++){
-   const v=hash(bay,storey,71);if(v<.16||y+30>low||y+146<top||y+30<ROOF+10)continue;
-   if(y+30<houseFloor(l)+40&&y+146>houseFloor(l)-12)continue;
-   if(y<houseFloor(l)&&y+146>houseFloor(l)-100&&x+38<exitDoor(l)+136&&x+102>exitDoor(l)+56)continue;
-   c.drawImage(farWindow(v>.62?0:v>.36?1:2),x+38,y+30);
+   const v=hash(bay,storey,71);if(y+30>low||y+146<top||y+26<ROOF+16)continue;
+   // Nothing is built across the hoist house floor, and the door has its own bay.
+   if(y+16<houseFloor(l)+44&&y+150>houseFloor(l)-14)continue;
+   if(y<houseFloor(l)&&x<exitDoor(l)+50&&x+BAY-PIER>exitDoor(l)-50)continue;
+   if(v<.2){c.drawImage(blind(),x+24,y+26);continue;}
+   c.drawImage(dressing(),x+28,y+20);c.drawImage(farWindow(v>.62?0:v>.36?1:2),x+38,y+30);
   }
   // A string course every storey: the cells above and below stop against it, and it caps every pier.
-  if(y+8>top){box(c,'#231d23',L,y,right-L,7);box(c,'#2d252b',L,y,right-L,1);box(c,'#0b090d',L,y+7,right-L,2);for(const x of piers){box(c,'#2d252b',x-2,y-2,PIER+4,10);box(c,'#3a3036',x-2,y-2,PIER+4,1);box(c,'#0b090d',x-2,y+8,PIER+4,2);}}
+  if(y+14>top){box(c,'#231d23',L,y,right-L,7);box(c,'#2d252b',L,y,right-L,1);box(c,'#0b090d',L,y+7,right-L,2);
+   // A dentil course under it, and an iron tie plate on every pier where the storey's tie rod comes through.
+   for(let x=L+RETURN+4;x<right-RETURN-4;x+=8){box(c,'#231d23',x,y+9,4,4);box(c,'#0b090d',x,y+13,4,1);}
+   for(const x of piers){box(c,'#12181d',x+5,y+84,10,10);box(c,'#3a474e',x+5,y+84,10,1);box(c,'#3a474e',x+9,y+86,2,6);box(c,'#3a474e',x+7,y+88,6,2);}
+   for(const x of piers){box(c,'#2d252b',x-2,y-2,PIER+4,10);box(c,'#3a3036',x-2,y-2,PIER+4,1);box(c,'#0b090d',x-2,y+8,PIER+4,2);}}
  }
  // The corners: each return is the side wall's inner face, in shadow, meeting the far wall in a dark arris.
  box(c,'#060709',L+RETURN,Math.max(top,ROOF),2,low-Math.max(top,ROOF));box(c,'#060709',right-RETURN-2,Math.max(top,ROOF),2,low-Math.max(top,ROOF));
@@ -97,7 +133,7 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
   for(const x of [well.x+1,well.x+well.w-4]){box(c,'#0d1115',x,a,3,b-a);box(c,'#2a343a',x,a,1,b-a);}
  }
  // Every landing is a floor: chequer plate running back from the edge you walk to an angle iron on the far wall.
- for(const p of l.platforms)if(p.kind==='stone'&&visible(p.x,p.y-BACK-6,p.w,BACK+8,cx,cy,vw,vh)){
+ for(const p of l.platforms)if(p.kind==='stone'&&p.h>12&&visible(p.x,p.y-BACK-6,p.w,BACK+8,cx,cy,vw,vh)){
   box(c,'#0b0d10',p.x,p.y-BACK-5,p.w,5);box(c,'#12181d',p.x,p.y-BACK-3,p.w,3);box(c,'#3a474e',p.x,p.y-BACK-3,p.w,1);
   box(c,'#1a2227',p.x,p.y-BACK,p.w,4);box(c,'#20292f',p.x,p.y-BACK+4,p.w,4);box(c,'#273138',p.x,p.y-4,p.w,4);
   for(let x=p.x+24-p.x%24;x<p.x+p.w;x+=24)box(c,'#12181d',x,p.y-BACK,1,BACK);
@@ -124,21 +160,25 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
  }
  // Every counterweight hangs on a chain from a bracket on the girder above it.
  for(const h of l.hazards)if(h.kind==='crusher'){
-  const x=Math.round(h.x+h.w/2);let roof=CROWN;for(const y of pl.floors)if(y+24<h.y&&y+24>roof)roof=y+24;
+  const x=Math.round(h.x+h.w/2);let roof=-1e9;for(const y of pl.floors)if(y+24<h.y&&y+24>roof)roof=y+24;if(roof<-1e8)roof=CROWN;
   if(!visible(x-30,roof,60,h.y-roof+20,cx,cy,vw,vh))continue;
   for(let y=roof+8;y<h.y-10;y+=6)box(c,(y/6|0)%2?'#59666b':'#2c353b',x-1,y,3,4);
   box(c,'#12181d',x-12,roof,24,8);box(c,'#4f5f66',x-12,roof,24,1);sheave(c,x,roof+16,0);
   for(const side of [-22,22]){box(c,'#12181d',x+side-1,roof,3,h.y-roof);box(c,'#3d4a51',x+side-1,roof,1,h.y-roof);}
  }
- for(const p of l.platforms)if(p.kind==='grate'&&p.y<CROWN+160&&visible(p.x,ROOF,p.w,p.y-ROOF+20,cx,cy,vw,vh)){
-  // Over the crown the gratings hang on rods: from the winding floor's girder, or west of it from the roof trusses.
-  const over=l.platforms.find(q=>q.kind==='stone'&&q.y<p.y&&q.x<=p.x&&q.x+q.w>=p.x+p.w),from=over?over.y+24:houseFloor(l)+28;
-  for(const x of [p.x+4,p.x+p.w-7]){box(c,'#1a2228',x,from,3,p.y-from);box(c,'#56646b',x,from,1,p.y-from);box(c,'#1a2228',x-1,p.y+8,5,4);}
+ for(const p of l.platforms)if(p.kind==='grate'&&visible(p.x-30,p.y-20,p.w+60,100,cx,cy,vw,vh)){
+  // A ladder landing: rail behind, two brackets off the side wall it is bolted to, the ladder down to the landing below.
+  const west=p.x+p.w/2<(L+right)/2,wallX=west?L:right;
+  box(c,'#1a2228',p.x,p.y-16,p.w,2);box(c,'#56646b',p.x,p.y-16,p.w,1);for(let x=p.x+1;x<p.x+p.w;x+=12)box(c,'#1a2228',x,p.y-14,1,14);
+  box(c,'#1a2228',west?wallX:p.x+p.w,p.y+3,west?p.x-wallX:wallX-p.x-p.w,5);box(c,'#3a464d',west?wallX:p.x+p.w,p.y+3,west?p.x-wallX:wallX-p.x-p.w,1);
+  stroke(c,'#1a2228',wallX+(west?2:-2),p.y+44,west?p.x+p.w-20:p.x+20,p.y+12,2);box(c,'#56646b',wallX+(west?0:-4),p.y+42,4,4);
+  if(l.platforms.some(q=>q.kind==='grate'&&q.x===p.x&&q.y>p.y&&q.y-p.y<=80)){const x=p.x+Math.round(p.w/2)-6;box(c,'#1a2228',x,p.y+12,2,52);box(c,'#1a2228',x+10,p.y+12,2,52);box(c,'#56646b',x,p.y+12,1,52);for(let y=p.y+17;y<p.y+64;y+=7)box(c,'#3a464d',x+2,y,8,1);}
  }
- for(const p of l.platforms)if(p.kind==='grate'&&p.y>=CROWN+160&&visible(p.x,p.y-20,p.w,90,cx,cy,vw,vh)){
-  // A ladder landing: rail behind, bracket to the wall, the ladder down to the one below.
-  box(c,'#1a2228',p.x,p.y-16,p.w,2);for(let x=p.x+1;x<p.x+p.w;x+=12)box(c,'#1a2228',x,p.y-14,1,14);
-  const x=p.x+Math.round(p.w/2)-6;box(c,'#1a2228',x,p.y+12,2,52);box(c,'#1a2228',x+10,p.y+12,2,52);box(c,'#56646b',x,p.y+12,1,52);for(let y=p.y+17;y<p.y+64;y+=7)box(c,'#3a464d',x+2,y,8,1);
+ for(const p of l.platforms)if((p.kind==='crumble'||p.kind==='stone'&&p.h<=12)&&visible(p.x-40,p.y,p.w+80,60,cx,cy,vw,vh)){
+  // The sheave deck and its loose plates lie on angle-iron bearers off the nearest stanchion or guide, each on a gusset.
+  for(const x of [p.x+4,p.x+p.w-10]){box(c,'#0d1216',x,p.y+10,6,8);box(c,'#3a474e',x,p.y+10,6,1);}
+  const well=pl.wells.find(w=>p.x<w.x+w.w&&p.x+p.w>w.x),post=well?(p.x+p.w/2<well.x+well.w/2?well.x-6:well.x+well.w+6):p.x+p.w/2<(L+right)/2?pl.wells[0].x+pl.wells[0].w+16:pl.wells[1].x-16;
+  stroke(c,'#12181d',post,p.y+40,p.x+p.w/2<post?p.x+8:p.x+p.w-8,p.y+14,3);stroke(c,'#12181d',post,p.y+14,p.x+p.w/2<post?p.x+p.w:p.x,p.y+14,3);box(c,'#3a474e',post-3,p.y+38,6,5);
  }
  // The cut walls of the shaft, laid between the floors whose girders bear on them, with their windows and parapet; and the footing under the first landing.
  for(const side of [0,1] as const)cutWall(c,l,pl.floors,side,right,top,bottom);
@@ -151,13 +191,14 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
 /** Where the door out of the hoist house stands on the winding floor. */
 const exitDoor=(l:Level)=>Math.round(l.exit.x+l.exit.w/2);
 function cutWall(c:C,l:Level,floors:readonly number[],side:0|1,right:number,top:number,bottom:number){
- const x0=side?right:0,wide=side?140:L,face=side?right:L,foot=l.height+40,ROOF=roofOf(l),PARAPET=ROOF-24;
+ const x0=side?right:0,wide=side?WALL:L,face=side?right:L,foot=l.height+40,ROOF=roofOf(l),PARAPET=ROOF;
  const lines=[PARAPET,...[...floors].sort((a,b)=>a-b).map(y=>y+14),foot];
  for(let i=0;i<lines.length-1;i++){const a=lines[i],b=lines[i+1];if(b<top||a>bottom||b<=a)continue;c.drawImage(panel(`hoist/cut/${side}/${a}`,wide,b-a,CUTS,a+side*101),x0,a);}
  const from=Math.max(top,PARAPET),to=Math.min(bottom,foot);
  box(c,'#6d5850',side?right:L-1,from,1,to-from);box(c,'#0b0d11',side?right-2:L,Math.max(top,ROOF),2,to-Math.max(top,ROOF));
- // The parapet's coping, over the roof.
- if(PARAPET>top-8&&PARAPET<bottom){box(c,'#2a2224',x0-3,PARAPET-5,wide+6,6);box(c,'#7a665e',x0-3,PARAPET-5,wide+6,1);box(c,'#120e10',x0-3,PARAPET+1,wide+6,1);}
+ // The wall stops under a stone pad for the wall plate; its outer face is weathered dark.
+ if(PARAPET>top-8&&PARAPET<bottom){box(c,'#2a2224',x0-2,PARAPET,wide+4,6);box(c,'#7a665e',x0-2,PARAPET,wide+4,1);box(c,'#120e10',x0-2,PARAPET+6,wide+4,1);}
+ if(side)box(c,'#1a1516',x0+wide-2,from,2,to-from);
  for(const [s2,head,sill] of OPENINGS){
   if(s2!==side||sill+8<top||head-8>bottom)continue;
   box(c,'#1a2436',x0,head,wide,sill-head);box(c,'#24324a',side?x0+wide-8:x0,head,8,sill-head);
@@ -185,22 +226,25 @@ function stairwell(c:C,p:Platform){
  box(c,'#12181d',x-15,y-92,30,12);box(c,'#aab3ae',x-13,y-90,26,8);box(c,'#12181d',x-1,y-88,2,5);box(c,'#12181d',x-3,y-85,6,1);box(c,'#12181d',x-2,y-84,4,1);
 }
 function windingHouse(c:C,l:Level,pl:{wells:{x:number;w:number}[]},right:number,clock:number,top:number){
- const ROOF=roofOf(l),PARAPET=ROOF-24,floor=houseFloor(l);
- // The roof: trusses on the side walls, boarded over, under the parapet.
- if(top<ROOF+30){box(c,'#0e1216',L,PARAPET,right-L,ROOF-PARAPET+6);box(c,'#2a3036',L,ROOF+2,right-L,4);box(c,'#3d454c',L,PARAPET,right-L,1);for(let x=L+40;x<right-20;x+=120){stroke(c,'#17110d',x,ROOF+6,x+60,ROOF+30,3);stroke(c,'#17110d',x+120,ROOF+6,x+60,ROOF+30,3);box(c,'#17110d',x,ROOF+28,120,4);}}
- if(top<PARAPET)box(c,'#141c2c',L,top,right-L,PARAPET-top);
-  // The hoist house floor: chequer plate on a girder from wall to wall, the lift's rails coming up through it.
- box(c,'#0b0d10',L,floor-BACK-5,right-L,5);box(c,'#1a2227',L,floor-BACK,right-L,BACK);box(c,'#273138',L,floor-4,right-L,4);
- box(c,'#0d1216',L,floor,right-L,28);box(c,'#3a474e',L,floor,right-L,6);box(c,'#aab3ae',L,floor,right-L,1);box(c,'#2c383f',L,floor+6,right-L,16);box(c,'#4f5f66',L,floor+6,right-L,2);for(let x=L+10;x<right;x+=18)box(c,'#5a686b',x,floor+13,2,2);box(c,'#06070999',L,floor+28,right-L,8);
+ const ROOF=roofOf(l),floor=houseFloor(l),end=l.platforms[l.mainCount-1];
+ // The roof in section, standing on the two cut walls: under it the hoist house is one room, the width of the tower.
+ if(top<ROOF+16)c.drawImage(houseRoof(right-L),L-20,ROOF-RISE);
  houseDoor(c,l,floor);
- for(const well of pl.wells){
-  // The drum that winds this well's cable sits on the floor; the cable runs down through a slot to the sheave.
-  const mid=well.x+Math.round(well.w/2),dx=mid+60;if(dx+30>right-RETURN||Math.abs(dx-exitDoor(l)-96)<80)continue;
-  for(let yy=-22;yy<=22;yy++){const out=Math.floor(Math.sqrt(484-yy*yy));box(c,'#151b20',dx-out,floor-30+yy,out*2,1);}
-  box(c,'#2c383f',dx-18,floor-48,36,36);for(let yy=floor-46;yy<floor-14;yy+=4)box(c,'#59666b',dx-17,yy,34,1);box(c,'#12181d',dx-26,floor-8,52,8);box(c,'#3d4a51',dx-26,floor-8,52,1);
-  stroke(c,'#59666b',dx-18,floor-40,mid,floor+30,1);box(c,'#0b0d11',mid-6,floor,12,4);
-  for(let i=0;i<4;i++){const a=clock*.4+i*Math.PI/2;stroke(c,'#3d4a51',dx,floor-30,dx+Math.cos(a)*16,floor-30+Math.sin(a)*16,2);}
+ // The hatchway: the floor stops at a trimmer west of the drums, railed on its open side, and the ladder comes up through it.
+ box(c,'#12181d',end.x-4,floor+4,8,22);box(c,'#4f5f66',end.x-4,floor+4,8,1);
+ for(const x of [end.x+2,end.x+34]){box(c,'#1a2228',x,floor-BACK-34,2,34);box(c,'#56646b',x,floor-BACK-34,1,34);}box(c,'#1a2228',end.x+2,floor-BACK-34,34,2);box(c,'#56646b',end.x+2,floor-BACK-34,34,1);box(c,'#1a2228',end.x+2,floor-BACK-18,34,1);
+ for(const [i,well] of pl.wells.entries()){
+  // The drum that winds this well's cable stands on the floor on its bearers; the cable runs over to a slot and down to the sheave.
+  const mid=well.x+Math.round(well.w/2),dx=i?mid-84:mid+84,y=floor-BACK-3;
+  for(let yy=-24;yy<=24;yy++){const out=Math.floor(Math.sqrt(576-yy*yy));box(c,'#151b20',dx-out,y-32+yy,out*2,1);}
+  box(c,'#2c383f',dx-18,y-52,36,40);for(let yy=y-50;yy<y-14;yy+=4)box(c,'#59666b',dx-17,yy,34,1);box(c,'#12181d',dx-30,y-8,60,8);box(c,'#3d4a51',dx-30,y-8,60,1);
+  for(let k=0;k<4;k++){const a=clock*.4+k*Math.PI/2;stroke(c,'#3d4a51',dx,y-32,dx+Math.cos(a)*18,y-32+Math.sin(a)*18,2);}box(c,'#7d8c8e',dx-2,y-34,4,4);
+  stroke(c,'#59666b',dx+(i?18:-18),y-44,mid,floor-2,1);box(c,'#0b0d11',mid-7,floor-BACK,14,BACK+2);box(c,'#59666b',mid,floor,1,CROWN-13-floor);
+  // The brake: a lever in a quadrant beside the drum.
+  const bx=dx+(i?-44:44);box(c,'#12181d',bx-8,y-10,16,10);stroke(c,'#3d4a51',bx,y-8,bx+(i?-10:10),y-40,2);box(c,'#b79a5c',bx+(i?-12:8),y-44,5,5);
  }
+ // An oil lamp on a bracket lights the room from the far wall, beside the door.
+ const lx=exitDoor(l)-58;box(c,'#141b21',lx-8,floor-BACK-76,10,2);box(c,'#141b21',lx,floor-BACK-76,2,8);lantern(c,lx+1,floor-BACK-68,'#f3c77a',true);box(c,'#f3c77a0c',lx-40,floor-BACK-100,82,100);
 }
 function mover(c:C,p:Platform,x:number,y:number){
  // The cage: corner posts, a head frame, a mesh back, and the cable up to its sheave.
@@ -214,6 +258,15 @@ function mover(c:C,p:Platform,x:number,y:number){
 }
 function deck(c:C,p:Platform){
  const w=p.w;
+ if(p.kind==='crumble'||p.kind==='stone'&&p.h<=12){
+  // A length of chequer plate on its angle frame. A loose one has lost its bolts on one side and gone red along the edge.
+  const loose=p.kind==='crumble';
+  box(c,'#0d1216',-1,0,w+2,12);box(c,loose?'#4a4038':'#3a474e',0,0,w,7);box(c,loose?'#9a8f84':'#aab3ae',0,0,w,1);box(c,loose?'#6a5f55':'#6d7d80',0,1,w,2);
+  for(let x=4;x<w-4;x+=8)box(c,loose?'#6a5347':'#56646b',x+(x/8|0)%2*2,4,3,1);
+  box(c,'#26333a',0,7,w,5);box(c,'#4f5f66',0,7,w,1);
+  if(loose){box(c,'#6a4532',0,5,Math.round(w*.4),2);box(c,'#0d1216',3,2,2,2);box(c,'#0d1216',w-14,0,9,2);}else for(const x of [3,w-5])box(c,'#7d8c8e',x,2,2,2);
+  return;
+ }
  if(p.kind==='grate'){
   box(c,'#12191e',-2,0,w+4,12);box(c,'#aab3ae',0,0,w,1);box(c,'#5d6b70',0,1,w,2);
   for(let x=3;x<w-3;x+=8){box(c,'#1c272d',x,3,3,7);box(c,'#6d7d80',x,3,1,6);}
@@ -243,36 +296,21 @@ function station(c:C,l:Level,s:Station,x:number,y:number,lit:boolean,t:number){
  * on the floor the lift arrives at, and the night outside where the bridge
  * approach begins. */
 function houseDoor(c:C,l:Level,floor:number){
- const x=exitDoor(l)+96,y=floor-BACK-3;
+ const x=exitDoor(l),y=floor-BACK-3;
  box(c,'#08090c',x-30,y-82,60,82);
  box(c,'#141c2c',x-19,y-70,38,70);box(c,'#1c2940',x-19,y-36,38,36);box(c,'#263345',x-19,y-14,38,14);
  // Beyond the door: the approach's parapet and its first lamp, unlit.
  box(c,'#46525f',x-19,y-14,38,4);box(c,'#6b7782',x-19,y-14,38,1);box(c,'#141b21',x+8,y-46,2,32);box(c,'#141b21',x+5,y-52,8,7);box(c,'#232e37',x+6,y-51,6,5);
  for(let k=0;k<6;k++){const yy=y-70+k*12;box(c,k%2?'#6b625c':'#5d5550',x-30,yy,11,11);box(c,k%2?'#5d5550':'#6b625c',x+19,yy,11,11);box(c,'#8a817a',x-30,yy,11,1);box(c,'#8a817a',x+19,yy,11,1);}
  box(c,'#2a2224',x-34,y-84,68,14);box(c,'#6b625c',x-33,y-83,66,12);box(c,'#8a817a',x-33,y-83,66,1);box(c,'#3b3034',x-33,y-72,66,1);box(c,'#7d746d',x-6,y-86,12,15);box(c,'#a39b92',x-6,y-86,12,1);
- // The leaf stands open into the house; a lamp hangs on the wall beside it.
+ // The leaf stands open into the house, on a stone threshold that runs out onto the floor.
  box(c,'#3b2a1d',x+10,y-70,9,70);box(c,'#5d4129',x+11,y-69,7,68);box(c,'#262d33',x+10,y-54,9,2);box(c,'#262d33',x+10,y-18,9,2);
- box(c,'#57514d',x-34,y-2,68,4);box(c,'#a39b92',x-34,y-2,68,1);
- box(c,'#141b21',x-44,y-80,2,16);box(c,'#141b21',x-48,y-64,10,12);box(c,'#f3c77a',x-46,y-62,6,8);box(c,'#f3c77a10',x-62,y-82,40,40);
+ box(c,'#57514d',x-34,y-2,68,4);box(c,'#a39b92',x-34,y-2,68,1);box(c,'#57514d',x-30,y+2,60,BACK+1);box(c,'#77706b',x-30,y+2,60,1);
 }
-function exit(c:C,l:Level,s:Run,t:number,front:boolean,reduced:boolean,view:{width:number;height:number}){
- const x=Math.round(l.exit.x+l.exit.w/2),y=l.exit.y+l.exit.h,offset=departureOffset(l,s,reduced,view),floor=y-8+offset.y,upper=houseFloor(l);
- if(front){
-  // The cage gate closes in front of the passenger for the ride.
-  if(s.phase!=='playing'&&!reduced){c.save();c.globalAlpha*=departureVisibility(s,reduced);for(let xx=x-18;xx<=x+18;xx+=6)box(c,'#6d7d80',xx,floor-40,1,40);box(c,'#aab3ae',x-20,floor-22,40,1);c.restore();}
-  return;
- }
- // The counterweight lift: its own rails from the lift landing up through the hoist house floor, where the door out stands in the wall.
- for(const xx of [x-28,x+25]){box(c,'#12181d',xx,upper-70,4,y-upper+70);box(c,'#5a686b',xx+1,upper-70,1,y-upper+70);}
- box(c,'#0b0d11',x-26,upper,52,6);
- box(c,'#59666b',x,upper-70,1,Math.max(0,floor-52-upper+70));
- c.save();c.globalAlpha*=departureVisibility(s,reduced);
- box(c,'#0d121699',x-22,floor-46,44,46);for(let xx=x-16;xx<x+20;xx+=8)box(c,'#232d33',xx,floor-44,1,44);
- for(const xx of [x-24,x+20]){box(c,'#151b20',xx,floor-50,4,50);box(c,'#6d7d80',xx,floor-50,1,50);}
- box(c,'#151b20',x-26,floor-54,52,6);box(c,'#f3c77a',x-8,floor-52,16,2);box(c,'#aab3ae',x-26,floor-54,52,1);
- box(c,'#151b20',x-26,floor,52,9);box(c,'#6b523a',x-25,floor,50,4);box(c,'#b3946a',x-25,floor,50,1);
- box(c,'#f3c77a22',x-18,floor-44,36,44);
- c.restore();
+function exit(c:C,l:Level,s:Run,t:number,front:boolean){
+ // The way out is the hoist house door itself, built with the house. Going through it lets the night's light in.
+ if(front||s.phase==='playing')return;
+ const x=exitDoor(l),y=houseFloor(l)-BACK-3;box(c,'#6f8fb41f',x-19,y-70,38,70);
 }
 
 export const hoist:QuarterSet={sky(c,l,w,h){box(c,'#0b0d11',0,0,w,h);box(c,'#141c2c',0,0,w,Math.round(h*.5));},back,deck,exit,mover,station};

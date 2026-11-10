@@ -41,7 +41,7 @@ export function createLevel(index:number):Level {
  const checkpoints:Checkpoint[]=authored.checkpoints.map(id=>{const p=main[id];return {x:p.x+28,y:p.y,platform:id};});
  // Keep the historical field for saved runs; current runs use the ordered array.
  const checkpoint=checkpoints[Math.floor(checkpoints.length/2)]??{x:main[0].x+28,y:main[0].y,platform:0};
- const kind=goal==='rescue'?'survivor':goal==='engine'?'valve':goal==='ferry'?'bell':'lamp';
+ const kind=authored.stationKind??(goal==='rescue'?'survivor':goal==='engine'?'valve':goal==='ferry'?'bell':'lamp');
  const stations:Station[]=authored.stations.map(([platform,label],id)=>{
   const p=main[platform];return {id,platform,x:p.x+p.w*.5,y:p.y,kind,label:goal==='rescue'?rescueNameFor(index):label};
  });
