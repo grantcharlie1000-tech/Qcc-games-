@@ -1,7 +1,7 @@
 import type {Level,Platform,Station} from './levels';
 import type {Run} from './model';
 import {departureOffset,departureVisibility} from './departure';
-import {box,masonry,stroke,visible,wall,type C} from './quarter-kit';
+import {box,hash,masonry,sprite,stroke,visible,wall,type C} from './quarter-kit';
 import type {QuarterSet} from './quarter-sets';
 
 /** Level 7 · the Quarter's hoist tower, seen in section. Two lift wells run
@@ -10,9 +10,38 @@ import type {QuarterSet} from './quarter-sets';
  * on a girder that crosses the shaft from wall to wall; ladders are iron
  * landings on the side walls; each counterweight hangs on its own chain in
  * a guide frame bolted to the girder above. Below the first landing the
- * wells go down to the pit. */
-const L=24,CROWN=250;
-const shaft=()=>masonry('hoist/shaft',64,32,16,8,{mortar:'#16131a',stones:['#261f25','#292127','#2c2329'],lip:'#33292e',chip:'#392e33'});
+ * wells go down to the pit.
+ * The shaft has a far side. Every landing is a floor of chequer plate that
+ * runs back from the edge you walk to the far wall; each well has a second
+ * pair of guides against that wall; and the wall itself is the tower's own:
+ * brick piers, a string course to every storey, and between the piers tall
+ * iron-framed windows with the night behind them, or arches bricked up. */
+const L=24,CROWN=250,BACK=12,RETURN=22,STOREY=180,BAY=160,PIER=20;
+const farWall=()=>masonry('hoist/far',48,24,12,6,{mortar:'#0f0d12',stones:['#19151b','#1b161c','#1c181e'],lip:'#201b21',chip:'#231d23'});
+const pierTile=()=>masonry('hoist/pier',32,16,16,8,{mortar:'#131016',stones:['#231d23','#251e24','#272026'],lip:'#2d252b',chip:'#31282e'});
+const sideTile=()=>masonry('hoist/side',32,32,8,16,{mortar:'#0d0b0f',stones:['#17131a','#18141b','#1a151c'],lip:'#1e181f',chip:'#211b22'});
+/** A window of the far wall: a round-headed opening, iron glazing bars, and
+ * the night through whatever glass is left. The third kind was bricked up. */
+const farWindow=(kind:number)=>sprite(`hoist/window/${kind}`,64,116,c=>{
+ const head=(x:number,r:number)=>32-Math.round(r*Math.sqrt(Math.max(0,1-((x+.5-32)/r)**2)));
+ for(let x=0;x<64;x++){const top=head(x,32);box(c,'#2d252b',x,top,1,3);box(c,'#08090c',x,top+3,1,112-top-3);}
+ for(let i=0;i<9;i++){const g=Math.PI*(i+.5)/9;box(c,'#131016',32-Math.cos(g)*31,32-Math.sin(g)*31,1,3);}
+ if(kind===2){for(let x=4;x<60;x++){const top=head(x,28)+4;c.fillStyle=c.createPattern(pierTile(),'repeat')!;c.fillRect(x,top,1,110-top);box(c,'#08090c',x,top,1,3);}box(c,'#08090c',4,34,3,76);}
+ else for(let x=4;x<60;x++){
+  const top=head(x,28)+4,col=Math.floor((x-4)/8);
+  for(let row=0;row<11;row++){
+   const y0=Math.max(top,row*10),y1=Math.min(110,row*10+10);if(y1<=y0)continue;
+   const v=hash(col,row,kind+61),lost=v<(kind?.22:.06);
+   box(c,lost?'#0e1219':v>.7?'#263850':v>.4?'#213148':'#1d2c42',x,y0,1,y1-y0);
+   if(!lost&&row>7)box(c,'#15202f',x,y0,1,y1-y0);
+  }
+  if((x-4)%8===7)box(c,'#0d1015',x,top,1,110-top);
+ }
+ if(kind!==2)for(let row=1;row<11;row++)box(c,'#0d1015',4,row*10,56,1);
+ box(c,'#2d252b',-2,110,68,4);box(c,'#3a3036',0,110,64,1);box(c,'#08090c',0,114,64,2);
+});
+/** Diagonal ties between a well's far guides, one storey of them. */
+const ties=(w:number)=>sprite(`hoist/ties/${w}`,w,128,c=>{stroke(c,'#151b20',2,0,w-3,127);stroke(c,'#151b20',w-3,0,2,127);box(c,'#1a2228',0,0,w,2);box(c,'#2a343a',0,0,w,1);});
 const cut=()=>masonry('hoist/cut',48,32,24,16,{mortar:'#1b1719',stones:['#40312f','#453432','#4a3835'],lip:'#59453f',chip:'#634e47'});
 const info=new WeakMap<Level,{right:number;wells:{x:number;w:number}[];floors:number[]}>();
 function plan(l:Level){
@@ -26,19 +55,45 @@ function sheave(c:C,x:number,y:number,turn:number){
  box(c,'#7d8c8e',x-2,y-2,4,4);
 }
 function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock:number){
- const pl=plan(l),top=cy-24,bottom=cy+vh+24,pit=l.height-20,right=pl.right;
- wall(c,'hoist/shaft',shaft,0,top,right+140,bottom-top);
- box(c,'#07090d66',L,top,20,bottom-top);box(c,'#07090d66',right-20,top,20,bottom-top);
+ const pl=plan(l),top=cy-24,bottom=cy+vh+24,pit=l.height-20,right=pl.right,low=Math.min(bottom,pit);
+ // The far wall: small dark brick, a pier every bay, a string course every storey, and its windows.
+ wall(c,'hoist/far',farWall,L,top,right-L,low-top);
+ for(let y=pit-Math.ceil((pit-top)/STOREY)*STOREY;y<low;y+=STOREY){
+  const storey=Math.round((pit-y)/STOREY);
+  for(let x=L+RETURN+PIER,bay=0;x+BAY-PIER<=right-RETURN;x+=BAY,bay++){
+   const v=hash(bay,storey,71);if(v<.16||y+30>low||y+146<top)continue;
+   c.drawImage(farWindow(v>.62?0:v>.36?1:2),x+38,y+30);
+  }
+  if(y+8>top){box(c,'#231d23',L,y,right-L,7);box(c,'#2d252b',L,y,right-L,1);box(c,'#0b090d',L,y+7,right-L,2);}
+ }
+ for(let x=L+RETURN;x<right-RETURN;x+=BAY){wall(c,'hoist/pier',pierTile,x,top,PIER,low-top);box(c,'#31282e',x,top,1,low-top);box(c,'#08090c',x+PIER,top,3,low-top);
+  for(let y=pit-Math.ceil((pit-top)/STOREY)*STOREY;y<low;y+=STOREY)if(y+10>top){box(c,'#2d252b',x-2,y-2,PIER+4,10);box(c,'#3a3036',x-2,y-2,PIER+4,1);box(c,'#0b090d',x-2,y+8,PIER+4,2);}}
+ // The side walls, end-on in the corners.
+ wall(c,'hoist/side',sideTile,L,top,RETURN,bottom-top);box(c,'#060709',L+RETURN,top,2,bottom-top);wall(c,'hoist/side',sideTile,right-RETURN,top,RETURN,bottom-top);box(c,'#060709',right-RETURN-2,top,2,bottom-top);
+ for(const well of pl.wells){
+  // Against the far wall each well has its second pair of guides, tied across with diagonals.
+  if(well.x+well.w+12<cx-24||well.x-12>cx+vw+24)continue;
+  const a=Math.max(top,CROWN),b=low;if(b<=a)continue;
+  box(c,'#050609a6',well.x+2,a,well.w-4,b-a);
+  for(let y=CROWN+Math.floor((a-CROWN)/128)*128;y<b;y+=128)c.drawImage(ties(well.w-8),well.x+4,y);
+  for(const x of [well.x+1,well.x+well.w-4]){box(c,'#0d1115',x,a,3,b-a);box(c,'#2a343a',x,a,1,b-a);}
+ }
+ // Every landing is a floor: chequer plate running back from the edge you walk to an angle iron on the far wall.
+ for(const p of l.platforms)if(p.kind==='stone'&&visible(p.x,p.y-BACK-6,p.w,BACK+8,cx,cy,vw,vh)){
+  box(c,'#0b0d10',p.x,p.y-BACK-5,p.w,5);box(c,'#12181d',p.x,p.y-BACK-3,p.w,3);box(c,'#3a474e',p.x,p.y-BACK-3,p.w,1);
+  box(c,'#1a2227',p.x,p.y-BACK,p.w,4);box(c,'#20292f',p.x,p.y-BACK+4,p.w,4);box(c,'#273138',p.x,p.y-4,p.w,4);
+  for(let x=p.x+24-p.x%24;x<p.x+p.w;x+=24)box(c,'#12181d',x,p.y-BACK,1,BACK);
+  for(let row=0;row<3;row++)for(let x=p.x+3+row*3;x<p.x+p.w-3;x+=8+row*2)box(c,row===2?'#3a474e':row?'#2c373e':'#242d33',x,p.y-BACK+2+row*4,2+row,1);
+ }
  // An iron girder crosses the shaft at every floor; the rails and landings are fixed to it.
- for(const y of pl.floors)if(y+40>top&&y<bottom){box(c,'#12181d',L,y+6,right-L,18);box(c,'#2c383f',L,y+8,right-L,12);box(c,'#4f5f66',L,y+6,right-L,2);box(c,'#0d1216',L,y+22,right-L,2);for(let x=L+10;x<right;x+=18)box(c,'#5a686b',x,y+13,2,2);}
+ for(const y of pl.floors)if(y+40>top&&y<bottom){box(c,'#12181d',L,y+6,right-L,18);box(c,'#2c383f',L,y+8,right-L,12);box(c,'#4f5f66',L,y+6,right-L,2);box(c,'#0d1216',L,y+22,right-L,2);for(let x=L+10;x<right;x+=18)box(c,'#5a686b',x,y+13,2,2);box(c,'#06070999',L,y+24,right-L,8);}
  // Two lattice stanchions stand between the wells from the pit to the crown.
  if(pl.wells.length>1){const a=pl.wells[0].x+pl.wells[0].w+10,b=pl.wells[1].x-22;for(const x of [a,b]){box(c,'#12181d',x,CROWN,12,pit-CROWN);box(c,'#3d4a51',x,CROWN,2,pit-CROWN);box(c,'#3d4a51',x+10,CROWN,2,pit-CROWN);for(let y=Math.max(CROWN,Math.floor(top/24)*24);y<Math.min(pit,bottom);y+=24)stroke(c,'#2c383f',x+2,y,x+10,y+12);}}
- // A lobby door on the back wall at every side landing.
- for(const p of l.platforms)if(p.kind==='stone'&&(p.x<=L+4||p.x+p.w>=right-4)&&visible(p.x,p.y-60,p.w,60,cx,cy,vw,vh)){const x=Math.round(p.x+p.w*(p.x<=L+4?.3:.7))-14;box(c,'#0d1014',x-3,p.y-50,34,50);box(c,'#231d1f',x,p.y-47,28,47);box(c,'#2c2527',x,p.y-47,13,47);box(c,'#3b3034',x-3,p.y-52,34,3);box(c,'#6d6248',x+10,p.y-24,2,4);}
+ // A lobby door in the far wall at every side landing, at the back of its floor.
+ for(const p of l.platforms)if(p.kind==='stone'&&(p.x<=L+4||p.x+p.w>=right-4)&&visible(p.x,p.y-80,p.w,80,cx,cy,vw,vh)){const x=Math.round(p.x+p.w*(p.x<=L+4?.3:.7))-14,y=p.y-BACK-3;box(c,'#0d1014',x-3,y-50,34,50);box(c,'#231d1f',x,y-47,28,47);box(c,'#2c2527',x,y-47,13,47);box(c,'#3b3034',x-3,y-52,34,3);box(c,'#6d6248',x+10,y-24,2,4);}
  for(const well of pl.wells){
   if(well.x+well.w+12<cx-24||well.x-12>cx+vw+24)continue;
-  // The well: a darker slot, a guide rail either side, the sheave at the crown.
-  box(c,'#0a0c1066',well.x-6,Math.max(top,CROWN),well.w+12,Math.min(bottom,pit)-Math.max(top,CROWN));
+  // The near guides either side of the well, and the sheave at the crown.
   for(const x of [well.x-8,well.x+well.w+4]){box(c,'#12181d',x,CROWN,4,pit-CROWN);box(c,'#5a686b',x+1,CROWN,1,pit-CROWN);for(let y=Math.max(CROWN,Math.floor(top/64)*64);y<Math.min(pit,bottom);y+=64)box(c,'#0d1216',x-2,y,8,4);}
   if(visible(well.x,CROWN-30,well.w,60,cx,cy,vw,vh)){box(c,'#12181d',well.x-12,CROWN-18,well.w+24,6);box(c,'#4f5f66',well.x-12,CROWN-18,well.w+24,1);sheave(c,well.x+well.w/2,CROWN,clock*1.5);}
   // Sprung buffers on the pit floor.
@@ -61,14 +116,17 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
  wall(c,'hoist/cut',cut,0,top,L,bottom-top);box(c,'#6d5850',L-1,top,1,bottom-top);box(c,'#0b0d11',L,top,2,bottom-top);
  wall(c,'hoist/cut',cut,right,top,140,bottom-top);box(c,'#6d5850',right,top,1,bottom-top);box(c,'#0b0d11',right-2,top,2,bottom-top);
  const first=l.platforms[0];if(bottom>first.y+28)wall(c,'hoist/cut',cut,first.x,first.y+28,first.w,bottom-first.y-28);
- if(pit<bottom){box(c,'#0d1014',L,pit,right-L,bottom-pit);box(c,'#3b3034',L,pit,right-L,2);}
+ // The pit floor runs back to the far wall like every other; water has got into it.
+ if(pit<bottom+BACK){box(c,'#15191d',L,pit-BACK,right-L,BACK);box(c,'#232a30',L,pit-BACK,right-L,1);for(let x=L+30;x<right-40;x+=97){const v=hash(x,3,79);box(c,'#101c20',x+Math.floor(v*30),pit-8+Math.floor(v*4),26+Math.floor(v*30),2);box(c,'#2a4046',x+4+Math.floor(v*30),pit-8+Math.floor(v*4),10,1);}box(c,'#0d1014',L,pit,right-L,bottom-pit);box(c,'#3b3034',L,pit,right-L,2);}
 }
 function mover(c:C,p:Platform,x:number,y:number){
  // The cage: corner posts, a head frame, a mesh back, and the cable up to its sheave.
  const mid=x+Math.round(p.w/2);box(c,'#59666b',mid-1,CROWN+12,1,y-56-CROWN-12);box(c,'#2c353b',mid,CROWN+12,1,y-56-CROWN-12);
  box(c,'#0d121699',x+4,y-50,p.w-8,50);for(let xx=x+10;xx<x+p.w-6;xx+=10)box(c,'#232d33',xx,y-48,1,48);for(let yy=y-40;yy<y;yy+=10)box(c,'#232d33',x+4,yy,p.w-8,1);
  for(const xx of [x+1,x+p.w-5]){box(c,'#151b20',xx,y-54,4,54);box(c,'#6d7d80',xx,y-54,1,54);}
- box(c,'#151b20',x-1,y-58,p.w+2,6);box(c,'#aab3ae',x-1,y-58,p.w+2,1);box(c,'#151b20',mid-4,y-64,8,6);
+ // The roof of the cage runs back to the far guides, like the floors.
+ box(c,'#1a2228',x+1,y-58-BACK,p.w-2,BACK);box(c,'#34414a',x+1,y-58-BACK,p.w-2,1);for(let xx=x+8;xx<x+p.w-6;xx+=12)box(c,'#232d33',xx,y-58-BACK+2,1,BACK-2);
+ box(c,'#151b20',x-1,y-58,p.w+2,6);box(c,'#aab3ae',x-1,y-58,p.w+2,1);box(c,'#151b20',mid-4,y-64-BACK+6,8,6);
  for(const xx of [x-7,x+p.w+3]){box(c,'#3d4a51',xx,y-50,5,8);box(c,'#3d4a51',xx,y+10,5,8);}
 }
 function deck(c:C,p:Platform){
