@@ -54,6 +54,14 @@ function tile(p:Platform,l:Level):HTMLCanvasElement {
  cache.set(key,canvas);if(cache.size>100)cache.delete(cache.keys().next().value!);return canvas;
 }
 export function clearTerrainCache(){cache.clear();boundsCache=new WeakMap();}
+/** A thin eave is a porch canopy: its timber post stands on the roof below
+ * its outer end. Looked up once per level, drawn behind every actor. */
+const eavePosts=new WeakMap<Platform,number|null>();
+function eavePost(p:Platform,l:Level):number|null {
+ let floor=eavePosts.get(p);
+ if(floor===undefined){const x=p.x+p.w-8;floor=null;for(const q of l.platforms)if(q!==p&&!q.branch&&q.x<=x&&q.x+q.w>=x&&q.y>p.y+p.h&&(floor===null||q.y<floor))floor=q.y;eavePosts.set(p,floor);}
+ return floor;
+}
 export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:number,s:Run,l:Level,reduced:boolean){
  const timer=s.crumbles[p.id];x=Math.round(x);y=Math.round(y);
  if(p.kind==='grate'){
@@ -62,6 +70,13 @@ export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:nu
   c.fillStyle='#334f55';c.fillRect(x,y+10,p.w,2);return;
  }
  if(p.kind==='crumble'&&timer!==undefined){drawCrumble(c,p,tile(p,l),x,y,timer,reduced);return;}
+ if(p.h<=10&&p.kind==='stone'){
+  const floor=eavePost(p,l);
+  if(floor!==null){const px=x+p.w-12,top=y+p.h,bottom=Math.round(floor);c.fillStyle='#2b2a2c';c.fillRect(px-1,top,7,bottom-top);c.fillStyle='#6e5641';c.fillRect(px,top,5,bottom-top);c.fillStyle='#93745a';c.fillRect(px+1,top,1,bottom-top);
+   // Knee brace into the canopy's underside, then a stone pad on the roof.
+   for(let i=0;i<18;i++){c.fillStyle=i%6===0?'#93745a':'#6e5641';c.fillRect(px-2-i,top+16-Math.round(i*.85),3,2);}
+   c.fillStyle='#3d3b3a';c.fillRect(px-3,bottom-3,11,3);}
+ }
  c.drawImage(tile(p,l),x-4,y-8);
  if(p.kind==='belt'){
   c.fillStyle='#302e38';c.fillRect(x,y+3,p.w,13);const shift=reduced?0:(s.clock*35*(p.direction??1))%18;

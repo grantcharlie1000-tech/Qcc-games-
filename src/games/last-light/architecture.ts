@@ -50,6 +50,7 @@ export function drawArchitecture(c:C,l:Level,cx:number,cy:number,w:number,h:numb
    for(const sign of [-1,1]){const xx=vertical?x:p.x+p.w/2+sign*(p.w/2+travel+4),yy=vertical?y+sign*(travel+12):y;c.fillStyle=theme.near;c.fillRect(xx-4,yy-4,8,8);c.fillStyle=theme.edge+'66';c.fillRect(xx-2,yy-2,2,2);}continue;
   }
   if(p.kind==='crumble')continue;
+  if(p.h<=10)continue;
   const bottom=p.y+p.h,depth=Math.max(28,(l.water??l.height+48)-bottom);
   if(l.world===3&&l.setting!=='tower'&&l.setting!=='factory'){
    // Glacier shoulders meet the collision slab, then taper into the world fog.

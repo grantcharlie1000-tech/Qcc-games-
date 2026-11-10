@@ -1,7 +1,7 @@
 import type {Goal,Hazard,Setting} from './levels';
 
 /** Geometry is written in travel order. Each token is x,y,width,surface,
- * optional travel and speed; surfaces are s/c/m/l/b/i/>/<. Branch ledges
+ * optional travel and speed; surfaces are s/e/c/m/l/b/i/>/<. Branch ledges
  * follow the main route in the resulting level and never hold objectives. */
 export interface CampaignRoute {
  setting:Setting;

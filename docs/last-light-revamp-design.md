@@ -22,7 +22,7 @@ Gaps are measured edge to edge. Coyote time (about 22 px) and the 16 px body bot
 - **Test:** 128–144 flat (about 85% of max), +64 only on gaps of 80 or less.
 - **Dash:** 184–216 flat, always wider than a full jump, so the dash is clearly needed and not just a bonus.
 - **Landing width:** at least 120 px after any new idea, at least 96 px in tests, and at least 64 px before a hazard edge.
-- **Headroom:** an eave 48–56 px above the takeoff deck stops a full jump but lets a tap through.
+- **Headroom:** measure from the courier's head, not the deck (the body is 24 px). An eave whose underside is 53–56 px above the standing head (77–80 px above the deck) stops a full jump but lets a tap or a short hold through.
 
 ## 1. Player promise and what the opening teaches
 
@@ -101,7 +101,7 @@ Each sector starts at a checkpoint. A *rest* is a wide deck (≥ 240 px) with no
 
 - *Demonstrate, "Our roof":* start on Mira's roof (300 px) by her open window. Alleys of 48 and 64 px, flat. A lean-to 48 px below each one catches a miss, with a step back up.
 - *Practise, "Washing lines":* alleys of 96, 112 (+32) and 120 px. Yards below have crate steps, so misses still cost time and nothing else.
-- *Twist, "Low eaves":* a dormer eave 52 px above a 96 px gap. A full jump bonks and drops you into the yard; a tap clears it. Then a chimney step of +64 over 72 px that a tap cannot reach. One spark sits on the eave roof for players who experiment.
+- *Twist, "Low eaves":* a porch eave over a 96 px gap, its underside 55 px above the courier's head (79 px above the deck) and its edge 64 px out from the takeoff roof. A full jump clips the eave and drops you into the yard; a tap or short hop clears it. Then a chimney step of +64 over 72 px that a tap cannot reach. One spark sits on the eave roof for players who experiment.
 - *Test, "The street":* one gutter tooth (22 px) mid-roof on a 300 px deck. A 128 px gap over the street, which is lethal. Then a 96 px landing and a tooth pair at the far edge, approached by a 112 px gap with a 120 px landing before the teeth.
 - *Rest:* Nell's roof, 340 px. The kettle steam comes from her chimney and is decoration only.
 

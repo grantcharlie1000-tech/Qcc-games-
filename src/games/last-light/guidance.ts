@@ -42,6 +42,8 @@ function movementHint(run:Run,level:Level,index:number):string {
  if(next?.kind==='ice')return 'Ice ahead. Brake before the next edge; momentum carries you.';
  if(next?.kind==='moving')return 'Moving landing ahead. Wait for it to approach, then jump.';
  if(nextGap>130)return dashHint;
+ // A roof tooth is part of the deck being crossed, so warn before the run-up.
+ if(level.hazards.some(h=>h.kind==='spikes'&&h.platform===current.id&&h.x>run.x+8))return 'Spikes ahead. Jump over them and land on clear ground.';
  const hazard=next&&level.hazards.find(h=>h.x+h.w>next.x&&h.x<next.x+next.w&&h.y+h.h<=next.y+4&&(h.disabledBy===undefined||!run.activated.includes(h.disabledBy)));
  if(hazard?.kind==='steam'||hazard?.kind==='laser'){
   const paired=next&&level.hazards.filter(h=>h.x+h.w>next.x&&h.x<next.x+next.w&&['steam','laser'].includes(h.kind)&&(h.disabledBy===undefined||!run.activated.includes(h.disabledBy))).length>1;
@@ -53,6 +55,8 @@ function movementHint(run:Run,level:Level,index:number):string {
   if(current.kind==='spring')return 'Spring launch ahead. Steer and brake toward the small landing.';
   return next.y<current.y-24?'Hold Space for the higher ledge. Release direction to brake onto the small landing.':'Tap Space for the short hop. Release direction to brake; save X for long gaps.';
  }
+ if(next&&level.platforms.some(p=>p.h<=10&&p.x<Math.max(current.x+current.w,next.x)&&p.x+p.w>Math.min(current.x+current.w,next.x)&&current.y-(p.y+p.h)>=77&&current.y-(p.y+p.h)<=103))return 'Low eave ahead. Tap Space to slip under it. A full jump hits the beam.';
+ if(next&&current.y-next.y>=48&&gap<=90&&next.w>125)return level.setting==='roofs'?'Hold Space for the chimney step.':'Hold Space for the high step.';
  if(level.goal==='escape')return 'Keep ahead of the dark. Reach the shelter; no switches block the way.';
  const surface=current?.kind;
  if(surface==='ice')return 'Ice carries your speed. Brake before the next edge.';
@@ -60,7 +64,7 @@ function movementHint(run:Run,level:Level,index:number):string {
  if(surface==='moving')return 'Ride the platform, then jump when the next landing is close.';
  if(surface==='spring')return 'The spring gives you height. Steer toward the next landing.';
  if(surface==='belt')return 'The belt pushes you. Adjust your run before jumping.';
- if(level.id===0&&index<5)return 'Hold Space to jump higher. Land to refill your dash.';
+ if(level.id===0&&index<5)return 'Run, then hold Space at the edge. A miss drops you into a yard, not the street.';
  if(!run.dashReady&&!run.grounded)return 'Land on a ledge to refill your air dash.';
  return 'Read the ledges ahead. Side paths hold optional memories.';
 }

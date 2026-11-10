@@ -21,11 +21,11 @@ export const WORLDS=[
 ] as const;
 // Geometry and encounters are authored per chapter in the three campaign files.
 // All mandatory fixtures sit on the route; optional ledges hold memories only.
-const SURFACES:Record<string,Surface>={s:'stone',c:'crumble',m:'moving',l:'moving',b:'spring',i:'ice','>':'belt','<':'belt',g:'grate'};
+const SURFACES:Record<string,Surface>={s:'stone',e:'stone',c:'crumble',m:'moving',l:'moving',b:'spring',i:'ice','>':'belt','<':'belt',g:'grate'};
 function parse(text:string,offset=0,branch=false):Platform[]{
  return text.split(';').filter(Boolean).map((row,i)=>{
   const [x,y,w,code='s',travel,speed,crumbleDelay]=row.split(',');
-  return {id:offset+i,x:+x,y:+y,w:+w,h:code==='g'?12:28,kind:SURFACES[code],axis:code==='l'?'y':'x',travel:travel?+travel:code==='l'?24:28,speed:speed?+speed:.9,direction:code==='<'?-1:1,branch,crumbleDelay:crumbleDelay?+crumbleDelay:undefined};
+  return {id:offset+i,x:+x,y:+y,w:+w,h:code==='g'?12:code==='e'?8:28,kind:SURFACES[code],axis:code==='l'?'y':'x',travel:travel?+travel:code==='l'?24:28,speed:speed?+speed:.9,direction:code==='<'?-1:1,branch,crumbleDelay:crumbleDelay?+crumbleDelay:undefined};
  });
 }
 export const LEVEL_COUNT=40;

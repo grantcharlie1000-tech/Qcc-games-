@@ -41,7 +41,7 @@ test('new press and enemy art animates within the world and draws without errors
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/#/game/last-light');await expect(page.getByRole('button',{name:'Play →',exact:true})).toBeVisible();
  const frames=await page.evaluate(async()=>{
   const [{drawEnemy,drawPress},{LEVELS},{createRun}]=await Promise.all(['/src/games/last-light/enemy-art.ts','/src/games/last-light/levels.ts','/src/games/last-light/model.ts'].map(p=>import(p)));
-  const canvas=document.createElement('canvas');canvas.width=160;canvas.height=180;const c=canvas.getContext('2d')!,s=createRun(),enemy=LEVELS[0].enemies[0],press=LEVELS[18].hazards.find((h:any)=>h.kind==='crusher');
+  const canvas=document.createElement('canvas');canvas.width=160;canvas.height=180;const c=canvas.getContext('2d')!,s=createRun(),enemy=LEVELS.find((l:any)=>l.enemies.length)!.enemies[0],press=LEVELS[18].hazards.find((h:any)=>h.kind==='crusher');
   const hash=()=>c.getImageData(0,0,160,180).data.reduce((h:number,v:number)=>Math.imul(h^v,16777619)>>>0,2166136261),out=[];
   for(const time of [0,.5,1.5,2]){s.clock=time;c.clearRect(0,0,160,180);c.save();c.translate(80-enemy.x,160-enemy.y);drawEnemy(c,enemy,s,false);c.restore();out.push(hash());}
   for(const phase of [.1,.45,.57,.65,.85]){s.clock=phase*press.period-press.offset;c.clearRect(0,0,160,180);c.save();c.translate(60-press.x,25-press.y);drawPress(c,press,s,false);c.restore();out.push(hash());}return out;
