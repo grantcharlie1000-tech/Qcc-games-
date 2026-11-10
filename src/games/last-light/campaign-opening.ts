@@ -92,6 +92,10 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   pressure:88,
  },
  // 06 · Under the Sleeping City
+ // It opens in the lane where level 5 ended, at the culvert's mouth: the
+ // gate in the headwall gives onto the outfall shaft, and a dog-leg stair of
+ // landings and one hung grating goes down it to the water. A miss in the
+ // shaft is the flood at its foot. Then the culvert, as it was:
  // The service culvert under the street: one brick vault, flooded, and the
  // water is lethal. Brick benches rise out of it, lengths of iron main turn
  // down into it, gratings hang from the vault. Steam leaves joints on the
@@ -101,11 +105,11 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
  // the shaft to the street stairwell. Three wall lamps are optional.
  {
   setting:'cavern',goal:'signal',water:700,
-  route:'24,660,260,s;340,632,240,s;640,632,150,s;860,660,200,s;1116,604,96,g;1260,548,96,g;1420,548,180,s;1670,580,120,s;1850,612,120,g;1850,676,300,s;2230,660,180,s;2480,620,110,s;2670,572,100,s;2860,540,96,g;3156,540,160,s;3400,596,200,s;3640,548,110,g;3640,484,110,g;3640,420,110,g;3800,372,300,s',
-  branches:'348,568,80,g;2010,612,100,g;3640,356,110,g',memories:[0,1,2],
-  stations:[[3,"Culvert lamp"],[10,"Duct lamp"],[15,"Shaft lamp"]],
-  checkpoints:[3,10,15,19],sectors:[[0,"The water main"],[3,"Sleeping pumps"],[8,"The lower duct"],[10,"The broken flange"],[15,"Street foundations"]],
-  hazards:[steam(1,.5,96,0,3.2),steam(2,.8,96,.8,3),steam(6,.5,96,0,3),steam(7,.5,96,1.5,3),steam(9,.7,80,.4,3),spike(12,.8,22),steam(14,.75,96,1,3)],
+  route:'24,380,192,s;264,436,96,s;408,500,80,g;264,564,72,s;408,628,96,s;584,660,260,s;900,632,240,s;1200,632,150,s;1420,660,200,s;1676,604,96,g;1820,548,96,g;1980,548,180,s;2230,580,120,s;2410,612,120,g;2410,676,300,s;2790,660,180,s;3040,620,110,s;3230,572,100,s;3420,540,96,g;3716,540,160,s;3960,596,200,s;4200,548,110,g;4200,484,110,g;4200,420,110,g;4360,372,300,s',
+  branches:'908,568,80,g;2570,612,100,g;4200,356,110,g',memories:[0,1,2],
+  stations:[[8,"Culvert lamp"],[15,"Duct lamp"],[20,"Shaft lamp"]],
+  checkpoints:[3,8,15,20,24],sectors:[[0,"The culvert mouth"],[1,"The outfall stair"],[5,"The water main"],[8,"Sleeping pumps"],[13,"The lower duct"],[15,"The broken flange"],[20,"Street foundations"]],
+  hazards:[steam(6,.5,96,0,3.2),steam(7,.8,96,.8,3),steam(11,.5,96,0,3),steam(12,.5,96,1.5,3),steam(14,.7,80,.4,3),spike(17,.8,22),steam(19,.75,96,1,3)],
  },
  // 07 · The Counterweight
  // The hoist tower: one brick shaft, two lift wells, the pit under both.
