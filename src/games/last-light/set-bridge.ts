@@ -81,11 +81,13 @@ function quoins(c:C,x:number,from:number,to:number,dir:number){
  * house against the tower, the bank path on its river wall, and the garden wall along the back of the path. */
 function gatehouse(c:C,l:Level,water:number,s?:Run){
  const {fore,top,bothy,path,lifts}=gateParts(l),foot=water+40,g0=fore.x,t0=top.x-8,t1=top.x+top.w+8,x1=l.width+40,lit=!!s&&s.x>top.x;
- // The garden beyond the wall: cypresses and round-headed trees on the bank, dark against the sky.
- for(let x=t1+70,k=0;x<x1;k++){const v=hash(k,5,91),foot2=path.y-40;
-  if(v<.5){const tall=70+Math.floor(v*120);for(let y=0;y<tall;y++){const half=Math.max(1,Math.round(9*Math.sin(Math.PI*Math.min(1,(y+6)/tall)**.7)));box(c,y%7<3?'#1b2b2c':'#182728',x-half,foot2-tall+y,half*2,1);}box(c,'#2a3f3c',x+3,foot2-tall+14,2,tall-30);}
-  else{const r=16+Math.floor(v*14);box(c,'#141d1f',x-2,foot2-r,4,r);for(let y=-r;y<=r;y++){const sx=Math.floor(Math.sqrt(r*r-y*y));box(c,(y+r)%9<4?'#1b2b2c':'#182728',x-sx,foot2-r*2+y,sx*2,1);}box(c,'#2a3f3c',x+4,foot2-r*3+6,Math.max(3,r-8),1);box(c,'#2a3f3c',x+r-6,foot2-r*2-4,3,3);}
-  x+=34+Math.floor(hash(k,6,91)*44);}
+ // The garden beyond the wall: cypresses and round-headed trees on the bank, dark against the sky. Painted once.
+ c.drawImage(sprite(`bridge/gate/trees/${l.id}`,Math.max(1,x1-t1-70),230,g=>{
+  for(let x=0,k=0;x<x1-t1-70;k++){const v=hash(k,5,91);
+   if(v<.5){const tall=70+Math.floor(v*120);for(let y=0;y<tall;y++){const half=Math.max(1,Math.round(9*Math.sin(Math.PI*Math.min(1,(y+6)/tall)**.7)));box(g,y%7<3?'#1b2b2c':'#182728',x-half,230-tall+y,half*2,1);}box(g,'#2a3f3c',x+3,230-tall+14,2,tall-30);}
+   else{const r=16+Math.floor(v*14);box(g,'#141d1f',x-2,230-r,4,r);for(let y=-r;y<=r;y++){const sx=Math.floor(Math.sqrt(r*r-y*y));box(g,(y+r)%9<4?'#1b2b2c':'#182728',x-sx,230-r*2+y,sx*2,1);}box(g,'#2a3f3c',x+4,230-r*3+6,Math.max(3,r-8),1);box(g,'#2a3f3c',x+r-6,230-r*2-4,3,3);}
+   x+=34+Math.floor(hash(k,6,91)*44);}
+ }),t1+70,path.y-270);
  // The lower range, from under the wall walk down into the river.
  c.drawImage(panel(`bridge/gate/range/${l.id}`,t0-g0,foot-fore.y-8,ASHLAR,g0),g0,fore.y+8);
  // The gate tower, from under its parapet walk to the river.

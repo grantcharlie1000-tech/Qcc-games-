@@ -185,22 +185,44 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   enemies:[{ledge:8,at:.5,kind:'crawler',travel:60,period:4.2},{ledge:31,at:.5,kind:'crawler',travel:50,period:3.8}],
  },
  // 09 · Water for the Living
+ // It opens inside the garden gate level 8 ended at, on the path at the
+ // foot of the garden bank, and climbs the bank's terraces to the glasshouse
+ // at the top. A terrace is ground behind its retaining wall, so each step
+ // up is a wall to jump. Twice the bank has slipped into the river and what
+ // crosses the slip is the old irrigation launder: rotten lengths of timber
+ // trough on trestles, each good for a moment, with nothing under them. The
+ // cistern is dry and its inlet main crosses it, spraying from a burst
+ // joint; the intake wheel on the cistern's wall shuts that off. A
+ // water-balance hoist rides the high wall. The return wheel on the fifth
+ // terrace shuts the jet on the glasshouse terrace. Neither wheel is needed
+ // to reach the glasshouse door.
  {
-  setting:'garden',goal:'engine',
-  route:'24,500,300,s;534,500,95,s;659,500,85,c,,,0.56;954,500,100,s;1259,460,125,s;1554,412,300,s;2004,412,340,s;2534,452,155,s;2769,476,90,c,,,0.56;3064,436,155,s;3394,436,300,s;3904,436,95,s;4029,436,90,c,,,0.56;4329,364,160,s;4669,348,340,s;5169,348,280,s;5644,372,90,c,,,0.56;5774,324,105,s;6089,324,100,s;6219,324,95,s;6524,284,300,s;6989,236,350,s',
-  branches:'1114,524,84;2751,540,110,s;5859,388,84;2923,580,95,c,,,0.56;3080,532,105,<;3247,500,85,s',memories:[0,3,2],
-  stations:[[6,"Garden intake wheel"],[14,"Glasshouse return wheel"]],
-  checkpoints:[5,10,15,20],sectors:[[0,"Dry beds"],[5,"Irrigation head"],[10,"Root terrace"],[15,"Glasshouse channel"]],
-  hazards:[spike(3,.75,24),steam(4,.75,128,.4,2.7),steam(7,.75,124,.5,2.7,0),spike(9,.28,24),spike(9,.76,24),steam(11,.75,128,1.2,2.6),spike(13,.28,26),spike(13,.75,26),steam(16,.75,124,1.8,2.7,1),spike(18,.28,24),spike(18,.76,24),spike(19,.75,24),spike(26,.8,20)],
+  setting:'garden',goal:'shelter',stationKind:'valve',
+  route:'24,1000,340,s;364,952,64,s,,,,76;428,904,260,s,,,,124;688,840,48,s,,,,188;736,776,300,s,,,,252;1100,792,72,c,,,0.55,12;1236,792,72,c,,,0.55,12;1380,760,56,s;1520,808,72,c,,,0.5,12;1660,776,56,s;1790,808,72,c,,,0.5,12;1950,840,64,s;2150,808,56,g;2150,744,56,g;2234,680,216,s,,,,364;2450,648,170,s,,,,12;2710,680,60,g;2810,680,240,s,,,,364;3066,640,64,l,60,1;3066,524,64,g;3066,460,64,g;3066,396,64,g;3156,368,220,s,,,,312;3376,304,48,s,,,,376;3424,240,200,s,,,,440;3690,256,72,c,,,0.5,12;3830,224,56,s;3960,240,72,c,,,0.5,12;4100,208,56,s;4230,224,72,c,,,0.5,12;4390,192,64,s;4670,208,200,s,,,,472;4870,144,400,s,,,,536',
+  branches:'2450,916,360,s;2754,852,56,g;2754,788,56,g;2754,724,56,g;1380,696,56,g;3830,160,56,g',memories:[0,4,5],
+  stations:[[14,"Garden intake wheel"],[24,"Glasshouse return wheel"]],exit:.6,
+  checkpoints:[2,4,9,14,17,22,24,28,31],sectors:[[0,"Inside the garden gate"],[1,"Kitchen terraces"],[5,"The landslip"],[12,"The cistern rungs"],[14,"The dry cistern"],[17,"The water hoist"],[22,"The high terraces"],[25,"The broken launder"],[31,"The glasshouse terrace"]],
+  hazards:[steam(15,.55,88,.4,2.7,0),steam(31,.7,96,1.2,2.7,1)],
  },
  // 10 · A Voice in the Reeds
+ // It opens on the glasshouse path where level 9 ended, at the glasshouse's
+ // far end, and goes down the water stairs into the reed beds: the garden's
+ // old ponds, with the bank's water lying in them. A punt on its rope, pile
+ // heads and two rotten duckboards reach the eel stage; its ladder climbs to
+ // the boathouse roof for a dash to a lone post, and a second punt reaches
+ // the drowned willow, whose two boughs are the climb for a dash to the
+ // water-gate pier and the sunken garden's wall. The sunken garden is flooded to its coping:
+ // the pergola's beams on their columns, or the stones under them, cross to
+ // the plinth and Pip's summerhouse. The fountain's two bowls are the step
+ // for the dash to the east wall; a last duckboard and the sluice lead to
+ // the cascade, dry now, which climbs to the upper bank and the orchard gate.
  {
-  setting:'canal',goal:'rescue',
-  route:'24,400,300,s;534,400,95,s;659,400,85,c,,,0.56;954,400,100,s;1259,512,125,s;1554,560,300,s;2044,592,90,m,40,1.2;2214,592,150,s;2569,624,110,c,,,0.56;2874,624,155,s;3199,624,340,s;3749,624,95,s;3874,624,90,m,20,1.2;4174,552,165,s;4524,504,110,s;4799,504,300,s;5299,464,90,c,,,0.56;5429,424,110,s;5749,424,100,s;5879,424,95,s;6184,376,300,s;6649,328,350,s',
-  branches:'1114,576,84;3519,688,84;5519,488,84',memories:[0,1,2],
-  stations:[[10,"Pip"]],
-  checkpoints:[5,10,15,20],sectors:[[0,"Reed steps"],[5,"The sunken garden"],[10,"Pip’s hideaway"],[15,"Back to the bank"]],
-  hazards:[spike(3,.75,24),spike(7,.27,24),spike(7,.76,24),steam(9,.75,128,1.6,2.7),spike(11,.75,24),spike(13,.28,26),spike(13,.75,26),spike(14,.75,24),steam(17,.75,128,.5,2.6),spike(18,.28,26),spike(18,.75,26),spike(19,.75,24)],
+  setting:'canal',goal:'rescue',water:760,
+  route:'24,560,300,s;388,640,80,s;540,712,64,s;684,728,96,m,30,1;890,712,56,s;1020,712,56,s;1150,716,72,c,,,0.5,12;1290,716,72,c,,,0.5,12;1430,696,120,s;1610,648,56,g;1610,584,56,g;1610,520,56,g;1666,456,180,s;2060,640,56,s;2190,712,64,s;2330,728,96,m,40,1.2;2520,712,60,s;2540,648,64,g;2540,584,64,g;2820,632,56,s;2950,680,150,s;3160,632,110,s,,,,8;3330,632,110,s,,,,8;3500,656,48,s;3620,696,260,s;3950,656,56,s;4070,600,48,s;4330,656,150,s;4540,716,72,c,,,0.5,12;4680,696,64,s;4810,640,80,s;4890,584,80,s,,,,84;4970,528,80,s,,,,140;5050,472,320,s,,,,196',
+  branches:'770,656,44,g;2236,640,48,g;3190,716,56,s;3350,716,56,s;3630,632,48,g',memories:[0,1,4],
+  stations:[[24,"Pip"]],exit:.6,
+  checkpoints:[1,8,12,16,20,24,27],sectors:[[0,"The glasshouse path"],[1,"The water stairs"],[3,"The reed beds"],[8,"The eel stage"],[12,"The boathouse"],[16,"The drowned willow"],[20,"The sunken garden"],[24,"Pip’s summerhouse"],[25,"The fountain"],[27,"The east wall"],[30,"The cascade"],[33,"The orchard gate"]],
+  hazards:[],
  },
  // 11 · The Orchard Circuit
  {

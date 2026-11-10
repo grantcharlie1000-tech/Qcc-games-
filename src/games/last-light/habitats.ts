@@ -34,7 +34,7 @@ export function worldDressing(l:Level):readonly WorldDressing[]{
   const [kind,position,branch]=preferred;
   const width=kind==='washing'?112:kind==='tree'?66:kind==='resident'?56:kind==='cat'?52:42;
   const height=kind==='washing'?68:kind==='tree'?77:kind==='lantern'?65:kind==='cat'?29:46;
-  const platforms=l.platforms.filter(p=>p.id!==0&&p.kind==='stone'&&p.w>=width+40).sort((a,b)=>{
+  const platforms=l.platforms.filter(p=>p.id!==0&&p.kind==='stone'&&p.h>12&&p.w>=width+40).sort((a,b)=>{
    const score=(p:typeof a)=>Math.abs(p.x+p.w*.5-l.width*position)+(p.branch===branch?0:240);
    return score(a)-score(b)||a.id-b.id;
   });

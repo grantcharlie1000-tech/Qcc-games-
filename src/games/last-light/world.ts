@@ -19,7 +19,7 @@ function gear(c:CanvasRenderingContext2D,x:number,y:number,r:number,t:number,col
 export function drawSky(c:CanvasRenderingContext2D,l:Level,s:Run,w:number,h:number,cx:number,cy:number,reduced:boolean){
  const theme=WORLDS[l.world],t=reduced?0:s.clock;
  // The Old Quarter is one built place: no pasted panorama, clouds or landmarks.
- if(l.world===0){drawQuarterSky(c,l,w,h,cx,cy,s.clock,reduced,!!s.ending);return;}
+ if(l.world===0||quarterSet(l)){drawQuarterSky(c,l,w,h,cx,cy,s.clock,reduced,!!s.ending);return;}
  const gradient=c.createLinearGradient(0,0,0,h);gradient.addColorStop(0,s.ending?'#485572':theme.sky);gradient.addColorStop(.65,s.ending?'#967b89':theme.far);gradient.addColorStop(1,s.ending?'#d4ab8b':theme.sky);c.fillStyle=gradient;c.fillRect(0,0,w,h);
  for(let i=0;i<(l.setting==='cavern'?0:28);i++){c.fillStyle=i%9===0?theme.accent+'66':'#dfe6dc36';c.fillRect(Math.floor(noise(i,12)*w),Math.floor(noise(i,3)*h*.56),1,1);}
  const mx=Math.round(w*.8-cx*.025),my=Math.round(Math.max(100,h*.24-cy*.03));
@@ -68,6 +68,8 @@ export function drawLife(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:n
  }
  for(const item of worldDressing(l)){
   const {kind,x,y,bounds}=item;
+  // An authored set grows its own trees.
+  if(set&&kind==='tree')continue;
   if(bounds.x+bounds.w<cx-8||bounds.x>cx+w+8||bounds.y+bounds.h<cy-8||bounds.y>cy+h+8)continue;
   c.save();
   // Residents and fixtures stay present when approached. The courier is
@@ -121,7 +123,7 @@ export function depthFogBounds(l:Level){
 export function drawDepthFog(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:number,w:number,h:number,reduced:boolean){
  // Water has its own edge, and the Old Quarter's streets, tower floors and
  // basement are built all the way down, so neither gets a fog bank.
- if(l.water!==null||l.world===0)return;
+ if(l.water!==null||l.world===0||quarterSet(l))return;
  const {start,end}=depthFogBounds(l),visibleBottom=cy+h;if(visibleBottom<=start)return;
  const color=l.world===3?'#7b9aad':l.world===1?'#345b58':l.world===2?'#4c414f':l.world===4?'#655877':'#40566c';
  const fade=c.createLinearGradient(0,start,0,end);fade.addColorStop(0,color+'00');fade.addColorStop(.48,color+'58');fade.addColorStop(1,color+'e8');

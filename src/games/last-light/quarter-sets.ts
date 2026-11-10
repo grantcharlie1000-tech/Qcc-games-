@@ -7,8 +7,9 @@ import {roofs} from './set-roofs';
 import {culvert} from './set-culvert';
 import {hoist} from './set-hoist';
 import {bridge} from './set-bridge';
+import {gardenBank,reedGarden} from './set-garden';
 
-/** Levels 2–8 of the Old Quarter are authored sets. Each one is a single
+/** Levels 2–8 of the Old Quarter, and the garden bank and reed beds past its bridge (9 and 10), are authored sets. Each one is a single
  * place a person could name, drawn from the same numbers the collision uses:
  * a landing is a floor of the tower, a tread of its stair, a roof of a house
  * or a hull on the canal. Nothing here decorates a rectangle after the fact. */
@@ -32,7 +33,7 @@ export interface QuarterSet {
 }
 // Built on first use: sets and the modules that ask for them import each other.
 let sets:Readonly<Record<number,QuarterSet>>|undefined;
-export function quarterSet(l:Level):QuarterSet|null{if(l.world!==0)return null;sets??={1:bellTower,2:canalQuay,3:roofs,4:roofs,5:culvert,6:hoist,7:bridge};return sets[l.id]??null;}
+export function quarterSet(l:Level):QuarterSet|null{if(l.id>9)return null;sets??={1:bellTower,2:canalQuay,3:roofs,4:roofs,5:culvert,6:hoist,7:bridge,8:gardenBank,9:reedGarden};return sets[l.id]??null;}
 const decks=new WeakMap<Platform,HTMLCanvasElement>();
 /** One small canvas per landing, painted once. The 4 px side and 8 px top
  * margins match the generic terrain tiles, so crumbling reuses it unchanged. */
