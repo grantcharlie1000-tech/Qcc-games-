@@ -122,10 +122,16 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
  // shuts one steam vent further up.
  {
   setting:'tower',goal:'engine',
-  route:'24,1500,208,s;242,1400,100,l,100,1.745;352,1300,240,s;712,1300,176,s;760,1236,128,g;760,1172,128,g;352,1140,240,s;242,1040,100,l,100,1.745;24,940,208,s;72,876,128,g;72,812,128,g;352,780,240,s;602,700,100,l,80,1.745;712,620,176,s;760,556,128,g;760,492,128,g;352,460,240,s',
+  // Past the crown landing the shaft goes on up over the sheaves: a grating
+  // hung from the lift landing's girder, one across the top of the first
+  // well (a miss there is the whole shaft), one hung from the roof by the
+  // west wall, and the lift landing, where the counterweight lift rides one
+  // storey up into the hoist house to its door. The culvert's stairwell
+  // comes up into the pit at the start.
+  route:'24,1500,208,s;242,1400,100,l,100,1.745;352,1300,240,s;712,1300,176,s;760,1236,128,g;760,1172,128,g;352,1140,240,s;242,1040,100,l,100,1.745;24,940,208,s;72,876,128,g;72,812,128,g;352,780,240,s;602,700,100,l,80,1.745;712,620,176,s;760,556,128,g;760,492,128,g;352,460,240,s;440,396,64,g;248,332,80,g;96,268,96,g;232,208,656,s',
   branches:'24,1300,208,s;24,1140,208,s;352,620,240,s',memories:[0,1,2],
-  stations:[[6,"Lower brake wheel"],[11,"Upper brake wheel"]],
-  checkpoints:[2,3,6,8,11,13],sectors:[[0,"The lift pit"],[2,"Counterweight walk"],[4,"The ladder"],[6,"The brake room"],[8,"The west landing"],[11,"The machine room"],[13,"Under the winding gear"],[16,"The lift crown"]],
+  stations:[[6,"Lower brake wheel"],[11,"Upper brake wheel"]],exit:.7,
+  checkpoints:[2,3,6,8,11,13,16],sectors:[[0,"The lift pit"],[2,"Counterweight walk"],[4,"The ladder"],[6,"The brake room"],[8,"The west landing"],[11,"The machine room"],[13,"Under the winding gear"],[16,"The lift crown"],[17,"Over the sheaves"],[20,"The lift landing"]],
   hazards:[steam(13,.5,96,.4,2.8,0),steam(16,.8,96,0,3,1)],
  },
  // 08 · The Quarter’s Reply
