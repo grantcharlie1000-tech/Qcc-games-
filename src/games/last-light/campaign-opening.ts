@@ -68,13 +68,18 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   pressure:88,
  },
  // 06 · Under the Sleeping City
+ // The pipe basement under the street. Steam only leaves vented joints on
+ // the pipe runs: one vent to watch on a 300 px floor, one at the far edge
+ // of a small landing, a pair out of phase, then Down through a grate into
+ // the lower duct. A vent guards the +40 climb out, a broken flange sits on
+ // a pipe, and the street stairwell is iron landings stacked to the street.
  {
   setting:'cavern',goal:'signal',
-  route:'24,400,300,s;534,400,100,s;664,400,100,s;974,400,100,s;1274,488,145,s;1579,536,300,s;2069,568,100,c,,,0.62;2249,592,160,c,,,0.62;2599,552,125,s;2919,552,150,s;3229,504,300,s;3739,504,100,s;3869,504,100,c,,,0.62;4179,432,165,s;4524,416,140,s;4829,376,300,s;5324,328,115,s;5519,328,125,s;5844,328,165,s;6199,288,140,s;6509,240,340,s',
-  branches:'1127,552,94;3509,568,94;5697,392,94',memories:[0,1,2],
-  stations:[[5,"Pump passage signal"],[10,"Return stair signal"],[15,"Street signal"]],
-  checkpoints:[5,10,15],sectors:[[0,"The water pipe"],[5,"Sleeping pumps"],[10,"The return stair"],[15,"Street foundations"]],
-  hazards:[spike(2,.75,26),steam(3,.72,120,.5,2.7),spike(4,.75,24),spike(7,.28,26),spike(7,.75,26),steam(9,.72,120,.6,2.6),spike(13,.28,26),spike(13,.75,26),steam(16,.75,120,1.4,2.8),spike(18,.28,26),spike(18,.75,26),spike(19,.75,24)],
+  route:'24,560,240,s;328,560,300,s;724,560,140,s;948,520,240,s;1284,520,120,s;1500,520,120,s;1716,520,120,g;1716,648,360,s;2188,608,240,s;2524,608,96,s;2716,544,120,g;2716,480,120,g;2716,416,120,g;2900,352,300,s',
+  branches:'864,456,60,s;1640,584,60,s;3260,288,60,s',memories:[0,1,2],
+  stations:[[3,"Pump passage signal"],[7,"Return stair signal"],[8,"Street signal"]],
+  checkpoints:[3,7,8,13],sectors:[[0,"The water pipe"],[3,"Sleeping pumps"],[7,"The lower duct"],[8,"The return stair"],[13,"Street foundations"]],
+  hazards:[steam(1,.5,96,0,3.2),steam(2,.86,96,.8,3),steam(4,.5,96,0,3),steam(5,.5,96,1.5,3),steam(7,.93,96,.4,3),spike(9,.86,22)],
  },
  // 07 · The Counterweight
  {
