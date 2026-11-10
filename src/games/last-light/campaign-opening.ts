@@ -30,13 +30,18 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   hazards:[],
  },
  // 03 · The Last Ferry
+ // A stone quay along the canal. Barges drift on their mooring ropes; two
+ // low timber footbridges ask for a short hop from a narrow deck (a full
+ // jump clips the bridge and drops into the water). The first lethal dash
+ // leaves a moored barge for a fender, the tow path behind it the retry.
+ // Bolts stand only on pile tops. Ada's deck holds the optional bell.
  {
   setting:'canal',goal:'ferry',
-  route:'24,420,300,s;534,420,100,s;659,420,95,m,20,1.1;964,420,95,s;1204,420,150,s;1549,420,200,s;1924,380,130,s;2134,420,145,s;2469,444,105,m,36,1.1;2754,420,165,s;3074,420,230,s;3514,420,100,s;3644,420,100,s;3954,412,105,m,36,1.1;4244,380,125,s;4539,380,320,s;5054,396,140,s;5269,420,105,m,36,1.1;5569,380,165,s;5889,348,125,s;6199,348,360,s',
-  branches:'1404,484,94;2359,508,110,s;4910,444,94;2549,548,95,s;2724,500,105,s;2909,484,85,s',memories:[0,3,2],
-  stations:[[15,"Departure bell"]],
-  checkpoints:[5,10,15],sectors:[[0,"Stone quay"],[5,"Mooring ropes"],[10,"The bell quay"],[15,"Ada’s crossing"]],
-  hazards:[spike(3,.75,24),spike(4,.75,28),spike(6,.75,24),spike(9,.28,24),spike(9,.76,24),spike(12,.75,28),steam(14,.75,116,.2,2.9),spike(18,.28,26),spike(18,.75,26),spike(19,.75,24),spike(25,.8,20)],
+  route:'24,436,300,s;356,436,112,m,20,.9;500,436,240,s;836,436,100,m,16,1;1060,436,96,s;1220,396,240,s;1492,396,100,m,20,1.1;1784,396,80,s;1992,396,96,m,16,1.2;2120,364,96,m,16,1.2;2424,364,120,s;2608,364,96,s;2768,364,96,s;2928,364,320,s;3280,364,150,s;3462,364,150,s;3644,364,220,s',
+  branches:'1012,349,172,e;1928,309,140,e;3348,340,60,s',memories:[0,1,2],
+  stations:[[13,"Departure bell"]],
+  checkpoints:[2,5,7,13],sectors:[[0,"Stone quay"],[2,"Mooring ropes"],[5,"The tow path"],[7,"Two barges"],[13,"Ada’s crossing"]],
+  hazards:[spike(11,.5,22),spike(12,.62,22)],
  },
  // 04 · Windows, Not Stars
  {

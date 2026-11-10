@@ -54,18 +54,21 @@ function tile(p:Platform,l:Level):HTMLCanvasElement {
  cache.set(key,canvas);if(cache.size>100)cache.delete(cache.keys().next().value!);return canvas;
 }
 export function clearTerrainCache(){cache.clear();boundsCache=new WeakMap();}
-/** A thin eave is a porch canopy or frame head beam. Its timber post stands
- * on the main-route deck nearest below one of its ends (within one storey),
- * looked up once per level and drawn behind every actor. */
-const eavePosts=new WeakMap<Platform,{x:number;y:number}|null>();
-function eavePost(p:Platform,l:Level){
- let post=eavePosts.get(p);
- if(post===undefined){
-  post=null;
-  for(const end of [p.x+8,p.x+p.w-8])for(const q of l.platforms)if(q!==p&&!q.branch&&q.x<=end&&q.x+q.w>=end&&q.y>p.y+p.h&&q.y-p.y<=120&&(!post||q.y<post.y))post={x:end,y:q.y};
-  eavePosts.set(p,post);
+/** A thin eave is a porch canopy, frame head beam or footbridge. Each end
+ * stands on the nearest static main-route deck within one storey below it;
+ * over a canal, an end that no barge sweeps under gets a pier into the water.
+ * Looked up once per level and drawn behind every actor. */
+const postCache=new WeakMap<Platform,{x:number;y:number}[]>();
+function eavePosts(p:Platform,l:Level){
+ let posts=postCache.get(p);
+ if(!posts){
+  posts=[];let deck:{x:number;y:number}|null=null;
+  for(const end of [p.x+8,p.x+p.w-8])for(const q of l.platforms)if(q!==p&&!q.branch&&q.kind!=='moving'&&q.x<=end&&q.x+q.w>=end&&q.y>p.y+p.h&&q.y-p.y<=120&&(!deck||q.y<deck.y))deck={x:end,y:q.y};
+  if(deck)posts.push(deck);
+  else if(l.water!==null)for(const end of [p.x+8,p.x+p.w-8])if(!l.platforms.some(q=>q!==p&&q.y>p.y&&q.x-(q.kind==='moving'?q.travel??0:0)-8<=end&&q.x+q.w+(q.kind==='moving'?q.travel??0:0)+8>=end))posts.push({x:end,y:l.water});
+  postCache.set(p,posts);
  }
- return post;
+ return posts;
 }
 export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:number,s:Run,l:Level,reduced:boolean){
  const timer=s.crumbles[p.id];x=Math.round(x);y=Math.round(y);
@@ -75,13 +78,12 @@ export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:nu
   c.fillStyle='#334f55';c.fillRect(x,y+10,p.w,2);return;
  }
  if(p.kind==='crumble'&&timer!==undefined){drawCrumble(c,p,tile(p,l),x,y,timer,reduced);return;}
- if(p.h<=10&&p.kind==='stone'){
-  const post=eavePost(p,l);
-  if(post){const dir=post.x<p.x+p.w/2?1:-1,px=x+post.x-p.x-2,top=y+p.h,bottom=Math.round(y+post.y-p.y);
-   c.fillStyle='#2b2a2c';c.fillRect(px-1,top,7,bottom-top);c.fillStyle='#6e5641';c.fillRect(px,top,5,bottom-top);c.fillStyle='#93745a';c.fillRect(px+1,top,1,bottom-top);
-   // Knee brace into the beam's underside, then a stone pad on the deck.
-   for(let i=0;i<18;i++){c.fillStyle=i%6===0?'#93745a':'#6e5641';c.fillRect(dir>0?px+5+i:px-2-i,top+16-Math.round(i*.85),3,2);}
-   c.fillStyle='#3d3b3a';c.fillRect(px-3,bottom-3,11,3);}
+ if(p.h<=10&&p.kind==='stone')for(const post of eavePosts(p,l)){
+  const dir=post.x<p.x+p.w/2?1:-1,px=x+post.x-p.x-2,top=y+p.h,bottom=Math.round(y+post.y-p.y);
+  c.fillStyle='#2b2a2c';c.fillRect(px-1,top,7,bottom-top);c.fillStyle='#6e5641';c.fillRect(px,top,5,bottom-top);c.fillStyle='#93745a';c.fillRect(px+1,top,1,bottom-top);
+  // Knee brace into the beam's underside, then a stone pad on the deck.
+  for(let i=0;i<18;i++){c.fillStyle=i%6===0?'#93745a':'#6e5641';c.fillRect(dir>0?px+5+i:px-2-i,top+16-Math.round(i*.85),3,2);}
+  c.fillStyle='#3d3b3a';c.fillRect(px-3,bottom-3,11,3);
  }
  c.drawImage(tile(p,l),x-4,y-8);
  if(p.kind==='belt'){
