@@ -1,4 +1,5 @@
 import {WORLDS,type Level,type Platform} from './levels';
+import type {Run} from './model';
 import {box,enginesArt,fill,hash,masonry,noise,seamless,sprite,visible,type C,type Courses} from './quarter-kit';
 import {quarterSet} from './quarter-sets';
 
@@ -258,8 +259,8 @@ function bridge(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
 function bridgePier(c:C,x:number,top:number,river:number){c.fillStyle=fill(c,'quay',quayStone);c.fillRect(Math.round(x),top,44,river-top+20);box(c,'#11181f',x,top,2,river-top);box(c,'#11181f',x+42,top,2,river-top);box(c,'#1c2a30',x-4,river-14,52,14);}
 
 /** World-space construction for the Old Quarter (drawn behind every landing). */
-export function drawQuarterPlace(c:C,l:Level,clock:number,cx:number,cy:number,vw:number,vh:number,reduced=false){
- const set=quarterSet(l);if(set){c.save();set.back(c,l,reduced?0:clock,cx,cy,vw,vh,clock);c.restore();return;}
+export function drawQuarterPlace(c:C,l:Level,clock:number,cx:number,cy:number,vw:number,vh:number,reduced=false,run?:Run){
+ const set=quarterSet(l);if(set){c.save();set.back(c,l,reduced?0:clock,cx,cy,vw,vh,clock,run);c.restore();return;}
  const pl=plan(l);c.save();
  if(l.setting==='roofs')roofs(c,l,pl,cx,cy,vw,vh);
  else if(l.setting==='tower')tower(c,l,pl,clock,cx,cy,vw,vh);

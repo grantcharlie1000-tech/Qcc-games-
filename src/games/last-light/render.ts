@@ -157,7 +157,7 @@ export class Scene {
   drawSky(c,l,s,w,h,cx,cy,reduced);
   drawEndingSky(c,w,h,s);
   c.save();c.translate(-cx,-cy);
-  drawArchitecture(c,l,cx,cy,w,h,s.clock,reduced);drawDepthFog(c,l,s,cx,cy,w,h,reduced);
+  drawArchitecture(c,l,cx,cy,w,h,s.clock,reduced,s);drawDepthFog(c,l,s,cx,cy,w,h,reduced);
 
   for(const p of l.platforms){const r=platformAt(p,s.clock);if(r.x+r.w<cx-60||r.x>cx+w+60||r.y>cy+h+60||r.y<cy-220)continue;const visual=l.goal==='escape'&&s.phase!=='playing'&&p.kind==='crumble'&&elapsed>p.id*.12?{...s,crumbles:{...s.crumbles,[p.id]:-(elapsed-p.id*.12)}}:s;drawPlatform(c,p,r.x,r.y,visual,l,reduced);}
   for(let i=1;i<l.mainCount-1;i++){

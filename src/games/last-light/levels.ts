@@ -24,8 +24,9 @@ export const WORLDS=[
 const SURFACES:Record<string,Surface>={s:'stone',e:'stone',c:'crumble',m:'moving',l:'moving',b:'spring',i:'ice','>':'belt','<':'belt',g:'grate'};
 function parse(text:string,offset=0,branch=false):Platform[]{
  return text.split(';').filter(Boolean).map((row,i)=>{
-  const [x,y,w,code='s',travel,speed,crumbleDelay]=row.split(',');
-  return {id:offset+i,x:+x,y:+y,w:+w,h:code==='g'?12:code==='e'?8:28,kind:SURFACES[code],axis:code==='l'?'y':'x',travel:travel?+travel:code==='l'?24:28,speed:speed?+speed:.9,direction:code==='<'?-1:1,branch,crumbleDelay:crumbleDelay?+crumbleDelay:undefined};
+  const [x,y,w,code='s',travel,speed,crumbleDelay,height]=row.split(',');
+  // An eighth field gives a solid its own height: a chimney stack or a pier, standing clear of other landings.
+  return {id:offset+i,x:+x,y:+y,w:+w,h:height?+height:code==='g'?12:code==='e'?8:28,kind:SURFACES[code],axis:code==='l'?'y':'x',travel:travel?+travel:code==='l'?24:28,speed:speed?+speed:.9,direction:code==='<'?-1:1,branch,crumbleDelay:crumbleDelay?+crumbleDelay:undefined};
  });
 }
 export const LEVEL_COUNT=40;
@@ -46,7 +47,8 @@ export function createLevel(index:number):Level {
  });
  const enemies:Enemy[]=(authored.enemies??[]).map((e,id)=>{const p=main[e.ledge];return {id,platform:p.id,kind:e.kind,x:p.x+p.w*e.at,y:p.y-(e.kind==='moth'?48:0),travel:e.travel,period:e.period??3.4,offset:e.offset??0};});
  const pickups:Pickup[]=authored.memories.map((id,number)=>{const p=branches[id];return {id:number,x:p.x+p.w*.5,y:p.y-30,kind:'spark'};});
- if(index>=3){const p=main[Math.min(4,main.length-2)];pickups.push({id:3,x:p.x+p.w*.72,y:p.y-44,kind:'dash'});}
+ // The Old Quarter's authored sets have no place for a floating dash refill.
+ if(index>=8){const p=main[Math.min(4,main.length-2)];pickups.push({id:3,x:p.x+p.w*.72,y:p.y-44,kind:'dash'});}
  return {
   id:index,name:chapter.name,world,setting,goal,platforms,hazards,enemies,pickups,stations,mainCount:main.length,
   checkpoint,checkpoints,sectors:authored.sectors.map(([platform,name])=>({platform,name})),

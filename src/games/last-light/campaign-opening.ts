@@ -60,18 +60,19 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   hazards:[spike(2,.27,24),spike(2,.75,24),steam(4,.74,116,.4,2.8),spike(8,.28,26),spike(8,.75,26),spike(9,.75,24),spike(13,.28,26),spike(13,.75,26),steam(16,.75,116,1.2,2.7),spike(18,.28,26),spike(18,.75,26),spike(19,.75,26)],
  },
  // 05 · The Roof That Remembers
- // One long failing roof over a lane, with the dark behind. Cracked slate
- // drops after a dust tell and returns 2.5 s later. The first tiles sit over
- // a lower roof you can walk back along; past it, dormer eaves ask for a
- // short hop onto a cracked tile, the last pair hangs over the lane, and a
- // chimney stack leads to Tomas's roof. Teeth stand only at a roof edge.
+ // The black is in the lane behind you, and the old roofs over the alleys
+ // are failing. Every cracked span is slate on builders' shoring with the
+ // alley under it: it drops a moment after you land and stays down, so a
+ // fall costs the run. Chimney stacks are steps at the gable ends, a fire
+ // escape climbs the tall house mid-way, a dash leaves the last stack for a
+ // span that is already going, and Tomas's stair-house is on the far roof.
  {
   setting:'roofs',goal:'escape',
-  route:'24,460,300,s;388,460,100,c;552,460,140,s;722,460,100,c,,,0.7;852,460,95,c,,,0.7;977,460,150,s;1255,460,100,c,,,0.7;1451,420,120,s;1699,420,100,c,,,0.7;1829,420,95,c,,,0.7;2004,356,120,s;2260,356,200,s;2556,356,340,s',
-  branches:'0,520,1040,s;1191,373,88,e;1635,333,214,e',memories:[0,1,2],
-  stations:[],
-  checkpoints:[2,5,7,12],sectors:[[0,"The first crack"],[2,"Falling tiles"],[5,"Dormer eaves"],[7,"The lane"],[12,"Tomas’s chimney"]],
-  hazards:[spike(10,.86,22),spike(11,.9,22)],
+  route:'24,620,300,s;324,620,104,c,,,0.9;428,620,180,s;636,620,100,c,,,0.7;766,620,96,c,,,0.7;892,588,170,s;1062,524,48,s,,,,64;1190,572,100,c,,,0.6;1340,572,150,s;1560,668,216,s;1776,604,120,g;1776,540,120,g;1896,540,140,s;2064,540,96,c,,,0.6;2190,540,96,c,,,0.6;2316,508,96,c,,,0.6;2452,476,160,s;2612,412,48,s,,,,64;2860,476,100,c,,,0.55;2990,476,140,s;3160,476,96,c,,,0.55;3290,444,96,c,,,0.55;3430,412,360,s',
+  branches:'468,556,96,g;1776,668,120,g;3020,412,80,g',memories:[0,1,2],
+  stations:[],exit:.72,
+  checkpoints:[2,5,9,16,22],sectors:[[0,"The first crack"],[2,"Falling tiles"],[5,"The shored alley"],[9,"The tall house"],[16,"The lane"],[22,"Tomas’s chimney"]],
+  hazards:[spike(12,.45,22),spike(19,.5,22)],
   pressure:88,
  },
  // 06 · Under the Sleeping City
