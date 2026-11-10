@@ -35,7 +35,7 @@ function quoins(c:C,x:number,from:number,to:number,right:boolean){
  }
 }
 /** The spire in section: its two slopes, slated outside and raftered within, rising off the wall plate to the king post. */
-const APEX=PLATE-640;
+const APEX=PLATE-640,COLLARS=[452,326,196] as const,HOIST_Y=APEX+COLLARS[0]+9;
 const spire=()=>sprite('belltower/spire',R-L+40,PLATE-APEX,c=>{
  const mid=(R-L)/2+20,h=PLATE-APEX;
  for(let y=0;y<h;y++){
@@ -44,9 +44,13 @@ const spire=()=>sprite('belltower/spire',R-L+40,PLATE-APEX,c=>{
   if(half>8){box(c,'#0a0d12',mid-half,y,half*2,1);box(c,'#17110d',mid-half,y,6,1);box(c,'#33261d',mid-half+5,y,1,1);box(c,'#17110d',mid+half-6,y,6,1);}
   if(y%9===4&&half>16)box(c,'#0e1218',mid-half+6,y,half*2-12,1);
  }
- // Collars tie the rafters at two heights; the king post hangs from the apex.
- for(const y of [h-70,h-170,h-300]){const half=Math.round((R-L)/2*y/h)+6;box(c,'#17110d',mid-half+4,y,half*2-8,8);box(c,'#3d2e22',mid-half+4,y,half*2-8,1);box(c,'#2b2018',mid-half+4,y+1,half*2-8,2);}
- box(c,'#17110d',mid-4,40,9,h-40);box(c,'#3d2e22',mid-4,40,2,h-40);
+ // Collars tie the rafters from the second tier up; the king post hangs from the apex to the lowest of them.
+ // The first tier was cut away to pass the bell hoist: what is left of it is the staging you stand on.
+ for(const y of COLLARS){const half=Math.round((R-L)/2*y/h)+6;box(c,'#17110d',mid-half+4,y,half*2-8,9);box(c,'#3d2e22',mid-half+4,y,half*2-8,1);box(c,'#2b2018',mid-half+4,y+1,half*2-8,2);
+  for(const side of [-1,1]){const x=mid+side*(half-22);stroke(c,'#17110d',x,y+9,x+side*16,y+30,3);}}
+ box(c,'#17110d',mid-4,40,9,COLLARS[0]-32);box(c,'#3d2e22',mid-4,40,2,COLLARS[0]-32);
+ // Purlins run the length of each slope behind the rafters, a tier apart.
+ for(let y=120;y<h-20;y+=96){const half=Math.round((R-L)/2*y/h)+6;for(const side of [-1,1]){box(c,'#231a14',mid+side*(half-14)-4,y,8,6);box(c,'#3d2e22',mid+side*(half-14)-4,y,8,1);}}
 });
 /** A blind bay: a shallow arched recess in the far wall, its back in thinner brick. */
 const bay=(w:number,h:number)=>sprite(`belltower/bay/${w}/${h}`,w,h,c=>{
@@ -66,8 +70,6 @@ const SKY='#31425d',SKY_LIT='#42587a';
 /** Each flight is one string board from a floor to the wall it lands on. */
 const FLIGHTS:readonly (readonly [number,number,number,number])[]=[
  [228,1400,26,1249],[429,1400,622,1269],[428,1224,622,1079],[208,1048,26,912],[490,872,622,731],[228,696,26,545],
- // Over the bells: from the bell loft up to the west loft, with two treads left.
- [466,304,152,180],
 ];
 const SLITS:readonly (readonly [number,number])[]=[[212,1262],[440,1098],[206,920],[474,740],[216,572],[544,560],[496,228]];
 const ROPES=[300,314,328,342],FLOORS=[1224,1048,872,696,520];
@@ -263,10 +265,36 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
   box(c,'#7d7052',x+sway,sally+28,1,90);box(c,'#6d6248',x,sally+118,1,end-sally-118);box(c,'#6d6248',x-1,end,3,3);
   for(const y of FLOORS)if(y>346&&y+20>top&&y<bottom){box(c,'#0b0906',x-2,y+11,5,5);box(c,'#7d7052',x,y+8,1,10);box(c,'#59666b',x-2,y+10,1,6);box(c,'#59666b',x+2,y+10,1,6);}
  }
- // Over the gallery and the west loft the walkway hangs from the wall plate on iron straps; the gallery floor and the loft run into the walls.
+ // The top of the belfry and the foot of the spire: what each landing up here stands on.
  for(const p of l.platforms){
-  if(p.y>=PLATE+130||!visible(p.x,PLATE,p.w,p.y-PLATE+30,cx,cy,vw,vh))continue;
-  for(const x of p.kind==='grate'?[p.x+4,p.x+p.w-7]:p.x+p.w>=R-1?[p.x+10]:[p.x+p.w-14]){box(c,'#1a1f25',x,PLATE+9,3,p.y-PLATE-7);box(c,'#4a545b',x,PLATE+9,1,p.y-PLATE-7);box(c,'#1a1f25',x-1,p.y+(p.kind==='grate'?9:20),5,4);box(c,'#59666b',x-1,PLATE+10,5,2);}
+  if(p.y>500||!visible(p.x-40,p.y-20,p.w+80,140,cx,cy,vw,vh))continue;
+  if((p.kind==='crumble'||p.kind==='grate')&&p.y>440){
+   // A frame beam under the bells: on a post down to the floor's stone course.
+   const x=Math.round(p.x+p.w/2)-3;box(c,'#1c1510',x,p.y+11,7,529-p.y-11);box(c,'#57432f',x,p.y+11,2,529-p.y-11);stroke(c,'#2a2019',x+3,p.y+34,p.x+5,p.y+11,2);stroke(c,'#2a2019',x+3,p.y+34,p.x+p.w-6,p.y+11,2);
+  }else if(p.kind==='crumble'){
+   // The plank lies across the bell cage: two rails seen end-on, each on a post off the head beam, braced to each other.
+   for(const x of [p.x+3,p.x+p.w-15]){box(c,'#15100c',x,p.y+11,12,12);box(c,'#3d2e22',x+1,p.y+12,10,10);box(c,'#57432f',x+1,p.y+12,10,1);box(c,'#2b2018',x+3,p.y+15,6,5);box(c,'#1c1510',x+3,p.y+23,6,336-p.y-23);box(c,'#57432f',x+3,p.y+23,1,336-p.y-23);}
+   stroke(c,'#2a2019',p.x+8,p.y+30,p.x+p.w-10,332,2);stroke(c,'#2a2019',p.x+p.w-10,p.y+30,p.x+8,332,2);
+  }else if(p.kind==='grate'&&p.y<300&&p.y>180&&p.x>120&&p.x<260){
+   // The frame's west post runs on up to a rail: the tread is its cap, strutted either side.
+   box(c,'#1c1510',186,p.y+10,8,336-p.y-10);box(c,'#57432f',186,p.y+10,2,336-p.y-10);
+   stroke(c,'#2a2019',190,p.y+44,p.x+4,p.y+11,3);stroke(c,'#2a2019',190,p.y+44,p.x+p.w-5,p.y+11,3);box(c,'#59666b',188,p.y+42,4,4);
+  }else if(p.kind==='grate'&&p.y<200&&p.x<L+RETURN+8){
+   // A wall tread on an iron bracket leaded into the west wall.
+   box(c,'#10161d',L+RETURN,p.y+3,6,6);box(c,'#262d33',p.x,p.y+10,p.w-8,2);stroke(c,'#262d33',L+RETURN+1,p.y+34,p.x+p.w-14,p.y+11,2);box(c,'#59666b',L+RETURN,p.y+32,4,4);
+  }else if(p.kind==='stone'&&p.h<=12&&p.y>=PARAPET){
+   // Staging at the wall plate: its two tie beams run back onto the far wall, each on a stone corbel under the plate.
+   for(const x of [p.x+5,p.x+p.w-19]){box(c,'#141b23',x-2,p.y+20,18,10);box(c,'#3a4653',x-1,p.y+20,16,6);box(c,'#4d5a67',x-1,p.y+20,16,1);box(c,'#2c3743',x+2,p.y+26,10,4);box(c,'#05080c8c',x-1,p.y+30,16,6);}
+  }else if(p.kind==='stone'&&p.h<=12&&p.y<PARAPET){
+   // Staging on the stumps of the spire's first collars: each stump is tenoned into its rafter and strutted from it.
+   const west=p.x<300,half=Math.round((R-L)/2*(p.y+70-APEX)/(PLATE-APEX))+6,rx=west?(L+R)/2-half+8:(L+R)/2+half-8;
+   stroke(c,'#17110d',rx,p.y+70,west?p.x+p.w-12:p.x+12,p.y+18,4);stroke(c,'#3d2e22',rx,p.y+69,west?p.x+p.w-12:p.x+12,p.y+17,1);
+   box(c,'#59666b',west?p.x-2:p.x+p.w-3,p.y+2,5,8);
+  }
+ }
+ if(visible(300,HOIST_Y,50,30,cx,cy,vw,vh)){
+  // The bell hoist's block hangs under the second collar, over the middle of the well.
+  const mx=(L+R)/2;box(c,'#1a1f25',mx-2,HOIST_Y,4,8);for(let y=-7;y<=7;y++){const out=Math.floor(Math.sqrt(49-y*y));box(c,'#262d33',mx-out,HOIST_Y+14+y,out*2,1);}box(c,'#59666b',mx-2,HOIST_Y+12,4,4);box(c,'#4a545b',mx-7,HOIST_Y+13,1,3);
  }
  for(const p of l.platforms)if(p.x<=L+1&&p.kind==='stone'&&p.y<PLATE+260&&visible(L,p.y,p.w,80,cx,cy,vw,vh)){
   // The west loft's knee brace runs from a stone in the wall up under its outer end.
@@ -297,6 +325,29 @@ function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
 }
 function deck(c:C,p:Platform,l:Level){
  const w=p.w;
+ if(p.kind==='moving'){
+  // The bell hoist's pallet: oak boards on two bearers, an eye bolt at each corner for its slings.
+  box(c,'#15100c',-1,0,w+2,12);box(c,'#6b523a',0,0,w,7);box(c,'#b3946a',0,0,w,2);box(c,'#8d704f',0,2,w,1);for(let x=10;x<w-4;x+=13)box(c,'#4c3a29',x,3,1,4);
+  box(c,'#2c2119',0,7,w,5);for(const x of [3,w-13]){box(c,'#15100c',x,7,10,5);box(c,'#3d2e22',x+1,7,8,4);}
+  for(const x of [1,w-4]){box(c,'#262d33',x,-2,3,4);box(c,'#5d6a6e',x,-2,3,1);}
+  return;
+ }
+ if(p.kind==='crumble'){
+  // A rotten plank: grey oak gone soft, split along the grain, a knot fallen out of it.
+  box(c,'#15100c',-1,0,w+2,12);box(c,'#57493a',0,0,w,9);box(c,'#8a7a62',0,0,w,2);box(c,'#6a5b48',0,2,w,2);
+  for(let x=6+p.id%5;x<w-8;x+=11){const v=hash(x,p.id,7);box(c,'#231a14',x,3+Math.floor(v*3),3+Math.floor(v*9),1);}
+  box(c,'#15100c',Math.round(w*.38),2,7,5);box(c,'#231a14',Math.round(w*.38)+1,3,5,3);box(c,'#4a5a44',Math.round(w*.7),1,9,2);box(c,'#5d6b4f',Math.round(w*.7)+2,1,4,1);box(c,'#4a5a44',5,7,11,2);
+  box(c,'#2c2119',0,9,w,2);
+  return;
+ }
+ if(p.h<=12&&p.kind==='stone'){
+  // Staging: boards on a ledger across two cross beams, which run back to the far wall and are seen end-on.
+  box(c,'#15100c',-1,0,w+2,12);box(c,'#6b523a',0,0,w,5);box(c,'#b3946a',0,0,w,2);box(c,'#8d704f',0,2,w,1);
+  for(let x=13+p.id%7;x<w-4;x+=21)box(c,'#4c3a29',x,3,1,2);
+  box(c,'#2c2119',0,5,w,7);box(c,'#3d2e22',0,6,w,5);box(c,'#4a3828',0,6,w,1);
+  for(const x of [5,w-19]){box(c,'#15100c',x,4,14,16);box(c,'#3d2e22',x+1,5,12,14);box(c,'#57432f',x+1,5,12,1);box(c,'#2b2018',x+3,8,8,8);box(c,'#4a3828',x+5,10,4,4);box(c,'#2b2018',x+6,11,2,2);}
+  return;
+ }
  if(p.kind==='grate'){
   // A surviving stair tread or frame beam: one oak plank you can come up through.
   box(c,'#15100c',-1,0,w+2,12);box(c,'#735a40',0,0,w,9);box(c,'#b3946a',0,0,w,2);box(c,'#8d704f',0,2,w,2);
@@ -349,4 +400,10 @@ export const bellTower:QuarterSet={
   for(let i=0;i<12;i++){const rx=x+((hash(i,1)*(w-x)-t*30)%(w-x)+(w-x))%(w-x),y=((hash(i,2)*h+t*250)%h+h)%h;box(c,'#b9c9d93d',rx,y,1,7);}
  },
  back,deck,exit,water,
+ depth:p=>p.kind==='stone'&&p.h<=12?8:0,
+ mover(c,p,x,y){
+  // The pallet hangs from the hoist's block on one rope, which parts into two slings above the load.
+  const mx=(L+R)/2,mid=Math.round(x+p.w/2),knot=y-26;stroke(c,'#8a7a5a',mx,HOIST_Y+20,mid,knot,1);
+  box(c,'#262d33',mid-2,knot-1,5,4);stroke(c,'#6d6248',mid,knot+3,x+2,y-1,1);stroke(c,'#6d6248',mid,knot+3,x+p.w-3,y-1,1);
+ },
 };
