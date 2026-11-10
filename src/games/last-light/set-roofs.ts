@@ -17,7 +17,7 @@ import type {QuarterSet} from './quarter-sets';
 interface Building {x0:number;x1:number;top:number;style:number}
 const BUILDINGS:Readonly<Record<number,readonly Building[]>>={
  3:[{x0:440,x1:560,top:1004,style:2},{x0:600,x1:760,top:924,style:1},{x0:816,x1:1140,top:1124,style:0},{x0:1188,x1:1696,top:740,style:1},{x0:1832,x1:2128,top:772,style:2},{x0:2128,x1:2448,top:644,style:0},{x0:2656,x1:3016,top:612,style:1},{x0:3112,x1:3248,top:676,style:0},{x0:3800,x1:3960,top:676,style:0},{x0:4160,x1:4290,top:676,style:2},{x0:4376,x1:4536,top:536,style:1},{x0:4656,x1:4944,top:676,style:2},{x0:5096,x1:5528,top:356,style:0}],
- 4:[{x0:0,x1:324,top:620,style:0},{x0:428,x1:608,top:620,style:2},{x0:892,x1:1110,top:588,style:0},{x0:1340,x1:1490,top:572,style:1},{x0:1560,x1:1776,top:668,style:2},{x0:1776,x1:2036,top:540,style:0},{x0:2452,x1:2660,top:476,style:1},{x0:2990,x1:3130,top:476,style:2},{x0:3430,x1:3800,top:412,style:0},{x0:3864,x1:3976,top:476,style:2},{x0:4200,x1:4280,top:604,style:1}],
+ 4:[{x0:0,x1:324,top:620,style:0},{x0:428,x1:608,top:620,style:2},{x0:892,x1:1110,top:588,style:0},{x0:1340,x1:1490,top:572,style:1},{x0:1560,x1:1776,top:668,style:2},{x0:1776,x1:2036,top:540,style:0},{x0:2452,x1:2660,top:476,style:1},{x0:2990,x1:3130,top:476,style:2},{x0:3430,x1:3800,top:412,style:0},{x0:3864,x1:3976,top:476,style:2},{x0:4456,x1:4884,top:300,style:0},{x0:5230,x1:5350,top:396,style:2},{x0:5560,x1:5640,top:540,style:1}],
 };
 const STYLES=[
  {key:'roofs/brick',mortar:'#1c1719',stones:['#33282a','#382b2c','#3c2f2e'],lip:'#463735',chip:'#4f3f3b',block:16,row:8,trim:'#5b4a44',trimLit:'#7d6a5e',shade:'#201a1c'},
@@ -95,19 +95,21 @@ function cornice(c:C,x:number,y:number,w:number,style:number,phase:number){
  for(let i=Math.ceil(phase/10)*10-phase;i<w-4;i+=10)box(c,k.trim,x+i,y+19,5,5);
  box(c,k.shade,x,y+26,w,2);
 }
-const plans=new WeakMap<Level,{street:number;stacks:{x:number;w:number;ys:number[]}[];gantries:Platform[];byPlatform:Map<number,Building>}>();
+const plans=new WeakMap<Level,{street:number;stacks:{x:number;w:number;ys:number[]}[];gantries:Platform[];poles:Platform[];byPlatform:Map<number,Building>}>();
 function plan(l:Level){
  let made=plans.get(l);if(made)return made;
- const stacks:{x:number;w:number;ys:number[]}[]=[],gantries:Platform[]=[],byPlatform=new Map<number,Building>(),buildings=BUILDINGS[l.id]??[];
+ const stacks:{x:number;w:number;ys:number[]}[]=[],gantries:Platform[]=[],poles:Platform[]=[],byPlatform=new Map<number,Building>(),buildings=BUILDINGS[l.id]??[];
  for(const p of l.platforms){
   const b=buildings.find(b=>p.x>=b.x0-2&&p.x+p.w<=b.x1+2);if(b)byPlatform.set(p.id,b);
   if(p.kind!=='grate'||inArcade(l,p))continue;
+  // A narrow stage that belongs to no house is a lineman's, on a wire pole.
+  if(!b&&p.w<=48){poles.push(p);continue;}
   // A grating on a building's front, at or below its roof line, is fire escape; above a roof it is a gantry on legs.
   if(b&&p.y<b.top){gantries.push(p);continue;}
   const stack=stacks.find(s=>s.x===p.x&&s.w===p.w);if(stack)stack.ys.push(p.y);else stacks.push({x:p.x,w:p.w,ys:[p.y]});
  }
  for(const s of stacks)s.ys.sort((a,b)=>a-b);
- made={street:l.water??l.height-20,stacks,gantries,byPlatform};plans.set(l,made);return made;
+ poles.sort((a,b)=>a.x-b.x);made={street:l.water??l.height-20,stacks,gantries,poles,byPlatform};plans.set(l,made);return made;
 }
 function facade(c:C,b:Building,street:number,lit:boolean,cx:number,cy:number,vw:number,vh:number){
  if(!visible(b.x0,b.top,b.x1-b.x0,street-b.top,cx,cy,vw,vh))return;
@@ -219,6 +221,18 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
  }
  const arcade=ARCADES[l.id];if(arcade&&visible(arcade.x0-8,arcade.y-8,arcade.x1-arcade.x0+16,40,cx,cy,vw,vh))lantern(c,l,arcade);
  for(const p of pl.gantries)if(visible(p.x-10,p.y-20,p.w+20,120,cx,cy,vw,vh))gantry(c,p,l);
+ for(const [i,p] of pl.poles.entries()){
+  // A wire pole: a tarred mast from the street, the lineman's stage bracketed to it, the cross-arm and its pots above.
+  const x=Math.round(p.x+p.w/2),head=p.y-64;
+  if(visible(p.x-20,head,p.w+40,street-head,cx,cy,vw,vh)){
+   box(c,'#17110d',x-4,head,8,street-head);box(c,'#3d2e22',x-3,head,2,street-head);box(c,'#17110d',x-7,street-5,14,5);
+   for(let y=p.y+40;y<street-20;y+=30)box(c,'#3a464d',x+4,y,5,2);
+   stroke(c,'#1a2228',x-3,p.y+30,p.x+3,p.y+12,2);stroke(c,'#1a2228',x+3,p.y+30,p.x+p.w-4,p.y+12,2);
+   box(c,'#17110d',x-18,head+6,36,5);box(c,'#57432f',x-18,head+6,36,1);for(const dx of [-16,-7,4,13]){box(c,'#6d7d80',x+dx,head+1,3,5);box(c,'#aab3ae',x+dx,head+1,3,1);}
+  }
+  // The light wires run pole to pole, and from the last of them on toward the towers.
+  const next=pl.poles[i+1];if(next){const nx=Math.round(next.x+next.w/2);if(visible(x,head-4,nx-x,40,cx,cy,vw,vh)){const steps=Math.round((nx-x)/4);for(let k=0;k<=steps;k++){const u=k/steps;box(c,'#0f141a',x+(nx-x)*u,head+3+(next.y-p.y)*u+Math.sin(u*Math.PI)*9,2,1);}}}
+ }
  for(const stack of pl.stacks)if(visible(stack.x,stack.ys[0]-20,stack.w,street-stack.ys[0],cx,cy,vw,vh))fireEscape(c,stack,street);
  // The light wires: one sagging run from roof to roof across every street, toward the towers.
  for(let i=1;i<buildings.length;i++){const a=buildings[i-1],b=buildings[i];if(b.x0-a.x1<40||lane&&a.x1===lane.x0||!visible(a.x1,Math.min(a.top,b.top)-20,b.x0-a.x1,Math.abs(a.top-b.top)+60,cx,cy,vw,vh))continue;

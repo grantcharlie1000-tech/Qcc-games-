@@ -91,16 +91,20 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
  // escape climbs the tall house mid-way, a dash leaves the last stack for a
  // span that is already going, and Tomas's stair-house is on the far roof.
  // It opens at the east street stair-house where level 4 ended. Tomas's
- // stair is barred, so the roofs go on down past it: his wash-house, a
- // shored coal shed and the pump house step down the lane to the culvert
- // steps in its headwall, the mouth level 6 starts inside.
+ // stair is barred, so the run goes on with the black still behind it: his
+ // wash-house, the linemen's stages on two wire poles, a shored span, and
+ // the brewery's fire escape straight up its end wall. The copper vents on
+ // the brewery roof; its stack is the step for a dash over Brewery Yard
+ // onto a span that is already going; and the malthouse, the pump house
+ // and two more shored spans come down the lane to the culvert steps in
+ // its headwall, the mouth level 6 starts inside.
  {
   setting:'roofs',goal:'escape',
-  route:'24,620,300,s;324,620,104,c,,,0.9;428,620,180,s;636,620,100,c,,,0.7;766,620,96,c,,,0.7;892,588,170,s;1062,524,48,s,,,,64;1190,572,100,c,,,0.6;1340,572,150,s;1560,668,216,s;1776,604,120,g;1776,540,120,g;1896,540,140,s;2064,540,96,c,,,0.6;2190,540,96,c,,,0.6;2316,508,96,c,,,0.6;2452,476,160,s;2612,412,48,s,,,,64;2860,476,100,c,,,0.55;2990,476,140,s;3160,476,96,c,,,0.55;3290,444,96,c,,,0.55;3430,412,360,s;3864,476,112,s;4040,540,96,c,,,0.55;4200,604,80,s;4344,668,200,s',
+  route:'24,620,300,s;324,620,104,c,,,0.9;428,620,180,s;636,620,100,c,,,0.7;766,620,96,c,,,0.7;892,588,170,s;1062,524,48,s,,,,64;1190,572,100,c,,,0.6;1340,572,150,s;1560,668,216,s;1776,604,120,g;1776,540,120,g;1896,540,140,s;2064,540,96,c,,,0.6;2190,540,96,c,,,0.6;2316,508,96,c,,,0.6;2452,476,160,s;2612,412,48,s,,,,64;2860,476,100,c,,,0.55;2990,476,140,s;3160,476,96,c,,,0.55;3290,444,96,c,,,0.55;3430,412,360,s;3864,476,112,s;4040,524,40,g;4168,524,40,g;4296,540,96,c,,,0.55;4456,556,120,g;4456,492,120,g;4456,428,120,g;4456,364,120,g;4576,300,260,s;4836,236,48,s,,,,64;5104,364,96,c,,,0.5;5230,396,120,s;5414,460,96,c,,,0.55;5560,540,80,s;5704,604,96,c,,,0.55;5860,668,200,s',
   branches:'468,556,96,g;1776,668,120,g;3020,412,80,g',memories:[0,1,2],
   stations:[],exit:.3,
-  checkpoints:[2,5,9,16,22],sectors:[[0,"The east street stair"],[1,"The first crack"],[2,"Falling tiles"],[5,"The shored alley"],[9,"The tall house"],[16,"The lane"],[22,"Tomas’s chimney"],[23,"Down to the culvert"]],
-  hazards:[spike(12,.45,22),spike(19,.5,22)],
+  checkpoints:[2,5,9,16,22,31,34],sectors:[[0,"The east street stair"],[1,"The first crack"],[2,"Falling tiles"],[5,"The shored alley"],[9,"The tall house"],[16,"The lane"],[22,"Tomas’s chimney"],[23,"The wire poles"],[27,"The brewery escape"],[31,"The brewery roof"],[33,"Brewery Yard"],[36,"Down to the culvert"]],
+  hazards:[spike(12,.45,22),spike(19,.5,22),steam(31,.55,88,.3,2.4)],
   pressure:88,
  },
  // 06 · Under the Sleeping City
