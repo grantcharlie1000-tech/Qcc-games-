@@ -2,7 +2,8 @@ import {WORLDS,type Level,type Platform} from './levels';
 import type {Run} from './model';
 import {box,enginesArt,fill,hash,masonry,noise,panel,seamless,sprite,stroke,visible,type C,type Courses,type Work} from './quarter-kit';
 import {quarterSet} from './quarter-sets';
-import {laneBack,laneBuilds,laneDeck,laneHouses} from './set-lane';
+import {housePiece,laneBack,laneBuilds,laneDeck} from './set-lane';
+import {HOUSE_PIECES} from './pieces/level-01';
 
 /** The Old Quarter is drawn as one built place. Every landing continues into
  * the structure it belongs to: a roof into its house and the street, a tower
@@ -89,7 +90,6 @@ function plan(l:Level):Plan{
   // One wall behind a whole stack of iron balconies, a storey above the top.
   else if(p.kind==='grate'&&!grates.some(q=>q.x===p.x&&q.w===p.w&&q.y<p.y))houses.push({x:p.x-28,w:p.w+56,top:p.y-60,id:p.id});
  }
- if(l.id===0)houses.push(...laneHouses(l));
  const byX=[...houses].sort((a,b)=>a.x-b.x),alleys:Plan['alleys']=[];
  for(let i=1;i<byX.length;i++){const a=byX[i-1],b=byX[i],left=a.x+a.w;if(b.x-left>=4)alleys.push({x:left,w:b.x-left,top:Math.max(a.top,b.top)+26});}
  // Taller houses stand further back, so lower fronts are drawn over them.
@@ -173,8 +173,18 @@ function roofs(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
    if(a.w>=64){const x=Math.round(a.w/2-8);box(k,'#0a0d12',x,h-30,16,30);box(k,'#151b23',x+2,h-28,12,28);box(k,'#1f2833',x-2,h-33,20,3);}
   }),a.x,a.top);
  }
- for(const h of pl.houses)houseFront(c,h.x,h.top,h.w,street,h.id,cx,cy,vw,vh);
- for(const s of pl.sheds)shed(c,s,cx,cy,vw,vh);
+ if(l.id===0){
+  // Level 1's houses and sheds are each drawn by their own piece, from the roof line down.
+  // A stairhead or bellcote stands on the east gable of the roof it adjoins, so that house is drawn on under it.
+  for(const h of pl.houses){
+   const p=l.platforms[h.id],piece=housePiece(p),gable=l.platforms.find(q=>(q.tag==='stairhead'||q.tag==='bellcote')&&q.x===p.x+p.w&&q.y+q.h===p.y),w=p.w+(gable?.w??0);
+   if(piece&&visible(p.x-24,p.y-60,w+48,street-p.y+60,cx,cy,vw,vh))piece(c,p.x,p.y,w,street-p.y);
+  }
+  for(const s of pl.sheds){const p=s.p;if(s.floor>p.y&&visible(p.x-24,p.y-60,p.w+48,s.floor-p.y+60,cx,cy,vw,vh))(s.kind==='house'?HOUSE_PIECES.terrace:HOUSE_PIECES.leanTo)(c,p.x,p.y,p.w,s.floor-p.y);}
+ }else{
+  for(const h of pl.houses)houseFront(c,h.x,h.top,h.w,street,h.id,cx,cy,vw,vh);
+  for(const s of pl.sheds)shed(c,s,cx,cy,vw,vh);
+ }
  for(const s of pl.shores)shores(c,s,cx,cy,vw,vh);
  rails(c,pl.rails,cx,cy,vw,vh);
  if(l.id===0){laneBack(c,l,street,cx,cy,vw,vh);nellsWindow(c,l,cx,cy,vw,vh);bellLane(c,l,pl,cx,cy,vw,vh);}
@@ -198,8 +208,8 @@ function nellsWindow(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
  * to the lane. */
 const TOWER_OUT:Work={course:16,short:22,long:54,mortar:'#19212a',stones:['#29333f','#2c3642','#2f3946','#27313c'],lip:'#3a4654',shade:'#212a34',chip:'#46525f'};
 const FORECOURT:Work={course:12,short:18,long:40,mortar:'#151c24',stones:['#28323d','#2b3540','#2e3843','#262f39'],lip:'#3a4654',shade:'#1f2832',chip:'#46525f'};
-/** Tiles for the landings of Bell Lane that are not house roofs. */
-export function paintQuarterDeck(c:C,p:Platform,l:Level):boolean{return l.id===0&&laneBuilds(p)&&laneDeck(c,p);}
+/** Tiles for level 1's landings. A roof's tile is empty: its house piece draws it. */
+export function paintQuarterDeck(c:C,p:Platform,l:Level):boolean{return l.id===0&&laneDeck(c,p);}
 function bellLane(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
  const pier=l.platforms.find(p=>p.tag==='pier')!,court=l.platforms.find(p=>p.tag==='court')!,lean=l.platforms.find(p=>p.tag==='lean')!,lane=pl.street+40;
  const x0=pier.x,x1=l.width+40,top=court.y;
