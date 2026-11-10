@@ -1,7 +1,8 @@
 import {WORLDS,type Level,type Platform} from './levels';
 import type {Run} from './model';
-import {box,enginesArt,fill,hash,lay,masonry,noise,panel,seamless,sprite,stroke,visible,type C,type Courses,type Work} from './quarter-kit';
+import {box,enginesArt,fill,hash,masonry,noise,panel,seamless,sprite,stroke,visible,type C,type Courses,type Work} from './quarter-kit';
 import {quarterSet} from './quarter-sets';
+import {laneBack,laneBuilds,laneDeck,laneHouses} from './set-lane';
 
 /** The Old Quarter is drawn as one built place. Every landing continues into
  * the structure it belongs to: a roof into its house and the street, a tower
@@ -21,6 +22,7 @@ const towerWall=()=>masonry('tower',128,64,32,16,{mortar:'#161d25',stones:['#212
 const vaultBrick=()=>masonry('vault',64,32,16,8,{mortar:'#1a1617',stones:['#2b2324','#2f2627','#33292a'],lip:'#3d3130',chip:'#463836'});
 const quayStone=()=>masonry('quay',96,64,32,16,{mortar:'#18212a',stones:['#2a3540','#2e3945','#323e4a'],lip:'#3c4956',chip:'#465461'});
 const alleyBack=()=>masonry('alley',96,48,24,12,{mortar:'#10151c',stones:['#161d26','#182029','#1a222c'],lip:'#1f2833',chip:'#232d38'});
+const ALLEY:Work={course:12,short:20,long:46,mortar:'#0d1218',stones:['#151c25','#171f28','#19212b','#141a23'],lip:'#1d2630',shade:'#11161d',chip:'#212b36'};
 const cobbles=()=>seamless('cobbles',64,16,rect=>{rect('#161c23',0,0,64,16);for(let r=0;r<2;r++)for(let i=0;i<4;i++){const x=i*16+r*8,v=hash(i,r,7);rect(v>.5?'#262e37':'#222a33',x+1,r*8+1,14,6);rect('#313b45',x+2,r*8+1,11,1);}});
 const planks=()=>seamless('planks',32,32,rect=>{rect('#241c17',0,0,32,32);for(let i=0;i<4;i++){const v=hash(i,3,11);rect(v>.5?'#33281f':'#2f251d',i*8+1,0,6,32);rect('#3d3026',i*8+1,0,1,32);rect('#1d1612',i*8+2,8+Math.floor(v*14),4,1);}});
 
@@ -81,17 +83,19 @@ function plan(l:Level):Plan{
  const houses:House[]=[],sheds:Shed[]=[],shores:Shed[]=[],rails:Rail[]=[];
  const grates=l.platforms.filter(p=>p.kind==='grate');
  for(const p of l.platforms.slice(0,l.mainCount)){
-  // Level 1's Bell Lane builds its own stack, gate pier and forecourt.
-  if(l.id===0&&LANE_BUILT.includes(p.id))continue;
+  // Level 1's Bell Lane builds whatever is not a plain roof: stacks, cowls, piers, iron and timber.
+  if(l.id===0&&laneBuilds(p))continue;
   if(p.kind==='stone')houses.push({x:p.x,w:p.w,top:p.y+p.h,id:p.id});
   // One wall behind a whole stack of iron balconies, a storey above the top.
   else if(p.kind==='grate'&&!grates.some(q=>q.x===p.x&&q.w===p.w&&q.y<p.y))houses.push({x:p.x-28,w:p.w+56,top:p.y-60,id:p.id});
  }
+ if(l.id===0)houses.push(...laneHouses(l));
  const byX=[...houses].sort((a,b)=>a.x-b.x),alleys:Plan['alleys']=[];
  for(let i=1;i<byX.length;i++){const a=byX[i-1],b=byX[i],left=a.x+a.w;if(b.x-left>=4)alleys.push({x:left,w:b.x-left,top:Math.max(a.top,b.top)+26});}
  // Taller houses stand further back, so lower fronts are drawn over them.
  houses.sort((a,b)=>a.top-b.top);
  for(const p of l.platforms){
+  if(l.id===0&&p.tag)continue;
   if(p.kind==='crumble'){const below=supportBelow(l,p);shores.push({p,top:p.y+p.h,floor:below?below.y:street,kind:'shed'});continue;}
   if(!p.branch||p.kind!=='stone'||p.h<=10)continue;
   const below=supportBelow(l,p),bottom=below?below.y:street,top=p.y+p.h;
@@ -156,16 +160,28 @@ function roofs(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
  const street=pl.street;
  if(street<cy+vh+24){c.fillStyle=fill(c,'cobbles',cobbles);c.fillRect(cx-24,street,vw+48,cy+vh+24-street);box(c,'#3a444d',cx-24,street,vw+48,1);box(c,'#0f141a',cx-24,street+1,vw+48,2);}
  // Each alley shows the dark back of the house behind it, never another city.
- for(const a of pl.alleys)if(a.top<street&&visible(a.x,a.top,a.w,street-a.top,cx,cy,vw,vh)){c.fillStyle=fill(c,'alley',alleyBack);c.fillRect(a.x,a.top,a.w,street-a.top);}
+ for(const a of pl.alleys)if(a.top<street&&visible(a.x,a.top,a.w,street-a.top,cx,cy,vw,vh)){
+  if(l.id!==0){c.fillStyle=fill(c,'alley',alleyBack);c.fillRect(a.x,a.top,a.w,street-a.top);continue;}
+  // The back of the house across the yard: laid once between the two houses it shows between, with its own
+  // coping, a blind window or two and a rear door at the lane.
+  const h=street-a.top;
+  c.drawImage(panel(`alley/${a.x}`,a.w,h,ALLEY,a.x,k=>{
+   box(k,'#0b0f14',0,0,a.w,3);box(k,'#232d38',0,3,a.w,1);
+   const cols=Math.floor((a.w-20)/46);
+   for(let i=0;i<cols;i++)for(let y=22,r=0;y+24<h-40;y+=58,r++){const v=hash(i,r,a.x);if(v<.3)continue;const x=Math.round(10+(a.w-20-cols*46)/2+i*46+16);
+    box(k,'#0b0f14',x-1,y-3,14,3);box(k,'#1f2833',x-1,y-3,14,1);box(k,'#0a0d12',x,y,12,18);box(k,v>.93?'#4a3a25':'#10161e',x+1,y+1,10,16);box(k,'#0a0d12',x+5,y,2,18);box(k,'#1c242e',x-2,y+18,16,2);}
+   if(a.w>=64){const x=Math.round(a.w/2-8);box(k,'#0a0d12',x,h-30,16,30);box(k,'#151b23',x+2,h-28,12,28);box(k,'#1f2833',x-2,h-33,20,3);}
+  }),a.x,a.top);
+ }
  for(const h of pl.houses)houseFront(c,h.x,h.top,h.w,street,h.id,cx,cy,vw,vh);
  for(const s of pl.sheds)shed(c,s,cx,cy,vw,vh);
  for(const s of pl.shores)shores(c,s,cx,cy,vw,vh);
  rails(c,pl.rails,cx,cy,vw,vh);
- if(l.id===0){nellsWindow(c,l,cx,cy,vw,vh);bellLane(c,l,pl,cx,cy,vw,vh);}
+ if(l.id===0){laneBack(c,l,street,cx,cy,vw,vh);nellsWindow(c,l,cx,cy,vw,vh);bellLane(c,l,pl,cx,cy,vw,vh);}
 }
 /** Nell's dormer on her roof, where level 1 used to end: the casement open, the lamp lit, Nell at it. */
 function nellsWindow(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
- const roof=l.platforms[10],x=Math.round(roof.x+roof.w*.55),y=roof.y;if(!visible(x-6,y-52,48,52,cx,cy,vw,vh))return;
+ const roof=l.platforms.find(p=>p.tag==='nell')!,x=Math.round(roof.x+roof.w*.55),y=roof.y;if(!visible(x-6,y-52,48,52,cx,cy,vw,vh))return;
  box(c,'#10161d',x-4,y-38,44,38);box(c,'#3b2e30',x-2,y-36,40,36);
  for(let k=0;k<12;k++){box(c,'#10161d',x-6+k*2,y-40-k,48-k*4,2);box(c,'#4a3b38',x-5+k*2,y-40-k,46-k*4,1);}
  box(c,'#0d1218',x+6,y-30,24,26);box(c,'#f0c47a',x+8,y-28,20,22);box(c,'#fff0c4',x+12,y-24,8,14);
@@ -180,51 +196,12 @@ function nellsWindow(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
  * steps down beside it; the tower stands on the forecourt, its door in its
  * west face. Every wall is laid once, between its own corners, and goes down
  * to the lane. */
-const LANE_BUILT=[11,14,15];
 const TOWER_OUT:Work={course:16,short:22,long:54,mortar:'#19212a',stones:['#29333f','#2c3642','#2f3946','#27313c'],lip:'#3a4654',shade:'#212a34',chip:'#46525f'};
 const FORECOURT:Work={course:12,short:18,long:40,mortar:'#151c24',stones:['#28323d','#2b3540','#2e3843','#262f39'],lip:'#3a4654',shade:'#1f2832',chip:'#46525f'};
-const BREAST:Work={course:8,short:12,long:18,mortar:'#1a1415',stones:['#4a3330','#503733','#563b35','#46302d'],lip:'#644640',shade:'#3a2826',chip:'#6e4e46'};
-/** Tiles for the three landings of Bell Lane that are not house roofs. */
-export function paintQuarterDeck(c:C,p:Platform,l:Level):boolean{
- if(l.id!==0||!LANE_BUILT.includes(p.id))return false;
- const w=p.w,h=p.h;
- if(p.id===11){
-  // Nell's stack: brick laid to its oversailing courses, capped in cement.
-  c.save();c.translate(0,11);lay(c,w,h-11,BREAST,31);c.restore();
-  box(c,'#120e0f',0,11,2,h-11);box(c,'#120e0f',w-2,11,2,h-11);box(c,'#644640',2,11,1,h-11);
-  box(c,'#1a1415',-3,3,w+6,9);box(c,'#5e423c',-3,4,w+6,6);box(c,'#7a5a50',-3,4,w+6,1);box(c,'#1a1415',-1,10,w+2,2);
-  box(c,'#6c7378',-1,0,w+2,4);box(c,'#9aa2a4',-1,0,w+2,2);
-  // An iron strap round the stack under the cap, where it was tied after the last storm.
-  box(c,'#1c2228',0,26,w,3);box(c,'#4a545b',0,26,w,1);for(const x of [6,w-9])box(c,'#59666b',x,27,2,1);
-  return true;
- }
- if(p.id===14){
-  // The forecourt's gate pier: dressed stone under a weathered cap.
-  c.save();c.translate(0,12);lay(c,w,h-12,FORECOURT,57);c.restore();
-  box(c,'#10161d',0,12,2,h-12);box(c,'#10161d',w-2,12,2,h-12);box(c,'#46525f',2,12,1,h-12);
-  // A sunk panel in its face, and the cap stepping out over a bed mould.
-  box(c,'#1a222b',12,24,w-24,h-36);box(c,'#232c36',13,25,w-26,h-38);box(c,'#3a4654',13,h-13,w-26,1);
-  box(c,'#1a222b',-3,2,w+6,10);box(c,'#56626e',-3,2,w+6,7);box(c,'#3a4652',-1,9,w+2,3);box(c,'#10161d',-1,11,w+2,1);
-  box(c,'#6d777e',-2,0,w+4,3);box(c,'#9aa3a5',-2,0,w+4,1);
-  return true;
- }
- // The forecourt: worn flags on the head of the retaining wall, which shows under them.
- box(c,'#1a2028',0,0,w,19);
- for(let x=0;x<w;){const wide=Math.min(w-x,26+Math.floor(hash(x,p.id,3)*18)),v=hash(x,p.id,5);box(c,v>.5?'#4b555e':'#454f58',x,2,wide-1,8);box(c,'#5d676f',x,2,wide-1,1);if(v>.7)box(c,'#363f47',x+6,6,7,1);x+=wide;}
- box(c,'#8a949b',0,0,w,2);box(c,'#6b757d',0,2,w,1);
- box(c,'#1a222b',0,10,w,9);box(c,'#3a4652',0,11,w,6);box(c,'#56626e',0,11,w,1);box(c,'#10161d',0,17,w,2);
- return true;
-}
+/** Tiles for the landings of Bell Lane that are not house roofs. */
+export function paintQuarterDeck(c:C,p:Platform,l:Level):boolean{return l.id===0&&laneBuilds(p)&&laneDeck(c,p);}
 function bellLane(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
- const stack=l.platforms[11],pier=l.platforms[14],court=l.platforms[15],lean=l.platforms[13],lane=pl.street+40;
- // The chimney breast under Nell's stack: brick down her gable to the lane, bonded into the house wall beside it.
- if(visible(stack.x,stack.y,stack.w,lane-stack.y,cx,cy,vw,vh)){
-  const top=stack.y+stack.h;c.drawImage(panel('lane/breast',stack.w,lane-top,BREAST,37),stack.x,top);
-  box(c,'#120e0f',stack.x+stack.w-2,top,2,lane-top);box(c,'#644640',stack.x+2,top,1,lane-top);
-  // Toothing where the breast is bonded into the gable, and its offset where the flues gather.
-  for(let y=top+4,k=0;y<lane;y+=16,k++)box(c,k%2?'#3a2826':'#503733',stack.x-4,y,6,7);
-  box(c,'#1a1415',stack.x-2,top+120,stack.w+6,6);box(c,'#644640',stack.x-2,top+120,stack.w+6,1);
- }
+ const pier=l.platforms.find(p=>p.tag==='pier')!,court=l.platforms.find(p=>p.tag==='court')!,lean=l.platforms.find(p=>p.tag==='lean')!,lane=pl.street+40;
  const x0=pier.x,x1=l.width+40,top=court.y;
  // The tower stands on the forecourt: its west face, corner and door storey.
  const tx=court.x+78,roof=-260;

@@ -5,6 +5,7 @@ import {goalComposition,stationArtBounds,stationComposition} from './composition
 import {paintMaterial,paintFoundation} from './materials';
 import {drawBarge,paintQuarterDeck} from './quarter-place';
 import {quarterSet,setDeckTile} from './quarter-sets';
+import {laneMover} from './set-lane';
 export const noise=(a:number,b:number)=>Math.abs(Math.sin(a*127.1+b*311.7)*43758.5453)%1;
 const cache=new Map<string,HTMLCanvasElement>();
 let boundsCache=new WeakMap<Level,WeakMap<Platform,Rect>>();
@@ -82,13 +83,13 @@ export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:nu
   if(p.kind==='crumble'&&timer!==undefined){drawCrumble(c,p,tile(p,l),x,y,timer,reduced);return;}
   c.drawImage(tile(p,l),x-4,y-8);return;
  }
- if(p.kind==='grate'){
+ if(p.kind==='grate'&&!(l.id===0&&p.tag)){
   c.fillStyle='#162c37';c.fillRect(x-2,y-2,p.w+4,4);c.fillStyle='#b5b7a0';c.fillRect(x,y,p.w,1);c.fillStyle='#697f7c';c.fillRect(x,y+1,p.w,2);
   for(let xx=x+3;xx<x+p.w-3;xx+=8){c.fillStyle='#1a303b';c.fillRect(xx,y+3,3,8);c.fillStyle='#78928a';c.fillRect(xx,y+3,1,7);c.fillStyle='#b2b49a';c.fillRect(xx,y+4,1,2);}
   c.fillStyle='#334f55';c.fillRect(x,y+10,p.w,2);return;
  }
  if(p.kind==='crumble'&&timer!==undefined){drawCrumble(c,p,tile(p,l),x,y,timer,reduced);return;}
- if(p.h<=10&&p.kind==='stone')for(const post of eavePosts(p,l)){
+ if(p.h<=10&&p.kind==='stone'&&!(l.id===0&&p.tag))for(const post of eavePosts(p,l)){
   // A post rides on its deck: while a cracked tile is down, so is the post.
   if((s.crumbles[post.support]??1)<=0)continue;
   const dir=post.x<p.x+p.w/2?1:-1,px=x+post.x-p.x-2,top=y+p.h,bottom=Math.round(y+post.y-p.y);
@@ -97,6 +98,8 @@ export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:nu
   for(let i=0;i<18;i++){c.fillStyle=i%6===0?'#93745a':'#6e5641';c.fillRect(dir>0?px+5+i:px-2-i,top+16-Math.round(i*.85),3,2);}
   c.fillStyle='#3d3b3a';c.fillRect(px-3,bottom-3,11,3);
  }
+ // Bell Lane's hoist pallets and its drying rack hang from what carries them.
+ if(l.id===0&&p.tag&&p.kind!=='crumble'){if(p.kind==='moving')laneMover(c,p,x,y);c.drawImage(tile(p,l),x-4,y-8);return;}
  // Old Quarter barges are boats, not slabs: hull and gunwale replace the tile.
  if(p.kind==='moving'&&l.world===0&&l.setting==='canal'){drawBarge(c,p,x,y,l);return;}
  c.drawImage(tile(p,l),x-4,y-8);

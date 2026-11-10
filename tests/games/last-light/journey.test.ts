@@ -5,6 +5,9 @@ import journeys from './journeys.json';
 
 // Regenerate with: node tests/games/last-light/record-journeys.mjs [stage ids]
 
+/** How many levels, from the first, have been rebuilt to three minutes. Ten when the Old Quarter and the garden bank are done. */
+const THREE_MINUTE_LEVELS=1;
+
 describe('Last Light continuous journeys',()=>{
  it('records one complete input witness for every chapter',()=>{
   expect(journeys.map(journey=>journey.stage)).toEqual(LEVELS.map(level=>level.id));
@@ -44,8 +47,11 @@ describe('Last Light continuous journeys',()=>{
   expect(run.stageTime/1000).toBeCloseTo(frames*STEP,5);
   // Duration prevents empty maps; the difficulty audit separately verifies
   // required control choices, so adding safe distance cannot satisfy it.
-  expect(run.stageTime/1000,'Expert play must contain a complete journey').toBeGreaterThanOrEqual(level.id<8?8:10);
-  expect(run.stageTime/1000,'A safe completion should not require a long timing wait').toBeLessThan(100);
+  // A rebuilt Old Quarter level is a three-minute level: its clean journey
+  // takes 150 to 210 seconds. Later chapters keep their original bounds.
+  const long=level.id<THREE_MINUTE_LEVELS;
+  expect(run.stageTime/1000,'Expert play must contain a complete journey').toBeGreaterThanOrEqual(long?150:level.id<8?8:10);
+  expect(run.stageTime/1000,long?'A three-minute level is not padded past three and a half':'A safe completion should not require a long timing wait').toBeLessThanOrEqual(long?210:99.999);
  });
 
 });

@@ -22,7 +22,8 @@ describe('authored campaign spaces',()=>{
   const required=[l.mainCount-1,...l.stations.map(s=>l.platforms.findIndex(p=>s.x>=p.x&&s.x<=p.x+p.w&&s.y===p.y))];
   for(const id of required){expect(fromStart.has(id),`unreachable objective platform ${id}; reachable ${[...fromStart]}`).toBe(true);expect(reachable(graph,id).has(l.mainCount-1),`no way from objective ${id} to exit`).toBe(true);}
   for(const p of l.pickups.filter(p=>p.kind==='spark')){const support=l.platforms.findIndex(r=>p.x>=r.x&&p.x<=r.x+r.w&&p.y===r.y-30);expect(fromStart.has(support),`unreachable memory on platform ${support}`).toBe(true);expect(reachable(graph,support).has(l.mainCount-1),`memory ${p.id} has no return to the exit`).toBe(true);}
- },30000);
+ // A three-minute level has some two hundred landings; its whole graph takes longer to search than a short chapter's.
+ },120000);
  for(const l of LEVELS)it(`${l.id+1}: leaves headroom for every mission and memory`,()=>{
   // These spaces cover the goal silhouette and label, station fixture and the
   // memory interaction area. Art can become smaller, but authored ledges must

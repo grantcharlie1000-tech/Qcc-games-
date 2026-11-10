@@ -102,7 +102,7 @@ export function step(s:Run,input:Input,dt=STEP):Events {
  if(s.respawn>0){s.respawn=Math.max(0,s.respawn-dt);return events;}
  for(const id of Object.keys(s.crumbles)){const n=Number(id);s.crumbles[n]=Math.max(-CRUMBLE_RETURN-.5,s.crumbles[n]-dt);if(s.crumbles[n]<=-CRUMBLE_RETURN)delete s.crumbles[n];}
  s.buffer=jumpPressed?.12:Math.max(0,s.buffer-dt);s.coyote=s.grounded?.1:Math.max(0,s.coyote-dt);
- const oldGround=level.platforms.find(p=>p.id===s.ground);
+ const direct=level.platforms[s.ground],oldGround=direct?.id===s.ground?direct:level.platforms.find(p=>p.id===s.ground);
  if(s.grounded&&oldGround?.kind==='moving'){const before=platformAt(oldGround,oldClock),after=platformAt(oldGround,s.clock);s.x+=after.x-before.x;s.y+=after.y-before.y;}
  s.dropLeft=Math.max(0,s.dropLeft-dt);
  if(input.drop&&s.grounded&&oldGround?.kind==='grate'){s.dropLeft=.2;s.y+=2;s.grounded=false;s.ground=-1;s.coyote=0;s.pet=null;}
@@ -122,7 +122,14 @@ export function step(s:Run,input:Input,dt=STEP):Events {
   s.vy=Math.min(s.vy+1120*dt,650);
   if(s.wall&&s.vy>90&&move===s.wall)s.vy=90;
  }
- const bodies=level.platforms.filter(p=>s.crumbles[p.id]===undefined||s.crumbles[p.id]>0).map(p=>({p,r:platformAt(p,s.clock)}));
+ // Only landings within reach of this step can touch the courier. A three-minute level has two hundred of them,
+ // so the rest are passed over, in the same order, before anything is worked out for them.
+ const bodies:{p:Platform;r:Rect}[]=[];
+ for(const p of level.platforms){
+  const reach=p.kind==='moving'&&p.axis!=='y'?Math.abs(p.travel??0)+48:48;
+  if(p.x+p.w+reach<s.x||p.x-reach>s.x+PLAYER_W||(s.crumbles[p.id]!==undefined&&s.crumbles[p.id]<=0))continue;
+  bodies.push({p,r:platformAt(p,s.clock)});
+ }
  if(level.gate&&!s.key)bodies.push({p:{...level.gate,id:-2,kind:'stone'},r:level.gate});
  const previousX=s.x,previousY=s.y;
  s.x+=s.vx*dt+(s.grounded&&oldGround?.kind==='belt'?(oldGround.direction??1)*85*dt:0);s.x=clamp(s.x,0,level.width-PLAYER_W);s.wall=0;

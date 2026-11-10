@@ -1,4 +1,5 @@
 import type {Goal,Hazard,Setting} from './levels';
+import type {Place} from './route-build';
 
 /** Geometry is written in travel order. Each token is x,y,width,surface,
  * optional travel, speed, crumble delay and solid height; surfaces are s/e/c/m/l/b/i/>/<. Branch ledges
@@ -24,6 +25,10 @@ export interface CampaignRoute {
  water?:number;
  /** What the optional fixtures are, where the way out does not say: brake or irrigation wheels beside a door. */
  stationKind?:'lamp'|'valve'|'bell';
+ /** What each landing is, main route then branches, for the set painter. */
+ tags?:readonly string[];
+ /** The built places along the route, in travel order. */
+ places?:readonly Place[];
 }
 export interface HazardPlacement {
  ledge:number;
