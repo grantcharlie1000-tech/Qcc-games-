@@ -3,15 +3,18 @@ import {spike,steam,laser,press,type CampaignRoute} from './campaign-types';
 /** Signature spaces, authored in travel order. These are physical multi-storey
  * routes, not a height offset applied to the old horizontal obstacle pattern. */
 export const FEATURE_ROUTES:Readonly<Record<number,CampaignRoute>>={
- // Four overlapping streets: climb the grates, reverse across the skyline,
- // descend the west stair, then dash beneath the street already crossed.
+ // Market roofs over four streets. Jump up through a house's iron fire
+ // escape (a balcony with a floor waits under the first grate for anyone who
+ // presses Down), cross the rook's ridge, then pass under the market awning
+ // with a short hop. The test turns back across the street: +64 over 80 onto
+ // a dormer, then a 136 px gap, and the arch. Lamps are windows, optional.
  3:{setting:'roofs',goal:'relay',
-  route:'24,850,300,s;534,850,100,s;658,850,100,g;968,786,140,g;1248,722,260,s;1748,722,100,c,,,0.62;1872,722,120,s;2232,658,280,b;1904,530,120,g;1584,466,130,s;1204,402,240,s;924,466,120,c,,,0.62;644,530,140,g;344,594,160,s;24,658,180,b;244,530,120,g;464,466,100,c,,,0.62;694,402,120,g;424,338,140,s;24,274,280,s',
-  branches:'662,914,110,s;1930,594,90,s;1534,786,100,s',memories:[0,1,2],
-  stations:[[4,'Bakery light'],[10,'Market light'],[13,'West street light']],
-  checkpoints:[4,6,10,13],sectors:[[0,'The grate stair'],[4,'Above the bakery'],[7,'The skyline turn'],[10,'Westward descent'],[14,'The west roof launch']],
-  hazards:[spike(6,.75,24),steam(9,.75,96,.3,3),spike(11,.75,22),spike(16,.75,22),spike(18,.25,24)],
-  enemies:[{ledge:4,at:.8,kind:'crawler',travel:18,period:3.8},{ledge:10,at:.8,kind:'moth',travel:16,period:3.2}],
+  route:'24,1124,300,s;404,1060,120,g;404,996,120,g;404,932,120,g;404,868,120,g;604,868,260,s;944,828,120,s;1160,828,280,s;1504,764,120,s;1384,700,120,s;1184,636,120,s;928,636,120,s;560,596,300,s',
+  branches:'404,1124,120,s;1128,741,252,e;560,532,60,s',memories:[0,1,2],
+  stations:[[6,'Bakery light'],[7,'Market light'],[11,'East street light']],
+  checkpoints:[5,7,9,12],sectors:[[0,'The fire escape'],[5,'The rook’s ridge'],[7,'Market awnings'],[9,'Across the street'],[12,'The east street arch']],
+  hazards:[],
+  enemies:[{ledge:5,at:.6,kind:'crawler',travel:70,period:4.2}],
  },
  // Launch up the orchard terraces, cross the canopy to the left, then make a
  // controlled descent through the open grates into the lower greenhouse.
