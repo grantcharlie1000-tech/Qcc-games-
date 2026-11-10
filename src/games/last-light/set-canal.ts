@@ -4,7 +4,7 @@ import {platformAt} from './model';
 import {goalComposition} from './composition';
 import {departureOffset,departureVisibility} from './departure';
 import {ferry} from './props';
-import {box,hash,masonry,stroke,visible,wall,type C} from './quarter-kit';
+import {box,hash,masonry,sprite,stroke,visible,wall,type C} from './quarter-kit';
 import {MID,MID_SCALE,drawRow,farRoof,headTowers,lotEdge,moon,nightSky,row,townHouse,windowColumns,windowLit,windowX,type Scale,type Tone} from './quarter-distance';
 import type {QuarterSet} from './quarter-sets';
 
@@ -48,19 +48,48 @@ export function shadowOnWater(c:C,x:number,w:number,water:number,t:number){
 }
 const BANK:Tone={walls:['#1a2330','#1d2734','#202b39','#211f2a','#1c242b'],edge:'#2a3647',shade:'#121924',roof:'#263447',course:'#1f2b3c',ridge:'#384962',glass:'#0f1621',pane:'#1b2a3c',lit:'#a8763f',glow:'#e0ab5c'};
 const BANK_SCALE:Scale={unit:17,ww:6,wh:9,pitch:13,lit:.09};
-const LOT=50,BANK_SEED=21,BANK_H=160,BEHIND_H=190,BEHIND='#222e44';
+const LOT=50,BANK_SEED=21,QUAY=8,BANK_H=160+QUAY,BEHIND_H=190,BEHIND='#222e44';
 const seedOf=(i:number)=>i*13+5,tallOf=(i:number)=>54+Math.floor(hash(i,1,53)*62);
-/** Now and then a side canal runs back between two houses, under a humped footbridge. */
-const sideCanal=(i:number)=>hash(i,7,3)>.93;
+const lotWide=(i:number)=>lotEdge(i+1,LOT,BANK_SEED)-lotEdge(i,LOT,BANK_SEED);
+/** Now and then a side canal runs back between two houses, and the quay street crosses it on a bridge of its own. A lot too narrow or too wide for one is a house. */
+const canalLot=(i:number)=>hash(i,7,3)>.9&&lotWide(i)>=50&&lotWide(i)<=78;
+const sideCanal=(i:number)=>canalLot(i)&&!canalLot(i-1)&&!canalLot(i-2)&&!canalLot(i-3);
+/** The far quay wall under a lot: coursed stone from the street down to the water. */
+function quayWall(c:C,x:number,w:number,h:number,i:number){
+ box(c,'#18212c',x,h-QUAY,w,QUAY);box(c,'#2c394a',x,h-QUAY,w,1);box(c,'#10171f',x,h-1,w,1);for(let j=x+7+((i%5)+5)%5;j<x+w-2;j+=16)box(c,'#10171f',j,h-6,1,4);
+}
+/** The street bridge over a side canal, at the far bank's size: abutments in
+ * the quay wall, one low arch with its ring, a road that humps over it, and
+ * a parapet with a pier and a dead lamp at each end. Under it the side canal
+ * goes back into the dark. */
+function crossing(c:C,w:number,h:number,i:number){
+ const abut=8,rx=(w-abut*2)/2,mid=w/2,street=h-QUAY,stone='#1f2a38',lit='#33414f',dark='#141c27';
+ const road=(x:number)=>street-1-Math.round(5*(1-((x+.5-mid)/mid)**2));
+ quayWall(c,0,abut,h,i);quayWall(c,w-abut,abut,h,i);
+ for(let x=0;x<w;x++){
+  const k=(x+.5-mid)/rx,open=Math.abs(k)<1?h-Math.round((QUAY+5)*Math.sqrt(1-k*k)):h,top=road(x);
+  // Spandrel from the road down to the arch; the ring; then the canal going back under it.
+  box(c,stone,x,top,1,open-top);
+  if(open<h){box(c,lit,x,open-2,1,2);box(c,'#465564',x,open-2,1,1);box(c,'#08121a',x,open,1,h-open);if(Math.abs(k)<.62)box(c,'#162c38',x,h-2,1,2);}
+  // The parapet stands on the road: a coping, and openings between its balusters.
+  box(c,stone,x,top-6,1,6);box(c,lit,x,top-6,1,1);if(x%4===1&&x>4&&x<w-5)box(c,dark,x,top-4,2,3);
+  box(c,dark,x,top,1,1);
+ }
+ for(let k=1;k<7;k++){const g=Math.PI*k/7,ox=mid-Math.cos(g)*rx,oy=h-Math.sin(g)*(QUAY+5);box(c,dark,ox,oy-2,1,2);}
+ box(c,'#465564',mid-1,h-QUAY-8,3,4);
+ for(const x of [0,w-5]){
+  const top=road(x+2);box(c,'#263243',x,top-9,5,9);box(c,lit,x,top-9,5,1);box(c,dark,x+4,top-8,1,8);
+  box(c,'#10171f',x+2,top-23,1,14);box(c,'#10171f',x+1,top-27,3,4);box(c,'#232f3e',x+2,top-26,1,2);
+ }
+}
 const bankRow=row(LOT,BANK_SEED,BANK_H,(c,i,w,h)=>{
- if(!sideCanal(i)){townHouse(c,w,h-tallOf(i),h,seedOf(i),BANK,BANK_SCALE,true);return;}
- box(c,'#1c3644',0,h-4,w,4);box(c,'#2a4b58',2,h-3,Math.round(w*.4),1);
- for(let x=0;x<w;x++){const k=(x+.5)/w*2-1,rise=Math.round(8*(1-k*k));box(c,'#1a2330',x,h-8-rise,1,3+Math.round(rise*.2));box(c,'#2a3647',x,h-8-rise,1,1);if(x%5===2)box(c,'#1a2330',x,h-13-rise,1,5);box(c,'#232e3e',x,h-13-rise,1,1);}
+ if(sideCanal(i)){crossing(c,w,h,i);return;}
+ townHouse(c,w,h-QUAY-tallOf(i),h-QUAY,seedOf(i),BANK,BANK_SCALE,true);quayWall(c,0,w,h,i);
 },()=>BANK.shade);
 /** The next street back: roofs over the bank's own, and now and then a church or a dome. */
 const behindRow=row(44,22,BEHIND_H,(c,i,w,h)=>{const top=h-74-Math.floor(hash(i,1,57)*76);if(hash(i,2,57)>.78)farRoof(c,w,top,h,i+400,BEHIND,'#2b3a54','#b98a4a');else townHouse(c,w,top,h,i*3+2,MID,MID_SCALE);},()=>BEHIND);
 let quayLine=0;
-const bankBase=()=>quayLine;
+const bankBase=()=>quayLine+QUAY,behindBase=()=>quayLine;
 /** A reflection breaks up the further it lies from the bank: depth below the quay, and how much of the width is left. */
 const BROKEN=[[2,.9],[5,.74],[9,.5],[14,.3]] as const;
 /** The far quay itself, what is moored at it, and the bank lying on the water:
@@ -69,10 +98,9 @@ function farShore(c:C,w:number,cx:number,fy:number,t:number){
  const shift=Math.round(cx*.35);
  for(let i=Math.floor(shift/LOT)-2;;i++){
   const x0=lotEdge(i,LOT,BANK_SEED)-shift;if(x0>=w)break;const wide=lotEdge(i+1,LOT,BANK_SEED)-shift-x0;if(x0+wide<=0)continue;
-  // Over a side canal it is the street behind that lies on the water, under the footbridge.
-  if(sideCanal(i)){box(c,'#12232e',x0,fy,wide,22);for(const [at,keep] of BROKEN){const len=Math.round(wide*keep),slip=Math.round(Math.sin(t*1.1+at*.9+i)*2);box(c,'#12232e',x0+Math.round((wide-len)*hash(i,at,71))+slip,fy+21+at,len,at>8?1:2);}continue;}
-  // Quay wall, a mooring ring, and sometimes a skiff tied up or a dead lamp.
-  box(c,'#18212c',x0,fy-8,wide,8);box(c,'#2c394a',x0,fy-8,wide,1);box(c,'#10171f',x0,fy-1,wide,1);for(let x=x0+7+i%5;x<x0+wide-2;x+=16)box(c,'#10171f',x,fy-6,1,4);
+  // A crossing lies on the water as dark as the arch over it, as deep as the bridge is tall.
+  if(sideCanal(i)){box(c,'#12232e',x0,fy,wide,16);for(const [at,keep] of BROKEN){const len=Math.round(wide*keep),slip=Math.round(Math.sin(t*1.1+at*.9+i)*2);box(c,'#12232e',x0+Math.round((wide-len)*hash(i,at,71))+slip,fy+15+at,len,at>8?1:2);}continue;}
+  // What is moored at the quay: sometimes a skiff tied up, sometimes a dead lamp on the street above.
   const v=hash(i,8,3);
   if(v>.72&&wide>34){const bx=x0+5+Math.floor(v*8);box(c,'#0f161d',bx,fy-3,24,4);box(c,'#34414f',bx-1,fy-4,26,1);box(c,'#0f161d',bx+10,fy-9,1,5);}
   else if(v<.3){const lx=x0+Math.round(wide*.5);box(c,'#10171f',lx,fy-25,1,17);box(c,'#10171f',lx-1,fy-28,3,4);box(c,'#232f3e',lx,fy-27,1,2);}
@@ -106,8 +134,8 @@ function sky(c:C,l:Level,w:number,h:number,cx:number,cy:number,t:number,ending:b
  const fy=Math.round(l.water!-FAR-cy);quayLine=fy-8;
  nightSky(c,w,h,ending,cx,t);moon(c,Math.round(w*.78-cx*.02),Math.max(46,fy-178));
  c.drawImage(headTowers(),Math.round(w*.28-cx*.05),fy-232);
- drawRow(c,behindRow,w,cx*.2,bankBase,quayLine);
- drawRow(c,bankRow,w,cx*.35,bankBase,quayLine);
+ drawRow(c,behindRow,w,cx*.2,behindBase,quayLine);
+ drawRow(c,bankRow,w,cx*.35,bankBase,quayLine+QUAY);
  if(fy>=h)return;
  sheet(c,0,w,fy,h,fy);farShore(c,w,cx,fy,t);
  c.save();c.translate(-cx,-cy);ripples(c,cx,cx+w,l.water!-FAR+3,l.water!,l.water!-FAR,t);moonPath(c,cx+Math.round(w*.78-cx*.02),l.water!-FAR,l.water!,l.water!-FAR,t);c.restore();
@@ -128,25 +156,76 @@ function pile(c:C,x:number,top:number,water:number){
  // Wet to the tide line, with a rag of weed on the side the current leaves alone.
  box(c,'#0a141a80',x,water-9-x%3*2,10,9+x%3*2);if(x%4<2){box(c,'#2c4739',x+6,water-5-x%3,2,5+x%3);box(c,'#35543f',x+8,water-3,1,3);}
 }
-const spans=new WeakMap<Level,{x0:number;x1:number;a0:number;a1:number}|null>();
-/** The stepped footbridge: its landings are the treads, one arch carries them. */
-function bridge(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
- let span=spans.get(l);
- if(span===undefined){const steps=l.platforms.filter(p=>role(p,l)==='bridge');span=steps.length?{x0:Math.min(...steps.map(p=>p.x)),x1:Math.max(...steps.map(p=>p.x+p.w)),a0:0,a1:0}:null;if(span){span.a0=span.x0+46;span.a1=span.x1-80;}spans.set(l,span);}
- if(!span||!visible(span.x0,300,span.x1-span.x0,320,cx,cy,vw,vh))return;
- const water=l.water!,mid=(span.a0+span.a1)/2,rx=(span.a1-span.a0)/2;
- for(const p of l.platforms){
-  if(role(p,l)!=='bridge')continue;
-  for(let x=p.x;x<p.x+p.w;x+=4){
-   const k=(x+2-mid)/rx,soffit=Math.abs(k)<1?Math.round(water-110*Math.sqrt(1-k*k)):water+40;
-   wall(c,'canal/quay',quayTile,x,p.y+8,4,soffit-p.y-8);
-   if(Math.abs(k)<1){box(c,'#55616d',x,soffit-5,4,5);box(c,'#1a222b',x,soffit-6,4,1);box(c,'#10171e',x,soffit-1,4,1);}
-  }
-  // A low parapet on the far side of every landing.
-  box(c,'#232d38',p.x,p.y-12,p.w,12);box(c,'#3a4653',p.x,p.y-12,p.w,2);for(let x=p.x+6;x<p.x+p.w-4;x+=12)box(c,'#161d26',x,p.y-8,5,6);
+/** The stepped footbridge is one stone bridge. A tall round arch on upright
+ * jambs carries the top landing high enough for a lighter to pass under; the
+ * lower treads either side are the tops of its two abutments, the longer of
+ * which is pierced by a flood arch. Each tread's coping is the top of the
+ * bridge's own parapet: a panelled course above a string course in the face
+ * you see, with a newel where one tread steps down to the next. Nothing
+ * stands above a tread. Every pier comes down onto a plinth in the water. */
+interface Arch {x:number;r:number;spring:number;ring:number}
+interface Span {x0:number;x1:number;top:number;steps:Platform[];arches:Arch[];solid:(readonly [number,number])[];art:HTMLCanvasElement|null}
+const spans=new WeakMap<Level,Span|null>();
+function span(l:Level){
+ let made=spans.get(l);if(made!==undefined)return made;
+ const steps=l.platforms.filter(p=>role(p,l)==='bridge').sort((a,b)=>a.x-b.x);
+ if(!steps.length){spans.set(l,null);return null;}
+ const water=l.water!,x0=steps[0].x,x1=steps.at(-1)!.x+steps.at(-1)!.w,high=steps.reduce((a,b)=>b.y<a.y?b:a);
+ // The great arch stands under the top landing: its crown close under the parapet, its springing well above the water.
+ const r=Math.round(high.w/2)+2,main:Arch={x:high.x+high.w/2,r,spring:Math.min(water-14,high.y+40+r),ring:10},arches=[main];
+ // An abutment long enough to want it gets a flood arch under the tread next to the great one.
+ for(const [from,to] of [[x0,main.x-r-main.ring],[main.x+r+main.ring,x1]] as const)if(to-from>=110){
+  const x=from<main.x?to-30:from+30,over=steps.find(p=>p.x<=x&&p.x+p.w>=x)??high;arches.push({x,r:16,spring:Math.max(over.y+36,water-52)+16,ring:6});
  }
- box(c,'#6b7782',mid-5,water-120,10,12);box(c,'#8a959d',mid-5,water-120,10,2);
- weed(c,span.x0,span.a0-span.x0,water,3);weed(c,span.a1,span.x1-span.a1,water,4);
+ const cuts=arches.map(a=>[a.x-a.r,a.x+a.r] as const).sort((a,b)=>a[0]-b[0]),solid:(readonly [number,number])[]=[];
+ let at=x0;for(const [a,b] of cuts){solid.push([at,a]);at=b;}solid.push([at,x1]);
+ made={x0,x1,top:high.y,steps,arches,solid,art:null};spans.set(l,made);return made;
+}
+function footbridge(l:Level,sp:Span){
+ const water=l.water!,foot=water+40,{x0,x1,steps}=sp;
+ return sp.art??=sprite(`canal/footbridge/${l.id}`,x1-x0+16,foot-sp.top+4,c=>{
+  c.translate(8-x0,2-sp.top);
+  // The face: coursed stone from under each tread's coping down into the water, and the riser where one tread meets the next.
+  for(const p of steps)wall(c,'canal/quay',quayTile,p.x,p.y+8,p.w,foot-p.y-8);
+  for(let i=1;i<steps.length;i++){const a=steps[i-1],b=steps[i],hi=a.y<b.y?a:b,lo=hi===a?b:a;box(c,'#0f161d',hi===a?b.x-2:b.x,hi.y+8,2,lo.y-hi.y);}
+  box(c,'#0f161d',x0,steps[0].y+8,2,foot-steps[0].y);box(c,'#0f161d',x1-2,steps.at(-1)!.y+8,2,foot-steps.at(-1)!.y);
+  for(const a of sp.arches){
+   const {x,r,spring,ring}=a,out=r+ring;
+   // The opening is cut clean through: the canal and the far bank show under the bridge.
+   for(let px=Math.ceil(x-r);px<x+r;px++){const d=px+.5-x,y=Math.round(spring-Math.sqrt(r*r-d*d));c.clearRect(px,y,1,foot-y+4);}
+   // The arch ring: dressed voussoirs round the head, and the same stones as quoins down each jamb.
+   for(let px=Math.floor(x-out);px<x+out;px++){const d=px+.5-x,top=Math.round(spring-Math.sqrt(Math.max(0,out*out-d*d))),inner=Math.abs(d)<r?Math.round(spring-Math.sqrt(r*r-d*d)):foot;box(c,'#4c5864',px,top,1,inner-top);box(c,'#6b7782',px,top,1,1);}
+   const stones=Math.max(7,Math.round(Math.PI*r/13)|1);
+   for(let k=0;k<=stones;k++){const g=Math.PI*k/stones;stroke(c,'#1a222b',x-Math.cos(g)*r,spring-Math.sin(g)*r,x-Math.cos(g)*(out-1),spring-Math.sin(g)*(out-1));}
+   for(let y=spring+11,k=0;y<foot;y+=12,k++){box(c,'#1a222b',x-out,y,ring,1);box(c,'#1a222b',x+r,y,ring,1);if(k%2){box(c,'#4c5864',x-out-4,y-11,4,11);box(c,'#4c5864',x+out,y-11,4,11);}}
+   box(c,'#10171e',x-out-1,spring,1,foot-spring);box(c,'#10171e',x+out,spring,1,foot-spring);
+   // Imposts where the head springs from the jambs, and the keystone locked into the ring.
+   for(const ix of [x-out-3,x+r-1]){box(c,'#6b7782',ix,spring-3,ring+4,5);box(c,'#8a959d',ix,spring-3,ring+4,1);box(c,'#10171e',ix+1,spring+2,ring+2,1);}
+   const key=Math.round(ring*.9);box(c,'#1a222b',x-key/2-1,spring-out-2,key+2,ring+3);box(c,'#7d8791',x-key/2,spring-out-2,key,ring+2);box(c,'#a3adb5',x-key/2,spring-out-2,key,1);
+   // Under the arch the vault runs back to the far face: dark along the head and down the jamb the moon does not reach.
+   for(let px=Math.ceil(x-r);px<x+r;px++){const d=px+.5-x,y=Math.round(spring-Math.sqrt(r*r-d*d)),deep=Math.max(2,Math.round(ring*.6));box(c,'#0c1218',px,y,1,deep);box(c,'#1a2530',px,y+deep,1,Math.round(deep/2));}
+   box(c,'#0c1218',Math.ceil(x-r),spring,Math.round(ring*.5),foot-spring);box(c,'#1a2530',Math.ceil(x-r)+Math.round(ring*.5),spring,2,foot-spring);
+  }
+  for(const p of steps){
+   // The parapet belongs to the face: a panelled course under the coping, on a string course.
+   box(c,'#3a4652',p.x,p.y+8,p.w,13);for(let x=p.x+10;x+16<=p.x+p.w-8;x+=24){box(c,'#2f3a46',x,p.y+12,16,6);box(c,'#232d38',x,p.y+12,16,1);box(c,'#465260',x,p.y+18,16,1);}
+   box(c,'#56626e',p.x-1,p.y+21,p.w+2,3);box(c,'#7a8690',p.x-1,p.y+21,p.w+2,1);box(c,'#10171e',p.x,p.y+24,p.w,2);
+  }
+  // A newel closes each parapet where the tread steps down, and stands at both ends of the bridge.
+  const newel=(x:number,from:number,to:number)=>{box(c,'#4c5864',x,from,8,to-from);box(c,'#6b7782',x,from,1,to-from);box(c,'#1a222b',x+7,from,1,to-from);for(let y=from+11;y<to;y+=12)box(c,'#1a222b',x,y,8,1);};
+  for(let i=1;i<steps.length;i++){const a=steps[i-1],b=steps[i];if(a.y<b.y)newel(b.x-8,a.y+8,b.y+24);else if(b.y<a.y)newel(b.x,b.y+8,a.y+24);}
+  newel(x0,steps[0].y+8,steps[0].y+24);newel(x1-8,steps.at(-1)!.y+8,steps.at(-1)!.y+24);
+  for(const [a,b] of sp.solid){
+   // Each pier stands on a plinth that goes down into the canal, wet to the tide line.
+   box(c,'#2a3540',a-3,water-13,b-a+6,foot-water+13);box(c,'#56626e',a-3,water-13,b-a+6,2);box(c,'#10171e',a-3,water-11,b-a+6,1);
+   for(let x=a+9;x<b-3;x+=22)box(c,'#1a222b',x,water-10,1,foot-water+10);
+   weed(c,a-3,b-a+6,water,Math.round(a));
+  }
+ });
+}
+function bridge(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
+ const sp=span(l);if(!sp||!visible(sp.x0-8,sp.top-2,sp.x1-sp.x0+16,l.water!+44-sp.top,cx,cy,vw,vh))return;
+ c.drawImage(footbridge(l,sp),sp.x0-8,sp.top-2);
 }
 function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock:number){
  const water=l.water!;bridge(c,l,cx,cy,vw,vh);
@@ -204,7 +283,9 @@ function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,s?:R
  sheet(c,cx-24,vw+48,top,bottom,far);
  ripples(c,cx-24,cx+vw+24,top,bottom,far,t);
  for(let x=Math.floor((cx-24)/22)*22;x<cx+vw+24;x+=22){const wave=Math.round(Math.sin(t*1.7+x*.21));box(c,'#5a8a94',x+3,top+wave,11,1);}
- for(const p of l.platforms){const kind=role(p,l);if(kind==='barge'||kind==='boat'||p.x+p.w<cx-24||p.x>cx+vw+24)continue;if(kind==='quay'||kind==='bridge'||kind==='stage')shadowOnWater(c,p.x,p.w,top,t);}
+ for(const p of l.platforms){const kind=role(p,l);if(p.x+p.w<cx-24||p.x>cx+vw+24)continue;if(kind==='quay'||kind==='stage')shadowOnWater(c,p.x,p.w,top,t);}
+ // The footbridge lies on the water pier by pier; under its arches the canal is open.
+ const sp=span(l);if(sp&&sp.x1>cx-24&&sp.x0<cx+vw+24)for(const [a,b] of sp.solid)shadowOnWater(c,a-3,b-a+6,top,t);
  moonPath(c,cx+Math.round(vw*.78-cx*.02),top,bottom,far,t);
  if(!s)return;
  // The lantern you carry and every jar still burning lie on the water under them.
