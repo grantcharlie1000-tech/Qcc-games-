@@ -96,6 +96,7 @@ export default class Input {
     this.aiming = false;
     this.touchMode = false;
     this._virtualLock = false;
+    this._mouseFallback = false;
 
     // --- private state ----------------------------------------------------
     this._down = new Set();          // normalized keys currently held
@@ -377,6 +378,7 @@ export default class Input {
       // behaves exactly as if locked (synthetic events drive the game).
       this.locked = true;
       this._virtualLock = true;
+      this._mouseFallback = false;
       this._dx = 0;
       this._dy = 0;
       this.game.events.emit('input:lock');
@@ -402,8 +404,19 @@ export default class Input {
         document.exitPointerLock?.();
       }
     };
+    // A denied lock (Safari/WebKit, policy, Esc cooldown) must not leave the
+    // desktop game ignoring all input: use a virtual lock driven by ordinary
+    // mouse movement instead, as touch mode does.
+    const fallback = () => {
+      cleanup();
+      if (!current() || document.pointerLockElement === canvas) return;
+      this.locked = true;this._virtualLock = true;this._mouseFallback = true;
+      this._dx = 0;this._dy = 0;
+      this.game.events.emit('input:lock');
+    };
+    let viaPromise = false;
     const changed = () => finish();
-    const failed = () => cleanup();
+    const failed = () => { if (!viaPromise) fallback(); };
     // Temporary guards outlive mount disposal until the browser settles the
     // request. Older browsers return void and report success only by event.
     document.addEventListener('pointerlockchange', changed);
@@ -412,11 +425,12 @@ export default class Input {
       if (!current()) {cleanup();return;}
       try {
         const result = canvas.requestPointerLock(raw ? {unadjustedMovement:true} : undefined);
+        viaPromise = typeof result?.then === 'function';
         result?.then?.(finish, () => {
-          if (raw && current()) request(false);else cleanup();
+          if (raw && current()) request(false);else fallback();
         });
       } catch {
-        if (raw && current()) request(false);else cleanup();
+        if (raw && current()) request(false);else fallback();
       }
     };
     request(true);
@@ -621,10 +635,14 @@ export default class Input {
   }
 
   _onMouseMove(e) {
+    const lastX = this._lastX, lastY = this._lastY;
+    this._lastX = e.clientX;this._lastY = e.clientY;
     if (!this.locked) return; // only accumulate while locked (spec)
 
-    const mx = typeof e.movementX === 'number' ? e.movementX : 0;
-    const my = typeof e.movementY === 'number' ? e.movementY : 0;
+    // Pointer-lock fallback: the cursor is free, so aim from its travel.
+    const free = this._mouseFallback && this._virtualLock;
+    const mx = free ? e.clientX - lastX : typeof e.movementX === 'number' ? e.movementX : 0;
+    const my = free ? e.clientY - lastY : typeof e.movementY === 'number' ? e.movementY : 0;
     if (!Number.isFinite(mx) || !Number.isFinite(my)) return;
 
     // Chromium occasionally reports a massive one-event spike when the OS
@@ -688,6 +706,7 @@ export default class Input {
     if (nowLocked) {
       const wasLocked = this.locked;
       this._virtualLock = false;
+      this._mouseFallback = false;
       this._dx = 0;
       this._dy = 0;
       if (!wasLocked) {

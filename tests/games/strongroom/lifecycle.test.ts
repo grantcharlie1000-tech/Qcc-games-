@@ -56,3 +56,16 @@ it('mouse actions follow swaps and a mouse button can restore a captured binding
  input._onKeyDown({key:'w'});expect(input.isActionDown('fire')).toBe(true);input._onKeyUp({key:'w'});
  input.locked=false;const capture=vi.fn();input.captureNextKey(capture);input._onMouseDown({button:2,target:canvas});expect(capture).toHaveBeenCalledWith('mouse2',{cancelled:false});expect(input.locked).toBe(false);
 });
+it('falls back to unlocked mouse movement when the browser denies pointer lock',async()=>{
+  input.requestLock();rejectRequest(new Error('raw input unsupported'));
+  await Promise.resolve();await Promise.resolve();
+  rejectRequest(new Error('pointer lock denied'));await Promise.resolve();await Promise.resolve();
+  expect(input.locked).toBe(true);
+  input._onMouseMove({clientX:100,clientY:100,movementX:0,movementY:0});input._onMouseMove({clientX:130,clientY:90,movementX:0,movementY:0});
+  expect({...input.consumeLook()}).toEqual({dx:30,dy:-10});
+});
+it('falls back when a void-returning browser reports pointerlockerror',()=>{
+  canvas.requestPointerLock=vi.fn(()=>undefined);
+  input.requestLock();doc.dispatchEvent(new Event('pointerlockerror'));
+  expect(input.locked).toBe(true);
+});
