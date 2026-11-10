@@ -55,3 +55,35 @@ export function enginesArt(){
   box(c,body,24,62,14,5);box(c,'#f3c77a',46,15,2,2);box(c,'#ffb76b55',45,14,4,4);
  });
 }
+
+/** A built wall, laid course by course from its foot. Every stone's length and
+ * tone comes from the wall's own seed and its course number, so no course
+ * repeats another and no panel repeats the next. A course starts and stops at
+ * the panel's edges with a cut stone: the panel is one stretch of wall between
+ * a floor and the next, a corner and the next, or an opening and the next.
+ * Panels are painted once into their own canvas; nothing is tiled. */
+export interface Work {course:number;short:number;long:number;mortar:string;stones:readonly string[];lip:string;shade:string;chip:string}
+export function lay(c:C,w:number,h:number,k:Work,seed:number){
+ box(c,k.mortar,0,0,w,h);
+ for(let r=0;r*k.course<h;r++){
+  const y=h-(r+1)*k.course;let x=-Math.floor(hash(r,seed,11)*k.long);
+  for(let i=0;x<w;i++){
+   const v=hash(i,r,seed),len=k.short+Math.floor(v*(k.long-k.short+1)),x0=Math.max(0,x),x1=Math.min(w,x+len);
+   if(x1-x0>=3){
+    const tone=k.stones[Math.floor(hash(i,r,seed+9)*k.stones.length)],top=Math.max(0,y+1),bottom=y+k.course-1;
+    box(c,tone,x0+1,top,x1-x0-1,bottom-top);
+    if(y+1>=0)box(c,k.lip,x0+1,y+1,x1-x0-2,1);
+    box(c,k.shade,x0+1,bottom-1,x1-x0-1,1);
+    // Weathering belongs to single stones: a spalled corner, a darker face, a hairline.
+    if(v>.86&&x1-x0>8)box(c,k.chip,x0+3+Math.floor(hash(i,r,seed+3)*(x1-x0-7)),bottom-3,3,1);
+    else if(v<.07)box(c,k.shade,x0+2,top+2,x1-x0-4,bottom-top-4);
+    else if(v>.8&&v<.83&&bottom-top>6)box(c,k.mortar,x0+Math.floor((x1-x0)/2),top+1,1,bottom-top-2);
+   }
+   x+=len;
+  }
+ }
+}
+/** A wall panel painted once at its own size; `extra` adds what is built into it. */
+export function panel(key:string,w:number,h:number,k:Work,seed:number,extra?:(c:C)=>void){
+ return sprite(`panel/${key}/${w}/${h}`,Math.max(1,Math.round(w)),Math.max(1,Math.round(h)),c=>{lay(c,Math.round(w),Math.round(h),k,seed);extra?.(c);});
+}

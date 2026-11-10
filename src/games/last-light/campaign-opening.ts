@@ -26,10 +26,14 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
  // well under the bells to Ivo's landing, and the gallery door is above.
  {
   setting:'tower',goal:'rescue',
-  route:'24,1400,240,s;120,1340,56,g;40,1280,56,g;184,1224,80,s;384,1224,160,s;472,1164,56,g;552,1104,56,g;384,1048,80,s;24,1048,240,s;96,988,80,g;24,928,64,g;168,872,96,s;456,872,168,s;512,812,56,g;568,752,56,g;384,696,96,s;24,696,240,s;120,636,56,g;40,576,56,g;184,520,80,s;300,488,48,g;400,456,48,g;496,424,128,s;400,364,56,g;464,304,160,s',
-  branches:'384,1400,240,s;480,1340,56,g;568,1280,56,g;104,812,56,g;400,244,56,g',memories:[2,3,4],
+  // Past Ivo the belfry goes on up: the bell loft where the stair used to
+  // end, a raking stair over the bells to the west loft, and a walkway hung
+  // from the wall plate across the top of the well to the gallery door. A
+  // miss over the well up there falls the whole height of the tower.
+  route:'24,1400,240,s;120,1340,56,g;40,1280,56,g;184,1224,80,s;384,1224,160,s;472,1164,56,g;552,1104,56,g;384,1048,80,s;24,1048,240,s;96,988,80,g;24,928,64,g;168,872,96,s;456,872,168,s;512,812,56,g;568,752,56,g;384,696,96,s;24,696,240,s;120,636,56,g;40,576,56,g;184,520,80,s;300,488,48,g;400,456,48,g;496,424,128,s;400,364,56,g;464,304,160,s;352,248,56,g;216,200,64,g;24,176,128,s;120,124,48,g;232,136,56,g;384,100,48,g;496,112,128,s',
+  branches:'384,1400,240,s;480,1340,56,g;568,1280,56,g;104,812,56,g;568,248,56,g',memories:[2,3,4],
   stations:[[22,"Ivo"]],
-  checkpoints:[4,8,11,16,22],sectors:[[0,"Bell stair"],[4,"The ringing floor"],[8,"The clock room"],[12,"Under the bells"],[22,"Ivo’s landing"]],
+  checkpoints:[4,8,11,16,22,27],sectors:[[0,"Bell stair"],[4,"The ringing floor"],[8,"The clock room"],[12,"Under the bells"],[22,"Ivo’s landing"],[24,"The bell loft"],[27,"Under the spire"]],
   hazards:[],water:1500,
  },
  // 03 · The Last Ferry

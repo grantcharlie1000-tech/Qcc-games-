@@ -1,7 +1,7 @@
 import type {Level,Platform} from './levels';
 import type {Run} from './model';
 import {lantern} from './props';
-import {box,fill,hash,masonry,seamless,sprite,stroke,visible,wall,type C} from './quarter-kit';
+import {box,hash,lay,panel,sprite,stroke,visible,type C,type Work} from './quarter-kit';
 import type {QuarterSet} from './quarter-sets';
 
 /** Level 2 · the inside of the Quarter's bell tower, seen in section.
@@ -13,35 +13,47 @@ import type {QuarterSet} from './quarter-sets';
 const L=24,R=624,OUT=664,WELL0=264,WELL1=384,GROUND=1400,PIT=1500;
 /** The far wall is built in three kinds of work: big ashlar at the foot, coursed
  * stone above it and at the belfry, and brick for the storeys between. The
- * side walls are seen end-on in the corners, and the well is lined in brick. */
-const bigTile=()=>masonry('belltower/big',192,96,48,24,{mortar:'#131a22',stones:['#1b242e','#1d2731','#202a35'],lip:'#27323e',chip:'#2b3643'});
-const backTile=()=>masonry('belltower/back',128,64,32,16,{mortar:'#19212b',stones:['#1d2631','#1f2934','#222c37'],lip:'#27323e',chip:'#2b3643'});
-const brickTile=()=>masonry('belltower/brick',64,32,16,8,{mortar:'#15181f',stones:['#221e25','#252027','#28222a'],lip:'#2f282e',chip:'#342c32'});
-const bayTile=()=>masonry('belltower/bay',64,32,16,8,{mortar:'#101319',stones:['#1a181e','#1c1a20','#1f1c22'],lip:'#242026',chip:'#28242a'});
-const sideTile=()=>masonry('belltower/side',32,32,8,16,{mortar:'#0d1218',stones:['#151b24','#161d26','#181f29'],lip:'#1c2430',chip:'#1f2733'});
-const chaseTile=()=>masonry('belltower/chase',64,32,16,8,{mortar:'#0e1015',stones:['#141318','#151419','#16151b'],lip:'#19181e',chip:'#1c1a20'});
-const cutTile=()=>masonry('belltower/cut',48,32,24,16,{mortar:'#222a33',stones:['#39444f','#3e4954','#434e59'],lip:'#56626d',chip:'#606c77'});
-const footTile=()=>masonry('belltower/foot',64,32,32,16,{mortar:'#0f141a',stones:['#171d25','#191f28','#1b222b'],lip:'#1f2731',chip:'#222b36'});
-const RETURN=26,CHASE0=273,CHASE1=377,PLATE=150;
-/** The well's quoins: dressed stones, long and short by turns, toothed into the wall either side. The lining's edges stand on multiples of the strip's 13 px. */
-const quoin=(right:number)=>seamless(`belltower/quoin/${right}`,13,32,rect=>{
- // Whatever a quoin does not cover stays clear: it is the wall the quoin is toothed into.
- for(let k=0;k<2;k++){const wide=k?13:8,x=right?0:13-wide;rect('#27313c',x,k*16+1,wide,14);rect('#333e4a',x,k*16+1,wide,1);}
-});
-const quoinLeft=()=>quoin(0),quoinRight=()=>quoin(1);
-/** Looking up into the spire: rafters leaning in to the king post, tied by collars, under the roof boards. */
-const spire=()=>sprite('belltower/spire',R-L,260,c=>{
- for(let y=4;y<260;y+=9)box(c,'#0e1218',0,y,R-L,1);
- for(let x=14;x<R-L;x+=52){const lean=(300-x)*.5;stroke(c,'#17110d',x,259,x+lean,0,5);stroke(c,'#33261d',x+1,259,x+lean+1,0,1);}
- for(const y of [178,92]){box(c,'#17110d',0,y,R-L,8);box(c,'#3d2e22',0,y,R-L,1);box(c,'#2b2018',0,y+1,R-L,2);}
- box(c,'#17110d',296,0,9,260);box(c,'#3d2e22',296,0,2,260);
+ * side walls are seen end-on in the corners and cut through at the edges of
+ * the section, and the well is lined in brick. Every stretch of wall is laid
+ * course by course between the floors, corners and openings that bound it. */
+const BIG:Work={course:24,short:34,long:66,mortar:'#131a22',stones:['#1b242e','#1d2731','#202a35','#1a232d'],lip:'#27323e',shade:'#161d26',chip:'#2b3643'};
+const COURSED:Work={course:16,short:22,long:46,mortar:'#19212b',stones:['#1d2631','#1f2934','#222c37','#1c2530'],lip:'#27323e',shade:'#18202a',chip:'#2b3643'};
+const BRICK:Work={course:8,short:12,long:18,mortar:'#15181f',stones:['#221e25','#252027','#28222a','#201c23'],lip:'#2f282e',shade:'#1c181e',chip:'#342c32'};
+const BAY:Work={course:8,short:12,long:18,mortar:'#101319',stones:['#1a181e','#1c1a20','#1f1c22'],lip:'#242026',shade:'#161419',chip:'#28242a'};
+const SIDE:Work={course:16,short:5,long:11,mortar:'#0d1218',stones:['#151b24','#161d26','#181f29'],lip:'#1c2430',shade:'#121820',chip:'#1f2733'};
+const CHASE:Work={course:8,short:12,long:18,mortar:'#0e1015',stones:['#141318','#151419','#16151b'],lip:'#19181e',shade:'#111015',chip:'#1c1a20'};
+/** Where the section cuts a wall: the rubble core between two dressed faces. */
+const CUT:Work={course:14,short:10,long:30,mortar:'#1d252e',stones:['#39444f','#3e4954','#434e59','#353f49'],lip:'#56626d',shade:'#2c353f',chip:'#606c77'};
+const FOOT:Work={course:16,short:26,long:52,mortar:'#0f141a',stones:['#171d25','#191f28','#1b222b'],lip:'#1f2731',shade:'#141a21',chip:'#222b36'};
+const RETURN=26,CHASE0=273,CHASE1=377,PLATE=24,PARAPET=PLATE-30,FOOTING=GROUND+28,DEEP=1640;
+/** The well's quoins: dressed stones, long and short by turns, toothed into the wall either side. */
+function quoins(c:C,x:number,from:number,to:number,right:boolean){
+ for(let y=from-((from%16)+16)%16,k=0;y<to;y+=16,k++){
+  const a=Math.max(from,y+1),b=Math.min(to,y+15);if(b<=a)continue;
+  const wide=(y/16&1)?13:8,v=hash(y,x,41),at=right?x:x+13-wide;
+  box(c,v>.5?'#27313c':'#29333e',at,a,wide,b-a);if(a===y+1)box(c,'#333e4a',at,a,wide,1);box(c,'#1b232c',at,b-1,wide,1);
+ }
+}
+/** The spire in section: its two slopes, slated outside and raftered within, rising off the wall plate to the king post. */
+const APEX=PLATE-640;
+const spire=()=>sprite('belltower/spire',R-L+40,PLATE-APEX,c=>{
+ const mid=(R-L)/2+20,h=PLATE-APEX;
+ for(let y=0;y<h;y++){
+  const half=Math.round((R-L)/2*y/h)+6;
+  box(c,'#1a2330',mid-half-8,y,8,1);box(c,'#3a4a5e',mid-half-8,y,1,1);box(c,'#1a2330',mid+half,y,8,1);box(c,'#2c394a',mid+half+7,y,1,1);
+  if(half>8){box(c,'#0a0d12',mid-half,y,half*2,1);box(c,'#17110d',mid-half,y,6,1);box(c,'#33261d',mid-half+5,y,1,1);box(c,'#17110d',mid+half-6,y,6,1);}
+  if(y%9===4&&half>16)box(c,'#0e1218',mid-half+6,y,half*2-12,1);
+ }
+ // Collars tie the rafters at two heights; the king post hangs from the apex.
+ for(const y of [h-70,h-170,h-300]){const half=Math.round((R-L)/2*y/h)+6;box(c,'#17110d',mid-half+4,y,half*2-8,8);box(c,'#3d2e22',mid-half+4,y,half*2-8,1);box(c,'#2b2018',mid-half+4,y+1,half*2-8,2);}
+ box(c,'#17110d',mid-4,40,9,h-40);box(c,'#3d2e22',mid-4,40,2,h-40);
 });
 /** A blind bay: a shallow arched recess in the far wall, its back in thinner brick. */
 const bay=(w:number,h:number)=>sprite(`belltower/bay/${w}/${h}`,w,h,c=>{
+ lay(c,w,h,BAY,w*7+h);
  for(let x=0;x<w;x+=2){
   const k=(x+1)/w*2-1,top=14-Math.round(14*(1-k*k));
-  c.fillStyle=fill(c,'belltower/bay',bayTile);c.fillRect(x,top+3,2,h-top-3);
-  box(c,'#2c3743',x,top,2,3);box(c,'#3a4653',x,top,2,1);box(c,'#080b10',x,top+3,2,3);
+  c.clearRect(x,0,2,top);box(c,'#2c3743',x,top,2,3);box(c,'#3a4653',x,top,2,1);box(c,'#080b10',x,top+3,2,3);
  }
  for(let x=4;x<w-4;x+=13){const k=(x+1)/w*2-1,top=14-Math.round(14*(1-k*k));box(c,'#19212b',x,top,1,3);}
  box(c,'#080b10',0,14,4,h-14);box(c,'#0c1016',4,17,2,h-17);box(c,'#28323d',w-1,14,1,h-14);
@@ -49,11 +61,13 @@ const bay=(w:number,h:number)=>sprite(`belltower/bay/${w}/${h}`,w,h,c=>{
 });
 /** The storeys of the tower: the floor over each, the floor under it, and what the far wall is built of. */
 const STOREYS:readonly (readonly [number,number,number])[]=[[-400,520,1],[520,696,2],[696,872,2],[872,1048,2],[1048,1224,1],[1224,1400,0]];
-const WORK=[['belltower/big',bigTile],['belltower/back',backTile],['belltower/brick',brickTile]] as const;
+const WORK=[BIG,COURSED,BRICK] as const;
 const SKY='#31425d',SKY_LIT='#42587a';
 /** Each flight is one string board from a floor to the wall it lands on. */
 const FLIGHTS:readonly (readonly [number,number,number,number])[]=[
  [228,1400,26,1249],[429,1400,622,1269],[428,1224,622,1079],[208,1048,26,912],[490,872,622,731],[228,696,26,545],
+ // Over the bells: from the bell loft up to the west loft, with two treads left.
+ [466,304,152,180],
 ];
 const SLITS:readonly (readonly [number,number])[]=[[212,1262],[440,1098],[206,920],[474,740],[216,572],[544,560],[496,228]];
 const ROPES=[300,314,328,342],FLOORS=[1224,1048,872,696,520];
@@ -111,36 +125,89 @@ function flight(c:C,x0:number,y0:number,x1:number,y1:number,l:Level){
   if(d%30===12)box(c,'#1c1510',x,y-30,2,21);
  }
 }
+/** Where a storey's far wall starts: the course over its floor, or the wall plate in the belfry. */
+const storeyTop=(over:number)=>over<520?PLATE+9:over+12;
+/** The landings a side wall carries: each one's bearer runs into the wall. */
+const bearings=new WeakMap<Level,{left:Platform[];right:Platform[]}>();
+function bearing(l:Level){
+ let made=bearings.get(l);
+ if(!made){made={left:l.platforms.filter(p=>p.x<=L+1&&p.y<GROUND),right:l.platforms.filter(p=>p.x+p.w>=R-1&&p.y<GROUND)};bearings.set(l,made);}
+ return made;
+}
+/** Window openings cut through the side walls: [side, head, sill]. */
+const OPENINGS:readonly (readonly [0|1,number,number])[]=[[0,760,816],[0,1120,1176],[1,592,644],[1,936,992],[1,1180,1232]];
+/** One side wall where the section cuts it: laid between the floors it carries, stopped by its openings and its parapet. */
+function cutWall(c:C,l:Level,side:0|1,top:number,bottom:number){
+ const x0=side?R:0,wide=side?OUT-R:L,face=side?R:L,carried=side?bearing(l).right:bearing(l).left;
+ const lines=[...new Set([PARAPET,...carried.filter(p=>p.kind!=='grate').map(p=>p.y+14),FOOTING])].sort((a,b)=>a-b);
+ for(let i=0;i<lines.length-1;i++){
+  const a=lines[i],b=lines[i+1];if(b<top||a>bottom)continue;
+  c.drawImage(panel(`belltower/cut/${side}/${a}`,wide,b-a,CUT,side*977+a),x0,a);
+ }
+ // The two faces of the wall: the room side catches the lantern, the outer side is weathered dark.
+ box(c,'#66727d',side?R:L-1,Math.max(top,PARAPET),1,Math.min(bottom,FOOTING)-Math.max(top,PARAPET));
+ box(c,'#0b0f14',side?R-2:L,Math.max(top,PLATE),2,Math.min(bottom,FOOTING)-Math.max(top,PLATE));
+ if(side)box(c,'#1a2028',OUT-2,Math.max(top,PARAPET),2,Math.min(bottom,FOOTING)-Math.max(top,PARAPET));
+ // The parapet: the wall stops under a coping stone that throws water clear of both faces.
+ if(PARAPET-6<bottom&&PARAPET>top-6){box(c,'#2c3743',x0-3,PARAPET-5,wide+6,6);box(c,'#56626d',x0-3,PARAPET-5,wide+6,1);box(c,'#141b23',x0-3,PARAPET+1,wide+6,1);for(const x of [x0-3,x0+wide+1])box(c,'#141b23',x,PARAPET+1,2,2);}
+ for(const [s,head,sill] of OPENINGS){
+  if(s!==side||sill+8<top||head-8>bottom)continue;
+  // Through the wall to the night: a lintel the courses stop under, a sloped sill they stop on.
+  // Below the neighbour's eaves the right-hand openings look onto its gable wall, not the sky.
+  const beyond=side&&head>1050;box(c,beyond?'#1a222e':'#31425d',x0,head,wide,sill-head);box(c,beyond?'#263345':'#42587a',side?x0+wide-6:x0,head,6,sill-head);box(c,'#141c2c',side?x0:x0+wide-3,head,3,sill-head);
+  if(beyond)box(c,'#b07d40',x0+wide-14,head+14,6,10);
+  box(c,'#1d252e',x0-1,head-7,wide+2,7);box(c,'#4c5864',x0,head-6,wide,5);box(c,'#6b7782',x0,head-6,wide,1);box(c,'#2c353f',x0,head-2,wide,1);
+  box(c,'#1d252e',x0-1,sill,wide+2,6);box(c,'#4c5864',x0,sill,wide,4);box(c,'#7a8690',x0,sill,wide,1);box(c,'#2c353f',x0,sill+4,wide,1);
+  box(c,side?'#7a8690':'#7a8690',side?x0+wide:x0-2,sill+1,2,2);
+ }
+ for(const p of carried){
+  if(p.y+40<top||p.y>bottom)continue;
+  if(p.kind==='grate'){
+   // A tread or shelf on an iron bracket leaded into the wall.
+   const bx=side?face-1:face-8;box(c,'#10161d',bx,p.y+3,9,5);box(c,'#262d33',side?face-6:face,p.y+10,6,2);stroke(c,'#262d33',side?face-1:face,p.y+20,side?face-10:face+9,p.y+11,2);
+   continue;
+  }
+  // The floor's bearer runs into the wall on a stone corbel, in a pocket the courses stop round.
+  const into=side?face:face-12;
+  box(c,'#0b0f14',into-1,p.y+6,14,20);box(c,'#3d2e22',into,p.y+8,12,16);box(c,'#57432f',into,p.y+8,12,1);
+  for(let k=0;k<3;k++)box(c,'#2b2018',into+2+k*3,p.y+12+k*3,6-k*2,1);
+  box(c,'#1d252e',side?face-6:face-12,p.y+27,18,8);box(c,'#4c5864',side?face-5:face-11,p.y+28,16,6);box(c,'#6b7782',side?face-5:face-11,p.y+28,16,1);box(c,'#2c353f',side?face-5:face-11,p.y+33,16,1);
+ }
+}
 function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
- const top=cy-24,bottom=cy+vh+24,height=bottom-top;
+ const top=cy-24,bottom=cy+vh+24;
  for(const [over,under,work] of STOREYS){
-  // Each storey of the far wall in its own masonry, with a blind bay either side of the well.
-  const from=Math.max(top,over+12),to=Math.min(bottom,under+12);if(to<=from)continue;
-  wall(c,WORK[work][0],WORK[work][1],L,from,R-L,to-from);
+  // Each storey of the far wall in its own work, laid from its floor up to the floor over it, with a blind bay either side of the well.
+  const y0=storeyTop(over),y1=under+12;if(y1<=top||y0>=bottom)continue;
+  c.drawImage(panel(`belltower/storey/${under}`,R-L,y1-y0,WORK[work],under*3+work),L,y0);
   if(over<520)continue;
   const left=under===GROUND?96:70,y=over+44,high=under-26-y;
   if(y<bottom&&y+high>top){c.drawImage(bay(246-left,high),left,y);c.drawImage(bay(176,high),402,y);}
  }
  if(top<532){
-  // The belfry: stone piers between its openings, a corbelled wall plate, and over that the timbers of the spire.
-  for(const x of [150,430]){wall(c,'belltower/big',bigTile,x,PLATE,24,532-PLATE);box(c,'#2c3743',x,PLATE,1,532-PLATE);box(c,'#080b10',x+24,PLATE,3,532-PLATE);box(c,'#2c3743',x-3,500,30,8);box(c,'#3a4653',x-3,500,30,1);}
+  // The belfry: stone piers between its openings, a corbelled wall plate, and over that the spire.
+  for(const x of [150,430]){c.drawImage(panel(`belltower/pier/${x}`,24,532-PLATE,COURSED,x),x,PLATE);box(c,'#2c3743',x,PLATE,1,532-PLATE);box(c,'#080b10',x+24,PLATE,3,532-PLATE);box(c,'#2c3743',x-3,500,30,8);box(c,'#3a4653',x-3,500,30,1);}
   box(c,'#252f3b',L+RETURN,322,R-L-RETURN*2,6);box(c,'#2e3946',L+RETURN,322,R-L-RETURN*2,1);box(c,'#141b23',L+RETURN,328,R-L-RETURN*2,1);
   if(top<PLATE+20){
-   if(top<PLATE){box(c,'#0a0d12',L,top,R-L,PLATE-top);c.drawImage(spire(),L,PLATE-260);}
+   if(top<PLATE)c.drawImage(spire(),L-20,APEX);
    box(c,'#2c3743',L,PLATE,R-L,9);box(c,'#3a4653',L,PLATE,R-L,1);box(c,'#141b23',L,PLATE+9,R-L,1);
    for(let x=L+RETURN+8;x<R-RETURN-8;x+=30){box(c,'#2c3743',x,PLATE+10,10,5);box(c,'#232d38',x+2,PLATE+15,6,4);box(c,'#141b23',x,PLATE+15,2,1);}
   }
  }
  // The well's lining runs behind the ropes from the belfry floor to the pit, quoined in stone; the clock stands across it.
- for(const [from,to] of [[548,708],[884,bottom]] as const){
+ for(const [from,to] of [[548,708],[884,DEEP]] as const){
   const a=Math.max(top,from),b=Math.min(bottom,to);if(b<=a)continue;
-  wall(c,'belltower/chase',chaseTile,CHASE0,a,CHASE1-CHASE0,b-a);box(c,'#06080c',CHASE0,a,3,b-a);box(c,'#22272f',CHASE1-1,a,1,b-a);
-  wall(c,'belltower/quoin/0',quoinLeft,CHASE0-13,a,13,b-a);wall(c,'belltower/quoin/1',quoinRight,CHASE1,a,13,b-a);
+  c.drawImage(panel(`belltower/chase/${from}`,CHASE1-CHASE0,to-from,CHASE,from),CHASE0,from);box(c,'#06080c',CHASE0,a,3,b-a);box(c,'#22272f',CHASE1-1,a,1,b-a);
+  quoins(c,CHASE0-13,a,b,false);quoins(c,CHASE1,a,b,true);
   if(from>top-8&&from<bottom){box(c,'#2c3743',CHASE0-14,from-6,CHASE1-CHASE0+28,7);box(c,'#3a4653',CHASE0-14,from-6,CHASE1-CHASE0+28,1);box(c,'#06080c',CHASE0,from+1,CHASE1-CHASE0,3);}
  }
  // The side walls, end-on in the corners, and the shadow each floor throws on the wall under it.
- wall(c,'belltower/side',sideTile,L,top,RETURN,height);box(c,'#070a0e',L+RETURN,top,2,height);box(c,'#28323d',L+RETURN+2,top,1,height);
- wall(c,'belltower/side',sideTile,R-RETURN,top,RETURN,height);box(c,'#070a0e',R-RETURN-2,top,2,height);
+ // Each return stops under the wall plate and at every floor it carries, like the far wall between them.
+ for(const [over,under] of STOREYS){
+  const y0=storeyTop(over),y1=under+12;if(y1<=top||y0>=bottom)continue;
+  for(const side of [0,1]){c.drawImage(panel(`belltower/return/${side}/${under}`,RETURN,y1-y0,SIDE,under+side*31),side?R-RETURN:L,y0);}
+  box(c,'#070a0e',L+RETURN,y0,2,y1-y0);box(c,'#28323d',L+RETURN+2,y0,1,y1-y0);box(c,'#070a0e',R-RETURN-2,y0,2,y1-y0);
+ }
  for(const p of l.platforms)if(p.kind==='stone'&&p.y<GROUND&&visible(p.x,p.y,p.w,60,cx,cy,vw,vh)){box(c,'#05080c73',p.x,p.y+p.h,p.w,9);box(c,'#05080c3d',p.x,p.y+p.h+9,p.w,16);}
  for(const y of FLOORS)if(y+34>top&&y<bottom){
   // A stone course carries every floor; empty pockets show where joists were. Across the well a trimmer holds the rope guides.
@@ -196,17 +263,25 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
   box(c,'#7d7052',x+sway,sally+28,1,90);box(c,'#6d6248',x,sally+118,1,end-sally-118);box(c,'#6d6248',x-1,end,3,3);
   for(const y of FLOORS)if(y>346&&y+20>top&&y<bottom){box(c,'#0b0906',x-2,y+11,5,5);box(c,'#7d7052',x,y+8,1,10);box(c,'#59666b',x-2,y+10,1,6);box(c,'#59666b',x+2,y+10,1,6);}
  }
+ // Over the gallery and the west loft the walkway hangs from the wall plate on iron straps; the gallery floor and the loft run into the walls.
+ for(const p of l.platforms){
+  if(p.y>=PLATE+130||!visible(p.x,PLATE,p.w,p.y-PLATE+30,cx,cy,vw,vh))continue;
+  for(const x of p.kind==='grate'?[p.x+4,p.x+p.w-7]:p.x+p.w>=R-1?[p.x+10]:[p.x+p.w-14]){box(c,'#1a1f25',x,PLATE+9,3,p.y-PLATE-7);box(c,'#4a545b',x,PLATE+9,1,p.y-PLATE-7);box(c,'#1a1f25',x-1,p.y+(p.kind==='grate'?9:20),5,4);box(c,'#59666b',x-1,PLATE+10,5,2);}
+ }
+ for(const p of l.platforms)if(p.x<=L+1&&p.kind==='stone'&&p.y<PLATE+260&&visible(L,p.y,p.w,80,cx,cy,vw,vh)){
+  // The west loft's knee brace runs from a stone in the wall up under its outer end.
+  stroke(c,'#17110d',L+RETURN+2,p.y+72,p.x+p.w-18,p.y+27,4);stroke(c,'#57432f',L+RETURN+2,p.y+71,p.x+p.w-18,p.y+26,1);box(c,'#4c5864',L+RETURN,p.y+70,10,8);box(c,'#6b7782',L+RETURN,p.y+70,10,1);
+ }
  // Cut walls either side, built down into the ground the tower stands in.
- wall(c,'belltower/cut',cutTile,0,top,L,height);box(c,'#66727d',L-1,top,1,height);box(c,'#0b0f14',L,top,2,height);
- wall(c,'belltower/cut',cutTile,R,top,OUT-R,height);box(c,'#66727d',R,top,1,height);box(c,'#0b0f14',R-2,top,2,height);box(c,'#1a2028',OUT-2,top,2,height);
- if(bottom>GROUND+28){
-  wall(c,'belltower/foot',footTile,0,GROUND+28,WELL0,bottom-GROUND-28);wall(c,'belltower/foot',footTile,WELL1,GROUND+28,OUT-WELL1,bottom-GROUND-28);
+ cutWall(c,l,0,top,bottom);cutWall(c,l,1,top,bottom);
+ if(bottom>FOOTING){
+  c.drawImage(panel('belltower/foot/0',WELL0,DEEP-FOOTING,FOOT,3),0,FOOTING);c.drawImage(panel('belltower/foot/1',OUT-WELL1,DEEP-FOOTING,FOOT,5),WELL1,FOOTING);
   // The pit: the well's lining going on down into the ground, stained to the old flood line, with rungs and a drain.
-  wall(c,'belltower/chase',chaseTile,WELL0,GROUND,WELL1-WELL0,bottom-GROUND);box(c,'#05070a',WELL0,GROUND,WELL1-WELL0,6);box(c,'#05070a8c',WELL0,GROUND+6,WELL1-WELL0,10);
+  c.drawImage(panel('belltower/pit',WELL1-WELL0,DEEP-GROUND,CHASE,9),WELL0,GROUND);box(c,'#05070a',WELL0,GROUND,WELL1-WELL0,6);box(c,'#05070a8c',WELL0,GROUND+6,WELL1-WELL0,10);
   for(let x=WELL0+6;x<WELL1-6;x+=16)box(c,'#05080c80',x,PIT-30-(hash(x,3,5)*3|0)*4,16,bottom-PIT+42);
   box(c,'#05070a',330,PIT-34,34,bottom-PIT+34);box(c,'#05070a',334,PIT-40,26,6);for(let x=328;x<366;x+=6){const k=(x+3-347)/20,y=PIT-40-Math.round(6*Math.sqrt(Math.max(0,1-k*k)));box(c,'#27313c',x,y,6,5);box(c,'#333e4a',x,y,6,1);}
-  wall(c,'belltower/cut',cutTile,WELL0-6,GROUND+28,6,bottom-GROUND-28);wall(c,'belltower/cut',cutTile,WELL1,GROUND+28,6,bottom-GROUND-28);
-  box(c,'#0b0f14',WELL0,GROUND+28,2,bottom-GROUND-28);box(c,'#0b0f14',WELL1-2,GROUND+28,2,bottom-GROUND-28);
+  for(const x of [WELL0-6,WELL1]){c.drawImage(panel(`belltower/pitside/${x}`,6,DEEP-FOOTING,CUT,x),x,FOOTING);}
+  box(c,'#0b0f14',WELL0,FOOTING,2,bottom-FOOTING);box(c,'#0b0f14',WELL1-2,FOOTING,2,bottom-FOOTING);
   for(let y=GROUND+36;y<bottom;y+=12){box(c,'#0b0f14',WELL0+4,y+1,13,2);box(c,'#4a545b',WELL0+4,y,12,1);box(c,'#39424a',WELL0+15,y,1,3);}
  }
 }
@@ -265,8 +340,9 @@ function exit(c:C,l:Level,s:Run,t:number,front:boolean){
 export const bellTower:QuarterSet={
  sky(c,l,w,h,cx,cy,t){
   // Only a strip of night shows past the tower's outer wall; the tower itself covers the rest.
+  // Night behind everything: over the parapet and past the outer wall.
+  box(c,'#141c2c',0,0,w,h);box(c,'#1c2940',0,Math.round(h*.5),w,Math.round(h*.5));
   const x=OUT-cx;if(x>=w)return;
-  box(c,'#141c2c',x,0,w-x,h);box(c,'#1c2940',x,Math.round(h*.5),w-x,Math.round(h*.5));
   // The house next door reaches a third of the way up the tower: its gable wall, its eaves and a lit window on the stair.
   const roof=1050-cy;if(roof<h){box(c,'#1a222e',x,roof,w-x,h-roof);box(c,'#263345',x-3,roof-5,w-x+3,5);box(c,'#3b4c64',x-3,roof-5,w-x+3,1);box(c,'#111822',x,roof,w-x,2);
    for(let yy=roof+26;yy<h;yy+=58){box(c,'#0e151f',x+22,yy,12,18);box(c,yy%116<58?'#b07d40':'#1c2b3d',x+24,yy+2,8,14);box(c,'#0e151f',x+27,yy+2,1,14);box(c,'#2c3848',x+21,yy+18,14,1);}}
