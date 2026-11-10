@@ -4,9 +4,10 @@ import {MIDDLE_ROUTES} from './campaign-middle';
 import {FINAL_ROUTES} from './campaign-final';
 import type {CampaignRoute} from './campaign-types';
 import {ROUTE_01} from './route-01';
+import {ROUTE_02} from './route-02';
 
 /** Levels 1–10 are written as walked, one file each. */
-const QUARTER:Readonly<Record<number,CampaignRoute>>={0:ROUTE_01};
+const QUARTER:Readonly<Record<number,CampaignRoute>>={0:ROUTE_01,1:ROUTE_02};
 
 /** Forty authored journeys, in chapter order. Required actions, checkpoints
  * and encounter names refer only to the ordered main route. */
