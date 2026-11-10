@@ -4,7 +4,7 @@ import {platformAt} from './model';
 import {goalComposition} from './composition';
 import {departureOffset,departureVisibility} from './departure';
 import {ferry} from './props';
-import {box,hash,masonry,sprite,stroke,visible,wall,type C} from './quarter-kit';
+import {box,hash,masonry,panel,sprite,stroke,visible,wall,type C,type Work} from './quarter-kit';
 import {MID,MID_SCALE,drawRow,farRoof,headTowers,lotEdge,moon,nightSky,row,townHouse,windowColumns,windowLit,windowX,type Scale,type Tone} from './quarter-distance';
 import type {QuarterSet} from './quarter-sets';
 
@@ -15,8 +15,19 @@ import type {QuarterSet} from './quarter-sets';
  * granite quay built down into it, a cluster of mooring piles, a timber
  * staging, a moored lighter, a barge on its rope, a raft on a chain. */
 export const FAR=72;
-type Role='quay'|'piles'|'staging'|'boat'|'barge'|'stage'|'spar'|'bridge';
+type Role='quay'|'piles'|'staging'|'boat'|'barge'|'stage'|'spar'|'bridge'|'tower';
+/** Level 3 opens on the bell tower that level 2 climbed: it stands with its
+ * foot in the canal at the head of the quay. Everything before the first
+ * quay is on it, or (standing clear of it in the water) the dolphin at its foot. */
+const TX0=24,TX1=352,FOOT_X=400,TOP=4,GALLERY=96;
+const towerEnds=new WeakMap<Level,number>();
+function towerEnd(l:Level){
+ let x=towerEnds.get(l);
+ if(x===undefined){const quay=l.platforms.slice(0,l.mainCount).find(p=>p.kind!=='moving'&&l.water!-p.y>=44&&l.water!-p.y<60);x=quay?.x??0;towerEnds.set(l,x);}
+ return x;
+}
 function role(p:Platform,l:Level):Role{
+ if(p.x<towerEnd(l)&&!p.branch)return p.x+p.w<=FOOT_X?'tower':'piles';
  if(p.kind==='moving')return 'barge';
  if(p.kind==='grate')return 'spar';
  if(p.id===l.mainCount-1)return 'stage';
@@ -139,7 +150,7 @@ const MOON_PAN=.01,TOWER_PAN=.015,BEHIND_PAN=.02,BANK_PAN=.03;
 const waterPan=(y:number,far:number,near:number)=>{const k=Math.max(0,Math.min(1,(y-far)/(near-far)));return BANK_PAN+(1-BANK_PAN)*k*k*k;};
 function sky(c:C,l:Level,w:number,h:number,cx:number,cy:number,t:number,ending:boolean){
  const fy=Math.round(l.water!-FAR-cy);quayLine=fy-8;
- nightSky(c,w,h,ending,cx,t);moon(c,Math.round(w*.78-cx*MOON_PAN),Math.max(46,fy-178));
+ nightSky(c,w,h,ending,cx,t);moon(c,Math.round(w*.78-cx*MOON_PAN),Math.max(46,Math.min(Math.round(h*.24),fy-178)));
  c.drawImage(headTowers(),Math.round(w*.28-cx*TOWER_PAN),fy-232);
  drawRow(c,behindRow,w,cx*BEHIND_PAN,behindBase,quayLine);
  drawRow(c,bankRow,w,cx*BANK_PAN,bankBase,quayLine+QUAY);
@@ -235,8 +246,97 @@ function bridge(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
  const sp=span(l);if(!sp||!visible(sp.x0-8,sp.top-2,sp.x1-sp.x0+16,l.water!+44-sp.top,cx,cy,vw,vh))return;
  c.drawImage(footbridge(l,sp),sp.x0-8,sp.top-2);
 }
+/** The tower's face is weathered stone, laid stage by stage between its string courses. */
+const FACE:Work={course:16,short:22,long:54,mortar:'#19212a',stones:['#29333f','#2c3642','#2f3946','#27313c'],lip:'#3a4654',shade:'#212a34',chip:'#46525f'};
+const FOOTING:Work={course:20,short:28,long:60,mortar:'#141c24',stones:['#2b3641','#2f3a45','#333e49'],lip:'#414d59',shade:'#232d37',chip:'#4b5763'};
+const STAGES=[[TOP,300],[300,560],[560,0]] as const;
+function louvreOut(c:C,x:number,y:number,w:number,h:number){
+ // A belfry opening from outside: a pointed head on dressed jambs, slatted against the weather.
+ const mid=x+w/2;
+ for(let yy=0;yy<16;yy++){const half=Math.round(w/2*Math.sqrt(1-((16-yy)/16)**2));box(c,'#0d1116',mid-half-4,y+yy,half*2+8,1);box(c,'#3e4a57',mid-half-4,y+yy,4,1);box(c,'#3e4a57',mid+half,y+yy,4,1);}
+ box(c,'#0d1116',x,y+16,w,h-16);box(c,'#3e4a57',x-4,y+16,4,h-16);box(c,'#3e4a57',x+w,y+16,4,h-16);box(c,'#56636f',x-4,y+16,1,h-16);
+ for(let yy=y+12;yy<y+h-4;yy+=8){box(c,'#2a333d',x+1,yy,w-2,4);box(c,'#46525e',x+1,yy,w-2,1);}
+ box(c,'#46525f',x-7,y+h,w+14,5);box(c,'#6b7782',x-7,y+h,w+14,1);box(c,'#1a222b',x-7,y+h+5,w+14,1);
+}
+function dialOut(c:C,x:number,y:number,r:number){
+ // The clock you climbed past inside, from the street: a stone ring, a pale face, its hands stopped.
+ for(let yy=-r;yy<=r;yy++){const out=Math.floor(Math.sqrt(r*r-yy*yy)),face=Math.abs(yy)<=r-7?Math.floor(Math.sqrt((r-7)*(r-7)-yy*yy)):-1;box(c,'#46525f',x-out,y+yy,out*2,1);if(yy<-r+3)box(c,'#6b7782',x-out,y+yy,out*2,1);if(face>=0)box(c,yy<0?'#b9bfae':'#a5ab9a',x-face,y+yy,face*2,1);}
+ for(let i=0;i<12;i++){const a=i*Math.PI/6;box(c,'#2a2f33',Math.round(x+Math.cos(a)*(r-12))-1,Math.round(y+Math.sin(a)*(r-12))-1,i%3?2:3,i%3?2:3);}
+ stroke(c,'#1d2226',x,y,x-12,y-32,2);stroke(c,'#1d2226',x,y,x-26,y+5,3);box(c,'#1d2226',x-3,y-3,7,7);
+}
+const towerFace=new WeakMap<Level,HTMLCanvasElement>();
+function towerArt(l:Level){
+ let art=towerFace.get(l);if(art)return art;
+ const water=l.water!,foot=water+40,stair=l.platforms.slice(0,l.mainCount).filter(p=>role(p,l)==='tower');
+ art=sprite(`canal/tower/${l.id}`,FOOT_X+16,foot-TOP+8,c=>{
+  c.translate(0,-TOP);
+  for(const [a,b0] of STAGES){const b=b0||foot;c.drawImage(panel(`canal/tower/${a}`,TX1-TX0,b-a,FACE,a+17),TX0,a);}
+  // String courses where the stages meet; the courses above and below stop against them.
+  for(const y of [300,560]){box(c,'#1a222b',TX0-3,y-1,TX1-TX0+6,8);box(c,'#4c5864',TX0-3,y,TX1-TX0+6,5);box(c,'#6b7782',TX0-3,y,TX1-TX0+6,1);}
+  // The parapet over the gallery door, and its coping.
+  box(c,'#1a222b',TX0-4,TOP-2,TX1-TX0+8,8);box(c,'#56626e',TX0-4,TOP-2,TX1-TX0+8,5);box(c,'#7a8690',TX0-4,TOP-2,TX1-TX0+8,1);
+  // Quoins at both corners: long and short stones by turns, standing proud of the face.
+  for(let y=TOP+6,k=0;y<foot;y+=16,k++)for(const [x,dir] of [[TX0,1],[TX1,-1]] as const){const wide=k%2?18:10,at=dir>0?x:x-wide;box(c,'#36414c',at,y+1,wide,14);box(c,'#4a5662',at,y+1,wide,1);box(c,'#1c242d',at,y+15,wide,1);box(c,dir>0?'#4a5662':'#1c242d',dir>0?x:x-1,y+1,1,14);}
+  louvreOut(c,64,150,56,112);louvreOut(c,236,150,56,112);
+  dialOut(c,108,364,52);
+  // Slit windows light the stair inside, staggered as the stair is.
+  for(const [x,y] of [[290,460],[80,612],[300,700]] as const){box(c,'#0d1116',x,y,10,40);box(c,'#3e4a57',x-4,y-6,18,6);box(c,'#56636f',x-4,y-6,18,1);box(c,'#46525f',x-4,y+40,18,4);box(c,'#141c2c',x+2,y+2,6,36);}
+  // The water gate: the flooded pit you looked down into from the bell stair opens here onto the canal.
+  const gx=56,gw=96,gs=water-34;
+  for(let px=gx-10;px<gx+gw+10;px++){const k=(px+.5-gx-gw/2)/(gw/2+10),y=gs-Math.round((gw/2+10)*Math.sqrt(Math.max(0,1-k*k)));box(c,'#46525f',px,y,1,foot-y);box(c,'#5d6975',px,y,1,1);}
+  for(let px=gx;px<gx+gw;px++){const k=(px+.5-gx-gw/2)/(gw/2),y=gs-Math.round(gw/2*Math.sqrt(Math.max(0,1-k*k)));box(c,'#05080b',px,y,1,foot-y);}
+  for(let k=1;k<9;k++){const g=Math.PI*k/9;stroke(c,'#1a222b',gx+gw/2-Math.cos(g)*gw/2,gs-Math.sin(g)*gw/2,gx+gw/2-Math.cos(g)*(gw/2+9),gs-Math.sin(g)*(gw/2+9));}
+  for(let x=gx+6;x<gx+gw-4;x+=10){box(c,'#1c2228',x,gs-30,3,foot-gs+30);box(c,'#3a444b',x,gs-30,1,foot-gs+30);}
+  // The cutwater: a buttress foot standing out of the canal at the corner, wet to the tide line.
+  const pier=stair.find(p=>p.x+p.w>TX1);
+  if(pier){c.drawImage(panel('canal/tower/cutwater',pier.x+pier.w-pier.x,foot-pier.y-8,FOOTING,pier.x),pier.x,pier.y+8);box(c,'#10171e',pier.x+pier.w-2,pier.y+8,2,foot-pier.y-8);box(c,'#10171e',pier.x,pier.y+8,2,foot-pier.y-8);weed(c,pier.x,pier.w,water,7);}
+  weed(c,TX0,TX1-TX0,water,3);
+  // The gallery walk runs the whole top of the face on a corbel table; its rail stands at the walk's edge.
+  const gallery=stair[0];
+  for(let x=TX0+4;x<TX1-8;x+=20){box(c,'#1a222b',x,GALLERY+26,12,14);box(c,'#4c5864',x+1,GALLERY+27,10,10);box(c,'#6b7782',x+1,GALLERY+27,10,1);box(c,'#3a4652',x+3,GALLERY+37,6,4);}
+  box(c,'#3a4652',TX0,GALLERY+20,TX1-TX0,6);box(c,'#56626e',TX0,GALLERY+20,TX1-TX0,1);
+  const railEnd=gallery.x+gallery.w-4;
+  for(let x=TX0+6;x<railEnd;x+=22){box(c,'#141b21',x,GALLERY-22,3,22);box(c,'#3d4a51',x,GALLERY-22,1,22);}
+  box(c,'#141b21',railEnd-3,GALLERY-22,3,22);
+  box(c,'#141b21',TX0+4,GALLERY-24,railEnd-TX0-4,3);box(c,'#4a585f',TX0+4,GALLERY-24,railEnd-TX0-4,1);box(c,'#141b21',TX0+4,GALLERY-12,railEnd-TX0-4,2);
+  // The gallery door: the same door, from the gallery side. Its leaf stands open into the belfry.
+  const dx=44,dy=GALLERY;
+  box(c,'#1a222b',dx-4,dy-78,64,78);box(c,'#4c5864',dx-2,dy-74,10,74);box(c,'#4c5864',dx+46,dy-74,10,74);box(c,'#4c5864',dx+2,dy-80,52,8);box(c,'#4c5864',dx+10,dy-86,36,6);
+  box(c,'#6b7782',dx-2,dy-74,1,74);box(c,'#6b7782',dx+10,dy-86,36,1);box(c,'#6b7782',dx+2,dy-80,8,1);box(c,'#6b7782',dx+46,dy-80,8,1);
+  for(let y=dy-62;y<dy;y+=13){box(c,'#2c353f',dx-2,y,10,1);box(c,'#2c353f',dx+46,y,10,1);}
+  box(c,'#0b0f14',dx+8,dy-72,38,72);box(c,'#0b0f14',dx+12,dy-77,30,6);box(c,'#3a2a1c',dx+10,dy-70,34,70);box(c,'#c98f4b55',dx+14,dy-66,26,66);box(c,'#f0c47a33',dx+20,dy-60,14,60);
+  box(c,'#4a3423',dx+38,dy-70,8,70);box(c,'#6b4a2e',dx+39,dy-69,6,69);box(c,'#262d33',dx+38,dy-54,8,2);box(c,'#262d33',dx+38,dy-18,8,2);
+  box(c,'#56626d',dx-4,dy-3,64,3);box(c,'#78848e',dx-4,dy-3,64,1);
+  // The iron stair: a string bolted to the face from each landing to the next, most treads gone.
+  for(let i=0;i<stair.length-1;i++){
+   const a=stair[i],b=stair[i+1];if(b.x+b.w>TX1||b.y-a.y>72)continue;
+   const right=b.x>a.x,x0=right?a.x+a.w-4:a.x+4,x1=right?b.x+4:b.x+b.w-4,y0=a.y+(a.kind==='grate'?8:10),y1=b.y+8,broken=Math.abs(x1-x0)>60;
+   const run=Math.abs(x1-x0),dir=Math.sign(x1-x0);
+   for(let k=0;k<=run;k++){if(broken&&k>run*.34&&k<run*.7)continue;const x=x0+dir*k,y=Math.round(y0+(y1-y0)*k/run);box(c,'#141b21',x,y,1,4);box(c,'#4a585f',x,y,1,1);if(k%14===7&&!broken)box(c,'#262d33',x-3,y-1,7,2);}
+   if(!broken)for(let k=0;k<=run;k++){const x=x0+dir*k,y=Math.round(y0+(y1-y0)*k/run)-20;box(c,'#262d33',x,y,1,1);if(k%28===0)box(c,'#141b21',x,y,1,20);}
+   // A bracket leaded into the face carries each end.
+   for(const [x,y] of [[x0,y0],[x1,y1]] as const){stroke(c,'#141b21',x,y+3,x+(right?1:-1)*(x===x0?-10:10),y+18,2);box(c,'#59666b',x-1,y+17,3,3);}
+  }
+  for(const p of stair){
+   if(p.kind==='grate'){for(const x of [p.x+6,p.x+p.w-8]){stroke(c,'#141b21',x,p.y+12,x+(x<p.x+p.w/2?8:-8),p.y+30,2);box(c,'#141b21',x-1,p.y+12,3,20);box(c,'#59666b',x-1,p.y+30,3,3);}}
+   else if(p!==gallery&&p!==pier)for(let x=p.x+6;x<p.x+p.w-10;x+=26){box(c,'#1a222b',x,p.y+26,14,14);box(c,'#4c5864',x+1,p.y+27,12,6);box(c,'#3a4652',x+3,p.y+33,8,5);box(c,'#6b7782',x+1,p.y+27,12,1);}
+  }
+ });
+ towerFace.set(l,art);return art;
+}
+/** The spire over the parapet, slated, its two slopes running up out of sight. */
+function spireOut(c:C,cx:number,cy:number,vw:number,vh:number){
+ const base=TOP-2,apex=base-620,mid=(TX0+TX1)/2,half0=(TX1-TX0)/2-14;
+ const from=Math.max(apex,cy-24),to=Math.min(base,cy+vh+24);
+ for(let y=from;y<to;y++){
+  const half=Math.round(half0*(y-apex)/(base-apex));if(half<1)continue;
+  box(c,(y>>2)%2?'#202a37':'#1d2633',mid-half,y,half*2,1);box(c,'#3a4a5e',mid-half,y,2,1);box(c,'#111821',mid+half-2,y,2,1);
+  if(y%6===0)for(let x=mid-half+3+(y%12?5:0);x<mid+half-4;x+=10)box(c,'#161e29',x,y,1,6);
+ }
+}
 function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock:number){
  const water=l.water!;bridge(c,l,cx,cy,vw,vh);
+ if(towerEnd(l)>0&&cx<FOOT_X+40){spireOut(c,cx,cy,vw,vh);if(visible(0,TOP,FOOT_X+16,water+40-TOP,cx,cy,vw,vh))c.drawImage(towerArt(l),0,TOP);}
  for(const p of l.platforms){
   const kind=role(p,l),top=p.y+p.h;
   if(kind==='barge'){
@@ -246,7 +346,7 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
    for(let x=a+10;x<b;x+=6)box(c,(x/6|0)%2?'#59666b':'#2c353b',x,p.y-12+Math.round(Math.sin((x-a)/(b-a)*Math.PI)*5),4,2);
    continue;
   }
-  if(!visible(p.x-8,p.y-70,p.w+16,water+60-p.y+70,cx,cy,vw,vh))continue;
+  if(kind==='tower'||!visible(p.x-8,p.y-70,p.w+16,water+60-p.y+70,cx,cy,vw,vh))continue;
   if(kind==='quay'){
    wall(c,'canal/quay',quayTile,p.x,p.y+8,p.w,water+40-p.y-8);
    box(c,'#0f161d',p.x,p.y+8,2,water+40-p.y);box(c,'#0f161d',p.x+p.w-2,p.y+8,2,water+40-p.y);box(c,'#0b11178c',p.x,p.y+10,p.w,4);
@@ -292,6 +392,8 @@ function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,s?:R
  ripples(c,cx-24,cx+vw+24,top,bottom,far,t);
  for(let x=Math.floor((cx-24)/22)*22;x<cx+vw+24;x+=22){const wave=Math.round(Math.sin(t*1.7+x*.21));box(c,'#5a8a94',x+3,top+wave,11,1);}
  for(const p of l.platforms){const kind=role(p,l);if(p.x+p.w<cx-24||p.x>cx+vw+24)continue;if(kind==='quay'||kind==='stage')shadowOnWater(c,p.x,p.w,top,t);}
+ // The tower stands in the canal and lies on it, dark, with its water gate a deeper dark.
+ if(towerEnd(l)>0&&cx<FOOT_X+24){shadowOnWater(c,TX0,TX1-TX0,top,t);shadowOnWater(c,TX1,FOOT_X-TX1,top,t);}
  // The footbridge lies on the water pier by pier; under its arches the canal is open.
  const sp=span(l);if(sp&&sp.x1>cx-24&&sp.x0<cx+vw+24)for(const [a,b] of sp.solid)shadowOnWater(c,a-3,b-a+6,top,t);
  moonPath(c,cx+Math.round(vw*.78-cx*MOON_PAN),top,bottom,far,t);
@@ -326,6 +428,18 @@ function deck(c:C,p:Platform,l:Level){
   for(let x=11;x<w-3;x+=12)box(c,'#3d2e22',x,2,1,6);
   box(c,'#33261d',0,8,w,5);box(c,'#4a3828',0,8,w,1);
   if(kind==='stage')for(let x=6;x<w-28;x+=40){box(c,'#17110d',x,13,28,15);box(c,'#3f3227',x+1,13,26,13);box(c,'#59666b',x+5,13,2,13);box(c,'#59666b',x+21,13,2,13);}
+  return;
+ }
+ if(kind==='tower'){
+  if(p.kind==='grate'){
+   // An iron landing of the outside stair: chequer plate on an angle frame.
+   box(c,'#0f1418',-1,0,w+2,12);box(c,'#3d4a51',0,0,w,9);box(c,'#7d8a8f',0,0,w,2);box(c,'#59666b',0,2,w,1);
+   for(let x=3+(p.id%2)*3;x<w-2;x+=6)box(c,'#2c353b',x,4,2,2);
+   box(c,'#1c2228',0,9,w,3);return;
+  }
+  // A dressed stone walk: the gallery, the clock hood, the landing over the water gate, the cutwater's top.
+  box(c,'#1a2129',-2,0,w+4,12);box(c,'#6d777e',-2,0,w+4,9);box(c,'#9aa3a5',-2,0,w+4,2);box(c,'#4d575e',-2,9,w+4,2);
+  for(let x=30+p.id%3*7;x<w-8;x+=44)box(c,'#4d575e',x,2,1,7);
   return;
  }
  if(kind==='spar'){box(c,'#17110d',-1,0,w+2,12);box(c,'#6b523a',0,0,w,8);box(c,'#b2946d',0,0,w,2);box(c,'#33261d',0,8,w,3);return;}

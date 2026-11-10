@@ -37,6 +37,12 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   hazards:[],water:1500,
  },
  // 03 · The Last Ferry
+ // It starts where level 2 ended: on the gallery outside the bell tower's
+ // door, at the top. The tower stands with its foot in the canal, and its
+ // outside stair is iron flights bolted to the face, most treads gone, with
+ // landings on the clock hood and over the boat door. Off the stair's foot a
+ // bracket, the cutwater and a dolphin of piles cross open water to the
+ // stone quay; a miss there drowns. Then the canal, as it was:
  // One canal, travelled along its near quay. Everything stood on is a quay
  // built down into the water, a cluster of mooring piles, a timber staging
  // or a boat; the water under all of it is lethal. A barge tied off the
@@ -48,11 +54,11 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
  // canal comes down, 56 px a landing, to the ferry stage at the waterline.
  {
   setting:'canal',goal:'ferry',
-  route:'24,512,300,s;356,538,112,m,20,.9;500,512,240,s;808,528,56,s;932,524,56,s;1068,538,100,m,28,1;1260,512,260,s;1580,528,120,s;1896,538,120,s;2080,528,56,s;2204,512,220,s;2496,538,100,m,20,1.1;2800,538,110,m,16,1.3;2992,528,96,s;3152,512,200,s;3424,528,56,s;3548,524,56,s;3700,538,120,m,48,.8;3948,528,56,s;4088,538,96,m,36,1.4;4340,528,96,s;4500,524,48,s;4720,538,120,s;4904,512,200,s;5104,448,72,s;5176,384,160,s;5336,440,72,s;5408,496,72,s;5496,552,180,s',
-  branches:'752,540,48,s;2024,540,48,s;3628,468,44,g',memories:[0,1,2],
+  route:'24,96,256,s;304,152,48,g;192,212,64,g;56,268,104,s;200,332,48,g;304,392,48,g;200,452,56,g;24,508,128,s;216,572,48,g;280,652,120,s;472,700,56,s;600,744,300,s;932,770,112,m,20,.9;1076,744,240,s;1384,760,56,s;1508,756,56,s;1644,770,100,m,28,1;1836,744,260,s;2156,760,120,s;2472,770,120,s;2656,760,56,s;2780,744,220,s;3072,770,100,m,20,1.1;3376,770,110,m,16,1.3;3568,760,96,s;3728,744,200,s;4000,760,56,s;4124,756,56,s;4276,770,120,m,48,.8;4524,760,56,s;4664,770,96,m,36,1.4;4916,760,96,s;5076,756,48,s;5296,770,120,s;5480,744,200,s;5680,680,72,s;5752,616,160,s;5912,672,72,s;5984,728,72,s;6072,784,180,s',
+  branches:'1328,772,48,s;2600,772,48,s;4204,700,44,g',memories:[0,1,2],
   stations:[],
-  checkpoints:[2,6,10,14,20,23],sectors:[[0,"Stone quay"],[2,"Mooring piles"],[6,"The staging"],[10,"Two barges"],[14,"The chain raft"],[20,"The coal lighter"],[23,"Ada’s crossing"]],
-  hazards:[spike(13,.78,22),spike(20,.8,22)],
+  checkpoints:[3,7,13,17,21,25,31,34],sectors:[[0,"The gallery"],[1,"The outside stair"],[3,"The clock hood"],[7,"The tower foot"],[11,"Stone quay"],[13,"Mooring piles"],[17,"The staging"],[21,"Two barges"],[25,"The chain raft"],[31,"The coal lighter"],[34,"Ada’s crossing"]],
+  hazards:[spike(24,.78,22),spike(31,.8,22)],
  },
  // 04 · Windows, Not Stars
  {
