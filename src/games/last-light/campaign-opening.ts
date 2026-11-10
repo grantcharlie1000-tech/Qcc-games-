@@ -109,19 +109,21 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   hazards:[steam(13,.5,96,.4,2.8,0),steam(16,.8,96,0,3,1)],
  },
  // 08 · The Quarter’s Reply
- // A bridge between two built banks with its middle span fallen: a test of
- // the district with no new verb. Railing stubs sit behind the first
- // landing, a crawler walks the bank deck, two cracked planks hang before a
- // 200 px dash to the far pier, the bridge house asks for a short hop under
- // its eave, and iron landings climb the garden lookout. No bridge steam.
+ // The old bridge to the garden bank, with its arches gone and the river
+ // under all of it. Each length of roadway is the top of its pier; bridge
+ // houses stand on theirs, with a chimney stack as a step at the gable. A
+ // rook walks each house roof. The middle is the test: two trestle planks,
+ // a dash to a stump, down to a cutwater, a punt on a rope, and a scaffold
+ // back up to the roadway. The gatehouse stair climbs to the lookout and
+ // the garden gate. Three bridge lamps are optional.
  {
-  setting:'bridge',goal:'signal',
-  route:'24,520,300,s;444,520,120,s;660,520,240,s;996,480,300,s;1392,480,180,s;1668,480,100,c,,,0.7;1798,480,95,c,,,0.7;2093,480,240,s;2413,416,120,s;2645,400,240,s;3021,400,240,s;3325,336,120,g;3325,272,120,g;3509,208,300,s',
-  branches:'340,580,80,s;2597,329,128,e;3825,144,60,s',memories:[0,1,2],
-  stations:[[2,"Quarter light"],[7,"Bridge light"],[10,"Garden gate light"]],
-  checkpoints:[3,4,8,13],sectors:[[0,"Bridge approach"],[3,"The bank"],[4,"Broken middle span"],[8,"The bridge house"],[13,"Garden lookout"]],
-  hazards:[spike(1,.86,22)],
-  enemies:[{ledge:3,at:.6,kind:'crawler',travel:80,period:4.4}],
+  setting:'bridge',goal:'signal',water:760,exit:.6,
+  route:'24,560,300,s;420,560,120,s;636,560,240,s;972,496,200,s;1172,432,48,s,,,,64;1300,560,160,s;1500,560,100,c,,,0.7;1630,560,96,c,,,0.7;1930,560,96,s;2080,656,96,s;2236,716,110,m,30,1;2436,700,96,s;2436,636,96,g;2436,572,96,g;2566,560,240,s;2902,496,180,s;3082,432,48,s,,,,64;3266,496,120,s;3426,432,110,g;3426,368,110,g;3576,320,300,s',
+  branches:'556,656,72,s;556,608,72,g;2700,700,96,s;3426,304,110,g',memories:[1,2,3],
+  stations:[[2,"Quarter lamp"],[14,"Bridge lamp"],[17,"Garden gate lamp"]],
+  checkpoints:[2,5,8,14,17],sectors:[[0,"Bridge approach"],[3,"The first bridge house"],[5,"Broken middle span"],[9,"Down at the piers"],[14,"The far roadway"],[17,"Garden lookout"]],
+  hazards:[spike(1,.8,22),spike(5,.5,22)],
+  enemies:[{ledge:3,at:.5,kind:'crawler',travel:60,period:4.2},{ledge:15,at:.5,kind:'crawler',travel:50,period:3.8}],
  },
  // 09 · Water for the Living
  {

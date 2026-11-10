@@ -12,7 +12,7 @@ import type {QuarterSet} from './quarter-sets';
  * towers behind them. Everything you stand on is in or beside that water: a
  * granite quay built down into it, a cluster of mooring piles, a timber
  * staging, a moored lighter, a barge on its rope, a raft on a chain. */
-const FAR=34;
+export const FAR=34;
 type Role='quay'|'piles'|'staging'|'boat'|'barge'|'stage'|'spar'|'bridge';
 function role(p:Platform,l:Level):Role{
  if(p.kind==='moving')return 'barge';
@@ -21,15 +21,15 @@ function role(p:Platform,l:Level):Role{
  const lift=l.water!-p.y;
  return lift>=60?'bridge':lift>=44?'quay':lift<=24?'boat':p.w<=64?'piles':'staging';
 }
-const quayTile=()=>masonry('canal/quay',96,48,32,12,{mortar:'#141c24',stones:['#2f3a45','#333e49','#37424d'],lip:'#414d59',chip:'#4b5763'});
+export const quayTile=()=>masonry('canal/quay',96,48,32,12,{mortar:'#141c24',stones:['#2f3a45','#333e49','#37424d'],lip:'#414d59',chip:'#4b5763'});
 /** One sheet of water from the far bank to the bottom of the view: the same
  * colour function is used behind the quay and in front of the hulls. */
 const DEPTH=['#1d3947','#1a3542','#17303d','#152c38','#132833','#11252f','#10222c','#0f2029'];
-function sheet(c:C,x:number,w:number,from:number,to:number,far:number){
+export function sheet(c:C,x:number,w:number,from:number,to:number,far:number){
  for(let y=from;y<to;){const band=Math.max(0,Math.min(DEPTH.length-1,Math.floor((y-far)/14))),end=band===DEPTH.length-1?to:Math.min(to,far+(band+1)*14);box(c,DEPTH[band],x,y,w,end-y);y=end;}
 }
 /** Ripples are short dashes on rows that widen toward the viewer. */
-function ripples(c:C,left:number,right:number,from:number,to:number,far:number,t:number){
+export function ripples(c:C,left:number,right:number,from:number,to:number,far:number,t:number){
  for(let row=0;row<12;row++){
   const y=far+3+row*row*1.9+row*3;if(y<from)continue;if(y>=to)break;
   const step=38+row*9,drift=Math.sin(t*.55+row*1.3)*4,length=5+row*2;
@@ -42,7 +42,7 @@ function ripples(c:C,left:number,right:number,from:number,to:number,far:number,t
 const HOUSE_TONES=['#1a2330','#1d2734','#202b39'];
 /** The far bank is built house by house from the house's own number, so it
  * never repeats and has no tile edge to show. */
-function farBank(c:C,w:number,cx:number,fy:number,t:number){
+export function farBank(c:C,w:number,cx:number,fy:number,t:number){
  const shift=cx*.35,cell=58,first=Math.floor(shift/cell)-1;
  for(let i=first;i*cell-shift<w;i++){
   const x=Math.round(i*cell-shift),side=hash(i,7)>.87;
@@ -74,7 +74,7 @@ function sky(c:C,l:Level,w:number,h:number,cx:number,cy:number,t:number,ending:b
  farBank(c,w,cx,fy,t);
  if(fy<h){sheet(c,0,w,fy+7,h,fy);c.save();c.translate(-cx,-cy);ripples(c,cx,cx+w,l.water!-FAR+3,l.water!,l.water!-FAR,t);c.restore();}
 }
-function weed(c:C,x:number,w:number,water:number,seed:number){
+export function weed(c:C,x:number,w:number,water:number,seed:number){
  // The wet band: darker stone, then weed in uneven tufts hanging to the water.
  box(c,'#0a141a8c',x,water-11,w,11);
  for(let i=0;i*7<w-4;i++){const v=hash(i,seed,5);if(v<.35)continue;const tall=2+Math.floor(v*7);box(c,v>.7?'#3a5a44':'#2c4739',x+2+i*7,water-tall,3+Math.floor(v*3),tall);if(v>.85)box(c,'#52745a',x+3+i*7,water-tall,1,2);}
@@ -162,7 +162,7 @@ function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
  // Moonlight lies on the water in a broken path under the moon.
  const mx=Math.round(cx+vw*.78-cx*.02);for(let k=0;k<9;k++){const y=top+4+k*k*1.6+k*4;if(y>bottom)break;box(c,'#c5d2c966',mx-6-k+Math.round(Math.sin(t*1.2+k*1.9)*3),y,10+k*2,1);}
 }
-function hull(c:C,w:number,deep:number){
+export function hull(c:C,w:number,deep:number){
  // A timber hull seen side on: sheer strake, planked sides, the turn of the bilge.
  for(let y=0;y<deep;y++){const inset=y<3?-3:Math.round((y-3)*(y-3)*.018);box(c,y%5===4?'#1c1511':'#2c2119',inset,y,w-inset*2,1);}
  box(c,'#14100d',-4,0,w+8,3);box(c,'#7a6048',-3,0,w+6,2);box(c,'#b2946d',-3,0,w+6,1);
