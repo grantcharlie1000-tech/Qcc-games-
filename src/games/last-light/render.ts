@@ -197,6 +197,7 @@ export class Scene {
   for(const station of l.stations){
    const {x,y}=stationAt(station,l,s.clock),{kind,id}=station,lit=s.activated.includes(id),plan=stationComposition(l,station),dx=x-station.x,dy=y-station.y;
    if(kind==='survivor'){if(lit)continue;person(c,x,y,t,characterColor(station.label,l.world));}
+   else if(set?.station){set.station(c,l,station,x,y,lit,t);continue;}
    else{
     c.save();c.beginPath();c.rect(plan.bounds.x+dx,plan.bounds.y+dy,plan.bounds.w,plan.bounds.h);c.clip();
     if(plan.art==='valve')valve(c,x,y-25,theme.accent,lit);

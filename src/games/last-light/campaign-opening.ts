@@ -76,18 +76,20 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   pressure:88,
  },
  // 06 · Under the Sleeping City
- // The pipe basement under the street. Steam only leaves vented joints on
- // the pipe runs: one vent to watch on a 300 px floor, one at the far edge
- // of a small landing, a pair out of phase, then Down through a grate into
- // the lower duct. A vent guards the +40 climb out, a broken flange sits on
- // a pipe, and the street stairwell is iron landings stacked to the street.
+ // The service culvert under the street: one brick vault, flooded, and the
+ // water is lethal. Brick benches rise out of it, lengths of iron main turn
+ // down into it, gratings hang from the vault. Steam leaves joints on the
+ // mains: one to watch, one at the far end of a landing, a pair out of
+ // phase past the stopped pumps, one in the lower duct under a grating. A
+ // broken flange, a dash to a venting main and a ladder of gratings lead up
+ // the shaft to the street stairwell. Three wall lamps are optional.
  {
-  setting:'cavern',goal:'signal',
-  route:'24,560,240,s;328,560,300,s;724,560,140,s;948,520,240,s;1284,520,120,s;1500,520,120,s;1716,520,120,g;1716,648,360,s;2188,608,240,s;2524,608,96,s;2716,544,120,g;2716,480,120,g;2716,416,120,g;2900,352,300,s',
-  branches:'864,456,60,s;1640,584,60,s;3260,288,60,s',memories:[0,1,2],
-  stations:[[3,"Pump passage signal"],[7,"Return stair signal"],[8,"Street signal"]],
-  checkpoints:[3,7,8,13],sectors:[[0,"The water pipe"],[3,"Sleeping pumps"],[7,"The lower duct"],[8,"The return stair"],[13,"Street foundations"]],
-  hazards:[steam(1,.5,96,0,3.2),steam(2,.86,96,.8,3),steam(4,.5,96,0,3),steam(5,.5,96,1.5,3),steam(7,.93,96,.4,3),spike(9,.86,22)],
+  setting:'cavern',goal:'signal',water:700,
+  route:'24,660,260,s;340,632,240,s;640,632,150,s;860,660,200,s;1116,604,96,g;1260,548,96,g;1420,548,180,s;1670,580,120,s;1850,612,120,g;1850,676,300,s;2230,660,180,s;2480,620,110,s;2670,572,100,s;2860,540,96,g;3156,540,160,s;3400,596,200,s;3640,548,110,g;3640,484,110,g;3640,420,110,g;3800,372,300,s',
+  branches:'348,568,80,g;2010,612,100,g;3640,356,110,g',memories:[0,1,2],
+  stations:[[3,"Culvert lamp"],[10,"Duct lamp"],[15,"Shaft lamp"]],
+  checkpoints:[3,10,15,19],sectors:[[0,"The water main"],[3,"Sleeping pumps"],[8,"The lower duct"],[10,"The broken flange"],[15,"Street foundations"]],
+  hazards:[steam(1,.5,96,0,3.2),steam(2,.8,96,.8,3),steam(6,.5,96,0,3),steam(7,.5,96,1.5,3),steam(9,.7,80,.4,3),spike(12,.8,22),steam(14,.75,96,1,3)],
  },
  // 07 · The Counterweight
  // A service tower's lift shaft. Cages ride visible rails: one carries you
