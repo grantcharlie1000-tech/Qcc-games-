@@ -53,13 +53,18 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   hazards:[spike(2,.27,24),spike(2,.75,24),steam(4,.74,116,.4,2.8),spike(8,.28,26),spike(8,.75,26),spike(9,.75,24),spike(13,.28,26),spike(13,.75,26),steam(16,.75,116,1.2,2.7),spike(18,.28,26),spike(18,.75,26),spike(19,.75,26)],
  },
  // 05 · The Roof That Remembers
+ // One long failing roof over a lane, with the dark behind. Cracked slate
+ // drops after a dust tell and returns 2.5 s later. The first tiles sit over
+ // a lower roof you can walk back along; past it, dormer eaves ask for a
+ // short hop onto a cracked tile, the last pair hangs over the lane, and a
+ // chimney stack leads to Tomas's roof. Teeth stand only at a roof edge.
  {
-  setting:'bridge',goal:'escape',
-  route:'24,460,300,s;534,460,100,s;664,460,95,c,,,0.62;969,460,100,c,,,0.62;1269,404,170,s;1594,364,300,s;2084,388,100,c,,,0.62;2264,412,95,c,,,0.62;2554,380,155,s;2894,380,125,s;3179,340,300,s;3689,340,100,s;3819,340,100,c,,,0.62;4129,340,100,c,,,0.62;4409,308,160,s;4729,308,300,s;5224,332,100,c,,,0.62;5404,308,95,c,,,0.62;5699,308,165,s;6049,260,145,s;6359,260,340,s',
-  branches:'2015,452,110,s;3459,404,94;5552,372,94;2315,492,110,c,,,0.62;2530,508,110;2799,444,85',memories:[3,1,2],
+  setting:'roofs',goal:'escape',
+  route:'24,460,300,s;388,460,100,c;552,460,140,s;722,460,100,c,,,0.7;852,460,95,c,,,0.7;977,460,150,s;1255,460,100,c,,,0.7;1451,420,120,s;1699,420,100,c,,,0.7;1829,420,95,c,,,0.7;2004,356,120,s;2260,356,200,s;2556,356,340,s',
+  branches:'0,520,1040,s;1191,373,88,e;1635,333,214,e',memories:[0,1,2],
   stations:[],
-  checkpoints:[5,10,15],sectors:[[0,"The first crack"],[5,"Falling tiles"],[10,"Chimney rest"],[15,"The last roof"]],
-  hazards:[spike(4,.28,26),spike(4,.75,26),spike(8,.75,28),spike(9,.75,24),spike(11,.75,26),spike(14,.28,26),spike(14,.75,26),spike(18,.28,26),spike(18,.75,26),spike(19,.75,26),spike(25,.8,20)],
+  checkpoints:[2,5,7,12],sectors:[[0,"The first crack"],[2,"Falling tiles"],[5,"Dormer eaves"],[7,"The lane"],[12,"Tomas’s chimney"]],
+  hazards:[spike(10,.86,22),spike(11,.9,22)],
   pressure:88,
  },
  // 06 · Under the Sleeping City
