@@ -61,7 +61,7 @@ function movementHint(run:Run,level:Level,index:number):string {
   return next.y<current.y-24?'Hold Space for the higher ledge. Release direction to brake onto the small landing.':'Tap Space for the short hop. Release direction to brake; save X for long gaps.';
  }
  if(next&&current.kind!=='moving'&&current.y-next.y>=48&&gap<=90&&next.w>125)return level.setting==='roofs'?'Hold Space for the chimney step.':'Hold Space for the high step.';
- if(level.goal==='escape')return 'Keep ahead of the dark. Reach the shelter; no switches block the way.';
+ if(level.goal==='escape')return 'Keep ahead of the black. Reach the shelter; nothing on the way has to be switched.';
  const surface=current?.kind;
  if(surface==='ice')return 'Ice carries your speed. Brake before the next edge.';
  if(surface==='crumble')return 'Cracked ground falls away. Jump before it breaks.';
