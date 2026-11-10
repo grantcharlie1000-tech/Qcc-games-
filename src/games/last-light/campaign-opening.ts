@@ -17,19 +17,23 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   hazards:[spike(7,.5,22),spike(9,.72,22),spike(9,.89,22)],
  },
  // 02 · A Bell Above the Rain
+ // One bell tower, climbed as switchbacks. Every miss falls one flight onto
+ // stairs already climbed (the tower floor catches the first). The bell
+ // frame's head beam repeats the eave rule, the broken flight is the first
+ // dash over a landing below, and Ivo waits on the landing under the belfry.
  {
   setting:'tower',goal:'rescue',
-  route:'24,830,280,s;424,798,160,s;664,758,160,s;974,750,180,s;1219,750,105,c,,,0.62;1494,694,240,s;1894,638,115,s;2149,574,130,s;1859,510,120,s;1519,510,160,s;1119,464,240,s;809,464,100,c,,,0.62;679,464,100,c,,,0.62;394,416,125,s;64,360,160,s;24,296,100,s;294,232,240,s;714,180,125,c,,,0.62;1024,132,145,s;1334,132,150,s;1664,76,340,s',
-  branches:'1128,826,90;1055,528,90;584,244,90',memories:[0,1,2],
-  stations:[[10,"Ivo"]],
-  checkpoints:[5,10,16],sectors:[[0,"Bell stair"],[5,"The east turn"],[10,"Ivo’s landing"],[16,"Above the rain"]],
-  hazards:[spike(3,.28,24),spike(3,.75,24),spike(6,.75,24),spike(9,.27,24),spike(9,.73,24),steam(13,.27,112,.7,2.6),spike(18,.27,22),spike(18,.75,22)],
+  route:'24,1240,280,s;368,1200,120,s;560,1160,120,s;760,1120,120,s;952,1080,160,s;1176,1016,120,s;1000,952,120,s;784,952,120,s;576,952,120,s;384,952,96,s;200,888,96,s;360,824,96,s;640,824,120,s;824,784,120,s;1008,744,120,s;1192,680,120,s;1016,616,120,s;696,616,120,s;464,576,120,s;272,576,96,s;88,512,120,s;272,448,240,s;576,408,300,s',
+  branches:'0,1300,1340,s;840,865,96,e;1376,744,64,s;24,448,64,s',memories:[0,2,3],
+  stations:[[21,"Ivo"]],
+  checkpoints:[6,11,16,21],sectors:[[0,"Bell stair"],[6,"The bell frame"],[11,"The broken flight"],[16,"Alternate sides"],[21,"Ivo’s landing"]],
+  hazards:[],
  },
  // 03 · The Last Ferry
  {
   setting:'canal',goal:'ferry',
   route:'24,420,300,s;534,420,100,s;659,420,95,m,20,1.1;964,420,95,s;1204,420,150,s;1549,420,200,s;1924,380,130,s;2134,420,145,s;2469,444,105,m,36,1.1;2754,420,165,s;3074,420,230,s;3514,420,100,s;3644,420,100,s;3954,412,105,m,36,1.1;4244,380,125,s;4539,380,320,s;5054,396,140,s;5269,420,105,m,36,1.1;5569,380,165,s;5889,348,125,s;6199,348,360,s',
-  branches:'1404,484,94;2359,508,110,s;4910,444,94;2549,548,95,c,,,0.62;2724,500,105,s;2909,484,85,s',memories:[0,3,2],
+  branches:'1404,484,94;2359,508,110,s;4910,444,94;2549,548,95,s;2724,500,105,s;2909,484,85,s',memories:[0,3,2],
   stations:[[15,"Departure bell"]],
   checkpoints:[5,10,15],sectors:[[0,"Stone quay"],[5,"Mooring ropes"],[10,"The bell quay"],[15,"Ada’s crossing"]],
   hazards:[spike(3,.75,24),spike(4,.75,28),spike(6,.75,24),spike(9,.28,24),spike(9,.76,24),spike(12,.75,28),steam(14,.75,116,.2,2.9),spike(18,.28,26),spike(18,.75,26),spike(19,.75,24),spike(25,.8,20)],
