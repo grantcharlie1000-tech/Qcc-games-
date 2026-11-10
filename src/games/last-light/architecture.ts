@@ -23,8 +23,8 @@ function masonry(world:number,industrial:boolean){
 /** World-space construction follows the actual collision ledges. Recessed
  * walls, bolted brackets and pipe risers establish one building, while only
  * the foreground deck caps carry the bright walkable edge. */
-export function drawArchitecture(c:C,l:Level,cx:number,cy:number,w:number,h:number,clock=0){
- if(l.world===0){drawQuarterPlace(c,l,clock,cx,cy,w,h);return;}
+export function drawArchitecture(c:C,l:Level,cx:number,cy:number,w:number,h:number,clock=0,reduced=false){
+ if(l.world===0){drawQuarterPlace(c,l,clock,cx,cy,w,h,reduced);return;}
  const theme=WORLDS[l.world],industrial=l.setting==='factory'||l.setting==='tower',tile=masonry(l.world,industrial);
  c.save();
  const pattern=c.createPattern(tile,'repeat');

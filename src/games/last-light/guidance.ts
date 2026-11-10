@@ -33,7 +33,7 @@ function movementHint(run:Run,level:Level,index:number):string {
  const gap=next?Math.max(next.x-current.x-current.w,current.x-next.x-next.w,0):0;
  const nextGap=next&&after?Math.max(after.x-next.x-next.w,next.x-after.x-after.w,0):0;
  const dashHint=next&&next.w<=125?'Long gap: hold Space, then press X. Release direction to brake onto the small landing.':'Long gap ahead: hold Space, then press X in the air. Land to refill your dash.';
- if(next?.kind==='grate'||current.kind==='grate')return 'Jump through metal grates from below. Press ↓ to drop through one; look for the landing underneath.';
+ if(next?.kind==='grate'||current.kind==='grate')return 'Jump up through open treads and gratings from below. Press ↓ to drop through one.';
  if(level.hazards.some(h=>h.kind==='crusher'&&(h.platform===index||h.platform===index+1)))return 'Press ahead. Amber lamps warn before it falls; cross while its head is raised.';
  if(next?.kind==='crumble')return gap>130||nextGap>130?'Cracked landing ahead. Hold Space and press X for the long gap; jump again before it breaks.':'Cracked landing ahead. Keep moving and jump before it breaks.';
  if(gap>130)return dashHint;

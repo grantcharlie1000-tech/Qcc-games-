@@ -4,6 +4,7 @@ import {PLAYER_H,PLAYER_W,type Run} from './model';
 import {goalComposition,stationArtBounds,stationComposition} from './composition';
 import {paintMaterial,paintFoundation} from './materials';
 import {drawBarge} from './quarter-place';
+import {quarterSet,setDeckTile} from './quarter-sets';
 export const noise=(a:number,b:number)=>Math.abs(Math.sin(a*127.1+b*311.7)*43758.5453)%1;
 const cache=new Map<string,HTMLCanvasElement>();
 let boundsCache=new WeakMap<Level,WeakMap<Platform,Rect>>();
@@ -47,6 +48,7 @@ export function terrainArtBounds(p:Platform,l:Level):Rect {
  levelCache.set(p,bounds);return bounds;
 }
 function tile(p:Platform,l:Level):HTMLCanvasElement {
+ if(quarterSet(l))return setDeckTile(p,l);
  const bounds=terrainArtBounds(p,l),key=`${l.id}/${l.world}/${l.setting}/${p.kind}/${p.id}/${p.w}/${p.h}/${bounds.h}`;let canvas=cache.get(key);if(canvas)return canvas;
  canvas=document.createElement('canvas');canvas.width=p.w+8;canvas.height=bounds.h+8;
  const c=canvas.getContext('2d',{willReadFrequently:true})!;c.translate(4,8);
@@ -73,6 +75,14 @@ function eavePosts(p:Platform,l:Level){
 }
 export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:number,s:Run,l:Level,reduced:boolean){
  const timer=s.crumbles[p.id];x=Math.round(x);y=Math.round(y);
+ const set=quarterSet(l);
+ if(set){
+  // A set's landings are parts of its building: the tile is the floor, tread,
+  // roof or hull itself, and anything that travels with it is drawn first.
+  set.mover?.(c,p,x,y,l,s.clock,reduced);
+  if(p.kind==='crumble'&&timer!==undefined){drawCrumble(c,p,tile(p,l),x,y,timer,reduced);return;}
+  c.drawImage(tile(p,l),x-4,y-8);return;
+ }
  if(p.kind==='grate'){
   c.fillStyle='#162c37';c.fillRect(x-2,y-2,p.w+4,4);c.fillStyle='#b5b7a0';c.fillRect(x,y,p.w,1);c.fillStyle='#697f7c';c.fillRect(x,y+1,p.w,2);
   for(let xx=x+3;xx<x+p.w-3;xx+=8){c.fillStyle='#1a303b';c.fillRect(xx,y+3,3,8);c.fillStyle='#78928a';c.fillRect(xx,y+3,1,7);c.fillStyle='#b2b49a';c.fillRect(xx,y+4,1,2);}

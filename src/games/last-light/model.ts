@@ -1,13 +1,15 @@
 import {LEVELS,LEVEL_COUNT,type Rect,type Platform,type Hazard,type Station,type Level,type Checkpoint} from './levels';
 import {CHAPTERS,speakerFor,memoryFor} from './story';
 import {enemyAt} from './enemies';
-import {pressAt} from './press';
+import {pressAt,pressState} from './press';
 import {nearbyAnimal} from './habitats';
 import {PET_DURATION,type Petting} from './affection';
 import {DEATH_DURATION,type DeathCause} from './death';
 import {clearDuration} from './departure';
 import {normalizeLastLightScore,LAST_LIGHT_MAX_SCORE} from '../../core/last-light-score';
 export const STEP=1/120,PLAYER_W=16,PLAYER_H=24;
+/** Seconds a fallen floor stays gone. Long enough that standing and waiting is not a plan. */
+export const CRUMBLE_RETURN=7;
 export interface Input {move:number;jump:boolean;dash:boolean;interact?:boolean;drop?:boolean}
 export type Phase='playing'|'cleared'|'complete';
 export interface Run {
@@ -43,7 +45,8 @@ export function hazardFade(h:Hazard,t:number):number {
 }
 /** Powered machinery has a visible, persistent response to its control wheel. */
 const supportGone=(h:Hazard,s:Run)=>h.platform!==undefined&&s.crumbles[h.platform]!==undefined&&s.crumbles[h.platform]<=0;
-export const hazardActive=(h:Hazard,s:Run)=>!supportGone(h,s)&&(h.disabledBy===undefined||!s.activated.includes(h.disabledBy))&&laserActive(h,s.clock);
+/** A press only hurts while its head is out of the housing: fully raised, it is part of the machine. */
+export const hazardActive=(h:Hazard,s:Run)=>!supportGone(h,s)&&(h.disabledBy===undefined||!s.activated.includes(h.disabledBy))&&laserActive(h,s.clock)&&(h.kind!=='crusher'||pressState(h,s.clock).extension>0);
 /** Amber emitters announce the end of a safe interval before collision returns. */
 export function hazardWarning(h:Hazard,s:Run):boolean {
  if(supportGone(h,s)||!['laser','steam'].includes(h.kind)||(h.disabledBy!==undefined&&s.activated.includes(h.disabledBy))||laserActive(h,s.clock))return false;
@@ -97,7 +100,7 @@ export function step(s:Run,input:Input,dt=STEP):Events {
  const interactPressed=!!input.interact&&!s.previousInteract;s.previousInteract=!!input.interact;
  s.previousJump=input.jump;s.previousDash=input.dash;
  if(s.respawn>0){s.respawn=Math.max(0,s.respawn-dt);return events;}
- for(const id of Object.keys(s.crumbles)){const n=Number(id);s.crumbles[n]=Math.max(-3,s.crumbles[n]-dt);if(s.crumbles[n]<=-2.5)delete s.crumbles[n];}
+ for(const id of Object.keys(s.crumbles)){const n=Number(id);s.crumbles[n]=Math.max(-CRUMBLE_RETURN-.5,s.crumbles[n]-dt);if(s.crumbles[n]<=-CRUMBLE_RETURN)delete s.crumbles[n];}
  s.buffer=jumpPressed?.12:Math.max(0,s.buffer-dt);s.coyote=s.grounded?.1:Math.max(0,s.coyote-dt);
  const oldGround=level.platforms.find(p=>p.id===s.ground);
  if(s.grounded&&oldGround?.kind==='moving'){const before=platformAt(oldGround,oldClock),after=platformAt(oldGround,s.clock);s.x+=after.x-before.x;s.y+=after.y-before.y;}

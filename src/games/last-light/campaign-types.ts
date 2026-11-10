@@ -18,6 +18,10 @@ export interface CampaignRoute {
  enemies?:readonly {ledge:number;at:number;kind:'crawler'|'moth';travel:number;period?:number;offset?:number}[];
  pressure?:number;
  wind?:number;
+ /** Where the gold exit stands along the last landing (0–1). Default .55. */
+ exit?:number;
+ /** A lethal waterline at this world y, for a flooded pit or a river under a span. */
+ water?:number;
 }
 export interface HazardPlacement {
  ledge:number;

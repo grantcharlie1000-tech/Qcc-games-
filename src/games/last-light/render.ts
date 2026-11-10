@@ -13,6 +13,7 @@ import {Courier} from './courier';
 import {drawPlatform,clearTerrainCache} from './terrain';
 import {drawSky,drawLife,drawGear,person,drawDepthFog} from './world';
 import {drawQuarterPickup} from './quarter-place';
+import {quarterSet} from './quarter-sets';
 import {Effects,completionOffset,drawCompletion,drawDawn,drawEndingSky} from './effects';
 import {goalComposition,stationComposition,type GoalComposition,type StationArt} from './composition';
 type C=CanvasRenderingContext2D;
@@ -75,6 +76,8 @@ function smallGoal(c:C,p:GoalComposition,color:string,ready:boolean,lift=0){
  }c.restore();
 }
 function drawGoal(c:C,l:Level,s:Run,reduced:boolean,view:{width:number;height:number}){
+ // A set's way out is part of its building, drawn by the set.
+ const set=quarterSet(l);if(set){set.exit(c,l,s,reduced?0:s.clock,false,reduced,view);return;}
  const p=goalComposition(l),{x,y,art,bounds}=p,theme=WORLDS[l.world],ready=true,t=reduced?0:s.clock;
  const offset=completionOffset(s,reduced,view),shift=offset.x;
  if(l.berth){
@@ -154,7 +157,7 @@ export class Scene {
   drawSky(c,l,s,w,h,cx,cy,reduced);
   drawEndingSky(c,w,h,s);
   c.save();c.translate(-cx,-cy);
-  drawArchitecture(c,l,cx,cy,w,h,s.clock);drawDepthFog(c,l,s,cx,cy,w,h,reduced);
+  drawArchitecture(c,l,cx,cy,w,h,s.clock,reduced);drawDepthFog(c,l,s,cx,cy,w,h,reduced);
 
   for(const p of l.platforms){const r=platformAt(p,s.clock);if(r.x+r.w<cx-60||r.x>cx+w+60||r.y>cy+h+60||r.y<cy-220)continue;const visual=l.goal==='escape'&&s.phase!=='playing'&&p.kind==='crumble'&&elapsed>p.id*.12?{...s,crumbles:{...s.crumbles,[p.id]:-(elapsed-p.id*.12)}}:s;drawPlatform(c,p,r.x,r.y,visual,l,reduced);}
   for(let i=1;i<l.mainCount-1;i++){
@@ -167,7 +170,8 @@ export class Scene {
   drawLife(c,l,s,cx,cy,w,h,reduced);
   // Mission architecture sits behind every collectible, hazard and character.
   // Its footprint is chosen before drawing, using the exact interaction anchor.
-  drawGoal(c,l,s,reduced,this);drawCompletion(c,l,s,theme.accent,reduced,this);drawServiceDoor(c,l,s,theme.accent);drawExitConnection(c,l,s,theme.accent,cy,reduced);
+  const set=quarterSet(l);
+  drawGoal(c,l,s,reduced,this);drawCompletion(c,l,s,theme.accent,reduced,this);if(!set){drawServiceDoor(c,l,s,theme.accent);drawExitConnection(c,l,s,theme.accent,cy,reduced);}
   for(const [index,cp] of checkpointsFor(l).entries()){
    if(cp.x<cx-35||cp.x>cx+w+35||cp.y<cy-20||cp.y>cy+h+60)continue;
    c.fillStyle='#b7bda7';c.fillRect(cp.x,cp.y-48,2,48);c.fillStyle=index<=checkpointIndexFor(s,l)?'#d8e5a0':'#859da3';
@@ -209,7 +213,7 @@ export class Scene {
   const departure=s.phase!=='playing'?departurePose(l,s,reduced,this):null;
   if(departure){c.translate(departure.x-s.x,departure.y-s.y);c.globalAlpha=departure.opacity;}
   if(!this.death.impact){this.courier.drawShadow(c,s,departure?s.y+PLAYER_H:surfaceBelow(s,l));this.courier.draw(c,s,theme.accent,reduced,departure??undefined);}c.restore();
-  if(l.goal==='engine')drawLift(c,l,s,theme.accent,reduced,this,true);else drawServiceDoor(c,l,s,theme.accent,true);
+  if(set)set.exit(c,l,s,reduced?0:s.clock,true,reduced,this);else if(l.goal==='engine')drawLift(c,l,s,theme.accent,reduced,this,true);else drawServiceDoor(c,l,s,theme.accent,true);
   c.restore();
   this.death.drawBody(c,cx,cy,reduced);this.death.drawTransition(c,w,h,actual,cx,cy,reduced);
   drawDawn(c,w,h,s,reduced);

@@ -1,5 +1,6 @@
 import {WORLDS,type Level,type Platform} from './levels';
-type C=CanvasRenderingContext2D;
+import {box,fill,hash,masonry,noise,seamless,sprite,visible,type C,type Courses} from './quarter-kit';
+import {quarterSet} from './quarter-sets';
 
 /** The Old Quarter is drawn as one built place. Every landing continues into
  * the structure it belongs to: a roof into its house and the street, a tower
@@ -8,38 +9,6 @@ type C=CanvasRenderingContext2D;
  * opposite edges are the same pixels, filled through cached patterns. What
  * stands where is worked out once per level; drawing allocates nothing. */
 
-const tiles=new Map<string,HTMLCanvasElement>();
-const patterns=new WeakMap<C,Map<string,CanvasPattern>>();
-/** Same star field as the rest of the game, kept local to avoid an import cycle. */
-const noise=(a:number,b:number)=>Math.abs(Math.sin(a*127.1+b*311.7)*43758.5453)%1;
-const hash=(a:number,b:number,c=0)=>{let h=Math.imul(a|0,374761393)^Math.imul(b|0,668265263)^Math.imul(c|0,1274126177);h=Math.imul(h^(h>>>13),1103515245);return ((h^(h>>>16))>>>0)/4294967296;};
-function canvas(w:number,h:number){const out=document.createElement('canvas');out.width=w;out.height=h;const c=out.getContext('2d',{willReadFrequently:true})!;c.imageSmoothingEnabled=false;return {out,c};}
-/** A tile painter whose rectangles wrap, so the left/right and top/bottom
- * edges always continue each other exactly. */
-function seamless(key:string,w:number,h:number,paint:(rect:(color:string,x:number,y:number,rw:number,rh:number)=>void)=>void){
- const made=tiles.get(key);if(made)return made;
- const {out,c}=canvas(w,h);
- const rect=(color:string,x:number,y:number,rw:number,rh:number)=>{c.fillStyle=color;for(let dx=-w;dx<=w;dx+=w)for(let dy=-h;dy<=h;dy+=h)c.fillRect(x+dx,y+dy,rw,rh);};
- paint(rect);tiles.set(key,out);return out;
-}
-function sprite(key:string,w:number,h:number,paint:(c:C)=>void){const made=tiles.get(key);if(made)return made;const {out,c}=canvas(w,h);paint(c);tiles.set(key,out);return out;}
-function fill(c:C,key:string,source:()=>HTMLCanvasElement){let byKey=patterns.get(c);if(!byKey){byKey=new Map();patterns.set(c,byKey);}let p=byKey.get(key);if(!p){p=c.createPattern(source(),'repeat')!;byKey.set(key,p);}return p;}
-const box=(c:C,color:string,x:number,y:number,w:number,h:number)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
-
-interface Courses {mortar:string;stones:readonly string[];lip:string;chip:string}
-/** Coursed masonry: rows offset by half a block. Every block is drawn with
- * wrapping and shaded only from its own cell, so the tile repeats exactly. */
-function masonry(key:string,w:number,h:number,block:number,row:number,k:Courses){
- return seamless(key,w,h,rect=>{
-  rect(k.mortar,0,0,w,h);
-  for(let r=0;r<h/row;r++)for(let col=0;col<w/block;col++){
-   const x=col*block+(r%2)*block/2,y=r*row,v=hash(col,r,w+h);
-   rect(k.stones[Math.floor(v*k.stones.length)],x+1,y+1,block-2,row-2);
-   rect(k.lip,x+1,y+1,block-3,1);
-   if(v>.72)rect(k.chip,x+3+Math.floor(v*7),y+row-4,3,1);
-  }
- });
-}
 const HOUSE:readonly Courses[]=[
  {mortar:'#1b232d',stones:['#29333f','#2d3844','#313c48'],lip:'#3b4753',chip:'#45525d'},
  {mortar:'#211b1f',stones:['#352a2d','#3b2e30','#40322f'],lip:'#4b3b38',chip:'#574640'},
@@ -146,7 +115,6 @@ function plan(l:Level):Plan{
  const result:Plan={street,floor,ceiling,alleys,houses,sheds,shores,rails,lookout,surfaces:new Map(),chimneys:new Set(sheds.filter(s=>s.kind==='chimney').map(s=>s.p))};
  plans.set(l,result);return result;
 }
-function visible(x:number,y:number,w:number,h:number,cx:number,cy:number,vw:number,vh:number){return x+w>cx-24&&x<cx+vw+24&&y+h>cy-24&&y<cy+vh+24;}
 
 function houseFront(c:C,x:number,top:number,w:number,floor:number,id:number,cx:number,cy:number,vw:number,vh:number){
  if(floor<=top||!visible(x,top,w,floor-top,cx,cy,vw,vh))return;
@@ -303,7 +271,8 @@ function bridge(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
 function bridgePier(c:C,x:number,top:number,river:number){c.fillStyle=fill(c,'quay',quayStone);c.fillRect(Math.round(x),top,44,river-top+20);box(c,'#11181f',x,top,2,river-top);box(c,'#11181f',x+42,top,2,river-top);box(c,'#1c2a30',x-4,river-14,52,14);}
 
 /** World-space construction for the Old Quarter (drawn behind every landing). */
-export function drawQuarterPlace(c:C,l:Level,clock:number,cx:number,cy:number,vw:number,vh:number){
+export function drawQuarterPlace(c:C,l:Level,clock:number,cx:number,cy:number,vw:number,vh:number,reduced=false){
+ const set=quarterSet(l);if(set){c.save();set.back(c,l,reduced?0:clock,cx,cy,vw,vh,clock);c.restore();return;}
  const pl=plan(l);c.save();
  if(l.setting==='roofs')roofs(c,l,pl,cx,cy,vw,vh);
  else if(l.setting==='tower')tower(c,l,pl,clock,cx,cy,vw,vh);
@@ -324,7 +293,8 @@ function skyGradient(c:C,h:number,ending:boolean){
 /** Sky for the Old Quarter. Outdoors: one gradient, stars, the moon and the
  * towers at the head of the city. Indoors the wall itself is the backdrop. */
 export function drawQuarterSky(c:C,l:Level,w:number,h:number,cx:number,cy:number,clock:number,reduced:boolean,ending=false){
- const theme=WORLDS[0];
+ const theme=WORLDS[0],set=quarterSet(l);
+ if(set){set.sky(c,l,w,h,cx,cy,reduced?0:clock,ending);return;}
  if(l.setting==='tower'||l.setting==='cavern'){c.fillStyle='#0f141a';c.fillRect(0,0,w,h);return;}
  c.fillStyle=skyGradient(c,h,ending);c.fillRect(0,0,w,h);
  for(let i=0;i<28;i++){c.fillStyle=i%9===0?theme.accent+'66':'#dfe6dc36';c.fillRect(Math.floor(noise(i,12)*w),Math.floor(noise(i,3)*h*.5),1,1);}
@@ -337,7 +307,7 @@ export function drawQuarterSky(c:C,l:Level,w:number,h:number,cx:number,cy:number
 /** Distance layer: the towers once, and the canal's far bank where there is
  * a canal. Shared by the sky and by the vista API used in tests. */
 export function drawQuarterDistance(c:C,l:Level,w:number,h:number,cx:number,cy:number){
- if(l.setting==='tower'||l.setting==='cavern')return;
+ if(l.setting==='tower'||l.setting==='cavern'||quarterSet(l))return;
  // Their shafts continue down behind the houses, so the towers never float.
  const tx=Math.round(w*.64-cx*.03),ty=Math.round(h*.34-cy*.02);c.drawImage(enginesArt(),tx,ty);
  if(ty+150<h){box(c,'#1c2637',tx+10,ty+150,14,h-ty-150);box(c,'#1c2637',tx+38,ty+150,18,h-ty-150);}

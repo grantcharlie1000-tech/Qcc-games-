@@ -7,7 +7,7 @@ export interface WorldDressing {readonly kind:DressingKind;readonly platform:num
 // chase, isolation or finale. The location is a preference, never permission to
 // occupy an interaction, a pickup's approach, or the underside of another ledge.
 const HABITATS:readonly ([DressingKind,number,boolean]|null)[]=[
- ['washing',.46,true],['resident',.78,true],['cat',.42,true],['washing',.7,true],null,null,['lantern',.72,true],null,
+ ['washing',.46,true],null,['cat',.42,true],null,null,null,null,null,
  ['tree',.73,false],['resident',.5,true],['tree',.63,true],['cat',.71,true],null,['resident',.56,true],null,['tree',.43,true],
  ['resident',.58,true],null,['resident',.45,true],null,['lantern',.65,true],['cat',.51,true],null,null,
  ['resident',.57,true],null,null,null,['resident',.48,true],['tree',.6,true],null,null,

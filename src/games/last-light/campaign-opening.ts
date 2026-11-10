@@ -17,17 +17,20 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   hazards:[spike(7,.5,22),spike(9,.72,22),spike(9,.89,22)],
  },
  // 02 · A Bell Above the Rain
- // One bell tower, climbed as switchbacks. Every miss falls one flight onto
- // stairs already climbed (the tower floor catches the first). The bell
- // frame's head beam repeats the eave rule, the broken flight is the first
- // dash over a landing below, and Ivo waits on the landing under the belfry.
+ // The inside of the bell tower, climbed floor by floor. Each floor is oak
+ // let into the walls; the stair between floors has lost most of its treads
+ // (open treads: jump up through them, Down drops). Ropes and clock weights
+ // hang down one open well through every floor into the flooded pit, so a
+ // miss on a stair costs a flight and a miss over the well costs the run.
+ // The clock room's broken floor is the first dash; frame beams cross the
+ // well under the bells to Ivo's landing, and the gallery door is above.
  {
   setting:'tower',goal:'rescue',
-  route:'24,1240,280,s;368,1200,120,s;560,1160,120,s;760,1120,120,s;952,1080,160,s;1176,1016,120,s;1000,952,120,s;784,952,120,s;576,952,120,s;384,952,96,s;200,888,96,s;360,824,96,s;640,824,120,s;824,784,120,s;1008,744,120,s;1192,680,120,s;1016,616,120,s;696,616,120,s;464,576,120,s;272,576,96,s;88,512,120,s;272,448,240,s;576,408,300,s',
-  branches:'0,1300,1340,s;840,865,96,e;1376,744,64,s;24,448,64,s',memories:[0,2,3],
-  stations:[[21,"Ivo"]],
-  checkpoints:[6,11,16,21],sectors:[[0,"Bell stair"],[6,"The bell frame"],[11,"The broken flight"],[16,"Alternate sides"],[21,"Ivo’s landing"]],
-  hazards:[],
+  route:'24,1400,240,s;120,1340,56,g;40,1280,56,g;184,1224,80,s;384,1224,160,s;472,1164,56,g;552,1104,56,g;384,1048,80,s;24,1048,240,s;96,988,80,g;24,928,64,g;168,872,96,s;456,872,168,s;512,812,56,g;568,752,56,g;384,696,96,s;24,696,240,s;120,636,56,g;40,576,56,g;184,520,80,s;300,488,48,g;400,456,48,g;496,424,128,s;400,364,56,g;464,304,160,s',
+  branches:'384,1400,240,s;480,1340,56,g;568,1280,56,g;104,812,56,g;400,244,56,g',memories:[2,3,4],
+  stations:[[22,"Ivo"]],
+  checkpoints:[4,8,11,16,22],sectors:[[0,"Bell stair"],[4,"The ringing floor"],[8,"The clock room"],[12,"Under the bells"],[22,"Ivo’s landing"]],
+  hazards:[],water:1500,
  },
  // 03 · The Last Ferry
  // A stone quay along the canal, built down to the waterline: barges ride a

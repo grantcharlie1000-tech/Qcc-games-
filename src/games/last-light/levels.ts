@@ -51,9 +51,9 @@ export function createLevel(index:number):Level {
   id:index,name:chapter.name,world,setting,goal,platforms,hazards,enemies,pickups,stations,mainCount:main.length,
   checkpoint,checkpoints,sectors:authored.sectors.map(([platform,name])=>({platform,name})),
   ...(goal==='ferry'?{berth:{x:end.x+end.w+66,y:end.y}}:{}),
-  exit:{x:goal==='ferry'?end.x+end.w-44:end.x+end.w*.55,y:end.y-56,w:38,h:56},spawn:{x:72,y:main[0].y-24},
+  exit:{x:goal==='ferry'?end.x+end.w-44:end.x+end.w*(authored.exit??.55),y:end.y-56,w:38,h:56},spawn:{x:72,y:main[0].y-24},
   width:Math.max(...platforms.map(p=>p.x+p.w))+(goal==='ferry'?320:110),height:Math.max(600,...platforms.map(p=>p.y+160)),
-  hint:chapter.task,wind:wind??0,water:setting==='canal'?(goal==='ferry'?end.y+8:Math.max(...platforms.map(p=>p.y))+76):null,
+  hint:chapter.task,wind:wind??0,water:authored.water??(setting==='canal'?(goal==='ferry'?end.y+8:Math.max(...platforms.map(p=>p.y))+76):null),
   ...(pressure===undefined?{}:{pressure}),
  };
 }

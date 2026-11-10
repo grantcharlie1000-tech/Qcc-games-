@@ -7,6 +7,7 @@ import {speakerFor,characterColor} from './story';
 import {tree,cat,washing,settingDetails} from './environment-art';
 import {drawVistas} from './vista-art';
 import {drawQuarterSky} from './quarter-place';
+import {quarterSet} from './quarter-sets';
 import {person} from './inhabitants';
 import {landmarks,atmosphere} from './environment-landmarks';
 export {person} from './inhabitants';
@@ -47,8 +48,9 @@ export function drawSky(c:CanvasRenderingContext2D,l:Level,s:Run,w:number,h:numb
 
 }
 export function drawLife(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:number,w:number,h:number,reduced:boolean){
- const theme=WORLDS[l.world],t=reduced?0:s.clock;
- if(l.water!==null){const y=l.water,left=Math.max(0,Math.floor(cx/24)*24),right=Math.min(l.width,cx+w+24);c.fillStyle='#153440';c.fillRect(left,y,right-left,l.height-y+200);
+ const theme=WORLDS[l.world],t=reduced?0:s.clock,set=quarterSet(l);
+ if(set?.water)set.water(c,l,t,cx,cy,w,h);
+ else if(l.water!==null){const y=l.water,left=Math.max(0,Math.floor(cx/24)*24),right=Math.min(l.width,cx+w+24);c.fillStyle='#153440';c.fillRect(left,y,right-left,l.height-y+200);
   for(let i=left;i<right;i+=24){const wave=Math.sin(t*2+i)*1.3;c.fillStyle=theme.edge+'55';c.fillRect(i+Math.sin(t+i)*3,y+wave,15,1);
    for(let j=0;j<5;j++){const offset=Math.sin(t*1.1+j+i)*4,yy=y+6+j*j*3;c.fillStyle=j%2?theme.glow+'22':theme.edge+'22';c.fillRect(i+offset,yy,8+j*3,1);}
   }

@@ -28,7 +28,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  const levelLabel=document.createElement('span'),scoreLabel=document.createElement('span');scoreLabel.className='ll-score';hud.element.replaceChildren(levelLabel,scoreLabel);hud.element.after(hudContent);
  const text=(el:HTMLElement,value:string)=>{if(el.textContent!==value)el.textContent=value;};
  const data=(key:string,value:string)=>{if(root.dataset[key]!==value)root.dataset[key]=value;};
- let run=createRun(),overlay:Overlay='intro',paused=false,disposed=false,frame=0,last=0,acc=0,noticeUntil=0,dialogueUntil=0,dialogueBlocking=false,previousHud='',previousSecond=-1,previousSector='';
+ let run=createRun(),overlay:Overlay='intro',paused=false,disposed=false,frame=0,last=0,acc=0,noticeUntil=0,dialogueUntil=0,dialogueBlocking=false,dialogueArmed=false,dialogueShown=0,previousHud='',previousSecond=-1,previousSector='';
  const keys=new Set<string>(),touches=new Map<number,string>();let jumpQueued=false,dashQueued=false,interactQueued=false,dropQueued=false;
  const touchMode=()=>matchMedia('(any-pointer: coarse)').matches;
  const instructions=(text:string)=>touchMode()?text.replace(/Arrows move; hold Up to jump/g,'Hold ← or → to run; hold JUMP to jump').replace(/Tap Up/g,'Tap JUMP').replace(/Right Shift/g,'DASH').replace(/A \/ D runs/g,'Hold ← or → to run').replace(/hold Space to jump/g,'hold JUMP to jump').replace(/\bE\b/g,'Tap').replace(/\bSpace\b/g,'JUMP').replace(/\bShift\b/g,'DASH').replace(/\bX\b/g,'DASH'):text.replace(/\bSpace\b/g,'↑').replace(/\bX\b/g,'Right Shift').replace(/\bE\b/g,'Enter');
@@ -44,7 +44,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  function save(){context.save(serialize(run));}
  function notice(message:string){q<HTMLElement>('.ll-notice').textContent=instructions(message);noticeUntil=run.clock+7;context.announce(message);}
  function dialogue(message:string,blocking=false){
-  dialogueBlocking=blocking;q<HTMLElement>('.ll-dialogue-hint').textContent=blocking?'PAUSED · MOVE TO CONTINUE':'SAVED IN JOURNAL · MOVE TO DISMISS';
+  dialogueBlocking=blocking;dialogueArmed=false;dialogueShown=performance.now();q<HTMLElement>('.ll-dialogue-hint').textContent=blocking?'PAUSED · MOVE TO CONTINUE':'SAVED IN JOURNAL · MOVE TO DISMISS';
   const colon=message.indexOf(':');q<HTMLElement>('.ll-speaker').textContent=colon>0&&colon<28?message.slice(0,colon):'A memory of Mira';
   q<HTMLElement>('.ll-dialogue p').textContent=colon>0&&colon<28?message.slice(colon+1).trim():message;
   q<HTMLElement>('.ll-dialogue').hidden=false;dialogueUntil=run.clock+Math.max(12,message.length/12);context.announce(message);
@@ -105,7 +105,10 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
   frame=0;if(!active())return;
   const controls=input();
   if(!q<HTMLElement>('.ll-dialogue').hidden){
-   if(controls.move||controls.jump||controls.dash)q<HTMLElement>('.ll-dialogue').hidden=true;
+   // A key already held when someone starts speaking must not swallow the line:
+   // it has to be let go and pressed again (or held for a full second).
+   const pressing=!!(controls.move||controls.jump||controls.dash);if(!pressing)dialogueArmed=true;
+   if(pressing&&(dialogueArmed||now-dialogueShown>1000))q<HTMLElement>('.ll-dialogue').hidden=true;
    else if(dialogueBlocking){last=0;acc=0;paint();schedule();return;}
   }
   const interval=last?Math.max(0,(now-last)/1000):0,simulated=Math.min(interval,.1);
