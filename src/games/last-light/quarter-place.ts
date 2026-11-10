@@ -1,5 +1,5 @@
 import {WORLDS,type Level,type Platform} from './levels';
-import {box,fill,hash,masonry,noise,seamless,sprite,visible,type C,type Courses} from './quarter-kit';
+import {box,enginesArt,fill,hash,masonry,noise,seamless,sprite,visible,type C,type Courses} from './quarter-kit';
 import {quarterSet} from './quarter-sets';
 
 /** The Old Quarter is drawn as one built place. Every landing continues into
@@ -44,19 +44,6 @@ function doorArt(lit:boolean){
   box(c,'#121820',0,0,20,32);box(c,'#3e4950',1,0,18,2);box(c,'#2b211b',3,4,14,28);
   for(const x of [5,9,13])box(c,'#3a2d23',x,5,2,26);
   box(c,lit?'#e1b064':'#5b4a3a',3,4,14,4);box(c,lit?'#f3c77a':'#6d5b48',8,5,4,2);box(c,'#a9905f',13,18,2,2);
- });
-}
-/** The towers at the head of the city, where the wires lead. One landmark at
- * the horizon, never tiled into a second skyline. */
-function enginesArt(){
- return sprite('engines',64,150,c=>{
-  const body='#1c2637',rim='#253248',band='#212c3e';
-  for(const [x,top,wide] of [[10,22,14],[38,6,18]] as const){
-   box(c,body,x,top+12,wide,150);box(c,rim,x,top+12,1,150);
-   c.fillStyle=body;c.beginPath();c.moveTo(x-2,top+13);c.lineTo(x+wide/2,top);c.lineTo(x+wide+2,top+13);c.closePath();c.fill();
-   for(let y=top+30;y<150;y+=18)box(c,band,x+2,y,wide-4,1);
-  }
-  box(c,body,24,62,14,5);box(c,'#f3c77a',46,15,2,2);box(c,'#ffb76b55',45,14,4,4);
  });
 }
 /** The canal's opposite bank: warehouse fronts on a quay wall. Seamless. */

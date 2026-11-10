@@ -33,22 +33,22 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   hazards:[],water:1500,
  },
  // 03 · The Last Ferry
- // A stone quay along the canal, built down to the waterline: barges ride a
- // little above the water and every landing is a quay wall, a pile cap or a
- // hull. A barge tied 32 px off the quay shows riding; a low timber
- // footbridge asks for a short hop from a moored barge onto a pile cap (a
- // full jump clips it into the water). The first lethal dash leaves a barge
- // for a fender, the tow path behind it the retry; the test taps onto a
- // barge, dashes 208 px onto the next one's 120 px deck and crosses bolts on
- // pile tops. Ada's terminal deck holds the optional bell; its stair goes
- // down to the ferry, which fixes the water 8 px under the last landing.
+ // One canal, travelled along its near quay. Everything stood on is a quay
+ // built down into the water, a cluster of mooring piles, a timber staging
+ // or a boat; the water under all of it is lethal. A barge tied off the
+ // first quay shows riding. Mooring piles ask for braking, the staging end
+ // is the first lethal dash (onto a moored lighter), two barges out of
+ // phase ask for a timed dash, a bolt stands on one pile cap, and a raft on
+ // a chain crosses a basin; a fast barge, a second bolt and a dash onto the
+ // coal lighter lead to Ada's quay. A stepped footbridge over the last side
+ // canal comes down, 56 px a landing, to the ferry stage at the waterline.
  {
   setting:'canal',goal:'ferry',
-  route:'24,472,300,s;356,500,112,m,20,.9;500,472,240,s;836,500,100,m,16,1;1060,500,96,s;1212,472,240,s;1484,500,100,m,12,1.1;1776,500,80,s;1920,500,96,m,10,1.2;2224,500,120,m,16,1.3;2392,488,96,s;2552,488,96,s;2712,432,160,s;2936,376,160,s;3160,344,320,s;3512,344,150,s;3694,344,150,s;3876,344,220,s',
-  branches:'1008,413,172,e;2980,312,60,s;3560,280,60,s',memories:[0,1,2],
-  stations:[[14,"Departure bell"]],
-  checkpoints:[2,5,7,14],sectors:[[0,"Stone quay"],[2,"Mooring ropes"],[5,"The tow path"],[7,"Two barges"],[14,"Ada’s crossing"]],
-  hazards:[spike(10,.84,22),spike(11,.62,22)],
+  route:'24,512,300,s;356,538,112,m,20,.9;500,512,240,s;808,528,56,s;932,524,56,s;1068,538,100,m,28,1;1260,512,260,s;1580,528,120,s;1896,538,120,s;2080,528,56,s;2204,512,220,s;2496,538,100,m,20,1.1;2800,538,110,m,16,1.3;2992,528,96,s;3152,512,200,s;3424,528,56,s;3548,524,56,s;3700,538,120,m,48,.8;3948,528,56,s;4088,538,96,m,36,1.4;4340,528,96,s;4500,524,48,s;4720,538,120,s;4904,512,200,s;5104,448,72,s;5176,384,160,s;5336,440,72,s;5408,496,72,s;5496,552,180,s',
+  branches:'752,540,48,s;2024,540,48,s;3628,468,44,g',memories:[0,1,2],
+  stations:[],
+  checkpoints:[2,6,10,14,20,23],sectors:[[0,"Stone quay"],[2,"Mooring piles"],[6,"The staging"],[10,"Two barges"],[14,"The chain raft"],[20,"The coal lighter"],[23,"Ada’s crossing"]],
+  hazards:[spike(13,.78,22),spike(20,.8,22)],
  },
  // 04 · Windows, Not Stars
  {

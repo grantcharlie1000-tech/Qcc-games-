@@ -2,6 +2,7 @@ import type {Level,Platform} from './levels';
 import type {Run} from './model';
 import {canvas,type C} from './quarter-kit';
 import {bellTower} from './set-bell-tower';
+import {canalQuay} from './set-canal';
 
 /** Levels 2–8 of the Old Quarter are authored sets. Each one is a single
  * place a person could name, drawn from the same numbers the collision uses:
@@ -23,8 +24,9 @@ export interface QuarterSet {
  /** Water that belongs to the place; replaces the generic waterline. */
  water?(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number):void;
 }
-const SETS:Readonly<Record<number,QuarterSet>>={1:bellTower};
-export function quarterSet(l:Level):QuarterSet|null{return l.world===0?SETS[l.id]??null:null;}
+// Built on first use: sets and the modules that ask for them import each other.
+let sets:Readonly<Record<number,QuarterSet>>|undefined;
+export function quarterSet(l:Level):QuarterSet|null{if(l.world!==0)return null;sets??={1:bellTower,2:canalQuay};return sets[l.id]??null;}
 const decks=new WeakMap<Platform,HTMLCanvasElement>();
 /** One small canvas per landing, painted once. The 4 px side and 8 px top
  * margins match the generic terrain tiles, so crumbling reuses it unchanged. */

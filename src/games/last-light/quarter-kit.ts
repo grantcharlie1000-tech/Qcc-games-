@@ -41,3 +41,30 @@ export function stroke(c:C,color:string,x0:number,y0:number,x1:number,y1:number,
  for(let i=0;i<=steps;i++){const t=steps?i/steps:0;c.fillRect(Math.round(x0+(x1-x0)*t),Math.round(y0+(y1-y0)*t),thick,thick);}
 }
 export function visible(x:number,y:number,w:number,h:number,cx:number,cy:number,vw:number,vh:number){return x+w>cx-24&&x<cx+vw+24&&y+h>cy-24&&y<cy+vh+24;}
+
+/** The towers at the head of the city, where the wires lead. One landmark at
+ * the horizon, never tiled into a second skyline. */
+export function enginesArt(){
+ return sprite('engines',64,150,c=>{
+  const body='#1c2637',rim='#253248',band='#212c3e';
+  for(const [x,top,wide] of [[10,22,14],[38,6,18]] as const){
+   box(c,body,x,top+12,wide,150);box(c,rim,x,top+12,1,150);
+   c.fillStyle=body;c.beginPath();c.moveTo(x-2,top+13);c.lineTo(x+wide/2,top);c.lineTo(x+wide+2,top+13);c.closePath();c.fill();
+   for(let y=top+30;y<150;y+=18)box(c,band,x+2,y,wide-4,1);
+  }
+  box(c,body,24,62,14,5);box(c,'#f3c77a',46,15,2,2);box(c,'#ffb76b55',45,14,4,4);
+ });
+}
+/** The same scanline moon the rest of the Quarter uses. */
+export function moon(c:C,mx:number,my:number){
+ for(let yy=-21;yy<=21;yy++){const span=Math.floor(Math.sqrt(441-yy*yy)),cut=Math.abs(yy+5)<20?9-Math.sqrt(400-(yy+5)*(yy+5)):99,right=Math.min(span,Math.floor(cut));c.fillStyle=yy>10?'#bbc8c2':'#e1e5d2';if(right>-span)c.fillRect(mx-span,my+yy,right+span,1);}
+}
+const skies=new WeakMap<C,{h:number;ending:boolean;g:CanvasGradient}>();
+/** One night sky for every outdoor set. The gradient is rebuilt only when the
+ * view height or the ending changes, never per frame. */
+export function nightSky(c:C,w:number,h:number,ending:boolean){
+ let made=skies.get(c);
+ if(!made||made.h!==h||made.ending!==ending){const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,ending?'#485572':'#172031');g.addColorStop(.6,ending?'#967b89':'#243247');g.addColorStop(1,ending?'#d4ab8b':'#2b3b54');made={h,ending,g};skies.set(c,made);}
+ c.fillStyle=made.g;c.fillRect(0,0,w,h);
+ for(let i=0;i<30;i++){c.fillStyle=i%9===0?'#f3c77a66':'#dfe6dc36';c.fillRect(Math.floor(noise(i,12)*w),Math.floor(noise(i,3)*h*.5),1,1);}
+}
