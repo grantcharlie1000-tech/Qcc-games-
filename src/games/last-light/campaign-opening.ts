@@ -30,18 +30,22 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   hazards:[],
  },
  // 03 · The Last Ferry
- // A stone quay along the canal. Barges drift on their mooring ropes; two
- // low timber footbridges ask for a short hop from a narrow deck (a full
- // jump clips the bridge and drops into the water). The first lethal dash
- // leaves a moored barge for a fender, the tow path behind it the retry.
- // Bolts stand only on pile tops. Ada's deck holds the optional bell.
+ // A stone quay along the canal, built down to the waterline: barges ride a
+ // little above the water and every landing is a quay wall, a pile cap or a
+ // hull. A barge tied 32 px off the quay shows riding; a low timber
+ // footbridge asks for a short hop from a moored barge onto a pile cap (a
+ // full jump clips it into the water). The first lethal dash leaves a barge
+ // for a fender, the tow path behind it the retry; the test taps onto a
+ // barge, dashes 208 px onto the next one's 120 px deck and crosses bolts on
+ // pile tops. Ada's terminal deck holds the optional bell; its stair goes
+ // down to the ferry, which fixes the water 8 px under the last landing.
  {
   setting:'canal',goal:'ferry',
-  route:'24,436,300,s;356,436,112,m,20,.9;500,436,240,s;836,436,100,m,16,1;1060,436,96,s;1220,396,240,s;1492,396,100,m,20,1.1;1784,396,80,s;1992,396,96,m,16,1.2;2120,364,96,m,16,1.2;2424,364,120,s;2608,364,96,s;2768,364,96,s;2928,364,320,s;3280,364,150,s;3462,364,150,s;3644,364,220,s',
-  branches:'1012,349,172,e;1928,309,140,e;3348,340,60,s',memories:[0,1,2],
-  stations:[[13,"Departure bell"]],
-  checkpoints:[2,5,7,13],sectors:[[0,"Stone quay"],[2,"Mooring ropes"],[5,"The tow path"],[7,"Two barges"],[13,"Ada’s crossing"]],
-  hazards:[spike(11,.5,22),spike(12,.62,22)],
+  route:'24,472,300,s;356,500,112,m,20,.9;500,472,240,s;836,500,100,m,16,1;1060,500,96,s;1212,472,240,s;1484,500,100,m,12,1.1;1776,500,80,s;1920,500,96,m,10,1.2;2224,500,120,m,16,1.3;2392,488,96,s;2552,488,96,s;2712,432,160,s;2936,376,160,s;3160,344,320,s;3512,344,150,s;3694,344,150,s;3876,344,220,s',
+  branches:'1008,413,172,e;2980,312,60,s;3560,280,60,s',memories:[0,1,2],
+  stations:[[14,"Departure bell"]],
+  checkpoints:[2,5,7,14],sectors:[[0,"Stone quay"],[2,"Mooring ropes"],[5,"The tow path"],[7,"Two barges"],[14,"Ada’s crossing"]],
+  hazards:[spike(10,.84,22),spike(11,.62,22)],
  },
  // 04 · Windows, Not Stars
  {

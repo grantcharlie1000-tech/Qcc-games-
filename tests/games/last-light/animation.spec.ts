@@ -65,15 +65,17 @@ test('Enter and the contextual pet button stroke a real cat without pausing play
   const key=(code:string,on:boolean)=>{if(on===held.has(code))return;on?held.add(code):held.delete(code);canvas.dispatchEvent(new KeyboardEvent(on?'keydown':'keyup',{code,key:code,bubbles:true}));};
   (window as any).__tick();
   const modelPath='/src/games/last-light/model.ts',{createRun,respawn,step}=await import(modelPath),simulation=createRun();simulation.stage=2;simulation.cleared=2;respawn(simulation,false);
+  // Follow the cat wherever the dressing places it on this chapter's quay.
+  const [{LEVELS},{worldDressing}]=await Promise.all(['/src/games/last-light/levels.ts','/src/games/last-light/habitats.ts'].map(path=>import(path))),cat=worldDressing(LEVELS[2]).find((a:any)=>a.kind==='cat');
   const prefix:number[][]=[];
   // Find the cut using pure physics, then replay DOM input in bounded render
   // batches. Thousands of canvas draws in one JS task flood Chromium's GPU queue.
-  journey:for(const [count,bits] of witness.blocks){let used=0;for(;used<count;){step(simulation,{move:(bits&3)-1,jump:!!(bits&4),dash:!!(bits&8)});used++;if(simulation.ground===9){prefix.push([used,bits]);break journey;}}prefix.push([used,bits]);}
+  journey:for(const [count,bits] of witness.blocks){let used=0;for(;used<count;){step(simulation,{move:(bits&3)-1,jump:!!(bits&4),dash:!!(bits&8)});used++;if(simulation.ground===cat.platform){prefix.push([used,bits]);break journey;}}prefix.push([used,bits]);}
   for(const [count,bits] of prefix){const move=(bits&3)-1;key('ArrowRight',move>0);key('ArrowLeft',move<0);key('ArrowUp',!!(bits&4));key('ShiftRight',!!(bits&8));for(let left=count;left>0;){const n=Math.min(10,left);(window as any).__tick(n);left-=n;}}
   for(const code of [...held])key(code,false);
   // Brake and walk into reach using actual arrow input, never an assigned position.
   let previous=Number(game.dataset.x);for(let i=0;i<360;i++){
-   const x=Number(game.dataset.x),velocity=(x-previous)*30,d=2771-x;previous=x;
+   const x=Number(game.dataset.x),velocity=(x-previous)*30,d=cat.x-35-x;previous=x;
    const move=Math.abs(d)<3&&Math.abs(velocity)<25?0:Math.sign(d-velocity*.055);key('ArrowRight',move>0);key('ArrowLeft',move<0);(window as any).__tick(4);
    if(game.querySelector('.ll-prompt')!.textContent?.includes('Pet cat'))break;
   }

@@ -1,5 +1,6 @@
 import {WORLDS,type Level} from './levels';
 import {drawDistrictVistas} from './district-vistas';
+import {drawQuarterDistance} from './quarter-place';
 type C=CanvasRenderingContext2D;
 const WIDTH=960,HEIGHT=432;
 const cache=new Map<string,HTMLCanvasElement>();
@@ -63,6 +64,7 @@ function bake(world:number,layer:number,cavern:boolean){
 /** Cached native-resolution vistas use different silhouettes, light and scale
  * on two parallax planes. There is no per-frame pixel processing or blur. */
 export function drawVistas(c:C,l:Level,w:number,h:number,cx:number,cy:number,time=0){
+ if(l.world===0){drawQuarterDistance(c,l,w,h,cx,cy);return;}
  if(drawDistrictVistas(c,l,w,h,cx,cy,time))return;
  const cavern=l.setting==='cavern';
  for(let layer=0;layer<2;layer++){

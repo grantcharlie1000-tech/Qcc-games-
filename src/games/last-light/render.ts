@@ -12,6 +12,7 @@ import {lantern,doorway,valve,bell,ferry,signalDish,lifeTree} from './props';
 import {Courier} from './courier';
 import {drawPlatform,clearTerrainCache} from './terrain';
 import {drawSky,drawLife,drawGear,person,drawDepthFog} from './world';
+import {drawQuarterPickup} from './quarter-place';
 import {Effects,completionOffset,drawCompletion,drawDawn,drawEndingSky} from './effects';
 import {goalComposition,stationComposition,type GoalComposition,type StationArt} from './composition';
 type C=CanvasRenderingContext2D;
@@ -153,7 +154,7 @@ export class Scene {
   drawSky(c,l,s,w,h,cx,cy,reduced);
   drawEndingSky(c,w,h,s);
   c.save();c.translate(-cx,-cy);
-  drawArchitecture(c,l,cx,cy,w,h);drawDepthFog(c,l,s,cx,cy,w,h,reduced);
+  drawArchitecture(c,l,cx,cy,w,h,s.clock);drawDepthFog(c,l,s,cx,cy,w,h,reduced);
 
   for(const p of l.platforms){const r=platformAt(p,s.clock);if(r.x+r.w<cx-60||r.x>cx+w+60||r.y>cy+h+60||r.y<cy-220)continue;const visual=l.goal==='escape'&&s.phase!=='playing'&&p.kind==='crumble'&&elapsed>p.id*.12?{...s,crumbles:{...s.crumbles,[p.id]:-(elapsed-p.id*.12)}}:s;drawPlatform(c,p,r.x,r.y,visual,l,reduced);}
   for(let i=1;i<l.mainCount-1;i++){
@@ -185,7 +186,7 @@ export class Scene {
    }
   }
   for(const enemy of l.enemies??[]){const margin=enemy.travel+28;if(enemy.x+margin<cx||enemy.x-margin>cx+w)continue;drawEnemy(c,enemy,s,reduced);}
-  for(const p of l.pickups){if(s.collected.includes(p.id))continue;const y=p.y+Math.round(Math.sin(t*3+p.id)*3);
+  for(const p of l.pickups){if(s.collected.includes(p.id))continue;if(l.world===0&&drawQuarterPickup(c,l,p.kind,p.x,p.y,s.clock,reduced))continue;const y=p.y+Math.round(Math.sin(t*3+p.id)*3);
    c.fillStyle=(p.kind==='dash'?'#a9d9ef':theme.accent)+'12';c.beginPath();c.moveTo(p.x,y-15);c.lineTo(p.x+12,y);c.lineTo(p.x,y+15);c.lineTo(p.x-12,y);c.fill();c.fillStyle=p.kind==='dash'?'#9ed6ee':theme.accent;
    c.beginPath();c.moveTo(p.x,y-8);c.lineTo(p.x+6,y);c.lineTo(p.x,y+8);c.lineTo(p.x-6,y);c.fill();c.fillStyle='#fff4d1';c.fillRect(p.x-1,y-4,2,5);
   }

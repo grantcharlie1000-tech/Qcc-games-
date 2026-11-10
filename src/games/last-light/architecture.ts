@@ -1,6 +1,7 @@
 import {materialTile} from './generated-art';
 import {WORLDS,type Level} from './levels';
 import {facadeWindow} from './facade-art';
+import {drawQuarterPlace} from './quarter-place';
 type C=CanvasRenderingContext2D;
 const tiles=new Map<string,HTMLCanvasElement>();
 function masonry(world:number,industrial:boolean){
@@ -22,7 +23,8 @@ function masonry(world:number,industrial:boolean){
 /** World-space construction follows the actual collision ledges. Recessed
  * walls, bolted brackets and pipe risers establish one building, while only
  * the foreground deck caps carry the bright walkable edge. */
-export function drawArchitecture(c:C,l:Level,cx:number,cy:number,w:number,h:number){
+export function drawArchitecture(c:C,l:Level,cx:number,cy:number,w:number,h:number,clock=0){
+ if(l.world===0){drawQuarterPlace(c,l,clock,cx,cy,w,h);return;}
  const theme=WORLDS[l.world],industrial=l.setting==='factory'||l.setting==='tower',tile=masonry(l.world,industrial);
  c.save();
  const pattern=c.createPattern(tile,'repeat');

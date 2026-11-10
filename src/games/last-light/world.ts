@@ -6,6 +6,7 @@ import {noise} from './terrain';
 import {speakerFor,characterColor} from './story';
 import {tree,cat,washing,settingDetails} from './environment-art';
 import {drawVistas} from './vista-art';
+import {drawQuarterSky} from './quarter-place';
 import {person} from './inhabitants';
 import {landmarks,atmosphere} from './environment-landmarks';
 export {person} from './inhabitants';
@@ -16,6 +17,8 @@ import {petPose} from './affection';
 function gear(c:CanvasRenderingContext2D,x:number,y:number,r:number,t:number,color:string){c.save();c.translate(x,y);c.rotate(t);c.strokeStyle=color;c.lineWidth=5;c.beginPath();c.arc(0,0,r,0,Math.PI*2);c.stroke();for(let i=0;i<10;i++){c.rotate(Math.PI/5);c.fillStyle=color;c.fillRect(-3,-r-5,6,10);if(i%2===0)c.fillRect(-2,-r,4,r);}c.fillStyle='#1e2634';c.fillRect(-5,-5,10,10);c.restore();}
 export function drawSky(c:CanvasRenderingContext2D,l:Level,s:Run,w:number,h:number,cx:number,cy:number,reduced:boolean){
  const theme=WORLDS[l.world],t=reduced?0:s.clock;
+ // The Old Quarter is one built place: no pasted panorama, clouds or landmarks.
+ if(l.world===0){drawQuarterSky(c,l,w,h,cx,cy,s.clock,reduced,!!s.ending);return;}
  const gradient=c.createLinearGradient(0,0,0,h);gradient.addColorStop(0,s.ending?'#485572':theme.sky);gradient.addColorStop(.65,s.ending?'#967b89':theme.far);gradient.addColorStop(1,s.ending?'#d4ab8b':theme.sky);c.fillStyle=gradient;c.fillRect(0,0,w,h);
  for(let i=0;i<(l.setting==='cavern'?0:28);i++){c.fillStyle=i%9===0?theme.accent+'66':'#dfe6dc36';c.fillRect(Math.floor(noise(i,12)*w),Math.floor(noise(i,3)*h*.56),1,1);}
  const mx=Math.round(w*.8-cx*.025),my=Math.round(Math.max(100,h*.24-cy*.03));
@@ -114,13 +117,13 @@ export function depthFogBounds(l:Level){
  return {start:Math.max(bottom+28,l.height-112),end:l.height+48};
 }
 export function drawDepthFog(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:number,w:number,h:number,reduced:boolean){
- if(l.water!==null)return;
+ // Water has its own edge, and the Old Quarter's streets, tower floors and
+ // basement are built all the way down, so neither gets a fog bank.
+ if(l.water!==null||l.world===0)return;
  const {start,end}=depthFogBounds(l),visibleBottom=cy+h;if(visibleBottom<=start)return;
  const color=l.world===3?'#7b9aad':l.world===1?'#345b58':l.world===2?'#4c414f':l.world===4?'#655877':'#40566c';
  const fade=c.createLinearGradient(0,start,0,end);fade.addColorStop(0,color+'00');fade.addColorStop(.48,color+'58');fade.addColorStop(1,color+'e8');
+ // One smooth bank only: repeated wisps striped the screen.
  c.save();c.fillStyle=fade;c.fillRect(cx,start,w,Math.max(0,visibleBottom-start));
- // Broken wisps live at fixed world elevations and scroll with the scenery.
- const t=reduced?0:s.clock;
- for(let i=0;i<3;i++){const yy=start+38+i*31,drift=reduced?0:Math.sin(t*.16+i)*12;for(let x=Math.floor(cx/180)*180-180;x<cx+w;x+=180){c.globalAlpha=.05;c.fillStyle=color;c.fillRect(Math.round(x+drift+i*17),yy,128+i*8,2+i);}}
  c.restore();
 }

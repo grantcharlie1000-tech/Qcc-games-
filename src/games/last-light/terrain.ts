@@ -3,6 +3,7 @@ import {type Level,type Platform,type Rect} from './levels';
 import {PLAYER_H,PLAYER_W,type Run} from './model';
 import {goalComposition,stationArtBounds,stationComposition} from './composition';
 import {paintMaterial,paintFoundation} from './materials';
+import {drawBarge} from './quarter-place';
 export const noise=(a:number,b:number)=>Math.abs(Math.sin(a*127.1+b*311.7)*43758.5453)%1;
 const cache=new Map<string,HTMLCanvasElement>();
 let boundsCache=new WeakMap<Level,WeakMap<Platform,Rect>>();
@@ -87,6 +88,8 @@ export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:nu
   for(let i=0;i<18;i++){c.fillStyle=i%6===0?'#93745a':'#6e5641';c.fillRect(dir>0?px+5+i:px-2-i,top+16-Math.round(i*.85),3,2);}
   c.fillStyle='#3d3b3a';c.fillRect(px-3,bottom-3,11,3);
  }
+ // Old Quarter barges are boats, not slabs: hull and gunwale replace the tile.
+ if(p.kind==='moving'&&l.world===0&&l.setting==='canal'){drawBarge(c,p,x,y,l);return;}
  c.drawImage(tile(p,l),x-4,y-8);
  if(p.kind==='belt'){
   c.fillStyle='#302e38';c.fillRect(x,y+3,p.w,13);const shift=reduced?0:(s.clock*35*(p.direction??1))%18;
