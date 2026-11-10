@@ -1,14 +1,54 @@
 import type {Level,Platform,Station} from './levels';
 import type {Run} from './model';
-import {box,hash,masonry,stroke,visible,wall,type C} from './quarter-kit';
+import {box,hash,masonry,seamless,sprite,stroke,visible,wall,type C} from './quarter-kit';
+import {lampOnWater} from './set-canal';
 import type {QuarterSet} from './quarter-sets';
 
 /** Level 6 · the service culvert under the street. One brick vault, flooded
  * to the springing. What you stand on is what a culvert has: a brick bench
  * built up out of the water, a length of iron main between two elbows that
  * go down into it, or a grating hung from the vault on rods. Steam comes
- * from a joint on a main, fed by the pipe run on the wall behind it. */
-const vault=()=>masonry('culvert/vault',64,32,16,8,{mortar:'#17131a',stones:['#272026','#2a2228','#2d242a'],lip:'#352b30',chip:'#3b3035'});
+ * from a joint on a main, fed by the pipe run on the wall behind it.
+ * The far wall is the other side of the vault, curving over toward you: its
+ * courses close up and darken as they rise to the crown. Branch culverts
+ * open off it and carry the water away into the dark; the street is over
+ * the crown, and comes down through its gratings as light and its drains
+ * as water. */
+const COURSES=[
+ {from:96,key:'culvert/v0',tile:()=>masonry('culvert/v0',64,32,16,8,{mortar:'#17131a',stones:['#2b2328','#2e252a','#31282c'],lip:'#3a2f33',chip:'#40343a'})},
+ {from:176,key:'culvert/v1',tile:()=>masonry('culvert/v1',64,24,16,6,{mortar:'#151118',stones:['#262025','#282126','#2a2328'],lip:'#30272c',chip:'#352b30'})},
+ {from:236,key:'culvert/v2',tile:()=>masonry('culvert/v2',64,16,16,4,{mortar:'#120f15',stones:['#201b20','#221c21','#231d22'],lip:'#282126',chip:'#2b2328'})},
+ {from:1e4,key:'culvert/v3',tile:()=>masonry('culvert/v3',48,12,12,3,{mortar:'#0e0c11',stones:['#19151a','#1a161b','#1b171c'],lip:'#1b171c',chip:'#1b171c'})},
+] as const;
+const ring=()=>masonry('culvert/ring',24,12,6,12,{mortar:'#191417',stones:['#3a2d2e','#3e3031','#423334'],lip:'#4d3c3a',chip:'#4d3c3a'});
+const patch=()=>masonry('culvert/patch',64,32,16,8,{mortar:'#1a1416',stones:['#3a2a29','#3e2d2b','#42302d'],lip:'#4c3834',chip:'#553f3a'});
+const earth=()=>seamless('culvert/earth',96,64,rect=>{rect('#0c0d10',0,0,96,64);for(let i=0;i<26;i++){const v=hash(i,3,51),x=Math.floor(hash(i,1,51)*96),y=Math.floor(hash(i,2,51)*64);rect(v>.6?'#15161a':'#111216',x,y,3+Math.floor(v*7),2+Math.floor(v*3));if(v>.8)rect('#1b1c20',x,y,2+Math.floor(v*4),1);}for(let i=0;i<5;i++)rect('#090a0c',Math.floor(hash(i,4,51)*96),8+i*12,30+Math.floor(hash(i,5,51)*40),1);});
+const setts=()=>masonry('culvert/setts',48,12,12,6,{mortar:'#0e1217',stones:['#232b33','#262e37','#29313a'],lip:'#343e48',chip:'#3a444e'});
+const CROWN=300,STREET=368,RISE=118,MOUTH_TOP=150;
+/** Where a branch culvert opens off the far wall: its centre, its width, and which way it bends out of sight. */
+const MOUTHS:readonly (readonly [number,number,number])[]=[[300,150,0],[1175,170,1],[2630,150,-1],[3050,180,0]];
+/** Where a grating in the street lets the night down, with rungs up to it. */
+const GRATINGS=[520,905,1444,1960,2400,2840,3330];
+const inMouth=(x:number,w:number)=>MOUTHS.some(([m,wide])=>x+w>m-wide/2-14&&x<m+wide/2+14);
+/** A branch culvert seen from its mouth: section after section of the same
+ * vault, each smaller and darker than the last, sliding aside where it bends;
+ * the water lies along its floor until both are lost. */
+const mouth=(w:number,bend:number)=>sprite(`culvert/mouth/${w}/${bend}`,w+24,MOUTH_TOP+30,c=>{
+ const a=w/2,mx=12+a,base=MOUTH_TOP;
+ for(let x=-a-10;x<a+10;x++){const k=(x+.5)/(a+10),top=base-Math.round((RISE+10)*Math.sqrt(Math.max(0,1-k*k)));box(c,'#3a2d2e',mx+x,top,1,base+30-top);box(c,'#57443f',mx+x,top,1,1);}
+ for(let i=0;i<=30;i++){const g=Math.PI*i/30;stroke(c,'#191417',mx-Math.cos(g)*a,base-Math.sin(g)*RISE,mx-Math.cos(g)*(a+10),base-Math.sin(g)*(RISE+10));}
+ for(let y=base+6;y<base+30;y+=8){box(c,'#191417',mx-a-10,y,10,1);box(c,'#191417',mx+a,y,10,1);}
+ const walls=['#141116','#0f0d11','#0b090c','#070608','#040405'],rims=['','#221c20','#1a1619','#131012','#0d0b0d'],wet=['#0f1d1f','#0b1618','#081012','#050b0c'],size=[1,.78,.6,.45,.33];
+ for(let j=0;j<5;j++){
+  const s=size[j],half=a*s,at=mx+bend*(1-s)*a*1.1,foot=base-Math.round(34*(1-s));
+  for(let x=Math.ceil(-half);x<half;x++){const k=(x+.5)/half,top=foot-Math.round(RISE*s*Math.sqrt(Math.max(0,1-k*k)));box(c,walls[j],at+x,top,1,foot-top+(j?0:30));if(j)box(c,rims[j],at+x,top,1,1);}
+  if(j<4){const next=base-Math.round(34*(1-size[j+1]));box(c,wet[j],at-half,next,half*2,foot-next);for(let i=0;i<4-j;i++){const v=hash(i,j,w);box(c,j?'#14292a':'#1d3836',at-half+4+v*(half*2-16),next+1+Math.floor(hash(i,j,w+1)*Math.max(1,foot-next-2)),Math.round((10-j*2)*(.5+v)),1);}}
+ }
+ // Far down it a grating lets the night in, and the water under that shows it.
+ const s=size[4],at=mx+bend*(1-s)*a*1.1,foot=base-Math.round(34*(1-s));
+ box(c,'#31425d',at-1,foot-Math.round(RISE*s)+5,2,Math.round(RISE*s)-6);box(c,'#3f6660',at-4,foot-1,8,1);
+ box(c,'#6d5a52',mx-5,base-RISE-13,10,14);box(c,'#8a746a',mx-5,base-RISE-13,10,1);box(c,'#191417',mx-5,base-RISE,10,1);
+});
 const bench=()=>masonry('culvert/bench',64,32,16,8,{mortar:'#191417',stones:['#3a2d2e','#3e3031','#423334'],lip:'#4d3c3a',chip:'#564440'});
 type Role='bench'|'main'|'grating';
 const role=(p:Platform,l:Level):Role=>p.kind==='grate'?'grating':p.w>=170&&l.water!-p.y<=48||p.id===l.mainCount-1?'bench':'main';
@@ -23,18 +63,51 @@ function pump(c:C,x:number,water:number,t:number){
  box(c,'#3d4a51',x+92,water-82,8,8);stroke(c,'#151b20',x+22,water-128,x+96,water-136,4);box(c,'#151b20',x+56,water-150,6,110);box(c,'#3d4a51',x+56,water-150,2,110);
 }
 function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
- const water=l.water!,left=cx-24,right=cx+vw+24,top=cy-24,bottom=cy+vh+24;
- wall(c,'culvert/vault',vault,left,top,right-left,bottom-top);
- // Brick ribs and their piers stand at fixed places along the tunnel.
- for(let x=Math.floor(left/352)*352+96;x<right;x+=352){const s=soffit(l,x);box(c,'#1d181c',x,s,26,water+60-s);box(c,'#3b3034',x+2,s,2,water+60-s);box(c,'#120e11',x+24,s,2,water+60-s);box(c,'#3b3034',x-4,s+34,34,5);}
- // Two service mains run the length of the back wall, with a flange every few yards.
- for(let k=0;k<2;k++){const y=water-262+k*22;for(let x=Math.floor(left/96)*96;x<right;x+=96){if(y<soffit(l,x)+8)continue;box(c,'#12181d',x,y,96,9);box(c,'#3f4c52',x,y+1,96,2);box(c,'#0d1216',x+90,y-2,6,13);box(c,'#5a686b',x+91,y-1,1,11);}}
+ const water=l.water!,left=cx-24,right=cx+vw+24,top=cy-24,bottom=cy+vh+24,crown=water-CROWN,shaft=l.platforms[l.mainCount-1].x-190;
+ // The far side of the vault: the courses close up and darken as it curves over to the crown.
+ for(let i=0,y=water+90;i<COURSES.length;i++){const k=COURSES[i],up=Math.max(top,water-k.from);if(up<Math.min(y,bottom))wall(c,k.key,k.tile,left,up,right-left,Math.min(y,bottom)-up);y=water-k.from;}
+ // The flood has stained the bottom courses a brick at a time.
+ for(let x=Math.floor(left/16)*16;x<right;x+=16){const v=hash(x>>4,7,31);box(c,'#070d0c80',x,water-10-Math.floor(v*4)*4,16,10+Math.floor(v*4)*4);}
+ // Where the wall has been rebuilt the brick is newer and redder.
+ for(let i=Math.floor(left/420)-1;i*420<right;i++){const v=hash(i,9,33),x=i*420+120+Math.floor(v*200),w=64+Math.floor(v*4)*16;if(x+w<left||x>right||inMouth(x,w))continue;wall(c,'culvert/patch',patch,x,water-88,w,48);wall(c,'culvert/patch',patch,x+16,water-96,w-48,8);wall(c,'culvert/patch',patch,x+8,water-40,w-24,16);}
+ // The ground over the crown: the vault's own ring of brick on edge, the fill, and the street's setts on top of that.
+ if(top<crown){
+  const street=water-STREET;
+  for(let x=Math.floor(left/32)*32;x<right;x+=32){
+   if(x>=shaft){
+    // The stair shaft at the far end stands upright in ordinary courses to its own head, above the street.
+    const head=soffit(l,x),from=Math.max(top,head);wall(c,COURSES[1].key,COURSES[1].tile,x,from,32,crown-from);
+    if(head>top){box(c,'#0b0d11',x,top,32,head-top);box(c,'#3b3034',x,head-4,32,4);box(c,'#120e11',x,head,32,3);}
+    continue;
+   }
+   if(top<street-12){box(c,'#111928',x,top,32,street-12-top);box(c,'#1a222e',x,street-48,32,36);box(c,'#263243',x,street-48,32,1);box(c,'#111822',x,street-14,32,2);}
+   wall(c,'culvert/setts',setts,x,street-12,32,12);box(c,'#3d4852',x,street-12,32,1);wall(c,'culvert/earth',earth,x,street,32,crown-12-street);wall(c,'culvert/ring',ring,x,crown-12,32,12);box(c,'#57443f',x,crown-12,32,1);box(c,'#0b090c',x,crown-1,32,2);}
+ }
+ const jamb=Math.ceil(shaft/32)*32;if(jamb+8>left&&jamb<right&&top<crown){const head=soffit(l,jamb);box(c,'#1d181c',jamb,head,8,crown-head);box(c,'#3b3034',jamb+1,head,2,crown-head);box(c,'#0b090c80',jamb+8,head,5,crown-head);}
+ // Brick ribs stand at fixed places along the tunnel, each on its own footing at the springing.
+ for(let x=Math.floor(left/352)*352+96;x<right;x+=352){if(inMouth(x,26))continue;const s=soffit(l,x);box(c,'#1d181c',x,s,26,water+60-s);box(c,'#3b3034',x+2,s,2,water+60-s);box(c,'#120e11',x+24,s,2,water+60-s);box(c,'#0b090c80',x+26,s,5,water-s);for(let y=Math.max(s,Math.floor(top/24)*24);y<Math.min(water,bottom);y+=24)box(c,'#120e11',x+4,y,20,1);box(c,'#3b3034',x-4,water-22,34,6);box(c,'#4d3c3a',x-4,water-22,34,1);box(c,'#1d181c',x-4,water-16,34,16);}
+ // Branch culverts open off the wall and take the water with them.
+ for(const [x,w,bend] of MOUTHS)if(x+w/2+12>left&&x-w/2-12<right)c.drawImage(mouth(w,bend),x-w/2-12,water-MOUTH_TOP);
+ for(const x of GRATINGS){
+  // A grating in the street: the shaft down through the crown, the night coming through it, and rungs up the wall to it.
+  if(x+70<left||x-20>right||x>=shaft)continue;
+  box(c,'#0b0d11',x-2,water-STREET-12,44,STREET-CROWN+14);box(c,'#141a22',x,water-STREET,40,STREET-CROWN);box(c,'#1c2228',x-2,water-STREET-12,44,12);for(let i=0;i<5;i++)box(c,'#31425d',x+2+i*8,water-STREET-11,4,10);
+  box(c,'#6f8fb412',x,crown,40,CROWN);box(c,'#6f8fb40c',x-10,crown+40,60,CROWN-40);
+  for(let y=crown+6;y<water-4;y+=11){box(c,'#0b090c',x+48,y+1,13,2);box(c,'#56646b',x+48,y,12,1);box(c,'#3a464d',x+48,y,1,3);box(c,'#3a464d',x+59,y,1,3);}
+ }
+ // Two service mains run the length of the wall on hangers from the vault, with a flange every few yards.
+ for(let k=0;k<2;k++){const y=water-262+k*22;for(let x=Math.floor(left/96)*96;x<right;x+=96){if(y<soffit(l,x)+8)continue;box(c,'#12181d',x,y,96,9);box(c,'#3f4c52',x,y+1,96,2);box(c,'#0d1216',x+90,y-2,6,13);box(c,'#5a686b',x+91,y-1,1,11);if(!k){box(c,'#0d1216',x+44,crown,2,y-crown);box(c,'#0d1216',x+40,y+31,10,3);box(c,'#0d1216',x+44,y+9,2,22);}}}
+ // Street drains come out of the wall and run down it into the culvert.
+ for(let i=Math.floor(left/270)-1;i*270<right;i++){
+  const v=hash(i,5,37),x=i*270+60+Math.floor(v*150),y=water-52-Math.floor(v*4)*8;if(x+12<left||x>right||inMouth(x-6,24)||x>=shaft)continue;
+  box(c,'#16231d',x,y+8,10,10);box(c,'#16231d',x+2,y+18,6,14);box(c,'#16231d',x+3,y+32,4,water-y-32);
+  box(c,'#0d1216',x-2,y-2,14,3);box(c,'#4f5f66',x-2,y-2,14,1);box(c,'#0d1216',x-1,y+1,12,8);box(c,'#34424a',x,y+1,10,7);box(c,'#060809',x+2,y+2,6,6);
+  box(c,'#2e4f4c',x+4,y+7,2,water-y-7);
+  for(let k=0;k<3;k++){const fall=(((t*52+k*31+i*17)%(water-y-7))+(water-y-7))%(water-y-7);box(c,'#7fb0a8',x+4,y+7+fall,2,3);}
+  box(c,'#6f9a94',x+1+Math.round(Math.sin(t*6+i)),water-1,8,1);
+ }
  // The stopped pumps of the pump passage.
  for(const x of [1300,1560])if(visible(x-20,water-160,180,200,cx,cy,vw,vh))pump(c,x,water,t);
- // The ground over the vault, and the dark side walls of the stair shaft.
- for(let x=Math.floor(left/32)*32;x<right;x+=32){const s=soffit(l,x);if(s>top){box(c,'#0b0d11',x,top,32,s-top);box(c,'#3b3034',x,s-4,32,4);box(c,'#120e11',x,s,32,3);}}
- // A street grating every so often lets a little moonlight down.
- for(let x=Math.floor(left/448)*448+250;x<right;x+=448){const s=soffit(l,x);if(s>water-290)box(c,'#6f8fb410',x,s,40,water-s);if(s>top){box(c,'#1c2228',x-2,s-12,44,12);for(let i=0;i<5;i++)box(c,'#31425d',x+2+i*8,s-11,4,9);}}
  for(const h of l.hazards)if(h.kind==='steam'){
   // Every vent is fed from the run on the wall.
   const x=Math.round(h.x+h.w/2)-3,from=water-232,base=h.y+h.h;if(!visible(x,from,8,base-from,cx,cy,vw,vh))continue;
@@ -44,7 +117,7 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
   const kind=role(p,l);if(!visible(p.x-16,p.y-320,p.w+32,water+380-p.y,cx,cy,vw,vh))continue;
   if(kind==='bench'){
    wall(c,'culvert/bench',bench,p.x,p.y+8,p.w,water+60-p.y-8);box(c,'#120e11',p.x,p.y+8,2,water+60-p.y);box(c,'#120e11',p.x+p.w-2,p.y+8,2,water+60-p.y);
-   box(c,'#0b0d1180',p.x,water-10,p.w,10);for(let i=0;i*9<p.w-6;i++){const v=hash(i,p.id,3);if(v>.4)box(c,v>.75?'#3f5a43':'#2e4534',p.x+3+i*9,water-2-Math.floor(v*6),4,2+Math.floor(v*6));}
+   box(c,'#0b0d1180',p.x,water-10,p.w,10);for(let i=0;i*29<p.w-12;i++){const v=hash(i,p.id,3);if(v<.55)continue;const at=p.x+5+i*29+Math.floor(hash(i,p.id,4)*14);for(let k=0;k<2+Math.floor(v*3);k++){const hang=3+Math.floor(hash(i*5+k,p.id,6)*7);box(c,k%2?'#2e4534':'#3a5540',at+k*2,water-hang,1+k%2,hang);}}
   }else if(kind==='main'){
    // Each length of main turns down into the water at both ends and sits in a wall cradle.
    for(const x of [p.x+2,p.x+p.w-24]){box(c,'#11171c',x,p.y+14,22,water+50-p.y);box(c,'#34424a',x+3,p.y+14,6,water+50-p.y);box(c,'#4f5f66',x+3,p.y+14,2,water+50-p.y);box(c,'#0d1216',x-2,p.y+34,26,6);box(c,'#5a686b',x-2,p.y+34,26,1);}
@@ -55,13 +128,17 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
   }
  }
 }
-function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
+function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,s?:Run){
  const top=l.water!,bottom=cy+vh+24;if(bottom<=top)return;
- box(c,'#0d1a1c',cx-24,top,vw+48,bottom-top);box(c,'#0a1416',cx-24,top+18,vw+48,bottom-top-18);
+ box(c,'#0f1e20',cx-24,top,vw+48,bottom-top);box(c,'#0c181a',cx-24,top+12,vw+48,bottom-top-12);box(c,'#091214',cx-24,top+34,vw+48,bottom-top-34);
  // The culvert runs: streaks slide along the surface toward the outfall.
- for(let row=0;row<5;row++){const y=top+2+row*row*2+row*3,step=46+row*12,slide=t*(26-row*3);
+ for(let row=0;row<7;row++){const y=top+2+row*row*2+row*3,step=46+row*12,slide=t*(26-row*3);
   for(let i=Math.floor((cx-24+slide)/step)-1;i*step-slide<cx+vw+24;i++){const v=hash(i,row,41);box(c,v>.5?'#2e4f4c':'#1d3836',i*step-slide+v*20,y,8+Math.floor(v*14),1);}}
  for(let x=Math.floor((cx-24)/26)*26;x<cx+vw+24;x+=26)box(c,'#3f6660',x+4+Math.round(Math.sin(t*2+x*.3)*2),top,12,1);
+ // What light there is lies on it: the night under each grating, and every wall lamp you have lit.
+ for(const x of GRATINGS)if(x+60>cx&&x-20<cx+vw)for(let k=0;k<5;k++)box(c,'#6f8fb433',x+4+k*2+Math.round(Math.sin(t*1.3+k*1.7+x)*2),top+3+k*5,32-k*5,1);
+ if(s)for(const lamp of l.stations)if(lamp.kind==='lamp'&&s.activated.includes(lamp.id)&&lamp.x>cx-30&&lamp.x<cx+vw+30)lampOnWater(c,Math.round(lamp.x),top,top-lamp.y+50,t);
+ if(s&&top-s.y<150&&s.y<top)lampOnWater(c,Math.round(s.x+8+s.facing*7),top,top-s.y-24,t);
 }
 function deck(c:C,p:Platform,l:Level){
  const w=p.w,kind=role(p,l);
