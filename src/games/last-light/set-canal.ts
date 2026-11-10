@@ -31,11 +31,12 @@ export function sheet(c:C,x:number,w:number,from:number,to:number,far:number){
  for(let y=from;y<to;){const band=Math.max(0,Math.min(DEPTH.length-1,Math.floor((y-far)/14))),end=band===DEPTH.length-1?to:Math.min(to,far+(band+1)*14);box(c,DEPTH[band],x,y,w,end-y);y=end;}
 }
 /** Ripples are short dashes on rows that widen toward the viewer. */
-export function ripples(c:C,left:number,right:number,from:number,to:number,far:number,t:number){
+export function ripples(c:C,left:number,right:number,from:number,to:number,far:number,t:number,pan:(y:number)=>number=()=>0){
  for(let row=0;row<26;row++){
   const y=Math.round(far+3+row*row*.5+row*6);if(y<from)continue;if(y>=to)break;
-  const step=30+row*7,drift=Math.sin(t*.55+row*1.3)*4,length=4+row*1.4;
-  for(let i=Math.floor((left-drift)/step)-1;i*step<right+step;i++){
+  // `pan` carries a far row along with the bank it lies under, so distant water never slides past the houses.
+  const step=30+row*7,drift=Math.sin(t*.55+row*1.3)*4+Math.round(pan(y)),length=4+row*1.4;
+  for(let i=Math.floor((left-drift)/step)-1;i*step<right-drift+step;i++){
    const v=hash(i,row,17),x=i*step+v*step*.8+drift;if(x+length*1.6<left||x>right)continue;
    box(c,v>.8?'#4f7a85':v>.45?'#335865':'#264754',x,y,Math.round(length*(.6+v)),1);
   }
@@ -95,7 +96,7 @@ const BROKEN=[[2,.9],[5,.74],[9,.5],[14,.3]] as const;
 /** The far quay itself, what is moored at it, and the bank lying on the water:
  * each house's dark front, and under every lit window its own wavering light. */
 function farShore(c:C,w:number,cx:number,fy:number,t:number){
- const shift=Math.round(cx*.35);
+ const shift=Math.round(cx*BANK_PAN);
  for(let i=Math.floor(shift/LOT)-2;;i++){
   const x0=lotEdge(i,LOT,BANK_SEED)-shift;if(x0>=w)break;const wide=lotEdge(i+1,LOT,BANK_SEED)-shift-x0;if(x0+wide<=0)continue;
   // A crossing lies on the water as dark as the arch over it, as deep as the bridge is tall.
@@ -119,7 +120,7 @@ function farShore(c:C,w:number,cx:number,fy:number,t:number){
 export function moonPath(c:C,mx:number,from:number,to:number,far:number,t:number){
  for(let k=0;k<16;k++){
   const y=Math.round(far+4+k*k*.9+k*5);if(y<from)continue;if(y>=to)break;
-  const wide=6+k*3,slip=Math.round(Math.sin(t*1.2+k*1.9)*(1+k*.3));
+  const wide=6+k*3,slip=Math.round(Math.sin(t*.7+k*1.9)*(1+k*.25));
   box(c,k<5?'#c5d2c98c':'#c5d2c966',mx-Math.round(wide/2)+slip,y,wide,1);
   if(k>2)box(c,'#c5d2c93d',mx-wide+slip*2+k%3*5,y+2,Math.round(wide*.6),1);
   if(k>5)box(c,'#c5d2c92e',mx+Math.round(wide*.4)-slip,y-2,Math.round(wide*.5),1);
@@ -130,15 +131,22 @@ export function lampOnWater(c:C,x:number,water:number,height:number,t:number){
  const reach=Math.max(3,8-Math.floor(height/14));
  for(let d=0;d<reach;d++)box(c,d<2?'#f3c77a70':'#d9a25a4d',x-3+Math.round(Math.sin(t*1.6+d*1.7+x*.1)*(1+d*.4)),water+2+d*4+Math.round(height*.1),7-Math.min(4,d),1);
 }
+/** How far each distant layer follows the camera. The far side of the canal
+ * is a long way off: walking the quay barely moves it, the way the moon barely
+ * moves. Only what you stand on is locked to the world. */
+const MOON_PAN=.01,TOWER_PAN=.015,BEHIND_PAN=.02,BANK_PAN=.03;
+/** The canal between the banks: a row at the far bank moves with the bank, a row at your feet with the quay. */
+const waterPan=(y:number,far:number,near:number)=>{const k=Math.max(0,Math.min(1,(y-far)/(near-far)));return BANK_PAN+(1-BANK_PAN)*k*k*k;};
 function sky(c:C,l:Level,w:number,h:number,cx:number,cy:number,t:number,ending:boolean){
  const fy=Math.round(l.water!-FAR-cy);quayLine=fy-8;
- nightSky(c,w,h,ending,cx,t);moon(c,Math.round(w*.78-cx*.02),Math.max(46,fy-178));
- c.drawImage(headTowers(),Math.round(w*.28-cx*.05),fy-232);
- drawRow(c,behindRow,w,cx*.2,behindBase,quayLine);
- drawRow(c,bankRow,w,cx*.35,bankBase,quayLine+QUAY);
+ nightSky(c,w,h,ending,cx,t);moon(c,Math.round(w*.78-cx*MOON_PAN),Math.max(46,fy-178));
+ c.drawImage(headTowers(),Math.round(w*.28-cx*TOWER_PAN),fy-232);
+ drawRow(c,behindRow,w,cx*BEHIND_PAN,behindBase,quayLine);
+ drawRow(c,bankRow,w,cx*BANK_PAN,bankBase,quayLine+QUAY);
  if(fy>=h)return;
+ const far=l.water!-FAR,near=l.water!;
  sheet(c,0,w,fy,h,fy);farShore(c,w,cx,fy,t);
- c.save();c.translate(-cx,-cy);ripples(c,cx,cx+w,l.water!-FAR+3,l.water!,l.water!-FAR,t);moonPath(c,cx+Math.round(w*.78-cx*.02),l.water!-FAR,l.water!,l.water!-FAR,t);c.restore();
+ c.save();c.translate(-cx,-cy);ripples(c,cx,cx+w,far+3,near,far,t,y=>cx*(1-waterPan(y,far,near)));moonPath(c,cx+Math.round(w*.78-cx*MOON_PAN),far,near,far,t);c.restore();
 }
 export function weed(c:C,x:number,w:number,water:number,seed:number){
  // The tide has left the bottom courses dark, a stone at a time. Weed hangs
@@ -286,7 +294,7 @@ function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,s?:R
  for(const p of l.platforms){const kind=role(p,l);if(p.x+p.w<cx-24||p.x>cx+vw+24)continue;if(kind==='quay'||kind==='stage')shadowOnWater(c,p.x,p.w,top,t);}
  // The footbridge lies on the water pier by pier; under its arches the canal is open.
  const sp=span(l);if(sp&&sp.x1>cx-24&&sp.x0<cx+vw+24)for(const [a,b] of sp.solid)shadowOnWater(c,a-3,b-a+6,top,t);
- moonPath(c,cx+Math.round(vw*.78-cx*.02),top,bottom,far,t);
+ moonPath(c,cx+Math.round(vw*.78-cx*MOON_PAN),top,bottom,far,t);
  if(!s)return;
  // The lantern you carry and every jar still burning lie on the water under them.
  if(top-s.y<150&&s.y<top)lampOnWater(c,Math.round(s.x+8+s.facing*7),top,top-s.y-24,t);
