@@ -98,13 +98,19 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   hazards:[steam(12,.5,96,.4,2.8,1)],
  },
  // 08 · The Quarter’s Reply
+ // A bridge between two built banks with its middle span fallen: a test of
+ // the district with no new verb. Railing stubs sit behind the first
+ // landing, a crawler walks the bank deck, two cracked planks hang before a
+ // 200 px dash to the far pier, the bridge house asks for a short hop under
+ // its eave, and iron landings climb the garden lookout. No bridge steam.
  {
   setting:'bridge',goal:'signal',
-  route:'24,520,300,s;534,520,100,s;664,520,100,s;974,512,100,s;1279,440,140,s;1584,392,300,s;2079,416,100,c,,,0.62;2259,392,100,c,,,0.62;2559,352,165,s;2909,352,130,s;3209,304,300,s;3719,304,100,s;3849,304,100,s;4159,304,175,s;4519,296,130,s;4814,296,300,s;5314,256,100,c,,,0.62;5494,256,145,s;5844,256,165,s;6199,216,145,s;6519,216,300,s;6984,168,350,s',
-  branches:'1130,504,94;3489,368,94;5694,320,94',memories:[0,1,2],
-  stations:[[5,"Quarter light"],[10,"Bridge light"],[15,"Garden gate light"]],
-  checkpoints:[5,10,15,20],sectors:[[0,"Bridge approach"],[5,"Broken middle span"],[10,"Signal houses"],[15,"Garden lookout"]],
-  hazards:[spike(2,.28,24),spike(2,.75,24),steam(3,.74,120,.8,2.7),spike(4,.76,24),spike(8,.28,26),spike(8,.75,26),spike(9,.75,24),steam(12,.75,124,1.2,2.7),spike(13,.28,26),spike(13,.75,26),spike(14,.75,24),steam(17,.75,124,.4,2.6),spike(18,.28,26),spike(18,.75,26),spike(19,.75,24)],
+  route:'24,520,300,s;444,520,120,s;660,520,240,s;996,480,300,s;1392,480,180,s;1668,480,100,c,,,0.7;1798,480,95,c,,,0.7;2093,480,240,s;2413,416,120,s;2645,400,240,s;3021,400,240,s;3325,336,120,g;3325,272,120,g;3509,208,300,s',
+  branches:'340,580,80,s;2597,329,128,e;3825,144,60,s',memories:[0,1,2],
+  stations:[[2,"Quarter light"],[7,"Bridge light"],[10,"Garden gate light"]],
+  checkpoints:[3,4,8,13],sectors:[[0,"Bridge approach"],[3,"The bank"],[4,"Broken middle span"],[8,"The bridge house"],[13,"Garden lookout"]],
+  hazards:[spike(1,.86,22)],
+  enemies:[{ledge:3,at:.6,kind:'crawler',travel:80,period:4.4}],
  },
  // 09 · Water for the Living
  {
