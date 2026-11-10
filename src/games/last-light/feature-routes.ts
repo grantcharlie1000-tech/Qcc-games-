@@ -3,6 +3,11 @@ import {spike,steam,laser,press,type CampaignRoute} from './campaign-types';
 /** Signature spaces, authored in travel order. These are physical multi-storey
  * routes, not a height offset applied to the old horizontal obstacle pattern. */
 export const FEATURE_ROUTES:Readonly<Record<number,CampaignRoute>>={
+ // Ada's ferry puts in at the market stairs, the landing at the top of a
+ // deep-cut canal quay; the water is a long way down and a miss into it is
+ // the end. A wharf crane swings a pallet out over the cut to a warehouse
+ // wing; its stack is the step to the tall warehouse, and from its roof a
+ // long drop crosses the cut to the first roof of the market.
  // Market roofs over four streets. Every roof is the top of its own building
  // and every street between them is a real drop. An iron fire escape climbs
  // the tenement wall from below the start to its roof (jump up through the
@@ -11,13 +16,13 @@ export const FEATURE_ROUTES:Readonly<Record<number,CampaignRoute>>={
  // sign gantry reaches the long tenement, whose balconies cross its front to
  // a last fire escape; the route turns back along its roof to the stair-house
  // door, the way down to the east street.
- 3:{setting:'roofs',goal:'relay',
-  route:'24,1124,300,s;372,1060,120,g;372,996,120,g;372,932,120,g;372,868,120,g;372,804,120,g;372,740,120,g;492,740,340,s;832,676,48,s,,,,64;1016,772,296,s;1312,708,120,g;1312,644,120,g;1432,644,152,s;1584,580,48,s,,,,64;1840,612,160,s;2000,548,64,s,,,,64;2064,612,136,s;2272,676,288,s;2440,612,120,g;2712,612,120,g;2880,612,120,g;3024,612,120,g;3024,548,120,g;3024,484,120,g;3024,420,120,g;3024,356,120,g;2712,356,312,s',
-  branches:'372,1124,120,g;1448,580,96,g;2912,292,96,g',memories:[0,1,2],
+ 3:{setting:'roofs',goal:'relay',water:1244,
+  route:'24,1124,232,s;296,1048,64,l,52,1.2;440,1004,80,s;520,940,40,s,,,,64;600,924,160,s;840,1124,300,s;1188,1060,120,g;1188,996,120,g;1188,932,120,g;1188,868,120,g;1188,804,120,g;1188,740,120,g;1308,740,340,s;1648,676,48,s,,,,64;1832,772,296,s;2128,708,120,g;2128,644,120,g;2248,644,152,s;2400,580,48,s,,,,64;2656,612,160,s;2816,548,64,s,,,,64;2880,612,136,s;3088,676,288,s;3256,612,120,g;3528,612,120,g;3696,612,120,g;3840,612,120,g;3840,548,120,g;3840,484,120,g;3840,420,120,g;3840,356,120,g;3528,356,312,s',
+  branches:'1188,1124,120,g;2264,580,96,g;3728,292,96,g',memories:[0,1,2],
   stations:[],exit:.25,
-  checkpoints:[7,9,14,17,21],sectors:[[0,'The fire escape'],[7,'The rook’s ridge'],[9,'Market roofs'],[14,'Across the street'],[17,'The sign gantry'],[19,'The long tenement'],[26,'The east street stair']],
-  hazards:[spike(9,.6,22),spike(26,.72,22)],
-  enemies:[{ledge:7,at:.55,kind:'crawler',travel:80,period:4.2},{ledge:17,at:.3,kind:'crawler',travel:50,period:3.6}],
+  checkpoints:[4,12,14,19,22,26],sectors:[[0,'The market stairs'],[1,'The wharf crane'],[2,'Warehouse roofs'],[5,'The fire escape'],[12,'The rook’s ridge'],[14,'Market roofs'],[19,'Across the street'],[22,'The sign gantry'],[24,'The long tenement'],[31,'The east street stair']],
+  hazards:[spike(14,.6,22),spike(31,.72,22)],
+  enemies:[{ledge:12,at:.55,kind:'crawler',travel:80,period:4.2},{ledge:22,at:.3,kind:'crawler',travel:50,period:3.6}],
  },
  // Launch up the orchard terraces, cross the canopy to the left, then make a
  // controlled descent through the open grates into the lower greenhouse.

@@ -1,6 +1,9 @@
 import type {Level,Platform} from './levels';
 import type {Run} from './model';
-import {box,hash,masonry,sprite,stroke,visible,wall,type C} from './quarter-kit';
+import {WORLDS} from './levels';
+import {box,hash,masonry,panel,sprite,stroke,visible,wall,type C,type Work} from './quarter-kit';
+import {ferry} from './props';
+import {ripples,sheet,shadowOnWater,weed} from './set-canal';
 import {MID,MID_SCALE,drawRow,farRoof,headTowers,moon,nightSky,row,townHouse,type Scale,type Tone} from './quarter-distance';
 import type {QuarterSet} from './quarter-sets';
 
@@ -13,7 +16,7 @@ import type {QuarterSet} from './quarter-sets';
  * an alley. Between buildings there is only the street, a long way down. */
 interface Building {x0:number;x1:number;top:number;style:number}
 const BUILDINGS:Readonly<Record<number,readonly Building[]>>={
- 3:[{x0:0,x1:324,top:1124,style:0},{x0:372,x1:880,top:740,style:1},{x0:1016,x1:1312,top:772,style:2},{x0:1312,x1:1632,top:644,style:0},{x0:1840,x1:2200,top:612,style:1},{x0:2272,x1:2560,top:676,style:2},{x0:2712,x1:3144,top:356,style:0}],
+ 3:[{x0:440,x1:560,top:1004,style:2},{x0:600,x1:760,top:924,style:1},{x0:816,x1:1140,top:1124,style:0},{x0:1188,x1:1696,top:740,style:1},{x0:1832,x1:2128,top:772,style:2},{x0:2128,x1:2448,top:644,style:0},{x0:2656,x1:3016,top:612,style:1},{x0:3088,x1:3376,top:676,style:2},{x0:3528,x1:3960,top:356,style:0}],
  4:[{x0:0,x1:324,top:620,style:1},{x0:428,x1:608,top:620,style:2},{x0:892,x1:1110,top:588,style:0},{x0:1340,x1:1490,top:572,style:1},{x0:1560,x1:1776,top:668,style:2},{x0:1776,x1:2036,top:540,style:0},{x0:2452,x1:2660,top:476,style:1},{x0:2990,x1:3130,top:476,style:2},{x0:3430,x1:3800,top:412,style:0}],
 };
 const STYLES=[
@@ -25,6 +28,45 @@ const tiles=STYLES.map(s=>()=>masonry(s.key,96,48,s.block,s.row,s));
 const stackTile=()=>masonry('roofs/stack',32,16,16,8,{mortar:'#1a1415',stones:['#4a3330','#503733','#563b35'],lip:'#644640',chip:'#6e4e46'});
 const cobbles=()=>masonry('roofs/cobbles',64,16,16,8,{mortar:'#11161c',stones:['#222a33','#252d36','#272f38'],lip:'#303a44',chip:'#333d47'});
 const windows:HTMLCanvasElement[]=[];
+/** Level 4 opens where Ada's ferry puts in: the market stairs, at the top of
+ * a deep-cut canal quay west of the first market house. The cut's water lies
+ * level with the streets further on, and the black lies in those streets like
+ * water: a miss into either sinks at its surface. */
+const CUTS:Readonly<Record<number,number>>={3:816};
+const QUAY:Work={course:16,short:26,long:56,mortar:'#141c24',stones:['#2f3a45','#333e49','#37424d','#2c3742'],lip:'#414d59',shade:'#27313b',chip:'#4b5763'};
+/** The cut: its water, the market stairs' quay wall with the water stairs down it, Ada's ferry at their foot, and the wharf crane. */
+function canalCut(c:C,l:Level,street:number,t:number,cx:number,cy:number,vw:number,vh:number){
+ const end=CUTS[l.id],water=street;if(!end||cx-24>end)return;
+ const q=l.platforms[0],qx=0,qw=q.x+q.w;
+ if(visible(qx,q.y,qw,water+40-q.y,cx,cy,vw,vh)){
+  c.drawImage(panel('roofs/cut/quay',qw,water+40-q.y-8,QUAY,41),qx,q.y+8);box(c,'#0f161d',qw-2,q.y+8,2,water+40-q.y);box(c,'#0b11178c',qx,q.y+10,qw,4);
+  // The water stairs: stone treads let into the quay face, down to the ferry, with an iron rail.
+  for(let k=0;k*9<water-q.y-14;k++){const x=qw-30-k*12,y=q.y+14+k*9;box(c,'#1a2129',x,y,30,9);box(c,'#5d676e',x,y,28,3);box(c,'#8a949b',x,y,28,1);box(c,'#3a444b',x,y+3,28,1);}
+  stroke(c,'#141b21',qw-6,q.y-20,qw-6-(water-q.y)*12/9,water-34,2);for(let k=0;k<6;k++){const x=qw-6-k*30,y=q.y-20+k*30*9/12;box(c,'#141b21',x,y,2,22);}
+  for(const x of [qx+40,qx+120]){box(c,'#1b2228',x-2,water-30,4,4);box(c,'#59666b',x-4,water-27,8,7);box(c,'#2f3a45',x-2,water-25,4,4);}
+  weed(c,qx,qw,water,3);
+ }
+ for(const b of BUILDINGS[l.id]??[])if(b.x1<=end&&visible(b.x0,water-20,b.x1-b.x0,40,cx,cy,vw,vh))weed(c,b.x0,b.x1-b.x0,water,b.x0);
+ // The wharf crane on the quay's end: a post, a jib out over the cut and the pulley the pallet hangs from.
+ const post=qw-34;if(visible(post-10,880,140,q.y-880,cx,cy,vw,vh)){
+  box(c,'#17110d',post,948,9,q.y-948);box(c,'#4b3a2b',post+1,948,2,q.y-948);box(c,'#141b21',post-4,q.y-8,17,8);
+  box(c,'#17110d',post,944,JIB-post+8,8);box(c,'#57432f',post,944,JIB-post+8,1);stroke(c,'#17110d',post+8,1000,post+60,952,3);stroke(c,'#57432f',post+8,999,post+60,951,1);
+  for(let y=-6;y<=6;y++){const s2=Math.floor(Math.sqrt(36-y*y));box(c,'#262d33',JIB-s2,958+y,s2*2,1);}box(c,'#59666b',JIB-1,957,3,3);
+ }
+}
+const JIB=328;
+/** The cut's water over the foot of everything standing in it, and Ada's ferry lying on it at the foot of the stairs. */
+function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
+ const end=CUTS[l.id],top=l.water!,bottom=cy+vh+24;if(!end||cx-24>end||bottom<=top)return;
+ const left=cx-24,right=Math.min(end,cx+vw+24);
+ sheet(c,left,right-left,top,bottom,top-60);ripples(c,left,right,top,bottom,top-60,t);
+ for(let x=Math.floor(left/22)*22;x<right;x+=22)box(c,'#5a8a94',x+3,top+Math.round(Math.sin(t*1.7+x*.21)),11,1);
+ const qw=l.platforms[0].x+l.platforms[0].w;shadowOnWater(c,0,qw,top,t);
+ for(const b of BUILDINGS[l.id]??[])if(b.x1<=end)shadowOnWater(c,b.x0,b.x1-b.x0,top,t);
+ // Ada's ferry lies at the foot of the stairs, her lamp still lit, the rope made fast to the quay's ring.
+ if(left<220){ferry(c,96,top-2-Math.round(Math.sin(t*2)*1.5),WORLDS[0].accent,false);for(let i=0;i<=10;i++){const k=i/10;box(c,'#8a7a5a',150+(124-150)*k,top-11-14*k+Math.sin(k*Math.PI)*4,2,1);}
+  sheet(c,30,140,top,top+20,top-60);for(let i=0;i<6;i++)box(c,'#5a8a94',36+i*22,top+Math.round(Math.sin(t*1.7+i)),11,1);}
+}
 /** A sash window: dark, shuttered, or with a lamp lit behind the curtain. */
 function sash(kind:number){
  return windows[kind]??=sprite(`roofs/sash/${kind}`,18,28,c=>{
@@ -60,7 +102,7 @@ function plan(l:Level){
   const stack=stacks.find(s=>s.x===p.x&&s.w===p.w);if(stack)stack.ys.push(p.y);else stacks.push({x:p.x,w:p.w,ys:[p.y]});
  }
  for(const s of stacks)s.ys.sort((a,b)=>a-b);
- made={street:l.height-20,stacks,gantries,byPlatform};plans.set(l,made);return made;
+ made={street:l.water??l.height-20,stacks,gantries,byPlatform};plans.set(l,made);return made;
 }
 function facade(c:C,b:Building,street:number,lit:boolean,cx:number,cy:number,vw:number,vh:number){
  if(!visible(b.x0,b.top,b.x1-b.x0,street-b.top,cx,cy,vw,vh))return;
@@ -111,12 +153,14 @@ function shoring(c:C,p:Platform,street:number){
 function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock:number,s?:Run){
  const pl=plan(l),street=pl.street,buildings=BUILDINGS[l.id]??[],courier=s?s.x:-1;
  if(street<cy+vh+24){
-  wall(c,'roofs/cobbles',cobbles,cx-24,street,vw+48,cy+vh+24-street);box(c,'#3a444d',cx-24,street,vw+48,1);
+  const from=Math.max(cx-24,CUTS[l.id]??-1e9);
+  if(from<cx+vw+24){wall(c,'roofs/cobbles',cobbles,from,street,cx+vw+24-from,cy+vh+24-street);box(c,'#3a444d',from,street,cx+vw+24-from,1);}
   // A street lamp stands in every street. With the engine holding the light, none burns.
   for(let i=1;i<buildings.length;i++){const a=buildings[i-1],b=buildings[i],gap=b.x0-a.x1;if(gap<100)continue;const x=Math.round(a.x1+gap/2);if(x<cx-30||x>cx+vw+30)continue;box(c,'#141b21',x-1,street-70,3,70);box(c,'#3d4a51',x,street-70,1,70);box(c,'#141b21',x-5,street-84,11,14);box(c,'#232e37',x-3,street-82,7,10);box(c,'#3d4a51',x-5,street-86,11,2);box(c,'#141b21',x-4,street-4,9,4);}
  }
  // A house you have carried the lantern past lights its own windows.
  for(const b of buildings)facade(c,b,street,courier>b.x1-20,cx,cy,vw,vh);
+ canalCut(c,l,street,t,cx,cy,vw,vh);
  for(const p of l.platforms){
   if(!visible(p.x-10,p.y-20,p.w+20,street-p.y+20,cx,cy,vw,vh))continue;
   if(p.kind==='crumble')shoring(c,p,street);
@@ -129,6 +173,16 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
 }
 function deck(c:C,p:Platform,l:Level){
  const w=p.w,b=plan(l).byPlatform.get(p.id);
+ if(CUTS[l.id]&&p.id===0){
+  // The market stairs' landing: a granite coping on the quay wall.
+  box(c,'#1a2129',-2,0,w+4,10);box(c,'#7d878c',-2,0,w+4,8);box(c,'#aab3b3',-2,0,w+4,2);box(c,'#5d676e',-2,7,w+4,1);for(let x=38;x<w-10;x+=52)box(c,'#565f66',x,2,1,6);
+  return;
+ }
+ if(p.kind==='moving'){
+  // The crane's pallet: boards on two bearers, a sling chain at each end.
+  box(c,'#17110d',0,0,w,12);box(c,'#6b523a',0,0,w,8);box(c,'#b2946d',0,0,w,2);for(let x=10;x<w-4;x+=12)box(c,'#3d2e22',x,2,1,6);
+  box(c,'#33261d',2,8,8,4);box(c,'#33261d',w-10,8,8,4);return;
+ }
  if(p.kind==='grate'){
   // An iron landing: flat bar treads you can come up through.
   box(c,'#12191e',-2,0,w+4,12);box(c,'#aab3ae',0,0,w,1);box(c,'#5d6b70',0,1,w,2);
@@ -211,4 +265,9 @@ function sky(c:C,l:Level,w:number,h:number,cx:number,cy:number,t:number,ending:b
  drawRow(c,midRow,w,cx*.24,midBase,h);
  drawRow(c,nearRow,w,cx*.5,nearBase,h);
 }
-export const roofs:QuarterSet={sky,back,deck,exit};
+function mover(c:C,p:Platform,x:number,y:number){
+ // The rope runs from the jib's pulley to the hook; two chains spread from the hook to the pallet's ends.
+ const hook=y-26,mid=Math.round(x+p.w/2);box(c,'#8a7a5a',mid,964,1,hook-964);box(c,'#262d33',mid-2,hook,5,4);box(c,'#59666b',mid-1,hook,3,1);
+ stroke(c,'#3d4a51',mid,hook+4,x+4,y,1);stroke(c,'#3d4a51',mid,hook+4,x+p.w-5,y,1);
+}
+export const roofs:QuarterSet={sky,back,deck,exit,mover,water};
