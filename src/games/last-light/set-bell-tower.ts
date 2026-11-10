@@ -1,8 +1,7 @@
 import type {Level,Platform} from './levels';
 import type {Run} from './model';
 import {lantern} from './props';
-import {box,fill,hash,masonry,sprite,stroke,visible,wall,type C} from './quarter-kit';
-import {nightSky} from './quarter-distance';
+import {box,fill,hash,masonry,seamless,sprite,stroke,visible,wall,type C} from './quarter-kit';
 import type {QuarterSet} from './quarter-sets';
 
 /** Level 2 · the inside of the Quarter's bell tower, seen in section.
@@ -23,7 +22,13 @@ const sideTile=()=>masonry('belltower/side',32,32,8,16,{mortar:'#0d1218',stones:
 const chaseTile=()=>masonry('belltower/chase',64,32,16,8,{mortar:'#0e1015',stones:['#141318','#151419','#16151b'],lip:'#19181e',chip:'#1c1a20'});
 const cutTile=()=>masonry('belltower/cut',48,32,24,16,{mortar:'#222a33',stones:['#39444f','#3e4954','#434e59'],lip:'#56626d',chip:'#606c77'});
 const footTile=()=>masonry('belltower/foot',64,32,32,16,{mortar:'#0f141a',stones:['#171d25','#191f28','#1b222b'],lip:'#1f2731',chip:'#222b36'});
-const RETURN=26,CHASE0=274,CHASE1=376,PLATE=150;
+const RETURN=26,CHASE0=273,CHASE1=377,PLATE=150;
+/** The well's quoins: dressed stones, long and short by turns, toothed into the wall either side. The lining's edges stand on multiples of the strip's 13 px. */
+const quoin=(right:number)=>seamless(`belltower/quoin/${right}`,13,32,rect=>{
+ // Whatever a quoin does not cover stays clear: it is the wall the quoin is toothed into.
+ for(let k=0;k<2;k++){const wide=k?13:8,x=right?0:13-wide;rect('#27313c',x,k*16+1,wide,14);rect('#333e4a',x,k*16+1,wide,1);}
+});
+const quoinLeft=()=>quoin(0),quoinRight=()=>quoin(1);
 /** Looking up into the spire: rafters leaning in to the king post, tied by collars, under the roof boards. */
 const spire=()=>sprite('belltower/spire',R-L,260,c=>{
  for(let y=4;y<260;y+=9)box(c,'#0e1218',0,y,R-L,1);
@@ -130,8 +135,7 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
  for(const [from,to] of [[548,708],[884,bottom]] as const){
   const a=Math.max(top,from),b=Math.min(bottom,to);if(b<=a)continue;
   wall(c,'belltower/chase',chaseTile,CHASE0,a,CHASE1-CHASE0,b-a);box(c,'#06080c',CHASE0,a,3,b-a);box(c,'#22272f',CHASE1-1,a,1,b-a);
-  for(let y=Math.floor(a/16)*16;y<b;y+=16){const long=(y>>4)&1,wide=long?13:8;if(y<from)continue;
-   box(c,'#27313c',CHASE0-wide,y+1,wide,14);box(c,'#333e4a',CHASE0-wide,y+1,wide,1);box(c,'#27313c',CHASE1,y+1,wide,14);box(c,'#333e4a',CHASE1,y+1,wide,1);}
+  wall(c,'belltower/quoin/0',quoinLeft,CHASE0-13,a,13,b-a);wall(c,'belltower/quoin/1',quoinRight,CHASE1,a,13,b-a);
   if(from>top-8&&from<bottom){box(c,'#2c3743',CHASE0-14,from-6,CHASE1-CHASE0+28,7);box(c,'#3a4653',CHASE0-14,from-6,CHASE1-CHASE0+28,1);box(c,'#06080c',CHASE0,from+1,CHASE1-CHASE0,3);}
  }
  // The side walls, end-on in the corners, and the shadow each floor throws on the wall under it.
@@ -259,12 +263,14 @@ function exit(c:C,l:Level,s:Run,t:number,front:boolean){
  box(c,'#262d33',x+27,y-70,14,2);box(c,'#262d33',x+39,y-70,2,6);lantern(c,x+40,y-64,'#f3c77a',true);
 }
 export const bellTower:QuarterSet={
- sky(c,l,w,h,cx,cy,t,ending){
-  nightSky(c,w,h,ending,cx,t);
+ sky(c,l,w,h,cx,cy,t){
+  // Only a strip of night shows past the tower's outer wall; the tower itself covers the rest.
+  const x=OUT-cx;if(x>=w)return;
+  box(c,'#141c2c',x,0,w-x,h);box(c,'#1c2940',x,Math.round(h*.5),w-x,Math.round(h*.5));
   // The house next door reaches a third of the way up the tower: its gable wall, its eaves and a lit window on the stair.
-  const roof=1050-cy,x=OUT-cx;if(roof<h){box(c,'#1a222e',x,roof,w-x,h-roof);box(c,'#263345',x-3,roof-5,w-x+3,5);box(c,'#3b4c64',x-3,roof-5,w-x+3,1);box(c,'#111822',x,roof,w-x,2);
+  const roof=1050-cy;if(roof<h){box(c,'#1a222e',x,roof,w-x,h-roof);box(c,'#263345',x-3,roof-5,w-x+3,5);box(c,'#3b4c64',x-3,roof-5,w-x+3,1);box(c,'#111822',x,roof,w-x,2);
    for(let yy=roof+26;yy<h;yy+=58){box(c,'#0e151f',x+22,yy,12,18);box(c,yy%116<58?'#b07d40':'#1c2b3d',x+24,yy+2,8,14);box(c,'#0e151f',x+27,yy+2,1,14);box(c,'#2c3848',x+21,yy+18,14,1);}}
-  for(let i=0;i<40;i++){const rx=((hash(i,1)*w-t*30)%w+w)%w,y=((hash(i,2)*h+t*250)%h+h)%h;box(c,'#b9c9d93d',rx,y,1,7);}
+  for(let i=0;i<12;i++){const rx=x+((hash(i,1)*(w-x)-t*30)%(w-x)+(w-x))%(w-x),y=((hash(i,2)*h+t*250)%h+h)%h;box(c,'#b9c9d93d',rx,y,1,7);}
  },
  back,deck,exit,water,
 };

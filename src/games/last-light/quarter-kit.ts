@@ -55,16 +55,3 @@ export function enginesArt(){
   box(c,body,24,62,14,5);box(c,'#f3c77a',46,15,2,2);box(c,'#ffb76b55',45,14,4,4);
  });
 }
-/** The same scanline moon the rest of the Quarter uses. */
-export function moon(c:C,mx:number,my:number){
- for(let yy=-21;yy<=21;yy++){const span=Math.floor(Math.sqrt(441-yy*yy)),cut=Math.abs(yy+5)<20?9-Math.sqrt(400-(yy+5)*(yy+5)):99,right=Math.min(span,Math.floor(cut));c.fillStyle=yy>10?'#bbc8c2':'#e1e5d2';if(right>-span)c.fillRect(mx-span,my+yy,right+span,1);}
-}
-const skies=new WeakMap<C,{h:number;ending:boolean;g:CanvasGradient}>();
-/** One night sky for every outdoor set. The gradient is rebuilt only when the
- * view height or the ending changes, never per frame. */
-export function nightSky(c:C,w:number,h:number,ending:boolean){
- let made=skies.get(c);
- if(!made||made.h!==h||made.ending!==ending){const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,ending?'#485572':'#172031');g.addColorStop(.6,ending?'#967b89':'#243247');g.addColorStop(1,ending?'#d4ab8b':'#2b3b54');made={h,ending,g};skies.set(c,made);}
- c.fillStyle=made.g;c.fillRect(0,0,w,h);
- for(let i=0;i<30;i++){c.fillStyle=i%9===0?'#f3c77a66':'#dfe6dc36';c.fillRect(Math.floor(noise(i,12)*w),Math.floor(noise(i,3)*h*.5),1,1);}
-}
