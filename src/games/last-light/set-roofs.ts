@@ -16,7 +16,7 @@ import type {QuarterSet} from './quarter-sets';
  * an alley. Between buildings there is only the street, a long way down. */
 interface Building {x0:number;x1:number;top:number;style:number}
 const BUILDINGS:Readonly<Record<number,readonly Building[]>>={
- 3:[{x0:440,x1:560,top:1004,style:2},{x0:600,x1:760,top:924,style:1},{x0:816,x1:1140,top:1124,style:0},{x0:1188,x1:1696,top:740,style:1},{x0:1832,x1:2128,top:772,style:2},{x0:2128,x1:2448,top:644,style:0},{x0:2656,x1:3016,top:612,style:1},{x0:3088,x1:3376,top:676,style:2},{x0:3528,x1:3960,top:356,style:0}],
+ 3:[{x0:440,x1:560,top:1004,style:2},{x0:600,x1:760,top:924,style:1},{x0:816,x1:1140,top:1124,style:0},{x0:1188,x1:1696,top:740,style:1},{x0:1832,x1:2128,top:772,style:2},{x0:2128,x1:2448,top:644,style:0},{x0:2656,x1:3016,top:612,style:1},{x0:3112,x1:3248,top:676,style:0},{x0:3800,x1:3960,top:676,style:0},{x0:4160,x1:4290,top:676,style:2},{x0:4376,x1:4536,top:536,style:1},{x0:4656,x1:4944,top:676,style:2},{x0:5096,x1:5528,top:356,style:0}],
  4:[{x0:0,x1:324,top:620,style:0},{x0:428,x1:608,top:620,style:2},{x0:892,x1:1110,top:588,style:0},{x0:1340,x1:1490,top:572,style:1},{x0:1560,x1:1776,top:668,style:2},{x0:1776,x1:2036,top:540,style:0},{x0:2452,x1:2660,top:476,style:1},{x0:2990,x1:3130,top:476,style:2},{x0:3430,x1:3800,top:412,style:0},{x0:3864,x1:3976,top:476,style:2},{x0:4200,x1:4280,top:604,style:1}],
 };
 const STYLES=[
@@ -28,6 +28,11 @@ const tiles=STYLES.map(s=>()=>masonry(s.key,96,48,s.block,s.row,s));
 const stackTile=()=>masonry('roofs/stack',32,16,16,8,{mortar:'#1a1415',stones:['#4a3330','#503733','#563b35'],lip:'#644640',chip:'#6e4e46'});
 const cobbles=()=>masonry('roofs/cobbles',64,16,16,8,{mortar:'#11161c',stones:['#222a33','#252d36','#272f38'],lip:'#303a44',chip:'#333d47'});
 const windows:HTMLCanvasElement[]=[];
+/** The market arcade's lantern: a glazed monitor along its roof, over the lane it covers. Most of its glass has gone. */
+const ARCADES:Readonly<Record<number,{x0:number;x1:number;y:number}>>={3:{x0:3248,x1:3800,y:660}};
+const inArcade=(l:Level,p:Platform)=>{const a=ARCADES[l.id];return !!a&&p.y===a.y&&p.x>=a.x0&&p.x+p.w<=a.x1;};
+/** Where a hoist's rope leaves its jib: the wharf crane's pulley, or a sack hoist's a storey over the roof it serves. */
+const hoistHead=(p:Platform)=>p.id===1?964:p.y-(p.travel??0)-84;
 /** Level 4 opens where Ada's ferry puts in: the market stairs, at the top of
  * a deep-cut canal quay west of the first market house. The cut's water lies
  * level with the streets further on, and the black lies in those streets like
@@ -96,7 +101,7 @@ function plan(l:Level){
  const stacks:{x:number;w:number;ys:number[]}[]=[],gantries:Platform[]=[],byPlatform=new Map<number,Building>(),buildings=BUILDINGS[l.id]??[];
  for(const p of l.platforms){
   const b=buildings.find(b=>p.x>=b.x0-2&&p.x+p.w<=b.x1+2);if(b)byPlatform.set(p.id,b);
-  if(p.kind!=='grate')continue;
+  if(p.kind!=='grate'||inArcade(l,p))continue;
   // A grating on a building's front, at or below its roof line, is fire escape; above a roof it is a gantry on legs.
   if(b&&p.y<b.top){gantries.push(p);continue;}
   const stack=stacks.find(s=>s.x===p.x&&s.w===p.w);if(stack)stack.ys.push(p.y);else stacks.push({x:p.x,w:p.w,ys:[p.y]});
@@ -150,6 +155,45 @@ function shoring(c:C,p:Platform,street:number){
  for(let y=p.y+52,i=0;y<street-20;y+=64,i++){box(c,pole,p.x+8,y,p.w-16,3);box(c,lit,p.x+8,y,p.w-16,1);if(y+64<street-10)stroke(c,pole,i%2?p.x+10:p.x+p.w-12,y+3,i%2?p.x+p.w-12:p.x+10,y+64,2);}
  box(c,pole,p.x+2,p.y+20,p.w-4,4);box(c,lit,p.x+2,p.y+20,p.w-4,1);
 }
+const ARCADE_WALL:Work={course:10,short:16,long:36,mortar:'#0e1218',stones:['#181e27','#1a212a','#1c232d','#171c25'],lip:'#212934',shade:'#131820',chip:'#252e39'};
+/** The arcade is a lane roofed over between two houses, seen with its near side away: the far side's shop fronts
+ * from the lantern's curb down to the lane, a pilaster under every other standard, and the lane itself at the bottom. */
+function arcadeLane(c:C,l:Level,a:{x0:number;x1:number;y:number},street:number,cx:number,cy:number,vw:number,vh:number){
+ const top=a.y+16,w=a.x1-a.x0;if(!visible(a.x0,top,w,street-top,cx,cy,vw,vh))return;
+ c.drawImage(panel(`roofs/arcade/${l.id}`,w,street-top,ARCADE_WALL,53),a.x0,top);
+ for(let x=a.x0+46,k=0;x<a.x1-20;x+=92,k++){
+  // A pilaster from the curb to the lane; between pilasters a round-headed light over each shop.
+  box(c,'#0b0e13',x-6,top,12,street-top);box(c,'#222a35',x-5,top,10,street-top);box(c,'#2c3643',x-5,top,1,street-top);box(c,'#141920',x+4,top,1,street-top);
+  box(c,'#2c3643',x-8,top+2,16,6);box(c,'#3a4654',x-8,top+2,16,1);
+  if(x+86>a.x1)continue;
+  for(let y=top+34,row=0;y+70<street-70;y+=150,row++){
+   if(y>cy+vh||y+70<cy)continue;const wx=x+16,ww=60,lit2=hash(k,row,l.id+5)>.86;
+   for(let px=0;px<ww;px++){const d=(px+.5-ww/2)/(ww/2),head=y+14-Math.round(14*Math.sqrt(Math.max(0,1-d*d)));box(c,'#2c3643',wx+px,head-3,1,3);box(c,lit2?'#5a3d27':'#090c11',wx+px,head,1,y+64-head);}
+   if(lit2){box(c,'#a8763f',wx+8,y+22,ww-16,38);box(c,'#d9a453',wx+16,y+34,ww-32,22);}
+   for(const bar of [ww/3,ww*2/3])box(c,'#141920',wx+Math.round(bar),y+2,2,62);box(c,'#141920',wx,y+30,ww,2);
+   box(c,'#2c3643',wx-4,y+64,ww+8,4);box(c,'#3a4654',wx-4,y+64,ww+8,1);box(c,'#0b0e13',wx-4,y+68,ww+8,1);
+  }
+  // The shop under it: a wide opening on the lane, boarded, under its fascia.
+  if(street-66<cy+vh){const wx=x+12,ww=68;box(c,'#090c11',wx,street-58,ww,58);for(let bx=wx+3;bx<wx+ww-4;bx+=9)box(c,'#161b23',bx,street-54,7,54);box(c,'#2c3643',wx-4,street-66,ww+8,8);box(c,'#3a4654',wx-4,street-66,ww+8,1);}
+ }
+ // The return of each end house into the lane throws its shadow along the far wall.
+ box(c,'#06080b8c',a.x0,top,10,street-top);box(c,'#06080b59',a.x0+10,top,8,street-top);box(c,'#06080b8c',a.x1-6,top,6,street-top);
+}
+/** The lantern's iron frame: a curb along the top of the lane's far wall, a standard every bay, and the stubs of the rails and glass
+ * that rusted through between them. Only what still carries a pane or a walk has both its standards and its rail. */
+function lantern(c:C,l:Level,a:{x0:number;x1:number;y:number}){
+ const iron='#1a2228',lit='#56646b',base=a.y+16,held=l.platforms.filter(p=>inArcade(l,p));
+ box(c,iron,a.x0-4,base-4,a.x1-a.x0+8,6);box(c,lit,a.x0-4,base-4,a.x1-a.x0+8,1);
+ const standard=(x:number)=>{box(c,iron,x-1,a.y,3,base-a.y-4);box(c,lit,x-1,a.y,1,base-a.y-4);box(c,iron,x-3,a.y-1,7,3);box(c,lit,x-3,a.y-1,7,1);};
+ for(let x=a.x0,k=0;x<=a.x1;x+=46,k++){
+  if(held.some(p=>x>p.x-6&&x<p.x+p.w+6))continue;
+  standard(x);
+  // A rail stub and a tooth of glass left in its putty, to one side or the other.
+  const v=hash(k,l.id,97),dir=v>.5?1:-1,len=6+Math.floor(v*9);box(c,iron,dir>0?x+2:x-1-len,a.y+1,len,2);
+  if(v>.3&&v<.8){box(c,'#7c98a8',dir>0?x+3:x-7,a.y+3,4,5);box(c,'#a9c2cc',dir>0?x+3:x-7,a.y+3,1,5);box(c,'#7c98a8',dir>0?x+7:x-9,a.y+5,2,3);}
+ }
+ for(const p of held){standard(p.x+1);standard(p.x+p.w-2);stroke(c,iron,p.x+2,base-5,p.x+16,a.y+11,1);stroke(c,iron,p.x+p.w-3,base-5,p.x+p.w-17,a.y+11,1);}
+}
 function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock:number,s?:Run){
  const pl=plan(l),street=pl.street,buildings=BUILDINGS[l.id]??[],courier=s?s.x:-1;
  if(street<cy+vh+24){
@@ -160,15 +204,24 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
  }
  // A house you have carried the lantern past lights its own windows.
  for(const b of buildings)facade(c,b,street,courier>b.x1-20,cx,cy,vw,vh);
+ const lane=ARCADES[l.id];if(lane)arcadeLane(c,l,lane,street,cx,cy,vw,vh);
  canalCut(c,l,street,t,cx,cy,vw,vh);routePlaces(c,l,street,cx,cy,vw,vh);
  for(const p of l.platforms){
   if(!visible(p.x-10,p.y-20,p.w+20,street-p.y+20,cx,cy,vw,vh))continue;
-  if(p.kind==='crumble')shoring(c,p,street);
+  if(p.kind==='crumble'&&!inArcade(l,p))shoring(c,p,street);
+  if(p.kind==='moving'&&p.id!==1){
+   // A sack hoist: a short jib on a post at the corn loft's eaves, its pulley over the bay between the two houses.
+   const head=hoistHead(p),post=p.x+p.w+22,jib=Math.round(p.x+p.w/2),foot=p.y-(p.travel??0)-24;
+   box(c,'#17110d',post,head-8,8,foot-head+8);box(c,'#4b3a2b',post+1,head-8,2,foot-head+8);box(c,'#141b21',post-3,foot-6,14,6);
+   box(c,'#17110d',jib-10,head-6,post-jib+18,7);box(c,'#57432f',jib-10,head-6,post-jib+18,1);stroke(c,'#17110d',post,head+38,jib+4,head,3);stroke(c,'#57432f',post,head+37,jib+4,head-1,1);
+   for(let y=-5;y<=5;y++){const s2=Math.floor(Math.sqrt(25-y*y));box(c,'#262d33',jib-s2,head+6+y,s2*2,1);}box(c,'#59666b',jib-1,head+5,3,3);
+  }
  }
+ const arcade=ARCADES[l.id];if(arcade&&visible(arcade.x0-8,arcade.y-8,arcade.x1-arcade.x0+16,40,cx,cy,vw,vh))lantern(c,l,arcade);
  for(const p of pl.gantries)if(visible(p.x-10,p.y-20,p.w+20,120,cx,cy,vw,vh))gantry(c,p,l);
  for(const stack of pl.stacks)if(visible(stack.x,stack.ys[0]-20,stack.w,street-stack.ys[0],cx,cy,vw,vh))fireEscape(c,stack,street);
  // The light wires: one sagging run from roof to roof across every street, toward the towers.
- for(let i=1;i<buildings.length;i++){const a=buildings[i-1],b=buildings[i];if(b.x0-a.x1<40||!visible(a.x1,Math.min(a.top,b.top)-20,b.x0-a.x1,Math.abs(a.top-b.top)+60,cx,cy,vw,vh))continue;
+ for(let i=1;i<buildings.length;i++){const a=buildings[i-1],b=buildings[i];if(b.x0-a.x1<40||lane&&a.x1===lane.x0||!visible(a.x1,Math.min(a.top,b.top)-20,b.x0-a.x1,Math.abs(a.top-b.top)+60,cx,cy,vw,vh))continue;
   const steps=Math.round((b.x0-a.x1)/4);for(let k=0;k<=steps;k++){const u=k/steps;box(c,'#0f141a',a.x1+(b.x0-a.x1)*u,a.top+30+(b.top-a.top)*u+Math.sin(u*Math.PI)*12,2,1);}}
 }
 function deck(c:C,p:Platform,l:Level){
@@ -188,6 +241,14 @@ function deck(c:C,p:Platform,l:Level){
   box(c,'#12191e',-2,0,w+4,12);box(c,'#aab3ae',0,0,w,1);box(c,'#5d6b70',0,1,w,2);
   for(let x=3;x<w-3;x+=8){box(c,'#1c272d',x,3,3,7);box(c,'#6d7d80',x,3,1,6);}
   box(c,'#2f3d43',0,10,w,2);return;
+ }
+ if(p.kind==='crumble'&&inArcade(l,p)){
+  // A pane of the arcade's lantern in its iron frame: rough-cast glass, starred where something came down on it.
+  box(c,'#12191e',-1,0,w+2,12);box(c,'#6f8b9b',1,1,w-2,6);box(c,'#a9c2cc',1,1,w-2,1);box(c,'#8aa5b3',1,2,Math.round(w*.4),1);box(c,'#587383',1,6,w-2,1);
+  for(let x=0;x<w;x+=18)box(c,'#1a2228',x,0,2,8);
+  const sx=Math.round(w*.42+(p.id%3)*6);for(const [dx,dy] of [[-14,2],[-8,-3],[9,-3],[15,3],[-5,4],[6,4]] as const)stroke(c,'#243640',sx,4,sx+dx,Math.max(1,Math.min(6,4+dy)));box(c,'#12191e',sx-1,3,3,2);
+  box(c,'#1a2228',0,7,w,5);box(c,'#56646b',0,7,w,1);for(let x=5;x<w-4;x+=12)box(c,'#3a464d',x,9,2,2);
+  return;
  }
  if(p.kind==='crumble'){
   // Old slate on rotten battens: courses slipped, a few already gone.
@@ -309,7 +370,7 @@ function sky(c:C,l:Level,w:number,h:number,cx:number,cy:number,t:number,ending:b
 }
 function mover(c:C,p:Platform,x:number,y:number){
  // The rope runs from the jib's pulley to the hook; two chains spread from the hook to the pallet's ends.
- const hook=y-26,mid=Math.round(x+p.w/2);box(c,'#8a7a5a',mid,964,1,hook-964);box(c,'#262d33',mid-2,hook,5,4);box(c,'#59666b',mid-1,hook,3,1);
+ const hook=y-26,mid=Math.round(x+p.w/2),head=hoistHead(p)+(p.id===1?0:10);box(c,'#8a7a5a',mid,head,1,hook-head);box(c,'#262d33',mid-2,hook,5,4);box(c,'#59666b',mid-1,hook,3,1);
  stroke(c,'#3d4a51',mid,hook+4,x+4,y,1);stroke(c,'#3d4a51',mid,hook+4,x+p.w-5,y,1);
 }
 export const roofs:QuarterSet={sky,back,deck,exit,mover,water};
