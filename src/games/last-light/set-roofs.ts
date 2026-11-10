@@ -1,6 +1,7 @@
 import type {Level,Platform} from './levels';
 import type {Run} from './model';
-import {box,enginesArt,hash,masonry,moon,nightSky,sprite,stroke,visible,wall,type C} from './quarter-kit';
+import {box,hash,masonry,sprite,stroke,visible,wall,type C} from './quarter-kit';
+import {drawRow,farRoof,headTowers,moon,nightSky,row,townHouse,type Scale,type Tone} from './quarter-distance';
 import type {QuarterSet} from './quarter-sets';
 
 /** Levels 4 and 5 · the roofs of the Quarter. Every building stands on its
@@ -171,18 +172,44 @@ function exit(c:C,l:Level,s:Run,t:number,front:boolean){
  // A small window and a vent on the rest of the wall.
  const side=west?-1:1;if(width>110){c.drawImage(sash(1),x+side*49-9,y-56);if(width>170){box(c,'#120e0f',x+side*95-11,y-50,22,16);for(let yy=y-48;yy<y-36;yy+=4)box(c,'#3a2d2b',x+side*95-9,yy,18,2);}}
 }
+/** Past the roofs you walk are the roofs you do not: the row across the
+ * street, whose eaves stay below your own; the next streets' roofs behind
+ * them; and the ridge of the far city under the towers. Each row follows the
+ * climb of the roofs in front of it, so the Quarter rises as you do. */
+const NEAR:Tone={walls:['#1a222e','#1d2531','#201f28','#1c2228'],edge:'#2c3848',shade:'#111822',roof:'#263345',course:'#1f2a3a',ridge:'#3b4c64',glass:'#0e151f',pane:'#1c2b3d',lit:'#b07d40',glow:'#eab968'};
+const MID:Tone={walls:['#1e293b','#202c3f','#1c2637','#22293a'],edge:'#2c3a52',shade:'#172030',roof:'#27354b',course:'#212d41',ridge:'#35465f',glass:'#141c2a',pane:'#1f2c40',lit:'#a7773f',glow:'#dba659'};
+const NEAR_SCALE:Scale={unit:26,ww:8,wh:12,pitch:17,lit:.1},MID_SCALE:Scale={unit:14,ww:3,wh:5,pitch:8,lit:.07};
+const NEAR_HEAD=58,MID_HEAD=32,FAR_HEAD=36,FAR_WALL='#243148';
+const nearRow=row(104,11,NEAR_HEAD+230,(c,i,w,h)=>townHouse(c,w,NEAR_HEAD,h,i*7+3,NEAR,NEAR_SCALE),i=>NEAR.walls[Math.floor(hash(i*7+3,2,5)*NEAR.walls.length)]);
+const midRow=row(58,12,MID_HEAD+150,(c,i,w,h)=>townHouse(c,w,MID_HEAD,h,i*5+1,MID,MID_SCALE),i=>MID.walls[Math.floor(hash(i*5+1,2,5)*MID.walls.length)]);
+const farRow=row(30,13,FAR_HEAD+60,(c,i,w,h)=>farRoof(c,w,FAR_HEAD,h,i,FAR_WALL,'#2d3c56','#b98a4a'),()=>FAR_WALL);
+const profiles=new WeakMap<Level,{low:Float32Array;wide:Float32Array}>();
+/** The height of the walked roofs along the level: the lowest roof within a street, and within a district. */
+function profile(l:Level){
+ let made=profiles.get(l);if(made)return made;
+ const buildings=BUILDINGS[l.id]??[],n=Math.ceil(l.width/50)+1,raw=new Float32Array(n),low=new Float32Array(n),wide=new Float32Array(n);
+ for(let k=0;k<n;k++){const x=k*50;let top=0,before=-1e9,after=1e9,a=l.height,b=l.height;
+  for(const q of buildings){if(x>=q.x0&&x<=q.x1)top=q.top;if(q.x1<x&&q.x1>before){before=q.x1;a=q.top;}if(q.x0>x&&q.x0<after){after=q.x0;b=q.top;}}
+  raw[k]=top||Math.max(before>-1e9?a:b,after<1e9?b:a);}
+ for(let k=0;k<n;k++){let a=0,b=0;for(let d=-8;d<=8;d++){const v=raw[Math.max(0,Math.min(n-1,k+d))];if(Math.abs(d)<=4)a=Math.max(a,v);b=Math.max(b,v);}low[k]=a;wide[k]=b;}
+ made={low,wide};profiles.set(l,made);return made;
+}
+const view:{l:Level|null;w:number;h:number;cy:number;low:Float32Array;wide:Float32Array}={l:null,w:0,h:0,cy:0,low:new Float32Array(1),wide:new Float32Array(1)};
+/** Where a roof line `rise` above the walked roofs sits on screen, for a house at layer position `u` and depth `p`. */
+function place(u:number,p:number,env:Float32Array){
+ const {l,w,h,cy}=view,roof=env[Math.max(0,Math.min(env.length-1,Math.round(((u-w/2)/p+w/2)/50)))],follow=Math.max(-170,Math.min(Math.max(0,l!.height-h),roof-24-h*.57));
+ return roof-follow+(follow-cy)*p;
+}
+const farBase=(i:number,x:number,wide:number)=>place(x+wide/2,.08,view.wide)-72-Math.floor(hash(i,1,41)*30)-FAR_HEAD+farRow.height;
+const midBase=(i:number,x:number,wide:number)=>place(x+wide/2,.24,view.wide)-8-Math.floor(hash(i,1,43)*50)-MID_HEAD+midRow.height;
+const nearBase=(i:number,x:number,wide:number)=>place(x+wide/2,.5,view.low)+34+Math.floor(hash(i,1,47)*56)-NEAR_HEAD+nearRow.height;
 function sky(c:C,l:Level,w:number,h:number,cx:number,cy:number,t:number,ending:boolean){
- nightSky(c,w,h,ending);moon(c,Math.round(w*.8-cx*.02),Math.round(Math.max(56,h*.22-cy*.02)));
- // Far roofs, built one by one and never repeated, with the towers standing over them.
- const fy=Math.round(h*.78+(l.height*.55-cy)*.22),shift=cx*.2,cell=44;
- c.drawImage(enginesArt(),Math.round(w*.58-cx*.04),fy-250,96,225);
- for(let i=Math.floor(shift/cell)-1;i*cell-shift<w;i++){
-  const x=Math.round(i*cell-shift),tall=20+Math.floor(hash(i,21)*70),top=fy-tall;
-  box(c,'#18212e',x,top,cell,tall+4);box(c,'#1d2735',x,top,cell,2);
-  if(hash(i,22)>.5)for(let k=0;k<4;k++)box(c,'#18212e',x+4+k*4,top-3-k*3,cell-8-k*8,3);
-  if(hash(i,23)>.6)box(c,'#18212e',x+6+Math.floor(hash(i,24)*24),top-12,6,12);
-  if(hash(i,25)>.9)box(c,'#8f6a3c',x+12,top+12,4,6);
- }
- if(fy<h)box(c,'#18212e',0,fy,w,h-fy);
+ nightSky(c,w,h,ending,cx,t);moon(c,Math.round(w*.8-cx*.02),Math.round(Math.max(56,h*.2-cy*.02)));
+ const pr=profile(l);view.l=l;view.w=w;view.h=h;view.cy=cy;view.low=pr.low;view.wide=pr.wide;
+ // The towers stand at the head of the city; their shafts go down behind its far ridge.
+ c.drawImage(headTowers(),Math.round(w*.42-cx*.04),Math.round(place(w*.42+cx*.04,.08,pr.wide))-262);
+ drawRow(c,farRow,w,cx*.08,farBase,h);
+ drawRow(c,midRow,w,cx*.24,midBase,h);
+ drawRow(c,nearRow,w,cx*.5,nearBase,h);
 }
 export const roofs:QuarterSet={sky,back,deck,exit};
