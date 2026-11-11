@@ -132,7 +132,7 @@ export function step(s:Run,input:Input,dt=STEP):Events {
  }
  if(level.gate&&!s.key)bodies.push({p:{...level.gate,id:-2,kind:'stone'},r:level.gate});
  const previousX=s.x,previousY=s.y;
- s.x+=s.vx*dt+(s.grounded&&oldGround?.kind==='belt'?(oldGround.direction??1)*85*dt:0);s.x=clamp(s.x,0,level.width-PLAYER_W);s.wall=0;
+ s.x+=s.vx*dt+(s.grounded&&oldGround?.kind==='belt'?(oldGround.direction??1)*85*dt:0);s.x=clamp(s.x,level.walls?.[0]??0,(level.walls?.[1]??level.width)-PLAYER_W);s.wall=0;
  for(const {p,r} of bodies)if(p.kind!=='grate'&&overlap({x:s.x,y:s.y,w:PLAYER_W,h:PLAYER_H},r)){
   if(previousX+PLAYER_W<=r.x+.1){s.x=r.x-PLAYER_W;s.wall=1;}
   else if(previousX>=r.x+r.w-.1){s.x=r.x+r.w;s.wall=-1;}

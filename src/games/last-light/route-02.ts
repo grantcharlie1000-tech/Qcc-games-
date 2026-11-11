@@ -1,83 +1,88 @@
-import {saw,steam} from './campaign-types';
-import {trail,C,G,H,L,M,T,type Opt,type Trail} from './route-build';
+import {trail,C,G,H,L,T} from './route-build';
+import {EAST,OUT_E,WATER,WEST,floorLine} from './tower-02';
 
 /** 02 · A Bell Above the Rain
- * The inside of the bell tower, climbed floor by floor. Each floor is oak let
- * into the walls; the stair between floors has lost most of its treads (open
- * treads: jump up through them, Down drops). Ropes and clock weights hang
- * down one open well through every floor into the flooded pit, so a miss on
- * a stair costs a flight and a miss over the well costs the run.
- * Between the ringing floor and the clock room the tower has twenty-two
- * storeys nobody has kept up: the rope loft, the ringers' loft, the peal
- * gallery, the keeper's room, the weight shaft, the carillon drum, the
- * pendulum case, the dead bell, the bat loft. Most of each floor is gone.
- * What crosses the well is a board, a rotten plank that will not hold, a
- * hoist pallet on its rope, or the pendulum's bob; four of the clock's
- * weights still ride their cables and lift a storey at a time; the drum's
- * hammer carriages run their shafts along the floors that are left.
- * The clock room's broken floor is still the first place the dash is asked
- * for; frame beams cross the well under the bells to Ivo's landing, and the
- * first of them is rotten. Past Ivo the belfry goes on up, and the gallery
- * door is across the top of it: a rotten plank on the bell cage, a wall
- * tread, the west loft, staging on the tie beams and the spire's collars,
- * the bell hoist's pallet over the whole height of the tower, and the east
- * staging down to the east loft and the gallery door. */
-const STOREYS=22,RISE=176,D=STOREYS*RISE;
-const tread=G,rotten=T('rotten',C(.6,12)),board=T('board',H(12)),pallet=(t:number,v=1.745)=>T('pallet',M(t,v,12)),weight=(v=1.3)=>T('weight',L(88,v,12));
-type Piece=readonly [x:number,rise:number,w:number,o?:Opt,after?:(t:Trail)=>void];
-/** One storey of the neglected middle of the tower: each piece is placed from that storey's floor line. */
-const storey=(t:Trail,m:number,name:string|null,pieces:readonly Piece[])=>{
- if(name)t.sec(name).place('storey',name,{m});
- for(const [x,rise,w,o,after] of pieces){t.at(x,1048+D-RISE*m-rise,w,o);after?.(t);}
- return t;
-};
-const cp=(t:Trail)=>{t.cp();},cog=(at:number,travel:number,offset=0,period=3)=>(t:Trail)=>{t.hz(i=>saw(i,at,travel,offset,period));},bat=(at:number,travel:number,period=3.4)=>(t:Trail)=>{t.enemy('moth',at,travel,period);};
-const t=trail(24,1400+D,240).here('Bell stair')
- .side(384,1400+D,240).side(480,1340+D,56,G).side(568,1280+D,56,G,true)
- .at(120,1340+D,56,G).at(40,1280+D,56,G).at(184,1224+D,80)
- .at(384,1224+D,160).here('The ringing floor').cp()
- .at(472,1164+D,56,G).at(552,1104+D,56,G);
-storey(t,0,'The rope loft',[[384,0,80],[24,0,240,{},cp],[96,60,80,tread],[24,120,64,tread],[168,176,96]]);
-storey(t,1,null,[[296,0,48,rotten],[380,0,64,board],[480,0,144],[568,60,56,tread],[496,120,56,tread],[392,176,88]]);
-storey(t,2,'The ringers’ loft',[[300,0,56,board],[204,-4,56,pallet(36)],[24,0,120],[24,60,56,tread],[104,120,56,tread],[24,176,76,{},cp]]);
-storey(t,3,null,[[168,0,96],[414,0,90],[544,0,80],[568,60,56,tread],[488,120,56,tread],[392,176,80]]);
-storey(t,4,null,[[300,88,64,weight()],[168,176,96]]);
-storey(t,5,'The keeper’s room',[[24,0,110,{},t=>{t.hz(i=>steam(i,.45,80,.4,3));}],[24,60,56,tread],[96,120,56,tread],[176,176,88,{},cp]]);
-storey(t,6,null,[[292,0,48,rotten],[372,0,48,rotten],[456,0,168],[560,60,56,tread],[488,120,56,tread],[400,176,80]]);
-storey(t,7,'The peal gallery',[[292,8,64,board],[180,0,72,board],[24,0,116],[24,60,56,tread],[100,120,56,tread],[24,176,72]]);
-storey(t,8,null,[[160,0,104,{},cp],[440,0,184],[568,60,56,tread],[496,120,56,rotten],[400,176,80]]);
-storey(t,9,null,[[300,88,64,weight(1.6)],[150,176,114]]);
-storey(t,10,'The weight shaft',[[56,0,60,rotten],[24,60,48,tread],[92,120,48,tread],[150,176,114,{},cp]]);
-storey(t,11,null,[[314,-4,56,pallet(34)],[440,0,184],[560,60,56,tread],[488,120,56,tread],[384,176,96]]);
-storey(t,12,'The carillon drum',[[276,8,64,board],[160,0,80,rotten],[24,0,110],[40,60,56,tread],[120,120,56,tread],[24,176,92,{},cp]]);
-storey(t,13,null,[[176,0,88],[312,0,40,board],[400,0,224,{},cog(.5,60)],[552,60,56,tread],[480,120,56,tread],[384,176,88]]);
-storey(t,14,null,[[300,88,64,weight(1.6)],[24,176,240,{},t=>{t.cp().hz(i=>saw(i,.4,50,1));}]]);
-storey(t,15,'The pendulum case',[[340,8,48,pallet(66)],[476,0,148],[568,60,56,tread],[488,120,64,tread],[392,176,88]]);
-storey(t,16,null,[[296,0,56,rotten],[200,0,56,rotten],[24,0,136],[24,60,56,tread],[104,120,56,tread],[24,176,76,{},cp]]);
-storey(t,17,'The dead bell',[[168,0,96],[296,24,56,board],[420,0,204,{},bat(.5,40)],[576,60,48,tread],[504,120,48,tread],[416,176,72]]);
-storey(t,18,null,[[300,0,56,rotten],[150,0,114],[72,60,64,tread],[24,120,56,tread],[112,176,152,{},cp]]);
-storey(t,19,'The bat loft',[[300,-4,56,pallet(30)],[400,0,224,{},bat(.6,50,3)],[560,60,56,tread],[480,120,56,rotten],[392,176,80]]);
-storey(t,20,null,[[280,8,64,board],[170,0,70,rotten],[24,0,110],[24,60,56,tread],[88,120,56,tread],[150,176,114,{},cp]]);
-storey(t,21,'Under the clock',[[300,88,64,weight()]]);
-export const ROUTE_02=t
- .at(384,1048,80).at(24,1048,240).here('The clock room').cp()
- .at(96,988,80,G).at(24,928,64,G).at(168,872,96).cp()
- .at(456,872,168).here('Under the bells')
- .at(512,812,56,G).at(568,752,56,G).at(384,696,96)
- .at(24,696,240).cp().side(104,812,56,G,true)
- .at(120,636,56,G).at(40,576,56,G).at(184,520,80)
- .at(300,488,48,C(.6,12)).at(400,456,48,G)
- .at(496,424,128).here('Ivo’s landing').cp().station('Ivo')
- .at(400,364,56,G)
- .at(464,304,160).here('The bell loft').cp().side(568,248,56,G,true)
- .at(276,264,72,C(.55,12)).here('Over the bells')
- .at(168,220,64,G).at(52,156,56,G)
- .at(24,88,60).here('The west loft').cp()
- .at(120,16,88,H(12)).here('Inside the spire')
- .at(64,-56,64,H(12))
- .at(292,-40,64,M(90,1.2,12)).here('The bell hoist')
- .at(520,-56,64,H(12)).at(320,16,88,H(12))
- .at(424,120,200).here('The gallery door')
- .done({setting:'tower',goal:'rescue',exit:.62,water:1500+D});
-/** How far the foot of the tower stands below where it stood before its middle storeys were climbed. */
-export const TOWER_DROP=D,TOWER_STOREYS=STOREYS;
+ * One tower, climbed floor by floor. You come in by the door at its foot,
+ * where level 1 ended, and leave by the gallery door at the top. The tower is
+ * seen in section and is as wide as the screen; its measurements are in
+ * tower-02.ts. One open well runs up the middle from the flooded pit to the
+ * belfry floor. Every floor is trimmed round it, nothing that stands still
+ * crosses it, and a miss into it is a fall to the water. A miss anywhere else
+ * drops you a flight, onto the floor or the treads below.
+ *
+ * Each storey is one room, crossed once and climbed by its own means: the
+ * foot's stone steps on the back wall; the ringing floor's run-up jump, a
+ * ringer's box and two wall treads; the rotten floor's beam over the well;
+ * the masons' putlog boards; the muniment room's chest, press and aumbry; the
+ * clock's two weights riding their cables up the chase; the stones of the
+ * fallen vault, lodged on its joists; the clock room's dash, the clock case
+ * and a bracket; the dial's iron rim; the old stair's soft treads over the
+ * well, up without stopping; the corbel table and the iron ladder; the bell
+ * hoist's pallet up through the trap; the bell frame to Ivo; a rotten plank
+ * on the bell cage, the tenor's headstock and the west loft; the tie bar across the
+ * belfry; three louvre boards to the gallery door. */
+const F=floorLine;
+const floor=T('floor'),step=T('step',H(16)),tread=T('tread',G),putlog=T('putlog',H(12)),louvre=T('louvre',G);
+export const ROUTE_02=trail(WEST,F(0),204,T('ground')).here('The tower foot')
+ // The well-head kerb either side of the pit's mouth, then the stone steps along the back wall.
+ .at(244,F(0)-16,32,T('wellhead',H(44))).at(364,F(0)-16,32,T('wellhead',H(44)))
+ .at(396,F(0),EAST-396,T('ground')).cp()
+ .at(420,F(0)-48,48,step).at(508,F(0)-96,48,step).at(556,F(0)-144,EAST-556,step)
+ // The ringing floor is broken back from the well: a run-up jump, then a ringer's box and two treads on the west wall.
+ .sec('The ringing floor').at(404,F(1),96,floor)
+ .at(172,F(1),80,floor).at(140,F(1)-32,32,T('box',H(60)))
+ .side(WEST,F(1),100,floor,true)
+ .at(64,F(1)-96,56,tread).at(152,F(1)-144,56,tread)
+ // The rotten floor: the beam over the well, a rotten joist, a corbel and a bracket up the east wall.
+ .sec('The rotten floor').at(224,F(2),48,floor)
+ .side(WEST,F(2),72,floor,true)
+ .at(272,F(2)+8,104,T('beam',C(.5,12)))
+ .at(392,F(2),48,floor).at(456,F(2),32,T('joist',C(.45,12))).at(504,F(2),EAST-504,floor).cp()
+ .at(552,F(2)-64,EAST-552,T('corbel',H(16))).at(480,F(2)-128,48,T('bracket',G))
+ // The masons' scaffold: over the well, then boards on putlogs let into the back wall.
+ .sec('The masons’ scaffold').at(384,F(3),80,floor)
+ .at(168,F(3),96,floor)
+ .at(104,F(3)-56,48,putlog).at(WEST,F(3)-112,56,putlog).at(104,F(3)-168,48,putlog)
+ // The muniment room: over the well, the parish chest, the press against the east wall, an aumbry in the wall.
+ .sec('The muniment room').at(168,F(4),96,floor)
+ .at(380,F(4),68,floor).at(448,F(4)-40,48,T('chest',H(68))).at(496,F(4),56,floor)
+ .at(552,F(4)-64,EAST-552,T('press',H(92))).at(472,F(4)-128,56,T('aumbry',H(12)))
+ // The weight shaft: over the well, then the clock's two weights up the chase on their cables.
+ .sec('The weight shaft').at(384,F(5),72,floor)
+ .at(160,F(5),104,floor).cp()
+ .at(96,F(5)-40,48,T('weight',L(40,.9,16)))
+ .at(WEST,F(5)-136,48,T('weight',L(56,1.5,16)))
+ // The fallen vault: its stones came down onto this floor's joists and are the way over the hole they made.
+ .sec('The fallen vault').at(104,F(6),160,floor)
+ .at(380,F(6)-40,56,T('rubble',H(68))).at(460,F(6)-80,48,T('rubble',H(108))).at(540,F(6)-128,EAST-540,T('rubble',H(156)))
+ // The clock room: a dash over the well, the clock case, a bracket on the west wall.
+ .sec('The clock room').at(400,F(7),128,floor).cp()
+ .at(128,F(7),60,floor).at(64,F(7)-64,64,T('clockcase',H(92))).at(136,F(7)-128,48,T('bracket',G))
+ // Behind the dial: over the well, then up the dial's iron rim.
+ .sec('Behind the dial').at(200,F(8),64,floor)
+ .at(384,F(8),56,floor).at(456,F(8)-48,40,T('dial',G)).at(528,F(8)-88,40,T('dial',G)).at(456,F(8)-128,40,T('dial',G))
+ // The old stair: its soft treads cross the well to the half-landing on the west wall. Up it without stopping.
+ .sec('The old stair').at(504,F(9),EAST-504,floor).cp()
+ .at(440,F(9)-24,40,T('stair',C(.4,12))).at(376,F(9)-48,40,T('stair',C(.4,12))).at(312,F(9)-72,40,T('stair',C(.4,12)))
+ .at(248,F(9)-96,40,T('stair',C(.4,12))).at(184,F(9)-120,40,T('stair',C(.4,12)))
+ .at(WEST,F(9)-144,128,T('landing'))
+ // The corbel table along the east half of the back wall, then the iron ladder up the east wall.
+ .sec('The corbel table').at(184,F(10),80,floor)
+ .at(388,F(10)-16,40,T('corbel',H(16))).at(452,F(10)-40,32,T('corbel',H(16))).at(516,F(10)-24,32,T('corbel',H(16)))
+ .at(552,F(10)-72,EAST-552,T('ladder',G)).at(552,F(10)-120,EAST-552,T('ladder',G))
+ // The bell hoist: its pallet rides the top of the well up through the trap in the belfry floor.
+ .sec('The bell hoist').at(400,F(11),136,floor)
+ .side(WEST,F(11),224,floor,true)
+ .at(284,F(11)-96,72,T('pallet',L(96,.9,12)))
+ // Under the bells: the belfry floor, over the trap, up the bell frame to Ivo's landing.
+ .sec('Under the bells').at(WEST,F(12),228,floor).cp()
+ .at(372,F(12),76,floor).at(464,F(12)-56,56,T('frame',G)).at(392,F(12)-112,56,T('frame',G))
+ .at(480,F(12)-168,EAST-480,T('landing')).here('Ivo’s landing').cp().station('Ivo')
+ // Over the bells: a rotten plank on the bell cage's east rail, the tenor's headstock over the trap, the frame's west post, the west loft.
+ .sec('Over the bells').at(376,F(13),80,T('plank',C(.55,12)))
+ .at(240,F(13)-24,64,T('headstock',H(20))).at(152,F(13)-56,48,T('frame',G)).at(WEST,F(13)-104,80,T('loft')).cp()
+ // The tie bar runs wall to wall across the belfry; three louvre boards in the east openings climb to the gallery door.
+ .sec('The tie bar').at(136,F(14)+44,48,tread).at(WEST,F(14),EAST-WEST,T('tiebar',G))
+ .at(520,F(14)-48,48,louvre).at(440,F(14)-96,48,louvre).at(520,F(14)-144,48,louvre)
+ .sec('The gallery door').at(360,F(15),144,T('gallery'))
+ .done({setting:'tower',goal:'rescue',exit:.5,water:WATER,width:OUT_E,walls:[WEST,EAST]});

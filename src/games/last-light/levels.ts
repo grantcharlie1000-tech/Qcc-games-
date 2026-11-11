@@ -12,7 +12,7 @@ export interface Hazard extends Rect {platform?:number;kind:'spikes'|'saw'|'lase
 export interface Pickup {x:number;y:number;kind:'spark'|'key'|'dash';id:number}
 export interface Station {id:number;platform:number;x:number;y:number;kind:'lamp'|'survivor'|'valve'|'bell';label:string}
 export interface Checkpoint {x:number;y:number;platform:number}
-export interface Level {id:number;name:string;world:number;hint:string;platforms:Platform[];hazards:Hazard[];enemies:Enemy[];pickups:Pickup[];checkpoint:Checkpoint;exit:Rect;gate?:Rect;spawn:{x:number;y:number};width:number;height:number;setting:Setting;goal:Goal;stations:Station[];mainCount:number;wind:number;water:number|null;berth?:{x:number;y:number};pressure?:number;checkpoints?:Checkpoint[];sectors?:{name:string;platform:number}[];places?:readonly Place[]}
+export interface Level {id:number;name:string;world:number;hint:string;platforms:Platform[];hazards:Hazard[];enemies:Enemy[];pickups:Pickup[];checkpoint:Checkpoint;exit:Rect;gate?:Rect;spawn:{x:number;y:number};width:number;height:number;setting:Setting;goal:Goal;stations:Station[];mainCount:number;wind:number;water:number|null;berth?:{x:number;y:number};pressure?:number;checkpoints?:Checkpoint[];sectors?:{name:string;platform:number}[];places?:readonly Place[];walls?:readonly [number,number]}
 export const WORLDS=[
  {name:'The Old Quarter',sky:'#202d40',far:'#2b3b52',near:'#3a4b5b',stone:'#637078',edge:'#a5b3b0',accent:'#f3c77a',glow:'#ffb76b',flora:'#779b8b'},
  {name:'Mossworks',sky:'#142f32',far:'#20423e',near:'#315d4d',stone:'#526e60',edge:'#a8bf8b',accent:'#c8df87',glow:'#d9e990',flora:'#8fbd74'},
@@ -56,9 +56,9 @@ export function createLevel(index:number):Level {
   checkpoint,checkpoints,sectors:authored.sectors.map(([platform,name])=>({platform,name})),
   ...(goal==='ferry'?{berth:{x:end.x+end.w+66,y:end.y}}:{}),
   exit:{x:goal==='ferry'?end.x+end.w-44:end.x+end.w*(authored.exit??.55),y:end.y-56,w:38,h:56},spawn:{x:72,y:main[0].y-24},
-  width:Math.max(...platforms.map(p=>p.x+p.w))+(goal==='ferry'?320:110),height:Math.max(600,...platforms.map(p=>p.y+160)),
+  width:authored.width??Math.max(...platforms.map(p=>p.x+p.w))+(goal==='ferry'?320:110),height:Math.max(600,...platforms.map(p=>p.y+160)),
   hint:chapter.task,wind:wind??0,water:authored.water??(setting==='canal'?(goal==='ferry'?end.y+8:Math.max(...platforms.map(p=>p.y))+76):null),
-  ...(pressure===undefined?{}:{pressure}),...(authored.places?{places:authored.places}:{}),
+  ...(pressure===undefined?{}:{pressure}),...(authored.places?{places:authored.places}:{}),...(authored.walls?{walls:authored.walls}:{}),
  };
 }
 export const LEVELS:readonly Level[]=Array.from({length:LEVEL_COUNT},(_,i)=>createLevel(i));

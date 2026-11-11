@@ -23,6 +23,10 @@ export interface CampaignRoute {
  exit?:number;
  /** A lethal waterline at this world y, for a flooded pit or a river under a span. */
  water?:number;
+ /** The world's width, where the place has edges of its own (a tower's outer walls) rather than open ground past its last landing. */
+ width?:number;
+ /** Inner faces of the walls that bound the place; the courier stands between them. */
+ walls?:readonly [number,number];
  /** What the optional fixtures are, where the way out does not say: brake or irrigation wheels beside a door. */
  stationKind?:'lamp'|'valve'|'bell';
  /** What each landing is, main route then branches, for the set painter. */
