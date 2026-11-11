@@ -93,6 +93,8 @@ function shellReload(t: number, B: Record<string, number[]>, f: ReloadFrame) {
   let handle = 0;
   if (pump !== undefined) { const p = pulse(t, pump - 0.06, pump + 0.04); handle = p; f.bolt = p; }
   f.shell = shell; f.shellIn = shellIn;
+  // The shell travels from the side saddle (left of the receiver) to the loading port underneath.
+  f.magP = [-0.035 * (1 - shellIn), 0.035 * (1 - shellIn), 0.05 * (1 - shellIn)];
   f.hand = [1 - onShell, onShell, 0, 0];
   f.handle = handle;
 }

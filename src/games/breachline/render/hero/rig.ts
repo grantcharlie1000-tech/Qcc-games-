@@ -50,19 +50,52 @@ const POSE_SLAP: HandPose = [[0.1, 0.1, 0.1, 0.2], [0.15, 0.2, 0.1, 0.04], [0.15
 const HOOK: HandPose = [[0.3, 0.2, 0.2, 0.1], [1.1, 1.2, 0.7, 0], [1.15, 1.25, 0.7, 0], [1.2, 1.25, 0.7, 0], [1.25, 1.25, 0.7, 0]];
 export const POSES = { RIFLE_GRIP, OFF_TRIGGER, RIFLE_SUPPORT, MAG_GRIP, HOOK, POSE_SLAP };
 
-export const HOLDS: Record<WeaponId, Hold> = {
-  ar: {
-    right: { at: [0.018, -0.14, 0.006], palm: [-1, 0, 0], fingers: [0, -0.32, -0.95] },
-    left: { at: [-0.004, -0.103, -0.3], palm: [0.15, 1, 0], fingers: [0.7, 0, -0.7] },
+/** A rifle-style hold built from a weapon's sockets: the trigger hand on the grip's palm point with fingers square to
+ * the grip's rake, the support hand under the handguard. */
+function rifleHold(id: WeaponId, o: Partial<Hold> = {}): Hold {
+  const S = weaponModel(id).sockets, rake = S.grip.r[0];
+  const sup = S.support.p;
+  return {
+    right: { at: S.grip.p, palm: [-1, 0, 0], fingers: [0, Math.sin(rake), -Math.cos(rake)] },
+    left: { at: [sup[0] - 0.004, sup[1] - 0.004, sup[2]], palm: [0.15, 1, 0], fingers: [0.7, 0, -0.7] },
     rightPose: RIFLE_GRIP, leftPose: RIFLE_SUPPORT,
     magGrip: { at: [-0.016, -0.075, -0.012], palm: [1, 0, 0], fingers: [0, -0.25, -0.97] }, magPose: MAG_GRIP,
     handleGrip: { at: [-0.012, 0.004, 0.0], palm: [1, 0, 0], fingers: [0, 0.35, -1] }, handlePose: POSE_SLAP,
     shoulderR: [0.17, -0.38, 0.0], shoulderL: [-0.17, -0.34, -0.08], poleR: [0.6, -1, 0.4], poleL: [-1, -0.8, 0],
     hip: { p: [0.1, -0.085, -0.24], r: [0.03, 0.02, -0.03] }, adsZ: -0.1,
-  },
-  carbine: undefined!, smg: undefined!, shotgun: undefined!, dmr: undefined!, pistol: undefined!,
-};
-for (const id of ['carbine', 'smg', 'shotgun', 'dmr', 'pistol'] as WeaponId[]) HOLDS[id] = HOLDS.ar;
+    ...o,
+  };
+}
+/** Pistol: thumbs-forward two-hand grip; the support palm over the firing hand's fingers. */
+const PISTOL_SUPPORT: HandPose = [[0.1, 0.1, 0.15, 0.2], [0.95, 0.9, 0.5, 0], [1.0, 0.95, 0.5, 0], [1.05, 1.0, 0.5, -0.03], [1.1, 1.0, 0.5, -0.08]];
+const PISTOL_GRIP: HandPose = [[0.15, 0.15, 0.2, 0.3], [0.3, 0.5, 0.3, 0.05], [1.4, 1.4, 0.7, 0], [1.45, 1.4, 0.7, -0.03], [1.45, 1.35, 0.7, -0.08]];
+const holds = new Map<WeaponId, Hold>();
+export function holdFor(id: WeaponId): Hold {
+  let h = holds.get(id);
+  if (h) return h;
+  const S = weaponModel(id).sockets;
+  switch (id) {
+    case 'smg': h = rifleHold(id, { hip: { p: [0.1, -0.08, -0.22], r: [0.03, 0.02, -0.03] }, adsZ: -0.13 }); break;
+    case 'shotgun': h = rifleHold(id, {
+      left: { at: [0, S.support.p[1] - 0.008, S.support.p[2]], palm: [0.1, 1, 0], fingers: [0.75, 0, -0.66] },
+      hip: { p: [0.1, -0.085, -0.25], r: [0.03, 0.02, -0.03] }, adsZ: -0.17,
+    }); break;
+    case 'dmr': h = rifleHold(id, { hip: { p: [0.1, -0.085, -0.22], r: [0.03, 0.02, -0.03] }, adsZ: -0.07 }); break;
+    case 'pistol': h = rifleHold(id, {
+      left: { at: [-0.034, S.grip.p[1] - 0.012, S.grip.p[2] - 0.004], palm: [1, 0, 0], fingers: [0.25, -0.45, -0.86] },
+      rightPose: PISTOL_GRIP, leftPose: PISTOL_SUPPORT,
+      magGrip: { at: [-0.014, -0.08, 0.02], palm: [1, 0, 0], fingers: [0, -0.4, -0.9] },
+      handleGrip: { at: [0, 0.03, 0.0], palm: [0, -1, 0.1], fingers: [1, 0, 0] }, handlePose: HOOK,
+      shoulderR: [0.16, -0.32, -0.02], shoulderL: [-0.14, -0.32, -0.04], poleR: [0.5, -1, 0.3], poleL: [-0.6, -1, 0.2],
+      hip: { p: [0.08, -0.1, -0.42], r: [0.03, 0.05, -0.02] }, adsZ: -0.42,
+    }); break;
+    default: h = rifleHold(id);
+  }
+  holds.set(id, h);
+  return h;
+}
+/** Kept for the studio and tests: the hold of each weapon. */
+export const HOLDS = new Proxy({} as Record<WeaponId, Hold>, { get: (_, k) => holdFor(k as WeaponId) });
 
 export interface FpRig {
   root: THREE.Group;
@@ -89,7 +122,7 @@ export function createFpRig(look: ArmsLook): FpRig {
   const root = new THREE.Group(), gun = new THREE.Group();
   root.add(gun);
   const material = heroMaterial({ skinned: true });
-  const lensMat = new THREE.MeshStandardMaterial({ color: 0x223438, roughness: 0.04, metalness: 0.3, transparent: true, opacity: 0.22, depthWrite: false });
+  const lensMat = new THREE.MeshStandardMaterial({ color: 0x8fb0b0, roughness: 0.04, metalness: 0.3, transparent: true, opacity: 0.14, depthWrite: false });
   const arms: [Arm, Arm] = [makeArm(1), makeArm(-1)];
   const armGeo = armsGeometry(look);
   const armMesh = new THREE.SkinnedMesh(armGeo, material);
@@ -125,7 +158,7 @@ export function createFpRig(look: ArmsLook): FpRig {
       rig.lens = lens;
     },
     solve(f = IDLE) {
-      const hold = HOLDS[rig.weapon.id], S = rig.weapon.sockets;
+      const hold = holdFor(rig.weapon.id), S = rig.weapon.sockets;
       // Moving parts.
       const mb = weaponBones[WB.mag];
       magQ.setFromEuler(tmpE.set(f.magR[0], f.magR[1], f.magR[2]));
@@ -135,6 +168,7 @@ export function createFpRig(look: ArmsLook): FpRig {
       mb.quaternion.copy(magQ);
       mb.scale.setScalar(f.magOn ? 1 : 0);
       weaponBones[WB.handle].position.z = f.handle * S.handleTravel;
+      if (rig.weapon.id === 'shotgun') { const a = weaponBones[WB.aux]; a.position.set(...f.magP); a.scale.setScalar(f.shell ? 1 : 0); }
       weaponBones[WB.bolt].position.z = Math.max(weaponBones[WB.bolt].position.z, f.bolt * S.boltTravel);
       root.updateMatrixWorld(true);
       gun.getWorldQuaternion(gunQ);
@@ -160,7 +194,8 @@ export function createFpRig(look: ArmsLook): FpRig {
             if (acc === 0) { tmpQ.copy(qA); pose = hp; } else { tmpQ.slerp(qA, k); pose = lerpPose(pose, hp, k); }
             acc += weight;
           };
-          add(hold.left, w[0], null, hold.leftPose);
+          const L = rig.weapon.id === 'shotgun' ? { ...hold.left, at: [hold.left.at[0], hold.left.at[1], hold.left.at[2] + f.handle * S.handleTravel] as V3 } : hold.left;
+          add(L, w[0], null, hold.leftPose);
           add(hold.magGrip, w[1], magM, hold.magPose);
           const hg = hold.handleGrip;
           add({ ...hg, at: [hg.at[0] + S.handle[0], hg.at[1] + S.handle[1], hg.at[2] + S.handle[2] + f.handle * S.handleTravel] }, w[2], null, hold.handlePose);

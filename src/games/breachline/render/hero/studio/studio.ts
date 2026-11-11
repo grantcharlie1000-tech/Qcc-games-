@@ -7,7 +7,7 @@ import type { WeaponId } from '../../../config';
 import { heroMaterial } from '../material';
 import { heroReady } from '../geom';
 import { WEAPON_BONES, census, weaponModel } from '../weapons';
-import { DEFAULT_LOOK, POSE, createFpRig, type FpRig } from '../rig';
+import { DEFAULT_LOOK, POSE, createFpRig, holdFor, type FpRig } from '../rig';
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
@@ -25,7 +25,7 @@ scene.add(key, rim, new THREE.HemisphereLight(0xffffff, 0x404040, 0.3));
 const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 20);
 const stage = new THREE.Group(); scene.add(stage);
 const mat = heroMaterial();
-const lensMat = new THREE.MeshStandardMaterial({ color: 0x1a2a2a, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.35 });
+const lensMat = new THREE.MeshStandardMaterial({ color: 0x8fb0b0, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.14, depthWrite: false });
 
 function clear() { for (const c of [...stage.children]) stage.remove(c); }
 function size() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
@@ -71,7 +71,8 @@ const api = {
     if (r.weapon.id !== id) r.setWeapon(id);
     const ms = performance.now() - t0, a = o.ads ?? 0;
     stage.position.set(0, 0, 0); stage.add(r.root);
-    r.gun.position.set(0.2 * (1 - a), -0.15 * (1 - a), -0.36 + 0.16 * a); r.gun.rotation.set(0, 0.035 * (1 - a), 0);
+    const H = holdFor(id).hip, az = holdFor(id).adsZ;
+    r.gun.position.set(H.p[0] * (1 - a), H.p[1] * (1 - a), H.p[2] + (az - H.p[2]) * a); r.gun.rotation.set(H.r[0] * (1 - a), H.r[1] * (1 - a), H.r[2] * (1 - a));
     const t1 = performance.now(); r.solve(); const solveMs = performance.now() - t1;
     if (o.orbit) {
       const yaw = THREE.MathUtils.degToRad(o.yaw ?? 60), pitch = THREE.MathUtils.degToRad(o.pitch ?? 10), d = o.dist ?? 1.1;
@@ -91,6 +92,7 @@ const api = {
     const t0 = performance.now(), w = weaponModel(id, o.lod ?? 0), ms = performance.now() - t0;
     const { mesh, bones } = rigMesh(w.geo, WEAPON_BONES);
     bones[1].position.y = -(o.mag ?? 0); bones[2].position.z = o.bolt ?? 0;
+    for (let i = 5; i < bones.length; i++) bones[i].scale.setScalar(0);
     stage.add(mesh);
     if (w.lens) stage.add(new THREE.Mesh(w.lens, lensMat));
     const bb = w.geo.boundingBox!, c = new THREE.Vector3(); bb.getCenter(c);

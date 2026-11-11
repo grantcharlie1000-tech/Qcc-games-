@@ -9,7 +9,7 @@ import { ACT, weaponIdOf, type Match, type SimEvent } from '../../state';
 import { makeSprite } from '../../textures';
 import { heroReady } from './geom';
 import { reloadFrame, idleFrame } from './reload';
-import { DEFAULT_LOOK, HOLDS, createFpRig, type FpRig } from './rig';
+import { DEFAULT_LOOK, createFpRig, holdFor, type FpRig } from './rig';
 import { CASES, WB } from './weapons';
 import type { HeroLighting, HeroView, Viewmodel } from './index';
 
@@ -90,7 +90,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       holder.visible = show;
       if (!show || !p) return;
       if (p.squad !== curSquad) { if (rig) holder.remove(rig.root); rig = rigFor(p.squad); holder.add(rig.root); rig.root.add(flash); curSquad = p.squad; curId = '' as WeaponId; }
-      const r = rig!, id = weaponIdOf(m, p), def = WEAPONS[id], hold = HOLDS[id];
+      const r = rig!, id = weaponIdOf(m, p), def = WEAPONS[id], hold = holdFor(id);
       if (id !== curId) { r.setWeapon(id); curId = id; }
       const still = view.reduced ? 0 : 1;
       // Aim, sprint and "using something" blends.

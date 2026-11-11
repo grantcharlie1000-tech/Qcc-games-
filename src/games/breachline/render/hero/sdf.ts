@@ -158,6 +158,27 @@ export function meshField(f: Field, h: number, neighbours: (bone: number) => rea
     pos[v * 3] = x; pos[v * 3 + 1] = y; pos[v * 3 + 2] = z;
     nor[v * 3] = gx / gl; nor[v * 3 + 1] = gy / gl; nor[v * 3 + 2] = gz / gl;
   }
+  // Taubin smoothing (shrink, then inflate) removes the grid's faceting without losing volume; then re-project.
+  {
+    const adj0: number[][] = Array.from({ length: nv }, () => []);
+    for (let t = 0; t < idx.length; t += 3) for (let q = 0; q < 3; q++) { const a = idx[t + q], b = idx[t + (q + 1) % 3]; adj0[a].push(b); adj0[b].push(a); }
+    const tmpP = new Float32Array(pos.length);
+    for (let it = 0; it < 4; it++) {
+      const lam = it % 2 === 0 ? 0.5 : -0.53;
+      for (let v = 0; v < nv; v++) {
+        const l = adj0[v]; if (!l.length) { for (let k = 0; k < 3; k++) tmpP[v * 3 + k] = pos[v * 3 + k]; continue; }
+        for (let k = 0; k < 3; k++) { let sum = 0; for (const u of l) sum += pos[u * 3 + k]; tmpP[v * 3 + k] = pos[v * 3 + k] + lam * (sum / l.length - pos[v * 3 + k]); }
+      }
+      for (let i = 0; i < pos.length; i++) pos[i] = tmpP[i];
+    }
+    for (let v = 0; v < nv; v++) {
+      const x = pos[v * 3], y = pos[v * 3 + 1], z = pos[v * 3 + 2], d = F(x, y, z);
+      const gx = F(x + e, y, z) - F(x - e, y, z), gy = F(x, y + e, z) - F(x, y - e, z), gz = F(x, y, z + e) - F(x, y, z - e), gl = Math.hypot(gx, gy, gz) || 1;
+      // Pull halfway back to the surface (keeps the smoothing, loses no volume) and refresh the normal.
+      pos[v * 3] -= gx / gl * d * 0.5; pos[v * 3 + 1] -= gy / gl * d * 0.5; pos[v * 3 + 2] -= gz / gl * d * 0.5;
+      nor[v * 3] = gx / gl; nor[v * 3 + 1] = gy / gl; nor[v * 3 + 2] = gz / gl;
+    }
+  }
   // Skin weights and surface tags from the primitives.
   const nb = Math.max(...f.prims.map(p => p.bone)) + 1, W = new Float32Array(nv * nb), tags = new Uint8Array(nv);
   for (let v = 0; v < nv; v++) {

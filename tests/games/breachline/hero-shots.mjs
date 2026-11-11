@@ -32,6 +32,12 @@ if (job === 'turntable') {
     console.log(name, JSON.stringify(await page.evaluate(o => window.__breachlineHero.hand(o), o)));
     await shot(`hand-${name}`);
   }
+} else if (job === 'fpall') {
+  for (const id of ['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol']) for (const [name, o] of [['hip', {}], ['ads', { ads: 1 }], ['orbit', { orbit: true, yaw: 55, pitch: 12, dist: 0.9 }], ['orbit-l', { orbit: true, yaw: -60, pitch: -8, dist: 0.9 }]]) {
+    const r = await page.evaluate(([id, o]) => window.__breachlineHero.fp(id, o), [id, o]);
+    if (name === 'hip') console.log(id, JSON.stringify(r));
+    await shot(`fp-${id}-${name}`);
+  }
 } else if (job === 'eval') {
   console.log(JSON.stringify(await page.evaluate(args[0])));
   await shot(args[1] ?? 'eval');

@@ -10,7 +10,7 @@ import { cone, ell, meshField, rbox, type Field, type Prim, type Vec } from './s
 
 export const UPPER = 0.3, FORE = 0.28;
 /** Triangles per gloved hand after decimation (the surface-nets mesh is about 18k). */
-export const HAND_TRIS = 3000;
+export const HAND_TRIS = 2300;
 /** Bones per arm: 0 upper arm, 1 forearm, 2 hand, then 3 + finger * 3 + segment (thumb, index, middle, ring, little). */
 export const ARM_BONES = 18;
 export const FINGER = { thumb: 0, index: 1, middle: 2, ring: 3, little: 4 } as const;
@@ -115,7 +115,7 @@ export interface ArmsLook { sleeve: Surface; glove: Surface; palm: Surface; guar
 /** Sleeve: a tube from the shoulder to just over the cuff, with folds at the elbow and wrist, a squad band on the
  * forearm and the squad's shape patch (diamond or triangle) on its outer face. */
 function sleeve(b: Builder, look: ArmsLook) {
-  const rings = 30, seg = 18, z0 = 0.02, z1 = -(UPPER + FORE) + 0.04;
+  const rings = 24, seg = 16, z0 = 0.02, z1 = -(UPPER + FORE) + 0.04;
   const pos: number[] = [], nor: number[] = [], si: number[] = [], sw: number[] = [], tag: number[] = [], idx: number[] = [];
   const radius = (z: number, a: number) => {
     const t = (z0 - z) / (z0 - z1);
@@ -181,7 +181,7 @@ export function armsGeometry(look: ArmsLook): THREE.BufferGeometry {
     tagAttr[i] = t;
   }
   full.setAttribute('tag', new THREE.Float32BufferAttribute(tagAttr, 1));
-  const hand = simplify(full, HAND_TRIS, 0.002);
+  const hand = simplify(full, HAND_TRIS, 0.006);
   right.addTagged(hand, [look.glove, look.palm, look.guard, look.glove, look.palm, surf(look.guard, { color: 0x3a3a36 })]);
   sleeve(right, look);
   const geo = right.build({ ao: false });

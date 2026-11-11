@@ -66,9 +66,10 @@ if (pat < 0.5) {
   heroBump = (grain - 0.5) * 0.6 * fine + (small - 0.5) * 0.2 * mid;
 } else if (pat < 2.5) {
   // Wood: rings along the stock, pores, oiled sheen worn on edges.
-  float ring = sin((vObj.y * 260.0 + vObj.x * 120.0 + big * 9.0) ) * 0.5 + 0.5;
-  float fibre = vn(vec3(vObj.x * 600.0, vObj.y * 600.0, vObj.z * 18.0));
-  diffuseColor.rgb *= 0.7 + 0.35 * ring * (0.7 + 0.3 * fibre);
+  // Grain runs along the stock (z); rings are stretched along it and warped by low-frequency noise.
+  float ring = sin(vObj.y * 900.0 + vObj.x * 300.0 + vn(vec3(vObj.x * 40.0, vObj.y * 40.0, vObj.z * 6.0)) * 14.0) * 0.5 + 0.5;
+  float fibre = vn(vec3(vObj.x * 900.0, vObj.y * 900.0, vObj.z * 22.0));
+  diffuseColor.rgb *= 0.82 + 0.16 * ring + 0.12 * (fibre - 0.5) + 0.1 * (big - 0.5);
   diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.5, smoothstep(0.4, 0.9, vEdge * wearAmt));
   heroRough = clamp(heroRough + (fibre - 0.5) * 0.2, 0.25, 0.9);
   heroBump = (fibre - 0.5) * 0.5 * fine;

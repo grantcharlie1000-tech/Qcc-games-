@@ -15,7 +15,7 @@ Session: hero models (weapons, hands, reloads, fighters). Plan: `docs/superpower
 | Marrow AR-5 | Round 3 (turntable), round 2 (in hand) |
 | Hands and arms (SDF gloves, sleeves, squad band and shape patch, IK) | Round 2 |
 | Viewmodel motion (springs, sway, bob, recoil, ADS, sprint, swap, melee, casings) and reload timelines | Round 1, **in the game** |
-| Other five weapons | **Not built: they show the AR-5 model for now** |
+| Tern C8, Wren-9, Halden 12, Corvin DMR, P-11 | Round 2 (turntables), holds derived from each weapon's sockets |
 | Fighters, animation | Not started (still the box figures) |
 
 ## Scores (row E: weapon and hands; row F: characters). 8 = MW2 (2009)
@@ -23,6 +23,7 @@ Session: hero models (weapons, hands, reloads, fighters). Plan: `docs/superpower
 | Round | E | F | Evidence |
 | --- | --- | --- | --- |
 | Baseline | 1 | 1 | `docs/evidence/breachline/05-breach.png`, `overhaul/phase-0/lab-bench-high.png`: about 30 boxes, slab arms, a blue block for a wrist band; fighters are six rigid box groups |
+| r2 | 5 | 1 | `r2/*-turntable.png`, `r2/*-fp-hip-ads-orbits.png`. All six weapons now exist as distinct designs with their own sights (tube dot, holographic with ring reticle, mini reflex, ghost ring with bead, variable scope, three-dot irons), all held by the gloved hands within budget. Why only 5: weapons are clean but plain (flat panels, little surface break-up, no markings); in-hand frames only checked in the studio for five of the six; pistol hands look like mittens at aimed range; magazine changes are still largely off-screen. |
 | r1 | 4 | 1 | `r1/ar-game-hip-ads.png`, `r1/ar-turntable-*.png`, `r1/ar-reload-*-strip.png`. The AR-5 is a real rifle shape with bevelled parts, a slotted handguard, a rail, an optic, edge wear and cavity AO, and gloved five-finger hands hold it. Why only 4: five of six weapons are still missing; in the reload the magazine is mostly out of frame; the gloves read soft and lumpy at close range; the hip pose crowds the right edge; the materials are flat under the game's light. F is unchanged. |
 
 Gates: E ≥ 8, F ≥ 7.
@@ -79,6 +80,16 @@ plates with triple magazine pouches, boots with about 0.03 m soles.
 6. Blotchy AO from self-hits → finer voxels (1/320 of the size), larger normal offset.
 7. Ejection port was a slab stuck on → flush dark port, a hinge rod, a dust-cover lip and the bolt carrier in it.
 
+**Five new weapons, rounds 1–2:**
+1. The studio showed spent casings and the loading shell → hidden bones are scaled to zero.
+2. The carbine's lower rail floated above the gun (rotated about the origin, not the bore) → mirrored height.
+3. The holographic window read as a black box (lens too opaque) → a 14 % clear lens; the ring reticle now reads.
+4. The shotgun's wood was a wavy zebra → grain stretched along the stock, warped by low-frequency noise.
+5. The shotgun's aimed view was all stock (the comb sat on the sight line) → comb lowered 3 cm, eye relief 0.17 m.
+6. The pistol arms were bent and too close → extended to 0.42 m, shoulders moved in.
+7. AR plus arms was 23.9k → unbevelled rail teeth, one-segment bevels on the handguard walls, decimation to 2.3k per
+   hand (error 6 mm cap), sleeves at 24×16: 19.9k.
+
 **Hands, rounds 1–2:**
 1. Inside out (quad winding) → fixed.
 2. 39k triangles for two arms → meshoptimizer simplifier (pinned 0.22.0, bundled WebAssembly) to 3k per hand; sleeves
@@ -101,9 +112,9 @@ plates with triple magazine pouches, boots with about 0.03 m soles.
 
 | Item | Budget | Measured |
 | --- | --- | --- |
-| AR-5 first person | 8–15k tris | 15.3k (with casings) |
-| Both arms | — | 8.2k tris |
-| Weapon + hands in view | ≤ 20k tris, ≤ 4 calls | **23.7k (over)**, 3 calls (weapon, arms, lens) + flash sprite when firing |
+| Weapons, first person | 8–15k tris | AR 13.3k, Tern C8 9.4k, Wren-9 6.2k, Halden 12 5.5k, Corvin 10.5k, P-11 4k (round 2, after trimming) |
+| Both arms | — | about 6.5k tris |
+| Weapon + hands in view | ≤ 20k tris, ≤ 4 calls | max 19.9k (AR); 3 calls (weapon, arms, lens) or 2 without glass, + the flash sprite while firing; casings are bones in the weapon mesh (0 calls) |
 | Arm IK + finger poses | ≤ 1 ms per frame (all hero animation) | 0.2–1.1 ms per solve in the studio under the software rasteriser (includes the first-call JIT) |
 | AR-5 build time | — | about 290 ms once (the AO bake is most of it) |
 | Glove mesh build | — | about 700 ms once (surface nets plus simplify): **too slow, to be cut** |
@@ -115,8 +126,10 @@ two-device online test 7/7 passed with the new viewmodel in the game.
 
 ## Still weak
 
-- Five of six weapons are missing (they show the AR-5).
-- Weapon plus hands are over the triangle budget; the glove mesh takes about 0.7 s to build.
+- The other five weapons are below the AR's detail: flat panels, few small parts, no markings.
+- The glove mesh takes about 0.7 s to build (once).
+- Pistol hands read as mittens when aimed.
+- Third-person weapons still use the old box figures' guns (no low detail levels made yet).
 - The magazine change is mostly off-screen; there are no casings yet in the world, only in the viewmodel.
 - Gloves are lumpy close up; the knuckle guard bar is crude.
 - Fighters are untouched (row F = 1).
