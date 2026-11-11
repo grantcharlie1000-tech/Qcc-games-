@@ -86,7 +86,7 @@ export function createPatchViewmodel(renderer: THREE.WebGLRenderer, lighting: He
   }).catch(e => console.warn('Breachline hand textures unavailable; procedural look kept.', e)));
   // PATCH: the models, their gun-space placement and sockets, loaded with the rest.
   type V3 = [number, number, number];
-  interface PatchModel { body: THREE.Object3D; mag: THREE.Object3D; slide: THREE.Object3D | null; sockets: WeaponSockets; sight: number; hipDrop: number }
+  interface PatchModel { body: THREE.Object3D; mag: THREE.Object3D; slide: THREE.Object3D | null; sockets: WeaponSockets; sight: number; hipDrop: number; hipFwd: number }
   const PATCH = new Map<WeaponId, PatchModel>();
   const add = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
   const nodeMesh = (g: THREE.Object3D, name: string, mat: THREE.Material) => { const o = g.getObjectByName(name)!; o.traverse(c => { const m = c as THREE.Mesh; if (m.isMesh) { m.material = mat; m.frustumCulled = false; } }); return o; };
@@ -97,16 +97,28 @@ export function createPatchViewmodel(renderer: THREE.WebGLRenderer, lighting: He
       Promise.all([art.texture('../patch/pistol', 'diff', 1024), art.texture('../patch/pistol', 'nor', 1024), art.texture('../patch/pistol', 'arm', 512)]),
     ]);
     for (const t of [...rmaps, ...pmaps]) { t.flipY = false; t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.needsUpdate = true; }
-    const rm = texturedMaterial({ map: rmaps[0], normalMap: rmaps[1], arm: rmaps[2] }), pm = texturedMaterial({ map: pmaps[0], normalMap: pmaps[1], arm: pmaps[2] });
+    const rm = rifleFinish(rmaps[0], rmaps[1], rmaps[2]), pm = texturedMaterial({ map: pmaps[0], normalMap: pmaps[1], arm: pmaps[2] });
     // Rifle (sockets in its own frame, see patch/rifle-scifi/sockets.json): grip palm (0, -0.07, 0.185) onto the AR-5's.
     {
       const A = weaponModel('ar').sockets, T: V3 = [0, A.grip.p[1] + 0.07, A.grip.p[2] - 0.185];
-      const body = new THREE.Group(), b = nodeMesh(rg.scene, 'body', rm); b.position.set(...T); body.add(b);
-      const mag = new THREE.Group(), mm = nodeMesh(rg.scene, 'magazine', rm); mag.add(mm); mm.position.set(...add([0, -0.04, -0.05], T));
+      // Job 6: 15% narrower across its width (it read as a block).
+      const body = new THREE.Group(), b = nodeMesh(rg.scene, 'body', rm); b.position.set(...T); b.scale.x = 0.85; body.add(b);
+      const mag = new THREE.Group(), mm = nodeMesh(rg.scene, 'magazine', rm); mag.add(mm); mm.position.set(...add([0, -0.04, -0.05], T)); mm.scale.x = 0.85;
+      // Job 6: the generated box sight is removed (cut-rifle-sight.ts); the AR-5's own red-dot optic and lens go on the
+      // rail instead: cut from the AR-5 by position (above its rail, between z -0.16 and -0.04), raised 7.4 cm onto the
+      // Patch rail and moved 9 cm forward to its free length. Its sight line, the AR-5's axis, rises by the same 7.4 cm.
+      const OPT = new THREE.Vector3(0, 0.074, -0.09), arw = weaponModel('ar', 0), ap = arw.geo.getAttribute('position'), aix = arw.geo.index!.array, keep: number[] = [];
+      for (let t = 0; t < aix.length; t += 3) { let y = 0, z = 0; for (let q = 0; q < 3; q++) { y += ap.getY(aix[t + q]) / 3; z += ap.getZ(aix[t + q]) / 3; } if (y > -0.036 && z > -0.16 && z < -0.04) keep.push(aix[t], aix[t + 1], aix[t + 2]); }
+      const og = new THREE.BufferGeometry(); og.setAttribute('position', ap); og.setAttribute('normal', arw.geo.getAttribute('normal')); if (arw.geo.getAttribute('uv')) og.setAttribute('uv', arw.geo.getAttribute('uv')); og.setIndex(keep);
+      const [am, an, aa] = await Promise.all([art.texture('../hero/ar', 'diff', low ? 1024 : 2048), art.texture('../hero/ar', 'nor', low ? 1024 : 2048), art.texture('../hero/ar', 'arm', low ? 1024 : 2048)]);
+      for (const t of [am, an, aa]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+      const optic = new THREE.Mesh(og, texturedMaterial({ map: am, normalMap: an, arm: aa })); optic.position.copy(OPT); optic.frustumCulled = false; body.add(optic);
+      if (arw.lens) { const lens = new THREE.Mesh(arw.lens, new THREE.MeshStandardMaterial({ color: 0xc08a3a, roughness: 0.03, metalness: 0.55, transparent: true, opacity: 0.2, depthWrite: false, envMapIntensity: 1.6 })); lens.renderOrder = 2; lens.position.copy(OPT); body.add(lens); }
       const sockets: WeaponSockets = { ...A, muzzle: add([0, 0.03, -0.44], T), eject: add([0.042, 0.06, 0.04], T), mag: add([0, -0.04, -0.05], T), handle: add([0, 0.11, 0.13], T), bore: 0.118 };
       // The generated box sight is solid (no window to look through), so the aim is taken just over its top (0.166),
       // and at the hip the rig is lowered 5 cm: the Patch receiver stands much taller above its grip than the AR-5's.
-      PATCH.set('ar', { body, mag, slide: null, sockets, sight: 0.166 + T[1], hipDrop: 0.05 });
+      // At the hip the rig sits 8 cm lower and 4 cm further forward so the rifle takes no more of the frame than the AR-5.
+      PATCH.set('ar', { body, mag, slide: null, sockets, sight: OPT.y, hipDrop: 0.08, hipFwd: 0.04 });
     }
     // Pistol (patch/pistol/sockets.json): grip palm (0, -0.0053, 0.0698) onto the stock pistol's, on the bore's centre line.
     {
@@ -116,10 +128,30 @@ export function createPatchViewmodel(renderer: THREE.WebGLRenderer, lighting: He
       const mag = new THREE.Group(), mo = nodeMesh(pg.scene, 'magazine', pm); mo.position.add(new THREE.Vector3(...T)); mag.add(mo);
       const slide = new THREE.Group(), so = nodeMesh(pg.scene, 'slide', pm); so.position.add(new THREE.Vector3(...T)); slide.add(so);
       const sockets: WeaponSockets = { ...A, muzzle: add([0, 0.0517, -0.1112], T), eject: add([0.016, 0.0527, 0.0198], T), mag: add([0, 0.0417, 0.0623], T), handle: add([0, 0.0497, 0.0848], T), boltTravel: 0.035, bore: 0.018 };
-      PATCH.set('pistol', { body, mag, slide, sockets, sight: 0.0517 + 0.018 + T[1], hipDrop: 0 });
+      PATCH.set('pistol', { body, mag, slide, sockets, sight: 0.0517 + 0.018 + T[1], hipDrop: 0, hipFwd: 0 });
     }
     for (const [r, id] of [...rigs.entries()].map(([, r]) => [r, r.weapon.id] as const)) patchify(r, id);
   })().catch(e => console.warn('Breachline: Patch weapons unavailable; stock weapons kept.', e)));
+  /** Job 6 finish for the rifle: dark grey (receiver albedo about 0.11, furniture a darker, warmer 0.07), the baked
+   * colour kept only as detail (its luminance against its mean), recesses darker, raised edges a thin lighter wear
+   * line where the detail is brightest, roughness 0.45 on the flats so the lights put a highlight on it. Furniture
+   * (grip, stock, handguard panels) is picked by position in the rifle's own frame. */
+  function rifleFinish(map: THREE.Texture, normalMap: THREE.Texture, arm: THREE.Texture) {
+    const m = new THREE.MeshStandardMaterial({ map, normalMap, roughness: 0.45, metalness: 0.35 });
+    m.onBeforeCompile = sh => {
+      sh.vertexShader = 'varying vec3 vRP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvRP = position;');
+      sh.fragmentShader = 'varying vec3 vRP;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+        { float l = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)), d = clamp(l / 0.03, 0.45, 2.2);
+          float furn = max(max(step(0.12, vRP.z) * step(vRP.y, -0.02) * step(vRP.z, 0.25), step(0.25, vRP.z)), step(vRP.z, -0.12) * step(vRP.y, 0.07) * step(0.0, -vRP.y + 0.07) * step(0.02, abs(vRP.x)));
+          vec3 base = mix(vec3(0.11, 0.112, 0.118), vec3(0.075, 0.07, 0.062), furn);
+          float wear = smoothstep(1.5, 2.1, d);
+          diffuseColor.rgb = mix(base * mix(0.55, 1.0, smoothstep(0.45, 1.0, d)), vec3(0.28, 0.28, 0.27), wear * 0.6); }`)
+        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(0.45, 0.7, smoothstep(0.0, 1.0, float(vRP.z > 0.25)));');
+    };
+    m.customProgramCacheKey = () => 'patch-rifle-finish';
+    void arm;
+    return m;
+  }
   const brass = new THREE.MeshStandardMaterial({ color: 0xb08a3c, metalness: 1, roughness: 0.35 }), caseGeo = new THREE.CylinderGeometry(0.0045, 0.0045, 0.022, 8).rotateX(Math.PI / 2);
   const applied = new Map<FpRig, THREE.Object3D[]>();
   /** PATCH: after `setWeapon`, hide the stock model (and its casings) and attach the Patch one, with its sockets. */
@@ -228,7 +260,7 @@ export function createPatchViewmodel(renderer: THREE.WebGLRenderer, lighting: He
       const arc = Math.sin(Math.PI * ads) * 0.02;
       let x = x0 - arc * 0.5, y = y0 - arc, z = z0;
       // PATCH: the Patch sight line sits higher (rifle) or lower (pistol) than the stock one in gun space.
-      { const P = PATCH.get(id); if (P) y -= ads * P.sight + (1 - ads) * P.hipDrop; }
+      { const P = PATCH.get(id); if (P) { y -= ads * P.sight + (1 - ads) * P.hipDrop; z -= (1 - ads) * P.hipFwd; } }
       let ax = H.r[0] * (1 - ads), ay = H.r[1] * (1 - ads), az = H.r[2] * (1 - ads);
       x += Math.sin(gait) * 0.006 * bobA - sy * 0.25 * (1 - ads * 0.6); y += -Math.abs(Math.cos(gait)) * 0.008 * bobA + Math.sin(time * 1.6) * 0.0012 * still * (1 - ads * 0.7) - sp * 0.2 * (1 - ads * 0.6);
       ay += sy * (1 - ads * 0.85); ax += sp * (1 - ads * 0.85); az += -sr * 0.6 * (1 - ads * 0.7) + Math.sin(gait) * 0.01 * bobA - p.lean * 0.1;

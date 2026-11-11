@@ -32,16 +32,19 @@ async function run(patch) {
   await page.addStyleTag({ content: '.bl-toast, .bl-banner, .bl-prompt { visibility: hidden !important; }' });
   const shot = async name => { await page.waitForTimeout(600); await writeFile(path.join(outDir, `${tag}-${name}.png`), await page.locator('canvas').first().screenshot()); console.log(tag, name); };
   for (const [place, [x, z, yaw, pitch]] of Object.entries(SPOTS)) {
+    if (process.env.SHORT && place !== 'corridor') continue;
     await page.evaluate(([x, z, yaw, pitch]) => { const h = window.__breachlineTest; h.place(x, z, yaw, pitch); h.hold({}, 1.0); h.draw(); }, [x, z, yaw, pitch]);
     await shot(`${place}-hip`);
     await page.evaluate(() => { const h = window.__breachlineTest; h.hold({ ads: true }, 0.8); h.draw(); });
     await shot(`${place}-aim`);
+    if (process.env.SHORT) continue;
     // Spend a few rounds, settle, then reload; frames at four points of it.
     await page.evaluate(() => { const h = window.__breachlineTest; h.hold({ fire: true }, 0.35); h.hold({}, 0.8); h.hold({}, 0.05, { reload: true }); });
     let t = 0;
     for (const at of [0.35, 0.9, 1.5, 2.1]) { await page.evaluate(d => { const h = window.__breachlineTest; h.hold({}, d); h.draw(); }, at - t); t = at; await shot(`${place}-reload-${at}`); }
     await page.evaluate(() => { const h = window.__breachlineTest; h.hold({}, 2.0); });
   }
+  if (process.env.SHORT) { await browser.close(); return true; }
   // The sidearm at the hip, in the Lab.
   await page.evaluate(() => { const h = window.__breachlineTest; h.hold({}, 0.05, { slot: 1 }); h.hold({}, 1.0); h.draw(); });
   await shot('lab-pistol');
