@@ -59,6 +59,10 @@ levels) and the reflection probe about 4 MB; committed art 9.4 MB (all of it at 
 per frame is not measured yet (phase-1 counters). The props are still at full resolution (about 50k of the 90k
 triangles); LODs are on the list.
 
+**Hero lighting:** `HeroLighting.environment(x, z)` now returns the Lab's reflection probe inside the Lab (null elsewhere); `probe` is still the old per-vertex bake adapter until the light grid lands.
+
+**Tests this round:** `npx tsc --noEmit` clean; `npx vitest run tests/games/breachline` 53 passed; browser tests (solo flow and two-device online) 7 passed.
+
 **What ARM devices get today:** no S3TC, so the 512 px JPEG fallbacks, uncompressed in GPU memory (about 3x the
 compressed size). KTX2/Basis (transcoding to ETC2/ASTC) is what fixes this; it is the next renderer task after the
 slice.

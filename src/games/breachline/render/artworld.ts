@@ -30,6 +30,8 @@ export interface ArtWorld {
   capture(renderer: THREE.WebGLRenderer, scene: THREE.Scene): void;
   stats: { triangles: number; meshes: number; textureBytes: number };
   readonly envReady: boolean;
+  /** The reflection probe for the room containing (x, z), or null. */
+  environment(x: number, z: number): THREE.Texture | null;
   dispose(): void;
 }
 
@@ -165,6 +167,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     group, claim: claimFaces, stats: { triangles, meshes, textureBytes: L.bytes },
     panelLook: i => looks.get(i) ?? null,
     get envReady() { return env !== null; },
+    environment(x, z) { const r = REGIONS[0]; return env && x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1 ? env.texture : null; },
     capture(renderer, scene) {
       if (!full || dbg.includes('noenv')) return;
       // One reflection probe per room, from its middle at eye height.

@@ -122,7 +122,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   // ---- Fighters and the weapon in hand (render/hero) ----
   const heroLighting: HeroLighting = {
     probe(x, _y, z) { const l = bake.probe(x, z); return { color: [l[0], l[1], l[2]] }; },
-    environment() { return null; },
+    environment(x, z) { return art?.environment(x, z) ?? null; },
     sun: { x: SUN.x, y: SUN.y, z: SUN.z, color: [1.55, 1.12, 0.7] },
   };
   const fighters = createFighters(scene, heroLighting);
