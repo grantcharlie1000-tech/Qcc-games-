@@ -31,6 +31,9 @@ export const BOOKMARKS = {
   // The Lobby from the east by the entrance, and the reception desk's public front.
   lobby: [-7.7, 9.2, 0.6, -0.08],
   'lobby-desk': [-10.4, 2.0, 2.9, -0.15],
+  // The Office from the north-east corner, and a workstation close.
+  office: [-0.6, 1.6, 2.36, -0.12],
+  'office-desk': [-3.4, 5.6, -2.25, -0.35],
   // Down the aisle between the two long rack runs, and close on a rack face.
   'server-aisle': [12.6, -6.3, 1.5708, -0.05],
   'server-rack': [8.2, -6.5, 0.25, -0.12],

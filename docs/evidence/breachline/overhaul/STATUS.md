@@ -4,6 +4,11 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: Office round 1 done.** `rooms/office/round-1/round1.png`: before, after, a workstation, and closer.
+Baked art region with four neutral fittings; each desk is a workstation (monitor on a stand, keyboard, mouse,
+papers, a mug, a task chair pulled out, a bin); drawer fronts on the filing cabinet; whiteboard with marks, clock and
+skirting on the south wall. Next: the Break Room.
+
 **2026-11-11: Lobby round 1 done.** `rooms/lobby/round-1/round1.png`: before (procedural), after, the desk's
 public front and the desk close. Baked art region with four warm fittings; the reception desk has panelled fronts,
 a ledge and kick plate, the receptionist's monitor, keyboard, phone and papers; entrance mat and exit sign at the
@@ -150,8 +155,25 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** yard, Server Room and Lobby round 1 done; next the Office and the Break Room, then a
-second round on the lowest-scoring area.
+**Where I am (keep current):** yard, Server Room, Lobby and Office round 1 done; next the Break Room, then a second
+round on the lowest-scoring area.
+
+## Office, round 1 (`rooms/office/round-1/round1.png`, 960 px)
+
+- **Region:** `room('Office', 'office')`; fixtures `office` (four neutral troffers); baked in 4.8 min; bookmarks
+  `office` and `office-desk`.
+- **Dressing** (`workstation` and `dressOffice`): per desk, the user's side is the open one; monitor on a stand
+  facing them, keyboard, mouse, two paper stacks, a mug, a five-star task chair (low and open, not cover) and a
+  bin. Filing cabinet drawer fronts (`filing`). South wall: whiteboard with frame, pen tray and marks; a clock;
+  skirting.
+- **Found and fixed:** monitors and chairs read pale: detail pieces take the light of the surface they stand on
+  (an up-facing desk top or floor), so their vertical faces are over-lit; their tints are set darker to match.
+  A per-face light for detail is the proper fix (noted for later).
+- **Budget:** 170-177 draw calls, 78-87k triangles.
+- **Still wrong:** chairs are blocky; no cables, desk phones or pinboards on the soft walls (kept off destructible
+  panels on purpose).
+- Tests: unit 5385 passed; Breachline browser 8 passed (stock warm run expected to fail).
+
 
 ## Lobby, round 1 (`rooms/lobby/round-1/round1.png`, 960 px)
 

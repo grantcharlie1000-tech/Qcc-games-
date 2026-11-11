@@ -21,6 +21,7 @@ export function dressRoom(atlas: Atlas, room: Region): DetailBuilder {
   if (room.name === 'yard') return dressYard(atlas, room);
   if (room.name === 'server') return dressServer(atlas, room);
   if (room.name === 'lobby') return dressLobby(atlas, room);
+  if (room.name === 'office') return dressOffice(atlas, room);
   return dressLab(atlas, room);
 }
 
@@ -616,6 +617,57 @@ function dressLobby(atlas: Atlas, room: Region): DetailBuilder {
     D.box('plastic', x, 2.52, 4.82, x + 0.04, 2.88, 5.18, at(5, 2.7), n);
     geo(new THREE.PlaneGeometry(0.32, 0.32).rotateY(Math.PI / 2).translate(x + 0.041, 2.7, 5), 'clock', at(5, 2.7), n);
   }
+  return D;
+}
+
+/** A workstation on a desk (long along x): monitor on a stand facing the user's side (s = +1: the user sits at z1),
+ * keyboard, mouse, papers and a mug; a task chair and a bin on the user's side. */
+function workstation(D: DetailBuilder, b: { x0: number; z0: number; x1: number; z1: number; y1: number }, s: 1 | -1, seed: number) {
+  const r = seeded(seed), top = b.y1, up: V3 = [0, 1, 0], on: V3 = [(b.x0 + b.x1) / 2, top + 0.001, (b.z0 + b.z1) / 2];
+  const back = s > 0 ? b.z0 + 0.14 : b.z1 - 0.14, front = s > 0 ? b.z1 - 0.2 : b.z0 + 0.2, mx = (b.x0 + b.x1) / 2 + (r() - 0.5) * 0.4;
+  const zb = (a: number, c: number) => [Math.min(a, c), Math.max(a, c)] as const;
+  const box = (key: DressKey, x0: number, y0: number, za: number, x1: number, y1: number, zc: number, tint?: V3, o: V3 = on) => { const [z0, z1] = zb(za, zc); D.box(key, x0, y0, z0, x1, y1, z1, o, up, tint); };
+  box('chassis', mx - 0.11, top, back - 0.08, mx + 0.11, top + 0.012, back + 0.06, [0.9, 0.9, 0.9]);
+  box('chassis', mx - 0.02, top + 0.012, back - 0.03, mx + 0.02, top + 0.16, back, [0.9, 0.9, 0.9]);
+  box('chassis', mx - 0.27, top + 0.1, back, mx + 0.27, top + 0.42, back + s * 0.03, [0.55, 0.55, 0.55]);
+  box('screen', mx - 0.25, top + 0.12, back + s * 0.03, mx + 0.25, top + 0.4, back + s * 0.034);
+  box('chassis', mx - 0.22, top, front - 0.07, mx + 0.22, top + 0.02, front + 0.07, [1.1, 1.1, 1.1]);
+  box('chassis', mx + 0.3, top, front - 0.03, mx + 0.36, top + 0.025, front + 0.04, [1.1, 1.1, 1.1]);
+  for (let i = 0; i < 2; i++) { const px = b.x0 + 0.15 + r() * 0.3 + i * (b.x1 - b.x0 - 0.65), pz = (b.z0 + b.z1) / 2 - 0.15 + r() * 0.1; box('paper', px, top, pz, px + 0.21, top + 0.004 + r() * 0.02, pz + 0.3, [0.5, 0.5, 0.48]); }
+  { const g = new THREE.CylinderGeometry(0.04, 0.036, 0.1, 14).translate(b.x1 - 0.18, top + 0.05, front); D.mesh('casing', g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, up, r() < 0.5 ? [0.9, 0.3, 0.25] : [0.95, 0.95, 0.92]); g.dispose(); }
+  // The chair, pulled out on the user's side: five-star base, column, seat and back (open and low; not cover).
+  const cx = mx + (r() - 0.5) * 0.3, cz = (s > 0 ? b.z1 : b.z0) + s * (0.45 + r() * 0.15), turn = (r() - 0.5) * 0.8, fl: V3 = [cx, 0.001, cz];
+  const mesh = (g: THREE.BufferGeometry, key: DressKey, tint?: V3) => { g.rotateY(turn); g.translate(cx, 0, cz); D.mesh(key, g.attributes.position.array, g.attributes.normal.array, g.index!.array, fl, up, tint ?? [1, 1, 1]); g.dispose(); };
+  for (let k = 0; k < 5; k++) mesh(new THREE.BoxGeometry(0.3, 0.03, 0.04).translate(0.15, 0.06, 0).rotateY(k * Math.PI * 2 / 5), 'chassis', [0.8, 0.8, 0.8]);
+  mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.38, 10).translate(0, 0.26, 0), 'chrome');
+  mesh(new THREE.BoxGeometry(0.46, 0.07, 0.46).translate(0, 0.48, 0), 'chassis', [0.5, 0.55, 0.75]);
+  mesh(new THREE.BoxGeometry(0.44, 0.5, 0.06).translate(0, 0.82, s * 0.22), 'chassis', [0.5, 0.55, 0.75]);
+  // A bin by the desk end.
+  { const bx = b.x0 - 0.22, bz = (s > 0 ? b.z1 : b.z0) - s * 0.2, g = new THREE.CylinderGeometry(0.13, 0.11, 0.32, 16, 1, true).translate(bx, 0.16, bz); D.mesh('chassis', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [bx, 0.001, bz], up, [1, 1, 1]); g.dispose(); }
+}
+
+/** The Office: three workstations, the filing cabinet's drawers, a whiteboard and clock on the south wall, skirting. */
+function dressOffice(atlas: Atlas, room: Region): DetailBuilder {
+  const D = new DetailBuilder(atlas);
+  ceilingGrid(D, room);
+  let seed = 41;
+  for (const b of MAP.boxes) {
+    const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
+    if (!inRoom(room, cx, cz)) continue;
+    // Users sit on the open side: away from the south wall, otherwise facing north.
+    if (b.mat === 'wood') workstation(D, b, b.z1 > room.z1 - 1 ? -1 : 1, seed += 9);
+    if (b.mat === 'steel') filing(D, b.x0, [-1, 0, 0], b.z0, b.z1, b.y1);
+  }
+  const z = room.z1 - 0.15, n: V3 = [0, 0, -1], at = (x: number, y: number): V3 => [x, y, z - 0.001];
+  D.box('trim', room.x0 + 0.12, 0.02, z - 0.016, room.x1 - 0.12, 0.11, z, at(-3.5, 0.06), n);
+  // Whiteboard east of the window: aluminium frame, the board, a pen tray and a few marks.
+  D.box('handle', -2.6, 1.0, z - 0.02, -0.9, 2.0, z, at(-1.75, 1.5), n);
+  D.box('paper', -2.57, 1.03, z - 0.022, -0.93, 1.97, z - 0.02, at(-1.75, 1.5), n, [1.1, 1.1, 1.1]);
+  D.box('handle', -2.3, 0.97, z - 0.07, -1.2, 1.0, z - 0.02, at(-1.75, 1.0), n);
+  const r = seeded(23);
+  for (let i = 0; i < 6; i++) { const x = -2.45 + r() * 1.2, y = 1.2 + r() * 0.65; D.box('kick', x, y, z - 0.0225, x + 0.1 + r() * 0.25, y + 0.008, z - 0.022, at(x, y), n, i < 2 ? [8, 1.5, 1.5] : [2, 2, 4]); }
+  D.box('plastic', -6.3, 2.52, z - 0.04, -5.94, 2.88, z, at(-6.12, 2.7), n);
+  { const g = new THREE.PlaneGeometry(0.32, 0.32).rotateY(Math.PI).translate(-6.12, 2.7, z - 0.041); D.mesh('clock', g.attributes.position.array, g.attributes.normal.array, g.index!.array, at(-6.12, 2.7), n, [1, 1, 1], g.attributes.uv.array); g.dispose(); }
   return D;
 }
 

@@ -22,6 +22,8 @@ export const FIXTURES: Record<string, Fixture[]> = {
   server: [[6.5, -9.1], [9.5, -9.1], [12.8, -9.1], [6.5, -6.4], [9.5, -6.4], [12.8, -6.0], [7.2, -3.2], [10, -3.2]].map(([x, z]) => troffer(x, z, [0.88, 0.96, 1.06])),
   // The Lobby: four warm fittings, two over the desk and two over the seating and the entrance.
   lobby: [[-12.3, 3.2], [-9.3, 3.2], [-12.3, 7.6], [-9.3, 7.6]].map(([x, z]) => troffer(x, z, [1.04, 0.95, 0.84])),
+  // The Office: four neutral fittings over the desks.
+  office: [[-5.3, 3.2], [-1.8, 3.2], [-5.3, 7.4], [-1.8, 7.4]].map(([x, z]) => troffer(x, z, [1, 0.98, 0.94])),
   // Tubes replaced at different times: older ones gone warm, two new cold ones, so the corridor's light is not one
   // flat colour along its length.
   corridor: [-12.75, -8.25, -3.75, 0.75, 5.25, 9.75, 13.5].map((x, i) => troffer(x, -0.5, ([[1.06, 0.9, 0.72], [1, 0.95, 0.86], [0.88, 0.95, 1.06], [1, 0.95, 0.86], [1.06, 0.9, 0.72], [1, 0.95, 0.86], [0.88, 0.95, 1.06]] as const)[i])),
