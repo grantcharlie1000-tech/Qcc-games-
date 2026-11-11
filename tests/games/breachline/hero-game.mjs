@@ -18,7 +18,7 @@ const page = await context.newPage();
 page.on('console', m => { if (m.type() === 'error') console.log(`[page] ${m.text()}`); });
 page.on('pageerror', e => console.log('[pageerror]', e.message));
 const low = !!process.env.LOW;
-await page.goto(`${base}/?festive=off${low ? '&arttier=low' : ''}#/game/breachline`);
+await page.goto(`${base}/?festive=off${low ? '&arttier=low' : '&arttier=high'}#/game/breachline`);
 await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 60000 });
 const kit = Number(kitArg ?? 1);
 await page.evaluate(low => { const h = window.__breachlineTest; h.start({ seed: 7, quality: low ? 'low' : 'high', teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); }, low);

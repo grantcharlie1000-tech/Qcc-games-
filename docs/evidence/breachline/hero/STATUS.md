@@ -167,6 +167,9 @@ steel now separate in all three.
 
 ## Tests
 
+r6: the online-test failure was the environment session's art streaming stalling the page (fixed in bc35092). After pulling it, the Breachline browser tests plus the two-device online test passed 8/8 on the second run; the first run had one failure. `hero-game.mjs` now asks for `arttier=high`, because room art defaults to Low on software rasterisers.
+
+
 r5d: `npx tsc --noEmit` clean; Breachline unit tests green; Breachline browser tests 7/7. **The two-device online test now fails consistently** at "the host hits the guest" (line 59: the guest's health does not drop within 10 s), three runs in a row. It fails the same with the weapon and hand texture sets switched off locally, and no simulation, network or input file changed since it last passed. The commits since then add rendering load (fighters' texture sets, the Archive room), so a slow host under the software rasteriser is the likely cause. Reported to the planner; not changed here (outside this session's files).
 
 
