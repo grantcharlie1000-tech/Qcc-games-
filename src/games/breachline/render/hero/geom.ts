@@ -33,14 +33,14 @@ const S = (color: number, rough: number, metal: number, wear: number, pat: numbe
 
 /** Material families. Wear is how strongly edges are worn back to bare metal or lighter substrate. */
 export const SURF = {
-  park: S(0x3e3f40, 0.7, 0.35, 0.6, PAT.metal), // parkerised steel
-  steel: S(0x55585b, 0.5, 0.7, 0.5, PAT.metal), // blued / nitrided steel
+  park: S(0x3b3d40, 0.62, 0.5, 0.6, PAT.metal), // parkerised steel
+  steel: S(0x4d5562, 0.42, 0.8, 0.5, PAT.metal), // blued / nitrided steel
   bright: S(0x8d8f91, 0.3, 1, 0.2, PAT.metal), // machined steel: bolt, pins, springs
-  anod: S(0x434549, 0.58, 0.15, 0.9, PAT.metal), // black anodised aluminium
+  anod: S(0x3a3c40, 0.4, 0.35, 0.9, PAT.metal), // black anodised aluminium
   anodFde: S(0x8a7556, 0.66, 0.05, 0.8, PAT.metal), // flat dark earth cerakote on aluminium
   anodOd: S(0x4b5240, 0.68, 0.05, 0.8, PAT.metal), // olive cerakote
-  anodGrey: S(0x5c6064, 0.62, 0.12, 0.9, PAT.metal), // tungsten grey cerakote
-  poly: S(0x434446, 0.72, 0, 0.35, PAT.polymer),
+  anodGrey: S(0x62666b, 0.36, 0.4, 0.9, PAT.metal), // tungsten grey cerakote
+  poly: S(0x3a3b3c, 0.82, 0, 0.35, PAT.polymer),
   polyFde: S(0x86724f, 0.75, 0, 0.35, PAT.polymer),
   polyOd: S(0x4a5040, 0.75, 0, 0.35, PAT.polymer),
   rubber: S(0x2a2a2b, 0.92, 0, 0.1, PAT.rubber),
@@ -52,8 +52,8 @@ export const SURF = {
   tritium: S(0xb8ff7a, 0.3, 0, 0, PAT.emissive),
   white: S(0xd9d6cf, 0.6, 0, 0.1, PAT.polymer),
   // Soft goods.
-  glove: S(0x3b3d39, 0.85, 0, 0.25, PAT.leather),
-  gloveTan: S(0x564d40, 0.8, 0, 0.35, PAT.leather),
+  glove: S(0x7c6c53, 0.85, 0, 0.25, PAT.leather),
+  gloveTan: S(0x3e3a33, 0.8, 0, 0.35, PAT.leather),
   knuckle: S(0x2e2f2d, 0.8, 0, 0.3, PAT.rubber),
   skin: S(0xb98a6a, 0.6, 0, 0, PAT.skin),
   cloth: S(0x4f5546, 0.95, 0, 0.15, PAT.fabric),

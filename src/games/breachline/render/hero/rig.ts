@@ -108,6 +108,8 @@ export interface FpRig {
   /** Distance (m) between each wrist and its target after the last solve. */
   residual: [number, number];
   setWeapon(id: WeaponId): void;
+  /** Gives a weapon its baked texture set; used whenever that weapon is in hand. */
+  setTextures(id: WeaponId, material: THREE.Material): void;
   /** Poses moving parts and solves both arms for a reload frame (idle when omitted). */
   solve(f?: ReloadFrame): void;
   dispose(): void;
@@ -134,6 +136,7 @@ export function createFpRig(look: ArmsLook): FpRig {
   const weaponBones: THREE.Bone[] = [];
   for (let i = 0; i < WEAPON_BONES; i++) { const b = new THREE.Bone(); weaponBones.push(b); gun.add(b); }
   let weaponMesh: THREE.SkinnedMesh | null = null, lens: THREE.Mesh | null = null;
+  const textured = new Map<WeaponId, THREE.Material>();
   const rootInv = new THREE.Matrix4(), rootQInv = new THREE.Quaternion();
   const toRoot = (p: THREE.Vector3, q: THREE.Quaternion) => { p.applyMatrix4(gun.matrixWorld).applyMatrix4(rootInv); q.premultiply(gunQ).premultiply(rootQInv); };
   const rig: FpRig = {
@@ -143,7 +146,7 @@ export function createFpRig(look: ArmsLook): FpRig {
       if (weaponMesh) gun.remove(weaponMesh);
       if (lens) gun.remove(lens);
       rig.weapon = weaponModel(id);
-      weaponMesh = new THREE.SkinnedMesh(rig.weapon.geo, material);
+      weaponMesh = new THREE.SkinnedMesh(rig.weapon.geo, textured.get(id) ?? material);
       weaponMesh.frustumCulled = false;
       gun.add(weaponMesh);
       const p = gun.position.clone(), q = gun.quaternion.clone();
@@ -157,6 +160,7 @@ export function createFpRig(look: ArmsLook): FpRig {
       if (lens) { lens.renderOrder = 2; gun.add(lens); }
       rig.lens = lens;
     },
+    setTextures(id, m) { textured.set(id, m); if (rig.weapon.id === id && weaponMesh) weaponMesh.material = m; },
     solve(f = IDLE) {
       const hold = holdFor(rig.weapon.id), S = rig.weapon.sockets;
       // Moving parts.

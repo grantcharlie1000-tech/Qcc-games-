@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import type { WeaponId } from '../../config';
 import { Builder, SURF, fillet, rect, surf, type Surface } from './geom';
+import { WEAPON_WEIGHT, unwrap } from './unwrap';
 
 /** Bone slots shared by every weapon. */
 export const WB = { root: 0, mag: 1, bolt: 2, trigger: 3, handle: 4, aux: 5, case0: 6 } as const;
@@ -47,7 +48,9 @@ export interface WeaponSockets {
   /** Shotgun: where shells go in (loading port) and where they are taken from (side saddle). */
   port?: [number, number, number];
 }
-export interface WeaponModel { id: WeaponId; geo: THREE.BufferGeometry; lens: THREE.BufferGeometry | null; sockets: WeaponSockets; triangles: number }
+export interface WeaponModel { id: WeaponId; geo: THREE.BufferGeometry; lens: THREE.BufferGeometry | null; sockets: WeaponSockets; triangles: number; texelDensity?: number }
+/** Weapons that have a baked texture set under public/game-art/breachline/hero/<id>/. */
+export const TEXTURED = new Set<WeaponId>(['ar']);
 
 type V3 = [number, number, number];
 
@@ -673,7 +676,12 @@ export let census: Record<string, number> = {};
 export function weaponModel(id: WeaponId, lod = 0): WeaponModel {
   const k = `${id}${lod}`;
   let m = cache.get(k);
-  if (!m) { const f = BUILDERS[id] ?? BUILDERS.ar!; m = { id, ...f(lod) }; cache.set(k, m); }
+  if (!m) {
+    const f = BUILDERS[id] ?? BUILDERS.ar!; m = { id, ...f(lod) };
+    // Weapons with a baked texture set carry the atlas UVs the baker used (same geometry, same unwrap).
+    if (TEXTURED.has(id) && lod === 0) { const u = unwrap(m.geo, { size: 2048, pad: 6, weight: WEAPON_WEIGHT }); m.geo = u.geo; m.texelDensity = u.density; }
+    cache.set(k, m);
+  }
   return m;
 }
 export const weaponBuilt = (id: WeaponId) => !!BUILDERS[id];

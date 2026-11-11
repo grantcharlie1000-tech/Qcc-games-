@@ -8,6 +8,9 @@ import { SQUADS, WEAPONS, type WeaponId } from '../../config';
 import { ACT, weaponIdOf, type Match, type SimEvent } from '../../state';
 import { makeSprite } from '../../textures';
 import { heroReady } from './geom';
+import { texturedMaterial } from './material';
+import { TEXTURED } from './weapons';
+import { ArtLoader } from '../assets';
 import { reloadFrame, idleFrame } from './reload';
 import { DEFAULT_LOOK, createFpRig, holdFor, type FpRig } from './rig';
 import { CASES, WB } from './weapons';
@@ -63,9 +66,23 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   // Build the arms and the first weapon while the menu is up, not on the first frame of a match.
   let disposed = false;
   heroReady.then(() => { ready = true; setTimeout(() => { if (!disposed && !rigs.size) rigFor(0); }, 300); });
+  // Baked texture sets (KTX2 through the art loader; 1024 maps on the Low tier). Until they arrive, or if they
+  // fail, the weapon keeps the procedural hero material.
+  const low = typeof location !== 'undefined' && /[?&]arttier=low\b/.test(location.search);
+  const art = new ArtLoader(renderer, low ? 'low' : 'high');
+  const sets = new Map<WeaponId, THREE.Material>();
+  for (const id of TEXTURED) {
+    const size = low ? 1024 : 2048, set = `../hero/${id}`;
+    Promise.all([art.texture(set, 'diff', size), art.texture(set, 'nor', size), art.texture(set, 'arm', size)]).then(([map, normalMap, armMap]) => {
+      for (const t of [map, normalMap, armMap]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+      const m = texturedMaterial({ map, normalMap, arm: armMap });
+      sets.set(id, m);
+      for (const r of rigs.values()) r.setTextures(id, m);
+    }).catch(e => console.warn('Breachline weapon textures unavailable; procedural look kept.', e));
+  }
   const rigFor = (squad: 0 | 1) => {
     let r = rigs.get(squad);
-    if (!r) { r = createFpRig(DEFAULT_LOOK(squad, Number(`0x${SQUADS[squad].color.slice(1)}`))); rigs.set(squad, r); }
+    if (!r) { r = createFpRig(DEFAULT_LOOK(squad, Number(`0x${SQUADS[squad].color.slice(1)}`))); for (const [id, m] of sets) r.setTextures(id, m); rigs.set(squad, r); }
     return r;
   };
   // Motion state.
@@ -163,7 +180,10 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       key.intensity = VM_GAIN * (0.6 + Math.min(2, lum * 1.8)); fill.intensity = VM_GAIN * 0.4;
       // Sun direction in camera space: rotate the world direction by the inverse view yaw.
       const sy0 = Math.sin(view.yaw), cy0 = Math.cos(view.yaw), s = lighting.sun;
-      key.position.set(s.x * cy0 - s.z * sy0, Math.max(0.35, s.y), s.x * sy0 + s.z * cy0);
+      // Indoors the light comes from the ceiling fittings: the key leans toward overhead and slightly ahead, so the
+      // rail, the optic and the receiver's top edges catch a highlight; outdoors it follows the sun.
+      const indoor = lighting.environment(p.x, p.z) ? 0.75 : 0.45;
+      key.position.set((s.x * cy0 - s.z * sy0) * (1 - indoor) + 0.15 * indoor, Math.max(0.35, s.y) * (1 - indoor) + 1 * indoor, (s.x * sy0 + s.z * cy0) * (1 - indoor) - 0.35 * indoor);
       fill.position.set(-key.position.x, 0.3, -key.position.z);
       // Specular only (see material.ts), scaled into the probe's units.
       scene.environment = envFor(p.x, p.z); scene.environmentIntensity = VM_GAIN * (lighting.environment(p.x, p.z) ? lighting.environmentScale(p.x, p.z) : 1) * Math.max(0.35, Math.min(1.6, lum * 1.2));
@@ -189,6 +209,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       disposed = true;
       for (const r of rigs.values()) r.dispose();
       flashTex.dispose(); (flash.material as THREE.Material).dispose(); ownEnv?.dispose();
+      for (const m of sets.values()) m.dispose(); art.dispose();
     },
   };
 }
