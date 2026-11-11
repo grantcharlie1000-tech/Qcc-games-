@@ -27,6 +27,8 @@ export interface PoseInput {
   /** 0..1 of the reload still to go (0 when not reloading); `empty` for the full reload with the bolt. */
   reload: number; empty: boolean;
   act: number; actT: number; hp: number; deaths: number;
+  /** Which death to play (from where the killing shot came); -1 picks by the death count. */
+  deathKind?: number;
 }
 export const idleInput = (): PoseInput => ({ x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, alive: true, pace: 0, sprint: false, ads: false, reload: 0, empty: false, act: 0, actT: 0, hp: 100, deaths: 0 });
 
@@ -77,6 +79,7 @@ const DEATHS: DeathKey[][] = [
   ],
 ];
 export const DEATH_KINDS = DEATHS.length;
+const kindOf = (p: PoseInput) => (p.deathKind !== undefined && p.deathKind >= 0 ? p.deathKind % DEATH_KINDS : ((p.deaths % DEATH_KINDS) + DEATH_KINDS) % DEATH_KINDS);
 export const DEATH_TIME = 1.1;
 
 const OFFS = JOINT.map((j, i) => (PARENT[i] < 0 ? j.clone() : j.clone().sub(JOINT[PARENT[i]])));
@@ -142,7 +145,7 @@ export class Animator {
   /** Snaps to the input's pose with feet at rest (a spawn or a new round). */
   reset(p: PoseInput) {
     this.root.set(p.x, 0, p.z); this.prev.copy(this.root); this.yaw = p.yaw; this.vel.set(0, 0, 0); this.phase = 0; this.moving = 0;
-    this.crouchS = p.crouch; this.dead = !p.alive; this.deathT = p.alive ? 0 : DEATH_TIME; this.deathKind = ((p.deaths % DEATH_KINDS) + DEATH_KINDS) % DEATH_KINDS; this.lastHp = p.hp;
+    this.crouchS = p.crouch; this.dead = !p.alive; this.deathT = p.alive ? 0 : DEATH_TIME; this.deathKind = kindOf(p); this.lastHp = p.hp;
     for (const sp of [...this.recoil, ...this.flinch]) { sp.x = 0; sp.v = 0; }
     for (let s = 0; s < 2; s++) { const f = this.feet[s]; this.restFoot(s, p.crouch, f.plant); f.yaw = p.yaw; f.lift.copy(f.plant); f.liftYaw = f.yaw; f.stance = true; }
     this.weapon.visible = true;
@@ -164,7 +167,7 @@ export class Animator {
   private toModel(v: THREE.Vector3, out: THREE.Vector3) { const c = Math.cos(this.yaw) / SCALE, s = Math.sin(this.yaw) / SCALE, dx = v.x - this.root.x, dz = v.z - this.root.z; return out.set(c * dx - s * dz, v.y / SCALE, s * dx + c * dz); }
 
   private startDeath(p: PoseInput) {
-    this.dead = true; this.deathT = 0; this.deathKind = ((p.deaths % DEATH_KINDS) + DEATH_KINDS) % DEATH_KINDS;
+    this.dead = true; this.deathT = 0; this.deathKind = kindOf(p);
     for (let i = 0; i < BONES; i++) this.deathFrom[i].copy(this.lq[i]);
     this.deathPelvis.copy(this.pelvisPos); this.deathPelvisQ.copy(this.lq[B.pelvis]);
     this.weaponFrom.copy(this.weaponM);

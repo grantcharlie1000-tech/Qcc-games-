@@ -11,6 +11,7 @@ import { weaponIdOf } from '../../state';
 import { makeSprite } from '../../textures';
 import { heroReady } from '../hero/geom';
 import type { Fighters, HeroLighting } from '../hero/index';
+import type { Match, SimEvent } from '../../state';
 import { Animator, idleInput, type PoseInput } from './anim';
 import { figureGeometry, figureBuilt } from './figure';
 import { SCALE, makeBones } from './skeleton';
@@ -28,12 +29,15 @@ interface Fig {
   squad: 0 | 1; group: THREE.Group; meshes: (THREE.SkinnedMesh | null)[]; skeleton: THREE.Skeleton; bones: THREE.Bone[];
   weapon: THREE.SkinnedMesh; weaponBones: THREE.Bone[]; wid: WeaponId; anim: Animator; mat: FighterMaterial; weaponMat: FighterMaterial; wlod: 1 | 2;
   x: number; z: number; yaw: number; pitch: number; crouch: number; lean: number; phase: number;
-  fresh: boolean; lod: number; dist: number; reloadEmpty: boolean; wasReloading: boolean; input: PoseInput;
+  fresh: boolean; lod: number; remoteReload: number; deathKind: number; dist: number; reloadEmpty: boolean; wasReloading: boolean; input: PoseInput;
 }
 
 const wrap = (a: number) => { a = (a + Math.PI) % (Math.PI * 2); return (a < 0 ? a + Math.PI * 2 : a) - Math.PI; };
 
-export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Fighters {
+/** `Fighters` plus the match-event hook the scene forwards to (optional on the scene's side). */
+export interface FightersWithEvents extends Fighters { handle(events: readonly SimEvent[], m: Match, self: number): void }
+
+export function createFighters(scene: THREE.Scene, lighting: HeroLighting): FightersWithEvents {
   const figs: (Fig | null)[] = [];
   let ready = false;
   heroReady.then(() => { ready = true; });
@@ -74,7 +78,7 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
     group.add(weapon);
     scene.add(group);
     const anim = new Animator(bones, weapon, wb, w);
-    f = { squad, group, meshes: [null, null, null], skeleton, bones, weapon, weaponBones: wb, wid, anim, mat, weaponMat, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, wlod: 1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
+    f = { squad, group, meshes: [null, null, null], skeleton, bones, weapon, weaponBones: wb, wid, anim, mat, weaponMat, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, wlod: 1, remoteReload: 0, deathKind: -1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
     anim.setWeapon(wid, w);
     figs[i] = f;
     for (const l of [2, 1, 0]) want(squad, l);
@@ -122,7 +126,9 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
         f.wasReloading = reloading;
         const inp = f.input;
         inp.x = f.x; inp.z = f.z; inp.yaw = f.yaw; inp.pitch = f.pitch; inp.crouch = f.crouch; inp.lean = f.lean;
-        inp.alive = p.alive; inp.pace = p.pace; inp.sprint = p.sprint; inp.ads = p.ads; inp.reload = reloading ? p.reload / def.reload : 0; inp.empty = f.reloadEmpty;
+        inp.alive = p.alive; inp.pace = p.pace; inp.sprint = p.sprint; inp.ads = p.ads; f.remoteReload = Math.max(0, f.remoteReload - dt);
+        inp.reload = reloading ? p.reload / def.reload : f.remoteReload > 0 ? f.remoteReload / def.reload : 0; inp.empty = f.reloadEmpty;
+        inp.deathKind = p.alive ? (f.deathKind = -1) : f.deathKind;
         inp.act = p.act; inp.actT = p.actT; inp.hp = p.hp; inp.deaths = p.deaths;
         if (f.fresh) { f.anim.reset(inp); f.fresh = false; }
         if (!show) continue;
@@ -166,6 +172,20 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
       f.weapon.updateWorldMatrix(true, false);
       out.copy(f.anim.w.muzzle).applyMatrix4(f.weapon.matrixWorld);
       return true;
+    },
+    /** Match events (forwarded by the scene when it does): a remote fighter's reload starts the reload animation, a
+     * kill picks the death by where the shot came from (front: falls back; behind: falls forward; side: spins). */
+    handle(events: readonly SimEvent[], m: Match, self: number) {
+      for (const e of events) {
+        if (e.e === 'reload' && e.id !== self) { const f = figs[e.id], p = m.players[e.id]; if (f && p && p.reload <= 0) { f.remoteReload = WEAPONS[weaponIdOf(m, p)].reload; f.reloadEmpty = p.mag[p.slot] === 0; } }
+        else if (e.e === 'kill') {
+          const f = figs[e.on], v = m.players[e.on], k = m.players[e.by];
+          if (!f || !v || !k || e.by === e.on) continue;
+          // Angle of the killer seen from the victim, relative to the victim's facing (yaw 0 looks along -Z).
+          const a = wrap(Math.atan2(-(k.x - v.x), -(k.z - v.z)) - v.yaw);
+          f.deathKind = Math.abs(a) < 0.9 ? 0 : Math.abs(a) > 2.3 ? 1 : 2;
+        }
+      }
     },
     reset(ids) {
       if (!ids) { for (const f of figs) if (f) f.fresh = true; return; }
