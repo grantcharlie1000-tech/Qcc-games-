@@ -174,6 +174,8 @@ export class Scene {
   drawGoal(c,l,s,reduced,this);drawCompletion(c,l,s,theme.accent,reduced,this);if(!set){drawServiceDoor(c,l,s,theme.accent);drawExitConnection(c,l,s,theme.accent,cy,reduced);}
   for(const [index,cp] of checkpointsFor(l).entries()){
    if(cp.x<cx-35||cp.x>cx+w+35||cp.y<cy-20||cp.y>cy+h+60)continue;
+   // Bell Lane flies one flag, from the watch house's staff; its other checkpoints are saved without a pole.
+   if(l.id===0&&l.platforms[cp.platform].tag!=='watch')continue;
    c.fillStyle='#b7bda7';c.fillRect(cp.x,cp.y-48,2,48);c.fillStyle=index<=checkpointIndexFor(s,l)?'#d8e5a0':'#859da3';
    c.beginPath();c.moveTo(cp.x+2,cp.y-46);c.lineTo(cp.x+23,cp.y-44+(reduced?0:Math.sin(t*3)*2));c.lineTo(cp.x+17,cp.y-34);c.lineTo(cp.x+2,cp.y-34);c.fill();
   }

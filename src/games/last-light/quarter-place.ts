@@ -2,7 +2,7 @@ import {WORLDS,type Level,type Platform} from './levels';
 import type {Run} from './model';
 import {box,enginesArt,fill,hash,masonry,noise,panel,seamless,sprite,stroke,visible,type C,type Courses,type Work} from './quarter-kit';
 import {quarterSet} from './quarter-sets';
-import {housePiece,laneBack,laneBuilds,laneDeck} from './set-lane';
+import {drawLaneHouses,housePiece,laneBack,laneBuilds,laneDeck,laneHouses} from './set-lane';
 import {HOUSE_PIECES} from './pieces/level-01';
 
 /** The Old Quarter is drawn as one built place. Every landing continues into
@@ -90,7 +90,8 @@ function plan(l:Level):Plan{
   // One wall behind a whole stack of iron balconies, a storey above the top.
   else if(p.kind==='grate'&&!grates.some(q=>q.x===p.x&&q.w===p.w&&q.y<p.y))houses.push({x:p.x-28,w:p.w+56,top:p.y-60,id:p.id});
  }
- const byX=[...houses].sort((a,b)=>a.x-b.x),alleys:Plan['alleys']=[];
+ // Level 1's lane buildings stand among the houses, so the alleys run between them too.
+ const byX=[...houses,...(l.id===0?laneHouses(l).map(b=>({x:b.x,w:b.w,top:b.y+28,id:-1})):[])].sort((a,b)=>a.x-b.x),alleys:Plan['alleys']=[];
  for(let i=1;i<byX.length;i++){const a=byX[i-1],b=byX[i],left=a.x+a.w;if(b.x-left>=4)alleys.push({x:left,w:b.x-left,top:Math.max(a.top,b.top)+26});}
  // Taller houses stand further back, so lower fronts are drawn over them.
  houses.sort((a,b)=>a.top-b.top);
@@ -174,6 +175,7 @@ function roofs(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
   }),a.x,a.top);
  }
  if(l.id===0){
+  drawLaneHouses(c,l,cx,cy,vw,vh);
   // Level 1's houses and sheds are each drawn by their own piece, from the roof line down.
   // A stairhead or bellcote stands on the east gable of the roof it adjoins, so that house is drawn on under it.
   for(const h of pl.houses){
@@ -387,9 +389,12 @@ export function drawQuarterSky(c:C,l:Level,w:number,h:number,cx:number,cy:number
  * a canal. Shared by the sky and by the vista API used in tests. */
 export function drawQuarterDistance(c:C,l:Level,w:number,h:number,cx:number,cy:number){
  if(l.setting==='tower'||l.setting==='cavern'||quarterSet(l))return;
- // Their shafts continue down behind the houses, so the towers never float.
- const tx=Math.round(w*.64-cx*.03),ty=Math.round(h*.34-cy*.02);c.drawImage(enginesArt(),tx,ty);
- if(ty+150<h){box(c,'#1c2637',tx+10,ty+150,14,h-ty-150);box(c,'#1c2637',tx+38,ty+150,18,h-ty-150);}
+ // Their shafts continue down behind the houses, so the towers never float. Bell Lane has no engine
+ // house to stand them on, so level 1 does not draw them over its roofs.
+ if(l.id!==0){
+  const tx=Math.round(w*.64-cx*.03),ty=Math.round(h*.34-cy*.02);c.drawImage(enginesArt(),tx,ty);
+  if(ty+150<h){box(c,'#1c2637',tx+10,ty+150,14,h-ty-150);box(c,'#1c2637',tx+38,ty+150,18,h-ty-150);}
+ }
  if(l.setting==='canal'&&l.water!==null){
   const bank=farBank(),y=Math.round(l.water-cy-104),shift=Math.floor(cx*.6),first=Math.floor(shift/256);
   for(let i=first;i*256-shift<w;i++)c.drawImage(bank,i*256-shift,y);
