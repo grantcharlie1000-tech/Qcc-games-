@@ -1,5 +1,5 @@
 import type {Level,Platform} from './levels';
-import {box,lay,panel,sprite,stroke,visible,type C,type Work} from './quarter-kit';
+import {box,hash,lay,panel,sprite,stroke,visible,type C,type Work} from './quarter-kit';
 import {COOL,FIXTURE_PIECES,HOUSE_PIECES,closeEaves,door,type Piece} from './pieces/level-01';
 import {LANE_HOUSES,PAD,type Building,type Ledge,type Vent} from './pieces/lane-houses';
 
@@ -45,7 +45,7 @@ const HEAD=80;
 /** Draws one lane building from its cached canvas. `i` is its index in laneHouses. */
 export function drawLaneHouse(c:C,l:Level,i:number,cx:number,cy:number,vw:number,vh:number){
  const b=laneHouses(l)[i];if(!b||!visible(b.x-PAD,b.y-HEAD,b.w+PAD*2,b.h+HEAD,cx,cy,vw,vh))return;
- c.drawImage(sprite(`lane/house/v3/${b.name}/${b.w}/${b.h}`,b.w+PAD*2,b.h+HEAD,k=>{k.translate(PAD,HEAD);b.house.paint(k,{w:b.w,h:b.h,ledges:b.ledges,vents:b.vents});closeEaves(k.canvas,HEAD,PAD,b.ledges.filter(g=>g.h>=20).map(g=>({x:g.x,y:g.y,w:g.w})));}),b.x-PAD,b.y-HEAD);
+ c.drawImage(sprite(`lane/house/v4/${b.name}/${b.w}/${b.h}`,b.w+PAD*2,b.h+HEAD,k=>{k.translate(PAD,HEAD);b.house.paint(k,{w:b.w,h:b.h,ledges:b.ledges,vents:b.vents});closeEaves(k.canvas,HEAD,PAD,b.ledges.filter(g=>g.h>=20).map(g=>({x:g.x,y:g.y,w:g.w})));}),b.x-PAD,b.y-HEAD);
 }
 /** Paints a level-1 landing's own tile; (0,0) is its top-left corner. A roof paints nothing: its house piece draws it. */
 export function laneDeck(c:C,p:Platform):boolean {
@@ -95,21 +95,25 @@ export function laneDeck(c:C,p:Platform):boolean {
 export const laneBuilds=(p:Platform)=>!!p.tag&&!housePiece(p);
 /** What stands under and behind the lane's non-roof landings; `street` is the lane's cobbles. */
 export function laneBack(c:C,l:Level,street:number,cx:number,cy:number,vw:number,vh:number){
- const lane=street+40,see=(x:number,y:number,w:number,h:number)=>visible(x,y,w,h,cx,cy,vw,vh);
+ const see=(x:number,y:number,w:number,h:number)=>visible(x,y,w,h,cx,cy,vw,vh);
+ // Breasts and piers stop at the lane's surface, on a footing laid on the cobbles; the cobbles go on under the view.
+ const foot=street-FOOT;
  for(const p of l.platforms){
   const top=p.y+p.h;
   if(p.tag==='stack'||p.tag==='nellstack'){
-   if(!see(p.x-8,top,p.w+16,lane-top))continue;
-   // The chimney breast under the stack: brick down the gable to the lane, toothed into the house wall beside it.
-   c.drawImage(panel(`lane/breast/${p.id}`,p.w,lane-top,BRICK,37+p.id*3),p.x,top);box(c,'#120e0f',p.x+p.w-2,top,2,lane-top);box(c,'#644640',p.x+2,top,1,lane-top);
-   for(let y=top+4,k=0;y<lane;y+=16,k++)box(c,k%2?'#3a2826':'#503733',p.x-4,y,6,7);
-   const off=top+96+p.id%3*24;box(c,'#1a1415',p.x-2,off,p.w+6,6);box(c,'#644640',p.x-2,off,p.w+6,1);
+   if(!see(p.x-8,top,p.w+16,street-top))continue;
+   // The chimney breast under the stack: brick down the gable to its footing, toothed into the house wall beside it.
+   c.drawImage(panel(`lane/breast/v2/${p.id}`,p.w,foot-top,BRICK,37+p.id*3),p.x,top);box(c,'#120e0f',p.x+p.w-2,top,2,foot-top);box(c,'#644640',p.x+2,top,1,foot-top);
+   for(let y=top+4,k=0;y+7<=foot;y+=16,k++)box(c,k%2?'#3a2826':'#503733',p.x-4,y,6,7);
+   const off=top+96+p.id%3*24;if(off+6<foot){box(c,'#1a1415',p.x-2,off,p.w+6,6);box(c,'#644640',p.x-2,off,p.w+6,1);}
+   footing(c,p.x,p.w,street,p.id);
   }else if(p.tag==='wall'||p.tag==='pier'){
    if(p.tag==='wall')yardWall(c,l,p,street,see);
-   if(!see(p.x,top,p.w,lane-top))continue;
-   // The pier goes on down to its own footing in the lane.
+   if(!see(p.x-4,top,p.w+8,street-top))continue;
+   // The pier goes down to its own footing on the lane.
    const work=p.tag==='pier'?STONE:YARD,lit=work===STONE?'#46525f':'#454950';
-   c.drawImage(panel(`lane/pier/${p.id}`,p.w,lane-top,work,p.id*7+3),p.x,top);box(c,'#0d1014',p.x,top,2,lane-top);box(c,lit,p.x+2,top,1,lane-top);box(c,'#0d1014',p.x+p.w-2,top,2,lane-top);
+   c.drawImage(panel(`lane/pier/v2/${p.id}`,p.w,foot-top,work,p.id*7+3),p.x,top);box(c,'#0d1014',p.x,top,2,foot-top);box(c,lit,p.x+2,top,1,foot-top);box(c,'#0d1014',p.x+p.w-2,top,2,foot-top);
+   footing(c,p.x,p.w,street,p.id+5);
   }else if(p.tag==='hoist'){
    // The jib the hoist hangs from: a post stood on the tall house's roof, a beam out over the pallet's rope, strutted back, a sheave at its end.
    const travel=p.travel??0,y=p.y-travel-58,mx=p.x+p.w/2,roof=l.platforms[p.id+1],post=roof.x+10;
@@ -125,25 +129,31 @@ export function laneBack(c:C,l:Level,street:number,cx:number,cy:number,vw:number
   }
  }
 }
+/** A footing on the lane's surface: one deep plinth stone and a weathered
+ * offset, a little proud of the face. Its foot is the cobbles' top line. */
+const FOOT=11;
+function footing(c:C,x:number,w:number,street:number,seed:number){
+ const y=street-FOOT;
+ box(c,'#10161d',x-4,y,w+8,FOOT);box(c,'#3a4450',x-3,y+1,w+6,3);box(c,'#56606a',x-3,y+1,w+6,1);
+ box(c,'#2c353f',x-4,y+4,w+8,FOOT-4);box(c,'#3a4450',x-4,y+4,w+8,1);box(c,'#1c242d',x-4,street-1,w+8,1);
+ for(let px=x+6+Math.floor(hash(seed,0,41)*10);px<x+w-2;px+=16+Math.floor(hash(seed,px,42)*10))box(c,'#10161d',px,y+5,1,FOOT-6);
+}
 /** The chandlers' yard wall: brick from the lane, toothed into the shed's east
- * end and ramped up under a saddleback coping to the pier, which is its head.
- * The gate through it is the yard's. The ramp is steep and dark-coped, so it
- * never reads as a ledge; only the pier's cap is walked. */
+ * end, level under one dark coping and stopped square against the pier, which
+ * stands up past it on its own. The gate through it is the yard's. The coping is
+ * low and dark, so it never reads as a ledge; only the pier's cap is walked. */
 function yardWall(c:C,l:Level,p:Platform,street:number,see:(x:number,y:number,w:number,h:number)=>boolean){
  const shed=l.platforms.find(q=>q.tag==='shed');if(!shed)return;
  const xa=shed.x+shed.w,xb=p.x,w=xb-xa;if(w<8)return;
- const high=p.y+p.h-8,low=Math.min(street-60,shed.y+76),top=high-8,h=street-top;
+ const top=Math.min(street-60,shed.y+76),h=street-top,cope=7;
  if(!see(xa-6,top,w+12,h))return;
- c.drawImage(sprite(`lane/yardwall/${p.id}/${w}/${h}`,w+6,h,k=>{
+ c.drawImage(sprite(`lane/yardwall/v2/${p.id}/${w}/${h}`,w+6,h,k=>{
   k.translate(6,0);
-  const ramp=(x:number)=>Math.round(low-top+(high-low)*x/(w-1));
-  k.save();k.beginPath();k.moveTo(-6,low-top+3);for(let x=0;x<=w;x++)k.lineTo(x,ramp(x)+3);k.lineTo(w,h);k.lineTo(-6,h);k.closePath();k.clip();
-  lay(k,w,h,YARD,p.id*11+5);
+  k.save();k.translate(0,cope);lay(k,w,h-cope,YARD,p.id*11+5);k.restore();
   // Toothing: every other course runs on past the shed's end and is bonded into its brick foot and boards.
-  for(let y=h-YARD.course,r=0;y>low-top;y-=YARD.course,r++)if(r%2===0){box(k,YARD.mortar,-6,y,6,YARD.course);box(k,YARD.stones[r%4],-6,y,5,YARD.course-1);box(k,YARD.lip,-6,y,5,1);}
-  k.restore();
-  // The coping: a saddleback stone, each length its own, in its own shadow with a mid-tone crest.
-  for(let x=-6;x<w;x++){const y=ramp(Math.max(0,x));box(k,'#161b21',x,y,1,7);box(k,'#3e464c',x,y+1,1,4);box(k,'#5d666c',x,y,1,1);if((x+p.id*3)%17===0)box(k,'#161b21',x,y+1,1,4);}
+  for(let y=h-YARD.course,r=0;y>=cope;y-=YARD.course,r++)if(r%2===0){box(k,YARD.mortar,-6,y,6,YARD.course);box(k,YARD.stones[r%4],-6,y,5,YARD.course-1);box(k,YARD.lip,-6,y,5,1);}
+  // The coping: level stones, each length its own, dark on the wall's head.
+  box(k,'#161b21',-6,0,w+6,cope);box(k,'#3e464c',-6,1,w+6,4);box(k,'#5d666c',-6,0,w+6,1);for(let x=-6+((p.id*5)%9);x<w;x+=13+((x*7)%5))box(k,'#161b21',x,1,1,4);
   // The yard gate: a segmental arch on brick reveals, the leaves shut and barred.
   const gw=Math.min(40,w-18),gx=Math.round((w-gw)/2),gh=Math.min(72,h-40),gy=h-gh;
   box(k,COOL[2],gx-3,gy-6,gw+6,6);box(k,COOL[0],gx-3,gy-6,gw+6,5);box(k,COOL[1],gx-3,gy-6,gw+6,1);

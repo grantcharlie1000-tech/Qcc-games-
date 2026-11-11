@@ -1,6 +1,6 @@
 import {WORLDS,type Level,type Platform} from './levels';
 import type {Run} from './model';
-import {box,enginesArt,fill,hash,lay,masonry,noise,panel,seamless,sprite,stroke,visible,type C,type Courses,type Work} from './quarter-kit';
+import {box,enginesArt,fill,hash,lay,masonry,noise,panel,seamless,sprite,visible,type C,type Courses,type Work} from './quarter-kit';
 import {quarterSet} from './quarter-sets';
 import {drawLaneHouse,housePiece,laneBack,laneBuilds,laneDeck,laneHouses} from './set-lane';
 import {HOUSE_PIECES,door,gutter,laps,renderAt,win,type Look,type Tri} from './pieces/level-01';
@@ -181,7 +181,7 @@ function roofs(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
   // A wide gap shows the house across the yard, a storey back: its own height, walls, openings and roof.
   // A crack between two walls stays a dark slot.
   const h=street-a.top;
-  if(a.w>=36){c.drawImage(sprite(`yard/rear/v2/${a.x}/${a.w}/${h}`,a.w,h+REAR_ROOF,k=>rearHouse(k,a.w,h+REAR_ROOF,a.x,a.n)),a.x,a.top-REAR_ROOF);continue;}
+  if(a.w>=36){c.drawImage(sprite(`yard/rear/v3/${a.x}/${a.w}/${h}`,a.w,h+REAR_ROOF,k=>rearHouse(k,a.w,h+REAR_ROOF,a.x,a.n)),a.x,a.top-REAR_ROOF);continue;}
   c.drawImage(panel(`alley/v3/${a.x}`,a.w,h,ALLEY,a.x,k=>box(k,'#0b0f14',0,0,a.w,4)),a.x,a.top);
  }
  if(l.id===0){
@@ -214,11 +214,34 @@ const REAR_WORKS:readonly Work[]=[
 const REAR_RENDER:Tri=['#2f363c','#363d44','#252b31'],REAR_BOARDS=['#1c1f22','#202326','#24272a','#191b1e'];
 const REAR_FRAME='#2e363d';
 const REAR_DOORS:readonly Tri[]=[['#0e1012','#22262a','#2e3338'],['#120e0c','#2a2019','#3a2d22'],['#0d1110','#1d2622','#28332e']];
-/** The back of the house across a yard, painted once into its own canvas. (0,REAR_ROOF) is the plot's top.
- * The eave is a flat coping. A slope above it would be a wedge in this side view. */
+/** The backs across a yard, painted once into their own canvas. (0,REAR_ROOF) is the plot's top.
+ * A wide yard shows two or three houses, each its own height, wall and window rhythm,
+ * parted by a party wall. Every eave is a flat coping: a slope above it would be a wedge in this side view. */
 function rearHouse(k:C,w:number,h:number,s:number,n:number){
+ const count=w>=260?3:w>=150?2:1,cuts=[0];
+ for(let i=1;i<count;i++)cuts.push(Math.round(w*i/count+(hash(s,i,79)-.5)*w/(count*3)));
+ cuts.push(w);
+ const eaves:number[]=[],faces:number[]=[];
+ for(let i=0;i<count;i++){
+  const t=s+i*101;let eave=Math.max(34,REAR_ROOF+Math.round(hash(t,1,77)*30)-6),face=(n*3+i*2+Math.floor(hash(t,3,77)*2))%6;
+  // Neighbours never share a coping line or a wall: the step and the change of bond part them.
+  if(i>0){const prev=eaves[i-1];if(Math.abs(eave-prev)<10)eave=prev>=50?prev-14:prev+14;if(face===faces[i-1])face=(face+1+(i%2))%6;}
+  eaves.push(eave);faces.push(face);
+ }
+ for(let i=0;i<count;i++){const x=cuts[i],pw=cuts[i+1]-x;k.save();k.beginPath();k.rect(x,0,pw,h);k.clip();k.translate(x,0);rearPlot(k,pw,h,s+i*101,eaves[i],faces[i]);k.restore();}
+ // Each party wall stands up a course past the higher coping under a flat stone cap, and runs down to the yard;
+ // the taller house's end shows as a return in shadow over the lower roof.
+ for(let i=1;i<count;i++){
+  const x=cuts[i],hi=Math.min(eaves[i-1],eaves[i]),lo=Math.max(eaves[i-1],eaves[i]),leftTall=eaves[i-1]<eaves[i];
+  const rx=leftTall?x:x-4;box(k,'#141113',rx,hi-4,4,lo-hi+4);box(k,'#221d20',rx+(leftTall?0:1),hi-4,3,lo-hi+4);
+  box(k,'#120f11',x-3,hi-8,6,h-hi+8);box(k,'#2a2326',x-2,hi-8,4,h-hi+8);box(k,'#3a3033',x-2,hi-8,1,h-hi+8);
+  for(let y=hi+6,j=0;y<h-4;y+=9,j++)box(k,'#1a1517',x-2,y,4,1);
+  box(k,'#2a2c30',x-5,hi-11,10,4);box(k,'#3a3e42',x-5,hi-11,10,1);box(k,'#16181b',x-5,hi-7,10,1);
+ }
+}
+/** One back house across a yard, at (0,0) in its own clipped strip. */
+function rearPlot(k:C,w:number,h:number,s:number,eave:number,face:number){
  const v=(n:number)=>hash(s,n,77);
- const eave=REAR_ROOF+Math.round(v(1)*30)-6,face=(n*3+Math.floor(v(3)*2))%6;
  // The walls: brick, stone, rubble, render or tarred boards, each its own.
  if(face<4){k.save();k.translate(0,eave);lay(k,w,h-eave,REAR_WORKS[face],s);k.restore();}
  else if(face===4)renderAt(k,REAR_RENDER,s,0,eave,w,h-eave);
@@ -229,26 +252,28 @@ function rearHouse(k:C,w:number,h:number,s:number,n:number){
   box(k,'#2a2c30',x-2,base-tall-3,wide+4,3);box(k,'#3a3e42',x-2,base-tall-3,wide+4,1);
   for(let i=0,n=Math.max(1,Math.floor(wide/6));i<n;i++){const px=x+1+i*6;box(k,'#3a2a24',px,base-tall-8,4,5);box(k,'#4a3a32',px,base-tall-8,1,5);}
  };
- const sx=Math.round(6+v(5)*(w-24)),hasStack=v(6)>.35;
+ const sx=Math.round(8+v(5)*Math.max(1,w-28)),hasStack=v(6)>.35&&w>=40;
  gutter(k,-2,eave-4,w+4,s);
  if(hasStack)stack(sx,eave-4,12+Math.round(v(8)*8),8+Math.round(v(9)*6));
+ // At the yard: a back door, and a privy, a coal hatch or a pump against the wall.
+ const dx=Math.round(6+v(18)*Math.max(1,w-34)),dw=14+Math.round(v(19)*4),dh=26+Math.round(v(20)*6);
+ const extra=Math.floor(v(22)*4),ex=dx+dw+6<w-20?dx+dw+6:Math.max(2,dx-24);
  // Openings: each house its own storey height, light size and spacing; what is in each light is its own.
+ // The yard storey has its lights too, kept clear of the door and what stands by it.
  const storey=42+Math.round(v(11)*18),lw=9+Math.round(v(12)*7),lh=14+Math.round(v(13)*10),span=lw+14+Math.round(v(14)*16);
  const cols=Math.max(1,Math.floor((w-12)/span)),x0=Math.round((w-(cols-1)*span-lw)/2+(v(15)-.5)*6),lintel=Math.floor(v(16)*3);
  const LOOKS:readonly Look[]=['dark','dark','drawn','dark','shut','dim','board','dark','lit','blind','dark','drawn'];
- for(let y=eave+12+Math.round(v(17)*8),r=0;y+lh<h-44;y+=storey,r++)for(let i=0;i<cols;i++){
+ for(let y=eave+12+Math.round(v(17)*8),r=0;y+lh<h-10;y+=storey,r++)for(let i=0;i<cols;i++){
   const pick=hash(s,i*7+r,78);if(pick<.18)continue;const x=x0+i*span,look=LOOKS[Math.floor(hash(s,i,r+90)*LOOKS.length)];
+  if(y+lh>h-dh-8&&(x<dx+dw+4&&x+lw>dx-4||x<ex+22&&x+lw>ex-4||y+lh>h-6))continue;
   if(lintel===0){box(k,'#0b0f14',x-1,y-3,lw+2,3);box(k,'#2c353d',x-1,y-3,lw+2,1);}else if(lintel===1){for(let px=x-1;px<x+lw+1;px+=2)box(k,px%4?'#3a2c2a':'#30252a',px,y-4,2,4);}
   win(k,x,y,lw,lh,{look,cols:lw>12?2:1,rows:lh>20?3:2,frame:REAR_FRAME,tint:'#24302a',s:s+i*13+r});
   box(k,'#262d33',x-2,y+lh,lw+4,2);
  }
- // At the yard: a back door, and a privy, a coal hatch or a pump against the wall.
- const dx=Math.round(6+v(18)*Math.max(1,w-34)),dw=14+Math.round(v(19)*4),dh=26+Math.round(v(20)*6);
  door(k,dx,h-dh,dw,dh,{tone:REAR_DOORS[Math.floor(v(21)*3)],style:'plank',knob:''});
- const extra=Math.floor(v(22)*4),ex=dx+dw+6<w-20?dx+dw+6:Math.max(2,dx-24);
  if(extra===0&&w>=60){box(k,'#121518',ex,h-22,18,22);box(k,'#2a2e33',ex,h-24,18,3);box(k,'#1c2024',ex+4,h-18,10,18);}
  else if(extra===1){box(k,'#0b0f14',ex,h-14,14,10);box(k,'#1c2228',ex+1,h-13,12,8);box(k,'#2c353d',ex,h-15,14,1);}
- else if(extra===2&&w>=56){box(k,'#151b20',ex+4,h-26,4,26);box(k,'#2e383f',ex+4,h-26,1,26);box(k,'#151b20',ex+8,h-22,6,2);box(k,'#1c2228',ex,h-6,14,6);}
+ else if(extra===2&&w>=56){box(k,'#151b20',ex+4,h-26,4,26);box(k,'#2e383f',ex+4,h-26,1,26);box(k,'#151b20',ex+8,h-22,6,2);box(k,'#1c2024',ex,h-6,14,6);}
 }
 /** Nell's dormer on her roof, where level 1 used to end: the casement open, the lamp lit, Nell at it. */
 function nellsWindow(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
@@ -297,10 +322,9 @@ function bellLane(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
   // A weep hole and its stain every few yards, and a blind arch under the tower where the wall carries it.
   for(let x=x0+70;x<x1-20;x+=96){box(c,'#0b0f14',x,top+92,4,5);box(c,'#1a222b88',x,top+97,4,40);}
   const ax=tx+70,ar=44;for(let px=ax-ar;px<ax+ar;px+=2){const d=px+1-ax,y=top+150-Math.round(Math.sqrt(Math.max(0,ar*ar-d*d))*.6);box(c,'#3a4654',px,y,2,4);box(c,'#4c5864',px,y,2,1);box(c,'#1c242d',px,y+4,2,lane-y-4);}
-  // The forecourt steps: a stone flight down the wall's west end into the lane, with its iron rail.
+  // The forecourt steps: a stone flight down the wall's west end into the lane.
   const stop=lean.x+lean.w+2;
   for(let k=0;x0-8*(k+1)>=stop;k++){const sx=x0-8*(k+1),sy=top+16*k;box(c,'#141b23',sx,sy,8,lane-sy);box(c,'#3a4652',sx,sy,8,3);box(c,'#56626e',sx,sy,8,1);box(c,'#232c36',sx,sy+3,7,13);}
-  stroke(c,'#141b21',x0-3,top-24,stop,top-24+(x0-3-stop)*2,2);for(let x=x0-4;x>stop+6;x-=16)box(c,'#141b21',x,top-24+(x0-3-x)*2,2,24);
   // The forecourt stops against the tower's stair turret, which stands out from the face on its own footing.
   const past=court.x+court.w,tt=top-132;
   c.drawImage(panel('lane/turret',x1-past,lane-tt,TOWER_OUT,83),past,tt);box(c,'#10161d',past-1,tt,1,lane-tt);

@@ -422,10 +422,11 @@ const inn:Building={above:110,paint(c,p){
 
 // ── The smithy ──────────────────────────────────────────────────────────────
 const smithy:Building={paint(c,p){
- const r=part(p,'roof'),s=8678,x0=r.x,w=r.w,h=p.h,top=r.y,eave=top+30,dx=x0+36,dw=90,dy=h-102,fire=['#b5562a','#c8913f','#f3c77a','#fff0c4'] as const;
+ const r=part(p,'roof'),s=8678,x0=r.x,w=r.w,h=p.h,top=r.y,dx=x0+36,dw=90,dy=h-102,fire=['#b5562a','#c8913f','#f3c77a','#fff0c4'] as const;
+ // The rubble runs up to the coping; the gutter and the vent's hood are fixed on its face.
+ wallAt(c,RUBBLE,s+1,x0,top+2,w,h-top-2);
  slope(c,x0,top,w,30,STONE_SLATE,s,5,9,WARM,.5);
  for(const v of p.vents)ventSeat(c,v,LEAD);
- wallAt(c,RUBBLE,s+1,x0,eave,w,h-eave);
  // The forge doors stand open: the hearth alight under its hood, the anvil on its block in the doorway.
  archRing(c,dx,dy,dw,'seg',10,8,COOL[0],'#414a52',COOL[2],s+2);
  c.save();shape(c,dx,dy,dw,h-dy,'seg',10);c.clip();
@@ -451,7 +452,7 @@ const smithy:Building={paint(c,p){
  const wx=x0+w-38;lintel(c,wx,h-92,18,COOL,5);win(c,wx,h-92,18,20,{look:'dim',cols:2,rows:2,frame:'#2a2019',s:4});sill(c,wx,h-72,18,COOL);
  for(const rr of [15,14])hoop(c,x0+w-20,h-17,rr,rr===15?'#4f5d61':IRON);hoop(c,x0+w-20,h-17,3,'#3a2d22');for(let k=0;k<4;k++){const t=k*Math.PI/4+.3;stroke(c,'#3a2d22',Math.round(x0+w-20-Math.cos(t)*13),Math.round(h-17-Math.sin(t)*13),Math.round(x0+w-20+Math.cos(t)*13),Math.round(h-17+Math.sin(t)*13),1);}
  box(c,IRON,x0+5,h-52,2,3);hoop(c,x0+6,h-46,3,IRON_LIT);
- quoins(c,x0,eave,h,COOL,false,13,14,8);quoins(c,x0+w,eave,h,COOL,true,13,14,8);sides(c,x0,x0+w,eave,h,RUBBLE.lip);
+ quoins(c,x0,top+4,h,COOL,false,13,14,8);quoins(c,x0+w,top+4,h,COOL,true,13,14,8);sides(c,x0,x0+w,top+4,h,RUBBLE.lip);
 }};
 
 // ── The fish stall ──────────────────────────────────────────────────────────
@@ -549,12 +550,15 @@ const granary:Building={paint(c,p){
  for(const px of [x0,x0+w-5]){box(c,TIMBER[0],px,eave,5,floor-eave);box(c,TIMBER[1],px,eave,1,floor-eave);}
  box(c,TIMBER[0],x0,girt-2,w,4);box(c,TIMBER[1],x0,girt-2,w,1);
  const lx=x0+Math.round(w/2)-15;box(c,TIMBER[0],lx-3,eave+14,36,4);box(c,TIMBER[1],lx-3,eave+14,36,1);door(c,lx,eave+18,30,46,{tone:leaf,style:'pair'});box(c,TIMBER[0],lx-4,eave+64,38,4);box(c,TIMBER[1],lx-4,eave+64,38,1);
- stain(c,'#b9b29a',lx+1,eave+68,28,34,s+2,.2);
+ // Where the sacks scuff the boards under the door: a few solid tarred-over patches, no fade.
+ for(let i=0;i<5;i++){const px=lx+3+Math.floor(hash(s,i,31)*22),ln=4+Math.floor(hash(s,i,32)*10);box(c,'#14110f',px,eave+70,2,ln);box(c,'#2a2622',px+2,eave+70,1,ln-2);}
  box(c,INK,x0+15,eave+28,20,26);for(let y=eave+30;y<eave+52;y+=4){box(c,'#2a2823',x0+16,y,18,3);box(c,'#454039',x0+16,y,18,1);}
  box(c,INK,x0+w-36,eave+34,20,20);box(c,'#262220',x0+w-35,eave+35,18,18);box(c,'#3a3633',x0+w-35,eave+35,18,1);box(c,INK,x0+w-27,eave+35,1,18);box(c,IRON,x0+w-34,eave+43,16,2);
  const dx=x0+106;box(c,TIMBER[0],dx-3,floor-58,32,4);box(c,TIMBER[1],dx-3,floor-58,32,1);door(c,dx,floor-54,26,54,{tone:leaf,style:'plank'});
  box(c,INK,x0+21,girt+38,22,22);box(c,'#111a24',x0+22,girt+39,20,20);for(let px=x0+25;px<x0+41;px+=4)box(c,IRON,px,girt+39,1,20);box(c,TIMBER[1],x0+20,girt+60,24,2);
  // It stands clear of the lane's rats: a sill beam on mushroom staddles, the staddles on a stone base.
+ // Behind them the undercroft is in shadow: the back wall of the lean-to behind, boarded and unlit.
+ {const y0=floor+6,y1=base+2;box(c,'#0b0a0a',x0,y0,w,y1-y0);for(let px=x0+3,i=0;px<x0+w-2;i++){box(c,'#141210',px,y0,1,y1-y0);px+=9+Math.floor(hash(s,i,33)*5);}box(c,'#17140f',x0,y0+Math.round((y1-y0)*.45),w,2);box(c,'#060505',x0,y0,w,3);}
  box(c,INK,x0-2,floor-1,w+4,10);box(c,TIMBER[0],x0-2,floor,w+4,8);box(c,TIMBER[1],x0-2,floor,w+4,1);for(let px=x0+6;px<x0+w-8;px+=14)box(c,TIMBER[2],px,floor+5,6,3);
  for(let i=0;i<5;i++){
   const cx=x0+13+Math.round(i*(w-26)/4),y=floor+8;
@@ -584,7 +588,7 @@ const pub:Building={paint(c,p){
  renderAt(c,coat,s+2,x0,fl[1]+1,w,fl[2]-fl[1]-1);
  for(const [x,look] of [[20,'dark'],[76,'drawn'],[132,'dim']] as const){surround(c,x0+x,fl[1]+20,20,46,[coat[1],'#6d6a60',coat[2]],2);win(c,x0+x,fl[1]+20,20,46,{look,cols:2,rows:2,rail:true,frame,tint:'#3a3629',s:s+x+3});sill(c,x0+x,fl[1]+66,20,[coat[1],'#6d6a60',coat[2]]);}
  // The bar: glazed brick, the name board over it, the bay alight, the lamp over the door.
- wallAt(c,PLUM,s+3,x0,fl[2]+18,w,h-fl[2]-18);
+ wallAt(c,PLUM,s+3,x0,fl[2]+1,w,h-fl[2]-1);
  board(c,x0+6,fl[2]+2,92,18,'THE LAMB',2,'#1f1a1c','#8a7446','#c9b98a');
  const bx=x0+14,by=fl[2]+34,bw=66,bh=h-by-24;
  for(let k=0;k<7;k++)box(c,k<2?LEAD[1]:LEAD[0],bx+7-k,by-7+k,bw-14+k*2,1);box(c,LEAD[2],bx-1,by,bw+2,1);
@@ -639,14 +643,15 @@ const lodging:Building={paint(c,p){
  box(c,INK,bx,top+22,1,h-top-22);box(c,INK,bx+bw-1,top+22,1,h-top-22);pipe(c,bx+bw-10,fl[0],h,s);
  // The wing: grey brick under slate, three floors of let rooms.
  const wx=wg.x,ww=dm.x+dm.w-wg.x,wy=wg.y,wf=[wy+24,wy+118,wy+212,h];
+ // The wing's brick runs up to its coping and on under the dormer, which stands on it.
+ for(let f=0;f<3;f++){const y=f?wf[f]:wy+2;wallAt(c,GREY,s+12+f,wx,y,ww,wf[f+1]-y);}
  slope(c,wx,wy,ww,24,SLATE_GREEN,s+11,6,9,LEAD);
- for(let f=0;f<3;f++)wallAt(c,GREY,s+12+f,wx,wf[f],ww,wf[f+1]-wf[f]);
  const wl:Look[][]=[['dark','drawn','dim','dark'],['blind','dark','dark','drawn'],['drawn','dark']];
  for(let f=0;f<2;f++)for(let i=0;i<4;i++)arched(c,wx+20+i*48,wf[f]+24,20,f?46:42,wl[f][i],'seg',3,ringOf(RED),{cols:2,rows:f?3:2,frame:'#4f4a42',tint:CURTAINS[(i+f*2)%5],s:s+40+f*5+i},COOL);
  band(c,wx,wf[2]-3,ww,[GREY.stones[2],GREY.lip,GREY.mortar],3);
  for(let i=0;i<2;i++)arched(c,wx+20+i*48,wf[2]+22,20,44,wl[2][i],'seg',3,ringOf(RED),{cols:2,rows:3,frame:'#4f4a42',tint:CURTAINS[i],s:s+60+i},COOL);
  const ex=wx+122;archRing(c,ex,h-66,44,'seg',6,6,RED.lip,RED.stones[1],RED.mortar,s+70);door(c,ex,h-66,44,66,{tone:['#14100c','#2f3a3a','#3c4a49'],style:'pair',arch:'seg',rise:6});
- box(c,GREY.shade,wx,h-7,ex-wx-6,7);box(c,INK,wx,wf[0],1,h-wf[0]);box(c,GREY.lip,wx+1,wf[0],1,h-wf[0]);pipe(c,wx+7,wf[0],h,s+3);
+ box(c,GREY.shade,wx,h-7,ex-wx-6,7);box(c,INK,wx,wy+4,1,h-wy-4);box(c,GREY.lip,wx+1,wy+4,1,h-wy-4);pipe(c,wx+7,wf[0],h,s+3);
  // The dormer stood on the wing against the block: lead cheeks and a lead flat, one casement.
  const ox=dm.x,oy=dm.y,ow=dm.w,oh=dm.h;
  box(c,INK,ox,oy+6,ow,oh-6);box(c,'#3d474f',ox+1,oy+6,ow-1,oh-6);box(c,LEAD[0],ox+1,oy+6,1,oh-6);
