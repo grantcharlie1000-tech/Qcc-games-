@@ -127,6 +127,8 @@ export class Animator {
   private deathPelvisQ = new THREE.Quaternion();
   private weaponFrom = new THREE.Matrix4();
   private time = 0;
+  /** Deltoid helper scale per side (the shoulder corrective). */
+  readonly deltScale = [1, 1];
   private diagOut: Diag = { headErr: 0, head: V(), headTarget: V(), pelvisShift: V(), armReach: [0, 0], legReach: [0, 0], feet: [V(), V()], stance: [true, true], muzzle: V(), aimErr: 0, chest: V(), pelvis: V() };
   /** Weapon transform in model space. */
   readonly weaponM = new THREE.Matrix4();
@@ -277,7 +279,8 @@ export class Animator {
     lq[B.neck].setFromEuler(e.set(neckPitch - fl[0].x * 0.3, -blade * 0.45, -roll * 0.3, 'YXZ'));
     lq[B.head].setFromEuler(e.set(clamp(aim - chestPitch, -0.9, 0.9) * 0.55 + fold * 0.35 - fl[0].x * 0.4 - ads * 0.14, -blade * 0.55, -roll * 0.25 + fl[1].x * 0.3 - ads * 0.14, 'YXZ'));
     // Clavicles shrug forward when the arms are up.
-    for (const s of [0, 1]) lq[SIDE[s].clav].setFromEuler(e.set(fl[0].x * 0.15, sgn(s) * (0.18 + ads * 0.06), sgn(s) * (-0.04 - Math.abs(fl[0].x) * 0.2), 'YXZ'));
+    // Clavicles shrug up and forward as the arm rises (last frame's swing), carrying the shoulder with the arm.
+    for (const s of [0, 1]) { const el = Math.min(1, (this.deltScale[s] - 1) / 0.12); lq[SIDE[s].clav].setFromEuler(e.set(fl[0].x * 0.15 - el * 0.1, sgn(s) * (0.18 + ads * 0.06 + el * 0.18), sgn(s) * (-0.04 - Math.abs(fl[0].x) * 0.2 + el * 0.32), 'YXZ')); }
     // Pelvis position: rest height, crouch drop and hips back, bob and sway; then corrected so the head is exact.
     this.pelvisPos.set(this.hipSway, JOINT[B.pelvis].y - 0.035 - c * 0.36 - sprint * 0.07, c * 0.07 + sprint * 0.03);
     this.fk();
@@ -402,6 +405,10 @@ export class Animator {
       lq[S.elbow].copy(I).slerp(lq[S.fore], 0.5);
       lq[S.knee].copy(I).slerp(lq[S.shin], 0.5);
       lq[S.delt].copy(I).slerp(lq[S.upper], 0.5);
+      // Corrective: the more the arm swings from its bind direction, the fuller the deltoid (linear skinning
+      // otherwise collapses it), up to an eighth larger.
+      const swing = 2 * Math.acos(Math.min(1, Math.abs(lq[S.upper].w)));
+      this.deltScale[s] = 1 + 0.12 * Math.min(1, swing / 1.3);
       lq[S.hip].copy(I).slerp(lq[S.thigh], 0.5);
       // Twist: the hand's rotation about the forearm's axis (bind arm direction), halved.
       const ax = armDir(s), h = lq[S.hand], dot = h.x * ax.x + h.y * ax.y + h.z * ax.z;
@@ -567,6 +574,7 @@ export class Animator {
   private write() {
     const { bones, lq } = this;
     for (let i = 0; i < BONES; i++) bones[i].quaternion.copy(lq[i]);
+    for (const sd of [0, 1]) bones[SIDE[sd].delt].scale.setScalar(this.deltScale[sd]);
     bones[B.pelvis].position.copy(this.pelvisPos);
     this.weaponM.decompose(this.weapon.position, this.weapon.quaternion, this.weapon.scale);
   }

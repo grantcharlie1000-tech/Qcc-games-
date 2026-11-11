@@ -52,7 +52,7 @@ const checkerMat = (() => {
 const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 80);
 const mat = fighterMaterial(), weaponMat = fighterMaterial();
 mat.userData.probe.value.setRGB(1.3, 1.3, 1.35); weaponMat.userData.probe.value.setRGB(1.3, 1.3, 1.35);
-let tex0: FighterTextures | null = null;
+const texs: (FighterTextures | null)[] = [null, null];
 
 function size(w = innerWidth, h = innerHeight) { renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 
@@ -60,7 +60,7 @@ interface Rig { group: THREE.Group; mesh: THREE.SkinnedMesh; weapon: THREE.Skinn
 const rigs: Rig[] = [];
 function makeRig(squad: 0 | 1, lod: number, wid: WeaponId, plain: boolean): Rig {
   const group = new THREE.Group(), bones = makeBones(), f = figureGeometry(squad, lod);
-  const tg = !plain && squad === 0 && tex0 ? texturedGeometry(tex0, lod, () => f.geo) : null;
+  const tex0 = texs[squad], tg = !plain && tex0 ? texturedGeometry(tex0, lod, () => f.geo) : null;
   let m: THREE.Material = mat;
   if (tg && tex0) { const tm = texturedFighterMaterial(tex0.levels[lod]!.maps); tm.userData.probe.value.setRGB(1.3, 1.3, 1.35); tm.envMap = scene.environment; tm.envMapIntensity = 0.6; m = tm; }
   const mesh = new THREE.SkinnedMesh(tg ?? f.geo, m);
@@ -105,7 +105,7 @@ const api = {
     renderer.render(scene, camera);
     if (helper) scene.remove(helper);
     const f = figureGeometry(r.squad, r.lod);
-    return { triangles: f.triangles, buildMs: f.ms, census: f.census, poseMs: ms, calls: renderer.info.render.calls, rendered: renderer.info.render.triangles, bones: BONES, weaponTris: weaponFor(r.wid).triangles, material: (r.mesh.material as THREE.Material).type + ':' + ((r.mesh.material as THREE.MeshStandardMaterial).map ? 'mapped' : 'plain') + ':' + !!tex0 + ':' + !!r.mesh.geometry.getAttribute('uv'), diag: r.anim.diag() };
+    return { triangles: f.triangles, buildMs: f.ms, census: f.census, poseMs: ms, calls: renderer.info.render.calls, rendered: renderer.info.render.triangles, bones: BONES, weaponTris: weaponFor(r.wid).triangles, material: (r.mesh.material as THREE.Material).type + ':' + ((r.mesh.material as THREE.MeshStandardMaterial).map ? 'mapped' : 'plain') + ':' + !!texs[r.squad] + ':' + !!r.mesh.geometry.getAttribute('uv'), diag: r.anim.diag() };
   },
   /** Runs an animation from a script of inputs and renders frame `frame` of `frames` sampled over `seconds`. The
    * camera follows the fighter (side or front) unless `fixed`. Returns the pose diagnostics. */
@@ -155,5 +155,5 @@ const SCRIPTS: Record<string, Script> = {
 addEventListener('resize', () => size());
 size();
 await heroReady;
-tex0 = await loadFighterTextures(renderer, 0).catch(e => { console.warn('no baked set', e); return null; });
+for (const sq of [0, 1] as const) texs[sq] = await loadFighterTextures(renderer, sq).catch(e => { console.warn('no baked set', sq, e); return null; });
 (window as unknown as { __fightersReady: boolean }).__fightersReady = true;

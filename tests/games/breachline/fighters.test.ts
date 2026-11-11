@@ -140,9 +140,11 @@ describe('baked fighter texture sets', () => {
         for (const kind of ['diff', 'nor', 'arm']) expect(readdirSync(join(dir, `l${lv.lod}`)).some(f => f.startsWith(kind) && f.endsWith('.ktx2'))).toBe(true);
       }
       const walk = (d: string): number => readdirSync(d).reduce((n, f) => { const p = join(d, f); return n + (statSync(p).isDirectory() ? walk(p) : statSync(p).size); }, 0);
-      bytes += walk(dir);
+      const one = walk(dir);
+      expect(one, FIGHTER_SETS[squad]).toBeLessThan(3.1 * 1024 * 1024);
+      bytes += one;
     }
-    // Fighter textures: 6 MB for every variant together; one variant may use half.
-    expect(bytes).toBeLessThan(3.1 * 1024 * 1024);
+    // Fighter textures: 6 MB for every variant together.
+    expect(bytes).toBeLessThan(6 * 1024 * 1024);
   });
 });
