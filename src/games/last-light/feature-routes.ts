@@ -1,4 +1,4 @@
-import {spike,steam,laser,press,type CampaignRoute} from './campaign-types';
+import {spike,spikeAs,steam,laser,press,type CampaignRoute} from './campaign-types';
 
 /** Signature spaces, authored in travel order. These are physical multi-storey
  * routes, not a height offset applied to the old horizontal obstacle pattern. */
@@ -12,23 +12,27 @@ export const FEATURE_ROUTES:Readonly<Record<number,CampaignRoute>>={
  // and every street between them is a real drop. An iron fire escape climbs
  // the tenement wall from below the start to its roof (jump up through the
  // landings; Down drops). A chimney stack stands at a gable end as a solid
- // step before each street; a rook walks two of the roofs; a second and a
- // sign gantry reaches the long tenement, whose balconies cross its front to
- // a last fire escape; the route turns back along its roof to the stair-house
- // door, the way down to the east street.
+ // step before each street; party walls between the houses' leads are capped
+ // with bottle glass; a rook walks the roofs; a sign gantry, its board
+ // painted for the corn merchant, reaches the long tenement, whose balconies
+ // cross its front to a last fire escape; the route turns back along its
+ // roof to the stair-house door, the way down to the east street.
  // Between the market roofs and the sign gantry is the arcade. Its lantern
  // has lost most of its glass: three cracked panes and one length of iron
  // walk are what is left over the lane, and each pane goes a moment after
  // you land on it. The bakehouse flue vents on the arcade's east flat, a
- // stack is the step before Market Street, and the corn loft's sack hoist
- // is the only way up to its roof.
+ // stack is the step before Market Street, where the stalls stand on the
+ // cobbles either side of the market hall. A torn length of the hall's
+ // ridge cresting lies across its leads, its clock turret is the step over
+ // the ridge, and a rook keeps its east flat. Past Market Street the corn
+ // loft's sack hoist is the only way up to its roof.
  3:{setting:'roofs',goal:'relay',water:1244,
-  route:'24,1124,232,s;296,1048,64,l,52,1.2;440,1004,80,s;520,940,40,s,,,,64;600,924,160,s;840,1124,300,s;1188,1060,120,g;1188,996,120,g;1188,932,120,g;1188,868,120,g;1188,804,120,g;1188,740,120,g;1308,740,340,s;1648,676,48,s,,,,64;1832,772,296,s;2128,708,120,g;2128,644,120,g;2248,644,152,s;2400,580,48,s,,,,64;2656,612,160,s;2816,548,64,s,,,,64;2880,612,136,s;3112,676,136,s;3296,660,72,c,,,0.5,12;3416,660,56,g;3528,660,72,c,,,0.5,12;3664,660,72,c,,,0.5,12;3800,676,112,s;3912,612,48,s,,,,64;4160,676,120,s;4296,620,64,l,60,1.2;4376,536,160,s;4656,676,288,s;4824,612,120,g;5096,612,120,g;5264,612,120,g;5408,612,120,g;5408,548,120,g;5408,484,120,g;5408,420,120,g;5408,356,120,g;5096,356,312,s',
-  branches:'1188,1124,120,g;2264,580,96,g;5296,292,96,g',memories:[0,1,2],
+  route:'24,1124,232,s;296,1048,64,l,52,1.2;440,1004,80,s;520,940,40,s,,,,64;600,924,160,s;840,1124,300,s;1188,1060,120,g;1188,996,120,g;1188,932,120,g;1188,868,120,g;1188,804,120,g;1188,740,120,g;1308,740,340,s;1648,676,48,s,,,,64;1832,772,296,s;2128,708,120,g;2128,644,120,g;2248,644,152,s;2400,580,48,s,,,,64;2656,612,160,s;2816,548,64,s,,,,64;2880,612,136,s;3112,676,136,s;3296,660,72,c,,,0.5,12;3416,660,56,g;3528,660,72,c,,,0.5,12;3664,660,72,c,,,0.5,12;3800,676,112,s;3912,612,48,s,,,,64;4100,708,260,s;4360,644,80,s,,,,64;4440,708,260,s;4820,676,120,s;4956,620,64,l,60,1.2;5036,536,160,s;5316,676,288,s;5484,612,120,g;5756,612,120,g;5924,612,120,g;6068,612,120,g;6068,548,120,g;6068,484,120,g;6068,420,120,g;6068,356,120,g;5756,356,312,s',
+  branches:'1188,1124,120,g;2264,580,96,g;5956,292,96,g',memories:[0,1,2],
   stations:[],exit:.25,
-  checkpoints:[4,12,14,19,22,29,32,36],sectors:[[0,'The market stairs'],[1,'The wharf crane'],[2,'Warehouse roofs'],[5,'The fire escape'],[12,'The rook’s ridge'],[14,'Market roofs'],[19,'Across the street'],[22,'The arcade lantern'],[28,'Market Street'],[29,'The corn loft'],[33,'The sign gantry'],[34,'The long tenement'],[41,'The east street stair']],
-  hazards:[spike(14,.6,22),spike(41,.72,22),steam(27,.5,88,0,2.8)],
-  enemies:[{ledge:12,at:.55,kind:'crawler',travel:80,period:4.2},{ledge:32,at:.3,kind:'crawler',travel:50,period:3.6}],
+  checkpoints:[4,12,14,19,22,29,32,35,39],sectors:[[0,'The market stairs'],[1,'The wharf crane'],[2,'Warehouse roofs'],[5,'The fire escape'],[12,'The rook’s ridge'],[14,'Market roofs'],[19,'Across the street'],[22,'The arcade lantern'],[28,'Market Street'],[29,'The market hall'],[32,'The corn loft'],[36,'The sign gantry'],[37,'The long tenement'],[44,'The east street stair']],
+  hazards:[spikeAs('glass',14,.6,22),spikeAs('glass',44,.72,22),steam(27,.5,88,0,2.8),spikeAs('torn',29,.46,30)],
+  enemies:[{ledge:12,at:.55,kind:'crawler',travel:80,period:4.2},{ledge:31,at:.55,kind:'crawler',travel:64,period:3.9},{ledge:35,at:.3,kind:'crawler',travel:50,period:3.6}],
  },
  // Launch up the orchard terraces, cross the canopy to the left, then make a
  // controlled descent through the open grates into the lower greenhouse.
