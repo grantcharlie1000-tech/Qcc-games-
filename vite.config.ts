@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { fileURLToPath } from 'node:url';
 // Globle's globe.gl dependencies import large modules for features it never uses; see the stub file.
 const unused=fileURLToPath(new URL('./src/games/globle/unused-stubs.ts',import.meta.url));
-const contentSecurityPolicy=`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://image.tmdb.org; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com; worker-src 'self'; media-src 'self'; frame-src https://framextv.xyz https://framextv.cc https://archive.org; form-action 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`;
+const contentSecurityPolicy=`default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://image.tmdb.org; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com; worker-src 'self'; media-src 'self'; frame-src https://framextv.xyz https://framextv.cc https://archive.org; form-action 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`;
 // Preserve the default policy literally. Only the dedicated integration build
 // permits trusted first-party framing; no remote frame origin is added.
 const securityHeaders={'Content-Security-Policy':process.env.VITE_QCC_WHETU_STUDY==='on'

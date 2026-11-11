@@ -23,6 +23,9 @@ it('permits only approved image/frame origins for movie requests',()=>{
   const text=readFileSync(path,'utf8');
   for(const policy of ["media-src 'self'","frame-src https://framextv.xyz https://framextv.cc","script-src 'self'","object-src 'none'","https://image.tmdb.org"])expect(text).toContain(policy);
   expect(text.match(/frame-src [^;]+/)?.[0]).toBe('frame-src https://framextv.xyz https://framextv.cc https://archive.org');
-  expect(text).not.toContain('unsafe-eval');
+  // JavaScript eval stays forbidden. WebAssembly compilation ('wasm-unsafe-eval') was allowed by the owner on
+  // 2026-11-11 for Breachline's compressed textures and models; it does not permit eval() or new Function().
+  expect(text).not.toMatch(/(?<!wasm-)unsafe-eval/);
+  expect(text).toContain("script-src 'self' 'wasm-unsafe-eval';");
  }
 });

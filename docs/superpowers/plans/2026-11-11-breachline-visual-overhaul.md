@@ -75,25 +75,24 @@ on top. Expectation, to be confirmed on hardware:
 None of the frame-rate claims can be proven in the build container. The plan therefore ships a benchmark the owner
 can run on a real Chromebook.
 
-## 3. Decisions the owner must make (blocking only phases 6 and 7)
+## 3. Owner decisions (answered 2026-11-11)
 
-1. **Weapon and character source.** One of:
-   - (a) a Sketchfab API token, so CC0 and CC-BY models can be downloaded, each recorded with author and licence
-     (CC-BY needs visible credit);
-   - (b) asset packs the owner has bought or made, dropped into the repository or a reachable URL;
-   - (c) neither: weapons and characters are built in code from CC0 parts (Poly Haven pistol, CC0 materials) and
-     Quaternius-style CC0 animation, accepting that they will not reach the bar.
-2. **Download and memory budget:** accept about 40–60 MB of assets, loaded behind a progress screen, with a Low tier
-   under about 20 MB.
-3. **Minimum device:** name the actual Chromebook model(s) to target, and run the benchmark on one.
-4. **Content-Security-Policy.** The site allows only `script-src 'self'` and `worker-src 'self'`. The standard
-   compressed-texture and compressed-mesh decoders (Basis, meshopt, Draco) are WebAssembly, which that policy
-   blocks. Either the owner approves adding `'wasm-unsafe-eval'` to `script-src` in the three places the policy
-   lives (`public/_headers`, `netlify.toml`, `vite.config.ts`), or the overhaul avoids WebAssembly (see 4.1). This is
-   a security setting, so it is the owner's call; **the overhaul must not change it unasked**.
-
-Phases 0–5 and 8 do not depend on decisions 1–3 and proceed now, using the no-WebAssembly path until decision 4
-is made.
+1. **Weapons and characters.** Make our own weapons, and find and use asset packs freely. Working rule: an asset
+   may be committed only if its licence allows redistribution in a public repository — CC0, or CC-BY with the
+   author credited in `public/THIRD_PARTY_NOTICES.txt`. Anything paid, non-commercial, "editorial use" or without a
+   clear licence stays out. Sources that need a login or token remain unavailable unless the owner supplies one.
+2. **Reload animations and sound effects must be our own work.** No downloaded reload animation clips and no
+   downloaded sound effects, from any pack, whatever its licence. Reloads are authored here (keyframed or
+   procedural, with hand IK); sound stays synthesised in `audio.ts`. Locomotion and other character animation from
+   a properly licensed pack is still allowed.
+3. **Security policy: WebAssembly is allowed.** `'wasm-unsafe-eval'` has been added to `script-src` in
+   `public/_headers`, `netlify.toml`, `vite.config.ts` and `scripts/serve-built.mjs`. `worker-src` is still
+   `'self'`: decoder workers and `.wasm` files must be served from the site, not from `blob:` URLs or a CDN.
+4. **Chromebooks are a hard requirement. Optimise first.** A throttled mode for weak machines is allowed but is the
+   last resort, used sparingly: reach the frame budget by instancing, merging, LODs, culling, compressed textures
+   and cheaper shaders before removing anything the player can see, and select the throttled mode automatically
+   only when the startup probe shows the device needs it.
+5. Still open: the download budget (40–60 MB assumed acceptable) and which Chromebook model to benchmark on.
 
 ## 4. Technical design
 
@@ -104,14 +103,13 @@ is made.
 - `fetch.mjs` downloads by manifest (idempotent, checks hashes). `build.mjs` produces shipped files:
   - textures resized with sharp to tier sizes (512 / 1K / 2K), AO/roughness/metal packed in one map, normals in
     OpenGL convention;
-  - GPU compression, which the Low tier needs to fit 4 GB machines. Two routes, settled in the spike:
-    - **without WebAssembly (default until decision 4):** ship GPU-native blocks that need no decoder — S3TC/BC
-      (ImageMagick can write DXT1/DXT5 DDS here) for x86 Chromebooks and desktops, read by a small local loader into
-      `CompressedTexture`; ETC2/ASTC for ARM if an encoder can be found, otherwise uncompressed 512 px on ARM;
-    - **with WebAssembly (if approved):** KTX2/Basis (UASTC for normals, ETC1S for colour), one file for every GPU,
-      with the transcoder worker served same-origin rather than from a `blob:` URL;
-  - models as plain binary glTF with quantised attributes (no decoder needed), LODs from meshoptimizer's simplifier
-    at build time. Meshopt or Draco compression only if decision 4 allows WebAssembly.
+  - GPU compression, which weak machines need to fit in 4 GB: KTX2/Basis (UASTC for normals, ETC1S for colour),
+    one file for every GPU. The Basis transcoder's worker and `.wasm` are copied into the site and loaded
+    same-origin (three's stock loader builds its worker from a `blob:` URL, which `worker-src 'self'` forbids, so
+    wrap or patch that). The spike confirms an encoder runs under Node here (`ktx2-encoder`, or a Basis build from
+    npm); if none does, fall back to S3TC/BC DDS written by ImageMagick plus uncompressed 512 px on ARM;
+  - models as binary glTF with meshopt compression (decoder is WebAssembly, served same-origin), LODs from
+    meshoptimizer's simplifier at build time.
 - **Asset count is budgeted, not just bytes:** at most 22 surface materials and 30 prop models; small props share
   512 px textures; nothing ships at more than 2K.
 - Shipped binaries are committed (the site is static). Keep the total under 60 MB and no file over 20 MB.
@@ -176,7 +174,7 @@ The 0.25 m cell simulation does not change. The picture does:
 - debris uses a few chunk meshes, not cubes, plus dust that lingers; bullet holes on solid surfaces get
   normal-mapped decals.
 
-### 4.6 Weapons and hands (depends on decision 1)
+### 4.6 Weapons and hands
 
 - Weapon models as glTF with named sockets (muzzle, grip, support hand, magazine, sight line). The existing
   procedural sway, recoil, aim-down-sights and reload timing drive them.
@@ -186,7 +184,7 @@ The 0.25 m cell simulation does not change. The picture does:
   long guns are rebuilt in code with bevelled, lathe-turned parts and CC0 metal and polymer materials. This is
   expected to score about 5/10 against the bar, not 8.
 
-### 4.7 Characters (depends on decision 1)
+### 4.7 Characters
 
 - Skinned glTF, 6–10k triangles, three LODs, squad colours as a tint mask on armbands and helmet band (shape cue
   kept for colour-blind players).
@@ -282,14 +280,14 @@ all existing tests green; a commit and push. A phase is not done because tests p
 
 | Risk | Likelihood | Effect | Response |
 | --- | --- | --- | --- |
-| WebAssembly decoders blocked by the site's CSP | Certain today | No Basis, meshopt or Draco | Decision 4; until then DDS/S3TC and quantised glTF (4.1) |
+| Decoder worker built from a `blob:` URL | Certain with three's stock loader | Blocked by `worker-src 'self'` | Serve the worker and `.wasm` from the site (4.1) |
 | No ETC2/ASTC encoder for ARM devices | Medium | Low tier may not fit 4 GB ARM Chromebooks | Uncompressed 512 px there; flag for the owner |
 | Offline baker too slow or noisy | Medium | Lighting stays below bar | Lower texel density outdoors, progressive bake, bilateral denoise; worst case per-vertex bake on denser meshes |
 | Poly Haven props do not fit the collision boxes | High | Rework | Scale within ±15 %, otherwise adjust `map.ts` under the 4.4 rule |
 | Too many unique prop textures | High | Download and memory budgets blown | The asset count budget in 4.1; atlas small props |
 | Baker and browser build different geometry | Medium | Lightmaps misplaced | Single shared module and an agreement test (4.2) |
-| Weapons and characters have no source | Certain until decided | Rows E, F stay near 4–5 | Section 3; ship the rest |
-| Chromebook cannot hold 30 fps on Low | Unknown (no GPU here) | Core requirement missed | Benchmark mode, adaptive scale, an even lighter "Minimum" variant (512 textures, 50 % scale) |
+| No committable pack for weapons or characters is found | Medium | Rows E, F below the bar | Build our own weapons (4.6); search CC0 and CC-BY packs; report the score honestly |
+| Chromebook cannot hold 30 fps | Unknown (no GPU here) | Core requirement missed | Optimise first (instancing, merging, LODs, culling, compressed textures, cheaper shaders); benchmark mode; adaptive scale; a throttled mode only as the last resort |
 | Download too large for school networks | Medium | Players wait or give up | Tiered loading; Low under 20 MB; lazy-load High textures after first frame |
 | Software rasteriser renders differ from real GPUs | Low | Misjudged pictures | Owner confirms on real hardware at the phase 0 and phase 4 gates |
 

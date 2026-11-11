@@ -19,7 +19,7 @@ describe('dedicated Study build preparation',()=>{
  it('adds only same-origin framing in the explicit integrated parent build, preserving other security directives',()=>{
   const dir=fixture();prepareWhetuHost(dir,'on');const headers=readFileSync(join(dir,'_headers'),'utf8');
   expect(headers).toContain("frame-src 'self' https://framextv.xyz https://framextv.cc https://archive.org");
-  expect(headers).toContain("frame-ancestors 'none'");expect(headers).toContain("script-src 'self'; style-src 'self' 'unsafe-inline'");
+  expect(headers).toContain("frame-ancestors 'none'");expect(headers).toContain("script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'");
   expect(headers).not.toMatch(/frame-src[^;]*https:\/\/whetu\.app/);
   expect(readFileSync('public/_headers','utf8')).not.toContain("frame-src 'self'");
  });
