@@ -4,6 +4,12 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: map fill C, first pass done in every area.** `mapfill/rooms/server-break-lab-garage.png`: Server Room
+floor cable covers, trays joined across the aisles, warning signs, a crash cart; Break Room fruit bowl, cups, pedal
+bin, door mat; Lab fume-hood ducting and hazard tape round the site core; Garage tyres, trolley jack, hose, oil
+stains, hanging lights, a creeper. Views: 167-315 draw calls, 68-202k triangles (High budget 400 and 500k). Waiting on
+the greybox gate for Phase B (art for the cover, one `NET_VERSION` bump); then Phase D (budgets per tier).
+
 **2026-11-11: map fill C, the yards.** `mapfill/rooms/yards.png` (South Yard, bays, North Yard, West Lot): lamp posts
 every 12 m along the perimeter with arms over the yard, downpipes at the building's corners and between openings, a
 wall light over each outside door, weed tufts along the foot of the perimeter, puddles, manhole covers and cones. No

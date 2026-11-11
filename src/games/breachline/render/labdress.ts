@@ -377,6 +377,13 @@ function dressLab(atlas: Atlas, room: Region): DetailBuilder {
   wallKit(D, room);
   ceilingKit(D);
   benchKit(D);
+  // Map fill: fume-hood ducting overhead from the north wall, and hazard tape on the floor round the site's core.
+  { const dn: V3 = [0, -1, 0];
+    put(D, new THREE.CylinderGeometry(0.16, 0.16, 3.2, 16, 1, true).rotateZ(Math.PI / 2).translate(-3.2, 2.72, -9.3), 'steel', [-3.2, WALL_H - 0.001, -9.3], dn, [0.8, 0.8, 0.82]);
+    put(D, new THREE.CylinderGeometry(0.16, 0.16, 0.5, 16, 1, true).translate(-4.8, 2.72 + 0.12, -9.3), 'steel', [-4.8, WALL_H - 0.001, -9.3], dn, [0.8, 0.8, 0.82]);
+    for (const x of [-4.4, -3.2, -2.0]) D.box('conduit', x - 0.006, 2.88, -9.32, x + 0.006, WALL_H, -9.28, [x, WALL_H - 0.001, -9.3], dn);
+    const up: V3 = [0, 1, 0], cx = -1, cz = -6, h = 1.35;
+    for (const [x0, z0, x1, z1] of [[cx - h, cz - h, cx + h, cz - h + 0.05], [cx - h, cz + h - 0.05, cx + h, cz + h], [cx - h, cz - h, cx - h + 0.05, cz + h], [cx + h - 0.05, cz - h, cx + h, cz + h]] as const) D.box('paper', x0, 0.021, z0, x1, 0.024, z1, [(x0 + x1) / 2, 0.022, (z0 + z1) / 2], up, [1.3, 1.1, 0.25]); }
   return D;
 }
 
@@ -647,6 +654,18 @@ function dressServer(atlas: Atlas, room: Region): DetailBuilder {
   D.box('conduit', 9.5, 2.5, z, 10.2, 2.56, z + 0.06, at(9.85, 2.53), n, [0.9, 0.9, 0.88]);
   D.box('conduit', 10.14, 2.56, z, 10.2, H, z + 0.06, at(10.17, 2.8), n, [0.9, 0.9, 0.88]);
   D.box('alarm', 13.2, 1.4, z, 13.55, 1.75, z + 0.08, at(13.37, 1.57), n);
+  // Map fill: floor cable covers across the aisles, the trays joined over them, warning signs, a crash cart.
+  { const fl = (x: number, z: number): V3 => [x, 0.001, z], upF: V3 = [0, 1, 0];
+    for (const x of [7.2, 10.8]) put(D, new THREE.BoxGeometry(0.22, 0.02, 2.5).translate(x, 0.01, -6.3), 'chassis', fl(x, -6.3), upF, [2.4, 2.1, 0.6]);
+    for (const x of [7.5, 9.5]) D.box('conduit', x - 0.15, 2.42, -7.4, x + 0.15, 2.43, -5.4, [x, WALL_H - 0.001, -6.4], [0, -1, 0]);
+    const z = room.z0 + 0.15, n: V3 = [0, 0, 1];
+    for (const x of [6.2, 11.6]) { D.box('paper', x - 0.15, 1.5, z, x + 0.15, 1.72, z + 0.004, [x, 1.6, z + 0.001], n, [1.3, 1.15, 0.3]); D.box('kick', x - 0.12, 1.52, z + 0.004, x + 0.12, 1.56, z + 0.006, [x, 1.6, z + 0.001], n, [1, 1, 1]); }
+    const cx = 12.9, cz = -7.0;
+    put(D, new THREE.BoxGeometry(0.5, 0.02, 0.35).translate(cx, 0.85, cz), 'chassis', fl(cx, cz), upF, [1.8, 1.8, 1.8]);
+    put(D, new THREE.BoxGeometry(0.5, 0.02, 0.35).translate(cx, 0.3, cz), 'chassis', fl(cx, cz), upF, [1.8, 1.8, 1.8]);
+    for (const [dx, dz] of [[-0.23, -0.15], [0.23, -0.15], [-0.23, 0.15], [0.23, 0.15]]) put(D, new THREE.CylinderGeometry(0.012, 0.012, 0.85, 6).translate(cx + dx, 0.43, cz + dz), 'chrome', fl(cx, cz), upF);
+    put(D, new THREE.BoxGeometry(0.36, 0.26, 0.04).translate(cx, 1.0, cz - 0.08).rotateX(0), 'chassis', fl(cx, cz), upF, [0.8, 0.8, 0.8]);
+    put(D, new THREE.BoxGeometry(0.33, 0.22, 0.005).translate(cx, 1.0, cz - 0.055), 'screen', fl(cx, cz), upF); }
   return D;
 }
 
@@ -864,6 +883,14 @@ function dressBreak(atlas: Atlas, room: Region): DetailBuilder {
   // East wall: skirting either side of the kitchen run.
   const x = room.x1 - 0.15, en: V3 = [-1, 0, 0];
   D.box('trim', x - 0.016, 0.02, 4.5, x, 0.11, 8.8, [x - 0.001, 0.06, 6.5], en);
+  // Map fill: counter clutter (a fruit bowl, a stack of cups, a dish rack), a pedal bin and a mat by the door.
+  { const fl = (x: number, z: number): V3 => [x, 0.001, z], upF: V3 = [0, 1, 0], top = 0.95, on = (x: number, z: number): V3 => [x, top + 0.001, z];
+    put(D, new THREE.SphereGeometry(0.13, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2).translate(14.55, top + 0.13, 1.8), 'casing', on(14.55, 1.8), upF, [0.9, 0.9, 0.88]);
+    for (let i = 0; i < 4; i++) put(D, new THREE.SphereGeometry(0.04, 10, 8).translate(14.5 + (i % 2) * 0.08, top + 0.06, 1.76 + Math.floor(i / 2) * 0.08), 'casing', on(14.55, 1.8), upF, [[1.2, 0.3, 0.2], [1.1, 0.9, 0.2], [0.4, 0.9, 0.3]][i % 3] as V3);
+    for (let i = 0; i < 4; i++) put(D, new THREE.CylinderGeometry(0.04, 0.034, 0.09, 12).translate(14.55, top + 0.045 + i * 0.07, 2.95), 'casing', on(14.55, 2.95), upF, [1.1, 1.1, 1.08]);
+    put(D, new THREE.CylinderGeometry(0.15, 0.15, 0.4, 16, 1, true).translate(13.5, 0.2, 9.6), 'steel', fl(13.5, 9.6), upF, [0.8, 0.8, 0.8]);
+    put(D, new THREE.CylinderGeometry(0.155, 0.155, 0.03, 16).translate(13.5, 0.41, 9.6), 'steel', fl(13.5, 9.6), upF, [0.8, 0.8, 0.8]);
+    D.box('kick', 6.6 + 1.6, 0.003, 7.55, 9.0, 0.01, 8.1, [8.6, 0.001, 7.8], upF, [2.5, 2.2, 1.8]); }
   return D;
 }
 
@@ -895,8 +922,26 @@ function dressGarage(atlas: Atlas, room: Region): DetailBuilder {
     for (const x of [-14.5, -12.9]) D.box('steel', x - 0.015, 1.4, z, x + 0.015, 1.6, z + 0.25, at(x, 1.5), n, [0.6, 0.6, 0.6]);
     for (let i = 0; i < 5; i++) { const x = -14.6 + i * 0.38, w = 0.22 + r() * 0.1, h = 0.2 + r() * 0.15; D.box(i % 2 ? 'card' : 'chassis', x, 1.63, z + 0.04, x + w, 1.63 + h, z + 0.28, at(x + w / 2, 1.7), n, i % 2 ? [1, 1, 1] : [1.5, 2.5, 1.2]); }
     D.box('trim', -8.1, 0.02, z, room.x1 - 0.12, 0.11, z + 0.016, at(-7, 0.06), n); }
+  // Map fill: tyres, a trolley jack, a coiled hose, oil stains, hanging lights, a creeper.
+  { const fl = (x: number, z: number): V3 => [x, 0.001, z], upF: V3 = [0, 1, 0];
+    for (const [x, z, k] of [[-14.4, -4.2, 0], [-14.4, -4.2, 1], [-14.4, -4.2, 2], [-13.7, -4.0, 0]] as const) put(D, new THREE.TorusGeometry(0.28, 0.1, 10, 22).rotateX(Math.PI / 2).translate(x, 0.1 + k * 0.2, z), 'chassis', fl(x, z), upF, [0.7, 0.7, 0.7]);
+    put(D, new THREE.BoxGeometry(0.3, 0.12, 0.7).translate(-8.6, 0.08, -6.6), 'alarm', fl(-8.6, -6.6), upF, [1.4, 0.4, 0.3]);
+    put(D, new THREE.CylinderGeometry(0.015, 0.015, 0.9, 6).rotateX(-1.1).translate(-8.6, 0.3, -6.1), 'chrome', fl(-8.6, -6.6), upF);
+    put(D, new THREE.TorusGeometry(0.25, 0.018, 6, 28).rotateX(Math.PI / 2).translate(-14.55, 0.03, -6.2), 'conduit', fl(-14.55, -6.2), upF, [0.3, 0.6, 0.3]);
+    put(D, new THREE.TorusGeometry(0.2, 0.018, 6, 28).rotateX(Math.PI / 2).translate(-14.55, 0.06, -6.2), 'conduit', fl(-14.55, -6.2), upF, [0.3, 0.6, 0.3]);
+    for (const [x, z, sx, sz] of [[-10.4, -6.9, 1.2, 0.8], [-11.6, -6.6, 0.5, 0.4], [-9.0, -4.5, 0.7, 0.5]] as const) put(D, new THREE.CircleGeometry(0.5, 18).rotateX(-Math.PI / 2).scale(sx, 1, sz).translate(x, 0.012, z), 'glass', fl(x, z), upF, [0.35, 0.33, 0.3]);
+    for (const [x, z] of [[-12.2, -5.6], [-8.6, -5.6]] as const) {
+      put(D, new THREE.CylinderGeometry(0.004, 0.004, 0.5, 4).translate(x, WALL_H - 0.25, z), 'chrome', [x, WALL_H - 0.001, z], [0, -1, 0]);
+      put(D, new THREE.ConeGeometry(0.22, 0.18, 18, 1, true).translate(x, WALL_H - 0.58, z), 'steel', [x, WALL_H - 0.001, z], [0, -1, 0], [0.4, 0.45, 0.4]);
+      put(D, new THREE.SphereGeometry(0.06, 10, 8).translate(x, WALL_H - 0.64, z), 'bulb', [x, WALL_H - 0.001, z], [0, -1, 0]);
+    }
+    put(D, new THREE.BoxGeometry(0.45, 0.04, 1.0).translate(-7.9, 0.09, -5.0), 'alarm', fl(-7.9, -5.0), upF, [0.25, 0.25, 0.3]);
+    for (const [dx, dz] of [[-0.18, -0.4], [0.18, -0.4], [-0.18, 0.4], [0.18, 0.4]]) put(D, new THREE.SphereGeometry(0.035, 8, 6).translate(-7.9 + dx, 0.035, -5.0 + dz), 'chassis', fl(-7.9, -5.0), upF); }
   return D;
 }
+
+/** Shared small-mesh helper for the fill dressing: a geometry placed on the surface under (x, z) at height y. */
+function put(D: DetailBuilder, g: THREE.BufferGeometry, key: DressKey, on: V3, n: V3, tint: V3 = [1, 1, 1]) { D.mesh(key, g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, n, tint); g.dispose(); }
 
 /** A rug on the floor (under the knee: dressing, never cover): a field, a border and a worn centre. */
 function rug(D: DetailBuilder, x0: number, z0: number, x1: number, z1: number, field: V3, border: V3) {
