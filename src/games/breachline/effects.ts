@@ -74,6 +74,7 @@ export class Effects {
   private scars: THREE.InstancedMesh; private scarNext = 0;
   private holes: THREE.InstancedMesh; private holeNext = 0; private holeTag = new Int32Array(160).fill(-1);
   private flashes: { sprite: THREE.Sprite; life: number; span: number; size: number }[] = [];
+  private rings: { mesh: THREE.Mesh; life: number; span: number; size: number }[] = [];
   private textures: THREE.Texture[] = [];
   /** 1 full effects; lower on the performance preset. */
   density = 1;
@@ -102,6 +103,13 @@ export class Effects {
     for (let i = 0; i < 10; i++) {
       const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: flash, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
       sprite.visible = false; sprite.renderOrder = 7; this.group.add(sprite); this.flashes.push({ sprite, life: 0, span: 1, size: 1 });
+    }
+    // Shock rings: a bright edge racing out across the floor (the impact grenade's signature), pooled.
+    const ringTex = makeSprite('ring'); this.textures.push(ringTex);
+    const ringGeo = new THREE.PlaneGeometry(1, 1); ringGeo.rotateX(-Math.PI / 2);
+    for (let i = 0; i < 4; i++) {
+      const mesh = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ map: ringTex, color: 0xd8ecff, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false }));
+      mesh.visible = false; mesh.renderOrder = 6; this.group.add(mesh); this.rings.push({ mesh, life: 0, span: 1, size: 1 });
     }
     this.group.add(this.scorches, this.scars, this.holes, this.chunks, this.tracers, this.dustP.object, this.sparkP.object);
   }
@@ -155,15 +163,27 @@ export class Effects {
     for (let i = 0; i < 160; i++) if (this.holeTag[i] === tag) { this.holeTag[i] = -1; this.holes.setMatrixAt(i, ZERO); any = true; }
     if (any) this.holes.instanceMatrix.needsUpdate = true;
   }
-  flash(x: number, y: number, z: number, size: number, life: number) {
+  flash(x: number, y: number, z: number, size: number, life: number, tint: readonly [number, number, number] = [1, 1, 1]) {
     let f = this.flashes[0];
     for (const c of this.flashes) if (c.life <= 0) { f = c; break; } else if (c.life < f.life) f = c;
     f.life = f.span = life; f.size = size; f.sprite.position.set(x, y, z); f.sprite.scale.setScalar(size); f.sprite.visible = true;
     (f.sprite.material as THREE.SpriteMaterial).opacity = 1; (f.sprite.material as THREE.SpriteMaterial).rotation = Math.random() * 6;
+    (f.sprite.material as THREE.SpriteMaterial).color.setRGB(tint[0], tint[1], tint[2]);
   }
-  /** A burst of smoke, sparks and a flash. */
-  blast(x: number, y: number, z: number, power: number, light: readonly [number, number, number]) {
-    this.flash(x, y, z, 3.2 * power, 0.14);
+  /** A burst of smoke, sparks and a flash. `kind` gives each source its own look: the frag a fiery flash, a heavy
+   * dust cloud and debris; the impact grenade a cold white flash, a sharp shock ring and more sparks than smoke. */
+  blast(x: number, y: number, z: number, power: number, light: readonly [number, number, number], kind: 'frag' | 'impact' | 'charge' = 'frag') {
+    this.flash(x, y, z, 3.2 * power, 0.14, kind === 'impact' ? [0.75, 0.85, 1.3] : [1, 1, 1]);
+    if (kind === 'impact') {
+      const r = this.rings.reduce((a, b) => (b.life < a.life ? b : a));
+      r.life = r.span = 0.28; r.size = 5.5; r.mesh.position.set(x, Math.max(0.03, Math.min(y, 0.06)), z); r.mesh.scale.setScalar(0.3); r.mesh.visible = true;
+      for (let i = 0; i < 30 * this.density; i++) { const a = Math.random() * 6.28, sp = 6 + Math.random() * 10; this.spark(x, y, z, Math.cos(a) * sp, Math.random() * 5, Math.sin(a) * sp, 0.05, 0.25 + Math.random() * 0.25); }
+    }
+    if (kind === 'frag') {
+      // Floor and wall bits thrown out that come to rest and stay, and an ember-orange core to the flash.
+      this.flash(x, y + 0.2, z, 2.2 * power, 0.22, [1.3, 0.75, 0.4]);
+      for (let i = 0; i < 14 * this.density; i++) { const a = Math.random() * 6.28, sp = 2 + Math.random() * 6, g = 0.3 + Math.random() * 0.2; this.debris(x, y + 0.1, z, Math.cos(a) * sp, 1 + Math.random() * 4, Math.sin(a) * sp, 0.02 + Math.random() * 0.04, g * light[0] * 2, g * light[1] * 2, g * light[2] * 2, true, 0.5); }
+    }
     const count = Math.round(16 * power * this.density);
     for (let i = 0; i < count; i++) {
       const a = Math.random() * 6.28, sp = 1 + Math.random() * 3.5 * power, g = 0.3 + Math.random() * 0.25;
@@ -177,7 +197,7 @@ export class Effects {
       this.dust(x, 0.08 + Math.random() * 0.15, z, Math.cos(a) * sp, 0.2 + Math.random() * 0.5, Math.sin(a) * sp, 0.35 + Math.random() * 0.3, 0.7 + Math.random() * 0.5, g * light[0] * 2, g * light[1] * 2, g * light[2] * 2, 0.4, 3, -0.1, 4.5);
     }
     // Soot on the floor under it.
-    if (y < 2.2) this.scorch(x, 0.002, z, 0, 1, 0, 1.4 * power + Math.random() * 0.4);
+    if (y < 2.2) this.scorch(x, 0.002, z, 0, 1, 0, (kind === 'impact' ? 0.8 : 1.4) * power + Math.random() * 0.4);
   }
   update(dt: number, pixelHeight: number, fov: number) {
     const scale = pixelHeight / (2 * Math.tan(fov * Math.PI / 360));
@@ -210,6 +230,12 @@ export class Effects {
       for (let i = 0; i < 40; i++) if (this.tracerLife[i] > 0) { if ((this.tracerLife[i] -= dt) <= 0) this.tracers.setMatrixAt(i, ZERO); else any++; }
       this.tracerLive = any; this.tracers.instanceMatrix.needsUpdate = true;
     }
+    for (const r of this.rings) {
+      if (r.life <= 0) continue;
+      r.life -= dt;
+      if (r.life <= 0) { r.mesh.visible = false; continue; }
+      const t = 1 - r.life / r.span; r.mesh.scale.setScalar(0.3 + r.size * Math.sqrt(t)); (r.mesh.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 1.6;
+    }
     for (const f of this.flashes) {
       if (f.life <= 0) continue;
       f.life -= dt;
@@ -218,7 +244,10 @@ export class Effects {
     }
   }
   /** Objects that are hidden until first use (the flash sprites): shown for a warm-up compile, then hidden again. */
-  prime(on: boolean) { const f = this.flashes[0]; f.sprite.visible = on; if (on) f.sprite.scale.setScalar(1e-4); }
+  prime(on: boolean) {
+    const f = this.flashes[0]; f.sprite.visible = on; if (on) f.sprite.scale.setScalar(1e-4);
+    const r = this.rings[0]; r.mesh.visible = on; if (on) r.mesh.scale.setScalar(1e-4);
+  }
   /** A new round: sweep everything away. */
   clear() {
     this.dustP.clear(); this.sparkP.clear();
@@ -230,11 +259,14 @@ export class Effects {
     for (let i = 0; i < 40; i++) { this.tracerLife[i] = 0; this.tracers.setMatrixAt(i, ZERO); }
     this.chunks.instanceMatrix.needsUpdate = this.holes.instanceMatrix.needsUpdate = this.tracers.instanceMatrix.needsUpdate = true;
     for (const f of this.flashes) { f.life = 0; f.sprite.visible = false; }
+    for (const r of this.rings) { r.life = 0; r.mesh.visible = false; }
   }
   dispose() {
     this.dustP.dispose(); this.sparkP.dispose();
     for (const m of [this.chunks, this.tracers, this.holes, this.scorches, this.scars]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }
     for (const f of this.flashes) f.sprite.material.dispose();
+    for (const r of this.rings) (r.mesh.material as THREE.Material).dispose();
+    this.rings[0]?.mesh.geometry.dispose();
     for (const t of this.textures) t.dispose();
   }
 }

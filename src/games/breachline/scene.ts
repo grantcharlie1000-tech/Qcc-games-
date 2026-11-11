@@ -458,7 +458,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
           case 'boom': {
             lastOrigin = { x: e.x, y: e.y, z: e.z };
             const power = e.kind === 'impact' ? 0.7 : e.kind === 'charge' ? 1.1 : 1.25, l = bake.probe(e.x, e.z);
-            fx.blast(e.x, e.y, e.z, power, l);
+            fx.blast(e.x, e.y, e.z, power, l, e.kind === 'impact' ? 'impact' : e.kind === 'charge' ? 'charge' : 'frag');
             const d = Math.hypot(e.x - ear.x, e.z - ear.z);
             if (d < 16) exposure = Math.max(exposure, (1 - d / 16) * 1.1);
             break;

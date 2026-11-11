@@ -47,6 +47,8 @@ export const BOOKMARKS = {
   // The uplink planted at site A (counting), then the same after the link completes.
   uplink: [1.6, -2.7, 0.78, -0.34],
   'uplink-done': [1.6, -2.7, 0.78, -0.34],
+  // A frag thrown into the Lab; FRAG_T seconds after it goes off (FXDRAWS extra frames age the effects).
+  frag: [2.2, -2.2, 1.25, -0.3],
 };
 /** A breach charge pressed onto the wall and left armed. */
 const PLANT = `(() => { const h = window.__breachlineTest; h.place(1.5, -0.6, 0, -0.25); h.advance(0.1); h.hold({}, 1.4, { breach: true }); h.advance(0.3); })()`;
@@ -84,6 +86,8 @@ let damaged = false;
 for (const [name, [x, z, yaw, pitch]] of Object.entries(BOOKMARKS)) {
   if (only.length && !only.includes(name)) continue;
   if (name === 'charge') await page.evaluate(PLANT);
+  // The frag's fuse is 2.6 s: throw, then step just past it (effects age only with drawn frames, FXDRAWS of them).
+  if (name === 'frag') await page.evaluate(n => { const h = window.__breachlineTest; h.place(1.2, -2.6, 0.75, -0.45); h.advance(0.1); h.hold({}, 0.1, { grenade: true }); h.advance(2.65); for (let i = 0; i < n; i++) h.draw(); }, Number(process.env.FXDRAWS ?? 0));
   if (name === 'uplink') await page.evaluate(() => { const h = window.__breachlineTest; h.place(-1, -4, 0, 0); h.hold({ use: true }, 5.3); h.advance(8); });
   if (name === 'uplink-done') await page.evaluate(() => { const h = window.__breachlineTest; h.skip(31); h.advance(0.8); });
   if (name === 'reinforced-shot') await page.evaluate(() => { const h = window.__breachlineTest; h.place(1.4, -1.2, 3.1416, 0.02); h.advance(0.1); h.hold({ fire: true, mx: 0.6 }, 0.8); h.advance(0.3); for (let i = 0; i < 8; i++) h.draw(); });

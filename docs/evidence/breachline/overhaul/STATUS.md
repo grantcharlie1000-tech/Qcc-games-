@@ -67,8 +67,31 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** kit round 1 done for the charge, barricades, reinforcement and uplink (`kit/`);
-next grenade blasts; then corridor round 3 and Archive round 2.
+**Where I am (keep current):** kit round 1 done for all five of my items (`kit/`); next corridor round 3 (the
+reviewer's notes: door frames and doors, lighter and fewer posts, fittings, wall dirt, a second light colour), then
+Archive round 2.
+
+## Tactical kit (row K): grenade blasts, round 1 (`kit/grenade-round-1/`)
+
+Every explosion used to share one effect. Now `Effects.blast` takes the source:
+- **Frag:** the white flash plus an ember-orange core flash, the dust cloud and floor pressure ring, sparks, a soot
+  mark, and floor and wall bits thrown out that come to rest and stay.
+- **Impact grenade** (its own look): a cold blue-white flash; a sharp shock ring racing across the floor (a new
+  pooled ring, warmed with the effects); more sparks and a thinner cloud; a smaller soot mark.
+- **Breach charge:** as in the charge item.
+- **Evidence:** `frag-strip.png` (just after the blast, 0.2 s later, after clearing with `fxfast`). The blast is 6 m
+  from the camera, so the soot and debris are hard to make out, and the 0.14 s flash isn't caught in the first
+  frame. The impact grenade isn't rendered yet: the bookmark player's kit carries frags, and kit choice happens in
+  preparation, which the script skips.
+- **Mismatches for round 2:**
+  - a close-up of the aftermath;
+  - the impact grenade in evidence;
+  - no light from the flash on the room (the flash is a sprite; a real light needs the fixed light pool);
+  - debris is boxes, not shaped fragments.
+- K (mine, grenades): 3 -> 4.5.
+
+**Row K overall (mine, my parts only), round 1:** charge 5, barricades 5, reinforcement 5, uplink 5, grenades 4.5,
+soft walls (row J) 6. The in-hand and third-person parts are the weapons' and fighters' sessions'.
 
 ## Tactical kit (row K): uplink device, round 1 (`kit/uplink-round-1/`)
 
