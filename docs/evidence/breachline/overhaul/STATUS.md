@@ -181,6 +181,20 @@ Before: a flat 20 cm slab carrying the old plate texture (dark grey, printed riv
   - the hazard band is texture-only.
 - K (mine, reinforcement): 3 -> 5.
 
+## Tactical kit (row K): barricades, round 2 (`kit/barricade-round-2/`)
+
+The reviewer scored round 1 at 5 on the stricter scale. Changes against the notes:
+- Snapped ends break along the grain: nine points down each end, mostly a ragged tear back into the board (to
+  10 cm), with about one in three a long splinter finger left reaching into the gap. Pale fresh end grain.
+- Boards are thicker (32 mm).
+- Two battens behind the boards near each jamb, cell by cell where cells stand, show what the boards are nailed
+  to.
+- Splinters and broken pieces on the floor were already there (flat timber debris that stays).
+- **Evidence:** `shot-high.png`, `shot-crop.png`.
+- **Still open:** the battens hide behind intact boards in this view; no staggered board lengths; the first-aid box
+  on that wall is still a placeholder cube (Lab dressing).
+- Barricades (mine, strict scale): 5 -> 5.5.
+
 ## Tactical kit (row K): barricades, round 1 (`kit/barricade-round-1/`)
 
 Doors and windows were a flat sheet of plank texture with square cells cut out.

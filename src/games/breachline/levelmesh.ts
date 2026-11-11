@@ -343,7 +343,7 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
    * cells is one length of board, and where cells are gone the board ends in a jagged, splintered break. Nail heads
    * where a board rests on the frame. Faces in group 0, ends and nails in group 1. */
   function barricade() {
-    const GAP = 0.022, T = 0.026;
+    const GAP = 0.022, T = 0.032;
     for (let r = 0; r < p.rows; r++) {
       const h = hash(p.u0, p.y0 + r, p.pos), tilt = (h - 0.5) * 0.035, depth = (r % 2 ? 1 : -1) * 0.007, mid = p.u0 + p.cols * CELL / 2;
       const yAt = (u: number, top: boolean) => p.y0 + r * CELL + (top ? CELL - GAP / 2 : GAP / 2) + (u - mid) * tilt;
@@ -357,6 +357,18 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
         if (start < 0) continue;
         board(start, c, r, yAt, depth, T, vo, uo, shadeT);
         start = -1;
+      }
+    }
+    // Two battens behind the boards, near each jamb: what the boards are nailed to. Drawn cell by cell, only where
+    // that cell still stands, so a batten never hangs across a gap.
+    const BAT: RGB = [0.5, 0.42, 0.34];
+    for (const bu of [p.u0 + 0.1, p.u0 + p.cols * CELL - 0.1]) {
+      const c = Math.min(p.cols - 1, Math.floor((bu - p.u0) / CELL)), o0 = -0.024, o1 = -0.064, ua = bu - 0.025, ub = bu + 0.025;
+      for (let r = 0; r < p.rows; r++) {
+        if (!cell(c, r)) continue;
+        const ya = p.y0 + r * CELL, yb = ya + CELL;
+        for (const [o, n] of [[o1, -1]] as const) quad(edge, vert(ua, ya, o, n, BAT, 0, 0, true), vert(ub, ya, o, n, BAT, 0, 0, true), vert(ub, yb, o, n, BAT, 0, 0, true), vert(ua, yb, o, n, BAT, 0, 0, true), alongX ? n < 0 : n > 0);
+        for (const [uu, nx] of [[ua, -1], [ub, 1]] as const) { const v = [vert(uu, ya, o0, 0, BAT, nx, 0, true), vert(uu, yb, o0, 0, BAT, nx, 0, true), vert(uu, yb, o1, 0, BAT, nx, 0, true), vert(uu, ya, o1, 0, BAT, nx, 0, true)]; edge.push(v[0], v[1], v[2], v[0], v[2], v[3], v[0], v[2], v[1], v[0], v[3], v[2]); }
       }
     }
     return finish();
@@ -407,17 +419,17 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
   }
   function board(c0: number, c1: number, r: number, yAt: (u: number, top: boolean) => number, depth: number, T: number, vo: number, uo: number, shade: RGB) {
     const ua = p.u0 + c0 * CELL, ub = p.u0 + c1 * CELL, brokeA = c0 > 0, brokeB = c1 < p.cols;
-    // A break is jagged: top, middle and bottom of the end stop at different places.
-    const ends = (u: number, broke: boolean, dir: number, k: number): [number, number, number] => {
-      if (!broke) return [u, u, u];
-      // Top and bottom tear back into the board by different amounts (a rough diagonal break); a splinter tip
-      // reaches no more than 3 cm into the gap.
-      const j = (n: number) => hash(u * 9.1 + n, r * 1.7 + k, p.pos);
-      const top = u - dir * 0.08 * j(1), bottom = u - dir * 0.08 * j(3);
-      return [top, Math.max(top, bottom) * (dir > 0 ? 1 : 0) + Math.min(top, bottom) * (dir > 0 ? 0 : 1) + dir * 0.03 * j(2), bottom];
-    };
-    const [at, am, ab] = ends(ua, brokeA, -1, 0), [bt, bm, bb] = ends(ub, brokeB, 1, 1);
-    const ym = (yAt(ua, true) + yAt(ua, false)) / 2, ymB = (yAt(ub, true) + yAt(ub, false)) / 2;
+    // A snapped end breaks along the grain into splinter fingers: down the end, points alternate between a deep tear
+    // back into the board (3-9 cm) and a finger left reaching out (up to 3 cm into the gap).
+    const N = 9;
+    const ends = (u: number, broke: boolean, dir: number, k: number): number[] => Array.from({ length: N }, (_, i) => {
+      if (!broke) return u;
+      const j = hash(u * 9.1 + i * 1.37, r * 1.7 + k, p.pos), f = hash(i * 3.3 + k, u * 4.1, r + p.pos);
+      // Mostly a ragged tear of varying depth; about one point in three is a long splinter left reaching out.
+      return f > 0.66 ? u + dir * (0.01 + 0.03 * j) : u - dir * (0.015 + 0.09 * j * j);
+    });
+    const ea = ends(ua, brokeA, -1, 0), eb = ends(ub, brokeB, 1, 1);
+    const yk = (u: number, i: number) => { const t = i / (N - 1); return yAt(u, true) * (1 - t) + yAt(u, false) * t; };
     const pt = (u: number, y: number, off: number, n: number, sh: number | RGB, nx = 0, ny = 0, vEdge?: number) => {
       const w = panelPoint(p, u, y, off), l = light(u, y, off, n);
       const [sr, sg, sb] = typeof sh === 'number' ? [sh, sh, sh] : sh;
@@ -425,19 +437,22 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
       if (n) { if (alongX) nor.push(0, 0, n); else nor.push(n, 0, 0); } else if (alongX) nor.push(nx, ny, 0); else nor.push(0, ny, nx);
       return pos.length / 3 - 1;
     };
-    // Outline: top edge, the two ends (through their middle points), bottom edge; drawn as an upper and a lower quad.
-    const outline: [number, number][] = [[at, yAt(at, true)], [bt, yAt(bt, true)], [bm, ymB], [bb, yAt(bb, false)], [ab, yAt(ab, false)], [am, ym]];
+    const L = ea.map((u, i): [number, number] => [u, yk(u, i)]), R = eb.map((u, i): [number, number] => [u, yk(u, i)]);
+    // Faces: a strip of quads from the top of the board to the bottom, between its two ends.
     for (const n of [1, -1]) {
-      const off = depth + n * T / 2, sh: RGB = n > 0 ? shade : [shade[0] * 0.9, shade[1] * 0.9, shade[2] * 0.9];
-      const v = outline.map(([u, y]) => pt(u, y, off, n, sh)), flip = alongX ? n < 0 : n > 0;
-      quad(face, v[0], v[1], v[2], v[5], flip); quad(face, v[5], v[2], v[3], v[4], flip);
+      const off = depth + n * T / 2, sh: RGB = n > 0 ? shade : [shade[0] * 0.9, shade[1] * 0.9, shade[2] * 0.9], flip = alongX ? n < 0 : n > 0;
+      const lv = L.map(([u, y]) => pt(u, y, off, n, sh)), rv = R.map(([u, y]) => pt(u, y, off, n, sh));
+      for (let i = 0; i < N - 1; i++) quad(face, lv[i], rv[i], rv[i + 1], lv[i + 1], flip);
     }
-    // Edges all round: long top and bottom faces, and the ends (pale, rough end grain where snapped).
+    // Edges all round: the top, down the right end, the bottom, up the left end. Snapped ends show pale fresh wood.
+    const outline: [number, number, boolean, boolean][] = [];
+    outline.push([...L[0], false, false]);
+    R.forEach(([u, y], i) => outline.push([u, y, i < N - 1, brokeB]));
+    for (let i = N - 1; i >= 0; i--) outline.push([...L[i], i > 0, brokeA]);
     for (let i = 0; i < outline.length; i++) {
-      const [u0, y0] = outline[i], [u1, y1] = outline[(i + 1) % outline.length];
+      const [u0, y0, isEnd, snapped] = outline[i], [u1, y1] = outline[(i + 1) % outline.length];
       const du = u1 - u0, dy = y1 - y0, l = Math.hypot(du, dy) || 1, nx = -dy / l, ny = du / l;
-      const isEnd = i === 1 || i === 2 || i === 4 || i === 5, snapped = (i === 1 || i === 2) ? brokeB : (i === 4 || i === 5) ? brokeA : false;
-      const sh: RGB = snapped ? [1.15, 1.05, 0.88] : isEnd ? [0.7, 0.62, 0.52] : [shade[0] * 0.55, shade[1] * 0.52, shade[2] * 0.5];
+      const sh: RGB = snapped && isEnd ? [1.2, 1.08, 0.88] : isEnd ? [0.7, 0.62, 0.52] : [shade[0] * 0.55, shade[1] * 0.52, shade[2] * 0.5];
       const a = pt(u0, y0, depth - T / 2, 0, sh, nx, ny, vo), b = pt(u1, y1, depth - T / 2, 0, sh, nx, ny, vo), cc = pt(u1, y1, depth + T / 2, 0, sh, nx, ny, vo + 0.03), d = pt(u0, y0, depth + T / 2, 0, sh, nx, ny, vo + 0.03);
       edge.push(a, b, cc, a, cc, d, a, cc, b, a, d, cc);
     }
