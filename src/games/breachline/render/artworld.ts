@@ -16,7 +16,7 @@ import { PROPS } from './props';
 import { SURFACES } from './surfaces';
 
 interface BakeInfo {
-  version: number; region: string; width: number; height: number; density: number; scale: number;
+  version: number; region: string; meanLight?: number; width: number; height: number; density: number; scale: number;
   props: number[][];
   grid: { x0: number; z0: number; nx: number; nz: number; heights: number[]; sh: number[][] };
   panels: { index: number; side: number; light: number[] }[];
@@ -28,6 +28,7 @@ export interface ArtWorld {
   /** Fits the environment probes once the group is in a scene. */
   capture(renderer: THREE.WebGLRenderer, scene: THREE.Scene): void;
   stats: { triangles: number; meshes: number; textureBytes: number };
+  readonly envReady: boolean;
   dispose(): void;
 }
 
@@ -77,8 +78,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     const faces = byRegion[r], atlas = packAtlas(faces.filter(f => !f.glow), info.density);
     if (atlas.width !== info.width || atlas.height !== info.height) throw new Error(`${region.name}: lightmap is out of date (rebake)`);
     // Average light the room's probe sees, for specular occlusion.
-    const mid = info.grid.sh[Math.floor(info.grid.sh.length * 0.75)];
-    envLight = 0.282095 * (mid[0] * 0.3 + mid[1] * 0.59 + mid[2] * 0.11);
+    envLight = info.meanLight ?? 1;
     // One mesh per surface type.
     const ids = [...new Set(atlas.charts.map(c => c.face.tex))];
     for (const id of ids) {
@@ -94,7 +94,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       }
       if (dbg.includes('nonormal')) nor = null;
       if (dbg.includes('noarm')) arm = null;
-      const mat = artMaterial({ map, normalMap: nor, armMap: arm, lightMap, lightScale: info.scale, dirMap: dbg.includes('nodir') ? null : dirMap, vertexTint: true, roughness: arm ? s?.gloss ?? 1 : 0.85, metalness: arm ? 1 : 0, band: s?.band });
+      const mat = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, lightMap, lightScale: info.scale, dirMap: dbg.includes('nodir') ? null : dirMap, vertexTint: true, roughness: dbg.includes('mirror') ? 0.02 : arm ? s?.gloss ?? 1 : 0.85, metalness: dbg.includes('metal') ? 1 : arm ? 1 : 0, band: s?.band, specOnly: dbg.includes('speconly') });
       const g = geometry(a), mesh = new THREE.Mesh(g, mat);
       mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:${id}`;
       group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
@@ -122,7 +122,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     for (const mesh of meshes) {
       const src = mesh.material as THREE.MeshStandardMaterial, key = `${p.model}--${src.name}`;
       const [map, nor, arm] = await set(key, PROP_SIZE[tier]);
-      const mat = artMaterial({ map, normalMap: nor, armMap: arm, sh: info.props[i], roughness: arm ? 1 : 0.7, metalness: arm ? 1 : 0 });
+      const mat = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, sh: info.props[i], roughness: arm ? 1 : 0.7, metalness: arm ? 1 : 0 });
       mesh.material = mat; materials.push(mat); envLights.push(mat);
       mesh.matrixAutoUpdate = true;
     }
@@ -138,6 +138,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   return {
     group, claim: claimFaces, stats: { triangles, meshes, textureBytes: L.bytes },
     panelLook: i => looks.get(i) ?? null,
+    get envReady() { return env !== null; },
     capture(renderer, scene) {
       if (!full || dbg.includes('noenv')) return;
       // One reflection probe per room, from its middle at eye height.
@@ -145,11 +146,15 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       const cam = new THREE.CubeCamera(0.05, 60, cube);
       cam.position.set((r.x0 + r.x1) / 2, 1.6, (r.z0 + r.z1) / 2);
       // Reflections are projected onto the room's box, so they line up with the room from anywhere in it.
-      for (const m of envLights) {
+      if (!dbg.includes('nobox')) for (const m of envLights) {
         const u = m.userData.art;
         u.artBoxMin.value.set(r.x0, 0, r.z0); u.artBoxMax.value.set(r.x1, WALL_H, r.z1); u.artProbe.value.copy(cam.position);
       }
+      // The game renders with autoClear off; a fresh cube target's depth starts at 0, so it must be cleared here.
+      const auto = renderer.autoClear, target = renderer.getRenderTarget();
+      renderer.autoClear = true;
       cam.update(renderer, scene);
+      renderer.autoClear = auto; renderer.setRenderTarget(target);
       const pmrem = new THREE.PMREMGenerator(renderer);
       env = pmrem.fromCubemap(cube.texture);
       pmrem.dispose(); cube.dispose();

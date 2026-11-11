@@ -25,6 +25,8 @@ export interface ArtMaterialOptions {
   /** Average baked light of the room the environment probe saw, for specular occlusion. */
   envLight?: number;
   roughness?: number;
+  /** Debug: show only the reflection term. */
+  specOnly?: boolean;
   /** Painted lower band by world height: tint below \`height\`, a dark 4 cm rail at the top of it. */
   band?: { height: number; tint: readonly [number, number, number] } | null;
   metalness?: number;
@@ -51,7 +53,7 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
     artProbe: { value: new THREE.Vector3() },
     artBand: { value: new THREE.Vector4(o.band?.tint[0] ?? 1, o.band?.tint[1] ?? 1, o.band?.tint[2] ?? 1, o.band?.height ?? -1) },
   };
-  const defs = [o.dirMap && o.lightMap ? 'ART_DIRMAP' : '', o.vertexLight ? 'ART_VERTEX_LIGHT' : '', o.sh ? 'ART_SH' : '', o.band ? 'ART_BAND' : ''].filter(Boolean);
+  const defs = [o.dirMap && o.lightMap ? 'ART_DIRMAP' : '', o.vertexLight ? 'ART_VERTEX_LIGHT' : '', o.sh ? 'ART_SH' : '', o.band ? 'ART_BAND' : '', o.specOnly ? 'ART_SPECONLY' : ''].filter(Boolean);
   m.userData.art = uniforms;
   m.customProgramCacheKey = () => `art:${defs.join(',')}`;
   m.onBeforeCompile = shader => {
@@ -104,7 +106,7 @@ float artLight = 1.0;
 		vec3 artDC = PI * 0.282095 * artSH[ 0 ];
 		vec3 artE = artDC + ( 2.0 * PI / 3.0 ) * 0.488603 * ( artSH[ 1 ] * artWorldN.y + artSH[ 2 ] * artWorldN.z + artSH[ 3 ] * artWorldN.x );
 		// L1 rings negative opposite strong light; keep a share of the average so backs are dim, not black.
-		artE = max( artE, artDC * 0.3 );
+		artE = max( artE, artDC * 0.5 );
 		irradiance += artE;
 		artLight = dot( artE, vec3( 0.3, 0.59, 0.11 ) ) / PI;
 	#endif
@@ -117,5 +119,8 @@ float artLight = 1.0;
 	vec3 artT = mix( ( artBoxMin - vArtWorld ) / artR, ( artBoxMax - vArtWorld ) / artR, step( 0.0, artR ) );
 	artR = vArtWorld + artR * min( min( artT.x, artT.y ), artT.z ) - artProbe;
 	radiance += textureCubeUV( envMap, envMapRotation * artR, material.roughness ).rgb * envMapIntensity * clamp( artLight / artEnvLight, 0.0, 1.6 );
+	#ifdef ART_SPECONLY
+		irradiance = vec3( 0.0 ); radiance *= 4.0;
+	#endif
 #endif
 `;

@@ -298,6 +298,10 @@ async function main() {
       console.log(`${region.name}: bounce ${bounce + 1} in ${((performance.now() - t2) / 1000).toFixed(1)} s`);
     }
     for (let k = 0; k < N * 3; k++) dirV[k] = field[k];
+    // Mean baked light over the room's surfaces: what reflections are normalised against (specular occlusion).
+    let meanLight = 0, meanN = 0;
+    for (let k = 0; k < N; k++) if (valid[k]) { meanLight += field[k * 3] * 0.3 + field[k * 3 + 1] * 0.59 + field[k * 3 + 2] * 0.11; meanN++; }
+    meanLight /= Math.max(1, meanN);
     dilate(atlas, dirV, valid, W); dilate(atlas, dirW, valid, W);
     await writeAtlas(join(OUT, 'bake', `${region.name}-light.png`), dirV, W, H, v => srgb(v / LM_SCALE));
     // Direction: light-weighted mean direction; its length is how directional the light is.
@@ -351,7 +355,7 @@ async function main() {
     });
     await mkdir(join(OUT, 'bake'), { recursive: true });
     await writeFile(join(OUT, 'bake', `${region.name}.json`), JSON.stringify({
-      version: 1, region: region.name, rect: [region.x0, region.z0, region.x1, region.z1], width: W, height: H, density: DENSITY, scale: LM_SCALE,
+      version: 1, region: region.name, meanLight: +meanLight.toFixed(4), rect: [region.x0, region.z0, region.x1, region.z1], width: W, height: H, density: DENSITY, scale: LM_SCALE,
       props, grid: { x0: region.x0, z0: region.z0, nx: gx + 1, nz: gz + 1, heights: [0.6, 1.6], sh: grid }, panels,
     }) + '\n');
     console.log(`${region.name}: probes and panels done, total ${((performance.now() - t0) / 1000).toFixed(1)} s`);

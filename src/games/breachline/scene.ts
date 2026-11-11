@@ -9,6 +9,7 @@ import { MAP } from './map';
 import { loadArtWorld, type ArtWorld } from './render/artworld';
 import { boxes, chargeParts, deviceParts } from './models';
 import { createFighters, createViewmodel, type HeroLighting } from './render/hero';
+import { createPost, type PostTier } from './render/post';
 import { shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
 import { makeSprite, makeTextures, type TexId } from './textures';
 import { cellCenter, eyeOf, panelPoint, trace, viewDir, type World } from './world';
@@ -41,7 +42,7 @@ export interface BreachScene {
   project(x: number, y: number, z: number): { x: number; y: number; front: boolean };
   /** Where the camera is and which way it faces, for sound. */
   readonly ear: { x: number; y: number; z: number; yaw: number };
-  readonly stats: { calls: number; triangles: number; scale: number; level: number };
+  readonly stats: { calls: number; triangles: number; scale: number; level: number; post?: string; art?: string };
   dispose(): void;
 }
 
@@ -159,9 +160,13 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   scene.add(fx.group);
 
   let exposure = 0;
+  // Post-processing by quality: the throttled setting draws straight to the screen with the renderer's own curve.
+  const postTier = (q: QualityId): PostTier => (q === 'low' ? 'off' : q === 'high' ? 'high' : 'medium');
+  const post = createPost(renderer, /[?&]post=off\b/.test(typeof location !== 'undefined' ? location.search : '') ? 'off' : postTier(initial));
+  const drawSize = new THREE.Vector2();
 
   const ear = { x: 0, y: 1.6, z: 0, yaw: 0 };
-  const stats = { calls: 0, triangles: 0, scale, level: level.triangles };
+  const stats: BreachScene['stats'] = { calls: 0, triangles: 0, scale, level: level.triangles };
   let orbit = 0, lastOrigin = { x: 0, y: 1, z: 0 }, time = 0;
   const cam = { x: 0, y: 12, z: 30, yaw: 0, pitch: -0.3, set: false };
 
@@ -169,6 +174,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     const q = QUALITIES[quality], ratio = Math.min(window.devicePixelRatio || 1, q.cap) * scale;
     renderer.setPixelRatio(ratio);
     renderer.setSize(width, height, false);
+    renderer.getDrawingBufferSize(drawSize);
+    post.setSize(drawSize.x, drawSize.y);
     stats.scale = scale;
   }
   /** Lowers the resolution when frames run long and raises it again when there is headroom. */
@@ -320,12 +327,15 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       fx.update(dt, height * (window.devicePixelRatio || 1) * scale, camera.fov);
       exposure = Math.max(0, exposure - dt * 3.5);
       renderer.toneMappingExposure = 1.02 + (view.reduced ? 0 : exposure);
+      const graded = post.begin();
       renderer.clear();
       let calls = 0, tris = 0;
       if (art) { renderer.render(artScene, camera); calls = renderer.info.render.calls; tris = renderer.info.render.triangles; }
       renderer.render(scene, camera);
       stats.calls = calls + renderer.info.render.calls; stats.triangles = tris + renderer.info.render.triangles;
       stats.calls += viewmodel.render();
+      if (graded) post.end(renderer.toneMappingExposure);
+      stats.post = graded ? post.tier : 'off'; stats.art = art ? (art.envReady ? 'env' : 'noenv') : 'none';
       if (dt > 0) adapt(view.dt);
     },
     resize(w, h) {
@@ -336,6 +346,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     setQuality(q) {
       quality = q; const d = QUALITIES[q];
       scale = Math.max(d.min, Math.min(d.max, q === 'auto' ? scale : d.max)); slow = fast = 0; fx.density = d.density;
+      post.setTier(/[?&]post=off\b/.test(location.search) ? 'off' : postTier(q));
       applySize();
     },
     project(x, y, z) {
@@ -345,6 +356,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     dispose() {
       disposed = true;
       art?.dispose();
+      post.dispose();
       for (const p of panels) p.dispose();
       fighters.dispose(); viewmodel.dispose();
       fx.dispose();

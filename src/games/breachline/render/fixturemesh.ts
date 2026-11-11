@@ -6,7 +6,7 @@ import { FIXTURE_Y, type Fixture } from './fixtures';
 
 /** Underside of the housing; the baker's light samples sit just below it. */
 export const DIFFUSER_Y = FIXTURE_Y + 0.006;
-const LIP = 0.035, GLOW = 2.8;
+const LIP = 0.035, GLOW = 12;
 
 let diffuserTex: THREE.CanvasTexture | null = null;
 /** A prismatic lens: fine diamond facets, two brighter bands where the tubes sit, dimmer towards the frame. */

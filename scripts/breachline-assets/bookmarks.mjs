@@ -36,7 +36,8 @@ await context.addInitScript(() => {
   localStorage.setItem('pocket-arcade:study:v1:reading-choice', 'accept'); sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading');
 });
 const page = await context.newPage();
-page.on('console', m => { if (m.type() === 'warning' || m.type() === 'error') console.log(`[page] ${m.text()}`); });
+page.on('console', m => { if (m.type() === 'warning' || m.type() === 'error' || process.env.VERBOSE) console.log(`[page] ${m.type()} ${m.text().slice(0, 1500)}`); });
+page.on('pageerror', e => console.log(`[page] pageerror ${e.message}`));
 await page.goto(`${url}/?festive=off${art === 'off' ? '&art=off' : ''}${dbg ? `&artdbg=${dbg}` : ''}${tier === 'low' ? '&arttier=low' : ''}#/game/breachline`);
 await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 60000 });
 await page.evaluate(q => { const h = window.__breachlineTest; h.start({ seed: 7, quality: q === 'low' ? 'low' : 'high', teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); h.still(); h.skip(30); h.advance(0.3); h.advance(5); }, tier);
