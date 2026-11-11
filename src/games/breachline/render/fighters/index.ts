@@ -23,7 +23,9 @@ import { fighterMaterial, type FighterMaterial } from './material';
 export const LOD_DIST = [7, 18] as const;
 export const LOD0_MAX = 4;
 /** How strongly the light probe's colour lights a fighter, on top of the scene's run-time sun and sky lights. */
-const PROBE_GAIN = 0.35;
+const PROBE_GAIN = 0.6;
+/** Fill every fighter gets on top of the probe (shade under the yard walls is near zero in the bake). */
+const SHADE_FILL = 0.8;
 
 interface Fig {
   squad: 0 | 1; group: THREE.Group; meshes: (THREE.SkinnedMesh | null)[]; skeleton: THREE.Skeleton; bones: THREE.Bone[];
@@ -139,7 +141,9 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
         // Diffuse: the light probe at the fighter, as indirect irradiance. Specular: the room's reflection probe,
         // scaled to the room (bake units differ from a studio environment).
         const l = lighting.probe(f.x, 1.1, f.z).color;
-        color.setRGB(l[0], l[1], l[2]).multiplyScalar(Math.PI * PROBE_GAIN);
+        // A floor on the fill, so a fighter in deep shade keeps fabric, webbing, polymer and skin apart.
+        // Irradiance reaches diffuse as albedo * E / pi, so a 0.1 albedo beside walls baked to about 0.15 needs E near 4.
+        color.setRGB(SHADE_FILL + l[0] * PROBE_GAIN, SHADE_FILL + l[1] * PROBE_GAIN, SHADE_FILL * 1.06 + l[2] * PROBE_GAIN).multiplyScalar(Math.PI);
         f.mat.userData.probe.value.copy(color); f.weaponMat.userData.probe.value.copy(color);
         const env = lighting.environment(f.x, f.z), es = lighting.environmentScale(f.x, f.z) * 0.8;
         if (f.mat.envMap !== env) { f.mat.envMap = env; f.weaponMat.envMap = env; f.mat.needsUpdate = f.weaponMat.needsUpdate = true; }

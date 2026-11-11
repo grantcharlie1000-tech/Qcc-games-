@@ -14,7 +14,7 @@ Session: fighters (row F: bodies, kit, materials, animation). Plan:
 | Weapons in hand | `worldWeapon(id, lod)` from the weapons session, adapted to the fighter's sockets (stand-in kept as fallback) |
 | Lighting | Diffuse from `probe()` as indirect irradiance, specular from `environment()` scaled by `environmentScale()` |
 
-**Where I am:** round 2 committed (body, kit and materials round 2; animation round 2 with every clip seen in strips). F = 5, below the gate of 7; next steps are under "Still weak".
+**Where I am:** round 3 committed (stance, build, values, legs, shade fill; every clip re-rendered). F = 6, below the gate of 7; next steps are under "Still weak".
 
 ## Reference study (looked at, nothing saved)
 
@@ -87,6 +87,8 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 
 | r2 | **5** | `r2/turntable-s0.png`, `r2/turntable-s1.png`, `r2/before-after.png`, `r2/ingame-lab-2m.png`, `r2/ingame-yard-{2,8,20}m.png`, and an eight-frame strip of every clip in `r2/strip-*.png` (walk side and front, sprint, crouch-walk side and front, strafe, fire, flinch, the three deaths from the side and the front, tactical and empty reloads, plant, reinforce) | Up from 4: every clip is now seen in motion and reads as what it is; the three deaths fall differently and come to rest; the reloads carry the magazine on the beats; the printed uniform with seams and the dust on the boots give the cloth a surface. Held at 5 because: the arms are still smooth tubes with a pinched shoulder when raised, and the gloves are lumps; Ember's scarf barely shows; the sprint is knees-bent rather than a driving run; firing recoil is small at range and the flinch shows mainly in the weapon; the faces are long and gaunt; outdoors in shade both squads go dark; the plant reads as reaching forward, not down (the sim keeps the head at standing height). |
 
+| r3 | **6** | `r3/turntable-s0.png`, `r3/turntable-s1.png`, `r3/before-after.png`, `r3/ingame-lab-2m.png`, `r3/ingame-lab-5m.png`, `r3/ingame-yard-{2m-shade,8m,20m}.png`, `r3/strip-*.png` | Up from 5, following the review. A low ready replaces the mannequin point: the rifle pivots about the butt in the shoulder, muzzle down, elbows bent. Aimed, the head drops to the sights and the firing elbow tucks. Shoulders are broader, the carrier deeper, limbs and boots heavier, and the thighs have cargo pockets. Carrier, pouches, helmet, gloves and boots now separate from the fatigues in value and hue (Ember's olive carrier on coyote, Azure's black kit on slate). The balaclava is charcoal rather than a void. Held at 6 because: the shoulders still pinch when the rifle is up; the gloves are lumps; the faces are long; Azure in deep shade outdoors still reads mostly black; the sprint has no driving stride; there are no normal-mapped folds beyond the shader's weave and grain. |
+
 ## Iteration log
 
 **Body, round 1** (studio turntables):
@@ -118,15 +120,27 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 7. Ember's ▲ sat on a backing that read as a ◆ when the arm turned it → round backing; Azure's ◆ narrowed so it never reads as a square.
 8. Head and gloves meshed on a coarser grid before decimation: full-detail build 600 → about 390 ms.
 
+**Round 3** (reviewer's eight points):
+1. Stance → low ready when not aiming, reloading or just fired (1.2 s). Head down and rolled onto the stock when aimed; firing-elbow pole lowered so it tucks.
+2. Build → shoulder joints out to ±0.20; chest and shoulders up to 12% wider and 10% deeper; arms ×1.15 (deltoid ×1.25); legs ×1.08; plates 6 cm thick, further forward, and the pouches follow; boots 12% wider and taller.
+3. Shoulder volume → fuller deltoid rings (the pinch remains; see Still weak).
+4. Values → kit darker, or a different hue from the fatigues; the admin, magazine and radio pouches are in webbing colour, so they separate from the plate bags.
+5. Face → charcoal balaclava; glasses and goggles unchanged.
+6. Legs → cargo pockets with flaps, and the trousers bloused over the boot tops.
+7. Grounding and shade → a constant fill of 0.8 plus the probe × 0.6, as irradiance. The arithmetic: a 0.1 albedo beside walls baked to about 0.15 needs E near 4. The contact shadow is present on every tier.
+8. Evidence → every clip re-rendered; in-game frames at 2, 5, 8 and 20 m.
+- Budget paid for: helmet shell rows 5 → 4, leg straps 12 → 10 segments, pocket flaps as plain boxes, one fewer torso ring. Full detail is now 7.80k (Azure) and 7.93k (Ember).
+- `handle(events, m, self)` added. Remote reloads start the reload animation, and a kill picks the death by where the shot came from: front falls back, behind falls forward, side spins. It is ready for the scene's call.
+
 ## Budgets measured
 
 | Item | Budget | Measured |
 | --- | --- | --- |
-| Fighter, full detail | 6–8k tris | Azure 7.85k, Ember 7.99k |
-| Middle / low level | ~3k / ~1k | 3.59k–3.66k / 1.26k–1.32k |
+| Fighter, full detail | 6–8k tris | Azure 7.80k, Ember 7.93k (r3) |
+| Middle / low level | ~3k / ~1k | 3.67k–3.74k / 1.34k–1.40k (r3) |
 | Draw calls per fighter | ≤ 3 | 2 (body + kit, weapon) + one shared contact-shadow call for all |
 | Bones | ≤ 40 | 32 (+9 in the weapon) |
-| Ten fighters in view | ≤ 60k | ≤ 4 × 8.0k + 6 × 3.7k = 54k worst case (at most 4 at full detail) |
+| Ten fighters in view | ≤ 60k | ≤ 4 × 7.93k + 6 × 3.74k = 54.2k worst case (at most 4 at full detail) |
 | Animation, ten fighters | ≤ 1 ms | 0.23 ms per frame (node, unit test) |
 | Mesh build | — | about 390 ms for full detail (head and glove surface nets dominate; AO about 30 ms), 180 ms middle, 50 ms low; built lazily one per frame, lowest first, so the first frame is not blocked. **Still a stall of that size when a full level is first built; to be moved off the frame or cut further.** |
 | Textures | ≤ 1K, ≤ 150 ms | none: all surface detail is the shared shader's procedural PBR |
@@ -139,13 +153,14 @@ r2 (342ed44): `npx tsc --noEmit` clean; whole unit suite 5381 passed; Breachline
 
 ## Still weak (what the next rounds change)
 
-- **Below the gate: F = 5 against 7.** No asset or reference blocks it; it needs more rounds.
-- Arms and shoulders: smooth tubes with a pinched shoulder when the rifle is up. Next: deltoid and biceps cross-sections, a sleeve cuff and the elbow pad sitting on the joint, a second shoulder helper.
-- Gloves are lumps at close range (low-detail surface nets at 150 triangles); fingers do not separate.
-- Faces are long and gaunt; Ember's scarf barely shows above the plate carrier's straps.
-- Sprint has bent knees and no flight phase; the crouch-walk is a squat-walk; the strafe crosses its feet.
-- Fire recoil reads at 2–5 m and not at 20 m; the flinch shows mostly in the weapon.
-- Outdoors in shade the fighters go dark: the world's sky light is low there. Next: a rim or fill term from the probe's sky colour, judged with the environment session's light grid when it lands.
-- Third-person reloads only run for fighters this device simulates. `p.reload` is not sent over the network, and `scene.ts` does not forward match events to the fighters; the planner has been asked for a `fighters.handle?.(events)` call. Firing is cued from the scene's `muzzle()` request, which the scene makes for every remote shot.
-- Mesh build for the full level is still about 390 ms when it first happens.
-- The ground check in the death test uses joint positions, not the skinned surface. The renders show no visible floor penetration, but the test would not catch a surface that sinks between joints.
+- **Below the gate: F = 6 against 7.** No asset or reference blocks it; it needs more rounds.
+- Shoulders pinch when the rifle is up (the deltoid collapses inward on the near side). Next: a second shoulder helper driven by arm elevation, and torso weights at the armpit.
+- Gloves are lumps at close range; fingers do not separate.
+- Faces read long; Ember's scarf barely shows above the shoulder straps.
+- Azure's black kit in deep outdoor shade reads mostly black at 2 m.
+- Sprint has bent knees and no flight phase; the strafe crosses its feet.
+- Folds and pouch flaps are geometry and procedural shading only, with no baked normal detail.
+- Third-person reloads for remote fighters wait for the scene's `fighters.handle?.(events, m, self)` call, which has been approved for the environment session.
+- Building the full-detail mesh is about 390 ms the first time it is needed.
+- The death ground test checks joints, not the skinned surface.
+- **Not mine, reported:** the two-device online test fails at line 54 in the full browser run (it passes alone). It fails identically with the box figures swapped back in.
