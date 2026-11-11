@@ -170,3 +170,56 @@ section 3 and a target in section 2 conflict anywhere, the rule wins and the con
 - Decimated product scans can look melted; reject and fall back to code-built pieces rather than ship them.
 - Draw calls: everything repeated must be instanced, and the distance culling already in place must cover the new
   props.
+
+## 10. The world reacts to being shot (owner, 2026-11-11: "shooting walls makes bullet holes, shooting glass breaks it, etc.")
+
+A full map only convinces if it answers back. Every surface a bullet, pellet, melee swing or blast can reach must
+show it, and what it shows must suit the material. Today soft walls open into holes and some surfaces take a
+bullet-hole decal; this section makes that complete and adds things that break.
+
+**10.1 Every surface answers, by material.** One table drives decal, particles and (later) sound:
+
+| Material | Mark left | Burst on impact |
+| --- | --- | --- |
+| Plasterboard, painted plaster | round hole with torn paper rim and a pale halo | white dust puff, paper flecks |
+| Brick, concrete, precast, asphalt | chipped crater, pale core, hairline cracks | grey dust, a few chips thrown back along the normal |
+| Timber, plywood, cardboard, barricade boards | splintered hole with raised fibres, pale fresh wood | splinters, a little dust (cardboard: a punched hole, no splinters) |
+| Steel, sheet metal (containers, cabinets, racks, reinforcement, vehicles under covers) | dented puncture or bright scar with scorched ring | sparks, no dust; a ricochet streak on glancing hits |
+| Glass (see 10.2), screens | cracked star, then gone | glittering shards |
+| Fabric, upholstery, tarpaulin, carpet | small dark hole, fibres | a puff of lint |
+| Earth, grass | dark divot | soil spray |
+| Ceiling tiles | hole with crumbled edge | tile dust falling |
+
+- Marks appear on **everything**: solid walls, floors, ceilings, cover, dressing, props and the destructible panels,
+  indoors and out, at the hit point and aligned to the surface. Pellets leave a pattern; a blast leaves a field.
+- The material comes from what was hit: the box kind or panel type for collision the simulation reports, and the
+  render mesh's own material tag for dressing (the render layer may ray-test dressing along the shot, between the
+  muzzle and the simulation's hit point; cosmetic only).
+- Marks persist for the round, pooled with a cap (oldest fade first), and go when the thing they are on goes.
+- Nothing here compiles or uploads in play: decal atlases and particle materials are warmed at load, and
+  `warm.spec.ts` must still pass with gunfire on every material.
+
+**10.2 Things that break.** Cosmetic unless stated; each has an intact and a broken state, a burst, and debris
+that stays.
+- **Window glass.** Every window opening in the shell gets panes outside its barricade, and the Lobby entrance and
+  interior door vision panels get glazing. First hit: a crack star at the hit point; second hit or any blast nearby:
+  the pane shatters, shards fall inside and out, jagged remnants stay in the frame. Glass never stops or deflects a
+  round and never blocks sight more than a clear pane would, so play is unchanged.
+- **Screens and lights.** Monitors, the TV and server status panels crack and go dark. A ceiling light fitting that
+  is shot loses its diffuser, sparks and flickers, but **keeps lighting the room** (the bake does not change; a
+  dark map is a different game).
+- **Small objects.** Bottles, glassware, mugs and jars shatter; cardboard boxes punch through and shed paper;
+  monitors, kettles and bins get knocked over or dented; plants lose leaves; tyres and drums get holes (a drum
+  leaks a dark stain). Small loose items may be knocked off surfaces by a blast.
+- **Synced enough for multiplayer.** Breakage is derived from the same shot and blast events every client already
+  receives, with no randomness that changes which object breaks, so two players see the same broken window.
+  It is not simulated on the host and never affects hits, movement or sight. If a core event lacks something needed
+  (for example the shot's start point), ask the planner; do not edit core files.
+
+**10.3 Evidence and tests.** One before/after strip per material from 10.1 (a short burst into each), one strip per
+breakable class from 10.2, in the game at 960 px. A test fires at one surface of each material and one breakable of
+each class and asserts a mark or state change exists, that pools stay within their caps, and that program and
+texture counts do not change.
+
+**Order.** After the greybox (Phase A) is pushed and while it awaits approval: 10.1 first (it covers what already
+exists), then 10.2 for window glass, then the other breakables as each kind of dressing arrives in Phase C.
