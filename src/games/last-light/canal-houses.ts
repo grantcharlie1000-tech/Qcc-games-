@@ -250,8 +250,9 @@ export function granaryRoom(c:C,x:number,y:number,w:number){
   box(c,'#71604b',x+dx+2,y+174,32,2);
  }
  // The hoist trench is a masonry-lined pit beneath the working floor.
- box(c,'#0c1015',4950,y+176,60,76);
- for(const px of [4950,5002]){box(c,'#4a443b',px,y+176,8,76);for(let yy=y+184;yy<y+252;yy+=12)box(c,'#242329',px,yy,8,1);}
- box(c,'#68553c',4942,y+14,76,8);box(c,'#1a2328',4976,y+22,10,12);
- for(let yy=y+34;yy<y+160;yy+=4)box(c,'#77817e',4980,yy,2,2);
+ const trench=x+776;
+ box(c,'#0c1015',trench,y+176,60,76);
+ for(const px of [trench,trench+52]){box(c,'#4a443b',px,y+176,8,76);for(let yy=y+184;yy<y+252;yy+=12)box(c,'#242329',px,yy,8,1);}
+ box(c,'#68553c',trench-8,y+14,76,8);box(c,'#1a2328',trench+26,y+22,10,12);
+ for(let yy=y+34;yy<y+160;yy+=4)box(c,'#77817e',trench+30,yy,2,2);
 }
