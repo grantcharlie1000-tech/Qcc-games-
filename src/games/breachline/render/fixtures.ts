@@ -14,8 +14,8 @@ export const FIXTURES: Record<string, Fixture[]> = {
   // Two rows over the walkways either side of the benches: the benches throw shadow between them.
   lab: [-2.7, 1.7].flatMap(x => [-8.2, -4.2].map(z => troffer(x, z))),
   // One line down the middle of the corridor every 4.5 m, so the walls get pools and falloff; warmer than the Lab.
-  // The Archive: four fittings between the shelving runs, a warmer white.
-  archive: [3.3, 6.9].flatMap(x => [3.2, 7.6].map(z => troffer(x, z, [1, 0.93, 0.82]))),
+  // The Archive: four fittings between the shelving runs, a slightly warm white.
+  archive: [3.3, 6.9].flatMap(x => [3.2, 7.6].map(z => troffer(x, z, [1, 0.97, 0.91]))),
   corridor: [-12.75, -8.25, -3.75, 0.75, 5.25, 9.75, 13.5].map(x => troffer(x, -0.5, [1, 0.95, 0.86])),
 };
 /** Where the baker's light samples sit: just under the diffuser of the modelled fitting (render/fixturemesh.ts). */

@@ -54,8 +54,8 @@ function shelving(D: DetailBuilder, x0: number, z0: number, x1: number, z1: numb
           } else {
             const shade = 0.75 + r() * 0.3;
             put('card', u, u + w - 0.006, y, y + h, 0.002, 0.014, [shade, shade * 0.97, shade * 0.92]);
-            put('label', u + w * 0.2, u + w * 0.8, y + h * 0.5, y + h * 0.78, 0.014, 0.0155);
-            put('kick', u + w * 0.38, u + w * 0.62, y + h * 0.18, y + h * 0.3, 0.014, 0.0152, [0.35, 0.3, 0.25]);
+            put('label', u + w * 0.3, u + w * 0.7, y + h * 0.58, y + h * 0.74, 0.014, 0.0155, [0.82, 0.8, 0.74]);
+            put('kick', u + w * 0.43, u + w * 0.57, y + h * 0.22, y + h * 0.28, 0.014, 0.0152, [0.35, 0.3, 0.25]);
           }
           u += w + 0.004;
         }
@@ -97,8 +97,8 @@ function dressArchive(atlas: Atlas, room: Region): DetailBuilder {
       // The reading table: paper stacks, box files lying flat, an open archive box.
       const top = b.y1, r = seeded(5), on = (x: number, z: number): V3 => [x, top + 0.001, z], tu: V3 = [0, 1, 0];
       for (let i = 0; i < 5; i++) {
-        const x = b.x0 + 0.2 + r() * (b.x1 - b.x0 - 0.5), z = b.z0 + 0.15 + r() * (b.z1 - b.z0 - 0.45), h = 0.01 + r() * 0.05;
-        D.box('paper', x, top, z, x + 0.21, top + h, z + 0.3, on(x + 0.1, z + 0.15), tu, [0.95, 0.94, 0.9]);
+        const x = b.x0 + 0.2 + r() * (b.x1 - b.x0 - 0.5), z = b.z0 + 0.15 + r() * (b.z1 - b.z0 - 0.45), h = 0.005 + r() * 0.03;
+        D.box('paper', x, top, z, x + 0.21, top + h, z + 0.3, on(x + 0.1, z + 0.15), tu, [0.5, 0.5, 0.47]);
       }
       D.box('binder', b.x1 - 0.5, top, b.z0 + 0.2, b.x1 - 0.18, top + 0.07, b.z0 + 0.48, on(b.x1 - 0.34, b.z0 + 0.34), tu, [0.2, 0.25, 0.45]);
       D.box('card', b.x0 + 0.25, top, b.z1 - 0.42, b.x0 + 0.62, top + 0.26, b.z1 - 0.12, on(b.x0 + 0.43, b.z1 - 0.27), tu, [0.9, 0.86, 0.78]);

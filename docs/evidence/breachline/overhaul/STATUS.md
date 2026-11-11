@@ -9,7 +9,23 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** corridor round 2 done (`rooms/corridor/round-2/`); next the Archive, then the destruction look.
+**Where I am (keep current):** Archive round 1 done (`rooms/archive/round-1/`); next the destruction look (phase 5).
+
+## Roll-out step 3: Archive (site B)
+
+Round 0/1: timber floor (Poly Haven `wood_planks`, CC0, Amal Kumar); four slightly warm fittings between the
+shelving runs; shelving dressed on its solid collision boxes: steel uprights and shelf lips, archive-box fronts with
+labels and hand-holes, and box files in varied colours, all standing just proud of the faces, so the collision is
+unchanged; a bank of filing cabinets with drawer pulls and label holders; the reading table with paper stacks, a box
+file and an open archive box (dark veneer, so it separates from the floor); ceiling grid, sprinklers, detector; a
+clock, sockets and skirting on the solid south wall. Fixes after the first look: labels and hand-holes were too
+large and white, the papers glared, and warm light plus the timber's bounce made the ceiling muddy brown (cooled).
+Rooms now load independently: a missing or stale bake keeps that one room on the old look instead of all of them.
+
+Scores (mine, `rooms/archive/round-1/`): A 6.5, B 6.5, C 6.5, D 7. Budgets: High 46k-82k triangles, 88-179 draw
+calls (the shelving costs draw calls: about 20 dressing materials; merging by material on High is next if the
+total grows); Low 71-151. Three rooms baked in parallel in 447 s.
+
 
 ## Roll-out step 2: corridor (in progress)
 

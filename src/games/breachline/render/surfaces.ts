@@ -27,7 +27,7 @@ export const PLANKS: Surface = { set: 'raw_plank_wall', size: 1.87, tint: [0.85,
 export const SURFACES: Partial<Record<TexId, Surface>> = {
   // Archive floor: worn timber boards; tables and desks in the same wood, darker.
   floorboards: { set: 'wood_planks', size: 1.5, gloss: 0.6, spec: 1.2, tint: [0.85, 0.8, 0.75] },
-  wood: { set: 'wood_planks', size: 1.2, gloss: 0.5, tint: [0.55, 0.45, 0.38] },
+  wood: { set: 'wood_planks', size: 0.6, gloss: 0.35, spec: 1.3, tint: [0.3, 0.22, 0.17] },
   // Shelving carcasses: dark painted steel behind the modelled uprights and boxes.
   shelf: { set: 'painted_plaster_wall', size: 1, tint: [0.18, 0.19, 0.21] },
   // Polished terrazzo in the corridor: cool grey, glossy enough to carry the fittings' reflections.
