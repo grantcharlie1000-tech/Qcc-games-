@@ -4,6 +4,11 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: greybox revision 2 (plan section 11) for your gate.** `mapfill/greybox-plan-2.png`, every set piece
+labelled. 46 hand-placed boxes replace the search's 83; the search is retired (the rule checker stays). 0 rule
+breaches; routes, heights and the corridor exception tested. Layout intent per area and the misses are in "Map fill,
+Phase A, revision 2" below. Every art region rebaked.
+
 **2026-11-11: map fill C, first pass done in every area.** `mapfill/rooms/server-break-lab-garage.png`: Server Room
 floor cable covers, trays joined across the aisles, warning signs, a crash cart; Break Room fruit bowl, cups, pedal
 bin, door mat; Lab fume-hood ducting and hazard tape round the site core; Garage tyres, trolley jack, hose, oil
@@ -232,6 +237,60 @@ renderer work, measured against section 5.
 for the planner's gate; Phase C dressing under way, emptiest area first. Previously: every room and the three outdoor areas north, south and west are art regions with a
 round each (the Garage and the West Lot / North Yard as the second-round "lowest" picks); the East Lane is the last
 procedural area. Draw calls are back inside the High budget.
+
+## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
+
+Hand-placed set pieces from the section 11 kit, each named in a trailing comment in `map.ts` and labelled in the image;
+the tests judge them. 46 boxes. The checker learnt two things: a gap between two pieces with a wall panel or a third
+solid thing in it is not a way through, and the corridor's three pieces follow 11.6 (no more than 1.4 x 0.5 x 1.0 m,
+flush to the panels, 2 m from doorways, 6 m apart, at least 2 m of lane; a test routes to the room side of every
+panel they stand against).
+
+- **Garage:** a working bay round the parked car: a shelving bay against the brick beside the car, a drum cluster
+  against its flank, two crate stacks and an equipment crate in a row across the floor, so the roller door and the
+  corridor door do not see each other straight across.
+- **Lab (site A):** the two benches become islands (a waist-high return on each), and one tall storage cabinet stands
+  on the brick west of the windows; the plant core stays open and readable from both doors.
+- **Server Room:** a network cabinet on the north brick and a UPS cabinet on the east brick between the window and the
+  crate, a waist-high UPS unit off the aisles; the two aisles stay clear.
+- **Corridor:** a filing run, a bench with boxes and a trolley on alternating sides about 9 m apart; it stays a long
+  lane with three places to duck.
+- **Lobby:** a second seating group (sofa and low table) facing the first, a vending machine and a display case on the
+  brick, a planter at the entrance and a planter run splitting the floor between the desk and the door.
+- **Office:** two desk pods split the floor so neither door sees across to the other, and a cabinet run stands on the
+  brick west of the window.
+- **Archive (site B):** a map chest off the long run, a shelving stub against the short run, a trolley of boxes by the
+  reading table; the plant core stays open.
+- **Break Room:** a second table set, a vending machine beside the fridge, a sideboard under the south wall.
+- **South Yard:** a skip on the walk to the lobby door, a pallet stack group and a planter on the flanks, a materials
+  drop beside the spawn and a bin store in the corner: cover every 8-10 m from the spawn to each entrance.
+- **North Yard:** a parked trailer in the middle, a skip and a pallet stack group on the walks to the north door and
+  windows, a low wall to the west, a generator on its plinth and a materials drop near the spawn.
+- **West Lot:** a pallet stack group against the container, a skip beside the car, and a low wall across the walk from
+  the spawn to the garage door.
+- **East Lane:** a bin store at the wall, a materials drop and a skip staggered down the lane.
+
+| Area | Floor m² | Furniture boxes | Per 10 m² | Largest empty rectangle | Within target |
+| --- | --- | --- | --- | --- | --- |
+| Garage | 72 | 9 | 1.25 | 7.25 x 1.25 m | yes |
+| Lab | 80 | 8 | 1 | 8.75 x 2.50 m | yes |
+| Server Room | 88 | 7 | 0.8 | 7.25 x 2.25 m | yes |
+| Corridor | 90 | 6 | 0.67 | 28.50 x 1.50 m | yes |
+| Lobby | 72 | 10 | 1.39 | 3.25 x 4.75 m | no |
+| Office | 63 | 7 | 1.11 | 6.75 x 2.00 m | yes |
+| Archive | 72 | 8 | 1.11 | 2.50 x 4.25 m | yes |
+| Break Room | 63 | 7 | 1.11 | 5.75 x 3.25 m | no |
+| South Yard | 672 | 13 | 0.19 | 27.00 x 4.25 m | yes |
+| North Yard | 672 | 11 | 0.16 | 24.00 x 6.50 m | no |
+| West Lot | 260 | 7 | 0.27 | 5.00 x 20.00 m | no |
+| East Lane | 260 | 6 | 0.23 | 3.50 x 17.50 m | yes |
+
+- **Misses (rule won):** the Lobby and the Break Room keep one open area each (the roam points need 1 m and their
+  doors need clear approaches); the North Yard keeps the strip under its windows; the West Lot's long open run is the
+  attack spawn's 3 m ring. Indoor density is 0.8-1.39 per 10 m² against 1.4: the hand layout keeps rooms walkable rather
+  than packing them.
+- **Tests:** mapfill suite 7 passed (baseline intact, rules, heights, routes, corridor-panel reach, empty floor as
+  reported, corridor sight line); nav, bots, sim, world and net unchanged and passing.
 
 ## Map fill, Phase A: greybox (`mapfill/greybox-plan.png`, 960 px)
 

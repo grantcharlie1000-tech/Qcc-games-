@@ -38,11 +38,18 @@ const area = (r: Rect) => (r.x1 - r.x0) * (r.z1 - r.z0);
 export const OUTDOOR = new Set(['South Yard', 'North Yard', 'West Lot', 'East Lane']);
 const corridor = MAP.rooms.find(r => r.name === 'Corridor')!;
 
+/** A corridor piece (plan 11.6): a solid box wholly inside the corridor, standing against one of its walls. */
+export const isCorridorPiece = (b: Box) => b.solid && b.x0 >= corridor.x0 && b.x1 <= corridor.x1 && b.z0 >= corridor.z0 - 0.01 && b.z1 <= corridor.z1 + 0.01 && (b.z0 - corridor.z0 < 0.1 || corridor.z1 - b.z1 < 0.1) && !baseline.some(o => o.x0 === b.x0 && o.z0 === b.z0 && o.x1 === b.x1);
 /** Whether the gap between two footprints is a way through (open at both ends) rather than a nook closed at one end
  * by something solid. Corner-to-corner gaps count as a way through only when narrower than a body (0.6 m). */
 function passThrough(a: Rect, b: Rect, solid: Rect[]): boolean {
   const dx = Math.max(a.x0 - b.x1, b.x0 - a.x1, 0), dz = Math.max(a.z0 - b.z1, b.z0 - a.z1, 0);
-  if (dx > 0 && dz > 0) return Math.hypot(dx, dz) < 0.6;
+  // The space between them, corner to corner: if a wall panel or a third solid thing lies in it, it is no way through.
+  const between = { x0: Math.min(a.x1, b.x1), x1: Math.max(a.x0, b.x0), z0: Math.min(a.z1, b.z1), z1: Math.max(a.z0, b.z0) };
+  const span = { x0: Math.min(between.x0, between.x1), x1: Math.max(between.x0, between.x1), z0: Math.min(between.z0, between.z1), z1: Math.max(between.z0, between.z1) };
+  if (panelRects().some(p => p.x0 < span.x1 && p.x1 > span.x0 && p.z0 < span.z1 && p.z1 > span.z0)) return false;
+  if (solid.some(o => o !== a && o !== b && o.x0 < span.x1 - 0.01 && o.x1 > span.x0 + 0.01 && o.z0 < span.z1 - 0.01 && o.z1 > span.z0 + 0.01)) return false;
+  if (dx > 0 && dz > 0) return Math.hypot(dx, dz) < 0.6 && !solid.some(o => o !== a && o !== b && o.x0 < span.x1 && o.x1 > span.x0 && o.z0 < span.z1 && o.z1 > span.z0);
   // The strip between them, and a thin probe just beyond each of its two open ends.
   const strip = dx > 0
     ? { x0: Math.min(a.x1, b.x1), x1: Math.max(a.x0, b.x0), z0: Math.max(a.z0, b.z0), z1: Math.min(a.z1, b.z1) }
@@ -58,6 +65,15 @@ export function boxViolations(b: Box, all: Box[]): string[] {
   const out: string[] = [], panels = panelRects();
   const name = (q: Box) => `${q.mat} (${q.x0},${q.z0})-(${q.x1},${q.z1}) h${q.y1}`;
   if (!b.solid) return out;
+  // Section 11.6: the corridor's three waist-high pieces stand flush to its panels, under their own rules.
+  if (isCorridorPiece(b)) {
+    if (b.y1 > 1.0 || Math.min(b.x1 - b.x0, b.z1 - b.z0) > 0.5 + 1e-6 || Math.max(b.x1 - b.x0, b.z1 - b.z0) > 1.4 + 1e-6) out.push(`${name(b)}: corridor piece larger than 1.4 x 0.5 x 1.0 m`);
+    const lane = Math.max(b.z0 - corridor.z0, corridor.z1 - b.z1) - 0.07;
+    if (lane < 2.0) out.push(`${name(b)}: leaves ${lane.toFixed(2)} m of corridor lane`);
+    for (const p of panels) if (p.kind === 'door' && gap(b, p) < 2) out.push(`${name(b)}: ${gap(b, p).toFixed(2)} m from a doorway`);
+    for (const o of all) if (o !== b && o.solid && isCorridorPiece(o) && Math.abs((o.x0 + o.x1) - (b.x0 + b.x1)) / 2 < 6) out.push(`${name(b)}: under 6 m from another corridor piece`);
+    return out;
+  }
   // 2. 0.75 m from every destructible panel, door and window.
   for (const p of panels) { const d = gap(b, p); if (d < 0.75) out.push(`${name(b)}: ${d.toFixed(2)} m from a ${p.kind} panel`); }
   // 3. Clear width: against something (touching) or at least 1.2 m from every other solid thing on the floor.

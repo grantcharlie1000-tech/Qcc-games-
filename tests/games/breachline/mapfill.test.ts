@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { MAP } from '../../../src/games/breachline/map';
 import { createNav, route } from '../../../src/games/breachline/nav';
 import { newWorld } from '../../../src/games/breachline/map';
-import { OUTDOOR, baselineIntact, corridorSight, fill, fits, forEmpty, violations } from './mapfill';
+import { OUTDOOR, baselineIntact, corridorSight, fill, fits, forEmpty, isCorridorPiece, violations } from './mapfill';
 
 describe('map fill pass', () => {
   it('only adds boxes: every existing box is unchanged and in place', () => {
@@ -51,9 +51,23 @@ describe('map fill pass', () => {
       if (r.name === 'Corridor') continue;
       if (fits(r, w + 0.25, h + 0.25, forEmpty())) over.push(r.name);
     }
-    // The North Yard keeps one long strip under the outer windows and along the perimeter that the 0.75 m window
-    // clearance and the 1.2 m route rule leave unfillable at greybox; it is reported, not hidden.
-    expect(over).toEqual(['North Yard']);
+    // Hand-placed set pieces (plan section 11) leave these over the empty-floor target, reported to the planner: the
+    // Lobby's and Break Room's open middles are the routes between their doors and bot points (roam points need 1 m),
+    // the North Yard keeps the strip under its windows, and the West Lot's open run is the attack spawn's 3 m ring.
+    expect(over).toEqual(['Lobby', 'Break Room', 'North Yard', 'West Lot']);
+  });
+
+  it('leaves every panel a corridor piece stands against reachable from its room side (plan 11.6)', () => {
+    const nav = createNav(newWorld()), open = { barricade: 6, wall: Infinity }, spawn = MAP.attackSpawns[0].points[0];
+    const pieces = fill().filter(isCorridorPiece);
+    expect(pieces).toHaveLength(3);
+    for (const b of pieces) for (const p of MAP.panels) {
+      if (p.kind !== 'wall' || p.axis !== 'x' || Math.abs(p.pos - (b.z0 < 0 ? -2 : 1)) > 0.01) continue;
+      const a = p.u0, e = p.u0 + p.cols * 0.25;
+      if (e <= b.x0 || a >= b.x1) continue;
+      const room = p.pos < 0 ? p.pos - 0.6 : p.pos + 0.6, x = Math.max(a, b.x0) + 0.25;
+      expect(route(nav, spawn.x, spawn.z, x, room, open), `panel at z=${p.pos} behind the piece at x ${b.x0}`).not.toBeNull();
+    }
   });
 
   it('pins the corridor sight line: both corridor walls are destructible, so rule 2 leaves no legal cover there', () => {

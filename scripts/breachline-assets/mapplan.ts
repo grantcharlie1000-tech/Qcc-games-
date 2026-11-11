@@ -26,6 +26,7 @@ function plan(boxes: Box[], added: Set<Box>, title: string, sight: ReturnType<ty
     if (!isFurniture(b)) continue;
     const isNew = added.has(b), full = b.y1 >= 1.75;
     g.push(rect(b, isNew ? (full ? '#1f4fa8' : '#6fa8e8') : (full ? '#6b6b6b' : '#a9a9a4'), isNew ? '#0b2a66' : '#555', isNew ? 1.4 : 0.6));
+    if (isNew && label.get(b)) g.push(`<text x="${X((b.x0 + b.x1) / 2)}" y="${Z(b.z1)}" dy="9" font-size="8.5" font-family="sans-serif" text-anchor="middle" fill="#0b2a66" stroke="#f4f2ec" stroke-width="2.5" paint-order="stroke">${label.get(b)}</text>`);
   }
   for (const p of MAP.panels) {
     const a = p.u0, b = p.u0 + p.cols * CELL, col = p.kind === 'door' ? '#2e9a3e' : p.kind === 'window' ? '#2a8fd6' : '#e07a1f';
@@ -46,6 +47,10 @@ const legend = `<g font-family="sans-serif" font-size="12" fill="#222">${[
 ].map(([c, t], i) => `<rect x="${8 + (i % 4) * 238}" y="${8 + Math.floor(i / 4) * 18}" width="12" height="12" fill="${c}"/><text x="${24 + (i % 4) * 238}" y="${18 + Math.floor(i / 4) * 18}">${t}</text>`).join('')}</g>`;
 
 const added = new Set(fill());
+/** Set-piece names from the trailing comments in map.ts's fill block, in box order. */
+const SRC = (await import('node:fs')).readFileSync(new URL('../../src/games/breachline/map.ts', import.meta.url), 'utf8');
+const NAMES = (SRC.split('// --- fill pass 2026-11-11 ---')[1] ?? '').split('// --- end fill pass ---')[0].split('\n').filter(l => l.trim().startsWith('box(')).map(l => (l.split('//')[1] ?? '').trim());
+const label = new Map(fill().map((b, i) => [b, NAMES[i] ?? '']));
 const before = plan(baseline, new Set(), `Before: ${baseline.filter(isFurniture).length} furniture boxes; corridor sight line ${corridorSight(baseline).length.toFixed(1)} m`, corridorSight(baseline));
 const after = plan(MAP.boxes, added, `After: ${MAP.boxes.filter(isFurniture).length} furniture boxes (${added.size} new); corridor sight line ${corridorSight().length.toFixed(1)} m`, corridorSight());
 const LH = 64, total = H + PAD;
