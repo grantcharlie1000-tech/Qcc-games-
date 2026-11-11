@@ -3,9 +3,11 @@
  *
  *   node scripts/breachline-assets/fetch.mjs            fetch what is missing, verify every hash
  *   node scripts/breachline-assets/fetch.mjs --add ID   add a Poly Haven asset (CC0) to the manifest, then fetch
+ *   node scripts/breachline-assets/fetch.mjs --add-acg ID   add an ambientCG material (CC0), 2K JPEG set
  *
- * Only Poly Haven assets can be added this way, because Poly Haven publishes everything as CC0. Anything else must be
+ * Only Poly Haven and ambientCG assets can be added this way, because both publish everything as CC0. Anything else must be
  * added to manifest.json by hand with its source, author and licence, and only after the owner agrees to non-CC0. */
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -60,8 +62,31 @@ async function describe(id) {
   };
 }
 
+/** An ambientCG material: one zip of maps, extracted beside it on fetch. */
+async function describeAcg(id) {
+  const d = await json(`https://ambientcg.com/api/v2/full_json?id=${encodeURIComponent(id)}&include=downloadData,dimensionsData`);
+  const a = d.foundAssets?.[0];
+  if (!a) throw new Error(`${id}: not found on ambientCG`);
+  let zip = null;
+  for (const f of Object.values(a.downloadFolders)) for (const c of Object.values(f.downloadFiletypeCategories)) for (const x of c.downloads) if (x.attribute === '2K-JPG') zip = x;
+  if (!zip) throw new Error(`${id}: no 2K-JPG download`);
+  return {
+    id, kind: 'texture', name: a.displayName, source: a.shortLink ?? `https://ambientcg.com/a/${id}`, author: 'ambientCG (Lennart Demes)', licence: 'CC0-1.0',
+    dimensions: a.dimensionX ? [a.dimensionX / 100, a.dimensionY / 100] : null, provider: 'ambientcg',
+    files: [{ path: `${id}/${id}_2K-JPG.zip`, url: zip.fullDownloadPath, size: zip.size, sha256: null }], use: '',
+  };
+}
+
 async function main() {
   const manifest = JSON.parse(await readFile(MANIFEST, 'utf8'));
+  const acg = process.argv.indexOf('--add-acg');
+  if (acg >= 0) {
+    for (const id of process.argv.slice(acg + 1)) {
+      if (manifest.assets.some(a => a.id === id)) { console.log(`${id}: already listed`); continue; }
+      manifest.assets.push(await describeAcg(id));
+      console.log(`${id}: added`);
+    }
+  }
   const add = process.argv.indexOf('--add');
   if (add >= 0) {
     for (const id of process.argv.slice(add + 1)) {
@@ -80,6 +105,7 @@ async function main() {
       const h = sha256(buf);
       if (f.sha256 && f.sha256 !== h) throw new Error(`${f.path}: hash mismatch (have ${h}, manifest ${f.sha256})`);
       f.sha256 = h; f.size = buf.length; bytes += buf.length;
+      if (dest.endsWith('.zip')) execFileSync('unzip', ['-o', '-q', dest, '-d', dirname(dest)]);
     }
   }
   await writeFile(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');

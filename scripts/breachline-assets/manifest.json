@@ -306,6 +306,28 @@
         }
       ],
       "use": ""
+    },
+    {
+      "id": "OfficeCeiling001",
+      "kind": "texture",
+      "name": "Office Ceiling 001",
+      "source": "https://ambientcg.com/a/OfficeCeiling001",
+      "author": "ambientCG (Lennart Demes)",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        3.85,
+        3.85
+      ],
+      "provider": "ambientcg",
+      "files": [
+        {
+          "path": "OfficeCeiling001/OfficeCeiling001_2K-JPG.zip",
+          "url": "https://ambientcg.com/get?file=OfficeCeiling001_2K-JPG.zip",
+          "size": 26204610,
+          "sha256": "c28085beb79758a5364a72a0b2e3270836eaaf73fc7ed60b7f1f1212eb5c2653"
+        }
+      ],
+      "use": ""
     }
   ]
 }
