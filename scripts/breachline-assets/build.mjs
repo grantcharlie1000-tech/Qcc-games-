@@ -1,16 +1,21 @@
 #!/usr/bin/env node
 /** Builds Breachline's shipped art from the fetched sources (run fetch.mjs first).
  *
- * Textures: per tier size, colour as BC1 (sRGB), normals as BC5 (two channels, z rebuilt in the shader), packed
- * AO/roughness/metal as BC1; plus small JPEG fallbacks for GPUs without S3TC (most ARM Chromebooks).
+ * Textures: per tier size, KTX2/Basis Universal (one file for every GPU: the browser transcodes to BC, ETC2 or ASTC):
+ * colour as ETC1S with the sRGB transfer function, normals and packed AO/roughness/metal as UASTC with RDO and zstd.
+ * Small JPEG fallbacks cover a failed transcoder. Encodes are cached in .cache/ktx2 by source hash and settings.
+ * Also writes the same-origin Basis transcoder worker (basis/), because the site's CSP forbids blob: workers.
  * Models: geometry as binary glTF with images stripped; their textures go through the same texture path.
  * Writes public/game-art/breachline/assets.json (what exists, sizes) and the Breachline block of THIRD_PARTY_NOTICES. */
 import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { createHash } from 'node:crypto';
+import { copyFile, stat } from 'node:fs/promises';
+import { encodeToKTX2 } from 'ktx2-encoder';
 import { MeshoptSimplifier } from 'meshoptimizer';
-import { encode, GL, ktx } from './bc.mjs';
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
@@ -23,11 +28,6 @@ const SURFACE_SIZES = [512, 1024];
 const PROP_SIZES = [256, 512];
 const FALLBACK = 512;
 
-async function rgbaAt(file, size) {
-  const { data, info } = await sharp(file).resize(size, size, { kernel: 'lanczos3' }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  return { data, w: info.width, h: info.height };
-}
-
 function renormalise(rgba) {
   for (let i = 0; i < rgba.length; i += 4) {
     const x = rgba[i] / 127.5 - 1, y = rgba[i + 1] / 127.5 - 1, z = Math.max(0, rgba[i + 2] / 127.5 - 1), l = Math.hypot(x, y, z) || 1;
@@ -35,16 +35,90 @@ function renormalise(rgba) {
   }
 }
 
-/** A full mip chain, each level resized from the source (no compounding blur). */
+/** Encoder settings per map kind. Bump ENCODE_VERSION when these change, to invalidate the cache. */
+const ENCODE_VERSION = 1;
+const SETTINGS = {
+  diff: { isUASTC: false, qualityLevel: 160, compressionLevel: 2, isSetKTX2SRGBTransferFunc: true, isPerceptual: true },
+  nor: { isUASTC: true, isNormalMap: true, isPerceptual: false, uastcLDRQualityLevel: 1, enableRDO: true, rdoQualityLevel: 1.5, needSupercompression: true },
+  arm: { isUASTC: true, isPerceptual: false, uastcLDRQualityLevel: 1, enableRDO: true, rdoQualityLevel: 3, needSupercompression: true },
+};
+const exists = p => stat(p).then(() => true, () => false);
+const imageDecoder = async buf => { const { data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true }); return { width: info.width, height: info.height, data: new Uint8Array(data) }; };
+
 async function compressed(file, size, kind) {
-  const fmt = kind === 'nor' ? 'bc5' : 'bc1', mips = [];
-  for (let s = size; s >= 4; s >>= 1) {
-    const { data, w, h } = await rgbaAt(file, s);
-    if (kind === 'nor') renormalise(data);
-    mips.push(encode(fmt, data, w, h));
-  }
-  const gl = kind === 'nor' ? GL.bc5 : kind === 'diff' ? GL.bc1srgb : GL.bc1;
-  return ktx(gl, size, size, mips);
+  const src = await readFile(file);
+  const key = createHash('sha256').update(src).update(JSON.stringify([ENCODE_VERSION, size, kind, SETTINGS[kind]])).digest('hex').slice(0, 24);
+  const cached = join(CACHE, 'ktx2', `${key}.ktx2`);
+  if (await exists(cached)) return readFile(cached);
+  const { data, info } = await sharp(src).resize(size, size, { kernel: 'lanczos3' }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  if (kind === 'nor') renormalise(data);
+  const png = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer();
+  // Quiet the encoder's per-slice progress lines.
+  const log = console.log; console.log = () => {};
+  let out;
+  try { out = Buffer.from(await encodeToKTX2(new Uint8Array(png), { ...SETTINGS[kind], generateMipmap: true, isKTX2File: true, imageDecoder })); }
+  finally { console.log = log; }
+  await mkdir(dirname(cached), { recursive: true });
+  await writeFile(cached, out);
+  return out;
+}
+
+const NO_EVAL_INVOKER = `function craftInvokerFunction(humanName,argTypes,classType,cppInvokerFunc,cppTargetFunc,isAsync){
+  var argCount=argTypes.length;if(argCount<2){throwBindingError("argTypes array size mismatch! Must at least get return value and 'this' types!")}
+  var isClassMethodFunc=argTypes[1]!==null&&classType!==null,needsDestructorStack=usesDestructorStack(argTypes),returns=argTypes[0].name!=="void",expected=argCount-2;
+  var invokerFn=function(...args){
+    if(args.length!==expected){throwBindingError("function "+humanName+" called with "+args.length+" arguments, expected "+expected)}
+    var destructors=needsDestructorStack?[]:null,wired=[],thisWired;
+    if(isClassMethodFunc){thisWired=argTypes[1].toWireType(destructors,this);wired.push(thisWired)}
+    for(var i=0;i<expected;++i){wired.push(argTypes[i+2].toWireType(destructors,args[i]))}
+    var rv=cppInvokerFunc(cppTargetFunc,...wired);
+    if(needsDestructorStack){runDestructors(destructors)}else{
+      for(var i=isClassMethodFunc?1:2;i<argTypes.length;++i){if(argTypes[i].destructorFunction!==null){argTypes[i].destructorFunction(i===1?thisWired:wired[isClassMethodFunc?i-1:i-2])}}
+    }
+    if(returns){return argTypes[0].fromWireType(rv)}
+  };
+  return createNamedFunction(humanName,invokerFn)}`;
+
+const NO_EVAL_METHOD_CALLER = `var __emval_get_method_caller=(argCount,argTypes,kind)=>{
+  var types=emval_lookupTypes(argCount,argTypes);var retType=types.shift();argCount--;
+  var invokerFunction=function(obj,func,destructorsRef,args){
+    var offset=0,list=[];
+    for(var i=0;i<argCount;++i){list.push(types[i].readValueFromPointer(args+offset));offset+=types[i]["argPackAdvance"]}
+    var rv=kind===1?new func(...list):func.call(obj,...list);
+    if(!retType.isVoid){return emval_returnValue(retType,destructorsRef,rv)}
+  };
+  var functionName=\`methodCaller<(\${types.map(t=>t.name).join(", ")}) => \${retType.name}>\`;
+  return emval_addMethodCaller(createNamedFunction(functionName,invokerFunction))};`;
+
+/** The worker three's KTX2Loader would build as a blob: URL, written as a same-origin file instead. */
+async function transcoderWorker() {
+  const dir = join(ROOT, 'node_modules', 'three', 'examples', 'jsm', 'libs', 'basis'), out = join(OUT, 'basis');
+  await mkdir(out, { recursive: true });
+  const fn = KTX2Loader.BasisWorker.toString();
+  let js = await readFile(join(dir, 'basis_transcoder.js'), 'utf8');
+  // Embind builds each C++ binding's JavaScript wrapper with new Function, which needs 'unsafe-eval'; the site allows
+  // only 'wasm-unsafe-eval'. Swap in the equivalent closure (what Emscripten emits for DYNAMIC_EXECUTION=0).
+  const start = js.indexOf('function craftInvokerFunction('), endMark = 'return createNamedFunction(humanName,invokerFn)}';
+  const end = js.indexOf(endMark, start);
+  if (start < 0 || end < 0) throw new Error('basis_transcoder.js changed: update the no-eval invoker patch');
+  js = js.slice(0, start) + NO_EVAL_INVOKER + js.slice(end + endMark.length);
+  // The same for emval's method callers (used when the transcoder constructs a KTX2File).
+  const m0 = js.indexOf('var __emval_get_method_caller='), mEnd = 'return emval_addMethodCaller(createNamedFunction(functionName,invokerFunction))};';
+  const m1 = js.indexOf(mEnd, m0);
+  if (m0 < 0 || m1 < 0) throw new Error('basis_transcoder.js changed: update the no-eval method-caller patch');
+  js = js.slice(0, m0) + NO_EVAL_METHOD_CALLER + js.slice(m1 + mEnd.length);
+  if (/newFunc\(Function/.test(js)) throw new Error('no-eval patches did not remove every new Function');
+  const body = [
+    '/* Generated by scripts/breachline-assets/build.mjs from three r180 KTX2Loader and its Basis transcoder (Apache-2.0). */',
+    'let _EngineFormat = ' + JSON.stringify(KTX2Loader.EngineFormat),
+    'let _EngineType = ' + JSON.stringify(KTX2Loader.EngineType),
+    'let _TranscoderFormat = ' + JSON.stringify(KTX2Loader.TranscoderFormat),
+    'let _BasisFormat = ' + JSON.stringify(KTX2Loader.BasisFormat),
+    js,
+    fn.substring(fn.indexOf('{') + 1, fn.lastIndexOf('}')),
+  ].join('\n');
+  await writeFile(join(out, 'ktx2-worker.js'), body);
+  await copyFile(join(dir, 'basis_transcoder.wasm'), join(out, 'basis_transcoder.wasm'));
 }
 
 const report = { textures: {}, models: {}, bytes: { low: 0, high: 0, fallback: 0 } };
@@ -59,7 +133,7 @@ async function textureSet(id, sources, sizes, outDir) {
   const entry = { sizes, files: {} };
   for (const [kind, src] of Object.entries(sources)) {
     for (const [i, size] of sizes.entries()) {
-      const name = `${kind}-${size}.ktx`;
+      const name = `${kind}-${size}.ktx2`;
       const n = await written(join(outDir, name), await compressed(src, size, kind), i === 0 ? ['low'] : ['high']);
       entry.files[name] = n;
     }
@@ -88,6 +162,7 @@ function glbWithoutImages(gltf, bin) {
 }
 
 async function main() {
+  await transcoderWorker();
   await rm(join(OUT, 'tex'), { recursive: true, force: true });
   await rm(join(OUT, 'models'), { recursive: true, force: true });
   for (const a of manifest.assets) {
@@ -163,6 +238,10 @@ async function notices() {
   const begin = '----- Breachline art (generated by scripts/breachline-assets/build.mjs) -----', end = '----- end of Breachline art -----';
   const lines = [begin, 'Textures and models from Poly Haven (https://polyhaven.com), released under CC0 1.0 Universal', '(https://creativecommons.org/publicdomain/zero/1.0/). Credit is not required; it is given anyway.', ''];
   for (const a of manifest.assets) lines.push(`${a.name} (${a.kind}) by ${a.author}. ${a.source}. License: ${a.licence}.`);
+  lines.push('', 'Basis Universal transcoder (basis_transcoder.js and .wasm, as distributed with three.js r180), by Binomial LLC.',
+    'License: Apache-2.0 (full text above in this file). Modified: public/game-art/breachline/basis/ktx2-worker.js wraps it',
+    'with three.js\'s KTX2Loader worker, and its embind glue builds function wrappers with closures instead of new Function,',
+    'so it runs without \'unsafe-eval\'. The .wasm is unmodified.');
   lines.push(end);
   const block = lines.join('\n');
   const i = text.indexOf(begin), j = text.indexOf(end);

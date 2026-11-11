@@ -29,5 +29,3 @@ dist-pages/
 .vite-cache/
 .cache/
 
-# Breachline 1K BC textures are local build outputs until the KTX2 route lands (see overhaul STATUS.md).
-public/game-art/breachline/tex/*/*-1024.ktx

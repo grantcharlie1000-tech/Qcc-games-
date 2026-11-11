@@ -3789,4 +3789,9 @@ Metal Tool Chest (model) by Yann Kervran, John Hutcheson. https://polyhaven.com/
 Korean Fire Extinguisher 01 (model) by UM JOORIN. https://polyhaven.com/a/korean_fire_extinguisher_01. License: CC0-1.0.
 Metal Stool 01 (model) by Ulan Cabanilla. https://polyhaven.com/a/metal_stool_01. License: CC0-1.0.
 Raw Plank Wall (texture) by Dimitrios Savva. https://polyhaven.com/a/raw_plank_wall. License: CC0-1.0.
+
+Basis Universal transcoder (basis_transcoder.js and .wasm, as distributed with three.js r180), by Binomial LLC.
+License: Apache-2.0 (full text above in this file). Modified: public/game-art/breachline/basis/ktx2-worker.js wraps it
+with three.js's KTX2Loader worker, and its embind glue builds function wrappers with closures instead of new Function,
+so it runs without 'unsafe-eval'. The .wasm is unmodified.
 ----- end of Breachline art -----

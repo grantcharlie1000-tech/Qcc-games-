@@ -9,7 +9,24 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-## Lab slice gate note (evidence: `lab-slice/gate/`; for review before roll-out)
+## Roll-out step 1: KTX2 (in progress)
+
+**Landed:** textures ship as KTX2/Basis (colour ETC1S with the sRGB transfer function; normals and AO/roughness/metal
+UASTC with RDO and zstd), one file for every GPU. The browser transcodes to BC, ETC2 or ASTC, so ARM Chromebooks
+now get compressed textures. All tiers total 13.3 MB (512 px 3.9 MB, 1K 9.4 MB) against 22.4 MB for the BC/KTX1
+set. JPEG 512 fallbacks remain for a failed transcoder, with a 20 s timeout so a dead worker cannot hang loading.
+The BC encoder (`bc.mjs`) and the KTX1 files are gone.
+
+**What was in the way, and the fix:** allowing WebAssembly was not enough. The Basis transcoder's Emscripten/embind
+glue builds function wrappers with `new Function`, which needs `'unsafe-eval'`, still forbidden (correctly). Two
+places do it: `craftInvokerFunction` for bound C++ methods, and `__emval_get_method_caller`, used when it constructs
+a `KTX2File`. `build.mjs` swaps both for the closure equivalents Emscripten emits under `DYNAMIC_EXECUTION=0`. It
+fails the build if the source text changes, or if any `new Function` survives. It then writes the worker three's
+`KTX2Loader` would have made as a `blob:`, as a same-origin file (`basis/ktx2-worker.js` and the unmodified `.wasm`).
+`render/assets.ts` runs it through a small `KTX2Loader` subclass. A test (`tests/games/breachline/artcsp.test.ts`)
+holds the worker eval-free and the policy unchanged. Notices record the modification (Apache-2.0).
+
+ (evidence: `lab-slice/gate/`; for review before roll-out)
 
 **Changes this round,** in the reviewer's order:
 1. Service pipes removed (the services reach the sink inside the cabinetry).

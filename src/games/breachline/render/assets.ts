@@ -1,65 +1,69 @@
-/** Loads Breachline's shipped art: GPU-compressed textures (KTX 1.1 with BC1/BC5 blocks, read by three's KTXLoader,
- * no WebAssembly), JPEG fallbacks where the GPU has no S3TC, binary glTF models and baked lightmaps. Reports
+/** Loads Breachline's shipped art: KTX2/Basis textures (transcoded in a same-origin worker to whatever the GPU
+ * reads: BC, ETC2 or ASTC), JPEG fallbacks if transcoding fails, binary glTF models and baked lightmaps. Reports
  * progress; any failure rejects, and the caller keeps the procedural look. */
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { KTXLoader } from 'three/examples/jsm/loaders/KTXLoader.js';
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 
 export type Tier = 'low' | 'medium' | 'high';
 export const ART_BASE = `${import.meta.env.BASE_URL}game-art/breachline/`;
 
-/** sRGB BC1, which three expresses as the linear format plus an sRGB colour space. */
-const BC1_SRGB = 0x8c4c;
+/** three's KTX2Loader builds its transcoder worker from a blob: URL, which the site's CSP (worker-src 'self') forbids.
+ * This one runs the identical worker from a file served by the site (written by scripts/breachline-assets/build.mjs). */
+class SameOriginKTX2Loader extends KTX2Loader {
+  init(): Promise<void> {
+    const self = this as unknown as {
+      transcoderPending?: Promise<void>; transcoderBinary?: ArrayBuffer; workerConfig: unknown;
+      workerPool: { setWorkerCreator(f: () => Worker): void };
+    };
+    if (!self.transcoderPending) {
+      self.transcoderPending = fetch(`${ART_BASE}basis/basis_transcoder.wasm`).then(r => {
+        if (!r.ok) throw new Error(`Basis transcoder: ${r.status}`);
+        return r.arrayBuffer();
+      }).then(bin => {
+        self.transcoderBinary = bin;
+        self.workerPool.setWorkerCreator(() => {
+          const worker = new Worker(`${ART_BASE}basis/ktx2-worker.js`), copy = bin.slice(0);
+          worker.postMessage({ type: 'init', config: self.workerConfig, transcoderBinary: copy }, [copy]);
+          return worker;
+        });
+      });
+    }
+    return self.transcoderPending;
+  }
+}
 
 export class ArtLoader {
-  private ktx = new KTXLoader();
+  private ktx2 = new SameOriginKTX2Loader();
   private img = new THREE.TextureLoader();
   private gltf = new GLTFLoader();
-  readonly compressed: boolean;
   private total = 0;
   private done = 0;
   readonly textures: THREE.Texture[] = [];
   bytes = 0;
   constructor(renderer: THREE.WebGLRenderer, readonly tier: Tier, private progress: (fraction: number) => void = () => {}) {
-    this.compressed = renderer.extensions.has('WEBGL_compressed_texture_s3tc') && renderer.extensions.has('EXT_texture_compression_rgtc') && renderer.extensions.has('WEBGL_compressed_texture_s3tc_srgb');
+    this.ktx2.detectSupport(renderer);
   }
   private track<T>(p: Promise<T>): Promise<T> {
     this.total++;
     return p.then(v => { this.done++; this.progress(this.done / this.total); return v; });
   }
-  /** One map of a texture set. `size` is the texel size wanted; the fallback is always 512 px JPEG. */
+  /** One map of a texture set at `size` texels; the 512 px JPEG if the transcoder cannot run. */
   texture(set: string, kind: 'diff' | 'nor' | 'arm', size: number): Promise<THREE.Texture> {
     const srgb = kind === 'diff';
-    if (!this.compressed) {
-      return this.track(this.img.loadAsync(`${ART_BASE}tex/${set}/${kind}-512.jpg`).then(t => {
-        t.flipY = false; t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; t.needsUpdate = true;
-        this.textures.push(t);
-        return t;
-      }));
-    }
-    const url = `${ART_BASE}tex/${set}/${kind}-${size}.ktx`;
-    return this.track(this.ktxTexture(url, srgb).catch(err => {
-      // The 1K BC files are local build outputs until phase 1 ships KTX2; fall back to the committed 512 px set.
-      if (size > 512) return this.texture(set, kind, 512);
-      throw err;
-    }));
-  }
-  /** Fetches and parses a KTX 1.1 file. A missing file can come back as the site's HTML page, so check the magic. */
-  private async ktxTexture(url: string, srgb: boolean): Promise<THREE.CompressedTexture> {
-    const r = await fetch(url);
-    const buf = r.ok ? await r.arrayBuffer() : null;
-    const magic = buf && buf.byteLength > 64 ? new Uint8Array(buf, 0, 12) : null;
-    if (!buf || !magic || magic[0] !== 0xab || magic[1] !== 0x4b || magic[2] !== 0x54 || magic[3] !== 0x58) throw new Error(`not a KTX file: ${url}`);
-    const d = this.ktx.parse(buf, true) as { mipmaps: { data: Uint8Array; width: number; height: number }[]; width: number; height: number; format: number };
-    const tex = new THREE.CompressedTexture(d.mipmaps, d.width, d.height, (d.format === BC1_SRGB ? THREE.RGB_S3TC_DXT1_Format : d.format) as THREE.CompressedPixelFormat);
-    tex.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.minFilter = THREE.LinearMipmapLinearFilter; tex.magFilter = THREE.LinearFilter;
-    tex.anisotropy = 4;
-    tex.needsUpdate = true;
-    for (const m of d.mipmaps) this.bytes += m.data.byteLength;
-    this.textures.push(tex);
-    return tex;
+    const finish = <T extends THREE.Texture>(t: T) => {
+      t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; t.needsUpdate = true;
+      this.textures.push(t);
+      return t;
+    };
+    const jpeg = () => this.img.loadAsync(`${ART_BASE}tex/${set}/${kind}-512.jpg`).then(t => { t.flipY = false; return finish(t); });
+    // A worker that dies (a blocked script, say) never answers: give up after a while and use the JPEG.
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('KTX2 transcoder timed out')), 20000));
+    return this.track(Promise.race([this.ktx2.loadAsync(`${ART_BASE}tex/${set}/${kind}-${size}.ktx2`), timeout]).then(t => {
+      const tex = t as THREE.CompressedTexture;
+      for (const m of tex.mipmaps as { data?: ArrayBufferView }[]) this.bytes += m.data?.byteLength ?? 0;
+      return finish(tex);
+    }).catch(err => { console.warn('Breachline art: KTX2 failed, using JPEG', set, kind, err); return jpeg(); }));
   }
   /** A baked map: PNG, no mipmaps beyond what the GPU makes, not flipped (the baker writes row 0 at v = 0). */
   bakeMap(path: string, srgb: boolean): Promise<THREE.Texture> {
@@ -75,5 +79,5 @@ export class ArtLoader {
     return this.track(fetch(`${ART_BASE}${path}`).then(r => { if (!r.ok) throw new Error(`${r.status} ${path}`); return r.json() as Promise<T>; }));
   }
   model(name: string): Promise<GLTF> { return this.track(this.gltf.loadAsync(`${ART_BASE}models/${name}.glb`)); }
-  dispose() { for (const t of this.textures) t.dispose(); }
+  dispose() { for (const t of this.textures) t.dispose(); this.ktx2.dispose(); }
 }
