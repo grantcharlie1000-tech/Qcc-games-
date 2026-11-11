@@ -166,6 +166,15 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 4. Legs: trouser folds in the silhouette at the knee (1.8×), above the boot (1.7×) and mid-thigh.
 - Both sets re-baked: Azure 2.2 MB, Ember 2.2 MB.
 
+**Performance (planner's request, 10:00):**
+- Nothing is built, uploaded or compiled during play once `warm()` has run. `warm(renderer, camera)` builds every level of both squads, every weapon's world model at both levels and the textured geometry for every level; it loads the baked sets and compiles every program the fighters draw with (procedural and baked, with and without a reflection probe, body and weapon) through `renderer.compileAsync` on a throwaway scene. The compiled programs are kept alive.
+- The scene does not call `warm()` yet, so the fighters call it themselves on the first frame (menu or lobby). One line in `scene.ts` (`fighters.warm?.(renderer, camera)` behind the loading screen) would move it before the first frame.
+- `handle(events)` creates nothing: a remote reload sets a timer, a kill picks a death; flinches and deaths only drive the animator. The check of a baked level against the built mesh runs once per level, when the set loads, never per frame or per spawn.
+- Materials: every fighter has its own small material (so its probe colour is its own uniform), but all fighters of a kind share one compiled program and the same texture objects; texture memory is per set, not per fighter.
+- Ten fighters: 20 draw calls (body and kit, weapon) plus one shared contact-shadow call. Triangles: 10 × 7.9k = 79k all at full detail, which the selector never allows (at most 4 at full detail); worst case 54.2k; ten at the middle level 37k; ten at the lowest 13k.
+- GPU texture memory (compressed, with mips): about 6.5 MB per squad (full detail: diff 2048 at 4 bpp ≈ 2.7 MB, nor 1024 and arm 1024 at 8 bpp ≈ 1.4 MB each; middle and low about 1 MB), 13 MB for both. Low tier: the same today (it still loads the full-size albedo); to be cut by shipping a 1024 albedo for Low.
+- Two-device online test: passes alone (50 s) and in the full sequence (8/8) with this change.
+
 ## Budgets measured
 
 | Item | Budget | Measured |

@@ -40,7 +40,13 @@ interface Fig {
 const wrap = (a: number) => { a = (a + Math.PI) % (Math.PI * 2); return (a < 0 ? a + Math.PI * 2 : a) - Math.PI; };
 
 /** `Fighters` plus the match-event hook the scene forwards to (optional on the scene's side). */
-export interface FightersWithEvents extends Fighters { handle(events: readonly SimEvent[], m: Match, self: number): void }
+export interface FightersWithEvents extends Fighters {
+  handle(events: readonly SimEvent[], m: Match, self: number): void;
+  /** Everything a match will need, done before it starts (behind the loading screen): every level of both squads'
+   * meshes and their textured versions, every weapon's world model, the baked texture sets, and every shader the
+   * fighters draw with, compiled. Resolves when done. Nothing is then built, uploaded or compiled during play. */
+  warm(renderer: THREE.WebGLRenderer, camera: THREE.Camera): Promise<void>;
+}
 
 export function createFighters(scene: THREE.Scene, lighting: HeroLighting): FightersWithEvents {
   const figs: (Fig | null)[] = [];
@@ -56,15 +62,18 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
   const cam = new THREE.Vector3(NaN, 0, 0);
   // Baked texture sets, loaded once the renderer is known (the first frame); until then the procedural look.
   const baked: (FighterTextures | null)[] = [null, null];
-  let texVersion = 0, texStarted = false;
+  let texVersion = 0;
+  let texLoad: Promise<void> | null = null, warmed = false, warming: Promise<void> | null = null;
+  const warmKeep: THREE.Material[] = [];
+  const loadTextures = (renderer: THREE.WebGLRenderer) => (texLoad ??= Promise.all(([0, 1] as const).map(squad => !BAKED[squad] ? null : loadFighterTextures(renderer, squad).then(t => {
+    // Textured geometry for every level now, not when a level is first seen.
+    for (let l = 0; l < 3; l++) texturedGeometry(t, l, () => figureGeometry(squad, l).geo);
+    baked[squad] = t; texVersion++;
+  }).catch(err => console.warn('Breachline fighters: baked textures unavailable, keeping the procedural look', err)))).then(() => {}));
   blobs.onBeforeRender = (renderer, _s, camera) => {
     cam.setFromMatrixPosition(camera.matrixWorld);
-    if (texStarted) return;
-    texStarted = true;
-    for (const squad of [0, 1] as const) {
-      if (!BAKED[squad]) continue;
-      loadFighterTextures(renderer, squad).then(t => { baked[squad] = t; texVersion++; }).catch(err => console.warn('Breachline fighters: baked textures unavailable, keeping the procedural look', err));
-    }
+    // If the scene has not called warm(), do it on the first frame (the menu or lobby, not mid-match).
+    if (!warmed) { warmed = true; void api.warm(renderer, camera); }
   };
   const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
   const color = new THREE.Color();
@@ -119,7 +128,7 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
     scene.remove(f.group); f.mat.dispose(); f.weaponMat.dispose(); for (const m of f.tmats) m?.dispose();
   }
 
-  return {
+  const api: FightersWithEvents = {
     update(view) {
       const { m, dt } = view, k = 1 - Math.exp(-dt * 16);
       if (!ready) { for (const f of figs) if (f) f.group.visible = false; return; }
@@ -189,6 +198,33 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
       for (let i = blob; i < 10; i++) blobs.setMatrixAt(i, m4.makeScale(0, 0, 0));
       blobs.instanceMatrix.needsUpdate = true;
     },
+    async warm(renderer, camera) {
+      if (warming) return warming;
+      warmed = true;
+      return (warming = (async () => {
+      await heroReady;
+      for (const squad of [0, 1] as const) for (let l = 0; l < 3; l++) figureGeometry(squad, l);
+      for (const id of Object.keys(WEAPONS) as WeaponId[]) { weaponFor(id, 1); weaponFor(id, 2); }
+      await loadTextures(renderer);
+      // Compile every program the fighters use: procedural and baked, with and without a reflection probe, skinned
+      // body and weapon, by drawing one of each into a throwaway scene.
+      const tmp = new THREE.Scene(), env = lighting.environment(0, 0), bones = makeBones(), holder = new THREE.Object3D();
+      holder.add(bones[0]); holder.updateMatrixWorld(true);
+      const sk = new THREE.Skeleton(bones), made: THREE.Material[] = [];
+      tmp.add(holder, ...scene.children.filter(o => (o as THREE.Light).isLight).map(l => l.clone()));
+      for (const e of env ? [null, env] : [null]) for (const squad of [0, 1] as const) for (let l = 0; l < 3; l++) {
+        const pm = fighterMaterial(); pm.envMap = e; made.push(pm);
+        const a = new THREE.SkinnedMesh(figureGeometry(squad, l).geo, pm); a.bind(sk, new THREE.Matrix4()); a.frustumCulled = false; tmp.add(a);
+        const t = baked[squad], tg = t ? texturedGeometry(t, l, () => figureGeometry(squad, l).geo) : null;
+        if (t && tg) { const tm = texturedFighterMaterial(t.levels[l]!.maps); tm.envMap = e; made.push(tm); const b = new THREE.SkinnedMesh(tg, tm); b.bind(sk, new THREE.Matrix4()); b.frustumCulled = false; tmp.add(b); }
+      }
+      const w = weaponFor('ar'), wb = Array.from({ length: WEAPON_BONES }, () => new THREE.Bone()), wm = new THREE.SkinnedMesh(w.geo, made[0]);
+      wm.add(...wb); wm.bind(new THREE.Skeleton(wb)); wm.frustumCulled = false; tmp.add(wm);
+      await renderer.compileAsync(tmp, camera);
+      // Keep these materials alive: disposing them would release the programs just compiled.
+      warmKeep.push(...made);
+      })());
+    },
     pose(i) { return figs[i] ?? null; },
     muzzle(i, out) {
       const f = figs[i];
@@ -222,4 +258,5 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
       scene.remove(blobs); blobGeo.dispose(); blobMat.dispose(); blobTex.dispose();
     },
   };
+  return api;
 }
