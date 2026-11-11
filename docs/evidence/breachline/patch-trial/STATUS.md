@@ -14,7 +14,8 @@ Sheets are JPEG (not PNG) to stay under 400 KB.
 
 - [x] 1. Tactical soldier sheet: `soldier-tactical.jpg`, and beside our rifleman: `soldier-tactical-vs-ours.jpg`;
   its raw textures: `tex-tactical-basecolor.jpg`, `tex-tactical-metalrough.jpg`
-- [ ] 2. Rifle sheet
+- [x] 2. Rifle sheet: `rifle-scifi.jpg`, and beside our AR-5 and the Poly Haven Service Pistol: `rifle-scifi-vs-ours.jpg`;
+  raw colour texture: `tex-rifle-scifi-basecolor.jpg`
 - [ ] 3. Armoured soldier, desert trooper, bolt-action rifle
 - [ ] 4. Full assessment
 
@@ -57,3 +58,51 @@ At game scale (2 m, 1:1) it reads as a real soldier; ours reads as a toy beside 
 **Verdict (provisional): adopt with named fixes** — metalness to 0 / roughness up; head replaced or covered by our
 helmet + balaclava + goggles (remove the hair and face); hands replaced by our gloved hands at the wrist; re-colour by
 a tint mask rather than repainting the atlas. Final verdict after the other soldiers are seen.
+
+## Black sci-fi assault rifle (`scenario:asset_kHXqk4QynhrkbnpiD9C8A5zo`, `web-lod2`, 151,030 triangles, 2048 px)
+
+Meshy 7 image-to-3D; CC-BY-4.0. Patch's size (1.90 m) is an estimate and clearly wrong; rendered at 0.88 m. One fused
+mesh, double-sided material. The first-person frame places it and our AR-5 identically (camera at the eye, 55° FOV,
+no hands) so only the models differ.
+
+**Good.** Dense, coherent hard-surface detail with real depth: chamfered panels, vents, rail, a box sight, a
+skeleton stock with through-holes, ribbed magazine, raked grip. It holds up in the 2x first-person crop far better
+than our AR-5, whose handguard and receiver are still flat slabs. Both sides are finished; the underside and top are
+plausible. No melted areas at this level; small parts (trigger, sight) are clean.
+
+**Wrong.**
+- **It is a sci-fi weapon, not a modern rifle**: glowing blue capsule windows in the handguard and sides, orange
+  accent stripes. That does not fit a modern close-quarters game; recolouring the glow out leaves recessed windows
+  with nothing in them.
+- **Readable text**: "X7A" on the receiver and handguard, "07" on the stock, small pseudo-labels elsewhere. Generated,
+  not a brand I recognise, but it must be painted out (the plan forbids logos and readable text from unknown origin).
+- **Baked shading** in the colour map: each panel carries its own darkening and highlight gradient, so it looks
+  slightly "painted" and will fight our lighting; the atlas is shredded into hundreds of islands (see
+  `tex-rifle-scifi-basecolor.jpg`), so clean repainting is impractical — it would need re-unwrapping and a re-bake.
+- **One fused mesh**: magazine, trigger, charging handle and sight are welded on. A reload needs the magazine cut out
+  and capped; there is no bolt or port to animate.
+- The overall silhouette is chunky (deep receiver, fat stock) — closer to a game "future rifle" than to the slim
+  proportions the plan asks for (handguard 40–48 mm).
+
+**Reduction to about 15k triangles with a baked normal map.** 151k is about 10x the budget. What would survive as
+geometry: the outline (receiver block, handguard, stock frame with its large holes, grip, magazine, sight box, muzzle).
+What would move into the normal map acceptably: panel lines, vents, rail teeth, small screws, the ribs on the
+magazine and stock. What would suffer: the shallow window recesses and edge chamfers that catch light (they become
+flat-shaded), and close to the camera (first person, 2x crop) the silhouette steps on the sight and rail would be
+visible. In first person it is probably fine at 15k; seen from 2 m in third person it certainly is.
+
+**Comparison.** Against our AR-5: richer and more convincing at every distance, but stylistically wrong (sci-fi) and
+with readable text; ours is the right kind of rifle drawn badly. Against the Poly Haven Service Pistol (the bar): the
+pistol is clean, accurately proportioned, separate parts (slide, hammer, trigger, magazine), tidy UVs and no baked
+light; the generated rifle is busier and less believable as an object. A stranger would not think they came from the
+same studio.
+
+**Verdict: reject as our main rifle** (sci-fi design, text, baked shading, fused). It could serve a future or
+"prototype" weapon after paint-out of the text and glow; not for row E's modern AR. Its value is as a reference for
+the density of detail we lack.
+
+## Service Pistol (Poly Haven, CC0) — benchmark
+
+Variant A (wood grips); the file also carries variant B (blue grips), an empty magazine and a loose round, hidden
+here. 16,650 triangles as assembled. Clean, separate moving parts, correct scale, no text seen. **Adopt as the
+sidearm** (as the plan already intends), credit Mateusz Sadek / Poly Haven.

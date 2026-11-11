@@ -50,7 +50,7 @@ function tris(o: THREE.Object3D) {
 function normalise(inner: THREE.Object3D, kind: 'soldier' | 'weapon', size: number, rotY = 0) {
   const turn = new THREE.Group(); turn.add(inner); turn.rotation.y = rotY; turn.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(turn), dim = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
-  const k = size / (kind === 'soldier' ? dim.y : dim.x);
+  const k = size > 0 ? size / (kind === 'soldier' ? dim.y : dim.x) : 1; // size 0: keep the file's own scale
   const scaled = new THREE.Group(); scaled.add(turn); scaled.scale.setScalar(k);
   scaled.position.set(-c.x * k, kind === 'soldier' ? -box.min.y * k : -c.y * k, -c.z * k);
   const outer = new THREE.Group(); outer.add(scaled);
@@ -58,8 +58,11 @@ function normalise(inner: THREE.Object3D, kind: 'soldier' | 'weapon', size: numb
 }
 
 const gltf = new GLTFLoader();
-async function load(name: string, kind: 'soldier' | 'weapon', size: number, rotY = 0) {
+/** `hide` drops nodes by name (alternate parts shipped in the same file); `move` offsets nodes (metres, file units). */
+async function load(name: string, kind: 'soldier' | 'weapon', size: number, rotY = 0, opt: { hide?: string[]; move?: Record<string, [number, number, number]> } = {}) {
   const g = await gltf.loadAsync(`/patch-dl/${name}.glb`);
+  for (const h of opt.hide ?? []) g.scene.getObjectByName(h)?.removeFromParent();
+  for (const [n, d] of Object.entries(opt.move ?? {})) { const o = g.scene.getObjectByName(n); if (o) o.position.add(new THREE.Vector3(...d)); }
   const mats = new Set<THREE.MeshStandardMaterial>();
   g.scene.traverse(c => { const m = c as THREE.Mesh; if (m.isMesh) { m.frustumCulled = false; (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => mats.add(x as THREE.MeshStandardMaterial)); } });
   const n = normalise(g.scene, kind, size, rotY);
