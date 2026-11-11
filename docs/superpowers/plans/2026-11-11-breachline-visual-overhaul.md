@@ -6,6 +6,40 @@ including high-quality models and textures. The current build was judged, fairly
 This document is the assessment, the plan, and the contract for the session that carries it out. It was reviewed
 twice before hand-off; the review log is at the end.
 
+## Correction, 2026-11-11 (after the owner's challenge): build the assets in code
+
+The first version of this plan said weapons and characters were "blocked on a source" because "an agent cannot
+sculpt an MW2-grade rifle by writing coordinates". **That was wrong**, and the owner proved it with a reference: a
+public artifact made by the same model family (https://claude.ai/artifact/BGY1SztrAYcJQHSsnHHGmp, a breach shooter
+called "Saltline"). Reading its source shows everything in it is authored in code, with no asset files:
+
+- **Hands:** parametric five-finger hands (thumb, index, middle, ring, little; per-phalanx lengths and radii) on a
+  20-bone skinned rig with two-segment arms and IK.
+- **Weapons:** bevelled, lathe-turned and extruded parts, not boxes.
+- **Reloads:** hand-written timelines with named beats (magazine out, clear, swap, rise, align, insert, rebound,
+  regrip, tug, bolt back, release), with separate tactical and empty reloads.
+- **Textures:** generated procedurally, largely in shaders with layered fbm noise for wear, grime and edge
+  highlights, feeding full PBR (standard and physical materials, clear coat, normal and roughness maps).
+- **Rendering:** shadow maps (1024 to 4096 by tier), ambient occlusion, planar reflections, bloom with lens dirt
+  and an anamorphic streak, motion blur, MSAA, rain, quality tiers chosen from the GPU string.
+- **Sound:** Web Audio with separate buses (world, near, gun, music), two convolution reverbs and ducking.
+
+What the earlier build lacked was not capability but craft and effort: it used axis-aligned boxes and unlit
+materials (about a quarter of a megabyte of code against that artifact's megabyte and a half).
+
+**Consequences for this plan:**
+
+- Rows E (weapon and hands) and F (characters) are **not blocked**. They are built here, in code, to the standard
+  that reference shows is reachable. Asset packs remain optional, not required.
+- Code-authored geometry and shader-generated PBR textures become the **primary** route for hero assets (weapons,
+  hands, fighters, destruction, effects) and a legitimate route for the environment. Poly Haven and ambientCG
+  remain useful for photographic surface materials and set dressing.
+- That artifact is the **reference bar** for craft. Study its source statically for technique (do not run it, do
+  not copy its code, names, setting or look: Breachline stays its own game).
+- One thing that reference does **not** prove is the Chromebook requirement: its lowest tier still uses a 2048
+  shadow map, bloom and volumetrics. Breachline must hold 30 fps on a Chromebook, so the same craft has to be
+  delivered inside the budgets in section 5, optimising first.
+
 ## 1. What "MW2 quality" means here
 
 The target is the 2009 game's **technical and craft bar**, not its content. No MW2 maps, characters, weapons models,
@@ -52,13 +86,12 @@ What follows from that:
 | A, B, C, D environment | **Yes, largely** | Poly Haven covers bricks, concrete, plaster, tiles, floors, metal, and most of the props an annex needs (desks, chairs, cabinets, tool chests, crates, barrels, barriers, chain-link fence, ducts, pipes, air-con units, generator, lamps, cameras, extinguisher, roller shutters). Lightmaps and probes are code. |
 | G, H, I | **Yes** | Code plus a few flipbook textures that can be generated offline. |
 | J | **Yes** | Code and CC0 materials. |
-| D gaps | **Partly** | No CC0 server racks, lockers, computers, shipping containers or vehicles were found on Poly Haven. These must be modelled in code to a much higher standard than today, or sourced once Sketchfab access exists. |
-| E first-person weapons | **Blocked on a source** for the rifles, shotgun and SMG. Poly Haven has one service pistol and one bolt-action rifle. | An agent cannot sculpt an MW2-grade rifle by writing coordinates. |
-| F characters and animation | **Blocked on a source.** No realistic rigged soldier with animations is reachable under a licence that allows committing it. | Same reason; and motion-captured animation cannot be written by hand. |
+| D gaps | **Yes, in code** | No CC0 server racks, lockers, computers, shipping containers or vehicles were found on Poly Haven. Model them in code with bevelled, lathed and extruded parts and procedural PBR materials. |
+| E first-person weapons and hands | **Yes, in code** (see the correction above) | Parametric bevelled parts, five-finger skinned hands with IK, timeline-authored reloads. |
+| F characters and animation | **Yes, in code**, with more risk than E | Skinned parametric bodies and gear; locomotion and deaths authored as procedural or keyframed cycles. Hand-written body animation is the hardest thing in this plan to make convincing, so it gets the most iteration rounds. |
 
-So: **the environment can get to roughly MW2 standard; weapons and characters cannot until the owner supplies or
-unlocks a source** (see section 3). Without that, rows E and F will improve a lot but stay visibly below the bar, and
-this plan says so rather than pretending otherwise.
+So: **every row is to be built to the bar.** Where a row falls short at a gate, the status file gives its score and
+what the next round changes; "no source" is no longer an accepted reason.
 
 **The Chromebook constraint.** MW2 ran on consoles at about 1024x600. The weakest current Chromebooks (Intel UHD 600
 class, Mali-G52 class, 4 GB shared memory) are in the same range as those consoles or below, with browser overhead
@@ -176,22 +209,33 @@ The 0.25 m cell simulation does not change. The picture does:
 
 ### 4.6 Weapons and hands
 
-- Weapon models as glTF with named sockets (muzzle, grip, support hand, magazine, sight line). The existing
-  procedural sway, recoil, aim-down-sights and reload timing drive them.
-- Arms: a skinned arm mesh with two-bone IK to the grip and support sockets, so no hand animation files are needed;
-  fingers posed per weapon.
-- Until a source exists: the Poly Haven service pistol becomes the sidearm (proves the pipeline end to end), and the
-  long guns are rebuilt in code with bevelled, lathe-turned parts and CC0 metal and polymer materials. This is
-  expected to score about 5/10 against the bar, not 8.
+- Each weapon is authored in code as real parts with named sockets (muzzle, grip, support hand, magazine, bolt or
+  slide, sight line): receivers and handguards from extruded profiles with bevels, barrels, suppressor threads and
+  optics from lathes, rails, pins, screws, selector, trigger and guard as separate bevelled pieces. Target 8–15k
+  triangles each, with LODs for the third-person copy. Materials are PBR with shader-generated wear: edge
+  highlights, scratches, grime in recesses, parkerised steel, polymer, anodised aluminium, wood where it applies.
+- Hands: parametric five-finger hands (per-phalanx lengths and radii, knuckles, nails, glove seams) on a skinned
+  rig, two-bone IK for the arms to the grip and support sockets, finger curl poses per weapon and per grip.
+- **Reloads are authored here, as timelines of named beats** (owner's rule: no downloaded reload clips): magazine
+  release, magazine out, clear, fetch, rise, align, insert, seat, regrip, bolt or slide; separate tactical and
+  empty reloads per weapon; the shotgun loads shell by shell. Hands and magazine follow the timeline through IK
+  targets. Timings must still match `WeaponDef.reload` in `config.ts` (the simulation is not changed).
+- The existing procedural sway, recoil and aim-down-sights stay and are refined (weapon inertia, sight alignment,
+  a firing cycle with bolt travel and ejected casings).
+- Gate for this section: row E at 8. If it is below, iterate; do not move on with "about 5".
 
 ### 4.7 Characters
 
-- Skinned glTF, 6–10k triangles, three LODs, squad colours as a tint mask on armbands and helmet band (shape cue
-  kept for colour-blind players).
-- Animation through `AnimationMixer`: locomotion blend by pace and direction, crouch, lean, aim pitch as an additive
-  layer, reload, hit reactions, three deaths. The simulation's pose fields stay the single source of truth.
-- Without a source: keep the current rig but replace box parts with modelled, normal-mapped segments and smooth
-  joints. Expected about 4/10.
+- Skinned bodies authored in code: torso, limbs, head and hands from lofted cross-sections with smooth skin
+  weights at the joints; modelled gear on top (helmet with rails and strap, goggles, plate carrier with pouches,
+  belt, holster, knee pads, boots with soles). About 6–10k triangles, three LODs. Procedural fabric, webbing, metal
+  and rubber materials. Squad colours as bands on helmet and arms, with the shape cue kept.
+- Animation authored in code: a locomotion cycle driven by pace and direction (foot plant, hip sway, shoulder
+  counter-rotation, weapon bob), crouch, lean, aim pitch as an additive layer through the spine, a third-person
+  reload matching the first-person beats, hit flinches, and several deaths. The simulation's pose fields stay the
+  single source of truth. A properly licensed locomotion pack may be used if one is found, but is not required.
+- This is the riskiest section. Budget the most look-compare-iterate rounds here and judge it in motion (frame
+  sequences), not only in stills.
 
 ### 4.8 Effects and post
 
@@ -243,8 +287,8 @@ all existing tests green; a commit and push. A phase is not done because tests p
 | 3. Surfaces | Every wall, floor, ceiling material replaced; trims, frames, ceiling grid, fixtures | Rows B, C ≥ 7 on High |
 | 4. Props and dressing | Room by room and yard, per section 6; modelled stand-ins for the gaps | Row D ≥ 7 indoors, ≥ 6 in the yard |
 | 5. Destruction look | Section 4.5 | Row J ≥ 7; the destruction tests and a new "nothing visible blocks a passable gap" check pass |
-| 6. Weapons and hands | Section 4.6 with whatever source exists | Row E as scored; honest number reported |
-| 7. Characters | Section 4.7 with whatever source exists | Row F as scored; honest number reported |
+| 6. Weapons and hands | Section 4.6, authored in code | Row E ≥ 8, judged in stills and across a reload sequence |
+| 7. Characters | Section 4.7, authored in code | Row F ≥ 7, judged in motion (frame sequences of walking, crouching, firing, dying) |
 | 8. Effects, post, optimisation | Section 4.8; LODs; tier tuning against budgets; docs, notices, SPEC update | Rows G, H, I ≥ 7; all budgets met; benchmark instructions written for the owner |
 
 ## 8. How quality is judged
@@ -252,6 +296,8 @@ all existing tests green; a commit and push. A phase is not done because tests p
 - **Scorecard, fixed bar.** Each row A–J is scored 0–10 where 8 means "would not look out of place in MW2 (2009)"
   and the current build is recorded as the baseline (about 1–2 on most rows). All rows are re-scored after every
   phase, in a table, by looking at the renders — never from memory or from the report alone.
+- **The craft bar is the reference artifact** named in the correction at the top: read its source for how each
+  thing is built before building the same kind of thing here.
 - **Reference first.** Before writing code in a phase, study real references for that row (the Poly Haven asset
   renders for materials and props; publicly available screenshots of late-2000s military shooters for composition
   and lighting, looked at for study only, never saved into the repository or copied).
@@ -286,7 +332,8 @@ all existing tests green; a commit and push. A phase is not done because tests p
 | Poly Haven props do not fit the collision boxes | High | Rework | Scale within ±15 %, otherwise adjust `map.ts` under the 4.4 rule |
 | Too many unique prop textures | High | Download and memory budgets blown | The asset count budget in 4.1; atlas small props |
 | Baker and browser build different geometry | Medium | Lightmaps misplaced | Single shared module and an agreement test (4.2) |
-| No committable pack for weapons or characters is found | Medium | Rows E, F below the bar | Build our own weapons (4.6); search CC0 and CC-BY packs; report the score honestly |
+| Hand-written body animation looks stiff | High | Row F below the bar | Most iteration rounds go here; judge in motion; a licensed locomotion pack is allowed as a supplement |
+| Code-authored hero assets cost too much per frame | Medium | Chromebook budget missed | LODs, merged static parts, one material per weapon, shader cost measured per tier |
 | Chromebook cannot hold 30 fps | Unknown (no GPU here) | Core requirement missed | Optimise first (instancing, merging, LODs, culling, compressed textures, cheaper shaders); benchmark mode; adaptive scale; a throttled mode only as the last resort |
 | Download too large for school networks | Medium | Players wait or give up | Tiered loading; Low under 20 MB; lazy-load High textures after first frame |
 | Software rasteriser renders differ from real GPUs | Low | Misjudged pictures | Owner confirms on real hardware at the phase 0 and phase 4 gates |
@@ -338,3 +385,9 @@ loading with an immediate fallback look was added; `index.ts` joined the restric
 purposes; budgets gained a script-cost row because that is the only frame cost measurable in the container; the
 prop table marks every gap ("no source") rather than implying coverage; working notes were added from what this
 session learned about running tests here.
+
+**Correction after hand-off (owner's challenge).** The owner pointed to a code-only artifact by the same model
+family with skinned five-finger hands, bevelled weapons, shader-made PBR textures, beat-by-beat reloads and layered
+sound. The claim that weapons and characters were blocked without downloaded models was withdrawn; sections 2, 4.6,
+4.7, 7, 8 and 10 were rewritten so that every row is built in code to the bar, with that artifact as the craft
+reference and the Chromebook budgets still binding.
