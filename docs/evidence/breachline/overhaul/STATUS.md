@@ -4,6 +4,12 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: destructible panels batched.** `render/panelbatch.ts`: every whole, unreinforced panel is split by its
+material groups and merged into one mesh per material; a panel leaves the batch (and draws alone) when it is damaged,
+reinforced or gone, and only the batches it was in are rebuilt, at that moment. Of 59 panels, 47 start whole. Draw
+calls: Lab 221 -> 209, corridor 346 -> 315, Archive 314 -> 281, South Yard 322 -> 296, West Lot 325 -> 285; the
+breach and shot-wall views render as before. Next: small-object models, calmer floors, the tarpaulin.
+
 **2026-11-11: East Lane done; no procedural area is left.** `rooms/outdoors/round-1/east.png` (before, after): an
 outdoor art region (`east`) with drains, drums against the concrete block, cans and a military crate on the crate.
 230 draw calls. No core files touched. Next: batching the destructible panels' draw calls.

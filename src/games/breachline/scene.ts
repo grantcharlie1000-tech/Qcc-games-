@@ -7,6 +7,7 @@ import { createBake, SUN, SUN_COLOR, type Bake } from './lightbake';
 import { PanelView, buildLevel, type PanelMaterials } from './levelmesh';
 import { MAP } from './map';
 import { loadArtWorld, type ArtWorld } from './render/artworld';
+import { PanelBatches } from './render/panelbatch';
 import { boxes } from './models';
 import { chargeGeometry, deviceGeometry, deviceScreenTexture } from './render/kit';
 import { createPatchFighters } from './render/patchfighters/index';
@@ -87,8 +88,11 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const panelMats: PanelMaterials = { wall: materials.drywall, core: materials.core, planks: materials.planks, plate: materials.plate };
   const panelGroup = new THREE.Group(); scene.add(panelGroup);
   let world: World | null = null, panels: PanelView[] = [];
+  // Undamaged panels sharing a material draw as one merged mesh (render/panelbatch.ts).
+  let batches = new PanelBatches(panelGroup);
   function bind(w: World) {
     for (const p of panels) { panelGroup.remove(p.mesh); p.dispose(); }
+    batches.dispose(); batches = new PanelBatches(panelGroup);
     world = w;
     // `?artdbg=world` exposes the bound world to evidence scripts (read-only use: finding damaged or reinforced panels).
     if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) (window as unknown as { __blWorld: World }).__blWorld = w;
@@ -546,7 +550,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       if (art && !probesDone) { const t = performance.now(); probesDone = art.captureNext(renderer, artScene); if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: probe ${(performance.now() - t).toFixed(0)} ms`); }
       time += dt;
       if (view.m.world !== world) bind(view.m.world);
-      for (const p of panels) p.sync();
+      for (const p of panels) if (p.sync()) batches.update(p);
+      batches.flush();
       updateDeploys(view.m);
       fighters.update(view);
       place(view);
@@ -589,6 +594,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       art?.dispose();
       post.dispose();
       for (const p of panels) p.dispose();
+      batches.dispose();
       fighters.dispose(); viewmodel.dispose();
       fx.dispose();
       scene.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.geometry) mesh.geometry.dispose(); });
