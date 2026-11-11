@@ -44,6 +44,12 @@ if (job === 'turntable') {
     await page.evaluate(([id, t, e]) => window.__breachlineHero.fp(id, { reload: t, empty: e }), [id, (i + 0.5) / 8, kind === 'empty']);
     await shot(`reload-${id}-${kind}-${i}`);
   }
+} else if (job === 'lightturn') {
+  const [id] = args;
+  for (let i = 0; i < 8; i++) {
+    await page.evaluate(([id, a]) => window.__breachlineHero.weapon(id, { yaw: -70, pitch: 12, dist: 1.0, light: a }), [id, i * 45]);
+    await shot(`light-${id}-${i}`);
+  }
 } else if (job === 'eval') {
   console.log(JSON.stringify(await page.evaluate(args[0])));
   await shot(args[1] ?? 'eval');

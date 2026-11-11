@@ -7,6 +7,9 @@ change of 2026-11-11 ("Fighters split out"), fighters and row F belong to the fi
 
 ## Where I am
 
+r5d: wider bright edge wear, an amber-coated lens, a moving-light turntable (`r5/ar-turntable-moving-light.png`: the highlight travels across the receiver flats, the grip stipple and the handguard), and refreshed game frames. My honest read of the 2× corridor crop is **6–6.5**: the parts and finishes separate and the hand shows fingers, but the support hand still reads soft and the reload beats are not yet distinct.
+
+
 r5c: the hands' baked set is in (`public/game-art/breachline/hero/hands/`, 1024, about 0.35 MB). The right arm is unwrapped before mirroring, so both arms share the atlas. It's a detail map multiplied by the vertex colours, so squad colours stay in the geometry, plus finger-joint creases, seams at panel borders, ray-cast AO, a normal map with crease grooves, leather pebble and sleeve weave, and a darker ranger-green sleeve. Evidence: `r5/hands-textured-studio-and-game.png`, `r5/hands-atlas-*.png`. In the 2× corridor crop the support hand now shows separate fingers.
 
 

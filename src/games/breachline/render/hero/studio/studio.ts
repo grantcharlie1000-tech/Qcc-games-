@@ -29,7 +29,7 @@ scene.add(key, rim, new THREE.HemisphereLight(0xffffff, 0x404040, 0.3));
 const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 20);
 const stage = new THREE.Group(); scene.add(stage);
 const mat = heroMaterial();
-const lensMat = new THREE.MeshStandardMaterial({ color: 0x8fb0b0, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.14, depthWrite: false });
+const lensMat = new THREE.MeshStandardMaterial({ color: 0xc08a3a, roughness: 0.03, metalness: 0.55, transparent: true, opacity: 0.2, depthWrite: false, envMapIntensity: 1.6 });
 
 function clear() { for (const c of [...stage.children]) stage.remove(c); }
 function size() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }

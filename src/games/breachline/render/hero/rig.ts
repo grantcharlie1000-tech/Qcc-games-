@@ -132,7 +132,7 @@ export function createFpRig(look: ArmsLook): FpRig {
   const root = new THREE.Group(), gun = new THREE.Group();
   root.add(gun);
   const material = heroMaterial({ skinned: true });
-  const lensMat = new THREE.MeshStandardMaterial({ color: 0x8fb0b0, roughness: 0.04, metalness: 0.3, transparent: true, opacity: 0.14, depthWrite: false });
+  const lensMat = new THREE.MeshStandardMaterial({ color: 0xc08a3a, roughness: 0.03, metalness: 0.55, transparent: true, opacity: 0.2, depthWrite: false, envMapIntensity: 1.6 });
   const arms: [Arm, Arm] = [makeArm(1), makeArm(-1)];
   const armGeo = armsGeometry(look);
   const armMesh = new THREE.SkinnedMesh(armGeo, material);

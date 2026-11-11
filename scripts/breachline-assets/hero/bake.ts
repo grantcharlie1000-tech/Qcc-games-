@@ -170,7 +170,7 @@ async function bake(id: string, geo: THREE.BufferGeometry, density: number, S: n
     const polish = (bone[k] === WB.root && Y < -0.1 && Z > -0.03 && Z < 0.05 ? 1 : 0) * 0.6 + (bone[k] === WB.handle ? 0.7 : 0) + (Y < -0.09 && Z < -0.08 && Z > -0.17 ? 0.35 : 0) + (Z < -0.3 && Z > -0.5 && Y < -0.08 ? 0.3 : 0);
     // Scratches along the slide direction (z), mostly on the lower half and the magazine.
     const scr = Math.max(0, vnoise(X * 1200, Y * 1200, Z * 40) - 0.82) / 0.18 * sstep(0.4, 0.7, big);
-    const edgeW = sstep(0.15, 0.6, edge[k] * wear * (0.6 + mid) + scr * 0.5 * wear);
+    const edgeW = sstep(0.08, 0.42, edge[k] * wear * (0.7 + mid) + scr * 0.6 * wear);
     if (isGlow) { /* keep */ }
     else if (isMetal) {
       const tint = 0.82 + 0.3 * big + 0.08 * (fine - 0.5);
