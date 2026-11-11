@@ -4,6 +4,12 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: Server Room round 1 done.** `rooms/server/round-1/round1.png`: top row the aisle before (procedural)
+and after, bottom row the old bookmark and a rack face close. It is now an art region (baked, eight cold troffers
+over the aisles). The racks are dressed on both faces: posts, black and silver 1U-4U equipment with green and amber
+status lights, patch panels with looms, blanking plates, dark steel end panels with grilles; a cable tray on drop
+rods over each run; wall AC unit with its pipe run, skirting, fire panel, extinguisher. Next: the Lobby.
+
 **2026-11-11: yard step 3b (containers and crate) done.** `rooms/yard/round-1/step3b.png`: the yard, the car, a
 container's door end, the crate stack. Containers have raised corrugation ribs, top and bottom rails, corner posts,
 door leaves with four locking bars and handles, and rust runs; the crate box has edge and cross battens. Next: one
@@ -139,8 +145,25 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** yard round 1 done (steps 1-4); next one round each on the Server Room, Lobby, Office
+**Where I am (keep current):** yard round 1 and Server Room round 1 done; next one round each on the Lobby, Office
 and Break Room, then a second round on the lowest-scoring area.
+
+## Server Room, round 1 (`rooms/server/round-1/round1.png`, 960 px)
+
+- **Region:** `room('Server Room', 'server')` in `REGIONS`; fixtures `server` (eight troffers, cold white); baked
+  in 5.6 min; new bookmarks `server-aisle` and `server-rack`.
+- **Dressing** (`dressServer` in `render/labdress.ts`): per rack face, bay posts and rails, a column of equipment
+  from 1U to 4U (mostly black, one in five silver), drive bays or vents, two or three status lights (new emissive
+  `led` and `ledAmber`), patch panels (ports and a blue loom), blanking plates; end panels in dark steel with a vent
+  grille. Over each run a cable tray with a cable loom on drop rods. North wall: AC unit, pipe run, skirting, fire
+  panel. An extinguisher by the east wall.
+- **Found and fixed:** equipment first read pale grey (a 0.45 roughness reflected the white ceiling), so it has
+  its own rough `chassis` material; rack ends read as concrete pillars (the room's light trim), so they got panels.
+- **Budget:** 202-252 draw calls, 140-160k triangles in the room views (the rack dressing is the bulk).
+- **Still wrong:** the raised floor is the procedural texture (no tile edges or lifting holes in a real set); the
+  equipment is boxes without front detail at close range; no cable runs between racks at the floor.
+- Tests: unit 5385 passed; Breachline browser 8 passed (stock warm run expected to fail).
+
 
 ## The yard, step 3b: containers and crate (`rooms/yard/round-1/step3b.png`, 960 px)
 

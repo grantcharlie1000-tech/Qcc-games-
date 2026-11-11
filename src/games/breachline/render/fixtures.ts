@@ -18,6 +18,8 @@ export const FIXTURES: Record<string, Fixture[]> = {
   archive: [...[3.3, 6.9].flatMap(x => [3.2, 7.6].map(z => troffer(x, z, [1, 0.97, 0.91]))),
     // A desk lamp on the reading table: a warm local pool on the table and the floor round it.
     { x: 4.25, z: 2.85, color: [1.3, 0.92, 0.55], w: 0.14, d: 0.14, y: 1.12, gain: 26 }],
+  // The Server Room: fittings over the aisles between the rack runs, a cold white.
+  server: [[6.5, -9.1], [9.5, -9.1], [12.8, -9.1], [6.5, -6.4], [9.5, -6.4], [12.8, -6.0], [7.2, -3.2], [10, -3.2]].map(([x, z]) => troffer(x, z, [0.88, 0.96, 1.06])),
   // Tubes replaced at different times: older ones gone warm, two new cold ones, so the corridor's light is not one
   // flat colour along its length.
   corridor: [-12.75, -8.25, -3.75, 0.75, 5.25, 9.75, 13.5].map((x, i) => troffer(x, -0.5, ([[1.06, 0.9, 0.72], [1, 0.95, 0.86], [0.88, 0.95, 1.06], [1, 0.95, 0.86], [1.06, 0.9, 0.72], [1, 0.95, 0.86], [0.88, 0.95, 1.06]] as const)[i])),

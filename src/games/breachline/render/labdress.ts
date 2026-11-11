@@ -10,7 +10,7 @@ import type { Atlas, Region } from './levelgeo';
 
 type V3 = [number, number, number];
 /** Materials the dressing asks for; artworld.ts maps each key to a material. */
-export type DressKey = 'bulb' | 'casing' | 'door' | 'locker' | 'exit' | 'alarm' | 'fire' | 'card' | 'label' | 'binder' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
+export type DressKey = 'chassis' | 'led' | 'ledAmber' | 'bulb' | 'casing' | 'door' | 'locker' | 'exit' | 'alarm' | 'fire' | 'card' | 'label' | 'binder' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
 
 const inRoom = (r: Region, x: number, z: number) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1;
 
@@ -19,6 +19,7 @@ export function dressRoom(atlas: Atlas, room: Region): DetailBuilder {
   if (room.name === 'corridor') return dressCorridor(atlas, room);
   if (room.name === 'archive') return dressArchive(atlas, room);
   if (room.name === 'yard') return dressYard(atlas, room);
+  if (room.name === 'server') return dressServer(atlas, room);
   return dressLab(atlas, room);
 }
 
@@ -466,6 +467,86 @@ function benchKit(D: DetailBuilder) {
 }
 
 /** The suspended ceiling's T-bar grid at 600 mm, over the tile joints the ceiling texture draws. */
+/** The Server Room: equipment racks dressed on both faces (posts, servers, switches and patch panels with their
+ * status lights, blanking plates), a cable tray over each run on drop rods, a wall air-conditioning unit and kit on the
+ * walls. The racks' collision boxes stay the volume; everything here sits on their faces or overhead. */
+function dressServer(atlas: Atlas, room: Region): DetailBuilder {
+  const D = new DetailBuilder(atlas), up: V3 = [0, -1, 0], H = WALL_H;
+  ceilingGrid(D, room);
+  let seed = 31;
+  for (const b of MAP.boxes) {
+    if (b.mat !== 'rack' || !inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) continue;
+    const r = seeded(seed += 13), alongZ = b.z1 - b.z0 > b.x1 - b.x0, len = alongZ ? b.z1 - b.z0 : b.x1 - b.x0, start = alongZ ? b.z0 : b.x0;
+    const bays = Math.max(1, Math.round(len / 0.6)), bw = len / bays;
+    for (const side of [1, -1]) {
+      const face = alongZ ? (side > 0 ? b.x1 : b.x0) : (side > 0 ? b.z1 : b.z0), n: V3 = alongZ ? [side, 0, 0] : [0, 0, side];
+      const put = (key: DressKey, a: number, c: number, y0: number, y1: number, d0: number, d1: number, tint?: V3) => {
+        const o0 = face + side * d0, o1 = face + side * d1, lo = Math.min(o0, o1), hi = Math.max(o0, o1), mid = (a + c) / 2, at: V3 = alongZ ? [face + side * 0.001, (y0 + y1) / 2, mid] : [mid, (y0 + y1) / 2, face + side * 0.001];
+        if (alongZ) D.box(key, lo, y0, a, hi, y1, c, at, n, tint); else D.box(key, a, y0, lo, c, y1, hi, at, n, tint);
+      };
+      for (let i = 0; i <= bays; i++) { const u = start + i * bw; put('kick', u - 0.025, u + 0.025, 0, b.y1, 0, 0.035); }
+      put('kick', start, start + len, b.y1 - 0.06, b.y1, 0, 0.035); put('kick', start, start + len, 0, 0.09, 0, 0.035);
+      for (let i = 0; i < bays; i++) {
+        const a = start + i * bw + 0.03, c = start + (i + 1) * bw - 0.03;
+        let y = 0.12;
+        while (y < b.y1 - 0.12) {
+          const pick = r(), u = pick < 0.35 ? 1 : pick < 0.6 ? 2 : pick < 0.75 ? 4 : pick < 0.88 ? 1 : 3, h = Math.min(u * 0.0445 - 0.003, b.y1 - 0.1 - y);
+          if (h < 0.03) break;
+          if (pick > 0.88 && pick < 0.95) { put('chassis', a, c, y, y + h, 0.002, 0.008, [1.4, 1.4, 1.45]); y += h + 0.003; continue; }  // blanking plate
+          // Mostly black bezels; one in five a silver or grey chassis.
+          const silver = r() < 0.2, tone = silver ? 5 + r() * 4 : 0.7 + r() * 0.8, depth = 0.012 + r() * 0.02;
+          put('chassis', a, c, y, y + h, 0.002, depth, [tone, tone, tone * 1.05]);
+          if (pick >= 0.75 && pick < 0.88) {
+            // Patch panel: a row of ports and a cable loom hanging off it.
+            for (let p = 0; p < 12; p++) { const pu = a + 0.03 + p * (c - a - 0.06) / 12; put('socket', pu, pu + 0.018, y + h * 0.3, y + h * 0.7, depth, depth + 0.002, [0.35, 0.36, 0.38]); }
+            put('conduit', a + 0.02, c - 0.02, y - 0.012, y + 0.004, depth + 0.004, depth + 0.03, [0.25, 0.4, 0.75]);
+          } else {
+            // Drive bays or vents, and two or three status lights at the left end.
+            if (u >= 2) for (let k = 0; k < 4; k++) { const ku = a + 0.12 + k * (c - a - 0.16) / 4; put('kick', ku, ku + (c - a - 0.2) / 4 - 0.01, y + 0.008, y + h - 0.008, depth, depth + 0.002); }
+            const lights = 2 + Math.floor(r() * 2);
+            for (let k = 0; k < lights; k++) put(r() < 0.82 ? 'led' : 'ledAmber', a + 0.03 + k * 0.022, a + 0.04 + k * 0.022, y + h / 2 - 0.005, y + h / 2 + 0.005, depth, depth + 0.003);
+          }
+          y += h + 0.003;
+        }
+      }
+    }
+    // Dark steel side panels over both ends of the run, with a vent grille and a cable entry.
+    for (const end of [-1, 1]) {
+      const e = alongZ ? (end > 0 ? b.z1 : b.z0) : (end > 0 ? b.x1 : b.x0), n: V3 = alongZ ? [0, 0, end] : [end, 0, 0];
+      const slab = (u0: number, u1: number, y0: number, y1: number, d0: number, d1: number, key: DressKey, tint?: V3) => {
+        const o0 = e + end * d0, o1 = e + end * d1, lo = Math.min(o0, o1), hi = Math.max(o0, o1), at: V3 = alongZ ? [(u0 + u1) / 2, (y0 + y1) / 2, e + end * 0.001] : [e + end * 0.001, (y0 + y1) / 2, (u0 + u1) / 2];
+        if (alongZ) D.box(key, u0, y0, lo, u1, y1, hi, at, n, tint); else D.box(key, lo, y0, u0, hi, y1, u1, at, n, tint);
+      };
+      const w0 = alongZ ? b.x0 : b.z0, w1 = alongZ ? b.x1 : b.z1;
+      slab(w0, w1, 0, b.y1, 0, 0.012, 'chassis', [1.5, 1.5, 1.6]);
+      for (let k = 0; k < 9; k++) slab(w0 + 0.12, w1 - 0.12, 1.2 + k * 0.05, 1.22 + k * 0.05, 0.012, 0.016, 'kick');
+      slab((w0 + w1) / 2 - 0.08, (w0 + w1) / 2 + 0.08, b.y1 - 0.12, b.y1 - 0.02, 0.012, 0.03, 'plastic');
+    }
+    // The cable tray over the run, on drop rods to the slab, with a loom of cable in it.
+    const ty = 2.42, cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2, hw = 0.16;
+    const tray = (y0: number, y1: number, w: number, key: DressKey, tint?: V3) => alongZ
+      ? D.box(key, cx - w, y0, b.z0 - 0.2, cx + w, y1, b.z1 + 0.2, [cx, H - 0.001, cz], up, tint)
+      : D.box(key, b.x0 - 0.2, y0, cz - w, b.x1 + 0.2, y1, cz + w, [cx, H - 0.001, cz], up, tint);
+    tray(ty, ty + 0.012, hw, 'steel');
+    for (const s of [-1, 1]) alongZ ? D.box('steel', cx + s * hw - 0.006, ty, b.z0 - 0.2, cx + s * hw + 0.006, ty + 0.08, b.z1 + 0.2, [cx, H - 0.001, cz], up)
+      : D.box('steel', b.x0 - 0.2, ty, cz + s * hw - 0.006, b.x1 + 0.2, ty + 0.08, cz + s * hw + 0.006, [cx, H - 0.001, cz], up);
+    tray(ty + 0.012, ty + 0.06, hw - 0.03, 'conduit', [0.18, 0.2, 0.24]);
+    for (let a = 0.3; a < len; a += 1.2) for (const s of [-1, 1]) {
+      const px = alongZ ? cx + s * (hw + 0.02) : start + a, pz = alongZ ? start + a : cz + s * (hw + 0.02);
+      D.box('chrome', px - 0.005, ty, pz - 0.005, px + 0.005, H, pz + 0.005, [px, H - 0.001, pz], up, [0.7, 0.7, 0.7]);
+    }
+  }
+  // North wall (solid): skirting, the wall air-conditioning unit with its pipe run, a fire panel by the door end.
+  const z = room.z0 + 0.15, n: V3 = [0, 0, 1], at = (x: number, yy: number): V3 => [x, yy, z + 0.001];
+  D.box('trim', room.x0 + 0.12, 0.02, z, room.x1 - 0.12, 0.11, z + 0.016, at(9, 0.06), n);
+  D.box('casing', 8.4, 2.3, z, 9.5, 2.62, z + 0.24, at(8.95, 2.46), n, [0.98, 0.98, 0.96]);
+  D.box('kick', 8.5, 2.31, z + 0.2, 9.4, 2.35, z + 0.242, at(8.95, 2.33), n);
+  D.box('conduit', 9.5, 2.5, z, 10.2, 2.56, z + 0.06, at(9.85, 2.53), n, [0.9, 0.9, 0.88]);
+  D.box('conduit', 10.14, 2.56, z, 10.2, H, z + 0.06, at(10.17, 2.8), n, [0.9, 0.9, 0.88]);
+  D.box('alarm', 13.2, 1.4, z, 13.55, 1.75, z + 0.08, at(13.37, 1.57), n);
+  return D;
+}
+
 function ceilingGrid(D: DetailBuilder, room: Region) {
   const y = WALL_H, drop = 0.014, half = 0.012, n: V3 = [0, -1, 0];
   const on = (x: number, z: number): V3 => [x, y - 0.001, z];

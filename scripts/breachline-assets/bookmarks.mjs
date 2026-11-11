@@ -28,6 +28,9 @@ export const BOOKMARKS = {
   // The reading table and its desk lamp.
   'archive-desk': [5.6, 4.3, 0.95, -0.3],
   'server-room': [14.3, -2.6, 0.95, -0.06],
+  // Down the aisle between the two long rack runs, and close on a rack face.
+  'server-aisle': [12.6, -6.3, 1.5708, -0.05],
+  'server-rack': [8.2, -6.5, 0.25, -0.12],
   'south-yard': [3, 19.5, 0, -0.02],
   // The south yard's painted bays and a grass verge, looking south.
   'yard-bays': [3.5, 13.2, 2.75, -0.22],
