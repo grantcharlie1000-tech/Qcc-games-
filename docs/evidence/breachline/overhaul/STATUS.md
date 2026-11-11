@@ -4,6 +4,15 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: map fill C, corridor, and dressing on destructible walls.** `mapfill/corridor/c1.png` (corridor before
+and after: pipe run on hangers, hanging double-sided room signs at every doorway, trunking and emergency lights on
+the solid headers above the panels, bins at posts, a clock) and `c2-panel-decor.png`. Because nothing may hang on a
+destructible wall as an object, soft-wall panels now carry their own dressing in their geometry (`panelDecor` in
+`levelmesh.ts`): skirting and a dado rail per cell column, and on each face now and then a noticeboard with sheets, a
+poster, a framed print or a whiteboard, plus sockets and a switch. Each piece is tinted board (same texture and baked
+light, no extra material or draw call) and is drawn only while every cell under it is intact, so it goes with the
+board. This dresses every soft wall on the map at once. Next: the Lobby, Office and Archive lane.
+
 **2026-11-11: map fill, Phase A greybox ready for your gate.** `mapfill/greybox-plan.png` (before above, after
 below). 83 new cover boxes in the marked block in `map.ts` (additive only; nothing existing touched), placed by a
 rule-checked search (`scripts/breachline-assets/mapfill-place.ts`) and tested (`tests/games/breachline/mapfill.test.ts`).

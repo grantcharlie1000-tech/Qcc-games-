@@ -246,6 +246,57 @@ const GYPSUM_FACE: RGB = [1.12, 1.1, 1.05], TORN: RGB = [0.74, 0.71, 0.66];
 /** Deterministic hash in [0, 1) of a panel corner. */
 const hash = (a: number, b: number, c: number) => { const v = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453; return v - Math.floor(v); };
 
+/** A piece of dressing on a soft wall's face: u and y extents, which face (+1 or -1 along the wall's normal), how far
+ * it stands proud, and its tint on the board. */
+export interface PanelDecor { u0: number; u1: number; y0: number; y1: number; side: 1 | -1; d: number; tint: RGB }
+/** The dressing for a plasterboard wall panel, laid out from its position (the same every time). */
+export function panelDecor(p: Panel): PanelDecor[] {
+  if (p.kind !== 'wall' || p.reinforced) return [];
+  const out: PanelDecor[] = [], w = p.cols * CELL, top = p.y0 + p.rows * CELL;
+  for (const side of [1, -1] as const) {
+    const h = (k: number) => hash(p.u0 * 1.7 + k, p.pos * 2.3 + side, p.cols + k * 0.37);
+    for (let c = 0; c < p.cols; c++) {
+      const u0 = p.u0 + c * CELL, u1 = u0 + CELL;
+      out.push({ u0, u1, y0: p.y0 + 0.02, y1: p.y0 + 0.11, side, d: 0.014, tint: [0.42, 0.44, 0.47] });
+      out.push({ u0, u1, y0: 1.03, y1: 1.075, side, d: 0.012, tint: [0.62, 0.63, 0.64] });
+    }
+    if (w < 1.4 || top < 2) continue;
+    const pick = h(1), fw = pick < 0.3 ? 0.9 + h(2) * 0.4 : pick < 0.5 ? 0.42 : pick < 0.7 ? 0.55 : 1.2;
+    if (pick < 0.85 && w > fw + 0.6) {
+      const a = p.u0 + 0.3 + h(3) * (w - fw - 0.6), b = a + fw;
+      if (pick < 0.3) {
+        // Noticeboard: an aluminium frame, cork, pinned sheets (some yellow).
+        out.push({ u0: a, u1: b, y0: 1.25, y1: 1.95, side, d: 0.018, tint: [0.75, 0.76, 0.78] });
+        out.push({ u0: a + 0.025, u1: b - 0.025, y0: 1.275, y1: 1.925, side, d: 0.02, tint: [0.72, 0.5, 0.3] });
+        for (let i = 0; i < 4; i++) {
+          const sw = 0.15 + h(10 + i) * 0.06, sh = 0.21 + h(20 + i) * 0.05, su = a + 0.06 + h(30 + i) * (fw - 0.12 - sw), sy = 1.32 + h(40 + i) * (0.55 - sh);
+          out.push({ u0: su, u1: su + sw, y0: sy, y1: sy + sh, side, d: 0.022, tint: i % 3 ? [1.25, 1.25, 1.22] : [1.25, 1.18, 0.75] });
+        }
+      } else if (pick < 0.5) {
+        // A poster in a clip frame: white border, a coloured field and a dark band of text.
+        const hue: RGB = ([[0.35, 0.55, 0.95], [0.95, 0.45, 0.3], [0.4, 0.8, 0.5], [0.95, 0.8, 0.3]] as RGB[])[Math.floor(h(4) * 4)];
+        out.push({ u0: a, u1: b, y0: 1.3, y1: 1.92, side, d: 0.006, tint: [1.2, 1.2, 1.18] });
+        out.push({ u0: a + 0.03, u1: b - 0.03, y0: 1.5, y1: 1.88, side, d: 0.008, tint: hue });
+        out.push({ u0: a + 0.05, u1: b - 0.05, y0: 1.36, y1: 1.44, side, d: 0.008, tint: [0.25, 0.25, 0.27] });
+      } else if (pick < 0.7) {
+        // A framed print: dark frame, a pale mount and a muted picture.
+        out.push({ u0: a, u1: b, y0: 1.45, y1: 1.88, side, d: 0.02, tint: [0.2, 0.18, 0.16] });
+        out.push({ u0: a + 0.04, u1: b - 0.04, y0: 1.49, y1: 1.84, side, d: 0.022, tint: [1.15, 1.13, 1.08] });
+        out.push({ u0: a + 0.09, u1: b - 0.09, y0: 1.54, y1: 1.79, side, d: 0.024, tint: [0.45 + h(5) * 0.3, 0.5, 0.4 + h(6) * 0.3] });
+      } else {
+        // A whiteboard with its pen tray.
+        out.push({ u0: a, u1: b, y0: 1.05, y1: 1.9, side, d: 0.018, tint: [0.75, 0.76, 0.78] });
+        out.push({ u0: a + 0.02, u1: b - 0.02, y0: 1.07, y1: 1.88, side, d: 0.02, tint: [1.3, 1.3, 1.3] });
+        out.push({ u0: a + 0.2, u1: b - 0.2, y0: 1.02, y1: 1.05, side, d: 0.06, tint: [0.75, 0.76, 0.78] });
+      }
+    }
+    // A double socket low down, and now and then a light switch near one end.
+    { const su = p.u0 + 0.35 + h(7) * (w - 0.7); out.push({ u0: su, u1: su + 0.15, y0: 0.3, y1: 0.39, side, d: 0.012, tint: [1.25, 1.25, 1.22] }); }
+    if (h(8) < 0.5) { const su = h(9) < 0.5 ? p.u0 + 0.15 : p.u0 + w - 0.24; out.push({ u0: su, u1: su + 0.09, y0: 1.2, y1: 1.29, side, d: 0.012, tint: [1.25, 1.25, 1.22] }); }
+  }
+  return out;
+}
+
 /** Builds a panel's mesh: faces (group 0), board edges and cavity (group 1), studs (group 2). Pure, testable. */
 export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLight): { geometry: THREE.BufferGeometry; studs: { c: number; r: number }[] } {
   const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [], face: number[] = [], edge: number[] = [], stud: number[] = [];
@@ -292,6 +343,24 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
       for (const n of [1, -1]) quad(face, vert(u0, y0, half * n, n, 1), vert(u1, y0, half * n, n, 1), vert(u1, y1, half * n, n, 1), vert(u0, y1, half * n, n, 1), alongX ? n < 0 : n > 0);
       start = on ? c : -1;
     }
+  }
+  // Dressing on the board itself (map-fill plan, section 4: nothing is hung on destructible walls as a separate
+  // object): skirting and a dado rail per cell column, and on each face now and then a noticeboard with pinned sheets,
+  // a poster, a framed print or a whiteboard, plus sockets and a switch. Each piece is tinted board (the wall's own
+  // texture and baked light) standing a few millimetres proud, and is drawn only while every cell under it is
+  // intact, so it goes with the board when that part of the wall is shot or blown out.
+  for (const d of panelDecor(p)) {
+    const c0 = Math.floor((d.u0 - p.u0) / CELL + 1e-6), c1 = Math.ceil((d.u1 - p.u0) / CELL - 1e-6), r0 = Math.floor((d.y0 - p.y0) / CELL + 1e-6), r1 = Math.ceil((d.y1 - p.y0) / CELL - 1e-6);
+    let whole = true;
+    for (let r = r0; r < r1 && whole; r++) for (let c = c0; c < c1; c++) if (!cell(c, r) || rim(c, r)) { whole = false; break; }
+    if (!whole) continue;
+    const n = d.side, o0 = half * n, o1 = (half + d.d) * n, flip = alongX ? n < 0 : n > 0;
+    const v = (u: number, y: number, o: number) => vert(u, y, o, n, d.tint, 0, 0, true);
+    quad(face, v(d.u0, d.y0, o1), v(d.u1, d.y0, o1), v(d.u1, d.y1, o1), v(d.u0, d.y1, o1), flip);
+    quad(face, v(d.u0, d.y1, o0), v(d.u1, d.y1, o0), v(d.u1, d.y1, o1), v(d.u0, d.y1, o1), !flip);
+    quad(face, v(d.u0, d.y0, o0), v(d.u1, d.y0, o0), v(d.u1, d.y0, o1), v(d.u0, d.y0, o1), flip);
+    quad(face, v(d.u0, d.y0, o0), v(d.u0, d.y1, o0), v(d.u0, d.y1, o1), v(d.u0, d.y0, o1), flip);
+    quad(face, v(d.u1, d.y0, o0), v(d.u1, d.y1, o0), v(d.u1, d.y1, o1), v(d.u1, d.y0, o1), !flip);
   }
   // Rim cells: each skin tears in its own ragged outline. Along every side that faces a hole the break is cut into
   // short segments that bite back into the board by 1-5 cm (now and then a bigger chunk, or a tongue left hanging a
