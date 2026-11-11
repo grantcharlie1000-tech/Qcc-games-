@@ -4,11 +4,11 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { heroReady } from '../../hero/geom';
-import { heroMaterial } from '../../hero/material';
 import { figureGeometry } from '../figure';
 import { BONES, SCALE, makeBones } from '../skeleton';
 import { Animator, type PoseInput, idleInput } from '../anim';
-import { standInWeapon } from '../weapon';
+import { weaponFor } from '../weapon';
+import { fighterMaterial } from '../material';
 import type { WeaponId } from '../../../config';
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
@@ -34,7 +34,8 @@ const floorTex = (() => {
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.9 }));
 floor.rotation.x = -Math.PI / 2; scene.add(floor);
 const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 80);
-const mat = heroMaterial(), weaponMat = heroMaterial();
+const mat = fighterMaterial(), weaponMat = fighterMaterial();
+mat.userData.probe.value.setRGB(0.5, 0.5, 0.52); weaponMat.userData.probe.value.setRGB(0.5, 0.5, 0.52);
 
 function size(w = innerWidth, h = innerHeight) { renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 
@@ -44,8 +45,8 @@ function makeRig(squad: 0 | 1, lod: number, wid: WeaponId): Rig {
   const group = new THREE.Group(), bones = makeBones(), f = figureGeometry(squad, lod);
   const mesh = new THREE.SkinnedMesh(f.geo, mat);
   mesh.add(bones[0]); mesh.bind(new THREE.Skeleton(bones)); mesh.frustumCulled = false;
-  const w = standInWeapon(wid), wb = [new THREE.Bone(), new THREE.Bone()];
-  const weapon = new THREE.SkinnedMesh(w.geo, weaponMat); weapon.add(wb[0]); weapon.add(wb[1]); weapon.bind(new THREE.Skeleton(wb)); weapon.frustumCulled = false;
+  const w = weaponFor(wid), wb = Array.from({ length: w.bones }, () => new THREE.Bone());
+  const weapon = new THREE.SkinnedMesh(w.geo, weaponMat); weapon.add(...wb); weapon.bind(new THREE.Skeleton(wb)); weapon.frustumCulled = false;
   group.add(mesh, weapon); group.scale.setScalar(SCALE); scene.add(group);
   const anim = new Animator(bones, weapon, wb, w);
   return { group, mesh, weapon, anim, squad, lod, wid };
@@ -83,7 +84,7 @@ const api = {
     renderer.render(scene, camera);
     if (helper) scene.remove(helper);
     const f = figureGeometry(r.squad, r.lod);
-    return { triangles: f.triangles, buildMs: f.ms, census: f.census, poseMs: ms, calls: renderer.info.render.calls, rendered: renderer.info.render.triangles, bones: BONES, weaponTris: standInWeapon(r.wid).triangles, diag: r.anim.diag() };
+    return { triangles: f.triangles, buildMs: f.ms, census: f.census, poseMs: ms, calls: renderer.info.render.calls, rendered: renderer.info.render.triangles, bones: BONES, weaponTris: weaponFor(r.wid).triangles, diag: r.anim.diag() };
   },
   /** Runs an animation from a script of inputs and renders frame `frame` of `frames` sampled over `seconds`. The
    * camera follows the fighter (side or front) unless `fixed`. Returns the pose diagnostics. */

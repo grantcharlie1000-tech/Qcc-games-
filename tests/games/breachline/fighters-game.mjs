@@ -24,7 +24,7 @@ await page.addStyleTag({ content: '.bl-toast, .bl-prompt, .bl-hud { visibility: 
 const st = await page.evaluate(() => window.__breachlineTest.state());
 const self = st.self, bots = st.players.filter(p => p.id !== self && p.alive);
 const bot = bots[Number(botArg ?? 0)] ?? bots[0];
-console.log('bot', JSON.stringify(bot), 'self', self);
+console.log('bot', JSON.stringify(bot), 'self', self, 'all', JSON.stringify(st.players.map(p => [p.id, p.squad, +p.x.toFixed(1), +p.z.toFixed(1)])));
 // Let every level of detail build (one per frame).
 for (let i = 0; i < 12; i++) await page.evaluate(() => window.__breachlineTest.draw());
 for (const d of distArg.split(',').map(Number)) for (const a of dirArg.split(',').map(Number)) {

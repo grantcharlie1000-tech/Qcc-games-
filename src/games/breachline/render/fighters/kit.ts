@@ -189,7 +189,7 @@ function glasses(b: Builder, l: Look, lod: number) {
 
 /** The scarf: wrapped round the neck and pulled over the mouth and nose, with loose folds. */
 function scarf(b: Builder, l: Look, lod: number) {
-  const nr = [6, 4, 3][lod], seg = [18, 12, 7][lod], rings: Ring[] = [];
+  const nr = [6, 4, 3][lod], seg = [16, 12, 7][lod], rings: Ring[] = [];
   for (let i = 0; i < nr; i++) {
     const t = i / (nr - 1), y = 1.425 + t * 0.165;
     // Wide round the collar, snug under the jaw, up over the chin and mouth at the front.

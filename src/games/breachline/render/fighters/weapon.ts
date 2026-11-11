@@ -4,6 +4,8 @@
  * grip; the magazine is bone 1 so a reload can carry it in the support hand. One draw call. */
 import * as THREE from 'three';
 import { Builder, SURF, surf } from '../hero/geom';
+import { placeHand } from '../hero/rig';
+import * as hero from '../hero/index';
 import type { WeaponId } from '../../config';
 
 export interface HandSocket { p: THREE.Vector3; palm: THREE.Vector3; fingers: THREE.Vector3 }
@@ -15,6 +17,8 @@ export interface WorldWeapon {
   /** Height of the sight line above the bore at the grip. */
   sight: number;
   pistol: boolean;
+  /** Bones the geometry is skinned to (bone 1 is the magazine). */
+  bones: number;
 }
 
 interface Dims { len: number; barrel: number; stock: number; mag: [number, number, number]; magTilt: number; optic: 0 | 1 | 2; tube?: boolean; guard: number }
@@ -73,8 +77,37 @@ export function standInWeapon(id: WeaponId, lod = 0): WorldWeapon {
     // Left hand under the handguard, palm up and in, fingers forward and across (pistol: wrapped round the right).
     support: pistol ? { p: V(-0.02, -0.02, 0.005), palm: V(0.8, 0.3, -0.2).normalize(), fingers: V(0.3, 0.2, -0.93).normalize() } : { p: V(-0.008, ry - 0.045, guardZ), palm: V(0.35, 1, 0).normalize(), fingers: V(0.55, 0.15, -0.8).normalize() },
     butt: pistol ? V(0, 0, 0.1) : V(0, ry - 0.01, rz0 + d.stock), muzzle: V(0, ry + 0.004, pistol ? -0.15 : rz1 - d.barrel + 0.01),
-    mag: magAt, handle: pistol ? V(0, ry, 0.02) : V(0, ry + 0.02, rz0 - 0.02), sight: pistol ? 0.08 : d.optic ? 0.115 : 0.07,
+    mag: magAt, handle: pistol ? V(0, ry, 0.02) : V(0, ry + 0.02, rz0 - 0.02), sight: pistol ? 0.08 : d.optic ? 0.115 : 0.07, bones: 2,
   };
   cache.set(key, out);
+  return out;
+}
+
+const real = new Map<string, WorldWeapon>();
+/** The weapons session's world model (`worldWeapon`, low detail with the first-person sockets) adapted to the
+ * fighter's sockets; the stand-in if that export is missing. Level 1 near, 2 far. */
+export function weaponFor(id: WeaponId, lod: 1 | 2 = 1): WorldWeapon {
+  const ww = (hero as { worldWeapon?: typeof hero.worldWeapon }).worldWeapon;
+  if (!ww) return standInWeapon(id, lod);
+  const key = `${id}:${lod}`, hit = real.get(key);
+  if (hit) return hit;
+  const w = ww(id, lod), S = w.sockets;
+  const hand = (pl: typeof w.hold.right, side: 1 | -1): HandSocket => {
+    const p = new THREE.Vector3(), q = new THREE.Quaternion();
+    placeHand(pl, side, p, q);
+    return { p, palm: new THREE.Vector3(0, -1, 0).applyQuaternion(q), fingers: new THREE.Vector3(0, 0, -1).applyQuaternion(q) };
+  };
+  w.geometry.computeBoundingBox();
+  const bb = w.geometry.boundingBox!, pistol = id === 'pistol';
+  const out: WorldWeapon = {
+    geo: w.geometry, triangles: w.triangles, pistol,
+    grip: hand(w.hold.right, 1), support: hand(w.hold.left, -1),
+    // The butt plate is the rearmost point, at about grip height below the sight line.
+    butt: pistol ? V(0, S.grip.p[1], 0.1) : V(0, Math.max(bb.min.y * 0.4, -0.06), bb.max.z),
+    muzzle: V(...S.muzzle), mag: V(...S.mag), handle: V(...S.handle),
+    // Weapon space has the sight line through the origin.
+    sight: 0, bones: 9,
+  };
+  real.set(key, out);
   return out;
 }

@@ -10,23 +10,23 @@ import { WEAPONS, type WeaponId } from '../../config';
 import { weaponIdOf } from '../../state';
 import { makeSprite } from '../../textures';
 import { heroReady } from '../hero/geom';
-import { heroMaterial } from '../hero/material';
 import type { Fighters, HeroLighting } from '../hero/index';
 import { Animator, idleInput, type PoseInput } from './anim';
 import { figureGeometry, figureBuilt } from './figure';
 import { SCALE, makeBones } from './skeleton';
-import { standInWeapon } from './weapon';
+import { WEAPON_BONES } from '../hero/weapons';
+import { weaponFor } from './weapon';
+import { fighterMaterial, type FighterMaterial } from './material';
 
 /** Distances (m) at which a fighter drops to the next level; and how many may have full detail at once. */
 export const LOD_DIST = [7, 18] as const;
 export const LOD0_MAX = 4;
-/** The world's run-time lights are tuned for flat Lambert boxes; physically based fabric under them needs this gain
- * to sit at the same brightness as the walls around it. */
-const LIGHT_GAIN = 1.45;
+/** How strongly the light probe's colour lights a fighter, on top of the scene's run-time sun and sky lights. */
+const PROBE_GAIN = 0.35;
 
 interface Fig {
   squad: 0 | 1; group: THREE.Group; meshes: (THREE.SkinnedMesh | null)[]; skeleton: THREE.Skeleton; bones: THREE.Bone[];
-  weapon: THREE.SkinnedMesh; weaponBones: THREE.Bone[]; wid: WeaponId; anim: Animator; mat: THREE.MeshStandardMaterial; weaponMat: THREE.MeshStandardMaterial;
+  weapon: THREE.SkinnedMesh; weaponBones: THREE.Bone[]; wid: WeaponId; anim: Animator; mat: FighterMaterial; weaponMat: FighterMaterial; wlod: 1 | 2;
   x: number; z: number; yaw: number; pitch: number; crouch: number; lean: number; phase: number;
   fresh: boolean; lod: number; dist: number; reloadEmpty: boolean; wasReloading: boolean; input: PoseInput;
 }
@@ -52,9 +52,9 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
   const queue: [0 | 1, number][] = [];
   const want = (squad: 0 | 1, lod: number) => { if (!figureBuilt(squad, lod) && !queue.some(q => q[0] === squad && q[1] === lod)) queue.push([squad, lod]); queue.sort((a, b) => b[1] - a[1]); };
 
-  function weaponMesh(f: Fig, id: WeaponId) {
-    const w = standInWeapon(id);
-    f.weapon.geometry = w.geo; f.wid = id; f.anim.setWeapon(id, w);
+  function weaponMesh(f: Fig, id: WeaponId, lod: 1 | 2) {
+    const w = weaponFor(id, lod);
+    f.weapon.geometry = w.geo; f.wid = id; f.wlod = lod; f.anim.setWeapon(id, w);
   }
 
   function figFor(i: number, squad: 0 | 1, wid: WeaponId): Fig {
@@ -68,13 +68,13 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
     const holder = new THREE.Object3D(); holder.add(bones[0]); holder.updateMatrixWorld(true);
     const skeleton = new THREE.Skeleton(bones);
     group.scale.setScalar(SCALE); group.add(holder);
-    const mat = heroMaterial(), weaponMat = heroMaterial();
-    const w = standInWeapon(wid), wb = [new THREE.Bone(), new THREE.Bone()];
-    const weapon = new THREE.SkinnedMesh(w.geo, weaponMat); weapon.add(wb[0], wb[1]); weapon.bind(new THREE.Skeleton(wb)); weapon.frustumCulled = false;
+    const mat = fighterMaterial(), weaponMat = fighterMaterial();
+    const w = weaponFor(wid), wb = Array.from({ length: WEAPON_BONES }, () => new THREE.Bone());
+    const weapon = new THREE.SkinnedMesh(w.geo, weaponMat); weapon.add(...wb); weapon.bind(new THREE.Skeleton(wb)); weapon.frustumCulled = false;
     group.add(weapon);
     scene.add(group);
     const anim = new Animator(bones, weapon, wb, w);
-    f = { squad, group, meshes: [null, null, null], skeleton, bones, weapon, weaponBones: wb, wid, anim, mat, weaponMat, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
+    f = { squad, group, meshes: [null, null, null], skeleton, bones, weapon, weaponBones: wb, wid, anim, mat, weaponMat, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, wlod: 1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
     anim.setWeapon(wid, w);
     figs[i] = f;
     for (const l of [2, 1, 0]) want(squad, l);
@@ -109,7 +109,7 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
         const p = m.players[i];
         if (!p || m.phase === 'lobby') { const f = figs[i]; if (f) f.group.visible = false; continue; }
         const wid = weaponIdOf(m, p), f = figFor(i, p.squad, wid), local = i === view.self;
-        if (f.wid !== wid) weaponMesh(f, wid);
+        if (f.wid !== wid) weaponMesh(f, wid, f.wlod);
         const tx = local ? view.px + (p.x - view.px) * view.alpha : p.x, tz = local ? view.pz + (p.z - view.pz) * view.alpha : p.z;
         const snap = f.fresh || local || Math.hypot(tx - f.x, tz - f.z) > 4;
         if (snap) { f.x = tx; f.z = tz; f.yaw = local ? view.yaw : p.yaw; f.pitch = local ? view.pitch : p.pitch; f.crouch = p.crouch; f.lean = p.lean; }
@@ -130,11 +130,14 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
         f.phase = f.anim.gaitPhase * Math.PI * 2;
         f.group.position.set(f.anim.root.x, 0, f.anim.root.z); f.group.rotation.y = f.anim.yaw;
         // Light from the probe at the fighter, as a tint on its material; reflections from the room's probe.
+        // Diffuse: the light probe at the fighter, as indirect irradiance. Specular: the room's reflection probe,
+        // scaled to the room (bake units differ from a studio environment).
         const l = lighting.probe(f.x, 1.1, f.z).color;
-        color.setRGB(Math.min(2.6, (0.25 + l[0] * 1.15) * LIGHT_GAIN), Math.min(2.6, (0.25 + l[1] * 1.15) * LIGHT_GAIN), Math.min(2.6, (0.25 + l[2] * 1.15) * LIGHT_GAIN));
-        f.mat.color.copy(color); f.weaponMat.color.copy(color);
-        const env = lighting.environment(f.x, f.z);
+        color.setRGB(l[0], l[1], l[2]).multiplyScalar(Math.PI * PROBE_GAIN);
+        f.mat.userData.probe.value.copy(color); f.weaponMat.userData.probe.value.copy(color);
+        const env = lighting.environment(f.x, f.z), es = lighting.environmentScale(f.x, f.z) * 0.8;
         if (f.mat.envMap !== env) { f.mat.envMap = env; f.weaponMat.envMap = env; f.mat.needsUpdate = f.weaponMat.needsUpdate = true; }
+        f.mat.envMapIntensity = f.weaponMat.envMapIntensity = es;
         f.dist = camOk ? Math.hypot(cam.x - f.x, cam.y - 1.2, cam.z - f.z) : Math.hypot(view.px - f.x, view.pz - f.z);
         order.push(f);
         if (blob < 10) { const lie = p.alive ? 0 : 0.9; blobs.setMatrixAt(blob++, m4.compose(v3.set(f.x, 0.04, f.z), q4.identity(), s3.set(1.0 + lie, 1, 1.0 + lie))); }
@@ -147,6 +150,8 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
         let mesh: THREE.SkinnedMesh | null = null;
         for (const l of [lod, lod + 1, lod + 2, lod - 1, lod - 2]) { if (l < 0 || l > 2) continue; mesh = meshFor(f, l); if (mesh) { lod = l; break; } }
         f.lod = lod;
+        const wl = lod === 2 ? 2 : 1;
+        if (f.wlod !== wl) weaponMesh(f, f.wid, wl);
         f.meshes.forEach((ms, l) => { if (ms) ms.visible = l === lod; });
       });
       for (let i = blob; i < 10; i++) blobs.setMatrixAt(i, m4.makeScale(0, 0, 0));

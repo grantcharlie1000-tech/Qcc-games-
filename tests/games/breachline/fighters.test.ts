@@ -6,14 +6,14 @@ import { heroReady } from '../../../src/games/breachline/render/hero/geom';
 import { figureGeometry } from '../../../src/games/breachline/render/fighters/figure';
 import { Animator, DEATH_KINDS, DEATH_TIME, idleInput, type PoseInput } from '../../../src/games/breachline/render/fighters/anim';
 import { B, BONES, SCALE, SIDE, makeBones } from '../../../src/games/breachline/render/fighters/skeleton';
-import { standInWeapon } from '../../../src/games/breachline/render/fighters/weapon';
+import { weaponFor } from '../../../src/games/breachline/render/fighters/weapon';
 import { LOD0_MAX } from '../../../src/games/breachline/render/fighters/index';
 
 beforeAll(async () => { await heroReady; });
 
 function rig(id: 'ar' | 'pistol' | 'shotgun' = 'ar') {
-  const bones = makeBones(), weapon = new THREE.Object3D(), wb = [new THREE.Bone(), new THREE.Bone()];
-  return new Animator(bones, weapon, wb, standInWeapon(id));
+  const bones = makeBones(), weapon = new THREE.Object3D(), wb = Array.from({ length: 9 }, () => new THREE.Bone());
+  return new Animator(bones, weapon, wb, weaponFor(id));
 }
 /** Model space (authored units) to world, as the fighter's group does. */
 const world = (a: Animator, v: THREE.Vector3) => v.clone().multiplyScalar(SCALE).applyAxisAngle(new THREE.Vector3(0, 1, 0), a.yaw).add(a.root);
