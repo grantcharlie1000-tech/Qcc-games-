@@ -1,6 +1,7 @@
 import type {Level,Platform} from './levels';
-import {box,lay,panel,stroke,visible,type C,type Work} from './quarter-kit';
+import {box,lay,panel,sprite,stroke,visible,type C,type Work} from './quarter-kit';
 import {FIXTURE_PIECES,HOUSE_PIECES,type Piece} from './pieces/level-01';
+import {LANE_HOUSES,PAD,type Building,type Ledge,type Vent} from './pieces/lane-houses';
 
 /** Level 1 · Bell Lane, between Nell's gable and the bell tower. Each roof is
  * the top of its own house, and the house goes down to the lane; the houses
@@ -21,10 +22,36 @@ export function housePiece(p:Platform):Piece|undefined{
 const cap=(c:C,w:number,stone='#6c7378',lit='#9aa2a4')=>{box(c,'#1a1415',-3,3,w+6,9);box(c,'#5e423c',-3,4,w+6,6);box(c,'#7a5a50',-3,4,w+6,1);box(c,'#1a1415',-1,10,w+2,2);box(c,stone,-1,0,w+2,4);box(c,lit,-1,0,w+2,2);};
 const coping=(c:C,w:number)=>{box(c,'#161b21',-3,0,w+6,9);box(c,'#5d666c',-3,0,w+6,6);box(c,'#8b949a',-3,0,w+6,2);box(c,'#3e464c',-3,6,w+6,2);for(let x=12;x<w-4;x+=22)box(c,'#3e464c',x,2,1,4);};
 const edges=(c:C,w:number,h:number,from:number,dark:string,lit:string)=>{box(c,dark,0,from,2,h-from);box(c,dark,w-2,from,2,h-from);box(c,lit,2,from,1,h-from);};
+/** The lane building a level-1 landing belongs to: the first word of its tag, `inn.lower` to `inn`. */
+const laneHouseName=(p:Platform)=>{const name=p.tag?.split('.')[0];return name&&LANE_HOUSES[name]?name:undefined;};
+interface LanePlot {name:string;house:Building;x:number;y:number;w:number;h:number;ledges:Ledge[];vents:Vent[]}
+const lanePlots=new WeakMap<Level,LanePlot[]>();
+/** Each lane building's plot, worked out once per level from the landings tagged with its name. */
+export function laneHouses(l:Level):readonly LanePlot[]{
+ const made=lanePlots.get(l);if(made)return made;
+ const street=l.height-20,groups=new Map<string,Platform[]>();
+ for(const p of l.platforms){const name=laneHouseName(p);if(name)groups.set(name,[...groups.get(name)??[],p]);}
+ const plots=[...groups].map(([name,parts]):LanePlot=>{
+  const house=LANE_HOUSES[name],x=Math.min(...parts.map(p=>p.x))-(house.west??0),y=Math.min(...parts.map(p=>p.y))-(house.above??0);
+  const w=Math.max(...parts.map(p=>p.x+p.w))+(house.east??0)-x,ids=new Set(parts.map(p=>p.id));
+  return {name,house,x,y,w,h:street-y,
+   ledges:parts.map(p=>({part:p.tag!.split('.')[1]??'roof',x:p.x-x,y:p.y-y,w:p.w,h:p.h,kind:p.kind})),
+   vents:l.hazards.filter(z=>z.platform!==undefined&&ids.has(z.platform)).map(z=>({kind:z.kind,x:z.x-x,y:z.y-y,w:z.w,h:z.h}))};
+ });
+ lanePlots.set(l,plots);return plots;
+}
+/** Draws every lane building in view, each from its one canvas. */
+export function drawLaneHouses(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
+ for(const b of laneHouses(l)){
+  if(!visible(b.x-PAD,b.y-PAD,b.w+PAD*2,b.h+PAD,cx,cy,vw,vh))continue;
+  c.drawImage(sprite(`lane/house/${b.name}/${b.w}/${b.h}`,b.w+PAD*2,b.h+PAD,k=>{k.translate(PAD,PAD);b.house.paint(k,{w:b.w,h:b.h,ledges:b.ledges,vents:b.vents});}),b.x-PAD,b.y-PAD);
+ }
+}
 /** Paints a level-1 landing's own tile; (0,0) is its top-left corner. A roof paints nothing: its house piece draws it. */
 export function laneDeck(c:C,p:Platform):boolean {
- const w=p.w,h=p.h,tag=p.tag;
+ const w=p.w,h=p.h,tag=p.tag,name=laneHouseName(p);
  if(housePiece(p))return true;
+ if(name){if(p.kind!=='stone')LANE_HOUSES[name].deck?.(c,tag!.split('.')[1]??'roof',w,h);return true;}
  if(tag==='stairhead'||tag==='bellcote'){FIXTURE_PIECES[tag](c,0,0,w,h);return true;}
  if(tag==='stack'||tag==='nellstack'){
   // A stack: brick laid to its oversailing courses, capped in cement, strapped in iron where it was tied after a storm.

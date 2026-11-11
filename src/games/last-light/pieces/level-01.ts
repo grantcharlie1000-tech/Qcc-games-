@@ -24,29 +24,29 @@ function built(name:string,paint:Paint):Piece{
 
 // ── Materials ───────────────────────────────────────────────────────────────
 const W=(course:number,short:number,long:number,mortar:string,stones:readonly string[],lip:string,shade:string,chip:string):Work=>({course,short,long,mortar,stones,lip,shade,chip});
-const RED=W(8,12,18,'#1a1415',['#4a3330','#503733','#563b35','#46302d'],'#644640','#3a2826','#6e4e46');
-const PLUM=W(7,11,17,'#16121a',['#3b2b35','#402f39','#45333b','#372831'],'#524049','#2b2029','#5c4a52');
-const SOOT=W(8,13,20,'#111113',['#2e292a','#322c2c','#37302f','#2a2627'],'#443b39','#222021','#4e4441');
-const OCHRE=W(8,12,19,'#191712',['#484031','#4e4535','#534937','#433c2f'],'#635843','#363025','#6d614a');
-const LIME=W(8,12,18,'#2a3239',['#48525c','#4d5761','#525c65','#454f58'],'#616c75','#3a434c','#3f3431');
-const ASHLAR=W(12,18,40,'#151c24',['#2c3742','#2f3a46','#323e4a','#293440'],'#3f4c5a','#222b35','#4a5765');
-const SQUARED=W(10,14,28,'#131a21',['#313b45','#343f49','#38424c','#2e3741'],'#45525e','#252e37','#4f5c68');
-const RUBBLE=W(9,7,21,'#11171e',['#29313a','#2d353f','#323941','#262d36','#2f3439'],'#3b454f','#1e252d','#444e57');
-const GREY=W(8,12,20,'#14181d',['#30333a','#34373e','#383a40','#2d3036'],'#454950','#24272d','#4e5258');
-const SAND=W(11,16,34,'#16140f',['#3e392f','#423d32','#464135','#3a352c'],'#565040','#2d2921','#605a48');
-const RUSTIC=W(15,26,48,'#10161d',['#333d48','#36414c','#3a4550','#303a44'],'#4a5764','#262f38','#54616e');
+export const RED=W(8,12,18,'#1a1415',['#4a3330','#503733','#563b35','#46302d'],'#644640','#3a2826','#6e4e46');
+export const PLUM=W(7,11,17,'#16121a',['#3b2b35','#402f39','#45333b','#372831'],'#524049','#2b2029','#5c4a52');
+export const SOOT=W(8,13,20,'#111113',['#2e292a','#322c2c','#37302f','#2a2627'],'#443b39','#222021','#4e4441');
+export const OCHRE=W(8,12,19,'#191712',['#484031','#4e4535','#534937','#433c2f'],'#635843','#363025','#6d614a');
+export const LIME=W(8,12,18,'#2a3239',['#48525c','#4d5761','#525c65','#454f58'],'#616c75','#3a434c','#3f3431');
+export const ASHLAR=W(12,18,40,'#151c24',['#2c3742','#2f3a46','#323e4a','#293440'],'#3f4c5a','#222b35','#4a5765');
+export const SQUARED=W(10,14,28,'#131a21',['#313b45','#343f49','#38424c','#2e3741'],'#45525e','#252e37','#4f5c68');
+export const RUBBLE=W(9,7,21,'#11171e',['#29313a','#2d353f','#323941','#262d36','#2f3439'],'#3b454f','#1e252d','#444e57');
+export const GREY=W(8,12,20,'#14181d',['#30333a','#34373e','#383a40','#2d3036'],'#454950','#24272d','#4e5258');
+export const SAND=W(11,16,34,'#16140f',['#3e392f','#423d32','#464135','#3a352c'],'#565040','#2d2921','#605a48');
+export const RUSTIC=W(15,26,48,'#10161d',['#333d48','#36414c','#3a4550','#303a44'],'#4a5764','#262f38','#54616e');
 /** A dressing: its face, its lit edge and its shadow. */
-type Tri=readonly [string,string,string];
-const COOL:Tri=['#4c555d','#6a737a','#232a31'],WARM:Tri=['#57524a','#736c5f','#2b2823'],PALE:Tri=['#5d666c','#8b949a','#3e464c'];
-const TIMBER:Tri=['#2a2019','#4a3a2c','#15100d'],LEAD:Tri=['#4a545c','#8f9aa0','#2c343b'],CLAY:Tri=['#63463c','#977a6c','#35231f'];
-const INK='#0b0f14',IRON='#131a21',IRON_LIT='#3d4950';
-const SLATE_BLUE=['#2b3540','#303a46','#35404b','#28313b'],SLATE_PURPLE=['#322d39','#37323e','#3c3743','#2e2934'],SLATE_GREEN=['#2a3533','#2f3a37','#343f3b','#27312f'];
-const TILE=['#49312b','#4f352f','#553931','#442e29'],STONE_SLATE=['#3b4038','#40453b','#45493e','#363b35','#3f3e35'];
-const BOARD_TAR=['#1f1d1c','#242120','#282524','#1b1a19'],BOARD_BROWN=['#3a2c22','#40312a','#45362b','#36291f'],BOARD_GREY=['#38342f','#3e3933','#433e37','#34302b'],BOARD_PITCH=['#21252a','#252a2f','#292e33','#1d2126'];
+export type Tri=readonly [string,string,string];
+export const COOL:Tri=['#4c555d','#6a737a','#232a31'],WARM:Tri=['#57524a','#736c5f','#2b2823'],PALE:Tri=['#5d666c','#8b949a','#3e464c'];
+export const TIMBER:Tri=['#2a2019','#4a3a2c','#15100d'],LEAD:Tri=['#4a545c','#8f9aa0','#2c343b'],CLAY:Tri=['#63463c','#977a6c','#35231f'];
+export const INK='#0b0f14',IRON='#131a21',IRON_LIT='#3d4950';
+export const SLATE_BLUE=['#2b3540','#303a46','#35404b','#28313b'],SLATE_PURPLE=['#322d39','#37323e','#3c3743','#2e2934'],SLATE_GREEN=['#2a3533','#2f3a37','#343f3b','#27312f'];
+export const TILE=['#49312b','#4f352f','#553931','#442e29'],STONE_SLATE=['#3b4038','#40453b','#45493e','#363b35','#3f3e35'];
+export const BOARD_TAR=['#1f1d1c','#242120','#282524','#1b1a19'],BOARD_BROWN=['#3a2c22','#40312a','#45362b','#36291f'],BOARD_GREY=['#38342f','#3e3933','#433e37','#34302b'],BOARD_PITCH=['#21252a','#252a2f','#292e33','#1d2126'];
 
-const wallAt=(c:C,k:Work,s:number,x:number,y:number,w:number,h:number)=>{if(w<1||h<1)return;c.save();c.translate(Math.round(x),Math.round(y));lay(c,Math.round(w),Math.round(h),k,s);c.restore();};
+export const wallAt=(c:C,k:Work,s:number,x:number,y:number,w:number,h:number)=>{if(w<1||h<1)return;c.save();c.translate(Math.round(x),Math.round(y));lay(c,Math.round(w),Math.round(h),k,s);c.restore();};
 /** A render coat: one ground, blotched where it holds damp, cracked where it has moved. */
-function renderAt(c:C,t:Tri,s:number,x:number,y:number,w:number,h:number){
+export function renderAt(c:C,t:Tri,s:number,x:number,y:number,w:number,h:number){
  box(c,t[0],x,y,w,h);
  for(let i=0,n=Math.max(3,Math.round(w*h/1700));i<n;i++){
   const pw=8+Math.floor(hash(s,i,1)*Math.min(34,Math.max(1,w-12))),ph=3+Math.floor(hash(s,i,2)*9),px=x+Math.floor(hash(s,i,3)*Math.max(1,w-pw)),py=y+2+Math.floor(hash(s,i,4)*Math.max(1,h-ph-6)),tone=t[hash(s,i,5)>.45?1:2];
@@ -58,7 +58,7 @@ function renderAt(c:C,t:Tri,s:number,x:number,y:number,w:number,h:number){
  }
 }
 /** Upright boards, each its own width and tone, butted or knotted here and there. */
-function planks(c:C,tones:readonly string[],gap:string,s:number,x:number,y:number,w:number,h:number,min=5,max=9){
+export function planks(c:C,tones:readonly string[],gap:string,s:number,x:number,y:number,w:number,h:number,min=5,max=9){
  box(c,gap,x,y,w,h);
  for(let px=x,i=0;px<x+w;i++){
   const bw=Math.min(x+w-px,min+Math.floor(hash(s,i,1)*(max-min+1))),v=hash(s,i,2);
@@ -69,7 +69,7 @@ function planks(c:C,tones:readonly string[],gap:string,s:number,x:number,y:numbe
  }
 }
 /** Weatherboards lapped one over the next, each course of boards butted end to end. */
-function laps(c:C,tones:readonly string[],under:string,lit:string,s:number,x:number,y:number,w:number,h:number,row=6){
+export function laps(c:C,tones:readonly string[],under:string,lit:string,s:number,x:number,y:number,w:number,h:number,row=6){
  for(let r=0,py=y;py<y+h;r++,py+=row){
   const rh=Math.min(row,y+h-py);
   for(let px=x-Math.floor(hash(s,r,1)*40),i=0;px<x+w;i++){const len=34+Math.floor(hash(s,r,i+2)*52),x0=Math.max(x,px),x1=Math.min(x+w,px+len);if(x1>x0){box(c,tones[Math.min(tones.length-1,Math.floor(hash(s,r,i+40)*tones.length))],x0,py,x1-x0,rh);if(px>x)box(c,under,x0,py,1,rh);}px+=len;}
@@ -77,7 +77,7 @@ function laps(c:C,tones:readonly string[],under:string,lit:string,s:number,x:num
  }
 }
 /** Slates in courses; `grow` makes each course lower down deeper and wider, as stone slates are laid. */
-function slates(c:C,tones:readonly string[],dark:string,s:number,x:number,y:number,w:number,h:number,row=6,sw=9,grow=0,gone=.972){
+export function slates(c:C,tones:readonly string[],dark:string,s:number,x:number,y:number,w:number,h:number,row=6,sw=9,grow=0,gone=.972){
  box(c,dark,x,y,w,h);
  for(let r=0,py=y;py<y+h;r++){
   const rh=Math.min(row+Math.floor(r*grow),y+h-py),cw=sw+Math.floor(r*grow*1.5);
@@ -90,7 +90,7 @@ function slates(c:C,tones:readonly string[],dark:string,s:number,x:number,y:numb
   py+=rh;
  }
 }
-function pantiles(c:C,tones:readonly string[],dark:string,lit:string,s:number,x:number,y:number,w:number,h:number){
+export function pantiles(c:C,tones:readonly string[],dark:string,lit:string,s:number,x:number,y:number,w:number,h:number){
  box(c,dark,x,y,w,h);
  for(let py=y,r=0;py<y+h;py+=7,r++)for(let px=x,i=0;px<x+w;px+=6,i++){
   const rh=Math.min(7,y+h-py),cw=Math.min(6,x+w-px),v=hash(s,r,i);
@@ -98,17 +98,17 @@ function pantiles(c:C,tones:readonly string[],dark:string,lit:string,s:number,x:
  }
 }
 /** The walked edge of a coped wall: stones of their own lengths, light on top. */
-function coping(c:C,x:number,w:number,t:number,k:Tri,s:number){
+export function coping(c:C,x:number,w:number,t:number,k:Tri,s:number){
  box(c,k[0],x,0,w,t);box(c,k[1],x,0,w,2);box(c,k[2],x,t-1,w,1);
  for(let px=x+10+Math.floor(hash(s,0,90)*14),i=0;px<x+w-6;i++){box(c,k[2],px,2,1,t-3);px+=18+Math.floor(hash(s,i,91)*17);}
 }
-function gutter(c:C,x:number,y:number,w:number,s:number){
+export function gutter(c:C,x:number,y:number,w:number,s:number){
  box(c,'#0f151b',x,y,w,4);box(c,IRON_LIT,x,y,w,1);box(c,'#232d35',x,y+1,w,1);
  for(let px=x+6+Math.floor(hash(s,0,70)*10),i=0;px<x+w-4;i++){box(c,'#0f151b',px,y+4,2,2);px+=22+Math.floor(hash(s,i,71)*15);}
 }
 /** A downpipe from its hopper head to its shoe on the lane, strapped where the wall would take a nail. */
 const PIPES=[[IRON,IRON_LIT],['#2a3138','#59646c'],['#2b1f1a','#5a4034']] as const;
-function pipe(c:C,x:number,y0:number,y1:number,s:number){
+export function pipe(c:C,x:number,y0:number,y1:number,s:number){
  const v=hash(s,1,82),[dark,lit]=PIPES[Math.floor(hash(s,2,82)*3)],wide=hash(s,3,82)>.5?4:3;let top=y0;
  if(v<.34){box(c,dark,x-2,y0,wide+4,6);box(c,lit,x-2,y0,wide+4,1);box(c,dark,x-1,y0+6,wide+2,2);top=y0+8;}          // a square rainwater head
  else if(v<.67){for(let k=0;k<5;k++){const cut=Math.floor(k*.75);box(c,dark,x-3+cut,y0+k,wide+6-cut*2,1);}box(c,lit,x-3,y0,wide+6,1);top=y0+5;}   // a funnel head
@@ -118,7 +118,7 @@ function pipe(c:C,x:number,y0:number,y1:number,s:number){
  if(hash(s,4,82)>.4){box(c,dark,x+2,y1-4,wide+2,4);box(c,lit,x+2,y1-4,wide+2,1);}else{box(c,dark,x-2,y1-3,wide+4,3);box(c,lit,x-2,y1-3,wide+4,1);}
 }
 /** A slated pitch seen from the street: ridge on the roof line, verges down each gable, gutter at the eaves. */
-function pitch(c:C,w:number,depth:number,tones:readonly string[],s:number,row=6,sw=9,ridge:Tri=PALE,grow=0){
+export function pitch(c:C,w:number,depth:number,tones:readonly string[],s:number,row=6,sw=9,ridge:Tri=PALE,grow=0){
  slates(c,tones,'#141a21',s,0,5,w,depth-9,row,sw,grow);
  box(c,ridge[0],0,0,w,5);box(c,ridge[1],0,0,w,2);box(c,'#141a21',0,5,w,1);
  for(let px=8+Math.floor(hash(s,0,60)*8),i=0;px<w-4;i++){box(c,ridge[2],px,2,1,3);px+=13+Math.floor(hash(s,i,61)*6);}
@@ -126,33 +126,33 @@ function pitch(c:C,w:number,depth:number,tones:readonly string[],s:number,row=6,
  gutter(c,-2,depth-4,w+4,s);
 }
 /** A band between two storeys: the courses above and below stop against it. */
-function band(c:C,x:number,y:number,w:number,k:Tri,t=4){box(c,k[2],x,y,w,t+1);box(c,k[0],x,y,w,t);box(c,k[1],x,y,w,1);}
+export function band(c:C,x:number,y:number,w:number,k:Tri,t=4){box(c,k[2],x,y,w,t+1);box(c,k[0],x,y,w,t);box(c,k[1],x,y,w,1);}
 /** A corner in dressed stones, long and short by turns, from the foot up. */
-function quoins(c:C,x:number,y0:number,y1:number,k:Tri,right=false,course=12,long=15,short=9){
+export function quoins(c:C,x:number,y0:number,y1:number,k:Tri,right=false,course=12,long=15,short=9){
  for(let y=y1-course,i=0;y>=y0-course+1;y-=course,i++){const wide=i%2?long:short,top=Math.max(y0,y),x0=right?x-wide:x;box(c,k[0],x0,top,wide,y+course-top-1);box(c,k[1],x0,top,wide,1);box(c,k[2],x0,y+course-1,wide,1);box(c,right?k[2]:k[1],right?x-1:x,top,1,y+course-top-1);}
 }
 /** The return of a wall round its corner: the side face, in its own shadow. */
-function returnFace(c:C,x:number,y0:number,y1:number,wide=5){c.save();c.globalAlpha=.42;box(c,'#04070b',x,y0,wide,y1-y0);c.restore();box(c,INK,x,y0,1,y1-y0);}
-function edges(c:C,w:number,y0:number,y1:number,lit:string){box(c,INK,0,y0,1,y1-y0);box(c,INK,w-1,y0,1,y1-y0);box(c,lit,1,y0,1,y1-y0);}
+export function returnFace(c:C,x:number,y0:number,y1:number,wide=5){c.save();c.globalAlpha=.42;box(c,'#04070b',x,y0,wide,y1-y0);c.restore();box(c,INK,x,y0,1,y1-y0);}
+export function edges(c:C,w:number,y0:number,y1:number,lit:string){box(c,INK,0,y0,1,y1-y0);box(c,INK,w-1,y0,1,y1-y0);box(c,lit,1,y0,1,y1-y0);}
 
 // ── Openings ────────────────────────────────────────────────────────────────
-type Arch='seg'|'round'|'point';
+export type Arch='seg'|'round'|'point';
 /** How many pixels an arched head cuts from each side of an opening `dy` rows below its crown. */
-function inset(w:number,dy:number,arch:Arch,rise:number){
+export function inset(w:number,dy:number,arch:Arch,rise:number){
  if(arch==='round'){const r=w/2;if(dy>=r)return 0;const t=r-dy-.5;return Math.round(r-Math.sqrt(Math.max(0,r*r-t*t)));}
  if(dy>=rise)return 0;
  if(arch==='seg'){const R=(w*w/4+rise*rise)/(2*rise),t=R-dy-.5;return Math.round(w/2-Math.sqrt(Math.max(0,R*R-t*t)));}
  const p=(rise*rise+w*w/4)/w,t=rise-dy-.5;return Math.min(Math.floor(w/2),Math.round(p-Math.sqrt(Math.max(0,p*p-t*t))));
 }
-const spring=(w:number,arch:Arch|undefined,rise:number)=>!arch?0:arch==='round'?Math.ceil(w/2):rise;
+export const spring=(w:number,arch:Arch|undefined,rise:number)=>!arch?0:arch==='round'?Math.ceil(w/2):rise;
 /** An opening's outline as whole pixel rows, so a clip or a fill of it stays sharp. */
-function shape(c:C,x:number,y:number,w:number,h:number,arch?:Arch,rise=4){
+export function shape(c:C,x:number,y:number,w:number,h:number,arch?:Arch,rise=4){
  c.beginPath();if(!arch){c.rect(x,y,w,h);return;}
  for(let dy=0;dy<h;dy++){const k=inset(w,dy,arch,rise);if(w-2*k>0)c.rect(x+k,y+dy,w-2*k,1);}
 }
-type Look='dark'|'lit'|'dim'|'drawn'|'blind'|'shut'|'board'|'broken'|'fog'|'foglit'|'lead'|'leadlit';
-function lattice(c:C,x:number,y:number,w:number,h:number,col:string){for(let k=-h;k<w;k+=4)for(let i=0;i<h;i++){const a=x+k+i,b=x+w-1-k-i;if(a>=x&&a<x+w)box(c,col,a,y+i,1,1);if(b>=x&&b<x+w)box(c,col,b,y+i,1,1);}}
-function glass(c:C,x:number,y:number,w:number,h:number,look:Look,s:number,tint='#2a3038'){
+export type Look='dark'|'lit'|'dim'|'drawn'|'blind'|'shut'|'board'|'broken'|'fog'|'foglit'|'lead'|'leadlit';
+export function lattice(c:C,x:number,y:number,w:number,h:number,col:string){for(let k=-h;k<w;k+=4)for(let i=0;i<h;i++){const a=x+k+i,b=x+w-1-k-i;if(a>=x&&a<x+w)box(c,col,a,y+i,1,1);if(b>=x&&b<x+w)box(c,col,b,y+i,1,1);}}
+export function glass(c:C,x:number,y:number,w:number,h:number,look:Look,s:number,tint='#2a3038'){
  const v=hash(s,2,5);
  if(look==='lit'||look==='leadlit'){
   box(c,'#8f6233',x,y,w,h);box(c,'#c8913f',x+1,y+1,w-2,h-2);const cw=Math.max(2,Math.floor(w*.4)),ch=Math.max(3,Math.floor(h*.45));box(c,'#f3c77a',x+Math.floor((w-cw)/2),y+h-ch-2,cw,ch);
@@ -181,9 +181,9 @@ function glass(c:C,x:number,y:number,w:number,h:number,look:Look,s:number,tint='
  for(let yy=y,i=0;yy<y+h;yy+=5,i++){box(c,i%2?'#372b22':'#3f3228',x,yy,w,4);box(c,'#54432f',x,yy,w,1);}
  box(c,'#17120e',x+2,y,1,h);box(c,'#17120e',x+w-3,y,1,h);
 }
-interface Win {look:Look;cols?:number;rows?:number;frame?:string;arch?:Arch;rise?:number;rail?:boolean;tint?:string;s?:number}
+export interface Win {look:Look;cols?:number;rows?:number;frame?:string;arch?:Arch;rise?:number;rail?:boolean;tint?:string;s?:number}
 /** A window: its reveal, its frame, what shows in the glass, and its glazing bars. */
-function win(c:C,x:number,y:number,w:number,h:number,o:Win){
+export function win(c:C,x:number,y:number,w:number,h:number,o:Win){
  const {arch,rise=4,frame='#59636b',cols=2,rows=2,s=x*31+y*7}=o;
  c.fillStyle=INK;shape(c,x-1,y-1,w+2,h+1,arch,arch==='round'?rise:rise+1);c.fill();
  c.fillStyle=frame;shape(c,x,y,w,h,arch,rise);c.fill();
@@ -197,21 +197,21 @@ function win(c:C,x:number,y:number,w:number,h:number,o:Win){
  c.restore();
 }
 /** Brick or stone set on end over an opening; `joint` shows between them. */
-function soldiers(c:C,x:number,y:number,w:number,h:number,a:string,b:string,joint:string,s=0,seg=4){box(c,joint,x,y,w,h);for(let px=x,i=0;px<x+w;px+=seg,i++)box(c,hash(s,i,5)>.5?a:b,px,y,Math.min(seg,x+w-px)-1,h-1);}
-function lintel(c:C,x:number,y:number,w:number,k:Tri,t=6,over=2){box(c,k[2],x-over,y-t,w+over*2,t);box(c,k[0],x-over,y-t,w+over*2,t-1);box(c,k[1],x-over,y-t,w+over*2,1);}
+export function soldiers(c:C,x:number,y:number,w:number,h:number,a:string,b:string,joint:string,s=0,seg=4){box(c,joint,x,y,w,h);for(let px=x,i=0;px<x+w;px+=seg,i++)box(c,hash(s,i,5)>.5?a:b,px,y,Math.min(seg,x+w-px)-1,h-1);}
+export function lintel(c:C,x:number,y:number,w:number,k:Tri,t=6,over=2){box(c,k[2],x-over,y-t,w+over*2,t);box(c,k[0],x-over,y-t,w+over*2,t-1);box(c,k[1],x-over,y-t,w+over*2,1);}
 /** The ring of an arch, turned in bricks on end round the opening's head. Painted before the window. */
-function archRing(c:C,x:number,y:number,w:number,arch:Arch,rise:number,th:number,a:string,b:string,joint:string,s=0){
+export function archRing(c:C,x:number,y:number,w:number,arch:Arch,rise:number,th:number,a:string,b:string,joint:string,s=0){
  const sp=spring(w,arch,rise);c.save();shape(c,x-th,y-th,w+th*2,th+sp,arch,arch==='point'?rise+Math.round(th*1.5):rise+1);c.clip();soldiers(c,x-th,y-th,w+th*2,th+sp+1,a,b,joint,s,3);c.restore();
 }
-function sill(c:C,x:number,y:number,w:number,k:Tri,over=2,t=3){box(c,k[2],x-over,y,w+over*2,t);box(c,k[0],x-over,y,w+over*2,t-1);box(c,k[1],x-over,y,w+over*2,1);}
-function surround(c:C,x:number,y:number,w:number,h:number,k:Tri,t=3){box(c,k[2],x-t,y-t,w+t*2,h+t);box(c,k[0],x-t,y-t,w+t*2-1,h+t);box(c,k[1],x-t,y-t,w+t*2-1,1);box(c,k[1],x-t,y-t,1,h+t);}
+export function sill(c:C,x:number,y:number,w:number,k:Tri,over=2,t=3){box(c,k[2],x-over,y,w+over*2,t);box(c,k[0],x-over,y,w+over*2,t-1);box(c,k[1],x-over,y,w+over*2,1);}
+export function surround(c:C,x:number,y:number,w:number,h:number,k:Tri,t=3){box(c,k[2],x-t,y-t,w+t*2,h+t);box(c,k[0],x-t,y-t,w+t*2-1,h+t);box(c,k[1],x-t,y-t,w+t*2-1,1);box(c,k[1],x-t,y-t,1,h+t);}
 /** A drip mould over a window, dropped at each end. */
-function hood(c:C,x:number,y:number,w:number,k:Tri){box(c,k[2],x-4,y-4,w+8,3);box(c,k[0],x-4,y-5,w+8,3);box(c,k[1],x-4,y-5,w+8,1);box(c,k[0],x-4,y-2,2,6);box(c,k[0],x+w+2,y-2,2,6);box(c,k[2],x-4,y+4,2,1);box(c,k[2],x+w+2,y+4,2,1);}
+export function hood(c:C,x:number,y:number,w:number,k:Tri){box(c,k[2],x-4,y-4,w+8,3);box(c,k[0],x-4,y-5,w+8,3);box(c,k[1],x-4,y-5,w+8,1);box(c,k[0],x-4,y-2,2,6);box(c,k[0],x+w+2,y-2,2,6);box(c,k[2],x-4,y+4,2,1);box(c,k[2],x+w+2,y+4,2,1);}
 /** Shutters folded back against the wall each side of a window. */
-function leaves(c:C,x:number,y:number,w:number,h:number,col:string,lw=5){for(const lx of [x-lw-1,x+w+1]){box(c,INK,lx,y,lw,h);for(let yy=y+1;yy<y+h-1;yy+=3)box(c,col,lx+1,yy,lw-1,2);}}
-interface Door {tone:Tri;style:'plank'|'panel'|'pair';arch?:Arch;rise?:number;fan?:Look;fanH?:number;knob?:string;straps?:boolean}
+export function leaves(c:C,x:number,y:number,w:number,h:number,col:string,lw=5){for(const lx of [x-lw-1,x+w+1]){box(c,INK,lx,y,lw,h);for(let yy=y+1;yy<y+h-1;yy+=3)box(c,col,lx+1,yy,lw-1,2);}}
+export interface Door {tone:Tri;style:'plank'|'panel'|'pair';arch?:Arch;rise?:number;fan?:Look;fanH?:number;knob?:string;straps?:boolean}
 /** A door in its reveal: tone is its shadow, its boards and their lit edges. */
-function door(c:C,x:number,y:number,w:number,h:number,o:Door){
+export function door(c:C,x:number,y:number,w:number,h:number,o:Door){
  const {arch,rise=4,tone,fanH=8}=o,top=y+(o.fan?fanH:0);
  c.fillStyle=INK;shape(c,x-1,y-1,w+2,h+1,arch,arch==='round'?rise:rise+1);c.fill();
  c.save();shape(c,x,y,w,h,arch,rise);c.clip();
@@ -228,29 +228,29 @@ function door(c:C,x:number,y:number,w:number,h:number,o:Door){
  if(o.knob!=='')box(c,o.knob??'#a9905f',o.style==='pair'?x+Math.floor(w/2)-4:x+w-5,y+Math.round(h*.56),2,2);
  c.restore();
 }
-function step(c:C,x:number,y:number,w:number,k:Tri,over=3,t=3){box(c,k[0],x-over,y-t,w+over*2,t);box(c,k[1],x-over,y-t,w+over*2,1);box(c,k[2],x-over,y-1,w+over*2,1);}
+export function step(c:C,x:number,y:number,w:number,k:Tri,over=3,t=3){box(c,k[0],x-over,y-t,w+over*2,t);box(c,k[1],x-over,y-t,w+over*2,1);box(c,k[2],x-over,y-1,w+over*2,1);}
 
 // ── Lettering and things that stand or hang against a wall ──────────────────
-const FONT:Readonly<Record<string,string>>={A:'010101111101101',B:'110101110101110',C:'011100100100011',D:'110101101101110',E:'111100110100111',H:'101101111101101',K:'101101110101101',L:'100100100100111',M:'101111111101101',N:'110101101101101',O:'111101101101111',P:'111101111100100',R:'110101110101101',S:'011100010001110',T:'111010010010010',U:'101101101101111',Y:'101101010010010'};
-const textW=(t:string,k=1)=>t.length*4*k-k;
+export const FONT:Readonly<Record<string,string>>={A:'010101111101101',B:'110101110101110',C:'011100100100011',D:'110101101101110',E:'111100110100111',H:'101101111101101',K:'101101110101101',L:'100100100100111',M:'101111111101101',N:'110101101101101',O:'111101101101111',P:'111101111100100',R:'110101110101101',S:'011100010001110',T:'111010010010010',U:'101101101101111',Y:'101101010010010'};
+export const textW=(t:string,k=1)=>t.length*4*k-k;
 /** Sign-writer's capitals, painted straight onto a board or a wall. */
-function text(c:C,t:string,x:number,y:number,col:string,k=1){for(const ch of t){const g=FONT[ch];if(g)for(let i=0;i<15;i++)if(g[i]==='1')box(c,col,x+(i%3)*k,y+Math.floor(i/3)*k,k,k);x+=4*k;}}
+export function text(c:C,t:string,x:number,y:number,col:string,k=1){for(const ch of t){const g=FONT[ch];if(g)for(let i=0;i<15;i++)if(g[i]==='1')box(c,col,x+(i%3)*k,y+Math.floor(i/3)*k,k,k);x+=4*k;}}
 /** A sign board screwed flat to the wall, lettered across its middle. */
-function board(c:C,x:number,y:number,w:number,h:number,t:string,k:number,ground:string,edge:string,ink:string){
+export function board(c:C,x:number,y:number,w:number,h:number,t:string,k:number,ground:string,edge:string,ink:string){
  box(c,INK,x-1,y-1,w+2,h+2);box(c,edge,x,y,w,h);box(c,ground,x+1,y+1,w-2,h-2);text(c,t,x+Math.round((w-textW(t,k))/2),y+Math.round((h-5*k)/2),ink,k);
  for(const [px,py] of [[x+2,y+2],[x+w-3,y+2],[x+2,y+h-3],[x+w-3,y+h-3]] as const)box(c,edge,px,py,1,1);
 }
 /** A cask standing on its end: bellied staves in iron hoops. x,y is its top-left. */
-function barrel(c:C,x:number,y:number,w:number,h:number,wood='#3d2f22'){
+export function barrel(c:C,x:number,y:number,w:number,h:number,wood='#3d2f22'){
  const belly=(dy:number)=>{const t=Math.abs(dy-(h-1)/2)/(h/2);return Math.round(t*t*2.4);};
  for(let dy=0;dy<h;dy++){const k=belly(dy);box(c,wood,x+k,y+dy,w-2*k,1);}
  for(let px=x+3,i=0;px<x+w-2;px+=3+(i++%2))box(c,'#2a2018',px,y+1,1,h-2);
  box(c,'#5a4731',x+2,y+2,1,h-4);box(c,'#5a4731',x+2,y,w-4,1);
  for(const f of [.1,.34,.66,.9]){const dy=Math.round(f*(h-1)),k=belly(dy);box(c,'#181e24',x+k,y+dy,w-2*k,2);box(c,'#4a545b',x+k,y+dy,Math.max(2,(w-2*k)>>1),1);}
 }
-function hoop(c:C,cx:number,cy:number,r:number,col:string){for(let a=0;a<72;a++){const t=a/72*Math.PI*2;box(c,col,Math.round(cx+Math.cos(t)*r),Math.round(cy+Math.sin(t)*r),1,1);}}
+export function hoop(c:C,cx:number,cy:number,r:number,col:string){for(let a=0;a<72;a++){const t=a/72*Math.PI*2;box(c,col,Math.round(cx+Math.cos(t)*r),Math.round(cy+Math.sin(t)*r),1,1);}}
 /** Ivy grown up a corner from the ground, thinning as it climbs. */
-function ivy(c:C,x:number,foot:number,top:number,reach:number,s:number,dir=1){
+export function ivy(c:C,x:number,foot:number,top:number,reach:number,s:number,dir=1){
  const tones=['#1b2c24','#22382b','#2a4532','#182620'];
  for(let y=foot-1,i=0;y>top;y-=2,i++){
   const t=(foot-y)/(foot-top),wide=Math.max(2,Math.round(reach*(1-t*t)*(.7+hash(s,i,44)*.5)));
@@ -258,17 +258,17 @@ function ivy(c:C,x:number,foot:number,top:number,reach:number,s:number,dir=1){
  }
 }
 /** A ladder stood on the ground and leant on the wall. */
-function ladder(c:C,x0:number,y0:number,x1:number,y1:number,wide:number,col:string,lit:string){
+export function ladder(c:C,x0:number,y0:number,x1:number,y1:number,wide:number,col:string,lit:string){
  stroke(c,col,x0,y0,x1,y1,2);stroke(c,col,x0+wide,y0,x1+wide,y1,2);stroke(c,lit,x0,y0,x1,y1,1);
  for(let t=.06;t<1;t+=7/Math.max(8,Math.abs(y1-y0))){const px=Math.round(x0+(x1-x0)*t),py=Math.round(y0+(y1-y0)*t);box(c,col,px,py,wide+1,1);}
 }
 /** A plant box on a sill. */
-function flowerBox(c:C,x:number,y:number,w:number,s:number){
+export function flowerBox(c:C,x:number,y:number,w:number,s:number){
  box(c,'#17120e',x-2,y-1,w+4,5);box(c,'#3a2c22',x-1,y,w+2,3);box(c,'#54422f',x-1,y,w+2,1);
  for(let px=x-1,i=0;px<x+w;px+=2,i++){const tall=1+Math.floor(hash(s,i,50)*4);box(c,hash(s,i,51)>.5?'#27402f':'#31503a',px,y-tall,2,tall);if(hash(s,i,52)>.72)box(c,'#8a4a44',px,y-tall,1,1);}
 }
 /** Soot or damp run down a wall from where it starts. */
-function stain(c:C,col:string,x:number,y:number,w:number,len:number,s:number,alpha=.4,up=false){
+export function stain(c:C,col:string,x:number,y:number,w:number,len:number,s:number,alpha=.4,up=false){
  c.save();c.globalAlpha=alpha/2;
  for(let pass=0;pass<2;pass++)for(let i=0;i<w;i++){const l=Math.round(len*(pass?.6:1)*(.4+hash(s,i>>1,55+pass)*.6)*(1-Math.abs(i-(w-1)/2)/(w*.6)));if(l>0)box(c,col,x+i,up?y-l:y,1,l);}
  c.restore();
@@ -278,7 +278,7 @@ function stain(c:C,col:string,x:number,y:number,w:number,len:number,s:number,alp
 const FRAMES=['#59636b','#27352f','#3b2e25','#1c232b','#4f4a42'] as const;
 const DOOR_TONES:readonly Tri[]=[['#111815','#22362d','#2e483b'],['#170f0e','#3e231f','#53302a'],['#0f1318','#223042','#2f4158'],['#14100c','#382b21','#4a392b'],['#0f1113','#292d31','#3a3f44']];
 const SHUTTERS=['#2a3a36','#3a2e33','#2c333c','#3b3328'] as const;
-const CURTAINS=['#2a3038','#3d2c30','#2f3a36','#3a3629','#34303c'] as const;
+export const CURTAINS=['#2a3038','#3d2c30','#2f3a36','#3a3629','#34303c'] as const;
 const WORKS=[RED,PLUM,OCHRE,SOOT,LIME,ASHLAR] as const;
 const RENDERS:readonly Tri[]=[['#39414a','#414952','#2f363e'],['#43423d','#4b4a44','#383733']];
 /** One house front, from under its roof at `top` to the lane at `h`, between x0 and x0+w. */
