@@ -2,6 +2,42 @@
 
 Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch: `claude/zen-allen-otdlt6`.
 
+## For the planner (latest first)
+
+**2026-11-11 ~10:30 UTC: cause of the first-firefight stall.** Method: the real online spec with a 100 ms
+`setInterval` gap monitor on both pages, plus `renderer.info` and a wrapper that records every GL texture/buffer
+upload, between "round in action" and "4 s after the host's first hit". (`stats()` now also reports `programs`,
+`textures` and `geometries`, for the acceptance check.) In that window, on **both** pages:
+1. **One new shader program: a `Sprite` material, the muzzle flash.** The weapon viewmodel's flash
+   (`render/hero/viewmodel.ts:61-62`) and the fighters' muzzle flash are hidden until the first shot, and
+   `compile()` skips invisible objects, so the program is built on the first shot. The sun sprite does not cover it
+   (different settings: fog off, not tone-mapped).
+   -> **hero and fighters:** build the flash materials at load and compile them once (draw them once at scale ~0, or
+   give them identical settings to an already-visible sprite), so no `Sprite` program appears in play.
+2. **Three texture uploads: 2048x2048 sRGB BC7 + two 1024x1024 ASTC.** That is a fighter's level-0 baked set
+   (`render/fighters/textures.ts`: diff, nor, arm). The fighters build a level's mesh and material on first use
+   (`render/fighters/index.ts:103-110`, `meshFor`), so the first time an enemy comes within level-0 range (the
+   host stepping in front of the guest), the page builds geometry, makes a new material and uploads ~10 MB of
+   textures in one frame. The fighters' first `update` costs 0.3-1.1 s of script time here.
+   -> **fighters:** build every level's geometry, mesh and material at load (time-sliced), and `renderer.initTexture`
+   each map one per task, before the round starts. `meshFor` should never create anything during play.
+3. **~16 buffer uploads**: the wall-hole geometry rebuilt when panels take damage (mine; small, by design).
+4. **Post-processing targets reallocated** (mine, `render/post.ts` `setSize` -> `build()`): the resolution scaler
+   changes the drawing size, which rebuilds the HDR buffer and the whole bloom chain. Under the software rasteriser
+   the scaler moves often. I will allocate at the largest size and draw into a viewport, so scale changes never
+   allocate.
+5. **No lights are added or removed when firing** (checked: only the hemisphere and key lights in `scene.ts` and
+   the viewmodel's own three, all permanent).
+- Gaps: in my container the longest guest gap was 6.0 s, at the guest's first burst; the online test passes alone
+  and in the sequence. Your 17.6 s is the same first-use work on a slower or busier machine.
+- A program is also added the first time the corridor is seen on High (lab 45, corridor 46). I'm tracking it down
+  (mine or the fighters').
+- **Frame cost now vs the Lab gate** (bookmarks, this container): High Lab 113 calls / 73k tris (gate: 78 / 83k);
+  corridor 184 / 83k; Archive 179 / 82k; programs 45-46, textures 110-114, geometries 174-208. Low: 93-156 calls,
+  67k-83k tris, 39-40 programs, 76-80 textures. Growth: draw calls from the dressing (the corridor and Archive have
+  about 20 dressing materials each; merging by material on High is next) and from the textured fighters and weapon;
+  triangles are flat thanks to the LODs.
+
 ## Current phase: Lab vertical slice (after phase 0; see the plan's "Re-ordering after phase 0")
 
 Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the hero session (`render/hero/`,

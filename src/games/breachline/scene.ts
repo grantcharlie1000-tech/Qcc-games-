@@ -42,7 +42,7 @@ export interface BreachScene {
   project(x: number, y: number, z: number): { x: number; y: number; front: boolean };
   /** Where the camera is and which way it faces, for sound. */
   readonly ear: { x: number; y: number; z: number; yaw: number };
-  readonly stats: { calls: number; triangles: number; scale: number; level: number; post?: string; art?: string; cpu?: number };
+  readonly stats: { calls: number; triangles: number; scale: number; level: number; post?: string; art?: string; cpu?: number; programs?: number; textures?: number; geometries?: number };
   dispose(): void;
 }
 
@@ -373,6 +373,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       if (graded) post.end(renderer.toneMappingExposure);
       // Script time on the main thread for this frame (command submission included, GPU work not), smoothed.
       stats.cpu = +((stats.cpu ?? 0) * 0.9 + (performance.now() - cpuStart) * 0.1).toFixed(3);
+      stats.programs = renderer.info.programs?.length ?? 0; stats.textures = renderer.info.memory.textures; stats.geometries = renderer.info.memory.geometries;
       stats.post = graded ? post.tier : 'off'; stats.art = art ? (art.envReady ? 'env' : 'noenv') : 'none';
     },
     resize(w, h) {
