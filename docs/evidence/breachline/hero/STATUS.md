@@ -10,15 +10,20 @@ Session: hero models (weapons, hands, reloads, fighters). Plan: `docs/superpower
 | Seam (`render/hero/index.ts`, `createViewmodel`, `createFighters`, `HeroLighting`) | **Done**, commit 64547a5, behaviour unchanged; unit (53), Breachline browser (6) and online (1) tests green |
 | Shared reload beat table `reloads.ts` | Created to the audio plan's section 4 shape (commit 17d94db); the sound session owns it and may retune |
 | Reference study | Done (below) |
-| Geometry toolkit (`render/hero/geom.ts`) | In progress |
-| Weapons ×6, hands, reloads | Not started |
-| Fighters, animation | Not started |
+| Geometry toolkit (`render/hero/geom.ts`), PBR wear shader (`material.ts`), SDF mesher (`sdf.ts`) | Done (round 1) |
+| Dev studio (`render/hero/studio/index.html` under vite; `window.__breachlineHero`) and evidence scripts (`tests/games/breachline/hero-shots.mjs`, `hero-game.mjs`) | Done |
+| Marrow AR-5 | Round 3 (turntable), round 2 (in hand) |
+| Hands and arms (SDF gloves, sleeves, squad band and shape patch, IK) | Round 2 |
+| Viewmodel motion (springs, sway, bob, recoil, ADS, sprint, swap, melee, casings) and reload timelines | Round 1, **in the game** |
+| Other five weapons | **Not built: they show the AR-5 model for now** |
+| Fighters, animation | Not started (still the box figures) |
 
 ## Scores (row E: weapon and hands; row F: characters). 8 = MW2 (2009)
 
 | Round | E | F | Evidence |
 | --- | --- | --- | --- |
 | Baseline | 1 | 1 | `docs/evidence/breachline/05-breach.png`, `overhaul/phase-0/lab-bench-high.png`: about 30 boxes, slab arms, a blue block for a wrist band; fighters are six rigid box groups |
+| r1 | 4 | 1 | `r1/ar-game-hip-ads.png`, `r1/ar-turntable-*.png`, `r1/ar-reload-*-strip.png`. The AR-5 is a real rifle shape with bevelled parts, a slotted handguard, a rail, an optic, edge wear and cavity AO, and gloved five-finger hands hold it. Why only 4: five of six weapons are still missing; in the reload the magazine is mostly out of frame; the gloves read soft and lumpy at close range; the hip pose crowds the right edge; the materials are flat under the game's light. F is unchanged. |
 
 Gates: E ≥ 8, F ≥ 7.
 
@@ -64,12 +69,54 @@ plates with triple magazine pouches, boots with about 0.03 m soles.
 
 ## Iteration log
 
-(none yet)
+**AR-5 turntable, rounds 1–3** (`scratchpad` renders, r1 evidence is round 3):
+1. 23.5k tris (over budget) → rail teeth unbevelled, knurls plain, rounded boxes cheaper: 15.3k.
+2. Huge sporting-style stock → slim collapsible stock on a visible buffer tube with a latch, cheek riser and ribbed butt pad.
+3. Magazine floorplate tilted the wrong way; ribs read as scratches → tilt sign fixed.
+4. Coated aluminium read as chrome (metalness .45) → cerakote/anodising .05–.15 metalness, rough .6.
+5. Whole flat faces were "worn" because every crease vertex counted as an edge → wear from bevel curvature only;
+   `RoundedBoxGeometry` replaced with filleted extrusions, so flats stay flat.
+6. Blotchy AO from self-hits → finer voxels (1/320 of the size), larger normal offset.
+7. Ejection port was a slab stuck on → flush dark port, a hinge rod, a dust-cover lip and the bolt carrier in it.
+
+**Hands, rounds 1–2:**
+1. Inside out (quad winding) → fixed.
+2. 39k triangles for two arms → meshoptimizer simplifier (pinned 0.22.0, bundled WebAssembly) to 3k per hand; sleeves
+   30×18 rings: both arms 8.2k.
+3. The cuff was a fat round cone → an oval cuff with a strap.
+4. Hand rotations as Euler angles were unreadable → placements given as a palm contact point, a palm direction and a
+   finger direction; the wrist is derived.
+5. The left arm could not reach the handguard → viewmodel shoulders moved forward and down (as games do), plus a
+   12 cm shoulder lean when a target is out of reach; IK residual measured as 0 at hip and aimed.
+
+**In game, rounds 1–2:**
+1. The hip pose crowded the bottom-right corner → moved in.
+2. Aimed, the optic filled the screen → eye relief 0.1 m.
+3. The red dot was darkened by cavity grime → emissive excluded from grime.
+4. The reload happened below the screen edge → the rifle lifts and cants during the change.
+5. The empty reload's hand crossed the camera to reach the charging handle at the cheek → a palm slap on the bolt
+   catch instead.
 
 ## Budgets measured
 
-(none yet)
+| Item | Budget | Measured |
+| --- | --- | --- |
+| AR-5 first person | 8–15k tris | 15.3k (with casings) |
+| Both arms | — | 8.2k tris |
+| Weapon + hands in view | ≤ 20k tris, ≤ 4 calls | **23.7k (over)**, 3 calls (weapon, arms, lens) + flash sprite when firing |
+| Arm IK + finger poses | ≤ 1 ms per frame (all hero animation) | 0.2–1.1 ms per solve in the studio under the software rasteriser (includes the first-call JIT) |
+| AR-5 build time | — | about 290 ms once (the AO bake is most of it) |
+| Glove mesh build | — | about 700 ms once (surface nets plus simplify): **too slow, to be cut** |
+
+## Tests
+
+r1: `npx tsc --noEmit` clean; `npx vitest run tests/games/breachline` 53 passed; Breachline browser tests and the
+two-device online test 7/7 passed with the new viewmodel in the game.
 
 ## Still weak
 
-Everything in rows E and F is still the baseline.
+- Five of six weapons are missing (they show the AR-5).
+- Weapon plus hands are over the triangle budget; the glove mesh takes about 0.7 s to build.
+- The magazine change is mostly off-screen; there are no casings yet in the world, only in the viewmodel.
+- Gloves are lumpy close up; the knuckle guard bar is crude.
+- Fighters are untouched (row F = 1).

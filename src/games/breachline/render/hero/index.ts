@@ -3,9 +3,9 @@
  * the world. Lighting arrives through `HeroLighting`, so the same code works under the simple per-vertex bake and
  * under the baked light grid and reflection probes when those exist. */
 import * as THREE from 'three';
-import { SQUADS, WEAPONS, type WeaponId } from '../../config';
-import { SHIN, THIGH, armParts, boxes, makeFigure, weaponParts, type Figure } from '../../models';
-import { ACT, weaponIdOf, type Match, type SimEvent } from '../../state';
+import { SHIN, THIGH, makeFigure, type Figure } from '../../models';
+import { createHeroViewmodel } from './viewmodel';
+import type { Match, SimEvent } from '../../state';
 import { makeSprite } from '../../textures';
 
 export interface HeroLighting {
@@ -52,94 +52,12 @@ export interface Fighters {
 }
 
 interface FigState { fig: Figure; squad: 0 | 1; x: number; z: number; yaw: number; pitch: number; crouch: number; lean: number; phase: number; dead: number; fresh: boolean }
-interface GunView { group: THREE.Group; slide: THREE.Mesh | null; mag: THREE.Mesh | null; muzzle: number; dot: THREE.Mesh | null }
 
-const hex = (c: string) => Number(`0x${c.slice(1)}`);
-const smooth = (t: number) => t * t * (3 - 2 * t);
 const wrap = (a: number) => { a = (a + Math.PI) % (Math.PI * 2); return (a < 0 ? a + Math.PI * 2 : a) - Math.PI; };
 
+/** The weapon in hand, with arms, in its own scene and camera. */
 export function createViewmodel(renderer: THREE.WebGLRenderer, lighting: HeroLighting): Viewmodel {
-  const viewScene = new THREE.Scene(), viewCamera = new THREE.PerspectiveCamera(54, 16 / 9, 0.01, 5);
-  const vHemi = new THREE.HemisphereLight(0xffffff, 0x8a847c, 1.5), vKey = new THREE.DirectionalLight(0xffffff, 1);
-  vKey.position.set(-0.5, 1, 0.9); viewScene.add(vHemi, vKey);
-  const vm = new THREE.Group(); viewScene.add(vm);
-  const vmMat = new THREE.MeshLambertMaterial({ vertexColors: true }), dotMat = new THREE.MeshBasicMaterial({ color: 0xff3524 });
-  const guns = new Map<string, GunView>();
-  const flashTex = makeSprite('flash');
-  const vmFlash = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true }));
-  vmFlash.visible = false; vm.add(vmFlash);
-  let gunKey = '', kick = 0, pump = 9, flashLife = 0, swayX = 0, swayY = 0, lastYaw = 0, lastPitch = 0, bob = 0, sprintT = 0, useT = 0;
-  function gunFor(id: WeaponId, squad: 0 | 1): GunView {
-    const k = `${id}${squad}`;
-    let g = guns.get(k);
-    if (g) return g;
-    const parts = weaponParts(id), group = new THREE.Group();
-    group.add(new THREE.Mesh(boxes([...parts.fixed, ...armParts(id, hex(SQUADS[squad].color))]), vmMat));
-    const slide = parts.slide.length ? new THREE.Mesh(boxes(parts.slide), vmMat) : null, mag = parts.mag.length ? new THREE.Mesh(boxes(parts.mag), vmMat) : null;
-    if (slide) group.add(slide);
-    if (mag) group.add(mag);
-    let dot: THREE.Mesh | null = null;
-    if (parts.sightGlow && id !== 'dmr') { dot = new THREE.Mesh(new THREE.PlaneGeometry(0.0045, 0.0045), dotMat); dot.position.set(...parts.sightGlow); group.add(dot); }
-    group.visible = false; vm.add(group);
-    g = { group, slide, mag, muzzle: parts.muzzle, dot };
-    guns.set(k, g);
-    return g;
-  }
-
-  return {
-    get visible() { return vm.visible; },
-    update(view, time) {
-      const { m, dt } = view, p = m.players[view.self];
-      const show = !!p && p.alive && view.watch === view.self && !view.menu && m.phase !== 'lobby';
-      vm.visible = show;
-      if (!show || !p) { gunKey = ''; return; }
-      const id = weaponIdOf(m, p), def = WEAPONS[id], key2 = `${id}${p.squad}`, gun = gunFor(id, p.squad);
-      if (key2 !== gunKey) { for (const g of guns.values()) g.group.visible = false; gun.group.visible = true; gunKey = key2; }
-      const ads = smooth(p.adsT), pistol = id === 'pistol', scoped = id === 'dmr' && ads > 0.9;
-      gun.group.visible = !scoped;
-      kick = Math.max(0, kick - dt * 9 * Math.max(0.25, kick)); pump += dt; bob += dt * (2 + p.pace * 8);
-      sprintT += ((p.sprint ? 1 : 0) - sprintT) * Math.min(1, dt * 9);
-      useT += ((p.act !== ACT.none || p.using ? 1 : 0) - useT) * Math.min(1, dt * 8);
-      const dyaw = wrap(view.yaw - lastYaw), dpitch = view.pitch - lastPitch; lastYaw = view.yaw; lastPitch = view.pitch;
-      swayX += (Math.max(-0.04, Math.min(0.04, dyaw * 0.5)) - swayX) * Math.min(1, dt * 10); swayY += (Math.max(-0.04, Math.min(0.04, dpitch * 0.5)) - swayY) * Math.min(1, dt * 10);
-      const still = view.reduced ? 0 : 1, hipX = pistol ? 0.13 : 0.2, hipY = pistol ? -0.12 : -0.15, hipZ = pistol ? -0.46 : -0.36, adsZ = pistol ? -0.4 : id === 'shotgun' ? -0.26 : -0.2;
-      let x = hipX * (1 - ads), y = hipY * (1 - ads), z = hipZ + (adsZ - hipZ) * ads, rx = 0, ry = 0.035 * (1 - ads), rz = 0;
-      const paceBob = Math.min(1.4, p.pace) * (1 - ads * 0.8) * still;
-      x += Math.sin(bob) * 0.007 * paceBob + swayX * (1 - ads * 0.7); y += Math.abs(Math.cos(bob)) * 0.008 * paceBob + Math.sin(time * 1.3) * 0.0015 * still - swayY * (1 - ads * 0.7);
-      rz += -p.lean * 0.12 + swayX * 1.2;
-      // Sprint: carried across the body. Using something: lowered out of the way.
-      x -= sprintT * 0.06; y -= sprintT * 0.05 + useT * 0.26; ry += sprintT * 0.75; rx -= sprintT * 0.22 + useT * 0.5;
-      if (p.reload > 0) { const t = 1 - p.reload / def.reload, w = Math.sin(Math.PI * Math.min(1, t * 1.15)); y -= w * 0.12; rx += w * 0.42; rz += w * 0.32; if (gun.mag) gun.mag.position.y = -0.32 * Math.max(0, Math.sin(Math.PI * Math.min(1, Math.max(0, (t - 0.15) / 0.5)))); }
-      else if (gun.mag) gun.mag.position.y = 0;
-      if (p.swap > 0) { const t = p.swap / 0.42; y -= t * 0.3; rx -= t * 0.6; }
-      if (p.meleeCool > 0.4) { const t = Math.sin(Math.PI * (0.75 - p.meleeCool) / 0.35); z -= t * 0.2; ry -= t * 0.55; x -= t * 0.08; }
-      z += kick * (pistol ? 0.03 : 0.045) * (1 - ads * 0.35); rx += kick * (pistol ? 0.14 : 0.05) * (1 - ads * 0.5);
-      if (gun.slide) gun.slide.position.z = id === 'shotgun' ? (pump < 0.5 ? Math.sin(Math.PI * Math.max(0, (pump - 0.12) / 0.38)) * 0.09 : 0) : kick * 0.035;
-      vm.position.set(x, y, z); vm.rotation.set(rx, ry, rz);
-      const l = lighting.probe(p.x, 1.4, p.z).color;
-      vHemi.color.setRGB(Math.min(1.4, 0.3 + l[0]), Math.min(1.4, 0.3 + l[1]), Math.min(1.4, 0.3 + l[2])); vKey.intensity = 0.25 + (l[0] + l[1] + l[2]) * 0.3;
-      if (flashLife > 0) { flashLife -= dt; vmFlash.visible = flashLife > 0 && !scoped; vmFlash.position.set(0, -0.055, gun.muzzle - 0.04); }
-      else vmFlash.visible = false;
-      viewCamera.fov = 54 - ads * 9; viewCamera.updateProjectionMatrix();
-    },
-    handle(events, _m, self) {
-      for (const e of events) {
-        if (e.e !== 'shot' || e.id !== self) continue;
-        kick = Math.min(1.6, kick + (e.w === 'shotgun' ? 1.5 : e.w === 'dmr' ? 1.1 : 0.55)); pump = 0; flashLife = 0.045;
-        vmFlash.scale.setScalar(0.1 + Math.random() * 0.05); (vmFlash.material as THREE.SpriteMaterial).rotation = Math.random() * 6;
-      }
-    },
-    render() {
-      if (!vm.visible) return 0;
-      renderer.clearDepth(); renderer.render(viewScene, viewCamera);
-      return renderer.info.render.calls;
-    },
-    resize(aspect) { viewCamera.aspect = aspect; viewCamera.updateProjectionMatrix(); },
-    dispose() {
-      viewScene.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.geometry) mesh.geometry.dispose(); });
-      flashTex.dispose(); vmMat.dispose(); dotMat.dispose(); (vmFlash.material as THREE.Material).dispose();
-    },
-  };
+  return createHeroViewmodel(renderer, lighting);
 }
 
 export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Fighters {
