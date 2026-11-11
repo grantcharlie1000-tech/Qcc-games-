@@ -4,6 +4,14 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: map fill, Phase A greybox ready for your gate.** `mapfill/greybox-plan.png` (before above, after
+below). 83 new cover boxes in the marked block in `map.ts` (additive only; nothing existing touched), placed by a
+rule-checked search (`scripts/breachline-assets/mapfill-place.ts`) and tested (`tests/games/breachline/mapfill.test.ts`).
+Section 3 rules: 0 breaches. Indoors 1.38-1.53 objects per 10 m² (target 1.4-2.0; Lab 1.38) and every room within
+the 4 x 3 m empty-floor target; yards within 12 x 5 m except the North Yard. Two conflicts where the rule won (below):
+the corridor gets no cover, and the North Yard keeps a long strip. `NET_VERSION` not bumped yet (one bump after your
+approval, with the art). Going on to Phase C dressing (corridor first) while you look.
+
 **2026-11-11: calmer floors.** `rooms/server/round-2/floors.png` (Server Room, Break Room): the raised floor is the
 ceramic set laid square at 600 mm in a cool grey; the Break Room's black-and-white chequer is a warm terrazzo. Both
 reuse texture sets already shipped (no new download); both rooms rebaked for the new bounce. Next: small-object models.
@@ -195,9 +203,58 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** every room and the three outdoor areas north, south and west are art regions with a
+**Where I am (keep current):** map fill (plan `2026-11-11-breachline-map-fill.md`): Phase A greybox pushed and waiting
+for the planner's gate; Phase C dressing under way, emptiest area first. Previously: every room and the three outdoor areas north, south and west are art regions with a
 round each (the Garage and the West Lot / North Yard as the second-round "lowest" picks); the East Lane is the last
 procedural area. Draw calls are back inside the High budget.
+
+## Map fill, Phase A: greybox (`mapfill/greybox-plan.png`, 960 px)
+
+- **How it was placed.** For each area, emptiest first, a search proposes cover pieces on a 0.25 m grid (0.5 m
+  outdoors) plus positions flush with existing walls and furniture, keeps only those that pass every section 3 rule
+  that can be checked from data, and greedily takes the one that most shrinks the area's largest empty rectangle until
+  the targets are met. Sizes: indoors full-height 1.0 x 0.6 / 0.75 x 0.55 m at 2.0 m, waist-high 1.4 x 0.7 / 1.0 x 1.0
+  m at 1.0 m; outdoors skips 2.4 x 1.4 m at 1.9 m, pallet stacks 1.2 x 1.2 m and low walls 3.0 x 0.5 m at 1.0 m. At most
+  about a third of each area's new pieces are full-height, and every room gets both heights. A new piece touches walls
+  and at most one other piece (no chains). After each pick, every attack spawn must still route to both sites and to
+  both sides of every door, or the pick is banned. Lines and points that the existing world, sim, net and bot tests
+  probe are kept clear, so those tests still test what they were written for.
+- **Rules checked from data** (`tests/games/breachline/mapfill.ts`): baseline boxes unchanged and in order (against
+  a snapshot taken before the pass); 0.75 m from every destructible panel, door and window; no squeeze under 1.2 m
+  that is a way through (gaps closed at one end, nooks, are allowed; corner gaps under 0.6 m are squeezes); corridor
+  1.8 m and 1.5 m from its doorways; site cores 2.5 x 2.5 m clear; 3 m round attack spawns, 1 m round defend spawns,
+  posts, roam and reinforce points; heights only 0.9-1.1 or 1.8+; routes from every attack spawn to both sites and both
+  sides of every door. Not checked from data: rule 7 (fairness at windows) and the two-thirds doorway view; judge
+  from the plan image.
+
+| Area | Floor m² | Furniture boxes | Per 10 m² | Largest empty rectangle | Within target |
+| --- | --- | --- | --- | --- | --- |
+| Garage | 72 | 11 | 1.53 | 6.75 x 1.25 m | yes |
+| Lab | 80 | 11 | 1.38 | 5.00 x 2.50 m | yes |
+| Server Room | 88 | 13 | 1.48 | 8.50 x 1.00 m | yes |
+| Corridor | 90 | 3 | 0.33 | 28.50 x 2.00 m | yes |
+| Lobby | 72 | 11 | 1.53 | 1.75 x 5.25 m | yes |
+| Office | 63 | 9 | 1.43 | 7.00 x 1.25 m | yes |
+| Archive | 72 | 11 | 1.53 | 7.00 x 1.25 m | yes |
+| Break Room | 63 | 9 | 1.43 | 5.00 x 2.50 m | yes |
+| South Yard | 672 | 24 | 0.36 | 18.75 x 5.00 m | yes |
+| North Yard | 672 | 21 | 0.31 | 52.25 x 2.25 m | no |
+| West Lot | 260 | 8 | 0.31 | 3.75 x 14.75 m | yes |
+
+- **Conflicts (rule won).**
+  1. *Corridor:* both corridor walls are destructible panels end to end. Rule 2 (0.75 m from every panel) leaves a
+     1.5 m band down the middle, and any piece in it leaves less than rule 3's 1.8 m of lane. So no stubs or
+     waist-high pieces: the corridor sight line stays 30 m (target 12). Options for you: allow corridor pieces at
+     the posts with less clearance, or accept dressing only (overhead services, signs, bins) there.
+  2. *North Yard:* a 12 x 5 m empty rectangle remains (the measure's largest strip runs 52 x 2.25 m along the
+     perimeter). Its middle is the north windows' field and the spawn's 3 m ring; more pieces there either breach the
+     window clearance or stack along the perimeter where they do nothing.
+  3. *Lab* reaches 1.38 per 10 m², just under 1.4: posts, defend spawns, the site core and three test probes fill it.
+- **Tests:** the new mapfill suite (6) passes; the existing nav, bot, sim, world and online unit tests pass unchanged.
+  Every art region was rebaked for the new faces.
+- **Not yet:** `NET_VERSION` (one bump with Phase B art, after approval); art for the boxes (they draw as the
+  procedural look of their material for now).
+
 
 ## West Lot and North Yard (`rooms/outdoors/round-1/round1.png`, 960 px)
 
