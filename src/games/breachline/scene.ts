@@ -42,7 +42,7 @@ export interface BreachScene {
   project(x: number, y: number, z: number): { x: number; y: number; front: boolean };
   /** Where the camera is and which way it faces, for sound. */
   readonly ear: { x: number; y: number; z: number; yaw: number };
-  readonly stats: { calls: number; triangles: number; scale: number; level: number; post?: string; art?: string };
+  readonly stats: { calls: number; triangles: number; scale: number; level: number; post?: string; art?: string; cpu?: number };
   dispose(): void;
 }
 
@@ -323,7 +323,11 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       }
     },
     render(view) {
+      const cpuStart = performance.now();
       const dt = Math.min(0.1, view.dt);
+      // Resolution changes resize (and so clear) the canvas: do them before drawing, never after, or the frame
+      // just drawn is lost and the screen flashes empty.
+      if (dt > 0) adapt(view.dt);
       time += dt;
       if (view.m.world !== world) bind(view.m.world);
       for (const p of panels) p.sync();
@@ -342,8 +346,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       stats.calls = calls + renderer.info.render.calls; stats.triangles = tris + renderer.info.render.triangles;
       stats.calls += viewmodel.render();
       if (graded) post.end(renderer.toneMappingExposure);
+      // Script time on the main thread for this frame (command submission included, GPU work not), smoothed.
+      stats.cpu = +((stats.cpu ?? 0) * 0.9 + (performance.now() - cpuStart) * 0.1).toFixed(3);
       stats.post = graded ? post.tier : 'off'; stats.art = art ? (art.envReady ? 'env' : 'noenv') : 'none';
-      if (dt > 0) adapt(view.dt);
     },
     resize(w, h) {
       width = Math.max(1, Math.round(w)); height = Math.max(1, Math.round(h));

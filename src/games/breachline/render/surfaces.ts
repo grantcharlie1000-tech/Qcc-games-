@@ -32,7 +32,8 @@ export const SURFACES: Partial<Record<TexId, Surface>> = {
   // Locker carcasses (doors are modelled in render/labdress.ts).
   steel: { set: 'painted_plaster_wall', size: 1.5, tint: [0.5, 0.56, 0.5] },
   trim: { set: 'painted_plaster_wall', size: 1, tint: [0.26, 0.28, 0.31] },
-  paint: { set: 'painted_plaster_wall', size: 1, tint: [0.32, 0.33, 0.34] },
+  // Bench tops: dark epoxy resin, sealed and semi-gloss.
+  paint: { set: 'painted_plaster_wall', size: 1, tint: [0.26, 0.27, 0.28], gloss: 0.4, spec: 1.6 },
 };
 
 /** Average linear albedo of each texture set, measured by the baker from the source images (build output). Used

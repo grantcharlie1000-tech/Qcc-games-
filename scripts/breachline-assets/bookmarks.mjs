@@ -65,4 +65,15 @@ for (const [name, [x, z, yaw, pitch]] of Object.entries(BOOKMARKS)) {
   }
   console.log(file, JSON.stringify(await page.evaluate(() => window.__breachlineTest.stats())));
 }
+// Script cost (after the screenshots: 60 back-to-back frames queue up in a software GPU): 60 frames at the first bookmark, smoothed in the scene's own counter.
+if (process.env.MEASURE) {
+  const [x, z, yaw, pitch] = BOOKMARKS[only[0] ?? 'lab'];
+  const ms = await page.evaluate(([x, z, yaw, pitch]) => {
+    const h = window.__breachlineTest; h.place(x, z, yaw, pitch);
+    const t = []; for (let i = 0; i < 60; i++) { const a = performance.now(); h.draw(); t.push(performance.now() - a); }
+    t.sort((p, q) => p - q);
+    return { median: t[30], p90: t[54], sceneCpu: h.stats().cpu };
+  }, [x, z, yaw, pitch]);
+  console.log('script ms per frame', JSON.stringify(ms));
+}
 await browser.close();

@@ -101,8 +101,8 @@ void main() {
 
 /** The chosen grade: cool, slightly desaturated shadows, warm neutral highlights, gentle contrast. */
 export const GRADE = {
-  lift: new THREE.Vector3(0.012, 0.016, 0.024), gamma: new THREE.Vector3(0.94, 0.95, 0.97), gain: new THREE.Vector3(1.03, 1.0, 0.95),
-  saturation: 0.84, vignette: 0.16, bloom: 0.16, threshold: 1.6, knee: 0.6, blackPoint: 0.018,
+  lift: new THREE.Vector3(0.012, 0.016, 0.024), gamma: new THREE.Vector3(0.9, 0.91, 0.93), gain: new THREE.Vector3(1.03, 1.0, 0.95),
+  saturation: 0.84, vignette: 0.16, bloom: 0.16, threshold: 1.6, knee: 0.6, blackPoint: 0.03,
 };
 
 export interface Post {

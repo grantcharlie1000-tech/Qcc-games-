@@ -72,7 +72,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     return p;
   };
   const models = new Map<string, ReturnType<ArtLoader['model']>>();
-  for (const p of PROPS) if (!models.has(p.model)) models.set(p.model, L.model(p.model));
+  const lods = new Map<string, ReturnType<ArtLoader['model']>>();
+  for (const p of PROPS) if (!models.has(p.model)) { models.set(p.model, L.model(p.model)); lods.set(p.model, L.model(`${p.model}.lod1`)); }
 
   const looks = new Map<number, PanelLook>();
   const envLights: THREE.MeshStandardMaterial[] = [];
@@ -156,19 +157,29 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   }));
   // Props, each lit by its own baked probe.
   const info = await L.json<BakeInfo>(`bake/${REGIONS[0].name}.json`);
+  /** Near: the full model within LOD_NEAR metres; far (and always on the throttled tier): the simplified one. */
+  const LOD_NEAR = 5;
   for (const [i, p] of PROPS.entries()) {
-    const gltf = await models.get(p.model)!, root = gltf.scene.clone(true);
-    const meshes: THREE.Mesh[] = [];
-    root.traverse(o => { if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh); });
-    for (const mesh of meshes) {
-      const src = mesh.material as THREE.MeshStandardMaterial, key = `${p.model}--${src.name}`;
-      const [map, nor, arm] = await set(key, PROP_SIZE[tier]);
-      const mat = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, sh: info.props[i], roughness: arm ? 1 : 0.7, metalness: arm ? 1 : 0 });
-      mesh.material = mat; materials.push(mat); envLights.push(mat);
-      mesh.matrixAutoUpdate = true;
+    const lod = new THREE.LOD();
+    const levels: [THREE.Object3D, number][] = full ? [[(await models.get(p.model)!).scene.clone(true), 0], [(await lods.get(p.model)!).scene.clone(true), LOD_NEAR]] : [[(await lods.get(p.model)!).scene.clone(true), 0]];
+    const mats = new Map<string, THREE.Material>();
+    for (const [root, distance] of levels) {
+      const meshes: THREE.Mesh[] = [];
+      root.traverse(o => { if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh); });
+      for (const mesh of meshes) {
+        const src = mesh.material as THREE.MeshStandardMaterial, key = `${p.model}--${src.name}`;
+        let mat = mats.get(key);
+        if (!mat) {
+          const [map, nor, arm] = await set(key, PROP_SIZE[tier]);
+          const m = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, sh: info.props[i], roughness: arm ? 1 : 0.7, metalness: arm ? 1 : 0 });
+          mats.set(key, m); materials.push(m); envLights.push(m); mat = m;
+        }
+        mesh.material = mat;
+      }
+      lod.addLevel(root, distance);
     }
-    root.position.set(p.x, p.y, p.z); root.rotation.y = p.yaw; root.scale.setScalar(p.scale ?? 1);
-    group.add(root);
+    lod.position.set(p.x, p.y, p.z); lod.rotation.y = p.yaw; lod.scale.setScalar(p.scale ?? 1);
+    group.add(lod);
   }
   for (const m of envLights) m.userData.art.artEnvLight.value = Math.max(0.05, envLight);
   let triangles = 0, meshes = 0;

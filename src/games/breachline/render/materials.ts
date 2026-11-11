@@ -71,6 +71,14 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
 	diffuseColor.rgb *= mix( vArtWorld.y < artBand.w ? artBand.rgb : vec3( 1.0 ), vec3( 0.18 ), artRail );
 	// Boot-height grime on the band: darker and dirtier towards the floor.
 	diffuseColor.rgb *= vArtWorld.y < artBand.w ? mix( 0.72, 1.0, smoothstep( 0.1, 0.55, vArtWorld.y ) ) : 1.0;
+	#ifdef ART_VERTEX_LIGHT
+		// Destructible plasterboard: taped joints every 1.2 m and scuffs, all per pixel, so they break with the cells.
+		vec3 artWN = inverseTransformDirection( normalize( vNormal ), viewMatrix );
+		float artU = abs( artWN.x ) > 0.5 ? vArtWorld.z : vArtWorld.x;
+		float artJoint = 1.0 - 0.13 * ( 1.0 - smoothstep( 0.0, 0.012, abs( fract( artU / 1.2 + 0.5 ) - 0.5 ) * 1.2 ) );
+		float artScuff = fract( sin( dot( floor( vec2( artU * 9.0, vArtWorld.y * 22.0 ) ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+		diffuseColor.rgb *= artJoint * ( vArtWorld.y < 0.45 && artScuff > 0.93 ? 0.84 : 1.0 );
+	#endif
 	// Painted skirting zone at the floor.
 	diffuseColor.rgb *= vArtWorld.y < 0.1 ? vec3( 0.42 ) : vec3( 1.0 );
 #endif`)

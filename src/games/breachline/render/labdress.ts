@@ -219,12 +219,7 @@ function benchKit(D: DetailBuilder) {
   D.box('screen', cx - 0.05, top + 0.12, cz + 0.17, cx + 0.05, top + 0.16, cz + 0.185, on(cx, cz), up);
   D.box('kick', 0.55, top, -5.95, 0.78, top + 0.006, -5.63, on(0.66, -5.8), up, [0.5, 0.4, 0.3]);
   D.box('paper', 0.57, top + 0.006, -5.93, 0.76, top + 0.008, -5.67, on(0.66, -5.8), up);
-  // Service pipes dropping from the ceiling to the sink's spine.
-  for (const x of [2.2, 2.32]) {
-    const g = new THREE.CylinderGeometry(0.018, 0.018, WALL_H - top, 10).translate(x, (WALL_H + top) / 2, -6.18);
-    D.mesh('conduit', g.attributes.position.array, g.attributes.normal.array, g.index!.array, on(x, -6.18), up);
-    g.dispose();
-  }
+  // (Services reach the sink from under the bench, inside the cabinetry: no pipes stand in the room.)
 }
 
 /** The suspended ceiling's T-bar grid at 600 mm, over the tile joints the ceiling texture draws. */

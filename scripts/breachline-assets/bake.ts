@@ -40,7 +40,7 @@ const BEAM = 1.5;
 /** The bright margin a recessed fitting throws on the ceiling tiles around it, and how fast it falls away (m). */
 const HALO = 0.9, HALO_FALL = 0.28;
 /** Contact occlusion on bounced light: rays that hit something closer than this darken corners and prop footprints. */
-const CONTACT = 0.4, CONTACT_STRENGTH = 0.75;
+const CONTACT = 0.5, CONTACT_STRENGTH = 0.85;
 const LAMP_Y = FIXTURE_Y;
 const LIGHTS = bakeLights();
 

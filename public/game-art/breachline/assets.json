@@ -158,31 +158,37 @@
  "models": {
   "metal_tool_chest": {
    "glb": 441212,
+   "lod1": 490172,
    "materials": [
     "metal_tool_chest"
    ],
-   "triangles": 13360
+   "triangles": 13360,
+   "lod1Triangles": 4002
   },
   "korean_fire_extinguisher_01": {
    "glb": 282176,
+   "lod1": 319176,
    "materials": [
     "korean_fire_extinguisher_01_body",
     "korean_fire_extinguisher_01_glass",
     "korean_fire_extinguisher_01_paper"
    ],
-   "triangles": 9913
+   "triangles": 9913,
+   "lod1Triangles": 3050
   },
   "metal_stool_01": {
    "glb": 217468,
+   "lod1": 247604,
    "materials": [
     "metal_stool_01"
    ],
-   "triangles": 8334
+   "triangles": 8334,
+   "lod1Triangles": 2500
   }
  },
  "bytes": {
-  "low": 4613308,
-  "high": 15623464,
+  "low": 5670260,
+  "high": 16680416,
   "fallback": 899428
  }
 }

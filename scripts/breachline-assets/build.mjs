@@ -9,6 +9,7 @@ import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { MeshoptSimplifier } from 'meshoptimizer';
 import { encode, GL, ktx } from './bc.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -99,6 +100,9 @@ async function main() {
       const bin = await readFile(join(dir, gltf.buffers[0].uri));
       const glb = glbWithoutImages(gltf, bin);
       const size = await written(join(OUT, 'models', `${a.id}.glb`), glb, ['low', 'high']);
+      // A far level at about 30 % of the triangles, used beyond a few metres and on the throttled tier.
+      const lod = await simplified(gltf, bin, 0.3);
+      const lodSize = await written(join(OUT, 'models', `${a.id}.lod1.glb`), glbWithoutImages(lod.gltf, lod.bin), ['low', 'high']);
       // Textures per source material, named after it.
       const mats = [];
       for (const m of gltf.materials) {
@@ -109,7 +113,7 @@ async function main() {
         await textureSet(key, { diff, nor, arm }, PROP_SIZES, join(OUT, 'tex', key));
         mats.push(m.name);
       }
-      report.models[a.id] = { glb: size, materials: mats, triangles: triangles(gltf) };
+      report.models[a.id] = { glb: size, lod1: lodSize, materials: mats, triangles: triangles(gltf), lod1Triangles: triangles(lod.gltf) };
     }
   }
   report.bytes = Object.fromEntries(Object.entries(report.bytes).map(([k, v]) => [k, v]));
@@ -117,6 +121,33 @@ async function main() {
   await notices();
   const mb = v => (v / 1e6).toFixed(2);
   console.log(`low tier ${mb(report.bytes.low)} MB, medium/high extra ${mb(report.bytes.high)} MB, fallback JPEGs ${mb(report.bytes.fallback)} MB`);
+}
+
+/** A lower level of detail: every indexed primitive simplified to `ratio` of its triangles (meshoptimizer, borders
+ * locked so UV seams and open edges hold). New index buffers are appended to the binary. */
+async function simplified(gltf, bin, ratio) {
+  await MeshoptSimplifier.ready;
+  const g = structuredClone(gltf), extra = [];
+  let offset = bin.length;
+  const view = i => g.bufferViews[g.accessors[i].bufferView];
+  for (const mesh of g.meshes) for (const p of mesh.primitives) {
+    if (p.indices === undefined) continue;
+    const pa = g.accessors[p.attributes.POSITION], pv = view(p.attributes.POSITION), stride = pv.byteStride || 12;
+    const pos = new Float32Array(pa.count * 3);
+    for (let k = 0; k < pa.count; k++) for (let c = 0; c < 3; c++) pos[k * 3 + c] = bin.readFloatLE((pv.byteOffset ?? 0) + (pa.byteOffset ?? 0) + k * stride + c * 4);
+    const ia = g.accessors[p.indices], iv = view(p.indices), size = ia.componentType === 5125 ? 4 : ia.componentType === 5123 ? 2 : 1;
+    const idx = new Uint32Array(ia.count);
+    for (let k = 0; k < ia.count; k++) { const at = (iv.byteOffset ?? 0) + (ia.byteOffset ?? 0) + k * size; idx[k] = size === 4 ? bin.readUInt32LE(at) : size === 2 ? bin.readUInt16LE(at) : bin.readUInt8(at); }
+    const target = Math.max(3, Math.floor(idx.length * ratio / 3) * 3);
+    const [out] = MeshoptSimplifier.simplify(idx, pos, 3, target, 0.02, ['LockBorder']);
+    const buf = Buffer.from(out.buffer, out.byteOffset, out.byteLength), pad = (4 - (offset % 4)) % 4;
+    if (pad) { extra.push(Buffer.alloc(pad)); offset += pad; }
+    g.bufferViews.push({ buffer: 0, byteOffset: offset, byteLength: buf.length, target: 34963 });
+    g.accessors.push({ bufferView: g.bufferViews.length - 1, componentType: 5125, count: out.length, type: 'SCALAR' });
+    p.indices = g.accessors.length - 1;
+    extra.push(buf); offset += buf.length;
+  }
+  return { gltf: g, bin: Buffer.concat([bin, ...extra]) };
 }
 
 function triangles(gltf) {

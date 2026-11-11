@@ -9,6 +9,56 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
+## Lab slice gate note (evidence: `lab-slice/gate/`; for review before roll-out)
+
+**Changes this round,** in the reviewer's order:
+1. Service pipes removed (the services reach the sink inside the cabinetry).
+2. Destructible plasterboard gets taped joints every 1.2 m and boot-height scuffs, drawn per pixel, so they break
+   with the cells. The painted skirting and rail were already per pixel.
+3. More lit/unlit separation: contact occlusion reach 0.5 m at 85 %, a deeper grade toe (gamma 0.9) and black
+   point 0.03. Bench tops are sealed epoxy with a soft second reflection.
+4. The budget items below.
+
+Also fixed a real bug: the automatic resolution scaler ran after drawing. On a scale change it resized, and so
+cleared, the canvas after the frame was drawn, so the screen flashed empty for a frame. That flash was the
+intermittent "blank Low frame" in my earlier renders, not the dev server as I wrote in round 3. It now runs before
+drawing, and repeated High-then-Low runs are clean.
+
+**Scores (Lab, mine):** A 7, B 6.5, C 6.5, D 7, H 6. A and D are at the gate. B and C are half a point short.
+B needs stronger plaster normals and reflections on painted metal. C needs a photo ceiling-tile set to replace the
+procedural one; that waits for KTX2, because the texture count is about to grow.
+
+**Budgets, measured on the gate frames (this container, 1280x720):**
+
+| | High | Low (throttled) | Budget High / Low |
+| --- | --- | --- | --- |
+| Triangles in view | 38k-80k (63k at `lab`) | 57k-59k | 500k / 150k |
+| Draw calls | 59-108 | 99-107 | 400 / 200 |
+| Script per frame, 60 frames | 0.9 ms median, 2.5 ms p90 | 0.7 ms median, 0.9 ms p90 | 5 ms / 3 ms |
+| Lab art textures, GPU | about 16 MB (5 surface sets at 1K, 5 prop sets at 512, lightmaps, 2 canvases) | about 5 MB at 512 | |
+| Post targets, GPU | about 42 MB (MSAA 4x HDR 33.6 MB + resolve 8.4 MB + bloom about 1 MB at 1366x768) | about 2.5 MB (HDR at 55 % scale, no bloom) | |
+| Medium (not rendered here) | HDR 8.4 MB + bloom 0.5 MB, no MSAA, FXAA | | |
+| Committed art | 10.5 MB (all at 512 px until KTX2) | | 60 MB / 20 MB |
+
+Prop LODs: meshoptimizer (pinned dev dependency 0.22.0) writes a level at about 30 % of the triangles for each prop
+(tool chest 13.4k to 4.0k, extinguisher 9.9k to 3.1k, stool 8.3k to 2.5k). High switches to it beyond 5 m and
+Low always uses it. Triangles at the `lab` bookmark dropped from 91k to 63k. Each LOD file still carries its
+model's full vertex buffer: about 1 MB in total, to strip later.
+
+**Per-room allowance for roll-out (proposed):** each new room may add at most two new 1K surface sets. It reuses
+the shared family (plaster, tile, painted metal, boards, ceiling) and the dressing kit's untextured and canvas
+materials. Its props share 512 px sets. That keeps eight rooms near 60-70 MB of textures on High at BC/ETC sizes
+(under 350 MB on Medium) and roughly half the download once KTX2 lands. Post targets are per screen, not per room,
+so they do not scale with rooms.
+
+**Tests:** `npx tsc --noEmit` clean; `npx vitest run tests/games/breachline` 53 passed; browser (solo flow) and the
+two-device online match: 7 passed; whole suite `npx vitest run` 270 files passed (1 skipped), 5,341 tests passed (7 skipped).
+
+**ARM today:** 512 px JPEG fallback, uncompressed in GPU memory, until KTX2.
+
+**Roll-out order after review (reviewer's):** corridor, Archive, the remaining rooms, the yard, with KTX2 landing
+before the texture count grows.
+
 **HeroLighting (planner's decision, 2026-11-11):** `environmentScale(x, z)` added to the interface and implemented:
 1 / the room's mean baked surface light inside art rooms (about 1.7 in the Lab), 1 elsewhere. Hero and fighter
 materials use `environment()` for specular only, scaled by this, and take diffuse from `probe()`. `probe()` gains
