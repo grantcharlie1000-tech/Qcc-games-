@@ -133,7 +133,9 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 
 ## Tests
 
-`tests/games/breachline/fighters.test.ts` (32): budgets per level and squad; the head centre within 3 cm of the sim's head sphere centre and pelvis, waist and chest inside the body cylinder for 27 stance × lean × pitch poses; the bore along the view direction; a planted foot moves < 5 mm a frame walking, strafing, crouch-walking and sprinting; every death ends with all joints between the floor and 0.55 m; ten fighters' animation per frame. Whole unit suite 5373 passed; Breachline browser tests and the two-device online test 7/7.
+`tests/games/breachline/fighters.test.ts` (32): budgets per level and squad; the head centre within 3 cm of the sim's head sphere centre and pelvis, waist and chest inside the body cylinder for 27 stance × lean × pitch poses; the bore along the view direction; a planted foot moves < 5 mm a frame walking, strafing, crouch-walking and sprinting; every death ends with all joints between the floor and 0.55 m; ten fighters' animation per frame. Whole unit suite 5373 passed; Breachline browser tests and the two-device online test 7/7 (r1).
+
+r2 (342ed44): `npx tsc --noEmit` clean; whole unit suite 5381 passed; Breachline browser tests 7/7. **The two-device online test fails** at its line 54: after gunfire, device b's hole count does not match device a's within 10 s. It fails in the full browser sequence and passes when run alone. With `createFighters` swapped back to the original box figures at the same commit it fails identically, so it is not from the fighters. It was green at 3f3978e and arrived with commits from other sessions in between; reported to the planner.
 
 ## Still weak (what the next rounds change)
 
