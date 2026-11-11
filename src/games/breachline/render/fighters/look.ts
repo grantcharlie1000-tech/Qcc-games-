@@ -18,12 +18,14 @@ export interface Look {
 }
 
 const fab = (color: number, rough = 0.93) => surf(SURF.cloth, { color, rough, pat: PAT.fabric, wear: 0.15 });
+/** Uniform cloth with the printed pattern and seams (the fighter material reads wear >= 0.5 on fabric as that flag). */
+const uni = (color: number) => surf(fab(color), { wear: 0.6 });
 const hex = (s: string) => Number(`0x${s.slice(1)}`);
 
 export const LOOKS: readonly [Look, Look] = [
   {
     squad: 0, band: hex(SQUADS[0].color), mask: 'balaclava', eyes: 'goggles',
-    shirt: fab(0x666d76), pants: fab(0x555b63), skin: surf(SURF.skin, { color: 0xb0866a }), face: fab(0x242628, 0.97),
+    shirt: uni(0x666d76), pants: uni(0x555b63), skin: surf(SURF.skin, { color: 0xb0866a }), face: fab(0x242628, 0.97),
     hair: fab(0x2a2420), lip: surf(SURF.skin, { color: 0x9a6a58 }),
     glove: surf(SURF.glove, { color: 0x262728 }), palm: surf(SURF.gloveTan, { color: 0x45423d }), knuckle: surf(SURF.knuckle, { color: 0x1c1d1e }),
     kit: fab(0x43484d, 0.9), web: surf(SURF.webbing, { color: 0x34383b }), helmet: surf(SURF.helmet, { color: 0x50565c, rough: 0.72 }),
@@ -32,7 +34,7 @@ export const LOOKS: readonly [Look, Look] = [
   },
   {
     squad: 1, band: hex(SQUADS[1].color), mask: 'scarf', eyes: 'glasses',
-    shirt: fab(0x93826a), pants: fab(0x7c6d56), skin: surf(SURF.skin, { color: 0x8f6650 }), face: fab(0x8c7c60, 0.97),
+    shirt: uni(0x93826a), pants: uni(0x7c6d56), skin: surf(SURF.skin, { color: 0x8f6650 }), face: fab(0x8c7c60, 0.97),
     hair: fab(0x1e1915), lip: surf(SURF.skin, { color: 0x7a4f42 }),
     glove: surf(SURF.glove, { color: 0x4a4234 }), palm: surf(SURF.gloveTan, { color: 0x6e6150 }), knuckle: surf(SURF.knuckle, { color: 0x2c2a26 }),
     kit: fab(0x6f6650, 0.9), web: surf(SURF.webbing, { color: 0x5a5240 }), helmet: surf(SURF.helmet, { color: 0x7d7158, rough: 0.74 }),

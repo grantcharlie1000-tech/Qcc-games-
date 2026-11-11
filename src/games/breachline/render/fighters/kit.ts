@@ -83,7 +83,7 @@ function grid(rows: THREE.Vector3[][], closed = true, capFirst = false): THREE.B
 /** The squad's shape (◆ or ▲) as a flat extrusion, size `s` metres, facing +Z. */
 function shapeGeo(squad: 0 | 1, s: number, depth: number) {
   const sh = new THREE.Shape();
-  if (squad === 0) { sh.moveTo(0, s); sh.lineTo(s * 0.78, 0); sh.lineTo(0, -s); sh.lineTo(-s * 0.78, 0); }
+  if (squad === 0) { sh.moveTo(0, s * 1.1); sh.lineTo(s * 0.58, 0); sh.lineTo(0, -s * 1.1); sh.lineTo(-s * 0.58, 0); }
   else { sh.moveTo(0, s * 0.95); sh.lineTo(s * 0.95, -s * 0.72); sh.lineTo(-s * 0.95, -s * 0.72); }
   sh.closePath();
   const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 1 });
@@ -94,7 +94,9 @@ function shapeGeo(squad: 0 | 1, s: number, depth: number) {
 /** A patch: a dark backing plate with a raised squad shape in the squad colour (shape plus colour, never colour
  * alone). */
 function patch(b: Builder, l: Look, lod: number, at: THREE.Vector3, normal: THREE.Vector3, up: THREE.Vector3, size: number) {
-  orient(b.add(cbox([size * 2.3, size * 2.3, 0.004], 0.0015, lod).translate(0, 0, 0.002), l.web), at, normal, up);
+  // A round backing, so the outline never repeats either squad's shape.
+  const disc = new THREE.CylinderGeometry(size * 1.3, size * 1.3, 0.004, lod ? 8 : 10).rotateX(Math.PI / 2).translate(0, 0, 0.002);
+  orient(b.add(disc, l.web), at, normal, up);
   orient(b.add(shapeGeo(l.squad, size, 0.003), surf(l.web, { color: l.band, rough: 0.6, wear: 0 })), at.clone().addScaledVector(normal.clone().normalize(), 0.004), normal, up);
 }
 
@@ -138,7 +140,7 @@ function helmet(b: Builder, l: Look, lod: number) {
   }
   // Front shroud for a night-vision mount.
   const sp = shell(0, rimTh(0) * 0.62, 0.008), sn = shell(0, rimTh(0) * 0.62, 1).sub(shell(0, rimTh(0) * 0.62)).normalize();
-  if (lod < 2) orient(b.add(cbox([0.052, 0.034, 0.012], 0.003, lod), l.metal), sp, sn, V(0, 1, 0.3));
+  if (lod < 2) orient(b.add(cbox([0.052, 0.034, 0.012], 0.003, lod), l.poly), sp, sn, V(0, 1, 0.3));
   // Hook-and-loop panel on top and the squad shape patch at the back.
   if (lod < 2) orient(b.add(cbox([0.07, 0.05, 0.004], 0.002, lod), surf(l.helmet, { color: 0x2b2b2b, rough: 0.95, pat: 3 })), shell(0, 0.28, 0.002), V(0, 1, -0.25), V(0, 0.2, -1));
   const bp = shell(Math.PI, rimTh(Math.PI) * 0.6, 0.002), bn = shell(Math.PI, rimTh(Math.PI) * 0.6, 1).sub(shell(Math.PI, rimTh(Math.PI) * 0.6)).normalize();
@@ -187,19 +189,19 @@ function glasses(b: Builder, l: Look, lod: number) {
   for (const g of [-1, 1]) b.tube([[g * 0.085, 1.645, -0.062], [g * 0.09, 1.642, -0.02], [g * 0.085, 1.632, 0.012]], 0.0025, l.poly, 3, 3);
 }
 
-/** The scarf: wrapped round the neck and pulled over the mouth and nose, with loose folds. */
+/** The scarf: a shemagh wrapped thick round the neck and collar under the jaw, in loose folds, with a tail at the
+ * back. */
 function scarf(b: Builder, l: Look, lod: number) {
   const nr = [6, 4, 3][lod], seg = [16, 12, 7][lod], rings: Ring[] = [];
   for (let i = 0; i < nr; i++) {
-    const t = i / (nr - 1), y = 1.425 + t * 0.165;
-    // Wide round the collar, snug under the jaw, up over the chin and mouth at the front.
-    const w = 0.084 - 0.02 * Math.sin(t * Math.PI * 0.9) + 0.004, f = 0.075 + 0.04 * t, bk = 0.078 - 0.012 * t, zc = 0.004 - 0.032 * t;
-    rings.push({ c: V(0, y, zc), u: V(1, 0, 0), v: V(0, 0, -1), at: section(w, w, f, bk, 2, a => 0.05 * Math.sin(a * 5 + t * 7) * Math.sin(t * Math.PI) + 0.03 * Math.sin(a * 9 + 1.7)) });
+    const t = i / (nr - 1), y = 1.435 + t * 0.095;
+    // Round in section: fullest in the middle of the wrap, tucked in at the top under the jaw.
+    const bulge = Math.sin(t * Math.PI), w = 0.085 + 0.03 * bulge - 0.012 * t, f = 0.08 + 0.032 * bulge + 0.006 * t, bk = 0.08 + 0.024 * bulge - 0.012 * t;
+    rings.push({ c: V(0, y, 0.004 - 0.022 * t), u: V(1, 0, 0), v: V(0, 0, -1), at: section(w, w, f, bk, 2, a => 0.07 * Math.sin(a * 5 + t * 6) * bulge + 0.03 * Math.sin(a * 9 + 1.7)) });
   }
-  b.addTagged(loft(rings, { seg, weight: p => chain([[B.spine2, 1.42], [B.neck, 1.47], [B.head, 1.56]], p.y) }), [l.scarf]);
-  // A loose tail at the back.
+  b.addTagged(loft(rings, { seg, weight: p => chain([[B.spine2, 1.44], [B.neck, 1.5]], p.y) }), [l.scarf]);
   b.bone = B.spine2;
-  b.tube([[0.02, 1.47, 0.07], [0.035, 1.4, 0.1], [0.03, 1.33, 0.115]], 0.016, l.scarf, 4, 5);
+  b.tube([[0.02, 1.47, 0.08], [0.035, 1.4, 0.105], [0.03, 1.33, 0.12]], 0.016, l.scarf, 4, 5);
 }
 
 // ---- Plate carrier -----------------------------------------------------------------------------------------------

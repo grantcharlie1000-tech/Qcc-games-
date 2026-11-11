@@ -56,10 +56,10 @@ const L = SIDE[0], R = SIDE[1];
 const DEATHS: DeathKey[][] = [
   // 0: shot from the front, a stagger back, knees go, falls on the back, one knee raised, arms out.
   [
-    { t: 0.12, pelvis: [0, 0.93, 0.08], prot: [0.12, 0, 0.05], bones: { [B.spine1]: [0.15, 0, 0], [B.spine2]: [0.2, 0, 0], [B.neck]: [0.25, 0, 0], [B.head]: [0.2, 0, 0], [L.upper]: [-0.4, 0, -0.3], [R.upper]: [-0.6, 0, 0.4], [L.fore]: [-0.9, 0, 0], [R.fore]: [-1.0, 0, 0], [L.thigh]: [0.15, 0, 0], [R.thigh]: [-0.1, 0, 0], [L.shin]: [-0.3, 0, 0], [R.shin]: [-0.15, 0, 0] } },
-    { t: 0.42, pelvis: [0, 0.6, 0.25], prot: [0.45, 0.1, 0.05], bones: { [B.spine1]: [0.2, 0, 0], [B.spine2]: [0.25, 0, 0.05], [B.neck]: [-0.3, 0, 0], [B.head]: [-0.2, 0, 0], [L.upper]: [-0.6, 0, -0.6], [R.upper]: [-0.3, 0, 0.7], [L.fore]: [-0.6, 0, 0], [R.fore]: [-0.5, 0, 0], [L.thigh]: [1.1, 0, -0.1], [R.thigh]: [0.9, 0, 0.1], [L.shin]: [-1.5, 0, 0], [R.shin]: [-1.3, 0, 0] } },
-    { t: 0.78, pelvis: [0, 0.16, 0.62], prot: [1.45, 0.15, 0.02], bones: { [B.spine1]: [0.12, 0, 0], [B.spine2]: [0.1, 0, 0], [B.neck]: [-0.35, 0, 0], [B.head]: [-0.2, 0.3, 0], [L.upper]: [0.3, 0, -1.0], [R.upper]: [0.1, 0, 1.15], [L.fore]: [-0.4, 0, 0], [R.fore]: [-0.25, 0, 0], [L.thigh]: [1.0, 0, -0.15], [R.thigh]: [0.35, 0, 0.12], [L.shin]: [-1.25, 0, 0], [R.shin]: [-0.4, 0, 0] } },
-    { t: 1.05, pelvis: [0, 0.14, 0.66], prot: [1.55, 0.15, 0.02], bones: { [B.spine1]: [0.05, 0, 0], [B.spine2]: [0.0, 0, 0], [B.neck]: [-0.1, 0, 0], [B.head]: [-0.15, 0.55, 0], [L.upper]: [0.15, 0, -1.15], [R.upper]: [0.0, 0, 1.3], [L.fore]: [-0.25, 0, 0], [R.fore]: [-0.15, 0, 0], [L.thigh]: [0.85, 0, -0.18], [R.thigh]: [0.2, 0, 0.15], [L.shin]: [-1.15, 0, 0], [R.shin]: [-0.22, 0, 0], [L.foot]: [0.4, 0, 0], [R.foot]: [0.6, 0, 0] } },
+    { t: 0.12, pelvis: [0, 0.93, 0.08], prot: [0.12, 0, 0.05], bones: { [B.spine1]: [0.15, 0, 0], [B.spine2]: [0.2, 0, 0], [B.neck]: [0.25, 0, 0], [B.head]: [0.2, 0, 0], [L.upper]: [-0.3, 0, -0.15], [R.upper]: [-0.5, 0, 0.2], [L.fore]: [-0.9, 0, 0], [R.fore]: [-1.0, 0, 0], [L.thigh]: [0.15, 0, 0], [R.thigh]: [-0.1, 0, 0], [L.shin]: [-0.3, 0, 0], [R.shin]: [-0.15, 0, 0] } },
+    { t: 0.42, pelvis: [0, 0.68, 0.3], prot: [0.6, 0.1, 0.05], bones: { [B.spine1]: [0.15, 0, 0], [B.spine2]: [0.2, 0, 0.05], [B.neck]: [-0.3, 0, 0], [B.head]: [-0.2, 0, 0], [L.upper]: [-0.4, 0, -0.35], [R.upper]: [-0.2, 0, 0.4], [L.fore]: [-0.6, 0, 0], [R.fore]: [-0.5, 0, 0], [L.thigh]: [0.45, 0, -0.1], [R.thigh]: [0.3, 0, 0.1], [L.shin]: [-1.0, 0, 0], [R.shin]: [-0.8, 0, 0] } },
+    { t: 0.78, pelvis: [0, 0.16, 0.62], prot: [1.45, 0.15, 0.02], bones: { [B.spine1]: [0.12, 0, 0], [B.spine2]: [0.1, 0, 0], [B.neck]: [-0.35, 0, 0], [B.head]: [-0.2, 0.3, 0], [L.upper]: [0.3, 0, -0.75], [R.upper]: [0.1, 0, 0.8], [L.fore]: [-0.4, 0, 0], [R.fore]: [-0.25, 0, 0], [L.thigh]: [0.6, 0, -0.15], [R.thigh]: [0.2, 0, 0.12], [L.shin]: [-1.05, 0, 0], [R.shin]: [-0.3, 0, 0] } },
+    { t: 1.05, pelvis: [0, 0.14, 0.66], prot: [1.55, 0.15, 0.02], bones: { [B.spine1]: [0.05, 0, 0], [B.spine2]: [0.0, 0, 0], [B.neck]: [-0.1, 0, 0], [B.head]: [-0.15, 0.55, 0], [L.upper]: [0.15, 0, -0.85], [R.upper]: [0.0, 0, 0.95], [L.fore]: [-0.35, 0, 0], [R.fore]: [-0.2, 0, 0], [L.thigh]: [0.45, 0, -0.18], [R.thigh]: [0.08, 0, 0.15], [L.shin]: [-0.9, 0, 0], [R.shin]: [-0.15, 0, 0], [L.foot]: [0.4, 0, 0], [R.foot]: [0.5, 0, 0] } },
   ],
   // 1: crumples: knees buckle first, folds at the waist, falls forward onto the chest, face turned.
   [
@@ -70,8 +70,8 @@ const DEATHS: DeathKey[][] = [
   ],
   // 2: spun by the hit, drops to the knees and slumps onto the right side, curled.
   [
-    { t: 0.14, pelvis: [0.03, 0.92, 0.0], prot: [0.0, 0.5, 0.08], bones: { [B.spine1]: [-0.1, 0.25, 0.15], [B.spine2]: [-0.1, 0.3, 0.15], [B.neck]: [0, 0.2, 0], [B.head]: [0.1, 0.2, 0.1], [L.upper]: [0.1, 0, -0.6], [R.upper]: [0.5, 0, 0.3], [L.fore]: [-0.7, 0, 0], [R.fore]: [-1.0, 0, 0], [L.thigh]: [0.2, 0, -0.1], [R.thigh]: [0.0, 0, 0.1], [L.shin]: [-0.4, 0, 0], [R.shin]: [-0.2, 0, 0] } },
-    { t: 0.45, pelvis: [0.08, 0.52, 0.0], prot: [-0.2, 1.0, 0.3], bones: { [B.spine1]: [-0.25, 0.1, 0.25], [B.spine2]: [-0.2, 0.1, 0.25], [B.neck]: [0.1, 0, 0.2], [B.head]: [0.1, 0, 0.2], [L.upper]: [0.6, 0, -0.4], [R.upper]: [0.3, 0, 0.5], [L.fore]: [-0.9, 0, 0], [R.fore]: [-0.6, 0, 0], [L.thigh]: [1.35, 0, -0.1], [R.thigh]: [1.25, 0, 0.1], [L.shin]: [-2.1, 0, 0], [R.shin]: [-2.0, 0, 0] } },
+    { t: 0.14, pelvis: [0.03, 0.92, 0.0], prot: [0.0, 0.5, 0.08], bones: { [B.spine1]: [-0.1, 0.25, 0.15], [B.spine2]: [-0.1, 0.3, 0.15], [B.neck]: [0, 0.2, 0], [B.head]: [0.1, 0.2, 0.1], [L.upper]: [0.3, 0, -0.25], [R.upper]: [0.5, 0, 0.15], [L.fore]: [-0.9, 0, 0], [R.fore]: [-1.0, 0, 0], [L.thigh]: [0.2, 0, -0.1], [R.thigh]: [0.0, 0, 0.1], [L.shin]: [-0.4, 0, 0], [R.shin]: [-0.2, 0, 0] } },
+    { t: 0.45, pelvis: [0.08, 0.52, 0.0], prot: [-0.2, 1.0, 0.3], bones: { [B.spine1]: [-0.25, 0.1, 0.25], [B.spine2]: [-0.2, 0.1, 0.25], [B.neck]: [0.1, 0, 0.2], [B.head]: [0.1, 0, 0.2], [L.upper]: [0.6, 0, -0.15], [R.upper]: [0.5, 0, 0.2], [L.fore]: [-0.9, 0, 0], [R.fore]: [-0.8, 0, 0], [L.thigh]: [1.35, 0, -0.1], [R.thigh]: [1.25, 0, 0.1], [L.shin]: [-2.1, 0, 0], [R.shin]: [-2.0, 0, 0] } },
     { t: 0.82, pelvis: [0.3, 0.22, 0.05], prot: [0.0, 1.3, -1.45], bones: { [B.spine1]: [-0.25, 0, 0.05], [B.spine2]: [-0.25, 0, 0.0], [B.neck]: [-0.1, 0, 0.3], [B.head]: [0.0, 0, 0.35], [L.upper]: [0.6, 0, 0.5], [R.upper]: [0.9, 0, -0.6], [L.fore]: [-0.8, 0, 0], [R.fore]: [-0.8, 0, 0], [L.thigh]: [1.0, 0, -0.1], [R.thigh]: [1.2, 0, 0.1], [L.shin]: [-1.5, 0, 0], [R.shin]: [-1.6, 0, 0] } },
     { t: 1.1, pelvis: [0.33, 0.2, 0.06], prot: [0.0, 1.3, -1.52], bones: { [B.spine1]: [-0.3, 0, 0.05], [B.spine2]: [-0.3, 0, 0.0], [B.neck]: [-0.1, 0, 0.35], [B.head]: [0.0, 0, 0.4], [L.upper]: [0.7, 0, 0.6], [R.upper]: [0.95, 0, -0.6], [L.fore]: [-0.7, 0, 0], [R.fore]: [-0.9, 0, 0], [L.thigh]: [0.95, 0, -0.1], [R.thigh]: [1.15, 0, 0.1], [L.shin]: [-1.45, 0, 0], [R.shin]: [-1.6, 0, 0], [L.foot]: [0.3, 0, 0], [R.foot]: [0.3, 0, 0] } },
   ],
@@ -150,7 +150,7 @@ export class Animator {
   }
 
   /** A shot by this fighter. */
-  fire() { const k = this.w.pistol ? 1.3 : 1; this.recoil[0].v += 0.9 * k; this.recoil[1].v += 1.6 * k; }
+  fire() { const k = this.w.pistol ? 1.3 : 1; this.recoil[0].v += 1.6 * k; this.recoil[1].v += 2.6 * k; }
 
   /** World position of the foot's rest spot under the hip. */
   private restFoot(s: number, crouch: number, out: THREE.Vector3) {
@@ -182,7 +182,7 @@ export class Animator {
     if (!p.alive && !this.dead) this.startDeath(p);
     if (p.alive && this.dead) this.reset(p);
     if (this.dead) { this.deathT += dt; this.poseDeath(); this.write(); return; }
-    if (p.hp < this.lastHp - 0.5) { const h = this.time * 7.3; this.flinch[0].v += 5.5; this.flinch[1].v += Math.sin(h) > 0 ? 4 : -4; }
+    if (p.hp < this.lastHp - 0.5) { const h = this.time * 7.3; this.flinch[0].v += 14; this.flinch[1].v += Math.sin(h) > 0 ? 10 : -10; }
     this.lastHp = p.hp;
     this.crouchS = p.crouch;
     this.recoil[0].step(dt); this.recoil[1].step(dt); this.flinch[0].step(dt); this.flinch[1].step(dt);
@@ -310,6 +310,16 @@ export class Animator {
     this.placeWeapon(p, sprint, ads, reloading, using, speed);
     // Arms to the weapon (or the reload path, or the object in use).
     const hands = this.handTargets(p, reloading, using);
+    // Protract the support shoulder until the hand is within reach (a rifleman's shoulder rolls forward onto a long
+    // handguard), up to 0.8 rad.
+    let extra = 0;
+    for (let it = 0; it < 4; it++) {
+      const r = this.wp[L.upper].distanceTo(hands[0].p) / (UPPER_LEN + FORE_LEN);
+      if (r < 0.95) break;
+      extra = Math.min(0.8, extra + (r - 0.93) * 2.2);
+      lq[L.clav].setFromEuler(e.set(0.05 * extra, -(0.18 + ads * 0.06) - extra, 0.04 + extra * 0.25, 'YXZ'));
+      this.fkFrom(L.clav);
+    }
     for (const s of [0, 1]) {
       const S = SIDE[s], h = hands[s];
       const pole = new THREE.Vector3(sgn(s) * (s ? 0.75 : 0.5), -1, s ? 0.35 : 0.1);
@@ -430,10 +440,10 @@ export class Animator {
     // Using an object: the weapon hangs on its sling at the right side, muzzle down.
     if (using) {
       q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-1.25, 0.25, 0.1, 'YXZ')).premultiply(cq);
-      pos.copy(chest).add(new THREE.Vector3(0.2, -0.18, -0.14).applyQuaternion(cq));
+      pos.copy(chest).add(new THREE.Vector3(0.27, -0.2, -0.1).applyQuaternion(cq));
     }
     // Recoil: back along the bore and the muzzle up.
-    const back = this.recoil[0].x * 0.03, rise = this.recoil[1].x * 0.03;
+    const back = this.recoil[0].x * 0.045, rise = this.recoil[1].x * 0.05;
     pos.addScaledVector(fwd, -back);
     q.multiply(new THREE.Quaternion().setFromAxisAngle(X, rise));
     this.weaponM.compose(pos, q, new THREE.Vector3(1, 1, 1));
@@ -449,7 +459,7 @@ export class Animator {
     if (using) {
       // Both hands work at the object in front: low for the uplink, chest high for a wall.
       const low = p.act === 1 || p.act === 2, t = this.time * (low ? 5 : 3.2);
-      const base = new THREE.Vector3(0, low ? 0.72 : 1.18, -0.5).add(new THREE.Vector3(0, 0, 0).applyQuaternion(this.wq[B.spine1]));
+      const base = new THREE.Vector3(0, low ? 0.62 : 1.18, low ? -0.42 : -0.5).add(new THREE.Vector3(0, 0, 0).applyQuaternion(this.wq[B.spine1]));
       const palm = new THREE.Vector3(0, low ? -1 : 0, low ? 0 : -1), fingers = new THREE.Vector3(0, low ? 0 : 1, low ? -1 : 0);
       return [0, 1].map(s => ({ p: base.clone().add(new THREE.Vector3(sgn(s) * 0.12, Math.sin(t + s * 2) * 0.03, Math.cos(t * 0.7 + s) * 0.025)), q: basisQ(palm.clone().add(new THREE.Vector3(-sgn(s) * 0.3, 0, 0)).normalize(), fingers) }));
     }

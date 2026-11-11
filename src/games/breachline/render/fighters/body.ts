@@ -14,8 +14,8 @@ export const BT = { shirt: 0, pants: 1, skin: 2, band: 3, face: 4, hair: 5, glov
 
 /** Detail per level: rings and segments for lofts, SDF cell sizes and decimation targets. */
 export const LOD = [
-  { torso: [18, 18], leg: [16, 12], arm: [14, 10], headH: 0.0055, headTris: 620, handH: 0.0042, handTris: 150 },
-  { torso: [11, 11], leg: [9, 8], arm: [8, 7], headH: 0.009, headTris: 260, handH: 0.006, handTris: 50 },
+  { torso: [18, 18], leg: [16, 12], arm: [14, 10], headH: 0.0075, headTris: 620, handH: 0.0055, handTris: 150 },
+  { torso: [11, 11], leg: [9, 8], arm: [8, 7], headH: 0.011, headTris: 260, handH: 0.0075, handTris: 50 },
   { torso: [6, 7], leg: [5, 5], arm: [4, 5], headH: 0.016, headTris: 70, handH: 0.01, handTris: 16 },
 ] as const;
 
@@ -157,10 +157,10 @@ function headField(): Field {
   P.push(ell([0, 1.668, 0.008], [0.074, 0.092, 0.097], H, 0));
   P.push(ell([0, 1.6, -0.03], [0.062, 0.068, 0.072], H, 0));
   // Jaw: two cones from under the ears to the chin.
-  for (const g of [-1, 1]) P.push(cone([g * 0.056, 1.585, -0.005], [g * 0.022, 1.528, -0.072], 0.017, 0.016, H, 0));
-  P.push(ell([0, 1.527, -0.075], [0.025, 0.018, 0.02], H, 0));
+  for (const g of [-1, 1]) P.push(cone([g * 0.058, 1.588, -0.005], [g * 0.024, 1.53, -0.07], 0.022, 0.019, H, 0));
+  P.push(ell([0, 1.53, -0.074], [0.03, 0.021, 0.022], H, 0));
   // Neck and the back of the neck into the skull.
-  P.push(cone([0, 1.44, 0.012], [0, 1.6, 0.0], 0.06, 0.056, N, 1));
+  P.push(cone([0, 1.44, 0.014], [0, 1.6, 0.004], 0.054, 0.05, N, 1));
   // Features.
   P.push(ell([0, 1.657, -0.083], [0.058, 0.0135, 0.02], H, 2, 0, new THREE.Euler(-0.15, 0, 0)));
   P.push(cone([0, 1.648, -0.094], [0, 1.603, -0.113], 0.0075, 0.011, H, 2));
@@ -171,7 +171,7 @@ function headField(): Field {
     P.push(ell([g * 0.074, 1.623, 0.008], [0.011, 0.03, 0.019], H, 3, BT.skin, new THREE.Euler(0, g * 0.3, 0)));
   }
   P.push(ell([0, 1.567, -0.095], [0.021, 0.0075, 0.011], H, 2, BT.lip));
-  return { prims: P, groups: [{ k: 0.03, join: 0 }, { k: 0, join: 0.035 }, { k: 0.012, join: 0.012 }, { k: 0, join: 0.006 }] };
+  return { prims: P, groups: [{ k: 0.03, join: 0 }, { k: 0, join: 0.018 }, { k: 0.012, join: 0.012 }, { k: 0, join: 0.006 }] };
 }
 
 let headCache: { geo: THREE.BufferGeometry; tags: Uint8Array }[] = [];
