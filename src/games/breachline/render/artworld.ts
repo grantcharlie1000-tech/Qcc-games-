@@ -222,6 +222,9 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   // Props, each lit by its own baked probe from the bake of the room it stands in.
   /** Near: the full model within LOD_NEAR metres; far (and always on the throttled tier): the simplified one. */
   const LOD_NEAR = 5;
+  /** Colour lifts per model: the covered car's scan is a near-black cover, lifted to a dark grey-green tarpaulin so
+   * its folds read in daylight. */
+  const PROP_TINT: Record<string, THREE.Color> = { covered_car: new THREE.Color(2.2, 2.7, 2.5) };
   for (const [i, p] of PROPS.entries()) {
     const room = roomAt(p.x, p.z);
     if (room < 0 || !loaded[room]) continue;
@@ -236,7 +239,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         let mat = mats.get(key);
         if (!mat) {
           const [map, nor, arm] = await set(key, PROP_SIZE[tier]);
-          const m = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, sh: rooms[room].props[i], roughness: arm ? 1 : 0.7, metalness: arm ? 1 : 0 });
+          const m = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, sh: rooms[room].props[i], roughness: arm ? 1 : 0.7, metalness: arm ? 1 : 0, color: PROP_TINT[p.model] });
           mats.set(key, m); materials.push(m); rooms[room].envLights.push(m); mat = m;
         }
         mesh.material = mat;

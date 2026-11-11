@@ -4,6 +4,11 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: covered car's tarpaulin lifted.** `rooms/yard/round-2/tarpaulin.png` (South Yard, Garage): a per-model
+colour lift (`PROP_TINT` in `artworld.ts`) takes the scan's near-black cover to a dark grey-green, so the folds read
+in daylight and indoors. The ground under it already carries the bake's occlusion from the car (it is an occluder in
+the bake); I did not add a separate contact decal. Next: small-object models and calmer floors.
+
 **2026-11-11: destructible panels batched.** `render/panelbatch.ts`: every whole, unreinforced panel is split by its
 material groups and merged into one mesh per material; a panel leaves the batch (and draws alone) when it is damaged,
 reinforced or gone, and only the batches it was in are rebuilt, at that moment. Of 59 panels, 47 start whole. Draw
