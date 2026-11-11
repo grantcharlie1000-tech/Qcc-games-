@@ -87,6 +87,75 @@ function tubeDot(b: Builder, z: number, railY: number, body: Surface): void {
   b.sphere(0.0006, [0, 0, z - L / 2 + 0.004], SURF.red, 6);
 }
 
+
+// ---- Engraved markings ----------------------------------------------------------------------------------------
+
+/** A 5x7 bitmap font for the few characters the markings use (rows top to bottom, '#' = engraved). */
+const FONT: Record<string, string> = {
+  A: '.###.#...##...#######...##...##...#',
+  B: '####.#...##...#####.#...##...#####.',
+  C: '.#####....#....#....#....#.....####',
+  D: '####.#...##...##...##...##...#####.',
+  E: '######....#....####.#....#....#####',
+  F: '######....#....####.#....#....#....',
+  I: '.###...#....#....#....#....#...###.',
+  L: '#....#....#....#....#....#....#####',
+  M: '#...###.###.#.##...##...##...##...#',
+  N: '#...###..##.#.##..###...##...##...#',
+  O: '.###.#...##...##...##...##...#.###.',
+  R: '####.#...##...#####.#.#..#..#.#...#',
+  S: '.#####....#.....###.....#....#####.',
+  T: '#####..#....#....#....#....#....#..',
+  U: '#...##...##...##...##...##...#.###.',
+  W: '#...##...##...##.#.##.#.###.###...#',
+  '-': '...............#####...............',
+  '.': '................................#..',
+  0: '.###.#..###.#.###..##...##...#.###.',
+  1: '..#...##....#....#....#....#...###.',
+  2: '.###.#...#....#...#...#...#...#####',
+  3: '####.....#....#.###.....#....#####.',
+  4: '...#...##..#.#.#..#.#####...#....#.',
+  5: '######....####.....#....##...#.###.',
+  6: '.###.#....#....####.#...##...#.###.',
+  7: '#####....#...#...#...#....#....#...',
+  8: '.###.#...##...#.###.#...##...#.###.',
+  9: '.###.#...##...#.####....#....#.###.',
+  ' ': '...................................',
+  '/': '....#....#...#...#...#...#....#....',
+};
+/** Engraves `text` on a flat face at x = `x` (facing +X if side 1, -X if -1), starting at z, baseline y, cap height h.
+ * Runs of pixels in a row become one quad each, so a line of text costs a few hundred triangles at most. */
+function engrave(b: Builder, text: string, x: number, y: number, z: number, h: number, side: 1 | -1, s: Surface) {
+  if (b.lod > 0) return;
+  const px = h / 7, adv = px * 6;
+  const pos: number[] = [], idx: number[] = [];
+  let cz = z;
+  for (const ch of text.toUpperCase()) {
+    const g = FONT[ch] ?? FONT[' '];
+    for (let r = 0; r < 7; r++) {
+      let c = 0;
+      while (c < 5) {
+        if (g[r * 5 + c] !== '#') { c++; continue; }
+        let e = c; while (e < 5 && g[r * 5 + e] === '#') e++;
+        // Seen from outside, text reads toward +Z on the left face and toward -Z on the right face.
+        const z0 = side === -1 ? cz + c * px : cz - c * px, z1 = side === -1 ? cz + e * px : cz - e * px;
+        const y0 = y + (6 - r) * px, y1 = y0 + px * 0.9, n = pos.length / 3;
+        pos.push(x, y0, z0, x, y0, z1, x, y1, z1, x, y1, z0);
+        if ((side === 1) === (z1 > z0)) idx.push(n, n + 2, n + 1, n, n + 3, n + 2); else idx.push(n, n + 1, n + 2, n, n + 2, n + 3);
+        c = e;
+      }
+    }
+    cz += side === -1 ? adv : -adv;
+  }
+  if (!idx.length) return;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+  const nrm = geo.getAttribute('normal'); for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, side, 0, 0);
+  b.add(geo, s, null, 1);
+}
+const ETCH = surf(SURF.white, { color: 0x8c8e90, rough: 0.55, metal: 0.6, wear: 0, pat: 0 });
+const PAINT = surf(SURF.white, { color: 0xd8d4c8, wear: 0 });
+
 // ---- Marrow AR-5: 5.56 mm assault rifle --------------------------------------------------------------------
 
 function marrowAR5(lod: number): Omit<WeaponModel, 'id'> {
@@ -218,6 +287,13 @@ function marrowAR5(lod: number): Omit<WeaponModel, 'id'> {
     b.transformSince(m0, new THREE.Matrix4().makeTranslation(0, MY, MZ));
   }
   b.bone = WB.root;
+  // Markings: maker's roll mark and calibre on the left of the magazine well, serial on the right, selector positions.
+  engrave(b, 'MARROW ARMS', -0.0161, B - 0.0505, -0.152, 0.0042, -1, ETCH);
+  engrave(b, 'AR-5  CAL 5.56 NATO', -0.0162, B - 0.0085, -0.232, 0.0034, -1, ETCH);
+  engrave(b, 'TA 04172', 0.0161, B - 0.05, -0.085, 0.0034, 1, ETCH);
+  engrave(b, 'SAFE', -0.0161, B - 0.0175, -0.043, 0.0026, -1, PAINT);
+  engrave(b, 'SEMI', -0.0161, B - 0.0345, -0.043, 0.0026, -1, PAINT);
+  engrave(b, 'AUTO', -0.0161, B - 0.0265, 0.0, 0.0026, -1, PAINT);
   casings(b, 'rifle', [0.018, B + 0.002, -0.095]);
   // Optic.
   b.tag = 'Optic.';

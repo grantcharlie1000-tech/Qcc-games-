@@ -40,7 +40,7 @@ export function digitRest(d: number): THREE.Quaternion {
 }
 
 /** Surface regions of the glove and sleeve, chosen per vertex from the nearest primitive and the side it faces. */
-const TAG = { back: 0, palm: 1, guard: 2, cuff: 3, tip: 4, strap: 5 } as const;
+const TAG = { back: 0, palm: 1, guard: 2, cuff: 3, tip: 4, strap: 5, gusset: 6 } as const;
 
 function handField(wrist: Vec): Field {
   const P: Prim[] = [], W = (v: Vec): Vec => [v[0] + wrist[0], v[1] + wrist[1], v[2] + wrist[2]];
@@ -83,8 +83,8 @@ function handField(wrist: Vec): Field {
   P.push(ell(W([0, 0.0, 0.05]), [0.035, 0.028, 0.02], 1, 6, TAG.cuff));
   P.push(rbox(W([0.004, 0.0255, 0.03]), [0.013, 0.0025, 0.012], 0.0015, 1, 6, TAG.strap));
   // Knuckle guard (group 7): moulded pads over each knuckle and a bridge.
-  for (let d = 1; d <= 4; d++) { const k = HAND[d].base; P.push(ell(W([k[0], k[1] + HAND[d].rad[0] + 0.0022, k[2] + 0.004]), [0.0082, 0.0042, 0.0085], HB, 7, TAG.guard)); }
-  P.push(rbox(W([0.0, 0.0145, -0.072]), [0.026, 0.0025, 0.0055], 0.002, HB, 7, TAG.guard, new THREE.Euler(0, 0.12, 0)));
+  for (let d = 1; d <= 4; d++) { const k = HAND[d].base; P.push(ell(W([k[0], k[1] + HAND[d].rad[0] + 0.003, k[2] + 0.004]), [0.0086, 0.0058, 0.009], HB, 7, TAG.guard)); }
+  P.push(rbox(W([0.0, 0.0155, -0.072]), [0.026, 0.004, 0.006], 0.0025, HB, 7, TAG.guard, new THREE.Euler(0, 0.12, 0)));
   // Finger-back guards on the middle phalanges.
   for (let d = 1; d <= 4; d++) {
     const h = HAND[d], dir = new THREE.Vector3(0, 0, -1).applyQuaternion(digitRest(d));
@@ -115,11 +115,11 @@ export interface ArmsLook { sleeve: Surface; glove: Surface; palm: Surface; guar
 /** Sleeve: a tube from the shoulder to just over the cuff, with folds at the elbow and wrist, a squad band on the
  * forearm and the squad's shape patch (diamond or triangle) on its outer face. */
 function sleeve(b: Builder, look: ArmsLook) {
-  const rings = 24, seg = 16, z0 = 0.02, z1 = -(UPPER + FORE) + 0.04;
+  const rings = 20, seg = 14, z0 = 0.02, z1 = -(UPPER + FORE) + 0.04;
   const pos: number[] = [], nor: number[] = [], si: number[] = [], sw: number[] = [], tag: number[] = [], idx: number[] = [];
   const radius = (z: number, a: number) => {
     const t = (z0 - z) / (z0 - z1);
-    let r = THREE.MathUtils.lerp(0.05, 0.043, Math.min(1, t / 0.55)) - Math.max(0, t - 0.55) / 0.45 * 0.006;
+    let r = THREE.MathUtils.lerp(0.05, 0.042, Math.min(1, t / 0.55)) - Math.max(0, t - 0.55) / 0.45 * 0.009;
     // Folds: bunching above the cuff and around the elbow, varying round the arm.
     const nearElbow = Math.exp(-Math.pow((z + UPPER) / 0.05, 2)), nearCuff = Math.exp(-Math.pow((z - z1 - 0.03) / 0.04, 2));
     r += (nearElbow * 0.004 + nearCuff * 0.0045) * Math.abs(Math.sin(z * 260 + Math.sin(a * 2) * 1.5)) * (0.6 + 0.4 * Math.sin(a * 3 + z * 40));
@@ -178,11 +178,14 @@ export function armsGeometry(look: ArmsLook): THREE.BufferGeometry {
     let t: number = tags[i];
     // Palm side of fingers and hand faces down in the bind pose: synthetic leather; back is nylon.
     if (t === TAG.back && N.getY(i) < -0.55) t = TAG.palm;
+    // Finger sides are separate gusset panels (fourchettes), darker, so the fingers read apart at a glance.
+    const zw = -(UPPER + FORE), P = full.getAttribute('position');
+    if (P.getZ(i) < zw - 0.09 && Math.abs(N.getX(i)) > 0.72 && t !== TAG.guard) t = TAG.gusset;
     tagAttr[i] = t;
   }
   full.setAttribute('tag', new THREE.Float32BufferAttribute(tagAttr, 1));
-  const hand = simplify(full, HAND_TRIS, 0.006);
-  right.addTagged(hand, [look.glove, look.palm, look.guard, look.glove, look.palm, surf(look.guard, { color: 0x3a3a36 })]);
+  const hand = simplify(full, HAND_TRIS, 0.004);
+  right.addTagged(hand, [look.glove, look.palm, look.guard, look.glove, look.palm, surf(look.guard, { color: 0x3a3a36 }), surf(look.glove, { color: 0x1f201d, rough: 0.95 })]);
   sleeve(right, look);
   const geo = right.build({ ao: false });
   // The left arm: mirror in X, flip winding, offset bones.

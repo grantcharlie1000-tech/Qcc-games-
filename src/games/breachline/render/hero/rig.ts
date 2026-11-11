@@ -62,7 +62,7 @@ function rifleHold(id: WeaponId, o: Partial<Hold> = {}): Hold {
     magGrip: { at: [-0.016, -0.075, -0.012], palm: [1, 0, 0], fingers: [0, -0.25, -0.97] }, magPose: MAG_GRIP,
     handleGrip: { at: [-0.012, 0.004, 0.0], palm: [1, 0, 0], fingers: [0, 0.35, -1] }, handlePose: POSE_SLAP,
     shoulderR: [0.17, -0.38, 0.0], shoulderL: [-0.17, -0.34, -0.08], poleR: [0.6, -1, 0.4], poleL: [-1, -0.8, 0],
-    hip: { p: [0.1, -0.085, -0.24], r: [0.03, 0.02, -0.03] }, adsZ: -0.1,
+    hip: { p: [0.12, -0.092, -0.22], r: [0.04, 0.09, -0.26] }, adsZ: -0.1,
     ...o,
   };
 }

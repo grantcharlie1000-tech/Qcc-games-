@@ -7,7 +7,7 @@ change of 2026-11-11 ("Fighters split out"), fighters and row F belong to the fi
 
 ## Where I am
 
-r4: lighting fix pushed (the weapon in hand read as a black silhouette on High). Next: the AR-5 in hand to E ≥ 8 (framing, materials and markings, gloves and sleeves, reloads that read beat by beat), then each other weapon to the same standard.
+r4: lighting fix pushed; then hip framing (lower right, canted 15° so the side reads, support hand in view), original engraved markings on the AR-5 (`r4/ar-markings.png`: maker, model and calibre, serial, selector positions, 5×7 laser-style glyphs as flush quads), darker gloves with finger gussets and thicker knuckle guards (`r4/gloves.png`), slimmer sleeves. AR plus arms 19.85k tris. Next: the AR-5 in hand to E ≥ 8 (framing, materials and markings, gloves and sleeves, reloads that read beat by beat), then each other weapon to the same standard.
 
 ## Phase
 

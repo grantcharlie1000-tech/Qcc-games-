@@ -53,7 +53,7 @@ export const SURF = {
   white: S(0xd9d6cf, 0.6, 0, 0.1, PAT.polymer),
   // Soft goods.
   glove: S(0x3b3d39, 0.85, 0, 0.25, PAT.leather),
-  gloveTan: S(0x6e6150, 0.85, 0, 0.25, PAT.leather),
+  gloveTan: S(0x564d40, 0.8, 0, 0.35, PAT.leather),
   knuckle: S(0x2e2f2d, 0.8, 0, 0.3, PAT.rubber),
   skin: S(0xb98a6a, 0.6, 0, 0, PAT.skin),
   cloth: S(0x4f5546, 0.95, 0, 0.15, PAT.fabric),
@@ -127,6 +127,7 @@ export class Builder {
 
   /** A body of revolution around the Z axis: profile points are (radius, forward distance), forward = -z. */
   lathe(profile: readonly (readonly [number, number])[], s: Surface, at: [number, number, number] = [0, 0, 0], seg = 20) {
+    seg = Math.round(seg * 0.8);
     const pts = profile.map(([r, d]) => new THREE.Vector2(Math.max(0, r), d));
     const geo = new THREE.LatheGeometry(pts, this.seg(seg, 6));
     geo.rotateX(-Math.PI / 2);
@@ -153,6 +154,7 @@ export class Builder {
 
   /** A cylinder along an axis ('x', 'y' or 'z') centred at p. */
   cyl(r: number, len: number, axis: 'x' | 'y' | 'z', p: readonly [number, number, number], s: Surface, seg = 12, r2 = r) {
+    seg = Math.max(6, Math.round(seg * 0.8));
     const geo = new THREE.CylinderGeometry(r2, r, len, this.seg(seg, 5), 1);
     if (axis === 'x') geo.rotateZ(-Math.PI / 2); else if (axis === 'z') geo.rotateX(-Math.PI / 2);
     geo.translate(p[0], p[1], p[2]);
