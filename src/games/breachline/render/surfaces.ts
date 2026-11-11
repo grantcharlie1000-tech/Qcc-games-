@@ -19,7 +19,7 @@ export interface Surface {
 
 export const SURFACES: Partial<Record<TexId, Surface>> = {
   // Square ceramic tiles; the source is laid diagonally, so turn it square and make each tile 47 cm.
-  tile: { set: 'interior_tiles', size: 0.95 * Math.SQRT2 / 2, rotate: Math.PI / 4, gloss: 0.5 },
+  tile: { set: 'interior_tiles', size: 0.95 * Math.SQRT2 / 2, rotate: Math.PI / 4, gloss: 0.32 },
   drywall: { set: 'painted_plaster_wall', size: 2, band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
   cinder: { set: 'painted_plaster_wall', size: 2, tint: [0.86, 0.88, 0.9], band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
   counter: { set: 'blue_metal_plate', size: 1.25, tint: [1.9, 1.9, 1.9] },

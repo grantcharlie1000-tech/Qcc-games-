@@ -14,7 +14,8 @@ export const FIXTURES: Record<string, Fixture[]> = {
   // Two rows over the walkways either side of the benches: the benches throw shadow between them.
   lab: [-2.7, 1.7].flatMap(x => [-8.2, -4.2].map(z => troffer(x, z))),
 };
-export const FIXTURE_Y = WALL_H - 0.03;
+/** Where the baker's light samples sit: just under the diffuser of the modelled fitting (render/fixturemesh.ts). */
+export const FIXTURE_Y = WALL_H - 0.062;
 
 const inside = (x: number, z: number) => REGIONS.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
 /** Every light the baker uses: map lamps outside art rooms (as 1200 x 600 panels) and the art rooms' fixtures. */

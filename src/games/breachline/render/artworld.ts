@@ -10,6 +10,7 @@ import { TILE, type TexId } from '../textures';
 import { ArtLoader, type Tier } from './assets';
 import { REGIONS, collectFaces, faceArrays, packAtlas, splitFace, type GeoArrays } from './levelgeo';
 import { FIXTURES } from './fixtures';
+import { fixtureMeshes } from './fixturemesh';
 import { artMaterial } from './materials';
 import { PROPS } from './props';
 import { SURFACES } from './surfaces';
@@ -55,7 +56,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   const L = new ArtLoader(renderer, tier, progress), full = tier !== 'low';
   /** Debug switches for visual review only (?artdbg=nodir,nonormal,noenv,noarm). */
   const dbg = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('artdbg')?.split(',') ?? [] : [];
-  const group = new THREE.Group(), materials: THREE.Material[] = [], geometries: THREE.BufferGeometry[] = [];
+  const group = new THREE.Group(), materials: THREE.Material[] = [], geometries: THREE.BufferGeometry[] = [], disposers: (() => void)[] = [];
   const { byRegion } = collectFaces();
   const sets = new Map<string, Promise<[THREE.Texture, THREE.Texture | null, THREE.Texture | null]>>();
   const set = (name: string, size: number) => {
@@ -99,20 +100,9 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
     }
     // The room's own light fixtures glow (the map's lamp panels in this room are not drawn).
-    const fx = FIXTURES[region.name] ?? [];
-    if (fx.length) {
-      const a: GeoArrays = { position: [], normal: [], uv: [], uv1: [], color: [], index: [] };
-      for (const f of fx) {
-        const b = a.position.length / 3, y = WALL_H - 0.012;
-        for (const [s, t] of [[0, 0], [1, 0], [1, 1], [0, 1]]) {
-          a.position.push(f.x + (s - 0.5) * f.w, y, f.z + (0.5 - t) * f.d);
-          a.normal.push(0, -1, 0); a.uv.push(s, t); a.uv1.push(0, 0); a.color.push(f.color[0] * 2.4, f.color[1] * 2.4, f.color[2] * 2.4);
-        }
-        a.index.push(b, b + 2, b + 1, b, b + 3, b + 2);
-      }
-      const mat = new THREE.MeshBasicMaterial({ map: procedural.lamp, vertexColors: true }), g = geometry(a);
-      const mesh = new THREE.Mesh(g, mat); mesh.matrixAutoUpdate = false; group.add(mesh); materials.push(mat); geometries.push(g);
-    }
+    const fx = fixtureMeshes(FIXTURES[region.name] ?? []);
+    for (const m of fx.meshes) group.add(m);
+    disposers.push(fx.dispose);
     // Destructible panels facing into the room.
     const wallSet = SURFACES.drywall;
     const [wmap, wnor, warm] = wallSet ? await set(wallSet.set, TEX_SIZE[tier]) : [procedural.drywall, null, null];
@@ -151,9 +141,14 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     capture(renderer, scene) {
       if (!full || dbg.includes('noenv')) return;
       // One reflection probe per room, from its middle at eye height.
-      const r = REGIONS[0], cube = new THREE.WebGLCubeRenderTarget(128, { type: THREE.HalfFloatType });
+      const r = REGIONS[0], cube = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
       const cam = new THREE.CubeCamera(0.05, 60, cube);
       cam.position.set((r.x0 + r.x1) / 2, 1.6, (r.z0 + r.z1) / 2);
+      // Reflections are projected onto the room's box, so they line up with the room from anywhere in it.
+      for (const m of envLights) {
+        const u = m.userData.art;
+        u.artBoxMin.value.set(r.x0, 0, r.z0); u.artBoxMax.value.set(r.x1, WALL_H, r.z1); u.artProbe.value.copy(cam.position);
+      }
       cam.update(renderer, scene);
       const pmrem = new THREE.PMREMGenerator(renderer);
       env = pmrem.fromCubemap(cube.texture);
@@ -165,6 +160,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       for (const g of geometries) g.dispose();
       group.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) m.geometry.dispose(); });
       env?.dispose();
+      for (const d of disposers) d();
       L.dispose();
     },
   };

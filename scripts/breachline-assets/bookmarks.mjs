@@ -19,6 +19,7 @@ export const BOOKMARKS = {
   lab: [3.3, -2.7, 0.78, -0.1],
   'lab-west': [-5.4, -3.0, -0.95, -0.08],
   'lab-bench': [-0.6, -4.6, 1.2, -0.32],
+  'lab-ceiling': [-1.2, -6.2, 0.9, 0.75],
   corridor: [13.5, -0.5, 1.5708, -0.04],
   archive: [7.2, 9.3, 0.9, -0.08],
   'server-room': [14.3, -2.6, 0.95, -0.06],
@@ -43,7 +44,7 @@ await page.evaluate(q => { const h = window.__breachlineTest; h.start({ seed: 7,
 if (art !== 'off') await page.waitForFunction(() => window.__breachlineTest.stats().level > 0 && window.__breachlineTest.stats().calls > 0, undefined, { timeout: 60000 });
 await page.waitForTimeout(art === 'off' ? 500 : 6000);
 // Transient banners and prompts are hidden so rounds compare like for like; the rest of the HUD stays.
-await page.addStyleTag({ content: '.bl-toast, .bl-prompt { visibility: hidden !important; }' });
+await page.addStyleTag({ content: '.bl-toast, .bl-banner, .bl-prompt { visibility: hidden !important; }' });
 await mkdir(out, { recursive: true });
 for (const [name, [x, z, yaw, pitch]] of Object.entries(BOOKMARKS)) {
   if (only.length && !only.includes(name)) continue;

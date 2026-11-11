@@ -46,6 +46,9 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
     artDirMap: { value: o.dirMap ?? null },
     artSH: { value: [0, 1, 2, 3].map(i => new THREE.Vector3(sh[i * 3], sh[i * 3 + 1], sh[i * 3 + 2])) },
     artEnvLight: { value: Math.max(0.05, o.envLight ?? 1) },
+    artBoxMin: { value: new THREE.Vector3(-1e4, -1e4, -1e4) },
+    artBoxMax: { value: new THREE.Vector3(1e4, 1e4, 1e4) },
+    artProbe: { value: new THREE.Vector3() },
     artBand: { value: new THREE.Vector4(o.band?.tint[0] ?? 1, o.band?.tint[1] ?? 1, o.band?.tint[2] ?? 1, o.band?.height ?? -1) },
   };
   const defs = [o.dirMap && o.lightMap ? 'ART_DIRMAP' : '', o.vertexLight ? 'ART_VERTEX_LIGHT' : '', o.sh ? 'ART_SH' : '', o.band ? 'ART_BAND' : ''].filter(Boolean);
@@ -53,15 +56,15 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
   m.customProgramCacheKey = () => `art:${defs.join(',')}`;
   m.onBeforeCompile = shader => {
     Object.assign(shader.uniforms, uniforms);
-    if (o.band) shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying float vArtY;')
-      .replace('#include <project_vertex>', '#include <project_vertex>\n\tvArtY = ( modelMatrix * vec4( transformed, 1.0 ) ).y;');
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vArtWorld;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n\tvArtWorld = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${defs.map(d => `#define ${d}`).join('\n')}\nuniform sampler2D artDirMap;\nuniform vec3 artSH[4];\nuniform float artEnvLight;\nuniform vec4 artBand;\n#ifdef ART_BAND\nvarying float vArtY;\n#endif`)
+      .replace('#include <common>', `#include <common>\n${defs.map(d => `#define ${d}`).join('\n')}\nuniform sampler2D artDirMap;\nuniform vec3 artSH[4];\nuniform float artEnvLight;\nuniform vec4 artBand;\nuniform vec3 artBoxMin;\nuniform vec3 artBoxMax;\nuniform vec3 artProbe;\nvarying vec3 vArtWorld;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
 #ifdef ART_BAND
-	float artRail = smoothstep( artBand.w - 0.002, artBand.w, vArtY ) - smoothstep( artBand.w + 0.038, artBand.w + 0.04, vArtY );
-	diffuseColor.rgb *= mix( vArtY < artBand.w ? artBand.rgb : vec3( 1.0 ), vec3( 0.18 ), artRail );
+	float artRail = smoothstep( artBand.w - 0.002, artBand.w, vArtWorld.y ) - smoothstep( artBand.w + 0.038, artBand.w + 0.04, vArtWorld.y );
+	diffuseColor.rgb *= mix( vArtWorld.y < artBand.w ? artBand.rgb : vec3( 1.0 ), vec3( 0.18 ), artRail );
 #endif`)
       .replace('#include <normal_fragment_maps>', NORMAL_MAPS)
       .replace('#include <color_fragment>', o.vertexLight ? '' : '#include <color_fragment>')
@@ -107,6 +110,12 @@ float artLight = 1.0;
 	#endif
 #endif
 #if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
-	radiance += getIBLRadiance( geometryViewDir, geometryNormal, material.roughness ) * clamp( artLight / artEnvLight, 0.0, 1.6 );
+	// Parallax-corrected (box-projected) reflection, so fixtures land where they are on the floor and benches.
+	vec3 artR = reflect( - geometryViewDir, geometryNormal );
+	artR = normalize( mix( artR, geometryNormal, pow4( material.roughness ) ) );
+	artR = inverseTransformDirection( artR, viewMatrix );
+	vec3 artT = mix( ( artBoxMin - vArtWorld ) / artR, ( artBoxMax - vArtWorld ) / artR, step( 0.0, artR ) );
+	artR = vArtWorld + artR * min( min( artT.x, artT.y ), artT.z ) - artProbe;
+	radiance += textureCubeUV( envMap, envMapRotation * artR, material.roughness ).rgb * envMapIntensity * clamp( artLight / artEnvLight, 0.0, 1.6 );
 #endif
 `;

@@ -31,10 +31,16 @@ const OUT = join(ROOT, 'public', 'game-art', 'breachline');
 type V3 = [number, number, number];
 
 export const LM_SCALE = 4;
-const DENSITY = Number(process.env.BAKE_DENSITY ?? 12);
+const DENSITY = Number(process.env.BAKE_DENSITY ?? 16);
 const LAMP_SAMPLES = 12, BOUNCE_RAYS = Number(process.env.BAKE_RAYS ?? 96), PROBE_RAYS = 384;
 /** Lamp panel brightness (V-units of radiance x 1/pi); tuned so the floor under a lamp reads about 1.1. */
 const LAMP_POWER = 14;
+/** Troffer beams are tighter than a flat Lambert panel: cos^2 about the downward axis (normalised to the same power). */
+const BEAM = 1.5;
+/** The bright margin a recessed fitting throws on the ceiling tiles around it, and how fast it falls away (m). */
+const HALO = 0.9, HALO_FALL = 0.28;
+/** Contact occlusion on bounced light: rays that hit something closer than this darken corners and prop footprints. */
+const CONTACT = 0.4, CONTACT_STRENGTH = 0.75;
 const LAMP_Y = FIXTURE_Y;
 const LIGHTS = bakeLights();
 
@@ -158,11 +164,16 @@ function direct(p: V3, n: V3, samples: number): { v: V3; dir: V3 } {
       const cs = (d[0] * n[0] + d[1] * n[1] + d[2] * n[2]) / dl, cl = d[1] / dl; // lamp faces down
       if (cs <= 0 || cl <= 0) continue;
       if (occluded(p, q)) continue;
-      const w = cs * cl / Math.max(d2, 0.05);
+      const w = cs * cl * cl * BEAM / Math.max(d2, 0.05);
       acc += w;
       dir[0] += w * d[0] / dl; dir[1] += w * d[1] / dl; dir[2] += w * d[2] / dl;
     }
-    const k = LAMP_POWER * LAMP_W * LAMP_D / (sx * sz) * acc;
+    let k = LAMP_POWER * LAMP_W * LAMP_D / (sx * sz) * acc;
+    // Ceiling just around the fitting: the housing's lip and diffuser spill.
+    if (n[1] < -0.5 && p[1] > LAMP_Y - 0.1) {
+      const ox = Math.max(0, Math.abs(p[0] - l.x) - LAMP_W / 2), oz = Math.max(0, Math.abs(p[2] - l.z) - LAMP_D / 2);
+      k += HALO * Math.exp(-Math.hypot(ox, oz) / HALO_FALL);
+    }
     v[0] += k * l.color[0]; v[1] += k * l.color[1]; v[2] += k * l.color[2];
   }
   return { v, dir };
@@ -211,7 +222,7 @@ async function main() {
   for (const [r, region] of REGIONS.entries()) {
     const atlas = atlases[r], W = atlas.width, H = atlas.height, N = W * H;
     const dirV = new Float32Array(N * 3), indirect = new Float32Array(N * 3), dirW = new Float32Array(N * 3);
-    const direct3 = new Float32Array(N * 3), valid = new Uint8Array(N), chartAt = new Int32Array(N).fill(-1);
+    const direct3 = new Float32Array(N * 3), valid = new Uint8Array(N), chartAt = new Int32Array(N).fill(-1), contact = new Float32Array(N).fill(1);
     const texel = (c: Chart, i: number, j: number) => (c.y + PAD + j) * W + c.x + PAD + i;
     const t1 = performance.now();
     let texels = 0;
@@ -264,18 +275,23 @@ async function main() {
           const [s, t] = texelST(c, i, j), q = pointOn(c.face, s, t), p: V3 = [q[0] + n[0] * 0.01, q[1] + n[1] * 0.01, q[2] + n[2] * 0.01];
           const acc: V3 = [0, 0, 0];
           const sq = Math.round(Math.sqrt(BOUNCE_RAYS));
+          let near = 0;
           for (let a = 0; a < sq; a++) for (let b = 0; b < sq; b++) {
             const d = cosineDir(n, (a + rnd()) / sq, (b + rnd()) / sq), h = cast(p, d);
             if (!h) continue;
+            if (h.t < CONTACT) near += 1 - h.t / CONTACT;
             const L = outgoing(h, field);
             acc[0] += L[0]; acc[1] += L[1]; acc[2] += L[2];
             if (bounce === 1) { const w = (L[0] * 0.3 + L[1] * 0.59 + L[2] * 0.11) / (sq * sq); dirW[k * 3] += d[0] * w; dirW[k * 3 + 1] += d[1] * w; dirW[k * 3 + 2] += d[2] * w; }
           }
           for (let m = 0; m < 3; m++) next[k * 3 + m] = acc[m] / (sq * sq);
+          if (bounce === 0) contact[k] = 1 - CONTACT_STRENGTH * Math.min(1, near / (sq * sq) * 2.5);
         }
       }
       // Smooth the noisy gather inside each chart before it feeds the next bounce.
       denoise(atlas, next, valid, W);
+      // Contact occlusion is applied after the blur so it stays sharp in corners and under props.
+      for (let k = 0; k < N; k++) for (let m = 0; m < 3; m++) next[k * 3 + m] *= contact[k];
       for (let k = 0; k < N * 3; k++) indirect[k] = next[k];
       field = new Float32Array(N * 3);
       for (let k = 0; k < N * 3; k++) field[k] = direct3[k] + next[k];
