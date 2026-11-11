@@ -446,6 +446,57 @@ Contract between them:
   the body must fill them: a head where the head sphere is, a torso where the cylinder is.
 - Lighting arrives through `HeroLighting`, as for weapons. Budgets as in the hero section above.
 
+## Change of technique, 2026-11-11 08:40 UTC: baked texture sets for weapons, hands and fighters
+
+**Why.** After four weapon rounds and two fighter rounds the scores are E 5 and F 5 and rising half a point a round.
+The owner has said twice that guns and people must look better. The reviewer's reading of the frames
+(`hero/r4/`, `overhaul/rooms/corridor/round-2/corridor-high.png`, `fighters/r2/`): the shapes are adequate and the
+triangle counts are already above what MW2 spent on a weapon in hand (about 20k against 5–8k). What is missing is
+what MW2 spent its effort on: **texture sets**. Surface detail today is carried per vertex (curvature, cavity, AO) and
+by noise in the shader, which at these vertex densities reads as soft blotches: the receiver looks like clay, the
+glove like a dark ball, the sleeve like a pipe, the uniform like smooth plastic. More modelling will not fix that.
+
+**What changes.** Each weapon, the gloved hands and sleeves, and each fighter variant get an authored texture set,
+generated offline by our own code and shipped as KTX2 beside the environment's textures:
+
+- **Albedo, tangent-space normal, and occlusion/roughness/metalness** at texel resolution. Weapon in hand: 2048²
+  (1024² on Low). Hands and sleeves: 1024². Fighters: 2048² shared per squad variant (1024² on Low). World weapons
+  reuse the in-hand set at a lower mip.
+- **Unwrap in code.** Parts are parametric (extrusions, lathes, lofts), so each part gets its natural UVs and a
+  rectangle packer lays the islands into one atlas with padding; texel density is weighted to what the player sees
+  (right side and top of a weapon, back of the support hand, a fighter's chest, head and arms). SDF meshes (hands,
+  bodies) unwrap per bone as cylinders with the seam on the hidden side.
+- **Bake from a high-detail source.** For every texel find its surface point, then ray-cast (three-mesh-bvh, as the
+  lightmap baker already does) against a high-detail version of the same asset: ambient occlusion (64 rays or more),
+  curvature, and the high-detail normal. The high-detail version adds what is too fine for triangles: panel lines,
+  chamfers, screws and pins, knurling, grip stippling, rail slot edges, weld beads, moulded ribs; on cloth, folds at
+  elbows, knees and waist, seams with stitch rows, pocket flaps, webbing weave; on gloves, finger seams, knuckle
+  panels, a strap. Floating detail and height-field stamps are both fine.
+- **Paint from the bakes.** Albedo and roughness are composed in layers from the baked masks: base finish per
+  material; bright bare metal on convex edges broken up by noise; dust and oil in cavities; handling polish where
+  hands go (grip, magazine well, charging handle, selector); scratches along the directions things slide; markings.
+  **Roughness variation matters more than colour**: a rifle reads as metal because its highlight breaks up.
+- **Materials are separate and named**, not one grey: anodised aluminium (dark coating, tight highlight, bare metal
+  at edges), moulded polymer (matte, fine pebble in the normal map), parkerised and blued steel, rubber, coated glass
+  (tinted fresnel reflection, a see-through lens), nylon webbing, cotton ripstop, leather, skin.
+- **Runtime stays cheap**: one standard PBR material per set, no per-pixel procedural noise in the weapon shader.
+  That is also a saving on a Chromebook.
+
+**Also required for the weapon in hand.** (1) The support hand must be seen holding the weapon: fingers and thumb
+readable, two-tone glove, not a dark fist beside the handguard. (2) Highlights: the rail, optic and receiver edges
+must catch the corridor's lights; if the environment specular is too weak for that, add one viewmodel-only key light
+derived from the brightest probe direction. (3) The weapon is drawn with its own narrower projection (about 55°) so
+it has length and weight instead of wide-angle stretch.
+
+**Fences for this work.** Weapons session: `scripts/breachline-assets/hero/` and `public/game-art/breachline/hero/`.
+Fighters session: `scripts/breachline-assets/fighters/` and `public/game-art/breachline/fighters/`. Both read, and do
+not edit, the environment session's bake and KTX2 helpers and its loader; ask the environment session for an export
+if one is missing. Download budget: weapons and hands 12 MB together, fighters 6 MB, counted in the bench report.
+
+**Order.** One asset first, end to end, then the rest: the Marrow AR-5 with hands for the weapons session; the
+attacker rifleman for the fighters session. Evidence each round: the three atlas images, a studio turntable under a
+moving light, and game frames in the Lab and the corridor at 1280×720 with a 2× crop of the asset.
+
 ## Working notes for whoever carries this out
 
 - Fresh checkout: `npm ci`. Type-check with `npx tsc --noEmit`; unit tests `npx vitest run tests/games/breachline`
