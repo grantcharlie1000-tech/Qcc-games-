@@ -1,6 +1,6 @@
 import type {Level,Platform} from './levels';
 import {box,lay,panel,sprite,stroke,visible,type C,type Work} from './quarter-kit';
-import {FIXTURE_PIECES,HOUSE_PIECES,closeEaves,type Piece} from './pieces/level-01';
+import {COOL,FIXTURE_PIECES,HOUSE_PIECES,closeEaves,door,type Piece} from './pieces/level-01';
 import {LANE_HOUSES,PAD,type Building,type Ledge,type Vent} from './pieces/lane-houses';
 
 /** Level 1 · Bell Lane, between Nell's gable and the bell tower. Each roof is
@@ -105,6 +105,7 @@ export function laneBack(c:C,l:Level,street:number,cx:number,cy:number,vw:number
    for(let y=top+4,k=0;y<lane;y+=16,k++)box(c,k%2?'#3a2826':'#503733',p.x-4,y,6,7);
    const off=top+96+p.id%3*24;box(c,'#1a1415',p.x-2,off,p.w+6,6);box(c,'#644640',p.x-2,off,p.w+6,1);
   }else if(p.tag==='wall'||p.tag==='pier'){
+   if(p.tag==='wall')yardWall(c,l,p,street,see);
    if(!see(p.x,top,p.w,lane-top))continue;
    // The pier goes on down to its own footing in the lane.
    const work=p.tag==='pier'?STONE:YARD,lit=work===STONE?'#46525f':'#454950';
@@ -123,6 +124,35 @@ export function laneBack(c:C,l:Level,street:number,cx:number,cy:number,vw:number
    for(const [x,foot] of [[x0-2,a.y],[x1-2,b.y]] as const){box(c,IRON,x,y-8,4,foot-y+8);box(c,IRON_LIT,x+1,y-8,1,foot-y+8);box(c,IRON,x-3,foot-3,10,3);}
   }
  }
+}
+/** The chandlers' yard wall: brick from the lane, toothed into the shed's east
+ * end and ramped up under a saddleback coping to the pier, which is its head.
+ * The gate through it is the yard's. The ramp is steep and dark-coped, so it
+ * never reads as a ledge; only the pier's cap is walked. */
+function yardWall(c:C,l:Level,p:Platform,street:number,see:(x:number,y:number,w:number,h:number)=>boolean){
+ const shed=l.platforms.find(q=>q.tag==='shed');if(!shed)return;
+ const xa=shed.x+shed.w,xb=p.x,w=xb-xa;if(w<8)return;
+ const high=p.y+p.h-8,low=Math.min(street-60,shed.y+76),top=high-8,h=street-top;
+ if(!see(xa-6,top,w+12,h))return;
+ c.drawImage(sprite(`lane/yardwall/${p.id}/${w}/${h}`,w+6,h,k=>{
+  k.translate(6,0);
+  const ramp=(x:number)=>Math.round(low-top+(high-low)*x/(w-1));
+  k.save();k.beginPath();k.moveTo(-6,low-top+3);for(let x=0;x<=w;x++)k.lineTo(x,ramp(x)+3);k.lineTo(w,h);k.lineTo(-6,h);k.closePath();k.clip();
+  lay(k,w,h,YARD,p.id*11+5);
+  // Toothing: every other course runs on past the shed's end and is bonded into its brick foot and boards.
+  for(let y=h-YARD.course,r=0;y>low-top;y-=YARD.course,r++)if(r%2===0){box(k,YARD.mortar,-6,y,6,YARD.course);box(k,YARD.stones[r%4],-6,y,5,YARD.course-1);box(k,YARD.lip,-6,y,5,1);}
+  k.restore();
+  // The coping: a saddleback stone, each length its own, in its own shadow with a mid-tone crest.
+  for(let x=-6;x<w;x++){const y=ramp(Math.max(0,x));box(k,'#161b21',x,y,1,7);box(k,'#3e464c',x,y+1,1,4);box(k,'#5d666c',x,y,1,1);if((x+p.id*3)%17===0)box(k,'#161b21',x,y+1,1,4);}
+  // The yard gate: a segmental arch on brick reveals, the leaves shut and barred.
+  const gw=Math.min(40,w-18),gx=Math.round((w-gw)/2),gh=Math.min(72,h-40),gy=h-gh;
+  box(k,COOL[2],gx-3,gy-6,gw+6,6);box(k,COOL[0],gx-3,gy-6,gw+6,5);box(k,COOL[1],gx-3,gy-6,gw+6,1);
+  door(k,gx,gy,gw,gh,{tone:['#0f0e0d','#2c2724','#3b3530'],style:'pair',arch:'seg',rise:5,knob:''});
+  box(k,'#141c22',gx+2,gy+Math.round(gh*.5),gw-4,2);box(k,'#4f5d61',gx+2,gy+Math.round(gh*.5),gw-4,1);
+  box(k,COOL[0],gx-3,h-3,gw+6,3);box(k,COOL[1],gx-3,h-3,gw+6,1);
+  // A wall end, square to the pier.
+  box(k,'#0d1014',w-1,0,1,h);
+ }),xa-6,top);
 }
 /** Whatever carries a moving landing, at its live position. */
 export function laneMover(c:C,p:Platform,x:number,y:number):boolean {

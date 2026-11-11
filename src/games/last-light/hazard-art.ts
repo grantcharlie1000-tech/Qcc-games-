@@ -62,3 +62,34 @@ export function drawSpikes(c:C,r:Rect){
  c.fillStyle='#252936';c.fillRect(r.x-2,r.y+r.h-2,r.w+4,5);
  for(let x=r.x;x<r.x+r.w;x+=8){c.fillStyle='#d4b3a5';c.beginPath();c.moveTo(x,r.y+r.h);c.lineTo(x+4,r.y);c.lineTo(x+8,r.y+r.h);c.fill();c.fillStyle='#906f73';c.fillRect(x+4,r.y+5,2,r.h-5);}
 }
+/** Bell Lane's teeth: a run of iron cresting leaded into the gutter of the roof
+ * it stands on. Its standards are spiked, its rails are bolted to the gutter at
+ * both ends, and its points fill the hazard's whole box, so what hurts is what
+ * is drawn. The points catch the moon, so the run reads against slate and sky.
+ * Each run is wrought its own way, from where it stands. */
+export function drawCresting(c:C,r:Rect,seed:number){
+ const x0=Math.round(r.x),top=Math.round(r.y),foot=Math.round(r.y+r.h),w=Math.round(r.w);
+ const INK='#0b0f13',IRON='#2a333a',LIT='#8c989d',TIP='#e4e0d4',EDGE='#b7c0c3',style=Math.floor(Math.abs(Math.sin(seed*12.9898)*43758.5453)%1*3);
+ // Lugs leaded into the gutter at each end.
+ for(const lx of [x0-1,x0+w-2]){box(c,INK,lx,foot-2,3,4);box(c,LIT,lx,foot-2,1,2);}
+ // The bottom rail and a lighter top rail, the standards run through both.
+ box(c,INK,x0-1,foot-4,w+2,3);box(c,IRON,x0-1,foot-3,w+2,1);box(c,LIT,x0-1,foot-4,w+2,1);
+ box(c,INK,x0,top+5,w,2);box(c,LIT,x0,top+5,w,1);
+ const n=Math.max(3,Math.round(w/6)),step=(w-2)/(n-1);
+ for(let i=0;i<n;i++){
+  const x=Math.round(x0+i*step);
+  box(c,INK,x-1,top+3,4,foot-4-top-3);box(c,IRON,x,top+3,2,foot-4-top-3);box(c,LIT,x,top+3,1,foot-4-top-3);
+  if(style===0){
+   // Spear heads.
+   box(c,TIP,x,top,2,1);box(c,EDGE,x-1,top+1,4,1);box(c,INK,x-1,top+2,4,1);box(c,LIT,x,top+2,1,1);
+  }else if(style===1){
+   // Fleurs: a point and two curled leaves.
+   box(c,TIP,x,top,2,2);box(c,INK,x-2,top+2,6,1);box(c,EDGE,x-2,top+1,1,1);box(c,EDGE,x+3,top+1,1,1);box(c,INK,x-2,top+3,1,1);box(c,INK,x+3,top+3,1,1);
+  }else{
+   // Barbed spikes, the end standards ringed.
+   box(c,TIP,x,top,2,1);box(c,EDGE,x,top+1,2,1);box(c,INK,x-1,top+2,1,2);box(c,INK,x+2,top+2,1,2);box(c,EDGE,x-1,top+2,1,1);box(c,EDGE,x+2,top+2,1,1);
+  }
+ }
+ // A scroll in each bay, between the rails.
+ for(let i=0;i<n-1;i++){const x=Math.round(x0+i*step+step/2)+1;box(c,INK,x-1,foot-6,3,1);box(c,LIT,x-1,foot-7,1,1);box(c,LIT,x+1,foot-7,1,1);}
+}
