@@ -500,3 +500,25 @@ import { createPatchFighters } from './render/patchfighters/index';
 const fighters = new URLSearchParams(location.search).get('fighters') === 'patch' ? createPatchFighters(scene, heroLighting) : createFighters(scene, heroLighting);
 ```
 Without `?fighters=patch`, behaviour is unchanged.
+
+## 3.7 First-person hands: Polyfork "Base Hand" — quick look; verdict: does not beat ours
+
+Proof: `job3-7-fp-hands.jpg` (script `hand-look.mjs`; our glove comes from the hero studio page, which was not
+changed). The base hand is a WebXR-style rig: 25 joints flat under one node, named like the WebXR hand joints,
+skinned in six meshes, 3,000 triangles, plain colour, no texture. I posed it by setting each joint's transform: the
+fingers curl about their side axes, and the hand is seated on the grip and handguard by palm centre, palm normal
+and finger direction.
+
+- **Shape:** a stylised mannequin hand from a "clockwork hand adornments" kit. The palm is a flat, hard-edged slab
+  with sculpted tendons; the fingers are long, thin and uniform, with no pads; there is no thumb muscle or heel. Curled,
+  it reads as a robot claw. At 2x in first person the faceting and the gaps between thin fingers would show.
+- **Ours** (render/hero) is anatomically proportioned: palm width and thickness, finger taper, knuckle arc, thumb
+  pad, cuff. Its problems are surface and texture (blotchy glove print, soft detail), not proportion.
+- **Verdict: no.** It does not beat our glove as a base for a baked glove. The useful part is its rig: WebXR joint
+  naming and absolute-pose posing, a clean way to drive per-finger grips if our rig ever needs that. The
+  first-person frame shows the support hand only: the grip hand sits below the frame at this placement. Its
+  close-ups are in the first row.
+
+Credit (as the Patch record gives it; not adopted):
+
+> Base Hand by Polyfork (https://polyfork.dev/asset/base-hand-e3398a), CC BY 4.0. Licence: https://creativecommons.org/licenses/by/4.0/. Changed by Patch: a compressed preview copy added for the viewer (web and src are as published).

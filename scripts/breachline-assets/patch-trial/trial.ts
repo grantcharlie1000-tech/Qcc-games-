@@ -343,7 +343,7 @@ async function headgear(name: string, sets: string[]) {
 /** Polyfork "Base Hand" (a WebXR-style hand: 25 joints, flat under one node, posed by absolute joint transforms).
  * Loads it as object `name`, mirrored for a right hand when `mirror`, with each finger curled by `curl` (radians per
  * joint, proximal..distal) about the finger's side axis toward the palm (`palmSign` picks which face is the palm). */
-async function baseHand(name: string, o: { mirror?: boolean; curl?: number[]; thumb?: number[]; spread?: number; palmSign?: number; color?: number } = {}) {
+async function baseHand(name: string, o: { mirror?: boolean; curl?: number[]; thumb?: number[]; spread?: number; palmSign?: number; color?: number; target?: { p: [number, number, number]; n: [number, number, number]; f: [number, number, number] } } = {}) {
   const g = await gltf.loadAsync('/patch-dl/basehand.glb');
   const skinned: THREE.SkinnedMesh[] = []; g.scene.traverse(c => { if ((c as THREE.SkinnedMesh).isSkinnedMesh) skinned.push(c as THREE.SkinnedMesh); });
   const mat = new THREE.MeshStandardMaterial({ color: o.color ?? 0x1c1d1f, roughness: 0.8, metalness: 0 });
@@ -372,6 +372,16 @@ async function baseHand(name: string, o: { mirror?: boolean; curl?: number[]; th
   for (const b of bones) { b.matrixAutoUpdate = false; b.matrix.copy(pose.get(b)!); b.matrixWorldNeedsUpdate = true; }
   const holder = new THREE.Group(); holder.add(g.scene); if (o.mirror) holder.scale.x = -1;
   const wrap = new THREE.Group(); wrap.add(holder); objects.set(name, wrap);
+  if (o.target) {
+    // Seat the palm centre on target.p with the palm facing target.n and the fingers along target.f.
+    const mx = (v: THREE.Vector3) => (o.mirror ? v.clone().setX(-v.x) : v.clone());
+    const palmC = mx(wrist.clone().lerp(mProx, 0.5)), fs = mx(mProx.clone().sub(wrist)).normalize(), ns = mx(palmN);
+    ns.addScaledVector(fs, -ns.dot(fs)).normalize();
+    const ft = new THREE.Vector3(...o.target.f).normalize(), nt = new THREE.Vector3(...o.target.n); nt.addScaledVector(ft, -nt.dot(ft)).normalize();
+    const Ms = new THREE.Matrix4().makeBasis(fs, ns, fs.clone().cross(ns)), Mt = new THREE.Matrix4().makeBasis(ft, nt, ft.clone().cross(nt));
+    const R = Mt.multiply(Ms.transpose()), q = new THREE.Quaternion().setFromRotationMatrix(R);
+    wrap.quaternion.copy(q); wrap.position.set(...o.target.p).sub(palmC.applyQuaternion(q));
+  }
   return { bones: bones.length, wrist: wrist.toArray(), palmN: palmN.toArray(), dims: new THREE.Box3().setFromObject(g.scene).getSize(new THREE.Vector3()).toArray() };
 }
 /** Groups already-loaded objects into a new object `name`, each with a local position (m), Euler rotation (degrees,
