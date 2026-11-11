@@ -522,3 +522,39 @@ and finger direction.
 Credit (as the Patch record gives it; not adopted):
 
 > Base Hand by Polyfork (https://polyfork.dev/asset/base-hand-e3398a), CC BY 4.0. Licence: https://creativecommons.org/licenses/by/4.0/. Changed by Patch: a compressed preview copy added for the viewer (web and src are as published).
+
+# Job 4 (planner, 12:25 UTC): the look in the game
+
+Evidence: `job4-sq0-yard.jpg`, `job4-sq0-lab.jpg`, `job4-sq1-yard.jpg`, `job4-sq1-lab.jpg`. Each holds the game
+frame at full 1280×720 (stock left, Patch right) at 2 m and 8 m, plus a 2× crop of the centre. Seed 7, high tier.
+`game-test.mjs` swaps a squad-0 and a squad-1 player between the south-yard and Lab spots, through a test-only
+`teleport` it injects into `index.ts` as the page loads it (the file on disk is untouched), so each squad is seen in
+both places. The two Lab sheets are about 470 KB, over the usual 400 KB, because they are at full size as asked.
+
+What changed (all in `render/patchfighters/index.ts`, plus the bake in `prep-soldier.mjs`):
+1. **Internal shading.** AO (24 rays to 25 cm) and cavity (rays to 3 cm) baked from the full-resolution source mesh
+   into the atlas (mean AO 0.79, mean cavity 0.86; 71 s). AO is in the packed map's R, used as three's `aoMap`, so it
+   darkens the probe term and the specular. Cavity is in the mask's B, multiplied into the albedo (×0.85 strength).
+   The probe is now directional: `uProbe × (0.6 + 0.5·n.y)`, with the normal-mapped normal in world space, plus a rim
+   of 0.35 × probe at grazing angles. It applies to the body and the headgear.
+2. **Squad 0:** cloth middle albedo `#4a5058` (linear about 0.08) swinging ±55% with the source detail, kit
+   `#34373b` (about 0.035) with roughness ×0.72 (glossier), light dust at knees, elbows, cuffs and boots.
+3. **Squad 1:** coyote middle `#857360` (about 0.19, swinging ±30%; a first pass at 0.26 ±50% read cream), olive kit
+   `#585b45` (about 0.1), desaturated, darker mud in the same places. The source detail is carried twice as strongly
+   (tanh spread a tenth of the class range, was a fifth), and the AO, cavity and normal map now add the folds.
+4. **Probe level: 0.42**, the stock baked sets' own value, chosen from game frames at 0.75 and 0.42. At 0.75, with the
+   new albedo and the directional term, both squads were lighter than the walls (squad 0 read whitish grey). At 0.42
+   they sit at the brightness of the props around them, indoors and out. `?patchgain=` overrides it for tuning.
+
+**Honest read of the pairs (would the owner pick the right-hand one?):**
+- **Squad 0, Lab: yes.** Dark slate cloth and a black vest clearly separate, the folds and pouches read, and the
+  helmet and goggles give a distinct head. The stock figure is a smooth grey suit.
+- **Squad 1, Lab: yes, narrowly.** Coyote with an olive vest, pouches and folds visible; the stock figure is similar
+  in colour but smoother. The Patch figure is a touch flat on the sleeves.
+- **Squad 0, yard (in shade): no, not yet.** It reads as dark clothing, no longer a hole in the picture, but the
+  stock figure's lighter camouflage is easier to read in deep shade. At 8 m the two are about even.
+- **Squad 1, yard: about even.** The sleeves are still the lightest part of the figure in shade. The shape is better,
+  the colour no better.
+- Remaining levers, if the owner wants the yard to win too: lift squad 0's cloth to about 0.10 outdoors only (via
+  the probe's brightness, not the albedo), and darken the sleeve region of squad 1 (its source texels are the
+  glossiest, so they remap lightest).
