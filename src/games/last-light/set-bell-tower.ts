@@ -31,6 +31,12 @@ const WORKS:readonly Work[]=[
  vary(BRICK,2),vary(BRICK,-3,{short:8,long:13}),vary(BRICK,0,{course:9,short:14,long:20}),vary(BRICK,3),vary(BRICK,-2,{short:16,long:20}),vary(BRICK,1,{course:7,short:10,long:16}),vary(BRICK,-1,{course:9}),
  vary(COURSED,1,{course:14,short:20,long:40}),vary(COURSED,2),vary(COURSED,0,{course:18,short:24,long:50}),vary(COURSED,3,{course:14}),vary(COURSED,1,{short:30,long:60}),
 ];
+/** The brick storeys are a lining built inside the stone shell, a storey at a time, each standing on the stone course at its floor line. */
+const LINED=(k:number)=>k>=4&&k<=10;
+/** How thick each brick storey's lining is where the section cuts it: it steps at every floor line. */
+const liningAt=(k:number)=>k%2?11:9;
+/** The stone course a lining stands on runs from just over a floor line to under its bearer's padstone. */
+const COURSE_UP=8,COURSE_DOWN=40;
 /** The head of the walls, the tie beam that lies on them, and the point of the spire. */
 const PLATE=F(16),TIE=PLATE-22,APEX=TIE-560;
 const CHASE_TOP=F(8)+8,CHASE_FOOT=F(5)+24,LINE='#878c8e';
@@ -90,6 +96,30 @@ function skin(c:C,x:number,h:number,short:number,long:number,right:boolean,seed:
  }
 }
 
+/** A cut wall's brick lining for one storey, seen in section: bricks of the far wall's own courses, a header every third course tailed into the rubble core. */
+function lining(c:C,k:number,west:boolean,y0:number,y1:number,seed:number){
+ const work=WORKS[k],t=liningAt(k),face=west?WEST:0,lit=(v:string,d=34)=>tone(v,d);
+ for(let r=0,y=y1;y>y0;r++){
+  const top=Math.max(y0,y-work.course),deep=r%3===1?t+5:t,x0=west?face-deep:face,v=hash(r,seed,13);
+  box(c,'#1d252e',x0+(west?-1:0),top,deep+1,y-top);
+  box(c,lit(work.stones[Math.floor(v*work.stones.length)]),x0,top+1,deep,y-top-1);
+  box(c,lit(work.lip,40),x0,top+1,deep,1);box(c,lit(work.shade,20),x0,y-1,deep,1);
+  if(deep>t)box(c,lit(work.mortar,14),west?face-t-1:face+t,top+1,1,y-top-1);
+  if(v>.86)box(c,lit(work.chip,30),x0+2,top+2,2,1);
+  y=top;
+ }
+ box(c,lit(work.lip,70),west?WEST-1:0,y0,1,y1-y0);
+}
+/** The stone course at a floor line under a brick lining: three dressed stones, deeper than the brick, the floor's bearer pocketed in them. */
+function liningCourse(c:C,y:number,west:boolean,t:number,seed:number){
+ const face=west?WEST:0;
+ for(let i=0;i<3;i++){
+  const a=y-COURSE_UP+i*16,wide=t+((i+seed)%2?12:8),x0=west?face-wide:face,v=hash(i,seed,17);
+  box(c,'#1d252e',west?x0-1:x0,a,wide+1,16);box(c,v>.5?'#56626d':'#515d68',x0,a,wide,15);box(c,'#7a8690',x0,a,wide,1);box(c,'#3e4954',x0,a+14,wide,1);
+ }
+ box(c,'#8a949b',west?WEST-1:0,y-COURSE_UP,1,COURSE_UP+COURSE_DOWN);
+}
+
 /** Which floor lines carry a bearer into the west and east walls. Every storey has its pocket; a floor that is still there has its bearer in it. */
 function bearings(l:Level){
  const lines=new Map<number,[boolean,boolean]>();
@@ -99,6 +129,8 @@ function bearings(l:Level){
   const y=p.y+p.h-28,west=p.x<=WEST,east=p.x+p.w>=EAST;if(!west&&!east)continue;
   const at=lines.get(y)??[false,false];at[0]||=west;at[1]||=east;lines.set(y,at);
  }
+ // The bell frame's sill beam is pocketed into the east wall at the belfry floor.
+ if(frameSill(l))lines.get(BELFRY)![1]=true;
  return lines;
 }
 /** A window through a side wall, cut by the section: a lintel the courses stop under, the far reveal, a sill that falls to the outside. */
@@ -135,6 +167,12 @@ function sides(c:C,l:Level,k:number,top:number){
   else{
    core(c,WEST-OUT_W,RISE,seed);skin(c,west?WEST:0,RISE,7,11,west,seed,true);skin(c,west?0:WEST,RISE,6,10,!west,seed+1,false);
    box(c,'#8a949b',west?WEST-1:0,0,1,RISE);box(c,'#141b23',west?0:WEST-1,0,1,RISE);
+   if(LINED(k)){
+    // Over the stone course at its floor, under the course at the next, the storey's brick lining in place of the dressed face.
+    const a=F(k+1)+COURSE_DOWN-top,b=F(k)-COURSE_UP-top;
+    box(c,'#1b222a',west?WEST-liningAt(k)-5:0,a,liningAt(k)+5,b-a);lining(c,k,west,a,b,seed);
+   }
+   for(const j of [k,k+1])if(j>0&&(LINED(j)||LINED(j-1)))liningCourse(c,F(j)-top,west,liningAt(LINED(j)?j:j-1),seed+j);
   }
   c.restore();
  }
@@ -157,6 +195,15 @@ function sides(c:C,l:Level,k:number,top:number){
   else if((p.tag==='corbel'||p.tag==='step')&&p.x+p.w>=EAST)stone(c,EAST,p.y+1,16,p.h-4,'#56626d','#8a949b');
  }
  if(top+RISE>FOOT_DOOR.y-12&&top<GROUND)footDoor(c);
+}
+
+/** Where the belfry floor is gone under a lower rail's post: the frame's sill beam, laid from under the floor's end into the east wall. [from, top] or nothing. */
+const onFloor=(l:Level,x:number)=>l.platforms.some(q=>q.kind==='stone'&&q.y===BELFRY&&q.x<=x&&q.x+q.w>=x+6);
+const lowerPosts=(l:Level)=>{const hs=tagged(l,'headstock')[0];return hs?tagged(l,'frame').filter(p=>p.y>hs.y).flatMap(p=>[p.x+8,p.x+p.w-14]):[];};
+function frameSill(l:Level):readonly [number,number]|undefined{
+ const loose=lowerPosts(l).filter(x=>!onFloor(l,x));if(!loose.length)return;
+ const west=Math.min(...loose),ends=l.platforms.filter(q=>q.kind==='stone'&&q.y===BELFRY&&q.x+q.w<=west).map(q=>q.x+q.w);
+ return [ends.length?Math.max(...ends)-16:west-12,BELFRY+6];
 }
 
 /** What the tower is built of at every floor line: the bearing course with the pockets of joists that are gone, and round the well its two trimmers on their corbels. */
@@ -217,14 +264,16 @@ function slit(c:C,x:number,y:number){
  box(c,'#10161d',x+2,y+55,5,26);box(c,'#10161d',x+3,y+81,3,20);box(c,'#10161d',x+4,y+101,1,12);
 }
 /** A louvred belfry opening: jambs long and short, a pointed head in small voussoirs, a board every sixteen pixels in its frame. */
-function louvred(c:C,x:number,y:number,w:number,h:number){
+function louvred(c:C,x:number,y:number,w:number,h:number,lintel?:number){
  for(let r=0;r*16<h;r++){const b=y+h-r*16,a=Math.max(y,b-16),long=r%2===0;stone(c,long?x-10:x-6,a,long?10:6,b-a-1,S2,S3);stone(c,x+w,a,long?6:10,b-a-1,S1,S2);}
- const head=(px:number)=>y-16+Math.round(16*Math.pow(Math.abs((px+1-w/2)/(w/2)),1.5));
- for(let px=-8;px<w+8;px+=2){const t=px<0||px>=w?y:head(px);box(c,S0,x+px,t-8,2,8);box(c,S2,x+px,t-7,2,6);box(c,S4,x+px,t-7,2,1);if(((px+8)>>1)%4===0)box(c,S0,x+px,t-7,1,6);}
+ // Under a floor there is no room for the pointed head: the opening is finished square under a lintel.
+ const flat=lintel===undefined?undefined:lintel+10,head=(px:number)=>flat??y-16+Math.round(16*Math.pow(Math.abs((px+1-w/2)/(w/2)),1.5));
+ if(flat===undefined)for(let px=-8;px<w+8;px+=2){const t=px<0||px>=w?y:head(px);box(c,S0,x+px,t-8,2,8);box(c,S2,x+px,t-7,2,6);box(c,S4,x+px,t-7,2,1);if(((px+8)>>1)%4===0)box(c,S0,x+px,t-7,1,6);}
  for(let px=0;px<w;px+=2){const t=head(px);box(c,'#26354d',x+px,t,2,y+h-t);if(px<6)box(c,SKY,x+px,t,2,y+h-t);}
  box(c,'#2c3d58',x,y+Math.round(h*.6),w,h-Math.round(h*.6));
  for(const sx of [0,w-4]){const t=head(sx?w-3:2);box(c,B0,x+sx,t,4,y+h-t);box(c,B2,x+sx+(sx?1:0),t+1,3,y+h-t-1);}
- for(let ly=y+8;ly<y+h-3;ly+=16){box(c,'#10161d',x+4,ly,w-8,6);box(c,'#1c2530',x+4,ly,w-8,4);box(c,'#2b3643',x+4,ly,w-8,1);}
+ for(let ly=y+8;ly<y+h-3;ly+=16)if(ly>(flat??y)){box(c,'#10161d',x+4,ly,w-8,6);box(c,'#1c2530',x+4,ly,w-8,4);box(c,'#2b3643',x+4,ly,w-8,1);}
+ if(lintel!==undefined){stone(c,x-10,lintel,w+20,10,S2,S4);box(c,S0,x-1,lintel+1,1,9);box(c,S0,x+w,lintel+1,1,9);}
  stone(c,x-10,y+h,w+20,4,'#3b4753','#4d5a67');box(c,'#4d6a7a',x-8,y+h-1,w+16,1);
  for(const dx of [6,Math.round(w/2),w-8])box(c,'#0c111766',x+dx,y+h+5,2,6+Math.floor(hash(dx,x,3)*10));
 }
@@ -392,15 +441,19 @@ function hoistRoom(c:C){
 /** Storeys 12 and 13, the belfry: the bell frame standing on the floor, the tenor under its headstock and the treble beside it, each with its wheel
  * and its rope, and the hoist: a windlass on the floor, a jib off the frame's east post over the trap, the block. */
 function belfry(c:C,l:Level,ropeXs:readonly number[]){
- const hs=tagged(l,'headstock')[0],frames=tagged(l,'frame');if(!hs)return;
+ const hs=tagged(l,'headstock')[0],frames=tagged(l,'frame'),beam=frameSill(l);if(!hs)return;
  const axis=hs.y+10,head=hs.y+24,west=frames.find(p=>p.y<hs.y),wx=west?west.x+Math.round(west.w/2)-4:hs.x-68,ex=WELL1+8,mid=hs.x+Math.round(hs.w/2);
  for(const p of frames){
   if(p===west)continue;
   for(const x of [p.x+8,p.x+p.w-14]){
-   // A lower rail's posts stand on the belfry floor, or where it is gone on a padstone built out of the wall.
-   post(c,x,p.y+12,BELFRY,6);
-   if(!l.platforms.some(q=>q.kind==='stone'&&q.y===BELFRY&&q.x<=x&&q.x+q.w>=x+6)){stone(c,x-4,BELFRY,14,6,S3,S4);stone(c,x-2,BELFRY+6,10,5,S2,S3);box(c,SHADE2,x-1,BELFRY+11,8,4);}
+   // A lower rail's posts stand on the belfry floor, or where it is gone on the frame's sill beam.
+   const foot=onFloor(l,x)||!beam?BELFRY:beam[1];
+   post(c,x,p.y+12,foot,6);if(foot!==BELFRY)iron(c,x-3,foot-4,12,3);
   }
+ }
+ if(beam){
+  // The sill: an oak beam in line with the floor's joists, from under the floor's end into its pocket in the east wall.
+  rail(c,beam[0],EAST,beam[1],16);for(let x=beam[0]+30;x<EAST-12;x+=34)box(c,B1,x,beam[1]+6,1,6);box(c,SHADE,beam[0],beam[1]+17,EAST-beam[0],3);box(c,SHADE2,beam[0],beam[1]+20,EAST-beam[0],3);
  }
  for(const p of tagged(l,'plank')){
   // The plank lies on two cross rails of the cage: one on the east post's head, one on a post up from the rail below it.
@@ -437,7 +490,12 @@ function belfry(c:C,l:Level,ropeXs:readonly number[]){
 function belfryOpenings(c:C,l:Level){
  const boards=tagged(l,'louvre');if(!boards.length)return;
  const top=Math.min(...boards.map(p=>p.y))-24,sill=Math.max(...boards.map(p=>p.y))+24,width=boards[0].w+8;
- for(const x of new Set([76,156,...boards.map(p=>p.x-4)]))louvred(c,x,top,width,sill-top);
+ // An opening whose head would rise into the gallery's floor takes a lintel under the floor's joists instead.
+ const galleries=tagged(l,'gallery');
+ for(const x of new Set([76,156,...boards.map(p=>p.x-4)])){
+  const over=galleries.find(g=>g.x<x+width+8&&g.x+g.w>x-8&&g.y+g.h>top-24&&g.y<sill);
+  louvred(c,x,top,width,sill-top,over?over.y+over.h:undefined);
+ }
 }
 /** Above the gallery: the head of the far wall under its plate, the tie beam across the tower, and the spire's underside. */
 function roof(c:C,top:number){
