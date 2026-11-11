@@ -59,11 +59,19 @@ export function drawEmitter(c:C,h:Hazard,r:Rect,on:boolean,warning:boolean,stopp
  c.restore();
 }
 
+/** A set can say what a row of teeth is where it stands: on the canal it is
+ * a sheared mooring bolt or torn-up planking, painted to the same box. Keyed
+ * by the hazard's own rectangle, so a level that registers nothing keeps the
+ * plain teeth. */
+const forms=new Map<string,(c:C,r:Rect)=>void>();
+const formOf=(r:Rect)=>`${r.x},${r.y},${r.w},${r.h}`;
+export function formSpikes(r:Rect,draw:(c:C,r:Rect)=>void){forms.set(formOf(r),draw);}
 export function drawSpikes(c:C,r:Rect){
  // A run that says what it is where it stands is drawn as that, over the same box.
  const art=(r as Rect&{art?:SpikeArt}).art;
  if(art==='glass'){drawGlassCoping(c,r,r.x);return;}
  if(art==='torn'){drawTornCresting(c,r,r.x);return;}
+ const form=forms.get(formOf(r));if(form){form(c,r);return;}
  c.fillStyle='#252936';c.fillRect(r.x-2,r.y+r.h-2,r.w+4,5);
  for(let x=r.x;x<r.x+r.w;x+=8){c.fillStyle='#d4b3a5';c.beginPath();c.moveTo(x,r.y+r.h);c.lineTo(x+4,r.y);c.lineTo(x+8,r.y+r.h);c.fill();c.fillStyle='#906f73';c.fillRect(x+4,r.y+5,2,r.h-5);}
 }

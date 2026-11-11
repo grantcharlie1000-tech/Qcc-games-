@@ -1,4 +1,114 @@
-import {spike,steam,type CampaignRoute} from './campaign-types';
+import {spike,steam,type CampaignRoute,type HazardPlacement} from './campaign-types';
+import {trail,C,G,H,M,T} from './route-build';
+
+/** What hurts on the canal is what the canal has broken: the iron stub of a
+ * mooring bolt sheared off a dolphin's cap, and the splintered ends of planks
+ * torn up out of a builders' staging. Each box is exactly the drawn thing. */
+const bolt=(ledge:number,at:number):HazardPlacement=>({ledge,at,kind:'spikes',height:14,width:10});
+const torn=(ledge:number,at:number):HazardPlacement=>({ledge,at,kind:'spikes',height:10,width:28});
+
+/** 03 · The Last Ferry
+ * It starts where level 2 ended: on the gallery outside the bell tower's
+ * door, at the top. The tower stands with its foot in the canal, and its
+ * outside stair is iron flights bolted to the face, most treads gone, with
+ * landings on the clock hood and over the boat door. Off the stair's foot a
+ * bracket, the cutwater and one dolphin of piles cross open water to the
+ * head of the near quay in two long jumps; a miss there drowns.
+ *
+ * Then one canal, travelled along its near quay. The quay is one wall from
+ * the coping down into the canal, and it is cut only where something cuts
+ * it: the mouth of a side canal, a breach where the wall fell in, a basin
+ * let into the bank, the water steps at the coal tip. Each cut is crossed on
+ * what lies in it: a moored boat, a dolphin of piles, a timber staging, a
+ * raft on a chain. The water in every cut is lethal.
+ *
+ * Along the quay stand the warehouses that use it. The bonded store's upper
+ * quay is a step up, and its post crane swings over the corn basin, where a
+ * barge of sacks rides on its rope. The sack wharf's shed is followed by the
+ * breach, crossed on the builders' staging with its torn-up planks. The coal
+ * merchant's staging ends in the first lethal dash, onto a tarpaulined lighter.
+ * The chandlers' loading dock is a step up, and from it two barges out of
+ * phase ask for a timed dash to a dolphin with a sheared bolt on its cap. The
+ * granary's water steps climb to its upper quay, which is the high take-off
+ * for the chain basin's raft. On the customs quay a stack of crates is the step
+ * up to the custom house landing, and its crane gantry's end is the long jump down onto a fast barge
+ * in the customs cut; a dolphin and a dash reach the coal lighter, then the
+ * coal tip's quay and its water steps go down into the old dock.
+ *
+ * The old dock is the long reach: a pontoon whose rotten sections break up
+ * under you between two dolphins, then a lighter sunk by the head. Her
+ * wheelhouse roof and the two crosstrees left on her mast are the climb; the
+ * dash off the masthead is to the lit beacon's stage, and a last pontoon
+ * section and a raft on its chain reach Ada's quay. A stepped footbridge over
+ * the last side canal comes down, 56 px a landing, to the ferry stage at the
+ * waterline. Every landing's tag names the thing it is the top of. */
+const CANAL:CampaignRoute=trail(24,96,256,T('tower')).here('The gallery')
+ .sec('The outside stair').at(304,152,48,T('tower',G)).at(192,212,64,T('tower',G))
+ .sec('The clock hood').at(56,268,104,T('tower')).cp()
+ .at(200,332,48,T('tower',G)).at(304,392,48,T('tower',G)).at(200,452,56,T('tower',G))
+ .sec('The tower foot').at(24,508,128,T('tower')).cp()
+ .at(216,572,48,T('tower',G)).at(280,652,120,T('tower'))
+ .at(540,708,44,T('piles'))
+ // The bonded store and its upper quay; the crane swings over the corn basin.
+ .place('wharf','The bonded quay',{house:1,crane:1,face:2}).sec('The bonded quay')
+ .at(750,744,380,T('quay')).cp()
+ .at(1130,704,230,T('quay'))
+ .side(1000,648,56,T('sill'),true)
+ .place('mouth','The corn basin').sec('The corn basin')
+ .at(1400,770,120,T('barge.sacks',M(20,.9)))
+ .side(1560,772,40,T('skiff'),true)
+ .place('wharf','The sack wharf',{house:2,face:0,cart:1,lamp:1}).sec('The sack wharf')
+ .at(1620,744,320,T('quay')).cp()
+ .place('breach','The breach').sec('The breach')
+ .at(2000,760,140,T('staging.torn')).hz(i=>torn(i,.55))
+ .place('wharf','The coal stage',{house:3,face:1,fender:1}).sec('The coal stage')
+ .at(2200,744,220,T('quay')).cp()
+ .place('mouth','The lighter dock')
+ .at(2420,760,140,T('staging'))
+ .sec('The tarpaulin lighter').at(2756,770,120,T('boat.tarp'))
+ .place('wharf','Chandlers’ wharf',{house:4,face:3,rope:1}).sec('Chandlers’ wharf')
+ .at(2960,744,220,T('quay')).cp()
+ .at(3180,688,120,T('dock',H(56)))
+ .place('basin','Two barges').sec('Two barges')
+ .at(3360,770,100,T('barge.tiller',M(20,1.1)))
+ .at(3550,770,110,T('barge.hatch',M(16,1.3)))
+ .sec('The sheared bolt').at(3740,760,96,T('piles.bolt')).hz(i=>bolt(i,.5))
+ .place('wharf','The granary quay',{house:5,face:2}).sec('The granary steps')
+ .at(3880,744,150,T('quay')).cp()
+ .at(4030,717,36,T('steps',H(27))).at(4066,690,36,T('steps',H(54)))
+ .at(4102,664,260,T('quay'))
+ .place('basin','The chain basin').sec('The chain basin')
+ .at(4520,770,120,T('raft',M(48,.8)))
+ .at(4790,760,56,T('piles'))
+ .place('wharf','The customs quay',{house:6,gantry:1,face:0}).sec('The customs quay')
+ .at(4930,744,200,T('quay')).cp()
+ .at(5130,704,48,T('crates',H(40)))
+ .at(5178,672,262,T('quay'))
+ .sec('The crane gantry').at(5300,608,190,T('gantry',G))
+ .side(5524,690,44,T('spar',G),true)
+ .place('mouth','The customs cut').sec('The customs cut')
+ .at(5600,770,96,T('barge.deals',M(36,1.4)))
+ .at(5810,758,48,T('piles'))
+ .sec('The coal lighter').at(6030,770,150,T('boat.coal'))
+ .place('wharf','The coal tip',{house:7,face:1,fender:1}).sec('The coal tip')
+ .at(6260,744,220,T('quay')).cp()
+ .at(6480,760,32,T('steps',H(32))).at(6512,776,32,T('steps',H(16)))
+ .place('basin','The old dock').sec('The old pontoon')
+ .at(6620,780,56,T('pontoon',C(.45,12))).at(6756,780,56,T('pontoon',C(.45,12))).at(6900,780,56,T('pontoon',C(.45,12)))
+ .at(7052,758,48,T('piles')).cp()
+ .sec('The wreck').at(7220,770,72,T('wreck'))
+ .at(7292,706,88,T('cabin',H(64)))
+ .at(7412,650,56,T('mast',G)).at(7412,586,56,T('mast',G))
+ .sec('The beacon').at(7676,574,44,T('beacon'))
+ .at(7820,780,56,T('pontoon',C(.45,12)))
+ .at(7964,772,96,T('raft',M(44,1.1)))
+ .place('wharf','Ada’s quay',{face:0,lamp:3,lit:1}).sec('Ada’s crossing')
+ .at(8160,744,200,T('quay')).cp()
+ .place('bridge','The footbridge')
+ .at(8360,680,72,T('bridge')).at(8432,616,160,T('bridge')).at(8592,672,72,T('bridge')).at(8664,728,72,T('bridge'))
+ .at(8752,784,180,T('stage'))
+ .done({setting:'canal',goal:'ferry'});
+
 
 /** The Quarter teaches a movement language; Mossworks combines it into journeys.
  * Each route has authored encounter and rest beats, with every task on the road. */
@@ -45,35 +155,8 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   checkpoints:[4,8,11,16,22,24,28],sectors:[[0,"Bell stair"],[4,"The ringing floor"],[8,"The clock room"],[12,"Under the bells"],[22,"Ivo’s landing"],[24,"The bell loft"],[25,"Over the bells"],[28,"The west loft"],[29,"Inside the spire"],[31,"The bell hoist"],[34,"The gallery door"]],
   hazards:[],water:1500,
  },
- // 03 · The Last Ferry
- // It starts where level 2 ended: on the gallery outside the bell tower's
- // door, at the top. The tower stands with its foot in the canal, and its
- // outside stair is iron flights bolted to the face, most treads gone, with
- // landings on the clock hood and over the boat door. Off the stair's foot a
- // bracket, the cutwater and one dolphin of piles cross open water to the
- // stone quay in two long jumps; a miss there drowns. Then the canal, as it was:
- // One canal, travelled along its near quay. Everything stood on is a quay
- // built down into the water, a cluster of mooring piles, a timber staging
- // or a boat; the water under all of it is lethal. A barge tied off the
- // first quay shows riding. Mooring piles ask for braking, the staging end
- // is the first lethal dash (onto a moored lighter), two barges out of
- // phase ask for a timed dash, a bolt stands on one pile cap, and a raft on
- // a chain crosses a basin; a fast barge, a second bolt and a dash onto the
- // coal lighter lead on. Past the lighter is the long reach: an old pontoon
- // whose rotten sections break up under you between two dolphins, then a
- // lighter sunk by the head. Its wheelhouse roof and the two crosstrees left
- // on its mast are the climb; the dash off the masthead is to a beacon's
- // stage, and a last pontoon section and a raft on its chain reach Ada's
- // quay. A stepped footbridge over the last side canal comes down, 56 px a
- // landing, to the ferry stage at the waterline.
- {
-  setting:'canal',goal:'ferry',
-  route:'24,96,256,s;304,152,48,g;192,212,64,g;56,268,104,s;200,332,48,g;304,392,48,g;200,452,56,g;24,508,128,s;216,572,48,g;280,652,120,s;540,708,44,s;750,744,300,s;1082,770,112,m,20,.9;1226,744,240,s;1534,760,56,s;1658,756,56,s;1794,770,100,m,28,1;1986,744,260,s;2306,760,120,s;2622,770,120,s;2806,760,56,s;2930,744,220,s;3222,770,100,m,20,1.1;3526,770,110,m,16,1.3;3718,760,96,s;3878,744,200,s;4150,760,56,s;4274,756,56,s;4426,770,120,m,48,.8;4674,760,56,s;4814,770,96,m,36,1.4;5066,760,96,s;5226,756,48,s;5446,770,120,s;5666,758,48,s;5786,780,56,c,,,0.45,12;5922,780,56,c,,,0.45,12;6066,780,56,c,,,0.45,12;6218,758,48,s;6386,770,72,s;6458,706,88,s,,,,64;6578,650,56,g;6578,586,56,g;6842,574,44,s;6986,780,56,c,,,0.45,12;7130,772,96,m,44,1.1;7326,744,200,s;7526,680,72,s;7598,616,160,s;7758,672,72,s;7830,728,72,s;7918,784,180,s',
-  branches:'1478,772,48,s;2750,772,48,s;4354,700,44,g',memories:[0,1,2],
-  stations:[],
-  checkpoints:[3,7,13,17,21,25,31,38,46],sectors:[[0,"The gallery"],[1,"The outside stair"],[3,"The clock hood"],[7,"The tower foot"],[11,"Stone quay"],[13,"Mooring piles"],[17,"The staging"],[21,"Two barges"],[25,"The chain raft"],[31,"The coal lighter"],[34,"The old pontoon"],[39,"The wreck"],[43,"The beacon"],[46,"Ada’s crossing"]],
-  hazards:[spike(24,.78,22),spike(31,.8,22)],
- },
+ // 03 · The Last Ferry: see CANAL above.
+ CANAL,
  // 04 · Windows, Not Stars
  {
   setting:'roofs',goal:'relay',
