@@ -72,7 +72,10 @@ six-character code or invite link. Up to ten people; bots fill empty seats when 
 - **The host is authoritative** for rounds, damage, destruction, gadgets and objectives (`sim.ts`, `HostSession`).
 - **Each device runs its own fighter**: movement, stance, lean and weapon handling (`control()` in `state.ts`), so
   moving and firing feel immediate. It reports its pose 20 times a second and sends commands (shot, melee, grenade,
-  breach, use). The host refuses impossible moves and shots faster than the weapon fires.
+  breach, use). The host accepts a reported position only if the fighter could have walked there: within a sprint's
+  distance for the time elapsed, along an open path, not into anything solid, not while frozen. It refuses fire
+  faster than the weapon's rate (a short burst may arrive at once), limits melee swings, and takes kit changes only
+  during preparation or between rounds.
 - **Shots are judged against what the shooter saw**: the host keeps 0.8 s of poses and rewinds targets by half the
   guest's round trip plus 100 ms.
 - The host sends **events** (reliable, ordered: destroyed cells, hits, eliminations, phase changes) and **15
@@ -81,7 +84,8 @@ six-character code or invite link. Up to ten people; bots fill empty seats when 
   hands the seat back to a bot. There is no host migration: when the host leaves, the room ends.
 - When the host pauses (or hides the tab), the room pauses and guests see "Waiting for the host".
 
-This trusts guests about where they are, within a speed limit. It is meant for friends, not a public server.
+Guests still own their ammunition count and their aim, and nothing stops a modified client from aiming perfectly.
+It is meant for friends, not a public server.
 
 ## Bots
 

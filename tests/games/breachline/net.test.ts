@@ -126,4 +126,23 @@ describe('online', () => {
     expect(g.x).toBeCloseTo(before.x, 1);
     expect(aimOf(g).y).toBeGreaterThan(1);
   });
+  it('refuses to start with an empty squad, replans the bots on a restart, and announces each phase once', () => {
+    const solo = new HostSession('Hana', { teamSize: 2, bots: false, skill: 'regular' }, 5);
+    expect(solo.start()).toBe(false); expect(solo.m.phase).toBe('lobby');
+    const h = hub(), host = new HostSession('Hana', { teamSize: 2, bots: true, skill: 'regular' }, 5);
+    host.attach(h.host);
+    const guest = new GuestSession(h.join('g', 'Gus')); h.admit('g');
+    guest.drain();
+    expect(host.start()).toBe(true);
+    both(host, guest, 2);
+    const first = host.brain;
+    expect(guest.drain().filter(e => e.e === 'phase' && e.phase === 'prep')).toHaveLength(1);
+    // Someone else joining mid-round must not replay the round's banner for those already playing.
+    h.join('x', 'Xu'); h.admit('x');
+    expect(guest.drain().filter(e => e.e === 'phase')).toHaveLength(0);
+    host.toLobby(); expect(host.start()).toBe(true);
+    expect(host.brain).not.toBe(first); expect(host.brain.minds.size).toBe(0);
+    both(host, guest, 0.5);
+    expect(host.brain.round).toBe(1); expect(host.brain.minds.size).toBeGreaterThan(0);
+  });
 });

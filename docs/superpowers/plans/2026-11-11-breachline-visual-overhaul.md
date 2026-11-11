@@ -1,0 +1,342 @@
+# Breachline visual overhaul: assessment and plan
+
+Date: 2026-11-11. Owner asked for visuals that "match if not exceed Call of Duty: Modern Warfare 2 (the original)",
+including high-quality models and textures. The current build was judged, fairly, as nowhere near that.
+
+This document is the assessment, the plan, and the contract for the session that carries it out. It was reviewed
+twice before hand-off; the review log is at the end.
+
+## 1. What "MW2 quality" means here
+
+The target is the 2009 game's **technical and craft bar**, not its content. No MW2 maps, characters, weapons models,
+textures, sounds or names are to be copied or imitated closely; Breachline keeps its own setting.
+
+The bar, as things a reviewer can check in a screenshot:
+
+| # | Quality | MW2-era bar | Breachline today (score /10, 8 = MW2) |
+| --- | --- | --- | --- |
+| A | World lighting | Baked lightmaps with soft shadows and bounced light; a light grid for moving things | Per-vertex bake, hard falloff, no bounce — **3** |
+| B | Surface shading | Per-pixel normal and specular maps everywhere, reflections from probes | Unlit albedo only — **1** |
+| C | Texture detail | Photo-sourced, roughly 256–512 px per metre on walls and floors, 1K–2K on weapons and characters | Canvas-drawn 256–512 px tiles — **2** |
+| D | World geometry | Modelled props, trims, fixtures, clutter in every room | Boxes — **1** |
+| E | First-person weapon | About 8–15k triangles, normal-mapped, animated reloads, hands with fingers | About 30 boxes, slab arms — **1** |
+| F | Characters | About 6–10k triangles, skinned, motion-captured locomotion and deaths | 6 rigid box groups — **1** |
+| G | Dynamic shadow | Sun shadow map on characters and the weapon | Blob under each fighter — **1** |
+| H | Post-processing | HDR bloom, filmic grade, depth of field when aiming | Tone mapping only — **2** |
+| I | Effects | Flipbook muzzle flashes, smoke, dust, sparks; normal-mapped decals | Soft points, flat decals — **2** |
+| J | Destruction look | (MW2 had little) — ours must read as layered wall: board, studs, torn edges | Square holes in a flat sheet — **3** |
+
+## 2. Honest assessment
+
+**The bottleneck is assets, not rendering code.** WebGL 2 can do everything in rows A, B, G, H and I. What separates
+the current build from MW2 is that MW2's look came from hundreds of hand-made, photo-textured models, and this build
+has none.
+
+What was verified from this build environment (2026-11-11):
+
+- **Reachable, CC0 (no attribution required, redistribution allowed):** Poly Haven (869 PBR texture sets; 521
+  models, of which 97 industrial, 85 furniture, plus lighting, electronics, containers; glTF with diffuse, normal and
+  AO/roughness/metal maps at 1K–8K; HDRI skies) and ambientCG (PBR materials). npm and GitHub are reachable.
+- **Not reachable or not usable without the owner:** Sketchfab downloads (need the owner's API token; licences vary
+  per model), Mixamo (needs an Adobe login; redistribution in a public repository is doubtful), Kenney and
+  poly.pizza (blocked by the network policy).
+- **Tools present:** three r180 with GLTFLoader, KTX2Loader, the Basis transcoder, Draco and meshopt decoders;
+  meshoptimizer; sharp; ffmpeg; ImageMagick. **Absent:** Blender, toktx, basisu, gltf-transform (the last three may
+  be installable from npm; Blender is not assumed).
+- **No GPU.** Rendering here is a software rasteriser. Pictures can be checked; frame rate cannot.
+
+What follows from that:
+
+| Area | Can this plan reach the bar? | Why |
+| --- | --- | --- |
+| A, B, C, D environment | **Yes, largely** | Poly Haven covers bricks, concrete, plaster, tiles, floors, metal, and most of the props an annex needs (desks, chairs, cabinets, tool chests, crates, barrels, barriers, chain-link fence, ducts, pipes, air-con units, generator, lamps, cameras, extinguisher, roller shutters). Lightmaps and probes are code. |
+| G, H, I | **Yes** | Code plus a few flipbook textures that can be generated offline. |
+| J | **Yes** | Code and CC0 materials. |
+| D gaps | **Partly** | No CC0 server racks, lockers, computers, shipping containers or vehicles were found on Poly Haven. These must be modelled in code to a much higher standard than today, or sourced once Sketchfab access exists. |
+| E first-person weapons | **Blocked on a source** for the rifles, shotgun and SMG. Poly Haven has one service pistol and one bolt-action rifle. | An agent cannot sculpt an MW2-grade rifle by writing coordinates. |
+| F characters and animation | **Blocked on a source.** No realistic rigged soldier with animations is reachable under a licence that allows committing it. | Same reason; and motion-captured animation cannot be written by hand. |
+
+So: **the environment can get to roughly MW2 standard; weapons and characters cannot until the owner supplies or
+unlocks a source** (see section 3). Without that, rows E and F will improve a lot but stay visibly below the bar, and
+this plan says so rather than pretending otherwise.
+
+**The Chromebook constraint.** MW2 ran on consoles at about 1024x600. The weakest current Chromebooks (Intel UHD 600
+class, Mali-G52 class, 4 GB shared memory) are in the same range as those consoles or below, with browser overhead
+on top. Expectation, to be confirmed on hardware:
+
+- A **Low** tier (lightmaps + albedo, no per-pixel specular on the world, no dynamic shadow, no post, 512–1K
+  textures, 60–75 % render scale) should hold 30 fps on that class. It carries most of the look, because lighting
+  and texture detail do most of the work.
+- **Medium** and **High** (rows B, G, H in full) are where the MW2 comparison holds, and need a mid-range
+  Chromebook or better.
+- Download grows from about 1 MB to an estimated 40–60 MB, and GPU memory matters: textures must be GPU-compressed
+  (KTX2) or the Low tier will not fit in 4 GB machines.
+
+None of the frame-rate claims can be proven in the build container. The plan therefore ships a benchmark the owner
+can run on a real Chromebook.
+
+## 3. Decisions the owner must make (blocking only phases 6 and 7)
+
+1. **Weapon and character source.** One of:
+   - (a) a Sketchfab API token, so CC0 and CC-BY models can be downloaded, each recorded with author and licence
+     (CC-BY needs visible credit);
+   - (b) asset packs the owner has bought or made, dropped into the repository or a reachable URL;
+   - (c) neither: weapons and characters are built in code from CC0 parts (Poly Haven pistol, CC0 materials) and
+     Quaternius-style CC0 animation, accepting that they will not reach the bar.
+2. **Download and memory budget:** accept about 40–60 MB of assets, loaded behind a progress screen, with a Low tier
+   under about 20 MB.
+3. **Minimum device:** name the actual Chromebook model(s) to target, and run the benchmark on one.
+4. **Content-Security-Policy.** The site allows only `script-src 'self'` and `worker-src 'self'`. The standard
+   compressed-texture and compressed-mesh decoders (Basis, meshopt, Draco) are WebAssembly, which that policy
+   blocks. Either the owner approves adding `'wasm-unsafe-eval'` to `script-src` in the three places the policy
+   lives (`public/_headers`, `netlify.toml`, `vite.config.ts`), or the overhaul avoids WebAssembly (see 4.1). This is
+   a security setting, so it is the owner's call; **the overhaul must not change it unasked**.
+
+Phases 0–5 and 8 do not depend on decisions 1–3 and proceed now, using the no-WebAssembly path until decision 4
+is made.
+
+## 4. Technical design
+
+### 4.1 Asset pipeline (`scripts/breachline-assets/`, output `public/game-art/breachline/`)
+
+- `manifest.json` lists every external asset: id, source URL, author, licence, SHA-256, what it is used for. Only
+  CC0 assets may be added without the owner's say-so. `public/THIRD_PARTY_NOTICES.txt` is updated from the manifest.
+- `fetch.mjs` downloads by manifest (idempotent, checks hashes). `build.mjs` produces shipped files:
+  - textures resized with sharp to tier sizes (512 / 1K / 2K), AO/roughness/metal packed in one map, normals in
+    OpenGL convention;
+  - GPU compression, which the Low tier needs to fit 4 GB machines. Two routes, settled in the spike:
+    - **without WebAssembly (default until decision 4):** ship GPU-native blocks that need no decoder — S3TC/BC
+      (ImageMagick can write DXT1/DXT5 DDS here) for x86 Chromebooks and desktops, read by a small local loader into
+      `CompressedTexture`; ETC2/ASTC for ARM if an encoder can be found, otherwise uncompressed 512 px on ARM;
+    - **with WebAssembly (if approved):** KTX2/Basis (UASTC for normals, ETC1S for colour), one file for every GPU,
+      with the transcoder worker served same-origin rather than from a `blob:` URL;
+  - models as plain binary glTF with quantised attributes (no decoder needed), LODs from meshoptimizer's simplifier
+    at build time. Meshopt or Draco compression only if decision 4 allows WebAssembly.
+- **Asset count is budgeted, not just bytes:** at most 22 surface materials and 30 prop models; small props share
+  512 px textures; nothing ships at more than 2K.
+- Shipped binaries are committed (the site is static). Keep the total under 60 MB and no file over 20 MB.
+- Runtime loads through one `assets.ts` with a progress callback, per-tier variants, and a hard failure path
+  (missing asset → the current procedural look, not a broken screen).
+
+### 4.2 Lighting
+
+- **Offline baker** (`scripts/breachline-assets/bake.mjs`, Node, deterministic): builds the level's static geometry
+  from `map.ts` plus placed props, generates a second UV set (planar charts per wall/floor face, packed), and
+  ray-traces into lightmap atlases at 8–16 texels per metre: sun and sky from the chosen HDRI, ceiling fixtures as
+  area lights with soft shadows, two bounces, ambient occlusion, then denoise and edge dilation. A BVH is needed
+  (`three-mesh-bvh` as a dev dependency, or a small local one). Budget: a full bake under 10 minutes on 4 cores.
+  Placed props are occluders in the bake, so they cast baked contact shadows; bounce colour comes from each
+  material's average albedo. Lightmaps hold more than 0–1 range (RGBM or a fixed 4x scale), or lamps will clip.
+- **One geometry source.** The baker and the browser must build byte-identical static geometry and UV2 from
+  `map.ts`. Put that in a pure module (`render/levelgeo.ts`, no DOM, no three renderer) imported by both, and test
+  that the two agree; otherwise lightmaps will land on the wrong surfaces.
+- **Light grid:** the same baker writes a 3D grid of L1 spherical-harmonic probes (about 1 m spacing, two heights).
+  Props without lightmap UVs, fighters, the weapon in hand, gadgets and particles are lit from it.
+- **Reflection probes:** one small prefiltered cube map per room and three for the yard, baked offline.
+- Destructible panels cannot be lightmapped per texel (they change). They take lighting from panel-local baked
+  samples at cell corners (as now, but from the new baker) so they match the walls around them.
+- The existing `lightbake.ts` stays as the fallback and for tests.
+
+### 4.3 Materials and tiers
+
+One material family (`render/materials.ts`), three variants compiled per tier:
+
+| | Low | Medium | High |
+| --- | --- | --- | --- |
+| World | albedo x lightmap | + normal, specular from probe and dominant light direction | same, 2K textures |
+| Props, fighters, weapon | albedo x light grid | + normal, specular, sun shadow | same |
+| Sun shadow | none (contact blobs) | one 1024 map, fighters and weapon only | two cascades, 2048 |
+| Post | none | bloom, grade, FXAA | + depth of field when aiming, SSAO if it fits |
+| Render scale | 60–75 %, adaptive | 75–100 %, adaptive | 100 % |
+
+Tier is chosen by a short startup probe (renderer string, a timed frame burst) and can be overridden in the menu.
+
+### 4.4 Geometry
+
+- **Architecture** stays generated from `map.ts`, so collision and visuals cannot drift, but gains modelled detail:
+  door and window frames with depth, skirting, a suspended ceiling grid with recessed fixtures, wall trunking, vents,
+  pipes and ducts from the modular Poly Haven kits, signage.
+- **Props:** each collision box in `map.ts` is dressed with real models (mapping table in section 6). Art fits the
+  collision, not the other way round. Where collision must change to fit a model, change `map.ts`, bump
+  `NET_VERSION`, and re-run the navigation, bot and online tests.
+- **Clutter** with no collision (papers, cables, bins, small tools) is allowed only where it cannot be mistaken for
+  cover.
+- **Instancing and merging:** repeated props are instanced; static props in a room merge into few draw calls.
+- **Loading is asynchronous.** `createScene` is synchronous today. The menu must appear at once on the fallback
+  look while assets stream in, with progress shown, and a match must be playable before High-tier textures arrive.
+
+### 4.5 Destruction look
+
+The 0.25 m cell simulation does not change. The picture does:
+
+- the hole outline is smoothed (marching squares over the cell grid) so breaches are ragged, not square;
+- the wall is two skins with a cavity: broken board edges show thickness, torn paper and a gypsum normal map;
+- timber studs and noggins sit in the cavity and are revealed by damage. They must break with the cells around
+  them, so nothing visible is left where the simulation says a fighter can walk or shoot;
+- debris uses a few chunk meshes, not cubes, plus dust that lingers; bullet holes on solid surfaces get
+  normal-mapped decals.
+
+### 4.6 Weapons and hands (depends on decision 1)
+
+- Weapon models as glTF with named sockets (muzzle, grip, support hand, magazine, sight line). The existing
+  procedural sway, recoil, aim-down-sights and reload timing drive them.
+- Arms: a skinned arm mesh with two-bone IK to the grip and support sockets, so no hand animation files are needed;
+  fingers posed per weapon.
+- Until a source exists: the Poly Haven service pistol becomes the sidearm (proves the pipeline end to end), and the
+  long guns are rebuilt in code with bevelled, lathe-turned parts and CC0 metal and polymer materials. This is
+  expected to score about 5/10 against the bar, not 8.
+
+### 4.7 Characters (depends on decision 1)
+
+- Skinned glTF, 6–10k triangles, three LODs, squad colours as a tint mask on armbands and helmet band (shape cue
+  kept for colour-blind players).
+- Animation through `AnimationMixer`: locomotion blend by pace and direction, crouch, lean, aim pitch as an additive
+  layer, reload, hit reactions, three deaths. The simulation's pose fields stay the single source of truth.
+- Without a source: keep the current rig but replace box parts with modelled, normal-mapped segments and smooth
+  joints. Expected about 4/10.
+
+### 4.8 Effects and post
+
+- Flipbook atlases for muzzle flash, smoke, dust and explosion (generated offline from a noise simulation, so they
+  are original and deterministic), soft particles on Medium and up, shell casings, impact sparks by surface type.
+- Bloom, filmic curve and a colour-grade LUT in one composite pass; depth of field only when aiming, High only.
+- Sky from a Poly Haven HDRI converted to a low-dynamic-range cube map; the baker uses the same HDRI, so the sun in
+  the sky and the light on the ground agree.
+
+## 5. Budgets (asserted by tests wherever countable)
+
+| | Low | Medium | High |
+| --- | --- | --- | --- |
+| Triangles in view | ≤ 150k | ≤ 300k | ≤ 500k |
+| Draw calls | ≤ 200 | ≤ 300 | ≤ 400 |
+| Texture memory (GPU) | ≤ 160 MB | ≤ 350 MB | ≤ 700 MB |
+| First download | ≤ 20 MB | ≤ 40 MB | ≤ 60 MB |
+| Script per frame (this container) | ≤ 3 ms | ≤ 4 ms | ≤ 5 ms |
+| Target | 30 fps on the named Chromebook | 60 fps on a mid laptop | 60 fps on a desktop GPU |
+
+A `?bench=1` mode flies a fixed camera path for 30 seconds on each tier and shows average and 1 % low frame rate,
+tier, render scale and the renderer string, so the owner can read real numbers off a real Chromebook.
+
+## 6. Prop mapping (first candidates, all Poly Haven CC0; confirm fit and size before use)
+
+| Place | Collision today | Candidates |
+| --- | --- | --- |
+| Office, lobby | desks, reception | `metal_office_desk`, `SchoolChair_01`, `drawer_cabinet`, `desk_lamp_arm_01`, `cardboard_box_01` |
+| Lab | benches, cabinets | `chemistry_set`, `metal_tool_chest`, `drill_press_01`, `korean_fire_extinguisher_01`, stools; benches modelled |
+| Garage | van, crates, bench | `metal_toolbox`, `hand_truck`, `propane_tank`, `Barrel_01`/`barrel_03`, `old_military_crate`, `ladder_sectioned_01`; **vehicle: no source** |
+| Archive | shelving | `Shelf_01` family, box files modelled, `plastic_crate_01` |
+| Break room | counter, fridge, sofa | `sofa_02`/`sofa_03`, `metal_trash_can`, `WetFloorSign_01`; appliances modelled |
+| Server room | racks | **no source**: model racks properly (frame, rails, blanking plates, cable looms), emissive LEDs |
+| Ceilings, walls | — | `modular_airduct_rectangular_01`, `modular_industrial_pipes_01`, `hanging_industrial_lamp`, `industrial_caged_sconce`, `security_camera_01` |
+| Yard | barriers, containers, shed | `concrete_road_barrier`(`_02`), `modular_chainlink_fence`, `exterior_aircon_unit`, `portable_generator`, `trashbag`; **containers and vehicles: no source**, model with ribbed panels, doors, corner castings |
+| Openings | barricades, windows | `rollershutter_window_01–03` for reference and parts; barricade planks modelled with CC0 wood |
+| Sidearm | — | `service_pistol` |
+
+## 7. Phases, each ending in a gate
+
+Every phase ends with: the fixed set of eight camera bookmarks re-rendered on High and Low; a scorecard (section 8);
+all existing tests green; a commit and push. A phase is not done because tests pass.
+
+| Phase | Work | Gate |
+| --- | --- | --- |
+| 0. Spike (do first, small) | Fetch three texture sets and three models; settle the texture route in 4.1 (write a DDS/S3TC texture and load it under the site's real CSP; note what the software rasteriser supports); load them in the real renderer; prototype the baker on the Lab alone; record sizes, bake time, memory | One Lab screenshot with real materials and a ray-traced lightmap; a written go/no-go on the texture route and on the baker approach. **If the Lab does not look dramatically better here, stop and report before building the rest.** |
+| 1. Renderer foundation | `assets.ts`, material family, tiers and startup probe, loading screen, fallback path, post chain skeleton, budget counters, `?bench=1` | Old look still works with assets missing; budgets measured |
+| 2. Lighting | Full baker, UV2, lightmaps, light grid, reflection probes, HDRI sky | Lighting row A ≥ 7 |
+| 3. Surfaces | Every wall, floor, ceiling material replaced; trims, frames, ceiling grid, fixtures | Rows B, C ≥ 7 on High |
+| 4. Props and dressing | Room by room and yard, per section 6; modelled stand-ins for the gaps | Row D ≥ 7 indoors, ≥ 6 in the yard |
+| 5. Destruction look | Section 4.5 | Row J ≥ 7; the destruction tests and a new "nothing visible blocks a passable gap" check pass |
+| 6. Weapons and hands | Section 4.6 with whatever source exists | Row E as scored; honest number reported |
+| 7. Characters | Section 4.7 with whatever source exists | Row F as scored; honest number reported |
+| 8. Effects, post, optimisation | Section 4.8; LODs; tier tuning against budgets; docs, notices, SPEC update | Rows G, H, I ≥ 7; all budgets met; benchmark instructions written for the owner |
+
+## 8. How quality is judged
+
+- **Scorecard, fixed bar.** Each row A–J is scored 0–10 where 8 means "would not look out of place in MW2 (2009)"
+  and the current build is recorded as the baseline (about 1–2 on most rows). All rows are re-scored after every
+  phase, in a table, by looking at the renders — never from memory or from the report alone.
+- **Reference first.** Before writing code in a phase, study real references for that row (the Poly Haven asset
+  renders for materials and props; publicly available screenshots of late-2000s military shooters for composition
+  and lighting, looked at for study only, never saved into the repository or copied).
+- **Look, compare, iterate.** Each round: render → open the render → list at least five specific mismatches against
+  the reference → fix → render again. Expect two to four rounds per phase. A green test with a poor picture is a
+  failure.
+- **Bookmarks:** lobby menu flyover; south yard toward the building; west lot; corridor; Lab; Archive; Server room;
+  a breached wall close up; the weapon in hand in each of those. Same seeds, same poses, every time.
+- **Orchestrator sign-off.** The session that commissioned this opens the final renders itself before the work is
+  called done.
+
+## 9. Fences
+
+- **Do not change behaviour:** `sim.ts`, `state.ts`, `net.ts`, `bots.ts`, `nav.ts`, `world.ts` and the rules in
+  `config.ts` are off limits, except collision adjustments in `map.ts` under the rule in 4.4. `index.ts`, `hud.ts`
+  and `input.ts` may be touched only for the loading screen, the tier setting and the benchmark.
+- **Owned by the overhaul:** `scene.ts`, `levelmesh.ts`, `lightbake.ts`, `textures.ts`, `models.ts`, `effects.ts`,
+  new files under `src/games/breachline/render/`, `scripts/breachline-assets/`, `public/game-art/breachline/`.
+- No runtime CDN; everything ships from the site. No new runtime dependency without need; dev dependencies for the
+  pipeline are acceptable and must be pinned.
+- Reduced motion still disables camera shake, bob and flashes. Colour is never the only squad cue.
+- Never commit an asset whose licence is not recorded in the manifest. Nothing from MW2 or any other game.
+- Report honestly: where a row cannot reach the bar, say what score it reached and what would unlock the rest.
+
+## 10. Risks
+
+| Risk | Likelihood | Effect | Response |
+| --- | --- | --- | --- |
+| WebAssembly decoders blocked by the site's CSP | Certain today | No Basis, meshopt or Draco | Decision 4; until then DDS/S3TC and quantised glTF (4.1) |
+| No ETC2/ASTC encoder for ARM devices | Medium | Low tier may not fit 4 GB ARM Chromebooks | Uncompressed 512 px there; flag for the owner |
+| Offline baker too slow or noisy | Medium | Lighting stays below bar | Lower texel density outdoors, progressive bake, bilateral denoise; worst case per-vertex bake on denser meshes |
+| Poly Haven props do not fit the collision boxes | High | Rework | Scale within ±15 %, otherwise adjust `map.ts` under the 4.4 rule |
+| Too many unique prop textures | High | Download and memory budgets blown | The asset count budget in 4.1; atlas small props |
+| Baker and browser build different geometry | Medium | Lightmaps misplaced | Single shared module and an agreement test (4.2) |
+| Weapons and characters have no source | Certain until decided | Rows E, F stay near 4–5 | Section 3; ship the rest |
+| Chromebook cannot hold 30 fps on Low | Unknown (no GPU here) | Core requirement missed | Benchmark mode, adaptive scale, an even lighter "Minimum" variant (512 textures, 50 % scale) |
+| Download too large for school networks | Medium | Players wait or give up | Tiered loading; Low under 20 MB; lazy-load High textures after first frame |
+| Software rasteriser renders differ from real GPUs | Low | Misjudged pictures | Owner confirms on real hardware at the phase 0 and phase 4 gates |
+
+## Working notes for whoever carries this out
+
+- Fresh checkout: `npm ci`. Type-check with `npx tsc --noEmit`; unit tests `npx vitest run tests/games/breachline`
+  (41 tests) and the whole suite `npx vitest run`; build `npm run build`.
+- Browser tests in this kind of container need the pre-installed Chromium:
+  `ARCADE_URL=http://127.0.0.1:<port> CHROMIUM_PATH=/opt/pw-browsers/chromium BLOCKCRAFT_BROWSER_CHANNEL=headless-shell npx playwright test tests/games/breachline tests/multiplayer/breachline-online.spec.ts --project=chromium --trace off --workers=1`
+  with `npx vite --host 127.0.0.1 --port <port> --strictPort` running. Run one browser at a time: several at once
+  exhausted the container's memory.
+- The game exposes `window.__breachlineTest` in dev builds (`start`, `freeze`, `advance`, `hold`, `place`, `look`,
+  `skip`, `still`, `stats`, `draw`, `state`): use it to pose the fixed bookmarks. `start({quality:'high'})` avoids
+  the adaptive scale dropping under the software rasteriser.
+- `tests/e2e/shell.spec.ts` "library at …" already fails on the base branch (it expects 24 game cards); ignore it.
+- `tests/core/posters.test.ts` requires flat cover art; do not touch `public/game-art/breachline/cover.svg`.
+- Existing screenshots for the baseline are in `docs/evidence/breachline/`.
+
+## Left over from the code review, for the overhaul to pick up (all in `scene.ts`)
+
+- Release the WebGL context on dispose (`renderer.forceContextLoss()`), as `src/games/quad-clash/scene.ts` does, and
+  dispose the instanced shadow mesh and every pooled geometry.
+- Only six grenade meshes are pooled; a seventh live grenade is invisible. Size the pool to the most that can exist.
+- The "Sharp" preset never gets antialiasing, because `antialias` is fixed when the renderer is created, before
+  saved preferences are restored. Tier selection in 4.3 must account for this.
+- Mounting blocks the main thread while the level is built (about 270 ms in the build container, likely a second or
+  more on a Chromebook). The asynchronous loading in 4.4 should remove this.
+
+## Review log
+
+**Pass 1 (feasibility and order).** Changes made: moved the spike to phase 0 with a stop-and-report gate, because
+the whole plan rests on unproven tools (texture compression and the baker); separated what is achievable now
+(environment) from what is blocked (weapons, characters) instead of listing both as work; added the fallback path so
+a missing asset can never break the game; replaced "match MW2" with a ten-row scorecard, with today's scores as the
+baseline, so progress is measurable; added the benchmark because frame rate cannot be measured where the work is
+done; added an asset *count* budget after working out that forty props with three 1K maps each would blow the
+download budget on their own; required the bake to include props as occluders and to store more than 0–1 range.
+
+**Pass 2 (against the code and the site as they are).** Changes made: checked the site's Content-Security-Policy and
+found it blocks WebAssembly and `blob:` workers, which rules out the standard Basis, meshopt and Draco decoders —
+added decision 4, a no-WebAssembly texture and mesh route as the default, and a rule that the policy is not to be
+changed unasked; the baker and the browser must share one geometry module or lightmaps will not line up, so that is
+now a requirement with a test; lighting for destructible panels cannot use lightmaps, so it keeps corner samples
+from the new baker; studs in the wall cavity were visual-only in the first draft, which would show solid timber
+where fighters can walk — they now break with their cells and get a test; props must fit existing collision, with
+an explicit rule (and `NET_VERSION` bump) where they cannot; scene creation is synchronous today, so asynchronous
+loading with an immediate fallback look was added; `index.ts` joined the restricted list with three allowed
+purposes; budgets gained a script-cost row because that is the only frame cost measurable in the container; the
+prop table marks every gap ("no source") rather than implying coverage; working notes were added from what this
+session learned about running tests here.

@@ -152,10 +152,10 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   skill.addEventListener('change', () => { prefs.bots = skill.value !== 'off'; if (prefs.bots) prefs.skill = skill.value as SkillId; host.configure({ bots: prefs.bots, skill: prefs.skill }); syncMenu(); }, { signal });
   graphics.addEventListener('change', () => { if (isQuality(graphics.value)) { prefs.quality = graphics.value; scene.setQuality(prefs.quality); } }, { signal });
   sens.addEventListener('input', () => { prefs.sens = Number(sens.value) || 1; sensOut.textContent = `${prefs.sens.toFixed(1)}×`; }, { signal });
-  play.addEventListener('click', () => { if (!guest) { sfx.ui(); host.start(); } }, { signal });
+  play.addEventListener('click', () => { if (!guest) { sfx.ui(); if (!host.start()) syncMenu(); } }, { signal });
   swap.addEventListener('click', () => { sfx.ui(); if (guest) guest.swapSquad(); else host.swapSquad(); syncMenu(); }, { signal });
   online.addEventListener('click', () => dialog.open(), { signal });
-  q('.bl-again').addEventListener('click', () => { if (!guest) host.start(); }, { signal });
+  q('.bl-again').addEventListener('click', () => { if (!guest && !host.start()) { host.toLobby(); show('menu'); syncMenu(); } }, { signal });
   q('.bl-lobby').addEventListener('click', () => { if (!guest) { host.toLobby(); show('menu'); syncMenu(); } }, { signal });
   q('.bl-click-btn').addEventListener('click', () => { input.lock(); canvas.focus({ preventScroll: true }); }, { signal });
   hud.onKit(kit => session().kit(kit));
@@ -333,6 +333,17 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     lastPhase = e.phase;
   }
 
+  /** Brings the screen in line with the match after events were skipped (a guest returning from a pause). */
+  function reconcile() {
+    const ses = session(), m = ses.m, me = m.players[ses.self] as Player | undefined;
+    if (m.phase === 'over') { lastPhase = 'end'; onPhase({ e: 'phase', phase: 'over', round: m.round, attackers: m.attackers, wins: [m.wins[0], m.wins[1]], spawn: m.spawn, winner: m.winner, reason: m.reason }, m, me); return; }
+    lastPhase = m.phase;
+    if (m.phase === 'lobby') { show('menu'); syncMenu(); return; }
+    if (me) { input.setLook(me.yaw, 0); input.clear(); prevX = me.x; prevZ = me.z; }
+    watch = me && me.alive ? me.id : -1;
+    if (!held) enterPlay();
+  }
+
   // ---- Per-frame sound that follows state rather than events ----
   function ambient(m: Match, self: number, dt: number) {
     const e = scene.ear;
@@ -406,6 +417,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     if (disposed) return;
     event.preventDefault();
     lost = true; cancel(); input.unlock(); show('lost');
+    // A host that cannot draw cannot run the match either: hold the room rather than freeze it silently.
+    if (room?.role === 'host') room.setPaused(true);
     q('.bl-lost h2').focus({ preventScroll: true });
     context.setStatus('Graphics interrupted. Leave and reopen Breachline.');
   }, { signal });
@@ -427,7 +440,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     let countId = requestAnimationFrame(count);
     const api = {
       state: () => { const s = session(), m = s.m, me = m.players[s.self]; return { phase: m.phase, t: m.t, round: m.round, wins: [...m.wins], attackers: m.attackers, self: s.self, watch, online: s.online, host: s.host, shown, paused, held, me: me ? { x: me.x, z: me.z, yaw: input.state.yaw, pitch: input.state.pitch, hp: me.hp, alive: me.alive, squad: me.squad, role: roleOf(m, me), kit: me.kit, mag: [...me.mag], charges: me.charges, grenades: me.grenades, reinforcements: me.reinforcements, act: me.act, kills: me.kills, score: me.score } : null, players: m.players.map(p => ({ id: p.id, name: p.name, squad: p.squad, bot: p.bot, alive: p.alive, hp: p.hp, x: p.x, z: p.z })), holes: m.world.panels.reduce((n, p) => n + (p.kind === 'wall' ? p.cells.length - p.intact : 0), 0), reinforced: m.world.panels.filter(p => p.reinforced).length, device: m.device }; },
-      start: (o: Partial<Prefs> & { seed?: number } = {}) => { if (guest) return; prefs = { ...prefs, ...o }; if (o.seed) host = new HostSession(host.name, { teamSize: prefs.teamSize, bots: prefs.bots, skill: prefs.skill }, o.seed); else host.configure({ teamSize: prefs.teamSize, bots: prefs.bots, skill: prefs.skill }); if (room) host.attach(room); scene.setQuality(prefs.quality); host.start(); },
+      start: (o: Partial<Prefs> & { seed?: number } = {}) => { if (guest) return; prefs = { ...prefs, ...o }; if (o.seed) { host.dispose(); host = new HostSession(host.name, { teamSize: prefs.teamSize, bots: prefs.bots, skill: prefs.skill }, o.seed); } else { if (host.m.phase !== 'lobby') host.toLobby(); host.configure({ teamSize: prefs.teamSize, bots: prefs.bots, skill: prefs.skill }); } if (room) host.attach(room); scene.setQuality(prefs.quality); host.start(); },
       freeze: (on: boolean) => { frozen = on; acc = 0; },
       advance: (seconds: number) => { if (disposed) return; input.frame(seconds); const steps = Math.round(seconds / TICK); for (let i = 0; i < steps; i++) { acc = TICK; advance(0); } draw(0); },
       look: (yaw: number, pitch: number) => input.setLook(yaw, pitch),
@@ -465,8 +478,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       if (disposed || lost || !paused) return;
       paused = false; sfx.resume();
       if (room?.role === 'host') room.setPaused(false);
-      // Whatever happened while this device was away has already been applied; skip its effects.
-      if (guest) guest.drain();
+      // Whatever happened while this device was away has already been applied; skip its effects and catch up
+      // from the state instead.
+      if (guest) { guest.drain(); reconcile(); }
       updateClickLayer();
       if (inMatch()) context.announce('Breachline resumed');
       schedule();
@@ -474,7 +488,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     restart() {
       if (disposed || lost || guest) return false;
       if (host.m.phase === 'lobby') return true;
-      host.toLobby(); host.start();
+      host.toLobby();
+      if (!host.start()) { show('menu'); syncMenu(); }
       return true;
     },
     serialize() { return { v: SNAPSHOT_VERSION, prefs: { ...prefs } }; },

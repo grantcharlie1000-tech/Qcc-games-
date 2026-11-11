@@ -90,6 +90,9 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
     vitals: q('.bl-vitals'), gear: q('.bl-gear'),
   };
   const markerEls: HTMLElement[] = [];
+  const timers = new Set<ReturnType<typeof setTimeout>>();
+  const later = (fn: () => void, ms: number) => { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); };
+  signal.addEventListener('abort', () => { for (const id of timers) clearTimeout(id); timers.clear(); });
   let kitCb: (kit: number) => void = () => {}, hurtLevel = 0, dirLife = 0, hitLife = 0, toastLife = 0, bannerLife = 0, boardAt = 0, planKey = '', kitKey = '', pipKey = '', gadgetKey = '';
   el.kits.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-kit]'); if (b) kitCb(Number(b.dataset.kit)); }, { signal });
 
@@ -190,13 +193,13 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
       row.innerHTML = `<b data-squad="${bySquad}">${escape(by)}</b><span>${escape(weapon)}${head ? ' · head' : ''}</span><b data-squad="${onSquad}">${escape(on)}</b>`;
       el.feed.prepend(row);
       while (el.feed.children.length > 5) el.feed.lastElementChild!.remove();
-      setTimeout(() => row.remove(), 6500);
+      later(() => row.remove(), 6500);
     },
     note(t) {
       const row = document.createElement('div'); row.className = 'bl-kill bl-note'; row.textContent = t;
       el.feed.prepend(row);
       while (el.feed.children.length > 5) el.feed.lastElementChild!.remove();
-      setTimeout(() => row.remove(), 6500);
+      later(() => row.remove(), 6500);
     },
     hitmarker(kill, head) { el.hit.dataset.on = 'true'; el.hit.dataset.kill = String(kill); el.hit.dataset.head = String(head); hitLife = kill ? 0.4 : 0.16; },
     hurt(angle, amount) { hurtLevel = Math.min(1, hurtLevel + amount / 60 + 0.25); el.dir.style.transform = `rotate(${angle}rad)`; dirLife = 1.1; },

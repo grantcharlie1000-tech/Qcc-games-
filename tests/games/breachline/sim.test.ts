@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ATK, CHARGE, DEF, KITS, ROUND, TICK, WEAPONS } from '../../../src/games/breachline/config';
-import { command, createMatch, drive, interaction, seat, startMatch, step } from '../../../src/games/breachline/sim';
+import { command, createMatch, drive, freeSeat, interaction, report, seat, startMatch, step, takeSeat } from '../../../src/games/breachline/sim';
 import { ACT, aimOf, idleIntent, roleOf, shotDirs, type Match, type Player } from '../../../src/games/breachline/state';
 import { BODY, CELL } from '../../../src/games/breachline/config';
 
@@ -64,17 +64,32 @@ describe('combat', () => {
     expect(m.phase).toBe('end'); expect(m.reason).toBe('eliminated'); expect(m.roundWinner).toBe(atk.squad);
     expect(atk.kills).toBe(1); expect(atk.score).toBe(150);
   });
-  it('needs several body shots, refuses fire faster than the weapon allows, and none in preparation', () => {
+  it('needs several body shots, and allows no fire in preparation', () => {
     const { m, atk, def } = duel();
     place(atk, 20, 15, 0, -0.07); place(def, 20, 5);
     shoot(m, atk); expect(def.hp).toBe(100);
     tick(m, ROUND.prep + 0.1);
     place(atk, 20, 15, 0, -0.07); place(def, 20, 5);
-    shoot(m, atk, 1); shoot(m, atk, 2);
     const dmg = WEAPONS[KITS[ATK][atk.kit].primary].damage;
+    shoot(m, atk, 1);
     expect(def.hp).toBe(100 - dmg);
-    tick(m, 0.2); shoot(m, atk, 3);
+    tick(m, 0.2); shoot(m, atk, 2);
     expect(def.hp).toBe(100 - dmg * 2);
+  });
+  it('accepts a short burst that arrives at once but never a faster average than the weapon fires', () => {
+    const { m, atk, def } = duel();
+    tick(m, ROUND.prep + 0.1);
+    place(atk, 20, 15, 0, 0.5); place(def, 20, 5);
+    const shots = () => m.events.filter(e => e.e === 'shot').length;
+    for (let i = 0; i < 10; i++) shoot(m, atk, i);
+    expect(shots()).toBe(3);
+    // Ten commands every tick for a second: the rifle still only fires at its own rate.
+    for (let t = 0; t < 60; t++) { step(m, TICK); for (let i = 0; i < 10; i++) shoot(m, atk, 100 + t * 10 + i); }
+    const perSecond = 1 / WEAPONS.ar.interval;
+    expect(shots() - 3).toBeGreaterThan(perSecond * 0.9); expect(shots() - 3).toBeLessThan(perSecond * 1.15);
+    // Slow weapons get no burst worth having.
+    command(m, atk.id, { c: 'kit', kit: 0 });
+    expect(atk.kit).toBe(1);
   });
   it('shoots through a soft wall for less damage and leaves a hole', () => {
     const { m, atk, def } = duel();
@@ -216,7 +231,31 @@ describe('objectives and gadgets', () => {
     expect(m.events.some(e => e.e === 'cells' && e.cause === 2)).toBe(true);
     place(def, -4, -0.2); place(atk, -4, -1.4, Math.PI, 0);
     command(m, atk.id, { c: 'melee', ...aimOf(atk) });
+    expect(def.alive).toBe(true);
+    tick(m, 0.7);
+    command(m, atk.id, { c: 'melee', ...aimOf(atk) });
     expect(def.alive).toBe(false);
+  });
+  it('changes kit only while preparing or between rounds', () => {
+    const { m, atk } = duel();
+    command(m, atk.id, { c: 'kit', kit: 2 });
+    expect(atk.kit).toBe(2); expect(atk.mag[0]).toBe(WEAPONS.dmr.mag);
+    tick(m, ROUND.prep + 0.1);
+    command(m, atk.id, { c: 'kit', kit: 0 });
+    expect(atk.kit).toBe(2); expect(atk.mag[0]).toBe(WEAPONS.dmr.mag);
+    tick(m, ROUND.action + 0.2);
+    expect(m.phase).toBe('end');
+    command(m, atk.id, { c: 'kit', kit: 0 });
+    tick(m, ROUND.end + 0.2);
+    expect(atk.kit).toBe(0); expect(atk.mag[0]).toBe(WEAPONS.shotgun.mag);
+  });
+  it('limits melee swings and reload notices from a flooding client', () => {
+    const { m, atk } = duel();
+    tick(m, ROUND.prep + 0.1);
+    place(atk, 20, 15);
+    for (let i = 0; i < 50; i++) { command(m, atk.id, { c: 'melee', ...aimOf(atk) }); command(m, atk.id, { c: 'reload' }); }
+    expect(m.events.filter(e => e.e === 'melee')).toHaveLength(1);
+    expect(m.events.filter(e => e.e === 'reload')).toHaveLength(1);
   });
   it('ignores commands from far away, with bad numbers, or for weapons the fighter does not carry', () => {
     const { m, atk, def } = duel();
@@ -229,5 +268,75 @@ describe('objectives and gadgets', () => {
     command(m, 9, { c: 'reload' }); command(m, atk.id, null as never); command(m, atk.id, { c: 'kit', kit: 99 });
     expect(def.hp).toBe(100); expect(m.events.filter(e => e.e === 'shot')).toHaveLength(0);
     expect(BODY.radius).toBeGreaterThan(CELL);
+  });
+});
+
+describe('pose reports from guests', () => {
+  const send = (m: Match, p: Player, x: number, z: number, yaw = 0) => report(m, p.id, x, z, yaw, 0, 0, 0, 0, 0);
+  const fixes = (m: Match) => m.events.filter(e => e.e === 'fix').length;
+  it('follows honest walking, including reports that arrive in a bunch', () => {
+    const { m, def } = duel();
+    tick(m, ROUND.prep + 0.1);
+    place(def, 20, 5);
+    let z = 5;
+    for (let i = 0; i < 40; i++) { tick(m, 0.05); z += 0.25; send(m, def, 20, z); }
+    expect(def.z).toBeCloseTo(z, 5); expect(fixes(m)).toBe(0);
+    tick(m, 0.3);
+    for (let i = 0; i < 6; i++) { z += 0.25; send(m, def, 20, z); }
+    expect(def.z).toBeCloseTo(z, 5); expect(fixes(m)).toBe(0);
+  });
+  it('refuses a teleport, even one cut into many small reports in a single instant', () => {
+    const { m, def } = duel();
+    tick(m, ROUND.prep + 0.1);
+    place(def, 20, 5);
+    send(m, def, 20, 15);
+    expect(def.z).toBe(5); expect(fixes(m)).toBe(1);
+    for (let i = 1; i <= 30; i++) send(m, def, 20, 5 + i * 0.9);
+    expect(def.z).toBeLessThan(5 + 2.6);
+    expect(fixes(m)).toBeGreaterThan(20);
+  });
+  it('refuses walking through a wall, standing inside furniture, and moving while frozen', () => {
+    const { m, atk, def } = duel();
+    const start = { x: atk.x, z: atk.z };
+    tick(m, 1);
+    send(m, atk, start.x + 0.3, start.z);
+    expect([atk.x, atk.z]).toEqual([start.x, start.z]);
+    send(m, def, def.x + 0.2, def.z);
+    expect(fixes(m)).toBe(1);
+    tick(m, ROUND.prep);
+    place(def, -4, -2.5);
+    for (let i = 1; i <= 12; i++) { tick(m, 0.05); send(m, def, -4, -2.5 + i * 0.25); }
+    expect(def.z).toBeLessThan(-2.3);
+    // Into the lab bench.
+    place(def, -4.7, -6.1); tick(m, 0.2);
+    send(m, def, -3.9, -6.1);
+    expect(def.x).toBe(-4.7);
+  });
+  it('keeps defenders indoors during preparation and never stores a wild angle', () => {
+    const { m, def } = duel();
+    place(def, 9.75, -9.4);
+    for (let i = 1; i <= 8; i++) { tick(m, 0.05); send(m, def, 9.75, -9.4 - i * 0.02, 1e39); }
+    expect(def.z).toBeGreaterThan(-9.6);
+    expect(Number.isFinite(def.yaw)).toBe(true);
+    send(m, def, 9.75, def.z, 9);
+    expect(Math.abs(def.yaw)).toBeLessThanOrEqual(Math.PI);
+  });
+});
+
+describe('seats when bots are off', () => {
+  it('leaves an empty seat when someone goes, and lets a newcomer take it', () => {
+    const m = createMatch({ teamSize: 2, bots: false, skill: 'regular' }, 3);
+    seat(m, [{ owner: 'a', name: 'Ada' }, { owner: 'b', name: 'Bo' }, { owner: 'c', name: 'Cy' }]);
+    startMatch(m);
+    tick(m, ROUND.prep + 0.1);
+    freeSeat(m, 'c');
+    const gone = m.players[2];
+    expect(gone.gone).toBe(true); expect(gone.alive).toBe(false);
+    tick(m, ROUND.action + ROUND.end + 0.3);
+    expect(m.round).toBe(2); expect(gone.alive).toBe(false);
+    expect(takeSeat(m, 'd', 'Di')).toBe(2);
+    expect(gone.gone).toBe(false); expect(gone.name).toBe('Di');
+    tick(m, ROUND.prep + ROUND.action + ROUND.end + 0.3);
+    expect(m.round).toBe(3); expect(gone.alive).toBe(true);
   });
 });

@@ -91,7 +91,7 @@ Up to ten players in two squads; bots fill empty seats when they are on. Open **
 - The host's pause pauses the room. Matches are not saved.
 - `NET_VERSION` in `src/games/breachline/net.ts` must change whenever the simulation, map or messages change.
 
-Guests are trusted about where they stand (within the speed limit) and about their own ammunition; this is for friends, not a public server.
+A reported position is accepted only if the fighter could have walked there (speed, an open path, nothing solid, not frozen). Guests are still trusted about their own ammunition and aim; this is for friends, not a public server.
 
 ## TURN relay and the Netlify Function
 

@@ -52,7 +52,7 @@ function plan(b: Brain, m: Match) {
   b.round = m.round;
   b.site = nextRandom(m) < 0.5 ? 0 : 1;
   b.planter = -1;
-  const bots = m.players.filter(p => p.bot), atk = bots.filter(p => roleOf(m, p) === ATK), def = bots.filter(p => roleOf(m, p) === DEF);
+  const bots = m.players.filter(p => p.bot && !p.gone), atk = bots.filter(p => roleOf(m, p) === ATK), def = bots.filter(p => roleOf(m, p) === DEF);
   const spawn = MAP.attackSpawns[m.spawn].points[2];
   const doors = m.world.panels.filter(p => p.kind === 'door' && p.closed).map(p => panelCenter(p))
     .sort((u, v) => Math.hypot(u.x - spawn.x, u.z - spawn.z) - Math.hypot(v.x - spawn.x, v.z - spawn.z));
@@ -283,7 +283,7 @@ export function stepBots(b: Brain, m: Match, dt: number) {
     b.planter = best;
   }
   for (const p of m.players) {
-    if (!p.bot) continue;
+    if (!p.bot || p.gone) continue;
     let mind = b.minds.get(p.id);
     if (!mind) { mind = newMind(); mind.yaw = p.yaw; mind.post = MAP.posts[roleOf(m, p) === ATK ? b.site : p.id % 2][p.id % 5]; b.minds.set(p.id, mind); }
     drive(m, p, think(b, m, p, mind, dt), dt);

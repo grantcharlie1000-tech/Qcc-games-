@@ -3,7 +3,7 @@
 import { ATK, BOT_NAMES, CELL, CHARGE, DEF, GRENADE, HEAD_MULT, INTERACT_REACH, KITS, MAX_PENETRATIONS, MELEE, MOVE, PENETRATION, ROUND, TICK, WEAPONS, type WeaponId } from './config';
 import { MAP, newWorld, siteAt } from './map';
 import { ACT, control, equip, frozen, kitOf, living, mayFire, newPlayer, nextRandom, roleOf, shotDirs, type ActId, type Aim, type Command, type EndReason, type Intent, type Match, type MatchConfig, type Player } from './state';
-import { bite, fillPanel, obstruction, panelPoint, panelU, panelV, rayBody, resetPanels, trace, viewDir, type Panel, type Pose, type World } from './world';
+import { bite, bodyHeight, fillPanel, obstruction, panelPoint, panelU, panelV, rayBody, resetPanels, resolve, trace, viewDir, type Panel, type Pose, type World } from './world';
 
 const HISTORY = 48;
 /** Poses of every seat for the last HISTORY ticks, so a shot is judged against what the shooter saw. */
@@ -48,17 +48,18 @@ export function takeSeat(m: Match, owner: string, name: string): number {
   const bots = m.players.filter(p => p.bot).sort((a, b) => counts[a.squad] - counts[b.squad] || Number(b.alive) - Number(a.alive) || a.id - b.id);
   const p = bots[0];
   if (!p) return -1;
-  p.bot = false; p.owner = owner; p.name = name;
+  p.bot = false; p.gone = false; p.owner = owner; p.name = name;
   return p.id;
 }
 /** Someone left: a bot takes the seat, or the fighter falls if bots are off. */
 export function freeSeat(m: Match, owner: string) {
   const p = m.players.find(q => q.owner === owner);
   if (!p) return;
-  p.owner = '';
-  if (m.cfg.bots) { p.bot = true; p.name = BOT_NAMES[p.id % BOT_NAMES.length]; p.using = false; }
-  else if (p.alive && m.phase !== 'lobby') { p.name = `${p.name} (left)`; p.bot = true; eliminate(m, p, p, 'left', false); }
-  else { p.bot = true; p.name = `${p.name} (left)`; }
+  p.owner = ''; p.bot = true; p.using = false;
+  if (m.cfg.bots) { p.name = BOT_NAMES[p.id % BOT_NAMES.length]; return; }
+  // Bots are off: the seat stays empty for the rest of the match.
+  p.gone = true; p.name = `${p.name} (left)`;
+  if (p.alive && m.phase !== 'lobby') eliminate(m, p, p, 'left', false);
 }
 
 // ---- Rounds ------------------------------------------------------------------------------------------------------------
@@ -76,9 +77,10 @@ export function startRound(m: Match) {
   resetPanels(m.world);
   const n = [0, 0], at: [number, number, number, number][] = [];
   for (const p of m.players) {
+    if (p.gone) { p.alive = false; p.hp = 0; p.act = ACT.none; continue; }
     const role = roleOf(m, p), s = role === ATK ? MAP.attackSpawns[m.spawn].points[n[0]++ % 5] : MAP.defendSpawns[n[1]++ % MAP.defendSpawns.length];
     p.alive = true; p.hp = 100; p.x = s.x; p.z = s.z; p.yaw = s.yaw; p.pitch = 0; p.vx = p.vz = 0; p.crouch = p.lean = 0; p.crouching = false; p.pace = 0;
-    p.act = ACT.none; p.actT = 0; p.actTarget = -1; p.lastShot = -1; p.poseAt = m.time;
+    p.act = ACT.none; p.actT = 0; p.actTarget = -1; p.lastShot = -1; p.poseAt = m.time; p.slack = 0.5; p.shotTokens = 1; p.shotAt = m.time;
     if (p.kit >= KITS[role].length) p.kit = 0;
     equip(m, p);
     at.push([p.id, s.x, s.z, s.yaw]);
@@ -138,7 +140,12 @@ function near(p: Player, a: Aim, slack = 2.2) { return validAim(a) && Math.hypot
 function fire(m: Match, p: Player, c: Extract<Command, { c: 'shot' }>, rewind: number) {
   const kit = kitOf(m, p), def = WEAPONS[c.w];
   if (!mayFire(m, p) || !def || (c.w !== kit.primary && c.w !== 'pistol') || !near(p, c)) return;
-  if (m.time - p.lastShot < def.interval * 0.6 || !(c.spread >= 0 && c.spread < 0.5)) return;
+  if (!(c.spread >= 0 && c.spread < 0.5)) return;
+  // Shots can arrive in a bunch after a network hiccup, so allow a short burst but never a faster average.
+  const cap = def.interval < 0.25 ? 3 : 1.2;
+  p.shotTokens = Math.min(cap, p.shotTokens + (m.time - p.shotAt) / (def.interval * 0.92)); p.shotAt = m.time;
+  if (p.shotTokens < 1) return;
+  p.shotTokens -= 1;
   p.lastShot = m.time;
   m.events.push({ e: 'shot', id: p.id, w: c.w, x: c.x, y: c.y, z: c.z, yaw: c.yaw, pitch: c.pitch, spread: c.spread, seed: c.seed });
   const damage = new Map<Player, { amount: number; head: boolean }>();
@@ -169,7 +176,8 @@ function fire(m: Match, p: Player, c: Extract<Command, { c: 'shot' }>, rewind: n
 }
 
 function melee(m: Match, p: Player, a: Aim, rewind: number) {
-  if (!mayFire(m, p) || !near(p, a)) return;
+  if (!mayFire(m, p) || !near(p, a) || m.time - p.lastMelee < MELEE.interval * 0.8) return;
+  p.lastMelee = m.time;
   m.events.push({ e: 'melee', id: p.id });
   const d = viewDir(a.yaw, a.pitch), tr = trace(m.world, a.x, a.y, a.z, d.x, d.y, d.z, MELEE.range);
   const wall = tr.soft[0], limit = wall ? wall.t : tr.t;
@@ -362,10 +370,12 @@ export function command(m: Match, id: number, c: Command, rewind = 0) {
     case 'nade': throwGrenade(m, p, c); break;
     case 'breach': breach(m, p, c); break;
     case 'use': use(m, p, c); break;
-    case 'reload': if (p.alive) m.events.push({ e: 'reload', id }); break;
+    case 'reload': if (p.alive && m.time - p.lastReload > 0.5) { p.lastReload = m.time; m.events.push({ e: 'reload', id }); } break;
     case 'kit': {
       const kit = Math.floor(c.kit);
       if (!(kit >= 0 && kit < KITS[roleOf(m, p)].length) || kit === p.kit) break;
+      // A kit is chosen while preparing (or between rounds, for the next one), never mid-fight.
+      if (m.phase === 'action' || m.phase === 'planted') break;
       p.kit = kit;
       if (m.phase === 'prep' && p.alive) equip(m, p);
       m.events.push({ e: 'kit', id, kit });
@@ -373,17 +383,34 @@ export function command(m: Match, id: number, c: Command, rewind = 0) {
     }
   }
 }
-/** A guest's report of where its fighter is. Impossible jumps are refused and corrected. */
+/** A guest's report of where its fighter is. The host accepts it only if the fighter could have walked there:
+ * within the distance a sprint allows since the last accepted report, not while frozen, not inside anything solid,
+ * and not out of the building while defenders are penned in. Otherwise it is refused and the guest is put back. */
 export function report(m: Match, id: number, x: number, z: number, yaw: number, pitch: number, crouch: number, lean: number, flags: number, slot: number) {
   const p = m.players[id];
-  if (!p || !p.alive || ![x, z, yaw, pitch, crouch, lean].every(Number.isFinite)) return;
-  const dt = Math.max(TICK, m.time - p.poseAt), far = Math.hypot(x - p.x, z - p.z);
-  p.yaw = yaw; p.pitch = Math.max(-1.45, Math.min(1.45, pitch));
+  if (!p || !p.alive || ![x, z, yaw, pitch, crouch, lean].every(Number.isFinite) || Math.abs(yaw) > 1e4) return;
+  p.yaw = Math.atan2(Math.sin(yaw), Math.cos(yaw)); p.pitch = Math.max(-1.45, Math.min(1.45, pitch));
   p.crouch = Math.max(0, Math.min(1, crouch)); p.lean = Math.max(-1, Math.min(1, lean));
   p.crouching = !!(flags & 1); p.ads = !!(flags & 2); p.sprint = !!(flags & 4); p.slot = slot === 1 ? 1 : 0;
-  p.poseAt = m.time;
-  if (frozen(m, p) ? far > 0.6 : far > MOVE.sprint * 1.25 * dt + 0.9) { m.events.push({ e: 'fix', id, x: p.x, z: p.z }); return; }
-  p.pace = Math.min(1.6, far / dt / MOVE.walk);
+  // The allowance grows with host time only, so a burst of reports cannot add up to a teleport; it holds about
+  // half a second of sprinting, enough for reports that arrive in a bunch after a network hiccup.
+  const dt = Math.max(0, m.time - p.poseAt), far = Math.hypot(x - p.x, z - p.z);
+  const budget = Math.min(2.5, p.slack + MOVE.sprint * 1.25 * dt), still = frozen(m, p);
+  p.poseAt = m.time; p.slack = budget;
+  const refuse = () => { p.pace = 0; m.events.push({ e: 'fix', id, x: p.x, z: p.z }); };
+  if (still ? far > 0.05 : far > budget) return refuse();
+  // The way there must be open: sample the straight path closely enough that no wall panel fits between samples.
+  const height = bodyHeight(p.crouch), steps = Math.max(1, Math.ceil(far / 0.2)), at = { x: 0, z: 0 };
+  for (let i = 1; i <= steps; i++) {
+    const sx = p.x + (x - p.x) * i / steps, sz = p.z + (z - p.z) * i / steps;
+    at.x = sx; at.z = sz;
+    resolve(m.world, at, height);
+    if (Math.hypot(at.x - sx, at.z - sz) > (i === steps ? 0.06 : 0.2)) return refuse();
+  }
+  const hold = penFor(m, p);
+  if (hold && (x < hold.x0 - 0.05 || x > hold.x1 + 0.05 || z < hold.z0 - 0.05 || z > hold.z1 + 0.05)) return refuse();
+  p.slack = budget - far;
+  p.pace = Math.min(1.6, far / Math.max(dt, TICK) / MOVE.walk);
   p.x = x; p.z = z;
 }
 

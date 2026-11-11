@@ -31,8 +31,9 @@ export interface Player {
   charges: number; grenades: number; reinforcements: number;
   act: ActId; actT: number; actTarget: number;
   kills: number; deaths: number; score: number;
-  /** Host bookkeeping. */
+  /** Host bookkeeping: rate limits, the movement allowance for pose reports, and a seat nobody fills. */
   lastShot: number; actX: number; actZ: number; poseAt: number;
+  shotTokens: number; shotAt: number; lastMelee: number; lastReload: number; slack: number; gone: boolean;
 }
 
 export interface Grenade { id: number; kind: 'frag' | 'impact'; by: number; x: number; y: number; z: number; vx: number; vy: number; vz: number; fuse: number }
@@ -117,6 +118,7 @@ export function newPlayer(id: number, squad: 0 | 1, name: string, bot: boolean, 
     id, squad, name, bot, owner, kit: bot ? id % 3 : 1, alive: false, hp: 100, x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0,
     crouching: false, ads: false, sprint: false, pace: 0, slot: 0, mag: [0, 0], reserve: [0, 0], cool: 0, reload: 0, swap: 0, bloom: 0, adsT: 0, meleeCool: 0, throwCool: 0,
     trigger: false, using: false, charges: 0, grenades: 0, reinforcements: 0, act: ACT.none, actT: 0, actTarget: -1, kills: 0, deaths: 0, score: 0, lastShot: -1, actX: 0, actZ: 0, poseAt: 0,
+    shotTokens: 1, shotAt: 0, lastMelee: -9, lastReload: -9, slack: 0.5, gone: false,
   };
 }
 /** Fresh weapons and gadgets for the fighter's current role and kit. */

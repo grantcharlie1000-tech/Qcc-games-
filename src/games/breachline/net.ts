@@ -87,15 +87,19 @@ export class HostSession implements Session {
     this.squads.set(owner, p.squad ? 0 : 1);
     this.reseat();
   }
-  start() {
-    if (this.m.phase !== 'lobby' && this.m.phase !== 'over') return;
+  /** Starts a match from the lobby or the result screen. False when a squad has nobody in it. */
+  start(): boolean {
+    if (this.m.phase !== 'lobby' && this.m.phase !== 'over') return false;
     if (this.m.phase === 'over') { this.m.phase = 'lobby'; seat(this.m, this.people()); }
-    // Bots need an opponent: with bots off, both squads must have someone.
-    startMatch(this.m);
+    if (!this.m.players.some(p => p.squad === 0) || !this.m.players.some(p => p.squad === 1)) { this.welcomeAll(); return false; }
+    // Bots plan afresh, and guests learn the seats before the round's own events reach them.
+    this.brain = createBrain(this.m);
     this.welcomeAll();
+    startMatch(this.m);
+    return true;
   }
   /** Back to the lobby (the host chose to end the match). */
-  toLobby() { this.m.phase = 'lobby'; this.m.round = 0; this.m.wins = [0, 0]; for (const p of this.m.players) p.alive = false; this.reseat(); }
+  toLobby() { this.m.phase = 'lobby'; this.m.round = 0; this.m.wins = [0, 0]; for (const p of this.m.players) p.alive = false; this.brain = createBrain(this.m); this.reseat(); }
 
   attach(room: RoomLike | null) {
     this.off?.(); this.off = null; this.room = room;
@@ -191,6 +195,7 @@ export class GuestSession implements Session {
   private welcome(w: Welcome) {
     if (!w || !Array.isArray(w.seats) || w.seats.length > MAX_PLAYERS) return;
     const m = this.m, old = this.self >= 0 ? m.players[this.self] : null, sameSeat = !!old && w.you === this.self && w.seats[w.you]?.owner === old.owner;
+    const was = this.ready ? `${m.phase}${m.round}` : '';
     m.cfg = { teamSize: Number(w.cfg?.teamSize) || 1, bots: !!w.cfg?.bots, skill: SKILLS.includes(w.cfg?.skill as SkillId) ? w.cfg.skill : 'regular' };
     m.phase = PHASES[w.phase] ?? 'lobby'; m.t = Number(w.t) || 0; m.round = w.round | 0; m.wins = [w.wins?.[0] | 0, w.wins?.[1] | 0]; m.attackers = w.attackers ? 1 : 0; m.spawn = w.spawn | 0;
     m.winner = (w.winner === 0 || w.winner === 1 ? w.winner : -1); m.roundWinner = (w.roundWinner === 0 || w.roundWinner === 1 ? w.roundWinner : -1); m.reason = (w.reason as Match['reason']) || '';
@@ -208,8 +213,9 @@ export class GuestSession implements Session {
     const changed = this.self !== w.you || !sameSeat;
     this.self = Number.isInteger(w.you) && w.you >= 0 && w.you < m.players.length ? w.you : -1;
     this.ready = true;
-    // Tell the presentation to rebuild: a fresh phase event carries everything it needs.
-    this.out.push({ e: 'phase', phase: m.phase, round: m.round, attackers: m.attackers, wins: [m.wins[0], m.wins[1]], spawn: m.spawn, winner: m.phase === 'over' ? m.winner : m.roundWinner, reason: m.reason });
+    // Tell the presentation when the phase is news (a first welcome, or one that changes it); a roster change
+    // mid-round must not replay the round's banners and sounds.
+    if (was !== `${m.phase}${m.round}`) this.out.push({ e: 'phase', phase: m.phase, round: m.round, attackers: m.attackers, wins: [m.wins[0], m.wins[1]], spawn: m.spawn, winner: m.phase === 'over' ? m.winner : m.roundWinner, reason: m.reason });
     if (changed && this.self >= 0) { const me = m.players[this.self]; this.out.push({ e: 'spawn', at: [[me.id, me.x, me.z, me.yaw]] }); }
   }
   private snapshot(s: Snapshot) {
@@ -258,7 +264,7 @@ export class GuestSession implements Session {
       case 'charge': if (m.world.panels[e.p]) m.charges.push({ id: e.id, by: e.by, panel: e.p, u: e.u, y: e.y, side: e.side, age: 0 }); break;
       case 'chargeOff': m.charges = m.charges.filter(c => c.id !== e.id); break;
       case 'plant': m.device = { site: e.site, x: e.x, z: e.z, by: e.by }; break;
-      case 'kit': { const p = m.players[e.id]; if (p) { p.kit = e.kit; if (m.phase === 'prep') equip(m, p); } break; }
+      case 'kit': { const p = m.players[e.id]; if (p) { p.kit = e.kit; if (m.phase === 'prep' && p.alive) equip(m, p); } break; }
       case 'fix': if (e.id === me && m.players[me]) { m.players[me].x = e.x; m.players[me].z = e.z; m.players[me].vx = m.players[me].vz = 0; } break;
     }
   }
