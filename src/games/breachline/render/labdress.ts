@@ -22,6 +22,7 @@ export function dressRoom(atlas: Atlas, room: Region): DetailBuilder {
   if (room.name === 'server') return dressServer(atlas, room);
   if (room.name === 'lobby') return dressLobby(atlas, room);
   if (room.name === 'office') return dressOffice(atlas, room);
+  if (room.name === 'break') return dressBreak(atlas, room);
   return dressLab(atlas, room);
 }
 
@@ -668,6 +669,85 @@ function dressOffice(atlas: Atlas, room: Region): DetailBuilder {
   for (let i = 0; i < 6; i++) { const x = -2.45 + r() * 1.2, y = 1.2 + r() * 0.65; D.box('kick', x, y, z - 0.0225, x + 0.1 + r() * 0.25, y + 0.008, z - 0.022, at(x, y), n, i < 2 ? [8, 1.5, 1.5] : [2, 2, 4]); }
   D.box('plastic', -6.3, 2.52, z - 0.04, -5.94, 2.88, z, at(-6.12, 2.7), n);
   { const g = new THREE.PlaneGeometry(0.32, 0.32).rotateY(Math.PI).translate(-6.12, 2.7, z - 0.041); D.mesh('clock', g.attributes.position.array, g.attributes.normal.array, g.index!.array, at(-6.12, 2.7), n, [1, 1, 1], g.attributes.uv.array); g.dispose(); }
+  return D;
+}
+
+/** The Break Room: the kitchen run (cabinet doors and a drawer line on its open face, a sink, a kettle, a
+ * microwave and a coffee machine on top, wall cabinets over it), the fridge, chairs round the table with mugs, a
+ * clock, a poster and skirting on the solid walls. */
+function dressBreak(atlas: Atlas, room: Region): DetailBuilder {
+  const D = new DetailBuilder(atlas), up: V3 = [0, 1, 0];
+  ceilingGrid(D, room);
+  const mesh = (g: THREE.BufferGeometry, key: DressKey, on: V3, n: V3, tint?: V3) => { D.mesh(key, g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, n, tint ?? [1, 1, 1], g.attributes.uv?.array); g.dispose(); };
+  for (const b of MAP.boxes) {
+    const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
+    if (!inRoom(room, cx, cz)) continue;
+    if (b.mat === 'counter') {
+      // Kitchen run against the east wall: its open face is the west one.
+      const x = b.x0, n: V3 = [-1, 0, 0], at = (z: number, y: number): V3 => [x - 0.001, y, z], top = b.y1, carcass = top - 0.05;
+      const bays = Math.max(1, Math.round((b.z1 - b.z0) / 0.6)), w = (b.z1 - b.z0) / bays;
+      D.box('kick', x - 0.003, 0.02, b.z0, x, 0.11, b.z1, at(cz, 0.06), n);
+      for (let i = 0; i < bays; i++) {
+        const z0 = b.z0 + i * w + 0.004, z1 = b.z0 + (i + 1) * w - 0.004, zc = (z0 + z1) / 2;
+        D.box('door', x - 0.018, 0.12, z0, x, 0.68, z1, at(zc, 0.4), n, [1.2, 1.2, 1.15]);
+        D.box('door', x - 0.018, 0.69, z0, x, carcass - 0.01, z1, at(zc, 0.8), n, [1.15, 1.15, 1.1]);
+        D.box('handle', x - 0.05, 0.6, zc - 0.07, x - 0.018, 0.612, zc + 0.07, at(zc, 0.6), n);
+        D.box('handle', x - 0.05, (0.69 + carcass) / 2 - 0.006, zc - 0.07, x - 0.018, (0.69 + carcass) / 2 + 0.006, zc + 0.07, at(zc, 0.8), n);
+      }
+      // On the worktop: sink and tap, kettle, microwave, coffee machine.
+      const on: V3 = [cx, top + 0.001, cz];
+      D.box('steel', b.x0 + 0.06, top, 2.1, b.x1 - 0.08, top + 0.006, 2.7, on, up);
+      D.box('kick', b.x0 + 0.1, top + 0.001, 2.14, b.x1 - 0.12, top + 0.007, 2.66, on, up, [2, 2, 2]);
+      mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.25, 8).translate(b.x1 - 0.1, top + 0.125, 2.4), 'chrome', on, up);
+      mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.18, 8).rotateZ(Math.PI / 2).translate(b.x1 - 0.19, top + 0.25, 2.4), 'chrome', on, up);
+      mesh(new THREE.CylinderGeometry(0.075, 0.085, 0.22, 16).translate(cx, top + 0.11, 1.75), 'chassis', on, up, [3.5, 3.5, 3.5]);
+      D.box('chassis', b.x0 + 0.02, top, 3.0, b.x1 - 0.05, top + 0.3, 3.5, on, up, [3, 3, 3]);
+      D.box('screen', b.x0 + 0.015, top + 0.05, 3.04, b.x0 + 0.02, top + 0.26, 3.36, on, up);
+      D.box('chassis', b.x0 + 0.06, top, 3.8, b.x1 - 0.08, top + 0.38, 4.15, on, up, [0.8, 0.8, 0.8]);
+      D.box('amber', b.x0 + 0.055, top + 0.3, 3.95, b.x0 + 0.06, top + 0.32, 4.0, on, up);
+      // Wall cabinets over the run, on the east wall.
+      const wx = room.x1 - 0.15, wn: V3 = [-1, 0, 0], wa = (z: number, y: number): V3 => [wx - 0.001, y, z];
+      for (let i = 0; i < bays; i++) {
+        const z0 = b.z0 + i * w + 0.004, z1 = b.z0 + (i + 1) * w - 0.004, zc = (z0 + z1) / 2;
+        D.box('kick', wx - 0.33, 1.55, z0 - 0.004, wx, 2.25, z1 + 0.004, wa(zc, 1.9), wn, [3, 3, 3]);
+        D.box('door', wx - 0.345, 1.56, z0, wx - 0.33, 2.24, z1, wa(zc, 1.9), wn, [1.2, 1.2, 1.15]);
+        D.box('handle', wx - 0.37, 1.6, zc - 0.006, wx - 0.34, 1.75, zc + 0.006, wa(zc, 1.68), wn);
+      }
+    }
+    if (b.mat === 'steel') {
+      // The fridge: two doors on its west face with long handles, a grille at the foot.
+      const x = b.x0, n: V3 = [-1, 0, 0], at = (z: number, y: number): V3 => [x - 0.001, y, z];
+      D.box('casing', x - 0.015, 0.12, b.z0 + 0.01, x, 1.25, b.z1 - 0.01, at(cz, 0.7), n, [1, 1, 0.98]);
+      D.box('casing', x - 0.015, 1.27, b.z0 + 0.01, x, b.y1 - 0.02, b.z1 - 0.01, at(cz, 1.6), n, [1, 1, 0.98]);
+      D.box('handle', x - 0.05, 0.8, b.z1 - 0.08, x - 0.015, 1.2, b.z1 - 0.06, at(b.z1 - 0.07, 1), n);
+      D.box('handle', x - 0.05, 1.3, b.z1 - 0.08, x - 0.015, 1.6, b.z1 - 0.06, at(b.z1 - 0.07, 1.45), n);
+      D.box('kick', x - 0.01, 0.02, b.z0 + 0.02, x, 0.11, b.z1 - 0.02, at(cz, 0.06), n);
+    }
+    if (b.mat === 'wood' && b.y1 < 0.9 && b.y1 > 0.6) {
+      // Chairs round the table (open and low; not cover), and mugs on it.
+      const top = b.y1, r = seeded(53), on: V3 = [cx, top + 0.001, cz];
+      const seats: [number, number, number][] = [[b.x0 + 0.45, b.z0 - 0.38, 0], [b.x1 - 0.45, b.z0 - 0.42, 0.2], [b.x0 + 0.5, b.z1 + 0.4, Math.PI], [b.x1 - 0.4, b.z1 + 0.45, Math.PI - 0.3]];
+      for (const [sx, sz, yaw] of seats) {
+        const fl: V3 = [sx, 0.001, sz], put = (g: THREE.BufferGeometry, key: DressKey, tint?: V3) => { g.rotateY(yaw + (r() - 0.5) * 0.3); g.translate(sx, 0, sz); mesh(g, key, fl, up, tint); };
+        for (const [lx, lz] of [[-0.19, -0.19], [0.19, -0.19], [-0.19, 0.19], [0.19, 0.19]]) put(new THREE.CylinderGeometry(0.012, 0.012, 0.45, 6).translate(lx, 0.225, lz), 'chrome');
+        put(new THREE.BoxGeometry(0.42, 0.03, 0.42).translate(0, 0.46, 0), 'chassis', [0.9, 0.5, 0.35]);
+        put(new THREE.BoxGeometry(0.42, 0.28, 0.025).translate(0, 0.7, -0.2), 'chassis', [0.9, 0.5, 0.35]);
+        for (const lx of [-0.19, 0.19]) put(new THREE.CylinderGeometry(0.01, 0.01, 0.4, 6).translate(lx, 0.66, -0.2), 'chrome');
+      }
+      for (let i = 0; i < 3; i++) mesh(new THREE.CylinderGeometry(0.04, 0.036, 0.1, 14).translate(b.x0 + 0.3 + r() * (b.x1 - b.x0 - 0.6), top + 0.05, b.z0 + 0.2 + r() * (b.z1 - b.z0 - 0.4)), 'casing', on, up, i === 1 ? [0.3, 0.5, 0.9] : [0.95, 0.95, 0.92]);
+      D.box('paper', b.x0 + 0.6, top, cz - 0.12, b.x0 + 0.9, top + 0.006, cz + 0.12, on, up, [0.6, 0.6, 0.58]);
+    }
+  }
+  // South wall (solid, a window at x 11 to 12.5): skirting, a clock, a poster.
+  const z = room.z1 - 0.15, n: V3 = [0, 0, -1], at = (x: number, y: number): V3 => [x, y, z - 0.001];
+  D.box('trim', room.x0 + 0.12, 0.02, z - 0.016, room.x1 - 0.12, 0.11, z, at(9.5, 0.06), n);
+  D.box('plastic', 9.3, 2.42, z - 0.04, 9.66, 2.78, z, at(9.48, 2.6), n);
+  mesh(new THREE.PlaneGeometry(0.32, 0.32).rotateY(Math.PI).translate(9.48, 2.6, z - 0.041), 'clock', at(9.48, 2.6), n);
+  D.box('handle', 13.2, 1.25, z - 0.012, 13.9, 2.15, z, at(13.55, 1.7), n);
+  mesh(new THREE.PlaneGeometry(0.66, 0.86).rotateY(Math.PI).translate(13.55, 1.7, z - 0.013), 'sign', at(13.55, 1.7), n);
+  // East wall: skirting either side of the kitchen run.
+  const x = room.x1 - 0.15, en: V3 = [-1, 0, 0];
+  D.box('trim', x - 0.016, 0.02, 4.5, x, 0.11, 8.8, [x - 0.001, 0.06, 6.5], en);
   return D;
 }
 

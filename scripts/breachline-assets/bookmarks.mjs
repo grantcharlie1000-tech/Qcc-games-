@@ -33,6 +33,9 @@ export const BOOKMARKS = {
   'lobby-desk': [-10.4, 2.0, 2.9, -0.15],
   // The Office from the north-east corner, and a workstation close.
   office: [-0.6, 1.6, 2.36, -0.12],
+  // The Break Room from the north-west corner, and the kitchen run.
+  'break-room': [8.6, 1.6, -2.4, -0.12],
+  'break-kitchen': [12.3, 2.3, -1.8, -0.22],
   'office-desk': [-3.4, 5.6, -2.25, -0.35],
   // Down the aisle between the two long rack runs, and close on a rack face.
   'server-aisle': [12.6, -6.3, 1.5708, -0.05],

@@ -4,6 +4,12 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: Break Room round 1 done; every room has now had a round.** `rooms/break/round-1/round1.png`: before,
+after, the kitchen run and the table. Baked art region with four warm-white fittings; the kitchen run has cabinet
+doors and drawers, a sink and tap, kettle, microwave and coffee machine, wall cabinets over it; the fridge has doors
+and handles; four chairs and mugs at the table; clock, poster and skirting. Next: a second round on the lowest-scoring
+area (by my reading, the yard's West Lot and North Yard, which are still procedural, then the Garage).
+
 **2026-11-11: Office round 1 done.** `rooms/office/round-1/round1.png`: before, after, a workstation, and closer.
 Baked art region with four neutral fittings; each desk is a workstation (monitor on a stand, keyboard, mouse,
 papers, a mug, a task chair pulled out, a bin); drawer fronts on the filing cabinet; whiteboard with marks, clock and
@@ -155,8 +161,22 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** yard, Server Room, Lobby and Office round 1 done; next the Break Room, then a second
-round on the lowest-scoring area.
+**Where I am (keep current):** round 1 done in every art room (Lab, corridor, Archive, South Yard, Server Room,
+Lobby, Office, Break Room); next a second round on the lowest-scoring area.
+
+## Break Room, round 1 (`rooms/break/round-1/round1.png`, 960 px)
+
+- **Region:** `room('Break Room', 'break')`; fixtures `break` (four warm-white troffers); baked in 3.7 min;
+  bookmarks `break-room` and `break-kitchen`.
+- **Dressing** (`dressBreak`): kitchen run on the east wall with doors, drawer line, handles and kick plate; a sink
+  and tap, kettle, microwave (with its door glass) and coffee machine on the worktop; wall cabinets over it; the
+  steel box is a fridge (two doors, long handles, grille); four chairs (open and low) round the table, mugs and a
+  paper; clock, poster and skirting on the solid walls.
+- **Budget:** 100-149 draw calls, 52-62k triangles.
+- **Still wrong:** the poster reuses the Lab's safety sign; the microwave and kettle are plain blocks; the wall
+  cabinets' handles are too small to read from across the room.
+- Tests: unit 5385 passed; Breachline browser 8 passed (stock warm run expected to fail); online 1 passed.
+
 
 ## Office, round 1 (`rooms/office/round-1/round1.png`, 960 px)
 
