@@ -40,12 +40,12 @@ export function laneHouses(l:Level):readonly LanePlot[]{
  });
  lanePlots.set(l,plots);return plots;
 }
-/** Room above the plot for a pitch that rises behind the walked edge. */
+/** Room above the plot for a stack on a flat roof. Nothing is drawn up behind the walk. */
 const HEAD=80;
 /** Draws one lane building from its cached canvas. `i` is its index in laneHouses. */
 export function drawLaneHouse(c:C,l:Level,i:number,cx:number,cy:number,vw:number,vh:number){
  const b=laneHouses(l)[i];if(!b||!visible(b.x-PAD,b.y-HEAD,b.w+PAD*2,b.h+HEAD,cx,cy,vw,vh))return;
- c.drawImage(sprite(`lane/house/v2/${b.name}/${b.w}/${b.h}`,b.w+PAD*2,b.h+HEAD,k=>{k.translate(PAD,HEAD);b.house.paint(k,{w:b.w,h:b.h,ledges:b.ledges,vents:b.vents});closeEaves(k.canvas,HEAD,PAD,b.ledges.filter(g=>g.h>=20).map(g=>({x:g.x,y:g.y,w:g.w})));}),b.x-PAD,b.y-HEAD);
+ c.drawImage(sprite(`lane/house/v3/${b.name}/${b.w}/${b.h}`,b.w+PAD*2,b.h+HEAD,k=>{k.translate(PAD,HEAD);b.house.paint(k,{w:b.w,h:b.h,ledges:b.ledges,vents:b.vents});closeEaves(k.canvas,HEAD,PAD,b.ledges.filter(g=>g.h>=20).map(g=>({x:g.x,y:g.y,w:g.w})));}),b.x-PAD,b.y-HEAD);
 }
 /** Paints a level-1 landing's own tile; (0,0) is its top-left corner. A roof paints nothing: its house piece draws it. */
 export function laneDeck(c:C,p:Platform):boolean {

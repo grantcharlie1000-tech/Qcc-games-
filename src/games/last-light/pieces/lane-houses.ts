@@ -1,6 +1,6 @@
 import {box,hash,stroke,type C,type Work} from '../quarter-kit';
 import {ASHLAR,BOARD_BROWN,BOARD_GREY,BOARD_PITCH,BOARD_TAR,CLAY,COOL,CURTAINS,FONT,GREY,INK,IRON,IRON_LIT,LEAD,LIME,OCHRE,PALE,PLUM,RED,RUBBLE,RUSTIC,SAND,SLATE_BLUE,SLATE_GREEN,SLATE_PURPLE,SOOT,SQUARED,STONE_SLATE,TILE,TIMBER,WARM,
- archRing,band,barrel,board,coping,door,gutter,hoop,ladder,laps,lintel,pantiles,pipe,pitch,planks,quoins,renderAt,returnFace,ridgeCap,roofBehind,shape,sill,soldiers,stain,step,surround,textW,wallAt,win,type Arch,type Look,type Tri,type Win} from './level-01';
+ archRing,band,barrel,board,coping,door,gutter,hoop,ladder,laps,lintel,pantiles,pipe,pitch,planks,quoins,renderAt,returnFace,roofBehind,shape,sill,soldiers,stain,step,surround,textW,wallAt,win,type Arch,type Look,type Tri,type Win} from './level-01';
 
 /** Bell Lane's buildings that carry more than one landing. Each is named by
  * the first word of its landings' tags (`inn.lower` belongs to `inn`), and is
@@ -43,34 +43,29 @@ const sash=(c:C,x:number,y:number,w:number,h:number,look:Look,o:Partial<Win>={},
 const arched=(c:C,x:number,y:number,w:number,h:number,look:Look,arch:Arch,rise:number,ring:readonly [string,string,string],o:Partial<Win>={},k:Tri=COOL,th=5)=>{archRing(c,x,y,w,arch,rise,th,ring[0],ring[1],ring[2],x*7+y);win(c,x,y,w,h,{look,arch,rise,...o});sill(c,x,y+h,w,k);};
 const cope=(c:C,x:number,y:number,w:number,t:number,k:Tri,s:number)=>at(c,0,y,()=>coping(c,x,w,t,k,s));
 const slope=(c:C,x:number,y:number,w:number,depth:number,tones:readonly string[],s:number,row=6,sw=9,ridge:Tri=PALE,grow=0)=>at(c,x,y,()=>pitch(c,w,depth,tones,s,row,sw,ridge,grow));
-/** A lead flat. The walked edge stays put; the sheets run back above it. */
+/** A lead flat in the wall plane. Sheets above the walk would be a wedge. */
 function leadTop(c:C,x:number,y:number,w:number,t:number,s:number){
- for(let i=0;i<22;i++)box(c,i<2?'#222a30':i%6===0?'#3a444c':'#313b44',x,y-22+i,w,1);
  box(c,LEAD[0],x,y,w,t);box(c,LEAD[1],x,y,w,2);box(c,LEAD[2],x,y+t-1,w,1);
  for(let px=x+8+Math.floor(hash(s,0,1)*8),i=0;px<x+w-5;i++){box(c,'#6b767d',px,y+2,2,t-3);box(c,LEAD[2],px+2,y+2,1,t-3);px+=13+Math.floor(hash(s,i,2)*9);}
 }
-/** A lead-covered pitch seen from the street: the drip is the walked edge, the rolls run back to the ridge. */
-function leadSlope(c:C,x:number,y:number,w:number,depth:number,s:number){
- const shown=Math.max(depth,42);
- c.save();c.translate(0,-(shown-4));
- box(c,LEAD[2],x,y,w,shown);box(c,'#3d474f',x,y+2,w,shown-3);box(c,LEAD[0],x,y,w,1);
- for(let px=x+10+Math.floor(hash(s,0,3)*10),i=0;px<x+w-4;i++){box(c,'#55616a',px,y+2,2,shown-3);box(c,'#2a3239',px+2,y+2,1,shown-3);px+=20+Math.floor(hash(s,i,4)*13);}
- box(c,'#2a3239',x,y+Math.round(shown*.56),w,1);
- c.restore();
+/** A lead drip on the walked edge. The rolls do not run back into the sky. */
+function leadSlope(c:C,x:number,y:number,w:number,_depth:number,s:number){
+ box(c,LEAD[2],x,y,w,5);box(c,LEAD[0],x,y,w,1);
+ for(let px=x+10+Math.floor(hash(s,0,3)*10),i=0;px<x+w-4;i++){box(c,'#55616a',px,y+1,2,3);px+=20+Math.floor(hash(s,i,4)*13);}
 }
-/** Clay tiles. `rise` puts the ridge behind the walked edge instead of hanging the tiles down the wall. */
+/** Clay tiles. `rise` is a tile edge on the walk. Hanging tiles (`rise` false) stay on the wall, as the inn gallery already does. */
 function tiled(c:C,x:number,y:number,w:number,depth:number,s:number,pan=false,rise=false){
- const draw=(d:number)=>{
-  if(pan)pantiles(c,TILE,'#170f0d','#63433a',s,x,y+5,w,d-9);
-  else{box(c,'#170f0d',x,y+5,w,d-9);for(let py=y+5,r=0;py<y+d-4;py+=5,r++)for(let px=x-Math.floor(hash(s,r,62)*7),i=0;px<x+w;px+=7,i++){const a=Math.max(x,px),b=Math.min(x+w,px+7);if(b-a>1)box(c,TILE[Math.floor(hash(s,r,i+3)*4)],a,py,b-a-1,Math.min(4,y+d-4-py));}}
-  if(rise)ridgeCap(c,x,y,w,CLAY,s,'#170f0d');
-  else{box(c,CLAY[0],x,y,w,5);box(c,CLAY[1],x,y,w,2);box(c,'#170f0d',x,y+5,w,1);
-  for(let px=x+7;px<x+w-4;px+=11+Math.floor(hash(s,px,64)*4))box(c,CLAY[2],px,y+2,1,3);}
-  gutter(c,x-2,y+d-4,w+4,s);
- };
- if(!rise){draw(depth);return;}
- const shown=Math.max(depth,42);
- c.save();c.translate(0,-(shown-4));draw(shown);c.restore();
+ if(rise){
+  box(c,TILE[Math.floor(hash(s,1,62)*4)],x,y+1,w,4);
+  box(c,CLAY[1],x,y,w,1);box(c,'#170f0d',x,y+4,w,1);
+  gutter(c,x-2,y,w+4,s);
+  return;
+ }
+ if(pan)pantiles(c,TILE,'#170f0d','#63433a',s,x,y+5,w,depth-9);
+ else{box(c,'#170f0d',x,y+5,w,depth-9);for(let py=y+5,r=0;py<y+depth-4;py+=5,r++)for(let px=x-Math.floor(hash(s,r,62)*7),i=0;px<x+w;px+=7,i++){const a=Math.max(x,px),b=Math.min(x+w,px+7);if(b-a>1)box(c,TILE[Math.floor(hash(s,r,i+3)*4)],a,py,b-a-1,Math.min(4,y+depth-4-py));}}
+ box(c,CLAY[0],x,y,w,5);box(c,CLAY[1],x,y,w,2);box(c,'#170f0d',x,y+5,w,1);
+ for(let px=x+7;px<x+w-4;px+=11+Math.floor(hash(s,px,64)*4))box(c,CLAY[2],px,y+2,1,3);
+ gutter(c,x-2,y+depth-4,w+4,s);
 }
 /** A stone shelf of a cornice on its blocks. */
 function cornice(c:C,x:number,y:number,w:number,k:Tri,block:string,t=8){
@@ -306,7 +301,7 @@ const burnt:Building={
 // ── The market hall ─────────────────────────────────────────────────────────
 const market:Building={paint(c,p){
  const a=part(p,'roof',0),b=part(p,'roof',1),la=part(p,'lantern'),s=7672,w=p.w,h=p.h,top=a.y,eave=top+30,arc=h-112,bay=w/5,stone=WARM;
- // Lead to the ridge either side of the lantern, on a stone cornice.
+ // A lead drip on the walk, on a stone cornice. The sheet does not rise behind it.
  leadSlope(c,0,top,w,30,s);for(const r of [a,b])box(c,LEAD[1],r.x,r.y,r.w,2);
  // The frieze under the lead, the whole width of the hall: the lantern stands on this wall, not on a gap.
  wallAt(c,SAND,s+3,0,top+4,w,eave-top-4);box(c,'#141a21',0,top+4,w,1);
@@ -355,7 +350,9 @@ const inn:Building={above:110,paint(c,p){
  const lo=part(p,'lower'),up=part(p,'upper'),s=8202,w=p.w,h=p.h,xj=up.x-12,coat:Tri=['#45423b','#504c44','#383530'],dim:Tri=['#2b2a27','#33322e','#232220'],frame='#4f4a42';
  /** One range's gallery: the rooms behind it, the roof over it, and the floor it stands on. `y` is the top of its rail. */
  const range=(x0:number,x1:number,y:number,seed:number)=>{
-  tiled(c,x0,y-106,x1-x0,48,seed);
+  // A flat eaves over the top storey. A tile field here read as a pitch.
+  box(c,CLAY[0],x0,y-106,x1-x0,5);box(c,CLAY[1],x0,y-106,x1-x0,1);box(c,'#170f0d',x0,y-102,x1-x0,1);
+  renderAt(c,dim,seed+1,x0,y-101,x1-x0,43);
   renderAt(c,dim,seed+1,x0,y-58,x1-x0,92);
   for(let px=x0+9,i=0;px<x1-4;i++){box(c,'#191613',px,y-58,3,92);px+=17+Math.floor(hash(seed,i,3)*11);}
   box(c,WOOD[0],x0,y-60,x1-x0,5);box(c,WOOD[1],x0,y-60,x1-x0,1);
@@ -370,8 +367,8 @@ const inn:Building={above:110,paint(c,p){
  };
  const dormer=(x:number,base:number,look:Look,seed:number)=>{
   box(c,INK,x-1,base-22,24,22);box(c,coat[0],x,base-22,22,22);box(c,coat[1],x,base-22,1,22);
-  for(let k=0;k<10;k++){const half=2+Math.round(k*1.3);box(c,'#170f0d',x+11-half-1,base-34+k,half*2+2,2);box(c,TILE[(k+seed)%4],x+11-half,base-34+k,half*2,1);}
-  box(c,CLAY[1],x+9,base-35,4,1);win(c,x+5,base-19,12,15,{look,cols:2,rows:2,frame,tint:'#3d2c30',s:seed});box(c,WOOD[1],x+3,base-4,16,2);
+  box(c,'#170f0d',x+1,base-28,20,6);box(c,CLAY[1],x+1,base-28,20,1);
+  win(c,x+5,base-19,12,15,{look,cols:2,rows:2,frame,tint:'#3d2c30',s:seed});box(c,WOOD[1],x+3,base-4,16,2);
  };
  const yl=lo.y,yu=up.y;
  range(0,xj,yl,s);range(xj,w,yu,s+20);

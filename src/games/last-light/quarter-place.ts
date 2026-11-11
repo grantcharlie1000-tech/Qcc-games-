@@ -3,7 +3,7 @@ import type {Run} from './model';
 import {box,enginesArt,fill,hash,lay,masonry,noise,panel,seamless,sprite,stroke,visible,type C,type Courses,type Work} from './quarter-kit';
 import {quarterSet} from './quarter-sets';
 import {drawLaneHouse,housePiece,laneBack,laneBuilds,laneDeck,laneHouses} from './set-lane';
-import {HOUSE_PIECES,door,gutter,laps,renderAt,ridgeCap,slates,win,type Look,type Tri} from './pieces/level-01';
+import {HOUSE_PIECES,door,gutter,laps,renderAt,win,type Look,type Tri} from './pieces/level-01';
 
 /** The Old Quarter is drawn as one built place. Every landing continues into
  * the structure it belongs to: a roof into its house and the street, a tower
@@ -181,7 +181,7 @@ function roofs(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
   // A wide gap shows the house across the yard, a storey back: its own height, walls, openings and roof.
   // A crack between two walls stays a dark slot.
   const h=street-a.top;
-  if(a.w>=36){c.drawImage(sprite(`yard/rear/${a.x}/${a.w}/${h}`,a.w,h+REAR_ROOF,k=>rearHouse(k,a.w,h+REAR_ROOF,a.x,a.n)),a.x,a.top-REAR_ROOF);continue;}
+  if(a.w>=36){c.drawImage(sprite(`yard/rear/v2/${a.x}/${a.w}/${h}`,a.w,h+REAR_ROOF,k=>rearHouse(k,a.w,h+REAR_ROOF,a.x,a.n)),a.x,a.top-REAR_ROOF);continue;}
   c.drawImage(panel(`alley/v3/${a.x}`,a.w,h,ALLEY,a.x,k=>box(k,'#0b0f14',0,0,a.w,4)),a.x,a.top);
  }
  if(l.id===0){
@@ -212,61 +212,26 @@ const REAR_WORKS:readonly Work[]=[
  {course:9,short:7,long:21,mortar:'#121510',stones:['#2c2e27','#30322a','#34362e','#292b24'],lip:'#3b3d34',shade:'#25271f',chip:'#44463c'},
 ];
 const REAR_RENDER:Tri=['#2f363c','#363d44','#252b31'],REAR_BOARDS=['#1c1f22','#202326','#24272a','#191b1e'];
-const REAR_SLATES=[['#1f2731','#232c36','#27303a','#1c232c'],['#262330','#2a2734','#2e2b38','#221f2b'],['#21282a','#252c2e','#293032','#1e2527']];
-const REAR_RIDGE:Tri=['#3a434b','#4a545c','#20272e'],REAR_FRAME='#2e363d';
+const REAR_FRAME='#2e363d';
 const REAR_DOORS:readonly Tri[]=[['#0e1012','#22262a','#2e3338'],['#120e0c','#2a2019','#3a2d22'],['#0d1110','#1d2622','#28332e']];
-/** The back of the house across a yard, painted once into its own canvas. (0,REAR_ROOF) is the plot's top;
- * the eave sits up to a few courses either side of it and the roof rises from there. Everything is drawn
- * from the gap's own seed, so no two yards show the same house. */
+/** The back of the house across a yard, painted once into its own canvas. (0,REAR_ROOF) is the plot's top.
+ * The eave is a flat coping. A slope above it would be a wedge in this side view. */
 function rearHouse(k:C,w:number,h:number,s:number,n:number){
  const v=(n:number)=>hash(s,n,77);
- // The roof and the walls step on from one yard to the next, so two neighbours never share either.
- const eave=REAR_ROOF+Math.round(v(1)*30)-6,roof=(n*2+Math.floor(v(2)*2))%5,face=(n*3+Math.floor(v(3)*2))%6;
- const tones=REAR_SLATES[Math.floor(v(4)*3)];
+ const eave=REAR_ROOF+Math.round(v(1)*30)-6,face=(n*3+Math.floor(v(3)*2))%6;
  // The walls: brick, stone, rubble, render or tarred boards, each its own.
  if(face<4){k.save();k.translate(0,eave);lay(k,w,h-eave,REAR_WORKS[face],s);k.restore();}
  else if(face===4)renderAt(k,REAR_RENDER,s,0,eave,w,h-eave);
  else laps(k,REAR_BOARDS,'#0f1114','#2a2e33',s,0,eave,w,h-eave,6);
- const wallPaint=(y0:number,y1:number)=>{if(face<4){k.save();k.translate(0,y0);lay(k,w,y1-y0,REAR_WORKS[face],s+3);k.restore();}else if(face===4)box(k,REAR_RENDER[0],0,y0,w,y1-y0);else laps(k,REAR_BOARDS,'#0f1114','#2a2e33',s+3,0,y0,w,y1-y0,6);};
- // A stack, where the house has one, stands on its own roof.
+ // A stack, where the house has one, stands on the coping.
  const stack=(x:number,base:number,tall:number,wide:number)=>{
   box(k,'#120f11',x-1,base-tall-1,wide+2,tall+1);k.save();k.translate(x,base-tall);lay(k,wide,tall,REAR_WORKS[1],s+9);k.restore();
   box(k,'#2a2c30',x-2,base-tall-3,wide+4,3);box(k,'#3a3e42',x-2,base-tall-3,wide+4,1);
   for(let i=0,n=Math.max(1,Math.floor(wide/6));i<n;i++){const px=x+1+i*6;box(k,'#3a2a24',px,base-tall-8,4,5);box(k,'#4a3a32',px,base-tall-8,1,5);}
  };
  const sx=Math.round(6+v(5)*(w-24)),hasStack=v(6)>.35;
- if(roof===0){
-  // A slated slope, the long side to the yard, its ridge in its own shadow.
-  const rh=14+Math.round(v(7)*12);if(hasStack)stack(sx,eave-rh+6,12+Math.round(v(8)*10),10+Math.round(v(9)*6));
-  slates(k,tones,'#0f141a',s,0,eave-rh+5,w,rh-5,5,8);ridgeCap(k,0,eave-rh,w,REAR_RIDGE,s,'#0f141a');gutter(k,-2,eave-4,w+4,s);
- }else if(roof===1){
-  // The gable end to the yard: the wall goes up to the apex, coped in dark stone, a small light in it.
-  const cx=Math.round(w*(.3+v(7)*.4)),rise=Math.min(REAR_ROOF-6,12+Math.round(v(8)*18)),run=Math.max(cx,w-cx)+6;
-  wallPaint(eave-rise,eave);
-  k.save();k.globalCompositeOperation='destination-out';k.beginPath();k.moveTo(-1,eave-rise-1);k.lineTo(cx-run,eave);k.lineTo(cx,eave-rise);k.lineTo(cx+run,eave);k.lineTo(w+1,eave-rise-1);k.closePath();k.fill();
-  // Slope from the apex down each way, cleared above it.
-  k.beginPath();k.moveTo(-1,-1);k.lineTo(w+1,-1);k.lineTo(w+1,eave-1);for(let x=w;x>=0;x--){const y=eave-rise+Math.round(Math.abs(x-cx)*rise/run);k.lineTo(x,y);}k.lineTo(-1,eave);k.closePath();k.fill();k.restore();
-  for(let x=0;x<w;x++){const y=eave-rise+Math.round(Math.abs(x-cx)*rise/run);box(k,'#141a21',x,y-1,1,4);box(k,REAR_RIDGE[0],x,y-1,1,1);}
-  if(hasStack)stack(cx-5,eave-rise+2,10+Math.round(v(9)*8),10);
-  if(rise>18){const lw=8,ly=eave-Math.round(rise*.55);win(k,cx-lw/2,ly,lw,10,{look:v(10)>.8?'dim':'dark',cols:1,rows:2,frame:REAR_FRAME,s});}
- }else if(roof===2){
-  // A parapet with a dark coping; the slates behind it only just show.
-  const up=8+Math.round(v(7)*6);if(hasStack)stack(sx,eave-up-4,14+Math.round(v(8)*10),12+Math.round(v(9)*8));
-  slates(k,tones,'#0f141a',s,2,eave-up-10,w-4,8,4,8);box(k,'#10151a',0,eave-up-10,w,1);
-  wallPaint(eave-up,eave);box(k,'#141a21',-1,eave-up-3,w+2,4);box(k,REAR_RIDGE[0],-1,eave-up-3,w+2,1);
- }else if(roof===3){
-  // A catslide falling one way across the yard, its verge on the slope.
-  const left=v(7)>.5,rise=10+Math.round(v(8)*18),y=(x:number)=>eave-Math.round((left?w-x:x)*rise/w);
-  if(hasStack)stack(sx,y(sx)+6,10+Math.round(v(9)*10),10);
-  for(let x=0;x<w;x++){const t=y(x);slates(k,tones,'#0f141a',s+x,x,t+3,1,eave-t-3,5,1);box(k,'#141a21',x,t,1,3);box(k,REAR_RIDGE[0],x,t,1,1);}
-  gutter(k,-2,eave-4,w+4,s);
- }else{
-  // A mansard: a steep slated storey with a dormer, under a dark lead flat.
-  const rh=18+Math.round(v(7)*6),dx=Math.round(w*(.25+v(8)*.5))-8;if(hasStack)stack(sx,eave-rh+2,12+Math.round(v(9)*8),12);
-  slates(k,tones,'#0f141a',s,0,eave-rh+3,w,rh-3,4,7);box(k,'#141a21',0,eave-rh,w,3);box(k,REAR_RIDGE[0],0,eave-rh,w,1);
-  if(w>=48){box(k,'#141a21',dx-2,eave-rh-4,20,rh);box(k,'#262d33',dx-1,eave-rh-3,18,2);win(k,dx+2,eave-rh+1,12,rh-6,{look:v(10)>.75?'drawn':'dark',cols:2,rows:1,frame:REAR_FRAME,s});}
-  gutter(k,-2,eave-4,w+4,s);
- }
+ gutter(k,-2,eave-4,w+4,s);
+ if(hasStack)stack(sx,eave-4,12+Math.round(v(8)*8),8+Math.round(v(9)*6));
  // Openings: each house its own storey height, light size and spacing; what is in each light is its own.
  const storey=42+Math.round(v(11)*18),lw=9+Math.round(v(12)*7),lh=14+Math.round(v(13)*10),span=lw+14+Math.round(v(14)*16);
  const cols=Math.max(1,Math.floor((w-12)/span)),x0=Math.round((w-(cols-1)*span-lw)/2+(v(15)-.5)*6),lintel=Math.floor(v(16)*3);
@@ -289,7 +254,7 @@ function rearHouse(k:C,w:number,h:number,s:number,n:number){
 function nellsWindow(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
  const roof=l.platforms.find(p=>p.tag==='nell')!,x=Math.round(roof.x+roof.w*.55),y=roof.y;if(!visible(x-6,y-52,48,52,cx,cy,vw,vh))return;
  box(c,'#10161d',x-4,y-38,44,38);box(c,'#3b2e30',x-2,y-36,40,36);
- for(let k=0;k<12;k++){box(c,'#10161d',x-6+k*2,y-40-k,48-k*4,2);box(c,'#4a3b38',x-5+k*2,y-40-k,46-k*4,1);}
+ box(c,'#10161d',x-6,y-44,52,8);box(c,'#4a3b38',x-5,y-43,50,2);
  box(c,'#0d1218',x+6,y-30,24,26);box(c,'#f0c47a',x+8,y-28,20,22);box(c,'#fff0c4',x+12,y-24,8,14);
  box(c,'#2a2019',x+17,y-28,2,22);box(c,'#2a2019',x+8,y-18,20,2);
  // Nell at the glass, and the casement swung out.
