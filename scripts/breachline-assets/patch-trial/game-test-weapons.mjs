@@ -27,6 +27,8 @@ async function run(patch) {
   await page.waitForFunction(() => { const s = window.__breachlineTest?.state(); return s && s.players.length > 0; }, undefined, { timeout: 60000 });
   await page.waitForFunction(() => window.__breachlineTest.stats().art === 'env', undefined, { timeout: 180000, polling: 500 }).catch(() => console.log('art did not reach env'));
   await page.waitForTimeout(3000);
+  const phase = await page.evaluate(() => window.__breachlineTest?.state()?.phase);
+  if (!phase || phase === 'lobby') { console.log('START FAILED', phase); await browser.close(); return false; }
   await page.addStyleTag({ content: '.bl-toast, .bl-banner, .bl-prompt { visibility: hidden !important; }' });
   const shot = async name => { await page.waitForTimeout(600); await writeFile(path.join(outDir, `${tag}-${name}.png`), await page.locator('canvas').first().screenshot()); console.log(tag, name); };
   for (const [place, [x, z, yaw, pitch]] of Object.entries(SPOTS)) {
@@ -44,6 +46,6 @@ async function run(patch) {
   await page.evaluate(() => { const h = window.__breachlineTest; h.hold({}, 0.05, { slot: 1 }); h.hold({}, 1.0); h.draw(); });
   await shot('lab-pistol');
   await browser.close();
+  return true;
 }
-if (process.env.ONLY !== 'patch') await run(false);
-await run(true);
+for (const patch of process.env.ONLY === 'patch' ? [true] : [false, true]) for (let t = 0; t < 3; t++) if (await run(patch)) break;
