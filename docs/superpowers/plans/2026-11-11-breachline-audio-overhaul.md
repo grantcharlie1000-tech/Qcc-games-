@@ -153,7 +153,9 @@ Each gate: tests green, a commit and push, the status file updated.
 - **Owned:** `src/games/breachline/audio.ts`, new files under `src/games/breachline/audio/`, `reloads.ts` (shared,
   see section 4), `tests/games/breachline/audio*.{test,spec}.ts`, `docs/evidence/breachline/audio/`.
 - **`index.ts`:** only the lines that call `sfx.*` (in `onEvents`, `onPhase`, `ambient`) and, if needed, one line
-  in the menu telling the player that sound is off and where to turn it on. Another session is changing `index.ts`
+  in the menu telling the player that sound is off and where to turn it on. Also the `SURFACES` table and `surfaceAt` (they
+  fold the nine floor materials into five sound surfaces, and footsteps per floor need the material itself; found in
+  phase 0). Another session is changing `index.ts`
   for loading and graphics tiers at the same time: keep edits small, pull with rebase before every push.
 - **Off limits:** the simulation, netcode, bots, map and rules (`sim.ts`, `state.ts`, `net.ts`, `bots.ts`,
   `nav.ts`, `world.ts`, `map.ts`, `config.ts`), and everything the visual session owns (`scene.ts`,
