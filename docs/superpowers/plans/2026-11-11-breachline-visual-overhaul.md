@@ -422,6 +422,30 @@ materials to other rooms, in this order:
 Gate for the slice: rows A–D at 7 or better in the Lab bookmarks, with the budget numbers measured on those frames.
 Then the same standard rolls out room by room (phases 2–4 as written). Phases 6 and 7 belong to the hero session.
 
+## Fighters split out, added 2026-11-11
+
+The owner asked again for better gun and people models and textures. After its first round the hero session had one
+weapon in the game and had not started the fighters, so **fighters (section 4.7, row F) move to their own Opus 5.5
+session**, and the hero session keeps weapons, hands, the weapon in hand and reloads (section 4.6, row E).
+
+| | Weapons session (was "hero") | Fighters session |
+| --- | --- | --- |
+| Owns | `models.ts`, `src/games/breachline/render/hero/`, `tests/games/breachline/hero*`, `docs/evidence/breachline/hero/` | `src/games/breachline/render/fighters/`, `tests/games/breachline/fighters*`, `docs/evidence/breachline/fighters/` |
+| Gate | Row E ≥ 8 | Row F ≥ 7, judged in motion |
+
+Contract between them:
+
+- **One-line seam.** `createFighters` in `render/hero/index.ts` becomes a re-export of `render/fighters/index.ts`.
+  The fighters session makes that single edit in its first commit; nothing else in `render/hero/` is edited by it.
+- **Toolkit.** The fighters session may import the hero toolkit (`geom.ts`, `sdf.ts`, `material.ts`, `rig.ts`,
+  `hands.ts`) but not change it; anything it needs beyond that it writes in its own directory.
+- **Weapons in fighters' hands.** The weapons session exports a low-detail world model per weapon with grip and
+  support-hand sockets (`worldWeapon(id)` from `render/hero/index.ts`, about 1.5k triangles). Until it exists the
+  fighters session uses a stand-in with the same sockets.
+- **Truth comes from the simulation.** Hit volumes (`rayBody` in `world.ts`), eye height, crouch and lean are fixed;
+  the body must fill them: a head where the head sphere is, a torso where the cylinder is.
+- Lighting arrives through `HeroLighting`, as for weapons. Budgets as in the hero section above.
+
 ## Working notes for whoever carries this out
 
 - Fresh checkout: `npm ci`. Type-check with `npx tsc --noEmit`; unit tests `npx vitest run tests/games/breachline`
