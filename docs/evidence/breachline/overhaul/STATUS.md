@@ -4,6 +4,10 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: yard step 4 (readability) done.** Both squads at the South Yard spawn against the perimeter
+(`rooms/yard/round-1/step4.png`, two halves from one pose). The blue squad vanished into the dark wall; the wall is now
+pale precast and the bake's sky is brighter, and both read. Next: step 3, dressing.
+
 **2026-11-11 ~15:10 UTC: Archive round 2 started, Patch boxes tried and backed out (nothing shipped).**
 - **Pipeline (kept, committed):**
   - `fetch.mjs --add-patch ID` takes a Patch model's `web` GLB over HTTPS. It accepts only CC0 or CC-BY and nothing
@@ -121,8 +125,24 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** yard steps 1-2 done (sun and sky in the bake, the region, ground sets, bays, kerbs,
-drains); next step 4, readability, then step 3, dressing.
+**Where I am (keep current):** yard steps 1, 2 and 4 done (sun and sky in the bake, ground sets, bays, kerbs,
+drains, readability against the perimeter); next step 3, dressing.
+
+## The yard, step 4: readability (`rooms/yard/round-1/step4.png`, 960 px)
+
+- **Check:** a full squad of Patch soldiers at the South Yard spawn, about 7 m away, against the perimeter wall;
+  left squad 0 (Azure, blue-grey camouflage), right squad 1 (tan). New bookmarks `yard-squad-0` and `yard-squad-1`
+  (seed 2 puts each squad's attack there, in rounds 2 and 4). The squads never share the yard at prep and the
+  bots don't bring defenders out in the first minute, so the frame is two halves from the same pose, not one shot.
+- **Found:** the perimeter (`concrete`, a floor texture on a wall) was a dark mottled grey at about the same value
+  as squad 0's camouflage, so the blue squad dissolved into it; the tan squad read.
+- **Fixed:** `concrete` is now pale precast (tint 1.55, 3 m tile; the baker takes the albedo from it, so bounce
+  rises too), and the bake's sky is stronger (`BAKE_SKY` default 1.9 -> 3.2) so walls in the sun's shadow are not
+  black. Both squads now read as dark and mid figures on a light wall.
+- **Still wrong (for step 3):** the wall texture is a noisy floor scan with no panel joints or coping, and it ends
+  in a hard line at the sky; the sun disc sits in the south-facing view. Tan camouflage on a brownish mottle is
+  readable but weaker than the blue on it.
+- Tests: unit 5385 passed; Breachline browser 8 passed (the stock warm run is the expected failure); online 1 passed.
 
 ## The yard, steps 1-2 (`rooms/yard/round-1/step2.png`, 960 px)
 

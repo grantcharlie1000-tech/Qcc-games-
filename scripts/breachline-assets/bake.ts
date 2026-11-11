@@ -48,7 +48,7 @@ const LAMP_Y = FIXTURE_Y;
 /** Outdoors: the low evening sun the picture already uses (shadowed, so indoors only what comes through an opening),
  * and the sky, seen by every bounce and probe ray that escapes upward. Strengths are in lightmap units (a lit room
  * averages about 0.5). */
-const SUN_POWER = Number(process.env.BAKE_SUN ?? 1.6), SKY_POWER = Number(process.env.BAKE_SKY ?? 1.9);
+const SUN_POWER = Number(process.env.BAKE_SUN ?? 1.6), SKY_POWER = Number(process.env.BAKE_SKY ?? 3.2);
 const SUN_DIR: V3 = [SUN.x, SUN.y, SUN.z];
 const skyAt = (d: V3): V3 => { const k = SKY_POWER * (0.55 + 0.45 * Math.max(0, d[1])); return [SKY[0] * k, SKY[1] * k, SKY[2] * k]; };
 /** Per-region lightmap density: open ground at half the rooms' resolution. */

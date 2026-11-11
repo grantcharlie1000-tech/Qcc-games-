@@ -31,6 +31,10 @@ export const BOOKMARKS = {
   'south-yard': [3, 19.5, 0, -0.02],
   // The south yard's painted bays and a grass verge, looking south.
   'yard-bays': [3.5, 13.2, 2.75, -0.22],
+  // Readability: a full squad lined up at the South Yard spawn against the perimeter, seen from near the building
+  // (about 7 m), once per squad (seed 2 puts squad 0's attack there in round 2 and squad 1's in round 4).
+  'yard-squad-0': [2.5, 12.6, 3.1416, -0.02],
+  'yard-squad-1': [2.5, 12.6, 3.1416, -0.02],
   'west-lot': [-25.5, 0.5, -1.5708, -0.02],
   // Destruction views (rendered after the damage setup below): the charge's breach from the corridor and from the
   // Lab, and the rifle-chewed wall west of it.
@@ -84,7 +88,7 @@ if (art !== 'off') await page.waitForFunction(() => window.__breachlineTest.stat
 if (art !== 'off') await page.waitForFunction(t => { const a = window.__breachlineTest.stats().art; return t === 'low' ? a !== 'none' : a === 'env'; }, tier, { timeout: 120000, polling: 500 });
 await page.waitForTimeout(art === 'off' ? 500 : 3000);
 // Transient banners and prompts are hidden so rounds compare like for like; the rest of the HUD stays.
-await page.addStyleTag({ content: '.bl-toast, .bl-banner, .bl-prompt { visibility: hidden !important; }' });
+await page.addStyleTag({ content: '.bl-toast, .bl-banner, .bl-prompt, .bl-prep { visibility: hidden !important; }' });
 await mkdir(out, { recursive: true });
 let damaged = false;
 for (const [name, [x, z, yaw, pitch]] of Object.entries(BOOKMARKS)) {
@@ -92,6 +96,10 @@ for (const [name, [x, z, yaw, pitch]] of Object.entries(BOOKMARKS)) {
   if (name === 'charge') await page.evaluate(PLANT);
   // The frag's fuse is 2.6 s: throw, then step just past it (effects age only with drawn frames, FXDRAWS of them).
   if (name === 'frag') await page.evaluate(n => { const h = window.__breachlineTest; h.place(1.2, -2.6, 0.75, -0.45); h.advance(0.1); h.hold({}, 0.1, { grenade: true }); h.advance(2.65); for (let i = 0; i < n; i++) h.draw(); }, Number(process.env.FXDRAWS ?? 0));
+  if (name.startsWith('yard-squad-')) await page.evaluate(r => { const h = window.__breachlineTest;
+    if (r === 2 || h.state().round > r) { h.start({ seed: 2, teamSize: 5, bots: true }); h.freeze(true); h.advance(0.2); h.still(); }
+    for (let i = 0; i < 20 && !(h.state().round === r && h.state().phase === 'prep'); i++) { h.skip(999); h.advance(0.3); }
+    h.advance(1); }, name.endsWith('0') ? 2 : 4);
   if (name === 'uplink') await page.evaluate(() => { const h = window.__breachlineTest; h.place(-1, -4, 0, 0); h.hold({ use: true }, 5.3); h.advance(8); });
   if (name === 'uplink-done') await page.evaluate(() => { const h = window.__breachlineTest; h.skip(31); h.advance(0.8); });
   if (name === 'reinforced-shot') await page.evaluate(() => { const h = window.__breachlineTest; h.place(1.4, -1.2, 3.1416, 0.02); h.advance(0.1); h.hold({ fire: true, mx: 0.6 }, 0.8); h.advance(0.3); for (let i = 0; i < 8; i++) h.draw(); });
