@@ -171,7 +171,7 @@ let gloveCache: { geo: THREE.BufferGeometry; tags: Uint8Array } | null = null;
 /** Builds both arms as one skinned geometry: bones 0..17 the right arm, 18..35 the left. */
 export function armsGeometry(look: ArmsLook): THREE.BufferGeometry {
   const right = new Builder(0);
-  if (!gloveCache) gloveCache = meshField(handField([0, 0, -(UPPER + FORE)]), 0.0032, armNeighbours);
+  if (!gloveCache) gloveCache = meshField(handField([0, 0, -(UPPER + FORE)]), 0.0038, armNeighbours);
   const full = gloveCache.geo.clone(), tags = gloveCache.tags;
   const tagAttr = new Float32Array(tags.length), N = full.getAttribute('normal');
   for (let i = 0; i < tags.length; i++) {

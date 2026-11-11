@@ -56,7 +56,9 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   flash.visible = false; flash.renderOrder = 5;
   const rigs = new Map<number, FpRig>();
   let rig: FpRig | null = null, ready = false;
-  heroReady.then(() => { ready = true; });
+  // Build the arms and the first weapon while the menu is up, not on the first frame of a match.
+  let disposed = false;
+  heroReady.then(() => { ready = true; setTimeout(() => { if (!disposed && !rigs.size) rigFor(0); }, 300); });
   const rigFor = (squad: 0 | 1) => {
     let r = rigs.get(squad);
     if (!r) { r = createFpRig(DEFAULT_LOOK(squad, Number(`0x${SQUADS[squad].color.slice(1)}`))); rigs.set(squad, r); }
@@ -178,6 +180,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
     },
     resize(aspect: number) { camera.aspect = aspect; camera.updateProjectionMatrix(); },
     dispose() {
+      disposed = true;
       for (const r of rigs.values()) r.dispose();
       flashTex.dispose(); (flash.material as THREE.Material).dispose(); ownEnv?.dispose();
     },

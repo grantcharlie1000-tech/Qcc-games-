@@ -66,9 +66,9 @@ export interface Field {
 }
 
 /** Evaluates the field. `exclude` is a scratch buffer of per-group distances. */
-export function evalField(f: Field, x: number, y: number, z: number, band: number, gd: Float64Array): number {
+export function evalField(f: Field, x: number, y: number, z: number, band: number, gd: Float64Array, prims: readonly Prim[] = f.prims): number {
   gd.fill(1e9);
-  for (const p of f.prims) {
+  for (const p of prims) {
     const dx = x - p.c[0], dy = y - p.c[1], dz = z - p.c[2];
     if (Math.sqrt(dx * dx + dy * dy + dz * dz) - p.cr > band + f.groups[p.group].k) continue;
     const d = primDist(p, x, y, z);
@@ -100,7 +100,14 @@ export function meshField(f: Field, h: number, neighbours: (bone: number) => rea
   const gd = new Float64Array(f.groups.length), band = h * 1.8;
   const val = new Float32Array(nx * ny * nz);
   const at = (i: number, j: number, k: number) => (k * ny + j) * nx + i;
-  for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) val[at(i, j, k)] = evalField(f, lo[0] + i * h, lo[1] + j * h, lo[2] + k * h, band, gd);
+  for (let k = 0; k < nz; k++) {
+    // Primitives that can matter in this slab of the grid.
+    const z = lo[2] + k * h, slab = f.prims.filter(p => Math.abs(z - p.c[2]) - p.cr < band + f.groups[p.group].k);
+    for (let j = 0; j < ny; j++) {
+      const y = lo[1] + j * h, row = slab.filter(p => Math.abs(y - p.c[1]) - p.cr < band + f.groups[p.group].k);
+      for (let i = 0; i < nx; i++) val[at(i, j, k)] = row.length ? evalField(f, lo[0] + i * h, y, z, band, gd, row) : 1e9;
+    }
+  }
   // One vertex per cell that straddles the surface.
   const vid = new Int32Array((nx - 1) * (ny - 1) * (nz - 1)).fill(-1);
   const cat = (i: number, j: number, k: number) => (k * (ny - 1) + j) * (nx - 1) + i;
@@ -144,15 +151,20 @@ export function meshField(f: Field, h: number, neighbours: (bone: number) => rea
   }
   // Project each vertex onto the surface (two Newton steps) and take normals from the field gradient.
   const nv = pos.length / 3, nor = new Float32Array(nv * 3), e = h * 0.25;
-  const F = (x: number, y: number, z: number) => evalField(f, x, y, z, band, gd);
+  // Each vertex only ever looks at the primitives near it (projection and smoothing move it less than a cell).
+  let near: Prim[] = f.prims;
+  const F = (x: number, y: number, z: number) => evalField(f, x, y, z, band, gd, near);
+  const nearOf = (x: number, y: number, z: number) => f.prims.filter(p => Math.hypot(x - p.c[0], y - p.c[1], z - p.c[2]) - p.cr < band + h * 3 + f.groups[p.group].k);
+  const nearList: Prim[][] = new Array(nv);
   for (let v = 0; v < nv; v++) {
     let x = pos[v * 3], y = pos[v * 3 + 1], z = pos[v * 3 + 2];
+    near = nearList[v] = nearOf(x, y, z);
     let gx = 0, gy = 0, gz = 0;
-    for (let it = 0; it < 3; it++) {
+    for (let it = 0; it < 2; it++) {
       const d = F(x, y, z);
       gx = F(x + e, y, z) - F(x - e, y, z); gy = F(x, y + e, z) - F(x, y - e, z); gz = F(x, y, z + e) - F(x, y, z - e);
       const g2 = (gx * gx + gy * gy + gz * gz) / (4 * e * e);
-      if (it < 2 && g2 > 1e-8) { const s = d / g2 / (2 * e); x -= gx * s; y -= gy * s; z -= gz * s; }
+      if (g2 > 1e-8) { const s = d / g2 / (2 * e); x -= gx * s; y -= gy * s; z -= gz * s; }
     }
     const gl = Math.hypot(gx, gy, gz) || 1;
     pos[v * 3] = x; pos[v * 3 + 1] = y; pos[v * 3 + 2] = z;
@@ -172,6 +184,7 @@ export function meshField(f: Field, h: number, neighbours: (bone: number) => rea
       for (let i = 0; i < pos.length; i++) pos[i] = tmpP[i];
     }
     for (let v = 0; v < nv; v++) {
+      near = nearList[v];
       const x = pos[v * 3], y = pos[v * 3 + 1], z = pos[v * 3 + 2], d = F(x, y, z);
       const gx = F(x + e, y, z) - F(x - e, y, z), gy = F(x, y + e, z) - F(x, y - e, z), gz = F(x, y, z + e) - F(x, y, z - e), gl = Math.hypot(gx, gy, gz) || 1;
       // Pull halfway back to the surface (keeps the smoothing, loses no volume) and refresh the normal.
