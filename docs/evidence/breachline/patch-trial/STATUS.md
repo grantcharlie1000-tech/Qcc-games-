@@ -463,3 +463,40 @@ Proof: `job3-3-5-hips-distance.jpg` (script `job3-distance.mjs`).
 - **3.5 Distance:** at 2 m the Patch figure, with its helmet and goggles (A) or headset (B), is clearly more real than
   our rifleman. At 8 m the two squads separate by silhouette as well as colour (helmet against bare head). At 20 m
   (46 px) both read as soldiers and colour does the work; the dark squad A is quite dark against a grey backdrop.
+
+## 3.6 In the game behind a switch — ready (`src/games/breachline/render/patchfighters/index.ts`)
+
+`createPatchFighters(scene, lighting)` returns the same `FightersWithEvents` as `createFighters`. It does not copy
+the stock fighters: it imports their skeleton (`makeBones`, `SCALE`), `Animator`, world weapons (`weaponFor`),
+`fighterMaterial` (for the weapon), and `LOD_DIST` / `LOD0_MAX`. Nothing in `render/fighters/` or `scene.ts` was
+edited.
+- **Assets** through `ArtLoader`: `patch/tactical/body-skinned.glb` (levels 8,000 / 3,200 / 1,200 triangles,
+  matching the stock 7.9k / 3.7k / 1.4k), the shared texture set (diff 2048, nor/arm/mask 1024: one set for both
+  squads, recoloured in the shader), and `patch/headgear/headgear.glb` (three levels; squad 0: helmet and goggles,
+  1,845 triangles near; squad 1: headset, 516). The tactical folder is now 3.1 MB (`nor-2048` dropped); with the
+  headgear, 3.4 MB in all, against the stock fighters' 4.4 MB for two squads.
+- **Lighting** as the stock baked material: the reflection probe for specular only, the light probe as diffuse
+  irradiance (`uProbe`), the same gains. One deliberate difference: the body takes the full probe, not the stock
+  baked sets' 0.42. Tried at 0.42 in the game, the figures read as silhouettes outdoors.
+- **`warm()`** loads everything, compiles every program (both squads' bodies, opaque and transparent headgear, the
+  weapon, with and without a reflection probe) and uploads the shared textures. Fighters and their meshes are made
+  when a player first appears, as the stock module does, from geometry and textures that are already uploaded.
+  If any asset fails to load, it hands over to `createFighters`, so the switch can never leave a match without
+  fighters.
+- **Checked in the game** (`game-test.mjs`): it serves `scene.ts` with the switch below injected as the page loads
+  it, so the file on disk stays untouched; seed 7, bots, high tier. `job3-6-in-game.jpg` shows the same spots with
+  stock and Patch fighters, both squads, at 2 and 8 m. No errors in the console. The renderer's triangle count is
+  about 10–15k higher with Patch fighters in view (headgear, hip fill and hands, also drawn into the shadow map);
+  draw calls +7 to +13. `npx tsc --noEmit` passes.
+- Harness note: the app sometimes navigates from `#/game/breachline` to `#/collection/28` partway through a long
+  scripted run (stock and Patch alike), so the driver shoots only angles with a clear sightline, chosen from a
+  four-way sweep.
+
+**The change for `scene.ts`** (the environment session's file), two lines:
+
+```ts
+import { createPatchFighters } from './render/patchfighters/index';
+// line 192, replacing `const fighters = createFighters(scene, heroLighting);`
+const fighters = new URLSearchParams(location.search).get('fighters') === 'patch' ? createPatchFighters(scene, heroLighting) : createFighters(scene, heroLighting);
+```
+Without `?fighters=patch`, behaviour is unchanged.

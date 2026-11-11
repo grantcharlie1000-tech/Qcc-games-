@@ -32,7 +32,9 @@ async function run(patch) {
   const shots = [];
   for (const sq of [0, 1]) {
     const target = st.players.find(p => p.squad === sq && p.id !== st.self && p.alive); if (!target) continue;
-    for (const d of [2, 8]) for (const ang of [0, 1, 2, 3]) {
+    // Angles with a clear sightline, chosen from a four-way sweep of this seed (see STATUS.md).
+    const ANG = { '0-2': 2, '0-8': 1, '1-2': 1, '1-8': 1 };
+    for (const d of [2, 8]) for (const ang of [ANG[`${sq}-${d}`]]) {
       // Stand d metres from the target in each of four directions, facing it (walls block some; pick by eye).
       const r = await page.evaluate(([tx, tz, d, ang]) => {
         const h = window.__breachlineTest, a = ang * Math.PI / 2 + 0.3;
