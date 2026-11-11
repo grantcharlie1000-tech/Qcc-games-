@@ -6,7 +6,7 @@ import {departureOffset,departureVisibility} from './departure';
 import {ferry} from './props';
 import {box,hash,masonry,panel,sprite,stroke,visible,wall,type C,type Work} from './quarter-kit';
 import {formSpikes} from './hazard-art';
-import {bondedStore,chandlers,customHouse,gantry,goodsShed,granary,postCrane,tipHouse,weighHouse} from './canal-houses';
+import {bondedStore,chandlers,customHouse,gantry,goodsShed,granaryRoom,postCrane,tipHouse,weighHouse} from './canal-houses';
 import {MID,MID_SCALE,drawRow,farRoof,headTowers,lotEdge,moon,nightSky,row,townHouse,windowColumns,windowLit,windowX,type Scale,type Tone} from './quarter-distance';
 import type {QuarterSet} from './quarter-sets';
 
@@ -390,11 +390,47 @@ const topAt=(w:Wharf,x:number,l:Level)=>{const p=w.steps.find(q=>x>=q.x&&x<q.x+q
  * dark and weeded below the tide line, with its own fittings and its ends. */
 function nearFace(c:C,l:Level,w:Wharf,bottom:number){
  const water=l.water!,{key,tile}=NEAR[w.face],span=w.x1-w.x0,v=(k:number)=>hash(w.seed,k,83);
+ if(w.data.pier){
+  // Coal is tipped from a timber pier, not an island of masonry.
+  for(const p of w.steps){
+   box(c,'#17110d',p.x,p.y+8,p.w,12);box(c,'#5b4835',p.x,p.y+9,p.w,5);
+   for(let x=p.x+9;x<p.x+p.w-9;x+=48){pile(c,x,p.y+16,water+16);stroke(c,'#4b3a2b',x+5,p.y+20,Math.min(x+47,p.x+p.w-4),water+8,3);}
+  }
+  return;
+ }
+ // Finished returns recede from the canal edge into the solid near bank.
+ // Their widening face keeps land on the landward side right to the frame foot.
+ for(const [x,side] of [[w.x0,-1],[w.x1,1]] as const){
+  if((side<0?w.before:w.after)==='bridge')continue;
+  const top=topAt(w,side<0?x:x-1,l);
+  for(let y=top;y<bottom;y++){
+   const spread=Math.round((y-top)*.22),left=side<0?x-spread:x;
+   box(c,y<l.water!?'#303c45':'#202a31',left,y,spread,1);
+   if(y%12===0)box(c,'#56616a',left,y,spread,1);
+   if(y%12===11)box(c,'#10181f',left,y,spread,1);
+   for(let xx=left+((Math.floor(y/12)%2)*14);xx<left+spread;xx+=28)box(c,'#10181f',xx,y,1,1);
+   box(c,'#10171e',side<0?left:x+spread,y,2,1);
+  }
+ }
+
  for(const p of w.steps){const top=faceTop(p,l);if(bottom>top)wall(c,key,tile,p.x,top,p.w,bottom-top);box(c,'#0b11178c',p.x,top,p.w,3);}
  // Where the quay steps up, the higher wall's end is a riser with its own arris.
  for(let i=1;i<w.steps.length;i++){
   const a=w.steps[i-1],b=w.steps[i],ta=faceTop(a,l),tb=faceTop(b,l);if(ta===tb)continue;
   const x=ta<tb?b.x-2:b.x;box(c,'#0f161d',x,Math.min(ta,tb),2,Math.abs(ta-tb));box(c,'#56626e',ta<tb?x-1:x+2,Math.min(ta,tb),1,Math.abs(ta-tb));
+ }
+ if(w.data.customs){
+  // Iron-strapped rubbing timbers protect the customs landing.
+  for(const x of [w.x0+42,w.x1-48]){
+   const y=topAt(w,x,l)+8;
+   box(c,'#17110d',x,y,13,bottom-y);box(c,'#57432f',x+2,y,9,bottom-y);box(c,'#927551',x+2,y,2,bottom-y);
+   for(let yy=y+16;yy<bottom;yy+=52){box(c,'#1c2830',x-2,yy,17,5);box(c,'#8b9a9d',x-2,yy,17,1);}
+  }
+  const x=w.x1-104,y=water-28;
+  box(c,'#858d89',x-4,y-12,8,54);for(let k=0;k<9;k++)box(c,'#1a252b',x-4,y-9+k*5,k%2?4:7,1);
+  // A grilled discharge, masonry cut away within its stone surround.
+  box(c,'#77817d',w.x0+94,water-34,34,28);box(c,'#090f14',w.x0+98,water-29,26,23);
+  for(let dx=0;dx<24;dx+=6)box(c,'#65777b',w.x0+100+dx,water-28,2,22);
  }
  // A relaid course, lighter than the old stone round it, along part of the wall.
  if(w.face!==3){const from=w.x0+Math.round(span*(.1+v(1)*.3)),to=Math.min(w.x1-8,from+90+Math.round(v(2)*140));for(let x=from;x<to;x+=26){const y=topAt(w,x,l)+22;box(c,'#141c24',x,y,26,10);box(c,'#3f4a56',x+1,y+1,24,8);box(c,'#4e5a66',x+1,y+1,24,1);}}
@@ -443,7 +479,10 @@ function nearBank(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
    case 2:at(goodsShed(260,112),first.x+30,ground);break;
    case 3:at(weighHouse(200,96),first.x+10,ground);break;
    case 4:{const dock=w.steps.find(p=>p.tag==='dock'),x=first.x+6,top=ground+4-190;at(chandlers(334,190,dock?{x:dock.x-x,w:dock.w,y:dock.y-top}:{x:220,w:110,y:180}),x,ground);break;}
-   case 5:{const hi=w.steps.at(-1)!;at(granary(220,204),hi.x+20,hi.y);break;}
+   case 5:{
+    granaryRoom(c,4174,568);
+    break;
+   }
    case 6:at(customHouse(190,180),first.x+5,ground);break;
    case 7:at(tipHouse(206,132),first.x+8,ground);break;
   }
@@ -466,16 +505,13 @@ function handcart(c:C,x:number,ground:number){
  * iron stub of a mooring bolt sheared off with its plate; on the builders'
  * staging, the splintered ends of planks torn up out of the deck. */
 function snappedBolt(c:C,r:{x:number;y:number;w:number;h:number}){
- const x=Math.round(r.x),y=Math.round(r.y),w=Math.round(r.w),h=Math.round(r.h),mid=x+Math.floor(w/2);
- // Its plate, spiked to the cap, rust bleeding out from under it.
- box(c,'#0b0d0f',x,y+h-4,w,4);box(c,'#5a3a28',x+1,y+h-3,w-2,2);box(c,'#8a5a3a',x+1,y+h-3,w-2,1);box(c,'#9aa3a5',x+1,y+h-2,2,1);box(c,'#9aa3a5',x+w-3,y+h-2,2,1);
- // The stem: a thick iron bolt, rusted through, bent a little where it took the strain.
- box(c,'#0b0d0f',mid-4,y+2,8,h-5);box(c,'#6a3a22',mid-3,y+2,6,h-6);box(c,'#a0603a',mid-3,y+2,1,h-6);box(c,'#3a2016',mid+2,y+2,1,h-6);box(c,'#8a4a2a',mid-1,y+6,2,1);
- // The fracture: torn iron, jagged and bright where it parted.
- box(c,'#0b0d0f',mid-4,y+1,2,2);box(c,'#0b0d0f',mid-1,y,3,2);box(c,'#0b0d0f',mid+3,y+1,1,2);
- box(c,'#e0c08a',mid-3,y+1,1,1);box(c,'#f0d8a8',mid,y,1,1);box(c,'#e0c08a',mid+2,y+1,1,1);box(c,'#c08a5a',mid-2,y+2,4,1);
- // A link of the chain it held, still hooked on it.
- box(c,'#0b0d0f',mid+3,y+5,3,5);box(c,'#59666b',mid+4,y+6,1,3);
+ const x=Math.round(r.x),y=Math.round(r.y),w=Math.round(r.w),h=Math.round(r.h);
+ // Cold iron against oak: the complete damaging silhouette stays in r.
+ box(c,'#0b0d0f',x,y+h-4,w,4);box(c,'#71838d',x+1,y+h-3,w-2,2);
+ box(c,'#0b0d0f',x+3,y+2,w-6,h-5);box(c,'#526976',x+4,y+2,w-8,h-6);
+ box(c,'#b5cbd0',x+4,y+2,2,h-7);box(c,'#263640',x+w-5,y+3,1,h-7);
+ for(const [dx,dy] of [[3,1],[6,0],[10,1]] as const){box(c,'#0b0d0f',x+dx,y+dy,3,3);box(c,'#d8e5e6',x+dx+1,y+dy,2,1);}
+ box(c,'#d8e5e6',x+1,y+h-3,2,1);box(c,'#d8e5e6',x+w-3,y+h-3,2,1);
 }
 function tornPlanks(c:C,r:{x:number;y:number;w:number;h:number}){
  const x=Math.round(r.x),y=Math.round(r.y),h=Math.round(r.h),foot=y+h;
@@ -512,7 +548,16 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
    continue;
   }
   if(kind==='tower'||kind==='barge'||!visible(p.x-40,p.y-70,p.w+80,water+60-p.y+70,cx,cy,vw,vh))continue;
-  if(kind==='piles'){pile(c,p.x+3,top-4,water);pile(c,p.x+p.w/2-5,top-4,water);pile(c,p.x+p.w-13,top-4,water);}
+  if(kind==='piles'){
+   const offsets=p.w<60?[5,p.w-15]:[3,Math.round(p.w*.6)-5,p.w-13];
+   for(const x of offsets)pile(c,p.x+x,top-4,water);
+   if(p.w<60){
+    const crossed=p.id%2===0;
+    stroke(c,'#6a5440',p.x+10,top+3,p.x+p.w-10,water-3,3);
+    if(crossed)stroke(c,'#4b3a2b',p.x+p.w-10,top+3,p.x+10,water-3,2);
+    else for(let y=top+5;y<water-2;y+=6)box(c,'#9c8861',p.x+3,y,12,2);
+   }
+  }
   else if(kind==='staging'){
    const a=p.x+8,b=p.x+p.w-18;pile(c,a,p.y+10,water);pile(c,b,p.y+10,water);if(p.w>100)pile(c,p.x+p.w/2-5,p.y+10,water);
    stroke(c,'#2a2119',a+5,p.y+14,b+5,water-5,2);stroke(c,'#2a2119',b+5,p.y+14,a+5,water-5,2);
@@ -587,8 +632,29 @@ function rudder(c:C,x:number,y:number,sweep:boolean){
  if(sweep){stroke(c,'#14100d',x-6,y+2,x+22,y-3,2);stroke(c,'#6a5440',x-6,y+1,x+22,y-4,1);}
  else{stroke(c,'#14100d',x-6,y+2,x-24,y-9,2);stroke(c,'#6a5440',x-6,y+1,x-24,y-10,1);box(c,'#14100d',x-26,y-12,4,4);}
 }
+/** Cargo stands above the tile's eight-pixel margin, so paint it in world space. */
+function bargeCargo(c:C,p:Platform,x:number,y:number){
+ const w=p.w,what=load(p);c.save();c.translate(x,y);
+ if(what==='tiller'){
+  // A rope coil and a shipping crate: cargo silhouettes above the gunwale.
+  const cx=Math.round(w*.34);
+  for(let r=15;r>=3;r-=3){c.strokeStyle=r%2?'#baa47b':'#756044';c.lineWidth=2;c.beginPath();c.ellipse(cx,-5,r,Math.max(2,r*.35),0,0,Math.PI*2);c.stroke();}
+  stroke(c,'#baa47b',cx+14,-5,cx+23,-1,2);
+  box(c,'#17110d',w-34,-22,25,23);box(c,'#8d704f',w-33,-21,23,20);
+  box(c,'#c0a078',w-33,-21,23,2);box(c,'#4b3929',w-30,-18,17,14);
+  stroke(c,'#b2946d',w-30,-18,w-14,-5,2);box(c,'#dad0ab',w-25,-14,7,4);
+ }else if(what==='hatch'){
+  // A full raised hatch cover, with a locking iron athwart it.
+  box(c,'#14191c',12,-15,w-24,17);box(c,'#657164',14,-14,w-28,14);
+  for(let x=20;x<w-14;x+=10)box(c,'#39483f',x,-13,1,13);
+  box(c,'#a4aa8e',14,-14,w-28,2);box(c,'#131e26',10,-7,w-20,5);
+  box(c,'#97a9ae',10,-7,w-20,1);box(c,'#c4d0cf',w/2-2,-8,4,7);
+ }
+ c.restore();
+}
 function mover(c:C,p:Platform,x:number,y:number,l:Level){
  if(role(p,l)!=='barge')return;
+ bargeCargo(c,p,x,y);
  if(load(p)==='tiller')rudder(c,x,y,false);
  // A rope fender hangs off the bow of every barge.
  box(c,'#5a4a36',x+p.w+2,y+6,4,8);box(c,'#8a7656',x+p.w+2,y+6,4,1);stroke(c,'#8a7a5a',x+p.w-2,y+1,x+p.w+3,y+6,1);
@@ -701,6 +767,7 @@ function deck(c:C,p:Platform,l:Level){
   // A granite coping on coursed stone; the wall under it is drawn in front of the canal.
   const wharf=kind==='bridge'?undefined:wharfOf(p,l),tone=wharf?.face===3?['#6f777b','#9aa1a0']:wharf?.face===1?['#737d82','#a2abab']:['#7d878c','#aab3b3'];
   box(c,'#1a2129',-2,0,w+4,10);box(c,tone[0],-2,0,w+4,8);box(c,tone[1],-2,0,w+4,2);box(c,'#5d676e',-2,7,w+4,1);
+  if(wharf?.data.pier){box(c,'#17110d',-1,0,w+2,9);box(c,'#8d704f',0,0,w,7);box(c,'#b2946d',0,0,w,2);for(let x=8;x<w;x+=9)box(c,'#493828',x,2,1,5);return;}
   const joint=kind==='steps'?w+1:wharf?.face===2?72:wharf?.face===1?38:52;
   for(let x=Math.round(joint*.7)+p.id%3*9;x<w-10;x+=joint)box(c,'#565f66',x,2,1,6);
   // Worn hollows where carts turned, and a chipped arris; at a breach the coping's end has gone with the wall.
@@ -729,9 +796,9 @@ function deck(c:C,p:Platform,l:Level){
   return;
  }
  if(kind==='piles'||kind==='beacon'){
-  // Three pile heads bound with an iron hoop.
-  for(const x of [3,Math.round(w/2)-5,w-13]){box(c,'#17110d',x,0,10,28);box(c,'#4b3a2b',x+1,2,7,26);box(c,'#6a5440',x+2,2,2,26);box(c,'#9a7f5f',x,0,10,2);box(c,'#7a6048',x+1,2,8,1);}
-  box(c,'#17110d',0,3,w,7);box(c,'#6b523a',0,3,w,5);box(c,'#b2946d',0,0,w,2);box(c,'#8d704f',0,2,w,1);
+  // Pile heads bound with an iron hoop; narrow dolphins use two posts.
+  for(const x of (kind==='piles'&&w<60?[5,w-15]:[3,Math.round(w/2)-5,w-13])){box(c,'#17110d',x,0,10,28);box(c,'#4b3a2b',x+1,2,7,26);box(c,'#6a5440',x+2,2,2,26);box(c,'#9a7f5f',x,0,10,2);box(c,'#7a6048',x+1,2,8,1);}
+  box(c,'#17110d',0,3,w,7);box(c,'#6b523a',0,3,w,5);box(c,p.w<60?(p.id%2?'#8d9a9e':'#ae9064'):'#b2946d',0,0,w,2);box(c,'#8d704f',0,2,w,1);
   box(c,'#232c33',0,13,w,4);box(c,'#59666b',0,13,w,1);
   // The bolted dolphin's rail is gone: a bent stanchion at one end, the stubs of its brackets along the cap.
   if(what==='bolt')for(const x of [12,w-30]){box(c,'#3a2a22',x,0,5,2);box(c,'#7a4426',x+1,0,1,1);}
@@ -766,7 +833,12 @@ function deck(c:C,p:Platform,l:Level){
   return;
  }
  // Boats. The deck you land on is the top of what each one carries.
- hull(c,w,36);
+ if(what==='hatch'){
+  // A bluff-ended covered lighter, deeper than the rope boat beside her.
+  box(c,'#151b20',-2,0,w+4,29);box(c,'#344048',0,3,w,23);
+  for(let y=8;y<28;y+=7)box(c,'#1c272f',1,y,w-2,1);
+  box(c,'#98a5a7',-2,0,w+4,2);box(c,'#151b20',4,28,w-8,3);
+ }else hull(c,w,what==='tiller'?26:36);
  if(what==='sacks'){
   // Sacks of corn stowed level in the hold, their necks tied.
   for(let row=0;row<2;row++)for(let x=8+row*5;x<w-12;x+=10){const y=row?-1:2;box(c,'#4a3c2c',x,y,10,6);box(c,'#8a7656',x+1,y,8,5);box(c,'#a89272',x+1,y,8,1);box(c,'#5a4a36',x+4,y-1,2,2);}
@@ -783,10 +855,6 @@ function deck(c:C,p:Platform,l:Level){
   // Sawn deals stacked flat, end grain to the bow, a rope round the stack.
   for(let y=0;y<7;y+=2){box(c,'#17110d',6,y,w-12,2);box(c,y%4?'#7a6048':'#8d704f',7,y,w-14,1);}
   for(let y=0;y<7;y+=2)box(c,'#a88a62',w-8,y,2,1);stroke(c,'#8a7a5a',Math.round(w*.3),0,Math.round(w*.3)+3,8,1);stroke(c,'#8a7a5a',Math.round(w*.7),0,Math.round(w*.7)+3,8,1);
- }else{
-  // Hatch boards over the hold, a water cask lashed by the bitts.
-  box(c,'#3a2d23',8,3,w-16,5);for(let x=14;x<w-12;x+=14)box(c,'#57432f',x,3,10,4);
-  if(what==='hatch'){box(c,'#17110d',w-24,-6,10,9);box(c,'#4b3a2b',w-23,-5,8,7);box(c,'#232c33',w-23,-3,8,1);box(c,'#232c33',w-23,1,8,1);}
  }
  for(const x of [3,w-9]){box(c,'#14100d',x,-5,6,5);box(c,'#7a6048',x+1,-5,4,1);}
 }

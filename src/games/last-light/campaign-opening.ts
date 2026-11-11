@@ -4,7 +4,7 @@ import {trail,C,G,H,M,T} from './route-build';
 /** What hurts on the canal is what the canal has broken: the iron stub of a
  * mooring bolt sheared off a dolphin's cap, and the splintered ends of planks
  * torn up out of a builders' staging. Each box is exactly the drawn thing. */
-const bolt=(ledge:number,at:number):HazardPlacement=>({ledge,at,kind:'spikes',height:14,width:10});
+const bolt=(ledge:number,at:number):HazardPlacement=>({ledge,at,kind:'spikes',height:20,width:16});
 const torn=(ledge:number,at:number):HazardPlacement=>({ledge,at,kind:'spikes',height:10,width:28});
 
 /** 03 · The Last Ferry
@@ -29,7 +29,8 @@ const torn=(ledge:number,at:number):HazardPlacement=>({ledge,at,kind:'spikes',he
  * merchant's staging ends in the first lethal dash, onto a tarpaulined lighter.
  * The chandlers' loading dock is a step up, and from it two barges out of
  * phase ask for a timed dash to a dolphin with a sheared bolt on its cap. The
- * granary's water steps climb to its upper quay, which is the high take-off
+ * granary's water steps climb to its upper quay, descend through the loading
+ * room and climb out again to the high take-off
  * for the chain basin's raft. On the customs quay a stack of crates is the step
  * up to the custom house landing, and its crane gantry's end is the long jump down onto a fast barge
  * in the customs cut; a dolphin and a dash reach the coal lighter, then the
@@ -61,7 +62,7 @@ const CANAL:CampaignRoute=trail(24,96,256,T('tower')).here('The gallery')
  .at(1620,744,320,T('quay')).cp()
  .place('breach','The breach').sec('The breach')
  .at(2000,760,140,T('staging.torn')).hz(i=>torn(i,.55))
- .place('wharf','The coal stage',{house:3,face:1,fender:1}).sec('The coal stage')
+ .place('wharf','The coal stage',{house:3,face:1,fender:1,pier:1}).sec('The coal stage')
  .at(2200,744,220,T('quay')).cp()
  .place('mouth','The lighter dock')
  .at(2420,760,140,T('staging'))
@@ -76,11 +77,14 @@ const CANAL:CampaignRoute=trail(24,96,256,T('tower')).here('The gallery')
  .place('wharf','The granary quay',{house:5,face:2}).sec('The granary steps')
  .at(3880,744,150,T('quay')).cp()
  .at(4030,717,36,T('steps',H(27))).at(4066,690,36,T('steps',H(54)))
- .at(4102,664,260,T('quay'))
+ .at(4102,664,72,T('quay'))
+ .sec('Inside the granary').at(4174,704,36,T('steps',H(40)))
+ .at(4210,744,80,T('quay.floor')).at(4290,704,36,T('steps',H(40)))
+ .at(4326,664,36,T('quay'))
  .place('basin','The chain basin').sec('The chain basin')
  .at(4520,770,120,T('raft',M(48,.8)))
  .at(4790,760,56,T('piles'))
- .place('wharf','The customs quay',{house:6,gantry:1,face:0}).sec('The customs quay')
+ .place('wharf','The customs quay',{house:6,gantry:1,face:0,customs:1}).sec('The customs quay')
  .at(4930,744,200,T('quay')).cp()
  .at(5130,704,48,T('crates',H(40)))
  .at(5178,672,262,T('quay'))
@@ -90,7 +94,7 @@ const CANAL:CampaignRoute=trail(24,96,256,T('tower')).here('The gallery')
  .at(5600,770,96,T('barge.deals',M(36,1.4)))
  .at(5810,758,48,T('piles'))
  .sec('The coal lighter').at(6030,770,150,T('boat.coal'))
- .place('wharf','The coal tip',{house:7,face:1,fender:1}).sec('The coal tip')
+ .place('wharf','The coal tip',{house:7,face:1,fender:1,pier:1}).sec('The coal tip')
  .at(6260,744,220,T('quay')).cp()
  .at(6480,760,32,T('steps',H(32))).at(6512,776,32,T('steps',H(16)))
  .place('basin','The old dock').sec('The old pontoon')

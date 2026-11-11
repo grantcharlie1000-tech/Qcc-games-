@@ -214,3 +214,23 @@ export function gantry(c:C,x0:number,x1:number,deck:number,foot:number,legs:read
  for(let k=0;k<38;k+=3)box(c,k%6?'#59666b':'#2c353b',x1-15,deck+24+k,2,2);box(c,IRON,x1-17,deck+62,6,2);box(c,IRON,x1-13,deck+64,2,5);box(c,IRON,x1-16,deck+68,4,2);
  box(c,'#1a222b',x0,deck+12,x1-x0,1);
 }
+
+/** The granary loading room: open side doors and a lowered floor, no roof landing. */
+export function granaryRoom(c:C,x:number,y:number){
+ const w=152,h=176;
+ box(c,'#171b21',x,y,w,h);box(c,'#302c2a',x+8,y+8,w-16,h-8);
+ // Brick courses end at the room edges; the door surrounds mask their openings.
+ for(let yy=y+12;yy<y+h-6;yy+=9)for(let xx=x+10;xx<x+w-10;xx+=24){const bx=xx+(Math.floor((yy-y)/9)%2?8:0);if(bx<x+w-8)box(c,'#473a32',bx,yy,Math.min(19,x+w-8-bx),6);}
+ for(const dx of [0,w-18]){
+  box(c,'#111820',x+dx,y+48,18,h-48);box(c,'#8b7960',x+dx,y+46,18,3);
+  // A door leaf folded back against its jamb, with iron strap hinges.
+  box(c,'#5b4632',x+dx+2,y+50,5,78);box(c,'#998064',x+dx+2,y+50,1,78);
+  for(const dy of [62,112])box(c,'#17252d',x+dx+1,y+dy,7,3);
+ }
+ box(c,'#17110d',x-5,y-8,w+10,14);box(c,'#736047',x-3,y-7,w+6,4);
+ for(const dx of [25,124]){box(c,'#17110d',x+dx,y+4,7,h-4);box(c,'#685139',x+dx+1,y+4,3,h-4);}
+ doors(c,x+45,y+92,40,84,true,true);
+ box(c,'#8c7c5c',x+48,y+82,34,7);box(c,'#d7c69a',x+53,y+84,24,2);
+ // Grain awaiting the next lighter, clear of the floor through the doors.
+ for(const [dx,dy] of [[91,164],[105,164],[98,154]] as const){box(c,'#4a3c2c',x+dx,y+dy,14,12);box(c,'#a08b65',x+dx+1,y+dy,12,10);box(c,'#cab28a',x+dx+2,y+dy,10,2);box(c,'#5a4a36',x+dx+6,y+dy-2,2,3);}
+}
