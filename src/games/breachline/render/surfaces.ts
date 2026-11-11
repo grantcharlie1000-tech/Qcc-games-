@@ -17,6 +17,9 @@ export interface Surface {
   tint?: RGB;
 }
 
+/** Barricade boards on doorways and windows in art rooms (destructible panels). */
+export const PLANKS: Surface = { set: 'raw_plank_wall', size: 1.87, tint: [0.85, 0.8, 0.75] };
+
 export const SURFACES: Partial<Record<TexId, Surface>> = {
   // Square ceramic tiles; the source is laid diagonally, so turn it square and make each tile 47 cm.
   tile: { set: 'interior_tiles', size: 0.95 * Math.SQRT2 / 2, rotate: Math.PI / 4, gloss: 0.2 },
@@ -25,7 +28,7 @@ export const SURFACES: Partial<Record<TexId, Surface>> = {
   counter: { set: 'blue_metal_plate', size: 1.25, tint: [1.9, 1.9, 1.9] },
   // Locker carcasses (doors are modelled in render/labdress.ts).
   steel: { set: 'blue_metal_plate', size: 1.25, tint: [2.4, 2.5, 2.6] },
-  trim: { set: 'blue_metal_plate', size: 1.25, tint: [0.7, 0.7, 0.7] },
+  trim: { set: 'blue_metal_plate', size: 1.25, tint: [1.15, 1.15, 1.15] },
   paint: { set: 'painted_plaster_wall', size: 1, tint: [0.32, 0.33, 0.34] },
 };
 

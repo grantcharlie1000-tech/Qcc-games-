@@ -14,7 +14,7 @@ import { fixtureMeshes } from './fixturemesh';
 import { dressLab, type DressKey } from './labdress';
 import { artMaterial } from './materials';
 import { PROPS } from './props';
-import { SURFACES } from './surfaces';
+import { PLANKS, SURFACES } from './surfaces';
 
 interface BakeInfo {
   version: number; region: string; meanLight?: number; width: number; height: number; density: number; scale: number;
@@ -114,7 +114,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       };
       for (const [key, arrays] of D.parts) {
         const o = looks[key as DressKey];
-        const mat = artMaterial({ ...o, lightMap, lightScale: info.scale, dirMap, vertexTint: true });
+        // The throttled tier has no reflection probe, so metals would read black: draw them as painted.
+        const mat = artMaterial({ ...o, ...(full ? {} : { metalness: 0, armMap: null }), lightMap, lightScale: info.scale, dirMap, vertexTint: true });
         const g = geometry(arrays), mesh = new THREE.Mesh(g, mat);
         mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:dress:${key}`;
         group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
@@ -133,7 +134,10 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     materials.push(wall); if (wall.userData.art) envLights.push(wall);
     const tables = new Map<number, Map<number, Float32Array>>();
     for (const p of info.panels) { let t = tables.get(p.index); if (!t) tables.set(p.index, t = new Map()); t.set(p.side, new Float32Array(p.light)); }
-    for (const [index, t] of tables) looks.set(index, panelLook(MAP.panels[index].cols + 1, t, wall, wallSet ? [wallSet.size, wallSet.size] : TILE.drywall));
+    const [km, kn, ka] = await set(PLANKS.set, TEX_SIZE[tier]);
+    const planks = artMaterial({ map: km, normalMap: kn, armMap: ka, vertexLight: true, roughness: 1, metalness: ka ? 1 : 0, color: new THREE.Color(...(PLANKS.tint ?? [1, 1, 1])) });
+    materials.push(planks); envLights.push(planks);
+    for (const [index, t] of tables) looks.set(index, { ...panelLook(MAP.panels[index].cols + 1, t, wall, wallSet ? [wallSet.size, wallSet.size] : TILE.drywall), planks, plankTile: [PLANKS.size, PLANKS.size] });
   }));
   // Props, each lit by its own baked probe.
   const info = await L.json<BakeInfo>(`bake/${REGIONS[0].name}.json`);

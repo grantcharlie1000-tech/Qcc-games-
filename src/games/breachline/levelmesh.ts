@@ -177,7 +177,7 @@ export function emitLevel(L: LevelBuilder) {
 export interface PanelMaterials { wall: THREE.Material; core: THREE.Material; planks: THREE.Material; plate: THREE.Material }
 /** A panel in an asset-rendered room: baked light per cell corner (side +1/-1 along the wall's normal axis, 0 for
  * the broken edge between them) and the room's wall material, whose UVs are in `tile` metres per repeat. */
-export interface PanelLook { light(c: number, r: number, side: number): RGB | null; wall: THREE.Material; tile: readonly [number, number] }
+export interface PanelLook { light(c: number, r: number, side: number): RGB | null; wall: THREE.Material; tile: readonly [number, number]; planks?: THREE.Material; plankTile?: readonly [number, number] }
 
 export class PanelView {
   readonly mesh: THREE.Mesh;
@@ -196,7 +196,7 @@ export class PanelView {
     if (!p.intact) return true;
     const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [], face: number[] = [], edge: number[] = [];
     const plate = p.reinforced, wood = p.kind !== 'wall', half = (plate ? 0.2 : wood ? 0.07 : PANEL_T) / 2;
-    const look = this.look, tile = plate ? TILE.plate : wood ? TILE.planks : look ? look.tile : TILE.drywall, alongX = p.axis === 'x';
+    const look = this.look, tile = plate ? TILE.plate : wood ? look?.plankTile ?? TILE.planks : look ? look.tile : TILE.drywall, alongX = p.axis === 'x';
     const vert = (u: number, y: number, off: number, n: number, tu: number, tv: number, shade: number) => {
       const w = panelPoint(p, u, y, off);
       const l = look?.light(Math.round((u - p.u0) / CELL), Math.round((y - p.y0) / CELL), n) ?? this.bake.light(w.x, w.y, w.z, alongX ? 0 : n, 0, alongX ? n : 0);
@@ -253,7 +253,8 @@ export class PanelView {
     if (edge.length) ng.addGroup(face.length, edge.length, 1);
     ng.computeBoundingSphere();
     this.mesh.geometry = ng;
-    this.mesh.material = [plate ? this.mats.plate : wood ? this.mats.planks : look ? look.wall : this.mats.wall, wood ? this.mats.planks : this.mats.core];
+    const planks = look?.planks ?? this.mats.planks;
+    this.mesh.material = [plate ? this.mats.plate : wood ? planks : look ? look.wall : this.mats.wall, wood ? planks : this.mats.core];
     return true;
   }
   dispose() { this.mesh.geometry.dispose(); }

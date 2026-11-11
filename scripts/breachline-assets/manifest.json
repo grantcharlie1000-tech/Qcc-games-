@@ -273,6 +273,39 @@
         }
       ],
       "use": ""
+    },
+    {
+      "id": "raw_plank_wall",
+      "kind": "texture",
+      "name": "Raw Plank Wall",
+      "source": "https://polyhaven.com/a/raw_plank_wall",
+      "author": "Dimitrios Savva",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.87,
+        1.87
+      ],
+      "files": [
+        {
+          "path": "raw_plank_wall/raw_plank_wall_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/raw_plank_wall/raw_plank_wall_diff_2k.jpg",
+          "size": 2522671,
+          "sha256": "dd9099dfffc98d897739d03714f863d5e55ac3ea95b5185914d03d789307c354"
+        },
+        {
+          "path": "raw_plank_wall/raw_plank_wall_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/raw_plank_wall/raw_plank_wall_nor_gl_2k.jpg",
+          "size": 3223836,
+          "sha256": "554a8c1cc95d86f0aa8844c4897a7dc5e269e40eac2f3254c22efb1b84599347"
+        },
+        {
+          "path": "raw_plank_wall/raw_plank_wall_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/raw_plank_wall/raw_plank_wall_arm_2k.jpg",
+          "size": 2432109,
+          "sha256": "ed9afe2fb246149f5c5f75ccede0a8db16db91089e0d33a157e4e9b019a8dd03"
+        }
+      ],
+      "use": ""
     }
   ]
 }

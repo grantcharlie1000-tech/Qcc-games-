@@ -3788,4 +3788,5 @@ Blue Metal Plate (texture) by Rob Tuytel. https://polyhaven.com/a/blue_metal_pla
 Metal Tool Chest (model) by Yann Kervran, John Hutcheson. https://polyhaven.com/a/metal_tool_chest. License: CC0-1.0.
 Korean Fire Extinguisher 01 (model) by UM JOORIN. https://polyhaven.com/a/korean_fire_extinguisher_01. License: CC0-1.0.
 Metal Stool 01 (model) by Ulan Cabanilla. https://polyhaven.com/a/metal_stool_01. License: CC0-1.0.
+Raw Plank Wall (texture) by Dimitrios Savva. https://polyhaven.com/a/raw_plank_wall. License: CC0-1.0.
 ----- end of Breachline art -----

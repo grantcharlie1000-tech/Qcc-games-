@@ -9,7 +9,61 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-## Phase 0 (spike): gate **passed (go)**, with caveats below
+## Lab slice, round 1 (evidence: `lab-slice/round-1/`)
+
+Not at the slice gate yet (rows A-D at 7). Done this round, in the order the reviewer asked:
+
+1. **Light contrast.** Troffer beams tightened (cos^2), sharp contact occlusion on bounced light, 16 texels/m,
+   four fittings over the walkways; modelled fittings (housing, rim, prismatic lens) with a baked hot spot on the
+   ceiling around each (`lab-ceiling-high.png`).
+2. **Specular.** The reflection probe was black (cube faces were never cleared because the game renders with
+   `autoClear` off); fixed. Reflections are box-projected onto the room; specular occlusion is normalised to the
+   room's mean baked light (it had been normalised to a probe that sees the lamps, which hid the floor's
+   reflections). Lenses now carry near-physical radiance, so they show in reflections and bloom.
+3. **Post chain** (`render/post.ts`), brought forward: half-float HDR target (MSAA 4x on High), soft-knee bloom
+   pyramid, ACES, a lift/gamma/gain grade (cool, slightly desaturated shadows, warm neutral highlights), vignette.
+   The throttled tier keeps the renderer's own curve and no post. **Grade direction chosen:** institutional
+   blue-grey (walls, casework, trim) against warm beige floors and timber, cool fluorescent light; surfaces in
+   later rooms are held to this.
+4. **Dense dressing** (`render/labdress.ts`, `render/detail.ts`): bench cabinetry with doors, drawers, bar handles,
+   kick plates and end panels; lockers with louvres, latches and number plates; a sink with a gooseneck tap;
+   reagent bottles; sockets; a switch on conduit; skirting and a dado rail on the solid wall (painted skirting zone
+   on the destructible panels). Every piece borrows the lightmap of the surface it stands on, so it carries the
+   baked light and contact shadow with no extra bake or lights.
+5. Barricade boards use a CC0 photo set (`raw_plank_wall`, Dimitrios Savva) lit by the panel bake; frames lifted
+   off pure black.
+
+Bugs found by looking: the room split rejected faces whose origin lay outside the room on their vertical axis, so
+the west end of the Lab's north wall still drew the old way (fixed, rebaked; the stale-bake test caught the
+geometry change); on Low, "metal" dressing rendered black without a reflection probe (now painted on Low).
+
+**Scores now (Lab only, from `lab-slice/round-1/`):**
+
+| Row | Phase 0 (reviewer) | Now | Evidence |
+| --- | --- | --- | --- |
+| A Lighting | 4 | 6 | `lab-west-high.png`: hot spots, darker upper walls and corners, contact shadow under benches and stools; still too even across the floor. |
+| B Shading | 3 | 5 | `lab-bench-high.png`: reflections on worktops, bottles and chrome; floor gloss subtle; normal detail on plaster mostly invisible at this exposure. |
+| C Texture | 5 | 6 | Photo floor, walls, casework, boards; ceiling tiles and lockers' sides are still procedural or tinted. |
+| D Geometry | 2 | 6 | `lab-high.png`: cabinetry, lockers, sink and tap, bottles, sockets, conduit; the room shell is still flat boxes (no ceiling grid in depth, no door leaves, plain posts). |
+| H Post | 2 | 5 | Bloom, grade and vignette on High; no AO or depth of field. |
+
+**What would take A-D to 7 next round:** a ceiling grid with depth and a better tile; stronger falloff between
+fittings (fewer bounce lumens, or an exposure that lets midtones sit lower); door leaves and frames with depth;
+noticeboard, fume cupboard or equipment on the benches' far ends; normal-map strength on plaster; then KTX2 so the
+1K sets ship.
+
+**Budgets measured on the Lab bookmarks (High, this container):** triangles in view 36k-91k (budget 500k);
+draw calls 54-101 (budget 400); textures for the Lab art about 15 MB of GPU memory at 1K (4 surface sets 11.2 MB,
+5 prop sets 3.5 MB, lightmaps 1.2 MB) plus the post chain about 40 MB at 1280x720 (MSAA HDR target and bloom
+levels) and the reflection probe about 4 MB; committed art 9.4 MB (all of it at 512 px until KTX2). Script time
+per frame is not measured yet (phase-1 counters). The props are still at full resolution (about 50k of the 90k
+triangles); LODs are on the list.
+
+**What ARM devices get today:** no S3TC, so the 512 px JPEG fallbacks, uncompressed in GPU memory (about 3x the
+compressed size). KTX2/Basis (transcoding to ETC2/ASTC) is what fixes this; it is the next renderer task after the
+slice.
+
+
 
 **Gate verdict.** The Lab now uses photo-sourced CC0 materials, GPU-compressed textures loaded with no WebAssembly
 under the real site CSP, a ray-traced lightmap with soft shadows and two bounces, a dominant-direction map so normal
