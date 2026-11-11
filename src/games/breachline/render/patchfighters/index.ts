@@ -50,7 +50,7 @@ export const PATCH_LOOKS = [
 const RIM = 0.35;
 
 interface Maps { map: THREE.Texture; normalMap: THREE.Texture; arm: THREE.Texture; mask: THREE.Texture }
-interface Assets { body: THREE.BufferGeometry[]; maps: Maps; lumRange: { fatigues: number[]; kit: number[] }; headgear: { geo: THREE.BufferGeometry; set: string; lod: number; color: string; roughness: number; metalness: number; opacity: number }[] }
+interface Assets { rifle: { body: THREE.BufferGeometry; mag: THREE.BufferGeometry; magSeat: THREE.Vector3; maps: { map: THREE.Texture; arm: THREE.Texture } } | null; body: THREE.BufferGeometry[]; maps: Maps; lumRange: { fatigues: number[]; kit: number[] }; headgear: { geo: THREE.BufferGeometry; set: string; lod: number; color: string; roughness: number; metalness: number; opacity: number }[] }
 type ProbeMaterial = THREE.MeshStandardMaterial & { userData: { probe: { value: THREE.Color } } };
 
 /** Probe lighting as the stock baked material does it: the reflection probe for specular only, the light probe as
@@ -119,7 +119,7 @@ roughnessFactor *= mix(1.0, kitGloss, smoothstep(0.3, 0.7, texture2D(tMask, vMap
 
 interface Fig {
   squad: 0 | 1; group: THREE.Group; meshes: THREE.SkinnedMesh[]; gear: THREE.Group[]; skeleton: THREE.Skeleton; bones: THREE.Bone[];
-  weapon: THREE.SkinnedMesh; wid: WeaponId; anim: Animator; mats: ProbeMaterial[]; weaponMat: FighterMaterial; wlod: 1 | 2;
+  weapon: THREE.SkinnedMesh; wbones: THREE.Bone[]; dressed: THREE.Object3D[]; wid: WeaponId; anim: Animator; mats: ProbeMaterial[]; weaponMat: FighterMaterial; wlod: 1 | 2;
   x: number; z: number; yaw: number; pitch: number; crouch: number; lean: number; phase: number;
   fresh: boolean; lod: number; remoteReload: number; deathKind: number; dist: number; reloadEmpty: boolean; wasReloading: boolean; input: PoseInput;
 }
@@ -147,11 +147,40 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
     const hg: Assets['headgear'] = [];
     gear.scene.traverse(o => { const m = o as THREE.Mesh, x = m.userData as { set?: string; lod?: number; color?: string; roughness?: number; metalness?: number; opacity?: number };
       if (m.isMesh && x.set) hg.push({ geo: m.geometry, set: x.set, lod: x.lod ?? 0, color: x.color ?? '#222222', roughness: x.roughness ?? 0.7, metalness: x.metalness ?? 0, opacity: x.opacity ?? 1 }); });
+    // The Patch rifle at world level of detail, for fighters carrying the AR (job 5.3). Optional: without it the stock
+    // world AR is kept.
+    let rifle: Assets['rifle'] = null;
+    try {
+      const [rw, rmap, rarm] = await Promise.all([art.model('../patch/rifle-scifi/rifle-world'), art.texture('../patch/rifle-scifi', 'diff', 1024), art.texture('../patch/rifle-scifi', 'arm', 1024)]);
+      for (const t of [rmap, rarm]) { t.flipY = false; t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.needsUpdate = true; }
+      const b = rw.scene.getObjectByName('body') as THREE.Mesh, m = rw.scene.getObjectByName('magazine') as THREE.Mesh;
+      rifle = { body: b.geometry, mag: m.geometry, magSeat: m.position.clone(), maps: { map: rmap, arm: rarm } };
+    } catch (e) { console.warn('Breachline: Patch world rifle unavailable; stock world AR kept', e); }
     const extras = (body.parser.json as { asset?: { extras?: { lumRange?: Assets['lumRange'] } } }).asset?.extras;
-    return { body: [geo('body_lod0'), geo('body_lod1'), geo('body_lod2')], maps: { map, normalMap, arm, mask }, lumRange: extras?.lumRange ?? { fatigues: [0, 0.0017, 0.015], kit: [0, 0.0012, 0.0093] }, headgear: hg };
+    return { rifle, body: [geo('body_lod0'), geo('body_lod1'), geo('body_lod2')], maps: { map, normalMap, arm, mask }, lumRange: extras?.lumRange ?? { fatigues: [0, 0.0017, 0.015], kit: [0, 0.0012, 0.0093] }, headgear: hg };
   }
 
-  function weaponMesh(f: Fig, id: WeaponId, lod: 1 | 2) { const w = weaponFor(id, lod); f.weapon.geometry = w.geo; f.wid = id; f.wlod = lod; f.anim.setWeapon(id, w); }
+  function weaponMesh(f: Fig, id: WeaponId, lod: 1 | 2) { const w = weaponFor(id, lod); f.weapon.geometry = w.geo; f.wid = id; f.wlod = lod; f.anim.setWeapon(id, w); dress(f); }
+  /** Job 5.3: a fighter carrying the AR shows the Patch rifle instead of the stock world model. The stock skinned
+   * mesh keeps its bones (the animator drives them) but draws nothing; the Patch body rides bone 0 and its magazine
+   * bone 1, placed so the Patch grip palm sits on the world weapon's grip socket. */
+  const EMPTY = (() => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([], 3)); g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute([], 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute([], 4)); return g; })();
+  let rifleMat: ProbeMaterial | null = null;
+  function dress(f: Fig) {
+    for (const o of f.dressed) o.removeFromParent();
+    f.dressed.length = 0;
+    const r = assets?.rifle; if (!r || f.wid !== 'ar') return;
+    const w = weaponFor('ar', f.wlod), g = w.grip.p, T = new THREE.Vector3(g.x, g.y + 0.07, g.z - 0.185);
+    rifleMat ??= probeMaterial({ map: r.maps.map, aoMap: r.maps.arm, roughnessMap: r.maps.arm, metalnessMap: r.maps.arm, roughness: 1, metalness: 1 }, 'patch-gear');
+    if (!f.mats.includes(rifleMat)) f.mats.push(rifleMat);
+    const body = new THREE.Mesh(r.body, rifleMat), mag = new THREE.Mesh(r.mag, rifleMat);
+    body.position.copy(T); mag.position.copy(r.magSeat).add(T).sub(w.mag);
+    for (const m of [body, mag]) { m.frustumCulled = false; m.castShadow = true; }
+    // The magazine bone's origin is the world model's magazine seat; the Patch magazine is offset from it.
+    const holder = new THREE.Group(); holder.position.copy(w.mag); holder.add(mag);
+    f.wbones[0].add(body); f.wbones[1].add(holder); f.dressed.push(body, holder);
+    f.weapon.geometry = EMPTY;
+  }
 
   function figFor(a: Assets, i: number, squad: 0 | 1, wid: WeaponId): Fig {
     let f = figs[i];
@@ -174,8 +203,9 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
     const weapon = new THREE.SkinnedMesh(w.geo, weaponMat); weapon.add(...wb); weapon.bind(new THREE.Skeleton(wb)); weapon.frustumCulled = false;
     group.add(weapon); scene.add(group);
     const anim = new Animator(bones, weapon, wb, w); anim.setWeapon(wid, w);
-    f = { squad, group, meshes, gear, skeleton, bones, weapon, wid, anim, mats, weaponMat, wlod: 1, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, remoteReload: 0, deathKind: -1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
+    f = { squad, group, meshes, gear, skeleton, bones, weapon, wbones: wb, dressed: [], wid, anim, mats, weaponMat, wlod: 1, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, remoteReload: 0, deathKind: -1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
     figs[i] = f;
+    dress(f);
     return f;
   }
   function drop(f: Fig) { scene.remove(f.group); for (const m of f.mats) m.dispose(); f.weaponMat.dispose(); }
