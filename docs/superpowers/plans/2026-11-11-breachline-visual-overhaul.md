@@ -551,6 +551,72 @@ Rules for using it here:
 - **What it is not for:** weapons, hands, reload animations and sound effects stay our own work (owner's rule), and
   no asset goes in unreviewed: it must sit within the budgets in section 5 and match the room's texel density.
 
+## Hero models, second build, added 2026-11-11 10:35 UTC (owner on r6: "the gun and hand/arm models are really bad")
+
+**Verdict and recalibration.** The owner looked at `hero/r6/game-ar-hand-corridor-crop-2x.png`, which the reviewer
+had scored 6.5, and called the models really bad. The owner's eye is the measure, so the reviewer's scale was too
+generous by about two points: **E is 4.** The texture pipeline, the arm path, the rig, sockets and reload timelines
+stay. What is replaced is **how the shapes are made**.
+
+**Why they read as bad (shape, not texture).**
+- Every part is a bevelled box or a straight extrusion, so every silhouette edge is straight and parallel to another.
+  A real firearm is machined and moulded: chamfers on every edge, radiused transitions, pockets, cuts that go
+  through, parts that taper. Edges that catch a thin highlight are most of what makes a weapon look real.
+- Proportions are toy-like: the handguard is a wide flat box, the optic a fat tube on a block, the rail a sawtooth
+  strip, the receiver a slab. Real rifles are **slim**: a receiver about 25–30 mm wide, a handguard 40–48 mm across.
+- The glove's fingers are inflated tubes without joints; the forearm is a tube.
+
+**Method: sculpt in high detail offline, bake down.** This is how game weapons are made; we do it in code.
+1. **A dimensioned design sheet first** (side, top and front views drawn from the model's own parameters, with
+   millimetre dimensions). Our own design, real-world sizes. For a modern rifle of this class, as a guide: overall
+   about 840 mm; barrel about 370 mm with a muzzle device; handguard about 330 mm long and 40–48 mm across with an
+   octagonal or rounded section; receiver 25–30 mm wide; magazine well about 30 mm wide outside; curved 30-round
+   magazine about 180 × 65 × 23 mm; grip raked 17–25°; accessory rail 21.2 mm wide with 5.2 mm slots on a 10 mm
+   pitch, 3 mm deep, with 45° dovetail flanks; red-dot tube about 30 mm bore on a riser mount.
+2. **The high-detail solid, as a signed-distance field** built from exact primitives (rounded boxes, cylinders,
+   capsules, extruded 2D outlines with rounded corners, revolved profiles) combined with **chamfered or filleted**
+   unions and cuts: 0.3–1 mm chamfers on machined metal, 1–3 mm fillets on moulded polymer. Cut the real features:
+   handguard slots with rounded ends, lightening pockets, ejection port and its door, magazine well with a flared
+   mouth, trigger guard opening, pin and screw holes with recessed heads, serrations, knurling, grip texture, ports in
+   the muzzle device, every rail slot.
+3. **The game mesh**: the same field without its finest detail, meshed and simplified to the triangle budget
+   (silhouette features kept; moving parts as separate meshes with their own pivots: bolt carrier, charging handle,
+   magazine with follower and top round, trigger, selector, port door, magazine release).
+4. **Bake straight from the field**: for each texel of the game mesh, find the high-detail surface along the normal
+   and take the field's gradient as the normal-map value; ambient occlusion by tracing the field; curvature from the
+   field. No high-detail mesh needs to be stored. Then the existing unwrap, paint, KTX2 and material.
+
+**Parts the AR-5 must have** (seen or not, they make the outline right): barrel, gas block, muzzle device; handguard
+with slots and a full top rail; barrel nut; upper receiver with integral rail, ejection port and door, deflector;
+charging handle with latches; bolt carrier seen through the port; lower receiver with flared well, trigger and guard,
+selector, bolt catch, magazine release, takedown pins; textured grip; receiver extension, lock nut, stock with cheek
+rest and butt pad; sling points; ribbed magazine; compact red-dot with mount, clamp screws, adjustment caps and lens
+hoods; folded front and rear back-up sights.
+
+**Hand and arm, to anatomy.** Guide sizes: hand 190 mm from wrist crease to middle fingertip; palm 85 mm wide and
+about 29 mm thick; fingers from the knuckle: index 72, middle 80, ring 74, little 58 mm, each split roughly 50 / 28 /
+22 % into its three bones; finger width 18–20 mm at the first joint tapering to 16–17 mm, oval not round, flat on the
+pad side; knuckles in an arc with the middle highest; thumb pad and heel-of-hand pads; wrist about 58 × 40 mm,
+narrower than the palm. Glove: 2 mm over the hand, side panels with seams along the fingers, a moulded or padded
+knuckle panel that follows the arc, palm patch, pull tab, wrist strap; creases compress inside each joint and stretch
+outside. Sleeve: about 105 mm across at the forearm tapering to a 78 mm cuff, with compression folds near elbow and
+cuff large enough to break the outline, a cuff tab and an underside seam.
+
+**The bar, on screen beside ours.** Poly Haven publishes two CC0 weapons made by professional artists: "Service
+Pistol" (27.5k triangles) and "Bolt Action Rifle 7.62" (20k triangles), both with detachable magazines. Fetch both
+(Poly Haven directly, or the Patch API ids `polyhaven:service_pistol` and `polyhaven:bolt_action_rifle_7_62`), credit
+them, and render them in the studio beside the AR-5 under the same light and in the first-person view. **Every
+round's evidence includes that side-by-side.** The test: would a stranger think the three came from the same studio?
+The Service Pistol also **becomes the sidearm's model** (the owner allows asset packs), split into slide, frame and
+magazine if it is not already, with our own reload animation. Whether the bolt-action replaces the marksman rifle is
+the planner's decision once it has been seen in hand.
+
+**Gates, in order, each with evidence before moving on:** (1) design sheet; (2) the AR-5 as an untextured grey
+"clay" render at 1600 px, three-quarter front and three-quarter rear, beside the two Poly Haven weapons in clay: the
+shape must be right before any texture; (3) hand and arm in clay, open and gripping; (4) baked and textured in the
+studio; (5) in the game at 1280×720 with a 2× crop. Nothing else on row E or K is started until gate 5 is passed
+with the owner's agreement.
+
 ## Working notes for whoever carries this out
 
 - Fresh checkout: `npm ci`. Type-check with `npx tsc --noEmit`; unit tests `npx vitest run tests/games/breachline`
