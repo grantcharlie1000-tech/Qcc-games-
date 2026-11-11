@@ -22,6 +22,7 @@ export const BOOKMARKS = {
   'lab-bench': [-0.6, -4.6, 1.2, -0.32],
   'lab-ceiling': [-1.2, -6.2, 0.9, 0.75],
   corridor: [13.5, -0.5, 1.5708, -0.04],
+  'corridor-west': [-13.6, 0.3, -1.35, -0.06],
   archive: [7.2, 9.3, 0.9, -0.08],
   'server-room': [14.3, -2.6, 0.95, -0.06],
   'south-yard': [3, 19.5, 0, -0.02],

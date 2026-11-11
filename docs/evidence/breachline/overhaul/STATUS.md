@@ -9,7 +9,28 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** KTX2 step done (Lab B/C items included). Next: the corridor.
+**Where I am (keep current):** corridor round 1 done (`rooms/corridor/round-1/`); round 2 next (wall contrast). Then the Archive, then the destruction look.
+
+## Roll-out step 2: corridor (in progress)
+
+Round 0 (`adcd2b9`): the art world now handles any number of rooms (probes, mean light, reflection environment per
+room; panel light merged across rooms, so the Lab–corridor wall carries both bakes). Corridor: polished terrazzo
+(Poly Haven `terrazzo_tiles`, CC0, Amal Kumar), a line of ten fittings at 3 m, the T-bar ceiling with sprinklers
+and smoke detectors, a cable tray on drop rods, hanging exit signs with an original running-figure pictogram, the
+cabinet modelled as casework, the lockers facing into the corridor. First render: the floor carries long
+reflections of the fittings, and the ceiling recedes properly. Round 1: terrazzo cooled toward the grade (it read
+tan), two extinguishers at the foot of the walls.
+
+Round 1 scores (mine, from `rooms/corridor/round-1/`): A 6.5 (even fluorescent light, upper walls near the
+camera wash out), B 7 (the terrazzo carries long reflections of every fitting), C 6.5, D 6 (the walls on both sides
+are destructible panels, so nothing can be fixed to them: the ceiling, the floor props and the casework carry the
+dressing). Budgets: High 73k-76k triangles, 153-158 draw calls; Low 135-140 draw calls (budget 200). Running texture
+total: 10 surface sets plus 5 prop sets, 17 MB shipped across all tiers; at 1K the GPU holds about 16 MB for the
+Lab and corridor sets together with BC/ASTC transcodes.
+
+Bake time: Lab and corridor together take 8 minutes single-threaded. The full building would be about 30, so the
+baker needs worker threads (4 cores here) before more than two more rooms are added.
+
 
 ## Roll-out step 1: KTX2 (done)
 

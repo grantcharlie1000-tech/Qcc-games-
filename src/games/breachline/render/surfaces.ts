@@ -26,7 +26,7 @@ export const PLANKS: Surface = { set: 'raw_plank_wall', size: 1.87, tint: [0.85,
 
 export const SURFACES: Partial<Record<TexId, Surface>> = {
   // Polished terrazzo in the corridor: cool grey, glossy enough to carry the fittings' reflections.
-  lino: { set: 'terrazzo_tiles', size: 2, gloss: 0.3, spec: 2, tint: [0.78, 0.8, 0.84] },
+  lino: { set: 'terrazzo_tiles', size: 2, gloss: 0.3, spec: 2, tint: [0.66, 0.7, 0.8] },
   // Mineral-fibre ceiling tiles, 600 mm, six to a repeat, joints on the T-bar grid.
   ceiling: { set: 'OfficeCeiling001', size: 3.6, normal: 1.5, tint: [0.92, 0.92, 0.9] },
   // Square ceramic tiles; the source is laid diagonally, so turn it square and make each tile 47 cm.

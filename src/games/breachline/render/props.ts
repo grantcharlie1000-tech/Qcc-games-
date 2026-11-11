@@ -10,4 +10,7 @@ export const PROPS: Placement[] = [
   { model: 'metal_stool_01', x: -2.3, y: 0, z: -5.15, yaw: 0.4 },
   { model: 'metal_stool_01', x: -3.4, y: 0, z: -5.2, yaw: -0.3 },
   { model: 'metal_stool_01', x: 1.6, y: 0, z: -5.15, yaw: 1.1 },
+  // Corridor: extinguishers standing at the foot of the walls by the west window and mid-way along.
+  { model: 'korean_fire_extinguisher_01', x: -14.72, y: 0, z: 0.72, yaw: Math.PI },
+  { model: 'korean_fire_extinguisher_01', x: 5.45, y: 0, z: 0.8, yaw: Math.PI },
 ];
