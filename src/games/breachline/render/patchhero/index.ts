@@ -86,7 +86,7 @@ export function createPatchViewmodel(renderer: THREE.WebGLRenderer, lighting: He
   }).catch(e => console.warn('Breachline hand textures unavailable; procedural look kept.', e)));
   // PATCH: the models, their gun-space placement and sockets, loaded with the rest.
   type V3 = [number, number, number];
-  interface PatchModel { body: THREE.Object3D; mag: THREE.Object3D; slide: THREE.Object3D | null; sockets: WeaponSockets; sight: number }
+  interface PatchModel { body: THREE.Object3D; mag: THREE.Object3D; slide: THREE.Object3D | null; sockets: WeaponSockets; sight: number; hipDrop: number }
   const PATCH = new Map<WeaponId, PatchModel>();
   const add = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
   const nodeMesh = (g: THREE.Object3D, name: string, mat: THREE.Material) => { const o = g.getObjectByName(name)!; o.traverse(c => { const m = c as THREE.Mesh; if (m.isMesh) { m.material = mat; m.frustumCulled = false; } }); return o; };
@@ -104,7 +104,9 @@ export function createPatchViewmodel(renderer: THREE.WebGLRenderer, lighting: He
       const body = new THREE.Group(), b = nodeMesh(rg.scene, 'body', rm); b.position.set(...T); body.add(b);
       const mag = new THREE.Group(), mm = nodeMesh(rg.scene, 'magazine', rm); mag.add(mm); mm.position.set(...add([0, -0.04, -0.05], T));
       const sockets: WeaponSockets = { ...A, muzzle: add([0, 0.03, -0.44], T), eject: add([0.042, 0.06, 0.04], T), mag: add([0, -0.04, -0.05], T), handle: add([0, 0.11, 0.13], T), bore: 0.118 };
-      PATCH.set('ar', { body, mag, slide: null, sockets, sight: 0.148 + T[1] });
+      // The generated box sight is solid (no window to look through), so the aim is taken just over its top (0.166),
+      // and at the hip the rig is lowered 5 cm: the Patch receiver stands much taller above its grip than the AR-5's.
+      PATCH.set('ar', { body, mag, slide: null, sockets, sight: 0.166 + T[1], hipDrop: 0.05 });
     }
     // Pistol (patch/pistol/sockets.json): grip palm (0, -0.0053, 0.0698) onto the stock pistol's, on the bore's centre line.
     {
@@ -114,7 +116,7 @@ export function createPatchViewmodel(renderer: THREE.WebGLRenderer, lighting: He
       const mag = new THREE.Group(), mo = nodeMesh(pg.scene, 'magazine', pm); mo.position.add(new THREE.Vector3(...T)); mag.add(mo);
       const slide = new THREE.Group(), so = nodeMesh(pg.scene, 'slide', pm); so.position.add(new THREE.Vector3(...T)); slide.add(so);
       const sockets: WeaponSockets = { ...A, muzzle: add([0, 0.0517, -0.1112], T), eject: add([0.016, 0.0527, 0.0198], T), mag: add([0, 0.0417, 0.0623], T), handle: add([0, 0.0497, 0.0848], T), boltTravel: 0.035, bore: 0.018 };
-      PATCH.set('pistol', { body, mag, slide, sockets, sight: 0.0517 + 0.018 + T[1] });
+      PATCH.set('pistol', { body, mag, slide, sockets, sight: 0.0517 + 0.018 + T[1], hipDrop: 0 });
     }
     for (const [r, id] of [...rigs.entries()].map(([, r]) => [r, r.weapon.id] as const)) patchify(r, id);
   })().catch(e => console.warn('Breachline: Patch weapons unavailable; stock weapons kept.', e)));
@@ -226,7 +228,7 @@ export function createPatchViewmodel(renderer: THREE.WebGLRenderer, lighting: He
       const arc = Math.sin(Math.PI * ads) * 0.02;
       let x = x0 - arc * 0.5, y = y0 - arc, z = z0;
       // PATCH: the Patch sight line sits higher (rifle) or lower (pistol) than the stock one in gun space.
-      y -= ads * (PATCH.get(id)?.sight ?? 0);
+      { const P = PATCH.get(id); if (P) y -= ads * P.sight + (1 - ads) * P.hipDrop; }
       let ax = H.r[0] * (1 - ads), ay = H.r[1] * (1 - ads), az = H.r[2] * (1 - ads);
       x += Math.sin(gait) * 0.006 * bobA - sy * 0.25 * (1 - ads * 0.6); y += -Math.abs(Math.cos(gait)) * 0.008 * bobA + Math.sin(time * 1.6) * 0.0012 * still * (1 - ads * 0.7) - sp * 0.2 * (1 - ads * 0.6);
       ay += sy * (1 - ads * 0.85); ax += sp * (1 - ads * 0.85); az += -sr * 0.6 * (1 - ads * 0.7) + Math.sin(gait) * 0.01 * bobA - p.lean * 0.1;

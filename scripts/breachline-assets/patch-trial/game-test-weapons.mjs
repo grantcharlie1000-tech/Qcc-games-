@@ -45,4 +45,5 @@ async function run(patch) {
   await shot('lab-pistol');
   await browser.close();
 }
-await run(false); await run(true);
+if (process.env.ONLY !== 'patch') await run(false);
+await run(true);
