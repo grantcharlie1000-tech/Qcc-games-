@@ -530,7 +530,7 @@ first use. Evidence per item: a before/after pair in the game, and a strip of th
 Patch (patch.gg) is a new platform for browser games with a library of about 54,000 open-licensed game assets (3D
 models, materials, HDRIs, sprites, sound), each recorded with its licence, the evidence for it, and a ready-made
 credit line. The planner checked it on 2026-11-11: the library is searchable and downloadable **over plain HTTPS with
-no account and no installed tool**.
+no account**, and also through Patch's `pch` command-line tool.
 
 - Search: `GET https://patch.gg/api/v1/assets/search?q=<words>&limit=<n>` (also `type`, `license`, `sort`; reference
   at `https://docs.patch.gg/api-reference/assets/search-the-asset-library.md`).
@@ -538,9 +538,12 @@ no account and no installed tool**.
   dimensions, licence and evidence, `credit`, and `variants` with file URLs (a `web` glTF variant for three.js).
 
 Rules for using it here:
-- **HTTP only.** Do not install or run Patch's `pch` tool, its `install.sh`, its MCP server or its desktop app in a
-  session, do not log in, and do not publish anything to Patch. (Running the tool was refused in the planner's
-  session; that is a deliberate guardrail, not something to work round.)
+- **The tool may be installed (owner's permission, 2026-11-11 10:45 UTC).** Pin it and keep it out of the repo:
+  `npm install --ignore-scripts @patchgg/cli@0.5.1` in a scratch folder, run with `PCH_NO_AGENT_INSTALL=1` and a
+  scratch `HOME`. Use `pch assets search`, `pch assets add` and `pch search` only. Do **not** run `pch login`,
+  `pch publish`, `pch push`, `pch agent install`, `pch mcp` or `install.sh`, and do not install the desktop app:
+  nothing of ours goes to Patch and no agent configuration is changed. If a session's own safety check refuses the
+  tool, do not work round it; use the HTTP calls above, which give the same data.
 - **Licences:** CC0 or CC-BY only, as before. Copy the asset's `credit` line into `public/THIRD_PARTY_NOTICES.txt`
   and record id, source, revision and licence in the asset manifest. Nothing share-alike, non-commercial or
   "LicenseRef".
