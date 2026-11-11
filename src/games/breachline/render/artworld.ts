@@ -101,7 +101,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       }
       if (dbg.includes('nonormal')) nor = null;
       if (dbg.includes('noarm')) arm = null;
-      const mat = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, lightMap, lightScale: info.scale, dirMap: dbg.includes('nodir') ? null : dirMap, vertexTint: true, roughness: dbg.includes('mirror') ? 0.02 : arm ? s?.gloss ?? 1 : 0.85, metalness: dbg.includes('metal') ? 1 : arm ? 1 : 0, band: s?.band, spec: s?.spec, specOnly: dbg.includes('speconly') });
+      const mat = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, lightMap, lightScale: info.scale, dirMap: dbg.includes('nodir') ? null : dirMap, vertexTint: true, roughness: dbg.includes('mirror') ? 0.02 : arm ? s?.gloss ?? 1 : 0.85, metalness: dbg.includes('metal') ? 1 : arm ? 1 : 0, band: s?.band, spec: s?.spec, normalScale: s?.normal, specOnly: dbg.includes('speconly') });
       const g = geometry(a), mesh = new THREE.Mesh(g, mat);
       mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:${id}`;
       group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
@@ -113,11 +113,11 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       const D = dressLab(atlas, region), [bm, bn, ba] = await set('blue_metal_plate', TEX_SIZE[tier]), [pm, pn, pa] = await set('painted_plaster_wall', TEX_SIZE[tier]);
       const plain = (color: [number, number, number], roughness: number, metalness: number) => ({ map: null, normalMap: null, armMap: null, color: new THREE.Color(...color), roughness, metalness });
       const looks: Record<DressKey, Parameters<typeof artMaterial>[0]> = {
-        door: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(1.55, 1.62, 1.7), roughness: 0.8, metalness: 1 },
-        locker: { map: pm, normalMap: pn, armMap: pa, color: new THREE.Color(0.52, 0.58, 0.52), roughness: 0.55, metalness: 1 },
+        door: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(1.55, 1.62, 1.7), roughness: 0.55, metalness: 1, spec: 1.4 },
+        locker: { map: pm, normalMap: pn, armMap: pa, color: new THREE.Color(0.52, 0.58, 0.52), roughness: 0.4, metalness: 1, spec: 1.4 },
         trim: { map: pm, normalMap: pn, armMap: pa, color: new THREE.Color(0.3, 0.36, 0.44), roughness: 0.7, metalness: 1 },
         handle: plain([0.72, 0.72, 0.7], 0.32, 1), chrome: plain([0.92, 0.92, 0.92], 0.07, 1), steel: plain([0.66, 0.67, 0.68], 0.28, 1),
-        grid: plain([0.78, 0.78, 0.76], 0.5, 0),
+        grid: plain([0.6, 0.6, 0.58], 0.45, 0),
         conduit: plain([0.55, 0.56, 0.56], 0.45, 1), socket: plain([0.82, 0.81, 0.78], 0.42, 0), kick: plain([0.035, 0.035, 0.04], 0.55, 0),
         cork: plain([0.42, 0.28, 0.15], 0.9, 0), paper: plain([0.86, 0.86, 0.84], 0.85, 0), plastic: plain([0.16, 0.17, 0.18], 0.45, 0),
         aid: plain([0.1, 0.42, 0.18], 0.5, 0),
@@ -126,15 +126,31 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         clock: { map: printed.clock, normalMap: null, armMap: null, roughness: 0.15, metalness: 0 },
         amber: plain([0.2, 0.08, 0.015], 0.05, 0), glass: plain([0.1, 0.13, 0.125], 0.04, 0),
       };
+      const merged: GeoArrays = { position: [], normal: [], uv: [], uv1: [], color: [], index: [] };
       for (const [key, arrays] of D.parts) {
         const o = looks[key as DressKey];
         // The throttled tier has no reflection probe, so metals would read black: draw them as painted.
         // Bare metal (no texture) would read chalk-white as paint, so it is darkened to its average reflected tone.
         const asPaint = full ? {} : { metalness: 0, armMap: null, color: !o.map && (o.metalness ?? 0) > 0.5 ? new THREE.Color(o.color as THREE.Color).multiplyScalar(0.42) : o.color };
+        // On the throttled tier every untextured piece becomes plain paint, so they share one draw call: fold each
+        // piece's colour into its vertex tint and draw them together after this loop.
+        if (!full && !o.map && !o.emissive) {
+          const c = (asPaint as { color?: THREE.Color }).color ?? new THREE.Color(1, 1, 1), base = merged.position.length / 3;
+          merged.position.push(...arrays.position); merged.normal.push(...arrays.normal); merged.uv.push(...arrays.uv); merged.uv1.push(...arrays.uv1);
+          for (let i = 0; i < arrays.color.length; i += 3) merged.color.push(arrays.color[i] * c.r, arrays.color[i + 1] * c.g, arrays.color[i + 2] * c.b);
+          for (const k of arrays.index) merged.index.push(base + k);
+          continue;
+        }
         const mat = artMaterial({ ...o, ...asPaint, lightMap, lightScale: info.scale, dirMap, vertexTint: true });
         const g = geometry(arrays), mesh = new THREE.Mesh(g, mat);
         mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:dress:${key}`;
         group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
+      }
+      if (merged.index.length) {
+        const mat = artMaterial({ map: null, lightMap, lightScale: info.scale, dirMap, vertexTint: true, roughness: 0.6, metalness: 0 });
+        const g = geometry(merged), mesh = new THREE.Mesh(g, mat);
+        mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:dress:merged`;
+        group.add(mesh); materials.push(mat); geometries.push(g);
       }
       if (D.missed) console.warn(`Breachline art: ${D.missed} dressing pieces found no surface to stand on: ${D.misses.join(' ')}`);
     }
@@ -146,7 +162,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     const wallSet = SURFACES.drywall;
     const [wmap, wnor, warm] = wallSet ? await set(wallSet.set, TEX_SIZE[tier]) : [procedural.drywall, null, null];
     const wall = dbg.includes('panelbasic') ? new THREE.MeshBasicMaterial({ map: wmap, vertexColors: true }) as unknown as THREE.MeshStandardMaterial
-      : artMaterial({ map: wmap, normalMap: wnor, armMap: warm, vertexLight: true, roughness: warm ? 1 : 0.9, metalness: warm ? 1 : 0, band: wallSet?.band });
+      : artMaterial({ map: wmap, normalMap: wnor, armMap: warm, vertexLight: true, normalScale: wallSet?.normal, roughness: warm ? 1 : 0.9, metalness: warm ? 1 : 0, band: wallSet?.band });
     materials.push(wall); if (wall.userData.art) envLights.push(wall);
     const tables = new Map<number, Map<number, Float32Array>>();
     for (const p of info.panels) { let t = tables.get(p.index); if (!t) tables.set(p.index, t = new Map()); t.set(p.side, new Float32Array(p.light)); }

@@ -9,7 +9,15 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-## Roll-out step 1: KTX2 (in progress)
+**Where I am (keep current):** KTX2 step done (Lab B/C items included). Next: the corridor.
+
+## Roll-out step 1: KTX2 (done)
+
+Lab items closed in this step: photo ceiling tiles (ambientCG Office Ceiling 001, CC0, 600 mm tiles on the T-bar
+grid); plaster normal strength 2.2x; painted metal doors and lockers glossier with a 1.4x reflection; the grade's toe
+lifted (lift 0.03, black point 0.012) so shadowed casework keeps its detail (the reviewer's carry-forward note 1).
+On Low, untextured dressing merges into one draw call: Low's Lab draw calls 99-107 -> 87-95.
+
 
 **Landed:** textures ship as KTX2/Basis (colour ETC1S with the sRGB transfer function; normals and AO/roughness/metal
 UASTC with RDO and zstd), one file for every GPU. The browser transcodes to BC, ETC2 or ASTC, so ARM Chromebooks

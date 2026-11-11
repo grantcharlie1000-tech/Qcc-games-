@@ -25,6 +25,8 @@ export interface ArtMaterialOptions {
   /** Average baked light of the room the environment probe saw, for specular occlusion. */
   envLight?: number;
   roughness?: number;
+  /** Normal-map strength. */
+  normalScale?: number;
   /** Reflection strength multiplier (envMapIntensity). */
   spec?: number;
   /** Debug: show only the reflection term. */
@@ -44,6 +46,7 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
     envMap: o.envMap ?? null, envMapIntensity: o.spec ?? 1, vertexColors: !!(o.vertexLight || o.vertexTint), color: o.color ?? 0xffffff,
     emissive: o.emissive ?? 0x000000,
   });
+  if (o.normalScale) m.normalScale.setScalar(o.normalScale);
   const sh = new Float32Array(12);
   if (o.sh) sh.set(Array.from(o.sh).slice(0, 12));
   const uniforms = {

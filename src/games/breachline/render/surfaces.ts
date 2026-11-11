@@ -8,6 +8,8 @@ export interface Surface {
   set: string;
   /** Multiplies the texture's roughness (below 1 is glossier). */
   gloss?: number;
+  /** Normal-map strength (1 = as authored). */
+  normal?: number;
   /** Multiplies the reflection (polished or sealed surfaces read stronger than the bare physics gives at this exposure). */
   spec?: number;
   /** A painted lower band (wainscot) up to this height, in this tint, with a dark rail at its top. */
@@ -23,10 +25,12 @@ export interface Surface {
 export const PLANKS: Surface = { set: 'raw_plank_wall', size: 1.87, tint: [0.85, 0.8, 0.75] };
 
 export const SURFACES: Partial<Record<TexId, Surface>> = {
+  // Mineral-fibre ceiling tiles, 600 mm, six to a repeat, joints on the T-bar grid.
+  ceiling: { set: 'OfficeCeiling001', size: 3.6, normal: 1.5, tint: [0.92, 0.92, 0.9] },
   // Square ceramic tiles; the source is laid diagonally, so turn it square and make each tile 47 cm.
   tile: { set: 'interior_tiles', size: 0.95 * Math.SQRT2 / 2, rotate: Math.PI / 4, gloss: 0.12, spec: 2.6, tint: [0.66, 0.64, 0.62] },
-  drywall: { set: 'painted_plaster_wall', size: 2, band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
-  cinder: { set: 'painted_plaster_wall', size: 2, tint: [0.86, 0.88, 0.9], band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
+  drywall: { set: 'painted_plaster_wall', size: 2, normal: 2.2, band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
+  cinder: { set: 'painted_plaster_wall', size: 2, normal: 2.2, tint: [0.86, 0.88, 0.9], band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
   // Carcasses sit behind the modelled doors: dark, so the gaps between doors read as gaps.
   counter: { set: 'blue_metal_plate', size: 1.25, tint: [0.55, 0.55, 0.55] },
   // Locker carcasses (doors are modelled in render/labdress.ts).

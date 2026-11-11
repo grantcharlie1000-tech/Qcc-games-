@@ -9,6 +9,7 @@
  *
  * Units: a baked value V is what a white surface reflects, so a surface shows albedo x V (the old vertex bake used
  * the same scale). Lightmaps store sqrt-ish sRGB of V / LM_SCALE, so values up to LM_SCALE survive without clipping. */
+import { existsSync } from 'node:fs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -61,7 +62,10 @@ async function albedoOf(tex: TexId, tint: V3): Promise<V3> {
   const s = SURFACES[tex];
   let base: V3;
   if (s) {
-    if (!setAlbedo.has(s.set)) setAlbedo.set(s.set, await averageAlbedo(join(HERE, '.cache', s.set, `${s.set}_diff.jpg`)));
+    if (!setAlbedo.has(s.set)) {
+      const ph = join(HERE, '.cache', s.set, `${s.set}_diff.jpg`), acg = join(HERE, '.cache', s.set, `${s.set}_2K-JPG_Color.jpg`);
+      setAlbedo.set(s.set, await averageAlbedo(existsSync(ph) ? ph : acg));
+    }
     base = setAlbedo.get(s.set)!;
     const t = s.tint ?? [1, 1, 1];
     base = [base[0] * t[0], base[1] * t[1], base[2] * t[2]];
