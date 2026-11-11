@@ -12,13 +12,33 @@ for that.
 | Phase | State | Gate |
 | --- | --- | --- |
 | 0. Harness | **Done** (2026-11-11) | Passed: baseline numbers and pictures exist; scores confirmed, and Mix corrected down (below) |
-| 1. Graph and space | Next | |
+| 1. Graph and space | **In progress, paused** (usage window; resumes after 07:40 UTC) | Not yet assessed |
 | 2. Weapons and reloads | | |
 | 3. Foley and destruction | | |
 | 4. Blasts, objective, feedback | | |
 | 5. Ambience, cues, polish | | |
 
-The sound the game plays is still the old `audio.ts`, unchanged. Phase 0 added only the lab and tests.
+**Paused mid phase 1 (2026-11-11, on the planner's request for the usage window).** Exactly where it is:
+
+- Built and committed: `audio/dsp.ts` (DSP toolkit), `audio/spaces.ts` (four synthesised impulse responses with
+  explicit early reflections: hard room, soft room, corridor, yard), `audio/sounds.ts` (first-pass generators for
+  every sound, several variants each), `audio/render.ts` + `audio/worker.ts` (progressive pre-render in a
+  same-origin module worker, main-thread fallback), `audio/engine.ts` (buses, compressor and a −1 dBFS ceiling,
+  per-space reverb sends, ducking, blast low-pass, 32-voice and 6-HRTF caps, occlusion states, distance delay),
+  and a new `audio.ts` driving them through the unchanged `Sfx` calls (the interface only grew: optional weapon
+  and empty flag on `reload`, floor names on `step`, `ready()`, `stats()`).
+- **The game now plays this first-pass sound.** It is untested in a live browser match: the Breachline browser
+  tests and the two-device test have **not** been run on it yet. First thing on resuming.
+- Round 2 lab numbers (`test-results/breachline-audio/r2`, not committed): no clipping anywhere; corridor peak
+  −2.3 dBFS, breach −2.0 (baseline +6.1); own gun in a room vs a yard now differs (span 0.73 s vs 1.32 s); a wall
+  layer is now distinct (12 m AR: clear −5.7 dB peak/centroid 1659 Hz, one soft layer −9.8/1241, three −17.2/638,
+  solid −24.9/437); bank 11.4 MB (budget 12), 231 render jobs ~0.65 s total in Node.
+- Known open defects from round 2: the room ambience is still far too loud (−40 dBFS RMS alone, target ≥ 20 dB
+  under gunfire; I cut the bus but have not re-measured the ratio); automatic fire still merges into a wall
+  below 200 Hz; footsteps on carpet and wood read too dull; nodes per shot not yet re-counted; the phase 1 lab
+  spectrograms after the round-2 fixes have not been looked at yet.
+- Plan deviation to write into the plan on resuming: pre-rendering is plain-JS DSP in a worker, not
+  `OfflineAudioContext` (same code renders in Node for unit tests; off the main thread either way).
 
 ## Scorecard (plan §1)
 
@@ -126,4 +146,4 @@ New listening files arrive from phase 1 on, each beside its "before".
 
 ## Still weak
 
-Everything: the game's sound is unchanged at this gate.
+Phase 1 is not through its gate: see the paused notes at the top. No listening files for the new sound yet.

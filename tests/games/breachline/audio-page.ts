@@ -12,6 +12,8 @@ export interface RenderJob {
   sampleRate: number;
   seed: number;
   cues: Cue[];
+  /** Second argument to createSfx (e.g. { ambience: false } for single sounds). */
+  options?: Record<string, unknown>;
   /** Method to call after construction and before any cue, if the module needs warming (pre-rendering). */
   warm?: string;
 }
@@ -43,13 +45,16 @@ export async function renderInPage(job: RenderJob): Promise<RenderResult> {
   (off as unknown as Record<string, unknown>).resume = () => Promise.resolve();
   (off as unknown as Record<string, unknown>).suspend = (t?: number) => (t === undefined ? Promise.resolve() : realSuspend(t));
   (off as unknown as Record<string, unknown>).close = () => Promise.resolve();
+  // The lab stands in for a player who has clicked: the game creates no context before a gesture.
+  try { Object.defineProperty(navigator, 'userActivation', { value: { hasBeenActive: true, isActive: true }, configurable: true }); } catch { /* not supported */ }
   const w = window as unknown as Record<string, unknown>;
   // The module may pre-render with its own OfflineAudioContexts; only the live context is replaced.
   w.AudioContext = function AudioContextStub() { return off; };
   w.webkitAudioContext = w.AudioContext;
-  const mod = await import(/* @vite-ignore */ job.module) as { createSfx(enabled: () => boolean): Record<string, (...a: unknown[]) => unknown> };
-  const sfx = mod.createSfx(() => true);
+  const mod = await import(/* @vite-ignore */ job.module) as { createSfx(enabled: () => boolean, options?: unknown): Record<string, (...a: unknown[]) => unknown> };
+  const sfx = mod.createSfx(() => true, job.options);
   if (job.warm) await (sfx[job.warm] as () => Promise<void>)();
+  else if (typeof sfx.ready === 'function') await (sfx.ready as () => Promise<void>)();
   const q = 128 / job.sampleRate, groups = new Map<number, number[]>();
   job.cues.forEach((c, i) => { const k = Math.max(0, Math.round(c.t / q)); groups.set(k, [...(groups.get(k) ?? []), i]); });
   const perCue = new Array(job.cues.length).fill(0);

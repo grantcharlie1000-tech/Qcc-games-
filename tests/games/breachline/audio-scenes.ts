@@ -1,6 +1,6 @@
 /** What the sound lab renders: a catalogue of single sounds and three scripted scenes, written only against the
  * `Sfx` calls the game makes today, so the same jobs render both the baseline and the rebuilt sound. The listener
- * stands at the origin facing -Z (+X is to their right). Plan §6. */
+ * stands in a real room of the map (a frame per job); places are written relative to them, -Z ahead and +X to their right. Plan §6. */
 import type { WeaponId } from '../../../src/games/breachline/config';
 import type { Cue, RenderJob } from './audio-page';
 
@@ -9,14 +9,23 @@ export const RELOAD_SECONDS: Record<WeaponId, number> = { ar: 2.3, carbine: 2.2,
 export const INTERVAL: Record<WeaponId, number> = { ar: 60 / 690, carbine: 60 / 760, smg: 60 / 920, shotgun: 0.82, dmr: 0.21, pistol: 0.14 };
 const SR = 48000;
 
+/** A place in the listener's frame: x to their right, z behind them (so ahead is −z). `job` moves it into the map. */
 const at = (x: number, z: number, block = 0, y = 1.4) => ({ x, y, z, block });
-const listen = (t: number, indoors: boolean, x = 0, z = 0, yaw = 0): Cue => ({ t, call: 'listen', args: [x, 1.6, z, yaw, indoors] });
+/** Where the listener stands in the map, and which way they face. Sounds are placed relative to this, so the room
+ * each one is in (and so its reverb) comes from the real map. */
+export interface Frame { x: number; z: number; yaw: number }
+export const LAB: Frame = { x: -1, z: -6, yaw: 0 }, YARD: Frame = { x: 0, z: 16, yaw: 0 }, CORRIDOR: Frame = { x: 0, z: -0.5, yaw: Math.PI / 2 }, ARCHIVE: Frame = { x: 4, z: 5.5, yaw: 0 };
+const toWorld = (f: Frame, lx: number, lz: number) => ({ x: f.x + Math.cos(f.yaw) * lx + Math.sin(f.yaw) * lz, z: f.z - Math.sin(f.yaw) * lx + Math.cos(f.yaw) * lz });
+const listen = (t: number, f: Frame, indoors: boolean): Cue => ({ t, call: 'listen', args: [f.x, 1.6, f.z, f.yaw, indoors] });
 /** Calls `listen` every 50 ms, as the game does every frame, so ambience and the ear follow along. */
-const ears = (seconds: number, indoors: boolean): Cue[] => Array.from({ length: Math.floor(seconds / 0.05) }, (_, i) => listen(i * 0.05, indoors));
+const ears = (seconds: number, f: Frame, indoors: boolean): Cue[] => Array.from({ length: Math.floor(seconds / 0.05) }, (_, i) => listen(i * 0.05, f, indoors));
+const isPlace = (a: unknown): a is { x: number; y: number; z: number; block: number } => !!a && typeof a === 'object' && 'block' in a;
 /** Scenes and ambience renders follow the ear every 50 ms; single sounds place the ear once, before the first sound,
  * so no ambience bed sits under them and their measurements are of the sound alone. */
-const job = (module: string, name: string, seconds: number, cues: Cue[], indoors = true, seed = 1, bed = /^(scene|ambience)/.test(name)): RenderJob =>
-  ({ name, module, seconds, sampleRate: SR, seed, cues: [...(bed ? ears(seconds, indoors) : [listen(0, indoors)]), ...cues].sort((a, b) => a.t - b.t) });
+const job = (module: string, name: string, seconds: number, cues: Cue[], indoors = true, seed = 1, frame: Frame = indoors ? LAB : YARD, bed = /^(scene|ambience)/.test(name)): RenderJob => ({
+  name, module, seconds, sampleRate: SR, seed, options: { ambience: bed },
+  cues: [...(bed ? ears(seconds, frame, indoors) : [listen(0, frame, indoors)]), ...cues.map(c => ({ ...c, args: c.args.map(a => (isPlace(a) ? { ...a, ...toWorld(frame, a.x, a.z) } : a)) }))].sort((a, b) => a.t - b.t),
+});
 const burst = (t0: number, w: WeaponId, n: number, where: ReturnType<typeof at> | null): Cue[] =>
   Array.from({ length: n }, (_, i) => ({ t: t0 + i * INTERVAL[w], call: 'shot', args: [w, where] }));
 
@@ -75,7 +84,7 @@ export function corridor(module: string): RenderJob {
     ...burst(5.6, 'dmr', 1, at(2, -24, 4)), ...burst(6.1, 'dmr', 1, at(2, -24, 4)),
     ...burst(7.3, 'ar', 8, null),
   ];
-  return job(module, 'scene-corridor', 9, cues, true, 11);
+  return job(module, 'scene-corridor', 9, cues, true, 11, CORRIDOR);
 }
 
 /** A breach: a charge set on the wall beside the listener, a short wait, the blast, the wall coming down, then
@@ -104,7 +113,7 @@ export function uplink(module: string): RenderJob {
   cues.push(...burst(2.2, 'ar', 4, at(25, -30, 4)), ...burst(4.0, 'carbine', 5, at(-20, -35, 4)));
   cues.push(...[6.2, 6.6, 7.0, 7.4].map(t => ({ t, call: 'step', args: ['soft', 0.8, at(-3, 4, 1, 0.1)] })));
   cues.push(...burst(7.8, 'pistol', 3, null), { t: 9.6, call: 'round', args: ['lose'] });
-  return job(module, 'scene-uplink', 11, cues, true, 13);
+  return job(module, 'scene-uplink', 11, cues, true, 13, ARCHIVE);
 }
 
 export const scenes = (module: string) => [corridor(module), breach(module), uplink(module)];
