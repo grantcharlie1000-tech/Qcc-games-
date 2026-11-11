@@ -42,7 +42,7 @@ export interface BreachScene {
   project(x: number, y: number, z: number): { x: number; y: number; front: boolean };
   /** Where the camera is and which way it faces, for sound. */
   readonly ear: { x: number; y: number; z: number; yaw: number };
-  readonly stats: { calls: number; triangles: number; scale: number; level: number; post?: string; art?: string; cpu?: number; programs?: number; textures?: number; geometries?: number };
+  readonly stats: { calls: number; triangles: number; scale: number; level: number; post?: string; art?: string; cpu?: number; programs?: number; textures?: number; geometries?: number; ready?: boolean };
   dispose(): void;
 }
 
@@ -115,7 +115,46 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       probesDone = false;
       stats.level = level.triangles + a.stats.triangles;
       if (world) bind(world);
-    }).catch(e => { console.warn('Breachline art unavailable; using the procedural look.', e); });
+    }).catch(e => { console.warn('Breachline art unavailable; using the procedural look.', e); }).finally(() => { void warmRest(); });
+  } else queueMicrotask(() => { void warmRest(); });
+  /** After the art: compile and upload everything that otherwise appears first in a fight (the weapon in hand, the
+   * fighters, the effects), with the match's lights in place, so nothing is built during play. Then `stats.ready`. */
+  async function warmRest() {
+    const tick = (ms = 0) => new Promise(res => setTimeout(res, ms));
+    for (let i = 0; i < 600 && !disposed; i++) { if (viewmodel.warm()) break; await tick(100); }
+    if (disposed) return;
+    await tick();
+    try { await fighters.warm(renderer, camera); } catch (e) { console.warn('Breachline fighters warm-up failed', e); }
+    if (disposed) return;
+    const prev = renderer.getRenderTarget(), hdr = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true, samples: post.tier === 'high' ? 4 : 0 });
+    fx.prime(true);
+    // Every material a damaged wall can show (cut edges, cavity, studs, planks, plate): an intact wall draws only its
+    // face, so without this the first bullet hole would compile them. A tiny triangle with the panels' attributes each.
+    const wallMats = new Set<THREE.Material>(Object.values(panelMats));
+    if (art) for (let i = 0; i < MAP.panels.length; i++) { const l = art.panelLook(i); if (l) { wallMats.add(l.wall); if (l.planks) wallMats.add(l.planks); } }
+    const tri = new THREE.BufferGeometry();
+    tri.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1e-3, 0, 0, 0, 1e-3, 0], 3));
+    tri.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+    tri.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1], 2));
+    tri.setAttribute('color', new THREE.Float32BufferAttribute([1, 1, 1, 1, 1, 1, 1, 1, 1], 3));
+    const wallWarm = new THREE.Group();
+    for (const m of wallMats) { const mesh = new THREE.Mesh(tri, m); mesh.frustumCulled = false; wallWarm.add(mesh); }
+    camera.updateMatrixWorld(); wallWarm.position.copy(camera.localToWorld(new THREE.Vector3(0, 0, -1))); fx.group.add(wallWarm);
+    // The gadgets are hidden until used (charges, the uplink, grenades, the pulse ring): show them for this draw too.
+    const gadgets: THREE.Object3D[] = [device, pulse, ...chargeMeshes, ...nades.map(n => n.mesh)];
+    const kept = gadgets.map(o => [o.visible, o.position.clone()] as const);
+    for (const o of gadgets) { o.visible = true; o.position.copy(wallWarm.position); o.updateMatrixWorld(true); }
+    try {
+      renderer.setRenderTarget(hdr);
+      const done = renderer.compileAsync(scene, camera);
+      renderer.setRenderTarget(prev);
+      await done;
+      // One real draw, so the flash's and the walls' textures are uploaded too.
+      renderer.setRenderTarget(hdr); renderer.render(scene, camera); renderer.setRenderTarget(prev);
+    } finally {
+      gadgets.forEach((o, i) => { o.visible = kept[i][0]; o.position.copy(kept[i][1]); o.updateMatrixWorld(true); });
+      fx.prime(false); fx.group.remove(wallWarm); tri.dispose(); renderer.setRenderTarget(prev); hdr.dispose(); }
+    stats.ready = true;
   }
 
   // ---- Sky, sun and a far skyline ----

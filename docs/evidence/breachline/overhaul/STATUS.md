@@ -4,6 +4,26 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11 ~10:55 UTC: warm-up wired in; count test added.** The scene now warms everything behind the menu,
+in order, and then sets `stats().ready`:
+1. the art (as before);
+2. `viewmodel.warm()` (retried until its assets are in);
+3. `await fighters.warm(renderer, camera)`;
+4. one compile and one draw of the whole scene into a small HDR target, with every combat-only object shown for it:
+   the effects' flash sprites, the gadgets (charges, uplink, grenades, pulse ring; these were the lambert and basic
+   programs new in play), and a tiny triangle per wall material a damaged panel can show (an intact wall draws only
+   its face, so the cut-edge, cavity, stud and plank shaders used to compile at the first hole).
+
+New test `tests/games/breachline/warm.spec.ts` waits for `ready`, records `programs` and `textures`, runs gunfire
+into a wall, a breach charge and point-blank fire at an enemy, then compares. Programs are now unchanged (they rose
+by 2 before this). Textures still rise by 3: the fighters' level-0 baked set (2048 BC7 + 2 x 1024 ASTC). Their
+`warm()` compiles those programs, but `compileAsync` does not upload textures. I've asked the fighters session to
+`renderer.initTexture` each map in `warm()`. Until then the test is marked `test.fail` with that reason, so it
+flags itself as soon as the fix lands. Hole geometry: the rebuild runs once per damage change, not per frame
+(`PanelView.sync` compares the panel's damage version); it creates and disposes a geometry each time, so the
+geometry count is level and only small buffers upload. Suite: Breachline unit tests 96/96; browser tests plus
+online test, one worker: 9 passed (warm.spec counted as an expected failure).
+
 **2026-11-11 ~10:30 UTC: cause of the first-firefight stall.** Method: the real online spec with a 100 ms
 `setInterval` gap monitor on both pages, plus `renderer.info` and a wrapper that records every GL texture/buffer
 upload, between "round in action" and "4 s after the host's first hit". (`stats()` now also reports `programs`,

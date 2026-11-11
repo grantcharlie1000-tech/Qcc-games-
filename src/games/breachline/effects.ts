@@ -168,6 +168,8 @@ export class Effects {
       const t = f.life / f.span; (f.sprite.material as THREE.SpriteMaterial).opacity = t; f.sprite.scale.setScalar(f.size * (1.25 - 0.25 * t));
     }
   }
+  /** Objects that are hidden until first use (the flash sprites): shown for a warm-up compile, then hidden again. */
+  prime(on: boolean) { const f = this.flashes[0]; f.sprite.visible = on; if (on) f.sprite.scale.setScalar(1e-4); }
   /** A new round: sweep everything away. */
   clear() {
     this.dustP.clear(); this.sparkP.clear();
