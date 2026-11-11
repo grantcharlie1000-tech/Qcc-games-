@@ -40,6 +40,7 @@ export function fixtureMeshes(list: readonly Fixture[]): { meshes: THREE.Mesh[];
     idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
   };
   for (const f of list) {
+    if (f.y !== undefined) continue; // desk lamps are modelled with the room's dressing
     const x0 = f.x - f.w / 2, x1 = f.x + f.w / 2, z0 = f.z - f.d / 2, z1 = f.z + f.d / 2;
     const X0 = x0 - LIP, X1 = x1 + LIP, Z0 = z0 - LIP, Z1 = z1 + LIP, y = DIFFUSER_Y, top = WALL_H;
     // Rim around the diffuser, facing down (lit by the diffuser beside it), then the housing's four sides.

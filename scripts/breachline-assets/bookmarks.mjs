@@ -25,6 +25,8 @@ export const BOOKMARKS = {
   'corridor-west': [-13.6, 0.3, -1.35, -0.06],
   archive: [7.2, 9.3, 0.9, -0.08],
   'archive-north': [3.75, 1.5, 3.1416, -0.06],
+  // The reading table and its desk lamp.
+  'archive-desk': [5.6, 4.3, 0.95, -0.3],
   'server-room': [14.3, -2.6, 0.95, -0.06],
   'south-yard': [3, 19.5, 0, -0.02],
   'west-lot': [-25.5, 0.5, -1.5708, -0.02],

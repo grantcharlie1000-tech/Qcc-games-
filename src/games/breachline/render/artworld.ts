@@ -144,7 +144,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         alarm: plain([0.62, 0.06, 0.05], 0.35, 0),
         card: plain([0.55, 0.43, 0.3], 0.85, 0), binder: plain([1, 1, 1], 0.5, 0), label: plain([0.88, 0.87, 0.82], 0.8, 0),
         exit: { map: printed.exit, normalMap: null, armMap: null, roughness: 0.3, metalness: 0, emissive: new THREE.Color(0.9, 1.2, 0.95), emissiveMap: printed.exit },
-        amber: plain([0.2, 0.08, 0.015], 0.05, 0), glass: plain([0.1, 0.13, 0.125], 0.04, 0),
+        amber: plain([0.2, 0.08, 0.015], 0.05, 0),
+        bulb: { ...plain([1, 0.85, 0.6], 0.3, 0), emissive: new THREE.Color(6, 4.2, 2.4) }, glass: plain([0.1, 0.13, 0.125], 0.04, 0),
       };
       const merged: GeoArrays = { position: [], normal: [], uv: [], uv1: [], color: [], index: [] };
       for (const [key, arrays] of D.parts) {

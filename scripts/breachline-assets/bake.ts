@@ -164,7 +164,7 @@ function direct(p: V3, n: V3, samples: number): { v: V3; dir: V3 } {
     if (dx0 * dx0 + dz0 * dz0 > (l.range + 3) ** 2) continue;
     let acc = 0;
     for (let i = 0; i < sx; i++) for (let j = 0; j < sz; j++) {
-      const q: V3 = [l.x + ((i + rnd()) / sx - 0.5) * LAMP_W, LAMP_Y, l.z + ((j + rnd()) / sz - 0.5) * LAMP_D];
+      const q: V3 = [l.x + ((i + rnd()) / sx - 0.5) * LAMP_W, l.y ?? LAMP_Y, l.z + ((j + rnd()) / sz - 0.5) * LAMP_D];
       const d: V3 = [q[0] - p[0], q[1] - p[1], q[2] - p[2]], d2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2], dl = Math.sqrt(d2);
       const cs = (d[0] * n[0] + d[1] * n[1] + d[2] * n[2]) / dl, cl = d[1] / dl; // lamp faces down
       if (cs <= 0 || cl <= 0) continue;
@@ -173,9 +173,9 @@ function direct(p: V3, n: V3, samples: number): { v: V3; dir: V3 } {
       acc += w;
       dir[0] += w * d[0] / dl; dir[1] += w * d[1] / dl; dir[2] += w * d[2] / dl;
     }
-    let k = LAMP_POWER * LAMP_W * LAMP_D / (sx * sz) * acc;
+    let k = LAMP_POWER * LAMP_W * LAMP_D / (sx * sz) * acc * (l.gain ?? 1);
     // Ceiling just around the fitting: the housing's lip and diffuser spill.
-    if (n[1] < -0.5 && p[1] > LAMP_Y - 0.1) {
+    if (l.y === undefined && n[1] < -0.5 && p[1] > LAMP_Y - 0.1) {
       const ox = Math.max(0, Math.abs(p[0] - l.x) - LAMP_W / 2), oz = Math.max(0, Math.abs(p[2] - l.z) - LAMP_D / 2);
       k += HALO * Math.exp(-Math.hypot(ox, oz) / HALO_FALL);
     }

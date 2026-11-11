@@ -10,7 +10,7 @@ import type { Atlas, Region } from './levelgeo';
 
 type V3 = [number, number, number];
 /** Materials the dressing asks for; artworld.ts maps each key to a material. */
-export type DressKey = 'casing' | 'door' | 'locker' | 'exit' | 'alarm' | 'fire' | 'card' | 'label' | 'binder' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
+export type DressKey = 'bulb' | 'casing' | 'door' | 'locker' | 'exit' | 'alarm' | 'fire' | 'card' | 'label' | 'binder' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
 
 const inRoom = (r: Region, x: number, z: number) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1;
 
@@ -104,6 +104,16 @@ function dressArchive(atlas: Atlas, room: Region): DetailBuilder {
     // Filing cabinets face west, into the room.
     if (b.mat === 'steel') filing(D, b.x0, [-1, 0, 0], b.z0, b.z1, b.y1);
     if (b.mat === 'wood') {
+      {
+        // A desk lamp: a weighted base, a jointed arm and a green enamel shade over a warm bulb.
+        const lx = 4.25, lz = 2.85, top = b.y1, on: V3 = [lx, top + 0.001, lz], tu: V3 = [0, 1, 0];
+        const geo = (g: THREE.BufferGeometry, key: DressKey, tint?: V3) => { D.mesh(key, g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, tu, tint ?? [1, 1, 1]); g.dispose(); };
+        geo(new THREE.CylinderGeometry(0.07, 0.08, 0.025, 20).translate(lx + 0.12, top + 0.0125, lz + 0.02), 'plastic', [0.6, 0.6, 0.6]);
+        geo(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 8).rotateZ(-0.35).translate(lx + 0.07, top + 0.16, lz + 0.02), 'chrome');
+        geo(new THREE.CylinderGeometry(0.008, 0.008, 0.22, 8).rotateZ(1.1).translate(lx - 0.0, top + 0.31, lz + 0.01), 'chrome');
+        geo(new THREE.CylinderGeometry(0.03, 0.085, 0.12, 20, 1, true).translate(lx, top + 0.32, lz), 'aid');
+        geo(new THREE.SphereGeometry(0.03, 12, 8).translate(lx, top + 0.31, lz), 'bulb');
+      }
       // The reading table: paper stacks, box files lying flat, an open archive box.
       const top = b.y1, r = seeded(5), on = (x: number, z: number): V3 => [x, top + 0.001, z], tu: V3 = [0, 1, 0];
       for (let i = 0; i < 5; i++) {

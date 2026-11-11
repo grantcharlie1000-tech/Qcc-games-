@@ -138,8 +138,12 @@ instanced:
   lit as a box, not a flat card.
 - **Cost:** one draw call for every box body, plus one per label variant. The Archive view is 93k triangles
   (round 1: 82k), 201 draw calls (round 1: 179).
-- **Not done yet:** aisle shading in the bake (the shelving is already in the bake geometry; the darker aisles the
-  reviewer wants need a closer look at the bake), the desk lamp, and rolling steps or a trolley.
+- **Desk lamp (done):** a modelled lamp on the reading table (weighted base, jointed chrome arm, green enamel
+  shade, a glowing warm bulb), baked as a small warm source at 1.1 m. Fixtures can now carry a height and a gain;
+  the fitting mesh skips them. Archive re-baked (307 s). The warm pool reads only faintly at evidence size; more
+  gain is a re-bake away. Evidence: `archive-desk-high.png`.
+- **Not done yet:** darker aisles (the fittings sit between the shelving runs, so the aisles are where the light
+  is); rolling steps or a trolley.
 - Archive (mine, strict scale): D 5.5 -> 6.5; A unchanged.
 - Tests: unit tests 97/97; browser suite plus the online test 10 passed, with the stock-fighters warm run as the
   expected failure.
