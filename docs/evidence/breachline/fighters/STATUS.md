@@ -14,7 +14,7 @@ Session: fighters (row F: bodies, kit, materials, animation). Plan:
 | Weapons in hand | `worldWeapon(id, lod)` from the weapons session, adapted to the fighter's sockets (stand-in kept as fallback) |
 | Lighting | Diffuse from `probe()` as indirect irradiance, specular from `environment()` scaled by `environmentScale()` |
 
-**Where I am:** round 4, the planner's change of technique: a baked texture set for the attacker rifleman (Azure), end to end, in the game. The other variant (Ember) is still procedural. F = 6, below the gate of 7.
+**Where I am:** round 5, a re-unwrap for large, recognisable islands, with the face reworked in the bake. The Azure rifleman's set is in the game; Ember is still procedural. F = 6, below the gate of 7. Next: Ember's set, the shoulder pinch, the gloves.
 
 ## Reference study (looked at, nothing saved)
 
@@ -91,6 +91,8 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 
 | r4 | **6** | `r4/atlas-l0-{diff,nor,arm}.png`, `r4/turntable-s0.png`, `r4/turntable-moving-light.png`, `r4/baked-vs-procedural-close.png`, `r4/ingame-yard-{2m,8m,20m}.png` with 2× crops, `r4/strip-{walk-side,walk-front,sprint-side}-s0.png` | The rifleman now has a real texture set: printed camouflage, ripstop, folds at elbows, knees and waist, seams with stitching, taped kit edges, webbing ribs, sole tread, ray-traced occlusion, and roughness that separates cloth, nylon, leather, polymer and skin; it reads in the game at 2 and 8 m. The walk gained shoulder counter-rotation, weapon bob and sway, and a longer stride. Held at 6: the atlas packs at 47% (texels wasted), and chart seams cut the print on the arms; the normal detail is soft at 1024; the shoulders still pinch; the gloves are lumps; Ember has no set yet. |
 
+| r5 | **6** | `r5/atlas-l0-{diff,nor,arm}.png`, `r5/checker.png`, `r5/turntable-s0.png`, `r5/ingame-yard-{2m,8m,20m}.png` with 2× crops | The atlas is now recognisable: torso, each leg and arm, the plates, the hands and the cummerbund are single islands. 452 charts instead of 1318, 698 texels/m instead of 580, and charts fill 83% of the square. The checker shows even density with little stretch. The face is a muted, darker skin with brow and nose shading and stubble. Held at 6: thin bands still unwrap as rings; the head and helmet charts are fans; the shoulders pinch; the gloves are lumps; Ember is not baked. |
+
 ## Iteration log
 
 **Body, round 1** (studio turntables):
@@ -143,6 +145,12 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 6. Baked albedo is lighter than the vertex colours and carries its own occlusion → baked materials get half the probe fill.
 7. Walk: shoulders counter-rotate visibly against the hips, the weapon bobs and sways with the step and lags the body, the stride is longer (inside the foot-slide test), and the weight is forward at rest.
 
+**Round 5** (the reviewer's unwrap warning and r3 notes):
+1. Unwrap rewritten (`unwrap.ts`). The mesh is split into its connected parts. Tubes are detected by the axis their normals are most perpendicular to (right for limbs and for short, wide bands) and unwrapped as one cylinder each, seam toward the body's centre. Other parts become planar charts with a loose normal cone, so bevels join their faces; parts under 30 cm² are one chart. Packing is a skyline packer, with 90° turns that are rotations, not mirrors.
+2. Skin: 45% desaturated and darker, with brow and nose shading and stubble on the jaw and upper lip; rougher.
+3. Studio: a numbered checker mode for judging density and stretch on the unwrap.
+- Set size: 2.1 MB.
+
 ## Budgets measured
 
 | Item | Budget | Measured |
@@ -154,7 +162,7 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 | Ten fighters in view | ≤ 60k | ≤ 4 × 7.93k + 6 × 3.74k = 54.2k worst case (at most 4 at full detail) |
 | Animation, ten fighters | ≤ 1 ms | 0.23 ms per frame (node, unit test) |
 | Mesh build | — | about 390 ms for full detail (head and glove surface nets dominate; AO about 30 ms), 180 ms middle, 50 ms low; built lazily one per frame, lowest first, so the first frame is not blocked. **Still a stall of that size when a full level is first built; to be moved off the frame or cut further.** |
-| Textures (download) | 6 MB for all fighters | rifleman-azure 2.4 MB: full detail diff 2048, nor 1024, arm 1024; middle 1024 / 512 / 512; low 512 / 256 / 256; UV data 250 KB. Ember not baked yet |
+| Textures (download) | 6 MB for all fighters | rifleman-azure 2.1 MB: full detail diff 2048, nor 1024, arm 1024; middle 1024 / 512 / 512; low 512 / 256 / 256; UV data 250 KB. Ember not baked yet |
 | Bake | offline | about 5 min for the three levels (64 AO rays) |
 
 ## Tests
@@ -166,7 +174,7 @@ r2 (342ed44): `npx tsc --noEmit` clean; whole unit suite 5381 passed; Breachline
 ## Still weak (what the next rounds change)
 
 - **Below the gate: F = 6 against 7.** No asset or reference blocks it; it needs more rounds.
-- Texture set: the atlas packs at 47% (a better packer would give about 1.5× the texel density); chart seams cut the print on the arms; the normal detail is soft at 1024; the Low tier still downloads the full-size albedo; Ember has no set yet.
+- Texture set: thin bands still unwrap as rings and the head and helmet charts are fans; the normal detail is soft at 1024; the Low tier still downloads the full-size albedo; Ember has no set yet.
 - Shoulders pinch when the rifle is up (the deltoid collapses inward on the near side). Next: a second shoulder helper driven by arm elevation, and torso weights at the armpit.
 - Gloves are lumps at close range; fingers do not separate.
 - Faces read long; Ember's scarf barely shows above the shoulder straps.

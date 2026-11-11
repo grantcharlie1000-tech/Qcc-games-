@@ -38,6 +38,17 @@ const floorTex = (() => {
 })();
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.9 }));
 floor.rotation.x = -Math.PI / 2; scene.add(floor);
+/** Numbered checker (16 x 16 cells over the atlas), to judge texel density and stretch on the baked unwrap. */
+const checkerMat = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 1024; const g = c.getContext('2d')!, n = 16, s = 1024 / n;
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    g.fillStyle = (x + y) % 2 ? '#d8d8d8' : `hsl(${(x * 23 + y * 41) % 360},55%,45%)`; g.fillRect(x * s, y * s, s, s);
+    g.fillStyle = (x + y) % 2 ? '#333' : '#fff'; g.font = 'bold 22px sans-serif'; g.fillText(`${y * n + x}`, x * s + 8, y * s + 30);
+    g.strokeStyle = 'rgba(0,0,0,0.35)'; g.strokeRect(x * s + 0.5, y * s + 0.5, s / 2, s / 2);
+  }
+  const t = new THREE.CanvasTexture(c); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return new THREE.MeshStandardMaterial({ map: t, roughness: 0.8 });
+})();
 const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 80);
 const mat = fighterMaterial(), weaponMat = fighterMaterial();
 mat.userData.probe.value.setRGB(1.3, 1.3, 1.35); weaponMat.userData.probe.value.setRGB(1.3, 1.3, 1.35);
@@ -75,7 +86,7 @@ function look(at: THREE.Vector3, yawDeg: number, pitchDeg: number, dist: number,
   camera.lookAt(at);
 }
 
-export interface ShotOptions { plain?: boolean; light?: number; bones?: boolean; squad?: 0 | 1; lod?: number; weapon?: WeaponId; yaw?: number; pitch?: number; dist?: number; at?: [number, number, number]; fov?: number; pose?: Partial<PoseInput>; bind?: boolean; wire?: boolean; w?: number; h?: number }
+export interface ShotOptions { checker?: boolean; plain?: boolean; light?: number; bones?: boolean; squad?: 0 | 1; lod?: number; weapon?: WeaponId; yaw?: number; pitch?: number; dist?: number; at?: [number, number, number]; fov?: number; pose?: Partial<PoseInput>; bind?: boolean; wire?: boolean; w?: number; h?: number }
 
 const api = {
   /** One fighter standing at the origin facing -Z; the camera orbits (yaw 0 looks at its face). */
@@ -87,7 +98,7 @@ const api = {
     if (o.bind) r.anim.bindPose(); else { r.anim.reset({ ...idleInput(), ...o.pose }); r.anim.update({ ...idleInput(), ...o.pose }, 1 / 60); }
     const ms = performance.now() - t0;
     r.group.position.copy(r.anim.root); r.group.rotation.y = r.anim.yaw;
-    r.mesh.material = o.wire ? new THREE.MeshBasicMaterial({ wireframe: true, color: 0x99ff99 }) : r.mat;
+    r.mesh.material = o.wire ? new THREE.MeshBasicMaterial({ wireframe: true, color: 0x99ff99 }) : o.checker ? checkerMat : r.mat;
     look(new THREE.Vector3(...(o.at ?? [0, 0.95, 0])), o.yaw ?? 0, o.pitch ?? 5, o.dist ?? 4.6, o.fov ?? 30);
     let helper: THREE.SkeletonHelper | null = null;
     if (o.bones) { helper = new THREE.SkeletonHelper(r.mesh); (helper.material as THREE.LineBasicMaterial).depthTest = false; scene.add(helper); }

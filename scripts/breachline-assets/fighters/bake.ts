@@ -140,8 +140,12 @@ function paint(x: Texel, ao: number, d: ReturnType<typeof height>, out: { col: T
   else if (x.cls === C.rubber) { rough = 0.9; }
   else if (x.cls === C.skin) {
     // Less saturated, rougher skin; a little colour in the cheeks and nose.
-    const g = col.r * 0.3 + col.g * 0.59 + col.b * 0.11; col.lerp(new THREE.Color(g, g, g), 0.28);
-    col.multiplyScalar(0.94 + 0.1 * small); rough = 0.68 + 0.06 * (small - 0.5);
+    const g = col.r * 0.3 + col.g * 0.59 + col.b * 0.11; col.lerp(new THREE.Color(g, g, g), 0.45).multiplyScalar(0.82);
+    // Shading the eye reads from: darker under the brow and beside the nose; stubble on the jaw and upper lip.
+    const brow = (1 - ss(0.0, 0.025, Math.abs(p.y - 1.632))) * ss(-0.06, -0.085, p.z) * 0.25;
+    const stubble = (1 - ss(1.555, 1.585, p.y)) * ss(1.5, 1.52, p.y) * 0.3 * (0.6 + 0.4 * vn(p.x * 900, p.y * 900, p.z * 900));
+    col.multiplyScalar(1 - brow).lerp(new THREE.Color(0.06, 0.05, 0.045), stubble);
+    col.multiplyScalar(0.94 + 0.1 * small); rough = 0.72 + 0.06 * (small - 0.5) + stubble * 0.2;
   } else if (x.cls === C.glove) { col.multiplyScalar(0.9 + 0.2 * big); const worn = ss(0.3, 0.7, x.edge); col.lerp(col.clone().multiplyScalar(1.5), worn * 0.4); rough = 0.75 - worn * 0.15; }
   else if (x.cls === C.face) { col.multiplyScalar(0.92 + 0.12 * small); rough = 0.95; }
   else if (x.cls === C.lens) { rough = 0.06; metal = 0.3; }
@@ -165,7 +169,7 @@ async function bakeLevel(squad: 0 | 1, lod: number, size: number, dir: string): 
   const t0 = performance.now();
   const g = figureGeometry(squad, lod).geo, l = LOOKS[squad];
   const weight = (p: THREE.Vector3) => (p.y > 1.45 ? 1.6 : p.y > 1.05 ? 1.25 : p.y < 0.25 ? 0.9 : 1.0);
-  const U = unwrap(g, size, lod === 0 ? 4 : 3, weight);
+  const U = unwrap(g, size, lod === 0 ? 4 : 2, weight);
   const P = g.getAttribute('position'), N = g.getAttribute('normal'), COL = g.getAttribute('color'), PBR = g.getAttribute('pbr'), EDGE = g.getAttribute('edge'), SI = g.getAttribute('skinIndex');
   const cls = classes(l), classOf = (r: number, gg: number, b: number): Cls => {
     const hex = new THREE.Color(r, gg, b).getHex(); let best: Cls = C.other, bd = 1e9;
@@ -299,7 +303,7 @@ async function bakeLevel(squad: 0 | 1, lod: number, size: number, dir: string): 
   const index = Buffer.from(Uint32Array.from(U.index).buffer);
   const uvq = Buffer.from(Uint16Array.from(U.uv, v => Math.round(Math.max(0, Math.min(1, v)) * 65535)).buffer);
   await writeFile(join(dir, L, 'uv.bin'), Buffer.concat([remap, index, uvq])); bytes += remap.length + index.length + uvq.length;
-  console.log(`${variantName(squad)} ${L}: ${size}² atlas, ${U.charts} charts, ${(U.density).toFixed(0)} texels/m, ${(covered / (size * size) * 100).toFixed(0)}% covered, ${(bytes / 1024).toFixed(0)} KB, ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+  console.log(`${variantName(squad)} ${L}: ${size}² atlas, ${U.charts} charts, ${(U.density).toFixed(0)} texels/m, ${(covered / (size * size) * 100).toFixed(0)}% covered (charts ${(U.coverage * 100).toFixed(0)}%), ${(bytes / 1024).toFixed(0)} KB, ${((performance.now() - t0) / 1000).toFixed(1)} s`);
   return { lod, size, sizes: [shipped.diff, shipped.nor, shipped.arm], vertices: g.getAttribute('position').count, outVertices: nv, indices: U.index.length, wide };
 }
 
