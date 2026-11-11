@@ -52,10 +52,14 @@ function shelving(D: DetailBuilder, x0: number, z0: number, x1: number, z1: numb
             put('binder', u, u + w - 0.004, y, y + h, 0.004, 0.012, tone);
             put('label', u + 0.012, u + w - 0.016, y + h * 0.55, y + h * 0.8, 0.012, 0.0135);
           } else {
-            const shade = 0.75 + r() * 0.3;
-            put('card', u, u + w - 0.006, y, y + h, 0.002, 0.014, [shade, shade * 0.97, shade * 0.92]);
-            put('label', u + w * 0.3, u + w * 0.7, y + h * 0.58, y + h * 0.74, 0.014, 0.0155, [0.82, 0.8, 0.74]);
-            put('kick', u + w * 0.43, u + w * 0.57, y + h * 0.22, y + h * 0.28, 0.014, 0.0152, [0.35, 0.3, 0.25]);
+            // An archive box (drawn instanced): pulled forward by up to 6 cm, turned a touch, now and then tipped
+            // against its neighbour; mostly cardboard, a few in faded office colours. One in twelve stands open,
+            // with files sticking up out of it.
+            const pull = r() * 0.06, depth = 0.035 + pull, mid = u + (w - 0.006) / 2, across = face + side * 0.002, shade = 0.85 + r() * 0.25, pick = r();
+            const tint: V3 = pick < 0.75 ? [shade, shade * 0.96, shade * 0.9] : pick < 0.85 ? [0.75, 0.45, 0.42] : pick < 0.93 ? [0.55, 0.65, 0.55] : [0.6, 0.62, 0.7];
+            const open = r() < 0.08, bh = open ? h * 0.72 : h;
+            D.boxes.push({ x: alongZ ? across : mid, y, z: alongZ ? mid : across, yaw: (alongZ ? (side > 0 ? Math.PI / 2 : -Math.PI / 2) : (side > 0 ? 0 : Math.PI)) + (r() - 0.5) * 0.12, tilt: r() < 0.05 ? (r() > 0.5 ? 1 : -1) * (0.08 + r() * 0.1) : 0, w: w - 0.006, h: bh, depth, tint, label: open ? -1 : Math.floor(r() * 4) });
+            if (open) for (let f = 0; f < 4; f++) { const fu = u + 0.03 + f * (w - 0.06) / 4; put('binder', fu, fu + 0.012, y + bh - 0.02, y + bh + 0.04 + r() * 0.05, depth * 0.3, depth * 0.3 + 0.02, [0.85 - r() * 0.2, 0.82, 0.7]); }
           }
           u += w + 0.004;
         }
@@ -90,7 +94,13 @@ function dressArchive(atlas: Atlas, room: Region): DetailBuilder {
   let seed = 11;
   for (const b of MAP.boxes) {
     if (!inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) continue;
-    if (b.mat === 'shelf') shelving(D, b.x0, b.z0, b.x1, b.z1, b.y1, seed += 7);
+    if (b.mat === 'shelf') {
+      shelving(D, b.x0, b.z0, b.x1, b.z1, b.y1, seed += 7);
+      // A box left on the floor at the end of each run, full depth (it stands in the aisle, not in the shelving).
+      const r = seeded(seed), alongZ = b.z1 - b.z0 > b.x1 - b.x0, end = r() > 0.5;
+      const fx = alongZ ? (b.x0 + b.x1) / 2 + (r() - 0.5) * 0.2 : (end ? b.x1 + 0.3 : b.x0 - 0.3), fz = alongZ ? (end ? b.z1 + 0.3 : b.z0 - 0.3) : (b.z0 + b.z1) / 2;
+      D.boxes.push({ x: fx, y: 0, z: fz - (alongZ ? 0 : 0), yaw: r() * 6.28, tilt: 0, w: 0.32, h: 0.26, depth: 0.4, tint: [0.95, 0.9, 0.82], label: Math.floor(r() * 4) });
+    }
     // Filing cabinets face west, into the room.
     if (b.mat === 'steel') filing(D, b.x0, [-1, 0, 0], b.z0, b.z1, b.y1);
     if (b.mat === 'wood') {

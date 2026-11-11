@@ -394,6 +394,25 @@
         }
       ],
       "use": ""
+    },
+    {
+      "id": "Cardboard004",
+      "kind": "texture",
+      "name": "Cardboard 004",
+      "source": "https://ambientcg.com/a/Cardboard004",
+      "author": "ambientCG (Lennart Demes)",
+      "licence": "CC0-1.0",
+      "dimensions": null,
+      "provider": "ambientcg",
+      "files": [
+        {
+          "path": "Cardboard004/Cardboard004_2K-JPG.zip",
+          "url": "https://ambientcg.com/get?file=Cardboard004_2K-JPG.zip",
+          "size": 23261239,
+          "sha256": "c75c518d8ab2cc54eb496a8c01d83236de29c8110590e0f8e599ef8e62e2caae"
+        }
+      ],
+      "use": "Archive boxes (render/archivebox.ts)"
     }
   ]
 }

@@ -12,6 +12,8 @@ import { REGIONS, collectFaces, faceArrays, packAtlas, splitFace, type GeoArrays
 import { FIXTURES } from './fixtures';
 import { fixtureMeshes } from './fixturemesh';
 import { dressRoom, type DressKey } from './labdress';
+import { BOX_H, BOX_W, LABEL_VARIANTS, archiveBoxGeometry, labelAtlas, labelGeometry } from './archivebox';
+import type { DetailBuilder } from './detail';
 import { clockFace, exitSign, fireSign, safetySign } from './printed';
 import { artMaterial } from './materials';
 import { PROPS } from './props';
@@ -73,6 +75,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     if (!p) { p = Promise.all([L.texture(name, 'diff', size), full ? L.texture(name, 'nor', size) : null, full ? L.texture(name, 'arm', size) : null]); sets.set(name, p); }
     return p;
   };
+  const boxes: (DetailBuilder['boxes'][number] & { room: number })[] = [];
   const models = new Map<string, ReturnType<ArtLoader['model']>>();
   const lods = new Map<string, ReturnType<ArtLoader['model']>>();
   for (const p of PROPS) if (!models.has(p.model)) { models.set(p.model, L.model(p.model)); lods.set(p.model, L.model(`${p.model}.lod1`)); }
@@ -120,7 +123,9 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       const printed = { sign: safetySign(), clock: clockFace(), exit: exitSign(), fire: fireSign() };
       disposers.push(() => { for (const t of Object.values(printed)) t.dispose(); });
       const tDress = performance.now();
-      const D = dressRoom(atlas, region), [bm, bn, ba] = await set('blue_metal_plate', TEX_SIZE[tier]), [pm, pn, pa] = await set('painted_plaster_wall', TEX_SIZE[tier]);
+      const D = dressRoom(atlas, region);
+      for (const b of D.boxes) boxes.push({ ...b, room: r });
+      const [bm, bn, ba] = await set('blue_metal_plate', TEX_SIZE[tier]), [pm, pn, pa] = await set('painted_plaster_wall', TEX_SIZE[tier]);
       const plain = (color: [number, number, number], roughness: number, metalness: number) => ({ map: null, normalMap: null, armMap: null, color: new THREE.Color(...color), roughness, metalness });
       const looks: Record<DressKey, Parameters<typeof artMaterial>[0]> = {
         door: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(1.55, 1.62, 1.7), roughness: 0.55, metalness: 1, spec: 1.4 },
@@ -224,6 +229,30 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     }
     lod.position.set(p.x, p.y, p.z); lod.rotation.y = p.yaw; lod.scale.setScalar(p.scale ?? 1);
     group.add(lod);
+  }
+  // Archive boxes: one instanced body (CC0 cardboard, ambientCG Cardboard004) and one instanced label mesh per label
+  // variant. Lit by a flat probe at the room's mean light, a little darker than the open room (they sit in shelving).
+  if (boxes.length) {
+    const room = boxes[0].room, k = 1.3 * Math.max(0.05, rooms[room].envLight), sh = [k, k * 0.97, k * 0.92, k * 0.3, k * 0.3, k * 0.3, 0, 0, 0, 0, 0, 0];
+    const [cm, cn, ca] = await set('Cardboard004', PROP_SIZE[tier]);
+    const body = artMaterial({ map: cm, normalMap: cn, armMap: ca, sh, roughness: ca ? 1 : 0.85, metalness: 0, vertexTint: true });
+    const atlasTex = labelAtlas(), labelMat = artMaterial({ map: atlasTex, normalMap: null, armMap: null, sh, roughness: 0.8, metalness: 0 });
+    labelMat.polygonOffset = true; labelMat.polygonOffsetFactor = -2; labelMat.polygonOffsetUnits = -2;
+    materials.push(body, labelMat); rooms[room].envLights.push(body, labelMat); disposers.push(() => atlasTex.dispose());
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), c = new THREE.Color(), at = new THREE.Vector3(), sc = new THREE.Vector3();
+    const matrixOf = (b: typeof boxes[number]) => m4.compose(at.set(b.x, b.y, b.z), q.setFromEuler(e.set(0, b.yaw, b.tilt, 'YXZ')), sc.set(b.w / BOX_W, b.h / BOX_H, b.depth));
+    const bodyGeo = archiveBoxGeometry(); geometries.push(bodyGeo);
+    const bodies = new THREE.InstancedMesh(bodyGeo, body, boxes.length);
+    boxes.forEach((b, j) => { bodies.setMatrixAt(j, matrixOf(b)); bodies.setColorAt(j, c.setRGB(...b.tint)); });
+    bodies.computeBoundingSphere(); group.add(bodies);
+    for (let v = 0; v < LABEL_VARIANTS; v++) {
+      const list = boxes.filter(b => b.label === v);
+      if (!list.length) continue;
+      const lg = labelGeometry(v); geometries.push(lg);
+      const labels = new THREE.InstancedMesh(lg, labelMat, list.length);
+      list.forEach((b, j) => labels.setMatrixAt(j, matrixOf(b)));
+      labels.computeBoundingSphere(); group.add(labels);
+    }
   }
   for (const room of rooms) for (const m of room.envLights) m.userData.art.artEnvLight.value = Math.max(0.05, room.envLight);
   let triangles = 0, meshes = 0;

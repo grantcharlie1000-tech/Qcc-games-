@@ -34,6 +34,9 @@ export class DetailBuilder {
   readonly parts = new Map<string, GeoArrays>();
   missed = 0;
   readonly misses: string[] = [];
+  /** Archive boxes to draw instanced (render/archivebox.ts): front centre-bottom on the shelf face, a turn about the
+   * vertical, a tilt, the box front's width and height, its depth out from the face, a tint and a label variant. */
+  readonly boxes: { x: number; y: number; z: number; yaw: number; tilt: number; w: number; h: number; depth: number; tint: V3; label: number }[] = [];
   constructor(private atlas: Atlas) {}
   private arrays(key: string) {
     let a = this.parts.get(key);

@@ -121,8 +121,28 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** Patch soldiers default (fa31b3c); destruction round 4 done; next the kit items to 7
-(blast opening, barricade, reinforcement relief and deploy evidence), then rooms (Archive round 2, corridor round 4).
+**Where I am (keep current):** Archive round 2 boxes done; next the Archive's aisle shading and desk lamp, then
+corridor round 4, kit leftovers, the yard.
+
+## Archive round 2 (`rooms/archive/round-2/`, 960 px)
+
+The flat card boxes are replaced by a code-built archive box (`render/archivebox.ts`, our own design), drawn
+instanced:
+- **The box:** a bevelled front, sides, the lid's shadow line, a punched hand-hole, and a label holder. Material:
+  CC0 cardboard (ambientCG Cardboard004, colour, normal and roughness).
+- **Labels:** four variants on a canvas atlas: two printed with a barcode, two hand-written in marker.
+- **Variation:** most boxes plain cardboard, some faded burgundy, green or blue; each pulled forward by up to 6 cm and
+  turned a touch; one in twenty tipped against its neighbour; one in twelve open, with files sticking up out of it;
+  gaps where boxes are missing. A full-depth box sits on the floor at one end of each run.
+- **Depth:** the shelving is a solid box, so each shelf box is its front, a slab 3.5-9.5 cm deep, now bevelled and
+  lit as a box, not a flat card.
+- **Cost:** one draw call for every box body, plus one per label variant. The Archive view is 93k triangles
+  (round 1: 82k), 201 draw calls (round 1: 179).
+- **Not done yet:** aisle shading in the bake (the shelving is already in the bake geometry; the darker aisles the
+  reviewer wants need a closer look at the bake), the desk lamp, and rolling steps or a trolley.
+- Archive (mine, strict scale): D 5.5 -> 6.5; A unchanged.
+- Tests: unit tests 97/97; browser suite plus the online test 10 passed, with the stock-fighters warm run as the
+  expected failure.
 
 ## Corridor round 3 (`rooms/corridor/round-3/`), against the reviewer's round-2 notes
 
