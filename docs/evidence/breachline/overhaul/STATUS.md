@@ -89,8 +89,8 @@ boxes, aisle shade, mid-room clutter, perforated uprights), then corridor round 
 5. **Light colour:** the corridor's tubes alternate warm (old), neutral and cold (new). Re-baked (corridor only,
    442 s). The difference is subtle. No daylight from doorways (the rooms behind are not art rooms yet).
 
-Scores (mine): A 6.5, B 6.5, C 6.5, D 6. Still below 7 on D: no doors, no variety between the posts. Budgets:
-the corridor view is 184 -> 190 draw calls (the casing look adds one), triangles about the same. Evidence:
+Scores (mine): A 6.5, B 6.5, C 6.5, D 6. Still below 7 on D: no doors, no variety between the posts. Budgets
+(measured, corridor bookmark, High): 200 draw calls (round 2: 184), 86k triangles (83k), 55 programs. Evidence:
 `before-after.png` (round 2 left, round 3 right), `corridor-high.png`, `corridor-west-high.png`,
 `corridor-low.png`.
 
