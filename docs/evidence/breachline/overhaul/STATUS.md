@@ -1,0 +1,121 @@
+# Breachline visual overhaul: status
+
+Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch: `claude/zen-allen-otdlt6`.
+
+## Current phase: 0 (spike), gate **passed (go)**, with caveats below
+
+**Gate verdict.** The Lab now uses photo-sourced CC0 materials, GPU-compressed textures loaded with no WebAssembly
+under the real site CSP, a ray-traced lightmap with soft shadows and two bounces, a dominant-direction map so normal
+maps shade the baked light, reflection-probe specular, and three modelled CC0 props lit by baked light probes. Compare
+`phase-0/lab-high-procedural.png` (the old look, same pose) with `phase-0/lab-high.png`. It is a large step on
+lighting, surfaces and texture detail. It is **not yet** "dramatically better" in every respect: the ceiling is still
+the old procedural drop ceiling, nothing is post-processed, and the fighters and the weapon in hand are unchanged, so
+the frame as a whole still reads as a game in transition. The foundation (texture route, baker, shared geometry,
+material family, fallback) is proven, which is what this gate exists to decide, so the plan proceeds.
+
+- **Texture route: go.** KTX 1.1 containers holding BC1 (colour, sRGB), BC5 (normals) and BC1 (AO/roughness/metal),
+  encoded by our own deterministic JavaScript encoder (`scripts/breachline-assets/bc.mjs`, 38.5 dB PSNR on the tile
+  set) and read by three's stock `KTXLoader` (plain JavaScript). Works under `script-src 'self'` with no change to the
+  policy. The software rasteriser here exposes `WEBGL_compressed_texture_s3tc`, `_s3tc_srgb`, `EXT_texture_compression_rgtc`,
+  `_etc`, `_astc`, `_bptc`. GPUs without S3TC/RGTC (most ARM Chromebooks) get 512 px JPEG fallbacks automatically.
+  No ETC2/ASTC encoder yet: ARM devices take the uncompressed fallback (risk noted in plan section 10).
+  This replaces the plan's DDS/ImageMagick idea: ImageMagick cannot write BC5, and KTX needs no custom loader.
+- **Update after the owner's answers (WebAssembly now allowed, `worker-src 'self'`):** `ktx2-encoder` 0.6.0 (MIT, a
+  Basis Universal build) runs under Node here. On the Lab floor at 1K: colour as ETC1S 154 KB in 2.6 s (BC1 KTX:
+  699 KB), normals as UASTC+RDO+zstd 334 KB in 8.2 s (BC5 KTX: 1.4 MB). That is about 4.5 times less download and,
+  unlike BC, transcodes to ETC2/ASTC on ARM Chromebooks. **Decision: phase 1 moves the shipped textures to KTX2/Basis**,
+  with three's transcoder `.wasm` and worker served same-origin (three's stock `KTX2Loader` builds its worker from a
+  `blob:` URL, which `worker-src 'self'` forbids, so it gets a small same-origin worker wrapper). That runtime path is
+  the first task of phase 1 and is not yet proven in the browser. The BC/KTX1 path built here stays as the fallback.
+- **Baker: go.** `scripts/breachline-assets/bake.ts` (Node via `vite-node`, `three-mesh-bvh` 0.9.1 pinned as a dev
+  dependency). Lab at 12 texels/m: 40,349 texels, 512 x 172 atlas, 64 gather rays, two bounces, 384-ray SH probes,
+  panel corner samples: **97 s single-threaded** on this container. The whole building is roughly eight Labs, so a
+  full bake needs worker threads to meet the 10-minute budget (phase 2).
+
+## Scorecard (0-10, 8 = would not look out of place in MW2 2009; scored from the pixels)
+
+| Row | Baseline | Phase 0 (Lab only) | Evidence |
+| --- | --- | --- | --- |
+| A World lighting | 3 | **5** | `phase-0/lab-west-high.png`: soft shadows under benches, AO in wall/floor corners, bounce tint; but flat overall exposure, no grade, rest of the map unchanged. |
+| B Surface shading | 1 | **4** | `phase-0/lab-bench-high.png`: normal-mapped plaster and metal, probe reflections; specular is subtle, ceiling and panels' broken edges still unlit-style. |
+| C Texture detail | 2 | **5** | `phase-0/lab-high.png`: photo tiles, plaster, painted metal at 1K (~400-800 px/m); ceiling, lockers and barricades still procedural. |
+| D World geometry | 1 | **2** | `phase-0/lab-high.png`: three real props (tool chest, extinguisher, stools); benches and lockers are still boxes. |
+| E First-person weapon | 1 | 1 | Unchanged (phase 6, built in code, gate 8). |
+| F Characters | 1 | 1 | Unchanged (phase 7, built in code, gate 7). |
+| G Dynamic shadow | 1 | 1 | Unchanged (phase 8). |
+| H Post-processing | 2 | 2 | Unchanged: tone mapping only (phase 1 skeleton, phase 8). |
+| I Effects | 2 | 2 | Unchanged (phase 8). |
+| J Destruction look | 3 | 3 | Unchanged (phase 5); Lab panels now share the room's material and baked light. |
+
+Scores for A-D are for the Lab; elsewhere the map is still at baseline.
+
+## Iteration log (phase 0)
+
+**Reference study.** Poly Haven's own sphere renders of ~45 candidate texture sets (tiles, plaster, block, brick,
+metals) and ambientCG's painted-metal range; prop renders and polycounts from the Poly Haven API. Late-2000s military
+shooter interiors studied from memory of publicly available material only (nothing saved): strong light pools under
+fixtures, dark corners, two-tone institutional walls, dense props, filmic contrast.
+
+**Round 1** (first render, `lab` bookmark): (1) every lightmapped surface black — the lightmap sampled UV set 0
+because three's `channel` defaults to 0; (2) only two 0.7 m² lamps for 80 m², floor about 0.3 of target;
+(3) destructible panels pure black; (4) bench tops black; (5) navy metal albedo ~0.03 reads as void;
+(6) panel corner samples at y = 0 sit under the floor and return zero. Changed: lightmap `channel = 1`; art rooms get
+their own fixture layout (`render/fixtures.ts`); corner samples moved just inside the panel rim; metal brightened.
+**Round 2**: (1) bench tops and floor darkened by the direction term — traced to the BC5 normal patch never applying
+(three resolves `#include`s after `onBeforeCompile`, so z came out as -1); (2) panels still black — panel meshes had
+no normals (fine for the old unlit material, NaN for the lit one); (3) lighting too even (six fixtures, heavy fill);
+(4) lockers lost their detail under a plain metal texture; (5) walls blank: the two-tone institutional band was gone;
+(6) floor has no sheen. Changed: patch the chunk itself; `PanelView` writes normals; four fixtures over the walkways
+so benches throw shadow; lockers keep the procedural texture under the lightmap until modelled; a painted lower band
+with a dark rail by world height in the shader (works on lightmapped walls and panels alike); tile gloss 0.5.
+**Round 3**: (1) tool chest black on its unlit side — L1 SH rings negative; (2) "ROUND 1" banner covering the frame
+in some runs; (3) extinguisher very dark in its corner (correct, but dull); (4) barricade planks bright and flat
+against the new light (old material); (5) ceiling still the old canvas texture, fixtures flat white. Changed: SH floor
+at 30 % of the average; bookmark renders hide transient banners and prompts. (3)-(5) are left for phases 3 and 5.
+
+## Assets (all CC0, Poly Haven; manifest `scripts/breachline-assets/manifest.json`, notices updated)
+
+| Asset | Use | Shipped |
+| --- | --- | --- |
+| interior_tiles (Charlotte Baglioni) | Lab floor | 512 + 1K KTX, JPEG fallback: 3.57 MB |
+| painted_plaster_wall (Amal Kumar) | Lab walls, panels, bench tops | 3.55 MB |
+| blue_metal_plate (Rob Tuytel) | Lab benches, posts, frames | 3.54 MB |
+| metal_tool_chest (Yann Kervran, John Hutcheson) | Lab prop, 14.6k tris | glb + 256/512 textures |
+| korean_fire_extinguisher_01 (UM JOORIN) | Lab prop, 9.9k tris, 3 materials | glb + 3 texture sets (~3 MB) |
+| metal_stool_01 (Ulan Cabanilla) | Lab prop x3, 8.3k tris | glb + textures |
+
+Totals: textures 15.6 MB on disk (512/256 tier 6.5 MB, 1K/512 tier 8.4 MB, JPEG fallback 0.8 MB), models 0.94 MB,
+bake 0.23 MB. Source downloads 27 MB in `.cache` (not committed).
+
+## Budgets (Lab view, High, measured in this container)
+
+| | Measured | Budget (High) | Note |
+| --- | --- | --- | --- |
+| Triangles in view | 83k (old look: 38k) | 500k | Props are full-resolution: 50k triangles for five props. LODs needed (phase 4). |
+| Draw calls | 78 (old: 64) | 400 | |
+| Texture memory (Lab art) | ~12.6 MB | 700 MB | 3 surface sets at 1K (2.8 MB each) + 5 prop sets at 512 + lightmaps. |
+| Download (Lab art, High) | ~10 MB | 60 MB | Three surface sets at 1K cost 8.4 MB; 22 sets would cost ~60 MB alone. 1K must be the High ceiling for most sets; small props must share an atlas (the extinguisher's three texture sets for one small prop is wasteful). |
+| Script per frame | not measured yet | 5 ms | Phase 1 adds counters. |
+
+## Tests
+
+- `npx tsc --noEmit`: clean.
+- `npx vitest run`: 270 files passed, 1 skipped; 5,341 tests passed, 7 skipped (includes the new
+  `tests/games/breachline/levelgeo.test.ts`: no surface lost or doubled by the room split, atlas deterministic and
+  non-overlapping, shipped lightmaps match current geometry).
+
+## Owner decisions
+
+Answered 2026-11-11 (plan section 3): WebAssembly allowed (same-origin workers and `.wasm` only); weapons, hands and
+characters are authored in code to the bar (rows E >= 8, F >= 7); reloads and sounds must be our own work; Chromebooks
+are a hard requirement, optimise first, and the Low tier is the throttled last-resort mode, chosen automatically
+only when the startup probe needs it. Still open: the 40-60 MB download budget (assumed acceptable) and which
+Chromebook model to benchmark on.
+
+## Known gaps after phase 0
+
+- The default Chromebook experience must be the full look, optimised (owner's rule). Low (throttled) still runs the full PBR shader with features off; phase 1 needs cheaper shader variants per tier and a cost measurement for each.
+- Art quality is selected at scene creation (`?arttier=low` for review); the in-game setting does not switch it yet.
+- Ceiling, lockers, barricade planks, fighters, weapon: unchanged.
+- Bake is single-threaded.
+- Bookmarks other than the Lab exist in `scripts/breachline-assets/bookmarks.mjs` but are not yet part of the review.

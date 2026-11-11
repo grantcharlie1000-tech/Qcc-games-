@@ -363,6 +363,25 @@ all existing tests green; a commit and push. A phase is not done because tests p
 - Mounting blocks the main thread while the level is built (about 270 ms in the build container, likely a second or
   more on a Chromebook). The asynchronous loading in 4.4 should remove this.
 
+## Corrections from phase 0 (2026-11-11)
+
+- **Texture route settled:** KTX 1.1 files with BC1 (colour, sRGB), BC5 (normals, z rebuilt in the shader) and BC1
+  (AO/roughness/metal), written by a local JavaScript encoder (`scripts/breachline-assets/bc.mjs`) and read by three's
+  stock `KTXLoader`. ImageMagick cannot write BC5 and DDS would have needed a custom loader, so DDS is dropped.
+  JPEG 512 px fallbacks cover GPUs without S3TC/RGTC.
+- **Art rooms carry their own light fixtures** (`render/fixtures.ts`). The map's lamp list is too sparse for a baked
+  look (the Lab had two small panels for 80 m^2); it is kept for the fallback look and rooms not yet converted.
+  `map.ts` is not touched.
+- **Lit materials need normals everywhere.** Destructible panel meshes had none (the unlit material never needed them).
+- **Shader patches must target whole chunks.** three expands `#include`s after `onBeforeCompile`, so line-level
+  replacements inside chunks silently do nothing.
+- **Tooling:** `npx vite-node scripts/breachline-assets/bake.ts` runs the TypeScript baker against the real map code;
+  `scripts/breachline-assets/bookmarks.mjs` renders the camera bookmarks (needs the fixture-style localStorage seeding
+  to get past the account screen). `?art=off` shows the procedural look, `?arttier=low` the Low tier,
+  `?artdbg=nodir,nonormal,noenv,noarm,panelbasic` isolates material terms for review.
+- **Budget arithmetic:** a surface set at 1K costs 2.8 MB (download and GPU). 22 sets at 1K is ~60 MB, the whole High
+  budget, so 2K is for hero surfaces only and small props must share atlases.
+
 ## Review log
 
 **Pass 1 (feasibility and order).** Changes made: moved the spike to phase 0 with a stop-and-report gate, because

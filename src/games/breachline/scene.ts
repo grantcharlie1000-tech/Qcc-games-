@@ -6,6 +6,7 @@ import { Effects } from './effects';
 import { createBake, SUN, type Bake } from './lightbake';
 import { PanelView, buildLevel, type PanelMaterials } from './levelmesh';
 import { MAP } from './map';
+import { loadArtWorld, type ArtWorld } from './render/artworld';
 import { SHIN, THIGH, armParts, boxes, chargeParts, deviceParts, makeFigure, weaponParts, type Figure } from './models';
 import { ACT, shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
 import { makeSprite, makeTextures, type TexId } from './textures';
@@ -68,15 +69,35 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const textures = makeTextures(aniso);
   const materials = {} as Record<TexId, THREE.Material>;
   for (const id of Object.keys(textures) as TexId[]) materials[id] = new THREE.MeshBasicMaterial({ map: textures[id], vertexColors: true });
-  const level = buildLevel(bake, materials);
+  let level = buildLevel(bake, materials);
   scene.add(level.group);
+  // The asset renderer's rooms draw first, in a scene with no run-time lights (their light is baked).
+  const artScene = new THREE.Scene();
+  artScene.fog = scene.fog;
+  let art: ArtWorld | null = null, disposed = false;
   const panelMats: PanelMaterials = { wall: materials.drywall, core: materials.core, planks: materials.planks, plate: materials.plate };
   const panelGroup = new THREE.Group(); scene.add(panelGroup);
   let world: World | null = null, panels: PanelView[] = [];
   function bind(w: World) {
     for (const p of panels) { panelGroup.remove(p.mesh); p.dispose(); }
     world = w;
-    panels = w.panels.map(p => { const v = new PanelView(p, bake, panelMats); panelGroup.add(v.mesh); return v; });
+    panels = w.panels.map((p, i) => { const v = new PanelView(p, bake, panelMats, art?.panelLook(i) ?? null); panelGroup.add(v.mesh); return v; });
+  }
+  // Photo-sourced rooms stream in after the first frame; until then, and if anything fails, the procedural look stays.
+  const artOff = typeof location !== 'undefined' && /[?&]art=off\b/.test(location.search);
+  if (!artOff) {
+    loadArtWorld(renderer, initial === 'low' || /[?&]arttier=low\b/.test(location.search) ? 'low' : 'high', textures, () => {}).then(a => {
+      if (disposed) { a.dispose(); return; }
+      art = a;
+      scene.remove(level.group);
+      level.group.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.isMesh) mesh.geometry.dispose(); });
+      level = buildLevel(bake, materials, a.claim);
+      scene.add(level.group);
+      artScene.add(a.group);
+      a.capture(renderer, artScene);
+      stats.level = level.triangles + a.stats.triangles;
+      if (world) bind(world);
+    }).catch(e => { console.warn('Breachline art unavailable; using the procedural look.', e); });
   }
 
   // ---- Sky, sun and a far skyline ----
@@ -409,8 +430,10 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       exposure = Math.max(0, exposure - dt * 3.5);
       renderer.toneMappingExposure = 1.02 + (view.reduced ? 0 : exposure);
       renderer.clear();
+      let calls = 0, tris = 0;
+      if (art) { renderer.render(artScene, camera); calls = renderer.info.render.calls; tris = renderer.info.render.triangles; }
       renderer.render(scene, camera);
-      stats.calls = renderer.info.render.calls; stats.triangles = renderer.info.render.triangles;
+      stats.calls = calls + renderer.info.render.calls; stats.triangles = tris + renderer.info.render.triangles;
       if (vm.visible) { renderer.clearDepth(); renderer.render(viewScene, viewCamera); stats.calls += renderer.info.render.calls; }
       if (dt > 0) adapt(view.dt);
     },
@@ -429,6 +452,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       return { x: v3.x * 0.5 + 0.5, y: 0.5 - v3.y * 0.5, front: v3.z < 1 && v3.z > -1 };
     },
     dispose() {
+      disposed = true;
+      art?.dispose();
       for (const p of panels) p.dispose();
       for (const f of figs) if (f) f.fig.material.dispose();
       fx.dispose();

@@ -22,15 +22,30 @@ class Batch {
   }
 }
 const WHITE: RGB = [1, 1, 1];
-type UvMode = 'world' | 'fit';
+export type UvMode = 'world' | 'fit';
+/** One rectangle of static level surface, as the builder is asked for it. */
+export interface FaceRec {
+  tex: TexId; o: [number, number, number]; u: [number, number, number]; lu: number; v: [number, number, number]; lv: number;
+  tint: RGB; mode: UvMode; cell: number; glow?: RGB;
+}
+/** Takes faces for another renderer; returns the pieces (possibly none) still to be drawn the old way. */
+export type Claim = (f: FaceRec) => FaceRec[];
 
 export class LevelBuilder {
   private batches = new Map<TexId, Batch>();
-  constructor(private bake: Bake) {}
+  constructor(private bake: Bake, private claim?: Claim) {}
   private batch(id: TexId) { let b = this.batches.get(id); if (!b) { b = new Batch(); this.batches.set(id, b); } return b; }
   /** A lit rectangle from `o`, spanning `lu` along U and `lv` along V (unit vectors, U x V = normal), split so no
    * piece is larger than `cell` and the baked light has vertices to live on. */
   face(tex: TexId, ox: number, oy: number, oz: number, ux: number, uy: number, uz: number, lu: number, vx: number, vy: number, vz: number, lv: number, tint: RGB = WHITE, mode: UvMode = 'world', cell = 0.75, glow?: RGB) {
+    if (lu < 1e-4 || lv < 1e-4) return;
+    if (this.claim) {
+      for (const f of this.claim({ tex, o: [ox, oy, oz], u: [ux, uy, uz], lu, v: [vx, vy, vz], lv, tint, mode, cell, glow })) this.draw(f.tex, f.o[0], f.o[1], f.o[2], f.u[0], f.u[1], f.u[2], f.lu, f.v[0], f.v[1], f.v[2], f.lv, f.tint, f.mode, f.cell, f.glow);
+      return;
+    }
+    this.draw(tex, ox, oy, oz, ux, uy, uz, lu, vx, vy, vz, lv, tint, mode, cell, glow);
+  }
+  private draw(tex: TexId, ox: number, oy: number, oz: number, ux: number, uy: number, uz: number, lu: number, vx: number, vy: number, vz: number, lv: number, tint: RGB, mode: UvMode, cell: number, glow?: RGB) {
     if (lu < 1e-4 || lv < 1e-4) return;
     const b = this.batch(tex), nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
     const nu = Math.max(1, Math.ceil(lu / cell)), nv = Math.max(1, Math.ceil(lv / cell)), base = b.pos.length / 3, tile = TILE[tex];
@@ -124,9 +139,16 @@ function prop(L: LevelBuilder, b: Box, n: number) {
   }
 }
 
-/** The whole static level, lit. */
-export function buildLevel(bake: Bake, materials: Record<TexId, THREE.Material>): { group: THREE.Group; triangles: number } {
-  const L = new LevelBuilder(bake), B = MAP.building;
+/** The whole static level, lit. Faces a `claim` takes are left to the asset renderer. */
+export function buildLevel(bake: Bake, materials: Record<TexId, THREE.Material>, claim?: Claim): { group: THREE.Group; triangles: number } {
+  const L = new LevelBuilder(bake, claim);
+  emitLevel(L);
+  return { group: L.build(materials), triangles: L.triangles };
+}
+
+/** Every static surface of the level, as calls on a builder. Shared by the browser and the offline light baker. */
+export function emitLevel(L: LevelBuilder) {
+  const B = MAP.building;
   // Ground, then grass and room floors a hair above it.
   MAP.floors.forEach((f, i) => { const y = i === 0 ? 0 : f.mat === 'grass' ? 0.012 : 0.02; L.face(FLOOR_TEX[f.mat], f.x0, y, f.z1, 1, 0, 0, f.x1 - f.x0, 0, 0, -1, f.z1 - f.z0, WHITE, 'world', i === 0 ? 1.4 : 0.6); });
   // Yard markings.
@@ -136,7 +158,8 @@ export function buildLevel(bake: Bake, materials: Record<TexId, THREE.Material>)
   for (let i = 0; i < 8; i++) line(-18.4 + i * 0.44, -7.5, -18.2 + i * 0.44, -4.5, [0.85, 0.66, 0.1]);
   line(-15.9, 9.9, 15.9, 10.9, [0.42, 0.42, 0.42]); line(-15.9, -10.9, 15.9, -9.9, [0.42, 0.42, 0.42]);
   // Ceiling, lamp panels and the roof.
-  L.face('ceiling', B.x0, WALL_H, B.z0, 1, 0, 0, B.x1 - B.x0, 0, 0, 1, B.z1 - B.z0, WHITE, 'world', 0.75);
+  // One ceiling piece per room, so a room can be handed to another renderer whole.
+  for (const r of MAP.rooms.slice(0, 8)) L.face('ceiling', r.x0, WALL_H, r.z0, 1, 0, 0, r.x1 - r.x0, 0, 0, 1, r.z1 - r.z0, WHITE, 'world', 0.75);
   for (const l of MAP.lamps) L.face('lamp', l.x - 0.6, WALL_H - 0.015, l.z - 0.3, 1, 0, 0, 1.2, 0, 0, 1, 0.6, WHITE, 'fit', 9, [l.color[0] * 2.6, l.color[1] * 2.6, l.color[2] * 2.6]);
   L.face('roof', B.x0, WALL_H + 0.3, B.z1, 1, 0, 0, B.x1 - B.x0, 0, 0, -1, B.z1 - B.z0, WHITE, 'world', 3);
   MAP.boxes.forEach((b, n) => { if (b.draw) prop(L, b, n); });
@@ -148,16 +171,18 @@ export function buildLevel(bake: Bake, materials: Record<TexId, THREE.Material>)
     bar(p.u0 - w, p.u0, p.y0, y1 + w); bar(u1, u1 + w, p.y0, y1 + w); bar(p.u0, u1, y1, y1 + w);
     if (p.kind === 'window') bar(p.u0 - w, u1 + w, p.y0 - w, p.y0);
   }
-  return { group: L.build(materials), triangles: L.triangles };
 }
 
 // ---- Destructible panels -------------------------------------------------------------------------------------------------
 export interface PanelMaterials { wall: THREE.Material; core: THREE.Material; planks: THREE.Material; plate: THREE.Material }
+/** A panel in an asset-rendered room: baked light per cell corner (side +1/-1 along the wall's normal axis, 0 for
+ * the broken edge between them) and the room's wall material, whose UVs are in `tile` metres per repeat. */
+export interface PanelLook { light(c: number, r: number, side: number): RGB | null; wall: THREE.Material; tile: readonly [number, number] }
 
 export class PanelView {
   readonly mesh: THREE.Mesh;
   private version = -1;
-  constructor(readonly panel: Panel, private bake: Bake, private mats: PanelMaterials) {
+  constructor(readonly panel: Panel, private bake: Bake, private mats: PanelMaterials, private look: PanelLook | null = null) {
     this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), [mats.wall, mats.core]);
     this.mesh.matrixAutoUpdate = false;
     this.mesh.frustumCulled = true;
@@ -169,12 +194,14 @@ export class PanelView {
     this.version = p.version;
     this.mesh.visible = p.intact > 0;
     if (!p.intact) return true;
-    const pos: number[] = [], uv: number[] = [], col: number[] = [], face: number[] = [], edge: number[] = [];
+    const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [], face: number[] = [], edge: number[] = [];
     const plate = p.reinforced, wood = p.kind !== 'wall', half = (plate ? 0.2 : wood ? 0.07 : PANEL_T) / 2;
-    const tile = plate ? TILE.plate : wood ? TILE.planks : TILE.drywall, alongX = p.axis === 'x';
+    const look = this.look, tile = plate ? TILE.plate : wood ? TILE.planks : look ? look.tile : TILE.drywall, alongX = p.axis === 'x';
     const vert = (u: number, y: number, off: number, n: number, tu: number, tv: number, shade: number) => {
-      const w = panelPoint(p, u, y, off), l = this.bake.light(w.x, w.y, w.z, alongX ? 0 : n, 0, alongX ? n : 0);
+      const w = panelPoint(p, u, y, off);
+      const l = look?.light(Math.round((u - p.u0) / CELL), Math.round((y - p.y0) / CELL), n) ?? this.bake.light(w.x, w.y, w.z, alongX ? 0 : n, 0, alongX ? n : 0);
       pos.push(w.x, w.y, w.z); uv.push(tu, tv); col.push(l[0] * shade, l[1] * shade, l[2] * shade);
+      if (alongX) nor.push(0, n ? 0 : 1, n); else nor.push(n, n ? 0 : 1, 0);
       return pos.length / 3 - 1;
     };
     // Front and back: runs of intact cells along each row become one quad each.
@@ -217,6 +244,7 @@ export class PanelView {
     g.dispose();
     const ng = new THREE.BufferGeometry();
     ng.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    ng.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
     ng.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     ng.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     ng.setIndex([...face, ...edge]);
@@ -225,7 +253,7 @@ export class PanelView {
     if (edge.length) ng.addGroup(face.length, edge.length, 1);
     ng.computeBoundingSphere();
     this.mesh.geometry = ng;
-    this.mesh.material = [plate ? this.mats.plate : wood ? this.mats.planks : this.mats.wall, wood ? this.mats.planks : this.mats.core];
+    this.mesh.material = [plate ? this.mats.plate : wood ? this.mats.planks : look ? look.wall : this.mats.wall, wood ? this.mats.planks : this.mats.core];
     return true;
   }
   dispose() { this.mesh.geometry.dispose(); }

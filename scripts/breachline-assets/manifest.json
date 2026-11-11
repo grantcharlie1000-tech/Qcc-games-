@@ -1,0 +1,278 @@
+{
+  "note": "Every external asset Breachline ships. Only CC0 without the owner. Sources live in .cache (not committed); build.mjs writes public/game-art/breachline/.",
+  "assets": [
+    {
+      "id": "interior_tiles",
+      "kind": "texture",
+      "name": "Interior Tiles",
+      "source": "https://polyhaven.com/a/interior_tiles",
+      "author": "Charlotte Baglioni",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.9,
+        1.9
+      ],
+      "files": [
+        {
+          "path": "interior_tiles/interior_tiles_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/interior_tiles/interior_tiles_diff_2k.jpg",
+          "size": 2879908,
+          "sha256": "57d3ce95255500e7b0fa677b99b258427a1b1676bd452e90f710eb4ac41f531f"
+        },
+        {
+          "path": "interior_tiles/interior_tiles_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/interior_tiles/interior_tiles_nor_gl_2k.jpg",
+          "size": 1924372,
+          "sha256": "67dc47321ca45fc71123eb3c285f7859ca47147d2a93655ee53d44f6a284bffe"
+        },
+        {
+          "path": "interior_tiles/interior_tiles_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/interior_tiles/interior_tiles_arm_2k.jpg",
+          "size": 2472830,
+          "sha256": "a0c9e96712f5184f569537b3efaf7179d15d4a6398c1fa69ededefc8227e30e1"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "painted_plaster_wall",
+      "kind": "texture",
+      "name": "Painted Plaster Wall",
+      "source": "https://polyhaven.com/a/painted_plaster_wall",
+      "author": "Amal Kumar",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        2,
+        2
+      ],
+      "files": [
+        {
+          "path": "painted_plaster_wall/painted_plaster_wall_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_diff_2k.jpg",
+          "size": 3132937,
+          "sha256": "6fd812ed8dd5be1873c29aeef38ce9bf1fb30a22c6d4b3a12db725e98c26a1be"
+        },
+        {
+          "path": "painted_plaster_wall/painted_plaster_wall_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_nor_gl_2k.jpg",
+          "size": 4048392,
+          "sha256": "2d601a46ed5ce2af866741c53cafa3cba472620c272e633b6484d4de16a80eb1"
+        },
+        {
+          "path": "painted_plaster_wall/painted_plaster_wall_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_arm_2k.jpg",
+          "size": 2159906,
+          "sha256": "8d6a2e391e87130aabb1dc6fea23e6ebcc80aca6559a0aa82e57b75729055be5"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "blue_metal_plate",
+      "kind": "texture",
+      "name": "Blue Metal Plate",
+      "source": "https://polyhaven.com/a/blue_metal_plate",
+      "author": "Rob Tuytel",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        2.5,
+        2.5
+      ],
+      "files": [
+        {
+          "path": "blue_metal_plate/blue_metal_plate_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/blue_metal_plate/blue_metal_plate_diff_2k.jpg",
+          "size": 1518621,
+          "sha256": "82855f6297ad07ea7ea4d1c501e6b56ed4c9c758653ca126bda9fd0ebba63c59"
+        },
+        {
+          "path": "blue_metal_plate/blue_metal_plate_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/blue_metal_plate/blue_metal_plate_nor_gl_2k.jpg",
+          "size": 948237,
+          "sha256": "4cd3069a918cf891295b369b26f47c0a0631c634d0fd1006b6b7412a8f2b3550"
+        },
+        {
+          "path": "blue_metal_plate/blue_metal_plate_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/blue_metal_plate/blue_metal_plate_arm_2k.jpg",
+          "size": 1640935,
+          "sha256": "64991aa1059eb36d74fb5973dcc55de9153cf277e8f587a5b7939966737a04e4"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "metal_tool_chest",
+      "kind": "model",
+      "name": "Metal Tool Chest",
+      "source": "https://polyhaven.com/a/metal_tool_chest",
+      "author": "Yann Kervran, John Hutcheson",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.6854,
+        0.4072,
+        0.6518
+      ],
+      "files": [
+        {
+          "path": "metal_tool_chest/metal_tool_chest.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/metal_tool_chest/metal_tool_chest_1k.gltf",
+          "size": 12256,
+          "sha256": "2f66fbb723cd52382f73daec184b68d9b36842a488ecaf120e5c3a6354e9dea4"
+        },
+        {
+          "path": "metal_tool_chest/metal_tool_chest.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/metal_tool_chest/metal_tool_chest.bin",
+          "size": 434496,
+          "sha256": "c2bde4e96af4aad171e57e00ff78f0aa9e3b603286a2c74cd6d7c2a20c487342"
+        },
+        {
+          "path": "metal_tool_chest/textures/metal_tool_chest_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_tool_chest/metal_tool_chest_nor_gl_1k.jpg",
+          "size": 604781,
+          "sha256": "bc5a4009a544a9504849b951afd984d6ac7c5adb0d43c5a08c0a834f8e811a01"
+        },
+        {
+          "path": "metal_tool_chest/textures/metal_tool_chest_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_tool_chest/metal_tool_chest_arm_1k.jpg",
+          "size": 755794,
+          "sha256": "d5552ee63ac9bc53527ee1bf19bcbd31d8424bcc15fe9861f79bba917e857828"
+        },
+        {
+          "path": "metal_tool_chest/textures/metal_tool_chest_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_tool_chest/metal_tool_chest_diff_1k.jpg",
+          "size": 552016,
+          "sha256": "da37ba2a8d064637c7206cb091597275986e788ce379bee58a96c949cce06511"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "korean_fire_extinguisher_01",
+      "kind": "model",
+      "name": "Korean Fire Extinguisher 01",
+      "source": "https://polyhaven.com/a/korean_fire_extinguisher_01",
+      "author": "UM JOORIN",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.28,
+        0.3674,
+        0.6593
+      ],
+      "files": [
+        {
+          "path": "korean_fire_extinguisher_01/korean_fire_extinguisher_01.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_1k.gltf",
+          "size": 7450,
+          "sha256": "565f9e41909165c2bead24b722746e29ba55e8eb5e541f61fe0d1ef7e66d2ecf"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_paper_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_paper_nor_gl_1k.jpg",
+          "size": 267306,
+          "sha256": "caaa26dd438e827e994c69605091d58ecc6a152813ece776cc561e0b24a8433a"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_paper_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_paper_diff_1k.jpg",
+          "size": 161849,
+          "sha256": "2d56948aa72a9bad6133db3e6b17fa0df1a56cdf25db4b7e21e6ceb21999a038"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_body_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_body_nor_gl_1k.jpg",
+          "size": 95607,
+          "sha256": "b6ba7a7cafa04557c93dc63b44260b635863f0a95f8ba1445b75758dac3443d3"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_paper_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_paper_arm_1k.jpg",
+          "size": 221117,
+          "sha256": "542b45184bb0ea66cdd2f180792148c45d45862a12f1ac341f798e53029015b9"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_glass_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_glass_diff_1k.jpg",
+          "size": 150097,
+          "sha256": "ca7e49959126aa51e2d4ab440aeb9f7ff17a8a6d025b116f6327f2343ee041af"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_glass_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_glass_nor_gl_1k.jpg",
+          "size": 36344,
+          "sha256": "3b299c54cb9b6f72d4f79e6ecd2f8cfcc618292c87881de1d17892b5ca668896"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_glass_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_glass_arm_1k.jpg",
+          "size": 61925,
+          "sha256": "412712fddc3654d801949889f78c9ee92d8855624a1fe1057be29a38e766bda0"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/korean_fire_extinguisher_01.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/korean_fire_extinguisher_01/korean_fire_extinguisher_01.bin",
+          "size": 279480,
+          "sha256": "a460dd65b63477bb641196d77393258af0c8a6e2a64728156cb45d92658c86bd"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_body_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_body_diff_1k.jpg",
+          "size": 127270,
+          "sha256": "2d874513cfb6d7485b67e936ee32e7af14992da6a5eedf980dbdfc32a2119987"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_body_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_body_arm_1k.jpg",
+          "size": 209865,
+          "sha256": "2c8fa0a85d5acc5f4e784ecefd8bfd16e1aafd112e553bfcece0c81c9b129eea"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "metal_stool_01",
+      "kind": "model",
+      "name": "Metal Stool 01",
+      "source": "https://polyhaven.com/a/metal_stool_01",
+      "author": "Ulan Cabanilla",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.352,
+        0.3546,
+        0.8828
+      ],
+      "files": [
+        {
+          "path": "metal_stool_01/metal_stool_01.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/metal_stool_01/metal_stool_01_1k.gltf",
+          "size": 2790,
+          "sha256": "e69a99778cacbbf0a2447971d8917a2463b411cdd2a50ff2c53c2230b4c43881"
+        },
+        {
+          "path": "metal_stool_01/textures/metal_stool_01_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_stool_01/metal_stool_01_nor_gl_1k.jpg",
+          "size": 667394,
+          "sha256": "55d71cb01dd9afba245d4513728ce0cde8b112d5a7e1695a68578445c7b02b82"
+        },
+        {
+          "path": "metal_stool_01/textures/metal_stool_01_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_stool_01/metal_stool_01_diff_1k.jpg",
+          "size": 617390,
+          "sha256": "d11949df1f0c59b5a85145395703a2aa7617e76b80759a5ef80b09e1798acb3d"
+        },
+        {
+          "path": "metal_stool_01/textures/metal_stool_01_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_stool_01/metal_stool_01_arm_1k.jpg",
+          "size": 783046,
+          "sha256": "eb13e80e9fe232d022b4136e817d4590a7279d8da327d35e525e1aa4cf30e334"
+        },
+        {
+          "path": "metal_stool_01/metal_stool_01.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/metal_stool_01/metal_stool_01.bin",
+          "size": 216340,
+          "sha256": "a57dae498990e7b56cba33b64721d1d0b940ca6352248de149740cd4678d451d"
+        }
+      ],
+      "use": ""
+    }
+  ]
+}
