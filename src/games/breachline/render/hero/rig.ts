@@ -75,6 +75,12 @@ export function holdFor(id: WeaponId): Hold {
   if (h) return h;
   const S = weaponModel(id).sockets;
   switch (id) {
+    case 'ar': h = rifleHold(id, {
+      // Cradle rolled toward the shooter: palm up and right under the handguard, thumb along the near side,
+      // fingertips curling over the far side, so knuckles, thumb and fingertips all read from the eye.
+      left: { at: [-0.01, S.support.p[1] - 0.004, S.support.p[2] + 0.01], palm: [0.55, 0.85, 0], fingers: [0.5, 0.25, -0.83] },
+      leftPose: [[0.2, 0.05, 0.1, 0.1], [1.15, 1.1, 0.6, 0.03], [1.2, 1.1, 0.6, 0], [1.25, 1.1, 0.6, -0.04], [1.3, 1.1, 0.6, -0.1]],
+    }); break;
     case 'smg': h = rifleHold(id, { hip: { p: [0.1, -0.08, -0.22], r: [0.03, 0.02, -0.03] }, adsZ: -0.13 }); break;
     case 'shotgun': h = rifleHold(id, {
       left: { at: [0, S.support.p[1] - 0.008, S.support.p[2]], palm: [0.1, 1, 0], fingers: [0.75, 0, -0.66] },
