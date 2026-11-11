@@ -168,11 +168,11 @@ function project(o: Frame, pt: [number, number, number]) {
 
 /** A processed asset from public/game-art/breachline/patch/<dir>/: one mesh of `file` (by node name) with its KTX2
  * set loaded the way the game loads textures (ArtLoader). `tint` recolours by the mask: [fatigues, kit] sRGB hex. */
-async function loadPrepared(name: string, dir: string, file: string, node: string, o: { tint?: [number, number]; plain?: boolean; size?: number; armSize?: number; skin?: boolean } = {}) {
+async function loadPrepared(name: string, dir: string, file: string, node: string, o: { tint?: [number, number]; plain?: boolean; size?: number; norSize?: number; armSize?: number; rotY?: number; drop?: Record<string, [number, number, number]> } = {}) {
   const g = await gltf.loadAsync(`/game-art/breachline/patch/${dir}/${file}`);
-  const src = g.scene.getObjectByName(node) as THREE.Mesh; if (!src) throw new Error(`no node ${node}`);
+  const src = (node === '*' ? null : g.scene.getObjectByName(node)) as THREE.Mesh | null; if (node !== '*' && !src) throw new Error(`no node ${node}`);
   const art = new ArtLoader(renderer, 'high'), set = `../patch/${dir}`, size = o.size ?? 2048;
-  const [map, normalMap] = await Promise.all([art.texture(set, 'diff', size), art.texture(set, 'nor', size)]);
+  const [map, normalMap] = await Promise.all([art.texture(set, 'diff', size), art.texture(set, 'nor', o.norSize ?? size)]);
   const arm = await art.texture(set, 'arm', o.armSize ?? 1024);
   const mat = new THREE.MeshStandardMaterial({ map, normalMap, roughnessMap: arm, metalnessMap: arm, roughness: 1, metalness: 1 });
   if (o.plain) { mat.map = null; mat.color.set(0x9a9a9a); }
@@ -188,10 +188,13 @@ async function loadPrepared(name: string, dir: string, file: string, node: strin
     };
     mat.customProgramCacheKey = () => 'tint';
   }
-  const mesh = new THREE.Mesh(src.geometry, mat); mesh.frustumCulled = false;
-  const holder = new THREE.Group(); holder.add(mesh);
-  objects.set(name, holder);
-  const r = { triangles: tris(mesh), extras: g.parser.json.asset?.extras ? Object.keys(g.parser.json.asset.extras) : [] };
+  const holder = new THREE.Group();
+  if (src) { const mesh = new THREE.Mesh(src.geometry, mat); mesh.frustumCulled = false; holder.add(mesh); }
+  else { g.scene.traverse(c => { const m = c as THREE.Mesh; if (m.isMesh) { m.material = mat; m.frustumCulled = false; } }); for (const [k, d] of Object.entries(o.drop ?? {})) g.scene.getObjectByName(k)?.position.add(new THREE.Vector3(...d)); holder.add(g.scene); }
+  holder.rotation.y = o.rotY ?? 0;
+  const wrap = new THREE.Group(); wrap.add(holder);
+  objects.set(name, wrap);
+  const r = { triangles: tris(holder), extras: g.parser.json.asset?.extras ? Object.keys(g.parser.json.asset.extras) : [] };
   info.set(name, r);
   return r;
 }
@@ -268,6 +271,13 @@ function joint(name: string, b: number) {
   return r.mesh.skeleton.bones[b].getWorldPosition(new THREE.Vector3()).toArray();
 }
 
-const api = { load, loadPrepared, loadSkinned, ourRig, pose, joint, ourRifleman, ourAr5, frame, project, info: () => Object.fromEntries(info) };
+/** Small red spheres at the given points (for sockets), as object `name`, in the same frame rotation as `rotY`. */
+function markers(name: string, pts: [number, number, number][], rotY = 0, r = 0.006) {
+  const grp = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color: 0xff2a2a, depthTest: false });
+  for (const p of pts) { const s = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), m); s.position.set(...p); s.renderOrder = 10; grp.add(s); }
+  grp.rotation.y = rotY; const w = new THREE.Group(); w.add(grp); objects.set(name, w);
+}
+
+const api = { load, loadPrepared, markers, loadSkinned, ourRig, pose, joint, ourRifleman, ourAr5, frame, project, info: () => Object.fromEntries(info) };
 (window as unknown as { __trial: typeof api }).__trial = api;
 (window as unknown as { __trialReady: boolean }).__trialReady = true;

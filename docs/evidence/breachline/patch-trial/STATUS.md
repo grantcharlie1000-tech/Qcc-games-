@@ -266,3 +266,49 @@ an hour's work in the fighters session, not a rebuild.
 
 **Budget:** the tactical folder is now 4.2 MB (0.2 MB over 4 MB). Cheapest cut, if needed: drop `nor-1024.ktx2`
 (0.37 MB; the low tier would then fall back to the 512 JPEG normal map), or ship `diff/nor` at 2048 only.
+
+## 2.3 Sci-fi rifle, made usable — done
+
+Script: `scripts/breachline-assets/patch-trial/prep-rifle.ts` (`npx vite-node`, env `RIFLE` = the web-lod2 GLB,
+`SCRATCH`). It uses the hero weapons' own unwrapper (`render/hero/unwrap.ts`) and `crease` (`render/hero/geom.ts`),
+imported read-only. Proof: `job2-3-rifle-clean.jpg`: the original beside the cleaned rifle, detail crops of the
+"X7A" receiver and the glowing handguard before and after, the magazine out, the sockets, a clay view, and both in the
+first-person 2x crop.
+
+Files in `public/game-art/breachline/patch/rifle-scifi/` (3.33 MB, budget 4 MB):
+- `rifle.glb`: nodes `body` (14,426 triangles) and `magazine` (832, capped at the well; node translation = its seat,
+  so dropping it is a move along -Y). POSITION, NORMAL, **TANGENT**, TEXCOORD_0. Our weapon frame: metres, **muzzle
+  toward -Z**, +Y up, +X right, origin at the bounding-box centre, 0.88 m long. (Patch's 1.90 m is an estimate; at
+  0.88 m the magazine well, grip and stock read at real-rifle size.)
+- `sockets.json` (also in the GLB's `extras`): muzzle, bore, sight line (rear/front, 0.118 m above the bore: a
+  tall box sight), grip palm and rake, support palm, trigger, magazine seat, ejection port, charging handle. Placed by
+  measurement of the side profile and checked by eye on the sheet (red markers); the weapons session should fine-tune
+  them with the hands in place.
+- `diff-2048/1024.ktx2`, `nor-1024.ktx2`, `arm-1024.ktx2`, 512 JPEG fallbacks. The normal map is tangent space,
+  +Y up (glTF), for use with the TANGENT attribute and normalScale (1, 1).
+
+Method and numbers:
+- Decimated with the vertices welded: 151,030 to 14,996 triangles (meshoptimizer error 0.0006 of the size). Then the
+  magazine was cut off by a plane at the well (body 14,426 + magazine 832 with both openings capped), normals creased
+  at 34°, and the mesh unwrapped into 95 islands at 1,684 texels/m.
+- Bake by closest point on the 151k mesh. Colour and roughness/metal come through its UVs; its smooth vertex normals
+  go into the new tangent space. 0.9% of texels lie more than 6 mm from the 151k surface (thin parts); there the low
+  normal is kept. Its own normal map was not carried over: its fine panel lines are painted into its colour anyway.
+- Paint-out, in the baked colour: blue glow (34k texels) became dark anodised panels (smoother and metallic in the
+  packed map); orange accents (14k) became dark polymer; light marks on dark panels (8k: "X7A", "07", pseudo-labels)
+  took the local panel colour. The detail crops show the text and glow gone. Faint dark-blue tints remain in the
+  former windows, and a few light edge highlights went with the marks.
+- **Budget decision:** the normal map at 2048 alone was 1.6 MB, so normals and the packed map ship at 1024 and colour
+  at 2048. In the 2x first-person crop the 1024 normal map holds up; see the sheet.
+
+What it still is: a chunky, sci-fi-styled rifle (deep receiver, box sight, skeleton stock) with no moving parts other
+than the magazine. Its baked shading is still in the colour. My earlier verdict on the design stands; this makes it
+usable, not modern.
+
+**Credit and licence, exactly as the Patch record gives them:**
+
+> asset_kHXqk4QynhrkbnpiD9C8A5zo ("Black sci-fi assault rifle", title by Patch) by Scenario (Scenario, https://huggingface.co/datasets/scenario-labs/3d-collection/blob/55b4c002b4c1529fc48da3dff98516c3069bfa3f/assets/scenario_asset_kHXqk4QynhrkbnpiD9C8A5zo/output.glb), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). AI-generated with Meshy 7 image-to-3D. Changed by Patch: textures resized to 2048 px, pivot moved to the bottom centre, credit and license added to the file metadata, simplified LODs added.
+
+Licence: CC-BY-4.0 (Creative Commons Attribution 4.0 International, https://creativecommons.org/licenses/by/4.0/).
+Our changes, to append: "Changed for Breachline: rescaled to 0.88 m; decimated to 15k triangles; magazine separated;
+re-unwrapped and re-baked; glowing panels, orange accents and markings painted out; textures re-encoded as KTX2."
