@@ -262,3 +262,69 @@ for placement (it may stay as a checker that reports which rule a hand placement
 Send the revised top-down image with each set piece labelled by name, and one sentence per room and per yard
 saying what the layout is for ("two pods split the Office so neither door sees the other"). Rule 7 (fairness at
 windows) and the doorway two-thirds view stay the planner's to judge from that image.
+
+## 12. Damage you can see: blood and damaged models (owner, 2026-11-11: "the game needs detailed damaged models and blood")
+
+A firefight should leave evidence on people and on things. This extends section 10. Everything here is cosmetic,
+derived from events every client already receives (`shot` with origin, direction and seed; `hit` with shooter,
+victim, damage and head flag; `kill`; `melee`; `boom`), so all players see the same thing and no core file changes.
+The hit point on a body is reconstructed in the render layer: the nearest point on the shooter's last shot ray to
+the victim's body (the head when the head flag is set). Collision never changes: damaged cover is still cover.
+Tone: the level of a mainstream military shooter. Blood, wounds and bodies; no dismemberment or mutilation.
+
+**12.1 Blood in the world** (environment session, with the mark system of 10.1).
+- **On every hit:** a short dark-red spray at the hit point, thrown along the bullet's direction; larger for a head
+  hit or a shotgun; a slash-shaped spray for a melee hit.
+- **Behind the victim:** a spatter mark on whatever surface lies within about 2.5 m along the shot (wall, floor,
+  furniture, a panel), found by a cosmetic ray test; elongated when it lands at a shallow angle; a few drips running
+  down a wall. It goes when the wall cell it is on goes.
+- **Under a body:** a pool that spreads over a few seconds where a fighter falls, shaped by the floor (stopped by
+  walls and furniture), glossy while fresh and darker as it dries; smeared if the body slid.
+- **Blasts:** scorch as now, plus spatter on nearby surfaces only when a fighter was hit.
+- Marks persist for the round, pooled with caps (oldest fade), warmed at load; `warm.spec.ts` must still pass.
+
+**12.2 Wounded and fallen fighters** (the session that owns `render/patchfighters/`).
+- **Wounds where they were hit:** up to eight per fighter, each a dark entry mark with a blood stain that spreads a
+  little into the cloth, placed on the body region that was hit (head, chest, abdomen, each arm, each leg), carried
+  in the fighter's material so it moves with the skin and costs no extra draw call. A head hit marks the balaclava
+  or helmet.
+- **Worse as health falls:** below half health the uniform shows more blood and dirt; near death the figure is
+  visibly hurt (stains on torso and legs), so players can read an enemy's state.
+- **Reactions:** the existing flinch is directed away from the hit; a hit leg or arm shows in the pose for a moment.
+- **Bodies stay** where they fall until the round ends, in a settled pose that respects the floor and nearby
+  furniture, wounds and stains included; the weapon lies beside them.
+- **First person:** a brief red flash at the screen edge on the side the hit came from, and a few blood specks on
+  the glove and sleeve at low health (through the render layer only; the weapons session's files are not edited:
+  if the hands cannot be reached without that, report it).
+
+**12.3 Damaged models for objects** (environment session, built with each set piece in Phase B).
+Every set piece and repeated prop is authored with **three states: intact, damaged, wrecked**, chosen by the hits
+and blasts it has taken (a count per object from the shared events), with its own geometry, not just decals:
+- desks and tables: splintered edges, a split top, drawers hanging, contents on the floor;
+- cabinets, lockers, UPS and network units: dented panels, doors ajar or off, punctured faces, sparking when live;
+- sofas and chairs: torn covers, stuffing out, a broken leg, overturned by a blast;
+- screens, vending and display units: smashed glass, dark, contents spilled;
+- shelving and boxes: boxes burst, files shed, a shelf collapsed at one end;
+- crates and pallets: broken planks, a stack slumped, splinters round it;
+- drums and jerrycans: punctured, leaking a stain, one tipped;
+- skips, the trailer, containers and the covered car: dents, punctures, torn cover showing bodywork, a flat tyre,
+  a broken window under the cover;
+- planters and low walls: cracked, chipped corners, soil and rubble spilled;
+- lamp posts and wall lights: head smashed, cover hanging (still lit, as in 10.2);
+- ceilings and floors near a blast: tiles down with the grid showing, a scorched and cracked floor patch.
+The state change is immediate at the hit that crosses a threshold, with a burst of the right debris, and debris
+stays. Each state fits inside the object's collision box. Low tier keeps all three states (it is feedback, not
+garnish) but may use fewer debris pieces.
+
+**12.4 A setting.** Blood and wounds are on by default. The planner will add a menu toggle later (the menu is a
+core file); until then honour a `?blood=off` query in the render layer that replaces sprays, spatter, pools and
+wounds with dust and dark scuffs.
+
+**12.5 Evidence and tests.** A strip of a fighter being hit in the chest, the leg and the head (spray, spatter
+behind, wound on the model), a strip of a death (fall, pool spreading, body staying), one before/damaged/wrecked
+triple per set-piece family, in the game at 960 px. A test fires scripted shots at a fighter and at one object of
+each family and asserts the marks, wounds and state changes exist, that pools stay within caps, and that program
+and texture counts do not change during play.
+
+**Order.** Environment session: finish marks on props (10.1), then 12.1 with the same mark system, then the window
+glass (10.2), then Phase B art with each piece's three states (12.3), then Phase D. Fighters module: 12.2.
