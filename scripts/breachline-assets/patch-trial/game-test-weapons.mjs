@@ -51,4 +51,4 @@ async function run(patch) {
   await browser.close();
   return true;
 }
-for (const patch of process.env.ONLY === 'patch' ? [true] : [false, true]) for (let t = 0; t < 3; t++) if (await run(patch)) break;
+for (const patch of process.env.ONLY === 'patch' ? [true] : process.env.ONLY === 'stock' ? [false] : [false, true]) for (let t = 0; t < 3; t++) if (await run(patch)) break;

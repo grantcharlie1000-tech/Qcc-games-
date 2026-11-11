@@ -76,12 +76,12 @@ export function holdFor(id: WeaponId): Hold {
   const S = weaponModel(id).sockets;
   switch (id) {
     case 'ar': h = rifleHold(id, {
-      // Cradle rolled toward the shooter: palm up and right under the handguard, thumb along the near side,
-      // fingertips curling over the far side, so knuckles, thumb and fingertips all read from the eye.
-      left: { at: [-0.01, S.support.p[1] - 0.004, S.support.p[2] - 0.05], palm: [0.55, 0.85, 0], fingers: [0.5, 0.25, -0.83] },
+      // Palm cupped up against the underside of the handguard (no gap), fingers running across it and wrapping the far
+      // side, thumb straight along the near side. (Fingers pointing forward along the handguard read as a claw.)
+      left: { at: [-0.008, S.support.p[1] + 0.008, S.support.p[2] - 0.03], palm: [0.35, 1, 0], fingers: [0.9, 0.1, -0.42] },
       // The left elbow out and down: the forearm enters from the lower left and runs diagonally to the handguard.
       shoulderL: [-0.3, -0.37, 0.02], poleL: [-1, -1, 0.3],
-      leftPose: [[0.2, 0.05, 0.1, 0.1], [1.15, 1.1, 0.6, 0.03], [1.2, 1.1, 0.6, 0], [1.25, 1.1, 0.6, -0.04], [1.3, 1.1, 0.6, -0.1]],
+      leftPose: [[0.15, 0.05, 0.1, 0.15], [1.3, 1.25, 0.7, 0.02], [1.35, 1.25, 0.7, 0], [1.4, 1.25, 0.7, -0.02], [1.45, 1.25, 0.7, -0.05]],
     }); break;
     case 'smg': h = rifleHold(id, { hip: { p: [0.1, -0.08, -0.22], r: [0.03, 0.02, -0.03] }, adsZ: -0.13 }); break;
     case 'shotgun': h = rifleHold(id, {
