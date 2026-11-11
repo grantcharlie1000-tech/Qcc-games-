@@ -36,8 +36,8 @@ material family, fallback) is proven, which is what this gate exists to decide, 
 
 | Row | Baseline | Phase 0 (Lab only) | Evidence |
 | --- | --- | --- | --- |
-| A World lighting | 3 | **5** | `phase-0/lab-west-high.png`: soft shadows under benches, AO in wall/floor corners, bounce tint; but flat overall exposure, no grade, rest of the map unchanged. |
-| B Surface shading | 1 | **4** | `phase-0/lab-bench-high.png`: normal-mapped plaster and metal, probe reflections; specular is subtle, ceiling and panels' broken edges still unlit-style. |
+| A World lighting | 3 | **5** (reviewer: 4) | `phase-0/lab-west-high.png`: soft shadows under benches, AO in wall/floor corners, bounce tint; but flat overall exposure, no grade, rest of the map unchanged. |
+| B Surface shading | 1 | **4** (reviewer: 3) | `phase-0/lab-bench-high.png`: normal-mapped plaster and metal, probe reflections; specular is subtle, ceiling and panels' broken edges still unlit-style. |
 | C Texture detail | 2 | **5** | `phase-0/lab-high.png`: photo tiles, plaster, painted metal at 1K (~400-800 px/m); ceiling, lockers and barricades still procedural. |
 | D World geometry | 1 | **2** | `phase-0/lab-high.png`: three real props (tool chest, extinguisher, stools); benches and lockers are still boxes. |
 | E First-person weapon | 1 | 1 | Unchanged (phase 6, built in code, gate 8). |
@@ -48,6 +48,27 @@ material family, fallback) is proven, which is what this gate exists to decide, 
 | J Destruction look | 3 | 3 | Unchanged (phase 5); Lab panels now share the room's material and baked light. |
 
 Scores for A-D are for the Lab; elsewhere the map is still at baseline.
+
+### Reviewer's phase-0 scores (commissioning session, from the pixels): A 4, B 3, C 5, D 2
+
+Taken as the scores of record; mine above were one point generous on A and B. Their findings, folded into phases
+(items 1-3 must show in the Lab bookmark by the end of phase 2):
+
+1. Lighting flat and washed, flatter than the old frame: raise key-to-fill, let corners and under-bench go dark,
+   check the lightmap range and AO strength. Target: fixtures brightest, floor midtones about a third, contact shadow
+   under every prop. (Phase 2.)
+2. No visible specular: grazing-angle sheen on tile and metal, fixtures as bright sources in the probes, ARM
+   roughness reaching the shader. (Phases 2-3.)
+3. Fixtures are flat rectangles: model the troffer (frame, diffuser), hot spot on the ceiling in the lightmap. (Phase 2.)
+4. Benches are the most box-like thing in frame: modelled cabinetry, sink, taps, equipment; Lab first. (Phase 4.)
+5. Wall band is a featureless strip: dado rail and skirting as geometry, sockets, conduit, scuffs. (Phase 3.)
+6. Door posts and frames pure black: proper material and light. (Phase 3.)
+7. Site "A" ring reads as fresh flat paint: wear it, take the floor's normal and gloss. (Phase 3.)
+8. Palette does not hang together (beige floor, cool grey walls, navy trim): choose a grade direction before phase 3.
+9. Barricades, ceiling tiles, lockers, fighters and weapon still old; the photo/box mismatch is now glaring.
+
+From now on each gate records the section 5 budgets measured on the bookmark frames and what ARM devices get
+(today: uncompressed 512 px JPEG fallback until KTX2 lands).
 
 ## Iteration log (phase 0)
 
