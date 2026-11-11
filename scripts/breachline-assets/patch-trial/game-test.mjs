@@ -31,10 +31,12 @@ async function run(patch) {
   });
   await page.goto(`http://127.0.0.1:${port}/?festive=off&arttier=high${patch ? '&fighters=patch' : ''}${extra ? '&' + extra : ''}#/game/breachline`);
   await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 120000 });
+  await page.waitForFunction(() => window.__breachlineTest.stats().ready !== false, undefined, { timeout: 120000 }).catch(() => {});
   await page.evaluate(() => { const h = window.__breachlineTest; h.start({ seed: 7, quality: 'high', teamSize: 3, bots: true }); h.freeze(true); h.advance(0.2); h.still(); h.skip(30); h.advance(0.3); h.advance(5); });
   await page.waitForFunction(() => window.__breachlineTest.stats().art === 'env', undefined, { timeout: 180000, polling: 500 }).catch(() => console.log('art did not reach env'));
   await page.waitForTimeout(3000);
   await page.addStyleTag({ content: '.bl-toast, .bl-banner, .bl-prompt { visibility: hidden !important; }' });
+  await page.waitForFunction(() => { const s = window.__breachlineTest?.state(); return s && s.players.length > 0; }, undefined, { timeout: 60000 });
   const st = await page.evaluate(() => window.__breachlineTest.state());
   const a = st.players.find(p => p.squad === 0 && p.id !== st.self && p.alive), b = st.players.find(p => p.squad === 1 && p.alive);
   const spots = { yard: [a.x, a.z], lab: [b.x, b.z] };
