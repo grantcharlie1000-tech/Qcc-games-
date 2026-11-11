@@ -10,6 +10,23 @@
   "fatigues": 0.0678,
   "kit": 0.0546
  },
+ "lumRange": {
+  "fatigues": [
+   0,
+   0.00171,
+   0.06421
+  ],
+  "kit": [
+   0,
+   0.00146,
+   0.01123
+  ]
+ },
+ "skinned": {
+  "file": "body-skinned.glb",
+  "skeleton": "fighters/skeleton.ts, 32 bones, JOINTS_0 = bone order B, weights normalised bytes",
+  "frame": "fighters frame: facing -Z, bind pose, authored units (fighter group applies SCALE)"
+ },
  "cuts": {
   "neck": {
    "p": [
@@ -59,12 +76,7 @@
   "arm-512.jpg": 55915,
   "mask-1024.ktx2": 124428,
   "mask-256.png": 57001,
-  "body-skinned.glb": 1204632
+  "body-skinned.glb": 1204700
  },
- "bytes": 4215253,
- "skinned": {
-  "file": "body-skinned.glb",
-  "skeleton": "fighters/skeleton.ts, 32 bones, JOINTS_0 = bone order B, weights normalised bytes",
-  "frame": "fighters frame: facing -Z, bind pose, authored units (fighter group applies SCALE)"
- }
+ "bytes": 4215321
 }

@@ -344,3 +344,41 @@ external hammer). It is generic, with no markings or text seen, and CC0.
 
 Licence: CC0-1.0 (CC0 1.0 Universal, https://creativecommons.org/publicdomain/zero/1.0/); no attribution required,
 but credit it anyway as above.
+
+## 2.5 Planner's follow-up on the soldier (2026-11-11, after reviewing 2.1–2.2)
+
+Sheets: `job2-5-weight-fixes.jpg`, `job2-5-look-squad-b.jpg`, `job2-5-look-squad-a.jpg`, `job2-5-head-hands.jpg`,
+`job2-5-distance.jpg`. Script: `soldier-finish.mjs`. `body-skinned.glb` was regenerated (same file name).
+
+- **Budget:** the 4.5 MB limit was accepted; `nor-1024` is kept. The folder is 4.22 MB.
+- **Weight fixes (both done; the second only partly helps).** Above the armpit, 70% of the chest/clavicle weight moves
+  to the shoulder helper, fading in from x = 0.13 m and y = 1.18 m. The holster and both outer thigh pockets are
+  rigid to their thigh, blending to the hip helper at the holster's top. While doing this I found and fixed a bug: UV-seam
+  duplicates had the forearm-twist step applied more than once. Result: the aiming shoulders change little; the bunching
+  comes as much from the shape of the hood and shoulder plate as from the weights. The hip gap in the crouch is smaller
+  but **still open**: the tear sits where the fused crotch and pocket geometry folds, and weights cannot close it.
+  Remaining fix: cut the holster off as a separate rigid piece, and add a small hidden fill patch inside the hip fold.
+- **Length matching (new, needed for the hands).** The soldier's forearm (elbow to glove cuff, 0.19 m) is shorter
+  than our skeleton's 0.255 m, so our hand floated 6 cm past the cuff. Each limb bone is now stretched along its own
+  axis to our length: forearm ×1.37, upper arm ×0.88, thigh and shin ×1.04. The cuff now meets our glove. The cost:
+  the soldier's forearm sleeve is visibly longer than its own design.
+- **Recolour by luminance remap** (reference shader in `trial.ts`, `squadLook`). Per class (fatigues/kit), the
+  source's luminance is centred on its median and spread over a fifth of its 2–98% range with a tanh curve, then
+  mapped between a dark and a light target colour. Folds, seams and wear survive as steps instead of collapsing to
+  one fill. On top: a 2.5 mm object-space weave plus fine noise, a two-octave large stain layer, a steeper curve for
+  kit (straps and buckles stay darker) and darkened soles. The measured ranges are in `tactical.json` / the GLB's
+  `extras.lumRange`. Squad A as it ships: fatigues `#090b0d`→`#323a42` (very dark slate), kit
+  `#050506`→`#232528` (near-black). Squad B: coyote `#21190f`→`#8a6e4b`, olive `#12140c`→`#5e6345`.
+  Honest limit: the source texture carries little detail in its near-black values, so even remapped, squad B reads
+  cleaner and flatter than a painted texture. A proper fix is a hand-tuned detail pass on the atlas, which its
+  shredded layout makes impractical.
+- **Head and hands on** (`attachOurs` in `trial.ts`). Triangles of our textured figure whose dominant bone is the
+  head or a hand are bound to the soldier's skeleton; with the same bind pose they seat without any offset. What fits:
+  helmet, balaclava (A) or face wrap (B) and goggles sit on the hood with no neck gap or step; gloves meet the cuffs
+  after the length matching. What does not: our head is slightly small for this broader body; the squad B face wrap
+  leaves skin around the eyes, which looks odd above a fully covered soldier; our gloves are simpler and blobbier than
+  the body around them; the hood shows behind the helmet at the nape.
+- **Game distance** (exact pixels, 1280×720, 70° FOV, eye 1.6 m). At 2 m (463 px tall) the soldier is clearly more
+  detailed and better proportioned than ours. At 8 m (116 px) both squads separate at a glance and the soldier still
+  reads better: real pouches, knee pads and boots against our smooth suit. At 20 m (46 px) the two figures are
+  similar; the squad colours are what tell them apart, and both pass.

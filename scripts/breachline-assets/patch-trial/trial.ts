@@ -203,13 +203,72 @@ async function loadPrepared(name: string, dir: string, file: string, node: strin
  * named rigs can exist (`soldier`, `ours`); `clip` poses one. */
 interface Rig { group: THREE.Group; anim: Animator; outer: THREE.Group; mesh: THREE.SkinnedMesh }
 const rigs = new Map<string, Rig>();
-async function loadSkinned(name: string, node = 'body_lod0', weights = false) {
+/** Squad looks for the recolour. Colours are sRGB hex: the darkest and lightest the cloth reaches. */
+const LOOKS: Record<string, { fat: [number, number]; kit: [number, number]; weave: number; stain: number }> = {
+  A: { fat: [0x090b0d, 0x323a42], kit: [0x050506, 0x232528], weave: 0.10, stain: 0.18 },   // ships: very dark slate fatigues, near-black kit
+  B: { fat: [0x21190f, 0x8a6e4b], kit: [0x12140c, 0x5e6345], weave: 0.12, stain: 0.30 },   // coyote fatigues, olive kit
+};
+/** Recolour by remapping luminance. The source is near-black, so each class's own luminance range (2nd to 98th
+ * percentile, measured offline, in sRGB-encoded units) is stretched onto the target's dark..light range: folds, seams,
+ * stitching and wear keep their relative values. A fine object-space weave (2.5 mm) and a faint large stain layer add
+ * cloth; kit gets a steeper curve (straps and buckles stay darker than the cloth) and boot soles are darkened. */
+async function squadLook(mat: THREE.MeshStandardMaterial, look: string, art: ArtLoader, set: string, range: { fatigues: number[]; kit: number[] }) {
+  const L = LOOKS[look], mask = await art.texture(set, 'mask' as 'arm', 1024), enc = (x: number) => Math.pow(Math.max(x, 1e-6), 1 / 2.2);
+  const u = {
+    tMask: { value: mask }, fat: { value: new THREE.Vector3(...range.fatigues.map(enc)) }, kit: { value: new THREE.Vector3(...range.kit.map(enc)) },
+    fatA: { value: new THREE.Color(L.fat[0]) }, fatB: { value: new THREE.Color(L.fat[1]) }, kitA: { value: new THREE.Color(L.kit[0]) }, kitB: { value: new THREE.Color(L.kit[1]) },
+    weave: { value: L.weave }, stain: { value: L.stain },
+  };
+  mat.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, u);
+    sh.vertexShader = 'varying vec3 vObjP; varying vec3 vObjN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vObjP = position; vObjN = normal;');
+    sh.fragmentShader = `uniform sampler2D tMask; uniform vec3 fat, kit, fatA, fatB, kitA, kitB; uniform float weave, stain; varying vec3 vObjP; varying vec3 vObjN;
+      float h3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+      float vnoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(mix(h3(i), h3(i + vec3(1,0,0)), f.x), mix(h3(i + vec3(0,1,0)), h3(i + vec3(1,1,0)), f.x), f.y),
+                   mix(mix(h3(i + vec3(0,0,1)), h3(i + vec3(1,0,1)), f.x), mix(h3(i + vec3(0,1,1)), h3(i + vec3(1,1,1)), f.x), f.y), f.z); }
+      ` + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      { float k = smoothstep(0.3, 0.7, texture2D(tMask, vMapUv).r);
+        float l = pow(max(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 1e-6), 0.4545);
+        // Centred on the class median with a spread of a fifth of its 2..98% range: small differences (folds, seams,
+        // stitching, wear) become visible steps instead of all landing at the dark end.
+        float sF = 0.5 + 0.5 * tanh((l - fat.y) / max(1e-4, (fat.z - fat.x) * 0.2));
+        float sK = pow(0.5 + 0.5 * tanh((l - kit.y) / max(1e-4, (kit.z - kit.x) * 0.2)), 1.3);
+        vec3 an = abs(vObjN); vec2 w2 = an.x > an.y && an.x > an.z ? vObjP.yz : an.y > an.z ? vObjP.xz : vObjP.xy;
+        float wv = sin(w2.x * 2513.0) * sin(w2.y * 2513.0) * 0.6 + (vnoise(vObjP * 900.0) - 0.5) * 0.8;
+        float st = vnoise(vObjP * 5.0) * 0.65 + vnoise(vObjP * 17.0) * 0.35;
+        vec3 cF = mix(fatA, fatB, sF) * (1.0 + weave * wv) * (1.0 - stain * (st - 0.45));
+        vec3 cK = mix(kitA, kitB, sK) * (1.0 + weave * 0.4 * wv) * (1.0 - stain * 0.6 * (st - 0.45));
+        vec3 c = mix(cF, cK, k);
+        if (vObjP.y < 0.028) c *= 0.55;
+        diffuseColor.rgb = c; }`);
+  };
+  mat.customProgramCacheKey = () => `look${look}`;
+}
+/** Our covered head (helmet, balaclava, goggles) and gloved hands, cut from our own textured figure by bone, bound to
+ * the soldier's skeleton (same bones, same bind pose). */
+async function attachOurs(rig: Rig, squad: 0 | 1) {
+  const tex = await loadFighterTextures(renderer, squad).catch(() => null), f = figureGeometry(squad, 0);
+  const geo = (tex ? texturedGeometry(tex, 0, () => f.geo) : null) ?? f.geo, SI = geo.getAttribute('skinIndex'), SW = geo.getAttribute('skinWeight'), ix = geo.index!.array;
+  const KEEP = new Set([5, 9, 13]), keep: number[] = [];
+  const dom = (v: number) => { let b = SI.getX(v), w = SW.getX(v); for (const [bb, ww] of [[SI.getY(v), SW.getY(v)], [SI.getZ(v), SW.getZ(v)], [SI.getW(v), SW.getW(v)]]) if (ww > w) { w = ww; b = bb; } return b; };
+  for (let t = 0; t < ix.length; t += 3) if (KEEP.has(dom(ix[t])) && KEEP.has(dom(ix[t + 1])) && KEEP.has(dom(ix[t + 2]))) keep.push(ix[t], ix[t + 1], ix[t + 2]);
+  const part = geo.clone(); part.setIndex(keep);
+  let m: THREE.Material;
+  if (tex && geo !== f.geo) { const tm = texturedFighterMaterial(tex.levels[0]!.maps); tm.userData.probe.value.setRGB(1.3, 1.3, 1.35); tm.envMap = scene.environment; tm.envMapIntensity = 0.6; m = tm; }
+  else { const pm = fighterMaterial(); pm.userData.probe.value.setRGB(1.3, 1.3, 1.35); m = pm; }
+  const mesh = new THREE.SkinnedMesh(part, m); mesh.frustumCulled = false; mesh.bind(rig.mesh.skeleton, rig.mesh.bindMatrix);
+  rig.group.add(mesh);
+  return keep.length / 3;
+}
+async function loadSkinned(name: string, node = 'body_lod0', weights = false, look: string | null = null, attach: 0 | 1 | null = null, url = '/game-art/breachline/patch/tactical/body-skinned.glb') {
   await heroReady;
-  const g = await gltf.loadAsync('/game-art/breachline/patch/tactical/body-skinned.glb');
+  const g = await gltf.loadAsync(url);
   const src = g.scene.getObjectByName(node) as THREE.Mesh;
   const art = new ArtLoader(renderer, 'high'), set = '../patch/tactical';
   const [map, normalMap, arm] = await Promise.all([art.texture(set, 'diff', 2048), art.texture(set, 'nor', 2048), art.texture(set, 'arm', 1024)]);
   const mat = new THREE.MeshStandardMaterial({ map, normalMap, roughnessMap: arm, metalnessMap: arm, roughness: 1, metalness: 1 });
+  if (look) await squadLook(mat, look, art, set, (g.parser.json.asset.extras as { lumRange: { fatigues: number[]; kit: number[] } }).lumRange);
   const bones = makeBones(), mesh = new THREE.SkinnedMesh(src.geometry, weights ? weightMaterial() : mat);
   mesh.add(bones[0]); mesh.bind(new THREE.Skeleton(bones)); mesh.frustumCulled = false;
   const w = weaponFor('ar'), wb = Array.from({ length: w.bones }, () => new THREE.Bone());
@@ -218,14 +277,15 @@ async function loadSkinned(name: string, node = 'body_lod0', weights = false) {
   const group = new THREE.Group(); group.add(mesh, weapon); group.scale.setScalar(SCALE);
   const outer = new THREE.Group(); outer.add(group);
   const anim = new Animator(bones, weapon, wb, w);
-  rigs.set(name, { group, anim, outer, mesh }); objects.set(name, outer);
-  return { triangles: tris(mesh) };
+  const rig = { group, anim, outer, mesh }; rigs.set(name, rig); objects.set(name, outer);
+  const attached = attach === null ? 0 : await attachOurs(rig, attach);
+  return { triangles: tris(mesh), attached };
 }
 /** Our own rifleman as a rig too, for side-by-side strips. */
-async function ourRig(name: string) {
+async function ourRig(name: string, squad: 0 | 1 = 0) {
   await heroReady;
-  const tex = await loadFighterTextures(renderer, 0).catch(() => null);
-  const bones = makeBones(), f = figureGeometry(0, 0), tg = tex ? texturedGeometry(tex, 0, () => f.geo) : null;
+  const tex = await loadFighterTextures(renderer, squad).catch(() => null);
+  const bones = makeBones(), f = figureGeometry(squad, 0), tg = tex ? texturedGeometry(tex, 0, () => f.geo) : null;
   let m: THREE.Material; if (tg && tex) { const tm = texturedFighterMaterial(tex.levels[0]!.maps); tm.userData.probe.value.setRGB(1.3, 1.3, 1.35); tm.envMap = scene.environment; tm.envMapIntensity = 0.6; m = tm; } else m = fighterMaterial();
   const mesh = new THREE.SkinnedMesh(tg ?? f.geo, m); mesh.add(bones[0]); mesh.bind(new THREE.Skeleton(bones)); mesh.frustumCulled = false;
   const w = weaponFor('ar'), wb = Array.from({ length: w.bones }, () => new THREE.Bone());

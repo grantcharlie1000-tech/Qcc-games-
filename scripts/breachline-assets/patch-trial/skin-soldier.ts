@@ -53,6 +53,13 @@ for (let i = 0; i < BONES; i++) {
 }
 for (const s of [0, 1]) { const S = SIDE[s]; ROT[S.hand].copy(ROT[S.fore]); ROT[S.twist].copy(ROT[S.fore]); ROT[S.elbow].copy(ROT[S.upper]).slerp(ROT[S.fore], 0.5); ROT[S.knee].copy(ROT[S.thigh]).slerp(ROT[S.shin], 0.5); ROT[S.delt].copy(ROT[S.clav]).slerp(ROT[S.upper], 0.5); ROT[S.hip].copy(ROT[B.pelvis]).slerp(ROT[S.thigh], 0.5); ROT[S.toe].copy(ROT[S.foot]); }
 
+/** Each limb bone's length ratio, ours / measured: the soldier's forearm (elbow to glove cuff) is 0.19 m against our
+ * 0.255 m, so without this the hand floats 6 cm beyond the cuff. Applied along the bone, not across it. */
+const STRETCH: number[] = new Array(BONES).fill(1);
+const AXIS: THREE.Vector3[] = Array.from({ length: BONES }, () => new THREE.Vector3());
+for (let i = 0; i < BONES; i++) { const c = CHILD[i]; if (c === null) continue; const lc = CAND[c].distanceTo(CAND[i]); STRETCH[i] = JOINT[c].distanceTo(JOINT[i]) / lc; AXIS[i].copy(CAND[c]).sub(CAND[i]).normalize(); }
+for (const s of [0, 1]) { const S = SIDE[s]; STRETCH[S.twist] = STRETCH[S.fore]; AXIS[S.twist].copy(AXIS[S.fore]); STRETCH[S.hand] = 1; }
+console.log('stretch', [0, 1].map(s => { const S = SIDE[s]; return [S.upper, S.fore, S.thigh, S.shin].map(b => STRETCH[b].toFixed(2)).join('/'); }).join(' | '));
 function segDist(p: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3) {
   const ab = b.clone().sub(a), t = THREE.MathUtils.clamp(p.clone().sub(a).dot(ab) / ab.lengthSq(), 0, 1);
   return { d: p.distanceTo(a.clone().addScaledVector(ab, t)), t };
@@ -97,10 +104,32 @@ function skin(pos: Float32Array, nrm: Float32Array, idx: Uint32Array) {
   const HELP: [number, number, number][] = [0, 1].flatMap(s => { const S = SIDE[s]; return [[S.upper, S.fore, S.elbow], [S.thigh, S.shin, S.knee], [S.clav, S.upper, S.delt], [B.pelvis, S.thigh, S.hip], [S.fore, S.hand, S.twist]] as [number, number, number][]; });
   for (const m of WW) for (const [a, b, h] of HELP) { const wa = m.get(a) ?? 0, wb = m.get(b) ?? 0, share = Math.min(wa, wb); if (share > 0.02) { m.set(a, wa - share * 0.5); m.set(b, wb - share * 0.5); m.set(h, (m.get(h) ?? 0) + share); } }
   // Forearm twist: the distal half of the forearm leans on the twist bone.
-  for (let i = 0; i < n; i++) {
+  // (Each welded vertex once: UV-seam duplicates share their weights.)
+  const once = (f: (i: number) => void) => { const seen = new Uint8Array(nw); for (let i = 0; i < n; i++) if (!seen[wid[i]]) { seen[wid[i]] = 1; f(i); } };
+  once(i => {
     const m = WW[wid[i]], p = P(i);
     for (const s of [0, 1]) { const S = SIDE[s], f = m.get(S.fore) ?? 0; if (f > 0) { const t = segDist(p, CAND[S.fore], CAND[S.hand]).t, k = THREE.MathUtils.smoothstep(t, 0.3, 0.9) * 0.6; m.set(S.fore, f * (1 - k)); m.set(S.twist, (m.get(S.twist) ?? 0) + f * k); } }
-  }
+  });
+  // Fix 1 (aim): above the armpit, the shoulder cap and the top of the vest's shoulder strap follow the shoulder
+  // helper (half the upper arm's rotation) rather than the chest, so raising the rifle no longer bunches them.
+  // Fix 2 (crouch): the drop holster and the thigh pockets are rigid to their thigh (the generated mesh fuses them to
+  // the belly, which tore at the hip).
+  let shoulderFixed = 0, rigid = 0;
+  once(i => {
+    const m = WW[wid[i]], p = P(i), side = p.x < 0 ? 0 : 1, S = SIDE[side], ax = Math.abs(p.x);
+    if (p.y > 1.18 && ax > 0.13 && ((m.get(S.upper) ?? 0) + (m.get(S.delt) ?? 0)) > 0.05) {
+      const k = THREE.MathUtils.smoothstep(ax, 0.13, 0.22) * THREE.MathUtils.smoothstep(p.y, 1.18, 1.3);
+      for (const b of [B.spine2, S.clav]) { const w = m.get(b) ?? 0; if (w > 0) { m.set(b, w * (1 - 0.7 * k)); m.set(S.delt, (m.get(S.delt) ?? 0) + w * 0.7 * k); } }
+      shoulderFixed++;
+    }
+    const holster = side === 1 && p.x > 0.195 && p.y > 0.64 && p.y < 0.97 && Math.abs(p.z) < 0.13;
+    const pocket = ax > 0.16 && p.y > 0.58 && p.y < 0.86 && Math.abs(p.z) < 0.12;
+    if (holster || pocket) {
+      const top = holster ? THREE.MathUtils.smoothstep(p.y, 0.86, 0.97) * 0.35 : 0;
+      m.clear(); m.set(S.thigh, 1 - top); if (top > 0) m.set(S.hip, top); rigid++;
+    }
+  });
+  console.log('shoulder vertices re-weighted', shoulderFixed, 'rigid holster/pocket vertices', rigid);
   // Top four, normalised; then move each vertex into the bind pose.
   const ji = new Uint16Array(n * 4), jw = new Float32Array(n * 4), outP = new Float32Array(n * 3), outN = new Float32Array(n * 3);
   const qi = new THREE.Quaternion();
@@ -110,7 +139,12 @@ function skin(pos: Float32Array, nrm: Float32Array, idx: Uint32Array) {
     top.forEach(([b, w], k) => {
       ji[i * 4 + k] = b; jw[i * 4 + k] = w / s;
       qi.copy(ROT[b]).invert();
-      op.addScaledVector(p.clone().sub(CAND[b]).applyQuaternion(qi).add(JOINT[b]), w / s);
+      const rel = p.clone().sub(CAND[b]), a = rel.dot(AXIS[b]);
+      // Stretch along the bone over its length only (points past the child joint move with the child's end).
+      // Twist bones sit mid-forearm on both skeletons, so for them the same stretch applies unclamped about their joint.
+      const twist = b === SIDE[0].twist || b === SIDE[1].twist;
+      if (STRETCH[b] !== 1 && AXIS[b].lengthSq() > 0) { const len = twist ? 0 : CAND[CHILD[b]!].distanceTo(CAND[b]); rel.addScaledVector(AXIS[b], (STRETCH[b] - 1) * (twist ? a : THREE.MathUtils.clamp(a, 0, len))); }
+      op.addScaledVector(rel.applyQuaternion(qi).add(JOINT[b]), w / s);
       on.addScaledVector(nn.clone().applyQuaternion(qi), w / s);
     });
     outP.set([op.x, op.y, op.z], i * 3); on.normalize(); outN.set([on.x, on.y, on.z], i * 3);

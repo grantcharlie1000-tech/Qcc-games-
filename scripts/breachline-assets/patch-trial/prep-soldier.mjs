@@ -129,13 +129,21 @@ const base = await sharp(baseImg).resize(M, M).removeAlpha().raw().toBuffer();
 const lum = [0, 0], cnt = [0, 0];
 for (let o = 0; o < M * M; o++) { if (!cover[o]) continue; const k = mask[o] > 127 ? 1 : 0, L = (0.2126 * base[o * 3] + 0.7152 * base[o * 3 + 1] + 0.0722 * base[o * 3 + 2]) / 255; lum[k] += L; cnt[k]++; }
 const refLum = { fatigues: +(lum[0] / cnt[0]).toFixed(4), kit: +(lum[1] / cnt[1]).toFixed(4) };
+// Luminance range per class, linear light (2nd and 98th percentiles and the median), for recolouring by remapping the
+// source's dark range onto the target's range (so folds, seams and wear survive).
+const hist = [new Uint32Array(1024), new Uint32Array(1024)];
+for (let o = 0; o < M * M; o++) { if (!cover[o]) continue; const k = mask[o] > 127 ? 1 : 0, lin = c => Math.pow(c / 255, 2.2), L = 0.2126 * lin(base[o * 3]) + 0.7152 * lin(base[o * 3 + 1]) + 0.0722 * lin(base[o * 3 + 2]); hist[k][Math.min(1023, Math.floor(L * 4096))]++; }
+const pct = (h, q) => { let tot = 0; for (const v of h) tot += v; let acc = 0; for (let i = 0; i < h.length; i++) { acc += h[i]; if (acc >= q * tot) return +(i / 4096).toFixed(5); } return 0.25; };
+const lumRange = { fatigues: [pct(hist[0], 0.02), pct(hist[0], 0.5), pct(hist[0], 0.98)], kit: [pct(hist[1], 0.02), pct(hist[1], 0.5), pct(hist[1], 0.98)] };
+console.log('linear luminance p2/p50/p98', JSON.stringify(lumRange));
 console.log('reference luminance (sRGB)', refLum, 'kit share', (cnt[1] / (cnt[0] + cnt[1])).toFixed(3));
 
 // Files.
 const credit = g.json.asset?.extras?.credit ?? null;
-const extras = { source: 'patch.gg scenario:asset_e9xaKzrr8R1sMe2VMajWaAb1 (src variant)', license: 'CC-BY-4.0', changes: 'head cut at the neck and hands at the wrists (capped), metalness removed, roughness floored, simplified to two levels, tint mask added', up: '+Y', facing: '+Z', units: 'metres, feet on y = 0', cuts: CUTS, refLum };
+const extras = { lumRange, source: 'patch.gg scenario:asset_e9xaKzrr8R1sMe2VMajWaAb1 (src variant)', license: 'CC-BY-4.0', changes: 'head cut at the neck and hands at the wrists (capped), metalness removed, roughness floored, simplified to two levels, tint mask added', up: '+Y', facing: '+Z', units: 'metres, feet on y = 0', cuts: CUTS, refLum };
 const mk = (name, mm) => ({ name, attributes: { POSITION: mm.pos, NORMAL: mm.nrm, TEXCOORD_0: mm.uv }, indices: mm.idx });
-await writeGlb(path.join(outDir, 'body.glb'), [mk('body_lod0', l0.mesh), mk('body_lod1', l1.mesh)], extras);
+// The static file stays in scratch (the skinned file in public carries the same levels).
+await writeGlb(path.join(scratch, 'body.glb'), [mk('body_lod0', l0.mesh), mk('body_lod1', l1.mesh)], extras);
 // Uncut full-resolution mesh too, for the skinning step (scratch only).
 await writeGlb(path.join(scratch, 'tactical-cut-full.glb'), [mk('body_full', m)], extras);
 const files = {};
@@ -148,8 +156,8 @@ for (const [kind, img] of [['diff', baseImg], ['nor', norImg], ['arm', armPng]])
 await put('mask-1024.ktx2', await ktx2(maskPng, 1024, 'mask'));
 await put('mask-256.png', await sharp(maskPng).resize(256, 256).png({ compressionLevel: 9 }).toBuffer());
 await writeFile(path.join(scratch, 'mask-2048.png'), maskPng); await writeFile(path.join(scratch, 'arm-src.png'), armPng);
-const glbBytes = (await import('node:fs')).statSync(path.join(outDir, 'body.glb')).size;
-files['body.glb'] = glbBytes;
+const { statSync, existsSync } = await import('node:fs');
+if (existsSync(path.join(outDir, 'body-skinned.glb'))) files['body-skinned.glb'] = statSync(path.join(outDir, 'body-skinned.glb')).size;
 const total = Object.values(files).reduce((a, b) => a + b, 0);
-await writeFile(path.join(outDir, 'tactical.json'), JSON.stringify({ id: 'scenario:asset_e9xaKzrr8R1sMe2VMajWaAb1', variant: 'src', triangles: { source: tris0, lod0: l0.mesh.idx.length / 3, lod1: l1.mesh.idx.length / 3 }, refLum, cuts: CUTS, files, bytes: total }, null, 1));
+await writeFile(path.join(outDir, 'tactical.json'), JSON.stringify({ id: 'scenario:asset_e9xaKzrr8R1sMe2VMajWaAb1', variant: 'src', triangles: { source: tris0, lod0: l0.mesh.idx.length / 3, lod1: l1.mesh.idx.length / 3 }, refLum, lumRange, skinned: { file: 'body-skinned.glb', skeleton: 'fighters/skeleton.ts, 32 bones, JOINTS_0 = bone order B, weights normalised bytes', frame: 'fighters frame: facing -Z, bind pose, authored units (fighter group applies SCALE)' }, cuts: CUTS, files, bytes: total }, null, 1));
 console.log(JSON.stringify(files), 'total', (total / 1e6).toFixed(2), 'MB');
