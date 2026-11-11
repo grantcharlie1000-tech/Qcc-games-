@@ -30,6 +30,7 @@ r4: lighting fix pushed; then hip framing (lower right, canted 15° so the side 
 | Round | E | F | Evidence |
 | --- | --- | --- | --- |
 | Baseline | 1 | 1 | `docs/evidence/breachline/05-breach.png`, `overhaul/phase-0/lab-bench-high.png`: about 30 boxes, slab arms, a blue block for a wrist band; fighters are six rigid box groups |
+| r4 | 6 | — | `r4/lighting-after-high.png`, `r4/lighting-after-low.png`, `r4/game-ar-hip-ads.png`, `r4/ar-markings.png`, `r4/gloves.png`, `r4/game-ar-reload-*.png`. The weapon in hand now reads in the game, with polymer, anodised aluminium and steel separate, in the Lab, the corridor and on Low. The hip framing shows the side and the support hand; the AR-5 carries real markings; the gloves have gussets and guards. Why 6, not 8: in the game's reload the magazine is visible only briefly at the frame's lower edge, so the beats do not read as distinct poses; the aimed optic housing is still heavy; there is no fine normal detail per material (machining lines, cast texture); only the AR-5 had this round; the other five are still at the r2 standard (about 5). |
 | r3 | 5 | — | `r3/game-*-hip-ads.png` (AR, Halden, Corvin, P-11 in the Lab and corridor under the real light), `r3/game-*-reload-*.png`, `r3/studio-reload-*.png`, `r3/studio-ar-reload-insert-closeup.png`. Reloads now read on screen: the rifle tips up and cants so the magazine well comes into view and the support hand is seen seating a magazine; the shotgun shuttles red shells from the side saddle into the port; the pistol's support hand comes over the top to rack. The shotgun's aimed view now shows the ghost ring and the glowing front post centred. Still 5, not higher: surfaces are clean but plain next to MW2's textured guns (no markings, no normal-mapped detail, little colour variation); gloves are soft lumps at close range, worst in the pistol's aimed grip; the support hand takes an odd path back after the AR's tactical reload; the magazine is out of view while it is being fetched. |
 | r2 | 5 | 1 | `r2/*-turntable.png`, `r2/*-fp-hip-ads-orbits.png`. All six weapons now exist as distinct designs with their own sights (tube dot, holographic with ring reticle, mini reflex, ghost ring with bead, variable scope, three-dot irons), all held by the gloved hands within budget. Why only 5: weapons are clean but plain (flat panels, little surface break-up, no markings); in-hand frames only checked in the studio for five of the six; pistol hands look like mittens at aimed range; magazine changes are still largely off-screen. |
 | r1 | 4 | 1 | `r1/ar-game-hip-ads.png`, `r1/ar-turntable-*.png`, `r1/ar-reload-*-strip.png`. The AR-5 is a real rifle shape with bevelled parts, a slotted handguard, a rail, an optic, edge wear and cavity AO, and gloved five-finger hands hold it. Why only 4: five of six weapons are still missing; in the reload the magazine is mostly out of frame; the gloves read soft and lumpy at close range; the hip pose crowds the right edge; the materials are flat under the game's light. F is unchanged. |
@@ -151,11 +152,15 @@ steel now separate in all three.
 
 ## Tests
 
+r4 (final this session): `npx tsc --noEmit` clean; `npx vitest run` whole suite: 5346 passed, 7 skipped, 0 failed (271 files). Breachline browser tests 7/7. The two-device online test failed once ("the host hits the guest": the guest's health did not drop within 10 s), then passed on rerun. That is timing-dependent under two software-rendered pages, but it could also mean the new viewmodel's per-frame cost slows the host. Worth measuring on a real machine.
+
+
 r1: `npx tsc --noEmit` clean; `npx vitest run tests/games/breachline` 53 passed; Breachline browser tests and the
 two-device online test 7/7 passed with the new viewmodel in the game.
 
 ## Still weak
 
+- **Row E is 6, below the gate of 8.** What remains, in order: reload beats as distinct, readable poses with the magazine in view; thinner optic housings and a tinted lens; fine normal detail per material; then bring the five other weapons up to the AR-5 one at a time (markings, small parts, shotgun walnut and checkering), each with its own rounds.
 - The other five weapons are below the AR's detail: flat panels, few small parts, no markings.
 - The glove mesh takes about 0.7 s to build (once).
 - Pistol hands read as mittens when aimed.

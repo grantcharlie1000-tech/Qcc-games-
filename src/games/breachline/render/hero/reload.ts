@@ -52,16 +52,18 @@ function magReload(t: number, B: Record<string, number[]>, empty: boolean, pisto
   const drop = ease(t, o, o + (fe - o) * 0.7), rise = ease(t, fe, i - 0.05), insert = ease(t, i - 0.05, i), slam = ease(t, i + (s - i) * 0.5, s);
   const draw = ease(t, r, o);
   let y = -0.1 * draw, z = 0, rx = 0, rz = 0, x = 0;
-  if (t >= o && t < fe) { y += -0.4 * drop; x = -0.12 * drop; z = 0.08 * drop; rz = 0.7 * drop; rx = -0.5 * drop; }
+  // Away to the frame's lower left, turned so its side shows, rather than out of view.
+  if (t >= o && t < fe) { y += -0.17 * drop; x = -0.13 * drop; z = 0.05 * drop; rz = 0.95 * drop; rx = -0.35 * drop; }
   if (t >= fe) {
     const away = 1 - rise;
-    y = -0.07 * (1 - insert) - 0.012 * insert * (1 - slam) - 0.4 * away; x = -0.12 * away; z = 0.08 * away; rz = 0.7 * away; rx = -0.5 * away + 0.15 * (1 - insert) * rise;
+    y = -0.07 * (1 - insert) - 0.012 * insert * (1 - slam) - 0.17 * away; x = -0.13 * away; z = 0.05 * away; rz = 0.95 * away; rx = -0.35 * away + 0.15 * (1 - insert) * rise;
     // A short wind-up before the slam.
     if (t > i && t < s) y -= 0.006 * pulse(t, i, i + (s - i) * 0.5);
   }
   if (t >= s) { y = 0.0015 * pulse(t, s, s + 0.04); x = z = rx = rz = 0; }
   f.magP = [x, y, z]; f.magR = [rx, 0, rz];
-  f.magOn = !(t > o + (fe - o) * 0.75 && t < fe + (i - fe) * 0.12);
+  // The spent magazine is let go at the frame edge and the fresh one comes up from the vest in the same place.
+  f.magOn = !(t > o + (fe - o) * 0.85 && t < fe + (i - fe) * 0.06);
   // Support hand: from the hold to the magazine by the release, with it until seated, then home or to the handle.
   const toMag = ease(t, 0, r * 0.95), offMag = ease(t, s + 0.02, s + 0.1);
   let hold = 1 - toMag, mag = toMag * (1 - offMag), handle = 0;
