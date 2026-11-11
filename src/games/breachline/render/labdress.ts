@@ -20,6 +20,7 @@ export function dressRoom(atlas: Atlas, room: Region): DetailBuilder {
   if (room.name === 'archive') return dressArchive(atlas, room);
   if (room.name === 'yard') return dressYard(atlas, room);
   if (room.name === 'server') return dressServer(atlas, room);
+  if (room.name === 'lobby') return dressLobby(atlas, room);
   return dressLab(atlas, room);
 }
 
@@ -544,6 +545,77 @@ function dressServer(atlas: Atlas, room: Region): DetailBuilder {
   D.box('conduit', 9.5, 2.5, z, 10.2, 2.56, z + 0.06, at(9.85, 2.53), n, [0.9, 0.9, 0.88]);
   D.box('conduit', 10.14, 2.56, z, 10.2, H, z + 0.06, at(10.17, 2.8), n, [0.9, 0.9, 0.88]);
   D.box('alarm', 13.2, 1.4, z, 13.55, 1.75, z + 0.08, at(13.37, 1.57), n);
+  return D;
+}
+
+/** The Lobby: the reception desk (panelled front, a ledge, a kick plate, the receptionist's monitor, keyboard and
+ * phone), an entrance mat inside the south door with an exit sign over it, a TV on the south wall, a noticeboard and a
+ * clock on the west wall, skirting on the solid walls, sofa cushions. Nothing is placed on destructible walls. */
+function dressLobby(atlas: Atlas, room: Region): DetailBuilder {
+  const D = new DetailBuilder(atlas), up: V3 = [0, 1, 0];
+  ceilingGrid(D, room);
+  const geo = (g: THREE.BufferGeometry, key: DressKey, on: V3, n: V3, tint?: V3) => { D.mesh(key, g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, n, tint ?? [1, 1, 1], g.attributes.uv?.array); g.dispose(); };
+  for (const b of MAP.boxes) {
+    if (!inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) continue;
+    if (b.mat === 'wood' && b.y1 > 0.9) {
+      // Reception desk: the long run's north face and the return's west face are the public fronts.
+      const alongX = b.x1 - b.x0 > b.z1 - b.z0, top = b.y1;
+      if (alongX) {
+        const z = b.z0, n: V3 = [0, 0, -1], at = (x: number, y: number): V3 => [x, y, z - 0.001];
+        const panels = Math.round((b.x1 - b.x0) / 0.75), pw = (b.x1 - b.x0) / panels;
+        for (let i = 0; i < panels; i++) D.box('casing', b.x0 + i * pw + 0.02, 0.12, z - 0.02, b.x0 + (i + 1) * pw - 0.02, top - 0.12, z, at(b.x0 + (i + 0.5) * pw, 0.6), n, [0.62, 0.6, 0.56]);
+        D.box('kick', b.x0, 0, z - 0.025, b.x1, 0.1, z, at((b.x0 + b.x1) / 2, 0.05), n);
+        D.box('casing', b.x0 - 0.02, top, z - 0.08, b.x1, top + 0.035, z + 0.22, [(b.x0 + b.x1) / 2, top + 0.001, z + 0.1], up, [0.8, 0.78, 0.74]);
+        // On the desk, set back for the receptionist: a monitor facing south, a keyboard, a phone, a tray of papers.
+        const mx = b.x0 + 1.6, mz = b.z0 + 0.45, on: V3 = [mx, top + 0.001, (b.z0 + b.z1) / 2];
+        D.box('chassis', mx - 0.1, top, mz - 0.08, mx + 0.1, top + 0.015, mz + 0.06, on, up);
+        D.box('chassis', mx - 0.02, top + 0.015, mz - 0.04, mx + 0.02, top + 0.2, mz - 0.01, on, up);
+        D.box('chassis', mx - 0.29, top + 0.14, mz - 0.03, mx + 0.29, top + 0.48, mz, on, up);
+        D.box('screen', mx - 0.27, top + 0.16, mz, mx + 0.27, top + 0.46, mz + 0.004, on, up);
+        D.box('chassis', mx - 0.22, top, mz + 0.12, mx + 0.22, top + 0.02, mz + 0.27, on, up, [2.4, 2.4, 2.4]);
+        D.box('chassis', mx + 0.45, top, mz + 0.05, mx + 0.65, top + 0.07, mz + 0.25, on, up, [1.6, 1.6, 1.6]);
+        D.box('chassis', mx + 0.47, top + 0.07, mz + 0.06, mx + 0.52, top + 0.1, mz + 0.24, on, up, [1.2, 1.2, 1.2]);
+        D.box('paper', mx - 0.9, top, mz - 0.05, mx - 0.6, top + 0.04, mz + 0.18, on, up, [0.9, 0.9, 0.88]);
+      } else {
+        const x = b.x0, n: V3 = [-1, 0, 0], at = (zz: number, y: number): V3 => [x - 0.001, y, zz];
+        const panels = Math.max(1, Math.round((b.z1 - b.z0) / 0.75)), pw = (b.z1 - b.z0) / panels;
+        for (let i = 0; i < panels; i++) D.box('casing', x - 0.02, 0.12, b.z0 + i * pw + 0.02, x, top - 0.12, b.z0 + (i + 1) * pw - 0.02, at(b.z0 + (i + 0.5) * pw, 0.6), n, [0.62, 0.6, 0.56]);
+        D.box('kick', x - 0.025, 0, b.z0, x, 0.1, b.z1, at((b.z0 + b.z1) / 2, 0.05), n);
+        D.box('casing', x - 0.08, top, b.z0, x + 0.22, top + 0.035, b.z1 + 0.02, [x + 0.1, top + 0.001, (b.z0 + b.z1) / 2], up, [0.8, 0.78, 0.74]);
+      }
+    }
+    if (b.mat === 'fabric') {
+      // Seat cushion joints and the cushion fronts' piping.
+      const alongZ = b.z1 - b.z0 > b.x1 - b.x0, len = alongZ ? b.z1 - b.z0 : b.x1 - b.x0, start = alongZ ? b.z0 : b.x0;
+      for (let k = 1; k < 3; k++) {
+        const u = start + 0.18 + k * (len - 0.36) / 3;
+        const on: V3 = [(b.x0 + b.x1) / 2, 0.451, (b.z0 + b.z1) / 2];
+        if (alongZ) D.box('kick', b.x0 + 0.02, 0.45, u - 0.006, b.x1 - 0.24, 0.456, u + 0.006, on, up, [3, 3, 3]); else D.box('kick', u - 0.006, 0.45, b.z0 + 0.24, u + 0.006, 0.456, b.z1 - 0.02, on, up, [3, 3, 3]);
+      }
+    }
+  }
+  // South wall (solid, with the entrance): mat, exit sign, skirting, a TV.
+  {
+    const z = room.z1 - 0.15, n: V3 = [0, 0, -1], at = (x: number, y: number): V3 => [x, y, z - 0.001];
+    D.box('kick', -12.15, 0.02, 8.5, -10.35, 0.028, z, [-11.25, 0.021, 9.2], up, [2.2, 2.1, 2]);
+    D.box('trim', room.x0 + 0.12, 0.02, z - 0.016, -12.05, 0.11, z, at(-13.5, 0.06), n);
+    D.box('trim', -10.45, 0.02, z - 0.016, room.x1 - 0.12, 0.11, z, at(-8.8, 0.06), n);
+    D.box('plastic', -11.45, 2.35, z - 0.06, -11.05, 2.53, z, at(-11.25, 2.44), n);
+    geo(new THREE.PlaneGeometry(0.36, 0.16).rotateY(Math.PI).translate(-11.25, 2.44, z - 0.061), 'exit', at(-11.25, 2.44), n);
+    D.box('chassis', -9.6, 1.65, z - 0.06, -8.4, 2.35, z, at(-9, 2), n);
+    D.box('screen', -9.56, 1.69, z - 0.062, -8.44, 2.31, z - 0.06, at(-9, 2), n);
+  }
+  // West wall (solid): skirting, a noticeboard with sheets, a clock.
+  {
+    const x = room.x0 + 0.15, n: V3 = [1, 0, 0], at = (zz: number, y: number): V3 => [x + 0.001, y, zz];
+    D.box('trim', x, 0.02, room.z0 + 0.12, x + 0.016, 0.11, room.z1 - 0.12, at(5.5, 0.06), n);
+    D.box('handle', x, 1.3, 6.4, x + 0.02, 2.05, 7.6, at(7, 1.6), n);
+    D.box('cork', x, 1.325, 6.425, x + 0.022, 2.025, 7.575, at(7, 1.6), n);
+    const r = seeded(19);
+    for (let i = 0; i < 6; i++) { const w = 0.15 + r() * 0.08, h = 0.21 + r() * 0.06, zz = 6.48 + r() * (1.0 - w), y = 1.36 + r() * (0.62 - h); D.box('paper', x + 0.022, y, zz, x + 0.0235, y + h, zz + w, at(zz + w / 2, y + h / 2), n, i % 3 === 0 ? [1, 0.95, 0.75] : [1, 1, 1]); }
+    D.box('plastic', x, 2.52, 4.82, x + 0.04, 2.88, 5.18, at(5, 2.7), n);
+    geo(new THREE.PlaneGeometry(0.32, 0.32).rotateY(Math.PI / 2).translate(x + 0.041, 2.7, 5), 'clock', at(5, 2.7), n);
+  }
   return D;
 }
 

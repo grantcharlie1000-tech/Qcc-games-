@@ -20,6 +20,8 @@ export const PROPS: Placement[] = [
   { model: 'security_camera_01', x: 15.0, y: 2.45, z: 0.85, yaw: Math.PI },
   // Server Room: an extinguisher by the east wall.
   { model: 'korean_fire_extinguisher_01', x: 14.68, y: 0, z: -6.9, yaw: -Math.PI / 2 },
+  // Lobby: an extinguisher by the entrance.
+  { model: 'korean_fire_extinguisher_01', x: -13.0, y: 0, z: 9.7, yaw: Math.PI },
   // South Yard: a car under a dust cover in the bays (its collision box was cut to the model), a military crate on
   // the stacked crate and another on the steel bin, jerrycans, and drums against the perimeter by the containers.
   { model: 'covered_car', x: 7.3, y: 0, z: 15.15, yaw: Math.PI / 2, replaces: true },

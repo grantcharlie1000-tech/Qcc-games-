@@ -4,6 +4,11 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: Lobby round 1 done.** `rooms/lobby/round-1/round1.png`: before (procedural), after, the desk's
+public front and the desk close. Baked art region with four warm fittings; the reception desk has panelled fronts,
+a ledge and kick plate, the receptionist's monitor, keyboard, phone and papers; entrance mat and exit sign at the
+south door; wall TV, noticeboard, clock, skirting, sofa cushion joints, an extinguisher. Next: the Office.
+
 **2026-11-11: Server Room round 1 done.** `rooms/server/round-1/round1.png`: top row the aisle before (procedural)
 and after, bottom row the old bookmark and a rack face close. It is now an art region (baked, eight cold troffers
 over the aisles). The racks are dressed on both faces: posts, black and silver 1U-4U equipment with green and amber
@@ -145,8 +150,24 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** yard round 1 and Server Room round 1 done; next one round each on the Lobby, Office
-and Break Room, then a second round on the lowest-scoring area.
+**Where I am (keep current):** yard, Server Room and Lobby round 1 done; next the Office and the Break Room, then a
+second round on the lowest-scoring area.
+
+## Lobby, round 1 (`rooms/lobby/round-1/round1.png`, 960 px)
+
+- **Region:** `room('Lobby', 'lobby')`; fixtures `lobby` (four warm troffers); baked in 2.8 min; bookmarks `lobby`
+  and `lobby-desk`.
+- **Dressing** (`dressLobby`): desk fronts in panels with a kick plate and an oversailing ledge (both runs); monitor,
+  keyboard, phone and a paper tray for the receptionist; an entrance mat inside the south door, an exit sign over
+  it, a wall TV; on the west wall a noticeboard with sheets and a clock; skirting on the solid walls; cushion
+  joints on the sofa; an extinguisher by the entrance. Nothing on destructible walls.
+- **Found and fixed:** the monitor's back read white (same reflection as the server kit): desk electronics use
+  `chassis`.
+- **Budget:** 110-162 draw calls, 53-72k triangles.
+- **Still wrong:** the TV screen reads as a flat blue panel; no plants (Poly Haven's are 70-96k triangles); the desk
+  body is the dark wood box with light fronts, a bit two-tone.
+- Tests: unit 5385 passed; Breachline browser 8 passed (stock warm run expected to fail).
+
 
 ## Server Room, round 1 (`rooms/server/round-1/round1.png`, 960 px)
 
