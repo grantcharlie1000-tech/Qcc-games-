@@ -11,6 +11,7 @@ import { ArtLoader, type Tier } from './assets';
 import { REGIONS, collectFaces, faceArrays, packAtlas, splitFace, type GeoArrays } from './levelgeo';
 import { FIXTURES } from './fixtures';
 import { fixtureMeshes } from './fixturemesh';
+import { dressLab, type DressKey } from './labdress';
 import { artMaterial } from './materials';
 import { PROPS } from './props';
 import { SURFACES } from './surfaces';
@@ -98,6 +99,27 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       const g = geometry(a), mesh = new THREE.Mesh(g, mat);
       mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:${id}`;
       group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
+    }
+    // Modelled dressing, lit by the lightmap of whatever it stands on.
+    if (region.name === 'lab') {
+      const D = dressLab(atlas, region), [bm, bn, ba] = await set('blue_metal_plate', TEX_SIZE[tier]), [pm, pn, pa] = await set('painted_plaster_wall', TEX_SIZE[tier]);
+      const plain = (color: [number, number, number], roughness: number, metalness: number) => ({ map: null, normalMap: null, armMap: null, color: new THREE.Color(...color), roughness, metalness });
+      const looks: Record<DressKey, Parameters<typeof artMaterial>[0]> = {
+        door: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(1.75, 1.75, 1.75), roughness: 0.8, metalness: 1 },
+        locker: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(2.5, 2.6, 2.7), roughness: 0.7, metalness: 1 },
+        trim: { map: pm, normalMap: pn, armMap: pa, color: new THREE.Color(0.3, 0.36, 0.44), roughness: 0.7, metalness: 1 },
+        handle: plain([0.72, 0.72, 0.7], 0.32, 1), chrome: plain([0.92, 0.92, 0.92], 0.07, 1), steel: plain([0.66, 0.67, 0.68], 0.28, 1),
+        conduit: plain([0.55, 0.56, 0.56], 0.45, 1), socket: plain([0.82, 0.81, 0.78], 0.42, 0), kick: plain([0.035, 0.035, 0.04], 0.55, 0),
+        amber: plain([0.2, 0.08, 0.015], 0.05, 0), glass: plain([0.1, 0.13, 0.125], 0.04, 0),
+      };
+      for (const [key, arrays] of D.parts) {
+        const o = looks[key as DressKey];
+        const mat = artMaterial({ ...o, lightMap, lightScale: info.scale, dirMap, vertexTint: true });
+        const g = geometry(arrays), mesh = new THREE.Mesh(g, mat);
+        mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:dress:${key}`;
+        group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
+      }
+      if (D.missed) console.warn(`Breachline art: ${D.missed} dressing pieces found no surface to stand on: ${D.misses.join(' ')}`);
     }
     // The room's own light fixtures glow (the map's lamp panels in this room are not drawn).
     const fx = fixtureMeshes(FIXTURES[region.name] ?? []);

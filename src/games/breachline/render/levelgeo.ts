@@ -32,9 +32,13 @@ export function splitFace(f: FaceRec, r: Rect): { inside: FaceRec[]; outside: Fa
     const cx = ox + (f.u[0] * f.lu + f.v[0] * f.lv) / 2, cz = oz + (f.u[2] * f.lu + f.v[2] * f.lv) / 2;
     return cx > r.x0 && cx < r.x1 && cz > r.z0 && cz < r.z1 ? { inside: [f], outside: [] } : { inside: [], outside: [f] };
   }
-  const sx = span(ox, f.u[0], f.lu, r.x0, r.x1), sz = span(oz, f.u[2], f.lu, r.z0, r.z1);
-  const tx = span(ox, f.v[0], f.lv, r.x0, r.x1), tz = span(oz, f.v[2], f.lv, r.z0, r.z1);
-  const s0 = Math.max(sx[0], sz[0]), s1 = Math.min(sx[1], sz[1]), t0 = Math.max(tx[0], tz[0]), t1 = Math.min(tx[1], tz[1]);
+  // Each horizontal axis varies along at most one of U and V (faces are axis-aligned); clip that one.
+  let s0 = 0, s1 = f.lu, t0 = 0, t1 = f.lv;
+  for (const [k, o, lo, hi] of [[0, ox, r.x0, r.x1], [2, oz, r.z0, r.z1]] as const) {
+    if (f.u[k] !== 0) { const [a, b] = span(o, f.u[k], f.lu, lo, hi); s0 = Math.max(s0, a); s1 = Math.min(s1, b); }
+    else if (f.v[k] !== 0) { const [a, b] = span(o, f.v[k], f.lv, lo, hi); t0 = Math.max(t0, a); t1 = Math.min(t1, b); }
+    else if (o < lo || o > hi) return { inside: [], outside: [f] };
+  }
   if (s1 - s0 < 1e-4 || t1 - t0 < 1e-4) return { inside: [], outside: [f] };
   const outside: FaceRec[] = [];
   if (s0 > 1e-4) outside.push(piece(f, 0, s0, 0, f.lv));

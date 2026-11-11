@@ -23,6 +23,8 @@ export const SURFACES: Partial<Record<TexId, Surface>> = {
   drywall: { set: 'painted_plaster_wall', size: 2, band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
   cinder: { set: 'painted_plaster_wall', size: 2, tint: [0.86, 0.88, 0.9], band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
   counter: { set: 'blue_metal_plate', size: 1.25, tint: [1.9, 1.9, 1.9] },
+  // Locker carcasses (doors are modelled in render/labdress.ts).
+  steel: { set: 'blue_metal_plate', size: 1.25, tint: [2.4, 2.5, 2.6] },
   trim: { set: 'blue_metal_plate', size: 1.25, tint: [0.7, 0.7, 0.7] },
   paint: { set: 'painted_plaster_wall', size: 1, tint: [0.32, 0.33, 0.34] },
 };

@@ -30,7 +30,7 @@ export interface ArtMaterialOptions {
   /** Painted lower band by world height: tint below \`height\`, a dark 4 cm rail at the top of it. */
   band?: { height: number; tint: readonly [number, number, number] } | null;
   metalness?: number;
-  color?: THREE.ColorRepresentation;
+  color?: THREE.ColorRepresentation | THREE.Color;
   emissive?: THREE.ColorRepresentation;
 }
 
@@ -67,6 +67,8 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
 #ifdef ART_BAND
 	float artRail = smoothstep( artBand.w - 0.002, artBand.w, vArtWorld.y ) - smoothstep( artBand.w + 0.038, artBand.w + 0.04, vArtWorld.y );
 	diffuseColor.rgb *= mix( vArtWorld.y < artBand.w ? artBand.rgb : vec3( 1.0 ), vec3( 0.18 ), artRail );
+	// Painted skirting zone at the floor.
+	diffuseColor.rgb *= vArtWorld.y < 0.1 ? vec3( 0.42 ) : vec3( 1.0 );
 #endif`)
       .replace('#include <normal_fragment_maps>', NORMAL_MAPS)
       .replace('#include <color_fragment>', o.vertexLight ? '' : '#include <color_fragment>')
