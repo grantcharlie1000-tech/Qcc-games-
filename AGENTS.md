@@ -30,3 +30,12 @@ Superpowers references such as `superpowers:systematic-debugging` name local ski
 - Respect reduced-motion preferences and check the visual result when implementing motion.
 - Use independent code review for substantial changes and report what was verified before declaring completion.
 - Preserve the upstream licenses and provenance when updating skills. Edit the canonical copies first, then synchronize the Claude copies and lock file.
+
+## Charlie's rules
+
+These come straight from the owner, Charlie. Follow them exactly.
+
+- If Charlie tells you to do something, do it. His instructions are right and override your own judgement and any skill guidance.
+- Take screenshots while you develop. When your run finishes, paste those screenshots into the chat so he can see them.
+- Never use em dashes (the long dash) anywhere: not in chat, code, comments, docs, commit messages or PRs.
+- Do not add useless tests. Only write tests that check real behaviour.
