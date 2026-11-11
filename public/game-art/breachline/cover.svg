@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 410" role="img" aria-labelledby="title desc"><title id="title">A fighter stepping through a hole blown in a wall, lit from behind</title><desc id="desc">Original Breachline cover: a breached plaster wall over timber panelling, amber light and dust pouring through, and a rifleman in silhouette.</desc>
+<defs>
+<radialGradient id="glow" cx="160" cy="262" r="150" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffe2a1"/><stop offset=".45" stop-color="#f0b429"/><stop offset="1" stop-color="#a0561c"/></radialGradient>
+<linearGradient id="wall" x1="0" y1="95" x2="0" y2="410" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#27343f"/><stop offset="1" stop-color="#1a232b"/></linearGradient>
+<clipPath id="hole"><path d="M78 366 70 318 84 286 72 246 92 208 86 176 116 150 138 158 158 136 186 150 214 140 232 170 228 202 250 232 240 276 254 312 242 366Z"/></clipPath>
+</defs>
+<path fill="#1f2a33" d="M0 0h320v410H0Z"/>
+<path fill="url(#wall)" d="M0 95h320v315H0Z"/>
+<g stroke="#131a20" stroke-width="2" opacity=".7"><path d="M64 95v205M128 95v60M192 95v48M256 95v205" fill="none"/></g>
+<g fill="#131a20" opacity=".8"><circle cx="72" cy="120" r="2"/><circle cx="72" cy="170" r="2"/><circle cx="72" cy="220" r="2"/><circle cx="264" cy="120" r="2"/><circle cx="264" cy="170" r="2"/><circle cx="264" cy="220" r="2"/></g>
+<path fill="#3a2a1e" d="M0 300h320v110H0Z"/>
+<g fill="#4a3626"><path d="M4 308h36v98H4ZM44 308h36v98H44ZM244 308h36v98h-36ZM284 308h32v98h-32Z"/></g>
+<path fill="#241a12" d="M0 296h320v8H0Z"/>
+<path fill="url(#glow)" d="M78 366 70 318 84 286 72 246 92 208 86 176 116 150 138 158 158 136 186 150 214 140 232 170 228 202 250 232 240 276 254 312 242 366Z"/>
+<g clip-path="url(#hole)">
+<g fill="#fff3d2" opacity=".28"><path d="M150 130 60 380h44ZM176 130 150 380h40ZM206 136 232 380h40Z"/></g>
+<path fill="#7a4a1c" opacity=".55" d="M60 340h200v40H60Z"/>
+<g fill="#12181d">
+<path d="M143 196h34v30h-34Z"/>
+<path d="M139 186h42l4 14h-50Z"/>
+<path d="M124 228h72l6 74h-84Z"/>
+<path d="M130 300h26l-6 68h-26ZM164 300h26l8 68h-26Z"/>
+<path d="M116 364h36v10h-36ZM168 364h36v10h-36Z"/>
+<path d="M192 236l24 20-8 34-20-14Z"/>
+<path d="M108 262h118v12H108Z"/>
+<path d="M226 258h34v6h-34ZM150 274h14v26h-14ZM98 258h14v26H98Z"/>
+<path d="M116 240l-18 24 14 12 18-18Z"/>
+</g>
+<path fill="#5aa2ff" d="M139 200h42v6h-42Z"/>
+<path fill="#f0b429" d="M146 210h28v5h-28Z" opacity=".9"/>
+</g>
+<path fill="none" stroke="#e9e2d2" stroke-width="5" stroke-linejoin="round" d="M78 366 70 318 84 286 72 246 92 208 86 176 116 150 138 158 158 136 186 150 214 140 232 170 228 202 250 232 240 276 254 312 242 366"/>
+<path fill="none" stroke="#0f1418" stroke-width="2" stroke-linejoin="round" d="M78 366 70 318 84 286 72 246 92 208 86 176 116 150 138 158 158 136 186 150 214 140 232 170 228 202 250 232 240 276 254 312 242 366" opacity=".6"/>
+<g fill="#e9e2d2"><path d="M52 198l14 6-8 12ZM40 252l10 12-14 4ZM262 190l12-8 4 14ZM276 248l14 2-8 12ZM248 132l10-4 2 12ZM96 136l8-10 6 12ZM58 318l10 2-4 10Z"/></g>
+<g fill="#5b4330"><path d="M36 340l16-6 4 14ZM270 330l14 8-12 8ZM286 376l12-4 2 12ZM22 384l12 4-8 10Z"/></g>
+<g fill="#ffe2a1" opacity=".8"><circle cx="100" cy="176" r="2.5"/><circle cx="226" cy="158" r="2"/><circle cx="246" cy="290" r="2.5"/><circle cx="66" cy="278" r="2"/><circle cx="210" cy="124" r="1.6"/><circle cx="124" cy="126" r="1.6"/></g>
+<g><path fill="#2f3830" d="M268 306h34v24h-34Z"/><path fill="#f0b429" d="M272 310h26v5h-26Z"/><circle cx="292" cy="323" r="3" fill="#ff3b24"/></g>
+</svg>

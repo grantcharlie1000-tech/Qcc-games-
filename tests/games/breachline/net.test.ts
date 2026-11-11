@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ROUND, TICK } from '../../../src/games/breachline/config';
 import { GuestSession, HostSession, type RoomLike } from '../../../src/games/breachline/net';
-import { aimOf, idleIntent, roleOf, type Intent } from '../../../src/games/breachline/state';
+import { aimOf, idleIntent, roleOf, weaponOf, type Intent } from '../../../src/games/breachline/state';
 import { packPanels } from '../../../src/games/breachline/world';
 import type { RoomEvent, RosterEntry } from '../../../src/multiplayer/room';
 
@@ -79,7 +79,7 @@ describe('online', () => {
     expect(guest.m.players[host.self].hp).toBe(hSelf.hp);
     const mine = guest.drain().filter(e => e.e === 'shot' && e.id === guest.self), theirs = host.drain().filter(e => e.e === 'shot' && e.id === guest.self);
     expect(mine.length).toBeGreaterThan(2); expect(mine.length).toBe(theirs.length);
-    expect(g.mag[0]).toBe(30 - mine.length);
+    expect(g.mag[0]).toBe(weaponOf(guest.m, g).mag - mine.length);
   });
   it('keeps destruction identical on both devices', () => {
     const h = hub(), host = new HostSession('Hana', { teamSize: 1, bots: false, skill: 'regular' }, 5);

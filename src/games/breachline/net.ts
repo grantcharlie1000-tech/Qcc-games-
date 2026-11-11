@@ -57,12 +57,13 @@ export class HostSession implements Session {
   private room: RoomLike | null = null;
   private off: (() => void) | null = null;
   private squads = new Map<string, 0 | 1>();
-  constructor(private name: string, cfg: MatchConfig, seed: number) {
+  constructor(public name: string, cfg: MatchConfig, seed: number) {
     this.m = createMatch(cfg, seed); this.brain = createBrain(this.m);
     this.reseat();
   }
   get online() { return !!this.room; }
   get self() { return this.m.players.find(p => p.owner === 'host')?.id ?? -1; }
+  rename(name: string) { this.name = name; const p = this.m.players.find(q => q.owner === 'host'); if (p) p.name = name; this.reseat(); }
   private people() {
     const list = [{ owner: 'host', name: this.name, squad: this.squads.get('host') }];
     if (this.room) for (const p of this.room.players) if (p.id !== this.room.id) list.push({ owner: p.id, name: p.name, squad: this.squads.get(p.id) });

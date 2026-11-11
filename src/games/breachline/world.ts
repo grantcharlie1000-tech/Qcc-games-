@@ -2,7 +2,7 @@
  * barricades) made of square cells. Pure geometry: collision, bullet traces, sight lines and panel damage. */
 import { BODY, CELL } from './config';
 
-export type Mat = 'concrete' | 'brick' | 'plaster' | 'trim' | 'wood' | 'metal' | 'crate' | 'container' | 'van' | 'rack' | 'fabric' | 'steel' | 'counter';
+export type Mat = 'concrete' | 'brick' | 'plaster' | 'trim' | 'wood' | 'metal' | 'crate' | 'container' | 'van' | 'rack' | 'fabric' | 'steel' | 'counter' | 'shelf';
 export interface Box { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; mat: Mat; solid: boolean; draw: boolean }
 export type PanelKind = 'wall' | 'door' | 'window';
 export interface PanelDef {
