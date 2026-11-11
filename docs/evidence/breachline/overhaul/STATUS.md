@@ -4,6 +4,10 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: East Lane done; no procedural area is left.** `rooms/outdoors/round-1/east.png` (before, after): an
+outdoor art region (`east`) with drains, drums against the concrete block, cans and a military crate on the crate.
+230 draw calls. No core files touched. Next: batching the destructible panels' draw calls.
+
 **2026-11-11: West Lot and North Yard done, and the draw-call budget restored.** `rooms/outdoors/round-1/round1.png`:
 West Lot before and after, the West Lot car, the North Yard. Both are outdoor art regions (sun, sky, half density)
 with the South Yard's kit; the West Lot van is a covered car (`NET_VERSION` `breachline-4`). With eleven art regions

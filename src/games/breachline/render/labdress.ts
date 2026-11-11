@@ -250,7 +250,7 @@ function dressYard(atlas: Atlas, room: Region): DetailBuilder {
     if (f.x1 < room.x1 - 0.1) kerb(f.x1, f.z0, f.x1 + KW, f.z1);
   }
   // Drain grates: a dark frame and slats over a black pit.
-  for (const [x, z] of [[-12, 12.6], [-2, 16.5], [6.5, 12.6], [14, 15.5], [20, 13], [-24, -6.2], [-19.8, 3.6], [-15, -12.6], [0.5, -19], [10.5, -12.6], [22, -19.5]] as const) {
+  for (const [x, z] of [[-12, 12.6], [-2, 16.5], [6.5, 12.6], [14, 15.5], [20, 13], [-24, -6.2], [-19.8, 3.6], [-15, -12.6], [0.5, -19], [10.5, -12.6], [22, -19.5], [24.5, -4], [20.5, 8]] as const) {
     if (!inRoom(room, x, z)) continue;
     const on: V3 = [x, 0.03, z];
     D.box('kick', x - 0.3, 0.005, z - 0.3, x + 0.3, 0.012, z + 0.3, on, up);

@@ -61,6 +61,8 @@ export const BOOKMARKS = {
   // The West Lot towards the covered car, and the North Yard along its length.
   'west-car': [-17.5, 2.5, 2.43, -0.1],
   'north-yard': [24, -19.5, 1.5708, -0.04],
+  // The East Lane looking south along the building.
+  'east-lane': [17, -9, 3.0, -0.05],
   // Destruction views (rendered after the damage setup below): the charge's breach from the corridor and from the
   // Lab, and the rifle-chewed wall west of it.
   breach: [1.5, 0.35, 0, -0.06],

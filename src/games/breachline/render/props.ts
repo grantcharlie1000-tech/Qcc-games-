@@ -44,6 +44,11 @@ export const PROPS: Placement[] = [
   { model: 'barrel_03', x: -4.1, y: 0, z: -16.65, yaw: 3.1 },
   { model: 'metal_jerrycan_green', x: 13.65, y: 0, z: -15.2, yaw: -0.4 },
   { model: 'metal_jerrycan_green', x: 13.62, y: 0, z: -14.75, yaw: 0.3 },
+  // East Lane: drums against the concrete block, cans by the crate, a military crate on the crate.
+  { model: 'barrel_03', x: 22.85, y: 0, z: 2.1, yaw: 0.6 },
+  { model: 'barrel_03', x: 22.9, y: 0, z: 2.75, yaw: 2.0 },
+  { model: 'metal_jerrycan_green', x: 21.0, y: 0, z: -8.3, yaw: -0.2 },
+  { model: 'old_military_crate', x: 20.0, y: 1.2, z: -8.0, yaw: Math.PI / 2 },
   // South Yard: a car under a dust cover in the bays (its collision box was cut to the model), a military crate on
   // the stacked crate and another on the steel bin, jerrycans, and drums against the perimeter by the containers.
   { model: 'covered_car', x: 7.3, y: 0, z: 15.15, yaw: Math.PI / 2, replaces: true },
