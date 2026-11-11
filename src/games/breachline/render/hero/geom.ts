@@ -36,7 +36,7 @@ export const SURF = {
   park: S(0x3b3d40, 0.62, 0.5, 0.6, PAT.metal), // parkerised steel
   steel: S(0x4d5562, 0.42, 0.8, 0.5, PAT.metal), // blued / nitrided steel
   bright: S(0x8d8f91, 0.3, 1, 0.2, PAT.metal), // machined steel: bolt, pins, springs
-  anod: S(0x3a3c40, 0.4, 0.35, 0.9, PAT.metal), // black anodised aluminium
+  anod: S(0x3a3c40, 0.32, 0.4, 0.9, PAT.metal), // black anodised aluminium
   anodFde: S(0x8a7556, 0.66, 0.05, 0.8, PAT.metal), // flat dark earth cerakote on aluminium
   anodOd: S(0x4b5240, 0.68, 0.05, 0.8, PAT.metal), // olive cerakote
   anodGrey: S(0x62666b, 0.36, 0.4, 0.9, PAT.metal), // tungsten grey cerakote

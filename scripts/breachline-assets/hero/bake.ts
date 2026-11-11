@@ -123,7 +123,7 @@ async function bake(id: string, geo: THREE.BufferGeometry, density: number, S: n
     if (pat === PAT.metal) {
       // Machining lines along the receiver (z), fine; a faint cast texture on coated parts.
       // Panel lines: a groove where the upper meets the handguard and around the receiver's flats.
-      const groove = Math.exp(-Math.pow((z + 0.2375) / 0.0006, 2)) * -0.0005;
+      const groove = (Math.exp(-Math.pow((z + 0.2375) / 0.0006, 2)) + Math.exp(-Math.pow((y + 0.086) / 0.0005, 2)) * (z > -0.2 && z < 0.004 ? 1 : 0)) * -0.0006;
       return Math.sin(z * 2600 + vnoise(x * 300, y * 300, z * 30) * 3) * 0.000018 + fbm(x * 900, y * 900, z * 900, 2) * 0.00005 + groove;
     }
     return 0;
@@ -173,10 +173,11 @@ async function bake(id: string, geo: THREE.BufferGeometry, density: number, S: n
     const edgeW = sstep(0.08, 0.42, edge[k] * wear * (0.7 + mid) + scr * 0.6 * wear);
     if (isGlow) { /* keep */ }
     else if (isMetal) {
-      const tint = 0.82 + 0.3 * big + 0.08 * (fine - 0.5);
+      // Coating tone drifts over the part (batch, handling, sun), with fine mottling.
+      const tint = 0.72 + 0.5 * big + 0.12 * (mid - 0.5) + 0.08 * (fine - 0.5);
       r *= tint; g *= tint; bl *= tint * 1.01;
       // Bare aluminium or steel showing through on edges and scratches.
-      const bare = [0.42, 0.43, 0.45];
+      const bare = [0.55, 0.56, 0.58];
       r += (bare[0] - r) * edgeW; g += (bare[1] - g) * edgeW; bl += (bare[2] - bl) * edgeW;
       metal += (1 - metal) * edgeW; rough = rough * (0.85 + 0.3 * mid) - polish * 0.18 - edgeW * 0.3 + scr * 0.12;
     } else if (isPoly) {
