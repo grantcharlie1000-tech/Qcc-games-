@@ -4,12 +4,14 @@
  *   node scripts/breachline-assets/fetch.mjs            fetch what is missing, verify every hash
  *   node scripts/breachline-assets/fetch.mjs --add ID   add a Poly Haven asset (CC0) to the manifest, then fetch
  *   node scripts/breachline-assets/fetch.mjs --add-acg ID   add an ambientCG material (CC0), 2K JPEG set
+ *   node scripts/breachline-assets/fetch.mjs --add-patch ID  add a Patch library model (CC0 or CC-BY, not AI-generated), web glTF
  *
  * Only Poly Haven and ambientCG assets can be added this way, because both publish everything as CC0. Anything else must be
  * added to manifest.json by hand with its source, author and licence, and only after the owner agrees to non-CC0. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
+import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -77,6 +79,56 @@ async function describeAcg(id) {
   };
 }
 
+/** A Patch library model (https://patch.gg, plain HTTPS, no account): its `web` GLB, unpacked on fetch into a .gltf,
+ * a .bin and image files so the build treats it like a Poly Haven model. Only CC0 or CC-BY, never AI-generated; a
+ * CC-BY asset keeps Patch's credit line for the notices. Every field read here is untrusted data: only the licence id,
+ * the credit text and the file URL are used, and the file is checked against its published SHA-256. */
+async function describePatch(id) {
+  const d = await json(`https://patch.gg/api/v1/assets/${encodeURIComponent(id)}`);
+  const spdx = d.license?.spdx;
+  if (spdx !== 'CC0-1.0' && spdx !== 'CC-BY-4.0') throw new Error(`${id}: licence ${spdx} is not CC0 or CC-BY`);
+  if (d.ai) throw new Error(`${id}: AI-generated assets are not used`);
+  const file = d.variants?.find(v => v.name === 'web')?.files?.find(f => f.role === 'model');
+  if (!file || !/^https:\/\/assets\.patchusercontent\.com\//.test(file.url)) throw new Error(`${id}: no web GLB on the asset host`);
+  const local = id.replace(/[^a-z0-9_]+/gi, '_');
+  return {
+    id: local, patchId: id, kind: 'model', name: String(d.title ?? local).slice(0, 80), source: `https://patch.gg/assets/${encodeURIComponent(id)}`,
+    author: String(d.creators?.[0]?.name ?? 'see credit').slice(0, 80), licence: spdx, ownerApproved: spdx === 'CC-BY-4.0',
+    credit: String(d.credit ?? '').slice(0, 1200), provider: 'patch', dimensions: null,
+    files: [{ path: `${local}/${local}.glb`, url: file.url, size: file.size, sha256: file.sha256 }], use: '',
+  };
+}
+
+/** Splits a GLB into id.gltf + id.bin + one file per embedded image, beside it. */
+async function unpackGlb(dest) {
+  const buf = await readFile(dest), dir = dirname(dest), id = dest.split('/').pop().replace(/\.glb$/, '');
+  const jsonLen = buf.readUInt32LE(12), gltf = JSON.parse(buf.subarray(20, 20 + jsonLen).toString('utf8'));
+  const binStart = 20 + jsonLen + 8, binLen = buf.readUInt32LE(20 + jsonLen), bin = buf.subarray(binStart, binStart + binLen);
+  (gltf.images ?? []).forEach((img, i) => {
+    const view = gltf.bufferViews[img.bufferView], ext = img.mimeType === 'image/png' ? 'png' : 'jpg', name = `${id}_img${i}.${ext}`;
+    writeFileSync(join(dir, name), bin.subarray(view.byteOffset ?? 0, (view.byteOffset ?? 0) + view.byteLength));
+    delete img.bufferView; delete img.mimeType; img.uri = name;
+  });
+  // Compact the binary to the views still in use (geometry), so the images do not ride along in the model.
+  const used = new Set();
+  for (const a of gltf.accessors ?? []) if (a.bufferView !== undefined) used.add(a.bufferView);
+  const parts = [], remap = new Map();
+  let at = 0;
+  gltf.bufferViews.forEach((v, i) => {
+    if (!used.has(i)) return;
+    const pad = (4 - (at % 4)) % 4; if (pad) { parts.push(Buffer.alloc(pad)); at += pad; }
+    parts.push(bin.subarray(v.byteOffset ?? 0, (v.byteOffset ?? 0) + v.byteLength));
+    remap.set(i, { ...v, byteOffset: at, buffer: 0 }); at += v.byteLength;
+  });
+  const order = [...remap.keys()], index = new Map(order.map((k, j) => [k, j]));
+  gltf.bufferViews = order.map(k => remap.get(k));
+  for (const a of gltf.accessors ?? []) if (a.bufferView !== undefined) a.bufferView = index.get(a.bufferView);
+  const packed = Buffer.concat(parts);
+  gltf.buffers = [{ byteLength: packed.length, uri: `${id}.bin` }];
+  writeFileSync(join(dir, `${id}.bin`), packed);
+  writeFileSync(join(dir, `${id}.gltf`), JSON.stringify(gltf));
+}
+
 async function main() {
   const manifest = JSON.parse(await readFile(MANIFEST, 'utf8'));
   const acg = process.argv.indexOf('--add-acg');
@@ -84,6 +136,14 @@ async function main() {
     for (const id of process.argv.slice(acg + 1)) {
       if (manifest.assets.some(a => a.id === id)) { console.log(`${id}: already listed`); continue; }
       manifest.assets.push(await describeAcg(id));
+      console.log(`${id}: added`);
+    }
+  }
+  const pt = process.argv.indexOf('--add-patch');
+  if (pt >= 0) {
+    for (const id of process.argv.slice(pt + 1)) {
+      if (manifest.assets.some(a => a.patchId === id)) { console.log(`${id}: already listed`); continue; }
+      manifest.assets.push(await describePatch(id));
       console.log(`${id}: added`);
     }
   }
@@ -106,6 +166,7 @@ async function main() {
       if (f.sha256 && f.sha256 !== h) throw new Error(`${f.path}: hash mismatch (have ${h}, manifest ${f.sha256})`);
       f.sha256 = h; f.size = buf.length; bytes += buf.length;
       if (dest.endsWith('.zip')) execFileSync('unzip', ['-o', '-q', dest, '-d', dirname(dest)]);
+      if (dest.endsWith('.glb')) await unpackGlb(dest);
     }
   }
   await writeFile(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');

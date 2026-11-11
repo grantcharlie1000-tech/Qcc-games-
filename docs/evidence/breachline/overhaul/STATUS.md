@@ -4,6 +4,26 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11 ~15:10 UTC: Archive round 2 started, Patch boxes tried and backed out (nothing shipped).**
+- **Pipeline (kept, committed):**
+  - `fetch.mjs --add-patch ID` takes a Patch model's `web` GLB over HTTPS. It accepts only CC0 or CC-BY and nothing
+    AI-generated, checks the file against Patch's SHA-256, keeps Patch's credit line, and unpacks the GLB into
+    `.gltf` + `.bin` + images. The binary is compacted to the geometry, so images don't ride along: 14 MB -> 148 KB.
+  - The build writes a manifest asset's `credit` (plus our `changes`) into the notices.
+  - Two optional per-asset settings: `lod2`, a crude level with borders free (335 triangles for the box), and
+    `greyscale`, which turns a colour map grey so one texture set can be tinted per instance.
+- **`simready:box_paper_office_burgundy_a01` (CC-BY, 2,318 triangles) didn't work in the Archive:**
+  1. The shelving is a solid collision box whose front face is drawn, so a real-depth box sits inside it and is
+     hidden. I drew each box as a slab a few centimetres deep, standing just proud of the face.
+  2. At about 130 slots, even the 1,658-triangle level costs 310k triangles in view. The 335-triangle crude level
+     breaks the UVs; using models in a third of the slots costs 177k.
+  3. The box's front reads as a dark face (a dark interior with a coloured rim) whatever the tint, the greyscale
+     remap or the orientation. I suspect the asset's front is its open side. Turning it Z-up made it black.
+- **Decision:** the Archive keeps its previous dressing. The box asset is removed from the manifest and from
+  `public/`, so nothing extra ships and no credit is owed.
+- **Next for the Archive:** a different box. A simple closed archive box modelled in code (lid line, hand-hole,
+  label slot) drawn instanced would be cheaper than any of these and fits the shelf faces.
+
 **2026-11-11 ~14:20 UTC: the Patch soldiers are the default.** In `scene.ts`:
 - `createPatchFighters` by default (it falls back to the stock fighters if an asset fails to load);
   `?fighters=stock` keeps the old ones;
