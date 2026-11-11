@@ -17,6 +17,9 @@ const g = await readGlb(srcFile), p = primitive(g, g.json.nodes.findIndex(n => n
 let minY = Infinity; for (let i = 1; i < p.pos.length; i += 3) minY = Math.min(minY, p.pos[i]);
 for (let i = 1; i < p.pos.length; i += 3) p.pos[i] -= minY;
 let m = { pos: p.pos, nrm: p.nrm, uv: p.uv, idx: p.idx };
+// Job 3: the hair's quiff would show as a bump under the balaclava; flatten the top and front of the head a little.
+if (process.env.FULL === '1') for (let i = 0; i < m.pos.length; i += 3) { const x = m.pos[i], y = m.pos[i + 1], z = m.pos[i + 2];
+  if (y > 1.64 && Math.hypot(x, z) < 0.16) { const k = Math.min(1, (y - 1.64) / 0.05); m.pos[i + 1] = 1.64 + (y - 1.64) * (1 - 0.35 * k); if (z > 0.02) m.pos[i + 2] = z - (z - 0.02) * 0.3 * k; } }
 const tris0 = m.idx.length / 3;
 
 // A cap UV on plain black cloth that the tint mask calls fatigues: the vertex nearest the outside of the right sleeve.
@@ -32,9 +35,13 @@ export const CUTS = {
   wristR: { p: [0.388, 0.95, 0.08], n: [0.25, -0.80, 0.53] },
 };
 const log = {};
-let r = cut(m, CUTS.neck.p, CUTS.neck.n, c => c[1] > 1.35 && Math.abs(c[0]) < 0.22, capUv); m = r.mesh; log.neck = { loops: r.loops, removed: r.removed };
+const FULL = process.env.FULL === '1';  // job 3: keep the asset's own head and hands (repainted below)
+let r = { mesh: m, loops: 0, removed: 0 };
+if (!FULL) {
+r = cut(m, CUTS.neck.p, CUTS.neck.n, c => c[1] > 1.35 && Math.abs(c[0]) < 0.22, capUv); m = r.mesh; log.neck = { loops: r.loops, removed: r.removed };
 for (const k of ['wristL', 'wristR']) {
   const w = CUTS[k]; r = cut(m, w.p, w.n, c => Math.hypot(...V.sub(c, w.p)) < 0.25 && Math.abs(c[0]) > 0.27, capUv); m = r.mesh; log[k] = { loops: r.loops, removed: r.removed };
+}
 }
 console.log('cuts', JSON.stringify(log), 'triangles', tris0, '->', m.idx.length / 3);
 
@@ -100,6 +107,15 @@ export function isKit(x, y, z, nz) {
   return false;
 }
 const M = 2048, mask = new Uint8Array(M * M), cover = new Uint8Array(M * M);
+/** Job 3 repaint regions (file frame, facing +Z): 1 = balaclava (head and neck), 2 = eye band (kept as is),
+ * 3 = hand (bare fingertips become glove). Measured on renders: eyes at y 1.595, brows 1.61. */
+const region = new Uint8Array(M * M), rpos = new Float32Array(M * M * 3);
+function regionOf(x, y, z) {
+  const r = Math.hypot(x, z + 0.005);
+  if (FULL && ((y > 1.55 && r < 0.16) || (y > 1.49 && y <= 1.55 && z > 0.02 && r < 0.16 && Math.abs(x) < 0.09) || (y > 1.47 && y <= 1.55 && r < 0.09))) return y > 1.578 && y < 1.625 && z > 0.07 && z < 0.112 && Math.abs(x) < 0.062 ? 2 : 1;
+  if (FULL && Math.abs(x) > 0.31 && y < 0.925 && y > 0.6) return 3;
+  return 0;
+}
 {
   const { pos, nrm, uv, idx } = m;
   for (let t = 0; t < idx.length; t += 3) {
@@ -113,26 +129,57 @@ const M = 2048, mask = new Uint8Array(M * M), cover = new Uint8Array(M * M);
       const w0 = ((by - cy) * (sx - cx) + (cx - bx) * (sy - cy)) / den, w1 = ((cy - ay) * (sx - cx) + (ax - cx) * (sy - cy)) / den, w2 = 1 - w0 - w1;
       if (w0 < -0.02 || w1 < -0.02 || w2 < -0.02) continue;
       const P = k => w0 * pos[a * 3 + k] + w1 * pos[b * 3 + k] + w2 * pos[c * 3 + k], nz = w0 * nrm[a * 3 + 2] + w1 * nrm[b * 3 + 2] + w2 * nrm[c * 3 + 2];
-      const o = py * M + px; cover[o] = 1; mask[o] = isKit(P(0), P(1), P(2), nz) ? 255 : 0;
+      const o = py * M + px; cover[o] = 1; mask[o] = isKit(P(0), P(1), P(2), nz) ? 255 : 0; region[o] = regionOf(P(0), P(1), P(2)); rpos.set([P(0), P(1), P(2)], o * 3);
     }
   }
   for (let pass = 0; pass < 6; pass++) {  // dilate into uncovered texels
-    const nc = cover.slice(), nm = mask.slice();
+    const nc = cover.slice(), nm = mask.slice(), nr = region.slice();
     for (let y = 0; y < M; y++) for (let x = 0; x < M; x++) { const o = y * M + x; if (cover[o]) continue;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= M || Y >= M) continue; const q = Y * M + X; if (cover[q]) { nc[o] = 1; nm[o] = mask[q]; break; } } }
-    cover.set(nc); mask.set(nm);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= M || Y >= M) continue; const q = Y * M + X; if (cover[q]) { nc[o] = 1; nm[o] = mask[q]; nr[o] = region[q]; rpos.set(rpos.subarray(q * 3, q * 3 + 3), o * 3); break; } } }
+    cover.set(nc); mask.set(nm); region.set(nr);
   }
 }
-const maskPng = await sharp(Buffer.from(mask), { raw: { width: M, height: M, channels: 1 } }).blur(1.2).png().toBuffer();
+const maskRgb = Buffer.alloc(M * M * 3);
+for (let o = 0; o < M * M; o++) { maskRgb[o * 3] = region[o] ? 0 : mask[o]; maskRgb[o * 3 + 1] = region[o] ? 255 : 0; }
+// R = kit, G = keep (balaclava, eyes and gloves keep their own colour in every squad).
+const maskPng = await sharp(maskRgb, { raw: { width: M, height: M, channels: 3 } }).blur(1.2).png().toBuffer();
+// Repaint (job 3): at 2048, from the 4096 sources.
+let baseImgOut = baseImg, norImgOut = norImg, armPngOut = armPng;
+if (FULL) {
+  const raw = async (b, ch) => (await sharp(b).resize(M, M, { kernel: 'lanczos3' }).removeAlpha().raw().toBuffer());
+  const bc = await raw(baseImg), nr = await raw(norImg), am = await raw(armPng);
+  const fr = x => x - Math.floor(x), h = (a, b) => fr(Math.sin(a * 12.9898 + b * 78.233) * 43758.5453);
+  let head = 0, glove = 0;
+  for (let o = 0; o < M * M; o++) {
+    const rg = region[o]; if (!rg || rg === 2) continue;
+    const x = rpos[o * 3], y = rpos[o * 3 + 1], z = rpos[o * 3 + 2];
+    if (rg === 1) {
+      // Dark knitted balaclava: vertical ribs 3.5 mm apart around the head, stitch rows 4.5 mm high.
+      const sArc = Math.atan2(x, z + 0.005) * 0.11, rib = Math.sin(2 * Math.PI * sArc / 0.0035), row = Math.sin(2 * Math.PI * y / 0.0045 + (rib > 0 ? 0 : Math.PI));
+      const knit = 0.5 + 0.25 * rib + 0.15 * row + 0.1 * (h(Math.round(sArc * 2000), Math.round(y * 2000)) - 0.5);
+      const v = 15 + 14 * knit; bc[o * 3] = v; bc[o * 3 + 1] = v + 1; bc[o * 3 + 2] = v + 3;
+      nr[o * 3] = Math.round(128 + 40 * Math.cos(2 * Math.PI * sArc / 0.0035)); nr[o * 3 + 1] = Math.round(128 + 22 * Math.cos(2 * Math.PI * y / 0.0045)); nr[o * 3 + 2] = 240;
+      am[o * 3 + 1] = 245; am[o * 3 + 2] = 0; head++;
+    } else {
+      // Glove: only the bare skin (orange-pink) becomes black synthetic glove; the glove texels stay.
+      const r = bc[o * 3], g = bc[o * 3 + 1], b = bc[o * 3 + 2];
+      if (r > 70 && r > b + 25 && r >= g) { const v = 20 + 10 * h(x * 900, y * 900); bc[o * 3] = v; bc[o * 3 + 1] = v; bc[o * 3 + 2] = v + 2; am[o * 3 + 1] = 200; glove++; }
+    }
+  }
+  console.log('repainted texels: balaclava', head, 'glove', glove);
+  const png = d => sharp(d, { raw: { width: M, height: M, channels: 3 } }).png().toBuffer();
+  [baseImgOut, norImgOut, armPngOut] = await Promise.all([png(bc), png(nr), png(am)]);
+  await writeFile(path.join(scratch, 'diff-repainted.png'), baseImgOut);
+}
 // Reference luminance of each class in the colour texture, for luminance-preserving recolouring.
 const base = await sharp(baseImg).resize(M, M).removeAlpha().raw().toBuffer();
 const lum = [0, 0], cnt = [0, 0];
-for (let o = 0; o < M * M; o++) { if (!cover[o]) continue; const k = mask[o] > 127 ? 1 : 0, L = (0.2126 * base[o * 3] + 0.7152 * base[o * 3 + 1] + 0.0722 * base[o * 3 + 2]) / 255; lum[k] += L; cnt[k]++; }
+for (let o = 0; o < M * M; o++) { if (!cover[o] || region[o]) continue; const k = mask[o] > 127 ? 1 : 0, L = (0.2126 * base[o * 3] + 0.7152 * base[o * 3 + 1] + 0.0722 * base[o * 3 + 2]) / 255; lum[k] += L; cnt[k]++; }
 const refLum = { fatigues: +(lum[0] / cnt[0]).toFixed(4), kit: +(lum[1] / cnt[1]).toFixed(4) };
 // Luminance range per class, linear light (2nd and 98th percentiles and the median), for recolouring by remapping the
 // source's dark range onto the target's range (so folds, seams and wear survive).
 const hist = [new Uint32Array(1024), new Uint32Array(1024)];
-for (let o = 0; o < M * M; o++) { if (!cover[o]) continue; const k = mask[o] > 127 ? 1 : 0, lin = c => Math.pow(c / 255, 2.2), L = 0.2126 * lin(base[o * 3]) + 0.7152 * lin(base[o * 3 + 1]) + 0.0722 * lin(base[o * 3 + 2]); hist[k][Math.min(1023, Math.floor(L * 4096))]++; }
+for (let o = 0; o < M * M; o++) { if (!cover[o] || region[o]) continue; const k = mask[o] > 127 ? 1 : 0, lin = c => Math.pow(c / 255, 2.2), L = 0.2126 * lin(base[o * 3]) + 0.7152 * lin(base[o * 3 + 1]) + 0.0722 * lin(base[o * 3 + 2]); hist[k][Math.min(1023, Math.floor(L * 4096))]++; }
 const pct = (h, q) => { let tot = 0; for (const v of h) tot += v; let acc = 0; for (let i = 0; i < h.length; i++) { acc += h[i]; if (acc >= q * tot) return +(i / 4096).toFixed(5); } return 0.25; };
 const lumRange = { fatigues: [pct(hist[0], 0.02), pct(hist[0], 0.5), pct(hist[0], 0.98)], kit: [pct(hist[1], 0.02), pct(hist[1], 0.5), pct(hist[1], 0.98)] };
 console.log('linear luminance p2/p50/p98', JSON.stringify(lumRange));
@@ -148,7 +195,7 @@ await writeGlb(path.join(scratch, 'body.glb'), [mk('body_lod0', l0.mesh), mk('bo
 await writeGlb(path.join(scratch, 'tactical-cut-full.glb'), [mk('body_full', m)], extras);
 const files = {};
 const put = async (name, buf) => { await writeFile(path.join(outDir, name), buf); files[name] = buf.length; };
-for (const [kind, img] of [['diff', baseImg], ['nor', norImg], ['arm', armPng]]) {
+for (const [kind, img] of [['diff', baseImgOut], ['nor', norImgOut], ['arm', armPngOut]]) {
   // Roughness alone is left in the packed map; at 2048 it cost 1.75 MB for no visible gain, so it ships at 1024 only.
   for (const size of kind === 'arm' ? [1024] : [2048, 1024]) await put(`${kind}-${size}.ktx2`, await ktx2(img, size, kind));
   await put(`${kind}-512.jpg`, await jpeg(img, 512, kind === 'diff' ? 82 : 90));

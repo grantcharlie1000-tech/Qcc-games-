@@ -228,7 +228,7 @@ async function squadLook(mat: THREE.MeshStandardMaterial, look: string, art: Art
         return mix(mix(mix(h3(i), h3(i + vec3(1,0,0)), f.x), mix(h3(i + vec3(0,1,0)), h3(i + vec3(1,1,0)), f.x), f.y),
                    mix(mix(h3(i + vec3(0,0,1)), h3(i + vec3(1,0,1)), f.x), mix(h3(i + vec3(0,1,1)), h3(i + vec3(1,1,1)), f.x), f.y), f.z); }
       ` + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
-      { float k = smoothstep(0.3, 0.7, texture2D(tMask, vMapUv).r);
+      { vec3 mk = texture2D(tMask, vMapUv).rgb; float k = smoothstep(0.3, 0.7, mk.r), keep = smoothstep(0.3, 0.7, mk.g);
         float l = pow(max(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 1e-6), 0.4545);
         // Centred on the class median with a spread of a fifth of its 2..98% range: small differences (folds, seams,
         // stitching, wear) become visible steps instead of all landing at the dark end.
@@ -241,7 +241,7 @@ async function squadLook(mat: THREE.MeshStandardMaterial, look: string, art: Art
         vec3 cK = mix(kitA, kitB, sK) * (1.0 + weave * 0.4 * wv) * (1.0 - stain * 0.6 * (st - 0.45));
         vec3 c = mix(cF, cK, k);
         if (vObjP.y < 0.028) c *= 0.55;
-        diffuseColor.rgb = c; }`);
+        diffuseColor.rgb = mix(c, diffuseColor.rgb, keep); }`);
   };
   mat.customProgramCacheKey = () => `look${look}`;
 }
@@ -313,6 +313,33 @@ const SCRIPTS: Record<string, Script> = {
   crouch: { lead: 0.6, at: () => ({ crouch: 1 }) }, crouchwalk: walk(0, -1.5, { crouch: 1 }), sprint: walk(0, -6.2, { sprint: true }),
   death0: { lead: 0.3, at: t => ({ alive: t < 0.35, deaths: 0 }) }, death1: { lead: 0.3, at: t => ({ alive: t < 0.35, deaths: 1 }) },
 };
+/** A rigid prop (headgear) on rig `name`'s head bone. The file comes from the scratch folder (`/patch-dl/`). It is
+ * centred, turned by `rotY` (most props face +Z; the fighters face -Z), scaled so its width across X is `width`, and
+ * placed in head-bone space (bind axes: +Y up, -Z forward) with its bounding-box bottom at `at[1]`. */
+async function headProp(name: string, prop: string, o: { width: number; at: [number, number, number]; rotY?: number; rotX?: number; recolor?: Record<string, number>; hide?: string[] }) {
+  const r = rigs.get(name)!, g = await gltf.loadAsync(`/patch-dl/${prop}.glb`);
+  for (const h of o.hide ?? []) g.scene.getObjectByName(h)?.removeFromParent();
+  let n = 0;
+  g.scene.traverse(c => { const m = c as THREE.Mesh; if (!m.isMesh) return; n += tris(m); const mats = Array.isArray(m.material) ? m.material : [m.material];
+    mats.forEach(mm => { const ms = mm as THREE.MeshStandardMaterial; const key = Object.keys(o.recolor ?? {}).find(k => k === '*' || (ms.name ?? '').includes(k)); if (key !== undefined) { ms.color.set(o.recolor![key]); if (key === '*') ms.map = null; } ms.needsUpdate = true; }); });
+  const turn = new THREE.Group(); turn.add(g.scene); turn.rotation.set(o.rotX ?? 0, o.rotY ?? 0, 0); turn.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(turn), dim = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3()), k = o.width / dim.x;
+  const holder = new THREE.Group(); holder.add(turn); holder.scale.setScalar(k);
+  holder.position.set(o.at[0] - c.x * k, o.at[1] - box.min.y * k, o.at[2] - c.z * k);
+  r.mesh.skeleton.bones[5].add(holder);
+  return { triangles: n, dims: dim.toArray().map(v => +v.toFixed(3)), scale: +k.toFixed(3) };
+}
+/** The prepared headgear (public/game-art/breachline/patch/headgear/headgear.glb) for a squad's sets, on the head bone. */
+async function headgear(name: string, sets: string[]) {
+  const r = rigs.get(name)!, g = await gltf.loadAsync('/game-art/breachline/patch/headgear/headgear.glb');
+  let n = 0; const add: THREE.Mesh[] = [];
+  g.scene.traverse(c => { const m = c as THREE.Mesh; const x = m.userData as { set?: string; color?: string; roughness?: number; metalness?: number; opacity?: number };
+    if (!m.isMesh || !sets.includes(x.set ?? '')) return;
+    m.material = new THREE.MeshStandardMaterial({ color: x.color, roughness: x.roughness, metalness: x.metalness, transparent: (x.opacity ?? 1) < 1, opacity: x.opacity ?? 1 });
+    m.frustumCulled = false; add.push(m); n += tris(m); });
+  for (const m of add) r.mesh.skeleton.bones[5].add(m);
+  return n;
+}
 /** Runs `script` and poses rig `name` at time `t` (s after the script's lead-in). Returns the root position. */
 function pose(name: string, script: string, t: number) {
   const r = rigs.get(name)!, sc = SCRIPTS[script], dt = 1 / 60, total = t + (sc.lead ?? 0);
@@ -338,6 +365,6 @@ function markers(name: string, pts: [number, number, number][], rotY = 0, r = 0.
   grp.rotation.y = rotY; const w = new THREE.Group(); w.add(grp); objects.set(name, w);
 }
 
-const api = { load, loadPrepared, markers, loadSkinned, ourRig, pose, joint, ourRifleman, ourAr5, frame, project, info: () => Object.fromEntries(info) };
+const api = { load, loadPrepared, markers, loadSkinned, headProp, headgear, ourRig, pose, joint, ourRifleman, ourAr5, frame, project, info: () => Object.fromEntries(info) };
 (window as unknown as { __trial: typeof api }).__trial = api;
 (window as unknown as { __trialReady: boolean }).__trialReady = true;

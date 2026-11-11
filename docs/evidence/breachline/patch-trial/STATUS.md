@@ -382,3 +382,70 @@ Sheets: `job2-5-weight-fixes.jpg`, `job2-5-look-squad-b.jpg`, `job2-5-look-squad
   detailed and better proportioned than ours. At 8 m (116 px) both squads separate at a glance and the soldier still
   reads better: real pouches, knee pads and boots against our smooth suit. At 20 m (46 px) the two figures are
   similar; the squad colours are what tell them apart, and both pass.
+
+---
+
+# Job 3 (planner, 2026-11-11 11:51 UTC): the asset's own head and hands, headgear from Patch, then in the game
+
+## 3.1 The asset's own head and hands — done
+
+Proof: `job3-1-2-head-hands-headgear.jpg`. `prep-soldier.mjs` now runs with `FULL=1` (no cuts) and repaints at
+2048 from the 4096 sources. `skin-soldier.ts` runs with `FULL=1`. The cut version from 2.1–2.5 is replaced in the
+same folder and under the same file names.
+
+- **Head:** every texel of the head and neck becomes a dark knitted balaclava (vertical ribs 3.5 mm apart, stitch rows
+  4.5 mm, a matching ripple in the normal map, roughness 0.96), except a band across the eyes (y 1.578–1.625 m,
+  front only), which keeps the asset's own eyes and brows. The head shape and neck stay. The hair's quiff was flattened
+  a little (the top 5 cm by up to 35%) so it does not show as a bump under the knit. The mask's new G channel marks
+  "keep" (balaclava, eye band, gloves), so the squad recolour leaves them alone.
+- **Hands:** the bare skin of the fingertips (32k texels, orange-pink by colour test inside the hand region) is painted
+  as black synthetic glove; the glove texels stay. They remain the asset's fused hands, bound to the hand bones,
+  with the hand bone at the real wrist (0.915 m) and the hand's own direction measured (wrist to fingertips). They do
+  not curl round the grip: the animator places the hand, but these fingers cannot close. At 2 m they read as gloved
+  hands on the rifle (sheet, last column).
+- **Bone lengths, what I chose.** The animator's two-bone arm IK uses the skeleton's fixed lengths
+  (`UPPER_LEN`, `FORE_LEN` in `skeleton.ts`), so our skeleton cannot take the asset's lengths without editing that
+  folder. I keep our lengths and stretch the asset to them, but far less than before, because the forearm now runs
+  to the real wrist: forearm ×1.13 (was ×1.37), upper arm ×0.88, legs ×1.04. The hands keep their own size.
+- **Fill patches** (item 4 of the job, built here): a closed ellipsoid of black cloth inside each hip fold (0.075 ×
+  0.07 × 0.08 m, half pelvis, half thigh with the hip helper; 2 × 252 triangles) so a crouch never shows the backdrop
+  through the fused crotch geometry. The holster and thigh pockets were already rigid to the thigh (2.5); with the
+  hands kept, the rigid regions now stop short of the hands (they had caught them).
+- Budget: the tactical folder is 4.5 MB (the repainted normal map compresses less well).
+
+## 3.2 Headgear from Patch — done
+
+Searched with single words (`helmet` 56 hits, `mask` 168, `goggles` 2, `headset` 1, `cap` 99 (only end caps and a
+cartoon hat), `balaclava` and `beanie` 0). Candidates' thumbnails: `job3-2-headgear-candidates.jpg`. Tried on the
+head: steel helmet, goggles, headset, dark armoured helmet.
+
+| Candidate | Verdict |
+| --- | --- |
+| `polyfork:steel-helmet-f5aa7d` (684 triangles, CC-BY, by an artist) | **Adopted, squad A.** Generic steel helmet with netting; low-poly and flat-coloured, recoloured dark slate. |
+| `simready:ppe_eyeProtection_goggles_a01` (226k triangles, CC-BY, NVIDIA SimReady) | **Adopted, squad A**, over the eyes; decimated to 2,499 triangles; plain dark plastic and smoked lens. |
+| `polyfork:call-headset-a95887` (516 triangles, CC-BY) | **Adopted, squad B**, over the bare balaclava; recoloured near-black. |
+| `polyfork:flight-helmet-56f390` | Rejected: a cartoon space-style helmet. |
+| `scenario:asset_21XK6moCyyMRnBDPnHW8KBmJ` dark armoured helmet | Rejected: sci-fi armour. |
+| `scenario:asset_2Ro5Mui16ixub1zqw2BiqKaR` rusted steel helmet | Rejected: a 16th-century morion. |
+| `scenario:asset_LTuvr9RKsbZJHn9YmZ5M1JtE`, `..._kSuefGeNxHWWfTVVGx3Dxn1U` goggle/riveted helmets | Rejected: fantasy full-face masks. |
+| `polyhaven:old_gas_mask` | Rejected: a vintage civil-defence mask with a waist-length hose. |
+
+Silhouettes: **A = helmet and goggles, B = bare balaclava and headset.** Prepared by `prep-headgear.ts` into
+`public/game-art/breachline/patch/headgear/headgear.glb` (150 KB; helmet 684, goggles 2,499 and headset 516
+triangles). Every mesh is already in head-bone space; colour, roughness, metalness and opacity are in node
+`extras`, and the sets are listed in the asset `extras`. What does not fit: the helmet is low-poly and flat-shaded
+next to the body (fine at 8 m and beyond, plain at 2 m), and the headset is stylised.
+
+**Credits and licences, exactly as the Patch records give them:**
+
+> Steel Helmet by Polyfork (https://polyfork.dev/asset/steel-helmet-f5aa7d), CC BY 4.0. Licence: https://creativecommons.org/licenses/by/4.0/. Changed by Patch: a compressed preview copy added for the viewer (web and src are as published).
+
+Licence: CC-BY-4.0 (Creative Commons Attribution 4.0 International, https://creativecommons.org/licenses/by/4.0/). AI-generated: no.
+
+> Call Headset by Polyfork (https://polyfork.dev/asset/call-headset-a95887), CC BY 4.0. Licence: https://creativecommons.org/licenses/by/4.0/. Changed by Patch: a compressed preview copy added for the viewer (web and src are as published).
+
+Licence: CC-BY-4.0 (Creative Commons Attribution 4.0 International, https://creativecommons.org/licenses/by/4.0/). AI-generated: no.
+
+> "Protective eyewear" by NVIDIA (SimReady, https://huggingface.co/datasets/nvidia/simready-assets/tree/524747d9b5e1f21b5b18b56041788c01d745f1a1/ppe_eyeProtection_goggles_a01), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). Changed by Patch: converted from USD to glTF, MDL materials dropped for the UsdPreviewSurface textures, textures resized to 2048 px, ambient occlusion mapped from the ORM texture, mass and one convex hull per part added as OMI_physics_body and OMI_physics_shape, pivot moved to the bottom centre, credit and license added to the file metadata.
+
+Licence: CC-BY-4.0 (Creative Commons Attribution 4.0 International, https://creativecommons.org/licenses/by/4.0/). AI-generated: no.

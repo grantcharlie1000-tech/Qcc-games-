@@ -10,7 +10,7 @@
  * Writes public/game-art/breachline/patch/tactical/body-skinned.glb (nodes body_lod0, body_lod1; JOINTS_0 indices
  * are the skeleton's bone order `B`). */
 import * as THREE from 'three';
-import { B, BONES, JOINT, PARENT, SIDE, sgn } from '../../../src/games/breachline/render/fighters/skeleton';
+import { B, BONES, JOINT, PARENT, SIDE, sgn, armDir } from '../../../src/games/breachline/render/fighters/skeleton';
 // @ts-expect-error plain JS module
 import { readGlb, primitive, writeGlb } from './glb.mjs';
 
@@ -18,6 +18,8 @@ const OUT = 'public/game-art/breachline/patch/tactical';
 /** Weight smoothing passes over the welded mesh. */
 const SMOOTH = +(process.env.SMOOTH ?? 10);
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+/** Job 3: skin the uncut mesh (head and hands kept). */
+const FULL = process.env.FULL === '1';
 
 /** Measured joints of the soldier mesh in the fighters' frame (x and z negated from the file's +Z-facing frame). */
 const CAND: THREE.Vector3[] = JOINT.map(j => j.clone());
@@ -26,7 +28,8 @@ for (const s of [0, 1]) {
   CAND[S.clav] = V(g * 0.03, 1.41, 0);
   CAND[S.upper] = V(g * 0.205, 1.40, 0.02);
   CAND[S.fore] = V(g * 0.34, 1.10, 0.02);
-  CAND[S.hand] = V(g * 0.388, 0.95, -0.08);
+  // Job 3 (FULL): the asset's own hands are kept, so the hand bone sits at the real wrist below the glove cuff.
+  CAND[S.hand] = FULL ? V(g * 0.39, 0.915, -0.10) : V(g * 0.388, 0.95, -0.08);
   CAND[S.twist] = CAND[S.fore].clone().lerp(CAND[S.hand], 0.5);
   CAND[S.elbow] = CAND[S.fore].clone(); CAND[S.delt] = CAND[S.upper].clone();
   CAND[S.thigh] = V(g * 0.10, 0.90, 0); CAND[S.hip] = CAND[S.thigh].clone();
@@ -40,8 +43,13 @@ CAND[B.pelvis] = V(0, 0.95, 0); CAND[B.spine1] = V(0, 1.065, 0); CAND[B.spine2] 
 const CHILD: (number | null)[] = new Array(BONES).fill(null);
 CHILD[B.pelvis] = B.spine1; CHILD[B.spine1] = B.spine2; CHILD[B.spine2] = B.neck; CHILD[B.neck] = B.head;
 for (const s of [0, 1]) { const S = SIDE[s]; CHILD[S.clav] = S.upper; CHILD[S.upper] = S.fore; CHILD[S.fore] = S.hand; CHILD[S.thigh] = S.shin; CHILD[S.shin] = S.foot; CHILD[S.foot] = S.toe; }
+/** Segment ends for bones without a child: the hand to the fingertips, the head to the crown (measured / bind). */
+const TIP_C: (THREE.Vector3 | null)[] = new Array(BONES).fill(null), TIP_B: (THREE.Vector3 | null)[] = new Array(BONES).fill(null);
+for (const s of [0, 1]) { const S = SIDE[s], g = sgn(s); TIP_C[S.hand] = V(g * 0.37, 0.74, -0.15); TIP_B[S.hand] = JOINT[S.hand].clone().addScaledVector(armDir(s), 0.18); }
+TIP_C[B.head] = V(0, 1.74, 0); TIP_B[B.head] = JOINT[B.head].clone().add(V(0, 0.18, 0));
+const endC = (b: number) => CHILD[b] !== null ? CAND[CHILD[b]!] : TIP_C[b]!;
 /** Bones a vertex may weight to (main bones; helpers are added at the joints afterwards). */
-const MAIN = [B.pelvis, B.spine1, B.spine2, B.neck, ...[0, 1].flatMap(s => { const S = SIDE[s]; return [S.clav, S.upper, S.fore, S.thigh, S.shin, S.foot]; /* no hand bone: the hands are cut off */ })];
+const MAIN = [B.pelvis, B.spine1, B.spine2, B.neck, ...(FULL ? [B.head] : []), ...[0, 1].flatMap(s => { const S = SIDE[s]; return [S.clav, S.upper, S.fore, ...(FULL ? [S.hand] : []), S.thigh, S.shin, S.foot]; })];
 const sideOf = (b: number) => SIDE[0] && Object.values(SIDE[0]).includes(b as never) ? 0 : Object.values(SIDE[1]).includes(b as never) ? 1 : -1;
 const adjacent = (a: number, b: number) => a === b || PARENT[a] === b || PARENT[b] === a || (PARENT[a] === PARENT[b] && PARENT[a] > 0 && sideOf(a) === sideOf(b));
 
@@ -51,7 +59,7 @@ for (let i = 0; i < BONES; i++) {
   const c = CHILD[i]; if (c === null) continue;
   ROT[i].setFromUnitVectors(JOINT[c].clone().sub(JOINT[i]).normalize(), CAND[c].clone().sub(CAND[i]).normalize());
 }
-for (const s of [0, 1]) { const S = SIDE[s]; ROT[S.hand].copy(ROT[S.fore]); ROT[S.twist].copy(ROT[S.fore]); ROT[S.elbow].copy(ROT[S.upper]).slerp(ROT[S.fore], 0.5); ROT[S.knee].copy(ROT[S.thigh]).slerp(ROT[S.shin], 0.5); ROT[S.delt].copy(ROT[S.clav]).slerp(ROT[S.upper], 0.5); ROT[S.hip].copy(ROT[B.pelvis]).slerp(ROT[S.thigh], 0.5); ROT[S.toe].copy(ROT[S.foot]); }
+for (const s of [0, 1]) { const S = SIDE[s]; if (FULL) ROT[S.hand].setFromUnitVectors(TIP_B[S.hand]!.clone().sub(JOINT[S.hand]).normalize(), TIP_C[S.hand]!.clone().sub(CAND[S.hand]).normalize()); else ROT[S.hand].copy(ROT[S.fore]); ROT[S.twist].copy(ROT[S.fore]); ROT[S.elbow].copy(ROT[S.upper]).slerp(ROT[S.fore], 0.5); ROT[S.knee].copy(ROT[S.thigh]).slerp(ROT[S.shin], 0.5); ROT[S.delt].copy(ROT[S.clav]).slerp(ROT[S.upper], 0.5); ROT[S.hip].copy(ROT[B.pelvis]).slerp(ROT[S.thigh], 0.5); ROT[S.toe].copy(ROT[S.foot]); }
 
 /** Each limb bone's length ratio, ours / measured: the soldier's forearm (elbow to glove cuff) is 0.19 m against our
  * 0.255 m, so without this the hand floats 6 cm beyond the cuff. Applied along the bone, not across it. */
@@ -73,9 +81,10 @@ function skin(pos: Float32Array, nrm: Float32Array, idx: Uint32Array) {
     const ds = MAIN.map(b => {
       const sb = sideOf(b);
       if (sb >= 0 && side >= 0 && sb !== side) return { b, d: Infinity };
-      const c = CHILD[b]!; let d = segDist(p, CAND[b], CAND[c]).d;
+      let d = segDist(p, CAND[b], endC(b)).d;
       // Arm bones only for points outside the torso's width (the A-pose arm hangs 6 cm clear of the body).
       const arm = [SIDE[0].upper, SIDE[0].fore, SIDE[0].hand, SIDE[1].upper, SIDE[1].fore, SIDE[1].hand].includes(b as never);
+      if (b === B.head && p.y < 1.47) d = Infinity;
       if (arm && p.y < 1.3) d *= 1 + 6 * (1 - THREE.MathUtils.smoothstep(Math.abs(p.x), 0.235, 0.29)); // soft: no hard seam at the inner arm
       if (!arm && b !== B.neck && Math.abs(p.x) > 0.29 && p.y > 0.85) d *= 3;
       return { b, d };
@@ -122,8 +131,8 @@ function skin(pos: Float32Array, nrm: Float32Array, idx: Uint32Array) {
       for (const b of [B.spine2, S.clav]) { const w = m.get(b) ?? 0; if (w > 0) { m.set(b, w * (1 - 0.7 * k)); m.set(S.delt, (m.get(S.delt) ?? 0) + w * 0.7 * k); } }
       shoulderFixed++;
     }
-    const holster = side === 1 && p.x > 0.195 && p.y > 0.64 && p.y < 0.97 && Math.abs(p.z) < 0.13;
-    const pocket = ax > 0.16 && p.y > 0.58 && p.y < 0.86 && Math.abs(p.z) < 0.12;
+    const holster = side === 1 && p.x > 0.195 && p.x < 0.30 && p.y > 0.64 && p.y < 0.97 && Math.abs(p.z) < 0.13;
+    const pocket = ax > 0.16 && ax < 0.28 && p.y > 0.58 && p.y < 0.86 && Math.abs(p.z) < 0.12;
     if (holster || pocket) {
       const top = holster ? THREE.MathUtils.smoothstep(p.y, 0.86, 0.97) * 0.35 : 0;
       m.clear(); m.set(S.thigh, 1 - top); if (top > 0) m.set(S.hip, top); rigid++;
@@ -153,6 +162,28 @@ function skin(pos: Float32Array, nrm: Float32Array, idx: Uint32Array) {
   return { pos: outP, nrm: outN, ji, jw };
 }
 
+/** Hidden fill (job 3): a closed ellipsoid inside each hip fold, black cloth, half pelvis and half thigh (with the hip
+ * helper), so when a crouch opens the fused crotch and pocket geometry there is cloth behind it, not the backdrop.
+ * It sits inside the trousers in every standing pose. */
+function addFill(m: { pos: Float32Array; nrm: Float32Array; uv: Float32Array; j8: Uint8Array; w8: Uint8Array; idx: Uint32Array }) {
+  const n0 = m.pos.length / 3; let best = 0, bd = Infinity;
+  for (let i = 0; i < n0; i++) { const d = Math.hypot(Math.abs(m.pos[i * 3]) - 0.36, m.pos[i * 3 + 1] - 1.2, m.pos[i * 3 + 2]); if (d < bd) { bd = d; best = i; } }
+  const uv0 = [m.uv[best * 2], m.uv[best * 2 + 1]];
+  const P: number[] = [], N: number[] = [], U: number[] = [], J: number[] = [], W: number[] = [], I: number[] = [];
+  const SEG = 14, RING = 9;
+  for (const s of [0, 1]) {
+    const S = SIDE[s], c = V(sgn(s) * 0.1, 0.85, -0.01), r = V(0.075, 0.07, 0.08), base = n0 + P.length / 3;
+    for (let a = 0; a <= RING; a++) for (let b = 0; b <= SEG; b++) {
+      const th = Math.PI * a / RING, ph = 2 * Math.PI * b / SEG, d = V(Math.sin(th) * Math.cos(ph), Math.cos(th), Math.sin(th) * Math.sin(ph));
+      P.push(c.x + d.x * r.x, c.y + d.y * r.y, c.z + d.z * r.z); const nn = V(d.x / r.x, d.y / r.y, d.z / r.z).normalize(); N.push(nn.x, nn.y, nn.z); U.push(uv0[0], uv0[1]);
+      J.push(B.pelvis, S.thigh, S.hip, 0); W.push(102, 102, 51, 0);
+    }
+    for (let a = 0; a < RING; a++) for (let b = 0; b < SEG; b++) { const i0 = base + a * (SEG + 1) + b, i1 = i0 + SEG + 1; I.push(i0, i0 + 1, i1, i0 + 1, i1 + 1, i1); }
+  }
+  const cat = <T extends Float32Array | Uint8Array | Uint32Array>(a: T, b: number[], C: new (n: number) => T) => { const o = new C(a.length + b.length); o.set(a); o.set(b, a.length); return o; };
+  return { pos: cat(m.pos, P, Float32Array), nrm: cat(m.nrm, N, Float32Array), uv: cat(m.uv, U, Float32Array), j8: cat(m.j8, J, Uint8Array), w8: cat(m.w8, W, Uint8Array), idx: cat(m.idx, I, Uint32Array) };
+}
+
 async function main() {
 const g = await readGlb(process.env.STATIC ?? `${OUT}/body.glb`);
 const meshes = [];
@@ -163,7 +194,8 @@ for (const name of ['body_lod0', 'body_lod1']) {
   // Joints and weights as normalised bytes (the weights' rounding error goes to the largest so each set sums to 255).
   const j8 = Uint8Array.from(r.ji), w8 = new Uint8Array(r.jw.length);
   for (let i = 0; i < r.jw.length; i += 4) { let sum = 0, big = i; for (let k = 0; k < 4; k++) { w8[i + k] = Math.round(r.jw[i + k] * 255); sum += w8[i + k]; if (r.jw[i + k] > r.jw[big]) big = i + k; } w8[big] += 255 - sum; }
-  meshes.push({ name, attributes: { POSITION: r.pos, NORMAL: r.nrm, TEXCOORD_0: p.uv, JOINTS_0: j8, WEIGHTS_0: w8 }, indices: p.idx });
+  const out = FULL ? addFill({ pos: r.pos, nrm: r.nrm, uv: p.uv, j8, w8, idx: p.idx }) : { pos: r.pos, nrm: r.nrm, uv: p.uv, j8, w8, idx: p.idx };
+  meshes.push({ name, attributes: { POSITION: out.pos, NORMAL: out.nrm, TEXCOORD_0: out.uv, JOINTS_0: out.j8, WEIGHTS_0: out.w8 }, indices: out.idx });
 }
 await writeGlb(`${OUT}/body-skinned.glb`, meshes, { ...g.json.asset.extras, skeleton: 'src/games/breachline/render/fighters/skeleton.ts (32 bones, order B; bind rotations identity)', facing: '-Z (fighters frame)', units: 'metres, authored size: the fighter group carries SCALE', measuredJoints: CAND.map(v => v.toArray().map(x => +x.toFixed(3))) });
 console.log('written');
