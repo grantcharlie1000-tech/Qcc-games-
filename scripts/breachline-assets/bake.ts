@@ -22,6 +22,7 @@ import type { FaceRec } from '../../src/games/breachline/levelmesh';
 import { newWorld } from '../../src/games/breachline/map';
 import { PAD, REGIONS, collectFaces, normalOf, packAtlas, pointOn, texelST, type Atlas, type Chart } from '../../src/games/breachline/render/levelgeo';
 import { FIXTURE_Y, bakeLights } from '../../src/games/breachline/render/fixtures';
+import { SKY, SUN, SUN_COLOR } from '../../src/games/breachline/lightbake';
 import { PROPS } from '../../src/games/breachline/render/props';
 import { DEFAULT_ALBEDO, PROCEDURAL_ALBEDO, SURFACES } from '../../src/games/breachline/render/surfaces';
 import type { TexId } from '../../src/games/breachline/textures';
@@ -44,6 +45,14 @@ const HALO = 0.9, HALO_FALL = 0.28;
 /** Contact occlusion on bounced light: rays that hit something closer than this darken corners and prop footprints. */
 const CONTACT = 0.5, CONTACT_STRENGTH = 0.85;
 const LAMP_Y = FIXTURE_Y;
+/** Outdoors: the low evening sun the picture already uses (shadowed, so indoors only what comes through an opening),
+ * and the sky, seen by every bounce and probe ray that escapes upward. Strengths are in lightmap units (a lit room
+ * averages about 0.5). */
+const SUN_POWER = Number(process.env.BAKE_SUN ?? 1.6), SKY_POWER = Number(process.env.BAKE_SKY ?? 1.9);
+const SUN_DIR: V3 = [SUN.x, SUN.y, SUN.z];
+const skyAt = (d: V3): V3 => { const k = SKY_POWER * (0.55 + 0.45 * Math.max(0, d[1])); return [SKY[0] * k, SKY[1] * k, SKY[2] * k]; };
+/** Per-region lightmap density: open ground at half the rooms' resolution. */
+const densityOf = (name: string) => (name === 'yard' ? DENSITY / 2 : DENSITY);
 const LIGHTS = bakeLights();
 
 // ---- deterministic random ----
@@ -181,6 +190,14 @@ function direct(p: V3, n: V3, samples: number): { v: V3; dir: V3 } {
     }
     v[0] += k * l.color[0]; v[1] += k * l.color[1]; v[2] += k * l.color[2];
   }
+  // The sun, where the surface faces it and nothing stands in the way.
+  const cs = n[0] * SUN_DIR[0] + n[1] * SUN_DIR[1] + n[2] * SUN_DIR[2];
+  if (cs > 0 && !cast(p, SUN_DIR)) {
+    const k = SUN_POWER * cs;
+    v[0] += k * SUN_COLOR[0]; v[1] += k * SUN_COLOR[1]; v[2] += k * SUN_COLOR[2];
+    const w = k * (SUN_COLOR[0] * 0.3 + SUN_COLOR[1] * 0.59 + SUN_COLOR[2] * 0.11);
+    dir[0] += w * SUN_DIR[0]; dir[1] += w * SUN_DIR[1]; dir[2] += w * SUN_DIR[2];
+  }
   return { v, dir };
 }
 
@@ -188,7 +205,7 @@ function direct(p: V3, n: V3, samples: number): { v: V3; dir: V3 } {
 async function main() {
   const t0 = performance.now();
   const { byRegion, rest } = collectFaces();
-  const atlases: Atlas[] = byRegion.map(f => packAtlas(f.filter(x => !x.glow), DENSITY));
+  const atlases: Atlas[] = byRegion.map((f, i) => packAtlas(f.filter(x => !x.glow), densityOf(REGIONS[i].name)));
   // Static faces. Lamp panels are left out: the light samples sit just under them.
   const faceTri = async (f: FaceRec, chart: number, region: number) => {
     if (f.glow) return;
@@ -287,7 +304,7 @@ async function main() {
           let near = 0;
           for (let a = 0; a < sq; a++) for (let b = 0; b < sq; b++) {
             const d = cosineDir(n, (a + rnd()) / sq, (b + rnd()) / sq), h = cast(p, d);
-            if (!h) continue;
+            if (!h) { if (d[1] > 0) { const L = skyAt(d); acc[0] += L[0]; acc[1] += L[1]; acc[2] += L[2]; } continue; }
             if (h.t < CONTACT) near += 1 - h.t / CONTACT;
             const L = outgoing(h, field);
             acc[0] += L[0]; acc[1] += L[1]; acc[2] += L[2];
@@ -336,6 +353,7 @@ async function main() {
           for (const l of LIGHTS) if (Math.abs(x - l.x) < l.w / 2 && Math.abs(zz - l.z) < l.d / 2) { L = [l.color[0] * LAMP_POWER * Math.PI, l.color[1] * LAMP_POWER * Math.PI, l.color[2] * LAMP_POWER * Math.PI]; lit = true; break; }
         }
         if (!lit && h) L = outgoing(h, field);
+        else if (!lit && d[1] > 0) L = skyAt(d);
         const Y = [0.282095, 0.488603 * d[1], 0.488603 * d[2], 0.488603 * d[0]];
         for (let c = 0; c < 4; c++) for (let ch = 0; ch < 3; ch++) sh[c * 3 + ch] += L[ch] * Y[c] * 4 * Math.PI / PROBE_RAYS;
       }
@@ -364,7 +382,7 @@ async function main() {
     });
     await mkdir(join(OUT, 'bake'), { recursive: true });
     await writeFile(join(OUT, 'bake', `${region.name}.json`), JSON.stringify({
-      version: 1, region: region.name, meanLight: +meanLight.toFixed(4), rect: [region.x0, region.z0, region.x1, region.z1], width: W, height: H, density: DENSITY, scale: LM_SCALE,
+      version: 1, region: region.name, meanLight: +meanLight.toFixed(4), rect: [region.x0, region.z0, region.x1, region.z1], width: W, height: H, density: densityOf(region.name), scale: LM_SCALE,
       props, grid: { x0: region.x0, z0: region.z0, nx: gx + 1, nz: gz + 1, heights: [0.6, 1.6], sh: grid }, panels,
     }) + '\n');
     console.log(`${region.name}: probes and panels done, total ${((performance.now() - t0) / 1000).toFixed(1)} s`);

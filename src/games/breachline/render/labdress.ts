@@ -18,6 +18,7 @@ const inRoom = (r: Region, x: number, z: number) => x > r.x0 && x < r.x1 && z > 
 export function dressRoom(atlas: Atlas, room: Region): DetailBuilder {
   if (room.name === 'corridor') return dressCorridor(atlas, room);
   if (room.name === 'archive') return dressArchive(atlas, room);
+  if (room.name === 'yard') return dressYard(atlas, room);
   return dressLab(atlas, room);
 }
 
@@ -229,6 +230,26 @@ function dressCorridor(atlas: Atlas, room: Region): DetailBuilder {
       D.mesh('exit', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [x, y - 0.001, -0.5], up, [1, 1, 1], g.attributes.uv.array);
       g.dispose();
     }
+  }
+  return D;
+}
+
+/** The yard: concrete kerbs round the grass, drain grates in the asphalt. All low enough never to read as cover. */
+function dressYard(atlas: Atlas, room: Region): DetailBuilder {
+  const D = new DetailBuilder(atlas), up: V3 = [0, 1, 0], K = 0.14, KW = 0.15;
+  for (const f of MAP.floors) {
+    if (f.mat !== 'grass' || !inRoom(room, (f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2)) continue;
+    const kerb = (x0: number, z0: number, x1: number, z1: number) => D.box('socket', x0, 0, z0, x1, K, z1, [(x0 + x1) / 2, 0.02, (z0 + z1) / 2], up, [0.72, 0.71, 0.68]);
+    if (f.z0 > room.z0 + 0.1) kerb(f.x0, f.z0 - KW, f.x1, f.z0);
+    if (f.x0 > room.x0 + 0.1) kerb(f.x0 - KW, f.z0, f.x0, f.z1);
+    if (f.x1 < room.x1 - 0.1) kerb(f.x1, f.z0, f.x1 + KW, f.z1);
+  }
+  // Drain grates: a dark frame and slats over a black pit.
+  for (const [x, z] of [[-12, 12.6], [-2, 16.5], [6.5, 12.6], [14, 15.5], [20, 13]] as const) {
+    const on: V3 = [x, 0.03, z];
+    D.box('kick', x - 0.3, 0.005, z - 0.3, x + 0.3, 0.012, z + 0.3, on, up);
+    for (let i = 0; i < 9; i++) { const sx = x - 0.27 + i * 0.065; D.box('steel', sx, 0.012, z - 0.27, sx + 0.025, 0.02, z + 0.27, on, up, [0.45, 0.43, 0.4]); }
+    for (const zz of [z - 0.3, z + 0.27]) D.box('steel', x - 0.3, 0.012, zz, x + 0.3, 0.022, zz + 0.03, on, up, [0.4, 0.38, 0.36]);
   }
   return D;
 }

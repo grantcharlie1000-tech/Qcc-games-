@@ -152,7 +152,7 @@ export function emitLevel(L: LevelBuilder) {
   // Ground, then grass and room floors a hair above it.
   MAP.floors.forEach((f, i) => { const y = i === 0 ? 0 : f.mat === 'grass' ? 0.012 : 0.02; L.face(FLOOR_TEX[f.mat], f.x0, y, f.z1, 1, 0, 0, f.x1 - f.x0, 0, 0, -1, f.z1 - f.z0, WHITE, 'world', i === 0 ? 1.4 : 0.6); });
   // Yard markings.
-  const line = (x0: number, z0: number, x1: number, z1: number, tint: RGB) => L.face('paint', x0, 0.03, z1, 1, 0, 0, x1 - x0, 0, 0, -1, z1 - z0, tint, 'world', 1.2);
+  const line = (x0: number, z0: number, x1: number, z1: number, tint: RGB) => L.face('line', x0, 0.03, z1, 1, 0, 0, x1 - x0, 0, 0, -1, z1 - z0, tint, 'world', 1.2);
   for (let i = 0; i < 6; i++) line(3 + i * 2.6, 17.2, 3.12 + i * 2.6, 21.6, [0.8, 0.8, 0.76]);
   for (let i = 0; i < 5; i++) line(-26.8, -3 + i * 2.6, -22.4, -2.88 + i * 2.6, [0.8, 0.8, 0.76]);
   for (let i = 0; i < 8; i++) line(-18.4 + i * 0.44, -7.5, -18.2 + i * 0.44, -4.5, [0.85, 0.66, 0.1]);

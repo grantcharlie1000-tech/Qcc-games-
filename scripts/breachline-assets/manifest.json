@@ -459,6 +459,138 @@
         }
       ],
       "use": ""
+    },
+    {
+      "id": "asphalt_02",
+      "kind": "texture",
+      "name": "Asphalt 02",
+      "source": "https://polyhaven.com/a/asphalt_02",
+      "author": "Rob Tuytel",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        3,
+        3
+      ],
+      "files": [
+        {
+          "path": "asphalt_02/asphalt_02_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/asphalt_02/asphalt_02_diff_2k.jpg",
+          "size": 3075676,
+          "sha256": "28f5ba8690553f192c0e5e1a5ff40f34765b4b93f4cc7059b1a3e9c795b6c28c"
+        },
+        {
+          "path": "asphalt_02/asphalt_02_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/asphalt_02/asphalt_02_nor_gl_2k.jpg",
+          "size": 4943950,
+          "sha256": "ffe49db71a0fd34c1e259625df66a302a237597d6ef655307987ec4e45bc6f21"
+        },
+        {
+          "path": "asphalt_02/asphalt_02_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/asphalt_02/asphalt_02_arm_2k.jpg",
+          "size": 1299186,
+          "sha256": "ed70e88640e4ed51cf1c3e57cb20db26983599b20b867c2526439e3a2c849fea"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "concrete_floor_02",
+      "kind": "texture",
+      "name": "Concrete Floor 02",
+      "source": "https://polyhaven.com/a/concrete_floor_02",
+      "author": "Rob Tuytel",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        2,
+        2
+      ],
+      "files": [
+        {
+          "path": "concrete_floor_02/concrete_floor_02_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_floor_02/concrete_floor_02_diff_2k.jpg",
+          "size": 3310792,
+          "sha256": "b08a20dcb306d08ee7f4a05ec216b19b7fd37e95745998ec5f81ecedaac1f0e9"
+        },
+        {
+          "path": "concrete_floor_02/concrete_floor_02_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_floor_02/concrete_floor_02_nor_gl_2k.jpg",
+          "size": 935810,
+          "sha256": "ce12d18f283f884f4be6f6c110f81582376049caada1e226958659d3d5fbaae1"
+        },
+        {
+          "path": "concrete_floor_02/concrete_floor_02_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_floor_02/concrete_floor_02_arm_2k.jpg",
+          "size": 702807,
+          "sha256": "bea1da529cfaf1dba9d127b8ae89793530d261f199409cdebb23abf750306c74"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "red_brick_03",
+      "kind": "texture",
+      "name": "Red Brick 03",
+      "source": "https://polyhaven.com/a/red_brick_03",
+      "author": "Rob Tuytel",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1,
+        1
+      ],
+      "files": [
+        {
+          "path": "red_brick_03/red_brick_03_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/red_brick_03/red_brick_03_diff_2k.jpg",
+          "size": 2969950,
+          "sha256": "c37ef11bb94a533d1c758c5c7d7199264e90f19b23946766c7c59aa189c11ff6"
+        },
+        {
+          "path": "red_brick_03/red_brick_03_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/red_brick_03/red_brick_03_nor_gl_2k.jpg",
+          "size": 3684630,
+          "sha256": "3bcb8714c450369915a9608a9e5318433a5e5df932184519bdbfd993dec16a9f"
+        },
+        {
+          "path": "red_brick_03/red_brick_03_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/red_brick_03/red_brick_03_arm_2k.jpg",
+          "size": 697262,
+          "sha256": "8866779a31fdda349433ed749b299bf0b4bb7c56b1ca12637ca3d17642a07982"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "aerial_grass_rock",
+      "kind": "texture",
+      "name": "Aerial Grass Rock",
+      "source": "https://polyhaven.com/a/aerial_grass_rock",
+      "author": "Rob Tuytel",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        15,
+        15
+      ],
+      "files": [
+        {
+          "path": "aerial_grass_rock/aerial_grass_rock_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/aerial_grass_rock/aerial_grass_rock_diff_2k.jpg",
+          "size": 2624635,
+          "sha256": "1a2ddfa4652adbe00447b940c40019d46f4b88245bc1b341cdf622c2110b7bc5"
+        },
+        {
+          "path": "aerial_grass_rock/aerial_grass_rock_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/aerial_grass_rock/aerial_grass_rock_nor_gl_2k.jpg",
+          "size": 3799025,
+          "sha256": "c6aa14b042ce243f93a6ca807f46a085711c23ad316b104578e92df7770ee285"
+        },
+        {
+          "path": "aerial_grass_rock/aerial_grass_rock_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/aerial_grass_rock/aerial_grass_rock_arm_2k.jpg",
+          "size": 945301,
+          "sha256": "a7daabd9aa877f861ced2830b792709f31a399324db47df2bdac256c0414fc14"
+        }
+      ],
+      "use": ""
     }
   ]
 }

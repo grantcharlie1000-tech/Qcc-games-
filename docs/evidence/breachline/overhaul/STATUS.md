@@ -121,10 +121,28 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** Archive round 2 (boxes, desk lamp) and corridor round 4 done; kit leftovers done
-(no new evidence); next the yard.
+**Where I am (keep current):** yard steps 1-2 done (sun and sky in the bake, the region, ground sets, bays, kerbs,
+drains); next step 4, readability, then step 3, dressing.
 
-## The yard: plan (not started)
+## The yard, steps 1-2 (`rooms/yard/round-1/step2.png`, 960 px)
+
+- **Step 1, sun and sky in the bake.** `bake.ts` now adds the scene's evening sun (`SUN`, `SUN_COLOR` from
+  `lightbake.ts`, shadowed by a ray) to every point's direct light. Every bounce and probe ray that escapes upward
+  sees the sky (`SKY`, brighter towards the zenith). Strengths are `BAKE_SUN` 1.6 and `BAKE_SKY` 1.9. Indoors the
+  roof shields both, so only openings let them in; the indoor rooms aren't re-baked yet.
+- **Step 2, the region and its surfaces.** The South Yard is an art region (`room('South Yard', 'yard')`, baked at
+  half density: 99k texels, 51 s). Poly Haven CC0 sets, credited by the build:
+  - `asphalt_02`: the yard ground;
+  - `concrete_floor_02`: concrete boxes and slab;
+  - `red_brick_03`: the building's brick skin;
+  - `aerial_grass_rock`: the grass verges.
+- **Dressing:** road paint has its own worn `line` surface, so the bay lines read on the asphalt. Concrete kerbs
+  run round the grass verges, and five drain grates (frame, slats, dark pit) sit in the asphalt.
+- **Budget:** yard views are 62-242 draw calls and 32-93k triangles. Download: low tier 8.5 MB, High extra 25.5 MB.
+- **Next:** step 4, readability. The perimeter wall reads very dark in its own shadow, and the soldiers need to
+  separate from it. Then step 3, dressing (crates, jerrycans, barrels).
+
+## The yard: plan
 
 The yard has had no art pass and is still the procedural look. Making it an art region is bigger than a room:
 1. **Sky and sun in the bake.** `bake.ts` only knows ceiling fittings. The yard needs a sun term (the scene's

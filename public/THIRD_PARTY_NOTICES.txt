@@ -3794,6 +3794,10 @@ Terrazzo Tiles (texture) by Amal Kumar. https://polyhaven.com/a/terrazzo_tiles. 
 Wood Planks (texture) by Amal Kumar. https://polyhaven.com/a/wood_planks. License: CC0-1.0.
 Cardboard 004 (texture) by ambientCG (Lennart Demes). https://ambientcg.com/a/Cardboard004. License: CC0-1.0.
 Security Camera 01 (model) by Alexander Otterbeck, Yann Kervran. https://polyhaven.com/a/security_camera_01. License: CC0-1.0.
+Asphalt 02 (texture) by Rob Tuytel. https://polyhaven.com/a/asphalt_02. License: CC0-1.0.
+Concrete Floor 02 (texture) by Rob Tuytel. https://polyhaven.com/a/concrete_floor_02. License: CC0-1.0.
+Red Brick 03 (texture) by Rob Tuytel. https://polyhaven.com/a/red_brick_03. License: CC0-1.0.
+Aerial Grass Rock (texture) by Rob Tuytel. https://polyhaven.com/a/aerial_grass_rock. License: CC0-1.0.
 
 Basis Universal transcoder (basis_transcoder.js and .wasm, as distributed with three.js r180), by Binomial LLC.
 License: Apache-2.0 (full text above in this file). Modified: public/game-art/breachline/basis/ktx2-worker.js wraps it

@@ -4,7 +4,7 @@ import * as THREE from 'three';
 
 export type TexId =
   | 'brick' | 'cinder' | 'drywall' | 'core' | 'planks' | 'plate' | 'concrete' | 'trim' | 'wood' | 'crate' | 'container' | 'paint' | 'glass' | 'rack' | 'shelf' | 'steel' | 'counter' | 'fabric' | 'rubber'
-  | 'asphalt' | 'grass' | 'slab' | 'tile' | 'lino' | 'carpet' | 'floorboards' | 'raised' | 'check' | 'ceiling' | 'lamp' | 'roof';
+  | 'asphalt' | 'grass' | 'slab' | 'line' | 'tile' | 'lino' | 'carpet' | 'floorboards' | 'raised' | 'check' | 'ceiling' | 'lamp' | 'roof';
 
 type G = CanvasRenderingContext2D;
 function rng(seed: number) { let s = seed | 0; return () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), s | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -125,6 +125,8 @@ const painters: Record<TexId, (g: G, s: number, r: () => number) => void> = {
     blotches(g, s, r, 12, 'rgba(110,60,25,0.22)', 6, 40);
     grain(g, s, r, 9);
   },
+  // Road paint: worn, with the asphalt showing through in specks.
+  line(g, s, r) { g.fillStyle = '#e8e6e0'; g.fillRect(0, 0, s, s); blotches(g, s, r, 30, 'rgba(40,40,40,0.35)', 2, 8); grain(g, s, r, 8); },
   paint(g, s, r) { g.fillStyle = '#e6e6e6'; g.fillRect(0, 0, s, s); const grad = g.createLinearGradient(0, 0, 0, s); grad.addColorStop(0, 'rgba(255,255,255,0.25)'); grad.addColorStop(1, 'rgba(0,0,0,0.2)'); g.fillStyle = grad; g.fillRect(0, 0, s, s); blotches(g, s, r, 6, 'rgba(60,50,40,0.12)', 10, 50); grain(g, s, r, 6); },
   glass(g, s) { const grad = g.createLinearGradient(0, 0, s, s); grad.addColorStop(0, '#31475a'); grad.addColorStop(0.45, '#182531'); grad.addColorStop(0.5, '#5d7a90'); grad.addColorStop(0.56, '#182531'); grad.addColorStop(1, '#0d151c'); g.fillStyle = grad; g.fillRect(0, 0, s, s); },
   rack(g, s, r) {
@@ -227,7 +229,7 @@ const painters: Record<TexId, (g: G, s: number, r: () => number) => void> = {
 /** Metres covered by one repeat of each texture, across and up. Wall textures are WALL_H tall. */
 export const TILE: Record<TexId, readonly [number, number]> = {
   brick: [1.5, 1.8], cinder: [3, 3], drywall: [3, 3], core: [0.5, 0.5], planks: [1, 1], plate: [1, 2.5], concrete: [3, 3], trim: [0.5, 0.5], wood: [1.2, 1.2], crate: [1, 1], container: [2.4, 2.6],
-  paint: [2, 2], glass: [1.4, 1.4], rack: [0.8, 2.1], shelf: [1.8, 2.2], steel: [1, 2], counter: [1.8, 0.95], fabric: [0.6, 0.6], rubber: [0.5, 0.5],
+  paint: [2, 2], line: [1, 1], glass: [1.4, 1.4], rack: [0.8, 2.1], shelf: [1.8, 2.2], steel: [1, 2], counter: [1.8, 0.95], fabric: [0.6, 0.6], rubber: [0.5, 0.5],
   asphalt: [5, 5], grass: [4, 4], slab: [3, 3], tile: [2, 2], lino: [3, 3], carpet: [1.5, 1.5], floorboards: [2, 2], raised: [1.2, 1.2], check: [2, 2], ceiling: [1.2, 1.2], lamp: [1, 1], roof: [4, 4],
 };
 

@@ -15,7 +15,8 @@ export interface Bake {
 
 const len = Math.hypot(-0.52, 0.4, 0.76);
 export const SUN = { x: -0.52 / len, y: 0.4 / len, z: 0.76 / len };
-const SUN_COLOR: RGB = [1.55, 1.12, 0.7], SKY: RGB = [0.3, 0.37, 0.52], FILL: RGB = [0.105, 0.11, 0.125];
+export const SUN_COLOR: RGB = [1.55, 1.12, 0.7], SKY: RGB = [0.3, 0.37, 0.52];
+const FILL: RGB = [0.105, 0.11, 0.125];
 const PROBE = 1;
 
 export function createBake(): Bake {

@@ -33,6 +33,12 @@ export const SURFACES: Partial<Record<TexId, Surface>> = {
   // Shelving carcasses: dark painted steel behind the modelled uprights and boxes.
   shelf: { set: 'painted_plaster_wall', size: 1, tint: [0.18, 0.19, 0.21] },
   // Polished terrazzo in the corridor: cool grey, glossy enough to carry the fittings' reflections.
+  // The yard (outdoors): worn asphalt, poured concrete, the building's brick skin and rough grass.
+  asphalt: { set: 'asphalt_02', size: 3, gloss: 1, tint: [1.15, 1.15, 1.12] },
+  concrete: { set: 'concrete_floor_02', size: 2, tint: [0.85, 0.85, 0.83] },
+  slab: { set: 'concrete_floor_02', size: 2.5, tint: [0.8, 0.8, 0.78] },
+  brick: { set: 'red_brick_03', size: 1.5, tint: [0.9, 0.85, 0.82] },
+  grass: { set: 'aerial_grass_rock', size: 2.5, tint: [0.85, 0.9, 0.8] },
   lino: { set: 'terrazzo_tiles', size: 2, gloss: 0.3, spec: 2, tint: [0.66, 0.7, 0.8], wear: { axis: 'z', centre: -0.5, half: 1.5 } },
   // Mineral-fibre ceiling tiles, 600 mm, six to a repeat, joints on the T-bar grid.
   ceiling: { set: 'OfficeCeiling001', size: 3.6, normal: 1.5, tint: [0.92, 0.92, 0.9] },

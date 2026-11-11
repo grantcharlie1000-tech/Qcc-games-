@@ -29,6 +29,8 @@ export const BOOKMARKS = {
   'archive-desk': [5.6, 4.3, 0.95, -0.3],
   'server-room': [14.3, -2.6, 0.95, -0.06],
   'south-yard': [3, 19.5, 0, -0.02],
+  // The south yard's painted bays and a grass verge, looking south.
+  'yard-bays': [3.5, 13.2, 2.75, -0.22],
   'west-lot': [-25.5, 0.5, -1.5708, -0.02],
   // Destruction views (rendered after the damage setup below): the charge's breach from the corridor and from the
   // Lab, and the rifle-chewed wall west of it.
