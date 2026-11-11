@@ -19,7 +19,7 @@ export const fb = (finger: number, seg: number) => 3 + finger * 3 + seg;
 
 /** Hand anatomy (right hand, metres, wrist joint at the origin, palm down, fingers along -Z). Gloved radii. */
 interface Digit { base: Vec; len: [number, number, number]; rad: [number, number, number, number]; yaw: number; pitch: number }
-const G = 0.0004;
+const G = 0.0009;
 export const HAND: Digit[] = [
   { base: [-0.02, -0.01, -0.024], len: [0.044, 0.032, 0.028], rad: [0.0142 + G, 0.0118 + G, 0.0108 + G, 0.0093 + G], yaw: 0.62, pitch: -0.32 },
   { base: [-0.026, 0.002, -0.088], len: [0.041, 0.024, 0.021], rad: [0.0096 + G, 0.0086 + G, 0.0078 + G, 0.0068 + G], yaw: 0.07, pitch: 0 },
@@ -27,8 +27,9 @@ export const HAND: Digit[] = [
   { base: [0.0108, 0.002, -0.087], len: [0.043, 0.027, 0.021], rad: [0.0093 + G, 0.0084 + G, 0.0076 + G, 0.0066 + G], yaw: -0.06, pitch: 0 },
   { base: [0.0272, -0.003, -0.077], len: [0.034, 0.021, 0.019], rad: [0.0083 + G, 0.0075 + G, 0.0068 + G, 0.006 + G], yaw: -0.15, pitch: 0 },
 ];
-// Slimmer fingers: a fitted glove, not a padded mitt.
-for (let d = 1; d < 5; d++) HAND[d].rad = HAND[d].rad.map(r => r * 0.9) as Digit['rad'];
+/** First-person glove radii: slimmer than `HAND` (a fitted glove, not a padded mitt). `HAND` itself stays as it
+ * was, because the fighters session builds its hands from it. */
+const fpRad = (d: number, s: number) => (HAND[d].rad[s] - 0.0005) * (d === 0 ? 1 : 0.9);
 /** Rest rotation of each digit's first bone: yaw (toward the thumb side) and pitch. */
 export function digitRest(d: number): THREE.Quaternion {
   const h = HAND[d];
@@ -50,7 +51,7 @@ function handField(wrist: Vec): Field {
   const HB = 2; // hand bone
   // Palm (group 0): metacarpals from the carpus to each knuckle, a palm pad, the heel and the wrist.
   for (let d = 1; d <= 4; d++) {
-    const k = HAND[d].base, r = HAND[d].rad[0];
+    const k = HAND[d].base, r = fpRad(d, 0);
     P.push(cone(W([k[0] * 0.55, k[1] - 0.002, -0.014]), W(k), r * 1.08, r * 1.02, HB, 0));
     P.push(ell(W([k[0], k[1] + 0.001, k[2] + 0.002]), [r * 1.05, r * 0.95, r * 1.1], HB, 0));
   }
@@ -63,7 +64,7 @@ function handField(wrist: Vec): Field {
   P.push(ell(W([-0.019, -0.011, -0.04]), [0.017, 0.015, 0.027], fb(0, 0), 1, TAG.palm, new THREE.Euler(0, 0.45, 0)));
   for (let s = 0; s < 3; s++) {
     const next = at.clone().addScaledVector(tdir, t.len[s]);
-    P.push(cone([at.x, at.y, at.z], [next.x, next.y, next.z], t.rad[s], t.rad[s + 1], fb(0, s), 1, s === 2 ? TAG.tip : TAG.back));
+    P.push(cone([at.x, at.y, at.z], [next.x, next.y, next.z], fpRad(0, s), fpRad(0, s + 1), fb(0, s), 1, s === 2 ? TAG.tip : TAG.back));
     at = next;
   }
   // Web between thumb and index.
@@ -74,10 +75,10 @@ function handField(wrist: Vec): Field {
     let p = new THREE.Vector3(...W(h.base));
     for (let s = 0; s < 3; s++) {
       const n = p.clone().addScaledVector(dir, h.len[s]);
-      P.push(cone([p.x, p.y, p.z], [n.x, n.y, n.z], h.rad[s], h.rad[s + 1], fb(d, s), 1 + d, s === 2 ? TAG.tip : TAG.back));
+      P.push(cone([p.x, p.y, p.z], [n.x, n.y, n.z], fpRad(d, s), fpRad(d, s + 1), fb(d, s), 1 + d, s === 2 ? TAG.tip : TAG.back));
       // Pads on the palm side of each phalanx.
       const m = p.clone().lerp(n, 0.55);
-      P.push(ell([m.x, m.y - h.rad[s] * 0.25, m.z], [h.rad[s] * 0.95, h.rad[s] * 0.8, h.len[s] * 0.36], fb(d, s), 1 + d, TAG.palm));
+      P.push(ell([m.x, m.y - fpRad(d, s) * 0.25, m.z], [fpRad(d, s) * 0.95, fpRad(d, s) * 0.8, h.len[s] * 0.36], fb(d, s), 1 + d, TAG.palm));
       p = n;
     }
   }
@@ -88,12 +89,12 @@ function handField(wrist: Vec): Field {
   P.push(ell(W([0, 0.0, 0.027]), [0.0355, 0.0275, 0.0055], 1, 6, TAG.strap));
   P.push(rbox(W([0.03, 0.006, 0.027]), [0.004, 0.0012, 0.005], 0.001, 1, 6, TAG.strap));
   // Knuckle guard (group 7): moulded pads over each knuckle and a bridge.
-  for (let d = 1; d <= 4; d++) { const k = HAND[d].base; P.push(ell(W([k[0], k[1] + HAND[d].rad[0] + 0.003, k[2] + 0.004]), [0.0082, 0.0044, 0.0088], HB, 7, TAG.guard)); }
+  for (let d = 1; d <= 4; d++) { const k = HAND[d].base; P.push(ell(W([k[0], k[1] + fpRad(d, 0) + 0.003, k[2] + 0.004]), [0.0082, 0.0044, 0.0088], HB, 7, TAG.guard)); }
   // Finger-back guards on the middle phalanges.
   for (let d = 1; d <= 4; d++) {
     const h = HAND[d], dir = new THREE.Vector3(0, 0, -1).applyQuaternion(digitRest(d));
     const m = new THREE.Vector3(...W(h.base)).addScaledVector(dir, h.len[0] + h.len[1] * 0.35);
-    P.push(ell([m.x, m.y + h.rad[1] + 0.0012, m.z], [h.rad[1] * 0.75, 0.0024, h.len[1] * 0.3], fb(d, 1), 7, TAG.guard));
+    P.push(ell([m.x, m.y + fpRad(d, 1) + 0.0012, m.z], [fpRad(d, 1) * 0.75, 0.0024, h.len[1] * 0.3], fb(d, 1), 7, TAG.guard));
   }
   return {
     prims: P,
