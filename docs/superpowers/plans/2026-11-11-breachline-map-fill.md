@@ -223,3 +223,42 @@ texture counts do not change.
 
 **Order.** After the greybox (Phase A) is pushed and while it awaits approval: 10.1 first (it covers what already
 exists), then 10.2 for window glass, then the other breakables as each kind of dressing arrives in Phase C.
+
+## 11. Greybox review 1 (planner, 2026-11-11 21:45 UTC): not approved; revise
+
+The first greybox (0aa91c0: 83 boxes placed by a rule-checked search) passes the data rules and the tests are worth
+keeping exactly as they are. It is not approved because the layout has no intent: it reads as crates scattered by a
+solver, mostly small squares clumped in mid-floor, and it would dress as clutter rather than as rooms people use.
+
+**Change of method: place set pieces by hand, then let the tests judge.** Keep `mapfill.test.ts`; retire the search
+for placement (it may stay as a checker that reports which rule a hand placement breaks).
+
+1. **Set pieces, not boxes.** Each addition is a named, recognisable group with a purpose, built from a small
+   kit: *desk pod* (two or four desks back to back with a low screen, waist-high), *seating group* (two sofas and
+   a low table), *table set*, *island bench*, *cabinet run* (full-height, against a wall), *locker run*, *shelving
+   stub*, *crate stack*, *equipment crate*; outdoors *skip* (about 3.0 × 1.7 × 1.4 m), *pallet stack group*
+   (two or three stacks of different heights with a drum cluster), *low wall or planter* (4–6 m long, waist-high),
+   *bin store* (full-height, about 3 × 1.5 m), *parked trailer*, *generator on a plinth*, *materials drop*.
+2. **Aligned and grouped.** Everything is square to the room, set out in rows or facing groups, with the gaps
+   between pieces either walkable (1.2 m or more) or closed (touching). No diagonal chains of single boxes.
+3. **Use the shell.** The brick outer walls are solid: full-height pieces (lockers, cabinets, shelving, vending)
+   belong against them between the windows (0.75 m clear of each window), and against existing full-height
+   furniture. Mid-floor pieces are mostly waist-high.
+4. **Fewer, larger pieces outdoors.** About four to six set pieces per yard and two or three per lane and lot,
+   each at least 2 m in its long dimension, placed on the lines an attacker walks from each spawn to each entrance
+   so there is cover every 8–10 m, and leaving the spawn rings clear. The North Yard's middle needs one large piece
+   (a parked trailer or a materials drop) even if the 12 × 5 m target is then missed slightly elsewhere.
+5. **Site cores read as open.** In the Lab and the Archive keep the 2.5 × 2.5 m plant core clear and keep the
+   pieces round it few and deliberate: an attacker entering must be able to read where a defender can be.
+6. **The corridor: the rule is relaxed and the target is changed.** A 3 m corridor walled by panels cannot hold
+   full-height cover without becoming a maze, so the 12 m sight-line target is dropped: it stays a long lane on
+   purpose. Instead it gets **three waist-high pieces** (no more than 1.0 m high, 0.5 m deep and 1.4 m long: a
+   filing run, a bench with boxes, a trolley), flush against the panels on alternating sides, at least 2 m from
+   every doorway and about 8 m apart, leaving at least 2.0 m of lane. This is the only exception to the 0.75 m
+   panel clearance. A test must show every panel they touch can still be reached from its room side.
+7. **Count.** Expect about 45–60 collision boxes in total rather than 83; the density target (1.4–2.0 per 10 m²
+   indoors) counts a set piece's boxes individually, so it should still be met.
+
+Send the revised top-down image with each set piece labelled by name, and one sentence per room and per yard
+saying what the layout is for ("two pods split the Office so neither door sees the other"). Rule 7 (fairness at
+windows) and the doorway two-thirds view stay the planner's to judge from that image.
