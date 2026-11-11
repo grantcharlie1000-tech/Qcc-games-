@@ -71,11 +71,11 @@
   "diff-512.jpg": 25043,
   "nor-1024.ktx2": 425944,
   "nor-512.jpg": 11173,
-  "arm-1024.ktx2": 495856,
-  "arm-512.jpg": 57963,
-  "mask-1024.ktx2": 127040,
-  "mask-256.png": 74909,
-  "body-skinned.glb": 1282952
+  "arm-1024.ktx2": 821954,
+  "arm-512.jpg": 88019,
+  "mask-1024.ktx2": 198035,
+  "mask-256.png": 126976,
+  "body-skinned.glb": 1226140
  },
- "bytes": 3162890
+ "bytes": 3585294
 }
