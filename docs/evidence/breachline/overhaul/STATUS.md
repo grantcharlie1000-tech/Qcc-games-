@@ -4,6 +4,11 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: yard step 3b (containers and crate) done.** `rooms/yard/round-1/step3b.png`: the yard, the car, a
+container's door end, the crate stack. Containers have raised corrugation ribs, top and bottom rails, corner posts,
+door leaves with four locking bars and handles, and rust runs; the crate box has edge and cross battens. Next: one
+round each on the Server Room, Lobby, Office and Break Room.
+
 **2026-11-11: yard step 3a (vehicle, perimeter wall, first dressing) done.** `rooms/yard/round-1/step3a.png`.
 The box van is now Poly Haven's `covered_car` (a CC0 photoscan under a dust cover); its collision box was cut to the
 model (1.42 m tall, was 2 m) and `NET_VERSION` bumped to `breachline-2`. The perimeter is precast panels
@@ -134,8 +139,22 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** yard steps 1, 2, 4 and 3a done (vehicle, perimeter wall, first dressing); next the
-containers and the crate box, then one round each on the Server Room, Lobby, Office and Break Room.
+**Where I am (keep current):** yard round 1 done (steps 1-4); next one round each on the Server Room, Lobby, Office
+and Break Room, then a second round on the lowest-scoring area.
+
+## The yard, step 3b: containers and crate (`rooms/yard/round-1/step3b.png`, 960 px)
+
+- **Containers** (`levelmesh.ts`, every container on the map): ribs every 0.3 m on both long sides (outward face
+  and ends only), rails top and bottom, corner posts, and at one end the leaves' meeting line, four locking bars
+  and their handles. Nothing stands more than 3 cm proud of the collision box. The procedural texture gained rust
+  runs from the top rail and a scabbed band low down.
+- **Crate box:** battens on all twelve edges (proud of the sides only, so the military crate on top still sits on the
+  lid) and a cross batten round the middle.
+- **Budget:** yard views 99-257 draw calls, 62-122k triangles (the busiest is the wide south view).
+- **Still wrong:** no container numbers or placards (needs a decal texture); the military crate and the jerrycans
+  read dark from the north (shade side); the West Lot and North Yard are not art regions yet.
+- Tests: unit 5385 passed; Breachline browser 8 passed (the stock warm run is the expected failure).
+
 
 ## The yard, step 3a: vehicle, perimeter, dressing (`rooms/yard/round-1/step3a.png`, 960 px)
 

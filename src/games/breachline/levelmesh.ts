@@ -111,8 +111,48 @@ function prop(L: LevelBuilder, b: Box, n: number) {
         else L.box(x0 - 0.008, 0.22, a - 0.018, x1 + 0.008, y1, a + 0.018, 'trim', [0.55, 0.55, 0.55]);
       }
       break;
-    case 'crate': L.box(x0, y0, z0, x1, y1, z1, 'crate', WHITE, 'fit'); break;
-    case 'container': L.box(x0, y0, z0, x1, y1, z1, 'container', CONTAINER_TINTS[n % CONTAINER_TINTS.length]); break;
+    case 'crate': {
+      // A plank crate: the stencilled box, framed by battens on all twelve edges (2.5 cm proud of the sides only,
+      // so whatever stands on top still sits on the lid) and a cross batten on each side.
+      L.box(x0, y0, z0, x1, y1, z1, 'crate', WHITE, 'fit');
+      const B = 0.07, P = 0.025, W: RGB = [0.62, 0.55, 0.47];
+      for (const x of [x0 - P, x1 - B + P]) for (const z of [z0 - P, z1 - B + P]) L.box(x, y0, z, x + B, y1, z + B, 'wood', W);
+      for (const y of [y0, y1 - B]) {
+        L.box(x0 - P, y, z0 - P, x1 + P, y + B, z0 + 0.01, 'wood', W); L.box(x0 - P, y, z1 - 0.01, x1 + P, y + B, z1 + P, 'wood', W);
+        L.box(x0 - P, y, z0 + 0.01, x0 + 0.01, y + B, z1 - 0.01, 'wood', W); L.box(x1 - 0.01, y, z0 + 0.01, x1 + P, y + B, z1 - 0.01, 'wood', W);
+      }
+      const ym = (y0 + y1) / 2 - B / 2;
+      L.box(x0 + B, ym, z0 - P * 0.6, x1 - B, ym + B, z0, 'wood', W); L.box(x0 + B, ym, z1, x1 - B, ym + B, z1 + P * 0.6, 'wood', W);
+      L.box(x0 - P * 0.6, ym, z0 + B, x0, ym + B, z1 - B, 'wood', W); L.box(x1, ym, z0 + B, x1 + P * 0.6, ym + B, z1 - B, 'wood', W);
+      break;
+    }
+    case 'container': {
+      // A shipping container: the shell, raised corrugation ribs and rails on the long sides, corner posts, and a
+      // pair of doors with locking bars at one end. Everything stands at most 3 cm proud of the collision box.
+      const tint = CONTAINER_TINTS[n % CONTAINER_TINTS.length], dark: RGB = [tint[0] * 0.72, tint[1] * 0.72, tint[2] * 0.72];
+      const len = long ? dx : dz, wid = long ? dz : dx, h = y1 - y0, P = 0.03;
+      // part(a0..a1 along, b0..b1 up, c0..c1 across); `faces` filters the sides by their meaning.
+      const part = (a0: number, a1: number, b0: number, b1: number, c0: number, c1: number, t: RGB, keep?: (s: number) => boolean, tex: TexId = 'container') => {
+        const pick = keep ? (s: number) => (keep(long ? s : ([4, 5, 2, 3, 0, 1][s])) ? tex : null) : tex;
+        if (long) L.box(x0 + a0, y0 + b0, z0 + c0, x0 + a1, y0 + b1, z0 + c1, pick, t); else L.box(x0 + c0, y0 + b0, z0 + a0, x0 + c1, y0 + b1, z0 + a1, pick, t);
+      };
+      part(0, len, 0, h, 0, wid, tint);
+      // Ribs: outward face and both ends only (in the long-x frame: 4 is +across, 5 is -across, 0 and 1 the ends).
+      for (let a = 0.42; a < len - 0.36; a += 0.3) {
+        part(a, a + 0.11, 0.14, h - 0.14, wid, wid + P, tint, s => s === 4 || s === 0 || s === 1);
+        part(a, a + 0.11, 0.14, h - 0.14, -P, 0, tint, s => s === 5 || s === 0 || s === 1);
+      }
+      // Top and bottom rails along both long sides, corner posts at the four corners.
+      for (const [b0, b1] of [[0, 0.14], [h - 0.14, h]]) { part(0, len, b0, b1, wid, wid + P, dark, s => s !== 5); part(0, len, b0, b1, -P, 0, dark, s => s !== 4); }
+      for (const a of [-P, len - 0.16]) for (const c of [-P, wid - 0.16]) part(a, a + 0.16 + P, 0, h + 0.01, c, c + 0.16 + P, dark);
+      // Doors at the far end: the leaves' meeting line, four locking bars with their handles.
+      part(len, len + 0.012, 0.14, h - 0.14, wid / 2 - 0.012, wid / 2 + 0.012, [0.12, 0.12, 0.12], s => s === 0);
+      for (const c of [0.24, wid / 2 - 0.2, wid / 2 + 0.2, wid - 0.24]) {
+        part(len + 0.005, len + 0.03, 0.1, h - 0.1, c - 0.018, c + 0.018, [0.45, 0.45, 0.43], s => s !== 1, 'paint');
+        part(len + 0.005, len + 0.05, h * 0.45, h * 0.45 + 0.05, c - 0.018, c + 0.12, [0.4, 0.4, 0.38], s => s !== 1, 'paint');
+      }
+      break;
+    }
     case 'rack': L.box(x0, y0, z0, x1, y1, z1, side => (side === 2 || side === 3 ? 'trim' : (side < 2) === long ? 'trim' : 'rack')); break;
     case 'steel': L.box(x0, y0, z0, x1, y1, z1, 'steel'); break;
     case 'shelf': L.box(x0, y0, z0, x1, y1, z1, side => (side === 2 || side === 3 ? 'trim' : (side < 2) === long ? 'trim' : 'shelf')); break;

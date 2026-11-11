@@ -129,6 +129,12 @@ const painters: Record<TexId, (g: G, s: number, r: () => number) => void> = {
     for (let x = 0; x < 16; x++) { const px = x * s / 16, grad = g.createLinearGradient(px, 0, px + s / 16, 0); grad.addColorStop(0, 'rgba(0,0,0,0.3)'); grad.addColorStop(0.5, 'rgba(255,255,255,0.14)'); grad.addColorStop(1, 'rgba(0,0,0,0.3)'); g.fillStyle = grad; g.fillRect(px, 0, s / 16, s); }
     g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(0, 0, s, s * 0.035); g.fillRect(0, s * 0.965, s, s * 0.035);
     blotches(g, s, r, 12, 'rgba(110,60,25,0.22)', 6, 40);
+    // Rust: runs from the top rail and the seams downward, and a scabbed band along the bottom.
+    for (let i = 0; i < 26; i++) {
+      const x = r() * s, len = s * (0.08 + r() * 0.35), w = 1 + r() * 4, run = g.createLinearGradient(0, 0, 0, len);
+      run.addColorStop(0, 'rgba(120,58,22,0.55)'); run.addColorStop(1, 'rgba(120,58,22,0)'); g.fillStyle = run; g.fillRect(x, s * 0.03, w, len);
+    }
+    for (let i = 0; i < 18; i++) { const x = r() * s, y = s * (0.86 + r() * 0.1), rad = 4 + r() * 14, b = g.createRadialGradient(x, y, 0, x, y, rad); b.addColorStop(0, 'rgba(105,52,20,0.35)'); b.addColorStop(1, 'rgba(105,52,20,0)'); g.fillStyle = b; g.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
     grain(g, s, r, 9);
   },
   // Road paint: worn, with the asphalt showing through in specks.

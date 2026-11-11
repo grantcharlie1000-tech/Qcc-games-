@@ -34,6 +34,10 @@ export const BOOKMARKS = {
   // Yard dressing: the covered car and the crate stack from the building's apron; the drums by the west container.
   'yard-car': [3.2, 11.6, -2.28, -0.12],
   'yard-drums': [-14.5, 17.2, 2.45, -0.1],
+  // The south container's door end, close.
+  'yard-container': [2.2, 18.8, 0.85, -0.08],
+  // The crate stack by the building with its military crate and jerrycans.
+  'yard-crate': [4.6, 11.5, 2.18, -0.3],
   // Readability: a full squad lined up at the South Yard spawn against the perimeter, seen from near the building
   // (about 7 m), once per squad (seed 2 puts squad 0's attack there in round 2 and squad 1's in round 4).
   'yard-squad-0': [2.5, 12.6, 3.1416, -0.02],
