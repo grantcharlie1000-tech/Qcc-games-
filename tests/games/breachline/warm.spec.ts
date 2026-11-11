@@ -10,13 +10,9 @@ type Win={__breachlineTest?:Hook};
 const counts=(page:Page)=>page.evaluate(()=>{const h=(window as unknown as Win).__breachlineTest!;for(let i=0;i<3;i++)h.draw();const s=h.stats();return {programs:s.programs,textures:s.textures};});
 
 test.setTimeout(240_000);
-// Known failure, owned by the fighters session: their warm() compiles the baked sets' programs but does not upload
-// their textures (2048 + 2 x 1024 for level 0), so the first close contact still uploads them. Remove this line when
-// it does; the test then has to pass.
-test.fail(true,'fighters level-0 textures upload on first contact');
-test('a first firefight with a breach compiles no shader and uploads no texture after the warm-up',async({page})=>{
+async function firstFirefight(page:Page,query:string){
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto('/?festive=off#/game/breachline');
+ await page.goto(`/?festive=off${query}#/game/breachline`);
  await page.waitForFunction(()=>(window as unknown as Win).__breachlineTest!==undefined,undefined,{timeout:60000});
  await page.waitForFunction(()=>(window as unknown as Win).__breachlineTest!.stats().ready===true,undefined,{timeout:180000,polling:500});
  await page.evaluate(()=>{const h=(window as unknown as Win).__breachlineTest!;h.start({seed:7,teamSize:1,bots:true});h.freeze(true);h.advance(0.2);h.still();h.skip(19.9);h.advance(0.3);});
@@ -36,4 +32,8 @@ test('a first firefight with a breach compiles no shader and uploads no texture 
  const after=await counts(page);
  expect(after).toEqual(before);
  expect(errors).toEqual([]);
-});
+}
+test('a first firefight with a breach compiles no shader and uploads no texture after the warm-up',async({page})=>firstFirefight(page,''));
+// The stock fighters (`?fighters=stock`) still upload their level-0 textures on first close contact: a known late
+// upload, owned by the fighters session. Remove this mark when their warm() uploads them; the test must then pass.
+test('the same with the stock fighters (known late texture upload)',async({page})=>{test.fail(true,'stock fighters upload level-0 textures on first contact');await firstFirefight(page,'&fighters=stock');});

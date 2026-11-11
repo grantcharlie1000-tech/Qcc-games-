@@ -4,6 +4,26 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11 ~14:20 UTC: the Patch soldiers are the default.** In `scene.ts`:
+- `createPatchFighters` by default (it falls back to the stock fighters if an asset fails to load);
+  `?fighters=stock` keeps the old ones;
+- `?weapons=patch` is opt-in for `createPatchViewmodel`; the default viewmodel is unchanged;
+- the scene's warm-up calls whichever fighters and viewmodel are in use (`fighters.warm`, `viewmodel.warm`).
+
+Credits for the Tactical soldier, steel helmet, call headset and protective eyewear are added to
+`public/THIRD_PARTY_NOTICES.txt` verbatim from the Patch records (`docs/evidence/breachline/patch-trial/STATUS.md`),
+each with our changes stated (CC BY 4.0).
+
+`warm.spec.ts` now has two tests:
+- the default (Patch soldiers), unmarked: **passes**, with programs and textures unchanged through the first
+  firefight with a breach;
+- `?fighters=stock`, marked `test.fail` as the known late upload of level-0 textures.
+
+Results:
+- Breachline browser suite (one worker): 9 passed (the stock warm run counted as the expected failure).
+- Online test alone on the new default: **3 of 3 passed**.
+- Unit tests: 97/97.
+
 **2026-11-11 ~13:30 UTC: `?fighters=patch` switch.** In `scene.ts`; the default is unchanged. The scene's
 warm-up already calls `fighters.warm()`, so the Patch module's own warm-up runs behind the menu the same way.
 - `warm.spec` with `?fighters=patch` (expected-failure mark removed for the check): **passes**. Programs and

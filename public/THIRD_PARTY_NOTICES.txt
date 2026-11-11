@@ -3798,3 +3798,17 @@ License: Apache-2.0 (full text above in this file). Modified: public/game-art/br
 with three.js's KTX2Loader worker, and its embind glue builds function wrappers with closures instead of new Function,
 so it runs without 'unsafe-eval'. The .wasm is unmodified.
 ----- end of Breachline art -----
+
+----- Breachline soldiers (Patch assets, shipped by default) -----
+asset_e9xaKzrr8R1sMe2VMajWaAb1 ("Tactical soldier in black", title by Patch) by Scenario (Scenario, https://huggingface.co/datasets/scenario-labs/3d-collection/blob/55b4c002b4c1529fc48da3dff98516c3069bfa3f/assets/scenario_asset_e9xaKzrr8R1sMe2VMajWaAb1/output.glb), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). AI-generated with Rodin (Hyper3D) v2.5 fast image-to-3D. Changed by Patch: textures resized to 2048 px, pivot moved to the bottom centre, credit and license added to the file metadata, simplified LODs added.
+Changed for Breachline: from the 4096 px source; head cut at the neck and hands at the wrists; metalness removed and roughness remapped; simplified to 12k and 5k triangles; tint mask added; textures re-encoded as KTX2.
+
+Steel Helmet by Polyfork (https://polyfork.dev/asset/steel-helmet-f5aa7d), CC BY 4.0. Licence: https://creativecommons.org/licenses/by/4.0/. Changed by Patch: a compressed preview copy added for the viewer (web and src are as published).
+Changed for Breachline: recoloured dark slate; levels of detail added.
+
+Call Headset by Polyfork (https://polyfork.dev/asset/call-headset-a95887), CC BY 4.0. Licence: https://creativecommons.org/licenses/by/4.0/. Changed by Patch: a compressed preview copy added for the viewer (web and src are as published).
+Changed for Breachline: recoloured near-black; levels of detail added.
+
+"Protective eyewear" by NVIDIA (SimReady, https://huggingface.co/datasets/nvidia/simready-assets/tree/524747d9b5e1f21b5b18b56041788c01d745f1a1/ppe_eyeProtection_goggles_a01), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). Changed by Patch: converted from USD to glTF, MDL materials dropped for the UsdPreviewSurface textures, textures resized to 2048 px, ambient occlusion mapped from the ORM texture, mass and one convex hull per part added as OMI_physics_body and OMI_physics_shape, pivot moved to the bottom centre, credit and license added to the file metadata.
+Changed for Breachline: decimated to 2,499 triangles; plain dark plastic and smoked lens materials; levels of detail added.
+----- end of Breachline soldiers -----
