@@ -10,7 +10,7 @@ import type { Atlas, Region } from './levelgeo';
 
 type V3 = [number, number, number];
 /** Materials the dressing asks for; artworld.ts maps each key to a material. */
-export type DressKey = 'door' | 'locker' | 'exit' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
+export type DressKey = 'door' | 'locker' | 'exit' | 'alarm' | 'fire' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
 
 const inRoom = (r: Region, x: number, z: number) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1;
 
@@ -45,6 +45,21 @@ function dressCorridor(atlas: Atlas, room: Region): DetailBuilder {
   D.box('conduit', room.x0 + 0.2, ty, tz0, room.x1 - 0.2, ty + 0.01, tz1, [0, y - 0.001, 0.6], up);
   for (const z of [tz0, tz1 - 0.01]) D.box('conduit', room.x0 + 0.2, ty, z, room.x1 - 0.2, ty + 0.06, z + 0.01, [0, y - 0.001, 0.6], up);
   for (let x = room.x0 + 0.5; x < room.x1 - 0.3; x += 1.5) for (const z of [tz0 - 0.01, tz1]) D.box('conduit', x - 0.006, ty, z, x + 0.006, y, z + 0.012, [x, y - 0.001, 0.6], up);
+  // On the posts (static, unlike the plasterboard between them): fire-alarm call points and extinguisher signs.
+  const postFace = (x: number, wallZ: number, side: number) => wallZ + side * 0.11;
+  const onPost = (key: DressKey, x: number, wallZ: number, side: number, y0: number, y1: number, w: number, d: number, tint?: V3) => {
+    const z = postFace(x, wallZ, side), n: V3 = [0, 0, side];
+    D.box(key, x - w / 2, y0, side > 0 ? z : z - d, x + w / 2, y1, side > 0 ? z + d : z, [x, (y0 + y1) / 2, z + side * 0.001], n, tint);
+  };
+  for (const [x, wallZ, side] of [[-9.5, -2, 1], [5.5, 1, -1], [8, -2, 1]] as const) {
+    onPost('alarm', x, wallZ, side, 1.38, 1.47, 0.09, 0.045);
+    onPost('paper', x, wallZ, side, 1.405, 1.445, 0.05, 0.047, [0.95, 0.95, 0.95]);
+  }
+  for (const [x, wallZ, side] of [[5.5, 1, -1]] as const) {
+    const z = postFace(x, wallZ, side) + side * 0.004, g = new THREE.PlaneGeometry(0.16, 0.2).rotateY(side > 0 ? 0 : Math.PI).translate(x, 1.8, z);
+    D.mesh('fire', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [x, 1.8, postFace(x, wallZ, side) + side * 0.001], [0, 0, side], [1, 1, 1], g.attributes.uv.array);
+    g.dispose();
+  }
   // Exit signs hung across the corridor, readable from both ends.
   for (const x of [-12, 0.75, 12]) {
     D.box('plastic', x - 0.02, 2.62, -0.66, x + 0.02, 2.8, -0.34, [x, y - 0.001, -0.5], up);

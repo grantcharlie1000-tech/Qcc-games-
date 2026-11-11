@@ -82,6 +82,8 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
 		float artJoint = 1.0 - 0.13 * ( 1.0 - smoothstep( 0.0, 0.012, abs( fract( artU / 1.2 + 0.5 ) - 0.5 ) * 1.2 ) );
 		float artScuff = fract( sin( dot( floor( vec2( artU * 9.0, vArtWorld.y * 22.0 ) ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
 		diffuseColor.rgb *= artJoint * ( vArtWorld.y < 0.45 && artScuff > 0.93 ? 0.84 : 1.0 );
+		// Years of grime gathered towards the ceiling.
+		diffuseColor.rgb *= mix( 1.0, 0.84, smoothstep( 2.0, 2.9, vArtWorld.y ) );
 	#endif
 	// Painted skirting zone at the floor.
 	diffuseColor.rgb *= vArtWorld.y < 0.1 ? vec3( 0.42 ) : vec3( 1.0 );

@@ -48,3 +48,12 @@ export const exitSign = () => canvasTexture(256, 128, g => {
   g.lineWidth = 9; g.beginPath(); g.moveTo(20, 64); g.lineTo(62, 64); g.stroke();
   g.beginPath(); g.moveTo(44, 44); g.lineTo(66, 64); g.lineTo(44, 84); g.stroke();
 });
+
+/** A fire-equipment sign: an extinguisher silhouette, white on red. */
+export const fireSign = () => canvasTexture(128, 160, g => {
+  g.fillStyle = '#c4231c'; g.fillRect(0, 0, 128, 160);
+  g.fillStyle = '#ffffff';
+  g.beginPath(); g.roundRect(48, 46, 32, 88, 10); g.fill();
+  g.fillRect(56, 30, 16, 18); g.fillRect(70, 30, 26, 7); g.fillRect(40, 34, 18, 6);
+  g.font = 'bold 18px sans-serif'; g.textAlign = 'center'; g.fillText('FIRE', 64, 156);
+});

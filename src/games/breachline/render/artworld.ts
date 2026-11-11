@@ -12,7 +12,7 @@ import { REGIONS, collectFaces, faceArrays, packAtlas, splitFace, type GeoArrays
 import { FIXTURES } from './fixtures';
 import { fixtureMeshes } from './fixturemesh';
 import { dressRoom, type DressKey } from './labdress';
-import { clockFace, exitSign, safetySign } from './printed';
+import { clockFace, exitSign, fireSign, safetySign } from './printed';
 import { artMaterial } from './materials';
 import { PROPS } from './props';
 import { PLANKS, SURFACES } from './surfaces';
@@ -113,8 +113,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     }
     // Modelled dressing, lit by the lightmap of whatever it stands on.
     {
-      const printed = { sign: safetySign(), clock: clockFace(), exit: exitSign() };
-      disposers.push(() => { printed.sign.dispose(); printed.clock.dispose(); printed.exit.dispose(); });
+      const printed = { sign: safetySign(), clock: clockFace(), exit: exitSign(), fire: fireSign() };
+      disposers.push(() => { for (const t of Object.values(printed)) t.dispose(); });
       const D = dressRoom(atlas, region), [bm, bn, ba] = await set('blue_metal_plate', TEX_SIZE[tier]), [pm, pn, pa] = await set('painted_plaster_wall', TEX_SIZE[tier]);
       const plain = (color: [number, number, number], roughness: number, metalness: number) => ({ map: null, normalMap: null, armMap: null, color: new THREE.Color(...color), roughness, metalness });
       const looks: Record<DressKey, Parameters<typeof artMaterial>[0]> = {
@@ -129,6 +129,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         screen: { ...plain([0.02, 0.03, 0.04], 0.12, 0), emissive: new THREE.Color(0.05, 0.11, 0.16) },
         sign: { map: printed.sign, normalMap: null, armMap: null, roughness: 0.5, metalness: 0 },
         clock: { map: printed.clock, normalMap: null, armMap: null, roughness: 0.15, metalness: 0 },
+        fire: { map: printed.fire, normalMap: null, armMap: null, roughness: 0.4, metalness: 0 },
+        alarm: plain([0.62, 0.06, 0.05], 0.35, 0),
         exit: { map: printed.exit, normalMap: null, armMap: null, roughness: 0.3, metalness: 0, emissive: new THREE.Color(0.9, 1.2, 0.95), emissiveMap: printed.exit },
         amber: plain([0.2, 0.08, 0.015], 0.05, 0), glass: plain([0.1, 0.13, 0.125], 0.04, 0),
       };

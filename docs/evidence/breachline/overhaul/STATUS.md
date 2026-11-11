@@ -9,7 +9,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** corridor round 1 done (`rooms/corridor/round-1/`); round 2 next (wall contrast). Then the Archive, then the destruction look.
+**Where I am (keep current):** corridor round 2 done (`rooms/corridor/round-2/`); next the Archive, then the destruction look.
 
 ## Roll-out step 2: corridor (in progress)
 
@@ -27,6 +27,14 @@ are destructible panels, so nothing can be fixed to them: the ceiling, the floor
 dressing). Budgets: High 73k-76k triangles, 153-158 draw calls; Low 135-140 draw calls (budget 200). Running texture
 total: 10 surface sets plus 5 prop sets, 17 MB shipped across all tiers; at 1K the GPU holds about 16 MB for the
 Lab and corridor sets together with BC/ASTC transcodes.
+
+Round 2: fittings every 4.5 m instead of 3 m, so the walls get pools; grime gathers toward the ceiling on the
+plasterboard; red fire-alarm call points and a fire-equipment sign on the static posts between panels (nothing can
+hang on the plasterboard itself). Scores (mine): A 7, B 7, C 6.5, D 6.5. C and D are capped mainly by the bare
+plasterboard on both sides; the destruction-look phase, next after the Archive, gives those panels seams, studs
+and breakage, which is where they will gain. Budgets: High 73k-77k triangles, 156-161 draw calls; Low 136-141.
+
+`bake-all.mjs` bakes rooms in parallel, one process each. With two rooms it is bounded by the corridor (470 s).
 
 Bake time: Lab and corridor together take 8 minutes single-threaded. The full building would be about 30, so the
 baker needs worker threads (4 cores here) before more than two more rooms are added.

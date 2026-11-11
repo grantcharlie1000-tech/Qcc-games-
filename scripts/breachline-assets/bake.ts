@@ -1,6 +1,7 @@
 /** Offline light baker for Breachline's asset renderer. Run with:
  *
- *   npx vite-node scripts/breachline-assets/bake.ts
+ *   npx vite-node scripts/breachline-assets/bake.ts          (every room, one process)
+ *   node scripts/breachline-assets/bake-all.mjs              (one process per room, in parallel)
  *
  * For each region in render/levelgeo.ts it ray-traces a lightmap atlas: the ceiling panels as soft area lights,
  * two bounces of diffuse light (bounce colour from each material's average albedo), contact occlusion from the props,
@@ -223,7 +224,11 @@ async function main() {
     return;
   }
 
+  // BAKE_ONLY=lab,corridor bakes just those rooms (rooms are independent, so they can run as parallel processes:
+  // scripts/breachline-assets/bake-all.mjs).
+  const only = process.env.BAKE_ONLY?.split(',').filter(Boolean);
   for (const [r, region] of REGIONS.entries()) {
+    if (only && !only.includes(region.name)) continue;
     const atlas = atlases[r], W = atlas.width, H = atlas.height, N = W * H;
     const dirV = new Float32Array(N * 3), indirect = new Float32Array(N * 3), dirW = new Float32Array(N * 3);
     const direct3 = new Float32Array(N * 3), valid = new Uint8Array(N), chartAt = new Int32Array(N).fill(-1), contact = new Float32Array(N).fill(1);
