@@ -156,6 +156,19 @@ steel now separate in all three.
 
 ## Budgets measured
 
+**First use during play.** `Viewmodel.warm()` (`render/hero/viewmodel.ts`, declared in `render/hero/index.ts`) draws every weapon in both squads' arms once into a 4×4 offscreen target, with the flash and casings visible. That compiles every program the weapon in hand can need (procedural hero material, textured weapon set, textured arms, lens, flash) and uploads every mesh and texture. It also prefilters the fallback environment, which used to happen lazily on the first frame. It runs by itself once heroReady and the texture sets have settled, and the scene may also call it behind its loading screen. The viewmodel's light count is fixed (hemisphere, key, fill; nothing is added or removed when firing); casings are bones in the weapon mesh; reload-only parts (shotgun shell, magazine) are part of each weapon's mesh. The third-person weapon and its flash belong to the fighters session.
+
+**Texture cost** (KTX2 transcodes to BC7, ASTC 4×4 or ETC2: at most 1 byte per texel, plus a third for mips):
+
+| Set | Maps | High | Low |
+| --- | --- | --- | --- |
+| AR-5 | 3 (albedo, normal, occlusion/roughness/metal) | 2048²: about 16.8 MB GPU | 1024²: about 4.2 MB GPU |
+| Hands and sleeves (both arms share one atlas) | 3 | 1024²: about 4.2 MB GPU | 1024²: about 4.2 MB GPU (no 512 level shipped yet) |
+| JPEG fallback (no transcoder) | 3 per set | 512² RGBA8: about 4.2 MB GPU per set | same |
+
+World weapons (`worldWeapon`, levels 1–2) do not load any texture set: they keep the procedural hero material and their own small UV-less geometry, so no per-fighter 2048² copies exist. Download: AR-5 about 5.8 MB (2048 and 1024 KTX2 plus JPEG), hands about 0.35 MB.
+
+
 | Item | Budget | Measured |
 | --- | --- | --- |
 | Weapons, first person | 8–15k tris | AR 13.3k, Tern C8 9.4k, Wren-9 6.2k, Halden 12 5.5k, Corvin 10.5k, P-11 4k (round 2, after trimming) |

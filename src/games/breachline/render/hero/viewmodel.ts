@@ -71,26 +71,53 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   const low = typeof location !== 'undefined' && /[?&]arttier=low\b/.test(location.search);
   const art = new ArtLoader(renderer, low ? 'low' : 'high');
   const sets = new Map<WeaponId, THREE.Material>();
+  const loads: Promise<unknown>[] = [heroReady];
   for (const id of TEXTURED) {
     const size = low ? 1024 : 2048, set = `../hero/${id}`;
-    Promise.all([art.texture(set, 'diff', size), art.texture(set, 'nor', size), art.texture(set, 'arm', size)]).then(([map, normalMap, armMap]) => {
+    loads.push(Promise.all([art.texture(set, 'diff', size), art.texture(set, 'nor', size), art.texture(set, 'arm', size)]).then(([map, normalMap, armMap]) => {
       for (const t of [map, normalMap, armMap]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
       const m = texturedMaterial({ map, normalMap, arm: armMap });
       sets.set(id, m);
       for (const r of rigs.values()) r.setTextures(id, m);
-    }).catch(e => console.warn('Breachline weapon textures unavailable; procedural look kept.', e));
+    }).catch(e => console.warn('Breachline weapon textures unavailable; procedural look kept.', e)));
   }
   let armMat: THREE.Material | null = null;
-  Promise.all((['diff', 'nor', 'arm'] as const).map(k => art.texture('../hero/hands', k, 1024))).then(([map, normalMap, armMap]) => {
+  loads.push(Promise.all((['diff', 'nor', 'arm'] as const).map(k => art.texture('../hero/hands', k, 1024))).then(([map, normalMap, armMap]) => {
     for (const t of [map, normalMap, armMap]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
     armMat = texturedMaterial({ map, normalMap, arm: armMap }, true);
     for (const r of rigs.values()) r.setArmMaterial(armMat);
-  }).catch(e => console.warn('Breachline hand textures unavailable; procedural look kept.', e));
+  }).catch(e => console.warn('Breachline hand textures unavailable; procedural look kept.', e)));
   const rigFor = (squad: 0 | 1) => {
     let r = rigs.get(squad);
     if (!r) { r = createFpRig(DEFAULT_LOOK(squad, Number(`0x${SQUADS[squad].color.slice(1)}`))); for (const [id, m] of sets) r.setTextures(id, m); if (armMat) r.setArmMaterial(armMat); rigs.set(squad, r); }
     return r;
   };
+  /** Draws every weapon in both squads' arms once, with the flash and casings shown, into a tiny offscreen target:
+   * shader programs compile and geometry and textures upload here, behind the loading screen, never at first use in
+   * play. Also prefilters the fallback environment. Safe to call more than once; returns false if not ready. */
+  let warmed = false;
+  function warm(): boolean {
+    if (!ready || disposed) return false;
+    const target = new THREE.WebGLRenderTarget(4, 4), prev = renderer.getRenderTarget(), wasVisible = holder.visible;
+    scene.environment = envFor(0, 0);
+    holder.visible = true; flash.visible = true;
+    for (const squad of [0, 1] as const) {
+      const r = rigFor(squad);
+      holder.add(r.root); r.root.add(flash);
+      r.gun.position.set(0.1, -0.08, -0.25);
+      for (let i = 0; i < CASES; i++) r.weaponBones[WB.case0 + i].scale.setScalar(1);
+      for (const id of Object.keys(WEAPONS) as WeaponId[]) {
+        r.setWeapon(id); r.solve();
+        renderer.setRenderTarget(target); renderer.render(scene, camera);
+      }
+      holder.remove(r.root);
+    }
+    renderer.setRenderTarget(prev); target.dispose();
+    holder.visible = wasVisible; flash.visible = false; rig = null; curSquad = -1;
+    warmed = true;
+    return true;
+  }
+  Promise.allSettled(loads).then(() => setTimeout(() => { if (!warmed) warm(); }, 0));
   // Motion state.
   const swayY = new Spring(14, 0.7), swayP = new Spring(14, 0.7), swayR = new Spring(12, 0.6);
   const kZ = new Spring(28, 0.55), kP = new Spring(22, 0.5), kY = new Spring(20, 0.6), kR = new Spring(18, 0.45), adsS = new Spring(22, 1), sprintS = new Spring(10, 1), useS = new Spring(9, 1);
@@ -112,6 +139,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
 
   return {
     get visible() { return holder.visible; },
+    warm,
     update(view: HeroView, clock: number) {
       const { m, dt } = view, p = m.players[view.self];
       time = clock;

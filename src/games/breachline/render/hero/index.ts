@@ -40,6 +40,10 @@ export interface Viewmodel {
   /** Draws the weapon over the world (call after the world, with the colour buffer intact). Returns draw calls. */
   render(): number;
   readonly visible: boolean;
+  /** Compiles every shader and uploads every mesh and texture the weapon in hand can need (all weapons, both squads,
+   * flash, casings) so nothing compiles during play. Runs by itself once the assets have loaded; the scene may also
+   * call it behind its loading screen. Returns false if the assets are not ready yet. */
+  warm(): boolean;
   resize(aspect: number): void;
   dispose(): void;
 }
