@@ -67,8 +67,29 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** kit: breach charge round 1 done (`kit/charge-round-1/`); next barricades, then the
-reinforcement, the uplink and grenade blasts; then corridor round 3 and Archive round 2.
+**Where I am (keep current):** kit: charge and barricades round 1 done (`kit/`); next the reinforcement, then the
+uplink and grenade blasts; then corridor round 3 and Archive round 2.
+
+## Tactical kit (row K): barricades, round 1 (`kit/barricade-round-1/`)
+
+Doors and windows were a flat sheet of plank texture with square cells cut out.
+- **Now** (`levelmesh.ts` `barricade()`): each row of cells is one separate board. Boards are 23 cm tall with gaps
+  between them (the sky shows through on outside windows), alternate slightly in depth, and are each tilted a
+  little. Each takes its own slice and shade of the timber texture.
+- **Nails:** two iron heads where a board rests on the frame.
+- **Collision is unchanged:** a run of intact cells is one length of board.
+- **Breaks:** where cells are shot or struck out, the board snaps. Top and bottom tear back into the board by
+  different amounts, a rough diagonal with a short splinter tip (no more than 3 cm into the gap). The snapped end
+  grain is pale. The splinters thrown (existing debris, now flat timber slivers) stay on the floor.
+- **Evidence:** `intact-before-after.png`, `shot-before-after.png` (old left, new right), `shot-high.png`.
+- **Mismatches for round 2:**
+  - no frame or batten behind the boards: they rest on the wall's opening trim;
+  - boards are the same length (full width), never staggered or overlapping;
+  - no bullet holes in boards that survive a hit;
+  - the build-up animation (plank by plank) follows the simulation's cells, but nothing marks a board being
+    placed (hammer or fighters' side);
+  - the texture still shows the occasional seam inside one board.
+- K (mine, barricades): 3 -> 5.
 
 ## Tactical kit (row K): breach charge, round 1 (`kit/charge-round-1/`)
 

@@ -222,6 +222,7 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
     return pos.length / 3 - 1;
   };
   const quad = (list: number[], a: number, b: number, c: number, d: number, flip: boolean) => { if (flip) list.push(a, d, c, a, c, b); else list.push(a, b, c, a, c, d); };
+  if (wood && !plate) return barricade();
   // Front and back: runs of intact cells along each row become one quad each (split every half metre, so rows share
   // their lit columns).
   for (let r = 0; r < p.rows; r++) {
@@ -308,6 +309,80 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
       }
     }
   }
+  return finish();
+
+  /** A barricade: one plank per row of cells, with gaps, alternating depth and a slight tilt each; a run of intact
+   * cells is one length of board, and where cells are gone the board ends in a jagged, splintered break. Nail heads
+   * where a board rests on the frame. Faces in group 0, ends and nails in group 1. */
+  function barricade() {
+    const GAP = 0.022, T = 0.026;
+    for (let r = 0; r < p.rows; r++) {
+      const h = hash(p.u0, p.y0 + r, p.pos), tilt = (h - 0.5) * 0.035, depth = (r % 2 ? 1 : -1) * 0.007, mid = p.u0 + p.cols * CELL / 2;
+      const yAt = (u: number, top: boolean) => p.y0 + r * CELL + (top ? CELL - GAP / 2 : GAP / 2) + (u - mid) * tilt;
+      // This plank's slice of the texture and its own shade, so neighbouring boards differ.
+      const vo = Math.floor(h * 12) * 0.075, uo = hash(r, p.pos, p.u0) * 3, tone = 0.82 + 0.3 * hash(r * 3.7, p.u0, p.pos);
+      const shadeT: RGB = [tone, tone * 0.97, tone * 0.93];
+      let start = -1;
+      for (let c = 0; c <= p.cols; c++) {
+        const on = c < p.cols && cell(c, r);
+        if (on) { if (start < 0) start = c; continue; }
+        if (start < 0) continue;
+        board(start, c, r, yAt, depth, T, vo, uo, shadeT);
+        start = -1;
+      }
+    }
+    return finish();
+  }
+  function board(c0: number, c1: number, r: number, yAt: (u: number, top: boolean) => number, depth: number, T: number, vo: number, uo: number, shade: RGB) {
+    const ua = p.u0 + c0 * CELL, ub = p.u0 + c1 * CELL, brokeA = c0 > 0, brokeB = c1 < p.cols;
+    // A break is jagged: top, middle and bottom of the end stop at different places.
+    const ends = (u: number, broke: boolean, dir: number, k: number): [number, number, number] => {
+      if (!broke) return [u, u, u];
+      // Top and bottom tear back into the board by different amounts (a rough diagonal break); a splinter tip
+      // reaches no more than 3 cm into the gap.
+      const j = (n: number) => hash(u * 9.1 + n, r * 1.7 + k, p.pos);
+      const top = u - dir * 0.08 * j(1), bottom = u - dir * 0.08 * j(3);
+      return [top, Math.max(top, bottom) * (dir > 0 ? 1 : 0) + Math.min(top, bottom) * (dir > 0 ? 0 : 1) + dir * 0.03 * j(2), bottom];
+    };
+    const [at, am, ab] = ends(ua, brokeA, -1, 0), [bt, bm, bb] = ends(ub, brokeB, 1, 1);
+    const ym = (yAt(ua, true) + yAt(ua, false)) / 2, ymB = (yAt(ub, true) + yAt(ub, false)) / 2;
+    const pt = (u: number, y: number, off: number, n: number, sh: number | RGB, nx = 0, ny = 0, vEdge?: number) => {
+      const w = panelPoint(p, u, y, off), l = light(u, y, off, n);
+      const [sr, sg, sb] = typeof sh === 'number' ? [sh, sh, sh] : sh;
+      pos.push(w.x, w.y, w.z); uv.push(u / tile[0] + uo, vEdge ?? ((y - p.y0 - r * CELL) / CELL * 0.065 + vo)); col.push(l[0] * sr, l[1] * sg, l[2] * sb);
+      if (n) { if (alongX) nor.push(0, 0, n); else nor.push(n, 0, 0); } else if (alongX) nor.push(nx, ny, 0); else nor.push(0, ny, nx);
+      return pos.length / 3 - 1;
+    };
+    // Outline: top edge, the two ends (through their middle points), bottom edge; drawn as an upper and a lower quad.
+    const outline: [number, number][] = [[at, yAt(at, true)], [bt, yAt(bt, true)], [bm, ymB], [bb, yAt(bb, false)], [ab, yAt(ab, false)], [am, ym]];
+    for (const n of [1, -1]) {
+      const off = depth + n * T / 2, sh: RGB = n > 0 ? shade : [shade[0] * 0.9, shade[1] * 0.9, shade[2] * 0.9];
+      const v = outline.map(([u, y]) => pt(u, y, off, n, sh)), flip = alongX ? n < 0 : n > 0;
+      quad(face, v[0], v[1], v[2], v[5], flip); quad(face, v[5], v[2], v[3], v[4], flip);
+    }
+    // Edges all round: long top and bottom faces, and the ends (pale, rough end grain where snapped).
+    for (let i = 0; i < outline.length; i++) {
+      const [u0, y0] = outline[i], [u1, y1] = outline[(i + 1) % outline.length];
+      const du = u1 - u0, dy = y1 - y0, l = Math.hypot(du, dy) || 1, nx = -dy / l, ny = du / l;
+      const isEnd = i === 1 || i === 2 || i === 4 || i === 5, snapped = (i === 1 || i === 2) ? brokeB : (i === 4 || i === 5) ? brokeA : false;
+      const sh: RGB = snapped ? [1.15, 1.05, 0.88] : isEnd ? [0.7, 0.62, 0.52] : [shade[0] * 0.55, shade[1] * 0.52, shade[2] * 0.5];
+      const a = pt(u0, y0, depth - T / 2, 0, sh, nx, ny, vo), b = pt(u1, y1, depth - T / 2, 0, sh, nx, ny, vo), cc = pt(u1, y1, depth + T / 2, 0, sh, nx, ny, vo + 0.03), d = pt(u0, y0, depth + T / 2, 0, sh, nx, ny, vo + 0.03);
+      edge.push(a, b, cc, a, cc, d, a, cc, b, a, d, cc);
+    }
+    // Nails where the board rests on the frame, on the face that shows.
+    for (const [u, rests] of [[ua + 0.12, !brokeA], [ub - 0.12, !brokeB]] as const) {
+      if (!rests) continue;
+      for (const dy of [-0.055, 0.055]) {
+        const y = (yAt(u, true) + yAt(u, false)) / 2 + dy, s = 0.01;
+        for (const side of [1, -1]) {
+          const o = depth + side * (T / 2 + 0.002);
+          const NAIL: RGB = [0.16, 0.16, 0.17], k = [pt(u - s, y - s, o, side, NAIL), pt(u + s, y - s, o, side, NAIL), pt(u + s, y + s, o, side, NAIL), pt(u - s, y + s, o, side, NAIL)];
+          quad(edge, k[0], k[1], k[2], k[3], alongX ? side < 0 : side > 0);
+        }
+      }
+    }
+  }
+  function finish() {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
@@ -320,6 +395,7 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
   if (stud.length) g.addGroup(face.length + edge.length, stud.length, 2);
   g.computeBoundingSphere();
   return { geometry: g, studs };
+  }
 }
 
 export class PanelView {

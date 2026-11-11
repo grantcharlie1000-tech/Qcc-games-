@@ -36,6 +36,10 @@ export const BOOKMARKS = {
   'breach-close': [1.9, -1.2, 0.35, -0.12],
   // A charge placed on the Lab's south wall, before it goes off (taken first: the damage set detonates it).
   charge: [1.62, -0.05, 0.3, -0.32],
+  // The barricaded north window of the Lab, from inside.
+  barricade: [-2.75, -8.2, 0, -0.05],
+  // The same window after a burst: snapped planks and splinters (taken after 'barricade').
+  'barricade-shot': [-2.75, -8.2, 0, -0.05],
 };
 /** A breach charge pressed onto the wall and left armed. */
 const PLANT = `(() => { const h = window.__breachlineTest; h.place(1.5, -0.6, 0, -0.25); h.advance(0.1); h.hold({}, 1.4, { breach: true }); h.advance(0.3); })()`;
@@ -71,6 +75,7 @@ let damaged = false;
 for (const [name, [x, z, yaw, pitch]] of Object.entries(BOOKMARKS)) {
   if (only.length && !only.includes(name)) continue;
   if (name === 'charge') await page.evaluate(PLANT);
+  if (name === 'barricade-shot') await page.evaluate(() => { const h = window.__breachlineTest; h.place(-2.75, -8.2, 0, 0.05); h.advance(0.1); h.hold({ fire: true, mx: 0.8 }, 0.7); h.advance(0.5); for (let i = 0; i < 6; i++) h.draw(); });
   if (['breach', 'breach-lab', 'shot-wall', 'breach-close'].includes(name) && !damaged) { await page.evaluate(DAMAGE); damaged = true; await page.waitForTimeout(500); }
   await page.evaluate(([x, z, yaw, pitch]) => { const h = window.__breachlineTest; h.place(x, z, yaw, pitch); h.advance(0.05); h.draw(); h.draw(); }, [x, z, yaw, pitch]);
   await page.waitForTimeout(300);
