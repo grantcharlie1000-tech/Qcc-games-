@@ -1,4 +1,4 @@
-/** Lighting is computed once, when the map loads, and stored in vertex colours: a low evening sun and sky outdoors,
+/** Lighting is computed once, when the map loads, and stored in vertex colours: a late-afternoon sun (about 38 degrees up) and sky outdoors,
  * ceiling lamps indoors, each shadowed by ray tests against the level. Nothing is lit per pixel at run time, which is
  * what lets the game hold its frame rate on integrated graphics. */
 import { WALL_H } from './config';
@@ -13,9 +13,9 @@ export interface Bake {
   probe(x: number, z: number): RGB;
 }
 
-const len = Math.hypot(-0.52, 0.4, 0.76);
-export const SUN = { x: -0.52 / len, y: 0.4 / len, z: 0.76 / len };
-export const SUN_COLOR: RGB = [1.55, 1.12, 0.7], SKY: RGB = [0.3, 0.37, 0.52];
+const len = Math.hypot(-0.52, 0.72, 0.76);
+export const SUN = { x: -0.52 / len, y: 0.72 / len, z: 0.76 / len };
+export const SUN_COLOR: RGB = [1.6, 1.32, 0.98], SKY: RGB = [0.36, 0.44, 0.58];
 const FILL: RGB = [0.105, 0.11, 0.125];
 const PROBE = 1;
 

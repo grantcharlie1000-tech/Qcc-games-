@@ -7,6 +7,9 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 **2026-11-11: yard step 4 (readability) done.** Both squads at the South Yard spawn against the perimeter
 (`rooms/yard/round-1/step4.png`, two halves from one pose). The blue squad vanished into the dark wall; the wall is now
 pale precast and the bake's sky is brighter, and both read. Next: step 3, dressing.
+Then, on the reviewer's note (yard about 5, too dark overall): the sun is now late afternoon (about 38 degrees up,
+was 24), less orange, with an afternoon sky dome; full rebake (17 min). The ground is mid-grey and walls in shade
+read. `step4.png` is now four views: the two yard bookmarks, then the two squads. Step 3 starts with the vehicle.
 
 **2026-11-11 ~15:10 UTC: Archive round 2 started, Patch boxes tried and backed out (nothing shipped).**
 - **Pipeline (kept, committed):**
@@ -142,6 +145,9 @@ drains, readability against the perimeter); next step 3, dressing.
 - **Still wrong (for step 3):** the wall texture is a noisy floor scan with no panel joints or coping, and it ends
   in a hard line at the sky; the sun disc sits in the south-facing view. Tan camouflage on a brownish mottle is
   readable but weaker than the blue on it.
+- **Afternoon sun (reviewer):** `SUN` raised to about 38 degrees, `SUN_COLOR` [1.6, 1.32, 0.98], `SKY` a
+  little brighter, sky dome re-graded from dusk to afternoon; the scene's sun now uses `SUN_COLOR`. Every region
+  rebaked; Lab and Archive checked (unchanged indoors).
 - Tests: unit 5385 passed; Breachline browser 8 passed (the stock warm run is the expected failure); online 1 passed.
 
 ## The yard, steps 1-2 (`rooms/yard/round-1/step2.png`, 960 px)

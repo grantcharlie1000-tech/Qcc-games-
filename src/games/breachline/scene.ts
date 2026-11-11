@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { CELL, ROUND, WEAPONS } from './config';
 import { Effects } from './effects';
-import { createBake, SUN, type Bake } from './lightbake';
+import { createBake, SUN, SUN_COLOR, type Bake } from './lightbake';
 import { PanelView, buildLevel, type PanelMaterials } from './levelmesh';
 import { MAP } from './map';
 import { loadArtWorld, type ArtWorld } from './render/artworld';
@@ -164,16 +164,16 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     stats.ready = true;
   }
 
-  // ---- Sky, sun and a far skyline ----
+  // ---- Sky, sun and a far skyline (late afternoon, matching the bake's sun) ----
   const skyCanvas = document.createElement('canvas'); skyCanvas.width = 4; skyCanvas.height = 256;
   const sg = skyCanvas.getContext('2d')!, grad = sg.createLinearGradient(0, 0, 0, 256);
-  grad.addColorStop(0, '#22335c'); grad.addColorStop(0.3, '#4f6791'); grad.addColorStop(0.44, '#b9a096'); grad.addColorStop(0.5, '#e6ad7c'); grad.addColorStop(0.53, '#8a7468'); grad.addColorStop(1, '#3d3a3e');
+  grad.addColorStop(0, '#2f5d99'); grad.addColorStop(0.3, '#6b93c4'); grad.addColorStop(0.44, '#b8cbdc'); grad.addColorStop(0.5, '#e4e2d6'); grad.addColorStop(0.53, '#8c8a84'); grad.addColorStop(1, '#46464a');
   sg.fillStyle = grad; sg.fillRect(0, 0, 4, 256);
   const skyTex = new THREE.CanvasTexture(skyCanvas); skyTex.colorSpace = THREE.SRGBColorSpace;
   const sky = new THREE.Mesh(new THREE.SphereGeometry(450, 20, 12), new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false, toneMapped: false }));
   sky.renderOrder = -10; scene.add(sky);
   const sunTex = makeSprite('puff');
-  const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTex, color: 0xffd9a0, blending: THREE.AdditiveBlending, fog: false, depthWrite: false, toneMapped: false }));
+  const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTex, color: 0xfff1d6, blending: THREE.AdditiveBlending, fog: false, depthWrite: false, toneMapped: false }));
   sun.scale.setScalar(150); sun.renderOrder = -9; scene.add(sun);
   {
     let seed = 91; const rnd = () => { seed = (seed * 1664525 + 1013904223) | 0; return ((seed >>> 8) & 0xffff) / 65536; };
@@ -192,7 +192,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     probe(x, _y, z) { const l = bake.probe(x, z); return { color: [l[0], l[1], l[2]] }; },
     environment(x, z) { return art?.environment(x, z) ?? null; },
     environmentScale(x, z) { return art?.environmentScale(x, z) ?? 1; },
-    sun: { x: SUN.x, y: SUN.y, z: SUN.z, color: [1.55, 1.12, 0.7] },
+    sun: { x: SUN.x, y: SUN.y, z: SUN.z, color: SUN_COLOR },
   };
   // The Patch-asset soldiers are the default (they fall back to the stock ones if an asset fails to load);
   // `?fighters=stock` keeps the old ones for comparison. `?weapons=patch` opts into the Patch viewmodel.
