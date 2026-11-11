@@ -19,8 +19,12 @@ const SHOTS = {
   timber: [2.2, 11.5, Math.PI, -0.3],
   fabric: [-10.4, 3.3, -Math.PI / 2, -0.55],
   steel: [8, -6.3, 0, -0.1],
-  carpet: [-3.2, 8.2, 0, -1.25],
+  carpet: [-3.2, 7.4, 0, -0.75],
   plasterboard: [-12.5, -0.2, 0, 0.05],
+  'car-cover': [7.3, 12.9, Math.PI, -0.35],
+  drum: [-16.0, 20.4, 2.4, -0.25],
+  monitor: [-3.4, 5.6, -2.25, -0.3],
+  'crate-prop': [2.2, 11.6, Math.PI, -0.5],
 };
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });

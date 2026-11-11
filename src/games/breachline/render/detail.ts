@@ -37,6 +37,8 @@ export class DetailBuilder {
   /** Archive boxes to draw instanced (render/archivebox.ts): front centre-bottom on the shelf face, a turn about the
    * vertical, a tilt, the box front's width and height, its depth out from the face, a tint and a label variant. */
   readonly boxes: { x: number; y: number; z: number; yaw: number; tilt: number; w: number; h: number; depth: number; tint: V3; label: number }[] = [];
+  /** A bounding box and material key for each piece, so the scene can mark dressing a round passes through. */
+  readonly proxies: { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; key: string }[] = [];
   constructor(private atlas: Atlas) {}
   private arrays(key: string) {
     let a = this.parts.get(key);
@@ -48,6 +50,7 @@ export class DetailBuilder {
     const c = parentChart(this.atlas, on, n);
     if (!c) { this.missed++; this.misses.push(`${key}@${on.map(v => v.toFixed(2))}`); return; }
     const a = this.arrays(key);
+    this.proxies.push({ x0, y0, z0, x1, y1, z1, key });
     const faces: [V3, V3, V3, V3, V3][] = [
       [[1, 0, 0], [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]],
       [[-1, 0, 0], [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]],
@@ -73,6 +76,9 @@ export class DetailBuilder {
     const c = parentChart(this.atlas, on, n);
     if (!c) { this.missed++; this.misses.push(`${key}@${on.map(v => v.toFixed(2))}`); return; }
     const a = this.arrays(key), b = a.position.length / 3, count = position.length / 3;
+    { let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+      for (let i = 0; i < count; i++) { const x = position[i * 3], y = position[i * 3 + 1], z = position[i * 3 + 2]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+      if (count) this.proxies.push({ x0, y0, z0, x1, y1, z1, key }); }
     for (let i = 0; i < count; i++) {
       const p: V3 = [position[i * 3], position[i * 3 + 1], position[i * 3 + 2]];
       a.position.push(...p); a.normal.push(normal[i * 3], normal[i * 3 + 1], normal[i * 3 + 2]); a.color.push(...tint);

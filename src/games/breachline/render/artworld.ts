@@ -35,6 +35,9 @@ export interface ArtWorld {
   captureNext(renderer: THREE.WebGLRenderer, scene: THREE.Scene): boolean;
   /** Hides each room's small dressing while the camera is more than DRESS_RANGE metres from the room (draw calls). */
   cull(eye: THREE.Vector3): void;
+  /** What a round can mark on its way through (no collision: rounds pass): each dressing piece's box and material key,
+   * and each modelled prop with its bounds (render/surfacehit.ts names their materials). */
+  markables: { dress: { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; key: string }[]; props: { box: THREE.Box3; object: THREE.Object3D; model: string }[] };
   /** Compiles every shader the art needs (in parallel where the browser can), so its first frame does not stall. */
   warm(renderer: THREE.WebGLRenderer, camera: THREE.Camera, scene: THREE.Scene, samples: number): Promise<void>;
   stats: { triangles: number; meshes: number; textureBytes: number };
@@ -82,6 +85,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     return p;
   };
   const boxes: (DetailBuilder['boxes'][number] & { room: number })[] = [];
+  const markables: ArtWorld['markables'] = { dress: [], props: [] };
   const models = new Map<string, ReturnType<ArtLoader['model']>>();
   const lods = new Map<string, ReturnType<ArtLoader['model']>>();
   for (const p of PROPS) if (!models.has(p.model)) { models.set(p.model, L.model(p.model)); lods.set(p.model, L.model(`${p.model}.lod1`)); }
@@ -136,6 +140,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       const tDress = performance.now();
       const D = dressRoom(atlas, region);
       for (const b of D.boxes) boxes.push({ ...b, room: r });
+      markables.dress.push(...D.proxies);
+      for (const b of D.boxes) { const h = Math.max(b.w, b.depth) / 2 + 0.02; markables.dress.push({ x0: b.x - h, y0: b.y, z0: b.z - h, x1: b.x + h, y1: b.y + b.h, z1: b.z + h, key: 'card' }); }
       const [bm, bn, ba] = await set('blue_metal_plate', TEX_SIZE[tier]), [pm, pn, pa] = await set('painted_plaster_wall', TEX_SIZE[tier]);
       const plain = (color: [number, number, number], roughness: number, metalness: number) => ({ map: null, normalMap: null, armMap: null, color: new THREE.Color(...color), roughness, metalness });
       const looks: Record<DressKey, Parameters<typeof artMaterial>[0]> = {
@@ -251,6 +257,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     { const r = new THREE.Box3().setFromObject(levels[levels.length - 1][0]).getBoundingSphere(new THREE.Sphere()).radius * (p.scale ?? 1); lod.addLevel(new THREE.Object3D(), r < 0.8 ? 22 : 45); }
     lod.position.set(p.x, p.y, p.z); lod.rotation.y = p.yaw; lod.scale.setScalar(p.scale ?? 1);
     group.add(lod);
+    lod.updateMatrixWorld(true);
+    markables.props.push({ box: new THREE.Box3().setFromObject(lod), object: lod, model: p.model });
   }
   // Archive boxes: one instanced body (CC0 cardboard, ambientCG Cardboard004) and one instanced label mesh per label
   // variant. Lit by a flat probe at the room's mean light, a little darker than the open room (they sit in shelving).
@@ -299,6 +307,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     get envReady() { return rooms.some(r => r.env !== null); },
     environmentScale(x, z) { const r = roomAt(x, z); return r >= 0 && rooms[r].env ? 1 / Math.max(0.05, rooms[r].envLight) : 1; },
     environment(x, z) { const r = roomAt(x, z); return r >= 0 ? rooms[r].env?.texture ?? null : null; },
+    markables,
     cull(eye) {
       for (const d of dressing) {
         const dx = Math.max(d.x0 - eye.x, 0, eye.x - d.x1), dz = Math.max(d.z0 - eye.z, 0, eye.z - d.z1), show = dx * dx + dz * dz <= DRESS_RANGE * DRESS_RANGE;

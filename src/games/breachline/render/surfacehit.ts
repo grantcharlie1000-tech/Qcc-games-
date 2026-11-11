@@ -10,11 +10,49 @@ export const MARKS: Record<string, { cell: number; tint: [number, number, number
   concrete: { cell: MARK.crater, tint: [0.85, 0.85, 0.85], chips: [0.6, 0.6, 0.58], size: 0.08 },
   brick: { cell: MARK.brick, tint: [1, 1, 1], chips: [0.62, 0.34, 0.24], size: 0.09 },
   wood: { cell: MARK.wood, tint: [1, 1, 1], chips: [0.72, 0.56, 0.36], size: 0.1 },
-  fabric: { cell: MARK.fabric, tint: [1.45, 1.4, 1.35], chips: null, size: 0.085 },
+  fabric: { cell: MARK.fabric, tint: [1.2, 1.15, 1.1], chips: null, size: 0.13 },
   earth: { cell: MARK.earth, tint: [1, 1, 1], chips: null, size: 0.14 },
   ceiling: { cell: MARK.ceiling, tint: [1, 1, 1], chips: [0.92, 0.9, 0.86], size: 0.1 },
   tile: { cell: MARK.tile, tint: [0.8, 0.8, 0.8], chips: [0.9, 0.9, 0.88], size: 0.12 },
+  plastic: { cell: MARK.crater, tint: [0.35, 0.35, 0.36], chips: [0.18, 0.18, 0.2], size: 0.06 },
+  glass: { cell: MARK.glass, tint: [1, 1, 1], chips: [0.75, 0.85, 0.9], size: 0.09 },
+  cardboard: { cell: MARK.fabric, tint: [0.75, 0.6, 0.45], chips: [0.7, 0.58, 0.42], size: 0.07 },
+  leaf: { cell: -1, tint: [1, 1, 1], chips: [0.3, 0.5, 0.25], size: 0 },
 };
+/** Materials of dressing pieces by their material key (render/labdress.ts DressKey). */
+const KEY_MAT: Record<string, string> = {
+  chassis: 'plastic', plastic: 'plastic', casing: 'plastic', kick: 'plastic', socket: 'plastic', roomsign: 'plastic', led: 'plastic', ledAmber: 'plastic', amber: 'plastic',
+  alarm: 'plastic', exit: 'plastic', clock: 'plastic', sign: 'plastic', fire: 'plastic', screen: 'glass', glass: 'glass', bulb: 'glass',
+  steel: 'metal', chrome: 'metal', conduit: 'metal', handle: 'metal', door: 'metal', locker: 'metal', grid: 'metal', trim: 'metal',
+  card: 'cardboard', paper: 'cardboard', binder: 'cardboard', label: 'cardboard', cork: 'wood', aid: 'leaf',
+};
+/** Materials of the modelled props. */
+const PROP_MAT: Record<string, string> = {
+  covered_car: 'fabric', barrel_03: 'metal', metal_jerrycan_green: 'metal', wooden_military_crate: 'wood', old_military_crate: 'wood',
+  metal_tool_chest: 'metal', korean_fire_extinguisher_01: 'metal', metal_stool_01: 'metal', security_camera_01: 'plastic',
+};
+export const dressMaterial = (key: string) => KEY_MAT[key] ?? 'plastic';
+export const propMaterial = (model: string) => PROP_MAT[model] ?? 'plastic';
+type Proxy = { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; key: string };
+/** The first dressing piece a ray passes through before `tmax` (slab test on each piece's box), with the face normal. */
+export function firstDressing(list: readonly Proxy[], ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, tmax: number): { t: number; nx: number; ny: number; nz: number; key: string } | null {
+  let best: { t: number; nx: number; ny: number; nz: number; key: string } | null = null;
+  const inv = [1 / dx, 1 / dy, 1 / dz], o = [ox, oy, oz];
+  for (const b of list) {
+    const lo = [b.x0, b.y0, b.z0], hi = [b.x1, b.y1, b.z1];
+    let t0 = 0.05, t1 = best ? best.t : tmax - 0.02, axis = -1, sign = 0;
+    for (let k = 0; k < 3; k++) {
+      let a = (lo[k] - o[k]) * inv[k], c = (hi[k] - o[k]) * inv[k], sg = -1;
+      if (a > c) { const tt = a; a = c; c = tt; sg = 1; }
+      if (a > t0) { t0 = a; axis = k; sign = sg; }
+      if (c < t1) t1 = c;
+      if (t0 > t1) break;
+    }
+    if (t0 > t1 || axis < 0) continue;
+    best = { t: t0, nx: axis === 0 ? sign : 0, ny: axis === 1 ? sign : 0, nz: axis === 2 ? sign : 0, key: b.key };
+  }
+  return best;
+}
 /** What covers the ground in each floor area. */
 const FLOOR_KIND: Record<string, string> = { asphalt: 'earth', grass: 'earth', slab: 'concrete', tile: 'tile', lino: 'tile', check: 'tile', raised: 'tile', carpet: 'fabric', planks: 'wood' };
 /** The material at a stopped round's end: the box it struck, or for the ground and the ceiling slab what covers them

@@ -327,7 +327,7 @@ export function makeMarks(): THREE.CanvasTexture {
   // 2: timber: a dark hole torn along the grain, pale splintered fibres either side.
   cell(2, r => { blot(c * 0.8, 0.35, '50,32,20'); for (let i = 0; i < 14; i++) { const x = c + (r() - 0.5) * c * 0.5; g.strokeStyle = `rgba(222,190,140,${0.5 + r() * 0.4})`; g.lineWidth = 1 + r() * 2.5; g.beginPath(); g.moveTo(x, c - c * (0.2 + r() * 0.6)); g.lineTo(x + (r() - 0.5) * 6, c + c * (0.2 + r() * 0.6)); g.stroke(); } ragged(r, c * 0.24, 0.3, 'rgba(20,12,8,0.97)', 0.7, 1.3); });
   // 3: fabric: a small dark hole with frayed threads and a scorched ring.
-  cell(3, r => { blot(c * 0.55, 0.45, '30,26,22'); rays(r, 22, 0.15, 0.55, 'rgba(210,200,185,0.55)', 1); ragged(r, c * 0.16, 0.3, 'rgba(10,8,6,0.95)'); });
+  cell(3, r => { blot(c * 0.7, 0.6, '30,26,22'); rays(r, 26, 0.2, 0.7, 'rgba(225,215,200,0.7)', 1.6); ragged(r, c * 0.24, 0.3, 'rgba(8,6,5,0.97)'); });
   // 4: ceramic tile: a chipped pit with a star of cracks running out across the glaze.
   cell(4, r => { rays(r, 9, 0.15, 0.95, 'rgba(40,38,36,0.75)', 1.6); ragged(r, c * 0.22, 0.35, 'rgba(235,232,225,0.95)'); ragged(r, c * 0.12, 0.3, 'rgba(60,56,52,0.9)'); });
   // 5: glass: a bright crushed centre, radial cracks and two broken rings.
