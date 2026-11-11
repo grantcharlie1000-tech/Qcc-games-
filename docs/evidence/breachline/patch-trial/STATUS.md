@@ -449,3 +449,17 @@ Licence: CC-BY-4.0 (Creative Commons Attribution 4.0 International, https://crea
 > "Protective eyewear" by NVIDIA (SimReady, https://huggingface.co/datasets/nvidia/simready-assets/tree/524747d9b5e1f21b5b18b56041788c01d745f1a1/ppe_eyeProtection_goggles_a01), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). Changed by Patch: converted from USD to glTF, MDL materials dropped for the UsdPreviewSurface textures, textures resized to 2048 px, ambient occlusion mapped from the ORM texture, mass and one convex hull per part added as OMI_physics_body and OMI_physics_shape, pivot moved to the bottom centre, credit and license added to the file metadata.
 
 Licence: CC-BY-4.0 (Creative Commons Attribution 4.0 International, https://creativecommons.org/licenses/by/4.0/). AI-generated: no.
+
+## 3.3–3.5 Stump, holster, distance — done
+
+Proof: `job3-3-5-hips-distance.jpg` (script `job3-distance.mjs`).
+- **3.3 Stump:** it was the capped wrist of the hanging left arm. With the asset's hands restored there are **no capped
+  cuts left anywhere on the figure** (the neck and both wrist cuts are gone). The idle left hip at 2 m is clean in
+  both squads.
+- **3.4 Holster:** a separate mesh would only re-create the cut-and-cap problem, so I kept it as part of the body and
+  bound it rigidly: holster and both outer thigh pockets on the thigh bone, blending to the hip helper at the
+  holster's top. With the fill patches (3.1) in the hip folds, the crouch and crouch-walk hips now show cloth with no
+  gap. A further detail: the eye band now stops short of the nose bridge (the nose tip had kept its skin colour).
+- **3.5 Distance:** at 2 m the Patch figure, with its helmet and goggles (A) or headset (B), is clearly more real than
+  our rifleman. At 8 m the two squads separate by silhouette as well as colour (helmet against bare head). At 20 m
+  (46 px) both read as soldiers and colour does the work; the dark squad A is quite dark against a grey backdrop.
