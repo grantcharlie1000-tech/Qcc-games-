@@ -6,11 +6,12 @@ import * as THREE from 'three';
 import { WALL_H } from '../config';
 import { MAP } from '../map';
 import { DetailBuilder } from './detail';
+import { ROOM_SIGNS } from './printed';
 import { OUTDOOR, type Atlas, type Region } from './levelgeo';
 
 type V3 = [number, number, number];
 /** Materials the dressing asks for; artworld.ts maps each key to a material. */
-export type DressKey = 'chassis' | 'led' | 'ledAmber' | 'bulb' | 'casing' | 'door' | 'locker' | 'exit' | 'alarm' | 'fire' | 'card' | 'label' | 'binder' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
+export type DressKey = 'roomsign' | 'chassis' | 'led' | 'ledAmber' | 'bulb' | 'casing' | 'door' | 'locker' | 'exit' | 'alarm' | 'fire' | 'card' | 'label' | 'binder' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
 
 const inRoom = (r: Region, x: number, z: number) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1;
 
@@ -185,6 +186,48 @@ function dressCorridor(atlas: Atlas, room: Region): DetailBuilder {
   for (const [x, wallZ, side] of [[5.5, 1, -1]] as const) {
     const z = postFace(x, wallZ, side) + side * 0.004, g = new THREE.PlaneGeometry(0.16, 0.2).rotateY(side > 0 ? 0 : Math.PI).translate(x, 1.8, z);
     D.mesh('fire', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [x, 1.8, postFace(x, wallZ, side) + side * 0.001], [0, 0, side], [1, 1, 1], g.attributes.uv.array);
+    g.dispose();
+  }
+  // Services overhead along the north side: two pipes (a lagged one and a bare copper one) on hangers every 2 m.
+  for (const [pz, r, tint] of [[-1.62, 0.045, [0.85, 0.85, 0.82]], [-1.46, 0.018, [0.75, 0.45, 0.25]]] as const) {
+    const g = new THREE.CylinderGeometry(r, r, room.x1 - room.x0 - 0.4, 10, 1, true).rotateZ(Math.PI / 2).translate(0, 2.78, pz);
+    D.mesh('conduit', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [0, y - 0.001, pz], up, [...tint] as V3);
+    g.dispose();
+  }
+  for (let x = room.x0 + 0.6; x < room.x1 - 0.3; x += 2) {
+    D.box('conduit', x - 0.006, 2.83, -1.68, x + 0.006, y, -1.67, [x, y - 0.001, -1.6], up, [0.5, 0.5, 0.5]);
+    D.box('conduit', x - 0.015, 2.72, -1.7, x + 0.015, 2.735, -1.4, [x, y - 0.001, -1.6], up, [0.5, 0.5, 0.5]);
+  }
+  // Hanging room signs at every corridor doorway, printed on both faces so they read from either end.
+  for (const [x, wallZ, side, k] of [[-10.25, -2, 1, 0], [-1.25, -2, 1, 1], [8.75, -2, 1, 2], [-8.75, 1, -1, 3], [-2.25, 1, -1, 4], [6.25, 1, -1, 5], [9.75, 1, -1, 6]] as const) {
+    const zc = wallZ + side * 0.38, v0 = 1 - (k + 1) / ROOM_SIGNS.length, v1 = 1 - k / ROOM_SIGNS.length;
+    D.box('kick', x - 0.012, 2.43, zc - 0.275, x + 0.012, 2.59, zc + 0.275, [x, y - 0.001, zc], up, [1.5, 1.5, 1.5]);
+    for (const zz of [zc - 0.2, zc + 0.2]) D.box('chrome', x - 0.004, 2.59, zz - 0.004, x + 0.004, y, zz + 0.004, [x, y - 0.001, zc], up);
+    for (const f of [1, -1]) {
+      const g = new THREE.PlaneGeometry(0.52, 0.13).rotateY(f > 0 ? Math.PI / 2 : -Math.PI / 2).translate(x + f * 0.0125, 2.51, zc);
+      const uv = g.attributes.uv as THREE.BufferAttribute;
+      for (let i = 0; i < uv.count; i++) uv.setY(i, v0 + uv.getY(i) * (v1 - v0));
+      D.mesh('roomsign', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [x, y - 0.001, zc], up, [1, 1, 1], uv.array);
+      g.dispose();
+    }
+  }
+  // On the solid headers above the panels (2.5 m up; the plasterboard below stays bare, it can be shot away):
+  // white cable trunking along both sides, an emergency light over each doorway, and a clock.
+  for (const [wallZ, side] of [[-2, 1], [1, -1]] as const) {
+    const z = wallZ + side * 0.07, n: V3 = [0, 0, side], at = (x: number, yy: number): V3 => [x, yy, z + side * 0.001];
+    D.box('casing', room.x0 + 0.3, 2.64, side > 0 ? z : z - 0.035, room.x1 - 0.3, 2.7, side > 0 ? z + 0.035 : z, at(0, 2.67), n, [0.95, 0.95, 0.93]);
+  }
+  for (const [x, wallZ, side] of [[-10.25, -2, 1], [-1.25, -2, 1], [8.75, -2, 1], [-8.75, 1, -1], [-2.25, 1, -1], [6.25, 1, -1], [9.75, 1, -1]] as const) {
+    const z = wallZ + side * 0.07, n: V3 = [0, 0, side], at = (yy: number): V3 => [x, yy, z + side * 0.001];
+    D.box('casing', x - 0.17, 2.3, side > 0 ? z : z - 0.07, x + 0.17, 2.4, side > 0 ? z + 0.07 : z, at(2.35), n, [0.96, 0.96, 0.94]);
+    D.box('exit', x - 0.12, 2.31, side > 0 ? z + 0.07 : z - 0.072, x + 0.12, 2.39, side > 0 ? z + 0.072 : z - 0.07, at(2.35), n);
+  }
+  { const z = -2 + 0.07, n: V3 = [0, 0, 1]; D.box('plastic', 3.32, 2.57, z, 3.68, 2.93, z + 0.04, [3.5, 2.75, z + 0.001], n);
+    const g = new THREE.PlaneGeometry(0.32, 0.32).translate(3.5, 2.75, z + 0.041); D.mesh('clock', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [3.5, 2.75, z + 0.001], n, [1, 1, 1], g.attributes.uv.array); g.dispose(); }
+  // Bins at the foot of three posts (small and open: dressing, not cover).
+  for (const [x, z] of [[-6.18, -1.7], [4.18, -1.7], [0.18, 0.72]] as const) {
+    const g = new THREE.CylinderGeometry(0.17, 0.14, 0.42, 16, 1, true).translate(x, 0.21, z);
+    D.mesh('chassis', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [x, 0.001, z], [0, 1, 0], [1.4, 1.5, 1.6]);
     g.dispose();
   }
   // A ceiling with a history: three water-stained tiles, and one tile pushed up and gone, its void dark and two cables

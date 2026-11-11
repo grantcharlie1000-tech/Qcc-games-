@@ -57,3 +57,16 @@ export const fireSign = () => canvasTexture(128, 160, g => {
   g.fillRect(56, 30, 16, 18); g.fillRect(70, 30, 26, 7); g.fillRect(40, 34, 18, 6);
   g.font = 'bold 18px sans-serif'; g.textAlign = 'center'; g.fillText('FIRE', 64, 156);
 });
+
+/** Room names for the corridor's hanging signs: one row each, white on navy, with a room number. Our own layout. */
+export const ROOM_SIGNS = ['GARAGE', 'LABORATORY', 'SERVER ROOM', 'LOBBY', 'OFFICE', 'ARCHIVE', 'STAFF ROOM', 'STORES'] as const;
+export const roomSigns = () => canvasTexture(512, 1024, g => {
+  ROOM_SIGNS.forEach((name, i) => {
+    const y = i * 128;
+    g.fillStyle = '#1f3352'; g.fillRect(0, y, 512, 128);
+    g.fillStyle = '#e8edf2'; g.fillRect(0, y + 116, 512, 12);
+    g.fillStyle = '#ffffff'; g.font = 'bold 52px sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'left';
+    g.fillText(name, 26, y + 60);
+    g.font = '30px sans-serif'; g.textAlign = 'right'; g.fillStyle = '#b9c7d8'; g.fillText(`G.${String(i + 1).padStart(2, '0')}`, 492, y + 60);
+  });
+});

@@ -14,7 +14,7 @@ import { fixtureMeshes } from './fixturemesh';
 import { dressRoom, type DressKey } from './labdress';
 import { BOX_H, BOX_W, LABEL_VARIANTS, archiveBoxGeometry, labelAtlas, labelGeometry } from './archivebox';
 import type { DetailBuilder } from './detail';
-import { clockFace, exitSign, fireSign, safetySign } from './printed';
+import { clockFace, exitSign, fireSign, roomSigns, safetySign } from './printed';
 import { artMaterial } from './materials';
 import { PROPS, propKey } from './props';
 import { PLANKS, SURFACES } from './surfaces';
@@ -131,7 +131,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     }
     // Modelled dressing, lit by the lightmap of whatever it stands on.
     {
-      const printed = { sign: safetySign(), clock: clockFace(), exit: exitSign(), fire: fireSign() };
+      const printed = { sign: safetySign(), clock: clockFace(), exit: exitSign(), fire: fireSign(), rooms: roomSigns() };
       disposers.push(() => { for (const t of Object.values(printed)) t.dispose(); });
       const tDress = performance.now();
       const D = dressRoom(atlas, region);
@@ -150,6 +150,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         aid: plain([0.1, 0.42, 0.18], 0.5, 0),
         screen: { ...plain([0.02, 0.03, 0.04], 0.12, 0), emissive: new THREE.Color(0.05, 0.11, 0.16) },
         sign: { map: printed.sign, normalMap: null, armMap: null, roughness: 0.5, metalness: 0 },
+        roomsign: { map: printed.rooms, normalMap: null, armMap: null, roughness: 0.45, metalness: 0 },
         clock: { map: printed.clock, normalMap: null, armMap: null, roughness: 0.15, metalness: 0 },
         fire: { map: printed.fire, normalMap: null, armMap: null, roughness: 0.4, metalness: 0 },
         alarm: plain([0.62, 0.06, 0.05], 0.35, 0),
