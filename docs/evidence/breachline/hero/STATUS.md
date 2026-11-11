@@ -1,6 +1,8 @@
 # Breachline hero models — status
 
-Session: hero models (weapons, hands, reloads, fighters). Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`
+Session: hero models, now **weapons session**: weapons, hands, the weapon in hand and reloads (row E). Since the plan
+change of 2026-11-11 ("Fighters split out"), fighters and row F belong to the fighters session
+(`docs/evidence/breachline/fighters/`); row F is no longer scored here. Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`
 (sections 4.6, 4.7, 5, 8, 9 and "Parallel workstream: hero models").
 
 ## Phase
@@ -16,7 +18,8 @@ Session: hero models (weapons, hands, reloads, fighters). Plan: `docs/superpower
 | Hands and arms (SDF gloves, sleeves, squad band and shape patch, IK) | Round 2 |
 | Viewmodel motion (springs, sway, bob, recoil, ADS, sprint, swap, melee, casings) and reload timelines | Round 1, **in the game** |
 | Tern C8, Wren-9, Halden 12, Corvin DMR, P-11 | Round 2 (turntables), holds derived from each weapon's sockets |
-| Fighters, animation | Not started (still the box figures) |
+| `worldWeapon(id, lod)` for fighters' hands (contract in the plan) | **Done**: exported from `render/hero/index.ts` with the full sockets and each hand's placement. Level 1 (near) 0.8–2.6k tris, level 2 (far) 0.6–1.8k: AR 2.6k/1.8k, Tern 1.7k/1.2k, Wren 0.9k/0.7k, Halden 1.8k/1.2k, Corvin 2.3k/1.5k, P-11 0.8k/0.6k. Evidence `r2/world-weapons-lods.png` |
+| Fighters, animation | Moved to the fighters session |
 
 ## Scores (row E: weapon and hands; row F: characters). 8 = MW2 (2009)
 
@@ -129,7 +132,5 @@ two-device online test 7/7 passed with the new viewmodel in the game.
 - The other five weapons are below the AR's detail: flat panels, few small parts, no markings.
 - The glove mesh takes about 0.7 s to build (once).
 - Pistol hands read as mittens when aimed.
-- Third-person weapons still use the old box figures' guns (no low detail levels made yet).
 - The magazine change is mostly off-screen; there are no casings yet in the world, only in the viewmodel.
 - Gloves are lumpy close up; the knuckle guard bar is crude.
-- Fighters are untouched (row F = 1).

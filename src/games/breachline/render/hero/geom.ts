@@ -76,7 +76,7 @@ export class Builder {
   /** Bone index applied to everything added until changed. */
   bone = 0;
   /** Detail level: 0 full, 1 medium, 2 low. Builders read it to pick segment counts. */
-  constructor(public lod = 0) {}
+  constructor(public lod = 0) { filletSegs = lod ? 1 : 3; }
   seg(full: number, min = 3): number { return Math.max(min, Math.round(full / (1 + this.lod * 0.9))); }
 
   add(geo: THREE.BufferGeometry, s: Surface, m?: THREE.Matrix4 | null, ao = 1): THREE.BufferGeometry {
@@ -93,10 +93,10 @@ export class Builder {
 
   /** A side profile (z forward is negative, y up) extruded across the width (x), bevelled on every edge. */
   prism(profile: readonly (readonly [number, number])[], width: number, s: Surface, opt: { x?: number; bevel?: number; seg?: number; holes?: (readonly (readonly [number, number])[])[] } = {}) {
-    const bevel = Math.min(opt.bevel ?? 0.0015, width * 0.3), shape = new THREE.Shape();
+    const bevel = this.lod ? 0 : Math.min(opt.bevel ?? 0.0015, width * 0.3), shape = new THREE.Shape();
     // Shape coordinates are (forward distance, height); forward distance = -z.
     profile.forEach(([z, y], i) => (i ? shape.lineTo(-z, y) : shape.moveTo(-z, y)));
-    for (const h of opt.holes ?? []) { const path = new THREE.Path(); h.forEach(([z, y], i) => (i ? path.lineTo(-z, y) : path.moveTo(-z, y))); shape.holes.push(path); }
+    for (const h of this.lod >= 2 ? [] : opt.holes ?? []) { const path = new THREE.Path(); h.forEach(([z, y], i) => (i ? path.lineTo(-z, y) : path.moveTo(-z, y))); shape.holes.push(path); }
     const geo = new THREE.ExtrudeGeometry(shape, { depth: Math.max(1e-4, width - bevel * 2), bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel * 0.9, bevelSegments: this.lod ? 1 : opt.seg ?? 2, curveSegments: this.seg(8) });
     // Shape x (forward) -> -z, extrusion -> x.
     geo.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 0, 1));
@@ -106,7 +106,7 @@ export class Builder {
 
   /** A cross-section (x across, y up) extruded along the bore from z0 back to z1 (z1 < z0 is forward). */
   extrudeZ(section: readonly (readonly [number, number])[], z0: number, z1: number, s: Surface, bevel = 0.001, holes?: (readonly (readonly [number, number])[])[], segs = 2) {
-    const shape = new THREE.Shape(), len = Math.abs(z0 - z1), b = Math.min(bevel, len * 0.3);
+    const shape = new THREE.Shape(), len = Math.abs(z0 - z1), b = this.lod ? 0 : Math.min(bevel, len * 0.3);
     section.forEach(([x, y], i) => (i ? shape.lineTo(x, y) : shape.moveTo(x, y)));
     for (const h of holes ?? []) { const path = new THREE.Path(); h.forEach(([x, y], i) => (i ? path.lineTo(x, y) : path.moveTo(x, y))); shape.holes.push(path); }
     const geo = new THREE.ExtrudeGeometry(shape, { depth: Math.max(1e-4, len - b * 2), bevelEnabled: b > 0, bevelThickness: b, bevelSize: b * 0.9, bevelSegments: this.lod ? 1 : segs, curveSegments: this.seg(8) });
@@ -118,7 +118,7 @@ export class Builder {
   slab(outline: readonly (readonly [number, number])[], y0: number, y1: number, s: Surface, bevel = 0.001) {
     const shape = new THREE.Shape();
     outline.forEach(([x, z], i) => (i ? shape.lineTo(x, -z) : shape.moveTo(x, -z)));
-    const h = y1 - y0, b = Math.min(bevel, h * 0.3);
+    const h = y1 - y0, b = this.lod ? 0 : Math.min(bevel, h * 0.3);
     const geo = new THREE.ExtrudeGeometry(shape, { depth: Math.max(1e-4, h - b * 2), bevelEnabled: b > 0, bevelThickness: b, bevelSize: b * 0.9, bevelSegments: this.lod ? 1 : 2, curveSegments: this.seg(8) });
     geo.rotateX(-Math.PI / 2); // shape y (= -z) -> -z ; extrusion -> +y
     geo.translate(0, y0 + b, 0);
@@ -136,7 +136,7 @@ export class Builder {
 
   /** A rounded box centred at p. */
   box(size: readonly [number, number, number], p: readonly [number, number, number], s: Surface, r = 0.0015, rot?: readonly [number, number, number]) {
-    const rr = Math.min(r, Math.min(...size) * 0.3);
+    const rr = this.lod ? 0 : Math.min(r, Math.min(...size) * 0.3);
     let geo: THREE.BufferGeometry;
     if (rr > 0.0002) {
       // A filleted rectangle extruded with a bevel: flats stay flat, every edge is rounded.
@@ -200,8 +200,11 @@ export class Builder {
   build(opt: { ao?: boolean; aoRange?: number; aoSkipBones?: number[] } = {}): THREE.BufferGeometry {
     const pos: number[] = [], nor: number[] = [], col: number[] = [], pbr: number[] = [], si: number[] = [], sw: number[] = [], ao: number[] = [], idx: number[] = [];
     const c = new THREE.Color();
+    // Lower levels of detail drop parts too small to see at their distance (pins, knurls, casings, lettering).
+    const minR = this.lod >= 2 ? 0.009 : this.lod >= 1 ? 0.004 : 0;
     for (const p of this.pieces) {
       let g = p.geo;
+      if (minR > 0) { if (!g.boundingSphere) g.computeBoundingSphere(); if (g.boundingSphere!.radius < minR) continue; }
       if (!g.getAttribute('normal')) g.computeVertexNormals();
       if (!g.index) g = indexed(g, !!p.surfs);
       const P = g.getAttribute('position'), N = g.getAttribute('normal'), base = pos.length / 3;
@@ -309,7 +312,10 @@ export function bakeAO(g: THREE.BufferGeometry, range: number, skip: number[] = 
 }
 
 /** Rounds the corners of a polygon with fillet arcs (radius per corner or one for all). */
-export function fillet(poly: readonly (readonly [number, number])[], r: number | readonly number[], segs = 3): [number, number][] {
+/** Arc points per fillet; the Builder lowers it for its lower levels of detail. */
+let filletSegs = 3;
+export function fillet(poly: readonly (readonly [number, number])[], r: number | readonly number[], segs = filletSegs): [number, number][] {
+  segs = Math.min(segs, filletSegs);
   const out: [number, number][] = [], n = poly.length;
   for (let i = 0; i < n; i++) {
     const rr = typeof r === 'number' ? r : r[i] ?? 0, p = poly[i], a = poly[(i + n - 1) % n], b = poly[(i + 1) % n];

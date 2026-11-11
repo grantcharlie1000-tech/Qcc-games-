@@ -14,6 +14,7 @@ export const WEAPON_BONES = 6 + CASES;
 
 /** A spent case at a bone's origin, mouth forward. Shotgun hulls are wider and red. */
 function casings(b: Builder, kind: 'rifle' | 'pistol' | 'shell', at: V3) {
+  if (b.lod > 0) return;
   for (let i = 0; i < CASES; i++) {
     b.bone = WB.case0 + i;
     const m0 = b.mark;
@@ -57,7 +58,8 @@ function rail(b: Builder, z0: number, z1: number, y: number, s: Surface, x = 0, 
   const mark = b.mark, w = 0.0212, pitch = 0.01;
   b.extrudeZ([[-w / 2 + 0.002, y - 0.006], [w / 2 - 0.002, y - 0.006], [w / 2 - 0.002, y - 0.0035], [-w / 2 + 0.002, y - 0.0035]], z0, z1, s, 0.0005);
   const tooth: [number, number][] = [[-w / 2 + 0.0025, y - 0.0036], [w / 2 - 0.0025, y - 0.0036], [w / 2, y - 0.0022], [w / 2 - 0.0012, y], [-w / 2 + 0.0012, y], [-w / 2, y - 0.0022]];
-  for (let z = z0 - 0.002; z - 0.0052 >= z1; z -= pitch) b.extrudeZ(tooth, z, z - 0.0052, s, 0);
+  if (b.lod === 0) for (let z = z0 - 0.002; z - 0.0052 >= z1; z -= pitch) b.extrudeZ(tooth, z, z - 0.0052, s, 0);
+  else b.extrudeZ([[-w / 2, y - 0.0036], [w / 2, y - 0.0036], [w / 2, y - 0.0022], [w / 2 - 0.0012, y], [-w / 2 + 0.0012, y], [-w / 2, y - 0.0022]], z0, z1, s, 0);
   if (rot || x) b.transformSince(mark, new THREE.Matrix4().makeTranslation(x, 0, 0).multiply(new THREE.Matrix4().makeRotationZ(rot)));
 }
 

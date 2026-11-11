@@ -4,6 +4,9 @@
  * under the baked light grid and reflection probes when those exist. */
 import * as THREE from 'three';
 import { createHeroViewmodel } from './viewmodel';
+import type { WeaponId } from '../../config';
+import { holdFor, type Place } from './rig';
+import { weaponModel, type WeaponSockets } from './weapons';
 import type { Match, SimEvent } from '../../state';
 
 export interface HeroLighting {
@@ -55,3 +58,13 @@ export function createViewmodel(renderer: THREE.WebGLRenderer, lighting: HeroLig
 }
 
 export { createFighters } from '../fighters/index';
+
+/** A weapon for a fighter's hands in the world: low detail (level 1 near, 2 far), the same parts and sockets as the
+ * first-person model (sight line on -Z through the origin, metres). `hold` gives each hand's placement (palm contact
+ * point, palm direction, finger direction) in weapon space; `material` is the shared hero material. The geometry
+ * carries rigid skin attributes for the moving parts (bones as `WB` in weapons.ts) and works as a plain mesh too. */
+export function worldWeapon(id: WeaponId, lod: 1 | 2 = 1): { geometry: THREE.BufferGeometry; triangles: number; sockets: WeaponSockets; hold: { right: Place; left: Place } } {
+  const w = weaponModel(id, lod), h = holdFor(id);
+  return { geometry: w.geo, triangles: w.triangles, sockets: weaponModel(id, 0).sockets, hold: { right: h.right, left: h.left } };
+}
+export { heroMaterial } from './material';
