@@ -68,20 +68,24 @@ const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 export class Effects {
   readonly group = new THREE.Group();
   private dustP: Points; private sparkP: Points;
-  private chunks: THREE.InstancedMesh; private chunk: { x: number; y: number; z: number; vx: number; vy: number; vz: number; rx: number; ry: number; rz: number; spin: number; size: number; life: number; stay: boolean; rest: boolean }[] = []; private chunkNext = 0; private chunkLive = 0;
+  private chunks: THREE.InstancedMesh; private chunk: { x: number; y: number; z: number; vx: number; vy: number; vz: number; rx: number; ry: number; rz: number; spin: number; size: number; life: number; stay: boolean; rest: boolean; flat: number }[] = []; private chunkNext = 0; private chunkLive = 0;
   private tracers: THREE.InstancedMesh; private tracerLife: Float32Array; private tracerNext = 0; private tracerLive = 0;
+  private scorches: THREE.InstancedMesh; private scorchNext = 0; private scorchTag = new Int32Array(32).fill(-1);
   private holes: THREE.InstancedMesh; private holeNext = 0; private holeTag = new Int32Array(160).fill(-1);
   private flashes: { sprite: THREE.Sprite; life: number; span: number; size: number }[] = [];
   private textures: THREE.Texture[] = [];
   /** 1 full effects; lower on the performance preset. */
   density = 1;
   constructor(readonly maxChunks = 180) {
-    const puff = makeSprite('puff'), flash = makeSprite('flash'), hole = makeSprite('hole');
-    this.textures.push(puff, flash, hole);
+    const puff = makeSprite('puff'), flash = makeSprite('flash'), hole = makeSprite('hole'), scorch = makeSprite('scorch');
+    this.textures.push(puff, flash, hole, scorch);
+    this.scorches = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: scorch, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), 32);
+    this.scorches.frustumCulled = false; this.scorches.renderOrder = 1;
+    for (let i = 0; i < 32; i++) this.scorches.setMatrixAt(i, ZERO);
     this.dustP = new Points(280, puff, false); this.sparkP = new Points(160, puff, true);
     this.chunks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), maxChunks);
     this.chunks.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.chunks.frustumCulled = false;
-    for (let i = 0; i < maxChunks; i++) { this.chunks.setMatrixAt(i, ZERO); this.chunks.setColorAt(i, col.setRGB(1, 1, 1)); this.chunk.push({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, rx: 0, ry: 0, rz: 0, spin: 0, size: 0, life: 0, stay: false, rest: false }); }
+    for (let i = 0; i < maxChunks; i++) { this.chunks.setMatrixAt(i, ZERO); this.chunks.setColorAt(i, col.setRGB(1, 1, 1)); this.chunk.push({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, rx: 0, ry: 0, rz: 0, spin: 0, size: 0, life: 0, stay: false, rest: false, flat: 0.6 }); }
     const tg = new THREE.BoxGeometry(1, 1, 1); tg.translate(0, 0, 0.5);
     this.tracers = new THREE.InstancedMesh(tg, new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false }), 40);
     this.tracers.frustumCulled = false; this.tracers.renderOrder = 6; this.tracerLife = new Float32Array(40);
@@ -93,16 +97,16 @@ export class Effects {
       const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: flash, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
       sprite.visible = false; sprite.renderOrder = 7; this.group.add(sprite); this.flashes.push({ sprite, life: 0, span: 1, size: 1 });
     }
-    this.group.add(this.holes, this.chunks, this.tracers, this.dustP.object, this.sparkP.object);
+    this.group.add(this.scorches, this.holes, this.chunks, this.tracers, this.dustP.object, this.sparkP.object);
   }
   dust(x: number, y: number, z: number, vx: number, vy: number, vz: number, size: number, life: number, r: number, g: number, b: number, alpha = 0.5, grow = 1.6, gravity = 0, drag = 2.2) { this.dustP.add(x, y, z, vx, vy, vz, size, life, r, g, b, alpha, grow, gravity, drag); }
   spark(x: number, y: number, z: number, vx: number, vy: number, vz: number, size = 0.05, life = 0.3) { this.sparkP.add(x, y, z, vx, vy, vz, size, life, 1, 0.72, 0.3, 1, -0.6, 9, 1); }
   /** A tumbling chunk. With `stay`, it stays where it comes to rest until the round is cleared (the pool recycles the
    * oldest first). */
-  debris(x: number, y: number, z: number, vx: number, vy: number, vz: number, size: number, r: number, g: number, b: number, stay = false) {
+  debris(x: number, y: number, z: number, vx: number, vy: number, vz: number, size: number, r: number, g: number, b: number, stay = false, flat = 0.6) {
     const i = this.chunkNext; this.chunkNext = (this.chunkNext + 1) % this.maxChunks;
     const c = this.chunk[i];
-    c.x = x; c.y = y; c.z = z; c.vx = vx; c.vy = vy; c.vz = vz; c.rx = Math.random() * 6; c.ry = Math.random() * 6; c.rz = Math.random() * 6; c.spin = 4 + Math.random() * 9; c.size = size; c.life = 2.2 + Math.random() * 1.6; c.stay = stay; c.rest = false;
+    c.x = x; c.y = y; c.z = z; c.vx = vx; c.vy = vy; c.vz = vz; c.rx = Math.random() * 6; c.ry = Math.random() * 6; c.rz = Math.random() * 6; c.spin = 4 + Math.random() * 9; c.size = size; c.life = 2.2 + Math.random() * 1.6; c.stay = stay; c.rest = false; c.flat = flat;
     this.chunks.setColorAt(i, col.setRGB(r, g, b)); this.chunks.instanceColor!.needsUpdate = true;
     this.chunkLive = 1;
   }
@@ -123,9 +127,18 @@ export class Effects {
     this.holes.setMatrixAt(i, mat.compose(v.set(x + nx * 0.012, y + ny * 0.012, z + nz * 0.012), q, s.set(size, size, size)));
     this.holes.instanceMatrix.needsUpdate = true;
   }
+  /** A soot mark from a blast, on the floor or a wall (`tag` as for holes). */
+  scorch(x: number, y: number, z: number, nx: number, ny: number, nz: number, size: number, tag = -1) {
+    const i = this.scorchNext; this.scorchNext = (this.scorchNext + 1) % 32;
+    this.scorchTag[i] = tag;
+    q.setFromUnitVectors(up, n.set(nx, ny, nz)).multiply(new THREE.Quaternion().setFromAxisAngle(up, Math.random() * 6.28));
+    this.scorches.setMatrixAt(i, mat.compose(v.set(x + nx * 0.006, y + ny * 0.006, z + nz * 0.006), q, s.set(size, size, size)));
+    this.scorches.instanceMatrix.needsUpdate = true;
+  }
   /** Removes the decals painted on something that has gone (a wall cell knocked out). */
   clearHoles(tag: number) {
     let any = false;
+    for (let i = 0; i < 32; i++) if (this.scorchTag[i] === tag) { this.scorchTag[i] = -1; this.scorches.setMatrixAt(i, ZERO); this.scorches.instanceMatrix.needsUpdate = true; }
     for (let i = 0; i < 160; i++) if (this.holeTag[i] === tag) { this.holeTag[i] = -1; this.holes.setMatrixAt(i, ZERO); any = true; }
     if (any) this.holes.instanceMatrix.needsUpdate = true;
   }
@@ -144,6 +157,14 @@ export class Effects {
       this.dust(x, y, z, Math.cos(a) * sp, 0.4 + Math.random() * 2.2, Math.sin(a) * sp, 0.9 + Math.random() * 0.9, 1.6 + Math.random() * 1.6, g * light[0] * 2.4, g * light[1] * 2.4, g * light[2] * 2.4, 0.55, 2.4, -0.25, 1.6);
     }
     for (let i = 0; i < 26 * this.density; i++) { const a = Math.random() * 6.28, sp = 3 + Math.random() * 9; this.spark(x, y, z, Math.cos(a) * sp, 1 + Math.random() * 7, Math.sin(a) * sp, 0.06, 0.35 + Math.random() * 0.4); }
+    // The pressure ring: a skirt of dust racing out along the floor, fast and low, then dragging to a stop.
+    const ring = Math.round(28 * power * this.density);
+    for (let i = 0; i < ring; i++) {
+      const a = i / ring * 6.283 + Math.random() * 0.2, sp = 7 + Math.random() * 4 * power, g = 0.42 + Math.random() * 0.2;
+      this.dust(x, 0.08 + Math.random() * 0.15, z, Math.cos(a) * sp, 0.2 + Math.random() * 0.5, Math.sin(a) * sp, 0.35 + Math.random() * 0.3, 0.7 + Math.random() * 0.5, g * light[0] * 2, g * light[1] * 2, g * light[2] * 2, 0.4, 3, -0.1, 4.5);
+    }
+    // Soot on the floor under it.
+    if (y < 2.2) this.scorch(x, 0.002, z, 0, 1, 0, 1.4 * power + Math.random() * 0.4);
   }
   update(dt: number, pixelHeight: number, fov: number) {
     const scale = pixelHeight / (2 * Math.tan(fov * Math.PI / 360));
@@ -167,7 +188,7 @@ export class Effects {
         }
         c.rx += c.spin * dt; c.rz += c.spin * 0.7 * dt;
         const k = c.size * Math.min(1, c.life * 2.5);
-        this.chunks.setMatrixAt(i, mat.compose(v.set(c.x, c.y, c.z), q.setFromEuler(e.set(c.rx, c.ry, c.rz)), s.set(k, k * 0.6, k)));
+        this.chunks.setMatrixAt(i, mat.compose(v.set(c.x, c.y, c.z), q.setFromEuler(e.set(c.rx, c.ry, c.rz)), s.set(k, k * c.flat, k)));
       }
       this.chunkLive = any; this.chunks.instanceMatrix.needsUpdate = true;
     }
@@ -191,13 +212,15 @@ export class Effects {
     for (let i = 0; i < this.maxChunks; i++) { this.chunk[i].life = 0; this.chunks.setMatrixAt(i, ZERO); }
     for (let i = 0; i < 160; i++) this.holes.setMatrixAt(i, ZERO);
     this.holeTag.fill(-1);
+    for (let i = 0; i < 32; i++) this.scorches.setMatrixAt(i, ZERO);
+    this.scorchTag.fill(-1); this.scorches.instanceMatrix.needsUpdate = true;
     for (let i = 0; i < 40; i++) { this.tracerLife[i] = 0; this.tracers.setMatrixAt(i, ZERO); }
     this.chunks.instanceMatrix.needsUpdate = this.holes.instanceMatrix.needsUpdate = this.tracers.instanceMatrix.needsUpdate = true;
     for (const f of this.flashes) { f.life = 0; f.sprite.visible = false; }
   }
   dispose() {
     this.dustP.dispose(); this.sparkP.dispose();
-    for (const m of [this.chunks, this.tracers, this.holes]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }
+    for (const m of [this.chunks, this.tracers, this.holes, this.scorches]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }
     for (const f of this.flashes) f.sprite.material.dispose();
     for (const t of this.textures) t.dispose();
   }

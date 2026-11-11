@@ -67,9 +67,39 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** destruction round 2 done (`destruction/round-2/`); next the tactical-kit items
-(plan commit 803ccc4: breach charge, barricades, reinforcement, uplink, grenade blasts), then corridor round 3 and
-Archive round 2.
+**Where I am (keep current):** kit: breach charge round 1 done (`kit/charge-round-1/`); next barricades, then the
+reinforcement, the uplink and grenade blasts; then corridor round 3 and Archive round 2.
+
+## Tactical kit (row K): breach charge, round 1 (`kit/charge-round-1/`)
+
+My part of the charge is the placed model, the blast and the aftermath. The in-hand charge belongs to the weapons
+session and the third-person placing to the fighters session.
+- **On the wall** (`render/kit.ts`, new, our own design): an adhesive foam frame, and an olive pack with webbing
+  straps, a raised tan core and two printed hazard bands. Tape over two corners onto the wall. A black detonator
+  with a cap, a toggle and a cable gland, and a blinking LED that blooms. Red and black firing wires loop down the
+  wall. One merged mesh (one draw call) plus the LED. Each charge's material is tinted by the baked light where it
+  sits, so it is lit like the wall behind it. Before: three flat-coloured boxes (`models.ts` `chargeParts`, still
+  there for the weapons session).
+- **Going off:** the existing flash, smoke and sparks, plus a pressure ring (a skirt of dust racing out low along
+  the floor), a soot mark on the floor, and soot on the board round the opening on the side the charge was set
+  (decals belong to their cells). Board fragments thrown into the room are thin flat plates that come to rest and
+  stay.
+- **The opening:** ragged, torn skins, studs and the cavity (destruction rounds 1-2), with gunfire-style chips
+  round it.
+- **Evidence:**
+  - `charge-on-wall-high.png` and `-crop.png` (armed charge);
+  - `blast-strip.png`: in the smoke after 9 s game time; then 2.4 s and 8 s of effect time with `?artdbg=fxfast`.
+    The bookmark tool can't run effects in real time: effects age only with rendered frames, and the test hook
+    draws 16 ms frames;
+  - `after-high.png`, `after-close-high.png`.
+- **Mismatches for round 2:**
+  - the pack is flat-coloured (no fabric, print or label textures);
+  - no wire running away from the charge to the player;
+  - no broken stud ends sticking into the opening (blocked by the "nothing in a passable gap" rule; a short
+    splintered stub at the jamb is a possibility);
+  - the smoke is a uniform haze rather than rolling clouds;
+  - the floor soot sits at the wall base, under the opening, where it is hard to see.
+- K (mine, charge only): 3 -> 5.
 
 ## Phase 5: destruction look, round 2 (`destruction/round-2/`)
 

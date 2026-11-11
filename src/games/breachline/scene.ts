@@ -7,7 +7,8 @@ import { createBake, SUN, type Bake } from './lightbake';
 import { PanelView, buildLevel, type PanelMaterials } from './levelmesh';
 import { MAP } from './map';
 import { loadArtWorld, type ArtWorld } from './render/artworld';
-import { boxes, chargeParts, deviceParts } from './models';
+import { boxes, deviceParts } from './models';
+import { chargeGeometry } from './render/kit';
 import { createFighters, createViewmodel, type HeroLighting } from './render/hero';
 import { createPost, type PostTier } from './render/post';
 import { shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
@@ -78,6 +79,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const artScene = new THREE.Scene();
   artScene.fog = scene.fog;
   let art: ArtWorld | null = null, disposed = false, probesDone = true;
+  const fxFast = typeof location !== 'undefined' && /artdbg=[^&]*fxfast/.test(location.search);
   const panelMats: PanelMaterials = { wall: materials.drywall, core: materials.core, planks: materials.planks, plate: materials.plate };
   const panelGroup = new THREE.Group(); scene.add(panelGroup);
   let world: World | null = null, panels: PanelView[] = [];
@@ -198,10 +200,15 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const ringGeo = new THREE.PlaneGeometry(1, 1); ringGeo.rotateX(-Math.PI / 2);
   const pulse = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ map: ringTex, color: 0xff5a3c, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   pulse.visible = false; pulse.renderOrder = 3; scene.add(pulse);
-  const led = new THREE.MeshBasicMaterial({ color: 0xff3020 });
-  const chargeGeo = boxes(chargeParts()), ledGeo = new THREE.BoxGeometry(0.03, 0.03, 0.02);
+  // The LED is drawn bright enough to bloom; the charge itself is lit like the fighters (hemisphere and key light).
+  const led = new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 0.12, 0.06).multiplyScalar(6), toneMapped: false });
+  const kitMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0 });
+  const { body: chargeGeo, led: ledGeo } = chargeGeometry();
   const chargeMeshes: THREE.Group[] = [];
-  for (let i = 0; i < 6; i++) { const g = new THREE.Group(), l = new THREE.Mesh(ledGeo, led); l.position.set(-0.08, -0.04, 0.05); g.add(new THREE.Mesh(chargeGeo, lambert), l); g.visible = false; scene.add(g); chargeMeshes.push(g); }
+  // Each charge has its own copy of the material (same shader), tinted by the baked light where it sits, so it is lit
+  // like the wall behind it rather than only by the scene's two run-time lights.
+  const kitMats: THREE.MeshStandardMaterial[] = [];
+  for (let i = 0; i < 6; i++) { const mm = kitMat.clone(); kitMats.push(mm); const g = new THREE.Group(), l = new THREE.Mesh(ledGeo, led); g.add(new THREE.Mesh(chargeGeo, mm), l); g.visible = false; scene.add(g); chargeMeshes.push(g); }
   const nadeGeo = [boxes([{ s: [0.07, 0.1, 0.07], p: [0, 0, 0], c: 0x39452f }, { s: [0.03, 0.04, 0.03], p: [0, 0.07, 0], c: 0x8a8d90 }]), boxes([{ s: [0.065, 0.13, 0.065], p: [0, 0, 0], c: 0x2a2d30 }, { s: [0.07, 0.03, 0.07], p: [0, 0.03, 0], c: 0xe0b020 }])];
   const nades: { mesh: THREE.Mesh; id: number }[] = [];
   for (let i = 0; i < 6; i++) { const mesh = new THREE.Mesh(nadeGeo[0], lambert); mesh.visible = false; scene.add(mesh); nades.push({ mesh, id: -1 }); }
@@ -263,8 +270,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       const c = m.charges[i], panel = c && m.world.panels[c.panel];
       g.visible = !!panel;
       if (!c || !panel) return;
-      const at = panelPoint(panel, c.u, c.y, c.side * 0.075);
+      const at = panelPoint(panel, c.u, c.y, c.side * (panel.kind === 'wall' ? PANEL_T / 2 : 0.035));
       g.position.set(at.x, at.y, at.z);
+      const lit = bake.probe(at.x, at.z); kitMats[i].color.setRGB(1.2 + lit[0] * 2.4, 1.2 + lit[1] * 2.4, 1.2 + lit[2] * 2.4);
       g.rotation.y = panel.axis === 'x' ? (c.side > 0 ? 0 : Math.PI) : c.side > 0 ? Math.PI / 2 : -Math.PI / 2;
       g.children[1].visible = blink;
     });
@@ -330,7 +338,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     for (let i = 0; i < (fx.density < 1 ? 1 : 2); i++) fx.debris(ex, y, ez, dx * (0.5 + Math.random() * 1.5) + (Math.random() - 0.5), Math.random() * 0.8, dz * (0.5 + Math.random() * 1.5) + (Math.random() - 0.5), 0.012 + Math.random() * 0.02, c[0] * b, c[1] * b, c[2] * b, true);
   }
   /** Chips on the intact board round a fresh hole, on both faces: rounds and blast tear more than they cut. */
-  function chipRim(panel: Panel, broken: number[], per: number) {
+  function chipRim(panel: Panel, broken: number[], per: number, scorched = false) {
     if (fx.density < 1) per = 1;
     const half = PANEL_T / 2, nx = panel.axis === 'z' ? 1 : 0, nz = panel.axis === 'x' ? 1 : 0;
     for (const k of broken.slice(0, 12)) {
@@ -346,6 +354,11 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
           for (const side of [1, -1]) {
             const p = panelPoint(panel, u, y, side * half);
             fx.hole(p.x, p.y, p.z, nx * side, 0, nz * side, 0.03 + Math.random() * 0.03, panel.id * 4096 + r * panel.cols + c);
+          }
+          // A charge blackens the board round the opening on the side it was set (once per neighbour).
+          if (scorched && i === 0 && Math.random() < 0.6) {
+            const side = (panel.axis === 'x' ? lastOrigin.z : lastOrigin.x) < panel.pos ? -1 : 1, p = panelPoint(panel, u, y, side * (half + 0.002));
+            fx.scorch(p.x, p.y, p.z, nx * side, 0, nz * side, 0.3 + Math.random() * 0.25, panel.id * 4096 + r * panel.cols + c);
           }
         }
       }
@@ -387,7 +400,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             const panel = m.world.panels[e.p];
             if (!panel) break;
             for (const c of e.c) fx.clearHoles(e.p * 4096 + c);
-            if (panel.kind === 'wall') chipRim(panel, e.c, e.cause === 1 ? 1 : 2);
+            if (panel.kind === 'wall') chipRim(panel, e.c, e.cause === 1 ? 1 : 2, e.cause === 1);
             const wood = panel.kind !== 'wall', max = e.cause === 1 ? 46 : 10, stride = Math.max(1, Math.ceil(e.c.length / max));
             const src = lastOrigin, side = (panel.axis === 'x' ? src.z : src.x) < panel.pos ? 1 : -1;
             for (let i = 0; i < e.c.length; i += stride) {
@@ -395,7 +408,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
               const lowWood = wood || at.y < 1.1, c = lowWood ? [0.5, 0.36, 0.22] : [0.85, 0.82, 0.74];
               const speed = e.cause === 1 ? 3 + Math.random() * 6 : 1 + Math.random() * 2.5, nx = panel.axis === 'z' ? side : 0, nz = panel.axis === 'x' ? side : 0;
               const count = e.cause === 1 ? 1 : 2;
-              for (let k = 0; k < count; k++) fx.debris(at.x, at.y, at.z, nx * speed + (Math.random() - 0.5) * 2, Math.random() * 2.5, nz * speed + (Math.random() - 0.5) * 2, 0.05 + Math.random() * (e.cause === 1 ? 0.13 : 0.07), c[0] * b, c[1] * b, c[2] * b);
+              // Board fragments: thin, flat pieces that come to rest and stay.
+              for (let k = 0; k < count; k++) fx.debris(at.x, at.y, at.z, nx * speed + (Math.random() - 0.5) * 2, Math.random() * 2.5, nz * speed + (Math.random() - 0.5) * 2, 0.05 + Math.random() * (e.cause === 1 ? 0.13 : 0.07), c[0] * b, c[1] * b, c[2] * b, true, wood ? 0.3 : 0.12);
               if (i % (stride * 2) === 0) impact(at.x, at.y, at.z, nx, 0, nz, wood ? 'wood' : 'wall', false);
             }
             break;
@@ -442,7 +456,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       place(view);
       updateGadgets(view.m, dt);
       viewmodel.update(view, time);
-      fx.update(dt, height * (window.devicePixelRatio || 1) * scale, camera.fov);
+      // `?artdbg=fxfast` ages effects 25 times faster, for evidence renders of how smoke and dust clear.
+      fx.update(fxFast ? dt * 25 : dt, height * (window.devicePixelRatio || 1) * scale, camera.fov);
       exposure = Math.max(0, exposure - dt * 3.5);
       renderer.toneMappingExposure = 1.02 + (view.reduced ? 0 : exposure);
       const graded = post.begin();
@@ -483,7 +498,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       scene.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.geometry) mesh.geometry.dispose(); });
       for (const m of Object.values(materials)) m.dispose();
       for (const t of [...Object.values(textures), skyTex, sunTex, ringTex, ...siteTex]) t.dispose();
-      for (const m of [lambert, led]) m.dispose();
+      for (const m of [lambert, led, kitMat, ...kitMats]) m.dispose();
       renderer.dispose();
     },
   };

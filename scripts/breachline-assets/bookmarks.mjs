@@ -34,12 +34,16 @@ export const BOOKMARKS = {
   'breach-lab': [1.2, -3.6, 3.1416, -0.06],
   'shot-wall': [-4.4, -0.4, 0.15, -0.04],
   'breach-close': [1.9, -1.2, 0.35, -0.12],
+  // A charge placed on the Lab's south wall, before it goes off (taken first: the damage set detonates it).
+  charge: [1.62, -0.05, 0.3, -0.32],
 };
+/** A breach charge pressed onto the wall and left armed. */
+const PLANT = `(() => { const h = window.__breachlineTest; h.place(1.5, -0.6, 0, -0.25); h.advance(0.1); h.hold({}, 1.4, { breach: true }); h.advance(0.3); })()`;
 /** The same damage every time: a magazine into the Lab's south wall from the corridor, then a breach charge. */
 const DAMAGE = `(() => { const h = window.__breachlineTest;
   h.place(-4.6, 0.2, 0, -0.05); h.advance(0.1); h.hold({ fire: true, mx: 1 }, 0.8);
   h.place(1.5, -0.6, 0, -0.25); h.advance(0.1); h.hold({}, 1.4, { breach: true });
-  h.place(1.5, 0.55, 0, -0.1); h.advance(0.2); h.hold({}, 0.2, { breach: true }); h.advance(9); })()`;
+  h.place(1.5, 0.55, 0, -0.1); h.advance(0.2); h.hold({}, 0.2, { breach: true }); h.advance(${Number(process.env.AFTER ?? 9)}); for (let i = 0; i < ${Number(process.env.FXDRAWS ?? 0)}; i++) h.draw(); })()`;
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -66,6 +70,7 @@ await mkdir(out, { recursive: true });
 let damaged = false;
 for (const [name, [x, z, yaw, pitch]] of Object.entries(BOOKMARKS)) {
   if (only.length && !only.includes(name)) continue;
+  if (name === 'charge') await page.evaluate(PLANT);
   if (['breach', 'breach-lab', 'shot-wall', 'breach-close'].includes(name) && !damaged) { await page.evaluate(DAMAGE); damaged = true; await page.waitForTimeout(500); }
   await page.evaluate(([x, z, yaw, pitch]) => { const h = window.__breachlineTest; h.place(x, z, yaw, pitch); h.advance(0.05); h.draw(); h.draw(); }, [x, z, yaw, pitch]);
   await page.waitForTimeout(300);

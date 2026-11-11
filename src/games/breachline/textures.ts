@@ -246,7 +246,7 @@ export function makeTextures(anisotropy: number, size = 256): Record<TexId, THRE
 }
 
 /** Soft sprites for effects: white on transparent, tinted per use. */
-export function makeSprite(kind: 'puff' | 'flash' | 'hole' | 'blob' | 'ring'): THREE.CanvasTexture {
+export function makeSprite(kind: 'puff' | 'flash' | 'hole' | 'blob' | 'ring' | 'scorch'): THREE.CanvasTexture {
   const s = 128, canvas = document.createElement('canvas'); canvas.width = canvas.height = s;
   const g = canvas.getContext('2d')!, c = s / 2;
   if (kind === 'puff' || kind === 'blob') {
@@ -259,6 +259,19 @@ export function makeSprite(kind: 'puff' | 'flash' | 'hole' | 'blob' | 'ring'): T
     g.fillStyle = grad; g.fillRect(0, 0, s, s);
     g.fillStyle = 'rgba(255,240,200,0.9)';
     for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5 + 0.3; g.beginPath(); g.moveTo(c + Math.cos(a - 0.16) * 8, c + Math.sin(a - 0.16) * 8); g.lineTo(c + Math.cos(a) * c * 0.95, c + Math.sin(a) * c * 0.95); g.lineTo(c + Math.cos(a + 0.16) * 8, c + Math.sin(a + 0.16) * 8); g.fill(); }
+  } else if (kind === 'scorch') {
+    // Soot: a dark, uneven core fading out, with streaks thrown radially and a few clean spots where debris lay.
+    const r = rng(23), grad = g.createRadialGradient(c, c, 0, c, c, c);
+    grad.addColorStop(0, 'rgba(14,12,10,0.6)'); grad.addColorStop(0.35, 'rgba(22,19,16,0.4)'); grad.addColorStop(0.7, 'rgba(30,26,22,0.14)'); grad.addColorStop(1, 'rgba(30,26,22,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, s, s);
+    for (let i = 0; i < 40; i++) {
+      const a = r() * 6.283, l0 = c * (0.15 + r() * 0.2), l1 = c * (0.5 + r() * 0.45), w = 1 + r() * 3;
+      g.strokeStyle = `rgba(16,13,11,${0.08 + r() * 0.18})`; g.lineWidth = w; g.beginPath();
+      g.moveTo(c + Math.cos(a) * l0, c + Math.sin(a) * l0); g.lineTo(c + Math.cos(a) * l1, c + Math.sin(a) * l1); g.stroke();
+    }
+    g.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 6; i++) { g.fillStyle = `rgba(0,0,0,${0.3 + r() * 0.4})`; g.beginPath(); g.arc(c + (r() - 0.5) * c, c + (r() - 0.5) * c, 3 + r() * 6, 0, 7); g.fill(); }
+    g.globalCompositeOperation = 'source-over';
   } else if (kind === 'hole') {
     // A crater: faint grey bruising, a ring of crushed, bared gypsum chips, then the ragged dark hole.
     const r = rng(11), grad = g.createRadialGradient(c, c, 0, c, c, c);
