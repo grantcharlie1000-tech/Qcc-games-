@@ -19,7 +19,7 @@ export const fb = (finger: number, seg: number) => 3 + finger * 3 + seg;
 
 /** Hand anatomy (right hand, metres, wrist joint at the origin, palm down, fingers along -Z). Gloved radii. */
 interface Digit { base: Vec; len: [number, number, number]; rad: [number, number, number, number]; yaw: number; pitch: number }
-const G = 0.0009;
+const G = 0.0004;
 export const HAND: Digit[] = [
   { base: [-0.02, -0.01, -0.024], len: [0.044, 0.032, 0.028], rad: [0.0142 + G, 0.0118 + G, 0.0108 + G, 0.0093 + G], yaw: 0.62, pitch: -0.32 },
   { base: [-0.026, 0.002, -0.088], len: [0.041, 0.024, 0.021], rad: [0.0096 + G, 0.0086 + G, 0.0078 + G, 0.0068 + G], yaw: 0.07, pitch: 0 },
@@ -27,6 +27,8 @@ export const HAND: Digit[] = [
   { base: [0.0108, 0.002, -0.087], len: [0.043, 0.027, 0.021], rad: [0.0093 + G, 0.0084 + G, 0.0076 + G, 0.0066 + G], yaw: -0.06, pitch: 0 },
   { base: [0.0272, -0.003, -0.077], len: [0.034, 0.021, 0.019], rad: [0.0083 + G, 0.0075 + G, 0.0068 + G, 0.006 + G], yaw: -0.15, pitch: 0 },
 ];
+// Slimmer fingers: a fitted glove, not a padded mitt.
+for (let d = 1; d < 5; d++) HAND[d].rad = HAND[d].rad.map(r => r * 0.9) as Digit['rad'];
 /** Rest rotation of each digit's first bone: yaw (toward the thumb side) and pitch. */
 export function digitRest(d: number): THREE.Quaternion {
   const h = HAND[d];
@@ -52,9 +54,9 @@ function handField(wrist: Vec): Field {
     P.push(cone(W([k[0] * 0.55, k[1] - 0.002, -0.014]), W(k), r * 1.08, r * 1.02, HB, 0));
     P.push(ell(W([k[0], k[1] + 0.001, k[2] + 0.002]), [r * 1.05, r * 0.95, r * 1.1], HB, 0));
   }
-  P.push(ell(W([0.003, -0.006, -0.052]), [0.037, 0.0125, 0.04], HB, 0, TAG.palm));
+  P.push(ell(W([0.003, -0.005, -0.052]), [0.034, 0.0105, 0.04], HB, 0, TAG.palm));
   P.push(ell(W([0.021, -0.006, -0.03]), [0.017, 0.0135, 0.03], HB, 0, TAG.palm));
-  P.push(ell(W([-0.002, -0.001, -0.006]), [0.03, 0.019, 0.026], HB, 0));
+  P.push(ell(W([-0.002, -0.001, -0.006]), [0.027, 0.0165, 0.024], HB, 0));
   // Thumb (group 1): the thenar mound on the thumb's first bone, then the chain.
   const t = HAND[0], tq = digitRest(0), tdir = new THREE.Vector3(0, 0, -1).applyQuaternion(tq);
   let at = new THREE.Vector3(...W(t.base));
@@ -82,10 +84,11 @@ function handField(wrist: Vec): Field {
   // Cuff (group 6) on the forearm bone, with a strap.
   P.push(ell(W([0, 0.0, 0.03]), [0.034, 0.026, 0.03], 1, 6, TAG.cuff));
   P.push(ell(W([0, 0.0, 0.05]), [0.035, 0.028, 0.02], 1, 6, TAG.cuff));
-  P.push(rbox(W([0.004, 0.0255, 0.03]), [0.013, 0.0025, 0.012], 0.0015, 1, 6, TAG.strap));
+  // A thin strap band round the wrist with a pull tab, not a block.
+  P.push(ell(W([0, 0.0, 0.027]), [0.0355, 0.0275, 0.0055], 1, 6, TAG.strap));
+  P.push(rbox(W([0.03, 0.006, 0.027]), [0.004, 0.0012, 0.005], 0.001, 1, 6, TAG.strap));
   // Knuckle guard (group 7): moulded pads over each knuckle and a bridge.
-  for (let d = 1; d <= 4; d++) { const k = HAND[d].base; P.push(ell(W([k[0], k[1] + HAND[d].rad[0] + 0.003, k[2] + 0.004]), [0.0086, 0.0058, 0.009], HB, 7, TAG.guard)); }
-  P.push(rbox(W([0.0, 0.0155, -0.072]), [0.026, 0.004, 0.006], 0.0025, HB, 7, TAG.guard, new THREE.Euler(0, 0.12, 0)));
+  for (let d = 1; d <= 4; d++) { const k = HAND[d].base; P.push(ell(W([k[0], k[1] + HAND[d].rad[0] + 0.003, k[2] + 0.004]), [0.0082, 0.0044, 0.0088], HB, 7, TAG.guard)); }
   // Finger-back guards on the middle phalanges.
   for (let d = 1; d <= 4; d++) {
     const h = HAND[d], dir = new THREE.Vector3(0, 0, -1).applyQuaternion(digitRest(d));
@@ -123,8 +126,10 @@ function sleeve(b: Builder, look: ArmsLook) {
     let r = THREE.MathUtils.lerp(0.05, 0.042, Math.min(1, t / 0.55)) - Math.max(0, t - 0.55) / 0.45 * 0.009;
     // Folds: bunching above the cuff and around the elbow, varying round the arm.
     const nearElbow = Math.exp(-Math.pow((z + UPPER) / 0.05, 2)), nearCuff = Math.exp(-Math.pow((z - z1 - 0.03) / 0.04, 2));
-    r += (nearElbow * 0.004 + nearCuff * 0.0045) * Math.abs(Math.sin(z * 260 + Math.sin(a * 2) * 1.5)) * (0.6 + 0.4 * Math.sin(a * 3 + z * 40));
+    r += (nearElbow * 0.0065 + nearCuff * 0.007) * Math.abs(Math.sin(z * 260 + Math.sin(a * 2) * 1.5)) * (0.6 + 0.4 * Math.sin(a * 3 + z * 40));
     r += 0.0012 * Math.sin(a * 5 + z * 30) * Math.sin(z * 70);
+    // A turned-back hem at the cuff.
+    r += Math.exp(-Math.pow((z - z1 - 0.008) / 0.006, 2)) * 0.0035;
     // Slightly flattened: forearms are wider than deep.
     return r * (1 + 0.08 * Math.cos(2 * a));
   };

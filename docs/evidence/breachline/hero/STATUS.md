@@ -7,6 +7,9 @@ change of 2026-11-11 ("Fighters split out"), fighters and row F belong to the fi
 
 ## Where I am
 
+r6: the left arm's path was the problem. With the elbow out and down to the left, the forearm enters from the lower left and runs diagonally to the handguard, and the grip sits 5 cm further forward. The hand reads as a hand: four slimmer fingers wrap the handguard and the thumb lies along it. The knuckle guard is now four low pads, the strap a thin band with a tab, and the sleeve has deeper folds and a turned-back cuff (`r6/game-ar-hand-corridor-crop-2x.png`, `r6/game-ar-lab-hip.png`). My honest read of the 2× crop is **7**. Next: reload beats as distinct poses, trim the AR's set, then the next weapon.
+
+
 r5d: wider bright edge wear, an amber-coated lens, a moving-light turntable (`r5/ar-turntable-moving-light.png`: the highlight travels across the receiver flats, the grip stipple and the handguard), and refreshed game frames. My honest read of the 2× corridor crop is **6–6.5**: the parts and finishes separate and the hand shows fingers, but the support hand still reads soft and the reload beats are not yet distinct.
 
 
