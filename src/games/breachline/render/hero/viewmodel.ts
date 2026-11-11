@@ -29,6 +29,9 @@ export class Spring {
     return this.x;
   }
 }
+/** The weapon in hand is lit hotter than the world, as shooters have always done: dark coated metal under the
+ * room's light sits below the post grade's black point and would read as a silhouette. */
+const VM_GAIN = 2.2;
 const soft = (x: number, max: number) => max * Math.tanh(x / max);
 const smooth = (t: number) => t * t * (3 - 2 * t);
 const wrap = (a: number) => { a = (a + Math.PI) % (Math.PI * 2); return (a < 0 ? a + Math.PI * 2 : a) - Math.PI; };
@@ -48,6 +51,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   const hemi = new THREE.HemisphereLight(0xffffff, 0x6a645c, 0.6), key = new THREE.DirectionalLight(0xffffff, 1.4), fill = new THREE.DirectionalLight(0xc8d4ff, 0.35);
   scene.add(hemi, key, fill);
   const holder = new THREE.Group(); scene.add(holder);
+  if (import.meta.env?.DEV) (globalThis as { __heroVM?: unknown }).__heroVM = { scene, hemi, key, fill, camera, renderer };
   // Reflections: the environment session's probe when it exists, else a neutral studio room, prefiltered once.
   let ownEnv: THREE.Texture | null = null;
   const envFor = (x: number, z: number) => lighting.environment(x, z) ?? (ownEnv ??= new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture);
@@ -153,14 +157,16 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       }
       // Light from the probe where the shooter stands; the key from the sun direction, dimmed indoors by the probe.
       const l = lighting.probe(p.x, 1.4, p.z).color, lum = (l[0] + l[1] + l[2]) / 3;
-      hemi.color.setRGB(0.25 + l[0] * 0.9, 0.25 + l[1] * 0.9, 0.25 + l[2] * 0.9); hemi.intensity = 0.7;
+      // Diffuse: the probe's light with a floor so nothing goes to black.
+      hemi.color.setRGB(0.12 + l[0] * 1.05, 0.12 + l[1] * 1.05, 0.12 + l[2] * 1.05); hemi.intensity = VM_GAIN * 1.5; hemi.groundColor.setRGB(0.06 + l[0] * 0.45, 0.06 + l[1] * 0.42, 0.06 + l[2] * 0.4);
       key.color.setRGB(...lighting.sun.color.map(c => c / 1.55) as [number, number, number]);
-      key.intensity = 0.4 + Math.min(1.6, lum * 1.4);
+      key.intensity = VM_GAIN * (0.6 + Math.min(2, lum * 1.8)); fill.intensity = VM_GAIN * 0.4;
       // Sun direction in camera space: rotate the world direction by the inverse view yaw.
       const sy0 = Math.sin(view.yaw), cy0 = Math.cos(view.yaw), s = lighting.sun;
       key.position.set(s.x * cy0 - s.z * sy0, Math.max(0.35, s.y), s.x * sy0 + s.z * cy0);
       fill.position.set(-key.position.x, 0.3, -key.position.z);
-      scene.environment = envFor(p.x, p.z); scene.environmentIntensity = 0.25 + Math.min(1.1, lum * 0.9);
+      // Specular only (see material.ts), scaled into the probe's units.
+      scene.environment = envFor(p.x, p.z); scene.environmentIntensity = VM_GAIN * (lighting.environment(p.x, p.z) ? lighting.environmentScale(p.x, p.z) : 1) * Math.max(0.35, Math.min(1.6, lum * 1.2));
       // Muzzle flash at the muzzle socket.
       const scoped = id === 'dmr' && ads > 0.9;
       if (flashLife > 0) { flashLife -= dt; flash.visible = flashLife > 0 && !scoped; tmp.set(...S.muzzle); tmp.z -= 0.03; r.gun.localToWorld(tmp); r.root.worldToLocal(tmp); flash.position.copy(tmp); }

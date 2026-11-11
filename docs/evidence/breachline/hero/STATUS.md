@@ -5,6 +5,10 @@ change of 2026-11-11 ("Fighters split out"), fighters and row F belong to the fi
 (`docs/evidence/breachline/fighters/`); row F is no longer scored here. Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`
 (sections 4.6, 4.7, 5, 8, 9 and "Parallel workstream: hero models").
 
+## Where I am
+
+r4: lighting fix pushed (the weapon in hand read as a black silhouette on High). Next: the AR-5 in hand to E ≥ 8 (framing, materials and markings, gloves and sleeves, reloads that read beat by beat), then each other weapon to the same standard.
+
 ## Phase
 
 | Step | State |
@@ -83,6 +87,17 @@ plates with triple magazine pouches, boots with about 0.03 m soles.
    `RoundedBoxGeometry` replaced with filleted extrusions, so flats stay flat.
 6. Blotchy AO from self-hits → finer voxels (1/320 of the size), larger normal offset.
 7. Ejection port was a slab stuck on → flush dark port, a hinge rod, a dust-cover lip and the bolt carrier in it.
+
+**Lighting, round 4** (`r4/lighting-before-high.png`, `r4/lighting-after-high.png`, `r4/lighting-after-low.png`):
+the rifle and gloves were a near-black silhouette on High in the Lab and the corridor. There were three causes:
+1. The baked reflection probe was used for diffuse light, in the bake's physical units. Now the environment gives
+   specular only (the IBL irradiance term is removed in the shader patch), scaled by `environmentScale`. Diffuse comes
+   from `probe()` through the hemisphere and key lights.
+2. Albedos were near black (0x23–0x2a sRGB, about 0.02 linear). Coated metals and polymer are raised to 0x3e–0x5c.
+3. The post grade's 0.03 black point (after the tone curve) crushes anything under about 0.05 linear radiance. The
+   viewmodel is now lit hotter than the world (×2.2), as shooters traditionally do.
+Checked in the Lab (baked probe), the corridor (fallback environment) and on Low: polymer, anodised aluminium and
+steel now separate in all three.
 
 **Reloads and in-game, round 3:**
 1. The magazine change was below the frame edge → the rifle pitches up (muzzle up about 20°) and cants instead of

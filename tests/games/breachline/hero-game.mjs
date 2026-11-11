@@ -17,10 +17,11 @@ await context.addInitScript(() => {
 const page = await context.newPage();
 page.on('console', m => { if (m.type() === 'error') console.log(`[page] ${m.text()}`); });
 page.on('pageerror', e => console.log('[pageerror]', e.message));
-await page.goto(`${base}/?festive=off#/game/breachline`);
+const low = !!process.env.LOW;
+await page.goto(`${base}/?festive=off${low ? '&arttier=low' : ''}#/game/breachline`);
 await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 60000 });
 const kit = Number(kitArg ?? 1);
-await page.evaluate(() => { const h = window.__breachlineTest; h.start({ seed: 7, quality: 'high', teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); });
+await page.evaluate(low => { const h = window.__breachlineTest; h.start({ seed: 7, quality: low ? 'low' : 'high', teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); }, low);
 await page.locator('.bl-canvas').focus();
 await page.keyboard.press(`Digit${kit}`);
 await page.evaluate(() => { const h = window.__breachlineTest; h.advance(0.1); h.still(); h.skip(30); h.advance(0.3); h.advance(5); });

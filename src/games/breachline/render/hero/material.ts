@@ -112,6 +112,9 @@ heroRough = mix(heroRough, 0.95, cav * 0.6);`)
   normal = normalize(abs(det) * normal - grad * 0.00004);
 }
 #endif`)
+      // The environment map gives specular reflections only: diffuse light comes from the light probe (hemisphere and
+      // key lights set from HeroLighting.probe), because baked reflection probes are in the bake's physical units.
+      .replace('#include <lights_fragment_maps>', THREE.ShaderChunk.lights_fragment_maps.replace('iblIrradiance += getIBLIrradiance( geometryNormal );', ''))
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 if (pat > 7.5) totalEmissiveRadiance += diffuseColor.rgb * 6.0;`)
       .replace('#include <aomap_fragment>', `{
