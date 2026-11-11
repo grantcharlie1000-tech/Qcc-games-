@@ -636,3 +636,12 @@ Result: **aimed, about even** (it is our optic, now with a clear window). **At t
 viewmodel's hot lighting (`VM_GAIN` 2.2) the new finish reads pale grey with blown-out white specks along the edges,
 so the rifle looks washed out next to the stock AR-5's warm, readable furniture. The rifle goes back to our own second
 build. The Service Pistol stays the recommendation for the sidearm.
+
+## Owner request: "the way the hand grips the gun looks terrible" — first-person AR-5 support hand
+
+`grip-before-after.jpg`: corridor at the hip, in the game, before (left) and after (right). The left hand used to sit
+under the handguard with its fingers pointing forward along it, so from the eye it read as a claw. In
+`render/hero/rig.ts` (the AR-5's hold only: two lines, the weapons session's file, edited at the owner's direct
+request), the palm now cups up against the underside of the handguard, the fingers run across it and wrap the far
+side (stronger curl), and the thumb lies straight along the near side. A tighter elbow was tried and reverted: it
+twisted the wrist. Other weapons' holds are unchanged.
