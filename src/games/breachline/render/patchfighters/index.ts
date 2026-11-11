@@ -36,10 +36,11 @@ const SET = '../patch/tactical';
 
 /** Squad looks: the darkest and lightest each class reaches (sRGB), cloth weave and stain strength. */
 export const PATCH_LOOKS = [
-  // Squad 0: dark slate cloth (linear albedo about 0.08 at the middle of its range), kit darker and glossier, light dust.
-  { fat: [0x262b30, 0x6a737c], kit: [0x16181a, 0x45484d], kitGloss: 0.72, dirt: 0x7a7468, dirtAmt: 0.35, weave: 0.10, stain: 0.16, headgear: ['helmetA', 'gogglesA'] },
-  // Squad 1: coyote cloth (about 0.27), olive kit darker than the cloth, both desaturated, darker mud.
-  { fat: [0x4e4132, 0xc4b296], kit: [0x2f3224, 0x77795e], kitGloss: 0.85, dirt: 0x4f4232, dirtAmt: 0.45, weave: 0.10, stain: 0.22, headgear: ['headsetB'] },
+  // Squad 0: dark slate cloth (linear albedo about 0.08 at its middle), kit darker (0.035) and glossier, light dust.
+  // `fat`/`kit` are the middle albedo (sRGB); `fatC`/`kitC` how far the source's detail swings it either way.
+  { fat: 0x4a5058, fatC: 0.55, kit: 0x34373b, kitC: 0.5, kitGloss: 0.72, dirt: 0x7a7468, dirtAmt: 0.35, weave: 0.10, stain: 0.16, headgear: ['helmetA', 'gogglesA'] },
+  // Squad 1: coyote cloth (about 0.26), olive kit darker (0.11), both desaturated, darker mud.
+  { fat: 0x9c8a72, fatC: 0.5, kit: 0x5d604a, kitC: 0.45, kitGloss: 0.85, dirt: 0x4f4232, dirtAmt: 0.45, weave: 0.10, stain: 0.22, headgear: ['headsetB'] },
 ] as const;
 /** Rim light from the probe, as a fraction of it, at grazing angles (separates edges from dark walls). */
 const RIM = 0.35;
@@ -77,10 +78,10 @@ function bodyMaterial(a: Assets, squad: 0 | 1): ProbeMaterial {
   const u = {
     dirtC: { value: new THREE.Color(L.dirt) }, dirtAmt: { value: L.dirtAmt }, kitGloss: { value: L.kitGloss },
     tMask: { value: a.maps.mask }, fat: { value: new THREE.Vector3(...a.lumRange.fatigues.map(enc)) }, kit: { value: new THREE.Vector3(...a.lumRange.kit.map(enc)) },
-    fatA: { value: new THREE.Color(L.fat[0]) }, fatB: { value: new THREE.Color(L.fat[1]) }, kitA: { value: new THREE.Color(L.kit[0]) }, kitB: { value: new THREE.Color(L.kit[1]) },
+    fatA: { value: new THREE.Color(L.fat) }, kitA: { value: new THREE.Color(L.kit) }, fatC: { value: L.fatC }, kitC: { value: L.kitC },
     weave: { value: L.weave }, stain: { value: L.stain },
   };
-  const m = probeMaterial({ map: a.maps.map, normalMap: a.maps.normalMap, aoMap: a.maps.arm, roughnessMap: a.maps.arm, metalnessMap: a.maps.arm, roughness: 1, metalness: 1 }, 'patch-body', fs => `uniform sampler2D tMask; uniform vec3 fat, kit, fatA, fatB, kitA, kitB, dirtC; uniform float weave, stain, dirtAmt, kitGloss; varying vec3 vObjP; varying vec3 vObjN;
+  const m = probeMaterial({ map: a.maps.map, normalMap: a.maps.normalMap, aoMap: a.maps.arm, roughnessMap: a.maps.arm, metalnessMap: a.maps.arm, roughness: 1, metalness: 1 }, 'patch-body', fs => `uniform sampler2D tMask; uniform vec3 fat, kit, fatA, kitA, dirtC; uniform float fatC, kitC, weave, stain, dirtAmt, kitGloss; varying vec3 vObjP; varying vec3 vObjN;
 float pfH(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 float pfNoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(mix(pfH(i), pfH(i + vec3(1,0,0)), f.x), mix(pfH(i + vec3(0,1,0)), pfH(i + vec3(1,1,0)), f.x), f.y),
@@ -89,13 +90,13 @@ float pfNoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 
 { vec3 mk = texture2D(tMask, vMapUv).rgb; float k = smoothstep(0.3, 0.7, mk.r), keep = smoothstep(0.3, 0.7, mk.g);
   float l = pow(max(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 1e-6), 0.4545);
   // Source detail carried strongly: spread over a tenth of the class's range (folds, seams and stitching become steps).
-  float sF = 0.5 + 0.5 * tanh((l - fat.y) / max(1e-4, (fat.z - fat.x) * 0.1));
-  float sK = pow(0.5 + 0.5 * tanh((l - kit.y) / max(1e-4, (kit.z - kit.x) * 0.1)), 1.3);
+  float sF = tanh((l - fat.y) / max(1e-4, (fat.z - fat.x) * 0.15));
+  float sK = tanh((l - kit.y) / max(1e-4, (kit.z - kit.x) * 0.15)) - 0.15;
   vec3 an = abs(vObjN); vec2 w2 = an.x > an.y && an.x > an.z ? vObjP.yz : an.y > an.z ? vObjP.xz : vObjP.xy;
   float wv = sin(w2.x * 2513.0) * sin(w2.y * 2513.0) * 0.6 + (pfNoise(vObjP * 900.0) - 0.5) * 0.8;
   float st = pfNoise(vObjP * 5.0) * 0.65 + pfNoise(vObjP * 17.0) * 0.35;
-  vec3 cF = mix(fatA, fatB, sF) * (1.0 + weave * wv) * (1.0 - stain * (st - 0.45));
-  vec3 cK = mix(kitA, kitB, sK) * (1.0 + weave * 0.4 * wv) * (1.0 - stain * 0.6 * (st - 0.45));
+  vec3 cF = fatA * (1.0 + fatC * sF) * (1.0 + weave * wv) * (1.0 - stain * (st - 0.45));
+  vec3 cK = kitA * (1.0 + kitC * sK) * (1.0 + weave * 0.4 * wv) * (1.0 - stain * 0.6 * (st - 0.45));
   vec3 c = mix(cF, cK, k);
   // Dirt: knees, elbows, cuffs and boots (bind-pose positions; the fighter faces -Z), broken up by noise.
   vec3 ap = vec3(abs(vObjP.x), vObjP.y, vObjP.z);
