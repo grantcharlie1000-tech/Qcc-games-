@@ -77,15 +77,20 @@ function probeMaterial(params: THREE.MeshStandardMaterialParameters, key: string
  * on its median and spread over a fifth of its 2..98% range, then mapped between the look's dark and light colours,
  * so folds, seams and wear survive; plus a 2.5 mm object-space weave, a faint two-octave stain, a steeper curve for
  * kit and darker soles. Texels the mask's G channel marks (balaclava, eye band, gloves) keep their own colour. */
+/** Wounds a fighter can carry (job 12.2): bind-pose position (xyz) and age-scaled strength (w). */
+export const MAX_WOUNDS = 8;
+/** `?blood=off` replaces blood with dust-dark scuffs (plan 12.4). */
+const BLOOD = typeof location === 'undefined' || new URLSearchParams(location.search).get('blood') !== 'off';
 function bodyMaterial(a: Assets, squad: 0 | 1): ProbeMaterial {
   const L = PATCH_LOOKS[squad], enc = (x: number) => Math.pow(Math.max(x, 1e-6), 1 / 2.2);
   const u = {
+    uWound: { value: Array.from({ length: MAX_WOUNDS }, () => new THREE.Vector4(0, -9, 0, 0)) }, uHurt: { value: 0 }, uBlood: { value: BLOOD ? 1 : 0 },
     sleeve: { value: L.sleeve }, dirtC: { value: new THREE.Color(L.dirt) }, dirtAmt: { value: L.dirtAmt }, kitGloss: { value: L.kitGloss },
     tMask: { value: a.maps.mask }, fat: { value: new THREE.Vector3(...a.lumRange.fatigues.map(enc)) }, kit: { value: new THREE.Vector3(...a.lumRange.kit.map(enc)) },
     fatA: { value: new THREE.Color(L.fat) }, kitA: { value: new THREE.Color(L.kit) }, fatC: { value: L.fatC }, kitC: { value: L.kitC },
     weave: { value: L.weave }, stain: { value: L.stain },
   };
-  const m = probeMaterial({ map: a.maps.map, normalMap: a.maps.normalMap, aoMap: a.maps.arm, roughnessMap: a.maps.arm, metalnessMap: a.maps.arm, roughness: 1, metalness: 1 }, 'patch-body', fs => `uniform sampler2D tMask; uniform vec3 fat, kit, fatA, kitA, dirtC; uniform float fatC, kitC, weave, stain, dirtAmt, kitGloss, sleeve; varying vec3 vObjP; varying vec3 vObjN;
+  const m = probeMaterial({ map: a.maps.map, normalMap: a.maps.normalMap, aoMap: a.maps.arm, roughnessMap: a.maps.arm, metalnessMap: a.maps.arm, roughness: 1, metalness: 1 }, 'patch-body', fs => `uniform sampler2D tMask; uniform vec3 fat, kit, fatA, kitA, dirtC; uniform float fatC, kitC, weave, stain, dirtAmt, kitGloss, sleeve, uHurt, uBlood; uniform vec4 uWound[8]; varying vec3 vObjP; varying vec3 vObjN;
 float pfH(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 float pfNoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(mix(pfH(i), pfH(i + vec3(1,0,0)), f.x), mix(pfH(i + vec3(0,1,0)), pfH(i + vec3(1,1,0)), f.x), f.y),
@@ -112,8 +117,28 @@ float pfNoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 
   if (vObjP.y < 0.028) c *= 0.55;
   // Cavity (baked into the mask's B): seams, strap edges and pouch gaps.
   c *= mix(1.0, mk.b, 0.85);
-  diffuseColor.rgb = mix(c, diffuseColor.rgb * mix(1.0, mk.b, 0.6), keep); }`).replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+  c = mix(c, diffuseColor.rgb * mix(1.0, mk.b, 0.6), keep);
+  // Wounds (job 12.2), in bind-pose space so they ride the skin: a dark entry mark and a stain that soaks into the
+  // cloth around it and runs a little downward; with ?blood=off a dusty scuff instead.
+  vec3 bloodC = mix(vec3(0.16, 0.12, 0.10), vec3(0.20, 0.012, 0.010), uBlood), entryC = mix(vec3(0.05), vec3(0.06, 0.004, 0.004), uBlood);
+  float soak = 0.0, entry = 0.0;
+  for (int i = 0; i < 8; i++) {
+    vec4 w = uWound[i]; if (w.w <= 0.0) continue;
+    vec3 dv = vObjP - w.xyz; dv.y *= dv.y < 0.0 ? 0.55 : 1.25;
+    float r = 0.035 + 0.045 * w.w, d = length(dv) / r + (pfNoise(vObjP * 60.0) - 0.5) * 0.5;
+    soak = max(soak, (1.0 - smoothstep(0.55, 1.0, d)) * min(1.0, w.w * 1.4));
+    entry = max(entry, 1.0 - smoothstep(0.0, 0.009, length(vObjP - w.xyz) - 0.004));
+  }
+  // Worse as health falls: below half, blood and dirt spread over the torso front and the legs; near death, more.
+  float hurt = smoothstep(0.5, 1.0, uHurt), patchy = smoothstep(0.45, 0.8, pfNoise(vObjP * 9.0) * 0.7 + pfNoise(vObjP * 31.0) * 0.3);
+  float region = max(step(0.85, vObjP.y) * step(vObjP.y, 1.45) * step(vObjP.z, 0.02), step(0.15, vObjP.y) * step(vObjP.y, 0.9));
+  soak = max(soak, hurt * region * patchy * 0.75);
+  c = mix(c, c * 0.35 + bloodC * 0.65, soak * 0.85);
+  c = mix(c, dirtC * 0.6, hurt * 0.25 * patchy);
+  c = mix(c, entryC, entry);
+  diffuseColor.rgb = c; }`).replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
 roughnessFactor *= mix(1.0, kitGloss, smoothstep(0.3, 0.7, texture2D(tMask, vMapUv).r));`), u);
+  (m.userData as Record<string, unknown>).wound = u.uWound; (m.userData as Record<string, unknown>).hurt = u.uHurt;
   return m;
 }
 
@@ -121,11 +146,14 @@ interface Fig {
   squad: 0 | 1; group: THREE.Group; meshes: THREE.SkinnedMesh[]; gear: THREE.Group[]; skeleton: THREE.Skeleton; bones: THREE.Bone[];
   weapon: THREE.SkinnedMesh; wbones: THREE.Bone[]; dressed: THREE.Object3D[]; wid: WeaponId; anim: Animator; mats: ProbeMaterial[]; weaponMat: FighterMaterial; wlod: 1 | 2;
   x: number; z: number; yaw: number; pitch: number; crouch: number; lean: number; phase: number;
-  fresh: boolean; lod: number; remoteReload: number; deathKind: number; dist: number; reloadEmpty: boolean; wasReloading: boolean; input: PoseInput;
+  fresh: boolean; lod: number; remoteReload: number; deathKind: number; dist: number; wounds: THREE.Vector4[]; nWound: number; hurt: number; react: { t: number; ax: number; az: number; limb: number }; died: number; reloadEmpty: boolean; wasReloading: boolean; input: PoseInput;
 }
 const wrap = (a: number) => { a = (a + Math.PI) % (Math.PI * 2); return (a < 0 ? a + Math.PI * 2 : a) - Math.PI; };
 
-export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting): FightersWithEvents {
+/** A fighter lying where it fell (job 12.2). */
+export interface PatchBody { id: number; x: number; z: number; yaw: number; t: number }
+export interface PatchFighters extends FightersWithEvents { bodies(): PatchBody[] }
+export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting): PatchFighters {
   const figs: (Fig | null)[] = [];
   let assets: Assets | null = null, fallback: FightersWithEvents | null = null, warming: Promise<void> | null = null, warmed = false;
   const keep: THREE.Material[] = [];
@@ -203,14 +231,50 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
     const weapon = new THREE.SkinnedMesh(w.geo, weaponMat); weapon.add(...wb); weapon.bind(new THREE.Skeleton(wb)); weapon.frustumCulled = false;
     group.add(weapon); scene.add(group);
     const anim = new Animator(bones, weapon, wb, w); anim.setWeapon(wid, w);
-    f = { squad, group, meshes, gear, skeleton, bones, weapon, wbones: wb, dressed: [], wid, anim, mats, weaponMat, wlod: 1, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, remoteReload: 0, deathKind: -1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
+    f = { wounds: Array.from({ length: MAX_WOUNDS }, () => new THREE.Vector4(0, -9, 0, 0)), nWound: 0, hurt: 0, react: { t: 9, ax: 0, az: 0, limb: -1 }, died: -1, squad, group, meshes, gear, skeleton, bones, weapon, wbones: wb, dressed: [], wid, anim, mats, weaponMat, wlod: 1, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, remoteReload: 0, deathKind: -1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
     figs[i] = f;
     dress(f);
     return f;
   }
   function drop(f: Fig) { scene.remove(f.group); for (const m of f.mats) m.dispose(); f.weaponMat.dispose(); }
 
-  const api: FightersWithEvents = {
+  /** Job 12.2: the last shot of each shooter (origin and look), to place the wound its hit makes. */
+  const lastShot = new Map<number, { x: number; y: number; z: number; yaw: number; pitch: number }>();
+  const SEGS: [number, number, number][] = [[B.head, -1, 0.11], [B.spine2, B.neck, 0.15], [B.spine1, B.spine2, 0.15], [B.pelvis, B.spine1, 0.15],
+    [B.upperL, B.foreL, 0.06], [B.foreL, B.handL, 0.05], [B.upperR, B.foreR, 0.06], [B.foreR, B.handR, 0.05],
+    [B.thighL, B.shinL, 0.085], [B.shinL, B.footL, 0.065], [B.thighR, B.shinR, 0.085], [B.shinR, B.footR, 0.065]];
+  const bindM = new THREE.Matrix4(), ro = new THREE.Vector3(), rd = new THREE.Vector3(), sa = new THREE.Vector3(), sb = new THREE.Vector3(), cp = new THREE.Vector3(), cq = new THREE.Vector3(), seg = new THREE.Line3(), wm = new THREE.Matrix4();
+  /** Places a wound where shooter `by`'s last shot meets fighter `on`: the nearest body part to the ray (the head when
+   * the hit was a head shot), the entry point where the ray crosses that part's surface, stored in bind-pose space so
+   * it rides the skin. Deterministic from the shared events (up to each client's interpolated pose). */
+  function wound(on: number, by: number, head: boolean, hp: number) {
+    const f = figs[on], s = lastShot.get(by); if (!f) return;
+    f.hurt = Math.max(f.hurt, 1 - Math.max(0, hp) / 100);
+    if (!s) return;
+    f.group.updateMatrixWorld(true);
+    ro.set(s.x, s.y, s.z); rd.set(-Math.sin(s.yaw) * Math.cos(s.pitch), Math.sin(s.pitch), -Math.cos(s.yaw) * Math.cos(s.pitch)).normalize();
+    let best = -1, bd = Infinity, bt = 0;
+    SEGS.forEach(([b, c, r], k) => {
+      if (head !== (b === B.head)) return;
+      f.bones[b].getWorldPosition(sa); if (c >= 0) f.bones[c].getWorldPosition(sb); else sb.copy(sa).add(cq.set(0, 0.16, 0));
+      seg.set(sa, sb);
+      // Closest points between the ray and the bone segment, by sampling the segment (12 steps is plenty here).
+      for (let i = 0; i <= 12; i++) { seg.at(i / 12, cp); const t = Math.max(0, cp.clone().sub(ro).dot(rd)), d = cq.copy(ro).addScaledVector(rd, t).distanceTo(cp) - r; if (d < bd) { bd = d; best = k; bt = t; } }
+    });
+    if (best < 0) return;
+    const [b, , r] = SEGS[best];
+    // Entry: back along the ray from its closest approach to where it crosses the part's surface.
+    const back = Math.sqrt(Math.max(0, r * r - Math.max(0, bd + r) ** 2));
+    cp.copy(ro).addScaledVector(rd, Math.max(0, bt - back));
+    // World -> bind pose through that bone (attached mode, identity bind matrix: world = bone.world * inverse * v).
+    const bi = f.skeleton.boneInverses[b]; wm.copy(f.bones[b].matrixWorld).invert(); cp.applyMatrix4(wm).applyMatrix4(bindM.copy(bi).invert());
+    const w = f.wounds[f.nWound % MAX_WOUNDS]; f.nWound++;
+    w.set(cp.x, cp.y, cp.z, 0.6 + Math.min(0.4, (100 - hp) / 150));
+    // The hit's direction in the fighter's own frame, for the flinch away from it; a hit limb kicks too.
+    const yaw = f.anim.yaw, lx = rd.x * Math.cos(yaw) - rd.z * Math.sin(yaw), lz = rd.x * Math.sin(yaw) + rd.z * Math.cos(yaw);
+    f.react.t = 0; f.react.ax = lx; f.react.az = lz; f.react.limb = [B.upperL, B.upperR, B.thighL, B.thighR, B.shinL, B.shinR, B.foreL, B.foreR].includes(b as never) ? b : -1;
+  }
+  const api: PatchFighters = {
     update(view) {
       if (fallback) return fallback.update(view);
       const { m, dt } = view, k = 1 - Math.exp(-dt * 16), a = assets;
@@ -240,6 +304,14 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
         if (f.fresh) { f.anim.reset(inp); f.fresh = false; }
         if (!show) continue;
         f.anim.update(inp, dt);
+        // Job 12.2: wounds and hurt state into the body material; a reaction away from the last hit.
+        const bm = f.mats[0] as unknown as { userData: { wound?: { value: THREE.Vector4[] }; hurt?: { value: number } } };
+        bm.userData.wound!.value = f.wounds; bm.userData.hurt!.value = Math.max(f.hurt, p.alive ? 0 : 0.85);
+        if (p.alive && f.react.t < 0.45) {
+          f.react.t += dt; const k = Math.sin(Math.min(1, f.react.t / 0.45) * Math.PI) * 0.22;
+          q4.setFromAxisAngle(v3.set(f.react.az, 0, -f.react.ax).normalize(), k); f.bones[B.spine2].quaternion.premultiply(q4);
+          if (f.react.limb >= 0) { q4.setFromAxisAngle(v3.set(1, 0, 0), k * 1.3); f.bones[f.react.limb].quaternion.premultiply(q4); }
+        }
         f.phase = f.anim.gaitPhase * Math.PI * 2;
         f.group.position.set(f.anim.root.x, 0, f.anim.root.z); f.group.rotation.y = f.anim.yaw;
         const l = lighting.probe(f.x, 1.1, f.z).color;
@@ -307,19 +379,31 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
     handle(events: readonly SimEvent[], m: Match, self: number) {
       if (fallback) return fallback.handle(events, m, self);
       for (const e of events) {
-        if (e.e === 'reload' && e.id !== self) { const f = figs[e.id], p = m.players[e.id]; if (f && p && p.reload <= 0) { f.remoteReload = WEAPONS[weaponIdOf(m, p)].reload; f.reloadEmpty = p.mag[p.slot] === 0; } }
+        if (e.e === 'shot') lastShot.set(e.id, e);
+        else if (e.e === 'hit') wound(e.on, e.by, e.head, e.hp);
+        else if (e.e === 'reload' && e.id !== self) { const f = figs[e.id], p = m.players[e.id]; if (f && p && p.reload <= 0) { f.remoteReload = WEAPONS[weaponIdOf(m, p)].reload; f.reloadEmpty = p.mag[p.slot] === 0; } }
         else if (e.e === 'kill') {
           const f = figs[e.on], v = m.players[e.on], k = m.players[e.by];
           if (!f || !v || !k || e.by === e.on) continue;
           const a = wrap(Math.atan2(-(k.x - v.x), -(k.z - v.z)) - v.yaw);
           f.deathKind = Math.abs(a) < 0.9 ? 0 : Math.abs(a) > 2.3 ? 1 : 2;
+          f.died = m.t;
         }
       }
     },
     reset(ids) {
       if (fallback) return fallback.reset(ids);
-      if (!ids) { for (const f of figs) if (f) f.fresh = true; return; }
-      for (const id of ids) { const f = figs[id]; if (f) f.fresh = true; }
+      // A new round (or a respawn) clears wounds, hurt state and the body.
+      const clear = (f: Fig) => { f.fresh = true; f.nWound = 0; f.hurt = 0; f.died = -1; f.react.t = 9; for (const w of f.wounds) w.set(0, -9, 0, 0); };
+      if (!ids) { for (const f of figs) if (f) clear(f); return; }
+      for (const id of ids) { const f = figs[id]; if (f) clear(f); }
+    },
+    /** Job 12.2: fighters lying where they fell this round (bodies stay until the round ends): position, facing and
+     * the match time of death, for the environment's blood pool. */
+    bodies() {
+      const out: PatchBody[] = [];
+      figs.forEach((f, id) => { if (f && f.died >= 0 && f.group.visible) out.push({ id, x: f.anim.root.x, z: f.anim.root.z, yaw: f.anim.yaw, t: f.died }); });
+      return out;
     },
     dispose() {
       if (fallback) fallback.dispose();
