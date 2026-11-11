@@ -4,6 +4,10 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: calmer floors.** `rooms/server/round-2/floors.png` (Server Room, Break Room): the raised floor is the
+ceramic set laid square at 600 mm in a cool grey; the Break Room's black-and-white chequer is a warm terrazzo. Both
+reuse texture sets already shipped (no new download); both rooms rebaked for the new bounce. Next: small-object models.
+
 **2026-11-11: covered car's tarpaulin lifted.** `rooms/yard/round-2/tarpaulin.png` (South Yard, Garage): a per-model
 colour lift (`PROP_TINT` in `artworld.ts`) takes the scan's near-black cover to a dark grey-green, so the folds read
 in daylight and indoors. The ground under it already carries the bake's occlusion from the car (it is an occluder in

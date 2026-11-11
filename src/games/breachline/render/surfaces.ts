@@ -47,6 +47,10 @@ export const SURFACES: Partial<Record<TexId, Surface>> = {
   ceiling: { set: 'OfficeCeiling001', size: 3.6, normal: 1.5, tint: [0.92, 0.92, 0.9] },
   // Square ceramic tiles; the source is laid diagonally, so turn it square and make each tile 47 cm.
   tile: { set: 'interior_tiles', size: 0.95 * Math.SQRT2 / 2, rotate: Math.PI / 4, gloss: 0.12, spec: 2.6, tint: [0.66, 0.64, 0.62] },
+  // Server Room raised floor: square 600 mm tiles in a cool grey (the ceramic set, turned square).
+  raised: { set: 'interior_tiles', size: 1.2 * Math.SQRT2 / 2, rotate: Math.PI / 4, gloss: 0.2, spec: 1.6, tint: [0.78, 0.8, 0.84] },
+  // Break Room: a calm, warm terrazzo in place of the loud black-and-white chequer.
+  check: { set: 'terrazzo_tiles', size: 2, gloss: 0.35, spec: 1.6, tint: [0.86, 0.78, 0.68] },
   drywall: { set: 'painted_plaster_wall', size: 2, normal: 2.2, band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
   cinder: { set: 'painted_plaster_wall', size: 2, normal: 2.2, tint: [0.86, 0.88, 0.9], band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
   // Carcasses sit behind the modelled doors: dark, so the gaps between doors read as gaps.
