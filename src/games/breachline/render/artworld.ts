@@ -76,16 +76,21 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   for (const p of PROPS) if (!models.has(p.model)) { models.set(p.model, L.model(p.model)); lods.set(p.model, L.model(`${p.model}.lod1`)); }
 
   const looks = new Map<number, PanelLook>();
-  const envLights: THREE.MeshStandardMaterial[] = [];
-  let envLight = 1;
+  /** Per room: the materials its reflection probe lights, its mean baked light, its probe once captured. */
+  const rooms = REGIONS.map(() => ({ envLights: [] as THREE.MeshStandardMaterial[], envLight: 1, env: null as THREE.WebGLRenderTarget | null, props: [] as number[][] }));
+  /** Panel corner light from every room's bake (a wall between two art rooms is listed by both, one side each). */
+  const tables = new Map<number, { t: Map<number, Float32Array>; wall: THREE.Material; planks: THREE.Material; tile: readonly [number, number] }>();
+  const roomAt = (x: number, z: number) => REGIONS.findIndex(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
   await Promise.all(REGIONS.map(async (region, r) => {
+    const envLights = rooms[r].envLights;
     const [info, lightMap, dirMap] = await Promise.all([
       L.json<BakeInfo>(`bake/${region.name}.json`), L.bakeMap(`bake/${region.name}-light.png`, true), full ? L.bakeMap(`bake/${region.name}-dir.png`, false) : Promise.resolve(null),
     ]);
     const faces = byRegion[r], atlas = packAtlas(faces.filter(f => !f.glow), info.density);
     if (atlas.width !== info.width || atlas.height !== info.height) throw new Error(`${region.name}: lightmap is out of date (rebake)`);
     // Average light the room's probe sees, for specular occlusion.
-    envLight = info.meanLight ?? 1;
+    rooms[r].envLight = info.meanLight ?? 1;
+    rooms[r].props = info.props;
     // One mesh per surface type.
     const ids = [...new Set(atlas.charts.map(c => c.face.tex))];
     for (const id of ids) {
@@ -164,18 +169,22 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     const wall = dbg.includes('panelbasic') ? new THREE.MeshBasicMaterial({ map: wmap, vertexColors: true }) as unknown as THREE.MeshStandardMaterial
       : artMaterial({ map: wmap, normalMap: wnor, armMap: warm, vertexLight: true, normalScale: wallSet?.normal, roughness: warm ? 1 : 0.9, metalness: warm ? 1 : 0, band: wallSet?.band });
     materials.push(wall); if (wall.userData.art) envLights.push(wall);
-    const tables = new Map<number, Map<number, Float32Array>>();
-    for (const p of info.panels) { let t = tables.get(p.index); if (!t) tables.set(p.index, t = new Map()); t.set(p.side, new Float32Array(p.light)); }
     const [km, kn, ka] = await set(PLANKS.set, TEX_SIZE[tier]);
     const planks = artMaterial({ map: km, normalMap: kn, armMap: ka, vertexLight: true, roughness: 1, metalness: ka ? 1 : 0, color: new THREE.Color(...(PLANKS.tint ?? [1, 1, 1])) });
     materials.push(planks); envLights.push(planks);
-    for (const [index, t] of tables) looks.set(index, { ...panelLook(MAP.panels[index].cols + 1, t, wall, wallSet ? [wallSet.size, wallSet.size] : TILE.drywall), planks, plankTile: [PLANKS.size, PLANKS.size] });
+    for (const p of info.panels) {
+      let e = tables.get(p.index);
+      if (!e) tables.set(p.index, e = { t: new Map(), wall, planks, tile: wallSet ? [wallSet.size, wallSet.size] : TILE.drywall });
+      e.t.set(p.side, new Float32Array(p.light));
+    }
   }));
-  // Props, each lit by its own baked probe.
-  const info = await L.json<BakeInfo>(`bake/${REGIONS[0].name}.json`);
+  for (const [index, e] of tables) looks.set(index, { ...panelLook(MAP.panels[index].cols + 1, e.t, e.wall, e.tile), planks: e.planks, plankTile: [PLANKS.size, PLANKS.size] });
+  // Props, each lit by its own baked probe from the bake of the room it stands in.
   /** Near: the full model within LOD_NEAR metres; far (and always on the throttled tier): the simplified one. */
   const LOD_NEAR = 5;
   for (const [i, p] of PROPS.entries()) {
+    const room = roomAt(p.x, p.z);
+    if (room < 0) continue;
     const lod = new THREE.LOD();
     const levels: [THREE.Object3D, number][] = full ? [[(await models.get(p.model)!).scene.clone(true), 0], [(await lods.get(p.model)!).scene.clone(true), LOD_NEAR]] : [[(await lods.get(p.model)!).scene.clone(true), 0]];
     const mats = new Map<string, THREE.Material>();
@@ -187,8 +196,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         let mat = mats.get(key);
         if (!mat) {
           const [map, nor, arm] = await set(key, PROP_SIZE[tier]);
-          const m = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, sh: info.props[i], roughness: arm ? 1 : 0.7, metalness: arm ? 1 : 0 });
-          mats.set(key, m); materials.push(m); envLights.push(m); mat = m;
+          const m = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, sh: rooms[room].props[i], roughness: arm ? 1 : 0.7, metalness: arm ? 1 : 0 });
+          mats.set(key, m); materials.push(m); rooms[room].envLights.push(m); mat = m;
         }
         mesh.material = mat;
       }
@@ -197,44 +206,43 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     lod.position.set(p.x, p.y, p.z); lod.rotation.y = p.yaw; lod.scale.setScalar(p.scale ?? 1);
     group.add(lod);
   }
-  for (const m of envLights) m.userData.art.artEnvLight.value = Math.max(0.05, envLight);
+  for (const room of rooms) for (const m of room.envLights) m.userData.art.artEnvLight.value = Math.max(0.05, room.envLight);
   let triangles = 0, meshes = 0;
   group.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) { meshes++; const g = m.geometry; triangles += (g.index ? g.index.count : g.attributes.position.count) / 3; } });
 
-  let env: THREE.WebGLRenderTarget | null = null;
   const claimFaces: Claim = f => { let left: FaceRec[] = [f]; for (const r of REGIONS) left = left.flatMap(g => splitFace(g, r).outside); return left; };
   return {
     group, claim: claimFaces, stats: { triangles, meshes, textureBytes: L.bytes },
     panelLook: i => looks.get(i) ?? null,
-    get envReady() { return env !== null; },
-    environmentScale(x, z) { const r = REGIONS[0]; return env && x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1 ? 1 / Math.max(0.05, envLight) : 1; },
-    environment(x, z) { const r = REGIONS[0]; return env && x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1 ? env.texture : null; },
+    get envReady() { return rooms.some(r => r.env !== null); },
+    environmentScale(x, z) { const r = roomAt(x, z); return r >= 0 && rooms[r].env ? 1 / Math.max(0.05, rooms[r].envLight) : 1; },
+    environment(x, z) { const r = roomAt(x, z); return r >= 0 ? rooms[r].env?.texture ?? null : null; },
     capture(renderer, scene) {
       if (!full || dbg.includes('noenv')) return;
-      // One reflection probe per room, from its middle at eye height.
-      const r = REGIONS[0], cube = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
-      const cam = new THREE.CubeCamera(0.05, 60, cube);
-      cam.position.set((r.x0 + r.x1) / 2, 1.6, (r.z0 + r.z1) / 2);
-      // Reflections are projected onto the room's box, so they line up with the room from anywhere in it.
-      if (!dbg.includes('nobox')) for (const m of envLights) {
-        const u = m.userData.art;
-        u.artBoxMin.value.set(r.x0, 0, r.z0); u.artBoxMax.value.set(r.x1, WALL_H, r.z1); u.artProbe.value.copy(cam.position);
-      }
-      // The game renders with autoClear off; a fresh cube target's depth starts at 0, so it must be cleared here.
-      const auto = renderer.autoClear, target = renderer.getRenderTarget();
+      // One reflection probe per room, from its middle at eye height, projected onto the room's box so reflections
+      // line up from anywhere in it. The game renders with autoClear off; a fresh cube's depth starts at 0, so clear.
+      const auto = renderer.autoClear, target = renderer.getRenderTarget(), pmrem = new THREE.PMREMGenerator(renderer);
       renderer.autoClear = true;
-      cam.update(renderer, scene);
+      REGIONS.forEach((r, i) => {
+        const cube = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType }), cam = new THREE.CubeCamera(0.05, 60, cube);
+        cam.position.set((r.x0 + r.x1) / 2, 1.6, (r.z0 + r.z1) / 2);
+        cam.update(renderer, scene);
+        rooms[i].env = pmrem.fromCubemap(cube.texture);
+        cube.dispose();
+        for (const m of rooms[i].envLights) {
+          const u = m.userData.art;
+          if (!dbg.includes('nobox')) { u.artBoxMin.value.set(r.x0, 0, r.z0); u.artBoxMax.value.set(r.x1, WALL_H, r.z1); u.artProbe.value.copy(cam.position); }
+          m.envMap = rooms[i].env!.texture; m.needsUpdate = true;
+        }
+      });
+      pmrem.dispose();
       renderer.autoClear = auto; renderer.setRenderTarget(target);
-      const pmrem = new THREE.PMREMGenerator(renderer);
-      env = pmrem.fromCubemap(cube.texture);
-      pmrem.dispose(); cube.dispose();
-      for (const m of envLights) { m.envMap = env.texture; m.needsUpdate = true; }
     },
     dispose() {
       for (const m of materials) m.dispose();
       for (const g of geometries) g.dispose();
       group.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) m.geometry.dispose(); });
-      env?.dispose();
+      for (const r of rooms) r.env?.dispose();
       for (const d of disposers) d();
       L.dispose();
     },
