@@ -187,8 +187,9 @@ function addFill(m: { pos: Float32Array; nrm: Float32Array; uv: Float32Array; j8
 async function main() {
 const g = await readGlb(process.env.STATIC ?? `${OUT}/body.glb`);
 const meshes = [];
-for (const name of ['body_lod0', 'body_lod1']) {
-  const p = primitive(g, g.json.nodes.findIndex((nd: { name: string }) => nd.name === name));
+for (const name of ['body_lod0', 'body_lod1', 'body_lod2']) {
+  const ni = g.json.nodes.findIndex((nd: { name: string }) => nd.name === name); if (ni < 0) continue;
+  const p = primitive(g, ni);
   const t0 = performance.now(), r = skin(p.pos, p.nrm, p.idx);
   console.log(name, p.pos.length / 3, 'verts', (performance.now() - t0).toFixed(0), 'ms');
   // Joints and weights as normalised bytes (the weights' rounding error goes to the largest so each set sums to 255).

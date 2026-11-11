@@ -75,7 +75,10 @@ function lodWelded(mesh, target) {
   }
   return { mesh: compact({ ...mesh, idx }), err, stretched: stretched / (sidx.length / 3) };
 }
-const l0 = lod(m, 12000), l1 = lodWelded(m, 5000);
+// Job 3.6: the fighters' budget is about 7.9k / 3.7k / 1.4k triangles per level (body and kit), so in FULL mode the
+// levels are 8,000 / 3,200 / 1,200.
+const FULL_LODS = process.env.FULL === '1';
+const l0 = lod(m, FULL_LODS ? 8000 : 12000), l1 = lodWelded(m, FULL_LODS ? 3200 : 5000), l2 = FULL_LODS ? lodWelded(m, 1200) : null;
 console.log('lod1 triangles crossing a UV seam', (l1.stretched * 100).toFixed(1) + '%');
 console.log('lod0', l0.mesh.idx.length / 3, 'err', l0.err.toFixed(4), 'lod1', l1.mesh.idx.length / 3, 'err', l1.err.toFixed(4));
 
@@ -190,14 +193,15 @@ const credit = g.json.asset?.extras?.credit ?? null;
 const extras = { lumRange, source: 'patch.gg scenario:asset_e9xaKzrr8R1sMe2VMajWaAb1 (src variant)', license: 'CC-BY-4.0', changes: 'head cut at the neck and hands at the wrists (capped), metalness removed, roughness floored, simplified to two levels, tint mask added', up: '+Y', facing: '+Z', units: 'metres, feet on y = 0', cuts: CUTS, refLum };
 const mk = (name, mm) => ({ name, attributes: { POSITION: mm.pos, NORMAL: mm.nrm, TEXCOORD_0: mm.uv }, indices: mm.idx });
 // The static file stays in scratch (the skinned file in public carries the same levels).
-await writeGlb(path.join(scratch, 'body.glb'), [mk('body_lod0', l0.mesh), mk('body_lod1', l1.mesh)], extras);
+await writeGlb(path.join(scratch, 'body.glb'), [mk('body_lod0', l0.mesh), mk('body_lod1', l1.mesh), ...(l2 ? [mk('body_lod2', l2.mesh)] : [])], extras);
 // Uncut full-resolution mesh too, for the skinning step (scratch only).
 await writeGlb(path.join(scratch, 'tactical-cut-full.glb'), [mk('body_full', m)], extras);
 const files = {};
 const put = async (name, buf) => { await writeFile(path.join(outDir, name), buf); files[name] = buf.length; };
 for (const [kind, img] of [['diff', baseImgOut], ['nor', norImgOut], ['arm', armPngOut]]) {
   // Roughness alone is left in the packed map; at 2048 it cost 1.75 MB for no visible gain, so it ships at 1024 only.
-  for (const size of kind === 'arm' ? [1024] : [2048, 1024]) await put(`${kind}-${size}.ktx2`, await ktx2(img, size, kind));
+  // Normals and the packed map at 1024 only (job 3.6: the fighters' own sets ship them at 1024 for the nearest level).
+  for (const size of kind === 'diff' ? [2048, 1024] : [1024]) await put(`${kind}-${size}.ktx2`, await ktx2(img, size, kind));
   await put(`${kind}-512.jpg`, await jpeg(img, 512, kind === 'diff' ? 82 : 90));
 }
 await put('mask-1024.ktx2', await ktx2(maskPng, 1024, 'mask'));

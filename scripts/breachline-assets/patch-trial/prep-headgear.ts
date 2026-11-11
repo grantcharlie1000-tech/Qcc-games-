@@ -17,9 +17,9 @@ const PROPS: { file: string; set: string; width: number; at: [number, number, nu
   { file: 'hg_helmet', set: 'helmetA', width: 0.27, at: [0, 0.055, 0.012], rotY: 0, parts: [
     { match: /net/i, name: 'helmet_net', color: 0x1d2023, rough: 0.95, metal: 0 }, { match: /.*/, name: 'helmet_shell', color: 0x2b3036, rough: 0.7, metal: 0.1 }] },
   { file: 'hg_goggles', set: 'gogglesA', width: 0.19, at: [0, 0.0, -0.085], rotY: Math.PI / 2, parts: [
-    { match: /visor/i, name: 'goggles_lens', color: 0x2a2f35, rough: 0.08, metal: 0.4, opacity: 0.85, tris: 600 },
-    { match: /strap/i, name: 'goggles_strap', color: 0x101112, rough: 0.9, metal: 0, tris: 500 },
-    { match: /.*/, name: 'goggles_frame', color: 0x18191b, rough: 0.55, metal: 0, tris: 1400 }] },
+    { match: /visor/i, name: 'goggles_lens', color: 0x2a2f35, rough: 0.08, metal: 0.4, opacity: 0.85, tris: 260 },
+    { match: /strap/i, name: 'goggles_strap', color: 0x101112, rough: 0.9, metal: 0, tris: 160 },
+    { match: /.*/, name: 'goggles_frame', color: 0x18191b, rough: 0.55, metal: 0, tris: 500 }] },
   { file: 'hg_headset', set: 'headsetB', width: 0.205, at: [0, -0.045, 0.0], rotY: 0, parts: [{ match: /.*/, name: 'headset', color: 0x1b1c1e, rough: 0.6, metal: 0.05 }] },
 ];
 
@@ -61,15 +61,19 @@ async function main() {
       const key = (k: number) => `${Math.round(P[k * 3] * 1e5)},${Math.round(P[k * 3 + 1] * 1e5)},${Math.round(P[k * 3 + 2] * 1e5)},${Math.round(N[k * 3] * 20)},${Math.round(N[k * 3 + 1] * 20)},${Math.round(N[k * 3 + 2] * 20)}`;
       const map = new Map<string, number>(), WP: number[] = [], WN: number[] = [], WI: number[] = [];
       for (let k = 0; k < P.length / 3; k++) { const kk = key(k); let w = map.get(kk); if (w === undefined) { w = WP.length / 3; map.set(kk, w); WP.push(P[k * 3], P[k * 3 + 1], P[k * 3 + 2]); WN.push(N[k * 3], N[k * 3 + 1], N[k * 3 + 2]); } WI.push(w); }
-      let idx = new Uint32Array(WI); const wp = new Float32Array(WP);
-      if (part.tris && idx.length / 3 > part.tris) idx = new Uint32Array(MeshoptSimplifier.simplify(idx, wp, 3, part.tris * 3, 0.05, [])[0]);
+      const wp = new Float32Array(WP), full = new Uint32Array(WI), base = Math.min(part.tris ?? Infinity, full.length / 3);
+      for (const [lod, f] of [[0, 1], [1, 0.45], [2, 0.18]] as const) {
+      if (lod === 2 && pr.set === 'gogglesA') continue;  // too small to see at the far level
+      let idx = full; const want = Math.max(24, Math.round(base * f));
+      if (idx.length / 3 > want) idx = new Uint32Array(MeshoptSimplifier.simplify(full, wp, 3, want * 3, 0.2, [])[0]);
       // Compact.
       const remap = new Int32Array(wp.length / 3).fill(-1); let m = 0; for (const i of idx) if (remap[i] < 0) remap[i] = m++;
       const cp = new Float32Array(m * 3), cn = new Float32Array(m * 3);
       for (let i = 0; i < remap.length; i++) if (remap[i] >= 0) { cp.set(wp.subarray(i * 3, i * 3 + 3), remap[i] * 3); cn.set(WN.slice(i * 3, i * 3 + 3), remap[i] * 3); }
       const ci = Uint32Array.from(idx, i => remap[i]);
-      meshes.push({ name: `${pr.set}_${part.name}`, attributes: { POSITION: cp, NORMAL: cn }, indices: ci, extras: { set: pr.set, color: '#' + part.color.toString(16).padStart(6, '0'), roughness: part.rough, metalness: part.metal, opacity: part.opacity ?? 1 } });
-      tris += ci.length / 3;
+      meshes.push({ name: `${pr.set}_${part.name}_l${lod}`, attributes: { POSITION: cp, NORMAL: cn }, indices: ci, extras: { set: pr.set, lod, color: '#' + part.color.toString(16).padStart(6, '0'), roughness: part.rough, metalness: part.metal, opacity: part.opacity ?? 1 } });
+      if (lod === 0) tris += ci.length / 3;
+      }
     }
     report[pr.set] = { source: pr.file, sourceTriangles: [...parts.values()].reduce((a, e) => a + e.pos.length / 9, 0), triangles: tris, scale: +s.toFixed(3) };
   }

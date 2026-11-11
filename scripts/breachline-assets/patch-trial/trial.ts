@@ -266,7 +266,7 @@ async function loadSkinned(name: string, node = 'body_lod0', weights = false, lo
   const g = await gltf.loadAsync(url);
   const src = g.scene.getObjectByName(node) as THREE.Mesh;
   const art = new ArtLoader(renderer, 'high'), set = '../patch/tactical';
-  const [map, normalMap, arm] = await Promise.all([art.texture(set, 'diff', 2048), art.texture(set, 'nor', 2048), art.texture(set, 'arm', 1024)]);
+  const [map, normalMap, arm] = await Promise.all([art.texture(set, 'diff', 2048), art.texture(set, 'nor', 1024), art.texture(set, 'arm', 1024)]);
   const mat = new THREE.MeshStandardMaterial({ map, normalMap, roughnessMap: arm, metalnessMap: arm, roughness: 1, metalness: 1 });
   if (look) await squadLook(mat, look, art, set, (g.parser.json.asset.extras as { lumRange: { fatigues: number[]; kit: number[] } }).lumRange);
   const bones = makeBones(), mesh = new THREE.SkinnedMesh(src.geometry, weights ? weightMaterial() : mat);
@@ -334,11 +334,52 @@ async function headgear(name: string, sets: string[]) {
   const r = rigs.get(name)!, g = await gltf.loadAsync('/game-art/breachline/patch/headgear/headgear.glb');
   let n = 0; const add: THREE.Mesh[] = [];
   g.scene.traverse(c => { const m = c as THREE.Mesh; const x = m.userData as { set?: string; color?: string; roughness?: number; metalness?: number; opacity?: number };
-    if (!m.isMesh || !sets.includes(x.set ?? '')) return;
+    if (!m.isMesh || !sets.includes(x.set ?? '') || ((x as { lod?: number }).lod ?? 0) !== 0) return;
     m.material = new THREE.MeshStandardMaterial({ color: x.color, roughness: x.roughness, metalness: x.metalness, transparent: (x.opacity ?? 1) < 1, opacity: x.opacity ?? 1 });
     m.frustumCulled = false; add.push(m); n += tris(m); });
   for (const m of add) r.mesh.skeleton.bones[5].add(m);
   return n;
+}
+/** Polyfork "Base Hand" (a WebXR-style hand: 25 joints, flat under one node, posed by absolute joint transforms).
+ * Loads it as object `name`, mirrored for a right hand when `mirror`, with each finger curled by `curl` (radians per
+ * joint, proximal..distal) about the finger's side axis toward the palm (`palmSign` picks which face is the palm). */
+async function baseHand(name: string, o: { mirror?: boolean; curl?: number[]; thumb?: number[]; spread?: number; palmSign?: number; color?: number } = {}) {
+  const g = await gltf.loadAsync('/patch-dl/basehand.glb');
+  const skinned: THREE.SkinnedMesh[] = []; g.scene.traverse(c => { if ((c as THREE.SkinnedMesh).isSkinnedMesh) skinned.push(c as THREE.SkinnedMesh); });
+  const mat = new THREE.MeshStandardMaterial({ color: o.color ?? 0x1c1d1f, roughness: 0.8, metalness: 0 });
+  for (const m of skinned) { m.material = mat; m.frustumCulled = false; }
+  const sk = skinned[0].skeleton, bones = sk.bones, byName = (n: string) => bones.find(b => b.name.replace(/[^a-z-]/g, '') === n.replace(/[^a-z-]/g, ''))!;
+  // Bind world matrices (relative to the skinned mesh) from the inverse bind matrices.
+  const bind = new Map<THREE.Bone, THREE.Matrix4>(); bones.forEach((b, i) => bind.set(b, sk.boneInverses[i].clone().invert()));
+  const P = (b: THREE.Bone) => new THREE.Vector3().setFromMatrixPosition(bind.get(b)!);
+  const wrist = P(byName('wrist')), iMeta = P(byName('index-finger-metacarpal')), pMeta = P(byName('pinky-finger-metacarpal')), mProx = P(byName('middle-finger-phalanx-proximal'));
+  const palmN = new THREE.Vector3().crossVectors(iMeta.clone().sub(wrist), pMeta.clone().sub(wrist)).normalize().multiplyScalar(o.palmSign ?? 1);
+  const pose = new Map<THREE.Bone, THREE.Matrix4>(); for (const b of bones) pose.set(b, bind.get(b)!.clone());
+  const chains: [string, number[]][] = [['index-finger', o.curl ?? [1.1, 1.2, 0.8]], ['middle-finger', o.curl ?? [1.1, 1.2, 0.8]], ['ring-finger', o.curl ?? [1.1, 1.2, 0.8]], ['pinky-finger', o.curl ?? [1.1, 1.2, 0.8]], ['thumb', o.thumb ?? [0.4, 0.5, 0.4]]];
+  for (const [f, angles] of chains) {
+    const names = f === 'thumb' ? ['thumb-phalanx-proximal', 'thumb-phalanx-distal', 'thumb-tip'] : [`${f}-phalanx-proximal`, `${f}-phalanx-intermediate`, `${f}-phalanx-distal`, `${f}-tip`];
+    const js = names.map(byName); const pts = js.map(P);
+    const dir = pts[1].clone().sub(pts[0]).normalize(), axis = new THREE.Vector3().crossVectors(dir, palmN).normalize();
+    let cum = new THREE.Quaternion(); const newP = pts.map(p => p.clone());
+    for (let k = 0; k < js.length; k++) {
+      if (k > 0) newP[k] = newP[k - 1].clone().add(pts[k].clone().sub(pts[k - 1]).applyQuaternion(cum));
+      if (k < angles.length) cum = new THREE.Quaternion().setFromAxisAngle(axis, angles[k]).multiply(cum);
+      const r = new THREE.Quaternion().setFromRotationMatrix(bind.get(js[k])!), m4 = new THREE.Matrix4().compose(newP[k], cum.clone().multiply(r), new THREE.Vector3(1, 1, 1));
+      pose.set(js[k], m4);
+    }
+  }
+  // Bones sit flat under the mesh's parent at identity: their local matrix is the pose itself.
+  for (const b of bones) { b.matrixAutoUpdate = false; b.matrix.copy(pose.get(b)!); b.matrixWorldNeedsUpdate = true; }
+  const holder = new THREE.Group(); holder.add(g.scene); if (o.mirror) holder.scale.x = -1;
+  const wrap = new THREE.Group(); wrap.add(holder); objects.set(name, wrap);
+  return { bones: bones.length, wrist: wrist.toArray(), palmN: palmN.toArray(), dims: new THREE.Box3().setFromObject(g.scene).getSize(new THREE.Vector3()).toArray() };
+}
+/** Groups already-loaded objects into a new object `name`, each with a local position (m), Euler rotation (degrees,
+ * XYZ) and uniform scale, e.g. hands placed in a weapon's frame. */
+function group(name: string, items: { name: string; p?: [number, number, number]; r?: [number, number, number]; s?: number }[]) {
+  const grp = new THREE.Group();
+  for (const it of items) { const src = objects.get(it.name); if (!src) throw new Error(`not loaded: ${it.name}`); const h = new THREE.Group(); h.add(src); h.position.set(...(it.p ?? [0, 0, 0])); h.rotation.set(...((it.r ?? [0, 0, 0]).map(THREE.MathUtils.degToRad) as [number, number, number])); h.scale.setScalar(it.s ?? 1); grp.add(h); }
+  objects.set(name, grp);
 }
 /** Runs `script` and poses rig `name` at time `t` (s after the script's lead-in). Returns the root position. */
 function pose(name: string, script: string, t: number) {
@@ -365,6 +406,6 @@ function markers(name: string, pts: [number, number, number][], rotY = 0, r = 0.
   grp.rotation.y = rotY; const w = new THREE.Group(); w.add(grp); objects.set(name, w);
 }
 
-const api = { load, loadPrepared, markers, loadSkinned, headProp, headgear, ourRig, pose, joint, ourRifleman, ourAr5, frame, project, info: () => Object.fromEntries(info) };
+const api = { load, loadPrepared, markers, loadSkinned, headProp, headgear, baseHand, group, ourRig, pose, joint, ourRifleman, ourAr5, frame, project, info: () => Object.fromEntries(info) };
 (window as unknown as { __trial: typeof api }).__trial = api;
 (window as unknown as { __trialReady: boolean }).__trialReady = true;
