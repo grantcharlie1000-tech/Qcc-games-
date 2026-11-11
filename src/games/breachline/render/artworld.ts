@@ -81,7 +81,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   /** Per room: the materials its reflection probe lights, its mean baked light, its probe once captured. */
   const rooms = REGIONS.map(() => ({ envLights: [] as THREE.MeshStandardMaterial[], envLight: 1, env: null as THREE.WebGLRenderTarget | null, captured: false, props: [] as number[][] }));
   /** Panel corner light from every room's bake (a wall between two art rooms is listed by both, one side each). */
-  const tables = new Map<number, { t: Map<number, Float32Array>; wall: THREE.Material; planks: THREE.Material; tile: readonly [number, number] }>();
+  const tables = new Map<number, { t: Map<number, Float32Array>; wall: THREE.Material; planks: THREE.Material; plate: THREE.Material; tile: readonly [number, number] }>();
   const roomAt = (x: number, z: number) => REGIONS.findIndex(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
   /** Rooms whose art loaded; any room that fails keeps the procedural look on its own. */
   const loaded = REGIONS.map(() => false);
@@ -183,15 +183,21 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     const [km, kn, ka] = await set(PLANKS.set, TEX_SIZE[tier]);
     const planks = artMaterial({ map: km, normalMap: kn, armMap: ka, vertexLight: true, roughness: 1, metalness: ka ? 1 : 0, color: new THREE.Color(...(PLANKS.tint ?? [1, 1, 1])) });
     materials.push(planks); envLights.push(planks);
+    // Reinforcement plates: painted steel that picks up the room's reflection probe, so its folds and rails catch the
+    // fittings like the room's other metal.
+    // Painted steel behaves as paint (a dielectric): semi-gloss, so the fittings show in it as soft highlights.
+    const [sm, sn, sa] = await set('painted_plaster_wall', TEX_SIZE[tier]);
+    const plate = artMaterial({ map: sm, normalMap: sn, armMap: sa, vertexLight: true, roughness: 0.45, metalness: 0, spec: 1.6, color: new THREE.Color(0.3, 0.34, 0.33) });
+    materials.push(plate); envLights.push(plate);
     for (const p of info.panels) {
       let e = tables.get(p.index);
-      if (!e) tables.set(p.index, e = { t: new Map(), wall, planks, tile: wallSet ? [wallSet.size, wallSet.size] : TILE.drywall });
+      if (!e) tables.set(p.index, e = { t: new Map(), wall, planks, plate, tile: wallSet ? [wallSet.size, wallSet.size] : TILE.drywall });
       e.t.set(p.side, new Float32Array(p.light));
     }
     loaded[r] = true;
   } catch (e) { console.warn(`Breachline art: ${region.name} unavailable, keeping its procedural look`, e); } }));
   if (!loaded.some(Boolean)) throw new Error('no art rooms loaded');
-  for (const [index, e] of tables) looks.set(index, { ...panelLook(MAP.panels[index].cols + 1, e.t, e.wall, e.tile), planks: e.planks, plankTile: [PLANKS.size, PLANKS.size] });
+  for (const [index, e] of tables) looks.set(index, { ...panelLook(MAP.panels[index].cols + 1, e.t, e.wall, e.tile), planks: e.planks, plankTile: [PLANKS.size, PLANKS.size], plate: e.plate, plateTile: [1.2, 1.2] });
   // Props, each lit by its own baked probe from the bake of the room it stands in.
   /** Near: the full model within LOD_NEAR metres; far (and always on the throttled tier): the simplified one. */
   const LOD_NEAR = 5;

@@ -12,7 +12,8 @@ import { chargeGeometry, deviceGeometry, deviceScreenTexture } from './render/ki
 import { createPatchFighters } from './render/patchfighters/index';
 import { createFighters, createViewmodel, type HeroLighting } from './render/hero';
 import { createPost, type PostTier } from './render/post';
-import { shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
+import { ACT, shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
+import { actDuration } from './sim';
 import { makeSprite, makeTextures, type TexId } from './textures';
 import { PANEL_T, cellCenter, eyeOf, panelPoint, trace, viewDir, type Panel, type World } from './world';
 
@@ -136,7 +137,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     // Every material a damaged wall can show (cut edges, cavity, studs, planks, plate): an intact wall draws only its
     // face, so without this the first bullet hole would compile them. A tiny triangle with the panels' attributes each.
     const wallMats = new Set<THREE.Material>(Object.values(panelMats));
-    if (art) for (let i = 0; i < MAP.panels.length; i++) { const l = art.panelLook(i); if (l) { wallMats.add(l.wall); if (l.planks) wallMats.add(l.planks); } }
+    if (art) for (let i = 0; i < MAP.panels.length; i++) { const l = art.panelLook(i); if (l) { wallMats.add(l.wall); if (l.planks) wallMats.add(l.planks); if (l.plate) wallMats.add(l.plate); } }
     const tri = new THREE.BufferGeometry();
     tri.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1e-3, 0, 0, 0, 1e-3, 0], 3));
     tri.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
@@ -400,6 +401,26 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       }
     }
   }
+  /** A reinforcement going up: while a defender works on a wall, the plate rises from the floor over the action's
+   * duration (fast at first, settling at the top), drawn from the same geometry the finished plate will have. */
+  const deploys = new Map<number, PanelView>();
+  function updateDeploys(m: Match) {
+    const live = new Set<number>();
+    for (const pl of m.players) {
+      if (!pl.alive || pl.act !== ACT.reinforce || pl.actTarget < 0) continue;
+      const panel = m.world.panels[pl.actTarget];
+      if (!panel || panel.reinforced) continue;
+      live.add(panel.id);
+      let v = deploys.get(panel.id);
+      if (!v) {
+        v = new PanelView({ ...panel, reinforced: true, version: panel.version + 1 }, bake, panelMats, art?.panelLook(panel.id) ?? null);
+        v.sync(); panelGroup.add(v.mesh); deploys.set(panel.id, v);
+      }
+      const t = Math.min(1, pl.actT / actDuration(ACT.reinforce)), e = 1 - (1 - t) ** 3;
+      v.mesh.scale.set(1, Math.max(0.02, e), 1); v.mesh.updateMatrix();
+    }
+    for (const [id, v] of deploys) if (!live.has(id)) { panelGroup.remove(v.mesh); v.dispose(); deploys.delete(id); }
+  }
   function impact(x: number, y: number, z: number, nx: number, ny: number, nz: number, kind: keyof typeof DUST, hard: boolean) {
     const c = DUST[kind], l = bake.probe(x, z), b = 0.35 + (l[0] + l[1] + l[2]) / 3;
     const n = fx.density < 1 ? 1 : 2;
@@ -497,6 +518,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       time += dt;
       if (view.m.world !== world) bind(view.m.world);
       for (const p of panels) p.sync();
+      updateDeploys(view.m);
       fighters.update(view);
       place(view);
       updateGadgets(view.m, dt);

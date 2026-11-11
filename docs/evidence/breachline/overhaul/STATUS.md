@@ -81,9 +81,9 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** destruction round 3 (ragged, layered breaks) done; next the reviewer's kit notes
-(barricade splinters and battens, a heavier reinforcement with its deploy, brighter uplink states), then Archive
-round 2, then corridor round 4.
+**Where I am (keep current):** destruction round 3, barricades round 2, reinforcement round 2 done; next the
+uplink notes (brighter, a cable and clipped-on parts, states that differ in rhythm), then Archive round 2, then
+corridor round 4.
 
 ## Corridor round 3 (`rooms/corridor/round-3/`), against the reviewer's round-2 notes
 
@@ -156,6 +156,30 @@ Before: six flat boxes and a pulsing ring.
   - the screen is unlit by the room (fine) but has no glass reflection;
   - the plant and shut-down hands belong to the weapons and fighters sessions.
 - K (mine, uplink): 3 -> 5.
+
+## Tactical kit (row K): reinforcement, round 2 (`kit/reinforcement-round-2/`)
+
+The reviewer scored round 1 at 5 on the stricter scale: it read as "steel-print wallpaper".
+- **Lit steel.** In art rooms the plate now uses the room's lit material: semi-gloss painted steel, dark grey-green,
+  on the art pipeline with the reflection probe, instead of the old flat unlit texture. The folds, rails and
+  anchors now take light and soft highlights. Its shades are retuned for the lit material.
+- **Painted on the geometry:** a yellow-and-black diagonal hazard band across the top, and weld seams down every
+  fold.
+- **Deploy:** while a defender reinforces a wall, a copy of the finished plate rises from the floor over the
+  action's 3.5 s (eased: fast, then settling), and is replaced by the real plate when the simulation sets it. It is
+  driven only by the player's existing `act`, `actT` and `actTarget` (`actDuration` from `sim.ts`, read only); no
+  new hook. **Not yet captured in evidence:** only bots reinforce in the scripted views, and the hook doesn't
+  expose their actions.
+- Under fire: scars and sparks as in round 1.
+- **Evidence:** `intact-and-shot.png` (intact, then after a burst).
+- **Still open:**
+  - no anchors visibly entering the floor;
+  - no uneven top edge;
+  - no brushed-metal streaks;
+  - the unfold is a rise, not a fold-out.
+- Reinforcement (mine, strict scale): 5 -> 5.5.
+- One full-suite run had a single failure I couldn't attribute (the next three runs were clean). Possibly a flake
+  in the online test; watching it.
 
 ## Tactical kit (row K): reinforcement, round 1 (`kit/reinforcement-round-1/`)
 

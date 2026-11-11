@@ -177,7 +177,7 @@ export function emitLevel(L: LevelBuilder) {
 export interface PanelMaterials { wall: THREE.Material; core: THREE.Material; planks: THREE.Material; plate: THREE.Material }
 /** A panel in an asset-rendered room: baked light per cell corner (side +1/-1 along the wall's normal axis, 0 for
  * the broken edge between them) and the room's wall material, whose UVs are in `tile` metres per repeat. */
-export interface PanelLook { light(c: number, r: number, side: number): RGB | null; wall: THREE.Material; tile: readonly [number, number]; planks?: THREE.Material; plankTile?: readonly [number, number] }
+export interface PanelLook { light(c: number, r: number, side: number): RGB | null; wall: THREE.Material; tile: readonly [number, number]; planks?: THREE.Material; plankTile?: readonly [number, number]; plate?: THREE.Material; plateTile?: readonly [number, number] }
 
 /** Where a panel's geometry gets its light: corner (u, y), offset along the wall normal, and side (+1, -1, 0 for edges). */
 export type PanelLight = (u: number, y: number, off: number, side: number) => RGB;
@@ -198,7 +198,7 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
   const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [], face: number[] = [], edge: number[] = [], stud: number[] = [];
   const studs: { c: number; r: number }[] = [];
   const plate = p.reinforced, wood = p.kind !== 'wall', half = (plate ? 0.2 : wood ? 0.07 : PANEL_T) / 2;
-  const tile = plate ? TILE.plate : wood ? look?.plankTile ?? TILE.planks : look ? look.tile : TILE.drywall, alongX = p.axis === 'x';
+  const tile = plate ? look?.plateTile ?? TILE.plate : wood ? look?.plankTile ?? TILE.planks : look ? look.tile : TILE.drywall, alongX = p.axis === 'x';
   const cell = (c: number, r: number) => c < 0 || r < 0 || c >= p.cols || r >= p.rows || plate || p.cells[r * p.cols + c] === 1;
   const torn = !plate && !wood && p.intact < p.cells.length;
   /** How far a skin's corner tears back (in u and y) from the hole beside it, into the intact board; zero away from
@@ -377,7 +377,9 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
    * stiffening rails with rivet heads, and anchor shoes biting into the floor and ceiling. Both faces alike. */
   function reinforcement() {
     const W = p.cols * CELL, leaves = Math.max(2, Math.round(W / 0.5)), lw = W / leaves, y0 = p.y0, y1 = p.y0 + p.rows * CELL, FOLD = 0.018;
-    const PAINT: RGB = [1.75, 1.8, 1.9], RAIL: RGB = [1.15, 1.18, 1.24], STEEL: RGB = [0.9, 0.9, 0.92], RIVET: RGB = [2.3, 2.3, 2.3];
+    // Shades multiply the light: the old flat plate texture is dark, the room's lit steel is not, so it needs less.
+    const g = look?.plate ? 0.8 : 1, sc = (v: RGB): RGB => [v[0] * g, v[1] * g, v[2] * g];
+    const PAINT = sc([1.75, 1.8, 1.9]), RAIL = sc([1.15, 1.18, 1.24]), STEEL = sc([0.9, 0.9, 0.92]), RIVET = sc([2.3, 2.3, 2.3]);
     const at = (u: number, y: number, off: number, n: number, sh: RGB, nx = 0, ny = 0) => {
       const w = panelPoint(p, u, y, off), l = light(u, y, off, n);
       pos.push(w.x, w.y, w.z); uv.push(u / tile[0], y / tile[1]); col.push(l[0] * sh[0], l[1] * sh[1], l[2] * sh[2]);
@@ -407,6 +409,17 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
           const u = Math.min(Math.max(p.u0 + i * lw, p.u0 + 0.06), p.u0 + W - 0.06);
           for (const dy of [-0.025, 0.025]) box(u - 0.008, u + 0.008, yc + dy - 0.008, yc + dy + 0.008, o1, o1 + n * 0.006, RIVET, n);
         }
+      }
+      // A hazard band across the top: yellow and black diagonal stripes painted on (only on the lit steel; the old
+      // flat texture prints its own), and weld seams down every fold line.
+      if (look?.plate) {
+        const yb0 = y1 - 0.2, yb1 = y1 - 0.12, o = base + n * (FOLD + 0.0015), W2 = 0.09;
+        for (let u = p.u0; u < p.u0 + W - 1e-3; u += W2) {
+          const k = Math.round((u - p.u0) / W2) % 2, sh: RGB = k ? [0.05, 0.05, 0.05] : [2.1, 1.6, 0.2];
+          const u0 = u, u1 = Math.min(u + W2, p.u0 + W), sl = 0.06;
+          quad(edge, at(u0, yb0, o, n, sh), at(u1, yb0, o, n, sh), at(Math.min(u1 + sl, p.u0 + W), yb1, o, n, sh), at(Math.min(u0 + sl, p.u0 + W), yb1, o, n, sh), flip);
+        }
+        for (let i = 1; i < leaves; i++) { const u = p.u0 + i * lw, o2 = base + n * (FOLD + 0.002); quad(edge, at(u - 0.006, y0, o2, n, sc([0.55, 0.52, 0.5])), at(u + 0.006, y0, o2, n, sc([0.55, 0.52, 0.5])), at(u + 0.006, y1, o2, n, sc([0.55, 0.52, 0.5])), at(u - 0.006, y1, o2, n, sc([0.55, 0.52, 0.5])), flip); }
       }
       // Anchor shoes at the foot and head of every other fold line, as if fired into the floor and ceiling.
       for (let i = 1; i < leaves; i += 2) {
@@ -512,7 +525,8 @@ export class PanelView {
     this.mesh.geometry.dispose();
     this.mesh.geometry = geo.geometry;
     const look = this.look, planks = look?.planks ?? this.mats.planks, plate = p.reinforced, wood = p.kind !== 'wall';
-    this.mesh.material = plate ? [this.mats.plate, this.mats.plate, this.mats.plate] : [wood ? planks : look ? look.wall : this.mats.wall, wood ? planks : look ? look.wall : this.mats.core, planks];
+    const steel = look?.plate ?? this.mats.plate;
+    this.mesh.material = plate ? [steel, steel, steel] : [wood ? planks : look ? look.wall : this.mats.wall, wood ? planks : look ? look.wall : this.mats.core, planks];
     return true;
   }
   dispose() { this.mesh.geometry.dispose(); }
