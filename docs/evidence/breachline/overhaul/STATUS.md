@@ -67,8 +67,34 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** kit round 1 done for the charge, barricades and reinforcement (`kit/`); next the
-uplink device and grenade blasts; then corridor round 3 and Archive round 2.
+**Where I am (keep current):** kit round 1 done for the charge, barricades, reinforcement and uplink (`kit/`);
+next grenade blasts; then corridor round 3 and Archive round 2.
+
+## Tactical kit (row K): uplink device, round 1 (`kit/uplink-round-1/`)
+
+Before: six flat boxes and a pulsing ring.
+- **Now** (`render/kit.ts` `deviceGeometry`, our own design):
+  - a hard case with ribs, rubber feet, latches, a handle and a hazard strip, its lid open and standing at the back;
+  - a keypad panel and cable gland inside, and a whip aerial;
+  - a screen in the lid's bezel (title, signal trace, status box), with a progress bar in the box;
+  - three status lights: power, link, alarm.
+- **State drives colour and scale only, never a redraw or upload:**
+  - counting (planted): amber screen, a bar that fills over the fuse, and a link light and glow that blink faster
+    as time runs out;
+  - complete: green, bar full;
+  - shut down (defused): dark screen and a red alarm light;
+  - otherwise: armed (cyan).
+- **The light that carries:** an additive glow over the screen and a pool of its colour on the floor round the case,
+  pulsing with the count, plus the existing pulse ring. The case is lit by the bake probe like the charges.
+- **Evidence:** `counting-then-complete.png` (amber while counting, green once the link completes),
+  `counting-high.png`, `counting-crop.png`. The shut-down state is not rendered yet (it needs a scripted defuse).
+- **Mismatches for round 2:**
+  - the pool is faint on the bright tile floor;
+  - no real light on the room: it would need a permanent light in the art scene and a recompile of every art
+    shader to carry it, so it's left as a fake pool for now;
+  - the screen is unlit by the room (fine) but has no glass reflection;
+  - the plant and shut-down hands belong to the weapons and fighters sessions.
+- K (mine, uplink): 3 -> 5.
 
 ## Tactical kit (row K): reinforcement, round 1 (`kit/reinforcement-round-1/`)
 

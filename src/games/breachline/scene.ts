@@ -1,14 +1,14 @@
 /** The picture. A baked-light level, destructible panel meshes, fighters, the weapon in hand and pooled effects,
  * drawn with unlit materials so integrated graphics can keep up. Resolution adapts to hold the frame rate. */
 import * as THREE from 'three';
-import { CELL, WEAPONS } from './config';
+import { CELL, ROUND, WEAPONS } from './config';
 import { Effects } from './effects';
 import { createBake, SUN, type Bake } from './lightbake';
 import { PanelView, buildLevel, type PanelMaterials } from './levelmesh';
 import { MAP } from './map';
 import { loadArtWorld, type ArtWorld } from './render/artworld';
-import { boxes, deviceParts } from './models';
-import { chargeGeometry } from './render/kit';
+import { boxes } from './models';
+import { chargeGeometry, deviceGeometry, deviceScreenTexture } from './render/kit';
 import { createFighters, createViewmodel, type HeroLighting } from './render/hero';
 import { createPost, type PostTier } from './render/post';
 import { shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
@@ -197,7 +197,21 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
 
   // ---- Gadgets and markers ----
   const lambert = new THREE.MeshLambertMaterial({ vertexColors: true });
-  const device = new THREE.Mesh(boxes(deviceParts()), lambert); device.visible = false; scene.add(device);
+  // The uplink: the case (lit like the charges), a screen and progress bar drawn bright, three status lights, a glow
+  // over the screen and a pool of its light on the floor; all tinted by the device's state, nothing redrawn.
+  const dev = deviceGeometry(), screenTex = deviceScreenTexture(), devMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.1 });
+  const glowBasic = (map: THREE.Texture | null, extra: THREE.MeshBasicMaterialParameters = {}) => new THREE.MeshBasicMaterial({ map, toneMapped: false, ...extra });
+  const devScreen = glowBasic(screenTex), devBar = glowBasic(null), devLeds = [0, 1, 2].map(() => glowBasic(null));
+  const device = new THREE.Group();
+  device.add(new THREE.Mesh(dev.body, devMat), new THREE.Mesh(dev.screen, devScreen));
+  const barMesh = new THREE.Mesh(dev.bar, devBar); barMesh.position.x = -0.13; device.add(barMesh);
+  dev.leds.forEach((g, i) => device.add(new THREE.Mesh(g, devLeds[i])));
+  const devGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeSprite('puff'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }));
+  devGlow.position.set(0, 0.36, 0.05); devGlow.scale.setScalar(0.7); device.add(devGlow);
+  const poolGeo = new THREE.PlaneGeometry(1, 1); poolGeo.rotateX(-Math.PI / 2);
+  const devPool = new THREE.Mesh(poolGeo, new THREE.MeshBasicMaterial({ map: makeSprite('puff'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }));
+  devPool.position.set(0, 0.012, 0.25); devPool.scale.setScalar(2.6); devPool.renderOrder = 2; device.add(devPool);
+  device.visible = false; scene.add(device);
   const ringTex = makeSprite('ring');
   const ringGeo = new THREE.PlaneGeometry(1, 1); ringGeo.rotateX(-Math.PI / 2);
   const pulse = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ map: ringTex, color: 0xff5a3c, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
@@ -288,6 +302,22 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     device.visible = pulse.visible = !!m.device && m.phase !== 'lobby';
     if (m.device) {
       device.position.set(m.device.x, 0, m.device.z);
+      device.rotation.y = ((m.device.x * 7.31 + m.device.z * 3.17) % 1) * 6.283;
+      // State: counting while planted, complete when the uplink went through, shut down when defused; armed otherwise.
+      const counting = m.phase === 'planted', done = m.phase !== 'planted' && m.reason === 'uplink', off = m.phase !== 'planted' && m.reason === 'defused';
+      const progress = counting ? Math.min(1, Math.max(0, 1 - m.t / ROUND.fuse)) : done ? 1 : 0;
+      const hue = done ? [0.35, 1, 0.45] : off ? [1, 0.12, 0.08] : counting ? [1, 0.62, 0.16] : [0.3, 0.8, 1];
+      const blinkRate = counting ? (m.t < 10 ? 6 : m.t < 20 ? 3 : 1.5) : 1, blinkOn = (time * blinkRate) % 1 < 0.5;
+      const k = off ? 0.25 : 1.6;
+      devScreen.color.setRGB(hue[0] * k, hue[1] * k, hue[2] * k);
+      devBar.color.setRGB(hue[0] * 2.4, hue[1] * 2.4, hue[2] * 2.4); barMesh.scale.x = Math.max(0.001, progress); barMesh.visible = progress > 0;
+      devLeds[0].color.setRGB(off ? 0.05 : 0.2, off ? 0.05 : 3, off ? 0.05 : 0.4);
+      devLeds[1].color.setRGB(...(blinkOn && !off ? [hue[0] * 4, hue[1] * 4, hue[2] * 4] as const : [0.05, 0.05, 0.05] as const));
+      devLeds[2].color.setRGB(off ? 4 : 0.05, 0.05, 0.05);
+      const beat = counting ? 0.75 + 0.25 * Math.sin(time * blinkRate * 6.283) : 1, glow = off ? 0.08 : 0.55 * beat;
+      (devGlow.material as THREE.SpriteMaterial).color.setRGB(hue[0] * glow, hue[1] * glow, hue[2] * glow);
+      (devPool.material as THREE.MeshBasicMaterial).color.setRGB(hue[0] * glow * 0.5, hue[1] * glow * 0.5, hue[2] * glow * 0.5);
+      const lit = bake.probe(m.device.x, m.device.z); devMat.color.setRGB(1.2 + lit[0] * 2.4, 1.2 + lit[1] * 2.4, 1.2 + lit[2] * 2.4);
       const rate = m.phase === 'planted' ? (m.t < 10 ? 4 : m.t < 20 ? 2 : 1) : 0, t = (time * rate) % 1;
       pulse.position.set(m.device.x, 0.05, m.device.z); pulse.scale.setScalar(0.6 + t * 3.2);
       (pulse.material as THREE.MeshBasicMaterial).opacity = rate ? 0.8 * (1 - t) : 0;
@@ -509,7 +539,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       scene.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.geometry) mesh.geometry.dispose(); });
       for (const m of Object.values(materials)) m.dispose();
       for (const t of [...Object.values(textures), skyTex, sunTex, ringTex, ...siteTex]) t.dispose();
-      for (const m of [lambert, led, kitMat, ...kitMats]) m.dispose();
+      for (const m of [lambert, led, kitMat, ...kitMats, devMat, devScreen, devBar, ...devLeds, devGlow.material, devPool.material]) m.dispose();
+      screenTex.dispose(); (devGlow.material as THREE.SpriteMaterial).map?.dispose(); (devPool.material as THREE.MeshBasicMaterial).map?.dispose();
       renderer.dispose();
     },
   };

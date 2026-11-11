@@ -59,3 +59,60 @@ export function chargeGeometry(): { body: THREE.BufferGeometry; led: THREE.Buffe
   const led = new THREE.SphereGeometry(0.009, 10, 6); led.translate(0.13, -0.025, 0.093);
   return { body, led };
 }
+
+/** The uplink on the floor: a hard case with its lid open, a keypad, an aerial, and the screen inside the lid.
+ * Local axes: x across, y up, z towards the front (the screen faces +z from the lid standing at the back). Returns the
+ * case as one merged mesh, plus the pieces that change with the device's state: the screen, its progress bar (scaled
+ * in x from its left end) and three status lights. */
+export function deviceGeometry(): { body: THREE.BufferGeometry; screen: THREE.BufferGeometry; bar: THREE.BufferGeometry; leds: THREE.BufferGeometry[] } {
+  const CASE = 0x2f363b, RIB = 0x262c30, LATCH = 0x8d9397, PANEL = 0x15191c, KEY = 0x3a4146, BEZEL = 0x101315, RUBBER = 0x1c1f21, HAZARD = 0xd6a51c;
+  const parts: THREE.BufferGeometry[] = [
+    // The case: body, two ribs round it, feet, latches and a handle on the front.
+    block([0.46, 0.15, 0.32], [0, 0.085, 0], CASE, 0.02),
+    block([0.47, 0.025, 0.33], [0, 0.05, 0], RIB, 0.008), block([0.47, 0.025, 0.33], [0, 0.125, 0], RIB, 0.008),
+    block([0.06, 0.012, 0.06], [-0.18, 0.006, -0.12], RUBBER, 0.004), block([0.06, 0.012, 0.06], [0.18, 0.006, -0.12], RUBBER, 0.004),
+    block([0.06, 0.012, 0.06], [-0.18, 0.006, 0.12], RUBBER, 0.004), block([0.06, 0.012, 0.06], [0.18, 0.006, 0.12], RUBBER, 0.004),
+    block([0.05, 0.05, 0.02], [-0.13, 0.12, 0.165], LATCH, 0.006), block([0.05, 0.05, 0.02], [0.13, 0.12, 0.165], LATCH, 0.006),
+    block([0.16, 0.022, 0.03], [0, 0.1, 0.18], RUBBER, 0.01),
+    block([0.47, 0.02, 0.01], [0, 0.04, 0.162], HAZARD, 0.003),
+    // Inside the open case: the panel with a keypad and a cable gland.
+    block([0.42, 0.01, 0.28], [0, 0.161, 0.005], PANEL, 0.004),
+    ...Array.from({ length: 12 }, (_, i) => block([0.028, 0.008, 0.024], [0.04 + (i % 4) * 0.036, 0.168, 0.02 + Math.floor(i / 4) * 0.032], KEY, 0.003)),
+    block([0.12, 0.006, 0.07], [-0.1, 0.167, 0.06], 0x23292d, 0.002),
+    block([0.03, 0.03, 0.03], [-0.17, 0.175, -0.08], LATCH, 0.006),
+    // The lid, hinged at the back and standing up, with the screen's bezel on its inside.
+    block([0.46, 0.32, 0.03], [0, 0.32, -0.165], CASE, 0.015, [-0.12, 0, 0]),
+    block([0.34, 0.2, 0.012], [0, 0.33, -0.143], BEZEL, 0.006, [-0.12, 0, 0]),
+    // The aerial: a base and a whip.
+    block([0.03, 0.04, 0.03], [0.2, 0.19, -0.11], LATCH, 0.006),
+    paint(new THREE.CylinderGeometry(0.004, 0.006, 0.5, 6).translate(0.2, 0.45, -0.11), 0x1e2124),
+    paint(new THREE.SphereGeometry(0.01, 8, 6).translate(0.2, 0.7, -0.11), 0x1e2124),
+  ];
+  const body = mergeGeometries(parts, false)!;
+  for (const p of parts) p.dispose();
+  body.computeBoundingSphere();
+  // The screen and bar lie on the bezel, tilted back with the lid.
+  const tilt = (g: THREE.BufferGeometry, y: number, z: number) => { g.rotateX(-0.12); g.translate(0, y, z); return g; };
+  const screen = tilt(new THREE.PlaneGeometry(0.3, 0.16), 0.335, -0.136);
+  const bar = new THREE.PlaneGeometry(0.26, 0.018); bar.translate(0.13, 0, 0); tilt(bar, 0.275, -0.128);
+  const leds = [0, 1, 2].map(i => new THREE.SphereGeometry(0.006, 8, 6).translate(-0.18 + i * 0.022, 0.172, 0.11));
+  return { body, screen, bar, leds };
+}
+
+/** The screen's face: our own layout (a title, a signal graph and the status line), drawn once at load. Its colour
+ * comes from the material, so state changes never redraw or upload it. */
+export function deviceScreenTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#05080a'; g.fillRect(0, 0, 256, 128);
+  g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 1;
+  for (let x = 8; x < 256; x += 16) { g.beginPath(); g.moveTo(x, 34); g.lineTo(x, 92); g.stroke(); }
+  g.fillStyle = '#ffffff'; g.font = 'bold 22px monospace'; g.fillText('UPLINK', 12, 26);
+  g.font = '12px monospace'; g.fillText('CH 07  TX', 168, 24);
+  g.strokeStyle = '#ffffff'; g.lineWidth = 2; g.beginPath();
+  for (let x = 0; x < 240; x += 4) { const y = 64 + Math.sin(x * 0.11) * 14 * Math.sin(x * 0.027) + Math.sin(x * 0.53) * 4; if (x) g.lineTo(8 + x, y); else g.moveTo(8, y); }
+  g.stroke();
+  g.strokeRect(10, 100, 236, 18);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}

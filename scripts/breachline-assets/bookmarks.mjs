@@ -44,6 +44,9 @@ export const BOOKMARKS = {
   'reinforced-a': [1.4, 3.2, 0, -0.02],
   'reinforced-b': [1.4, -1.2, 3.1416, -0.02],
   'reinforced-shot': [1.4, -1.2, 3.1416, -0.02],
+  // The uplink planted at site A (counting), then the same after the link completes.
+  uplink: [1.6, -2.7, 0.78, -0.34],
+  'uplink-done': [1.6, -2.7, 0.78, -0.34],
 };
 /** A breach charge pressed onto the wall and left armed. */
 const PLANT = `(() => { const h = window.__breachlineTest; h.place(1.5, -0.6, 0, -0.25); h.advance(0.1); h.hold({}, 1.4, { breach: true }); h.advance(0.3); })()`;
@@ -81,6 +84,8 @@ let damaged = false;
 for (const [name, [x, z, yaw, pitch]] of Object.entries(BOOKMARKS)) {
   if (only.length && !only.includes(name)) continue;
   if (name === 'charge') await page.evaluate(PLANT);
+  if (name === 'uplink') await page.evaluate(() => { const h = window.__breachlineTest; h.place(-1, -4, 0, 0); h.hold({ use: true }, 5.3); h.advance(8); });
+  if (name === 'uplink-done') await page.evaluate(() => { const h = window.__breachlineTest; h.skip(31); h.advance(0.8); });
   if (name === 'reinforced-shot') await page.evaluate(() => { const h = window.__breachlineTest; h.place(1.4, -1.2, 3.1416, 0.02); h.advance(0.1); h.hold({ fire: true, mx: 0.6 }, 0.8); h.advance(0.3); for (let i = 0; i < 8; i++) h.draw(); });
   if (name === 'barricade-shot') await page.evaluate(() => { const h = window.__breachlineTest; h.place(-2.75, -8.2, 0, 0.05); h.advance(0.1); h.hold({ fire: true, mx: 0.8 }, 0.7); h.advance(0.5); for (let i = 0; i < 6; i++) h.draw(); });
   if (['breach', 'breach-lab', 'shot-wall', 'breach-close'].includes(name) && !damaged) { await page.evaluate(DAMAGE); damaged = true; await page.waitForTimeout(500); }
