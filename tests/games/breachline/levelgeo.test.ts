@@ -2,6 +2,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { LevelBuilder, emitLevel, type FaceRec } from '../../../src/games/breachline/levelmesh';
 import { PAD, REGIONS, collectFaces, faceArrays, packAtlas } from '../../../src/games/breachline/render/levelgeo';
+import { PROPS, propKey } from '../../../src/games/breachline/render/props';
 
 const area = (fs: FaceRec[]) => fs.reduce((a, f) => a + f.lu * f.lv, 0);
 const bakeInfo = (name: string) => {
@@ -48,6 +49,19 @@ describe('Breachline level geometry for the asset renderer', () => {
       if (!info) continue;
       const a = packAtlas(byRegion[i].filter(f => !f.glow), info.density);
       expect([a.width, a.height]).toEqual([info.width, info.height]);
+    }
+  });
+  it('has a baked light probe for every prop in each art room (rebake a room after moving or adding its props)', () => {
+    for (const r of REGIONS) {
+      const file = `public/game-art/breachline/bake/${r.name}.json`;
+      if (!existsSync(file)) continue;
+      const info = JSON.parse(readFileSync(file, 'utf8')) as { props: number[][]; propKeys?: string[] };
+      PROPS.forEach((p, i) => {
+        if (!(p.x > r.x0 && p.x < r.x1 && p.z > r.z0 && p.z < r.z1)) return;
+        const sh = info.propKeys ? info.props[info.propKeys.indexOf(propKey(p))] : info.props[i];
+        expect(sh, `${r.name}: ${propKey(p)}`).toBeDefined();
+        if (info.propKeys) expect(info.propKeys).toContain(propKey(p));
+      });
     }
   });
 });

@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { WALL_H } from '../config';
 import { MAP } from '../map';
 import { DetailBuilder } from './detail';
-import type { Atlas, Region } from './levelgeo';
+import { OUTDOOR, type Atlas, type Region } from './levelgeo';
 
 type V3 = [number, number, number];
 /** Materials the dressing asks for; artworld.ts maps each key to a material. */
@@ -18,7 +18,7 @@ const inRoom = (r: Region, x: number, z: number) => x > r.x0 && x < r.x1 && z > 
 export function dressRoom(atlas: Atlas, room: Region): DetailBuilder {
   if (room.name === 'corridor') return dressCorridor(atlas, room);
   if (room.name === 'archive') return dressArchive(atlas, room);
-  if (room.name === 'yard') return dressYard(atlas, room);
+  if (OUTDOOR.has(room.name)) return dressYard(atlas, room);
   if (room.name === 'server') return dressServer(atlas, room);
   if (room.name === 'lobby') return dressLobby(atlas, room);
   if (room.name === 'office') return dressOffice(atlas, room);
@@ -250,7 +250,8 @@ function dressYard(atlas: Atlas, room: Region): DetailBuilder {
     if (f.x1 < room.x1 - 0.1) kerb(f.x1, f.z0, f.x1 + KW, f.z1);
   }
   // Drain grates: a dark frame and slats over a black pit.
-  for (const [x, z] of [[-12, 12.6], [-2, 16.5], [6.5, 12.6], [14, 15.5], [20, 13]] as const) {
+  for (const [x, z] of [[-12, 12.6], [-2, 16.5], [6.5, 12.6], [14, 15.5], [20, 13], [-24, -6.2], [-19.8, 3.6], [-15, -12.6], [0.5, -19], [10.5, -12.6], [22, -19.5]] as const) {
+    if (!inRoom(room, x, z)) continue;
     const on: V3 = [x, 0.03, z];
     D.box('kick', x - 0.3, 0.005, z - 0.3, x + 0.3, 0.012, z + 0.3, on, up);
     for (let i = 0; i < 9; i++) { const sx = x - 0.27 + i * 0.065; D.box('steel', sx, 0.012, z - 0.27, sx + 0.025, 0.02, z + 0.27, on, up, [0.45, 0.43, 0.4]); }

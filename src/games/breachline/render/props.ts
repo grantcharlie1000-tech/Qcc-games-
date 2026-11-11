@@ -31,6 +31,19 @@ export const PROPS: Placement[] = [
   { model: 'metal_jerrycan_green', x: -13.1, y: 0, z: -9.75, yaw: 0.1 },
   { model: 'old_military_crate', x: -14.1, y: 1.0, z: -9.15, yaw: 0.04 },
   { model: 'metal_jerrycan_green', x: -7.05, y: 1.7, z: -3.05, yaw: 0.6 },
+  // West Lot: the van is a covered car too (collision cut to it); drums and a can by the container, a military crate
+  // on the crate.
+  { model: 'covered_car', x: -22.05, y: 0, z: 7.75, yaw: 0, replaces: true },
+  { model: 'barrel_03', x: -18.6, y: 0, z: -8.6, yaw: 0.9 },
+  { model: 'barrel_03', x: -18.62, y: 0, z: -7.95, yaw: 2.6 },
+  { model: 'metal_jerrycan_green', x: -18.55, y: 0, z: -3.4, yaw: 1.2 },
+  { model: 'wooden_military_crate', x: -17.45, y: 1.1, z: -0.85, yaw: Math.PI / 2 },
+  // North Yard: drums by the plant housing and the containers, cans at a container's end.
+  { model: 'barrel_03', x: -20.9, y: 0, z: -18.2, yaw: 0.2 },
+  { model: 'barrel_03', x: -20.95, y: 0, z: -17.5, yaw: 1.4 },
+  { model: 'barrel_03', x: -4.1, y: 0, z: -16.65, yaw: 3.1 },
+  { model: 'metal_jerrycan_green', x: 13.65, y: 0, z: -15.2, yaw: -0.4 },
+  { model: 'metal_jerrycan_green', x: 13.62, y: 0, z: -14.75, yaw: 0.3 },
   // South Yard: a car under a dust cover in the bays (its collision box was cut to the model), a military crate on
   // the stacked crate and another on the steel bin, jerrycans, and drums against the perimeter by the containers.
   { model: 'covered_car', x: 7.3, y: 0, z: 15.15, yaw: Math.PI / 2, replaces: true },
@@ -44,5 +57,7 @@ export const PROPS: Placement[] = [
   { model: 'barrel_03', x: -17.75, y: 0, z: 20.95, yaw: 4.2 },
   { model: 'barrel_03', x: 24.0, y: 0, z: 21.55, yaw: 0.8 },
 ];
+/** A placement's identity in baked data (bakes store each prop's light probe under this key). */
+export const propKey = (p: Placement) => `${p.model}@${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}`;
 /** Whether a model stands in for the collision box with this footprint. */
 export const replaced = (x0: number, z0: number, x1: number, z1: number) => PROPS.some(p => p.replaces && p.x > x0 && p.x < x1 && p.z > z0 && p.z < z1);

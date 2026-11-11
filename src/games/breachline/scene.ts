@@ -80,6 +80,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   scene.add(level.group);
   // The asset renderer's rooms draw first, in a scene with no run-time lights (their light is baked).
   const artScene = new THREE.Scene();
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blScenes: { scene, artScene, camera: () => camera } });
   artScene.fog = scene.fog;
   let art: ArtWorld | null = null, disposed = false, probesDone = true;
   const fxFast = typeof location !== 'undefined' && /artdbg=[^&]*fxfast/.test(location.search);
@@ -541,6 +542,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       // just drawn is lost and the screen flashes empty.
       if (dt > 0) adapt(view.dt);
       // Reflection probes are captured one room per frame after the art arrives, so no single frame stalls.
+      art?.cull(camera.position);
       if (art && !probesDone) { const t = performance.now(); probesDone = art.captureNext(renderer, artScene); if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: probe ${(performance.now() - t).toFixed(0)} ms`); }
       time += dt;
       if (view.m.world !== world) bind(view.m.world);

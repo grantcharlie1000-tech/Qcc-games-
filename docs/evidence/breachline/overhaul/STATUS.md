@@ -4,6 +4,14 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: West Lot and North Yard done, and the draw-call budget restored.** `rooms/outdoors/round-1/round1.png`:
+West Lot before and after, the West Lot car, the North Yard. Both are outdoor art regions (sun, sky, half density)
+with the South Yard's kit; the West Lot van is a covered car (`NET_VERSION` `breachline-4`). With eleven art regions
+the outdoor views had reached 470-541 draw calls (High budget 400): every room's dressing drew from outside. Each
+room's dressing now hides beyond 10 m of the room, and props beyond 22 m (small) or 45 m (large): outdoor views are
+245-325, rooms 221-346. Also fixed: bakes stored prop probes by list position, so adding props elsewhere had left the
+South Yard's props with the wrong light; probes are now keyed by placement, with a test.
+
 **2026-11-11: second round, the Garage (lowest by my reading) done.** `rooms/garage/round-1/round1.png`: before,
 after, the north wall and the pegboard close. Baked art region with six fittings; the box van is a covered car
 (collision cut to the model, `NET_VERSION` `breachline-3`); workbench cabinetry with the tool chest on it;
@@ -168,8 +176,28 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** round 1 done in every room and the South Yard; second round done on the Garage (it had
-none); next the West Lot and North Yard.
+**Where I am (keep current):** every room and the three outdoor areas north, south and west are art regions with a
+round each (the Garage and the West Lot / North Yard as the second-round "lowest" picks); the East Lane is the last
+procedural area. Draw calls are back inside the High budget.
+
+## West Lot and North Yard (`rooms/outdoors/round-1/round1.png`, 960 px)
+
+- **Regions:** `west` and `north`, outdoor (`OUTDOOR` in `levelgeo.ts`: half density, `dressYard`); baked in about a
+  minute each; bookmarks `west-car` and `north-yard`.
+- **Collision:** the West Lot van box is (-22.945, 5.56)-(-21.155, 9.94), 1.42 m tall, for `covered_car`;
+  `NET_VERSION` `breachline-4`. Nav, bot and online tests pass.
+- **Dressing:** drains (now filtered per region), kerbs where grass meets asphalt; drums, jerrycans and a wooden
+  military crate on existing collision.
+- **Draw calls:** measured per region by hiding each one's meshes in turn (`?artdbg=world` now also exposes the
+  scenes as `__blScenes`). Interior dressing was about 113 calls from the West Lot and props about 114. Fixes:
+  `ArtWorld.cull(eye)` hides a room's dressing beyond 10 m of its rectangle; every prop gains an empty LOD level at
+  22 m (radius < 0.8 m) or 45 m. Result: West Lot 325, North Yard 245, South Yard 322, corridor 346, Archive 314,
+  Lab 221.
+- **Probe keys:** bakes now store `propKeys` beside `props`, and the art reads probes by key (older bakes by
+  position); a test checks every prop in a room has its probe. The yard was rebaked.
+- **Still wrong:** destructible panels are one draw call each (60-116 in view); the East Lane is procedural.
+- Tests: unit 5386 passed; Breachline browser 8 passed (stock warm run expected to fail); online 1 passed.
+
 
 ## Garage (`rooms/garage/round-1/round1.png`, 960 px)
 

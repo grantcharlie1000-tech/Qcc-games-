@@ -9,7 +9,9 @@ import { MAP, type Rect } from '../map';
 export interface Region extends Rect { name: string }
 /** Rooms handed to the asset renderer. Phase 0 proves the route on the Lab alone. */
 const room = (name: string, id: string): Region => ({ ...MAP.rooms.find(r => r.name === name)!, name: id });
-export const REGIONS: Region[] = [room('Lab', 'lab'), room('Corridor', 'corridor'), room('Archive', 'archive'), room('South Yard', 'yard'), room('Server Room', 'server'), room('Lobby', 'lobby'), room('Office', 'office'), room('Break Room', 'break'), room('Garage', 'garage')];
+export const REGIONS: Region[] = [room('Lab', 'lab'), room('Corridor', 'corridor'), room('Archive', 'archive'), room('South Yard', 'yard'), room('Server Room', 'server'), room('Lobby', 'lobby'), room('Office', 'office'), room('Break Room', 'break'), room('Garage', 'garage'), room('West Lot', 'west'), room('North Yard', 'north')];
+/** Outdoor regions: baked at half density, with the sun and sky, dressed by `dressYard`. */
+export const OUTDOOR = new Set(['yard', 'west', 'north']);
 
 const NEAR = 0.05;
 const span = (o: number, d: number, len: number, lo: number, hi: number): [number, number] => {

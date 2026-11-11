@@ -58,6 +58,9 @@ export const BOOKMARKS = {
   'yard-squad-0': [2.5, 12.6, 3.1416, -0.02],
   'yard-squad-1': [2.5, 12.6, 3.1416, -0.02],
   'west-lot': [-25.5, 0.5, -1.5708, -0.02],
+  // The West Lot towards the covered car, and the North Yard along its length.
+  'west-car': [-17.5, 2.5, 2.43, -0.1],
+  'north-yard': [24, -19.5, 1.5708, -0.04],
   // Destruction views (rendered after the damage setup below): the charge's breach from the corridor and from the
   // Lab, and the rifle-chewed wall west of it.
   breach: [1.5, 0.35, 0, -0.06],

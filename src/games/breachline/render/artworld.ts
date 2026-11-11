@@ -16,12 +16,14 @@ import { BOX_H, BOX_W, LABEL_VARIANTS, archiveBoxGeometry, labelAtlas, labelGeom
 import type { DetailBuilder } from './detail';
 import { clockFace, exitSign, fireSign, safetySign } from './printed';
 import { artMaterial } from './materials';
-import { PROPS } from './props';
+import { PROPS, propKey } from './props';
 import { PLANKS, SURFACES } from './surfaces';
 
 interface BakeInfo {
   version: number; region: string; meanLight?: number; width: number; height: number; density: number; scale: number;
   props: number[][];
+  /** Which placement each probe in `props` belongs to (render/props.ts `propKey`); older bakes go by list order. */
+  propKeys?: string[];
   grid: { x0: number; z0: number; nx: number; nz: number; heights: number[]; sh: number[][] };
   panels: { index: number; side: number; light: number[] }[];
 }
@@ -31,6 +33,8 @@ export interface ArtWorld {
   panelLook(index: number): PanelLook | null;
   /** Captures the next room's reflection probe (one per call, so no single frame stalls). True when all are done. */
   captureNext(renderer: THREE.WebGLRenderer, scene: THREE.Scene): boolean;
+  /** Hides each room's small dressing while the camera is more than DRESS_RANGE metres from the room (draw calls). */
+  cull(eye: THREE.Vector3): void;
   /** Compiles every shader the art needs (in parallel where the browser can), so its first frame does not stall. */
   warm(renderer: THREE.WebGLRenderer, camera: THREE.Camera, scene: THREE.Scene, samples: number): Promise<void>;
   stats: { triangles: number; meshes: number; textureBytes: number };
@@ -67,6 +71,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   const L = new ArtLoader(renderer, tier, progress), full = tier !== 'low';
   /** Debug switches for visual review only (?artdbg=nodir,nonormal,noenv,noarm). */
   const dbg = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('artdbg')?.split(',') ?? [] : [];
+  /** Each room's dressing meshes, shown only within DRESS_RANGE metres of the room's rectangle. */
+  const DRESS_RANGE = 10, dressing: { x0: number; z0: number; x1: number; z1: number; meshes: THREE.Object3D[] }[] = [];
   const group = new THREE.Group(), materials: THREE.Material[] = [], geometries: THREE.BufferGeometry[] = [], disposers: (() => void)[] = [];
   const { byRegion } = collectFaces();
   const sets = new Map<string, Promise<[THREE.Texture, THREE.Texture | null, THREE.Texture | null]>>();
@@ -88,6 +94,11 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   const roomAt = (x: number, z: number) => REGIONS.findIndex(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
   /** Rooms whose art loaded; any room that fails keeps the procedural look on its own. */
   const loaded = REGIONS.map(() => false);
+  const dressOf = (region: { x0: number; z0: number; x1: number; z1: number }) => {
+    let d = dressing.find(e => e.x0 === region.x0 && e.z0 === region.z0);
+    if (!d) dressing.push(d = { x0: region.x0, z0: region.z0, x1: region.x1, z1: region.z1, meshes: [] });
+    return d.meshes;
+  };
   await Promise.all(REGIONS.map(async (region, r) => { try {
     const envLights = rooms[r].envLights;
     const [info, lightMap, dirMap] = await Promise.all([
@@ -97,7 +108,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     if (atlas.width !== info.width || atlas.height !== info.height) throw new Error(`${region.name}: lightmap is out of date (rebake)`);
     // Average light the room's probe sees, for specular occlusion.
     rooms[r].envLight = info.meanLight ?? 1;
-    rooms[r].props = info.props;
+    rooms[r].props = info.propKeys ? PROPS.map(p => info.props[info.propKeys!.indexOf(propKey(p))]) : info.props;
     // One mesh per surface type.
     const ids = [...new Set(atlas.charts.map(c => c.face.tex))];
     for (const id of ids) {
@@ -167,6 +178,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         const mat = artMaterial({ ...o, ...asPaint, lightMap, lightScale: info.scale, dirMap, vertexTint: true });
         const g = geometry(arrays), mesh = new THREE.Mesh(g, mat);
         mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:dress:${key}`;
+        dressOf(region).push(mesh);
         group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
       }
       if (dbg.includes('timing')) console.warn(`art timing: ${region.name} dressing ${(performance.now() - tDress).toFixed(0)} ms`);
@@ -174,6 +186,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         const mat = artMaterial({ map: null, lightMap, lightScale: info.scale, dirMap, vertexTint: true, roughness: 0.6, metalness: 0 });
         const g = geometry(merged), mesh = new THREE.Mesh(g, mat);
         mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:dress:merged`;
+        dressOf(region).push(mesh);
         group.add(mesh); materials.push(mat); geometries.push(g);
       }
       if (D.missed) console.warn(`Breachline art: ${D.missed} dressing pieces found no surface to stand on: ${D.misses.join(' ')}`);
@@ -230,6 +243,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       }
       lod.addLevel(root, distance);
     }
+    // Past a range set by its size the prop is not drawn at all: small kit at 22 m, a car or a crate at 45 m.
+    { const r = new THREE.Box3().setFromObject(levels[levels.length - 1][0]).getBoundingSphere(new THREE.Sphere()).radius * (p.scale ?? 1); lod.addLevel(new THREE.Object3D(), r < 0.8 ? 22 : 45); }
     lod.position.set(p.x, p.y, p.z); lod.rotation.y = p.yaw; lod.scale.setScalar(p.scale ?? 1);
     group.add(lod);
   }
@@ -280,6 +295,12 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     get envReady() { return rooms.some(r => r.env !== null); },
     environmentScale(x, z) { const r = roomAt(x, z); return r >= 0 && rooms[r].env ? 1 / Math.max(0.05, rooms[r].envLight) : 1; },
     environment(x, z) { const r = roomAt(x, z); return r >= 0 ? rooms[r].env?.texture ?? null : null; },
+    cull(eye) {
+      for (const d of dressing) {
+        const dx = Math.max(d.x0 - eye.x, 0, eye.x - d.x1), dz = Math.max(d.z0 - eye.z, 0, eye.z - d.z1), show = dx * dx + dz * dz <= DRESS_RANGE * DRESS_RANGE;
+        for (const m of d.meshes) m.visible = show;
+      }
+    },
     captureNext(renderer, scene) {
       if (!full || dbg.includes('noenv')) return true;
       const i = loaded.findIndex((ok, k) => ok && !rooms[k].env && !rooms[k].captured);

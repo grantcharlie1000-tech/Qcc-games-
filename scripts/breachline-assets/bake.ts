@@ -20,10 +20,10 @@ import { MeshBVH } from 'three-mesh-bvh';
 import { CELL, WALL_H } from '../../src/games/breachline/config';
 import type { FaceRec } from '../../src/games/breachline/levelmesh';
 import { newWorld } from '../../src/games/breachline/map';
-import { PAD, REGIONS, collectFaces, normalOf, packAtlas, pointOn, texelST, type Atlas, type Chart } from '../../src/games/breachline/render/levelgeo';
+import { OUTDOOR, PAD, REGIONS, collectFaces, normalOf, packAtlas, pointOn, texelST, type Atlas, type Chart } from '../../src/games/breachline/render/levelgeo';
 import { FIXTURE_Y, bakeLights } from '../../src/games/breachline/render/fixtures';
 import { SKY, SUN, SUN_COLOR } from '../../src/games/breachline/lightbake';
-import { PROPS } from '../../src/games/breachline/render/props';
+import { PROPS, propKey } from '../../src/games/breachline/render/props';
 import { DEFAULT_ALBEDO, PROCEDURAL_ALBEDO, SURFACES } from '../../src/games/breachline/render/surfaces';
 import type { TexId } from '../../src/games/breachline/textures';
 import { PANEL_T, panelPoint } from '../../src/games/breachline/world';
@@ -52,7 +52,7 @@ const SUN_POWER = Number(process.env.BAKE_SUN ?? 1.6), SKY_POWER = Number(proces
 const SUN_DIR: V3 = [SUN.x, SUN.y, SUN.z];
 const skyAt = (d: V3): V3 => { const k = SKY_POWER * (0.55 + 0.45 * Math.max(0, d[1])); return [SKY[0] * k, SKY[1] * k, SKY[2] * k]; };
 /** Per-region lightmap density: open ground at half the rooms' resolution. */
-const densityOf = (name: string) => (name === 'yard' ? DENSITY / 2 : DENSITY);
+const densityOf = (name: string) => (OUTDOOR.has(name) ? DENSITY / 2 : DENSITY);
 const LIGHTS = bakeLights();
 
 // ---- deterministic random ----
@@ -388,7 +388,7 @@ async function main() {
     await mkdir(join(OUT, 'bake'), { recursive: true });
     await writeFile(join(OUT, 'bake', `${region.name}.json`), JSON.stringify({
       version: 1, region: region.name, meanLight: +meanLight.toFixed(4), rect: [region.x0, region.z0, region.x1, region.z1], width: W, height: H, density: densityOf(region.name), scale: LM_SCALE,
-      props, grid: { x0: region.x0, z0: region.z0, nx: gx + 1, nz: gz + 1, heights: [0.6, 1.6], sh: grid }, panels,
+      props, propKeys: PROPS.map(propKey), grid: { x0: region.x0, z0: region.z0, nx: gx + 1, nz: gz + 1, heights: [0.6, 1.6], sh: grid }, panels,
     }) + '\n');
     console.log(`${region.name}: probes and panels done, total ${((performance.now() - t0) / 1000).toFixed(1)} s`);
   }
