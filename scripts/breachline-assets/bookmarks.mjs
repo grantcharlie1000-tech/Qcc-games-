@@ -35,6 +35,9 @@ export const BOOKMARKS = {
   office: [-0.6, 1.6, 2.36, -0.12],
   // The Break Room from the north-west corner, and the kitchen run.
   'break-room': [8.6, 1.6, -2.4, -0.12],
+  // The Garage from its east end looking at the roller door and the car, and its north wall.
+  garage: [-6.5, -5.6, 1.35, -0.1],
+  'garage-wall': [-9.6, -5.2, -0.35, -0.12],
   'break-kitchen': [12.3, 2.3, -1.8, -0.22],
   'office-desk': [-3.4, 5.6, -2.25, -0.35],
   // Down the aisle between the two long rack runs, and close on a rack face.

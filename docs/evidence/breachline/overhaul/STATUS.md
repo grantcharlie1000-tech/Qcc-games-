@@ -4,6 +4,13 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: second round, the Garage (lowest by my reading) done.** `rooms/garage/round-1/round1.png`: before,
+after, the north wall and the pegboard close. Baked art region with six fittings; the box van is a covered car
+(collision cut to the model, `NET_VERSION` `breachline-3`); workbench cabinetry with the tool chest on it;
+roller-door housing and guide rails on the west opening; pegboard of tools and a wall shelf with cans and boxes;
+drums, jerrycans and the military crate on existing collision. Next lowest by my reading: the West Lot and North
+Yard (still procedural outdoors), then the East Lane.
+
 **2026-11-11: Break Room round 1 done; every room has now had a round.** `rooms/break/round-1/round1.png`: before,
 after, the kitchen run and the table. Baked art region with four warm-white fittings; the kitchen run has cabinet
 doors and drawers, a sink and tap, kettle, microwave and coffee machine, wall cabinets over it; the fridge has doors
@@ -161,8 +168,23 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** round 1 done in every art room (Lab, corridor, Archive, South Yard, Server Room,
-Lobby, Office, Break Room); next a second round on the lowest-scoring area.
+**Where I am (keep current):** round 1 done in every room and the South Yard; second round done on the Garage (it had
+none); next the West Lot and North Yard.
+
+## Garage (`rooms/garage/round-1/round1.png`, 960 px)
+
+- **Region:** `room('Garage', 'garage')`; fixtures `garage` (six troffers; four left it dim behind the car); baked
+  in 6.5 min; bookmarks `garage` and `garage-wall`.
+- **Collision:** the Garage van box is now (-12.59, -9.345)-(-8.21, -7.555), 1.42 m tall, to match `covered_car`
+  (`replaces`); `NET_VERSION` `breachline-3`. Nav, bot and online tests pass.
+- **Dressing** (`dressGarage`): workbench cabinetry (the Lab's `cabinetry`) with `metal_tool_chest` on it; a coil
+  housing over the west opening and guide rails down both sides; a pegboard with hanging tools; a wall shelf on
+  brackets with cans and boxes; skirting; drums, jerrycans and `old_military_crate` on the corner crate.
+- **Budget:** 130-136 draw calls, 72-78k triangles.
+- **Still wrong:** the slab floor reads mottled and dirty rather than painted garage concrete; no oil stains, bay
+  lines or a door control box beyond the red button.
+- Tests: unit 5385 passed; Breachline browser 8 passed (stock warm run expected to fail); online 1 passed.
+
 
 ## Break Room, round 1 (`rooms/break/round-1/round1.png`, 960 px)
 

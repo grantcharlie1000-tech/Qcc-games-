@@ -22,6 +22,15 @@ export const PROPS: Placement[] = [
   { model: 'korean_fire_extinguisher_01', x: 14.68, y: 0, z: -6.9, yaw: -Math.PI / 2 },
   // Lobby: an extinguisher by the entrance.
   { model: 'korean_fire_extinguisher_01', x: -13.0, y: 0, z: 9.7, yaw: Math.PI },
+  // Garage: a covered car (collision cut to the model), a tool chest on the bench, drums by the corner crate with the
+  // military crate on it, jerrycans by the wall and on the stacked crates.
+  { model: 'covered_car', x: -10.4, y: 0, z: -8.45, yaw: Math.PI / 2, replaces: true },
+  { model: 'metal_tool_chest', x: -13.4, y: 0.92, z: -2.45, yaw: 0 },
+  { model: 'barrel_03', x: -14.55, y: 0, z: -8.2, yaw: 0.4 },
+  { model: 'barrel_03', x: -13.9, y: 0, z: -8.22, yaw: 2.2 },
+  { model: 'metal_jerrycan_green', x: -13.1, y: 0, z: -9.75, yaw: 0.1 },
+  { model: 'old_military_crate', x: -14.1, y: 1.0, z: -9.15, yaw: 0.04 },
+  { model: 'metal_jerrycan_green', x: -7.05, y: 1.7, z: -3.05, yaw: 0.6 },
   // South Yard: a car under a dust cover in the bays (its collision box was cut to the model), a military crate on
   // the stacked crate and another on the steel bin, jerrycans, and drums against the perimeter by the containers.
   { model: 'covered_car', x: 7.3, y: 0, z: 15.15, yaw: Math.PI / 2, replaces: true },

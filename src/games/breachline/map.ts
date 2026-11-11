@@ -112,7 +112,7 @@ function build(): MapDef {
 
   // ---- Furniture and cover (solid; low pieces can be shot over) ----
   // Garage
-  box(-12.6, 0, -9.35, -8.2, 2, -7.55, 'van');
+  box(-12.59, 0, -9.345, -8.21, 1.42, -7.555, 'van');
   box(-14.65, 0, -2.75, -12.1, 0.92, -2.15, 'counter');
   box(-7.5, 0, -3.5, -6.5, 1, -2.5, 'crate'); box(-7.4, 1, -3.4, -6.7, 1.7, -2.7, 'crate');
   box(-14.6, 0, -9.6, -13.6, 1, -8.6, 'crate');

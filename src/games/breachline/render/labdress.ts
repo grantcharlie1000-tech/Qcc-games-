@@ -23,6 +23,7 @@ export function dressRoom(atlas: Atlas, room: Region): DetailBuilder {
   if (room.name === 'lobby') return dressLobby(atlas, room);
   if (room.name === 'office') return dressOffice(atlas, room);
   if (room.name === 'break') return dressBreak(atlas, room);
+  if (room.name === 'garage') return dressGarage(atlas, room);
   return dressLab(atlas, room);
 }
 
@@ -748,6 +749,37 @@ function dressBreak(atlas: Atlas, room: Region): DetailBuilder {
   // East wall: skirting either side of the kitchen run.
   const x = room.x1 - 0.15, en: V3 = [-1, 0, 0];
   D.box('trim', x - 0.016, 0.02, 4.5, x, 0.11, 8.8, [x - 0.001, 0.06, 6.5], en);
+  return D;
+}
+
+/** The Garage: the workbench's cabinetry, a roller-door housing and guide rails on the west opening, a pegboard of
+ * tools and a wall shelf with cans and boxes on the north wall, skirting. The car and the drums are modelled props. */
+function dressGarage(atlas: Atlas, room: Region): DetailBuilder {
+  const D = new DetailBuilder(atlas);
+  for (const b of MAP.boxes) {
+    if (b.mat === 'counter' && inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) cabinetry(D, b.x0, b.z0, b.x1, b.z1, b.y1);
+  }
+  // West opening (z -7.5 to -4.5): a roller-door coil housing over it and guide rails down both sides.
+  { const x = room.x0 + 0.15, n: V3 = [1, 0, 0], at = (z: number, y: number): V3 => [x + 0.001, y, z];
+    D.box('steel', x, 2.32, -7.7, x + 0.32, 2.72, -4.3, at(-6, 2.8), n, [0.8, 0.82, 0.85]);
+    for (const z of [-7.62, -4.38]) D.box('steel', x, 0, z - 0.04, x + 0.09, 2.32, z + 0.04, at(z < -6 ? -7.8 : -4.2, 1.2), n, [0.7, 0.7, 0.72]);
+    D.box('alarm', x, 1.2, -4.05, x + 0.05, 1.32, -3.95, at(-4, 1.26), n);
+    D.box('trim', x, 0.02, room.z0 + 0.12, x + 0.016, 0.11, -7.75, at(-9, 0.06), n);
+    D.box('trim', x, 0.02, -4.25, x + 0.016, 0.11, room.z1 - 0.12, at(-3, 0.06), n); }
+  // North wall: pegboard with tools east of the car, a shelf with cans and boxes west of the window.
+  { const z = room.z0 + 0.15, n: V3 = [0, 0, 1], at = (x: number, y: number): V3 => [x, y, z + 0.001];
+    D.box('cork', -8.0, 1.05, z, -6.4, 2.0, z + 0.018, at(-7.2, 1.5), n, [0.95, 0.85, 0.7]);
+    for (let i = 0; i < 16; i++) for (let j = 0; j < 9; j++) D.box('kick', -7.95 + i * 0.1, 1.1 + j * 0.1, z + 0.018, -7.94 + i * 0.1, 1.11 + j * 0.1, z + 0.019, at(-7.2, 1.5), n);
+    const r = seeded(61);
+    for (let i = 0; i < 9; i++) {
+      const x = -7.85 + i * 0.16 + r() * 0.04, y = 1.2 + r() * 0.5, h = 0.18 + r() * 0.2;
+      D.box(r() < 0.5 ? 'steel' : 'chassis', x, y, z + 0.02, x + 0.03, y + h, z + 0.035, at(x, y + h / 2), n, r() < 0.5 ? [1, 1, 1] : [6, 1.2, 1]);
+      if (r() < 0.5) D.box('chassis', x - 0.03, y + h, z + 0.02, x + 0.06, y + h + 0.04, z + 0.035, at(x, y + h), n, [5, 1.2, 1]);
+    }
+    D.box('steel', -14.7, 1.6, z, -12.7, 1.63, z + 0.32, at(-13.7, 1.6), n, [0.7, 0.7, 0.7]);
+    for (const x of [-14.5, -12.9]) D.box('steel', x - 0.015, 1.4, z, x + 0.015, 1.6, z + 0.25, at(x, 1.5), n, [0.6, 0.6, 0.6]);
+    for (let i = 0; i < 5; i++) { const x = -14.6 + i * 0.38, w = 0.22 + r() * 0.1, h = 0.2 + r() * 0.15; D.box(i % 2 ? 'card' : 'chassis', x, 1.63, z + 0.04, x + w, 1.63 + h, z + 0.28, at(x + w / 2, 1.7), n, i % 2 ? [1, 1, 1] : [1.5, 2.5, 1.2]); }
+    D.box('trim', -8.1, 0.02, z, room.x1 - 0.12, 0.11, z + 0.016, at(-7, 0.06), n); }
   return D;
 }
 
