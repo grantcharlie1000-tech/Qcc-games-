@@ -1,6 +1,6 @@
 import {box,hash,stroke,type C,type Work} from '../quarter-kit';
 import {ASHLAR,BOARD_BROWN,BOARD_GREY,BOARD_PITCH,BOARD_TAR,CLAY,COOL,CURTAINS,FONT,GREY,INK,IRON,IRON_LIT,LEAD,LIME,OCHRE,PALE,PLUM,RED,RUBBLE,RUSTIC,SAND,SLATE_BLUE,SLATE_GREEN,SLATE_PURPLE,SOOT,SQUARED,STONE_SLATE,TILE,TIMBER,WARM,
- archRing,band,barrel,board,coping,door,gutter,hoop,ladder,laps,lintel,pantiles,pipe,pitch,planks,quoins,renderAt,returnFace,shape,sill,soldiers,stain,step,surround,textW,wallAt,win,type Arch,type Look,type Tri,type Win} from './level-01';
+ archRing,band,barrel,board,coping,door,gutter,hoop,ladder,laps,lintel,pantiles,pipe,pitch,planks,quoins,renderAt,returnFace,roofBehind,shape,sill,soldiers,stain,step,surround,textW,wallAt,win,type Arch,type Look,type Tri,type Win} from './level-01';
 
 /** Bell Lane's buildings that carry more than one landing. Each is named by
  * the first word of its landings' tags (`inn.lower` belongs to `inn`), and is
@@ -43,24 +43,33 @@ const sash=(c:C,x:number,y:number,w:number,h:number,look:Look,o:Partial<Win>={},
 const arched=(c:C,x:number,y:number,w:number,h:number,look:Look,arch:Arch,rise:number,ring:readonly [string,string,string],o:Partial<Win>={},k:Tri=COOL,th=5)=>{archRing(c,x,y,w,arch,rise,th,ring[0],ring[1],ring[2],x*7+y);win(c,x,y,w,h,{look,arch,rise,...o});sill(c,x,y+h,w,k);};
 const cope=(c:C,x:number,y:number,w:number,t:number,k:Tri,s:number)=>at(c,0,y,()=>coping(c,x,w,t,k,s));
 const slope=(c:C,x:number,y:number,w:number,depth:number,tones:readonly string[],s:number,row=6,sw=9,ridge:Tri=PALE,grow=0)=>at(c,x,y,()=>pitch(c,w,depth,tones,s,row,sw,ridge,grow));
-/** A lead flat: the walked edge, and the rolls the sheets are dressed over. */
+/** A lead flat. The walked edge stays put; the sheets run back above it. */
 function leadTop(c:C,x:number,y:number,w:number,t:number,s:number){
+ for(let i=0;i<22;i++)box(c,i<2?'#222a30':i%6===0?'#3a444c':'#313b44',x,y-22+i,w,1);
  box(c,LEAD[0],x,y,w,t);box(c,LEAD[1],x,y,w,2);box(c,LEAD[2],x,y+t-1,w,1);
  for(let px=x+8+Math.floor(hash(s,0,1)*8),i=0;px<x+w-5;i++){box(c,'#6b767d',px,y+2,2,t-3);box(c,LEAD[2],px+2,y+2,1,t-3);px+=13+Math.floor(hash(s,i,2)*9);}
 }
-/** A lead-covered pitch seen from the street: sheets between rolls, a drip where two lengths lap. */
+/** A lead-covered pitch seen from the street: the drip is the walked edge, the rolls run back to the ridge. */
 function leadSlope(c:C,x:number,y:number,w:number,depth:number,s:number){
- box(c,LEAD[2],x,y,w,depth);box(c,'#3d474f',x,y+2,w,depth-3);box(c,LEAD[1],x,y,w,2);
- for(let px=x+10+Math.floor(hash(s,0,3)*10),i=0;px<x+w-4;i++){box(c,'#55616a',px,y+2,2,depth-3);box(c,'#2a3239',px+2,y+2,1,depth-3);px+=20+Math.floor(hash(s,i,4)*13);}
- box(c,'#2a3239',x,y+Math.round(depth*.56),w,1);
+ const shown=Math.max(depth,42);
+ c.save();c.translate(0,-(shown-4));
+ box(c,LEAD[2],x,y,w,shown);box(c,'#3d474f',x,y+2,w,shown-3);box(c,LEAD[1],x,y,w,2);
+ for(let px=x+10+Math.floor(hash(s,0,3)*10),i=0;px<x+w-4;i++){box(c,'#55616a',px,y+2,2,shown-3);box(c,'#2a3239',px+2,y+2,1,shown-3);px+=20+Math.floor(hash(s,i,4)*13);}
+ box(c,'#2a3239',x,y+Math.round(shown*.56),w,1);
+ c.restore();
 }
-/** Clay tiles under a clay ridge on the roof line: plain tiles, or pantiles. */
-function tiled(c:C,x:number,y:number,w:number,depth:number,s:number,pan=false){
- if(pan)pantiles(c,TILE,'#170f0d','#63433a',s,x,y+5,w,depth-9);
- else{box(c,'#170f0d',x,y+5,w,depth-9);for(let py=y+5,r=0;py<y+depth-4;py+=5,r++)for(let px=x-Math.floor(hash(s,r,62)*7),i=0;px<x+w;px+=7,i++){const a=Math.max(x,px),b=Math.min(x+w,px+7);if(b-a>1)box(c,TILE[Math.floor(hash(s,r,i+3)*4)],a,py,b-a-1,Math.min(4,y+depth-4-py));}}
- box(c,CLAY[0],x,y,w,5);box(c,CLAY[1],x,y,w,2);box(c,'#170f0d',x,y+5,w,1);
- for(let px=x+7;px<x+w-4;px+=11+Math.floor(hash(s,px,64)*4))box(c,CLAY[2],px,y+2,1,3);
- gutter(c,x-2,y+depth-4,w+4,s);
+/** Clay tiles. `rise` puts the ridge behind the walked edge instead of hanging the tiles down the wall. */
+function tiled(c:C,x:number,y:number,w:number,depth:number,s:number,pan=false,rise=false){
+ const draw=(d:number)=>{
+  if(pan)pantiles(c,TILE,'#170f0d','#63433a',s,x,y+5,w,d-9);
+  else{box(c,'#170f0d',x,y+5,w,d-9);for(let py=y+5,r=0;py<y+d-4;py+=5,r++)for(let px=x-Math.floor(hash(s,r,62)*7),i=0;px<x+w;px+=7,i++){const a=Math.max(x,px),b=Math.min(x+w,px+7);if(b-a>1)box(c,TILE[Math.floor(hash(s,r,i+3)*4)],a,py,b-a-1,Math.min(4,y+d-4-py));}}
+  box(c,CLAY[0],x,y,w,5);box(c,CLAY[1],x,y,w,2);box(c,'#170f0d',x,y+5,w,1);
+  for(let px=x+7;px<x+w-4;px+=11+Math.floor(hash(s,px,64)*4))box(c,CLAY[2],px,y+2,1,3);
+  gutter(c,x-2,y+d-4,w+4,s);
+ };
+ if(!rise){draw(depth);return;}
+ const shown=Math.max(depth,42);
+ c.save();c.translate(0,-(shown-4));draw(shown);c.restore();
 }
 /** A stone shelf of a cornice on its blocks. */
 function cornice(c:C,x:number,y:number,w:number,k:Tri,block:string,t=8){
@@ -131,7 +140,7 @@ const clock:Building={paint(c,p){
 // ── The pawnbroker's ────────────────────────────────────────────────────────
 const pawn:Building={paint(c,p){
  const r=part(p,'roof'),o=part(p,'oriel'),s=5370,x0=r.x,w=r.w,h=p.h,top=r.y,fl=[top+26,top+104,top+196,h],frame='#4f4a42',gold=['#6e5624','#b08d3c','#e0c070'] as const;
- wallAt(c,SOOT,s,x0,top+5,w,13);cope(c,x0,top,w,5,WARM,s);cornice(c,x0,top+18,w,WARM,SOOT.stones[2]);
+ at(c,x0,top,()=>roofBehind(c,w,s,36));wallAt(c,SOOT,s,x0,top+5,w,13);cope(c,x0,top,w,5,WARM,s);cornice(c,x0,top+18,w,WARM,SOOT.stones[2]);
  for(let f=0;f<3;f++)wallAt(c,SOOT,s+3+f*7,x0,fl[f],w,fl[f+1]-fl[f]);
  band(c,x0,fl[1]-3,w,WARM,3);band(c,x0,fl[2]-4,w,WARM,4);
  for(const [x,look] of [[22,'dark'],[66,'drawn'],[110,'blind']] as const)sash(c,x0+x,fl[0]+22,18,34,look,{cols:2,rows:2,rail:true,frame,tint:'#3d2c30',s:s+x},WARM);
@@ -534,7 +543,7 @@ const weavers:Building={paint(c,p){
 // ── The granary ─────────────────────────────────────────────────────────────
 const granary:Building={paint(c,p){
  const r=part(p,'roof'),s=9478,x0=r.x,w=r.w,h=p.h,top=r.y,eave=top+26,floor=h-104,base=h-62,girt=Math.round((eave+floor)/2),leaf:Tri=['#14100c','#33291f','#463829'];
- tiled(c,x0,top,w,26,s);
+ tiled(c,x0,top,w,26,s,false,true);
  // Tarred weatherboard on a timber frame: the loft door the sacks come in at, the bin floor's door below.
  laps(c,BOARD_TAR,'#0d0c0c','#3a3633',s,x0,eave,w,girt-eave,6);laps(c,BOARD_TAR,'#0d0c0c','#3a3633',s+1,x0,girt,w,floor-girt,6);
  for(const px of [x0,x0+w-5]){box(c,TIMBER[0],px,eave,5,floor-eave);box(c,TIMBER[1],px,eave,1,floor-eave);}
@@ -569,7 +578,7 @@ function hang(c:C,x:number,y:number,w:number,h:number,s:number){
 const pub:Building={paint(c,p){
  const r=part(p,'roof'),al=part(p,'alley'),s=9712,x0=r.x,w=r.w,h=p.h,top=r.y,fl=[top+48,top+134,top+216,h],frame='#8a8f8c',coat:Tri=['#4a473f','#55524a','#3b3832'];
  // A deep tiled roof, tile-hanging to the top storey, render under it.
- tiled(c,x0,top,w,48,s);
+ tiled(c,x0,top,w,48,s,false,true);
  hang(c,x0,fl[0],w,fl[1]-fl[0],s+1);box(c,'#170f0d',x0,fl[1]-2,w,3);for(let px=x0;px<x0+w;px+=6)box(c,TILE[2],px,fl[1]-2,5,2);
  for(const [x,look] of [[20,'drawn'],[76,'lit'],[132,'dark']] as const){box(c,INK,x0+x-3,fl[0]+21,26,48);box(c,'#5d625f',x0+x-2,fl[0]+22,24,46);win(c,x0+x,fl[0]+24,20,40,{look,cols:2,rows:2,rail:true,frame,tint:'#46323a',s:s+x});box(c,'#8a8f8c',x0+x-3,fl[0]+65,26,2);}
  renderAt(c,coat,s+2,x0,fl[1]+1,w,fl[2]-fl[1]-1);
@@ -615,7 +624,7 @@ const lodging:Building={paint(c,p){
  const wg=part(p,'wing'),dm=part(p,'dormer'),r=part(p,'roof'),s=10112,h=p.h,bx=r.x,bw=r.w,top=r.y,coat:Tri=['#3d444b','#474e56','#31373d'],dress:Tri=[coat[1],'#626b72',coat[2]],frame='#59636b';
  // The block: five storeys in one tired coat of render, BEDS painted across it where the lane can read it.
  const fl=[top+24,top+98,top+182,top+266,top+352,h];
- renderAt(c,coat,s,bx,top+5,bw,13);cope(c,bx,top,bw,5,PALE,s);cornice(c,bx,top+17,bw,dress,coat[2],7);
+ at(c,bx,top,()=>roofBehind(c,bw,s,36));renderAt(c,coat,s,bx,top+5,bw,13);cope(c,bx,top,bw,5,PALE,s);cornice(c,bx,top+17,bw,dress,coat[2],7);
  for(let f=0;f<5;f++)renderAt(c,coat,s+1+f,bx,fl[f],bw,fl[f+1]-fl[f]);
  for(let y=fl[4]+9;y<h-6;y+=11)box(c,coat[2],bx,y,bw,1);
  for(const f of [2,3,4])band(c,bx,fl[f]-3,bw,dress,f===4?4:2);
@@ -651,7 +660,7 @@ const lodging:Building={paint(c,p){
 const baths:Building={paint(c,p){
  const r=part(p,'roof'),tk=part(p,'tank'),s=10638,w=p.w,h=p.h,top=r.y,fl=[top+52,top+144,top+228,h],frame='#6a7378';
  // Dressed stone under a parapet and a cornice, its name cut in the frieze.
- wallAt(c,ASHLAR,s,0,top+6,w,14);cope(c,0,top,w,6,PALE,s);cornice(c,0,top+20,w,PALE,'#39424a',10);
+ at(c,0,top,()=>roofBehind(c,w,s,36));wallAt(c,ASHLAR,s,0,top+6,w,14);cope(c,0,top,w,6,PALE,s);cornice(c,0,top+20,w,PALE,'#39424a',10);
  wallAt(c,ASHLAR,s+1,0,top+30,w,22);box(c,INK,69,top+31,128,20);box(c,'#2a343e',70,top+32,126,18);box(c,'#3f4c5a',70,top+32,126,1);
  write(c,'BATHS',106,top+34,'#57646f',3);write(c,'BATHS',105,top+33,'#10161d',3);
  wallAt(c,ASHLAR,s+2,0,fl[0],w,fl[1]-fl[0]);wallAt(c,ASHLAR,s+3,0,fl[1],w,fl[2]-fl[1]);wallAt(c,RUSTIC,s+4,0,fl[2],w,h-fl[2]);
@@ -702,7 +711,7 @@ const corn:Building={paint(c,p){
  {
   // The west warehouse: red brick under a corbelled parapet, piers at its corners.
   const x0=a.x,w=a.w,top=a.y,fh=Math.floor((h-top-26)/5),fl=[0,1,2,3,4,5].map(f=>f===5?h:top+26+f*fh);
-  wallAt(c,RED,s,x0,top+5,w,12);cope(c,x0,top,w,5,PALE,s);
+  at(c,x0,top,()=>roofBehind(c,w,s,36));wallAt(c,RED,s,x0,top+5,w,12);cope(c,x0,top,w,5,PALE,s);
   for(let k=0;k<3;k++){box(c,RED.mortar,x0-2+k,top+17+k*3,w+4-k*2,3);box(c,RED.stones[k],x0-2+k,top+17+k*3,w+4-k*2,2);box(c,RED.lip,x0-2+k,top+17+k*3,w+4-k*2,1);}
   for(let f=0;f<5;f++){wallAt(c,RED,s+1+f,x0+10,fl[f],w-20,fl[f+1]-fl[f]);for(const px of [x0,x0+w-10]){wallAt(c,RED,s+20+f+px,px,fl[f],10,fl[f+1]-fl[f]);}}
   for(const px of [x0+9,x0+w-11])box(c,RED.mortar,px,top+26,1,h-top-26);
@@ -739,7 +748,7 @@ const theatre:Building={paint(c,p){
  // The fly tower: plain brick, a louvre for the flies, the scene dock and the stage door at its foot.
  const fx=fy.x,fw=fy.w,ft=fy.y,lifts=[ft+6,ft+96,ft+200,ft+300,h];
  for(let k=0;k<4;k++)wallAt(c,GREY,s+k,fx,lifts[k],fw,lifts[k+1]-lifts[k]);
- cope(c,fx,ft,fw,6,COOL,s);for(const k of [1,2,3]){box(c,GREY.mortar,fx,lifts[k]-3,fw,4);box(c,GREY.stones[2],fx,lifts[k]-3,fw,3);box(c,GREY.lip,fx,lifts[k]-3,fw,1);}
+ at(c,fx,ft,()=>roofBehind(c,fw,s,40));cope(c,fx,ft,fw,6,COOL,s);for(const k of [1,2,3]){box(c,GREY.mortar,fx,lifts[k]-3,fw,4);box(c,GREY.stones[2],fx,lifts[k]-3,fw,3);box(c,GREY.lip,fx,lifts[k]-3,fw,1);}
  box(c,INK,fx+27,ft+26,38,50);for(let y=ft+28;y<ft+74;y+=4){box(c,'#2a2f33',fx+28,y,36,3);box(c,'#454c52',fx+28,y,36,1);}lintel(c,fx+28,ft+27,36,COOL,5);sill(c,fx+28,ft+76,36,COOL);
  for(const [x,y] of [[14,120],[52,120],[14,222],[52,222]] as const){box(c,GREY.mortar,fx+x,ft+y,24,54);wallAt(c,GREY,s+x+y,fx+x+1,ft+y+1,22,52);shade(c,fx+x+1,ft+y+1,22,52,.25,'#000');}
  const sd=fx+10;lintel(c,sd,h-96,24,COOL,6);door(c,sd,h-96,24,96,{tone:['#101316','#2b3036','#3a4148'],style:'pair',knob:''});
@@ -748,7 +757,7 @@ const theatre:Building={paint(c,p){
  box(c,INK,fx+fw-1,ft+6,1,h-ft-6);returnFace(c,fx+fw-6,ft+6,h,6);box(c,GREY.lip,fx+1,ft+6,1,top-ft-6);
  // The front: stucco, four pilasters carrying an entablature under the parapet.
  const ent=top+16,order=top+44,base=h-104;
- renderAt(c,stucco,s+5,x0,top+6,w,10);cope(c,x0,top,w,6,dress,s+1);
+ at(c,x0,top,()=>roofBehind(c,w,s+1,36));renderAt(c,stucco,s+5,x0,top+6,w,10);cope(c,x0,top,w,6,dress,s+1);
  box(c,INK,x0-4,ent-1,w+6,10);box(c,dress[0],x0-4,ent,w+6,8);box(c,dress[1],x0-4,ent,w+6,2);box(c,dress[2],x0-2,ent+6,w+2,2);for(let px=x0;px<x0+w-3;px+=6)box(c,dress[0],px,ent+8,3,3);
  renderAt(c,stucco,s+6,x0,ent+11,w,order-ent-11);box(c,dress[2],x0,order-4,w,4);box(c,dress[0],x0,order-4,w,3);box(c,dress[1],x0,order-4,w,1);
  renderAt(c,stucco,s+7,x0,order,w,base-order);
@@ -888,7 +897,7 @@ const ropewalk:Building={paint(c,p){
  const vents=['louvre','open','board','louvre','shut','open'] as const;
  for(let i=0;i<n;i++){
   const bx=cut(i)+pier,bw=cut(i+1)-bx,seed=s+i*31;
-  tiled(c,bx-pier,top,bw+pier+(i===n-1?pier:0),26,seed,true);
+  tiled(c,bx-pier,top,bw+pier+(i===n-1?pier:0),26,seed,true,true);
   if(i===n-1){
    // The open end: the jack with its hooks and crank, the strands laid off it down the walk, coils waiting to go out.
    planks(c,BOARD_PITCH,'#0b0e11',seed,bx,eave,bw,84,6,10);box(c,TIMBER[0],bx,eave+84,bw,6);box(c,TIMBER[1],bx,eave+84,bw,1);
@@ -965,7 +974,7 @@ function wheel(c:C,cx:number,cy:number,r:number,rim:string,spoke:string){
 }
 const cart:Building={paint(c,p){
  const r=part(p,'roof'),s=13558,x0=r.x,w=r.w,h=p.h,top=r.y,eave=top+34,loft=top+146,posts=[x0+1,x0+66,x0+130,x0+w-8];
- tiled(c,x0,top,w,34,s);
+ tiled(c,x0,top,w,34,s,false,true);
  // The hayloft: boarded, its pitching door open and the hay showing, a slit each side for the air.
  planks(c,BOARD_BROWN,'#17110d',s+1,x0,eave,w,loft-eave,6,10);
  for(const px of [x0,x0+w-5]){box(c,TIMBER[0],px,eave,5,loft-eave);box(c,TIMBER[1],px,eave,1,loft-eave);}
@@ -1021,7 +1030,7 @@ const pump:Building={paint(c,p){
 const watch:Building={paint(c,p){
  const r=part(p,'roof'),ce=part(p,'cell'),s=13966,x0=r.x,w=r.w,h=p.h,top=r.y,fl=[top+28,top+108,top+190,h],frame='#59636b';
  // A squat stone house under a blocking course; the staff the lane's flag flies from stands in a socket on its roof.
- wallAt(c,ASHLAR,s,x0,top+6,w,12);cope(c,x0,top,w,6,PALE,s);cornice(c,x0,top+18,w,PALE,'#39424a',10);
+ at(c,x0,top,()=>roofBehind(c,w,s,36));wallAt(c,ASHLAR,s,x0,top+6,w,12);cope(c,x0,top,w,6,PALE,s);cornice(c,x0,top+18,w,PALE,'#39424a',10);
  box(c,INK,x0+23,top-5,12,5);box(c,PALE[0],x0+24,top-4,10,4);box(c,PALE[1],x0+24,top-4,10,1);box(c,INK,x0+28,top-4,2,3);
  box(c,IRON,x0+26,top+7,6,10);box(c,IRON_LIT,x0+26,top+7,6,1);box(c,'#59666b',x0+27,top+10,1,1);box(c,'#59666b',x0+30,top+13,1,1);
  wallAt(c,ASHLAR,s+1,x0,fl[0],w,fl[1]-fl[0]);wallAt(c,ASHLAR,s+2,x0,fl[1],w,fl[2]-fl[1]);wallAt(c,RUSTIC,s+3,x0,fl[2],w,h-fl[2]);

@@ -57,6 +57,26 @@ function tile(p:Platform,l:Level):HTMLCanvasElement {
  cache.set(key,canvas);if(cache.size>100)cache.delete(cache.keys().next().value!);return canvas;
 }
 export function clearTerrainCache(){cache.clear();boundsCache=new WeakMap();}
+/** Bell Lane: the landing is the edge of its own roof, in front of the wall.
+ * A moonlit top, the thickness of the covering, and the shade that covering
+ * throws on the courses under it. Cornices and sills never get this, so the
+ * solid reads as the solid. */
+function markLanding(c:CanvasRenderingContext2D,p:Platform,x:number,y:number){
+ const wood=p.h<=12||p.kind==='moving'||p.kind==='spring';
+ if(wood){
+  // A gallery or a rack is a timber edge. The roof's own eave is drawn with the house.
+  c.fillStyle='#1c140e';c.fillRect(x-2,y+2,p.w+4,2);
+  c.fillStyle='#5a4332';c.fillRect(x-2,y+1,p.w+4,1);
+  c.fillStyle='#b89468';c.fillRect(x-2,y,p.w+4,1);
+ }else{
+  // The floor slab stands proud of the wall. A sill is flush with the courses and never gets this.
+  c.fillStyle='#10161c';c.fillRect(x-2,y+2,p.w+4,2);
+  c.fillStyle='#6a757c';c.fillRect(x-2,y+1,p.w+4,1);
+  c.fillStyle='#9aa4a8';c.fillRect(x-2,y,p.w+4,1);
+ }
+ // The shade the slab throws on the courses under it.
+ c.save();c.globalAlpha=.5;c.fillStyle='#04070b';c.fillRect(x+1,y+5,p.w-2,8);c.restore();
+}
 /** A thin eave is a porch canopy, frame head beam or footbridge. Each end
  * stands on the nearest static main-route deck within one storey below it;
  * over a canal, an end that no barge sweeps under gets a pier into the water.
@@ -99,10 +119,12 @@ export function drawPlatform(c:CanvasRenderingContext2D,p:Platform,x:number,y:nu
   c.fillStyle='#3d3b3a';c.fillRect(px-3,bottom-3,11,3);
  }
  // Bell Lane's hoist pallets and its drying rack hang from what carries them.
- if(l.id===0&&p.tag&&p.kind!=='crumble'){if(p.kind==='moving')laneMover(c,p,x,y);c.drawImage(tile(p,l),x-4,y-8);return;}
+ // The tread is drawn after the house, so the roof sits in front of the wall.
+ if(l.id===0&&p.tag&&p.kind!=='crumble'){if(p.kind==='moving')laneMover(c,p,x,y);c.drawImage(tile(p,l),x-4,y-8);markLanding(c,p,x,y);return;}
  // Old Quarter barges are boats, not slabs: hull and gunwale replace the tile.
  if(p.kind==='moving'&&l.world===0&&l.setting==='canal'){drawBarge(c,p,x,y,l);return;}
  c.drawImage(tile(p,l),x-4,y-8);
+ if(l.id===0&&p.kind!=='crumble')markLanding(c,p,x,y);
  if(p.kind==='belt'){
   c.fillStyle='#302e38';c.fillRect(x,y+3,p.w,13);const shift=reduced?0:(s.clock*35*(p.direction??1))%18;
   for(let i=-18;i<p.w+18;i+=18){const xx=x+i+shift;if(xx<x||xx+8>x+p.w)continue;c.strokeStyle='#dbc697';c.beginPath();c.moveTo(xx,y+6);c.lineTo(xx+6,y+9);c.lineTo(xx,y+12);c.stroke();}

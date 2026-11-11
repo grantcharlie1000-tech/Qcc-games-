@@ -2,7 +2,7 @@ import {WORLDS,type Level,type Platform} from './levels';
 import type {Run} from './model';
 import {box,enginesArt,fill,hash,masonry,noise,panel,seamless,sprite,stroke,visible,type C,type Courses,type Work} from './quarter-kit';
 import {quarterSet} from './quarter-sets';
-import {drawLaneHouses,housePiece,laneBack,laneBuilds,laneDeck,laneHouses} from './set-lane';
+import {drawLaneHouse,housePiece,laneBack,laneBuilds,laneDeck,laneHouses} from './set-lane';
 import {HOUSE_PIECES} from './pieces/level-01';
 
 /** The Old Quarter is drawn as one built place. Every landing continues into
@@ -23,7 +23,7 @@ const towerWall=()=>masonry('tower',128,64,32,16,{mortar:'#161d25',stones:['#212
 const vaultBrick=()=>masonry('vault',64,32,16,8,{mortar:'#1a1617',stones:['#2b2324','#2f2627','#33292a'],lip:'#3d3130',chip:'#463836'});
 const quayStone=()=>masonry('quay',96,64,32,16,{mortar:'#18212a',stones:['#2a3540','#2e3945','#323e4a'],lip:'#3c4956',chip:'#465461'});
 const alleyBack=()=>masonry('alley',96,48,24,12,{mortar:'#10151c',stones:['#161d26','#182029','#1a222c'],lip:'#1f2833',chip:'#232d38'});
-const ALLEY:Work={course:12,short:20,long:46,mortar:'#0d1218',stones:['#151c25','#171f28','#19212b','#141a23'],lip:'#1d2630',shade:'#11161d',chip:'#212b36'};
+const ALLEY:Work={course:12,short:20,long:46,mortar:'#121820',stones:['#1e2834','#24303c','#283644','#1a2430'],lip:'#31404e',shade:'#16202a',chip:'#3a4a5a'};
 const cobbles=()=>seamless('cobbles',64,16,rect=>{rect('#161c23',0,0,64,16);for(let r=0;r<2;r++)for(let i=0;i<4;i++){const x=i*16+r*8,v=hash(i,r,7);rect(v>.5?'#262e37':'#222a33',x+1,r*8+1,14,6);rect('#313b45',x+2,r*8+1,11,1);}});
 const planks=()=>seamless('planks',32,32,rect=>{rect('#241c17',0,0,32,32);for(let i=0;i<4;i++){const v=hash(i,3,11);rect(v>.5?'#33281f':'#2f251d',i*8+1,0,6,32);rect('#3d3026',i*8+1,0,1,32);rect('#1d1612',i*8+2,8+Math.floor(v*14),4,1);}});
 
@@ -72,6 +72,17 @@ interface Plan {
  lookout:House|null;surfaces:Map<number,number|null>;chimneys:Set<Platform>;
 }
 const plans=new WeakMap<Level,Plan>();
+type Front={y:number;kind:'lane'|'house'|'shed';i:number};
+const fronts=new WeakMap<Level,readonly Front[]>();
+/** Painter's order for level 1, cached with the plan: high roofs behind, low roofs in front. */
+function frontOrder(l:Level,pl:Plan):readonly Front[]{
+ const made=fronts.get(l);if(made)return made;
+ const order:Front[]=[];
+ laneHouses(l).forEach((b,i)=>order.push({y:b.y,kind:'lane',i}));
+ pl.houses.forEach((h,i)=>{if(housePiece(l.platforms[h.id]))order.push({y:l.platforms[h.id].y,kind:'house',i});});
+ pl.sheds.forEach((s,i)=>{if(s.floor>s.p.y)order.push({y:s.p.y,kind:'shed',i});});
+ order.sort((a,b)=>a.y-b.y);fronts.set(l,order);return order;
+}
 /** Whatever a ledge stands on: the nearest surface under it, or nothing. */
 function supportBelow(l:Level,p:Platform){
  let best:Platform|null=null;
@@ -92,7 +103,11 @@ function plan(l:Level):Plan{
  }
  // Level 1's lane buildings stand among the houses, so the alleys run between them too.
  const byX=[...houses,...(l.id===0?laneHouses(l).map(b=>({x:b.x,w:b.w,top:b.y+28,id:-1})):[])].sort((a,b)=>a.x-b.x),alleys:Plan['alleys']=[];
- for(let i=1;i<byX.length;i++){const a=byX[i-1],b=byX[i],left=a.x+a.w;if(b.x-left>=4)alleys.push({x:left,w:b.x-left,top:Math.max(a.top,b.top)+26});}
+ for(let i=1;i<byX.length;i++){const a=byX[i-1],b=byX[i],left=a.x+a.w;if(b.x-left>=4){
+  // A wide gap is the yard: the house across it stands a storey back. A crack between two walls stays dark.
+  const yard=l.id===0&&b.x-left>=36;
+  alleys.push({x:left,w:b.x-left,top:Math.max(a.top,b.top)+(yard?64:26)});
+ }}
  // Taller houses stand further back, so lower fronts are drawn over them.
  houses.sort((a,b)=>a.top-b.top);
  for(const p of l.platforms){
@@ -165,24 +180,29 @@ function roofs(c:C,l:Level,pl:Plan,cx:number,cy:number,vw:number,vh:number){
   if(l.id!==0){c.fillStyle=fill(c,'alley',alleyBack);c.fillRect(a.x,a.top,a.w,street-a.top);continue;}
   // The back of the house across the yard: laid once between the two houses it shows between, with its own
   // coping, a blind window or two and a rear door at the lane.
-  const h=street-a.top;
-  c.drawImage(panel(`alley/${a.x}`,a.w,h,ALLEY,a.x,k=>{
-   box(k,'#0b0f14',0,0,a.w,3);box(k,'#232d38',0,3,a.w,1);
-   const cols=Math.floor((a.w-20)/46);
-   for(let i=0;i<cols;i++)for(let y=22,r=0;y+24<h-40;y+=58,r++){const v=hash(i,r,a.x);if(v<.3)continue;const x=Math.round(10+(a.w-20-cols*46)/2+i*46+16);
-    box(k,'#0b0f14',x-1,y-3,14,3);box(k,'#1f2833',x-1,y-3,14,1);box(k,'#0a0d12',x,y,12,18);box(k,v>.93?'#4a3a25':'#10161e',x+1,y+1,10,16);box(k,'#0a0d12',x+5,y,2,18);box(k,'#1c242e',x-2,y+18,16,2);}
-   if(a.w>=64){const x=Math.round(a.w/2-8);box(k,'#0a0d12',x,h-30,16,30);box(k,'#151b23',x+2,h-28,12,28);box(k,'#1f2833',x-2,h-33,20,3);}
+  const h=street-a.top,yard=a.w>=36;
+  c.drawImage(panel(`alley/v2/${a.x}`,a.w,h,ALLEY,a.x,k=>{
+   if(yard){
+    // The house across the yard has its own roof. The street houses stand in front of it.
+    for(let y=0,r=0;y<18;y+=4,r++)for(let x=-(r&1)*7;x<a.w;x+=14){const x0=Math.max(0,x),x1=Math.min(a.w,x+13);if(x1-x0>1)box(k,r%2?'#2a3644':'#1e2834',x0,y,x1-x0-1,4);}
+    box(k,'#10161c',0,18,a.w,2);box(k,'#5a656e',0,20,a.w,6);box(k,'#8b949a',0,20,a.w,1);box(k,'#141b22',0,25,a.w,2);
+   }else box(k,'#0b0f14',0,0,a.w,4);
+   const cols=Math.floor((a.w-20)/46),yRoof=yard?40:22;
+   for(let i=0;i<cols;i++)for(let y=yRoof,r=0;y+24<h-40;y+=58,r++){const v=hash(i,r,a.x);if(v<.3)continue;const x=Math.round(10+(a.w-20-cols*46)/2+i*46+16);
+    box(k,'#0b0f14',x-1,y-3,14,3);box(k,'#31404e',x-1,y-3,14,1);box(k,'#0a0d12',x,y,12,18);box(k,v>.93?'#4a3a25':'#141c26',x+1,y+1,10,16);box(k,'#0a0d12',x+5,y,2,18);box(k,'#24303c',x-2,y+18,16,2);}
+   if(a.w>=64){const x=Math.round(a.w/2-8);box(k,'#0a0d12',x,h-30,16,30);box(k,'#1a2430',x+2,h-28,12,28);box(k,'#31404e',x-2,h-33,20,3);}
   }),a.x,a.top);
  }
  if(l.id===0){
-  drawLaneHouses(c,l,cx,cy,vw,vh);
-  // Level 1's houses and sheds are each drawn by their own piece, from the roof line down.
-  // A stairhead or bellcote stands on the east gable of the roof it adjoins, so that house is drawn on under it.
-  for(const h of pl.houses){
-   const p=l.platforms[h.id],piece=housePiece(p),gable=l.platforms.find(q=>(q.tag==='stairhead'||q.tag==='bellcote')&&q.x===p.x+p.w&&q.y+q.h===p.y),w=p.w+(gable?.w??0);
-   if(piece&&visible(p.x-24,p.y-60,w+48,street-p.y+60,cx,cy,vw,vh))piece(c,p.x,p.y,w,street-p.y);
+  // Higher roofs first, lower roofs last. A later house used to be painted
+  // straight over the one before it and cut through its courses.
+  for(const d of frontOrder(l,pl)){
+   if(d.kind==='lane')drawLaneHouse(c,l,d.i,cx,cy,vw,vh);
+   else if(d.kind==='house'){
+    const h=pl.houses[d.i],p=l.platforms[h.id],piece=housePiece(p),gable=l.platforms.find(q=>(q.tag==='stairhead'||q.tag==='bellcote')&&q.x===p.x+p.w&&q.y+q.h===p.y),w=p.w+(gable?.w??0);
+    if(piece&&visible(p.x-24,p.y-88,w+48,street-p.y+88,cx,cy,vw,vh))piece(c,p.x,p.y,w,street-p.y);
+   }else{const s=pl.sheds[d.i],p=s.p;if(s.floor>p.y&&visible(p.x-24,p.y-88,p.w+48,s.floor-p.y+88,cx,cy,vw,vh))(s.kind==='house'?HOUSE_PIECES.terrace:HOUSE_PIECES.leanTo)(c,p.x,p.y,p.w,s.floor-p.y);}
   }
-  for(const s of pl.sheds){const p=s.p;if(s.floor>p.y&&visible(p.x-24,p.y-60,p.w+48,s.floor-p.y+60,cx,cy,vw,vh))(s.kind==='house'?HOUSE_PIECES.terrace:HOUSE_PIECES.leanTo)(c,p.x,p.y,p.w,s.floor-p.y);}
  }else{
   for(const h of pl.houses)houseFront(c,h.x,h.top,h.w,street,h.id,cx,cy,vw,vh);
   for(const s of pl.sheds)shed(c,s,cx,cy,vw,vh);

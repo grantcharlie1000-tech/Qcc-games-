@@ -1,23 +1,23 @@
 import {box,hash,lay,sprite,stroke,type C,type Work} from '../quarter-kit';
 
 /** Level 1's buildings. A piece is (c,x,y,w,h): x,y is the top-left corner of
- * the landing the courier walks on (the roof line), w is that landing's width
- * and h runs from the roof line down to the lane.
+ * the landing the courier walks on (the eave), w is that landing's width and
+ * h runs from the eave down to the lane.
  *
  * Every building is painted once, at its own size, into its own canvas, and
  * blitted after that. Its walls are laid storey by storey from the building's
  * own seed, so no course repeats; its openings, roof and trade are its own.
- * The top two pixel rows of every piece are the walked edge, exactly on the
- * roof line; nothing is drawn above it. */
+ * The walked edge is the eave, on the roof line. The pitch itself rises
+ * behind that edge, into the sky, so the slope is not a skirt on the wall. */
 export type Piece=(c:C,x:number,y:number,w:number,h:number)=>void;
 type Paint=(c:C,w:number,h:number,s:number)=>void;
-const PAD=8,TOP=8;
+const PAD=8,TOP=80;
 function built(name:string,paint:Paint):Piece{
  const made=new Map<number,HTMLCanvasElement>();
  return (c,x,y,w,h)=>{
   x=Math.round(x);y=Math.round(y);w=Math.round(w);h=Math.round(h);if(w<1||h<1)return;
   const id=(x*4096+w)*2048+h;let art=made.get(id);
-  if(!art){art=sprite(`l1/${name}/${x}/${w}/${h}`,w+PAD*2,h+TOP,k=>{k.translate(PAD,TOP);paint(k,w,h,x);});made.set(id,art);}
+  if(!art){art=sprite(`l1/v2/${name}/${x}/${w}/${h}`,w+PAD*2,h+TOP,k=>{k.translate(PAD,TOP);paint(k,w,h,x);closeEaves(k.canvas,TOP,PAD,[{x:0,y:0,w}]);});made.set(id,art);}
   c.drawImage(art,x-PAD,y-TOP);
  };
 }
@@ -117,13 +117,60 @@ export function pipe(c:C,x:number,y0:number,y1:number,s:number){
  for(let py=y0+18+Math.floor(hash(s,0,80)*24),i=0;py<y1-10;i++){box(c,dark,x-1,py,wide+2,3);box(c,lit,x-1,py,wide+2,1);py+=38+Math.floor(hash(s,i,81)*34);}
  if(hash(s,4,82)>.4){box(c,dark,x+2,y1-4,wide+2,4);box(c,lit,x+2,y1-4,wide+2,1);}else{box(c,dark,x-2,y1-3,wide+4,3);box(c,lit,x-2,y1-3,wide+4,1);}
 }
-/** A slated pitch seen from the street: ridge on the roof line, verges down each gable, gutter at the eaves. */
+/** A slated pitch seen from the street. The gutter is the walked edge; the
+ * ridge sits back above it, so the slope is behind the courier and not a
+ * tile skirt down the wall. */
 export function pitch(c:C,w:number,depth:number,tones:readonly string[],s:number,row=6,sw=9,ridge:Tri=PALE,grow=0){
- slates(c,tones,'#141a21',s,0,5,w,depth-9,row,sw,grow);
+ // A short skirt read as a cap. Draw enough courses that the ridge clears the courier's head.
+ const shown=Math.max(depth,42);
+ c.save();c.translate(0,-(shown-4));
+ slates(c,tones,'#141a21',s,0,5,w,shown-9,row,sw,grow);
  box(c,ridge[0],0,0,w,5);box(c,ridge[1],0,0,w,2);box(c,'#141a21',0,5,w,1);
  for(let px=8+Math.floor(hash(s,0,60)*8),i=0;px<w-4;i++){box(c,ridge[2],px,2,1,3);px+=13+Math.floor(hash(s,i,61)*6);}
- box(c,ridge[0],0,5,3,depth-9);box(c,ridge[1],0,5,1,depth-9);box(c,ridge[2],w-3,5,3,depth-9);box(c,ridge[0],w-3,5,1,depth-9);
- gutter(c,-2,depth-4,w+4,s);
+ box(c,ridge[0],0,5,3,shown-9);box(c,ridge[1],0,5,1,shown-9);box(c,ridge[2],w-3,5,3,shown-9);box(c,ridge[0],w-3,5,1,shown-9);
+ gutter(c,-2,shown-4,w+4,s);
+ c.restore();
+}
+/** A parapet roof: the coping is the walked edge, and the flat runs back above it. */
+export function roofBehind(c:C,w:number,s:number,depth=40){
+ slates(c,SLATE_BLUE,'#10161c',s,2,-depth,Math.max(1,w-4),depth-1,5,9,0,.99);
+ box(c,'#1a2128',0,-depth,w,2);box(c,'#2a333b',0,-depth,2,depth);box(c,'#161c22',w-2,-depth,2,depth);
+}
+/** Where a risen roof used to hang down the wall, continue that wall up to the
+ * eave. Runs once, when the building is cached. A gap counts only when it is
+ * the whole landing: an opening between posts is left open. */
+export function closeEaves(canvas:HTMLCanvasElement,originY:number,originX:number,spans:readonly {x:number;y:number;w:number}[]){
+ const ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)return;
+ const img=ctx.getImageData(0,0,canvas.width,canvas.height),d=img.data,W=canvas.width,H=canvas.height;
+ const opaque=(x:number,y:number)=>y>=0&&y<H&&x>=0&&x<W&&d[(y*W+x)*4+3]>40;
+ let changed=false;
+ for(const span of spans){
+  const walk=originY+Math.round(span.y),x0=originX+Math.round(span.x),x1=Math.min(W,x0+Math.round(span.w));
+  const gaps:{x:number;y0:number;y1:number}[]=[];
+  for(let x=x0;x<x1;x++){
+   let y=walk,lip=0;while(y<H&&y<walk+8&&opaque(x,y)){y++;lip++;}
+   if(!lip)continue;
+   const y0=y;while(y<H&&y<walk+78&&!opaque(x,y))y++;
+   if(y-y0<8||y>=walk+78||!opaque(x,y))continue;
+   gaps.push({x,y0,y1:y});
+  }
+  if(gaps.length<12)continue;
+  // One run of courses, shared across the landing. An 8px repeat read as stripes.
+  const ys=gaps.map(g=>g.y1).sort((a,b)=>a-b),y1=ys[Math.floor(ys.length/2)];
+  const band=gaps.filter(g=>Math.abs(g.y1-y1)<=3);if(band.length<12)continue;
+  const y0=Math.min(...band.map(g=>g.y0));
+  let period=8;
+  for(let n=9;n<=24;n++){const y=y1+n-1;if(y>=H||band.some(g=>!opaque(g.x,y)))break;period=n;}
+  for(let y=y0;y<y1;y++){
+   const src=y1+((y-y0)%period);
+   for(const g of band){
+    if(y<g.y0||y>=g.y1||!opaque(g.x,src))continue;
+    const di=(y*W+g.x)*4,si=(src*W+g.x)*4;
+    d[di]=d[si];d[di+1]=d[si+1];d[di+2]=d[si+2];d[di+3]=d[si+3];changed=true;
+   }
+  }
+ }
+ if(changed)ctx.putImageData(img,0,0);
 }
 /** A band between two storeys: the courses above and below stop against it. */
 export function band(c:C,x:number,y:number,w:number,k:Tri,t=4){box(c,k[2],x,y,w,t+1);box(c,k[0],x,y,w,t);box(c,k[1],x,y,w,1);}
@@ -350,14 +397,16 @@ function front(c:C,x0:number,w:number,top:number,h:number,s:number,kind:number){
 function terraceRoof(c:C,w:number,s:number,kind:number):number{
  const v=hash(s,60,28),depth=16+Math.floor(hash(s,61,23)*11);
  if(kind===5&&v>.45||v>.78){
+  roofBehind(c,w,s,36);
   const k=kind<6?WORKS[kind]:null;
   if(k)wallAt(c,k,s+63,0,5,w,11);else box(c,RENDERS[kind-6][0],0,5,w,11);
   coping(c,0,w,5,kind===1||kind===3?WARM:PALE,s);band(c,-1,16,w+2,k?[k.stones[3],k.lip,k.mortar]:COOL,4);return 21;
  }
  if(v<.22){
+  c.save();c.translate(0,-(depth-4));
   box(c,'#170f0d',0,5,w,depth-9);for(let py=5,r=0;py<depth-4;py+=5,r++)for(let px=-Math.floor(hash(s,r,62)*7),i=0;px<w;px+=7,i++){const x0=Math.max(0,px),x1=Math.min(w,px+7);if(x1-x0>1)box(c,TILE[Math.floor(hash(s,r,i+3)*4)],x0,py,x1-x0-1,Math.min(4,depth-4-py));}
   box(c,CLAY[0],0,0,w,5);box(c,CLAY[1],0,0,w,2);box(c,'#170f0d',0,5,w,1);for(let px=7;px<w-4;px+=11+Math.floor(hash(s,px,64)*4))box(c,CLAY[2],px,2,1,3);
-  gutter(c,-2,depth-4,w+4,s);return depth;
+  gutter(c,-2,depth-4,w+4,s);c.restore();return depth;
  }
  pitch(c,w,depth,v<.4?SLATE_PURPLE:v<.6?SLATE_BLUE:SLATE_GREEN,s,5+Math.floor(hash(s,65,23)*3),7+Math.floor(hash(s,66,23)*5),v<.5?PALE:LEAD);return depth;
 }
@@ -368,13 +417,15 @@ const terrace:Paint=(c,w,h,s)=>{
  // A row of cottages under one roof, each its own house: party walls come up through the slates.
  const n=Math.round(w/155),depth=17,cuts=[0];for(let i=1;i<n;i++)cuts.push(Math.round(i*w/n+(hash(s,i,70)-.5)*34));cuts.push(w);
  pitch(c,w,depth,s%3?SLATE_BLUE:SLATE_PURPLE,s,5,8,LEAD);
- for(let i=0;i<n;i++){const x0=cuts[i],kind=wallKind(s,i+1);front(c,x0,cuts[i+1]-x0,depth,h,s+i*977+13,kind===5?4:kind);if(i){box(c,'#141a21',x0-3,5,6,depth-8);box(c,COOL[0],x0-2,5,4,depth-9);box(c,COOL[1],x0-2,5,1,depth-9);}}
+ const up=-(depth-4);
+ for(let i=0;i<n;i++){const x0=cuts[i],kind=wallKind(s,i+1);front(c,x0,cuts[i+1]-x0,depth,h,s+i*977+13,kind===5?4:kind);if(i){box(c,'#141a21',x0-3,5+up,6,depth-8);box(c,COOL[0],x0-2,5+up,4,depth-9);box(c,COOL[1],x0-2,5+up,1,depth-9);}}
 };
 
 // ── Yards: what stands behind the terrace ───────────────────────────────────
 /** A hayloft over a stable. */
 const stable:Paint=(c,w,h,s)=>{
  const loft=Math.min(86,Math.round(h*.45));
+ roofBehind(c,w,s,28);
  box(c,TIMBER[0],0,0,w,7);box(c,'#7f878c',0,0,w,2);box(c,'#343b41',0,2,w,3);for(let px=5;px<w;px+=9+Math.floor(hash(s,px,1)*4))box(c,'#23292e',px,2,1,3);
  planks(c,BOARD_BROWN,'#17110d',s,0,7,w,loft-7,6,10);box(c,TIMBER[0],0,loft-5,w,5);box(c,TIMBER[1],0,loft-5,w,1);
  wallAt(c,GREY,s+3,0,loft,w,h-loft);
@@ -392,6 +443,7 @@ const stable:Paint=(c,w,h,s)=>{
 };
 /** A boarded wash-house: copper inside, tin bath on its nail, the butt under the pipe. */
 const washhouse:Paint=(c,w,h,s)=>{
+ roofBehind(c,w,s,28);
  box(c,'#15100d',0,0,w,8);box(c,'#93745a',0,0,w,2);box(c,'#4a3a2c',0,2,w,3);box(c,'#23272c',0,5,w,3);
  planks(c,BOARD_GREY,'#151210',s,0,8,w,h-22,5,9);wallAt(c,RED,s+2,0,h-14,w,14);box(c,TIMBER[0],0,h-16,w,2);
  for(const px of [0,w-4]){box(c,TIMBER[0],px,8,4,h-22);box(c,TIMBER[1],px,8,1,h-22);}
@@ -404,6 +456,7 @@ const washhouse:Paint=(c,w,h,s)=>{
 };
 /** A brick coal store and privy under one sheet of iron. */
 const coalStore:Paint=(c,w,h,s)=>{
+ roofBehind(c,w,s,28);
  box(c,'#10151a',0,0,w,7);for(let px=0;px<w;px+=4){box(c,'#3d474e',px,2,2,5);box(c,'#272f35',px+2,2,2,5);}box(c,'#8b949a',0,0,w,2);box(c,'#10151a',0,7,w,2);
  wallAt(c,SOOT,s+1,0,9,w,h-9);
  const split=Math.round(w*.52);box(c,INK,split,9,2,h-9);wallAt(c,SOOT,s+9,split+2,9,6,h-9);box(c,SOOT.lip,split+2,9,1,h-9);
@@ -417,6 +470,7 @@ const coalStore:Paint=(c,w,h,s)=>{
 };
 /** A passage through to the back court, with a room built over it. */
 const passage:Paint=(c,w,h,s)=>{
+ roofBehind(c,w,s,32);
  coping(c,0,w,5,WARM,s);wallAt(c,PLUM,s+1,0,5,w,10);band(c,-1,15,w+2,[PLUM.stones[3],PLUM.lip,PLUM.mortar],3);
  const arch=Math.min(h-70,74),room=h-arch;
  wallAt(c,PLUM,s+2,0,18,w,room-18);wallAt(c,PLUM,s+3,0,room,w,arch);
@@ -431,6 +485,7 @@ const passage:Paint=(c,w,h,s)=>{
 };
 /** A narrow pump house: the pump stands out on the lane with its trough. */
 const pumpHouse:Paint=(c,w,h,s)=>{
+ roofBehind(c,w,s,28);
  box(c,LEAD[0],0,0,w,6);box(c,LEAD[1],0,0,w,2);box(c,LEAD[2],0,6,w,1);for(let px=11;px<w-4;px+=15)box(c,LEAD[2],px,2,2,4);
  wallAt(c,OCHRE,s+1,0,7,w,Math.round(h*.5)-7);band(c,0,Math.round(h*.5)-3,w,[OCHRE.stones[2],OCHRE.lip,OCHRE.mortar],3);wallAt(c,OCHRE,s+2,0,Math.round(h*.5),w,h-Math.round(h*.5));
  // A louvred vent for the cistern under the roof.
@@ -464,6 +519,7 @@ const leanTo:Paint=(c,w,h,s)=>{
 
 // ── Nell's house ────────────────────────────────────────────────────────────
 const nell:Paint=(c,w,h,s)=>{
+ roofBehind(c,w,s,40);
  const fl=[24,90,160,228,h],bays=[28,94,161,228,294],frame='#6a6f70',curtain='#46323a';
  for(let f=0;f<4;f++)wallAt(c,RED,s+f*13,0,fl[f],w,fl[f+1]-fl[f]);
  wallAt(c,RED,s+77,0,5,w,13);coping(c,0,w,5,PALE,s);
@@ -490,10 +546,12 @@ const nell:Paint=(c,w,h,s)=>{
 // ── Bell Lane ───────────────────────────────────────────────────────────────
 const bakehouse:Paint=(c,w,h,s)=>{
  const eave=36,sign=116,ground=132;
- // Pantiles to a clay ridge, sooted toward the stack on the east gable.
+ // Pantiles to a clay ridge, sooted toward the stack on the east gable. The ridge is behind the eave.
+ c.save();c.translate(0,-(eave-4));
  pantiles(c,TILE,'#170f0d','#63433a',s,0,5,w,eave-9);box(c,CLAY[0],0,0,w,5);box(c,CLAY[1],0,0,w,2);box(c,'#170f0d',0,5,w,1);
  for(let px=6;px<w-4;px+=12+Math.floor(hash(s,px,1)*4))box(c,CLAY[2],px,2,1,3);
  c.save();c.globalAlpha=.13;for(const k of [84,58,34,16])box(c,'#000',w-k,5,k,eave-9);c.restore();box(c,CLAY[0],0,5,3,eave-9);box(c,CLAY[1],0,5,1,eave-9);gutter(c,-2,eave-4,w+4,s);
+ c.restore();
  // Limewashed brick over the bakery; the brick shows red where the gable takes the stack.
  wallAt(c,LIME,s+1,0,eave,w,sign-eave);wallAt(c,LIME,s+11,0,sign,w,ground-sign);wallAt(c,LIME,s+2,0,ground,w,h-ground-12);wallAt(c,SOOT,s+3,0,h-12,w,12);box(c,LIME.mortar,0,h-13,w,1);
  for(const [y0,y1,k] of [[eave,ground,4],[ground,h,5]] as const){wallAt(c,RED,s+k,w-12,y0,12,y1-y0);for(let y=y0;y<y1;y+=8)if(hash(s,y,6)>.5)wallAt(c,RED,s+y,w-18,y,6,8);}
@@ -551,6 +609,7 @@ const cooperage:Paint=(c,w,h,s)=>{
 };
 
 const laundry:Paint=(c,w,h,s)=>{
+ roofBehind(c,w,s,40);
  const loft=82,mid=178,brick:Tri=[OCHRE.stones[2],OCHRE.lip,OCHRE.mortar];
  wallAt(c,OCHRE,s+1,0,5,w,12);coping(c,0,w,5,PALE,s);band(c,-1,17,w+2,COOL,4);
  wallAt(c,OCHRE,s+2,0,21,w,loft-21);wallAt(c,OCHRE,s+3,0,loft+18,w,mid-loft-18);wallAt(c,LIME,s+4,0,mid,w,h-mid);
@@ -572,6 +631,7 @@ const laundry:Paint=(c,w,h,s)=>{
 };
 
 const dyehouse:Paint=(c,w,h,s)=>{
+ roofBehind(c,w,s,40);
  const hank=100,mid=126,ground=200,DYES=['#6a3038','#2c3a66','#5d5a30','#4a3058','#31564a'];
  wallAt(c,SOOT,s+1,0,5,w,10);coping(c,0,w,5,WARM,s);
  // A corbelled brick cornice, three courses stepping out.
@@ -598,6 +658,7 @@ const dyehouse:Paint=(c,w,h,s)=>{
 };
 
 const store:Paint=(c,w,h,s)=>{
+ roofBehind(c,w,s,32);
  const base=112;
  // A tarred flat with a timber kerb.
  box(c,TIMBER[2],0,0,w,12);box(c,'#93745a',0,0,w,2);box(c,TIMBER[1],0,2,w,3);box(c,'#23272c',0,5,w,6);for(let px=7;px<w;px+=17+Math.floor(hash(s,px,1)*6))box(c,'#15181c',px,5,1,6);
@@ -618,6 +679,7 @@ const store:Paint=(c,w,h,s)=>{
 };
 
 const tall:Paint=(c,w,h,s)=>{
+ roofBehind(c,w,s,40);
  const fl=[28,92,170,254,350,446,h],bays=[30,90,150,210,270],frame='#59636b',stone=COOL;
  wallAt(c,PLUM,s+70,0,5,w,10);coping(c,0,w,5,PALE,s);
  // The cornice: a stone shelf on modillions.
@@ -656,10 +718,12 @@ const tall:Paint=(c,w,h,s)=>{
 
 const chandler:Paint=(c,w,h,s)=>{
  const fl=[30,124,236,338,h],plaster:Tri=['#555e66','#5e676e','#49515a'],post='#1d1814',lit='#3d3229';
- // Old clay tiles to a clay ridge.
+ // Old clay tiles to a clay ridge, rising behind the eave board.
+ c.save();c.translate(0,-26);
  box(c,'#170f0d',0,5,w,21);for(let py=5,r=0;py<26;py+=5,r++)for(let px=-Math.floor(hash(s,r,1)*7),i=0;px<w;px+=7,i++){const x0=Math.max(0,px),x1=Math.min(w,px+7);if(x1-x0>1&&hash(s,r,i+9)<.975)box(c,TILE[Math.floor(hash(s,r,i+3)*4)],x0,py,x1-x0-1,4);}
  box(c,CLAY[0],0,0,w,5);box(c,CLAY[1],0,0,w,2);box(c,'#170f0d',0,5,w,1);for(let px=5;px<w-4;px+=10+Math.floor(hash(s,px,2)*5))box(c,CLAY[2],px,2,1,3);
  box(c,post,-2,26,w+4,4);box(c,lit,-2,26,w+4,1);for(let px=3;px<w;px+=11)box(c,post,px,30,4,3);
+ c.restore();
  // Three framed storeys, each framed its own way, each jettied on the bressummer under it.
  const beam=(y:number,t:number)=>{box(c,'#110d0a',0,y,w,t+2);box(c,'#231c16',0,y,w,t);box(c,'#4a3c2e',0,y,w,1);for(let px=5;px<w-6;px+=12)box(c,'#110d0a',px,y+t,5,3);};
  const stud=(x:number,y0:number,y1:number,wide=4)=>{box(c,post,x,y0,wide,y1-y0);box(c,lit,x,y0,1,y1-y0);};
@@ -696,6 +760,7 @@ const chandler:Paint=(c,w,h,s)=>{
 };
 
 const shed:Paint=(c,w,h,s)=>{
+ roofBehind(c,w,s,28);
  const base=h-58,fl=[14,108,200,base];
  // Tarred boards under a felted roof with a zinc ridge: three lofts, a door to each, a ladder fixed up the face.
  box(c,'#0c0e10',0,0,w,14);box(c,'#7f878c',0,0,w,2);box(c,'#3a4146',0,2,w,3);box(c,'#1d2125',0,5,w,6);box(c,'#2c3136',-2,11,w+4,3);box(c,'#454b50',-2,11,w+4,1);
@@ -730,7 +795,7 @@ const almshouse:Paint=(c,w,h,s)=>{
   for(let dy=0;dy<30;dy++){box(c,stone[1],cx-3-dy,eave-23+dy,2,1);box(c,stone[0],cx+1+dy,eave-23+dy,2,1);box(c,stone[2],cx+3+dy,eave-22+dy,1,1);}
   box(c,stone[1],cx-2,eave-26,4,4);win(c,cx-5,eave-8,10,14,{look:k===2?'dim':'dark',cols:2,rows:1,frame,s:s+k});
  };
- for(const [cx,k] of [[52,1],[160,2],[268,3]] as const)gablet(cx,k);
+ c.save();c.translate(0,-(eave-4));for(const [cx,k] of [[52,1],[160,2],[268,3]] as const)gablet(cx,k);c.restore();
  for(const y of [136,232])band(c,-1,y-3,w+2,stone,4);
  // Paired lights under drip moulds, the same on both floors as the trust laid down; what is in them is each pensioner's own.
  const xs=[22,74,222,274],looks:Look[][]=[['drawn','dark','blind','drawn'],['dark','drawn','lit','dark']];
@@ -761,14 +826,16 @@ const almshouse:Paint=(c,w,h,s)=>{
 
 const chapel:Paint=(c,w,h,s)=>{
  const eave=64,gable=w-68,stone:Tri=['#3f4a55','#5a6672','#1c242c'];
- // Stone slates, the courses deepening to the eaves, between the west verge and the east gable.
+ // Stone slates, rising behind the eave, between the west verge and the east gable.
+ c.save();c.translate(0,-(eave-4));
  slates(c,STONE_SLATE,'#14170f',s,0,5,gable,eave-9,5,7,.45,.994);
  box(c,PALE[0],0,0,w,5);box(c,PALE[1],0,0,w,2);box(c,'#12171c',0,5,gable,1);for(let px=9;px<gable-4;px+=15+Math.floor(hash(s,px,1)*6))box(c,PALE[2],px,2,1,3);
  box(c,stone[0],0,5,5,eave-9);box(c,stone[1],0,5,1,eave-9);box(c,stone[2],4,5,1,eave-9);
- // The eaves course on its corbels.
+ // The eaves course on its corbels, and the kneelers of the east gable, on the risen eave.
  box(c,stone[2],-2,eave-4,gable+2,6);box(c,stone[0],-2,eave-4,gable+2,4);box(c,stone[1],-2,eave-4,gable+2,1);for(let px=4;px<gable-6;px+=14){box(c,stone[0],px,eave,6,4);box(c,stone[2],px,eave+4,6,1);}
- // The nave wall in rubble, a sill band across it, a battered plinth.
- const sillY=216;wallAt(c,RUBBLE,s+1,0,eave,gable,sillY-eave);wallAt(c,RUBBLE,s+2,0,sillY,gable,h-sillY-18);band(c,0,sillY-3,gable,stone,4);
+ c.restore();
+ // The nave wall in rubble up to the gutter. A copied band under the slates read as a false storey.
+ const sillY=216,wallTop=6;wallAt(c,RUBBLE,s+1,0,wallTop,gable,sillY-wallTop);wallAt(c,RUBBLE,s+2,0,sillY,gable,h-sillY-18);band(c,0,sillY-3,gable,stone,4);
  wallAt(c,ASHLAR,s+3,-3,h-18,gable+3,18);box(c,stone[1],-3,h-18,gable+3,1);box(c,stone[2],-3,h-19,gable+3,1);
  // Three lancets, leaded; a little colour left in the glass, the sanctuary lamp behind the eastmost.
  const bays=[38,128,220],GLASS=['#2c3a66','#5a2f38','#4a4a2a','#274a44'];
@@ -796,7 +863,7 @@ const chapel:Paint=(c,w,h,s)=>{
  door(c,dx,h-66,26,48,{tone:['#0f0d0c','#2b2420','#3b322b'],style:'plank',arch:'point',rise:16,knob:'#59636a'});box(c,stone[0],dx-4,h-21,34,3);box(c,stone[1],dx-4,h-21,34,1);
  // The east gable: dressed stone the whole height, kneelered at the eaves, the wall the bellcote stands on.
  wallAt(c,SQUARED,s+4,gable,5,68,eave-1);wallAt(c,SQUARED,s+5,gable,eave+4,68,sillY-eave-7);wallAt(c,SQUARED,s+6,gable,sillY,68,h-sillY);
- box(c,stone[2],gable-2,eave-2,72,7);box(c,stone[0],gable-3,eave-2,74,5);box(c,stone[1],gable-3,eave-2,74,1);
+ box(c,stone[2],gable-2,2,72,7);box(c,stone[0],gable-3,2,74,5);box(c,stone[1],gable-3,2,74,1);
  band(c,gable,sillY-3,68,stone,4);box(c,INK,gable-1,5,1,h-5);box(c,stone[1],gable,5,1,h-5);
  quoins(c,w,5,h,stone,true,12,16,10);
  // A slit to light the rope loft, and the east window's blind tracery in the gable below.
@@ -806,10 +873,11 @@ const chapel:Paint=(c,w,h,s)=>{
  box(c,'#101924',ex,96,30,118);box(c,'#18273a',ex+2,110,11,40);for(let k=0;k<22;k++)box(c,GLASS[Math.floor(hash(s,9,k)*4)],ex+1+Math.floor(hash(s,8,k)*6)*5,100+Math.floor(hash(s,7,k)*18)*6,4,5);
  for(let py=101;py<214;py+=6)box(c,'#0a0f15',ex,py,30,1);box(c,stone[0],ex+9,118,2,96);box(c,stone[0],ex+19,118,2,96);
  c.restore();sill(c,ex,214,30,stone,4,4);
- box(c,INK,0,eave,1,h-eave);box(c,INK,w-1,5,1,h-5);
+ box(c,INK,0,wallTop,1,h-wallTop);box(c,INK,w-1,5,1,h-5);
 };
 
 const vestry:Paint=(c,w,h,s)=>{
+ roofBehind(c,w,s,36);
  const stone:Tri=['#434e59','#606c78','#1d252d'],mid=150;
  // A lead flat behind a moulded parapet.
  wallAt(c,SQUARED,s+1,0,5,w,17);box(c,LEAD[0],0,0,w,5);box(c,LEAD[1],0,0,w,2);box(c,LEAD[2],0,5,w,1);for(let px=13;px<w-6;px+=19)box(c,LEAD[2],px,2,2,3);
@@ -857,6 +925,7 @@ const sexton:Paint=(c,w,h,s)=>{
 };
 
 const lean:Paint=(c,w,h,s)=>{
+ roofBehind(c,w,s,28);
  const base=132;
  // Sheet lead dressed over rolls, a board fascia under it.
  box(c,LEAD[0],0,0,w,6);box(c,LEAD[1],0,0,w,2);box(c,LEAD[2],0,6,w,1);for(let px=10;px<w-4;px+=16){box(c,LEAD[2],px+2,2,1,4);box(c,'#6b767d',px,2,2,4);}

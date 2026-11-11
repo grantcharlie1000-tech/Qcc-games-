@@ -1,6 +1,6 @@
 import type {Level,Platform} from './levels';
 import {box,lay,panel,sprite,stroke,visible,type C,type Work} from './quarter-kit';
-import {FIXTURE_PIECES,HOUSE_PIECES,type Piece} from './pieces/level-01';
+import {FIXTURE_PIECES,HOUSE_PIECES,closeEaves,type Piece} from './pieces/level-01';
 import {LANE_HOUSES,PAD,type Building,type Ledge,type Vent} from './pieces/lane-houses';
 
 /** Level 1 · Bell Lane, between Nell's gable and the bell tower. Each roof is
@@ -40,12 +40,12 @@ export function laneHouses(l:Level):readonly LanePlot[]{
  });
  lanePlots.set(l,plots);return plots;
 }
-/** Draws every lane building in view, each from its one canvas. */
-export function drawLaneHouses(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
- for(const b of laneHouses(l)){
-  if(!visible(b.x-PAD,b.y-PAD,b.w+PAD*2,b.h+PAD,cx,cy,vw,vh))continue;
-  c.drawImage(sprite(`lane/house/${b.name}/${b.w}/${b.h}`,b.w+PAD*2,b.h+PAD,k=>{k.translate(PAD,PAD);b.house.paint(k,{w:b.w,h:b.h,ledges:b.ledges,vents:b.vents});}),b.x-PAD,b.y-PAD);
- }
+/** Room above the plot for a pitch that rises behind the walked edge. */
+const HEAD=80;
+/** Draws one lane building from its cached canvas. `i` is its index in laneHouses. */
+export function drawLaneHouse(c:C,l:Level,i:number,cx:number,cy:number,vw:number,vh:number){
+ const b=laneHouses(l)[i];if(!b||!visible(b.x-PAD,b.y-HEAD,b.w+PAD*2,b.h+HEAD,cx,cy,vw,vh))return;
+ c.drawImage(sprite(`lane/house/v2/${b.name}/${b.w}/${b.h}`,b.w+PAD*2,b.h+HEAD,k=>{k.translate(PAD,HEAD);b.house.paint(k,{w:b.w,h:b.h,ledges:b.ledges,vents:b.vents});closeEaves(k.canvas,HEAD,PAD,b.ledges.filter(g=>g.h>=20).map(g=>({x:g.x,y:g.y,w:g.w})));}),b.x-PAD,b.y-HEAD);
 }
 /** Paints a level-1 landing's own tile; (0,0) is its top-left corner. A roof paints nothing: its house piece draws it. */
 export function laneDeck(c:C,p:Platform):boolean {
