@@ -215,22 +215,43 @@ export function gantry(c:C,x0:number,x1:number,deck:number,foot:number,legs:read
  box(c,'#1a222b',x0,deck+12,x1-x0,1);
 }
 
-/** The granary loading room: open side doors and a lowered floor, no roof landing. */
-export function granaryRoom(c:C,x:number,y:number){
- const w=152,h=176;
- box(c,'#171b21',x,y,w,h);box(c,'#302c2a',x+8,y+8,w-16,h-8);
- // Brick courses end at the room edges; the door surrounds mask their openings.
- for(let yy=y+12;yy<y+h-6;yy+=9)for(let xx=x+10;xx<x+w-10;xx+=24){const bx=xx+(Math.floor((yy-y)/9)%2?8:0);if(bx<x+w-8)box(c,'#473a32',bx,yy,Math.min(19,x+w-8-bx),6);}
- for(const dx of [0,w-18]){
-  box(c,'#111820',x+dx,y+48,18,h-48);box(c,'#8b7960',x+dx,y+46,18,3);
-  // A door leaf folded back against its jamb, with iron strap hinges.
-  box(c,'#5b4632',x+dx+2,y+50,5,78);box(c,'#998064',x+dx+2,y+50,1,78);
-  for(const dy of [62,112])box(c,'#17252d',x+dx+1,y+dy,7,3);
+/** One granary storey in section. Bay-sized cached walls keep the long room
+ * cheap on small devices; the ceiling and rear masonry enclose every bay. */
+export function granaryRoom(c:C,x:number,y:number,w:number){
+ const h=176;
+ for(let at=0,bay=0;at<w;at+=232,bay++){
+  const bw=Math.min(232,w-at);
+  const art=sprite(`canal/granary-floor/fix3/${bay}/${bw}`,bw,h,ctx=>{
+   box(ctx,'#191b20',0,0,bw,h);
+   brick(ctx,0,16,bw,h-16);box(ctx,'#12151b55',0,16,bw,h-16);
+   // The floor above is supported by joists mortised into oak posts.
+   box(ctx,'#19120e',0,0,bw,18);box(ctx,'#65503c',0,2,bw,4);
+   for(let xx=20;xx<bw;xx+=38){box(ctx,'#463426',xx,6,9,14);box(ctx,'#8c7351',xx,6,2,12);}
+   const post=Math.min(bw-10,28);
+   box(ctx,'#17110d',post,18,10,h-18);box(ctx,'#63503b',post+1,18,6,h-18);box(ctx,'#967b55',post+1,18,1,h-18);
+   stroke(ctx,'#745a3f',post+7,48,post+42,18,5);
+   box(ctx,'#3b4142',post-2,h-18,14,18);box(ctx,'#8c9691',post,h-15,2,2);
+   // Vent recess, inventory board and loose sacks vary by working bay.
+   if(bay%2===0){window_(ctx,112,42,18,28,bay===2,true);wallLamp(ctx,158,50,bay===2);}
+   else{box(ctx,'#191713',108,54,42,22);for(let k=0;k<4;k++)box(ctx,'#9c967d',113,59+k*4,22-k*3,1);}
+   for(let k=0;k<3+bay%3;k++){
+    const sx=64+k*15,sy=h-14-(k%2)*10;
+    box(ctx,'#463725',sx,sy,15,14);box(ctx,'#8f7a56',sx+1,sy+1,13,12);box(ctx,'#c0a77c',sx+2,sy+1,11,2);
+   }
+   // Stone footing under the back wall: the room is in the building.
+   box(ctx,'#2b2927',0,h-4,bw,4);
+  });
+  c.drawImage(art,x+at,y);
  }
- box(c,'#17110d',x-5,y-8,w+10,14);box(c,'#736047',x-3,y-7,w+6,4);
- for(const dx of [25,124]){box(c,'#17110d',x+dx,y+4,7,h-4);box(c,'#685139',x+dx+1,y+4,3,h-4);}
- doors(c,x+45,y+92,40,84,true,true);
- box(c,'#8c7c5c',x+48,y+82,34,7);box(c,'#d7c69a',x+53,y+84,24,2);
- // Grain awaiting the next lighter, clear of the floor through the doors.
- for(const [dx,dy] of [[91,164],[105,164],[98,154]] as const){box(c,'#4a3c2c',x+dx,y+dy,14,12);box(c,'#a08b65',x+dx+1,y+dy,12,10);box(c,'#cab28a',x+dx+2,y+dy,10,2);box(c,'#5a4a36',x+dx+6,y+dy-2,2,3);}
+ // Two arched doors connect this storey to the same quay. Folded leaves
+ // stand against the jambs; neither doorway is a hole through to the sky.
+ for(const dx of [0,w-36]){
+  doors(c,x+dx+5,y+48,26,128,true,true);
+  box(c,'#71604b',x+dx+2,y+174,32,2);
+ }
+ // The hoist trench is a masonry-lined pit beneath the working floor.
+ box(c,'#0c1015',4950,y+176,60,76);
+ for(const px of [4950,5002]){box(c,'#4a443b',px,y+176,8,76);for(let yy=y+184;yy<y+252;yy+=12)box(c,'#242329',px,yy,8,1);}
+ box(c,'#68553c',4942,y+14,76,8);box(c,'#1a2328',4976,y+22,10,12);
+ for(let yy=y+34;yy<y+160;yy+=4)box(c,'#77817e',4980,yy,2,2);
 }

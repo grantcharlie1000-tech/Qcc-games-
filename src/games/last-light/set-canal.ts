@@ -384,7 +384,7 @@ function wharves(l:Level):readonly Wharf[]{
 }
 const wharfOf=(p:Platform,l:Level)=>wharves(l).find(w=>w.steps.includes(p));
 /** Where a wharf landing's wall starts: under its coping, or under the quay coping a stack of crates stands on. */
-const faceTop=(p:Platform,l:Level)=>role(p,l)==='crates'?p.y+p.h+10:p.y+10;
+const faceTop=(p:Platform,l:Level)=>p.tag==='quay.grain'?p.y+p.h+10:role(p,l)==='crates'?p.y+p.h+10:p.y+10;
 const topAt=(w:Wharf,x:number,l:Level)=>{const p=w.steps.find(q=>x>=q.x&&x<q.x+q.w)??w.steps[0];return faceTop(p,l);};
 /** The wall of one wharf, in front of the canal: coursed from the coping down,
  * dark and weeded below the tide line, with its own fittings and its ends. */
@@ -414,6 +414,22 @@ function nearFace(c:C,l:Level,w:Wharf,bottom:number){
  }
 
  for(const p of w.steps){const top=faceTop(p,l);if(bottom>top)wall(c,key,tile,p.x,top,p.w,bottom-top);box(c,'#0b11178c',p.x,top,p.w,3);}
+ if(w.data.house===5){
+  for(const p of w.steps)if(p.tag==='quay.grain'){
+   // The foreground canal pass follows the deck pass: close the backs of
+   // the stacks here too, so water cannot show through their lower tiers.
+   for(let yy=0;yy<p.h;yy+=14)for(let xx=0;xx<p.w;xx+=16){
+    const hh=Math.min(14,p.h-yy);
+    box(c,'#463725',p.x+xx,p.y+yy,16,hh);box(c,'#a18b64',p.x+xx+1,p.y+yy+1,14,hh-1);
+    box(c,'#c2ad83',p.x+xx+2,p.y+yy+1,12,2);box(c,'#6c583d',p.x+xx+7,p.y+yy+4,1,Math.max(1,hh-5));
+   }
+   wall(c,key,tile,p.x,744,p.w,10);
+  }
+  // The hoist well is inside solid foundations, never open sky or water.
+  wall(c,key,tile,4950,754,60,bottom-754);
+  box(c,'#101419',4950,744,60,72);
+  for(const x of [4950,5002]){box(c,'#514b40',x,744,8,72);for(let yy=752;yy<816;yy+=12)box(c,'#242329',x,yy,8,1);}
+ }
  // Where the quay steps up, the higher wall's end is a riser with its own arris.
  for(let i=1;i<w.steps.length;i++){
   const a=w.steps[i-1],b=w.steps[i],ta=faceTop(a,l),tb=faceTop(b,l);if(ta===tb)continue;
@@ -433,17 +449,50 @@ function nearFace(c:C,l:Level,w:Wharf,bottom:number){
   for(let dx=0;dx<24;dx+=6)box(c,'#65777b',w.x0+100+dx,water-28,2,22);
  }
  // A relaid course, lighter than the old stone round it, along part of the wall.
- if(w.face!==3){const from=w.x0+Math.round(span*(.1+v(1)*.3)),to=Math.min(w.x1-8,from+90+Math.round(v(2)*140));for(let x=from;x<to;x+=26){const y=topAt(w,x,l)+22;box(c,'#141c24',x,y,26,10);box(c,'#3f4a56',x+1,y+1,24,8);box(c,'#4e5a66',x+1,y+1,24,1);}}
+ if(w.data.house!==5&&!w.data.customs&&w.face!==3){const from=w.x0+Math.round(span*(.1+v(1)*.3)),to=Math.min(w.x1-8,from+90+Math.round(v(2)*140));for(let x=from;x<to;x+=26){const y=topAt(w,x,l)+22;box(c,'#141c24',x,y,26,10);box(c,'#3f4a56',x+1,y+1,24,8);box(c,'#4e5a66',x+1,y+1,24,1);}}
+ // Customs repairs are individual stones toothed into three existing courses,
+ // at one world height: no band following the stepped platform silhouette.
+ if(w.data.customs)for(let row=0;row<3;row++){
+  const y=water-60+row*12,from=Math.floor((w.x0+288)/32)*32+(row%2)*16,to=from+(3-row)*32;
+  for(let x=from;x<to;x+=32)if(y>topAt(w,x,l)+12){
+   box(c,'#172029',x,y,32,12);box(c,row===1?'#414b54':'#35414c',x+1,y+1,30,10);
+   box(c,'#505c64',x+1,y+1,30,1);
+  }
+ }
  // A mend in brick where the face fell out, its edge stepped course by course.
- if(w.face!==3&&span>200){
+ if(w.data.house!==5&&w.face!==3&&span>200){
   const px=w.x0+Math.round(span*(.55+v(3)*.3))-30,py=topAt(w,px,l)+16+Math.round(v(8)*8),pw=30+Math.round(v(4)*22),ph=Math.min(Math.max(12,water-py-8),18+Math.round(v(9)*12));
   for(let r=0;r*6<ph;r++){const cut=Math.round(hash(r,w.seed,85)*8),wide=pw-cut-Math.round(hash(r,w.seed,86)*8);wall(c,'canal/near/brick',NEAR[3].tile,px+cut,py+r*6,wide,6);box(c,'#0b111766',px+cut,py+r*6,wide,6);}
  }
  // Timber fenders where boats lie against it, or iron rings to make fast to.
  if(w.data.fender)for(let x=w.x0+26;x<w.x1-14;x+=64){const top=topAt(w,x,l)+2;box(c,'#17110d',x-1,top,9,bottom-top);box(c,'#2c2119',x,top,7,bottom-top);box(c,'#4b3a2b',x,top,1,bottom-top);for(let y=top+10;y<bottom;y+=34){box(c,'#232c33',x-1,y,9,3);box(c,'#59666b',x-1,y,9,1);}}
- else for(let x=w.x0+38+Math.round(v(5)*30);x<w.x1-26;x+=104+Math.round(v(6)*40)){const y=topAt(w,x,l)+12;box(c,'#59666b',x-4,y,8,7);box(c,'#1b2228',x-3,y+1,6,5);box(c,'#1b2228',x-2,y+6,4,5);box(c,'#59666b',x-3,y+10,6,1);}
+ else if(w.data.house!==5)for(let x=w.x0+38+Math.round(v(5)*30);x<w.x1-26;x+=104+Math.round(v(6)*40)){const y=topAt(w,x,l)+12;box(c,'#59666b',x-4,y,8,7);box(c,'#1b2228',x-3,y+1,6,5);box(c,'#1b2228',x-2,y+6,4,5);box(c,'#59666b',x-3,y+10,6,1);}
  // A drain comes out through the wall above the tide, its stain running down.
- if(span>180){const x=w.x0+Math.round(span*(.3+v(7)*.4)),y=water-16;box(c,'#46525f',x-7,y-3,14,13);box(c,'#06090c',x-4,y,8,8);box(c,'#06090c',x-3,y-1,6,1);box(c,'#2c4739',x-1,y+8,3,water-y-8);box(c,'#1c2e26',x-2,y+8,1,water-y-6);}
+ if(w.data.house!==5&&span>180){const x=w.x0+Math.round(span*(.3+v(7)*.4)),y=water-16;box(c,'#46525f',x-7,y-3,14,13);box(c,'#06090c',x-4,y,8,8);box(c,'#06090c',x-3,y-1,6,1);box(c,'#2c4739',x-1,y+8,3,water-y-8);box(c,'#1c2e26',x-2,y+8,1,water-y-6);}
+ // The foundations belong to the building above, rather than a single
+ // extruded wall texture. All remain solid masonry to the frame foot.
+ if(w.data.house===1){
+  for(let x=w.x0+30;x<w.x1-20;x+=116){
+   wall(c,'canal/near/ashlar',NEAR[2].tile,x,water-12,28,bottom-water+12);
+   box(c,'#53606a',x-3,water-14,34,3);box(c,'#101820',x+27,water-10,3,bottom-water+10);
+  }
+ }else if(w.data.house===2){
+  wall(c,'canal/near/rubble',NEAR[1].tile,w.x0,water+14,span,bottom-water-14);
+  box(c,'#414c53',w.x0,water+12,span,3);
+  const x=w.x0+96;
+  box(c,'#455059',x-6,water-16,52,52);box(c,'#10181c',x,water-10,40,40);
+  for(let dx=2;dx<40;dx+=8)box(c,'#514b3c',x+dx,water-10,5,40);
+  box(c,'#788084',x-5,water-18,50,3);box(c,'#364138',x,water+30,40,bottom-water-30);
+ }else if(w.data.house===4){
+  // Brick warehouse on a battered stone plinth with bonded corner piers.
+  wall(c,'canal/near/ashlar',NEAR[2].tile,w.x0,water+32,span,bottom-water-32);
+  for(let x=w.x0+66;x<w.x1-24;x+=132){
+   for(let y=water-20,k=0;y<bottom;y+=12,k++){
+    const width=k%2?30:22;box(c,'#493932',x,y,width,11);box(c,'#655047',x,y,width,1);
+   }
+  }
+  box(c,'#535c61',w.x0,water+30,span,3);
+ }
  // The tide line: weeded and dark at the water, and below it the wall is wet all the way down.
  weed(c,w.x0+2,span-4,water,w.seed);
  if(bottom>water){box(c,'#08101580',w.x0,water,span,bottom-water);if(bottom>water+40)box(c,'#03070a40',w.x0,water+40,span,bottom-water-40);}
@@ -480,7 +529,7 @@ function nearBank(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
    case 3:at(weighHouse(200,96),first.x+10,ground);break;
    case 4:{const dock=w.steps.find(p=>p.tag==='dock'),x=first.x+6,top=ground+4-190;at(chandlers(334,190,dock?{x:dock.x-x,w:dock.w,y:dock.y-top}:{x:220,w:110,y:180}),x,ground);break;}
    case 5:{
-    granaryRoom(c,4174,568);
+    granaryRoom(c,4174,568,1396);
     break;
    }
    case 6:at(customHouse(190,180),first.x+5,ground);break;
@@ -548,7 +597,9 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
    continue;
   }
   if(kind==='tower'||kind==='barge'||!visible(p.x-40,p.y-70,p.w+80,water+60-p.y+70,cx,cy,vw,vh))continue;
-  if(kind==='piles'){
+  if(kind==='piles'&&load(p)!=='bolt'&&p.tag?.includes('.mooring')){
+   canalMooring(c,p,water);
+  }else if(kind==='piles'){
    const offsets=p.w<60?[5,p.w-15]:[3,Math.round(p.w*.6)-5,p.w-13];
    for(const x of offsets)pile(c,p.x+x,top-4,water);
    if(p.w<60){
@@ -615,6 +666,24 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
   const at=platformAt(p,clock),end=tie.x<p.x?at.x+4:at.x+p.w-4,sag=Math.max(4,10-Math.abs(end-tie.x)*.08);
   if(!visible(Math.min(end,tie.x),tie.y-4,Math.abs(end-tie.x),40,cx,cy,vw,vh))continue;
   const steps=Math.max(4,Math.round(Math.abs(end-tie.x)/3));for(let i=0;i<=steps;i++){const k=i/steps;box(c,'#8a7a5a',tie.x+(end-tie.x)*k,tie.y+(at.y-2-tie.y)*k+Math.sin(k*Math.PI)*sag,2,1);}
+ }
+}
+/** Three existing dolphins, rebuilt for their different jobs. Bolt art is untouched. */
+function canalMooring(c:C,p:Platform,water:number){
+ const variant=load(p),x=p.x,y=p.y,w=p.w;
+ const offsets=variant==='mooringA'?[2,w-12]:variant==='mooringB'?[10,w-12]:[0,18,w-10];
+ for(const dx of offsets){pile(c,x+dx,y+5,water+24);box(c,'#293943',x+dx-1,y+18,12,4);box(c,'#8a989b',x+dx,y+18,10,1);}
+ if(variant==='mooringA'){
+  stroke(c,'#806447',x+7,y+15,x+w-7,water+14,4);
+  box(c,'#413124',x,y+8,w,8);for(const dx of [4,w-9])box(c,'#a6ada6',x+dx,y+9,3,3);
+ }else if(variant==='mooringB'){
+  stroke(c,'#423428',x+14,y+12,x+w-8,water+20,4);
+  stroke(c,'#6b5843',x+w-8,y+12,x+14,water+20,3);
+  for(let yy=y+12;yy<y+32;yy+=4)box(c,'#a28c64',x+8,yy,14,2);
+ }else{
+  box(c,'#2a3338',x-1,y+10,w+2,6);box(c,'#718084',x,y+10,w,1);
+  stroke(c,'#63503c',x+4,water+20,x+w-6,y+20,4);
+  box(c,'#71624e',x+20,y+18,3,water-y+6);
  }
 }
 /** The beacon's lamp: a lantern on its post, lit for the ferry, its light thrown round it on the dark. */
@@ -730,6 +799,23 @@ export function hull(c:C,w:number,deep:number){
 }
 function deck(c:C,p:Platform,l:Level){
  const w=p.w,kind=role(p,l),what=load(p);
+ if(p.tag==='quay.floor'){
+  box(c,'#211810',0,0,w,14);box(c,'#897053',0,0,w,3);box(c,'#513e2c',0,3,w,9);
+  for(let x=12;x<w;x+=23){box(c,'#241b14',x,3,1,9);box(c,'#a1977e',x-3,5,2,1);}return;
+ }
+ if(p.tag==='quay.grain'){
+  for(let y=0;y<p.h;y+=14)for(let x=0;x<w;x+=16){
+   box(c,'#463725',x,y,16,14);box(c,'#a18b64',x+1,y+1,14,12);box(c,'#c2ad83',x+2,y+1,12,2);
+   box(c,'#6c583d',x+7,y+4,1,8);
+  }return;
+ }
+ if(p.tag?.includes('.mooring')){
+  const v=load(p);box(c,'#211910',0,0,w,10);
+  if(v==='mooringA'){box(c,'#9b805b',0,0,w,3);box(c,'#695039',0,3,w,7);box(c,'#39464b',5,0,5,10);box(c,'#8e9da0',6,0,2,9);}
+  else if(v==='mooringB'){for(let x=0;x<w;x+=8){box(c,'#80654a',x,0,7,7);box(c,'#b29770',x,0,7,1);}box(c,'#382a20',0,7,w,4);}
+  else{box(c,'#667477',0,0,w,4);box(c,'#343e43',0,4,w,6);for(let x=4;x<w;x+=11)box(c,'#a8afaa',x,2,2,2);}return;
+ }
+
  if(kind==='pontoon'){
   // Rotten deck boards on a rail, across two cask floats. A board has gone already.
   box(c,'#15100c',-1,0,w+2,6);box(c,'#57493a',0,0,w,5);box(c,'#8a7a62',0,0,w,2);box(c,'#6a5b48',0,2,w,1);
