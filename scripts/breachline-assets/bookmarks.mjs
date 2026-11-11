@@ -28,7 +28,18 @@ export const BOOKMARKS = {
   'server-room': [14.3, -2.6, 0.95, -0.06],
   'south-yard': [3, 19.5, 0, -0.02],
   'west-lot': [-25.5, 0.5, -1.5708, -0.02],
+  // Destruction views (rendered after the damage setup below): the charge's breach from the corridor and from the
+  // Lab, and the rifle-chewed wall west of it.
+  breach: [1.5, 0.35, 0, -0.06],
+  'breach-lab': [1.2, -3.6, 3.1416, -0.06],
+  'shot-wall': [-4.4, -0.4, 0.15, -0.04],
+  'breach-close': [1.9, -1.2, 0.35, -0.12],
 };
+/** The same damage every time: a magazine into the Lab's south wall from the corridor, then a breach charge. */
+const DAMAGE = `(() => { const h = window.__breachlineTest;
+  h.place(-4.6, 0.2, 0, -0.05); h.advance(0.1); h.hold({ fire: true, mx: 1 }, 0.8);
+  h.place(1.5, -0.6, 0, -0.25); h.advance(0.1); h.hold({}, 1.4, { breach: true });
+  h.place(1.5, 0.55, 0, -0.1); h.advance(0.2); h.hold({}, 0.2, { breach: true }); h.advance(9); })()`;
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -41,7 +52,7 @@ await context.addInitScript(() => {
 const page = await context.newPage();
 page.on('console', m => { if (m.type() === 'warning' || m.type() === 'error' || process.env.VERBOSE) console.log(`[page] ${m.type()} ${m.text().slice(0, 1500)}`); });
 page.on('pageerror', e => console.log(`[page] pageerror ${e.message}`));
-await page.goto(`${url}/?festive=off${art === 'off' ? '&art=off' : ''}${dbg ? `&artdbg=${dbg}` : ''}${tier === 'low' ? '&arttier=low' : ''}#/game/breachline`);
+await page.goto(`${url}/?festive=off${art === 'off' ? '&art=off' : ''}${dbg ? `&artdbg=${dbg}` : ''}&arttier=${tier === 'low' ? 'low' : 'high'}#/game/breachline`);
 await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 60000 });
 await page.evaluate(q => { const h = window.__breachlineTest; h.start({ seed: 7, quality: q === 'low' ? 'low' : 'high', teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); h.still(); h.skip(30); h.advance(0.3); h.advance(5); }, tier);
 // Let the art stream in.
@@ -50,8 +61,10 @@ await page.waitForTimeout(art === 'off' ? 500 : 6000);
 // Transient banners and prompts are hidden so rounds compare like for like; the rest of the HUD stays.
 await page.addStyleTag({ content: '.bl-toast, .bl-banner, .bl-prompt { visibility: hidden !important; }' });
 await mkdir(out, { recursive: true });
+let damaged = false;
 for (const [name, [x, z, yaw, pitch]] of Object.entries(BOOKMARKS)) {
   if (only.length && !only.includes(name)) continue;
+  if (['breach', 'breach-lab', 'shot-wall', 'breach-close'].includes(name) && !damaged) { await page.evaluate(DAMAGE); damaged = true; await page.waitForTimeout(500); }
   await page.evaluate(([x, z, yaw, pitch]) => { const h = window.__breachlineTest; h.place(x, z, yaw, pitch); h.advance(0.05); h.draw(); h.draw(); }, [x, z, yaw, pitch]);
   await page.waitForTimeout(300);
   const file = join(out, `${name}-${tier}${art === 'off' ? '-procedural' : ''}.png`);

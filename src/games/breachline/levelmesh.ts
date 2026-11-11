@@ -179,82 +179,154 @@ export interface PanelMaterials { wall: THREE.Material; core: THREE.Material; pl
  * the broken edge between them) and the room's wall material, whose UVs are in `tile` metres per repeat. */
 export interface PanelLook { light(c: number, r: number, side: number): RGB | null; wall: THREE.Material; tile: readonly [number, number]; planks?: THREE.Material; plankTile?: readonly [number, number] }
 
+/** Where a panel's geometry gets its light: corner (u, y), offset along the wall normal, and side (+1, -1, 0 for edges). */
+export type PanelLight = (u: number, y: number, off: number, side: number) => RGB;
+/** Board thickness of each skin. */
+export const SKIN = 0.0125;
+const STUD = 0.045, STUD_PITCH = 0.6, NOGGIN = 1.2;
+/** Deterministic hash in [0, 1) of a panel corner. */
+const hash = (a: number, b: number, c: number) => { const v = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453; return v - Math.floor(v); };
+
+/** Builds a panel's mesh: faces (group 0), board edges and cavity (group 1), studs (group 2). Pure, testable. */
+export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLight): { geometry: THREE.BufferGeometry; studs: { c: number; r: number }[] } {
+  const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [], face: number[] = [], edge: number[] = [], stud: number[] = [];
+  const studs: { c: number; r: number }[] = [];
+  const plate = p.reinforced, wood = p.kind !== 'wall', half = (plate ? 0.2 : wood ? 0.07 : PANEL_T) / 2;
+  const tile = plate ? TILE.plate : wood ? look?.plankTile ?? TILE.planks : look ? look.tile : TILE.drywall, alongX = p.axis === 'x';
+  const cell = (c: number, r: number) => c < 0 || r < 0 || c >= p.cols || r >= p.rows || plate || p.cells[r * p.cols + c] === 1;
+  const torn = !plate && !wood && p.intact < p.cells.length;
+  /** How far a skin's corner tears back (in u and y) from the hole beside it, into the intact board; zero away from
+   * holes and on the panel's rim. Each skin tears differently, which opens the cavity and shows the studs. */
+  const jitter = (cu: number, cy: number, skin: number): [number, number] => {
+    if (!torn || cu <= 0 || cy <= 0 || cu >= p.cols || cy >= p.rows) return [0, 0];
+    let du = 0, dy = 0, open = 0;
+    for (const [dc, dr] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) if (!cell(cu + dc, cy + dr)) { du += dc + 0.5; dy += dr + 0.5; open++; }
+    if (!open || open === 4) return [0, 0];
+    // A corner touching a single open cell would cut a long notch, so it moves less.
+    const l = Math.hypot(du, dy) || 1, m = CELL * (0.15 + 0.35 * hash(p.u0 + cu, p.y0 + cy, p.pos + skin * 3.1)) * (open === 1 ? 0.45 : 1);
+    return [-du / l * m, -dy / l * m];
+  };
+  const vert = (u: number, y: number, off: number, n: number, shade: number, nx = 0, ny = 0, fixed = false) => {
+    const cu = Math.round((u - p.u0) / CELL), cy = Math.round((y - p.y0) / CELL), [ju, jy] = fixed ? [0, 0] : jitter(cu, cy, Math.sign(off)), uu = u + ju, yy = y + jy;
+    const w = panelPoint(p, uu, yy, off), l = light(u, y, off, n);
+    pos.push(w.x, w.y, w.z); uv.push(uu / tile[0], yy / tile[1]); col.push(l[0] * shade, l[1] * shade, l[2] * shade);
+    if (n) { if (alongX) nor.push(0, 0, n); else nor.push(n, 0, 0); }
+    else if (alongX) nor.push(nx, ny, 0); else nor.push(0, ny, nx);
+    return pos.length / 3 - 1;
+  };
+  const quad = (list: number[], a: number, b: number, c: number, d: number, flip: boolean) => { if (flip) list.push(a, d, c, a, c, b); else list.push(a, b, c, a, c, d); };
+  // Front and back: runs of intact cells along each row become one quad each (split every half metre, so rows share
+  // their lit columns).
+  for (let r = 0; r < p.rows; r++) {
+    let start = -1;
+    for (let c = 0; c <= p.cols; c++) {
+      const on = c < p.cols && cell(c, r);
+      if (on) { if (start < 0) { start = c; continue; } if (c % 2 !== 0) continue; }
+      if (start < 0) continue;
+      const u0 = p.u0 + start * CELL, u1 = p.u0 + c * CELL, y0 = p.y0 + r * CELL, y1 = y0 + CELL;
+      for (const n of [1, -1]) quad(face, vert(u0, y0, half * n, n, 1), vert(u1, y0, half * n, n, 1), vert(u1, y1, half * n, n, 1), vert(u0, y1, half * n, n, 1), alongX ? n < 0 : n > 0);
+      start = on ? c : -1;
+    }
+  }
+  if (!plate) {
+    // Broken edges. Planks are solid timber, shown full depth; plasterboard shows each skin's board thickness and the
+    // dark cavity behind it.
+    const skin = wood ? half : SKIN;
+    for (let r = 0; r < p.rows; r++) for (let c = 0; c < p.cols; c++) {
+      if (!cell(c, r)) continue;
+      const u0 = p.u0 + c * CELL, u1 = u0 + CELL, y0 = p.y0 + r * CELL, y1 = y0 + CELL;
+      const strip = (ua: number, ya: number, ub: number, yb: number, nx: number, ny: number) => {
+        for (const [o0, o1, shade] of wood ? [[-half, half, 0.55]] as const : [[half - skin, half, 0.85], [-half, -half + skin, 0.85]] as const) {
+          const a = vert(ua, ya, o0, 0, shade, nx, ny), b = vert(ub, yb, o0, 0, shade, nx, ny), cc = vert(ub, yb, o1, 0, shade, nx, ny), d = vert(ua, ya, o1, 0, shade, nx, ny);
+          edge.push(a, b, cc, a, cc, d, a, cc, b, a, d, cc);
+        }
+      };
+      const left = c > 0 && !cell(c - 1, r), right = c < p.cols - 1 && !cell(c + 1, r), down = r > 0 && !cell(c, r - 1), up = r < p.rows - 1 && !cell(c, r + 1);
+      if (left) strip(u0, y0, u0, y1, -1, 0);
+      if (right) strip(u1, y0, u1, y1, 1, 0);
+      if (down) strip(u0, y0, u1, y0, 0, -1);
+      if (up) strip(u0, y1, u1, y1, 0, 1);
+      if (wood || !(left || right || down || up)) continue;
+      // The inside faces of both skins, seen through the hole: the brown back of the board, in shadow.
+      for (const n of [1, -1]) {
+        const off = n * (half - SKIN);
+        quad(edge, vert(u0, y0, off, -n, 0.32), vert(u1, y0, off, -n, 0.32), vert(u1, y1, off, -n, 0.32), vert(u0, y1, off, -n, 0.32), alongX ? n > 0 : n < 0);
+      }
+    }
+    // Studs and the noggin, inside the cavity, only where their cell is intact and a hole is near enough to see them.
+    if (torn) {
+      const near = (c: number, r: number) => { for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if (!cell(c + dc, r + dr)) return true; return false; };
+      const timber = (ua: number, ub: number, ya: number, yb: number) => {
+        const d = half - SKIN, sh = 0.5;
+        // Four sides of a stick of timber running between the skins.
+        quad(stud, vert(ua, ya, -d, 0, sh, -1, 0, true), vert(ua, yb, -d, 0, sh, -1, 0, true), vert(ua, yb, d, 0, sh, -1, 0, true), vert(ua, ya, d, 0, sh, -1, 0, true), false);
+        quad(stud, vert(ub, ya, -d, 0, sh, 1, 0, true), vert(ub, ya, d, 0, sh, 1, 0, true), vert(ub, yb, d, 0, sh, 1, 0, true), vert(ub, yb, -d, 0, sh, 1, 0, true), false);
+        // End grain where the stick meets a hole above or below it.
+        quad(stud, vert(ua, ya, -d, 0, sh * 0.8, 0, -1, true), vert(ua, ya, d, 0, sh * 0.8, 0, -1, true), vert(ub, ya, d, 0, sh * 0.8, 0, -1, true), vert(ub, ya, -d, 0, sh * 0.8, 0, -1, true), false);
+        quad(stud, vert(ua, yb, -d, 0, sh * 0.8, 0, 1, true), vert(ub, yb, -d, 0, sh * 0.8, 0, 1, true), vert(ub, yb, d, 0, sh * 0.8, 0, 1, true), vert(ua, yb, d, 0, sh * 0.8, 0, 1, true), false);
+        stud.push(...stud.slice(-24).reverse());
+      };
+      for (let su = Math.ceil((p.u0 + 0.05) / STUD_PITCH) * STUD_PITCH; su < p.u0 + p.cols * CELL - 0.05; su += STUD_PITCH) {
+        const c = Math.floor((su - p.u0) / CELL);
+        for (let r = 0; r < p.rows; r++) {
+          if (!cell(c, r) || !near(c, r)) continue;
+          // A stud piece within its cell (stopping short of the cell's edges, so it never reaches into open cells).
+          const y0 = p.y0 + r * CELL, ua = Math.max(su - STUD / 2, p.u0 + c * CELL), ub = Math.min(su + STUD / 2, p.u0 + (c + 1) * CELL);
+          timber(ua, ub, y0, y0 + CELL);
+          studs.push({ c, r });
+        }
+      }
+      const nr = Math.floor((NOGGIN - p.y0) / CELL);
+      if (nr >= 0 && nr < p.rows) for (let c = 0; c < p.cols; c++) {
+        if (!cell(c, nr) || !near(c, nr)) continue;
+        const y = p.y0 + nr * CELL + CELL / 2, u0 = p.u0 + c * CELL;
+        timber(u0, u0 + CELL, y - STUD / 2, y + STUD / 2);
+        studs.push({ c, r: nr });
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex([...face, ...edge, ...stud]);
+  // An undamaged panel is a single draw call; damage adds edges and, for plasterboard, the studs.
+  g.addGroup(0, face.length, 0);
+  if (edge.length) g.addGroup(face.length, edge.length, 1);
+  if (stud.length) g.addGroup(face.length + edge.length, stud.length, 2);
+  g.computeBoundingSphere();
+  return { geometry: g, studs };
+}
+
 export class PanelView {
   readonly mesh: THREE.Mesh;
   private version = -1;
   constructor(readonly panel: Panel, private bake: Bake, private mats: PanelMaterials, private look: PanelLook | null = null) {
-    this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), [mats.wall, mats.core]);
+    this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), [mats.wall, mats.core, mats.planks]);
     this.mesh.matrixAutoUpdate = false;
     this.mesh.frustumCulled = true;
   }
-  /** Rebuilds the mesh if the panel changed. Returns true when it did. */
+  /** Rebuilds the mesh if the panel changed. Returns true when it did.
+   *
+   * A plasterboard wall is two 12.5 mm skins with a cavity and timber studs at 600 mm centres (a noggin at 1.2 m).
+   * Damage shows as torn holes: corners on a hole's rim are pushed out into the hole by a fixed, position-seeded
+   * amount, so outlines are ragged but nothing visible ever intrudes into a gap the simulation says is open. Studs
+   * exist only in intact cells, so they go with the cells around them. Barricades (planks) and plates stay solid. */
   sync(): boolean {
     const p = this.panel;
     if (p.version === this.version) return false;
     this.version = p.version;
     this.mesh.visible = p.intact > 0;
     if (!p.intact) return true;
-    const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [], face: number[] = [], edge: number[] = [];
-    const plate = p.reinforced, wood = p.kind !== 'wall', half = (plate ? 0.2 : wood ? 0.07 : PANEL_T) / 2;
-    const look = this.look, tile = plate ? TILE.plate : wood ? look?.plankTile ?? TILE.planks : look ? look.tile : TILE.drywall, alongX = p.axis === 'x';
-    const vert = (u: number, y: number, off: number, n: number, tu: number, tv: number, shade: number) => {
-      const w = panelPoint(p, u, y, off);
-      const l = look?.light(Math.round((u - p.u0) / CELL), Math.round((y - p.y0) / CELL), n) ?? this.bake.light(w.x, w.y, w.z, alongX ? 0 : n, 0, alongX ? n : 0);
-      pos.push(w.x, w.y, w.z); uv.push(tu, tv); col.push(l[0] * shade, l[1] * shade, l[2] * shade);
-      if (alongX) nor.push(0, n ? 0 : 1, n); else nor.push(n, n ? 0 : 1, 0);
-      return pos.length / 3 - 1;
-    };
-    // Front and back: runs of intact cells along each row become one quad each.
-    const quad = (list: number[], a: number, b: number, c: number, d: number, flip: boolean) => { if (flip) list.push(a, d, c, a, c, b); else list.push(a, b, c, a, c, d); };
-    for (let r = 0; r < p.rows; r++) {
-      let start = -1;
-      for (let c = 0; c <= p.cols; c++) {
-        const on = c < p.cols && (plate || p.cells[r * p.cols + c] === 1);
-        // Runs also end every half metre, so every row shares the same columns of lit vertices.
-        if (on) { if (start < 0) { start = c; continue; } if (c % 2 !== 0) continue; }
-        if (start < 0) continue;
-        const u0 = p.u0 + start * CELL, u1 = p.u0 + c * CELL, y0 = p.y0 + r * CELL, y1 = y0 + CELL;
-        for (const n of [1, -1]) {
-          const a = vert(u0, y0, half * n, n, u0 / tile[0], y0 / tile[1], 1), b = vert(u1, y0, half * n, n, u1 / tile[0], y0 / tile[1], 1);
-          const cc = vert(u1, y1, half * n, n, u1 / tile[0], y1 / tile[1], 1), d = vert(u0, y1, half * n, n, u0 / tile[0], y1 / tile[1], 1);
-          // Seen from its front, an along-X face runs left to right as u rises; an along-Z face as u falls.
-          quad(face, a, b, cc, d, alongX ? n < 0 : n > 0);
-        }
-        start = on ? c : -1;
-      }
-    }
-    // Broken edges: wherever an intact cell borders an open one, close the wall's thickness.
-    if (!plate) {
-      const at = (c: number, r: number) => c >= 0 && r >= 0 && c < p.cols && r < p.rows && p.cells[r * p.cols + c] === 1;
-      const shade = wood ? 0.55 : 0.8;
-      for (let r = 0; r < p.rows; r++) for (let c = 0; c < p.cols; c++) {
-        if (!p.cells[r * p.cols + c]) continue;
-        const u0 = p.u0 + c * CELL, u1 = u0 + CELL, y0 = p.y0 + r * CELL, y1 = y0 + CELL;
-        const strip = (ua: number, ya: number, ub: number, yb: number) => {
-          const a = vert(ua, ya, -half, 0, 0, 0, shade), b = vert(ub, yb, -half, 0, 1, 0, shade), cc = vert(ub, yb, half, 0, 1, 0.4, shade), d = vert(ua, ya, half, 0, 0, 0.4, shade);
-          edge.push(a, b, cc, a, cc, d, a, cc, b, a, d, cc);
-        };
-        if (c > 0 && !at(c - 1, r)) strip(u0, y0, u0, y1);
-        if (c < p.cols - 1 && !at(c + 1, r)) strip(u1, y0, u1, y1);
-        if (r > 0 && !at(c, r - 1)) strip(u0, y0, u1, y0);
-        if (r < p.rows - 1 && !at(c, r + 1)) strip(u0, y1, u1, y1);
-      }
-    }
-    const g = this.mesh.geometry;
-    g.dispose();
-    const ng = new THREE.BufferGeometry();
-    ng.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    ng.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-    ng.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    ng.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    ng.setIndex([...face, ...edge]);
-    // An undamaged panel is a single draw call; broken edges add a second.
-    ng.addGroup(0, face.length, 0);
-    if (edge.length) ng.addGroup(face.length, edge.length, 1);
-    ng.computeBoundingSphere();
-    this.mesh.geometry = ng;
-    const planks = look?.planks ?? this.mats.planks;
-    this.mesh.material = [plate ? this.mats.plate : wood ? planks : look ? look.wall : this.mats.wall, wood ? planks : this.mats.core];
+    const geo = panelGeometry(p, this.look, (u, y, off, n) => {
+      const w = panelPoint(p, u, y, off), alongX = p.axis === 'x';
+      return this.look?.light(Math.round((u - p.u0) / CELL), Math.round((y - p.y0) / CELL), n) ?? this.bake.light(w.x, w.y, w.z, alongX ? 0 : n, 0, alongX ? n : 0);
+    });
+    this.mesh.geometry.dispose();
+    this.mesh.geometry = geo.geometry;
+    const look = this.look, planks = look?.planks ?? this.mats.planks, plate = p.reinforced, wood = p.kind !== 'wall';
+    this.mesh.material = [plate ? this.mats.plate : wood ? planks : look ? look.wall : this.mats.wall, wood ? planks : look ? look.wall : this.mats.core, planks];
     return true;
   }
   dispose() { this.mesh.geometry.dispose(); }

@@ -27,8 +27,10 @@ export interface ArtWorld {
   group: THREE.Group;
   claim: Claim;
   panelLook(index: number): PanelLook | null;
-  /** Fits the environment probes once the group is in a scene. */
-  capture(renderer: THREE.WebGLRenderer, scene: THREE.Scene): void;
+  /** Captures the next room's reflection probe (one per call, so no single frame stalls). True when all are done. */
+  captureNext(renderer: THREE.WebGLRenderer, scene: THREE.Scene): boolean;
+  /** Compiles every shader the art needs (in parallel where the browser can), so its first frame does not stall. */
+  warm(renderer: THREE.WebGLRenderer, camera: THREE.Camera, scene: THREE.Scene, samples: number): Promise<void>;
   stats: { triangles: number; meshes: number; textureBytes: number };
   readonly envReady: boolean;
   /** The reflection probe for the room containing (x, z), or null. */
@@ -77,7 +79,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
 
   const looks = new Map<number, PanelLook>();
   /** Per room: the materials its reflection probe lights, its mean baked light, its probe once captured. */
-  const rooms = REGIONS.map(() => ({ envLights: [] as THREE.MeshStandardMaterial[], envLight: 1, env: null as THREE.WebGLRenderTarget | null, props: [] as number[][] }));
+  const rooms = REGIONS.map(() => ({ envLights: [] as THREE.MeshStandardMaterial[], envLight: 1, env: null as THREE.WebGLRenderTarget | null, captured: false, props: [] as number[][] }));
   /** Panel corner light from every room's bake (a wall between two art rooms is listed by both, one side each). */
   const tables = new Map<number, { t: Map<number, Float32Array>; wall: THREE.Material; planks: THREE.Material; tile: readonly [number, number] }>();
   const roomAt = (x: number, z: number) => REGIONS.findIndex(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
@@ -117,6 +119,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     {
       const printed = { sign: safetySign(), clock: clockFace(), exit: exitSign(), fire: fireSign() };
       disposers.push(() => { for (const t of Object.values(printed)) t.dispose(); });
+      const tDress = performance.now();
       const D = dressRoom(atlas, region), [bm, bn, ba] = await set('blue_metal_plate', TEX_SIZE[tier]), [pm, pn, pa] = await set('painted_plaster_wall', TEX_SIZE[tier]);
       const plain = (color: [number, number, number], roughness: number, metalness: number) => ({ map: null, normalMap: null, armMap: null, color: new THREE.Color(...color), roughness, metalness });
       const looks: Record<DressKey, Parameters<typeof artMaterial>[0]> = {
@@ -157,6 +160,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:dress:${key}`;
         group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
       }
+      if (dbg.includes('timing')) console.warn(`art timing: ${region.name} dressing ${(performance.now() - tDress).toFixed(0)} ms`);
       if (merged.index.length) {
         const mat = artMaterial({ map: null, lightMap, lightScale: info.scale, dirMap, vertexTint: true, roughness: 0.6, metalness: 0 });
         const g = geometry(merged), mesh = new THREE.Mesh(g, mat);
@@ -218,6 +222,18 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   let triangles = 0, meshes = 0;
   group.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) { meshes++; const g = m.geometry; triangles += (g.index ? g.index.count : g.attributes.position.count) / 3; } });
 
+  // Until a room's probe is captured its materials hold a black stand-in of the same size, so the shader they compile
+  // with is the one they keep: swapping in the real probe is then a uniform change, not a recompile mid-match.
+  // 128 texels a face is plenty for the semi-gloss surfaces that reflect it, and quarter the cost of 256.
+  const probeSize = 128;
+  let standIn: THREE.WebGLRenderTarget | null = null, disposedArt = false;
+  if (full && !dbg.includes('noenv')) {
+    const pmrem = new THREE.PMREMGenerator(renderer), blank = new THREE.WebGLCubeRenderTarget(probeSize, { type: THREE.HalfFloatType });
+    standIn = pmrem.fromCubemap(blank.texture);
+    blank.dispose(); pmrem.dispose();
+    for (const room of rooms) for (const m of room.envLights) { m.envMap = standIn.texture; m.needsUpdate = true; }
+  }
+
   const claimFaces: Claim = f => { let left: FaceRec[] = [f]; REGIONS.forEach((r, i) => { if (loaded[i]) left = left.flatMap(g => splitFace(g, r).outside); }); return left; };
   return {
     group, claim: claimFaces, stats: { triangles, meshes, textureBytes: L.bytes },
@@ -225,29 +241,77 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     get envReady() { return rooms.some(r => r.env !== null); },
     environmentScale(x, z) { const r = roomAt(x, z); return r >= 0 && rooms[r].env ? 1 / Math.max(0.05, rooms[r].envLight) : 1; },
     environment(x, z) { const r = roomAt(x, z); return r >= 0 ? rooms[r].env?.texture ?? null : null; },
-    capture(renderer, scene) {
-      if (!full || dbg.includes('noenv')) return;
+    captureNext(renderer, scene) {
+      if (!full || dbg.includes('noenv')) return true;
+      const i = loaded.findIndex((ok, k) => ok && !rooms[k].env && !rooms[k].captured);
+      if (i < 0) return true;
+      rooms[i].captured = true;
       // One reflection probe per room, from its middle at eye height, projected onto the room's box so reflections
       // line up from anywhere in it. The game renders with autoClear off; a fresh cube's depth starts at 0, so clear.
-      const auto = renderer.autoClear, target = renderer.getRenderTarget(), pmrem = new THREE.PMREMGenerator(renderer);
+      const r = REGIONS[i], auto = renderer.autoClear, target = renderer.getRenderTarget(), pmrem = new THREE.PMREMGenerator(renderer);
       renderer.autoClear = true;
-      REGIONS.forEach((r, i) => {
-        if (!loaded[i]) return;
-        const cube = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType }), cam = new THREE.CubeCamera(0.05, 60, cube);
-        cam.position.set((r.x0 + r.x1) / 2, 1.6, (r.z0 + r.z1) / 2);
-        cam.update(renderer, scene);
-        rooms[i].env = pmrem.fromCubemap(cube.texture);
-        cube.dispose();
-        for (const m of rooms[i].envLights) {
-          const u = m.userData.art;
-          if (!dbg.includes('nobox')) { u.artBoxMin.value.set(r.x0, 0, r.z0); u.artBoxMax.value.set(r.x1, WALL_H, r.z1); u.artProbe.value.copy(cam.position); }
-          m.envMap = rooms[i].env!.texture; m.needsUpdate = true;
-        }
-      });
-      pmrem.dispose();
+      const cube = new THREE.WebGLCubeRenderTarget(probeSize, { type: THREE.HalfFloatType }), cam = new THREE.CubeCamera(0.05, Math.hypot(r.x1 - r.x0, WALL_H, r.z1 - r.z0) + 1, cube);
+      cam.position.set((r.x0 + r.x1) / 2, 1.6, (r.z0 + r.z1) / 2);
+      cam.update(renderer, scene);
+      rooms[i].env = pmrem.fromCubemap(cube.texture);
+      cube.dispose(); pmrem.dispose();
       renderer.autoClear = auto; renderer.setRenderTarget(target);
+      for (const m of rooms[i].envLights) {
+        const u = m.userData.art;
+        if (!dbg.includes('nobox')) { u.artBoxMin.value.set(r.x0, 0, r.z0); u.artBoxMax.value.set(r.x1, WALL_H, r.z1); u.artProbe.value.copy(cam.position); }
+        m.envMap = rooms[i].env!.texture;
+      }
+      return !loaded.some((ok, k) => ok && !rooms[k].captured);
+    },
+    async warm(renderer, camera, scene, samples) {
+      const tick = () => new Promise(res => setTimeout(res, 0));
+      // Shader variants depend on the target drawn to: the game draws into a linear half-float buffer (as do the
+      // probes), not the tone-mapped screen, so compile against one like it.
+      const prev = renderer.getRenderTarget(), hdr = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true, samples });
+      try {
+        renderer.setRenderTarget(hdr);
+        const done = renderer.compileAsync(group, camera, scene);
+        renderer.setRenderTarget(prev);
+        await done;
+        // Upload the textures one per task, so the first frames that see them do not upload them all at once.
+        const textures = new Set<THREE.Texture>();
+        const add = (m: THREE.Material) => { for (const v of Object.values(m)) if ((v as THREE.Texture | null)?.isTexture && !(v as THREE.WebGLRenderTarget['texture'] & { isRenderTargetTexture?: boolean }).isRenderTargetTexture) textures.add(v as THREE.Texture); };
+        materials.forEach(add);
+        const all: THREE.Mesh[] = [];
+        group.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.isMesh) { all.push(mesh); ([] as THREE.Material[]).concat(mesh.material).forEach(add); } });
+        for (const t of textures) { if (disposedArt) return; renderer.initTexture(t); await tick(); }
+        // Then draw every mesh once into the small buffer, a few thousand triangles per task: the first draw is what
+        // uploads a mesh's buffers (and, on some drivers, finishes its pipeline), and doing all of that in the first
+        // frame that shows the art would freeze it for seconds.
+        const shown = all.map(m => m.visible), culled = all.map(m => m.frustumCulled), auto = renderer.autoClear;
+        const tris = (m: THREE.Mesh) => (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3;
+        let batches = 0;
+        try {
+          for (let i = 0; i < all.length;) {
+            if (disposedArt) return;
+            for (const m of all) m.visible = false;
+            for (let n = 0; i < all.length && n < 8000; i++) { all[i].visible = true; all[i].frustumCulled = false; n += tris(all[i]); }
+            // The art joins the scene only for this draw (it is not live yet), and leaves it before the game's frame.
+            const parent = group.parent;
+            scene.add(group); renderer.autoClear = true; renderer.setRenderTarget(hdr);
+            renderer.render(scene, camera);
+            renderer.setRenderTarget(prev); renderer.autoClear = auto;
+            if (parent) parent.add(group); else scene.remove(group);
+            batches++;
+            await tick();
+          }
+        } finally {
+          all.forEach((m, i) => { m.visible = shown[i]; m.frustumCulled = culled[i]; });
+        }
+        if (dbg.includes('timing')) console.warn(`art timing: warm drew ${all.length} meshes in ${batches} batches, ${textures.size} textures`);
+      } finally {
+        renderer.setRenderTarget(prev);
+        hdr.dispose();
+      }
     },
     dispose() {
+      disposedArt = true;
+      standIn?.dispose();
       for (const m of materials) m.dispose();
       for (const g of geometries) g.dispose();
       group.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) m.geometry.dispose(); });

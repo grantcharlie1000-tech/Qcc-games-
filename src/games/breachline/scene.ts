@@ -47,6 +47,13 @@ export interface BreachScene {
 }
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
+/** True when WebGL is drawn by a CPU rasteriser (SwiftShader, llvmpipe), as on a machine with no usable GPU. */
+function softwareGL(renderer: THREE.WebGLRenderer): boolean {
+  const gl = renderer.getContext(), info = gl.getExtension('WEBGL_debug_renderer_info');
+  const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '');
+  return /swiftshader|llvmpipe|softpipe|software/i.test(name);
+}
+
 export function createScene(canvas: HTMLCanvasElement, initial: QualityId): BreachScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: initial === 'high', powerPreference: 'high-performance', stencil: false, alpha: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -70,7 +77,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   // The asset renderer's rooms draw first, in a scene with no run-time lights (their light is baked).
   const artScene = new THREE.Scene();
   artScene.fog = scene.fog;
-  let art: ArtWorld | null = null, disposed = false;
+  let art: ArtWorld | null = null, disposed = false, probesDone = true;
   const panelMats: PanelMaterials = { wall: materials.drywall, core: materials.core, planks: materials.planks, plate: materials.plate };
   const panelGroup = new THREE.Group(); scene.add(panelGroup);
   let world: World | null = null, panels: PanelView[] = [];
@@ -82,15 +89,30 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   // Photo-sourced rooms stream in after the first frame; until then, and if anything fails, the procedural look stays.
   const artOff = typeof location !== 'undefined' && /[?&]art=off\b/.test(location.search);
   if (!artOff) {
-    loadArtWorld(renderer, initial === 'low' || /[?&]arttier=low\b/.test(location.search) ? 'low' : 'high', textures, () => {}).then(a => {
+    // A software rasteriser (no usable GPU) gets the light art tier, the same as the Low setting: the full one costs it
+    // seconds of CPU while it streams in. `?arttier=` forces either, for evidence renders.
+    const forced = /[?&]arttier=(low|high)\b/.exec(location.search)?.[1];
+    const artTier = forced ?? (initial === 'low' || softwareGL(renderer) ? 'low' : 'high');
+    loadArtWorld(renderer, artTier as 'low' | 'high', textures, () => {}).then(a => {
+      if (disposed) { a.dispose(); return; }
+      // Compile the art's shaders before it joins the scene, so the frame that first draws it does not freeze.
+      const tW = performance.now();
+      return a.warm(renderer, camera, artScene, post.tier === 'high' ? 4 : 0).catch(() => {}).then(() => {
+        if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: warm ${(performance.now() - tW).toFixed(0)} ms`);
+        return a;
+      });
+    }).then(a => {
+      if (!a) return;
       if (disposed) { a.dispose(); return; }
       art = a;
+      const tI = performance.now();
       scene.remove(level.group);
       level.group.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.isMesh) mesh.geometry.dispose(); });
       level = buildLevel(bake, materials, a.claim);
       scene.add(level.group);
       artScene.add(a.group);
-      a.capture(renderer, artScene);
+      if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: integrate ${(performance.now() - tI).toFixed(0)} ms`);
+      probesDone = false;
       stats.level = level.triangles + a.stats.triangles;
       if (world) bind(world);
     }).catch(e => { console.warn('Breachline art unavailable; using the procedural look.', e); });
@@ -328,6 +350,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       // Resolution changes resize (and so clear) the canvas: do them before drawing, never after, or the frame
       // just drawn is lost and the screen flashes empty.
       if (dt > 0) adapt(view.dt);
+      // Reflection probes are captured one room per frame after the art arrives, so no single frame stalls.
+      if (art && !probesDone) { const t = performance.now(); probesDone = art.captureNext(renderer, artScene); if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: probe ${(performance.now() - t).toFixed(0)} ms`); }
       time += dt;
       if (view.m.world !== world) bind(view.m.world);
       for (const p of panels) p.sync();

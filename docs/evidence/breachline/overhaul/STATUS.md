@@ -9,7 +9,39 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** Archive round 1 done (`rooms/archive/round-1/`); next the destruction look (phase 5).
+**Where I am (keep current):** destruction round 1 done (`destruction/round-1/`) and the online test green again;
+next phase 5 debris, dust and decals, then the Server Room.
+
+## Phase 5: destruction look, round 1 (`destruction/round-1/`)
+
+Soft-wall panels are now built as a real partition: two plaster skins (12.5 mm) with a cavity, timber studs every
+0.6 m and a noggin at 1.2 m, standing only in cells that are still intact (so nothing visible blocks a passable gap;
+`tests/games/breachline/panelgeo.test.ts` checks it). Hole edges tear back into the intact board by a hashed amount
+instead of following the cell grid, and the cut edges and cavity faces take the panel's own baked corner light.
+Bookmarks `shot-wall` (a magazine through the Lab's south wall), `breach`, `breach-lab`, `breach-close` (after a charge).
+
+Mismatches against the bar, for round 2: (1) torn edges are clean straight polygons with no paper fringe or crumbled
+gypsum; (2) no debris left on the floor and no lingering dust after a breach; (3) the cut edge has the face's albedo,
+where real board shows a grey gypsum core between paper liners; (4) no bullet decals on the intact plaster around the
+holes; (5) the far skin's studs read weakly through a hole (little light reaches the cavity); (6) on Low the breach
+smoke hides the hole for several seconds (existing effect; fine for play, but the look can't be judged there).
+
+J score (mine): 3 -> 5. Budgets in the breach views: High 63k-73k triangles, 107-136 draw calls; Low 67k-75k, 99-108.
+
+### Art streaming no longer stalls a match (online test)
+
+The two-device online test had failed since the corridor commit: when the art arrived mid-match, the guest's frame
+froze for 2-4 s (in software GL), and after the stall the guest's wall holes reset to none (a resync issue in the
+netcode, reported to the planner; off limits here). Measured with long-task timings, the freezes were the reflection
+probes (2 s, all three in one frame), first-draw shader variants, texture uploads and buffer uploads. Now: the art's
+shaders are compiled before it goes live, against a half-float target like the game's (the screen variant was the
+wrong one); materials hold a black stand-in probe of the same size, so the real probe is a uniform swap, not a
+recompile; textures upload one per task; every mesh is drawn once into a 4x4 target, about 8k triangles per task;
+probes are captured one room per frame at 128 px with a far plane fitted to the room. And a software rasteriser
+(SwiftShader, llvmpipe) now gets the Low art tier, the owner's last-resort mode; `?arttier=high` forces High for
+evidence renders (the bookmark script passes it). With that, `breachline-online.spec.ts` passes; with High art on
+two software-GL browsers sharing one CPU it still timed out on the hit check (each poll waited seconds for the CPU).
+
 
 ## Roll-out step 3: Archive (site B)
 
@@ -286,7 +318,7 @@ material family, fallback) is proven, which is what this gate exists to decide, 
 | G Dynamic shadow | 1 | 1 | Unchanged (phase 8). |
 | H Post-processing | 2 | 2 | Unchanged: tone mapping only (phase 1 skeleton, phase 8). |
 | I Effects | 2 | 2 | Unchanged (phase 8). |
-| J Destruction look | 3 | 3 | Unchanged (phase 5); Lab panels now share the room's material and baked light. |
+| J Destruction look | 3 | 3 -> **5** (destruction round 1) | `destruction/round-1/breach-close-high.png`, `shot-wall-high.png`: two skins, cavity, studs and noggins, torn edges; no debris, dust or decals yet. |
 
 Scores for A-D are for the Lab; elsewhere the map is still at baseline.
 
