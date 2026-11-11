@@ -6,6 +6,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import type { WeaponId } from '../../../config';
 import { heroMaterial } from '../material';
 import { heroReady } from '../geom';
+import { reloadFrame } from '../reload';
 import { WEAPON_BONES, census, weaponModel } from '../weapons';
 import { DEFAULT_LOOK, POSE, createFpRig, holdFor, type FpRig } from '../rig';
 
@@ -65,7 +66,7 @@ const api = {
 
   /** First person: the camera at the eye, the weapon at the hip (ads 0) or aimed (ads 1). Or, with orbit, the same
    * pose seen from outside (yaw/pitch degrees around the weapon). */
-  fp(id: WeaponId, o: { ads?: number; orbit?: boolean; yaw?: number; pitch?: number; dist?: number; fov?: number; at?: [number, number, number] } = {}) {
+  fp(id: WeaponId, o: { ads?: number; orbit?: boolean; yaw?: number; pitch?: number; dist?: number; fov?: number; at?: [number, number, number]; reload?: number; empty?: boolean } = {}) {
     clear(); size();
     const t0 = performance.now(), r = getRig();
     if (r.weapon.id !== id) r.setWeapon(id);
@@ -73,7 +74,9 @@ const api = {
     stage.position.set(0, 0, 0); stage.add(r.root);
     const H = holdFor(id).hip, az = holdFor(id).adsZ;
     r.gun.position.set(H.p[0] * (1 - a), H.p[1] * (1 - a), H.p[2] + (az - H.p[2]) * a); r.gun.rotation.set(H.r[0] * (1 - a), H.r[1] * (1 - a), H.r[2] * (1 - a));
-    const t1 = performance.now(); r.solve(); const solveMs = performance.now() - t1;
+    const f = o.reload !== undefined ? reloadFrame(id, o.reload, !!o.empty) : undefined;
+    if (f) { r.gun.position.x += f.gunP[0]; r.gun.position.y += f.gunP[1]; r.gun.position.z += f.gunP[2]; r.gun.rotation.x += f.gunR[0]; r.gun.rotation.y += f.gunR[1]; r.gun.rotation.z += f.gunR[2]; }
+    const t1 = performance.now(); r.solve(f); const solveMs = performance.now() - t1;
     if (o.orbit) {
       const yaw = THREE.MathUtils.degToRad(o.yaw ?? 60), pitch = THREE.MathUtils.degToRad(o.pitch ?? 10), d = o.dist ?? 1.1;
       const c = o.at ? r.gun.localToWorld(new THREE.Vector3(...o.at)) : new THREE.Vector3(0.05, -0.2, -0.3);

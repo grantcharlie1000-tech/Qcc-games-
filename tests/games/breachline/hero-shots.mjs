@@ -38,6 +38,12 @@ if (job === 'turntable') {
     if (name === 'hip') console.log(id, JSON.stringify(r));
     await shot(`fp-${id}-${name}`);
   }
+} else if (job === 'reload') {
+  const [id, kind = 'tactical'] = args;
+  for (let i = 0; i < 8; i++) {
+    await page.evaluate(([id, t, e]) => window.__breachlineHero.fp(id, { reload: t, empty: e }), [id, (i + 0.5) / 8, kind === 'empty']);
+    await shot(`reload-${id}-${kind}-${i}`);
+  }
 } else if (job === 'eval') {
   console.log(JSON.stringify(await page.evaluate(args[0])));
   await shot(args[1] ?? 'eval');

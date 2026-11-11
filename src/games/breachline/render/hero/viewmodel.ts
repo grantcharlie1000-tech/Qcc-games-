@@ -44,7 +44,7 @@ const KICK: Record<WeaponId, { back: number; rise: number; yaw: number; roll: nu
 };
 
 export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: HeroLighting): Viewmodel {
-  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(54, 16 / 9, 0.01, 5);
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(54, 16 / 9, 0.04, 5);
   const hemi = new THREE.HemisphereLight(0xffffff, 0x6a645c, 0.6), key = new THREE.DirectionalLight(0xffffff, 1.4), fill = new THREE.DirectionalLight(0xc8d4ff, 0.35);
   scene.add(hemi, key, fill);
   const holder = new THREE.Group(); scene.add(holder);

@@ -44,14 +44,14 @@ function magReload(t: number, B: Record<string, number[]>, empty: boolean, pisto
   // The weapon rolls toward the support hand and tips up for the swap, then settles.
   const tilt = ease(t, 0, r) * (1 - ease(t, empty ? k + 0.04 : s + 0.06, end));
   if (pistol) { f.gunP = [-0.05 * tilt, 0.035 * tilt, 0.03 * tilt]; f.gunR = [0.32 * tilt, 0.25 * tilt, 0.15 * tilt]; }
-  else { f.gunP = [-0.06 * tilt, 0.07 * tilt, 0.03 * tilt]; f.gunR = [0.22 * tilt, 0.28 * tilt, -0.5 * tilt]; }
+  else { f.gunP = [-0.07 * tilt, 0.03 * tilt, -0.03 * tilt]; f.gunR = [0.36 * tilt, 0.05 * tilt, -0.55 * tilt]; }
   // Seating knocks the weapon up a little.
   const knock = pulse(t, s, s + 0.06);
   f.gunR[0] += 0.06 * knock; f.gunP[1] += 0.008 * knock;
   // Magazine path: out along its axis, away and down out of view; back up from below, aligned, in short, seated.
   const drop = ease(t, o, o + (fe - o) * 0.7), rise = ease(t, fe, i - 0.05), insert = ease(t, i - 0.05, i), slam = ease(t, i + (s - i) * 0.5, s);
   const draw = ease(t, r, o);
-  let y = -0.085 * draw, z = 0, rx = 0, rz = 0, x = 0;
+  let y = -0.1 * draw, z = 0, rx = 0, rz = 0, x = 0;
   if (t >= o && t < fe) { y += -0.4 * drop; x = -0.12 * drop; z = 0.08 * drop; rz = 0.7 * drop; rx = -0.5 * drop; }
   if (t >= fe) {
     const away = 1 - rise;
@@ -82,7 +82,7 @@ function magReload(t: number, B: Record<string, number[]>, empty: boolean, pisto
 function shellReload(t: number, B: Record<string, number[]>, f: ReloadFrame) {
   const shells = B.shell ?? [], pump = B.pump?.[0];
   const tilt = ease(t, 0, 0.1) * (1 - ease(t, 0.9, 1));
-  f.gunP = [-0.05 * tilt, 0.02 * tilt, 0.02 * tilt]; f.gunR = [0.12 * tilt, 0.15 * tilt, 0.85 * tilt];
+  f.gunP = [-0.06 * tilt, 0.03 * tilt, -0.03 * tilt]; f.gunR = [0.3 * tilt, 0.05 * tilt, -0.75 * tilt];
   f.off = ease(t, 0, 0.06) * (1 - ease(t, 0.92, 1));
   let shell = 0, shellIn = 0, onShell = 0;
   for (const at of shells) {

@@ -26,6 +26,7 @@ change of 2026-11-11 ("Fighters split out"), fighters and row F belong to the fi
 | Round | E | F | Evidence |
 | --- | --- | --- | --- |
 | Baseline | 1 | 1 | `docs/evidence/breachline/05-breach.png`, `overhaul/phase-0/lab-bench-high.png`: about 30 boxes, slab arms, a blue block for a wrist band; fighters are six rigid box groups |
+| r3 | 5 | — | `r3/game-*-hip-ads.png` (AR, Halden, Corvin, P-11 in the Lab and corridor under the real light), `r3/game-*-reload-*.png`, `r3/studio-reload-*.png`, `r3/studio-ar-reload-insert-closeup.png`. Reloads now read on screen: the rifle tips up and cants so the magazine well comes into view and the support hand is seen seating a magazine; the shotgun shuttles red shells from the side saddle into the port; the pistol's support hand comes over the top to rack. The shotgun's aimed view now shows the ghost ring and the glowing front post centred. Still 5, not higher: surfaces are clean but plain next to MW2's textured guns (no markings, no normal-mapped detail, little colour variation); gloves are soft lumps at close range, worst in the pistol's aimed grip; the support hand takes an odd path back after the AR's tactical reload; the magazine is out of view while it is being fetched. |
 | r2 | 5 | 1 | `r2/*-turntable.png`, `r2/*-fp-hip-ads-orbits.png`. All six weapons now exist as distinct designs with their own sights (tube dot, holographic with ring reticle, mini reflex, ghost ring with bead, variable scope, three-dot irons), all held by the gloved hands within budget. Why only 5: weapons are clean but plain (flat panels, little surface break-up, no markings); in-hand frames only checked in the studio for five of the six; pistol hands look like mittens at aimed range; magazine changes are still largely off-screen. |
 | r1 | 4 | 1 | `r1/ar-game-hip-ads.png`, `r1/ar-turntable-*.png`, `r1/ar-reload-*-strip.png`. The AR-5 is a real rifle shape with bevelled parts, a slotted handguard, a rail, an optic, edge wear and cavity AO, and gloved five-finger hands hold it. Why only 4: five of six weapons are still missing; in the reload the magazine is mostly out of frame; the gloves read soft and lumpy at close range; the hip pose crowds the right edge; the materials are flat under the game's light. F is unchanged. |
 
@@ -82,6 +83,17 @@ plates with triple magazine pouches, boots with about 0.03 m soles.
    `RoundedBoxGeometry` replaced with filleted extrusions, so flats stay flat.
 6. Blotchy AO from self-hits → finer voxels (1/320 of the size), larger normal offset.
 7. Ejection port was a slab stuck on → flush dark port, a hinge rod, a dust-cover lip and the bolt carrier in it.
+
+**Reloads and in-game, round 3:**
+1. The magazine change was below the frame edge → the rifle pitches up (muzzle up about 20°) and cants instead of
+   lifting (lifting brought the stock into the lens).
+2. The shotgun reload rolled the wrong way and hid the loading port → the same tip-and-cant as the rifles.
+3. The in-game script picked no kit (it held the digit before the menu took input) → it presses the key, so the
+   shotgun, DMR and pistol are now shown in the game.
+4. The shotgun's aimed view was half stock → sights raised to a 46 mm sight height (a ramped front post with a tritium
+   dot, a ghost ring on a block) and the eye moved back to 0.2 m; the view camera's near plane is now 4 cm.
+5. `worldWeapon` lower levels were 2–7k triangles → bevels, holes and fillet arcs dropped below level 0, parts under
+   4 mm (level 1) or 9 mm (level 2) culled, rail teeth merged into one strip.
 
 **Five new weapons, rounds 1–2:**
 1. The studio showed spent casings and the loading shell → hidden bones are scaled to zero.

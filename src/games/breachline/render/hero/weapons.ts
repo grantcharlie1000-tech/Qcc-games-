@@ -451,7 +451,7 @@ function wren9(lod: number): Omit<WeaponModel, 'id'> {
 // ---- Halden 12: pump shotgun, wood furniture ----------------------------------------------------------------
 
 function halden12(lod: number): Omit<WeaponModel, 'id'> {
-  const b = new Builder(lod), B = -0.032, steel = SURF.park, wood = SURF.wood;
+  const b = new Builder(lod), B = -0.046, steel = SURF.park, wood = SURF.wood;
   // Receiver: a tall flat-sided steel box with a loading port underneath and an ejection port on the right.
   b.prism(fillet([[0.004, B - 0.04], [0.004, B + 0.012], [-0.012, B + 0.018], [-0.2, B + 0.018], [-0.2, B - 0.04]], [0, 0.006, 0.008, 0.004, 0.004]), 0.036, steel, { bevel: 0.002 });
   b.box([0.0012, 0.022, 0.07], [0.0186, B, -0.1], surf(steel, { color: 0x0a0a0a }), 0);
@@ -461,14 +461,15 @@ function halden12(lod: number): Omit<WeaponModel, 'id'> {
   b.box([0.004, 0.034, 0.1], [-0.02, B - 0.012, -0.1], SURF.poly, 0.0015);
   for (let i = 0; i < 4; i++) { b.cyl(0.0105, 0.05, 'y', [-0.033, B - 0.012, -0.065 - i * 0.024], surf(SURF.poly, { color: 0x7a1c16, rough: 0.5 }), 12); b.cyl(0.0108, 0.01, 'y', [-0.033, B - 0.042, -0.065 - i * 0.024], SURF.brass, 12); }
   // Ghost-ring rear sight on the receiver.
-  b.box([0.024, 0.008, 0.014], [0, B + 0.022, -0.01], steel, 0.002);
-  for (const sx of [-1, 1]) b.box([0.004, 0.022, 0.01], [sx * 0.009, B + 0.03, -0.01], steel, 0.0015);
+  b.prism(fillet([[0.004, B + 0.017], [0.004, B + 0.03], [-0.03, B + 0.03], [-0.04, B + 0.017]], 0.003), 0.024, steel, { bevel: 0.0015 });
+  for (const sx of [-1, 1]) b.box([0.004, 0.02, 0.01], [sx * 0.009, B + 0.039, -0.01], steel, 0.0015);
   const ring = new THREE.TorusGeometry(0.0045, 0.0016, 6, 18); ring.translate(0, 0, -0.01); b.add(ring, steel);
   // Barrel with a ventilated rib and a bead; the magazine tube under it with a knurled cap.
   b.lathe([[0.0108, 0.2], [0.0108, 0.66], [0.0098, 0.663], [0.0072, 0.663]], SURF.steel, [0, B, 0], 18);
   b.box([0.008, 0.003, 0.44], [0, B + 0.0125, -0.43], SURF.steel, 0.001);
   for (let i = 0; i < 12; i++) b.box([0.004, 0.004, 0.006], [0, B + 0.0095, -0.23 - i * 0.036], SURF.steel, 0);
-  b.sphere(0.0022, [0, B + 0.016 + 0.002, -0.648], SURF.brass, 8);
+  b.prism(fillet([[-0.625, B + 0.012], [-0.64, B + 0.034], [-0.652, B + 0.034], [-0.656, B + 0.012]], 0.002), 0.004, SURF.steel, { bevel: 0.0008 });
+  b.sphere(0.0018, [0, 0, -0.648], SURF.tritium, 8);
   b.lathe([[0.0112, 0.2], [0.0112, 0.6]], SURF.steel, [0, B - 0.024, 0], 16);
   b.lathe([[0.0122, 0.598], [0.0128, 0.6], [0.0128, 0.624], [0.0115, 0.628], [0.0, 0.628]], SURF.park, [0, B - 0.024, 0], 18);
   for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; b.box([0.0014, 0.0014, 0.02], [Math.cos(a) * 0.0129, B - 0.024 + Math.sin(a) * 0.0129, -0.612], SURF.park, 0); }
