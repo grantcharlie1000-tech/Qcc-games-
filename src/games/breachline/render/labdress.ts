@@ -10,11 +10,55 @@ import type { Atlas, Region } from './levelgeo';
 
 type V3 = [number, number, number];
 /** Materials the dressing asks for; artworld.ts maps each key to a material. */
-export type DressKey = 'door' | 'locker' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
+export type DressKey = 'door' | 'locker' | 'exit' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
 
 const inRoom = (r: Region, x: number, z: number) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1;
 
-export function dressLab(atlas: Atlas, room: Region): DetailBuilder {
+/** Dressing for any art room. */
+export function dressRoom(atlas: Atlas, room: Region): DetailBuilder {
+  if (room.name === 'corridor') return dressCorridor(atlas, room);
+  return dressLab(atlas, room);
+}
+
+/** The corridor: ceiling grid and services, hanging exit signs, a cable tray on drop rods, the cabinet and lockers. */
+function dressCorridor(atlas: Atlas, room: Region): DetailBuilder {
+  const D = new DetailBuilder(atlas), y = WALL_H, up: V3 = [0, -1, 0];
+  ceilingGrid(D, room);
+  for (const b of MAP.boxes) {
+    if (!inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) continue;
+    if (b.mat === 'counter') cabinetry(D, b.x0, b.z0, b.x1, b.z1, b.y1);
+    // Lockers against the south wall face north, into the corridor.
+    if (b.mat === 'steel') lockers(D, b.x0, b.x1, b.z0, b.y1, -1);
+  }
+  for (let x = -13.5; x <= 13.6; x += 3) {
+    const g = new THREE.CylinderGeometry(0.012, 0.03, 0.05, 10).translate(x + 1.5, y - 0.025, -1.2);
+    D.mesh('chrome', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [x + 1.5, y - 0.001, -1.2], up, [0.85, 0.8, 0.7]);
+    g.dispose();
+  }
+  for (const x of [-9, 0.3, 9]) {
+    const det = new THREE.CylinderGeometry(0.06, 0.065, 0.035, 20).translate(x, y - 0.0175, 0.25);
+    D.mesh('socket', det.attributes.position.array, det.attributes.normal.array, det.index!.array, [x, y - 0.001, 0.25], up);
+    det.dispose();
+  }
+  // Cable tray along the south side, hung on drop rods every 1.5 m.
+  const tz0 = 0.45, tz1 = 0.75, ty = 2.72;
+  D.box('conduit', room.x0 + 0.2, ty, tz0, room.x1 - 0.2, ty + 0.01, tz1, [0, y - 0.001, 0.6], up);
+  for (const z of [tz0, tz1 - 0.01]) D.box('conduit', room.x0 + 0.2, ty, z, room.x1 - 0.2, ty + 0.06, z + 0.01, [0, y - 0.001, 0.6], up);
+  for (let x = room.x0 + 0.5; x < room.x1 - 0.3; x += 1.5) for (const z of [tz0 - 0.01, tz1]) D.box('conduit', x - 0.006, ty, z, x + 0.006, y, z + 0.012, [x, y - 0.001, 0.6], up);
+  // Exit signs hung across the corridor, readable from both ends.
+  for (const x of [-12, 0.75, 12]) {
+    D.box('plastic', x - 0.02, 2.62, -0.66, x + 0.02, 2.8, -0.34, [x, y - 0.001, -0.5], up);
+    for (const z of [-0.6, -0.4]) D.box('conduit', x - 0.004, 2.8, z - 0.004, x + 0.004, y, z + 0.004, [x, y - 0.001, -0.5], up);
+    for (const s of [1, -1]) {
+      const g = new THREE.PlaneGeometry(0.3, 0.16).rotateY(s * Math.PI / 2).translate(x + s * 0.0205, 2.71, -0.5);
+      D.mesh('exit', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [x, y - 0.001, -0.5], up, [1, 1, 1], g.attributes.uv.array);
+      g.dispose();
+    }
+  }
+  return D;
+}
+
+function dressLab(atlas: Atlas, room: Region): DetailBuilder {
   const D = new DetailBuilder(atlas);
   for (const b of MAP.boxes) {
     if (b.mat !== 'counter' || !inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) continue;
@@ -69,20 +113,23 @@ function cabinetry(D: DetailBuilder, x0: number, z0: number, x1: number, z1: num
 }
 
 /** A bank of lockers on the +Z face of a box: doors with louvres, a latch handle, a number plate, a dark plinth. */
-function lockers(D: DetailBuilder, x0: number, x1: number, z: number, top: number) {
-  const n: V3 = [0, 0, 1], on = (x: number, y: number): V3 => [x, y, z + 0.001], count = Math.max(1, Math.round((x1 - x0) / 0.4)), w = (x1 - x0) / count;
-  D.box('kick', x0, 0.02, z, x1, 0.1, z + 0.004, on((x0 + x1) / 2, 0.06), n);
+function lockers(D: DetailBuilder, x0: number, x1: number, z: number, top: number, side = 1) {
+  // `side` is the way the doors face along Z; depths are measured out from the face at z.
+  const n: V3 = [0, 0, side], on = (x: number, y: number): V3 => [x, y, z + side * 0.001], count = Math.max(1, Math.round((x1 - x0) / 0.4)), w = (x1 - x0) / count;
+  const zr = (d0: number, d1: number): [number, number] => (side > 0 ? [z + d0, z + d1] : [z - d1, z - d0]);
+  const box = (key: DressKey, ax: number, ay: number, bx: number, by: number, d0: number, d1: number, at: V3, tint?: V3) => { const [za, zb] = zr(d0, d1); D.box(key, ax, ay, za, bx, by, zb, at, n, tint); };
+  box('kick', x0, 0.02, x1, 0.1, 0, 0.004, on((x0 + x1) / 2, 0.06));
   for (let i = 0; i < count; i++) {
-    const a = x0 + i * w + 0.004, b = x0 + (i + 1) * w - 0.004, cx = (a + b) / 2;
-    D.box('locker', a, 0.11, z, b, top - 0.04, z + 0.014, on(cx, 1), n);
+    const a = x0 + i * w + 0.004, b = x0 + (i + 1) * w - 0.004, cx = (a + b) / 2, hx = side > 0 ? b - 0.06 : a + 0.06;
+    box('locker', a, 0.11, b, top - 0.04, 0, 0.014, on(cx, 1));
     // Louvres near the top and bottom: dark slots, each with a lip.
     for (const y0 of [top - 0.34, 0.24]) for (let k = 0; k < 4; k++) {
       const y = y0 + k * 0.03;
-      D.box('kick', cx - 0.11, y, z + 0.014, cx + 0.11, y + 0.012, z + 0.0155, on(cx, y), n, [0.5, 0.5, 0.5]);
-      D.box('locker', cx - 0.11, y + 0.012, z + 0.014, cx + 0.11, y + 0.018, z + 0.022, on(cx, y), n, [0.9, 0.9, 0.9]);
+      box('kick', cx - 0.11, y, cx + 0.11, y + 0.012, 0.014, 0.0155, on(cx, y), [0.5, 0.5, 0.5]);
+      box('locker', cx - 0.11, y + 0.012, cx + 0.11, y + 0.018, 0.014, 0.022, on(cx, y), [0.9, 0.9, 0.9]);
     }
-    D.box('handle', b - 0.07, 0.95, z + 0.014, b - 0.045, 1.13, z + 0.034, on(b - 0.06, 1.04), n);
-    D.box('socket', cx - 0.035, top - 0.48, z + 0.014, cx + 0.035, top - 0.44, z + 0.017, on(cx, top - 0.46), n);
+    box('handle', hx - 0.0125, 0.95, hx + 0.0125, 1.13, 0.014, 0.034, on(hx, 1.04));
+    box('socket', cx - 0.035, top - 0.48, cx + 0.035, top - 0.44, 0.014, 0.017, on(cx, top - 0.46));
   }
 }
 

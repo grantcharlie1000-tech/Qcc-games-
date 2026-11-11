@@ -8,7 +8,8 @@ import { MAP, type Rect } from '../map';
 
 export interface Region extends Rect { name: string }
 /** Rooms handed to the asset renderer. Phase 0 proves the route on the Lab alone. */
-export const REGIONS: Region[] = [{ ...MAP.rooms.find(r => r.name === 'Lab')!, name: 'lab' }];
+const room = (name: string, id: string): Region => ({ ...MAP.rooms.find(r => r.name === name)!, name: id });
+export const REGIONS: Region[] = [room('Lab', 'lab'), room('Corridor', 'corridor')];
 
 const NEAR = 0.05;
 const span = (o: number, d: number, len: number, lo: number, hi: number): [number, number] => {

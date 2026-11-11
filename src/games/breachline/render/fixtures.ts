@@ -13,6 +13,8 @@ const troffer = (x: number, z: number, color: readonly [number, number, number] 
 export const FIXTURES: Record<string, Fixture[]> = {
   // Two rows over the walkways either side of the benches: the benches throw shadow between them.
   lab: [-2.7, 1.7].flatMap(x => [-8.2, -4.2].map(z => troffer(x, z))),
+  // One line down the middle of the corridor, every 3 m, warmer tubes than the Lab's.
+  corridor: [-13.5, -10.5, -7.5, -4.5, -1.5, 1.5, 4.5, 7.5, 10.5, 13.5].map(x => troffer(x, -0.5, [1, 0.95, 0.86])),
 };
 /** Where the baker's light samples sit: just under the diffuser of the modelled fitting (render/fixturemesh.ts). */
 export const FIXTURE_Y = WALL_H - 0.062;

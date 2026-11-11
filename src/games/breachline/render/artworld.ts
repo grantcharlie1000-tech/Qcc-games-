@@ -11,8 +11,8 @@ import { ArtLoader, type Tier } from './assets';
 import { REGIONS, collectFaces, faceArrays, packAtlas, splitFace, type GeoArrays } from './levelgeo';
 import { FIXTURES } from './fixtures';
 import { fixtureMeshes } from './fixturemesh';
-import { dressLab, type DressKey } from './labdress';
-import { clockFace, safetySign } from './printed';
+import { dressRoom, type DressKey } from './labdress';
+import { clockFace, exitSign, safetySign } from './printed';
 import { artMaterial } from './materials';
 import { PROPS } from './props';
 import { PLANKS, SURFACES } from './surfaces';
@@ -112,10 +112,10 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
     }
     // Modelled dressing, lit by the lightmap of whatever it stands on.
-    if (region.name === 'lab') {
-      const printed = { sign: safetySign(), clock: clockFace() };
-      disposers.push(() => { printed.sign.dispose(); printed.clock.dispose(); });
-      const D = dressLab(atlas, region), [bm, bn, ba] = await set('blue_metal_plate', TEX_SIZE[tier]), [pm, pn, pa] = await set('painted_plaster_wall', TEX_SIZE[tier]);
+    {
+      const printed = { sign: safetySign(), clock: clockFace(), exit: exitSign() };
+      disposers.push(() => { printed.sign.dispose(); printed.clock.dispose(); printed.exit.dispose(); });
+      const D = dressRoom(atlas, region), [bm, bn, ba] = await set('blue_metal_plate', TEX_SIZE[tier]), [pm, pn, pa] = await set('painted_plaster_wall', TEX_SIZE[tier]);
       const plain = (color: [number, number, number], roughness: number, metalness: number) => ({ map: null, normalMap: null, armMap: null, color: new THREE.Color(...color), roughness, metalness });
       const looks: Record<DressKey, Parameters<typeof artMaterial>[0]> = {
         door: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(1.55, 1.62, 1.7), roughness: 0.55, metalness: 1, spec: 1.4 },
@@ -129,6 +129,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         screen: { ...plain([0.02, 0.03, 0.04], 0.12, 0), emissive: new THREE.Color(0.05, 0.11, 0.16) },
         sign: { map: printed.sign, normalMap: null, armMap: null, roughness: 0.5, metalness: 0 },
         clock: { map: printed.clock, normalMap: null, armMap: null, roughness: 0.15, metalness: 0 },
+        exit: { map: printed.exit, normalMap: null, armMap: null, roughness: 0.3, metalness: 0, emissive: new THREE.Color(0.9, 1.2, 0.95), emissiveMap: printed.exit },
         amber: plain([0.2, 0.08, 0.015], 0.05, 0), glass: plain([0.1, 0.13, 0.125], 0.04, 0),
       };
       const merged: GeoArrays = { position: [], normal: [], uv: [], uv1: [], color: [], index: [] };

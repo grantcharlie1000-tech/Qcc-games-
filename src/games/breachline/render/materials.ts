@@ -36,6 +36,7 @@ export interface ArtMaterialOptions {
   metalness?: number;
   color?: THREE.ColorRepresentation | THREE.Color;
   emissive?: THREE.ColorRepresentation;
+  emissiveMap?: THREE.Texture | null;
 }
 
 export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
@@ -44,7 +45,7 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
     map: o.map, normalMap: o.normalMap ?? null, roughnessMap: arm, metalnessMap: arm, aoMap: arm, aoMapIntensity: 1,
     roughness: o.roughness ?? 1, metalness: o.metalness ?? (arm ? 1 : 0), lightMap: o.lightMap ?? null, lightMapIntensity: (o.lightScale ?? 1) * Math.PI,
     envMap: o.envMap ?? null, envMapIntensity: o.spec ?? 1, vertexColors: !!(o.vertexLight || o.vertexTint), color: o.color ?? 0xffffff,
-    emissive: o.emissive ?? 0x000000,
+    emissive: o.emissive ?? 0x000000, emissiveMap: o.emissiveMap ?? null,
   });
   if (o.normalScale) m.normalScale.setScalar(o.normalScale);
   const sh = new Float32Array(12);

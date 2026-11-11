@@ -328,6 +328,39 @@
         }
       ],
       "use": ""
+    },
+    {
+      "id": "terrazzo_tiles",
+      "kind": "texture",
+      "name": "Terrazzo Tiles",
+      "source": "https://polyhaven.com/a/terrazzo_tiles",
+      "author": "Amal Kumar",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        2,
+        2
+      ],
+      "files": [
+        {
+          "path": "terrazzo_tiles/terrazzo_tiles_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/terrazzo_tiles/terrazzo_tiles_diff_2k.jpg",
+          "size": 4554044,
+          "sha256": "26cc390c19e468de03fc9699198398590a7adc1ddd4972e6d6fb65d76403bb66"
+        },
+        {
+          "path": "terrazzo_tiles/terrazzo_tiles_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/terrazzo_tiles/terrazzo_tiles_nor_gl_2k.jpg",
+          "size": 509402,
+          "sha256": "48f79a943f626c90cfeac4528b765d9f7df862883890a9d05ddf00a2209e0fa4"
+        },
+        {
+          "path": "terrazzo_tiles/terrazzo_tiles_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/terrazzo_tiles/terrazzo_tiles_arm_2k.jpg",
+          "size": 2023471,
+          "sha256": "4480ba6a92d33d475b730126bb9608cfaa93d9b4b668b57181102cf23c380f1e"
+        }
+      ],
+      "use": ""
     }
   ]
 }

@@ -35,3 +35,16 @@ export const clockFace = () => canvasTexture(256, 256, g => {
   hand((10 + 10 / 60) / 12 * Math.PI * 2, 62, 9, '#1b1b1b'); hand(10 / 60 * Math.PI * 2, 92, 6, '#1b1b1b'); hand(38 / 60 * Math.PI * 2, 100, 2, '#b02020');
   g.fillStyle = '#1b1b1b'; g.beginPath(); g.arc(128, 128, 7, 0, 7); g.fill();
 });
+
+/** An exit sign: a running figure heading for a doorway, and an arrow, white on green. */
+export const exitSign = () => canvasTexture(256, 128, g => {
+  g.fillStyle = '#1f8a4c'; g.fillRect(0, 0, 256, 128);
+  g.fillStyle = '#f4fff6';
+  g.fillRect(150, 18, 52, 92); g.fillStyle = '#1f8a4c'; g.fillRect(158, 26, 36, 84);
+  g.fillStyle = '#f4fff6'; g.strokeStyle = '#f4fff6'; g.lineCap = 'round'; g.lineWidth = 10;
+  g.beginPath(); g.arc(112, 30, 10, 0, 7); g.fill();
+  g.beginPath(); g.moveTo(106, 46); g.lineTo(96, 74); g.lineTo(116, 92); g.lineTo(108, 112); g.moveTo(96, 74); g.lineTo(78, 100);
+  g.moveTo(104, 52); g.lineTo(126, 64); g.moveTo(104, 52); g.lineTo(84, 62); g.stroke();
+  g.lineWidth = 9; g.beginPath(); g.moveTo(20, 64); g.lineTo(62, 64); g.stroke();
+  g.beginPath(); g.moveTo(44, 44); g.lineTo(66, 64); g.lineTo(44, 84); g.stroke();
+});
