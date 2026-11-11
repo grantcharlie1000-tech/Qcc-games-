@@ -14,4 +14,4 @@ for (const place of ['corridor', 'lab']) {
   rows.push({ cells: [await crop('stock', `${place}-hip`, 'stock hip, 2x crop'), await crop('patch', `${place}-hip`, 'Patch hip, 2x crop')] });
 }
 rows.push({ title: 'Sidearm at the hip, Lab', cells: [await small('stock', 'lab-pistol', 'stock pistol'), await small('patch', 'lab-pistol', 'Service Pistol')] });
-console.log(await compose(rows, { width: 1920, title: 'Job 5: the weapon in hand in the game (seed 7, high tier), stock and ?weapons=patch', out, jpeg: 66 }));
+console.log(await compose(rows, { width: 1920, title: 'Job 5: the weapon in hand in the game (seed 7, high tier), stock and ?weapons=patch', out, jpeg: 56 }));

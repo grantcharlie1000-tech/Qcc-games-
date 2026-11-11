@@ -569,3 +569,57 @@ What changed (all in `render/patchfighters/index.ts`, plus the bake in `prep-sol
 - **Squad 1 sleeves:** the cloth on the arms (bind-pose |x| > 0.2 m and above 0.95 m) is scaled to 0.72, so the sleeves
   no longer outshine the rest of the figure in shade.
 The soldiers are done from my side.
+
+## 5.2–5.5 Weapons in hand and in the soldiers' hands — ready, with an honest verdict
+
+Evidence: `job5-weapons.jpg`: corridor and Lab, stock and Patch, hip, aimed and four reload frames, a 2× crop of the hip
+view, and the sidearm. Script: `game-test-weapons.mjs`, which injects both switches into `scene.ts` as the page loads
+it (file untouched) and retries when the scripted match fails to leave the lobby.
+
+**5.2 `src/games/breachline/render/patchhero/index.ts`:** `createPatchViewmodel(renderer, lighting)` returns `Viewmodel`.
+- **Missing export.** `render/hero/viewmodel.ts` builds its rig inside a closure and has no way to substitute a
+  weapon model. So the module reproduces that file's frame composition verbatim (springs, sway, bob, recoil, aim,
+  reload beats, casings, flash, lighting; `KICK` and `VM_GAIN` copied because they are not exported), with the hooks
+  marked `PATCH`. Everything it calls is imported from `render/hero/`: `createFpRig`, holds, arms and hands,
+  `reloadFrame`, `texturedMaterial`, `Spring`, `WB`/`CASES`. Requested: an option such as
+  `createHeroViewmodel(renderer, lighting, { models })` or `FpRig.setModel(id, object, sockets)`, after which this
+  module reduces to its model loading.
+- **How the models ride the rig.** After `setWeapon`, the stock mesh, its lens and casings are hidden. The Patch body is
+  parented to the gun, the magazine to the rig's magazine bone (it follows the reload beats about the Patch seat), the
+  pistol's slide to the bolt bone (35 mm travel), and brass casings to the case bones at the Patch ejection port. The rig
+  gets the Patch sockets (`r.weapon = { ...stock, sockets }`), so the flash comes from the Patch muzzle. Each model is
+  placed so its grip palm sits on the stock grip socket, because the hands' targets come from the stock holds.
+- **Sight line.** Aiming lowers the gun by the Patch sight height above the stock one (the rifle's sight stands 7 cm
+  higher above its grip). The generated rifle's box sight is solid, with no window to look through, so the rifle aims
+  just over its top. At the hip the rifle is lowered 5 cm, because its receiver stands much taller above the grip.
+  The pistol's sight line falls within 7 mm of the stock one.
+- Only `ar` and `pistol` are swapped; every other weapon is the stock one. The assets load with the rest, and `warm()`
+  draws them.
+
+**5.3 World weapon (`patchfighters`):** a fighter carrying the AR shows the Patch rifle at world level of detail
+(`patch/rifle-scifi/rifle-world.glb`, 2,193 + 249 triangles against the stock 2.5k). The stock skinned mesh keeps its
+bones (the animator drives them) but draws an empty geometry; the Patch body rides bone 0 and its magazine bone 1,
+grip palm on the world grip socket. One material is shared by all fighters' rifles, so its probe tint is the last
+fighter's in each frame (a small inaccuracy). I have not inspected it closely in the game: in these frames the
+soldiers' rifles are a few pixels.
+
+**Honest read (would the owner pick the right-hand frame?):**
+- **Rifle at the hip: no.** The Patch rifle is a dark, chunky block that fills the lower right, with no clear
+  silhouette, against a slim, readable stock AR-5 with its red dot. The detail is real, but at this size and angle it
+  reads as clutter.
+- **Rifle aimed: no.** The stock sight gives a clean red-dot window. The Patch rifle has no window, so the aim
+  looks over a dark stack of rail and sight.
+- **Reload: works**, but no better than stock. The Patch magazine leaves with the support hand and comes back on the
+  beats.
+- **Pistol at the hip: yes, narrowly.** The Service Pistol reads as a real pistol (wood grips, exposed barrel) where the
+  stock one is a dark block; it sits in the stock hands correctly.
+- So: keep the Service Pistol. The generated rifle is not a better first-person weapon than the AR-5 as it is. It would
+  need a real sight (a cut-out window or a separate optic), a slimmer handguard and a lighter finish to win; the AR-5
+  second build (plan) is the better path for the rifle.
+
+**5.5 The change for `scene.ts`**, two lines (default unchanged):
+```ts
+import { createPatchViewmodel } from './render/patchhero/index';
+// line 195, replacing `const viewmodel = createViewmodel(renderer, heroLighting);`
+const viewmodel = new URLSearchParams(location.search).get('weapons') === 'patch' ? createPatchViewmodel(renderer, heroLighting) : createViewmodel(renderer, heroLighting);
+```
