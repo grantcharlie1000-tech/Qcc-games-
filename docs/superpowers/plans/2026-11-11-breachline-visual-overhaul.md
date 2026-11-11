@@ -401,6 +401,27 @@ that scene outright; fighters' pose comes from the simulation's fields, which st
 from `reloads.ts` (sound plan, section 4) and `WeaponDef.reload`; `index.ts` is already edited by two sessions, so
 the hero session exposes its own dev-only hook from its module instead of touching it.
 
+## Re-ordering after phase 0 (environment session, 2026-11-11)
+
+The owner judges whole frames, and what made the phase-0 Lab look cheap was flat light and no post-processing, not
+missing megabytes. The environment session therefore works the **Lab as a vertical slice** before spreading the new
+materials to other rooms, in this order:
+
+1. Lighting contrast: stronger, tighter fixtures with less fill, dark corners and under-bench areas, contact shadow
+   under every prop, modelled troffers (frame, diffuser) with a hot spot on the ceiling in the lightmap; check the
+   lightmap's range and AO strength.
+2. Visible specular on tile and metal, with the fixtures present in the reflection probe as bright sources.
+3. The post chain basics, brought forward from phase 8: render to a half-float target, filmic curve and colour grade,
+   bloom on fixtures and muzzle flashes, light vignette, ambient occlusion where the tier affords it. One grade
+   direction is chosen here and surfaces are held to it from phase 3 on.
+4. Dense modelled props in the Lab: cabinetry with doors and handles, sink and taps, bench equipment, skirting and
+   dado rail as geometry, sockets and conduit.
+5. The KTX2/Basis runtime (same-origin transcoder) and the phase-1 renderer work (tiers with cheaper shaders, startup
+   probe, loading screen, budget counters, `?bench=1`) follow, because the slice must be measured against section 5.
+
+Gate for the slice: rows A–D at 7 or better in the Lab bookmarks, with the budget numbers measured on those frames.
+Then the same standard rolls out room by room (phases 2–4 as written). Phases 6 and 7 belong to the hero session.
+
 ## Working notes for whoever carries this out
 
 - Fresh checkout: `npm ci`. Type-check with `npx tsc --noEmit`; unit tests `npx vitest run tests/games/breachline`

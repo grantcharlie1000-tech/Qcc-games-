@@ -2,7 +2,14 @@
 
 Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch: `claude/zen-allen-otdlt6`.
 
-## Current phase: 0 (spike), gate **passed (go)**, with caveats below
+## Current phase: Lab vertical slice (after phase 0; see the plan's "Re-ordering after phase 0")
+
+Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the hero session (`render/hero/`,
+`docs/evidence/breachline/hero/`). This session supplies its lighting through `HeroLighting`. Next here: Lab lighting
+contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
+renderer work, measured against section 5.
+
+## Phase 0 (spike): gate **passed (go)**, with caveats below
 
 **Gate verdict.** The Lab now uses photo-sourced CC0 materials, GPU-compressed textures loaded with no WebAssembly
 under the real site CSP, a ray-traced lightmap with soft shadows and two bounces, a dominant-direction map so normal
