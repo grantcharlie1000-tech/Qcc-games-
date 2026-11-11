@@ -338,6 +338,69 @@ all existing tests green; a commit and push. A phase is not done because tests p
 | Download too large for school networks | Medium | Players wait or give up | Tiered loading; Low under 20 MB; lazy-load High textures after first frame |
 | Software rasteriser renders differ from real GPUs | Low | Misjudged pictures | Owner confirms on real hardware at the phase 0 and phase 4 gates |
 
+## Parallel workstream, added 2026-11-11: hero models (weapons, hands, fighters)
+
+The owner looked at the phase 0 Lab and said the graphics and models need to be better. The weapon in hand fills a
+third of every frame and the fighters are what players look at; both were scheduled last (phases 6 and 7). They
+are moved forward and given to **a second Opus 5.5 session that runs now, in parallel** with the environment
+session. Sections 4.6 and 4.7 remain the specification; this section is the contract between the two sessions.
+
+**Split.**
+
+| | Environment session | Hero session |
+| --- | --- | --- |
+| Phases | 0–5 and 8 (renderer, lighting, surfaces, props, destruction look, effects, post, optimisation) | 6 and 7 (first-person weapons and hands, reload animation, fighters and their animation) |
+| Owns | `scene.ts` (except the seam below), `levelmesh.ts`, `lightbake.ts`, `textures.ts`, `effects.ts`, `render/` except `render/hero/`, `scripts/breachline-assets/`, `public/game-art/breachline/` | `models.ts`, everything under `src/games/breachline/render/hero/`, `tests/games/breachline/hero*`, `docs/evidence/breachline/hero/` |
+
+**The seam in `scene.ts`.** Today the weapon in hand and the fighters are built inline (`gunFor`,
+`updateViewmodel`, `figFor`, `updateFigures`, the view scene and its lights). The hero session's **first commit**
+moves that code behind two modules and nothing else:
+
+```ts
+// render/hero/index.ts
+export interface HeroLighting {
+  /** Light arriving at a point, for anything that moves. Colour now; spherical harmonics when the light grid lands. */
+  probe(x: number, y: number, z: number): { color: [number, number, number]; sh?: Float32Array };
+  /** Reflection environment for the place the camera is in, or null before one exists. */
+  environment(x: number, z: number): THREE.Texture | null;
+  sun: { x: number; y: number; z: number; color: [number, number, number] };
+}
+export function createViewmodel(renderer: THREE.WebGLRenderer, lighting: HeroLighting): Viewmodel; // owns its scene and camera
+export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Fighters;
+```
+
+`scene.ts` then only constructs these, forwards the per-frame view and the match events, and renders the viewmodel
+after the world. After that commit the environment session does not edit the hero modules, and the hero session
+does not edit `scene.ts` again except to change those few call lines. The environment session supplies
+`HeroLighting` (an adapter over the existing `bake.probe` at first, the baked light grid and reflection probes
+later); the hero session must look right under both.
+
+**Budgets for hero assets** (in addition to section 5): weapon and hands in view ≤ 20k triangles and ≤ 4 draw
+calls; each fighter ≤ 8k triangles at full detail with two lower levels (about 3k and 1k), ≤ 3 draw calls, ≤ 40
+bones; ten fighters ≤ 60k triangles in view; procedural textures ≤ 1K, generated lazily for what is equipped, ≤ 150
+ms each; all hero animation ≤ 1 ms of script per frame in the build container. Weak machines get the lower levels
+and smaller textures, not missing parts.
+
+**How it is judged** (section 8 applies, plus): for every weapon, three studio turntable renders, the first-person
+frame at hip and aimed, and an eight-frame strip of each reload; for fighters, turntables per squad, and eight-frame
+strips of walking, sprinting, crouch-walking, firing, flinching and each death, seen from the side and from the
+front. Renders are also taken *in the game*, under the real lighting, because that is where they will be seen.
+Gates: row E ≥ 8, row F ≥ 7, each after at least three look-compare-iterate rounds per asset. Evidence and a status
+file go under `docs/evidence/breachline/hero/`.
+
+**Reference.** The "Saltline" artifact named at the top (hands, bevelled parts, reload beat timelines), studied
+statically; public photographs of real rifles, shotguns, carbines, submachine guns, marksman rifles, pistols and of
+soldiers' kit, looked at for proportion and detail, never saved into the repository. Breachline's weapons are its
+own designs with its own names: believable, not replicas of a specific make and model.
+
+**Review of this addition (two passes).** Pass 1: a third session on one branch only works if the files are
+disjoint, so the split is by file and the shared file (`scene.ts`) gets a one-time seam; lighting is the real
+dependency between the two, so it is an interface rather than an import of each other's internals. Pass 2 (against
+the code): the viewmodel renders in its own scene with its own camera and lights today, so the hero session owns
+that scene outright; fighters' pose comes from the simulation's fields, which stay read-only; reload timing comes
+from `reloads.ts` (sound plan, section 4) and `WeaponDef.reload`; `index.ts` is already edited by two sessions, so
+the hero session exposes its own dev-only hook from its module instead of touching it.
+
 ## Working notes for whoever carries this out
 
 - Fresh checkout: `npm ci`. Type-check with `npx tsc --noEmit`; unit tests `npx vitest run tests/games/breachline`
