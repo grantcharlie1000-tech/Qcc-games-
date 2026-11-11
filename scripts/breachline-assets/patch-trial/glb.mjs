@@ -33,8 +33,8 @@ export async function writeGlb(file, meshes, extras = {}) {
     json.bufferViews.push({ buffer: 0, byteOffset: off, byteLength: buf.length, ...(target ? { target } : {}) });
     chunks.push(buf); off += buf.length; return json.bufferViews.length - 1;
   };
-  const acc = (arr, type, ct, target, minmax) => {
-    const n = SIZE[type], a = { bufferView: push(arr, target), componentType: ct, count: arr.length / n, type };
+  const acc = (arr, type, ct, target, minmax, normalized) => {
+    const n = SIZE[type], a = { bufferView: push(arr, target), componentType: ct, count: arr.length / n, type, ...(normalized ? { normalized: true } : {}) };
     if (minmax) { const mn = new Array(n).fill(Infinity), mx = new Array(n).fill(-Infinity); for (let k = 0; k < arr.length; k++) { const c = k % n; mn[c] = Math.min(mn[c], arr[k]); mx[c] = Math.max(mx[c], arr[k]); } a.min = mn; a.max = mx; }
     json.accessors.push(a); return json.accessors.length - 1;
   };
@@ -45,8 +45,8 @@ export async function writeGlb(file, meshes, extras = {}) {
       else if (k === 'NORMAL') attributes[k] = acc(v, 'VEC3', 5126, 34962);
       else if (k === 'TANGENT') attributes[k] = acc(v, 'VEC4', 5126, 34962);
       else if (k.startsWith('TEXCOORD')) attributes[k] = acc(v, 'VEC2', 5126, 34962);
-      else if (k === 'JOINTS_0') attributes[k] = acc(v, 'VEC4', 5123, 34962);
-      else if (k === 'WEIGHTS_0') attributes[k] = acc(v, 'VEC4', 5126, 34962);
+      else if (k === 'JOINTS_0') attributes[k] = acc(v, 'VEC4', v instanceof Uint8Array ? 5121 : 5123, 34962);
+      else if (k === 'WEIGHTS_0') attributes[k] = v instanceof Uint8Array ? acc(v, 'VEC4', 5121, 34962, false, true) : acc(v, 'VEC4', 5126, 34962);
       else attributes[k] = acc(v, v.length === (m.attributes.POSITION.length / 3) ? 'SCALAR' : 'VEC4', 5126, 34962);
     }
     json.meshes.push({ name: m.name, primitives: [{ attributes, indices: acc(m.indices, 'SCALAR', 5125, 34963), mode: 4 }] });

@@ -59,7 +59,12 @@
   "arm-512.jpg": 55915,
   "mask-1024.ktx2": 124428,
   "mask-256.png": 57001,
-  "body.glb": 1003936
+  "body-skinned.glb": 1204632
  },
- "bytes": 4014557
+ "bytes": 4215253,
+ "skinned": {
+  "file": "body-skinned.glb",
+  "skeleton": "fighters/skeleton.ts, 32 bones, JOINTS_0 = bone order B, weights normalised bytes",
+  "frame": "fighters frame: facing -Z, bind pose, authored units (fighter group applies SCALE)"
+ }
 }

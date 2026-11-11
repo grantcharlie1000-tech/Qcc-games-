@@ -189,7 +189,7 @@ Proof: `job2-1-tactical-clean.jpg` (original beside LOD0 and LOD1, the recolour,
 textures loaded from the shipped KTX2 files through `ArtLoader`).
 
 Files in `public/game-art/breachline/patch/tactical/` (4.01 MB in total, budget 4 MB, see below):
-- `body.glb`: nodes `body_lod0` (12,000 triangles) and `body_lod1` (4,999), POSITION/NORMAL/TEXCOORD_0, no
+- `body.glb` (since removed, see 2.2): nodes `body_lod0` (12,000 triangles) and `body_lod1` (4,999), POSITION/NORMAL/TEXCOORD_0, no
   materials or images. Metres, +Y up, **facing +Z**, feet on y = 0, as delivered. The cut planes and the reference
   luminances are in the asset's `extras` and in `tactical.json`.
 - `diff-2048/1024.ktx2`, `nor-2048/1024.ktx2`, `arm-1024.ktx2`, `mask-1024.ktx2`, fallbacks `diff/nor/arm-512.jpg`
@@ -226,3 +226,43 @@ Licence: CC-BY-4.0 (Creative Commons Attribution 4.0 International, https://crea
 CC-BY requires the changes to be stated. Our changes, to append: "Changed for Breachline: from the 4096 px source; head
 cut at the neck and hands at the wrists; metalness removed and roughness remapped; simplified to 12k and 5k
 triangles; tint mask added; textures re-encoded as KTX2."
+
+## 2.2 Tactical soldier, skinned (prototype) — done; verdict: deforms acceptably at game distances, tears in two places close up
+
+Script: `scripts/breachline-assets/patch-trial/skin-soldier.ts` (run with `npx vite-node`; it imports
+`fighters/skeleton.ts` read-only). Viewer: `trial.ts` `loadSkinned` / `pose` / `joint`, using the stock `Animator`
+(walk, aim, crouch and death are the fighters' own scripts, copied from the fighter studio) with our AR in hand.
+Proof: `job2-2-tactical-skinned.jpg`.
+
+**File for the fighters session:** `public/game-art/breachline/patch/tactical/body-skinned.glb`, nodes `body_lod0`
+and `body_lod1`. Already in the **fighters' frame and bind pose** (facing -Z, authored units; the fighter group's
+`SCALE` applies as for our own body), with `JOINTS_0` = bone indices in `skeleton.ts` order `B` and `WEIGHTS_0` as
+normalised bytes (4 per vertex, summing to 255). Bind it exactly like our figure:
+`new THREE.SkinnedMesh(geo, mat); mesh.add(bones[0]); mesh.bind(new THREE.Skeleton(makeBones()))`, with the
+textures from 2.1 (`'../patch/tactical'`). The static `body.glb` was dropped from `public/` to stay near the budget
+(the skinned file carries the same two levels); `prep-soldier.mjs` regenerates it.
+
+**Method.** Joints measured on the A-pose mesh (listed in the GLB's `extras.measuredJoints`). Weights by distance to
+bone segments: each vertex takes its nearest bone and the bones adjacent to it in the hierarchy, w = 1/d⁴; arm bones are
+penalised smoothly inside the torso's width; 10 smoothing passes over the position-welded mesh, so UV seams cannot
+split. Half of each two-bone blend at the elbows, knees, shoulders and hips goes to the helper bone; the distal
+forearm leans on the twist bone. The mesh is then moved into the bind pose by those weights, so the stock bind
+matrices and the animator work unchanged.
+
+**What it shows.**
+- Walk, crouch, crouch-walk and the death fall: **acceptable**. The legs bend cleanly, the knee pads stay on the knees,
+  and the vest stays rigid enough. At 2–8 m it reads as a real soldier moving with our animation.
+- **Aiming: the shoulders bunch.** The deltoid area pushes up into the hood when the rifle is raised, and the
+  support-side elbow folds into a sharp crease. There is no tear after smoothing; the first pass, with a hard arm/torso
+  boundary, had spikes at the right elbow, now gone.
+- **Crouch, right hip: a tear.** The drop holster and thigh-pocket flap pull away from the belly and open a gap
+  showing the inside. The generated mesh has overlapping, fused geometry there, so a weight fix will not cure it.
+  Fix: weight the holster region rigidly to the thigh, or cut the holster off and attach our own.
+- No hands and no head yet. Those are our attachments (hand bones and head bone exist in the skeleton).
+
+**Recommendation:** usable as the fighter body after two targeted fixes: (a) re-weight the shoulder for the aim
+pose, more `delt` helper and less `spine2` above the armpit; (b) rigid-weight or remove the thigh holster. Expect
+an hour's work in the fighters session, not a rebuild.
+
+**Budget:** the tactical folder is now 4.2 MB (0.2 MB over 4 MB). Cheapest cut, if needed: drop `nor-1024.ktx2`
+(0.37 MB; the low tier would then fall back to the 512 JPEG normal map), or ship `diff/nor` at 2048 only.

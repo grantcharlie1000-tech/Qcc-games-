@@ -8,6 +8,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { heroReady } from '../../../src/games/breachline/render/hero/geom';
 import { figureGeometry } from '../../../src/games/breachline/render/fighters/figure';
 import { SCALE, makeBones } from '../../../src/games/breachline/render/fighters/skeleton';
+import type { PoseInput } from '../../../src/games/breachline/render/fighters/anim';
 import { Animator, idleInput } from '../../../src/games/breachline/render/fighters/anim';
 import { weaponFor } from '../../../src/games/breachline/render/fighters/weapon';
 import { fighterMaterial } from '../../../src/games/breachline/render/fighters/material';
@@ -195,6 +196,78 @@ async function loadPrepared(name: string, dir: string, file: string, node: strin
   return r;
 }
 
-const api = { load, loadPrepared, ourRifleman, ourAr5, frame, project, info: () => Object.fromEntries(info) };
+/** The skinned soldier (body-skinned.glb) on the fighters' own skeleton and animator, with our AR in hand. Several
+ * named rigs can exist (`soldier`, `ours`); `clip` poses one. */
+interface Rig { group: THREE.Group; anim: Animator; outer: THREE.Group; mesh: THREE.SkinnedMesh }
+const rigs = new Map<string, Rig>();
+async function loadSkinned(name: string, node = 'body_lod0', weights = false) {
+  await heroReady;
+  const g = await gltf.loadAsync('/game-art/breachline/patch/tactical/body-skinned.glb');
+  const src = g.scene.getObjectByName(node) as THREE.Mesh;
+  const art = new ArtLoader(renderer, 'high'), set = '../patch/tactical';
+  const [map, normalMap, arm] = await Promise.all([art.texture(set, 'diff', 2048), art.texture(set, 'nor', 2048), art.texture(set, 'arm', 1024)]);
+  const mat = new THREE.MeshStandardMaterial({ map, normalMap, roughnessMap: arm, metalnessMap: arm, roughness: 1, metalness: 1 });
+  const bones = makeBones(), mesh = new THREE.SkinnedMesh(src.geometry, weights ? weightMaterial() : mat);
+  mesh.add(bones[0]); mesh.bind(new THREE.Skeleton(bones)); mesh.frustumCulled = false;
+  const w = weaponFor('ar'), wb = Array.from({ length: w.bones }, () => new THREE.Bone());
+  const wm = fighterMaterial(); wm.userData.probe.value.setRGB(1.3, 1.3, 1.35);
+  const weapon = new THREE.SkinnedMesh(w.geo, wm); weapon.add(...wb); weapon.bind(new THREE.Skeleton(wb)); weapon.frustumCulled = false;
+  const group = new THREE.Group(); group.add(mesh, weapon); group.scale.setScalar(SCALE);
+  const outer = new THREE.Group(); outer.add(group);
+  const anim = new Animator(bones, weapon, wb, w);
+  rigs.set(name, { group, anim, outer, mesh }); objects.set(name, outer);
+  return { triangles: tris(mesh) };
+}
+/** Our own rifleman as a rig too, for side-by-side strips. */
+async function ourRig(name: string) {
+  await heroReady;
+  const tex = await loadFighterTextures(renderer, 0).catch(() => null);
+  const bones = makeBones(), f = figureGeometry(0, 0), tg = tex ? texturedGeometry(tex, 0, () => f.geo) : null;
+  let m: THREE.Material; if (tg && tex) { const tm = texturedFighterMaterial(tex.levels[0]!.maps); tm.userData.probe.value.setRGB(1.3, 1.3, 1.35); tm.envMap = scene.environment; tm.envMapIntensity = 0.6; m = tm; } else m = fighterMaterial();
+  const mesh = new THREE.SkinnedMesh(tg ?? f.geo, m); mesh.add(bones[0]); mesh.bind(new THREE.Skeleton(bones)); mesh.frustumCulled = false;
+  const w = weaponFor('ar'), wb = Array.from({ length: w.bones }, () => new THREE.Bone());
+  const wm = fighterMaterial(); wm.userData.probe.value.setRGB(1.3, 1.3, 1.35);
+  const weapon = new THREE.SkinnedMesh(w.geo, wm); weapon.add(...wb); weapon.bind(new THREE.Skeleton(wb)); weapon.frustumCulled = false;
+  const group = new THREE.Group(); group.add(mesh, weapon); group.scale.setScalar(SCALE);
+  const outer = new THREE.Group(); outer.add(group);
+  rigs.set(name, { group, anim: new Animator(bones, weapon, wb, w), outer, mesh }); objects.set(name, outer);
+}
+/** Colours each vertex by its strongest bone, to show the weights. */
+function weightMaterial() {
+  const m = new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0 });
+  m.onBeforeCompile = sh => {
+    sh.vertexShader = 'varying vec3 vBone;\n' + sh.vertexShader.replace('#include <skinning_vertex>', `#include <skinning_vertex>
+      { float b = skinIndex.x; vBone = vec3(fract(b * 0.37), fract(b * 0.61 + 0.3), fract(b * 0.83 + 0.6)) * skinWeight.x + vec3(0.15) * (1.0 - skinWeight.x); }`);
+    sh.fragmentShader = 'varying vec3 vBone;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = vBone;');
+  };
+  m.customProgramCacheKey = () => 'weights';
+  return m;
+}
+interface Script { at(t: number): Partial<PoseInput>; lead?: number }
+const walk = (vx: number, vz: number, extra: Partial<PoseInput> = {}): Script => ({ lead: 1.0, at: t => ({ x: vx * t, z: vz * t, pace: Math.hypot(vx, vz) / 3.5, ...extra }) });
+const SCRIPTS: Record<string, Script> = {
+  idle: { at: () => ({}) }, walk: walk(0, -2.6), aim: { lead: 0.6, at: () => ({ ads: true }) }, aimUp: { lead: 0.6, at: () => ({ ads: true, pitch: 0.5 }) },
+  crouch: { lead: 0.6, at: () => ({ crouch: 1 }) }, crouchwalk: walk(0, -1.5, { crouch: 1 }), sprint: walk(0, -6.2, { sprint: true }),
+  death0: { lead: 0.3, at: t => ({ alive: t < 0.35, deaths: 0 }) }, death1: { lead: 0.3, at: t => ({ alive: t < 0.35, deaths: 1 }) },
+};
+/** Runs `script` and poses rig `name` at time `t` (s after the script's lead-in). Returns the root position. */
+function pose(name: string, script: string, t: number) {
+  const r = rigs.get(name)!, sc = SCRIPTS[script], dt = 1 / 60, total = t + (sc.lead ?? 0);
+  let time = 0, input = { ...idleInput(), ...sc.at(0) };
+  r.anim.reset(input); r.anim.update(input, dt);
+  while (time < total - 1e-6) { time += dt; input = { ...idleInput(), ...sc.at(time) }; r.anim.update(input, dt); }
+  r.group.position.copy(r.anim.root); r.group.rotation.y = r.anim.yaw;
+  // The soldier rigs face -Z like the fighters; turn them to face +Z so the trial's yaw 0 is the front.
+  r.outer.rotation.y = Math.PI;
+  const p = r.anim.root; return [-p.x, p.y, -p.z];
+}
+
+/** World position of bone `b` of rig `name` as last posed (with the trial's placement of the rig at the origin). */
+function joint(name: string, b: number) {
+  const r = rigs.get(name)!; r.outer.updateMatrixWorld(true);
+  return r.mesh.skeleton.bones[b].getWorldPosition(new THREE.Vector3()).toArray();
+}
+
+const api = { load, loadPrepared, loadSkinned, ourRig, pose, joint, ourRifleman, ourAr5, frame, project, info: () => Object.fromEntries(info) };
 (window as unknown as { __trial: typeof api }).__trial = api;
 (window as unknown as { __trialReady: boolean }).__trialReady = true;
