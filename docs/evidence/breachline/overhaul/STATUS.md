@@ -9,6 +9,11 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
+**HeroLighting (planner's decision, 2026-11-11):** `environmentScale(x, z)` added to the interface and implemented:
+1 / the room's mean baked surface light inside art rooms (about 1.7 in the Lab), 1 elsewhere. Hero and fighter
+materials use `environment()` for specular only, scaled by this, and take diffuse from `probe()`. `probe()` gains
+SH when the light grid lands.
+
 ## Lab slice, round 3 (evidence: `lab-slice/round-3/`, including `lab-high-vs-low.png`)
 
 From the reviewer's round-1 review (scores A 5.5, B 4, C 6, D 5.5, H 5), in their order:

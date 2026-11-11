@@ -33,6 +33,8 @@ export interface ArtWorld {
   readonly envReady: boolean;
   /** The reflection probe for the room containing (x, z), or null. */
   environment(x: number, z: number): THREE.Texture | null;
+  /** 1 / the mean baked surface light of the room containing (x, z), or 1 outside art rooms. */
+  environmentScale(x: number, z: number): number;
   dispose(): void;
 }
 
@@ -178,6 +180,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     group, claim: claimFaces, stats: { triangles, meshes, textureBytes: L.bytes },
     panelLook: i => looks.get(i) ?? null,
     get envReady() { return env !== null; },
+    environmentScale(x, z) { const r = REGIONS[0]; return env && x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1 ? 1 / Math.max(0.05, envLight) : 1; },
     environment(x, z) { const r = REGIONS[0]; return env && x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1 ? env.texture : null; },
     capture(renderer, scene) {
       if (!full || dbg.includes('noenv')) return;

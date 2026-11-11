@@ -14,6 +14,10 @@ export interface HeroLighting {
   probe(x: number, y: number, z: number): { color: [number, number, number]; sh?: Float32Array };
   /** Reflection environment for the place the camera is in, or null before one exists. */
   environment(x: number, z: number): THREE.Texture | null;
+  /** Multiply `environment()` by this to bring it to the brightness a lit surface expects (the probe is in baked
+   * light units: about 1 / the room's mean surface light). 1 where `environment()` returns null. Specular only:
+   * diffuse light comes from `probe()`. */
+  environmentScale(x: number, z: number): number;
   sun: { x: number; y: number; z: number; color: [number, number, number] };
 }
 

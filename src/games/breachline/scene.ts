@@ -123,6 +123,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const heroLighting: HeroLighting = {
     probe(x, _y, z) { const l = bake.probe(x, z); return { color: [l[0], l[1], l[2]] }; },
     environment(x, z) { return art?.environment(x, z) ?? null; },
+    environmentScale(x, z) { return art?.environmentScale(x, z) ?? 1; },
     sun: { x: SUN.x, y: SUN.y, z: SUN.z, color: [1.55, 1.12, 0.7] },
   };
   const fighters = createFighters(scene, heroLighting);
