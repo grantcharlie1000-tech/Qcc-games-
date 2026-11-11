@@ -39,3 +39,5 @@ These come straight from the owner, Charlie. Follow them exactly.
 - Take screenshots while you develop. When your run finishes, paste those screenshots into the chat so he can see them.
 - Never use em dashes (the long dash) anywhere: not in chat, code, comments, docs, commit messages or PRs.
 - Do not add useless tests. Only write tests that check real behaviour.
+- When making menus or UI, keep the text short. No long blocks of sentences and no filler words. Use only the few words a player needs.
+- Focus on simplicity. Choose the simplest design and the simplest code that does the job.
