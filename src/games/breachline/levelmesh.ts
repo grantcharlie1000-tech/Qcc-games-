@@ -188,7 +188,7 @@ const STUD = 0.045, STUD_PITCH = 0.6, NOGGIN = 1.2;
 const PAPER = 0.0012, FRINGE = 0.022;
 /** Tints (on the wall's own texture and light): gypsum core, the brown back paper, the cavity side of the board,
  * the bared gypsum at a tear and the ragged paper edge just inside it. */
-const GYPSUM: RGB = [1.02, 1.0, 0.94], BACK_PAPER: RGB = [0.62, 0.54, 0.42], CAVITY: RGB = [0.4, 0.35, 0.28];
+const GYPSUM: RGB = [0.8, 0.79, 0.76], BACK_PAPER: RGB = [0.62, 0.54, 0.42], CAVITY: RGB = [0.4, 0.35, 0.28];
 const GYPSUM_FACE: RGB = [1.12, 1.1, 1.05], TORN: RGB = [0.74, 0.71, 0.66];
 /** Deterministic hash in [0, 1) of a panel corner. */
 const hash = (a: number, b: number, c: number) => { const v = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453; return v - Math.floor(v); };
@@ -326,6 +326,22 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
           const y0 = p.y0 + r * CELL, ua = Math.max(su - STUD / 2, p.u0 + c * CELL), ub = Math.min(su + STUD / 2, p.u0 + (c + 1) * CELL);
           timber(ua, ub, y0, y0 + CELL);
           studs.push({ c, r });
+          // Where the stud runs on into a hole above or below, its broken end reaches a little way into the opening
+          // (6-14 cm), splintered: framing seen in the gap, short enough never to block it.
+          for (const [dr, edgeY] of [[1, y0 + CELL], [-1, y0]] as const) {
+            if (!open(c, r + dr)) continue;
+            const len = 0.06 + 0.08 * hash(su, r + dr, p.pos), tip = edgeY + dr * len, mid = edgeY + dr * len * 0.55, d = half - SKIN, sh = 0.55;
+            // Two faces of the stub, cut back on a slant like a snapped stick, with a pale splinter at the end.
+            for (const [o0, o1] of [[-d, 0], [0, d]] as const) {
+              const ya = Math.min(edgeY, tip), yb = Math.max(edgeY, tip), slant = dr > 0 ? [yb, mid] : [mid, ya];
+              quad(stud, vert(ua, ya, o0, 0, sh, -1, 0, true), vert(ua, yb, o0, 0, sh, -1, 0, true), vert(ua, yb, o1, 0, sh, -1, 0, true), vert(ua, ya, o1, 0, sh, -1, 0, true), false);
+              quad(stud, vert(ub, dr > 0 ? ya : slant[1], o0, 0, sh, 1, 0, true), vert(ub, dr > 0 ? slant[1] : yb, o0, 0, sh, 1, 0, true), vert(ub, dr > 0 ? slant[1] : yb, o1, 0, sh, 1, 0, true), vert(ub, dr > 0 ? ya : slant[1], o1, 0, sh, 1, 0, true), false);
+              stud.push(...stud.slice(-12).reverse());
+            }
+            const pale: RGB = [1.25, 1.1, 0.85];
+            quad(stud, vert(ua, tip, -d, 0, pale, 0, dr, true), vert(ua, tip, d, 0, pale, 0, dr, true), vert(ub, mid, d, 0, pale, 0, dr, true), vert(ub, mid, -d, 0, pale, 0, dr, true), false);
+            stud.push(...stud.slice(-6).reverse());
+          }
         }
       }
       const nr = Math.floor((NOGGIN - p.y0) / CELL);

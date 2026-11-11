@@ -376,6 +376,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     fx.hole(ex, y, ez, -nx, 0, -nz, (wood ? 0.08 : 0.1) + Math.random() * 0.05, tag);
     const n = fx.density < 1 ? 2 : 4;
     for (let i = 0; i < n; i++) fx.dust(ex - nx * 0.04, y, ez - nz * 0.04, dx * (1 + Math.random() * 2) + (Math.random() - 0.5) * 0.7, dy + Math.random() * 0.4 - 0.1, dz * (1 + Math.random() * 2) + (Math.random() - 0.5) * 0.7, 0.12 + Math.random() * 0.12, 0.6 + Math.random() * 0.6, c[0] * b, c[1] * b, c[2] * b, 0.45, 1.8, 0.4);
+    // A haze that hangs for a few seconds, and powder settling on the floor below the hole on both sides.
+    fx.dust(ex - nx * 0.1, y, ez - nz * 0.1, dx * 0.25, 0.04, dz * 0.25, 0.45, 3 + Math.random(), c[0] * b, c[1] * b, c[2] * b, 0.16, 2.4, -0.02, 1.2);
+    if (Math.random() < 0.5) for (const sd of [1, -1]) fx.powder(x + nx * sd * (0.12 + Math.random() * 0.15), z + nz * sd * (0.12 + Math.random() * 0.15), 0.25 + Math.random() * 0.25);
     for (let i = 0; i < (fx.density < 1 ? 1 : 2); i++) fx.debris(ex, y, ez, dx * (0.5 + Math.random() * 1.5) + (Math.random() - 0.5), Math.random() * 0.8, dz * (0.5 + Math.random() * 1.5) + (Math.random() - 0.5), 0.012 + Math.random() * 0.02, c[0] * b, c[1] * b, c[2] * b, true);
   }
   /** Chips on the intact board round a fresh hole, on both faces: rounds and blast tear more than they cut. */

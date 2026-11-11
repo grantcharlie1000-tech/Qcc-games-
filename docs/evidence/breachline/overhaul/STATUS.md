@@ -305,6 +305,19 @@ session and the third-person placing to the fighters session.
   - the floor soot sits at the wall base, under the opening, where it is hard to see.
 - K (mine, charge only): 3 -> 5.
 
+## Phase 5: destruction look, round 4 (`destruction/round-4/`, 960 px)
+
+The reviewer scored round 3 at **J 6** ("reads as shot plasterboard for the first time"). For 7:
+- **Thickness at a distance:** the gypsum core between the paper faces is now a darker grey, so the board's
+  thickness reads.
+- **Framing in the gap:** where a stud runs on into a hole above or below its cell, its broken end now reaches 6-14 cm
+  into the opening, snapped on a slant with pale splintered wood at the tip. That is framing you can see, kept short
+  so nothing blocks a gap the simulation says is open. A full stud across an opening stays ruled out by that rule.
+- **Debris and powder:** each round through a soft wall leaves a haze that hangs for 3-4 s, pale powder patches on
+  the floor under the hole on both sides (a new pooled decal, kept for the round), and crumbs that stay.
+- **Evidence:** `shot-wall-high.png`, `breach-close-high.png`.
+- J (mine, strict scale): 6 -> 6.5. Walls are left here for now, as the reviewer asked; the kit items come next.
+
 ## Phase 5: destruction look, round 3 (`destruction/round-3/`), against the reviewer's round-2 notes
 
 The reviewer re-scored round 2 at **J 4.5** on a stricter scale ("about two points generous before"). My own scores

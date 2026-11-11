@@ -72,6 +72,7 @@ export class Effects {
   private tracers: THREE.InstancedMesh; private tracerLife: Float32Array; private tracerNext = 0; private tracerLive = 0;
   private scorches: THREE.InstancedMesh; private scorchNext = 0; private scorchTag = new Int32Array(32).fill(-1);
   private scars: THREE.InstancedMesh; private scarNext = 0;
+  private powders: THREE.InstancedMesh; private powderNext = 0;
   private holes: THREE.InstancedMesh; private holeNext = 0; private holeTag = new Int32Array(160).fill(-1);
   private flashes: { sprite: THREE.Sprite; life: number; span: number; size: number }[] = [];
   private rings: { mesh: THREE.Mesh; life: number; span: number; size: number }[] = [];
@@ -83,7 +84,13 @@ export class Effects {
     this.textures.push(puff, flash, hole, scorch, scar);
     this.scars = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: scar, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 80);
     this.scars.frustumCulled = false; this.scars.renderOrder = 2;
+    // Plaster powder on the floor under shot walls: soft pale patches that stay for the round.
+    this.powders = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: puff, color: 0xd8d2c4, transparent: true, opacity: 0.5, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), 64);
+    this.powders.frustumCulled = false; this.powders.renderOrder = 1;
+    for (let i = 0; i < 64; i++) this.powders.setMatrixAt(i, ZERO);
     for (let i = 0; i < 80; i++) this.scars.setMatrixAt(i, ZERO);
+    for (let i = 0; i < 64; i++) this.powders.setMatrixAt(i, ZERO);
+    this.powders.instanceMatrix.needsUpdate = true;
     this.scorches = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: scorch, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), 32);
     this.scorches.frustumCulled = false; this.scorches.renderOrder = 1;
     for (let i = 0; i < 32; i++) this.scorches.setMatrixAt(i, ZERO);
@@ -111,7 +118,7 @@ export class Effects {
       const mesh = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ map: ringTex, color: 0xd8ecff, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false }));
       mesh.visible = false; mesh.renderOrder = 6; this.group.add(mesh); this.rings.push({ mesh, life: 0, span: 1, size: 1 });
     }
-    this.group.add(this.scorches, this.scars, this.holes, this.chunks, this.tracers, this.dustP.object, this.sparkP.object);
+    this.group.add(this.scorches, this.powders, this.scars, this.holes, this.chunks, this.tracers, this.dustP.object, this.sparkP.object);
   }
   dust(x: number, y: number, z: number, vx: number, vy: number, vz: number, size: number, life: number, r: number, g: number, b: number, alpha = 0.5, grow = 1.6, gravity = 0, drag = 2.2) { this.dustP.add(x, y, z, vx, vy, vz, size, life, r, g, b, alpha, grow, gravity, drag); }
   spark(x: number, y: number, z: number, vx: number, vy: number, vz: number, size = 0.05, life = 0.3) { this.sparkP.add(x, y, z, vx, vy, vz, size, life, 1, 0.72, 0.3, 1, -0.6, 9, 1); }
@@ -147,6 +154,13 @@ export class Effects {
     q.setFromUnitVectors(up, n.set(nx, ny, nz)).multiply(new THREE.Quaternion().setFromAxisAngle(up, Math.random() * 6.28));
     this.scars.setMatrixAt(i, mat.compose(v.set(x + nx * 0.004, y + ny * 0.004, z + nz * 0.004), q, s.set(size, size, size)));
     this.scars.instanceMatrix.needsUpdate = true;
+  }
+  /** A patch of plaster powder on the floor (stays for the round). */
+  powder(x: number, z: number, size: number) {
+    const i = this.powderNext; this.powderNext = (this.powderNext + 1) % 64;
+    q.setFromUnitVectors(up, n.set(0, 1, 0)).multiply(new THREE.Quaternion().setFromAxisAngle(up, Math.random() * 6.28));
+    this.powders.setMatrixAt(i, mat.compose(v.set(x, 0.004, z), q, s.set(size, size * (0.6 + Math.random() * 0.4), size)));
+    this.powders.instanceMatrix.needsUpdate = true;
   }
   /** A soot mark from a blast, on the floor or a wall (`tag` as for holes). */
   scorch(x: number, y: number, z: number, nx: number, ny: number, nz: number, size: number, tag = -1) {
@@ -263,7 +277,7 @@ export class Effects {
   }
   dispose() {
     this.dustP.dispose(); this.sparkP.dispose();
-    for (const m of [this.chunks, this.tracers, this.holes, this.scorches, this.scars]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }
+    for (const m of [this.chunks, this.tracers, this.holes, this.scorches, this.scars, this.powders]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }
     for (const f of this.flashes) f.sprite.material.dispose();
     for (const r of this.rings) (r.mesh.material as THREE.Material).dispose();
     this.rings[0]?.mesh.geometry.dispose();
