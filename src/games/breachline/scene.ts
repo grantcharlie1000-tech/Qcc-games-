@@ -86,6 +86,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   function bind(w: World) {
     for (const p of panels) { panelGroup.remove(p.mesh); p.dispose(); }
     world = w;
+    // `?artdbg=world` exposes the bound world to evidence scripts (read-only use: finding damaged or reinforced panels).
+    if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) (window as unknown as { __blWorld: World }).__blWorld = w;
     panels = w.panels.map((p, i) => { const v = new PanelView(p, bake, panelMats, art?.panelLook(i) ?? null); panelGroup.add(v.mesh); return v; });
   }
   // Photo-sourced rooms stream in after the first frame; until then, and if anything fails, the procedural look stays.
@@ -368,7 +370,13 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     const c = DUST[kind], l = bake.probe(x, z), b = 0.35 + (l[0] + l[1] + l[2]) / 3;
     const n = fx.density < 1 ? 1 : 2;
     for (let i = 0; i < n; i++) fx.dust(x + nx * 0.05, y + ny * 0.05, z + nz * 0.05, nx * (0.6 + Math.random()) + (Math.random() - 0.5) * 0.6, ny * (0.6 + Math.random()) + Math.random() * 0.5, nz * (0.6 + Math.random()) + (Math.random() - 0.5) * 0.6, 0.16 + Math.random() * 0.12, 0.5 + Math.random() * 0.4, c[0] * b, c[1] * b, c[2] * b, 0.5);
-    if (hard) { fx.hole(x, y, z, nx, ny, nz, 0.07 + Math.random() * 0.04); if (kind === 'metal') for (let i = 0; i < 4; i++) fx.spark(x, y, z, nx * 3 + (Math.random() - 0.5) * 4, ny * 3 + Math.random() * 3, nz * 3 + (Math.random() - 0.5) * 4); }
+    if (hard) {
+      if (kind === 'metal') {
+        // Steel stops rounds: a bright scar and a spray of sparks, never a hole.
+        fx.scar(x, y, z, nx, ny, nz, 0.045 + Math.random() * 0.035);
+        for (let i = 0; i < (fx.density < 1 ? 3 : 6); i++) fx.spark(x, y, z, nx * 3 + (Math.random() - 0.5) * 4, ny * 3 + Math.random() * 3, nz * 3 + (Math.random() - 0.5) * 4);
+      } else fx.hole(x, y, z, nx, ny, nz, 0.07 + Math.random() * 0.04);
+    }
   }
 
   return {
@@ -392,7 +400,10 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
               for (const sh of tr.soft) softHit(m, sh.panel, sh.cell, e.x + d.x * sh.t, e.y + d.y * sh.t, e.z + d.z * sh.t, d.x, d.y, d.z);
               if (!tr.solid) return;
               const mat = tr.panel ? 'metal' : !tr.box ? 'concrete' : tr.box.mat === 'brick' ? 'brick' : tr.box.mat === 'wood' || tr.box.mat === 'crate' || tr.box.mat === 'trim' || tr.box.mat === 'shelf' ? 'wood' : tr.box.mat === 'concrete' ? 'concrete' : tr.box.mat === 'plaster' ? 'wall' : 'metal';
-              impact(hx, hy, hz, tr.nx, tr.ny, tr.nz, mat, true);
+              // The simulation stops a round at a reinforced panel's centre plane; the steel face the shooter sees is
+              // in front of that (plate half-thickness plus its folds).
+              const lift = tr.panel ? 0.12 : 0;
+              impact(hx + tr.nx * lift, hy + tr.ny * lift, hz + tr.nz * lift, tr.nx, tr.ny, tr.nz, mat, true);
             });
             break;
           }

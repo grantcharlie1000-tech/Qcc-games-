@@ -67,8 +67,32 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** kit: charge and barricades round 1 done (`kit/`); next the reinforcement, then the
-uplink and grenade blasts; then corridor round 3 and Archive round 2.
+**Where I am (keep current):** kit round 1 done for the charge, barricades and reinforcement (`kit/`); next the
+uplink device and grenade blasts; then corridor round 3 and Archive round 2.
+
+## Tactical kit (row K): reinforcement, round 1 (`kit/reinforcement-round-1/`)
+
+Before: a flat 20 cm slab carrying the old plate texture (dark grey, printed rivets and a hazard band).
+- **Now** (`levelmesh.ts` `reinforcement()`): folded steel leaves about 0.5 m wide in a shallow zig-zag; three
+  stiffening rails standing proud, with rivet heads at every fold; anchor shoes at the foot and head of every
+  other fold, as if fired into the floor and ceiling. Painted blue-grey, a touch different per leaf. Both faces
+  alike.
+- **Under fire:** rounds that hit a plate leave a bright scar (paint blasted off round bare metal and a lead smear;
+  a new decal pool) and a spray of sparks, never a hole. Fixed on the way: the simulation stops a round at the
+  panel's centre plane, inside the plate, so the old decals and sparks were buried in the steel. Hits are now
+  lifted to the face.
+- **Evidence** (a wall the defending bots reinforce; new `REINFORCE=1` mode in the bookmark script, and
+  `?artdbg=world` to list the reinforced panels): `before-after.png`, `other-side-high.png`, `shot-high.png`,
+  `shot-crop.png` (scars after a burst, dust cleared with `fxfast`).
+- **Mismatches for round 2:**
+  - the steel is unlit by the room probe (the plate material is the old flat-shaded one), so there's no brushed
+    sheen or specular;
+  - the scale of the old texture shows through (stretched streaks);
+  - no deploy animation: the plate appears whole when the simulation sets it, and the unfold needs the
+    defender's progress (`act`/`actT`/`actTarget` on the player is enough; no new hook);
+  - no anchor bolts visible in the floor or ceiling;
+  - the hazard band is texture-only.
+- K (mine, reinforcement): 3 -> 5.
 
 ## Tactical kit (row K): barricades, round 1 (`kit/barricade-round-1/`)
 

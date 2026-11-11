@@ -40,6 +40,10 @@ export const BOOKMARKS = {
   barricade: [-2.75, -8.2, 0, -0.05],
   // The same window after a burst: snapped planks and splinters (taken after 'barricade').
   'barricade-shot': [-2.75, -8.2, 0, -0.05],
+  // A wall the defending bots reinforce in preparation (panel 32, z = 1, x 0 to 2.75); needs REINFORCE=1.
+  'reinforced-a': [1.4, 3.2, 0, -0.02],
+  'reinforced-b': [1.4, -1.2, 3.1416, -0.02],
+  'reinforced-shot': [1.4, -1.2, 3.1416, -0.02],
 };
 /** A breach charge pressed onto the wall and left armed. */
 const PLANT = `(() => { const h = window.__breachlineTest; h.place(1.5, -0.6, 0, -0.25); h.advance(0.1); h.hold({}, 1.4, { breach: true }); h.advance(0.3); })()`;
@@ -62,7 +66,9 @@ page.on('console', m => { if (m.type() === 'warning' || m.type() === 'error' || 
 page.on('pageerror', e => console.log(`[page] pageerror ${e.message}`));
 await page.goto(`${url}/?festive=off${art === 'off' ? '&art=off' : ''}${dbg ? `&artdbg=${dbg}` : ''}&arttier=${tier === 'low' ? 'low' : 'high'}#/game/breachline`);
 await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 60000 });
-await page.evaluate(q => { const h = window.__breachlineTest; h.start({ seed: 7, quality: q === 'low' ? 'low' : 'high', teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); h.still(); h.skip(30); h.advance(0.3); h.advance(5); }, tier);
+// REINFORCE=1: a full squad each side, and the defending bots get their preparation (they reinforce site walls).
+if (process.env.REINFORCE) await page.evaluate(q => { const h = window.__breachlineTest; h.start({ seed: 7, quality: q === 'low' ? 'low' : 'high', teamSize: 5, bots: true }); h.freeze(true); for (let i = 0; i < 12; i++) h.advance(2); h.still(); }, tier);
+else await page.evaluate(q => { const h = window.__breachlineTest; h.start({ seed: 7, quality: q === 'low' ? 'low' : 'high', teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); h.still(); h.skip(30); h.advance(0.3); h.advance(5); }, tier);
 // Let the art stream in.
 if (art !== 'off') await page.waitForFunction(() => window.__breachlineTest.stats().level > 0 && window.__breachlineTest.stats().calls > 0, undefined, { timeout: 60000 });
 // The art warms up off the critical path (seconds under software GL), then goes live; High then captures its probes.
@@ -75,6 +81,7 @@ let damaged = false;
 for (const [name, [x, z, yaw, pitch]] of Object.entries(BOOKMARKS)) {
   if (only.length && !only.includes(name)) continue;
   if (name === 'charge') await page.evaluate(PLANT);
+  if (name === 'reinforced-shot') await page.evaluate(() => { const h = window.__breachlineTest; h.place(1.4, -1.2, 3.1416, 0.02); h.advance(0.1); h.hold({ fire: true, mx: 0.6 }, 0.8); h.advance(0.3); for (let i = 0; i < 8; i++) h.draw(); });
   if (name === 'barricade-shot') await page.evaluate(() => { const h = window.__breachlineTest; h.place(-2.75, -8.2, 0, 0.05); h.advance(0.1); h.hold({ fire: true, mx: 0.8 }, 0.7); h.advance(0.5); for (let i = 0; i < 6; i++) h.draw(); });
   if (['breach', 'breach-lab', 'shot-wall', 'breach-close'].includes(name) && !damaged) { await page.evaluate(DAMAGE); damaged = true; await page.waitForTimeout(500); }
   await page.evaluate(([x, z, yaw, pitch]) => { const h = window.__breachlineTest; h.place(x, z, yaw, pitch); h.advance(0.05); h.draw(); h.draw(); }, [x, z, yaw, pitch]);

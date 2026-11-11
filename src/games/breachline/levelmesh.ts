@@ -223,6 +223,7 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
   };
   const quad = (list: number[], a: number, b: number, c: number, d: number, flip: boolean) => { if (flip) list.push(a, d, c, a, c, b); else list.push(a, b, c, a, c, d); };
   if (wood && !plate) return barricade();
+  if (plate) return reinforcement();
   // Front and back: runs of intact cells along each row become one quad each (split every half metre, so rows share
   // their lit columns).
   for (let r = 0; r < p.rows; r++) {
@@ -333,6 +334,50 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
     }
     return finish();
   }
+  /** A reinforcement: folded steel leaves about half a metre wide (a shallow zig-zag across the opening), three
+   * stiffening rails with rivet heads, and anchor shoes biting into the floor and ceiling. Both faces alike. */
+  function reinforcement() {
+    const W = p.cols * CELL, leaves = Math.max(2, Math.round(W / 0.5)), lw = W / leaves, y0 = p.y0, y1 = p.y0 + p.rows * CELL, FOLD = 0.018;
+    const PAINT: RGB = [1.75, 1.8, 1.9], RAIL: RGB = [1.15, 1.18, 1.24], STEEL: RGB = [0.9, 0.9, 0.92], RIVET: RGB = [2.3, 2.3, 2.3];
+    const at = (u: number, y: number, off: number, n: number, sh: RGB, nx = 0, ny = 0) => {
+      const w = panelPoint(p, u, y, off), l = light(u, y, off, n);
+      pos.push(w.x, w.y, w.z); uv.push(u / tile[0], y / tile[1]); col.push(l[0] * sh[0], l[1] * sh[1], l[2] * sh[2]);
+      if (n) { if (alongX) nor.push(0, 0, n); else nor.push(n, 0, 0); } else if (alongX) nor.push(nx, ny, 0); else nor.push(0, ny, nx);
+      return pos.length / 3 - 1;
+    };
+    const box = (ua: number, ub: number, ya: number, yb: number, o0: number, o1: number, sh: RGB, n: number) => {
+      // A small block standing on the face (front, top, bottom and ends; its back is against the plate).
+      const flip = alongX ? n < 0 : n > 0;
+      quad(edge, at(ua, ya, o1, n, sh), at(ub, ya, o1, n, sh), at(ub, yb, o1, n, sh), at(ua, yb, o1, n, sh), flip);
+      for (const [a, b, ny, yy] of [[ua, ub, 1, yb], [ua, ub, -1, ya]] as const) { const v = [at(a, yy, o0, 0, sh, 0, ny), at(b, yy, o0, 0, sh, 0, ny), at(b, yy, o1, 0, sh, 0, ny), at(a, yy, o1, 0, sh, 0, ny)]; edge.push(v[0], v[1], v[2], v[0], v[2], v[3], v[0], v[2], v[1], v[0], v[3], v[2]); }
+      for (const [uu, nx] of [[ua, -1], [ub, 1]] as const) { const v = [at(uu, ya, o0, 0, sh, nx, 0), at(uu, yb, o0, 0, sh, nx, 0), at(uu, yb, o1, 0, sh, nx, 0), at(uu, ya, o1, 0, sh, nx, 0)]; edge.push(v[0], v[1], v[2], v[0], v[2], v[3], v[0], v[2], v[1], v[0], v[3], v[2]); }
+    };
+    for (const n of [1, -1]) {
+      const flip = alongX ? n < 0 : n > 0, base = n * half;
+      // The leaves: each face runs from a fold line to the next, alternately standing out and set back.
+      for (let i = 0; i < leaves; i++) {
+        const ua = p.u0 + i * lw, ub = ua + lw, oa = base + n * (i % 2 ? FOLD : 0), ob = base + n * (i % 2 ? 0 : FOLD);
+        const tone = 0.9 + 0.12 * hash(i, p.pos, n), sh: RGB = [PAINT[0] * tone, PAINT[1] * tone, PAINT[2] * tone];
+        quad(face, at(ua, y0, oa, n, sh), at(ub, y0, ob, n, sh), at(ub, y1, ob, n, sh), at(ua, y1, oa, n, sh), flip);
+      }
+      // Rails across, standing proud of the folds, each with a row of rivet heads.
+      for (const yc of [y0 + 0.22, (y0 + y1) / 2, y1 - 0.22]) {
+        const o0 = base + n * FOLD, o1 = o0 + n * 0.028;
+        box(p.u0 + 0.03, p.u0 + W - 0.03, yc - 0.045, yc + 0.045, o0, o1, RAIL, n);
+        for (let i = 0; i <= leaves; i++) {
+          const u = Math.min(Math.max(p.u0 + i * lw, p.u0 + 0.06), p.u0 + W - 0.06);
+          for (const dy of [-0.025, 0.025]) box(u - 0.008, u + 0.008, yc + dy - 0.008, yc + dy + 0.008, o1, o1 + n * 0.006, RIVET, n);
+        }
+      }
+      // Anchor shoes at the foot and head of every other fold line, as if fired into the floor and ceiling.
+      for (let i = 1; i < leaves; i += 2) {
+        const u = p.u0 + i * lw, o0 = base + n * FOLD, o1 = o0 + n * 0.06;
+        box(u - 0.04, u + 0.04, y0, y0 + 0.07, o0, o1, STEEL, n);
+        box(u - 0.04, u + 0.04, y1 - 0.07, y1, o0, o1, STEEL, n);
+      }
+    }
+    return finish();
+  }
   function board(c0: number, c1: number, r: number, yAt: (u: number, top: boolean) => number, depth: number, T: number, vo: number, uo: number, shade: RGB) {
     const ua = p.u0 + c0 * CELL, ub = p.u0 + c1 * CELL, brokeA = c0 > 0, brokeB = c1 < p.cols;
     // A break is jagged: top, middle and bottom of the end stop at different places.
@@ -425,7 +470,7 @@ export class PanelView {
     this.mesh.geometry.dispose();
     this.mesh.geometry = geo.geometry;
     const look = this.look, planks = look?.planks ?? this.mats.planks, plate = p.reinforced, wood = p.kind !== 'wall';
-    this.mesh.material = [plate ? this.mats.plate : wood ? planks : look ? look.wall : this.mats.wall, wood ? planks : look ? look.wall : this.mats.core, planks];
+    this.mesh.material = plate ? [this.mats.plate, this.mats.plate, this.mats.plate] : [wood ? planks : look ? look.wall : this.mats.wall, wood ? planks : look ? look.wall : this.mats.core, planks];
     return true;
   }
   dispose() { this.mesh.geometry.dispose(); }

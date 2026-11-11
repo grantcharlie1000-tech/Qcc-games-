@@ -246,7 +246,7 @@ export function makeTextures(anisotropy: number, size = 256): Record<TexId, THRE
 }
 
 /** Soft sprites for effects: white on transparent, tinted per use. */
-export function makeSprite(kind: 'puff' | 'flash' | 'hole' | 'blob' | 'ring' | 'scorch'): THREE.CanvasTexture {
+export function makeSprite(kind: 'puff' | 'flash' | 'hole' | 'blob' | 'ring' | 'scorch' | 'scar'): THREE.CanvasTexture {
   const s = 128, canvas = document.createElement('canvas'); canvas.width = canvas.height = s;
   const g = canvas.getContext('2d')!, c = s / 2;
   if (kind === 'puff' || kind === 'blob') {
@@ -259,6 +259,13 @@ export function makeSprite(kind: 'puff' | 'flash' | 'hole' | 'blob' | 'ring' | '
     g.fillStyle = grad; g.fillRect(0, 0, s, s);
     g.fillStyle = 'rgba(255,240,200,0.9)';
     for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5 + 0.3; g.beginPath(); g.moveTo(c + Math.cos(a - 0.16) * 8, c + Math.sin(a - 0.16) * 8); g.lineTo(c + Math.cos(a) * c * 0.95, c + Math.sin(a) * c * 0.95); g.lineTo(c + Math.cos(a + 0.16) * 8, c + Math.sin(a + 0.16) * 8); g.fill(); }
+  } else if (kind === 'scar') {
+    // A round stopped by steel: paint blasted off in a ragged ring, bright bare metal and a grey lead smear.
+    const r = rng(31), ragged = (rad: number, jag: number) => { g.beginPath(); for (let i = 0; i <= 20; i++) { const a = i / 20 * Math.PI * 2, q = rad * (1 - jag + 2 * jag * r()); if (i) g.lineTo(c + Math.cos(a) * q, c + Math.sin(a) * q); else g.moveTo(c + Math.cos(a) * q, c + Math.sin(a) * q); } g.closePath(); g.fill(); };
+    g.fillStyle = 'rgba(40,38,36,0.45)'; ragged(c * 0.62, 0.25);
+    g.fillStyle = 'rgba(205,208,212,0.95)'; ragged(c * 0.42, 0.3);
+    g.fillStyle = 'rgba(120,122,126,0.9)'; ragged(c * 0.22, 0.25);
+    for (let i = 0; i < 8; i++) { const a = r() * 6.283; g.strokeStyle = 'rgba(225,228,232,0.6)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(c + Math.cos(a) * c * 0.35, c + Math.sin(a) * c * 0.35); g.lineTo(c + Math.cos(a) * c * (0.55 + r() * 0.3), c + Math.sin(a) * c * (0.55 + r() * 0.3)); g.stroke(); }
   } else if (kind === 'scorch') {
     // Soot: a dark, uneven core fading out, with streaks thrown radially and a few clean spots where debris lay.
     const r = rng(23), grad = g.createRadialGradient(c, c, 0, c, c, c);

@@ -71,17 +71,23 @@ export class Effects {
   private chunks: THREE.InstancedMesh; private chunk: { x: number; y: number; z: number; vx: number; vy: number; vz: number; rx: number; ry: number; rz: number; spin: number; size: number; life: number; stay: boolean; rest: boolean; flat: number }[] = []; private chunkNext = 0; private chunkLive = 0;
   private tracers: THREE.InstancedMesh; private tracerLife: Float32Array; private tracerNext = 0; private tracerLive = 0;
   private scorches: THREE.InstancedMesh; private scorchNext = 0; private scorchTag = new Int32Array(32).fill(-1);
+  private scars: THREE.InstancedMesh; private scarNext = 0;
   private holes: THREE.InstancedMesh; private holeNext = 0; private holeTag = new Int32Array(160).fill(-1);
   private flashes: { sprite: THREE.Sprite; life: number; span: number; size: number }[] = [];
   private textures: THREE.Texture[] = [];
   /** 1 full effects; lower on the performance preset. */
   density = 1;
   constructor(readonly maxChunks = 180) {
-    const puff = makeSprite('puff'), flash = makeSprite('flash'), hole = makeSprite('hole'), scorch = makeSprite('scorch');
-    this.textures.push(puff, flash, hole, scorch);
+    const puff = makeSprite('puff'), flash = makeSprite('flash'), hole = makeSprite('hole'), scorch = makeSprite('scorch'), scar = makeSprite('scar');
+    this.textures.push(puff, flash, hole, scorch, scar);
+    this.scars = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: scar, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 80);
+    this.scars.frustumCulled = false; this.scars.renderOrder = 2;
+    for (let i = 0; i < 80; i++) this.scars.setMatrixAt(i, ZERO);
     this.scorches = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: scorch, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), 32);
     this.scorches.frustumCulled = false; this.scorches.renderOrder = 1;
     for (let i = 0; i < 32; i++) this.scorches.setMatrixAt(i, ZERO);
+    for (let i = 0; i < 80; i++) this.scars.setMatrixAt(i, ZERO);
+    this.scars.instanceMatrix.needsUpdate = true;
     this.dustP = new Points(280, puff, false); this.sparkP = new Points(160, puff, true);
     this.chunks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), maxChunks);
     this.chunks.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.chunks.frustumCulled = false;
@@ -97,7 +103,7 @@ export class Effects {
       const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: flash, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
       sprite.visible = false; sprite.renderOrder = 7; this.group.add(sprite); this.flashes.push({ sprite, life: 0, span: 1, size: 1 });
     }
-    this.group.add(this.scorches, this.holes, this.chunks, this.tracers, this.dustP.object, this.sparkP.object);
+    this.group.add(this.scorches, this.scars, this.holes, this.chunks, this.tracers, this.dustP.object, this.sparkP.object);
   }
   dust(x: number, y: number, z: number, vx: number, vy: number, vz: number, size: number, life: number, r: number, g: number, b: number, alpha = 0.5, grow = 1.6, gravity = 0, drag = 2.2) { this.dustP.add(x, y, z, vx, vy, vz, size, life, r, g, b, alpha, grow, gravity, drag); }
   spark(x: number, y: number, z: number, vx: number, vy: number, vz: number, size = 0.05, life = 0.3) { this.sparkP.add(x, y, z, vx, vy, vz, size, life, 1, 0.72, 0.3, 1, -0.6, 9, 1); }
@@ -126,6 +132,13 @@ export class Effects {
     q.setFromUnitVectors(up, n.set(nx, ny, nz));
     this.holes.setMatrixAt(i, mat.compose(v.set(x + nx * 0.012, y + ny * 0.012, z + nz * 0.012), q, s.set(size, size, size)));
     this.holes.instanceMatrix.needsUpdate = true;
+  }
+  /** A round stopped by steel: a bright scar where the paint came off (never a hole). */
+  scar(x: number, y: number, z: number, nx: number, ny: number, nz: number, size = 0.06) {
+    const i = this.scarNext; this.scarNext = (this.scarNext + 1) % 80;
+    q.setFromUnitVectors(up, n.set(nx, ny, nz)).multiply(new THREE.Quaternion().setFromAxisAngle(up, Math.random() * 6.28));
+    this.scars.setMatrixAt(i, mat.compose(v.set(x + nx * 0.004, y + ny * 0.004, z + nz * 0.004), q, s.set(size, size, size)));
+    this.scars.instanceMatrix.needsUpdate = true;
   }
   /** A soot mark from a blast, on the floor or a wall (`tag` as for holes). */
   scorch(x: number, y: number, z: number, nx: number, ny: number, nz: number, size: number, tag = -1) {
@@ -220,7 +233,7 @@ export class Effects {
   }
   dispose() {
     this.dustP.dispose(); this.sparkP.dispose();
-    for (const m of [this.chunks, this.tracers, this.holes, this.scorches]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }
+    for (const m of [this.chunks, this.tracers, this.holes, this.scorches, this.scars]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }
     for (const f of this.flashes) f.sprite.material.dispose();
     for (const t of this.textures) t.dispose();
   }
