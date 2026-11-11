@@ -132,9 +132,11 @@ export interface TextureSet { map: THREE.Texture; normalMap: THREE.Texture; arm:
 /** A baked texture set's material: standard PBR from the maps (albedo; tangent-space normal; occlusion, roughness and
  * metalness in R, G, B), no per-pixel noise. As with the hero material, the environment gives specular only, and
  * vertices marked emissive in the `pbr` attribute (sight reticles, tritium) glow. */
-export function texturedMaterial(t: TextureSet): THREE.MeshStandardMaterial {
-  const m = new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normalMap, aoMap: t.arm, roughnessMap: t.arm, metalnessMap: t.arm, roughness: 1, metalness: 1 });
-  m.customProgramCacheKey = () => 'heroTex';
+/** With `detail`, the albedo map is a shading multiplier on the vertex colours (gloves and sleeves keep their squad
+ * colours from the geometry). */
+export function texturedMaterial(t: TextureSet, detail = false): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normalMap, aoMap: t.arm, roughnessMap: t.arm, metalnessMap: t.arm, roughness: 1, metalness: 1, vertexColors: detail });
+  m.customProgramCacheKey = () => (detail ? 'heroTexD' : 'heroTex');
   m.onBeforeCompile = shader => {
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec4 pbr;\nvarying float vGlow;')

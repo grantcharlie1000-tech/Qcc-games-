@@ -116,6 +116,8 @@ export interface FpRig {
   setWeapon(id: WeaponId): void;
   /** Gives a weapon its baked texture set; used whenever that weapon is in hand. */
   setTextures(id: WeaponId, material: THREE.Material): void;
+  /** Gives both arms the hands' baked set. */
+  setArmMaterial(material: THREE.Material): void;
   /** Poses moving parts and solves both arms for a reload frame (idle when omitted). */
   solve(f?: ReloadFrame): void;
   dispose(): void;
@@ -166,6 +168,7 @@ export function createFpRig(look: ArmsLook): FpRig {
       if (lens) { lens.renderOrder = 2; gun.add(lens); }
       rig.lens = lens;
     },
+    setArmMaterial(m) { (armMesh as THREE.Mesh).material = m; },
     setTextures(id, m) { textured.set(id, m); if (rig.weapon.id === id && weaponMesh) weaponMesh.material = m; },
     solve(f = IDLE) {
       const hold = holdFor(rig.weapon.id), S = rig.weapon.sockets;

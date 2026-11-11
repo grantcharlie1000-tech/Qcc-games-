@@ -19,12 +19,14 @@ import * as THREE from 'three';
 import { MeshBVH } from 'three-mesh-bvh';
 import { encodeToKTX2 } from 'ktx2-encoder';
 import type { WeaponId } from '../../../src/games/breachline/config';
-import { PAT } from '../../../src/games/breachline/render/hero/geom';
+import { PAT, heroReady } from '../../../src/games/breachline/render/hero/geom';
+import { FORE, HAND, UPPER, digitRest, rightArm } from '../../../src/games/breachline/render/hero/hands';
+import { DEFAULT_LOOK } from '../../../src/games/breachline/render/hero/rig';
 import { WB, weaponModel } from '../../../src/games/breachline/render/hero/weapons';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const arg = (k: string, d: string) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
-const ids = process.argv.slice(2).filter(a => !a.startsWith('--') && !/^\d+$/.test(a)) as WeaponId[];
+const ids = process.argv.slice(2).filter(a => !a.startsWith('--') && !/^\d+$/.test(a));
 const SIZE = Number(arg('size', '2048')), PREVIEW = process.argv.includes('--preview');
 
 // ---- Noise (deterministic) --------------------------------------------------------------------------------------
@@ -39,11 +41,11 @@ function vnoise(x: number, y: number, z: number) {
 const fbm = (x: number, y: number, z: number, o = 4) => { let s = 0, a = 0.5, f = 1; for (let i = 0; i < o; i++) { s += a * vnoise(x * f + i * 17.3, y * f - i * 9.1, z * f + i * 3.7); f *= 2.03; a *= 0.5; } return s; };
 const sstep = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
-async function bake(id: WeaponId) {
-  const t0 = Date.now();
-  const model = weaponModel(id, 0), geo = model.geo;
+type Mode = 'weapon' | 'hands';
+async function bake(id: string, geo: THREE.BufferGeometry, density: number, S: number, mode: Mode, sizes: number[]) {
+  const t0 = Date.now(), model = { texelDensity: density };
   const P = geo.getAttribute('position'), N = geo.getAttribute('normal'), UV = geo.getAttribute('uv'), C = geo.getAttribute('color'), PB = geo.getAttribute('pbr'), E = geo.getAttribute('edge'), SI = geo.getAttribute('skinIndex');
-  const ix = geo.index!.array, nt = ix.length / 3, S = SIZE, T = S * S;
+  const ix = geo.index!.array, nt = ix.length / 3, T = S * S;
   // Texel buffers.
   const pos = new Float32Array(T * 3), nor = new Float32Array(T * 3), alb = new Float32Array(T * 3), pbr = new Float32Array(T * 4), edge = new Float32Array(T), tan = new Float32Array(T * 3), bit = new Float32Array(T * 3), bone = new Uint8Array(T), cov = new Uint8Array(T);
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), tA = new THREE.Vector2(), tB = new THREE.Vector2(), tC = new THREE.Vector2();
@@ -84,7 +86,7 @@ async function bake(id: WeaponId) {
   console.log(id, `rasterised in ${Date.now() - t0} ms, ${cov.reduce((s, v) => s + (v ? 1 : 0), 0)} texels covered, density ${model.texelDensity?.toFixed(0)} texels/m`);
   // Ambient occlusion: cosine rays against the weapon (casings excluded), at half resolution, then upsampled.
   const occl = new THREE.BufferGeometry(), keep: number[] = [];
-  for (let t = 0; t < nt; t++) if (SI.getX(ix[t * 3]) < WB.case0) keep.push(ix[t * 3], ix[t * 3 + 1], ix[t * 3 + 2]);
+  for (let t = 0; t < nt; t++) if (mode === 'hands' || SI.getX(ix[t * 3]) < WB.case0) keep.push(ix[t * 3], ix[t * 3 + 1], ix[t * 3 + 2]);
   occl.setAttribute('position', P); occl.setIndex(keep);
   const bvh = new MeshBVH(occl), ray = new THREE.Ray(), RAYS = 40, RANGE = 0.05, H = S / 2;
   const aoH = new Float32Array(H * H).fill(1);
@@ -110,6 +112,7 @@ async function bake(id: WeaponId) {
   // Height stamps (metres) by material and place, evaluated at the surface point.
   const height = (k: number) => {
     const x = pos[k * 3], y = pos[k * 3 + 1], z = pos[k * 3 + 2], pat = Math.round(pbr[k * 4 + 3]);
+    if (mode === 'hands') return handHeight(x, y, z, pat, nor[k * 3], nor[k * 3 + 1], nor[k * 3 + 2]);
     if (pat === PAT.polymer) {
       // Moulded pebble everywhere; aggressive stipple on the pistol grip and the magazine's ribs region.
       const grip = y < -0.11 && z > -0.04 && z < 0.06 && bone[k] === WB.root;
@@ -142,6 +145,24 @@ async function bake(id: WeaponId) {
     const hy = (y + 1 < S && cov[k + S] ? hgt[k + S] : hgt[k]) - (y > 0 && cov[k - S] ? hgt[k - S] : hgt[k]);
     let nx = -hx / (2 * texel), ny = -hy / (2 * texel), nz = 1; const nl = Math.hypot(nx, ny, nz); nx /= nl; ny /= nl; nz /= nl;
     nmap[o4] = Math.round((nx * 0.5 + 0.5) * 255); nmap[o4 + 1] = Math.round((ny * 0.5 + 0.5) * 255); nmap[o4 + 2] = Math.round((nz * 0.5 + 0.5) * 255); nmap[o4 + 3] = 255;
+    if (mode === 'hands') {
+      // A detail map multiplied with the vertex colours (glove, sleeve, squad band): shading only.
+      let v = 0.9 + 0.08 * (fbm(X * 160, Y * 160, Z * 160, 3) - 0.5);
+      // Seams where the colour changes (panel borders): a dark groove line.
+      let seam = 0;
+      for (const [dx, dy] of [[2, 0], [-2, 0], [0, 2], [0, -2]]) {
+        const kk = (y + dy) * S + (x + dx);
+        if (x + dx < 0 || y + dy < 0 || x + dx >= S || y + dy >= S || !cov[kk]) continue;
+        seam = Math.max(seam, Math.abs(alb[kk * 3] - alb[k * 3]) + Math.abs(alb[kk * 3 + 1] - alb[k * 3 + 1]) + Math.abs(alb[kk * 3 + 2] - alb[k * 3 + 2]));
+      }
+      v *= 1 - Math.min(0.45, seam * 3);
+      v *= 1 - 0.5 * crease(X, Y, Z);
+      v *= 1 - cav * 0.6;
+      const lin = Math.min(1, Math.max(0.05, v));
+      diff[o4] = diff[o4 + 1] = diff[o4 + 2] = lin2srgb(lin); diff[o4 + 3] = 255;
+      arm[o4] = Math.round(255 * Math.min(1, 0.35 + ao * 0.65)); arm[o4 + 1] = Math.round(255 * Math.min(1, rough + 0.05 * (fine0(X, Y, Z) - 0.5))); arm[o4 + 2] = 0; arm[o4 + 3] = 255;
+      continue;
+    }
     // Layers.
     const big = fbm(X * 25, Y * 25, Z * 25, 3), mid = fbm(X * 140, Y * 140, Z * 140, 3), fine = vnoise(X * 900, Y * 900, Z * 900);
     const isMetal = pat === PAT.metal, isPoly = pat === PAT.polymer, isRubber = pat === PAT.rubber, isGlow = pat === PAT.emissive;
@@ -187,7 +208,7 @@ async function bake(id: WeaponId) {
   for (const [kind, img] of [['diff', diff], ['nor', nmap], ['arm', arm]] as const) {
     const master = await sharp(img, { raw: { width: S, height: S, channels: 4 } }).png().toBuffer();
     await writeFile(join(cache, `${kind}-${S}.png`), master);
-    for (const size of [2048, 1024]) {
+    for (const size of sizes) {
       const png = size === S ? master : await sharp(master).resize(size, size, { kernel: 'lanczos3' }).png().toBuffer();
       const key = createHash('sha256').update(png).update(kind).digest('hex').slice(0, 20), cached = join(cache, `${kind}-${size}-${key}.ktx2`);
       let ktx: Buffer;
@@ -199,7 +220,7 @@ async function bake(id: WeaponId) {
       await writeFile(join(out, `${kind}-${size}.ktx2`), ktx);
     }
     await sharp(master).resize(512, 512).jpeg({ quality: 88 }).toFile(join(out, `${kind}-512.jpg`));
-    if (PREVIEW) await sharp(master).resize(1024, 1024).png({ palette: true, colours: 200 }).toFile(join(cache, `preview-${kind}.png`));
+    if (PREVIEW) await sharp(master).resize(Math.min(1024, S), Math.min(1024, S)).png({ palette: true, colours: 200 }).toFile(join(cache, `preview-${kind}.png`));
   }
   console.log(id, `written in ${Date.now() - t0} ms`);
 }
@@ -220,4 +241,47 @@ function dilate(img: Buffer, cov: Uint8Array, S: number, passes: number) {
   }
 }
 
-for (const id of ids.length ? ids : ['ar' as WeaponId]) await bake(id);
+// ---- Hands: crease lines at the finger joints, seams, weave and pebble -------------------------------------------
+const WRIST = -(UPPER + FORE);
+const joints: { p: THREE.Vector3; d: THREE.Vector3; r: number }[] = [];
+for (let dg = 0; dg < 5; dg++) {
+  const h = HAND[dg], dir = new THREE.Vector3(0, 0, -1).applyQuaternion(digitRest(dg));
+  let p = new THREE.Vector3(h.base[0], h.base[1], h.base[2] + WRIST);
+  for (let s = 0; s < 3; s++) { joints.push({ p: p.clone(), d: dir.clone(), r: h.rad[s] * 1.5 }); p = p.clone().addScaledVector(dir, h.len[s]); }
+}
+const tmpV = new THREE.Vector3();
+/** 0..1: how close a point is to a finger joint's crease line (a narrow band across the finger at each joint). */
+function crease(x: number, y: number, z: number) {
+  let c = 0;
+  for (const j of joints) {
+    tmpV.set(x, y, z).sub(j.p);
+    const along = tmpV.dot(j.d), across = tmpV.addScaledVector(j.d, -along).length();
+    if (across > j.r) continue;
+    c = Math.max(c, Math.exp(-Math.pow(along / 0.0011, 2)) * 0.9, Math.exp(-Math.pow((along - 0.0035) / 0.0008, 2)) * 0.45);
+  }
+  return c;
+}
+const fine0 = (x: number, y: number, z: number) => vnoise(x * 900, y * 900, z * 900);
+function handHeight(x: number, y: number, z: number, pat: number, _nx: number, ny: number, _nz: number) {
+  const cr = -crease(x, y, z) * 0.0006;
+  if (pat === PAT.fabric) {
+    // Ripstop weave and a seam down the underside of the sleeve.
+    const weave = (Math.sin(x * 4200) * Math.sin(z * 4200) + Math.sin(y * 4200) * Math.sin(z * 4200)) * 0.000025;
+    const seam = ny < -0.85 && Math.abs(x) < 0.004 ? -0.0004 : 0;
+    return weave + seam + fbm(x * 200, y * 200, z * 200, 2) * 0.0002;
+  }
+  if (pat === PAT.leather) return cr + fbm(x * 1400, y * 1400, z * 1400, 2) * 0.00006;
+  if (pat === PAT.rubber) return cr + Math.abs(Math.sin(z * 900)) * 0.00015;
+  return cr;
+}
+
+for (const id of ids.length ? ids : ['ar']) {
+  if (id === 'hands') {
+    await heroReady;
+    const u = rightArm(DEFAULT_LOOK(0, 0x3d8bf2));
+    await bake('hands', u.geo, u.density, 1024, 'hands', [1024]);
+  } else {
+    const model = weaponModel(id as WeaponId, 0);
+    await bake(id, model.geo, model.texelDensity ?? 1000, SIZE, 'weapon', [2048, 1024]);
+  }
+}

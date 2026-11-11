@@ -80,9 +80,15 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       for (const r of rigs.values()) r.setTextures(id, m);
     }).catch(e => console.warn('Breachline weapon textures unavailable; procedural look kept.', e));
   }
+  let armMat: THREE.Material | null = null;
+  Promise.all((['diff', 'nor', 'arm'] as const).map(k => art.texture('../hero/hands', k, 1024))).then(([map, normalMap, armMap]) => {
+    for (const t of [map, normalMap, armMap]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+    armMat = texturedMaterial({ map, normalMap, arm: armMap }, true);
+    for (const r of rigs.values()) r.setArmMaterial(armMat);
+  }).catch(e => console.warn('Breachline hand textures unavailable; procedural look kept.', e));
   const rigFor = (squad: 0 | 1) => {
     let r = rigs.get(squad);
-    if (!r) { r = createFpRig(DEFAULT_LOOK(squad, Number(`0x${SQUADS[squad].color.slice(1)}`))); for (const [id, m] of sets) r.setTextures(id, m); rigs.set(squad, r); }
+    if (!r) { r = createFpRig(DEFAULT_LOOK(squad, Number(`0x${SQUADS[squad].color.slice(1)}`))); for (const [id, m] of sets) r.setTextures(id, m); if (armMat) r.setArmMaterial(armMat); rigs.set(squad, r); }
     return r;
   };
   // Motion state.
@@ -209,7 +215,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       disposed = true;
       for (const r of rigs.values()) r.dispose();
       flashTex.dispose(); (flash.material as THREE.Material).dispose(); ownEnv?.dispose();
-      for (const m of sets.values()) m.dispose(); art.dispose();
+      for (const m of sets.values()) m.dispose(); armMat?.dispose(); art.dispose();
     },
   };
 }

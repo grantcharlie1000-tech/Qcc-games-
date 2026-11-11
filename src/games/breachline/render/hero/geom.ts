@@ -56,7 +56,7 @@ export const SURF = {
   gloveTan: S(0x3e3a33, 0.8, 0, 0.35, PAT.leather),
   knuckle: S(0x2e2f2d, 0.8, 0, 0.3, PAT.rubber),
   skin: S(0xb98a6a, 0.6, 0, 0, PAT.skin),
-  cloth: S(0x4f5546, 0.95, 0, 0.15, PAT.fabric),
+  cloth: S(0x3c4334, 0.95, 0, 0.15, PAT.fabric),
   clothDark: S(0x34382f, 0.95, 0, 0.15, PAT.fabric),
   webbing: S(0x4b4f3e, 0.9, 0, 0.2, PAT.fabric),
   plate: S(0x5a5d4c, 0.85, 0, 0.3, PAT.fabric),

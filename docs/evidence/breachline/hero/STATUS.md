@@ -7,6 +7,9 @@ change of 2026-11-11 ("Fighters split out"), fighters and row F belong to the fi
 
 ## Where I am
 
+r5c: the hands' baked set is in (`public/game-art/breachline/hero/hands/`, 1024, about 0.35 MB). The right arm is unwrapped before mirroring, so both arms share the atlas. It's a detail map multiplied by the vertex colours, so squad colours stay in the geometry, plus finger-joint creases, seams at panel borders, ray-cast AO, a normal map with crease grooves, leather pebble and sleeve weave, and a darker ranger-green sleeve. Evidence: `r5/hands-textured-studio-and-game.png`, `r5/hands-atlas-*.png`. In the 2× corridor crop the support hand now shows separate fingers.
+
+
 r5b: re-charted unwrap. Charts are now per part, axis and depth layer, and tiny layers share a chart, so the atlas shows recognisable parts: 1793 texels/m against 1405, 41% coverage. Proof is `r5/ar-unwrap-checker.png` (squares are square and even on the visible side). The receiver is now near-black anodised (about 0.04 linear), the handguard and magazine dark earth, the grip and stock black polymer (`r5/game-ar-textured-lab-corridor-crop.png`). Tried and reverted: a thumb-over grip from the top-left. The forearm crossed the rifle and filled the view. Next: fingers visible round the handguard (likely needs the hands' texture set with dark creases, plus a pose with the fingertips curling over the near edge), the optic coating and mount, wear at screen scale, the hands' texture set and the sleeve.
 
 

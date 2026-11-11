@@ -6,6 +6,7 @@
  * right arm is authored; the left is its mirror in X. */
 import * as THREE from 'three';
 import { Builder, SURF, simplify, surf, type Surface } from './geom';
+import { unwrap } from './unwrap';
 import { cone, ell, meshField, rbox, type Field, type Prim, type Vec } from './sdf';
 
 export const UPPER = 0.3, FORE = 0.28;
@@ -168,8 +169,11 @@ function sleeve(b: Builder, look: ArmsLook) {
 
 let gloveCache: { geo: THREE.BufferGeometry; tags: Uint8Array } | null = null;
 
-/** Builds both arms as one skinned geometry: bones 0..17 the right arm, 18..35 the left. */
-export function armsGeometry(look: ArmsLook): THREE.BufferGeometry {
+/** Texel density weights for the arms: the back of the hand and the outside of the forearm face the eye. */
+const ARM_WEIGHT = [1.1, 0.9, 1.3, 0.75, 0.9, 1.2];
+
+/** The right arm alone, unwrapped into the hands' 1024 atlas (the left arm mirrors it and shares the texture). */
+export function rightArm(look: ArmsLook): { geo: THREE.BufferGeometry; density: number } {
   const right = new Builder(0);
   if (!gloveCache) gloveCache = meshField(handField([0, 0, -(UPPER + FORE)]), 0.0038, armNeighbours);
   const full = gloveCache.geo.clone(), tags = gloveCache.tags;
@@ -187,7 +191,13 @@ export function armsGeometry(look: ArmsLook): THREE.BufferGeometry {
   const hand = simplify(full, HAND_TRIS, 0.004);
   right.addTagged(hand, [look.glove, look.palm, look.guard, look.glove, look.palm, surf(look.guard, { color: 0x3a3a36 }), surf(look.glove, { color: 0x1f201d, rough: 0.95 })]);
   sleeve(right, look);
-  const geo = right.build({ ao: false });
+  const u = unwrap(right.build({ ao: false }), { size: 1024, pad: 4, weight: ARM_WEIGHT, minChart: 0.012 });
+  return { geo: u.geo, density: u.density };
+}
+
+/** Builds both arms as one skinned geometry: bones 0..17 the right arm, 18..35 the left. */
+export function armsGeometry(look: ArmsLook): THREE.BufferGeometry {
+  const geo = rightArm(look).geo;
   // The left arm: mirror in X, flip winding, offset bones.
   const left = geo.clone();
   left.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));

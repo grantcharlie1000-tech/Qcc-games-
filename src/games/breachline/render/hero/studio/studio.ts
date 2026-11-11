@@ -134,6 +134,11 @@ const q = new URLSearchParams(location.search);
 if (q.get('w')) api.weapon(q.get('w') as WeaponId, { yaw: Number(q.get('yaw') ?? 90) });
 await heroReady;
 // The baked texture sets, as the game loads them.
+try {
+  const [map, normalMap, arm] = await Promise.all((['diff', 'nor', 'arm'] as const).map(k => new ArtLoader(renderer, 'high').texture('../hero/hands', k, 1024)));
+  for (const t of [map, normalMap, arm]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  getRig().setArmMaterial(texturedMaterial({ map, normalMap, arm }, true));
+} catch (e) { console.warn('studio: no hands set', e); }
 const texSets = new Map<WeaponId, THREE.Material>();
 const art = new ArtLoader(renderer, 'high');
 await Promise.all([...TEXTURED].map(async id => {
