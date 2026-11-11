@@ -1,18 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 410" role="img" aria-labelledby="title desc"><title id="title">A fighter stepping through a hole blown in a wall, lit from behind</title><desc id="desc">Original Breachline cover: a breached plaster wall over timber panelling, amber light and dust pouring through, and a rifleman in silhouette.</desc>
-<defs>
-<radialGradient id="glow" cx="160" cy="262" r="150" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffe2a1"/><stop offset=".45" stop-color="#f0b429"/><stop offset="1" stop-color="#a0561c"/></radialGradient>
-<linearGradient id="wall" x1="0" y1="95" x2="0" y2="410" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#27343f"/><stop offset="1" stop-color="#1a232b"/></linearGradient>
-<clipPath id="hole"><path d="M78 366 70 318 84 286 72 246 92 208 86 176 116 150 138 158 158 136 186 150 214 140 232 170 228 202 250 232 240 276 254 312 242 366Z"/></clipPath>
-</defs>
+<defs><clipPath id="hole"><path d="M78 366 70 318 84 286 72 246 92 208 86 176 116 150 138 158 158 136 186 150 214 140 232 170 228 202 250 232 240 276 254 312 242 366Z"/></clipPath></defs>
 <path fill="#1f2a33" d="M0 0h320v410H0Z"/>
-<path fill="url(#wall)" d="M0 95h320v315H0Z"/>
+<path fill="#27343f" d="M0 95h320v315H0Z"/>
+<path fill="#222e38" d="M0 200h320v100H0Z"/>
 <g stroke="#131a20" stroke-width="2" opacity=".7"><path d="M64 95v205M128 95v60M192 95v48M256 95v205" fill="none"/></g>
 <g fill="#131a20" opacity=".8"><circle cx="72" cy="120" r="2"/><circle cx="72" cy="170" r="2"/><circle cx="72" cy="220" r="2"/><circle cx="264" cy="120" r="2"/><circle cx="264" cy="170" r="2"/><circle cx="264" cy="220" r="2"/></g>
 <path fill="#3a2a1e" d="M0 300h320v110H0Z"/>
 <g fill="#4a3626"><path d="M4 308h36v98H4ZM44 308h36v98H44ZM244 308h36v98h-36ZM284 308h32v98h-32Z"/></g>
 <path fill="#241a12" d="M0 296h320v8H0Z"/>
-<path fill="url(#glow)" d="M78 366 70 318 84 286 72 246 92 208 86 176 116 150 138 158 158 136 186 150 214 140 232 170 228 202 250 232 240 276 254 312 242 366Z"/>
+<path fill="#d98a25" d="M78 366 70 318 84 286 72 246 92 208 86 176 116 150 138 158 158 136 186 150 214 140 232 170 228 202 250 232 240 276 254 312 242 366Z"/>
+<path fill="#f0b429" d="M96 366 92 316 102 284 96 250 110 216 108 190 126 172 144 178 160 162 182 172 204 166 214 188 212 212 228 238 220 278 230 314 222 366Z"/>
+<path fill="#ffd873" d="M118 366 116 320 122 290 120 258 130 232 132 208 146 198 160 190 176 198 190 196 196 214 196 234 206 254 200 286 206 318 200 366Z"/>
 <g clip-path="url(#hole)">
 <g fill="#fff3d2" opacity=".28"><path d="M150 130 60 380h44ZM176 130 150 380h40ZM206 136 232 380h40Z"/></g>
 <path fill="#7a4a1c" opacity=".55" d="M60 340h200v40H60Z"/>

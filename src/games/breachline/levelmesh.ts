@@ -220,7 +220,9 @@ export class PanelView {
     ng.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     ng.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     ng.setIndex([...face, ...edge]);
-    ng.addGroup(0, face.length, 0); ng.addGroup(face.length, edge.length, 1);
+    // An undamaged panel is a single draw call; broken edges add a second.
+    ng.addGroup(0, face.length, 0);
+    if (edge.length) ng.addGroup(face.length, edge.length, 1);
     ng.computeBoundingSphere();
     this.mesh.geometry = ng;
     this.mesh.material = [plate ? this.mats.plate : wood ? this.mats.planks : this.mats.wall, wood ? this.mats.planks : this.mats.core];

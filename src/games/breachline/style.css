@@ -190,25 +190,30 @@ body.in-game .game-view[data-game-id=breachline]:has(.breachline[data-layer=""][
 .bl-tb svg{width:24px;height:24px}
 .bl-tb[data-down=true],.bl-tb[data-on=true]{background:rgb(240 180 41 / .75);color:#1a1404}
 .bl-touch[data-crouch=true] .bl-tb-crouch{background:rgb(240 180 41 / .75);color:#1a1404}
-.bl-tb-fire{right:22px;bottom:96px;width:76px;height:76px}
-.bl-tb-fire2{left:18px;bottom:max(150px,36cqh);width:58px;height:58px}
-.bl-tb-ads{right:110px;bottom:84px}
-.bl-tb-crouch{right:30px;bottom:186px}
-.bl-tb-reload{right:96px;bottom:156px}
-.bl-tb-swap{right:164px;bottom:120px}
-.bl-tb-grenade{right:178px;bottom:52px}
-.bl-tb-melee{right:112px;bottom:20px}
-.bl-tb-breach{right:244px;bottom:52px;display:none}
+.bl-tb-fire{right:24px;bottom:64px;width:76px;height:76px}
+.bl-tb-fire2{display:none}
+.bl-tb-ads{right:112px;bottom:30px}
+.bl-tb-crouch{right:30px;bottom:150px}
+.bl-tb-reload{right:96px;bottom:150px}
+.bl-tb-swap{right:162px;bottom:110px}
+.bl-tb-grenade{right:176px;bottom:44px}
+.bl-tb-melee{right:240px;bottom:44px}
+.bl-tb-breach{right:226px;bottom:108px;display:none}
 .breachline[data-role=atk] .bl-tb-breach{display:grid}
-.bl-tb-use{left:50%;bottom:28%;margin-left:-32px;width:64px;height:64px;display:none;background:rgb(240 180 41 / .55)}
-.breachline[data-use=true] .bl-tb-use,.breachline[data-role=def] .bl-tb-use{display:grid}
-.bl-tb-leanl{left:18px;top:calc(var(--bl-top) + 70px);width:44px;height:44px}
-.bl-tb-leanr{left:70px;top:calc(var(--bl-top) + 70px);width:44px;height:44px}
-.bl-tb-board{right:14px;top:calc(var(--bl-top) + 70px);width:44px;height:44px}
-.breachline[data-touch=true] .bl-vitals{bottom:auto;top:calc(var(--bl-top) + 122px);min-width:130px}
-.breachline[data-touch=true] .bl-gear{bottom:auto;top:calc(var(--bl-top) + 122px)}
+.bl-tb-use{left:50%;bottom:12%;margin-left:-32px;width:64px;height:64px;display:none;background:rgb(240 180 41 / .55)}
+.breachline[data-use=true] .bl-tb-use{display:grid}
+.bl-tb-leanl{left:14px;top:calc(max(8px,env(safe-area-inset-top)) + 78px);width:44px;height:44px}
+.bl-tb-leanr{left:64px;top:calc(max(8px,env(safe-area-inset-top)) + 78px);width:44px;height:44px}
+.bl-tb-board{right:14px;top:max(8px,env(safe-area-inset-top));width:44px;height:44px}
+/* On touch the corners belong to thumbs: health and ammunition move to the top corners. */
+.breachline[data-touch=true] .bl-vitals{bottom:auto;top:max(8px,env(safe-area-inset-top));left:12px;min-width:130px;width:130px;gap:3px}
+.breachline[data-touch=true] .bl-gear{bottom:auto;top:max(8px,env(safe-area-inset-top));right:68px;gap:1px}
+.breachline[data-touch=true] .bl-ammo b{font-size:24px}
+.breachline[data-touch=true] .bl-gadgets{margin-top:0}
+.breachline[data-touch=true] .bl-gadget{padding:3px 6px;font-size:11px}
 .breachline[data-touch=true] .bl-feed{display:none}
-.breachline[data-touch=true] .bl-prep{bottom:auto;top:calc(var(--bl-top) + 190px)}
+.breachline[data-touch=true] .bl-prep{bottom:8px;width:min(calc(100% - 240px),640px)}
+.breachline[data-touch=true] .bl-watch{bottom:8px}
 
 @container (max-width:620px){
   .bl-clock{min-width:92px;padding:5px 8px}.bl-time{font-size:20px}.bl-pips i{width:6px;height:11px}
