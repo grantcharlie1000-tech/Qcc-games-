@@ -311,6 +311,50 @@ function dressYard(atlas: Atlas, room: Region): DetailBuilder {
     for (let i = 0; i < 9; i++) { const sx = x - 0.27 + i * 0.065; D.box('steel', sx, 0.012, z - 0.27, sx + 0.025, 0.02, z + 0.27, on, up, [0.45, 0.43, 0.4]); }
     for (const zz of [z - 0.3, z + 0.27]) D.box('steel', x - 0.3, 0.012, zz, x + 0.3, 0.022, zz + 0.03, on, up, [0.4, 0.38, 0.36]);
   }
+  // Map-fill dressing (off the routes, no collision). Shared mesh helper, all on the ground's light.
+  const mesh = (g: THREE.BufferGeometry, key: DressKey, x: number, z: number, tint: V3) => { if (inRoom(room, x, z)) D.mesh(key, g.attributes.position.array, g.attributes.normal.array, g.index!.array, [x, 0.02, z], up, tint); g.dispose(); };
+  const B = MAP.bounds, H = MAP.building;
+  // Lamp posts along the perimeter wall, every 12 m, arms reaching into the yard.
+  for (const [ax, az, nx, nz, len] of [[B.x0 + 0.35, B.z0, 0, 1, B.z1 - B.z0], [B.x1 - 0.35, B.z0, 0, 1, B.z1 - B.z0], [B.x0, B.z0 + 0.35, 1, 0, B.x1 - B.x0], [B.x0, B.z1 - 0.35, 1, 0, B.x1 - B.x0]] as const) {
+    const inward = nx ? (az < 0 ? 1 : -1) : (ax < 0 ? 1 : -1);
+    for (let t = 6; t < len - 3; t += 12) {
+      const x = ax + nx * t, z = az + nz * t, dx = nx ? 0 : inward * 0.9, dz = nx ? inward * 0.9 : 0;
+      mesh(new THREE.CylinderGeometry(0.05, 0.075, 5, 10).translate(x, 2.5, z), 'steel', x, z, [0.5, 0.52, 0.5]);
+      const arm = new THREE.CylinderGeometry(0.03, 0.03, 0.95, 8).rotateZ(Math.PI / 2); if (!nx) {} else arm.rotateY(Math.PI / 2); arm.translate(x + dx / 2, 4.95, z + dz / 2); mesh(arm, 'steel', x, z, [0.5, 0.52, 0.5]);
+      mesh(new THREE.BoxGeometry(0.42, 0.1, 0.22).translate(x + dx, 4.92, z + dz), 'chassis', x, z, [1.5, 1.5, 1.5]);
+      mesh(new THREE.BoxGeometry(0.36, 0.01, 0.17).translate(x + dx, 4.865, z + dz), 'glass', x, z, [1.4, 1.4, 1.3]);
+    }
+  }
+  // The building's outside: downpipes at the corners and between openings, a wall light over each door.
+  for (const [x, z] of [[H.x0 - 0.22, H.z0 - 0.22], [H.x1 + 0.22, H.z0 - 0.22], [H.x0 - 0.22, H.z1 + 0.22], [H.x1 + 0.22, H.z1 + 0.22], [-6, H.z1 + 0.22], [7.5, H.z1 + 0.22], [-8, H.z0 - 0.22], [6, H.z0 - 0.22], [H.x0 - 0.22, 2.5], [H.x1 + 0.22, -8]] as const) {
+    mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.4, 10).translate(x, 1.7, z), 'conduit', x, z, [0.35, 0.37, 0.36]);
+    mesh(new THREE.CylinderGeometry(0.075, 0.05, 0.15, 10).translate(x, 0.075, z), 'conduit', x, z, [0.35, 0.37, 0.36]);
+  }
+  for (const p of MAP.panels) {
+    if (p.kind !== 'door' || Math.abs(Math.abs(p.pos) - (p.axis === 'x' ? 10 : 15)) > 0.01) continue;
+    const u = p.u0 + p.cols * 0.125, out = Math.sign(p.pos) * 0.2, x = p.axis === 'x' ? u : p.pos + out, z = p.axis === 'x' ? p.pos + out : u;
+    mesh(new THREE.BoxGeometry(p.axis === 'x' ? 0.3 : 0.12, 0.16, p.axis === 'x' ? 0.12 : 0.3).translate(x, 2.55, z), 'casing', x, z, [0.9, 0.9, 0.88]);
+    mesh(new THREE.BoxGeometry(p.axis === 'x' ? 0.24 : 0.01, 0.1, p.axis === 'x' ? 0.01 : 0.24).translate(x + (p.axis === 'x' ? 0 : out * 0.35), 2.55, z + (p.axis === 'x' ? out * 0.35 : 0)), 'bulb', x, z, [0.5, 0.5, 0.5]);
+  }
+  // Weeds in tufts along the foot of the perimeter, puddles and manhole covers on the asphalt, a few cones.
+  const r = seeded(97);
+  for (let i = 0; i < 90; i++) {
+    const edge = Math.floor(r() * 4), t = r(), x = edge < 2 ? B.x0 + 0.15 + t * (B.x1 - B.x0 - 0.3) : edge === 2 ? B.x0 + 0.15 : B.x1 - 0.15, z = edge < 2 ? (edge === 0 ? B.z0 + 0.15 : B.z1 - 0.15) : B.z0 + 0.15 + t * (B.z1 - B.z0 - 0.3);
+    for (let k = 0; k < 6; k++) { const a = r() * 6.28, h = 0.12 + r() * 0.2; mesh(new THREE.PlaneGeometry(0.05, h).translate(0, h / 2, 0).rotateX(-0.3 - r() * 0.5).rotateY(a).translate(x, 0.02, z), 'aid', x, z, [0.8 + r() * 0.4, 1 + r() * 0.3, 0.6]); }
+  }
+  for (const [x, z, sx, sz] of [[-9, 18.5, 1.6, 0.9], [12.5, 19.2, 1.1, 0.7], [-20, -14, 1.8, 1.1], [5, -18.5, 1.3, 0.8], [-24, 2.5, 1.2, 0.9], [24.5, -2, 1.4, 0.8]] as const) {
+    const g = new THREE.CircleGeometry(0.5, 20).rotateX(-Math.PI / 2).scale(sx, 1, sz).translate(x, 0.011, z);
+    mesh(g, 'glass', x, z, [0.55, 0.6, 0.62]);
+  }
+  for (const [x, z] of [[-3.5, 13.6], [16, -18], [-24.5, -7.5], [21.5, 7.5]] as const) {
+    mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.012, 24).translate(x, 0.016, z), 'steel', x, z, [0.35, 0.34, 0.32]);
+    for (let k = -2; k <= 2; k++) mesh(new THREE.BoxGeometry(0.5, 0.004, 0.02).translate(x, 0.024, z + k * 0.1), 'kick', x, z, [1, 1, 1]);
+  }
+  for (const [x, z] of [[0.6, 11.4], [1.2, 11.2], [-16, -11.2], [16.2, 9.4]] as const) {
+    mesh(new THREE.ConeGeometry(0.13, 0.5, 14).translate(x, 0.28, z), 'alarm', x, z, [1.6, 0.7, 0.3]);
+    mesh(new THREE.BoxGeometry(0.34, 0.03, 0.34).translate(x, 0.015, z), 'chassis', x, z, [1, 1, 1]);
+    mesh(new THREE.CylinderGeometry(0.085, 0.1, 0.07, 14).translate(x, 0.32, z), 'paper', x, z, [1.2, 1.2, 1.2]);
+  }
   return D;
 }
 

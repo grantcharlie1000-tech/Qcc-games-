@@ -4,6 +4,11 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: map fill C, the yards.** `mapfill/rooms/yards.png` (South Yard, bays, North Yard, West Lot): lamp posts
+every 12 m along the perimeter with arms over the yard, downpipes at the building's corners and between openings, a
+wall light over each outside door, weed tufts along the foot of the perimeter, puddles, manhole covers and cones. No
+collision. Yard views 64-314 draw calls. Next: Server Room, Break Room, Lab, Garage.
+
 **2026-11-11: map fill C, Lobby, Office, Archive lane.** `mapfill/rooms/lobby-office-archive.png` (greybox cover in
 its procedural look plus the new dressing): Lobby rug, two plants in the solid corners, a leaflet rack on the west
 wall; Office rug, coat stand and coats on hooks; Archive boxes stacked on the floor by the runs, a cable tray over the
