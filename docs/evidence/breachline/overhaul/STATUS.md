@@ -4,6 +4,20 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11 ~13:30 UTC: `?fighters=patch` switch.** In `scene.ts`; the default is unchanged. The scene's
+warm-up already calls `fighters.warm()`, so the Patch module's own warm-up runs behind the menu the same way.
+- `warm.spec` with `?fighters=patch` (expected-failure mark removed for the check): **passes**. Programs and
+  textures are unchanged through the first firefight, because the Patch module uploads its maps itself. Without
+  the switch it still fails only on the stock fighters' +3 textures (still marked as an expected failure).
+- Online test with `?fighters=patch`: passed twice. Without: passes (suite 9/9, warm.spec counted as expected).
+- Budgets, Lab bookmarks on High (one or two soldiers in view): +1 draw call, +4.8k triangles, +6 programs
+  (124 -> 125 calls, 74.7k -> 79.6k triangles; Lab-west 136 -> 137, 92.1k -> 96.9k). Well inside 400 calls and
+  500k triangles. The bookmark script takes `FIGHTERS=patch`.
+- **The jump to `#/collection/28` is not an error.** That is Breachline's canonical address: the shell
+  (`src/main.ts` ~line 369, `entryHash`) rewrites `#/game/breachline` to `#/collection/28` and keeps the game
+  running. The one failure I saw right after adding the import was Vite re-optimising its dependencies and
+  reloading the page (first load after a new import in dev only).
+
 **2026-11-11 ~10:55 UTC: warm-up wired in; count test added.** The scene now warms everything behind the menu,
 in order, and then sets `stats().ready`:
 1. the art (as before);

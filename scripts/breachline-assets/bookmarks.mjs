@@ -69,7 +69,7 @@ await context.addInitScript(() => {
 const page = await context.newPage();
 page.on('console', m => { if (m.type() === 'warning' || m.type() === 'error' || process.env.VERBOSE) console.log(`[page] ${m.type()} ${m.text().slice(0, 1500)}`); });
 page.on('pageerror', e => console.log(`[page] pageerror ${e.message}`));
-await page.goto(`${url}/?festive=off${art === 'off' ? '&art=off' : ''}${dbg ? `&artdbg=${dbg}` : ''}&arttier=${tier === 'low' ? 'low' : 'high'}#/game/breachline`);
+await page.goto(`${url}/?festive=off${process.env.FIGHTERS ? `&fighters=${process.env.FIGHTERS}` : ""}${art === 'off' ? '&art=off' : ''}${dbg ? `&artdbg=${dbg}` : ''}&arttier=${tier === 'low' ? 'low' : 'high'}#/game/breachline`);
 await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 60000 });
 // REINFORCE=1: a full squad each side, and the defending bots get their preparation (they reinforce site walls).
 if (process.env.REINFORCE) await page.evaluate(q => { const h = window.__breachlineTest; h.start({ seed: 7, quality: q === 'low' ? 'low' : 'high', teamSize: 5, bots: true }); h.freeze(true); for (let i = 0; i < 12; i++) h.advance(2); h.still(); }, tier);

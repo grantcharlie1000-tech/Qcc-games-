@@ -9,6 +9,7 @@ import { MAP } from './map';
 import { loadArtWorld, type ArtWorld } from './render/artworld';
 import { boxes } from './models';
 import { chargeGeometry, deviceGeometry, deviceScreenTexture } from './render/kit';
+import { createPatchFighters } from './render/patchfighters/index';
 import { createFighters, createViewmodel, type HeroLighting } from './render/hero';
 import { createPost, type PostTier } from './render/post';
 import { shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
@@ -191,7 +192,10 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     environmentScale(x, z) { return art?.environmentScale(x, z) ?? 1; },
     sun: { x: SUN.x, y: SUN.y, z: SUN.z, color: [1.55, 1.12, 0.7] },
   };
-  const fighters = createFighters(scene, heroLighting);
+  // `?fighters=patch` swaps in the Patch-asset soldiers for comparison (same interface, own warm-up); default unchanged.
+  const fighters = typeof location !== 'undefined' && new URLSearchParams(location.search).get('fighters') === 'patch'
+    ? createPatchFighters(scene, heroLighting)
+    : createFighters(scene, heroLighting);
   const viewmodel = createViewmodel(renderer, heroLighting);
   const v3 = new THREE.Vector3();
 
