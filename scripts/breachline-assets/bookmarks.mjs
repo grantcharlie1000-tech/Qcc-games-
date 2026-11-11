@@ -9,6 +9,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+import sharp from 'sharp';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
 const url = arg('url', 'http://127.0.0.1:5199'), out = arg('out', 'bookmarks'), tier = arg('tier', 'high'), art = arg('art', 'on');
@@ -53,6 +54,15 @@ for (const [name, [x, z, yaw, pitch]] of Object.entries(BOOKMARKS)) {
   await page.waitForTimeout(300);
   const file = join(out, `${name}-${tier}${art === 'off' ? '-procedural' : ''}.png`);
   await page.locator('canvas').first().screenshot({ path: file });
+  // The first load after a source edit sometimes captures an empty canvas (the dev server re-transforming
+  // modules); a frame with almost no variation is retaken once rather than kept as evidence.
+  const { channels } = await sharp(file).stats();
+  if (channels.slice(0, 3).every(c => c.stdev < 4)) {
+    console.log(`${file}: blank frame, redrawing`);
+    await page.evaluate(() => { window.__breachlineTest.draw(); window.__breachlineTest.draw(); });
+    await page.waitForTimeout(1500);
+    await page.locator('canvas').first().screenshot({ path: file });
+  }
   console.log(file, JSON.stringify(await page.evaluate(() => window.__breachlineTest.stats())));
 }
 await browser.close();

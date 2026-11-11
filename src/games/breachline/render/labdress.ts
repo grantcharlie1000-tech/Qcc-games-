@@ -10,7 +10,7 @@ import type { Atlas, Region } from './levelgeo';
 
 type V3 = [number, number, number];
 /** Materials the dressing asks for; artworld.ts maps each key to a material. */
-export type DressKey = 'door' | 'locker' | 'grid' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
+export type DressKey = 'door' | 'locker' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
 
 const inRoom = (r: Region, x: number, z: number) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1;
 
@@ -30,6 +30,9 @@ export function dressLab(atlas: Atlas, room: Region): DetailBuilder {
   bottles(D, -1.9, -6.1, 0.95);
   walls(D, room);
   ceilingGrid(D, room);
+  wallKit(D, room);
+  ceilingKit(D);
+  benchKit(D);
   return D;
 }
 
@@ -120,6 +123,107 @@ function bottles(D: DetailBuilder, x: number, z: number, top: number) {
     const cap = new THREE.CylinderGeometry(r * 0.4, r * 0.4, 0.025, 14).translate(x + dx, top + h + 0.012, z + dz);
     D.mesh('kick', cap.attributes.position.array, cap.attributes.normal.array, cap.index!.array, [x + dx, top + 0.001, z + dz], [0, 1, 0]);
     cap.dispose();
+  }
+}
+
+const plane = (D: DetailBuilder, key: DressKey, cx: number, cy: number, z: number, w: number, h: number, on: V3) => {
+  // A flat quad facing +Z with 0..1 UVs, for printed things (signs, the clock face).
+  const g = new THREE.PlaneGeometry(w, h).translate(cx, cy, z);
+  D.mesh(key, g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, [0, 0, 1], [1, 1, 1], g.attributes.uv.array);
+  g.dispose();
+};
+
+/** What a lab's solid wall carries: a noticeboard, a first-aid box, safety signs, a clock, a vent grille, cable tray. */
+function wallKit(D: DetailBuilder, room: Region) {
+  const z = room.z0 + 0.15, n: V3 = [0, 0, 1], on = (x: number, y: number): V3 => [x, y, z + 0.001];
+  // Noticeboard east of the second window: aluminium frame, cork, pinned sheets.
+  const bx0 = 2.68, bx1 = 3.78, by0 = 1.3, by1 = 2.05;
+  D.box('handle', bx0, by0, z, bx1, by1, z + 0.02, on(3.2, 1.6), n);
+  D.box('cork', bx0 + 0.025, by0 + 0.025, z, bx1 - 0.025, by1 - 0.025, z + 0.022, on(3.2, 1.6), n);
+  let seed = 7;
+  const r = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  for (let i = 0; i < 7; i++) {
+    const w = 0.15 + r() * 0.08, h = 0.21 + r() * 0.06, x = bx0 + 0.08 + r() * (bx1 - bx0 - 0.16 - w), y = by0 + 0.06 + r() * (by1 - by0 - 0.12 - h);
+    D.box('paper', x, y, z + 0.022, x + w, y + h, z + 0.0235, on(x + w / 2, y + h / 2), n, i % 3 === 0 ? [1, 0.95, 0.75] : [1, 1, 1]);
+  }
+  // First-aid box and an eye-protection sign by the west door; a clock high over the lockers.
+  D.box('aid', -4.15, 1.35, z, -3.8, 1.7, z + 0.11, on(-3.97, 1.5), n);
+  D.box('paper', -4.0, 1.5, z + 0.11, -3.94, 1.6, z + 0.112, on(-3.97, 1.5), n);
+  D.box('paper', -4.02, 1.53, z + 0.11, -3.92, 1.57, z + 0.112, on(-3.97, 1.5), n);
+  plane(D, 'sign', -4.95, 1.62, z + 0.004, 0.3, 0.4, on(-4.95, 1.6));
+  D.box('plastic', -0.68, 2.52, z, -0.32, 2.88, z + 0.04, on(-0.5, 2.7), n);
+  plane(D, 'clock', -0.5, 2.7, z + 0.041, 0.32, 0.32, on(-0.5, 2.7));
+  // Vent grille high on the wall: frame and slats.
+  D.box('grid', 3.0, 2.55, z, 3.5, 2.8, z + 0.03, on(3.25, 2.67), n);
+  for (let k = 0; k < 6; k++) D.box('kick', 3.03, 2.575 + k * 0.035, z + 0.03, 3.47, 2.592 + k * 0.035, z + 0.034, on(3.25, 2.67), n, [0.4, 0.4, 0.4]);
+  // Cable tray along the top of the wall, with a drop of conduit to the noticeboard socket.
+  D.box('conduit', room.x0 + 0.15, 2.82, z, room.x1 - 0.15, 2.86, z + 0.12, on(-1, 2.84), n);
+  D.box('conduit', room.x0 + 0.15, 2.86, z + 0.11, room.x1 - 0.15, 2.92, z + 0.12, on(-1, 2.84), n);
+}
+
+/** Ceiling services: sprinkler heads, a smoke detector, a supply diffuser filling one tile. */
+function ceilingKit(D: DetailBuilder) {
+  const y = WALL_H, up: V3 = [0, -1, 0];
+  for (const [x, z] of [[-4.5, -8.7], [-1.5, -8.7], [1.5, -8.7], [-4.5, -3.3], [-1.5, -3.3], [1.5, -3.3], [3.3, -6.0]]) {
+    const g = new THREE.CylinderGeometry(0.012, 0.03, 0.05, 10).translate(x, y - 0.025, z);
+    D.mesh('chrome', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [x, y - 0.001, z], up, [0.85, 0.8, 0.7]);
+    g.dispose();
+  }
+  const det = new THREE.CylinderGeometry(0.06, 0.065, 0.035, 20).translate(-0.3, y - 0.0175, -6.3);
+  D.mesh('socket', det.attributes.position.array, det.attributes.normal.array, det.index!.array, [-0.3, y - 0.001, -6.3], up);
+  det.dispose();
+  // Supply diffuser in the tile at x 0..0.6, z -9.0..-8.4: frame and three stepped cones as rings.
+  const cx = 0.3, cz = -8.7;
+  for (let k = 0; k < 4; k++) {
+    const h = 0.28 - k * 0.07, d = 0.012 + k * 0.012;
+    D.box('grid', cx - h, y - d, cz - h, cx + h, y - d + 0.012, cz - h + 0.02, [cx, y - 0.001, cz], up);
+    D.box('grid', cx - h, y - d, cz + h - 0.02, cx + h, y - d + 0.012, cz + h, [cx, y - 0.001, cz], up);
+    D.box('grid', cx - h, y - d, cz - h, cx - h + 0.02, y - d + 0.012, cz + h, [cx, y - 0.001, cz], up);
+    D.box('grid', cx + h - 0.02, y - d, cz - h, cx + h, y - d + 0.012, cz + h, [cx, y - 0.001, cz], up);
+  }
+  D.box('kick', cx - 0.06, y - 0.06, cz - 0.06, cx + 0.06, y - 0.055, cz + 0.06, [cx, y - 0.001, cz], up, [0.3, 0.3, 0.3]);
+}
+
+/** Bench equipment in clusters, all low enough to keep sight lines over the benches. */
+function benchKit(D: DetailBuilder) {
+  const top = 0.95, up: V3 = [0, 1, 0], on = (x: number, z: number): V3 => [x, top + 0.001, z];
+  // West bench, corridor side: a monitor on a stand with a keyboard, facing the room's south half.
+  const mx = -2.75, mz = -5.95;
+  D.box('kick', mx - 0.12, top, mz - 0.1, mx + 0.12, top + 0.012, mz + 0.06, on(mx, mz), up);
+  D.box('kick', mx - 0.025, top + 0.012, mz - 0.06, mx + 0.025, top + 0.2, mz - 0.03, on(mx, mz), up);
+  D.box('kick', mx - 0.27, top + 0.12, mz - 0.03, mx + 0.27, top + 0.45, mz - 0.005, on(mx, mz), up);
+  D.box('screen', mx - 0.255, top + 0.135, mz - 0.005, mx + 0.255, top + 0.435, mz - 0.003, on(mx, mz), up);
+  D.box('plastic', mx - 0.22, top, mz + 0.14, mx + 0.22, top + 0.022, mz + 0.29, on(mx, mz + 0.2), up);
+  // Sample trays and a test-tube rack.
+  for (const [x, z] of [[-1.55, -5.85], [-1.55, -6.3]]) {
+    D.box('socket', x - 0.17, top, z - 0.12, x + 0.17, top + 0.04, z + 0.12, on(x, z), up, [0.62, 0.66, 0.68]);
+    D.box('kick', x - 0.15, top + 0.005, z - 0.1, x + 0.15, top + 0.035, z + 0.1, on(x, z), up, [0.4, 0.42, 0.45]);
+  }
+  const rx = -2.2, rz = -6.35;
+  D.box('plastic', rx - 0.16, top, rz - 0.05, rx + 0.16, top + 0.012, rz + 0.05, on(rx, rz), up);
+  D.box('plastic', rx - 0.16, top + 0.08, rz - 0.05, rx + 0.16, top + 0.092, rz + 0.05, on(rx, rz), up);
+  for (const s of [-1, 1]) D.box('plastic', rx + s * 0.155 - 0.006, top, rz - 0.05, rx + s * 0.155 + 0.006, top + 0.092, rz + 0.05, on(rx, rz), up);
+  for (let i = 0; i < 6; i++) {
+    const g = new THREE.CylinderGeometry(0.009, 0.009, 0.13, 8).translate(rx - 0.12 + i * 0.048, top + 0.075, rz);
+    D.mesh(i % 2 ? 'amber' : 'glass', g.attributes.position.array, g.attributes.normal.array, g.index!.array, on(rx, rz), up);
+    g.dispose();
+  }
+  // East bench: a benchtop centrifuge and a clipboard.
+  const cx = 1.25, cz = -6.25;
+  const body = new THREE.CylinderGeometry(0.17, 0.19, 0.2, 24).translate(cx, top + 0.1, cz);
+  D.mesh('socket', body.attributes.position.array, body.attributes.normal.array, body.index!.array, on(cx, cz), up);
+  body.dispose();
+  const lid = new THREE.CylinderGeometry(0.15, 0.16, 0.03, 24).translate(cx, top + 0.215, cz);
+  D.mesh('plastic', lid.attributes.position.array, lid.attributes.normal.array, lid.index!.array, on(cx, cz), up);
+  lid.dispose();
+  D.box('screen', cx - 0.05, top + 0.12, cz + 0.17, cx + 0.05, top + 0.16, cz + 0.185, on(cx, cz), up);
+  D.box('kick', 0.55, top, -5.95, 0.78, top + 0.006, -5.63, on(0.66, -5.8), up, [0.5, 0.4, 0.3]);
+  D.box('paper', 0.57, top + 0.006, -5.93, 0.76, top + 0.008, -5.67, on(0.66, -5.8), up);
+  // Service pipes dropping from the ceiling to the sink's spine.
+  for (const x of [2.2, 2.32]) {
+    const g = new THREE.CylinderGeometry(0.018, 0.018, WALL_H - top, 10).translate(x, (WALL_H + top) / 2, -6.18);
+    D.mesh('conduit', g.attributes.position.array, g.attributes.normal.array, g.index!.array, on(x, -6.18), up);
+    g.dispose();
   }
 }
 

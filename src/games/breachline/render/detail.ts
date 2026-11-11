@@ -66,14 +66,15 @@ export class DetailBuilder {
     }
   }
   /** Any indexed mesh (lathe, tube) placed in the world, standing on the surface through `on`. */
-  mesh(key: string, position: ArrayLike<number>, normal: ArrayLike<number>, index: ArrayLike<number> | null, on: V3, n: V3, tint: V3 = [1, 1, 1]) {
+  mesh(key: string, position: ArrayLike<number>, normal: ArrayLike<number>, index: ArrayLike<number> | null, on: V3, n: V3, tint: V3 = [1, 1, 1], uv?: ArrayLike<number>) {
     const c = parentChart(this.atlas, on, n);
     if (!c) { this.missed++; this.misses.push(`${key}@${on.map(v => v.toFixed(2))}`); return; }
     const a = this.arrays(key), b = a.position.length / 3, count = position.length / 3;
     for (let i = 0; i < count; i++) {
       const p: V3 = [position[i * 3], position[i * 3 + 1], position[i * 3 + 2]];
       a.position.push(...p); a.normal.push(normal[i * 3], normal[i * 3 + 1], normal[i * 3 + 2]); a.color.push(...tint);
-      a.uv.push(p[0] + p[2], p[1]); a.uv1.push(...chartUv(this.atlas, c, p));
+      if (uv) a.uv.push(uv[i * 2], uv[i * 2 + 1]); else a.uv.push(p[0] + p[2], p[1]);
+      a.uv1.push(...chartUv(this.atlas, c, p));
     }
     if (index) for (let i = 0; i < index.length; i++) a.index.push(b + index[i]);
     else for (let i = 0; i < count; i++) a.index.push(b + i);

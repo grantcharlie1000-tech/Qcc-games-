@@ -12,6 +12,7 @@ import { REGIONS, collectFaces, faceArrays, packAtlas, splitFace, type GeoArrays
 import { FIXTURES } from './fixtures';
 import { fixtureMeshes } from './fixturemesh';
 import { dressLab, type DressKey } from './labdress';
+import { clockFace, safetySign } from './printed';
 import { artMaterial } from './materials';
 import { PROPS } from './props';
 import { PLANKS, SURFACES } from './surfaces';
@@ -104,21 +105,30 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     }
     // Modelled dressing, lit by the lightmap of whatever it stands on.
     if (region.name === 'lab') {
+      const printed = { sign: safetySign(), clock: clockFace() };
+      disposers.push(() => { printed.sign.dispose(); printed.clock.dispose(); });
       const D = dressLab(atlas, region), [bm, bn, ba] = await set('blue_metal_plate', TEX_SIZE[tier]), [pm, pn, pa] = await set('painted_plaster_wall', TEX_SIZE[tier]);
       const plain = (color: [number, number, number], roughness: number, metalness: number) => ({ map: null, normalMap: null, armMap: null, color: new THREE.Color(...color), roughness, metalness });
       const looks: Record<DressKey, Parameters<typeof artMaterial>[0]> = {
-        door: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(1.75, 1.75, 1.75), roughness: 0.8, metalness: 1 },
-        locker: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(2.5, 2.6, 2.7), roughness: 0.7, metalness: 1 },
+        door: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(1.55, 1.62, 1.7), roughness: 0.8, metalness: 1 },
+        locker: { map: pm, normalMap: pn, armMap: pa, color: new THREE.Color(0.52, 0.58, 0.52), roughness: 0.55, metalness: 1 },
         trim: { map: pm, normalMap: pn, armMap: pa, color: new THREE.Color(0.3, 0.36, 0.44), roughness: 0.7, metalness: 1 },
         handle: plain([0.72, 0.72, 0.7], 0.32, 1), chrome: plain([0.92, 0.92, 0.92], 0.07, 1), steel: plain([0.66, 0.67, 0.68], 0.28, 1),
         grid: plain([0.78, 0.78, 0.76], 0.5, 0),
         conduit: plain([0.55, 0.56, 0.56], 0.45, 1), socket: plain([0.82, 0.81, 0.78], 0.42, 0), kick: plain([0.035, 0.035, 0.04], 0.55, 0),
+        cork: plain([0.42, 0.28, 0.15], 0.9, 0), paper: plain([0.86, 0.86, 0.84], 0.85, 0), plastic: plain([0.16, 0.17, 0.18], 0.45, 0),
+        aid: plain([0.1, 0.42, 0.18], 0.5, 0),
+        screen: { ...plain([0.02, 0.03, 0.04], 0.12, 0), emissive: new THREE.Color(0.05, 0.11, 0.16) },
+        sign: { map: printed.sign, normalMap: null, armMap: null, roughness: 0.5, metalness: 0 },
+        clock: { map: printed.clock, normalMap: null, armMap: null, roughness: 0.15, metalness: 0 },
         amber: plain([0.2, 0.08, 0.015], 0.05, 0), glass: plain([0.1, 0.13, 0.125], 0.04, 0),
       };
       for (const [key, arrays] of D.parts) {
         const o = looks[key as DressKey];
         // The throttled tier has no reflection probe, so metals would read black: draw them as painted.
-        const mat = artMaterial({ ...o, ...(full ? {} : { metalness: 0, armMap: null }), lightMap, lightScale: info.scale, dirMap, vertexTint: true });
+        // Bare metal (no texture) would read chalk-white as paint, so it is darkened to its average reflected tone.
+        const asPaint = full ? {} : { metalness: 0, armMap: null, color: !o.map && (o.metalness ?? 0) > 0.5 ? new THREE.Color(o.color as THREE.Color).multiplyScalar(0.42) : o.color };
+        const mat = artMaterial({ ...o, ...asPaint, lightMap, lightScale: info.scale, dirMap, vertexTint: true });
         const g = geometry(arrays), mesh = new THREE.Mesh(g, mat);
         mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:dress:${key}`;
         group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);

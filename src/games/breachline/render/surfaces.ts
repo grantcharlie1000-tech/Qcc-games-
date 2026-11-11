@@ -27,10 +27,11 @@ export const SURFACES: Partial<Record<TexId, Surface>> = {
   tile: { set: 'interior_tiles', size: 0.95 * Math.SQRT2 / 2, rotate: Math.PI / 4, gloss: 0.12, spec: 2.6, tint: [0.66, 0.64, 0.62] },
   drywall: { set: 'painted_plaster_wall', size: 2, band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
   cinder: { set: 'painted_plaster_wall', size: 2, tint: [0.86, 0.88, 0.9], band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
-  counter: { set: 'blue_metal_plate', size: 1.25, tint: [1.9, 1.9, 1.9] },
+  // Carcasses sit behind the modelled doors: dark, so the gaps between doors read as gaps.
+  counter: { set: 'blue_metal_plate', size: 1.25, tint: [0.55, 0.55, 0.55] },
   // Locker carcasses (doors are modelled in render/labdress.ts).
-  steel: { set: 'blue_metal_plate', size: 1.25, tint: [2.4, 2.5, 2.6] },
-  trim: { set: 'blue_metal_plate', size: 1.25, tint: [1.15, 1.15, 1.15] },
+  steel: { set: 'painted_plaster_wall', size: 1.5, tint: [0.5, 0.56, 0.5] },
+  trim: { set: 'painted_plaster_wall', size: 1, tint: [0.26, 0.28, 0.31] },
   paint: { set: 'painted_plaster_wall', size: 1, tint: [0.32, 0.33, 0.34] },
 };
 

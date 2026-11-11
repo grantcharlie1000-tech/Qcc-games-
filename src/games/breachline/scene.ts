@@ -150,8 +150,14 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     const g = c.getContext('2d')!;
     g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 12; g.beginPath(); g.arc(128, 128, 112, 0, 7); g.stroke();
     g.fillStyle = 'rgba(255,255,255,0.9)'; g.font = 'bold 170px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(site.id, 128, 138);
+    // Worn floor paint: scuffed out in small patches, but the marker stays clearly readable.
+    let seed = site.id.charCodeAt(0) * 977;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    g.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(0,0,0,${0.25 + rnd() * 0.5})`; g.beginPath(); g.ellipse(rnd() * 256, rnd() * 256, 1 + rnd() * 5, 1 + rnd() * 2.5, rnd() * 3, 0, 7); g.fill(); }
+    g.globalCompositeOperation = 'source-over';
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; siteTex.push(t);
-    const mesh = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ map: t, color: 0xf0c040, transparent: true, opacity: 0.55, depthWrite: false }));
+    const mesh = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ map: t, color: 0xf2c23a, transparent: true, opacity: 0.85, depthWrite: false }));
     mesh.position.set((site.x0 + site.x1) / 2, 0.035, (site.z0 + site.z1) / 2 + (site.id === 'A' ? 2 : -0.2)); mesh.scale.setScalar(1.8); mesh.renderOrder = 2; scene.add(mesh);
   });
 
@@ -160,8 +166,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   scene.add(fx.group);
 
   let exposure = 0;
-  // Post-processing by quality: the throttled setting draws straight to the screen with the renderer's own curve.
-  const postTier = (q: QualityId): PostTier => (q === 'low' ? 'off' : q === 'high' ? 'high' : 'medium');
+  // Post-processing by quality: the throttled setting keeps the grade and an edge pass but no bloom.
+  const postTier = (q: QualityId): PostTier => (q === 'low' ? 'low' : q === 'high' ? 'high' : 'medium');
   const post = createPost(renderer, /[?&]post=off\b/.test(typeof location !== 'undefined' ? location.search : '') ? 'off' : postTier(initial));
   const drawSize = new THREE.Vector2();
 

@@ -9,7 +9,39 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-## Lab slice, round 2 (evidence: `lab-slice/round-2/`)
+## Lab slice, round 3 (evidence: `lab-slice/round-3/`, including `lab-high-vs-low.png`)
+
+From the reviewer's round-1 review (scores A 5.5, B 4, C 6, D 5.5, H 5), in their order:
+
+1. Floor: done in round 2 (darker, glossier, visible reflections). Grounding comes from the kick plates, contact
+   occlusion and the floor's reflections of benches and lockers.
+2. **Low tier no longer stair-steps:** Low now has a light post tier (grade plus an FXAA edge pass, no bloom) at its
+   reduced resolution, so High and Low share one look. Metals on Low (no reflection probe) are drawn as darkened
+   paint instead of black or chalk-white.
+3. **Paint varies by object:** grey-green lockers on a neutral painted base, blue-grey cabinet doors, charcoal door
+   frames, dark carcasses so the gaps between doors and drawers read as gaps.
+4. **Black point:** the grade has a black point (0.018 after the curve), so recesses, louvres and the doorway go dark.
+5. **Walls:** noticeboard with pinned sheets, first-aid box, an original eye-protection sign, a wall clock, a vent
+   grille, cable tray. **Ceiling:** sprinkler heads, a smoke detector, a stepped supply diffuser.
+6. **Bench tops:** a monitor on a stand with a keyboard, sample trays, a test-tube rack, a benchtop centrifuge, a
+   clipboard, service pipes dropping to the sink.
+7. **Site "A" ring:** worn but clearly readable on every tier.
+8. **Door posts:** charcoal painted with texture detail.
+
+Also: the bookmark script retakes an empty frame once. The first run after a source edit sometimes captured a
+blank canvas; I traced that to the dev server re-transforming modules, not to the renderer (six repeat runs without
+edits were all clean).
+
+Found for the hero session (relayed): on High the new AR-5 renders near-black, because the viewmodel uses my room
+probe (physical units, mean surface light 0.59) for diffuse as well as reflections; with the probe off it lights
+correctly.
+
+**Scores (Lab, mine, from `lab-slice/round-3/`):** A 6.5, B 6, C 6.5, D 7, H 5.5. **Budgets on these frames:**
+38k-93k triangles, 59-108 draw calls (High); textures unchanged plus two 256 px canvas textures. Still owed before
+the gate: a per-room texture allowance and post targets sized by tier (the reviewer's budget note), script ms,
+prop LODs.
+
+
 
 From the reviewer's mid-slice look (at 90eeca9) and my own list:
 
