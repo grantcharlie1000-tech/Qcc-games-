@@ -200,8 +200,8 @@ export class Builder {
   }
 
   build(opt: { ao?: boolean; aoRange?: number; aoSkipBones?: number[] } = {}): THREE.BufferGeometry {
-    const pos: number[] = [], nor: number[] = [], col: number[] = [], pbr: number[] = [], si: number[] = [], sw: number[] = [], ao: number[] = [], idx: number[] = [];
-    const c = new THREE.Color();
+    const pos: number[] = [], nor: number[] = [], col: number[] = [], pbr: number[] = [], si: number[] = [], sw: number[] = [], ao: number[] = [], part: number[] = [], idx: number[] = [];
+    const c = new THREE.Color(), parts = new Map<string, number>();
     // Lower levels of detail drop parts too small to see at their distance (pins, knurls, casings, lettering).
     const minR = this.lod >= 2 ? 0.009 : this.lod >= 1 ? 0.004 : 0;
     for (const p of this.pieces) {
@@ -220,6 +220,9 @@ export class Builder {
         if (W && I) { si.push(I.getX(i), I.getY(i), I.getZ(i), I.getW(i)); sw.push(W.getX(i), W.getY(i), W.getZ(i), W.getW(i)); }
         else { si.push(p.bone, 0, 0, 0); sw.push(1, 0, 0, 0); }
         ao.push(p.ao);
+        // Part id: the piece's tag plus its bone, so moving parts never share a chart with the frame.
+        const pk = `${p.tag}|${p.bone}`; let pid = parts.get(pk); if (pid === undefined) { pid = parts.size; parts.set(pk, pid); }
+        part.push(pid);
       }
       const ix = g.index!.array;
       for (let i = 0; i < ix.length; i++) idx.push(base + ix[i]);
@@ -232,6 +235,7 @@ export class Builder {
     out.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
     out.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
     out.setAttribute('ao', new THREE.Float32BufferAttribute(ao, 1));
+    out.setAttribute('part', new THREE.Float32BufferAttribute(part, 1));
     out.setIndex(idx);
     curvature(out);
     if (opt.ao !== false) bakeAO(out, opt.aoRange ?? 0.05, opt.aoSkipBones);

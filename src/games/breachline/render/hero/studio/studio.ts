@@ -7,6 +7,9 @@ import type { WeaponId } from '../../../config';
 import { heroMaterial } from '../material';
 import { heroReady } from '../geom';
 import { reloadFrame } from '../reload';
+import { texturedMaterial } from '../material';
+import { TEXTURED } from '../weapons';
+import { ArtLoader } from '../../assets';
 import { WEAPON_BONES, census, weaponModel } from '../weapons';
 import { DEFAULT_LOOK, POSE, createFpRig, holdFor, type FpRig } from '../rig';
 
@@ -41,6 +44,19 @@ function rigMesh(geo: THREE.BufferGeometry, bones: number) {
   return { mesh, bones: list };
 }
 
+let checker: THREE.MeshBasicMaterial | null = null;
+/** A numbered checker for proving the unwrap: 16 x 16 squares, each labelled with its column and row. */
+function checkerMat() {
+  if (checker) return checker;
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const g = c.getContext('2d')!;
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    g.fillStyle = (x + y) % 2 ? '#d8d0c0' : '#405870'; g.fillRect(x * 64, y * 64, 64, 64);
+    g.fillStyle = (x + y) % 2 ? '#202020' : '#f0f0f0'; g.font = 'bold 22px monospace'; g.fillText(`${x.toString(16)}${y.toString(16)}`, x * 64 + 16, y * 64 + 40);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.flipY = false;
+  return (checker = new THREE.MeshBasicMaterial({ map: t }));
+}
 let rig: FpRig | null = null;
 const getRig = () => (rig ??= createFpRig(DEFAULT_LOOK(0, 0x3d8bf2)));
 
@@ -90,10 +106,12 @@ const api = {
   },
 
   /** Shows one weapon. yaw/pitch in degrees around its centre; dist in metres. */
-  weapon(id: WeaponId, o: { yaw?: number; pitch?: number; dist?: number; lod?: number; mag?: number; bolt?: number } = {}) {
+  weapon(id: WeaponId, o: { yaw?: number; pitch?: number; dist?: number; lod?: number; mag?: number; bolt?: number; checker?: boolean; light?: number } = {}) {
     clear(); size();
     const t0 = performance.now(), w = weaponModel(id, o.lod ?? 0), ms = performance.now() - t0;
     const { mesh, bones } = rigMesh(w.geo, WEAPON_BONES);
+    (mesh as THREE.Mesh).material = o.checker ? checkerMat() : texSets.get(id) ?? mat;
+    if (o.light !== undefined) { const a = THREE.MathUtils.degToRad(o.light); key.position.set(Math.sin(a) * 2.5, 2.2, Math.cos(a) * 2.5); }
     bones[1].position.y = -(o.mag ?? 0); bones[2].position.z = o.bolt ?? 0;
     for (let i = 5; i < bones.length; i++) bones[i].scale.setScalar(0);
     stage.add(mesh);
@@ -115,4 +133,14 @@ size();
 const q = new URLSearchParams(location.search);
 if (q.get('w')) api.weapon(q.get('w') as WeaponId, { yaw: Number(q.get('yaw') ?? 90) });
 await heroReady;
+// The baked texture sets, as the game loads them.
+const texSets = new Map<WeaponId, THREE.Material>();
+const art = new ArtLoader(renderer, 'high');
+await Promise.all([...TEXTURED].map(async id => {
+  try {
+    const [map, normalMap, arm] = await Promise.all((['diff', 'nor', 'arm'] as const).map(k => art.texture(`../hero/${id}`, k, 2048)));
+    for (const t of [map, normalMap, arm]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+    const m = texturedMaterial({ map, normalMap, arm }); texSets.set(id, m); getRig().setTextures(id, m);
+  } catch (e) { console.warn('studio: no texture set for', id, e); }
+}));
 (window as unknown as { __heroReady: boolean }).__heroReady = true;

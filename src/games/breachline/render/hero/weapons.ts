@@ -163,7 +163,8 @@ const PAINT = surf(SURF.white, { color: 0xd8d4c8, wear: 0 });
 
 function marrowAR5(lod: number): Omit<WeaponModel, 'id'> {
   const b = new Builder(lod), B = -0.072; // bore height below the sight line
-  const up = SURF.anodGrey, low = SURF.anod, hg = SURF.anodGrey, poly = SURF.poly;
+  // Near-black anodised receiver; dark-earth cerakote handguard; black polymer grip and stock; dark-earth magazine.
+  const up = SURF.anod, low = SURF.anod, hg = surf(SURF.anodFde, { color: 0x6e5d45, rough: 0.5, metal: 0.25 }), poly = SURF.poly;
   // Upper receiver: a flat-sided forging with a raised rail deck, ejection port and forward assist.
   b.tag = 'Upper receiver';
   b.prism(fillet([[0.004, B - 0.013], [0.004, B + 0.016], [-0.006, B + 0.02], [-0.238, B + 0.02], [-0.238, B - 0.013], [-0.2, B - 0.016], [-0.02, B - 0.016]], [0, 0.003, 0.003, 0.002, 0.002, 0.004, 0.004]), 0.031, up, { bevel: 0.0016 });
@@ -282,9 +283,9 @@ function marrowAR5(lod: number): Omit<WeaponModel, 'id'> {
     const prof: [number, number][] = [];
     for (let i = 0; i <= n; i++) { const t = i / n; prof.push([-0.032 - curve(t), -D * t]); }
     for (let i = n; i >= 0; i--) { const t = i / n; prof.push([0.032 - curve(t) - 0.004 * t, -D * t]); }
-    b.prism(prof, 0.022, SURF.poly, { bevel: 0.0022 });
-    for (let i = 0; i < 5; i++) { const t = 0.22 + i * 0.13; b.box([0.0245, 0.003, 0.056], [0, -D * t, -curve(t) - 0.002 * t], SURF.poly, 0.0012, [-tilt(t), 0, 0]); }
-    b.box([0.03, 0.012, 0.074], [0, -D - 0.003, -curve(1) - 0.002], SURF.poly, 0.004, [-tilt(1), 0, 0]);
+    b.prism(prof, 0.022, SURF.polyFde, { bevel: 0.0022 });
+    for (let i = 0; i < 5; i++) { const t = 0.22 + i * 0.13; b.box([0.0245, 0.003, 0.056], [0, -D * t, -curve(t) - 0.002 * t], SURF.polyFde, 0.0012, [-tilt(t), 0, 0]); }
+    b.box([0.03, 0.012, 0.074], [0, -D - 0.003, -curve(1) - 0.002], SURF.polyFde, 0.004, [-tilt(1), 0, 0]);
     // Top of the follower and cartridge visible at the lips.
     b.lathe([[0, 0], [0.0047, 0.004], [0.0047, 0.044], [0.0028, 0.056], [0, 0.058]].map(([r, d]) => [r, d] as const), SURF.brass, [0, 0.004, 0.022], 10);
     b.transformSince(m0, new THREE.Matrix4().makeTranslation(0, MY, MZ));

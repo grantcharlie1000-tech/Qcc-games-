@@ -10,6 +10,8 @@ export interface UnwrapOptions {
   pad: number;
   /** Relative texel density for faces whose dominant axis is 0..5 (+X, -X, +Y, -Y, +Z, -Z). */
   weight: readonly number[];
+  /** Side (m) of the smallest chart painted on its own; smaller layers share a chart. */
+  minChart?: number;
 }
 
 /** Returns a new geometry (vertices duplicated along island borders) with a `uv` attribute in 0..1 and the
@@ -24,16 +26,33 @@ export function unwrap(src: THREE.BufferGeometry, o: UnwrapOptions): { geo: THRE
     const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
     axis[t] = ax >= ay && ax >= az ? (n.x >= 0 ? 0 : 1) : ay >= az ? (n.y >= 0 ? 2 : 3) : (n.z >= 0 ? 4 : 5);
   }
-  // Union triangles that share a vertex and an axis.
-  const parent = new Int32Array(nt).map((_, i) => i);
-  const find = (x: number): number => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
-  const owner = new Map<number, number>();
-  for (let t = 0; t < nt; t++) for (let k = 0; k < 3; k++) {
-    const key = ix[t * 3 + k] * 8 + axis[t], prev = owner.get(key);
-    if (prev === undefined) owner.set(key, t); else { const r1 = find(prev), r2 = find(t); if (r1 !== r2) parent[r2] = r1; }
+  // Charts per part: each part's triangles grouped by dominant axis, then split into depth layers along that axis so
+  // opposite walls do not overlap; bevels join the face they lean toward. Layers too small to paint on their own
+  // (teeth, pins, glyphs) share one chart per part and axis (overlap accepted: they take the same paint).
+  const PT = src.getAttribute('part'), depth = new Float32Array(nt), area = new Float32Array(nt);
+  for (let t = 0; t < nt; t++) {
+    a.fromBufferAttribute(P, ix[t * 3]); b.fromBufferAttribute(P, ix[t * 3 + 1]); c.fromBufferAttribute(P, ix[t * 3 + 2]);
+    const ax = axis[t] >> 1, cen = (a.getComponent(ax) + b.getComponent(ax) + c.getComponent(ax)) / 3;
+    depth[t] = cen; area[t] = n.subVectors(b, a).cross(c.clone().sub(a)).length() / 2;
   }
+  const byKey = new Map<string, number[]>();
+  for (let t = 0; t < nt; t++) { const key = `${PT ? PT.getX(ix[t * 3]) : 0}|${axis[t]}`; const l = byKey.get(key); if (l) l.push(t); else byKey.set(key, [t]); }
   const groups = new Map<number, number[]>();
-  for (let t = 0; t < nt; t++) { const r = find(t); const g = groups.get(r); if (g) g.push(t); else groups.set(r, [t]); }
+  let gid = 0;
+  const MIN_AREA = (o.minChart ?? 0.008) ** 2;
+  for (const tris of byKey.values()) {
+    tris.sort((p, q) => depth[p] - depth[q]);
+    const layers: number[][] = [];
+    let cur: number[] = [];
+    for (let i = 0; i < tris.length; i++) {
+      if (cur.length && depth[tris[i]] - depth[tris[i - 1]] > 0.004) { layers.push(cur); cur = []; }
+      cur.push(tris[i]);
+    }
+    if (cur.length) layers.push(cur);
+    const small: number[] = [];
+    for (const l of layers) { let ar = 0; for (const t of l) ar += area[t]; if (ar < MIN_AREA) small.push(...l); else groups.set(gid++, l); }
+    if (small.length) groups.set(gid++, small);
+  }
   // Projected coordinates per island (metres), and bounds.
   const proj = (ax: number, x: number, y: number, z: number): [number, number] =>
     ax === 0 ? [-z, y] : ax === 1 ? [z, y] : ax === 2 ? [x, -z] : ax === 3 ? [x, z] : ax === 4 ? [x, y] : [-x, y];

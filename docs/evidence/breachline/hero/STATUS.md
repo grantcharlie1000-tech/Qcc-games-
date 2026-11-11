@@ -7,6 +7,9 @@ change of 2026-11-11 ("Fighters split out"), fighters and row F belong to the fi
 
 ## Where I am
 
+r5b: re-charted unwrap. Charts are now per part, axis and depth layer, and tiny layers share a chart, so the atlas shows recognisable parts: 1793 texels/m against 1405, 41% coverage. Proof is `r5/ar-unwrap-checker.png` (squares are square and even on the visible side). The receiver is now near-black anodised (about 0.04 linear), the handguard and magazine dark earth, the grip and stock black polymer (`r5/game-ar-textured-lab-corridor-crop.png`). Next: fingers visible round the handguard, the optic coating and mount, wear at screen scale, the hands' texture set and the sleeve.
+
+
 r5 (in progress, per the plan's "Change of technique"): baked texture pipeline for the AR-5 is working end to end. Unwrap in code (`render/hero/unwrap.ts`: dominant-axis islands, landscape shelf packing, density weighted to the left side and top), offline baker (`scripts/breachline-assets/hero/bake.ts`, vite-node: rasterise texels, ray-cast AO with three-mesh-bvh, height-stamp normal map, layered albedo/roughness/metal), KTX2 2048/1024 + 512 JPEG in `public/game-art/breachline/hero/ar/` (5.8 MB incl. both sizes), run-time `texturedMaterial` (no per-pixel noise; environment for specular only) loaded through the environment's ArtLoader. Separate finishes (glossier anodised receiver, bluish steel, matte polymer), an overhead viewmodel key light indoors. Evidence `r5/ar-atlas-{diff,nor,arm}.png`, `r5/game-ar-textured-lab-corridor-crop.png`. Support hand: two-tone coyote glove, cradle rolled so thumb and knuckles read (`r5/game-ar-support-hand-crop-2x.png`); fingers are still not distinct. Next: hands' own texture set, a turntable under a moving light, budget trim (arm map at 2048 is 2.1 MB).
 
 
