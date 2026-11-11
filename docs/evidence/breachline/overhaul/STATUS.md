@@ -67,8 +67,34 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** online-test stall investigation done (below); next corridor round 3 from the
-review, then Archive round 2, then phase 5 debris, dust and decals.
+**Where I am (keep current):** destruction round 2 done (`destruction/round-2/`); next the tactical-kit items
+(plan commit 803ccc4: breach charge, barricades, reinforcement, uplink, grenade blasts), then corridor round 3 and
+Archive round 2.
+
+## Phase 5: destruction look, round 2 (`destruction/round-2/`)
+
+Against round 1's mismatches:
+- (1) Torn edges now have a fringe: on both faces the paint and paper peel back 1-4 cm from each break. Bare gypsum
+  shows at the break, and a darker ragged paper line at the fringe's inner edge, which follows the tear.
+- (3) The cut edge shows the board's layers: face paper, a white gypsum core, brown back paper. The cavity side
+  of the board is brown.
+- (4) Decals: a round through a soft wall leaves an entry chip on the near face and a wider blow-out on the far
+  face. Every cell knocked out by gunfire leaves chips on the intact board round it, on both faces, placed beyond
+  where the board can tear back. Decals belong to their cell and go when it falls. The decal texture is now a
+  crater: grey bruising, a ring of crushed gypsum chips, a ragged dark hole.
+- (2) Dust on every hit: an entry puff, plus a cone of gypsum dust out of the far side. Gypsum crumbs and
+  breach/gunfire debris that come to rest stay on the floor until the round is cleared (pooled, oldest recycled
+  first), and no longer update once settled.
+
+Still open:
+- (5) little light in the cavity;
+- debris chunks are flat-shaded boxes (fine at size, plain close up);
+- decals are not normal-mapped;
+- the Low breach view is still mostly smoke for several seconds.
+
+J score (mine): 5 -> 6. Evidence: `shot-wall-high.png` (holes from a magazine with chips round them),
+`breach-close-high.png`, `breach-high.png`, `shot-wall-low.png`. Budgets unchanged (decals and chunks are pooled
+instanced meshes; no new draw calls or programs; `warm.spec` still shows programs unchanged).
 
 ## Phase 5: destruction look, round 1 (`destruction/round-1/`)
 

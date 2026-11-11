@@ -184,6 +184,12 @@ export type PanelLight = (u: number, y: number, off: number, side: number) => RG
 /** Board thickness of each skin. */
 export const SKIN = 0.0125;
 const STUD = 0.045, STUD_PITCH = 0.6, NOGGIN = 1.2;
+/** Paper liner thickness; the fringe of bare gypsum where the face paper tears back from a break. */
+const PAPER = 0.0012, FRINGE = 0.022;
+/** Tints (on the wall's own texture and light): gypsum core, the brown back paper, the cavity side of the board,
+ * the bared gypsum at a tear and the ragged paper edge just inside it. */
+const GYPSUM: RGB = [1.02, 1.0, 0.94], BACK_PAPER: RGB = [0.62, 0.54, 0.42], CAVITY: RGB = [0.4, 0.35, 0.28];
+const GYPSUM_FACE: RGB = [1.12, 1.1, 1.05], TORN: RGB = [0.74, 0.71, 0.66];
 /** Deterministic hash in [0, 1) of a panel corner. */
 const hash = (a: number, b: number, c: number) => { const v = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453; return v - Math.floor(v); };
 
@@ -206,10 +212,11 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
     const l = Math.hypot(du, dy) || 1, m = CELL * (0.15 + 0.35 * hash(p.u0 + cu, p.y0 + cy, p.pos + skin * 3.1)) * (open === 1 ? 0.45 : 1);
     return [-du / l * m, -dy / l * m];
   };
-  const vert = (u: number, y: number, off: number, n: number, shade: number, nx = 0, ny = 0, fixed = false) => {
+  const vert = (u: number, y: number, off: number, n: number, shade: number | RGB, nx = 0, ny = 0, fixed = false) => {
     const cu = Math.round((u - p.u0) / CELL), cy = Math.round((y - p.y0) / CELL), [ju, jy] = fixed ? [0, 0] : jitter(cu, cy, Math.sign(off)), uu = u + ju, yy = y + jy;
     const w = panelPoint(p, uu, yy, off), l = light(u, y, off, n);
-    pos.push(w.x, w.y, w.z); uv.push(uu / tile[0], yy / tile[1]); col.push(l[0] * shade, l[1] * shade, l[2] * shade);
+    const [sr, sg, sb] = typeof shade === 'number' ? [shade, shade, shade] : shade;
+    pos.push(w.x, w.y, w.z); uv.push(uu / tile[0], yy / tile[1]); col.push(l[0] * sr, l[1] * sg, l[2] * sb);
     if (n) { if (alongX) nor.push(0, 0, n); else nor.push(n, 0, 0); }
     else if (alongX) nor.push(nx, ny, 0); else nor.push(0, ny, nx);
     return pos.length / 3 - 1;
@@ -236,9 +243,25 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
       if (!cell(c, r)) continue;
       const u0 = p.u0 + c * CELL, u1 = u0 + CELL, y0 = p.y0 + r * CELL, y1 = y0 + CELL;
       const strip = (ua: number, ya: number, ub: number, yb: number, nx: number, ny: number) => {
-        for (const [o0, o1, shade] of wood ? [[-half, half, 0.55]] as const : [[half - skin, half, 0.85], [-half, -half + skin, 0.85]] as const) {
+        // Across each board's cut edge: the face paper, the white gypsum core, the brown back paper.
+        const bands: [number, number, number | RGB][] = wood ? [[-half, half, 0.55]] : [];
+        if (!wood) for (const sgn of [1, -1]) {
+          const out = sgn * half, inn = sgn * (half - skin), a = sgn * (half - PAPER), b = sgn * (half - skin + PAPER);
+          bands.push([out, a, 0.9], [a, b, GYPSUM], [b, inn, BACK_PAPER]);
+        }
+        for (const [o0, o1, shade] of bands) {
           const a = vert(ua, ya, o0, 0, shade, nx, ny), b = vert(ub, yb, o0, 0, shade, nx, ny), cc = vert(ub, yb, o1, 0, shade, nx, ny), d = vert(ua, ya, o1, 0, shade, nx, ny);
           edge.push(a, b, cc, a, cc, d, a, cc, b, a, d, cc);
+        }
+        if (wood) return;
+        // On both faces, a torn fringe: the paint and paper peel back a little from the break, baring gypsum. Its
+        // inner edge follows the same tear as the break, so the band's width varies along it.
+        const w = FRINGE * (0.6 + 0.8 * hash(ua * 7.3, ya * 3.1, p.pos));
+        for (const n of [1, -1]) {
+          const off = n * (half + 0.0006);
+          const a = vert(ua, ya, off, n, GYPSUM_FACE), b = vert(ub, yb, off, n, GYPSUM_FACE);
+          const c2 = vert(ub - nx * w, yb - ny * w, off, n, TORN), d2 = vert(ua - nx * w, ya - ny * w, off, n, TORN);
+          edge.push(a, b, c2, a, c2, d2, a, c2, b, a, d2, c2);
         }
       };
       const left = c > 0 && !cell(c - 1, r), right = c < p.cols - 1 && !cell(c + 1, r), down = r > 0 && !cell(c, r - 1), up = r < p.rows - 1 && !cell(c, r + 1);
@@ -250,7 +273,7 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
       // The inside faces of both skins, seen through the hole: the brown back of the board, in shadow.
       for (const n of [1, -1]) {
         const off = n * (half - SKIN);
-        quad(edge, vert(u0, y0, off, -n, 0.32), vert(u1, y0, off, -n, 0.32), vert(u1, y1, off, -n, 0.32), vert(u0, y1, off, -n, 0.32), alongX ? n > 0 : n < 0);
+        quad(edge, vert(u0, y0, off, -n, CAVITY), vert(u1, y0, off, -n, CAVITY), vert(u1, y1, off, -n, CAVITY), vert(u0, y1, off, -n, CAVITY), alongX ? n > 0 : n < 0);
       }
     }
     // Studs and the noggin, inside the cavity, only where their cell is intact and a hole is near enough to see them.

@@ -68,9 +68,9 @@ const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 export class Effects {
   readonly group = new THREE.Group();
   private dustP: Points; private sparkP: Points;
-  private chunks: THREE.InstancedMesh; private chunk: { x: number; y: number; z: number; vx: number; vy: number; vz: number; rx: number; ry: number; rz: number; spin: number; size: number; life: number }[] = []; private chunkNext = 0; private chunkLive = 0;
+  private chunks: THREE.InstancedMesh; private chunk: { x: number; y: number; z: number; vx: number; vy: number; vz: number; rx: number; ry: number; rz: number; spin: number; size: number; life: number; stay: boolean; rest: boolean }[] = []; private chunkNext = 0; private chunkLive = 0;
   private tracers: THREE.InstancedMesh; private tracerLife: Float32Array; private tracerNext = 0; private tracerLive = 0;
-  private holes: THREE.InstancedMesh; private holeNext = 0;
+  private holes: THREE.InstancedMesh; private holeNext = 0; private holeTag = new Int32Array(160).fill(-1);
   private flashes: { sprite: THREE.Sprite; life: number; span: number; size: number }[] = [];
   private textures: THREE.Texture[] = [];
   /** 1 full effects; lower on the performance preset. */
@@ -81,7 +81,7 @@ export class Effects {
     this.dustP = new Points(280, puff, false); this.sparkP = new Points(160, puff, true);
     this.chunks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), maxChunks);
     this.chunks.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.chunks.frustumCulled = false;
-    for (let i = 0; i < maxChunks; i++) { this.chunks.setMatrixAt(i, ZERO); this.chunks.setColorAt(i, col.setRGB(1, 1, 1)); this.chunk.push({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, rx: 0, ry: 0, rz: 0, spin: 0, size: 0, life: 0 }); }
+    for (let i = 0; i < maxChunks; i++) { this.chunks.setMatrixAt(i, ZERO); this.chunks.setColorAt(i, col.setRGB(1, 1, 1)); this.chunk.push({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, rx: 0, ry: 0, rz: 0, spin: 0, size: 0, life: 0, stay: false, rest: false }); }
     const tg = new THREE.BoxGeometry(1, 1, 1); tg.translate(0, 0, 0.5);
     this.tracers = new THREE.InstancedMesh(tg, new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false }), 40);
     this.tracers.frustumCulled = false; this.tracers.renderOrder = 6; this.tracerLife = new Float32Array(40);
@@ -97,10 +97,12 @@ export class Effects {
   }
   dust(x: number, y: number, z: number, vx: number, vy: number, vz: number, size: number, life: number, r: number, g: number, b: number, alpha = 0.5, grow = 1.6, gravity = 0, drag = 2.2) { this.dustP.add(x, y, z, vx, vy, vz, size, life, r, g, b, alpha, grow, gravity, drag); }
   spark(x: number, y: number, z: number, vx: number, vy: number, vz: number, size = 0.05, life = 0.3) { this.sparkP.add(x, y, z, vx, vy, vz, size, life, 1, 0.72, 0.3, 1, -0.6, 9, 1); }
-  debris(x: number, y: number, z: number, vx: number, vy: number, vz: number, size: number, r: number, g: number, b: number) {
+  /** A tumbling chunk. With `stay`, it stays where it comes to rest until the round is cleared (the pool recycles the
+   * oldest first). */
+  debris(x: number, y: number, z: number, vx: number, vy: number, vz: number, size: number, r: number, g: number, b: number, stay = false) {
     const i = this.chunkNext; this.chunkNext = (this.chunkNext + 1) % this.maxChunks;
     const c = this.chunk[i];
-    c.x = x; c.y = y; c.z = z; c.vx = vx; c.vy = vy; c.vz = vz; c.rx = Math.random() * 6; c.ry = Math.random() * 6; c.rz = Math.random() * 6; c.spin = 4 + Math.random() * 9; c.size = size; c.life = 2.2 + Math.random() * 1.6;
+    c.x = x; c.y = y; c.z = z; c.vx = vx; c.vy = vy; c.vz = vz; c.rx = Math.random() * 6; c.ry = Math.random() * 6; c.rz = Math.random() * 6; c.spin = 4 + Math.random() * 9; c.size = size; c.life = 2.2 + Math.random() * 1.6; c.stay = stay; c.rest = false;
     this.chunks.setColorAt(i, col.setRGB(r, g, b)); this.chunks.instanceColor!.needsUpdate = true;
     this.chunkLive = 1;
   }
@@ -113,11 +115,19 @@ export class Effects {
     this.tracers.setMatrixAt(i, mat.compose(v.set(ax, ay, az), q, s.set(0.014, 0.014, len)));
     this.tracers.instanceMatrix.needsUpdate = true; this.tracerLife[i] = 0.06; this.tracerLive = 1;
   }
-  hole(x: number, y: number, z: number, nx: number, ny: number, nz: number, size = 0.09) {
+  /** A bullet-hole decal. `tag` names what it is painted on (a wall cell), so it can go when that falls away. */
+  hole(x: number, y: number, z: number, nx: number, ny: number, nz: number, size = 0.09, tag = -1) {
     const i = this.holeNext; this.holeNext = (this.holeNext + 1) % 160;
+    this.holeTag[i] = tag;
     q.setFromUnitVectors(up, n.set(nx, ny, nz));
     this.holes.setMatrixAt(i, mat.compose(v.set(x + nx * 0.012, y + ny * 0.012, z + nz * 0.012), q, s.set(size, size, size)));
     this.holes.instanceMatrix.needsUpdate = true;
+  }
+  /** Removes the decals painted on something that has gone (a wall cell knocked out). */
+  clearHoles(tag: number) {
+    let any = false;
+    for (let i = 0; i < 160; i++) if (this.holeTag[i] === tag) { this.holeTag[i] = -1; this.holes.setMatrixAt(i, ZERO); any = true; }
+    if (any) this.holes.instanceMatrix.needsUpdate = true;
   }
   flash(x: number, y: number, z: number, size: number, life: number) {
     let f = this.flashes[0];
@@ -144,12 +154,17 @@ export class Effects {
       for (let i = 0; i < this.maxChunks; i++) {
         const c = this.chunk[i];
         if (c.life <= 0) continue;
+        if (c.rest) { any++; continue; }
         c.life -= dt;
         if (c.life <= 0) { this.chunks.setMatrixAt(i, ZERO); continue; }
         any++;
         c.vy -= 13 * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt;
         const floor = c.size * 0.5;
-        if (c.y < floor) { c.y = floor; c.vy = Math.abs(c.vy) > 1.2 ? -c.vy * 0.32 : 0; c.vx *= 0.55; c.vz *= 0.55; c.spin *= 0.5; }
+        if (c.y < floor) {
+          c.y = floor; c.vy = Math.abs(c.vy) > 1.2 ? -c.vy * 0.32 : 0; c.vx *= 0.55; c.vz *= 0.55; c.spin *= 0.5;
+          // Debris that stays lies flat once it stops (and is then left alone: no more updates).
+          if (c.stay && c.vy === 0 && Math.hypot(c.vx, c.vz) < 0.15) { c.rest = true; c.life = 1; c.rx = Math.round(c.rx / Math.PI) * Math.PI; c.rz = Math.round(c.rz / Math.PI) * Math.PI; }
+        }
         c.rx += c.spin * dt; c.rz += c.spin * 0.7 * dt;
         const k = c.size * Math.min(1, c.life * 2.5);
         this.chunks.setMatrixAt(i, mat.compose(v.set(c.x, c.y, c.z), q.setFromEuler(e.set(c.rx, c.ry, c.rz)), s.set(k, k * 0.6, k)));
@@ -175,6 +190,7 @@ export class Effects {
     this.dustP.clear(); this.sparkP.clear();
     for (let i = 0; i < this.maxChunks; i++) { this.chunk[i].life = 0; this.chunks.setMatrixAt(i, ZERO); }
     for (let i = 0; i < 160; i++) this.holes.setMatrixAt(i, ZERO);
+    this.holeTag.fill(-1);
     for (let i = 0; i < 40; i++) { this.tracerLife[i] = 0; this.tracers.setMatrixAt(i, ZERO); }
     this.chunks.instanceMatrix.needsUpdate = this.holes.instanceMatrix.needsUpdate = this.tracers.instanceMatrix.needsUpdate = true;
     for (const f of this.flashes) { f.life = 0; f.sprite.visible = false; }

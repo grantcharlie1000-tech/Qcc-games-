@@ -12,7 +12,7 @@ import { createFighters, createViewmodel, type HeroLighting } from './render/her
 import { createPost, type PostTier } from './render/post';
 import { shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
 import { makeSprite, makeTextures, type TexId } from './textures';
-import { cellCenter, eyeOf, panelPoint, trace, viewDir, type World } from './world';
+import { PANEL_T, cellCenter, eyeOf, panelPoint, trace, viewDir, type Panel, type World } from './world';
 
 export type QualityId = 'auto' | 'low' | 'high';
 export const QUALITIES: Record<QualityId, { name: string; fps: number; min: number; max: number; cap: number; density: number }> = {
@@ -311,6 +311,46 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   }
 
   const DUST: Record<string, [number, number, number]> = { wall: [0.86, 0.83, 0.76], wood: [0.6, 0.45, 0.28], concrete: [0.62, 0.62, 0.6], brick: [0.62, 0.38, 0.3], metal: [0.5, 0.52, 0.55] };
+  /** A round through a soft wall: a small entry hole with a puff of plaster on the near face, a wider blow-out on the
+   * far face with a spray of gypsum dust and crumbs that stay on the floor. Decals belong to the cell, so they go when
+   * the cell is knocked out. Planks splinter instead. */
+  function softHit(m: Match, panel: Panel, cell: number, x: number, y: number, z: number, dx: number, dy: number, dz: number) {
+    if (fx.density < 1 && Math.random() < 0.5) return;
+    const along = panel.axis === 'x', s = Math.sign(along ? dz : dx) || 1, nx = along ? 0 : -s, nz = along ? -s : 0;
+    const wood = panel.kind !== 'wall', half = (wood ? 0.07 : PANEL_T) / 2, tag = panel.id * 4096 + cell;
+    const l = bake.probe(x, z), b = 0.35 + (l[0] + l[1] + l[2]) / 3, c = wood ? DUST.wood : DUST.wall;
+    // Entry, on the face toward the shooter.
+    fx.hole(x + nx * half, y, z + nz * half, nx, 0, nz, (wood ? 0.05 : 0.045) + Math.random() * 0.02, tag);
+    impact(x + nx * half, y, z + nz * half, nx, 0, nz, wood ? 'wood' : 'wall', false);
+    // Exit: a wider, ragged blow-out and a cone of dust and crumbs on the far side.
+    const ex = x - nx * half, ez = z - nz * half;
+    fx.hole(ex, y, ez, -nx, 0, -nz, (wood ? 0.08 : 0.1) + Math.random() * 0.05, tag);
+    const n = fx.density < 1 ? 2 : 4;
+    for (let i = 0; i < n; i++) fx.dust(ex - nx * 0.04, y, ez - nz * 0.04, dx * (1 + Math.random() * 2) + (Math.random() - 0.5) * 0.7, dy + Math.random() * 0.4 - 0.1, dz * (1 + Math.random() * 2) + (Math.random() - 0.5) * 0.7, 0.12 + Math.random() * 0.12, 0.6 + Math.random() * 0.6, c[0] * b, c[1] * b, c[2] * b, 0.45, 1.8, 0.4);
+    for (let i = 0; i < (fx.density < 1 ? 1 : 2); i++) fx.debris(ex, y, ez, dx * (0.5 + Math.random() * 1.5) + (Math.random() - 0.5), Math.random() * 0.8, dz * (0.5 + Math.random() * 1.5) + (Math.random() - 0.5), 0.012 + Math.random() * 0.02, c[0] * b, c[1] * b, c[2] * b, true);
+  }
+  /** Chips on the intact board round a fresh hole, on both faces: rounds and blast tear more than they cut. */
+  function chipRim(panel: Panel, broken: number[], per: number) {
+    if (fx.density < 1) per = 1;
+    const half = PANEL_T / 2, nx = panel.axis === 'z' ? 1 : 0, nz = panel.axis === 'x' ? 1 : 0;
+    for (const k of broken.slice(0, 12)) {
+      const c0 = k % panel.cols, r0 = Math.floor(k / panel.cols);
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const c = c0 + dc, r = r0 + dr;
+        if (c < 0 || r < 0 || c >= panel.cols || r >= panel.rows || !panel.cells[r * panel.cols + c]) continue;
+        for (let i = 0; i < per; i++) {
+          // A point in the neighbour, beyond where its board can tear back (up to half a cell from the break).
+          const back = Math.random() * 0.2, across = (Math.random() - 0.5) * 0.6;
+          const u = panel.u0 + (c + 0.5 + dc * back + (dr ? across : 0)) * CELL;
+          const y = panel.y0 + (r + 0.5 + dr * back + (dc ? across : 0)) * CELL;
+          for (const side of [1, -1]) {
+            const p = panelPoint(panel, u, y, side * half);
+            fx.hole(p.x, p.y, p.z, nx * side, 0, nz * side, 0.03 + Math.random() * 0.03, panel.id * 4096 + r * panel.cols + c);
+          }
+        }
+      }
+    }
+  }
   function impact(x: number, y: number, z: number, nx: number, ny: number, nz: number, kind: keyof typeof DUST, hard: boolean) {
     const c = DUST[kind], l = bake.probe(x, z), b = 0.35 + (l[0] + l[1] + l[2]) / 3;
     const n = fx.density < 1 ? 1 : 2;
@@ -336,6 +376,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             dirs.forEach((d, i) => {
               const tr = trace(m.world, e.x, e.y, e.z, d.x, d.y, d.z, 120), hx = e.x + d.x * tr.t, hy = e.y + d.y * tr.t, hz = e.z + d.z * tr.t;
               if (def.pellets === 1 || i % 2 === 0) fx.tracer(ox, oy, oz, hx, hy, hz);
+              for (const sh of tr.soft) softHit(m, sh.panel, sh.cell, e.x + d.x * sh.t, e.y + d.y * sh.t, e.z + d.z * sh.t, d.x, d.y, d.z);
               if (!tr.solid) return;
               const mat = tr.panel ? 'metal' : !tr.box ? 'concrete' : tr.box.mat === 'brick' ? 'brick' : tr.box.mat === 'wood' || tr.box.mat === 'crate' || tr.box.mat === 'trim' || tr.box.mat === 'shelf' ? 'wood' : tr.box.mat === 'concrete' ? 'concrete' : tr.box.mat === 'plaster' ? 'wall' : 'metal';
               impact(hx, hy, hz, tr.nx, tr.ny, tr.nz, mat, true);
@@ -345,6 +386,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
           case 'cells': {
             const panel = m.world.panels[e.p];
             if (!panel) break;
+            for (const c of e.c) fx.clearHoles(e.p * 4096 + c);
+            if (panel.kind === 'wall') chipRim(panel, e.c, e.cause === 1 ? 1 : 2);
             const wood = panel.kind !== 'wall', max = e.cause === 1 ? 46 : 10, stride = Math.max(1, Math.ceil(e.c.length / max));
             const src = lastOrigin, side = (panel.axis === 'x' ? src.z : src.x) < panel.pos ? 1 : -1;
             for (let i = 0; i < e.c.length; i += stride) {

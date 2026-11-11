@@ -260,8 +260,15 @@ export function makeSprite(kind: 'puff' | 'flash' | 'hole' | 'blob' | 'ring'): T
     g.fillStyle = 'rgba(255,240,200,0.9)';
     for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5 + 0.3; g.beginPath(); g.moveTo(c + Math.cos(a - 0.16) * 8, c + Math.sin(a - 0.16) * 8); g.lineTo(c + Math.cos(a) * c * 0.95, c + Math.sin(a) * c * 0.95); g.lineTo(c + Math.cos(a + 0.16) * 8, c + Math.sin(a + 0.16) * 8); g.fill(); }
   } else if (kind === 'hole') {
-    const grad = g.createRadialGradient(c, c, 0, c, c, c); grad.addColorStop(0, 'rgba(8,8,8,1)'); grad.addColorStop(0.3, 'rgba(20,18,16,0.95)'); grad.addColorStop(0.55, 'rgba(60,55,50,0.5)'); grad.addColorStop(1, 'rgba(60,55,50,0)');
+    // A crater: faint grey bruising, a ring of crushed, bared gypsum chips, then the ragged dark hole.
+    const r = rng(11), grad = g.createRadialGradient(c, c, 0, c, c, c);
+    grad.addColorStop(0, 'rgba(70,64,58,0.55)'); grad.addColorStop(0.6, 'rgba(90,84,78,0.25)'); grad.addColorStop(1, 'rgba(90,84,78,0)');
     g.fillStyle = grad; g.fillRect(0, 0, s, s);
+    const ragged = (rad: number, jag: number) => { g.beginPath(); for (let i = 0; i <= 24; i++) { const a = i / 24 * Math.PI * 2, q = rad * (1 - jag + 2 * jag * r()); if (i) g.lineTo(c + Math.cos(a) * q, c + Math.sin(a) * q); else g.moveTo(c + Math.cos(a) * q, c + Math.sin(a) * q); } g.closePath(); g.fill(); };
+    g.fillStyle = 'rgba(214,208,196,0.85)'; ragged(c * 0.46, 0.3);
+    for (let i = 0; i < 18; i++) { const a = r() * 6.283, d = c * (0.3 + r() * 0.35); g.fillStyle = `rgba(${200 + r() * 30},${195 + r() * 28},${185 + r() * 25},${0.5 + r() * 0.4})`; g.fillRect(c + Math.cos(a) * d - 2, c + Math.sin(a) * d - 2, 2 + r() * 4, 2 + r() * 4); }
+    g.fillStyle = 'rgba(52,46,40,1)'; ragged(c * 0.26, 0.28);
+    g.fillStyle = 'rgba(10,9,8,1)'; ragged(c * 0.16, 0.25);
   } else {
     g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 7; g.beginPath(); g.arc(c, c, c - 8, 0, 7); g.stroke();
     g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 3; g.beginPath(); g.arc(c, c, c - 22, 0, 7); g.stroke();
