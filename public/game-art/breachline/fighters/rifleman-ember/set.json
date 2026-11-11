@@ -9,9 +9,9 @@
     1024,
     1024
    ],
-   "vertices": 5327,
-   "outVertices": 6794,
-   "indices": 23784,
+   "vertices": 5339,
+   "outVertices": 6766,
+   "indices": 23844,
    "wide": false
   },
   {
@@ -23,7 +23,7 @@
     512
    ],
    "vertices": 3364,
-   "outVertices": 4121,
+   "outVertices": 4100,
    "indices": 11211,
    "wide": false
   },
@@ -36,7 +36,7 @@
     256
    ],
    "vertices": 1425,
-   "outVertices": 1687,
+   "outVertices": 1676,
    "indices": 4191,
    "wide": false
   }

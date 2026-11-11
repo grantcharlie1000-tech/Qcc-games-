@@ -126,11 +126,12 @@ function paint(x: Texel, ao: number, d: ReturnType<typeof height>, out: { col: T
   if (x.cls === C.uniform) {
     // Printed three-tone pattern with breakup.
     // Four tones in fist-sized shapes (about 10 cm), edges broken up by finer noise.
-    const brk = (fbm(p.x * 60, p.y * 60, p.z * 60, 2) - 0.5) * 0.06;
+    const brk = (fbm(p.x * 45, p.y * 45, p.z * 45, 2) - 0.5) * 0.03;
     const b1 = fbm(p.x * 9 + 3.1, p.y * 9, p.z * 9 - 2, 4) + brk, b2 = fbm(p.x * 11 + 7.3, p.y * 11, p.z * 11, 3) + brk, b3 = fbm(p.x * 13 - 5.1, p.y * 13 + 2, p.z * 13, 3) + brk;
-    if (b1 > 0.56) col.multiplyScalar(0.6);
-    else if (b2 > 0.57) col.multiplyScalar(0.8);
-    else if (b3 > 0.58) col.multiply(new THREE.Color(1.12, 1.1, 1.06));
+    // Three tones with hard edges.
+    if (b1 > 0.555) col.multiplyScalar(0.52);
+    else if (b3 > 0.57) col.multiply(new THREE.Color(1.28, 1.25, 1.18));
+    void b2;
     col.multiplyScalar(0.92 + 0.12 * small);
     col.multiplyScalar(1 - d.seam * 0.3);
     rough = 0.9 + 0.06 * (small - 0.5);

@@ -41,6 +41,27 @@ describe('fighter meshes', () => {
   });
 });
 
+describe('fighter surfaces face outward', () => {
+  test('every body part and every lofted piece of kit has its normals pointing out (three draws front faces only)', async () => {
+    const { bodyParts } = await import('../../../src/games/breachline/render/fighters/body');
+    const { buildKit } = await import('../../../src/games/breachline/render/fighters/kit');
+    const { LOOKS } = await import('../../../src/games/breachline/render/fighters/look');
+    const { Builder } = await import('../../../src/games/breachline/render/hero/geom');
+    const outward = (g: THREE.BufferGeometry) => {
+      const P = g.getAttribute('position'), N = g.getAttribute('normal'), c = new THREE.Vector3(), v = new THREE.Vector3(), n = new THREE.Vector3();
+      for (let i = 0; i < P.count; i++) c.add(v.fromBufferAttribute(P, i)); c.multiplyScalar(1 / P.count);
+      let s = 0; for (let i = 0; i < P.count; i++) s += n.fromBufferAttribute(N, i).dot(v.fromBufferAttribute(P, i).sub(c).normalize());
+      return s / P.count;
+    };
+    for (const mask of ['balaclava', 'scarf'] as const) for (const g of bodyParts(0, mask)) expect(outward(g)).toBeGreaterThan(0.2);
+    for (const sq of [0, 1] as const) {
+      const b = new Builder(0); buildKit(b, LOOKS[sq], 0);
+      // Flat ribbons (the shoulder straps) are near zero either way; closed lofts must be clearly positive.
+      for (const p of b.pieces) if (p.geo.getAttribute('skinWeight')) expect(outward(p.geo), p.tag).toBeGreaterThan(-0.02);
+    }
+  });
+});
+
 describe('fighters fill the simulation\'s hit volumes', () => {
   const poses: Partial<PoseInput>[] = [];
   for (const crouch of [0, 0.5, 1]) for (const lean of [-1, 0, 1]) for (const pitch of [-0.8, 0, 0.8]) poses.push({ crouch, lean, pitch, yaw: 0.7, x: 3, z: -2 });

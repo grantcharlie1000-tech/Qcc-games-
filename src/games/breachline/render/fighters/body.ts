@@ -142,7 +142,8 @@ function arm(lod: number, s: number) {
     seg,
     weight(p) {
       const a = p.clone().sub(sh).dot(d);
-      return chain([[S.clav, -0.08], [S.delt, 0.0], [S.upper, 0.11], [S.upper, 0.245], [S.elbow, 0.29], [S.fore, 0.335], [S.twist, 0.45], [S.hand, 0.565]], a);
+      // The inner end stays with the clavicle (inside the torso), so less of the sleeve stretches when the arm rises.
+      return chain([[S.clav, -0.09], [S.clav, -0.03], [S.delt, 0.04], [S.upper, 0.13], [S.upper, 0.245], [S.elbow, 0.29], [S.fore, 0.335], [S.twist, 0.45], [S.hand, 0.565]], a);
     },
     tag: p => { const a = p.clone().sub(sh).dot(d); return a > 0.17 && a < 0.205 ? BT.band : BT.shirt; },
   });

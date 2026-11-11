@@ -14,7 +14,7 @@ Session: fighters (row F: bodies, kit, materials, animation). Plan:
 | Weapons in hand | `worldWeapon(id, lod)` from the weapons session, adapted to the fighter's sockets (stand-in kept as fallback) |
 | Lighting | Diffuse from `probe()` as indirect irradiance, specular from `environment()` scaled by `environmentScale()` |
 
-**Where I am:** round 7, the reviewer's r4 points 1–5 (facets, values, legs, head) on both squads' baked sets. F = 6, below the gate of 7. Next: the aimed shoulder, the gloves, the head and helmet charts.
+**Where I am:** round 8 committed without its in-game evidence. Paused there on request; the planner has proposed swapping the body mesh for a licensed downloaded model (plan commit 4288005), and that waits for the owner.
 
 ## Reference study (looked at, nothing saved)
 
@@ -174,6 +174,12 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 - Ten fighters: 20 draw calls (body and kit, weapon) plus one shared contact-shadow call. Triangles: 10 × 7.9k = 79k all at full detail, which the selector never allows (at most 4 at full detail); worst case 54.2k; ten at the middle level 37k; ten at the lowest 13k.
 - GPU texture memory (compressed, with mips): about 6.5 MB per squad (full detail: diff 2048 at 4 bpp ≈ 2.7 MB, nor 1024 and arm 1024 at 8 bpp ≈ 1.4 MB each; middle and low about 1 MB), 13 MB for both. Low tier: the same today (it still loads the full-size albedo); to be cut by shipping a 1024 albedo for Low.
 - Two-device online test: passes alone (50 s) and in the full sequence (8/8) with this change.
+
+**Round 8** (reviewer's r5/r6 notes; committed, in-game evidence not yet reviewed):
+1. The real cause of the "shoulder wings" and "facets": every lofted surface (torso, arms, legs and lofted kit) was wound inward, so three drew the far inside of each tube. `loft()` now reverses the winding whenever its frame is right-handed along the rings. A test checks that every body part and lofted kit piece faces outward. Previews show solid, bulky bodies and round shoulders at the low ready and aimed.
+2. Faces covered (planner's decision): Azure has a balaclava with mirrored smoked goggles over the eyes; Ember has a face wrap over the nose, under the sunglasses (the old scarf was inside out too, which is why it never showed).
+3. The stance leans forward with soft knees and the pelvis tipped; the clavicle shrug is mostly removed (it lifted the shoulders); the print is three hard-edged tones.
+4. Both sets re-baked (Azure 2.2 MB, Ember 2.3 MB).
 
 ## Budgets measured
 

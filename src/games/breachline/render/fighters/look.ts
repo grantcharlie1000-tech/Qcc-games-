@@ -30,7 +30,7 @@ export const LOOKS: readonly [Look, Look] = [
     glove: surf(SURF.glove, { color: 0x262728 }), palm: surf(SURF.gloveTan, { color: 0x45423d }), knuckle: surf(SURF.knuckle, { color: 0x1c1d1e }),
     kit: fab(0x464a4f, 0.9), web: surf(SURF.webbing, { color: 0x3a3d41 }), helmet: surf(SURF.helmet, { color: 0x4c5257, rough: 0.7 }),
     poly: surf(SURF.poly, { color: 0x1f2022 }), rubber: surf(SURF.rubber, {}), metal: surf(SURF.park, { color: 0x2d2e30 }),
-    boot: surf(SURF.boot, { color: 0x1f1e1d }), lens: surf(SURF.lens, { color: 0x10171c }), scarf: fab(0x242628),
+    boot: surf(SURF.boot, { color: 0x1f1e1d }), lens: surf(SURF.lens, { color: 0x56656e, rough: 0.12, metal: 0.6 }), scarf: fab(0x242628),
   },
   {
     squad: 1, band: hex(SQUADS[1].color), mask: 'scarf', eyes: 'glasses',

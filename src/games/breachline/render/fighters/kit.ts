@@ -159,8 +159,7 @@ function helmet(b: Builder, l: Look, lod: number) {
 
 function goggles(b: Builder, l: Look, lod: number) {
   b.bone = B.head;
-  // Pushed up onto the helmet above the brim, so the face shows (a dark visor bar read as a void).
-  const R = 0.122, c = V(0, 1.708, 0.004), n = [12, 8, 5][lod], frameRows: THREE.Vector3[][] = [], lens: THREE.Vector3[][] = [];
+  const R = 0.106, c = V(0, 1.627, -0.005), n = [12, 8, 5][lod], frameRows: THREE.Vector3[][] = [], lens: THREE.Vector3[][] = [];
   const at = (az: number, y: number, r: number) => V(c.x + Math.sin(az) * r, c.y + y, c.z - Math.cos(az) * r * 1.0);
   // The frame: a soft rounded band, deeper at the sides; the lens a curved sheet set into it.
   for (const [y, r] of [[0.03, R - 0.015], [0.032, R], [0.022, R + 0.006], [-0.019, R + 0.006], [-0.028, R], [-0.026, R - 0.015]] as const) {
@@ -173,7 +172,7 @@ function goggles(b: Builder, l: Look, lod: number) {
   b.add(grid(lens, false), l.lens);
   // Strap round the helmet.
   const pts: [number, number, number][] = [];
-  for (let k = 0; k <= 10; k++) { const az = 1.0 + (2 * Math.PI - 2.0) * k / 10, p = shell(az, rimTh(az) * 0.66, 0.004); pts.push([p.x, p.y, p.z]); }
+  for (let k = 0; k <= 10; k++) { const az = 1.0 + (2 * Math.PI - 2.0) * k / 10, p = shell(az, rimTh(az) * 0.94, 0.004); pts.push([p.x, p.y, p.z]); }
   b.tube(pts, 0.0065, surf(l.web, { color: 0x1b1c1d }), [8, 6, 4][lod], 3);
 }
 
@@ -190,19 +189,23 @@ function glasses(b: Builder, l: Look, lod: number) {
   for (const g of [-1, 1]) b.tube([[g * 0.085, 1.645, -0.062], [g * 0.09, 1.642, -0.02], [g * 0.085, 1.632, 0.012]], 0.0025, l.poly, 3, 3);
 }
 
-/** The scarf: a shemagh wrapped thick round the neck and collar under the jaw, in loose folds, with a tail at the
- * back. */
+/** The face wrap (Ember): a shemagh wound round the neck and pulled up over the mouth and nose, under the glasses,
+ * in loose folds, with a tail at the back. Only the brow and eyes show. */
 function scarf(b: Builder, l: Look, lod: number) {
-  const nr = [6, 4, 3][lod], seg = [16, 12, 7][lod], rings: Ring[] = [];
+  const rows: [number, number, number, number, number][] = [
+    // y, centre z, half-width, front, back
+    [1.44, 0.004, 0.088, 0.088, 0.086], [1.48, -0.002, 0.09, 0.098, 0.092], [1.52, -0.01, 0.09, 0.112, 0.098],
+    [1.56, -0.014, 0.09, 0.118, 0.108], [1.595, -0.012, 0.088, 0.12, 0.112], [1.612, -0.01, 0.084, 0.114, 0.108],
+  ];
+  const nr = [rows.length, 4, 3][lod], seg = [18, 12, 7][lod], rings: Ring[] = [];
   for (let i = 0; i < nr; i++) {
-    const t = i / (nr - 1), y = 1.435 + t * 0.095;
-    // Round in section: fullest in the middle of the wrap, tucked in at the top under the jaw.
-    const bulge = Math.sin(t * Math.PI), w = 0.085 + 0.03 * bulge - 0.012 * t, f = 0.08 + 0.032 * bulge + 0.006 * t, bk = 0.08 + 0.024 * bulge - 0.012 * t;
-    rings.push({ c: V(0, y, 0.004 - 0.022 * t), u: V(1, 0, 0), v: V(0, 0, -1), at: section(w, w, f, bk, 2, a => 0.07 * Math.sin(a * 5 + t * 6) * bulge + 0.03 * Math.sin(a * 9 + 1.7)) });
+    const t = i / (nr - 1), k = t * (rows.length - 1), j = Math.min(rows.length - 2, Math.floor(k)), f = k - j;
+    const [y, zc, w, fr, bk] = rows[j].map((v, q) => v + (rows[j + 1][q] - v) * f);
+    rings.push({ c: V(0, y, zc), u: V(1, 0, 0), v: V(0, 0, -1), at: section(w, w, fr, bk, 2.2, a => 0.035 * Math.sin(a * 5 + t * 9) * Math.sin(t * Math.PI) + 0.015 * Math.sin(a * 9 + 1.7)) });
   }
-  b.addTagged(loft(rings, { seg, weight: p => chain([[B.spine2, 1.44], [B.neck, 1.5]], p.y) }), [l.scarf]);
+  b.addTagged(loft(rings, { seg, weight: p => chain([[B.spine2, 1.44], [B.neck, 1.47], [B.head, 1.515]], p.y) }), [l.scarf]);
   b.bone = B.spine2;
-  b.tube([[0.02, 1.47, 0.08], [0.035, 1.4, 0.105], [0.03, 1.33, 0.12]], 0.016, l.scarf, 4, 5);
+  b.tube([[0.02, 1.47, 0.09], [0.035, 1.4, 0.11], [0.03, 1.33, 0.125]], 0.016, l.scarf, 4, 5);
 }
 
 // ---- Plate carrier -----------------------------------------------------------------------------------------------

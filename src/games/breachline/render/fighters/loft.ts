@@ -56,6 +56,10 @@ export function loft(rings: Ring[], o: LoftOptions): THREE.BufferGeometry {
   };
   if (o.capStart) cap(0, false);
   if (o.capEnd) cap(rings.length - 1, true);
+  // The winding above faces inward when (u, v, ring direction) is right-handed: reverse every triangle then, so the
+  // surface always faces out (the side three draws). Body lofts were drawn inside out before this.
+  const along = rings.length > 1 ? rings[rings.length - 1].c.clone().sub(rings[0].c) : new THREE.Vector3(0, 1, 0);
+  if (new THREE.Vector3().crossVectors(rings[0].u, rings[0].v).dot(along) > 0) for (let t = 0; t < idx.length; t += 3) { const k = idx[t + 1]; idx[t + 1] = idx[t + 2]; idx[t + 2] = k; }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));

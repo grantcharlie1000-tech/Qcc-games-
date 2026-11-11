@@ -267,10 +267,10 @@ export class Animator {
     const e = new THREE.Euler();
     // Blading: a rifleman stands with the support shoulder forward; the head turns back to the aim.
     const blade = (this.w.pistol ? -0.12 : -0.55) * (1 - sprint * 0.7) * (using ? 0.3 : 1);
-    lq[B.pelvis].setFromEuler(e.set(-c * 0.22 - sprint * 0.12, this.hipYaw + legTurn + blade * 0.35, -this.hipSway * 1.5, 'YXZ'));
+    lq[B.pelvis].setFromEuler(e.set(-0.08 - c * 0.22 - sprint * 0.12, this.hipYaw + legTurn + blade * 0.35, -this.hipSway * 1.5, 'YXZ'));
     // Spine: crouch folds forward, sprint leans in, aim pitch bends the chest, lean rolls; flinch adds on top.
     const aim = p.pitch, fl = this.flinch;
-    const fold = 0.07 + c * 0.2 + sprint * 0.16 + this.moving * 0.05 * (1 - sprint);
+    const fold = 0.15 + c * 0.2 + sprint * 0.16 + this.moving * 0.05 * (1 - sprint);
     const chestPitch = clamp(aim, -1.2, 1.2) * (aim < 0 ? 0.22 : 0.45);
     const roll = -lean * 0.36;
     lq[B.spine1].setFromEuler(e.set(-fold * 0.4 + chestPitch * 0.35 + fl[0].x * 0.3, -(this.hipYaw + legTurn) * 0.9 + legTurn * 0.4 + blade * 0.3, roll * 0.45 + fl[1].x * 0.25, 'YXZ'));
@@ -279,10 +279,11 @@ export class Animator {
     lq[B.neck].setFromEuler(e.set(neckPitch - fl[0].x * 0.3, -blade * 0.45, -roll * 0.3, 'YXZ'));
     lq[B.head].setFromEuler(e.set(clamp(aim - chestPitch, -0.9, 0.9) * 0.55 + fold * 0.35 - fl[0].x * 0.4 - ads * 0.14, -blade * 0.55, -roll * 0.25 + fl[1].x * 0.3 - ads * 0.14, 'YXZ'));
     // Clavicles shrug forward when the arms are up.
-    // Clavicles shrug up and forward as the arm rises (last frame's swing), carrying the shoulder with the arm.
-    for (const s of [0, 1]) { const el = Math.min(1, (this.deltScale[s] - 1) / 0.12); lq[SIDE[s].clav].setFromEuler(e.set(fl[0].x * 0.15 - el * 0.1, sgn(s) * (0.18 + ads * 0.06 + el * 0.18), sgn(s) * (-0.04 - Math.abs(fl[0].x) * 0.2 + el * 0.32), 'YXZ')); }
+    // Clavicles come forward a little as the arm rises (last frame's swing); a larger shrug lifted the torso's shoulder
+    // into wings.
+    for (const s of [0, 1]) { const el = Math.min(1, (this.deltScale[s] - 1) / 0.12); lq[SIDE[s].clav].setFromEuler(e.set(fl[0].x * 0.15 - el * 0.05, sgn(s) * (0.18 + ads * 0.06 + el * 0.12), sgn(s) * (-0.04 - Math.abs(fl[0].x) * 0.2 + el * 0.06), 'YXZ')); }
     // Pelvis position: rest height, crouch drop and hips back, bob and sway; then corrected so the head is exact.
-    this.pelvisPos.set(this.hipSway, JOINT[B.pelvis].y - 0.035 - c * 0.36 - sprint * 0.07, c * 0.07 + sprint * 0.03);
+    this.pelvisPos.set(this.hipSway, JOINT[B.pelvis].y - 0.05 - c * 0.36 - sprint * 0.07, c * 0.07 + sprint * 0.03);
     this.fk();
     const target = this.headTarget(p, V());
     // Most of the head's horizontal error is taken by bending the lower spine toward the target (the body leans
