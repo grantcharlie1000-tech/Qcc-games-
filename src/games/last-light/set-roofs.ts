@@ -1,0 +1,647 @@
+import type {Level,Platform} from './levels';
+import type {Run} from './model';
+import {WORLDS} from './levels';
+import {box,hash,masonry,panel,sprite,stroke,visible,wall,type C,type Work} from './quarter-kit';
+import {ferry} from './props';
+import {ripples,sheet,shadowOnWater,weed} from './set-canal';
+import {MID,MID_SCALE,drawRow,farRoof,headTowers,moon,nightSky,row,townHouse,type Scale,type Tone} from './quarter-distance';
+import type {QuarterSet} from './quarter-sets';
+
+/** Levels 4 and 5 · the roofs of the Quarter. Every building stands on its
+ * own ground from its own roof line down to the street, so no house is ever
+ * painted behind another's roof. A roof is the top of its building; a
+ * chimney stack is a solid at the gable end of the roof it belongs to; iron
+ * landings are a fire escape bolted to the wall behind them; a lone grating
+ * is a gantry on legs; a cracked span is old slate on builders' shoring over
+ * an alley. Between buildings there is only the street, a long way down. */
+/** What a level 4 house shows the street at its foot, bay by bay (see `frontage`). */
+interface Building {x0:number;x1:number;top:number;style:number;front?:readonly string[]}
+const BUILDINGS:Readonly<Record<number,readonly Building[]>>={
+ // Level 4's market: every house keeps a different front on the street. The
+ // two warehouses in the cut stand on a quay along their feet; the market hall
+ // stands between the two halves of Market Street; the last house closes the
+ // east street with its own wall.
+ 3:[{x0:440,x1:560,top:1004,style:2,front:['quay','door:wharf']},{x0:600,x1:760,top:924,style:1,front:['quay','loading']},
+  {x0:816,x1:1140,top:1124,style:0,front:['shop:CHANDLER:navy:rope','door:green']},
+  {x0:1188,x1:1696,top:740,style:1,front:['shop:TEA ROOM:green:cups:awning','door:fan','shutter','shop:POST:red:parcels']},
+  {x0:1832,x1:2128,top:772,style:2,front:['shop:FRUIT:green:veg:awning','door:blue']},
+  {x0:2128,x1:2448,top:644,style:0,front:['pub:THE BARGE','door:red']},
+  {x0:2656,x1:3016,top:612,style:1,front:['shop:DRAPER:plum:cloth:awning','door:fan','shop:HATS:navy:hats']},
+  {x0:3112,x1:3248,top:676,style:0,front:['arch','door:brown']},
+  {x0:3800,x1:3960,top:676,style:0,front:['shop:BAKER:brown:bread:awning','door:blue']},
+  {x0:4100,x1:4700,top:708,style:1,front:['hall']},
+  {x0:4820,x1:4950,top:676,style:2,front:['shutter','door:green']},
+  {x0:5036,x1:5196,top:536,style:1,front:['loading','door:brown']},
+  {x0:5316,x1:5604,top:676,style:2,front:['shop:IRONMONGER:green:pails','door:red','shop:SEEDS:brown:sacks:awning']},
+  {x0:5756,x1:6188,top:356,style:0,front:['shop:CHEMIST:navy:bottles','door:fan','shutter','door:green']},
+  {x0:6188,x1:6420,top:452,style:1,front:['arch','shutter']}],
+ 4:[{x0:0,x1:324,top:620,style:0},{x0:428,x1:608,top:620,style:2},{x0:892,x1:1110,top:588,style:0},{x0:1340,x1:1490,top:572,style:1},{x0:1560,x1:1776,top:668,style:2},{x0:1776,x1:2036,top:540,style:0},{x0:2452,x1:2660,top:476,style:1},{x0:2990,x1:3130,top:476,style:2},{x0:3430,x1:3800,top:412,style:0},{x0:3864,x1:3976,top:476,style:2},{x0:4456,x1:4884,top:300,style:0},{x0:5230,x1:5350,top:396,style:2},{x0:5560,x1:5640,top:540,style:1}],
+};
+const STYLES=[
+ {key:'roofs/brick',mortar:'#1c1719',stones:['#33282a','#382b2c','#3c2f2e'],lip:'#463735',chip:'#4f3f3b',block:16,row:8,trim:'#5b4a44',trimLit:'#7d6a5e',shade:'#201a1c'},
+ {key:'roofs/stone',mortar:'#182028',stones:['#2c3640','#303a45','#343f4a'],lip:'#3e4a56',chip:'#475460',block:32,row:16,trim:'#55626d',trimLit:'#7a8791',shade:'#161d25'},
+ {key:'roofs/render',mortar:'#22221f',stones:['#3a3a34','#3d3d37','#40403a'],lip:'#49493f',chip:'#515146',block:48,row:24,trim:'#625f52',trimLit:'#8a8674',shade:'#1c1c19'},
+] as const;
+const tiles=STYLES.map(s=>()=>masonry(s.key,96,48,s.block,s.row,s));
+const stackTile=()=>masonry('roofs/stack',32,16,16,8,{mortar:'#1a1415',stones:['#4a3330','#503733','#563b35'],lip:'#644640',chip:'#6e4e46'});
+const cobbles=()=>masonry('roofs/cobbles',64,16,16,8,{mortar:'#11161c',stones:['#222a33','#252d36','#272f38'],lip:'#303a44',chip:'#333d47'});
+const windows:HTMLCanvasElement[]=[];
+/** The market arcade's lantern: a glazed monitor along its roof, over the lane it covers. Most of its glass has gone. */
+const ARCADES:Readonly<Record<number,{x0:number;x1:number;y:number}>>={3:{x0:3248,x1:3800,y:660}};
+const inArcade=(l:Level,p:Platform)=>{const a=ARCADES[l.id];return !!a&&p.y===a.y&&p.x>=a.x0&&p.x+p.w<=a.x1;};
+/** Where a hoist's rope leaves its jib: the wharf crane's pulley, or a sack hoist's a storey over the roof it serves. */
+const hoistHead=(p:Platform)=>p.id===1?964:p.y-(p.travel??0)-84;
+/** Level 4 opens where Ada's ferry puts in: the market stairs, at the top of
+ * a deep-cut canal quay west of the first market house. The cut's water lies
+ * level with the streets further on, and the black lies in those streets like
+ * water: a miss into either sinks at its surface. */
+const CUTS:Readonly<Record<number,number>>={3:816};
+const QUAY:Work={course:16,short:26,long:56,mortar:'#141c24',stones:['#2f3a45','#333e49','#37424d','#2c3742'],lip:'#414d59',shade:'#27313b',chip:'#4b5763'};
+/** The cut: its water, the market stairs' quay wall with the water stairs down it, Ada's ferry at their foot, and the wharf crane. */
+function canalCut(c:C,l:Level,street:number,t:number,cx:number,cy:number,vw:number,vh:number){
+ const end=CUTS[l.id],water=street;if(!end||cx-24>end)return;
+ const q=l.platforms[0],qx=0,qw=q.x+q.w;
+ if(visible(qx,q.y,qw,water+40-q.y,cx,cy,vw,vh)){
+  c.drawImage(panel('roofs/cut/quay',qw,water+40-q.y-8,QUAY,41),qx,q.y+8);box(c,'#0f161d',qw-2,q.y+8,2,water+40-q.y);box(c,'#0b11178c',qx,q.y+10,qw,4);
+  // The water stairs: stone treads let into the quay face, down to the ferry, with an iron rail.
+  for(let k=0;k*9<water-q.y-14;k++){const x=qw-30-k*12,y=q.y+14+k*9;box(c,'#1a2129',x,y,30,9);box(c,'#5d676e',x,y,28,3);box(c,'#8a949b',x,y,28,1);box(c,'#3a444b',x,y+3,28,1);}
+  stroke(c,'#141b21',qw-6,q.y-20,qw-6-(water-q.y)*12/9,water-34,2);for(let k=0;k<6;k++){const x=qw-6-k*30,y=q.y-20+k*30*9/12;box(c,'#141b21',x,y,2,22);}
+  for(const x of [qx+40,qx+120]){box(c,'#1b2228',x-2,water-30,4,4);box(c,'#59666b',x-4,water-27,8,7);box(c,'#2f3a45',x-2,water-25,4,4);}
+  weed(c,qx,qw,water,3);
+ }
+ for(const b of BUILDINGS[l.id]??[])if(b.x1<=end&&visible(b.x0,water-20,b.x1-b.x0,40,cx,cy,vw,vh))weed(c,b.x0,b.x1-b.x0,water,b.x0);
+ // The wharf crane on the quay's end: a post, a jib out over the cut and the pulley the pallet hangs from.
+ const post=qw-34;if(visible(post-10,880,140,q.y-880,cx,cy,vw,vh)){
+  box(c,'#17110d',post,948,9,q.y-948);box(c,'#4b3a2b',post+1,948,2,q.y-948);box(c,'#141b21',post-4,q.y-8,17,8);
+  box(c,'#17110d',post,944,JIB-post+8,8);box(c,'#57432f',post,944,JIB-post+8,1);stroke(c,'#17110d',post+8,1000,post+60,952,3);stroke(c,'#57432f',post+8,999,post+60,951,1);
+  for(let y=-6;y<=6;y++){const s2=Math.floor(Math.sqrt(36-y*y));box(c,'#262d33',JIB-s2,958+y,s2*2,1);}box(c,'#59666b',JIB-1,957,3,3);
+ }
+}
+const JIB=328;
+/** The cut's water over the foot of everything standing in it, and Ada's ferry lying on it at the foot of the stairs. */
+function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number){
+ const end=CUTS[l.id],top=l.water!,bottom=cy+vh+24;if(!end||cx-24>end||bottom<=top)return;
+ const left=cx-24,right=Math.min(end,cx+vw+24);
+ sheet(c,left,right-left,top,bottom,top-60);ripples(c,left,right,top,bottom,top-60,t);
+ for(let x=Math.floor(left/22)*22;x<right;x+=22)box(c,'#5a8a94',x+3,top+Math.round(Math.sin(t*1.7+x*.21)),11,1);
+ const qw=l.platforms[0].x+l.platforms[0].w;shadowOnWater(c,0,qw,top,t);
+ for(const b of BUILDINGS[l.id]??[])if(b.x1<=end)shadowOnWater(c,b.x0,b.x1-b.x0,top,t);
+ // Ada's ferry lies at the foot of the stairs, her lamp still lit, the rope made fast to the quay's ring.
+ if(left<220){ferry(c,96,top-2-Math.round(Math.sin(t*2)*1.5),WORLDS[0].accent,false);for(let i=0;i<=10;i++){const k=i/10;box(c,'#8a7a5a',150+(124-150)*k,top-11-14*k+Math.sin(k*Math.PI)*4,2,1);}
+  sheet(c,30,140,top,top+20,top-60);for(let i=0;i<6;i++)box(c,'#5a8a94',36+i*22,top+Math.round(Math.sin(t*1.7+i)),11,1);}
+}
+/** A sash window: dark, shuttered, or with a lamp lit behind the curtain. */
+function sash(kind:number){
+ return windows[kind]??=sprite(`roofs/sash/${kind}`,18,28,c=>{
+  box(c,'#0f141b',0,0,18,26);box(c,'#4a545c',0,0,18,1);
+  if(kind===2){for(let y=2;y<24;y+=3){box(c,'#2a2826',2,y,14,2);box(c,'#3b3835',2,y,14,1);}box(c,'#0f141b',8,2,2,22);}
+  else{
+   box(c,kind===1?'#6b4728':'#18232f',2,2,14,22);
+   if(kind===1){box(c,'#b98443',4,3,10,20);box(c,'#e3b160',6,8,6,12);box(c,'#f7d489',7,12,4,5);box(c,'#7a5434',2,2,2,22);box(c,'#7a5434',14,2,2,22);}
+   else{box(c,'#243445',3,3,5,9);box(c,'#2a3c4f',10,14,4,7);}
+   box(c,'#0f141b',8,2,2,22);box(c,'#0f141b',2,12,14,2);
+  }
+  box(c,'#566068',-1,26,20,2);box(c,'#2a3138',0,27,18,1);
+ });
+}
+/** The cornice that finishes a roof line. Drawn along the whole building and
+ * again, identically, in each roof tile, so the two can never disagree. */
+function cornice(c:C,x:number,y:number,w:number,style:number,phase:number){
+ const k=STYLES[style];
+ box(c,k.shade,x,y,w,28);box(c,k.trim,x,y,w,9);box(c,k.trimLit,x,y,w,2);box(c,k.shade,x,y+9,w,3);
+ box(c,k.trim,x,y+12,w,5);box(c,k.trimLit,x,y+12,w,1);
+ for(let i=Math.ceil(phase/10)*10-phase;i<w-4;i+=10)box(c,k.trim,x+i,y+19,5,5);
+ box(c,k.shade,x,y+26,w,2);
+}
+const plans=new WeakMap<Level,{street:number;stacks:{x:number;w:number;ys:number[]}[];gantries:Platform[];poles:Platform[];byPlatform:Map<number,Building>}>();
+function plan(l:Level){
+ let made=plans.get(l);if(made)return made;
+ const stacks:{x:number;w:number;ys:number[]}[]=[],gantries:Platform[]=[],poles:Platform[]=[],byPlatform=new Map<number,Building>(),buildings=BUILDINGS[l.id]??[];
+ for(const p of l.platforms){
+  const b=buildings.find(b=>p.x>=b.x0-2&&p.x+p.w<=b.x1+2);if(b)byPlatform.set(p.id,b);
+  if(p.kind!=='grate'||inArcade(l,p))continue;
+  // A narrow stage that belongs to no house is a lineman's, on a wire pole.
+  if(!b&&p.w<=48){poles.push(p);continue;}
+  // A grating on a building's front, at or below its roof line, is fire escape; above a roof it is a gantry on legs.
+  if(b&&p.y<b.top){gantries.push(p);continue;}
+  const stack=stacks.find(s=>s.x===p.x&&s.w===p.w);if(stack)stack.ys.push(p.y);else stacks.push({x:p.x,w:p.w,ys:[p.y]});
+ }
+ for(const s of stacks)s.ys.sort((a,b)=>a-b);
+ poles.sort((a,b)=>a.x-b.x);made={street:l.water??l.height-20,stacks,gantries,poles,byPlatform};plans.set(l,made);return made;
+}
+function facade(c:C,b:Building,street:number,lit:boolean,id:number,cx:number,cy:number,vw:number,vh:number){
+ if(!visible(b.x0,b.top,b.x1-b.x0,street-b.top,cx,cy,vw,vh))return;
+ const w=b.x1-b.x0,k=STYLES[b.style],hall=id===3&&b.front?.[0]==='hall',loft=id===3&&b.front?.[0]==='loading'&&b.top<street-200;
+ wall(c,k.key,tiles[b.style],b.x0,b.top+28,w,street-b.top-28);cornice(c,b.x0,b.top,w,b.style,0);
+ box(c,'#0b0f1466',b.x0,b.top+28,w,6);box(c,'#0d1117',b.x0,b.top+2,2,street-b.top-2);box(c,'#0d1117',b.x1-2,b.top+2,2,street-b.top-2);
+ // Storeys of sash windows; the street door and a shop window stand at the bottom.
+ const cols=Math.max(1,Math.floor((w-24)/44)),gap=(w-cols*18)/(cols+1);
+ for(let y=b.top+46,row=0;y+28<street-66;y+=58,row++){
+  if(y>cy+vh||y+28<cy)continue;
+  if(hall)break;
+  box(c,k.shade,b.x0+2,y+38,w-4,2);
+  for(let i=0;i<cols;i++){const v=hash(b.x0+i,row,11),x=Math.round(b.x0+gap+i*(18+gap));if(loft&&i===0){loftDoor(c,x-3,y,lit&&v<.4);continue;}c.drawImage(sash(lit?(v<.62?1:v<.85?0:2):(v<.07?1:v<.7?0:2)),x,y);}
+ }
+ if(hall)hallFront(c,b,street,lit,cy,vh);
+ else if(id===3&&b.front){if(street-b.top>=100&&street-90<cy+vh)frontage(c,b,street,lit);}
+ else if(street-b.top>120&&street-64<cy+vh){
+  const door=b.x0+Math.round(w*.5)-10;box(c,'#0f141b',door-2,street-40,24,40);box(c,'#2b211b',door,street-37,20,37);box(c,lit?'#e1b064':'#4d4034',door,street-37,20,5);box(c,'#a9905f',door+15,street-20,2,2);
+  if(w>=200){for(const x of [b.x0+18,b.x1-18-56]){box(c,'#0f141b',x,street-46,56,34);box(c,lit?'#8f6a3c':'#1a2530',x+2,street-44,52,30);box(c,k.trim,x-3,street-50,62,4);box(c,k.shade,x,street-12,56,3);}}
+ }
+ // A downpipe from the gutter to the street on one corner.
+ const pipe=b.style===1?b.x0+6:b.x1-10;box(c,'#131a20',pipe,b.top+28,4,street-b.top-28);box(c,'#3d4950',pipe+1,b.top+28,1,street-b.top-28);for(let y=b.top+60;y<street;y+=58)box(c,'#263038',pipe-1,y,6,3);
+}
+/** Level 4's painted letters: a 3×5 pixel face for fascias, bills and the corn merchant's board. */
+const GLYPHS:Readonly<Record<string,string>>={A:'010101111101101',B:'110101110101110',C:'011100100100011',D:'110101101101110',E:'111100110100111',F:'111100110100100',G:'011100101101011',H:'101101111101101',I:'111010010010111',K:'101101110101101',L:'100100100100111',M:'101111111101101',N:'110101101101101',O:'010101101101010',P:'110101110100100',R:'110101110101101',S:'011100010001110',T:'111010010010010',U:'101101101101111',V:'101101101101010',W:'101101111111101',Y:'101101010010010','&':'010101010101011','.':'000000000000010','-':'000000111000000'};
+const letterWidth=(text:string,scale=1)=>text.length*4*scale-scale;
+function letters(c:C,text:string,x:number,y:number,color:string,scale=1){
+ for(const [i,ch] of [...text].entries()){const g=GLYPHS[ch];if(!g)continue;for(let k=0;k<15;k++)if(g[k]==='1')box(c,color,x+(i*4+k%3)*scale,y+Math.floor(k/3)*scale,scale,scale);}
+}
+/** Painted woodwork: a shop's fascia and stall-riser, a front door's leaf. */
+const PAINT:Readonly<Record<string,readonly [string,string]>>={green:['#1f3a2c','#2e5240'],red:['#4a1f1c','#6a2f28'],blue:['#1d2a44','#2d3f60'],navy:['#18233a','#26365a'],plum:['#3a2236','#55324f'],brown:['#2b211b','#4a3626']};
+const CLOTH:Readonly<Record<string,string>>={green:'#3f6b4a',red:'#7a3a30',blue:'#3a5478',navy:'#3a5478',plum:'#6a4064',brown:'#8a6438'};
+/** A loft door in place of a window, under the corn loft's hoist: boarded leaves with a Z of bracing. */
+function loftDoor(c:C,x:number,y:number,open:boolean){
+ box(c,'#0f141b',x,y-2,24,32);box(c,open?'#5a3d27':'#3b2a1d',x+2,y,20,28);
+ if(!open){box(c,'#2b211b',x+11,y,2,28);stroke(c,'#2b211b',x+3,y+26,x+10,y+2,1);stroke(c,'#2b211b',x+14,y+26,x+21,y+2,1);for(const yy of [y+4,y+22])box(c,'#262d33',x+2,yy,20,2);}
+ else{
+  // Open: the loft inside, a lamp somewhere back in it, sacks stacked to the lintel, and the leaf swung back to the wall.
+  box(c,'#1a1415',x+2,y,20,28);box(c,'#5a3d27',x+8,y+4,12,22);box(c,'#8a7a5a',x+9,y+16,10,10);box(c,'#a8946a',x+10,y+15,8,2);box(c,'#8a7a5a',x+12,y+8,7,8);box(c,'#00000055',x+9,y+16,10,1);
+  box(c,'#3b2a1d',x+2,y,5,28);box(c,'#2b211b',x+6,y,1,28);
+ }
+ box(c,'#566068',x-1,y+28,26,2);
+}
+function frontDoor(c:C,x:number,bot:number,paint:string,lit:boolean,seed:number){
+ const fan=paint==='fan',wharf=paint==='wharf',[dark,light]=PAINT[fan?['green','red','blue','plum'][Math.floor(hash(seed,3,5)*4)]:wharf?'brown':paint]??PAINT.brown;
+ box(c,'#0f141b',x+2,bot-42,24,42);box(c,dark,x+4,bot-39,20,39);
+ if(wharf){for(let px=x+6;px<x+24;px+=5)box(c,light,px,bot-38,1,38);for(const yy of [bot-32,bot-12])box(c,'#262d33',x+4,yy,20,2);}
+ else{box(c,light,x+6,bot-36,7,14);box(c,light,x+15,bot-36,7,14);box(c,light,x+6,bot-18,7,14);box(c,light,x+15,bot-18,7,14);box(c,dark,x+7,bot-35,5,12);box(c,dark,x+16,bot-35,5,12);box(c,dark,x+7,bot-17,5,12);box(c,dark,x+16,bot-17,5,12);}
+ box(c,'#a9905f',x+20,bot-21,2,2);box(c,'#a9905f',x+12,bot-27,4,1);
+ if(fan){
+  // A fanlight over the door, its glazing bars spread like a fan.
+  for(let px=0;px<24;px++){const d=(px+.5-12)/12,hy=Math.round(9*Math.sqrt(Math.max(0,1-d*d)));box(c,'#0f141b',x+2+px,bot-43-hy-1,1,hy+1);if(px>0&&px<23)box(c,lit?'#c98f4b':'#18232f',x+2+px,bot-43-hy+1,1,Math.max(0,hy-1));}
+  for(const a of [.35,.9,1.57,2.24,2.79])stroke(c,'#0f141b',x+14,bot-43,x+14+Math.cos(a)*10,bot-43-Math.sin(a)*8,1);
+ }
+ box(c,'#1a2129',x,bot-3,28,3);box(c,'#6c7378',x,bot-3,28,1);
+}
+/** What a shop sets in its window: the reason anyone stops at it. */
+function goods(c:C,kind:string,x:number,y:number,w:number,h:number,seed:number){
+ const at=(k:number)=>hash(seed,k,23);
+ if(kind==='bread'){for(const sy of [y+h-8,y+h-20]){box(c,'#2b211b',x,sy+5,w,2);for(let px=x+2;px<x+w-8;px+=9){box(c,'#7a5434',px,sy+1,8,4);box(c,'#c98f4b',px+1,sy,6,2);box(c,'#e3b160',px+2,sy,3,1);}}}
+ else if(kind==='veg'){box(c,'#3b2a1d',x,y+h-8,w,8);for(let px=x+2;px<x+w-3;px+=4){const v=at(px);box(c,v<.4?'#4f7a3a':v<.7?'#c0672a':'#8a2a24',px,y+h-11+Math.round(v*2),3,3);}for(let px=x+1;px<x+w;px+=10)box(c,'#57432f',px,y+h-8,1,8);}
+ else if(kind==='cloth'){for(let px=x+2,i=0;px<x+w-3;px+=5,i++){const k=['#6a4064','#3a5478','#8a6438','#4f7a3a','#7a3a30'][i%5];box(c,k,px,y+6+(i%2)*3,4,h-8-(i%2)*3);box(c,'#00000040',px+3,y+6,1,h-8);}}
+ else if(kind==='cups'){for(const sy of [y+h-6,y+h-18]){box(c,'#2b211b',x,sy+3,w,2);for(let px=x+3;px<x+w-5;px+=7){box(c,'#d9d4c4',px,sy,4,3);box(c,'#d9d4c4',px+4,sy+1,1,1);}}}
+ else if(kind==='rope'){for(let px=x+4;px<x+w-10;px+=13)for(let a=0;a<6.28;a+=.3){box(c,'#8a7a5a',px+5+Math.round(Math.cos(a)*5),y+h-7+Math.round(Math.sin(a)*4),1,1);}box(c,'#262d33',x+w-8,y+4,5,7);box(c,'#c98f4b',x+w-7,y+6,3,3);}
+ else if(kind==='parcels'){for(let px=x+2;px<x+w-8;px+=10){const ph=6+Math.round(at(px)*6);box(c,'#7a5a3a',px,y+h-ph,8,ph);box(c,'#c8b48a',px+3,y+h-ph,1,ph);}}
+ else if(kind==='hats'){for(let px=x+4;px<x+w-8;px+=11){box(c,'#2b211b',px+3,y+h-6,2,6);box(c,at(px)>.5?'#26365a':'#3b2a1d',px,y+h-12,9,2);box(c,at(px)>.5?'#26365a':'#3b2a1d',px+2,y+h-17,5,5);}}
+ else if(kind==='bottles'){
+  // A chemist's carboys, one red and one green, on stands in the window.
+  for(const [i,k] of (['#8a2a24','#2e6a4a'] as const).entries()){const px=x+6+i*(w-26);for(let yy=-6;yy<=6;yy++){const s2=Math.floor(Math.sqrt(36-yy*yy));box(c,k,px+7-s2,y+h-14+yy,s2*2,1);}box(c,k,px+5,y+h-26,4,6);box(c,'#ffffff55',px+4,y+h-18,1,3);box(c,'#2b211b',px+3,y+h-6,8,6);}
+  for(let px=x+22;px<x+w-24;px+=4)box(c,['#3a5478','#8a6438','#4f7a3a'][Math.floor(at(px)*3)],px,y+h-9,2,7);
+ }
+ else if(kind==='pails'){box(c,'#262d33',x,y+3,w,1);for(let px=x+3;px<x+w-7;px+=9){box(c,'#6d7d80',px,y+5,6,6);box(c,'#aab3ae',px,y+5,6,1);}for(let px=x+4;px<x+w-6;px+=8){box(c,'#4b5661',px,y+h-8,6,8);box(c,'#6f7b86',px,y+h-8,6,1);}}
+ else if(kind==='sacks'){for(let px=x+2;px<x+w-10;px+=11){box(c,'#8a7a5a',px,y+h-11,10,11);box(c,'#a8946a',px+1,y+h-12,8,2);box(c,'#6b5c40',px+4,y+h-14,2,3);}}
+}
+/** A shop window: fascia with the trade painted on it, pilasters, a glazed sash over a panelled stall-riser, and a striped blind if the shop keeps one. */
+function shopWindow(c:C,x:number,w:number,bot:number,text:string,paint:string,kind:string,blind:boolean,lit:boolean,seed:number){
+ const [dark,light]=PAINT[paint]??PAINT.brown,top=bot-64;
+ box(c,'#0f141b',x-3,top-2,w+6,2);box(c,dark,x-2,top,w+4,11);box(c,'#8a7448',x-2,top,w+4,1);box(c,'#8a7448',x-2,top+10,w+4,1);
+ letters(c,text,x+Math.round((w-letterWidth(text))/2),top+3,'#d8c48a');
+ box(c,dark,x-2,top+11,4,bot-top-11);box(c,dark,x+w-2,top+11,4,bot-top-11);box(c,light,x-2,top+11,1,bot-top-11);
+ const gy=top+13,gh=bot-14-gy;
+ box(c,'#0f141b',x+2,gy,w-4,gh);box(c,lit?'#5a3d27':'#141c26',x+3,gy+1,w-6,gh-1);if(lit)box(c,'#8f6a3c',x+5,gy+6,w-10,gh-8);
+ c.save();if(!lit)c.globalAlpha=.6;goods(c,kind,x+4,gy+2,w-8,gh-3,seed);c.restore();
+ box(c,'#0f141b',x+2,gy+8,w-4,1);for(let px=x+2+Math.round((w-4)/3);px<x+w-6;px+=Math.round((w-4)/3))box(c,'#0f141b',px,gy,2,gh);
+ box(c,light,x+1,bot-14,w-2,2);box(c,dark,x+2,bot-12,w-4,12);box(c,light,x+5,bot-10,w-10,1);box(c,'#00000033',x+5,bot-4,w-10,1);
+ if(blind){const k=CLOTH[paint]??CLOTH.brown;for(let px=x-2;px<x+w+2;px+=4)box(c,(px-x)%8<4?k:'#d9cfb4',px,top+12,Math.min(4,x+w+2-px),8);for(let px=x-1;px<x+w+1;px+=4)box(c,(px-x)%8<4?k:'#d9cfb4',px,top+20,2,2);box(c,'#00000044',x-2,top+12,w+4,1);}
+}
+function rollShutter(c:C,x:number,w:number,bot:number,seed:number){
+ box(c,'#0f141b',x-2,bot-58,w+4,58);box(c,'#262d33',x-1,bot-58,w+2,7);box(c,'#3d4950',x-1,bot-58,w+2,1);
+ for(let y=bot-50;y<bot;y+=3){box(c,'#2a3138',x,y,w,2);box(c,'#3d4950',x,y,w,1);}
+ box(c,'#4b5661',x+Math.round(w/2)-2,bot-6,4,4);
+ // A bill pasted on the shutter: the shop is to let.
+ if(hash(seed,4,9)>.3){const bx=x+Math.round(w/2)-15,by=bot-38;box(c,'#bfb497',bx,by,30,11);box(c,'#8f876f',bx,by+10,30,1);letters(c,'TO LET',bx+3,by+3,'#3b2a1d');}
+}
+function carriageArch(c:C,x:number,w:number,bot:number,k:{trim:string;trimLit:string;shade:string}){
+ const r=Math.round(w/2),spring=bot-46;
+ for(let px=0;px<w;px++){const d=(px+.5-r)/r,head=spring-Math.round(r*Math.sqrt(Math.max(0,1-d*d)));box(c,k.trim,x+px,head-4,1,4);box(c,'#06080b',x+px,head,1,bot-head);}
+ box(c,k.trimLit,x+r-3,spring-r-4,6,5);box(c,'#141a20',x+3,bot-6,w-6,6);box(c,'#1c242c',x+3,bot-6,w-6,1);
+ // The yard gate stands folded back against one side of the arch.
+ for(let i=0;i<4;i++)box(c,'#1c2228',x+3+i*3,bot-40,2,40);box(c,'#1c2228',x+3,bot-40,12,2);box(c,'#1c2228',x+3,bot-20,12,2);
+}
+function loadingDoors(c:C,x:number,bot:number,lit:boolean){
+ box(c,'#0f141b',x,bot-48,36,48);for(const lx of [x+2,x+18]){box(c,'#3b2a1d',lx,bot-46,16,46);stroke(c,'#2b211b',lx+1,bot-2,lx+14,bot-44,1);for(const yy of [bot-40,bot-10])box(c,'#262d33',lx,yy,16,2);}
+ if(lit)box(c,'#e1b06455',x+17,bot-46,2,46);
+ // The hoist beam over the doors, its hook drawn up.
+ box(c,'#17110d',x+10,bot-58,24,5);box(c,'#57432f',x+10,bot-58,24,1);box(c,'#8a7a5a',x+30,bot-53,1,8);box(c,'#262d33',x+29,bot-45,3,3);
+}
+function pubFront(c:C,x:number,w:number,bot:number,text:string,lit:boolean){
+ const top=bot-66;
+ box(c,'#0f141b',x-3,top-2,w+6,2);box(c,'#3a1a18',x-2,top,w+4,11);box(c,'#b39b5a',x-2,top,w+4,1);box(c,'#b39b5a',x-2,top+10,w+4,1);letters(c,text,x+Math.round((w-letterWidth(text))/2),top+3,'#e6d49a');
+ // A bay of small panes, warm behind them: the one house on the street that kept its lamp.
+ box(c,'#0f141b',x,top+13,w,bot-14-top-13);box(c,lit?'#8f6a3c':'#4a3020',x+1,top+14,w-2,bot-16-top-13);if(lit)box(c,'#d9a453',x+8,top+22,w-16,bot-30-top-13);
+ for(let px=x;px<x+w;px+=8)box(c,'#0f141b',px,top+13,1,bot-14-top-13);for(let y=top+19;y<bot-14;y+=7)box(c,'#0f141b',x,y,w,1);
+ box(c,'#3a1a18',x,bot-14,w,14);box(c,'#5a2a24',x,bot-14,w,1);
+ // The hanging sign: a barge on the cut, on an iron bracket off the wall.
+ const sx=x+w+6,sy=top-26;box(c,'#141b21',sx-6,sy-2,24,2);stroke(c,'#141b21',sx-6,sy+8,sx+4,sy-1,1);box(c,'#141b21',sx+3,sy,1,4);box(c,'#141b21',sx+14,sy,1,4);
+ box(c,'#0f141b',sx+1,sy+4,18,16);box(c,'#2b3a4a',sx+2,sy+5,16,14);box(c,'#5a8a94',sx+2,sy+15,16,1);box(c,'#6b4728',sx+4,sy+12,12,3);box(c,'#b98443',sx+8,sy+9,4,3);box(c,'#b39b5a',sx+1,sy+4,18,1);
+}
+/** The foot of a house: its bays as authored, spread evenly across the front. */
+function frontage(c:C,b:Building,street:number,lit:boolean){
+ const bays=b.front!,k=STYLES[b.style],quay=bays[0]==='quay',bot=quay?street-12:street,list=quay?bays.slice(1):bays;
+ if(quay){
+  // A granite quay along the warehouse's foot, steps down its end into the cut, a ring and a bollard: the door opens onto stone.
+  const q0=b.x0-6,q1=b.x1+6;box(c,'#141c24',q0,bot,q1-q0,street-bot+6);
+  for(let x=q0,i=0;x<q1;x+=22,i++){box(c,i%2?'#37424d':'#333e49',x,bot+3,Math.min(21,q1-x),street-bot+3);}
+  box(c,'#7d878c',q0,bot,q1-q0,3);box(c,'#aab3b3',q0,bot,q1-q0,1);
+  for(let i=0;i<3;i++){const x=q1+i*7,y=bot+i*5;box(c,'#1a2129',x,y,8,street-y+6);box(c,'#7d878c',x,y,8,2);}
+  box(c,'#1b2228',b.x0+8,bot-8,6,8);box(c,'#59666b',b.x0+7,bot-9,8,2);box(c,'#262d33',b.x1-14,bot+5,5,5);box(c,'#0f141b',b.x1-13,bot+6,3,3);
+ }
+ const widths=list.map(t=>{const [kind,a]=t.split(':');return kind==='door'?28:kind==='shop'?Math.max(64,letterWidth(a)+18):kind==='pub'?76:kind==='shutter'?56:kind==='arch'?44:kind==='loading'?36:0;});
+ const free=b.x1-b.x0-24-widths.reduce((a,v)=>a+v,0),gap=Math.max(4,free/(list.length+1));
+ let x=b.x0+12+gap;
+ for(const [i,t] of list.entries()){
+  const [kind,a,bb,cc,dd]=t.split(':'),bx=Math.round(x);
+  if(kind==='door')frontDoor(c,bx,bot,a,lit,b.x0+i);
+  else if(kind==='shop')shopWindow(c,bx,widths[i],bot,a,bb,cc,dd==='awning',lit,b.x0+i);
+  else if(kind==='pub')pubFront(c,bx,widths[i],bot,a,lit);
+  else if(kind==='shutter')rollShutter(c,bx,widths[i],bot,b.x0+i);
+  else if(kind==='arch')carriageArch(c,bx,widths[i],bot,k);
+  else if(kind==='loading')loadingDoors(c,bx,bot,lit);
+  x+=widths[i]+gap;
+ }
+}
+/** The market hall: tall round-headed windows in tiers, its name cut in the frieze, and three arches on the street, the middle one open on the stalls inside. */
+function hallFront(c:C,b:Building,street:number,lit:boolean,cy:number,vh:number){
+ const w=b.x1-b.x0,name='MARKET HALL',k=STYLES[b.style];
+ box(c,'#1e262f',b.x0+Math.round(w/2)-60,b.top+34,120,18);box(c,k.trimLit,b.x0+Math.round(w/2)-60,b.top+34,120,1);box(c,'#0f141b',b.x0+Math.round(w/2)-60,b.top+51,120,1);
+ letters(c,name,b.x0+Math.round((w-letterWidth(name,2))/2),b.top+38,'#cfc6a6',2);
+ const cols=Math.floor((w-40)/66),gap=(w-cols*24)/(cols+1);
+ for(let y=b.top+70,row=0;y+96<street-130;y+=126,row++){
+  if(y>cy+vh||y+96<cy)continue;
+  for(let i=0;i<cols;i++){
+   const x=Math.round(b.x0+gap+i*(24+gap)),v=hash(i,row,71),glow=lit&&v<.45;
+   for(let px=0;px<24;px++){const d=(px+.5-12)/12,head=y+12-Math.round(12*Math.sqrt(Math.max(0,1-d*d)));box(c,k.trim,x+px,head-3,1,3);box(c,glow?'#8f6a3c':'#0f141b',x+px,head,1,y+92-head);}
+   if(glow)box(c,'#d9a453',x+5,y+30,14,50);
+   box(c,'#0f141b',x+11,y,2,92);for(let yy=y+24;yy<y+92;yy+=17)box(c,'#0f141b',x,yy,24,1);
+   box(c,k.trim,x-3,y+92,30,4);box(c,k.trimLit,x-3,y+92,30,1);
+  }
+ }
+ if(street-110>cy+vh)return;
+ const mid=b.x0+Math.round(w/2);
+ // Rusticated base: deep joints in the stone of the bottom storey.
+ for(let y=street-104;y<street;y+=12)box(c,'#0d1117',b.x0+2,y,w-4,1);
+ for(const [dx,r,open] of [[0,36,true],[-150,22,false],[150,22,false],[-240,20,false],[240,20,false]] as const){
+  const x0=mid+dx-r,spring=street-(open?62:46);
+  for(let px=0;px<r*2;px++){const d=(px+.5-r)/r,head=spring-Math.round(r*Math.sqrt(Math.max(0,1-d*d)));box(c,k.trimLit,x0+px,head-5,1,1);box(c,k.trim,x0+px,head-4,1,4);box(c,'#06080b',x0+px,head,1,street-head);}
+  box(c,k.trimLit,mid+dx-3,spring-r-6,6,6);
+  if(open){
+   // Inside: the hall's own stalls under its roof, their blinds furled and lamps out.
+   for(const [sx,k2] of [[x0+8,'#7a3a30'],[x0+40,'#3f6b4a']] as const){box(c,'#2a231d',sx,street-34,2,34);box(c,'#2a231d',sx+22,street-34,2,34);for(let px=sx;px<sx+24;px+=4)box(c,(px-sx)%8<4?k2:'#8a826c',px,street-36,4,5);box(c,'#3b2a1d',sx,street-16,24,3);box(c,'#1a1415',sx+2,street-13,20,13);}
+   if(lit)box(c,'#f3c77a14',x0,spring-r,r*2,street-spring+r);
+  }else{for(let px=x0+3;px<x0+r*2-2;px+=4)box(c,'#1c2228',px,spring-r+6,2,street-spring+r-6);box(c,'#1c2228',x0,spring-8,r*2,2);}
+ }
+}
+/** Market Street on the cobbles: stalls under striped blinds, a barrow, crates and sacks, each standing on the street. */
+const MARKET:readonly {x:number;w:number;kind:'stall'|'barrow'|'crates';goods?:string;cloth?:string;sign?:string}[]=[
+ {x:3962,w:56,kind:'stall',goods:'veg',cloth:'#3f6b4a',sign:'VEG'},{x:4042,w:54,kind:'stall',goods:'fish',cloth:'#3a5478',sign:'FISH'},
+ {x:4702,w:48,kind:'stall',goods:'eggs',cloth:'#7a3a30',sign:'EGGS'},{x:4770,w:40,kind:'barrow'},{x:4106,w:30,kind:'crates'},{x:4664,w:30,kind:'crates'},
+];
+function market(c:C,street:number,cx:number,vw:number){
+ for(const m of MARKET){
+  if(m.x+m.w<cx-30||m.x>cx+vw+30)continue;
+  const {x,w}=m;
+  if(m.kind==='crates'){
+   for(const [dx,dy,cw] of [[0,0,14],[15,0,14],[6,-10,14]] as const){const bx=x+dx,by=street-10+dy;box(c,'#2b211b',bx,by,cw,10);box(c,'#6b523a',bx+1,by+1,cw-2,8);for(let yy=by+3;yy<by+9;yy+=3)box(c,'#3d2e22',bx+1,yy,cw-2,1);box(c,'#b2946d',bx+1,by+1,cw-2,1);}
+   box(c,'#8a7a5a',x+16,street-21,10,11);box(c,'#a8946a',x+17,street-22,8,2);
+  }else if(m.kind==='barrow'){
+   // A costermonger's barrow: a wheel on the cobbles, a tray of apples, the shafts down on a leg.
+   for(let a=0;a<6.28;a+=.25)box(c,'#2a231d',x+8+Math.round(Math.cos(a)*7),street-7+Math.round(Math.sin(a)*7),1,1);box(c,'#5d4f40',x+7,street-8,2,2);for(const a of [0,1.05,2.1])stroke(c,'#2a231d',x+8-Math.cos(a)*6,street-7-Math.sin(a)*6,x+8+Math.cos(a)*6,street-7+Math.sin(a)*6,1);
+   box(c,'#2b211b',x+1,street-22,w-8,9);box(c,'#6b523a',x+2,street-21,w-10,6);box(c,'#b2946d',x+2,street-21,w-10,1);
+   for(let px=x+3;px<x+w-9;px+=3)box(c,hash(px,1,5)>.4?'#8a2a24':'#a83a2a',px,street-25+(px%2),3,3);
+   stroke(c,'#2b211b',x+w-8,street-16,x+w,street-20,2);box(c,'#2b211b',x+w-10,street-14,2,14);
+  }else{
+   const top=street-60,[a,b2]=[m.cloth!,'#d9cfb4'];
+   for(const px of [x+2,x+w-5]){box(c,'#2a231d',px,top,3,60);box(c,'#5d4f40',px,top,1,60);box(c,'#2a231d',px-1,street-2,5,2);}
+   box(c,'#2a231d',x,top-1,w,2);
+   for(let px=x-2;px<x+w+2;px+=4){box(c,(px-x)%8<4?a:b2,px,top+1,Math.min(4,x+w+2-px),9);box(c,(px-x)%8<4?a:b2,px+1,top+10,2,2);}
+   box(c,'#00000055',x-2,top+12,w+4,1);
+   // The board hangs off the blind on two cords.
+   const sw=letterWidth(m.sign!)+6,sx=x+Math.round((w-sw)/2);box(c,'#141b21',sx+1,top+12,1,4);box(c,'#141b21',sx+sw-2,top+12,1,4);box(c,'#2b211b',sx,top+16,sw,9);box(c,'#cfc6a6',sx+1,top+17,sw-2,7);letters(c,m.sign!,sx+3,top+18,'#3b2a1d');
+   // The counter on trestles, its cloth hung to the knees, and the trade laid out on it.
+   box(c,'#2b211b',x,street-28,w,3);box(c,'#8a6a4a',x,street-28,w,1);box(c,a,x+1,street-25,w-2,10);box(c,'#00000040',x+1,street-16,w-2,1);
+   for(const lx of [x+5,x+w-8]){stroke(c,'#2a231d',lx,street-15,lx+3,street,2);stroke(c,'#2a231d',lx+3,street-15,lx,street,2);}
+   if(m.goods==='veg'){for(let px=x+3;px<x+w-3;px+=4){const v=hash(px,2,9);box(c,v<.5?'#4f7a3a':'#c0672a',px,street-32+Math.round(v*2),4,4);box(c,'#00000033',px,street-29,4,1);}}
+   else if(m.goods==='fish'){box(c,'#9fb0b8',x+2,street-30,w-4,2);for(let px=x+4;px<x+w-10;px+=9){box(c,'#7c8e96',px,street-33,8,3);box(c,'#cfd8dc',px+1,street-33,5,1);box(c,'#4b5661',px+8,street-34,2,4);}}
+   else{for(let px=x+3;px<x+w-6;px+=10){box(c,'#6b523a',px,street-32,9,4);for(let ex=px+1;ex<px+8;ex+=2)box(c,'#e6e0cc',ex,street-34,2,2);}}
+   box(c,'#2b211b',x+Math.round(w/2)-7,street-10,14,10);box(c,'#6b523a',x+Math.round(w/2)-6,street-9,12,8);box(c,'#3d2e22',x+Math.round(w/2)-6,street-5,12,1);
+  }
+ }
+}
+/** Iron fire escape: railed landings on brackets, a ladder between each pair,
+ * and a drop ladder hung below the lowest one. */
+function fireEscape(c:C,s:{x:number;w:number;ys:number[]},street:number){
+ const iron='#1a2228',lit='#56646b',low=s.ys.at(-1)!;
+ for(const [i,y] of s.ys.entries()){
+  for(const x of [s.x+2,s.x+s.w-5]){box(c,iron,x,y+12,3,4);stroke(c,iron,x+(x===s.x+2?1:1),y+15,x+(x===s.x+2?14:-12),y+12,2);}
+  // Rail: a top bar and standards behind whoever stands on the landing.
+  box(c,iron,s.x,y-17,s.w,2);box(c,lit,s.x,y-17,s.w,1);for(let x=s.x+1;x<s.x+s.w;x+=10)box(c,iron,x,y-15,1,15);box(c,iron,s.x,y-9,s.w,1);
+  if(i){const below=s.ys[i],above=s.ys[i-1],x=i%2?s.x+16:s.x+s.w-28;if(below-above<=80){box(c,iron,x,above-14,2,below-above+14);box(c,iron,x+10,above-14,2,below-above+14);box(c,lit,x,above-14,1,below-above+14);for(let yy=above+18;yy<below;yy+=7)box(c,'#3a464d',x+2,yy,8,1);}}
+ }
+ const x=s.x+Math.round(s.w/2)-6,end=Math.min(low+12+84,street-44);
+ box(c,iron,x,low+12,2,end-low-12);box(c,iron,x+10,low+12,2,end-low-12);box(c,lit,x,low+12,1,end-low-12);for(let yy=low+18;yy<end;yy+=7)box(c,'#3a464d',x+2,yy,8,1);
+}
+/** Level 4's sign gantry carries the corn merchant's board over the street, its catwalk along the board's foot. */
+const SIGN_GANTRY:Readonly<Record<number,number>>={3:5484};
+function signBoard(c:C,p:Platform){
+ const x=p.x-6,w=p.w+12,bot=p.y-28,top=bot-50,iron='#1a2228';
+ for(const px of [p.x+6,p.x+p.w-9]){box(c,iron,px,top+4,3,p.y-15-top-4);box(c,'#56646b',px,top+4,1,p.y-15-top-4);}
+ box(c,'#0b0f13',x-1,top-1,w+2,bot-top+2);box(c,'#1f3a2c',x,top,w,bot-top);box(c,'#8a7448',x+2,top+2,w-4,1);box(c,'#8a7448',x+2,bot-3,w-4,1);box(c,'#8a7448',x+2,top+2,1,bot-top-4);box(c,'#8a7448',x+w-3,top+2,1,bot-top-4);
+ // Weather has had the paint off in places, down to the boards.
+ for(let i=0;i<7;i++){const v=hash(i,p.x,13),px=x+4+Math.round(v*(w-14)),py=top+4+Math.round(hash(i,p.y,17)*(bot-top-10));box(c,v>.5?'#173024':'#3b2a1d',px,py,4+Math.round(v*6),2);}
+ for(let yy=top+12;yy<bot-4;yy+=12)box(c,'#1a3226',x+3,yy,w-6,1);
+ const big='PIKE & SONS',small='CORN SEED FLOUR',street='MARKET ST';
+ letters(c,big,x+Math.round((w-letterWidth(big,2))/2),top+7,'#d8c48a',2);
+ box(c,'#8a7448',x+Math.round(w/2)-24,top+21,48,1);
+ letters(c,small,x+Math.round((w-letterWidth(small))/2),top+26,'#cfc6a6');
+ letters(c,street,x+Math.round((w-letterWidth(street))/2),top+37,'#8a7448');
+ // Two lamps on goose-necks over the board, dark like every lamp tonight.
+ for(const lx of [x+22,x+w-26]){box(c,iron,lx,top-10,2,10);box(c,iron,lx,top-10,8,2);box(c,iron,lx+5,top-9,7,4);box(c,'#3d4a51',lx+5,top-9,7,1);}
+}
+function gantry(c:C,p:Platform,l:Level){
+ if(SIGN_GANTRY[l.id]===p.x)signBoard(c,p);
+ let foot=l.height-20;for(const q of l.platforms)if(q!==p&&q.kind!=='grate'&&q.x<p.x+p.w&&q.x+q.w>p.x&&q.y>p.y&&q.y<foot)foot=q.y;
+ const iron='#1a2228';
+ for(const x of [p.x+6,p.x+p.w-9]){box(c,iron,x,p.y+12,3,foot-p.y-12);box(c,'#56646b',x,p.y+12,1,foot-p.y-12);}
+ stroke(c,iron,p.x+8,p.y+14,p.x+p.w-8,foot-2,1);stroke(c,iron,p.x+p.w-8,p.y+14,p.x+8,foot-2,1);
+ box(c,iron,p.x,p.y-15,p.w,2);box(c,'#56646b',p.x,p.y-15,p.w,1);for(let x=p.x+1;x<p.x+p.w;x+=12)box(c,iron,x,p.y-13,1,13);
+}
+/** Builders' shoring under a cracked span: poles to the street, tied and braced. */
+function shoring(c:C,p:Platform,street:number){
+ const pole='#2a231d',lit='#5d4f40';
+ for(const x of [p.x+8,p.x+p.w-12]){box(c,pole,x,p.y+20,4,street-p.y-20);box(c,lit,x,p.y+20,1,street-p.y-20);box(c,pole,x-3,street-3,10,3);}
+ for(let y=p.y+52,i=0;y<street-20;y+=64,i++){box(c,pole,p.x+8,y,p.w-16,3);box(c,lit,p.x+8,y,p.w-16,1);if(y+64<street-10)stroke(c,pole,i%2?p.x+10:p.x+p.w-12,y+3,i%2?p.x+p.w-12:p.x+10,y+64,2);}
+ box(c,pole,p.x+2,p.y+20,p.w-4,4);box(c,lit,p.x+2,p.y+20,p.w-4,1);
+}
+const ARCADE_WALL:Work={course:10,short:16,long:36,mortar:'#0e1218',stones:['#181e27','#1a212a','#1c232d','#171c25'],lip:'#212934',shade:'#131820',chip:'#252e39'};
+/** The arcade is a lane roofed over between two houses, seen with its near side away: the far side's shop fronts
+ * from the lantern's curb down to the lane, a pilaster under every other standard, and the lane itself at the bottom. */
+function arcadeLane(c:C,l:Level,a:{x0:number;x1:number;y:number},street:number,cx:number,cy:number,vw:number,vh:number){
+ const top=a.y+16,w=a.x1-a.x0;if(!visible(a.x0,top,w,street-top,cx,cy,vw,vh))return;
+ c.drawImage(panel(`roofs/arcade/${l.id}`,w,street-top,ARCADE_WALL,53),a.x0,top);
+ for(let x=a.x0+46,k=0;x<a.x1-20;x+=92,k++){
+  // A pilaster from the curb to the lane; between pilasters a round-headed light over each shop.
+  box(c,'#0b0e13',x-6,top,12,street-top);box(c,'#222a35',x-5,top,10,street-top);box(c,'#2c3643',x-5,top,1,street-top);box(c,'#141920',x+4,top,1,street-top);
+  box(c,'#2c3643',x-8,top+2,16,6);box(c,'#3a4654',x-8,top+2,16,1);
+  if(x+86>a.x1)continue;
+  for(let y=top+34,row=0;y+70<street-70;y+=150,row++){
+   if(y>cy+vh||y+70<cy)continue;const wx=x+16,ww=60,lit2=hash(k,row,l.id+5)>.86;
+   for(let px=0;px<ww;px++){const d=(px+.5-ww/2)/(ww/2),head=y+14-Math.round(14*Math.sqrt(Math.max(0,1-d*d)));box(c,'#2c3643',wx+px,head-3,1,3);box(c,lit2?'#5a3d27':'#090c11',wx+px,head,1,y+64-head);}
+   if(lit2){box(c,'#a8763f',wx+8,y+22,ww-16,38);box(c,'#d9a453',wx+16,y+34,ww-32,22);}
+   for(const bar of [ww/3,ww*2/3])box(c,'#141920',wx+Math.round(bar),y+2,2,62);box(c,'#141920',wx,y+30,ww,2);
+   box(c,'#2c3643',wx-4,y+64,ww+8,4);box(c,'#3a4654',wx-4,y+64,ww+8,1);box(c,'#0b0e13',wx-4,y+68,ww+8,1);
+  }
+  // The shop under it: a wide opening on the lane, boarded, under its fascia.
+  if(street-66<cy+vh){const wx=x+12,ww=68;box(c,'#090c11',wx,street-58,ww,58);for(let bx=wx+3;bx<wx+ww-4;bx+=9)box(c,'#161b23',bx,street-54,7,54);box(c,'#2c3643',wx-4,street-66,ww+8,8);box(c,'#3a4654',wx-4,street-66,ww+8,1);}
+ }
+ // The return of each end house into the lane throws its shadow along the far wall.
+ box(c,'#06080b8c',a.x0,top,10,street-top);box(c,'#06080b59',a.x0+10,top,8,street-top);box(c,'#06080b8c',a.x1-6,top,6,street-top);
+}
+/** The lantern's iron frame: a curb along the top of the lane's far wall, a standard every bay, and the stubs of the rails and glass
+ * that rusted through between them. Only what still carries a pane or a walk has both its standards and its rail. */
+function lantern(c:C,l:Level,a:{x0:number;x1:number;y:number}){
+ const iron='#1a2228',lit='#56646b',base=a.y+16,held=l.platforms.filter(p=>inArcade(l,p)),open=l.id===3;
+ if(!open){box(c,iron,a.x0-4,base-4,a.x1-a.x0+8,6);box(c,lit,a.x0-4,base-4,a.x1-a.x0+8,1);}
+ else{
+  // Level 4: the curb is only where glass or walk still bears on it. Where the lantern has gone there is
+  // nothing level with the frames, only the dark of the lane falling away under the hole.
+  const spans:[number,number][]=[];let from=a.x0+8;
+  for(const p of [...held].sort((u,v)=>u.x-v.x)){if(p.x-4>from)spans.push([from,p.x-4]);box(c,iron,p.x-4,base-4,p.w+8,6);box(c,lit,p.x-4,base-4,p.w+8,1);from=p.x+p.w+4;}
+  if(a.x1-8>from)spans.push([from,a.x1-8]);
+  for(const x of [a.x0-4,a.x1-8]){box(c,iron,x,base-4,12,6);box(c,lit,x,base-4,12,1);}
+  for(const [x0,x1] of spans){
+   for(const [i,alpha] of ['e6','c0','99','70','48','24'].entries())box(c,'#04060a'+alpha,x0,base-6+i*9,x1-x0,9);
+   // Teeth of glass still in the putty at each side of the hole, hanging down into it.
+   for(const [x,dir] of [[x0,1],[x1,-1]] as const){for(let k=0;k<3;k++){const tx=x+dir*(2+k*4);box(c,'#7c98a8',tx,base-4,2,6-k*2);box(c,'#a9c2cc',tx,base-4,1,1);}}
+  }
+ }
+ const standard=(x:number)=>{box(c,iron,x-1,a.y,3,base-a.y-4);box(c,lit,x-1,a.y,1,base-a.y-4);box(c,iron,x-3,a.y-1,7,3);box(c,lit,x-3,a.y-1,7,1);};
+ for(let x=a.x0,k=0;x<=a.x1;x+=46,k++){
+  if(held.some(p=>x>p.x-6&&x<p.x+p.w+6))continue;
+  standard(x);
+  // A rail stub and a tooth of glass left in its putty, to one side or the other.
+  const v=hash(k,l.id,97),dir=v>.5?1:-1,len=6+Math.floor(v*9);box(c,iron,dir>0?x+2:x-1-len,a.y+1,len,2);
+  if(v>.3&&v<.8){box(c,'#7c98a8',dir>0?x+3:x-7,a.y+3,4,5);box(c,'#a9c2cc',dir>0?x+3:x-7,a.y+3,1,5);box(c,'#7c98a8',dir>0?x+7:x-9,a.y+5,2,3);}
+ }
+ for(const p of held){standard(p.x+1);standard(p.x+p.w-2);stroke(c,iron,p.x+2,base-5,p.x+16,a.y+11,1);stroke(c,iron,p.x+p.w-3,base-5,p.x+p.w-17,a.y+11,1);}
+}
+function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock:number,s?:Run){
+ const pl=plan(l),street=pl.street,buildings=BUILDINGS[l.id]??[],courier=s?s.x:-1;
+ if(street<cy+vh+24){
+  const from=Math.max(cx-24,CUTS[l.id]??-1e9);
+  if(from<cx+vw+24){wall(c,'roofs/cobbles',cobbles,from,street,cx+vw+24-from,cy+vh+24-street);box(c,'#3a444d',from,street,cx+vw+24-from,1);}
+  // A street lamp stands in every street. With the engine holding the light, none burns.
+  for(let i=1;i<buildings.length;i++){const a=buildings[i-1],b=buildings[i],gap=b.x0-a.x1;if(gap<100)continue;const x=Math.round(a.x1+gap/2);if(x<cx-30||x>cx+vw+30)continue;box(c,'#141b21',x-1,street-70,3,70);box(c,'#3d4a51',x,street-70,1,70);box(c,'#141b21',x-5,street-84,11,14);box(c,'#232e37',x-3,street-82,7,10);box(c,'#3d4a51',x-5,street-86,11,2);box(c,'#141b21',x-4,street-4,9,4);}
+ }
+ // A house you have carried the lantern past lights its own windows.
+ for(const b of buildings)facade(c,b,street,courier>b.x1-20,l.id,cx,cy,vw,vh);
+ if(l.id===3&&street<cy+vh+24)market(c,street,cx,vw);
+ const lane=ARCADES[l.id];if(lane)arcadeLane(c,l,lane,street,cx,cy,vw,vh);
+ canalCut(c,l,street,t,cx,cy,vw,vh);routePlaces(c,l,street,cx,cy,vw,vh);
+ for(const p of l.platforms){
+  if(!visible(p.x-10,p.y-20,p.w+20,street-p.y+20,cx,cy,vw,vh))continue;
+  if(p.kind==='crumble'&&!inArcade(l,p))shoring(c,p,street);
+  if(p.kind==='moving'&&p.id!==1){
+   // A sack hoist: a short jib on a post at the corn loft's eaves, its pulley over the bay between the two houses.
+   const head=hoistHead(p),post=p.x+p.w+22,jib=Math.round(p.x+p.w/2),foot=p.y-(p.travel??0)-24;
+   box(c,'#17110d',post,head-8,8,foot-head+8);box(c,'#4b3a2b',post+1,head-8,2,foot-head+8);box(c,'#141b21',post-3,foot-6,14,6);
+   box(c,'#17110d',jib-10,head-6,post-jib+18,7);box(c,'#57432f',jib-10,head-6,post-jib+18,1);stroke(c,'#17110d',post,head+38,jib+4,head,3);stroke(c,'#57432f',post,head+37,jib+4,head-1,1);
+   for(let y=-5;y<=5;y++){const s2=Math.floor(Math.sqrt(25-y*y));box(c,'#262d33',jib-s2,head+6+y,s2*2,1);}box(c,'#59666b',jib-1,head+5,3,3);
+  }
+ }
+ const arcade=ARCADES[l.id];if(arcade&&visible(arcade.x0-8,arcade.y-8,arcade.x1-arcade.x0+16,40,cx,cy,vw,vh))lantern(c,l,arcade);
+ for(const p of pl.gantries)if(visible(p.x-10,p.y-20,p.w+20,120,cx,cy,vw,vh))gantry(c,p,l);
+ for(const [i,p] of pl.poles.entries()){
+  // A wire pole: a tarred mast from the street, the lineman's stage bracketed to it, the cross-arm and its pots above.
+  const x=Math.round(p.x+p.w/2),head=p.y-64;
+  if(visible(p.x-20,head,p.w+40,street-head,cx,cy,vw,vh)){
+   box(c,'#17110d',x-4,head,8,street-head);box(c,'#3d2e22',x-3,head,2,street-head);box(c,'#17110d',x-7,street-5,14,5);
+   for(let y=p.y+40;y<street-20;y+=30)box(c,'#3a464d',x+4,y,5,2);
+   stroke(c,'#1a2228',x-3,p.y+30,p.x+3,p.y+12,2);stroke(c,'#1a2228',x+3,p.y+30,p.x+p.w-4,p.y+12,2);
+   box(c,'#17110d',x-18,head+6,36,5);box(c,'#57432f',x-18,head+6,36,1);for(const dx of [-16,-7,4,13]){box(c,'#6d7d80',x+dx,head+1,3,5);box(c,'#aab3ae',x+dx,head+1,3,1);}
+  }
+  // The light wires run pole to pole, and from the last of them on toward the towers.
+  const next=pl.poles[i+1];if(next){const nx=Math.round(next.x+next.w/2);if(visible(x,head-4,nx-x,40,cx,cy,vw,vh)){const steps=Math.round((nx-x)/4);for(let k=0;k<=steps;k++){const u=k/steps;box(c,'#0f141a',x+(nx-x)*u,head+3+(next.y-p.y)*u+Math.sin(u*Math.PI)*9,2,1);}}}
+ }
+ for(const stack of pl.stacks)if(visible(stack.x,stack.ys[0]-20,stack.w,street-stack.ys[0],cx,cy,vw,vh))fireEscape(c,stack,street);
+ // The light wires: one sagging run from roof to roof across every street, toward the towers.
+ for(let i=1;i<buildings.length;i++){const a=buildings[i-1],b=buildings[i];if(b.x0-a.x1<40||lane&&a.x1===lane.x0||!visible(a.x1,Math.min(a.top,b.top)-20,b.x0-a.x1,Math.abs(a.top-b.top)+60,cx,cy,vw,vh))continue;
+  const steps=Math.round((b.x0-a.x1)/4);for(let k=0;k<=steps;k++){const u=k/steps;box(c,'#0f141a',a.x1+(b.x0-a.x1)*u,a.top+30+(b.top-a.top)*u+Math.sin(u*Math.PI)*12,2,1);}}
+}
+function deck(c:C,p:Platform,l:Level){
+ const w=p.w,b=plan(l).byPlatform.get(p.id);
+ if(CUTS[l.id]&&p.id===0||STAIRS[l.id]?.culvert&&p.id===l.mainCount-1){
+  // The market stairs' landing, or the culvert headwall: a granite coping on the wall.
+  box(c,'#1a2129',-2,0,w+4,10);box(c,'#7d878c',-2,0,w+4,8);box(c,'#aab3b3',-2,0,w+4,2);box(c,'#5d676e',-2,7,w+4,1);for(let x=38;x<w-10;x+=52)box(c,'#565f66',x,2,1,6);
+  return;
+ }
+ if(p.kind==='moving'){
+  // The crane's pallet: boards on two bearers, a sling chain at each end.
+  box(c,'#17110d',0,0,w,12);box(c,'#6b523a',0,0,w,8);box(c,'#b2946d',0,0,w,2);for(let x=10;x<w-4;x+=12)box(c,'#3d2e22',x,2,1,6);
+  box(c,'#33261d',2,8,8,4);box(c,'#33261d',w-10,8,8,4);return;
+ }
+ if(p.kind==='grate'){
+  // An iron landing: flat bar treads you can come up through.
+  box(c,'#12191e',-2,0,w+4,12);box(c,'#aab3ae',0,0,w,1);box(c,'#5d6b70',0,1,w,2);
+  for(let x=3;x<w-3;x+=8){box(c,'#1c272d',x,3,3,7);box(c,'#6d7d80',x,3,1,6);}
+  box(c,'#2f3d43',0,10,w,2);return;
+ }
+ if(p.kind==='crumble'&&inArcade(l,p)){
+  // A pane of the arcade's lantern in its iron frame: rough-cast glass, starred where something came down on it.
+  box(c,'#12191e',-1,0,w+2,12);box(c,'#6f8b9b',1,1,w-2,6);box(c,'#a9c2cc',1,1,w-2,1);box(c,'#8aa5b3',1,2,Math.round(w*.4),1);box(c,'#587383',1,6,w-2,1);
+  for(let x=0;x<w;x+=18)box(c,'#1a2228',x,0,2,8);
+  const sx=Math.round(w*.42+(p.id%3)*6);for(const [dx,dy] of [[-14,2],[-8,-3],[9,-3],[15,3],[-5,4],[6,4]] as const)stroke(c,'#243640',sx,4,sx+dx,Math.max(1,Math.min(6,4+dy)));box(c,'#12191e',sx-1,3,3,2);
+  box(c,'#1a2228',0,7,w,5);box(c,'#56646b',0,7,w,1);for(let x=5;x<w-4;x+=12)box(c,'#3a464d',x,9,2,2);
+  // Level 4: the pane's top edge catches the light like a coping, so the glass you land on reads as floor.
+  if(l.id===3){box(c,'#d6e4e8',0,0,w,1);box(c,'#aab3b3',-1,0,1,8);box(c,'#aab3b3',w,0,1,8);}
+  return;
+ }
+ if(p.kind==='crumble'){
+  // Old slate on rotten battens: courses slipped, a few already gone.
+  box(c,'#15110e',0,0,w,28);box(c,'#3a2d23',0,14,w,12);box(c,'#4a3828',0,14,w,1);
+  for(let x=6;x<w-4;x+=22){box(c,'#241b15',x,16,5,10);box(c,'#57432f',x+1,16,1,10);}
+  for(let row=0;row<2;row++)for(let x=-((row*7+p.id*3)%14);x<w;x+=14){const v=hash(x,row,p.id);if(v>.86)continue;box(c,v>.5?'#55606b':'#4b5661',Math.max(0,x),row*7,Math.min(13,w-Math.max(0,x)),7);box(c,'#6f7b86',Math.max(0,x),row*7,Math.min(13,w-Math.max(0,x)),1);box(c,'#2c343c',Math.max(0,x)+Math.min(12,w-Math.max(0,x)-1),row*7,1,7);if(v<.2)stroke(c,'#2c343c',x+3,row*7+1,x+8,row*7+6);}
+  box(c,'#98a3ab',0,0,w,1);box(c,'#15110e',0,26,w,2);return;
+ }
+ if(l.id===3&&p.h>28&&b?.front?.[0]==='hall'){clockTurret(c,w,p.h);return;}
+ if(p.h>28){
+  // A brick stack on the gable: oversailing courses and a cement flaunching.
+  wall(c,'roofs/stack',stackTile,0,10,w,p.h-10);box(c,'#120e0f',0,10,2,p.h-10);box(c,'#120e0f',w-2,10,2,p.h-10);
+  box(c,'#1a1415',-3,3,w+6,8);box(c,'#5e423c',-3,3,w+6,6);box(c,'#7a5a50',-3,3,w+6,1);box(c,'#1a1415',-2,9,w+4,2);
+  box(c,'#6c7378',-1,0,w+2,4);box(c,'#9aa2a4',-1,0,w+2,2);
+  if(w>=60){box(c,'#120e0f',Math.round(w/2)-9,26,18,p.h-26);for(let y=30;y<p.h-4;y+=5)box(c,'#3a2d2b',Math.round(w/2)-7,y,14,2);}
+  return;
+ }
+ cornice(c,0,0,w,b?.style??0,b?p.x-b.x0:0);
+ // The walked edge of a roof is its coping, paler than the cornice below it.
+ box(c,'#aab3b3',0,0,w,1);
+}
+/** The market hall's clock turret over its ridge: stone under a lead cap, the clock stopped at ten to midnight. */
+function clockTurret(c:C,w:number,h:number){
+ const k=STYLES[1];
+ wall(c,k.key,tiles[1],0,8,w,h-8);box(c,'#0d1117',0,8,2,h-8);box(c,'#0d1117',w-2,8,2,h-8);
+ for(const x of [2,w-8]){box(c,k.trim,x,8,6,h-8);box(c,k.trimLit,x,8,1,h-8);}
+ box(c,'#1a2228',-3,2,w+6,7);box(c,k.trim,-3,2,w+6,5);box(c,k.trimLit,-3,2,w+6,1);box(c,'#7a8791',-2,0,w+4,2);box(c,'#aab3b3',-2,0,w+4,1);
+ const mx=Math.round(w/2),my=Math.round(8+(h-8)/2);
+ for(let y=-15;y<=15;y++){const s2=Math.floor(Math.sqrt(225-y*y));box(c,'#0d1117',mx-s2,my+y,s2*2,1);}
+ for(let y=-13;y<=13;y++){const s2=Math.floor(Math.sqrt(169-y*y));box(c,'#cfc6a6',mx-s2,my+y,s2*2,1);}
+ for(let i=0;i<12;i++){const a=i*Math.PI/6,len=i%3?1:2;for(let r=12-len;r<=11;r++)box(c,'#3b2a1d',Math.round(mx+Math.sin(a)*r)-1,Math.round(my-Math.cos(a)*r)-1,2,2);}
+ stroke(c,'#1a1415',mx,my,mx+Math.round(Math.sin(-.09)*7),my-Math.round(Math.cos(-.09)*7),2);
+ stroke(c,'#1a1415',mx,my,mx+Math.round(Math.sin(-Math.PI/3)*10),my-Math.round(Math.cos(-Math.PI/3)*10),1);
+ box(c,'#1a1415',mx-1,my-1,3,3);
+}
+/** A roof stair-house: brick walls under a flat lead cap, its door on a lit stair. `open` stands the leaf back; a shut door shows light only at its seams. */
+function stairHouse(c:C,x:number,y:number,end:Platform,open:boolean,glow:boolean){
+ let right=end.x+end.w;
+ const west=x-end.x<end.w/2,left=west?end.x:x-34,width=(west?x+34:right)-left,top=y-84;right=left+width;
+ wall(c,'roofs/stack',stackTile,left,top+8,width,76);box(c,'#120e0f',left,top+8,2,76);box(c,'#120e0f',right-2,top+8,2,76);
+ box(c,'#1a1415',left-4,top,width+8,9);box(c,'#6c7378',left-4,top,width+8,5);box(c,'#9aa2a4',left-4,top,width+8,2);
+ if(open){
+  box(c,'#f3c77a12',x-36,y-76,72,76);
+  box(c,'#120e0f',x-21,y-62,42,62);box(c,'#7a5a50',x-21,y-62,42,3);box(c,'#3a2826',x-19,y-59,3,59);box(c,'#3a2826',x+16,y-59,3,59);
+  box(c,'#c98f4b',x-16,y-58,32,58);box(c,'#f0c47a',x-10,y-56,20,56);box(c,'#fff0c4',x-5,y-48,10,48);
+  // Stair treads going down into the house, and the leaf folded back.
+  for(let i=0;i<4;i++)box(c,'#a8743c',x-10+i*2,y-10-i*9,20-i*4,2);
+  box(c,'#3b2a1d',x-16,y-58,7,58);box(c,'#5d4129',x-15,y-57,5,57);box(c,'#262d33',x-16,y-44,7,2);box(c,'#262d33',x-16,y-16,7,2);
+  if(glow)box(c,'#fff0c466',x-10,y-56,20,56);
+  box(c,'#f3c77a44',x-22,y-1,44,1);
+ }else{
+  // Shut: the leaf in its frame, lamplight only along the sill and the meeting edge.
+  box(c,'#120e0f',x-21,y-62,42,62);box(c,'#7a5a50',x-21,y-62,42,3);box(c,'#3a2826',x-19,y-59,3,59);box(c,'#3a2826',x+16,y-59,3,59);
+  box(c,'#3b2a1d',x-16,y-58,32,58);box(c,'#5d4129',x-15,y-57,30,56);for(const yy of [y-46,y-24])box(c,'#3b2a1d',x-13,yy,26,1);
+  box(c,'#262d33',x+9,y-32,3,4);box(c,'#f0c47a88',x-16,y-2,32,1);box(c,'#f0c47a55',x+15,y-56,1,54);
+  if(glow){box(c,'#2a2019',x-24,y-36,48,4);box(c,'#57432f',x-24,y-36,48,1);}
+ }
+ // A small window and a vent on the rest of the wall.
+ const side=west?-1:1;if(width>110){c.drawImage(sash(1),x+side*49-9,y-56);if(width>170){box(c,'#120e0f',x+side*95-11,y-50,22,16);for(let yy=y-48;yy<y-36;yy+=4)box(c,'#3a2d2b',x+side*95-9,yy,18,2);}}
+}
+/** Level 5's places on its route: the east street stair-house it starts at, Tomas's barred stair, and the culvert headwall in the lane. */
+const STAIRS:Readonly<Record<number,{start?:boolean;tomas?:number;culvert?:boolean}>>={4:{start:true,tomas:22,culvert:true}};
+function routePlaces(c:C,l:Level,street:number,cx:number,cy:number,vw:number,vh:number){
+ const k=STAIRS[l.id];if(!k)return;
+ const first=l.platforms[0];if(k.start&&visible(first.x,first.y-90,140,90,cx,cy,vw,vh))stairHouse(c,first.x+30,first.y,first,true,false);
+ if(k.tomas!==undefined){const p=l.platforms[k.tomas];if(visible(p.x,p.y-90,p.w,90,cx,cy,vw,vh))stairHouse(c,Math.round(p.x+p.w*.72+19),p.y,p,false,true);}
+ if(k.culvert){
+  // The headwall over the culvert's outfall: dressed stone from the lane up to its coping, the arched mouth at its foot.
+  const p=l.platforms[l.mainCount-1],x0=p.x,x1=p.x+p.w,mid=Math.round(x0+p.w*.62),r=40;
+  if(visible(x0,p.y,p.w,street-p.y+40,cx,cy,vw,vh)){
+   c.drawImage(panel(`roofs/headwall/${l.id}`,p.w,street+40-p.y-8,HEADWALL,77),x0,p.y+8);box(c,'#0d1117',x0,p.y+8,2,street-p.y);box(c,'#0d1117',x1-2,p.y+8,2,street-p.y);
+   for(let px=mid-r-8;px<mid+r+8;px++){const d=px+.5-mid,top=street-26-Math.round(Math.sqrt(Math.max(0,(r+8)**2-d*d)));box(c,'#46525f',px,top,1,street-top);if(Math.abs(d)<r){const inner=street-26-Math.round(Math.sqrt(r*r-d*d));box(c,'#05080b',px,inner,1,street-inner);}}
+   for(let k2=1;k2<9;k2++){const g=Math.PI*k2/9;stroke(c,'#1a222b',mid-Math.cos(g)*r,street-26-Math.sin(g)*r,mid-Math.cos(g)*(r+8),street-26-Math.sin(g)*(r+8));}
+   for(const side of [-1,1]){const jx=side<0?mid-r-8:mid+r;box(c,'#46525f',jx,street-26,8,26);box(c,'#1a222b',jx,street-14,8,1);}
+   // The grille stands open on its hinge, and the culvert's water runs out across the lane.
+   for(let k2=0;k2<6;k2++)box(c,'#1c2228',mid+r+10+k2*5,street-58,2,58);box(c,'#1c2228',mid+r+8,street-58,30,2);box(c,'#1c2228',mid+r+8,street-30,30,2);
+   box(c,'#10222c',mid-r,street-4,r*2,4);box(c,'#2f5560',mid-r+6,street-4,r*2-12,1);
+  }
+ }
+}
+const HEADWALL:Work={course:14,short:24,long:52,mortar:'#151c24',stones:['#2b3540','#2e3843','#313b46'],lip:'#3c4854',shade:'#212a34',chip:'#46525f'};
+function exit(c:C,l:Level,s:Run,t:number,front:boolean){
+ if(front)return;
+ const x=Math.round(l.exit.x+l.exit.w/2),y=l.exit.y+l.exit.h,end=l.platforms[l.mainCount-1],open=s.phase!=='playing';
+ if(!STAIRS[l.id]?.culvert){stairHouse(c,x,y,end,true,open);return;}
+ // The culvert steps: a gate in the headwall's parapet, and stone steps going down inside it to the mouth.
+ box(c,'#f3c77a0c',x-30,y-64,60,64);
+ for(const side of [-1,1]){const px=x+side*24-(side<0?10:0);box(c,'#1a222b',px,y-40,10,40);box(c,'#46525f',px+1,y-39,8,38);box(c,'#6b7782',px+1,y-39,8,1);box(c,'#56626e',px-1,y-44,12,5);box(c,'#7a8690',px-1,y-44,12,1);}
+ box(c,'#05080b',x-14,y-36,28,36);for(let i=0;i<4;i++){box(c,'#2c353f',x-14,y-30+i*8,28-i*3,3);box(c,'#46525f',x-14,y-30+i*8,28-i*3,1);}
+ // The gate stands open against the parapet.
+ box(c,'#1c2228',x-14,y-36,2,36);for(let k=0;k<4;k++)box(c,'#1c2228',x-28-k*2,y-34+k*2,2,32-k*4);box(c,'#1c2228',x-30,y-34,18,2);box(c,'#1c2228',x-30,y-12,18,2);
+ if(open)box(c,'#f3c77a22',x-14,y-36,28,36);
+ // A lamp bracket over the gate, unlit like every lamp in the lane.
+ box(c,'#141b21',x+30,y-60,2,22);box(c,'#141b21',x+22,y-60,10,2);box(c,'#141b21',x+19,y-58,7,9);box(c,'#232e37',x+20,y-57,5,6);
+}
+/** Past the roofs you walk are the roofs you do not: the row across the
+ * street, whose eaves stay below your own; the next streets' roofs behind
+ * them; and the ridge of the far city under the towers. Each row follows the
+ * climb of the roofs in front of it, so the Quarter rises as you do. */
+const NEAR:Tone={walls:['#1a222e','#1d2531','#201f28','#1c2228'],edge:'#2c3848',shade:'#111822',roof:'#263345',course:'#1f2a3a',ridge:'#3b4c64',glass:'#0e151f',pane:'#1c2b3d',lit:'#b07d40',glow:'#eab968'};
+const NEAR_SCALE:Scale={unit:26,ww:8,wh:12,pitch:17,lit:.1};
+const NEAR_HEAD=58,MID_HEAD=32,FAR_HEAD=36,FAR_WALL='#243148';
+const nearRow=row(104,11,NEAR_HEAD+230,(c,i,w,h)=>townHouse(c,w,NEAR_HEAD,h,i*7+3,NEAR,NEAR_SCALE),i=>NEAR.walls[Math.floor(hash(i*7+3,2,5)*NEAR.walls.length)]);
+const midRow=row(58,12,MID_HEAD+150,(c,i,w,h)=>townHouse(c,w,MID_HEAD,h,i*5+1,MID,MID_SCALE),i=>MID.walls[Math.floor(hash(i*5+1,2,5)*MID.walls.length)]);
+const farRow=row(30,13,FAR_HEAD+60,(c,i,w,h)=>farRoof(c,w,FAR_HEAD,h,i,FAR_WALL,'#2d3c56','#b98a4a'),()=>FAR_WALL);
+const profiles=new WeakMap<Level,{low:Float32Array;wide:Float32Array}>();
+/** The height of the walked roofs along the level: the lowest roof within a street, and within a district. */
+function profile(l:Level){
+ let made=profiles.get(l);if(made)return made;
+ const buildings=BUILDINGS[l.id]??[],n=Math.ceil(l.width/50)+1,raw=new Float32Array(n),low=new Float32Array(n),wide=new Float32Array(n);
+ for(let k=0;k<n;k++){const x=k*50;let top=0,before=-1e9,after=1e9,a=l.height,b=l.height;
+  for(const q of buildings){if(x>=q.x0&&x<=q.x1)top=q.top;if(q.x1<x&&q.x1>before){before=q.x1;a=q.top;}if(q.x0>x&&q.x0<after){after=q.x0;b=q.top;}}
+  raw[k]=top||Math.max(before>-1e9?a:b,after<1e9?b:a);}
+ for(let k=0;k<n;k++){let a=0,b=0;for(let d=-8;d<=8;d++){const v=raw[Math.max(0,Math.min(n-1,k+d))];if(Math.abs(d)<=4)a=Math.max(a,v);b=Math.max(b,v);}low[k]=a;wide[k]=b;}
+ made={low,wide};profiles.set(l,made);return made;
+}
+const view:{l:Level|null;w:number;h:number;cy:number;low:Float32Array;wide:Float32Array}={l:null,w:0,h:0,cy:0,low:new Float32Array(1),wide:new Float32Array(1)};
+/** Where a roof line `rise` above the walked roofs sits on screen, for a house at layer position `u` and depth `p`. */
+function place(u:number,p:number,env:Float32Array){
+ const {l,w,h,cy}=view,roof=env[Math.max(0,Math.min(env.length-1,Math.round(((u-w/2)/p+w/2)/50)))],follow=Math.max(-170,Math.min(Math.max(0,l!.height-h),roof-24-h*.57));
+ return roof-follow+(follow-cy)*p;
+}
+const farBase=(i:number,x:number,wide:number)=>place(x+wide/2,.08,view.wide)-72-Math.floor(hash(i,1,41)*30)-FAR_HEAD+farRow.height;
+const midBase=(i:number,x:number,wide:number)=>place(x+wide/2,.24,view.wide)-8-Math.floor(hash(i,1,43)*50)-MID_HEAD+midRow.height;
+const nearBase=(i:number,x:number,wide:number)=>place(x+wide/2,.5,view.low)+34+Math.floor(hash(i,1,47)*56)-NEAR_HEAD+nearRow.height;
+function sky(c:C,l:Level,w:number,h:number,cx:number,cy:number,t:number,ending:boolean){
+ nightSky(c,w,h,ending,cx,t);moon(c,Math.round(w*.8-cx*.02),Math.round(Math.max(56,h*.2-cy*.02)));
+ const pr=profile(l);view.l=l;view.w=w;view.h=h;view.cy=cy;view.low=pr.low;view.wide=pr.wide;
+ // The towers stand at the head of the city; their shafts go down behind its far ridge.
+ c.drawImage(headTowers(),Math.round(w*.42-cx*.04),Math.round(place(w*.42+cx*.04,.08,pr.wide))-262);
+ drawRow(c,farRow,w,cx*.08,farBase,h);
+ drawRow(c,midRow,w,cx*.24,midBase,h);
+ drawRow(c,nearRow,w,cx*.5,nearBase,h);
+}
+function mover(c:C,p:Platform,x:number,y:number){
+ // The rope runs from the jib's pulley to the hook; two chains spread from the hook to the pallet's ends.
+ const hook=y-26,mid=Math.round(x+p.w/2),head=hoistHead(p)+(p.id===1?0:10);box(c,'#8a7a5a',mid,head,1,hook-head);box(c,'#262d33',mid-2,hook,5,4);box(c,'#59666b',mid-1,hook,3,1);
+ stroke(c,'#3d4a51',mid,hook+4,x+4,y,1);stroke(c,'#3d4a51',mid,hook+4,x+p.w-5,y,1);
+}
+export const roofs:QuarterSet={sky,back,deck,exit,mover,water};

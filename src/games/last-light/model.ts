@@ -1,13 +1,15 @@
 import {LEVELS,LEVEL_COUNT,type Rect,type Platform,type Hazard,type Station,type Level,type Checkpoint} from './levels';
 import {CHAPTERS,speakerFor,memoryFor} from './story';
 import {enemyAt} from './enemies';
-import {pressAt} from './press';
+import {pressAt,pressState} from './press';
 import {nearbyAnimal} from './habitats';
 import {PET_DURATION,type Petting} from './affection';
 import {DEATH_DURATION,type DeathCause} from './death';
 import {clearDuration} from './departure';
 import {normalizeLastLightScore,LAST_LIGHT_MAX_SCORE} from '../../core/last-light-score';
 export const STEP=1/120,PLAYER_W=16,PLAYER_H=24;
+/** Seconds a fallen floor stays gone. Long enough that standing and waiting is not a plan. */
+export const CRUMBLE_RETURN=7;
 export interface Input {move:number;jump:boolean;dash:boolean;interact?:boolean;drop?:boolean}
 export type Phase='playing'|'cleared'|'complete';
 export interface Run {
@@ -43,7 +45,8 @@ export function hazardFade(h:Hazard,t:number):number {
 }
 /** Powered machinery has a visible, persistent response to its control wheel. */
 const supportGone=(h:Hazard,s:Run)=>h.platform!==undefined&&s.crumbles[h.platform]!==undefined&&s.crumbles[h.platform]<=0;
-export const hazardActive=(h:Hazard,s:Run)=>!supportGone(h,s)&&(h.disabledBy===undefined||!s.activated.includes(h.disabledBy))&&laserActive(h,s.clock);
+/** A press only hurts while its head is out of the housing: fully raised, it is part of the machine. */
+export const hazardActive=(h:Hazard,s:Run)=>!supportGone(h,s)&&(h.disabledBy===undefined||!s.activated.includes(h.disabledBy))&&laserActive(h,s.clock)&&(h.kind!=='crusher'||pressState(h,s.clock).extension>0);
 /** Amber emitters announce the end of a safe interval before collision returns. */
 export function hazardWarning(h:Hazard,s:Run):boolean {
  if(supportGone(h,s)||!['laser','steam'].includes(h.kind)||(h.disabledBy!==undefined&&s.activated.includes(h.disabledBy))||laserActive(h,s.clock))return false;
@@ -97,9 +100,9 @@ export function step(s:Run,input:Input,dt=STEP):Events {
  const interactPressed=!!input.interact&&!s.previousInteract;s.previousInteract=!!input.interact;
  s.previousJump=input.jump;s.previousDash=input.dash;
  if(s.respawn>0){s.respawn=Math.max(0,s.respawn-dt);return events;}
- for(const id of Object.keys(s.crumbles)){const n=Number(id);s.crumbles[n]=Math.max(-3,s.crumbles[n]-dt);if(s.crumbles[n]<=-2.5)delete s.crumbles[n];}
+ for(const id of Object.keys(s.crumbles)){const n=Number(id);s.crumbles[n]=Math.max(-CRUMBLE_RETURN-.5,s.crumbles[n]-dt);if(s.crumbles[n]<=-CRUMBLE_RETURN)delete s.crumbles[n];}
  s.buffer=jumpPressed?.12:Math.max(0,s.buffer-dt);s.coyote=s.grounded?.1:Math.max(0,s.coyote-dt);
- const oldGround=level.platforms.find(p=>p.id===s.ground);
+ const direct=level.platforms[s.ground],oldGround=direct?.id===s.ground?direct:level.platforms.find(p=>p.id===s.ground);
  if(s.grounded&&oldGround?.kind==='moving'){const before=platformAt(oldGround,oldClock),after=platformAt(oldGround,s.clock);s.x+=after.x-before.x;s.y+=after.y-before.y;}
  s.dropLeft=Math.max(0,s.dropLeft-dt);
  if(input.drop&&s.grounded&&oldGround?.kind==='grate'){s.dropLeft=.2;s.y+=2;s.grounded=false;s.ground=-1;s.coyote=0;s.pet=null;}
@@ -119,10 +122,17 @@ export function step(s:Run,input:Input,dt=STEP):Events {
   s.vy=Math.min(s.vy+1120*dt,650);
   if(s.wall&&s.vy>90&&move===s.wall)s.vy=90;
  }
- const bodies=level.platforms.filter(p=>s.crumbles[p.id]===undefined||s.crumbles[p.id]>0).map(p=>({p,r:platformAt(p,s.clock)}));
+ // Only landings within reach of this step can touch the courier. A three-minute level has two hundred of them,
+ // so the rest are passed over, in the same order, before anything is worked out for them.
+ const bodies:{p:Platform;r:Rect}[]=[];
+ for(const p of level.platforms){
+  const reach=p.kind==='moving'&&p.axis!=='y'?Math.abs(p.travel??0)+48:48;
+  if(p.x+p.w+reach<s.x||p.x-reach>s.x+PLAYER_W||(s.crumbles[p.id]!==undefined&&s.crumbles[p.id]<=0))continue;
+  bodies.push({p,r:platformAt(p,s.clock)});
+ }
  if(level.gate&&!s.key)bodies.push({p:{...level.gate,id:-2,kind:'stone'},r:level.gate});
  const previousX=s.x,previousY=s.y;
- s.x+=s.vx*dt+(s.grounded&&oldGround?.kind==='belt'?(oldGround.direction??1)*85*dt:0);s.x=clamp(s.x,0,level.width-PLAYER_W);s.wall=0;
+ s.x+=s.vx*dt+(s.grounded&&oldGround?.kind==='belt'?(oldGround.direction??1)*85*dt:0);s.x=clamp(s.x,level.walls?.[0]??0,(level.walls?.[1]??level.width)-PLAYER_W);s.wall=0;
  for(const {p,r} of bodies)if(p.kind!=='grate'&&overlap({x:s.x,y:s.y,w:PLAYER_W,h:PLAYER_H},r)){
   if(previousX+PLAYER_W<=r.x+.1){s.x=r.x-PLAYER_W;s.wall=1;}
   else if(previousX>=r.x+r.w-.1){s.x=r.x+r.w;s.wall=-1;}

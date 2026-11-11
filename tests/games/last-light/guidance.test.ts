@@ -35,10 +35,12 @@ describe('Last Light mission guidance',()=>{
   expect(missionGuidance(run).sector.index).toBe(level.sectors!.length-1);
  });
  it('teaches the air dash before the first wide gap and warns about the next crumble',()=>{
-  const run=atStage(0),level=LEVELS[0];run.ground=4;
-  expect(missionGuidance(run).hint).toMatch(/hold Space.*press X/);
-  const crumble=level.platforms.slice(0,level.mainCount).findIndex(p=>p.kind==='crumble');run.ground=crumble-1;
-  expect(missionGuidance(run).hint).toContain('Cracked landing ahead');
+  const level=LEVELS.slice(1).find(l=>l.platforms.slice(0,l.mainCount-1).some((p,i)=>{const n=l.platforms[i+1];return n.kind!=='crumble'&&Math.max(n.x-p.x-p.w,p.x-n.x-n.w)>130;}))!,run=atStage(level.id);
+  run.ground=level.platforms.slice(0,level.mainCount-1).findIndex((p,i)=>{const n=level.platforms[i+1];return n.kind!=='crumble'&&Math.max(n.x-p.x-p.w,p.x-n.x-n.w)>130;});
+  expect(missionGuidance(run).hint).toMatch(/hold Space.*press X/i);
+  const cracked=LEVELS.slice(1).find(l=>l.platforms.slice(1,l.mainCount).some(p=>p.kind==='crumble'))!,other=atStage(cracked.id);
+  other.ground=cracked.platforms.slice(0,cracked.mainCount).findIndex(p=>p.kind==='crumble')-1;
+  expect(missionGuidance(other).hint).toContain('Cracked landing ahead');
  });
  it('reports a compass bearing in all directions independently from the route',()=>{
   expect(targetBearing({x:0,y:0},{x:108,y:12})).toEqual({arrow:'→',distance:10,label:'right, 10 metres away'});

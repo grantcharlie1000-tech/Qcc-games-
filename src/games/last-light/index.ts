@@ -28,7 +28,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  const levelLabel=document.createElement('span'),scoreLabel=document.createElement('span');scoreLabel.className='ll-score';hud.element.replaceChildren(levelLabel,scoreLabel);hud.element.after(hudContent);
  const text=(el:HTMLElement,value:string)=>{if(el.textContent!==value)el.textContent=value;};
  const data=(key:string,value:string)=>{if(root.dataset[key]!==value)root.dataset[key]=value;};
- let run=createRun(),overlay:Overlay='intro',paused=false,disposed=false,frame=0,last=0,acc=0,noticeUntil=0,dialogueUntil=0,dialogueBlocking=false,previousHud='',previousSecond=-1,previousSector='';
+ let run=createRun(),overlay:Overlay='intro',paused=false,disposed=false,frame=0,last=0,acc=0,noticeUntil=0,dialogueUntil=0,dialogueBlocking=false,dialogueArmed=false,dialogueShown=0,previousHud='',previousSecond=-1,previousSector='';
  const keys=new Set<string>(),touches=new Map<number,string>();let jumpQueued=false,dashQueued=false,interactQueued=false,dropQueued=false;
  const touchMode=()=>matchMedia('(any-pointer: coarse)').matches;
  const instructions=(text:string)=>touchMode()?text.replace(/Arrows move; hold Up to jump/g,'Hold ← or → to run; hold JUMP to jump').replace(/Tap Up/g,'Tap JUMP').replace(/Right Shift/g,'DASH').replace(/A \/ D runs/g,'Hold ← or → to run').replace(/hold Space to jump/g,'hold JUMP to jump').replace(/\bE\b/g,'Tap').replace(/\bSpace\b/g,'JUMP').replace(/\bShift\b/g,'DASH').replace(/\bX\b/g,'DASH'):text.replace(/\bSpace\b/g,'↑').replace(/\bX\b/g,'Right Shift').replace(/\bE\b/g,'Enter');
@@ -44,7 +44,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  function save(){context.save(serialize(run));}
  function notice(message:string){q<HTMLElement>('.ll-notice').textContent=instructions(message);noticeUntil=run.clock+7;context.announce(message);}
  function dialogue(message:string,blocking=false){
-  dialogueBlocking=blocking;q<HTMLElement>('.ll-dialogue-hint').textContent=blocking?'PAUSED · MOVE TO CONTINUE':'SAVED IN JOURNAL · MOVE TO DISMISS';
+  dialogueBlocking=blocking;dialogueArmed=false;dialogueShown=performance.now();q<HTMLElement>('.ll-dialogue-hint').textContent=blocking?'PAUSED · MOVE TO CONTINUE':'SAVED IN JOURNAL · MOVE TO DISMISS';
   const colon=message.indexOf(':');q<HTMLElement>('.ll-speaker').textContent=colon>0&&colon<28?message.slice(0,colon):'A memory of Mira';
   q<HTMLElement>('.ll-dialogue p').textContent=colon>0&&colon<28?message.slice(colon+1).trim():message;
   q<HTMLElement>('.ll-dialogue').hidden=false;dialogueUntil=run.clock+Math.max(12,message.length/12);context.announce(message);
@@ -60,7 +60,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
   text(q<HTMLElement>('.ll-stage'),level.name);
   text(q<HTMLElement>('.ll-sparks'),String(run.sparks));text(q<HTMLElement>('.ll-deaths'),String(run.deaths));
   const progress=q<HTMLElement>('.ll-task-progress'),chase=level.goal==='escape'&&run.phase==='playing',lead=escapeLead(run);
-  if(progress.hidden===chase)progress.hidden=!chase;text(progress,run.chasing?`Dark · ${Math.ceil(lead/10)} m`:'Escape');
+  if(progress.hidden===chase)progress.hidden=!chase;text(progress,run.chasing?`The black · ${Math.ceil(lead/10)} m behind`:'Stay ahead of the black');
   const danger=String(chase&&run.chasing&&lead<250);if(progress.dataset.danger!==danger)progress.dataset.danger=danger;
   data('chase',String(chase));hudContent.hidden=!!overlay;
   const prompt=q<HTMLButtonElement>('.ll-prompt');text(prompt,run.phase==='playing'?instructions(nearby(run)):'');if(prompt.hidden!==!prompt.textContent)prompt.hidden=!prompt.textContent;
@@ -77,11 +77,11 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
   overlay=next;stop();layer.hidden=!next;canvas.tabIndex=next?-1:0;q<HTMLElement>('.ll-dialogue').hidden=true;
   if(!next){card.replaceChildren();paint();schedule();canvas.focus({preventScroll:true});return;}
   const level=LEVELS[run.stage];let html='';
-  if(next==='intro')html=`${eyebrow('A PRECISION PLATFORMER')}<h1><span class="sr-only">Last Light</span><img src="${import.meta.env.BASE_URL}game-art/last-light/title.svg" alt="" width="190" height="130"></h1><p class="ll-story">Forty levels. One goal.<br>Reach the exit.</p><p class="ll-description">${instructions('Arrows move; hold Up to jump.')}<br>${instructions('Tap Up for a short hop. Right Shift dashes.')}<br>Brake for small ledges. Flags save your place.</p>${button('play','Play →')}${button('help','How to play',true)}<details class="ll-score-breakdown"><summary>The story · optional</summary><p>Mira didn’t come home. She left you a lantern. Follow her trail through a city waiting for dawn. Conversations and hidden memories tell her story; none are required to finish a level.</p></details><p class="ll-footnote">PRECISION · MOMENTUM · TIMING</p>`;
+  if(next==='intro')html=`${eyebrow('A PRECISION PLATFORMER')}<h1><span class="sr-only">Last Light</span><img src="${import.meta.env.BASE_URL}game-art/last-light/title.svg" alt="" width="190" height="130"></h1><p class="ll-story">The city’s lamps have gone out. Where no lamp burns, the black comes up off the water and puts out whatever it closes over.<br>You carry the last lit lantern. Follow your sister Mira to the engine that feeds the lamps.</p><p class="ll-description">${instructions('Arrows move; hold Up to jump.')}<br>${instructions('Tap Up for a short hop. Right Shift dashes.')}<br>Forty levels. Reach each gold exit. Flags save your place.</p>${button('play','Play →')}${button('help','How to play',true)}<details class="ll-score-breakdown"><summary>The story · optional</summary><p>Every lamp in the city burns a flame sent down from one engine in the towers. Three nights ago the lamps went out. Mira, the engine’s keeper, went up to it and has not come home. The people you meet will tell you what they know. Talking, lamps and hidden memories are never required to finish a level.</p></details><p class="ll-footnote">PRECISION · MOMENTUM · TIMING</p>`;
   if(next==='continue')html=`${eyebrow('PICK UP WHERE YOU LEFT OFF')}<h2>Welcome back.</h2><p>Level ${run.stage+1} · ${level.name}<br>${run.cleared} levels cleared · ${run.best.toLocaleString()} points</p><p class="ll-map-objective"><strong>Objective</strong>Reach the exit</p>${button('play','Continue →')}${button('help','Controls',true)}${button('confirm','Start a new run',true)}`;
   if(next==='clear'||next==='complete'){
    const ending=run.ending?ENDINGS[run.ending]:null;
-   html=`${eyebrow(next==='complete'?'40 / 40 · CAMPAIGN COMPLETE':`${String(run.stage+1).padStart(2,'0')} / 40 · ${WORLDS[level.world].name}`)}<h2>${next==='complete'?'All forty cleared.':'Level clear.'}</h2><div class="ll-results"><span>MEMORIES<strong>${run.collected.filter(id=>id<3).length}/3</strong></span><span>LEVEL TIME<strong>${formatTime(run.stageTime)}</strong></span><span>POINTS<strong>${run.best.toLocaleString()}</strong></span></div><details class="ll-score-breakdown"><summary>Where your points came from</summary><p>${run.cleared} levels × 1,000 = ${(run.cleared*1000).toLocaleString()}<br>${run.sparks} sparks × 100 = ${(run.sparks*100).toLocaleString()}<br>Pace bonus = ${Math.max(0,run.best-run.cleared*1000-run.sparks*100).toLocaleString()}<br>Each level banks its own bonus: up to 250, −2 per active second, −25 per setback. Previously earned points stay yours.</p></details>${next==='clear'?button('next','Next level →'):button('confirm','Start another run →')}${next==='complete'?button('ending','Read the story ending',true):''}${ending?`<details class="ll-score-breakdown"><summary>${ending.title}</summary><p>${ending.text}</p></details>`:''}${button('journal','Read the journal',true)}${button('rankings','View leaderboard',true)}`;
+   html=`${eyebrow(next==='complete'?'40 / 40 · CAMPAIGN COMPLETE':`${String(run.stage+1).padStart(2,'0')} / 40 · ${WORLDS[level.world].name}`)}<h2>${next==='complete'?'All forty cleared.':'Level clear.'}</h2>${next==='clear'&&run.stage<8?`<p class="ll-story">${CHAPTERS[run.stage].after}</p>`:''}<div class="ll-results"><span>MEMORIES<strong>${run.collected.filter(id=>id<3).length}/3</strong></span><span>LEVEL TIME<strong>${formatTime(run.stageTime)}</strong></span><span>POINTS<strong>${run.best.toLocaleString()}</strong></span></div><details class="ll-score-breakdown"><summary>Where your points came from</summary><p>${run.cleared} levels × 1,000 = ${(run.cleared*1000).toLocaleString()}<br>${run.sparks} sparks × 100 = ${(run.sparks*100).toLocaleString()}<br>Pace bonus = ${Math.max(0,run.best-run.cleared*1000-run.sparks*100).toLocaleString()}<br>Each level banks its own bonus: up to 250, −2 per active second, −25 per setback. Previously earned points stay yours.</p></details>${next==='clear'?button('next','Next level →'):button('confirm','Start another run →')}${next==='complete'?button('ending','Read the story ending',true):''}${ending?`<details class="ll-score-breakdown"><summary>${ending.title}</summary><p>${ending.text}</p></details>`:''}${button('journal','Read the journal',true)}${button('rankings','View leaderboard',true)}`;
   }
   if(next==='choice')html=`${eyebrow('OPTIONAL · THE LAST PAGE')}<h2>What do we<br>leave alight?</h2><p class="ll-story">At the end of the city, Mira stands beside you. Below, windows wait for dawn.</p><p>Share the flame with every district now, or bring it home and let neighbour light neighbour.</p>${button('share','Share the flame →')}${button('home','Carry it home →',true)}${button('results','Back to results',true)}<p class="ll-small">Both roads lead home. Your campaign is already complete.</p>`;
   if(next==='menu')html=`${eyebrow('TAKE A BREATHER')}<h2>The light can wait.</h2><p>Level ${run.stage+1} · ${level.name}<br>${WORLDS[level.world].name} · ${missionGuidance(run).sector.name}</p><p class="ll-small">✦ ${run.sparks} memories · ↻ ${run.deaths} setbacks · ${formatTime(run.time)}<br>Checkpoint ${Math.max(0,checkpointIndexFor(run)+1)}/${checkpointsFor(level).length} · ${run.best.toLocaleString()} points</p>${button('play','Resume →')}${button('journal','Mira’s journal',true)}${button('help','How to play',true)}${button('rankings','Leaderboard',true)}${button('confirm','Start a new run',true)}`;
@@ -105,7 +105,10 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
   frame=0;if(!active())return;
   const controls=input();
   if(!q<HTMLElement>('.ll-dialogue').hidden){
-   if(controls.move||controls.jump||controls.dash)q<HTMLElement>('.ll-dialogue').hidden=true;
+   // A key already held when someone starts speaking must not swallow the line:
+   // it has to be let go and pressed again (or held for a full second).
+   const pressing=!!(controls.move||controls.jump||controls.dash);if(!pressing)dialogueArmed=true;
+   if(pressing&&(dialogueArmed||now-dialogueShown>1000))q<HTMLElement>('.ll-dialogue').hidden=true;
    else if(dialogueBlocking){last=0;acc=0;paint();schedule();return;}
   }
   const interval=last?Math.max(0,(now-last)/1000):0,simulated=Math.min(interval,.1);
@@ -121,7 +124,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
    }
    if(events.interact||events.pickup)save();
    if(events.checkpoint){notice(`Checkpoint ${checkpointIndexFor(run)+1}/${checkpointsFor(LEVELS[run.stage]).length} saved · ${missionGuidance(run).sector.name}`);save();context.sound('success');}
-   if(events.death){notice(`${({fall:'Fell',spikes:'Spikes',saw:'Saw strike',laser:'Electrocuted',steam:'Scalded',water:'Water',dark:'Caught by the dark',enemy:'Enemy contact',crusher:'Crushed'})[events.deathCause??'fall']} · ${run.checkpoint?`Checkpoint ${checkpointIndexFor(run)+1}`:'Level start'}`);q<HTMLElement>('.ll-dialogue').hidden=true;context.sound('lose');save();}
+   if(events.death){notice(`${({fall:'Fell',spikes:'Spikes',saw:'Saw strike',laser:'Electrocuted',steam:'Scalded',water:'Water',dark:'The black closed over your lantern',enemy:'Enemy contact',crusher:'Crushed'})[events.deathCause??'fall']} · ${run.checkpoint?`Checkpoint ${checkpointIndexFor(run)+1}`:'Level start'}`);q<HTMLElement>('.ll-dialogue').hidden=true;context.sound('lose');save();}
    if(events.clear){q<HTMLElement>('.ll-dialogue').hidden=true;context.sound('success');report();save();context.announce('Level clear');context.setStatus(run.phase==='complete'?'All forty levels cleared.':'Level clear.');}
    const guidance=missionGuidance(run),sectorKey=`${run.stage}:${guidance.sector.index}`;
    if(run.grounded&&sectorKey!==previousSector){
@@ -135,7 +138,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  }
  function play(){
   if(run.phase==='cleared'){show('clear');return;}if(run.phase==='complete'){show('complete');return;}
-  const guidance=missionGuidance(run);previousSector=`${run.stage}:${guidance.sector.index}`;show(null);notice(guidance.hint);context.setStatus(guidance.action);report();
+  const guidance=missionGuidance(run);previousSector=`${run.stage}:${guidance.sector.index}`;show(null);notice(run.stage<8&&run.stageTime<1500&&!run.checkpoint?LEVELS[run.stage].hint:guidance.hint);context.setStatus(guidance.action);report();
  }
  function retry(){if(run.phase!=='playing')return;q<HTMLElement>('.ll-dialogue').hidden=true;respawn(run);resetInput();notice(`${run.checkpoint?`Checkpoint ${checkpointIndexFor(run)+1}`:'Chapter start'} · ${missionGuidance(run).action}`);save();paint();}
  let returnTo:Overlay='intro';

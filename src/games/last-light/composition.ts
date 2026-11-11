@@ -1,5 +1,6 @@
 import {enemyBounds} from './enemies';
 import type {Level,Platform,Rect,Station} from './levels';
+import {quarterSet} from './quarter-sets';
 
 /** Visible silhouettes, measured from the authored one-pixel art. Anchors are
  * always the interaction's real centre/floor; presentation never moves a goal. */
@@ -115,6 +116,8 @@ export function serviceDoor(l:Level):{x:number;y:number;side:number}|null {
  if(!['relay','signal','dawn'].includes(l.goal))return null;
  if(serviceDoors.has(l))return serviceDoors.get(l)!;
  const goal=goalComposition(l),p=l.platforms[l.mainCount-1];
+ // An authored set builds its own door where the exit stands.
+ if(quarterSet(l)){const door={x:l.exit.x+l.exit.w/2,y:p.y,side:1};serviceDoors.set(l,door);return door;}
  for(const side of [1,-1]){
   const x=side>0?p.x+p.w-24:p.x+24,bounds={x:x-28,y:p.y-58,w:56,h:60};
   if(overlaps(expand(goal.bounds,7),bounds)||!foregroundFits(l,bounds,p.id,-1,true))continue;

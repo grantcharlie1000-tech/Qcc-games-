@@ -21,10 +21,14 @@ test('district vistas have distinct silhouettes and parallax; depth fog leaves w
   const paintings=[8,24,32].map(stage=>drawDistrictVistas(c,LEVELS[stage],640,360,0,0));
   const phone=document.createElement('canvas');phone.width=390;phone.height=844;const pc=phone.getContext('2d')!;
   const portrait=[8,24,32].map(stage=>{pc.clearRect(0,0,390,844);drawDistrictVistas(pc,LEVELS[stage],390,844,0,0);return pc.getImageData(0,0,390,Math.floor(844*.4)).data.some((v:number,i:number)=>i%4===3&&v>0);});
-  const s=createRun();const fill=()=>{c.fillStyle='#203040';c.fillRect(0,0,640,360);};fill();const upper=hash(0,200),lower=hash(280,80);drawDepthFog(c,LEVELS[0],s,0,0,640,360,true);const fog={upper:hash(0,200)===upper,lower:hash(280,80)!==lower};
-  const first=hash();s.clock=20;fill();drawDepthFog(c,LEVELS[0],s,0,0,640,360,true);const frozen=hash()===first;fill();const waterBefore=hash();drawDepthFog(c,LEVELS[2],s,0,0,640,360,false);return {vistas,paintings,portrait,fog,frozen,waterClear:hash()===waterBefore};
+  // The Old Quarter is built down to its street, tower floor, basement or
+  // water, so it has no fog bank; a garden level still fades into mist.
+  const s=createRun();const fill=()=>{c.fillStyle='#203040';c.fillRect(0,0,640,360);};fill();const upper=hash(0,200),lower=hash(280,80);drawDepthFog(c,LEVELS[8],s,0,0,640,360,true);const fog={upper:hash(0,200)===upper,lower:hash(280,80)!==lower};
+  const first=hash();s.clock=20;fill();drawDepthFog(c,LEVELS[8],s,0,0,640,360,true);const frozen=hash()===first;fill();const waterBefore=hash();drawDepthFog(c,LEVELS[2],s,0,0,640,360,false);const waterClear=hash()===waterBefore;
+  const quarter=[0,1,3,4,5,6,7].every(stage=>{fill();const before=hash();drawDepthFog(c,LEVELS[stage],s,0,0,640,360,false);return hash()===before;});
+  return {vistas,paintings,portrait,fog,frozen,waterClear,quarter};
  });
- expect(result.paintings).toEqual([true,true,true]);expect(result.portrait).toEqual([true,true,true]);expect(new Set(result.vistas.map(v=>v.still)).size).toBe(5);for(const v of result.vistas){expect(v.still).not.toBe(v.moved);expect(v.unchanged).toBe(true);}expect(result.fog).toEqual({upper:true,lower:false});expect(result.frozen).toBe(true);expect(result.waterClear).toBe(true);
+ expect(result.paintings).toEqual([true,true,true]);expect(result.portrait).toEqual([true,true,true]);expect(new Set(result.vistas.map(v=>v.still)).size).toBe(5);for(const v of result.vistas){expect(v.still).not.toBe(v.moved);expect(v.unchanged).toBe(true);}expect(result.fog).toEqual({upper:true,lower:false});expect(result.frozen).toBe(true);expect(result.waterClear).toBe(true);expect(result.quarter).toBe(true);
 });
 
 
@@ -32,7 +36,7 @@ test('fog follows the world cutoff through camera movement and resizing',async({
  await page.goto('/#/game/last-light');
  const result=await page.evaluate(async()=>{
   const [{drawDepthFog,depthFogBounds},{LEVELS},{createRun}]=await Promise.all(['/src/games/last-light/world.ts','/src/games/last-light/levels.ts','/src/games/last-light/model.ts'].map(p=>import(p)));
-  const l=LEVELS[0],s=createRun(),bounds=depthFogBounds(l);
+  const l=LEVELS[8],s=createRun(),bounds=depthFogBounds(l);
   function sample(cy:number,height:number){const canvas=document.createElement('canvas');canvas.width=200;canvas.height=height;const c=canvas.getContext('2d')!;c.fillStyle='#203040';c.fillRect(0,0,200,height);c.save();c.translate(0,-cy);drawDepthFog(c,l,s,0,cy,200,height,true);c.restore();return {above:[...c.getImageData(100,bounds.start-3-cy,1,1).data],below:[...c.getImageData(100,bounds.start+60-cy,1,1).data]};}
   const a=sample(bounds.start-130,240),b=sample(bounds.start-60,320);
   return {a,b,cutoffBelowAllLandings:bounds.start>Math.max(...l.platforms.map((p:any)=>p.y+p.h))};

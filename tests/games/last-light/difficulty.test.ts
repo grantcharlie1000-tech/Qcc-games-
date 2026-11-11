@@ -18,5 +18,6 @@ describe('Last Light required control choices',()=>{
   const required=level.id<=1?1:level.id<8?2:3;
   if(fullAudit)console.info(JSON.stringify({chapter:level.id+1,required,changes:route.changes,path:route.path,changedEdges:route.changedEdges}));
   expect(route.changes,`The tested graph needs ${route.changes} policy departures along ${route.path.join(' → ')}`).toBeGreaterThanOrEqual(required);
- },30000);
+ // A three-minute level has some two hundred landings; both graphs take longer to search than a short chapter's.
+ },240000);
 });
