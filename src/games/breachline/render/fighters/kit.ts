@@ -118,7 +118,7 @@ function rimTh(az: number) {
 
 function helmet(b: Builder, l: Look, lod: number) {
   b.bone = B.head;
-  const seg = [22, 14, 8][lod], rows = [5, 3, 2][lod], outer: THREE.Vector3[][] = [];
+  const seg = [22, 14, 8][lod], rows = [4, 3, 2][lod], outer: THREE.Vector3[][] = [];
   for (let i = 0; i <= rows; i++) {
     const t = 0.06 + 0.94 * Math.pow(i / rows, 0.85), row: THREE.Vector3[] = [];
     for (let j = 0; j < seg; j++) { const az = (j / seg) * Math.PI * 2; row.push(shell(az, rimTh(az) * t)); }
@@ -207,7 +207,7 @@ function scarf(b: Builder, l: Look, lod: number) {
 // ---- Plate carrier -----------------------------------------------------------------------------------------------
 
 /** Torso rows, as in body.ts, for kit that wraps it: y, half-width, front, back. */
-const T = [[0.94, 0.172, 0.1, 0.118], [1.0, 0.163, 0.1, 0.105], [1.06, 0.152, 0.098, 0.094], [1.12, 0.156, 0.104, 0.096], [1.19, 0.166, 0.115, 0.102], [1.26, 0.176, 0.124, 0.108]] as const;
+const T = [[0.94, 0.172, 0.1, 0.118], [1.0, 0.163, 0.1, 0.105], [1.06, 0.152, 0.098, 0.094], [1.12, 0.157, 0.105, 0.096], [1.19, 0.173, 0.119, 0.104], [1.26, 0.19, 0.134, 0.112]] as const;
 
 function band(y0: number, y1: number, out: number, seg: number, weight: (p: THREE.Vector3) => [number, number][]) {
   const rings: Ring[] = [];
@@ -222,11 +222,11 @@ function carrier(b: Builder, l: Look, lod: number) {
   b.addTagged(band(1.075, 1.215, 0.016, seg, p => chain([[B.spine1, 1.09], [B.spine2, 1.2]], p.y)), [l.kit]);
   b.bone = B.spine2;
   // Plate bags: front tilted with the chest, back flatter; edges bound with tape.
-  const front = b.add(cbox([0.27, 0.315, 0.05], 0.012, lod), l.kit); front.rotateX(0.06); front.translate(0, 1.245, -0.152);
-  const back = b.add(cbox([0.275, 0.34, 0.045], 0.012, lod), l.kit); back.rotateX(-0.08); back.translate(0, 1.255, 0.14);
+  const front = b.add(cbox([0.29, 0.32, 0.062], 0.012, lod), l.kit); front.rotateX(0.06); front.translate(0, 1.245, -0.168);
+  const back = b.add(cbox([0.295, 0.345, 0.055], 0.012, lod), l.kit); back.rotateX(-0.08); back.translate(0, 1.255, 0.15);
   // Padded shoulder straps over the trapezius, front plate to back plate.
   for (const g of [-1, 1]) {
-    const pts = [V(g * 0.085, 1.39, -0.165), V(g * 0.1, 1.45, -0.09), V(g * 0.108, 1.475, 0.0), V(g * 0.098, 1.445, 0.085), V(g * 0.085, 1.41, 0.15)];
+    const pts = [V(g * 0.09, 1.395, -0.18), V(g * 0.108, 1.455, -0.095), V(g * 0.118, 1.482, 0.0), V(g * 0.106, 1.45, 0.09), V(g * 0.09, 1.415, 0.165)];
     const curve = new THREE.CatmullRomCurve3(pts), n = [6, 4, 2][lod], rings: Ring[] = [];
     for (let k = 0; k <= n; k++) {
       const t = k / n, c = curve.getPoint(t), d = curve.getTangent(t);
@@ -239,26 +239,26 @@ function carrier(b: Builder, l: Look, lod: number) {
   // PALS rows: 25 mm webbing stitched every 38 mm, across the upper front and the back.
   if (lod < 2) {
     const rowPts = (z: number, y: number, tilt: number, cols: number) => { for (let c = 0; c < cols; c++) { const x = (c - (cols - 1) / 2) * 0.038; const g = b.add(cbox([0.034, 0.024, 0.004], 0, 2), l.web); g.rotateX(tilt); g.translate(x, y, z); } };
-    for (const y of [1.355]) rowPts(-0.18 + (y - 1.245) * 0.06, y, 0.06, 6);
-    for (const y of [1.36, 1.33]) rowPts(0.164 - (y - 1.255) * 0.08, y, -0.08, 6);
+    for (const y of [1.355]) rowPts(-0.201 + (y - 1.245) * 0.06, y, 0.06, 6);
+    for (const y of [1.36, 1.33]) rowPts(0.18 - (y - 1.255) * 0.08, y, -0.08, 6);
   }
   // Admin pouch high on the front, with a hook-and-loop name strip.
-  orient(b.add(cbox([0.15, 0.095, 0.03], 0.008, lod), l.kit), V(0, 1.305, -0.19), V(0, 0.06, -1), V(0, 1, 0));
+  orient(b.add(cbox([0.15, 0.095, 0.03], 0.008, lod), l.web), V(0, 1.305, -0.212), V(0, 0.06, -1), V(0, 1, 0));
   // Three magazine pouches with the magazines' base plates and bungee loops showing.
   for (let k = -1; k <= 1; k++) {
     const x = k * 0.083;
-    orient(b.add(cbox([0.078, 0.12, 0.045], 0.008, lod), l.kit), V(x, 1.16, -0.2), V(0, 0.04, -1), V(0, 1, 0));
-    orient(b.add(cbox([0.062, 0.05, 0.026], 0.004, lod), l.poly), V(x, 1.235, -0.197), V(0, 0.04, -1), V(0, 1, 0.05));
-    if (lod === 0) b.tube([[x - 0.03, 1.212, -0.224], [x, 1.262, -0.212], [x + 0.03, 1.212, -0.224]], 0.0028, surf(l.poly, { color: 0x111111 }), 4, 3);
+    orient(b.add(cbox([0.08, 0.12, 0.05], 0.008, lod), l.web), V(x, 1.16, -0.222), V(0, 0.04, -1), V(0, 1, 0));
+    orient(b.add(cbox([0.062, 0.05, 0.026], 0.004, lod), l.poly), V(x, 1.235, -0.219), V(0, 0.04, -1), V(0, 1, 0.05));
+    if (lod === 0) b.tube([[x - 0.03, 1.212, -0.249], [x, 1.262, -0.236], [x + 0.03, 1.212, -0.249]], 0.0028, surf(l.poly, { color: 0x111111 }), 4, 3);
   }
   // Radio pouch on the back left, radio with a bent whip antenna; drag handle at the top of the back.
-  orient(b.add(cbox([0.075, 0.16, 0.05], 0.008, lod), l.kit), V(-0.085, 1.21, 0.192), V(0, 0, 1), V(0, 1, 0));
-  orient(b.add(cbox([0.06, 0.04, 0.035], 0.004, lod), l.poly), V(-0.085, 1.3, 0.19), V(0, 0, 1), V(0, 1, 0));
+  orient(b.add(cbox([0.075, 0.16, 0.05], 0.008, lod), l.web), V(-0.085, 1.21, 0.205), V(0, 0, 1), V(0, 1, 0));
+  orient(b.add(cbox([0.06, 0.04, 0.035], 0.004, lod), l.poly), V(-0.085, 1.3, 0.203), V(0, 0, 1), V(0, 1, 0));
   if (lod < 2) b.cyl(0.006, 0.03, 'y', [-0.098, 1.33, 0.19], l.poly, 6);
   b.tube([[-0.098, 1.34, 0.19], [-0.103, 1.48, 0.205], [-0.112, 1.6, 0.235], [-0.125, 1.68, 0.29]], 0.0028, l.poly, [8, 5, 3][lod], 3);
   if (lod < 2) b.tube([[-0.05, 1.37, 0.165], [-0.04, 1.405, 0.18], [0.04, 1.405, 0.18], [0.05, 1.37, 0.165]], 0.008, l.web, 6, 4);
   // A hydration bladder flat on the back.
-  orient(b.add(cbox([0.17, 0.2, 0.025], 0.01, lod), l.kit), V(0.04, 1.2, 0.18), V(0, -0.05, 1), V(0, 1, 0));
+  orient(b.add(cbox([0.17, 0.2, 0.025], 0.01, lod), l.kit), V(0.04, 1.2, 0.192), V(0, -0.05, 1), V(0, 1, 0));
   // Grenade pouch on the right side of the cummerbund.
   b.bone = B.spine1;
   b.cyl(0.032, 0.085, 'y', [0.178, 1.13, -0.02], l.kit, [8, 6, 4][lod]);
@@ -284,7 +284,7 @@ function belt(b: Builder, l: Look, lod: number) {
 }
 
 /** Leg rows: y, inner, outer, front, back (as body.ts). */
-const L = [[0.1, 0.046, 0.046, 0.046, 0.05], [0.17, 0.05, 0.05, 0.048, 0.054], [0.24, 0.054, 0.054, 0.05, 0.062], [0.31, 0.058, 0.058, 0.054, 0.07], [0.38, 0.06, 0.06, 0.056, 0.073], [0.44, 0.057, 0.059, 0.06, 0.064], [0.5, 0.058, 0.061, 0.068, 0.058], [0.56, 0.06, 0.066, 0.068, 0.064], [0.64, 0.066, 0.074, 0.076, 0.072], [0.74, 0.073, 0.083, 0.083, 0.083], [0.84, 0.078, 0.091, 0.088, 0.098]] as const;
+const L = [[0.1, 0.04968, 0.04968, 0.04968, 0.054], [0.17, 0.054, 0.054, 0.05184, 0.05832], [0.24, 0.06372, 0.06372, 0.059, 0.07316], [0.31, 0.06264, 0.06264, 0.05832, 0.0756], [0.38, 0.0648, 0.0648, 0.06048, 0.07884], [0.44, 0.06156, 0.06372, 0.0648, 0.06912], [0.5, 0.06264, 0.06588, 0.07344, 0.06264], [0.56, 0.0648, 0.07128, 0.07344, 0.06912], [0.64, 0.07128, 0.07992, 0.08208, 0.07776], [0.74, 0.07884, 0.08964, 0.08964, 0.08964], [0.84, 0.08424, 0.09828, 0.09504, 0.1058]] as const;
 function legAxis(s: number, y: number) {
   const S = SIDE[s], hip = JOINT[S.thigh], knee = JOINT[S.shin], ankle = JOINT[S.foot];
   return y > knee.y ? hip.clone().lerp(knee, (hip.y - y) / (hip.y - knee.y)) : knee.clone().lerp(ankle, (knee.y - y) / (knee.y - ankle.y));
@@ -298,7 +298,7 @@ function legRing(y: number, out: number, h: number, lod: number, weight: (p: THR
     return { ...F, at: section((os ? outer : inner) + o, (os ? inner : outer) + o, front + o, back + o, 2.2) };
   };
   rings.push(at(y + h / 2 - 0.002, out - 0.006), at(y + h / 2, out), at(y - h / 2, out), at(y - h / 2 + 0.002, out - 0.006));
-  return loft(rings, { seg: [12, 9, 6][lod], weight });
+  return loft(rings, { seg: [10, 8, 6][lod], weight });
 }
 
 // ---- Arms: shoulder pockets with the squad patch, elbow pads -------------------------------------------------------
@@ -314,8 +314,18 @@ function sleeves(b: Builder, l: Look, lod: number) {
       // Elbow pad on the elbow helper, so it follows the joint.
       b.bone = S.elbow;
       const back = V(0, 0, 1).addScaledVector(d, -d.z).normalize(), ep = JOINT[S.fore].clone().addScaledVector(back, 0.04);
-      b.sphere(0.036, [ep.x, ep.y, ep.z], surf(l.kit, { color: 0x2a2b2c }), 7, [0.9, 1, 0.32]);
+      b.sphere(0.036, [ep.x, ep.y, ep.z], surf(l.kit, { color: 0x2a2b2c }), 6, [0.9, 1, 0.32]);
     }
+  }
+}
+
+/** Cargo pockets on the outside of each thigh, with a flap. */
+function cargo(b: Builder, l: Look, lod: number) {
+  for (const s of [0, 1]) {
+    const S = SIDE[s], g = sgn(s), c = legAxis(s, 0.7), [, outer] = table(L, 0.7);
+    b.bone = S.thigh;
+    orient(b.add(cbox([0.11, 0.13, 0.03], 0.008, lod), l.pants), c.clone().add(V(g * (outer - 0.004), 0, 0.005)), V(g, 0, 0.12), V(0, 1, 0));
+    if (lod < 2) orient(b.add(cbox([0.115, 0.04, 0.012], 0.004, 1), l.pants), c.clone().add(V(g * (outer + 0.012), 0.058, 0.005)), V(g, 0.1, 0.12), V(0, 1, 0));
   }
 }
 
@@ -333,7 +343,7 @@ function knees(b: Builder, l: Look, lod: number) {
 }
 
 /** Boot foot rows: z, half-width, bottom y, top y. */
-const FOOT = [[0.088, 0.03, 0.02, 0.07], [0.075, 0.043, 0.014, 0.11], [0.04, 0.05, 0.012, 0.135], [0.0, 0.051, 0.012, 0.13], [-0.045, 0.053, 0.012, 0.1], [-0.095, 0.054, 0.012, 0.075], [-0.14, 0.05, 0.013, 0.06], [-0.175, 0.042, 0.015, 0.05], [-0.195, 0.026, 0.02, 0.04]] as const;
+const FOOT = [[0.088, 0.0336, 0.02, 0.078], [0.075, 0.04816, 0.014, 0.118], [0.04, 0.056, 0.012, 0.143], [0, 0.05712, 0.012, 0.138], [-0.045, 0.05936, 0.012, 0.108], [-0.095, 0.06048, 0.012, 0.083], [-0.14, 0.056, 0.013, 0.068], [-0.175, 0.04704, 0.015, 0.058], [-0.195, 0.02912, 0.02, 0.048]] as const;
 
 function boots(b: Builder, l: Look, lod: number) {
   const toeCap = surf(l.boot, { color: 0x1a1a1a, rough: 0.6 });
@@ -381,6 +391,7 @@ export function buildKit(b: Builder, l: Look, lod: number) {
   b.tag = 'carrier'; carrier(b, l, lod);
   b.tag = 'belt'; belt(b, l, lod);
   b.tag = 'sleeves'; sleeves(b, l, lod);
+  b.tag = 'cargo'; cargo(b, l, lod);
   b.tag = 'knees'; knees(b, l, lod);
   b.tag = 'boots'; boots(b, l, lod);
   void ss;

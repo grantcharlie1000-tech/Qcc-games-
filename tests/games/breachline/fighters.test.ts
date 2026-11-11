@@ -59,11 +59,17 @@ describe('fighters fill the simulation\'s hit volumes', () => {
 });
 
 describe('fighter animation', () => {
-  test('the bore follows the view direction at the ready, aimed and walking', () => {
-    for (const p of [{ pitch: 0.5 }, { pitch: -0.6, ads: true }, { pitch: 0.2, crouch: 1 }]) {
+  test('the bore follows the view direction when aiming or just fired, and drops to a low ready otherwise', () => {
+    for (const p of [{ pitch: 0.5, ads: true }, { pitch: -0.6, ads: true }, { pitch: 0.2, crouch: 1, ads: true }]) {
       const a = rig(); run(a, p, 0.6, (t, i) => { i.z = -2.6 * t; i.pace = 0.75; });
       expect(a.diag().aimErr).toBeLessThan(0.02);
     }
+    // Hip fire: on the line while shooting, low again a moment after.
+    const a = rig(); run(a, { pitch: 0.1 }, 1.0, t => { if (Math.floor(t / 0.1) !== Math.floor((t - 1 / 60) / 0.1)) a.fire(); });
+    expect(a.diag().aimErr).toBeLessThan(0.08);
+    const b = rig(); run(b, { pitch: 0.1 }, 2.0);
+    expect(b.diag().aimErr).toBeGreaterThan(0.35);
+    expect(b.diag().aimErr).toBeLessThan(0.8);
   });
 
   test('a planted foot does not slide while walking, strafing or crouch-walking', () => {

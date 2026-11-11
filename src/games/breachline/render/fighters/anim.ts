@@ -153,7 +153,9 @@ export class Animator {
   }
 
   /** A shot by this fighter. */
-  fire() { const k = this.w.pistol ? 1.3 : 1; this.recoil[0].v += 1.6 * k; this.recoil[1].v += 2.6 * k; }
+  /** Seconds since this fighter last fired, and how far it is in the low ready (0 on the aim line, 1 low). */
+  private sinceFire = 99; private ready = 1;
+  fire() { this.sinceFire = 0; const k = this.w.pistol ? 1.3 : 1; this.recoil[0].v += 1.6 * k; this.recoil[1].v += 2.6 * k; }
 
   /** World position of the foot's rest spot under the hip. */
   private restFoot(s: number, crouch: number, out: THREE.Vector3) {
@@ -188,6 +190,10 @@ export class Animator {
     if (p.hp < this.lastHp - 0.5) { const h = this.time * 7.3; this.flinch[0].v += 14; this.flinch[1].v += Math.sin(h) > 0 ? 10 : -10; }
     this.lastHp = p.hp;
     this.crouchS = p.crouch;
+    this.sinceFire += dt;
+    // Low ready unless aiming, reloading, using an object or just fired.
+    const wantLow = !p.ads && this.sinceFire > 1.2 && p.reload <= 0.001 && !p.sprint ? 1 : 0;
+    this.ready += (wantLow - this.ready) * Math.min(1, dt * (wantLow ? 4 : 14));
     this.recoil[0].step(dt); this.recoil[1].step(dt); this.flinch[0].step(dt); this.flinch[1].step(dt);
     this.gait(p, dt);
     this.upper(p);
@@ -269,7 +275,7 @@ export class Animator {
     lq[B.spine2].setFromEuler(e.set(-fold * 0.3 + chestPitch * 0.65 + fl[0].x * 0.25 - this.recoil[1].x * 0.25, -(this.hipYaw + legTurn) * 0.5 + blade * 0.35, roll * 0.4 + fl[1].x * 0.2, 'YXZ'));
     const neckPitch = clamp(aim - chestPitch, -0.9, 0.9) * 0.45 + fold * 0.45;
     lq[B.neck].setFromEuler(e.set(neckPitch - fl[0].x * 0.3, -blade * 0.45, -roll * 0.3, 'YXZ'));
-    lq[B.head].setFromEuler(e.set(clamp(aim - chestPitch, -0.9, 0.9) * 0.55 + fold * 0.35 - fl[0].x * 0.4, -blade * 0.55, -roll * 0.25 + fl[1].x * 0.3, 'YXZ'));
+    lq[B.head].setFromEuler(e.set(clamp(aim - chestPitch, -0.9, 0.9) * 0.55 + fold * 0.35 - fl[0].x * 0.4 - ads * 0.14, -blade * 0.55, -roll * 0.25 + fl[1].x * 0.3 - ads * 0.14, 'YXZ'));
     // Clavicles shrug forward when the arms are up.
     for (const s of [0, 1]) lq[SIDE[s].clav].setFromEuler(e.set(fl[0].x * 0.15, sgn(s) * (0.18 + ads * 0.06), sgn(s) * (-0.04 - Math.abs(fl[0].x) * 0.2), 'YXZ'));
     // Pelvis position: rest height, crouch drop and hips back, bob and sway; then corrected so the head is exact.
@@ -325,7 +331,7 @@ export class Animator {
     }
     for (const s of [0, 1]) {
       const S = SIDE[s], h = hands[s];
-      const pole = new THREE.Vector3(sgn(s) * (s ? 0.75 : 0.5), -1, s ? 0.35 : 0.1);
+      const pole = new THREE.Vector3(sgn(s) * (s ? 0.35 : 0.5), -1, s ? 0.2 : 0.1);
       const hq = h.q.clone().multiply(HAND_BIND_INV[s]);
       dg.armReach[s] = this.limb(S.upper, S.fore, S.hand, UPPER_LEN, FORE_LEN, h.p, pole.applyQuaternion(this.wq[B.spine2]).add(this.wp[S.upper]).sub(this.wp[S.upper]), ARM_BIND[s], hq);
     }
@@ -426,6 +432,13 @@ export class Animator {
     if (w.pistol) hipPos.copy(chest).add(new THREE.Vector3(0.04, 0.12, -0.36).applyQuaternion(cq));
     const pos = hipPos.lerp(adsPos, ads * (w.pistol ? 0.85 : 0.9));
     let q = qAim.clone();
+    // Low ready: pivot about the butt in the shoulder (pistol: about the grip), muzzle down and a little inward.
+    if (this.ready > 0.001 && !ads) {
+      const r = this.ready, ql = qAim.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.55 * r, 0.14 * r, -0.08 * r, 'YXZ')));
+      const pivot = w.pistol ? pos.clone() : pocket.clone();
+      pos.copy(w.pistol ? pivot.add(new THREE.Vector3(0, -0.12 * r, 0.06 * r).applyQuaternion(cq)) : pivot.sub(w.butt.clone().applyQuaternion(ql)));
+      q = ql;
+    }
     // Sprint: muzzle down and across the body, held at the chest.
     if (sprint > 0) {
       const sq = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.75, 0.55, 0.5, 'YXZ'));

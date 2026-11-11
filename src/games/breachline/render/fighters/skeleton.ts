@@ -43,8 +43,8 @@ export const JOINT: THREE.Vector3[] = (() => {
   j[B.head] = V(0, 1.565, -0.005);
   for (const s of [0, 1]) {
     const S = SIDE[s], g = sgn(s), d = armDir(s);
-    j[S.clav] = V(g * 0.025, 1.41, -0.005);
-    j[S.upper] = V(g * 0.185, 1.415, 0.0);
+    j[S.clav] = V(g * 0.03, 1.41, -0.005);
+    j[S.upper] = V(g * 0.2, 1.415, 0.0);
     j[S.fore] = j[S.upper].clone().addScaledVector(d, UPPER_LEN);
     j[S.hand] = j[S.fore].clone().addScaledVector(d, FORE_LEN);
     j[S.thigh] = V(g * 0.092, 0.915, 0.0);

@@ -25,10 +25,10 @@ const hex = (s: string) => Number(`0x${s.slice(1)}`);
 export const LOOKS: readonly [Look, Look] = [
   {
     squad: 0, band: hex(SQUADS[0].color), mask: 'balaclava', eyes: 'goggles',
-    shirt: uni(0x666d76), pants: uni(0x555b63), skin: surf(SURF.skin, { color: 0xb0866a }), face: fab(0x242628, 0.97),
+    shirt: uni(0x666d76), pants: uni(0x555b63), skin: surf(SURF.skin, { color: 0xb0866a }), face: fab(0x45474a, 0.97),
     hair: fab(0x2a2420), lip: surf(SURF.skin, { color: 0x9a6a58 }),
     glove: surf(SURF.glove, { color: 0x262728 }), palm: surf(SURF.gloveTan, { color: 0x45423d }), knuckle: surf(SURF.knuckle, { color: 0x1c1d1e }),
-    kit: fab(0x43484d, 0.9), web: surf(SURF.webbing, { color: 0x34383b }), helmet: surf(SURF.helmet, { color: 0x50565c, rough: 0.72 }),
+    kit: fab(0x2c2f32, 0.9), web: surf(SURF.webbing, { color: 0x232527 }), helmet: surf(SURF.helmet, { color: 0x3e4347, rough: 0.7 }),
     poly: surf(SURF.poly, { color: 0x1f2022 }), rubber: surf(SURF.rubber, {}), metal: surf(SURF.park, { color: 0x2d2e30 }),
     boot: surf(SURF.boot, { color: 0x1f1e1d }), lens: surf(SURF.lens, { color: 0x10171c }), scarf: fab(0x242628),
   },
@@ -36,10 +36,10 @@ export const LOOKS: readonly [Look, Look] = [
     squad: 1, band: hex(SQUADS[1].color), mask: 'scarf', eyes: 'glasses',
     shirt: uni(0x93826a), pants: uni(0x7c6d56), skin: surf(SURF.skin, { color: 0x8f6650 }), face: fab(0x8c7c60, 0.97),
     hair: fab(0x1e1915), lip: surf(SURF.skin, { color: 0x7a4f42 }),
-    glove: surf(SURF.glove, { color: 0x4a4234 }), palm: surf(SURF.gloveTan, { color: 0x6e6150 }), knuckle: surf(SURF.knuckle, { color: 0x2c2a26 }),
-    kit: fab(0x6f6650, 0.9), web: surf(SURF.webbing, { color: 0x5a5240 }), helmet: surf(SURF.helmet, { color: 0x7d7158, rough: 0.74 }),
+    glove: surf(SURF.glove, { color: 0x3a3429 }), palm: surf(SURF.gloveTan, { color: 0x6e6150 }), knuckle: surf(SURF.knuckle, { color: 0x2c2a26 }),
+    kit: fab(0x4c513d, 0.9), web: surf(SURF.webbing, { color: 0x3d4131 }), helmet: surf(SURF.helmet, { color: 0x5d5646, rough: 0.74 }),
     poly: surf(SURF.poly, { color: 0x2a2825 }), rubber: surf(SURF.rubber, {}), metal: surf(SURF.park, { color: 0x2d2e30 }),
-    boot: surf(SURF.boot, { color: 0x5a4a37 }), lens: surf(SURF.lensAmber, { color: 0x2a1f10 }), scarf: fab(0x9a8a6a),
+    boot: surf(SURF.boot, { color: 0x4a3c2c }), lens: surf(SURF.lensAmber, { color: 0x2a1f10 }), scarf: fab(0x9a8a6a),
   },
 ];
 
