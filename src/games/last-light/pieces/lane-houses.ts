@@ -171,17 +171,17 @@ const pawn:Building={paint(c,p){
 // ── The schoolhouse ─────────────────────────────────────────────────────────
 const school:Building={paint(c,p){
  const po=part(p,'porch'),r=part(p,'roof'),s=6800,x0=r.x,w=r.w,h=p.h,top=r.y,eave=top+46,floor=top+190,ring=[PALE[0],'#6f787e',PALE[2]] as const,frame='#59636b';
- // Welsh slate between two coped gables; the ridge is the roof line.
+ // The walk is a gutter. The wall runs up to it. A hole here was filled by copying the window heads, which read as a second row of arches.
  slope(c,x0,top,w,46,SLATE_PURPLE,s,6,10,PALE);
+ wallAt(c,RED,s+1,x0,top+4,w,floor-(top+4));wallAt(c,RED,s+2,x0,floor,w,h-floor-10);wallAt(c,GREY,s+3,x0,h-10,w,10);box(c,PALE[1],x0,h-11,w,1);
  for(const px of [x0,x0+w-7]){box(c,PALE[2],px,top,7,eave-top);box(c,PALE[0],px,top,6,eave-top);box(c,PALE[1],px,top,6,2);box(c,PALE[1],px,top,1,eave-top);for(let y=top+13;y<eave-4;y+=13)box(c,PALE[2],px,y,6,1);}
  for(const px of [x0-3,x0+w-7]){box(c,INK,px,eave-7,10,10);box(c,PALE[0],px,eave-7,10,9);box(c,PALE[1],px,eave-7,10,1);}
- wallAt(c,RED,s+1,x0,eave,w,floor-eave);wallAt(c,RED,s+2,x0,floor,w,h-floor-10);wallAt(c,GREY,s+3,x0,h-10,w,10);box(c,PALE[1],x0,h-11,w,1);
  band(c,x0,floor-4,w,PALE,4);
  // The schoolroom: three tall pointed lights between buttresses, each glazed as it was last mended.
  const looks=[['lead',2,6],['blind',2,5],['dark',3,6]] as const;
  for(let i=0;i<3;i++){const x=x0+24+i*72,y=eave+18,[look,cols,rows]=looks[i];archRing(c,x,y,28,'point',18,5,ring[0],ring[1],ring[2],s+i);win(c,x,y,28,104,{look,cols,rows,frame,arch:'point',rise:18,s:s+i*7});sill(c,x,y+104,28,PALE,3,4);}
  for(const bx of [x0+62,x0+134]){
-  wallAt(c,RED,s+bx,bx,eave+10,10,floor-eave-10);wallAt(c,RED,s+bx+1,bx-2,floor,14,h-floor);shade(c,bx+1,eave+10,8,floor-eave-10,.07,'#fff');shade(c,bx+10,eave+10,4,floor-eave-10,.4);shade(c,bx-1,floor,12,h-floor,.07,'#fff');shade(c,bx+12,floor,4,h-floor,.4);box(c,RED.lip,bx,eave+10,1,floor-eave-10);box(c,INK,bx+9,eave+10,1,floor-eave-10);box(c,RED.lip,bx-2,floor,1,h-floor);box(c,INK,bx+11,floor,1,h-floor);
+  wallAt(c,RED,s+bx,bx,eave+10,10,floor-eave-10);wallAt(c,RED,s+bx+1,bx-2,floor,14,h-floor);box(c,RED.shade,bx+7,eave+10,2,floor-eave-10);box(c,RED.shade,bx+9,floor,2,h-floor);box(c,RED.lip,bx,eave+10,1,floor-eave-10);box(c,INK,bx+9,eave+10,1,floor-eave-10);box(c,RED.lip,bx-2,floor,1,h-floor);box(c,INK,bx+11,floor,1,h-floor);
   for(const [y,over] of [[eave+4,0],[floor-6,2]] as const){box(c,PALE[0],bx-over,y,10+over*2,6);box(c,PALE[1],bx-over,y,10+over*2,1);box(c,PALE[2],bx-over,y+6,10+over*2,1);}
  }
  // Below: the infants' room and the cloakroom, each a mullioned window, and the tablet the school was given with.

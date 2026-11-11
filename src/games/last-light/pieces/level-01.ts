@@ -18,7 +18,7 @@ function built(name:string,paint:Paint):Piece{
  return (c,x,y,w,h)=>{
   x=Math.round(x);y=Math.round(y);w=Math.round(w);h=Math.round(h);if(w<1||h<1)return;
   const id=(x*4096+w)*2048+h;let art=made.get(id);
-  if(!art){art=sprite(`l1/v3/${name}/${x}/${w}/${h}`,w+PAD*2,h+TOP,k=>{k.translate(PAD,TOP);paint(k,w,h,x);closeEaves(k.canvas,TOP,PAD,[{x:0,y:0,w}]);});made.set(id,art);}
+  if(!art){art=sprite(`l1/v4/${name}/${x}/${w}/${h}`,w+PAD*2,h+TOP,k=>{k.translate(PAD,TOP);paint(k,w,h,x);closeEaves(k.canvas,TOP,PAD,[{x:0,y:0,w}]);});made.set(id,art);}
   c.drawImage(art,x-PAD,y-TOP);
  };
 }
@@ -187,7 +187,13 @@ export function shape(c:C,x:number,y:number,w:number,h:number,arch?:Arch,rise=4)
  for(let dy=0;dy<h;dy++){const k=inset(w,dy,arch,rise);if(w-2*k>0)c.rect(x+k,y+dy,w-2*k,1);}
 }
 export type Look='dark'|'lit'|'dim'|'drawn'|'blind'|'shut'|'board'|'broken'|'fog'|'foglit'|'lead'|'leadlit';
-export function lattice(c:C,x:number,y:number,w:number,h:number,col:string){for(let k=-h;k<w;k+=4)for(let i=0;i<h;i++){const a=x+k+i,b=x+w-1-k-i;if(a>=x&&a<x+w)box(c,col,a,y+i,1,1);if(b>=x&&b<x+w)box(c,col,b,y+i,1,1);}}
+/** Diamond cames. A step of 4 crossed a whole lancet and read as a checker. */
+export function lattice(c:C,x:number,y:number,w:number,h:number,col:string){
+ const step=Math.max(11,Math.round(Math.min(w,h)/2));
+ if(w<14||h<14){box(c,col,x+(w>>1),y,1,h);box(c,col,x,y+(h>>1),w,1);return;}
+ for(let k=-h;k<w;k+=step)for(let i=0;i<h;i++){const a=x+k+i;if(a>=x&&a<x+w)box(c,col,a,y+i,1,1);}
+ for(let k=step>>1;k<w+h;k+=step)for(let i=0;i<h;i++){const b=x+k-i;if(b>=x&&b<x+w)box(c,col,b,y+i,1,1);}
+}
 export function glass(c:C,x:number,y:number,w:number,h:number,look:Look,s:number,tint='#2a3038'){
  const v=hash(s,2,5);
  if(look==='lit'||look==='leadlit'){
@@ -203,11 +209,15 @@ export function glass(c:C,x:number,y:number,w:number,h:number,look:Look,s:number
   return;
  }
  box(c,'#111a24',x,y,w,h);
- if(look==='dark'||look==='broken'||look==='lead'){
+ if(look==='lead'){
+  box(c,'#1c2c3e',x+2,y+2,Math.max(2,Math.floor(w*.28)),Math.max(3,Math.floor(h*.14)));
+  lattice(c,x,y,w,h,'#0c1219');
+  return;
+ }
+ if(look==='dark'||look==='broken'){
   if(v<.4)box(c,'#1c2c3e',x+1,y+1,Math.ceil(w*.4),Math.ceil(h*.3));
   else if(v<.75){box(c,'#1c2c3e',x+w-1-Math.ceil(w*.35),y+Math.floor(h*.5),Math.ceil(w*.35),Math.ceil(h*.3));box(c,'#24384d',x+1,y+2,2,Math.ceil(h*.2));}
   else box(c,'#172330',x+1,y+1,w-2,Math.ceil(h*.45));
-  if(look==='lead')lattice(c,x,y,w,h,'#0c1219');
   if(look==='broken'){box(c,'#05080c',x+Math.floor(w*.3),y+Math.floor(h*.45),Math.ceil(w*.5),Math.ceil(h*.3));box(c,'#05080c',x+Math.floor(w*.45),y+Math.floor(h*.3),Math.ceil(w*.25),Math.ceil(h*.2));box(c,'#3a4c66',x+Math.floor(w*.3)-1,y+Math.floor(h*.45)+1,1,2);box(c,'#3a4c66',x+Math.floor(w*.8),y+Math.floor(h*.72),1,1);}
   return;
  }
