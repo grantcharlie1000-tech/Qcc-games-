@@ -9,8 +9,8 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** destruction round 1 done (`destruction/round-1/`) and the online test green again;
-next phase 5 debris, dust and decals, then the Server Room.
+**Where I am (keep current):** online-test stall investigation done (below); next corridor round 3 from the
+review, then Archive round 2, then phase 5 debris, dust and decals.
 
 ## Phase 5: destruction look, round 1 (`destruction/round-1/`)
 
@@ -27,6 +27,23 @@ holes; (5) the far skin's studs read weakly through a hole (little light reaches
 smoke hides the hole for several seconds (existing effect; fine for play, but the look can't be judged there).
 
 J score (mine): 3 -> 5. Budgets in the breach views: High 63k-73k triangles, 107-136 draw calls; Low 67k-75k, 99-108.
+
+### Start-up stalls, measured in the two-page online test (planner's request, 08:28)
+
+Long-task observer on both pages, the real online spec, this container (SwiftShader, two browsers on one CPU):
+- **Before** (art High, everything in one frame): the guest's single art-integration frame took 1.6-3.9 s, and the
+  guest's wall holes dropped from 11 to 0 straight after it (netcode resync after a long stall; reported).
+- **After** (bc35092): the art is fully loaded and integrated about 6 s *before* the match starts (guest log: warm
+  3.1 s spread over 5 draw batches and 25 one-per-task texture uploads; integrate 67 ms; the largest art task is
+  under 1 s, the same as an ordinary software-rendered frame here). On High in one page the largest art step is a
+  0.5-1.2 s frame, against 0.95 s for an ordinary frame with art off.
+- **Remaining stalls are not loading.** The guest still has tasks of 1.5-6.9 s, all after the round starts. Timed
+  inside the frame loop: script work accounts for at most 2 s of them (first draw of the weapon viewmodel 1.1-2.0 s,
+  fighters' first updates 0.3-1.1 s, the main scene's first draw 0.3-1.4 s, each once); the rest is time the main
+  thread waits on the software GPU process (synchronous GL queries stalling behind queued rasterisation). On a
+  real GPU these are tens of milliseconds. Not a host/guest divergence: counts and health converge.
+- Result: six Breachline browser tests then the online test, one worker, **passed three times running** (8/8 each).
+  The poll timeout was not raised.
 
 ### Art streaming no longer stalls a match (online test)
 

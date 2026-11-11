@@ -283,6 +283,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     ear, stats,
     handle(events, m, self) {
       viewmodel.handle(events, m, self);
+      fighters.handle?.(events, m, self);
       for (const e of events) {
         switch (e.e) {
           case 'shot': {
