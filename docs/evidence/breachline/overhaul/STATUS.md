@@ -4,6 +4,11 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: map fill C, Lobby, Office, Archive lane.** `mapfill/rooms/lobby-office-archive.png` (greybox cover in
+its procedural look plus the new dressing): Lobby rug, two plants in the solid corners, a leaflet rack on the west
+wall; Office rug, coat stand and coats on hooks; Archive boxes stacked on the floor by the runs, a cable tray over the
+lane, a rolling step. The greybox desks and tables pick up the rooms' surface clutter already. Next: the yards.
+
 **2026-11-11: map fill C, corridor, and dressing on destructible walls.** `mapfill/corridor/c1.png` (corridor before
 and after: pipe run on hangers, hanging double-sided room signs at every doorway, trunking and emergency lights on
 the solid headers above the panels, bins at posts, a clock) and `c2-panel-decor.png`. Because nothing may hang on a

@@ -145,6 +145,17 @@ function dressArchive(atlas: Atlas, room: Region): DetailBuilder {
   D.box('plastic', 6.3, 2.42, z - 0.04, 6.66, 2.78, z, at(6.48, 2.6), n);
   { const g = new THREE.PlaneGeometry(0.32, 0.32).rotateY(Math.PI).translate(6.48, 2.6, z - 0.041); D.mesh('clock', g.attributes.position.array, g.attributes.normal.array, g.index!.array, at(6.48, 2.6), n, [1, 1, 1], g.attributes.uv.array); g.dispose(); }
   for (const x of [1.2, 6.9]) D.box('socket', x - 0.073, 0.27, z - 0.01, x + 0.073, 0.356, z, at(x, 0.31), n);
+  // Boxes stacked on the floor beside the runs, a cable tray overhead along the lane, a rolling step.
+  { const r = seeded(83);
+    for (const [x, z, n2] of [[0.55, 8.6, 3], [6.55, 7.4, 2], [0.55, 4.6, 2]] as const) for (let k = 0; k < n2; k++)
+      D.boxes.push({ x: x + (r() - 0.5) * 0.06, y: k * 0.26, z, yaw: (r() - 0.5) * 0.3, tilt: 0, w: 0.32, h: 0.26, depth: 0.4, tint: [0.95 - k * 0.04, 0.9, 0.82], label: Math.floor(r() * 4) });
+    const ty = 2.7, up2: V3 = [0, -1, 0];
+    D.box('conduit', 3.2, ty, 1.4, 3.5, ty + 0.01, 9.6, [3.35, WALL_H - 0.001, 5.5], up2);
+    for (const xx of [3.2, 3.49]) D.box('conduit', xx, ty, 1.4, xx + 0.01, ty + 0.06, 9.6, [3.35, WALL_H - 0.001, 5.5], up2);
+    for (let zz = 1.8; zz < 9.6; zz += 1.5) for (const xx of [3.19, 3.5]) D.box('conduit', xx, ty, zz, xx + 0.012, WALL_H, zz + 0.012, [3.35, WALL_H - 0.001, zz], up2);
+    const fl: V3 = [7.4, 0.001, 3.6], up3: V3 = [0, 1, 0];
+    for (const [yy, rr] of [[0.2, 0.2], [0.42, 0.17]] as const) { const g = new THREE.CylinderGeometry(rr, rr + 0.03, 0.03, 18).translate(7.4, yy, 3.6); D.mesh('steel', g.attributes.position.array, g.attributes.normal.array, g.index!.array, fl, up3, [0.6, 0.6, 0.62]); g.dispose(); }
+    const body = new THREE.CylinderGeometry(0.17, 0.24, 0.42, 18, 1, true).translate(7.4, 0.21, 3.6); D.mesh('steel', body.attributes.position.array, body.attributes.normal.array, body.index!.array, fl, up3, [0.5, 0.5, 0.52]); body.dispose(); }
   return D;
 }
 
@@ -663,6 +674,12 @@ function dressLobby(atlas: Atlas, room: Region): DetailBuilder {
     D.box('plastic', x, 2.52, 4.82, x + 0.04, 2.88, 5.18, at(5, 2.7), n);
     geo(new THREE.PlaneGeometry(0.32, 0.32).rotateY(Math.PI / 2).translate(x + 0.041, 2.7, 5), 'clock', at(5, 2.7), n);
   }
+  // A rug in front of the seating, plants in the solid corners, a leaflet rack on the west wall.
+  rug(D, -9.9, 2.3, -8.5, 4.3, [0.55, 0.6, 0.75], [0.3, 0.32, 0.42]);
+  plant(D, -13.4, 9.6, 1.0, 71); plant(D, -14.55, 1.5, 0.9, 73);
+  { const x = room.x0 + 0.15, n: V3 = [1, 0, 0], at = (zz: number, yy: number): V3 => [x + 0.001, yy, zz];
+    D.box('steel', x, 0.9, 7.9, x + 0.12, 1.5, 8.4, at(8.15, 1.2), n, [0.7, 0.7, 0.72]);
+    for (let k = 0; k < 3; k++) for (let c = 0; c < 2; c++) D.box('paper', x + 0.04, 0.95 + k * 0.18, 7.95 + c * 0.23, x + 0.11, 1.1 + k * 0.18, 8.15 + c * 0.23, at(8.15, 1.2), n, [[1.1, 0.6, 0.4], [0.5, 0.75, 1.1], [1.1, 1.05, 0.6]][(k + c) % 3] as V3); }
   return D;
 }
 
@@ -714,6 +731,16 @@ function dressOffice(atlas: Atlas, room: Region): DetailBuilder {
   for (let i = 0; i < 6; i++) { const x = -2.45 + r() * 1.2, y = 1.2 + r() * 0.65; D.box('kick', x, y, z - 0.0225, x + 0.1 + r() * 0.25, y + 0.008, z - 0.022, at(x, y), n, i < 2 ? [8, 1.5, 1.5] : [2, 2, 4]); }
   D.box('plastic', -6.3, 2.52, z - 0.04, -5.94, 2.88, z, at(-6.12, 2.7), n);
   { const g = new THREE.PlaneGeometry(0.32, 0.32).rotateY(Math.PI).translate(-6.12, 2.7, z - 0.041); D.mesh('clock', g.attributes.position.array, g.attributes.normal.array, g.index!.array, at(-6.12, 2.7), n, [1, 1, 1], g.attributes.uv.array); g.dispose(); }
+  // A rug in the open centre, a coat stand by the door and coats on hooks on the south wall.
+  rug(D, -4.4, 5.0, -2.9, 6.3, [0.55, 0.42, 0.35], [0.3, 0.24, 0.2]);
+  { const fl: V3 = [-6.3, 0.001, 9.4], up2: V3 = [0, 1, 0];
+    const g = new THREE.CylinderGeometry(0.015, 0.02, 1.75, 8).translate(-6.3, 0.875, 9.4); D.mesh('chrome', g.attributes.position.array, g.attributes.normal.array, g.index!.array, fl, up2, [0.4, 0.4, 0.4]); g.dispose();
+    const b = new THREE.CylinderGeometry(0.2, 0.22, 0.03, 16).translate(-6.3, 0.015, 9.4); D.mesh('chassis', b.attributes.position.array, b.attributes.normal.array, b.index!.array, fl, up2, [1.5, 1.5, 1.5]); b.dispose();
+    const coat = new THREE.CylinderGeometry(0.12, 0.2, 0.85, 10).translate(-6.24, 1.18, 9.4); D.mesh('card', coat.attributes.position.array, coat.attributes.normal.array, coat.index!.array, fl, up2, [0.3, 0.32, 0.38]); coat.dispose(); }
+  for (const [x, tint] of [[-0.9, [0.55, 0.3, 0.25]], [-0.6, [0.25, 0.3, 0.2]]] as const) {
+    D.box('handle', x - 0.02, 1.62, z - 0.06, x + 0.02, 1.66, z, at(x, 1.64), n);
+    D.box('card', x - 0.17, 0.95, z - 0.14, x + 0.17, 1.63, z - 0.02, at(x, 1.3), n, [...tint] as V3);
+  }
   return D;
 }
 
@@ -825,6 +852,25 @@ function dressGarage(atlas: Atlas, room: Region): DetailBuilder {
     for (let i = 0; i < 5; i++) { const x = -14.6 + i * 0.38, w = 0.22 + r() * 0.1, h = 0.2 + r() * 0.15; D.box(i % 2 ? 'card' : 'chassis', x, 1.63, z + 0.04, x + w, 1.63 + h, z + 0.28, at(x + w / 2, 1.7), n, i % 2 ? [1, 1, 1] : [1.5, 2.5, 1.2]); }
     D.box('trim', -8.1, 0.02, z, room.x1 - 0.12, 0.11, z + 0.016, at(-7, 0.06), n); }
   return D;
+}
+
+/** A rug on the floor (under the knee: dressing, never cover): a field, a border and a worn centre. */
+function rug(D: DetailBuilder, x0: number, z0: number, x1: number, z1: number, field: V3, border: V3) {
+  const on: V3 = [(x0 + x1) / 2, 0.001, (z0 + z1) / 2], up: V3 = [0, 1, 0];
+  D.box('card', x0, 0.003, z0, x1, 0.009, z1, on, up, border);
+  D.box('card', x0 + 0.12, 0.009, z0 + 0.12, x1 - 0.12, 0.012, z1 - 0.12, on, up, field);
+}
+/** A potted plant: a pot, soil and a loose clump of leaf blades (open and soft: dressing, not cover). */
+function plant(D: DetailBuilder, x: number, z: number, h: number, seed: number) {
+  const r = seeded(seed), fl: V3 = [x, 0.001, z], up: V3 = [0, 1, 0];
+  const mesh = (g: THREE.BufferGeometry, key: DressKey, tint: V3) => { D.mesh(key, g.attributes.position.array, g.attributes.normal.array, g.index!.array, fl, up, tint); g.dispose(); };
+  mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.42, 16).translate(x, 0.21, z), 'chassis', [2.4, 2.3, 2.2]);
+  mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.02, 16).translate(x, 0.41, z), 'card', [0.35, 0.25, 0.18]);
+  for (let i = 0; i < 14; i++) {
+    const a = r() * Math.PI * 2, lean = 0.25 + r() * 0.5, len = h * (0.5 + r() * 0.5);
+    const g = new THREE.PlaneGeometry(0.07, len).translate(0, len / 2, 0).rotateX(-lean).rotateY(a).translate(x + Math.cos(a) * 0.05, 0.42, z + Math.sin(a) * 0.05);
+    mesh(g, 'aid', [0.7 + r() * 0.5, 0.9 + r() * 0.4, 0.7]);
+  }
 }
 
 function ceilingGrid(D: DetailBuilder, room: Region) {
