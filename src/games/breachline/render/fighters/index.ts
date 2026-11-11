@@ -16,6 +16,7 @@ import { Animator, idleInput, type PoseInput } from './anim';
 import { figureGeometry, figureBuilt } from './figure';
 import { SCALE, makeBones } from './skeleton';
 import { WEAPON_BONES } from '../hero/weapons';
+import { BAKED, loadFighterTextures, texturedFighterMaterial, texturedGeometry, type FighterTextures, type TexturedFighterMaterial } from './textures';
 import { weaponFor } from './weapon';
 import { fighterMaterial, type FighterMaterial } from './material';
 
@@ -26,12 +27,14 @@ export const LOD0_MAX = 4;
 const PROBE_GAIN = 0.6;
 /** Fill every fighter gets on top of the probe (shade under the yard walls is near zero in the bake). */
 const SHADE_FILL = 0.8;
+/** Baked albedo carries its own occlusion and is lighter than the vertex colours: less fill for it. */
+const BAKED_GAIN = 0.5;
 
 interface Fig {
   squad: 0 | 1; group: THREE.Group; meshes: (THREE.SkinnedMesh | null)[]; skeleton: THREE.Skeleton; bones: THREE.Bone[];
   weapon: THREE.SkinnedMesh; weaponBones: THREE.Bone[]; wid: WeaponId; anim: Animator; mat: FighterMaterial; weaponMat: FighterMaterial; wlod: 1 | 2;
   x: number; z: number; yaw: number; pitch: number; crouch: number; lean: number; phase: number;
-  fresh: boolean; lod: number; remoteReload: number; deathKind: number; dist: number; reloadEmpty: boolean; wasReloading: boolean; input: PoseInput;
+  fresh: boolean; lod: number; remoteReload: number; deathKind: number; tmats: (TexturedFighterMaterial | null)[]; texVersion: number; dist: number; reloadEmpty: boolean; wasReloading: boolean; input: PoseInput;
 }
 
 const wrap = (a: number) => { a = (a + Math.PI) % (Math.PI * 2); return (a < 0 ? a + Math.PI * 2 : a) - Math.PI; };
@@ -51,7 +54,18 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
   blobs.frustumCulled = false; blobs.renderOrder = 1; scene.add(blobs);
   // The camera's position, captured when the scene renders (one frame late), for choosing levels of detail.
   const cam = new THREE.Vector3(NaN, 0, 0);
-  blobs.onBeforeRender = (_r, _s, camera) => { cam.setFromMatrixPosition(camera.matrixWorld); };
+  // Baked texture sets, loaded once the renderer is known (the first frame); until then the procedural look.
+  const baked: (FighterTextures | null)[] = [null, null];
+  let texVersion = 0, texStarted = false;
+  blobs.onBeforeRender = (renderer, _s, camera) => {
+    cam.setFromMatrixPosition(camera.matrixWorld);
+    if (texStarted) return;
+    texStarted = true;
+    for (const squad of [0, 1] as const) {
+      if (!BAKED[squad]) continue;
+      loadFighterTextures(renderer, squad).then(t => { baked[squad] = t; texVersion++; }).catch(err => console.warn('Breachline fighters: baked textures unavailable, keeping the procedural look', err));
+    }
+  };
   const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
   const color = new THREE.Color();
   // Build queue: [squad, lod] pairs still to build, cheapest first.
@@ -80,7 +94,7 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
     group.add(weapon);
     scene.add(group);
     const anim = new Animator(bones, weapon, wb, w);
-    f = { squad, group, meshes: [null, null, null], skeleton, bones, weapon, weaponBones: wb, wid, anim, mat, weaponMat, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, wlod: 1, remoteReload: 0, deathKind: -1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
+    f = { squad, group, meshes: [null, null, null], skeleton, bones, weapon, weaponBones: wb, wid, anim, mat, weaponMat, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, wlod: 1, remoteReload: 0, deathKind: -1, tmats: [null, null, null], texVersion: 0, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
     anim.setWeapon(wid, w);
     figs[i] = f;
     for (const l of [2, 1, 0]) want(squad, l);
@@ -90,7 +104,11 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
   function meshFor(f: Fig, lod: number): THREE.SkinnedMesh | null {
     if (f.meshes[lod]) return f.meshes[lod];
     if (!figureBuilt(f.squad, lod)) return null;
-    const mesh = new THREE.SkinnedMesh(figureGeometry(f.squad, lod).geo, f.mat);
+    // The baked set when it has arrived and matches this mesh; otherwise the procedural material.
+    const t = baked[f.squad], tg = t ? texturedGeometry(t, lod, () => figureGeometry(f.squad, lod).geo) : null;
+    let mat: THREE.Material = f.mat;
+    if (t && tg) { const tm = (f.tmats[lod] ??= texturedFighterMaterial(t.levels[lod]!.maps)); tm.envMap = f.mat.envMap; mat = tm; }
+    const mesh = new THREE.SkinnedMesh(tg ?? figureGeometry(f.squad, lod).geo, mat);
     mesh.frustumCulled = false; mesh.castShadow = true;
     mesh.bind(f.skeleton, new THREE.Matrix4());
     f.group.add(mesh);
@@ -98,7 +116,7 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
     return mesh;
   }
   function drop(f: Fig) {
-    scene.remove(f.group); f.mat.dispose(); f.weaponMat.dispose();
+    scene.remove(f.group); f.mat.dispose(); f.weaponMat.dispose(); for (const m of f.tmats) m?.dispose();
   }
 
   return {
@@ -145,9 +163,13 @@ export function createFighters(scene: THREE.Scene, lighting: HeroLighting): Figh
         // Irradiance reaches diffuse as albedo * E / pi, so a 0.1 albedo beside walls baked to about 0.15 needs E near 4.
         color.setRGB(SHADE_FILL + l[0] * PROBE_GAIN, SHADE_FILL + l[1] * PROBE_GAIN, SHADE_FILL * 1.06 + l[2] * PROBE_GAIN).multiplyScalar(Math.PI);
         f.mat.userData.probe.value.copy(color); f.weaponMat.userData.probe.value.copy(color);
+        for (const tm of f.tmats) if (tm) tm.userData.probe.value.copy(color).multiplyScalar(BAKED_GAIN);
         const env = lighting.environment(f.x, f.z), es = lighting.environmentScale(f.x, f.z) * 0.8;
-        if (f.mat.envMap !== env) { f.mat.envMap = env; f.weaponMat.envMap = env; f.mat.needsUpdate = f.weaponMat.needsUpdate = true; }
+        if (f.mat.envMap !== env) { f.mat.envMap = env; f.weaponMat.envMap = env; f.mat.needsUpdate = f.weaponMat.needsUpdate = true; for (const tm of f.tmats) if (tm) { tm.envMap = env; tm.needsUpdate = true; } }
         f.mat.envMapIntensity = f.weaponMat.envMapIntensity = es;
+        for (const tm of f.tmats) if (tm) tm.envMapIntensity = es;
+        // When a baked set arrives, remake this fighter's meshes with it.
+        if (f.texVersion !== texVersion) { f.texVersion = texVersion; f.meshes.forEach((ms, l) => { if (ms) { f.group.remove(ms); f.meshes[l] = null; } }); }
         f.dist = camOk ? Math.hypot(cam.x - f.x, cam.y - 1.2, cam.z - f.z) : Math.hypot(view.px - f.x, view.pz - f.z);
         order.push(f);
         if (blob < 10) { const lie = p.alive ? 0 : 0.9; blobs.setMatrixAt(blob++, m4.compose(v3.set(f.x, 0.04, f.z), q4.identity(), s3.set(1.0 + lie, 1, 1.0 + lie))); }

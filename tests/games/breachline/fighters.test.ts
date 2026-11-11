@@ -118,3 +118,31 @@ describe('fighter animation', () => {
     expect(ms).toBeLessThan(2);
   });
 });
+
+describe('baked fighter texture sets', () => {
+  test('every shipped set matches the mesh the game builds, level by level, and fits the download budget', async () => {
+    const { readFileSync, existsSync, readdirSync, statSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { FIGHTER_SETS, BAKED } = await import('../../../src/games/breachline/render/fighters/sets');
+    const { applyUnwrap } = await import('../../../src/games/breachline/render/fighters/textures');
+    const root = join(__dirname, '../../../public/game-art/breachline/fighters');
+    let bytes = 0;
+    for (const squad of [0, 1] as const) {
+      const dir = join(root, FIGHTER_SETS[squad]);
+      if (!BAKED[squad]) { expect(existsSync(join(dir, 'set.json'))).toBe(false); continue; }
+      const meta = JSON.parse(readFileSync(join(dir, 'set.json'), 'utf8'));
+      for (const lv of meta.levels) {
+        const built = figureGeometry(squad, lv.lod).geo;
+        const data = readFileSync(join(dir, `l${lv.lod}`, 'uv.bin'));
+        const geo = applyUnwrap(built, data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength), lv);
+        expect(geo, `level ${lv.lod}`).not.toBeNull();
+        expect(geo!.index!.count / 3).toBe(built.index!.count / 3);
+        for (const kind of ['diff', 'nor', 'arm']) expect(readdirSync(join(dir, `l${lv.lod}`)).some(f => f.startsWith(kind) && f.endsWith('.ktx2'))).toBe(true);
+      }
+      const walk = (d: string): number => readdirSync(d).reduce((n, f) => { const p = join(d, f); return n + (statSync(p).isDirectory() ? walk(p) : statSync(p).size); }, 0);
+      bytes += walk(dir);
+    }
+    // Fighter textures: 6 MB for every variant together; one variant may use half.
+    expect(bytes).toBeLessThan(3.1 * 1024 * 1024);
+  });
+});

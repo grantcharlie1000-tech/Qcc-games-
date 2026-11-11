@@ -208,7 +208,7 @@ export class Animator {
     const speed = Math.hypot(this.vel.x, this.vel.z), crouch = p.crouch;
     // Shorter steps sideways, where the hip reaches less far.
     const side = speed > 0.1 ? Math.abs(Math.sin(Math.atan2(this.vel.x, this.vel.z) - p.yaw)) : 0;
-    const stride = clamp(0.45 + 0.24 * speed, 0.7, 1.7) * (1 - crouch * 0.15) * (1 - side * 0.25);
+    const stride = clamp(0.5 + 0.27 * speed, 0.75, 1.75) * (1 - crouch * 0.15) * (1 - side * 0.25);
     const stanceFrac = clamp(0.62 - speed * 0.045, 0.38, 0.62);
     // Error of each planted foot from its rest spot: a fighter turning on the spot re-steps.
     let err = 0;
@@ -245,7 +245,7 @@ export class Animator {
     }
     // Pelvis: lowest at each contact, swaying over the stance foot, turning with the forward leg.
     const w = clamp(speed / 3.5, 0, 1.4);
-    this.hipBob = -(0.5 + 0.5 * Math.cos(this.phase * Math.PI * 4)) * 0.034 * w;
+    this.hipBob = -(0.5 + 0.5 * Math.cos(this.phase * Math.PI * 4)) * 0.045 * w;
     this.hipSway = -Math.sin(this.phase * Math.PI * 2) * 0.022 * Math.min(1, w + 0.2) * (cadence > 0 ? 1 : 0);
     this.hipYaw = Math.sin(this.phase * Math.PI * 2) * 0.16 * Math.min(1, w);
   }
@@ -268,11 +268,11 @@ export class Animator {
     lq[B.pelvis].setFromEuler(e.set(-c * 0.22 - sprint * 0.12, this.hipYaw + legTurn + blade * 0.35, -this.hipSway * 1.5, 'YXZ'));
     // Spine: crouch folds forward, sprint leans in, aim pitch bends the chest, lean rolls; flinch adds on top.
     const aim = p.pitch, fl = this.flinch;
-    const fold = c * 0.2 + sprint * 0.16 + this.moving * 0.05 * (1 - sprint);
+    const fold = 0.07 + c * 0.2 + sprint * 0.16 + this.moving * 0.05 * (1 - sprint);
     const chestPitch = clamp(aim, -1.2, 1.2) * (aim < 0 ? 0.22 : 0.45);
     const roll = -lean * 0.36;
-    lq[B.spine1].setFromEuler(e.set(-fold * 0.4 + chestPitch * 0.35 + fl[0].x * 0.3, -(this.hipYaw + legTurn) * 0.5 + blade * 0.3, roll * 0.45 + fl[1].x * 0.25, 'YXZ'));
-    lq[B.spine2].setFromEuler(e.set(-fold * 0.3 + chestPitch * 0.65 + fl[0].x * 0.25 - this.recoil[1].x * 0.25, -(this.hipYaw + legTurn) * 0.5 + blade * 0.35, roll * 0.4 + fl[1].x * 0.2, 'YXZ'));
+    lq[B.spine1].setFromEuler(e.set(-fold * 0.4 + chestPitch * 0.35 + fl[0].x * 0.3, -(this.hipYaw + legTurn) * 0.9 + legTurn * 0.4 + blade * 0.3, roll * 0.45 + fl[1].x * 0.25, 'YXZ'));
+    lq[B.spine2].setFromEuler(e.set(-fold * 0.3 + chestPitch * 0.65 + fl[0].x * 0.25 - this.recoil[1].x * 0.25, -(this.hipYaw + legTurn) * 0.9 + legTurn * 0.4 + blade * 0.35, roll * 0.4 + fl[1].x * 0.2, 'YXZ'));
     const neckPitch = clamp(aim - chestPitch, -0.9, 0.9) * 0.45 + fold * 0.45;
     lq[B.neck].setFromEuler(e.set(neckPitch - fl[0].x * 0.3, -blade * 0.45, -roll * 0.3, 'YXZ'));
     lq[B.head].setFromEuler(e.set(clamp(aim - chestPitch, -0.9, 0.9) * 0.55 + fold * 0.35 - fl[0].x * 0.4 - ads * 0.14, -blade * 0.55, -roll * 0.25 + fl[1].x * 0.3 - ads * 0.14, 'YXZ'));
@@ -462,6 +462,10 @@ export class Animator {
     const fl = this.flinch;
     q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(fl[0].x * 0.22, fl[1].x * 0.18, fl[1].x * 0.3)));
     pos.add(new THREE.Vector3(fl[1].x * 0.03, fl[0].x * 0.03, fl[0].x * 0.05).applyQuaternion(cq));
+    // Carry: the weapon bobs with each step and sways with the hips, lagging the body a little.
+    const wk = Math.min(1, speed / 3.5) * (1 - ads * 0.7), ph = this.phase * Math.PI * 2;
+    pos.add(new THREE.Vector3(Math.sin(ph - 0.6) * 0.012 * wk, Math.cos(ph * 2 - 0.8) * 0.014 * wk, 0).applyQuaternion(cq));
+    q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.cos(ph * 2 - 1.1) * 0.025 * wk, Math.sin(ph - 0.9) * 0.04 * wk, Math.sin(ph - 0.7) * 0.03 * wk)));
     // Recoil: back along the bore and the muzzle up.
     const back = this.recoil[0].x * 0.6, rise = this.recoil[1].x * 1.1;
     pos.addScaledVector(fwd, -back);
