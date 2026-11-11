@@ -10,7 +10,7 @@ import type { Atlas, Region } from './levelgeo';
 
 type V3 = [number, number, number];
 /** Materials the dressing asks for; artworld.ts maps each key to a material. */
-export type DressKey = 'door' | 'locker' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
+export type DressKey = 'door' | 'locker' | 'grid' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
 
 const inRoom = (r: Region, x: number, z: number) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1;
 
@@ -29,6 +29,7 @@ export function dressLab(atlas: Atlas, room: Region): DetailBuilder {
   sink(D, 2.45, -5.92, 0.95, -6.1);
   bottles(D, -1.9, -6.1, 0.95);
   walls(D, room);
+  ceilingGrid(D, room);
   return D;
 }
 
@@ -119,6 +120,18 @@ function bottles(D: DetailBuilder, x: number, z: number, top: number) {
     const cap = new THREE.CylinderGeometry(r * 0.4, r * 0.4, 0.025, 14).translate(x + dx, top + h + 0.012, z + dz);
     D.mesh('kick', cap.attributes.position.array, cap.attributes.normal.array, cap.index!.array, [x + dx, top + 0.001, z + dz], [0, 1, 0]);
     cap.dispose();
+  }
+}
+
+/** The suspended ceiling's T-bar grid at 600 mm, over the tile joints the ceiling texture draws. */
+function ceilingGrid(D: DetailBuilder, room: Region) {
+  const y = WALL_H, drop = 0.014, half = 0.012, n: V3 = [0, -1, 0];
+  const on = (x: number, z: number): V3 => [x, y - 0.001, z];
+  for (let x = Math.ceil(room.x0 / 0.6) * 0.6; x < room.x1 - 0.01; x += 0.6) if (x > room.x0 + 0.01) D.box('grid', x - half, y - drop, room.z0, x + half, y, room.z1, on(x, (room.z0 + room.z1) / 2), n);
+  for (let z = Math.ceil(room.z0 / 0.6) * 0.6; z < room.z1 - 0.01; z += 0.6) if (z > room.z0 + 0.01) D.box('grid', room.x0, y - drop, z - half, room.x1, y, z + half, on((room.x0 + room.x1) / 2, z), n);
+  // Wall angle trim where the grid meets the walls.
+  for (const [x0, z0, x1, z1] of [[room.x0, room.z0, room.x1, room.z0 + 0.02], [room.x0, room.z1 - 0.02, room.x1, room.z1], [room.x0, room.z0, room.x0 + 0.02, room.z1], [room.x1 - 0.02, room.z0, room.x1, room.z1]]) {
+    D.box('grid', x0, y - drop, z0, x1, y, z1, on((x0 + x1) / 2, (z0 + z1) / 2), n);
   }
 }
 

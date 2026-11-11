@@ -73,14 +73,14 @@ void main() {
   float y = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
   c = mix( vec3( y ), c, saturation );
   vec2 d = ( vUv - 0.5 ) * aspect;
-  c *= 1.0 - vignette * smoothstep( 0.35, 1.0, dot( d, d ) * 2.2 );
+  c *= 1.0 - vignette * smoothstep( 0.55, 1.25, dot( d, d ) * 2.2 );
   gl_FragColor = vec4( toSRGB( clamp( c, 0.0, 1.0 ) ), 1.0 );
 }`;
 
 /** The chosen grade: cool, slightly desaturated shadows, warm neutral highlights, gentle contrast. */
 export const GRADE = {
   lift: new THREE.Vector3(0.012, 0.016, 0.024), gamma: new THREE.Vector3(0.94, 0.95, 0.97), gain: new THREE.Vector3(1.03, 1.0, 0.95),
-  saturation: 0.86, vignette: 0.28, bloom: 0.16, threshold: 1.6, knee: 0.6,
+  saturation: 0.86, vignette: 0.16, bloom: 0.16, threshold: 1.6, knee: 0.6,
 };
 
 export interface Post {

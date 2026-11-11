@@ -25,6 +25,8 @@ export interface ArtMaterialOptions {
   /** Average baked light of the room the environment probe saw, for specular occlusion. */
   envLight?: number;
   roughness?: number;
+  /** Reflection strength multiplier (envMapIntensity). */
+  spec?: number;
   /** Debug: show only the reflection term. */
   specOnly?: boolean;
   /** Painted lower band by world height: tint below \`height\`, a dark 4 cm rail at the top of it. */
@@ -39,7 +41,7 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
   const m = new THREE.MeshStandardMaterial({
     map: o.map, normalMap: o.normalMap ?? null, roughnessMap: arm, metalnessMap: arm, aoMap: arm, aoMapIntensity: 1,
     roughness: o.roughness ?? 1, metalness: o.metalness ?? (arm ? 1 : 0), lightMap: o.lightMap ?? null, lightMapIntensity: (o.lightScale ?? 1) * Math.PI,
-    envMap: o.envMap ?? null, envMapIntensity: 1, vertexColors: !!(o.vertexLight || o.vertexTint), color: o.color ?? 0xffffff,
+    envMap: o.envMap ?? null, envMapIntensity: o.spec ?? 1, vertexColors: !!(o.vertexLight || o.vertexTint), color: o.color ?? 0xffffff,
     emissive: o.emissive ?? 0x000000,
   });
   const sh = new Float32Array(12);
@@ -67,8 +69,15 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
 #ifdef ART_BAND
 	float artRail = smoothstep( artBand.w - 0.002, artBand.w, vArtWorld.y ) - smoothstep( artBand.w + 0.038, artBand.w + 0.04, vArtWorld.y );
 	diffuseColor.rgb *= mix( vArtWorld.y < artBand.w ? artBand.rgb : vec3( 1.0 ), vec3( 0.18 ), artRail );
+	// Boot-height grime on the band: darker and dirtier towards the floor.
+	diffuseColor.rgb *= vArtWorld.y < artBand.w ? mix( 0.72, 1.0, smoothstep( 0.1, 0.55, vArtWorld.y ) ) : 1.0;
 	// Painted skirting zone at the floor.
 	diffuseColor.rgb *= vArtWorld.y < 0.1 ? vec3( 0.42 ) : vec3( 1.0 );
+#endif`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+#ifdef ART_BAND
+	// The band is semi-gloss paint, so it catches the fittings where the matt wall above does not.
+	roughnessFactor *= vArtWorld.y < artBand.w ? 0.42 : 1.0;
 #endif`)
       .replace('#include <normal_fragment_maps>', NORMAL_MAPS)
       .replace('#include <color_fragment>', o.vertexLight ? '' : '#include <color_fragment>')

@@ -9,7 +9,26 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-## Lab slice, round 1 (evidence: `lab-slice/round-1/`)
+## Lab slice, round 2 (evidence: `lab-slice/round-2/`)
+
+From the reviewer's mid-slice look (at 90eeca9) and my own list:
+
+1. **Floor specular now visible.** In a reflection-only render the floor reflections were already strong; the bright
+   diffuse floor swamped them. The tile albedo is lowered (floor midtones about a third, as asked), it is glossier
+   (roughness about 0.08), and its reflection carries a 2.6x sealed-surface multiplier. `lab-west-high.png` shows
+   the sheen and the fittings' reflections along the walls.
+2. **Vignette eased** (strength 0.16, starting further out), so the ceiling near the camera is no longer crushed.
+3. **Wall band no longer flat:** semi-gloss (it catches the fittings), grime towards boot height, a painted skirting
+   zone; the dado rail and skirting are geometry on the solid wall.
+4. **Ceiling grid with depth:** T-bars at 600 mm and wall angle trim, over the tile joints, lit by the ceiling's own
+   lightmap (`lab-ceiling-high.png`).
+
+Scores (Lab, from `lab-slice/round-2/`): A 6, B 6 (floor and band now reflect), C 6, D 6, H 5. Budgets on these
+frames: 36k-91k triangles, 55-102 draw calls (unchanged texture memory). Still to reach 7: door leaves and deeper
+frames, more on the benches' far ends and walls (noticeboard, fume cupboard), stronger plaster normals, prop LODs,
+then KTX2.
+
+
 
 Not at the slice gate yet (rows A-D at 7). Done this round, in the order the reviewer asked:
 

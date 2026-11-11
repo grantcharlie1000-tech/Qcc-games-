@@ -97,7 +97,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       }
       if (dbg.includes('nonormal')) nor = null;
       if (dbg.includes('noarm')) arm = null;
-      const mat = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, lightMap, lightScale: info.scale, dirMap: dbg.includes('nodir') ? null : dirMap, vertexTint: true, roughness: dbg.includes('mirror') ? 0.02 : arm ? s?.gloss ?? 1 : 0.85, metalness: dbg.includes('metal') ? 1 : arm ? 1 : 0, band: s?.band, specOnly: dbg.includes('speconly') });
+      const mat = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, lightMap, lightScale: info.scale, dirMap: dbg.includes('nodir') ? null : dirMap, vertexTint: true, roughness: dbg.includes('mirror') ? 0.02 : arm ? s?.gloss ?? 1 : 0.85, metalness: dbg.includes('metal') ? 1 : arm ? 1 : 0, band: s?.band, spec: s?.spec, specOnly: dbg.includes('speconly') });
       const g = geometry(a), mesh = new THREE.Mesh(g, mat);
       mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:${id}`;
       group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
@@ -111,6 +111,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         locker: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(2.5, 2.6, 2.7), roughness: 0.7, metalness: 1 },
         trim: { map: pm, normalMap: pn, armMap: pa, color: new THREE.Color(0.3, 0.36, 0.44), roughness: 0.7, metalness: 1 },
         handle: plain([0.72, 0.72, 0.7], 0.32, 1), chrome: plain([0.92, 0.92, 0.92], 0.07, 1), steel: plain([0.66, 0.67, 0.68], 0.28, 1),
+        grid: plain([0.78, 0.78, 0.76], 0.5, 0),
         conduit: plain([0.55, 0.56, 0.56], 0.45, 1), socket: plain([0.82, 0.81, 0.78], 0.42, 0), kick: plain([0.035, 0.035, 0.04], 0.55, 0),
         amber: plain([0.2, 0.08, 0.015], 0.05, 0), glass: plain([0.1, 0.13, 0.125], 0.04, 0),
       };
