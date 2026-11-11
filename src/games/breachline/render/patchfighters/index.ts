@@ -30,8 +30,9 @@ import { LOD_DIST, LOD0_MAX, createFighters, type FightersWithEvents } from '../
  * and are lighter, so they take 0.42 of the probe; this albedo is not baked-light (near-black kit), so it takes all
  * of it (checked in the game: at 0.42 the figures read as silhouettes outdoors). */
 const PROBE_GAIN = 0.6, SHADE_FILL = 0.8;
-/** The body's share of the probe (set by comparing game frames; `?patchgain=` overrides it while tuning). */
-const BODY_GAIN = Number(typeof location === 'undefined' ? NaN : new URLSearchParams(location.search).get('patchgain')) || 0.75;
+/** The body's share of the probe: 0.42, the stock baked sets' own value, chosen from game frames at 0.75 and 0.42 once the
+ * albedo was in range and the occlusion baked (`?patchgain=` overrides it while tuning). */
+const BODY_GAIN = Number(typeof location === 'undefined' ? NaN : new URLSearchParams(location.search).get('patchgain')) || 0.42;
 const SET = '../patch/tactical';
 
 /** Squad looks: the darkest and lightest each class reaches (sRGB), cloth weave and stain strength. */
@@ -39,8 +40,9 @@ export const PATCH_LOOKS = [
   // Squad 0: dark slate cloth (linear albedo about 0.08 at its middle), kit darker (0.035) and glossier, light dust.
   // `fat`/`kit` are the middle albedo (sRGB); `fatC`/`kitC` how far the source's detail swings it either way.
   { fat: 0x4a5058, fatC: 0.55, kit: 0x34373b, kitC: 0.5, kitGloss: 0.72, dirt: 0x7a7468, dirtAmt: 0.35, weave: 0.10, stain: 0.16, headgear: ['helmetA', 'gogglesA'] },
-  // Squad 1: coyote cloth (about 0.26), olive kit darker (0.11), both desaturated, darker mud.
-  { fat: 0x9c8a72, fatC: 0.5, kit: 0x5d604a, kitC: 0.45, kitGloss: 0.85, dirt: 0x4f4232, dirtAmt: 0.45, weave: 0.10, stain: 0.22, headgear: ['headsetB'] },
+  // Squad 1: coyote cloth (about 0.19 at its middle, rising to 0.25 on light folds), olive kit darker (0.1), both
+  // desaturated, darker mud. (At 0.26 with a wider swing the sleeves read cream in the game.)
+  { fat: 0x857360, fatC: 0.3, kit: 0x585b45, kitC: 0.4, kitGloss: 0.85, dirt: 0x4f4232, dirtAmt: 0.45, weave: 0.10, stain: 0.22, headgear: ['headsetB'] },
 ] as const;
 /** Rim light from the probe, as a fraction of it, at grazing angles (separates edges from dark walls). */
 const RIM = 0.35;
