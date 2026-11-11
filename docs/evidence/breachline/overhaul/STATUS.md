@@ -81,8 +81,9 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** corridor round 3 done (`rooms/corridor/round-3/`); next Archive round 2 (cardboard
-boxes, aisle shade, mid-room clutter, perforated uprights), then corridor round 4 (variety between posts, doors).
+**Where I am (keep current):** destruction round 3 (ragged, layered breaks) done; next the reviewer's kit notes
+(barricade splinters and battens, a heavier reinforcement with its deploy, brighter uplink states), then Archive
+round 2, then corridor round 4.
 
 ## Corridor round 3 (`rooms/corridor/round-3/`), against the reviewer's round-2 notes
 
@@ -231,6 +232,26 @@ session and the third-person placing to the fighters session.
   - the smoke is a uniform haze rather than rolling clouds;
   - the floor soot sits at the wall base, under the opening, where it is hard to see.
 - K (mine, charge only): 3 -> 5.
+
+## Phase 5: destruction look, round 3 (`destruction/round-3/`), against the reviewer's round-2 notes
+
+The reviewer re-scored round 2 at **J 4.5** on a stricter scale ("about two points generous before"). My own scores
+from here on use that scale too.
+- (1, 2) **Ragged, layered breaks.** Cells on a hole's rim are now drawn one by one, each skin with its own outline.
+  Every side facing a hole is cut into six segments that bite back into the board by 1-5 cm (now and then a bigger
+  chunk, or a tongue left hanging a little into the hole). The face is a fan about the cell's middle, so the
+  outline stays star-shaped and never folds. Along the break: face paper, white gypsum core and brown back paper,
+  the peeled fringe, and now and then a flap of torn paper curling out over the hole. The far skin tears
+  differently from the near one, and the back of each skin shows brown in the cavity.
+- (3) Studs are still drawn only in intact cells (the gap rule).
+- Cost: about 4 ms and 6.4k vertices to rebuild a badly holed panel (a test stress case), once per damage change.
+  `panelgeo.test.ts` now checks the bounds as extremes, one assertion per panel (it timed out with one per vertex).
+- **Evidence:** `before-after.png` (round 2 left, round 3 right), `shot-wall-high.png`, `breach-close-high.png`.
+- **Still open:**
+  - (4) the shots still open whole 25 cm cells, which the rough rim disguises but doesn't change;
+  - (5) the dust haze hangs only briefly;
+  - (6) the wall's own dirt comes from the corridor round.
+- J (mine, strict scale): 4.5 -> 5.5.
 
 ## Phase 5: destruction look, round 2 (`destruction/round-2/`)
 

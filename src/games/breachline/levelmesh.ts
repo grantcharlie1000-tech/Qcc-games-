@@ -224,12 +224,15 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
   const quad = (list: number[], a: number, b: number, c: number, d: number, flip: boolean) => { if (flip) list.push(a, d, c, a, c, b); else list.push(a, b, c, a, c, d); };
   if (wood && !plate) return barricade();
   if (plate) return reinforcement();
+  // A cell on a hole's rim is drawn on its own, with a ragged outline; the rest of the wall is drawn in runs.
+  const open = (c: number, r: number) => c >= 0 && r >= 0 && c < p.cols && r < p.rows && !cell(c, r);
+  const rim = (c: number, r: number) => cell(c, r) && (open(c - 1, r) || open(c + 1, r) || open(c, r - 1) || open(c, r + 1));
   // Front and back: runs of intact cells along each row become one quad each (split every half metre, so rows share
   // their lit columns).
   for (let r = 0; r < p.rows; r++) {
     let start = -1;
     for (let c = 0; c <= p.cols; c++) {
-      const on = c < p.cols && cell(c, r);
+      const on = c < p.cols && cell(c, r) && !rim(c, r);
       if (on) { if (start < 0) { start = c; continue; } if (c % 2 !== 0) continue; }
       if (start < 0) continue;
       const u0 = p.u0 + start * CELL, u1 = p.u0 + c * CELL, y0 = p.y0 + r * CELL, y1 = y0 + CELL;
@@ -237,47 +240,71 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
       start = on ? c : -1;
     }
   }
-  if (!plate) {
-    // Broken edges. Planks are solid timber, shown full depth; plasterboard shows each skin's board thickness and the
-    // dark cavity behind it.
-    const skin = wood ? half : SKIN;
-    for (let r = 0; r < p.rows; r++) for (let c = 0; c < p.cols; c++) {
-      if (!cell(c, r)) continue;
-      const u0 = p.u0 + c * CELL, u1 = u0 + CELL, y0 = p.y0 + r * CELL, y1 = y0 + CELL;
-      const strip = (ua: number, ya: number, ub: number, yb: number, nx: number, ny: number) => {
-        // Across each board's cut edge: the face paper, the white gypsum core, the brown back paper.
-        const bands: [number, number, number | RGB][] = wood ? [[-half, half, 0.55]] : [];
-        if (!wood) for (const sgn of [1, -1]) {
-          const out = sgn * half, inn = sgn * (half - skin), a = sgn * (half - PAPER), b = sgn * (half - skin + PAPER);
-          bands.push([out, a, 0.9], [a, b, GYPSUM], [b, inn, BACK_PAPER]);
+  // Rim cells: each skin tears in its own ragged outline. Along every side that faces a hole the break is cut into
+  // short segments that bite back into the board by 1-5 cm (now and then a bigger chunk, or a tongue left hanging a
+  // little into the hole), so shot board reads as crumbled, not cut. The board's layers show along the break (face
+  // paper, white gypsum core, brown back paper), paint and paper peel back from it, the odd flap of paper curls out,
+  // and the back of the board shows brown in the cavity.
+  const SEG = 6, MARGIN = 0.03;
+  const corner = (cu: number, cy: number, sk: number): [number, number] => { const [ju, jy] = jitter(cu, cy, sk); return [p.u0 + cu * CELL + ju, p.y0 + cy * CELL + jy]; };
+  for (let r = 0; r < p.rows; r++) for (let c = 0; c < p.cols; c++) {
+    if (!rim(c, r)) continue;
+    const mu = p.u0 + (c + 0.5) * CELL, my = p.y0 + (r + 0.5) * CELL;
+    for (const sk of [1, -1]) {
+      // Sides in order round the cell (counter-clockwise in u, y): bottom, right, top, left, each with its inward axis.
+      const k: [number, number][] = [corner(c, r, sk), corner(c + 1, r, sk), corner(c + 1, r + 1, sk), corner(c, r + 1, sk)];
+      const sides: [boolean, number, number][] = [[open(c, r - 1), 0, 1], [open(c + 1, r), -1, 0], [open(c, r + 1), 0, -1], [open(c - 1, r), 1, 0]];
+      const pts: [number, number][] = [], broke: boolean[] = [];
+      sides.forEach(([isOpen, iu, iy], i) => {
+        const [au, ay] = k[i], [bu, by] = k[(i + 1) % 4];
+        pts.push([au, ay]); broke.push(isOpen);
+        if (!isOpen) return;
+        for (let j = 1; j < SEG; j++) {
+          const t = j / SEG, bu0 = au + (bu - au) * t, by0 = ay + (by - ay) * t;
+          const h = hash(bu0 * 31.7 + sk, by0 * 17.3, p.pos + sk * 5.1), h2 = hash(by0 * 13.1, bu0 * 7.9 + sk, p.pos);
+          let d = 0.012 + 0.03 * h + (h2 > 0.86 ? 0.045 : 0) - (h2 < 0.08 ? 0.03 : 0);
+          // Never past the cell's middle: the outline stays star-shaped about it.
+          const lim = (iu ? iu * (mu - bu0) : iy * (my - by0)) - MARGIN;
+          d = Math.min(d, lim);
+          pts.push([bu0 + iu * d, by0 + iy * d]); broke.push(true);
         }
-        for (const [o0, o1, shade] of bands) {
-          const a = vert(ua, ya, o0, 0, shade, nx, ny), b = vert(ub, yb, o0, 0, shade, nx, ny), cc = vert(ub, yb, o1, 0, shade, nx, ny), d = vert(ua, ya, o1, 0, shade, nx, ny);
-          edge.push(a, b, cc, a, cc, d, a, cc, b, a, d, cc);
+      });
+      const n = sk, flip = alongX ? n < 0 : n > 0, off = sk * half;
+      // The face: a fan about the cell's middle.
+      const centre = vert(mu, my, off, n, 1, 0, 0, true), ring = pts.map(([u, y]) => vert(u, y, off, n, 1, 0, 0, true));
+      for (let i = 0; i < ring.length; i++) { const a2 = ring[i], b2 = ring[(i + 1) % ring.length]; if (flip) face.push(centre, b2, a2); else face.push(centre, a2, b2); }
+      // The back of this skin, in the cavity.
+      const inner = sk * (half - SKIN), cb = vert(mu, my, inner, -n, CAVITY, 0, 0, true), back = pts.map(([u, y]) => vert(u, y, inner, -n, CAVITY, 0, 0, true));
+      for (let i = 0; i < back.length; i++) { const a2 = back[i], b2 = back[(i + 1) % back.length]; if (flip) edge.push(cb, a2, b2); else edge.push(cb, b2, a2); }
+      // Along the break: the layers, the peeled fringe and the odd paper flap.
+      const out = sk * half, inn = sk * (half - SKIN), pa = sk * (half - PAPER), pb = sk * (half - SKIN + PAPER);
+      for (let i = 0; i < pts.length; i++) {
+        const j = (i + 1) % pts.length;
+        if (!broke[i]) continue;
+        // A segment is broken when it starts on a broken side (its end may be the corner closing that side).
+        const [ua, ya] = pts[i], [ub, yb] = pts[j], du = ub - ua, dy = yb - ya, l = Math.hypot(du, dy) || 1, nx = dy / l, ny = -du / l;
+        for (const [o0, o1, shade] of [[out, pa, 0.9], [pa, pb, GYPSUM], [pb, inn, BACK_PAPER]] as const) {
+          const v0 = vert(ua, ya, o0, 0, shade, nx, ny, true), v1 = vert(ub, yb, o0, 0, shade, nx, ny, true), v2 = vert(ub, yb, o1, 0, shade, nx, ny, true), v3 = vert(ua, ya, o1, 0, shade, nx, ny, true);
+          edge.push(v0, v1, v2, v0, v2, v3, v0, v2, v1, v0, v3, v2);
         }
-        if (wood) return;
-        // On both faces, a torn fringe: the paint and paper peel back a little from the break, baring gypsum. Its
-        // inner edge follows the same tear as the break, so the band's width varies along it.
-        const w = FRINGE * (0.6 + 0.8 * hash(ua * 7.3, ya * 3.1, p.pos));
-        for (const n of [1, -1]) {
-          const off = n * (half + 0.0006);
-          const a = vert(ua, ya, off, n, GYPSUM_FACE), b = vert(ub, yb, off, n, GYPSUM_FACE);
-          const c2 = vert(ub - nx * w, yb - ny * w, off, n, TORN), d2 = vert(ua - nx * w, ya - ny * w, off, n, TORN);
-          edge.push(a, b, c2, a, c2, d2, a, c2, b, a, d2, c2);
+        const h = hash(ua * 11.3 + sk, ya * 5.7, p.pos), w = FRINGE * (0.5 + h), fo = sk * (half + 0.0006);
+        const f0 = vert(ua, ya, fo, n, GYPSUM_FACE, 0, 0, true), f1 = vert(ub, yb, fo, n, GYPSUM_FACE, 0, 0, true);
+        // The fringe's inner edge stays on the panel where a slanted segment meets its outer edge.
+        const cu = (u: number) => Math.min(Math.max(u, p.u0), p.u0 + p.cols * CELL), cy = (y: number) => Math.min(Math.max(y, p.y0), p.y0 + p.rows * CELL);
+        const f2 = vert(cu(ub - nx * w), cy(yb - ny * w), fo, n, TORN, 0, 0, true), f3 = vert(cu(ua - nx * w), cy(ya - ny * w), fo, n, TORN, 0, 0, true);
+        edge.push(f0, f1, f2, f0, f2, f3, f0, f2, f1, f0, f3, f2);
+        if (h > 0.82) {
+          // A flap of face paper torn loose, curling out of the board and over the hole.
+          const mu2 = (ua + ub) / 2 + nx * 0.025, my2 = (ya + yb) / 2 + ny * 0.025, tip = vert(mu2, my2, sk * (half + 0.018), n, [1.02, 1.0, 0.95], 0, 0, true);
+          const e0 = vert(ua, ya, sk * (half + 0.001), n, [1.02, 1.0, 0.95], 0, 0, true), e1 = vert(ub, yb, sk * (half + 0.001), n, [1.02, 1.0, 0.95], 0, 0, true);
+          edge.push(e0, e1, tip, e0, tip, e1);
         }
-      };
-      const left = c > 0 && !cell(c - 1, r), right = c < p.cols - 1 && !cell(c + 1, r), down = r > 0 && !cell(c, r - 1), up = r < p.rows - 1 && !cell(c, r + 1);
-      if (left) strip(u0, y0, u0, y1, -1, 0);
-      if (right) strip(u1, y0, u1, y1, 1, 0);
-      if (down) strip(u0, y0, u1, y0, 0, -1);
-      if (up) strip(u0, y1, u1, y1, 0, 1);
-      if (wood || !(left || right || down || up)) continue;
-      // The inside faces of both skins, seen through the hole: the brown back of the board, in shadow.
-      for (const n of [1, -1]) {
-        const off = n * (half - SKIN);
-        quad(edge, vert(u0, y0, off, -n, CAVITY), vert(u1, y0, off, -n, CAVITY), vert(u1, y1, off, -n, CAVITY), vert(u0, y1, off, -n, CAVITY), alongX ? n > 0 : n < 0);
       }
     }
+  }
+  if (!plate) {
+    // Broken edges along straight runs (cells that are not on a rim never face a hole, so only the panel's outer
+    // rim could; plasterboard runs to the frame there, so nothing is drawn).
     // Studs and the noggin, inside the cavity, only where their cell is intact and a hole is near enough to see them.
     if (torn) {
       const near = (c: number, r: number) => { for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if (!cell(c + dc, r + dr)) return true; return false; };

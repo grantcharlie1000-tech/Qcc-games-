@@ -22,14 +22,13 @@ describe('Breachline destructible panel geometry', () => {
       const { geometry, studs } = panelGeometry(p, null, light);
       for (const s of studs) expect(p.cells[s.r * p.cols + s.c]).toBe(1);
       const pos = geometry.getAttribute('position').array as Float32Array;
-      for (const v of pos) expect(Number.isFinite(v)).toBe(true);
-      // Ragged rims tear back into the board, never out past the panel.
+      expect(pos.every(v => Number.isFinite(v))).toBe(true);
+      // Ragged rims tear back into the board, never out past the panel (checked as the extremes, one assertion each).
       const span = p.cols * CELL;
-      for (let i = 0; i < pos.length; i += 3) {
-        const u = p.axis === 'x' ? pos[i] : pos[i + 2];
-        expect(u).toBeGreaterThanOrEqual(p.u0 - 1e-6);
-        expect(u).toBeLessThanOrEqual(p.u0 + span + 1e-6);
-      }
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < pos.length; i += 3) { const u = p.axis === 'x' ? pos[i] : pos[i + 2]; lo = Math.min(lo, u); hi = Math.max(hi, u); }
+      expect(lo).toBeGreaterThanOrEqual(p.u0 - 1e-6);
+      expect(hi).toBeLessThanOrEqual(p.u0 + span + 1e-6);
       geometry.dispose();
     }
   });
