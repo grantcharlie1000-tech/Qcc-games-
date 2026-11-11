@@ -23,15 +23,17 @@ upload, between "round in action" and "4 s after the host's first hit". (`stats(
    each map one per task, before the round starts. `meshFor` should never create anything during play.
 3. **~16 buffer uploads**: the wall-hole geometry rebuilt when panels take damage (mine; small, by design).
 4. **Post-processing targets reallocated** (mine, `render/post.ts` `setSize` -> `build()`): the resolution scaler
-   changes the drawing size, which rebuilds the HDR buffer and the whole bloom chain. Under the software rasteriser
-   the scaler moves often. I will allocate at the largest size and draw into a viewport, so scale changes never
-   allocate.
+   changes the drawing size, which rebuilt the HDR buffer and the whole bloom chain. **Fixed:** the targets are now
+   allocated at the largest size seen (+10%) and drawn into a viewport; every read is clamped to the area in use.
+   Scale changes no longer allocate. Lab renders on High (scale 1, MSAA) and Low (scale 0.6) look unchanged.
 5. **No lights are added or removed when firing** (checked: only the hemisphere and key lights in `scene.ts` and
    the viewmodel's own three, all permanent).
 - Gaps: in my container the longest guest gap was 6.0 s, at the guest's first burst; the online test passes alone
   and in the sequence. Your 17.6 s is the same first-use work on a slower or busier machine.
-- A program is also added the first time the corridor is seen on High (lab 45, corridor 46). I'm tracking it down
-  (mine or the fighters').
+- A program is also added the first time the corridor is seen on High (lab 46, corridor 47). Not identified yet:
+  the names and truncated cache keys I logged don't separate it. Still open.
+- The bookmark script now waits for the art to be live (`stats().art`), not a fixed 6 s; the warm-up can take
+  longer than that under software GL.
 - **Frame cost now vs the Lab gate** (bookmarks, this container): High Lab 113 calls / 73k tris (gate: 78 / 83k);
   corridor 184 / 83k; Archive 179 / 82k; programs 45-46, textures 110-114, geometries 174-208. Low: 93-156 calls,
   67k-83k tris, 39-40 programs, 76-80 textures. Growth: draw calls from the dressing (the corridor and Archive have

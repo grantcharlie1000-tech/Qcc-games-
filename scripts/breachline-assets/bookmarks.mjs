@@ -57,7 +57,9 @@ await page.waitForFunction(() => window.__breachlineTest !== undefined, undefine
 await page.evaluate(q => { const h = window.__breachlineTest; h.start({ seed: 7, quality: q === 'low' ? 'low' : 'high', teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); h.still(); h.skip(30); h.advance(0.3); h.advance(5); }, tier);
 // Let the art stream in.
 if (art !== 'off') await page.waitForFunction(() => window.__breachlineTest.stats().level > 0 && window.__breachlineTest.stats().calls > 0, undefined, { timeout: 60000 });
-await page.waitForTimeout(art === 'off' ? 500 : 6000);
+// The art warms up off the critical path (seconds under software GL), then goes live; High then captures its probes.
+if (art !== 'off') await page.waitForFunction(t => { const a = window.__breachlineTest.stats().art; return t === 'low' ? a !== 'none' : a === 'env'; }, tier, { timeout: 120000, polling: 500 });
+await page.waitForTimeout(art === 'off' ? 500 : 3000);
 // Transient banners and prompts are hidden so rounds compare like for like; the rest of the HUD stays.
 await page.addStyleTag({ content: '.bl-toast, .bl-banner, .bl-prompt { visibility: hidden !important; }' });
 await mkdir(out, { recursive: true });
