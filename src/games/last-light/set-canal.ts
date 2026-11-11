@@ -426,10 +426,9 @@ function nearFace(c:C,l:Level,w:Wharf,bottom:number){
    wall(c,key,tile,p.x,744,p.w,10);
   }
   // The hoist well is inside solid foundations, never open sky or water.
-  const trench=w.x0+1070;
-  wall(c,key,tile,trench,754,60,bottom-754);
-  box(c,'#101419',trench,744,60,72);
-  for(const x of [trench,trench+52]){box(c,'#514b40',x,744,8,72);for(let yy=752;yy<816;yy+=12)box(c,'#242329',x,yy,8,1);}
+  wall(c,key,tile,4950,754,60,bottom-754);
+  box(c,'#101419',4950,744,60,72);
+  for(const x of [4950,5002]){box(c,'#514b40',x,744,8,72);for(let yy=752;yy<816;yy+=12)box(c,'#242329',x,yy,8,1);}
  }
  // Where the quay steps up, the higher wall's end is a riser with its own arris.
  for(let i=1;i<w.steps.length;i++){
@@ -472,7 +471,12 @@ function nearFace(c:C,l:Level,w:Wharf,bottom:number){
  if(w.data.house!==5&&span>180){const x=w.x0+Math.round(span*(.3+v(7)*.4)),y=water-16;box(c,'#46525f',x-7,y-3,14,13);box(c,'#06090c',x-4,y,8,8);box(c,'#06090c',x-3,y-1,6,1);box(c,'#2c4739',x-1,y+8,3,water-y-8);box(c,'#1c2e26',x-2,y+8,1,water-y-6);}
  // The foundations belong to the building above, rather than a single
  // extruded wall texture. All remain solid masonry to the frame foot.
- if(w.data.house===2){
+ if(w.data.house===1){
+  for(let x=w.x0+30;x<w.x1-20;x+=116){
+   wall(c,'canal/near/ashlar',NEAR[2].tile,x,water-12,28,bottom-water+12);
+   box(c,'#53606a',x-3,water-14,34,3);box(c,'#101820',x+27,water-10,3,bottom-water+10);
+  }
+ }else if(w.data.house===2){
   wall(c,'canal/near/rubble',NEAR[1].tile,w.x0,water+14,span,bottom-water-14);
   box(c,'#414c53',w.x0,water+12,span,3);
   const x=w.x0+96;
@@ -492,20 +496,6 @@ function nearFace(c:C,l:Level,w:Wharf,bottom:number){
  // The tide line: weeded and dark at the water, and below it the wall is wet all the way down.
  weed(c,w.x0+2,span-4,water,w.seed);
  if(bottom>water){box(c,'#08101580',w.x0,water,span,bottom-water);if(bottom>water+40)box(c,'#03070a40',w.x0,water+40,span,bottom-water-40);}
- // Projecting ashlar buttresses sit in front of the wet face. Their broader
- // battered feet and independent 20px beds break the wall's 12px bond.
- if(w.data.house===1)for(let x=w.x0+30;x<w.x1-40;x+=116){
-  for(let y=water-10,row=0;y<bottom;y+=20,row++){
-   const batter=Math.min(10,Math.floor((y-water+10)/24)),left=x-batter,width=42+batter*2,h=Math.min(20,bottom-y);
-   box(c,'#101820',left-2,y,width+6,h);
-   box(c,row%2?'#52616a':'#596870',left,y,width,h-1);
-   box(c,'#77848a',left,y,width,2);box(c,'#849095',left,y,3,h-1);
-   box(c,'#303f49',left+width-5,y+2,5,h-3);
-   box(c,'#35454e',left+(row%2?14:28),y+2,1,h-3);
-  }
-  box(c,'#101820',x-8,water-17,58,8);box(c,'#7d898e',x-7,water-17,56,3);
-  box(c,'#596971',x-7,water-14,56,4);
- }
  if(w.before!=='bridge')wharfEnd(c,l,w,w.x0,faceTop(w.steps[0],l),bottom,-1,w.before);
  if(w.after!=='bridge')wharfEnd(c,l,w,w.x1,faceTop(w.steps.at(-1)!,l),bottom,1,w.after);
 }
@@ -539,7 +529,7 @@ function nearBank(c:C,l:Level,cx:number,cy:number,vw:number,vh:number){
    case 3:at(weighHouse(200,96),first.x+10,ground);break;
    case 4:{const dock=w.steps.find(p=>p.tag==='dock'),x=first.x+6,top=ground+4-190;at(chandlers(334,190,dock?{x:dock.x-x,w:dock.w,y:dock.y-top}:{x:220,w:110,y:180}),x,ground);break;}
    case 5:{
-    granaryRoom(c,w.x0+294,568,1396);
+    granaryRoom(c,4174,568,1396);
     break;
    }
    case 6:at(customHouse(190,180),first.x+5,ground);break;
@@ -620,10 +610,6 @@ function back(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,clock
    }
   }
   else if(kind==='staging'){
-   if(load(p)==='dock'){
-    for(let x=p.x+8;x<p.x+p.w-8;x+=80){pile(c,x,p.y-10,water);stroke(c,'#6a5440',x+5,p.y+14,Math.min(x+69,p.x+p.w-8),water+18,3);}
-    continue;
-   }
    const a=p.x+8,b=p.x+p.w-18;pile(c,a,p.y+10,water);pile(c,b,p.y+10,water);if(p.w>100)pile(c,p.x+p.w/2-5,p.y+10,water);
    stroke(c,'#2a2119',a+5,p.y+14,b+5,water-5,2);stroke(c,'#2a2119',b+5,p.y+14,a+5,water-5,2);
   }else if(kind==='stage'){
@@ -801,13 +787,6 @@ function water(c:C,l:Level,t:number,cx:number,cy:number,vw:number,vh:number,s?:R
    // The lantern you carry and every jar still burning lie on the water under them.
    if(top-s.y<150&&s.y<top)lampOnWater(c,Math.round(s.x+8+s.facing*7),top,top-s.y-24,t);
    for(const p of l.pickups)if(p.kind==='spark'&&p.x>cx-20&&p.x<cx+vw+20&&top-p.y<150&&!s.collected.includes(p.id))lampOnWater(c,Math.round(p.x),top,top-p.y,t);
-  }
- }
- // The repair dock's pile feet remain visible through the shallow tide.
- for(const p of l.platforms)if(p.tag==='staging.dock'&&visible(p.x,p.y,p.w,48,cx,cy,vw,vh)){
-  for(let x=p.x+8;x<p.x+p.w-8;x+=80){
-   box(c,'#172321',x,top,10,22);box(c,'#354039',x+2,top,5,18);
-   box(c,'#526052',x+2,top,1,12);box(c,'#203b32',x,top,10,3);
   }
  }
  // The near quay stands in front of all of it, from its coping down past the foot of the view.
