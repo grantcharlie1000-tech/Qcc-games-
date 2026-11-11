@@ -28,7 +28,7 @@ const PROBE_GAIN = 0.6;
 /** Fill every fighter gets on top of the probe (shade under the yard walls is near zero in the bake). */
 const SHADE_FILL = 0.8;
 /** Baked albedo carries its own occlusion and is lighter than the vertex colours: less fill for it. */
-const BAKED_GAIN = 0.5;
+const BAKED_GAIN = 0.42;
 
 interface Fig {
   squad: 0 | 1; group: THREE.Group; meshes: (THREE.SkinnedMesh | null)[]; skeleton: THREE.Skeleton; bones: THREE.Bone[];

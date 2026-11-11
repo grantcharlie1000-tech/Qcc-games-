@@ -98,7 +98,7 @@ function leg(lod: number, s: number) {
     const F = frame(c, dir, V(0, 0, -1)), [inner, outer, front, back] = table(LEG, y);
     // u points to +X or -X depending on the side; put the outer extent on the outside.
     const outSide = F.u.x * g > 0;
-    const knees = Math.exp(-Math.pow((y - 0.5) / 0.05, 2)), cuff = Math.exp(-Math.pow((y - 0.2) / 0.05, 2));
+    const knees = Math.exp(-Math.pow((y - 0.5) / 0.05, 2)) * 1.8, cuff = Math.exp(-Math.pow((y - 0.2) / 0.05, 2)) * 1.7 + Math.exp(-Math.pow((y - 0.72) / 0.06, 2)) * 0.6;
     const fold = (knees * 0.05 + cuff * 0.07);
     rings.push({ ...F, at: section(outSide ? outer : inner, outSide ? inner : outer, front, back, 2.2, a => fold * Math.abs(Math.sin(a * 2.5 + y * 40)) + 0.012 * Math.sin(a * 5 + y * 23) * Math.sin(y * 31)) });
   }
@@ -186,7 +186,7 @@ function head(lod: number, mask: 'balaclava' | 'scarf') {
   for (let i = 0; i < P.count; i++) {
     const x = P.getX(i), y = P.getY(i), z = P.getZ(i), t = m.tags[i];
     if (mask === 'balaclava') {
-      const eye = y > 1.6 && y < 1.668 && z < -0.035 && Math.abs(x) < 0.066 - Math.max(0, 1.62 - y) * 0.6;
+      const eye = y > 1.608 && y < 1.664 && z < -0.035 && Math.abs(x) < 0.064 - Math.max(0, 1.62 - y) * 1.2;
       tag[i] = eye ? BT.skin : BT.face;
     } else {
       const hair = y > 1.61 && z > -0.03 && !(t === BT.skin) || y > 1.69;

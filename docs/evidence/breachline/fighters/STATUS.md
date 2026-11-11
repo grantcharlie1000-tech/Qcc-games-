@@ -14,7 +14,7 @@ Session: fighters (row F: bodies, kit, materials, animation). Plan:
 | Weapons in hand | `worldWeapon(id, lod)` from the weapons session, adapted to the fighter's sockets (stand-in kept as fallback) |
 | Lighting | Diffuse from `probe()` as indirect irradiance, specular from `environment()` scaled by `environmentScale()` |
 
-**Where I am:** round 6. Both squads have baked texture sets in the game (Azure 2.1 MB, Ember 2.2 MB). F = 6, below the gate of 7. Next: the aimed shoulder, the gloves, the head and helmet charts.
+**Where I am:** round 7, the reviewer's r4 points 1–5 (facets, values, legs, head) on both squads' baked sets. F = 6, below the gate of 7. Next: the aimed shoulder, the gloves, the head and helmet charts.
 
 ## Reference study (looked at, nothing saved)
 
@@ -95,6 +95,8 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 
 | r6 | **6** | `r6/turntable-s1.png`, `r6/atlas-ember-l0-{diff,nor,arm}.png`, `r6/ingame-lab-{2m,5m}-ember.png` with a 2× crop, `r6/shoulder-aimed.png` | Ember now has its own baked set (coyote print, olive carrier, stubbled face) and reads in the Lab at 2 and 5 m. The aimed shoulder got a clavicle shrug and a deltoid corrective, which helped only a little: a flat flap still shows where the raised arm leaves the torso. |
 
+| r7 | **6** | `r7/turntable-s{0,1}.png` (head close-ups at the end), `r7/atlas-l0-*.png`, `r7/ingame-yard-{2m,8m,20m}.png` with crops, `r7/strip-{walk-side,walk-front,sprint-side}-s0.png` | The uniform is now a mid-dark slate (or coyote) with a four-tone print in fist-sized shapes, and the kit is lifted off black so its pouches and plate edges read; the figure no longer splits into a white block and a black block. The goggles are up on the helmet, and the balaclava has a clean eye opening with shadowed eyes (no black visor bar, no pale wedge). Occlusion no longer tones each facet differently. Trousers fold visibly at the knee, mid-thigh and above the boot. Held at 6: the shoulder flap when aiming; the gloves; boxy kit silhouettes up close; the thin ring charts. |
+
 ## Iteration log
 
 **Body, round 1** (studio turntables):
@@ -157,6 +159,13 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 1. Ember baked with the same pipeline (`SQUADS=1`); both sets ship and the game loads both. The budget test now checks each variant under 3.1 MB and all fighters under 6 MB.
 2. Shoulder: the clavicle elevates and comes forward with the arm's swing, and the deltoid helper grows up to 12%. The aimed shoulder is only slightly better (`r6/shoulder-aimed.png`); the flap where the raised arm leaves the torso remains.
 
+**Round 7** (reviewer's r4 notes; the r4 unwrap point was already done in r5):
+1. Facets: occlusion rays started on the flat triangle, inside the smooth surface, and grazing rays hit the next facet, so each facet took its own tone → rays start 5 mm off and ignore hits closer than 8 mm. The bake's tangent frames were already built on the interpolated smooth normals.
+2. Values: Azure shirt and trousers darker slate, Ember coyote darker; kit lifted (Azure carrier about 0.06 linear, webbing 0.045); four-tone print in about 10 cm shapes with broken edges; baked materials' probe fill 0.5 → 0.42.
+3. Head: goggles pushed up onto the helmet above the brim. The eye opening is a smooth 3D shape in the bake instead of the head mesh's vertex tags. The eyes are shadowed sockets, a soft white and a dark iris, after a first try read as cartoon rings.
+4. Legs: trouser folds in the silhouette at the knee (1.8×), above the boot (1.7×) and mid-thigh.
+- Both sets re-baked: Azure 2.2 MB, Ember 2.2 MB.
+
 ## Budgets measured
 
 | Item | Budget | Measured |
@@ -168,7 +177,7 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 | Ten fighters in view | ≤ 60k | ≤ 4 × 7.93k + 6 × 3.74k = 54.2k worst case (at most 4 at full detail) |
 | Animation, ten fighters | ≤ 1 ms | 0.23 ms per frame (node, unit test) |
 | Mesh build | — | about 390 ms for full detail (head and glove surface nets dominate; AO about 30 ms), 180 ms middle, 50 ms low; built lazily one per frame, lowest first, so the first frame is not blocked. **Still a stall of that size when a full level is first built; to be moved off the frame or cut further.** |
-| Textures (download) | 6 MB for all fighters | rifleman-azure 2.1 MB, rifleman-ember 2.2 MB (4.3 MB of 6). Per set: full detail diff 2048, nor 1024, arm 1024; middle 1024 / 512 / 512; low 512 / 256 / 256; UV data 250 KB. |
+| Textures (download) | 6 MB for all fighters | rifleman-azure 2.2 MB, rifleman-ember 2.2 MB (4.4 MB of 6). Per set: full detail diff 2048, nor 1024, arm 1024; middle 1024 / 512 / 512; low 512 / 256 / 256; UV data 250 KB. |
 | Bake | offline | about 5 min for the three levels (64 AO rays) |
 
 ## Tests

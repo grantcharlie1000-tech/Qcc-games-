@@ -125,9 +125,12 @@ function paint(x: Texel, ao: number, d: ReturnType<typeof height>, out: { col: T
   const cav = 1 - ao;
   if (x.cls === C.uniform) {
     // Printed three-tone pattern with breakup.
-    const b1 = fbm(p.x * 9 + 3.1, p.y * 9, p.z * 9 - 2, 4), b2 = fbm(p.x * 17 + 7.3, p.y * 17, p.z * 17, 3);
-    if (b1 > 0.54) col.multiplyScalar(0.68);
-    else if (b2 > 0.57) col.multiply(new THREE.Color(1.22, 1.18, 1.12));
+    // Four tones in fist-sized shapes (about 10 cm), edges broken up by finer noise.
+    const brk = (fbm(p.x * 60, p.y * 60, p.z * 60, 2) - 0.5) * 0.06;
+    const b1 = fbm(p.x * 9 + 3.1, p.y * 9, p.z * 9 - 2, 4) + brk, b2 = fbm(p.x * 11 + 7.3, p.y * 11, p.z * 11, 3) + brk, b3 = fbm(p.x * 13 - 5.1, p.y * 13 + 2, p.z * 13, 3) + brk;
+    if (b1 > 0.56) col.multiplyScalar(0.6);
+    else if (b2 > 0.57) col.multiplyScalar(0.8);
+    else if (b3 > 0.58) col.multiply(new THREE.Color(1.12, 1.1, 1.06));
     col.multiplyScalar(0.92 + 0.12 * small);
     col.multiplyScalar(1 - d.seam * 0.3);
     rough = 0.9 + 0.06 * (small - 0.5);
@@ -145,6 +148,13 @@ function paint(x: Texel, ao: number, d: ReturnType<typeof height>, out: { col: T
     const brow = (1 - ss(0.0, 0.025, Math.abs(p.y - 1.632))) * ss(-0.06, -0.085, p.z) * 0.25;
     const stubble = (1 - ss(1.555, 1.585, p.y)) * ss(1.5, 1.52, p.y) * 0.3 * (0.6 + 0.4 * vn(p.x * 900, p.y * 900, p.z * 900));
     col.multiplyScalar(1 - brow).lerp(new THREE.Color(0.06, 0.05, 0.045), stubble);
+    // Eyes: a shadowed socket, the white, a dark iris.
+    for (const ex of [-0.032, 0.032]) {
+      const d = Math.hypot((p.x - ex) / 1.3, p.y - 1.626) ; if (p.z > -0.06) continue;
+      col.multiplyScalar(1 - (1 - ss(0.008, 0.02, d)) * 0.45);
+      const eyeW = 1 - ss(0.0035, 0.0055, Math.hypot((p.x - ex) / 1.5, p.y - 1.626));
+      col.lerp(new THREE.Color(0.2, 0.19, 0.18), eyeW * 0.5).lerp(new THREE.Color(0.04, 0.032, 0.028), (1 - ss(0.0016, 0.003, Math.hypot(p.x - ex, p.y - 1.626))) * 0.8);
+    }
     col.multiplyScalar(0.94 + 0.1 * small); rough = 0.72 + 0.06 * (small - 0.5) + stubble * 0.2;
   } else if (x.cls === C.glove) { col.multiplyScalar(0.9 + 0.2 * big); const worn = ss(0.3, 0.7, x.edge); col.lerp(col.clone().multiplyScalar(1.5), worn * 0.4); rough = 0.75 - worn * 0.15; }
   else if (x.cls === C.face) { col.multiplyScalar(0.92 + 0.12 * small); rough = 0.95; }
@@ -171,6 +181,7 @@ async function bakeLevel(squad: 0 | 1, lod: number, size: number, dir: string): 
   const weight = (p: THREE.Vector3) => (p.y > 1.45 ? 1.6 : p.y > 1.05 ? 1.25 : p.y < 0.25 ? 0.9 : 1.0);
   const U = unwrap(g, size, lod === 0 ? 4 : 2, weight);
   const P = g.getAttribute('position'), N = g.getAttribute('normal'), COL = g.getAttribute('color'), PBR = g.getAttribute('pbr'), EDGE = g.getAttribute('edge'), SI = g.getAttribute('skinIndex');
+  const skinC = new THREE.Color().setHex(l.skin.color, THREE.SRGBColorSpace), faceC = new THREE.Color().setHex(l.face.color, THREE.SRGBColorSpace);
   const cls = classes(l), classOf = (r: number, gg: number, b: number): Cls => {
     const hex = new THREE.Color(r, gg, b).getHex(); let best: Cls = C.other, bd = 1e9;
     for (const [h, c] of cls) { const dd = Math.abs(((h >> 16) & 255) - ((hex >> 16) & 255)) + Math.abs(((h >> 8) & 255) - ((hex >> 8) & 255)) + Math.abs((h & 255) - (hex & 255)); if (dd < bd) { bd = dd; best = c; } }
@@ -234,8 +245,10 @@ async function bakeLevel(squad: 0 | 1, lod: number, size: number, dir: string): 
     let occ = 0;
     for (const d of dirs) {
       tmp.copy(t1).multiplyScalar(d.x).addScaledVector(t2, d.y).addScaledVector(n, d.z);
-      ray.origin.copy(x.p).addScaledVector(n, 0.002); ray.direction.copy(tmp);
-      const h = bvh[arm ? 1 : 0].raycastFirst(ray, THREE.DoubleSide, 0, 0.12);
+      // Start off the surface and ignore very near hits: the flat triangle sits inside the smooth surface, and
+      // grazing rays hitting the next facet made every facet a different tone.
+      ray.origin.copy(x.p).addScaledVector(n, 0.005); ray.direction.copy(tmp);
+      const h = bvh[arm ? 1 : 0].raycastFirst(ray, THREE.DoubleSide, 0.008, 0.12);
       if (h) occ += 1 - (h.distance / 0.12) * 0.5;
     }
     const v = 1 - Math.min(0.9, occ / dirs.length * 1.15);
@@ -252,6 +265,12 @@ async function bakeLevel(squad: 0 | 1, lod: number, size: number, dir: string): 
     const dom = w0 >= w1 && w0 >= w2 ? a : w1 >= w2 ? b : c;
     x.col.setRGB(COL.getX(dom), COL.getY(dom), COL.getZ(dom));
     x.cls = classOf(COL.getX(dom), COL.getY(dom), COL.getZ(dom));
+    // The balaclava's eye opening, from a smooth shape in 3D rather than the coarse head mesh's vertex tags.
+    if (l.mask === 'balaclava' && (x.cls === C.face || x.cls === C.skin) && (SI.getX(dom) === B.head || SI.getX(dom) === B.neck)) {
+      const open = (1 - ss(0.052, 0.06, Math.abs(x.p.x))) * ss(1.606, 1.612, x.p.y) * (1 - ss(1.657, 1.663, x.p.y)) * ss(-0.03, -0.045, x.p.z);
+      x.cls = open > 0.5 ? C.skin : C.face;
+      x.col.copy(open > 0.5 ? skinC : faceC);
+    }
     x.rough = PBR.getX(dom); x.metal = PBR.getY(dom); x.edge = EDGE.getX(a) * w0 + EDGE.getX(b) * w1 + EDGE.getX(c) * w2; x.bone = SI.getX(dom);
     // Orthonormal tangent frame (T along +u, B along +v).
     x.t.set(TT[f * 3], TT[f * 3 + 1], TT[f * 3 + 2]); x.t.addScaledVector(x.n, -x.t.dot(x.n)).normalize();

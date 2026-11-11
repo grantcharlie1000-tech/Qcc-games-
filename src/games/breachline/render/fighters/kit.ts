@@ -159,7 +159,8 @@ function helmet(b: Builder, l: Look, lod: number) {
 
 function goggles(b: Builder, l: Look, lod: number) {
   b.bone = B.head;
-  const R = 0.106, c = V(0, 1.627, -0.005), n = [12, 8, 5][lod], frameRows: THREE.Vector3[][] = [], lens: THREE.Vector3[][] = [];
+  // Pushed up onto the helmet above the brim, so the face shows (a dark visor bar read as a void).
+  const R = 0.122, c = V(0, 1.708, 0.004), n = [12, 8, 5][lod], frameRows: THREE.Vector3[][] = [], lens: THREE.Vector3[][] = [];
   const at = (az: number, y: number, r: number) => V(c.x + Math.sin(az) * r, c.y + y, c.z - Math.cos(az) * r * 1.0);
   // The frame: a soft rounded band, deeper at the sides; the lens a curved sheet set into it.
   for (const [y, r] of [[0.03, R - 0.015], [0.032, R], [0.022, R + 0.006], [-0.019, R + 0.006], [-0.028, R], [-0.026, R - 0.015]] as const) {
@@ -172,7 +173,7 @@ function goggles(b: Builder, l: Look, lod: number) {
   b.add(grid(lens, false), l.lens);
   // Strap round the helmet.
   const pts: [number, number, number][] = [];
-  for (let k = 0; k <= 10; k++) { const az = 1.0 + (2 * Math.PI - 2.0) * k / 10, p = shell(az, rimTh(az) * 0.94, 0.004); pts.push([p.x, p.y, p.z]); }
+  for (let k = 0; k <= 10; k++) { const az = 1.0 + (2 * Math.PI - 2.0) * k / 10, p = shell(az, rimTh(az) * 0.66, 0.004); pts.push([p.x, p.y, p.z]); }
   b.tube(pts, 0.0065, surf(l.web, { color: 0x1b1c1d }), [8, 6, 4][lod], 3);
 }
 
