@@ -623,3 +623,16 @@ import { createPatchViewmodel } from './render/patchhero/index';
 // line 195, replacing `const viewmodel = createViewmodel(renderer, heroLighting);`
 const viewmodel = new URLSearchParams(location.search).get('weapons') === 'patch' ? createPatchViewmodel(renderer, heroLighting) : createViewmodel(renderer, heroLighting);
 ```
+
+## Job 6: last attempt on the Patch rifle — verdict: still no
+
+Evidence: `job6-rifle.jpg` (130 KB; corridor, hip and aimed, stock left and Patch right, with a 2× crop of the hip view).
+Done: the generated box sight was removed down to the rail and capped (`cut-rifle-sight.ts`, 729 triangles); the AR-5's own
+red-dot optic and lens sit on the rail, so the aim looks through a real window. The finish is dark grey with darker
+furniture, cavity darkening and edge wear, roughness 0.45. The rifle is 15% narrower, and at the hip sits 8 cm lower
+and 4 cm further forward.
+
+Result: **aimed, about even** (it is our optic, now with a clear window). **At the hip, still no**: under the
+viewmodel's hot lighting (`VM_GAIN` 2.2) the new finish reads pale grey with blown-out white specks along the edges,
+so the rifle looks washed out next to the stock AR-5's warm, readable furniture. The rifle goes back to our own second
+build. The Service Pistol stays the recommendation for the sidearm.
