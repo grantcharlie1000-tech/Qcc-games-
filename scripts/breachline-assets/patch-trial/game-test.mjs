@@ -43,6 +43,7 @@ async function run(patch) {
   for (const swap of [false, true]) {
     if (swap) await page.evaluate(([a, b, ya, yb]) => { const h = window.__breachlineTest; h.teleport(a, yb[0], yb[1]); h.teleport(b, ya[0], ya[1]); h.advance(0.05); }, [a.id, b.id, spots.yard, spots.lab]);
     for (const [who, place] of swap ? [[0, 'lab'], [1, 'yard']] : [[0, 'yard'], [1, 'lab']]) for (const d of [2, 8]) {
+      if (process.env.PLACES && !process.env.PLACES.split(',').includes(place)) continue;
       const [tx, tz] = spots[place], ang = ANG[place][d];
       await page.evaluate(([tx, tz, d, ang]) => { const h = window.__breachlineTest, q = ang * Math.PI / 2 + 0.3, x = tx + Math.sin(q) * d, z = tz + Math.cos(q) * d;
         h.place(x, z, Math.atan2(-(tx - x), -(tz - z)), -0.05); h.advance(0.05); h.draw(); h.draw(); }, [tx, tz, d, ang]);

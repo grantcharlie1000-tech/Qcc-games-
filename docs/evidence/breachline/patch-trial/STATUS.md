@@ -558,3 +558,14 @@ What changed (all in `render/patchfighters/index.ts`, plus the bake in `prep-sol
 - Remaining levers, if the owner wants the yard to win too: lift squad 0's cloth to about 0.10 outdoors only (via
   the probe's brightness, not the albedo), and darken the sleeve region of squad 1 (its source texels are the
   glossiest, so they remap lightest).
+
+# Job 5 (planner, 12:48 UTC)
+
+## 5.1 Yard levers — done (`job5-1-yard.jpg`: yard, 2 m and 8 m, stock left and Patch right in each pair)
+- **Squad 0** takes 1.45 × the body's probe share (a per-squad `gain` in `PATCH_LOOKS`), not a lighter albedo.
+  The probe varies little between yard shade and the Lab (the stock fill floor dominates it), so the lift applies
+  everywhere; in the Lab it stays dark slate. In yard shade it now reads as well as the stock figure: grey cloth,
+  a black vest, the helmet's outline.
+- **Squad 1 sleeves:** the cloth on the arms (bind-pose |x| > 0.2 m and above 0.95 m) is scaled to 0.72, so the sleeves
+  no longer outshine the rest of the figure in shade.
+The soldiers are done from my side.

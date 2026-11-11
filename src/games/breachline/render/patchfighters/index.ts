@@ -39,11 +39,13 @@ const SET = '../patch/tactical';
 export const PATCH_LOOKS = [
   // Squad 0: dark slate cloth (linear albedo about 0.08 at its middle), kit darker (0.035) and glossier, light dust.
   // `fat`/`kit` are the middle albedo (sRGB); `fatC`/`kitC` how far the source's detail swings it either way.
-  { fat: 0x4a5058, fatC: 0.55, kit: 0x34373b, kitC: 0.5, kitGloss: 0.72, dirt: 0x7a7468, dirtAmt: 0.35, weave: 0.10, stain: 0.16, headgear: ['helmetA', 'gogglesA'] },
+  { fat: 0x4a5058, fatC: 0.55, kit: 0x34373b, kitC: 0.5, kitGloss: 0.72, gain: 1.45, sleeve: 1.0, dirt: 0x7a7468, dirtAmt: 0.35, weave: 0.10, stain: 0.16, headgear: ['helmetA', 'gogglesA'] },
   // Squad 1: coyote cloth (about 0.19 at its middle, rising to 0.25 on light folds), olive kit darker (0.1), both
   // desaturated, darker mud. (At 0.26 with a wider swing the sleeves read cream in the game.)
-  { fat: 0x857360, fatC: 0.3, kit: 0x585b45, kitC: 0.4, kitGloss: 0.85, dirt: 0x4f4232, dirtAmt: 0.45, weave: 0.10, stain: 0.22, headgear: ['headsetB'] },
+  { fat: 0x857360, fatC: 0.3, kit: 0x585b45, kitC: 0.4, kitGloss: 0.85, gain: 1.0, sleeve: 0.72, dirt: 0x4f4232, dirtAmt: 0.45, weave: 0.10, stain: 0.22, headgear: ['headsetB'] },
 ] as const;
+/** `gain` multiplies the body's probe share per squad (job 5: squad 0's dark cloth needs more fill to read in the
+ * yard's shade); `sleeve` scales the cloth albedo on the arms (squad 1's sleeves remapped lightest). */
 /** Rim light from the probe, as a fraction of it, at grazing angles (separates edges from dark walls). */
 const RIM = 0.35;
 
@@ -78,12 +80,12 @@ function probeMaterial(params: THREE.MeshStandardMaterialParameters, key: string
 function bodyMaterial(a: Assets, squad: 0 | 1): ProbeMaterial {
   const L = PATCH_LOOKS[squad], enc = (x: number) => Math.pow(Math.max(x, 1e-6), 1 / 2.2);
   const u = {
-    dirtC: { value: new THREE.Color(L.dirt) }, dirtAmt: { value: L.dirtAmt }, kitGloss: { value: L.kitGloss },
+    sleeve: { value: L.sleeve }, dirtC: { value: new THREE.Color(L.dirt) }, dirtAmt: { value: L.dirtAmt }, kitGloss: { value: L.kitGloss },
     tMask: { value: a.maps.mask }, fat: { value: new THREE.Vector3(...a.lumRange.fatigues.map(enc)) }, kit: { value: new THREE.Vector3(...a.lumRange.kit.map(enc)) },
     fatA: { value: new THREE.Color(L.fat) }, kitA: { value: new THREE.Color(L.kit) }, fatC: { value: L.fatC }, kitC: { value: L.kitC },
     weave: { value: L.weave }, stain: { value: L.stain },
   };
-  const m = probeMaterial({ map: a.maps.map, normalMap: a.maps.normalMap, aoMap: a.maps.arm, roughnessMap: a.maps.arm, metalnessMap: a.maps.arm, roughness: 1, metalness: 1 }, 'patch-body', fs => `uniform sampler2D tMask; uniform vec3 fat, kit, fatA, kitA, dirtC; uniform float fatC, kitC, weave, stain, dirtAmt, kitGloss; varying vec3 vObjP; varying vec3 vObjN;
+  const m = probeMaterial({ map: a.maps.map, normalMap: a.maps.normalMap, aoMap: a.maps.arm, roughnessMap: a.maps.arm, metalnessMap: a.maps.arm, roughness: 1, metalness: 1 }, 'patch-body', fs => `uniform sampler2D tMask; uniform vec3 fat, kit, fatA, kitA, dirtC; uniform float fatC, kitC, weave, stain, dirtAmt, kitGloss, sleeve; varying vec3 vObjP; varying vec3 vObjN;
 float pfH(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 float pfNoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(mix(pfH(i), pfH(i + vec3(1,0,0)), f.x), mix(pfH(i + vec3(0,1,0)), pfH(i + vec3(1,1,0)), f.x), f.y),
@@ -99,6 +101,7 @@ float pfNoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 
   float st = pfNoise(vObjP * 5.0) * 0.65 + pfNoise(vObjP * 17.0) * 0.35;
   vec3 cF = fatA * (1.0 + fatC * sF) * (1.0 + weave * wv) * (1.0 - stain * (st - 0.45));
   vec3 cK = kitA * (1.0 + kitC * sK) * (1.0 + weave * 0.4 * wv) * (1.0 - stain * 0.6 * (st - 0.45));
+  cF *= mix(1.0, sleeve, smoothstep(0.2, 0.26, abs(vObjP.x)) * step(0.95, vObjP.y));
   vec3 c = mix(cF, cK, k);
   // Dirt: knees, elbows, cuffs and boots (bind-pose positions; the fighter faces -Z), broken up by noise.
   vec3 ap = vec3(abs(vObjP.x), vObjP.y, vObjP.z);
@@ -212,7 +215,7 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
         const l = lighting.probe(f.x, 1.1, f.z).color;
         color.setRGB(SHADE_FILL + l[0] * PROBE_GAIN, SHADE_FILL + l[1] * PROBE_GAIN, SHADE_FILL * 1.06 + l[2] * PROBE_GAIN).multiplyScalar(Math.PI);
         f.weaponMat.userData.probe.value.copy(color);
-        for (const mt of f.mats) mt.userData.probe.value.copy(color).multiplyScalar(BODY_GAIN);
+        for (const mt of f.mats) mt.userData.probe.value.copy(color).multiplyScalar(BODY_GAIN * PATCH_LOOKS[f.squad].gain);
         const env = lighting.environment(f.x, f.z), es = lighting.environmentScale(f.x, f.z) * 0.8;
         if (f.weaponMat.envMap !== env) { f.weaponMat.envMap = env; f.weaponMat.needsUpdate = true; for (const mt of f.mats) { mt.envMap = env; mt.needsUpdate = true; } }
         f.weaponMat.envMapIntensity = es; for (const mt of f.mats) mt.envMapIntensity = es;
