@@ -620,6 +620,48 @@ shape must be right before any texture; (3) hand and arm in clay, open and gripp
 studio; (5) in the game at 1280×720 with a 2× crop. Nothing else on row E or K is started until gate 5 is passed
 with the owner's agreement.
 
+## Assets first for people and weapons, added 2026-11-11 11:00 UTC (owner: "why don't you just pull assets from Patch instead of modelling your own?")
+
+The owner is right to ask. The planner had searched Patch only narrowly and had ruled out its AI-generated assets on
+his own initiative. A wide search (55 single-word queries, 659 distinct models) shows:
+
+- **By human artists:** no modern assault rifle, shotgun, submachine gun, first-person arms or modern soldier. There
+  are Poly Haven's Service Pistol and Bolt Action Rifle (CC0), useful props (ammo box, military crates, jerrycan,
+  security cameras, radio transceiver), real-glove models from SimReady, and low-poly kits.
+- **AI-generated (Scenario collection, CC-BY-4.0, licence evidence recorded by Patch):** several that look far better
+  than what we have built. The planner's exclusion of these is **withdrawn**.
+
+| Candidate | Patch id | Facts | Use |
+| --- | --- | --- | --- |
+| Tactical soldier in black | `scenario:asset_e9xaKzrr8R1sMe2VMajWaAb1` | 18.8k triangles, 1.72 m, 4096 px source textures, 2.5 MB web variant, A-pose, no skeleton | Fighter body, both squads |
+| Weathered armoured soldier | `scenario:asset_ma3BPFTWWAETEfU8vh9zQFrM` | 1.5M triangles (179k at lod2), camouflage and armour, no skeleton | Second squad's body, after decimation |
+| Orange desert trooper | `scenario:asset_in3md75AeDtffS4gGsbWsrBM` | 5.5k triangles | Alternate for the second squad |
+| Black sci-fi assault rifle | `scenario:asset_kHXqk4QynhrkbnpiD9C8A5zo` | 1.26M triangles (151k at lod2), 4096 px source textures, one fused mesh | Main rifle, after decimation, baking and cutting out the magazine |
+| Service Pistol, Bolt Action Rifle 7.62 | `polyhaven:service_pistol`, `polyhaven:bolt_action_rifle_7_62` | CC0, 27.5k and 20k triangles | Benchmark; sidearm and marksman rifle if the owner likes them in hand |
+
+**New order of preference for rows E and F: use a good asset if one exists; build our own only where none does.**
+What this means in practice:
+- **Fighters:** trial the Tactical soldier first. Step 1, same day: load it in the studio beside our rifleman under
+  the same light and at 2, 8 and 20 m in the game, static. Step 2 if it holds up: fit it to our existing skeleton
+  with the automatic distance-to-bone skinning already used for our own body, check the walk, aim, crouch and deaths
+  for tearing at shoulders, elbows, hips and knees, and fix weights. Step 3: the second squad, either the armoured
+  soldier decimated and baked through our pipeline, or a re-coloured and re-kitted variant of the first; squads must
+  be told apart at a glance. Our own helmet, goggles, patches and held weapon stay as attachments.
+- **Weapons:** trial the rifle the same way. Step 1: decimate from lod2 to the in-hand budget, bake its detail and
+  colour to our texture set, and show it in the studio and in the first-person view beside ours and the Poly Haven
+  pistol. Step 2 if it holds up: cut the magazine out as its own capped mesh for the reload, add our sockets, sights
+  alignment and muzzle point, and re-time our reload to its shape. Step 3: Poly Haven pistol and bolt-action in hand.
+- **Arms and hands stay our own build** (no asset exists), by the second-build method above, as do reload
+  animations and sound, which the owner asked to be ours.
+- The second build of our own AR-5 is **paused**, not cancelled: it resumes only if the asset rifle fails in hand.
+
+**Cautions that go with generated assets.** They are single fused meshes with baked-in lighting in places, untidy
+triangles and no moving parts or skeleton, so expect clean-up. Each came from an image whose origin we cannot see:
+before adopting one, look for anything that reads as another game's or brand's recognisable design (logos, named
+characters, signature silhouettes) and reject it if so. Credit each with its `credit` line in
+`public/THIRD_PARTY_NOTICES.txt` and record id, source revision and licence in the manifest. Keep within the
+download and triangle budgets after decimation.
+
 ## Working notes for whoever carries this out
 
 - Fresh checkout: `npm ci`. Type-check with `npx tsc --noEmit`; unit tests `npx vitest run tests/games/breachline`
