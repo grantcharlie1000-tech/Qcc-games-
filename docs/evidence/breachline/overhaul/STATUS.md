@@ -124,6 +124,23 @@ renderer work, measured against section 5.
 **Where I am (keep current):** Archive round 2 (boxes, desk lamp) and corridor round 4 done; kit leftovers done
 (no new evidence); next the yard.
 
+## The yard: plan (not started)
+
+The yard has had no art pass and is still the procedural look. Making it an art region is bigger than a room:
+1. **Sky and sun in the bake.** `bake.ts` only knows ceiling fittings. The yard needs a sun term (the scene's
+   `SUN` direction, shadowed by `occluded`) and a sky dome term (cosine-weighted samples over the upper
+   hemisphere, open sky only), plus the existing bounces. Without that, any outdoor region bakes black.
+2. **Region and surfaces.** A `room('Yard', 'yard')` region over the south yard and west lot (the open ground
+   faces only), with an asphalt or concrete set (Poly Haven CC0, e.g. `asphalt_02`, `concrete_floor_worn_001`),
+   painted bay lines as decals, kerbs and drains as dressing.
+3. **Dressing.** Poly Haven crates (`old_military_crate`, `wooden_military_crate`), `metal_jerrycan_green`,
+   barrels, all placed against or on existing collision boxes so nothing new reads as cover. The container and
+   vehicle get dressing on their faces (doors, ribs, rust).
+4. **Readability.** Enough sky light that a dark figure separates from the walls: a brighter sky term and a lifted
+   floor bounce, checked with a soldier in frame (`FIGHTERS` default is the Patch soldiers).
+Cost estimate: step 1 is a few hours of bake work plus about 10 minutes per re-bake; steps 2-4 are like a room
+round each.
+
 ## Kit leftovers (no new evidence)
 
 - **Reinforcement deploy:** the plate now rises in the first half of the action, folded to a third of its width, then
