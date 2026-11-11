@@ -382,6 +382,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     for (let i = 0; i < (fx.density < 1 ? 1 : 2); i++) fx.debris(ex, y, ez, dx * (0.5 + Math.random() * 1.5) + (Math.random() - 0.5), Math.random() * 0.8, dz * (0.5 + Math.random() * 1.5) + (Math.random() - 0.5), 0.012 + Math.random() * 0.02, c[0] * b, c[1] * b, c[2] * b, true);
   }
   /** Chips on the intact board round a fresh hole, on both faces: rounds and blast tear more than they cut. */
+  const k0 = (i: number) => i % 2 === 0;
   function chipRim(panel: Panel, broken: number[], per: number, scorched = false) {
     if (fx.density < 1) per = 1;
     const half = PANEL_T / 2, nx = panel.axis === 'z' ? 1 : 0, nz = panel.axis === 'x' ? 1 : 0;
@@ -423,10 +424,27 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
         v = new PanelView({ ...panel, reinforced: true, version: panel.version + 1 }, bake, panelMats, art?.panelLook(panel.id) ?? null);
         v.sync(); panelGroup.add(v.mesh); deploys.set(panel.id, v);
       }
-      const t = Math.min(1, pl.actT / actDuration(ACT.reinforce)), e = 1 - (1 - t) ** 3;
-      v.mesh.scale.set(1, Math.max(0.02, e), 1); v.mesh.updateMatrix();
+      // First half: the folded plate is lifted into place (rising from the floor, a third of its width); second half:
+      // it unfolds sideways across the wall, about its middle.
+      const t = Math.min(1, pl.actT / actDuration(ACT.reinforce)), rise = 1 - (1 - Math.min(1, t * 2)) ** 3, open = Math.max(0, t * 2 - 1);
+      const sx = 0.33 + 0.67 * (1 - (1 - open) ** 2), mid = panel.u0 + panel.cols * CELL / 2;
+      v.mesh.scale.set(panel.axis === 'x' ? sx : 1, Math.max(0.02, rise), panel.axis === 'z' ? sx : 1);
+      v.mesh.position.set(panel.axis === 'x' ? mid * (1 - sx) : 0, 0, panel.axis === 'z' ? mid * (1 - sx) : 0);
+      v.mesh.updateMatrix();
     }
-    for (const [id, v] of deploys) if (!live.has(id)) { panelGroup.remove(v.mesh); v.dispose(); deploys.delete(id); }
+    for (const [id, v] of deploys) if (!live.has(id)) {
+      // Done (or abandoned): when the wall is now reinforced, the anchors fire into floor and ceiling.
+      const panel = m.world.panels[id];
+      if (panel?.reinforced) {
+        const W = panel.cols * CELL, leaves = Math.max(2, Math.round(W / 0.5));
+        for (let i = 1; i < leaves; i += 2) for (const y of [0.04, panel.y0 + panel.rows * CELL - 0.04]) {
+          const at = panelPoint(panel, panel.u0 + i * W / leaves, y, 0);
+          for (let k = 0; k < 6; k++) fx.spark(at.x, at.y, at.z, (Math.random() - 0.5) * 3, (y < 1 ? 1 : -1) * Math.random() * 2, (Math.random() - 0.5) * 3, 0.04, 0.25);
+          fx.dust(at.x, at.y, at.z, 0, y < 1 ? 0.3 : -0.2, 0, 0.18, 0.8, 0.6, 0.58, 0.55, 0.4, 1.8);
+        }
+      }
+      panelGroup.remove(v.mesh); v.dispose(); deploys.delete(id);
+    }
   }
   function impact(x: number, y: number, z: number, nx: number, ny: number, nz: number, kind: keyof typeof DUST, hard: boolean) {
     const c = DUST[kind], l = bake.probe(x, z), b = 0.35 + (l[0] + l[1] + l[2]) / 3;
@@ -481,7 +499,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
               const lowWood = wood || at.y < 1.1, c = lowWood ? [0.5, 0.36, 0.22] : [0.85, 0.82, 0.74];
               const speed = e.cause === 1 ? 3 + Math.random() * 6 : 1 + Math.random() * 2.5, nx = panel.axis === 'z' ? side : 0, nz = panel.axis === 'x' ? side : 0;
               const count = e.cause === 1 ? 1 : 2;
-              // Board fragments: thin, flat pieces that come to rest and stay.
+              // Board fragments: thin, flat pieces that come to rest and stay; a broken barricade also leaves long
+              // splintered shards of plank.
+              if (wood && k0(i)) fx.debris(at.x, at.y, at.z, nx * speed * 0.6 + (Math.random() - 0.5), Math.random() * 1.5, nz * speed * 0.6 + (Math.random() - 0.5), 0.16 + Math.random() * 0.1, 0.55 * b, 0.4 * b, 0.26 * b, true, 0.1);
               for (let k = 0; k < count; k++) fx.debris(at.x, at.y, at.z, nx * speed + (Math.random() - 0.5) * 2, Math.random() * 2.5, nz * speed + (Math.random() - 0.5) * 2, 0.05 + Math.random() * (e.cause === 1 ? 0.13 : 0.07), c[0] * b, c[1] * b, c[2] * b, true, wood ? 0.3 : 0.12);
               if (i % (stride * 2) === 0) impact(at.x, at.y, at.z, nx, 0, nz, wood ? 'wood' : 'wall', false);
             }

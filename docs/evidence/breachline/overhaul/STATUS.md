@@ -121,8 +121,18 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** Archive round 2 (boxes, desk lamp) and corridor round 4 done; next the kit leftovers
-(reinforcement unfold, barricade debris, frag scorch), then the yard.
+**Where I am (keep current):** Archive round 2 (boxes, desk lamp) and corridor round 4 done; kit leftovers done
+(no new evidence); next the yard.
+
+## Kit leftovers (no new evidence)
+
+- **Reinforcement deploy:** the plate now rises in the first half of the action, folded to a third of its width, then
+  unfolds sideways across the wall about its middle. When the simulation sets the wall reinforced, the anchors fire:
+  sparks and a puff of dust at each anchor shoe, floor and ceiling. Still not captured in evidence (bots only).
+- **Barricade debris:** a broken barricade now also leaves long flat shards of plank on the floor (they stay for the
+  round), beside the existing splinters.
+- **Frag scorch:** in place since grenade round 1 (`Effects.blast`, a floor soot mark scaled by power). A close-up
+  of it is still owed.
 
 ## Corridor round 4 (`rooms/corridor/round-4/`, 960 px)
 
