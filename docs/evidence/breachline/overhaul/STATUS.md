@@ -101,8 +101,8 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** destruction round 3, barricades round 2, reinforcement round 2 done; uplink round 2
-done too; next Archive round 2 (the reviewer's notes), then corridor round 4.
+**Where I am (keep current):** Patch soldiers default (fa31b3c); destruction round 4 done; next the kit items to 7
+(blast opening, barricade, reinforcement relief and deploy evidence), then rooms (Archive round 2, corridor round 4).
 
 ## Corridor round 3 (`rooms/corridor/round-3/`), against the reviewer's round-2 notes
 
@@ -317,6 +317,9 @@ The reviewer scored round 3 at **J 6** ("reads as shot plasterboard for the firs
   the floor under the hole on both sides (a new pooled decal, kept for the round), and crumbs that stay.
 - **Evidence:** `shot-wall-high.png`, `breach-close-high.png`.
 - J (mine, strict scale): 6 -> 6.5. Walls are left here for now, as the reviewer asked; the kit items come next.
+- Tests: Breachline unit tests 97/97. In the full browser run (one worker) the audio session's new
+  `audio.spec.ts` failed once and then passed alone (4.7 s); it looks like a timing flake under load, not this
+  change. The other tests passed.
 
 ## Phase 5: destruction look, round 3 (`destruction/round-3/`), against the reviewer's round-2 notes
 
