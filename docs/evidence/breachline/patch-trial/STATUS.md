@@ -16,8 +16,22 @@ Sheets are JPEG (not PNG) to stay under 400 KB.
   its raw textures: `tex-tactical-basecolor.jpg`, `tex-tactical-metalrough.jpg`
 - [x] 2. Rifle sheet: `rifle-scifi.jpg`, and beside our AR-5 and the Poly Haven Service Pistol: `rifle-scifi-vs-ours.jpg`;
   raw colour texture: `tex-rifle-scifi-basecolor.jpg`
-- [ ] 3. Armoured soldier, desert trooper, bolt-action rifle
-- [ ] 4. Full assessment
+- [x] 3. `soldier-armoured.jpg`, `soldier-trooper.jpg`, `rifle-bolt.jpg`
+- [x] 4. Assessment below; summary table at the top
+
+## Summary
+
+| Candidate | Recommendation | One line |
+| --- | --- | --- |
+| Tactical soldier in black | **Adopt with named fixes** | Far better than our rifleman; fix metalness, cover the bare head, replace the hands, recolour by mask |
+| Weathered armoured soldier | **Reject** | Reads as a famous sci-fi franchise's armoured trooper; 179k triangles; grime and gloss baked in |
+| Orange desert trooper | **Reject** (for fighters) | Clean and light (5.5k) but a sci-fi spacesuit look, low detail up close |
+| Black sci-fi assault rifle | **Reject** (as the main rifle) | Rich detail, but sci-fi glow, readable "X7A"/"07" text, baked shading, one fused mesh |
+| Service Pistol (Poly Haven) | **Adopt** | The quality bar; separate parts; sidearm as planned |
+| Bolt Action Rifle 7.62 (Poly Haven) | **Adopt for the marksman slot only if a vintage rifle is wanted**; otherwise benchmark | Artist quality, but a wooden WW2-era scoped rifle |
+
+Nothing here is a modern assault rifle of artist quality; the AR question stays open (our second build, or a
+further search).
 
 ## Notes on method
 
@@ -106,3 +120,54 @@ the density of detail we lack.
 Variant A (wood grips); the file also carries variant B (blue grips), an empty magazine and a loose round, hidden
 here. 16,650 triangles as assembled. Clean, separate moving parts, correct scale, no text seen. **Adopt as the
 sidearm** (as the plan already intends), credit Mateusz Sadek / Poly Haven.
+
+## Weathered armoured soldier (`scenario:asset_ma3BPFTWWAETEfU8vh9zQFrM`, `web-lod2`, 179,436 triangles)
+
+YVO3D image-to-3D; CC-BY-4.0. The file faces +X and is 1.0 m tall (Patch's scale is an estimate); turned and
+rendered at 1.78 m.
+
+**Good.** Very rich sculpted detail: layered plates, pouches, straps, knee and elbow armour, gloves with separate
+fingers that hold up at studio scale, finished back.
+
+**Wrong.**
+- **Recognisable design.** A full-face helmet with an orange visor and a sculpted jaw guard, bulky plated
+  sci-fi armour: it reads at a glance as the drop-trooper armour of a famous console shooter franchise. That alone is
+  disqualifying under the plan's caution.
+- **Weathering and lighting baked into the colour**: heavy grime, dark crevices and highlights painted in; under our
+  light it looks wet and glossy-black in the recesses. Strong red accent stripes.
+- 179k triangles at the lightest LOD offered (1.5M source): about 10x a fighter's budget; a reduction would lose most
+  of what makes it look good.
+- No skeleton; hands are moulded in a half-curl.
+
+**Verdict: reject.**
+
+## Orange desert trooper (`scenario:asset_in3md75AeDtffS4gGsbWsrBM`, `web`, 5,542 triangles)
+
+Tripo P2 image-to-3D; CC-BY-4.0. 1.0 m in the file (estimated); rendered at 1.78 m.
+
+**Good.** Light (5.5k, under budget as is), clean and readable silhouette, simple tidy shapes, symmetrical, finished
+back with a backpack; gloves have a readable thumb and fingers at studio scale.
+
+**Wrong.**
+- **The look**: an orange suit with a full helmet, dark bubble visor and respirator: a sci-fi colonist or spaceman,
+  not a modern soldier. Re-colouring would not fix the helmet.
+- **Low detail up close**: smooth, rubbery surfaces with painted-on wear; the "armour" is just bumps in a one-piece
+  suit; at 2 m it looks like a toy figure (though a cleaner one than ours).
+- Glossy, plasticky highlights (high metalness or low roughness in its map).
+- A holstered pistol is part of the leg mesh.
+
+**Verdict: reject for the fighters.** Could be a stand-in for a non-combat or sci-fi mode; not for Breachline.
+
+## Bolt Action Rifle 7.62 (Poly Haven, CC0, 18,276 triangles shown)
+
+The file's muzzle points to +X; turned to match. The alternate bolt (`bolt_b`) and the loose round are hidden.
+
+**Good.** Artist quality throughout: correct proportions, clean wood grain, a cloth wrap on the stock, scope with
+glass, separate bolt and trigger, tidy UVs, no baked lighting seen, no text or logos seen. It reads as a real object
+at every distance and in first person.
+
+**Wrong for us.** It is a wooden, military-surplus scoped bolt-action of the mid-20th century (generic, but
+obviously historical), not a modern marksman rifle; it would stand out next to modern kit.
+
+**Verdict:** the best-made weapon here with the pistol. **Adopt for the marksman slot only if the owner is happy with
+a vintage rifle in a modern game**; otherwise keep it as the benchmark for our own builds.

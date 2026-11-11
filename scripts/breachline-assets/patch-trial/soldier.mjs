@@ -10,7 +10,7 @@ import path from 'node:path';
 export const SUBJECTS = {
   tactical: { title: 'Tactical soldier in black (Patch scenario:asset_e9xaKzrr8R1sMe2VMajWaAb1, web variant)', load: ['tactical', 'soldier', 1.72, 0],
     head: [0, 1.58, 0.02, 15, 0], hand: [-0.40, 0.83, 0.02, 25, 0], chest: [0, 1.28, 0.05, 15, 0], boots: [0, 0.10, 0.05, 15, 20] },
-  armoured: { title: 'Weathered armoured soldier (Patch scenario:asset_ma3BPFTWWAETEfU8vh9zQFrM, web-lod2)', load: ['armoured', 'soldier', 1.78, 0],
+  armoured: { title: 'Weathered armoured soldier (Patch scenario:asset_ma3BPFTWWAETEfU8vh9zQFrM, web-lod2)', load: ['armoured', 'soldier', 1.78, -Math.PI / 2],
     head: [0, 1.63, 0.02, 15, 0], hand: [-0.40, 0.85, 0.02, 25, 0], chest: [0, 1.32, 0.05, 15, 0], boots: [0, 0.10, 0.05, 15, 20] },
   trooper: { title: 'Orange desert trooper (Patch scenario:asset_in3md75AeDtffS4gGsbWsrBM, web variant)', load: ['trooper', 'soldier', 1.78, 0],
     head: [0, 1.63, 0.02, 15, 0], hand: [-0.40, 0.85, 0.02, 25, 0], chest: [0, 1.32, 0.05, 15, 0], boots: [0, 0.10, 0.05, 15, 20] },
