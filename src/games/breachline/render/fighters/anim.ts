@@ -56,22 +56,22 @@ const L = SIDE[0], R = SIDE[1];
 const DEATHS: DeathKey[][] = [
   // 0: shot from the front, a stagger back, knees go, falls on the back, one knee raised, arms out.
   [
-    { t: 0.12, pelvis: [0, 0.93, 0.08], prot: [0.12, 0, 0.05], bones: { [B.spine1]: [0.15, 0, 0], [B.spine2]: [0.2, 0, 0], [B.neck]: [0.25, 0, 0], [B.head]: [0.2, 0, 0], [L.upper]: [-0.3, 0, -0.15], [R.upper]: [-0.5, 0, 0.2], [L.fore]: [-0.9, 0, 0], [R.fore]: [-1.0, 0, 0], [L.thigh]: [0.15, 0, 0], [R.thigh]: [-0.1, 0, 0], [L.shin]: [-0.3, 0, 0], [R.shin]: [-0.15, 0, 0] } },
-    { t: 0.42, pelvis: [0, 0.68, 0.3], prot: [0.6, 0.1, 0.05], bones: { [B.spine1]: [0.15, 0, 0], [B.spine2]: [0.2, 0, 0.05], [B.neck]: [-0.3, 0, 0], [B.head]: [-0.2, 0, 0], [L.upper]: [-0.4, 0, -0.35], [R.upper]: [-0.2, 0, 0.4], [L.fore]: [-0.6, 0, 0], [R.fore]: [-0.5, 0, 0], [L.thigh]: [0.45, 0, -0.1], [R.thigh]: [0.3, 0, 0.1], [L.shin]: [-1.0, 0, 0], [R.shin]: [-0.8, 0, 0] } },
-    { t: 0.78, pelvis: [0, 0.16, 0.62], prot: [1.45, 0.15, 0.02], bones: { [B.spine1]: [0.12, 0, 0], [B.spine2]: [0.1, 0, 0], [B.neck]: [-0.35, 0, 0], [B.head]: [-0.2, 0.3, 0], [L.upper]: [0.3, 0, -0.75], [R.upper]: [0.1, 0, 0.8], [L.fore]: [-0.4, 0, 0], [R.fore]: [-0.25, 0, 0], [L.thigh]: [0.6, 0, -0.15], [R.thigh]: [0.2, 0, 0.12], [L.shin]: [-1.05, 0, 0], [R.shin]: [-0.3, 0, 0] } },
+    { t: 0.12, pelvis: [0, 0.93, 0.08], prot: [0.12, 0, 0.05], bones: { [B.spine1]: [0.15, 0, 0], [B.spine2]: [0.2, 0, 0], [B.neck]: [0.25, 0, 0], [B.head]: [0.2, 0, 0], [L.upper]: [-0.3, 0, 0.2], [R.upper]: [-0.5, 0, -0.1], [L.fore]: [-0.9, 0, 0], [R.fore]: [-1.0, 0, 0], [L.thigh]: [0.15, 0, 0], [R.thigh]: [-0.1, 0, 0], [L.shin]: [-0.3, 0, 0], [R.shin]: [-0.15, 0, 0] } },
+    { t: 0.42, pelvis: [0, 0.66, 0.32], prot: [0.6, 0.1, 0.05], bones: { [B.spine1]: [0.15, 0, 0], [B.spine2]: [0.2, 0, 0.05], [B.neck]: [-0.3, 0, 0], [B.head]: [-0.2, 0, 0], [L.upper]: [-0.5, 0, 0.2], [R.upper]: [-0.3, 0, -0.15], [L.fore]: [-0.8, 0, 0], [R.fore]: [-0.7, 0, 0], [L.thigh]: [-0.2, 0, -0.05], [R.thigh]: [-0.35, 0, 0.05], [L.shin]: [-0.9, 0, 0], [R.shin]: [-0.6, 0, 0] } },
+    { t: 0.78, pelvis: [0, 0.16, 0.62], prot: [1.45, 0.15, 0.02], bones: { [B.spine1]: [0.12, 0, 0], [B.spine2]: [0.1, 0, 0], [B.neck]: [-0.35, 0, 0], [B.head]: [-0.2, 0.3, 0], [L.upper]: [0.3, 0, -0.45], [R.upper]: [0.1, 0, 0.5], [L.fore]: [-0.5, 0, 0], [R.fore]: [-0.3, 0, 0], [L.thigh]: [0.3, 0, -0.15], [R.thigh]: [0.0, 0, 0.12], [L.shin]: [-0.8, 0, 0], [R.shin]: [-0.2, 0, 0] } },
     { t: 1.05, pelvis: [0, 0.14, 0.66], prot: [1.55, 0.15, 0.02], bones: { [B.spine1]: [0.05, 0, 0], [B.spine2]: [0.0, 0, 0], [B.neck]: [-0.1, 0, 0], [B.head]: [-0.15, 0.55, 0], [L.upper]: [0.15, 0, -0.85], [R.upper]: [0.0, 0, 0.95], [L.fore]: [-0.35, 0, 0], [R.fore]: [-0.2, 0, 0], [L.thigh]: [0.45, 0, -0.18], [R.thigh]: [0.08, 0, 0.15], [L.shin]: [-0.9, 0, 0], [R.shin]: [-0.15, 0, 0], [L.foot]: [0.4, 0, 0], [R.foot]: [0.5, 0, 0] } },
   ],
   // 1: crumples: knees buckle first, folds at the waist, falls forward onto the chest, face turned.
   [
-    { t: 0.14, pelvis: [0, 0.88, -0.02], prot: [-0.15, 0, -0.05], bones: { [B.spine1]: [-0.3, 0, 0], [B.spine2]: [-0.3, 0, 0], [B.neck]: [-0.2, 0, 0], [B.head]: [-0.3, 0, 0], [L.upper]: [0.3, 0, -0.2], [R.upper]: [0.4, 0, 0.2], [L.fore]: [-0.8, 0, 0], [R.fore]: [-0.9, 0, 0], [L.thigh]: [0.4, 0, 0], [R.thigh]: [0.3, 0, 0], [L.shin]: [-0.7, 0, 0], [R.shin]: [-0.6, 0, 0] } },
+    { t: 0.14, pelvis: [0, 0.88, -0.02], prot: [-0.15, 0, -0.05], bones: { [B.spine1]: [-0.3, 0, 0], [B.spine2]: [-0.3, 0, 0], [B.neck]: [-0.2, 0, 0], [B.head]: [-0.3, 0, 0], [L.upper]: [0.3, 0, 0.2], [R.upper]: [0.4, 0, -0.2], [L.fore]: [-0.8, 0, 0], [R.fore]: [-0.9, 0, 0], [L.thigh]: [0.4, 0, 0], [R.thigh]: [0.3, 0, 0], [L.shin]: [-0.7, 0, 0], [R.shin]: [-0.6, 0, 0] } },
     { t: 0.42, pelvis: [0, 0.48, 0.05], prot: [-0.35, 0.05, -0.05], bones: { [B.spine1]: [-0.4, 0, 0], [B.spine2]: [-0.35, 0, 0], [B.neck]: [-0.1, 0, 0], [B.head]: [-0.1, 0, 0], [L.upper]: [0.6, 0, -0.1], [R.upper]: [0.7, 0, 0.15], [L.fore]: [-0.5, 0, 0], [R.fore]: [-0.6, 0, 0], [L.thigh]: [1.45, 0, 0], [R.thigh]: [1.35, 0, 0], [L.shin]: [-2.3, 0, 0], [R.shin]: [-2.2, 0, 0], [L.foot]: [0.6, 0, 0], [R.foot]: [0.6, 0, 0] } },
     { t: 0.8, pelvis: [0, 0.17, -0.42], prot: [-1.35, 0.1, -0.08], bones: { [B.spine1]: [0.0, 0, 0], [B.spine2]: [0.05, 0, 0], [B.neck]: [0.35, 0, 0], [B.head]: [0.3, 0.6, 0], [L.upper]: [1.0, 0, -0.5], [R.upper]: [-0.6, 0, 0.1], [L.fore]: [-1.2, 0, 0], [R.fore]: [-0.3, 0, 0], [L.thigh]: [0.5, 0, -0.05], [R.thigh]: [0.15, 0, 0.05], [L.shin]: [-0.9, 0, 0], [R.shin]: [-0.3, 0, 0] } },
     { t: 1.1, pelvis: [0, 0.15, -0.46], prot: [-1.52, 0.1, -0.08], bones: { [B.spine1]: [0.02, 0, 0], [B.spine2]: [0.06, 0, 0], [B.neck]: [0.3, 0, 0], [B.head]: [0.25, 0.9, 0], [L.upper]: [1.25, 0, -0.55], [R.upper]: [-0.65, 0, 0.05], [L.fore]: [-1.35, 0, 0], [R.fore]: [-0.25, 0, 0], [L.thigh]: [0.35, 0, -0.08], [R.thigh]: [0.05, 0, 0.05], [L.shin]: [-0.75, 0, 0], [R.shin]: [-0.15, 0, 0], [L.foot]: [-0.4, 0, 0], [R.foot]: [-0.5, 0, 0] } },
   ],
   // 2: spun by the hit, drops to the knees and slumps onto the right side, curled.
   [
-    { t: 0.14, pelvis: [0.03, 0.92, 0.0], prot: [0.0, 0.5, 0.08], bones: { [B.spine1]: [-0.1, 0.25, 0.15], [B.spine2]: [-0.1, 0.3, 0.15], [B.neck]: [0, 0.2, 0], [B.head]: [0.1, 0.2, 0.1], [L.upper]: [0.3, 0, -0.25], [R.upper]: [0.5, 0, 0.15], [L.fore]: [-0.9, 0, 0], [R.fore]: [-1.0, 0, 0], [L.thigh]: [0.2, 0, -0.1], [R.thigh]: [0.0, 0, 0.1], [L.shin]: [-0.4, 0, 0], [R.shin]: [-0.2, 0, 0] } },
-    { t: 0.45, pelvis: [0.08, 0.52, 0.0], prot: [-0.2, 1.0, 0.3], bones: { [B.spine1]: [-0.25, 0.1, 0.25], [B.spine2]: [-0.2, 0.1, 0.25], [B.neck]: [0.1, 0, 0.2], [B.head]: [0.1, 0, 0.2], [L.upper]: [0.6, 0, -0.15], [R.upper]: [0.5, 0, 0.2], [L.fore]: [-0.9, 0, 0], [R.fore]: [-0.8, 0, 0], [L.thigh]: [1.35, 0, -0.1], [R.thigh]: [1.25, 0, 0.1], [L.shin]: [-2.1, 0, 0], [R.shin]: [-2.0, 0, 0] } },
+    { t: 0.14, pelvis: [0.03, 0.92, 0.0], prot: [0.0, 0.5, 0.08], bones: { [B.spine1]: [-0.1, 0.25, 0.15], [B.spine2]: [-0.1, 0.3, 0.15], [B.neck]: [0, 0.2, 0], [B.head]: [0.1, 0.2, 0.1], [L.upper]: [0.3, 0, 0.15], [R.upper]: [0.5, 0, -0.15], [L.fore]: [-0.9, 0, 0], [R.fore]: [-1.0, 0, 0], [L.thigh]: [0.2, 0, -0.1], [R.thigh]: [0.0, 0, 0.1], [L.shin]: [-0.4, 0, 0], [R.shin]: [-0.2, 0, 0] } },
+    { t: 0.45, pelvis: [0.08, 0.52, 0.0], prot: [-0.2, 1.0, 0.3], bones: { [B.spine1]: [-0.25, 0.1, 0.25], [B.spine2]: [-0.2, 0.1, 0.25], [B.neck]: [0.1, 0, 0.2], [B.head]: [0.1, 0, 0.2], [L.upper]: [0.6, 0, 0.25], [R.upper]: [0.5, 0, -0.2], [L.fore]: [-0.9, 0, 0], [R.fore]: [-0.8, 0, 0], [L.thigh]: [1.35, 0, -0.1], [R.thigh]: [1.25, 0, 0.1], [L.shin]: [-2.1, 0, 0], [R.shin]: [-2.0, 0, 0] } },
     { t: 0.82, pelvis: [0.3, 0.22, 0.05], prot: [0.0, 1.3, -1.45], bones: { [B.spine1]: [-0.25, 0, 0.05], [B.spine2]: [-0.25, 0, 0.0], [B.neck]: [-0.1, 0, 0.3], [B.head]: [0.0, 0, 0.35], [L.upper]: [0.6, 0, 0.5], [R.upper]: [0.9, 0, -0.6], [L.fore]: [-0.8, 0, 0], [R.fore]: [-0.8, 0, 0], [L.thigh]: [1.0, 0, -0.1], [R.thigh]: [1.2, 0, 0.1], [L.shin]: [-1.5, 0, 0], [R.shin]: [-1.6, 0, 0] } },
     { t: 1.1, pelvis: [0.33, 0.2, 0.06], prot: [0.0, 1.3, -1.52], bones: { [B.spine1]: [-0.3, 0, 0.05], [B.spine2]: [-0.3, 0, 0.0], [B.neck]: [-0.1, 0, 0.35], [B.head]: [0.0, 0, 0.4], [L.upper]: [0.7, 0, 0.6], [R.upper]: [0.95, 0, -0.6], [L.fore]: [-0.7, 0, 0], [R.fore]: [-0.9, 0, 0], [L.thigh]: [0.95, 0, -0.1], [R.thigh]: [1.15, 0, 0.1], [L.shin]: [-1.45, 0, 0], [R.shin]: [-1.6, 0, 0], [L.foot]: [0.3, 0, 0], [R.foot]: [0.3, 0, 0] } },
   ],
@@ -262,13 +262,13 @@ export class Animator {
     const fold = c * 0.2 + sprint * 0.16 + this.moving * 0.05 * (1 - sprint);
     const chestPitch = clamp(aim, -1.2, 1.2) * (aim < 0 ? 0.22 : 0.45);
     const roll = -lean * 0.36;
-    lq[B.spine1].setFromEuler(e.set(-fold * 0.4 + chestPitch * 0.35 + fl[0].x * 0.08, -(this.hipYaw + legTurn) * 0.5 + blade * 0.3, roll * 0.45 + fl[1].x * 0.04, 'YXZ'));
-    lq[B.spine2].setFromEuler(e.set(-fold * 0.3 + chestPitch * 0.65 + fl[0].x * 0.06 - this.recoil[1].x * 0.02, -(this.hipYaw + legTurn) * 0.5 + blade * 0.35, roll * 0.4 + fl[1].x * 0.05, 'YXZ'));
+    lq[B.spine1].setFromEuler(e.set(-fold * 0.4 + chestPitch * 0.35 + fl[0].x * 0.3, -(this.hipYaw + legTurn) * 0.5 + blade * 0.3, roll * 0.45 + fl[1].x * 0.25, 'YXZ'));
+    lq[B.spine2].setFromEuler(e.set(-fold * 0.3 + chestPitch * 0.65 + fl[0].x * 0.25 - this.recoil[1].x * 0.25, -(this.hipYaw + legTurn) * 0.5 + blade * 0.35, roll * 0.4 + fl[1].x * 0.2, 'YXZ'));
     const neckPitch = clamp(aim - chestPitch, -0.9, 0.9) * 0.45 + fold * 0.45;
-    lq[B.neck].setFromEuler(e.set(neckPitch - fl[0].x * 0.05, -blade * 0.45, -roll * 0.3, 'YXZ'));
-    lq[B.head].setFromEuler(e.set(clamp(aim - chestPitch, -0.9, 0.9) * 0.55 + fold * 0.35 - fl[0].x * 0.1, -blade * 0.55, -roll * 0.25 + fl[1].x * 0.06, 'YXZ'));
+    lq[B.neck].setFromEuler(e.set(neckPitch - fl[0].x * 0.3, -blade * 0.45, -roll * 0.3, 'YXZ'));
+    lq[B.head].setFromEuler(e.set(clamp(aim - chestPitch, -0.9, 0.9) * 0.55 + fold * 0.35 - fl[0].x * 0.4, -blade * 0.55, -roll * 0.25 + fl[1].x * 0.3, 'YXZ'));
     // Clavicles shrug forward when the arms are up.
-    for (const s of [0, 1]) lq[SIDE[s].clav].setFromEuler(e.set(0, sgn(s) * (0.18 + ads * 0.06), sgn(s) * -0.04, 'YXZ'));
+    for (const s of [0, 1]) lq[SIDE[s].clav].setFromEuler(e.set(fl[0].x * 0.15, sgn(s) * (0.18 + ads * 0.06), sgn(s) * (-0.04 - Math.abs(fl[0].x) * 0.2), 'YXZ'));
     // Pelvis position: rest height, crouch drop and hips back, bob and sway; then corrected so the head is exact.
     this.pelvisPos.set(this.hipSway, JOINT[B.pelvis].y - 0.035 - c * 0.36 - sprint * 0.07, c * 0.07 + sprint * 0.03);
     this.fk();
@@ -442,8 +442,12 @@ export class Animator {
       q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-1.25, 0.25, 0.1, 'YXZ')).premultiply(cq);
       pos.copy(chest).add(new THREE.Vector3(0.27, -0.2, -0.1).applyQuaternion(cq));
     }
+    // A hit knocks the weapon off line for a moment (the head stays in the sim's sphere, so this is where it shows).
+    const fl = this.flinch;
+    q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(fl[0].x * 0.22, fl[1].x * 0.18, fl[1].x * 0.3)));
+    pos.add(new THREE.Vector3(fl[1].x * 0.03, fl[0].x * 0.03, fl[0].x * 0.05).applyQuaternion(cq));
     // Recoil: back along the bore and the muzzle up.
-    const back = this.recoil[0].x * 0.045, rise = this.recoil[1].x * 0.05;
+    const back = this.recoil[0].x * 0.6, rise = this.recoil[1].x * 1.1;
     pos.addScaledVector(fwd, -back);
     q.multiply(new THREE.Quaternion().setFromAxisAngle(X, rise));
     this.weaponM.compose(pos, q, new THREE.Vector3(1, 1, 1));

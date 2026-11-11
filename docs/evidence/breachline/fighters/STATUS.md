@@ -14,7 +14,7 @@ Session: fighters (row F: bodies, kit, materials, animation). Plan:
 | Weapons in hand | `worldWeapon(id, lod)` from the weapons session, adapted to the fighter's sockets (stand-in kept as fallback) |
 | Lighting | Diffuse from `probe()` as indirect irradiance, specular from `environment()` scaled by `environmentScale()` |
 
-**Where I am:** round 1 evidence committed; next is round 2 of body and kit (see "Still weak").
+**Where I am:** round 2 committed (body, kit and materials round 2; animation round 2 with every clip seen in strips). F = 5, below the gate of 7; next steps are under "Still weak".
 
 ## Reference study (looked at, nothing saved)
 
@@ -83,7 +83,9 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 | Round | F | Evidence | Why |
 | --- | --- | --- | --- |
 | Baseline | 1 | `r1/before-after.png` (left) | Six rigid groups of boxes, a painted face, no hands |
-| r1 | **4** | `r1/turntable-s0.png`, `r1/turntable-s1.png`, `r1/before-after.png`, `r1/ingame-lab-*.png`, `r1/ingame-arc-*.png`, `r1/walk-strip-old-stride.png` | A real, skinned soldier with modelled kit and planted feet, the head exactly in the hit sphere, both squads distinct by kit, colour and shape. Held at 4 because: the support arm reaches at full stretch so the rifle hold looks presented rather than carried; the uniform is a flat colour with no camouflage, seams or pockets on the trousers; close up the gloves are lumps and the neck is long; only walking has been judged in motion (sprint, crouch-walk, strafe, firing, flinch, reloads, deaths are built and tested numerically but not yet looked at); outdoors in shade the figure goes dark. |
+| r1 | 4 | `r1/turntable-s0.png`, `r1/turntable-s1.png`, `r1/before-after.png`, `r1/ingame-lab-*.png`, `r1/ingame-arc-*.png`, `r1/walk-strip-old-stride.png` | A real, skinned soldier with modelled kit and planted feet, the head exactly in the hit sphere, both squads distinct by kit, colour and shape. Held at 4 because: the support arm reaches at full stretch so the rifle hold looks presented rather than carried; the uniform is a flat colour with no camouflage, seams or pockets on the trousers; close up the gloves are lumps and the neck is long; only walking has been judged in motion (sprint, crouch-walk, strafe, firing, flinch, reloads, deaths are built and tested numerically but not yet looked at); outdoors in shade the figure goes dark. |
+
+| r2 | **5** | `r2/turntable-s0.png`, `r2/turntable-s1.png`, `r2/before-after.png`, `r2/ingame-lab-2m.png`, `r2/ingame-yard-{2,8,20}m.png`, and an eight-frame strip of every clip in `r2/strip-*.png` (walk side and front, sprint, crouch-walk side and front, strafe, fire, flinch, the three deaths from the side and the front, tactical and empty reloads, plant, reinforce) | Up from 4: every clip is now seen in motion and reads as what it is; the three deaths fall differently and come to rest; the reloads carry the magazine on the beats; the printed uniform with seams and the dust on the boots give the cloth a surface. Held at 5 because: the arms are still smooth tubes with a pinched shoulder when raised, and the gloves are lumps; Ember's scarf barely shows; the sprint is knees-bent rather than a driving run; firing recoil is small at range and the flinch shows mainly in the weapon; the faces are long and gaunt; outdoors in shade both squads go dark; the plant reads as reaching forward, not down (the sim keeps the head at standing height). |
 
 ## Iteration log
 
@@ -106,6 +108,16 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 1. Near-black silhouettes under the world's run-time lights → albedos raised; lighting split per the planner: diffuse from `probe()` as indirect irradiance, specular from `environment()` × `environmentScale()`.
 2. Sunlit uniform blew out at full probe gain → gain 0.35.
 
+**Round 2** (strips of every clip, head close-ups, in-game Lab and yard):
+1. The support arm over-reached on long handguards (reach 1.01–1.16 for AR, DMR, shotgun) → the support shoulder protracts up to 0.8 rad until the hand is within 95% of reach (AR 0.94, DMR 0.95, shotgun 1.03).
+2. Uniform was flat colour → printed three-tone pattern at about 12 cm with breakup, side, knee-panel and waist seams with dashed stitching (fighter material, flagged by wear ≥ 0.5 on fabric); dust on boots and lower legs, more in recesses.
+3. Recoil and flinch were millimetres (spring peaks about 0.06 times tiny gains) → recoil 2–4 cm back and about 4° up per shot. The head solve cancelled a spine flinch (the head must stay in the sim's sphere), so the flinch now twists the chest against the neck, snaps the head, shrugs the shoulders and knocks the weapon off line.
+4. Death 0 sat in an invisible chair mid-fall and ended with its legs in the air: tilting the pelvis back swings the legs forward with it → thighs counter-rotated during the fall, flat at rest with one knee up. Arms in the deaths flew out T-wide because the keys' roll adds to the A-pose bind → keys roll the arms inward during falls.
+5. The slung weapon was buried in the body while using an object → it hangs at the right hip; the plant's hands go lower.
+6. Ember's scarf stuck out in front of the chin like a bill, then vanished inside an over-blended neck → a thick wrap round the collar, the neck's blend radius halved; the jaw is wider.
+7. Ember's ▲ sat on a backing that read as a ◆ when the arm turned it → round backing; Azure's ◆ narrowed so it never reads as a square.
+8. Head and gloves meshed on a coarser grid before decimation: full-detail build 600 → about 390 ms.
+
 ## Budgets measured
 
 | Item | Budget | Measured |
@@ -116,17 +128,22 @@ weapon always in both hands. Feet are planted with IK so they never slide.
 | Bones | ≤ 40 | 32 (+9 in the weapon) |
 | Ten fighters in view | ≤ 60k | ≤ 4 × 8.0k + 6 × 3.7k = 54k worst case (at most 4 at full detail) |
 | Animation, ten fighters | ≤ 1 ms | 0.23 ms per frame (node, unit test) |
-| Mesh build | — | about 600 ms for full detail (AO bake and head surface nets dominate), 250 ms middle, 50 ms low; built lazily one per frame, lowest first. **Too slow, to be cut.** |
+| Mesh build | — | about 390 ms for full detail (head and glove surface nets dominate; AO about 30 ms), 180 ms middle, 50 ms low; built lazily one per frame, lowest first, so the first frame is not blocked. **Still a stall of that size when a full level is first built; to be moved off the frame or cut further.** |
 | Textures | ≤ 1K, ≤ 150 ms | none: all surface detail is the shared shader's procedural PBR |
 
 ## Tests
 
 `tests/games/breachline/fighters.test.ts` (32): budgets per level and squad; the head centre within 3 cm of the sim's head sphere centre and pelvis, waist and chest inside the body cylinder for 27 stance × lean × pitch poses; the bore along the view direction; a planted foot moves < 5 mm a frame walking, strafing, crouch-walking and sprinting; every death ends with all joints between the floor and 0.55 m; ten fighters' animation per frame. Whole unit suite 5373 passed; Breachline browser tests and the two-device online test 7/7.
 
-## Still weak
+## Still weak (what the next rounds change)
 
-- Support arm at full stretch; the hold looks presented. Hands are lumps close up.
-- Uniform: flat colour, no camouflage print, no seams, no trouser pockets.
-- Strips for sprint, crouch-walk, strafe, fire, flinch, reload, plant and deaths not yet rendered and judged.
-- Third-person reloads only run for fighters this device simulates (`p.reload` is not sent over the network); remote fighters show no reload. Firing is taken from the scene's `muzzle()` request, which the scene makes for every shot.
-- Mesh build time (600 ms per full level).
+- **Below the gate: F = 5 against 7.** No asset or reference blocks it; it needs more rounds.
+- Arms and shoulders: smooth tubes with a pinched shoulder when the rifle is up. Next: deltoid and biceps cross-sections, a sleeve cuff and the elbow pad sitting on the joint, a second shoulder helper.
+- Gloves are lumps at close range (low-detail surface nets at 150 triangles); fingers do not separate.
+- Faces are long and gaunt; Ember's scarf barely shows above the plate carrier's straps.
+- Sprint has bent knees and no flight phase; the crouch-walk is a squat-walk; the strafe crosses its feet.
+- Fire recoil reads at 2–5 m and not at 20 m; the flinch shows mostly in the weapon.
+- Outdoors in shade the fighters go dark: the world's sky light is low there. Next: a rim or fill term from the probe's sky colour, judged with the environment session's light grid when it lands.
+- Third-person reloads only run for fighters this device simulates. `p.reload` is not sent over the network, and `scene.ts` does not forward match events to the fighters; the planner has been asked for a `fighters.handle?.(events)` call. Firing is cued from the scene's `muzzle()` request, which the scene makes for every remote shot.
+- Mesh build for the full level is still about 390 ms when it first happens.
+- The ground check in the death test uses joint positions, not the skinned surface. The renders show no visible floor penetration, but the test would not catch a surface that sinks between joints.
