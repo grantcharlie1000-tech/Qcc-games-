@@ -165,6 +165,36 @@ function project(o: Frame, pt: [number, number, number]) {
   return [(v.x + 1) / 2 * W, (1 - v.y) / 2 * H];
 }
 
-const api = { load, ourRifleman, ourAr5, frame, project, info: () => Object.fromEntries(info) };
+/** A processed asset from public/game-art/breachline/patch/<dir>/: one mesh of `file` (by node name) with its KTX2
+ * set loaded the way the game loads textures (ArtLoader). `tint` recolours by the mask: [fatigues, kit] sRGB hex. */
+async function loadPrepared(name: string, dir: string, file: string, node: string, o: { tint?: [number, number]; plain?: boolean; size?: number; armSize?: number; skin?: boolean } = {}) {
+  const g = await gltf.loadAsync(`/game-art/breachline/patch/${dir}/${file}`);
+  const src = g.scene.getObjectByName(node) as THREE.Mesh; if (!src) throw new Error(`no node ${node}`);
+  const art = new ArtLoader(renderer, 'high'), set = `../patch/${dir}`, size = o.size ?? 2048;
+  const [map, normalMap] = await Promise.all([art.texture(set, 'diff', size), art.texture(set, 'nor', size)]);
+  const arm = await art.texture(set, 'arm', o.armSize ?? 1024);
+  const mat = new THREE.MeshStandardMaterial({ map, normalMap, roughnessMap: arm, metalnessMap: arm, roughness: 1, metalness: 1 });
+  if (o.plain) { mat.map = null; mat.color.set(0x9a9a9a); }
+  if (o.tint) {
+    const mask = await art.texture(set, 'mask', 1024), ref = (g.parser.json.asset?.extras?.refLum ?? { fatigues: 0.07, kit: 0.055 }) as { fatigues: number; kit: number };
+    const lin = (x: number) => Math.pow(x, 2.2);
+    const u = { tintMask: { value: mask }, tintA: { value: new THREE.Color(o.tint[0]) }, tintB: { value: new THREE.Color(o.tint[1]) }, refA: { value: lin(ref.fatigues) }, refB: { value: lin(ref.kit) } };
+    mat.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, u);
+      sh.fragmentShader = 'uniform sampler2D tintMask; uniform vec3 tintA, tintB; uniform float refA, refB;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+        { float k = texture2D(tintMask, vMapUv).r; float l = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+          vec3 a = tintA * clamp(l / refA, 0.0, 3.0), b = tintB * clamp(l / refB, 0.0, 3.0); diffuseColor.rgb = mix(a, b, k); }`);
+    };
+    mat.customProgramCacheKey = () => 'tint';
+  }
+  const mesh = new THREE.Mesh(src.geometry, mat); mesh.frustumCulled = false;
+  const holder = new THREE.Group(); holder.add(mesh);
+  objects.set(name, holder);
+  const r = { triangles: tris(mesh), extras: g.parser.json.asset?.extras ? Object.keys(g.parser.json.asset.extras) : [] };
+  info.set(name, r);
+  return r;
+}
+
+const api = { load, loadPrepared, ourRifleman, ourAr5, frame, project, info: () => Object.fromEntries(info) };
 (window as unknown as { __trial: typeof api }).__trial = api;
 (window as unknown as { __trialReady: boolean }).__trialReady = true;

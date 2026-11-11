@@ -171,3 +171,58 @@ obviously historical), not a modern marksman rifle; it would stand out next to m
 
 **Verdict:** the best-made weapon here with the pistol. **Adopt for the marksman slot only if the owner is happy with
 a vintage rifle in a modern game**; otherwise keep it as the benchmark for our own builds.
+
+---
+
+# Job 2: preparing the assets (planner's request, 2026-11-11 11:15 UTC)
+
+Processed files go to `public/game-art/breachline/patch/<asset>/` (the only folder outside my two that this job may
+write). Nothing is wired into the game. Textures follow the game's `ArtLoader` layout (`<kind>-<size>.ktx2`, with
+`<kind>-512.jpg` fallbacks), so `new ArtLoader(renderer, tier).texture('../patch/<asset>', kind, size)` loads them.
+The KTX2 settings are copied from `scripts/breachline-assets/build.mjs` (in `patch-trial/ktx.mjs`; that script
+could not be imported because it runs its whole build when imported).
+
+## 2.1 Tactical soldier, cleaned — done
+
+Script: `scripts/breachline-assets/patch-trial/prep-soldier.mjs` (from the Patch `src` variant, 4096 px maps).
+Proof: `job2-1-tactical-clean.jpg` (original beside LOD0 and LOD1, the recolour, the mask, the neck and wrist caps;
+textures loaded from the shipped KTX2 files through `ArtLoader`).
+
+Files in `public/game-art/breachline/patch/tactical/` (4.01 MB in total, budget 4 MB, see below):
+- `body.glb`: nodes `body_lod0` (12,000 triangles) and `body_lod1` (4,999), POSITION/NORMAL/TEXCOORD_0, no
+  materials or images. Metres, +Y up, **facing +Z**, feet on y = 0, as delivered. The cut planes and the reference
+  luminances are in the asset's `extras` and in `tactical.json`.
+- `diff-2048/1024.ktx2`, `nor-2048/1024.ktx2`, `arm-1024.ktx2`, `mask-1024.ktx2`, fallbacks `diff/nor/arm-512.jpg`
+  and `mask-256.png`.
+
+Decisions:
+- **Metalness 0 everywhere.** The brief said to keep real metal such as buckles; at the size we draw a fighter there
+  is none worth keeping, and the generator's metal map only marked the sleeves, gloves and boots (8% of texels, all
+  wrong). Roughness is remapped to 0.55–0.95, which removes the latex look. The packed map keeps glTF's layout
+  (R = 1, G = roughness, B = 0), so it works as `roughnessMap`/`metalnessMap`. With only roughness left in it, I ship
+  it at **1024 only**: at 2048 it was 1.75 MB for no visible gain. That is what keeps the set within 4 MB.
+- **Cuts** are plane cuts through the triangles (straddling triangles are split, not dropped), each opening closed
+  by a fan cap: neck at y = 1.525 m (just above the hood collar), wrists at the glove cuffs, perpendicular to the
+  forearm (planes in `tactical.json`). The caps use a black cloth texel. A little neck skin still shows inside the
+  hood ring at the neck cut (see the close-up); our balaclava covers it. If it does not, lower the cut 1–2 cm.
+- **Tint mask** (`mask`, 255 = kit): plate carrier, belt and its pouches, drop holster, knee pads, boots. Fatigues:
+  sleeves, trousers, hood. Set by body region in 3D and rasterised into the atlas, then dilated 6 texels and blurred
+  slightly, because the atlas is shredded and all near-black, so colour gives nothing to separate by. Boundaries are
+  therefore straight cuts by height, not seams of the garment. Kit is about 50% of the atlas.
+- **Recolour formula** (the reference is in `trial.ts`, `loadPrepared(..., { tint })`): in linear space,
+  `l = luminance(base)`, `colour = mix(tintFatigues * clamp(l / refFatigues, 0, 3), tintKit * clamp(l / refKit, 0, 3), mask)`,
+  with `ref` = the class's mean luminance (sRGB 0.0678 fatigues, 0.0546 kit, raised to the power 2.2). Shown: coyote
+  `#6b5133` fatigues with olive `#464b2c` kit.
+- **LOD1 at 5k:** the shredded atlas's UV seams stop meshoptimizer at about 10k. LOD1 is therefore simplified with
+  vertices welded by position, and each corner takes the duplicate in its triangle's UV island. 47% of LOD1
+  triangles cross a seam and stretch texture across it; on the black outfit at LOD1 distances (7–18 m) that shows
+  only as faint specks at the shoulders. A clean fix needs a re-unwrap.
+
+**Credit and licence, exactly as the Patch record gives them** (for `public/THIRD_PARTY_NOTICES.txt`):
+
+> asset_e9xaKzrr8R1sMe2VMajWaAb1 ("Tactical soldier in black", title by Patch) by Scenario (Scenario, https://huggingface.co/datasets/scenario-labs/3d-collection/blob/55b4c002b4c1529fc48da3dff98516c3069bfa3f/assets/scenario_asset_e9xaKzrr8R1sMe2VMajWaAb1/output.glb), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). AI-generated with Rodin (Hyper3D) v2.5 fast image-to-3D. Changed by Patch: textures resized to 2048 px, pivot moved to the bottom centre, credit and license added to the file metadata, simplified LODs added.
+
+Licence: CC-BY-4.0 (Creative Commons Attribution 4.0 International, https://creativecommons.org/licenses/by/4.0/).
+CC-BY requires the changes to be stated. Our changes, to append: "Changed for Breachline: from the 4096 px source; head
+cut at the neck and hands at the wrists; metalness removed and roughness remapped; simplified to 12k and 5k
+triangles; tint mask added; textures re-encoded as KTX2."
