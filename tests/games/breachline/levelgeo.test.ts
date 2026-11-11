@@ -12,7 +12,8 @@ const bakeInfo = (name: string) => {
 describe('Breachline level geometry for the asset renderer', () => {
   it('splits faces between the art rooms and the rest without losing or doubling any surface', () => {
     const all: FaceRec[] = [];
-    emitLevel(new LevelBuilder({ light: () => [1, 1, 1], probe: () => [1, 1, 1] }, f => { all.push(f); return []; }));
+    // The art layer's emit (it leaves out boxes a modelled prop replaces, such as the covered car's).
+    emitLevel(new LevelBuilder({ light: () => [1, 1, 1], probe: () => [1, 1, 1] }, f => { all.push(f); return []; }), true);
     const { byRegion, rest } = collectFaces();
     expect(area([...byRegion.flat(), ...rest])).toBeCloseTo(area(all), 6);
     expect(byRegion[0].length).toBeGreaterThan(50);

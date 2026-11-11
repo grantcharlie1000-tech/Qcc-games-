@@ -323,6 +323,108 @@
     "arm-1024.ktx2": 1031265,
     "arm-512.jpg": 64013
    }
+  },
+  "covered_car--covered_car": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 16005,
+    "diff-512.ktx2": 55241,
+    "diff-512.jpg": 31889,
+    "nor-256.ktx2": 52254,
+    "nor-512.ktx2": 180901,
+    "nor-512.jpg": 35127,
+    "arm-256.ktx2": 58651,
+    "arm-512.ktx2": 207755,
+    "arm-512.jpg": 69948
+   }
+  },
+  "old_military_crate--military_crate_m_01": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 17347,
+    "diff-512.ktx2": 61366,
+    "diff-512.jpg": 35688,
+    "nor-256.ktx2": 52356,
+    "nor-512.ktx2": 190566,
+    "nor-512.jpg": 46849,
+    "arm-256.ktx2": 53410,
+    "arm-512.ktx2": 188457,
+    "arm-512.jpg": 54536
+   }
+  },
+  "wooden_military_crate--wooden_military_crate": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 17648,
+    "diff-512.ktx2": 62815,
+    "diff-512.jpg": 45957,
+    "nor-256.ktx2": 48945,
+    "nor-512.ktx2": 186237,
+    "nor-512.jpg": 42735,
+    "arm-256.ktx2": 61385,
+    "arm-512.ktx2": 220944,
+    "arm-512.jpg": 72695
+   }
+  },
+  "metal_jerrycan_green--metal_jerrycan_green": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15462,
+    "diff-512.ktx2": 55099,
+    "diff-512.jpg": 25308,
+    "nor-256.ktx2": 63822,
+    "nor-512.ktx2": 223787,
+    "nor-512.jpg": 57711,
+    "arm-256.ktx2": 77191,
+    "arm-512.ktx2": 282997,
+    "arm-512.jpg": 102172
+   }
+  },
+  "barrel_03--barrel_03": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15061,
+    "diff-512.ktx2": 51948,
+    "diff-512.jpg": 28574,
+    "nor-256.ktx2": 49666,
+    "nor-512.ktx2": 176386,
+    "nor-512.jpg": 39669,
+    "arm-256.ktx2": 60778,
+    "arm-512.ktx2": 231012,
+    "arm-512.jpg": 72710
+   }
+  },
+  "preconcrete_wall_001": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 56454,
+    "diff-1024.ktx2": 185457,
+    "diff-512.jpg": 33771,
+    "nor-512.ktx2": 179507,
+    "nor-1024.ktx2": 824426,
+    "nor-512.jpg": 35792,
+    "arm-512.ktx2": 172548,
+    "arm-1024.ktx2": 643284,
+    "arm-512.jpg": 30149
+   }
   }
  },
  "models": {
@@ -364,11 +466,57 @@
    ],
    "triangles": 13571,
    "lod1Triangles": 4071
+  },
+  "covered_car": {
+   "glb": 399444,
+   "lod1": 445392,
+   "materials": [
+    "covered_car",
+    "covered_car"
+   ],
+   "triangles": 12592,
+   "lod1Triangles": 3773
+  },
+  "old_military_crate": {
+   "glb": 334360,
+   "lod1": 372712,
+   "materials": [
+    "military_crate_m_01"
+   ],
+   "triangles": 10476,
+   "lod1Triangles": 3140
+  },
+  "wooden_military_crate": {
+   "glb": 690516,
+   "lod1": 773652,
+   "materials": [
+    "wooden_military_crate"
+   ],
+   "triangles": 22986,
+   "lod1Triangles": 6894
+  },
+  "metal_jerrycan_green": {
+   "glb": 278444,
+   "lod1": 313748,
+   "materials": [
+    "metal_jerrycan_green"
+   ],
+   "triangles": 9636,
+   "lod1Triangles": 2886
+  },
+  "barrel_03": {
+   "glb": 45920,
+   "lod1": 51344,
+   "materials": [
+    "barrel_03"
+   ],
+   "triangles": 1473,
+   "lod1Triangles": 441
   }
  },
  "bytes": {
-  "low": 8486935,
-  "high": 25456714,
-  "fallback": 2113292
+  "low": 13387867,
+  "high": 33634821,
+  "fallback": 3111536
  }
 }

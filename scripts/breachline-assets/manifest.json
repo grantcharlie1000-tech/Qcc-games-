@@ -591,6 +591,269 @@
         }
       ],
       "use": ""
+    },
+    {
+      "id": "covered_car",
+      "kind": "model",
+      "name": "Covered Car",
+      "source": "https://polyhaven.com/a/covered_car",
+      "author": "MP",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.789,
+        4.3803,
+        1.4111
+      ],
+      "files": [
+        {
+          "path": "covered_car/covered_car.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/covered_car/covered_car_1k.gltf",
+          "size": 9687,
+          "sha256": "80b210b08673833a8085812b9ee71286213b2af92654886e5a1a368977265aa7"
+        },
+        {
+          "path": "covered_car/covered_car.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/covered_car/covered_car.bin",
+          "size": 394464,
+          "sha256": "dcbd7bf82d415e30d02c3e7056013b44729de7b712868b5ab9bf29f2b3b8bc57"
+        },
+        {
+          "path": "covered_car/textures/covered_car_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/covered_car/covered_car_nor_gl_1k.jpg",
+          "size": 641340,
+          "sha256": "6769694abe28c53e5c35ad1cefdd462b56416e7d89a6bcf5a9d9f6c922b46d05"
+        },
+        {
+          "path": "covered_car/textures/covered_car_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/covered_car/covered_car_arm_1k.jpg",
+          "size": 745781,
+          "sha256": "e77f73234311701dd8088ec572e61d4ec7838bd28e9ea13ffe5e28f79da8e085"
+        },
+        {
+          "path": "covered_car/textures/covered_car_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/covered_car/covered_car_diff_1k.jpg",
+          "size": 558004,
+          "sha256": "c4616a5c7c1327e4bc127b600e59d9dcb2123f8926f1570a1ca4a068d97f4d34"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "old_military_crate",
+      "kind": "model",
+      "name": "Old Military Crate",
+      "source": "https://polyhaven.com/a/old_military_crate",
+      "author": "Jack Mava",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.8154,
+        0.9791,
+        0.3009
+      ],
+      "files": [
+        {
+          "path": "old_military_crate/old_military_crate.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/old_military_crate/old_military_crate_1k.gltf",
+          "size": 10126,
+          "sha256": "ef4b69dca61542c4d724c4807233161129150220695742b5137ed65d8d2e1f24"
+        },
+        {
+          "path": "old_military_crate/textures/old_military_crate_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/old_military_crate/old_military_crate_nor_gl_1k.jpg",
+          "size": 742682,
+          "sha256": "88935171626be79c4a44d0c52a33bc8d88b7b232ae48157d639a9ada0ab6e92b"
+        },
+        {
+          "path": "old_military_crate/textures/old_military_crate_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/old_military_crate/old_military_crate_diff_1k.jpg",
+          "size": 709506,
+          "sha256": "9e74a72787364fee09a450e442db97a687d237051e98f8ed709af516434e895d"
+        },
+        {
+          "path": "old_military_crate/textures/old_military_crate_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/old_military_crate/old_military_crate_arm_1k.jpg",
+          "size": 704105,
+          "sha256": "7b3a94f18f15783d9940fe4bd25316e8daffd0bdcbdfbe3e234b3cbb636bf5da"
+        },
+        {
+          "path": "old_military_crate/old_military_crate.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/old_military_crate/old_military_crate.bin",
+          "size": 329004,
+          "sha256": "80eb5ad690aaa6f4f401df0f8e323666bf8f3f9943c7cb703eb37002f5084ce1"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "wooden_military_crate",
+      "kind": "model",
+      "name": "Wooden Military Crate",
+      "source": "https://polyhaven.com/a/wooden_military_crate",
+      "author": "Prabhjinder Singh",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.2421,
+        0.5198,
+        0.4648
+      ],
+      "files": [
+        {
+          "path": "wooden_military_crate/wooden_military_crate.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/wooden_military_crate/wooden_military_crate_1k.gltf",
+          "size": 6002,
+          "sha256": "e8d8d21d112fef04c8e9fd05a62dc7c94260bc230a43d86d0e1f4b5a888a9499"
+        },
+        {
+          "path": "wooden_military_crate/textures/wooden_military_crate_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/wooden_military_crate/wooden_military_crate_nor_gl_1k.jpg",
+          "size": 745490,
+          "sha256": "89cc5ad94dd7ce425f2b9b04f37f2266778923369c77d8945101456f47579cf3"
+        },
+        {
+          "path": "wooden_military_crate/textures/wooden_military_crate_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/wooden_military_crate/wooden_military_crate_diff_1k.jpg",
+          "size": 824093,
+          "sha256": "aa6ace45bef9947586c07283cd11a2d737fe0783a18df69a76f77f59d4fb776d"
+        },
+        {
+          "path": "wooden_military_crate/textures/wooden_military_crate_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/wooden_military_crate/wooden_military_crate_arm_1k.jpg",
+          "size": 782386,
+          "sha256": "fe27fa628a9134f81958413c1a11deea8074fe40424c1a8a48ec459f2dde7955"
+        },
+        {
+          "path": "wooden_military_crate/wooden_military_crate.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/wooden_military_crate/wooden_military_crate.bin",
+          "size": 687548,
+          "sha256": "cf6fd469a476d834f9724f8b8f762630040d8e785e8697c5d7994ae3e840e727"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "metal_jerrycan_green",
+      "kind": "model",
+      "name": "Metal Jerrycan Green",
+      "source": "https://polyhaven.com/a/metal_jerrycan_green",
+      "author": "Ulan Cabanilla",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.3739,
+        0.1709,
+        0.5009
+      ],
+      "files": [
+        {
+          "path": "metal_jerrycan_green/metal_jerrycan_green.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/metal_jerrycan_green/metal_jerrycan_green_1k.gltf",
+          "size": 9539,
+          "sha256": "7c63c43f9042a08fff0cec69d1d954d029cc10d2546ba63072fcf719d5db49c5"
+        },
+        {
+          "path": "metal_jerrycan_green/textures/metal_jerrycan_green_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_jerrycan_green/metal_jerrycan_green_nor_gl_1k.jpg",
+          "size": 744758,
+          "sha256": "7af3a6bb717b13cfafaad5b933b40484983a57b3806992b1b349d2fa77eadb6c"
+        },
+        {
+          "path": "metal_jerrycan_green/textures/metal_jerrycan_green_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_jerrycan_green/metal_jerrycan_green_diff_1k.jpg",
+          "size": 577269,
+          "sha256": "422b63d79fd360a5d016b75ae110917da64ce682c9e1e97c73ac441a000652e9"
+        },
+        {
+          "path": "metal_jerrycan_green/textures/metal_jerrycan_green_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_jerrycan_green/metal_jerrycan_green_arm_1k.jpg",
+          "size": 1050155,
+          "sha256": "5012d95478dc0818e9ad883eee6f4ce5d99523cc190d3c6543c0b5750d954239"
+        },
+        {
+          "path": "metal_jerrycan_green/metal_jerrycan_green.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/metal_jerrycan_green/metal_jerrycan_green.bin",
+          "size": 273368,
+          "sha256": "386534027d20514402c05d68115f4bff7b466db0b02022f9ab51ac6a576bb3fa"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "barrel_03",
+      "kind": "model",
+      "name": "Barrel 03",
+      "source": "https://polyhaven.com/a/barrel_03",
+      "author": "Serhii Khromov",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.6339,
+        0.6386,
+        0.9305
+      ],
+      "files": [
+        {
+          "path": "barrel_03/barrel_03.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/barrel_03/barrel_03_1k.gltf",
+          "size": 2638,
+          "sha256": "80e2faf48b7423bb522b573e459d99c5656a16763285ec8268e957fc7d41f9b8"
+        },
+        {
+          "path": "barrel_03/textures/barrel_03_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/barrel_03/barrel_03_diff_1k.jpg",
+          "size": 149997,
+          "sha256": "62feb27dfa9a0daf3f323fdc1ddc2d8e4a5996cf2c72fe50197b55c2b9cba7f3"
+        },
+        {
+          "path": "barrel_03/barrel_03.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/barrel_03/barrel_03.bin",
+          "size": 44872,
+          "sha256": "10f3202e9ac9acf8dd896f1562c64db58311ffef89efb402d8433e03ad486427"
+        },
+        {
+          "path": "barrel_03/textures/barrel_03_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/barrel_03/barrel_03_nor_gl_1k.jpg",
+          "size": 126707,
+          "sha256": "ade97c52985047858a4f38226a9b8a888e3a766ba0434700b4618fb25424c4b6"
+        },
+        {
+          "path": "barrel_03/textures/barrel_03_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/barrel_03/barrel_03_arm_1k.jpg",
+          "size": 249922,
+          "sha256": "2cec2338b36d7322bef55e6a1d0884b223c5ed383cf986a58bfa461478c64c7e"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "preconcrete_wall_001",
+      "kind": "texture",
+      "name": "Preconcrete Wall 001",
+      "source": "https://polyhaven.com/a/preconcrete_wall_001",
+      "author": "Dimitrios Savva, Rico Cilliers",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        4,
+        4
+      ],
+      "files": [
+        {
+          "path": "preconcrete_wall_001/preconcrete_wall_001_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/preconcrete_wall_001/preconcrete_wall_001_diff_2k.jpg",
+          "size": 921611,
+          "sha256": "c5dd99db8726950122d1ebd49fdd6ead14b5d24c278e6559eba3128f86c7d797"
+        },
+        {
+          "path": "preconcrete_wall_001/preconcrete_wall_001_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/preconcrete_wall_001/preconcrete_wall_001_nor_gl_2k.jpg",
+          "size": 875406,
+          "sha256": "14a33abbf3126f7fe2c61c31906e2724174ec3a0467e24c73bec34b7c5d31969"
+        },
+        {
+          "path": "preconcrete_wall_001/preconcrete_wall_001_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/preconcrete_wall_001/preconcrete_wall_001_arm_2k.jpg",
+          "size": 476534,
+          "sha256": "628f8a53c3360aa028b1ea0df6d2c23c542717aa59e85b9fc8263a144d308bb3"
+        }
+      ],
+      "use": ""
     }
   ]
 }

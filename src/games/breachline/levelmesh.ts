@@ -6,6 +6,7 @@ import type { Bake, RGB } from './lightbake';
 import { MAP, type FloorMat } from './map';
 import { TILE, type TexId } from './textures';
 import { PANEL_T, panelPoint, type Box, type Panel } from './world';
+import { replaced } from './render/props';
 
 class Batch {
   pos: number[] = []; uv: number[] = []; col: number[] = []; idx: number[] = [];
@@ -98,7 +99,18 @@ function prop(L: LevelBuilder, b: Box, n: number) {
     }
     case 'plaster': L.box(x0, y0, z0, x1, y1, z1, 'drywall'); break;
     case 'trim': L.box(x0, y0, z0, x1, y1, z1, 'trim'); break;
-    case 'concrete': L.box(x0, y0, z0, x1, y1, z1, 'concrete'); break;
+    case 'concrete':
+      if (y1 < 3) { L.box(x0, y0, z0, x1, y1, z1, 'concrete'); break; }
+      // The perimeter: precast panels on a darker footing, capped by a coping that oversails both faces.
+      L.box(x0, 0.22, z0, x1, y1, z1, 'precast');
+      L.box(x0 - 0.04, 0, z0 - 0.04, x1 + 0.04, 0.22, z1 + 0.04, 'concrete', [0.62, 0.62, 0.6]);
+      L.box(x0 - 0.07, y1, z0 - 0.07, x1 + 0.07, y1 + 0.1, z1 + 0.07, 'concrete', [1.12, 1.12, 1.1]);
+      // Panel joints every 4 m: a dark mastic strip standing a hair proud of both faces.
+      for (let a = (long ? x0 : z0) + 4; a < (long ? x1 : z1) - 0.5; a += 4) {
+        if (long) L.box(a - 0.018, 0.22, z0 - 0.008, a + 0.018, y1, z1 + 0.008, 'trim', [0.55, 0.55, 0.55]);
+        else L.box(x0 - 0.008, 0.22, a - 0.018, x1 + 0.008, y1, a + 0.018, 'trim', [0.55, 0.55, 0.55]);
+      }
+      break;
     case 'crate': L.box(x0, y0, z0, x1, y1, z1, 'crate', WHITE, 'fit'); break;
     case 'container': L.box(x0, y0, z0, x1, y1, z1, 'container', CONTAINER_TINTS[n % CONTAINER_TINTS.length]); break;
     case 'rack': L.box(x0, y0, z0, x1, y1, z1, side => (side === 2 || side === 3 ? 'trim' : (side < 2) === long ? 'trim' : 'rack')); break;
@@ -146,8 +158,9 @@ export function buildLevel(bake: Bake, materials: Record<TexId, THREE.Material>,
   return { group: L.build(materials), triangles: L.triangles };
 }
 
-/** Every static surface of the level, as calls on a builder. Shared by the browser and the offline light baker. */
-export function emitLevel(L: LevelBuilder) {
+/** Every static surface of the level, as calls on a builder. Shared by the browser and the offline light baker.
+ * `art`: for the art layer, which leaves out boxes a modelled prop replaces (render/props.ts). */
+export function emitLevel(L: LevelBuilder, art = false) {
   const B = MAP.building;
   // Ground, then grass and room floors a hair above it.
   MAP.floors.forEach((f, i) => { const y = i === 0 ? 0 : f.mat === 'grass' ? 0.012 : 0.02; L.face(FLOOR_TEX[f.mat], f.x0, y, f.z1, 1, 0, 0, f.x1 - f.x0, 0, 0, -1, f.z1 - f.z0, WHITE, 'world', i === 0 ? 1.4 : 0.6); });
@@ -162,7 +175,7 @@ export function emitLevel(L: LevelBuilder) {
   for (const r of MAP.rooms.slice(0, 8)) L.face('ceiling', r.x0, WALL_H, r.z0, 1, 0, 0, r.x1 - r.x0, 0, 0, 1, r.z1 - r.z0, WHITE, 'world', 0.75);
   for (const l of MAP.lamps) L.face('lamp', l.x - 0.6, WALL_H - 0.015, l.z - 0.3, 1, 0, 0, 1.2, 0, 0, 1, 0.6, WHITE, 'fit', 9, [l.color[0] * 2.6, l.color[1] * 2.6, l.color[2] * 2.6]);
   L.face('roof', B.x0, WALL_H + 0.3, B.z1, 1, 0, 0, B.x1 - B.x0, 0, 0, -1, B.z1 - B.z0, WHITE, 'world', 3);
-  MAP.boxes.forEach((b, n) => { if (b.draw) prop(L, b, n); });
+  MAP.boxes.forEach((b, n) => { if (b.draw && !(art && replaced(b.x0, b.z0, b.x1, b.z1))) prop(L, b, n); });
   // Frames around every doorway and window.
   for (const p of MAP.panels) {
     if (p.kind === 'wall') continue;

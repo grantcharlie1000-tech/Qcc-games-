@@ -4,6 +4,12 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: yard step 3a (vehicle, perimeter wall, first dressing) done.** `rooms/yard/round-1/step3a.png`.
+The box van is now Poly Haven's `covered_car` (a CC0 photoscan under a dust cover); its collision box was cut to the
+model (1.42 m tall, was 2 m) and `NET_VERSION` bumped to `breachline-2`. The perimeter is precast panels
+(`preconcrete_wall_001`) on a footing, with a coping and joints every 4 m. Military crates, jerrycans and drums
+stand on or against existing collision. Next: containers, then the crate box.
+
 **2026-11-11: yard step 4 (readability) done.** Both squads at the South Yard spawn against the perimeter
 (`rooms/yard/round-1/step4.png`, two halves from one pose). The blue squad vanished into the dark wall; the wall is now
 pale precast and the bake's sky is brighter, and both read. Next: step 3, dressing.
@@ -128,8 +134,29 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** yard steps 1, 2 and 4 done (sun and sky in the bake, ground sets, bays, kerbs,
-drains, readability against the perimeter); next step 3, dressing.
+**Where I am (keep current):** yard steps 1, 2, 4 and 3a done (vehicle, perimeter wall, first dressing); next the
+containers and the crate box, then one round each on the Server Room, Lobby, Office and Break Room.
+
+## The yard, step 3a: vehicle, perimeter, dressing (`rooms/yard/round-1/step3a.png`, 960 px)
+
+- **Vehicle:** Patch's vans and trucks are flat-coloured low-poly (about 1.5k triangles, no textures), which the
+  reviewer ruled out. Poly Haven `covered_car` (CC0, 12.6k triangles, 4.38 x 1.79 x 1.41 m) replaces the South
+  Yard van. `map.ts`: that box is now (5.11, 14.26)-(9.49, 16.04), 1.42 m tall, to match the model; `NET_VERSION`
+  is `breachline-2`. Nav, bot and online tests pass. A `replaces` flag on a placement makes the art layer leave the
+  box's own faces out (`emitLevel(L, art)`); the procedural level still draws them where art is not loaded. The West
+  Lot and Garage vans are untouched (not art regions yet).
+- **Prop probes:** a prop's light probe was 0.4 m above its base, which is inside a car or a drum, so they rendered
+  black. The baker now puts each probe just above the model's own top.
+- **Perimeter:** a new `precast` surface (Poly Haven `preconcrete_wall_001`, one 4 m panel per repeat) on a darker
+  footing, a coping that oversails both faces, and a dark joint every 4 m. The procedural fallback paints a joint.
+- **Dressing:** `wooden_military_crate` on the stacked crate, `old_military_crate` and a jerrycan on the steel bin,
+  two jerrycans by the crate, drums against the perimeter by the west container and in the east corner.
+- **Budget:** 11 prop models (cap 30); download low tier 13.4 MB (was 8.5), High extra 33.6 MB; yard views 35-253
+  draw calls, 21-108k triangles.
+- **Still wrong:** the containers (flat sides, no door bars, corner posts or numbers); the crate box under the
+  military crate is the old procedural box; the wall scan reads a little cream and its tie-hole pattern repeats.
+- Tests: unit 5385 passed; Breachline browser 8 passed (the stock warm run is the expected failure); online 1 passed.
+
 
 ## The yard, step 4: readability (`rooms/yard/round-1/step4.png`, 960 px)
 

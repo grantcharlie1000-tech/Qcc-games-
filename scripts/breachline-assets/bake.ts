@@ -140,6 +140,7 @@ export const placementMatrix = (p: { x: number; y: number; z: number; yaw: numbe
 
 // ---- ray casting ----
 let bvh: MeshBVH, index: THREE.BufferAttribute;
+const propProbeY: number[] = [];
 const ray = new THREE.Ray(), o3 = new THREE.Vector3(), d3 = new THREE.Vector3();
 function cast(o: V3, d: V3, far = Infinity): { t: number; tri: number; p: V3 } | null {
   ray.origin.set(o[0], o[1], o[2]); ray.direction.set(d[0], d[1], d[2]);
@@ -221,14 +222,18 @@ async function main() {
     const half = (p.kind === 'wall' ? PANEL_T : 0.07) / 2, a = panelPoint(p, p.u0, p.y0, -half), b = panelPoint(p, p.u0 + p.cols * CELL, p.y0 + p.rows * CELL, half);
     addBox(Math.min(a.x, b.x), a.y, Math.min(a.z, b.z), Math.max(a.x, b.x), b.y, Math.max(a.z, b.z), p.kind === 'wall' ? plaster : wood);
   }
-  // Props occlude and bounce.
+  // Props occlude and bounce. Each one's light probe sits just above its own top, outside the model (a probe
+  // inside an occluder sees only its own faces and comes out black).
   for (const pl of PROPS) {
+    let top = pl.y;
     const file = join(OUT, 'models', `${pl.model}.glb`), albedo = await averageAlbedo(join(HERE, '.cache', pl.model, 'textures', (await readFile(join(HERE, '.cache', pl.model, `${pl.model}.gltf`), 'utf8')).match(/textures\/([^"]*diff[^"]*)"/)![1]));
     for (const [a, b, c] of await glbTriangles(file, placementMatrix(pl))) {
+      top = Math.max(top, a[1], b[1], c[1]);
       const e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], e2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
       const n: V3 = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]], l = Math.hypot(...n) || 1;
       addTri(a, b, c, { albedo, n: [n[0] / l, n[1] / l, n[2] / l], chart: -1, region: -1 });
     }
+    propProbeY.push(Math.max(pl.y + 0.4, top + 0.12));
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -359,7 +364,7 @@ async function main() {
       }
       return [...sh].map(v => +v.toFixed(4));
     };
-    const props = PROPS.map(pl => probe([pl.x, pl.y + 0.4, pl.z]));
+    const props = PROPS.map((pl, i) => probe([pl.x, propProbeY[i], pl.z]));
     const grid: number[][] = [], gx = Math.round(region.x1 - region.x0), gz = Math.round(region.z1 - region.z0);
     for (const y of [0.6, 1.6]) for (let j = 0; j <= gz; j++) for (let i = 0; i <= gx; i++) grid.push(probe([region.x0 + Math.min(Math.max(i, 0.25), gx - 0.25), y, region.z0 + Math.min(Math.max(j, 0.25), gz - 0.25)]));
     // Destructible panels that face into the region: light at each cell corner, on the side facing in.

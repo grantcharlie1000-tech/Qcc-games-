@@ -63,7 +63,7 @@ export function collectFaces(regions: readonly Region[] = REGIONS): { byRegion: 
     rest.push(...left);
     return [];
   });
-  emitLevel(L);
+  emitLevel(L, true);
   return { byRegion, rest };
 }
 

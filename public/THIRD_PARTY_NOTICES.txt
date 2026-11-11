@@ -3798,6 +3798,12 @@ Asphalt 02 (texture) by Rob Tuytel. https://polyhaven.com/a/asphalt_02. License:
 Concrete Floor 02 (texture) by Rob Tuytel. https://polyhaven.com/a/concrete_floor_02. License: CC0-1.0.
 Red Brick 03 (texture) by Rob Tuytel. https://polyhaven.com/a/red_brick_03. License: CC0-1.0.
 Aerial Grass Rock (texture) by Rob Tuytel. https://polyhaven.com/a/aerial_grass_rock. License: CC0-1.0.
+Covered Car (model) by MP. https://polyhaven.com/a/covered_car. License: CC0-1.0.
+Old Military Crate (model) by Jack Mava. https://polyhaven.com/a/old_military_crate. License: CC0-1.0.
+Wooden Military Crate (model) by Prabhjinder Singh. https://polyhaven.com/a/wooden_military_crate. License: CC0-1.0.
+Metal Jerrycan Green (model) by Ulan Cabanilla. https://polyhaven.com/a/metal_jerrycan_green. License: CC0-1.0.
+Barrel 03 (model) by Serhii Khromov. https://polyhaven.com/a/barrel_03. License: CC0-1.0.
+Preconcrete Wall 001 (texture) by Dimitrios Savva, Rico Cilliers. https://polyhaven.com/a/preconcrete_wall_001. License: CC0-1.0.
 
 Basis Universal transcoder (basis_transcoder.js and .wasm, as distributed with three.js r180), by Binomial LLC.
 License: Apache-2.0 (full text above in this file). Modified: public/game-art/breachline/basis/ktx2-worker.js wraps it

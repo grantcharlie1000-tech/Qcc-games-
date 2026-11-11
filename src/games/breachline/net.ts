@@ -8,7 +8,7 @@ import { ACT, control, equip, newPlayer, type ActId, type Command, type Intent, 
 import { fillPanel, packPanels, removeCells, resetPanels, unpackPanels, type PanelState } from './world';
 import type { RoomEvent, RosterEntry } from '../../multiplayer/room';
 
-export const NET_VERSION = 'breachline-1';
+export const NET_VERSION = 'breachline-2';
 export const MAX_PLAYERS = ROUND.maxTeam * 2;
 const SNAPSHOT_TICKS = 4, POSE_TICKS = 3, PLAYER_FIELDS = 17;
 const PHASES: Phase[] = ['lobby', 'prep', 'action', 'planted', 'end', 'over'];

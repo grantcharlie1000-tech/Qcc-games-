@@ -31,6 +31,9 @@ export const BOOKMARKS = {
   'south-yard': [3, 19.5, 0, -0.02],
   // The south yard's painted bays and a grass verge, looking south.
   'yard-bays': [3.5, 13.2, 2.75, -0.22],
+  // Yard dressing: the covered car and the crate stack from the building's apron; the drums by the west container.
+  'yard-car': [3.2, 11.6, -2.28, -0.12],
+  'yard-drums': [-14.5, 17.2, 2.45, -0.1],
   // Readability: a full squad lined up at the South Yard spawn against the perimeter, seen from near the building
   // (about 7 m), once per squad (seed 2 puts squad 0's attack there in round 2 and squad 1's in round 4).
   'yard-squad-0': [2.5, 12.6, 3.1416, -0.02],

@@ -148,7 +148,7 @@ function build(): MapDef {
   box(B.x0 - 0.6, 0, B.z0 - 0.6, B.x1 + 0.6, 3.4, B.z0, 'concrete'); box(B.x0 - 0.6, 0, B.z1, B.x1 + 0.6, 3.4, B.z1 + 0.6, 'concrete');
   box(B.x0 - 0.6, 0, B.z0, B.x0, 3.4, B.z1, 'concrete'); box(B.x1, 0, B.z0, B.x1 + 0.6, 3.4, B.z1, 'concrete');
   // South
-  box(-6, 0, 14.5, 0, 2.6, 17, 'container'); box(5, 0, 14.2, 9.6, 2, 16.1, 'van');
+  box(-6, 0, 14.5, 0, 2.6, 17, 'container'); box(5.11, 0, 14.26, 9.49, 1.42, 16.04, 'van');
   box(-13, 0, 13, -10.6, 0.95, 13.45, 'concrete'); box(9.6, 0, 12.5, 12, 0.95, 12.95, 'concrete');
   box(1.6, 0, 12.6, 2.8, 1.1, 13.8, 'crate');
   box(17, 0, 11.6, 19.2, 1.3, 12.8, 'steel');

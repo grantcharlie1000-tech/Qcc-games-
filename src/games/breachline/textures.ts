@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 
 export type TexId =
-  | 'brick' | 'cinder' | 'drywall' | 'core' | 'planks' | 'plate' | 'concrete' | 'trim' | 'wood' | 'crate' | 'container' | 'paint' | 'glass' | 'rack' | 'shelf' | 'steel' | 'counter' | 'fabric' | 'rubber'
+  | 'brick' | 'cinder' | 'drywall' | 'core' | 'planks' | 'plate' | 'concrete' | 'precast' | 'trim' | 'wood' | 'crate' | 'container' | 'paint' | 'glass' | 'rack' | 'shelf' | 'steel' | 'counter' | 'fabric' | 'rubber'
   | 'asphalt' | 'grass' | 'slab' | 'line' | 'tile' | 'lino' | 'carpet' | 'floorboards' | 'raised' | 'check' | 'ceiling' | 'lamp' | 'roof';
 
 type G = CanvasRenderingContext2D;
@@ -100,6 +100,12 @@ const painters: Record<TexId, (g: G, s: number, r: () => number) => void> = {
     const drip = g.createLinearGradient(0, 0, 0, s * 0.4); drip.addColorStop(0, 'rgba(30,30,25,0.3)'); drip.addColorStop(1, 'rgba(30,30,25,0)');
     g.fillStyle = drip; g.fillRect(0, 0, s, s * 0.4);
     grain(g, s, r, 16);
+  },
+  // Precast perimeter panels: the concrete with a vertical joint at each panel's edge and a lifting-hole row.
+  precast(g, s, r) {
+    painters.concrete(g, s, r);
+    g.fillStyle = 'rgba(25,25,22,0.55)'; g.fillRect(0, 0, s * 0.012, s); g.fillStyle = 'rgba(255,255,250,0.12)'; g.fillRect(s * 0.012, 0, s * 0.006, s);
+    g.fillStyle = 'rgba(30,30,28,0.4)'; for (const x of [0.25, 0.75]) { g.beginPath(); g.arc(x * s, s * 0.12, s * 0.012, 0, Math.PI * 2); g.fill(); }
   },
   trim(g, s, r) { g.fillStyle = '#2f3639'; g.fillRect(0, 0, s, s); g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(0, 0, s * 0.2, s); grain(g, s, r, 8, 1, 8); },
   wood(g, s, r) {
@@ -228,7 +234,7 @@ const painters: Record<TexId, (g: G, s: number, r: () => number) => void> = {
 
 /** Metres covered by one repeat of each texture, across and up. Wall textures are WALL_H tall. */
 export const TILE: Record<TexId, readonly [number, number]> = {
-  brick: [1.5, 1.8], cinder: [3, 3], drywall: [3, 3], core: [0.5, 0.5], planks: [1, 1], plate: [1, 2.5], concrete: [3, 3], trim: [0.5, 0.5], wood: [1.2, 1.2], crate: [1, 1], container: [2.4, 2.6],
+  brick: [1.5, 1.8], cinder: [3, 3], drywall: [3, 3], core: [0.5, 0.5], planks: [1, 1], plate: [1, 2.5], concrete: [3, 3], precast: [4, 3.4], trim: [0.5, 0.5], wood: [1.2, 1.2], crate: [1, 1], container: [2.4, 2.6],
   paint: [2, 2], line: [1, 1], glass: [1.4, 1.4], rack: [0.8, 2.1], shelf: [1.8, 2.2], steel: [1, 2], counter: [1.8, 0.95], fabric: [0.6, 0.6], rubber: [0.5, 0.5],
   asphalt: [5, 5], grass: [4, 4], slab: [3, 3], tile: [2, 2], lino: [3, 3], carpet: [1.5, 1.5], floorboards: [2, 2], raised: [1.2, 1.2], check: [2, 2], ceiling: [1.2, 1.2], lamp: [1, 1], roof: [4, 4],
 };

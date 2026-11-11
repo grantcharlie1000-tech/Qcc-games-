@@ -37,6 +37,8 @@ export const SURFACES: Partial<Record<TexId, Surface>> = {
   asphalt: { set: 'asphalt_02', size: 3, gloss: 1, tint: [1.15, 1.15, 1.12] },
   // Pale precast concrete: the perimeter must stay lighter than either squad's camouflage so figures read against it.
   concrete: { set: 'concrete_floor_02', size: 3, tint: [1.55, 1.53, 1.48] },
+  // The perimeter: precast panels (Poly Haven preconcrete_wall_001, one 4 m panel per repeat).
+  precast: { set: 'preconcrete_wall_001', size: 4, tint: [0.98, 0.98, 0.97] },
   slab: { set: 'concrete_floor_02', size: 2.5, tint: [0.8, 0.8, 0.78] },
   brick: { set: 'red_brick_03', size: 1.5, tint: [0.9, 0.85, 0.82] },
   grass: { set: 'aerial_grass_rock', size: 2.5, tint: [0.85, 0.9, 0.8] },
