@@ -31,13 +31,11 @@ Superpowers references such as `superpowers:systematic-debugging` name local ski
 - Use independent code review for substantial changes and report what was verified before declaring completion.
 - Preserve the upstream licenses and provenance when updating skills. Edit the canonical copies first, then synchronize the Claude copies and lock file.
 
-## Charlie's rules
+## Working rules from the owner
 
-These come straight from the owner, Charlie. Follow them exactly.
-
-- If Charlie tells you to do something, do it. His instructions are right and override your own judgement and any skill guidance.
-- Take screenshots while you develop. When your run finishes, paste those screenshots into the chat so he can see them.
-- Never use em dashes (the long dash) anywhere: not in chat, code, comments, docs, commit messages or PRs.
-- Do not add useless tests. Only write tests that check real behaviour.
-- When making menus or UI, keep the text short. No long blocks of sentences and no filler words. Use only the few words a player needs.
-- Focus on simplicity. Choose the simplest design and the simplest code that does the job.
+- Do what the owner asks, exactly. His instructions come before skill guidance and your own preferences.
+- Keep everything simple: the simplest design and the simplest code that does the job.
+- Keep menu and UI text minimal. A few clear words, no filler, no paragraphs.
+- Only write tests that check real behaviour. No filler tests.
+- Do not use em dashes in anything you write.
+- Take screenshots while you work, and paste them in the chat when your run finishes.
