@@ -221,6 +221,40 @@
     "arm-1024.ktx2": 342655,
     "arm-512.jpg": 24604
    }
+  },
+  "security_camera_01--security_camera_01": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15157,
+    "diff-512.ktx2": 52547,
+    "diff-512.jpg": 28592,
+    "nor-256.ktx2": 45109,
+    "nor-512.ktx2": 144820,
+    "nor-512.jpg": 32493,
+    "arm-256.ktx2": 51866,
+    "arm-512.ktx2": 177489,
+    "arm-512.jpg": 48863
+   }
+  },
+  "security_camera_01--security_camera_01_glass": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15157,
+    "diff-512.ktx2": 52547,
+    "diff-512.jpg": 28592,
+    "nor-256.ktx2": 45109,
+    "nor-512.ktx2": 144820,
+    "nor-512.jpg": 32493,
+    "arm-256.ktx2": 51866,
+    "arm-512.ktx2": 177489,
+    "arm-512.jpg": 48863
+   }
   }
  },
  "models": {
@@ -252,11 +286,21 @@
    ],
    "triangles": 8334,
    "lod1Triangles": 2500
+  },
+  "security_camera_01": {
+   "glb": 388804,
+   "lod1": 437920,
+   "materials": [
+    "security_camera_01",
+    "security_camera_01_glass"
+   ],
+   "triangles": 13571,
+   "lod1Triangles": 4071
   }
  },
  "bytes": {
-  "low": 5128248,
-  "high": 14472450,
-  "fallback": 1202965
+  "low": 6179236,
+  "high": 16048886,
+  "fallback": 1422861
  }
 }

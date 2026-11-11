@@ -191,6 +191,15 @@ function dressCorridor(atlas: Atlas, room: Region): DetailBuilder {
     D.mesh('conduit', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [-10.5, y - 0.001, 0.3], up, [...tint] as V3);
     g.dispose();
   }
+  // Panel radiators in some bays: standing on the floor just off the wall (7 cm deep, too slim to read as cover),
+  // with vertical convector fins, two feet and a valve.
+  for (const [x, wallZ, side] of [[-7.75, -2, 1], [6, -2, 1], [-5, 1, -1], [11.6, 1, -1]] as const) {
+    const back = wallZ + side * 0.1, front = back + side * 0.07, z0 = Math.min(back, front), z1 = Math.max(back, front), on: V3 = [x, 0.001, front + side * 0.2], fu: V3 = [0, 1, 0];
+    D.box('socket', x - 0.4, 0.14, z0, x + 0.4, 0.68, z1, on, fu, [0.95, 0.94, 0.9]);
+    for (let i = 0; i < 16; i++) { const fx = x - 0.38 + i * 0.05; D.box('socket', fx, 0.16, side > 0 ? z1 : z0 - 0.006, fx + 0.012, 0.66, side > 0 ? z1 + 0.006 : z0, on, fu, [0.82, 0.81, 0.78]); }
+    for (const fx of [x - 0.32, x + 0.32]) D.box('steel', fx - 0.02, 0, z0 + 0.01, fx + 0.02, 0.14, z1 - 0.01, on, fu, [0.6, 0.6, 0.6]);
+    D.box('chrome', x + 0.4, 0.12, z0 + 0.02, x + 0.45, 0.2, z1 - 0.02, on, fu);
+  }
   // Every doorway gets a frame: painted casings on the posts either side and across the lintel, an aluminium
   // threshold strip, hinges left on one jamb (the doors are long gone) and a room plate beside it.
   for (const p of MAP.panels) {

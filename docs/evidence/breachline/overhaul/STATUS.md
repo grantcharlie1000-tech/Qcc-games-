@@ -121,8 +121,22 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** Archive round 2 boxes done; next the Archive's aisle shading and desk lamp, then
-corridor round 4, kit leftovers, the yard.
+**Where I am (keep current):** Archive round 2 (boxes, desk lamp) and corridor round 4 done; next the kit leftovers
+(reinforcement unfold, barricade debris, frag scorch), then the yard.
+
+## Corridor round 4 (`rooms/corridor/round-4/`, 960 px)
+
+- **Radiators:** panel radiators in four bays, clear of the doorways, standing on the floor just off the wall (7 cm
+  deep, too slim to read as cover), with 16 vertical convector fins, two feet and a valve.
+- **Cameras:** Poly Haven `security_camera_01` (CC0, Alexander Otterbeck and Yann Kervran) high on each end post,
+  watching down the corridor. They are props, so the corridor was re-baked (522 s) for their occlusion and light
+  probes. Credited by the build.
+- **Limits:** the plasterboard walls are destructible panels with no baked faces, so nothing can be mounted on them
+  (no notice boards). Bulky floor items (benches, trolleys) would read as cover the simulation doesn't have, so
+  they're left out.
+- **Budget (corridor view, High):** 209 draw calls (round 3: 200), 95k triangles (86k). Download: low tier
+  6.18 MB, High extra 16.05 MB.
+- Corridor (mine, strict scale): D 6 -> 6.5.
 
 ## Archive round 2 (`rooms/archive/round-2/`, 960 px)
 

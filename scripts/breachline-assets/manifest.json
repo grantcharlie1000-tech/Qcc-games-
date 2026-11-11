@@ -413,6 +413,52 @@
         }
       ],
       "use": "Archive boxes (render/archivebox.ts)"
+    },
+    {
+      "id": "security_camera_01",
+      "kind": "model",
+      "name": "Security Camera 01",
+      "source": "https://polyhaven.com/a/security_camera_01",
+      "author": "Alexander Otterbeck, Yann Kervran",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.1696,
+        0.5537,
+        0.286
+      ],
+      "files": [
+        {
+          "path": "security_camera_01/security_camera_01.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/security_camera_01/security_camera_01_1k.gltf",
+          "size": 4743,
+          "sha256": "d2468fe353cd9f992a5549709cf9efcfae67e9fd17f80bf7ff3866e2881dd2ae"
+        },
+        {
+          "path": "security_camera_01/security_camera_01.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/security_camera_01/security_camera_01.bin",
+          "size": 386836,
+          "sha256": "c43dd3576213c169d1b3a9968788c0da2d14073e59c7d2503bc230c05042bb21"
+        },
+        {
+          "path": "security_camera_01/textures/security_camera_01_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/security_camera_01/security_camera_01_diff_1k.jpg",
+          "size": 521174,
+          "sha256": "572968d8c693682aa5c87d59428e1db234b0d81ec620af8a019c72e3f011d53f"
+        },
+        {
+          "path": "security_camera_01/textures/security_camera_01_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/security_camera_01/security_camera_01_arm_1k.jpg",
+          "size": 530966,
+          "sha256": "68bb728aff5af6bd4141201cd221c7e17ef537f49978c321b0e183677f8877ba"
+        },
+        {
+          "path": "security_camera_01/textures/security_camera_01_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/security_camera_01/security_camera_01_nor_gl_1k.jpg",
+          "size": 315604,
+          "sha256": "80e791da5d975177d16d5f30202deac0b262ffe6b13311605c09c630b93d0de5"
+        }
+      ],
+      "use": ""
     }
   ]
 }

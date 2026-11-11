@@ -13,4 +13,7 @@ export const PROPS: Placement[] = [
   // Corridor: extinguishers standing at the foot of the walls by the west window and mid-way along.
   { model: 'korean_fire_extinguisher_01', x: -14.72, y: 0, z: 0.72, yaw: Math.PI },
   { model: 'korean_fire_extinguisher_01', x: 5.45, y: 0, z: 0.8, yaw: Math.PI },
+  // Security cameras high on the end posts, watching down the corridor.
+  { model: 'security_camera_01', x: -15.0, y: 2.45, z: -1.85, yaw: 0 },
+  { model: 'security_camera_01', x: 15.0, y: 2.45, z: 0.85, yaw: Math.PI },
 ];
