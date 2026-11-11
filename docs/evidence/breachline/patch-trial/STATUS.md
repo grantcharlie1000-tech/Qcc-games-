@@ -312,3 +312,35 @@ usable, not modern.
 Licence: CC-BY-4.0 (Creative Commons Attribution 4.0 International, https://creativecommons.org/licenses/by/4.0/).
 Our changes, to append: "Changed for Breachline: rescaled to 0.88 m; decimated to 15k triangles; magazine separated;
 re-unwrapped and re-baked; glowing panels, orange accents and markings painted out; textures re-encoded as KTX2."
+
+## 2.4 Service Pistol, split — done
+
+Script: `scripts/breachline-assets/patch-trial/prep-pistol.ts` (`npx vite-node`, env `PISTOL` = the Patch `web`
+GLB). Proof: `job2-4-pistol-parts.jpg` (the original beside ours; the slide racked back 35 mm and the magazine
+dropped by moving only the node translations; sockets; a clay view).
+
+Files in `public/game-art/breachline/patch/pistol/` (1.94 MB, budget 2 MB):
+- `pistol.glb`: nodes `frame` (4,946 triangles, includes the fixed barrel), `slide` (2,212), `magazine` (1,822),
+  `hammer` (272) and `trigger` (126). Each node's translation is its pivot: slide at its own centre (travel +Z,
+  rearward), magazine at its seat (drop along -Y), hammer and trigger at their pins (rotate about X). POSITION,
+  NORMAL, **TANGENT** (computed), TEXCOORD_0. Our weapon frame (muzzle -Z, +Y up, +X right), origin at the centre
+  of the assembled pistol; the file's measured scale is kept (0.222 m long).
+- `sockets.json` (also in the GLB's `extras`): muzzle, bore (sight 18 mm above it), grip palm and rake, support palm
+  (wrapped round the firing hand), trigger, magazine seat, ejection port, slide serrations, slide travel 35 mm, hammer
+  and trigger axes. Taken from the part bounding boxes and the profile; fine-tune with the hands in place.
+- `diff-1024.ktx2`, `nor-1024.ktx2`, `arm-512.ktx2` and 512 JPEG fallbacks. The packed map keeps glTF's roughness
+  (G) and metalness (B), with R set to 1.
+
+Decisions for the budget: the loaded magazine's 9,094 triangles (mostly the rounds inside the grip) were simplified
+to 1,822, and the roughness/metal map ships at 512 (0.85 MB at 1024). Variant B (blue grips), the empty magazine and
+the loose round are not included.
+
+Design note: an artist's model of a classic mid-century service pistol (exposed barrel ahead of a short slide,
+external hammer). It is generic, with no markings or text seen, and CC0.
+
+**Credit and licence, exactly as the Patch record gives them:**
+
+> "Service Pistol" by Mateusz Sadek (Poly Haven, https://polyhaven.com/a/service_pistol), licensed CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/). Changed by Patch: packed the 1K glTF into one GLB, pivot moved to the bottom centre, credit added to the file, simplified LODs added.
+
+Licence: CC0-1.0 (CC0 1.0 Universal, https://creativecommons.org/publicdomain/zero/1.0/); no attribution required,
+but credit it anyway as above.

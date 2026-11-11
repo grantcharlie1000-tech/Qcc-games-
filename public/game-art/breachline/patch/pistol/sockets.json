@@ -1,0 +1,64 @@
+{
+ "frame": "metres; muzzle toward -Z, +Y up, +X right; origin at the bounding-box centre of the assembled pistol",
+ "muzzle": [
+  0,
+  0.0517,
+  -0.1112
+ ],
+ "bore": 0.018,
+ "grip": {
+  "palm": [
+   0,
+   -0.0053,
+   0.0698
+  ],
+  "axisDeg": 18
+ },
+ "support": {
+  "palm": [
+   -0.035,
+   -0.0203,
+   0.0698
+  ],
+  "note": "wrapped round the firing hand, left side"
+ },
+ "trigger": [
+  0,
+  0.0097,
+  0.0078
+ ],
+ "mag": {
+  "seat": [
+   0,
+   0.0417,
+   0.0623
+  ],
+  "node": "magazine",
+  "note": "node origin = seat; drop along -Y"
+ },
+ "eject": [
+  0.016,
+  0.0527,
+  0.0198
+ ],
+ "handle": [
+  0,
+  0.0497,
+  0.0848
+ ],
+ "slide": {
+  "node": "slide",
+  "travel": 0.035,
+  "axis": "+Z (rearward)"
+ },
+ "hammer": {
+  "node": "hammer",
+  "axis": "X",
+  "cockedDeg": "rotate back about X to cock"
+ },
+ "triggerPivot": {
+  "node": "trigger",
+  "axis": "X"
+ },
+ "measured": "from part bounding boxes and the side profile; fine-tune with the hands in place"
+}
