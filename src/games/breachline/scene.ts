@@ -1,14 +1,15 @@
 /** The picture. A baked-light level, destructible panel meshes, fighters, the weapon in hand and pooled effects,
  * drawn with unlit materials so integrated graphics can keep up. Resolution adapts to hold the frame rate. */
 import * as THREE from 'three';
-import { CELL, SQUADS, WEAPONS, type WeaponId } from './config';
+import { CELL, WEAPONS } from './config';
 import { Effects } from './effects';
 import { createBake, SUN, type Bake } from './lightbake';
 import { PanelView, buildLevel, type PanelMaterials } from './levelmesh';
 import { MAP } from './map';
 import { loadArtWorld, type ArtWorld } from './render/artworld';
-import { SHIN, THIGH, armParts, boxes, chargeParts, deviceParts, makeFigure, weaponParts, type Figure } from './models';
-import { ACT, shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
+import { boxes, chargeParts, deviceParts } from './models';
+import { createFighters, createViewmodel, type HeroLighting } from './render/hero';
+import { shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
 import { makeSprite, makeTextures, type TexId } from './textures';
 import { cellCenter, eyeOf, panelPoint, trace, viewDir, type World } from './world';
 
@@ -44,22 +45,16 @@ export interface BreachScene {
   dispose(): void;
 }
 
-interface FigState { fig: Figure; squad: 0 | 1; x: number; z: number; yaw: number; pitch: number; crouch: number; lean: number; phase: number; dead: number; fresh: boolean }
-interface GunView { group: THREE.Group; slide: THREE.Mesh | null; mag: THREE.Mesh | null; muzzle: number; dot: THREE.Mesh | null }
-
-const hex = (c: string) => Number(`0x${c.slice(1)}`);
 const smooth = (t: number) => t * t * (3 - 2 * t);
-const wrap = (a: number) => { a = (a + Math.PI) % (Math.PI * 2); return (a < 0 ? a + Math.PI * 2 : a) - Math.PI; };
-
 export function createScene(canvas: HTMLCanvasElement, initial: QualityId): BreachScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: initial === 'high', powerPreference: 'high-performance', stencil: false, alpha: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.autoClear = false;
-  const scene = new THREE.Scene(), viewScene = new THREE.Scene();
+  const scene = new THREE.Scene();
   const HORIZON = new THREE.Color(0xd9a37a);
   scene.fog = new THREE.Fog(HORIZON, 50, 260);
-  const camera = new THREE.PerspectiveCamera(64, 16 / 9, 0.08, 600), viewCamera = new THREE.PerspectiveCamera(54, 16 / 9, 0.01, 5);
+  const camera = new THREE.PerspectiveCamera(64, 16 / 9, 0.08, 600);
   camera.rotation.order = 'YXZ';
   let quality = initial, scale = QUALITIES[initial].max, width = 1, height = 1, slow = 0, fast = 0, frameMs = 16;
 
@@ -122,27 +117,16 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   // ---- Lights: only fighters, gadgets and the weapon in hand are lit at run time ----
   const hemi = new THREE.HemisphereLight(0xffffff, 0x8a847c, 1.5), key = new THREE.DirectionalLight(0xfff0dd, 0.9);
   key.position.set(SUN.x, SUN.y + 0.5, SUN.z); scene.add(hemi, key);
-  const vHemi = new THREE.HemisphereLight(0xffffff, 0x8a847c, 1.5), vKey = new THREE.DirectionalLight(0xffffff, 1);
-  vKey.position.set(-0.5, 1, 0.9); viewScene.add(vHemi, vKey);
 
-  // ---- Fighters ----
-  const figs: (FigState | null)[] = [];
-  const blobTex = makeSprite('blob');
-  const blobGeo = new THREE.PlaneGeometry(1, 1); blobGeo.rotateX(-Math.PI / 2);
-  const blobs = new THREE.InstancedMesh(blobGeo, new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, opacity: 0.7 }), 10);
-  blobs.frustumCulled = false; blobs.renderOrder = 1; scene.add(blobs);
-  const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
-  function figFor(i: number, squad: 0 | 1): FigState {
-    let f = figs[i];
-    if (f && f.squad === squad) return f;
-    if (f) { scene.remove(f.fig.root); f.fig.material.dispose(); }
-    const fig = makeFigure(squad);
-    fig.root.rotation.order = 'YXZ';
-    scene.add(fig.root);
-    f = { fig, squad, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, dead: 0, fresh: true };
-    figs[i] = f;
-    return f;
-  }
+  // ---- Fighters and the weapon in hand (render/hero) ----
+  const heroLighting: HeroLighting = {
+    probe(x, _y, z) { const l = bake.probe(x, z); return { color: [l[0], l[1], l[2]] }; },
+    environment() { return null; },
+    sun: { x: SUN.x, y: SUN.y, z: SUN.z, color: [1.55, 1.12, 0.7] },
+  };
+  const fighters = createFighters(scene, heroLighting);
+  const viewmodel = createViewmodel(renderer, heroLighting);
+  const v3 = new THREE.Vector3();
 
   // ---- Gadgets and markers ----
   const lambert = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -174,30 +158,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   fx.density = QUALITIES[quality].density;
   scene.add(fx.group);
 
-  // ---- The weapon in hand ----
-  const vm = new THREE.Group(); viewScene.add(vm);
-  const vmMat = new THREE.MeshLambertMaterial({ vertexColors: true }), dotMat = new THREE.MeshBasicMaterial({ color: 0xff3524 });
-  const guns = new Map<string, GunView>();
-  const flashTex = makeSprite('flash');
-  const vmFlash = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true }));
-  vmFlash.visible = false; vm.add(vmFlash);
-  let gunKey = '', kick = 0, pump = 9, flashLife = 0, swayX = 0, swayY = 0, lastYaw = 0, lastPitch = 0, bob = 0, sprintT = 0, useT = 0, exposure = 0;
-  function gunFor(id: WeaponId, squad: 0 | 1): GunView {
-    const k = `${id}${squad}`;
-    let g = guns.get(k);
-    if (g) return g;
-    const parts = weaponParts(id), group = new THREE.Group();
-    group.add(new THREE.Mesh(boxes([...parts.fixed, ...armParts(id, hex(SQUADS[squad].color))]), vmMat));
-    const slide = parts.slide.length ? new THREE.Mesh(boxes(parts.slide), vmMat) : null, mag = parts.mag.length ? new THREE.Mesh(boxes(parts.mag), vmMat) : null;
-    if (slide) group.add(slide);
-    if (mag) group.add(mag);
-    let dot: THREE.Mesh | null = null;
-    if (parts.sightGlow && id !== 'dmr') { dot = new THREE.Mesh(new THREE.PlaneGeometry(0.0045, 0.0045), dotMat); dot.position.set(...parts.sightGlow); group.add(dot); }
-    group.visible = false; vm.add(group);
-    g = { group, slide, mag, muzzle: parts.muzzle, dot };
-    guns.set(k, g);
-    return g;
-  }
+  let exposure = 0;
 
   const ear = { x: 0, y: 1.6, z: 0, yaw: 0 };
   const stats = { calls: 0, triangles: 0, scale, level: level.triangles };
@@ -219,42 +180,6 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     if (frameMs > budget * 1.22) { slow++; fast = 0; } else if (frameMs < budget * 1.06) { fast++; slow = 0; } else slow = fast = 0;
     if (slow > 25 && scale > q.min) { scale = Math.max(q.min, scale - 0.1); slow = 0; applySize(); }
     else if (fast > 240 && scale < q.max) { scale = Math.min(q.max, scale + 0.05); fast = 0; applySize(); }
-  }
-
-  function updateFigures(view: SceneView) {
-    const { m, dt } = view, k = 1 - Math.exp(-dt * 16);
-    let blob = 0;
-    for (let i = 0; i < Math.max(figs.length, m.players.length); i++) {
-      const p = m.players[i];
-      if (!p || m.phase === 'lobby') { const f = figs[i]; if (f) f.fig.root.visible = false; continue; }
-      const f = figFor(i, p.squad), local = i === view.self;
-      const tx = local ? view.px + (p.x - view.px) * view.alpha : p.x, tz = local ? view.pz + (p.z - view.pz) * view.alpha : p.z;
-      if (f.fresh || local || Math.hypot(tx - f.x, tz - f.z) > 4) { f.x = tx; f.z = tz; f.yaw = local ? view.yaw : p.yaw; f.pitch = local ? view.pitch : p.pitch; f.crouch = p.crouch; f.lean = p.lean; f.fresh = false; }
-      else { f.x += (tx - f.x) * k; f.z += (tz - f.z) * k; f.yaw += wrap(p.yaw - f.yaw) * k; f.pitch += (p.pitch - f.pitch) * k; f.crouch += (p.crouch - f.crouch) * k; f.lean += (p.lean - f.lean) * k; }
-      f.dead += ((p.alive ? 0 : 1) - f.dead) * Math.min(1, dt * (p.alive ? 30 : 5));
-      const g = f.fig, show = !(i === view.watch && p.alive) && (p.alive || f.dead > 0.01) && !view.menu;
-      g.root.visible = show;
-      if (!show) continue;
-      const pace = p.alive ? Math.min(1.5, p.pace) : 0;
-      f.phase += pace * dt * 8.5;
-      const c = f.crouch * (1 - f.dead), swing = Math.sin(f.phase) * 0.62 * Math.min(1, pace), crouchT = 1.15 * c, crouchS = -2 * c;
-      let low = 0;
-      for (let s = 0; s < 2; s++) {
-        const a = crouchT + (s ? swing : -swing), b = crouchS - Math.max(0, s ? -Math.sin(f.phase + 0.6) : Math.sin(f.phase + 0.6)) * 0.9 * Math.min(1, pace);
-        g.thigh[s].rotation.x = a; g.shin[s].rotation.x = b;
-        low = Math.max(low, THIGH * Math.cos(a) + SHIN * Math.cos(a + b));
-      }
-      g.hips.position.y = low + 0.05 + Math.abs(Math.sin(f.phase * 2)) * 0.012 * pace;
-      g.upper.rotation.x = f.pitch * 0.55 - c * 0.2; g.upper.rotation.z = -f.lean * 0.4;
-      g.upper.position.x = f.lean * 0.12;
-      g.root.position.set(f.x, f.dead * 0.14, f.z);
-      g.root.rotation.set(-f.dead * 1.48, f.yaw, 0);
-      const l = bake.probe(f.x, f.z);
-      g.material.color.setRGB(Math.min(1.5, 0.25 + l[0] * 1.15), Math.min(1.5, 0.25 + l[1] * 1.15), Math.min(1.5, 0.25 + l[2] * 1.15));
-      if (blob < 10) blobs.setMatrixAt(blob++, m4.compose(v3.set(f.x, 0.04, f.z), q4.identity(), s3.set(1.1 + f.dead * 0.9, 1, 1.1 + f.dead * 0.9)));
-    }
-    for (let i = blob; i < 10; i++) blobs.setMatrixAt(i, m4.makeScale(0, 0, 0));
-    blobs.instanceMatrix.needsUpdate = true;
   }
 
   function updateGadgets(m: Match, dt: number) {
@@ -284,41 +209,6 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     }
   }
 
-  function updateViewmodel(view: SceneView) {
-    const { m, dt } = view, p = m.players[view.self];
-    const show = !!p && p.alive && view.watch === view.self && !view.menu && m.phase !== 'lobby';
-    vm.visible = show;
-    if (!show || !p) { gunKey = ''; return; }
-    const id = weaponIdOf(m, p), def = WEAPONS[id], key2 = `${id}${p.squad}`, gun = gunFor(id, p.squad);
-    if (key2 !== gunKey) { for (const g of guns.values()) g.group.visible = false; gun.group.visible = true; gunKey = key2; }
-    const ads = smooth(p.adsT), pistol = id === 'pistol', scoped = id === 'dmr' && ads > 0.9;
-    gun.group.visible = !scoped;
-    kick = Math.max(0, kick - dt * 9 * Math.max(0.25, kick)); pump += dt; bob += dt * (2 + p.pace * 8);
-    sprintT += ((p.sprint ? 1 : 0) - sprintT) * Math.min(1, dt * 9);
-    useT += ((p.act !== ACT.none || p.using ? 1 : 0) - useT) * Math.min(1, dt * 8);
-    const dyaw = wrap(view.yaw - lastYaw), dpitch = view.pitch - lastPitch; lastYaw = view.yaw; lastPitch = view.pitch;
-    swayX += (Math.max(-0.04, Math.min(0.04, dyaw * 0.5)) - swayX) * Math.min(1, dt * 10); swayY += (Math.max(-0.04, Math.min(0.04, dpitch * 0.5)) - swayY) * Math.min(1, dt * 10);
-    const still = view.reduced ? 0 : 1, hipX = pistol ? 0.13 : 0.2, hipY = pistol ? -0.12 : -0.15, hipZ = pistol ? -0.46 : -0.36, adsZ = pistol ? -0.4 : id === 'shotgun' ? -0.26 : -0.2;
-    let x = hipX * (1 - ads), y = hipY * (1 - ads), z = hipZ + (adsZ - hipZ) * ads, rx = 0, ry = 0.035 * (1 - ads), rz = 0;
-    const paceBob = Math.min(1.4, p.pace) * (1 - ads * 0.8) * still;
-    x += Math.sin(bob) * 0.007 * paceBob + swayX * (1 - ads * 0.7); y += Math.abs(Math.cos(bob)) * 0.008 * paceBob + Math.sin(time * 1.3) * 0.0015 * still - swayY * (1 - ads * 0.7);
-    rz += -p.lean * 0.12 + swayX * 1.2;
-    // Sprint: carried across the body. Using something: lowered out of the way.
-    x -= sprintT * 0.06; y -= sprintT * 0.05 + useT * 0.26; ry += sprintT * 0.75; rx -= sprintT * 0.22 + useT * 0.5;
-    if (p.reload > 0) { const t = 1 - p.reload / def.reload, w = Math.sin(Math.PI * Math.min(1, t * 1.15)); y -= w * 0.12; rx += w * 0.42; rz += w * 0.32; if (gun.mag) gun.mag.position.y = -0.32 * Math.max(0, Math.sin(Math.PI * Math.min(1, Math.max(0, (t - 0.15) / 0.5)))); }
-    else if (gun.mag) gun.mag.position.y = 0;
-    if (p.swap > 0) { const t = p.swap / 0.42; y -= t * 0.3; rx -= t * 0.6; }
-    if (p.meleeCool > 0.4) { const t = Math.sin(Math.PI * (0.75 - p.meleeCool) / 0.35); z -= t * 0.2; ry -= t * 0.55; x -= t * 0.08; }
-    z += kick * (pistol ? 0.03 : 0.045) * (1 - ads * 0.35); rx += kick * (pistol ? 0.14 : 0.05) * (1 - ads * 0.5);
-    if (gun.slide) gun.slide.position.z = id === 'shotgun' ? (pump < 0.5 ? Math.sin(Math.PI * Math.max(0, (pump - 0.12) / 0.38)) * 0.09 : 0) : kick * 0.035;
-    vm.position.set(x, y, z); vm.rotation.set(rx, ry, rz);
-    const l = bake.probe(p.x, p.z);
-    vHemi.color.setRGB(Math.min(1.4, 0.3 + l[0]), Math.min(1.4, 0.3 + l[1]), Math.min(1.4, 0.3 + l[2])); vKey.intensity = 0.25 + (l[0] + l[1] + l[2]) * 0.3;
-    if (flashLife > 0) { flashLife -= dt; vmFlash.visible = flashLife > 0 && !scoped; vmFlash.position.set(0, -0.055, gun.muzzle - 0.04); }
-    else vmFlash.visible = false;
-    viewCamera.fov = 54 - ads * 9; viewCamera.updateProjectionMatrix();
-  }
-
   function place(view: SceneView) {
     const { m, dt } = view, watched = view.watch >= 0 ? m.players[view.watch] : null;
     let fov = 64, roll = 0;
@@ -331,7 +221,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       cam.yaw = Math.atan2(cam.x, cam.z); cam.pitch = -Math.atan2(cam.y - 1.5, Math.hypot(cam.x, cam.z));
       fov = 50;
     } else {
-      const f = figs[view.watch], local = view.watch === view.self;
+      const f = fighters.pose(view.watch), local = view.watch === view.self;
       const pose = f ? { x: f.x, z: f.z, yaw: local ? view.yaw : f.yaw, crouch: f.crouch, lean: f.lean } : watched;
       const eye = eyeOf(pose), def = WEAPONS[weaponIdOf(m, watched)], ads = smooth(watched.adsT);
       const step = view.reduced ? 0 : Math.abs(Math.sin((f?.phase ?? 0))) * 0.018 * Math.min(1.3, watched.pace);
@@ -356,15 +246,16 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   return {
     ear, stats,
     handle(events, m, self) {
+      viewmodel.handle(events, m, self);
       for (const e of events) {
         switch (e.e) {
           case 'shot': {
-            const def = WEAPONS[e.w], mine = e.id === self, f = figs[e.id];
+            const def = WEAPONS[e.w], mine = e.id === self;
             lastOrigin = { x: e.x, y: e.y, z: e.z };
             let ox = e.x, oy = e.y, oz = e.z;
             const fwd = viewDir(e.yaw, e.pitch);
-            if (mine) { kick = Math.min(1.6, kick + (e.w === 'shotgun' ? 1.5 : e.w === 'dmr' ? 1.1 : 0.55)); pump = 0; flashLife = 0.045; vmFlash.scale.setScalar(0.1 + Math.random() * 0.05); (vmFlash.material as THREE.SpriteMaterial).rotation = Math.random() * 6; ox += fwd.x * 0.7 + Math.cos(e.yaw) * 0.1; oy += fwd.y * 0.7 - 0.09; oz += fwd.z * 0.7 - Math.sin(e.yaw) * 0.1; }
-            else if (f && f.fig.root.visible) { f.fig.muzzle.getWorldPosition(v3); ox = v3.x; oy = v3.y; oz = v3.z; fx.flash(ox, oy, oz, 0.5 + Math.random() * 0.25, 0.05); }
+            if (mine) { ox += fwd.x * 0.7 + Math.cos(e.yaw) * 0.1; oy += fwd.y * 0.7 - 0.09; oz += fwd.z * 0.7 - Math.sin(e.yaw) * 0.1; }
+            else if (fighters.muzzle(e.id, v3)) { ox = v3.x; oy = v3.y; oz = v3.z; fx.flash(ox, oy, oz, 0.5 + Math.random() * 0.25, 0.05); }
             const dirs = shotDirs(e.yaw, e.pitch, e.spread, def.pellets, e.seed);
             dirs.forEach((d, i) => {
               const tr = trace(m.world, e.x, e.y, e.z, d.x, d.y, d.z, 120), hx = e.x + d.x * tr.t, hy = e.y + d.y * tr.t, hz = e.z + d.z * tr.t;
@@ -399,7 +290,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             break;
           }
           case 'hit': {
-            const f = figs[e.on], p = m.players[e.on];
+            const f = fighters.pose(e.on), p = m.players[e.on];
             if (!f || !p) break;
             const y = e.head ? 1.6 - f.crouch * 0.6 : 1.1 - f.crouch * 0.4;
             for (let i = 0; i < 3; i++) fx.dust(f.x + (Math.random() - 0.5) * 0.2, y + (Math.random() - 0.5) * 0.2, f.z + (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 1.5, Math.random(), (Math.random() - 0.5) * 1.5, 0.12, 0.35, 0.5, 0.06, 0.05, 0.6, 1.2, 2);
@@ -412,8 +303,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             for (let i = 0; i < 6; i++) fx.dust(c.x + (Math.random() - 0.5) * 1.5, c.y + (Math.random() - 0.5) * 1.5, c.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5), Math.random() * 0.5, (Math.random() - 0.5), 0.3, 0.8, 0.6, 0.58, 0.52, 0.35);
             break;
           }
-          case 'phase': if (e.phase === 'prep') { fx.clear(); for (const f of figs) if (f) { f.fresh = true; f.dead = 0; } } break;
-          case 'spawn': for (const [id] of e.at) { const f = figs[id]; if (f) { f.fresh = true; f.dead = 0; } } break;
+          case 'phase': if (e.phase === 'prep') { fx.clear(); fighters.reset(); } break;
+          case 'spawn': fighters.reset(e.at.map(([id]) => id)); break;
         }
       }
     },
@@ -422,10 +313,10 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       time += dt;
       if (view.m.world !== world) bind(view.m.world);
       for (const p of panels) p.sync();
-      updateFigures(view);
+      fighters.update(view);
       place(view);
       updateGadgets(view.m, dt);
-      updateViewmodel(view);
+      viewmodel.update(view, time);
       fx.update(dt, height * (window.devicePixelRatio || 1) * scale, camera.fov);
       exposure = Math.max(0, exposure - dt * 3.5);
       renderer.toneMappingExposure = 1.02 + (view.reduced ? 0 : exposure);
@@ -434,12 +325,12 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       if (art) { renderer.render(artScene, camera); calls = renderer.info.render.calls; tris = renderer.info.render.triangles; }
       renderer.render(scene, camera);
       stats.calls = calls + renderer.info.render.calls; stats.triangles = tris + renderer.info.render.triangles;
-      if (vm.visible) { renderer.clearDepth(); renderer.render(viewScene, viewCamera); stats.calls += renderer.info.render.calls; }
+      stats.calls += viewmodel.render();
       if (dt > 0) adapt(view.dt);
     },
     resize(w, h) {
       width = Math.max(1, Math.round(w)); height = Math.max(1, Math.round(h));
-      camera.aspect = viewCamera.aspect = width / height; camera.updateProjectionMatrix(); viewCamera.updateProjectionMatrix();
+      camera.aspect = width / height; camera.updateProjectionMatrix(); viewmodel.resize(camera.aspect);
       applySize();
     },
     setQuality(q) {
@@ -455,13 +346,12 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       disposed = true;
       art?.dispose();
       for (const p of panels) p.dispose();
-      for (const f of figs) if (f) f.fig.material.dispose();
+      fighters.dispose(); viewmodel.dispose();
       fx.dispose();
       scene.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.geometry) mesh.geometry.dispose(); });
-      viewScene.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.geometry) mesh.geometry.dispose(); });
       for (const m of Object.values(materials)) m.dispose();
-      for (const t of [...Object.values(textures), skyTex, sunTex, blobTex, ringTex, flashTex, ...siteTex]) t.dispose();
-      for (const m of [lambert, led, vmMat, dotMat]) m.dispose();
+      for (const t of [...Object.values(textures), skyTex, sunTex, ringTex, ...siteTex]) t.dispose();
+      for (const m of [lambert, led]) m.dispose();
       renderer.dispose();
     },
   };
