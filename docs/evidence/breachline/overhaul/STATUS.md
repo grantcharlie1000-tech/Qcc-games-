@@ -81,9 +81,8 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** destruction round 3, barricades round 2, reinforcement round 2 done; next the
-uplink notes (brighter, a cable and clipped-on parts, states that differ in rhythm), then Archive round 2, then
-corridor round 4.
+**Where I am (keep current):** destruction round 3, barricades round 2, reinforcement round 2 done; uplink round 2
+done too; next Archive round 2 (the reviewer's notes), then corridor round 4.
 
 ## Corridor round 3 (`rooms/corridor/round-3/`), against the reviewer's round-2 notes
 
@@ -130,6 +129,21 @@ Every explosion used to share one effect. Now `Effects.blast` takes the source:
 
 **Row K overall (mine, my parts only), round 1:** charge 5, barricades 5, reinforcement 5, uplink 5, grenades 4.5,
 soft walls (row J) 6. The in-hand and third-person parts are the weapons' and fighters' sessions'.
+
+## Tactical kit (row K): uplink device, round 2 (`kit/uplink-round-2/`)
+
+The reviewer scored round 1 at 5.5 on the stricter scale. Changes:
+- **Easier to find:** the screen is about twice as bright, the status lights larger and brighter, the glow wider.
+- **Reads as equipment:** a radio module clipped to the case's side with its own stub aerial, and a battery pack on
+  the floor joined to the case by a cable.
+- **States differ in rhythm as well as colour:**
+  - armed: a slow cyan breathing;
+  - counting: an amber blink that speeds up as the fuse runs down;
+  - complete: steady green;
+  - shut down: a dark screen with a single red flash every two seconds.
+- **Evidence:** `counting-then-complete-crop.png`.
+- **Still open:** the wider glow tints the lid; the shut-down state isn't rendered (needs a scripted defuse).
+- Uplink (mine, strict scale): 5.5 -> 6.
 
 ## Tactical kit (row K): uplink device, round 1 (`kit/uplink-round-1/`)
 

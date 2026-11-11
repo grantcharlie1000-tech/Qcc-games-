@@ -83,6 +83,13 @@ export function deviceGeometry(): { body: THREE.BufferGeometry; screen: THREE.Bu
     // The lid, hinged at the back and standing up, with the screen's bezel on its inside.
     block([0.46, 0.32, 0.03], [0, 0.32, -0.165], CASE, 0.015, [-0.12, 0, 0]),
     block([0.34, 0.2, 0.012], [0, 0.33, -0.143], BEZEL, 0.006, [-0.12, 0, 0]),
+    // Clipped-on kit: a radio module on the case's side with its own stub aerial, and a battery pack on the floor,
+    // joined to the case by a cable that runs out along the floor.
+    block([0.05, 0.09, 0.12], [0.255, 0.075, 0.02], 0x2a2f28, 0.008), block([0.012, 0.03, 0.06], [0.235, 0.12, 0.02], LATCH, 0.003),
+    paint(new THREE.CylinderGeometry(0.004, 0.004, 0.14, 6).translate(0.27, 0.19, 0.06), 0x1e2124),
+    block([0.16, 0.07, 0.11], [-0.48, 0.035, 0.12], 0x3b4232, 0.01), block([0.17, 0.012, 0.03], [-0.48, 0.072, 0.12], 0x1d2023, 0.004),
+    block([0.03, 0.02, 0.02], [-0.42, 0.08, 0.12], HAZARD, 0.004),
+    tube([[-0.23, 0.06, 0.08], [-0.27, 0.02, 0.1], [-0.33, 0.008, 0.16], [-0.38, 0.008, 0.15], [-0.4, 0.03, 0.12]], 0.006, 0x151617),
     // The aerial: a base and a whip.
     block([0.03, 0.04, 0.03], [0.2, 0.19, -0.11], LATCH, 0.006),
     paint(new THREE.CylinderGeometry(0.004, 0.006, 0.5, 6).translate(0.2, 0.45, -0.11), 0x1e2124),
@@ -95,7 +102,7 @@ export function deviceGeometry(): { body: THREE.BufferGeometry; screen: THREE.Bu
   const tilt = (g: THREE.BufferGeometry, y: number, z: number) => { g.rotateX(-0.12); g.translate(0, y, z); return g; };
   const screen = tilt(new THREE.PlaneGeometry(0.3, 0.16), 0.335, -0.136);
   const bar = new THREE.PlaneGeometry(0.26, 0.018); bar.translate(0.13, 0, 0); tilt(bar, 0.275, -0.128);
-  const leds = [0, 1, 2].map(i => new THREE.SphereGeometry(0.006, 8, 6).translate(-0.18 + i * 0.022, 0.172, 0.11));
+  const leds = [0, 1, 2].map(i => new THREE.SphereGeometry(0.01, 10, 8).translate(-0.18 + i * 0.026, 0.174, 0.11));
   return { body, screen, bar, leds };
 }
 

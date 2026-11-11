@@ -212,7 +212,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const barMesh = new THREE.Mesh(dev.bar, devBar); barMesh.position.x = -0.13; device.add(barMesh);
   dev.leds.forEach((g, i) => device.add(new THREE.Mesh(g, devLeds[i])));
   const devGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeSprite('puff'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }));
-  devGlow.position.set(0, 0.36, 0.05); devGlow.scale.setScalar(0.7); device.add(devGlow);
+  devGlow.position.set(0, 0.36, 0.05); devGlow.scale.setScalar(1); device.add(devGlow);
   const poolGeo = new THREE.PlaneGeometry(1, 1); poolGeo.rotateX(-Math.PI / 2);
   const devPool = new THREE.Mesh(poolGeo, new THREE.MeshBasicMaterial({ map: makeSprite('puff'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }));
   devPool.position.set(0, 0.012, 0.25); devPool.scale.setScalar(2.6); devPool.renderOrder = 2; device.add(devPool);
@@ -309,23 +309,26 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       device.position.set(m.device.x, 0, m.device.z);
       device.rotation.y = ((m.device.x * 7.31 + m.device.z * 3.17) % 1) * 6.283;
       // State: counting while planted, complete when the uplink went through, shut down when defused; armed otherwise.
+      // Each has its own colour and rhythm: armed breathes slowly (cyan), counting blinks faster as time runs out
+      // (amber), complete holds steady (green), shut down is dark with a single red flash every two seconds.
       const counting = m.phase === 'planted', done = m.phase !== 'planted' && m.reason === 'uplink', off = m.phase !== 'planted' && m.reason === 'defused';
       const progress = counting ? Math.min(1, Math.max(0, 1 - m.t / ROUND.fuse)) : done ? 1 : 0;
       const hue = done ? [0.35, 1, 0.45] : off ? [1, 0.12, 0.08] : counting ? [1, 0.62, 0.16] : [0.3, 0.8, 1];
-      const blinkRate = counting ? (m.t < 10 ? 6 : m.t < 20 ? 3 : 1.5) : 1, blinkOn = (time * blinkRate) % 1 < 0.5;
-      const k = off ? 0.25 : 1.6;
+      const rate = counting ? (m.t < 10 ? 6 : m.t < 20 ? 3 : 1.5) : 1;
+      const beat = counting ? ((time * rate) % 1 < 0.5 ? 1 : 0.35) : done ? 1 : off ? ((time * 0.5) % 1 < 0.08 ? 1 : 0) : 0.6 + 0.4 * Math.sin(time * 2.2);
+      const k = off ? 0.15 : 3;
       devScreen.color.setRGB(hue[0] * k, hue[1] * k, hue[2] * k);
-      devBar.color.setRGB(hue[0] * 2.4, hue[1] * 2.4, hue[2] * 2.4); barMesh.scale.x = Math.max(0.001, progress); barMesh.visible = progress > 0;
-      devLeds[0].color.setRGB(off ? 0.05 : 0.2, off ? 0.05 : 3, off ? 0.05 : 0.4);
-      devLeds[1].color.setRGB(...(blinkOn && !off ? [hue[0] * 4, hue[1] * 4, hue[2] * 4] as const : [0.05, 0.05, 0.05] as const));
-      devLeds[2].color.setRGB(off ? 4 : 0.05, 0.05, 0.05);
-      const beat = counting ? 0.75 + 0.25 * Math.sin(time * blinkRate * 6.283) : 1, glow = off ? 0.08 : 0.55 * beat;
+      devBar.color.setRGB(hue[0] * 4, hue[1] * 4, hue[2] * 4); barMesh.scale.x = Math.max(0.001, progress); barMesh.visible = progress > 0;
+      devLeds[0].color.setRGB(off ? 0.05 : 0.3, off ? 0.05 : 5, off ? 0.05 : 0.6);
+      devLeds[1].color.setRGB(hue[0] * 6 * beat, hue[1] * 6 * beat, hue[2] * 6 * beat);
+      devLeds[2].color.setRGB(off ? 8 * beat + 0.05 : 0.05, 0.05, 0.05);
+      const glow = off ? 0.6 * beat : 0.75 * beat;
       (devGlow.material as THREE.SpriteMaterial).color.setRGB(hue[0] * glow, hue[1] * glow, hue[2] * glow);
-      (devPool.material as THREE.MeshBasicMaterial).color.setRGB(hue[0] * glow * 0.5, hue[1] * glow * 0.5, hue[2] * glow * 0.5);
+      (devPool.material as THREE.MeshBasicMaterial).color.setRGB(hue[0] * glow * 0.6, hue[1] * glow * 0.6, hue[2] * glow * 0.6);
       const lit = bake.probe(m.device.x, m.device.z); devMat.color.setRGB(1.2 + lit[0] * 2.4, 1.2 + lit[1] * 2.4, 1.2 + lit[2] * 2.4);
-      const rate = m.phase === 'planted' ? (m.t < 10 ? 4 : m.t < 20 ? 2 : 1) : 0, t = (time * rate) % 1;
+      const ringRate = m.phase === 'planted' ? (m.t < 10 ? 4 : m.t < 20 ? 2 : 1) : 0, t = (time * ringRate) % 1;
       pulse.position.set(m.device.x, 0.05, m.device.z); pulse.scale.setScalar(0.6 + t * 3.2);
-      (pulse.material as THREE.MeshBasicMaterial).opacity = rate ? 0.8 * (1 - t) : 0;
+      (pulse.material as THREE.MeshBasicMaterial).opacity = ringRate ? 0.8 * (1 - t) : 0;
     }
   }
 
