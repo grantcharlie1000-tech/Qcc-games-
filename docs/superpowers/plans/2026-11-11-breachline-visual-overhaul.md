@@ -365,10 +365,14 @@ all existing tests green; a commit and push. A phase is not done because tests p
 
 ## Corrections from phase 0 (2026-11-11)
 
-- **Texture route settled:** KTX 1.1 files with BC1 (colour, sRGB), BC5 (normals, z rebuilt in the shader) and BC1
-  (AO/roughness/metal), written by a local JavaScript encoder (`scripts/breachline-assets/bc.mjs`) and read by three's
-  stock `KTXLoader`. ImageMagick cannot write BC5 and DDS would have needed a custom loader, so DDS is dropped.
-  JPEG 512 px fallbacks cover GPUs without S3TC/RGTC.
+- **Texture route.** Built and working first (before WebAssembly was allowed): KTX 1.1 files with BC1 (colour,
+  sRGB), BC5 (normals, z rebuilt in the shader) and BC1 (AO/roughness/metal), written by a local JavaScript encoder
+  (`scripts/breachline-assets/bc.mjs`, no ImageMagick: it cannot write BC5) and read by three's stock `KTXLoader`,
+  with 512 px JPEG fallbacks for GPUs without S3TC/RGTC. Then, with WebAssembly allowed, `ktx2-encoder` 0.6.0 was
+  confirmed to run under Node here: 1K colour as ETC1S is 154 KB (BC1: 699 KB) and normals as UASTC+RDO+zstd 334 KB
+  (BC5: 1.4 MB), and Basis transcodes to ETC2/ASTC on ARM. **Phase 1 switches the shipped textures to KTX2/Basis**
+  per 4.1, with the transcoder served same-origin; the BC path stays as the fallback. Until then only the 512 px BC
+  files are committed (the 1K ones are local build outputs, so history does not carry files about to be replaced).
 - **Art rooms carry their own light fixtures** (`render/fixtures.ts`). The map's lamp list is too sparse for a baked
   look (the Lab had two small panels for 80 m^2); it is kept for the fallback look and rooms not yet converted.
   `map.ts` is not touched.

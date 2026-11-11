@@ -73,6 +73,19 @@ in some runs; (3) extinguisher very dark in its corner (correct, but dull); (4) 
 against the new light (old material); (5) ceiling still the old canvas texture, fixtures flat white. Changed: SH floor
 at 30 % of the average; bookmark renders hide transient banners and prompts. (3)-(5) are left for phases 3 and 5.
 
+## Files (phase 0, net lines)
+
+New: `scripts/breachline-assets/` fetch.mjs 88, build.mjs 142, bc.mjs 112, bake.ts 406, bookmarks.mjs 56,
+manifest.json; `src/games/breachline/render/` artworld.ts 186, materials.ts 112, levelgeo.ts 109, assets.ts 79,
+surfaces.ts 36, fixtures.ts 25, props.ts 13; `tests/games/breachline/levelgeo.test.ts` 52.
+Changed: `levelmesh.ts` +52/-15 (face claim hook, per-room ceilings, panel normals and per-panel look),
+`scene.ts` +31 (art scene, async load, fallback), `package.json` (dev dependency `three-mesh-bvh` 0.9.1, pinned).
+No changes to sim, state, net, bots, nav, world, map or config.
+
+**Committed vs local:** only the 512 px BC files are committed; the 1K BC files are local build outputs, because
+phase 1 replaces them with KTX2. A fresh checkout therefore shows the Lab with 512 px surfaces (verified in a render);
+the phase-0 evidence images were rendered with the local 1K files.
+
 ## Assets (all CC0, Poly Haven; manifest `scripts/breachline-assets/manifest.json`, notices updated)
 
 | Asset | Use | Shipped |
@@ -103,6 +116,11 @@ bake 0.23 MB. Source downloads 27 MB in `.cache` (not committed).
 - `npx vitest run`: 270 files passed, 1 skipped; 5,341 tests passed, 7 skipped (includes the new
   `tests/games/breachline/levelgeo.test.ts`: no surface lost or doubled by the room split, atlas deterministic and
   non-overlapping, shipped lightmaps match current geometry).
+- Browser, with the art loading (dev server, pre-installed Chromium, one worker):
+  `npx playwright test tests/games/breachline tests/multiplayer/breachline-online.spec.ts --project=chromium --trace off --workers=1`:
+  7 passed (six solo-flow tests and the two-device online match), after rebasing onto the WebAssembly CSP change.
+- Fallback checks by render: with the 1K files absent the Lab loads the 512 px set; with the bake missing the
+  game logs one warning and keeps the procedural look.
 
 ## Owner decisions
 
