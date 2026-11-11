@@ -310,3 +310,32 @@ export function makeSprite(kind: 'puff' | 'flash' | 'hole' | 'blob' | 'ring' | '
   const t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
+
+/** Bullet marks by material, one 128 px cell each in a 4 x 2 atlas (cell index = MARK.* below). Our own drawings. */
+export const MARK = { crater: 0, brick: 1, wood: 2, fabric: 3, tile: 4, glass: 5, earth: 6, ceiling: 7 } as const;
+export function makeMarks(): THREE.CanvasTexture {
+  const S = 128, canvas = document.createElement('canvas'); canvas.width = S * 4; canvas.height = S * 2;
+  const g = canvas.getContext('2d')!, c = S / 2;
+  const cell = (i: number, draw: (r: () => number) => void) => { g.save(); g.translate((i % 4) * S, Math.floor(i / 4) * S); g.beginPath(); g.rect(0, 0, S, S); g.clip(); draw(rng(101 + i * 17)); g.restore(); };
+  const blot = (rad: number, a: number, rgb: string) => { const gr = g.createRadialGradient(c, c, 0, c, c, rad); gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(1, `rgba(${rgb},0)`); g.fillStyle = gr; g.fillRect(0, 0, S, S); };
+  const ragged = (r: () => number, rad: number, jag: number, fill: string, sx = 1, sy = 1) => { g.fillStyle = fill; g.beginPath(); for (let i = 0; i <= 18; i++) { const a = i / 18 * Math.PI * 2, q = rad * (1 - jag + 2 * jag * r()); const x = c + Math.cos(a) * q * sx, y = c + Math.sin(a) * q * sy; if (i) g.lineTo(x, y); else g.moveTo(x, y); } g.closePath(); g.fill(); };
+  const rays = (r: () => number, n: number, l0: number, l1: number, rgba: string, w: number) => { for (let i = 0; i < n; i++) { const a = r() * 6.283, a0 = c * l0, a1 = c * (l1 * (0.6 + r() * 0.4)); g.strokeStyle = rgba; g.lineWidth = w * (0.5 + r()); g.beginPath(); g.moveTo(c + Math.cos(a) * a0, c + Math.sin(a) * a0); g.lineTo(c + Math.cos(a) * a1, c + Math.sin(a) * a1); g.stroke(); } };
+  // 0: plaster and concrete, the existing crater.
+  g.drawImage(makeSprite('hole').image as HTMLCanvasElement, 0, 0, S, S);
+  // 1: brick: a red-brown bruise, a ring of bared orange clay chips and a dark pit.
+  cell(1, r => { blot(c, 0.5, '80,40,28'); ragged(r, c * 0.5, 0.3, 'rgba(176,96,62,0.9)'); ragged(r, c * 0.26, 0.3, 'rgba(32,20,16,0.95)'); rays(r, 10, 0.3, 0.75, 'rgba(60,30,20,0.35)', 2); });
+  // 2: timber: a dark hole torn along the grain, pale splintered fibres either side.
+  cell(2, r => { blot(c * 0.8, 0.35, '50,32,20'); for (let i = 0; i < 14; i++) { const x = c + (r() - 0.5) * c * 0.5; g.strokeStyle = `rgba(222,190,140,${0.5 + r() * 0.4})`; g.lineWidth = 1 + r() * 2.5; g.beginPath(); g.moveTo(x, c - c * (0.2 + r() * 0.6)); g.lineTo(x + (r() - 0.5) * 6, c + c * (0.2 + r() * 0.6)); g.stroke(); } ragged(r, c * 0.24, 0.3, 'rgba(20,12,8,0.97)', 0.7, 1.3); });
+  // 3: fabric: a small dark hole with frayed threads and a scorched ring.
+  cell(3, r => { blot(c * 0.55, 0.45, '30,26,22'); rays(r, 22, 0.15, 0.55, 'rgba(210,200,185,0.55)', 1); ragged(r, c * 0.16, 0.3, 'rgba(10,8,6,0.95)'); });
+  // 4: ceramic tile: a chipped pit with a star of cracks running out across the glaze.
+  cell(4, r => { rays(r, 9, 0.15, 0.95, 'rgba(40,38,36,0.75)', 1.6); ragged(r, c * 0.22, 0.35, 'rgba(235,232,225,0.95)'); ragged(r, c * 0.12, 0.3, 'rgba(60,56,52,0.9)'); });
+  // 5: glass: a bright crushed centre, radial cracks and two broken rings.
+  cell(5, r => { rays(r, 14, 0.05, 1.0, 'rgba(255,255,255,0.85)', 1.4); for (const k of [0.35, 0.62]) { g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 1.2; g.beginPath(); for (let i = 0; i <= 14; i++) { const a = i / 14 * 6.283, q = c * k * (0.85 + r() * 0.3); if (i) g.lineTo(c + Math.cos(a) * q, c + Math.sin(a) * q); else g.moveTo(c + Math.cos(a) * q, c + Math.sin(a) * q); } g.stroke(); } blot(c * 0.18, 0.95, '245,250,255'); });
+  // 6: earth and asphalt: a soft dark divot with thrown crumbs.
+  cell(6, r => { blot(c * 0.85, 0.5, '35,30,24'); ragged(r, c * 0.35, 0.45, 'rgba(25,21,17,0.8)'); for (let i = 0; i < 18; i++) { g.fillStyle = 'rgba(40,34,28,0.6)'; g.beginPath(); const a = r() * 6.283, d = c * (0.4 + r() * 0.5); g.arc(c + Math.cos(a) * d, c + Math.sin(a) * d, 1 + r() * 3, 0, 7); g.fill(); } });
+  // 7: ceiling tile: a punched dark hole with a fluffy pale mineral-fibre rim.
+  cell(7, r => { blot(c * 0.7, 0.3, '120,116,108'); rays(r, 26, 0.2, 0.6, 'rgba(250,248,240,0.7)', 1.5); ragged(r, c * 0.24, 0.35, 'rgba(18,16,14,0.97)'); });
+  const t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}

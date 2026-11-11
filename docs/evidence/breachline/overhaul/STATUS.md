@@ -4,6 +4,17 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-11: section 10.1, bullet marks by material.** `mapfill/shots/marks-by-material.png` (a burst into each, then
+the marks): one pooled decal mesh now draws a mark per material from an atlas (`makeMarks` in `textures.ts`: crater
+for plaster and concrete, brick pock, timber splinter hole, fabric tear, ceramic star crack, glass crack, earth divot,
+ceiling-tile punch), tinted per instance, with chips per material (none for fabric and earth, which puff). What was
+hit is read by `render/surfacehit.ts` (tested): the ground and ceiling by what covers them there (asphalt and grass,
+tiles, carpet, boards, ceiling tile), boxes by material, brick by which side of the shell (indoors it is painted
+block). Marks on dressed furniture and room floors sit on the visible face. Read on the sheet: asphalt, brick, carpet
+(faint), ceiling, fabric (faint), painted block, plasterboard, steel scars, tile; timber's frame missed its crate and
+is to redo. Still no marks on modelled props and dressing (rounds pass through them; no collision). Next: window glass
+(10.2).
+
 **2026-11-11: greybox revision 2 (plan section 11) for your gate.** `mapfill/greybox-plan-2.png`, every set piece
 labelled. 46 hand-placed boxes replace the search's 83; the search is retired (the rule checker stays). 0 rule
 breaches; routes, heights and the corridor exception tested. Layout intent per area and the misses are in "Map fill,

@@ -1,13 +1,14 @@
 /** The picture. A baked-light level, destructible panel meshes, fighters, the weapon in hand and pooled effects,
  * drawn with unlit materials so integrated graphics can keep up. Resolution adapts to hold the frame rate. */
 import * as THREE from 'three';
-import { CELL, ROUND, WEAPONS } from './config';
+import { CELL, ROUND, WALL_H, WEAPONS } from './config';
 import { Effects } from './effects';
 import { createBake, SUN, SUN_COLOR, type Bake } from './lightbake';
 import { PanelView, buildLevel, type PanelMaterials } from './levelmesh';
 import { MAP } from './map';
 import { loadArtWorld, type ArtWorld } from './render/artworld';
 import { PanelBatches } from './render/panelbatch';
+import { MARKS, surfaceAt } from './render/surfacehit';
 import { boxes } from './models';
 import { chargeGeometry, deviceGeometry, deviceScreenTexture } from './render/kit';
 import { createPatchFighters } from './render/patchfighters/index';
@@ -364,7 +365,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     sky.position.copy(camera.position); sun.position.set(cam.x + SUN.x * 400, cam.y + SUN.y * 400, cam.z + SUN.z * 400);
   }
 
-  const DUST: Record<string, [number, number, number]> = { wall: [0.86, 0.83, 0.76], wood: [0.6, 0.45, 0.28], concrete: [0.62, 0.62, 0.6], brick: [0.62, 0.38, 0.3], metal: [0.5, 0.52, 0.55] };
+  const DUST: Record<string, [number, number, number]> = { wall: [0.86, 0.83, 0.76], wood: [0.6, 0.45, 0.28], concrete: [0.62, 0.62, 0.6], brick: [0.62, 0.38, 0.3], metal: [0.5, 0.52, 0.55], fabric: [0.55, 0.5, 0.45], earth: [0.42, 0.36, 0.28], ceiling: [0.92, 0.9, 0.86], tile: [0.85, 0.84, 0.8] };
+
   /** A round through a soft wall: a small entry hole with a puff of plaster on the near face, a wider blow-out on the
    * far face with a spray of gypsum dust and crumbs that stay on the floor. Decals belong to the cell, so they go when
    * the cell is knocked out. Planks splinter instead. */
@@ -460,7 +462,13 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
         // Steel stops rounds: a bright scar and a spray of sparks, never a hole.
         fx.scar(x, y, z, nx, ny, nz, 0.045 + Math.random() * 0.035);
         for (let i = 0; i < (fx.density < 1 ? 3 : 6); i++) fx.spark(x, y, z, nx * 3 + (Math.random() - 0.5) * 4, ny * 3 + Math.random() * 3, nz * 3 + (Math.random() - 0.5) * 4);
-      } else fx.hole(x, y, z, nx, ny, nz, 0.07 + Math.random() * 0.04);
+      } else {
+        const k = MARKS[kind] ?? MARKS.concrete, sz = k.size * (0.8 + Math.random() * 0.45);
+        fx.hole(x, y, z, nx, ny, nz, sz, -1, k.cell, k.tint);
+        if (k.chips) for (let i = 0; i < (fx.density < 1 ? 2 : 4); i++) fx.debris(x + nx * 0.03, y + ny * 0.03, z + nz * 0.03, nx * (1 + Math.random() * 2) + (Math.random() - 0.5) * 1.5, ny * 1.5 + Math.random() * 1.5, nz * (1 + Math.random() * 2) + (Math.random() - 0.5) * 1.5, 0.012 + Math.random() * 0.018, k.chips[0] * b, k.chips[1] * b, k.chips[2] * b, Math.random() < 0.5);
+        if (kind === 'earth') fx.dust(x, y + 0.05, z, (Math.random() - 0.5) * 0.4, 1.2 + Math.random(), (Math.random() - 0.5) * 0.4, 0.2, 0.9, c[0] * b, c[1] * b, c[2] * b, 0.55, 1.4, -2.5, 1.5);
+        if (kind === 'ceiling') for (let i = 0; i < 3; i++) fx.dust(x, y - 0.05, z, (Math.random() - 0.5) * 0.3, -0.2 - Math.random() * 0.3, (Math.random() - 0.5) * 0.3, 0.12, 1.6, c[0] * b, c[1] * b, c[2] * b, 0.5, 1.8, 0.4, 1.2);
+      }
     }
   }
 
@@ -484,10 +492,13 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
               if (def.pellets === 1 || i % 2 === 0) fx.tracer(ox, oy, oz, hx, hy, hz);
               for (const sh of tr.soft) softHit(m, sh.panel, sh.cell, e.x + d.x * sh.t, e.y + d.y * sh.t, e.z + d.z * sh.t, d.x, d.y, d.z);
               if (!tr.solid) return;
-              const mat = tr.panel ? 'metal' : !tr.box ? 'concrete' : tr.box.mat === 'brick' ? 'brick' : tr.box.mat === 'wood' || tr.box.mat === 'crate' || tr.box.mat === 'trim' || tr.box.mat === 'shelf' ? 'wood' : tr.box.mat === 'concrete' ? 'concrete' : tr.box.mat === 'plaster' ? 'wall' : 'metal';
+              const mat = tr.panel ? 'metal' : surfaceAt(tr.box ?? null, hx, hy, hz, tr.ny);
               // The simulation stops a round at a reinforced panel's centre plane; the steel face the shooter sees is
               // in front of that (plate half-thickness plus its folds).
-              const lift = tr.panel ? 0.12 : 0;
+              // Dressed furniture (racks, cabinets, shelving, benches) carries modelled fronts up to 4 cm proud of its box,
+              // and room floors sit 2 cm above the ground: marks go on the visible face, not the collision face.
+              const dressed = tr.box && ['rack', 'steel', 'shelf', 'counter'].includes(tr.box.mat) && tr.box.y0 < WALL_H - 0.01;
+              const lift = tr.panel ? 0.12 : dressed ? 0.04 : (!tr.box || hy < 0.05) && tr.ny > 0.5 && hy < 0.05 ? 0.025 : 0;
               impact(hx + tr.nx * lift, hy + tr.ny * lift, hz + tr.nz * lift, tr.nx, tr.ny, tr.nz, mat, true);
             });
             break;

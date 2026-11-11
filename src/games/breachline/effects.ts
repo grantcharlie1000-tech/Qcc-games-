@@ -1,7 +1,7 @@
 /** Short-lived visuals, all pooled so nothing is allocated during a fight: dust and smoke, sparks, wall debris,
  * tracers, muzzle and blast flashes, and bullet holes on solid surfaces. */
 import * as THREE from 'three';
-import { makeSprite } from './textures';
+import { makeMarks, makeSprite } from './textures';
 
 const POINT_VERT = `attribute float size; attribute vec4 tint; varying vec4 vTint; uniform float scale;
 void main(){ vTint = tint; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = size * scale / max(0.1, -mv.z); }`;
@@ -74,13 +74,14 @@ export class Effects {
   private scars: THREE.InstancedMesh; private scarNext = 0;
   private powders: THREE.InstancedMesh; private powderNext = 0;
   private holes: THREE.InstancedMesh; private holeNext = 0; private holeTag = new Int32Array(160).fill(-1);
+  private holeCell = new THREE.InstancedBufferAttribute(new Float32Array(160), 1);
   private flashes: { sprite: THREE.Sprite; life: number; span: number; size: number }[] = [];
   private rings: { mesh: THREE.Mesh; life: number; span: number; size: number }[] = [];
   private textures: THREE.Texture[] = [];
   /** 1 full effects; lower on the performance preset. */
   density = 1;
   constructor(readonly maxChunks = 180) {
-    const puff = makeSprite('puff'), flash = makeSprite('flash'), hole = makeSprite('hole'), scorch = makeSprite('scorch'), scar = makeSprite('scar');
+    const puff = makeSprite('puff'), flash = makeSprite('flash'), hole = makeMarks(), scorch = makeSprite('scorch'), scar = makeSprite('scar');
     this.textures.push(puff, flash, hole, scorch, scar);
     this.scars = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: scar, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 80);
     this.scars.frustumCulled = false; this.scars.renderOrder = 2;
@@ -104,7 +105,14 @@ export class Effects {
     this.tracers = new THREE.InstancedMesh(tg, new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false }), 40);
     this.tracers.frustumCulled = false; this.tracers.renderOrder = 6; this.tracerLife = new Float32Array(40);
     for (let i = 0; i < 40; i++) this.tracers.setMatrixAt(i, ZERO);
-    this.holes = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: hole, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 160);
+    // Bullet marks: one pool, the mark per material picked from an atlas by a per-instance cell, tinted per instance.
+    const markMat = new THREE.MeshBasicMaterial({ map: hole, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    markMat.onBeforeCompile = sh => { sh.vertexShader = 'attribute float markCell;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\n  vMapUv = (vMapUv + vec2(mod(markCell, 4.0), 1.0 - floor(markCell / 4.0))) * vec2(0.25, 0.5);'); };
+    markMat.customProgramCacheKey = () => 'breachline-marks';
+    const markGeo = new THREE.PlaneGeometry(1, 1);
+    markGeo.setAttribute('markCell', this.holeCell);
+    this.holes = new THREE.InstancedMesh(markGeo, markMat, 160);
+    for (let i = 0; i < 160; i++) this.holes.setColorAt(i, col.setRGB(1, 1, 1));
     this.holes.frustumCulled = false; this.holes.renderOrder = 2;
     for (let i = 0; i < 160; i++) this.holes.setMatrixAt(i, ZERO);
     for (let i = 0; i < 10; i++) {
@@ -141,9 +149,11 @@ export class Effects {
     this.tracers.instanceMatrix.needsUpdate = true; this.tracerLife[i] = 0.06; this.tracerLive = 1;
   }
   /** A bullet-hole decal. `tag` names what it is painted on (a wall cell), so it can go when that falls away. */
-  hole(x: number, y: number, z: number, nx: number, ny: number, nz: number, size = 0.09, tag = -1) {
+  hole(x: number, y: number, z: number, nx: number, ny: number, nz: number, size = 0.09, tag = -1, cell = 0, tint: readonly [number, number, number] = [1, 1, 1]) {
     const i = this.holeNext; this.holeNext = (this.holeNext + 1) % 160;
     this.holeTag[i] = tag;
+    this.holeCell.setX(i, cell); this.holeCell.needsUpdate = true;
+    this.holes.setColorAt(i, col.setRGB(tint[0], tint[1], tint[2])); this.holes.instanceColor!.needsUpdate = true;
     q.setFromUnitVectors(up, n.set(nx, ny, nz));
     this.holes.setMatrixAt(i, mat.compose(v.set(x + nx * 0.012, y + ny * 0.012, z + nz * 0.012), q, s.set(size, size, size)));
     this.holes.instanceMatrix.needsUpdate = true;
