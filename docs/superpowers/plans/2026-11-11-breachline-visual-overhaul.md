@@ -497,6 +497,34 @@ if one is missing. Download budget: weapons and hands 12 MB together, fighters 6
 attacker rifleman for the fighters session. Evidence each round: the three atlas images, a studio turntable under a
 moving light, and game frames in the Lab and the corridor at 1280×720 with a 2× crop of the asset.
 
+## The tactical kit, added 2026-11-11 10:05 UTC (owner: "the siege aspects must match the rest")
+
+The owner asked that the breach-and-hold parts of the game be polished to the same standard as the rooms, weapons and
+people. These are the things only this genre has, and they are on screen in every round. They get their own row:
+
+| # | Quality | Bar | Today |
+| --- | --- | --- | --- |
+| K | Tactical kit | Every gadget and fortification is a modelled, textured object with its own first- and third-person animation, effect and aftermath, at the standard of rows D, E, I and J | Mostly placeholders — **3** |
+
+Gate: **K ≥ 7**, and row J's gate is raised from "reads as a layered wall" to **J ≥ 7**. Nothing here is copied from
+Rainbow Six Siege or any other game: the mechanics are the genre's, the designs are ours.
+
+| Item | What "done" looks like | Owner |
+| --- | --- | --- |
+| Soft walls under fire | Bullet holes with torn paper and crumbled core, studs and cavity seen through, decals around the hole, dust puff per hit, debris on the floor that stays | Environment (row J, in progress) |
+| Breach charge | In hand: a modelled charge, peel-and-press placing animation. On the wall: the charge with a blinking light and a wire. Going off: flash, pressure ring, board fragments thrown into the room, smoke that hangs and clears, scorch and a ragged opening with broken studs | In hand: weapons. Placed model, blast and aftermath: environment. Third person: fighters |
+| Barricades (doors, windows) | Separate planks with grain, nails and a frame, built up plank by plank; each strike or bullet splinters and snaps individual planks; splinters and plank ends left behind | Environment; build and strike animations: weapons and fighters |
+| Reinforcement | A folded steel panel carried and thrown up against the wall, unfolding with anchors firing into the floor and ceiling; brushed and painted steel with rivets, hazard markings, scuffs; bullets leave sparks and bright scars, never holes | Environment; deploy animation: weapons and fighters |
+| Uplink device | A modelled case with a lit screen and status lights that change through armed, counting and shut down; plant and shut-down animations with hands on the device; a light and a tone that carry through the room | World model and lights: environment. In hand: weapons. Third person: fighters |
+| Frag and impact grenades | Modelled grenades in hand with pin and lever, throw animation; blast with flash, dust, debris and scorch; impact grenade's own look | In hand: weapons. Blast: environment |
+| Lean and holes | Leaning tilts the weapon and view believably; looking and shooting through a hole shows the hole's torn edge in the near field without the weapon clipping it | Weapons (view), environment (edges) |
+| Preparation and round flow | Markers, timers, gadget counts and the kill feed drawn as designed icons, not letters in boxes; site markers that read in the world | HUD (`hud.ts` markup, styles and icons only; no game logic), assigned later |
+
+Order: after each session's current gate item (environment: the first-combat stall, then destruction round 2;
+weapons: AR-5 with hands at 7; fighters: the Azure rifleman at 7). Gadgets in hand use the weapons' texture pipeline;
+fortifications use the environment's. Everything here obeys the stall rule: created and compiled at load, never at
+first use. Evidence per item: a before/after pair in the game, and a strip of the animation or effect over time.
+
 ## Working notes for whoever carries this out
 
 - Fresh checkout: `npm ci`. Type-check with `npx tsc --noEmit`; unit tests `npx vitest run tests/games/breachline`
