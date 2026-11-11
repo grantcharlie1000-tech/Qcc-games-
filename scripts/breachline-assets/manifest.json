@@ -361,6 +361,39 @@
         }
       ],
       "use": ""
+    },
+    {
+      "id": "wood_planks",
+      "kind": "texture",
+      "name": "Wood Planks",
+      "source": "https://polyhaven.com/a/wood_planks",
+      "author": "Amal Kumar",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.5,
+        1.5
+      ],
+      "files": [
+        {
+          "path": "wood_planks/wood_planks_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_planks/wood_planks_diff_2k.jpg",
+          "size": 2387732,
+          "sha256": "caa1e71809521050fe0753ee7c17aa2faf32055fe53aff013415bc459dd23ea7"
+        },
+        {
+          "path": "wood_planks/wood_planks_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_planks/wood_planks_nor_gl_2k.jpg",
+          "size": 2906326,
+          "sha256": "908d0fe05d5abd963f2e518776bbff0db9617d3ccbb09e5e8503290572caaf27"
+        },
+        {
+          "path": "wood_planks/wood_planks_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_planks/wood_planks_arm_2k.jpg",
+          "size": 1469083,
+          "sha256": "b89b3fe4e9bc95f6c80b3488eb2101266dee69d9fbd165bcc962f7ac5924586e"
+        }
+      ],
+      "use": ""
     }
   ]
 }

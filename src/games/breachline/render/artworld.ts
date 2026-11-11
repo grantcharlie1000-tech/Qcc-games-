@@ -81,7 +81,9 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   /** Panel corner light from every room's bake (a wall between two art rooms is listed by both, one side each). */
   const tables = new Map<number, { t: Map<number, Float32Array>; wall: THREE.Material; planks: THREE.Material; tile: readonly [number, number] }>();
   const roomAt = (x: number, z: number) => REGIONS.findIndex(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
-  await Promise.all(REGIONS.map(async (region, r) => {
+  /** Rooms whose art loaded; any room that fails keeps the procedural look on its own. */
+  const loaded = REGIONS.map(() => false);
+  await Promise.all(REGIONS.map(async (region, r) => { try {
     const envLights = rooms[r].envLights;
     const [info, lightMap, dirMap] = await Promise.all([
       L.json<BakeInfo>(`bake/${region.name}.json`), L.bakeMap(`bake/${region.name}-light.png`, true), full ? L.bakeMap(`bake/${region.name}-dir.png`, false) : Promise.resolve(null),
@@ -131,6 +133,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         clock: { map: printed.clock, normalMap: null, armMap: null, roughness: 0.15, metalness: 0 },
         fire: { map: printed.fire, normalMap: null, armMap: null, roughness: 0.4, metalness: 0 },
         alarm: plain([0.62, 0.06, 0.05], 0.35, 0),
+        card: plain([0.55, 0.43, 0.3], 0.85, 0), binder: plain([1, 1, 1], 0.5, 0), label: plain([0.88, 0.87, 0.82], 0.8, 0),
         exit: { map: printed.exit, normalMap: null, armMap: null, roughness: 0.3, metalness: 0, emissive: new THREE.Color(0.9, 1.2, 0.95), emissiveMap: printed.exit },
         amber: plain([0.2, 0.08, 0.015], 0.05, 0), glass: plain([0.1, 0.13, 0.125], 0.04, 0),
       };
@@ -180,14 +183,16 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       if (!e) tables.set(p.index, e = { t: new Map(), wall, planks, tile: wallSet ? [wallSet.size, wallSet.size] : TILE.drywall });
       e.t.set(p.side, new Float32Array(p.light));
     }
-  }));
+    loaded[r] = true;
+  } catch (e) { console.warn(`Breachline art: ${region.name} unavailable, keeping its procedural look`, e); } }));
+  if (!loaded.some(Boolean)) throw new Error('no art rooms loaded');
   for (const [index, e] of tables) looks.set(index, { ...panelLook(MAP.panels[index].cols + 1, e.t, e.wall, e.tile), planks: e.planks, plankTile: [PLANKS.size, PLANKS.size] });
   // Props, each lit by its own baked probe from the bake of the room it stands in.
   /** Near: the full model within LOD_NEAR metres; far (and always on the throttled tier): the simplified one. */
   const LOD_NEAR = 5;
   for (const [i, p] of PROPS.entries()) {
     const room = roomAt(p.x, p.z);
-    if (room < 0) continue;
+    if (room < 0 || !loaded[room]) continue;
     const lod = new THREE.LOD();
     const levels: [THREE.Object3D, number][] = full ? [[(await models.get(p.model)!).scene.clone(true), 0], [(await lods.get(p.model)!).scene.clone(true), LOD_NEAR]] : [[(await lods.get(p.model)!).scene.clone(true), 0]];
     const mats = new Map<string, THREE.Material>();
@@ -213,7 +218,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   let triangles = 0, meshes = 0;
   group.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) { meshes++; const g = m.geometry; triangles += (g.index ? g.index.count : g.attributes.position.count) / 3; } });
 
-  const claimFaces: Claim = f => { let left: FaceRec[] = [f]; for (const r of REGIONS) left = left.flatMap(g => splitFace(g, r).outside); return left; };
+  const claimFaces: Claim = f => { let left: FaceRec[] = [f]; REGIONS.forEach((r, i) => { if (loaded[i]) left = left.flatMap(g => splitFace(g, r).outside); }); return left; };
   return {
     group, claim: claimFaces, stats: { triangles, meshes, textureBytes: L.bytes },
     panelLook: i => looks.get(i) ?? null,
@@ -227,6 +232,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       const auto = renderer.autoClear, target = renderer.getRenderTarget(), pmrem = new THREE.PMREMGenerator(renderer);
       renderer.autoClear = true;
       REGIONS.forEach((r, i) => {
+        if (!loaded[i]) return;
         const cube = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType }), cam = new THREE.CubeCamera(0.05, 60, cube);
         cam.position.set((r.x0 + r.x1) / 2, 1.6, (r.z0 + r.z1) / 2);
         cam.update(renderer, scene);

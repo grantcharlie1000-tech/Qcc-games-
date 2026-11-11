@@ -3791,6 +3791,7 @@ Metal Stool 01 (model) by Ulan Cabanilla. https://polyhaven.com/a/metal_stool_01
 Raw Plank Wall (texture) by Dimitrios Savva. https://polyhaven.com/a/raw_plank_wall. License: CC0-1.0.
 Office Ceiling 001 (texture) by ambientCG (Lennart Demes). https://ambientcg.com/a/OfficeCeiling001. License: CC0-1.0.
 Terrazzo Tiles (texture) by Amal Kumar. https://polyhaven.com/a/terrazzo_tiles. License: CC0-1.0.
+Wood Planks (texture) by Amal Kumar. https://polyhaven.com/a/wood_planks. License: CC0-1.0.
 
 Basis Universal transcoder (basis_transcoder.js and .wasm, as distributed with three.js r180), by Binomial LLC.
 License: Apache-2.0 (full text above in this file). Modified: public/game-art/breachline/basis/ktx2-worker.js wraps it

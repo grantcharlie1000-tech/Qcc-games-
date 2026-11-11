@@ -10,14 +10,115 @@ import type { Atlas, Region } from './levelgeo';
 
 type V3 = [number, number, number];
 /** Materials the dressing asks for; artworld.ts maps each key to a material. */
-export type DressKey = 'door' | 'locker' | 'exit' | 'alarm' | 'fire' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
+export type DressKey = 'door' | 'locker' | 'exit' | 'alarm' | 'fire' | 'card' | 'label' | 'binder' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
 
 const inRoom = (r: Region, x: number, z: number) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1;
 
 /** Dressing for any art room. */
 export function dressRoom(atlas: Atlas, room: Region): DetailBuilder {
   if (room.name === 'corridor') return dressCorridor(atlas, room);
+  if (room.name === 'archive') return dressArchive(atlas, room);
   return dressLab(atlas, room);
+}
+
+/** Deterministic random numbers for dressing layouts. */
+const seeded = (seed: number) => () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+
+/** Steel shelving on a solid shelf box: uprights, shelf lips, and the fronts of archive boxes and box files standing
+ * just proud of each long face. The collision box stays the volume; the dressing only reads as its contents. */
+function shelving(D: DetailBuilder, x0: number, z0: number, x1: number, z1: number, top: number, seed: number) {
+  const r = seeded(seed), alongZ = z1 - z0 > x1 - x0, len = alongZ ? z1 - z0 : x1 - x0;
+  const levels = [0.08, 0.5, 0.92, 1.34, 1.76];
+  for (const side of [1, -1]) {
+    const face = alongZ ? (side > 0 ? x1 : x0) : (side > 0 ? z1 : z0), n: V3 = alongZ ? [side, 0, 0] : [0, 0, side];
+    // A box on this face from (a..b along the run, y0..y1, d0..d1 out from the face).
+    const put = (key: DressKey, a: number, b: number, y0: number, y1: number, d0: number, d1: number, tint?: V3) => {
+      const o0 = face + side * d0, o1 = face + side * d1, lo = Math.min(o0, o1), hi = Math.max(o0, o1), mid = (a + b) / 2, at: V3 = alongZ ? [face + side * 0.001, (y0 + y1) / 2, mid] : [mid, (y0 + y1) / 2, face + side * 0.001];
+      if (alongZ) D.box(key, lo, y0, a, hi, y1, b, at, n, tint); else D.box(key, a, y0, lo, b, y1, hi, at, n, tint);
+    };
+    const start = alongZ ? z0 : x0, bays = Math.max(1, Math.round(len / 0.9)), bw = len / bays;
+    for (let i = 0; i <= bays; i++) { const u = start + i * bw; put('handle', u - 0.02, u + 0.02, 0, top, 0, 0.03, [0.45, 0.47, 0.5]); }
+    for (const y of [...levels, top - 0.04]) put('handle', start, start + len, y, y + 0.03, 0, 0.028, [0.5, 0.52, 0.55]);
+    for (let l = 0; l < levels.length; l++) {
+      const y = levels[l] + 0.03, room = (levels[l + 1] ?? top - 0.04) - y - 0.04;
+      for (let i = 0; i < bays; i++) {
+        let u = start + i * bw + 0.03;
+        const end = start + (i + 1) * bw - 0.03;
+        while (u < end - 0.08) {
+          const file = r() < 0.35, w = Math.min(end - u, file ? 0.06 + r() * 0.02 : 0.24 + r() * 0.14), h = Math.min(room, file ? 0.3 + r() * 0.04 : 0.24 + r() * 0.08);
+          if (r() < 0.12) { u += w + 0.02; continue; }
+          if (file) {
+            const tone = [0.3 + r() * 0.5, 0.3 + r() * 0.3, 0.25 + r() * 0.35] as V3;
+            put('binder', u, u + w - 0.004, y, y + h, 0.004, 0.012, tone);
+            put('label', u + 0.012, u + w - 0.016, y + h * 0.55, y + h * 0.8, 0.012, 0.0135);
+          } else {
+            const shade = 0.75 + r() * 0.3;
+            put('card', u, u + w - 0.006, y, y + h, 0.002, 0.014, [shade, shade * 0.97, shade * 0.92]);
+            put('label', u + w * 0.2, u + w * 0.8, y + h * 0.5, y + h * 0.78, 0.014, 0.0155);
+            put('kick', u + w * 0.38, u + w * 0.62, y + h * 0.18, y + h * 0.3, 0.014, 0.0152, [0.35, 0.3, 0.25]);
+          }
+          u += w + 0.004;
+        }
+      }
+    }
+  }
+}
+
+/** A bank of filing cabinets on one face of a steel box: drawer fronts, pull handles, label holders. */
+function filing(D: DetailBuilder, face: number, n: V3, a0: number, a1: number, top: number) {
+  const units = Math.max(1, Math.round((a1 - a0) / 0.47)), w = (a1 - a0) / units, drawers = Math.max(2, Math.round(top / 0.33)), dh = (top - 0.06) / drawers;
+  const alongZ = n[0] !== 0, side = alongZ ? n[0] : n[2];
+  const put = (key: DressKey, a: number, b: number, y0: number, y1: number, d0: number, d1: number, tint?: V3) => {
+    const o0 = face + side * d0, o1 = face + side * d1, lo = Math.min(o0, o1), hi = Math.max(o0, o1), at: V3 = alongZ ? [face + side * 0.001, (y0 + y1) / 2, (a + b) / 2] : [(a + b) / 2, (y0 + y1) / 2, face + side * 0.001];
+    if (alongZ) D.box(key, lo, y0, a, hi, y1, b, at, n, tint); else D.box(key, a, y0, lo, b, y1, hi, at, n, tint);
+  };
+  for (let i = 0; i < units; i++) {
+    const a = a0 + i * w + 0.004, b = a0 + (i + 1) * w - 0.004, c = (a + b) / 2;
+    for (let k = 0; k < drawers; k++) {
+      const y0 = 0.05 + k * dh + 0.004, y1 = 0.05 + (k + 1) * dh - 0.004;
+      put('locker', a, b, y0, y1, 0, 0.016);
+      put('handle', c - 0.07, c + 0.07, y1 - 0.09, y1 - 0.07, 0.016, 0.04);
+      put('label', c - 0.04, c + 0.04, y1 - 0.055, y1 - 0.025, 0.016, 0.019);
+    }
+  }
+}
+
+/** The Archive (site B): shelving runs, a bank of filing cabinets, the reading table, ceiling and wall kit. */
+function dressArchive(atlas: Atlas, room: Region): DetailBuilder {
+  const D = new DetailBuilder(atlas), y = WALL_H, up: V3 = [0, -1, 0];
+  ceilingGrid(D, room);
+  let seed = 11;
+  for (const b of MAP.boxes) {
+    if (!inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) continue;
+    if (b.mat === 'shelf') shelving(D, b.x0, b.z0, b.x1, b.z1, b.y1, seed += 7);
+    // Filing cabinets face west, into the room.
+    if (b.mat === 'steel') filing(D, b.x0, [-1, 0, 0], b.z0, b.z1, b.y1);
+    if (b.mat === 'wood') {
+      // The reading table: paper stacks, box files lying flat, an open archive box.
+      const top = b.y1, r = seeded(5), on = (x: number, z: number): V3 => [x, top + 0.001, z], tu: V3 = [0, 1, 0];
+      for (let i = 0; i < 5; i++) {
+        const x = b.x0 + 0.2 + r() * (b.x1 - b.x0 - 0.5), z = b.z0 + 0.15 + r() * (b.z1 - b.z0 - 0.45), h = 0.01 + r() * 0.05;
+        D.box('paper', x, top, z, x + 0.21, top + h, z + 0.3, on(x + 0.1, z + 0.15), tu, [0.95, 0.94, 0.9]);
+      }
+      D.box('binder', b.x1 - 0.5, top, b.z0 + 0.2, b.x1 - 0.18, top + 0.07, b.z0 + 0.48, on(b.x1 - 0.34, b.z0 + 0.34), tu, [0.2, 0.25, 0.45]);
+      D.box('card', b.x0 + 0.25, top, b.z1 - 0.42, b.x0 + 0.62, top + 0.26, b.z1 - 0.12, on(b.x0 + 0.43, b.z1 - 0.27), tu, [0.9, 0.86, 0.78]);
+    }
+  }
+  for (const [x, z] of [[2.4, 2.4], [6.6, 2.4], [2.4, 8.4], [6.6, 8.4], [4.2, 5.4]]) {
+    const g = new THREE.CylinderGeometry(0.012, 0.03, 0.05, 10).translate(x, y - 0.025, z);
+    D.mesh('chrome', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [x, y - 0.001, z], up, [0.85, 0.8, 0.7]);
+    g.dispose();
+  }
+  const det = new THREE.CylinderGeometry(0.06, 0.065, 0.035, 20).translate(4.5, y - 0.0175, 4.8);
+  D.mesh('socket', det.attributes.position.array, det.attributes.normal.array, det.index!.array, [4.5, y - 0.001, 4.8], up);
+  det.dispose();
+  // The solid south wall: skirting, a clock, sockets, a records-room sign.
+  const z = room.z1 - 0.15, n: V3 = [0, 0, -1], at = (x: number, yy: number): V3 => [x, yy, z - 0.001];
+  D.box('trim', room.x0 + 0.12, 0.02, z - 0.016, room.x1 - 0.12, 0.11, z, at(4, 0.06), n);
+  D.box('plastic', 6.3, 2.42, z - 0.04, 6.66, 2.78, z, at(6.48, 2.6), n);
+  { const g = new THREE.PlaneGeometry(0.32, 0.32).rotateY(Math.PI).translate(6.48, 2.6, z - 0.041); D.mesh('clock', g.attributes.position.array, g.attributes.normal.array, g.index!.array, at(6.48, 2.6), n, [1, 1, 1], g.attributes.uv.array); g.dispose(); }
+  for (const x of [1.2, 6.9]) D.box('socket', x - 0.073, 0.27, z - 0.01, x + 0.073, 0.356, z, at(x, 0.31), n);
+  return D;
 }
 
 /** The corridor: ceiling grid and services, hanging exit signs, a cable tray on drop rods, the cabinet and lockers. */
