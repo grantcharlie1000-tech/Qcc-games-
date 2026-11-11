@@ -67,9 +67,32 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** kit round 1 done for all five of my items (`kit/`); next corridor round 3 (the
-reviewer's notes: door frames and doors, lighter and fewer posts, fittings, wall dirt, a second light colour), then
-Archive round 2.
+**Where I am (keep current):** corridor round 3 done (`rooms/corridor/round-3/`); next Archive round 2 (cardboard
+boxes, aisle shade, mid-room clutter, perforated uprights), then corridor round 4 (variety between posts, doors).
+
+## Corridor round 3 (`rooms/corridor/round-3/`), against the reviewer's round-2 notes
+
+1. **Doorways:** every doorway now has a frame: off-white painted casings on the posts and across the lintel,
+   plinth blocks at their feet, an aluminium threshold strip, three hinges left on one jamb (the doors are gone)
+   and a room plate at eye height on the other post. No door leaves yet: an open leaf would sit in a room that is
+   not an art room yet.
+2. **Posts:** they are collision boxes in the map, so they can't be thinned or removed here. They are repainted from
+   near-black to a painted steel a few shades darker than the wall, so the bays read as structure, not stripes.
+   Variety between them (notice board, radiator, trolley, boxes, bench) is not done yet.
+3. **Fittings:** the diffuser glow is down from 12 to 5, so the prismatic lens shows its texture instead of a white
+   rectangle. Three water-stained tiles, and one missing tile with its dark void and two cables hanging out.
+   No dead or flickering tube yet.
+4. **Walls and floor:** the plasterboard shader gets trolley and bag rub at hip height (a broken grey line), boot
+   scuffs as short streaks instead of blocks, and the odd repainted patch. The terrazzo gets a dull walked path
+   down the middle and dull margins where the polisher never reached (new `wear` surface option). No hand grime by
+   the doors yet.
+5. **Light colour:** the corridor's tubes alternate warm (old), neutral and cold (new). Re-baked (corridor only,
+   442 s). The difference is subtle. No daylight from doorways (the rooms behind are not art rooms yet).
+
+Scores (mine): A 6.5, B 6.5, C 6.5, D 6. Still below 7 on D: no doors, no variety between the posts. Budgets:
+the corridor view is 184 -> 190 draw calls (the casing look adds one), triangles about the same. Evidence:
+`before-after.png` (round 2 left, round 3 right), `corridor-high.png`, `corridor-west-high.png`,
+`corridor-low.png`.
 
 ## Tactical kit (row K): grenade blasts, round 1 (`kit/grenade-round-1/`)
 

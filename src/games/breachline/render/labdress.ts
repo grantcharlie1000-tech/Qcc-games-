@@ -10,7 +10,7 @@ import type { Atlas, Region } from './levelgeo';
 
 type V3 = [number, number, number];
 /** Materials the dressing asks for; artworld.ts maps each key to a material. */
-export type DressKey = 'door' | 'locker' | 'exit' | 'alarm' | 'fire' | 'card' | 'label' | 'binder' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
+export type DressKey = 'casing' | 'door' | 'locker' | 'exit' | 'alarm' | 'fire' | 'card' | 'label' | 'binder' | 'grid' | 'cork' | 'paper' | 'aid' | 'screen' | 'plastic' | 'sign' | 'clock' | 'handle' | 'kick' | 'trim' | 'socket' | 'conduit' | 'steel' | 'chrome' | 'amber' | 'glass';
 
 const inRoom = (r: Region, x: number, z: number) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1;
 
@@ -160,6 +160,36 @@ function dressCorridor(atlas: Atlas, room: Region): DetailBuilder {
     const z = postFace(x, wallZ, side) + side * 0.004, g = new THREE.PlaneGeometry(0.16, 0.2).rotateY(side > 0 ? 0 : Math.PI).translate(x, 1.8, z);
     D.mesh('fire', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [x, 1.8, postFace(x, wallZ, side) + side * 0.001], [0, 0, side], [1, 1, 1], g.attributes.uv.array);
     g.dispose();
+  }
+  // A ceiling with a history: three water-stained tiles, and one tile pushed up and gone, its void dark and two cables
+  // hanging out of it.
+  for (const [x, z, k] of [[-5.7, 0.3, 0.8], [2.7, -1.5, 0.86], [11.1, 0.3, 0.76]] as const) D.box('card', x - 0.29, y - 0.004, z - 0.29, x + 0.29, y - 0.0015, z + 0.29, [x, y - 0.001, z], up, [k * 1.25, k * 1.1, k * 0.86]);
+  D.box('kick', -10.79, y - 0.003, 0.01, -10.21, y - 0.0012, 0.59, [-10.5, y - 0.001, 0.3], up);
+  for (const [dx, dz, len, tint] of [[0.08, 0.12, 0.42, [0.12, 0.12, 0.13]], [-0.1, -0.06, 0.3, [0.55, 0.12, 0.1]]] as const) {
+    const pts = [new THREE.Vector3(-10.5 + dx, y + 0.02, 0.3 + dz), new THREE.Vector3(-10.5 + dx * 1.4, y - len * 0.5, 0.3 + dz * 1.3), new THREE.Vector3(-10.5 + dx * 0.6, y - len, 0.3 + dz * 0.4)];
+    const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.006, 6, false);
+    D.mesh('conduit', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [-10.5, y - 0.001, 0.3], up, [...tint] as V3);
+    g.dispose();
+  }
+  // Every doorway gets a frame: painted casings on the posts either side and across the lintel, an aluminium
+  // threshold strip, hinges left on one jamb (the doors are long gone) and a room plate beside it.
+  for (const p of MAP.panels) {
+    if (p.kind !== 'door' || p.axis !== 'x' || (p.pos !== -2 && p.pos !== 1)) continue;
+    const side = p.pos === -2 ? 1 : -1, face = p.pos + side * 0.11, n: V3 = [0, 0, side], a = p.u0 + 0.11, b = p.u0 + p.cols * 0.25 - 0.11, top = 2.25;
+    const proud = (key: DressKey, x0: number, x1: number, y0: number, y1: number, d: number, on: V3, tint?: V3) =>
+      D.box(key, x0, y0, side > 0 ? face : face - d, x1, y1, side > 0 ? face + d : face, on, n, tint);
+    proud('casing', a - 0.075, a, 0, top + 0.075, 0.018, [a - 0.05, 1, face + side * 0.001]);
+    proud('casing', b, b + 0.075, 0, top + 0.075, 0.018, [b + 0.05, 1, face + side * 0.001]);
+    proud('casing', a - 0.075, b + 0.075, top, top + 0.075, 0.018, [(a + b) / 2, top + 0.2, face + side * 0.001]);
+    // A plinth block at the foot of each casing, where trolleys have chipped it.
+    proud('trim', a - 0.08, a + 0.005, 0, 0.14, 0.024, [a - 0.05, 0.07, face + side * 0.001], [1.6, 1.6, 1.6]);
+    proud('trim', b - 0.005, b + 0.08, 0, 0.14, 0.024, [b + 0.05, 0.07, face + side * 0.001], [1.6, 1.6, 1.6]);
+    D.box('chrome', a, 0, Math.min(p.pos, p.pos + side * 0.12), b, 0.006, Math.max(p.pos, p.pos + side * 0.12), [(a + b) / 2, 0, p.pos + side * 0.3], [0, 1, 0], [0.7, 0.7, 0.68]);
+    // Hinges on the jamb's inner face (the post's side towards the opening).
+    for (const y of [0.25, 1.1, 2.0]) D.box('steel', a, y, p.pos - 0.03, a + 0.006, y + 0.1, p.pos + 0.03, [a + 0.001, y + 0.05, p.pos], [1, 0, 0]);
+    // Room plate: a white plate with a dark band, at eye height on the far post.
+    proud('label', b + 0.09, b + 0.2, 1.48, 1.6, 0.006, [b + 0.1, 1.5, face + side * 0.001], [1.05, 1.05, 1.02]);
+    proud('kick', b + 0.1, b + 0.19, 1.52, 1.555, 0.0075, [b + 0.1, 1.5, face + side * 0.001]);
   }
   // Exit signs hung across the corridor, readable from both ends.
   for (const x of [-12, 0.75, 12]) {

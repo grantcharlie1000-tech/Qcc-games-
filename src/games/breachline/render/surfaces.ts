@@ -8,6 +8,8 @@ export interface Surface {
   set: string;
   /** Multiplies the texture's roughness (below 1 is glossier). */
   gloss?: number;
+  /** Polished-floor wear (see artMaterial). */
+  wear?: { axis: 'x' | 'z'; centre: number; half: number };
   /** Normal-map strength (1 = as authored). */
   normal?: number;
   /** Multiplies the reflection (polished or sealed surfaces read stronger than the bare physics gives at this exposure). */
@@ -31,7 +33,7 @@ export const SURFACES: Partial<Record<TexId, Surface>> = {
   // Shelving carcasses: dark painted steel behind the modelled uprights and boxes.
   shelf: { set: 'painted_plaster_wall', size: 1, tint: [0.18, 0.19, 0.21] },
   // Polished terrazzo in the corridor: cool grey, glossy enough to carry the fittings' reflections.
-  lino: { set: 'terrazzo_tiles', size: 2, gloss: 0.3, spec: 2, tint: [0.66, 0.7, 0.8] },
+  lino: { set: 'terrazzo_tiles', size: 2, gloss: 0.3, spec: 2, tint: [0.66, 0.7, 0.8], wear: { axis: 'z', centre: -0.5, half: 1.5 } },
   // Mineral-fibre ceiling tiles, 600 mm, six to a repeat, joints on the T-bar grid.
   ceiling: { set: 'OfficeCeiling001', size: 3.6, normal: 1.5, tint: [0.92, 0.92, 0.9] },
   // Square ceramic tiles; the source is laid diagonally, so turn it square and make each tile 47 cm.
@@ -42,7 +44,8 @@ export const SURFACES: Partial<Record<TexId, Surface>> = {
   counter: { set: 'blue_metal_plate', size: 1.25, tint: [0.55, 0.55, 0.55] },
   // Locker carcasses (doors are modelled in render/labdress.ts).
   steel: { set: 'painted_plaster_wall', size: 1.5, tint: [0.5, 0.56, 0.5] },
-  trim: { set: 'painted_plaster_wall', size: 1, tint: [0.26, 0.28, 0.31] },
+  // Posts and frames: painted steel a few shades darker than the walls, so the bays read without stripes of black.
+  trim: { set: 'painted_plaster_wall', size: 1, tint: [0.52, 0.53, 0.52] },
   // Bench tops: dark epoxy resin, sealed and semi-gloss.
   paint: { set: 'painted_plaster_wall', size: 1, tint: [0.26, 0.27, 0.28], gloss: 0.4, spec: 1.6 },
 };

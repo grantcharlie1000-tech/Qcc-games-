@@ -33,6 +33,9 @@ export interface ArtMaterialOptions {
   specOnly?: boolean;
   /** Painted lower band by world height: tint below \`height\`, a dark 4 cm rail at the top of it. */
   band?: { height: number; tint: readonly [number, number, number] } | null;
+  /** A polished floor's wear: a dull walked path along the line at `centre` (on world x or z) and dull margins where the
+   * polisher never reached, `half` metres either side. */
+  wear?: { axis: 'x' | 'z'; centre: number; half: number } | null;
   metalness?: number;
   color?: THREE.ColorRepresentation | THREE.Color;
   emissive?: THREE.ColorRepresentation;
@@ -57,9 +60,10 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
     artBoxMin: { value: new THREE.Vector3(-1e4, -1e4, -1e4) },
     artBoxMax: { value: new THREE.Vector3(1e4, 1e4, 1e4) },
     artProbe: { value: new THREE.Vector3() },
+    artWear: { value: new THREE.Vector4(o.wear?.axis === 'x' ? 1 : 0, o.wear?.centre ?? 0, o.wear?.half ?? 0, 0) },
     artBand: { value: new THREE.Vector4(o.band?.tint[0] ?? 1, o.band?.tint[1] ?? 1, o.band?.tint[2] ?? 1, o.band?.height ?? -1) },
   };
-  const defs = [o.dirMap && o.lightMap ? 'ART_DIRMAP' : '', o.vertexLight ? 'ART_VERTEX_LIGHT' : '', o.sh ? 'ART_SH' : '', o.band ? 'ART_BAND' : '', o.specOnly ? 'ART_SPECONLY' : ''].filter(Boolean);
+  const defs = [o.dirMap && o.lightMap ? 'ART_DIRMAP' : '', o.vertexLight ? 'ART_VERTEX_LIGHT' : '', o.sh ? 'ART_SH' : '', o.band ? 'ART_BAND' : '', o.wear ? 'ART_WEAR' : '', o.specOnly ? 'ART_SPECONLY' : ''].filter(Boolean);
   m.userData.art = uniforms;
   m.customProgramCacheKey = () => `art:${defs.join(',')}`;
   m.onBeforeCompile = shader => {
@@ -68,7 +72,7 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
       .replace('#include <common>', '#include <common>\nvarying vec3 vArtWorld;')
       .replace('#include <project_vertex>', '#include <project_vertex>\n\tvArtWorld = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${defs.map(d => `#define ${d}`).join('\n')}\nuniform sampler2D artDirMap;\nuniform vec3 artSH[4];\nuniform float artEnvLight;\nuniform vec4 artBand;\nuniform vec3 artBoxMin;\nuniform vec3 artBoxMax;\nuniform vec3 artProbe;\nvarying vec3 vArtWorld;`)
+      .replace('#include <common>', `#include <common>\n${defs.map(d => `#define ${d}`).join('\n')}\nuniform sampler2D artDirMap;\nuniform vec3 artSH[4];\nuniform float artEnvLight;\nuniform vec4 artBand;\nuniform vec4 artWear;\nuniform vec3 artBoxMin;\nuniform vec3 artBoxMax;\nuniform vec3 artProbe;\nvarying vec3 vArtWorld;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
 #ifdef ART_BAND
 	float artRail = smoothstep( artBand.w - 0.002, artBand.w, vArtWorld.y ) - smoothstep( artBand.w + 0.038, artBand.w + 0.04, vArtWorld.y );
@@ -80,8 +84,16 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
 		vec3 artWN = inverseTransformDirection( normalize( vNormal ), viewMatrix );
 		float artU = abs( artWN.x ) > 0.5 ? vArtWorld.z : vArtWorld.x;
 		float artJoint = 1.0 - 0.13 * ( 1.0 - smoothstep( 0.0, 0.012, abs( fract( artU / 1.2 + 0.5 ) - 0.5 ) * 1.2 ) );
-		float artScuff = fract( sin( dot( floor( vec2( artU * 9.0, vArtWorld.y * 22.0 ) ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
-		diffuseColor.rgb *= artJoint * ( vArtWorld.y < 0.45 && artScuff > 0.93 ? 0.84 : 1.0 );
+		// Boot scuffs: short horizontal streaks low on the wall, not blocks.
+		float artScuff = fract( sin( dot( floor( vec2( artU * 3.0, vArtWorld.y * 26.0 ) ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+		float artStreak = smoothstep( 0.0, 0.2, fract( artU * 3.0 ) ) * smoothstep( 1.0, 0.55, fract( artU * 3.0 ) );
+		diffuseColor.rgb *= artJoint * ( vArtWorld.y < 0.42 && artScuff > 0.9 ? mix( 1.0, 0.8, artStreak ) : 1.0 );
+		// Trolley and bag rub at hip height: a broken grey line that comes and goes along the wall.
+		float artRub = fract( sin( floor( artU * 1.3 ) * 91.7 ) * 43758.5453 ), artRubY = 1.0 - smoothstep( 0.0, 0.035, abs( vArtWorld.y - 0.9 - 0.04 * artRub ) );
+		diffuseColor.rgb *= 1.0 - 0.14 * artRubY * step( 0.35, artRub ) * smoothstep( 0.2, 0.5, fract( artU * 1.3 ) ) * smoothstep( 1.0, 0.7, fract( artU * 1.3 ) );
+		// The odd repainted patch: a rectangle a shade cleaner and warmer than the wall round it.
+		float artCell = floor( artU / 2.4 ), artPatch = fract( sin( artCell * 47.3 + 3.1 ) * 43758.5453 ), artPU = fract( artU / 2.4 );
+		diffuseColor.rgb *= artPatch > 0.72 && artPU > 0.18 && artPU < 0.62 && vArtWorld.y > 1.05 && vArtWorld.y < 1.95 ? vec3( 1.05, 1.04, 1.0 ) : vec3( 1.0 );
 		// Years of grime gathered towards the ceiling.
 		diffuseColor.rgb *= mix( 1.0, 0.84, smoothstep( 2.0, 2.9, vArtWorld.y ) );
 	#endif
@@ -89,6 +101,12 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
 	diffuseColor.rgb *= vArtWorld.y < 0.1 ? vec3( 0.42 ) : vec3( 1.0 );
 #endif`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+#ifdef ART_WEAR
+	float artWD = abs( ( artWear.x > 0.5 ? vArtWorld.x : vArtWorld.z ) - artWear.y );
+	float artPath = 1.0 - smoothstep( 0.2, 0.62, artWD ), artEdge = smoothstep( artWear.z - 0.32, artWear.z - 0.04, artWD );
+	roughnessFactor = min( 1.0, roughnessFactor * ( 1.0 + 1.5 * artPath + 1.3 * artEdge ) );
+	diffuseColor.rgb *= 1.0 - 0.07 * artPath - 0.1 * artEdge;
+#endif
 #ifdef ART_BAND
 	// The band is semi-gloss paint, so it catches the fittings where the matt wall above does not.
 	roughnessFactor *= vArtWorld.y < artBand.w ? 0.42 : 1.0;
