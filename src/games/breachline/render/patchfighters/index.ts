@@ -29,14 +29,20 @@ import { LOD_DIST, LOD0_MAX, createFighters, type FightersWithEvents } from '../
 /** Probe gains as the stock fighters use them (not exported there). The stock baked sets carry their own occlusion
  * and are lighter, so they take 0.42 of the probe; this albedo is not baked-light (near-black kit), so it takes all
  * of it (checked in the game: at 0.42 the figures read as silhouettes outdoors). */
-const PROBE_GAIN = 0.6, SHADE_FILL = 0.8, BODY_GAIN = 1.0;
+const PROBE_GAIN = 0.6, SHADE_FILL = 0.8;
+/** The body's share of the probe (set by comparing game frames; `?patchgain=` overrides it while tuning). */
+const BODY_GAIN = Number(typeof location === 'undefined' ? NaN : new URLSearchParams(location.search).get('patchgain')) || 0.75;
 const SET = '../patch/tactical';
 
 /** Squad looks: the darkest and lightest each class reaches (sRGB), cloth weave and stain strength. */
 export const PATCH_LOOKS = [
-  { fat: [0x090b0d, 0x323a42], kit: [0x050506, 0x232528], weave: 0.10, stain: 0.18, headgear: ['helmetA', 'gogglesA'] },   // squad 0: dark slate, near-black kit, helmet and goggles
-  { fat: [0x21190f, 0x8a6e4b], kit: [0x12140c, 0x5e6345], weave: 0.12, stain: 0.30, headgear: ['headsetB'] },              // squad 1: coyote, olive kit, headset
+  // Squad 0: dark slate cloth (linear albedo about 0.08 at the middle of its range), kit darker and glossier, light dust.
+  { fat: [0x262b30, 0x6a737c], kit: [0x16181a, 0x45484d], kitGloss: 0.72, dirt: 0x7a7468, dirtAmt: 0.35, weave: 0.10, stain: 0.16, headgear: ['helmetA', 'gogglesA'] },
+  // Squad 1: coyote cloth (about 0.27), olive kit darker than the cloth, both desaturated, darker mud.
+  { fat: [0x4e4132, 0xc4b296], kit: [0x2f3224, 0x77795e], kitGloss: 0.85, dirt: 0x4f4232, dirtAmt: 0.45, weave: 0.10, stain: 0.22, headgear: ['headsetB'] },
 ] as const;
+/** Rim light from the probe, as a fraction of it, at grazing angles (separates edges from dark walls). */
+const RIM = 0.35;
 
 interface Maps { map: THREE.Texture; normalMap: THREE.Texture; arm: THREE.Texture; mask: THREE.Texture }
 interface Assets { body: THREE.BufferGeometry[]; maps: Maps; lumRange: { fatigues: number[]; kit: number[] }; headgear: { geo: THREE.BufferGeometry; set: string; lod: number; color: string; roughness: number; metalness: number; opacity: number }[] }
@@ -51,7 +57,11 @@ function probeMaterial(params: THREE.MeshStandardMaterialParameters, key: string
   m.onBeforeCompile = shader => {
     shader.uniforms.uProbe = probe; Object.assign(shader.uniforms, uniforms);
     const maps = THREE.ShaderChunk.lights_fragment_maps.replace(/iblIrradiance \+= getIBLIrradiance\( geometryNormal \);/, '');
-    let fs = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uProbe;').replace('#include <lights_fragment_maps>', `${maps}\niblIrradiance += uProbe;`);
+    let fs = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uProbe;').replace('#include <lights_fragment_maps>', `${maps}
+// The probe as a sky-weighted directional term: the (normal-mapped) normal bends it, upward faces get more, undersides
+// less; plus a rim at grazing angles.
+{ vec3 nW = inverseTransformDirection(normal, viewMatrix); float rim = pow(1.0 - saturate(dot(normal, geometryViewDir)), 3.0);
+  iblIrradiance += uProbe * (0.6 + 0.5 * nW.y + ${RIM.toFixed(2)} * rim); }`);
     if (extra) { fs = extra(fs); shader.vertexShader = 'varying vec3 vObjP; varying vec3 vObjN;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvObjP = position; vObjN = normal;'); }
     shader.fragmentShader = fs;
   };
@@ -65,11 +75,12 @@ function probeMaterial(params: THREE.MeshStandardMaterialParameters, key: string
 function bodyMaterial(a: Assets, squad: 0 | 1): ProbeMaterial {
   const L = PATCH_LOOKS[squad], enc = (x: number) => Math.pow(Math.max(x, 1e-6), 1 / 2.2);
   const u = {
+    dirtC: { value: new THREE.Color(L.dirt) }, dirtAmt: { value: L.dirtAmt }, kitGloss: { value: L.kitGloss },
     tMask: { value: a.maps.mask }, fat: { value: new THREE.Vector3(...a.lumRange.fatigues.map(enc)) }, kit: { value: new THREE.Vector3(...a.lumRange.kit.map(enc)) },
     fatA: { value: new THREE.Color(L.fat[0]) }, fatB: { value: new THREE.Color(L.fat[1]) }, kitA: { value: new THREE.Color(L.kit[0]) }, kitB: { value: new THREE.Color(L.kit[1]) },
     weave: { value: L.weave }, stain: { value: L.stain },
   };
-  const m = probeMaterial({ map: a.maps.map, normalMap: a.maps.normalMap, aoMap: a.maps.arm, roughnessMap: a.maps.arm, metalnessMap: a.maps.arm, roughness: 1, metalness: 1 }, 'patch-body', fs => `uniform sampler2D tMask; uniform vec3 fat, kit, fatA, fatB, kitA, kitB; uniform float weave, stain; varying vec3 vObjP; varying vec3 vObjN;
+  const m = probeMaterial({ map: a.maps.map, normalMap: a.maps.normalMap, aoMap: a.maps.arm, roughnessMap: a.maps.arm, metalnessMap: a.maps.arm, roughness: 1, metalness: 1 }, 'patch-body', fs => `uniform sampler2D tMask; uniform vec3 fat, kit, fatA, fatB, kitA, kitB, dirtC; uniform float weave, stain, dirtAmt, kitGloss; varying vec3 vObjP; varying vec3 vObjN;
 float pfH(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 float pfNoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(mix(pfH(i), pfH(i + vec3(1,0,0)), f.x), mix(pfH(i + vec3(0,1,0)), pfH(i + vec3(1,1,0)), f.x), f.y),
@@ -77,16 +88,26 @@ float pfNoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 
 ` + fs.replace('#include <map_fragment>', `#include <map_fragment>
 { vec3 mk = texture2D(tMask, vMapUv).rgb; float k = smoothstep(0.3, 0.7, mk.r), keep = smoothstep(0.3, 0.7, mk.g);
   float l = pow(max(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 1e-6), 0.4545);
-  float sF = 0.5 + 0.5 * tanh((l - fat.y) / max(1e-4, (fat.z - fat.x) * 0.2));
-  float sK = pow(0.5 + 0.5 * tanh((l - kit.y) / max(1e-4, (kit.z - kit.x) * 0.2)), 1.3);
+  // Source detail carried strongly: spread over a tenth of the class's range (folds, seams and stitching become steps).
+  float sF = 0.5 + 0.5 * tanh((l - fat.y) / max(1e-4, (fat.z - fat.x) * 0.1));
+  float sK = pow(0.5 + 0.5 * tanh((l - kit.y) / max(1e-4, (kit.z - kit.x) * 0.1)), 1.3);
   vec3 an = abs(vObjN); vec2 w2 = an.x > an.y && an.x > an.z ? vObjP.yz : an.y > an.z ? vObjP.xz : vObjP.xy;
   float wv = sin(w2.x * 2513.0) * sin(w2.y * 2513.0) * 0.6 + (pfNoise(vObjP * 900.0) - 0.5) * 0.8;
   float st = pfNoise(vObjP * 5.0) * 0.65 + pfNoise(vObjP * 17.0) * 0.35;
   vec3 cF = mix(fatA, fatB, sF) * (1.0 + weave * wv) * (1.0 - stain * (st - 0.45));
   vec3 cK = mix(kitA, kitB, sK) * (1.0 + weave * 0.4 * wv) * (1.0 - stain * 0.6 * (st - 0.45));
   vec3 c = mix(cF, cK, k);
+  // Dirt: knees, elbows, cuffs and boots (bind-pose positions; the fighter faces -Z), broken up by noise.
+  vec3 ap = vec3(abs(vObjP.x), vObjP.y, vObjP.z);
+  float dz = max(max(1.0 - length((ap - vec3(0.11, 0.50, -0.07)) / vec3(0.08, 0.09, 0.07)), 1.0 - length((ap - vec3(0.343, 1.215, -0.152)) / 0.08)),
+                 max(1.0 - length((ap - vec3(0.45, 1.06, -0.26)) / 0.07), smoothstep(0.2, 0.04, vObjP.y)));
+  float dirt = saturate(dz * 1.6) * smoothstep(0.35, 0.75, pfNoise(vObjP * 28.0) * 0.6 + pfNoise(vObjP * 7.0) * 0.4 + 0.15) * dirtAmt;
+  c = mix(c, dirtC, dirt);
   if (vObjP.y < 0.028) c *= 0.55;
-  diffuseColor.rgb = mix(c, diffuseColor.rgb, keep); }`), u);
+  // Cavity (baked into the mask's B): seams, strap edges and pouch gaps.
+  c *= mix(1.0, mk.b, 0.85);
+  diffuseColor.rgb = mix(c, diffuseColor.rgb * mix(1.0, mk.b, 0.6), keep); }`).replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+roughnessFactor *= mix(1.0, kitGloss, smoothstep(0.3, 0.7, texture2D(tMask, vMapUv).r));`), u);
   return m;
 }
 

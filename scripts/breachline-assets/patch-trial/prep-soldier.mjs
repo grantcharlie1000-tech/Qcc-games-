@@ -7,6 +7,8 @@ import { cut, compact, V } from './mesh.mjs';
 import { ktx2, jpeg } from './ktx.mjs';
 import { MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
+import * as THREE from 'three';
+import { MeshBVH } from 'three-mesh-bvh';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -112,7 +114,7 @@ export function isKit(x, y, z, nz) {
 const M = 2048, mask = new Uint8Array(M * M), cover = new Uint8Array(M * M);
 /** Job 3 repaint regions (file frame, facing +Z): 1 = balaclava (head and neck), 2 = eye band (kept as is),
  * 3 = hand (bare fingertips become glove). Measured on renders: eyes at y 1.595, brows 1.61. */
-const region = new Uint8Array(M * M), rpos = new Float32Array(M * M * 3);
+const region = new Uint8Array(M * M), rpos = new Float32Array(M * M * 3), rnrm = new Float32Array(M * M * 3);
 function regionOf(x, y, z) {
   const r = Math.hypot(x, z + 0.005);
   if (FULL && ((y > 1.55 && r < 0.16) || (y > 1.49 && y <= 1.55 && z > 0.02 && r < 0.16 && Math.abs(x) < 0.09) || (y > 1.47 && y <= 1.55 && r < 0.09))) return y > 1.578 && y < 1.625 && z > 0.07 && z < 0.112 && Math.abs(x) < 0.062 ? 2 : 1;
@@ -132,18 +134,43 @@ function regionOf(x, y, z) {
       const w0 = ((by - cy) * (sx - cx) + (cx - bx) * (sy - cy)) / den, w1 = ((cy - ay) * (sx - cx) + (ax - cx) * (sy - cy)) / den, w2 = 1 - w0 - w1;
       if (w0 < -0.02 || w1 < -0.02 || w2 < -0.02) continue;
       const P = k => w0 * pos[a * 3 + k] + w1 * pos[b * 3 + k] + w2 * pos[c * 3 + k], nz = w0 * nrm[a * 3 + 2] + w1 * nrm[b * 3 + 2] + w2 * nrm[c * 3 + 2];
-      const o = py * M + px; cover[o] = 1; mask[o] = isKit(P(0), P(1), P(2), nz) ? 255 : 0; region[o] = regionOf(P(0), P(1), P(2)); rpos.set([P(0), P(1), P(2)], o * 3);
+      const o = py * M + px; cover[o] = 1; mask[o] = isKit(P(0), P(1), P(2), nz) ? 255 : 0; region[o] = regionOf(P(0), P(1), P(2)); rpos.set([P(0), P(1), P(2)], o * 3); { const N = k => w0 * nrm[a * 3 + k] + w1 * nrm[b * 3 + k] + w2 * nrm[c * 3 + k], l = Math.hypot(N(0), N(1), N(2)) || 1; rnrm.set([N(0) / l, N(1) / l, N(2) / l], o * 3); }
     }
   }
   for (let pass = 0; pass < 6; pass++) {  // dilate into uncovered texels
     const nc = cover.slice(), nm = mask.slice(), nr = region.slice();
     for (let y = 0; y < M; y++) for (let x = 0; x < M; x++) { const o = y * M + x; if (cover[o]) continue;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= M || Y >= M) continue; const q = Y * M + X; if (cover[q]) { nc[o] = 1; nm[o] = mask[q]; nr[o] = region[q]; rpos.set(rpos.subarray(q * 3, q * 3 + 3), o * 3); break; } } }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= M || Y >= M) continue; const q = Y * M + X; if (cover[q]) { nc[o] = 1; nm[o] = mask[q]; nr[o] = region[q]; rpos.set(rpos.subarray(q * 3, q * 3 + 3), o * 3); rnrm.set(rnrm.subarray(q * 3, q * 3 + 3), o * 3); break; } } }
     cover.set(nc); mask.set(nm); region.set(nr);
   }
 }
 const maskRgb = Buffer.alloc(M * M * 3);
 for (let o = 0; o < M * M; o++) { maskRgb[o * 3] = region[o] ? 0 : mask[o]; maskRgb[o * 3 + 1] = region[o] ? 255 : 0; }
+// Job 4: ambient occlusion (rays to 25 cm) and cavity (rays to 3 cm) baked from the full-resolution mesh at 1024 and
+// carried at 2048: AO into the packed map's R (three's aoMap: it darkens the probe's diffuse and the specular), cavity
+// into the mask's B (multiplied into the albedo). Folds, strap edges, pouch gaps, under the arms, between the legs.
+const AO = new Uint8Array(M * M).fill(255), CAV = new Uint8Array(M * M).fill(255);
+if (process.env.FULL === '1') {
+  const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(m.pos, 3)); bg.setIndex(new THREE.BufferAttribute(m.idx, 1));
+  const bvh = new MeshBVH(bg), ray = new THREE.Ray(), H = M / 2, RAYS = 24, ao1 = new Float32Array(H * H).fill(1), cv1 = new Float32Array(H * H).fill(1);
+  // Fixed cosine-weighted directions about +Z (a Fibonacci spiral), turned onto each normal.
+  const dirs = Array.from({ length: RAYS }, (_, k) => { const u = (k + 0.5) / RAYS, phi = k * 2.399963, r = Math.sqrt(u); return new THREE.Vector3(r * Math.cos(phi), r * Math.sin(phi), Math.sqrt(1 - u)); });
+  const q = new THREE.Quaternion(), Z = new THREE.Vector3(0, 0, 1), n = new THREE.Vector3(), d = new THREE.Vector3(), t0 = Date.now();
+  for (let y = 0; y < H; y++) for (let x = 0; x < H; x++) {
+    const o = (y * 2) * M + x * 2; if (!cover[o]) continue;
+    n.fromArray(rnrm, o * 3); q.setFromUnitVectors(Z, n);
+    let occ = 0, cav = 0;
+    for (const v of dirs) {
+      d.copy(v).applyQuaternion(q); ray.origin.fromArray(rpos, o * 3).addScaledVector(n, 0.003); ray.direction.copy(d);
+      const hit = bvh.raycastFirst(ray, THREE.DoubleSide, 0, 0.25);
+      if (hit) { occ += 1 - hit.distance / 0.25; if (hit.distance < 0.03) cav++; }
+    }
+    ao1[y * H + x] = 1 - occ / RAYS; cv1[y * H + x] = 1 - cav / RAYS;
+  }
+  for (let o = 0; o < M * M; o++) { const y = (o / M | 0) >> 1, x = (o % M) >> 1; AO[o] = Math.round(Math.max(0.15, ao1[y * H + x]) * 255); CAV[o] = Math.round(Math.max(0.2, cv1[y * H + x]) * 255); maskRgb[o * 3 + 2] = CAV[o]; }
+  let s0 = 0, s1 = 0, nn = 0; for (let i = 0; i < H * H; i++) if (cover[((i / H | 0) * 2) * M + (i % H) * 2]) { s0 += ao1[i]; s1 += cv1[i]; nn++; }
+  console.log('baked AO/cavity', nn, 'texels in', ((Date.now() - t0) / 1000).toFixed(0), 's; mean AO', (s0 / nn).toFixed(3), 'mean cavity', (s1 / nn).toFixed(3));
+}
 // R = kit, G = keep (balaclava, eyes and gloves keep their own colour in every squad).
 const maskPng = await sharp(maskRgb, { raw: { width: M, height: M, channels: 3 } }).blur(1.2).png().toBuffer();
 // Repaint (job 3): at 2048, from the 4096 sources.
@@ -170,6 +197,7 @@ if (FULL) {
     }
   }
   console.log('repainted texels: balaclava', head, 'glove', glove);
+  for (let o = 0; o < M * M; o++) am[o * 3] = AO[o];
   const png = d => sharp(d, { raw: { width: M, height: M, channels: 3 } }).png().toBuffer();
   [baseImgOut, norImgOut, armPngOut] = await Promise.all([png(bc), png(nr), png(am)]);
   await writeFile(path.join(scratch, 'diff-repainted.png'), baseImgOut);
