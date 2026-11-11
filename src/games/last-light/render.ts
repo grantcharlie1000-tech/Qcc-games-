@@ -4,7 +4,7 @@ import {clearDuration,departurePose,departureVisibility} from './departure';
 import {DeathAnimation} from './death-art';
 import {drawArchitecture} from './architecture';
 import {drawCrumblingHazard} from './crumble-art';
-import {drawEmitter,drawSpikes} from './hazard-art';
+import {drawCresting,drawEmitter,drawSpikes} from './hazard-art';
 import {LEVELS,WORLDS,type Level} from './levels';
 import {platformAt,hazardAt,hazardActive,hazardWarning,hazardFade,surfaceBelow,PLAYER_H,checkpointsFor,checkpointIndexFor,stationAt,type Events,type Run} from './model';
 import {characterColor,rescueNameFor} from './story';
@@ -184,7 +184,7 @@ export class Scene {
    const support=hazard.platform===undefined?undefined:s.crumbles[hazard.platform];
    if(support!==undefined&&support<=0){drawCrumblingHazard(c,hazard,support,reduced,r);continue;}
    if(hazard.kind==='crusher'){drawPress(c,hazard,s,reduced);
-   }else if(hazard.kind==='spikes'){drawSpikes(c,r);
+   }else if(hazard.kind==='spikes'){if(l.id===0)drawCresting(c,r,hazard.x);else drawSpikes(c,r);
    }else if(hazard.kind==='saw'){drawGear(c,r.x+r.w/2,r.y+r.h/2,12,hazardActive(hazard,s)?t*4:0,hazardActive(hazard,s)?'#d3b8b3':'#586c71');}
    else{
     const on=hazardActive(hazard,s),stopped=hazard.disabledBy!==undefined&&s.activated.includes(hazard.disabledBy),warning=hazardWarning(hazard,s);

@@ -1,6 +1,6 @@
 import {box,hash,stroke,type C,type Work} from '../quarter-kit';
 import {ASHLAR,BOARD_BROWN,BOARD_GREY,BOARD_PITCH,BOARD_TAR,CLAY,COOL,CURTAINS,FONT,GREY,INK,IRON,IRON_LIT,LEAD,LIME,OCHRE,PALE,PLUM,RED,RUBBLE,RUSTIC,SAND,SLATE_BLUE,SLATE_GREEN,SLATE_PURPLE,SOOT,SQUARED,STONE_SLATE,TILE,TIMBER,WARM,
- archRing,band,barrel,board,coping,door,gutter,hoop,ladder,laps,lintel,pantiles,pipe,pitch,planks,quoins,renderAt,returnFace,roofBehind,shape,sill,soldiers,stain,step,surround,textW,wallAt,win,type Arch,type Look,type Tri,type Win} from './level-01';
+ archRing,band,barrel,board,coping,door,gutter,hoop,ladder,laps,lintel,pantiles,pipe,pitch,planks,quoins,renderAt,returnFace,ridgeCap,roofBehind,shape,sill,soldiers,stain,step,surround,textW,wallAt,win,type Arch,type Look,type Tri,type Win} from './level-01';
 
 /** Bell Lane's buildings that carry more than one landing. Each is named by
  * the first word of its landings' tags (`inn.lower` belongs to `inn`), and is
@@ -53,7 +53,7 @@ function leadTop(c:C,x:number,y:number,w:number,t:number,s:number){
 function leadSlope(c:C,x:number,y:number,w:number,depth:number,s:number){
  const shown=Math.max(depth,42);
  c.save();c.translate(0,-(shown-4));
- box(c,LEAD[2],x,y,w,shown);box(c,'#3d474f',x,y+2,w,shown-3);box(c,LEAD[1],x,y,w,2);
+ box(c,LEAD[2],x,y,w,shown);box(c,'#3d474f',x,y+2,w,shown-3);box(c,LEAD[0],x,y,w,1);
  for(let px=x+10+Math.floor(hash(s,0,3)*10),i=0;px<x+w-4;i++){box(c,'#55616a',px,y+2,2,shown-3);box(c,'#2a3239',px+2,y+2,1,shown-3);px+=20+Math.floor(hash(s,i,4)*13);}
  box(c,'#2a3239',x,y+Math.round(shown*.56),w,1);
  c.restore();
@@ -63,8 +63,9 @@ function tiled(c:C,x:number,y:number,w:number,depth:number,s:number,pan=false,ri
  const draw=(d:number)=>{
   if(pan)pantiles(c,TILE,'#170f0d','#63433a',s,x,y+5,w,d-9);
   else{box(c,'#170f0d',x,y+5,w,d-9);for(let py=y+5,r=0;py<y+d-4;py+=5,r++)for(let px=x-Math.floor(hash(s,r,62)*7),i=0;px<x+w;px+=7,i++){const a=Math.max(x,px),b=Math.min(x+w,px+7);if(b-a>1)box(c,TILE[Math.floor(hash(s,r,i+3)*4)],a,py,b-a-1,Math.min(4,y+d-4-py));}}
-  box(c,CLAY[0],x,y,w,5);box(c,CLAY[1],x,y,w,2);box(c,'#170f0d',x,y+5,w,1);
-  for(let px=x+7;px<x+w-4;px+=11+Math.floor(hash(s,px,64)*4))box(c,CLAY[2],px,y+2,1,3);
+  if(rise)ridgeCap(c,x,y,w,CLAY,s,'#170f0d');
+  else{box(c,CLAY[0],x,y,w,5);box(c,CLAY[1],x,y,w,2);box(c,'#170f0d',x,y+5,w,1);
+  for(let px=x+7;px<x+w-4;px+=11+Math.floor(hash(s,px,64)*4))box(c,CLAY[2],px,y+2,1,3);}
   gutter(c,x-2,y+d-4,w+4,s);
  };
  if(!rise){draw(depth);return;}
@@ -307,6 +308,8 @@ const market:Building={paint(c,p){
  const a=part(p,'roof',0),b=part(p,'roof',1),la=part(p,'lantern'),s=7672,w=p.w,h=p.h,top=a.y,eave=top+30,arc=h-112,bay=w/5,stone=WARM;
  // Lead to the ridge either side of the lantern, on a stone cornice.
  leadSlope(c,0,top,w,30,s);for(const r of [a,b])box(c,LEAD[1],r.x,r.y,r.w,2);
+ // The frieze under the lead, the whole width of the hall: the lantern stands on this wall, not on a gap.
+ wallAt(c,SAND,s+3,0,top+4,w,eave-top-4);box(c,'#141a21',0,top+4,w,1);
  cornice(c,0,eave,w,stone,'#3b372f',9);
  // The hall over the arcade: a tall light to each bay but the middle one, which has the date the hall was built.
  wallAt(c,SAND,s+1,0,eave+9,w,arc-eave-15);

@@ -102,6 +102,15 @@ export function coping(c:C,x:number,w:number,t:number,k:Tri,s:number){
  box(c,k[0],x,0,w,t);box(c,k[1],x,0,w,2);box(c,k[2],x,t-1,w,1);
  for(let px=x+10+Math.floor(hash(s,0,90)*14),i=0;px<x+w-6;i++){box(c,k[2],px,2,1,t-3);px+=18+Math.floor(hash(s,i,91)*17);}
 }
+/** The ridge of a roof that rises behind the walked edge. It stands in its own
+ * shadow, a mid tone on top and no lit lip: only the gutter the courier walks
+ * carries the moonlit line, so the ridge never reads as a second ledge. */
+export function ridgeCap(c:C,x:number,y:number,w:number,k:Tri,s:number,dark='#141a21'){
+ box(c,k[2],x,y,w,5);box(c,k[0],x,y,w,1);box(c,dark,x,y+5,w,1);
+ for(let px=x+8+Math.floor(hash(s,0,60)*8),i=0;px<x+w-4;i++){box(c,dark,px,y+1,1,4);px+=13+Math.floor(hash(s,i,61)*6);}
+}
+/** A verge up the end of a risen roof, in the same shade as its ridge. */
+export function verge(c:C,x:number,y:number,h:number,k:Tri,right=false){box(c,k[2],x,y,3,h);box(c,right?'#141a21':k[0],right?x+2:x,y,1,h);}
 export function gutter(c:C,x:number,y:number,w:number,s:number){
  box(c,'#0f151b',x,y,w,4);box(c,IRON_LIT,x,y,w,1);box(c,'#232d35',x,y+1,w,1);
  for(let px=x+6+Math.floor(hash(s,0,70)*10),i=0;px<x+w-4;i++){box(c,'#0f151b',px,y+4,2,2);px+=22+Math.floor(hash(s,i,71)*15);}
@@ -125,9 +134,7 @@ export function pitch(c:C,w:number,depth:number,tones:readonly string[],s:number
  const shown=Math.max(depth,42);
  c.save();c.translate(0,-(shown-4));
  slates(c,tones,'#141a21',s,0,5,w,shown-9,row,sw,grow);
- box(c,ridge[0],0,0,w,5);box(c,ridge[1],0,0,w,2);box(c,'#141a21',0,5,w,1);
- for(let px=8+Math.floor(hash(s,0,60)*8),i=0;px<w-4;i++){box(c,ridge[2],px,2,1,3);px+=13+Math.floor(hash(s,i,61)*6);}
- box(c,ridge[0],0,5,3,shown-9);box(c,ridge[1],0,5,1,shown-9);box(c,ridge[2],w-3,5,3,shown-9);box(c,ridge[0],w-3,5,1,shown-9);
+ ridgeCap(c,0,0,w,ridge,s);verge(c,0,5,shown-9,ridge);verge(c,w-3,5,shown-9,ridge,true);
  gutter(c,-2,shown-4,w+4,s);
  c.restore();
 }
@@ -405,7 +412,7 @@ function terraceRoof(c:C,w:number,s:number,kind:number):number{
  if(v<.22){
   c.save();c.translate(0,-(depth-4));
   box(c,'#170f0d',0,5,w,depth-9);for(let py=5,r=0;py<depth-4;py+=5,r++)for(let px=-Math.floor(hash(s,r,62)*7),i=0;px<w;px+=7,i++){const x0=Math.max(0,px),x1=Math.min(w,px+7);if(x1-x0>1)box(c,TILE[Math.floor(hash(s,r,i+3)*4)],x0,py,x1-x0-1,Math.min(4,depth-4-py));}
-  box(c,CLAY[0],0,0,w,5);box(c,CLAY[1],0,0,w,2);box(c,'#170f0d',0,5,w,1);for(let px=7;px<w-4;px+=11+Math.floor(hash(s,px,64)*4))box(c,CLAY[2],px,2,1,3);
+  ridgeCap(c,0,0,w,CLAY,s,'#170f0d');
   gutter(c,-2,depth-4,w+4,s);c.restore();return depth;
  }
  pitch(c,w,depth,v<.4?SLATE_PURPLE:v<.6?SLATE_BLUE:SLATE_GREEN,s,5+Math.floor(hash(s,65,23)*3),7+Math.floor(hash(s,66,23)*5),v<.5?PALE:LEAD);return depth;
@@ -548,9 +555,8 @@ const bakehouse:Paint=(c,w,h,s)=>{
  const eave=36,sign=116,ground=132;
  // Pantiles to a clay ridge, sooted toward the stack on the east gable. The ridge is behind the eave.
  c.save();c.translate(0,-(eave-4));
- pantiles(c,TILE,'#170f0d','#63433a',s,0,5,w,eave-9);box(c,CLAY[0],0,0,w,5);box(c,CLAY[1],0,0,w,2);box(c,'#170f0d',0,5,w,1);
- for(let px=6;px<w-4;px+=12+Math.floor(hash(s,px,1)*4))box(c,CLAY[2],px,2,1,3);
- c.save();c.globalAlpha=.13;for(const k of [84,58,34,16])box(c,'#000',w-k,5,k,eave-9);c.restore();box(c,CLAY[0],0,5,3,eave-9);box(c,CLAY[1],0,5,1,eave-9);gutter(c,-2,eave-4,w+4,s);
+ pantiles(c,TILE,'#170f0d','#63433a',s,0,5,w,eave-9);ridgeCap(c,0,0,w,CLAY,s,'#170f0d');
+ c.save();c.globalAlpha=.13;for(const k of [84,58,34,16])box(c,'#000',w-k,5,k,eave-9);c.restore();verge(c,0,5,eave-9,CLAY);gutter(c,-2,eave-4,w+4,s);
  c.restore();
  // Limewashed brick over the bakery; the brick shows red where the gable takes the stack.
  wallAt(c,LIME,s+1,0,eave,w,sign-eave);wallAt(c,LIME,s+11,0,sign,w,ground-sign);wallAt(c,LIME,s+2,0,ground,w,h-ground-12);wallAt(c,SOOT,s+3,0,h-12,w,12);box(c,LIME.mortar,0,h-13,w,1);
@@ -721,7 +727,7 @@ const chandler:Paint=(c,w,h,s)=>{
  // Old clay tiles to a clay ridge, rising behind the eave board.
  c.save();c.translate(0,-26);
  box(c,'#170f0d',0,5,w,21);for(let py=5,r=0;py<26;py+=5,r++)for(let px=-Math.floor(hash(s,r,1)*7),i=0;px<w;px+=7,i++){const x0=Math.max(0,px),x1=Math.min(w,px+7);if(x1-x0>1&&hash(s,r,i+9)<.975)box(c,TILE[Math.floor(hash(s,r,i+3)*4)],x0,py,x1-x0-1,4);}
- box(c,CLAY[0],0,0,w,5);box(c,CLAY[1],0,0,w,2);box(c,'#170f0d',0,5,w,1);for(let px=5;px<w-4;px+=10+Math.floor(hash(s,px,2)*5))box(c,CLAY[2],px,2,1,3);
+ ridgeCap(c,0,0,w,CLAY,s,'#170f0d');
  box(c,post,-2,26,w+4,4);box(c,lit,-2,26,w+4,1);for(let px=3;px<w;px+=11)box(c,post,px,30,4,3);
  c.restore();
  // Three framed storeys, each framed its own way, each jettied on the bressummer under it.
@@ -787,6 +793,8 @@ const shed:Paint=(c,w,h,s)=>{
 
 const almshouse:Paint=(c,w,h,s)=>{
  const eave=40,fl=[eave,136,232,h],stone=WARM,frame='#2a2824';
+ // The top course runs right up under the gutter, behind the gablets, so nothing under them is open.
+ wallAt(c,SAND,s+71,0,4,w,eave-4);
  pitch(c,w,eave,SLATE_GREEN,s,6,9,[stone[0],'#8f8a7c',stone[2]]);
  for(let f=0;f<3;f++)wallAt(c,SAND,s+f*23,0,fl[f],w,fl[f+1]-fl[f]);
  // Three stone gablets come up through the eaves, a light in each.
@@ -819,9 +827,9 @@ const almshouse:Paint=(c,w,h,s)=>{
  }
  box(c,stone[0],138,h-14,44,3);box(c,stone[1],138,h-14,44,1);for(const px of [141,175])box(c,stone[0],px,h-11,4,11);
  box(c,SAND.shade,0,h-9,w,9);box(c,stone[0],0,h-11,w,2);box(c,stone[1],0,h-11,w,1);
- quoins(c,0,eave,h-11,stone,false,11,14,8);quoins(c,w,eave,h-11,stone,true,11,14,8);
- box(c,INK,0,eave,1,h-eave);box(c,INK,w-1,eave,1,h-eave);
- pipe(c,130,eave,h,s);pipe(c,188,eave,h,s+5);
+ quoins(c,0,6,h-11,stone,false,11,14,8);quoins(c,w,6,h-11,stone,true,11,14,8);
+ box(c,INK,0,4,1,h-4);box(c,INK,w-1,4,1,h-4);
+ pipe(c,130,12,h,s);pipe(c,188,12,h,s+5);
 };
 
 const chapel:Paint=(c,w,h,s)=>{
@@ -829,8 +837,9 @@ const chapel:Paint=(c,w,h,s)=>{
  // Stone slates, rising behind the eave, between the west verge and the east gable.
  c.save();c.translate(0,-(eave-4));
  slates(c,STONE_SLATE,'#14170f',s,0,5,gable,eave-9,5,7,.45,.994);
- box(c,PALE[0],0,0,w,5);box(c,PALE[1],0,0,w,2);box(c,'#12171c',0,5,gable,1);for(let px=9;px<gable-4;px+=15+Math.floor(hash(s,px,1)*6))box(c,PALE[2],px,2,1,3);
- box(c,stone[0],0,5,5,eave-9);box(c,stone[1],0,5,1,eave-9);box(c,stone[2],4,5,1,eave-9);
+ // The ridge stops where the nave's slates stop; the bellcote over the east gable keeps its own top.
+ ridgeCap(c,0,0,gable,PALE,s,'#12171c');
+ box(c,stone[2],0,5,5,eave-9);box(c,stone[0],0,5,1,eave-9);
  // The eaves course on its corbels, and the kneelers of the east gable, on the risen eave.
  box(c,stone[2],-2,eave-4,gable+2,6);box(c,stone[0],-2,eave-4,gable+2,4);box(c,stone[1],-2,eave-4,gable+2,1);for(let px=4;px<gable-6;px+=14){box(c,stone[0],px,eave,6,4);box(c,stone[2],px,eave+4,6,1);}
  c.restore();
