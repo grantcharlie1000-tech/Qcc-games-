@@ -36,7 +36,7 @@ export function ar5Sockets(): WeaponSockets {
   const [gu, gy] = gripPoint(), A = AR5;
   return {
     grip: { p: at(0, gy, gu), r: [-A.grip.rake, 0, 0] },
-    support: { p: at(-4, A.handguard.bottom - 6.5, 400), r: [0, 0, 0] },
+    support: { p: at(-4, A.handguard.bottom - 6.5, 360), r: [0, 0, 0] },
     mag: at(0, A.mag.seat[1], A.mag.seat[0]),
     muzzle: at(0, 0, A.muzzle.u1), eject: at(16, 1, 103),
     handle: at(-16, -20, 93),

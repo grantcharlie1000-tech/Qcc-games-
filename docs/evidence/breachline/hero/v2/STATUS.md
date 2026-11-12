@@ -85,6 +85,23 @@ Owns `models.ts`, `render/hero/`, `scripts/breachline-assets/hero/`, `public/gam
   under the corridor light; the support hand's fingers merge at hip distance; the stock and magazine are plain; no
   markings; the dot is small and dim against bright walls.
 
+## Gate 5, second pass (planner's review of gates 2–5)
+
+Done: compact red dot (26 mm body, 22 mm window, sight line 58 mm over the bore, low riser), coated cool glass and
+matt black inside (the "copper pipe" was the amber lens material); aimed now shows a thin dark ring, clear glass and a
+bright dot on the crosshair. Adjustable stock with a round collar on the tube, raised cheek surface, recessed side
+panels, latch lever, sling slot, position notches on the tube; no pointed forms. Receiver lifted (#676b70) with
+roughness drift; colour drift, handling polish and bottom-edge scuffs on the handguard and magazine. Invented markings
+(MARROW AR-5, CAL 5.56, M5-04217, MRW WORKS, SAFE SEMI AUTO, MRW on the mount). Arm slimmer, squad band toned toward
+the sleeve, cuff hem a clear step; fingers slimmer and spread; the glove a lighter coyote than the handguard.
+New hip hold chosen from `gate5-ar5-holds.jpg`: lower right, less cant, barrel less steeply in; the support grip moved
+back to 360 mm and the left shoulder forward so the hand still reaches (holds further forward left it floating).
+
+Honest read: aimed is now right; the optic no longer dominates the hip view. Still wrong: at the hip the support hand
+shows its back and wrist strap, so it reads as a mitten; with the owner's pose the fingers wrap the far side, out of
+view. Showing four fingers needs a pose change (fingers over the top of the handguard), which is the owner's call.
+The receiver and magazine are still mostly below the frame at the hip; the reload frames show them.
+
 ## Decisions (made without asking; say if wrong)
 
 - New assets go to `hero/ar5/`, not `hero/ar/`: `render/patchhero/` (the `?weapons=patch` switch, not mine) cuts its

@@ -80,7 +80,10 @@ export function holdFor(id: WeaponId): Hold {
       // side, thumb straight along the near side. (Fingers pointing forward along the handguard read as a claw.)
       left: { at: [-0.008, S.support.p[1] + 0.008, S.support.p[2] - 0.03], palm: [0.35, 1, 0], fingers: [0.9, 0.1, -0.42] },
       // The left elbow out and down: the forearm enters from the lower left and runs diagonally to the handguard.
-      shoulderL: [-0.3, -0.37, 0.02], poleL: [-1, -1, 0.3], adsZ: -0.075,
+      shoulderL: [-0.27, -0.36, -0.04], poleL: [-1, -1, 0.3], adsZ: -0.075,
+      // Lower right, barrel only slightly in from straight ahead, little cant: the receiver's left side, the magazine
+      // well and the grip stay in frame (chosen by eye from the holds in hero/v2/gate5-ar5-holds.jpg).
+      hip: { p: [0.12, -0.1, -0.255], r: [0.015, 0.045, -0.13] },
       leftPose: [[0.15, 0.05, 0.1, 0.15], [1.25, 1.2, 0.65, 0.1], [1.3, 1.2, 0.65, 0.02], [1.35, 1.2, 0.65, -0.07], [1.4, 1.2, 0.65, -0.16]],
     }); break;
     case 'smg': h = rifleHold(id, { hip: { p: [0.1, -0.08, -0.22], r: [0.03, 0.02, -0.03] }, adsZ: -0.13 }); break;
