@@ -5,9 +5,8 @@ Owns `models.ts`, `render/hero/`, `scripts/breachline-assets/hero/`, `public/gam
 
 ## Where I am
 
-**AR-5: gates 1–4 done; gate 5 (in the game, old beside new) in progress.** Hands: anatomy rebuilt to the plan
-(gate 3), hands' set rebaked for the new mesh. Next: gate 5 evidence and message to the planner, then the shared kit
-and the Halden 12.
+**AR-5: gates 1–5 done; the baked AR-5 is what players now hold.** Hands: anatomy rebuilt to the plan
+(gate 3), hands' set rebaked for the new mesh. Next: the shared kit (rails, sights, grips, magazines) and the Halden 12.
 
 ## Pipeline (new)
 
@@ -30,7 +29,7 @@ and the Halden 12.
 | 2 Clay, studio and first person | done, sent to the planner | `gate2-ar5-clay-studio.jpg`, `gate2-ar5-clay-firstperson.jpg` |
 | 3 Hand and arm clay | done | `gate3-hands-clay.jpg` |
 | 4 Baked and textured, moving light | done | `gate4-ar5-textured-studio.jpg`, `gate4-ar5-moving-light.jpg`, `gate4-ar5-atlas.jpg` |
-| 5 In the game, old beside new | | |
+| 5 In the game, old beside new | done, sent to the planner | `gate5-ar5-{corridor,lab}-hip-aimed.jpg`, `gate5-ar5-{corridor,lab}-reload.jpg`, `gate5-ar5-reload-crops-2x.jpg` |
 
 ## Honest read at gate 2
 
@@ -73,6 +72,19 @@ and the Halden 12.
   the receiver is still very dark under the studio light; the stock is plain; the magazine and handguard colour is
   flat between edges (little mid-frequency variation); no markings yet.
 
+## Gate 5: in the game
+
+- Old (left, `?heroold`) beside new (right) in the corridor and the Lab, hip and aimed with 2× crops, and four reload
+  frames each. Captures draw 24 frames before each shot: the viewmodel's springs only move on drawn frames, so the
+  earlier 0.6 s aim frames showed a weapon still on its way up (that, not the sight, was the off-centre window).
+- Aimed: the window is centred and the red dot sits on the true crosshair (measured: dot at camera (0, 0, -0.23)).
+  The dot's chart is now large in the atlas: at 2 texels ETC1S averaged it away.
+- Spent cases are back in the mesh (three brass cases on the case bones), excluded from the occlusion bake.
+- Honest read (row E): about 6 against the owner's scale. Better than r6: slim, crisp edges with a moving gleam,
+  real parts, a sight you look through. Still wrong: the optic still dominates the hip view; the receiver is dark
+  under the corridor light; the support hand's fingers merge at hip distance; the stock and magazine are plain; no
+  markings; the dot is small and dim against bright walls.
+
 ## Decisions (made without asking; say if wrong)
 
 - New assets go to `hero/ar5/`, not `hero/ar/`: `render/patchhero/` (the `?weapons=patch` switch, not mine) cuts its
@@ -84,6 +96,9 @@ and the Halden 12.
   in the magazine well).
 
 ## Tests
+
+Gate 5 push: `npx tsc --noEmit` clean; `npx vitest run tests/games/breachline` 121 passed (the fighters' frame-time test
+fails only while a browser capture loads the machine); Breachline browser tests 8/8 passed with the baked AR-5 in hand.
 
 Gate 2 push: `npx tsc --noEmit` clean; `npx vitest run tests/games/breachline` 116 passed; Breachline browser tests
 (`play.spec.ts`, `warm.spec.ts`) 8/8 passed. Players still see the old rifle: the AR-5's new texture set does not exist
