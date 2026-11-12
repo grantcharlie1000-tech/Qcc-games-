@@ -23,7 +23,8 @@ import { newWorld } from '../../src/games/breachline/map';
 import { OUTDOOR, PAD, REGIONS, collectFaces, normalOf, packAtlas, pointOn, texelST, type Atlas, type Chart } from '../../src/games/breachline/render/levelgeo';
 import { FIXTURE_Y, bakeLights } from '../../src/games/breachline/render/fixtures';
 import { SKY, SUN, SUN_COLOR } from '../../src/games/breachline/lightbake';
-import { PROPS, propKey } from '../../src/games/breachline/render/props';
+import { PROPS, intactProp, propKey } from '../../src/games/breachline/render/props';
+import { SET_PIECES } from '../../src/games/breachline/render/setpieces-data';
 import { DEFAULT_ALBEDO, PROCEDURAL_ALBEDO, SURFACES } from '../../src/games/breachline/render/surfaces';
 import type { TexId } from '../../src/games/breachline/textures';
 import { PANEL_T, panelPoint } from '../../src/games/breachline/world';
@@ -106,7 +107,7 @@ function addBox(x0: number, y0: number, z0: number, x1: number, y1: number, z1: 
 }
 
 /** Triangles of a binary glTF with every node transform applied, then the placement. */
-async function glbTriangles(file: string, place: THREE.Matrix4): Promise<V3[][]> {
+export async function glbTriangles(file: string, place: THREE.Matrix4): Promise<V3[][]> {
   const buf = await readFile(file);
   const jlen = buf.readUInt32LE(12), json = JSON.parse(buf.subarray(20, 20 + jlen).toString('utf8'));
   const bin = buf.subarray(20 + jlen + 8);
@@ -135,8 +136,8 @@ async function glbTriangles(file: string, place: THREE.Matrix4): Promise<V3[][]>
   for (const r of json.scenes[json.scene ?? 0].nodes) visit(r, place);
   return out;
 }
-export const placementMatrix = (p: { x: number; y: number; z: number; yaw: number; scale?: number }) =>
-  new THREE.Matrix4().compose(new THREE.Vector3(p.x, p.y, p.z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.yaw), new THREE.Vector3().setScalar(p.scale ?? 1));
+export const placementMatrix = (p: { x: number; y: number; z: number; yaw: number; scale?: number; tilt?: number }) =>
+  new THREE.Matrix4().compose(new THREE.Vector3(p.x, p.y, p.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, p.yaw, p.tilt ?? 0, 'YXZ')), new THREE.Vector3().setScalar(p.scale ?? 1));
 
 // ---- ray casting ----
 let bvh: MeshBVH, index: THREE.BufferAttribute;
@@ -227,13 +228,16 @@ async function main() {
   for (const pl of PROPS) {
     let top = pl.y;
     const file = join(OUT, 'models', `${pl.model}.glb`), albedo = await averageAlbedo(join(HERE, '.cache', pl.model, 'textures', (await readFile(join(HERE, '.cache', pl.model, `${pl.model}.gltf`), 'utf8')).match(/textures\/([^"]*diff[^"]*)"/)![1]));
+    // A set piece's wrecked-state models are not there while it is intact: no occluder, but still a probe.
     for (const [a, b, c] of await glbTriangles(file, placementMatrix(pl))) {
       top = Math.max(top, a[1], b[1], c[1]);
+      if (!intactProp(pl)) continue;
       const e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], e2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
       const n: V3 = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]], l = Math.hypot(...n) || 1;
       addTri(a, b, c, { albedo, n: [n[0] / l, n[1] / l, n[2] / l], chart: -1, region: -1 });
     }
-    propProbeY.push(Math.max(pl.y + 0.4, top + 0.12));
+    // A set piece's models stack (a crate on crates): their probes all sit above the piece, outside every model in it.
+    propProbeY.push(Math.max(pl.y + 0.4, top + 0.12, pl.piece !== undefined ? SET_PIECES[pl.piece].y1 + 0.15 : 0));
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -455,4 +459,4 @@ function dilate(atlas: Atlas, f: Float32Array, valid: Uint8Array, W: number) {
   }
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+if (!process.env.BAKE_AS_LIBRARY) main().catch(e => { console.error(e); process.exit(1); });

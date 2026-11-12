@@ -30,7 +30,14 @@ const KEY_MAT: Record<string, string> = {
 const PROP_MAT: Record<string, string> = {
   covered_car: 'fabric', barrel_03: 'metal', metal_jerrycan_green: 'metal', wooden_military_crate: 'wood', old_military_crate: 'wood',
   metal_tool_chest: 'metal', korean_fire_extinguisher_01: 'metal', metal_stool_01: 'metal', security_camera_01: 'plastic',
+  sofa_02: 'fabric', worn_metal_rack: 'metal', wooden_crate_02: 'wood', Barrel_02: 'metal', concrete_road_barrier_02: 'concrete',
+  compost_bags: 'plastic', cement_bag: 'cardboard', trashbag: 'plastic', cardboard_box_01: 'cardboard',
 };
+/** Materials of the set pieces drawn in code, by family. */
+const FAMILY_MAT: Record<string, string> = {
+  sofa: 'fabric', trailer: 'fabric', lowtable: 'wood', crates: 'wood', pallets: 'wood', binstore: 'wood', lowwall: 'concrete', planter: 'concrete', materials: 'wood',
+};
+export const familyMaterial = (family: string) => FAMILY_MAT[family] ?? 'metal';
 export const dressMaterial = (key: string) => KEY_MAT[key] ?? 'plastic';
 export const propMaterial = (model: string) => PROP_MAT[model] ?? 'plastic';
 type Proxy = { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; key: string };

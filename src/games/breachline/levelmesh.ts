@@ -7,6 +7,7 @@ import { MAP, type FloorMat } from './map';
 import { TILE, type TexId } from './textures';
 import { PANEL_T, panelPoint, type Box, type Panel } from './world';
 import { replaced } from './render/props';
+import { isSetPiece } from './render/setpieces-data';
 
 class Batch {
   pos: number[] = []; uv: number[] = []; col: number[] = []; idx: number[] = [];
@@ -199,7 +200,8 @@ export function buildLevel(bake: Bake, materials: Record<TexId, THREE.Material>,
 }
 
 /** Every static surface of the level, as calls on a builder. Shared by the browser and the offline light baker.
- * `art`: for the art layer, which leaves out boxes a modelled prop replaces (render/props.ts). */
+ * `art`: for the art layer, which leaves out boxes a modelled prop or set piece replaces (render/props.ts,
+ * render/setpieces.ts). */
 export function emitLevel(L: LevelBuilder, art = false) {
   const B = MAP.building;
   // Ground, then grass and room floors a hair above it.
@@ -215,7 +217,7 @@ export function emitLevel(L: LevelBuilder, art = false) {
   for (const r of MAP.rooms.slice(0, 8)) L.face('ceiling', r.x0, WALL_H, r.z0, 1, 0, 0, r.x1 - r.x0, 0, 0, 1, r.z1 - r.z0, WHITE, 'world', 0.75);
   for (const l of MAP.lamps) L.face('lamp', l.x - 0.6, WALL_H - 0.015, l.z - 0.3, 1, 0, 0, 1.2, 0, 0, 1, 0.6, WHITE, 'fit', 9, [l.color[0] * 2.6, l.color[1] * 2.6, l.color[2] * 2.6]);
   L.face('roof', B.x0, WALL_H + 0.3, B.z1, 1, 0, 0, B.x1 - B.x0, 0, 0, -1, B.z1 - B.z0, WHITE, 'world', 3);
-  MAP.boxes.forEach((b, n) => { if (b.draw && !(art && replaced(b.x0, b.z0, b.x1, b.z1))) prop(L, b, n); });
+  MAP.boxes.forEach((b, n) => { if (b.draw && !(art && (replaced(b.x0, b.z0, b.x1, b.z1) || isSetPiece(b)))) prop(L, b, n); });
   // Frames around every doorway and window.
   for (const p of MAP.panels) {
     if (p.kind === 'wall') continue;

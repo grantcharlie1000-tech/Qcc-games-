@@ -1,9 +1,13 @@
+import { PIECE_PROPS } from './setpiecemodels';
 /** Where modelled props stand. Pure data shared by the baker (props are occluders in the bake) and the browser.
  * Props here have no collision, so none is placed where it could be mistaken for cover: they sit on existing
  * collision boxes, against walls, or are too small and open to hide behind. */
 /** `replaces`: the model stands in for the collision box under it, so the art layer leaves that box's own faces out
  * (the procedural level still draws them wherever the art is not loaded). */
-export interface Placement { model: string; x: number; y: number; z: number; yaw: number; scale?: number; replaces?: true }
+/** `piece`, `states`: part of set piece SET_PIECES[piece], drawn only in those damage states (default all three);
+ * the baker takes only placements present when intact as occluders. `tilt`: a turn about the model's own z axis,
+ * before its yaw (a drum on its side). */
+export interface Placement { model: string; x: number; y: number; z: number; yaw: number; scale?: number; replaces?: true; piece?: number; states?: number[]; tilt?: number }
 
 export const PROPS: Placement[] = [
   // Lab: a tool chest on the west bench, an extinguisher by the north wall, stools along the benches.
@@ -20,7 +24,11 @@ export const PROPS: Placement[] = [
   { model: 'security_camera_01', x: 15.0, y: 2.45, z: 0.85, yaw: Math.PI },
   // Server Room: an extinguisher by the east wall.
   { model: 'korean_fire_extinguisher_01', x: 14.68, y: 0, z: -6.9, yaw: -Math.PI / 2 },
-  // Lobby: an extinguisher by the entrance.
+  // Lobby: an extinguisher by the entrance; two sofas facing across the low table (scaled into their boxes; their damage is
+  // drawn by render/setpieces.ts). Break Room: a sofa against the west wall.
+  { model: 'sofa_02', x: -9.215, y: 0, z: 3.3, yaw: Math.PI / 2, scale: 0.862, replaces: true },
+  { model: 'sofa_02', x: -7.795, y: 0, z: 3.3, yaw: -Math.PI / 2, scale: 1.108, replaces: true },
+  { model: 'sofa_02', x: 8.768, y: 0, z: 3.0, yaw: Math.PI / 2, scale: 1.046, replaces: true },
   { model: 'korean_fire_extinguisher_01', x: -13.0, y: 0, z: 9.7, yaw: Math.PI },
   // Garage: a covered car (collision cut to the model), a tool chest on the bench, drums by the corner crate with the
   // military crate on it, jerrycans by the wall and on the stacked crates.
@@ -61,7 +69,11 @@ export const PROPS: Placement[] = [
   { model: 'barrel_03', x: -17.35, y: 0, z: 21.6, yaw: 1.9 },
   { model: 'barrel_03', x: -17.75, y: 0, z: 20.95, yaw: 4.2 },
   { model: 'barrel_03', x: 24.0, y: 0, z: 21.55, yaw: 0.8 },
+  // Set pieces made of models (render/setpiecemodels.ts).
+  ...PIECE_PROPS,
 ];
+/** Whether a placement is drawn when its set piece is intact (and so blocks light in the bake). */
+export const intactProp = (p: Placement) => !p.states || p.states.includes(0);
 /** A placement's identity in baked data (bakes store each prop's light probe under this key). */
 export const propKey = (p: Placement) => `${p.model}@${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}`;
 /** Whether a model stands in for the collision box with this footprint. */

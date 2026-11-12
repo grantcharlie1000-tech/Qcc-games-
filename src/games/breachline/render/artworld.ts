@@ -35,9 +35,11 @@ export interface ArtWorld {
   captureNext(renderer: THREE.WebGLRenderer, scene: THREE.Scene): boolean;
   /** Hides each room's small dressing while the camera is more than DRESS_RANGE metres from the room (draw calls). */
   cull(eye: THREE.Vector3): void;
+  /** Shows the models of set piece `piece` that belong to damage state `state` (render/setpiecemodels.ts). */
+  pieceState(piece: number, state: number): void;
   /** What a round can mark on its way through (no collision: rounds pass): each dressing piece's box and material key,
    * and each modelled prop with its bounds (render/surfacehit.ts names their materials). */
-  markables: { dress: { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; key: string }[]; props: { box: THREE.Box3; object: THREE.Object3D; model: string }[] };
+  markables: { dress: { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; key: string }[]; props: { box: THREE.Box3; object: THREE.Object3D; model: string; piece?: number }[] };
   /** Compiles every shader the art needs (in parallel where the browser can), so its first frame does not stall. */
   warm(renderer: THREE.WebGLRenderer, camera: THREE.Camera, scene: THREE.Scene, samples: number): Promise<void>;
   stats: { triangles: number; meshes: number; textureBytes: number };
@@ -86,6 +88,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   };
   const boxes: (DetailBuilder['boxes'][number] & { room: number })[] = [];
   const markables: ArtWorld['markables'] = { dress: [], props: [] };
+  const pieceProps = new Map<number, { object: THREE.Object3D; states: number[] }[]>();
   const models = new Map<string, ReturnType<ArtLoader['model']>>();
   const lods = new Map<string, ReturnType<ArtLoader['model']>>();
   for (const p of PROPS) if (!models.has(p.model)) { models.set(p.model, L.model(p.model)); lods.set(p.model, L.model(`${p.model}.lod1`)); }
@@ -146,7 +149,9 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       const plain = (color: [number, number, number], roughness: number, metalness: number) => ({ map: null, normalMap: null, armMap: null, color: new THREE.Color(...color), roughness, metalness });
       const looks: Record<DressKey, Parameters<typeof artMaterial>[0]> = {
         door: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(1.55, 1.62, 1.7), roughness: 0.55, metalness: 1, spec: 1.4 },
-        locker: { map: pm, normalMap: pn, armMap: pa, color: new THREE.Color(0.52, 0.58, 0.52), roughness: 0.4, metalness: 1, spec: 1.4 },
+        // Painted sheet steel: the plate set's seams, scuffs and edge wear under a grey-green tint (the plaster set,
+        // used before, read as chalk).
+        locker: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(3.6, 3.5, 2.9), roughness: 0.45, metalness: 0, spec: 1.5 },
         trim: { map: pm, normalMap: pn, armMap: pa, color: new THREE.Color(0.3, 0.36, 0.44), roughness: 0.7, metalness: 1 },
         casing: { map: pm, normalMap: pn, armMap: pa, color: new THREE.Color(0.95, 0.93, 0.88), roughness: 0.55, metalness: 1, spec: 1.2 },
         handle: plain([0.72, 0.72, 0.7], 0.32, 1), chrome: plain([0.92, 0.92, 0.92], 0.07, 1), steel: plain([0.66, 0.67, 0.68], 0.28, 1),
@@ -230,8 +235,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   /** Near: the full model within LOD_NEAR metres; far (and always on the throttled tier): the simplified one. */
   const LOD_NEAR = 5;
   /** Colour lifts per model: the covered car's scan is a near-black cover, lifted to a dark grey-green tarpaulin so
-   * its folds read in daylight. */
-  const PROP_TINT: Record<string, THREE.Color> = { covered_car: new THREE.Color(2.2, 2.7, 2.5) };
+   * its folds read in daylight; the sofa's near-black leather is lifted so its buttoning reads. */
+  const PROP_TINT: Record<string, THREE.Color> = { covered_car: new THREE.Color(2.2, 2.7, 2.5), sofa_02: new THREE.Color(2.3, 2.15, 2.0) };
   for (const [i, p] of PROPS.entries()) {
     const room = roomAt(p.x, p.z);
     if (room < 0 || !loaded[room]) continue;
@@ -255,10 +260,11 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     }
     // Past a range set by its size the prop is not drawn at all: small kit at 22 m, a car or a crate at 45 m.
     { const r = new THREE.Box3().setFromObject(levels[levels.length - 1][0]).getBoundingSphere(new THREE.Sphere()).radius * (p.scale ?? 1); lod.addLevel(new THREE.Object3D(), r < 0.8 ? 22 : 45); }
-    lod.position.set(p.x, p.y, p.z); lod.rotation.y = p.yaw; lod.scale.setScalar(p.scale ?? 1);
+    lod.position.set(p.x, p.y, p.z); lod.rotation.set(0, p.yaw, p.tilt ?? 0, 'YXZ'); lod.scale.setScalar(p.scale ?? 1);
+    if (p.piece !== undefined && p.states) { const list = pieceProps.get(p.piece) ?? []; list.push({ object: lod, states: p.states }); pieceProps.set(p.piece, list); lod.visible = p.states.includes(0); }
     group.add(lod);
     lod.updateMatrixWorld(true);
-    markables.props.push({ box: new THREE.Box3().setFromObject(lod), object: lod, model: p.model });
+    markables.props.push({ box: new THREE.Box3().setFromObject(lod), object: lod, model: p.model, piece: p.piece });
   }
   // Archive boxes: one instanced body (CC0 cardboard, ambientCG Cardboard004) and one instanced label mesh per label
   // variant. Lit by a flat probe at the room's mean light, a little darker than the open room (they sit in shelving).
@@ -308,6 +314,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     environmentScale(x, z) { const r = roomAt(x, z); return r >= 0 && rooms[r].env ? 1 / Math.max(0.05, rooms[r].envLight) : 1; },
     environment(x, z) { const r = roomAt(x, z); return r >= 0 ? rooms[r].env?.texture ?? null : null; },
     markables,
+    pieceState(piece, state) { for (const e of pieceProps.get(piece) ?? []) e.object.visible = e.states.includes(state); },
     cull(eye) {
       for (const d of dressing) {
         const dx = Math.max(d.x0 - eye.x, 0, eye.x - d.x1), dz = Math.max(d.z0 - eye.z, 0, eye.z - d.z1), show = dx * dx + dz * dz <= DRESS_RANGE * DRESS_RANGE;

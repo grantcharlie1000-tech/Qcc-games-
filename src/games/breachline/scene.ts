@@ -9,7 +9,9 @@ import { MAP } from './map';
 import { loadArtWorld, type ArtWorld } from './render/artworld';
 import { PanelBatches } from './render/panelbatch';
 import { Glass } from './render/glass';
-import { MARKS, dressMaterial, firstDressing, propMaterial, surfaceAt } from './render/surfacehit';
+import { SetPieces } from './render/setpieces';
+import { SET_PIECES } from './render/setpieces-data';
+import { MARKS, dressMaterial, familyMaterial, firstDressing, propMaterial, surfaceAt } from './render/surfacehit';
 import { boxes } from './models';
 import { chargeGeometry, deviceGeometry, deviceScreenTexture } from './render/kit';
 import { createPatchFighters } from './render/patchfighters/index';
@@ -85,7 +87,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const artScene = new THREE.Scene();
   if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blScenes: { scene, artScene, camera: () => camera } });
   artScene.fog = scene.fog;
-  let art: ArtWorld | null = null, disposed = false, probesDone = true;
+  let art: ArtWorld | null = null, disposed = false, probesDone = true, pieces: SetPieces | null = null;
   const fxFast = typeof location !== 'undefined' && /artdbg=[^&]*fxfast/.test(location.search);
   const panelMats: PanelMaterials = { wall: materials.drywall, core: materials.core, planks: materials.planks, plate: materials.plate };
   const panelGroup = new THREE.Group(); scene.add(panelGroup);
@@ -125,6 +127,10 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       level = buildLevel(bake, materials, a.claim);
       scene.add(level.group);
       artScene.add(a.group);
+      pieces = new SetPieces(fx, (x, z) => { const l = bake.probe(x, z); return [0.18 + l[0] * 1.9, 0.18 + l[1] * 1.9, 0.18 + l[2] * 1.9]; });
+      scene.add(pieces.mesh);
+      pieces.onState = (i, s) => a.pieceState(i, s);
+      if (/artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blPieces: pieces, __blPieceView: SetPieces.view, __blPieceDefs: SET_PIECES });
       if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: integrate ${(performance.now() - tI).toFixed(0)} ms`);
       probesDone = false;
       stats.level = level.triangles + a.stats.triangles;
@@ -262,6 +268,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const fx = new Effects();
   // Window panes outside the barricaded windows (render/glass.ts): cosmetic, from the shot and blast events.
   const glass = new Glass(fx); scene.add(glass.group);
+  // The map-fill set pieces (render/setpieces.ts): modelled in three damage states, from the shot and blast events.
+  // They join with the art layer, which leaves their placeholder boxes out.
   fx.density = QUALITIES[quality].density;
   scene.add(fx.group);
 
@@ -491,14 +499,15 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       if (!bloodOff && Math.abs(hit.ny) < 0.5 && sy > 0.6) fx.hole(sx, sy - size * 0.55, sz, hit.nx, hit.ny, hit.nz, size * 0.7, hit.tag, MARK.drip, [1, 1, 1], [0.8, 1.4], true);
     }
   }
+  /** Pools waiting for their body to settle. */
+  const pendingPools: { id: number; wait: number; m: Match }[] = [];
   /** A pool spreading under a fallen fighter, shaped by what is round it (short traces stop it at walls and furniture). */
   function pool(m: Match, x: number, z: number) {
     const reach = (ux: number, uz: number) => { const t = trace(m.world, x, 0.06, z, ux, 0, uz, 0.9); return t.solid ? Math.max(0.15, t.t - 0.05) : 0.9; };
     const rx = Math.min(reach(1, 0), reach(-1, 0), 0.9) * (0.85 + Math.random() * 0.2), rz = Math.min(reach(0, 1), reach(0, -1), 0.9) * (0.85 + Math.random() * 0.2);
     let floorY = 0.024;
     for (const f of MAP.floors) if (x >= f.x0 && x <= f.x1 && z >= f.z0 && z <= f.z1) floorY = f === MAP.floors[0] ? 0.006 : f.mat === 'grass' ? 0.018 : 0.026;
-    // It starts spreading once the body is down (about a second after the kill).
-    fx.pool(x, floorY, z, rx, rz, 5, bloodOff ? MARK.scuff : MARK.pool, [1, 1, 1], 1);
+    fx.pool(x, floorY, z, rx, rz, 5, bloodOff ? MARK.scuff : MARK.pool, [1, 1, 1], 0);
   }
   const ray = new THREE.Raycaster(), rayO = new THREE.Vector3(), rayD = new THREE.Vector3(), rayHit = new THREE.Vector3(), nrm = new THREE.Vector3();
   function passThrough(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, tmax: number) {
@@ -516,6 +525,23 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     if (!best) return;
     const x = ox + dx * best.t + best.nx * 0.004, y = oy + dy * best.t + best.ny * 0.004, z = oz + dz * best.t + best.nz * 0.004;
     impact(x, y, z, best.nx, best.ny, best.nz, kind as keyof typeof DUST, true);
+  }
+  /** Marks the first visible surface of set piece `i` along the ray, from where it meets the piece's box onwards. */
+  function pieceSurface(i: number, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, t0: number) {
+    const a = art!;
+    rayO.set(ox, oy, oz); rayD.set(dx, dy, dz); ray.set(rayO, rayD); ray.near = Math.max(0.05, t0 - 0.1); ray.far = t0 + 3.5;
+    let best: { t: number; n: THREE.Vector3; kind: string } | null = null;
+    const take = (hit: THREE.Intersection | undefined, kind: string) => {
+      if (!hit || (best && hit.distance >= best.t)) return;
+      const n = (hit.face?.normal ?? rayD.clone().negate()).clone().transformDirection(hit.object.matrixWorld);
+      if (n.dot(rayD) > 0) n.negate();
+      best = { t: hit.distance, n, kind };
+    };
+    for (const p of a.markables.props) if (p.piece === i && p.object.visible && ray.ray.intersectBox(p.box, rayHit)) take(ray.intersectObject(p.object, true)[0], propMaterial(p.model));
+    if (pieces) take(ray.intersectObject(pieces.mesh, false).find(h => (h as THREE.Intersection & { batchId?: number }).batchId === i), familyMaterial(SET_PIECES[i].family));
+    const b = best as { t: number; n: THREE.Vector3; kind: string } | null;
+    if (!b) return;
+    impact(ox + dx * b.t + b.n.x * 0.004, oy + dy * b.t + b.n.y * 0.004, oz + dz * b.t + b.n.z * 0.004, b.n.x, b.n.y, b.n.z, b.kind as keyof typeof DUST, true);
   }
   function impact(x: number, y: number, z: number, nx: number, ny: number, nz: number, kind: keyof typeof DUST, hard: boolean) {
     const c = DUST[kind], l = bake.probe(x, z), b = 0.35 + (l[0] + l[1] + l[2]) / 3;
@@ -561,6 +587,13 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
               if (art) passThrough(e.x, e.y, e.z, d.x, d.y, d.z, tr.solid ? tr.t : 120);
               glass.shot(e.x, e.y, e.z, d.x, d.y, d.z, tr.solid ? tr.t : 120);
               if (!tr.solid) return;
+              const piece = pieces ? pieces.indexOf(tr.box ?? null) : -1;
+              if (piece >= 0) {
+                // A set piece: the round stops at its box, but the mark goes on the model surface the shooter sees.
+                pieces!.hit(piece);
+                pieceSurface(piece, e.x, e.y, e.z, d.x, d.y, d.z, tr.t);
+                return;
+              }
               const mat = tr.panel ? 'metal' : surfaceAt(tr.box ?? null, hx, hy, hz, tr.ny);
               // The simulation stops a round at a reinforced panel's centre plane; the steel face the shooter sees is
               // in front of that (plate half-thickness plus its folds).
@@ -595,7 +628,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
           case 'boom': {
             lastOrigin = { x: e.x, y: e.y, z: e.z };
             const power = e.kind === 'impact' ? 0.7 : e.kind === 'charge' ? 1.1 : 1.25, l = bake.probe(e.x, e.z);
-            glass.blast(e.x, e.y, e.z);
+            glass.blast(e.x, e.y, e.z); pieces?.blast(e.x, e.y, e.z, power);
             fx.blast(e.x, e.y, e.z, power, l, e.kind === 'impact' ? 'impact' : e.kind === 'charge' ? 'charge' : 'frag');
             const d = Math.hypot(e.x - ear.x, e.z - ear.z);
             if (d < 16) exposure = Math.max(exposure, (1 - d / 16) * 1.1);
@@ -610,9 +643,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             break;
           }
           case 'kill': {
-            // The body falls back along the shot that killed it; the pool spreads where it settles.
-            // Under where the body comes to rest: it falls away from the shot, its chest about 0.6 m from its feet.
-            { const d = lastShot.get(e.by)?.dirs[0], f = fighters.pose(e.on); if (f) pool(m, f.x + (d?.x ?? 0) * 0.6, f.z + (d?.z ?? 0) * 0.6); }
+            // The pool spreads where the body comes to rest, once it has settled (about a second after the kill):
+            // fighters.pose follows the ragdoll's pelvis, or the end of the keyed fall.
+            pendingPools.push({ id: e.on, wait: 1.2, m });
             break;
           }
           case 'panel': {
@@ -622,7 +655,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             for (let i = 0; i < 6; i++) fx.dust(c.x + (Math.random() - 0.5) * 1.5, c.y + (Math.random() - 0.5) * 1.5, c.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5), Math.random() * 0.5, (Math.random() - 0.5), 0.3, 0.8, 0.6, 0.58, 0.52, 0.35);
             break;
           }
-          case 'phase': if (e.phase === 'prep') { fx.clear(); fighters.reset(); glass.reset(); } break;
+          case 'phase': if (e.phase === 'prep') { fx.clear(); fighters.reset(); glass.reset(); pieces?.reset(); pendingPools.length = 0; } break;
           case 'spawn': fighters.reset(e.at.map(([id]) => id)); break;
         }
       }
@@ -642,6 +675,16 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       batches.flush();
       updateDeploys(view.m);
       fighters.update(view);
+      for (let i = pendingPools.length - 1; i >= 0; i--) {
+        const pp = pendingPools[i];
+        pp.wait -= fxFast ? dt * 25 : dt;
+        // Fighters that report their bodies (render/patchfighters) say when one is still; others settle in a second.
+        const body = (fighters as { bodies?: () => { id: number; x: number; z: number; still?: boolean }[] }).bodies?.().find(b => b.id === pp.id);
+        if (body ? !body.still && pp.wait > -2.8 : pp.wait > 0) continue;
+        pendingPools.splice(i, 1);
+        const f = body ?? fighters.pose(pp.id), alive = view.m.players[pp.id]?.alive;
+        if (f && !alive) pool(pp.m, f.x, f.z);
+      }
       place(view);
       updateGadgets(view.m, dt);
       viewmodel.update(view, time);
@@ -684,7 +727,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       for (const p of panels) p.dispose();
       batches.dispose();
       fighters.dispose(); viewmodel.dispose();
-      fx.dispose(); glass.dispose();
+      fx.dispose(); glass.dispose(); pieces?.dispose();
       scene.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.geometry) mesh.geometry.dispose(); });
       for (const m of Object.values(materials)) m.dispose();
       for (const t of [...Object.values(textures), skyTex, sunTex, ringTex, ...siteTex]) t.dispose();

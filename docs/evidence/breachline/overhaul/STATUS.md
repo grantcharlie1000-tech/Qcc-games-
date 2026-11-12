@@ -4,6 +4,34 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: Phase B, set pieces with three damage states (first piece), and the owner's steel, fabric and sofa.**
+`phaseb/owner-before-after.png` (the three things the owner named) and `phaseb/triples/<family>.png` (intact,
+damaged, wrecked). 38 set pieces in 18 families now have art and three states (`render/setpieces.ts`,
+`render/setpiecemodels.ts`); collision is unchanged and a test holds every state, model and code part inside its box
+within 3 cm (only flat litter lies outside). States follow rounds and blasts from the shared `shot` and `boom` events;
+a change throws debris that stays; everything resets at preparation; bullet marks on a set piece land on the visible
+model surface by a cosmetic ray test, with the piece's material.
+- **Sofa and fabric:** the green block sofas are now Poly Haven's `sofa_02` (CC0, tufted leather, seat and back
+  cushions, rolled arms, turned legs), scaled into each box: two facing across the Lobby table, one in the Break Room.
+  Damage adds tears with stuffing showing, then a cushion and stuffing on the floor. The tears read as pale specks at
+  range; that wants a better overlay.
+- **Steel:** the lockers were painted with the plaster set (it read as chalk); they now use the metal-plate set as
+  semi-gloss paint, with its seams, scratches and worn edges and a highlight that moves. Code-built steel pieces get a
+  surface shader: orange-peel paint, edge wear to bright metal, scratches and a moving highlight.
+- **Built from CC0 models (good):** shelving (worn steel rack and a carton), crate stacks, drum clusters, materials
+  drops (cement bags on a pallet, compost sacks), low walls (precast barriers), bin stores (sacks). In their damaged and
+  wrecked states, models swap (a crate shoved askew, a drum on its side, the top bags gone) and code debris is added.
+- **Built in code, passable:** pallets (real slats, blocks and boards), filing, trolley, bin-store enclosure, generator.
+- **Built in code, still weak (next piece):** vending machine and display case (flat glass fronts), skip (reads as a
+  cut-out), trailer (a box under a tarp), planter, and the server racks. The racks are honestly worse than before: the
+  old photo texture had more detail than my code rack, so the next piece restores the texture and draws only the damage
+  (with a rebake).
+- **Not done:** desk pods, island benches, table set, sideboard, map chest, trolley of boxes, bench with boxes (8 of 46).
+- **Blood pool:** it now waits for the body to come to rest (`bodies()[i].still` from the ragdoll; 1.2 s for fighters
+  without one) and spreads at the pelvis. Your three blood corrections are next after the weak families.
+- Tests: unit 5404 passed; Breachline browser 7 passed plus the expected stock warm failure. The online test failed
+  once in the batch run at 59 s and passed alone (1.1 min); Phase D runs it three times alone.
+
 **2026-11-12: section 10.2, window glass.** `mapfill/shots/glass.png` (intact, one round, two rounds; zoom below): a pane
 outside each of the eleven barricaded windows in the brick shell (`render/glass.ts`, one instanced sheet and one
 instanced jagged rim). The first round through a pane leaves a crack star; the second, or any blast within 5 m,
@@ -264,10 +292,9 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** map fill (plan `2026-11-11-breachline-map-fill.md`): Phase A greybox pushed and waiting
-for the planner's gate; Phase C dressing under way, emptiest area first. Previously: every room and the three outdoor areas north, south and west are art regions with a
-round each (the Garage and the West Lot / North Yard as the second-round "lowest" picks); the East Lane is the last
-procedural area. Draw calls are back inside the High budget.
+**Where I am (keep current):** map fill Phase B (set pieces with three damage states): first piece pushed (sofa,
+steel, fabric, the model-built families); next, the weak code-built families (vending, display, skip, trailer, planter,
+server racks) and the eight set pieces not yet modelled, then the blood corrections, then Phase D.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 
