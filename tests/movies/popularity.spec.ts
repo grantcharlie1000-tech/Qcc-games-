@@ -43,16 +43,69 @@ test('empty and unavailable states never substitute TMDB trending or starter tit
  await page.route(ENDPOINT,r=>r.fulfill({status:503,json:{error:'not_configured'}}));await page.reload();
  await expect(rail).toContainText('Popular picks are unavailable right now.');await expect(rail.locator('[data-title]')).toHaveCount(0);
 });
-test('historical FrameXTV fixture messages do not contribute',async({page})=>{
- await setup(page);const posts:unknown[]=[];
+async function streamReporting(page:Page){
+ await setup(page);const posts:Record<string,unknown>[]=[];
  await page.route(ENDPOINT,async route=>{if(route.request().method()==='POST')posts.push(route.request().postDataJSON());await route.fulfill({json:{titleIds:[],windowDays:7}});});
  await page.goto('/#/movies/movie-157336/play');await expect(page.locator('.movies-provider-frame')).toBeVisible();
  await page.clock.install();
- const frame=()=>page.frame({url:/framextv/})!;
- const report=async(time:number)=>{await frame().evaluate(time=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:time,duration:6000},'*'),time);await page.waitForTimeout(20);};
- await frame().evaluate(()=>parent.postMessage({event:'frameXTV:ready'},'*'));await report(0);await report(3000);
- for(let i=0;i<=12;i++){await page.clock.runFor(5000);await report(3000+i*5);}
+ const report=async(time:number)=>{await page.frame({url:/framextv/})!.evaluate(time=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:time,duration:12000},'*'),time);await page.waitForTimeout(20);};
+ const play=async(start:number,seconds:number)=>{for(let elapsed=5;elapsed<=seconds;elapsed+=5){await page.clock.runFor(5000);await report(start+elapsed);}};
+ return {posts,report,play};
+}
+test('FrameXTV contributes only after sixty fresh advancing seconds, not ready, resume, stalls or seeks',async({page})=>{
+ const {posts,report,play}=await streamReporting(page);
+ await page.frame({url:/framextv/})!.evaluate(()=>parent.postMessage({event:'frameXTV:ready'},'*'));
+ await report(3000);
+ for(let i=0;i<13;i++){await page.clock.runFor(5000);await report(3000);}
  expect(posts).toEqual([]);
+ await page.clock.runFor(5000);await report(6000);expect(posts).toEqual([]);
+ await play(6000,55);expect(posts).toEqual([]);
+ await page.clock.runFor(5000);await report(6060);await expect.poll(()=>posts.length).toBe(1);
+ expect(posts[0]).toEqual({titleId:'movie-157336',token:expect.stringMatching(/^[a-f0-9]{32}$/)});
+ await play(6060,65);expect(posts).toHaveLength(1);
+});
+test('spoofed origins, parent messages and other frame windows never contribute',async({page})=>{
+ const {posts}=await streamReporting(page);
+ await page.route('https://framextv.xyz/spoof',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><button>Other frame</button>'}));
+ await page.evaluate(()=>{const frame=document.createElement('iframe');frame.src='https://framextv.xyz/spoof';document.body.append(frame);});
+ const other=()=>page.frame({url:'https://framextv.xyz/spoof'})!;
+ await expect.poll(()=>!!other()).toBe(true);
+ for(let time=0;time<=65;time+=5){
+  await page.clock.runFor(5000);
+  await page.evaluate(time=>{
+   window.postMessage({event:'frameXTV:timeupdate',currentTime:time,duration:12000},'*');
+   // A permitted source window is insufficient without the exact permitted origin.
+   const event=new MessageEvent('message',{origin:'https://framextv.cc.evil.test',data:{event:'frameXTV:timeupdate',currentTime:time,duration:12000},source:document.querySelector<HTMLIFrameElement>('.movies-provider-frame')!.contentWindow});window.dispatchEvent(event);
+  },time);
+  await other().evaluate(time=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:time,duration:12000},'*'),time);
+ }
+ expect(posts).toEqual([]);
+});
+test('reloading the provider frame discards partial playback evidence',async({page})=>{
+ const {posts,report,play}=await streamReporting(page);
+ await report(0);await play(0,55);expect(posts).toEqual([]);
+ const frame=page.frame({url:/framextv/})!;
+ await Promise.all([frame.waitForNavigation({waitUntil:'load'}),frame.evaluate(()=>location.reload())]);
+ await report(55);await play(55,5);expect(posts).toEqual([]);
+ await play(60,50);expect(posts).toEqual([]);
+ await play(110,5);await expect.poll(()=>posts.length).toBe(1);
+});
+test('FrameXTV opt-out and hidden-tab unloading require fresh playback after resuming',async({page,context})=>{
+ const {posts,report,play}=await streamReporting(page);
+ await report(0);await play(0,55);
+ const other=await context.newPage();await setup(other);await other.goto('/#/movies');await other.locator('.movies-menu').click();
+ await other.getByRole('checkbox',{name:'Contribute to Popular in Marlborough'}).uncheck();
+ await play(55,65);expect(posts).toEqual([]);
+ await other.getByRole('checkbox',{name:'Contribute to Popular in Marlborough'}).check();
+ await report(120);await play(120,55);expect(posts).toEqual([]);
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
+ await expect(page.locator('.movies-provider-frame')).toHaveCount(0);
+ await page.clock.runFor(65000);expect(posts).toEqual([]);
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});
+ await page.getByRole('button',{name:'Resume stream',exact:true}).click();await expect(page.locator('.movies-provider-frame')).toBeVisible();
+ await report(175);await play(175,55);expect(posts).toEqual([]);
+ await play(230,5);await expect.poll(()=>posts.length).toBe(1);
+ await other.close();
 });
 
 for(const width of [390,1440])test(`popularity toggle shares the settings group at ${width}px`,async({page})=>{
@@ -68,7 +121,7 @@ for(const width of [390,1440])test(`popularity toggle shares the settings group 
 async function stamp(page:Page){
  await page.evaluate(()=>{document.getElementById('popularity-test-fixture')?.remove();const banner=document.createElement('div');banner.id='popularity-test-fixture';banner.textContent='TEST FIXTURE — not live Popular in Marlborough';banner.style.cssText='position:fixed;z-index:2147483647;top:0;left:0;right:0;padding:8px 12px;background:#111;color:#fff;font:600 14px/1.3 sans-serif;text-align:center';document.body.append(banner);});
 }
-const shot=(name:string)=>`/opt/cursor/artifacts/popular-marlborough/${name}.png`;
+const shot=(name:string)=>test.info().outputPath(`${name}.png`);
 
 test('archive playback and parent-page messages do not contribute',async({page})=>{
  await setup(page);const posts:unknown[]=[];
