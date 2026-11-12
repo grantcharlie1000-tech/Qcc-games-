@@ -1,4 +1,4 @@
-# Breachline weapons rebuild (second build) — status
+# Breachline weapons rebuild (second build): status
 
 Session: weapons rebuild, from 2026-11-12 (plan: "Hero models, second build", "Weapons rebuild resumes").
 Owns `models.ts`, `render/hero/`, `scripts/breachline-assets/hero/`, `public/game-art/breachline/hero/`, this folder.

@@ -107,7 +107,7 @@ export function lathe(pts: P2, cx = 0, cy = 0): Shape {
   const d = poly2(pts), [, u0, r1, u1] = bounds2(pts);
   return bounded({ b: [cx - r1, cy - r1, -u1, cx + r1, cy + r1, -u0], f: (x, y, z) => d(Math.hypot(x - cx, y - cy), -z) });
 }
-/** A profile in (r, h) revolved about the X axis through (y, u) — knobs, caps and pins seen from the side. */
+/** A profile in (r, h) revolved about the X axis through (y, u): knobs, caps and pins seen from the side. */
 export function latheX(pts: P2, y: number, u: number, x0 = 0, dir: 1 | -1 = 1): Shape {
   const d = poly2(pts), [, h0, r1, h1] = bounds2(pts);
   const xa = dir > 0 ? x0 + h0 : x0 - h1, xb = dir > 0 ? x0 + h1 : x0 - h0;
