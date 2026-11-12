@@ -2,7 +2,7 @@
 /** Performance experiments: the same views timed under debug switches (flat colour, overdraw count, depth pre-pass,
  * no post, no fighters, no viewmodel, no transparents, lowest LOD, only the rooms in view), each frame forced to finish
  * (a one-pixel read, in this script only) so the GPU cost shows even on a software renderer.
- *   node scripts/breachline-assets/perfexperiments.mjs [--quality high|low|auto] [--size 1280x720] [--views corridor,office,lab] --cases '{"label":{...switches}}'
+ *   node scripts/breachline-assets/perfexperiments.mjs [--quality high|low|auto] [--arttier low|high] [--size 1280x720] [--views corridor,office,lab] --cases '{"label":{...switches}}'
  */
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -16,7 +16,7 @@ const page = await context.newPage();
 page.on('pageerror', e => console.log('[pageerror]', e.message));
 const size = (arg('size', '1280x720')).split('x').map(Number), quality = arg('quality', 'high');
 await page.setViewportSize({ width: size[0], height: size[1] });
-await page.goto(`${url}/?festive=off&arttier=high&artdbg=world#/game/breachline`);
+await page.goto(`${url}/?festive=off&artdbg=world${arg("arttier", "") ? `&arttier=${arg("arttier", "")}` : ""}${arg("extra", "")}#/game/breachline`);
 await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 90000 });
 await page.evaluate(q => { const h = window.__breachlineTest; h.start({ seed: 7, quality: q, teamSize: 5, bots: true }); h.freeze(true); h.advance(0.2); h.still(); h.skip(30); h.advance(0.3); }, quality);
 await page.waitForFunction(() => window.__breachlineTest.stats().ready, undefined, { timeout: 240000, polling: 500 });
