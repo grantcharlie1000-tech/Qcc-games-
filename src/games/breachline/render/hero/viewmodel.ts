@@ -14,6 +14,10 @@ import { BAKED, clayMaterial, loadBaked } from './baked';
 import { ArtLoader } from '../assets';
 import { reloadFrame, idleFrame } from './reload';
 import { muzzleInView, viewToWorld } from './muzzle';
+import { readMeshBin } from './meshbin';
+import { ARM_BONES } from './hands';
+import { ART_BASE } from '../assets';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DEFAULT_LOOK, createFpRig, holdFor, type FpRig } from './rig';
 import { CASES, WB } from './weapons';
 import type { HeroLighting, HeroView, Viewmodel } from './index';
@@ -91,14 +95,28 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   for (const b of old ? [] : BAKED) loads.push(loadBaked(b, art, low ? 1024 : 2048, clay).then(m => useSet(b.id, m)).catch(e => { console.warn('Breachline baked weapon unavailable; procedural model kept.', b.dir, e); return TEXTURED.has(b.id) ? procedural(b.id) : undefined; }));
   for (const id of TEXTURED) if (old || !BAKED.some(b => b.id === id)) loads.push(procedural(id));
   let armMat: THREE.Material | null = clay;
-  if (!clay) loads.push(Promise.all((['diff', 'nor', 'arm'] as const).map(k => art.texture('../hero/hands', k, 1024))).then(([map, normalMap, armMap]) => {
+  // `?heroarms=patch`: trial of the Patch soldier's arms (scripts/breachline-assets/hero/arms-trial.ts) on the same rig.
+  let armGeo: THREE.BufferGeometry | null = null;
+  const armsTrial = typeof location !== 'undefined' && /[?&]heroarms=patch\b/.test(location.search);
+  if (armsTrial) loads.push((async () => {
+    const buf = await (await fetch(`${ART_BASE}hero/arms-trial/arms.bin`)).arrayBuffer(), right = readMeshBin(buf).geometries.get('arm')!;
+    const left = right.clone(); left.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
+    const ix = left.index!.array as Uint16Array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; }
+    const si = left.getAttribute('skinIndex'); for (let i = 0; i < si.count; i++) si.setX(i, si.getX(i) + ARM_BONES);
+    armGeo = mergeGeometries([right, left])!;
+    const maps = await Promise.all((['diff', 'nor', 'arm'] as const).map(k => art.texture('../patch/tactical', k, 1024)));
+    for (const t of maps) { t.flipY = false; t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.needsUpdate = true; }
+    armMat = texturedMaterial({ map: maps[0], normalMap: maps[1], arm: maps[2] });
+    for (const r of rigs.values()) { r.setArmGeometry(armGeo); r.setArmMaterial(armMat); }
+  })().catch(e => console.warn('Breachline arms trial unavailable.', e)));
+  if (!clay && !armsTrial) loads.push(Promise.all((['diff', 'nor', 'arm'] as const).map(k => art.texture('../hero/hands', k, 1024))).then(([map, normalMap, armMap]) => {
     for (const t of [map, normalMap, armMap]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
     armMat = texturedMaterial({ map, normalMap, arm: armMap }, true);
     for (const r of rigs.values()) r.setArmMaterial(armMat);
   }).catch(e => console.warn('Breachline hand textures unavailable; procedural look kept.', e)));
   const rigFor = (squad: 0 | 1) => {
     let r = rigs.get(squad);
-    if (!r) { r = createFpRig(DEFAULT_LOOK(squad, Number(`0x${SQUADS[squad].color.slice(1)}`))); for (const [id, m] of sets) r.setTextures(id, m); if (armMat) r.setArmMaterial(armMat); rigs.set(squad, r); }
+    if (!r) { r = createFpRig(DEFAULT_LOOK(squad, Number(`0x${SQUADS[squad].color.slice(1)}`))); for (const [id, m] of sets) r.setTextures(id, m); if (armMat) r.setArmMaterial(armMat); if (armGeo) r.setArmGeometry(armGeo); rigs.set(squad, r); }
     return r;
   };
   /** Draws every weapon in both squads' arms once, with the flash and casings shown, into a tiny offscreen target:

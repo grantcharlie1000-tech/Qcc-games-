@@ -134,6 +134,14 @@ segments still merge into one mass at hip distance.
   texture or program (the warm test checks programs and textures after a firefight). Per-frame allocations removed from
   the arm solver and the light update.
 
+## Arms asset trial (planner's item 3)
+
+`gate5-arms-asset-trial.jpg`: (a) our sculpted arms, (b) the Patch soldier's arms from the shoulder down on our rig
+(`scripts/breachline-assets/hero/arms-trial.ts`, switch `?heroarms=patch`), (c) not possible: its skeleton has one
+bone per hand and no finger bones, so the fingers cannot be posed round the handguard. Its arm is 1,135 triangles with
+405 in the hand (ours about 2,300 a hand), on the whole figure's texture. In the hand it reads worse: a black sleeve
+and an open, fanned hand that pokes through the handguard. Verdict: keep the sculpted arms.
+
 ## Decisions (made without asking; say if wrong)
 
 - New assets go to `hero/ar5/`, not `hero/ar/`: `render/patchhero/` (the `?weapons=patch` switch, not mine) cuts its

@@ -132,6 +132,8 @@ export interface FpRig {
   setTextures(id: WeaponId, material: THREE.Material): void;
   /** Gives both arms the hands' baked set. */
   setArmMaterial(material: THREE.Material): void;
+  /** Replaces the arms' geometry (same bones), for asset trials. */
+  setArmGeometry(geometry: THREE.BufferGeometry): void;
   /** Poses moving parts and solves both arms for a reload frame (idle when omitted). */
   solve(f?: ReloadFrame): void;
   dispose(): void;
@@ -184,6 +186,7 @@ export function createFpRig(look: ArmsLook): FpRig {
       rig.lens = lens;
     },
     setArmMaterial(m) { (armMesh as THREE.Mesh).material = m; },
+    setArmGeometry(g) { armMesh.geometry = g; },
     setTextures(id, m) { textured.set(id, m); if (rig.weapon.id === id && weaponMesh) weaponMesh.material = m; },
     solve(f = IDLE) {
       const hold = holdFor(rig.weapon.id), S = rig.weapon.sockets;
