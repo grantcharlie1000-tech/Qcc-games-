@@ -177,6 +177,47 @@ Each gate: tests green, a commit and push, the status file updated.
 | Two sessions editing `index.ts` | Medium | Narrow edits, rebase before push, call sites only |
 | Offline rendering differs from live playback | Low | A live smoke test with sound on counts nodes and checks for errors, as today |
 
+## Resumed, 2026-11-12 (owner: "I do want good sound design as a key factor to this game")
+
+Sound was paused on 2026-11-11 to save the usage allowance for graphics. The owner has now said sound design is a
+key factor, so it resumes at full priority alongside the visual work. Phases 1-5 stand. What has changed in the
+game since the pause, and what it adds to the sound work:
+
+**New things that now need sound** (all visual-only today):
+| Thing | Sound it needs |
+| --- | --- |
+| Bullet marks by material (plasterboard, painted block, brick, concrete, asphalt, timber, cardboard, steel, glass, fabric, carpet, floor tile, ceiling tile, earth) | A distinct impact per material, several variants each, with the debris tail that suits it (crumble, chips, splinters, ring and ricochet, tinkle, thud, lint) |
+| Window glass: crack on the first hit, shatter on the second or a blast | A sharp crack; a full shatter with shards falling and settling |
+| Furniture and cover with intact, damaged and wrecked states | The break at each change of state: wood splitting, sheet steel denting and a door springing, fabric tearing, a shelf collapsing, drums punctured and leaking, crates bursting |
+| Blood, wounds and ragdoll bodies | A wet hit on flesh distinct from armour and cloth; a body and its kit hitting the floor (by floor material) and settling; the dropped weapon clattering |
+| Breach charge, grenade blasts with their own looks, reinforcement that lifts, unfolds and fires anchors, barricade boards that splinter | Each stage audible and distinct; the reinforcement is a short mechanical sequence ending in anchor shots |
+| New floors (terrazzo, raised floor tiles, carpet, boards, tile, asphalt, grass, mats, cable covers) and far more furniture | Footsteps by the surface actually under the player; rooms that sound furnished rather than empty |
+| Six weapons being rebuilt | Each weapon's own shot (near, mid, far, indoor and outdoor tails), mechanical layer, casing and reload; the shared beat table in `reloads.ts` stays the contract |
+
+**What makes this genre's sound matter, restated as requirements:**
+1. **You can play by ear.** Footsteps, reloads, gadget use and barricade work are audible through walls at realistic
+   ranges, and their direction and distance can be judged. Crouching and walking are much quieter than running.
+2. **Walls change what you hear, and holes change it back.** Sound through an intact soft wall is muffled; through a
+   reinforced wall, more so; once a hole, a breach or an open door exists, sound passes more clearly along that
+   path. The occlusion model must read the destructible state, not just the map.
+3. **Every room has its own voice:** the corridor's flutter, the Server Room's hum and dead air, the Garage's hard
+   slap, the carpeted Office, the open yards with distant city and wind.
+4. **Weapons carry the fight:** a tight mechanical crack up close, a body of low end, a tail that tells indoors from
+   outdoors, and a clearly different report at distance and through walls.
+5. **Feedback is unmistakable but not tiring:** hit and kill confirmations, low-health, objective armed and
+   counting, round start and end, all in one consistent family.
+6. **Never clips, never drowns the cues, never hitches the game:** the mix targets and the pre-render budget in
+   sections 5 and 6 stand, and nothing may build or decode during play.
+
+**Hooks.** Sounds for the new visual-only events need those events. The environment session will expose one stream
+from the scene for cosmetic events (impact with material and position; glass crack and shatter; a set piece
+changing state; a body coming to rest; reinforcement stages), and the sound code subscribes to it. The sound
+session keeps its fences (section 8) and asks the planner for any hook it lacks rather than editing other files.
+
+**The owner's ears are the gate.** Because nobody building this can hear it, the listening files matter more than
+before: after each phase, publish a short set of WAV or MP3 files with a one-page listening guide (what to listen
+for in each, in plain words), and a one-minute scripted "round in sound" mixdown when phase 4 is done.
+
 ## Working notes
 
 - Fresh checkout: `npm ci`; `npx tsc --noEmit`; `npx vitest run tests/games/breachline`.
