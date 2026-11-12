@@ -16,18 +16,21 @@ async function connect(context:BrowserContext,session:{username:string;token:str
  await context.route('**/api/movie-popularity*',r=>r.fulfill({status:503,json:{error:'popularity_unavailable'}}));
  for(const host of ['framextv.cc','framextv.xyz'])await context.route('https://'+host+'/**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
 }
+async function openSignedIn(page:Page,url:string){
+ await page.goto(url);await page.getByRole('dialog',{name:'Merry Christmas!'}).getByRole('button',{name:'Got it',exact:true}).click();
+}
 async function warning(page:Page){await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>{await dialog.getByRole('button',{name:'Continue',exact:true}).click();});}
 test('two signed-in browsers share progress, isolate another account, and clear across devices',async({browser})=>{
  test.setTimeout(60000);const session=await identity('CW_'+Date.now()),other=await identity('Other_'+Date.now()),a=await browser.newContext(),b=await browser.newContext(),c=await browser.newContext();
  try{
   await connect(a,session);await connect(b,session);await connect(c,other);const first=await a.newPage(),second=await b.newPage(),third=await c.newPage();await warning(first);
-  await first.goto('/#/movies/movie-157336/play');await expect(first.locator('.movies-provider-frame')).toBeVisible();
+  await openSignedIn(first,'/#/movies/movie-157336/play');await expect(first.locator('.movies-provider-frame')).toBeVisible();
   await first.frame({url:/framextv/})!.evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:75,duration:5400},'*'));
   await expect.poll(()=>first.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1:account:'+JSON.parse(localStorage.getItem('pocket-arcade:v1:accounts:session')!).username.toLowerCase())!).progress['movie-157336'])).toBe(75);
   await expect.poll(async()=>Number((await pool.query('SELECT count(*) FROM account_movie_progress')).rows[0].count),{timeout:15000}).toBe(1);
-  await second.goto('/#/movies');await expect(second.locator('a.movies-continue')).toHaveCount(1);await expect(second.locator('.movies-storage')).toContainText('synced to your account');
+  await openSignedIn(second,'/#/movies');await expect(second.locator('a.movies-continue')).toHaveCount(1);await expect(second.locator('.movies-storage')).toContainText('synced to your account');
   await second.screenshot({path:'test-results/account-continue-watching-synced.png',fullPage:true});
-  await third.goto('/#/movies');await expect(third.locator('.movies-storage')).toContainText('synced to your account');await expect(third.locator('a.movies-continue')).toHaveCount(0);
+  await openSignedIn(third,'/#/movies');await expect(third.locator('.movies-storage')).toContainText('synced to your account');await expect(third.locator('a.movies-continue')).toHaveCount(0);
   await first.goto('/#/movies');
   await second.getByRole('button',{name:'Clear my list & watch history',exact:true}).click();await expect(second.locator('a.movies-continue')).toHaveCount(0);
   await expect.poll(async()=>Number((await pool.query('SELECT (value->>\'cleared\')::bigint AS cleared FROM account_movie_progress WHERE account_id=(SELECT id FROM accounts WHERE username=$1)',[session.username])).rows[0].cleared)).toBeGreaterThan(0);
@@ -40,7 +43,7 @@ test('legacy guest history remains private until explicitly imported and keeps i
  test.setTimeout(45000);const session=await identity('Import_'+Date.now()),context=await browser.newContext();
  try{
   await connect(context,session);await context.addInitScript(()=>{if(window!==window.top)return;if(localStorage.getItem('guest-history-seeded'))return;localStorage.setItem('guest-history-seeded','yes');localStorage.setItem('qcc:movies:v1',JSON.stringify({list:[],progress:{'movie-157336':120},meta:{'movie-157336':{updated:1000,duration:5400}},titles:{'movie-157336':{id:'movie-157336',kind:'movie',name:'Interstellar',year:2014,poster:'https://image.tmdb.org/t/p/w500/one.jpg'}}}));});
-  const page=await context.newPage();await page.goto('/#/movies');await expect(page.locator('.movies-storage')).toContainText('synced to your account');await expect(page.locator('a.movies-continue')).toHaveCount(0);
+  const page=await context.newPage();await openSignedIn(page,'/#/movies');await expect(page.locator('.movies-storage')).toContainText('synced to your account');await expect(page.locator('a.movies-continue')).toHaveCount(0);
   await page.getByRole('button',{name:'Add device history',exact:true}).click();await expect(page.locator('a.movies-continue')).toHaveCount(1);await expect(page.getByRole('button',{name:'Add device history',exact:true})).toBeHidden();
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')!).progress['movie-157336'])).toBe(120);
  }finally{await context.close();}
