@@ -64,7 +64,13 @@ const BED_GAIN: Record<Space, number> = { hard: 0.5, soft: 0.35, corridor: 0.5, 
 /** `options.ambience: false` leaves the room beds out (the sound lab measures single sounds that way).
  * `options.override` replaces sounds with given takes once the bank is ready: for the sound lab's auditions only;
  * the game never passes it. */
-export function createSfx(enabled: () => boolean, options: { ambience?: boolean; override?: Record<string, { sr: number; takes: number[][] }> } = {}): Sfx {
+/** A recorded sample pack to use for the guns (plan A). None ships until the owner decides; when one does, this is
+ * its URL (built by tests/games/breachline/audio-pack.ts) and the credit goes in public/THIRD_PARTY_NOTICES.txt. */
+export const PACK_URL: string | null = null;
+
+export function createSfx(enabled: () => boolean, options: { ambience?: boolean; override?: Record<string, { sr: number; takes: number[][] }>; pack?: string | null } = {}): Sfx {
+  const packUrl = options.pack === undefined ? PACK_URL : options.pack;
+  let packDone: Promise<boolean> = Promise.resolve(false);
   let eng: Engine | null = null, dead = false;
   const levels = new Map(catalogue().map(d => [d.key, d.level]));
   const beds = new Map<Space, GainNode>();
@@ -83,7 +89,11 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     if (!AC) return null;
     try { eng = new Engine(new AC({ latencyHint: 'interactive' }), levels); } catch { return null; }
     Object.assign(eng.ear, ear);
-    void eng.load();
+    // With a pack configured the synthesised guns are not rendered (they would only be thrown away); if the pack
+    // cannot be loaded they are rendered afterwards.
+    const packKeys = packUrl ? (['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol'] as const).flatMap(w => ['fp', 'tp', 'far'].map(v => `gun.${w}.${v}`)) : [];
+    void eng.load(packKeys);
+    if (packUrl) { const e = eng; packDone = e.loadPack(packUrl).then(async ok => { if (!ok) await e.fill(packKeys.filter(k => !e.packed.has(k))); else { const missing = packKeys.filter(k => !e.packed.has(k)); if (missing.length) await e.fill(missing); } return ok; }); }
     return eng;
   }
   const spaceAt = (x: number, z: number) => spaceOfRoom(roomAt(x, z));
@@ -119,6 +129,8 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     },
     shot(w, at) {
       if (!at) {
+        // A recorded body (plan A) carries no action: the bolt or slide is added from synthesis.
+        if (eng?.packed.has(`gun.${w}.fp`)) play(`gun.${w}.action`, 'own', null, { gain: 0.9 + Math.random() * 0.2 });
         const e = play(`gun.${w}.fp`, 'own', null, { wet: 0.32, rate: 0.985 + Math.random() * 0.03, gain: 0.9 + Math.random() * 0.2 });
         if (!e || !eng) return;
         eng.duck('world', 4, 0.06); eng.duck('amb', 9, 0.18);
@@ -246,7 +258,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     ready() {
       const e = start();
       if (!e) return Promise.resolve();
-      return e.load().then(() => { for (const [k, v] of Object.entries(options.override ?? {})) e.replace(k, v.takes.map(t => Float32Array.from(t)), v.sr); });
+      return Promise.all([e.load(), packDone]).then(() => { for (const [k, v] of Object.entries(options.override ?? {})) e.replace(k, v.takes.map(t => Float32Array.from(t)), v.sr); });
     },
     stats() { return eng ? { voices: eng.activeVoices, hrtf: eng.activeHrtf, bytes: eng.bytes, loaded: eng.loaded, firstMs: eng.readyAt, state: eng.ctx.state } : { voices: 0, hrtf: 0, bytes: 0, loaded: 0, firstMs: -1, state: 'none' }; },
   };

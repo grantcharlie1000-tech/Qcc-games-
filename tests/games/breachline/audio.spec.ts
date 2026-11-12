@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '../../fixtures';
 import { measure } from './audio-harness';
 import type { RenderJob, RenderResult } from './audio-page';
-import { scenes } from './audio-scenes';
+import { catalogue, scenes } from './audio-scenes';
 
 /** Renders a lab job through the game's sound module offline in this page (see audio-page.ts). */
 async function render(page: Page, job: RenderJob) {
@@ -108,4 +108,33 @@ test('live: no sound before a gesture; the bank fills on a throttled CPU; no hit
   await page.goto('/?festive=off#/collection');
   await expect.poll(async () => (await probe()).state).toBe('closed');
   expect(errors).toEqual([]);
+});
+
+test('a sample pack replaces the guns it covers, decoded once; without one the synthesis plays (plan A machinery)', async ({ page }) => {
+  const { buildPack } = await import('./audio-pack');
+  const { encodeWav } = await import('./audio-harness');
+  const { profile } = await import('./audio-reference');
+  const { mkdtempSync, readFileSync, writeFileSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os'); const { join } = await import('node:path');
+  // Generated fixture "recordings": 1 kHz tone bursts, which nothing in the synthesis resembles.
+  const dir = mkdtempSync(join(tmpdir(), 'fixture-pack-')), SR = 48000, x = new Float32Array(SR * 4);
+  for (const t0 of [0.4, 1.9]) for (let i = 0; i < SR * 0.3; i++) x[Math.round(SR * t0) + i] = 0.8 * Math.sin(2 * Math.PI * 1000 * i / SR) * Math.exp(-i / SR / 0.06);
+  writeFileSync(join(dir, 'tones.wav'), encodeWav([x], SR, true));
+  buildPack({ takes: [{ key: 'gun.ar.fp', file: 'tones.wav', keepMs: 200, fadeMs: 60 }] }, dir, join(dir, 'out'));
+  await page.route('**/__fixture-pack/*', r => r.fulfill({ body: readFileSync(join(dir, 'out', r.request().url().split('/').pop()!)) }));
+  await page.route('**/__missing-pack/*', r => r.fulfill({ status: 404, body: '' }));
+  await page.route('**/__audio-lab', r => r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>audio lab</title>' }));
+  const shot = catalogue('/src/games/breachline/audio.ts').find(j => j.name === 'shot-ar-fp-in')!;
+  const tonal = async (pack: string | null) => {
+    await page.goto('/__audio-lab');
+    const { r, m } = await render(page, { ...shot, options: { ...shot.options, pack } });
+    expect(r.errors).toEqual([]); expect(m.nan).toBe(0); expect(m.peakDb).toBeLessThanOrEqual(-1);
+    const ch = r.channels.map(b64 => { const b = Buffer.from(b64, 'base64'); return new Float32Array(b.buffer, b.byteOffset, b.length / 4); });
+    return profile(ch[0], r.sampleRate).tonal;
+  };
+  const withPack = await tonal('/__fixture-pack/pack.json'), without = await tonal('/__missing-pack/pack.json'), none = await tonal(null);
+  console.log(`tonal ratio: pack ${withPack.toFixed(3)}, missing pack ${without.toFixed(3)}, no pack ${none.toFixed(3)}`);
+  expect(withPack).toBeGreaterThan(0.3);
+  expect(without).toBeLessThan(0.1);
+  expect(none).toBeLessThan(0.1);
 });

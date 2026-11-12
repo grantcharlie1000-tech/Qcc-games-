@@ -99,7 +99,8 @@ export class Engine {
   }
 
   /** Starts rendering the bank (in a worker; on the main thread in slices if workers are unavailable). */
-  load(): Promise<void> {
+  /** `skip`: keys a sample pack will supply, left out of the synthesis (see `fill` if the pack fails). */
+  load(skip: string[] = []): Promise<void> {
     if (this.done) return this.done;
     const t0 = performance.now();
     this.done = new Promise<void>(resolve => {
@@ -118,22 +119,25 @@ export class Engine {
         this.worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
         this.worker.onmessage = e => take(e.data as Done);
         this.worker.onerror = () => { clearTimeout(watchdog); this.worker?.terminate(); this.worker = null; void this.fallback(take); };
-        this.worker.postMessage({ rate: this.ctx.sampleRate });
+        this.worker.postMessage({ rate: this.ctx.sampleRate, skip });
       } catch { clearTimeout(watchdog); void this.fallback(take); }
     });
     return this.done;
   }
-  private async fallback(take: (d: Done | { kind: 'end' }) => void) {
+  private async fallback(take: (d: Done | { kind: 'end' }) => void, only?: readonly string[]) {
     const { plan, run } = await import('./render');
-    const jobs = plan(this.ctx.sampleRate).filter(j => j.kind === 'ir' ? !this.verb[j.space].buffer : !this.bank.get(j.key)?.bufs[j.v]);
+    const jobs = plan(this.ctx.sampleRate).filter(j => !only || (j.kind === 'sound' && only.includes(j.key))).filter(j => j.kind === 'ir' ? !this.verb[j.space].buffer : !this.bank.get(j.key)?.bufs[j.v]);
     for (let i = 0; i < jobs.length && !this.disposed; i++) {
       take(run(jobs[i]));
       if (i % 4 === 3) await new Promise(r => setTimeout(r, 0));
     }
-    take({ kind: 'end' });
+    if (!only) take({ kind: 'end' });
   }
+  /** Renders sounds that were skipped for a pack that then failed to load (main thread, in slices). */
+  fill(keys: readonly string[]): Promise<void> { return this.fallback(d => { if (d.kind !== 'end') this.accept(d); }, keys); }
   private accept(d: Done) {
     if (this.disposed) return;
+    if (d.kind === 'sound' && this.packed.has(d.key)) return; // a recorded take wins over the synthesised one
     if (d.kind === 'ir') {
       const b = this.ctx.createBuffer(2, d.data[0].length, d.sr);
       b.copyToChannel(d.data[0] as Float32Array<ArrayBuffer>, 0); b.copyToChannel(d.data[1] as Float32Array<ArrayBuffer>, 1);
@@ -146,6 +150,31 @@ export class Engine {
     e.bufs[d.v] = b; this.bank.set(d.key, e); this.bytes += d.data.length * 4;
   }
   has(key: string) { return !!this.bank.get(key)?.bufs.length; }
+  /** Sounds that come from a sample pack (recordings) rather than synthesis. */
+  readonly packed = new Set<string>();
+  /** Loads a sample pack (pack.json and pack.ogg beside it; see tests/games/breachline/audio-pack.ts): fetched
+   * and decoded once (the browser decodes off the main thread), sliced into takes, and used in place of the
+   * synthesised sounds of the same keys. Any failure leaves the synthesis in place, silently. */
+  async loadPack(indexUrl: string): Promise<boolean> {
+    try {
+      const index = await (await fetch(indexUrl)).json() as { version: number; sr: number; keys: Record<string, { start: number; length: number }[]> };
+      const audio = await (await fetch(new URL('pack.ogg', new URL(indexUrl, location.href)).href)).arrayBuffer();
+      const all = await this.ctx.decodeAudioData(audio), data = all.getChannelData(0);
+      if (this.disposed) return false;
+      for (const [key, takes] of Object.entries(index.keys)) {
+        const bufs = takes.filter(t => t.start + t.length <= data.length).map(t => {
+          const b = this.ctx.createBuffer(1, t.length, all.sampleRate);
+          b.copyToChannel(data.slice(t.start, t.start + t.length), 0);
+          return b;
+        });
+        if (!bufs.length) continue;
+        this.packed.add(key);
+        this.bank.set(key, { sr: all.sampleRate, loop: false, bufs });
+        this.bytes += takes.reduce((n, t) => n + t.length * 4, 0);
+      }
+      return true;
+    } catch { return false; }
+  }
   /** Replaces a sound's variants (the sound lab uses this to audition other sources; the game never calls it). */
   replace(key: string, takes: Float32Array[], sr: number) {
     const bufs = takes.map(t => { const b = this.ctx.createBuffer(1, t.length, sr); b.copyToChannel(t as Float32Array<ArrayBuffer>, 0); return b; });

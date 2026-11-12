@@ -13,8 +13,9 @@ let defs: Map<string, SoundDef> | null = null;
 const lookup = () => (defs ??= new Map(catalogue().map(d => [d.key, d])));
 
 /** All jobs in the order they should run. IRs go after the first variant of the most-needed sounds. */
-export function plan(contextRate: number): Job[] {
-  const all = [...lookup().values()].sort((a, b) => a.order - b.order), jobs: Job[] = [];
+/** `skip`: keys not to render (a sample pack supplies them). */
+export function plan(contextRate: number, skip: readonly string[] = []): Job[] {
+  const all = [...lookup().values()].filter(d => !skip.includes(d.key)).sort((a, b) => a.order - b.order), jobs: Job[] = [];
   const first = all.map(d => ({ kind: 'sound', key: d.key, v: 0 }) as Job);
   const cut = all.findIndex(d => d.order > 2);
   jobs.push(...first.slice(0, cut), ...SPACES.map(space => ({ kind: 'ir', space, sr: contextRate }) as Job), ...first.slice(cut));

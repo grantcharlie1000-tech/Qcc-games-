@@ -4,8 +4,8 @@
 import { plan, run } from './render';
 
 (self as unknown as Worker).postMessage({ kind: 'up', at: performance.timeOrigin + performance.now() });
-self.onmessage = (e: MessageEvent<{ rate: number }>) => {
-  for (const job of plan(e.data.rate)) {
+self.onmessage = (e: MessageEvent<{ rate: number; skip?: string[] }>) => {
+  for (const job of plan(e.data.rate, e.data.skip)) {
     const done = run(job);
     const transfer = done.kind === 'ir' ? done.data.map(d => d.buffer) : [done.data.buffer];
     (self as unknown as Worker).postMessage(done, transfer as Transferable[]);

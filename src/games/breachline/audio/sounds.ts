@@ -108,6 +108,15 @@ export function gunshot(w: WeaponId, view: 'fp' | 'tp' | 'far', r: Rng, sr: numb
   return finish(biquad(out, sr, 'highpass', 38, 0.6), sr);
 }
 
+/** The action alone (bolt or slide cycling, and its spring), for when the shot itself is a recording (plan A). */
+export function gunAction(w: WeaponId, r: Rng, sr: number): Float32Array {
+  const [ab, ar, at, , spring] = GUNS[w].action, out = buf(sr, 0.2), pre = Math.round(sr * 0.0015);
+  const act = modal(click(sr, r, ab * 1.4, 0.9, 0.003, 0.0007), sr, [[ab * range(r, 0.97, 1.03), ar, 1], [ab * 1.63, ar * 0.7, 0.6], [ab * 2.71, ar * 0.5, 0.35]], Math.ceil(sr * 0.14));
+  if (spring) mixInto(act, modal(click(sr, r, spring, 2, 0.002, 0.0004), sr, [[spring * range(r, 0.98, 1.02), 0.12, 1]], Math.ceil(sr * 0.14)), 0, 0.15);
+  mixInto(out, act, pre + sr * at * range(r, 0.92, 1.08));
+  return finish(out, sr);
+}
+
 /** A spent case landing: brass rings on a hard floor; a shotgun hull is a dull plastic tap. */
 export const casingSound = (shell: boolean): Gen => (r, sr) => {
   const o = buf(sr, 0.5);
@@ -596,6 +605,7 @@ export function catalogue(): SoundDef[] {
     add(`gun.${w}.tp`, 3, 32000, GUN_LEVEL[w], 2, (r, sr) => gunshot(w, 'tp', r, sr));
     add(`gun.${w}.far`, 2, 12000, GUN_LEVEL[w], 4, (r, sr) => gunshot(w, 'far', r, sr));
   }
+  for (const w of W) add(`gun.${w}.action`, 2, 24000, GUNS[w].action[3] + 2, 3, (r, sr) => gunAction(w, r, sr));
   add('casing.brass', 4, 32000, -24, 2, casingSound(false));
   add('casing.shell', 3, 32000, -22, 2, casingSound(true));
   for (const f of FLOORS) add(`step.${f}`, 4, 24000, -6, 1, (r, sr) => footstep(f, r, sr));
