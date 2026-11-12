@@ -6,7 +6,7 @@ import { isSetPiece } from './setpieces-data';
 import * as THREE from 'three';
 import { WALL_H } from '../config';
 import { MAP } from '../map';
-import { DetailBuilder } from './detail';
+import { DetailBuilder, parentChart } from './detail';
 import { ROOM_SIGNS } from './printed';
 import { OUTDOOR, type Atlas, type Region } from './levelgeo';
 
@@ -750,6 +750,7 @@ function dressLobby(atlas: Atlas, room: Region): DetailBuilder {
   { const x = room.x0 + 0.15, n: V3 = [1, 0, 0], at = (zz: number, yy: number): V3 => [x + 0.001, yy, zz];
     D.box('steel', x, 0.9, 7.9, x + 0.12, 1.5, 8.4, at(8.15, 1.2), n, [0.7, 0.7, 0.72]);
     for (let k = 0; k < 3; k++) for (let c = 0; c < 2; c++) D.box('paper', x + 0.04, 0.95 + k * 0.18, 7.95 + c * 0.23, x + 0.11, 1.1 + k * 0.18, 8.15 + c * 0.23, at(8.15, 1.2), n, [[1.1, 0.6, 0.4], [0.5, 0.75, 1.1], [1.1, 1.05, 0.6]][(k + c) % 3] as V3); }
+  roomLife(D, atlas, room, 83, { screen: true });
   return D;
 }
 
@@ -809,6 +810,7 @@ function dressOffice(atlas: Atlas, room: Region): DetailBuilder {
     D.box('handle', x - 0.02, 1.62, z - 0.06, x + 0.02, 1.66, z, at(x, 1.64), n);
     D.box('card', x - 0.17, 0.95, z - 0.14, x + 0.17, 1.63, z - 0.02, at(x, 1.3), n, [...tint] as V3);
   }
+  roomLife(D, atlas, room, 61, { screen: true });
   return D;
 }
 
@@ -1005,4 +1007,143 @@ function walls(D: DetailBuilder, room: Region) {
   D.box('conduit', sx - 0.011, 1.27, z, sx + 0.011, WALL_H - 0.01, z + 0.022, on(sx, 2.1), n);
   D.box('socket', sx - 0.045, 1.15, z, sx + 0.045, 1.27, z + 0.045, on(sx, 1.2), n);
   D.box('kick', sx - 0.008, 1.19, z + 0.045, sx + 0.008, 1.225, z + 0.052, on(sx, 1.2), n, [0.7, 0.7, 0.7]);
+}
+
+/** A stretch of solid wall facing into a room (only solid walls carry lightmap charts, so doors, windows and the
+ * destructible partitions break the runs): its inward normal, the plane, and its extent along the wall. */
+interface WallRun { n: V3; alongX: boolean; c: number; a0: number; a1: number }
+export function wallRuns(atlas: Atlas, room: Region): WallRun[] {
+  const runs: WallRun[] = [];
+  const sides: [V3, boolean, number, number][] = [[[0, 0, 1], true, room.z0, 1], [[0, 0, -1], true, room.z1, -1], [[1, 0, 0], false, room.x0, 1], [[-1, 0, 0], false, room.x1, -1]];
+  for (const [n, alongX, edge, dir] of sides) {
+    const at = (u: number, y: number, c: number): V3 => (alongX ? [u, y, c] : [c, y, u]);
+    const lo = alongX ? room.x0 : room.z0, hi = alongX ? room.x1 : room.z1;
+    // The wall's face: the first plane in from the room's edge where a chart answers.
+    let c = NaN;
+    for (let d = -0.05; d <= 0.45 && Number.isNaN(c); d += 0.01) for (let u = lo + 0.5; u < hi - 0.5; u += 0.5) if (parentChart(atlas, at(u, 1.5, edge + dir * d), n, 0.012)) { c = edge + dir * d; break; }
+    if (Number.isNaN(c)) continue;
+    // Walk the wall in 10 cm steps (counted, not summed, so the last step is not lost to rounding).
+    let start = NaN;
+    const steps = Math.round((hi - lo - 0.2) / 0.1);
+    for (let k = 0; k <= steps + 1; k++) {
+      const u = lo + 0.1 + k * 0.1, ok = k <= steps && [0.9, 1.5, 2.4].every(y => !!parentChart(atlas, at(u, y, c + dir * 0.005), n, 0.03));
+      if (ok && Number.isNaN(start)) start = u;
+      if (!ok && !Number.isNaN(start)) { if (u - start >= 0.8) runs.push({ n, alongX, c: c + dir * 0.02, a0: start, a1: u - 0.1 }); start = NaN; }
+    }
+  }
+  return runs;
+}
+/** Life a room shows from its doorway (map-fill second round): cable trunking along the solid walls with drops to
+ * sockets, a notice board with pinned papers, a wall-mounted screen, safety signs, blinds over the windows, vent
+ * grilles, a stained tile and sprinkler heads in the ceiling, and bins, boxes and cable runs along the walls' feet.
+ * Seeded, so every client builds the same room; nothing stands where it could pass for cover. */
+function roomLife(D: DetailBuilder, atlas: Atlas, room: Region, seed: number, opt: { board?: boolean; screen?: boolean; blinds?: boolean; ceiling?: boolean; floor?: boolean } = {}) {
+  const r = seeded(seed), runs = wallRuns(atlas, room).sort((a, b) => (b.a1 - b.a0) - (a.a1 - a.a0)), up: V3 = [0, 1, 0];
+  // A box on a run: u along the wall, y up, d out from it (0 is the face).
+  const wall = (key: DressKey, w: WallRun, u0: number, u1: number, y0: number, y1: number, d0: number, d1: number, tint?: V3) => {
+    const s = w.alongX ? w.n[2] : w.n[0], c0 = w.c + s * d0, c1 = w.c + s * d1, on: V3 = w.alongX ? [(u0 + u1) / 2, (y0 + y1) / 2, w.c + s * 0.001] : [w.c + s * 0.001, (y0 + y1) / 2, (u0 + u1) / 2];
+    if (w.alongX) D.box(key, u0, y0, Math.min(c0, c1), u1, y1, Math.max(c0, c1), on, w.n, tint);
+    else D.box(key, Math.min(c0, c1), y0, u0, Math.max(c0, c1), y1, u1, on, w.n, tint);
+  };
+  // Whether a wall rectangle is free of what is already there (boards, cabinets, signs).
+  const free = (w: WallRun, u0: number, u1: number, y0: number, y1: number) => !D.proxies.some(p => {
+    const pu0 = w.alongX ? p.x0 : p.z0, pu1 = w.alongX ? p.x1 : p.z1, pc0 = w.alongX ? p.z0 : p.x0, pc1 = w.alongX ? p.z1 : p.x1;
+    return pu0 < u1 && pu1 > u0 && p.y0 < y1 && p.y1 > y0 && pc0 < w.c + 0.25 && pc1 > w.c - 0.25;
+  }) && !MAP.boxes.some(b => b.solid && b.y1 > y0 && b.y0 < y1 && (w.alongX ? b.x0 < u1 && b.x1 > u0 && b.z0 < w.c + 0.3 && b.z1 > w.c - 0.3 : b.z0 < u1 && b.z1 > u0 && b.x0 < w.c + 0.3 && b.x1 > w.c - 0.3) && !(b.y0 < 0.1 && b.y1 > WALL_H - 0.1));
+  const place = (w: WallRun, len: number, y0: number, y1: number) => { for (let k = 0; k < 12; k++) { const u = w.a0 + 0.1 + r() * Math.max(0, w.a1 - w.a0 - len - 0.2); if (free(w, u, u + len, y0, y1)) return u; } return NaN; };
+  // Trunking along each run just under the ceiling, with one drop to a double socket.
+  for (const w of runs) {
+    wall('socket', w, w.a0 + 0.02, w.a1 - 0.02, 2.33, 2.39, 0, 0.035, [0.95, 0.95, 0.93]);
+    const u = place(w, 0.1, 0.25, 2.33);
+    if (!Number.isNaN(u)) { wall('socket', w, u, u + 0.05, 0.42, 2.33, 0, 0.03, [0.95, 0.95, 0.93]); wall('socket', w, u - 0.03, u + 0.13, 0.3, 0.42, 0, 0.035); wall('kick', w, u + 0.005, u + 0.04, 0.33, 0.36, 0.035, 0.04); wall('kick', w, u + 0.06, u + 0.095, 0.33, 0.36, 0.035, 0.04); }
+  }
+  // A notice board with papers pinned to it, on the longest free stretch.
+  if (opt.board !== false) for (const w of runs) {
+    const u = place(w, 1.2, 1.15, 1.95); if (Number.isNaN(u)) continue;
+    wall('trim', w, u, u + 1.2, 1.15, 1.95, 0, 0.025, [3, 3, 3]); wall('cork', w, u + 0.03, u + 1.17, 1.18, 1.92, 0.025, 0.028);
+    for (let i = 0; i < 9; i++) {
+      const pw = 0.15 + r() * 0.1, ph = 0.2 + r() * 0.08, pu = u + 0.06 + r() * (1.08 - pw), py = 1.22 + r() * (0.65 - ph);
+      wall('paper', w, pu, pu + pw, py, py + ph, 0.028, 0.03, ([[1.1, 1.1, 1.08], [1.2, 1.1, 0.6], [0.8, 1.0, 1.2], [1.2, 0.85, 0.8]] as V3[])[i % 4]);
+      wall('alarm', w, pu + pw / 2 - 0.006, pu + pw / 2 + 0.006, py + ph - 0.02, py + ph - 0.008, 0.03, 0.038, ([[1, 1, 1], [0.3, 0.5, 2], [0.4, 1.4, 0.4]] as V3[])[i % 3]);
+    }
+    break;
+  }
+  // A wall-mounted screen (dark, with a status bar), on another stretch.
+  if (opt.screen) for (const w of runs.slice(1).concat(runs.slice(0, 1))) {
+    const u = place(w, 1.0, 1.55, 2.15); if (Number.isNaN(u)) continue;
+    wall('chassis', w, u, u + 1.0, 1.55, 2.15, 0, 0.05); wall('screen', w, u + 0.03, u + 0.97, 1.58, 2.12, 0.05, 0.052);
+    wall('led', w, u + 0.45, u + 0.55, 1.565, 1.572, 0.05, 0.054);
+    break;
+  }
+  // Safety signs by the ends of the runs.
+  for (const w of runs.slice(0, 2)) {
+    const u = place(w, 0.3, 1.6, 1.9); if (Number.isNaN(u)) continue;
+    const s = w.alongX ? w.n[2] : w.n[0], cx = w.alongX ? u + 0.15 : w.c + s * 0.004, cz = w.alongX ? w.c + s * 0.004 : u + 0.15, on: V3 = w.alongX ? [u + 0.15, 1.75, w.c + s * 0.001] : [w.c + s * 0.001, 1.75, u + 0.15];
+    const g = new THREE.PlaneGeometry(0.3, 0.3).rotateY(Math.atan2(w.n[0], w.n[2])).translate(cx, 1.75, cz);
+    D.mesh('sign', g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, w.n, [1, 1, 1], g.attributes.uv.array); g.dispose();
+  }
+  // Blinds over the room's windows: a head rail and slats drawn a third of the way down.
+  if (opt.blinds !== false) for (const p of MAP.panels) {
+    if (p.kind !== 'window') continue;
+    const u0 = p.u0, u1 = p.u0 + p.cols * 0.25, y1 = p.y0 + p.rows * 0.25, mid = (u0 + u1) / 2;
+    const x = p.axis === 'x' ? mid : p.pos, z = p.axis === 'x' ? p.pos : mid;
+    if (!inRoom(room, p.axis === 'x' ? x : p.pos + 0.5 * Math.sign((room.x0 + room.x1) / 2 - p.pos), p.axis === 'x' ? p.pos + 0.5 * Math.sign((room.z0 + room.z1) / 2 - p.pos) : z)) continue;
+    const s = p.axis === 'x' ? Math.sign((room.z0 + room.z1) / 2 - p.pos) : Math.sign((room.x0 + room.x1) / 2 - p.pos), n: V3 = p.axis === 'x' ? [0, 0, s] : [s, 0, 0];
+    const face = p.pos + s * 0.13, on: V3 = p.axis === 'x' ? [mid, y1 + 0.2, face] : [face, y1 + 0.2, mid];
+    const bx = (a0: number, a1: number, ya: number, yb: number, d0: number, d1: number, key: DressKey, tint?: V3) => {
+      if (p.axis === 'x') D.box(key, a0, ya, Math.min(face + s * d0, face + s * d1), a1, yb, Math.max(face + s * d0, face + s * d1), on, n, tint);
+      else D.box(key, Math.min(face + s * d0, face + s * d1), ya, a0, Math.max(face + s * d0, face + s * d1), yb, a1, on, n, tint);
+    };
+    bx(u0 - 0.03, u1 + 0.03, y1 - 0.06, y1, 0, 0.06, 'socket', [0.9, 0.9, 0.88]);
+    for (let i = 0; i < 9; i++) { const y = y1 - 0.09 - i * 0.045; bx(u0 + 0.01, u1 - 0.01, y, y + 0.012, 0.01, 0.05, 'socket', [0.92, 0.92, 0.9]); }
+  }
+  // Ceiling: a vent grille or two, a stained tile, sprinkler heads on a 3 m grid.
+  if (opt.ceiling !== false) {
+    const y = WALL_H, dn: V3 = [0, -1, 0], onC = (x: number, z: number): V3 => [x, y - 0.001, z];
+    for (let i = 0; i < 2; i++) {
+      const x = Math.floor((room.x0 + 0.8 + r() * (room.x1 - room.x0 - 1.6)) / 0.6) * 0.6 + 0.3, z = Math.floor((room.z0 + 0.8 + r() * (room.z1 - room.z0 - 1.6)) / 0.6) * 0.6 + 0.3;
+      if (!inRoom(room, x, z)) continue;
+      D.box('grid', x - 0.28, y - 0.012, z - 0.28, x + 0.28, y - 0.002, z + 0.28, onC(x, z), dn, [1.1, 1.1, 1.1]);
+      for (let k = 0; k < 7; k++) D.box('kick', x - 0.25, y - 0.013, z - 0.24 + k * 0.075, x + 0.25, y - 0.011, z - 0.21 + k * 0.075, onC(x, z), dn);
+    }
+    { const x = Math.floor((room.x0 + 1 + r() * (room.x1 - room.x0 - 2)) / 0.6) * 0.6 + 0.3, z = Math.floor((room.z0 + 1 + r() * (room.z1 - room.z0 - 2)) / 0.6) * 0.6 + 0.3;
+      if (inRoom(room, x, z)) D.box('card', x - 0.27, y - 0.003, z - 0.27, x + 0.27, y - 0.0015, z + 0.27, onC(x, z), dn, [0.95, 0.8, 0.6]); }
+    for (let x = room.x0 + 1.5; x < room.x1 - 1; x += 3) for (let z = room.z0 + 1.5; z < room.z1 - 1; z += 3) {
+      const g = new THREE.CylinderGeometry(0.012, 0.016, 0.05, 8).translate(x, y - 0.025, z); put(D, g, 'chrome', onC(x, z), dn);
+      const d = new THREE.CylinderGeometry(0.03, 0.03, 0.004, 10).translate(x, y - 0.052, z); put(D, d, 'chrome', onC(x, z), dn);
+    }
+  }
+  // At the walls' feet: a bin, cardboard boxes, a cable run out from the socket drop. Clear of doors and furniture.
+  if (opt.floor !== false) {
+    const clear = (x: number, z: number, rad: number) => !MAP.boxes.some(b => b.solid && b.y0 < 0.3 && x > b.x0 - rad && x < b.x1 + rad && z > b.z0 - rad && z < b.z1 + rad && !(b.y1 > WALL_H - 0.1))
+      && !MAP.panels.some(p => p.kind === 'door' && Math.hypot((p.axis === 'x' ? p.u0 + p.cols * 0.125 : p.pos) - x, (p.axis === 'x' ? p.pos : p.u0 + p.cols * 0.125) - z) < 1.1);
+    for (const w of runs.slice(0, 3)) {
+      const s = w.alongX ? w.n[2] : w.n[0], pt = (u: number, d: number): [number, number] => (w.alongX ? [u, w.c + s * d] : [w.c + s * d, u]);
+      // Boxes stacked against the wall (the instanced archive cartons).
+      { const u = w.a0 + 0.3 + r() * Math.max(0, w.a1 - w.a0 - 0.6), [x, z] = pt(u, 0.25);
+        if (clear(x, z, 0.3) && inRoom(room, x, z)) for (let k = 0; k < 2 + Math.floor(r() * 2); k++) D.boxes.push({ x: x + (r() - 0.5) * 0.05, y: k * 0.26, z, yaw: (w.alongX ? 0 : Math.PI / 2) + (r() - 0.5) * 0.3, tilt: 0, w: 0.32, h: 0.26, depth: 0.4, tint: [0.95, 0.9, 0.82], label: Math.floor(r() * 4) }); }
+      // A cable along the wall's foot.
+      { const u = w.a0 + 0.2 + r() * Math.max(0, w.a1 - w.a0 - 1.6), len = Math.min(1.4, w.a1 - u - 0.1);
+        if (len > 0.4) { const [x0, z0] = pt(u, 0.01), [x1, z1] = pt(u + len, 0.03); D.box('kick', Math.min(x0, x1), 0.0, Math.min(z0, z1), Math.max(x0, x1), 0.012, Math.max(z0, z1), [(x0 + x1) / 2, 0.001, (z0 + z1) / 2], up); } }
+    }
+    // Plants in the free corners and a water cooler against a partition: they read from the doorway, and are small
+    // and open enough not to pass for cover.
+    let plants = 0;
+    for (const [cx, cz] of [[room.x0 + 0.45, room.z0 + 0.45], [room.x1 - 0.45, room.z0 + 0.45], [room.x0 + 0.45, room.z1 - 0.45], [room.x1 - 0.45, room.z1 - 0.45]] as const) {
+      if (plants >= 2 || !clear(cx, cz, 0.35) || D.proxies.some(p => p.y0 < 0.5 && Math.hypot((p.x0 + p.x1) / 2 - cx, (p.z0 + p.z1) / 2 - cz) < 0.5)) continue;
+      plant(D, cx, cz, 0.9 + r() * 0.4, seed + plants * 7); plants++;
+    }
+    { const cx = (room.x0 + room.x1) / 2 + (r() - 0.5) * (room.x1 - room.x0 - 2), cz = room.z0 + 0.35;
+      if (clear(cx, cz, 0.35) && inRoom(room, cx, cz)) {
+        const fl: V3 = [cx, 0.001, cz];
+        put(D, new THREE.BoxGeometry(0.3, 0.95, 0.3).translate(cx, 0.475, cz), 'casing', fl, up, [0.95, 0.95, 0.93]);
+        put(D, new THREE.CylinderGeometry(0.13, 0.13, 0.42, 16).translate(cx, 1.16, cz), 'glass', fl, up, [1.6, 2.4, 3.4]);
+        put(D, new THREE.BoxGeometry(0.08, 0.03, 0.05).translate(cx, 0.8, cz + 0.16), 'alarm', fl, up, [0.3, 0.5, 2]);
+      } }
+    { const w = runs[0]; if (w) { const s = w.alongX ? w.n[2] : w.n[0];
+      for (let k = 0; k < 8; k++) { const u = w.a0 + 0.3 + r() * Math.max(0, w.a1 - w.a0 - 0.6), x = w.alongX ? u : w.c + s * 0.25, z = w.alongX ? w.c + s * 0.25 : u;
+        if (!clear(x, z, 0.25) || !inRoom(room, x, z)) continue;
+        D.tag = 'bin'; put(D, new THREE.CylinderGeometry(0.15, 0.13, 0.36, 16, 1, true).translate(x, 0.18, z), 'steel', [x, 0.001, z], up, [0.7, 0.72, 0.75]); put(D, new THREE.CylinderGeometry(0.15, 0.15, 0.02, 16).translate(x, 0.01, z), 'steel', [x, 0.001, z], up, [0.6, 0.6, 0.6]); D.tag = '';
+        break; } } }
+  }
 }

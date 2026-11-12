@@ -4,6 +4,24 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: second rounds, Office and Lobby** (`round2/office.png`, `round2/lobby.png`, each room's own bookmarks,
+before and after). A shared `roomLife()` (render/labdress.ts) adds what reads from the doorway, on each room's solid
+walls (found from the lightmap charts, so doors, windows and partitions are left alone):
+- **Upper walls:** cable trunking under the ceiling with drops to sockets, a notice board with pinned papers where a
+  stretch is free, a wall screen, safety signs, blinds over the windows.
+- **Ceiling:** vent grilles, a stained tile, sprinkler heads.
+- **Floor level:** cartons and a cable run at the walls' feet, a bin, potted plants in the free corners, a water
+  cooler.
+- **Limits:** the interior partitions are destructible panels with no lightmap chart; anything hung on them would
+  float once they are blown, so those large walls stay bare. They are the main reason the rooms still read much as
+  before from across.
+- **Ratings (stricter scale, gate 7), honestly:**
+  - Office 5.5: real chairs and monitors; trunking, vents and a plant read; the north partitions are bare.
+  - Lobby 6: the screen, sign, trunking and plant add to a room that already had seating, shelving and the counter.
+- **Watch:** the Lobby's main view is at 463k triangles (High now draws full prop models at range), close to the 500k
+  budget. Remedy: ship each prop's simplified level as its own index file over the full model's vertices.
+- Downloads are unchanged in kind (dressing is geometry built in the browser).
+
 **2026-11-12: `play.spec` passes on the built site.** As decided, its console check ignores exactly one URL, the
 site's `/.netlify/functions/chat?action=summary` (a static build has no server functions); every other failed load
 still fails it. With the weapons session's AR-5 textures now in, all six specs pass on the flagged production build
