@@ -14,6 +14,10 @@ let page;
 for (let t = 0; t < 4; t++) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   await context.addInitScript(() => { if (window !== window.top) return; localStorage.setItem('pocket-arcade:v1:accounts:guest', 'true'); localStorage.setItem('qcc:festive', 'off'); localStorage.setItem('pocket-arcade:study:v1:reading-choice', 'accept'); sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading'); });
+  // The game's own frame loop draws with real elapsed time, which would let a body fall while the script waits on a
+  // slow software renderer. While __rafHold is set, frame callbacks are queued, so only the script's fixed 0.016 s
+  // draws advance the ragdoll.
+  await context.addInitScript(() => { const raf = window.requestAnimationFrame.bind(window), q = []; window.requestAnimationFrame = cb => { if (window.__rafHold) { q.push(cb); return 0; } return raf(cb); }; window.__rafRelease = () => { window.__rafHold = false; q.splice(0).forEach(cb => raf(cb)); }; });
   page = await context.newPage();
   page.on('pageerror', e => console.log(`[pageerror] ${e.message}`));
   await page.route(/\/src\/games\/breachline\/scene\.ts(\?.*)?$/, async r => { const resp = await r.fetch(); let b = await resp.text(); b = b.replace(/(const fighters = [^;]+;)/, '$1 window.__pf = fighters; { const h0 = fighters.handle.bind(fighters); fighters.handle = (ev, m, s) => { for (const e of ev) if (e.e === "kill") (window.__kills ||= []).push(e); return h0(ev, m, s); }; }'); await r.fulfill({ response: resp, body: b }); });
@@ -61,7 +65,8 @@ for (const c of cases) {
     return null;
   }, [c]);
   if (!r) { console.log(c.tag, 'no line to any foe'); continue; }
-  // The kill itself.
+  // The kill itself, with the game's own frame loop held.
+  await page.evaluate(() => { window.__rafHold = true; });
   const res = await page.evaluate(([c, r]) => {
     const h = window.__breachlineTest, foe = () => h.state().players.find(p => p.id === r.id);
     const aimAt = (y, x = r.x, z = r.z) => { const f = foe(); h.place(x, z, Math.atan2(-(f.x - x), -(f.z - z)), Math.atan2(y - 1.6, Math.hypot(f.x - x, f.z - z))); h.advance(0.02); };
@@ -81,7 +86,7 @@ for (const c of cases) {
   }, [c, r]);
   console.log(c.tag, JSON.stringify(res));
   log.push({ tag: c.tag, ...res });
-  if (res.alive) continue;
+  if (res.alive) { await page.evaluate(() => window.__rafRelease()); continue; }
   // The camera: the side the kill came from, looking down at where the foe stood; frames over time from the kill.
   const times = [0, 0.15, 0.4, 0.9, 3.4];
   let at = 0;
@@ -98,6 +103,7 @@ for (const c of cases) {
     at = t;
     await shot(`${c.tag}-${i}`);
   }
+  await page.evaluate(() => window.__rafRelease());
   log[log.length - 1].body = await page.evaluate(id => window.__pf.bodies().find(b => b.id === id) || null, r.id);
   log[log.length - 1].rest = await page.evaluate(id => window.__pf.pose(id), r.id);
 }
