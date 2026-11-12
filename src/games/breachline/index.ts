@@ -76,6 +76,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const reduced = () => context.settings.reducedMotion || motion.matches;
   const sfx = createSfx(() => context.settings.sound);
+  scene.onCosmetic(e => sfx.cosmetic(e, at(e.x, e.y, e.z)));
   const hud = createHud(root, signal);
   const layer = q('.bl-layer'), clickLayer = q('.bl-click');
   const cards: Record<Exclude<Layer, null>, HTMLElement> = { menu: q('.bl-menu'), over: q('.bl-over'), wait: q('.bl-wait'), lost: q('.bl-lost') };

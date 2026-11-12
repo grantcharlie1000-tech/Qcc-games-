@@ -11,6 +11,13 @@ import { spaceOfRoom, type Space } from './audio/spaces';
 
 export type Surface = 'hard' | 'soft' | 'wood' | 'metal' | 'grass' | Floor;
 export interface At { x: number; y: number; z: number; /** 0 clear, 1-3 destructible layers, 4 solid. */ block: number }
+/** The fields of scene.ts `CosmeticEvent` that sound uses (kept structural, so audio does not import the scene). */
+export type Cosmetic =
+  | { k: 'impact'; mat: string; power: number }
+  | { k: 'glass'; stage: 'crack' | 'shatter' }
+  | { k: 'piece'; family: string; state: 'damaged' | 'wrecked' }
+  | { k: 'body' }
+  | { k: 'fort'; what: 'reinforce' | 'barricade'; stage: 'start' | 'unfold' | 'anchor' | 'break' };
 export interface SfxStats { voices: number; hrtf: number; bytes: number; loaded: number; firstMs: number; state: string }
 export interface Sfx {
   listen(x: number, y: number, z: number, yaw: number, indoors: boolean): void;
@@ -40,6 +47,9 @@ export interface Sfx {
   /** Someone hit: a wet hit on flesh, or a thud on armour. */
   flesh(at: At, armour: boolean): void;
   reinforceStage(stage: 'lift' | 'unfold' | 'anchor', at: At): void;
+  /** The scene's cosmetic event stream (scene.ts `onCosmetic`): impacts, glass, set pieces, bodies at rest,
+   * reinforcement and barricade stages. `at` is the event's place as the game sees it (with occlusion). */
+  cosmetic(e: Cosmetic, at: At): void;
   suspend(): void; resume(): void; dispose(): void;
   /** Starts the context (if allowed) and resolves when every sound has been rendered. For tests and the lab. */
   ready(): Promise<void>;
@@ -58,6 +68,8 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
   const beds = new Map<Space, GainNode>();
   let bedSpace: Space | null = null, indoors = false;
   const ear = { x: 0, y: 1.6, z: 0, yaw: 0 };
+  /** Set once the scene reports reinforcement stages itself. */
+  let fortStages = false;
 
   /** The engine, created on first use after a user gesture while sound is on. */
   function start(): Engine | null {
@@ -146,7 +158,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
     },
     build(reinforce, at) {
       // Until the scene reports reinforcement stages, play the whole sequence: lift, unfold, four anchors.
-      if (reinforce) {
+      if (reinforce && !fortStages) {
         play('rf.lift', 'world', at, { wet: 0.4, ref: 3, reach: 40 });
         play('rf.unfold', 'world', at, { delay: 0.6, wet: 0.4, ref: 3, reach: 40 });
         for (let i = 0; i < 4; i++) play('rf.anchor', 'world', at, { delay: 0.95 + i * 0.14, wet: 0.4, ref: 3, reach: 45, rate: 0.96 + Math.random() * 0.08 });
@@ -185,6 +197,41 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
     dropWeapon(at) { play('drop.weapon', 'world', at, { delay: 0.5, wet: 0.3, ref: 2, reach: 25, rate: 0.95 + Math.random() * 0.1 }); },
     flesh(at, armour) { play(armour ? 'armour' : 'flesh', 'world', at, { wet: 0.15, ref: 2, reach: 25, rate: 0.93 + Math.random() * 0.14 }); },
     reinforceStage(stage, at) { play(`rf.${stage}`, 'world', at, { wet: 0.4, ref: 3, reach: 45, rate: stage === 'anchor' ? 0.96 + Math.random() * 0.08 : 1 }); },
+    cosmetic(e, p) {
+      switch (e.k) {
+        case 'impact': play(`impact.${(IMPACT_MATS as string[]).includes(e.mat) ? e.mat : 'concrete'}`, 'world', p, { gain: e.power >= 1 ? 1 : 0.6, wet: 0.3, ref: 2, reach: 30, rate: 0.92 + Math.random() * 0.16 });
+          if (e.power >= 1 && Math.random() < (e.mat === 'metal' ? 0.35 : e.mat === 'concrete' || e.mat === 'brick' ? 0.12 : 0)) play('ricochet', 'world', p, { delay: 0.01, wet: 0.3, ref: 3, reach: 35, rate: 0.9 + Math.random() * 0.2 });
+          break;
+        case 'glass': this.glass(e.stage, p); break;
+        case 'piece': {
+          const f = e.family, gain = e.state === 'wrecked' ? 1 : 0.65;
+          // Small breakable dressing (screens, lights, mugs, bins, plants, fittings, loose items).
+          if (f === 'screen' || f === 'fitting') { play('glass.shatter', 'world', p, { gain: 0.6, rate: 1.25, wet: 0.3, ref: 2, reach: 30 }); play('impact.plastic', 'world', p, { gain: 0.7, ref: 2, reach: 25 }); break; }
+          if (f === 'mug') { play('glass.shatter', 'world', p, { gain: 0.45, rate: 0.8, wet: 0.3, ref: 2, reach: 25 }); break; }
+          if (f === 'led') { play('impact.plastic', 'world', p, { gain: 0.6, rate: 1.3, ref: 2, reach: 20 }); break; }
+          if (f === 'bin') { play('impact.metal', 'world', p, { gain: 0.8, rate: 0.85, ref: 2, reach: 25 }); break; }
+          if (f === 'leaf') { play('impact.leaf', 'world', p, { ref: 2, reach: 18 }); break; }
+          if (f === 'loose') { play('impact.cardboard', 'world', p, { ref: 2, reach: 20 }); break; }
+          // Set pieces by family (render/setpieces-data.ts).
+          const kind: BreakKind = /shelving|filing|cabinet|mapchest|vending|trolley|display/.test(f) ? 'shelf' : /drums|generator|skip/.test(f) ? 'drum'
+            : /crates|pallets|materials|binstore|benchboxes/.test(f) ? 'crate' : /sofa|trailer/.test(f) ? 'fabric' : /lowwall|planter/.test(f) ? 'wood' : /island|deskpod|tableset|lowtable|sideboard/.test(f) ? 'wood' : 'metal';
+          if (/lowwall|planter/.test(f)) { play('crumble.board', 'world', p, { gain, wet: 0.4, ref: 3, reach: 40, rate: 0.8 }); break; }
+          play(`break.${kind}`, 'world', p, { gain, wet: 0.4, ref: 3, reach: 40, rate: e.state === 'wrecked' ? 0.94 : 1.04 });
+          break;
+        }
+        case 'body': this.body(p, true); break;
+        case 'fort':
+          if (e.what === 'reinforce') {
+            fortStages = true;
+            if (e.stage === 'start') play('rf.lift', 'world', p, { wet: 0.4, ref: 3, reach: 40 });
+            else if (e.stage === 'unfold') play('rf.unfold', 'world', p, { wet: 0.4, ref: 3, reach: 40 });
+            else if (e.stage === 'anchor') play('rf.anchor', 'world', p, { wet: 0.4, ref: 3, reach: 45, rate: 0.96 + Math.random() * 0.08 });
+            else play('impact.metal', 'world', p, { gain: 0.9, rate: 0.7, wet: 0.4, ref: 3, reach: 40 });
+          }
+          // Barricades: building plays its hammering and breaking plays the crumble from the game's own events.
+          break;
+      }
+    },
     suspend() { if (eng && eng.ctx.state === 'running') void eng.ctx.suspend(); },
     resume() { if (eng && eng.ctx.state === 'suspended' && enabled()) void eng.ctx.resume(); },
     dispose() { dead = true; removeEventListener('pointerdown', early, true); removeEventListener('keydown', early, true); if (eng) { eng.dispose(); void eng.ctx.close().catch(() => {}); } eng = null; beds.clear(); },
