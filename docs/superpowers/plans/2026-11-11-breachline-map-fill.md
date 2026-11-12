@@ -328,3 +328,24 @@ and texture counts do not change during play.
 
 **Order.** Environment session: finish marks on props (10.1), then 12.1 with the same mark system, then the window
 glass (10.2), then Phase B art with each piece's three states (12.3), then Phase D. Fighters module: 12.2.
+
+**12.6 Ragdoll on death** (owner, 2026-11-12, typed into the environment session: "When someone dies make sure they
+ragdoll"; owner of the work: the session that owns `render/patchfighters/`). A fighter who dies goes limp under
+physics instead of playing a canned fall.
+- **Method:** a small position-based ragdoll in the render layer, no physics library: about 14 points (head, neck,
+  chest, pelvis, shoulders, elbows, hands, knees, feet) joined by fixed-length sticks, with extra minimum-distance
+  constraints standing in for joint limits so limbs cannot fold through the body; gravity; collision with the
+  floor, the solid boxes and walls from the map data (read only), and intact panels; friction so it comes to rest.
+- **Start state:** the live pose and velocity at the moment of death, plus an impulse from what killed them: along
+  the killing shot at the body region hit (a head shot snaps the head back, a shotgun throws the torso), outward
+  from a blast, forward from a melee blow.
+- **Run:** fixed small time steps, a few constraint passes each; sleep when it has settled or after about three
+  seconds, then freeze as the body for the rest of the round. The points drive the skeleton (bones aimed along the
+  sticks, torso from the shoulder and hip lines) so the skinned mesh, its wounds and headgear follow.
+- **Weapon:** dropped as its own simple body and left beside them.
+- **Same for everyone:** seeded and stepped only from shared events and a fixed time step, so clients agree closely
+  enough on where a body lies; `pose(id)` and `bodies()` report the settled position for the blood pool.
+- **Budget:** negligible (ten fighters); nothing compiled or uploaded at death (`warm.spec.ts` must still pass).
+- **Evidence:** strips over time of a death by rifle to the chest, a head shot, a shotgun at close range and a blast,
+  each ending in a settled body lying against the floor or furniture; and a test that a killed fighter ends below
+  standing height, at rest, and inside the map.
