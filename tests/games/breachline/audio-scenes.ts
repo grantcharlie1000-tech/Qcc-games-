@@ -132,3 +132,69 @@ export function uplink(module: string): RenderJob {
 }
 
 export const scenes = (module: string) => [corridor(module), breach(module), uplink(module)];
+
+/** One round in a minute, for the owner: everything the game can sound, in the order a round brings it. Prep
+ * (reinforcing, a barricade), go, distant fire, a breach, the firefight through the hole, a grenade, a far blast,
+ * set pieces breaking, the uplink planted and defused, the win. Rendered by the lab only (`-- now - - '^round'`). */
+export function round(module: string): RenderJob {
+  const p = { wall: at(3, -2, 0), entry: at(3.5, -3.5), enemy: at(3.5, -4.5, 0, 1.2), floor: at(3.5, -4.5, 0, 0.3) };
+  const cues: Cue[] = [
+    { t: 0.1, call: 'round', args: ['start'] },
+    ...[0.6, 1.1, 1.6, 2.1].map(t => ({ t, call: 'step', args: ['tile', 0.8, null] })),
+    { t: 2.4, call: 'build', args: [true, at(2, -3)] },
+    ...[5.4, 5.9, 6.4].map(t => ({ t, call: 'step', args: ['tile', 0.8, null] })),
+    { t: 6.8, call: 'build', args: [false, at(-2, -4)] },
+    ...[7.0, 7.4, 7.8, 8.2].map(t => ({ t, call: 'work', args: ['barricade', null] })),
+    { t: 9.5, call: 'round', args: ['go'] },
+    ...burst(10.5, 'ar', 5, at(25, -30, 4)), ...burst(12.0, 'carbine', 6, at(-20, -35, 4)),
+    ...[13.0, 13.4, 13.8, 14.2].map(t => ({ t, call: 'step', args: ['tile', 0.8, at(5, -6, 1, 0.1)] })),
+    { t: 14.6, call: 'chargeSet', args: [at(3, -2, 1)] },
+    ...[15.0, 15.3, 15.6].map(t => ({ t, call: 'work', args: ['charge', at(3, -2.5, 1)] })),
+    { t: 16.5, call: 'boom', args: [p.wall, 1] },
+    { t: 16.52, call: 'crumble', args: [false, true, p.wall] },
+    { t: 16.6, call: 'breakPiece', args: ['metal', 'shelf', 2, at(4, -3, 0, 0.6)] },
+    ...burst(17.6, 'shotgun', 1, p.entry), ...burst(18.4, 'shotgun', 1, p.entry),
+    ...[17.7, 18.0, 18.3].map(t => ({ t, call: 'step', args: ['tile', 1.35, at(3.5, -3, 0, 0.1)] })),
+    { t: 17.65, call: 'impact', args: ['wall', at(1, -1.5, 0, 1.2)] }, { t: 18.45, call: 'impact', args: ['concrete', at(0.5, -1.2, 0, 1.0)] },
+    { t: 18.5, call: 'hurt', args: [] },
+    ...burst(18.9, 'ar', 7, null),
+    { t: 19.0, call: 'flesh', args: [p.enemy, true] }, { t: 19.1, call: 'hit', args: [false] },
+    { t: 19.2, call: 'impact', args: ['brick', at(4, -6, 0, 1.3)] },
+    { t: 19.35, call: 'flesh', args: [p.enemy, false] }, { t: 19.45, call: 'hit', args: [false] },
+    { t: 19.55, call: 'kill', args: [] }, { t: 19.55, call: 'body', args: [p.floor, false, 'tile'] }, { t: 19.55, call: 'dropWeapon', args: [p.floor] },
+    { t: 21.0, call: 'reload', args: [2.3, null, 'ar', true] },
+    { t: 21.2, call: 'glass', args: ['crack', at(-3, -6)] },
+    ...burst(21.1, 'smg', 6, at(-6, -9, 1)), { t: 21.6, call: 'glass', args: ['shatter', at(-3, -6)] },
+    { t: 21.7, call: 'body', args: [p.floor, true, 'tile'] },
+    { t: 24.0, call: 'swap', args: [] },
+    { t: 24.6, call: 'throwIt', args: [null] },
+    { t: 25.2, call: 'bounce', args: [at(-2, -10, 0, 0.2)] }, { t: 25.5, call: 'bounce', args: [at(-2.5, -11, 0, 0.1)] },
+    { t: 26.8, call: 'boom', args: [at(-2.5, -11), 0.8] },
+    { t: 26.85, call: 'breakPiece', args: ['wood', 'table', 2, at(-2, -10, 0, 0.6)] },
+    { t: 26.9, call: 'breakPiece', args: ['wood', 'crates', 2, at(-3.5, -12, 0, 0.6)] },
+    { t: 27.0, call: 'breakPiece', args: ['fabric', 'sofa', 2, at(-1, -11, 0, 0.6)] },
+    { t: 28.5, call: 'swap', args: [] },
+    ...[29.0, 29.32, 29.64, 29.96, 30.28, 30.6].map(t => ({ t, call: 'step', args: ['tile', 1.35, null] })),
+    ...burst(31.0, 'smg', 8, at(-5, -7, 1)),
+    { t: 31.3, call: 'impact', args: ['wood', at(-1.5, -2.5, 0, 1.2)] }, { t: 31.6, call: 'impact', args: ['metal', at(1.5, -2.5, 0, 1.0)] },
+    { t: 31.9, call: 'hurt', args: [] },
+    ...burst(32.3, 'ar', 6, null), { t: 32.5, call: 'hit', args: [true] },
+    { t: 32.55, call: 'flesh', args: [at(-5, -7), false] }, { t: 32.6, call: 'kill', args: [] },
+    { t: 32.6, call: 'body', args: [at(-5, -7, 1, 0.3), false, 'tile'] }, { t: 32.6, call: 'dropWeapon', args: [at(-5, -7, 1, 0.3)] },
+    { t: 34.0, call: 'melee', args: [null] },
+    { t: 35.0, call: 'boom', args: [at(15, -45), 1] },
+    ...burst(36.0, 'dmr', 1, at(2, -24, 4)), ...burst(36.5, 'dmr', 1, at(2, -24, 4)),
+    { t: 36.55, call: 'breakPiece', args: ['metal', 'barrel', 2, at(2, -6, 0, 0.6)] },
+    ...burst(37.2, 'pistol', 3, null),
+    { t: 38.5, call: 'round', args: ['planted'] },
+    ...[39.0, 39.4, 39.8, 40.2, 40.6].map(t => ({ t, call: 'step', args: ['tile', 0.8, at(-3, 4, 1, 0.1)] })),
+    ...burst(41.0, 'carbine', 4, at(0.6, -16)),
+    { t: 41.1, call: 'impact', args: ['concrete', at(0.5, -1.5, 0, 1.2)] }, { t: 41.3, call: 'impact', args: ['glass', at(-1, -2, 0, 1.4)] },
+    ...burst(41.8, 'ar', 5, null), { t: 42.0, call: 'hit', args: [true] }, { t: 42.05, call: 'kill', args: [] },
+    { t: 42.05, call: 'body', args: [at(0.6, -16, 0, 0.3), false, 'tile'] },
+    ...Array.from({ length: Math.floor((52 - 43.5) / 0.26) }, (_, i) => ({ t: 43.5 + i * 0.26, call: 'work', args: ['defuse', null] })),
+  ];
+  for (let t = 38.8, left = 14; t < 52.2;) { cues.push({ t, call: 'beep', args: [at(1.5, -2, 0, 0.3), left < 5] }); const s = left < 5 ? 0.25 : 0.5; t += s; left -= s; }
+  cues.push({ t: 52.6, call: 'round', args: ['win'] });
+  return job(module, 'round-in-sound', 60, cues, true, 21, LAB, true);
+}

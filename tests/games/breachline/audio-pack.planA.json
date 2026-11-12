@@ -1548,6 +1548,282 @@
       "gainDb": -8,
       "pitch": 0.6,
       "lowpass": 3000
+    },
+    {
+      "group": "foley",
+      "key": "boom.near",
+      "file": "red4/R30-06-Big Crisp Explosions.wav",
+      "keepMs": 0,
+      "fadeMs": 700,
+      "ranges": [
+        [
+          3166,
+          4866
+        ],
+        [
+          9773,
+          11473
+        ]
+      ],
+      "gainDb": 6
+    },
+    {
+      "group": "foley",
+      "key": "boom.near",
+      "file": "red4/R30-07-Big Explosions Some Debris.wav",
+      "keepMs": 0,
+      "fadeMs": 700,
+      "ranges": [
+        [
+          19988,
+          21688
+        ]
+      ],
+      "gainDb": 6
+    },
+    {
+      "group": "foley",
+      "key": "boom.impact",
+      "file": "red4/R30-07-Big Explosions Some Debris.wav",
+      "keepMs": 0,
+      "fadeMs": 500,
+      "ranges": [
+        [
+          4216,
+          5516
+        ],
+        [
+          12572,
+          13872
+        ]
+      ],
+      "gainDb": 7
+    },
+    {
+      "group": "foley",
+      "key": "flesh",
+      "file": "red4/R17-40-Padded Punches.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          1448,
+          1568
+        ],
+        [
+          4943,
+          5063
+        ],
+        [
+          8603,
+          8723
+        ],
+        [
+          10158,
+          10278
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "flesh",
+      "file": "red4/R15-20-Padded Hits.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          5783,
+          5903
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "armour",
+      "file": "red4/R15-07-Metal Clangs and Hollow Hits.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          1878,
+          2028
+        ],
+        [
+          3783,
+          3933
+        ],
+        [
+          2853,
+          3003
+        ]
+      ],
+      "gainDb": -1
+    },
+    {
+      "group": "foley",
+      "key": "break.wood",
+      "file": "red4/R27-18-Axe Hits Wood Door.wav",
+      "keepMs": 0,
+      "fadeMs": 300,
+      "ranges": [
+        [
+          1263,
+          1663
+        ],
+        [
+          11618,
+          12018
+        ]
+      ],
+      "gainDb": -7
+    },
+    {
+      "group": "foley",
+      "key": "break.crate",
+      "file": "red4/R27-18-Axe Hits Wood Door.wav",
+      "keepMs": 0,
+      "fadeMs": 300,
+      "ranges": [
+        [
+          19813,
+          20213
+        ]
+      ],
+      "gainDb": -7
+    },
+    {
+      "group": "foley",
+      "key": "break.crate",
+      "file": "red4/R27-24-Crashes - Wood and Glass.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          4168,
+          4500
+        ]
+      ],
+      "gainDb": -7
+    },
+    {
+      "group": "foley",
+      "key": "break.shelf",
+      "file": "red4/R29-32-Large Quick Interior Crash.wav",
+      "keepMs": 0,
+      "fadeMs": 500,
+      "ranges": [
+        [
+          98,
+          1600
+        ]
+      ],
+      "gainDb": -1
+    },
+    {
+      "group": "foley",
+      "key": "break.metal",
+      "file": "red4/R15-07-Metal Clangs and Hollow Hits.wav",
+      "keepMs": 0,
+      "fadeMs": 200,
+      "ranges": [
+        [
+          1158,
+          1658
+        ],
+        [
+          12833,
+          13333
+        ]
+      ],
+      "gainDb": 3
+    },
+    {
+      "group": "foley",
+      "key": "break.drum",
+      "file": "red4/R15-07-Metal Clangs and Hollow Hits.wav",
+      "keepMs": 0,
+      "fadeMs": 200,
+      "ranges": [
+        [
+          4213,
+          4613
+        ],
+        [
+          22798,
+          23298
+        ]
+      ],
+      "gainDb": 5
+    },
+    {
+      "group": "foley",
+      "key": "drop.weapon",
+      "file": "red4/R27-17-Drop Object on Hard Surface.wav",
+      "keepMs": 0,
+      "fadeMs": 250,
+      "ranges": [
+        [
+          3293,
+          3793
+        ],
+        [
+          6688,
+          7188
+        ]
+      ],
+      "gainDb": -1
+    },
+    {
+      "group": "foley",
+      "key": "rf.lift",
+      "file": "red4/R18-01-Large Ratchet Turn and Spin.wav",
+      "keepMs": 0,
+      "fadeMs": 150,
+      "ranges": [
+        [
+          4700,
+          5600
+        ]
+      ],
+      "gainDb": 2
+    },
+    {
+      "group": "foley",
+      "key": "rf.unfold",
+      "file": "red4/R18-01-Large Ratchet Turn and Spin.wav",
+      "keepMs": 0,
+      "fadeMs": 200,
+      "ranges": [
+        [
+          27300,
+          28200
+        ]
+      ],
+      "gainDb": 3
+    },
+    {
+      "group": "foley",
+      "key": "rf.anchor",
+      "file": "red4/R28-41-Hammer Metal Stakes or Nails.wav",
+      "keepMs": 0,
+      "fadeMs": 100,
+      "ranges": [
+        [
+          27073,
+          27273
+        ],
+        [
+          29648,
+          29848
+        ],
+        [
+          31543,
+          31743
+        ]
+      ],
+      "gainDb": -1
     }
   ],
   "hybrids": [
@@ -1575,7 +1851,12 @@
     "gun.smg.tp",
     "gun.shotgun.tp",
     "gun.dmr.tp",
-    "gun.pistol.tp"
+    "gun.pistol.tp",
+    "boom.",
+    "flesh",
+    "armour",
+    "break.",
+    "rf."
   ],
   "bitrates": {
     "guns": 96,

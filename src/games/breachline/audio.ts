@@ -75,7 +75,8 @@ export const PACK_URLS: string[] = ['audio/breachline/guns.json', 'audio/breachl
  * if it fails. Reload slots and dry fire are recorded too (CC0 handling sounds; see THIRD_PARTY_NOTICES). */
 const PACK_KEYS: string[] = [
   ...(['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol'] as const).flatMap(w => ['fp', 'tp', 'far'].map(v => `gun.${w}.${v}`)),
-  'rl.*', 'casing.*', 'dry', 'step.*', 'impact.*', 'glass.*', 'body.*',
+  'rl.*', 'casing.*', 'dry', 'step.*', 'impact.*', 'glass.*', 'body.*', 'boom.*', 'flesh', 'armour', 'drop.weapon', 'rf.*',
+  ...['wood', 'metal', 'shelf', 'drum', 'crate'].map(b => `break.${b}`),
 ];
 
 export function createSfx(enabled: () => boolean, options: { ambience?: boolean; override?: Record<string, { sr: number; takes: number[][] }>; pack?: string | string[] | null } = {}): Sfx {
@@ -202,7 +203,8 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     boom(at, power) {
       const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z);
       if (d < 32) play(power >= 1 ? 'boom.near' : 'boom.impact', 'world', at, { wet: 0.8, ref: 6, reach: 140, rate: 0.93 + Math.random() * 0.14 });
-      else play('boom.far', 'world', at, { gain: 1.3 * power, wet: 0.7, ref: 6, reach: 160 });
+      // Far off, the same blast with its highs gone: the air and the walls between take them.
+      else play('boom.near', 'world', at, { gain: 0.8 * power, wet: 0.7, ref: 6, reach: 160, lowpass: 900, rate: 0.85 + Math.random() * 0.1 });
       if (eng && d < 14) { const k = 1 - d / 14; eng.muffle(20000 * Math.pow(0.04, k * power), 0.6 + 1.2 * k); eng.duck('amb', 12 * k, 1); }
     },
     bounce(at) { play('bounce', 'world', at, { wet: 0.3, ref: 2, reach: 28, rate: 0.95 + Math.random() * 0.1 }); },

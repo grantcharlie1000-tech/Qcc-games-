@@ -3,6 +3,7 @@
 //   set "phase1": scenes (stereo) plus "rooms" and "walls" comparisons (mono), 16-bit 22.05 kHz.
 //   set "decision" <name>: rifle and shotgun four ways, then a rifle burst (the plan A / plan B pair).
 //   set "phase3": footsteps by floor and pace, impacts by material, glass, set pieces, bodies, reinforcement, breach.
+//   set "round": the one-minute round, stereo.
 //   set "phase2": each gun four ways (own shot indoors, outdoors; someone else's at 10 m; at 60 m), automatic fire, reloads.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, statSync } from 'node:fs';
@@ -65,6 +66,10 @@ if (set === 'foley') {
   chain(['glass', 'breaks'], 'b3-glass-and-breaks.wav'); files.push('b3-glass-and-breaks.wav');
   chain(['body', 'reinforce'], 'b3-bodies-and-reinforcement.wav'); files.push('b3-bodies-and-reinforcement.wav');
   single('scene-breach', 'b3-breach.wav', true); files.push('b3-breach.wav');
+}
+if (set === 'round') {
+  // One round in a minute, everything together, in stereo.
+  single('round-in-sound', 'c1-round-in-sound.wav', true); files.push('c1-round-in-sound.wav');
 }
 let total = 0;
 for (const f of files) { const b = statSync(join(out, f)).size; total += b; console.log(`${f} ${(b / 1024).toFixed(0)} KB`); }

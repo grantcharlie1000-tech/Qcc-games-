@@ -3877,4 +3877,11 @@ Breachline footsteps, glass, impacts and body falls (in public/audio/breachline/
 - The Red Library sound effects (archive.org; CC0 1.0 as declared in the item metadata by the uploader, jscott@archive.org):
   Red_Library_Footsteps_1 R10-05 "Footsteps on Hard Tile Floor"; Red_Library_Footsteps_2 R10-56 "Footsteps on Metal Staircase";
   Red_Library_Fights R09-76 "Two Falls on Wooden Floor" and R15-19 "Muffled Body Fall".
+- Blasts, hits, breaks, the reinforcement ratchet and anchors, and the dropped weapon: the Red Library sound effects
+  (archive.org; CC0 1.0 as declared in the item metadata by the uploader, jscott@archive.org):
+  Red_Library_Explosions R30-06 "Big Crisp Explosions" and R30-07 "Big Explosions Some Debris";
+  Red_Library_Fights R17-40 "Padded Punches" and R15-20 "Padded Hits"; Red_Library_Metal R15-07 "Metal Clangs and Hollow Hits";
+  Red_Library_Impacts R27-18 "Axe Hits Wood Door"; Red_Library_Crashes R27-24 "Crashes - Wood and Glass",
+  R29-32 "Large Quick Interior Crash" and R27-17 "Drop Object on Hard Surface"; Red_Library_Tools R18-01
+  "Large Ratchet Turn and Spin" and R28-41 "Hammer Metal Stakes or Nails". https://archive.org/details/<item>.
 We cut, levelled, pitch-shifted or filtered (carpet, lino, plaster and brick are derived from other takes) and re-encoded these (Opus).

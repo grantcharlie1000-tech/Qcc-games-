@@ -1,14 +1,28 @@
 # Breachline sound: listening guide
 
-## Phase 3: footsteps, impacts, glass, bodies (2026-11-12): please play these first
+## One round in sound (2026-11-12): please play this first
+
+`c1-round-in-sound.wav`: a whole round in one minute, stereo. Prep (a reinforcement going up, a barricade), go,
+distant fire, a breach blast, the fight through the hole, a grenade, a far blast, furniture breaking, the uplink
+planted and defused, the win.
+
+- **Real:** guns, reloads, casings, footsteps, impacts, glass, bodies, hits on flesh and armour, blasts, grenades,
+  wood, crate, shelf, metal and drum breaks, the weapon drop, the reinforcement ratchet and anchors.
+- **Still synthetic:** the round cues and hit markers, uplink beeps, the room tone, the sofa (fabric) break, the
+  barricade hammer, kit rattle, weapon swap, melee, grenade throw and bounce, setting the charge, the defuse, the
+  wall crumbling.
+
+The `b3-*` files below were re-rendered with the new real breaks, hits, reinforcement and weapon drop.
+
+## Phase 3: footsteps, impacts, glass, bodies (2026-11-12)
 
 | File | What it is | Real, derived or synthetic |
 | --- | --- | --- |
 | `b3-footsteps-by-floor.wav` | Walking on asphalt, grass, concrete, tile, lino, carpet, boards, the raised metal floor, chequered tile | **Real**: concrete, gravel (for asphalt), grass, parquet (boards), tile, metal stairs (raised floor). **Derived**: lino (tile, lower and softer), chequered tile (tile, slightly higher), carpet (parquet, heavily damped). The occasional gear rustle is synthetic. |
 | `b3-crouch-walk-sprint.wav` | Crouching, walking, sprinting on tile | Real steps; crouching is much quieter and duller |
 | `b3-impacts.wav` | A bullet stopping in: wallboard, concrete, brick, wood, fabric, earth, ceiling tile, floor tile, plastic, glass, cardboard, metal, leaves | **Derived** from real hits (no licensed bullet impacts exist): wallboard and brick (a hammer on concrete and falling stone, re-pitched), concrete (hammer and stone), wood (paintball hits on wood). **Real**: glass, metal (a steel bar). **Synthetic**: fabric, earth, ceiling tile, floor tile, plastic, cardboard, leaves. |
-| `b3-glass-and-breaks.wav` | A pane cracking then shattering; then furniture breaking: wood, steel, fabric, a shelf, a drum, a crate | Glass **real**; the furniture breaks still **synthetic** (no sources yet). Since this set: boards and frames falling off a broken wall use the real wood hit, and the shotgun hull is derived from real casings. |
-| `b3-bodies-and-reinforcement.wav` | Hits on flesh and armour, a body falling and settling, a dropped weapon; then a reinforcement deploying | Body fall and settle **real**; hits, weapon drop and reinforcement **synthetic** |
+| `b3-glass-and-breaks.wav` | A pane cracking then shattering; then furniture breaking: wood, steel, fabric, a shelf, a drum, a crate | Glass **real**; the furniture breaks **real** except fabric. Since this set: boards and frames falling off a broken wall use the real wood hit, and the shotgun hull is derived from real casings. |
+| `b3-bodies-and-reinforcement.wav` | Hits on flesh and armour, a body falling and settling, a dropped weapon; then a reinforcement deploying | All **real** |
 | `b3-breach.wav` | The breach scene with everything together | Mixed |
 
 No more ricochets: the only licensed ones are Western-film ricochets, the cartoon sound you rejected.

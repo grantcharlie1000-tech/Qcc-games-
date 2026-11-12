@@ -10,7 +10,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { contactSheet, encodeWav, measure, spectrogram, writeJson, type Measure } from './audio-harness';
 import type { RenderJob, RenderResult } from './audio-page';
-import { catalogue, scenes } from './audio-scenes';
+import { catalogue, round, scenes } from './audio-scenes';
 
 export interface LabRecord { name: string; m: Measure; nodes: Record<string, number>; perCue: Record<string, number>; errors: string[] }
 
@@ -70,7 +70,7 @@ async function main() {
   const module = modArg && modArg !== '-' ? modArg : '/src/games/breachline/audio.ts';
   const outDir = outArg && outArg !== '-' ? outArg : join('test-results/breachline-audio', label);
   mkdirSync(join(outDir, 'wav'), { recursive: true }); mkdirSync(join(outDir, 'png'), { recursive: true });
-  let jobs = [...catalogue(module), ...scenes(module)];
+  let jobs = [...catalogue(module), ...scenes(module), round(module)];
   if (filter) jobs = jobs.filter(j => new RegExp(filter).test(j.name));
   // AUDIO_LAB_OVERRIDE=<json of { key: { sr, takes: number[][] } }>: audition other sources through the same engine.
   if (process.env.AUDIO_LAB_OVERRIDE) {

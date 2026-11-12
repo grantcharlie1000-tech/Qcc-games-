@@ -285,20 +285,17 @@ export const debris: Gen = (r, sr) => {
 
 // ---- Blasts, grenades, charges -------------------------------------------------------------------------------------
 
-/** An explosion. `near` keeps the pressure crack and the debris; far is the low boom and its long roll. */
-export function blast(near: boolean, impact: boolean, r: Rng, sr: number): Float32Array {
-  const o = buf(sr, near ? 1.9 : 2.4), k = range(r, 0.93, 1.07), size = impact ? 0.75 : 1;
-  if (near) {
-    const nw = Math.round(sr * 0.0018);
-    for (let i = 0; i < nw; i++) o[i] += (1 - 2 * i / nw) * 1.5;
-    mixInto(o, adExp(biquad(white(Math.ceil(sr * 0.06), r), sr, 'highpass', 2000), sr, 0.0002, 0.012), 0, 1.2);
-    mixInto(o, adExp(biquad(pink(Math.ceil(sr * 1.0), r), sr, 'lowpass', glide(5000 * k, 300, sr * 0.6)), sr, 0.001, 0.12 * size), 0, 5);
-    grains(o, r, sr, 70, 0.8, 800, 6000, 0.4, 0.8);
-  } else {
-    mixInto(o, adExp(biquad(pink(Math.ceil(sr * 1.2), r), sr, 'lowpass', 600 * k), sr, 0.01, 0.15 * size), 0, 4);
-  }
+/** An explosion, close: the pressure crack, the debris, the boom and its roll. Played low-passed when far off.
+ * The recorded pack replaces it; this is the fallback if the pack cannot load. */
+export function blast(impact: boolean, r: Rng, sr: number): Float32Array {
+  const o = buf(sr, 1.9), k = range(r, 0.93, 1.07), size = impact ? 0.75 : 1;
+  const nw = Math.round(sr * 0.0018);
+  for (let i = 0; i < nw; i++) o[i] += (1 - 2 * i / nw) * 1.5;
+  mixInto(o, adExp(biquad(white(Math.ceil(sr * 0.06), r), sr, 'highpass', 2000), sr, 0.0002, 0.012), 0, 1.2);
+  mixInto(o, adExp(biquad(pink(Math.ceil(sr * 1.0), r), sr, 'lowpass', glide(5000 * k, 300, sr * 0.6)), sr, 0.001, 0.12 * size), 0, 5);
+  grains(o, r, sr, 70, 0.8, 800, 6000, 0.4, 0.8);
   mixInto(o, adExp(osc(Math.ceil(sr * 1.5), sr, t => 32 * k + 60 * Math.exp(-t / 0.05)), sr, 0.002, 0.28 * size), 0, 2.2);
-  mixInto(o, adExp(biquad(brown(Math.ceil(sr * 2.3), r), sr, 'lowpass', near ? 400 : 220), sr, 0.02, 0.6 * size), 0, 3);
+  mixInto(o, adExp(biquad(brown(Math.ceil(sr * 2.3), r), sr, 'lowpass', 400), sr, 0.02, 0.6 * size), 0, 3);
   saturate(o, 2.4);
   return finish(o, sr);
 }
@@ -621,9 +618,8 @@ export function catalogue(): SoundDef[] {
   add('armour', 2, 22050, -12, 4, fleshHit(true));
   for (const st of ['lift', 'unfold', 'anchor'] as ReinforceStage[]) add(`rf.${st}`, st === 'anchor' ? 2 : 1, 22050, -6, 6, (r, sr) => reinforceStage(st, r, sr));
   add('debris', 2, 16000, -8, 5, debris);
-  add('boom.near', 1, 22050, 4, 5, (r, sr) => blast(true, false, r, sr));
-  add('boom.impact', 1, 22050, 2, 5, (r, sr) => blast(true, true, r, sr));
-  add('boom.far', 2, 12000, 2, 6, (r, sr) => blast(false, false, r, sr));
+  add('boom.near', 1, 22050, 4, 5, (r, sr) => blast(false, r, sr));
+  add('boom.impact', 1, 22050, 2, 5, (r, sr) => blast(true, r, sr));
   add('throw', 2, 32000, -10, 5, throwSound);
   add('bounce', 4, 32000, -10, 5, bounceSound);
   add('charge.set', 2, 32000, -8, 5, chargeSetSound);
