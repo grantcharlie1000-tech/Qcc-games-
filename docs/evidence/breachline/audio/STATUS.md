@@ -15,7 +15,7 @@ for that.
 | 1. Graph and space | **Done** (2026-11-12) | Passed on measurement (below): Space 6, Mix 6, walls 6; the corridor and breach scenes render at −2.3 and −2.0 dBFS with no clipping. **Owner's listening still to come** (`listen/p1-*.wav`). |
 | 2. Weapons and reloads | **Failed by the owner's ear** (2026-11-12) | **Partly met.** Sustained fire shows no repeating pattern (`phase2/auto-*`), and all six guns are distinct in unit tests. Gunfire scores **6.5, not the ≥ 7 asked**: synthesis without recordings lands here by my reading. The owner's notes on `listen/p2-*.wav` decide the next pass. |
 | 3. Foley and destruction | **Built, on hold** (2026-11-12) | Footsteps by floor, impacts in 13 materials, ricochets, glass, set-piece breaks, bodies, hits and the reinforcement sequence are built, wired and tested. They use the same method as the guns, so they are expected to fail the same way, and no listening set was made. They wait for the rebuild. |
-| 4. Blasts, objective, feedback | **Blasts real** (2026-11-12) | Blasts, grenades, hits, breaks, reinforcement and the weapon drop are recordings; objective and feedback cues stay synthetic. Owner to listen: `listen/c2-round-in-sound.wav (was c1)` |
+| 4. Blasts, objective, feedback | **Blasts real** (2026-11-12) | Blasts, grenades, hits, breaks, reinforcement and the weapon drop are recordings; objective and feedback cues stay synthetic. Owner to listen: `listen/c3-round-in-sound.wav (was c1, c2)` |
 | 5. Ambience, cues, polish | | |
 
 ## The owner's verdict on phases 1–2, and the diagnosis
@@ -167,6 +167,58 @@ change checked against the reference sheets until every gun is within about 1.0 
    distance to the reference, and searches the gun's parameters (a few dozen) to minimise it. Then the takes'
    spread sets the variant range. Indoor rooms are not covered by these references and stay as designed.
 
+## No more "piano keys" (2026-11-12)
+
+The owner heard piano keys in `c2`. They were the synthesised cues: clean sine tones and chords. Measured with
+`tests/games/breachline/audio-tonal.ts` (the harness's tonal ratio, the share of energy in narrow peaks; the most
+tonal real gunshot take scores 0.002).
+
+Every sound alone, before and after (synthesised cues replaced by recordings):
+
+| Sound | Before | After | Now |
+| --- | --- | --- | --- |
+| Uplink tick (`beep`, `beep.urgent`) | 0.99 | 0.02 to 0.04 | a real clock tick and tock |
+| Keypad (`work.plant`) | 0.99 | under 0.04 | real computer keys |
+| Planted (`cue.planted`) | 0.99 | 0.00 | a heavy industrial switch |
+| Kill | 0.97 | 0.03 | a typewriter key |
+| Lose, match lost | 0.95 to 0.96 | 0.00 | a radio crackle |
+| Menu click (`ui`) | 0.86 | 0.00 | a switch click |
+| Go, start | 0.73, 0.05 | 0.03, 0.00 | a radio crackle |
+| Defuse | 0.73 | 0.01 | switch clicks |
+| Win, match won | 0.67 to 0.68 | 0.06, 0.05 | door slams |
+| Hit, head hit | 0.66 | 0.00 to 0.01 | switch clicks |
+| Hurt | 0.59 | under 0.05 | a padded punch, muffled |
+| Plastic and tile impacts | 0.27, 0.06 | (aliased) | the real wood and concrete hits, brighter |
+| Grenade throw | synthetic | 0.02 | a whoosh with a click |
+| Reinforcement anchors, barricade hammer | 0.70, 0.45 | lower | the same stakes, low-passed at 3 kHz (their ring was a 4 to 6 kHz ping), and the anchors no longer vary in pitch (four pings at random pitches made a tune) |
+| Blast thump (under each blast) | far blast 0.29 | 0.04 | a bird-scaring gun is a tube and booms on a pitch: it now sits 6 dB lower |
+
+Moments in the round over 0.08, before (`c2`) and after (`c3`):
+
+| Time | c2 | c3 | What |
+| --- | --- | --- | --- |
+| 6.6 s, 7.6 s | 0.36, 0.38 | 0.10, 0.11 | anchors, barricade hammer |
+| 9.3 s | 0.30 | under 0.05 | go cue |
+| 14.7 s | 0.74 | none | charge set (its two beeps) |
+| 16.3 s | 0.15 | 0.08 | breach: blast, metal shelf break |
+| 21.0 s | 0.22 | 0.23 | glass cracking (real glass rings) |
+| 24.5 s | 0.15 | none | grenade throw |
+| 31.5 s | 0.39 | none | a metal hit (masked) |
+| 34.9 s | 0.59 | 0.22 | far blast, melee |
+| 36.4 s | 0.72 | 0.73 | a struck metal barrel breaking (a real barrel rings) |
+| 37.6 s | 0.15 | 0.17 | pistol casings tinkling (real brass) |
+| 38.3 s | 0.96 | under 0.03 | planted cue |
+| 41.1 s | 0.67 | under 0.03 | uplink beeps |
+| 52.5 s | 0.11 | under 0.06 | win cue |
+
+What still rings is real metal and glass: casings, glass, steel hits, the metal and barrel breaks. Those partials are
+inharmonic and come from the objects, not notes; if the owner still hears keys, the barrel (36.4 s) is the first
+suspect. No musical tone is synthesised anywhere now; the synthesis is only the fallback if a pack fails.
+
+- **Download 1,459 KB** (ceiling 1.5 MB).
+- **Tests:** 145 unit tests; `audio.spec.ts` 3/3 (4.0 nodes per shot).
+- **The round:** `listen/c3-round-in-sound.wav` (replaces c2; picture beside it).
+
 ## Is sound part of the frame-rate problem? (2026-11-12)
 
 Measured with `tests/games/breachline/audio-perf.ts`: a live 5v5 bot match in Chromium on the dev server, the player
@@ -212,7 +264,7 @@ created while the audio thread holds it; the remaining one-time costs sit at the
   overload); the tail of one debris take was cut before an edit gate in the source.
 - **Download 1,328 KB** (ceiling raised to 1.5 MB). **Bank 13.05 MB** (ceiling 14 MB).
 - **Still synthetic, besides the UI cues and beeps:** the fabric break, the grenade throw, the defuse.
-- **The round in sound** is re-rendered: `listen/c2-round-in-sound.wav` (replaces c1; picture beside it).
+- **The round in sound** is re-rendered: `listen/c2-round-in-sound.wav` (since replaced by c3).
   Peak -2.3 dBFS, no clipping.
 - **Tests:** 142 unit tests, including two new ones for the pack builder (the decay shaping, and a loop that runs on
   into its start without a jump); `audio.spec.ts` 3/3 (4.7 nodes per shot); the production build loads all three
@@ -242,7 +294,7 @@ sheet with an edit in it), R11-53 Explosive Blast (a narrow resonance at 300 Hz)
 - **Still synthetic, besides the UI cues:** the ambience beds (four real loops would not fit in what is left of
   the download), the fabric break, the barricade hammer, kit rattle, weapon swap, melee, grenade throw and bounce,
   charge set and tape, the defuse, and the wall crumbling with its debris.
-- **The round in sound:** `listen/c2-round-in-sound.wav (was c1)` (one minute, stereo; picture `listen/c1-round-in-sound.png`)
+- **The round in sound:** `listen/c3-round-in-sound.wav (was c1, c2)` (one minute, stereo; picture `listen/c1-round-in-sound.png`)
   plays a whole round through the game's sound: prep with reinforcement and a barricade, go, distant fire, a breach,
   the firefight through the hole, a grenade, a far blast, set pieces breaking, the uplink planted and defused, the
   win. Peak -2.0 dBFS, no clipping.

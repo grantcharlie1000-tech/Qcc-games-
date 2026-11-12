@@ -3895,4 +3895,11 @@ Breachline footsteps, glass, impacts and body falls (in public/audio/breachline/
   and "Explosion #2" https://bigsoundbank.com/explosion-2-s1808.html (an agricultural bird-scaring gun; under the
   blasts), "Whoosh #5" https://bigsoundbank.com/whoosh-s1797.html, by Joseph Sardin; "Adhesive tape #3"
   https://bigsoundbank.com/adhesive-tape-s0299.html, by Denis Chardonnet.
+- Round cues, hit markers, the uplink tick, keypad, defuse and grenade throw: BigSoundBank, CC0 1.0 as stated on each
+  sound page: "Crackling by radio" https://bigsoundbank.com/crackling-radio-2-s0313.html (Denis Chardonnet); "Switch
+  #5" https://bigsoundbank.com/switch-5-s0321.html (David Greck); by Joseph Sardin: "Door slamming #2"
+  https://bigsoundbank.com/door-slamming-2-s0223.html, "Industrial switch #1"
+  https://bigsoundbank.com/industrial-switch-1-s3061.html, "Clock" https://bigsoundbank.com/clock-s0007.html,
+  "Typewriter key" https://bigsoundbank.com/typewriter-key-s2842.html, "Computer keyboard"
+  https://bigsoundbank.com/computer-keyboard-s0229.html, "Whoosh #2" https://bigsoundbank.com/whoosh-2-s0573.html.
 We cut, levelled, pitch-shifted or filtered (carpet, lino, plaster and brick are derived from other takes) and re-encoded these (Opus).

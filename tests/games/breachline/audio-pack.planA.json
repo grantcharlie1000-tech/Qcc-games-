@@ -1575,7 +1575,7 @@
       "under": {
         "file": "bsb4/1808.flac",
         "startMs": 0,
-        "gainDb": -6
+        "gainDb": -12
       }
     },
     {
@@ -1600,7 +1600,7 @@
       "under": {
         "file": "bsb4/1807.flac",
         "startMs": 0,
-        "gainDb": -6
+        "gainDb": -12
       }
     },
     {
@@ -1629,7 +1629,7 @@
       "under": {
         "file": "bsb4/1807.flac",
         "startMs": 0,
-        "gainDb": -8
+        "gainDb": -14
       }
     },
     {
@@ -1856,7 +1856,8 @@
           31743
         ]
       ],
-      "gainDb": -1
+      "gainDb": -1,
+      "lowpass": 3000
     },
     {
       "group": "foley",
@@ -2086,7 +2087,8 @@
           32213
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "lowpass": 3000
     },
     {
       "group": "amb",
@@ -2117,6 +2119,300 @@
       ],
       "gainDb": 3,
       "loop": true
+    },
+    {
+      "group": "foley",
+      "key": "cue.start",
+      "file": "bsb6/0313.aiff",
+      "keepMs": 0,
+      "fadeMs": 150,
+      "ranges": [
+        [
+          778,
+          1150
+        ]
+      ],
+      "gainDb": 4
+    },
+    {
+      "group": "foley",
+      "key": "cue.go",
+      "file": "bsb6/0313.aiff",
+      "keepMs": 0,
+      "fadeMs": 150,
+      "ranges": [
+        [
+          148,
+          650
+        ]
+      ],
+      "gainDb": 4
+    },
+    {
+      "group": "foley",
+      "key": "cue.lose",
+      "file": "bsb6/0313.aiff",
+      "keepMs": 0,
+      "fadeMs": 300,
+      "ranges": [
+        [
+          1998,
+          3300
+        ]
+      ],
+      "gainDb": 4
+    },
+    {
+      "group": "foley",
+      "key": "cue.matchLose",
+      "file": "bsb6/0313.aiff",
+      "keepMs": 0,
+      "fadeMs": 400,
+      "ranges": [
+        [
+          1380,
+          3300
+        ]
+      ],
+      "gainDb": 5
+    },
+    {
+      "group": "foley",
+      "key": "cue.win",
+      "file": "bsb6/0223.aiff",
+      "keepMs": 0,
+      "fadeMs": 250,
+      "ranges": [
+        [
+          33,
+          700
+        ]
+      ],
+      "gainDb": 4
+    },
+    {
+      "group": "foley",
+      "key": "cue.matchWin",
+      "file": "bsb6/0223.aiff",
+      "keepMs": 0,
+      "fadeMs": 300,
+      "ranges": [
+        [
+          2743,
+          3500
+        ]
+      ],
+      "gainDb": 4
+    },
+    {
+      "group": "foley",
+      "key": "cue.planted",
+      "file": "bsb6/3061.aiff",
+      "keepMs": 0,
+      "fadeMs": 300,
+      "ranges": [
+        [
+          0,
+          900
+        ]
+      ],
+      "gainDb": 6
+    },
+    {
+      "group": "foley",
+      "key": "beep",
+      "file": "bsb6/0007.aiff",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          205,
+          330
+        ],
+        [
+          2205,
+          2315
+        ]
+      ],
+      "gainDb": 10
+    },
+    {
+      "group": "foley",
+      "key": "beep.urgent",
+      "file": "bsb6/0007.aiff",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1200,
+          1330
+        ],
+        [
+          3203,
+          3315
+        ]
+      ],
+      "gainDb": 10
+    },
+    {
+      "group": "foley",
+      "key": "hit",
+      "file": "bsb6/0321.aiff",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          256,
+          330
+        ],
+        [
+          778,
+          850
+        ]
+      ],
+      "gainDb": -1
+    },
+    {
+      "group": "foley",
+      "key": "hit.head",
+      "file": "bsb6/0321.aiff",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          2333,
+          2410
+        ]
+      ],
+      "gainDb": 2
+    },
+    {
+      "group": "foley",
+      "key": "kill",
+      "file": "bsb6/2842.aiff",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          120,
+          300
+        ]
+      ],
+      "gainDb": 6
+    },
+    {
+      "group": "foley",
+      "key": "ui",
+      "file": "bsb6/0321.aiff",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1748,
+          1830
+        ]
+      ],
+      "gainDb": 4
+    },
+    {
+      "group": "foley",
+      "key": "work.plant",
+      "file": "bsb6/0229.aiff",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          570,
+          640
+        ],
+        [
+          633,
+          700
+        ],
+        [
+          1255,
+          1320
+        ]
+      ],
+      "gainDb": 9
+    },
+    {
+      "group": "foley",
+      "key": "work.defuse",
+      "file": "bsb6/0321.aiff",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1253,
+          1330
+        ],
+        [
+          1748,
+          1830
+        ],
+        [
+          2333,
+          2410
+        ]
+      ],
+      "gainDb": 8
+    },
+    {
+      "group": "foley",
+      "key": "work.ratchet",
+      "file": "red4/R18-01-Large Ratchet Turn and Spin.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          5600,
+          5850
+        ],
+        [
+          27300,
+          27550
+        ]
+      ],
+      "gainDb": -3
+    },
+    {
+      "group": "foley",
+      "key": "hurt",
+      "file": "red4/R17-40-Padded Punches.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          633,
+          750
+        ],
+        [
+          1993,
+          2110
+        ]
+      ],
+      "gainDb": 4,
+      "lowpass": 1800
+    },
+    {
+      "group": "foley",
+      "key": "throw",
+      "file": "bsb6/0573.aiff",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          80,
+          300
+        ]
+      ],
+      "gainDb": 3,
+      "under": {
+        "file": "bsb6/0321.aiff",
+        "startMs": 240,
+        "gainDb": -8
+      }
     }
   ],
   "hybrids": [
@@ -2159,7 +2455,15 @@
     "melee",
     "bounce",
     "hammer",
-    "amb."
+    "amb.",
+    "cue.",
+    "beep",
+    "hit",
+    "kill",
+    "ui",
+    "work.",
+    "hurt",
+    "throw"
   ],
   "bitrates": {
     "guns": 96,

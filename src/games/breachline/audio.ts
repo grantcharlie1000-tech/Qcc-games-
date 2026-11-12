@@ -77,7 +77,9 @@ const PACK_KEYS: string[] = [
   ...(['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol'] as const).flatMap(w => ['fp', 'tp', 'far'].map(v => `gun.${w}.${v}`)),
   'rl.*', 'casing.*', 'dry', 'step.*', 'impact.*', 'glass.*', 'body.*', 'boom.*', 'flesh', 'armour', 'drop.weapon', 'rf.*',
   ...['wood', 'metal', 'shelf', 'drum', 'crate'].map(b => `break.${b}`),
-  'crumble.*', 'debris', 'gear', 'work.tape', 'charge.set', 'swap', 'melee', 'bounce', 'hammer', 'amb.*',
+  'crumble.*', 'debris', 'gear', 'work.*', 'charge.set', 'swap', 'melee', 'bounce', 'hammer', 'amb.*',
+  // Cues and feedback are recorded clicks, ticks, a radio crackle and door slams: no musical tones anywhere.
+  'cue.*', 'beep', 'beep.urgent', 'hit', 'hit.head', 'kill', 'ui', 'hurt', 'throw',
 ];
 
 export function createSfx(enabled: () => boolean, options: { ambience?: boolean; override?: Record<string, { sr: number; takes: number[][] }>; pack?: string | string[] | null } = {}): Sfx {
@@ -222,7 +224,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
       if (reinforce && !fortStages) {
         play('rf.lift', 'world', at, { wet: 0.4, ref: 3, reach: 40 });
         play('rf.unfold', 'world', at, { delay: 0.6, wet: 0.4, ref: 3, reach: 40 });
-        for (let i = 0; i < 4; i++) play('rf.anchor', 'world', at, { delay: 0.95 + i * 0.14, wet: 0.4, ref: 3, reach: 45, rate: 0.96 + Math.random() * 0.08 });
+        for (let i = 0; i < 4; i++) play('rf.anchor', 'world', at, { delay: 0.95 + i * 0.14, wet: 0.4, ref: 3, reach: 45 });
       }
       else for (let i = 0; i < 3; i++) play('hammer', 'world', at, { delay: i * 0.11, wet: 0.35, ref: 3, reach: 40 });
     },
@@ -240,7 +242,10 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     round(kind) { play(`cue.${kind}`, 'cue', null, { wet: 0.15 }); },
     impact(material, at) {
       const mat = (IMPACT_MATS as string[]).includes(material) ? (material as ImpactMat) : 'concrete';
-      play(`impact.${mat}`, 'world', at, { wet: 0, ref: 2, reach: 30, rate: 0.92 + Math.random() * 0.16 });
+      // Plastic and floor tile have no recording, and their synthesised hits ring like notes: use the real wood and
+      // concrete hits, a little brighter.
+      const alias = eng?.packed.has('impact.wood') ? (mat === 'plastic' ? 'wood' : mat === 'tile' ? 'concrete' : null) : null;
+      play(`impact.${alias ?? mat}`, 'world', at, { wet: 0, ref: 2, reach: 30, rate: (alias ? 1.2 : 1) * (0.92 + Math.random() * 0.16) });
     },
     glass(kind, at) { play(kind === 'crack' ? 'glass.crack' : 'glass.shatter', 'world', at, { wet: 0.4, ref: 3, reach: 40 }); },
     breakPiece(material, family, state, at) {
@@ -255,7 +260,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     },
     dropWeapon(at) { play('drop.weapon', 'world', at, { delay: 0.5, wet: 0.3, ref: 2, reach: 25, rate: 0.95 + Math.random() * 0.1 }); },
     flesh(at, armour) { play(armour ? 'armour' : 'flesh', 'world', at, { wet: 0.15, ref: 2, reach: 25, rate: 0.93 + Math.random() * 0.14 }); },
-    reinforceStage(stage, at) { play(`rf.${stage}`, 'world', at, { wet: 0.4, ref: 3, reach: 45, rate: stage === 'anchor' ? 0.96 + Math.random() * 0.08 : 1 }); },
+    reinforceStage(stage, at) { play(`rf.${stage}`, 'world', at, { wet: 0.4, ref: 3, reach: 45 }); },
     cosmetic(e, p) {
       switch (e.k) {
         // No reverb send: an impact is short and small, and there is one per round (node budget, plan §5).
@@ -291,7 +296,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
             fortStages = true;
             if (e.stage === 'start') play('rf.lift', 'world', p, { wet: 0.4, ref: 3, reach: 40 });
             else if (e.stage === 'unfold') play('rf.unfold', 'world', p, { wet: 0.4, ref: 3, reach: 40 });
-            else if (e.stage === 'anchor') play('rf.anchor', 'world', p, { wet: 0.4, ref: 3, reach: 45, rate: 0.96 + Math.random() * 0.08 });
+            else if (e.stage === 'anchor') play('rf.anchor', 'world', p, { wet: 0.4, ref: 3, reach: 45 });
             else play('impact.metal', 'world', p, { gain: 0.9, rate: 0.7, wet: 0.4, ref: 3, reach: 40 });
           }
           // Barricades: building plays its hammering and breaking plays the crumble from the game's own events.
