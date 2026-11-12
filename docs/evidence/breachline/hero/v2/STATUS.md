@@ -6,7 +6,7 @@ Owns `models.ts`, `render/hero/`, `scripts/breachline-assets/hero/`, `public/gam
 ## Where I am
 
 **Baked and held: AR-5, Halden 12, Tern C8, Wren-9.** Aimed views cleared, hands reworked (planner's items 1 and 2).
-Next: Halden 12 finish and markings, then the Corvin DMR, then the sidearm. Hands: anatomy rebuilt to the plan
+Next: the Corvin DMR, then the sidearm. Hands: anatomy rebuilt to the plan
 (gate 3), Base Hand is the default glove.
 
 ## Pipeline (new)
@@ -234,6 +234,13 @@ brace stock is plain.
 - Shared texel code moved from `sculpt.ts` to `texels.ts` (rasterise, normal encoding, noise) for both bakes.
 - Honest read: the arm now reads as one arm into the glove; at play distance the seams are too fine to see, the
   colours and panel carry it. The Base Hand's low polygon count shows at the knuckles. About 5.5.
+
+## Halden 12 polish
+
+Blued steel a step lighter (0x4e5156), pump grooves wider and deeper (3.6 mm, 12.5 mm pitch), markings on the left
+of the receiver larger (HALDEN 12, 12 GA 3 IN, HN-31740). 10.4k triangles, 1.78 MB. Evidence: `halden12-polish.jpg`.
+Honest read: the markings read in the studio; at the hip the side saddle covers most of the receiver's left, so they
+are barely seen in play. About 6.
 
 ## Decisions (made without asking; say if wrong)
 

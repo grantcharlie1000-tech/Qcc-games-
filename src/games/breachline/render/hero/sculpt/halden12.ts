@@ -82,7 +82,7 @@ export function haldenParts(hi: boolean): Part[] {
     const P = H.pump, sec = round2([[-P.half, P.bottom], [P.half, P.bottom], [P.half, P.top], [-P.half, P.top]], 9);
     let pump = alongZ(sec, P.u0, P.u1, 3);
     for (const u0 of [P.u0 + 30, P.u0 + 110]) {
-      const groove = repeatU(cut(alongZ(sec, u0, u0 + 4, 0, -1), alongZ(sec, u0 - 1, u0 + 5, 0, 2.2)), 13, 6);
+      const groove = repeatU(cut(alongZ(sec, u0, u0 + 5.5, 0, -1), alongZ(sec, u0 - 1, u0 + 6.5, 0, 3.6)), 12.5, 6);
       pump = cutRound(pump, groove, 0.6);
     }
     if (hi) pump = relief(pump, (x, y, z) => (Math.abs(x) > P.half - 0.6 ? stipple(x, y, z) * 0.6 : 0), 0.3);
