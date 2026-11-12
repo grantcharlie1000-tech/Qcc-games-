@@ -35,6 +35,9 @@ export interface HeroView {
 export interface Viewmodel {
   /** Poses the weapon in hand for this frame. `time` is the scene clock in seconds. */
   update(view: HeroView, time: number): void;
+  /** The held weapon's muzzle as the player sees it, as a world point (for tracers and smoke from the barrel), using
+   * the world camera. False when no weapon is shown. */
+  muzzle?(out: THREE.Vector3, world: THREE.Camera): boolean;
   /** Reacts to the local player's own events (shots). */
   handle(events: readonly SimEvent[], m: Match, self: number): void;
   /** Draws the weapon over the world (call after the world, with the colour buffer intact). Returns draw calls. */

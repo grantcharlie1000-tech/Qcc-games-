@@ -13,6 +13,7 @@ import { TEXTURED } from './weapons';
 import { BAKED, clayMaterial, loadBaked } from './baked';
 import { ArtLoader } from '../assets';
 import { reloadFrame, idleFrame } from './reload';
+import { muzzleInView, viewToWorld } from './muzzle';
 import { DEFAULT_LOOK, createFpRig, holdFor, type FpRig } from './rig';
 import { CASES, WB } from './weapons';
 import type { HeroLighting, HeroView, Viewmodel } from './index';
@@ -232,12 +233,16 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       scene.environment = envFor(p.x, p.z); scene.environmentIntensity = VM_GAIN * (lighting.environment(p.x, p.z) ? lighting.environmentScale(p.x, p.z) : 1) * Math.max(0.35, Math.min(1.6, lum * 1.2));
       // Muzzle flash at the muzzle socket.
       const scoped = id === 'dmr' && ads > 0.9;
-      if (flashLife > 0) { flashLife -= dt; flash.visible = flashLife > 0 && !scoped; tmp.set(...S.muzzle); tmp.z -= 0.03; r.gun.localToWorld(tmp); r.root.worldToLocal(tmp); flash.position.copy(tmp); }
+      if (flashLife > 0) { flashLife -= dt; flash.visible = flashLife > 0 && !scoped; muzzleInView(r.gun, S.muzzle, tmp); r.root.worldToLocal(tmp); flash.position.copy(tmp); }
       else flash.visible = false;
       r.gun.visible = !scoped;
       for (const a of r.root.children) if ((a as THREE.SkinnedMesh).isSkinnedMesh) a.visible = !scoped;
       camera.fov = 54 - ads * 8; camera.updateProjectionMatrix();
       void shots;
+    },
+    muzzle(out: THREE.Vector3, world: THREE.Camera) {
+      if (!holder.visible || !rig) return false;
+      return !!viewToWorld(muzzleInView(rig.gun, rig.weapon.sockets.muzzle, tmp), camera, world, out);
     },
     handle(events: readonly SimEvent[], m: Match, self: number) {
       for (const e of events) if (e.e === 'shot' && e.id === self && m.players[self]) fire(e.w);
