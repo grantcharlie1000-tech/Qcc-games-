@@ -228,3 +228,50 @@ test('room culling: an intact wall hides the room behind it, and a hole shows it
   expect(after.lab).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test('what changes in a match is drawn where it is now: a wrecked set piece, and what falls from a shot wall',async({page})=>{
+  test.setTimeout(300_000);
+  const errors=watch(page);
+  await page.goto('/?festive=off&artdbg=world#/game/breachline');
+  await page.waitForFunction(()=>window.__breachlineTest!==undefined,undefined,{timeout:60000});
+  await action(page,{seed:7});
+  await page.waitForFunction(()=>window.__breachlineTest!.stats().ready,undefined,{timeout:240_000,polling:500});
+  const r=await page.evaluate(()=>{
+    type O={visible:boolean;parent:O|null;children:O[];matrix:{elements:number[];compose(p:unknown,q:unknown,s:unknown):{elements:number[]}};matrixWorld:{elements:number[]};matrixAutoUpdate:boolean;position:unknown;quaternion:unknown;scale:unknown;isMesh?:boolean;geometry?:{boundingBox:unknown;computeBoundingBox():void}};
+    const w=window as unknown as {__blScenes:{scene:O;artScene:O};__blPieces:{hit(i:number):void;states():number[]};__blPieceDefs:{x0:number;z0:number;x1:number;z1:number;family:string}[];__blFx:{chunk:{rest:boolean;stay:boolean}[];chunks:{getMatrixAt(i:number,m:unknown):void}}};
+    const h=window.__breachlineTest!,S=w.__blScenes;
+    const all=(root:O,out:O[]=[])=>{out.push(root);for(const c of root.children)all(c,out);return out;};
+    // A shelving rack: hit until wrecked; its standing models go and its wrecked ones come.
+    const i=w.__blPieceDefs.findIndex(p=>p.family==='shelving'),def=w.__blPieceDefs[i];
+    const art=all(S.artScene),shown=new Map(art.map(o=>[o,o.visible]));
+    for(let k=0;k<200&&w.__blPieces.states()[i]!==2;k++)w.__blPieces.hit(i);
+    const came=art.filter(o=>o.visible&&!shown.get(o));
+    // A wall shot through from the corridor: pieces of it come down.
+    h.place(-4.6,0.2,0,-0.05);h.advance(0.1);h.hold({fire:true,mx:1},1.2);
+    for(let k=0;k<200;k++)h.draw();  // effects move only as frames are drawn (60 a second)
+    // Every object is drawn at the place its own position, turn and size (and its parents') give, frozen or not.
+    let worst=0;
+    const M=(S.scene as unknown as {matrix:{constructor:new()=>O['matrix']}}).matrix.constructor;
+    const check=(o:O,parent:number[]|null)=>{
+      const m=o.matrixAutoUpdate?new M().compose(o.position,o.quaternion,o.scale):o.matrix,e=m.elements,want=new Array(16).fill(0);
+      if(parent)for(let r=0;r<4;r++)for(let c=0;c<4;c++)for(let k=0;k<4;k++)want[c*4+r]+=parent[k*4+r]*e[c*4+k];else want.splice(0,16,...e);
+      for(let k=0;k<16;k++)worst=Math.max(worst,Math.abs(want[k]-o.matrixWorld.elements[k]));
+      for(const c of o.children)check(c,want);
+    };
+    check(S.scene,null);check(S.artScene,null);
+    // The wrecked models stand in the piece's footprint.
+    const inside=came.every(o=>{const mesh=all(o).find(c=>c.isMesh);if(!mesh)return false;const g=mesh.geometry!;if(!g.boundingBox)g.computeBoundingBox();const b=g.boundingBox! as unknown as {min:{x:number;y:number;z:number};max:{x:number;y:number;z:number}},e=mesh.matrixWorld.elements,cx=(b.min.x+b.max.x)/2,cy=(b.min.y+b.max.y)/2,cz=(b.min.z+b.max.z)/2,x=e[0]*cx+e[4]*cy+e[8]*cz+e[12],z=e[2]*cx+e[6]*cy+e[10]*cz+e[14];return Math.abs(x-(def.x0+def.x1)/2)<1.5&&Math.abs(z-(def.z0+def.z1)/2)<1.5;});
+    // What fell from the wall lies on the floor near it.
+    const m=new M(),down:number[]=[];
+    w.__blFx.chunk.forEach((c,k)=>{if(!c.rest||!c.stay)return;w.__blFx.chunks.getMatrixAt(k,m);const e=m.elements;if(Math.abs(e[12]+4.6)<2.5&&e[14]<1&&e[14]>-2.5)down.push(e[13]);});
+    return {state:w.__blPieces.states()[i],came:came.length,inside,worst,down:down.length,high:Math.max(0,...down),holes:h.state().holes};
+  });
+  expect(r.state).toBe(2);
+  expect(r.came).toBeGreaterThan(0);
+  expect(r.inside).toBe(true);
+  expect(r.worst).toBeLessThan(1e-4);
+  expect(r.holes).toBeGreaterThan(3);
+  expect(r.down).toBeGreaterThan(0);
+  expect(r.high).toBeLessThan(0.3);
+  expect(errors).toEqual([]);
+});

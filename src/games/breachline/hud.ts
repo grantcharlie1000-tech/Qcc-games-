@@ -78,9 +78,14 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
   root.className = 'bl-hud'; root.hidden = true; root.innerHTML = TEMPLATE;
   parent.append(root);
   const q = <T extends HTMLElement = HTMLElement>(s: string) => root.querySelector<T>(s)!;
-  const cache = new Map<HTMLElement, string>();
+  const cache = new Map<HTMLElement, string | number>();
+  /** Numbers shown as text, and keys of composed values: compared as numbers, so no string is built unless it changed. */
+  const num = (el: HTMLElement, n: number) => { if (cache.get(el) !== n) { cache.set(el, n); el.textContent = String(n); } };
+  const keys = new Map<unknown, number>();
+  const changed = (what: unknown, k: number) => { if (keys.get(what) === k) return false; keys.set(what, k); return true; };
+  const attrs = new Map<HTMLElement, Record<string, string>>();
   const text = (el: HTMLElement, v: string) => { if (cache.get(el) !== v) { cache.set(el, v); el.textContent = v; } };
-  const attr = (el: HTMLElement, k: string, v: string) => { const key = el.dataset[k]; if (key !== v) el.dataset[k] = v; };
+  const attr = (el: HTMLElement, k: string, v: string) => { let a = attrs.get(el); if (!a) attrs.set(el, a = {}); if (a[k] !== v) { a[k] = v; el.dataset[k] = v; } };
   const show = (el: HTMLElement, on: boolean) => { if (el.hidden === on) el.hidden = !on; };
   const el = {
     wins: [q('.bl-s0 .bl-wins'), q('.bl-s1 .bl-wins')], pips: [q('.bl-s0 .bl-pips'), q('.bl-s1 .bl-pips')], squads: [q('.bl-s0'), q('.bl-s1')],
@@ -95,13 +100,11 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
   const timers = new Set<ReturnType<typeof setTimeout>>();
   const later = (fn: () => void, ms: number) => { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); };
   signal.addEventListener('abort', () => { for (const id of timers) clearTimeout(id); timers.clear(); });
-  let kitCb: (kit: number) => void = () => {}, hurtLevel = 0, dirLife = 0, hitLife = 0, toastLife = 0, bannerLife = 0, boardAt = 0, planKey = '', kitKey = '', pipKey = '', gadgetKey = '';
+  let kitCb: (kit: number) => void = () => {}, hurtLevel = 0, dirLife = 0, hitLife = 0, toastLife = 0, bannerLife = 0, boardAt = 0;
   el.kits.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-kit]'); if (b) kitCb(Number(b.dataset.kit)); }, { signal });
 
   function gadgets(role: Role, charges: number, grenades: number, reinforcements: number, touch: boolean) {
-    const key = `${role}${charges}${grenades}${reinforcements}${touch}`;
-    if (key === gadgetKey) return;
-    gadgetKey = key;
+    if (!changed(el.gadgets, (((role * 64 + charges) * 64 + grenades) * 64 + reinforcements) * 2 + (touch ? 1 : 0))) return;
     const item = (k: string, name: string, n: number) => `<span class="bl-gadget" data-empty="${n <= 0}">${touch ? '' : `<kbd>${k}</kbd>`}${name}<b>${n}</b></span>`;
     el.gadgets.innerHTML = role === ATK ? item('B', 'Breach', charges) + item('G', 'Frag', grenades) : item('F', 'Reinforce', reinforcements) + item('G', 'Impact', grenades);
   }
@@ -127,16 +130,20 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
       if (!live) return;
       // Score, clock and who is alive.
       const mySquad = me ? me.squad : 0;
-      for (const s of [0, 1] as const) { text(el.wins[s], String(m.wins[s])); attr(el.squads[s], 'role', s === m.attackers ? 'atk' : 'def'); attr(el.squads[s], 'mine', String(!!me && s === mySquad)); }
-      const pk = m.players.map(p => (p.alive ? 1 : 0)).join('') + m.attackers;
-      if (pk !== pipKey) { pipKey = pk; for (const s of [0, 1] as const) el.pips[s].innerHTML = m.players.filter(p => p.squad === s).map(p => `<i data-alive="${p.alive}"></i>`).join(''); }
+      for (let s = 0 as 0 | 1; s < 2; s++) { num(el.wins[s], m.wins[s]); attr(el.squads[s], 'role', s === m.attackers ? 'atk' : 'def'); attr(el.squads[s], 'mine', String(!!me && s === mySquad)); }
+      let pk = m.attackers + 2;
+      for (const p of m.players) pk = pk * 2 + (p.alive ? 1 : 0);
+      if (changed(el.pips, pk + m.players.length * 1e6)) { for (const s of [0, 1] as const) el.pips[s].innerHTML = m.players.filter(p => p.squad === s).map(p => `<i data-alive="${p.alive}"></i>`).join(''); }
       text(el.phase, m.phase === 'prep' ? 'Preparation' : m.phase === 'action' ? 'Action' : m.phase === 'planted' ? 'Uplink armed' : m.phase === 'end' ? 'Round over' : 'Match over');
-      text(el.time, m.phase === 'over' ? '–' : clock(m.t));
+      if (changed(el.time, m.phase === 'over' ? -1 : Math.max(0, Math.ceil(m.t)))) text(el.time, m.phase === 'over' ? '–' : clock(m.t));
       attr(el.time, 'urgent', String((m.phase === 'action' && m.t < 30) || m.phase === 'planted'));
-      text(el.round, `Round ${m.round} · first to 4`);
+      if (changed(el.round, m.round)) text(el.round, `Round ${m.round} · first to 4`);
       const planted = m.phase === 'planted' && !!m.device;
       show(el.objective, planted);
-      if (planted && m.device) { text(el.objText, `Uplink armed in ${MAP.sites[m.device.site].name} (${MAP.sites[m.device.site].id})`); el.objBar.style.transform = `scaleX(${Math.max(0, Math.min(1, m.t / 40))})`; }
+      if (planted && m.device) {
+        if (changed(el.objText, m.device.site)) text(el.objText, `Uplink armed in ${MAP.sites[m.device.site].name} (${MAP.sites[m.device.site].id})`);
+        if (changed(el.objBar, m.t)) el.objBar.style.transform = `scaleX(${Math.max(0, Math.min(1, m.t / 40))})`;
+      }
       // Own fighter (or the one being watched).
       const alive = !!seen && seen.alive, first = v.watch === v.self && alive;
       show(el.vitals, alive); show(el.gear, first);
@@ -144,21 +151,24 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
       show(el.scope, first && v.scoped);
       if (alive && seen) {
         const role = roleOf(m, seen);
-        text(el.role, `${SQUADS[seen.squad].shape} ${ROLE_NAMES[role]} · ${kitOf(m, seen).name}`); attr(el.vitals, 'squad', String(seen.squad));
-        text(el.hp, String(Math.ceil(seen.hp))); el.hpBar.style.transform = `scaleX(${Math.max(0, seen.hp / 100)})`; attr(el.vitals, 'low', String(seen.hp <= 35));
+        if (changed(el.role, (seen.squad * 8 + role) * 64 + seen.kit)) text(el.role, `${SQUADS[seen.squad].shape} ${ROLE_NAMES[role]} · ${kitOf(m, seen).name}`);
+        attr(el.vitals, 'squad', seen.squad ? '1' : '0');
+        num(el.hp, Math.ceil(seen.hp)); if (changed(el.hpBar, seen.hp)) el.hpBar.style.transform = `scaleX(${Math.max(0, seen.hp / 100)})`; attr(el.vitals, 'low', String(seen.hp <= 35));
         text(el.room, v.room);
         if (first) {
           const def = weaponOf(m, seen);
-          text(el.gun, def.name); text(el.mag, seen.reload > 0 ? '··' : String(seen.mag[seen.slot])); text(el.reserve, `/ ${seen.reserve[seen.slot]}`);
+          text(el.gun, def.name);
+          if (seen.reload > 0) text(el.mag, '··'); else num(el.mag, seen.mag[seen.slot]);
+          if (changed(el.reserve, seen.reserve[seen.slot])) text(el.reserve, `/ ${seen.reserve[seen.slot]}`);
           attr(el.gear, 'low', String(seen.mag[seen.slot] <= def.mag * 0.25));
           gadgets(role, seen.charges, seen.grenades, seen.reinforcements, v.touch);
-          const g = Math.round(Math.max(3, v.gap)), fade = String(Math.max(0, 1 - v.ads * 1.6));
-          if (el.cross.style.getPropertyValue('--gap') !== `${g}px`) el.cross.style.setProperty('--gap', `${g}px`);
-          if (el.cross.style.getPropertyValue('--fade') !== fade) el.cross.style.setProperty('--fade', fade);
+          const g = Math.round(Math.max(3, v.gap)), fade = Math.max(0, 1 - v.ads * 1.6);
+          if (changed('gap', g)) el.cross.style.setProperty('--gap', `${g}px`);
+          if (changed('fade', fade)) el.cross.style.setProperty('--fade', String(fade));
         }
       }
       show(el.prompt, !!v.prompt && first);
-      if (v.prompt && first) { text(el.promptText, v.prompt); attr(el.prompt, 'busy', String(v.progress >= 0)); el.promptBar.style.transform = `scaleX(${Math.max(0, Math.min(1, v.progress))})`; }
+      if (v.prompt && first) { text(el.promptText, v.prompt); attr(el.prompt, 'busy', String(v.progress >= 0)); if (changed(el.promptBar, v.progress)) el.promptBar.style.transform = `scaleX(${Math.max(0, Math.min(1, v.progress))})`; }
       show(el.watch, !!v.waiting);
       if (v.waiting) text(el.watch, v.waiting);
       // Markers in the world.
@@ -169,19 +179,19 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
         const on = !!mk && mk.front && mk.x > -0.05 && mk.x < 1.05 && mk.y > -0.05 && mk.y < 1.05;
         show(e, on);
         if (!on || !mk) continue;
-        e.style.transform = `translate(${(mk.x * 100).toFixed(2)}cqw, ${(mk.y * 100).toFixed(2)}cqh)`;
+        // Moved by at least what the transform shows (a hundredth of a percent).
+        if (changed(e, Math.round(mk.x * 10000) * 100000 + Math.round(mk.y * 10000))) e.style.transform = `translate(${(mk.x * 100).toFixed(2)}cqw, ${(mk.y * 100).toFixed(2)}cqh)`;
         attr(e, 'kind', mk.kind); text(e.firstElementChild as HTMLElement, mk.label); text(e.lastElementChild as HTMLElement, mk.sub ?? '');
       }
       // Preparation screen.
       const prep = m.phase === 'prep' && !!me && me.alive;
       show(el.prep, prep);
       if (prep && me) {
-        const role = roleOf(m, me), kk = `${role}${me.kit}${v.touch}`;
-        text(el.prepRole, `${SQUADS[me.squad].shape} ${SQUADS[me.squad].name} · ${ROLE_NAMES[role]}`);
-        text(el.prepTask, role === ATK ? `Plant the uplink in the Lab (A) or the Archive (B). You enter from the ${MAP.attackSpawns[m.spawn]?.name ?? 'yard'}.` : 'Reinforce walls, barricade doorways and take positions. Stop the uplink.');
-        if (kk !== kitKey) { kitKey = kk; el.kits.innerHTML = KITS[role].map((k, i) => `<button type="button" data-kit="${i}" aria-pressed="${i === me.kit}">${v.touch ? '' : `<kbd>${i + 1}</kbd>`}<b>${k.name}</b><span>${WEAPONS[k.primary].name} · ${WEAPONS[k.primary].cls}</span><small>${k.blurb}</small></button>`).join(''); }
-        const pkey = `${m.spawn}${role}`;
-        if (pkey !== planKey) { planKey = pkey; el.plan.innerHTML = plan(m.spawn, role === ATK); }
+        const role = roleOf(m, me);
+        if (changed(el.prepRole, me.squad * 8 + role)) text(el.prepRole, `${SQUADS[me.squad].shape} ${SQUADS[me.squad].name} · ${ROLE_NAMES[role]}`);
+        if (changed(el.prepTask, m.spawn * 8 + role)) text(el.prepTask, role === ATK ? `Plant the uplink in the Lab (A) or the Archive (B). You enter from the ${MAP.attackSpawns[m.spawn]?.name ?? 'yard'}.` : 'Reinforce walls, barricade doorways and take positions. Stop the uplink.');
+        if (changed(el.kits, (role * 64 + me.kit) * 2 + (v.touch ? 1 : 0))) { el.kits.innerHTML = KITS[role].map((k, i) => `<button type="button" data-kit="${i}" aria-pressed="${i === me.kit}">${v.touch ? '' : `<kbd>${i + 1}</kbd>`}<b>${k.name}</b><span>${WEAPONS[k.primary].name} · ${WEAPONS[k.primary].cls}</span><small>${k.blurb}</small></button>`).join(''); }
+        if (changed(el.plan, m.spawn * 8 + role)) { el.plan.innerHTML = plan(m.spawn, role === ATK); }
         attr(el.prep, 'role', role === ATK ? 'atk' : 'def');
       }
       // Scoreboard.
@@ -193,13 +203,13 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
         el.rows.innerHTML = rows.map(p => `<tr data-squad="${p.squad}" data-alive="${p.alive}" data-me="${p.id === v.self}"><td>${SQUADS[p.squad].shape} ${escape(p.name)}${p.bot ? ' <small>bot</small>' : ''}</td><td>${kitOf(m, p).name}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${p.score}</td></tr>`).join('');
       }
       // Fading feedback.
-      if (hurtLevel > 0) { hurtLevel = Math.max(0, hurtLevel - v.dt * 0.9); el.hurt.style.opacity = String(Math.min(0.85, hurtLevel)); }
+      if (hurtLevel > 0) { hurtLevel = Math.max(0, hurtLevel - v.dt * 0.9); keys.delete(el.hurt); el.hurt.style.opacity = String(Math.min(0.85, hurtLevel)); }
       if (dirLife > 0) { dirLife -= v.dt; el.dir.style.opacity = String(Math.max(0, Math.min(1, dirLife * 1.5))); }
       if (hitLife > 0) { hitLife -= v.dt; if (hitLife <= 0) attr(el.hit, 'on', 'false'); }
       if (toastLife > 0) { toastLife -= v.dt; if (toastLife <= 0) attr(el.toast, 'on', 'false'); }
       if (bannerLife > 0) { bannerLife -= v.dt; if (bannerLife <= 0) show(el.banner, false); }
       const lowHp = alive && seen && seen.hp <= 35 && v.watch === v.self ? 0.35 : 0;
-      if (hurtLevel < lowHp) el.hurt.style.opacity = String(lowHp);
+      if (hurtLevel < lowHp && changed(el.hurt, lowHp)) el.hurt.style.opacity = String(lowHp);
     },
     kill(by, on, weapon, head, bySquad, onSquad, mine) {
       const row = document.createElement('div');
@@ -219,7 +229,7 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
     hurt(angle, amount) { hurtLevel = Math.min(1, hurtLevel + amount / 60 + 0.25); el.dir.style.transform = `rotate(${angle}rad)`; dirLife = 1.1; },
     toast(title, sub = '') { el.toast.innerHTML = `<b>${escape(title)}</b>${sub ? `<span>${escape(sub)}</span>` : ''}`; el.toast.dataset.on = 'true'; toastLife = 2.6; },
     banner(title, sub, tone, seconds) { el.banner.hidden = false; el.banner.dataset.tone = tone; (el.banner.firstElementChild as HTMLElement).textContent = title; (el.banner.lastElementChild as HTMLElement).textContent = sub; bannerLife = seconds; },
-    reset() { el.feed.replaceChildren(); hurtLevel = dirLife = hitLife = toastLife = bannerLife = 0; el.hurt.style.opacity = '0'; el.dir.style.opacity = '0'; el.banner.hidden = true; el.toast.dataset.on = 'false'; el.hit.dataset.on = 'false'; pipKey = kitKey = planKey = gadgetKey = ''; },
+    reset() { el.feed.replaceChildren(); hurtLevel = dirLife = hitLife = toastLife = bannerLife = 0; el.hurt.style.opacity = '0'; el.dir.style.opacity = '0'; el.banner.hidden = true; el.toast.dataset.on = 'false'; el.hit.dataset.on = 'false'; keys.clear(); },
   };
 }
 function escape(s: string) { return s.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`); }

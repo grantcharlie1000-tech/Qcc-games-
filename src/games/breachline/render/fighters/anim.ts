@@ -18,7 +18,7 @@ import { BODY } from '../../config';
 import { RELOADS } from '../../reloads';
 import type { WeaponId } from '../../config';
 import { ANKLE_H, B, BONES, SCALE, HEAD_CENTRE, JOINT, PARENT, SHIN_LEN, SIDE, THIGH_LEN, FORE_LEN, UPPER_LEN, armDir, sgn } from './skeleton';
-import { basisQ, handBind } from './body';
+import { handBind } from './body';
 import type { WorldWeapon } from './weapon';
 
 export interface PoseInput {
@@ -34,6 +34,24 @@ export const idleInput = (): PoseInput => ({ x: 0, z: 0, yaw: 0, pitch: 0, crouc
 
 const V = () => new THREE.Vector3();
 const Q = () => new THREE.Quaternion();
+/** Per-frame scratch for the upper body, weapon and hands: taken in order and handed back at each update, so a pose
+ * allocates nothing. Nothing taken from it is kept past the update that took it. */
+const pool = { v: [] as THREE.Vector3[], q: [] as THREE.Quaternion[], e: [] as THREE.Euler[], m: [] as THREE.Matrix4[], iv: 0, iq: 0, ie: 0, im: 0 };
+const poolReset = () => { pool.iv = pool.iq = pool.ie = pool.im = 0; };
+const v3 = (x = 0, y = 0, z = 0) => (pool.v[pool.iv++] ??= new THREE.Vector3()).set(x, y, z);
+const q4 = (x = 0, y = 0, z = 0, w = 1) => (pool.q[pool.iq++] ??= new THREE.Quaternion()).set(x, y, z, w);
+const eu = (x = 0, y = 0, z = 0, order: THREE.EulerOrder = 'XYZ') => (pool.e[pool.ie++] ??= new THREE.Euler()).set(x, y, z, order);
+const m4 = () => (pool.m[pool.im++] ??= new THREE.Matrix4()).identity();
+function cl<T extends THREE.Vector3 | THREE.Quaternion | THREE.Matrix4>(x: T): T {
+  return ((x as THREE.Vector3).isVector3 ? v3().copy(x as THREE.Vector3) : (x as THREE.Quaternion).isQuaternion ? q4().copy(x as THREE.Quaternion) : m4().copy(x as THREE.Matrix4)) as T;
+}
+/** body.ts's basisQ on the scratch pool (the same steps, so the same result). */
+function basisP(palm: THREE.Vector3, fingers: THREE.Vector3, out = q4()): THREE.Quaternion {
+  const z = cl(fingers).negate().normalize(), y = cl(palm).negate();
+  y.addScaledVector(z, -y.dot(z)).normalize();
+  const x = v3().crossVectors(y, z);
+  return out.setFromRotationMatrix(m4().makeBasis(x, y, z));
+}
 const ss = THREE.MathUtils.smoothstep;
 const clamp = THREE.MathUtils.clamp;
 const lerp = THREE.MathUtils.lerp;
@@ -182,6 +200,7 @@ export class Animator {
   }
 
   update(p: PoseInput, dt: number) {
+    poolReset();
     this.time += dt;
     // Position and velocity from the simulation's position (the only motion data a remote fighter has).
     this.root.set(p.x, 0, p.z); this.yaw = p.yaw;
@@ -263,12 +282,12 @@ export class Animator {
     const reloading = p.reload > 0.001, using = p.act !== 0, sprint = p.sprint ? 1 : 0, ads = p.ads ? 1 : 0;
     const speed = Math.hypot(this.vel.x, this.vel.z);
     // Movement direction in model space, for the lower body's turn toward a strafe.
-    const vm = this.toModel(this.root.clone().add(this.vel), V());
+    const vm = this.toModel(cl(this.root).add(this.vel), v3());
     const strafe = speed > 0.5 ? clamp(Math.atan2(vm.x, -vm.z), -1.6, 1.6) : 0;
     const legTurn = (Math.abs(strafe) < 1.6 ? strafe : 0) * 0.35 * Math.min(1, speed / 2) * (Math.abs(strafe) > 2.2 ? 0 : 1);
     for (const q of lq) q.identity();
     // Pelvis: hips back and down in a crouch.
-    const e = new THREE.Euler();
+    const e = eu();
     // Blading: a rifleman stands with the support shoulder forward; the head turns back to the aim.
     const blade = (this.w.pistol ? -0.12 : -0.55) * (1 - sprint * 0.7) * (using ? 0.3 : 1);
     lq[B.pelvis].setFromEuler(e.set(-0.08 - c * 0.22 - sprint * 0.12, this.hipYaw + legTurn + blade * 0.35, -this.hipSway * 1.5, 'YXZ'));
@@ -289,35 +308,35 @@ export class Animator {
     // Pelvis position: rest height, crouch drop and hips back, bob and sway; then corrected so the head is exact.
     this.pelvisPos.set(this.hipSway, JOINT[B.pelvis].y - 0.05 - c * 0.36 - sprint * 0.07, c * 0.07 + sprint * 0.03);
     this.fk();
-    const target = this.headTarget(p, V());
+    const target = this.headTarget(p, v3());
     // Most of the head's horizontal error is taken by bending the lower spine toward the target (the body leans
     // into it, as a person reaching their head somewhere does); the pelvis moves for the rest.
     for (let it = 0; it < 2; it++) {
-      const hc = this.headCentre(V()), d = target.clone().sub(hc); d.y = 0;
+      const hc = this.headCentre(v3()), d = cl(target).sub(hc); d.y = 0;
       const len = d.length(); if (len < 1e-4) break;
-      const arm = hc.clone().sub(wp[B.spine1]), axis = new THREE.Vector3().crossVectors(arm, d).normalize();
-      const rot = new THREE.Quaternion().setFromAxisAngle(axis, Math.atan(len * 0.75 / arm.length()));
+      const arm = cl(hc).sub(wp[B.spine1]), axis = v3().crossVectors(arm, d).normalize();
+      const rot = q4().setFromAxisAngle(axis, Math.atan(len * 0.75 / arm.length()));
       lq[B.spine1].copy(wq[B.pelvis]).invert().multiply(rot.multiply(wq[B.spine1]));
       this.fk();
     }
-    const head = this.headCentre(V());
-    const shift = target.clone().sub(head);
+    const head = this.headCentre(v3());
+    const shift = cl(target).sub(head);
     // The head follows the simulation exactly except for the gait's bob (a few centimetres, inside the sphere).
     this.pelvisPos.add(shift); this.pelvisPos.y += this.hipBob;
     this.fk();
     const dg = this.diagOut;
-    dg.pelvisShift.copy(shift); dg.head.copy(this.headCentre(V())); dg.headTarget.copy(target); dg.headErr = dg.head.distanceTo(target) - Math.abs(this.hipBob);
+    dg.pelvisShift.copy(shift); dg.head.copy(this.headCentre(v3())); dg.headTarget.copy(target); dg.headErr = dg.head.distanceTo(target) - Math.abs(this.hipBob);
     dg.chest.copy(wp[B.spine2]); dg.pelvis.copy(wp[B.pelvis]);
     // Legs to the feet.
     for (const s of [0, 1]) {
-      const f = this.feet[s], foot = this.toModel(f.plant, V()), yawM = wrap(f.yaw - this.yaw);
-      const fq = new THREE.Quaternion().setFromEuler(e.set(this.heel[s], yawM, 0, 'YXZ'));
+      const f = this.feet[s], foot = this.toModel(f.plant, v3()), yawM = wrap(f.yaw - this.yaw);
+      const fq = q4().setFromEuler(e.set(this.heel[s], yawM, 0, 'YXZ'));
       // The ball of the foot stays where it was planted while the heel lifts: ankle = ball - R * (ball - ankle).
-      const toe = TOE_FROM_ANKLE[s], ballGround = foot.clone().add(new THREE.Vector3(toe.x, 0, toe.z).applyAxisAngle(UP, yawM));
-      const ankle = ballGround.clone().add(new THREE.Vector3(0, toe.y, 0)).sub(toe.clone().applyQuaternion(fq));
+      const toe = TOE_FROM_ANKLE[s], ballGround = cl(foot).add(v3(toe.x, 0, toe.z).applyAxisAngle(UP, yawM));
+      const ankle = cl(ballGround).add(v3(0, toe.y, 0)).sub(cl(toe).applyQuaternion(fq));
       ankle.y = Math.max(ankle.y, ANKLE_H * 0.85 + foot.y);
-      if (this.heel[s] < 0) ankle.copy(foot).add(new THREE.Vector3(0, ANKLE_H, 0));
-      const pole = new THREE.Vector3(-Math.sin(yawM), 0.15, -Math.cos(yawM)).normalize().add(new THREE.Vector3(sgn(s) * 0.12, 0, 0));
+      if (this.heel[s] < 0) ankle.copy(foot).add(v3(0, ANKLE_H, 0));
+      const pole = v3(-Math.sin(yawM), 0.15, -Math.cos(yawM)).normalize().add(v3(sgn(s) * 0.12, 0, 0));
       dg.legReach[s] = this.limb(SIDE[s].thigh, SIDE[s].shin, SIDE[s].foot, THIGH_LEN, SHIN_LEN, ankle, pole, LEG_BIND[s], fq);
       // Toes flat on the ground while the heel is up.
       lq[SIDE[s].toe].setFromEuler(e.set(-Math.max(0, this.heel[s]) * 0.9, 0, 0));
@@ -339,16 +358,15 @@ export class Animator {
     }
     for (const s of [0, 1]) {
       const S = SIDE[s], h = hands[s];
-      const pole = new THREE.Vector3(sgn(s) * (s ? 0.35 : 0.5), -1, s ? 0.2 : 0.1);
-      const hq = h.q.clone().multiply(HAND_BIND_INV[s]);
+      const pole = v3(sgn(s) * (s ? 0.35 : 0.5), -1, s ? 0.2 : 0.1);
+      const hq = cl(h.q).multiply(HAND_BIND_INV[s]);
       dg.armReach[s] = this.limb(S.upper, S.fore, S.hand, UPPER_LEN, FORE_LEN, h.p, pole.applyQuaternion(this.wq[B.spine2]).add(this.wp[S.upper]).sub(this.wp[S.upper]), ARM_BIND[s], hq);
     }
-    dg.dbg = { weapon: new THREE.Vector3().setFromMatrixPosition(this.weaponM).toArray(), grip: hands[1].p.toArray(), support: hands[0].p.toArray(), shR: this.wp[R.upper].toArray(), shL: this.wp[L.upper].toArray(), handR: this.wp[R.hand].toArray() };
     this.helpers();
     // Diagnostics: the muzzle and how far the bore is from the view direction.
-    const mz = this.w.muzzle.clone().applyMatrix4(this.weaponM), bore = new THREE.Vector3(0, 0, -1).transformDirection(this.weaponM);
-    const look = new THREE.Vector3(0, Math.sin(p.pitch), -Math.cos(p.pitch));
-    dg.muzzle.copy(this.toWorld(mz, V())); dg.aimErr = bore.angleTo(look);
+    const mz = cl(this.w.muzzle).applyMatrix4(this.weaponM), bore = v3(0, 0, -1).transformDirection(this.weaponM);
+    const look = v3(0, Math.sin(p.pitch), -Math.cos(p.pitch));
+    dg.muzzle.copy(this.toWorld(mz, v3())); dg.aimErr = bore.angleTo(look);
     void wq;
   }
 
@@ -404,7 +422,7 @@ export class Animator {
 
   /** Helper bones: half the joint's rotation; forearm twist half the hand's roll. */
   private helpers() {
-    const { lq } = this, I = new THREE.Quaternion();
+    const { lq } = this, I = q4();
     for (const s of [0, 1]) {
       const S = SIDE[s];
       lq[S.elbow].copy(I).slerp(lq[S.fore], 0.5);
@@ -417,7 +435,7 @@ export class Animator {
       lq[S.hip].copy(I).slerp(lq[S.thigh], 0.5);
       // Twist: the hand's rotation about the forearm's axis (bind arm direction), halved.
       const ax = armDir(s), h = lq[S.hand], dot = h.x * ax.x + h.y * ax.y + h.z * ax.z;
-      const tw = new THREE.Quaternion(ax.x * dot, ax.y * dot, ax.z * dot, h.w).normalize();
+      const tw = q4(ax.x * dot, ax.y * dot, ax.z * dot, h.w).normalize();
       lq[S.twist].copy(I).slerp(tw, 0.5);
     }
   }
@@ -427,77 +445,77 @@ export class Animator {
   private placeWeapon(p: PoseInput, sprint: number, ads: number, reloading: boolean, using: boolean, speed: number) {
     const { wq, wp } = this, w = this.w;
     const chest = wp[B.spine2], cq = wq[B.spine2];
-    const look = new THREE.Vector3(0, Math.sin(p.pitch), -Math.cos(p.pitch));
+    const look = v3(0, Math.sin(p.pitch), -Math.cos(p.pitch));
     // Ready: butt in the right shoulder pocket. Aimed: the sight line just under the right eye.
-    const pocket = new THREE.Vector3(0.1, 0.17, -0.075).applyQuaternion(cq).add(chest);
-    const eye = this.headCentre(V()).add(new THREE.Vector3(0.035, -0.02, -0.03).applyQuaternion(wq[B.head]));
-    const fwd = look.clone();
-    const upRef = new THREE.Vector3(0, 1, 0).applyQuaternion(cq);
-    const right = new THREE.Vector3().crossVectors(fwd, upRef).normalize(), up = new THREE.Vector3().crossVectors(right, fwd).normalize();
-    const basis = new THREE.Matrix4().makeBasis(right, up, fwd.clone().negate());
-    const qAim = new THREE.Quaternion().setFromRotationMatrix(basis);
+    const pocket = v3(0.1, 0.17, -0.075).applyQuaternion(cq).add(chest);
+    const eye = this.headCentre(v3()).add(v3(0.035, -0.02, -0.03).applyQuaternion(wq[B.head]));
+    const fwd = cl(look);
+    const upRef = v3(0, 1, 0).applyQuaternion(cq);
+    const right = v3().crossVectors(fwd, upRef).normalize(), up = v3().crossVectors(right, fwd).normalize();
+    const basis = m4().makeBasis(right, up, cl(fwd).negate());
+    const qAim = q4().setFromRotationMatrix(basis);
     // Weapon origin is the grip; the butt is behind it. Position so the butt sits in the pocket.
-    const buttW = w.butt.clone().applyQuaternion(qAim);
-    const hipPos = pocket.clone().sub(buttW);
-    const sightOff = new THREE.Vector3(0, w.sight, 0).applyQuaternion(qAim);
-    const adsPos = eye.clone().sub(sightOff).addScaledVector(fwd, w.pistol ? 0.45 : Math.max(0.05, w.butt.z - 0.13));
-    if (w.pistol) hipPos.copy(chest).add(new THREE.Vector3(0.04, 0.12, -0.36).applyQuaternion(cq));
+    const buttW = cl(w.butt).applyQuaternion(qAim);
+    const hipPos = cl(pocket).sub(buttW);
+    const sightOff = v3(0, w.sight, 0).applyQuaternion(qAim);
+    const adsPos = cl(eye).sub(sightOff).addScaledVector(fwd, w.pistol ? 0.45 : Math.max(0.05, w.butt.z - 0.13));
+    if (w.pistol) hipPos.copy(chest).add(v3(0.04, 0.12, -0.36).applyQuaternion(cq));
     const pos = hipPos.lerp(adsPos, ads * (w.pistol ? 0.85 : 0.9));
-    let q = qAim.clone();
+    let q = cl(qAim);
     // Low ready: pivot about the butt in the shoulder (pistol: about the grip), muzzle down and a little inward.
     if (this.ready > 0.001 && !ads) {
-      const r = this.ready, ql = qAim.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.55 * r, 0.14 * r, -0.08 * r, 'YXZ')));
-      const pivot = w.pistol ? pos.clone() : pocket.clone();
-      pos.copy(w.pistol ? pivot.add(new THREE.Vector3(0, -0.12 * r, 0.06 * r).applyQuaternion(cq)) : pivot.sub(w.butt.clone().applyQuaternion(ql)));
+      const r = this.ready, ql = cl(qAim).multiply(q4().setFromEuler(eu(-0.55 * r, 0.14 * r, -0.08 * r, 'YXZ')));
+      const pivot = w.pistol ? cl(pos) : cl(pocket);
+      pos.copy(w.pistol ? pivot.add(v3(0, -0.12 * r, 0.06 * r).applyQuaternion(cq)) : pivot.sub(cl(w.butt).applyQuaternion(ql)));
       q = ql;
     }
     // Sprint: muzzle down and across the body, held at the chest.
     if (sprint > 0) {
-      const sq = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.75, 0.55, 0.5, 'YXZ'));
-      q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0)).multiply(sq);
+      const sq = q4().setFromEuler(eu(-0.75, 0.55, 0.5, 'YXZ'));
+      q = q4().setFromEuler(eu(0, 0, 0)).multiply(sq);
       q.premultiply(cq);
-      pos.copy(chest).add(new THREE.Vector3(0.02, 0.06, -0.3).applyQuaternion(cq)).sub(w.butt.clone().multiplyScalar(0.35).applyQuaternion(q));
+      pos.copy(chest).add(v3(0.02, 0.06, -0.3).applyQuaternion(cq)).sub(cl(w.butt).multiplyScalar(0.35).applyQuaternion(q));
       void speed;
     }
     // Reload: canted with the magazine well toward the support hand, pulled in a little.
     if (reloading) {
       const t = 1 - p.reload, k = ss(t, 0, 0.1) * (1 - ss(t, 0.88, 1));
-      q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.3 * k, 0.15 * k, -0.55 * k)));
-      pos.add(new THREE.Vector3(-0.03, -0.04, 0.08).applyQuaternion(cq).multiplyScalar(k));
+      q.multiply(q4().setFromEuler(eu(-0.3 * k, 0.15 * k, -0.55 * k)));
+      pos.add(v3(-0.03, -0.04, 0.08).applyQuaternion(cq).multiplyScalar(k));
     }
     // Using an object: the weapon hangs on its sling at the right side, muzzle down.
     if (using) {
-      q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-1.25, 0.25, 0.1, 'YXZ')).premultiply(cq);
-      pos.copy(chest).add(new THREE.Vector3(0.27, -0.2, -0.1).applyQuaternion(cq));
+      q = q4().setFromEuler(eu(-1.25, 0.25, 0.1, 'YXZ')).premultiply(cq);
+      pos.copy(chest).add(v3(0.27, -0.2, -0.1).applyQuaternion(cq));
     }
     // A hit knocks the weapon off line for a moment (the head stays in the sim's sphere, so this is where it shows).
     const fl = this.flinch;
-    q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(fl[0].x * 0.22, fl[1].x * 0.18, fl[1].x * 0.3)));
-    pos.add(new THREE.Vector3(fl[1].x * 0.03, fl[0].x * 0.03, fl[0].x * 0.05).applyQuaternion(cq));
+    q.multiply(q4().setFromEuler(eu(fl[0].x * 0.22, fl[1].x * 0.18, fl[1].x * 0.3)));
+    pos.add(v3(fl[1].x * 0.03, fl[0].x * 0.03, fl[0].x * 0.05).applyQuaternion(cq));
     // Carry: the weapon bobs with each step and sways with the hips, lagging the body a little.
     const wk = Math.min(1, speed / 3.5) * (1 - ads * 0.7), ph = this.phase * Math.PI * 2;
-    pos.add(new THREE.Vector3(Math.sin(ph - 0.6) * 0.012 * wk, Math.cos(ph * 2 - 0.8) * 0.014 * wk, 0).applyQuaternion(cq));
-    q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.cos(ph * 2 - 1.1) * 0.025 * wk, Math.sin(ph - 0.9) * 0.04 * wk, Math.sin(ph - 0.7) * 0.03 * wk)));
+    pos.add(v3(Math.sin(ph - 0.6) * 0.012 * wk, Math.cos(ph * 2 - 0.8) * 0.014 * wk, 0).applyQuaternion(cq));
+    q.multiply(q4().setFromEuler(eu(Math.cos(ph * 2 - 1.1) * 0.025 * wk, Math.sin(ph - 0.9) * 0.04 * wk, Math.sin(ph - 0.7) * 0.03 * wk)));
     // Recoil: back along the bore and the muzzle up.
     const back = this.recoil[0].x * 0.6, rise = this.recoil[1].x * 1.1;
     pos.addScaledVector(fwd, -back);
-    q.multiply(new THREE.Quaternion().setFromAxisAngle(X, rise));
-    this.weaponM.compose(pos, q, new THREE.Vector3(1, 1, 1));
+    q.multiply(q4().setFromAxisAngle(X, rise));
+    this.weaponM.compose(pos, q, v3(1, 1, 1));
   }
 
   /** Hand targets (model space): position and hand-space rotation for each side. */
   private handTargets(p: PoseInput, reloading: boolean, using: boolean) {
-    const w = this.w, M = this.weaponM, wq = new THREE.Quaternion().setFromRotationMatrix(M);
-    const sock = (s: { p: THREE.Vector3; palm: THREE.Vector3; fingers: THREE.Vector3 }) => ({ p: s.p.clone().applyMatrix4(M), q: basisQ(s.palm.clone().applyQuaternion(wq), s.fingers.clone().applyQuaternion(wq)) });
+    const w = this.w, M = this.weaponM, wq = q4().setFromRotationMatrix(M);
+    const sock = (s: { p: THREE.Vector3; palm: THREE.Vector3; fingers: THREE.Vector3 }) => ({ p: cl(s.p).applyMatrix4(M), q: basisP(cl(s.palm).applyQuaternion(wq), cl(s.fingers).applyQuaternion(wq)) });
     const right = sock(w.grip);
     let left = sock(w.support);
     this.weaponBones[1].position.set(0, 0, 0); this.weaponBones[1].quaternion.identity();
     if (using) {
       // Both hands work at the object in front: low for the uplink, chest high for a wall.
       const low = p.act === 1 || p.act === 2, t = this.time * (low ? 5 : 3.2);
-      const base = new THREE.Vector3(0, low ? 0.62 : 1.18, low ? -0.42 : -0.5).add(new THREE.Vector3(0, 0, 0).applyQuaternion(this.wq[B.spine1]));
-      const palm = new THREE.Vector3(0, low ? -1 : 0, low ? 0 : -1), fingers = new THREE.Vector3(0, low ? 0 : 1, low ? -1 : 0);
-      return [0, 1].map(s => ({ p: base.clone().add(new THREE.Vector3(sgn(s) * 0.12, Math.sin(t + s * 2) * 0.03, Math.cos(t * 0.7 + s) * 0.025)), q: basisQ(palm.clone().add(new THREE.Vector3(-sgn(s) * 0.3, 0, 0)).normalize(), fingers) }));
+      const base = v3(0, low ? 0.62 : 1.18, low ? -0.42 : -0.5).add(v3(0, 0, 0).applyQuaternion(this.wq[B.spine1]));
+      const palm = v3(0, low ? -1 : 0, low ? 0 : -1), fingers = v3(0, low ? 0 : 1, low ? -1 : 0);
+      return [0, 1].map(s => ({ p: cl(base).add(v3(sgn(s) * 0.12, Math.sin(t + s * 2) * 0.03, Math.cos(t * 0.7 + s) * 0.025)), q: basisP(cl(palm).add(v3(-sgn(s) * 0.3, 0, 0)).normalize(), fingers) }));
     }
     if (reloading) left = this.reloadHand(p, left);
     return [left, right];
@@ -505,42 +523,42 @@ export class Animator {
 
   /** The support hand's path through the reload beats (`reloads.ts`), carrying the magazine. */
   private reloadHand(p: PoseInput, support: { p: THREE.Vector3; q: THREE.Quaternion }) {
-    const w = this.w, M = this.weaponM, wq = new THREE.Quaternion().setFromRotationMatrix(M), t = 1 - p.reload;
+    const w = this.w, M = this.weaponM, wq = q4().setFromRotationMatrix(M), t = 1 - p.reload;
     const beats = RELOADS[this.weaponId][p.empty ? 'empty' : 'tactical'];
     const at = (n: string, d: number) => beats.find(b => b.name === n)?.at ?? d;
-    const palmMag = basisQ(new THREE.Vector3(0, 1, 0.2).normalize().applyQuaternion(wq), new THREE.Vector3(0.6, 0, -0.8).normalize().applyQuaternion(wq));
-    const magGrip = w.mag.clone().add(new THREE.Vector3(-0.01, -0.13, 0)).applyMatrix4(M);
-    const pouch = new THREE.Vector3(-0.05, -0.02, -0.21).applyQuaternion(this.wq[B.spine2]).add(this.wp[B.spine2]);
-    const pouchQ = basisQ(new THREE.Vector3(0.3, 0, -1).normalize().applyQuaternion(this.wq[B.spine2]), new THREE.Vector3(0, -1, 0).applyQuaternion(this.wq[B.spine2]));
-    const handle = w.handle.clone().add(new THREE.Vector3(-0.03, 0.02, 0)).applyMatrix4(M);
+    const palmMag = basisP(v3(0, 1, 0.2).normalize().applyQuaternion(wq), v3(0.6, 0, -0.8).normalize().applyQuaternion(wq));
+    const magGrip = cl(w.mag).add(v3(-0.01, -0.13, 0)).applyMatrix4(M);
+    const pouch = v3(-0.05, -0.02, -0.21).applyQuaternion(this.wq[B.spine2]).add(this.wp[B.spine2]);
+    const pouchQ = basisP(v3(0.3, 0, -1).normalize().applyQuaternion(this.wq[B.spine2]), v3(0, -1, 0).applyQuaternion(this.wq[B.spine2]));
+    const handle = cl(w.handle).add(v3(-0.03, 0.02, 0)).applyMatrix4(M);
     if (this.weaponId === 'shotgun') {
       // Shells from the carrier into the port, one per beat; a pump on the empty reload.
       const shells = beats.filter(b => b.name === 'shell').map(b => b.at), pump = at('pump', -1);
-      const port = w.mag.clone().add(new THREE.Vector3(-0.02, -0.03, 0.05)).applyMatrix4(M);
+      const port = cl(w.mag).add(v3(-0.02, -0.03, 0.05)).applyMatrix4(M);
       if (pump > 0 && Math.abs(t - pump) < 0.08) return support;
       let k = 0;
       for (const s of shells) { const d = (t - (s - 0.12)) / 0.15; if (d > 0 && d < 1) k = Math.sin(d * Math.PI); }
-      const pp = pouch.clone().lerp(port, k);
-      return { p: t < 0.08 || t > 0.9 ? support.p.clone().lerp(pp, ss(t, 0, 0.08) * (1 - ss(t, 0.9, 1))) : pp, q: pouchQ.clone().slerp(palmMag, k) };
+      const pp = cl(pouch).lerp(port, k);
+      return { p: t < 0.08 || t > 0.9 ? cl(support.p).lerp(pp, ss(t, 0, 0.08) * (1 - ss(t, 0.9, 1))) : pp, q: cl(pouchQ).slerp(palmMag, k) };
     }
     const rel = at('release', 0.12), out = at('out', 0.19), fetch = at('fetch', 0.34), ins = at('in', 0.58), seat = at('seat', 0.66), bolt = at('bolt', -1);
     const keys: [number, THREE.Vector3, THREE.Quaternion, number][] = [
       [0, support.p, support.q, 0],
       [rel, magGrip, palmMag, 0],
-      [out, magGrip.clone().add(new THREE.Vector3(0, -0.1, 0.02).applyQuaternion(wq)), palmMag, 1],
+      [out, cl(magGrip).add(v3(0, -0.1, 0.02).applyQuaternion(wq)), palmMag, 1],
       [fetch, pouch, pouchQ, 1],
-      [ins, magGrip.clone().add(new THREE.Vector3(0, -0.07, 0).applyQuaternion(wq)), palmMag, 1],
+      [ins, cl(magGrip).add(v3(0, -0.07, 0).applyQuaternion(wq)), palmMag, 1],
       [seat, magGrip, palmMag, 1],
     ];
-    if (bolt > 0) keys.push([bolt - 0.06, handle, basisQ(new THREE.Vector3(-1, -0.2, 0).applyQuaternion(wq), new THREE.Vector3(0, 0, -1).applyQuaternion(wq)), 0], [bolt + 0.04, handle.clone().add(new THREE.Vector3(0, 0, 0.06).applyQuaternion(wq)), basisQ(new THREE.Vector3(-1, -0.2, 0).applyQuaternion(wq), new THREE.Vector3(0, 0, -1).applyQuaternion(wq)), 0]);
+    if (bolt > 0) keys.push([bolt - 0.06, handle, basisP(v3(-1, -0.2, 0).applyQuaternion(wq), v3(0, 0, -1).applyQuaternion(wq)), 0], [bolt + 0.04, cl(handle).add(v3(0, 0, 0.06).applyQuaternion(wq)), basisP(v3(-1, -0.2, 0).applyQuaternion(wq), v3(0, 0, -1).applyQuaternion(wq)), 0]);
     keys.push([Math.min(0.97, (bolt > 0 ? bolt : seat) + 0.16), support.p, support.q, 0]);
     let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++;
     const a = keys[i], b = keys[i + 1], k = ease((t - a[0]) / Math.max(1e-3, b[0] - a[0]));
-    const pos = a[1].clone().lerp(b[1], k), q = a[2].clone().slerp(b[2], k);
+    const pos = cl(a[1]).lerp(b[1], k), q = cl(a[2]).slerp(b[2], k);
     // Carry the magazine with the hand between release and seat.
     const held = t > out - 0.03 && t < seat;
     if (held) {
-      const inv = M.clone().invert(), local = pos.clone().add(new THREE.Vector3(0.01, 0.13, 0).applyQuaternion(wq)).applyMatrix4(inv);
+      const inv = cl(M).invert(), local = cl(pos).add(v3(0.01, 0.13, 0).applyQuaternion(wq)).applyMatrix4(inv);
       this.weaponBones[1].position.copy(local.sub(w.mag));
     } else if (t > rel && t < out) this.weaponBones[1].position.set(0, -0.02 * ss(t, rel, out), 0);
     return { p: pos, q };

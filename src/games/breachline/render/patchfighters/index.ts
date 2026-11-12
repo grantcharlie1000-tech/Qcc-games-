@@ -286,9 +286,11 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
     const group = new THREE.Group(), bones = makeBones(), holder = new THREE.Object3D(); holder.add(bones[0]); holder.updateMatrixWorld(true);
     const skeleton = new THREE.Skeleton(bones); group.scale.setScalar(SCALE); group.add(holder);
     const body = bodyMaterial(a, squad), mats: ProbeMaterial[] = [body];
-    const meshes = a.withGear[squad].map(g => { const m = new THREE.SkinnedMesh(g, body); m.frustumCulled = false; m.castShadow = true; m.bind(skeleton, new THREE.Matrix4()); group.add(m); return m; });
+    // Bounding spheres from the rest pose (used only to sort draws): three would otherwise skin every vertex once to
+    // find them, a stall the first time each fighter is drawn.
+    const meshes = a.withGear[squad].map(g => { const m = new THREE.SkinnedMesh(g, body); if (!g.boundingSphere) g.computeBoundingSphere(); m.boundingSphere = g.boundingSphere!.clone(); m.frustumCulled = false; m.castShadow = true; m.bind(skeleton, new THREE.Matrix4()); group.add(m); return m; });
     const weaponMat = fighterMaterial(), w = weaponFor(wid), wb = Array.from({ length: WEAPON_BONES }, () => new THREE.Bone());
-    const weapon = new THREE.SkinnedMesh(w.geo, weaponMat); weapon.add(...wb); weapon.bind(new THREE.Skeleton(wb)); weapon.frustumCulled = false;
+    const weapon = new THREE.SkinnedMesh(w.geo, weaponMat); weapon.add(...wb); weapon.bind(new THREE.Skeleton(wb)); weapon.frustumCulled = false; weapon.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1);
     group.add(weapon); scene.add(group);
     const anim = new Animator(bones, weapon, wb, w); anim.setWeapon(wid, w);
     f = { wounds: Array.from({ length: MAX_WOUNDS }, () => new THREE.Vector4(0, -9, 0, 0)), nWound: 0, hurt: 0, react: { t: 9, ax: 0, az: 0, limb: -1 }, died: -1, kill: null, rag: null, ragInv: new THREE.Matrix4(), gunQ: new THREE.Quaternion(), gunF: new THREE.Quaternion(), px: NaN, pz: NaN, vx: 0, vz: 0, squad, group, meshes, skeleton, bones, weapon, wbones: wb, wid, anim, mats, weaponMat, wlod: 1, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, remoteReload: 0, deathKind: -1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };

@@ -7,7 +7,7 @@ import { RoomDialog, inviteCodeFromHash, relayOnlyFromHash } from '../../multipl
 import type { Room } from '../../multiplayer/room';
 import { ATK, BOT_SKILL, CELL, CHARGE, KITS, ROUND, SKILLS, SQUADS, TICK, WEAPONS, type SkillId } from './config';
 import { createSfx, type At } from './audio';
-import { createHud, type Marker } from './hud';
+import { createHud, type HudView, type Marker } from './hud';
 import { createInput } from './input';
 import { MAP, inRect, roomAt, type FloorMat } from './map';
 import { GuestSession, HostSession, MAX_PLAYERS, NET_VERSION, type Session } from './net';
@@ -399,22 +399,39 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     return '';
   }
 
-  const markers: Marker[] = [];
+  // Reused every frame: the view, the markers and the HUD's input (no objects or strings made per frame unless a
+  // shown value changed).
+  const markers: Marker[] = [], markerPool: Marker[] = [];
+  const view = { m: null, self: 0, watch: -1, yaw: 0, pitch: 0, px: 0, pz: 0, alpha: 0, dt: 0, reduced: false, menu: false } as unknown as SceneView;
+  const hv = { markers } as HudView;
+  let devSec = -1, devText = '', waitCase = -1, waitName = '', waitTouch = false, waitText = '', levelKey = -1, useNow = '', roleNow = '', phaseNow = '';
+  const siteDist: number[] = [], siteText: string[] = [];
+  function mark(x: number, y: number, z: number, label: string, kind: Marker['kind'], sub?: string) {
+    const p = scene.project(x, y, z), mk = markerPool[markers.length] ??= { x: 0, y: 0, front: false, label: '', kind: 'mate' };
+    mk.x = p.x; mk.y = p.y; mk.front = p.front; mk.label = label; mk.kind = kind; mk.sub = sub;
+    markers.push(mk);
+  }
   function draw(dt: number) {
     if (disposed || lost) return;
     const ses = session(), m = ses.m, self = ses.self, me = m.players[self] as Player | undefined;
     if (me && me.alive) watch = self; else if (watch < 0 || !m.players[watch]?.alive || (me && m.players[watch].squad !== me.squad)) nextWatch(0);
     const menu = shown === 'menu';
-    const view: SceneView = { m, self, watch: inMatch() || m.phase === 'over' ? watch : -1, yaw: input.state.yaw, pitch: input.state.pitch, px: prevX, pz: prevZ, alpha: Math.min(1, acc / TICK), dt, reduced: reduced(), menu };
+    view.m = m; view.self = self; view.watch = inMatch() || m.phase === 'over' ? watch : -1; view.yaw = input.state.yaw; view.pitch = input.state.pitch;
+    view.px = prevX; view.pz = prevZ; view.alpha = Math.min(1, acc / TICK); view.dt = dt; view.reduced = reduced(); view.menu = menu;
     scene.render(view);
     ambient(m, self, dt);
     // HUD.
     markers.length = 0;
     const seen = m.players[watch];
     if (inMatch() && seen) {
-      const mark = (x: number, y: number, z: number, label: string, kind: Marker['kind'], sub?: string) => { const p = scene.project(x, y, z); markers.push({ x: p.x, y: p.y, front: p.front, label, kind, sub }); };
-      if (m.device) mark(m.device.x, 0.9, m.device.z, 'UPLINK', 'device', `${Math.ceil(m.t)}s`);
-      else if (m.phase !== 'end') for (const s of MAP.sites) { const cx = (s.x0 + s.x1) / 2, cz = (s.z0 + s.z1) / 2; if (!inRect(s, seen.x, seen.z)) mark(cx, 1.7, cz, s.id, 'site', `${Math.round(Math.hypot(cx - seen.x, cz - seen.z))} m`); }
+      if (m.device) { const sec = Math.ceil(m.t); if (sec !== devSec) { devSec = sec; devText = `${sec}s`; } mark(m.device.x, 0.9, m.device.z, 'UPLINK', 'device', devText); }
+      else if (m.phase !== 'end') for (let i = 0; i < MAP.sites.length; i++) {
+        const s = MAP.sites[i], cx = (s.x0 + s.x1) / 2, cz = (s.z0 + s.z1) / 2;
+        if (inRect(s, seen.x, seen.z)) continue;
+        const d = Math.round(Math.hypot(cx - seen.x, cz - seen.z));
+        if (d !== siteDist[i]) { siteDist[i] = d; siteText[i] = `${d} m`; }
+        mark(cx, 1.7, cz, s.id, 'site', siteText[i]);
+      }
       for (const p of m.players) if (p.alive && p.id !== watch && p.squad === seen.squad && markers.length < 10) mark(p.x, 1.95 - p.crouch * 0.55, p.z, p.name, 'mate');
     }
     promptAt -= dt;
@@ -424,14 +441,25 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       const d = weaponOf(m, me), spread = d.hip + (d.ads - d.hip) * me.adsT + d.moveSpread * Math.min(1, me.pace) * (1 - 0.5 * me.adsT) + me.bloom * (1 - 0.6 * me.adsT) - (me.crouching ? d.hip * 0.2 * (1 - me.adsT) : 0);
       gap = Math.tan(Math.max(0, spread)) / Math.tan(32 * Math.PI / 180) * canvas.clientHeight / 2 + 3;
     }
-    const mates = me ? m.players.some(p => p.alive && p.squad === me.squad) : true;
-    const waiting = !inMatch() ? '' : me && !me.alive ? (seen && seen.alive ? `Watching ${seen.name} · ${input.touch ? 'tap' : 'click'} for the next squadmate` : mates ? '' : 'Your squad is down') : !me ? (seen ? `Watching ${seen.name}` : 'Watching') : m.phase === 'prep' && roleOf(m, me) === ATK ? `Waiting to go in · pick a kit${input.touch ? '' : ' with 1, 2 or 3'}` : '';
-    hud.update({ m, self, watch, gap, ads: me ? me.adsT : 0, scoped: !!me && me.alive && me.slot === 0 && kitOf(m, me).primary === 'dmr' && me.adsT > 0.9, prompt, progress: me && me.act !== ACT.none ? me.actT / actDuration(me.act) : -1, room: seen ? roomAt(seen.x, seen.z) : '', board: input.state.board, markers, touch: input.touch, waiting, dt });
-    root.dataset.use = String(!!prompt && prompt.startsWith('Hold'));
-    root.dataset.role = me ? (roleOf(m, me) === ATK ? 'atk' : 'def') : '';
-    const level = m.phase === 'lobby' ? 'Lobby' : `Round ${m.round} · ${m.wins[0]}–${m.wins[1]}`;
-    if (level !== levelText) { levelText = level; context.setLevel(level); }
-    if (root.dataset.phase !== m.phase) root.dataset.phase = m.phase;
+    let mates = !me;
+    if (me) for (const p of m.players) if (p.alive && p.squad === me.squad) { mates = true; break; }
+    // The waiting line: which case it is and who is watched, built again only when that changes.
+    const wcase = !inMatch() ? 0 : me && !me.alive ? (seen && seen.alive ? 1 : mates ? 0 : 2) : !me ? (seen ? 3 : 4) : m.phase === 'prep' && roleOf(m, me) === ATK ? 5 : 0;
+    const wname = (wcase === 1 || wcase === 3) && seen ? seen.name : '';
+    if (wcase !== waitCase || wname !== waitName || input.touch !== waitTouch) {
+      waitCase = wcase; waitName = wname; waitTouch = input.touch;
+      waitText = wcase === 1 ? `Watching ${wname} · ${input.touch ? 'tap' : 'click'} for the next squadmate` : wcase === 2 ? 'Your squad is down' : wcase === 3 ? `Watching ${wname}` : wcase === 4 ? 'Watching' : wcase === 5 ? `Waiting to go in · pick a kit${input.touch ? '' : ' with 1, 2 or 3'}` : '';
+    }
+    hv.m = m; hv.self = self; hv.watch = watch; hv.gap = gap; hv.ads = me ? me.adsT : 0; hv.scoped = !!me && me.alive && me.slot === 0 && kitOf(m, me).primary === 'dmr' && me.adsT > 0.9;
+    hv.prompt = prompt; hv.progress = me && me.act !== ACT.none ? me.actT / actDuration(me.act) : -1; hv.room = seen ? roomAt(seen.x, seen.z) : '';
+    hv.board = input.state.board; hv.touch = input.touch; hv.waiting = waitText; hv.dt = dt;
+    hud.update(hv);
+    const use = !!prompt && prompt.startsWith('Hold') ? 'true' : 'false', role = me ? (roleOf(m, me) === ATK ? 'atk' : 'def') : '';
+    if (use !== useNow) root.dataset.use = useNow = use;
+    if (role !== roleNow) root.dataset.role = roleNow = role;
+    const lk = m.phase === 'lobby' ? -1 : m.round * 10000 + m.wins[0] * 100 + m.wins[1];
+    if (lk !== levelKey || !levelText) { levelKey = lk; const level = lk < 0 ? 'Lobby' : `Round ${m.round} · ${m.wins[0]}–${m.wins[1]}`; if (level !== levelText) { levelText = level; context.setLevel(level); } }
+    if (m.phase !== phaseNow) root.dataset.phase = phaseNow = m.phase;
     if (m.phase === 'lobby' && shown === null && !held) { show('menu'); syncMenu(); }
   }
 

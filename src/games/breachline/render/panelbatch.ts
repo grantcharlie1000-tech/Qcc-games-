@@ -1,14 +1,14 @@
 /** Draws every undamaged destructible panel as part of a few merged meshes, one per material, so a room's soft walls
  * cost a draw call per material instead of one or two per panel. Each whole panel's geometry is split by its material
  * groups (face, edges) and each part filed under its material. A panel leaves the batches (and draws on its own) once
- * it is damaged, reinforced or gone; the batches it was in are rebuilt then, which is a small merge at the moment of
- * damage, never per frame. Panel geometry is already in world space with its light in the vertex colours, so merging
+ * it is damaged, reinforced or gone: its triangles in the batches are collapsed where they are (no rebuild, nothing
+ * allocated), and the batches are merged again only when panels join them, at a round's start. Panel geometry is already in world space with its light in the vertex colours, so merging
  * needs no transforms. */
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { PanelView } from '../levelmesh';
 
-interface Batch { material: THREE.Material; parts: Map<PanelView, THREE.BufferGeometry>; mesh: THREE.Mesh | null; dirty: boolean }
+interface Batch { material: THREE.Material; parts: Map<PanelView, THREE.BufferGeometry>; ranges: Map<PanelView, [number, number]>; mesh: THREE.Mesh | null; dirty: boolean }
 
 /** A whole, unreinforced panel's geometry split by material: [material, part] per group. Null if it cannot batch. */
 function split(v: PanelView): [THREE.Material, THREE.BufferGeometry][] | null {
@@ -28,16 +28,27 @@ export class PanelBatches {
   private home = new Map<PanelView, Batch[]>();
   constructor(private group: THREE.Group) {}
 
-  /** Call after a panel's sync() rebuilt it (or once for every panel after binding). */
-  update(v: PanelView) {
-    for (const b of this.home.get(v) ?? []) { b.parts.get(v)?.dispose(); b.parts.delete(v); b.dirty = true; }
-    this.home.delete(v);
-    const parts = split(v);
+  /** Call after a panel's sync() rebuilt it (or once for every panel after binding). A whole panel joins the batches
+   * only when `join` (at a round's start); one made whole during a round (a finished barricade) draws on its own
+   * until then, so a round never re-merges a batch. */
+  update(v: PanelView, join = true) {
+    const p = v.panel, homes0 = this.home.get(v);
+    if (homes0) {
+      // Still whole: it keeps its place. Otherwise its triangles collapse to nothing in place.
+      if (p.intact === p.cells.length && !p.reinforced) { v.mesh.visible = false; return; }
+      for (const b of homes0) {
+        const r = b.ranges.get(v), index = b.mesh?.geometry.index;
+        if (r && index && !b.dirty) { (index.array as Uint32Array).fill(0, r[0], r[0] + r[1]); index.addUpdateRange(r[0], r[1]); index.needsUpdate = true; }
+        b.parts.get(v)?.dispose(); b.parts.delete(v); b.ranges.delete(v);
+      }
+      this.home.delete(v);
+    }
+    const parts = join ? split(v) : null;
     if (!parts) { v.mesh.visible = v.panel.intact > 0; return; }
     const homes: Batch[] = [];
     for (const [material, part] of parts) {
       let b = this.batches.get(material);
-      if (!b) this.batches.set(material, b = { material, parts: new Map(), mesh: null, dirty: true });
+      if (!b) this.batches.set(material, b = { material, parts: new Map(), ranges: new Map(), mesh: null, dirty: true });
       // Two groups of one panel can share a material: merge them into the one part.
       const had = b.parts.get(v);
       if (had) { const both = mergeGeometries([had, part], false)!; had.dispose(); part.dispose(); b.parts.set(v, both); } else b.parts.set(v, part);
@@ -57,6 +68,9 @@ export class PanelBatches {
       const merged = mergeGeometries([...b.parts.values()], false);
       if (!merged) { for (const v of b.parts.keys()) v.mesh.visible = true; continue; }
       merged.computeBoundingSphere();
+      b.ranges.clear();
+      let at = 0;
+      for (const [v, g] of b.parts) { const n = g.index ? g.index.count : 0; b.ranges.set(v, [at, n]); at += n; }
       b.mesh = new THREE.Mesh(merged, b.material);
       b.mesh.matrixAutoUpdate = false; b.mesh.name = 'panels:batch';
       this.group.add(b.mesh);

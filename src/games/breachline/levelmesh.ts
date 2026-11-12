@@ -372,6 +372,8 @@ const G = { pos: new Grow(4096), nor: new Grow(4096), uv: new Grow(4096), col: n
 
 /** The four cells round a corner (dc, dr pairs), for the torn-edge jitter. */
 const CORNER_CELLS = [-1, -1, 0, -1, -1, 0, 0, 0];
+/** The torn-edge jitter of the vertex being written. */
+const JIT = new Float64Array(2);
 
 /** The dressing for a plasterboard wall panel, laid out from its position (the same every time). */
 export function panelDecor(p: Panel): PanelDecor[] {
@@ -426,28 +428,28 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
   const torn = !plate && !wood && p.intact < p.cells.length;
   /** How far a skin's corner tears back (in u and y) from the hole beside it, into the intact board; zero away from
    * holes and on the panel's rim. Each skin tears differently, which opens the cavity and shows the studs. */
-  // Written into jx, jy (no allocation per vertex).
-  let jx = 0, jy = 0;
+  // Written into J (no allocation per vertex: a double kept in a closure variable is boxed on every write).
+  const J = JIT;
   const jitter = (cu: number, cy: number, skin: number) => {
-    jx = jy = 0;
+    J[0] = J[1] = 0;
     if (!torn || cu <= 0 || cy <= 0 || cu >= p.cols || cy >= p.rows) return;
     let du = 0, dy = 0, open = 0;
     for (let k = 0; k < 4; k++) { const dc = CORNER_CELLS[k * 2], dr = CORNER_CELLS[k * 2 + 1]; if (!cell(cu + dc, cy + dr)) { du += dc + 0.5; dy += dr + 0.5; open++; } }
     if (!open || open === 4) return;
     // A corner touching a single open cell would cut a long notch, so it moves less.
     const l = Math.hypot(du, dy) || 1, m = CELL * (0.15 + 0.35 * hash(p.u0 + cu, p.y0 + cy, p.pos + skin * 3.1)) * (open === 1 ? 0.45 : 1);
-    jx = -du / l * m; jy = -dy / l * m;
+    J[0] = -du / l * m; J[1] = -dy / l * m;
   };
   const vert = (u: number, y: number, off: number, n: number, shade: number | RGB, nx = 0, ny = 0, fixed = false) => {
     const cu = Math.round((u - p.u0) / CELL), cy = Math.round((y - p.y0) / CELL);
-    if (fixed) jx = jy = 0; else jitter(cu, cy, Math.sign(off));
-    const uu = u + jx, yy = y + jy, l = light(u, y, off, n);
+    if (fixed) J[0] = J[1] = 0; else jitter(cu, cy, Math.sign(off));
+    const uu = u + J[0], yy = y + J[1], l = light(u, y, off, n);
     const sr = typeof shade === 'number' ? shade : shade[0], sg = typeof shade === 'number' ? shade : shade[1], sb = typeof shade === 'number' ? shade : shade[2];
     if (alongX) pos.push(uu, yy, p.pos + off); else pos.push(p.pos + off, yy, uu);
     uv.push(uu / tile[0], yy / tile[1]); col.push(l[0] * sr, l[1] * sg, l[2] * sb);
     if (n) { if (alongX) nor.push(0, 0, n); else nor.push(n, 0, 0); }
     else if (alongX) nor.push(nx, ny, 0); else nor.push(0, ny, nx);
-    return pos.length / 3 - 1;
+    return ((pos.length / 3) | 0) - 1;
   };
   const quad = (list: Grow, a: number, b: number, c: number, d: number, flip: boolean) => { if (flip) list.push(a, d, c, a, c, b); else list.push(a, b, c, a, c, d); };
   if (wood && !plate) return barricade();
@@ -492,7 +494,7 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
   // paper, white gypsum core, brown back paper), paint and paper peel back from it, the odd flap of paper curls out,
   // and the back of the board shows brown in the cavity.
   const SEG = 6, MARGIN = 0.03;
-  const corner = (cu: number, cy: number, sk: number): [number, number] => { jitter(cu, cy, sk); return [p.u0 + cu * CELL + jx, p.y0 + cy * CELL + jy]; };
+  const corner = (cu: number, cy: number, sk: number): [number, number] => { jitter(cu, cy, sk); return [p.u0 + cu * CELL + J[0], p.y0 + cy * CELL + J[1]]; };
   for (let r = 0; r < p.rows; r++) for (let c = 0; c < p.cols; c++) {
     if (!rim(c, r)) continue;
     const mu = p.u0 + (c + 0.5) * CELL, my = p.y0 + (r + 0.5) * CELL;
@@ -643,10 +645,11 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
     const g = look?.plate ? 0.8 : 1, sc = (v: RGB): RGB => [v[0] * g, v[1] * g, v[2] * g];
     const PAINT = sc([1.75, 1.8, 1.9]), RAIL = sc([1.15, 1.18, 1.24]), STEEL = sc([0.9, 0.9, 0.92]), RIVET = sc([2.3, 2.3, 2.3]);
     const at = (u: number, y: number, off: number, n: number, sh: RGB, nx = 0, ny = 0) => {
-      const w = panelPoint(p, u, y, off), l = light(u, y, off, n);
-      pos.push(w.x, w.y, w.z); uv.push(u / tile[0], y / tile[1]); col.push(l[0] * sh[0], l[1] * sh[1], l[2] * sh[2]);
+      const l = light(u, y, off, n);
+      if (alongX) pos.push(u, y, p.pos + off); else pos.push(p.pos + off, y, u);
+      uv.push(u / tile[0], y / tile[1]); col.push(l[0] * sh[0], l[1] * sh[1], l[2] * sh[2]);
       if (n) { if (alongX) nor.push(0, 0, n); else nor.push(n, 0, 0); } else if (alongX) nor.push(nx, ny, 0); else nor.push(0, ny, nx);
-      return pos.length / 3 - 1;
+      return ((pos.length / 3) | 0) - 1;
     };
     const box = (ua: number, ub: number, ya: number, yb: number, o0: number, o1: number, sh: RGB, n: number) => {
       // A small block standing on the face (front, top, bottom and ends; its back is against the plate).
@@ -706,11 +709,10 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
     const ea = ends(ua, brokeA, -1, 0), eb = ends(ub, brokeB, 1, 1);
     const yk = (u: number, i: number) => { const t = i / (N - 1); return yAt(u, true) * (1 - t) + yAt(u, false) * t; };
     const pt = (u: number, y: number, off: number, n: number, sh: number | RGB, nx = 0, ny = 0, vEdge?: number) => {
-      const w = panelPoint(p, u, y, off), l = light(u, y, off, n);
-      const [sr, sg, sb] = typeof sh === 'number' ? [sh, sh, sh] : sh;
-      pos.push(w.x, w.y, w.z); uv.push(u / tile[0] + uo, vEdge ?? ((y - p.y0 - r * CELL) / CELL * 0.065 + vo)); col.push(l[0] * sr, l[1] * sg, l[2] * sb);
+      const l = light(u, y, off, n), sr = typeof sh === 'number' ? sh : sh[0], sg = typeof sh === 'number' ? sh : sh[1], sb = typeof sh === 'number' ? sh : sh[2];
+      if (alongX) pos.push(u, y, p.pos + off); else pos.push(p.pos + off, y, u); uv.push(u / tile[0] + uo, vEdge ?? ((y - p.y0 - r * CELL) / CELL * 0.065 + vo)); col.push(l[0] * sr, l[1] * sg, l[2] * sb);
       if (n) { if (alongX) nor.push(0, 0, n); else nor.push(n, 0, 0); } else if (alongX) nor.push(nx, ny, 0); else nor.push(0, ny, nx);
-      return pos.length / 3 - 1;
+      return ((pos.length / 3) | 0) - 1;
     };
     const L = ea.map((u, i): [number, number] => [u, yk(u, i)]), R = eb.map((u, i): [number, number] => [u, yk(u, i)]);
     // Faces: a strip of quads from the top of the board to the bottom, between its two ends.
