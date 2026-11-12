@@ -41,4 +41,7 @@ jobs:
           console.log('D1 API is reachable. No database metadata is logged.');
           if(!await read('/workers/account-settings'))throw new Error('Worker API access is unavailable; no resources were changed.');
           console.log('Worker API is reachable. No account metadata is logged.');
+          const subscriptions=await read('/subscriptions');
+          if(!Array.isArray(subscriptions)||subscriptions.some(item=>!item.rate_plan||Number(item.rate_plan.price)!==0))throw new Error('Zero-cost backend eligibility could not be established. No resources were changed.');
+          console.log('Zero-cost eligibility check passed. No subscription metadata is logged.');
           JS
