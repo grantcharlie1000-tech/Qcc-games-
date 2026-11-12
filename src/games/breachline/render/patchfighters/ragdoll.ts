@@ -125,45 +125,51 @@ function integrate(b: Body) {
   }
 }
 
+// Allocation-free (it runs for every body every step): no closures, iterators or temporary arrays.
+function fix(p: Float64Array, w: Float64Array, a: number, c: number, len: number, min: boolean) {
+  const dx = p[c * 3] - p[a * 3], dy = p[c * 3 + 1] - p[a * 3 + 1], dz = p[c * 3 + 2] - p[a * 3 + 2], d = Math.hypot(dx, dy, dz);
+  if (d < 1e-9 || (min && d >= len)) return;
+  const k = (d - len) / d / (w[a] + w[c]);
+  p[a * 3] += dx * k * w[a]; p[a * 3 + 1] += dy * k * w[a]; p[a * 3 + 2] += dz * k * w[a];
+  p[c * 3] -= dx * k * w[c]; p[c * 3 + 1] -= dy * k * w[c]; p[c * 3 + 2] -= dz * k * w[c];
+}
 function solve(b: Body) {
-  const { p, w } = b;
-  const fix = (a: number, c: number, len: number, min: boolean) => {
-    const dx = p[c * 3] - p[a * 3], dy = p[c * 3 + 1] - p[a * 3 + 1], dz = p[c * 3 + 2] - p[a * 3 + 2], d = Math.hypot(dx, dy, dz);
-    if (d < 1e-9 || (min && d >= len)) return;
-    const k = (d - len) / d / (w[a] + w[c]);
-    p[a * 3] += dx * k * w[a]; p[a * 3 + 1] += dy * k * w[a]; p[a * 3 + 2] += dz * k * w[a];
-    p[c * 3] -= dx * k * w[c]; p[c * 3 + 1] -= dy * k * w[c]; p[c * 3 + 2] -= dz * k * w[c];
-  };
-  for (const s of b.sticks) fix(s.a, s.b, s.len, false);
-  for (const s of b.mins) fix(s.a, s.b, s.len, true);
+  const p = b.p, w = b.w;
+  for (let i = 0; i < b.sticks.length; i++) { const s = b.sticks[i]; fix(p, w, s.a, s.b, s.len, false); }
+  for (let i = 0; i < b.mins.length; i++) { const s = b.mins[i]; fix(p, w, s.a, s.b, s.len, true); }
 }
 
 /** Knees bend forward only: a knee behind the hip-to-foot line is moved back in front of it. */
 function knees(b: Body) {
-  const p = b.p, at = (i: number, c: number) => p[i * 3 + c];
-  const X = [at(P.hipR, 0) - at(P.hipL, 0), at(P.hipR, 1) - at(P.hipL, 1), at(P.hipR, 2) - at(P.hipL, 2)];
-  const Y = [at(P.chest, 0) - at(P.pelvis, 0), at(P.chest, 1) - at(P.pelvis, 1), at(P.chest, 2) - at(P.pelvis, 2)];
+  const p = b.p;
+  const x0 = p[P.hipR * 3] - p[P.hipL * 3], x1 = p[P.hipR * 3 + 1] - p[P.hipL * 3 + 1], x2 = p[P.hipR * 3 + 2] - p[P.hipL * 3 + 2];
+  const y0 = p[P.chest * 3] - p[P.pelvis * 3], y1 = p[P.chest * 3 + 1] - p[P.pelvis * 3 + 1], y2 = p[P.chest * 3 + 2] - p[P.pelvis * 3 + 2];
   // Forward (the fighter faces -Z in the bind pose, with X to the right and Y up) is Y x X.
-  const F = [Y[1] * X[2] - Y[2] * X[1], Y[2] * X[0] - Y[0] * X[2], Y[0] * X[1] - Y[1] * X[0]], fl = Math.hypot(F[0], F[1], F[2]);
+  const f0 = y1 * x2 - y2 * x1, f1 = y2 * x0 - y0 * x2, f2 = y0 * x1 - y1 * x0, fl = Math.hypot(f0, f1, f2);
   if (fl < 1e-6) return;
-  for (const [hip, kn, ft] of [[P.hipL, P.knL, P.ftL], [P.hipR, P.knR, P.ftR]]) {
+  for (let leg = 0; leg < 2; leg++) {
+    const hip = leg ? P.hipR : P.hipL, kn = leg ? P.knR : P.knL, ft = leg ? P.ftR : P.ftL;
     let d = 0;
-    for (let c = 0; c < 3; c++) d += (at(kn, c) - (at(hip, c) + at(ft, c)) / 2) * F[c] / fl;
+    for (let c = 0; c < 3; c++) d += (p[kn * 3 + c] - (p[hip * 3 + c] + p[ft * 3 + c]) / 2) * (c === 0 ? f0 : c === 1 ? f1 : f2) / fl;
     if (d >= 0.01) continue;
     const k = (0.01 - d) * 0.5;
-    for (let c = 0; c < 3; c++) { p[kn * 3 + c] += F[c] / fl * k; p[hip * 3 + c] -= F[c] / fl * k * 0.25; p[ft * 3 + c] -= F[c] / fl * k * 0.25; }
+    for (let c = 0; c < 3; c++) { const F = c === 0 ? f0 : c === 1 ? f1 : f2; p[kn * 3 + c] += F / fl * k; p[hip * 3 + c] -= F / fl * k * 0.25; p[ft * 3 + c] -= F / fl * k * 0.25; }
   }
 }
 
 /** Pushes each point out of the floor, solid boxes, intact panel cells and the map bounds, removing the velocity
  * into the surface and some of the velocity along it (friction). */
+/** Collision normal accumulated for the current point (x, y, z) and whether anything hit (w). */
+const cn = [0, 0, 0, 0];
+/** Pushes point `o` out along (ax, ay, az) by `depth`, adding to the collision normal. */
+function pushOut(p: Float64Array, o: number, ax: number, ay: number, az: number, depth: number) { p[o] += ax * depth; p[o + 1] += ay * depth; p[o + 2] += az * depth; cn[0] += ax; cn[1] += ay; cn[2] += az; cn[3] = 1; }
 function collide(b: Body, world: { boxes: Box[]; panels: Panel[]; bounds: Bounds } | null) {
   const { p, q, r } = b;
   for (let i = 0; i < b.n; i++) {
     const o = i * 3, rad = r[i];
-    let nx = 0, ny = 0, nz = 0, hit = false;
-    const out = (ax: number, ay: number, az: number, depth: number) => { p[o] += ax * depth; p[o + 1] += ay * depth; p[o + 2] += az * depth; nx += ax; ny += ay; nz += az; hit = true; };
-    if (p[o + 1] < rad) out(0, 1, 0, rad - p[o + 1]);
+    cn[0] = cn[1] = cn[2] = 0; cn[3] = 0;
+    const out = pushOut;
+    if (p[o + 1] < rad) out(p, o, 0, 1, 0, rad - p[o + 1]);
     if (world) {
       for (const bx of world.boxes) {
         if (!bx.solid) continue;
@@ -171,14 +177,17 @@ function collide(b: Body, world: { boxes: Box[]; panels: Panel[]; bounds: Bounds
         if (x <= bx.x0 - rad || x >= bx.x1 + rad || y <= bx.y0 - rad || y >= bx.y1 + rad || z <= bx.z0 - rad || z >= bx.z1 + rad) continue;
         // Leave through the face the point came in by: the one nearest its last position, by penetration depth.
         const px = q[o], py = q[o + 1], pz = q[o + 2];
-        const faces: [number, number, number, number, boolean][] = [
-          [-1, 0, 0, x - (bx.x0 - rad), px <= bx.x0 - rad + 1e-4], [1, 0, 0, bx.x1 + rad - x, px >= bx.x1 + rad - 1e-4],
-          [0, -1, 0, y - (bx.y0 - rad), py <= bx.y0 - rad + 1e-4], [0, 1, 0, bx.y1 + rad - y, py >= bx.y1 + rad - 1e-4],
-          [0, 0, -1, z - (bx.z0 - rad), pz <= bx.z0 - rad + 1e-4], [0, 0, 1, bx.z1 + rad - z, pz >= bx.z1 + rad - 1e-4],
-        ];
-        let best = faces.filter(f => f[4]).sort((a, c) => a[3] - c[3])[0];
-        best ??= faces.sort((a, c) => a[3] - c[3])[0];
-        out(best[0], best[1], best[2], best[3]);
+        // The six faces in a fixed order (-x, +x, -y, +y, -z, +z): the shallowest one the point entered by, else the
+        // shallowest of all; ties go to the first, as a stable sort would.
+        let bestE = -1, bestA = -1, dE = Infinity, dA = Infinity;
+        for (let f = 0; f < 6; f++) {
+          const depth = f === 0 ? x - (bx.x0 - rad) : f === 1 ? bx.x1 + rad - x : f === 2 ? y - (bx.y0 - rad) : f === 3 ? bx.y1 + rad - y : f === 4 ? z - (bx.z0 - rad) : bx.z1 + rad - z;
+          const entered = f === 0 ? px <= bx.x0 - rad + 1e-4 : f === 1 ? px >= bx.x1 + rad - 1e-4 : f === 2 ? py <= bx.y0 - rad + 1e-4 : f === 3 ? py >= bx.y1 + rad - 1e-4 : f === 4 ? pz <= bx.z0 - rad + 1e-4 : pz >= bx.z1 + rad - 1e-4;
+          if (entered && depth < dE) { dE = depth; bestE = f; }
+          if (depth < dA) { dA = depth; bestA = f; }
+        }
+        const f = bestE >= 0 ? bestE : bestA, sg = f % 2 ? 1 : -1;
+        out(p, o, f < 2 ? sg : 0, f === 2 || f === 3 ? sg : 0, f >= 4 ? sg : 0, bestE >= 0 ? dE : dA);
       }
       const half = PANEL_T / 2;
       for (const pn of world.panels) {
@@ -188,13 +197,14 @@ function collide(b: Body, world: { boxes: Box[]; panels: Panel[]; bounds: Bounds
         const c = Math.floor((u - pn.u0) / CELL), rw = Math.floor((y - pn.y0) / CELL);
         if (!pn.reinforced && !pn.cells[rw * pn.cols + c]) continue;
         const was = pn.axis === 'x' ? q[o + 2] : q[o], side = was >= pn.pos ? 1 : -1, depth = pn.pos + side * (half + rad) - v;
-        if (pn.axis === 'x') out(0, 0, 1, depth); else out(1, 0, 0, depth);
+        if (pn.axis === 'x') out(p, o, 0, 0, 1, depth); else out(p, o, 1, 0, 0, depth);
       }
       const bd = world.bounds;
-      if (p[o] < bd.x0 + rad) out(1, 0, 0, bd.x0 + rad - p[o]); else if (p[o] > bd.x1 - rad) out(-1, 0, 0, p[o] - (bd.x1 - rad));
-      if (p[o + 2] < bd.z0 + rad) out(0, 0, 1, bd.z0 + rad - p[o + 2]); else if (p[o + 2] > bd.z1 - rad) out(0, 0, -1, p[o + 2] - (bd.z1 - rad));
+      if (p[o] < bd.x0 + rad) out(p, o, 1, 0, 0, bd.x0 + rad - p[o]); else if (p[o] > bd.x1 - rad) out(p, o, -1, 0, 0, p[o] - (bd.x1 - rad));
+      if (p[o + 2] < bd.z0 + rad) out(p, o, 0, 0, 1, bd.z0 + rad - p[o + 2]); else if (p[o + 2] > bd.z1 - rad) out(p, o, 0, 0, -1, p[o + 2] - (bd.z1 - rad));
     }
-    if (!hit) continue;
+    if (!cn[3]) continue;
+    let nx = cn[0], ny = cn[1], nz = cn[2];
     const nl = Math.hypot(nx, ny, nz); if (nl < 1e-9) continue;
     nx /= nl; ny /= nl; nz /= nl;
     let vx = p[o] - q[o], vy = p[o + 1] - q[o + 1], vz = p[o + 2] - q[o + 2];
