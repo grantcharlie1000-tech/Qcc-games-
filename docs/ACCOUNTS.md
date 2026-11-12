@@ -12,7 +12,7 @@ A session is stored through core/storage. Logout removes its raw token immediate
 
 ## Sync
 
-The allowlist consists of `best:<game>`, `save:<game>`, settings and favourites. Corn Clicker's main farm is already `save:corn-clicker` in the shell namespace, so it follows the same sync path. Its tab lock and rolling backups are never synced. Movies, Study session choices, offline metadata and leaderboard browser tokens are excluded.
+The allowlist consists of `best:<game>`, `save:<game>`, settings and favourites. Corn Clicker's main farm is already `save:corn-clicker` in the shell namespace, so it follows the same sync path. Its tab lock and rolling backups are never synced. Movie progress is excluded from game-save synchronization and uses its own authenticated action and table; My list and guest movie history remain local. Study session choices, offline metadata and leaderboard browser tokens are excluded.
 
 Each transfer record contains `{value,updated}`. Best scores merge by maximum; favourites, settings and game snapshots by latest timestamp. Equal timestamps have a deterministic JSON lexical tie break. Snapshot envelope timestamps must equal record timestamps. Old snapshots without timestamps acquire zero, so a dated server snapshot wins. Settings/best/favourite writes persist update timestamps. Favourites can be removed on any device; a newer removal wins on every subsequent sync. Guest favourites are imported only at sign-up.
 
@@ -46,3 +46,8 @@ Passwords use Node scrypt with N=16384, r=8, p=1, a random 16-byte salt and 64-b
 Persistent database counters allow ten failed logins per trimmed, case-insensitive username and 100 failed logins per platform client IP in 15 minutes. Successful logins do not increment counters and reset the username counter. Sign-ups allow 60 attempts per IP per hour. Transaction-scoped database locks serialize concurrent checks before password derivation, so parallel requests cannot bypass a limit. Limits return 429 and Retry-After; Netlify allows 600 account requests per IP per minute. Expired sessions and old attempt counters are deleted opportunistically during authentication. Taken usernames are checked before scrypt, with the unique index still handling concurrent sign-ups. State-changing requests check origin, require JSON and bound streamed body bytes; auth bodies are limited to 2 KiB. SQL is parameterized; save merges take a per-account transaction lock. Tables revoke all public grants.
 
 Account leaderboard entries display a text “account” marker in both leaderboard views, including their accessible cell text. Historical guest rows keep their existing nicknames; this policy change does not delete or rewrite them. The marker distinguishes account identities without treating a matching nickname as ownership.
+
+
+## Continue watching
+
+Signed-in movie and episode progress has its own `accounts?action=movies` endpoint and private `account_movie_progress` table. It is not part of `account_saves` or popularity. Authentication, revocation, write freeze and storage-full handling use the existing account controls. Records merge per media key, with completion and clear tombstones to protect against stale devices. Anonymous history is imported only through the explicit **Add device history** action, after a successful account refresh; the original guest copy remains intact. See [Movies & TV](MOVIES_TV.md#account-continue-watching) for limits, browser fallback and backend deployment.
