@@ -43,21 +43,23 @@ export const propMaterial = (model: string) => PROP_MAT[model] ?? 'plastic';
 type Proxy = { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; key: string };
 /** The first dressing piece a ray passes through before `tmax` (slab test on each piece's box), with the face normal. */
 export function firstDressing<P extends Proxy>(list: readonly P[], ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, tmax: number): { t: number; nx: number; ny: number; nz: number; key: string; p?: P } | null {
-  let best: { t: number; nx: number; ny: number; nz: number; key: string; p?: P } | null = null;
-  const inv = [1 / dx, 1 / dy, 1 / dz], o = [ox, oy, oz];
-  for (const b of list) {
-    const lo = [b.x0, b.y0, b.z0], hi = [b.x1, b.y1, b.z1];
-    let t0 = 0.05, t1 = best ? best.t : tmax - 0.02, axis = -1, sign = 0;
-    for (let k = 0; k < 3; k++) {
-      let a = (lo[k] - o[k]) * inv[k], c = (hi[k] - o[k]) * inv[k], sg = -1;
+  // No allocation per box (this runs over every dressing piece for every round): the slab test unrolled per axis.
+  let bt = Infinity, bAxis = -1, bSign = 0, bp: P | null = null;
+  const ix = 1 / dx, iy = 1 / dy, iz = 1 / dz;
+  for (let i = 0; i < list.length; i++) {
+    const b = list[i];
+    let t0 = 0.05, t1 = bp ? bt : tmax - 0.02, axis = -1, sign = 0;
+    for (let k = 0; k < 3 && t0 <= t1; k++) {
+      const lo = k === 0 ? b.x0 : k === 1 ? b.y0 : b.z0, hi = k === 0 ? b.x1 : k === 1 ? b.y1 : b.z1, o = k === 0 ? ox : k === 1 ? oy : oz, inv = k === 0 ? ix : k === 1 ? iy : iz;
+      let a = (lo - o) * inv, c = (hi - o) * inv, sg = -1;
       if (a > c) { const tt = a; a = c; c = tt; sg = 1; }
       if (a > t0) { t0 = a; axis = k; sign = sg; }
       if (c < t1) t1 = c;
-      if (t0 > t1) break;
     }
     if (t0 > t1 || axis < 0) continue;
-    best = { t: t0, nx: axis === 0 ? sign : 0, ny: axis === 1 ? sign : 0, nz: axis === 2 ? sign : 0, key: b.key, p: b };
+    bt = t0; bAxis = axis; bSign = sign; bp = b;
   }
+  const best = bp ? { t: bt, nx: bAxis === 0 ? bSign : 0, ny: bAxis === 1 ? bSign : 0, nz: bAxis === 2 ? bSign : 0, key: bp.key, p: bp } : null;
   return best;
 }
 /** What covers the ground in each floor area. */

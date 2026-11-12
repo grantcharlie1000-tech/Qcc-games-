@@ -13,6 +13,31 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ### Performance
 
+**Performance setting: the scene split, then two fixes.** Software WebGL, 1280 x 720, with the light art tier as shipped. Switches: nothing drawn; flat colour; no meshes under 300 triangles; lowest LOD.
+
+| | Corridor | Lab |
+|---|---|---|
+| Whole frame | 201 to 229 ms | 166 to 180 ms |
+| Of which post, weapon and clear | about 80 ms | about 80 ms |
+| Shading (flat colour saves) | 70 to 90 ms | 30 to 70 ms |
+| Small draws (180 fewer draws save) | about 35 to 40 ms | about 15 to 30 ms |
+| Triangles (lowest LOD saves) | under 10 ms | under 10 ms |
+
+The fixes:
+- **No FXAA on the low post tier.** It was nine texture reads per pixel over the full-size canvas; it is only a uniform, so nothing recompiles. Post went from about 50 to 25 to 35 ms.
+- **No anisotropic filtering on the light art tier** (Performance chosen at start, or software WebGL), which is costly on weak and software GPUs. Every other device keeps 4x.
+
+**Result, as shipped:** Performance at 1280 x 720 is now 150 to 160 ms in the corridor (it was 201 to 229) and 134 to 138 ms in the Lab (it was 166 to 180).
+
+**Garbage while firing.** Measured on Performance with a live 5v5 and the player shooting walls, using Chrome's sampling heap profiler with collected objects counted (`perf/allocations-before.txt`, `perf/allocations-after.txt`). It went from 10.5 MB/s to 5.1 MB/s.
+- **Ray against dressing.** It allocated two arrays per box per round. Now it is an unrolled slab test.
+- **Panel rebuilds.** They allocated a tuple, a point and a light array per vertex, and grew plain arrays. Now they use scratch values and reused typed buffers, so a rebuild allocates only its finished geometry.
+- **Culling.** No allocation per frame.
+- **What is left:**
+  - the fighters' IK and ragdoll, about 1.4 MB/s (`render/patchfighters`, not changed);
+  - the arcade's text ink, about 0.2 MB/s;
+  - numbers boxed by V8 in functions that run too rarely to be optimised (short-lived and cheap to collect).
+
 **Experiments: where the frame goes.** All in software WebGL at 1280 x 720, 5v5, each frame forced to finish (`scripts/breachline-assets/perfexperiments.mjs`; its switches only exist with `?artdbg=world`).
 
 *High post, cheap shading (ms per frame):*

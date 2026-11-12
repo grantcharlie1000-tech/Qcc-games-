@@ -53,11 +53,12 @@ export class ArtLoader {
     this.total++;
     return p.then(v => { this.done++; this.progress(this.done / this.total); return v; });
   }
-  /** One map of a texture set at `size` texels; the 512 px JPEG if the transcoder cannot run. */
+  /** One map of a texture set at `size` texels (anisotropic filtering on the high tier only: it is costly on the weak
+   * and software GPUs the light tier is for); the 512 px JPEG if the transcoder cannot run. */
   texture(set: string, kind: 'diff' | 'nor' | 'arm', size: number): Promise<THREE.Texture> {
     const srgb = kind === 'diff';
     const finish = <T extends THREE.Texture>(t: T) => {
-      t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; t.needsUpdate = true;
+      t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = this.tier === 'high' ? 4 : 1; t.needsUpdate = true;
       this.textures.push(t);
       return t;
     };

@@ -1,0 +1,17 @@
+allocated (sampled) MB 60.7 over 12 s = 5.06 MB/s
+   4.07 MB  vert index-CoLzbx41.js:7112
+   3.98 MB  fix index-CoLzbx41.js:17413
+   3.80 MB  solve index-CoLzbx41.js:17411
+   3.70 MB  collide index-CoLzbx41.js:17445
+   2.61 MB  firstDressing index-CoLzbx41.js:13163
+   2.54 MB  next :0
+   2.25 MB  sample index-BzyoCmhg.js:523
+   2.16 MB  getParameters three.module-BKdg667R.js:28451
+   1.98 MB  frameRot index-CoLzbx41.js:16708
+   1.85 MB  upper index-CoLzbx41.js:16926
+   1.51 MB  knees$1 index-CoLzbx41.js:17427
+   1.33 MB  limb index-CoLzbx41.js:17051
+   1.30 MB  trace index-CoLzbx41.js:302
+   1.16 MB  hypot :0
+   1.03 MB  update index-CoLzbx41.js:8095
+   0.95 MB  panelGeometry index-CoLzbx41.js:7087
