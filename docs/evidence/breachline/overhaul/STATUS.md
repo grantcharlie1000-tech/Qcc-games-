@@ -29,6 +29,28 @@ The fixes:
 
 **Result, as shipped:** Performance at 1280 x 720 is now 150 to 160 ms in the corridor (it was 201 to 229) and 134 to 138 ms in the Lab (it was 166 to 180).
 
+**What a cheap-path pixel still does.** Two texture reads (the base map, already 512 px on the light tier, and the lightmap), vertex colour, a little maths for the painted wall details, and fog. Switching each off on Performance (software, two runs each):
+- base map off saves 5 to 60 ms;
+- lightmap off saves 0 to 45 ms;
+- fog off saves nothing measurable;
+- flat colour (everything off) saves 70 to 110 ms.
+
+Nothing is left to remove without losing the look itself.
+
+**Calibrating the ruler** (`scripts/breachline-assets/calibrate.mjs`). Four plain scenes in the same software renderer (SwiftShader on this container's 4 cores, 1280 x 720), medians of five runs of three forced frames:
+
+| Scene | Median | Per unit |
+|---|---|---|
+| Clear only | 0.2 ms | |
+| One full-screen textured quad (mipmapped 1024 texture) | 9.7 ms | about 10 ns per textured pixel |
+| 250 small draws | 7.2 ms | about 29 µs per draw |
+| 250k triangles in one small mesh | 32.7 ms | about 130 ns per triangle |
+
+*What it means.*
+- Software makes pixels and triangles roughly a hundred times dearer than any real GPU, but a draw only a few times dearer (a draw is mostly CPU work in either case).
+- So our software figures overstate fill and triangles and understate draws. On real hardware, draws and script time matter relatively more than these tables suggest.
+- A Performance frame here (about 150 ms in the corridor) splits roughly into 170k triangles (about 22 ms), 222 draws (about 6 ms, plus three.js's own per-draw work) and fill (the rest).
+
 **The fixed cost on the low steps.**
 - **The weapon in hand** has a cheap look: Lambert twins of its materials (same map, colour and vertex colours; no normal, roughness or reflection maps). It is used whenever the scene is on the cheap path, and compiled at warm-up.
 - **Auto's bottom step**, and so software WebGL, has no post pass. It draws straight to the screen with three's ACES curve (the same curve the post chain uses), so the screen output is compiled at warm-up too.

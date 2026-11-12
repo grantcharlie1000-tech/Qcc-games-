@@ -478,7 +478,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   }
   // ---- Performance experiments (debug only, `?artdbg=world`: window.__blExperiment): each switch changes how the next
   // frames are drawn, to find where the GPU time goes. Off by default; nothing here runs in a normal game.
-  const experiment: { on?: boolean; flat?: boolean; overdraw?: boolean; prepass?: boolean; noPost?: boolean; noFighters?: boolean; noViewmodel?: boolean; noTransparent?: boolean; noSmall?: boolean; lowLod?: boolean; rooms?: { x0: number; z0: number; x1: number; z1: number }[] } = {};
+  const experiment: { on?: boolean; flat?: boolean; overdraw?: boolean; prepass?: boolean; noPost?: boolean; noFighters?: boolean; noViewmodel?: boolean; noTransparent?: boolean; noSmall?: boolean; noMap?: boolean; noLightMap?: boolean; noFog?: boolean; lowLod?: boolean; rooms?: { x0: number; z0: number; x1: number; z1: number }[] } = {};
   const experimentMats = {
     flat: new THREE.MeshBasicMaterial({ color: 0x808080 }),
     count: new THREE.MeshBasicMaterial({ color: new THREE.Color(1 / 255, 1 / 255, 1 / 255), blending: THREE.AdditiveBlending, toneMapped: false }),
@@ -502,9 +502,16 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       }
       if (hide) { o.visible = false; hidden.push(o); }
     });
+    const matKeep: [THREE.MeshBasicMaterial, THREE.Texture | null, THREE.Texture | null, boolean][] = [];
+    if (X.noMap || X.noLightMap || X.noFog) {
+      for (const r of roots) r.traverse(o => { const ms = (o as THREE.Mesh).material; if (!ms) return; for (const m of Array.isArray(ms) ? ms : [ms]) {
+        const b = m as THREE.MeshBasicMaterial; if (!m.userData.full || matKeep.some(k => k[0] === b)) continue;
+        matKeep.push([b, b.map, b.lightMap, b.fog]); if (X.noMap) b.map = null; if (X.noLightMap) b.lightMap = null; if (X.noFog) b.fog = false; b.needsUpdate = true; } });
+    }
     if (X.flat) artScene.overrideMaterial = scene.overrideMaterial = experimentMats.flat;
     if (X.overdraw) { artScene.overrideMaterial = scene.overrideMaterial = experimentMats.count; renderer.toneMapping = THREE.NoToneMapping; renderer.outputColorSpace = THREE.LinearSRGBColorSpace; }
     return () => {
+      for (const [b, m, l, f] of matKeep) { b.map = m; b.lightMap = l; b.fog = f; b.needsUpdate = true; }
       for (const o of hidden) o.visible = true;
       for (const [l, a] of lods) { l.autoUpdate = a; l.levels.forEach((v, i) => { v.object.visible = i === 0; }); }
       artScene.overrideMaterial = scene.overrideMaterial = null;
