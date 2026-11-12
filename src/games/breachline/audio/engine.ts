@@ -31,8 +31,6 @@ export interface PlayOpts {
   ref?: number;
   /** Beyond this distance the sound is not played. */
   reach?: number;
-  /** May use HRTF (otherwise equal-power). */
-  hrtf?: boolean;
   /** Extra low-pass cut-off for this voice. */
   lowpass?: number;
   /** Variant to use; random (never the last one twice) when absent. */
@@ -44,11 +42,12 @@ export interface PlayOpts {
 /** Bus levels (linear) and each space's reverb return. */
 const BUS_GAIN: Record<BusName, number> = { own: 1, near: 0.85, world: 0.9, amb: 0.04, cue: 0.55 };
 const RETURN: Record<Space, number> = { hard: 0.55, soft: 0.35, corridor: 0.6, yard: 0.5 };
-export const MAX_VOICES = 32, MAX_HRTF = 6;
+/** Panning is equal-power only: creating an HRTF panner cost 1.4 to 2.7 ms on the main thread (audio-perf.ts). */
+export const MAX_VOICES = 32;
 /** Occlusion by the number of soft layers (index 1..3) or solid (4): [low-pass Hz, gain dB, wall-colour dB at 280 Hz, send ×]. */
 const BLOCK: [number, number, number, number][] = [[20000, 0, 0, 1], [2200, -5, 3, 0.85], [1500, -8, 4, 0.75], [1000, -11, 4, 0.7], [600, -16, 0, 1.6]];
 
-interface Voice { src: AudioBufferSourceNode; out: GainNode; loud: number; hrtf: boolean; end: number }
+interface Voice { src: AudioBufferSourceNode; out: GainNode; loud: number; end: number }
 
 export class Engine {
   readonly ctx: AudioContext;
@@ -167,7 +166,10 @@ export class Engine {
       const audio = await (await fetch(new URL(indexUrl, location.href).href.replace(/\.json$/, '.ogg'))).arrayBuffer();
       const all = await this.ctx.decodeAudioData(audio), data = all.getChannelData(0);
       if (this.disposed) return false;
+      let slice = performance.now();
       for (const [key, takes] of Object.entries(index.keys)) {
+        // Cutting a whole pack at once held the main thread for tens of ms: give the page a turn every 4 ms.
+        if (performance.now() - slice > 4) { await new Promise(r => setTimeout(r, 0)); slice = performance.now(); if (this.disposed) return false; }
         // Short handling sounds are kept at half rate (a light low-pass, then every other sample) to save memory.
         const half = !!index.half?.some(p => key.startsWith(p)) && all.sampleRate >= 44100;
         const bufs = takes.filter(t => t.start + t.length <= data.length).map(t => {
@@ -230,12 +232,11 @@ export class Engine {
     if (o.rate && o.rate !== 1) src.playbackRate.value = o.rate;
     const out = c.createGain(); out.gain.value = gain;
     src.connect(out);
-    let tail: AudioNode = out, hrtf = false;
+    let tail: AudioNode = out;
     if (lp < 16000) { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; f.Q.value = 0.6; tail.connect(f); tail = f; }
     if (colour) { const f = c.createBiquadFilter(); f.type = 'peaking'; f.frequency.value = 280; f.Q.value = 1.1; f.gain.value = colour; tail.connect(f); tail = f; }
     if (at) {
-      hrtf = !!o.hrtf && this.voices.filter(x => x.hrtf).length < MAX_HRTF;
-      const p = c.createPanner(); p.panningModel = hrtf ? 'HRTF' : 'equalpower'; p.distanceModel = 'linear'; p.rolloffFactor = 0;
+      const p = c.createPanner(); p.panningModel = 'equalpower'; p.distanceModel = 'linear'; p.rolloffFactor = 0;
       // Listener-relative position: the listener stays at the origin facing −Z, so nothing per frame touches it.
       const rx = Math.cos(this.ear.yaw), rz = -Math.sin(this.ear.yaw), fx = -Math.sin(this.ear.yaw), fz = -Math.cos(this.ear.yaw);
       const dx = at.x - this.ear.x, dz = at.z - this.ear.z;
@@ -247,7 +248,7 @@ export class Engine {
     if (send > 0) { const s = c.createGain(); s.gain.value = send; tail.connect(s); s.connect(this.verbIn[at ? at.space : this.ear.space]); }
     const t = now + 0.005 + delay;
     src.start(t);
-    const voice: Voice = { src, out, loud: gain, hrtf, end: o.loop ? Infinity : t + buffer.duration / (o.rate ?? 1) };
+    const voice: Voice = { src, out, loud: gain, end: o.loop ? Infinity : t + buffer.duration / (o.rate ?? 1) };
     src.onended = () => { const i = this.voices.indexOf(voice); if (i >= 0) this.voices.splice(i, 1); out.disconnect(); };
     this.voices.push(voice);
     return out;
@@ -281,7 +282,6 @@ export class Engine {
   /** Sets a bus level target (ambience cross-fades use their own gains). */
   busGain(bus: BusName) { return this.bus[bus]; }
   get activeVoices() { const now = this.ctx.currentTime; return this.voices.filter(v => v.end > now).length; }
-  get activeHrtf() { const now = this.ctx.currentTime; return this.voices.filter(v => v.end > now && v.hrtf).length; }
   dispose() {
     this.disposed = true;
     this.worker?.terminate(); this.worker = null;

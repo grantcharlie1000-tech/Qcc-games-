@@ -167,6 +167,33 @@ change checked against the reference sheets until every gun is within about 1.0 
    distance to the reference, and searches the gun's parameters (a few dozen) to minimise it. Then the takes'
    spread sets the variant range. Indoor rooms are not covered by these references and stay as designed.
 
+## Is sound part of the frame-rate problem? (2026-11-12)
+
+Measured with `tests/games/breachline/audio-perf.ts`: a live 5v5 bot match in Chromium on the dev server, the player
+holding fire into a soft wall, CPU profile at 0.1 ms sampling plus sampled allocations, every sample with sound code
+on its stack attributed to sound. This container renders WebGL in software, so the game itself runs at 1 to 3 frames a
+second here; per-second figures are the fair ones.
+
+| Measure | Budget | Result |
+| --- | --- | --- |
+| Main-thread script in sound code | under 0.3 ms per frame | **about 1.4 ms per second of play** (0.5 to 1.1% of all script): 0.02 ms per frame at 60 fps |
+| One `Engine.play` call, controlled burst (400 plays, game frozen) | under 1 ms | median under 0.05 ms, 99th percentile 0.4 ms, **max 1.8 ms (1 call in 400)** |
+| One `Engine.play` call, live match | under 1 ms | median 0.1 to 0.2 ms, 99th percentile 1.5 to 2.1 ms, max 4.4 ms (a few calls, on a starved main thread) |
+| Decodes, buffers made, worker messages during play | none | **0, 0, 0** |
+| Nodes created | | 19 to 27 per second; 4.3 to 5.2 per shot (live test) |
+| Garbage from sound | | 11 to 17 KB per second, against 3.4 to 21 MB per second for the whole page |
+| First press, 1x | | 41 to 64 ms to create the AudioContext (native, once, in the lobby); each reverb IR about 17 ms when assigned, in its own task; pack decoding is off the main thread (the call itself 0 to 14 ms) |
+| First press, 6x | | longest block 85 to 160 ms (assigning an IR); synthesis on the main thread appears only on the dev server, whose slow worker start trips the 8 s fallback; the production build loads the worker in 59 ms |
+
+Fixed in this pass:
+- **HRTF panning removed.** Creating an HRTF panner cost 1.4 to 2.7 ms per call; every voice is equal-power now.
+- **Pack slicing yields** every 4 ms instead of cutting a whole pack in one block.
+- **Falling wall items** now share the 50 ms impact throttle. They had raised nodes per shot to 8.7 to 9.0; now 4.3 to 5.2.
+
+Verdict: sound is about 1% of main-thread script during play and decodes nothing then; it is not the cause of 5
+frames a second. Over budget: a rare single call over 1 ms, most likely the browser's audio graph lock when a node is
+created while the audio thread holds it; the remaining one-time costs sit at the first press in the lobby.
+
 ## Blasts reshaped; crumble, gear, melee and ambience real (2026-11-12, second pass)
 
 - **Blasts.** The recorded onset and first 90 to 110 ms are kept; after that the body is split at 300 Hz and each
@@ -575,7 +602,7 @@ Still visible in the final phase 1 pictures, for later phases: the blast body is
 | Buffers in memory | ≤ 12 MB | ~0.2 MB | **11.4 MB** at a 48 kHz context (unit-tested < 12): sounds 9.3 MB, four stereo reverbs 2.1 MB |
 | Time to first sound | ≤ 150 ms | immediate | Production build: **144 ms unthrottled**. With the CPU throttled 6x, the worker is up in 164 ms, but the first buffer is not taken until **3.3 s**, because the main thread is busy starting the match. Rendering now starts at the first press anywhere in the page, so in practice the bank fills in the lobby. The first gunshot can come no sooner than 20 s (preparation phase). Measured with `audio-prodtime.mjs`. |
 | No hitch while filling | no visible hitch | n/a | Taking each buffer on the main thread costs ≤ 5.5 ms at 6x throttle, 40–60 ms in total over 231 buffers, each in its own task (live test) |
-| Live voices | ≤ 32, HRTF ≤ 6 | 40, no HRTF | 32 and 6, quietest dropped first (engine) |
+| Live voices | ≤ 32, HRTF ≤ 6 | 40, no HRTF | 32, quietest dropped first; HRTF removed for cost (see the frame-rate section) |
 | Nodes per shot | ≤ 8 | **28–31** | **3** own, **≤ 6** others (lab); **3.7–5.3** in a live match including impacts and crumbles |
 | Master peak | ≤ −1 dBFS | +6.1 (breach) | −2.0 worst scene; the ceiling caps at −1.0 |
 | Own weapon over world gun at 10 m | ~6 dB | ~4.4 dB | **6.1 dB** |

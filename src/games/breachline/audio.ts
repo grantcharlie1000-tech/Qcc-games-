@@ -168,12 +168,12 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
       // One buffer per shot (node budget): the near report up to ~38 m, the far one beyond; the engine's distance
       // low-pass and level carry the transition.
       const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z), rate = 0.98 + Math.random() * 0.04;
-      if (d < 38) play(`gun.${w}.tp`, 'world', at, { wet: 0.6, ref: 3.5, reach: 160, hrtf: d < 30, rate });
+      if (d < 38) play(`gun.${w}.tp`, 'world', at, { wet: 0.6, ref: 3.5, reach: 160, rate });
       else play(`gun.${w}.far`, 'world', at, { wet: 0.5, ref: 3.5, reach: 160, rate, gain: 1.4 });
     },
     step(surface, loud, at) {
       const floor = OLD_SURFACE[surface] ?? (surface as Floor), crouch = loud < 0.5, sprint = loud > 1;
-      play(`step.${floor}`, at ? 'world' : 'near', at, { gain: Math.pow(loud, 1.2) * (at ? 1 : 0.55), wet: 0.25, ref: 2, reach: 30, hrtf: true, lowpass: crouch ? 2400 : undefined, rate: 0.96 + Math.random() * 0.08 });
+      play(`step.${floor}`, at ? 'world' : 'near', at, { gain: Math.pow(loud, 1.2) * (at ? 1 : 0.55), wet: 0.25, ref: 2, reach: 30, lowpass: crouch ? 2400 : undefined, rate: 0.96 + Math.random() * 0.08 });
       if (sprint || Math.random() < 0.3) play('gear', at ? 'world' : 'near', at, { gain: loud * (at ? 1 : 0.6), wet: 0.1, ref: 2, reach: 18 });
     },
     reload(seconds, at, w, empty) {
@@ -185,7 +185,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
       // A slot of this weapon's own, else its class's, else the rifle's; the fetch beat is the pouch and cloth.
       const slot = (b: string) => b === 'fetch' && e.packed.has('rl.fetch') ? 'rl.fetch'
         : [`rl.${id}.${b}`, `rl.${cls}.${b}`, ...(cls !== 'shotgun' && cls !== 'pistol' ? [`rl.rifle.${b}`] : [])].find(k => e.has(k)) ?? `rl.rifle.${b}`;
-      const base = { wet: 0.2, ref: 2, reach: 22, hrtf: true } as const, bus: BusName = at ? 'world' : 'near', fast = cls === 'smg' && !e.packed.has('rl.smg.out') ? 1.08 : 1;
+      const base = { wet: 0.2, ref: 2, reach: 22 } as const, bus: BusName = at ? 'world' : 'near', fast = cls === 'smg' && !e.packed.has('rl.smg.out') ? 1.08 : 1;
       let prev = -1;
       for (const b of beats) {
         const t = Math.max(0, seconds * b.at + (Math.random() - 0.5) * 0.03);
@@ -277,7 +277,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
           if (f === 'leaf') { play('impact.leaf', 'world', p, { ref: 2, reach: 18 }); break; }
           if (f === 'loose') { play('impact.cardboard', 'world', p, { ref: 2, reach: 20 }); break; }
           // A board, frame or shelf falling off a broken wall: a light wooden clatter on the floor.
-          if (f === 'wallitem') { play('impact.wood', 'world', p, { gain: 0.8, rate: 0.7 + Math.random() * 0.15, wet: 0.3, ref: 2, reach: 25 }); break; }
+          if (f === 'wallitem') { if (eng && eng.ctx.currentTime - lastImpact < 0.05) break; if (eng) lastImpact = eng.ctx.currentTime; play('impact.wood', 'world', p, { gain: 0.8, rate: 0.7 + Math.random() * 0.15, wet: 0.3, ref: 2, reach: 25 }); break; }
           // Set pieces by family (render/setpieces-data.ts).
           const kind: BreakKind = /shelving|filing|cabinet|mapchest|vending|trolley|display/.test(f) ? 'shelf' : /drums|generator|skip/.test(f) ? 'drum'
             : /crates|pallets|materials|binstore|benchboxes/.test(f) ? 'crate' : /sofa|trailer/.test(f) ? 'fabric' : /lowwall|planter/.test(f) ? 'wood' : /island|deskpod|tableset|lowtable|sideboard/.test(f) ? 'wood' : 'metal';
@@ -306,6 +306,6 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
       if (!e) return Promise.resolve();
       return Promise.all([e.load(), packDone]).then(() => { for (const [k, v] of Object.entries(options.override ?? {})) e.replace(k, v.takes.map(t => Float32Array.from(t)), v.sr); });
     },
-    stats() { return eng ? { voices: eng.activeVoices, hrtf: eng.activeHrtf, bytes: eng.bytes, loaded: eng.loaded, firstMs: eng.readyAt, state: eng.ctx.state } : { voices: 0, hrtf: 0, bytes: 0, loaded: 0, firstMs: -1, state: 'none' }; },
+    stats() { return eng ? { voices: eng.activeVoices, hrtf: 0, bytes: eng.bytes, loaded: eng.loaded, firstMs: eng.readyAt, state: eng.ctx.state } : { voices: 0, hrtf: 0, bytes: 0, loaded: 0, firstMs: -1, state: 'none' }; },
   };
 }
