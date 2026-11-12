@@ -198,7 +198,16 @@ function dressCorridor(atlas: Atlas, room: Region): DetailBuilder {
     onPost('alarm', x, wallZ, side, 1.38, 1.47, 0.09, 0.045);
     onPost('paper', x, wallZ, side, 1.405, 1.445, 0.05, 0.047, [0.95, 0.95, 0.95]);
   }
-  for (const [x, wallZ, side] of [[5.5, 1, -1]] as const) {
+  // Extinguisher points on the posts: a red extinguisher on a wall bracket under its sign.
+  for (const [x, wallZ, side] of [[-6, -2, 1], [4, -2, 1], [5.5, 1, -1], [-7, 1, -1]] as const) {
+    const zc = postFace(x, wallZ, side) + side * 0.09, on: V3 = [x, 0.6, postFace(x, wallZ, side) + side * 0.001], n: V3 = [0, 0, side];
+    const body = new THREE.CylinderGeometry(0.075, 0.075, 0.48, 16).translate(x, 0.62, zc);
+    D.mesh('alarm', body.attributes.position.array, body.attributes.normal.array, body.index!.array, on, n, [1.6, 1.3, 1.3]); body.dispose();
+    const head = new THREE.CylinderGeometry(0.025, 0.04, 0.09, 10).translate(x, 0.905, zc);
+    D.mesh('plastic', head.attributes.position.array, head.attributes.normal.array, head.index!.array, on, n); head.dispose();
+    onPost('steel', x, wallZ, side, 0.7, 0.76, 0.1, 0.03);
+  }
+  for (const [x, wallZ, side] of [[5.5, 1, -1], [-6, -2, 1], [4, -2, 1], [-7, 1, -1]] as const) {
     const z = postFace(x, wallZ, side) + side * 0.004, g = new THREE.PlaneGeometry(0.16, 0.2).rotateY(side > 0 ? 0 : Math.PI).translate(x, 1.8, z);
     D.mesh('fire', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [x, 1.8, postFace(x, wallZ, side) + side * 0.001], [0, 0, side], [1, 1, 1], g.attributes.uv.array);
     g.dispose();
@@ -213,8 +222,22 @@ function dressCorridor(atlas: Atlas, room: Region): DetailBuilder {
     D.box('conduit', x - 0.006, 2.83, -1.68, x + 0.006, y, -1.67, [x, y - 0.001, -1.6], up, [0.5, 0.5, 0.5]);
     D.box('conduit', x - 0.015, 2.72, -1.7, x + 0.015, 2.735, -1.4, [x, y - 0.001, -1.6], up, [0.5, 0.5, 0.5]);
   }
+  // Each room's colour (its door frame and name plate), by its corridor doorway: x, wall, side, sign index.
+  const DOORWAYS = [[-10.25, -2, 1, 0], [-1.25, -2, 1, 1], [8.75, -2, 1, 2], [-8.75, 1, -1, 3], [-2.25, 1, -1, 4], [6.25, 1, -1, 5], [9.75, 1, -1, 6]] as const;
+  const ROOM_TINT: V3[] = [[1.2, 0.8, 0.2], [0.3, 0.9, 1.05], [0.65, 0.4, 1.0], [1.2, 1.0, 0.3], [0.3, 0.5, 1.1], [0.35, 0.85, 0.4], [1.2, 0.5, 0.2]];
+  const tintAt = (x: number, wallZ: number) => { let best = 0, d = Infinity; DOORWAYS.forEach(([dx, wz], i) => { if (wz === wallZ && Math.abs(dx - x) < d) { d = Math.abs(dx - x); best = i; } }); return ROOM_TINT[DOORWAYS[best][3]]; };
+  // Bold name plates on the solid header over each doorway: the room's colour with its name printed on white.
+  for (const [x, wallZ, side, k] of DOORWAYS) {
+    const z = wallZ + side * 0.07, n: V3 = [0, 0, side], on: V3 = [x, 2.55, z + side * 0.001], v0 = 1 - (k + 1) / ROOM_SIGNS.length, v1 = 1 - k / ROOM_SIGNS.length;
+    D.box('label', x - 0.5, 2.44, side > 0 ? z : z - 0.02, x + 0.5, 2.68, side > 0 ? z + 0.02 : z, on, n, ROOM_TINT[k]);
+    const g = new THREE.PlaneGeometry(0.78, 0.17).rotateY(side > 0 ? 0 : Math.PI).translate(x, 2.56, z + side * 0.021);
+    const uv = g.attributes.uv as THREE.BufferAttribute;
+    for (let i = 0; i < uv.count; i++) uv.setY(i, v0 + uv.getY(i) * (v1 - v0));
+    D.mesh('roomsign', g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, n, [1, 1, 1], uv.array);
+    g.dispose();
+  }
   // Hanging room signs at every corridor doorway, printed on both faces so they read from either end.
-  for (const [x, wallZ, side, k] of [[-10.25, -2, 1, 0], [-1.25, -2, 1, 1], [8.75, -2, 1, 2], [-8.75, 1, -1, 3], [-2.25, 1, -1, 4], [6.25, 1, -1, 5], [9.75, 1, -1, 6]] as const) {
+  for (const [x, wallZ, side, k] of DOORWAYS) {
     const zc = wallZ + side * 0.38, v0 = 1 - (k + 1) / ROOM_SIGNS.length, v1 = 1 - k / ROOM_SIGNS.length;
     D.box('kick', x - 0.012, 2.43, zc - 0.275, x + 0.012, 2.59, zc + 0.275, [x, y - 0.001, zc], up, [1.5, 1.5, 1.5]);
     for (const zz of [zc - 0.2, zc + 0.2]) D.box('chrome', x - 0.004, 2.59, zz - 0.004, x + 0.004, y, zz + 0.004, [x, y - 0.001, zc], up);
@@ -271,9 +294,10 @@ function dressCorridor(atlas: Atlas, room: Region): DetailBuilder {
     const side = p.pos === -2 ? 1 : -1, face = p.pos + side * 0.11, n: V3 = [0, 0, side], a = p.u0 + 0.11, b = p.u0 + p.cols * 0.25 - 0.11, top = 2.25;
     const proud = (key: DressKey, x0: number, x1: number, y0: number, y1: number, d: number, on: V3, tint?: V3) =>
       D.box(key, x0, y0, side > 0 ? face : face - d, x1, y1, side > 0 ? face + d : face, on, n, tint);
-    proud('casing', a - 0.075, a, 0, top + 0.075, 0.018, [a - 0.05, 1, face + side * 0.001]);
-    proud('casing', b, b + 0.075, 0, top + 0.075, 0.018, [b + 0.05, 1, face + side * 0.001]);
-    proud('casing', a - 0.075, b + 0.075, top, top + 0.075, 0.018, [(a + b) / 2, top + 0.2, face + side * 0.001]);
+    const rt = tintAt((a + b) / 2, p.pos);
+    proud('casing', a - 0.075, a, 0, top + 0.075, 0.018, [a - 0.05, 1, face + side * 0.001], rt);
+    proud('casing', b, b + 0.075, 0, top + 0.075, 0.018, [b + 0.05, 1, face + side * 0.001], rt);
+    proud('casing', a - 0.075, b + 0.075, top, top + 0.075, 0.018, [(a + b) / 2, top + 0.2, face + side * 0.001], rt);
     // A plinth block at the foot of each casing, where trolleys have chipped it.
     proud('trim', a - 0.08, a + 0.005, 0, 0.14, 0.024, [a - 0.05, 0.07, face + side * 0.001], [1.6, 1.6, 1.6]);
     proud('trim', b - 0.005, b + 0.08, 0, 0.14, 0.024, [b + 0.05, 0.07, face + side * 0.001], [1.6, 1.6, 1.6]);
@@ -285,7 +309,7 @@ function dressCorridor(atlas: Atlas, room: Region): DetailBuilder {
     proud('kick', b + 0.1, b + 0.19, 1.52, 1.555, 0.0075, [b + 0.1, 1.5, face + side * 0.001]);
   }
   // Exit signs hung across the corridor, readable from both ends.
-  for (const x of [-12, 0.75, 12]) {
+  for (const x of [-12, -6, 0.75, 6, 12]) {
     D.box('plastic', x - 0.02, 2.62, -0.66, x + 0.02, 2.8, -0.34, [x, y - 0.001, -0.5], up);
     for (const z of [-0.6, -0.4]) D.box('conduit', x - 0.004, 2.8, z - 0.004, x + 0.004, y, z + 0.004, [x, y - 0.001, -0.5], up);
     for (const s of [1, -1]) {

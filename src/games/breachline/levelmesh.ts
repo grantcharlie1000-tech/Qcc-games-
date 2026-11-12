@@ -261,9 +261,9 @@ const ROOM_DECOR: Record<string, string[]> = {
   Lobby: ['print', 'plan', 'poster', 'print'],
   'Server Room': ['plan', 'whiteboard', 'shelf', 'poster'],
   Garage: ['pinboard', 'calendar', 'shelf', 'poster'],
-  Corridor: ['poster', 'plan', 'print', 'poster', 'pinboard'],
+  Corridor: ['hose', 'pinboard', 'poster', 'pinboard', 'plan', 'print'],
 };
-const ITEM_W: Record<string, number> = { whiteboard: 1.3, pinboard: 1.0, calendar: 0.38, coats: 0.9, print: 0.6, plan: 0.75, poster: 0.5, shelf: 1.0, woodshelf: 1.0, cupboard: 1.5 };
+const ITEM_W: Record<string, number> = { whiteboard: 1.3, pinboard: 1.0, calendar: 0.38, coats: 0.9, print: 0.6, plan: 0.75, poster: 0.5, shelf: 1.0, woodshelf: 1.0, cupboard: 1.5, hose: 0.7 };
 /** One hung item's pieces, from u = a, as flat boxes standing off the face. */
 function decorItem(kind: string, a: number, side: 1 | -1, h: (k: number) => number, out: PanelDecor[]) {
   const b = a + ITEM_W[kind], box = (u0: number, u1: number, y0: number, y1: number, d: number, tint: RGB) => out.push({ u0, u1, y0, y1, side, d, tint });
@@ -319,6 +319,15 @@ function decorItem(kind: string, a: number, side: 1 | -1, h: (k: number) => numb
       for (let i = 0; i < 4; i++) box(a + 0.05, b - 0.05 - h(110 + i) * 0.15, 1.36 + i * 0.045, 1.38 + i * 0.045, 0.008, [0.25, 0.25, 0.27]);
       break;
     }
+    case 'hose': {
+      // A fire-hose reel cabinet: red box, a glazed door with the reel showing through, a white label.
+      box(a, b, 1.0, 1.75, 0.2, [1.2, 0.16, 0.12]);
+      box(a + 0.05, b - 0.05, 1.08, 1.62, 0.204, [0.3, 0.36, 0.4]);
+      box(a + 0.17, b - 0.17, 1.2, 1.5, 0.206, [0.9, 0.12, 0.1]);
+      box(a + 0.3, b - 0.3, 1.31, 1.39, 0.208, [0.25, 0.25, 0.27]);
+      box(a + 0.08, b - 0.08, 1.65, 1.71, 0.204, [1.4, 1.4, 1.35]);
+      break;
+    }
     case 'cupboard': {
       // A run of white wall cupboards above head height: the carcass, door gaps, handles and a shadow line under it.
       box(a, b, 1.75, 2.35, 0.32, [1.25, 1.28, 1.3]);
@@ -353,6 +362,13 @@ export function panelDecor(p: Panel): PanelDecor[] {
       const u0 = p.u0 + c * CELL, u1 = u0 + CELL;
       out.push({ u0, u1, y0: p.y0 + 0.02, y1: p.y0 + 0.11, side, d: 0.014, tint: [0.42, 0.44, 0.47] });
       out.push({ u0, u1, y0: rail - 0.02, y1: rail + 0.025, side, d: 0.012, tint: railTint });
+      // Corridor: a rubber bumper rail, and a wayfinding stripe whose colour tells the wing (blue west, green middle,
+      // orange east).
+      if (region?.name === 'corridor') {
+        const x = p.axis === 'x' ? (u0 + u1) / 2 : p.pos;
+        out.push({ u0, u1, y0: 0.82, y1: 0.94, side, d: 0.03, tint: [0.22, 0.22, 0.24] });
+        out.push({ u0, u1, y0: 1.18, y1: 1.3, side, d: 0.004, tint: x < -5 ? [0.3, 0.5, 1.3] : x > 5 ? [1.4, 0.65, 0.18] : [0.35, 1.05, 0.5] });
+      }
     }
     if (w < 1.0 || top < 2) continue;
     // What hangs here depends on the room this face looks into; a wide panel takes two or three items.

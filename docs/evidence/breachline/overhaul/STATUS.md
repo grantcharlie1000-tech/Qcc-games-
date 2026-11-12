@@ -4,6 +4,20 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+### Corridor, second pass
+
+- **Light rhythm.** Every corridor surface (floor, walls, ceiling, partitions) is brightest under each fitting and up to 55% darker between them. This is done in the shader (`ART_BANDS`), with the period set by the fittings 4.5 m apart. The wall tone above the dado is deeper (0.84).
+- **Wayfinding.** A coloured stripe at 1.2 m on the partitions: blue in the west wing, green in the middle, orange in the east. Each doorway has a door frame in its room's colour, and a bold plate in that colour with the room's name on the solid header over the door.
+- **Wall furniture.**
+  - A rubber bumper rail at 0.9 m.
+  - Fire-hose reel cabinets among the partition items.
+  - Four extinguisher points on the posts, each a red extinguisher on a bracket under its sign.
+  - Five glowing exit signs across the corridor (was three).
+  - More pinboards.
+  - The partition items fall with their cells, as in the rooms; the rest is on posts and headers. Nothing collides.
+- **Evidence:** `round2/corridor-second-pass.png` shows both ends, before and after.
+- **Honest rating:** corridor 7. It now recedes in bands and each wing and door reads from a distance. The floor's reflections are still the brightest thing in view.
+
 ### Outdoor areas
 
 - **What was added.** Contact shadows under the cover, worn paths from the outer doors, oil stains on the asphalt (12 to 22 per area), and darker wall bases. There is no ceiling ramp outside.
@@ -572,7 +586,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** map-fill round 2 done for every area (rooms 6.5 to 7, outdoors unchanged at 6); waiting for the planner's next order.
+**Where I am (keep current):** corridor second pass done; outdoors (sky, backdrop, building shadow, boundary walls) next, then Server Room brightness and Lobby cladding.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

@@ -35,6 +35,8 @@ export interface ArtMaterialOptions {
   band?: { height: number; tint: readonly [number, number, number] } | null;
   /** Tiles or slabs (width, height in metres) below the band's height, with grout lines. */
   tiles?: readonly [number, number] | null;
+  /** Light rhythm along x: darker between fittings spaced `period` apart from `x0`, by up to `depth`. */
+  bands?: { x0: number; period: number; depth: number } | null;
   /** A polished floor's wear: a dull walked path along the line at `centre` (on world x or z) and dull margins where the
    * polisher never reached, `half` metres either side. */
   wear?: { axis: 'x' | 'z'; centre: number; half: number } | null;
@@ -63,10 +65,11 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
     artBoxMax: { value: new THREE.Vector3(1e4, 1e4, 1e4) },
     artProbe: { value: new THREE.Vector3() },
     artWear: { value: new THREE.Vector4(o.wear?.axis === 'x' ? 1 : 0, o.wear?.centre ?? 0, o.wear?.half ?? 0, 0) },
+    artBands: { value: new THREE.Vector3(o.bands?.x0 ?? 0, o.bands?.period ?? 1, o.bands?.depth ?? 0) },
     artTile: { value: new THREE.Vector2(o.tiles?.[0] ?? 0.15, o.tiles?.[1] ?? 0.15) },
     artBand: { value: new THREE.Vector4(o.band?.tint[0] ?? 1, o.band?.tint[1] ?? 1, o.band?.tint[2] ?? 1, o.band?.height ?? -1) },
   };
-  const defs = [o.dirMap && o.lightMap ? 'ART_DIRMAP' : '', o.vertexLight ? 'ART_VERTEX_LIGHT' : '', o.sh ? 'ART_SH' : '', o.band ? 'ART_BAND' : '', o.band && o.tiles ? 'ART_TILES' : '', o.wear ? 'ART_WEAR' : '', o.specOnly ? 'ART_SPECONLY' : ''].filter(Boolean);
+  const defs = [o.dirMap && o.lightMap ? 'ART_DIRMAP' : '', o.vertexLight ? 'ART_VERTEX_LIGHT' : '', o.sh ? 'ART_SH' : '', o.band ? 'ART_BAND' : '', o.band && o.tiles ? 'ART_TILES' : '', o.bands ? 'ART_BANDS' : '', o.wear ? 'ART_WEAR' : '', o.specOnly ? 'ART_SPECONLY' : ''].filter(Boolean);
   m.userData.art = uniforms;
   m.customProgramCacheKey = () => `art:${defs.join(',')}`;
   m.onBeforeCompile = shader => {
@@ -75,8 +78,12 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
       .replace('#include <common>', '#include <common>\nvarying vec3 vArtWorld;')
       .replace('#include <project_vertex>', '#include <project_vertex>\n\tvArtWorld = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${defs.map(d => `#define ${d}`).join('\n')}\nuniform sampler2D artDirMap;\nuniform vec3 artSH[4];\nuniform float artEnvLight;\nuniform vec4 artBand;\nuniform vec2 artTile;\nuniform vec4 artWear;\nuniform vec3 artBoxMin;\nuniform vec3 artBoxMax;\nuniform vec3 artProbe;\nvarying vec3 vArtWorld;`)
+      .replace('#include <common>', `#include <common>\n${defs.map(d => `#define ${d}`).join('\n')}\nuniform sampler2D artDirMap;\nuniform vec3 artSH[4];\nuniform float artEnvLight;\nuniform vec4 artBand;\nuniform vec2 artTile;\nuniform vec3 artBands;\nuniform vec4 artWear;\nuniform vec3 artBoxMin;\nuniform vec3 artBoxMax;\nuniform vec3 artProbe;\nvarying vec3 vArtWorld;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
+#ifdef ART_BANDS
+	// Light rhythm: brightest under each fitting, darker between.
+	diffuseColor.rgb *= 1.0 - artBands.z * ( 0.5 - 0.5 * cos( 6.2832 * ( vArtWorld.x - artBands.x ) / artBands.y ) );
+#endif
 #ifdef ART_BAND
 	float artRail = smoothstep( artBand.w - 0.002, artBand.w, vArtWorld.y ) - smoothstep( artBand.w + 0.038, artBand.w + 0.04, vArtWorld.y );
 	diffuseColor.rgb *= mix( vArtWorld.y < artBand.w ? artBand.rgb : vec3( 1.0 ), vec3( 0.18 ), artRail );
