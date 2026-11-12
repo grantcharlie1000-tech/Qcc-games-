@@ -856,55 +856,6 @@
       "use": ""
     },
     {
-      "id": "sofa_02",
-      "kind": "model",
-      "name": "Sofa 02",
-      "source": "https://polyhaven.com/a/sofa_02",
-      "author": "Kirill Sannikov",
-      "licence": "CC0-1.0",
-      "dimensions": [
-        1.8072,
-        0.8178,
-        0.7095
-      ],
-      "files": [
-        {
-          "path": "sofa_02/sofa_02.gltf",
-          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/sofa_02/sofa_02_1k.gltf",
-          "size": 4183,
-          "sha256": "5df114209f9b956ccd4831eaeef469a81339ab371d0056eb6d5d29eee08eb431"
-        },
-        {
-          "path": "sofa_02/textures/sofa_02_diff_1k.jpg",
-          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/sofa_02/sofa_02_diff_1k.jpg",
-          "size": 86514,
-          "sha256": "4ff65c782578b52eee89cb96cc4e258ce1b6848e1a7655019af1f7207c749840"
-        },
-        {
-          "path": "sofa_02/textures/sofa_02_arm_1k.jpg",
-          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/sofa_02/sofa_02_arm_1k.jpg",
-          "size": 121752,
-          "sha256": "f2813f32cd9ec42a9080590d0953ac9e272d9baa0b22fdb5910bf325157393c6"
-        },
-        {
-          "path": "sofa_02/textures/sofa_02_nor_gl_1k.jpg",
-          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/sofa_02/sofa_02_nor_gl_1k.jpg",
-          "size": 139858,
-          "sha256": "c97a359703a8ce1cee62cbd9dc4013b611d821afb7769810983b464ebc5d0cfe"
-        },
-        {
-          "path": "sofa_02/sofa_02.bin",
-          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/sofa_02/sofa_02.bin",
-          "size": 74864,
-          "sha256": "cb337e03211be0309afa1ded2b6cbb2d402c0f794aaf8828fba559d27a42d3f5"
-        }
-      ],
-      "use": "Lobby and Break Room sofas (render/props.ts), in place of the fabric boxes",
-      "greyscale": [
-        "sofa_02"
-      ]
-    },
-    {
       "id": "worn_metal_rack",
       "kind": "model",
       "name": "Worn Metal Rack",

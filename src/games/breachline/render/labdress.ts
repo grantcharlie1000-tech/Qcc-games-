@@ -2,6 +2,7 @@
  * a gooseneck tap, reagent bottles, wall sockets, a switch on conduit, skirting and a dado rail. Everything fits the
  * existing collision boxes or sits flat on a wall, so nothing new can be mistaken for cover. Lit by the lightmap of
  * the surface each piece stands on (render/detail.ts). */
+import { isSetPiece } from './setpieces-data';
 import * as THREE from 'three';
 import { WALL_H } from '../config';
 import { MAP } from '../map';
@@ -100,6 +101,7 @@ function dressArchive(atlas: Atlas, room: Region): DetailBuilder {
   ceilingGrid(D, room);
   let seed = 11;
   for (const b of MAP.boxes) {
+    if (isSetPiece(b)) continue; // modelled in render/setpieces.ts, with its damage states
     if (!inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) continue;
     if (b.mat === 'shelf') {
       shelving(D, b.x0, b.z0, b.x1, b.z1, b.y1, seed += 7);
@@ -164,6 +166,7 @@ function dressCorridor(atlas: Atlas, room: Region): DetailBuilder {
   const D = new DetailBuilder(atlas), y = WALL_H, up: V3 = [0, -1, 0];
   ceilingGrid(D, room);
   for (const b of MAP.boxes) {
+    if (isSetPiece(b)) continue; // modelled in render/setpieces.ts, with its damage states
     if (!inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) continue;
     if (b.mat === 'counter') cabinetry(D, b.x0, b.z0, b.x1, b.z1, b.y1);
     // Lockers against the south wall face north, into the corridor.
@@ -361,11 +364,13 @@ function dressYard(atlas: Atlas, room: Region): DetailBuilder {
 function dressLab(atlas: Atlas, room: Region): DetailBuilder {
   const D = new DetailBuilder(atlas);
   for (const b of MAP.boxes) {
+    if (isSetPiece(b)) continue; // modelled in render/setpieces.ts, with its damage states
     if (b.mat !== 'counter' || !inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) continue;
     cabinetry(D, b.x0, b.z0, b.x1, b.z1, b.y1);
   }
   // Lockers: the tall steel boxes along the north wall, doors facing into the room.
   for (const b of MAP.boxes) {
+    if (isSetPiece(b)) continue; // modelled in render/setpieces.ts, with its damage states
     if (b.mat !== 'steel' || !inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) continue;
     lockers(D, b.x0, b.x1, b.z1, b.y1);
   }
@@ -585,6 +590,7 @@ function dressServer(atlas: Atlas, room: Region): DetailBuilder {
   ceilingGrid(D, room);
   let seed = 31;
   for (const b of MAP.boxes) {
+    if (isSetPiece(b)) continue; // modelled in render/setpieces.ts, with its damage states
     if (b.mat !== 'rack' || !inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) continue;
     const r = seeded(seed += 13), alongZ = b.z1 - b.z0 > b.x1 - b.x0, len = alongZ ? b.z1 - b.z0 : b.x1 - b.x0, start = alongZ ? b.z0 : b.x0;
     const bays = Math.max(1, Math.round(len / 0.6)), bw = len / bays;
@@ -677,6 +683,7 @@ function dressLobby(atlas: Atlas, room: Region): DetailBuilder {
   ceilingGrid(D, room);
   const geo = (g: THREE.BufferGeometry, key: DressKey, on: V3, n: V3, tint?: V3) => { D.mesh(key, g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, n, tint ?? [1, 1, 1], g.attributes.uv?.array); g.dispose(); };
   for (const b of MAP.boxes) {
+    if (isSetPiece(b)) continue; // modelled in render/setpieces.ts, with its damage states
     if (!inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) continue;
     if (b.mat === 'wood' && b.y1 > 0.9) {
       // Reception desk: the long run's north face and the return's west face are the public fronts.
@@ -778,6 +785,7 @@ function dressOffice(atlas: Atlas, room: Region): DetailBuilder {
   ceilingGrid(D, room);
   let seed = 41;
   for (const b of MAP.boxes) {
+    if (isSetPiece(b)) continue; // modelled in render/setpieces.ts, with its damage states
     const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
     if (!inRoom(room, cx, cz)) continue;
     // Users sit on the open side: away from the south wall, otherwise facing north.
@@ -815,6 +823,7 @@ function dressBreak(atlas: Atlas, room: Region): DetailBuilder {
   ceilingGrid(D, room);
   const mesh = (g: THREE.BufferGeometry, key: DressKey, on: V3, n: V3, tint?: V3) => { D.mesh(key, g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, n, tint ?? [1, 1, 1], g.attributes.uv?.array); g.dispose(); };
   for (const b of MAP.boxes) {
+    if (isSetPiece(b)) continue; // modelled in render/setpieces.ts, with its damage states
     const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
     if (!inRoom(room, cx, cz)) continue;
     if (b.mat === 'counter') {
@@ -899,6 +908,7 @@ function dressBreak(atlas: Atlas, room: Region): DetailBuilder {
 function dressGarage(atlas: Atlas, room: Region): DetailBuilder {
   const D = new DetailBuilder(atlas);
   for (const b of MAP.boxes) {
+    if (isSetPiece(b)) continue; // modelled in render/setpieces.ts, with its damage states
     if (b.mat === 'counter' && inRoom(room, (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2)) cabinetry(D, b.x0, b.z0, b.x1, b.z1, b.y1);
   }
   // West opening (z -7.5 to -4.5): a roller-door coil housing over it and guide rails down both sides.

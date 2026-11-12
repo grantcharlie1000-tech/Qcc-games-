@@ -55,9 +55,9 @@ export const SURFACES: Partial<Record<TexId, Surface>> = {
   cinder: { set: 'painted_plaster_wall', size: 2, normal: 2.2, tint: [0.86, 0.88, 0.9], band: { height: 1.05, tint: [0.42, 0.5, 0.6] } },
   // Carcasses sit behind the modelled doors: dark, so the gaps between doors read as gaps.
   counter: { set: 'blue_metal_plate', size: 1.25, tint: [0.55, 0.55, 0.55] },
-  // Locker and cabinet carcasses (doors are modelled in render/labdress.ts): painted sheet steel, semi-gloss, the
-  // plate set's seams and wear under a grey tint.
-  steel: { set: 'blue_metal_plate', size: 1.2, tint: [0.78, 0.8, 0.82], gloss: 0.45, spec: 1.6 },
+  // Locker and cabinet carcasses (doors are modelled in render/labdress.ts): the same even grey-blue paint as the
+  // doors, on the plaster set's near-flat surface at a fine scale.
+  steel: { set: 'painted_plaster_wall', size: 3, tint: [0.42, 0.47, 0.51], gloss: 0.6, spec: 1.3 },
   // Posts and frames: painted steel a few shades darker than the walls, so the bays read without stripes of black.
   trim: { set: 'painted_plaster_wall', size: 1, tint: [0.52, 0.53, 0.52] },
   // Bench tops: dark epoxy resin, sealed and semi-gloss.

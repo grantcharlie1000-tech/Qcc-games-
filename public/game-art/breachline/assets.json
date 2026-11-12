@@ -426,23 +426,6 @@
     "arm-512.jpg": 30149
    }
   },
-  "sofa_02--sofa_02": {
-   "sizes": [
-    256,
-    512
-   ],
-   "files": {
-    "diff-256.ktx2": 15250,
-    "diff-512.ktx2": 52380,
-    "diff-512.jpg": 30934,
-    "nor-256.ktx2": 64749,
-    "nor-512.ktx2": 220516,
-    "nor-512.jpg": 53686,
-    "arm-256.ktx2": 51495,
-    "arm-512.ktx2": 181392,
-    "arm-512.jpg": 44589
-   }
-  },
   "worn_metal_rack--worn_metal_rack": {
    "sizes": [
     256,
@@ -666,15 +649,6 @@
    "triangles": 1473,
    "lod1Triangles": 441
   },
-  "sofa_02": {
-   "glb": 76820,
-   "lod1": 86876,
-   "materials": [
-    "sofa_02"
-   ],
-   "triangles": 2728,
-   "lod1Triangles": 816
-  },
   "worn_metal_rack": {
    "glb": 270528,
    "lod1": 307116,
@@ -749,8 +723,8 @@
   }
  },
  "bytes": {
-  "low": 19038213,
-  "high": 42083117,
-  "fallback": 4304591
+  "low": 18743023,
+  "high": 41465133,
+  "fallback": 4175382
  }
 }

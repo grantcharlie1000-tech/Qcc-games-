@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Effects } from '../effects';
 import { SET_PIECES, TEXTURED_PIECES, frame, type SetPieceDef } from './setpieces-data';
-import { MODEL_BOUNDS, SOFA_TILT, crateScale, drumSpots, sofaScale } from './setpiecemodels';
+import { crateScale, drumSpots } from './setpiecemodels';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 export { frame };
 
@@ -79,6 +79,36 @@ class Kit {
     const g = new RoundedBoxGeometry(w, h, d, 3, Math.min(h, d) * 0.45); g.rotateZ(tip); g.rotateY(yaw); g.translate(x, h / 2 + Math.abs(Math.sin(tip)) * w / 2, z);
     this.parts.push(paint(g, hex, 1, SURF.fabric));
   }
+  /** An upholstered block: a box from (x0, y0, z0) to (x1, y1, z1) with rounded edges of radius `r`; `sag` dips its
+   * top towards the middle (a cushion that has been sat on); `rot` turns it about its centre. */
+  rbox(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, hex: number, r: number, shade = 1, sag = 0, rot: V3 = [0, 0, 0]) {
+    const w = x1 - x0, h = y1 - y0, d = z1 - z0, g = new RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2, h / 2, d / 2) * 0.98);
+    if (sag) { const pos = g.attributes.position; for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); if (y > 0) { const u = pos.getX(i) / (w / 2), v = pos.getZ(i) / (d / 2); pos.setY(i, y - sag * (y / (h / 2)) * Math.max(0, 1 - u * u) * Math.max(0, 1 - v * v)); } } }
+    g.rotateX(rot[0]); g.rotateY(rot[1]); g.rotateZ(rot[2]); g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    this.parts.push(paint(g, hex, shade, SURF.fabric));
+  }
+  /** An ellipsoid (foam, crumbs). */
+  ellipsoid(x: number, y: number, z: number, rx: number, ry: number, rz: number, hex: number, shade = 1) {
+    const g = new THREE.IcosahedronGeometry(1, 2); g.scale(rx, ry, rz); g.translate(x, y, z);
+    this.parts.push(paint(g, hex, shade, SURF.plain));
+  }
+  /** Fabric slit open at (x, y, z) on a face looking up or to the front: a dark slit, flaps of the cloth peeled back
+   * either side and foam bulging out of it. */
+  slit(x: number, y: number, z: number, facing: 'up' | 'front', cloth: number, foam: number, size = 1) {
+    const l = (0.1 + this.r() * 0.06) * size, turn = (this.r() - 0.5) * 1.2, c = Math.cos(turn), sn = Math.sin(turn);
+    if (facing === 'up') {
+      this.box(x - l / 2, y - 0.004, z - 0.012, x + l / 2, y + 0.002, z + 0.012, 0x141210, 1, [0, turn, 0]);
+      for (const side of [-1, 1]) this.box(x - l * 0.45 - sn * side * 0.03, y + 0.006, z - 0.02 + c * side * 0.03, x + l * 0.45 - sn * side * 0.03, y + 0.01, z + 0.02 + c * side * 0.03, cloth, 0.8, [side * 0.7, turn, 0]);
+      this.ellipsoid(x, y + 0.012 * size, z, l * 0.42, 0.028 * size, 0.022 * size, foam, 1.05);
+    } else {
+      this.box(x - l / 2, y - 0.012, z - 0.002, x + l / 2, y + 0.012, z + 0.004, 0x141210, 1, [0, 0, turn]);
+      for (const side of [-1, 1]) this.box(x - l * 0.45 + sn * side * 0.03, y - 0.02 + c * side * 0.03, z + 0.006, x + l * 0.45 + sn * side * 0.03, y + 0.02 + c * side * 0.03, z + 0.01, cloth, 0.8, [-side * 0.7, 0, turn]);
+      this.ellipsoid(x, y, z + 0.012 * size, l * 0.42, 0.022 * size, 0.028 * size, foam, 1.05);
+    }
+  }
+  /** Applies a matrix to every part added since index `from` (a frame that leans once a leg has gone). */
+  transform(from: number, m: THREE.Matrix4) { for (let i = from; i < this.parts.length; i++) this.parts[i].applyMatrix4(m); }
+  minX(from: number) { let lo = Infinity; for (let i = from; i < this.parts.length; i++) { this.parts[i].computeBoundingBox(); lo = Math.min(lo, this.parts[i].boundingBox!.min.x); } return lo; }
   /** No geometry of its own in this state (a model shows it): one hidden sliver, so the batch has an id. */
   none() { this.box(0, -0.01, 0, 0.002, -0.008, 0.002, 0x000000); }
   done(): THREE.BufferGeometry { const g = mergeGeometries(this.parts, false)!; for (const p of this.parts) p.dispose(); return g; }
@@ -109,23 +139,43 @@ const BUILD: Record<string, (k: Kit, s: number, p: SetPieceDef) => void> = {
       }
       return;
     }
-    const { L, D, H } = k, hue = p.name.includes('UPS') || p.name.includes('network') ? 0x2a2d31 : 0x7d8388;
-    k.box(0, 0, 0, L, H, D * 0.96, hue);
-    k.box(0, 0, D * 0.96, L, 0.08, D, DARK);
-    const doors = Math.max(1, Math.round(L / 0.5)), w = L / doors;
+    // Steel lockers and cabinets in clean grey-blue paint, as the room's own lockers: a carcass with a plinth, doors
+    // with crisp dark gaps, louvres top and bottom, a label holder, a handle with its lock, hinge barrels. Damaged:
+    // punctures with bright torn rims and shallow dents. Wrecked: a door torn off and lying in front, the cabinet's
+    // insides showing (a shelf, a hook, a bag), another door sprung on its lower hinge, the side buckled.
+    const { L, D, H } = k, UPS = p.name.includes('UPS'), hue = UPS ? 0x34383c : 0x8d969c, GAP = 0x101214;
+    k.box(0, 0.08, 0, L, H, D * 0.94, hue);
+    k.box(0.02, 0, 0.02, L - 0.02, 0.08, D * 0.9, 0x1c1e20);
+    k.box(0, H - 0.02, 0, L, H, D * 0.97, hue, 1.05);
+    const doors = UPS ? 1 : Math.max(1, Math.round(L / 0.38)), w = L / doors, f = D * 0.94;
     for (let i = 0; i < doors; i++) {
-      const a = i * w + 0.01, b = (i + 1) * w - 0.01, open = s === 2 && i === 0 ? 1 : s === 1 && i === doors - 1 ? 0.35 : 0;
-      if (open && s === 2) { k.box(a, 0.02, D + 0.02, b, 0.05, D + 0.6, hue, 0.9); continue; }         // a door off, on the floor
-      const zf = open ? D - 0.03 - (b - a) / 2 * Math.sin(open) : D * 0.96;
-      k.box(a, 0.1, zf, b, H - 0.04, zf + D * 0.02, hue, 1.08, [0, -open, 0]);
-      k.box(b - 0.06, H * 0.48, D * 0.98, b - 0.04, H * 0.62, D, STEEL);
-      if (p.name.includes('network') || p.name.includes('UPS')) for (let j = 0; j < 6; j++) k.box(a + 0.05, H * 0.75 - j * 0.05, D * 0.985, a + 0.12, H * 0.75 - j * 0.05 + 0.012, D * 0.99, j % 3 ? 0x2b8f3a : 0xd09020, 1.6);
+      const a = i * w + 0.006, b = (i + 1) * w - 0.006, off = s === 2 && i === 0 && doors > 1, sprung = s === 2 && i === doors - 1 && doors > 1;
+      k.box(i * w, 0.08, f, i * w + 0.006, H - 0.02, f + 0.004, GAP); if (i === doors - 1) k.box(L - 0.006, 0.08, f, L, H - 0.02, f + 0.004, GAP);
+      if (off) {
+        // The insides: back and sides in shadow, a shelf, a coat hook, a bag hanging from it.
+        k.box(a, 0.09, f - 0.3, b, H - 0.03, f - 0.29, 0x2a2e32); k.box(a, H - 0.42, f - 0.3, b, H - 0.4, f, hue, 0.7);
+        k.box((a + b) / 2 - 0.01, H - 0.6, f - 0.28, (a + b) / 2 + 0.01, H - 0.56, f - 0.2, 0x8a8c8e);
+        k.ellipsoid((a + b) / 2, H - 0.85, f - 0.18, 0.1, 0.18, 0.07, 0x3a4a2a);
+        // The door itself, face up on the floor in front.
+        k.box(0.02, 0, D + 0.05, 0.02 + (b - a), 0.018, D + 0.05 + (H - 0.12) * 0.5, hue, 0.95, [0, 0.25, 0]);
+        continue;
+      }
+      // A door sprung on its lower hinge drops and twists at the top: drawn as a door turned about its hinge corner.
+      const dz = sprung ? 0.012 : 0, tw: V3 = sprung ? [0.04, 0, -0.018] : [0, 0, 0];
+      k.box(a + (sprung ? 0.02 : 0), 0.1, f, b - (sprung ? 0.02 : 0), H - 0.04, f + 0.012 + dz, hue, 1.04, tw);
+      for (const y of [H - 0.32, 0.2]) for (let j = 0; j < 4; j++) k.box(a + 0.06, y + j * 0.028, f + 0.012, b - 0.06, y + j * 0.028 + 0.012, f + 0.016 + dz, GAP, 1, tw);
+      k.box((a + b) / 2 - 0.05, H - 0.48, f + 0.012, (a + b) / 2 + 0.05, H - 0.45, f + 0.016 + dz, 0xd8d8d0, 1.1, tw);
+      k.box(b - 0.06, H * 0.45, f + 0.012, b - 0.04, H * 0.58, f + 0.03, 0x404448, 1, tw);
+      k.cyl(b - 0.05, f + 0.024, 0.012, H * 0.6, H * 0.62, 0xb0b4b8, 1, [0, 0, 0], 8);
+      for (const y of [0.25, H - 0.3]) k.cyl(a + 0.004, f + 0.008, 0.008, y, y + 0.08, 0x606468, 1, [0, 0, 0], 6);
     }
-    // Damage: dents and punctures as dark patches on the front, a skew at the top when wrecked.
-    const hits = s === 0 ? 0 : s === 1 ? 4 : 9;
-    for (let i = 0; i < hits; i++) k.pock(0.08 + k.r() * (L - 0.16), 0.25 + k.r() * (H - 0.5), D * 0.985);
-    if (s === 2) k.box(0.02, H - 0.25, D * 0.5, L - 0.02, H - 0.02, D * 0.98, hue, 0.8, [0.18, 0, 0]);
+    // Damage: rounds through the doors with bright torn rims; dents as shallow dark creases.
+    const hits = s === 0 ? 0 : s === 1 ? 6 : 12;
+    for (let i = 0; i < hits; i++) k.pock(0.06 + k.r() * (L - 0.12), 0.3 + k.r() * (H - 0.6), f + 0.018);
+    for (let i = 0; i < (s === 0 ? 0 : s === 1 ? 2 : 4); i++) { const x = 0.08 + k.r() * (L - 0.25), y = 0.4 + k.r() * (H - 0.8); k.box(x, y, f + 0.013, x + 0.12, y + 0.015, f + 0.017, 0x5a6066, 1, [0, 0, (k.r() - 0.5) * 0.8]); }
+    if (s === 2) for (let j = 0; j < 3; j++) { const y = H * (0.25 + j * 0.22); k.box(L - 0.004, y, 0.1, L + 0.004, y + 0.02, D * 0.9, 0x4a5056, 1, [0.25 * (j - 1), 0, 0]); }
   },
+
   vending(k, s) {
     // A drinks machine: a red cabinet with a lit header, a glass front over a dark interior where drinks stand in rows
     // on spiral coils, a column with the display, keypad and coin slot, a delivery flap. Damaged: the glass cracked in
@@ -225,40 +275,51 @@ const BUILD: Record<string, (k: Kit, s: number, p: SetPieceDef) => void> = {
     for (let i = 0; i < 3; i++) { const tip = s === 2 && i === 1; k.box(0.08 + i * (L - 0.16) / 3, tip ? 0.18 : H - 0.01, 0.06, 0.08 + (i + 0.85) * (L - 0.16) / 3, tip ? 0.44 : H + Math.min(0, 0.26 - 0.0), D - 0.06, CARD, 1, tip ? [0, 0, 0.5] : [0, 0, 0]); }
     if (s >= 1) k.box(0.1, 0.18, 0.08, L * 0.45, 0.4, D - 0.08, CARD, 0.85, [0, 0, s === 2 ? 0.3 : 0.08]);
   },
-  // The sofas are Poly Haven's sofa_02 (render/setpiecemodels.ts): this draws their damage in the model's own
-  // coordinates, put through the same scale, tilt and centring as the model. Damaged: bullet tears with stuffing
-  // bulging out through curled leather. Wrecked (the model leans on a broken leg): more tears, the back split along
-  // its top, a seat cushion thrown onto the floor, the leg and clumps of stuffing round it.
-  sofa(k, s) {
-    const { L, D, H } = k, LEATHER = 0x5a3820, STUFF = 0xbdb5a0, b = MODEL_BOUNDS.sofa_02;
-    if (s === 0) { k.none(); return; }
-    const tilt = s === 2 ? SOFA_TILT : 0, sc = s === 2 ? sofaScale(L, D, H, SOFA_TILT) * 0.99 : sofaScale(L, D, H, 0), ct = Math.cos(tilt), st = Math.sin(tilt);
-    let lx = Infinity, hx = -Infinity, ly = Infinity;
-    for (const x of [b[0], b[3]]) for (const y of [b[1], b[4]]) { const xr = x * ct - y * st, yr = x * st + y * ct; lx = Math.min(lx, xr); hx = Math.max(hx, xr); ly = Math.min(ly, yr); }
-    const at = (u: number, v: number, w: number): V3 => [L / 2 + (u * ct - v * st - (lx + hx) / 2) * sc, (u * st + v * ct - ly) * sc, D / 2 + (w - (b[2] + b[5]) / 2) * sc];
-    const tear = (u: number, v: number, w: number, facing: 'up' | 'front', big: number) => {
-      const [x, y, z] = at(u, v, w);
-      for (let i = 0; i < 3 + Math.round(big * 2); i++) {
-        const r = (0.03 + k.r() * 0.03) * big, du = (k.r() - 0.5) * 0.09 * big, dv = (k.r() - 0.5) * 0.06 * big;
-        if (facing === 'up') k.ball(x + du, y + r * 0.5, z + dv, r, STUFF, 0.95 + k.r() * 0.15);
-        else k.ball(x + du, y + dv, z + r * 0.5, r, STUFF, 0.95 + k.r() * 0.15);
+  // Modern office seating: a boxy upholstered frame on slim steel legs, rounded seat and back cushions with a little
+  // sag and piped seams, in a mid teal-grey woven fabric. The Lobby's second seat is a pair of armchairs from the same
+  // set. Damage is the fabric itself torn: slits with flaps peeled back and yellowed foam bulging out; wrecked, a leg
+  // gone so the frame leans, a seat cushion gashed and thrown down, scorched and frayed cloth, foam crumbs.
+  sofa(k, s, p) {
+    const { L, D, H } = k, FAB = 0x637878, PIPE = 0x4e6262, FOAM = 0xd9cc92, LEG = 0x2a2b2d;
+    const seats = p.name === 'seating group (sofa)' ? [[0.02, L / 2 - 0.03], [L / 2 + 0.03, L - 0.02]] : [[0.02, L - 0.02]];
+    const body = k.parts.length, slits: [number, number, number, 'up' | 'front'][] = [];
+    const lostSeat = s === 2 ? 0 : -1;
+    seats.forEach(([a, b], si) => {
+      const w = b - a, arm = Math.min(0.15, w * 0.16), back = 0.17, base = 0.13, seatTop = Math.min(0.46, H * 0.56), armTop = Math.min(0.62, H * 0.76);
+      const cn = w - 2 * arm > 1.1 ? 2 : 1, cw = (w - 2 * arm) / cn;
+      for (const x of [a + 0.05, b - 0.07]) for (const z of [0.05, D - 0.07]) { if (s === 2 && si === 0 && x === a + 0.05 && z === D - 0.07) continue; k.cyl(x + 0.01, z + 0.01, 0.013, 0, base, LEG, 1, [0, 0, 0], 8); }
+      k.rbox(a, base, 0.02, b, base + 0.16, D - 0.02, FAB, 0.035, 0.95);
+      for (const x of [a, b - arm]) k.rbox(x, base, 0.02, x + arm, armTop, D - 0.02, FAB, 0.05, 1.0);
+      k.rbox(a + arm - 0.01, base + 0.1, 0.02, b - arm + 0.01, H - 0.03, 0.02 + back, FAB, 0.05, 0.92);
+      for (let c = 0; c < cn; c++) {
+        const x0 = a + arm + c * cw + 0.006, x1 = x0 + cw - 0.012, drop = si === 0 && c === lostSeat;
+        if (!drop) {
+          k.rbox(x0, base + 0.16, back + 0.02, x1, seatTop, D - 0.03, FAB, 0.04, 1.06, 0.018);
+          k.cyl((x0 + x1) / 2, D - 0.03, 0.006, -(x1 - x0) / 2, (x1 - x0) / 2, PIPE, 1, [0, 0, Math.PI / 2], 6);
+          k.box(x0 + 0.01, seatTop - 0.005, D - 0.035, x1 - 0.01, seatTop + 0.001, D - 0.029, PIPE);
+        }
+        k.rbox(x0, seatTop, 0.04, x1, H - 0.08, back + 0.12, FAB, 0.045, 1.02, 0.012, [-0.1, 0, 0]);
+        if (s >= 1) {
+          if (!drop) slits.push([x0 + (x1 - x0) * (0.3 + k.r() * 0.4), seatTop + 0.002, back + 0.12 + k.r() * (D - back - 0.3), 'up']);
+          slits.push([x0 + (x1 - x0) * (0.25 + k.r() * 0.5), seatTop + 0.08 + k.r() * (H - seatTop - 0.25), back + 0.13, 'front']);
+          if (s === 2) slits.push([x0 + (x1 - x0) * (0.2 + k.r() * 0.6), seatTop + 0.1 + k.r() * 0.15, back + 0.13, 'front']);
+        }
       }
-      for (let i = 0; i < 3; i++) {
-        const a = k.r() * 6.28, d = 0.06 * big;
-        if (facing === 'up') k.box(x + Math.cos(a) * d - 0.035, y, z + Math.sin(a) * d - 0.02, x + Math.cos(a) * d + 0.035, y + 0.006, z + Math.sin(a) * d + 0.02, LEATHER, 0.8, [0.5, a, 0]);
-        else k.box(x + Math.cos(a) * d - 0.035, y + Math.sin(a) * d - 0.02, z, x + Math.cos(a) * d + 0.035, y + Math.sin(a) * d + 0.02, z + 0.006, LEATHER, 0.8, [0.5, 0, a]);
-      }
-    };
-    const seat = s === 1 ? 3 : 5, back = s === 1 ? 3 : 4;
-    for (let i = 0; i < seat; i++) tear(-0.55 + (i + 0.5) * 1.1 / seat + (k.r() - 0.5) * 0.12, 0.415, 0.02 + k.r() * 0.18, 'up', 1 + (s === 2 ? 0.4 : 0));
-    for (let i = 0; i < back; i++) tear(-0.55 + (i + 0.5) * 1.1 / back + (k.r() - 0.5) * 0.12, 0.5 + k.r() * 0.12, -0.205, 'front', 1 + (s === 2 ? 0.4 : 0));
+    });
+    for (const [x, y, z, f] of slits) k.slit(x, y, z, f, FAB, FOAM, s === 2 ? 1.6 : 1.3);
     if (s === 2) {
-      // The back split along its top: a dark gash with stuffing pushed out of it.
-      for (let i = 0; i < 7; i++) { const [x, y, z] = at(-0.5 + i * 0.13, 0.66, -0.3); k.box(x - 0.07, y - 0.015, z - 0.04, x + 0.07, y + 0.012, z + 0.05, 0x1a120c, 1, [0, 0, (k.r() - 0.5) * 0.3]); k.ball(x, y + 0.02, z, 0.035 + k.r() * 0.025, STUFF); }
-      // A seat cushion thrown off onto the floor in front, a broken turned leg, stuffing scattered.
-      k.cushion(L * 0.3, D + 0.12, 0.62 * sc, 0.13, 0.5 * sc, LEATHER, 0.45, 0.06);
-      k.cyl(L * 0.72, D + 0.25, 0.028, -0.07, 0.07, 0x3a2414, 1, [0, 0, Math.PI / 2], 8);
-      for (let i = 0; i < 10; i++) { const x = 0.1 + k.r() * (L - 0.2), z = D + 0.05 + k.r() * 0.6, r = 0.025 + k.r() * 0.03; k.ball(x, r * 0.6, z, r, STUFF, 0.95 + k.r() * 0.1); }
+      // Scorched, frayed cloth by one arm.
+      for (let i = 0; i < 6; i++) { const x = 0.05 + k.r() * 0.35, y = 0.2 + k.r() * 0.35; k.box(x, y, D - 0.021, x + 0.06 + k.r() * 0.08, y + 0.04 + k.r() * 0.06, D - 0.017, 0x1a1816, 1, [0, 0, k.r()]); }
+      // A leg gone at the front corner: the frame leans down onto it.
+      const a = 0.11 / Math.max(1.6, seats[0][1] - seats[0][0]), m = new THREE.Matrix4().makeTranslation(-seats[0][1], 0, 0).premultiply(new THREE.Matrix4().makeRotationZ(a)).premultiply(new THREE.Matrix4().makeTranslation(seats[0][1], 0, 0));
+      k.transform(body, m);
+      const lo = k.minX(body); if (lo < 0.01) k.transform(body, new THREE.Matrix4().makeTranslation(0.01 - lo, 0, 0));
+      // On the floor: the gashed seat cushion, the broken leg, crumbs of foam.
+      const cw = Math.min(0.75, seats[0][1] - seats[0][0] - 0.3);
+      k.cushion(seats[0][0] + cw / 2 + 0.1, D + 0.3, cw, 0.13, 0.55, FAB, 0.35, 0.08);
+      k.slit(seats[0][0] + cw / 2 + 0.1, 0.135, D + 0.3, 'up', FAB, FOAM, 1.4);
+      k.cyl(seats[0][0] + 0.3, D + 0.1, 0.013, -0.065, 0.065, LEG, 1, [0, 0, Math.PI / 2 - 0.5], 8);
+      for (let i = 0; i < 10; i++) { const x = 0.05 + k.r() * (L - 0.1), z = D + 0.04 + k.r() * 0.6, r = 0.015 + k.r() * 0.025; k.ellipsoid(x, r * 0.4, z, r * 1.4, r * 0.6, r, FOAM, 0.9 + k.r() * 0.15); }
     }
   },
   lowtable(k, s) {

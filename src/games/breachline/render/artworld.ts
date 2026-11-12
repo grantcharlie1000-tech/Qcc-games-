@@ -149,9 +149,10 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       const plain = (color: [number, number, number], roughness: number, metalness: number) => ({ map: null, normalMap: null, armMap: null, color: new THREE.Color(...color), roughness, metalness });
       const looks: Record<DressKey, Parameters<typeof artMaterial>[0]> = {
         door: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(1.55, 1.62, 1.7), roughness: 0.55, metalness: 1, spec: 1.4 },
-        // Painted sheet steel: the plate set's seams, scuffs and edge wear, its dark blue (linear 0.018, 0.045, 0.071)
-        // lifted per channel to a mid grey-green near 0.2 (the plaster set, used before, read as chalk).
-        locker: { map: bm, normalMap: bn, armMap: ba, color: new THREE.Color(11.1, 4.7, 2.7), roughness: 0.45, metalness: 0, spec: 1.5 },
+        // Painted sheet steel in an occupied office: clean, even paint (a light grey-blue, linear albedo about 0.3) with
+        // a soft sheen; the modelled gaps, louvres, handles and label plates carry the detail. (A texture set's grime
+        // read as chalk with the plaster set and as rust with the plate set.)
+        locker: plain([0.27, 0.31, 0.34], 0.42, 0),
         trim: { map: pm, normalMap: pn, armMap: pa, color: new THREE.Color(0.3, 0.36, 0.44), roughness: 0.7, metalness: 1 },
         casing: { map: pm, normalMap: pn, armMap: pa, color: new THREE.Color(0.95, 0.93, 0.88), roughness: 0.55, metalness: 1, spec: 1.2 },
         handle: plain([0.72, 0.72, 0.7], 0.32, 1), chrome: plain([0.92, 0.92, 0.92], 0.07, 1), steel: plain([0.66, 0.67, 0.68], 0.28, 1),
@@ -235,8 +236,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   /** Near: the full model within LOD_NEAR metres; far (and always on the throttled tier): the simplified one. */
   const LOD_NEAR = 5;
   /** Colour lifts per model: the covered car's scan is a near-black cover, lifted to a dark grey-green tarpaulin so
-   * its folds read in daylight. The sofa's leather is built as grey (manifest `greyscale`) and coloured a mid brown here. */
-  const PROP_TINT: Record<string, THREE.Color> = { covered_car: new THREE.Color(2.2, 2.7, 2.5), sofa_02: new THREE.Color(0.62, 0.36, 0.2) };
+   * its folds read in daylight. */
+  const PROP_TINT: Record<string, THREE.Color> = { covered_car: new THREE.Color(2.2, 2.7, 2.5) };
   for (const [i, p] of PROPS.entries()) {
     const room = roomAt(p.x, p.z);
     if (room < 0 || !loaded[room]) continue;
