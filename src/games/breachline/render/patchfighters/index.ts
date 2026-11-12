@@ -124,10 +124,15 @@ float pfNoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 
   float soak = 0.0, entry = 0.0;
   for (int i = 0; i < 8; i++) {
     vec4 w = uWound[i]; if (w.w <= 0.0) continue;
-    vec3 dv = vObjP - w.xyz; dv.y *= dv.y < 0.0 ? 0.55 : 1.25;
-    float r = 0.035 + 0.045 * w.w, d = length(dv) / r + (pfNoise(vObjP * 60.0) - 0.5) * 0.5;
-    soak = max(soak, (1.0 - smoothstep(0.55, 1.0, d)) * min(1.0, w.w * 1.4));
-    entry = max(entry, 1.0 - smoothstep(0.0, 0.009, length(vObjP - w.xyz) - 0.004));
+    // Head wounds (bind-pose height above 1.5 m) stay a small patch on the balaclava or helmet edge.
+    float hd = step(1.5, w.y), e = length(vObjP - w.xyz);
+    vec3 dv = vObjP - w.xyz; dv.y *= dv.y < 0.0 ? 0.6 : 1.3;
+    float r = (0.03 + 0.04 * w.w) * mix(1.0, 0.5, hd), d = length(dv) / r + (pfNoise(vObjP * 60.0) - 0.5) * 0.35;
+    // The stain is densest at the hole and thins outward, rather than an even wash.
+    float fall = 1.0 - smoothstep(0.0, 1.0, d);
+    soak = max(soak, fall * sqrt(fall) * min(1.0, w.w * 1.3) * mix(1.0, 0.7, hd));
+    // Entry: a dark core about 1.5 cm across with a darkened ring around it.
+    entry = max(entry, max(1.0 - smoothstep(0.006, 0.011, e), (1.0 - smoothstep(0.011, 0.026, e)) * 0.55));
   }
   // Worse as health falls: below half, blood and dirt spread over the torso front and the legs; near death, more.
   float hurt = smoothstep(0.5, 1.0, uHurt), patchy = smoothstep(0.45, 0.8, pfNoise(vObjP * 9.0) * 0.7 + pfNoise(vObjP * 31.0) * 0.3);

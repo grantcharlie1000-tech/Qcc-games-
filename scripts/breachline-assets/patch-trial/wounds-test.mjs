@@ -46,7 +46,16 @@ for (const [on, dx] of [[A.id, -0.55], [E.id, 0.55]]) {
   await fire(on, tx - 0.06, 1.05, false, 45); await shot(`${tag}-half`);
   await fire(on, tx + 0.02, 1.2, false, 9); await shot(`${tag}-near-death`);
 }
-await page.evaluate(([a, e, me]) => { const h = window.__breachlineTest; h.kill(a, me); h.kill(e, me); h.advance(1.8); h.draw(); }, [A.id, E.id, self]);
+// A real kill: the player (squad A, no friendly fire in the sim) shoots fighter B in the chest until it dies. Fighter A
+// cannot be shot by its own side, so it gets the test kill, which pushes the same sim 'kill' event. The death
+// animation advances with drawn frames, so draw through the fall.
+console.log('real kill', JSON.stringify(await page.evaluate(([e, eye, ex, ez]) => {
+  const h = window.__breachlineTest, yaw = Math.atan2(-(ex - eye[0]), -(ez - eye[2])), pitch = Math.atan2(1.15 - eye[1], Math.hypot(ex - eye[0], ez - eye[2]));
+  let n = 0;
+  for (; n < 40 && h.state().players.find(p => p.id === e).alive; n++) { h.place(eye[0], eye[2], yaw, pitch); h.hold({ fire: true }, 0.05, { fire: true }); h.advance(0.12); h.draw(); }
+  return { shots: n, alive: h.state().players.find(p => p.id === e).alive };
+}, [E.id, eye, sx + 0.55, sz])));
+await page.evaluate(([a, me, x, z]) => { const h = window.__breachlineTest; h.kill(a, me); for (let i = 0; i < 90; i++) { h.advance(1 / 30); h.draw(); } h.place(x, z + 3.2, 0, -0.42); h.advance(0.02); h.draw(); h.draw(); }, [A.id, self, sx, sz]);
 console.log('alive after', JSON.stringify(await page.evaluate(() => window.__breachlineTest.state().players.map(p => [p.id, p.squad, p.alive]))), await page.evaluate(() => window.__breachlineTest.state().phase));
 await shot('bodies');
 console.log('bodies', JSON.stringify(await page.evaluate(() => window.__pf.bodies())));
