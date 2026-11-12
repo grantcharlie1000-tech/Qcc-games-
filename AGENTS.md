@@ -30,3 +30,12 @@ Superpowers references such as `superpowers:systematic-debugging` name local ski
 - Respect reduced-motion preferences and check the visual result when implementing motion.
 - Use independent code review for substantial changes and report what was verified before declaring completion.
 - Preserve the upstream licenses and provenance when updating skills. Edit the canonical copies first, then synchronize the Claude copies and lock file.
+
+## Working rules from the owner
+
+- Do what the owner asks, exactly. His instructions come before skill guidance and your own preferences.
+- Keep everything simple: the simplest design and the simplest code that does the job.
+- Keep menu and UI text minimal. A few clear words, no filler, no paragraphs.
+- Only write tests that check real behaviour. No filler tests.
+- Do not use em dashes in anything you write.
+- Take screenshots while you work, and paste them in the chat when your run finishes.

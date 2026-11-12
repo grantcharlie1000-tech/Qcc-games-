@@ -17,13 +17,14 @@ const {LEVELS,createRun,respawn,step,platformAt,stationAt}=await import(bundle.h
 const idle={move:0,jump:false,dash:false,interact:false};
 const mask=s=>s.activated.reduce((n,i)=>n|(1<<i),0);
 const stateKey=s=>`${s.ground}:${Math.round(s.x/24)}:${Math.round(s.vx/100)}:${Math.round((s.clock%3.2)/.25)}:${mask(s)}`;
-let budget=0;
+let budget=0;const LIMIT=600_000_000;
 function act(s,input,inputs){budget++;const a={...input,interact:false};const ev=step(s,a);inputs.push(a);return !ev.death;}
 function toward(s,p,aim=.5){const r=platformAt(p,s.clock),d=r.x+r.w*aim-(s.x+8);return Math.abs(d)<8?0:Math.sign(d);}
 function advance(s,to,deep=false,from=s.ground,direction){
  const l=LEVELS[s.stage],b=l.platforms[to],a=l.platforms[from],sourceGround=from,dir=direction??(Math.sign(b.x+b.w/2-(s.x+8))||s.facing),solutions=[],seen=new Set();
  if(!a)return [];
- const waits=deep?[0,24,48,72,96,120,160,200,240,280,320,360]:[0,48,96,144,192,240,288,336];
+ // A slow pallet or punt can be most of its swing away: keep waiting, up to seven seconds, before giving the hop up.
+ const waits=deep?[0,24,48,72,96,120,160,200,240,280,320,360]:[0,48,96,144,192,240,288,336,384,432,480,540,600,660,720,780,840];
  waits: for(const waiting of waits){
   let atThisPhase=0;
   const base=structuredClone(s),prefix=[];let alive=true;
@@ -55,7 +56,7 @@ function advance(s,to,deep=false,from=s.ground,direction){
      if(solutions.length>=12)return solutions.sort((a,b)=>a.s.clock-b.s.clock);
      if(++atThisPhase>=3)continue waits;
     }
-    if(budget>40_000_000)return solutions.sort((a,b)=>a.s.clock-b.s.clock);
+    if(budget>LIMIT)return solutions.sort((a,b)=>a.s.clock-b.s.clock);
    }
   }
  }
@@ -67,7 +68,8 @@ async function solve(stage,route){
  budget=0;const initial=createRun();initial.stage=stage;initial.cleared=stage;respawn(initial,false);const intro=[];for(let i=0;i<3;i++)act(initial,idle,intro);
  const l=LEVELS[stage],targets=route??Array.from({length:l.mainCount-1},(_,i)=>i+1);let attempts=0,failure=null,bestDepth=0;
  function go(s,index,inputs,segments,sameHops=0){
-  attempts++;if(attempts>180||budget>40_000_000)return null;
+  // A journey of several minutes has several hundred hops; the search allowance grows with the route.
+  attempts++;if(attempts>180+targets.length*8||budget>LIMIT)return null;
   if(index===targets.length){const q=structuredClone(s),tail=finish(q);return tail?{s:q,inputs:[...inputs,...tail],segments}:null;}
   if(index>bestDepth){bestDepth=index;console.log(`stage ${stage+1} progress ${index}/${targets.length} at ${s.clock.toFixed(2)}s; ${budget} ticks`);}
   const to=targets[index],choices=advance(s,to,index===0,index?targets[index-1]:0);

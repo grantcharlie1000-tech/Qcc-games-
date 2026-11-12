@@ -4,7 +4,7 @@ import {clearDuration,departurePose,departureVisibility} from './departure';
 import {DeathAnimation} from './death-art';
 import {drawArchitecture} from './architecture';
 import {drawCrumblingHazard} from './crumble-art';
-import {drawEmitter,drawSpikes} from './hazard-art';
+import {drawCresting,drawEmitter,drawSpikes} from './hazard-art';
 import {LEVELS,WORLDS,type Level} from './levels';
 import {platformAt,hazardAt,hazardActive,hazardWarning,hazardFade,surfaceBelow,PLAYER_H,checkpointsFor,checkpointIndexFor,stationAt,type Events,type Run} from './model';
 import {characterColor,rescueNameFor} from './story';
@@ -12,6 +12,8 @@ import {lantern,doorway,valve,bell,ferry,signalDish,lifeTree} from './props';
 import {Courier} from './courier';
 import {drawPlatform,clearTerrainCache} from './terrain';
 import {drawSky,drawLife,drawGear,person,drawDepthFog} from './world';
+import {drawQuarterPickup} from './quarter-place';
+import {quarterSet} from './quarter-sets';
 import {Effects,completionOffset,drawCompletion,drawDawn,drawEndingSky} from './effects';
 import {goalComposition,stationComposition,type GoalComposition,type StationArt} from './composition';
 type C=CanvasRenderingContext2D;
@@ -74,6 +76,8 @@ function smallGoal(c:C,p:GoalComposition,color:string,ready:boolean,lift=0){
  }c.restore();
 }
 function drawGoal(c:C,l:Level,s:Run,reduced:boolean,view:{width:number;height:number}){
+ // A set's way out is part of its building, drawn by the set.
+ const set=quarterSet(l);if(set){set.exit(c,l,s,reduced?0:s.clock,false,reduced,view);return;}
  const p=goalComposition(l),{x,y,art,bounds}=p,theme=WORLDS[l.world],ready=true,t=reduced?0:s.clock;
  const offset=completionOffset(s,reduced,view),shift=offset.x;
  if(l.berth){
@@ -153,7 +157,7 @@ export class Scene {
   drawSky(c,l,s,w,h,cx,cy,reduced);
   drawEndingSky(c,w,h,s);
   c.save();c.translate(-cx,-cy);
-  drawArchitecture(c,l,cx,cy,w,h);drawDepthFog(c,l,s,cx,cy,w,h,reduced);
+  drawArchitecture(c,l,cx,cy,w,h,s.clock,reduced,s);drawDepthFog(c,l,s,cx,cy,w,h,reduced);
 
   for(const p of l.platforms){const r=platformAt(p,s.clock);if(r.x+r.w<cx-60||r.x>cx+w+60||r.y>cy+h+60||r.y<cy-220)continue;const visual=l.goal==='escape'&&s.phase!=='playing'&&p.kind==='crumble'&&elapsed>p.id*.12?{...s,crumbles:{...s.crumbles,[p.id]:-(elapsed-p.id*.12)}}:s;drawPlatform(c,p,r.x,r.y,visual,l,reduced);}
   for(let i=1;i<l.mainCount-1;i++){
@@ -166,9 +170,12 @@ export class Scene {
   drawLife(c,l,s,cx,cy,w,h,reduced);
   // Mission architecture sits behind every collectible, hazard and character.
   // Its footprint is chosen before drawing, using the exact interaction anchor.
-  drawGoal(c,l,s,reduced,this);drawCompletion(c,l,s,theme.accent,reduced,this);drawServiceDoor(c,l,s,theme.accent);drawExitConnection(c,l,s,theme.accent,cy,reduced);
+  const set=quarterSet(l);
+  drawGoal(c,l,s,reduced,this);drawCompletion(c,l,s,theme.accent,reduced,this);if(!set){drawServiceDoor(c,l,s,theme.accent);drawExitConnection(c,l,s,theme.accent,cy,reduced);}
   for(const [index,cp] of checkpointsFor(l).entries()){
    if(cp.x<cx-35||cp.x>cx+w+35||cp.y<cy-20||cp.y>cy+h+60)continue;
+   // Bell Lane flies one flag, from the watch house's staff; its other checkpoints are saved without a pole.
+   if(l.id===0&&l.platforms[cp.platform].tag!=='watch')continue;
    c.fillStyle='#b7bda7';c.fillRect(cp.x,cp.y-48,2,48);c.fillStyle=index<=checkpointIndexFor(s,l)?'#d8e5a0':'#859da3';
    c.beginPath();c.moveTo(cp.x+2,cp.y-46);c.lineTo(cp.x+23,cp.y-44+(reduced?0:Math.sin(t*3)*2));c.lineTo(cp.x+17,cp.y-34);c.lineTo(cp.x+2,cp.y-34);c.fill();
   }
@@ -177,7 +184,7 @@ export class Scene {
    const support=hazard.platform===undefined?undefined:s.crumbles[hazard.platform];
    if(support!==undefined&&support<=0){drawCrumblingHazard(c,hazard,support,reduced,r);continue;}
    if(hazard.kind==='crusher'){drawPress(c,hazard,s,reduced);
-   }else if(hazard.kind==='spikes'){drawSpikes(c,r);
+   }else if(hazard.kind==='spikes'){if(l.id===0)drawCresting(c,r,hazard.x);else drawSpikes(c,r);
    }else if(hazard.kind==='saw'){drawGear(c,r.x+r.w/2,r.y+r.h/2,12,hazardActive(hazard,s)?t*4:0,hazardActive(hazard,s)?'#d3b8b3':'#586c71');}
    else{
     const on=hazardActive(hazard,s),stopped=hazard.disabledBy!==undefined&&s.activated.includes(hazard.disabledBy),warning=hazardWarning(hazard,s);
@@ -185,13 +192,14 @@ export class Scene {
    }
   }
   for(const enemy of l.enemies??[]){const margin=enemy.travel+28;if(enemy.x+margin<cx||enemy.x-margin>cx+w)continue;drawEnemy(c,enemy,s,reduced);}
-  for(const p of l.pickups){if(s.collected.includes(p.id))continue;const y=p.y+Math.round(Math.sin(t*3+p.id)*3);
+  for(const p of l.pickups){if(s.collected.includes(p.id))continue;if((l.world===0||set)&&drawQuarterPickup(c,l,p.kind,p.x,p.y,s.clock,reduced))continue;const y=p.y+Math.round(Math.sin(t*3+p.id)*3);
    c.fillStyle=(p.kind==='dash'?'#a9d9ef':theme.accent)+'12';c.beginPath();c.moveTo(p.x,y-15);c.lineTo(p.x+12,y);c.lineTo(p.x,y+15);c.lineTo(p.x-12,y);c.fill();c.fillStyle=p.kind==='dash'?'#9ed6ee':theme.accent;
    c.beginPath();c.moveTo(p.x,y-8);c.lineTo(p.x+6,y);c.lineTo(p.x,y+8);c.lineTo(p.x-6,y);c.fill();c.fillStyle='#fff4d1';c.fillRect(p.x-1,y-4,2,5);
   }
   for(const station of l.stations){
    const {x,y}=stationAt(station,l,s.clock),{kind,id}=station,lit=s.activated.includes(id),plan=stationComposition(l,station),dx=x-station.x,dy=y-station.y;
    if(kind==='survivor'){if(lit)continue;person(c,x,y,t,characterColor(station.label,l.world));}
+   else if(set?.station){set.station(c,l,station,x,y,lit,t);continue;}
    else{
     c.save();c.beginPath();c.rect(plan.bounds.x+dx,plan.bounds.y+dy,plan.bounds.w,plan.bounds.h);c.clip();
     if(plan.art==='valve')valve(c,x,y-25,theme.accent,lit);
@@ -208,7 +216,7 @@ export class Scene {
   const departure=s.phase!=='playing'?departurePose(l,s,reduced,this):null;
   if(departure){c.translate(departure.x-s.x,departure.y-s.y);c.globalAlpha=departure.opacity;}
   if(!this.death.impact){this.courier.drawShadow(c,s,departure?s.y+PLAYER_H:surfaceBelow(s,l));this.courier.draw(c,s,theme.accent,reduced,departure??undefined);}c.restore();
-  if(l.goal==='engine')drawLift(c,l,s,theme.accent,reduced,this,true);else drawServiceDoor(c,l,s,theme.accent,true);
+  if(set)set.exit(c,l,s,reduced?0:s.clock,true,reduced,this);else if(l.goal==='engine')drawLift(c,l,s,theme.accent,reduced,this,true);else drawServiceDoor(c,l,s,theme.accent,true);
   c.restore();
   this.death.drawBody(c,cx,cy,reduced);this.death.drawTransition(c,w,h,actual,cx,cy,reduced);
   drawDawn(c,w,h,s,reduced);

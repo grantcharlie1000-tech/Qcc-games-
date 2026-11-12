@@ -1,5 +1,7 @@
 import type {Platform,Hazard,Rect} from './levels';
 import {drawEmitter,drawSpikes} from './hazard-art';
+/** Mirrors model.CRUMBLE_RETURN: pieces reassemble over the last half second. */
+const RETURN=7;
 type C=CanvasRenderingContext2D;
 interface Cell {points:{x:number;y:number}[];x:number;y:number;w:number;h:number;cx:number;cy:number;seed:number;slotX:number;slotY:number}
 interface Fracture {atlas:HTMLCanvasElement;cells:Cell[];w:number;h:number}
@@ -29,7 +31,7 @@ function bake(source:HTMLCanvasElement,sx:number,sy:number,w:number,h:number,see
 function motion(cell:Cell,w:number,age:number,stress:number,reduced:boolean){
  if(age<0)return {dx:Math.round((cell.cx-w/2)*stress*.04),dy:Math.round((cell.seed-.5)*stress*2),rotation:0,alpha:1};
  if(age<1.15)return {dx:reduced?0:(cell.cx-w/2)*(.04+age*.32)+(cell.seed-.5)*age*34,dy:reduced?12:(cell.seed-.5)*2+age*22+age*age*(190+cell.seed*95),rotation:reduced?0:(cell.seed-.5)*age*2.2,alpha:Math.max(0,1-age/1.15)};
- const rebuilt=Math.max(0,Math.min(1,(age-2-cell.seed*.05)/.38));
+ const rebuilt=Math.max(0,Math.min(1,(age-(RETURN-.5)-cell.seed*.05)/.38));
  return {dx:reduced?0:(1-rebuilt)*(cell.seed-.5)*8,dy:reduced?0:(1-rebuilt)*(1-rebuilt)*18,rotation:0,alpha:rebuilt};
 }
 function pieces(c:C,art:Fracture,x:number,y:number,age:number,stress:number,reduced:boolean){

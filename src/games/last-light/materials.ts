@@ -96,7 +96,7 @@ export function paintMaterial(c:C,p:Platform,l:Level){
  * grants a complete 28px support only after checking the surrounding routes.
  * Partial arches and cropped pipes would imply broken geometry, so omit them. */
 export function paintFoundation(c:C,p:Platform,l:Level,depth=28){
- if(p.kind!=='stone'||p.branch||depth<p.h+28)return;
+ if(p.kind!=='stone'||p.branch||depth<p.h+28||l.world===0)return;
  const w=p.w;if(w<170)return;
  c.save();c.beginPath();c.rect(0,p.h,w,28);c.clip();
  c.translate(0,p.h-28);

@@ -1,0 +1,89 @@
+/** Shared pixel toolkit for the Old Quarter. Repeating art comes only from
+ * small cached tiles whose opposite edges are the same pixels, filled through
+ * cached patterns; nothing here allocates while a frame is being drawn. */
+export type C=CanvasRenderingContext2D;
+const tiles=new Map<string,HTMLCanvasElement>();
+const patterns=new WeakMap<C,Map<string,CanvasPattern>>();
+export const noise=(a:number,b:number)=>Math.abs(Math.sin(a*127.1+b*311.7)*43758.5453)%1;
+export const hash=(a:number,b:number,c=0)=>{let h=Math.imul(a|0,374761393)^Math.imul(b|0,668265263)^Math.imul(c|0,1274126177);h=Math.imul(h^(h>>>13),1103515245);return ((h^(h>>>16))>>>0)/4294967296;};
+export function canvas(w:number,h:number){const out=document.createElement('canvas');out.width=w;out.height=h;const c=out.getContext('2d',{willReadFrequently:true})!;c.imageSmoothingEnabled=false;return {out,c};}
+export type TileRect=(color:string,x:number,y:number,rw:number,rh:number)=>void;
+/** A tile painter whose rectangles wrap, so the left/right and top/bottom
+ * edges always continue each other exactly. */
+export function seamless(key:string,w:number,h:number,paint:(rect:TileRect)=>void){
+ const made=tiles.get(key);if(made)return made;
+ const {out,c}=canvas(w,h);
+ const rect:TileRect=(color,x,y,rw,rh)=>{c.fillStyle=color;for(let dx=-w;dx<=w;dx+=w)for(let dy=-h;dy<=h;dy+=h)c.fillRect(x+dx,y+dy,rw,rh);};
+ paint(rect);tiles.set(key,out);return out;
+}
+export function sprite(key:string,w:number,h:number,paint:(c:C)=>void){const made=tiles.get(key);if(made)return made;const {out,c}=canvas(w,h);paint(c);tiles.set(key,out);return out;}
+export function fill(c:C,key:string,source:()=>HTMLCanvasElement){let byKey=patterns.get(c);if(!byKey){byKey=new Map();patterns.set(c,byKey);}let p=byKey.get(key);if(!p){p=c.createPattern(source(),'repeat')!;byKey.set(key,p);}return p;}
+export const box=(c:C,color:string,x:number,y:number,w:number,h:number)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
+/** Fills a world rectangle with a seamless tile. */
+export function wall(c:C,key:string,source:()=>HTMLCanvasElement,x:number,y:number,w:number,h:number){if(w<=0||h<=0)return;c.fillStyle=fill(c,key,source);c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));}
+export interface Courses {mortar:string;stones:readonly string[];lip:string;chip:string}
+/** Coursed masonry: rows offset by half a block. Every block is drawn with
+ * wrapping and shaded only from its own cell, so the tile repeats exactly. */
+export function masonry(key:string,w:number,h:number,block:number,row:number,k:Courses){
+ return seamless(key,w,h,rect=>{
+  rect(k.mortar,0,0,w,h);
+  for(let r=0;r<h/row;r++)for(let col=0;col<w/block;col++){
+   const x=col*block+(r%2)*block/2,y=r*row,v=hash(col,r,w+h);
+   rect(k.stones[Math.floor(v*k.stones.length)],x+1,y+1,block-2,row-2);
+   rect(k.lip,x+1,y+1,block-3,1);
+   if(v>.72)rect(k.chip,x+3+Math.floor(v*7),y+row-4,3,1);
+  }
+ });
+}
+/** A one-pixel-stepped line, for ropes, braces and stair strings. */
+export function stroke(c:C,color:string,x0:number,y0:number,x1:number,y1:number,thick=1){
+ const steps=Math.max(Math.abs(x1-x0),Math.abs(y1-y0));c.fillStyle=color;
+ for(let i=0;i<=steps;i++){const t=steps?i/steps:0;c.fillRect(Math.round(x0+(x1-x0)*t),Math.round(y0+(y1-y0)*t),thick,thick);}
+}
+export function visible(x:number,y:number,w:number,h:number,cx:number,cy:number,vw:number,vh:number){return x+w>cx-24&&x<cx+vw+24&&y+h>cy-24&&y<cy+vh+24;}
+
+/** The towers at the head of the city, where the wires lead. One landmark at
+ * the horizon, never tiled into a second skyline. */
+export function enginesArt(){
+ return sprite('engines',64,150,c=>{
+  const body='#1c2637',rim='#253248',band='#212c3e';
+  for(const [x,top,wide] of [[10,22,14],[38,6,18]] as const){
+   box(c,body,x,top+12,wide,150);box(c,rim,x,top+12,1,150);
+   c.fillStyle=body;c.beginPath();c.moveTo(x-2,top+13);c.lineTo(x+wide/2,top);c.lineTo(x+wide+2,top+13);c.closePath();c.fill();
+   for(let y=top+30;y<150;y+=18)box(c,band,x+2,y,wide-4,1);
+  }
+  box(c,body,24,62,14,5);box(c,'#f3c77a',46,15,2,2);box(c,'#ffb76b55',45,14,4,4);
+ });
+}
+
+/** A built wall, laid course by course from its foot. Every stone's length and
+ * tone comes from the wall's own seed and its course number, so no course
+ * repeats another and no panel repeats the next. A course starts and stops at
+ * the panel's edges with a cut stone: the panel is one stretch of wall between
+ * a floor and the next, a corner and the next, or an opening and the next.
+ * Panels are painted once into their own canvas; nothing is tiled. */
+export interface Work {course:number;short:number;long:number;mortar:string;stones:readonly string[];lip:string;shade:string;chip:string}
+export function lay(c:C,w:number,h:number,k:Work,seed:number){
+ box(c,k.mortar,0,0,w,h);
+ for(let r=0;r*k.course<h;r++){
+  const y=h-(r+1)*k.course;let x=-Math.floor(hash(r,seed,11)*k.long);
+  for(let i=0;x<w;i++){
+   const v=hash(i,r,seed),len=k.short+Math.floor(v*(k.long-k.short+1)),x0=Math.max(0,x),x1=Math.min(w,x+len);
+   if(x1-x0>=3){
+    const tone=k.stones[Math.floor(hash(i,r,seed+9)*k.stones.length)],top=Math.max(0,y+1),bottom=y+k.course-1;
+    box(c,tone,x0+1,top,x1-x0-1,bottom-top);
+    if(y+1>=0)box(c,k.lip,x0+1,y+1,x1-x0-2,1);
+    box(c,k.shade,x0+1,bottom-1,x1-x0-1,1);
+    // Weathering belongs to single stones: a spalled corner, a darker face, a hairline.
+    if(v>.86&&x1-x0>8)box(c,k.chip,x0+3+Math.floor(hash(i,r,seed+3)*(x1-x0-7)),bottom-3,3,1);
+    else if(v<.07)box(c,k.shade,x0+2,top+2,x1-x0-4,bottom-top-4);
+    else if(v>.8&&v<.83&&bottom-top>6)box(c,k.mortar,x0+Math.floor((x1-x0)/2),top+1,1,bottom-top-2);
+   }
+   x+=len;
+  }
+ }
+}
+/** A wall panel painted once at its own size; `extra` adds what is built into it. */
+export function panel(key:string,w:number,h:number,k:Work,seed:number,extra?:(c:C)=>void){
+ return sprite(`panel/${key}/${w}/${h}`,Math.max(1,Math.round(w)),Math.max(1,Math.round(h)),c=>{lay(c,Math.round(w),Math.round(h),k,seed);extra?.(c);});
+}

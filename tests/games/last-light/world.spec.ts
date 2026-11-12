@@ -18,7 +18,7 @@ test('crumble tiles warn, fragment, rebuild and keep decorative motion reduced',
   const c=document.createElement('canvas');c.width=240;c.height=280;const ctx=c.getContext('2d')!,l=LEVELS[4],p=l.platforms.find((p:any)=>p.kind==='crumble'),s=createRun();s.stage=4;
   const hash=()=>ctx.getImageData(0,0,c.width,c.height).data.reduce((n:number,v:number)=>Math.imul(n^v,16777619)>>>0,2166136261);
   function draw(timer:number|undefined,clock=1,reduced=false){ctx.clearRect(0,0,c.width,c.height);s.clock=clock;s.crumbles=timer===undefined?{}:{[p.id]:timer};drawPlatform(ctx,p,20,30,s,l,reduced);return hash();}
-  const states=[undefined,.8,.3,-.1,-.45,-2.15,-2.4].map(n=>draw(n));
+  const states=[undefined,.8,.3,-.1,-.45,-6.65,-6.9].map(n=>draw(n));
   const frozen=[draw(.3,3,true),draw(.3,8,true)],falling=[draw(-.1),draw(-.4)];
   const palettes=[];for(const color of ['#ae837a','#8f9c70','#b79871','#a0acbf']){ctx.clearRect(0,0,c.width,c.height);person(ctx,70,100,0,color);const pixels=ctx.getImageData(0,0,c.width,c.height).data,colors=new Set();for(let i=0;i<pixels.length;i+=4)if(pixels[i+3])colors.add(`${pixels[i]},${pixels[i+1]},${pixels[i+2]}`);palettes.push(colors.size);}
   return {states,frozen,falling,palettes};

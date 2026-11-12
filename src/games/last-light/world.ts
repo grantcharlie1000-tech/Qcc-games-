@@ -6,6 +6,8 @@ import {noise} from './terrain';
 import {speakerFor,characterColor} from './story';
 import {tree,cat,washing,settingDetails} from './environment-art';
 import {drawVistas} from './vista-art';
+import {drawQuarterSky} from './quarter-place';
+import {quarterSet} from './quarter-sets';
 import {person} from './inhabitants';
 import {landmarks,atmosphere} from './environment-landmarks';
 export {person} from './inhabitants';
@@ -16,6 +18,8 @@ import {petPose} from './affection';
 function gear(c:CanvasRenderingContext2D,x:number,y:number,r:number,t:number,color:string){c.save();c.translate(x,y);c.rotate(t);c.strokeStyle=color;c.lineWidth=5;c.beginPath();c.arc(0,0,r,0,Math.PI*2);c.stroke();for(let i=0;i<10;i++){c.rotate(Math.PI/5);c.fillStyle=color;c.fillRect(-3,-r-5,6,10);if(i%2===0)c.fillRect(-2,-r,4,r);}c.fillStyle='#1e2634';c.fillRect(-5,-5,10,10);c.restore();}
 export function drawSky(c:CanvasRenderingContext2D,l:Level,s:Run,w:number,h:number,cx:number,cy:number,reduced:boolean){
  const theme=WORLDS[l.world],t=reduced?0:s.clock;
+ // The Old Quarter is one built place: no pasted panorama, clouds or landmarks.
+ if(l.world===0||quarterSet(l)){drawQuarterSky(c,l,w,h,cx,cy,s.clock,reduced,!!s.ending);return;}
  const gradient=c.createLinearGradient(0,0,0,h);gradient.addColorStop(0,s.ending?'#485572':theme.sky);gradient.addColorStop(.65,s.ending?'#967b89':theme.far);gradient.addColorStop(1,s.ending?'#d4ab8b':theme.sky);c.fillStyle=gradient;c.fillRect(0,0,w,h);
  for(let i=0;i<(l.setting==='cavern'?0:28);i++){c.fillStyle=i%9===0?theme.accent+'66':'#dfe6dc36';c.fillRect(Math.floor(noise(i,12)*w),Math.floor(noise(i,3)*h*.56),1,1);}
  const mx=Math.round(w*.8-cx*.025),my=Math.round(Math.max(100,h*.24-cy*.03));
@@ -44,8 +48,9 @@ export function drawSky(c:CanvasRenderingContext2D,l:Level,s:Run,w:number,h:numb
 
 }
 export function drawLife(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:number,w:number,h:number,reduced:boolean){
- const theme=WORLDS[l.world],t=reduced?0:s.clock;
- if(l.water!==null){const y=l.water,left=Math.max(0,Math.floor(cx/24)*24),right=Math.min(l.width,cx+w+24);c.fillStyle='#153440';c.fillRect(left,y,right-left,l.height-y+200);
+ const theme=WORLDS[l.world],t=reduced?0:s.clock,set=quarterSet(l);
+ if(set?.water)set.water(c,l,t,cx,cy,w,h,s);
+ else if(l.water!==null){const y=l.water,left=Math.max(0,Math.floor(cx/24)*24),right=Math.min(l.width,cx+w+24);c.fillStyle='#153440';c.fillRect(left,y,right-left,l.height-y+200);
   for(let i=left;i<right;i+=24){const wave=Math.sin(t*2+i)*1.3;c.fillStyle=theme.edge+'55';c.fillRect(i+Math.sin(t+i)*3,y+wave,15,1);
    for(let j=0;j<5;j++){const offset=Math.sin(t*1.1+j+i)*4,yy=y+6+j*j*3;c.fillStyle=j%2?theme.glow+'22':theme.edge+'22';c.fillRect(i+offset,yy,8+j*3,1);}
   }
@@ -63,6 +68,8 @@ export function drawLife(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:n
  }
  for(const item of worldDressing(l)){
   const {kind,x,y,bounds}=item;
+  // An authored set grows its own trees.
+  if(set&&kind==='tree')continue;
   if(bounds.x+bounds.w<cx-8||bounds.x>cx+w+8||bounds.y+bounds.h<cy-8||bounds.y>cy+h+8)continue;
   c.save();
   // Residents and fixtures stay present when approached. The courier is
@@ -87,7 +94,7 @@ export function drawLife(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:n
   }
   c.restore();
  }
- if(l.goal==='engine'&&s.activated.length){
+ if(l.goal==='engine'&&s.activated.length&&!set){
   for(const station of l.stations){if(!s.activated.includes(station.id))continue;const x=station.x,y=station.y;
    c.strokeStyle=l.world===1?'#9bc5b277':'#d3c6a477';c.lineWidth=2;c.beginPath();c.moveTo(x,y-10);c.lineTo(x+45,y-10);c.lineTo(x+45,y+70);c.stroke();
    for(let i=0;i<12;i++){const drop=reduced?i/12:(t*.7+i/12)%1;c.fillStyle=l.world===1?'#bddfc780':'#d3d6c755';c.fillRect(x+43+(l.world===1?0:Math.sin(drop*7)*8),y+drop*66,2,l.world===1?5:2);}
@@ -114,13 +121,13 @@ export function depthFogBounds(l:Level){
  return {start:Math.max(bottom+28,l.height-112),end:l.height+48};
 }
 export function drawDepthFog(c:CanvasRenderingContext2D,l:Level,s:Run,cx:number,cy:number,w:number,h:number,reduced:boolean){
- if(l.water!==null)return;
+ // Water has its own edge, and the Old Quarter's streets, tower floors and
+ // basement are built all the way down, so neither gets a fog bank.
+ if(l.water!==null||l.world===0||quarterSet(l))return;
  const {start,end}=depthFogBounds(l),visibleBottom=cy+h;if(visibleBottom<=start)return;
  const color=l.world===3?'#7b9aad':l.world===1?'#345b58':l.world===2?'#4c414f':l.world===4?'#655877':'#40566c';
  const fade=c.createLinearGradient(0,start,0,end);fade.addColorStop(0,color+'00');fade.addColorStop(.48,color+'58');fade.addColorStop(1,color+'e8');
+ // One smooth bank only: repeated wisps striped the screen.
  c.save();c.fillStyle=fade;c.fillRect(cx,start,w,Math.max(0,visibleBottom-start));
- // Broken wisps live at fixed world elevations and scroll with the scenery.
- const t=reduced?0:s.clock;
- for(let i=0;i<3;i++){const yy=start+38+i*31,drift=reduced?0:Math.sin(t*.16+i)*12;for(let x=Math.floor(cx/180)*180-180;x<cx+w;x+=180){c.globalAlpha=.05;c.fillStyle=color;c.fillRect(Math.round(x+drift+i*17),yy,128+i*8,2+i);}}
  c.restore();
 }

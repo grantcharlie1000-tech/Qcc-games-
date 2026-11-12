@@ -1,6 +1,9 @@
 import {materialTile} from './generated-art';
 import {WORLDS,type Level} from './levels';
+import type {Run} from './model';
 import {facadeWindow} from './facade-art';
+import {drawQuarterPlace} from './quarter-place';
+import {quarterSet} from './quarter-sets';
 type C=CanvasRenderingContext2D;
 const tiles=new Map<string,HTMLCanvasElement>();
 function masonry(world:number,industrial:boolean){
@@ -22,7 +25,8 @@ function masonry(world:number,industrial:boolean){
 /** World-space construction follows the actual collision ledges. Recessed
  * walls, bolted brackets and pipe risers establish one building, while only
  * the foreground deck caps carry the bright walkable edge. */
-export function drawArchitecture(c:C,l:Level,cx:number,cy:number,w:number,h:number){
+export function drawArchitecture(c:C,l:Level,cx:number,cy:number,w:number,h:number,clock=0,reduced=false,run?:Run){
+ if(l.world===0||quarterSet(l)){drawQuarterPlace(c,l,clock,cx,cy,w,h,reduced,run);return;}
  const theme=WORLDS[l.world],industrial=l.setting==='factory'||l.setting==='tower',tile=masonry(l.world,industrial);
  c.save();
  const pattern=c.createPattern(tile,'repeat');
@@ -50,6 +54,7 @@ export function drawArchitecture(c:C,l:Level,cx:number,cy:number,w:number,h:numb
    for(const sign of [-1,1]){const xx=vertical?x:p.x+p.w/2+sign*(p.w/2+travel+4),yy=vertical?y+sign*(travel+12):y;c.fillStyle=theme.near;c.fillRect(xx-4,yy-4,8,8);c.fillStyle=theme.edge+'66';c.fillRect(xx-2,yy-2,2,2);}continue;
   }
   if(p.kind==='crumble')continue;
+  if(p.h<=10)continue;
   const bottom=p.y+p.h,depth=Math.max(28,(l.water??l.height+48)-bottom);
   if(l.world===3&&l.setting!=='tower'&&l.setting!=='factory'){
    // Glacier shoulders meet the collision slab, then taper into the world fog.

@@ -49,6 +49,8 @@ it('ignores removed provider origins and their player event format',()=>{
   expect(providerSignal('framextv',origin,{event:'frameXTV:timeupdate',currentTime:42})).toBeUndefined();
  }
  expect(providerSignal('framextv',FRAME_ORIGIN,{type:'PLAYER_EVENT',data:{event:'timeupdate',currentTime:42}})).toBeUndefined();
+ expect(providerSignal('framextv',FRAME_ORIGIN,{__syncxtv:1,dir:'page',type:'hello',site:'framextv'})).toBeUndefined();
+ expect(providerSignal('framextv','https://archive.org',{event:'frameXTV:timeupdate',currentTime:80,duration:6000})).toBeUndefined();
 });
 it('keeps providerProgress to the progress case only',()=>{
  expect(providerProgress('framextv',FRAME_ORIGIN,{event:'frameXTV:ready'})).toBeUndefined();

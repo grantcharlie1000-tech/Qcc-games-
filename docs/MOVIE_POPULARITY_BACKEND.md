@@ -1,0 +1,65 @@
+# Popular in Marlborough: prototype aggregate backend
+
+This is a **disabled-by-default server prototype**, not a deployed service. The Movies preference is on by default; users can switch it off in settings without a popup. Until an operator explicitly configures the separate backend, requests return `503 popularity_unavailable`. Do not imply the rail is live before that setup and an end-to-end check.
+
+## What it measures
+
+The client sends a report after 60 seconds of plausible advancing playback. Loading a page, seeking, or opening a title must not qualify. Reports contain no account identifier and are unverified client reports, **not verified people, students, residents, or fraudproof proof of watching**. Anyone using QCC can contribute; “Marlborough” is the rail name, not geolocation or verified school membership. No location is collected.
+
+`POST /api/movie-popularity` accepts exactly `{titleId: "movie-123", token: "32 lowercase hex characters"}`. The token must be opaque and scoped to one title and UTC day, never an account ID, device fingerprint, stable browser ID, or historical watch record. It may be derived locally by hashing the title/day with a daily cryptographically random browser seed of at least 128 bits, provided that seed never leaves the browser and is replaced on the next contribution after a UTC day changes. This lets the client avoid persisting a list of viewed title IDs. Never backfill existing watch history. Opt-out stops all new report POSTs; already-contributed aggregates cannot be attributed back to someone to remove them. Accepted and duplicate submissions both return empty `204` responses.
+
+`GET /api/movie-popularity` returns `{titleIds: ["movie-123"], windowDays: 7}` with at most 20 movies. It exposes neither counts nor daily breakdowns. All responses are `no-store`, with no CORS permission. Movie IDs are positive decimal IDs (up to 10 digits).
+
+The ranking covers the current UTC day and previous six UTC days, not a rolling 168-hour window. Only daily buckets with **at least five accepted title/day tokens** participate. Those qualifying buckets are summed, descending by sum then ascending lexicographic title ID. Sub-threshold days never contribute to ranking. This deliberately prevents one regular device reporting on five different days from passing the threshold alone, without retaining a week of identifiers. It can suppress a movie watched by five different devices spread across five days. Daily random tokens mean these are approximate daily device reports, **not distinct weekly people**; one person can be counted on multiple days or devices. Even “device” is approximate because cleared storage and forged tokens can inflate it. Threshold suppression is not a guarantee of anonymity or protection against inference.
+
+## Storage and concurrency
+
+Use a **new, dedicated Cloudflare D1 database**, not existing leaderboard storage. Apply `docs/movie-popularity-schema.sql` to it and bind it to Pages as `MOVIE_POPULARITY_DB`. The SQL trigger increments the title/day aggregate only on a successful unique token insert, in the same SQLite transaction. Duplicate concurrent requests cannot increment it twice. D1 `batch` is transactional; there is no in-memory or read/modify/write counter fallback.
+
+- `movie_popularity_tokens`: title/day and a server-HMAC hash of the title/day/random token, plus expiration at the next UTC midnight. No raw tokens. Logically retained at most 24 hours.
+- `movie_popularity_daily`: title, UTC day number and aggregate count. Only seven UTC calendar days are used. There is no individual history table.
+- `movie_popularity_rate`: an independently namespaced hourly HMAC of the trusted platform IP, attempt count and expiration at the next UTC hour. It contains no title, event token, raw IP or persistent cross-hour key. The rate limit is 2,000 valid-schema POST attempts per trusted platform address per UTC hour, counting duplicates. It is sized for a shared school network. Do not add stable device identities to split that address.
+
+Hashing uses WebCrypto HMAC-SHA-256 with a server-only secret of at least 32 characters, preferably 32 cryptographically random bytes encoded as hex. Never use a `VITE_` variable, client bundle constant, committed secret, query parameter, or frontend-accessible binding for it. Key rotation will reset effective dedup and hourly rate limits, so coordinate it rather than rotating per request.
+
+The hourly ceiling is **2,000 valid-schema POSTs per trusted platform address**. A school network often shares one public address, and the ceiling is deliberately large enough for a few hundred people to report several titles during the same hour. It is not divided by device, account, or any key that lasts past the hour. That also means one script on the shared address can use the whole ceiling; solving that with a device fingerprint is intentionally not done. A different address has its own bucket. The next UTC hour starts a new bucket. Duplicates count toward the ceiling.
+
+## Required deployment configuration (not performed by this prototype)
+
+1. Create the separate D1 database and apply the supplied schema with its trigger and indexes. Configure **preview separately from production**; do not bind preview to production data.
+2. Bind `MOVIE_POPULARITY_DB` to that database in Cloudflare Pages. Save `MOVIE_POPULARITY_SECRET` through the platform's server secret configuration. Set server variable `MOVIE_POPULARITY_ENABLED=true` only when all other steps are ready.
+3. Deploy the Pages Function adapter. Requests must go directly through Cloudflare Pages, where `CF-Connecting-IP` is platform-controlled. The handler deliberately does not trust `X-Forwarded-For`. Do not mount this adapter on an arbitrary server that forwards caller-supplied `CF-Connecting-IP`; that would make the throttle spoofable. No Netlify or local server adapter is included.
+4. Schedule cleanup with a **separately reviewed Worker**, not a Pages Function. Pages Functions do not provide a cron trigger, and putting the job under `functions/` would publish an HTTP route on the next Pages deploy. The entrypoint `workers/movie-popularity-cleanup.ts` exports `onMoviePopularityScheduled`. It is outside `functions/`, so the existing Pages build does not publish it. It calls the same three deletes as request-time cleanup, in one D1 batch. It runs when `MOVIE_POPULARITY_ENABLED` is missing or false, and when there is no HTTP traffic. It does not need the HMAC secret. If the database binding is missing it returns without error. A database error is reported to the platform as `movie_popularity_cleanup_failed` and is not logged with the SQL error, tokens, or addresses.
+   This repository does **not** add a Wrangler config, cron, database id, or secret. Applying one would be a production change and is not authorized. An operator who later gets approval can bind `MOVIE_POPULARITY_DB` on that Worker and add a cron of `*/15 * * * *` (or at least hourly). Do not set `MOVIE_POPULARITY_ENABLED` on the cleanup Worker.
+   Each valid request to the enabled endpoint also runs those deletes. **That request path does not run while collection is disabled**, so idle or disabled periods depend on the cron. With a 15-minute cron, live-table deletion can lag logical expiry by about 15 minutes, plus cron propagation. SQL `DELETE` does not erase D1 Time Travel or platform logs.
+   D1 Time Travel is always on for production databases. Cloudflare's documented point-in-time window is **7 days on the Workers Free plan and 30 days on the Workers Paid plan** ([limits](https://developers.cloudflare.com/d1/platform/limits/), [Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/)). This repository cannot shorten or disable that window, and it cannot promise a maximum retention period until the account plan is known and the cron is actually running. Do not export the database to R2 or anywhere else as part of this prototype.
+   The handlers do not call `console` and do not log bodies, tokens, IP addresses, or secrets. Cloudflare may still record request metadata, the connecting address, and invocation errors in platform logs. This code cannot turn those logs off or set their retention. Confirm the account's log configuration before enablement, and do not enable a log drain that stores request bodies.
+5. Verify schema, origin handling, throttling, retention and opt-out end to end in preview using synthetic data. Confirm disabled/missing configuration shows an unavailable state without fabricated rankings. Only then consider production enablement after the relevant privacy review, particularly because students may be minors.
+
+Deployment, database creation, secret creation, cleanup scheduling and infrastructure changes require separate authorization. None were performed for this prototype. Disable future collection immediately by removing `MOVIE_POPULARITY_ENABLED=true`; keep the cleanup job active when collection is disabled. The disabled endpoint does not touch the database, so it cannot clean up old rows itself.
+
+## Request safety and limitations
+
+POST requires a present exact same-origin `Origin` and JSON content type, a streamed body no larger than 1024 bytes, exact validated fields, and a trusted platform IP. Cross-site requests and unsupported methods are rejected. A client cannot configure retention, counts, ranking window, or suppression threshold. SQL parameters are bound. Failures return generic 503 responses without sensitive logging.
+
+The same-origin check mitigates browser cross-origin submissions; it cannot authenticate curl/scripts. HMAC protects stored identifiers from casual correlation but does not verify playback. Someone who can submit many fresh tokens, use multiple IPs, or clear local storage can influence ranking. This is an approximate social discovery feature, never a basis for attendance, discipline, surveillance or individual conclusions. Production should consider platform-level request/abuse controls; per-address application throttling is not comprehensive DDoS protection, and malformed requests and GET requests do not consume the POST bucket.
+
+D1 `batch()` runs its statements in one SQLite transaction: if a later statement fails, the batch rolls back ([D1 batch](https://developers.cloudflare.com/d1/worker-api/d1-database/)). The count trigger runs in the same statement as the token insert, so a failed aggregate write does not leave an accepted token. The rate-limit upsert is a separate statement before that insert, so an over-limit attempt is recorded without adding a view. Local tests execute this on workerd's D1 implementation (Miniflare, compatibility date `2026-08-06`, in memory). That is not a remote Cloudflare D1 database. The Pages deploy compatibility date in CI is `2026-11-04`, which this workerd binary cannot load. Remote D1 remains an acceptance gate.
+
+## Rollback
+
+Collection stays off unless `MOVIE_POPULARITY_ENABLED=true`, `MOVIE_POPULARITY_DB`, and a secret of at least 32 characters are all present. To stop collection later, remove `MOVIE_POPULARITY_ENABLED=true`. Leave the cleanup cron in place if it was ever started; the disabled HTTP handler does not delete old rows. Reverting this branch removes the code. No database, secret, or cron is created here, so there is no production migration to undo. D1 Time Travel can still restore deleted rows inside the plan window above. Do not treat SQL deletion as erasure of backups or platform logs.
+
+## Verification
+
+`npm test -- tests/movies/popularity-api.test.ts` uses Node's real in-memory SQLite to execute the production schema, unique constraints, trigger, rate-limit UPSERT, transactional batches, ranking and cleanup. It exercises concurrent duplicate calls, per-title isolation, low-count suppression, ordering/limits, expiration, validation and generic error responses. It is not a live Cloudflare D1 deployment test.
+
+`tests/movies/popularity-d1.test.ts` runs the same handler inside local workerd (Miniflare `5.20261104.0-beta`, compatibility date `2026-11-04`, `dev.remote: false`). That is the compatibility date in `.github/workflows/pages.yml`. Miniflare 4.20260730.0 rejected `2026-11-04` because its workerd only accepted dates through `2026-08-06`. D1's `exec()` treats each newline as a separate statement, so the test applies `docs/movie-popularity-schema.sql` one statement at a time with `prepare().run()`, keeping each trigger body intact. That is not `wrangler d1 execute`, and it is not a remote database. Remote D1 remains an acceptance gate.
+
+Local cleanup, with no collection flag and no remote database:
+
+```sh
+node scripts/movie-popularity-cleanup-local.mjs
+```
+
+That command applies the schema to a throwaway in-memory D1 database and dispatches the worker's `scheduled` handler through Miniflare's `/cdn-cgi/local/scheduled` path. It does not read `MOVIE_POPULARITY_ENABLED`. The worker file is outside `functions/`, so Pages does not publish it. Do not point this command at a remote database or add a Wrangler cron.

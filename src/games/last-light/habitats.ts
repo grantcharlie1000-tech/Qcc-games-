@@ -7,7 +7,7 @@ export interface WorldDressing {readonly kind:DressingKind;readonly platform:num
 // chase, isolation or finale. The location is a preference, never permission to
 // occupy an interaction, a pickup's approach, or the underside of another ledge.
 const HABITATS:readonly ([DressingKind,number,boolean]|null)[]=[
- ['washing',.46,true],['resident',.78,true],['cat',.42,true],['washing',.7,true],null,null,['lantern',.72,true],null,
+ ['washing',.069,true],null,['cat',.245,false],null,null,null,null,null,
  ['tree',.73,false],['resident',.5,true],['tree',.63,true],['cat',.71,true],null,['resident',.56,true],null,['tree',.43,true],
  ['resident',.58,true],null,['resident',.45,true],null,['lantern',.65,true],['cat',.51,true],null,null,
  ['resident',.57,true],null,null,null,['resident',.48,true],['tree',.6,true],null,null,
@@ -34,7 +34,7 @@ export function worldDressing(l:Level):readonly WorldDressing[]{
   const [kind,position,branch]=preferred;
   const width=kind==='washing'?112:kind==='tree'?66:kind==='resident'?56:kind==='cat'?52:42;
   const height=kind==='washing'?68:kind==='tree'?77:kind==='lantern'?65:kind==='cat'?29:46;
-  const platforms=l.platforms.filter(p=>p.id!==0&&p.kind==='stone'&&p.w>=width+40).sort((a,b)=>{
+  const platforms=l.platforms.filter(p=>p.id!==0&&p.kind==='stone'&&p.h>12&&p.w>=width+40).sort((a,b)=>{
    const score=(p:typeof a)=>Math.abs(p.x+p.w*.5-l.width*position)+(p.branch===branch?0:240);
    return score(a)-score(b)||a.id-b.id;
   });
