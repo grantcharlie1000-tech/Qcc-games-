@@ -5,39 +5,39 @@
   "takes": [
     {
       "key": "gun.ar.fp",
-      "file": "AR-15/D_32P.wav",
+      "file": "lib/Prepared SFX Library/AR-15/D_32P.wav",
       "keepMs": 55,
       "fadeMs": 60
     },
     {
       "key": "gun.ar.tp",
-      "file": "AR-15/D_24P.wav",
+      "file": "lib/Prepared SFX Library/AR-15/D_24P.wav",
       "keepMs": 150,
       "fadeMs": 60
     },
     {
       "key": "gun.ar.far",
-      "file": "AR-15/D_24P.wav",
+      "file": "lib/Prepared SFX Library/AR-15/D_24P.wav",
       "keepMs": 300,
       "fadeMs": 80,
       "gainDb": -2
     },
     {
       "key": "gun.carbine.fp",
-      "file": "SKS/U_14P.wav",
+      "file": "lib/Prepared SFX Library/SKS/U_14P.wav",
       "keepMs": 55,
       "fadeMs": 60,
       "max": 4
     },
     {
       "key": "gun.carbine.tp",
-      "file": "SKS/U_19P.wav",
+      "file": "lib/Prepared SFX Library/SKS/U_19P.wav",
       "keepMs": 150,
       "fadeMs": 60
     },
     {
       "key": "gun.carbine.far",
-      "file": "SKS/U_19P.wav",
+      "file": "lib/Prepared SFX Library/SKS/U_19P.wav",
       "keepMs": 300,
       "fadeMs": 80,
       "max": 2,
@@ -45,13 +45,13 @@
     },
     {
       "key": "gun.smg.fp",
-      "file": "Carl Gustav M45/G_31P.wav",
+      "file": "lib/Prepared SFX Library/Carl Gustav M45/G_31P.wav",
       "keepMs": 45,
       "fadeMs": 50
     },
     {
       "key": "gun.smg.fp",
-      "file": "Carl Gustav M45/G_33P.wav",
+      "file": "lib/Prepared SFX Library/Carl Gustav M45/G_33P.wav",
       "keepMs": 45,
       "fadeMs": 40,
       "burst": true,
@@ -59,7 +59,7 @@
     },
     {
       "key": "gun.smg.fp",
-      "file": "Carl Gustav M45/G_35P.wav",
+      "file": "lib/Prepared SFX Library/Carl Gustav M45/G_35P.wav",
       "keepMs": 45,
       "fadeMs": 40,
       "burst": true,
@@ -68,13 +68,13 @@
     },
     {
       "key": "gun.smg.tp",
-      "file": "Carl Gustav M45/G_20P.wav",
+      "file": "lib/Prepared SFX Library/Carl Gustav M45/G_20P.wav",
       "keepMs": 120,
       "fadeMs": 50
     },
     {
       "key": "gun.smg.far",
-      "file": "Carl Gustav M45/G_20P.wav",
+      "file": "lib/Prepared SFX Library/Carl Gustav M45/G_20P.wav",
       "keepMs": 250,
       "fadeMs": 80,
       "max": 2,
@@ -82,45 +82,45 @@
     },
     {
       "key": "gun.shotgun.fp",
-      "file": "Nova/O_21P.wav",
+      "file": "lib/Prepared SFX Library/Nova/O_21P.wav",
       "keepMs": 60,
       "fadeMs": 60
     },
     {
       "key": "gun.shotgun.fp",
-      "file": "Model 12/K_22P.wav",
+      "file": "lib/Prepared SFX Library/Model 12/K_22P.wav",
       "keepMs": 60,
       "fadeMs": 60
     },
     {
       "key": "gun.shotgun.tp",
-      "file": "Nova/O_17P.wav",
+      "file": "lib/Prepared SFX Library/Nova/O_17P.wav",
       "keepMs": 150,
       "fadeMs": 60
     },
     {
       "key": "gun.shotgun.far",
-      "file": "Nova/O_17P.wav",
+      "file": "lib/Prepared SFX Library/Nova/O_17P.wav",
       "keepMs": 300,
       "fadeMs": 80,
       "gainDb": -2
     },
     {
       "key": "gun.dmr.fp",
-      "file": "Mosin Nagant/M_21P.wav",
+      "file": "lib/Prepared SFX Library/Mosin Nagant/M_21P.wav",
       "keepMs": 70,
       "fadeMs": 70,
       "max": 3
     },
     {
       "key": "gun.dmr.tp",
-      "file": "Mosin Nagant/M_26P.wav",
+      "file": "lib/Prepared SFX Library/Mosin Nagant/M_26P.wav",
       "keepMs": 150,
       "fadeMs": 60
     },
     {
       "key": "gun.dmr.far",
-      "file": "Mosin Nagant/M_26P.wav",
+      "file": "lib/Prepared SFX Library/Mosin Nagant/M_26P.wav",
       "keepMs": 300,
       "fadeMs": 80,
       "max": 2,
@@ -128,22 +128,323 @@
     },
     {
       "key": "gun.pistol.fp",
-      "file": "Walther PPQ/X_39P.wav",
+      "file": "lib/Prepared SFX Library/Walther PPQ/X_39P.wav",
       "keepMs": 45,
       "fadeMs": 50
     },
     {
       "key": "gun.pistol.tp",
-      "file": "Walther PPQ/X_31P.wav",
+      "file": "lib/Prepared SFX Library/Walther PPQ/X_31P.wav",
       "keepMs": 120,
       "fadeMs": 50
     },
     {
       "key": "gun.pistol.far",
-      "file": "Walther PPQ/X_31P.wav",
+      "file": "lib/Prepared SFX Library/Walther PPQ/X_31P.wav",
       "keepMs": 250,
       "fadeMs": 80,
       "gainDb": -2
+    },
+    {
+      "key": "rl.pistol.release",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          95,
+          165
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "key": "rl.pistol.out",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          570,
+          660
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "rl.pistol.in",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          650,
+          770
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "rl.pistol.seat",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1025,
+          1185
+        ]
+      ],
+      "gainDb": -2
+    },
+    {
+      "key": "rl.pistol.bolt",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1180,
+          1330
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "key": "rl.shotgun.shell",
+      "file": "small/shotgun/x/ShotgunSounds/4 Shell Reload.mp3",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          65,
+          310
+        ],
+        [
+          1145,
+          1460
+        ],
+        [
+          2205,
+          2520
+        ],
+        [
+          3260,
+          3470
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "rl.shotgun.shell",
+      "file": "small/shotgun/x/ShotgunSounds/Subsequent Shells.mp3",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          670,
+          990
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "rl.shotgun.shell",
+      "file": "small/shotgun/x/ShotgunSounds/First Shell.mp3",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          360,
+          600
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "rl.shotgun.pump",
+      "file": "small/shotgun/x/ShotgunSounds/Rack.mp3",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          630,
+          1045
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "key": "rl.shotgun.pump",
+      "file": "small/shotgun/x/ShotgunSounds/4 Shell Reload.mp3",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          4470,
+          4900
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "key": "rl.shotgun.pump",
+      "file": "mech/shotguncock_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          45,
+          385
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "key": "rl.rifle.release",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          145,
+          300
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "key": "rl.rifle.out",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          290,
+          425
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "rl.rifle.out",
+      "file": "mech/gunreload1.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          120,
+          285
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "rl.rifle.in",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1040,
+          1195
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "rl.rifle.in",
+      "file": "mech/gunreload1.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          680,
+          895
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "rl.rifle.seat",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1190,
+          1300
+        ]
+      ],
+      "gainDb": -2
+    },
+    {
+      "key": "rl.rifle.bolt",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1285,
+          1445
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "key": "rl.rifle.bolt",
+      "file": "mech/gunreload1.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1285,
+          1445
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "key": "rl.detail",
+      "file": "mech/equipmentclicks.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          135,
+          310
+        ],
+        [
+          2060,
+          2160
+        ],
+        [
+          2385,
+          2490
+        ],
+        [
+          3790,
+          4140
+        ],
+        [
+          5455,
+          5630
+        ]
+      ],
+      "gainDb": -10
+    },
+    {
+      "key": "dry",
+      "file": "mech/equipmentclicks.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          2275,
+          2340
+        ]
+      ],
+      "gainDb": -8
     }
   ],
   "hybrids": [

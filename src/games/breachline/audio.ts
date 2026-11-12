@@ -69,6 +69,12 @@ const BED_GAIN: Record<Space, number> = { hard: 0.5, soft: 0.35, corridor: 0.5, 
  * public/THIRD_PARTY_NOTICES.txt. Relative to the page, like the rest of the site's assets. If it cannot be
  * loaded, the synthesised guns play instead. */
 export const PACK_URL: string | null = 'audio/breachline/pack.json';
+/** What the pack supplies (audio-pack.planA.json): the synthesis skips these while the pack loads, and renders them
+ * if it fails. Reload slots and dry fire are recorded too (CC0 handling sounds; see THIRD_PARTY_NOTICES). */
+const PACK_KEYS: string[] = [
+  ...(['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol'] as const).flatMap(w => ['fp', 'tp', 'far'].map(v => `gun.${w}.${v}`)),
+  ...['release', 'out', 'in', 'seat', 'bolt'].flatMap(b => [`rl.rifle.${b}`, `rl.pistol.${b}`]), 'rl.shotgun.shell', 'rl.shotgun.pump', 'dry',
+];
 
 export function createSfx(enabled: () => boolean, options: { ambience?: boolean; override?: Record<string, { sr: number; takes: number[][] }>; pack?: string | null } = {}): Sfx {
   const packUrl = options.pack === undefined ? PACK_URL : options.pack;
@@ -93,7 +99,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     Object.assign(eng.ear, ear);
     // With a pack configured the synthesised guns are not rendered (they would only be thrown away); if the pack
     // cannot be loaded they are rendered afterwards.
-    const packKeys = packUrl ? (['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol'] as const).flatMap(w => ['fp', 'tp', 'far'].map(v => `gun.${w}.${v}`)) : [];
+    const packKeys = packUrl ? PACK_KEYS : [];
     void eng.load(packKeys);
     if (packUrl) { const e = eng; packDone = e.loadPack(packUrl).then(async ok => { if (!ok) await e.fill(packKeys.filter(k => !e.packed.has(k))); else { const missing = packKeys.filter(k => !e.packed.has(k)); if (missing.length) await e.fill(missing); } return ok; }); }
     return eng;
@@ -151,8 +157,24 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
       if (sprint || Math.random() < 0.3) play('gear', at ? 'world' : 'near', at, { gain: loud * (at ? 1 : 0.6), wet: 0.1, ref: 2, reach: 18 });
     },
     reload(seconds, at, w, empty) {
-      const cls = RELOAD_CLASS[w ?? 'ar'], beats = RELOADS[w ?? 'ar'][empty ? 'empty' : 'tactical'];
-      for (const b of beats) play(eng?.has(`rl.${cls}.${b.name}`) ? `rl.${cls}.${b.name}` : `rl.rifle.${b.name}`, at ? 'world' : 'near', at, { delay: seconds * b.at, gain: at ? 1 : 0.8, wet: 0.2, ref: 2, reach: 22, hrtf: true });
+      // Each beat on the reloads.ts timeline plays its slot: a recorded take where the pack has one (the SMG borrows
+      // the rifle's, a touch faster), else the synthesised beat. A little timing and level drift per beat, handling
+      // detail between beats, and on an empty reload the magazine hits the floor, so it is never a clean row of clicks.
+      const id = w ?? 'ar', cls = RELOAD_CLASS[id], beats = RELOADS[id][empty ? 'empty' : 'tactical'], e = start();
+      if (!e) return;
+      const slot = (b: string) => e.packed.has(`rl.${cls}.${b}`) ? `rl.${cls}.${b}`
+        : cls !== 'shotgun' && cls !== 'pistol' && e.packed.has(`rl.rifle.${b}`) ? `rl.rifle.${b}`
+        : e.has(`rl.${cls}.${b}`) ? `rl.${cls}.${b}` : `rl.rifle.${b}`;
+      const base = { wet: 0.2, ref: 2, reach: 22, hrtf: true } as const, bus: BusName = at ? 'world' : 'near', fast = cls === 'smg' ? 1.08 : 1;
+      let prev = -1;
+      for (const b of beats) {
+        const t = Math.max(0, seconds * b.at + (Math.random() - 0.5) * 0.03);
+        play(slot(b.name), bus, at, { ...base, delay: t, gain: (at ? 1 : 0.8) * (0.85 + Math.random() * 0.3), rate: fast * (0.97 + Math.random() * 0.06) });
+        if (prev >= 0 && t - prev > 0.25 && Math.random() < 0.6) play(e.packed.has('rl.detail') ? 'rl.detail' : 'gear', bus, at, { ...base, delay: prev + (t - prev) * (0.3 + Math.random() * 0.4), gain: 0.35 + Math.random() * 0.2, rate: 0.9 + Math.random() * 0.3 });
+        // The magazine hitting the floor (synthetic for now: no licensed take yet), light and without a thump.
+        if (empty && b.name === 'out') play('drop.weapon', bus, at, { ...base, delay: t + 0.32 + Math.random() * 0.1, gain: 0.18, rate: 1.7, lowpass: 9000 });
+        prev = t;
+      }
     },
     melee(at) { play('melee', at ? 'world' : 'near', at, { wet: 0.2, ref: 2, reach: 20 }); },
     crumble(wood, big, at) {

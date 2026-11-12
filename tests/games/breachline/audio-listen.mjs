@@ -50,6 +50,10 @@ if (set === 'guns') {
   for (const w of ['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol']) { chain([`shot-${w}-fp-in`, `shot-${w}-fp-out`, `shot-${w}-10m-in`, `shot-${w}-60m-out`], `a1-gun-${w}.wav`); files.push(`a1-gun-${w}.wav`); }
   chain(['auto-ar-fp', 'auto-carbine-fp', 'auto-smg-fp'], 'a1-automatic.wav'); files.push('a1-automatic.wav');
 }
+if (set === 'reloads') {
+  // The owner's set after step 2: every reload, tactical then empty, weapon by weapon.
+  for (const w of ['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol']) { chain([`reload-${w}`, `reload-${w}-empty`], `a2-reload-${w}.wav`); files.push(`a2-reload-${w}.wav`); }
+}
 let total = 0;
 for (const f of files) { const b = statSync(join(out, f)).size; total += b; console.log(`${f} ${(b / 1024).toFixed(0)} KB`); }
 console.log(`total ${(total / 1048576).toFixed(2)} MB`);

@@ -167,6 +167,50 @@ change checked against the reference sheets until every gun is within about 1.0 
    distance to the reference, and searches the gun's parameters (a few dozen) to minimise it. Then the takes'
    spread sets the variant range. Indoor rooms are not covered by these references and stay as designed.
 
+## Route A, step 2: reloads from real recordings (2026-11-12)
+
+**Sources.** I read each page myself; all are CC0 1.0 on OpenGameArt:
+- *"Handgun Reload Sound Effect"* by zer0_sol (`reload.wav`).
+- *"Shotgun Reload Sound Effects"* by zer0_sol (`shotgunsounds.zip`).
+- *"Gun Reload Sounds"* by SpringySpringo (assault rifle reload, gun reload, shotgun cock).
+- *"Equipment Clicks II"* by LFA.
+
+All are credited in `public/THIRD_PARTY_NOTICES.txt`. Also checked and not used:
+- *"Gun Reload Sound Effects"* by BMacZero (CC0): `clipload1` carries a steady 900 Hz whistle.
+- *"Handling Guns"*: CC-BY-SA, so rejected.
+- *"2 Metal Weapon Clicks"* by Michel Baradari, and *"Shotgun Shoot Reload"* (CC-BY 3.0): usable with credit, not
+  yet needed.
+- *"Equipment Clicks III"* by LFA (CC0): many clean clicks, kept in reserve.
+
+**Slots in the pack** (cut by time with a 3 ms fade-in and a 30 ms fade-out, levelled):
+- Pistol: release, out, in, seat and slide, one take each, from `reload.wav`.
+- Shotgun: 6 shell inserts and 3 pumps (zer0_sol's "Rack" with its opening hum cut, the rack at the end of
+  "4 Shell Reload", and SpringySpringo's shotgun cock).
+- Rifle class, used by the AR, carbine and DMR, and by the SMG played 8% faster: release, out ×2, in ×2, seat,
+  and bolt ×2, from SpringySpringo's two reloads.
+- 5 handling clicks and a dry-fire click from LFA.
+
+The pack is now **472 KB** (guns 316 KB). The memory bank is **11.67 MB** with the pack, under the 12 MB budget,
+because the synthesis skips everything the pack supplies.
+
+**Sequencer** (`audio.ts` `reload`): each beat in `reloads.ts` plays its slot, recorded where the pack has one,
+with ±15 ms of timing and ±1.3 dB of level drift and ±3% rate. A handling click falls between beats more than
+0.25 s apart, 60% of the time. On an empty reload the magazine drops (synthetic, light) about 0.35 s after "out".
+
+**Still missing** (for the researcher):
+- separate AR, carbine, SMG and DMR magazine and bolt takes (they share one rifle recording);
+- a DMR bolt-action cycle;
+- a charging-handle pull distinct from the bolt release;
+- a magazine hitting hard floor and carpet;
+- pouch and cloth handling;
+- brass casings on concrete and tile, and a shotgun hull on the floor;
+- a weapon swap and sling move;
+- grenade pin, spoon and throw.
+
+Production build re-checked after adding the reloads: `pack.json` and `pack.ogg` load, no errors or policy
+violations at 6x throttle, and the pack is decoded and in place 3.3 s after the context starts. Tests: 136 unit
+tests, `audio.spec` 3/3, `play.spec` 6/6.
+
 ## Route A, step 1: the guns are real recordings (2026-11-12)
 
 The owner chose A ("i would pick a - real") and said the reloads need work. All six guns now play real CC0 takes:
@@ -479,7 +523,7 @@ rooms), `listen/p1-walls.wav` (a rifle through 0, 1 and 3 wallboards, then brick
 
 ## Still weak
 
-- Reloads are synthetic and are the owner's named complaint: step 2.
+- Reloads now use real handling recordings, but the four magazine weapons share one rifle recording, and the cloth and magazine-drop layers are still synthetic.
 
 - Guns are synthetic: weighty and distinct on measurement, but not recordings. The SMG and pistol are the least
   distinct pair. Reloads are clean beats without hand or cloth detail between them.

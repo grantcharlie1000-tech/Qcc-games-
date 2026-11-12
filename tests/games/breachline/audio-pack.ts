@@ -12,7 +12,9 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** `burst`: the file is automatic fire; shots are split 60 ms apart on an 8 dB rise (single shots need 300 ms and 15 dB). */
-export interface PackTake { key: string; file: string; keepMs: number; fadeMs: number; max?: number; gainDb?: number; burst?: boolean; skip?: number }
+/** `ranges`: cut these [start, end] ms spans as takes (for handling sounds with no single onset), with a 3 ms fade-in
+ * and `fadeMs` out, instead of finding shots. */
+export interface PackTake { key: string; file: string; keepMs: number; fadeMs: number; max?: number; gainDb?: number; burst?: boolean; skip?: number; ranges?: [number, number][] }
 /** `hybrids`: keys whose takes are also recombined (each take's first 4 ms joined to another's body), for guns with
  * few takes, so automatic fire never alternates between two. */
 export interface PackManifest { takes: PackTake[]; loudness?: number; bitrate?: number; hybrids?: string[] }
@@ -64,8 +66,10 @@ export function buildPack(manifest: PackManifest, sourceDir: string, outDir: str
   const emit = (key: string, y: Float32Array) => { (index.keys[key] ??= []).push({ start: at, length: y.length }); parts.push(y, new Float32Array(GAP)); at += y.length + GAP; };
   for (const t of manifest.takes) {
     const x = decode(join(sourceDir, t.file));
-    for (const o of onsets(x, t.burst).slice(t.skip ?? 0, (t.skip ?? 0) + (t.max ?? 99))) {
-      const y = cut(x, o, t.keepMs, t.fadeMs), g = Math.pow(10, (target - shortTerm(y) + (t.gainDb ?? 0)) / 20);
+    const cuts = t.ranges ? t.ranges.map(([a, b]) => { const y = cut(x, Math.round(SR * a / 1000) + Math.round(SR * 0.002), b - a, t.fadeMs); for (let i = 0; i < Math.min(y.length, SR * 0.003); i++) y[i] *= i / (SR * 0.003); return y; })
+      : onsets(x, t.burst).slice(t.skip ?? 0, (t.skip ?? 0) + (t.max ?? 99)).map(o => cut(x, o, t.keepMs, t.fadeMs));
+    for (const y0 of cuts) {
+      const y = y0, g = Math.pow(10, (target - shortTerm(y) + (t.gainDb ?? 0)) / 20);
       let pk = 0; for (let i = 0; i < y.length; i++) { y[i] *= g; pk = Math.max(pk, Math.abs(y[i])); }
       if (pk > 0.98) for (let i = 0; i < y.length; i++) y[i] *= 0.98 / pk; // never clip the encoder
       emit(t.key, y);

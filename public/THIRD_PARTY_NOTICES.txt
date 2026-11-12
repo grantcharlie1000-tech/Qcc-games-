@@ -3844,3 +3844,10 @@ License: CC0 1.0 Universal (public domain dedication; "CC0 NO RIGHTS RESERVED").
 Takes used: AR-15, Norinco SKS, Carl Gustav M45, Benelli Nova, Winchester Model 12, Mosin-Nagant, Walther PPQ.
 We trimmed, high-passed, levelled, recombined and re-encoded the takes (Opus); the game plays them through its own
 room, wall and distance processing.
+
+Breachline reload and handling sounds (also in public/audio/breachline/pack.ogg), all CC0 1.0, from OpenGameArt.org:
+- "Handgun Reload Sound Effect" by zer0_sol, https://opengameart.org/content/handgun-reload-sound-effect (pistol magazine and slide)
+- "Shotgun Reload Sound Effects" by zer0_sol, https://opengameart.org/content/shotgun-reload-sound-effects (shell inserts, racks)
+- "Gun Reload Sounds" by SpringySpringo, https://opengameart.org/content/gun-reload-sounds (rifle magazine, bolt, shotgun cock)
+- "Equipment Clicks II" by LFA, https://opengameart.org/content/equipment-clicks-ii (handling clicks, dry fire)
+We cut these into single beats, high-passed, levelled and re-encoded them (Opus).

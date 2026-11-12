@@ -1,6 +1,20 @@
 # Breachline sound: listening guide
 
-## Route A, step 1: the guns from real recordings (2026-11-12): please play these first
+## Route A, step 2: reloads from real handling recordings (2026-11-12): please play these first
+
+You said the reloads need work. Each reload is now a sequence of **real recorded handling sounds** (CC0, from
+OpenGameArt: zer0_sol's handgun and shotgun reloads, SpringySpringo's gun reloads, LFA's equipment clicks), one per
+step of the reload animation, with small handling clicks between steps and a little natural timing and level drift.
+
+| File | What to listen for |
+| --- | --- |
+| `a2-reload-ar.wav`, `-carbine`, `-smg`, `-shotgun`, `-dmr`, `-pistol` | Each weapon's reload with ammunition left, then from empty. From empty, the magazine drops to the floor and the bolt or slide slams home at the end. The shotgun loads shell by shell (and from empty, one through the port and a pump first). Does it sound like real hands on a real gun? |
+
+Still synthetic: the cloth move as a new magazine comes out of the pouch, and the magazine hitting the floor (no
+licensed recording yet). The AR, carbine and DMR share one rifle reload recording; the SMG uses it slightly
+faster. More takes are being sought.
+
+## Route A, step 1: the guns from real recordings (2026-11-12)
 
 You chose A. All six guns are now **real public-domain (CC0) recordings** from The Free Firearm Sound Library by
 Ben Jaszczak, Brian Nelson, Kevin Heras and Matthew Nanney: AR-5 = AR-15, Tern C8 carbine = SKS (so it differs
