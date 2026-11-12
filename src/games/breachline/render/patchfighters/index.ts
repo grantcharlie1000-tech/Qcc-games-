@@ -250,6 +250,7 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
   function drop(f: Fig) { scene.remove(f.group); for (const m of f.mats) m.dispose(); f.weaponMat.dispose(); }
 
   /** Job 12.2: the last shot of each shooter (origin and look), to place the wound its hit makes. */
+  let lastMatch: Match | null = null;
   const lastShot = new Map<number, { x: number; y: number; z: number; yaw: number; pitch: number; w: WeaponId }>();
   let lastBoom: { x: number; y: number; z: number } | null = null;
   const SEGS: [number, number, number][] = [[B.head, -1, 0.11], [B.spine2, B.neck, 0.15], [B.spine1, B.spine2, 0.15], [B.pelvis, B.spine1, 0.15],
@@ -497,12 +498,20 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
       if (fallback) return fallback.muzzle(i, out);
       const f = figs[i];
       if (!f || !f.group.visible) return false;
+      // Pose first, from the shooter's state at the shot (a fighter that raises its gun and fires in the same tick
+      // would otherwise fire from where the gun was last drawn), then read the muzzle from that pose.
+      const p = lastMatch?.players[i];
+      if (p && p.alive && !f.rag) {
+        const inp = f.input; inp.yaw = f.yaw = p.yaw; inp.pitch = f.pitch = p.pitch; inp.ads = p.ads; inp.sprint = p.sprint; inp.crouch = f.crouch;
+        f.anim.update(inp, 0);
+      }
       f.anim.fire();
-      f.weapon.updateWorldMatrix(true, false);
+      f.group.updateMatrixWorld(true);
       out.copy(f.anim.w.muzzle).applyMatrix4(f.weapon.matrixWorld);
       return true;
     },
     handle(events: readonly SimEvent[], m: Match, self: number) {
+      lastMatch = m;
       if (fallback) return fallback.handle(events, m, self);
       for (const e of events) {
         if (e.e === 'shot') lastShot.set(e.id, e);

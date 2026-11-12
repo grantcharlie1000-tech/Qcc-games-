@@ -79,8 +79,10 @@ for (const [name, at] of PLACES) {
     await hold({}, 0.5);
     if (name === 'lab') {
       // A bot in front of us, firing: several frames, one will catch its flash.
-      await page.evaluate(() => { const h = window.__breachlineTest, s = h.state(), me = s.players[s.self], foe = s.players.find(p => p.squad !== me.squad && p.alive); if (foe) h.place(foe.x, foe.z + 4, 0, -0.05); h.advance(0.05); });
-      for (let i = 0; i < 8; i++) { await page.evaluate(() => window.__breachlineTest.advance(0.12)); await page.evaluate(() => window.__breachlineTest.draw()); await shot(`bot-fire-${i}`); }
+      for (const [dx, dz] of [[0, 3.5], [3.5, 0], [0, -3.5], [-3.5, 0]]) {
+        await page.evaluate(([dx, dz]) => { const h = window.__breachlineTest, s = h.state(), me = s.players[s.self], foe = s.players.find(p => p.squad !== me.squad && p.alive); if (foe) h.place(foe.x + dx, foe.z + dz, Math.atan2(dx, dz), -0.08); h.advance(0.05); }, [dx, dz]);
+        for (let i = 0; i < 4; i++) { await page.evaluate(() => window.__breachlineTest.advance(0.1)); await page.evaluate(() => window.__breachlineTest.draw()); await shot(`bot-fire-${dx}-${dz}-${i}`); }
+      }
     }
   } else if (job === 'roll') {
     const ROLLS = JSON.parse(process.env.ROLLS ?? '[0, 0.35, -0.35, 0.52]');

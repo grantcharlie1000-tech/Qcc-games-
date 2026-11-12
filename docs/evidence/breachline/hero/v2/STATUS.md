@@ -127,8 +127,9 @@ segments still merge into one mass at hip distance.
   muzzle as the player sees it (same screen place, same distance from the eye), and scene.ts uses it (two lines,
   approved). The viewmodel flash sits 1.5 cm ahead of the muzzle socket. Test: `tests/games/breachline/muzzle.test.ts`.
   Evidence `muzzle-flash-hip-aimed.jpg` (flash held up for the slow capture with the dev switch `__heroFlashHold`).
-- Third person: `patchfighters` takes the muzzle from the weapon's matrix as last drawn, so a fighter that snaps to aim
-  and fires in the same tick fires from where the gun was. Not yet captured or changed.
+- Third person: `patchfighters` took the muzzle from the weapon's matrix as last drawn. Fixed: `muzzle()` now poses the
+  fighter from the shooter's state at the shot (aim, yaw, pitch; no time passes) and reads the muzzle from that pose.
+  Not yet shown in a frame: `third-person-bot-attempt.jpg` has a bot in view, but it did not fire while captured.
 - Cost per frame (`hero-v2-game.mjs` job `cost`, mean of 30 drawn frames, software rasteriser): script 0.09 to 0.40 ms
   (hip, aimed, firing, reloading, corridor and Lab), 3 draw calls, 19.6k triangles. Firing creates no geometry, material,
   texture or program (the warm test checks programs and textures after a firefight). Per-frame allocations removed from
