@@ -1061,9 +1061,9 @@ export class MoviesView {
   this.frameReported=true;
   this.supervisor?.message('progress');
   if(signal.kind==='ended'){this.episodeEnded();return;}
-  // FrameXTV progress still updates the local resume position. It does not count toward
-  // Popular in Marlborough: the live player contract has not been verified, and the
-  // historical message shape must not be treated as one.
+  // The native FrameXTV player reports an advancing clock. Unsupported nested players
+  // stay uncounted. Resume storage is never read to qualify a popularity contribution.
+  moviePopularity.sample(this.route.id??'',signal.currentTime,performance.now(),!this.suspended&&!document.hidden&&!this.root.closest('[inert]'));
   this.frameTime=signal.currentTime;
   if(signal.duration)this.frameDuration=signal.duration;
   // A report more than 5 seconds before the end ends a finished state. A report without a duration uses the one known for this frame.
@@ -1168,7 +1168,7 @@ export class MoviesView {
   let supervisor=this.supervisor;
   if(!supervisor||this.supervisorKey!==key){supervisor?.stop();supervisor=new PlaybackSupervisor(key,this.supervisorEvents());this.supervisor=supervisor;this.supervisorKey=key;}
   this.frameStart=this.storage.data.progress[key]??0;this.lifeShown=false;
-  frame.addEventListener('load',()=>{if(this.frame===frame)this.supervisor?.loaded();});
+  frame.addEventListener('load',()=>{if(this.frame===frame){moviePopularity.reset();this.supervisor?.loaded();}});
   supervisor.start(provider);
  }
  // A loaded provider page takes its own clicks; a ready or playing frame may show its resume pill.
