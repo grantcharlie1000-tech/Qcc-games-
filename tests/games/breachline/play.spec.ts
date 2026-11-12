@@ -162,3 +162,17 @@ test('nothing reads the game canvas back during a live match',async({page})=>{
   expect(await page.evaluate(()=>(window as unknown as {__readbacks:number}).__readbacks)).toBe(0);
   expect(errors).toEqual([]);
 });
+
+test('?perf=1 shows the performance readout in a match, and F3 hides it',async({page})=>{
+  const errors=watch(page);
+  await page.goto('/?festive=off&perf=1#/game/breachline');
+  await page.waitForFunction(()=>window.__breachlineTest!==undefined,undefined,{timeout:60000});
+  await action(page);
+  await page.evaluate(()=>window.__breachlineTest!.freeze(false));
+  const readout=page.locator('.bl-perf');
+  await expect(readout).toContainText(/\d+ fps/,{timeout:15_000});
+  await expect(readout).toContainText('draws');
+  await page.keyboard.press('F3');
+  await expect(readout).toBeHidden();
+  expect(errors).toEqual([]);
+});

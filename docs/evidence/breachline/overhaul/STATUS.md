@@ -4,6 +4,7 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the owner
 
+- **Seeing your numbers.** Add `?perf=1` to the game's address, or press F3 during a match. A screenshot of that corner tells us what your machine is doing.
 - **Why the game crawled on a fast PC.** The arcade's adaptive text colour reads the game's picture back from the graphics card about every 140 ms, so the card has to stop and wait each time. Breachline now opts out.
 - **Other games.** The other 3D (WebGL) games in the arcade most likely have the same slowdown, and that code lives in the shared arcade interface (`src/ui/glass-ink.ts`, `canvas-ink.ts`).
 - **Smaller cost.** The same feature also scans the page's layout every 140 ms, which costs about 1 to 2 ms a frame even with the readback gone.
@@ -11,6 +12,15 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 ## For the planner (latest first)
 
 ### Performance
+
+**Job 2: the readout.** Add `?perf=1` to the address, or press F3 in a match. A small corner panel then shows:
+- fps, with the average and worst frame time over the last second;
+- script time per frame;
+- draw calls and triangles;
+- the render size, the quality setting and the post tier;
+- the graphics card's name, with "software" in red when it is a CPU rasteriser.
+
+It is checked by a browser test, and there is a screenshot in `perf/readout.png`.
 
 **Job 1: where the time goes.** These are CPU profiles of a live 5v5 bot match on the built site, with the player firing and walls breaking, 15 s per tier. The tables are in `perf/profile-*.txt`, and the tools are `scripts/breachline-assets/perfprofile.mjs` and `perfanalyze.py`.
 
@@ -615,7 +625,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** performance lead. Job 1 answered: the arcade's text-ink readback (fixed for Breachline). Next: the perf readout, then Auto, then particles.
+**Where I am (keep current):** performance lead. Readback fixed, resolution thrash fixed, readout in. Next: Auto that protects the frame rate, then particles.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

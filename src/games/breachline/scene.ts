@@ -65,7 +65,7 @@ export interface BreachScene {
   project(x: number, y: number, z: number): { x: number; y: number; front: boolean };
   /** Where the camera is and which way it faces, for sound. */
   readonly ear: { x: number; y: number; z: number; yaw: number };
-  readonly stats: { calls: number; triangles: number; scale: number; level: number; post?: string; art?: string; cpu?: number; programs?: number; textures?: number; geometries?: number; ready?: boolean };
+  readonly stats: { calls: number; triangles: number; scale: number; level: number; gpu?: string; software?: boolean; size?: string; post?: string; art?: string; cpu?: number; programs?: number; textures?: number; geometries?: number; ready?: boolean };
   dispose(): void;
 }
 
@@ -313,6 +313,10 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
 
   const ear = { x: 0, y: 1.6, z: 0, yaw: 0 };
   const stats: BreachScene['stats'] = { calls: 0, triangles: 0, scale, level: level.triangles };
+  // The graphics card's name, for the performance readout; a CPU rasteriser is flagged.
+  { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info');
+    stats.gpu = String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '');
+    stats.software = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(stats.gpu); }
   let orbit = 0, lastOrigin = { x: 0, y: 1, z: 0 }, time = 0;
   const cam = { x: 0, y: 12, z: 30, yaw: 0, pitch: -0.3, set: false };
 
@@ -324,8 +328,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     const q = QUALITIES[quality], graded = post.tier !== 'off', ratio = Math.min(window.devicePixelRatio || 1, q.cap) * (graded ? 1 : scale), key = `${width}x${height}@${ratio}`;
     if (key !== sized) { sized = key; renderer.setPixelRatio(ratio); renderer.setSize(width, height, false); }
     renderer.getDrawingBufferSize(drawSize);
-    post.setSize(Math.max(1, Math.round(drawSize.x * (graded ? scale : 1))), Math.max(1, Math.round(drawSize.y * (graded ? scale : 1))));
-    stats.scale = scale;
+    const rw = Math.max(1, Math.round(drawSize.x * (graded ? scale : 1))), rh = Math.max(1, Math.round(drawSize.y * (graded ? scale : 1)));
+    post.setSize(rw, rh);
+    stats.scale = scale; stats.size = `${rw}x${rh}`;
   }
   let resizedAt = -Infinity;
   /** Lowers the resolution when frames run long and raises it again when there is headroom. */
