@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Evidence for the map-fill plan's section 12.3: one set piece of each family, intact, damaged and wrecked.
- * Writes <out>/<family>-<state>.png; join them into strips afterwards.
+ * Writes <out>/<family>-<state>.png (960 x 640); `--sheet` also stacks each family's three at 640 px wide.
  *
  *   node scripts/breachline-assets/setpieces.mjs --out <dir> [--only skip,pallets]
  */
@@ -21,13 +21,21 @@ await page.evaluate(() => { const h = window.__breachlineTest; h.start({ seed: 7
 await page.waitForFunction(() => window.__breachlineTest.stats().art === 'env' && window.__blPieces, undefined, { timeout: 180000, polling: 500 });
 await page.addStyleTag({ content: '.bl-toast, .bl-banner, .bl-prompt, .bl-prep, .bl-hud { visibility: hidden !important; }' });
 await mkdir(out, { recursive: true });
-const picks = await page.evaluate(() => { const seen = new Map(); window.__blPieceDefs.forEach((p, i) => { if (!seen.has(p.family)) seen.set(p.family, i); }); return [...seen]; });
+// One piece per family (the first of each), with a few named instead: a sofa seen without the Lobby table in front, and
+// the server rack as its own entry.
+const NAMED = { sofa: 'break room sofa', rack: 'network cabinet', cabinet: 'storage cabinet' };
+const picks = await page.evaluate(named => {
+  const defs = window.__blPieceDefs, seen = new Map();
+  defs.forEach((p, i) => { if (!seen.has(p.family)) seen.set(p.family, i); });
+  for (const [label, name] of Object.entries(named)) seen.set(label, defs.findIndex(p => p.name === name));
+  return [...seen];
+}, NAMED);
 for (const [family, i] of picks) {
   if (only && !only.split(',').includes(family)) continue;
   for (const [s, name] of [[0, 'intact'], [1, 'damaged'], [2, 'wrecked']]) {
     await page.evaluate(([i, s]) => {
       const h = window.__breachlineTest, p = window.__blPieceDefs[i], big = Math.max(p.x1 - p.x0, p.z1 - p.z0) > 2;
-      const [x, z, yaw] = window.__blPieceView(i, big ? 3.2 : 1.9);
+      const [x, z, yaw] = window.__blPieceView(i, big ? 3.4 : 2.2);
       window.__blPieces.force(i, s);
       h.place(x, z, yaw, p.y1 > 1.5 ? -0.12 : -0.38); h.advance(0.1); for (let k = 0; k < 4; k++) h.draw();
     }, [i, s]);

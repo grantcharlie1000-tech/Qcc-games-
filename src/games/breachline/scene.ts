@@ -10,7 +10,7 @@ import { loadArtWorld, type ArtWorld } from './render/artworld';
 import { PanelBatches } from './render/panelbatch';
 import { Glass } from './render/glass';
 import { SetPieces } from './render/setpieces';
-import { SET_PIECES } from './render/setpieces-data';
+import { SET_PIECES, TEXTURED_PIECES } from './render/setpieces-data';
 import { MARKS, dressMaterial, familyMaterial, firstDressing, propMaterial, surfaceAt } from './render/surfacehit';
 import { boxes } from './models';
 import { chargeGeometry, deviceGeometry, deviceScreenTexture } from './render/kit';
@@ -588,9 +588,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
               glass.shot(e.x, e.y, e.z, d.x, d.y, d.z, tr.solid ? tr.t : 120);
               if (!tr.solid) return;
               const piece = pieces ? pieces.indexOf(tr.box ?? null) : -1;
-              if (piece >= 0) {
-                // A set piece: the round stops at its box, but the mark goes on the model surface the shooter sees.
-                pieces!.hit(piece);
+              if (piece >= 0) pieces!.hit(piece);
+              if (piece >= 0 && !TEXTURED_PIECES.has(SET_PIECES[piece].name)) {
+                // A modelled set piece: the round stops at its box, but the mark goes on the surface the shooter sees.
                 pieceSurface(piece, e.x, e.y, e.z, d.x, d.y, d.z, tr.t);
                 return;
               }

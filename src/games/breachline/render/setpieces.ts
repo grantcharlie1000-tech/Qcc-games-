@@ -7,7 +7,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Effects } from '../effects';
-import { SET_PIECES, frame, type SetPieceDef } from './setpieces-data';
+import { SET_PIECES, TEXTURED_PIECES, frame, type SetPieceDef } from './setpieces-data';
+import { MODEL_BOUNDS, SOFA_TILT, crateScale, drumSpots, sofaScale } from './setpiecemodels';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 export { frame };
 
 type V3 = [number, number, number];
@@ -54,19 +56,34 @@ class Kit {
     g.translate(0, 0, z0);
     this.parts.push(paint(g, hex, shade, this.as(hex)));
   }
+  /** An outline in z-y (across, up), extruded along x from x0 to x1 (a tarp's profile along a trailer). */
+  prismX(pts: [number, number][], x0: number, x1: number, hex: number, shade = 1) {
+    // Extruded along +z from a shape drawn at (-z, y), then turned a quarter about y: (x, y, z) -> (z, y, -x).
+    const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([z, y]) => new THREE.Vector2(-z, y))), { depth: x1 - x0, bevelEnabled: false });
+    g.rotateY(Math.PI / 2); g.translate(x0, 0, 0);
+    this.parts.push(paint(g, hex, shade, this.as(hex)));
+  }
   /** A bullet hole in a face looking along +z at depth z: a dark hole in a ring of bare, bright metal. */
   pock(x: number, y: number, z: number) {
     const a = 0.025 + this.r() * 0.02, turn: V3 = [0, 0, this.r() * 1.5];
     this.box(x - a, y - a, z, x + a, y + a, z + 0.003, 0xb8b4ac, 1.1, turn);
     this.box(x - a * 0.45, y - a * 0.45, z + 0.003, x + a * 0.45, y + a * 0.45, z + 0.005, 0x0a0a0a, 1, turn);
   }
+  /** A sphere (stuffing, clumps). */
+  ball(x: number, y: number, z: number, r: number, hex: number, shade = 1) {
+    const g = new THREE.IcosahedronGeometry(r, 1); g.translate(x, y, z);
+    this.parts.push(paint(g, hex, shade, this.as(hex)));
+  }
+  /** A soft cushion (a rounded box) w x h x d centred at (x, z) on the floor, turned by `yaw` and tipped by `tip`. */
+  cushion(x: number, z: number, w: number, h: number, d: number, hex: number, yaw = 0, tip = 0) {
+    const g = new RoundedBoxGeometry(w, h, d, 3, Math.min(h, d) * 0.45); g.rotateZ(tip); g.rotateY(yaw); g.translate(x, h / 2 + Math.abs(Math.sin(tip)) * w / 2, z);
+    this.parts.push(paint(g, hex, 1, SURF.fabric));
+  }
   /** No geometry of its own in this state (a model shows it): one hidden sliver, so the batch has an id. */
   none() { this.box(0, -0.01, 0, 0.002, -0.008, 0.002, 0x000000); }
   done(): THREE.BufferGeometry { const g = mergeGeometries(this.parts, false)!; for (const p of this.parts) p.dispose(); return g; }
 }
 
-/** sofa_02's width, depth and height, and how far its origin sits in front of its middle, in metres. */
-export const SOFA = [1.807, 0.812, 0.71, 0.041] as const;
 const WOODS = new Set([0x8a6a46, 0xa48662, 0x6a4e30, 0xc4a070, 0x7a6a50, 0x6a5a40]);
 const DARK = 0x1c1e20, STEEL = 0x8a8f94, WOOD = 0x8a6a46, PALLET = 0xa48662, CARD = 0xa88a62;
 /** Each family's builder: the local kit for a given state (0 intact, 1 damaged, 2 wrecked). */
@@ -79,28 +96,16 @@ const FAMILY_SURF: Record<string, number> = {
 };
 const BUILD: Record<string, (k: Kit, s: number, p: SetPieceDef) => void> = {
   cabinet(k, s, p) {
-    if (p.name === 'network cabinet' || p.name === 'UPS cabinet') {
-      // A server rack: black frame and side panels, a row of 1U and 2U units behind an open mesh door, status lights.
-      const { L, D, H } = k, BLK = 0x16181a;
-      k.box(0, 0, 0, L, H, D * 0.9, BLK);
-      for (const x of [0, L - 0.05]) k.box(x, 0, D * 0.9, x + 0.05, H, D, BLK, 1.1);
-      k.box(0, H - 0.08, D * 0.9, L, H, D, BLK, 1.1); k.box(0, 0, D * 0.9, L, 0.1, D, BLK, 1.1);
-      let y = 0.14, u = 0;
-      while (y < H - 0.2) {
-        const h = (u % 5 === 2 ? 0.088 : 0.044) - 0.004, dead = s === 2 && u % 4 === 1, gap = u % 9 === 6;
-        if (!gap) {
-          k.box(0.06, y, D * 0.82, L - 0.06, y + h, D * 0.9, u % 3 ? 0x2a2c30 : 0x3a3d42, dead ? 0.6 : 1);
-          if (!dead) for (let j = 0; j < 4; j++) k.box(0.1 + j * 0.03, y + h * 0.35, D * 0.9, 0.115 + j * 0.03, y + h * 0.65, D * 0.905, [0x30e050, 0x30e050, 0xf0a020, 0x3080f0][(u + j) % 4], 2.2);
-          for (let j = 0; j < 6; j++) k.box(L * 0.45 + j * 0.05, y + h * 0.3, D * 0.9, L * 0.45 + j * 0.05 + 0.03, y + h * 0.7, D * 0.902, 0x0c0c0c);
-        }
-        y += h + 0.004; u++;
-      }
-      // Damage: holes through units, then a sagging unit, hanging cables and debris under the rack.
-      for (let i = 0; i < (s === 0 ? 0 : s === 1 ? 5 : 12); i++) k.pock(0.1 + k.r() * (L - 0.2), 0.3 + k.r() * (H - 0.5), D * 0.905);
+    if (TEXTURED_PIECES.has(p.name)) {
+      // A server rack the art layer draws with its photo texture: only the damage, on its faces. Damaged: rounds
+      // through the units. Wrecked: more, a unit torn half out of the rack, cables hanging, debris below.
+      const { L, D, H } = k;
+      k.none();
+      for (let i = 0; i < (s === 0 ? 0 : s === 1 ? 7 : 16); i++) k.pock(0.08 + k.r() * (L - 0.16), 0.3 + k.r() * (H - 0.5), D + 0.002);
       if (s === 2) {
-        k.box(0.08, H * 0.45, D * 0.6, L - 0.08, H * 0.45 + 0.085, D * 0.95, 0x2a2c30, 0.8, [0.2, 0, 0.05]);
-        for (let i = 0; i < 4; i++) { const x = 0.15 + k.r() * (L - 0.3); k.box(x, H * 0.3 + k.r() * 0.3, D * 0.93, x + 0.012, H * 0.8, D * 0.945, [0x1a1a1a, 0x2a50a0, 0xc0a020, 0x1a1a1a][i], 1, [0.01, 0, k.r() * 0.3 - 0.15]); }
-        for (let i = 0; i < 6; i++) { const x = k.r() * L, z = D + 0.04 + k.r() * 0.4; k.box(x, 0, z, x + 0.12 + k.r() * 0.1, 0.02, z + 0.05 + k.r() * 0.05, i % 2 ? 0x1c1e20 : 0x3a3c3e, 1, [0, k.r() * 3, 0]); }
+        k.box(0.06, H * 0.48, D - 0.02, L - 0.06, H * 0.48 + 0.085, D + 0.025, 0x2a2c30, 0.9, [0.12, 0, 0.04]);
+        for (let i = 0; i < 5; i++) { const x = 0.12 + k.r() * (L - 0.24); k.box(x, H * 0.18 + k.r() * 0.3, D + 0.004, x + 0.012, H * 0.47, D + 0.016, [0x1a1a1a, 0x2a50a0, 0xc0a020, 0x1a1a1a, 0xc03020][i], 1, [0, 0, k.r() * 0.3 - 0.15]); }
+        for (let i = 0; i < 8; i++) { const x = k.r() * L, z = D + 0.04 + k.r() * 0.45; k.box(x, 0, z, x + 0.1 + k.r() * 0.12, 0.02 + k.r() * 0.03, z + 0.05 + k.r() * 0.06, i % 2 ? 0x1c1e20 : 0x3a3c3e, 1, [0, k.r() * 3, 0]); }
       }
       return;
     }
@@ -122,21 +127,86 @@ const BUILD: Record<string, (k: Kit, s: number, p: SetPieceDef) => void> = {
     if (s === 2) k.box(0.02, H - 0.25, D * 0.5, L - 0.02, H - 0.02, D * 0.98, hue, 0.8, [0.18, 0, 0]);
   },
   vending(k, s) {
-    const { L, D, H } = k;
-    k.box(0, 0, 0, L, H, D * 0.97, 0x8e1f22);
-    k.box(0.06, H * 0.32, D * 0.97, L * 0.66, H - 0.12, D * 0.985, s === 0 ? 0x9fc8e0 : s === 1 ? 0x6f8fa0 : 0x1a1d20, s === 0 ? 1.4 : 1);
-    for (let r = 0; r < 5 && s < 2; r++) for (let i = 0; i < 4; i++) k.box(0.1 + i * (L * 0.56 - 0.1) / 4, H * 0.36 + r * (H * 0.5) / 5, D * 0.8, 0.1 + (i + 0.8) * (L * 0.56 - 0.1) / 4, H * 0.36 + r * (H * 0.5) / 5 + 0.12, D * 0.95, [0xd04030, 0x3060c0, 0xe0b020, 0x30a050][(r + i) % 4]);
-    k.box(L * 0.7, H * 0.5, D * 0.97, L - 0.06, H * 0.62, D, 0x1c1e20); k.box(L * 0.7, 0.1, D * 0.97, L - 0.06, 0.3, D, 0x1c1e20);
-    if (s >= 1) for (let i = 0; i < (s === 1 ? 5 : 12); i++) { const x = 0.1 + k.r() * L * 0.5; k.box(x, 0.01, D + 0.05 + k.r() * 0.3, x + 0.06, 0.13, D + 0.12 + k.r() * 0.3, [0xd04030, 0x3060c0, 0xe0b020][i % 3]); }
+    // A drinks machine: a red cabinet with a lit header, a glass front over a dark interior where drinks stand in rows
+    // on spiral coils, a column with the display, keypad and coin slot, a delivery flap. Damaged: the glass cracked in
+    // stars round the holes, the header flickering dark. Wrecked: the glass gone (shards below), the rows half
+    // emptied onto the floor, the door dented.
+    const { L, D, H } = k, RED = 0x9a1e22, GW = L * 0.66, CANS = [0xd04030, 0x3060c0, 0xe0b020, 0x30a050, 0xe8e8e8];
+    // The body round an open bay for the glass: back, sides, the right-hand column, the header and the base.
+    k.box(0, 0, 0, L, H, D * 0.42, RED);
+    k.box(0, 0, D * 0.42, 0.04, H, D * 0.9, RED); k.box(GW + 0.04, 0, D * 0.42, L, H, D * 0.9, RED);
+    k.box(0.04, H - 0.22, D * 0.42, GW + 0.04, H, D * 0.9, RED); k.box(0.04, 0, D * 0.42, GW + 0.04, 0.42, D * 0.9, RED);
+    k.box(0, H - 0.22, D * 0.9, L, H, D, s === 2 ? 0x2a2a2a : 0xf0e6c8, s === 0 ? 2.0 : 1.2);
+    k.box(0, 0, D * 0.9, L, 0.12, D, RED, 0.8);
+    k.box(0.04, 0.12, D * 0.42, GW + 0.04, H - 0.22, D * 0.45, 0x0e1012);
+    k.box(0.04, 0.12, D * 0.45, 0.06, H - 0.22, D * 0.93, 0x2a2c2e); k.box(GW + 0.02, 0.12, D * 0.45, GW + 0.04, H - 0.22, D * 0.93, 0x2a2c2e);
+    const rows = 6, rh = (H - 0.62) / rows;
+    for (let r = 0; r < rows; r++) {
+      const y = 0.5 + r * rh;
+      k.box(0.06, y - 0.01, D * 0.45, GW + 0.02, y, D * 0.93, 0x5a5e62);
+      for (let i = 0; i < 6; i++) {
+        if (s === 2 && (r + i) % 3 !== 0) continue;
+        const x = 0.1 + i * (GW - 0.08) / 6;
+        k.cyl(x, D * 0.86, 0.032, y, y + rh * 0.62, CANS[(r * 2 + i) % 5], 1.1, [0, 0, 0], 10);
+        k.cyl(x, D * 0.86, 0.04, y, y + 0.012, 0x8a8e92, 0.9, [0, 0, 0], 10);
+      }
+    }
+    for (const x of [0.04, GW + 0.02]) k.box(x, 0.12, D * 0.93, x + 0.025, H - 0.22, D, RED, 0.9);
+    k.box(0.04, 0.12, D * 0.93, GW + 0.04, 0.42, D, RED, 0.9);
+    k.box(0.04, H - 0.25, D * 0.93, GW + 0.04, H - 0.22, D, RED, 0.9);
+    if (s < 2) for (let i = 0; i < 3; i++) { const x = 0.2 + i * 0.16, y = 0.7 + i * 0.25; k.box(x, y, D * 0.995, x + 0.012, y + 0.3, D, 0xb8c8d0, 0.9, [0, 0, 0.4]); }
+    k.box(0.12, 0.16, D * 0.93, GW - 0.04, 0.36, D * 0.95, 0x141414);
+    const px = GW + 0.08;
+    k.box(px, H * 0.62, D * 0.9, L - 0.05, H * 0.7, D * 0.92, 0x1a2a1a); k.box(px + 0.02, H * 0.64, D * 0.92, L - 0.07, H * 0.68, D * 0.925, s === 2 ? 0x101010 : 0x50e060, s === 2 ? 1 : 1.8);
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) k.box(px + 0.03 + c * 0.075, H * 0.42 + r * 0.06, D * 0.9, px + 0.08 + c * 0.075, H * 0.42 + r * 0.06 + 0.04, D * 0.925, 0xc8c8c0);
+    k.box(px + 0.06, H * 0.32, D * 0.9, px + 0.16, H * 0.36, D * 0.93, 0x2a2a2a);
+    // Damage.
+    if (s === 1) for (let i = 0; i < 4; i++) {
+      const x = 0.15 + k.r() * (GW - 0.25), y = 0.6 + k.r() * (H - 1.0);
+      k.pock(x, y, D * 0.997);
+      for (let j = 0; j < 5; j++) { const a = k.r() * 6.28, l = 0.08 + k.r() * 0.12; k.box(x - 0.002, y, D * 0.998, x + 0.002, y + l, D, 0xf0f4f6, 1.6, [0, 0, a]); }
+    }
+    if (s === 2) {
+      for (let i = 0; i < 14; i++) { const x = k.r() * L, z = D + 0.03 + k.r() * 0.5; k.box(x, 0, z, x + 0.03 + k.r() * 0.05, 0.004, z + 0.03 + k.r() * 0.04, 0xc8dce4, 1.4, [0, k.r() * 3, 0]); }
+      for (let i = 0; i < 12; i++) { const x = 0.05 + k.r() * (L - 0.1), z = D + 0.05 + k.r() * 0.45; k.cyl(x, z, 0.032, 0.032 - 0.06, 0.032 + 0.06, CANS[i % 5], 1.1, [Math.PI / 2, 0, k.r() * 3], 10); }
+      for (let i = 0; i < 6; i++) k.pock(0.1 + k.r() * (L - 0.2), 0.2 + k.r() * (H - 0.5), D);
+      k.box(L * 0.05, 0.3, D * 0.95, L * 0.4, 0.9, D * 0.99, RED, 0.7, [0, 0, 0.08]);
+    }
   },
+
   display(k, s) {
-    const { L, D, H } = k;
-    k.box(0, 0, 0, L, 0.1, D, DARK); k.box(0, H - 0.06, 0, L, H, D, DARK);
-    for (const x of [0, L - 0.03]) k.box(x, 0, 0, x + 0.03, H, D, DARK);
-    for (let y = 0.5; y < H - 0.35; y += 0.45) { k.box(0.03, y, 0.03, L - 0.03, y + 0.015, D - 0.02, 0xc0d4dc, 1.1); for (let i = 0; i < 3; i++) k.box(0.1 + i * (L - 0.2) / 3, y + 0.015, 0.1, 0.1 + i * (L - 0.2) / 3 + 0.12, y + 0.14 + k.r() * 0.08, 0.25, [0xb08040, 0x506080, 0xa04030][i]); }
-    if (s < 2) k.box(0.03, 0.1, D - 0.012, L - 0.03, H - 0.06, D - 0.004, 0xa8c8d4, s === 0 ? 1.2 : 0.8);
-    if (s >= 1) for (let i = 0; i < 6; i++) { const z = D + 0.05 + k.r() * 0.4; k.box(0.1 + k.r() * (L - 0.2), 0.005, z, 0.1 + k.r() * (L - 0.2) + 0.06, 0.01, z + 0.04, 0xc8dce4, 1.3); }
+    // A glazed display case: aluminium frame, a dark wood back, glass shelves of trophies, boxed kit and binders.
+    // Damaged: the front glass cracked in stars. Wrecked: the glass gone (shards below and on the shelves), the
+    // shelves tipped and their contents fallen.
+    const { L, D, H } = k, AL = 0xb8bcc0, ITEMS = [0xc8a040, 0x506080, 0xa04030, 0xe0e0d8, 0x305830];
+    k.box(0, 0, 0, L, 0.12, D, 0x3a2a1e); k.box(0, H - 0.08, 0, L, H, D, AL, 0.9);
+    k.box(0.03, 0.12, 0, L - 0.03, H - 0.08, 0.03, 0x4a3424);
+    for (const x of [0, L - 0.03]) k.box(x, 0, 0, x + 0.03, H, D, AL);
+    for (const x of [0, L / 2 - 0.012, L - 0.03]) k.box(x, 0.12, D - 0.03, x + (x === 0 || x === L - 0.03 ? 0.03 : 0.024), H - 0.08, D, AL);
+    const shelves = [0.55, 1.0, 1.45];
+    shelves.forEach((y, si) => {
+      const fallen = s === 2 && si === 1;
+      k.box(0.03, y, 0.03, L - 0.03, y + 0.012, D - 0.04, 0xc8dce4, 1.2, fallen ? [0, 0, 0.18] : [0, 0, 0]);
+      if (fallen) return;
+      for (let i = 0; i < 5; i++) {
+        const x = 0.12 + i * (L - 0.24) / 5, c = ITEMS[(i + si) % 5];
+        if (s === 2 && i % 2) continue;
+        if (i % 3 === 0) { k.cyl(x + 0.05, D * 0.45, 0.025, y + 0.012, y + 0.2, c, 1.2, [0, 0, 0], 10); k.box(x, y + 0.012, D * 0.45 - 0.05, x + 0.1, y + 0.05, D * 0.45 + 0.05, 0x2a2a2a); }
+        else k.box(x, y + 0.012, 0.08, x + 0.1 + k.r() * 0.05, y + 0.18 + k.r() * 0.12, D * 0.6, c, 1);
+      }
+    });
+    if (s < 2) for (let i = 0; i < 4; i++) { const x = 0.2 + i * (L - 0.4) / 3, y = 0.4 + (i % 2) * 0.6; k.box(x, y, D - 0.016, x + 0.03, y + 0.45, D - 0.012, 0xdfe8ee, s === 0 ? 1.6 : 1.1, [0, 0, 0.4]); }
+    if (s === 1) for (let i = 0; i < 3; i++) {
+      const x = 0.2 + k.r() * (L - 0.4), y = 0.4 + k.r() * (H - 0.9);
+      k.pock(x, y, D - 0.01);
+      for (let j = 0; j < 6; j++) { const a = k.r() * 6.28, l = 0.1 + k.r() * 0.15; k.box(x - 0.002, y, D - 0.012, x + 0.002, y + l, D - 0.01, 0xf0f4f6, 1.6, [0, 0, a]); }
+    }
+    if (s === 2) {
+      for (let i = 0; i < 16; i++) { const x = k.r() * L, z = D + 0.03 + k.r() * 0.55; k.box(x, 0, z, x + 0.04 + k.r() * 0.08, 0.004, z + 0.03 + k.r() * 0.06, 0xc8dce4, 1.4, [0, k.r() * 3, 0]); }
+      for (let i = 0; i < 6; i++) { const x = 0.05 + k.r() * (L - 0.25), z = D + 0.05 + k.r() * 0.4; k.box(x, 0, z, x + 0.12, 0.1, z + 0.09, ITEMS[i % 5], 1, [k.r(), k.r() * 3, k.r() * 0.5]); }
+    }
   },
+
   filing(k, s) {
     const { L, D, H } = k, n = Math.max(1, Math.round(L / 0.47)), w = L / n;
     k.box(0, 0, 0, L, H, D * 0.95, 0x8a8e86);
@@ -155,16 +225,40 @@ const BUILD: Record<string, (k: Kit, s: number, p: SetPieceDef) => void> = {
     for (let i = 0; i < 3; i++) { const tip = s === 2 && i === 1; k.box(0.08 + i * (L - 0.16) / 3, tip ? 0.18 : H - 0.01, 0.06, 0.08 + (i + 0.85) * (L - 0.16) / 3, tip ? 0.44 : H + Math.min(0, 0.26 - 0.0), D - 0.06, CARD, 1, tip ? [0, 0, 0.5] : [0, 0, 0]); }
     if (s >= 1) k.box(0.1, 0.18, 0.08, L * 0.45, 0.4, D - 0.08, CARD, 0.85, [0, 0, s === 2 ? 0.3 : 0.08]);
   },
+  // The sofas are Poly Haven's sofa_02 (render/setpiecemodels.ts): this draws their damage in the model's own
+  // coordinates, put through the same scale, tilt and centring as the model. Damaged: bullet tears with stuffing
+  // bulging out through curled leather. Wrecked (the model leans on a broken leg): more tears, the back split along
+  // its top, a seat cushion thrown onto the floor, the leg and clumps of stuffing round it.
   sofa(k, s) {
-    const { L, D, H } = k, S = Math.min(L / SOFA[0], D / SOFA[1], H / SOFA[2]), mx = L / 2, mz = D / 2 + SOFA[3] * S;
-    const X = (u: number) => mx + u * S, Y = (v: number) => v * S, Z = (w: number) => mz + w * S, STUFF = 0xe6dfcc;
-    if (s === 0) { k.box(mx, 0, mz, mx + 0.002, 0.002, mz + 0.002, DARK); return; }
-    const seat = s === 1 ? 3 : 7, back = s === 1 ? 2 : 6;
-    for (let i = 0; i < seat; i++) { const u = -0.6 + k.r() * 1.2, w = -0.12 + k.r() * 0.36, a = 0.05 + k.r() * 0.07; k.box(X(u), Y(0.405), Z(w), X(u) + a, Y(0.418), Z(w) + a * 0.6, STUFF, 1.15, [0, k.r() * 2, 0]); }
-    for (let i = 0; i < back; i++) { const u = -0.6 + k.r() * 1.2, v = 0.47 + k.r() * 0.18, a = 0.05 + k.r() * 0.06; k.box(X(u), Y(v), Z(-0.235), X(u) + a, Y(v) + a * 0.7, Z(-0.2), STUFF, 1.1); }
+    const { L, D, H } = k, LEATHER = 0x5a3820, STUFF = 0xbdb5a0, b = MODEL_BOUNDS.sofa_02;
+    if (s === 0) { k.none(); return; }
+    const tilt = s === 2 ? SOFA_TILT : 0, sc = s === 2 ? sofaScale(L, D, H, SOFA_TILT) * 0.99 : sofaScale(L, D, H, 0), ct = Math.cos(tilt), st = Math.sin(tilt);
+    let lx = Infinity, hx = -Infinity, ly = Infinity;
+    for (const x of [b[0], b[3]]) for (const y of [b[1], b[4]]) { const xr = x * ct - y * st, yr = x * st + y * ct; lx = Math.min(lx, xr); hx = Math.max(hx, xr); ly = Math.min(ly, yr); }
+    const at = (u: number, v: number, w: number): V3 => [L / 2 + (u * ct - v * st - (lx + hx) / 2) * sc, (u * st + v * ct - ly) * sc, D / 2 + (w - (b[2] + b[5]) / 2) * sc];
+    const tear = (u: number, v: number, w: number, facing: 'up' | 'front', big: number) => {
+      const [x, y, z] = at(u, v, w);
+      for (let i = 0; i < 3 + Math.round(big * 2); i++) {
+        const r = (0.03 + k.r() * 0.03) * big, du = (k.r() - 0.5) * 0.09 * big, dv = (k.r() - 0.5) * 0.06 * big;
+        if (facing === 'up') k.ball(x + du, y + r * 0.5, z + dv, r, STUFF, 0.95 + k.r() * 0.15);
+        else k.ball(x + du, y + dv, z + r * 0.5, r, STUFF, 0.95 + k.r() * 0.15);
+      }
+      for (let i = 0; i < 3; i++) {
+        const a = k.r() * 6.28, d = 0.06 * big;
+        if (facing === 'up') k.box(x + Math.cos(a) * d - 0.035, y, z + Math.sin(a) * d - 0.02, x + Math.cos(a) * d + 0.035, y + 0.006, z + Math.sin(a) * d + 0.02, LEATHER, 0.8, [0.5, a, 0]);
+        else k.box(x + Math.cos(a) * d - 0.035, y + Math.sin(a) * d - 0.02, z, x + Math.cos(a) * d + 0.035, y + Math.sin(a) * d + 0.02, z + 0.006, LEATHER, 0.8, [0.5, 0, a]);
+      }
+    };
+    const seat = s === 1 ? 3 : 5, back = s === 1 ? 3 : 4;
+    for (let i = 0; i < seat; i++) tear(-0.55 + (i + 0.5) * 1.1 / seat + (k.r() - 0.5) * 0.12, 0.415, 0.02 + k.r() * 0.18, 'up', 1 + (s === 2 ? 0.4 : 0));
+    for (let i = 0; i < back; i++) tear(-0.55 + (i + 0.5) * 1.1 / back + (k.r() - 0.5) * 0.12, 0.5 + k.r() * 0.12, -0.205, 'front', 1 + (s === 2 ? 0.4 : 0));
     if (s === 2) {
-      k.box(L * 0.25, 0, D + 0.08, L * 0.25 + 0.62, 0.13, D + 0.6, 0x23201d, 1, [0, 0.35, 0.06]);
-      for (let i = 0; i < 12; i++) { const x = k.r() * L, z = D + 0.05 + k.r() * 0.7; k.box(x, 0, z, x + 0.04 + k.r() * 0.05, 0.03 + k.r() * 0.03, z + 0.04, STUFF, 1.1, [0, k.r() * 3, 0]); }
+      // The back split along its top: a dark gash with stuffing pushed out of it.
+      for (let i = 0; i < 7; i++) { const [x, y, z] = at(-0.5 + i * 0.13, 0.66, -0.3); k.box(x - 0.07, y - 0.015, z - 0.04, x + 0.07, y + 0.012, z + 0.05, 0x1a120c, 1, [0, 0, (k.r() - 0.5) * 0.3]); k.ball(x, y + 0.02, z, 0.035 + k.r() * 0.025, STUFF); }
+      // A seat cushion thrown off onto the floor in front, a broken turned leg, stuffing scattered.
+      k.cushion(L * 0.3, D + 0.12, 0.62 * sc, 0.13, 0.5 * sc, LEATHER, 0.45, 0.06);
+      k.cyl(L * 0.72, D + 0.25, 0.028, -0.07, 0.07, 0x3a2414, 1, [0, 0, Math.PI / 2], 8);
+      for (let i = 0; i < 10; i++) { const x = 0.1 + k.r() * (L - 0.2), z = D + 0.05 + k.r() * 0.6, r = 0.025 + k.r() * 0.03; k.ball(x, r * 0.6, z, r, STUFF, 0.95 + k.r() * 0.1); }
     }
   },
   lowtable(k, s) {
@@ -205,39 +299,93 @@ const BUILD: Record<string, (k: Kit, s: number, p: SetPieceDef) => void> = {
   },
 
   planter(k, s) {
-    const { L, D, H } = k;
-    k.box(0, 0, 0, L, H * 0.85, D, 0x9a9890);
-    k.box(-0.0, H * 0.85, 0, L, H * 0.88, D, 0xaaa8a0);
-    k.box(0.05, H * 0.86, 0.05, L - 0.05, H * 0.9, D - 0.05, 0x3a2a1c);
-    if (D > 0.3) for (let i = 0; i < Math.round(L / 0.5); i++) { const x = 0.25 + i * 0.5, hz = Math.min(0.12, D / 2 - 0.06); k.box(x - 0.18, H * 0.9, D / 2 - hz, x + 0.18, H - 0.01, D / 2 + hz, 0x3d6a2e, 0.9 + k.r() * 0.3); }
-    if (s >= 1) { k.box(L - 0.25, H * 0.6, D - 0.002, L, H * 0.85, D + 0.002, 0x5a5850); k.box(0, 0, D - 0.002, 0.2, 0.25, D + 0.002, 0x5a5850); }
-    if (s === 2) for (let i = 0; i < 10; i++) { const x = k.r() * L; k.box(x, 0, D + 0.03 + k.r() * 0.4, x + 0.12, 0.05 + k.r() * 0.05, D + 0.12 + k.r() * 0.4, i % 2 ? 0x3a2a1c : 0x9a9890, 1, [0, k.r() * 3, 0]); }
+    // A cast-concrete planter: chamfered rim, drip groove, soil, shrubs as clusters of foliage. Damaged: cracks and
+    // chipped edges. Wrecked: a corner broken off, soil and lumps spilled, the shrubs knocked flat.
+    const { L, D, H } = k, CON = 0x9a9890, wall = Math.min(0.08, D * 0.2);
+    k.box(0.02, 0, 0.02, L - 0.02, 0.06, D - 0.02, CON, 0.85);
+    k.box(0, 0.06, 0, L, H * 0.84, D, CON);
+    k.box(-0.0, H * 0.84, 0, L, H * 0.88, D, 0xaaa8a0);
+    k.box(0, H * 0.79, D - 0.01, L, H * 0.8, D + 0.002, 0x6a6862);
+    k.box(wall, H * 0.86, wall, L - wall, H * 0.885, D - wall, 0x3a2a1c);
+    const n = Math.max(1, Math.round(L / 0.45));
+    for (let i = 0; i < n; i++) {
+      const x = (i + 0.5) * L / n, flat = s === 2 && i % 2 === 0, rr = Math.min(0.16, (D - 2 * wall) / 2);
+      for (let j = 0; j < 6; j++) {
+        const r = rr * (0.45 + k.r() * 0.35), dx = (k.r() - 0.5) * 0.18, dz = (k.r() - 0.5) * Math.max(0, D - 2 * wall - 2 * r), y = H * 0.885 + (flat ? r * 0.4 : r * (0.6 + j * 0.12));
+        if (y + r > H + 0.02) continue;
+        k.ball(x + dx, y, D / 2 + dz, r, [0x3d6a2e, 0x4a7a34, 0x2f5a26][j % 3], 0.85 + k.r() * 0.3);
+      }
+    }
+    if (s >= 1) {
+      for (let i = 0; i < (s === 1 ? 3 : 6); i++) { const x = 0.1 + k.r() * (L - 0.2), y = 0.1 + k.r() * (H * 0.6); for (let j = 0; j < 4; j++) k.box(x + j * 0.04, y + j * 0.05, D - 0.002, x + j * 0.04 + 0.006, y + j * 0.05 + 0.07, D + 0.003, 0x3a3a36, 1, [0, 0, (k.r() - 0.5) * 0.8]); }
+      for (let i = 0; i < (s === 1 ? 3 : 6); i++) k.box(k.r() * (L - 0.08), H * 0.84, D - 0.03, k.r() * (L - 0.08) + 0.08, H * 0.88, D + 0.002, 0x6a6862);
+    }
+    if (s === 2) {
+      k.box(L - 0.3, H * 0.4, D - 0.25, L + 0.002, H * 0.89, D + 0.002, 0x3a2a1c);
+      for (let i = 0; i < 12; i++) { const x = L - 0.6 + k.r() * 0.6, z = D + 0.03 + k.r() * 0.45, a = 0.05 + k.r() * 0.09; k.box(x, 0, z, x + a, a * 0.7, z + a, i % 3 ? 0x3a2a1c : CON, 1, [k.r(), k.r() * 3, k.r()]); }
+    }
   },
+
   // Families made of models (render/setpiecemodels.ts): only what the models cannot show is drawn here.
   shelving(k, s) {
+    // Damaged: stock knocked off the shelves. Wrecked (the rack leans on a buckled upright): its contents across the
+    // floor, cartons burst, papers everywhere.
     const { L, D } = k;
     k.none();
-    for (let i = 0; i < (s === 0 ? 0 : s === 1 ? 4 : 10); i++) { const x = k.r() * L, z = D + 0.03 + k.r() * 0.5; k.box(x, 0.002, z, x + 0.21, 0.005, z + 0.3, i % 3 ? 0xeeeeea : CARD, 1.05, [0, k.r() * 3, 0]); }
+    if (s === 0) return;
+    for (let i = 0; i < (s === 1 ? 2 : 6); i++) { const x = 0.05 + k.r() * (L - 0.4), z = 0.05 + k.r() * (D - 0.3); k.box(x, 0, z, x + 0.3, 0.2 + k.r() * 0.08, z + 0.24, CARD, 0.9 + k.r() * 0.2, [k.r() * 0.3, k.r() * 2, s === 2 ? (k.r() - 0.5) * 1.4 : 0]); }
+    for (let i = 0; i < (s === 1 ? 5 : 14); i++) { const x = k.r() * L, z = D + 0.02 + k.r() * 0.6; k.box(x, 0.002, z, x + 0.21, 0.005, z + 0.3, i % 3 ? 0xeeeeea : CARD, 1.05, [0, k.r() * 3, 0]); }
   },
-  crates(k, s) {
-    const { L, D, H } = k;
+  crates(k, s, p) {
+    const { L, D } = k;
     k.none();
-    // Splinters round the foot of the stack, and a split board on the top crate's front.
-    for (let i = 0; i < (s === 0 ? 0 : s === 1 ? 6 : 16); i++) { const x = k.r() * L, z = D + 0.02 + k.r() * 0.45; k.box(x, 0, z, x + 0.06 + k.r() * 0.22, 0.012 + k.r() * 0.02, z + 0.025, i % 2 ? 0xc49a68 : WOOD, 1, [0, k.r() * 3, 0]); }
-    if (s >= 1) for (let i = 0; i < (s === 1 ? 2 : 5); i++) { const x = 0.15 + k.r() * (L - 0.4), y = 0.1 + k.r() * (H - 0.3); k.box(x, y, D - 0.03, x + 0.04 + k.r() * 0.08, y + 0.03 + k.r() * 0.05, D - 0.005, 0xd8b88a, 1.1); }
+    if (s === 0) return;
+    const sc = p.name === 'equipment crate' ? 1 : crateScale(L, D), h = 0.464 * sc, front = p.name === 'equipment crate' ? D - 0.02 : D / 2 + 0.583 * sc;
+    // Rounds through the boards: dark holes ringed with pale splinters; splinters round the foot.
+    for (let i = 0; i < (s === 1 ? 5 : 9); i++) { const x = 0.15 + k.r() * (L - 0.3), y = 0.08 + k.r() * (h * (s === 1 ? 2 : 1) - 0.16); k.box(x - 0.03, y - 0.03, front - 0.004, x + 0.03, y + 0.03, front + 0.001, 0xd8b88a, 1.1, [0, 0, k.r()]); k.box(x - 0.014, y - 0.014, front + 0.001, x + 0.014, y + 0.014, front + 0.004, 0x0c0906); }
+    for (let i = 0; i < (s === 1 ? 8 : 18); i++) { const x = k.r() * L, z = D + 0.02 + k.r() * 0.5; k.box(x, 0, z, x + 0.06 + k.r() * 0.22, 0.012 + k.r() * 0.02, z + 0.025, i % 2 ? 0xc49a68 : WOOD, 1, [0, k.r() * 3, 0]); }
+    if (s === 2) {
+      // The top crate smashed open: its boards in a heap on the crates below, its contents spilled over them and
+      // onto the floor; a bottom crate's side stove in.
+      for (let i = 0; i < 10; i++) { const x = 0.12 + k.r() * (L - 0.85), z = 0.2 + k.r() * (D - 0.45); k.box(x, h + 0.01 + i * 0.022, z, x + 0.5 + k.r() * 0.1, h + 0.03 + i * 0.022, z + 0.1, i % 3 ? 0xa47a4c : 0x8a6440, 1, [(k.r() - 0.5) * 0.3, (k.r() - 0.5) * 0.7, (k.r() - 0.5) * 0.3]); }
+      for (let i = 0; i < 9; i++) { const x = 0.15 + k.r() * (L - 0.3), z = 0.15 + k.r() * (D - 0.3); k.cyl(x, z, 0.04, h + 0.02, h + 0.14, [0xb0b4b8, 0xc03020, 0x2a6ab0][i % 3], 1, i % 2 ? [Math.PI / 2, 0, k.r()] : [0, 0, 0], 10); }
+      for (let i = 0; i < 12; i++) { const x = k.r() * L, z = D + 0.05 + k.r() * 0.5, r = 0.03 + k.r() * 0.04; k.ball(x, r * 0.5, z, r, 0xd8c070, 0.9 + k.r() * 0.2); }
+      for (let i = 0; i < 5; i++) { const x = k.r() * L, z = D + 0.06 + k.r() * 0.45; k.cyl(x, z, 0.04, 0.04 - 0.06, 0.04 + 0.06, [0xb0b4b8, 0xc03020, 0x2a6ab0][i % 3], 1, [Math.PI / 2, 0, k.r() * 3], 10); }
+      const x = L * 0.25; k.box(x, 0.08, front - 0.006, x + 0.3, 0.36, front + 0.002, 0x0c0906);
+      for (let i = 0; i < 4; i++) k.box(x - 0.02 + i * 0.08, 0.12, front - 0.05, x + 0.04 + i * 0.08, 0.32, front - 0.03, 0xc49a68, 1, [0.25, 0, (k.r() - 0.5) * 0.4]);
+    }
   },
   drums(k, s) {
-    const { L, D } = k;
+    // Damaged: holed drums leaking in thin streams into a spreading pool. Wrecked: one crushed flat and split,
+    // another on its side, oil everywhere.
+    const { L, D } = k, { s: sc, r, us, ws } = drumSpots(L, D), OIL = 0x0b0a08, BLUE = 0x2457a8;
     k.none();
-    // Oil from the holed drums spreading across the floor.
-    if (s >= 1) k.box(L * 0.2, 0.002, D - 0.1, L * 0.2 + (s === 1 ? 0.5 : 0.9), 0.004, D + (s === 1 ? 0.25 : 0.6), 0x0e0d0b, 1, [0, 0.3, 0]);
-    if (s === 2) k.box(L * 0.55, 0.002, D - 0.05, L * 0.55 + 0.45, 0.004, D + 0.35, 0x0e0d0b, 1, [0, -0.5, 0]);
+    if (s === 0) return;
+    const leak = (x: number, y: number, z: number) => { k.box(x - 0.012, y - 0.012, z, x + 0.012, y + 0.012, z + 0.004, 0x050505); k.box(x - 0.005, 0.004, z + 0.002, x + 0.005, y, z + 0.01, OIL, 1, [0.04, 0, 0]); };
+    leak(us[0] + 0.05, 0.42 * sc, ws[0] + r + 0.002);
+    if (s === 1) { leak(us[1] - 0.08, 0.6 * sc, ws[1] + r + 0.002); leak(us[0] - 0.02, 0.3 * sc, ws[1] + r + 0.002); }
+    k.box(L * 0.15, 0.002, D - 0.25, L * 0.15 + (s === 1 ? 0.6 : 0.95), 0.004, D + (s === 1 ? 0.3 : 0.65), OIL, 1, [0, 0.3, 0]);
+    if (s === 2) {
+      // The crushed drum: flattened to half its height, bulging, its lid bent up, split down one side.
+      const x = us[1], z = ws[0], hgt = 0.885 * sc * 0.5;
+      k.cyl(x, z, r * 1.06, 0, hgt, BLUE, 0.95, [0, 0, 0], 16);
+      for (const y of [hgt * 0.3, hgt * 0.7]) k.cyl(x, z, r * 1.12, y - 0.02, y + 0.02, BLUE, 0.8, [0, 0, 0], 16);
+      k.box(x - r * 0.9, hgt - 0.01, z - r * 0.9, x + r * 0.9, hgt + 0.01, z + r * 0.9, 0x1d4a90, 1, [0.35, 0.4, 0.1]);
+      k.box(x - 0.015, 0.05, z + r * 1.05, x + 0.015, hgt - 0.02, z + r * 1.1, OIL);
+      k.box(L * 0.5, 0.002, D - 0.1, L * 0.5 + 0.55, 0.004, D + 0.4, OIL, 1, [0, -0.5, 0]);
+    }
   },
   lowwall(k, s) {
-    const { L, D } = k;
+    // Spalled concrete at the barriers' feet; wrecked, one barrier shunted out of line and the next one's end
+    // broken off, its rebar showing, the broken end in lumps on the ground.
+    const { L, D } = k, n = Math.ceil(L / 1.6), step = L / n;
     k.none();
-    // Spalled concrete at the foot of the barriers.
-    for (let i = 0; i < (s === 0 ? 0 : s === 1 ? 8 : 20); i++) { const x = k.r() * L, z = D + 0.02 + k.r() * 0.35, a = 0.03 + k.r() * 0.07; k.box(x, 0, z, x + a, a * 0.7, z + a, 0x9a978e, 0.9 + k.r() * 0.2, [k.r(), k.r() * 3, k.r()]); }
+    for (let i = 0; i < (s === 0 ? 0 : s === 1 ? 10 : 22); i++) { const x = k.r() * L, z = D + 0.02 + k.r() * 0.35, a = 0.03 + k.r() * 0.08; k.box(x, 0, z, x + a, a * 0.7, z + a, 0x9a978e, 0.9 + k.r() * 0.2, [k.r(), k.r() * 3, k.r()]); }
+    if (s === 2) {
+      const u = step * (n - 1) + 0.04;
+      for (let i = 0; i < 6; i++) k.box(u, 0.25 + i * 0.1, D / 2 - 0.12 + (i % 3) * 0.1, u + 0.1 + k.r() * 0.12, 0.262 + i * 0.1, D / 2 - 0.108 + (i % 3) * 0.1, 0x5a3a24, 1, [0, (k.r() - 0.5) * 0.4, (k.r() - 0.5) * 0.5]);
+      for (let i = 0; i < 9; i++) { const x = u - 0.1 + k.r() * 0.5, z = D + 0.02 + k.r() * 0.3, a = 0.07 + k.r() * 0.08; k.box(x, 0, z, x + a, a * 0.8, z + a, 0x9a978e, 0.85 + k.r() * 0.2, [k.r(), k.r() * 3, k.r()]); }
+    }
   },
   materials(k, s) {
     const { D } = k;
@@ -248,25 +396,39 @@ const BUILD: Record<string, (k: Kit, s: number, p: SetPieceDef) => void> = {
     if (s === 2) for (let i = 0; i < 8; i++) { const x = k.r(), z = D + 0.05 + k.r() * 0.5; k.box(x, 0.07, z, x + 0.1, 0.075, z + 0.08, 0xc8b890, 1, [0, k.r() * 3, 0]); }
   },
   skip(k, s) {
-    // A builder's skip: sloping ends, ribbed sides, a rolled rim and lifting lugs, in weathered yellow.
-    const { L, D, H } = k, hue = 0xa8862a, slope = 0.42, y0 = 0.14;
+    // A builder's skip: sloping ends, deep ribs, a box-section rim and lifting lugs, weathered yellow with a band of
+    // dirt, heaped with rubble, timber and bags. Damaged: rounds through the side, ringed with bare steel. Wrecked: a
+    // side panel stove in, the rim bent, the heap spilled down the side.
+    const { L, D, H } = k, hue = 0xa8862a, slope = 0.42, y0 = 0.14, T = H - 0.32;
     for (const z of [0.15, D - 0.27]) k.box(0.6, 0, z, L - 0.6, y0, z + 0.12, 0x2a2826);
-    k.prism([[slope, y0], [L - slope, y0], [L - 0.02, H - 0.02], [0.02, H - 0.02]], 0.02, D - 0.02, hue);
-    k.prism([[slope + 0.06, y0 + 0.06], [L - slope - 0.06, y0 + 0.06], [L - 0.09, H - 0.015], [0.09, H - 0.015]], 0.09, D - 0.09, 0x2b2924, 1, true);
-    for (const z of [0, D - 0.07]) k.box(0, H - 0.07, z, L, H, z + 0.07, hue, 0.95);
-    for (const x of [0, L - 0.07]) k.box(x, H - 0.07, 0, x + 0.07, H, D, hue, 0.95);
-    for (let i = 1; i < 7; i++) { const x = slope + i * (L - 2 * slope) / 7; for (const z of [0, D - 0.025]) k.box(x - 0.04, y0 + 0.05, z, x + 0.04, H - 0.08, z + 0.025, hue, 0.86); }
-    for (const [x, sx] of [[0.16, -1], [L - 0.16, 1]] as const) k.cyl(x + sx * 0.04, D / 2, 0.06, H * 0.62 - 0.05, H * 0.62 + 0.05, 0x3a3a36, 1, [0, 0, Math.PI / 2], 10);
-    // Weathering: rust runs down from the rim between the ribs.
-    for (let i = 0; i < 9; i++) { const x = 0.5 + k.r() * (L - 1); k.box(x, H * (0.35 + k.r() * 0.3), D - 0.021, x + 0.02 + k.r() * 0.03, H - 0.08, D - 0.018, 0x8a6a2a, 0.9); }
-    // Damage: rounds through the side (holes ringed with bare steel), then a stove-in panel and a bent rim.
-    for (let i = 0; i < (s === 0 ? 0 : s === 1 ? 7 : 18); i++) k.pock(slope + 0.1 + k.r() * (L - 2 * slope - 0.2), y0 + 0.2 + k.r() * (H - y0 - 0.4), D - 0.02);
+    k.prism([[slope, y0], [L - slope, y0], [L - 0.04, T - 0.02], [0.04, T - 0.02]], 0.04, D - 0.04, hue);
+    k.prism([[slope + 0.06, y0 + 0.06], [L - slope - 0.06, y0 + 0.06], [L - 0.1, T - 0.015], [0.1, T - 0.015]], 0.1, D - 0.1, 0x2b2924, 1, true);
+    for (const z of [0, D - 0.08]) k.box(0.02, T - 0.08, z, L - 0.02, T, z + 0.08, hue, 0.9);
+    for (const x of [0.02, L - 0.1]) k.box(x, T - 0.08, 0, x + 0.08, T, D, hue, 0.9);
+    for (let i = 1; i < 7; i++) { const x = slope + i * (L - 2 * slope) / 7; for (const z of [0, D - 0.06]) k.box(x - 0.05, y0 + 0.04, z, x + 0.05, T - 0.08, z + 0.06, hue, 0.78); }
+    for (const z of [0.04, D - 0.045]) k.box(slope, y0, z - 0.002, L - slope, y0 + 0.28, z + 0.007, 0x4a3a1c, 0.9);
+    for (const [x, sx] of [[0.1, -1], [L - 0.1, 1]] as const) k.cyl(x + sx * 0.0, D / 2, 0.06, T * 0.62 - 0.05, T * 0.62 + 0.05, 0x3a3a36, 1, [0, 0, Math.PI / 2], 10);
+    for (let i = 0; i < 9; i++) { const x = 0.5 + k.r() * (L - 1); k.box(x, T * (0.35 + k.r() * 0.3), D - 0.041, x + 0.02 + k.r() * 0.03, T - 0.08, D - 0.038, 0x8a6a2a, 0.9); }
+    // The heap: broken timber, plasterboard, rubble and bags, standing above the rim.
+    const heap = (n: number, spill: number) => {
+      for (let i = 0; i < n; i++) {
+        const x = 0.35 + k.r() * (L - 1.3), z = 0.3 + k.r() * (D - 0.8), y = T - 0.05 + k.r() * 0.12, kind = i % 4;
+        if (kind === 0) k.box(x, y, z, x + 0.5 + k.r() * 0.3, y + 0.04, z + 0.1, 0x8a6a46, 0.9 + k.r() * 0.2, [(k.r() - 0.5) * 0.3, (k.r() - 0.5) * 0.5, (k.r() - 0.5) * 0.5]);
+        else if (kind === 1) k.box(x, y, z, x + 0.45, y + 0.015, z + 0.35, 0xd8d4c8, 1, [(k.r() - 0.5) * 0.5, (k.r() - 0.5) * 0.5, (k.r() - 0.5) * 0.5]);
+        else if (kind === 2) k.ball(x + 0.1, y + 0.08, z + 0.1, 0.1 + k.r() * 0.06, 0x18191a, 0.9 + k.r() * 0.3);
+        else k.box(x, y, z, x + 0.12, y + 0.08, z + 0.12, 0x8a8478, 0.9 + k.r() * 0.2, [k.r(), k.r() * 3, k.r()]);
+      }
+      for (let i = 0; i < spill; i++) { const x = 0.3 + k.r() * (L - 0.6), z = D + 0.04 + k.r() * 0.5, a = 0.05 + k.r() * 0.09; k.box(x, 0, z, x + a, a * 0.7, z + a, [0x8a8478, 0x8a6a46, 0xd8d4c8][i % 3], 1, [k.r(), k.r() * 3, k.r()]); }
+    };
+    heap(s === 2 ? 10 : 18, s === 0 ? 0 : s === 1 ? 4 : 14);
+    for (let i = 0; i < (s === 0 ? 0 : s === 1 ? 8 : 18); i++) k.pock(slope + 0.1 + k.r() * (L - 2 * slope - 0.2), y0 + 0.2 + k.r() * (T - y0 - 0.4), D - 0.04);
     if (s === 2) {
-      k.box(L * 0.3, H * 0.25, D - 0.12, L * 0.5, H * 0.7, D - 0.1, 0x6a5a28, 0.7, [0.12, 0, 0.05]);
-      k.box(L * 0.55, H - 0.07, D - 0.16, L * 0.85, H - 0.01, D - 0.09, hue, 0.8, [0.3, 0, 0]);
-      for (let i = 0; i < 12; i++) { const x = 0.4 + k.r() * (L - 0.8), z = D + 0.03 + k.r() * 0.5, a = 0.05 + k.r() * 0.1; k.box(x, 0, z, x + a, a * 0.6, z + a, [0x6a6460, 0x8a6a46, 0x3a3836][i % 3], 1, [k.r(), k.r() * 3, k.r()]); }
+      k.box(L * 0.3, T * 0.25, D - 0.16, L * 0.52, T * 0.75, D - 0.13, 0x6a5a28, 0.7, [0.14, 0, 0.05]);
+      k.box(L * 0.3, T * 0.25, D - 0.13, L * 0.52, T * 0.27, D - 0.04, 0x1a1a18);
+      k.box(L * 0.55, T - 0.08, D - 0.2, L * 0.85, T - 0.01, D - 0.12, hue, 0.8, [0.3, 0, 0]);
     }
   },
+
   binstore(k, s) {
     const { L, D, H } = k;
     for (let i = 0; i <= Math.round(L / 0.12); i++) { const x = Math.min(L - 0.08, i * 0.12); if (s === 2 && i % 5 === 2) continue; k.box(x, 0, D - 0.04, x + 0.08, H, D, 0x7a6a50, 0.9 + (i % 3) * 0.05); }
@@ -275,34 +437,36 @@ const BUILD: Record<string, (k: Kit, s: number, p: SetPieceDef) => void> = {
     if (s >= 1) for (let i = 0; i < 6; i++) { const x = k.r() * L; k.box(x, 0, D + 0.05 + k.r() * 0.4, x + 0.15, 0.08, D + 0.15 + k.r() * 0.4, [0xe8e8e0, 0x404040, 0x8a6a40][i % 3], 1, [0, k.r() * 3, 0]); }
   },
   trailer(k, s) {
-    // A flatbed trailer: chassis rails and an A-frame drawbar, twin-axle wheels under mudguards, the load under a
-    // strapped tarp.
-    const { L, D, H } = k, bed = 0.62, bodyL = L - 0.9, TARP = 0x2c3f55;
+    // A flatbed trailer: chassis rails and an A-frame drawbar, twin-axle wheels under mudguards, a jockey wheel, and
+    // the load under a tarp that drapes from a ridge over its sides, roped down with straps over the top. Damaged:
+    // tears in the tarp with the crates showing. Wrecked: flaps hanging, the tarp slumped at one end, a tyre flat.
+    const { L, D, H } = k, bed = 0.62, bodyL = L - 0.9, TARP = 0x3a5470;
     for (const z of [0.25, D - 0.35]) k.box(0.1, 0.42, z, bodyL, 0.54, z + 0.1, 0x2a2c2e);
     k.box(0.05, 0.54, 0.05, bodyL + 0.05, bed, D - 0.05, 0x4a4c4a);
-    for (let i = 0; i < 12; i++) k.box(0.08 + i * (bodyL - 0.06) / 12, bed - 0.002, 0.04, 0.1 + i * (bodyL - 0.06) / 12, bed + 0.004, D - 0.04, 0x2a2c2e);
     for (const sz of [-1, 1]) k.box(bodyL, 0.45, D / 2 - 0.04, L - 0.12, 0.52, D / 2 + 0.04, 0x2a2c2e, 1, [0, sz * 0.32, 0]);
     k.box(L - 0.18, 0.4, D / 2 - 0.07, L - 0.02, 0.52, D / 2 + 0.07, 0x2a2c2e);
-    k.box(L - 0.5, 0, D / 2 - 0.03, L - 0.44, 0.45, D / 2 + 0.03, 0x555555);
+    k.box(L - 0.5, 0.08, D / 2 - 0.03, L - 0.44, 0.45, D / 2 + 0.03, 0x555555); k.cyl(L - 0.47, D / 2, 0.08, -0.03, 0.03, 0x141414, 1, [Math.PI / 2, 0, 0], 12);
     for (const x of [bodyL * 0.42, bodyL * 0.58]) for (const z of [0.03, D - 0.21]) {
       const flat = s === 2 && x === bodyL * 0.42 && z === 0.03, r = flat ? 0.24 : 0.3;
       k.cyl(x, z + 0.09, r, r - 0.09, r + 0.09, 0x141414, 1, [Math.PI / 2, 0, 0], 18);
       k.cyl(x, z + 0.09, 0.14, r - 0.095, r + 0.095, 0x8a8c8a, 1, [Math.PI / 2, 0, 0], 12);
     }
     for (const z of [0, D - 0.24]) k.box(bodyL * 0.3, 0.62, z, bodyL * 0.7, 0.66, z + 0.24, 0x2a2c2e);
-    // The load: a tarp over crates, pulled tight by straps, with a ridge along the top.
-    k.box(0.15, bed, 0.12, bodyL - 0.1, H - 0.12, D - 0.12, TARP);
-    k.box(0.2, H - 0.12, 0.3, bodyL - 0.15, H - 0.02, D - 0.3, TARP, 1.05);
-    for (const z of [0.12, D - 0.3]) k.box(0.2, H - 0.16, z, bodyL - 0.15, H - 0.06, z + 0.18, TARP, 1.02, [z < 1 ? 0.5 : -0.5, 0, 0]);
-    for (let i = 1; i < 5; i++) { const x = 0.15 + i * (bodyL - 0.25) / 5; k.box(x - 0.025, bed, 0.1, x + 0.025, H - 0.01, D - 0.1, 0xb07a1a, 0.9); }
-    // Damage: tears in the tarp showing the crates beneath, then flaps hanging loose and a flat tyre.
-    for (let i = 0; i < (s === 0 ? 0 : s === 1 ? 3 : 8); i++) {
-      const x = 0.4 + k.r() * (bodyL - 0.9), y = bed + 0.2 + k.r() * (H - bed - 0.5), w = 0.12 + k.r() * 0.18;
-      k.box(x, y, D - 0.125, x + w, y + w * 0.7, D - 0.115, 0x0c0c0c, 1, [0, 0, k.r() - 0.5]);
-      k.box(x + 0.02, y + 0.02, D - 0.124, x + w * 0.7, y + w * 0.4, D - 0.116, WOOD, 0.8, [0, 0, k.r() - 0.5]);
-      if (s === 2) k.box(x, y - w * 0.8, D - 0.11, x + w * 0.8, y, D - 0.1, TARP, 0.85, [0.15, 0, k.r() * 0.4]);
+    // The tarp: a ridged profile over the load, extruded along the bed; slumped at the back end when wrecked.
+    const prof = (top: number): [number, number][] => [[0.1, bed], [D - 0.1, bed], [D - 0.12, top - 0.35], [D / 2 + 0.25, top], [D / 2 - 0.25, top], [0.12, top - 0.35]];
+    if (s === 2) { k.prismX(prof(H - 0.02), 0.15, bodyL * 0.6, TARP); k.prismX(prof(H - 0.45), bodyL * 0.6, bodyL - 0.1, TARP, 0.9); }
+    else k.prismX(prof(H - 0.02), 0.15, bodyL - 0.1, TARP);
+    for (let i = 0; i < 6; i++) { const x = 0.15 + (i + 0.5) * (bodyL - 0.25) / 6; k.prismX(prof((s === 2 && x > bodyL * 0.6 ? H - 0.45 : H - 0.02) + 0.012).map(([z, y]) => [z + (z < D / 2 ? -0.012 : 0.012), y] as [number, number]), x - 0.025, x + 0.025, 0xb07a1a, 0.9); }
+    for (let i = 0; i < 5; i++) { const x = 0.3 + (i + 0.5) * (bodyL - 0.6) / 5; k.box(x, bed + 0.05, D - 0.105, x + 0.012, H - 0.4, D - 0.1, 0x2c4258, 1); }
+    // Damage: tears in the tarp's side, crates behind; wrecked, flaps hanging loose.
+    for (let i = 0; i < (s === 0 ? 0 : s === 1 ? 4 : 9); i++) {
+      const x = 0.4 + k.r() * (bodyL - 0.9), y = bed + 0.12 + k.r() * (H - bed - 0.65), w = 0.14 + k.r() * 0.18;
+      k.box(x, y, D - 0.105, x + w, y + w * 0.7, D - 0.095, 0x0c0c0c, 1, [0, 0, k.r() - 0.5]);
+      k.box(x + 0.02, y + 0.02, D - 0.103, x + w * 0.7, y + w * 0.45, D - 0.097, WOOD, 0.9, [0, 0, k.r() - 0.5]);
+      if (s === 2) k.box(x, Math.max(bed, y - w), D - 0.095, x + w * 0.8, y, D - 0.085, TARP, 0.85, [0.12, 0, k.r() * 0.4]);
     }
   },
+
   generator(k, s) {
     const { L, D, H } = k;
     k.box(0, 0, 0, L, 0.2, D, 0x8a8880);

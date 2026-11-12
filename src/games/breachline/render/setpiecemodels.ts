@@ -17,11 +17,29 @@ export const MODEL_BOUNDS: Record<string, readonly number[]> = {
   trashbag: [-0.26, -0.001, -0.24, 0.268, 0.574, 0.223],
   cardboard_box_01: [-0.193, -0.007, -0.225, 0.195, 0.335, 0.291],
   wooden_military_crate: [-0.621, 0, -0.26, 0.621, 0.465, 0.26],
+  sofa_02: [-0.903, 0, -0.478, 0.904, 0.71, 0.34],
 };
 /** Families built from models rather than in code. */
-export const MODEL_FAMILIES = new Set(['shelving', 'crates', 'drums', 'lowwall', 'materials', 'binstore']);
+export const MODEL_FAMILIES = new Set(['sofa', 'shelving', 'crates', 'drums', 'lowwall', 'materials', 'binstore']);
 
 type States = readonly (0 | 1 | 2)[];
+/** How far a wrecked sofa leans on its broken leg (radians about its front axis). */
+export const SOFA_TILT = 0.07;
+/** How far a wrecked shelving rack leans on its buckled upright. */
+export const RACK_TILT = 0.06;
+/** The crate stacks' crate scale, and the drum clusters' scale and drum centres, shared with the code-drawn damage. */
+export const crateScale = (L: number, D: number) => Math.min(1, (D - 0.04) / 1.166, (L - 0.04) / 1.08);
+export function drumSpots(L: number, D: number) {
+  const s = Math.min(1, (L - 0.06) / 1.0, (D - 0.04) / 0.97), r = 0.245 * s;
+  return { s, r, us: [0.03 + r, L - 0.03 - r], ws: [0.02 + r, D - 0.02 - r] };
+}
+/** The scale that fits sofa_02 into an L x D x H box when tipped by `tilt` about its front axis. */
+export function sofaScale(L: number, D: number, H: number, tilt: number) {
+  const b = [-0.903, 0, -0.478, 0.904, 0.71, 0.34], ct = Math.cos(tilt), st = Math.sin(tilt);
+  let lx = Infinity, hx = -Infinity, ly = Infinity, hy = -Infinity;
+  for (const x of [b[0], b[3]]) for (const y of [b[1], b[4]]) { const xr = x * ct - y * st, yr = x * st + y * ct; lx = Math.min(lx, xr); hx = Math.max(hx, xr); ly = Math.min(ly, yr); hy = Math.max(hy, yr); }
+  return Math.min(L / (hx - lx), D / (b[5] - b[2]), H / (hy - ly));
+}
 const ALL: States = [0, 1, 2], STANDING: States = [0, 1], WRECKED: States = [2];
 
 /** The eight corners of a model's bounds turned by `tilt` about its own z axis, then `yaw` about y. */
@@ -48,10 +66,19 @@ function layout(p: SetPieceDef, index: number) {
   };
   const { L, D } = f, H = p.y1;
   switch (p.family) {
+    case 'sofa': {
+      // Poly Haven's sofa_02 scaled into the box; wrecked, a leg has gone and it sits tilted on that end (the thrown
+      // cushion, the split back and the stuffing are drawn by render/setpieces.ts).
+      put('sofa_02', L / 2, D / 2, 0, 0, sofaScale(L, D, H, 0), STANDING);
+      put('sofa_02', L / 2, D / 2, 0, 0, sofaScale(L, D, H, SOFA_TILT) * 0.99, WRECKED, SOFA_TILT);
+      break;
+    }
     case 'shelving': {
-      // A steel rack against the wall, a carton beside it; wrecked, the carton is knocked onto its side.
+      // A steel rack against the wall, a carton beside it; wrecked, an upright has buckled so the rack leans, its
+      // contents are on the floor (drawn in code) and the carton is knocked onto its side.
       const s = Math.min(1, H / 1.9, D / 0.6);
-      put('worn_metal_rack', 0.03 + 0.46 * s, D / 2, 0, 0, s, ALL);
+      put('worn_metal_rack', 0.03 + 0.46 * s, D / 2, 0, 0, s, STANDING);
+      put('worn_metal_rack', 0.03 + 0.52 * s, D / 2, 0, 0, s * 0.97, WRECKED, RACK_TILT);
       if (L - 0.95 * s > 0.4) {
         put('cardboard_box_01', (0.95 * s + L) / 2, D / 2, 0, 0, 1, STANDING);
         put('cardboard_box_01', (0.95 * s + L) / 2, D / 2, 0, 0.3, 0.95, WRECKED, Math.PI / 2);
@@ -67,20 +94,20 @@ function layout(p: SetPieceDef, index: number) {
         put('wooden_military_crate', L / 2, 0.02 + 0.26 * s, h, 0, s, STANDING);
         put('wooden_military_crate', L / 2 - 0.04, 0.3, h - 0.02, 0.1, s * 0.97, WRECKED);
       } else {
-        // Two crates side by side and one across them; wrecked, the top one has slid and turned.
-        const s = Math.min(1, (D - 0.04) / 1.166, (L - 0.04) / 1.08), h = 0.464 * s;
+        // Two crates side by side and one across them; wrecked, the top one is smashed open (its broken boards and
+        // spilled contents are drawn in code).
+        const s = crateScale(L, D), h = 0.464 * s;
         put('wooden_crate_02', L / 2 - 0.28 * s, D / 2, 0, 0, s, ALL);
         put('wooden_crate_02', L / 2 + 0.28 * s, D / 2, 0, 0, s, ALL);
         put('wooden_crate_02', L / 2, D / 2, h, Math.PI / 2, s, STANDING);
-        put('wooden_crate_02', L / 2 - 0.03, D / 2, h - 0.03, Math.PI / 2 + 0.22, s * 0.9, WRECKED);
       }
       break;
     }
     case 'drums': {
-      // Four drums; wrecked, the front pair is down to one drum lying on its side.
-      const s = Math.min(1, (L - 0.06) / 1.0, (D - 0.04) / 0.97), r = 0.245 * s;
-      const us = [0.03 + r, L - 0.03 - r], ws = [0.02 + r, D - 0.02 - r];
-      put('Barrel_02', us[0], ws[0], 0, 0, s, ALL); put('Barrel_02', us[1], ws[0], 0, Math.PI / 2, s, ALL);
+      // Four drums; wrecked, the front pair is down to one drum lying on its side and a back one is crushed (drawn
+      // in code, with the leaks).
+      const { s, us, ws } = drumSpots(L, D);
+      put('Barrel_02', us[0], ws[0], 0, 0, s, ALL); put('Barrel_02', us[1], ws[0], 0, Math.PI / 2, s, STANDING);
       put('Barrel_02', us[0], ws[1], 0, Math.PI, s, STANDING); put('Barrel_02', us[1], ws[1], 0, -Math.PI / 2, s, STANDING);
       put('Barrel_02', L / 2, ws[1], 0, 0, s, WRECKED, Math.PI / 2);
       break;

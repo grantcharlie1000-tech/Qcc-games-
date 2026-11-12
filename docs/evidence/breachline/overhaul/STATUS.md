@@ -4,6 +4,32 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: Phase B, reviewer's three corrections applied (sofa as the pattern, then every pushed family).**
+`phaseb/owner-before-after.png` (redone) and `phaseb/triples/<family>.png`, now three 640 px frames stacked.
+- **Mid-tones:** the sofa's near-black leather (linear albedo about 0.005) is built as grey (`greyscale` in the
+  manifest, contrast eased so it does not blotch) and coloured a mid brown; the buttoning and piping read. The lockers'
+  metal-plate set (dark blue, linear 0.018, 0.045, 0.071) is lifted per channel to a mid grey-green near 0.2. Honest
+  note: the plate set's grime shows strongly on the lockers; they read as worn, used steel rather than clean paint.
+  No plainer modern sofa exists on Poly Haven; I have not searched Patch for one yet.
+- **States that change the object:** sofa (stuffing bursting through tears; wrecked: it leans on a broken leg, a seat
+  cushion is on the floor, the back is split along its top). Crates (holes ringed with splinters; wrecked: the top
+  crate smashed into a heap of boards with its tins and straw spilled, a bottom crate's side stove in). Drums (holes
+  leaking in streams into a spreading pool; wrecked: one crushed to half height and split, one on its side). Shelving
+  (stock knocked down; wrecked: the rack leans on a buckled upright, cartons burst across the floor). Low walls
+  (spalled lumps; wrecked: a barrier shunted out of line, the next one's end broken off with rebar showing).
+- **Rebuilt in code:** the vending machine (red body round an open bay, rows of drinks on coils behind glass, keypad,
+  display, coin slot, lit header; cracked glass; then the glass gone, rows emptied onto the floor, the header dark), the
+  display case (aluminium frame, wooden back, glass shelves of trophies and boxed kit; cracked; then shards and fallen
+  contents), the skip (deep ribs, box-section rim, a dirt band and a heap of timber, plasterboard, rubble and bags above
+  the rim; holes, then a stove-in side and a bent rim), the trailer (a ridged tarp extruded along the bed with straps
+  over it; tears showing crates, then the back slumped and flaps hanging), the planter (foliage clusters; cracks; then a
+  broken corner and spilled soil).
+- **Server racks:** their photo texture is back (the art layer draws their boxes again); only the damage is drawn
+  over it: holes, then a unit torn half out, cables hanging, debris.
+- Still weak: the generator (a flat green panel), the trolley and the filing run read but are plain; desk pods and
+  the other seven unmodelled pieces are next, then the blood corrections, then Phase D.
+- Tests: unit 5403 passed; Breachline browser 8 passed plus the expected stock warm failure; online passed alone.
+
 **2026-11-12: Phase B, set pieces with three damage states (first piece), and the owner's steel, fabric and sofa.**
 `phaseb/owner-before-after.png` (the three things the owner named) and `phaseb/triples/<family>.png` (intact,
 damaged, wrecked). 38 set pieces in 18 families now have art and three states (`render/setpieces.ts`,
@@ -292,9 +318,9 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** map fill Phase B (set pieces with three damage states): first piece pushed (sofa,
-steel, fabric, the model-built families); next, the weak code-built families (vending, display, skip, trailer, planter,
-server racks) and the eight set pieces not yet modelled, then the blood corrections, then Phase D.
+**Where I am (keep current):** map fill Phase B: every pushed family redone to the reviewer's standard (states with
+their own geometry, mid-tones, 640 px evidence); next the generator and the eight unmodelled set pieces (desk pods
+first), then the blood corrections, then Phase D.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

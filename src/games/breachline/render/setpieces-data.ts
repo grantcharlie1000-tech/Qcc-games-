@@ -44,8 +44,11 @@ export const SET_PIECES: SetPieceDef[] = [
   { x0: 20.5, z0: -3.4, x1: 23.0, y1: 1, z1: -2.4, name: 'materials drop', family: 'materials' },
   { x0: 22.0, z0: 7.5, x1: 25.0, y1: 1.8, z1: 9.2, name: 'skip', family: 'skip' },
 ];
-/** Whether a box is one of the modelled set pieces (the art layer leaves its plain faces out). */
-export const isSetPiece = (b: { x0: number; z0: number; x1: number; z1: number }) => SET_PIECES.some(p => p.x0 === b.x0 && p.z0 === b.z0 && p.x1 === b.x1 && p.z1 === b.z1);
+/** Set pieces whose box the art layer still draws, textured (the server racks' photo texture), with only their
+ * damage drawn over it by render/setpieces.ts. */
+export const TEXTURED_PIECES = new Set(['network cabinet', 'UPS cabinet']);
+/** Whether a box is one of the set pieces the art layer leaves out (they are modelled instead). */
+export const isSetPiece = (b: { x0: number; z0: number; x1: number; z1: number }) => SET_PIECES.some(p => p.x0 === b.x0 && p.z0 === b.z0 && p.x1 === b.x1 && p.z1 === b.z1 && !TEXTURED_PIECES.has(p.name));
 
 /** The local frame of a box: its long axis, and which way its front faces (away from a solid wall it stands
  * against, or else towards the open side of the room or yard). */

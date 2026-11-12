@@ -24,11 +24,7 @@ export const PROPS: Placement[] = [
   { model: 'security_camera_01', x: 15.0, y: 2.45, z: 0.85, yaw: Math.PI },
   // Server Room: an extinguisher by the east wall.
   { model: 'korean_fire_extinguisher_01', x: 14.68, y: 0, z: -6.9, yaw: -Math.PI / 2 },
-  // Lobby: an extinguisher by the entrance; two sofas facing across the low table (scaled into their boxes; their damage is
-  // drawn by render/setpieces.ts). Break Room: a sofa against the west wall.
-  { model: 'sofa_02', x: -9.215, y: 0, z: 3.3, yaw: Math.PI / 2, scale: 0.862, replaces: true },
-  { model: 'sofa_02', x: -7.795, y: 0, z: 3.3, yaw: -Math.PI / 2, scale: 1.108, replaces: true },
-  { model: 'sofa_02', x: 8.768, y: 0, z: 3.0, yaw: Math.PI / 2, scale: 1.046, replaces: true },
+  // Lobby: an extinguisher by the entrance (the sofas are set pieces: render/setpiecemodels.ts).
   { model: 'korean_fire_extinguisher_01', x: -13.0, y: 0, z: 9.7, yaw: Math.PI },
   // Garage: a covered car (collision cut to the model), a tool chest on the bench, drums by the corner crate with the
   // military crate on it, jerrycans by the wall and on the stacked crates.

@@ -899,7 +899,10 @@
           "sha256": "cb337e03211be0309afa1ded2b6cbb2d402c0f794aaf8828fba559d27a42d3f5"
         }
       ],
-      "use": "Lobby and Break Room sofas (render/props.ts), in place of the fabric boxes"
+      "use": "Lobby and Break Room sofas (render/props.ts), in place of the fabric boxes",
+      "greyscale": [
+        "sofa_02"
+      ]
     },
     {
       "id": "worn_metal_rack",

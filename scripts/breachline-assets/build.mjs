@@ -211,7 +211,7 @@ async function main() {
         const key = `${a.id}--${m.name}`;
         // A colour map turned to normalised grey, so one texture set serves every colour by per-instance tint.
         let base = diff;
-        if (a.greyscale?.includes(m.name)) { base = join(dir, `${m.name}-grey.png`); if (!(await exists(base))) await sharp(diff).greyscale().normalise({ lower: 2, upper: 80 }).linear(0.7, 95).png().toFile(base); }
+        if (a.greyscale?.includes(m.name)) { base = join(dir, `${m.name}-grey.png`); if (!(await exists(base))) await sharp(diff).greyscale().normalise({ lower: 2, upper: 98 }).linear(0.45, 120).png().toFile(base); }
         await textureSet(key, { diff: base, nor, arm }, PROP_SIZES, join(OUT, 'tex', key));
         mats.push(m.name);
       }

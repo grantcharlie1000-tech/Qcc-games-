@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { MAP } from '../../../src/games/breachline/map';
-import { SET_PIECES, isSetPiece } from '../../../src/games/breachline/render/setpieces-data';
+import { SET_PIECES, TEXTURED_PIECES, isSetPiece } from '../../../src/games/breachline/render/setpieces-data';
 import { SetPieces, build } from '../../../src/games/breachline/render/setpieces';
 import type { Effects } from '../../../src/games/breachline/effects';
 
@@ -12,7 +12,8 @@ const fx = { debris() {}, dust() {} } as unknown as Effects;
 describe('set pieces', () => {
   it('maps each modelled piece to one collision box of the map', () => {
     expect(SET_PIECES.length).toBeGreaterThanOrEqual(36);
-    for (const p of SET_PIECES) expect(MAP.boxes.filter(b => isSetPiece(b) && b.x0 === p.x0 && b.z0 === p.z0).length, p.name).toBe(1);
+    for (const p of SET_PIECES) expect(MAP.boxes.filter(b => b.x0 === p.x0 && b.z0 === p.z0 && b.x1 === p.x1 && b.z1 === p.z1).length, p.name).toBe(1);
+    for (const p of SET_PIECES) expect(isSetPiece(p), p.name).toBe(!TEXTURED_PIECES.has(p.name));
   });
 
   it('keeps every state inside its box; anything outside is litter lying on the floor', () => {
@@ -44,24 +45,6 @@ describe('set pieces', () => {
     expect(sp.states().every(s => s === 0)).toBe(true);
     expect(sp.indexOf({ x0: 999, z0: 0, x1: 1000, z1: 1 })).toBe(-1);
     sp.dispose();
-  });
-});
-
-describe('sofas', () => {
-  it('stand each sofa model in its set piece box, facing the way its damage is drawn, and inside it', async () => {
-    const { PROPS } = await import('../../../src/games/breachline/render/props');
-    const { frame, SOFA } = await import('../../../src/games/breachline/render/setpieces');
-    const sofas = SET_PIECES.filter(p => p.family === 'sofa');
-    expect(sofas).toHaveLength(3);
-    for (const p of sofas) {
-      const m = PROPS.find(q => q.model === 'sofa_02' && q.x > p.x0 && q.x < p.x1 && q.z > p.z0 && q.z < p.z1);
-      expect(m, p.name).toBeDefined();
-      const f = frame(p), n = f.alongX ? [0, f.front] : [f.front, 0], s = Math.min(f.L / SOFA[0], f.D / SOFA[1], p.y1 / SOFA[2]);
-      expect(m!.scale).toBeCloseTo(s, 2);
-      expect(Math.atan2(Math.sin(m!.yaw - Math.atan2(n[0], n[1])), Math.cos(m!.yaw - Math.atan2(n[0], n[1])))).toBeCloseTo(0, 3);
-      expect(m!.x).toBeCloseTo((p.x0 + p.x1) / 2 + n[0] * SOFA[3] * s, 2);
-      expect(m!.z).toBeCloseTo((p.z0 + p.z1) / 2 + n[1] * SOFA[3] * s, 2);
-    }
   });
 });
 
