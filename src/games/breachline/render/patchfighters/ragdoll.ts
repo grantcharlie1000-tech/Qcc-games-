@@ -88,8 +88,10 @@ export const gunPoint = (r: Ragdoll, i: number, out: Vec): Vec => { const p = r.
 /** Advances by dt of game time in fixed steps; returns true while still moving. */
 export function advance(r: Ragdoll, world: World | null, dt: number): boolean {
   if (r.asleep) return false;
-  r.acc += Math.min(dt, 0.1);
-  while (r.acc >= STEP && !r.asleep) { r.acc -= STEP; step(r, world); }
+  r.acc = Math.min(r.acc + Math.min(dt, 0.1), 0.1);
+  // At most three steps a frame (60 fps needs two): after a slow frame the rest waits for the next frames instead of
+  // landing in one. The steps are the same and in the same order, so a death still plays out alike on every client.
+  for (let n = 0; n < 3 && r.acc >= STEP && !r.asleep; n++) { r.acc -= STEP; step(r, world); }
   return !r.asleep;
 }
 

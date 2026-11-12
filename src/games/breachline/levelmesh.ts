@@ -772,6 +772,13 @@ export class PanelView {
     this.mesh.matrixAutoUpdate = false;
     this.mesh.frustumCulled = true;
   }
+  /** True when the panel changed since the mesh was built. */
+  stale() { return this.panel.version !== this.version; }
+  /** Squared ground distance from (x, z) to the panel's middle. */
+  distSq(x: number, z: number) {
+    const p = this.panel, u = p.u0 + (p.cols * CELL) / 2, dx = (p.axis === 'x' ? u : p.pos) - x, dz = (p.axis === 'x' ? p.pos : u) - z;
+    return dx * dx + dz * dz;
+  }
   /** Rebuilds the mesh if the panel changed. Returns true when it did.
    *
    * A plasterboard wall is two 12.5 mm skins with a cavity and timber studs at 600 mm centres (a noggin at 1.2 m).

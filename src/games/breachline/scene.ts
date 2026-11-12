@@ -159,6 +159,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       scene.add(level.group);
       artScene.add(a.group);
       if (cheap) shade(true);
+      // Nothing in the art or the level moves: their world matrices are set once, not walked every frame.
+      artScene.updateMatrixWorld(true); artScene.matrixWorldAutoUpdate = false;
+      level.group.updateMatrixWorld(true); level.group.matrixWorldAutoUpdate = false;
       tagRooms(artScene); tagRooms(level.group);
       pieces = new SetPieces(fx, (x, z) => { const l = bake.probe(x, z); return [0.18 + l[0] * 1.9, 0.18 + l[1] * 1.9, 0.18 + l[2] * 1.9]; });
       scene.add(pieces.mesh);
@@ -205,18 +208,23 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     tri.setAttribute('color', new THREE.Float32BufferAttribute([1, 1, 1, 1, 1, 1, 1, 1, 1], 3));
     const wallWarm = new THREE.Group();
     for (const m of wallMats) { const mesh = new THREE.Mesh(tri, m); mesh.frustumCulled = false; wallWarm.add(mesh); }
-    camera.updateMatrixWorld(); wallWarm.position.copy(camera.localToWorld(new THREE.Vector3(0, 0, -1))); fx.group.add(wallWarm);
+    camera.updateMatrixWorld(); wallWarm.position.copy(camera.localToWorld(new THREE.Vector3(0, 0, -1))); fx.group.add(wallWarm); shade(cheap);
     // The gadgets are hidden until used (charges, the uplink, grenades, the pulse ring): show them for this draw too.
     const gadgets: THREE.Object3D[] = [device, pulse, ...chargeMeshes, ...nades.map(n => n.mesh)];
     const kept = gadgets.map(o => [o.visible, o.position.clone()] as const);
     for (const o of gadgets) { o.visible = true; o.position.copy(wallWarm.position); o.updateMatrixWorld(true); }
+    // Three compiles only what is visible: show every hidden mesh (far rooms, damage states, LOD levels) meanwhile.
+    const hidden: THREE.Object3D[] = [];
+    for (const root of [scene, artScene]) root.traverse(o => { if (!o.visible) { hidden.push(o); o.visible = true; } });
     try {
       renderer.setRenderTarget(hdr);
-      const done = renderer.compileAsync(scene, camera);
+      const done = Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(artScene, camera)]);
       renderer.setRenderTarget(prev);
       await done;
       // One real draw, so the flash's and the walls' textures are uploaded too.
+      for (const o of hidden) o.visible = false;
       renderer.setRenderTarget(hdr); renderer.render(scene, camera); renderer.setRenderTarget(prev);
+      for (const o of hidden) o.visible = true;
       // The other shading path too (cheap or full), so a quality step in play never compiles a shader.
       const was = cheap;
       shade(!was);
@@ -230,7 +238,10 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       const direct = Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(artScene, camera)]);
       await direct;
       shade(was);
+      // Some drivers finish linking a program only when it is first used: use each one now, not in a fight.
+      for (const p of renderer.info.programs ?? []) { p.getUniforms(); p.getAttributes(); }
     } finally {
+      for (const o of hidden) o.visible = false;
       gadgets.forEach((o, i) => { o.visible = kept[i][0]; o.position.copy(kept[i][1]); o.updateMatrixWorld(true); });
       fx.prime(false); fx.group.remove(wallWarm); tri.dispose(); renderer.setRenderTarget(prev); hdr.dispose(); }
     stats.ready = true;
@@ -385,6 +396,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const tagBox = new THREE.Box3(), EXTERIOR = 1 << 30;
   /** Every tagged mesh: its rooms (layer mask) and world bounds. */
   const tags = new Map<THREE.Object3D, { mask: number; box: THREE.Box3 }>();
+  /** The single-room meshes by room, and those the opening test hid this frame. */
+  const byRoom = new Map<number, Map<THREE.Object3D, { mask: number; box: THREE.Box3 }>>(), hiddenNow: THREE.Object3D[] = [];
   /** Puts every tagged mesh back on all its rooms' layers (for the probes and the warm-up, which see everything). */
   function untag() { tags.forEach((t, o) => { o.layers.mask = t.mask; }); }
   /** The light tier's far rooms (render/artworld.ts): room index to its one merged mesh, shown instead of the room
@@ -414,7 +427,12 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       // Panels and props stay drawn when their room is far (on its far layer as well).
       let lod = false; for (let p = o.parent; p && !lod; p = p.parent) lod = (p as THREE.LOD).isLOD === true;
       if (mask && mask !== EXTERIOR && (both || lod)) mask |= mask << FAR_SHIFT;
-      if (mask) { o.layers.mask = mask; tags.set(o, { mask, box: tagBox.clone() }); }
+      if (mask) {
+        o.layers.mask = mask; const t = { mask, box: tagBox.clone() }; tags.set(o, t);
+        // A mesh of one room only can be culled against that room's opening: listed under it.
+        const near = mask & ((1 << (FAR_SHIFT + 1)) - 2);
+        if (mask !== EXTERIOR && near && (near & (near - 1)) === 0) { const r = Math.log2(near) - 1; let list = byRoom.get(r); if (!list) byRoom.set(r, list = new Map()); list.set(o, t); }
+      }
     });
   }
   interface Portal { box: THREE.Box3; a: number; b: number; panel: Panel }
@@ -487,12 +505,16 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     farMeshes.forEach((m, i) => { m.visible = !!(mask & (1 << (i + 1 + FAR_SHIFT))); });
     // Inside a room seen through an opening, a mesh of that room alone is drawn only if it shows through the opening.
     if (!probesDone) return;
-    tags.forEach((t, o) => {
-      // One room's mesh (its near layer, and maybe its far layer too): bits 1 to 12 name the room.
-      const m = t.mask, near = m & ((1 << (FAR_SHIFT + 1)) - 2), r = Math.log2(near) - 1;
-      if (m === EXTERIOR || !near || (near & (near - 1)) !== 0 || !(m & mask) || reach[r] <= 0) { o.layers.mask = m; return; }
-      project(t.box, pr);
-      o.layers.mask = Math.max(pr[0], rects[r * 4]) < Math.min(pr[2], rects[r * 4 + 2]) && Math.max(pr[1], rects[r * 4 + 1]) < Math.min(pr[3], rects[r * 4 + 3]) ? m : 0;
+    // Only the rooms reached through an opening this frame are visited; what was hidden last frame is put back first.
+    for (const o of hiddenNow) { const t = tags.get(o); if (t) o.layers.mask = t.mask; }
+    hiddenNow.length = 0;
+    byRoom.forEach((list, r) => {
+      if (reach[r] <= 0 || !(mask & (1 << (r + 1)))) return;
+      list.forEach((t, o) => {
+        project(t.box, pr);
+        if (Math.max(pr[0], rects[r * 4]) < Math.min(pr[2], rects[r * 4 + 2]) && Math.max(pr[1], rects[r * 4 + 1]) < Math.min(pr[3], rects[r * 4 + 3])) return;
+        o.layers.mask = 0; hiddenNow.push(o);
+      });
     });
   }
   // ---- Performance experiments (debug only, `?artdbg=world`: window.__blExperiment): each switch changes how the next
@@ -990,8 +1012,17 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       if (art && !probesDone) { const t = performance.now(); probesDone = art.captureNext(renderer, artScene); if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: probe ${(performance.now() - t).toFixed(0)} ms`); }
       time += dt;
       if (view.m.world !== world) bind(view.m.world);
-      let synced = false;
-      for (const p of panels) if (p.sync()) { batches.update(p); synced = true; }
+      // In a fight, rebuild only the nearest changed panel each frame, so a burst of breaks never stalls one frame;
+      // between rounds, all of them at once.
+      let synced = false, next: PanelView | null = null, best = Infinity;
+      const fight = view.m.phase === 'action' || view.m.phase === 'planted';
+      for (const p of panels) {
+        if (!p.stale()) continue;
+        if (!fight) { p.sync(); batches.update(p); synced = true; continue; }
+        const d = p.distSq(camera.position.x, camera.position.z);
+        if (d < best) { best = d; next = p; }
+      }
+      if (next) { next.sync(); batches.update(next); synced = true; }
       // A rebuilt panel takes its full material back; on the cheap path, swap it again.
       if (synced && cheap) setCheapShading(panelGroup, true);
       batches.flush();

@@ -395,7 +395,7 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
       const { m, dt } = view, k = 1 - Math.exp(-dt * 16), a = assets;
       if (!a) { for (const f of figs) if (f) f.group.visible = false; return; }
       const camOk = Number.isFinite(cam.x), order: Fig[] = [];
-      let blob = 0;
+      let blob = 0, ragged = false;
       for (let i = 0; i < Math.max(figs.length, m.players.length); i++) {
         const p = m.players[i];
         if (!p || m.phase === 'lobby') { const f = figs[i]; if (f) f.group.visible = false; continue; }
@@ -421,7 +421,8 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
         // The fighter's own speed, carried into the ragdoll at death.
         if (dt > 0 && p.alive) { if (Number.isFinite(f.px)) { f.vx = (f.anim.root.x - f.px) / dt; f.vz = (f.anim.root.z - f.pz) / dt; } f.px = f.anim.root.x; f.pz = f.anim.root.z; }
         if (!show) continue;
-        if (!p.alive && f.kill && !f.rag && m.world) startRag(f, f.kill);
+        // One body starts falling per frame: a second death in the same frame waits one.
+        if (!p.alive && f.kill && !f.rag && m.world && !ragged) { startRag(f, f.kill); ragged = true; }
         if (f.rag) { RD.advance(f.rag, m.world as World, dt); writeRag(f); }
         else f.anim.update(inp, dt);
         // Job 12.2: wounds and hurt state into the body material; a reaction away from the last hit.
@@ -481,6 +482,9 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
           wm.add(...wb); wm.bind(new THREE.Skeleton(wb)); wm.frustumCulled = false; tmp.add(wm);
         }
         await renderer.compileAsync(tmp, camera);
+        // Run a ragdoll once, so the first death does not also pay for compiling its code.
+        const pts = Array.from({ length: RD.POINTS }, (_, i) => ({ x: (i % 4) * 0.1, y: 0.3 + i * 0.1, z: 0 })), rag = RD.createRagdoll(pts, { x: 1, y: 0, z: 0 }, pts.slice(0, 3));
+        for (let i = 0; i < 60; i++) RD.advance(rag, null, 1 / 60);
         // Upload the shared textures and geometry now, not on the first frame a fighter is seen.
         for (const t of Object.values(assets.maps)) renderer.initTexture(t);
         keep.push(...made);
