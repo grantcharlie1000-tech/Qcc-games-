@@ -224,6 +224,11 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       const both = Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(artScene, camera)]);
       renderer.setRenderTarget(prev);
       await both;
+      // The bottom step (and so software WebGL) draws straight to the screen with no post pass, on the cheap path:
+      // compile that output too.
+      shade(true); renderer.setRenderTarget(null);
+      const direct = Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(artScene, camera)]);
+      await direct;
       shade(was);
     } finally {
       gadgets.forEach((o, i) => { o.visible = kept[i][0]; o.position.copy(kept[i][1]); o.updateMatrixWorld(true); });
@@ -360,10 +365,11 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   /** Lowers the resolution when frames run long and raises it again when there is headroom. */
   // Auto: a ladder from cheap to rich. It starts near the cheap end, steps down at once when frames run long (over
   // 20 ms, averaged over half a second), and climbs one step only after 3 s at full rate and never within 10 s of a
-  // step down. A software rasteriser stays on the bottom step. Post stays on throughout (the low tier, no bloom, at
-  // the bottom), so a step never changes the materials' output or compiles a shader; the scale only moves a viewport.
+  // step down. A software rasteriser stays on the bottom step. The bottom step has no post pass (it draws straight to
+  // the screen, cheap shading, scale by canvas size); the others keep post on, so their scale only moves a viewport.
+  // Every output is compiled at warm-up, so no step compiles a shader.
   const LADDER: { scale: number; post: PostTier; density: number }[] = [
-    { scale: 0.5, post: 'low', density: 0.35 }, { scale: 0.62, post: 'low', density: 0.6 }, { scale: 0.72, post: 'medium', density: 0.8 },
+    { scale: 0.5, post: 'off', density: 0.35 }, { scale: 0.62, post: 'low', density: 0.6 }, { scale: 0.72, post: 'medium', density: 0.8 },
     { scale: 0.85, post: 'medium', density: 1 }, { scale: 1, post: 'medium', density: 1 },
   ];
   let step = 1, downAt = -Infinity, longMs = 0, fullFor = 0;
@@ -508,7 +514,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blExperiment: experiment });
   if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blShade: (on: boolean) => setCheap(on) });
   function shade(on: boolean) { setCheapShading(artScene, on); setCheapShading(scene, on); }
-  function setCheap(on: boolean) { if (on !== cheap) { cheap = on; shade(on); } }
+  function setCheap(on: boolean) { if (on !== cheap) { cheap = on; shade(on); viewmodel.setCheap?.(on); } }
   function setStep(n: number) {
     step = Math.max(0, Math.min(LADDER.length - 1, n));
     const l = LADDER[step];
