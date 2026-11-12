@@ -13,6 +13,45 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ### Performance
 
+**Experiments: where the frame goes.** All in software WebGL at 1280 x 720, 5v5, each frame forced to finish (`scripts/breachline-assets/perfexperiments.mjs`; its switches only exist with `?artdbg=world`).
+
+*High post, cheap shading (ms per frame):*
+
+| Case | Corridor | Office | Lab |
+|---|---|---|---|
+| Cheap shading | 989 | 726 | 897 |
+| Flat unlit colour | 663 | 440 | 605 |
+| No post | 342 | 273 | 323 |
+| Only the view's rooms | 647 | 598 | 544 |
+| Depth pre-pass | 1216 | 849 | 1100 |
+| Lowest LOD | 717 | 670 | 674 |
+| No transparents | 756 | 650 | 809 |
+
+Overdraw averages 4.4 to 5.6 layers per pixel.
+
+*Real low configurations (whole frame, ms):*
+
+| Config | Corridor | Lab | Post alone |
+|---|---|---|---|
+| Performance, 1280 x 720 | 260 | 257 | about 50 |
+| Performance, 1366 x 768 | 255 | 272 | about 50 |
+| Auto bottom step, 1280 x 720 | 191 | 178 | about 50 |
+| Auto bottom step, 1366 x 768 | 233 | 209 | about 50 |
+
+Fighters and the weapon in hand each cost 0 to 20 ms (noise).
+
+*Reading:*
+- High's post chain (4x MSAA half-float plus bloom) is two thirds of a High frame.
+- On the low steps the scene barely shrinks with resolution, so its cost is geometry and draw count, not pixels.
+- A depth pre-pass costs more than it saves.
+
+**Room culling.**
+- The camera draws its own room and the rooms seen through openings, followed through doorways, windows and holed walls up to four rooms deep, using the screen rectangle each opening covers.
+- Static meshes are tagged with their rooms as camera layers. The probe cameras, the warm-up and the bullet-mark raycaster see every room, and `?cull=off` turns it off.
+- Draws fall from 361 to 210 in the Lab, 311 to 259 in the Office and 434 to 196 in the Lobby. The corridor sees every doorway, so it stays near 440.
+- Pictures with it on and off differ in 0 to 0.24% of pixels: edge noise, nothing missing.
+- A browser test checks that a room view draws less than with culling off.
+
 **Job 5: the cheap shading path.**
 
 *What it does.* Every art material (level, props, dressing, panels) has a twin: base colour times its baked light (the lightmap, the panels' vertex light, or a prop probe's average), plus the same painted detail (bands, dado, tiles, joints). It has no normal, roughness, metal or occlusion maps, no reflections and no lights.
@@ -662,7 +701,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** performance lead. Cheap shading path in (job 5); next: the half-way step, then draws under 120 and no per-hit geometry (job 6), then fighters' detail (job 7).
+**Where I am (keep current):** performance lead. Experiments done, room culling in; next: fewer draws inside a room (merging), no per-hit geometry, then the low steps' remaining scene cost.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

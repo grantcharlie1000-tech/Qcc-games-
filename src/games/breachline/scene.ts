@@ -2,6 +2,7 @@
  * drawn with unlit materials so integrated graphics can keep up. Resolution adapts to hold the frame rate. */
 import * as THREE from 'three';
 import { setCheapShading } from './render/materials';
+import { REGIONS } from './render/levelgeo';
 import { CELL, ROUND, WALL_H, WEAPONS } from './config';
 import { Effects } from './effects';
 import { createBake, SUN, SUN_COLOR, type Bake } from './lightbake';
@@ -121,6 +122,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     // `?artdbg=world` exposes the bound world to evidence scripts (read-only use: finding damaged or reinforced panels).
     if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) (window as unknown as { __blWorld: World }).__blWorld = w;
     panels = w.panels.map((p, i) => { const v = new PanelView(p, bake, panelMats, art?.panelLook(i) ?? null); panelGroup.add(v.mesh); return v; });
+    buildPortals(w);
   }
   // Photo-sourced rooms stream in after the first frame; until then, and if anything fails, the procedural look stays.
   const artOff = typeof location !== 'undefined' && /[?&]art=off\b/.test(location.search);
@@ -148,6 +150,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       scene.add(level.group);
       artScene.add(a.group);
       if (cheap) shade(true);
+      tagRooms(artScene); tagRooms(level.group);
       pieces = new SetPieces(fx, (x, z) => { const l = bake.probe(x, z); return [0.18 + l[0] * 1.9, 0.18 + l[1] * 1.9, 0.18 + l[2] * 1.9]; });
       scene.add(pieces.mesh);
       // Breakable dressing (render/breakables.ts): screens, lights, glass, mugs, bins, leaves, ceiling fittings.
@@ -180,6 +183,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     try { await fighters.warm(renderer, camera); } catch (e) { console.warn('Breachline fighters warm-up failed', e); }
     if (disposed) return;
     const prev = renderer.getRenderTarget(), hdr = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true, samples: post.tier === 'high' ? 4 : 0 });
+    camera.layers.enableAll(); // every room, whatever the room culling last chose
     fx.prime(true);
     // Every material a damaged wall can show (cut edges, cavity, studs, planks, plate): an intact wall draws only its
     // face, so without this the first bullet hole would compile them. A tiny triangle with the panels' attributes each.
@@ -357,6 +361,126 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   // The cheap shading path (render/materials.ts cheapTwin): on the bottom step of Auto, on Performance, and so always on
   // a software rasteriser.
   let cheap = false;
+  // ---- Room culling: draw only the camera's room and the rooms seen through openings that are in view ----
+  // Each static mesh of the level, the art rooms and the panels is put on the camera layers of the rooms its bounds
+  // touch (layer i + 1 for REGIONS[i]); anything untagged stays on layer 0 and is always drawn (fighters, effects, the
+  // sky, meshes made later). Each frame the camera's layers are the rooms reached from its own through portals
+  // (doorways, windows, holed walls) that lie in the view, up to four rooms deep. `?cull=off` draws everything.
+  const cullOff = typeof location !== 'undefined' && /[?&]cull=off\b/.test(location.search);
+  const tagBox = new THREE.Box3();
+  function tagRooms(root: THREE.Object3D) {
+    if (cullOff) return;
+    root.updateMatrixWorld(true);
+    root.traverse(o => {
+      if (!(o as THREE.Mesh).isMesh || (o as THREE.SkinnedMesh).isSkinnedMesh) return;
+      tagBox.setFromObject(o);
+      if (tagBox.isEmpty()) return;
+      let mask = 0;
+      // Thin things (walls, panels) belong to the rooms on both sides; anything else to the rooms that hold a fair
+      // share of its footprint (a room's merged mesh touches its neighbours only along the shared wall).
+      const w = tagBox.max.x - tagBox.min.x, d = tagBox.max.z - tagBox.min.z, thin = Math.min(w, d) < 0.6, area = Math.max(1e-4, w * d);
+      REGIONS.forEach((r, i) => {
+        if (thin) { if (tagBox.max.x > r.x0 - 0.25 && tagBox.min.x < r.x1 + 0.25 && tagBox.max.z > r.z0 - 0.25 && tagBox.min.z < r.z1 + 0.25) mask |= 1 << (i + 1); return; }
+        const ox = Math.min(tagBox.max.x, r.x1) - Math.max(tagBox.min.x, r.x0), oz = Math.min(tagBox.max.z, r.z1) - Math.max(tagBox.min.z, r.z0);
+        if (ox > 0 && oz > 0 && ox * oz > 0.15 * area) mask |= 1 << (i + 1);
+      });
+      if (mask) o.layers.mask = mask;
+    });
+  }
+  interface Portal { box: THREE.Box3; a: number; b: number; panel: Panel }
+  let portals: Portal[] = [];
+  const regionAt = (x: number, z: number) => REGIONS.findIndex(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
+  function buildPortals(w: World) {
+    portals = [];
+    for (const p of w.panels) {
+      const mid = p.u0 + p.cols * CELL / 2, at = (side: number) => (p.axis === 'x' ? regionAt(mid, p.pos + side * 0.4) : regionAt(p.pos + side * 0.4, mid));
+      const a = at(1), b = at(-1);
+      if (a < 0 || b < 0 || a === b) continue;
+      const u1 = p.u0 + p.cols * CELL, y1 = p.y0 + p.rows * CELL;
+      const box = p.axis === 'x' ? new THREE.Box3(new THREE.Vector3(p.u0, p.y0, p.pos - 0.2), new THREE.Vector3(u1, y1, p.pos + 0.2)) : new THREE.Box3(new THREE.Vector3(p.pos - 0.2, p.y0, p.u0), new THREE.Vector3(p.pos + 0.2, y1, u1));
+      portals.push({ box, a, b, panel: p });
+    }
+  }
+  // Each room reached carries the screen rectangle it is seen through (NDC); a portal opens the next room only where its
+  // own projected rectangle overlaps that one, and the next room is seen through the overlap.
+  const viewProj = new THREE.Matrix4(), corner = new THREE.Vector4(), rects = new Float32Array(32 * 4), reach = new Int8Array(32), queue: number[] = [];
+  function project(b: THREE.Box3, out: number[]) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, behind = 0;
+    for (let k = 0; k < 8; k++) {
+      corner.set(k & 1 ? b.max.x : b.min.x, k & 2 ? b.max.y : b.min.y, k & 4 ? b.max.z : b.min.z, 1).applyMatrix4(viewProj);
+      if (corner.w <= 0.05) { behind++; continue; }
+      const x = corner.x / corner.w, y = corner.y / corner.w;
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+    }
+    // Wholly behind the eye: not seen. Partly behind (the eye is at the opening): it may fill the screen.
+    if (behind === 8) { out[0] = out[1] = 1; out[2] = out[3] = -1; return; }
+    if (behind) { out[0] = -1; out[1] = -1; out[2] = 1; out[3] = 1; return; }
+    out[0] = x0; out[1] = y0; out[2] = x1; out[3] = y1;
+  }
+  const pr = [0, 0, 0, 0];
+  let cullLog: string[] | null = null;
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blCullLog: (on: boolean) => { cullLog = on ? [] : null; return () => cullLog; } });
+  function cullRooms() {
+    if (cullOff || !portals.length) { camera.layers.enableAll(); return; }
+    const home = regionAt(camera.position.x, camera.position.z);
+    if (home < 0) { camera.layers.enableAll(); return; }
+    camera.updateMatrixWorld(); viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    reach.fill(-1); reach[home] = 0; queue.length = 0; queue.push(home);
+    rects[home * 4] = -1; rects[home * 4 + 1] = -1; rects[home * 4 + 2] = 1; rects[home * 4 + 3] = 1;
+    let mask = 1 | (1 << (home + 1));
+    while (queue.length) {
+      const r = queue.shift()!;
+      if (reach[r] >= 4) continue;
+      for (const p of portals) {
+        if (p.a !== r && p.b !== r) continue;
+        const o = p.a === r ? p.b : p.a;
+        // A wall panel is a portal only once it has a hole; doors and windows always are.
+        if (p.panel.kind === 'wall' && p.panel.intact === p.panel.cells.length) continue;
+        project(p.box, pr);
+        const x0 = Math.max(pr[0], rects[r * 4]), y0 = Math.max(pr[1], rects[r * 4 + 1]), x1 = Math.min(pr[2], rects[r * 4 + 2]), y1 = Math.min(pr[3], rects[r * 4 + 3]);
+        if (x0 >= x1 || y0 >= y1) continue;
+        if (cullLog) cullLog.push(`${REGIONS[r].name}>${REGIONS[o].name} ${p.panel.kind} [${pr.map(v => v.toFixed(2))}] in [${[0, 1, 2, 3].map(k => rects[r * 4 + k].toFixed(2))}]`);
+        if (reach[o] < 0) { reach[o] = reach[r] + 1; mask |= 1 << (o + 1); queue.push(o); rects[o * 4] = x0; rects[o * 4 + 1] = y0; rects[o * 4 + 2] = x1; rects[o * 4 + 3] = y1; }
+        else { rects[o * 4] = Math.min(rects[o * 4], x0); rects[o * 4 + 1] = Math.min(rects[o * 4 + 1], y0); rects[o * 4 + 2] = Math.max(rects[o * 4 + 2], x1); rects[o * 4 + 3] = Math.max(rects[o * 4 + 3], y1); }
+      }
+    }
+    camera.layers.mask = mask;
+  }
+  // ---- Performance experiments (debug only, `?artdbg=world`: window.__blExperiment): each switch changes how the next
+  // frames are drawn, to find where the GPU time goes. Off by default; nothing here runs in a normal game.
+  const experiment: { on?: boolean; flat?: boolean; overdraw?: boolean; prepass?: boolean; noPost?: boolean; noFighters?: boolean; noViewmodel?: boolean; noTransparent?: boolean; lowLod?: boolean; rooms?: { x0: number; z0: number; x1: number; z1: number }[] } = {};
+  const experimentMats = {
+    flat: new THREE.MeshBasicMaterial({ color: 0x808080 }),
+    count: new THREE.MeshBasicMaterial({ color: new THREE.Color(1 / 255, 1 / 255, 1 / 255), blending: THREE.AdditiveBlending, toneMapped: false }),
+    depth: new THREE.MeshBasicMaterial({ colorWrite: false }),
+  };
+  function experimentBegin(X: typeof experiment) {
+    const hidden: THREE.Object3D[] = [], lods: [THREE.LOD, boolean][] = [];
+    const keep = { tm: renderer.toneMapping, cs: renderer.outputColorSpace };
+    const roots = [scene, artScene];
+    for (const r of roots) r.traverse(o => {
+      const mesh = o as THREE.Mesh;
+      if (X.lowLod && (o as THREE.LOD).isLOD) { const l = o as THREE.LOD; lods.push([l, l.autoUpdate]); l.autoUpdate = false; l.levels.forEach((v, i) => { v.object.visible = i === l.levels.length - 1; }); }
+      if (!mesh.material || !o.visible) return;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      let hide = (X.noFighters && (o as THREE.SkinnedMesh).isSkinnedMesh) || (X.noTransparent && mats.every(m => m.transparent));
+      if (!hide && X.rooms && !(o as THREE.SkinnedMesh).isSkinnedMesh) {
+        const g = mesh.geometry; if (g && !g.boundingSphere) g.computeBoundingSphere();
+        const c = g?.boundingSphere ? g.boundingSphere.center.clone().applyMatrix4(o.matrixWorld) : null;
+        if (c && g!.boundingSphere!.radius < 40) hide = !X.rooms.some(r => c.x > r.x0 && c.x < r.x1 && c.z > r.z0 && c.z < r.z1);
+      }
+      if (hide) { o.visible = false; hidden.push(o); }
+    });
+    if (X.flat) artScene.overrideMaterial = scene.overrideMaterial = experimentMats.flat;
+    if (X.overdraw) { artScene.overrideMaterial = scene.overrideMaterial = experimentMats.count; renderer.toneMapping = THREE.NoToneMapping; renderer.outputColorSpace = THREE.LinearSRGBColorSpace; }
+    return () => {
+      for (const o of hidden) o.visible = true;
+      for (const [l, a] of lods) { l.autoUpdate = a; l.levels.forEach((v, i) => { v.object.visible = i === 0; }); }
+      artScene.overrideMaterial = scene.overrideMaterial = null;
+      renderer.toneMapping = keep.tm; renderer.outputColorSpace = keep.cs;
+    };
+  }
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blExperiment: experiment });
   if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blShade: (on: boolean) => setCheap(on) });
   function shade(on: boolean) { setCheapShading(artScene, on); setCheapShading(scene, on); }
   function setCheap(on: boolean) { if (on !== cheap) { cheap = on; shade(on); } }
@@ -637,7 +761,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     for (const f of MAP.floors) if (x >= f.x0 && x <= f.x1 && z >= f.z0 && z <= f.z1) floorY = f === MAP.floors[0] ? 0.006 : f.mat === 'grass' ? 0.018 : 0.026;
     fx.pool(x, floorY, z, rx, rz, 5, bloodOff ? MARK.scuff : MARK.pool, [1, 1, 1], 0);
   }
-  const ray = new THREE.Raycaster(), rayO = new THREE.Vector3(), rayD = new THREE.Vector3(), rayHit = new THREE.Vector3(), nrm = new THREE.Vector3();
+  const ray = new THREE.Raycaster(); ray.layers.enableAll();
+  const rayO = new THREE.Vector3(), rayD = new THREE.Vector3(), rayHit = new THREE.Vector3(), nrm = new THREE.Vector3();
   function passThrough(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, tmax: number) {
     const a = art!;
     let best = firstDressing(a.markables.dress, ox, oy, oz, dx, dy, dz, tmax), kind = best ? dressMaterial(best.key) : '';
@@ -813,6 +938,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       // A rebuilt panel takes its full material back; on the cheap path, swap it again.
       if (synced && cheap) setCheapShading(panelGroup, true);
       batches.flush();
+      if (synced) tagRooms(panelGroup);
       updateDeploys(view.m);
       fighters.update(view);
       for (let i = pendingPools.length - 1; i >= 0; i--) {
@@ -833,14 +959,19 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       breakables?.update(dt, view.reduced);
       exposure = Math.max(0, exposure - dt * 3.5);
       renderer.toneMappingExposure = 1.02 + (view.reduced ? 0 : exposure);
-      const graded = post.begin();
+      cullRooms();
+      const X = experiment, undo = X.on ? experimentBegin(X) : null;
+      const graded = !X.noPost && !X.overdraw && post.begin();
+      if (!graded) renderer.setRenderTarget(null);
       renderer.clear();
       let calls = 0, tris = 0;
+      if (X.prepass) { const keep = [artScene.overrideMaterial, scene.overrideMaterial]; artScene.overrideMaterial = scene.overrideMaterial = experimentMats.depth; if (art) renderer.render(artScene, camera); renderer.render(scene, camera); [artScene.overrideMaterial, scene.overrideMaterial] = keep; }
       if (art) { renderer.render(artScene, camera); calls = renderer.info.render.calls; tris = renderer.info.render.triangles; }
       renderer.render(scene, camera);
       stats.calls = calls + renderer.info.render.calls; stats.triangles = tris + renderer.info.render.triangles;
-      stats.calls += viewmodel.render();
+      if (!X.noViewmodel) stats.calls += viewmodel.render();
       if (graded) post.end(renderer.toneMappingExposure);
+      undo?.();
       // Script time on the main thread for this frame (command submission included, GPU work not), smoothed.
       stats.cpu = +((stats.cpu ?? 0) * 0.9 + (performance.now() - cpuStart) * 0.1).toFixed(3);
       stats.programs = renderer.info.programs?.length ?? 0; stats.textures = renderer.info.memory.textures; stats.geometries = renderer.info.memory.geometries;

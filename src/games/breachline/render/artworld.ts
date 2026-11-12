@@ -405,6 +405,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       renderer.autoClear = true;
       const cube = new THREE.WebGLCubeRenderTarget(probeSize, { type: THREE.HalfFloatType }), cam = new THREE.CubeCamera(0.05, Math.hypot(r.x1 - r.x0, WALL_H, r.z1 - r.z0) + 1, cube);
       cam.position.set((r.x0 + r.x1) / 2, 1.6, (r.z0 + r.z1) / 2);
+      // The probe sees every room (the main camera's room culling uses layers).
+      for (const c of cam.children) c.layers.enableAll();
       cam.update(renderer, scene);
       rooms[i].env = pmrem.fromCubemap(cube.texture);
       cube.dispose(); pmrem.dispose();
