@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { readMeshBin } from '../meshbin';
-import { AR5, CORVIN, HALDEN, TERN, WREN, at } from '../sculpt/designs';
+import { AR5, CORVIN, HALDEN, SIDEARM, TERN, WREN, at } from '../sculpt/designs';
 import { ArtLoader } from '../../assets';
 import { texturedMaterial } from '../material';
 
@@ -76,7 +76,7 @@ function sheet() {
   finish(false); scene.add(weapon!);
   scene.background = new THREE.Color(0xe9e6df); renderer.setScissorTest(true);
   const S = curDir === 'halden12' ? 1.05 : 1.22; // px per mm
-  const SHt = curDir === 'halden12' ? HALDEN.sightH : curDir === 'tern' ? TERN.sightH : curDir === 'wren' ? WREN.sightH : curDir === 'corvin' ? CORVIN.sightH : AR5.sightH;
+  const SHt = curDir === 'halden12' ? HALDEN.sightH : curDir === 'tern' ? TERN.sightH : curDir === 'wren' ? WREN.sightH : curDir === 'corvin' ? CORVIN.sightH : curDir === 'p11' ? SIDEARM.sightH : AR5.sightH;
   // Side view: muzzle left. Region centre is the bore at u = 175.
   const views: { name: string; cx: number; cy: number; s: number; cam: THREE.OrthographicCamera; map: (x: number, y: number, u: number) => [number, number] }[] = [];
   const mk = (name: string, cx: number, cy: number, rw: number, rh: number, s: number, pos: THREE.Vector3, up: THREE.Vector3, look: THREE.Vector3, map: (x: number, y: number, u: number) => [number, number]) => {

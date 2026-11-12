@@ -16,8 +16,9 @@ import { MeshoptSimplifier } from 'meshoptimizer';
 import * as THREE from 'three';
 import { mergeVertices, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MAT, ar5Parts, type Part } from '../../../src/games/breachline/render/hero/sculpt/ar5';
-import { AR5, CORVIN, HALDEN, TERN, WREN } from '../../../src/games/breachline/render/hero/sculpt/designs';
+import { AR5, CORVIN, HALDEN, SIDEARM, TERN, WREN } from '../../../src/games/breachline/render/hero/sculpt/designs';
 import { haldenParts } from '../../../src/games/breachline/render/hero/sculpt/halden12';
+import { pistolParts } from '../../../src/games/breachline/render/hero/sculpt/pistol';
 import { packMeshBin, type MeshArrays } from '../../../src/games/breachline/render/hero/meshbin';
 import { meshField, type RawMesh } from './mesher';
 import { chartUnwrap } from './chart';
@@ -31,6 +32,7 @@ const CLAY = process.argv.includes('--clay');
 
 export interface Weapon { id: string; dir: string; parts: (hi: boolean) => Part[]; sightH: number; budget: number; grid: number; lens?: { r: number; u: number[] }; lensRect?: { w: number; h: number; u: number[] }; dot?: { u: number; r: number; y?: number }; ring?: { u: number; r0: number; r1: number }; src?: string }
 export const WEAPONS: Record<string, Weapon> = {
+  p11: { id: 'p11', dir: 'p11', src: 'pistol', parts: pistolParts, sightH: SIDEARM.sightH, budget: 8000, grid: 0.3, dot: { u: SIDEARM.slide.u1 - 13.2, r: 1.1, y: SIDEARM.sightH - 1.8 } },
   corvin: { id: 'corvin', dir: 'corvin', src: 'ar5', parts: hi => ar5Parts(hi, CORVIN), sightH: CORVIN.sightH, budget: 13000, grid: 0.4, lens: { r: CORVIN.scope!.bore, u: [CORVIN.scope!.u0 + 3, CORVIN.scope!.u1 - 8] } },
   wren: { id: 'wren', dir: 'wren', src: 'ar5', parts: hi => ar5Parts(hi, WREN), sightH: WREN.sightH, budget: 10500, grid: 0.4, lensRect: { w: WREN.reflex!.window[0] - 1, h: WREN.reflex!.window[1] - 1, u: [WREN.reflex!.u1 - 5] }, dot: { u: WREN.reflex!.u1 - 6.5, r: 1.1 } },
   tern: { id: 'tern', dir: 'tern', src: 'ar5', parts: hi => ar5Parts(hi, TERN), sightH: TERN.sightH, budget: 11500, grid: 0.4, lensRect: { w: TERN.holo!.window[0] - 1, h: TERN.holo!.window[1] - 1, u: [TERN.holo!.u0 + 6, TERN.holo!.u1 - 6] }, dot: { u: TERN.holo!.u1 - 10, r: 0.9 }, ring: { u: TERN.holo!.u1 - 10, r0: 6.4, r1: 7.4 } },
@@ -196,6 +198,9 @@ const MARKS: { part: string; side: -1 | 1; u: number; y: number; h: number; text
   { part: 'lower', side: -1, u: 171, y: -33.5, h: 2.6, text: 'CAL 5.56', w: 'tern' },
   { part: 'lower', side: -1, u: 171, y: -39, h: 2.6, text: 'T8-20633', w: 'tern' },
   { part: 'lower', side: -1, u: 66, y: -21, h: 1.9, text: 'SAFE SEMI AUTO', w: 'tern' },
+  { part: 'slide', side: -1, u: 128, y: 4, h: 3.4, text: 'P-11', w: 'p11' },
+  { part: 'slide', side: -1, u: 128, y: -3, h: 2.4, text: 'CAL 9MM', w: 'p11' },
+  { part: 'frame', side: -1, u: 150, y: -17, h: 2, text: 'P11-30418', w: 'p11' },
   { part: 'lower', side: -1, u: 171, y: -27, h: 3.4, text: 'CORVIN DMR', w: 'corvin' },
   { part: 'lower', side: -1, u: 171, y: -33.5, h: 2.6, text: 'CAL 7.62', w: 'corvin' },
   { part: 'lower', side: -1, u: 171, y: -39, h: 2.6, text: 'C7-11852', w: 'corvin' },

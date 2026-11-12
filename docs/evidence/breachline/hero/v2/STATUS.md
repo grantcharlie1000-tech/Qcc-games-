@@ -3,10 +3,34 @@
 Session: weapons rebuild, from 2026-11-12 (plan: "Hero models, second build", "Weapons rebuild resumes").
 Owns `models.ts`, `render/hero/`, `scripts/breachline-assets/hero/`, `public/game-art/breachline/hero/`, this folder.
 
+## State at stop (2026-11-12)
+
+Rebuilt from signed-distance sculpts, baked (KTX2 sets, cheap twins, warm-up compiled) and held in the game: all six
+weapons. Viewmodel cost: at most 0.4 ms script and 3 draws, 17k to 22k triangles with the arms. Ratings are honest
+reads from stills; motion needs the owner's eye on a real machine.
+
+| Item | Now | What would take it to 8 |
+| --- | --- | --- |
+| AR-5 | 6.5 | More triangles on the edges seen at the hip; hand-placed wear and grime where it is handled; a less generic lower. |
+| Halden 12 | 6 | Real receiver forms (action bars, cross-bolt safety detail); furniture texture with grain; a saddle that leaves the markings in view. |
+| Tern C8 | 6 | A shaped holo housing (sloped hood, bevelled window) in place of a slimmed box. |
+| Wren-9 | 6 | Its own lower and a true SMG brace stock instead of the AR family's parts; a handstop. |
+| Corvin DMR | 6 | A darker scope finish, heavier rings, a cheek riser; correct sight labels on its design sheet. |
+| P-11 | 5.5 | A shaped grip (palm swell, front strap texture) and more slide detail; it is the plainest next to the benchmark. |
+| Hands | 6.5 | A higher-poly hand (the Base Hand is 3k triangles, the knuckles show), glove armour as geometry, fingers solved against the weapon surface. |
+| Aim | 5 | Curves tuned in motion on real hardware; per-weapon timing. |
+| Recoil | 4 | Per-weapon recoil profiles with a readable kick and recovery, judged in motion. |
+| Swap | 4.5 | Authored lower-and-raise keys with the off hand used. |
+| Reload | 5 | Hand contacts held through every beat (magazine, charging handle, pump); per-weapon beats. |
+| Bob and sway | 5 | Tuned to movement speed in motion. |
+
+Known gaps: no frame of a bot firing in third person (the fix stands on its code and test); the old `hero/ar` set
+(5.8 MB) is kept for `render/patchhero/`; scope reticle and picture are the HUD's (CSS, not a second render).
+
 ## Where I am
 
 **Baked and held: AR-5, Halden 12, Tern C8, Wren-9.** Aimed views cleared, hands reworked (planner's items 1 and 2).
-Next: the sidearm. Hands: anatomy rebuilt to the plan
+All six done; stopped as asked. Hands: anatomy rebuilt to the plan
 (gate 3), Base Hand is the default glove.
 
 ## Pipeline (new)
@@ -259,6 +283,14 @@ sheet's sight labels are still the red dot's.
 Tern holo housing slimmer (half-width 17, top 79 mm, window 31 x 25); Halden ghost ring's inner lip and eye-side face
 painted machined bright. Evidence: `tern-halden-aimed-carryovers.jpg` (before left).
 
+## P-11 sidearm (gates 4, 5)
+
+Its own sculpt (`pistol.ts`, table `SIDEARM`): 188 mm steel slide with front and rear serrations, ejection port with the
+barrel hood, a square-notch rear sight level with the front post (red dot in the notch), polymer frame with a dust
+cover and three rail slots, undercut square guard, raked stippled grip, magazine with a baseplate, markings P-11,
+CAL 9MM, P11-30418. 7.9k triangles, 1.17 MB, 2 draws. Evidence: `p11-gate4-textured-studio.jpg`,
+`p11-gate5-corridor-lab.jpg` (old left). No design sheet: the sheet drawing is the rifle family's. Honest read: 5.5.
+
 ## Decisions (made without asking; say if wrong)
 
 - New assets go to `hero/ar5/`, not `hero/ar/`: `render/patchhero/` (the `?weapons=patch` switch, not mine) cuts its
@@ -270,6 +302,9 @@ painted machined bright. Evidence: `tern-halden-aimed-carryovers.jpg` (before le
   in the magazine well).
 
 ## Tests
+
+Final push: `npx tsc --noEmit` clean; `npx vitest run tests/games/breachline` 149 passed; Chromium browser tests
+(`play.spec.ts`, `warm.spec.ts`, no-compile after warm-up included) 14 of 14 passed.
 
 Aimed and hands push: `npx tsc --noEmit` clean; `npx vitest run tests/games/breachline` 148 passed; Chromium
 browser tests (`play.spec.ts`, `warm.spec.ts`) 12 of 13 then the two failures (soft-wall gunfire, stock fighters'

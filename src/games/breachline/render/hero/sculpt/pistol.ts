@@ -18,11 +18,12 @@ export function pistolParts(hi: boolean): Part[] {
     s = cut(s, move(repeatU(groove, 3.2, 9), 0, 0, 7), move(repeatU(groove, 3.2, 6), 0, 0, 142));
     s = cutChamfer(s, box(3, 5, D.port.u0, S.half + 2, S.top + 2, D.port.u1), 0.6);
     s = cut(s, lathe([[0, S.u1 - 4], [D.barrel.r + 0.3, S.u1 - 4], [D.barrel.r + 0.3, S.u1 + 2], [0, S.u1 + 2]], 0, 0));
-    // Rear sight: a block with a square notch; front post. The sight line runs over the notch floor and the post top.
-    let rear = box(-8.5, S.top - 1, 3, 8.5, sh + 3, 12, 0.8);
-    rear = cut(rear, box(-1.8, sh, 2, 1.8, sh + 5, 13));
+    // Rear sight: a block with a square notch; front post. The sight line runs level over the rear sight's top and the
+    // post's top, so the post sits in the notch with light either side.
+    let rear = box(-8.5, S.top - 1, 3, 8.5, sh, 12, 0.8);
+    rear = cut(rear, box(-2, sh - 3.5, 2, 2, sh + 2, 13));
     s = union(s, rear, box(-1.7, S.top - 1, S.u1 - 13, 1.7, sh, S.u1 - 7, 0.4));
-    if (hi) s = relief(s, (x, y, z) => (y > sh - 0.2 && -z < 13 ? ridgesU(0.8, 0.15)(x, y, z) : 0), 0.2);
+    if (hi) s = relief(s, (x, y, z) => (y > sh - 0.2 && -z < 13 ? ridgesU(0.8, 0.15)(x, y, z) : 0), 0.2); // serrated rear face top
     add('slide', BONE.bolt, MAT.steel, s, 2);
     // Barrel hood seen in the port, moving with the slide.
     add('barrel hood', BONE.bolt, MAT.brass, box(-6.6, -4, D.port.u0 - 4, 6.6, 11.5, D.port.u1 + 2, 1.2), 0.5);

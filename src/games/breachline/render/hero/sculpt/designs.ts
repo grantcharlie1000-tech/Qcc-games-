@@ -135,7 +135,7 @@ export const SIDEARM = {
   barrel: { r: 6.8, bore: 4.6 },
   frame: { u0: -6, u1: 176, bottom: -24, half: 11.6 },
   guard: { u0: 42, u1: 92, low: -50 },
-  grip: { pivot: [-4, -12] as const, rake: 0.33, width: 30 },
+  grip: { pivot: [2, -12] as const, rake: 0.3, width: 30 },
   mag: { width: 20 },
 } as const;
 
