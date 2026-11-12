@@ -61,9 +61,12 @@ export function createOperator({env=process.env,fetcher=fetch,readText=p=>readFi
  async function findDatabases(){const list=await api('/d1/database?per_page=100&page=1');if(!Array.isArray(list))fail('resource_list_invalid');return list;}
  function exactDatabase(list,e){const matches=list.filter(d=>d.name===databaseName(e));if(matches.length!==1||!matches[0].uuid)fail('database_missing_or_ambiguous');return matches[0].uuid;}
  async function verifyCleanup(e,id){
-  const settings=await api(`/workers/scripts/${workerName(e)}/settings`),schedule=await api(`/workers/scripts/${workerName(e)}/schedules`);
+  const settings=await api(`/workers/scripts/${workerName(e)}/settings`),privacy=await api(`/workers/scripts/${workerName(e)}/script-settings`),schedule=await api(`/workers/scripts/${workerName(e)}/schedules`);
   const bindings=settings?.bindings;
-  if(!Array.isArray(bindings)||bindings.length!==1||bindings[0].type!=='d1'||bindings[0].name!=='MOVIE_POPULARITY_DB'||bindings[0].id!==id||settings.compatibility_date!==DATE||settings.logpush!==false||settings.observability?.enabled!==false||!equal(schedule?.schedules?.map(s=>s.cron),['* * * * *']))fail('cleanup_invalid');
+  if(!Array.isArray(bindings)||bindings.length!==1||bindings[0].type!=='d1'||bindings[0].name!=='MOVIE_POPULARITY_DB'||bindings[0].id!==id)fail('cleanup_binding_invalid');
+  if(settings.compatibility_date!==DATE)fail('cleanup_date_invalid');
+  if(privacy?.logpush!==false||privacy.observability?.enabled!==false)fail('cleanup_logging_invalid');
+  if(!equal(schedule?.schedules?.map(s=>s.cron),['* * * * *']))fail('cleanup_schedule_invalid');
  }
  async function schemaValid(id){
   const rows=await tables(id);if(!['movie_popularity_tokens','movie_popularity_daily','movie_popularity_rate'].every(name=>rows.some(r=>r.name===name)))fail('schema_invalid');
@@ -96,7 +99,9 @@ export function createOperator({env=process.env,fetcher=fetch,readText=p=>readFi
    if(scripts.some(s=>s.id===workerName(e))){const settings=await api(`/workers/scripts/${workerName(e)}/settings`);const bindings=settings?.bindings;if(!Array.isArray(bindings)||bindings.length!==1||bindings[0].type!=='d1'||bindings[0].name!=='MOVIE_POPULARITY_DB'||bindings[0].id!==id)fail('worker_rebinding_refused');}
    const metadata={main_module:'movie-popularity-cleanup.js',compatibility_date:DATE,bindings:[{type:'d1',name:'MOVIE_POPULARITY_DB',id}],logpush:false,observability:{enabled:false}};
    const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));form.set('movie-popularity-cleanup.js',new Blob([javascript],{type:'application/javascript+module'}),'movie-popularity-cleanup.js');
-   await api(`/workers/scripts/${workerName(e)}`,'PUT',form);await api(`/workers/scripts/${workerName(e)}/schedules`,'PUT',[{cron:'* * * * *'}]);await verifyCleanup(e,id);
+   await api(`/workers/scripts/${workerName(e)}`,'PUT',form);
+   await api(`/workers/scripts/${workerName(e)}/script-settings`,'PATCH',{logpush:false,observability:{enabled:false}});
+   await api(`/workers/scripts/${workerName(e)}/schedules`,'PUT',[{cron:'* * * * *'}]);await verifyCleanup(e,id);
    const vars={MOVIE_POPULARITY_ENABLED:{type:'plain_text',value:e==='preview'?'true':'false'}};
    if(!p.deployment_configs[e].env_vars?.MOVIE_POPULARITY_SECRET)vars.MOVIE_POPULARITY_SECRET={type:'secret_text',value:randomHex()};
    const current=await project();

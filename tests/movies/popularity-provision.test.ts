@@ -45,7 +45,8 @@ function platform(){
   }else if(path.endsWith('/query')){const db=sqlite.get(path.split('/')[3])!;const query=db.prepare(body.sql);result=[{success:true,results:query.all(...(body.params??[]))}];}
   else if(path==='/workers/scripts')result=[...workers.keys()].map(id=>({id}));
   else if(path.endsWith('/schedules')){const name=path.split('/')[3];if(method==='PUT')workers.get(name).schedules=body;result={schedules:workers.get(name)?.schedules??[]};}
-  else if(path.endsWith('/settings'))result=workers.get(path.split('/')[3])?.metadata;
+  else if(path.endsWith('/script-settings')){const worker=workers.get(path.split('/')[3]);if(method==='PATCH')worker.privacy=body;result=worker.privacy??{};}
+  else if(path.endsWith('/settings')){const metadata=workers.get(path.split('/')[3])?.metadata;result={bindings:metadata?.bindings,compatibility_date:metadata?.compatibility_date};}
   else if(path.startsWith('/workers/scripts/')&&method==='PUT'){const metadata=JSON.parse(await body.get('metadata').text());workers.set(path.split('/')[3],{metadata});result={};}
   else throw Error('unexpected test route');
   return Response.json({success:true,result});
@@ -67,7 +68,7 @@ describe('operator deployment lifecycle',()=>{
   expect(p.requests.filter(r=>r.path==='/d1/database'&&r.method==='POST')).toHaveLength(2);
   for(const worker of p.workers.values()){
    expect(worker.metadata.bindings[0].name).toBe('MOVIE_POPULARITY_DB');
-   expect(worker.metadata.observability.enabled).toBe(false);
+   expect(worker.privacy.observability.enabled).toBe(false);expect(worker.privacy.logpush).toBe(false);
    expect(worker.schedules).toEqual([{cron:'* * * * *'}]);
   }
   await op.enableProduction();expect(p.project.deployment_configs.production.env_vars.MOVIE_POPULARITY_ENABLED.value).toBe('true');
@@ -76,7 +77,7 @@ describe('operator deployment lifecycle',()=>{
   const {createOperator}=await load(),p=platform();const op=createOperator({env,fetcher:p.fetcher,readText:async(path:string)=>String(path).endsWith('.sql')?schema():'export default {};'});
   await expect(op.verifyPreview('https://evil.example')).rejects.toThrow('preview_url_invalid');
   await op.prepare();p.workers.values().next().value.schedules=[];
-  await expect(op.enableProduction()).rejects.toThrow('cleanup_invalid');
+  await expect(op.enableProduction()).rejects.toThrow('cleanup_schedule_invalid');
   expect(p.project.deployment_configs.production.env_vars.MOVIE_POPULARITY_ENABLED.value).toBe('false');
  });
 });
@@ -104,7 +105,7 @@ describe('operator failure and rollback paths',()=>{
   await op.prepare();await op.enableProduction();await op.disableProduction();
   expect(p.project.deployment_configs.production.env_vars.MOVIE_POPULARITY_SECRET.value).toBe('existing-secret');
   expect(p.project.deployment_configs.production.env_vars.MOVIE_POPULARITY_ENABLED.value).toBe('false');
-  expect(p.requests.find(r=>r.method==='PATCH'&&r.body.deployment_configs.production)?.body.deployment_configs.production.d1_databases.OTHER).toEqual({id:'unchanged-other'});
+  expect(p.requests.find(r=>r.method==='PATCH'&&r.body.deployment_configs?.production)?.body.deployment_configs.production.d1_databases.OTHER).toEqual({id:'unchanged-other'});
   expect(p.workers.size).toBe(2);for(const w of p.workers.values())expect(w.schedules).toHaveLength(1);
  });
 });
@@ -139,4 +140,14 @@ it('preserves the Wrangler hash and tolerates API object-key ordering',async()=>
  const patch=p.requests.filter(r=>r.method==='PATCH').at(-1)!;
  expect(patch.body.deployment_configs.production.wrangler_config_hash).toBe('current-hash');
  expect(p.project.deployment_configs.production.env_vars.KEEP.value).toBe('stay');
+});
+it.each(['binding','date','logging'])('blocks production enablement when cleanup %s verification fails',async kind=>{
+ const {createOperator}=await load(),p=platform();
+ const op=createOperator({env,fetcher:p.fetcher,readText:async(path:string)=>String(path).endsWith('.sql')?schema():'export default {};'});
+ await op.prepare();const worker=p.workers.get('nceastudy-movie-popularity-production-cleanup');
+ if(kind==='binding')worker.metadata.bindings[0].id='another-database';
+ else if(kind==='date')worker.metadata.compatibility_date='2020-01-01';
+ else worker.privacy.observability.enabled=true;
+ await expect(op.enableProduction()).rejects.toThrow(`cleanup_${kind}_invalid`);
+ expect(p.project.deployment_configs.production.env_vars.MOVIE_POPULARITY_ENABLED.value).toBe('false');
 });
