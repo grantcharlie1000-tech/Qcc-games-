@@ -1,0 +1,17 @@
+allocated (sampled) MB 125.6 over 12 s = 10.47 MB/s
+  34.59 MB  firstDressing index-X4yBtw5k.js:13088
+  24.60 MB  vert index-X4yBtw5k.js:7057
+   7.30 MB  next :0
+   3.85 MB  fix index-X4yBtw5k.js:17334
+   3.80 MB  solve index-X4yBtw5k.js:17332
+   3.61 MB  collide index-X4yBtw5k.js:17366
+   2.16 MB  sample index-oDv2UGzX.js:523
+   2.05 MB  jitter index-X4yBtw5k.js:7045
+   2.03 MB  frameRot index-X4yBtw5k.js:16629
+   1.90 MB  getParameters three.module-BKdg667R.js:28451
+   1.89 MB  panelGeometry index-X4yBtw5k.js:7038
+   1.67 MB  (anon) index-X4yBtw5k.js:7416
+   1.67 MB  trace index-X4yBtw5k.js:302
+   1.64 MB  knees$1 index-X4yBtw5k.js:17348
+   1.54 MB  cullRooms index-X4yBtw5k.js:21456
+   1.46 MB  upper index-X4yBtw5k.js:16847

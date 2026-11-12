@@ -371,7 +371,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   /** Every tagged mesh: its rooms (layer mask) and world bounds. */
   const tags = new Map<THREE.Object3D, { mask: number; box: THREE.Box3 }>();
   /** Puts every tagged mesh back on all its rooms' layers (for the probes and the warm-up, which see everything). */
-  function untag() { for (const [o, t] of tags) o.layers.mask = t.mask; }
+  function untag() { tags.forEach((t, o) => { o.layers.mask = t.mask; }); }
   function tagRooms(root: THREE.Object3D) {
     if (cullOff) return;
     root.updateMatrixWorld(true);
@@ -454,12 +454,12 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     camera.layers.mask = mask;
     // Inside a room seen through an opening, a mesh of that room alone is drawn only if it shows through the opening.
     if (!probesDone) return;
-    for (const [o, t] of tags) {
+    tags.forEach((t, o) => {
       const m = t.mask, r = Math.log2(m) - 1;
-      if (m === EXTERIOR || (m & (m - 1)) !== 0 || !(m & mask) || reach[r] <= 0) { o.layers.mask = m; continue; }
+      if (m === EXTERIOR || (m & (m - 1)) !== 0 || !(m & mask) || reach[r] <= 0) { o.layers.mask = m; return; }
       project(t.box, pr);
       o.layers.mask = Math.max(pr[0], rects[r * 4]) < Math.min(pr[2], rects[r * 4 + 2]) && Math.max(pr[1], rects[r * 4 + 1]) < Math.min(pr[3], rects[r * 4 + 3]) ? m : 0;
-    }
+    });
   }
   // ---- Performance experiments (debug only, `?artdbg=world`: window.__blExperiment): each switch changes how the next
   // frames are drawn, to find where the GPU time goes. Off by default; nothing here runs in a normal game.

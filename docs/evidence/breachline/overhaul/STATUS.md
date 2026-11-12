@@ -13,6 +13,15 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ### Performance
 
+**Garbage while firing.** Measured on Performance with a live 5v5 and the player shooting walls, using Chrome's sampling heap profiler with collected objects counted (`perf/allocations-before.txt`, `perf/allocations-after.txt`). It went from 10.5 MB/s to 5.1 MB/s.
+- **Ray against dressing.** It allocated two arrays per box per round. Now it is an unrolled slab test.
+- **Panel rebuilds.** They allocated a tuple, a point and a light array per vertex, and grew plain arrays. Now they use scratch values and reused typed buffers, so a rebuild allocates only its finished geometry.
+- **Culling.** No allocation per frame.
+- **What is left:**
+  - the fighters' IK and ragdoll, about 1.4 MB/s (`render/patchfighters`, not changed);
+  - the arcade's text ink, about 0.2 MB/s;
+  - numbers boxed by V8 in functions that run too rarely to be optimised (short-lived and cheap to collect).
+
 **Experiments: where the frame goes.** All in software WebGL at 1280 x 720, 5v5, each frame forced to finish (`scripts/breachline-assets/perfexperiments.mjs`; its switches only exist with `?artdbg=world`).
 
 *High post, cheap shading (ms per frame):*

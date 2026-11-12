@@ -478,16 +478,20 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
 }
 
 function panelLook(width: number, t: Map<number, Float32Array>, wall: THREE.Material, tile: readonly [number, number]): PanelLook {
-  const at = (side: number, c: number, r: number): RGB | null => {
+  // Scratch results, reused (the caller reads them at once): no allocation per vertex of a rebuilt panel.
+  const sa: [number, number, number] = [0, 0, 0], sb: [number, number, number] = [0, 0, 0], sm: [number, number, number] = [0, 0, 0];
+  const at = (side: number, c: number, r: number, out: [number, number, number]): RGB | null => {
     const v = t.get(side), k = (r * width + c) * 3;
-    return v && c >= 0 && c < width && k + 2 < v.length ? [v[k], v[k + 1], v[k + 2]] : null;
+    if (!(v && c >= 0 && c < width && k + 2 < v.length)) return null;
+    out[0] = v[k]; out[1] = v[k + 1]; out[2] = v[k + 2]; return out;
   };
   return {
     wall, tile,
     light(c, r, side) {
-      if (side !== 0) return at(side, c, r);
-      const a = at(1, c, r), b = at(-1, c, r);
-      return a && b ? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2] : a ?? b;
+      if (side !== 0) return at(side, c, r, sa);
+      const a = at(1, c, r, sa), b = at(-1, c, r, sb);
+      if (!a || !b) return a ?? b;
+      sm[0] = (a[0] + b[0]) / 2; sm[1] = (a[1] + b[1]) / 2; sm[2] = (a[2] + b[2]) / 2; return sm;
     },
   };
 }

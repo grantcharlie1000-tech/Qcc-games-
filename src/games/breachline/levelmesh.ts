@@ -348,6 +348,31 @@ function decorItem(kind: string, a: number, side: 1 | -1, h: (k: number) => numb
   }
 }
 export interface PanelDecor { u0: number; u1: number; y0: number; y1: number; side: 1 | -1; d: number; tint: RGB }
+/** A growable typed array with a push that takes up to twelve values, reused between panel rebuilds so that a
+ * rebuild allocates only its finished geometry. */
+class Grow {
+  a: Float32Array; length = 0;
+  constructor(size: number) { this.a = new Float32Array(size); }
+  reset() { this.length = 0; return this; }
+  private room(k: number) { if (this.length + k > this.a.length) { const b = new Float32Array(Math.max(this.a.length * 2, this.length + k)); b.set(this.a); this.a = b; } }
+  push(v0: number, v1?: number, v2?: number, v3?: number, v4?: number, v5?: number, v6?: number, v7?: number, v8?: number, v9?: number, v10?: number, v11?: number) {
+    this.room(12);
+    const a = this.a; let n = this.length;
+    a[n++] = v0;
+    if (v1 !== undefined) a[n++] = v1; if (v2 !== undefined) a[n++] = v2; if (v3 !== undefined) a[n++] = v3; if (v4 !== undefined) a[n++] = v4; if (v5 !== undefined) a[n++] = v5;
+    if (v6 !== undefined) a[n++] = v6; if (v7 !== undefined) a[n++] = v7; if (v8 !== undefined) a[n++] = v8; if (v9 !== undefined) a[n++] = v9; if (v10 !== undefined) a[n++] = v10; if (v11 !== undefined) a[n++] = v11;
+    this.length = n;
+  }
+  /** Appends the last `k` values again in reverse order (a back face from a front one). */
+  mirrorTail(k: number) { this.room(k); for (let i = this.length - 1, end = this.length - k; i >= end; i--) this.a[this.length++] = this.a[i]; }
+  view() { return this.a.subarray(0, this.length); }
+  done() { return this.a.slice(0, this.length); }
+}
+const G = { pos: new Grow(4096), nor: new Grow(4096), uv: new Grow(4096), col: new Grow(4096), face: new Grow(2048), rear: new Grow(2048), edge: new Grow(4096), stud: new Grow(2048) };
+
+/** The four cells round a corner (dc, dr pairs), for the torn-edge jitter. */
+const CORNER_CELLS = [-1, -1, 0, -1, -1, 0, 0, 0];
+
 /** The dressing for a plasterboard wall panel, laid out from its position (the same every time). */
 export function panelDecor(p: Panel): PanelDecor[] {
   if (p.kind !== 'wall' || p.reinforced) return [];
@@ -392,7 +417,8 @@ export function panelDecor(p: Panel): PanelDecor[] {
 
 /** Builds a panel's mesh: faces (group 0), board edges and cavity (group 1), studs (group 2). Pure, testable. */
 export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLight): { geometry: THREE.BufferGeometry; studs: { c: number; r: number }[] } {
-  const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [], face: number[] = [], rear: number[] = [], edge: number[] = [], stud: number[] = [];
+  // Reused growable buffers (see Grow): a rebuild allocates only the finished geometry's arrays.
+  const pos = G.pos.reset(), nor = G.nor.reset(), uv = G.uv.reset(), col = G.col.reset(), face = G.face.reset(), rear = G.rear.reset(), edge = G.edge.reset(), stud = G.stud.reset();
   const studs: { c: number; r: number }[] = [];
   const plate = p.reinforced, wood = p.kind !== 'wall', half = (plate ? 0.2 : wood ? 0.07 : PANEL_T) / 2;
   const tile = plate ? look?.plateTile ?? TILE.plate : wood ? look?.plankTile ?? TILE.planks : look ? look.tile : TILE.drywall, alongX = p.axis === 'x';
@@ -400,25 +426,30 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
   const torn = !plate && !wood && p.intact < p.cells.length;
   /** How far a skin's corner tears back (in u and y) from the hole beside it, into the intact board; zero away from
    * holes and on the panel's rim. Each skin tears differently, which opens the cavity and shows the studs. */
-  const jitter = (cu: number, cy: number, skin: number): [number, number] => {
-    if (!torn || cu <= 0 || cy <= 0 || cu >= p.cols || cy >= p.rows) return [0, 0];
+  // Written into jx, jy (no allocation per vertex).
+  let jx = 0, jy = 0;
+  const jitter = (cu: number, cy: number, skin: number) => {
+    jx = jy = 0;
+    if (!torn || cu <= 0 || cy <= 0 || cu >= p.cols || cy >= p.rows) return;
     let du = 0, dy = 0, open = 0;
-    for (const [dc, dr] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) if (!cell(cu + dc, cy + dr)) { du += dc + 0.5; dy += dr + 0.5; open++; }
-    if (!open || open === 4) return [0, 0];
+    for (let k = 0; k < 4; k++) { const dc = CORNER_CELLS[k * 2], dr = CORNER_CELLS[k * 2 + 1]; if (!cell(cu + dc, cy + dr)) { du += dc + 0.5; dy += dr + 0.5; open++; } }
+    if (!open || open === 4) return;
     // A corner touching a single open cell would cut a long notch, so it moves less.
     const l = Math.hypot(du, dy) || 1, m = CELL * (0.15 + 0.35 * hash(p.u0 + cu, p.y0 + cy, p.pos + skin * 3.1)) * (open === 1 ? 0.45 : 1);
-    return [-du / l * m, -dy / l * m];
+    jx = -du / l * m; jy = -dy / l * m;
   };
   const vert = (u: number, y: number, off: number, n: number, shade: number | RGB, nx = 0, ny = 0, fixed = false) => {
-    const cu = Math.round((u - p.u0) / CELL), cy = Math.round((y - p.y0) / CELL), [ju, jy] = fixed ? [0, 0] : jitter(cu, cy, Math.sign(off)), uu = u + ju, yy = y + jy;
-    const w = panelPoint(p, uu, yy, off), l = light(u, y, off, n);
-    const [sr, sg, sb] = typeof shade === 'number' ? [shade, shade, shade] : shade;
-    pos.push(w.x, w.y, w.z); uv.push(uu / tile[0], yy / tile[1]); col.push(l[0] * sr, l[1] * sg, l[2] * sb);
+    const cu = Math.round((u - p.u0) / CELL), cy = Math.round((y - p.y0) / CELL);
+    if (fixed) jx = jy = 0; else jitter(cu, cy, Math.sign(off));
+    const uu = u + jx, yy = y + jy, l = light(u, y, off, n);
+    const sr = typeof shade === 'number' ? shade : shade[0], sg = typeof shade === 'number' ? shade : shade[1], sb = typeof shade === 'number' ? shade : shade[2];
+    if (alongX) pos.push(uu, yy, p.pos + off); else pos.push(p.pos + off, yy, uu);
+    uv.push(uu / tile[0], yy / tile[1]); col.push(l[0] * sr, l[1] * sg, l[2] * sb);
     if (n) { if (alongX) nor.push(0, 0, n); else nor.push(n, 0, 0); }
     else if (alongX) nor.push(nx, ny, 0); else nor.push(0, ny, nx);
     return pos.length / 3 - 1;
   };
-  const quad = (list: number[], a: number, b: number, c: number, d: number, flip: boolean) => { if (flip) list.push(a, d, c, a, c, b); else list.push(a, b, c, a, c, d); };
+  const quad = (list: Grow, a: number, b: number, c: number, d: number, flip: boolean) => { if (flip) list.push(a, d, c, a, c, b); else list.push(a, b, c, a, c, d); };
   if (wood && !plate) return barricade();
   if (plate) return reinforcement();
   // A cell on a hole's rim is drawn on its own, with a ragged outline; the rest of the wall is drawn in runs.
@@ -461,7 +492,7 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
   // paper, white gypsum core, brown back paper), paint and paper peel back from it, the odd flap of paper curls out,
   // and the back of the board shows brown in the cavity.
   const SEG = 6, MARGIN = 0.03;
-  const corner = (cu: number, cy: number, sk: number): [number, number] => { const [ju, jy] = jitter(cu, cy, sk); return [p.u0 + cu * CELL + ju, p.y0 + cy * CELL + jy]; };
+  const corner = (cu: number, cy: number, sk: number): [number, number] => { jitter(cu, cy, sk); return [p.u0 + cu * CELL + jx, p.y0 + cy * CELL + jy]; };
   for (let r = 0; r < p.rows; r++) for (let c = 0; c < p.cols; c++) {
     if (!rim(c, r)) continue;
     const mu = p.u0 + (c + 0.5) * CELL, my = p.y0 + (r + 0.5) * CELL;
@@ -531,7 +562,7 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
         // End grain where the stick meets a hole above or below it.
         quad(stud, vert(ua, ya, -d, 0, sh * 0.8, 0, -1, true), vert(ua, ya, d, 0, sh * 0.8, 0, -1, true), vert(ub, ya, d, 0, sh * 0.8, 0, -1, true), vert(ub, ya, -d, 0, sh * 0.8, 0, -1, true), false);
         quad(stud, vert(ua, yb, -d, 0, sh * 0.8, 0, 1, true), vert(ub, yb, -d, 0, sh * 0.8, 0, 1, true), vert(ub, yb, d, 0, sh * 0.8, 0, 1, true), vert(ua, yb, d, 0, sh * 0.8, 0, 1, true), false);
-        stud.push(...stud.slice(-24).reverse());
+        stud.mirrorTail(24);
       };
       for (let su = Math.ceil((p.u0 + 0.05) / STUD_PITCH) * STUD_PITCH; su < p.u0 + p.cols * CELL - 0.05; su += STUD_PITCH) {
         const c = Math.floor((su - p.u0) / CELL);
@@ -551,11 +582,11 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
               const ya = Math.min(edgeY, tip), yb = Math.max(edgeY, tip), slant = dr > 0 ? [yb, mid] : [mid, ya];
               quad(stud, vert(ua, ya, o0, 0, sh, -1, 0, true), vert(ua, yb, o0, 0, sh, -1, 0, true), vert(ua, yb, o1, 0, sh, -1, 0, true), vert(ua, ya, o1, 0, sh, -1, 0, true), false);
               quad(stud, vert(ub, dr > 0 ? ya : slant[1], o0, 0, sh, 1, 0, true), vert(ub, dr > 0 ? slant[1] : yb, o0, 0, sh, 1, 0, true), vert(ub, dr > 0 ? slant[1] : yb, o1, 0, sh, 1, 0, true), vert(ub, dr > 0 ? ya : slant[1], o1, 0, sh, 1, 0, true), false);
-              stud.push(...stud.slice(-12).reverse());
+              stud.mirrorTail(12);
             }
             const pale: RGB = [1.25, 1.1, 0.85];
             quad(stud, vert(ua, tip, -d, 0, pale, 0, dr, true), vert(ua, tip, d, 0, pale, 0, dr, true), vert(ub, mid, d, 0, pale, 0, dr, true), vert(ub, mid, -d, 0, pale, 0, dr, true), false);
-            stud.push(...stud.slice(-6).reverse());
+            stud.mirrorTail(6);
           }
         }
       }
@@ -715,11 +746,13 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
   }
   function finish() {
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  g.setIndex([...face, ...rear, ...edge, ...stud]);
+  g.setAttribute('position', new THREE.BufferAttribute(pos.done(), 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nor.done(), 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv.done(), 2));
+  g.setAttribute('color', new THREE.BufferAttribute(col.done(), 3));
+  const index = new Uint32Array(face.length + rear.length + edge.length + stud.length);
+  let at = 0; for (const list of [face, rear, edge, stud]) { index.set(list.view(), at); at += list.length; }
+  g.setIndex(new THREE.BufferAttribute(index, 1));
   // An undamaged panel is two draw calls (a face for each room, so each can take its room's look); damage adds edges
   // and, for plasterboard, the studs.
   g.addGroup(0, face.length, 0);
@@ -752,8 +785,10 @@ export class PanelView {
     this.mesh.visible = p.intact > 0;
     if (!p.intact) return true;
     const geo = panelGeometry(p, this.look, (u, y, off, n) => {
+      const lit = this.look?.light(Math.round((u - p.u0) / CELL), Math.round((y - p.y0) / CELL), n);
+      if (lit) return lit;
       const w = panelPoint(p, u, y, off), alongX = p.axis === 'x';
-      return this.look?.light(Math.round((u - p.u0) / CELL), Math.round((y - p.y0) / CELL), n) ?? this.bake.light(w.x, w.y, w.z, alongX ? 0 : n, 0, alongX ? n : 0);
+      return this.bake.light(w.x, w.y, w.z, alongX ? 0 : n, 0, alongX ? n : 0);
     });
     this.mesh.geometry.dispose();
     this.mesh.geometry = geo.geometry;
