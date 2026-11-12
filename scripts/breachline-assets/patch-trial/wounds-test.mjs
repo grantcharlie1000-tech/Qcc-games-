@@ -15,7 +15,7 @@ for (let t = 0; t < 4; t++) {
   page = await context.newPage();
   page.on('pageerror', e => console.log(`[pageerror] ${e.message}`));
   await page.route(/\/src\/games\/breachline\/scene\.ts(\?.*)?$/, async r => { const resp = await r.fetch(); let b = await resp.text(); b = b.replace(/(const fighters = [^;]+;)/, '$1 window.__pf = fighters;'); await r.fulfill({ response: resp, body: b }); });
-  await page.route(/\/src\/games\/breachline\/index\.ts(\?.*)?$/, async r => { const resp = await r.fetch(); const b = (await resp.text()).replace('still: () =>', "teleport: (id, x, z, yaw) => { const p = host.m.players[id]; if (p) { p.x = x; p.z = z; if (yaw !== undefined) p.yaw = yaw; } }, kill: (id) => { const p = host.m.players[id]; if (p) { p.alive = false; p.hp = 0; } }, still: () =>"); await r.fulfill({ response: resp, body: b }); });
+  await page.route(/\/src\/games\/breachline\/index\.ts(\?.*)?$/, async r => { const resp = await r.fetch(); const b = (await resp.text()).replace('still: () =>', "teleport: (id, x, z, yaw) => { const p = host.m.players[id]; if (p) { p.x = x; p.z = z; if (yaw !== undefined) p.yaw = yaw; } }, kill: (id, by) => { const p = host.m.players[id]; if (p) { p.alive = false; p.hp = 0; p.deaths++; host.m.events.push({ e: \'kill\', by, on: id, w: \'ar\', head: false }); } }, still: () =>"); await r.fulfill({ response: resp, body: b }); });
   await page.goto(`http://127.0.0.1:${port}/?festive=off&arttier=high#/game/breachline`);
   await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 120000 }).catch(() => {});
   const ok = await page.evaluate(() => { const h = window.__breachlineTest; if (!h) return false; h.start({ seed: 7, quality: 'high', teamSize: 3, bots: true }); h.freeze(true); h.advance(0.2); h.still(); h.skip(30); h.advance(0.3); h.advance(5); return h.state().phase !== 'lobby' && !!window.__pf; }).catch(() => false);
@@ -46,7 +46,8 @@ for (const [on, dx] of [[A.id, -0.55], [E.id, 0.55]]) {
   await fire(on, tx - 0.06, 1.05, false, 45); await shot(`${tag}-half`);
   await fire(on, tx + 0.02, 1.2, false, 9); await shot(`${tag}-near-death`);
 }
-await page.evaluate(([a, e]) => { const h = window.__breachlineTest; h.kill(a); h.kill(e); h.advance(3.0); h.draw(); }, [A.id, E.id]);
+await page.evaluate(([a, e, me]) => { const h = window.__breachlineTest; h.kill(a, me); h.kill(e, me); h.advance(1.8); h.draw(); }, [A.id, E.id, self]);
+console.log('alive after', JSON.stringify(await page.evaluate(() => window.__breachlineTest.state().players.map(p => [p.id, p.squad, p.alive]))), await page.evaluate(() => window.__breachlineTest.state().phase));
 await shot('bodies');
 console.log('bodies', JSON.stringify(await page.evaluate(() => window.__pf.bodies())));
 await browser.close();
