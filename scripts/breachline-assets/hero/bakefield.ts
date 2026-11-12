@@ -8,7 +8,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { haldenParts } from '../../../src/games/breachline/render/hero/sculpt/halden12';
-import { TERN } from '../../../src/games/breachline/render/hero/sculpt/designs';
+import { TERN, WREN } from '../../../src/games/breachline/render/hero/sculpt/designs';
 import { ar5Parts } from '../../../src/games/breachline/render/hero/sculpt/ar5';
 import type { Fn } from '../../../src/games/breachline/render/hero/sculpt/sdf';
 
@@ -19,6 +19,7 @@ const PARTS: Record<string, (hi: boolean) => { f: Fn; bone: number }[]> = {
   ar5: hi => ar5Parts(hi).map(p => ({ f: p.s.f, bone: p.bone })),
   halden12: hi => haldenParts(hi).map(p => ({ f: p.s.f, bone: p.bone })),
   tern: hi => ar5Parts(hi, TERN).map(p => ({ f: p.s.f, bone: p.bone })),
+  wren: hi => ar5Parts(hi, WREN).map(p => ({ f: p.s.f, bone: p.bone })),
 };
 
 const buf = await readFile(join(ROOT, '.cache/hero-bake', `${id}-texels.bin`));

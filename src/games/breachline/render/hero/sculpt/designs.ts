@@ -33,7 +33,7 @@ function gripPoint(pivot: readonly [number, number] = AR5.grip.pivot, rake: numb
 }
 
 /** A rifle design of the AR-5's family: the AR-5's table with some parts changed (the Tern C8 below). */
-export type RifleDesign = typeof AR5 & { holo?: { u0: number; u1: number; half: number; top: number; window: [number, number] }; support?: number; furniture?: 'polymer' | 'polymerFde' };
+export type RifleDesign = typeof AR5 & { holo?: { u0: number; u1: number; half: number; top: number; window: [number, number] }; reflex?: { u0: number; u1: number; window: [number, number] }; magBend?: number; support?: number; furniture?: 'polymer' | 'polymerFde' };
 
 export function ar5Sockets(A: RifleDesign = AR5): WeaponSockets {
   const [gu, gy] = gripPoint(A.grip.pivot, A.grip.rake), a = (x: number, y: number, u: number) => at(x, y, u, A.sightH);
@@ -92,3 +92,19 @@ export function haldenSockets(): WeaponSockets {
     trigger: a(0, -40, 66), bore: sh / 1000, port: a(0, -45, 120),
   };
 }
+
+/** Wren-9: a 9 mm submachine gun of the same family (Breachline's own design): a 140 mm barrel under a short handguard,
+ * a straight 32-round magazine in a narrow well, an open reflex sight, the stock collapsed. About 610 mm overall. */
+export const WREN = {
+  ...AR5, name: 'Wren-9', sightH: 50,
+  well: { ...AR5.well, u0: 128, u1: 170, half: 13.6, open: [21, 38] },
+  mag: { ...AR5.mag, width: 19.6, depth: 32, length: 210, seat: [149, -24] },
+  handguard: { ...AR5.handguard, u1: 330, slots: 2 },
+  barrel: { ...AR5.barrel, r: 7.4, muzzle: 345 },
+  muzzle: { u0: 343, u1: 372, r: 10 },
+  stock: { ...AR5.stock, butt: -205 },
+  reflex: { u0: 60, u1: 100, window: [24, 18] },
+  optic: { ...AR5.optic, dot: 94, dotR: 0.7 },
+  magBend: 0, support: 290, furniture: 'polymer',
+} as unknown as RifleDesign;
+export const wrenSockets = () => ar5Sockets(WREN);

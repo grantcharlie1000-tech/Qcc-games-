@@ -5,7 +5,7 @@
 import { AR5, type RifleDesign } from './designs';
 import {
   alongZ, box, chamferJoin, cut, cutChamfer, cutRound, cylX, cylY, cylZ, fillet, inter, lathe, latheX, latheY, mirrorX, relief,
-  move, repeatU, rotZ, round2, sideX, stadium2, stadiumB, topY, union, type Shape,
+  move, repeatU, rotX, rotZ, round2, sideX, stadium2, stadiumB, topY, union, type Shape,
 } from './sdf';
 import { MAT, knurlY, pistolGrip, rail, ridgesU, screwX, stipple, type Part } from './kit';
 export { MAT, type Part };
@@ -141,7 +141,18 @@ export function ar5Parts(hi: boolean, A: RifleDesign = AR5): Part[] {
     s = cut(s, box(9.6, -12, M.u0 - 1, 14, 12, M.u0 + 9), box(-14, -12, M.u0 - 1, -9.6, 12, M.u0 + 9));
     add('muzzle device', BONE.root, MAT.steel, s, 0.6);
   }
-  if (A.holo) {
+  if (A.reflex) {
+    // Open reflex sight: a low base on the rail and a single thin window frame, tilted back a little, with a hood over
+    // the top edge and an adjustment screw on the right.
+    const Rf = A.reflex, cy = A.sightH, [ww, wh] = Rf.window, fu = Rf.u1 - 6;
+    let base = box(-11, A.railTop, Rf.u0, 11, A.railTop + 7, Rf.u1, -0.8);
+    base = union(base, mirrorX(box(9.4, A.railTop - 5.6, Rf.u0 + 3, 12.6, A.railTop + 1, Rf.u1 - 3, -0.5)));
+    let frame = box(-ww / 2 - 2.6, A.railTop + 4, fu - 2, ww / 2 + 2.6, cy + wh / 2 + 2.6, fu + 2, 1.2);
+    frame = cutRound(frame, box(-ww / 2, cy - wh / 2, fu - 5, ww / 2, cy + wh / 2, fu + 5), 1.5);
+    frame = rotX(frame, -0.12, A.railTop + 4, fu);
+    base = union(base, frame, screwX(A.railTop + 3.5, (Rf.u0 + Rf.u1) / 2, 11, 1, 2.6, 1.6, hi), screwX(A.railTop + 3.5, (Rf.u0 + Rf.u1) / 2, -11, -1, 3.6, 1.6, hi));
+    add('reflex sight', BONE.root, MAT.anod, base, 3);
+  } else if (A.holo) {
     // Holographic sight: a squared housing with a wide rectangular window, a hood over it, buttons on the rear face,
     // a battery cap on the right, a clamp lever on the left; the reticle (ring and dot) floats in the window.
     const Hs = A.holo, cy = A.sightH, [ww, wh] = Hs.window;
@@ -208,27 +219,29 @@ export function ar5Parts(hi: boolean, A: RifleDesign = AR5): Part[] {
     if (hi) front = cut(front, cylX(A.railTop + 3, fu - 26, 1.2, -12, 12));
     add('front sight', BONE.root, MAT.anod, front, 0.7);
   }
-  // Magazine: curved, 22.6 mm wide polymer body with ribs low on the sides, a wider floorplate, and the top round
-  // (mag bone).
+  // Magazine: curved (rifle) or straight (submachine gun), polymer body with ribs low on the sides, a wider floorplate,
+  // and the top round (mag bone). Front and rear faces follow the well.
   {
-    const M = A.mag, n = 12, top = -12, len = 172;
+    const M = A.mag, n = 12, top = -12, len = M.length - 10, F = A.well.u1 - 5.4, Rr = A.well.u0 + 5, bendMax = A.magBend ?? 34;
+    const bendAt = (t: number) => bendMax * Math.pow(t, 1.7);
     const fr: [number, number][] = [], rr: [number, number][] = [];
     for (let i = 0; i <= n; i++) {
-      const t = i / n, y = top - len * t, bend = 34 * Math.pow(t, 1.7);
-      fr.push([168.6 + bend, y]); rr.push([106 + bend * 0.9 + 1.6 * t, y]);
+      const t = i / n, y = top - len * t, bend = bendAt(t);
+      fr.push([F + bend, y]); rr.push([Rr + bend * 0.9 + 1.6 * t, y]);
     }
     let body = sideX(round2([...fr, ...rr.reverse()], [0, ...Array(n - 1).fill(0), 3, 3, ...Array(n - 1).fill(0), 0]), -M.width / 2, M.width / 2, 1.6);
     // Ribs: raised bands across the lower side panels.
     for (const t of [0.56, 0.66, 0.76]) {
-      const y = top - len * t, b0 = 34 * Math.pow(t, 1.7);
-      body = fillet(body, sideX(round2([[108 + b0 * 0.9, y + 1.6], [167 + b0, y + 1.6], [167 + b0, y - 1.6], [108 + b0 * 0.9, y - 1.6]], 1.2), -M.width / 2 - 0.9, M.width / 2 + 0.9, 0.8), 0.8);
+      const y = top - len * t, b0 = bendAt(t);
+      body = fillet(body, sideX(round2([[Rr + 2 + b0 * 0.9, y + 1.6], [F - 1.6 + b0, y + 1.6], [F - 1.6 + b0, y - 1.6], [Rr + 2 + b0 * 0.9, y - 1.6]], 1.2), -M.width / 2 - 0.9, M.width / 2 + 0.9, 0.8), 0.8);
     }
-    const tb = 1, yb = top - len * tb, bb = 34;
-    const floor = sideX(round2([[104 + bb * 0.9, yb + 5], [172 + bb, yb + 5], [174 + bb, yb - 2], [170 + bb, yb - 6], [103 + bb * 0.9, yb - 6]], [1, 2, 2, 2, 2]), -M.width / 2 - 2, M.width / 2 + 2, -1);
+    const yb = top - len, bb = bendMax;
+    const floor = sideX(round2([[Rr - 2 + bb * 0.9, yb + 5], [F + 3.4 + bb, yb + 5], [F + 5.4 + bb, yb - 2], [F + 1.4 + bb, yb - 6], [Rr - 3 + bb * 0.9, yb - 6]], [1, 2, 2, 2, 2]), -M.width / 2 - 2, M.width / 2 + 2, -1);
     body = union(body, floor);
     if (hi) body = relief(body, (x, y, z) => (Math.abs(x) > M.width / 2 - 0.4 && y < top - 20 && y > top - 85 ? stipple(x, y, z) * 0.6 : 0), 0.3);
     add('magazine', BONE.mag, MAT.polymerFde, body, 0.9);
-    add('top round', BONE.mag, MAT.brass, union(cylZ(-2.8, top + 3.6, 4.7, 112, 150, -0.4), lathe([[0, 150], [4.3, 150], [3.4, 158], [1.6, 164], [0, 165]], -2.8, top + 3.6)), 0.15);
+    const rr0 = Rr + 6, rr1 = Rr + 6 + (F - Rr) * 0.6, rad = M.width < 21 ? 4.4 : 4.7;
+    add('top round', BONE.mag, MAT.brass, union(cylZ(-2.8, top + 3.6, rad, rr0, rr1, -0.4), lathe([[0, rr1], [rad - 0.4, rr1], [rad - 1.3, rr1 + 8], [1.6, rr1 + 14], [0, rr1 + 15]], -2.8, top + 3.6)), 0.15);
   }
   // Spent cases for the ejection effect: one per case bone, at the port (the bone's offset is the flight).
   for (let i = 0; i < 3; i++) add(`case ${i}`, 6 + i, MAT.brass, union(lathe([[0, 82], [4.8, 82], [4.8, 116], [3.2, 122], [3.0, 127], [0, 127]], 16, 1)), 0.5);

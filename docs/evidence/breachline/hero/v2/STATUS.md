@@ -5,8 +5,8 @@ Owns `models.ts`, `render/hero/`, `scripts/breachline-assets/hero/`, `public/gam
 
 ## Where I am
 
-**AR-5: gates 1–5 done; the baked AR-5 is what players now hold.** Hands: anatomy rebuilt to the plan
-(gate 3), hands' set rebaked for the new mesh. Next: the shared kit (rails, sights, grips, magazines) and the Halden 12.
+**Baked and held: AR-5, Halden 12, Tern C8, Wren-9.** Next: Corvin DMR, then the sidearm. Hands: anatomy rebuilt to the plan
+(gate 3), Base Hand is the default glove.
 
 ## Pipeline (new)
 
@@ -198,6 +198,15 @@ clamp lever on the left, a glowing ring and dot), stock collapsed one notch, dar
 Evidence: `tern-gate1-design-sheet.jpg`, `tern-gate4-textured-studio.jpg`, `tern-gate5-corridor-lab.jpg` (old left).
 Shown in hand with the dev switch `__heroWeapon` (the carbine belongs to the defenders' Anchor kit). Gate 2 (clay) was
 skipped: it shares the AR-5's shapes. Honest read: about 6; the holo housing is plain and boxy at the hip.
+
+## Wren-9 SMG (gates 1, 4, 5)
+
+The AR-5 sculpt with its own table (`WREN` in designs.ts): short 9 mm upper (barrel to 345 mm, short handguard with
+2 slots a side, flash hider), a straight 210 mm stick magazine in a flared well, folding-brace stock, a small open
+reflex sight (24 x 18 window, hood, dot). 10.5k triangles, 1.94 MB. Same hold as the AR-5 with the eye 0.12 m behind
+the sight. Evidence: `wren-gate1-design-sheet.jpg`, `wren-gate4-textured-studio.jpg`, `wren-gate5-corridor-lab.jpg`
+(old left). Honest read: about 6. Weak points: aimed, the receiver top hides the lower edge of the window and the dot
+is faint; the brace stock is plain.
 
 ## Decisions (made without asking; say if wrong)
 

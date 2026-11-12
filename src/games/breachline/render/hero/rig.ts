@@ -76,20 +76,19 @@ export function holdFor(id: WeaponId): Hold {
   const S = heldWeapon(id).sockets;
   switch (id) {
     // The Tern C8 shares the AR-5's hold (same family: same grip, handguard section and sockets' layout).
-    case 'ar': case 'carbine': h = rifleHold(id, {
+    case 'ar': case 'carbine': case 'smg': h = rifleHold(id, {
       // Palm cupped up against the underside of the handguard (no gap), fingers running across it and wrapping the far
       // side, thumb straight along the near side. (Fingers pointing forward along the handguard read as a claw.)
       // The wrist rolled 20° so the back of the hand turns toward the player (seen end-on it read as a ball); the
       // fingers still wrap under the handguard and the thumb lies along the near side (gate5-ar5-wrist-roll.jpg).
       left: { at: [-0.008, S.support.p[1] + 0.008, S.support.p[2] - 0.03], palm: rollAbout([0.35, 1, 0], [0.9, 0.1, -0.42], 0.35), fingers: [0.9, 0.1, -0.42] },
       // The left elbow out and down: the forearm enters from the lower left and runs diagonally to the handguard.
-      shoulderL: [-0.27, -0.36, -0.04], poleL: [-1, -1, 0.3], adsZ: id === 'carbine' ? -0.1 : -0.075,
+      shoulderL: [-0.27, -0.36, -0.04], poleL: [-1, -1, 0.3], adsZ: id === 'carbine' ? -0.1 : id === 'smg' ? -0.12 : -0.075,
       // Lower right, barrel only slightly in from straight ahead, little cant: the receiver's left side, the magazine
       // well and the grip stay in frame (chosen by eye from the holds in hero/v2/gate5-ar5-holds.jpg).
       hip: { p: [0.12, -0.1, -0.255], r: [0.015, 0.045, -0.13] },
       leftPose: [[0.15, 0.05, 0.1, 0.15], [1.25, 1.2, 0.65, 0.1], [1.3, 1.2, 0.65, 0.02], [1.35, 1.2, 0.65, -0.07], [1.4, 1.2, 0.65, -0.16]],
     }); break;
-    case 'smg': h = rifleHold(id, { hip: { p: [0.1, -0.08, -0.22], r: [0.03, 0.02, -0.03] }, adsZ: -0.13 }); break;
     case 'shotgun': h = rifleHold(id, {
       left: { at: [0, S.support.p[1] - 0.008, S.support.p[2]], palm: rollAbout([0.1, 1, 0], [0.75, 0, -0.66], 0.35), fingers: [0.75, 0, -0.66] },
       hip: { p: [0.1, -0.075, -0.25], r: [0.03, 0.02, -0.03] }, adsZ: -0.115,

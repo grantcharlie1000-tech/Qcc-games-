@@ -16,7 +16,7 @@ import { MeshoptSimplifier } from 'meshoptimizer';
 import * as THREE from 'three';
 import { mergeVertices, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MAT, ar5Parts, type Part } from '../../../src/games/breachline/render/hero/sculpt/ar5';
-import { AR5, HALDEN, TERN } from '../../../src/games/breachline/render/hero/sculpt/designs';
+import { AR5, HALDEN, TERN, WREN } from '../../../src/games/breachline/render/hero/sculpt/designs';
 import { haldenParts } from '../../../src/games/breachline/render/hero/sculpt/halden12';
 import { packMeshBin, type MeshArrays } from '../../../src/games/breachline/render/hero/meshbin';
 import { meshField, type RawMesh } from './mesher';
@@ -30,6 +30,7 @@ const CLAY = process.argv.includes('--clay');
 
 export interface Weapon { id: string; dir: string; parts: (hi: boolean) => Part[]; sightH: number; budget: number; grid: number; lens?: { r: number; u: number[] }; lensRect?: { w: number; h: number; u: number[] }; dot?: { u: number; r: number; y?: number }; ring?: { u: number; r0: number; r1: number }; src?: string }
 export const WEAPONS: Record<string, Weapon> = {
+  wren: { id: 'wren', dir: 'wren', src: 'ar5', parts: hi => ar5Parts(hi, WREN), sightH: WREN.sightH, budget: 10500, grid: 0.4, lensRect: { w: WREN.reflex!.window[0] - 1, h: WREN.reflex!.window[1] - 1, u: [WREN.reflex!.u1 - 5] }, dot: { u: WREN.reflex!.u1 - 6.5, r: 0.75 } },
   tern: { id: 'tern', dir: 'tern', src: 'ar5', parts: hi => ar5Parts(hi, TERN), sightH: TERN.sightH, budget: 11500, grid: 0.4, lensRect: { w: TERN.holo!.window[0] - 1, h: TERN.holo!.window[1] - 1, u: [TERN.holo!.u0 + 6, TERN.holo!.u1 - 6] }, dot: { u: TERN.holo!.u1 - 10, r: 0.7 }, ring: { u: TERN.holo!.u1 - 10, r0: 6.4, r1: 7.4 } },
   halden12: { id: 'halden12', dir: 'halden12', parts: haldenParts, sightH: HALDEN.sightH, budget: 10500, grid: 0.4, dot: { u: 661, r: 0.9, y: HALDEN.sightH - 2.2 } },
   ar5: { id: 'ar5', dir: 'ar5', parts: ar5Parts, sightH: AR5.sightH, budget: 12500, grid: 0.4, lens: { r: AR5.optic.bore, u: [AR5.optic.u0 + 2.5, AR5.optic.u1 - 2.5] }, dot: { u: AR5.optic.dot, r: AR5.optic.dotR } },
@@ -189,7 +190,7 @@ const GLYPH: Record<string, string> = {
   K: '10001100101010011000101001001010001', '-': '00000000000000011111000000000000000', '.': '00000000000000000000000000110001100',
   '0': '01110100011001110101110011000101110', '1': '00100011000010000100001000010001110', '2': '01110100010000100010001000100011111',
   '4': '00010001100101010010111110001000010', '5': '11111100001111000001000011000101110', '6': '00110010001000011110100011000101110',
-  '7': '11111000010001000100010000100001000', '8': '01110100011000101110100011000101110', '3': '11110000010000101110000010000111110',
+  '7': '11111000010001000100010000100001000', '8': '01110100011000101110100011000101110', '9': '01110100011000101111000010001001100', '3': '11110000010000101110000010000111110',
   D: '11110100011000110001100011000111110', G: '01110100011000010111100011000101110', ' ': '00000000000000000000000000000000000',
 };
 /** Engraved lines on a flat side, in design mm: text reads left to right seen from that side. */
@@ -204,6 +205,9 @@ const MARKS: { part: string; side: -1 | 1; u: number; y: number; h: number; text
   { part: 'lower', side: -1, u: 171, y: -33.5, h: 2.6, text: 'CAL 5.56', w: 'tern' },
   { part: 'lower', side: -1, u: 171, y: -39, h: 2.6, text: 'T8-20633', w: 'tern' },
   { part: 'lower', side: -1, u: 66, y: -21, h: 1.9, text: 'SAFE SEMI AUTO', w: 'tern' },
+  { part: 'lower', side: -1, u: 124, y: -16, h: 2.8, text: 'WREN-9', w: 'wren' },
+  { part: 'lower', side: -1, u: 124, y: -21.5, h: 2.2, text: 'CAL 9MM', w: 'wren' },
+  { part: 'lower', side: -1, u: 66, y: -21, h: 1.9, text: 'SAFE SEMI AUTO', w: 'wren' },
   { part: 'receiver', side: -1, u: 182, y: 9, h: 3.6, text: 'HALDEN 12' },
   { part: 'receiver', side: -1, u: 182, y: 2.5, h: 2.6, text: '12 GA 3 IN' },
   { part: 'receiver', side: -1, u: 182, y: -3.5, h: 2.6, text: 'HN-31740' },

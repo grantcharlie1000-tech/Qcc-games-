@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { readMeshBin } from '../meshbin';
-import { AR5, HALDEN, TERN, at } from '../sculpt/designs';
+import { AR5, HALDEN, TERN, WREN, at } from '../sculpt/designs';
 import { ArtLoader } from '../../assets';
 import { texturedMaterial } from '../material';
 
@@ -76,7 +76,7 @@ function sheet() {
   finish(false); scene.add(weapon!);
   scene.background = new THREE.Color(0xe9e6df); renderer.setScissorTest(true);
   const S = curDir === 'halden12' ? 1.05 : 1.22; // px per mm
-  const SHt = curDir === 'halden12' ? HALDEN.sightH : curDir === 'tern' ? TERN.sightH : AR5.sightH;
+  const SHt = curDir === 'halden12' ? HALDEN.sightH : curDir === 'tern' ? TERN.sightH : curDir === 'wren' ? WREN.sightH : AR5.sightH;
   // Side view: muzzle left. Region centre is the bore at u = 175.
   const views: { name: string; cx: number; cy: number; s: number; cam: THREE.OrthographicCamera; map: (x: number, y: number, u: number) => [number, number] }[] = [];
   const mk = (name: string, cx: number, cy: number, rw: number, rh: number, s: number, pos: THREE.Vector3, up: THREE.Vector3, look: THREE.Vector3, map: (x: number, y: number, u: number) => [number, number]) => {
@@ -119,7 +119,7 @@ function sheet() {
     else { const ly = ya + off; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(a, ya); g.lineTo(a, ly); g.moveTo(b, yb); g.lineTo(b, ly); g.stroke(); g.setLineDash([]); arrow(a, ly, b, ly); label(t, (a + b) / 2, ly - 4); }
   };
   if (curDir === 'halden12') return haldenDims(V, dimU, dimY, dimX, label, g, h);
-  const A = curDir === 'tern' ? TERN : AR5, H = A.handguard, M = A.muzzle;
+  const A = curDir === 'tern' ? TERN : curDir === 'wren' ? WREN : AR5, H = A.handguard, M = A.muzzle;
   dimU('side', A.stock.butt, M.u1, -200, 40, `overall ${M.u1 - A.stock.butt}`);
   dimU('side', 186, A.barrel.muzzle, 0, -150, `barrel ${A.barrel.muzzle - 186}`);
   dimU('side', H.u0, H.u1, 30, -60, `handguard ${H.u1 - H.u0}`);
