@@ -425,6 +425,159 @@
     "arm-1024.ktx2": 643284,
     "arm-512.jpg": 30149
    }
+  },
+  "sofa_02--sofa_02": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 13882,
+    "diff-512.ktx2": 45779,
+    "diff-512.jpg": 17843,
+    "nor-256.ktx2": 64749,
+    "nor-512.ktx2": 220516,
+    "nor-512.jpg": 53686,
+    "arm-256.ktx2": 51495,
+    "arm-512.ktx2": 181392,
+    "arm-512.jpg": 44589
+   }
+  },
+  "worn_metal_rack--worn_metal_rack": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15905,
+    "diff-512.ktx2": 57533,
+    "diff-512.jpg": 29385,
+    "nor-256.ktx2": 35744,
+    "nor-512.ktx2": 126542,
+    "nor-512.jpg": 30901,
+    "arm-256.ktx2": 66833,
+    "arm-512.ktx2": 242159,
+    "arm-512.jpg": 62428
+   }
+  },
+  "wooden_crate_02--wooden_crate_02": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 17176,
+    "diff-512.ktx2": 61451,
+    "diff-512.jpg": 39416,
+    "nor-256.ktx2": 52184,
+    "nor-512.ktx2": 191160,
+    "nor-512.jpg": 39947,
+    "arm-256.ktx2": 59078,
+    "arm-512.ktx2": 211561,
+    "arm-512.jpg": 73460
+   }
+  },
+  "Barrel_02--Barrel_02": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 12557,
+    "diff-512.ktx2": 38608,
+    "diff-512.jpg": 17630,
+    "nor-256.ktx2": 44205,
+    "nor-512.ktx2": 147361,
+    "nor-512.jpg": 35625,
+    "arm-256.ktx2": 52859,
+    "arm-512.ktx2": 184339,
+    "arm-512.jpg": 58489
+   }
+  },
+  "concrete_road_barrier_02--concrete_road_barrier_02": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 16686,
+    "diff-512.ktx2": 60071,
+    "diff-512.jpg": 41208,
+    "nor-256.ktx2": 67064,
+    "nor-512.ktx2": 270106,
+    "nor-512.jpg": 70682,
+    "arm-256.ktx2": 56902,
+    "arm-512.ktx2": 206973,
+    "arm-512.jpg": 50834
+   }
+  },
+  "compost_bags--compost_bags": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15462,
+    "diff-512.ktx2": 51115,
+    "diff-512.jpg": 31616,
+    "nor-256.ktx2": 59265,
+    "nor-512.ktx2": 201744,
+    "nor-512.jpg": 59651,
+    "arm-256.ktx2": 47803,
+    "arm-512.ktx2": 165406,
+    "arm-512.jpg": 56602
+   }
+  },
+  "cement_bag--cement_bag": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 16591,
+    "diff-512.ktx2": 54425,
+    "diff-512.jpg": 35951,
+    "nor-256.ktx2": 46228,
+    "nor-512.ktx2": 152219,
+    "nor-512.jpg": 28329,
+    "arm-256.ktx2": 28615,
+    "arm-512.ktx2": 101564,
+    "arm-512.jpg": 13908
+   }
+  },
+  "trashbag--trashbag": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 13782,
+    "diff-512.ktx2": 44201,
+    "diff-512.jpg": 17742,
+    "nor-256.ktx2": 67840,
+    "nor-512.ktx2": 232445,
+    "nor-512.jpg": 69484,
+    "arm-256.ktx2": 59633,
+    "arm-512.ktx2": 200237,
+    "arm-512.jpg": 68232
+   }
+  },
+  "cardboard_box_01--cardboard_box_01": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 16318,
+    "diff-512.ktx2": 55894,
+    "diff-512.jpg": 29443,
+    "nor-256.ktx2": 68744,
+    "nor-512.ktx2": 251926,
+    "nor-512.jpg": 70362,
+    "arm-256.ktx2": 42934,
+    "arm-512.ktx2": 146524,
+    "arm-512.jpg": 32521
+   }
   }
  },
  "models": {
@@ -468,8 +621,8 @@
    "lod1Triangles": 4071
   },
   "covered_car": {
-   "glb": 399444,
-   "lod1": 445392,
+   "glb": 399044,
+   "lod1": 444996,
    "materials": [
     "covered_car",
     "covered_car"
@@ -512,11 +665,92 @@
    ],
    "triangles": 1473,
    "lod1Triangles": 441
+  },
+  "sofa_02": {
+   "glb": 76820,
+   "lod1": 86876,
+   "materials": [
+    "sofa_02"
+   ],
+   "triangles": 2728,
+   "lod1Triangles": 816
+  },
+  "worn_metal_rack": {
+   "glb": 270528,
+   "lod1": 307116,
+   "materials": [
+    "worn_metal_rack"
+   ],
+   "triangles": 6372,
+   "lod1Triangles": 3038
+  },
+  "wooden_crate_02": {
+   "glb": 151972,
+   "lod1": 170836,
+   "materials": [
+    "wooden_crate_02"
+   ],
+   "triangles": 5176,
+   "lod1Triangles": 1550
+  },
+  "Barrel_02": {
+   "glb": 78484,
+   "lod1": 88288,
+   "materials": [
+    "Barrel_02"
+   ],
+   "triangles": 2688,
+   "lod1Triangles": 806
+  },
+  "concrete_road_barrier_02": {
+   "glb": 544088,
+   "lod1": 629976,
+   "materials": [
+    "concrete_road_barrier_02"
+   ],
+   "triangles": 23822,
+   "lod1Triangles": 7146
+  },
+  "compost_bags": {
+   "glb": 478940,
+   "lod1": 546800,
+   "materials": [
+    "compost_bags"
+   ],
+   "triangles": 18708,
+   "lod1Triangles": 5610
+  },
+  "cement_bag": {
+   "glb": 23400,
+   "lod1": 26556,
+   "materials": [
+    "cement_bag"
+   ],
+   "triangles": 844,
+   "lod1Triangles": 252
+  },
+  "trashbag": {
+   "glb": 107444,
+   "lod1": 123708,
+   "materials": [
+    "trashbag"
+   ],
+   "triangles": 4482,
+   "lod1Triangles": 1344
+  },
+  "cardboard_box_01": {
+   "glb": 383132,
+   "lod1": 444276,
+   "materials": [
+    "cardboard_box_01"
+   ],
+   "triangles": 16952,
+   "lod1Triangles": 5084
   }
  },
  "bytes": {
-  "low": 13387867,
-  "high": 33634821,
-  "fallback": 3111536
+  "low": 19036845,
+  "high": 42076516,
+  "fallback": 4291500
  }
 }

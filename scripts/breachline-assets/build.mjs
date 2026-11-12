@@ -150,7 +150,11 @@ function glbWithoutImages(gltf, bin) {
   for (const m of g.materials ?? []) {
     delete m.normalTexture; delete m.occlusionTexture; delete m.emissiveTexture;
     if (m.pbrMetallicRoughness) { delete m.pbrMetallicRoughness.baseColorTexture; delete m.pbrMetallicRoughness.metallicRoughnessTexture; }
+    // Material extensions (transmission, specular, IOR) can point at the stripped textures; the runtime ignores them.
+    delete m.extensions;
   }
+  if (g.extensionsUsed) { g.extensionsUsed = g.extensionsUsed.filter(e => !e.startsWith('KHR_materials_')); if (!g.extensionsUsed.length) delete g.extensionsUsed; }
+  if (g.extensionsRequired) { g.extensionsRequired = g.extensionsRequired.filter(e => !e.startsWith('KHR_materials_')); if (!g.extensionsRequired.length) delete g.extensionsRequired; }
   g.buffers = [{ byteLength: bin.length }];
   g.asset = { version: '2.0', generator: 'breachline-assets', copyright: gltf.asset?.copyright };
   const json = Buffer.from(JSON.stringify(g));
