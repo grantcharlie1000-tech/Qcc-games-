@@ -50,6 +50,21 @@ Fighters and the weapon in hand each cost 0 to 20 ms (noise).
 - Static meshes are tagged with their rooms as camera layers. The probe cameras, the warm-up and the bullet-mark raycaster see every room, and `?cull=off` turns it off.
 - Draws fall from 361 to 210 in the Lab, 311 to 259 in the Office and 434 to 196 in the Lobby. The corridor sees every doorway, so it stays near 440.
 - Pictures with it on and off differ in 0 to 0.24% of pixels: edge noise, nothing missing.
+- **Second pass.**
+  - Inside a room seen through an opening, a mesh that belongs to that room alone is drawn only if its bounds show through the opening.
+  - Small props are dropped by distance, scaled by size: 9 m, 16 m and 32 m (they were 22 m and 45 m).
+
+  | View | Culling off | Culling on |
+  |---|---|---|
+  | Corridor | 405 | 347 |
+  | Corridor east | 403 | 331 |
+  | Office | 311 | 247 |
+  | Lab | 358 | 185 |
+  | Lobby | 409 | 188 |
+  | Yard | 96 | 90 |
+
+  Pictures still differ by at most 0.19% (edge noise).
+- **What remains in the corridor:** it sees about ten rooms through their doorways, and each room's walls, floor and ceiling are many separate meshes (the Office alone draws 34).
 - A browser test checks that a room view draws less than with culling off.
 
 **Job 5: the cheap shading path.**

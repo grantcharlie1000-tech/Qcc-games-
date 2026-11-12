@@ -183,7 +183,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     try { await fighters.warm(renderer, camera); } catch (e) { console.warn('Breachline fighters warm-up failed', e); }
     if (disposed) return;
     const prev = renderer.getRenderTarget(), hdr = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true, samples: post.tier === 'high' ? 4 : 0 });
-    camera.layers.enableAll(); // every room, whatever the room culling last chose
+    camera.layers.enableAll(); untag(); // every room and mesh, whatever the room culling last chose
     fx.prime(true);
     // Every material a damaged wall can show (cut edges, cavity, studs, planks, plate): an intact wall draws only its
     // face, so without this the first bullet hole would compile them. A tiny triangle with the panels' attributes each.
@@ -368,6 +368,10 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   // (doorways, windows, holed walls) that lie in the view, up to four rooms deep. `?cull=off` draws everything.
   const cullOff = typeof location !== 'undefined' && /[?&]cull=off\b/.test(location.search);
   const tagBox = new THREE.Box3();
+  /** Every tagged mesh: its rooms (layer mask) and world bounds. */
+  const tags = new Map<THREE.Object3D, { mask: number; box: THREE.Box3 }>();
+  /** Puts every tagged mesh back on all its rooms' layers (for the probes and the warm-up, which see everything). */
+  function untag() { for (const [o, t] of tags) o.layers.mask = t.mask; }
   function tagRooms(root: THREE.Object3D) {
     if (cullOff) return;
     root.updateMatrixWorld(true);
@@ -384,7 +388,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
         const ox = Math.min(tagBox.max.x, r.x1) - Math.max(tagBox.min.x, r.x0), oz = Math.min(tagBox.max.z, r.z1) - Math.max(tagBox.min.z, r.z0);
         if (ox > 0 && oz > 0 && ox * oz > 0.15 * area) mask |= 1 << (i + 1);
       });
-      if (mask) o.layers.mask = mask;
+      if (mask) { o.layers.mask = mask; tags.set(o, { mask, box: tagBox.clone() }); }
     });
   }
   interface Portal { box: THREE.Box3; a: number; b: number; panel: Panel }
@@ -423,7 +427,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   function cullRooms() {
     if (cullOff || !portals.length) { camera.layers.enableAll(); return; }
     const home = regionAt(camera.position.x, camera.position.z);
-    if (home < 0) { camera.layers.enableAll(); return; }
+    if (home < 0) { camera.layers.enableAll(); untag(); return; }
     camera.updateMatrixWorld(); viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     reach.fill(-1); reach[home] = 0; queue.length = 0; queue.push(home);
     rects[home * 4] = -1; rects[home * 4 + 1] = -1; rects[home * 4 + 2] = 1; rects[home * 4 + 3] = 1;
@@ -445,6 +449,14 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       }
     }
     camera.layers.mask = mask;
+    // Inside a room seen through an opening, a mesh of that room alone is drawn only if it shows through the opening.
+    if (!probesDone) return;
+    for (const [o, t] of tags) {
+      const m = t.mask, r = Math.log2(m) - 1;
+      if ((m & (m - 1)) !== 0 || !(m & mask) || reach[r] <= 0) { o.layers.mask = m; continue; }
+      project(t.box, pr);
+      o.layers.mask = Math.max(pr[0], rects[r * 4]) < Math.min(pr[2], rects[r * 4 + 2]) && Math.max(pr[1], rects[r * 4 + 1]) < Math.min(pr[3], rects[r * 4 + 3]) ? m : 0;
+    }
   }
   // ---- Performance experiments (debug only, `?artdbg=world`: window.__blExperiment): each switch changes how the next
   // frames are drawn, to find where the GPU time goes. Off by default; nothing here runs in a normal game.

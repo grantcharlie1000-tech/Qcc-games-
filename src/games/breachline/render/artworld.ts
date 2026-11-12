@@ -157,7 +157,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       if (dbg.includes('nonormal')) nor = null;
       if (dbg.includes('noarm')) arm = null;
       const mat = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, lightMap, lightScale: info.scale, dirMap: dbg.includes('nodir') ? null : dirMap, vertexTint: true, roughness: dbg.includes('mirror') ? 0.02 : arm ? s?.gloss ?? 1 : 0.85, metalness: dbg.includes('metal') ? 1 : arm ? 1 : 0, band: (id === 'drywall' || id === 'cinder') && look?.band ? look.band : s?.band, tiles: (id === 'drywall' || id === 'cinder') ? look?.tiles : null, bands: look?.bands, wear: s?.wear, spec: s?.spec, normalScale: s?.normal, specOnly: dbg.includes('speconly') });
-      const g = geometry(a), mesh = new THREE.Mesh(g, mat);
+      const g = geometry(a), mesh = new THREE.Mesh(g, mat); mesh.name = `${region.name}:${id}`;
       mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:${id}`;
       group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
     }
@@ -316,7 +316,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       lod.addLevel(root, distance);
     }
     // Past a range set by its size the prop is not drawn at all: small kit at 22 m, a car or a crate at 45 m.
-    { const r = new THREE.Box3().setFromObject(levels[levels.length - 1][0]).getBoundingSphere(new THREE.Sphere()).radius * (p.scale ?? 1); lod.addLevel(new THREE.Object3D(), r < 0.8 ? 22 : 45); }
+    { const r = new THREE.Box3().setFromObject(levels[levels.length - 1][0]).getBoundingSphere(new THREE.Sphere()).radius * (p.scale ?? 1); lod.addLevel(new THREE.Object3D(), r < 0.25 ? 9 : r < 0.8 ? 16 : 32); }
     lod.position.set(p.x, p.y, p.z); lod.rotation.set(0, p.yaw, p.tilt ?? 0, 'YXZ'); lod.scale.setScalar(p.scale ?? 1);
     if (p.piece !== undefined && p.states) { const list = pieceProps.get(p.piece) ?? []; list.push({ object: lod, states: p.states }); pieceProps.set(p.piece, list); lod.visible = p.states.includes(0); }
     group.add(lod);
