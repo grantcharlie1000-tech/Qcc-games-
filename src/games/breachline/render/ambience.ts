@@ -223,6 +223,6 @@ void main(){
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`,
-    transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
   }));
 }

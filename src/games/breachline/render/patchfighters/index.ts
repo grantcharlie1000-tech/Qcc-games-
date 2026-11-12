@@ -165,7 +165,7 @@ roughnessFactor *= mix(1.0, kitGloss, smoothstep(0.3, 0.7, texture2D(tMask, vMap
 interface KillInfo { kind: 'gun' | 'blast' | 'melee'; shot: { x: number; y: number; z: number; yaw: number; pitch: number; w: WeaponId } | null; boom: { x: number; y: number; z: number } | null; head: boolean; kx: number; kz: number; seed: number }
 interface Fig {
   squad: 0 | 1; group: THREE.Group; meshes: THREE.SkinnedMesh[]; skeleton: THREE.Skeleton; bones: THREE.Bone[];
-  weapon: THREE.SkinnedMesh; wbones: THREE.Bone[]; wid: WeaponId; anim: Animator; mats: ProbeMaterial[]; weaponMat: FighterMaterial; wlod: 1 | 2;
+  weapon: THREE.SkinnedMesh; wbones: THREE.Bone[]; wid: WeaponId; anim: Animator; mats: ProbeMaterial[]; weaponMat: FighterMaterial; rifleMat?: ProbeMaterial; wlod: 1 | 2;
   x: number; z: number; yaw: number; pitch: number; crouch: number; lean: number; phase: number;
   fresh: boolean; lod: number; remoteReload: number; deathKind: number; dist: number; wounds: THREE.Vector4[]; nWound: number; hurt: number; react: { t: number; ax: number; az: number; limb: number }; died: number; kill: KillInfo | null; rag: RD.Ragdoll | null; ragInv: THREE.Matrix4; gunQ: THREE.Quaternion; gunF: THREE.Quaternion; px: number; pz: number; vx: number; vz: number; reloadEmpty: boolean; wasReloading: boolean; input: PoseInput;
 }
@@ -268,13 +268,13 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
   function weaponMesh(f: Fig, id: WeaponId, lod: 1 | 2) { const w = weaponFor(id, lod); f.weapon.geometry = w.geo; f.wid = id; f.wlod = lod; f.anim.setWeapon(id, w); dress(f); }
   /** Job 5.3: a fighter carrying the AR shows the Patch rifle instead of the stock world model, on the same skinned
    * mesh and bones (the animator drives them), so it is still one draw. */
-  let rifleMat: ProbeMaterial | null = null;
+  // One rifle material per fighter (one shared program): each fighter sets its own room's probe and reflection map,
+  // and a shared material would be changed back and forth, and so re-checked by three, every frame.
   function dress(f: Fig) {
     const a = assets, r = a?.rifle;
     if (!a || !r || f.wid !== 'ar') { f.weapon.material = f.weaponMat; return; }
-    rifleMat ??= probeMaterial({ map: r.maps.map, aoMap: r.maps.arm, roughnessMap: r.maps.arm, metalnessMap: r.maps.arm, roughness: 1, metalness: 1 }, 'patch-gear');
-    if (!f.mats.includes(rifleMat)) f.mats.push(rifleMat);
-    f.weapon.geometry = rifleGeo(a, f.wlod); f.weapon.material = rifleMat;
+    if (!f.rifleMat) { f.rifleMat = probeMaterial({ map: r.maps.map, aoMap: r.maps.arm, roughnessMap: r.maps.arm, metalnessMap: r.maps.arm, roughness: 1, metalness: 1 }, 'patch-gear'); f.mats.push(f.rifleMat); }
+    f.weapon.geometry = rifleGeo(a, f.wlod); f.weapon.material = f.rifleMat;
   }
 
   function figFor(a: Assets, i: number, squad: 0 | 1, wid: WeaponId): Fig {

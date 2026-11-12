@@ -42,5 +42,5 @@ const via = new Map();
 const walk = (n, caller, path) => { const native = !n.callFrame.url, name = native ? `${n.callFrame.functionName || '(native)'} in ${caller}` : label(n), s = n.selfSize || 0, here = [...path, n.callFrame.functionName || '(anon)'].slice(-6); total += s; if (s) { self.set(name, (self.get(name) || 0) + s); const m = via.get(name) || new Map(), k = here.slice(0, -1).join(' > '); m.set(k, (m.get(k) || 0) + s); via.set(name, m); } for (const c of n.children || []) walk(c, native ? caller : label(n), here); };
 walk(profile.head, '(root)', []);
 console.log(`${quality} ${idle ? 'idle' : 'firing'}: ${(total / 1048576 / el).toFixed(2)} MB/s, ${(total / 1024 / Math.max(1, frames)).toFixed(1)} KB per frame, ${frames} frames in ${el.toFixed(1)} s`);
-[...self].sort((x, y) => y[1] - x[1]).slice(0, 25).forEach(([n, s], i) => { console.log(`  ${(s / 1048576 / el).toFixed(3).padStart(7)} MB/s  ${n}`); if (i < 6 && process.env.VIA) console.log(`           via ${[...via.get(n)].sort((x, y) => y[1] - x[1])[0][0]}`); });
+[...self].sort((x, y) => y[1] - x[1]).slice(0, 25).forEach(([n, s], i) => { console.log(`  ${(s / 1048576 / el).toFixed(3).padStart(7)} MB/s  ${n}`); if (i < Number(process.env.VIA || 0)) console.log(`           via ${[...via.get(n)].sort((x, y) => y[1] - x[1])[0][0]}`); });
 await browser.close();

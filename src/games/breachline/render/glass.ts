@@ -46,6 +46,9 @@ export class Glass {
     this.panes = MAP.panels.filter(p => p.kind === 'window' && (p.axis === 'x' ? Math.abs(Math.abs(p.pos) - Math.abs(B.z1)) < 0.01 : Math.abs(Math.abs(p.pos) - Math.abs(B.x1)) < 0.01))
       .map(p => ({ axis: p.axis, pos: p.pos, out: Math.sign(p.pos), u0: p.u0, u1: p.u0 + p.cols * CELL, y0: p.y0, y1: p.y0 + p.rows * CELL, hits: 0 }));
     const mat = new THREE.MeshStandardMaterial({ color: 0x9db4bf, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide });
+    // A flat pane needs no back-then-front pass (three draws transparent double-sided things twice and rebuilds their
+    // program state for each pass, every frame).
+    mat.forceSinglePass = true;
     this.sheet = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), mat, this.panes.length);
     this.rim = new THREE.InstancedMesh(rimGeometry(), mat, this.panes.length);
     this.sheet.renderOrder = this.rim.renderOrder = 3;
