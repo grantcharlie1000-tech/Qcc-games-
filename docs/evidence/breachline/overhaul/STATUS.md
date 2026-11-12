@@ -4,6 +4,13 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: Low per-view numbers for all 20 bookmarks** (run in batches of four): 108 to 306 draw calls, 72k to 272k
+triangles (lab 214/240k, lab-west 180/188k, lab-bench 228/224k, lab-ceiling 107/72k, corridor 282/259k, corridor-west
+306/198k, archive 270/181k, archive-north 169/107k, archive-desk 284/272k, server-room 227/220k, lobby 236/191k,
+lobby-desk 117/73k, office 143/135k, break-room 152/92k, garage 186/197k, garage-wall 124/116k, break-kitchen 112/73k,
+office-desk 189/120k, server-aisle 272/262k, server-rack 108/136k). All within budget. The clean three-in-a-row online
+run was done on the built site (above).
+
 **2026-11-12: 10.2's breakables** (`render/breakables.ts`; evidence `mapfill/shots/breakables.png`, before and after
 per class). Dressing pieces now carry a role and their vertex range in the merged dressing meshes, so one piece can be
 removed without rebuilding a mesh (`ArtWorld.hideDress`, restored at each round's preparation):
