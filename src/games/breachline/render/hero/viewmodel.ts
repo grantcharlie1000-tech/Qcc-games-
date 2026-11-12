@@ -212,7 +212,9 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       holder.visible = show;
       if (!show || !p) return;
       if (p.squad !== curSquad) { if (rig) holder.remove(rig.root); rig = rigFor(p.squad); holder.add(rig.root); rig.root.add(flash); curSquad = p.squad; curId = '' as WeaponId; }
-      const r = rig!, id = weaponIdOf(m, p), def = WEAPONS[id], hold = holdFor(id);
+      // Dev only: `__heroWeapon` shows another weapon in hand, for evidence of weapons the squad cannot pick.
+      const forced = import.meta.env?.DEV ? (globalThis as { __heroWeapon?: WeaponId }).__heroWeapon : undefined;
+      const r = rig!, id = forced ?? weaponIdOf(m, p), def = WEAPONS[id], hold = holdFor(id);
       if (id !== curId) { r.setWeapon(id); curId = id; }
       const still = view.reduced ? 0 : 1;
       // Aim, sprint and "using something" blends.

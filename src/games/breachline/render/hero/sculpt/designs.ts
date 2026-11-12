@@ -32,18 +32,36 @@ function gripPoint(pivot: readonly [number, number] = AR5.grip.pivot, rake: numb
   return [pivot[0] + (-ly * s + lu * c), pivot[1] + (ly * c + lu * s)];
 }
 
-export function ar5Sockets(): WeaponSockets {
-  const [gu, gy] = gripPoint(), A = AR5;
+/** A rifle design of the AR-5's family: the AR-5's table with some parts changed (the Tern C8 below). */
+export type RifleDesign = typeof AR5 & { holo?: { u0: number; u1: number; half: number; top: number; window: [number, number] }; support?: number; furniture?: 'polymer' | 'polymerFde' };
+
+export function ar5Sockets(A: RifleDesign = AR5): WeaponSockets {
+  const [gu, gy] = gripPoint(A.grip.pivot, A.grip.rake), a = (x: number, y: number, u: number) => at(x, y, u, A.sightH);
   return {
-    grip: { p: at(0, gy, gu), r: [-A.grip.rake, 0, 0] },
-    support: { p: at(-4, A.handguard.bottom - 6.5, 360), r: [0, 0, 0] },
-    mag: at(0, A.mag.seat[1], A.mag.seat[0]),
-    muzzle: at(0, 0, A.muzzle.u1), eject: at(16, 1, 103),
-    handle: at(-16, -20, 93),
+    grip: { p: a(0, gy, gu), r: [-A.grip.rake, 0, 0] },
+    support: { p: a(-4, A.handguard.bottom - 6.5, A.support ?? 360), r: [0, 0, 0] },
+    mag: a(0, A.mag.seat[1], A.mag.seat[0]),
+    muzzle: a(0, 0, A.muzzle.u1), eject: a(16, 1, 103),
+    handle: a(-16, -20, 93),
     boltTravel: A.bolt.travel / 1000, handleTravel: 0,
-    trigger: at(0, -36, 80), bore: A.sightH / 1000,
+    trigger: a(0, -36, 80), bore: A.sightH / 1000,
   };
 }
+
+/** Tern C8: the AR-5's compact sister (Breachline's own design): a 267 mm barrel under a 230 mm handguard, a short
+ * muzzle brake, a holographic sight with a wide rectangular window, the stock collapsed one notch, dark-earth
+ * furniture. About 720 mm overall. */
+export const TERN = {
+  ...AR5, name: 'Tern C8', sightH: 62,
+  handguard: { ...AR5.handguard, u1: 420, slots: 5 },
+  barrel: { ...AR5.barrel, muzzle: 455 },
+  muzzle: { u0: 453, u1: 500, r: 11.5 },
+  stock: { ...AR5.stock, butt: -232 },
+  holo: { u0: 70, u1: 148, half: 18.5, top: 84, window: [30, 24] },
+  optic: { ...AR5.optic, dot: 140, dotR: 0.7 },
+  support: 330, furniture: 'polymerFde',
+} as unknown as RifleDesign;
+export const ternSockets = () => ar5Sockets(TERN);
 
 /** Halden 12: a pump shotgun (Breachline's own design) with a ghost-ring rear sight on the receiver, a ramped front
  * post with a tritium dot, a tube magazine under the barrel, a ribbed pump, a six-shell side saddle on the left and a

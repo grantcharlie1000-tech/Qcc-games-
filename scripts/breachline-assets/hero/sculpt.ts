@@ -16,7 +16,7 @@ import { MeshoptSimplifier } from 'meshoptimizer';
 import * as THREE from 'three';
 import { mergeVertices, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MAT, ar5Parts, type Part } from '../../../src/games/breachline/render/hero/sculpt/ar5';
-import { AR5, HALDEN } from '../../../src/games/breachline/render/hero/sculpt/designs';
+import { AR5, HALDEN, TERN } from '../../../src/games/breachline/render/hero/sculpt/designs';
 import { haldenParts } from '../../../src/games/breachline/render/hero/sculpt/halden12';
 import { packMeshBin, type MeshArrays } from '../../../src/games/breachline/render/hero/meshbin';
 import { meshField, type RawMesh } from './mesher';
@@ -28,15 +28,16 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const arg = (k: string, d: string) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
 const CLAY = process.argv.includes('--clay');
 
-export interface Weapon { id: string; dir: string; parts: (hi: boolean) => Part[]; sightH: number; budget: number; grid: number; lens?: { r: number; u: number[] }; dot?: { u: number; r: number; y?: number } }
+export interface Weapon { id: string; dir: string; parts: (hi: boolean) => Part[]; sightH: number; budget: number; grid: number; lens?: { r: number; u: number[] }; lensRect?: { w: number; h: number; u: number[] }; dot?: { u: number; r: number; y?: number }; ring?: { u: number; r0: number; r1: number }; src?: string }
 export const WEAPONS: Record<string, Weapon> = {
+  tern: { id: 'tern', dir: 'tern', src: 'ar5', parts: hi => ar5Parts(hi, TERN), sightH: TERN.sightH, budget: 11500, grid: 0.4, lensRect: { w: TERN.holo!.window[0] - 1, h: TERN.holo!.window[1] - 1, u: [TERN.holo!.u0 + 6, TERN.holo!.u1 - 6] }, dot: { u: TERN.holo!.u1 - 10, r: 0.7 }, ring: { u: TERN.holo!.u1 - 10, r0: 6.4, r1: 7.4 } },
   halden12: { id: 'halden12', dir: 'halden12', parts: haldenParts, sightH: HALDEN.sightH, budget: 10500, grid: 0.4, dot: { u: 661, r: 0.9, y: HALDEN.sightH - 2.2 } },
   ar5: { id: 'ar5', dir: 'ar5', parts: ar5Parts, sightH: AR5.sightH, budget: 12500, grid: 0.4, lens: { r: AR5.optic.bore, u: [AR5.optic.u0 + 2.5, AR5.optic.u1 - 2.5] }, dot: { u: AR5.optic.dot, r: AR5.optic.dotR } },
 };
 
 /** Meshes each part (cached by the sculpt sources' hash) and pre-simplifies to 0.03 mm. */
 async function meshParts(w: Weapon, parts: Part[]): Promise<RawMesh[]> {
-  const src = await Promise.all(['src/games/breachline/render/hero/sculpt/sdf.ts', `src/games/breachline/render/hero/sculpt/${w.id}.ts`, 'src/games/breachline/render/hero/sculpt/kit.ts', 'src/games/breachline/render/hero/sculpt/designs.ts', 'scripts/breachline-assets/hero/mesher.ts'].map(f => readFile(join(ROOT, f))));
+  const src = await Promise.all(['src/games/breachline/render/hero/sculpt/sdf.ts', `src/games/breachline/render/hero/sculpt/${w.src ?? w.id}.ts`, 'src/games/breachline/render/hero/sculpt/kit.ts', 'src/games/breachline/render/hero/sculpt/designs.ts', 'scripts/breachline-assets/hero/mesher.ts'].map(f => readFile(join(ROOT, f))));
   const key = createHash('sha256').update(Buffer.concat(src)).update(String(w.grid)).digest('hex').slice(0, 16);
   const cache = join(ROOT, '.cache/hero-sculpt', `${w.id}-${key}.json`);
   try { const j = JSON.parse(await readFile(cache, 'utf8')); return j.map((m: { pos: number[]; nor: number[]; idx: number[] }) => ({ pos: new Float32Array(m.pos), nor: new Float32Array(m.nor), idx: new Uint32Array(m.idx) })); } catch { /* build */ }
@@ -76,6 +77,17 @@ function toBudget(meshes: RawMesh[], parts: Part[], budget: number): RawMesh[] {
 function disc(y: number, u: number, r: number, n: number): RawMesh {
   const pos = [0, y, -u], nor = [0, 0, 1], idx: number[] = [];
   for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; pos.push(Math.cos(a) * r, y + Math.sin(a) * r, -u); nor.push(0, 0, 1); idx.push(0, 1 + i, 1 + ((i + 1) % n)); }
+  return { pos: new Float32Array(pos), nor: new Float32Array(nor), idx: new Uint32Array(idx) };
+}
+
+/** A rectangle facing +Z at (0, y, u), w × h mm. */
+function rect(y: number, u: number, w: number, h: number): RawMesh {
+  return { pos: new Float32Array([-w / 2, y - h / 2, -u, w / 2, y - h / 2, -u, w / 2, y + h / 2, -u, -w / 2, y + h / 2, -u]), nor: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1]), idx: new Uint32Array([0, 1, 2, 0, 2, 3]) };
+}
+/** A flat ring facing +Z at (0, y, u). */
+function annulus(y: number, u: number, r0: number, r1: number, n: number): RawMesh {
+  const pos: number[] = [], nor: number[] = [], idx: number[] = [];
+  for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; pos.push(Math.cos(a) * r0, y + Math.sin(a) * r0, -u, Math.cos(a) * r1, y + Math.sin(a) * r1, -u); nor.push(0, 0, 1, 0, 0, 1); const j = (i + 1) % n; idx.push(i * 2, i * 2 + 1, j * 2 + 1, i * 2, j * 2 + 1, j * 2); }
   return { pos: new Float32Array(pos), nor: new Float32Array(nor), idx: new Uint32Array(idx) };
 }
 
@@ -131,8 +143,10 @@ export async function buildGameMesh(w: Weapon) {
   parts.forEach((p, k) => console.log(`  ${p.name.padEnd(18)} ${String(meshes[k].idx.length / 3).padStart(6)} tris`));
   const list = meshes.map((m, k) => ({ m, bone: parts[k].bone, flag: 0, part: k }));
   if (w.dot) list.push({ m: disc(w.dot.y ?? w.sightH, w.dot.u, w.dot.r, 10), bone: 0, flag: 1, part: 255 });
+  if (w.ring) list.push({ m: annulus(w.sightH, w.ring.u, w.ring.r0, w.ring.r1, 40), bone: 0, flag: 1, part: 255 });
   const game = creased(merge(list, w.sightH), 40);
-  const lens = w.lens ? merge(w.lens.u.map(u => ({ m: disc(w.sightH, u, w.lens!.r, 32), bone: 0, flag: 0, part: 254 })), w.sightH) : null;
+  const lens = w.lens ? merge(w.lens.u.map(u => ({ m: disc(w.sightH, u, w.lens!.r, 32), bone: 0, flag: 0, part: 254 })), w.sightH)
+    : w.lensRect ? merge(w.lensRect.u.map(u => ({ m: rect(w.sightH, u, w.lensRect!.w, w.lensRect!.h), bone: 0, flag: 0, part: 254 })), w.sightH) : null;
   return { parts, game, lens };
 }
 
@@ -175,25 +189,29 @@ const GLYPH: Record<string, string> = {
   K: '10001100101010011000101001001010001', '-': '00000000000000011111000000000000000', '.': '00000000000000000000000000110001100',
   '0': '01110100011001110101110011000101110', '1': '00100011000010000100001000010001110', '2': '01110100010000100010001000100011111',
   '4': '00010001100101010010111110001000010', '5': '11111100001111000001000011000101110', '6': '00110010001000011110100011000101110',
-  '7': '11111000010001000100010000100001000', '3': '11110000010000101110000010000111110',
+  '7': '11111000010001000100010000100001000', '8': '01110100011000101110100011000101110', '3': '11110000010000101110000010000111110',
   D: '11110100011000110001100011000111110', G: '01110100011000010111100011000101110', ' ': '00000000000000000000000000000000000',
 };
 /** Engraved lines on a flat side, in design mm: text reads left to right seen from that side. */
-const MARKS: { part: string; side: -1 | 1; u: number; y: number; h: number; text: string }[] = [
-  { part: 'lower', side: -1, u: 171, y: -27, h: 3.4, text: 'MARROW AR-5' },
-  { part: 'lower', side: -1, u: 171, y: -33.5, h: 2.6, text: 'CAL 5.56' },
-  { part: 'lower', side: -1, u: 171, y: -39, h: 2.6, text: 'M5-04217' },
-  { part: 'lower', side: -1, u: 171, y: -47, h: 2.2, text: 'MRW WORKS' },
-  { part: 'lower', side: -1, u: 66, y: -21, h: 1.9, text: 'SAFE SEMI AUTO' },
-  { part: 'optic mount', side: -1, u: 92, y: 37.5, h: 2, text: 'MRW' },
+const MARKS: { part: string; side: -1 | 1; u: number; y: number; h: number; text: string; w?: string }[] = [
+  { part: 'lower', side: -1, u: 171, y: -27, h: 3.4, text: 'MARROW AR-5', w: 'ar5' },
+  { part: 'lower', side: -1, u: 171, y: -33.5, h: 2.6, text: 'CAL 5.56', w: 'ar5' },
+  { part: 'lower', side: -1, u: 171, y: -39, h: 2.6, text: 'M5-04217', w: 'ar5' },
+  { part: 'lower', side: -1, u: 171, y: -47, h: 2.2, text: 'MRW WORKS', w: 'ar5' },
+  { part: 'lower', side: -1, u: 66, y: -21, h: 1.9, text: 'SAFE SEMI AUTO', w: 'ar5' },
+  { part: 'optic mount', side: -1, u: 92, y: 37.5, h: 2, text: 'MRW', w: 'ar5' },
+  { part: 'lower', side: -1, u: 171, y: -27, h: 3.4, text: 'TERN C8', w: 'tern' },
+  { part: 'lower', side: -1, u: 171, y: -33.5, h: 2.6, text: 'CAL 5.56', w: 'tern' },
+  { part: 'lower', side: -1, u: 171, y: -39, h: 2.6, text: 'T8-20633', w: 'tern' },
+  { part: 'lower', side: -1, u: 66, y: -21, h: 1.9, text: 'SAFE SEMI AUTO', w: 'tern' },
   { part: 'receiver', side: -1, u: 182, y: 9, h: 3.6, text: 'HALDEN 12' },
   { part: 'receiver', side: -1, u: 182, y: 2.5, h: 2.6, text: '12 GA 3 IN' },
   { part: 'receiver', side: -1, u: 182, y: -3.5, h: 2.6, text: 'HN-31740' },
   { part: 'receiver', side: -1, u: 182, y: -9.5, h: 2.2, text: 'MRW WORKS' },
 ];
-function marked(name: string, x: number, y: number, z: number, nx: number): boolean {
+function marked(id: string, name: string, x: number, y: number, z: number, nx: number): boolean {
   for (const m of MARKS) {
-    if (m.part !== name || Math.sign(nx) !== m.side || Math.abs(nx) < 0.85) continue;
+    if ((m.w && m.w !== id) || m.part !== name || Math.sign(nx) !== m.side || Math.abs(nx) < 0.85) continue;
     const cw = m.h * 5 / 7, pitch = cw * 1.25, u = -z, along = m.side < 0 ? m.u - u : u - m.u, down = m.y - y;
     if (down < 0 || down >= m.h || along < 0) continue;
     const ci = Math.floor(along / pitch), g = GLYPH[m.text[ci] ?? ' '];
@@ -266,7 +284,7 @@ async function bakeSet(w: Weapon, parts: Part[], m: MeshArrays & { part: Uint8Ar
   }
   console.log(`  rasterised ${n} texels (${(n / (S * S) * 100).toFixed(0)} %) in ${Date.now() - t0} ms`);
   const cache = join(ROOT, '.cache/hero-bake'); await mkdir(cache, { recursive: true });
-  const texels = Buffer.from(rec.buffer), key = createHash('sha256').update(texels).update(await readFile(join(ROOT, `src/games/breachline/render/hero/sculpt/${w.id}.ts`))).update(await readFile(join(ROOT, 'scripts/breachline-assets/hero/bakefield.ts'))).digest('hex');
+  const texels = Buffer.from(rec.buffer), key = createHash('sha256').update(texels).update(await readFile(join(ROOT, `src/games/breachline/render/hero/sculpt/${w.src ?? w.id}.ts`))).update(await readFile(join(ROOT, 'scripts/breachline-assets/hero/bakefield.ts'))).digest('hex');
   const keyFile = join(cache, `${w.id}-out.key`), SL = 4;
   let same = false; try { same = (await readFile(keyFile, 'utf8')) === key; } catch { /* first bake */ }
   if (same) console.log('  field bake unchanged: reusing it');
@@ -300,7 +318,7 @@ async function bakeSet(w: Weapon, parts: Part[], m: MeshArrays & { part: Uint8Ar
     // along the bottom edges where the rifle is set down.
     const drift = fbm(x * 0.02 + 3, y * 0.02, z * 0.02, 3), scuff = (mat === MAT.cerakote || mat === MAT.polymerFde) ? sstep(0.55, 0.8, fbm(x * 0.6, y * 0.6, z * 0.08, 3)) * sstep(-2, -16, y - (name === 'magazine' ? -150 : 0)) * 0.6 : 0;
     const handPolish = name === 'handguard' && -z > 330 && -z < 470 && y < 0 ? 0.5 : 0;
-    const engraved = marked(name, x, y, z, hn[0]);
+    const engraved = marked(w.id, name, x, y, z, hn[0]);
     const alb = [0, 1, 2].map(q => {
       let v = base[q] * (tint + (drift - 0.5) * 0.16);
       v = v + (lin(0x9a9184)[q] - v) * scuff * 0.35;

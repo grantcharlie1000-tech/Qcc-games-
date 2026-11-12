@@ -2,10 +2,10 @@
  * scripts/breachline-assets/hero/ read it; the game loads the baked result). Every dimension comes from `AR5` in
  * designs.ts. `hi` adds what is too fine for triangles and goes into the normal map: stipple, knurling, serrations,
  * screw sockets, pin dimples, slot-edge chamfers. Moving parts are separate parts with their own bone. */
-import { AR5 as A } from './designs';
+import { AR5, type RifleDesign } from './designs';
 import {
   alongZ, box, chamferJoin, cut, cutChamfer, cutRound, cylX, cylY, cylZ, fillet, inter, lathe, latheX, latheY, mirrorX, relief,
-  repeatU, rotZ, round2, sideX, stadium2, stadiumB, topY, union, type Shape,
+  move, repeatU, rotZ, round2, sideX, stadium2, stadiumB, topY, union, type Shape,
 } from './sdf';
 import { MAT, knurlY, pistolGrip, rail, ridgesU, screwX, stipple, type Part } from './kit';
 export { MAT, type Part };
@@ -14,7 +14,8 @@ const BONE = { root: 0, mag: 1, bolt: 2, trigger: 3, handle: 4 } as const;
 
 // ---- The rifle ------------------------------------------------------------------------------------------------------
 
-export function ar5Parts(hi: boolean): Part[] {
+export function ar5Parts(hi: boolean, A: RifleDesign = AR5): Part[] {
+  const furn = A.furniture === 'polymerFde' ? MAT.polymerFde : MAT.polymer;
   const parts: Part[] = [];
   const add = (name: string, bone: number, mat: number, s: Shape, weight = 1) => parts.push({ name, bone, mat, s, weight });
   const U = A.upper, L = A.lower, W = A.well, H = A.handguard, P = A.port;
@@ -81,7 +82,7 @@ export function ar5Parts(hi: boolean): Part[] {
   // Trigger (trigger bone).
   add('trigger', BONE.trigger, MAT.steel, sideX(round2([[78.5, -26], [83, -26], [82, -35], [79, -42], [74, -47.5], [72.5, -46], [76, -40], [78, -34]], [0, 0, 2, 3, 1.2, 1.2, 3, 2]), -2.7, 2.7, 0.7), 0.4);
   // Pistol grip: raked, a beavertail, a finger swell, stippled side panels and a base cap.
-  add('grip', BONE.root, MAT.polymer, pistolGrip(A.grip.pivot, A.grip.rake, A.grip.width, hi), 0.9);
+  add('grip', BONE.root, furn, pistolGrip(A.grip.pivot, A.grip.rake, A.grip.width, hi), 0.9);
   // Receiver extension, lock nut and end plate with a sling socket; the stock with cheek rest and butt pad.
   {
     const S = A.stock;
@@ -104,10 +105,11 @@ export function ar5Parts(hi: boolean): Part[] {
     stock = fillet(stock, cylZ(0, S.tubeY, 20, -132, -94, 4), 3);
     stock = cutRound(stock, cylZ(0, S.tubeY, S.tubeR + 0.4, -250, -60), 0.8);
     stock = union(stock, sideX(round2([[-100, -19], [-127, -23], [-129, -28.5], [-102, -25]], 2), -4.5, 4.5, 1.4));
-    add('stock', BONE.root, MAT.polymer, stock, 0.35);
+    const sd = A.stock.butt - AR5.stock.butt; // a collapsed stock slides forward on the tube
+    add('stock', BONE.root, furn, move(stock, 0, 0, sd), 0.35);
     let pad = sideX(round2([[-246, 21], [-262, 22], [-263, -82], [-246, -82]], [3, 5, 5, 3]), -21, 21, 5);
     if (hi) pad = relief(pad, (_x, y, z) => (-z < -254 ? -0.35 * Math.max(0, Math.sin(y * Math.PI / 4)) : 0), 0.4);
-    add('butt pad', BONE.root, MAT.rubber, pad, 0.25);
+    add('butt pad', BONE.root, MAT.rubber, move(pad, 0, 0, A.stock.butt - AR5.stock.butt), 0.25);
   }
   // Handguard: an octagonal tube 44 mm across with rounded-end slots on the sides and bottom, a sling socket, and an
   // integral top rail continuous with the receiver's.
@@ -133,12 +135,28 @@ export function ar5Parts(hi: boolean): Part[] {
     add('barrel', BONE.root, MAT.steel, union(cylZ(0, 0, A.barrel.r, 186, A.barrel.muzzle, -0.5), lathe([[A.barrel.r, 182], [16.4, 182], [16.8, 183], [16.8, 189], [16.4, 190], [A.barrel.r, 190]])), 0.5);
     const M = A.muzzle;
     let s = lathe([[2.9, M.u0], [M.r - 0.6, M.u0], [M.r, M.u0 + 1.2], [M.r, M.u1 - 4], [M.r - 1.6, M.u1], [2.9, M.u1]]);
-    const slot = topY(stadiumB(0, 583, 26, 4.6), 2, 14);
+    const slot = topY(stadiumB(0, M.u0 + 27, Math.min(26, M.u1 - M.u0 - 22), 4.6), 2, 14);
     s = hi ? cutChamfer(s, slot, 0.5) : cut(s, slot);
     s = cut(s, rotZ(slot, 1.05), rotZ(slot, -1.05));
     s = cut(s, box(9.6, -12, M.u0 - 1, 14, 12, M.u0 + 9), box(-14, -12, M.u0 - 1, -9.6, 12, M.u0 + 9));
     add('muzzle device', BONE.root, MAT.steel, s, 0.6);
   }
+  if (A.holo) {
+    // Holographic sight: a squared housing with a wide rectangular window, a hood over it, buttons on the rear face,
+    // a battery cap on the right, a clamp lever on the left; the reticle (ring and dot) floats in the window.
+    const Hs = A.holo, cy = A.sightH, [ww, wh] = Hs.window;
+    let body = box(-Hs.half, A.railTop, Hs.u0, Hs.half, Hs.top, Hs.u1, 3);
+    body = cutRound(body, box(-ww / 2, cy - wh / 2, Hs.u0 - 5, ww / 2, cy + wh / 2, Hs.u1 + 5), 2.2);
+    body = cutRound(body, box(-Hs.half - 2, A.railTop + 3, Hs.u0 + 14, Hs.half + 2, cy - wh / 2 - 3, Hs.u1 - 10), 1.5);
+    body = union(body, box(-Hs.half + 3, A.railTop + 3, Hs.u0 + 14, Hs.half - 3, cy - wh / 2 - 3, Hs.u1 - 10, 1));
+    for (const bx of [-6, 0, 6]) body = union(body, box(bx - 2.2, A.railTop + 5, Hs.u0 - 1.4, bx + 2.2, A.railTop + 9, Hs.u0 + 1, 0.8));
+    body = union(body, latheX([[0, 0], [6.5, 0], [6.5, 7], [5.8, 8], [0, 8]], A.railTop + 12, (Hs.u0 + Hs.u1) / 2 + 12, Hs.half - 1, 1));
+    let lever = sideX(round2([[Hs.u0 + 20, A.railTop - 2], [Hs.u0 + 50, A.railTop - 2], [Hs.u0 + 52, A.railTop + 6], [Hs.u0 + 20, A.railTop + 5]], 2), -Hs.half - 3, -Hs.half + 0.5, -0.5);
+    if (hi) lever = relief(lever, (x, y, z) => (x < -Hs.half - 2.6 ? ridgesU(1.1, 0.2)(x, y, z) : 0), 0.3);
+    body = union(body, lever, mirrorX(box(9.4, A.railTop - 5.6, Hs.u0 + 6, 12.6, A.railTop + 1, Hs.u1 - 6, -0.5)));
+    if (hi) body = cut(body, latheX([[0, -1], [2.4, -1], [2.4, 0.5], [0, 0.5]], A.railTop + 12, (Hs.u0 + Hs.u1) / 2 + 12, Hs.half + 7, 1));
+    add('holo sight', BONE.root, MAT.anod, body, 3);
+  } else {
   // Red-dot sight: a compact 22 mm window in a 26 mm body with thin-rimmed lens hoods, elevation and windage caps, a
   // battery and brightness knob on the left, on a low single-piece riser with two rings, clamp screws and a cross bolt.
   {
@@ -176,6 +194,7 @@ export function ar5Parts(hi: boolean): Part[] {
     add('optic mount', BONE.root, MAT.anod, mount, 2.4);
     void L;
   }
+  }
   // Back-up sights, folded flat on the rail: the aperture at the rear, the post at the front.
   {
     let rear = box(-10.8, A.railTop - 3, 2, 10.8, A.railTop + 7, 30, -0.7);
@@ -183,9 +202,10 @@ export function ar5Parts(hi: boolean): Part[] {
     if (hi) rear = cut(rear, cylY(0, 12, 1.4, A.railTop + 8, A.railTop + 11), cylX(A.railTop + 3, 26, 1.2, -12, 12));
     rear = union(rear, latheX([[0, 0], [3.4, 0], [3.4, 2], [2.8, 2.6], [0, 2.6]], A.railTop + 2, 16, 10.8, 1));
     add('rear sight', BONE.root, MAT.anod, rear, 1.2);
-    let front = box(-10.8, A.railTop - 3, 490, 10.8, A.railTop + 8, 518, -0.7);
-    front = chamferJoin(front, box(-7, A.railTop + 7, 492, 7, A.railTop + 10.4, 516, -0.6), 0.4);
-    if (hi) front = cut(front, cylX(A.railTop + 3, 494, 1.2, -12, 12));
+    const fu = A.handguard.u1;
+    let front = box(-10.8, A.railTop - 3, fu - 30, 10.8, A.railTop + 8, fu - 2, -0.7);
+    front = chamferJoin(front, box(-7, A.railTop + 7, fu - 28, 7, A.railTop + 10.4, fu - 4, -0.6), 0.4);
+    if (hi) front = cut(front, cylX(A.railTop + 3, fu - 26, 1.2, -12, 12));
     add('front sight', BONE.root, MAT.anod, front, 0.7);
   }
   // Magazine: curved, 22.6 mm wide polymer body with ribs low on the sides, a wider floorplate, and the top round

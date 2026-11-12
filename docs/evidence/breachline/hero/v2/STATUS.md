@@ -189,6 +189,16 @@ still built at load before being replaced (about 0.7 s once). `?herohand=sculpt`
 - Honest re-rating from stills: aim 5, recoil 4, swap 4.5 to 5, reload 5, bob and sway about 5. The changes are real but
   modest, and stills at software frame rates do not show timing well; it needs judging in motion on a real machine.
 
+## Tern C8 (gates 1, 4, 5)
+
+The AR-5's sculpt with its own table (`TERN` in designs.ts): 267 mm barrel under a 230 mm handguard (5 slots a side),
+short muzzle brake, a holographic sight (squared housing, 30 × 24 window, hood, rear buttons, battery cap on the right,
+clamp lever on the left, a glowing ring and dot), stock collapsed one notch, dark-earth furniture, its own markings
+(TERN C8, CAL 5.56, T8-20633). 11.5k triangles, 1.85 MB. Same hold as the AR-5 with the eye 0.10 m behind the sight.
+Evidence: `tern-gate1-design-sheet.jpg`, `tern-gate4-textured-studio.jpg`, `tern-gate5-corridor-lab.jpg` (old left).
+Shown in hand with the dev switch `__heroWeapon` (the carbine belongs to the defenders' Anchor kit). Gate 2 (clay) was
+skipped: it shares the AR-5's shapes. Honest read: about 6; the holo housing is plain and boxy at the hip.
+
 ## Decisions (made without asking; say if wrong)
 
 - New assets go to `hero/ar5/`, not `hero/ar/`: `render/patchhero/` (the `?weapons=patch` switch, not mine) cuts its

@@ -19,6 +19,7 @@ page.on('console', m => { if (m.type() === 'error' || /Breachline (baked|weapon|
 page.on('pageerror', e => console.log('[pageerror]', e.message));
 await page.goto(`${base}/?festive=off&arttier=high${process.env.QUERY ?? ''}#/game/breachline`);
 await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 60000 });
+if (process.env.SWAP) await page.click('.bl-swap').catch(e => console.log('no swap button', e.message));
 await page.evaluate(() => { const h = window.__breachlineTest; h.start({ seed: 7, quality: 'high', teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); });
 await page.locator('.bl-canvas').focus();
 await page.keyboard.press(`Digit${Number(kitArg ?? 1)}`);
@@ -26,6 +27,7 @@ await page.evaluate(() => { const h = window.__breachlineTest; h.advance(0.1); h
 await page.waitForFunction(() => window.__breachlineTest.stats().ready === true, undefined, { timeout: 180000, polling: 500 }).catch(() => console.log('not ready'));
 await page.waitForTimeout(3000);
 await page.addStyleTag({ content: '.bl-toast, .bl-prompt { visibility: hidden !important; }' });
+if (process.env.WEAPON) await page.evaluate(w => { globalThis.__heroWeapon = w; }, process.env.WEAPON);
 const shot = async name => { const f = `${out}/${name}.png`; await page.screenshot({ path: f, timeout: 180000 }); console.log(f); return f; };
 const place = (x, z, yaw, pitch) => page.evaluate(([x, z, yaw, pitch]) => { const h = window.__breachlineTest; h.place(x, z, yaw, pitch); h.advance(0.05); h.draw(); h.draw(); }, [x, z, yaw, pitch]);
 const hold = (patch, s, once = null) => page.evaluate(([p, s, o]) => window.__breachlineTest.hold(p, s, o), [patch, s, once]);
