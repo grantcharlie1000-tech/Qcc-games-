@@ -65,6 +65,9 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   if (import.meta.env?.DEV) (globalThis as { __heroVM?: unknown }).__heroVM = { scene, hemi, key, fill, camera, renderer, get timing() { return timing; } };
   // Reflections: the environment session's probe when it exists, else a neutral studio room, prefiltered once.
   let ownEnv: THREE.Texture | null = null;
+  // Without a probe (the light art tier) the fallback studio room stands in at a third: a small fixed reflection, not a
+  // bright white room on every surface.
+  const FALLBACK_ENV = 0.35, vmLight = new THREE.Vector3();
   const envFor = (x: number, z: number) => lighting.environment(x, z) ?? (ownEnv ??= new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture);
   const flashTex = makeSprite('flash');
   const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true }));
@@ -203,7 +206,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   const frame = idleFrame();
   const eject = new THREE.Vector3(), tmp = new THREE.Vector3();
   // Cost of the weapon in hand, read by the evidence scripts (`__heroVM.timing`): script ms, draw calls, triangles.
-  const perf = globalThis.performance ?? Date, timing = { update: 0, frames: 0, calls: 0, triangles: 0 };
+  const perf = globalThis.performance ?? Date, timing = { update: 0, frames: 0, calls: 0, triangles: 0, lum: 0, probe: false };
 
   function fire(id: WeaponId) {
     const k = KICK[id], first = cycle > 0.25 ? 1.35 : 1, r = (a: number) => (Math.random() * 2 - 1) * a;
@@ -292,9 +295,11 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
         tmp.copy(eject);
       }
       // Light from the probe where the shooter stands; the key from the sun direction, dimmed indoors by the probe.
-      const l = lighting.probe(p.x, 1.4, p.z).color, lum = (l[0] + l[1] + l[2]) / 3;
+      const l0 = lighting.probe(p.x, 1.4, p.z).color, lum0 = (l0[0] + l0[1] + l0[2]) / 3;
+      // Open daylight is compressed above an interior's level, as an eye adapts: the dark metal must still read dark.
+      const lum = lum0 <= 0.45 ? lum0 : 0.45 + (lum0 - 0.45) * 0.35, c = lum / Math.max(lum0, 1e-3), l = vmLight.set(l0[0] * c, l0[1] * c, l0[2] * c);
       // Diffuse: the probe's light with a floor so nothing goes to black.
-      hemi.color.setRGB(0.12 + l[0] * 1.05, 0.12 + l[1] * 1.05, 0.12 + l[2] * 1.05); hemi.intensity = VM_GAIN * 1.5; hemi.groundColor.setRGB(0.06 + l[0] * 0.45, 0.06 + l[1] * 0.42, 0.06 + l[2] * 0.4);
+      hemi.color.setRGB(0.12 + l.x * 1.05, 0.12 + l.y * 1.05, 0.12 + l.z * 1.05); hemi.intensity = VM_GAIN * 1.5; hemi.groundColor.setRGB(0.06 + l.x * 0.45, 0.06 + l.y * 0.42, 0.06 + l.z * 0.4);
       const sc = lighting.sun.color; key.color.setRGB(sc[0] / 1.55, sc[1] / 1.55, sc[2] / 1.55);
       key.intensity = VM_GAIN * (0.6 + Math.min(2, lum * 1.8)); fill.intensity = VM_GAIN * 0.4;
       // Sun direction in camera space: rotate the world direction by the inverse view yaw.
@@ -302,10 +307,11 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       // Indoors the light comes from the ceiling fittings: the key leans toward overhead and slightly ahead, so the
       // rail, the optic and the receiver's top edges catch a highlight; outdoors it follows the sun.
       const indoor = lighting.environment(p.x, p.z) ? 0.75 : 0.45;
+      timing.lum = lum0; timing.probe = indoor > 0.5;
       key.position.set((s.x * cy0 - s.z * sy0) * (1 - indoor) + 0.15 * indoor, Math.max(0.35, s.y) * (1 - indoor) + 1 * indoor, (s.x * sy0 + s.z * cy0) * (1 - indoor) - 0.35 * indoor);
       fill.position.set(-key.position.x, 0.3, -key.position.z);
       // Specular only (see material.ts), scaled into the probe's units.
-      scene.environment = envFor(p.x, p.z); scene.environmentIntensity = VM_GAIN * (lighting.environment(p.x, p.z) ? lighting.environmentScale(p.x, p.z) : 1) * Math.max(0.35, Math.min(1.6, lum * 1.2));
+      scene.environment = envFor(p.x, p.z); scene.environmentIntensity = VM_GAIN * (lighting.environment(p.x, p.z) ? lighting.environmentScale(p.x, p.z) : FALLBACK_ENV) * Math.max(0.35, Math.min(1.6, lum * 1.2));
       // Muzzle flash at the muzzle socket.
       const scoped = id === 'dmr' && ads > 0.9;
       // Dev only: `__heroFlashHold` keeps the flash up, so a slow capture can show where it sits.

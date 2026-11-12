@@ -17,7 +17,7 @@ await context.addInitScript(() => {
 const page = await context.newPage();
 page.on('console', m => { if (m.type() === 'error' || /Breachline (baked|weapon|hand)/.test(m.text())) console.log(`[page] ${m.text()}`); });
 page.on('pageerror', e => console.log('[pageerror]', e.message));
-await page.goto(`${base}/?festive=off&arttier=high${process.env.QUERY ?? ''}#/game/breachline`);
+await page.goto(`${base}/?festive=off&arttier=${process.env.ART ?? 'high'}${process.env.QUERY ?? ''}#/game/breachline`);
 await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 60000 });
 if (process.env.SWAP) await page.click('.bl-swap').catch(e => console.log('no swap button', e.message));
 await page.evaluate(q => { const h = window.__breachlineTest; h.start({ seed: 7, quality: q, teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); }, process.env.QUALITY ?? 'high');
@@ -33,7 +33,7 @@ const place = (x, z, yaw, pitch) => page.evaluate(([x, z, yaw, pitch]) => { cons
 const hold = (patch, s, once = null) => page.evaluate(([p, s, o]) => window.__breachlineTest.hold(p, s, o), [patch, s, once]);
 // The viewmodel's springs advance only on drawn frames (the hook's hold draws once with no time): draw 0.4 s more.
 const settle = () => page.evaluate(() => { for (let i = 0; i < 24; i++) window.__breachlineTest.draw(); });
-const PLACES = [['corridor', [13.5, -0.5, 1.5708, -0.04]], ['lab', [-0.6, -4.6, 1.2, -0.12]]];
+const PLACES = process.env.PLACES ? JSON.parse(process.env.PLACES) : [['corridor', [13.5, -0.5, 1.5708, -0.04]], ['lab', [-0.6, -4.6, 1.2, -0.12]]];
 for (const [name, at] of PLACES) {
   await place(...at);
   if (job === 'glove') {
@@ -47,11 +47,13 @@ for (const [name, at] of PLACES) {
     // Aimed with each weapon in turn (WEAPONS=ar,shotgun,carbine,smg), one browser run.
     for (const w of (process.env.WEAPONS ?? 'ar,shotgun,carbine,smg').split(',')) {
       await page.evaluate(w => { globalThis.__heroWeapon = w; }, w);
+      if (process.env.HIP) { await hold({}, 0.6); await settle(); await shot(`${name}-${w}-hip`); continue; }
       await hold({}, 0.6); await hold({ ads: true }, Number(process.env.ADS_S ?? 1.4)); await settle();
       await shot(`${name}-${w}-ads`);
     }
   } else if (job === 'fp') {
     await hold({}, 0.6); await settle(); await shot(`${name}-hip`);
+    if (process.env.LUM) console.log(name, JSON.stringify(await page.evaluate(() => { const t = window.__heroVM.timing; return { lum: +t.lum.toFixed(3), probe: t.probe }; })));
     await hold({ ads: true }, Number(process.env.ADS_S ?? 1.4));
     await settle();
     await shot(`${name}-ads`);

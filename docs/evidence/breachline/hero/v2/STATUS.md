@@ -291,6 +291,16 @@ cover and three rail slots, undercut square guard, raked stippled grip, magazine
 CAL 9MM, P11-30418. 7.9k triangles, 1.17 MB, 2 draws. Evidence: `p11-gate4-textured-studio.jpg`,
 `p11-gate5-corridor-lab.jpg` (old left). No design sheet: the sheet drawing is the rifle family's. Honest read: 5.5.
 
+## Owner's yard frame (Sharp, art light, outdoors)
+
+Reproduced: on the light art tier there is no reflection probe anywhere, so the viewmodel reflected the bright fallback
+studio room at full strength (pale metal, a pale blue-white lens), and open daylight drove its lights 1.5 to 1.6 times
+an interior's. The weapon was never on the cheap twins (Sharp is not the cheap path) and its sets load at full size.
+Fixes (`viewmodel.ts`, `rig.ts`): light above an interior's level is compressed (yard 0.80 reads as 0.57); the fallback
+reflection is a fixed third; the lens is dark coated glass with a weak reflection. Indoors on the full tier nothing
+changes (the corridor's level is under the knee). Evidence: `owner-yard-before-after.jpg` (his frame, mine before and
+after), `light-tier-yard-six.jpg` (all six, light tier, yard, hip). The Tern's housing is still the palest part.
+
 ## Decisions (made without asking; say if wrong)
 
 - New assets go to `hero/ar5/`, not `hero/ar/`: `render/patchhero/` (the `?weapons=patch` switch, not mine) cuts its
