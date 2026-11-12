@@ -769,3 +769,31 @@ family with skinned five-finger hands, bevelled weapons, shader-made PBR texture
 sound. The claim that weapons and characters were blocked without downloaded models was withdrawn; sections 2, 4.6,
 4.7, 7, 8 and 10 were rewritten so that every row is built in code to the bar, with that artifact as the craft
 reference and the Chromebook budgets still binding.
+
+## Performance first (owner, 2026-11-12)
+
+The owner played the first deployed preview on a gaming computer: "it was still playing this at like 5 frames per
+maybe. The particles are laggy and terrible looking. The animations are worse, same goes for most gun models and the
+way the arm grips the gun. So optimisation is your biggest job right now." And: "The muzzleflash and bullets don't
+actually come from the guns barrel."
+
+Every budget we held (draw calls, triangles, megabytes) passed while the game ran at 5 fps on real hardware. Budgets
+measured in a software-rendered container are not evidence of speed.
+
+Order of work until the frame rate is fixed:
+
+1. **Find the cause with numbers.** Main-thread profile of a live match (script ms per frame by subsystem, top
+   functions), every frame over 33 ms explained, allocations while firing, and the GPU cost of each tier by counting
+   passes, targets, resolution and overdraw. Known already: the simulation with ten bots is about 0.1 ms per tick, so
+   it is not the sim.
+2. **A readout the owner can send us.** `?perf=1` or F3: fps, frame ms, script ms, draw calls, triangles, render
+   size, quality and the GPU name, flagged when WebGL is software. Ground truth comes from his machine, not ours.
+3. **Auto protects the frame rate.** Start cheap, climb only with headroom, step down fast. Targets: 60 fps on a
+   gaming computer at Auto, 30 fps on a Chromebook at Performance.
+4. **Particles rebuilt:** one pooled system, one or two draw calls, no allocation per burst.
+5. Rules from here: nothing is created while shooting; over 4 ms of script per frame is a defect; no new visual
+   feature lands without its measured cost.
+
+Then, in the owner's order of complaint: muzzle flash and bullets from the real muzzle; the grip (arms asset trial);
+the other five gun models; animation (first-person filmstrips reviewed, and body animation from licensed clips if a
+CC0 or CC-BY library fits our skeleton).
