@@ -141,7 +141,36 @@ export function ar5Parts(hi: boolean, A: RifleDesign = AR5): Part[] {
     s = cut(s, box(9.6, -12, M.u0 - 1, 14, 12, M.u0 + 9), box(-14, -12, M.u0 - 1, -9.6, 12, M.u0 + 9));
     add('muzzle device', BONE.root, MAT.steel, s, 0.6);
   }
-  if (A.reflex) {
+  if (A.scope) {
+    // Variable scope: a 30 mm tube with an ocular bell (eyepiece and knurled power ring) at the rear, an objective
+    // bell at the front, a turret saddle with elevation (top) and windage (right) caps and an illumination knob
+    // (left), on two tall rings clamped to the rail.
+    const Sc = A.scope, cy = A.sightH, R = Sc.r, oc = Sc.ocular, ob = Sc.objective, u0 = Sc.u0, u1 = Sc.u1, tu = Sc.turret;
+    let tube = lathe([[Sc.bore, u0], [oc - 1, u0], [oc, u0 + 1.5], [oc, u0 + 34], [oc - 1.5, u0 + 36], [oc - 1.5, u0 + 58], [oc - 3, u0 + 60], [R, u0 + 78],
+      [R, u1 - 92], [R + 1.5, u1 - 80], [ob - 0.5, u1 - 44], [ob, u1 - 40], [ob, u1 - 2], [ob - 1, u1], [Sc.bore + 2, u1], [Sc.bore, u1 - 6]], 0, cy);
+    if (hi) tube = relief(tube, (x, y, z) => (-z > u0 + 38 && -z < u0 + 56 ? -0.3 * Math.max(0, Math.cos(Math.atan2(y - cy, x) * 30)) : 0), 0.35);
+    let saddle = box(-R - 3, cy - R + 2, tu - 22, R + 3, cy + R + 3, tu + 22, 5);
+    saddle = union(saddle, latheY([[0, 0], [10, 0], [10, 3], [9, 4], [0, 4]], 0, tu, cy + R + 2));
+    let capY = latheY([[0, 0], [9.2, 0], [9.2, 11], [8.4, 12], [0, 12]], 0, tu, cy + R + 6);
+    let capX = latheX([[0, 0], [9.2, 0], [9.2, 10], [8.4, 11], [0, 11]], cy, tu, R + 4, 1);
+    let knob = latheX([[0, 0], [10, 0], [10, 8], [9.2, 9], [0, 9]], cy, tu, -(R + 4), -1);
+    if (hi) { capY = relief(capY, (x, y, z) => (y > cy + R + 8 ? knurlY(0, tu, 1.0, 0.2)(x, y, z) : 0), 0.25); knob = relief(knob, (x, y, z) => (x < -(R + 6) ? -0.25 * Math.max(0, Math.cos(Math.atan2(y - cy, -z - tu) * 20)) : 0), 0.3); }
+    saddle = union(saddle, latheX([[0, 0], [10, 0], [10, 3], [0, 3]], cy, tu, R + 2, 1), latheX([[0, 0], [10, 0], [10, 3], [0, 3]], cy, tu, -(R + 2), -1));
+    tube = union(fillet(tube, saddle, 2), capY, capX, knob);
+    add('scope', BONE.root, MAT.anod, tube, 4);
+    const rings = Sc.rings.map(ru => {
+      let ring = cylZ(0, cy, R + 3.2, ru, ru + 13, -0.6);
+      ring = cut(ring, box(-40, cy - 0.3, ru - 1, 40, cy + 0.3, ru + 14));
+      let base = box(-9, A.railTop, ru - 1, 9, cy - R + 1, ru + 14, -0.8);
+      base = union(base, mirrorX(box(9.4, A.railTop - 5.6, ru, 12.6, A.railTop + 1, ru + 13, -0.5)), latheX([[0, 0], [5, 0], [5, 3.6], [4.4, 4.2], [0, 4.2]], A.railTop - 2.4, ru + 6.5, 12.2, 1));
+      ring = fillet(ring, base, 2);
+      for (const sx of [1, -1] as const) ring = union(ring, screwX(cy + 5, ru + 6.5, sx * (R + 2.6), sx, 2, 1.4, hi));
+      return ring;
+    });
+    let mount = union(...rings);
+    mount = cut(mount, cylZ(0, cy, R + 0.05, u0, u1));
+    add('scope rings', BONE.root, MAT.anod, mount, 2);
+  } else if (A.reflex) {
     // Open reflex sight: a low base on the rail and a single thin window frame, tilted back a little, with a hood over
     // the top edge and an adjustment screw on the right.
     const Rf = A.reflex, cy = A.sightH, [ww, wh] = Rf.window, fu = Rf.u1 - 6;

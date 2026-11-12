@@ -33,7 +33,7 @@ function gripPoint(pivot: readonly [number, number] = AR5.grip.pivot, rake: numb
 }
 
 /** A rifle design of the AR-5's family: the AR-5's table with some parts changed (the Tern C8 below). */
-export type RifleDesign = typeof AR5 & { holo?: { u0: number; u1: number; half: number; top: number; window: [number, number] }; reflex?: { u0: number; u1: number; window: [number, number] }; magBend?: number; support?: number; furniture?: 'polymer' | 'polymerFde' };
+export type RifleDesign = typeof AR5 & { holo?: { u0: number; u1: number; half: number; top: number; window: [number, number] }; reflex?: { u0: number; u1: number; window: [number, number] }; scope?: { u0: number; u1: number; r: number; bore: number; ocular: number; objective: number; turret: number; rings: [number, number] }; magBend?: number; support?: number; furniture?: 'polymer' | 'polymerFde' };
 
 export function ar5Sockets(A: RifleDesign = AR5): WeaponSockets {
   const [gu, gy] = gripPoint(A.grip.pivot, A.grip.rake), a = (x: number, y: number, u: number) => at(x, y, u, A.sightH);
@@ -57,7 +57,7 @@ export const TERN = {
   barrel: { ...AR5.barrel, muzzle: 455 },
   muzzle: { u0: 453, u1: 500, r: 11.5 },
   stock: { ...AR5.stock, butt: -232 },
-  holo: { u0: 70, u1: 148, half: 18.5, top: 84, window: [30, 24] },
+  holo: { u0: 70, u1: 148, half: 17, top: 79, window: [31, 25] },
   optic: { ...AR5.optic, dot: 140, dotR: 0.7 },
   support: 330, furniture: 'polymerFde',
 } as unknown as RifleDesign;
@@ -108,3 +108,43 @@ export const WREN = {
   magBend: 0, support: 290, furniture: 'polymer',
 } as unknown as RifleDesign;
 export const wrenSockets = () => ar5Sockets(WREN);
+
+/** Corvin DMR: the family's 7.62 mm marksman rifle (Breachline's own design): a 500 mm heavy barrel under a long
+ * handguard, a three-port brake, a 20-round box magazine in a deeper well, and a 30 mm variable scope (ocular and
+ * objective bells, turrets, power ring) on tall rings. About 1010 mm overall. */
+export const CORVIN = {
+  ...AR5, name: 'Corvin DMR', sightH: 64,
+  well: { ...AR5.well, u0: 98, u1: 178, half: 16.4, mouth: -66, open: [25.4, 72] },
+  mag: { ...AR5.mag, width: 24.6, depth: 70, length: 150, seat: [138, -24] },
+  handguard: { ...AR5.handguard, u1: 560, slots: 8 },
+  barrel: { ...AR5.barrel, r: 9.6, muzzle: 690 },
+  muzzle: { u0: 688, u1: 752, r: 13 },
+  stock: { ...AR5.stock, butt: -282 },
+  scope: { u0: 18, u1: 340, r: 15, bore: 11.5, ocular: 20, objective: 23, turret: 180, rings: [104, 250] },
+  magBend: 10, support: 420, furniture: 'polymer',
+} as unknown as RifleDesign;
+export const corvinSockets = () => ar5Sockets(CORVIN);
+
+/** P-11: a polymer-framed 9 mm sidearm (Breachline's own design): a 188 mm steel slide with front and rear serrations
+ * and a square-notch rear sight, a dust cover with three rail slots, an undercut square trigger guard, a raked grip,
+ * a 17-round magazine. Bore on Y = 0; u forward of the slide's rear face. */
+export const SIDEARM = {
+  name: 'P-11', sightH: 22,
+  slide: { u0: 0, u1: 188, half: 12.4, top: 15, bottom: -9.5 },
+  port: { u0: 48, u1: 92 },
+  barrel: { r: 6.8, bore: 4.6 },
+  frame: { u0: -6, u1: 176, bottom: -24, half: 11.6 },
+  guard: { u0: 42, u1: 92, low: -50 },
+  grip: { pivot: [-4, -12] as const, rake: 0.33, width: 30 },
+  mag: { width: 20 },
+} as const;
+
+export function sidearmSockets(): WeaponSockets {
+  const D = SIDEARM, [gu, gy] = gripPoint(D.grip.pivot, D.grip.rake), a = (x: number, y: number, u: number) => at(x, y, u, D.sightH);
+  return {
+    grip: { p: a(0, gy, gu), r: [-D.grip.rake, 0, 0] },
+    support: { p: a(-20, -60, 0), r: [0, 0, 0] },
+    mag: a(0, -24, 20), muzzle: a(0, 0, D.slide.u1 + 1.6), eject: a(14, 12, 70), handle: a(0, 8, 20),
+    boltTravel: 0.032, handleTravel: 0.032, trigger: a(0, -36, 62), bore: D.sightH / 1000,
+  };
+}

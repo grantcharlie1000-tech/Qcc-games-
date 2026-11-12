@@ -7,7 +7,7 @@ import { ART_BASE, type ArtLoader } from '../assets';
 import { readMeshBin } from './meshbin';
 import { texturedMaterial } from './material';
 import { resetHolds } from './rig';
-import { ar5Sockets, haldenSockets, ternSockets, wrenSockets } from './sculpt/designs';
+import { ar5Sockets, corvinSockets, haldenSockets, ternSockets, wrenSockets } from './sculpt/designs';
 import { registerBaked, type WeaponSockets } from './weapons';
 
 /** Weapons with a baked second build: game id, asset directory, sockets. */
@@ -16,6 +16,7 @@ export const BAKED: { id: WeaponId; dir: string; sockets: () => WeaponSockets }[
   { id: 'shotgun', dir: 'halden12', sockets: haldenSockets },
   { id: 'carbine', dir: 'tern', sockets: ternSockets },
   { id: 'smg', dir: 'wren', sockets: wrenSockets },
+  { id: 'dmr', dir: 'corvin', sockets: corvinSockets },
 ];
 
 /** Grey clay for the gates' shape reviews (`?heroclay`): the textured material with flat maps, so the reticle still

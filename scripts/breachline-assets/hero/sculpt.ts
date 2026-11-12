@@ -16,7 +16,7 @@ import { MeshoptSimplifier } from 'meshoptimizer';
 import * as THREE from 'three';
 import { mergeVertices, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MAT, ar5Parts, type Part } from '../../../src/games/breachline/render/hero/sculpt/ar5';
-import { AR5, HALDEN, TERN, WREN } from '../../../src/games/breachline/render/hero/sculpt/designs';
+import { AR5, CORVIN, HALDEN, TERN, WREN } from '../../../src/games/breachline/render/hero/sculpt/designs';
 import { haldenParts } from '../../../src/games/breachline/render/hero/sculpt/halden12';
 import { packMeshBin, type MeshArrays } from '../../../src/games/breachline/render/hero/meshbin';
 import { meshField, type RawMesh } from './mesher';
@@ -31,6 +31,7 @@ const CLAY = process.argv.includes('--clay');
 
 export interface Weapon { id: string; dir: string; parts: (hi: boolean) => Part[]; sightH: number; budget: number; grid: number; lens?: { r: number; u: number[] }; lensRect?: { w: number; h: number; u: number[] }; dot?: { u: number; r: number; y?: number }; ring?: { u: number; r0: number; r1: number }; src?: string }
 export const WEAPONS: Record<string, Weapon> = {
+  corvin: { id: 'corvin', dir: 'corvin', src: 'ar5', parts: hi => ar5Parts(hi, CORVIN), sightH: CORVIN.sightH, budget: 13000, grid: 0.4, lens: { r: CORVIN.scope!.bore, u: [CORVIN.scope!.u0 + 3, CORVIN.scope!.u1 - 8] } },
   wren: { id: 'wren', dir: 'wren', src: 'ar5', parts: hi => ar5Parts(hi, WREN), sightH: WREN.sightH, budget: 10500, grid: 0.4, lensRect: { w: WREN.reflex!.window[0] - 1, h: WREN.reflex!.window[1] - 1, u: [WREN.reflex!.u1 - 5] }, dot: { u: WREN.reflex!.u1 - 6.5, r: 1.1 } },
   tern: { id: 'tern', dir: 'tern', src: 'ar5', parts: hi => ar5Parts(hi, TERN), sightH: TERN.sightH, budget: 11500, grid: 0.4, lensRect: { w: TERN.holo!.window[0] - 1, h: TERN.holo!.window[1] - 1, u: [TERN.holo!.u0 + 6, TERN.holo!.u1 - 6] }, dot: { u: TERN.holo!.u1 - 10, r: 0.9 }, ring: { u: TERN.holo!.u1 - 10, r0: 6.4, r1: 7.4 } },
   halden12: { id: 'halden12', dir: 'halden12', parts: haldenParts, sightH: HALDEN.sightH, budget: 10500, grid: 0.4, dot: { u: 661, r: 0.9, y: HALDEN.sightH - 2.2 } },
@@ -195,6 +196,10 @@ const MARKS: { part: string; side: -1 | 1; u: number; y: number; h: number; text
   { part: 'lower', side: -1, u: 171, y: -33.5, h: 2.6, text: 'CAL 5.56', w: 'tern' },
   { part: 'lower', side: -1, u: 171, y: -39, h: 2.6, text: 'T8-20633', w: 'tern' },
   { part: 'lower', side: -1, u: 66, y: -21, h: 1.9, text: 'SAFE SEMI AUTO', w: 'tern' },
+  { part: 'lower', side: -1, u: 171, y: -27, h: 3.4, text: 'CORVIN DMR', w: 'corvin' },
+  { part: 'lower', side: -1, u: 171, y: -33.5, h: 2.6, text: 'CAL 7.62', w: 'corvin' },
+  { part: 'lower', side: -1, u: 171, y: -39, h: 2.6, text: 'C7-11852', w: 'corvin' },
+  { part: 'lower', side: -1, u: 66, y: -21, h: 1.9, text: 'SAFE SEMI', w: 'corvin' },
   { part: 'lower', side: -1, u: 124, y: -16, h: 2.8, text: 'WREN-9', w: 'wren' },
   { part: 'lower', side: -1, u: 124, y: -21.5, h: 2.2, text: 'CAL 9MM', w: 'wren' },
   { part: 'lower', side: -1, u: 66, y: -21, h: 1.9, text: 'SAFE SEMI AUTO', w: 'wren' },
@@ -257,10 +262,13 @@ async function bakeSet(w: Weapon, parts: Part[], m: MeshArrays & { part: Uint8Ar
     const drift = fbm(x * 0.02 + 3, y * 0.02, z * 0.02, 3), scuff = (mat === MAT.cerakote || mat === MAT.polymerFde) ? sstep(0.55, 0.8, fbm(x * 0.6, y * 0.6, z * 0.08, 3)) * sstep(-2, -16, y - (name === 'magazine' ? -150 : 0)) * 0.6 : 0;
     const handPolish = name === 'handguard' && -z > 330 && -z < 470 && y < 0 ? 0.5 : 0;
     const engraved = marked(w.id, name, x, y, z, hn[0]);
+    // The ghost ring's inner lip and eye-side face are machined bright, so the aperture reads when aimed.
+    const rr = Math.hypot(x, y - SH), ringLit = name === 'ghost ring' && rr > 3.6 && rr < 7.2 && (hn[2] > 0.5 || rr < 4.6);
     const alb = [0, 1, 2].map(q => {
       let v = base[q] * (tint + (drift - 0.5) * 0.16);
       v = v + (lin(0x9a9184)[q] - v) * scuff * 0.35;
       if (engraved) v = v + (lin(0xc9c4b8)[q] - v) * 0.75;
+      if (ringLit) v = v + (lin(0x9a9da2)[q] - v) * 0.7;
       v = v + (edgeC[q] - v) * wear;
       v *= 1 - cavity * 0.3;
       v = v + (dust[q] - v) * Math.min(0.35, cavity * 0.25 + up * 0.04 * blot);
@@ -269,6 +277,7 @@ async function bakeSet(w: Weapon, parts: Part[], m: MeshArrays & { part: Uint8Ar
     let rough = F.r + (blot - 0.5) * 0.1 + (fine - 0.5) * 0.06 + cavity * 0.12;
     rough = rough + (F.edgeR - rough) * wear + (drift - 0.5) * 0.12 - handPolish * 0.12 + scuff * 0.1;
     if (engraved) rough = 0.65;
+    if (ringLit) rough = 0.3;
     // Machining marks along the receiver and rail: faint lengthwise streaks in the roughness.
     if (mat === MAT.anod) rough += 0.03 * (fbm(x * 0.9, y * 0.9, z * 0.04, 2) - 0.5);
     // Handling polish where hands go.

@@ -6,7 +6,7 @@ Owns `models.ts`, `render/hero/`, `scripts/breachline-assets/hero/`, `public/gam
 ## Where I am
 
 **Baked and held: AR-5, Halden 12, Tern C8, Wren-9.** Aimed views cleared, hands reworked (planner's items 1 and 2).
-Next: the Corvin DMR, then the sidearm. Hands: anatomy rebuilt to the plan
+Next: the sidearm. Hands: anatomy rebuilt to the plan
 (gate 3), Base Hand is the default glove.
 
 ## Pipeline (new)
@@ -241,6 +241,23 @@ Blued steel a step lighter (0x4e5156), pump grooves wider and deeper (3.6 mm, 12
 of the receiver larger (HALDEN 12, 12 GA 3 IN, HN-31740). 10.4k triangles, 1.78 MB. Evidence: `halden12-polish.jpg`.
 Honest read: the markings read in the studio; at the hip the side saddle covers most of the receiver's left, so they
 are barely seen in play. About 6.
+
+## Corvin DMR (gates 1, 4, 5)
+
+The AR-5 sculpt with its own table (`CORVIN` in designs.ts): 7.62 mm, a 500 mm heavy barrel under a 370 mm handguard
+(8 slots a side), a three-port brake, a 20-round box magazine in a deeper well, and a 30 mm variable scope (ocular bell
+with a knurled power ring, objective bell, turret saddle with elevation and windage caps and an illumination knob) on
+two tall rings. Markings: CORVIN DMR, CAL 7.62, C7-11852. 13.0k triangles, 1.96 MB. Same hold as the AR-5.
+Evidence: `corvin-gate1-design-sheet.jpg`, `corvin-gate4-textured-studio.jpg`, `corvin-gate5-corridor-lab.jpg` (old
+left; the bottom row is the scoped view with the Marksman kit). Scoped, the gun is hidden and the HUD draws the scope
+(CSS, no second render): the picture is clear and centred with a fine cross. Honest read: about 6. Weak points: the
+scope is pale and bulky close to the eye at the hip; the rings are slim posts so the scope looks perched; the design
+sheet's sight labels are still the red dot's.
+
+## Carry-overs: Tern and Halden aimed
+
+Tern holo housing slimmer (half-width 17, top 79 mm, window 31 x 25); Halden ghost ring's inner lip and eye-side face
+painted machined bright. Evidence: `tern-halden-aimed-carryovers.jpg` (before left).
 
 ## Decisions (made without asking; say if wrong)
 
