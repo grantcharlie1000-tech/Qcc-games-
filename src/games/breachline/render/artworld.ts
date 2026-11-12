@@ -260,9 +260,9 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     }
     // The room's own light fixtures glow (the map's lamp panels in this room are not drawn).
     // The room's light and identity over its bake: contact shadows, pools under the fittings, darker junctions.
-    { const amb = roomAmbience(region, wallRuns(atlas, region)); for (const m of amb.meshes) group.add(m); disposers.push(amb.dispose); }
+    { const amb = roomAmbience(region, wallRuns(atlas, region)); for (const m of amb.meshes) { m.name = `art:${region.name}:ambience`; group.add(m); } disposers.push(amb.dispose); }
     const fx = fixtureMeshes(FIXTURES[region.name] ?? []);
-    for (const m of fx.meshes) group.add(m);
+    for (const m of fx.meshes) { m.name = `art:${region.name}:fixtures`; group.add(m); }
     { const lensGeo = fx.meshes[1]?.geometry, col = lensGeo?.attributes.color as THREE.BufferAttribute | undefined, orig = col ? Float32Array.from(col.array as Float32Array) : null;
       for (const { f, at } of fx.lenses) fittings.push({ x: f.x, z: f.z, w: f.w, d: f.d, lens(on) { if (!col || !orig) return; for (let i = at * 3; i < (at + 4) * 3; i++) (col.array as Float32Array)[i] = on ? orig[i] : 0.16; col.needsUpdate = true; } }); }
     disposers.push(fx.dispose);
