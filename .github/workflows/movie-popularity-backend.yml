@@ -1,0 +1,44 @@
+# Read-only capability check. Never writes account data or configuration to logs.
+name: Check movie popularity backend access
+on:
+  push:
+    branches: [deploy/popular-marlborough-backend]
+    paths: [.github/workflows/movie-popularity-backend.yml]
+permissions:
+  contents: read
+concurrency:
+  group: movie-popularity-backend
+  cancel-in-progress: false
+jobs:
+  preflight:
+    if: github.repository == 'grantcharlie1000-tech/Qcc-games-'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check existing credentials without logging account information
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token||!/^[a-f0-9]{32}$/i.test(account||''))throw new Error('Backend access check could not start.');
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}`;
+          async function read(path){
+            try{
+              const response=await fetch(root+path,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(15000)});
+              if(!response.ok)return undefined;
+              const body=await response.json();return body.success?body.result:undefined;
+            }catch{return undefined;}
+          }
+          const project=await read('/pages/projects/nceastudy');
+          if(project?.name!=='nceastudy'||project?.subdomain!=='nceastudy.pages.dev'||project?.production_branch!=='production')throw new Error('Existing Pages target could not be validated.');
+          console.log('Pages target verified. No configuration data is logged.');
+          if(!await read('/d1/database?per_page=1'))throw new Error('D1 API access is unavailable; no resources were changed.');
+          console.log('D1 API is reachable. No database metadata is logged.');
+          if(!await read('/workers/account-settings'))throw new Error('Worker API access is unavailable; no resources were changed.');
+          console.log('Worker API is reachable. No account metadata is logged.');
+          JS
