@@ -4,6 +4,18 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: Phase D (budgets and tiers) and the cosmetic event stream (7f42220).**
+- High, all 20 bookmarks: 135 to 354 draw calls and 69k to 262k triangles (budget under 400 and 500k).
+- Low: the run hit its time limit after 4 bookmarks (lab views: 107 to 228 calls, 72k to 240k triangles, each at or
+  below its High figure); the other 16 were not measured.
+- Download, Low tier: 18.74 MB (budget 13.4 + 10 = 23.4 MB).
+- `warm.spec.ts`: passes (nothing compiles or uploads in play); the stock-fighters variant fails as known.
+- Online test alone: passed, passed, failed, passed, passed. The failure was in a run during which I pulled other
+  sessions' commits into the working tree (the dev server reloads); the two runs after it passed. Honest count: four
+  of five, three in a row not yet shown without that interruption.
+- `scene.onCosmetic(fn)` for the sound code: impact (material, power), glass crack and shatter, set-piece damaged and
+  wrecked, a body at rest, reinforce and barricade start, unfold, anchor and break.
+
 **2026-11-12: Phase B complete (all 46 fill pieces plus the two old sofas), generator, clean shader steel, blood polish.**
 `phaseb/triples/{island,deskpod,mapchest,benchboxes,tableset,sideboard,generator,stub,trolleyboxes,sofa}.png`,
 `mapfill/shots/blood-2.png`.
@@ -361,7 +373,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** map fill Phase B complete (every fill set piece in three states); blood polish done; next Phase D (budgets per tier, `warm.spec.ts`, the online test three times alone).
+**Where I am (keep current):** map fill Phases A to D done (Low per-view measure and a clean three-in-a-row online run outstanding); waiting for the planner's next order.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 
