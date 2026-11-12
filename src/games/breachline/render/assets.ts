@@ -33,8 +33,12 @@ class SameOriginKTX2Loader extends KTX2Loader {
   }
 }
 
+/** One KTX2 loader for every ArtLoader (world, fighters, weapons): the transcoder is fetched once and its workers
+ * are shared, instead of once and a pool per loader. */
+let sharedKtx2: SameOriginKTX2Loader | null = null, ktx2Users = 0;
 export class ArtLoader {
-  private ktx2 = new SameOriginKTX2Loader();
+  private ktx2 = sharedKtx2 ??= new SameOriginKTX2Loader();
+  private released = false;
   private img = new THREE.TextureLoader();
   private gltf = new GLTFLoader();
   private total = 0;
@@ -42,6 +46,7 @@ export class ArtLoader {
   readonly textures: THREE.Texture[] = [];
   bytes = 0;
   constructor(renderer: THREE.WebGLRenderer, readonly tier: Tier, private progress: (fraction: number) => void = () => {}) {
+    ktx2Users++;
     this.ktx2.detectSupport(renderer);
   }
   private track<T>(p: Promise<T>): Promise<T> {
@@ -79,5 +84,11 @@ export class ArtLoader {
     return this.track(fetch(`${ART_BASE}${path}`).then(r => { if (!r.ok) throw new Error(`${r.status} ${path}`); return r.json() as Promise<T>; }));
   }
   model(name: string): Promise<GLTF> { return this.track(this.gltf.loadAsync(`${ART_BASE}models/${name}.glb`)); }
-  dispose() { for (const t of this.textures) t.dispose(); this.ktx2.dispose(); }
+  dispose() {
+    for (const t of this.textures) t.dispose();
+    // The transcoder and its workers go with the last loader using them.
+    if (this.released) return;
+    this.released = true;
+    if (--ktx2Users === 0 && sharedKtx2) { sharedKtx2.dispose(); sharedKtx2 = null; }
+  }
 }

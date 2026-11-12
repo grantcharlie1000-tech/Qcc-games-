@@ -52,6 +52,8 @@ export interface ArtWorld {
 }
 
 const TEX_SIZE: Record<Tier, number> = { low: 512, medium: 1024, high: 1024 };
+/** Texture sets only ever seen from a distance (their normal maps load at half size). */
+const FAR_SETS = new Set(['OfficeCeiling001', 'preconcrete_wall_001', 'aerial_grass_rock']);
 const PROP_SIZE: Record<Tier, number> = { low: 256, medium: 512, high: 512 };
 
 function geometry(a: GeoArrays): THREE.BufferGeometry {
@@ -83,7 +85,12 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   const sets = new Map<string, Promise<[THREE.Texture, THREE.Texture | null, THREE.Texture | null]>>();
   const set = (name: string, size: number) => {
     let p = sets.get(name);
-    if (!p) { p = Promise.all([L.texture(name, 'diff', size), full ? L.texture(name, 'nor', size) : null, full ? L.texture(name, 'arm', size) : null]); sets.set(name, p); }
+    // Occlusion, roughness and metal vary slowly across a surface: at 1024 colour and normals, they come at 512 (half
+    // the High download of the texture sets for no visible change).
+    // Normals at half size too for the surfaces never seen up close: the ceiling overhead, the perimeter's precast
+    // wall and the matte grass.
+    const half = size >= 1024 ? size / 2 : size, nor = FAR_SETS.has(name) ? half : size;
+    if (!p) { p = Promise.all([L.texture(name, 'diff', size), full ? L.texture(name, 'nor', nor) : null, full ? L.texture(name, 'arm', half) : null]); sets.set(name, p); }
     return p;
   };
   const boxes: (DetailBuilder['boxes'][number] & { room: number })[] = [];
@@ -91,7 +98,9 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   const pieceProps = new Map<number, { object: THREE.Object3D; states: number[] }[]>();
   const models = new Map<string, ReturnType<ArtLoader['model']>>();
   const lods = new Map<string, ReturnType<ArtLoader['model']>>();
-  for (const p of PROPS) if (!models.has(p.model)) { models.set(p.model, L.model(p.model)); lods.set(p.model, L.model(`${p.model}.lod1`)); }
+  // High draws each prop's full model at every range (its simplified level keeps the full vertex data, so loading
+  // both doubled the download for little drawing saved); Low draws only the simplified one.
+  for (const p of PROPS) if (!models.has(p.model) && !lods.has(p.model)) { if (full) models.set(p.model, L.model(p.model)); else lods.set(p.model, L.model(`${p.model}.lod1`)); }
 
   const looks = new Map<number, PanelLook>();
   /** Per room: the materials its reflection probe lights, its mean baked light, its probe once captured. */
@@ -233,8 +242,6 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   if (!loaded.some(Boolean)) throw new Error('no art rooms loaded');
   for (const [index, e] of tables) looks.set(index, { ...panelLook(MAP.panels[index].cols + 1, e.t, e.wall, e.tile), planks: e.planks, plankTile: [PLANKS.size, PLANKS.size], plate: e.plate, plateTile: [1.2, 1.2] });
   // Props, each lit by its own baked probe from the bake of the room it stands in.
-  /** Near: the full model within LOD_NEAR metres; far (and always on the throttled tier): the simplified one. */
-  const LOD_NEAR = 5;
   /** Colour lifts per model: the covered car's scan is a near-black cover, lifted to a dark grey-green tarpaulin so
    * its folds read in daylight. */
   const PROP_TINT: Record<string, THREE.Color> = { covered_car: new THREE.Color(2.2, 2.7, 2.5) };
@@ -242,7 +249,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     const room = roomAt(p.x, p.z);
     if (room < 0 || !loaded[room]) continue;
     const lod = new THREE.LOD();
-    const levels: [THREE.Object3D, number][] = full ? [[(await models.get(p.model)!).scene.clone(true), 0], [(await lods.get(p.model)!).scene.clone(true), LOD_NEAR]] : [[(await lods.get(p.model)!).scene.clone(true), 0]];
+    const levels: [THREE.Object3D, number][] = full ? [[(await models.get(p.model)!).scene.clone(true), 0]] : [[(await lods.get(p.model)!).scene.clone(true), 0]];
     const mats = new Map<string, THREE.Material>();
     for (const [root, distance] of levels) {
       const meshes: THREE.Mesh[] = [];

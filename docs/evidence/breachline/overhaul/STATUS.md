@@ -4,6 +4,23 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: High's opening download from 55.08 MB to 39.25 MB** (built site, `builtcheck.mjs --tier high`).
+
+| category | before | after | how |
+| --- | --- | --- | --- |
+| texture-set normals | 14.01 | 11.45 | half size for the ceiling, perimeter precast wall and grass (never seen close) |
+| texture-set ARM (occlusion, roughness, metal) | 11.47 | 5.61 | 512 instead of 1024 for every set (slowly varying maps) |
+| prop models | 5.11 + 5.78 (lod1) | 5.11 | High draws the full model at every range; the lod1 files kept the full vertex data, so loading both doubled it |
+| Basis transcoder | 2.43 | 0.81 | one KTX2 loader shared by world, fighters and weapons (it was fetched three times) |
+| bakes, colour maps | 4.44, 3.13 | unchanged | |
+| hero, Patch fighters | 4.57, 4.14 | unchanged | not mine |
+
+Low: 22.94 to 16.22 MB (the same transcoder sharing). No security-policy violations on either tier. The
+bookmark frames before and after are indistinguishable at 960 px. **Cost:** with full models at range, High's
+triangles rose (Lab 198k to 441k, Garage 222k to 463k, server aisle 262k to 427k): still under 500k but with
+little margin; the remedy if needed is to ship each simplified level as its own index file over the full model's
+vertices.
+
 **2026-11-12: the specs on a production build (authorised `index.ts` line 437 change).** The hook is installed when
 `import.meta.env.DEV || import.meta.env.VITE_BREACHLINE_TEST === '1'`; `scripts/breachline-assets/hookcheck.mjs`
 proves it: a normal `npm run build` has `__breachlineTest` in no chunk (PASS), a `VITE_BREACHLINE_TEST=1` build has it

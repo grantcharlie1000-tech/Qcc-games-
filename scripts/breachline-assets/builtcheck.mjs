@@ -16,12 +16,12 @@ await context.addInitScript(() => {
   window.__csp = []; document.addEventListener('securitypolicyviolation', e => window.__csp.push(`${e.violatedDirective} ${e.blockedURI}`));
 });
 const page = await context.newPage();
-const failed = [], errors = [], bytes = { art: 0, js: 0, other: 0 }, kinds = {};
+const failed = [], errors = [], bytes = { art: 0, js: 0, other: 0 }, kinds = {}, files = [];
 page.on('requestfailed', r => failed.push(`${r.failure()?.errorText} ${r.url()}`));
 page.on('response', async r => {
   const u = r.url();
   if (r.status() >= 400) failed.push(`${r.status()} ${u}`);
-  try { const n = (await r.body()).length; if (u.includes('/game-art/breachline/')) { bytes.art += n; const k = u.split('/game-art/breachline/')[1].split('/')[0]; kinds[k] = (kinds[k] ?? 0) + n; } else if (u.endsWith('.js')) bytes.js += n; else bytes.other += n; } catch { /* redirects, opaque */ }
+  try { const n = (await r.body()).length; if (u.includes('/game-art/breachline/')) { bytes.art += n; files.push([u.split('/game-art/breachline/')[1], n]); const k = u.split('/game-art/breachline/')[1].split('/')[0]; kinds[k] = (kinds[k] ?? 0) + n; } else if (u.endsWith('.js')) bytes.js += n; else bytes.other += n; } catch { /* redirects, opaque */ }
 });
 page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`${m.type()}: ${m.text().slice(0, 300)}`); });
 page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
@@ -38,5 +38,5 @@ if (hasHook) {
 }
 await page.waitForTimeout(2000);
 const csp = await page.evaluate(() => window.__csp);
-console.log(JSON.stringify({ tier, csp, failed, errors: errors.slice(0, 40), mb: { art: +(bytes.art / 1e6).toFixed(2), js: +(bytes.js / 1e6).toFixed(2), other: +(bytes.other / 1e6).toFixed(2) }, artByKind: Object.fromEntries(Object.entries(kinds).map(([k, v]) => [k, +(v / 1e6).toFixed(2)])) }, null, 1));
+console.log(JSON.stringify({ tier, csp, failed, errors: errors.slice(0, 40), mb: { art: +(bytes.art / 1e6).toFixed(2), js: +(bytes.js / 1e6).toFixed(2), other: +(bytes.other / 1e6).toFixed(2) }, top: process.env.TOP ? files.sort((a, b) => b[1] - a[1]).slice(0, +process.env.TOP).map(([f, n]) => `${(n / 1e6).toFixed(2)} ${f}`) : undefined, artByKind: Object.fromEntries(Object.entries(kinds).map(([k, v]) => [k, +(v / 1e6).toFixed(2)])) }, null, 1));
 await browser.close();
