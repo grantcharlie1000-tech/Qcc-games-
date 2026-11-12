@@ -20,7 +20,7 @@ for (let t = 0; t < 4; t++) {
   await context.addInitScript(() => { const raf = window.requestAnimationFrame.bind(window), q = []; window.requestAnimationFrame = cb => { if (window.__rafHold) { q.push(cb); return 0; } return raf(cb); }; window.__rafRelease = () => { window.__rafHold = false; q.splice(0).forEach(cb => raf(cb)); }; });
   page = await context.newPage();
   page.on('pageerror', e => console.log(`[pageerror] ${e.message}`));
-  await page.route(/\/src\/games\/breachline\/scene\.ts(\?.*)?$/, async r => { const resp = await r.fetch(); let b = await resp.text(); b = b.replace(/(const fighters = [^;]+;)/, '$1 window.__pf = fighters; { const h0 = fighters.handle.bind(fighters); fighters.handle = (ev, m, s) => { for (const e of ev) if (e.e === "kill") (window.__kills ||= []).push(e); return h0(ev, m, s); }; }'); await r.fulfill({ response: resp, body: b }); });
+  await page.route(/\/src\/games\/breachline\/scene\.ts(\?.*)?$/, async r => { const resp = await r.fetch(); let b = await resp.text(); b = b.replace(/(const fighters = [^;]+;)/, '$1 window.__pf = fighters; { const h0 = fighters.handle.bind(fighters); fighters.handle = (ev, m, s) => { for (const e of ev) { if (e.e === "kill") (window.__kills ||= []).push(e); if (e.e === "throw" || e.e === "boom") (window.__ev ||= []).push(e); } return h0(ev, m, s); }; }'); await r.fulfill({ response: resp, body: b }); });
   await page.route(/\/src\/games\/breachline\/index\.ts(\?.*)?$/, async r => { const resp = await r.fetch(); const b = (await resp.text()).replace('still: () =>', ARM); await r.fulfill({ response: resp, body: b }); });
   await page.goto(`http://127.0.0.1:${port}/?festive=off&arttier=high#/game/breachline`);
   await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 120000 }).catch(() => {});
@@ -46,7 +46,7 @@ const cases = [
   { tag: 'blast', w: 'ar', y: 1.15, range: 4.5, how: 'grenade' },
 ];
 const log = [];
-for (const c of cases) {
+for (const c of cases.filter(c => !process.env.ONLY || process.env.ONLY.split(',').includes(c.tag))) {
   console.log('arm', c.w, await page.evaluate(w => window.__breachlineTest.arm(w), c.w));
   // Find a foe, and a side to stand on from which a round actually reaches it (the first that costs it hp).
   const r = await page.evaluate(([c]) => {
@@ -72,17 +72,18 @@ for (const c of cases) {
     const aimAt = (y, x = r.x, z = r.z) => { const f = foe(); h.place(x, z, Math.atan2(-(f.x - x), -(f.z - z)), Math.atan2(y - 1.6, Math.hypot(f.x - x, f.z - z))); h.advance(0.02); };
     let n = 0;
     if (c.how === 'grenade') {
-      // Wear it down with the rifle first, then a grenade at its feet from a little further back.
+      // Wear it down with the rifle first, then a grenade at its feet.
       while (foe().alive && foe().hp > 35 && n++ < 30) { aimAt(1.15); h.hold({ fire: true }, 0.05, { fire: true }); h.advance(0.15); }
-      const f = foe(), dx = r.x - f.x, dz = r.z - f.z, d = Math.hypot(dx, dz), gx = f.x + dx / d * 5, gz = f.z + dz / d * 5;
-      h.place(gx, gz, Math.atan2(-(f.x - gx), -(f.z - gz)), -0.32); h.advance(0.05);
+      const f = foe(), dx = r.x - f.x, dz = r.z - f.z, d = Math.hypot(dx, dz), gx = f.x + dx / d * 1.2, gz = f.z + dz / d * 1.2;
+      // Thrown steeply down from close by so it settles at the foe's feet, then this player steps well clear.
+      h.place(gx, gz, Math.atan2(-(f.x - gx), -(f.z - gz)), -1.3); h.advance(0.05);
       h.hold({ grenade: true }, 0.05, { grenade: true });
       h.place(f.x + dx / d * 9, f.z + dz / d * 9, Math.atan2(-(f.x - gx), -(f.z - gz)), -0.1);
       for (let i = 0; i < 40 && foe().alive; i++) h.advance(0.1);
     } else {
       while (foe().alive && n++ < 40) { aimAt(c.y); h.hold({ fire: true }, 0.05, { fire: true }); h.advance(c.w === 'dmr' || c.w === 'shotgun' ? 0.9 : 0.12); }
     }
-    return { shots: n, alive: foe().alive, kill: (window.__kills || []).filter(k => k.on === r.id).pop() || null };
+    return { shots: n, alive: foe().alive, hp: foe().hp, ev: window.__ev || [], kill: (window.__kills || []).filter(k => k.on === r.id).pop() || null };
   }, [c, r]);
   console.log(c.tag, JSON.stringify(res));
   log.push({ tag: c.tag, ...res });
@@ -93,12 +94,13 @@ for (const c of cases) {
   for (const [i, t] of times.entries()) {
     // Drawn in batches so the page stays responsive; the ragdoll advances 0.016 s per drawn frame.
     for (let left = Math.round((t - at) / 0.016), first = i === 0; left > 0 || first; first = false) {
-      const n = Math.min(left, 25); left -= n;
-      await page.evaluate(([r, frames, look]) => {
+      const n = Math.min(left, 25); left -= n; const last = i === times.length - 1 && left === 0;
+      await page.evaluate(([r, frames, look, last]) => {
         const h = window.__breachlineTest, dx = r.x - r.fx, dz = r.z - r.fz, d = Math.hypot(dx, dz), x = r.fx + dx / d * 3.4, z = r.fz + dz / d * 3.4;
         if (look) { h.place(x, z, Math.atan2(-(r.fx - x), -(r.fz - z)), -0.36); h.advance(0); }
+        if (last) { const b = window.__pf.pose(r.id); h.place(x, z, Math.atan2(-(b.x - x), -(b.z - z)), Math.atan2(0.3 - 1.6, Math.max(1.5, Math.hypot(b.x - x, b.z - z)))); h.advance(0); }
         for (let k = 0; k < frames; k++) h.draw();
-      }, [r, n, first]);
+      }, [r, n, first, last]);
     }
     at = t;
     await shot(`${c.tag}-${i}`);

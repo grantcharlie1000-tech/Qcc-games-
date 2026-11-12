@@ -160,7 +160,9 @@ interface Fig {
 const wrap = (a: number) => { a = (a + Math.PI) % (Math.PI * 2); return (a < 0 ? a + Math.PI * 2 : a) - Math.PI; };
 
 /** A fighter lying where it fell (job 12.2). */
-export interface PatchBody { id: number; x: number; z: number; yaw: number; t: number }
+/** A body this round: where it lies (the pelvis), facing, match time of death, and whether it has come to rest
+ * (the ragdoll asleep), so a pool of blood can wait for where the body ends up. */
+export interface PatchBody { id: number; x: number; z: number; yaw: number; t: number; still: boolean }
 export interface PatchFighters extends FightersWithEvents { bodies(): PatchBody[] }
 export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting): PatchFighters {
   const figs: (Fig | null)[] = [];
@@ -326,8 +328,10 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
     } else if (k.kind === 'blast' && k.boom) {
       const b = k.boom;
       for (let i = 0; i < RD.POINTS; i++) {
-        const p = pts[i], dx = p.x - b.x, dy = p.y - b.y, dz = p.z - b.z, d = Math.max(0.2, Math.hypot(dx, dy, dz)), sp = Math.min(9, Math.max(2.5, 9 * (1 - d / 6)));
-        RD.push(r, i, (dx / d) * sp, (Math.max(0, dy / d) + 0.55) * sp, (dz / d) * sp);
+        // Outward along the floor with some lift: a grenade at the feet throws a body over, not into the air.
+        // The parts nearest the blast take the most, so the legs are swept out and the body turns over as it goes.
+        const p = pts[i], dx = p.x - b.x, dz = p.z - b.z, h = Math.max(0.15, Math.hypot(dx, dz)), d = Math.hypot(h, p.y - b.y), sp = Math.min(5.5, Math.max(1, 6 * (1 - d / 2.4)));
+        RD.push(r, i, (dx / h) * sp, (0.55 - 0.3 * Math.min(1, Math.max(0, p.y - b.y) / 1.5)) * sp, (dz / h) * sp);
       }
     } else {
       // Melee, or a gun kill whose shot this client missed: away from the killer.
@@ -528,7 +532,7 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
      * the match time of death, for the environment's blood pool. */
     bodies() {
       const out: PatchBody[] = [];
-      figs.forEach((f, id) => { if (!f || f.died < 0 || !f.group.visible) return; if (f.rag) RD.point(f.rag, RD.P.pelvis, pv); else { pv.x = f.anim.root.x; pv.z = f.anim.root.z; } out.push({ id, x: pv.x, z: pv.z, yaw: f.anim.yaw, t: f.died }); });
+      figs.forEach((f, id) => { if (!f || f.died < 0 || !f.group.visible) return; if (f.rag) RD.point(f.rag, RD.P.pelvis, pv); else { pv.x = f.anim.root.x; pv.z = f.anim.root.z; } out.push({ id, x: pv.x, z: pv.z, yaw: f.anim.yaw, t: f.died, still: !f.rag || f.rag.asleep }); });
       return out;
     },
     dispose() {
