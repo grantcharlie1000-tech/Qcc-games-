@@ -22,11 +22,8 @@ export const P = {
   trim: r('#4a5662', '#3b4651', '#2e3740'),
   stud: r('#d4ab72', '#b48a52', '#8a683b'),
   carpet: r('#4d5d72', '#3f4d61', '#323e4f'),
-  carpetDark: r('#45546a', '#38465a', '#2c3747'),
   tile: r('#e3e0d7', '#cdc9bf', '#aca89e'),
   tileAlt: r('#cfd0ca', '#b9bab4', '#9a9b95'),
-  ceiling: r('#e9e6df', '#d2cec5', '#b0aca3'),
-  grid: r('#9ba3aa', '#80888f', '#656c73'),
   // furniture
   steel: r('#8592a0', '#67737f', '#4d5761'),
   steelDark: r('#56616c', '#444e58', '#343c45'),
@@ -56,6 +53,7 @@ export const P = {
   uplink: r('#3c434c', '#30363e', '#252a30'),
   uplinkGlow: r('#c9fff0', '#7df2cf', '#4fd3ad'),
   screen: r('#9fe0ff', '#7fcff5', '#5fb3dc'),
+  soot: r('#a59a88', '#8f8473', '#71685a'),
   scorch: r('#6e5f4f', '#5b4e41', '#473d33'),
   fire: r('#fff1c4', '#ffd277', '#f0b429'),
 } as const;

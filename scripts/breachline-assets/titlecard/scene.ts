@@ -56,12 +56,11 @@ export function soldier(g: Grid, ox: number, oy: number, oz: number, facing: Fac
   cube(3, 3, h + 8, 3, 1, 2, 'skin');
   cube(3, 3, h + 9, 3, 1, 1, 'visor');
   cube(2, 3, h + 10, 5, 1, 1, 'visor');
-  // Helmet: shell over the ears, a squad band round it, rounded crown.
-  cube(1, 0, h + 10, 1, 4, 1, helmet); cube(7, 0, h + 10, 1, 4, 1, helmet); cube(2, -1, h + 10, 5, 1, 1, helmet);
-  cube(1, -1, h + 11, 7, 6, 1, helmet);
-  cube(1, -1, h + 12, 7, 6, 1, band);
-  cube(2, 0, h + 13, 5, 4, 1, helmet);
-  for (const [u, v] of [[1, -1], [7, -1], [1, 4], [7, 4]] as const) { put(u, v, h + 11, null); put(u, v, h + 12, null); }
+  // Helmet: a shell no wider than the head, brim over the face, squad band round the middle.
+  cube(2, -1, h + 10, 5, 1, 1, helmet); cube(2, 0, h + 10, 1, 3, 1, helmet); cube(6, 0, h + 10, 1, 3, 1, helmet);
+  cube(2, -1, h + 11, 5, 6, 1, band);
+  cube(2, -1, h + 12, 5, 5, 1, helmet); put(2, -1, h + 12, null); put(6, -1, h + 12, null);
+  cube(3, 0, h + 13, 3, 3, 1, helmet);
 }
 
 export function buildScene(): Grid {
@@ -73,7 +72,7 @@ export function buildScene(): Grid {
   for (let x = 0; x < w; x++) for (let y = y0; y < d; y++) {
     g.set(x, y, -3, 'slab').set(x, y, -2, 'slab');
     const lab = y < wallY || x >= 22;
-    const top: Material = lab ? (((x >> 1) + (y >> 1)) % 2 ? 'tile' : 'tileAlt') : hash(x, y, 0, 5) < 0.12 ? 'carpetDark' : 'carpet';
+    const top: Material = lab ? (((x >> 1) + (y >> 1)) % 2 ? 'tile' : 'tileAlt') : 'carpet';
     g.set(x, y, -1, top);
   }
 
@@ -97,7 +96,7 @@ export function buildScene(): Grid {
     if (!hole(x, z, 1)) g.set(x, wallY, z, 'boardDim');
     const stud = x % 4 === 0 || z === 0 || z === h - 1 || x === w - 1;
     if (stud && !hole(x, z, 0.8)) g.set(x, wallY + 1, z, 'stud');
-    if (!hole(x, z, 1.35)) g.set(x, wallY + 2, z, hole(x, z, 1.75) ? 'scorch' : wallMat(z, x + 3));
+    if (!hole(x, z, 1.35)) g.set(x, wallY + 2, z, hole(x, z, 1.75) ? 'scorch' : hole(x, z, 2.6) && hash(x, z, 1, 2) < 0.45 ? 'soot' : wallMat(z, x + 3));
   }
   // The corridor's far wall, which takes the blast of light.
   g.box(2, y0, 0, 40, 1, h - 8, (_x, _y, z) => wallMat(z));
@@ -111,15 +110,15 @@ export function buildScene(): Grid {
   // Attackers: one stepping through the hole, the stack behind it.
   soldier(g, holeX - 9, wallY - 1, 0, '+y', 'atk', 'step');
   soldier(g, holeX + 4, wallY - 4, 0, '+y', 'atk', 'stand');
-  soldier(g, holeX - 17, wallY - 4, 0, '+y', 'atk', 'stand');
+  soldier(g, holeX - 22, wallY - 4, 0, '+y', 'atk', 'stand');
 
   // Debris thrown through the light shaft, and rubble on the floor.
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 24; i++) {
     const t = hash(i, 0, 0, 11);
-    const x = Math.round(holeX + 1 + 9 * hash(i, 1, 0, 11) - 5 * t), y = Math.round(wallY + 4 + 10 * t);
-    const z = Math.round(5 + 15 * hash(i, 2, 0, 11) * (1 - t * 0.6));
+    const x = Math.round(holeX + 2 + 9 * hash(i, 1, 0, 11)), y = Math.round(wallY + 4 + 6 * t);
+    const z = Math.round(12 + 9 * hash(i, 2, 0, 11) - 4 * t);
     if (g.get(x, y, z) || g.get(x, y, z - 1)) continue;
-    const m: Material = hash(i, 3, 0, 11) < 0.25 ? 'stud' : 'gypsum';
+    const m: Material = hash(i, 3, 0, 11) < 0.35 ? 'stud' : hash(i, 3, 0, 11) < 0.6 ? 'scorch' : 'gypsum';
     g.set(x, y, z, m);
     if (hash(i, 4, 0, 11) < 0.35) g.set(x + 1, y, z, m);
   }
@@ -128,26 +127,25 @@ export function buildScene(): Grid {
   }
 
   // Defenders: one kneeling behind an overturned desk on the left, one behind a barricade on the right.
-  g.box(10, 29, 0, 11, 1, 8, 'laminate');
-  for (const x of [11, 19]) for (const z of [1, 6]) g.box(x, 30, z, 1, 4, 1, 'desk');
-  g.box(11, 30, 0, 9, 3, 1, 'desk');
-  soldier(g, 11, 38, 0, '-y', 'def', 'kneel');
+  g.box(15, 29, 0, 11, 1, 8, 'laminate');
+  for (const x of [16, 24]) for (const z of [1, 6]) g.box(x, 30, z, 1, 4, 1, 'desk');
+  g.box(16, 30, 0, 9, 3, 1, 'desk');
+  soldier(g, 16, 38, 0, '-y', 'def', 'kneel');
 
   g.box(38, 22, 0, 1, 11, 11, (_x, y, z) => (z === 6 && y >= 25 && y <= 28 ? null : z === 10 ? 'hazard' : 'steelDark'));
   for (const y of [23, 31]) g.box(39, y, 0, 3, 1, 1, 'steel');
   soldier(g, 45, 22, 0, '-x', 'def', 'stand');
 
   // Office dressing: a filing cabinet, a desk with a monitor, the uplink on its table.
-  g.box(2, 18, 0, 3, 6, 10, 'cabinet');
-  for (const z of [2, 5, 8]) for (const y of [19, 22]) g.set(5, y, z, 'steelDark');
-  g.box(2, 41, 0, 3, 6, 6, 'desk');
-  g.box(9, 41, 0, 1, 6, 6, 'desk');
-  g.box(2, 41, 6, 9, 6, 1, 'laminate');
-  g.box(5, 42, 7, 2, 1, 2, 'monitor');
-  g.box(3, 42, 9, 6, 1, 4, 'monitor');
-  g.box(4, 43, 10, 4, 1, 2, 'screen');
+  g.box(2, 17, 0, 3, 5, 10, 'cabinet');
+  for (const z of [2, 5, 8]) for (const y of [18, 20]) g.set(5, y, z, 'steelDark');
+  g.box(2, 23, 0, 3, 7, 6, 'desk');
+  g.box(2, 23, 6, 6, 7, 1, 'laminate');
+  g.box(3, 25, 7, 1, 2, 2, 'monitor');
+  g.box(3, 24, 9, 1, 4, 3, 'monitor');
+  g.box(4, 24, 9, 1, 4, 3, 'screen');
 
-  const tx = 30, ty = 39;
+  const tx = 35, ty = 36;
   for (const [dx, dy] of [[1, 1], [8, 1], [1, 7], [8, 7]]) g.box(tx + dx, ty + dy, 0, 1, 1, 6, 'steelDark');
   g.box(tx, ty, 6, 10, 9, 1, 'laminate');
   g.box(tx + 2, ty + 2, 7, 6, 5, 2, 'uplink');
@@ -158,7 +156,7 @@ export function buildScene(): Grid {
   // Lights: the breach fire as a cone into the room, a glow on the corridor wall, teal on the uplink.
   const fire = { x: holeX - 2, y: wallY - 4, z: 6, rgb: LIGHT.breach };
   g.lights.push({ ...fire, range: 22, power: 2.6, dir: [0, 0.97, -0.24], cut: 0.55 });
-  g.lights.push({ ...fire, x: holeX + 1, y: wallY - 1.5, z: 9, range: 12, power: 2.6, dir: [0, -0.55, -0.83], cut: 0.1 });
+  g.lights.push({ ...fire, x: holeX - 1, y: wallY - 1.5, z: 10, range: 14, power: 2.4, dir: [0, -0.5, -0.87], cut: -0.2 });
   g.lights.push({ x: tx + 5, y: ty + 5, z: 11, rgb: LIGHT.uplink, range: 6, power: 1.0 });
   return g;
 }
