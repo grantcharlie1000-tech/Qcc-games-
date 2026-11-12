@@ -645,3 +645,22 @@ under the handguard with its fingers pointing forward along it, so from the eye 
 request), the palm now cups up against the underside of the handguard, the fingers run across it and wrap the far
 side (stronger curl), and the thumb lies straight along the near side. A tighter elbow was tried and reverted: it
 twisted the wrist. Other weapons' holds are unchanged.
+
+## 12.2 Wounds, hurt look, flinch and bodies (Patch fighters) — done
+
+Evidence: `job12-wounds.jpg` (227 KB). Both squads, left = squad A, right = squad B. Columns: chest hit, + leg hit, + head hit, half health, near death. The bottom strip shows both fighters after death, with their wounds. `bodies()` reported both at their rest positions (ids 1 and 3).
+
+Method (`src/games/breachline/render/patchfighters/index.ts`):
+- **Wounds.** Each `hit` takes the shooter's last `shot` event and rebuilds the ray from its x, y, z, yaw and pitch. The ray finds the nearest bone segment: the head only on head hits, otherwise the body and limbs. The hit point moves back along the ray to the surface and is converted into bind-pose space. Each fighter keeps up to `MAX_WOUNDS = 8` in a `uWound` Vector4 array in the body material. Strength grows as hp falls. The shader draws an entry mark plus a soak that runs downward. Everything is driven by the shared events, so the result is deterministic.
+- **Hurt.** `uHurt = (100 - hp) / 100`, and 0.85 once dead. It adds blood and grime over the torso front and legs.
+- **`?blood=off`.** Wounds become dark scuffs and dirt, with no red.
+- **Flinch.** For 0.45 s after a hit, the spine bends away from the shot direction. The hit limb (arm, leg or head) also jerks, as an additive rotation after `anim.update`.
+- **Bodies.** A dead fighter stays visible in the stock death pose until `reset` at round end, and keeps its wounds. `bodies()` returns `{id, x, z, yaw, t}`, where `t` is the time of death. `pose(id)` returns the body's rest position (anim root x, z) once dead, so the environment session's blood pool sits under the body.
+- **warm().** Nothing new is compiled. The changes are uniforms in the existing body program, so `warm()` already covers them.
+
+Not done:
+- **First-person blood specks.** The first-person hands live in `render/hero` (the weapons session's layer), so they can't be reached without editing it. Skipped. A screen-edge flash would belong to that layer too.
+- **Bodies don't settle onto furniture.** They lie at floor height where they fell.
+- **The dropped weapon** follows the stock animator's behaviour.
+
+How the evidence was made: `scripts/breachline-assets/patch-trial/wounds-test.mjs` and `wounds-sheet.mjs`. Hits are synthetic `shot` and `hit` events fed through `fighters.handle`, and the kills are a test-only injection into the served `index.ts`. No files in `src/` outside my folders were changed. `tests/games/breachline/warm.spec.ts` was not run in this pass, because usage is tight.
