@@ -4,6 +4,15 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+### Break Room and Garage
+
+- **Break Room.** A teal accent wall on the kitchen side (east, x = 15) over warm off-white walls, warm light and worn paths. Its partitions carry pinboards, a calendar, posters, coats and prints.
+- **Garage.** Bare painted block walls, full height: 440 x 215 mm courses from the tile shader. It has cool light, dark corners, and a dozen oil and water stains on the concrete. Its partitions carry pinboards, a calendar, shelves and posters.
+- **Evidence:** `round2/break-before-after.png`, `round2/garage-before-after.png`.
+- **Honest rating.**
+  - Break Room 7: the accent wall gives it an identity from the doorway.
+  - Garage 7: the block walls and the stained floor make it read as a garage.
+
 ### Server Room and Archive
 
 - **Server Room.** Dark grey walls over a lighter grey dado, cool light, and dark corners. The room's bake is very bright, so the tone has to be strong (0.36) or it clips back to white. Plans, a whiteboard and shelves hang on its partitions.
@@ -557,7 +566,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** map-fill round 2, rolling through the rooms: Office, Lab, corridor, Lobby, Server Room and Archive done; Break Room and Garage next.
+**Where I am (keep current):** map-fill round 2, rolling through the rooms: all inner rooms done; outdoor areas next.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

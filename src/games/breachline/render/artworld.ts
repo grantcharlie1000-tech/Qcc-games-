@@ -145,7 +145,11 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         mapUv(a.uv, s.size, s.size, s.rotate);
         if (s.tint) for (let i = 0; i < a.color.length; i++) a.color[i] *= s.tint[i % 3];
         // The room's own wall tone (render/ambience.ts ROOM_LOOK).
-        if (look && (id === 'drywall' || id === 'cinder')) for (let i = 0; i < a.color.length; i++) a.color[i] *= look.wall[i % 3];
+        // An accent wall takes its own paint: the faces on the plane x (or z) = at, facing into the room.
+        if (look && (id === 'drywall' || id === 'cinder')) for (let i = 0; i < a.color.length; i++) {
+          const v = Math.floor(i / 3), ac = look.accent, on = ac && Math.abs(a.position[v * 3 + (ac.axis === 'x' ? 0 : 2)] - ac.at) < 0.2 && Math.abs(a.normal[v * 3 + (ac.axis === 'x' ? 0 : 2)]) > 0.9;
+          a.color[i] *= on ? ac.tint[i % 3] : look.wall[i % 3];
+        }
       } else {
         map = procedural[id];
         if (!atlas.charts.some(c => c.face.tex === id && c.face.mode === 'fit')) mapUv(a.uv, TILE[id][0], TILE[id][1]);

@@ -11,12 +11,14 @@ import { SET_PIECES } from './setpieces-data';
 
 type RGB = readonly [number, number, number];
 /** Each room's identity: its wall tone, its dado (height and tone), the colour of its light, how dark its corners go. */
-export const ROOM_LOOK: Record<string, { wall: RGB; band?: { height: number; tint: RGB }; rail?: RGB; tiles?: readonly [number, number]; light: RGB; pool?: number; corners: number; wear: RGB; wearOpacity: number; scuffs?: boolean; tape?: boolean }> = {
+export const ROOM_LOOK: Record<string, { wall: RGB; band?: { height: number; tint: RGB }; rail?: RGB; tiles?: readonly [number, number]; light: RGB; pool?: number; corners: number; wear: RGB; wearOpacity: number; scuffs?: boolean; tape?: boolean; accent?: { axis: 'x' | 'z'; at: number; tint: RGB }; stains?: number }> = {
   office: { wall: [1.04, 0.98, 0.88], band: { height: 1.0, tint: [0.5, 0.36, 0.25] }, rail: [0.32, 0.22, 0.15], light: [1.0, 0.86, 0.66], corners: 0.42, wear: [0.16, 0.13, 0.1], wearOpacity: 0.3 },
   corridor: { wall: [1, 1, 1], light: [1.0, 0.95, 0.88], corners: 0.4, wear: [0.15, 0.14, 0.12], wearOpacity: 0.32 },
   lobby: { wall: [1.02, 0.99, 0.94], band: { height: 1.2, tint: [0.76, 0.69, 0.6] }, rail: [0.5, 0.46, 0.4], tiles: [0.6, 0.4], light: [1.0, 0.9, 0.75], pool: 0.35, corners: 0.4, wear: [0.16, 0.14, 0.12], wearOpacity: 0.28 },
   server: { wall: [0.36, 0.38, 0.42], band: { height: 1.0, tint: [0.7, 0.72, 0.76] }, rail: [0.3, 0.32, 0.35], light: [0.72, 0.86, 1.0], pool: 0.42, corners: 0.5, wear: [0.12, 0.12, 0.13], wearOpacity: 0.22, scuffs: false },
   archive: { wall: [0.9, 0.98, 0.88], band: { height: 1.0, tint: [0.62, 0.72, 0.6] }, rail: [0.4, 0.28, 0.18], light: [1.0, 0.92, 0.8], corners: 0.44, wear: [0.15, 0.14, 0.11], wearOpacity: 0.26 },
+  break: { wall: [1.04, 1.0, 0.94], accent: { axis: 'x', at: 15, tint: [0.42, 0.78, 0.8] }, light: [1.02, 0.94, 0.84], pool: 0.35, corners: 0.4, wear: [0.15, 0.13, 0.11], wearOpacity: 0.26 },
+  garage: { wall: [0.9, 0.9, 0.88], band: { height: 3.5, tint: [1, 1, 1] }, tiles: [0.44, 0.215], light: [0.95, 0.98, 1.0], corners: 0.5, wear: [0.13, 0.13, 0.12], wearOpacity: 0.3, scuffs: false, stains: 12 },
   lab: { wall: [1.18, 1.23, 1.28], band: { height: 1.5, tint: [1.3, 1.34, 1.38] }, rail: [1.2, 1.22, 1.25], tiles: [0.15, 0.15], light: [0.82, 0.92, 1.0], pool: 0.5, corners: 0.36, wear: [0.2, 0.2, 0.19], wearOpacity: 0.22, scuffs: false, tape: true },
 };
 
@@ -138,6 +140,14 @@ export function roomAmbience(region: Region, runs: readonly WallRunLike[]): { me
       else if (inside(c, m)) wear.strip(c, m - len / 2, c, m + len / 2, 0.85, 0.0218, 2);
     }
   }
+  // Oil and water stains on a concrete floor: dark soft blotches, seeded so every client draws the same.
+  const stains = new Quads();
+  let seed = Math.abs(Math.round(region.x0 * 31 + region.z0 * 17)) | 1;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let k = 0; k < (look.stains ?? 0); k++) {
+    const x = region.x0 + 0.8 + rnd() * (region.x1 - region.x0 - 1.6), z = region.z0 + 0.8 + rnd() * (region.z1 - region.z0 - 1.6), r = 0.3 + rnd() * 0.7, e = 0.6 + rnd() * 0.8;
+    stains.floor(x - r * e, z - r / e, x + r * e, z + r / e, 0.0205);
+  }
   // A pool of light under each ceiling fitting.
   for (const f of FIXTURES[region.name] ?? []) {
     if (f.y !== undefined || !inside(f.x, f.z)) continue;
@@ -164,6 +174,7 @@ export function roomAmbience(region: Region, runs: readonly WallRunLike[]): { me
   const edgeMat = new THREE.MeshBasicMaterial({ color: 0x000000, map: rampMap, transparent: true, opacity: look.corners, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const wearMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(...look.wear), map: wearMap(), transparent: true, opacity: look.wearOpacity, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   const tapeMat = new THREE.MeshBasicMaterial({ map: stripeMap(), color: 0x8a8a8a, depthWrite: false, transparent: true, opacity: 0.92, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-  const meshes = [wear.mesh(wearMat), tape.mesh(tapeMat), shadows.mesh(shadowMat), pools.mesh(poolMat), edges.mesh(edgeMat)].filter(m => (m.geometry.index?.count ?? 0) > 0);
-  return { meshes, dispose() { for (const m of meshes) m.geometry.dispose(); shadowMat.dispose(); poolMat.dispose(); edgeMat.dispose(); wearMat.dispose(); tapeMat.dispose(); } };
+  const stainMat = new THREE.MeshBasicMaterial({ color: 0x0b0a08, map: radialMap, transparent: true, opacity: 0.45, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  const meshes = [stains.mesh(stainMat), wear.mesh(wearMat), tape.mesh(tapeMat), shadows.mesh(shadowMat), pools.mesh(poolMat), edges.mesh(edgeMat)].filter(m => (m.geometry.index?.count ?? 0) > 0);
+  return { meshes, dispose() { for (const m of meshes) m.geometry.dispose(); shadowMat.dispose(); poolMat.dispose(); edgeMat.dispose(); wearMat.dispose(); tapeMat.dispose(); stainMat.dispose(); } };
 }
