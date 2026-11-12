@@ -270,6 +270,7 @@ export interface Arm {
 
 const restQ = FP_HAND.map((_, d) => digitRest(d));
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _e = new THREE.Euler(), _m = new THREE.Matrix4();
+const _sh = new THREE.Vector3(), _wr = new THREE.Vector3(), _up = new THREE.Vector3(), _hu = new THREE.Vector3(), _fu = new THREE.Vector3();
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _x = new THREE.Vector3(), _y = new THREE.Vector3();
 
 /** Makes one arm's bone hierarchy in bind pose. `side` 1 right, -1 left (mirrored in X). Bone positions are local. */
@@ -299,7 +300,7 @@ export function makeArm(side: 1 | -1): Arm {
       // A target out of reach pulls the shoulder toward it (up to 12 cm), as a real shooter leans into the gun.
       const reach = UPPER + FORE - 0.004, far = _a.subVectors(wrist, shoulder).length() - reach;
       const sh = far > 0 ? _b.copy(shoulder).addScaledVector(_a.normalize(), Math.min(0.12, far)) : _b.copy(shoulder);
-      shoulder = sh.clone();
+      shoulder = _sh.copy(sh);
       root.position.copy(shoulder);
       if (root.parent) { root.parent.updateWorldMatrix(true, false); root.parent.getWorldQuaternion(parentInv).invert(); } else parentInv.identity();
       // Law of cosines for the elbow, bent toward the pole.
@@ -308,13 +309,13 @@ export function makeArm(side: 1 | -1): Arm {
       const along = (dist * dist + UPPER * UPPER - FORE * FORE) / (2 * dist), hgt = Math.sqrt(Math.max(0, UPPER * UPPER - along * along));
       const pv = _b.subVectors(pole, shoulder); pv.addScaledVector(dir, -pv.dot(dir)).normalize();
       const elbow = _d.copy(shoulder).addScaledVector(dir, along).addScaledVector(pv, hgt);
-      const wristR = new THREE.Vector3().copy(shoulder).addScaledVector(dir, dist);
+      const wristR = _wr.copy(shoulder).addScaledVector(dir, dist);
       // Upper arm and forearm keep their "up" pointing away from the pole bend, so the elbow faces the pole.
-      const upHint = pv.clone().negate();
+      const upHint = _up.copy(pv).negate();
       basis(shoulder, elbow, upHint, upperW);
       root.quaternion.copy(parentInv).multiply(upperW);
       // Forearm: up from the hand's back so the forearm twists toward the hand.
-      const handUp = new THREE.Vector3(0, 1, 0).applyQuaternion(hand), foreUp = upHint.clone().lerp(handUp, 0.6).normalize();
+      const handUp = _hu.set(0, 1, 0).applyQuaternion(hand), foreUp = _fu.copy(upHint).lerp(handUp, 0.6).normalize();
       basis(elbow, wristR, foreUp, foreW);
       bones[1].quaternion.copy(_q.copy(upperW).invert().multiply(foreW));
       bones[2].quaternion.copy(_q2.copy(foreW).invert().multiply(hand));

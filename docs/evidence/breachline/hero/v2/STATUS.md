@@ -121,6 +121,19 @@ The sleeve's cuff tab is gone (it stayed with the forearm while the cuff twisted
 still meet the hand. Evidence `gate5-ar5-wrist-roll.jpg`. Honest read: hand about 5–5.5 now; the fingers' first
 segments still merge into one mass at hip distance.
 
+## Muzzle and cost (owner: "the muzzle flash and bullets don't come from the barrel"; "optimisation")
+
+- Own shots: scene.ts guessed a point 0.7 m ahead of the eye. Now `Viewmodel.muzzle(out, worldCamera)` gives the held
+  muzzle as the player sees it (same screen place, same distance from the eye), and scene.ts uses it (two lines,
+  approved). The viewmodel flash sits 1.5 cm ahead of the muzzle socket. Test: `tests/games/breachline/muzzle.test.ts`.
+  Evidence `muzzle-flash-hip-aimed.jpg` (flash held up for the slow capture with the dev switch `__heroFlashHold`).
+- Third person: `patchfighters` takes the muzzle from the weapon's matrix as last drawn, so a fighter that snaps to aim
+  and fires in the same tick fires from where the gun was. Not yet captured or changed.
+- Cost per frame (`hero-v2-game.mjs` job `cost`, mean of 30 drawn frames, software rasteriser): script 0.09 to 0.40 ms
+  (hip, aimed, firing, reloading, corridor and Lab), 3 draw calls, 19.6k triangles. Firing creates no geometry, material,
+  texture or program (the warm test checks programs and textures after a firefight). Per-frame allocations removed from
+  the arm solver and the light update.
+
 ## Decisions (made without asking; say if wrong)
 
 - New assets go to `hero/ar5/`, not `hero/ar/`: `render/patchhero/` (the `?weapons=patch` switch, not mine) cuts its

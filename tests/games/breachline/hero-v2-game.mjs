@@ -42,6 +42,29 @@ for (const [name, at] of PLACES) {
     if (process.env.DEBUG_VM) console.log(await page.evaluate(() => { const v = window.__heroVM, out = []; v.scene.traverse(o => { if (o.isSkinnedMesh && o.parent.children.length > 8) { const g = o.parent; g.updateMatrixWorld(true); const p = { x: 0, y: 0, z: -0.154 }; const e = g.matrixWorld.elements; const wx = e[0] * p.x + e[4] * p.y + e[8] * p.z + e[12], wy = e[1] * p.x + e[5] * p.y + e[9] * p.z + e[13], wz = e[2] * p.x + e[6] * p.y + e[10] * p.z + e[14]; out.push({ vis: o.visible && g.visible, pos: g.position.toArray().map(x => +x.toFixed(3)), dotCam: [wx, wy, wz].map(x => +x.toFixed(3)), tris: o.geometry.index.count / 3 }); } }); return JSON.stringify({ out, fov: v.camera.fov, aspect: v.camera.aspect, camPos: v.camera.position.toArray(), camRot: v.camera.rotation.toArray().slice(0, 3) }); }));
     if (process.env.DEBUG_VM) console.log(await page.evaluate(() => { const v = window.__heroVM; let g = null; v.scene.traverse(o => { if (o.isSkinnedMesh && o.parent.children.length > 8 && !g) g = o; }); const r = g.parent; return JSON.stringify({ p: r.position.toArray().map(x => +x.toFixed(4)), r: [r.rotation.x, r.rotation.y, r.rotation.z].map(x => +x.toFixed(4)), fov: v.camera.fov, cam: v.camera.position.toArray() }); }));
     await hold({}, 0.5);
+  } else if (job === 'cost') {
+    // The viewmodel's cost per frame in each state: script ms (mean over 30 drawn frames), draw calls, triangles.
+    const measure = async (label, patch, once = null) => {
+      if (once) await hold(patch, 1 / 60, once); else await hold(patch, 0.4);
+      const r = await page.evaluate(() => { const t = window.__heroVM.timing; t.update = 0; t.frames = 0; for (let i = 0; i < 30; i++) window.__breachlineTest.draw(); return { ms: +(t.update / t.frames).toFixed(3), calls: t.calls, triangles: t.triangles }; });
+      console.log(JSON.stringify({ where: name, state: label, ...r }));
+    };
+    await measure('hip', {}); await measure('aimed', { ads: true });
+    await measure('firing', { fire: true }); await measure('reloading', {}, { reload: true });
+  } else if (job === 'fire') {
+    // The first frame of a shot: the flash at the hip and aimed (held up for the slow capture).
+    await page.evaluate(() => { globalThis.__heroFlashHold = true; });
+    await hold({}, 0.6); await settle();
+    await hold({ fire: true }, 1 / 60); await shot(`${name}-fire-hip`);
+    if (process.env.DEBUG_VM) console.log(await page.evaluate(() => { const out = []; window.__heroVM.scene.traverse(o => { if (o.isSprite) out.push({ vis: o.visible, pos: o.getWorldPosition(new o.position.constructor()).toArray().map(x => +x.toFixed(3)), scale: +o.scale.x.toFixed(3), parent: o.parent?.type, op: o.material.opacity, map: !!o.material.map }); }); return JSON.stringify(out); }));
+    await hold({}, 0.5); await hold({ ads: true }, 1.4); await settle();
+    await hold({ ads: true, fire: true }, 1 / 60); await shot(`${name}-fire-ads`);
+    await hold({}, 0.5);
+    if (name === 'lab') {
+      // A bot in front of us, firing: several frames, one will catch its flash.
+      await page.evaluate(() => { const h = window.__breachlineTest, s = h.state(), me = s.players[s.self], foe = s.players.find(p => p.squad !== me.squad && p.alive); if (foe) h.place(foe.x, foe.z + 4, 0, -0.05); h.advance(0.05); });
+      for (let i = 0; i < 8; i++) { await page.evaluate(() => window.__breachlineTest.advance(0.12)); await page.evaluate(() => window.__breachlineTest.draw()); await shot(`bot-fire-${i}`); }
+    }
   } else if (job === 'roll') {
     const ROLLS = JSON.parse(process.env.ROLLS ?? '[0, 0.35, -0.35, 0.52]');
     for (let i = 0; i < ROLLS.length; i++) {

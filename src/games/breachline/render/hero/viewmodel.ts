@@ -56,7 +56,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   const hemi = new THREE.HemisphereLight(0xffffff, 0x6a645c, 0.6), key = new THREE.DirectionalLight(0xffffff, 1.4), fill = new THREE.DirectionalLight(0xc8d4ff, 0.35);
   scene.add(hemi, key, fill);
   const holder = new THREE.Group(); scene.add(holder);
-  if (import.meta.env?.DEV) (globalThis as { __heroVM?: unknown }).__heroVM = { scene, hemi, key, fill, camera, renderer };
+  if (import.meta.env?.DEV) (globalThis as { __heroVM?: unknown }).__heroVM = { scene, hemi, key, fill, camera, renderer, get timing() { return timing; } };
   // Reflections: the environment session's probe when it exists, else a neutral studio room, prefiltered once.
   let ownEnv: THREE.Texture | null = null;
   const envFor = (x: number, z: number) => lighting.environment(x, z) ?? (ownEnv ??= new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture);
@@ -135,6 +135,8 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   let caseNext = 0, flashLife = 0;
   const frame = idleFrame();
   const eject = new THREE.Vector3(), tmp = new THREE.Vector3();
+  // Cost of the weapon in hand, read by the evidence scripts (`__heroVM.timing`): script ms, draw calls, triangles.
+  const perf = globalThis.performance ?? Date, timing = { update: 0, frames: 0, calls: 0, triangles: 0 };
 
   function fire(id: WeaponId) {
     const k = KICK[id], first = cycle > 0.25 ? 1.35 : 1, r = (a: number) => (Math.random() * 2 - 1) * a;
@@ -146,10 +148,8 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
     c.t = 0; c.p.set(0, 0, 0); c.v.set(1.6 + Math.random() * 0.8, 1.1 + Math.random() * 0.6, 0.3 + Math.random() * 0.4); c.r.set(0, 0, 0); c.w.set(r(20), 25 + r(8), r(10));
   }
 
-  return {
-    get visible() { return holder.visible; },
-    warm,
-    update(view: HeroView, clock: number) {
+  /** One frame's pose of the weapon in hand (timed by `update`). */
+  function updateInner(view: HeroView, clock: number) {
       const { m, dt } = view, p = m.players[view.self];
       time = clock;
       const show = ready && !!p && p.alive && view.watch === view.self && !view.menu && m.phase !== 'lobby';
@@ -220,7 +220,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       const l = lighting.probe(p.x, 1.4, p.z).color, lum = (l[0] + l[1] + l[2]) / 3;
       // Diffuse: the probe's light with a floor so nothing goes to black.
       hemi.color.setRGB(0.12 + l[0] * 1.05, 0.12 + l[1] * 1.05, 0.12 + l[2] * 1.05); hemi.intensity = VM_GAIN * 1.5; hemi.groundColor.setRGB(0.06 + l[0] * 0.45, 0.06 + l[1] * 0.42, 0.06 + l[2] * 0.4);
-      key.color.setRGB(...lighting.sun.color.map(c => c / 1.55) as [number, number, number]);
+      const sc = lighting.sun.color; key.color.setRGB(sc[0] / 1.55, sc[1] / 1.55, sc[2] / 1.55);
       key.intensity = VM_GAIN * (0.6 + Math.min(2, lum * 1.8)); fill.intensity = VM_GAIN * 0.4;
       // Sun direction in camera space: rotate the world direction by the inverse view yaw.
       const sy0 = Math.sin(view.yaw), cy0 = Math.cos(view.yaw), s = lighting.sun;
@@ -233,12 +233,23 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       scene.environment = envFor(p.x, p.z); scene.environmentIntensity = VM_GAIN * (lighting.environment(p.x, p.z) ? lighting.environmentScale(p.x, p.z) : 1) * Math.max(0.35, Math.min(1.6, lum * 1.2));
       // Muzzle flash at the muzzle socket.
       const scoped = id === 'dmr' && ads > 0.9;
+      // Dev only: `__heroFlashHold` keeps the flash up, so a slow capture can show where it sits.
+      if (import.meta.env?.DEV && (globalThis as { __heroFlashHold?: boolean }).__heroFlashHold && shots > 0) flashLife = Math.max(flashLife, 0.05 + dt);
       if (flashLife > 0) { flashLife -= dt; flash.visible = flashLife > 0 && !scoped; muzzleInView(r.gun, S.muzzle, tmp); r.root.worldToLocal(tmp); flash.position.copy(tmp); }
       else flash.visible = false;
       r.gun.visible = !scoped;
       for (const a of r.root.children) if ((a as THREE.SkinnedMesh).isSkinnedMesh) a.visible = !scoped;
       camera.fov = 54 - ads * 8; camera.updateProjectionMatrix();
       void shots;
+    }
+
+  return {
+    get visible() { return holder.visible; },
+    warm,
+    update(view: HeroView, clock: number) {
+      const t0 = perf.now();
+      updateInner(view, clock);
+      timing.update += perf.now() - t0; timing.frames++;
     },
     muzzle(out: THREE.Vector3, world: THREE.Camera) {
       if (!holder.visible || !rig) return false;
@@ -249,7 +260,11 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
     },
     render() {
       if (!holder.visible) return 0;
-      renderer.clearDepth(); renderer.render(scene, camera);
+      renderer.clearDepth();
+      const c0 = renderer.info.render.calls, t0 = renderer.info.render.triangles;
+      renderer.render(scene, camera);
+      const r = renderer.info.autoReset; // with auto reset the counts start again at each render
+      timing.calls = renderer.info.render.calls - (r ? 0 : c0); timing.triangles = renderer.info.render.triangles - (r ? 0 : t0);
       return renderer.info.render.calls;
     },
     resize(aspect: number) { camera.aspect = aspect; camera.updateProjectionMatrix(); },
