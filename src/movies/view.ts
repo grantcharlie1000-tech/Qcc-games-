@@ -179,6 +179,9 @@ export class MoviesView {
  // The element that was fullscreen last, so an exit can tell whether its screen is still on the page.
  private fullscreenTarget?:Element|null;
  private intentionalExit=false;
+ private nativeFullscreen=false;
+ private fullscreenEscapeUntil=0;
+ private fullscreenEscapeHeld=false;
  private disposed=false;
  private lastSave=0;
  private route:MovieRoute={play:false};
@@ -1045,6 +1048,8 @@ export class MoviesView {
    this.progressKey=mediaKey(t,this.route);this.lastSave=0;const key=this.progressKey;
    video.addEventListener('loadedmetadata',()=>{if(this.video!==video)return;const time=this.storage.data.progress[key];if(time&&Number.isFinite(video.duration)&&time<video.duration-2){video.currentTime=time;if(time>=START_THRESHOLD&&!this.suspended&&!document.hidden)this.showResumePill(time);}});
    video.addEventListener('play',()=>{if(this.video===video&&!document.hidden&&!this.root.closest('[inert]'))this.suspended=false;});
+   video.addEventListener('webkitbeginfullscreen',()=>{if(this.video===video){this.nativeFullscreen=true;this.fullscreenTarget=video;}});
+   video.addEventListener('webkitendfullscreen',()=>{if(this.video===video&&this.nativeFullscreen){this.nativeFullscreen=false;this.browserExit();}});
    video.addEventListener('ended',()=>{if(this.video===video)this.episodeEnded();});
    // A seek to the saved position also fires timeupdate while the video is paused, so only playback counts as a report.
    video.addEventListener('timeupdate',()=>{if(this.video!==video)return;moviePopularity.sample(t.id,video.currentTime,performance.now(),!video.paused&&!video.seeking&&!this.suspended&&!document.hidden&&!this.root.closest('[inert]'));if(!video.paused)this.videoReported=true;this.rearm(video.currentTime,video.duration);if(this.videoReported&&!this.ended&&Date.now()-this.lastSave>5000)this.saveProgress(video.currentTime);});
@@ -1222,6 +1227,17 @@ export class MoviesView {
    else this.renderBrowseState();
   }
  };
+ // Fullscreen Escape belongs to the player, not the Study shortcut. Some browsers
+ // deliver the exit event before keydown; others consume the key and never send keyup.
+ handleFullscreenEscape(event:KeyboardEvent){
+  if(event.key!=='Escape')return false;
+  const active=this.fullscreenElement();
+  const owns=!!active&&this.root.contains(active)||this.nativeFullscreen;
+  if(!owns&&!(event.repeat&&this.fullscreenEscapeHeld)&&performance.now()>=this.fullscreenEscapeUntil)return false;
+  this.fullscreenEscapeHeld=true;
+  return true;
+ }
+ releaseFullscreenEscape(){this.fullscreenEscapeHeld=false;this.fullscreenEscapeUntil=0;}
  private fullscreenElement(){return document.fullscreenElement||(document as FullscreenDocument).webkitFullscreenElement;}
  private screenFullscreen(){const screen=this.root.querySelector('.movies-screen');return !!screen&&this.fullscreenElement()===screen;}
  private fullscreenSupported(){const element=document.documentElement as FullscreenElement;return typeof element.requestFullscreen==='function'||typeof element.webkitRequestFullscreen==='function';}
@@ -1240,22 +1256,21 @@ export class MoviesView {
   if(!screen.isConnected||this.suspended||document.hidden)await this.exitFullscreen();
  }
  private fullscreenChange=()=>{
-  const active=!!this.fullscreenElement();
-  if(active)this.fullscreenTarget=this.fullscreenElement();
+  const element=this.fullscreenElement();
+  const active=!!element&&this.root.contains(element);
+  if(active)this.fullscreenTarget=element;
   if(this.wasFullscreen&&!active){const intentional=this.intentionalExit;this.intentionalExit=false;if(!intentional)this.browserExit();}
   this.wasFullscreen=active;
   const button=this.root.querySelector('[data-action="fullscreen"]');button?.setAttribute('aria-pressed',String(this.screenFullscreen()));
  };
- // The browser consumed the Escape that left fullscreen, so the exit stands in for it, as the games' browser exit does. An open episode
- // drawer takes it as its cancel. Otherwise Up next is cancelled, and Study opens on its next article unless the page is hidden or
- // suspended, the view is disposed, or the screen has left the page.
+ // Leaving fullscreen only dismisses player overlays. It never navigates to Study
+ // or replaces the current media, whether the browser used Escape or its own control.
  private browserExit(){
+  if(!this.disposed&&!document.hidden&&this.fullscreenTarget?.isConnected)this.fullscreenEscapeUntil=performance.now()+250;
   if(this.warning?.open){const cancel=new Event('cancel',{cancelable:true});this.warning.dispatchEvent(cancel);return;}
   const drawer=this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer');
   if(drawer?.open){const cancel=new Event('cancel',{cancelable:true});if(drawer.dispatchEvent(cancel))drawer.close();return;}
   this.cancelNext(true);
-  if(this.disposed||this.suspended||document.hidden||!this.fullscreenTarget?.isConnected)return;
-  this.pause();this.study(true);
  }
  private refreshPlayer(title:Title){
   const screen=this.root.querySelector<HTMLElement>('.movies-screen'),player=screen?.parentElement;if(!screen||!player)return;
@@ -1341,7 +1356,7 @@ export class MoviesView {
  private stopVideo(){this.endSession();this.closeDrawer();this.releaseMedia();}
  // Takes the stream and the local video off the screen during a redraw.
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
- private releaseMedia(){this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
+ private releaseMedia(){this.nativeFullscreen=false;this.releaseFullscreenEscape();this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  private endSession(){moviePopularity.reset();this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
  dispose(){this.disposeStorage();moviePopularity.stop();this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.menuGlass.dispose();this.headerGlass?.dispose();this.yieldGuard.disconnect();this.abort.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }

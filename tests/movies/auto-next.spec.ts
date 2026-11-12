@@ -86,14 +86,17 @@ test('native video ended resets progress and opens the same countdown',async({pa
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')!).progress['tv-19885:s1:e1'])).toBe(0);
 });
 
-test('browser fullscreen exit cancels the countdown and opens Study on its next article, as Escape does',async({page})=>{
+test('browser fullscreen exit cancels the countdown without opening Study or replacing playback',async({page})=>{
  await open(page);test.skip(!await page.locator('.movies-screen').evaluate(e=>!!(e.requestFullscreen||(e as HTMLElement&{webkitRequestFullscreen?:unknown}).webkitRequestFullscreen)),'Browser reports the Fullscreen API unsupported');
  await page.getByRole('button',{name:'Full screen',exact:true}).click();await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(true);await ended(page);
  // Study dispatches study-article-change on its own root once for each article it advances to, so the open that advances counts once.
  await page.evaluate(()=>{const state=window as Window&{articleChanges?:number};state.articleChanges=0;document.addEventListener('study-article-change',event=>{if((event.target as Element).id==='study-view')state.articleChanges!++;},true);});
- await page.evaluate(()=>document.exitFullscreen());await expect(overlay(page)).toBeHidden();await expect(page.locator('#study-view')).toBeVisible();
+ await page.evaluate(()=>document.exitFullscreen());await expect(overlay(page)).toBeHidden();await expect(page.locator('#study-view')).toBeHidden();
+ await expect(page.locator('.movies-provider-frame')).toBeVisible();
+ await page.screenshot({path:'test-results/movie-fullscreen-exit.png'});
  await page.clock.runFor(11000);await expect(page).toHaveURL(/episode\/1\/play$/);
- expect(await page.evaluate(()=>(window as Window&{articleChanges?:number}).articleChanges)).toBe(1);
+ expect(await page.evaluate(()=>(window as Window&{articleChanges?:number}).articleChanges)).toBe(0);
+ await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
 });
 test('leaving fullscreen with the Full screen button does not open Study',async({page})=>{
  await open(page);test.skip(!await page.locator('.movies-screen').evaluate(e=>!!(e.requestFullscreen||(e as HTMLElement&{webkitRequestFullscreen?:unknown}).webkitRequestFullscreen)),'Browser reports the Fullscreen API unsupported');
@@ -333,4 +336,41 @@ for(const setting of ['media query','class'] as const)test(`reduced motion (${se
  expect(motion.animations).toEqual([]);
  expect(motion.transforms).toEqual([]);
  expect(motion.transitions).toEqual([]);
+});
+
+for(const prefixed of [false,true])test(`${prefixed?'WebKit':'standard'} fullscreen Escape belongs to playback until keyup`,async({page})=>{
+ await open(page);
+ // Exercise both event orders without relying on a browser consuming a synthetic key.
+ await page.evaluate(prefixed=>{
+  const screen=document.querySelector('.movies-screen')!;
+  const property=prefixed?'webkitFullscreenElement':'fullscreenElement';
+  Object.defineProperty(document,property,{configurable:true,value:screen});
+  document.dispatchEvent(new Event(prefixed?'webkitfullscreenchange':'fullscreenchange'));
+ },prefixed);
+ await page.keyboard.down('Escape');await expect(page.locator('#study-view')).toBeHidden();
+ await page.evaluate(prefixed=>{
+  Object.defineProperty(document,prefixed?'webkitFullscreenElement':'fullscreenElement',{configurable:true,value:null});
+  document.dispatchEvent(new Event('fullscreenchange'));document.dispatchEvent(new Event('webkitfullscreenchange'));
+ },prefixed);
+ await page.clock.runFor(1000);
+ await page.evaluate(()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',repeat:true,bubbles:true})));
+ await expect(page.locator('#study-view')).toBeHidden();await expect(page.locator('.movies-provider-frame')).toBeVisible();
+ await page.keyboard.up('Escape');await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
+});
+
+test('an exit delivered before Escape keydown stays in playback, and a consumed key cannot block later Escape',async({page})=>{
+ await open(page);
+ await page.evaluate(()=>{
+  Object.defineProperty(document,'fullscreenElement',{configurable:true,value:document.querySelector('.movies-provider-frame')});
+  document.dispatchEvent(new Event('fullscreenchange'));
+  Object.defineProperty(document,'fullscreenElement',{configurable:true,value:null});
+  document.dispatchEvent(new Event('fullscreenchange'));
+ });
+ await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeHidden();
+ // Repeated browser exits with no delivered keyup expire rather than disabling Study.
+ await page.evaluate(()=>{
+  Object.defineProperty(document,'fullscreenElement',{configurable:true,value:document.querySelector('.movies-screen')});document.dispatchEvent(new Event('fullscreenchange'));
+  Object.defineProperty(document,'fullscreenElement',{configurable:true,value:null});document.dispatchEvent(new Event('fullscreenchange'));
+ });
+ await page.clock.runFor(300);await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
 });
