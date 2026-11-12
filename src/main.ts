@@ -584,6 +584,7 @@ window.addEventListener('keydown',event=>{
   // Inert affects DOM targets, not document/window listeners retained by games.
   // Stop their handlers while preserving native reading/keyboard defaults.
   if(accountView.root.open||christmasWelcome.root.open||document.querySelector('dialog.movies-warning[open]'))return;
+  if(!study.isOpen&&movies?.handleFullscreenEscape(event)){event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(event.key==='Escape'&&(menu.open||launcher.sheet.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open||document.querySelector('dialog.apps-sheet[open],dialog.pr-sheet[open],.apps-popover')))return;
   // The inline Social composer owns Escape while its mention picker is open.
@@ -595,7 +596,7 @@ window.addEventListener('keydown',event=>{
   event.preventDefault();event.stopImmediatePropagation();
   if(!event.repeat){if(study.isOpen)study.advanceArticle();else openStudy(true);}
 },{capture:true});
-window.addEventListener('keyup',event=>{if(study.isOpen)event.stopImmediatePropagation();},{capture:true});
+window.addEventListener('keyup',event=>{if(event.key==='Escape')movies?.releaseFullscreenEscape();if(study.isOpen)event.stopImmediatePropagation();},{capture:true});
 updateStudySummary();
 function beginStudy(){
  if(WHETU_STUDY||study.session.topic()){initialized=true;showArcade();void route();}
