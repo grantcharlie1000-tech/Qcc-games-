@@ -78,7 +78,9 @@ export function holdFor(id: WeaponId): Hold {
     case 'ar': h = rifleHold(id, {
       // Palm cupped up against the underside of the handguard (no gap), fingers running across it and wrapping the far
       // side, thumb straight along the near side. (Fingers pointing forward along the handguard read as a claw.)
-      left: { at: [-0.008, S.support.p[1] + 0.008, S.support.p[2] - 0.03], palm: [0.35, 1, 0], fingers: [0.9, 0.1, -0.42] },
+      // The wrist rolled 20° so the back of the hand turns toward the player (seen end-on it read as a ball); the
+      // fingers still wrap under the handguard and the thumb lies along the near side (gate5-ar5-wrist-roll.jpg).
+      left: { at: [-0.008, S.support.p[1] + 0.008, S.support.p[2] - 0.03], palm: rollAbout([0.35, 1, 0], [0.9, 0.1, -0.42], 0.35), fingers: [0.9, 0.1, -0.42] },
       // The left elbow out and down: the forearm enters from the lower left and runs diagonally to the handguard.
       shoulderL: [-0.27, -0.36, -0.04], poleL: [-1, -1, 0.3], adsZ: -0.075,
       // Lower right, barrel only slightly in from straight ahead, little cant: the receiver's left side, the magazine
@@ -104,6 +106,11 @@ export function holdFor(id: WeaponId): Hold {
   }
   holds.set(id, h);
   return h;
+}
+/** Rotates `v` about the axis `axis` by `a` radians (Rodrigues). */
+export function rollAbout(v: V3, axis: V3, a: number): V3 {
+  const k = new THREE.Vector3(...axis).normalize(), p = new THREE.Vector3(...v);
+  return p.applyAxisAngle(k, a).toArray() as V3;
 }
 /** Forgets cached holds (after a baked weapon with new sockets is registered). */
 export function resetHolds() { holds.clear(); }
@@ -215,7 +222,10 @@ export function createFpRig(look: ArmsLook): FpRig {
             if (acc === 0) { tmpQ.copy(qA); pose = hp; } else { tmpQ.slerp(qA, k); pose = lerpPose(pose, hp, k); }
             acc += weight;
           };
-          const L = rig.weapon.id === 'shotgun' ? { ...hold.left, at: [hold.left.at[0], hold.left.at[1], hold.left.at[2] + f.handle * S.handleTravel] as V3 } : hold.left;
+          let L = rig.weapon.id === 'shotgun' ? { ...hold.left, at: [hold.left.at[0], hold.left.at[1], hold.left.at[2] + f.handle * S.handleTravel] as V3 } : hold.left;
+          // Dev only: `__heroRoll` rolls the support hand about its finger direction (radians), to try poses by eye.
+          const roll = import.meta.env?.DEV ? (globalThis as { __heroRoll?: number }).__heroRoll : undefined;
+          if (roll) L = { ...L, palm: rollAbout(L.palm, L.fingers, roll) };
           add(L, w[0], null, hold.leftPose);
           add(hold.magGrip, w[1], magM, hold.magPose);
           const hg = hold.handleGrip;

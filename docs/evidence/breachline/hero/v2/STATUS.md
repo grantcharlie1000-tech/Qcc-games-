@@ -112,6 +112,15 @@ from this camera, with the owner's pose, the back of the hand faces along the li
 into a ball. Shape changes alone barely move it; turning the hand's back toward the camera (a wrist roll of 20–30°
 toward the player, fingers still wrapping under) is the next lever, if the planner agrees.
 
+## Wrist roll (planner approved)
+
+The support hand's palm is rolled 20° about its finger direction (`rollAbout` in `rig.ts`) so the back of the hand
+turns toward the player; fingers still wrap under the handguard and the thumb lies along the near side. Tried 0, ±20°
+and +30° by eye (`__heroRoll`, `hero-v2-game.mjs` job `roll`); +20 and +30 both lose the end-on "ball", +20 kept.
+The sleeve's cuff tab is gone (it stayed with the forearm while the cuff twisted with the wrist, and floated). Reloads
+still meet the hand. Evidence `gate5-ar5-wrist-roll.jpg`. Honest read: hand about 5–5.5 now; the fingers' first
+segments still merge into one mass at hip distance.
+
 ## Decisions (made without asking; say if wrong)
 
 - New assets go to `hero/ar5/`, not `hero/ar/`: `render/patchhero/` (the `?weapons=patch` switch, not mine) cuts its

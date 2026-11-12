@@ -191,10 +191,6 @@ function sleeve(b: Builder, look: ArmsLook) {
   patch.translate(Math.cos(ang) * rr, Math.sin(ang) * rr, zc);
   b.bone = 1;
   b.add(patch, surf(SURF.white, { color: toned, rough: 0.6 }));
-  // Cuff tab with its hook-and-loop square, on the outer side of the hem.
-  b.bone = 1;
-  const cuffR = 0.0425;
-  b.box([0.0035, 0.018, 0.026], [cuffR * Math.cos(-0.35), cuffR * Math.sin(-0.35), z1 + 0.016], surf(look.sleeve, { color: 0x4a4f42 }), 0.0014);
   b.bone = 0;
 }
 

@@ -42,6 +42,13 @@ for (const [name, at] of PLACES) {
     if (process.env.DEBUG_VM) console.log(await page.evaluate(() => { const v = window.__heroVM, out = []; v.scene.traverse(o => { if (o.isSkinnedMesh && o.parent.children.length > 8) { const g = o.parent; g.updateMatrixWorld(true); const p = { x: 0, y: 0, z: -0.154 }; const e = g.matrixWorld.elements; const wx = e[0] * p.x + e[4] * p.y + e[8] * p.z + e[12], wy = e[1] * p.x + e[5] * p.y + e[9] * p.z + e[13], wz = e[2] * p.x + e[6] * p.y + e[10] * p.z + e[14]; out.push({ vis: o.visible && g.visible, pos: g.position.toArray().map(x => +x.toFixed(3)), dotCam: [wx, wy, wz].map(x => +x.toFixed(3)), tris: o.geometry.index.count / 3 }); } }); return JSON.stringify({ out, fov: v.camera.fov, aspect: v.camera.aspect, camPos: v.camera.position.toArray(), camRot: v.camera.rotation.toArray().slice(0, 3) }); }));
     if (process.env.DEBUG_VM) console.log(await page.evaluate(() => { const v = window.__heroVM; let g = null; v.scene.traverse(o => { if (o.isSkinnedMesh && o.parent.children.length > 8 && !g) g = o; }); const r = g.parent; return JSON.stringify({ p: r.position.toArray().map(x => +x.toFixed(4)), r: [r.rotation.x, r.rotation.y, r.rotation.z].map(x => +x.toFixed(4)), fov: v.camera.fov, cam: v.camera.position.toArray() }); }));
     await hold({}, 0.5);
+  } else if (job === 'roll') {
+    const ROLLS = JSON.parse(process.env.ROLLS ?? '[0, 0.35, -0.35, 0.52]');
+    for (let i = 0; i < ROLLS.length; i++) {
+      await page.evaluate(r => { globalThis.__heroRoll = r; }, ROLLS[i]);
+      await hold({}, 0.3); await settle(); await shot(`${name}-roll-${i}`);
+    }
+    await page.evaluate(() => { delete globalThis.__heroRoll; });
   } else if (job === 'holds') {
     // Candidate hip holds (weapon origin and Euler in camera space), tried by eye.
     const HOLDS = JSON.parse(process.env.HOLDS ?? "[[[0.12, -0.092, -0.22], [0.04, 0.09, -0.26]], [[0.13, -0.11, -0.24], [0.03, 0.04, -0.14]], [[0.14, -0.12, -0.25], [0.05, 0.02, -0.08]], [[0.125, -0.105, -0.23], [0.02, 0.06, -0.2]]]");
