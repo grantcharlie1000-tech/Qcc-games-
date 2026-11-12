@@ -1,0 +1,94 @@
+name: Publish approved native FrameXTV popularity
+on:
+  push:
+    branches: [deploy/framextv-popularity-once]
+permissions:
+  contents: read
+env:
+  XDG_CONFIG_HOME: /tmp/qcc-cloudflare
+  QCC_RELEASE_SHA: cc6a7e6ce108d6ea196f8b71b7a1f04c72186eae
+concurrency:
+  group: arcade-pages-production
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/deploy/framextv-popularity-once'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cc6a7e6ce108d6ea196f8b71b7a1f04c72186eae
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test -- tests/movies/framextv-contract.test.ts tests/movies/popularity-view.test.ts tests/movies/popularity.test.ts tests/movies/provider.test.ts tests/movies/privacy.test.ts tests/movies/popularity-api.test.ts tests/movies/popularity-d1.test.ts tests/movies/storage.test.ts tests/movies/account-storage.test.ts tests/accounts/movie-progress.test.ts
+      - run: npm run build
+      - name: Prepare standard Cloudflare Pages bundle
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          npx --yes wrangler@4.157.0 pages functions build functions --outdir dist/_worker.js --compatibility-date 2026-11-04 --minify
+          node --input-type=module -e 'import {writeFileSync} from "node:fs"; writeFileSync("dist/deploy-info.json", JSON.stringify({commit:process.env.QCC_RELEASE_SHA,project:"nceastudy",sourceBranch:"production",builtAt:new Date().toISOString()})+"\n");'
+      - name: Save upload-ready bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: nceastudy-native-framextv-popularity-production
+          path: dist/
+          retention-days: 7
+          include-hidden-files: true
+      - name: Verify exact source and unchanged production target
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          import {execFileSync} from 'node:child_process';
+          const expected=process.env.QCC_RELEASE_SHA;
+          if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==expected)throw new Error('Checkout is not the approved release.');
+          const latest=execFileSync('git',['ls-remote','origin','refs/heads/production'],{encoding:'utf8'}).trim().split(/\s/)[0];
+          if(latest!==expected)throw new Error('Production source changed; stop this release.');
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token||!account||!/^[a-f0-9]{32}$/i.test(account))throw new Error('Existing Cloudflare credentials unavailable.');
+          const response=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/pages/projects/nceastudy`,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(15000)});
+          if(!response.ok)throw new Error('Cloudflare project lookup failed.');
+          const body=await response.json(),project=body.result;
+          if(!body.success||project?.name!=='nceastudy'||project.subdomain!=='nceastudy.pages.dev'||project.production_branch!=='production')throw new Error('Unexpected Cloudflare production target.');
+          console.log('Verified approved source and nceastudy production target; existing runtime bindings remain unchanged.');
+          JS
+      - name: Publish exact approved source using standard Pages command
+        id: pages-deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          wranglerVersion: '4.157.0'
+          command: pages deploy dist --project-name=nceastudy --branch=production --commit-hash=${{ env.QCC_RELEASE_SHA }}
+      - name: Verify live production revision
+        env:
+          PAGES_ENVIRONMENT: ${{ steps.pages-deploy.outputs.pages-environment }}
+        run: |
+          node --input-type=module <<'JS'
+          import {appendFileSync} from 'node:fs';
+          import {setTimeout as delay} from 'node:timers/promises';
+          if(process.env.PAGES_ENVIRONMENT!=='production')throw new Error('Unexpected Pages environment.');
+          const origin='https://nceastudy.pages.dev',expected=process.env.QCC_RELEASE_SHA;
+          for(let attempt=0;attempt<12;attempt++){
+            try{
+              const response=await fetch(`${origin}/deploy-info.json?commit=${expected}&attempt=${attempt}`,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(10000)});
+              if(response.ok&&(await response.json()).commit===expected){
+                console.log(`Verified native FrameXTV popularity production revision ${expected}.`);
+                appendFileSync(process.env.GITHUB_STEP_SUMMARY,`Published native FrameXTV popularity to ${origin} from ${expected}.\n`);
+                process.exit(0);
+              }
+            }catch{}
+            await delay(5000);
+          }
+          throw new Error('Production did not serve the approved release revision.');
+          JS
