@@ -10,7 +10,7 @@ const browserMigrationLock=():DeviceHistoryLock|undefined=>typeof window!=='unde
 // Account caches and pending writes never share the guest namespace. Only this
 // account's scoped progress goes to the authenticated endpoint.
 export class AccountMovieStorage extends MovieStorage {
- private pending=empty();private cleared=0;private acknowledgedClear=0;private closed=false;
+ private pending=empty();private remote=empty();private cleared=0;private acknowledgedClear=0;private closed=false;
  private flight:Promise<void>|undefined;private timer:ReturnType<typeof setTimeout>|undefined;
  private abort=new AbortController();private retry=5000;private synced=false;private migrationDone=false;private migrationFlight:Promise<void>|undefined;private migrationNotice='';
  private readonly queueKey:string;
@@ -79,7 +79,7 @@ export class AccountMovieStorage extends MovieStorage {
  }
  private queueDeviceMerge(source:MovieProgressDocument):boolean {
   let durable=true,changed=false;
-  for(const [key,entry] of Object.entries(source.entries))if(entry.updated>this.cleared&&entry.updated>=(this.data.meta[key]?.updated??0)){
+  for(const [key,entry] of Object.entries(source.entries))if(entry.updated>this.cleared&&entry.updated>(this.remote.entries[key]?.updated??0)){
    changed=true;const document={entries:{[key]:entry},cleared:0};this.pending=mergeMovieProgress(document,this.pending);if(!this.persistQueue(document))durable=false;
   }
   if(changed){this.account!.status='Device history merged. Syncing to your account.';this.apply(mergeMovieProgress(this.document(),this.pending));this.schedule(0);}return durable;
@@ -164,7 +164,7 @@ export class AccountMovieStorage extends MovieStorage {
      response=Object.keys(submitted.entries).length||submitted.cleared?await exchange(submitted):Response.json(existing);full=true;
     }
     if(!response.ok)throw new Error('unavailable');
-    const remote=parseMovieProgress(await response.json());if(!remote)throw new Error('invalid');if(this.closed)return;
+    const remote=parseMovieProgress(await response.json());if(!remote)throw new Error('invalid');if(this.closed)return;this.remote=remote;
     this.readQueue();
     // Acknowledge only exact submitted values, never newer writes made in flight.
     for(const [key,entry] of Object.entries(submitted.entries))if(JSON.stringify(this.pending.entries[key])===JSON.stringify(entry))delete this.pending.entries[key];
