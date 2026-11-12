@@ -4,6 +4,29 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+### Office and Lab: wall items, room look and light, floor wear
+
+- **Wall items that fall with their cells.** Partition panels now carry room-specific hung items: whiteboards with writing or a diagram, pinboards with paper, framed prints and plans, a wall calendar, coat hooks with jackets, posters and a shelf (`levelmesh.ts` `ROOM_DECOR`, `decorItem`). They are drawn on the panel, so they go with its cells. When a cell under one goes, it drops as debris and emits the cosmetic event `{k:'piece', family:'wallitem', state:'wrecked'}` (`scene.ts` `dropDecor`). Nothing touches collision. Checked in the dev build by shooting a framed print on an Office partition; it goes with the hole (`round2/wallitem-fall.png`).
+- **Room look.** In `render/ambience.ts` `ROOM_LOOK`:
+  - Office: warm off-white over a timber dado with a dark timber rail.
+  - Lab: cold white glazed 15 cm tiles in grey grout to 1.5 m, with a white cap (in the shader, `materials.ts` `ART_TILES`), and a cold white wall above.
+  - These apply to the hard walls and the partitions. Each partition face now takes its own room's look: panel geometry has a group per face (+1 draw per panel in view; `panelgeo.test` updated to say so).
+- **Light.**
+  - Contact shadows under furniture and set pieces.
+  - A tinted pool under each fitting (warm in the Office, cool in the Lab).
+  - Darker ceiling-wall and floor-wall junctions.
+  - All of it is transparent quads; no rebake.
+- **Floor wear.**
+  - A mottled worn path from each doorway into the room's middle.
+  - Chair scuffs on the long sides of desks (Office).
+  - Hazard stripes boxing the Lab's doorways.
+- **Evidence.** `round2/office-lab-before-after.png` shows office, office-desk, lab and lab-west at High, before and after.
+- **Numbers (High).** office 209 calls / 160k tris, office-desk 246 / 147k, lab 275 / 248k, lab-west 239 / 225k. Download unchanged at 39.09 MB (the new textures are drawn on canvas at runtime). Unit tests pass; warm, play and online pass (the stock-fighters warm case is the known expected failure).
+- **Honest rating.**
+  - **Office 7:** the room now has an identity from the doorway; the timber dado, hung items, shadows and pools read.
+  - **Lab 6.5:** the tiles read, but the upper walls are still a flat grey-white, and the doorway stripes do not show from the bookmarks.
+  - What would lift the Lab: a tiled splashback behind the benches, and stronger cool pools.
+
 **2026-11-12: second rounds, Lab, Archive, Break Room, Server Room, Garage** (`round2/<room>.png`, each room's two
 bookmarks before and after). The same `roomLife()` with per-room choices (no plants in the Lab, Server Room or Garage;
 a TV in the Break Room and a screen in the Server Room; no ceiling-tile pieces in the Garage, whose ceiling is not a
@@ -503,7 +526,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** map fill Phases A to D done (Low per-view measure and a clean three-in-a-row online run outstanding); waiting for the planner's next order.
+**Where I am (keep current):** map-fill round 2: Office and Lab taken through wall items, room look and light, and floor wear; Office rated 7, Lab 6.5; waiting for the planner before rolling through the other rooms.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

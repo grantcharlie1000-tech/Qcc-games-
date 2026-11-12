@@ -11,6 +11,8 @@ import { ArtLoader, type Tier } from './assets';
 import { REGIONS, collectFaces, faceArrays, packAtlas, splitFace, type GeoArrays } from './levelgeo';
 import { FIXTURES } from './fixtures';
 import { fixtureMeshes } from './fixturemesh';
+import { ROOM_LOOK, roomAmbience } from './ambience';
+import { wallRuns } from './labdress';
 import { dressRoom, type DressKey } from './labdress';
 import { BOX_H, BOX_W, LABEL_VARIANTS, archiveBoxGeometry, labelAtlas, labelGeometry } from './archivebox';
 import type { DetailBuilder, DressProxy } from './detail';
@@ -114,7 +116,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   /** Per room: the materials its reflection probe lights, its mean baked light, its probe once captured. */
   const rooms = REGIONS.map(() => ({ envLights: [] as THREE.MeshStandardMaterial[], envLight: 1, env: null as THREE.WebGLRenderTarget | null, captured: false, props: [] as number[][] }));
   /** Panel corner light from every room's bake (a wall between two art rooms is listed by both, one side each). */
-  const tables = new Map<number, { t: Map<number, Float32Array>; wall: THREE.Material; planks: THREE.Material; plate: THREE.Material; tile: readonly [number, number] }>();
+  const tables = new Map<number, { t: Map<number, Float32Array>; walls: Map<number, THREE.Material>; planks: THREE.Material; plate: THREE.Material; tile: readonly [number, number] }>();
   const roomAt = (x: number, z: number) => REGIONS.findIndex(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
   /** Rooms whose art loaded; any room that fails keeps the procedural look on its own. */
   const loaded = REGIONS.map(() => false);
@@ -128,7 +130,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     const [info, lightMap, dirMap] = await Promise.all([
       L.json<BakeInfo>(`bake/${region.name}.json`), L.bakeMap(`bake/${region.name}-light.png`, true), full ? L.bakeMap(`bake/${region.name}-dir.png`, false) : Promise.resolve(null),
     ]);
-    const faces = byRegion[r], atlas = packAtlas(faces.filter(f => !f.glow), info.density);
+    const faces = byRegion[r], atlas = packAtlas(faces.filter(f => !f.glow), info.density), look = ROOM_LOOK[region.name];
     if (atlas.width !== info.width || atlas.height !== info.height) throw new Error(`${region.name}: lightmap is out of date (rebake)`);
     // Average light the room's probe sees, for specular occlusion.
     rooms[r].envLight = info.meanLight ?? 1;
@@ -142,13 +144,15 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         [map, nor, arm] = await set(s.set, TEX_SIZE[tier]);
         mapUv(a.uv, s.size, s.size, s.rotate);
         if (s.tint) for (let i = 0; i < a.color.length; i++) a.color[i] *= s.tint[i % 3];
+        // The room's own wall tone (render/ambience.ts ROOM_LOOK).
+        if (look && (id === 'drywall' || id === 'cinder')) for (let i = 0; i < a.color.length; i++) a.color[i] *= look.wall[i % 3];
       } else {
         map = procedural[id];
         if (!atlas.charts.some(c => c.face.tex === id && c.face.mode === 'fit')) mapUv(a.uv, TILE[id][0], TILE[id][1]);
       }
       if (dbg.includes('nonormal')) nor = null;
       if (dbg.includes('noarm')) arm = null;
-      const mat = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, lightMap, lightScale: info.scale, dirMap: dbg.includes('nodir') ? null : dirMap, vertexTint: true, roughness: dbg.includes('mirror') ? 0.02 : arm ? s?.gloss ?? 1 : 0.85, metalness: dbg.includes('metal') ? 1 : arm ? 1 : 0, band: s?.band, wear: s?.wear, spec: s?.spec, normalScale: s?.normal, specOnly: dbg.includes('speconly') });
+      const mat = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, lightMap, lightScale: info.scale, dirMap: dbg.includes('nodir') ? null : dirMap, vertexTint: true, roughness: dbg.includes('mirror') ? 0.02 : arm ? s?.gloss ?? 1 : 0.85, metalness: dbg.includes('metal') ? 1 : arm ? 1 : 0, band: (id === 'drywall' || id === 'cinder') && look?.band ? look.band : s?.band, tiles: (id === 'drywall' || id === 'cinder') && !!look?.tiles, wear: s?.wear, spec: s?.spec, normalScale: s?.normal, specOnly: dbg.includes('speconly') });
       const g = geometry(a), mesh = new THREE.Mesh(g, mat);
       mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:${id}`;
       group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
@@ -251,6 +255,8 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       }
     }
     // The room's own light fixtures glow (the map's lamp panels in this room are not drawn).
+    // The room's light and identity over its bake: contact shadows, pools under the fittings, darker junctions.
+    { const amb = roomAmbience(region, wallRuns(atlas, region)); for (const m of amb.meshes) group.add(m); disposers.push(amb.dispose); }
     const fx = fixtureMeshes(FIXTURES[region.name] ?? []);
     for (const m of fx.meshes) group.add(m);
     { const lensGeo = fx.meshes[1]?.geometry, col = lensGeo?.attributes.color as THREE.BufferAttribute | undefined, orig = col ? Float32Array.from(col.array as Float32Array) : null;
@@ -260,7 +266,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     const wallSet = SURFACES.drywall;
     const [wmap, wnor, warm] = wallSet ? await set(wallSet.set, TEX_SIZE[tier]) : [procedural.drywall, null, null];
     const wall = dbg.includes('panelbasic') ? new THREE.MeshBasicMaterial({ map: wmap, vertexColors: true }) as unknown as THREE.MeshStandardMaterial
-      : artMaterial({ map: wmap, normalMap: wnor, armMap: warm, vertexLight: true, normalScale: wallSet?.normal, roughness: warm ? 1 : 0.9, metalness: warm ? 1 : 0, band: wallSet?.band });
+      : artMaterial({ map: wmap, normalMap: wnor, armMap: warm, vertexLight: true, normalScale: wallSet?.normal, roughness: warm ? 1 : 0.9, metalness: warm ? 1 : 0, band: look?.band ?? wallSet?.band, tiles: !!look?.tiles, color: look ? new THREE.Color(...look.wall) : undefined });
     materials.push(wall); if (wall.userData.art) envLights.push(wall);
     const [km, kn, ka] = await set(PLANKS.set, TEX_SIZE[tier]);
     const planks = artMaterial({ map: km, normalMap: kn, armMap: ka, vertexLight: true, roughness: 1, metalness: ka ? 1 : 0, color: new THREE.Color(...(PLANKS.tint ?? [1, 1, 1])) });
@@ -273,13 +279,13 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     materials.push(plate); envLights.push(plate);
     for (const p of info.panels) {
       let e = tables.get(p.index);
-      if (!e) tables.set(p.index, e = { t: new Map(), wall, planks, plate, tile: wallSet ? [wallSet.size, wallSet.size] : TILE.drywall });
-      e.t.set(p.side, new Float32Array(p.light));
+      if (!e) tables.set(p.index, e = { t: new Map(), walls: new Map(), planks, plate, tile: wallSet ? [wallSet.size, wallSet.size] : TILE.drywall });
+      e.t.set(p.side, new Float32Array(p.light)); e.walls.set(p.side, wall);
     }
     loaded[r] = true;
   } catch (e) { console.warn(`Breachline art: ${region.name} unavailable, keeping its procedural look`, e); } }));
   if (!loaded.some(Boolean)) throw new Error('no art rooms loaded');
-  for (const [index, e] of tables) looks.set(index, { ...panelLook(MAP.panels[index].cols + 1, e.t, e.wall, e.tile), planks: e.planks, plankTile: [PLANKS.size, PLANKS.size], plate: e.plate, plateTile: [1.2, 1.2] });
+  for (const [index, e] of tables) looks.set(index, { ...panelLook(MAP.panels[index].cols + 1, e.t, e.walls.get(1) ?? e.walls.get(-1)!, e.tile), wallBack: e.walls.get(-1), planks: e.planks, plankTile: [PLANKS.size, PLANKS.size], plate: e.plate, plateTile: [1.2, 1.2] });
   // Props, each lit by its own baked probe from the bake of the room it stands in.
   /** Colour lifts per model: the covered car's scan is a near-black cover, lifted to a dark grey-green tarpaulin so
    * its folds read in daylight. */

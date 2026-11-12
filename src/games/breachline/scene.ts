@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { CELL, ROUND, WALL_H, WEAPONS } from './config';
 import { Effects } from './effects';
 import { createBake, SUN, SUN_COLOR, type Bake } from './lightbake';
-import { PanelView, buildLevel, type PanelMaterials } from './levelmesh';
+import { PanelView, buildLevel, panelDecor, type PanelMaterials } from './levelmesh';
 import { MAP } from './map';
 import { loadArtWorld, type ArtWorld } from './render/artworld';
 import { PanelBatches } from './render/panelbatch';
@@ -177,7 +177,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     // Every material a damaged wall can show (cut edges, cavity, studs, planks, plate): an intact wall draws only its
     // face, so without this the first bullet hole would compile them. A tiny triangle with the panels' attributes each.
     const wallMats = new Set<THREE.Material>(Object.values(panelMats));
-    if (art) for (let i = 0; i < MAP.panels.length; i++) { const l = art.panelLook(i); if (l) { wallMats.add(l.wall); if (l.planks) wallMats.add(l.planks); if (l.plate) wallMats.add(l.plate); } }
+    if (art) for (let i = 0; i < MAP.panels.length; i++) { const l = art.panelLook(i); if (l) { wallMats.add(l.wall); if (l.wallBack) wallMats.add(l.wallBack); if (l.planks) wallMats.add(l.planks); if (l.plate) wallMats.add(l.plate); } }
     const tri = new THREE.BufferGeometry();
     tri.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1e-3, 0, 0, 0, 1e-3, 0], 3));
     tri.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
@@ -551,6 +551,24 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       }
     }
   }
+  /** Things hung on a partition (render: levelmesh panelDecor) fall when a cell under them goes: a few pieces in the
+   * item's colours drop away from the wall and stay, once per item per round. */
+  const fallenDecor = new Set<string>();
+  function dropDecor(panel: Panel, cells: readonly number[]) {
+    const items = panelDecor(panel);
+    if (!items.length) return;
+    const gone = cells.map(c => { const col = c % panel.cols, row = (c - col) / panel.cols; return [panel.u0 + col * CELL, panel.y0 + row * CELL]; });
+    items.forEach((d, i) => {
+      if (d.y0 < 0.5 || d.u1 - d.u0 < 0.12 || fallenDecor.has(`${panel.id}:${i}`)) return;  // skirting, sockets and small marks just go
+      if (!gone.some(([u, y]) => u < d.u1 && u + CELL > d.u0 && y < d.y1 && y + CELL > d.y0)) return;
+      fallenDecor.add(`${panel.id}:${i}`);
+      const at = panelPoint(panel, (d.u0 + d.u1) / 2, (d.y0 + d.y1) / 2, d.side * (PANEL_T / 2 + d.d)), l = bake.probe(at.x, at.z), b = 0.3 + (l[0] + l[1] + l[2]) / 3;
+      const nx = panel.axis === 'z' ? d.side : 0, nz = panel.axis === 'x' ? d.side : 0, size = Math.min(0.25, Math.max(d.u1 - d.u0, d.y1 - d.y0) / 2.5);
+      const tint = [Math.min(1, d.tint[0] * 0.6), Math.min(1, d.tint[1] * 0.6), Math.min(1, d.tint[2] * 0.6)];
+      for (let k = 0; k < (size > 0.1 ? 3 : 1); k++) fx.debris(at.x, at.y, at.z, nx * (0.6 + Math.random()) + (Math.random() - 0.5) * 0.4, Math.random() * 0.6, nz * (0.6 + Math.random()) + (Math.random() - 0.5) * 0.4, size * (0.6 + Math.random() * 0.4), tint[0] * b, tint[1] * b, tint[2] * b, true, 0.2);
+      if (cosmetic.size) { evPiece.family = 'wallitem'; evPiece.state = 'wrecked'; evPiece.x = at.x; evPiece.y = at.y; evPiece.z = at.z; emit(evPiece); }
+    });
+  }
   /** Pools waiting for their body to settle. */
   const pendingPools: { id: number; wait: number; m: Match }[] = [];
   /** A pool spreading under a fallen fighter, shaped by what is round it (short traces stop it at walls and furniture). */
@@ -667,6 +685,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             if (!panel) break;
             for (const c of e.c) fx.clearHoles(e.p * 4096 + c);
             if (panel.kind === 'wall') chipRim(panel, e.c, e.cause === 1 ? 1 : 2, e.cause === 1);
+            if (panel.kind === 'wall') dropDecor(panel, e.c);
             if (cosmetic.size && (panel.kind !== 'wall' || panel.reinforced)) { const at = cellCenter(panel, e.c[0]); fort(panel.kind !== 'wall' ? 'barricade' : 'reinforce', 'break', at.x, at.y, at.z); }
             const wood = panel.kind !== 'wall', max = e.cause === 1 ? 46 : 10, stride = Math.max(1, Math.ceil(e.c.length / max));
             const src = lastOrigin, side = (panel.axis === 'x' ? src.z : src.x) < panel.pos ? 1 : -1;
@@ -714,7 +733,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             for (let i = 0; i < 6; i++) fx.dust(c.x + (Math.random() - 0.5) * 1.5, c.y + (Math.random() - 0.5) * 1.5, c.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5), Math.random() * 0.5, (Math.random() - 0.5), 0.3, 0.8, 0.6, 0.58, 0.52, 0.35);
             break;
           }
-          case 'phase': if (e.phase === 'prep') { fx.clear(); fighters.reset(); glass.reset(); pieces?.reset(); breakables?.reset(); pendingPools.length = 0; } break;
+          case 'phase': if (e.phase === 'prep') { fx.clear(); fighters.reset(); glass.reset(); pieces?.reset(); breakables?.reset(); pendingPools.length = 0; fallenDecor.clear(); } break;
           case 'spawn': fighters.reset(e.at.map(([id]) => id)); break;
         }
       }

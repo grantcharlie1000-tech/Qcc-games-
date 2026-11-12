@@ -36,6 +36,7 @@ describe('Breachline destructible panel geometry', () => {
     const p = newWorld().panels.find(q => q.kind === 'wall')!;
     const { geometry, studs } = panelGeometry(p, null, light);
     expect(studs.length).toBe(0);
-    expect(geometry.groups.length).toBe(1);
+    // One group per face (each room's side can take that room's look), nothing else.
+    expect(geometry.groups.map(g => g.materialIndex)).toEqual([0, 3]);
   });
 });

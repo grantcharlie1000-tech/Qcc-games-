@@ -7,6 +7,8 @@ import { MAP, type FloorMat } from './map';
 import { TILE, type TexId } from './textures';
 import { PANEL_T, panelPoint, type Box, type Panel } from './world';
 import { replaced } from './render/props';
+import { ROOM_LOOK } from './render/ambience';
+import { REGIONS } from './render/levelgeo';
 import { isSetPiece } from './render/setpieces-data';
 
 class Batch {
@@ -232,7 +234,7 @@ export function emitLevel(L: LevelBuilder, art = false) {
 export interface PanelMaterials { wall: THREE.Material; core: THREE.Material; planks: THREE.Material; plate: THREE.Material }
 /** A panel in an asset-rendered room: baked light per cell corner (side +1/-1 along the wall's normal axis, 0 for
  * the broken edge between them) and the room's wall material, whose UVs are in `tile` metres per repeat. */
-export interface PanelLook { light(c: number, r: number, side: number): RGB | null; wall: THREE.Material; tile: readonly [number, number]; planks?: THREE.Material; plankTile?: readonly [number, number]; plate?: THREE.Material; plateTile?: readonly [number, number] }
+export interface PanelLook { light(c: number, r: number, side: number): RGB | null; wall: THREE.Material; /** The wall's -1 face, when its room looks different. */ wallBack?: THREE.Material; tile: readonly [number, number]; planks?: THREE.Material; plankTile?: readonly [number, number]; plate?: THREE.Material; plateTile?: readonly [number, number] }
 
 /** Where a panel's geometry gets its light: corner (u, y), offset along the wall normal, and side (+1, -1, 0 for edges). */
 export type PanelLight = (u: number, y: number, off: number, side: number) => RGB;
@@ -250,6 +252,85 @@ const hash = (a: number, b: number, c: number) => { const v = Math.sin(a * 127.1
 
 /** A piece of dressing on a soft wall's face: u and y extents, which face (+1 or -1 along the wall's normal), how far
  * it stands proud, and its tint on the board. */
+/** What each room hangs on its partition walls (map-fill second round), in order of preference. */
+const ROOM_DECOR: Record<string, string[]> = {
+  Office: ['whiteboard', 'pinboard', 'calendar', 'coats', 'print'],
+  Lab: ['whiteboard', 'shelf', 'plan', 'poster', 'pinboard'],
+  Archive: ['shelf', 'plan', 'calendar', 'shelf', 'pinboard'],
+  'Break Room': ['pinboard', 'calendar', 'poster', 'coats', 'print'],
+  Lobby: ['print', 'plan', 'poster', 'print'],
+  'Server Room': ['plan', 'whiteboard', 'shelf', 'poster'],
+  Garage: ['pinboard', 'calendar', 'shelf', 'poster'],
+  Corridor: ['poster', 'plan', 'print', 'poster', 'pinboard'],
+};
+const ITEM_W: Record<string, number> = { whiteboard: 1.3, pinboard: 1.0, calendar: 0.38, coats: 0.9, print: 0.6, plan: 0.75, poster: 0.5, shelf: 1.0 };
+/** One hung item's pieces, from u = a, as flat boxes standing off the face. */
+function decorItem(kind: string, a: number, side: 1 | -1, h: (k: number) => number, out: PanelDecor[]) {
+  const b = a + ITEM_W[kind], box = (u0: number, u1: number, y0: number, y1: number, d: number, tint: RGB) => out.push({ u0, u1, y0, y1, side, d, tint });
+  switch (kind) {
+    case 'whiteboard': {
+      // Frame, board, pen tray, and writing: lines of marker text, a boxed diagram with arrows, a red underline.
+      box(a, b, 1.05, 1.9, 0.018, [0.75, 0.76, 0.78]); box(a + 0.02, b - 0.02, 1.07, 1.88, 0.02, [1.3, 1.3, 1.3]); box(a + 0.2, b - 0.2, 1.02, 1.05, 0.06, [0.75, 0.76, 0.78]);
+      for (let i = 0; i < 7; i++) { const y = 1.78 - i * 0.07, l = 0.25 + h(50 + i) * 0.35; box(a + 0.08, a + 0.08 + l, y, y + 0.012, 0.021, i % 4 === 0 ? [0.25, 0.3, 0.8] : [0.18, 0.18, 0.2]); }
+      const dx = b - 0.55; box(dx, dx + 0.18, 1.5, 1.62, 0.021, [0.25, 0.3, 0.8]); box(dx + 0.01, dx + 0.17, 1.51, 1.61, 0.022, [1.3, 1.3, 1.3]);
+      box(dx + 0.25, dx + 0.43, 1.3, 1.42, 0.021, [0.25, 0.3, 0.8]); box(dx + 0.26, dx + 0.42, 1.31, 1.41, 0.022, [1.3, 1.3, 1.3]);
+      box(dx + 0.18, dx + 0.27, 1.5, 1.51, 0.022, [0.2, 0.2, 0.22]); box(a + 0.08, a + 0.45, 1.27, 1.282, 0.021, [0.85, 0.2, 0.18]);
+      break;
+    }
+    case 'pinboard': {
+      box(a, b, 1.25, 1.95, 0.018, [0.75, 0.76, 0.78]); box(a + 0.025, b - 0.025, 1.275, 1.925, 0.02, [0.72, 0.5, 0.3]);
+      for (let i = 0; i < 7; i++) {
+        const sw = 0.15 + h(10 + i) * 0.06, sh = 0.21 + h(20 + i) * 0.05, su = a + 0.05 + h(30 + i) * (b - a - 0.1 - sw), sy = 1.3 + h(40 + i) * (0.58 - sh);
+        box(su, su + sw, sy, sy + sh, 0.022, ([[1.25, 1.25, 1.22], [1.25, 1.18, 0.75], [0.85, 1.05, 1.3], [1.3, 0.95, 0.9]] as RGB[])[i % 4]);
+        box(su + sw / 2 - 0.008, su + sw / 2 + 0.008, sy + sh - 0.025, sy + sh - 0.01, 0.03, ([[1.4, 0.3, 0.3], [0.3, 0.5, 1.4], [0.4, 1.2, 0.4]] as RGB[])[i % 3]);
+      }
+      break;
+    }
+    case 'calendar': {
+      // A wall calendar: a picture above, a red header, the grid of days.
+      box(a, b, 1.25, 1.85, 0.008, [1.25, 1.25, 1.22]); box(a + 0.02, b - 0.02, 1.58, 1.83, 0.01, [0.45 + h(60) * 0.4, 0.6, 0.5 + h(61) * 0.4]);
+      box(a + 0.02, b - 0.02, 1.52, 1.56, 0.01, [1.1, 0.25, 0.22]);
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 6; c++) box(a + 0.03 + c * 0.054, a + 0.07 + c * 0.054, 1.29 + r * 0.044, 1.32 + r * 0.044, 0.01, h(70 + r * 6 + c) < 0.12 ? [1.2, 0.35, 0.3] : [0.78, 0.78, 0.8]);
+      break;
+    }
+    case 'coats': {
+      // A coat rail with hooks and two or three jackets hanging from it.
+      box(a, b, 1.7, 1.74, 0.04, [0.5, 0.5, 0.52]);
+      const n = 2 + Math.floor(h(80) * 2);
+      for (let i = 0; i < n; i++) { const u = a + 0.08 + i * (b - a - 0.16) / n, c = ([[0.25, 0.27, 0.32], [0.42, 0.3, 0.22], [0.3, 0.35, 0.28], [0.55, 0.15, 0.14]] as RGB[])[Math.floor(h(81 + i) * 4)]; box(u + 0.05, u + 0.09, 1.68, 1.74, 0.07, [0.6, 0.6, 0.62]); box(u, u + 0.32, 0.98, 1.7, 0.1, c); box(u + 0.13, u + 0.19, 1.62, 1.7, 0.12, [c[0] * 0.8, c[1] * 0.8, c[2] * 0.8]); }
+      break;
+    }
+    case 'print': {
+      box(a, b, 1.45, 1.92, 0.02, [0.2, 0.18, 0.16]); box(a + 0.04, b - 0.04, 1.49, 1.88, 0.022, [1.15, 1.13, 1.08]);
+      box(a + 0.09, b - 0.09, 1.54, 1.83, 0.024, [0.45 + h(5) * 0.3, 0.5 + h(6) * 0.2, 0.4 + h(7) * 0.3]);
+      box(a + 0.09, b - 0.09, 1.54, 1.62, 0.025, [0.3 + h(8) * 0.2, 0.42, 0.28]);
+      break;
+    }
+    case 'plan': {
+      // A framed plan: a blueprint with the rooms drawn in white.
+      box(a, b, 1.35, 1.9, 0.02, [0.22, 0.22, 0.24]); box(a + 0.03, b - 0.03, 1.38, 1.87, 0.022, [0.25, 0.42, 0.85]);
+      for (let i = 0; i < 6; i++) { const u = a + 0.07 + h(90 + i) * (b - a - 0.3), y = 1.43 + h(96 + i) * 0.3, w2 = 0.1 + h(102 + i) * 0.12, h2 = 0.08 + h(108 + i) * 0.1;
+        box(u, u + w2, y, y + 0.006, 0.023, [1.3, 1.3, 1.3]); box(u, u + w2, y + h2, y + h2 + 0.006, 0.023, [1.3, 1.3, 1.3]); box(u, u + 0.006, y, y + h2, 0.023, [1.3, 1.3, 1.3]); box(u + w2, u + w2 + 0.006, y, y + h2, 0.023, [1.3, 1.3, 1.3]); }
+      break;
+    }
+    case 'poster': {
+      const hue: RGB = ([[0.35, 0.55, 0.95], [0.95, 0.45, 0.3], [0.4, 0.8, 0.5], [0.95, 0.8, 0.3]] as RGB[])[Math.floor(h(4) * 4)];
+      box(a, b, 1.3, 1.95, 0.006, [1.2, 1.2, 1.18]); box(a + 0.03, b - 0.03, 1.55, 1.91, 0.008, hue);
+      for (let i = 0; i < 4; i++) box(a + 0.05, b - 0.05 - h(110 + i) * 0.15, 1.36 + i * 0.045, 1.38 + i * 0.045, 0.008, [0.25, 0.25, 0.27]);
+      break;
+    }
+    case 'shelf': {
+      // Two wall shelves on brackets, lever-arch files standing on them.
+      for (const y of [1.3, 1.72]) {
+        box(a, b, y, y + 0.02, 0.24, [0.85, 0.82, 0.76]);
+        for (const u of [a + 0.08, b - 0.11]) box(u, u + 0.03, y - 0.12, y, 0.2, [0.55, 0.55, 0.57]);
+        let u = a + 0.04;
+        while (u < b - 0.1) { const fw = 0.055 + h(u * 31) * 0.02; if (h(u * 17 + y) > 0.12) box(u, u + fw, y + 0.02, y + 0.3, 0.21, ([[0.2, 0.3, 0.75], [0.75, 0.2, 0.18], [0.2, 0.55, 0.3], [0.2, 0.2, 0.22], [0.85, 0.75, 0.2]] as RGB[])[Math.floor(h(u * 7 + y) * 5)]); u += fw + 0.004; }
+      }
+      break;
+    }
+  }
+}
 export interface PanelDecor { u0: number; u1: number; y0: number; y1: number; side: 1 | -1; d: number; tint: RGB }
 /** The dressing for a plasterboard wall panel, laid out from its position (the same every time). */
 export function panelDecor(p: Panel): PanelDecor[] {
@@ -257,40 +338,26 @@ export function panelDecor(p: Panel): PanelDecor[] {
   const out: PanelDecor[] = [], w = p.cols * CELL, top = p.y0 + p.rows * CELL;
   for (const side of [1, -1] as const) {
     const h = (k: number) => hash(p.u0 * 1.7 + k, p.pos * 2.3 + side, p.cols + k * 0.37);
+    // The rail tops the room's dado (render/ambience.ts ROOM_LOOK): timber in the Office, a tile cap in the Lab.
+    const fm = p.u0 + p.cols * CELL / 2, fa = p.axis === 'x' ? [fm, p.pos + side * 0.6] : [p.pos + side * 0.6, fm];
+    const region = REGIONS.find(q => fa[0] > q.x0 && fa[0] < q.x1 && fa[1] > q.z0 && fa[1] < q.z1), look = region ? ROOM_LOOK[region.name] : undefined;
+    const rail = look?.band?.height ?? 1.05, railTint: RGB = look?.rail ? [...look.rail] as RGB : [0.62, 0.63, 0.64];
     for (let c = 0; c < p.cols; c++) {
       const u0 = p.u0 + c * CELL, u1 = u0 + CELL;
       out.push({ u0, u1, y0: p.y0 + 0.02, y1: p.y0 + 0.11, side, d: 0.014, tint: [0.42, 0.44, 0.47] });
-      out.push({ u0, u1, y0: 1.03, y1: 1.075, side, d: 0.012, tint: [0.62, 0.63, 0.64] });
+      out.push({ u0, u1, y0: rail - 0.02, y1: rail + 0.025, side, d: 0.012, tint: railTint });
     }
-    if (w < 1.4 || top < 2) continue;
-    const pick = h(1), fw = pick < 0.3 ? 0.9 + h(2) * 0.4 : pick < 0.5 ? 0.42 : pick < 0.7 ? 0.55 : 1.2;
-    if (pick < 0.85 && w > fw + 0.6) {
-      const a = p.u0 + 0.3 + h(3) * (w - fw - 0.6), b = a + fw;
-      if (pick < 0.3) {
-        // Noticeboard: an aluminium frame, cork, pinned sheets (some yellow).
-        out.push({ u0: a, u1: b, y0: 1.25, y1: 1.95, side, d: 0.018, tint: [0.75, 0.76, 0.78] });
-        out.push({ u0: a + 0.025, u1: b - 0.025, y0: 1.275, y1: 1.925, side, d: 0.02, tint: [0.72, 0.5, 0.3] });
-        for (let i = 0; i < 4; i++) {
-          const sw = 0.15 + h(10 + i) * 0.06, sh = 0.21 + h(20 + i) * 0.05, su = a + 0.06 + h(30 + i) * (fw - 0.12 - sw), sy = 1.32 + h(40 + i) * (0.55 - sh);
-          out.push({ u0: su, u1: su + sw, y0: sy, y1: sy + sh, side, d: 0.022, tint: i % 3 ? [1.25, 1.25, 1.22] : [1.25, 1.18, 0.75] });
-        }
-      } else if (pick < 0.5) {
-        // A poster in a clip frame: white border, a coloured field and a dark band of text.
-        const hue: RGB = ([[0.35, 0.55, 0.95], [0.95, 0.45, 0.3], [0.4, 0.8, 0.5], [0.95, 0.8, 0.3]] as RGB[])[Math.floor(h(4) * 4)];
-        out.push({ u0: a, u1: b, y0: 1.3, y1: 1.92, side, d: 0.006, tint: [1.2, 1.2, 1.18] });
-        out.push({ u0: a + 0.03, u1: b - 0.03, y0: 1.5, y1: 1.88, side, d: 0.008, tint: hue });
-        out.push({ u0: a + 0.05, u1: b - 0.05, y0: 1.36, y1: 1.44, side, d: 0.008, tint: [0.25, 0.25, 0.27] });
-      } else if (pick < 0.7) {
-        // A framed print: dark frame, a pale mount and a muted picture.
-        out.push({ u0: a, u1: b, y0: 1.45, y1: 1.88, side, d: 0.02, tint: [0.2, 0.18, 0.16] });
-        out.push({ u0: a + 0.04, u1: b - 0.04, y0: 1.49, y1: 1.84, side, d: 0.022, tint: [1.15, 1.13, 1.08] });
-        out.push({ u0: a + 0.09, u1: b - 0.09, y0: 1.54, y1: 1.79, side, d: 0.024, tint: [0.45 + h(5) * 0.3, 0.5, 0.4 + h(6) * 0.3] });
-      } else {
-        // A whiteboard with its pen tray.
-        out.push({ u0: a, u1: b, y0: 1.05, y1: 1.9, side, d: 0.018, tint: [0.75, 0.76, 0.78] });
-        out.push({ u0: a + 0.02, u1: b - 0.02, y0: 1.07, y1: 1.88, side, d: 0.02, tint: [1.3, 1.3, 1.3] });
-        out.push({ u0: a + 0.2, u1: b - 0.2, y0: 1.02, y1: 1.05, side, d: 0.06, tint: [0.75, 0.76, 0.78] });
-      }
+    if (w < 1.0 || top < 2) continue;
+    // What hangs here depends on the room this face looks into; a wide panel takes two or three items.
+    const mid = p.u0 + w / 2, at = p.axis === 'x' ? [mid, p.pos + side * 0.6] : [p.pos + side * 0.6, mid];
+    const room = MAP.rooms.find(q => at[0] > q.x0 && at[0] < q.x1 && at[1] > q.z0 && at[1] < q.z1)?.name ?? 'Corridor';
+    const kinds = ROOM_DECOR[room] ?? ROOM_DECOR.Corridor;
+    let u = p.u0 + 0.25 + h(3) * 0.3, k = Math.floor(h(1) * kinds.length);
+    for (let n = 0; n < 3; n++) {
+      const kind = kinds[(k + n) % kinds.length], iw = ITEM_W[kind];
+      if (u + iw > p.u0 + w - 0.25) break;
+      if (h(11 + n) < 0.82) decorItem(kind, u, side, q => h(q + n * 131), out);
+      u += iw + 0.35 + h(21 + n) * 0.5;
     }
     // A double socket low down, and now and then a light switch near one end.
     { const su = p.u0 + 0.35 + h(7) * (w - 0.7); out.push({ u0: su, u1: su + 0.15, y0: 0.3, y1: 0.39, side, d: 0.012, tint: [1.25, 1.25, 1.22] }); }
@@ -301,7 +368,7 @@ export function panelDecor(p: Panel): PanelDecor[] {
 
 /** Builds a panel's mesh: faces (group 0), board edges and cavity (group 1), studs (group 2). Pure, testable. */
 export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLight): { geometry: THREE.BufferGeometry; studs: { c: number; r: number }[] } {
-  const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [], face: number[] = [], edge: number[] = [], stud: number[] = [];
+  const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [], face: number[] = [], rear: number[] = [], edge: number[] = [], stud: number[] = [];
   const studs: { c: number; r: number }[] = [];
   const plate = p.reinforced, wood = p.kind !== 'wall', half = (plate ? 0.2 : wood ? 0.07 : PANEL_T) / 2;
   const tile = plate ? look?.plateTile ?? TILE.plate : wood ? look?.plankTile ?? TILE.planks : look ? look.tile : TILE.drywall, alongX = p.axis === 'x';
@@ -342,7 +409,7 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
       if (on) { if (start < 0) { start = c; continue; } if (c % 2 !== 0) continue; }
       if (start < 0) continue;
       const u0 = p.u0 + start * CELL, u1 = p.u0 + c * CELL, y0 = p.y0 + r * CELL, y1 = y0 + CELL;
-      for (const n of [1, -1]) quad(face, vert(u0, y0, half * n, n, 1), vert(u1, y0, half * n, n, 1), vert(u1, y1, half * n, n, 1), vert(u0, y1, half * n, n, 1), alongX ? n < 0 : n > 0);
+      for (const n of [1, -1]) quad(n > 0 ? face : rear, vert(u0, y0, half * n, n, 1), vert(u1, y0, half * n, n, 1), vert(u1, y1, half * n, n, 1), vert(u0, y1, half * n, n, 1), alongX ? n < 0 : n > 0);
       start = on ? c : -1;
     }
   }
@@ -357,12 +424,12 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
     for (let r = r0; r < r1 && whole; r++) for (let c = c0; c < c1; c++) if (!cell(c, r) || rim(c, r)) { whole = false; break; }
     if (!whole) continue;
     const n = d.side, o0 = half * n, o1 = (half + d.d) * n, flip = alongX ? n < 0 : n > 0;
-    const v = (u: number, y: number, o: number) => vert(u, y, o, n, d.tint, 0, 0, true);
-    quad(face, v(d.u0, d.y0, o1), v(d.u1, d.y0, o1), v(d.u1, d.y1, o1), v(d.u0, d.y1, o1), flip);
-    quad(face, v(d.u0, d.y1, o0), v(d.u1, d.y1, o0), v(d.u1, d.y1, o1), v(d.u0, d.y1, o1), !flip);
-    quad(face, v(d.u0, d.y0, o0), v(d.u1, d.y0, o0), v(d.u1, d.y0, o1), v(d.u0, d.y0, o1), flip);
-    quad(face, v(d.u0, d.y0, o0), v(d.u0, d.y1, o0), v(d.u0, d.y1, o1), v(d.u0, d.y0, o1), flip);
-    quad(face, v(d.u1, d.y0, o0), v(d.u1, d.y1, o0), v(d.u1, d.y1, o1), v(d.u1, d.y0, o1), !flip);
+    const v = (u: number, y: number, o: number) => vert(u, y, o, n, d.tint, 0, 0, true), F = n > 0 ? face : rear;
+    quad(F, v(d.u0, d.y0, o1), v(d.u1, d.y0, o1), v(d.u1, d.y1, o1), v(d.u0, d.y1, o1), flip);
+    quad(F, v(d.u0, d.y1, o0), v(d.u1, d.y1, o0), v(d.u1, d.y1, o1), v(d.u0, d.y1, o1), !flip);
+    quad(F, v(d.u0, d.y0, o0), v(d.u1, d.y0, o0), v(d.u1, d.y0, o1), v(d.u0, d.y0, o1), flip);
+    quad(F, v(d.u0, d.y0, o0), v(d.u0, d.y1, o0), v(d.u0, d.y1, o1), v(d.u0, d.y0, o1), flip);
+    quad(F, v(d.u1, d.y0, o0), v(d.u1, d.y1, o0), v(d.u1, d.y1, o1), v(d.u1, d.y0, o1), !flip);
   }
   // Rim cells: each skin tears in its own ragged outline. Along every side that faces a hole the break is cut into
   // short segments that bite back into the board by 1-5 cm (now and then a bigger chunk, or a tongue left hanging a
@@ -396,7 +463,7 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
       const n = sk, flip = alongX ? n < 0 : n > 0, off = sk * half;
       // The face: a fan about the cell's middle.
       const centre = vert(mu, my, off, n, 1, 0, 0, true), ring = pts.map(([u, y]) => vert(u, y, off, n, 1, 0, 0, true));
-      for (let i = 0; i < ring.length; i++) { const a2 = ring[i], b2 = ring[(i + 1) % ring.length]; if (flip) face.push(centre, b2, a2); else face.push(centre, a2, b2); }
+      for (let i = 0; i < ring.length; i++) { const a2 = ring[i], b2 = ring[(i + 1) % ring.length]; const F = n > 0 ? face : rear; if (flip) F.push(centre, b2, a2); else F.push(centre, a2, b2); }
       // The back of this skin, in the cavity.
       const inner = sk * (half - SKIN), cb = vert(mu, my, inner, -n, CAVITY, 0, 0, true), back = pts.map(([u, y]) => vert(u, y, inner, -n, CAVITY, 0, 0, true));
       for (let i = 0; i < back.length; i++) { const a2 = back[i], b2 = back[(i + 1) % back.length]; if (flip) edge.push(cb, a2, b2); else edge.push(cb, b2, a2); }
@@ -628,11 +695,13 @@ export function panelGeometry(p: Panel, look: PanelLook | null, light: PanelLigh
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  g.setIndex([...face, ...edge, ...stud]);
-  // An undamaged panel is a single draw call; damage adds edges and, for plasterboard, the studs.
+  g.setIndex([...face, ...rear, ...edge, ...stud]);
+  // An undamaged panel is two draw calls (a face for each room, so each can take its room's look); damage adds edges
+  // and, for plasterboard, the studs.
   g.addGroup(0, face.length, 0);
-  if (edge.length) g.addGroup(face.length, edge.length, 1);
-  if (stud.length) g.addGroup(face.length + edge.length, stud.length, 2);
+  if (rear.length) g.addGroup(face.length, rear.length, 3);
+  if (edge.length) g.addGroup(face.length + rear.length, edge.length, 1);
+  if (stud.length) g.addGroup(face.length + rear.length + edge.length, stud.length, 2);
   g.computeBoundingSphere();
   return { geometry: g, studs };
   }
@@ -642,7 +711,7 @@ export class PanelView {
   readonly mesh: THREE.Mesh;
   private version = -1;
   constructor(readonly panel: Panel, private bake: Bake, private mats: PanelMaterials, private look: PanelLook | null = null) {
-    this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), [mats.wall, mats.core, mats.planks]);
+    this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), [mats.wall, mats.core, mats.planks, mats.wall]);
     this.mesh.matrixAutoUpdate = false;
     this.mesh.frustumCulled = true;
   }
@@ -666,7 +735,7 @@ export class PanelView {
     this.mesh.geometry = geo.geometry;
     const look = this.look, planks = look?.planks ?? this.mats.planks, plate = p.reinforced, wood = p.kind !== 'wall';
     const steel = look?.plate ?? this.mats.plate;
-    this.mesh.material = plate ? [steel, steel, steel] : [wood ? planks : look ? look.wall : this.mats.wall, wood ? planks : look ? look.wall : this.mats.core, planks];
+    this.mesh.material = plate ? [steel, steel, steel, steel] : [wood ? planks : look ? look.wall : this.mats.wall, wood ? planks : look ? look.wall : this.mats.core, planks, wood ? planks : look ? look.wallBack ?? look.wall : this.mats.wall];
     return true;
   }
   dispose() { this.mesh.geometry.dispose(); }
