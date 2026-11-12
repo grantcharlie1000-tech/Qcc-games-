@@ -380,7 +380,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   // Each static mesh of the level, the art rooms and the panels is put on the camera layers of the rooms its bounds
   // touch (layer i + 1 for REGIONS[i]); anything untagged stays on layer 0 and is always drawn (fighters, effects, the
   // sky, meshes made later). Each frame the camera's layers are the rooms reached from its own through portals
-  // (doorways, windows, holed walls) that lie in the view, up to four rooms deep. `?cull=off` draws everything.
+  // (doorways, windows, holes in walls) that lie in the view, up to four rooms deep. `?cull=off` draws everything.
   const cullOff = typeof location !== 'undefined' && /[?&]cull=off\b/.test(location.search);
   const tagBox = new THREE.Box3(), EXTERIOR = 1 << 30;
   /** Every tagged mesh: its rooms (layer mask) and world bounds. */
@@ -456,8 +456,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       for (const p of portals) {
         if (p.a !== r && p.b !== r) continue;
         const o = p.a === r ? p.b : p.a;
-        // A wall panel is a portal only once it has a hole; doors and windows always are.
-        if (p.panel.kind === 'wall' && p.panel.intact === p.panel.cells.length) continue;
+        // An intact wall panel (or a reinforced one) blocks sight; a hole in it is an opening from the frame it appears.
+        // Doors and windows are always openings: a barricade's boards have gaps the far side shows through.
+        if ((p.panel.kind === 'wall' || p.panel.reinforced) && p.panel.intact === p.panel.cells.length) continue;
         project(p.box, pr);
         const x0 = Math.max(pr[0], rects[r * 4]), y0 = Math.max(pr[1], rects[r * 4 + 1]), x1 = Math.min(pr[2], rects[r * 4 + 2]), y1 = Math.min(pr[3], rects[r * 4 + 3]);
         if (x0 >= x1 || y0 >= y1) continue;

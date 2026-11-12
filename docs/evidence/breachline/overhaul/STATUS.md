@@ -29,6 +29,13 @@ The fixes:
 
 **Result, as shipped:** Performance at 1280 x 720 is now 150 to 160 ms in the corridor (it was 201 to 229) and 134 to 138 ms in the Lab (it was 166 to 180).
 
+**Culling: what counts as an opening.**
+- An intact wall panel (or a reinforced one) blocks sight; a hole in it opens the room behind from the same frame.
+- Doors and windows always count as openings, because a barricade's boards have gaps: with barricades treated as solid, the slits between the boards showed bare background (checked on the Garage's barricaded door and the Lab's windows; up to 1.3% of pixels wrong).
+- A browser test stands in the corridor facing the Lab's partition, with no doorway in view. It checks the Lab is not drawn, shoots the wall, and checks the Lab is drawn as soon as there is a hole. It fails if holes are ignored.
+
+**Online test flake.** `breachline-online.spec.ts` failed once in a full run of the three browser specs. The output I kept shows only the test's name without its tick; I did not keep the full error. It passed alone straight after, and in three later full runs. If it fails again, the full output goes here.
+
 **What a cheap-path pixel still does.** Two texture reads (the base map, already 512 px on the light tier, and the lightmap), vertex colour, a little maths for the painted wall details, and fog. Switching each off on Performance (software, two runs each):
 - base map off saves 5 to 60 ms;
 - lightmap off saves 0 to 45 ms;

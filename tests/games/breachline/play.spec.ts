@@ -205,3 +205,26 @@ test('room culling draws less in a room than with it off',async({page})=>{
   const off=await calls('&cull=off'),on=await calls('');
   expect(on).toBeLessThan(off*0.8);
 });
+
+test('room culling: an intact wall hides the room behind it, and a hole shows it in the same frame',async({page})=>{
+  test.setTimeout(300_000);
+  const errors=watch(page);
+  await page.goto('/?festive=off&artdbg=world#/game/breachline');
+  await page.waitForFunction(()=>window.__breachlineTest!==undefined,undefined,{timeout:60000});
+  await action(page,{seed:7});
+  await page.waitForFunction(()=>window.__breachlineTest!.stats().ready,undefined,{timeout:240_000,polling:500});
+  // Whether the camera draws the Lab (REGIONS[0], layer 1).
+  const drawn=(x:number,z:number,yaw:number,fire=0)=>page.evaluate(([x,z,yaw,fire])=>{
+    const h=window.__breachlineTest!;h.place(x,z,yaw,0);
+    if(fire)h.hold({fire:true,yaw,pitch:0},fire);else h.draw();
+    const mask=(window as unknown as {__blScenes:{camera():{layers:{mask:number}}}}).__blScenes.camera().layers.mask;
+    return {lab:!!(mask&(1<<1)),holes:h.state().holes};
+  },[x,z,yaw,fire] as const);
+  // In the corridor facing the Lab's partition, no doorway in view: the Lab is not drawn until the wall is shot through.
+  const before=await drawn(-4.5,-0.6,0);
+  expect(before.lab).toBe(false);
+  const after=await drawn(-4.5,-0.6,0,1.5);
+  expect(after.holes).toBeGreaterThan(0);
+  expect(after.lab).toBe(true);
+  expect(errors).toEqual([]);
+});
