@@ -4,6 +4,10 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: High's triangles back down.** Now that the build compacts each simplified level, High loads it again
+for props beyond 5 m (full model nearer): Lab 204k, Lobby 219k (was 463k), Garage 218k triangles. Built-site
+download High 39.09 MB (ceiling 40), Low 12.05 MB.
+
 **2026-11-12: second rounds, Office and Lobby** (`round2/office.png`, `round2/lobby.png`, each room's own bookmarks,
 before and after). A shared `roomLife()` (render/labdress.ts) adds what reads from the doorway, on each room's solid
 walls (found from the lightmap charts, so doors, windows and partitions are left alone):

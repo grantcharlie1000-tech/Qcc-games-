@@ -106,9 +106,9 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   const fittings: ArtWorld['fittings'] = [];
   const models = new Map<string, ReturnType<ArtLoader['model']>>();
   const lods = new Map<string, ReturnType<ArtLoader['model']>>();
-  // High draws each prop's full model at every range (its simplified level keeps the full vertex data, so loading
-  // both doubled the download for little drawing saved); Low draws only the simplified one.
-  for (const p of PROPS) if (!models.has(p.model) && !lods.has(p.model)) { if (full) models.set(p.model, L.model(p.model)); else lods.set(p.model, L.model(`${p.model}.lod1`)); }
+  // High draws each prop's full model near and its simplified level (compacted at build, so small) beyond a few
+  // metres; Low draws only the simplified one.
+  for (const p of PROPS) if (!lods.has(p.model)) { if (full) models.set(p.model, L.model(p.model)); lods.set(p.model, L.model(`${p.model}.lod1`)); }
 
   const looks = new Map<number, PanelLook>();
   /** Per room: the materials its reflection probe lights, its mean baked light, its probe once captured. */
@@ -288,7 +288,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     const room = roomAt(p.x, p.z);
     if (room < 0 || !loaded[room]) continue;
     const lod = new THREE.LOD();
-    const levels: [THREE.Object3D, number][] = full ? [[(await models.get(p.model)!).scene.clone(true), 0]] : [[(await lods.get(p.model)!).scene.clone(true), 0]];
+    const levels: [THREE.Object3D, number][] = full ? [[(await models.get(p.model)!).scene.clone(true), 0], [(await lods.get(p.model)!).scene.clone(true), 5]] : [[(await lods.get(p.model)!).scene.clone(true), 0]];
     const mats = new Map<string, THREE.Material>();
     for (const [root, distance] of levels) {
       const meshes: THREE.Mesh[] = [];
