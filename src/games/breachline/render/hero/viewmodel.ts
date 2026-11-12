@@ -129,6 +129,28 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   /** Draws every weapon in both squads' arms once, with the flash and casings shown, into a tiny offscreen target:
    * shader programs compile and geometry and textures upload here, behind the loading screen, never at first use in
    * play. Also prefilters the fallback environment. Safe to call more than once; returns false if not ready. */
+  // ---- The cheap look (weak GPUs): each material's Lambert twin, same map, colour and vertex colours ----
+  let cheap = false;
+  const twins = new WeakMap<THREE.Material, THREE.Material>();
+  const twin = (m: THREE.Material) => {
+    if (m.userData.full) return m;
+    let t = twins.get(m);
+    if (!t) {
+      const s = m as THREE.MeshStandardMaterial;
+      t = new THREE.MeshLambertMaterial({ map: s.map ?? null, color: s.color ?? 0xffffff, vertexColors: s.vertexColors, transparent: s.transparent, opacity: s.opacity, side: s.side, depthTest: s.depthTest, depthWrite: s.depthWrite });
+      t.userData.full = m; twins.set(m, t);
+    }
+    return t;
+  };
+  function swapCheap(root: THREE.Object3D, on: boolean) {
+    root.traverse(o => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const pick = (m: THREE.Material) => (on ? twin(m) : (m.userData.full as THREE.Material | undefined) ?? m);
+      if (!Array.isArray(mesh.material)) mesh.material = pick(mesh.material);
+      else if (mesh.material.some(m => pick(m) !== m)) mesh.material = mesh.material.map(pick);
+    });
+  }
   let warmed = false;
   function warm(): boolean {
     if (!ready || disposed) return false;
@@ -143,6 +165,11 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       for (const id of Object.keys(WEAPONS) as WeaponId[]) {
         r.setWeapon(id); r.solve();
         renderer.setRenderTarget(target); renderer.render(scene, camera);
+        // The cheap look too, so switching to it in play compiles nothing.
+        swapCheap(scene, true); renderer.render(scene, camera);
+        // ...and drawn straight to the screen (the lowest setting has no post pass); the next frame paints over it.
+        renderer.setRenderTarget(null); renderer.render(scene, camera); renderer.setRenderTarget(target);
+        swapCheap(scene, cheap);
       }
       holder.remove(r.root);
     }
@@ -279,6 +306,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   return {
     get visible() { return holder.visible; },
     warm,
+    setCheap(on: boolean) { if (on !== cheap) { cheap = on; swapCheap(scene, on); } },
     update(view: HeroView, clock: number) {
       const t0 = perf.now();
       updateInner(view, clock);
@@ -293,6 +321,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
     },
     render() {
       if (!holder.visible) return 0;
+      if (cheap) swapCheap(scene, true); // a weapon or rig made since then
       renderer.clearDepth();
       const c0 = renderer.info.render.calls, t0 = renderer.info.render.triangles;
       renderer.render(scene, camera);

@@ -224,6 +224,11 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       const both = Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(artScene, camera)]);
       renderer.setRenderTarget(prev);
       await both;
+      // The bottom step (and so software WebGL) draws straight to the screen with no post pass, on the cheap path:
+      // compile that output too.
+      shade(true); renderer.setRenderTarget(null);
+      const direct = Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(artScene, camera)]);
+      await direct;
       shade(was);
     } finally {
       gadgets.forEach((o, i) => { o.visible = kept[i][0]; o.position.copy(kept[i][1]); o.updateMatrixWorld(true); });
@@ -360,10 +365,11 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   /** Lowers the resolution when frames run long and raises it again when there is headroom. */
   // Auto: a ladder from cheap to rich. It starts near the cheap end, steps down at once when frames run long (over
   // 20 ms, averaged over half a second), and climbs one step only after 3 s at full rate and never within 10 s of a
-  // step down. A software rasteriser stays on the bottom step. Post stays on throughout (the low tier, no bloom, at
-  // the bottom), so a step never changes the materials' output or compiles a shader; the scale only moves a viewport.
+  // step down. A software rasteriser stays on the bottom step. The bottom step has no post pass (it draws straight to
+  // the screen, cheap shading, scale by canvas size); the others keep post on, so their scale only moves a viewport.
+  // Every output is compiled at warm-up, so no step compiles a shader.
   const LADDER: { scale: number; post: PostTier; density: number }[] = [
-    { scale: 0.5, post: 'low', density: 0.35 }, { scale: 0.62, post: 'low', density: 0.6 }, { scale: 0.72, post: 'medium', density: 0.8 },
+    { scale: 0.5, post: 'off', density: 0.35 }, { scale: 0.62, post: 'low', density: 0.6 }, { scale: 0.72, post: 'medium', density: 0.8 },
     { scale: 0.85, post: 'medium', density: 1 }, { scale: 1, post: 'medium', density: 1 },
   ];
   let step = 1, downAt = -Infinity, longMs = 0, fullFor = 0;
@@ -472,7 +478,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   }
   // ---- Performance experiments (debug only, `?artdbg=world`: window.__blExperiment): each switch changes how the next
   // frames are drawn, to find where the GPU time goes. Off by default; nothing here runs in a normal game.
-  const experiment: { on?: boolean; flat?: boolean; overdraw?: boolean; prepass?: boolean; noPost?: boolean; noFighters?: boolean; noViewmodel?: boolean; noTransparent?: boolean; noSmall?: boolean; lowLod?: boolean; rooms?: { x0: number; z0: number; x1: number; z1: number }[] } = {};
+  const experiment: { on?: boolean; flat?: boolean; overdraw?: boolean; prepass?: boolean; noPost?: boolean; noFighters?: boolean; noViewmodel?: boolean; noTransparent?: boolean; noSmall?: boolean; noMap?: boolean; noLightMap?: boolean; noFog?: boolean; lowLod?: boolean; rooms?: { x0: number; z0: number; x1: number; z1: number }[] } = {};
   const experimentMats = {
     flat: new THREE.MeshBasicMaterial({ color: 0x808080 }),
     count: new THREE.MeshBasicMaterial({ color: new THREE.Color(1 / 255, 1 / 255, 1 / 255), blending: THREE.AdditiveBlending, toneMapped: false }),
@@ -496,9 +502,16 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       }
       if (hide) { o.visible = false; hidden.push(o); }
     });
+    const matKeep: [THREE.MeshBasicMaterial, THREE.Texture | null, THREE.Texture | null, boolean][] = [];
+    if (X.noMap || X.noLightMap || X.noFog) {
+      for (const r of roots) r.traverse(o => { const ms = (o as THREE.Mesh).material; if (!ms) return; for (const m of Array.isArray(ms) ? ms : [ms]) {
+        const b = m as THREE.MeshBasicMaterial; if (!m.userData.full || matKeep.some(k => k[0] === b)) continue;
+        matKeep.push([b, b.map, b.lightMap, b.fog]); if (X.noMap) b.map = null; if (X.noLightMap) b.lightMap = null; if (X.noFog) b.fog = false; b.needsUpdate = true; } });
+    }
     if (X.flat) artScene.overrideMaterial = scene.overrideMaterial = experimentMats.flat;
     if (X.overdraw) { artScene.overrideMaterial = scene.overrideMaterial = experimentMats.count; renderer.toneMapping = THREE.NoToneMapping; renderer.outputColorSpace = THREE.LinearSRGBColorSpace; }
     return () => {
+      for (const [b, m, l, f] of matKeep) { b.map = m; b.lightMap = l; b.fog = f; b.needsUpdate = true; }
       for (const o of hidden) o.visible = true;
       for (const [l, a] of lods) { l.autoUpdate = a; l.levels.forEach((v, i) => { v.object.visible = i === 0; }); }
       artScene.overrideMaterial = scene.overrideMaterial = null;
@@ -508,7 +521,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blExperiment: experiment });
   if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blShade: (on: boolean) => setCheap(on) });
   function shade(on: boolean) { setCheapShading(artScene, on); setCheapShading(scene, on); }
-  function setCheap(on: boolean) { if (on !== cheap) { cheap = on; shade(on); } }
+  function setCheap(on: boolean) { if (on !== cheap) { cheap = on; shade(on); viewmodel.setCheap?.(on); } }
   function setStep(n: number) {
     step = Math.max(0, Math.min(LADDER.length - 1, n));
     const l = LADDER[step];

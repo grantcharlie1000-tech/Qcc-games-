@@ -42,6 +42,8 @@ export interface Viewmodel {
   handle(events: readonly SimEvent[], m: Match, self: number): void;
   /** Draws the weapon over the world (call after the world, with the colour buffer intact). Returns draw calls. */
   render(): number;
+  /** The cheap look for weak GPUs: plain lit colour and texture, no normal, roughness or reflection maps. Optional. */
+  setCheap?(on: boolean): void;
   readonly visible: boolean;
   /** Compiles every shader and uploads every mesh and texture the weapon in hand can need (all weapons, both squads,
    * flash, casings) so nothing compiles during play. Runs by itself once the assets have loaded; the scene may also

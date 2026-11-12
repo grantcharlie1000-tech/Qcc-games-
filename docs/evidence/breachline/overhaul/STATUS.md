@@ -29,6 +29,39 @@ The fixes:
 
 **Result, as shipped:** Performance at 1280 x 720 is now 150 to 160 ms in the corridor (it was 201 to 229) and 134 to 138 ms in the Lab (it was 166 to 180).
 
+**What a cheap-path pixel still does.** Two texture reads (the base map, already 512 px on the light tier, and the lightmap), vertex colour, a little maths for the painted wall details, and fog. Switching each off on Performance (software, two runs each):
+- base map off saves 5 to 60 ms;
+- lightmap off saves 0 to 45 ms;
+- fog off saves nothing measurable;
+- flat colour (everything off) saves 70 to 110 ms.
+
+Nothing is left to remove without losing the look itself.
+
+**Calibrating the ruler** (`scripts/breachline-assets/calibrate.mjs`). Four plain scenes in the same software renderer (SwiftShader on this container's 4 cores, 1280 x 720), medians of five runs of three forced frames:
+
+| Scene | Median | Per unit |
+|---|---|---|
+| Clear only | 0.2 ms | |
+| One full-screen textured quad (mipmapped 1024 texture) | 9.7 ms | about 10 ns per textured pixel |
+| 250 small draws | 7.2 ms | about 29 µs per draw |
+| 250k triangles in one small mesh | 32.7 ms | about 130 ns per triangle |
+
+*What it means.*
+- Software makes pixels and triangles roughly a hundred times dearer than any real GPU, but a draw only a few times dearer (a draw is mostly CPU work in either case).
+- So our software figures overstate fill and triangles and understate draws. On real hardware, draws and script time matter relatively more than these tables suggest.
+- A Performance frame here (about 150 ms in the corridor) splits roughly into 170k triangles (about 22 ms), 222 draws (about 6 ms, plus three.js's own per-draw work) and fill (the rest).
+
+**The fixed cost on the low steps.**
+- **The weapon in hand** has a cheap look: Lambert twins of its materials (same map, colour and vertex colours; no normal, roughness or reflection maps). It is used whenever the scene is on the cheap path, and compiled at warm-up.
+- **Auto's bottom step**, and so software WebGL, has no post pass. It draws straight to the screen with three's ACES curve (the same curve the post chain uses), so the screen output is compiled at warm-up too.
+- Without the colour grade the bottom step is a little more saturated (`perf/bottom-step.png`: left is a step with post, right is the bottom step).
+
+| Setting | Corridor | Lab | Weapon in hand |
+|---|---|---|---|
+| Auto bottom step, before | 181 to 297 ms | 160 to 216 ms | 55 to 68 ms |
+| Auto bottom step, now | 120 to 134 ms | about 91 ms | 12 to 32 ms |
+| Performance, now | 150 to 156 ms | 113 to 123 ms | |
+
 **Art tier chosen at start.** The full art tier (1024 px textures, 4x anisotropy, about 39 MB) is chosen only when the graphics card is clearly strong: a discrete NVIDIA, AMD or Intel Arc card, or Apple M-series. It is never chosen on ChromeOS, a phone or tablet, or software WebGL. Everything else gets the light tier (about 12 MB). The readout shows `art full` or `art light`.
 
 **Light tier: surfaces merged by texture set.** On the light art tier, room surfaces with no shader feature of their own (no painted band or worn path) that share a texture set are one mesh per set per room. Performance draws: corridor 235 to 222, Office 172 to 166, Lab 141 to 137.
