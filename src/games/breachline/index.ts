@@ -215,7 +215,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     hud.perf([
       `${Math.round(n * 1000 / Math.max(1, now - perfAt))} fps  ${avg.toFixed(1)} ms  worst ${worst.toFixed(1)} ms`,
       `script ${(perfScript / Math.max(1, n)).toFixed(1)} ms  ${st.calls} draws  ${Math.round(st.triangles / 1000)}k tris`,
-      `${st.size ?? ''}  ${QUALITIES[prefs.quality].name}  post ${st.post ?? 'off'}`,
+      `${st.size ?? ''}  ${QUALITIES[prefs.quality].name}  post ${st.post ?? 'off'}${st.auto ? `  ${st.auto}` : ''}`,
       (st.gpu ?? '').length > 56 ? `${(st.gpu ?? '').slice(0, 55)}...` : st.gpu ?? '',
     ], !!st.software);
     perfAt = now; perfFrames = []; perfScript = 0;

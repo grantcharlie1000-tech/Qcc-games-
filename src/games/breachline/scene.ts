@@ -65,7 +65,7 @@ export interface BreachScene {
   project(x: number, y: number, z: number): { x: number; y: number; front: boolean };
   /** Where the camera is and which way it faces, for sound. */
   readonly ear: { x: number; y: number; z: number; yaw: number };
-  readonly stats: { calls: number; triangles: number; scale: number; level: number; gpu?: string; software?: boolean; size?: string; post?: string; art?: string; cpu?: number; programs?: number; textures?: number; geometries?: number; ready?: boolean };
+  readonly stats: { calls: number; triangles: number; scale: number; level: number; gpu?: string; software?: boolean; size?: string; auto?: string; post?: string; art?: string; cpu?: number; programs?: number; textures?: number; geometries?: number; ready?: boolean };
   dispose(): void;
 }
 
@@ -334,7 +334,33 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   }
   let resizedAt = -Infinity;
   /** Lowers the resolution when frames run long and raises it again when there is headroom. */
+  // Auto: a ladder from cheap to rich. It starts near the cheap end, steps down at once when frames run long (over
+  // 20 ms, averaged over half a second), and climbs one step only after 3 s at full rate and never within 10 s of a
+  // step down. A software rasteriser stays on the bottom step. Post stays on throughout (the low tier, no bloom, at
+  // the bottom), so a step never changes the materials' output or compiles a shader; the scale only moves a viewport.
+  const LADDER: { scale: number; post: PostTier; density: number }[] = [
+    { scale: 0.5, post: 'low', density: 0.35 }, { scale: 0.62, post: 'low', density: 0.6 }, { scale: 0.72, post: 'medium', density: 0.8 },
+    { scale: 0.85, post: 'medium', density: 1 }, { scale: 1, post: 'medium', density: 1 },
+  ];
+  let step = 1, downAt = -Infinity, longMs = 0, fullFor = 0;
+  function setStep(n: number) {
+    step = Math.max(0, Math.min(LADDER.length - 1, n));
+    const l = LADDER[step];
+    scale = l.scale; fx.density = l.density;
+    post.setTier(/[?&]post=off\b/.test(location.search) ? 'off' : l.post);
+    applySize();
+    stats.auto = stats.software ? 'auto: lowest (software)' : `auto ${step + 1}/${LADDER.length}`;
+  }
+  function autoLadder(dt: number) {
+    const ms = dt * 1000;
+    longMs += (ms - longMs) * Math.min(1, dt / 0.5);
+    if (stats.software) { if (step) setStep(0); return; }
+    if (longMs > 20 && step > 0) { setStep(step - 1); downAt = time; longMs = 16; fullFor = 0; return; }
+    fullFor = longMs < 17.5 ? fullFor + dt : 0;
+    if (fullFor > 3 && time - downAt > 10 && step < LADDER.length - 1) { setStep(step + 1); fullFor = 0; }
+  }
   function adapt(dt: number) {
+    if (quality === 'auto') { autoLadder(dt); return; }
     const q = QUALITIES[quality];
     if (q.min === q.max) return;
     frameMs += (dt * 1000 - frameMs) * 0.08;
@@ -807,7 +833,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     },
     setQuality(q) {
       quality = q; const d = QUALITIES[q];
-      scale = Math.max(d.min, Math.min(d.max, q === 'auto' ? scale : d.max)); slow = fast = 0; fx.density = d.density;
+      stats.auto = undefined;
+      if (q === 'auto') { setStep(stats.software ? 0 : 1); return; }
+      scale = Math.max(d.min, Math.min(d.max, d.max)); slow = fast = 0; fx.density = d.density;
       post.setTier(/[?&]post=off\b/.test(location.search) ? 'off' : postTier(q));
       applySize();
     },

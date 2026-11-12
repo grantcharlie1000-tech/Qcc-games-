@@ -163,7 +163,7 @@ test('nothing reads the game canvas back during a live match',async({page})=>{
   expect(errors).toEqual([]);
 });
 
-test('?perf=1 shows the performance readout in a match, and F3 hides it',async({page})=>{
+test('?perf=1 shows the performance readout in a match, Auto drops to its lowest step on software WebGL, and F3 hides it',async({page})=>{
   const errors=watch(page);
   await page.goto('/?festive=off&perf=1#/game/breachline');
   await page.waitForFunction(()=>window.__breachlineTest!==undefined,undefined,{timeout:60000});
@@ -172,6 +172,8 @@ test('?perf=1 shows the performance readout in a match, and F3 hides it',async({
   const readout=page.locator('.bl-perf');
   await expect(readout).toContainText(/\d+ fps/,{timeout:15_000});
   await expect(readout).toContainText('draws');
+  // On a software rasteriser (as in CI) Auto sits on its lowest step and says so.
+  if((await readout.innerText()).includes('software'))await expect(readout).toContainText('auto: lowest (software)');
   await page.keyboard.press('F3');
   await expect(readout).toBeHidden();
   expect(errors).toEqual([]);

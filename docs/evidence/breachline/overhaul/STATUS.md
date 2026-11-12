@@ -13,6 +13,15 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ### Performance
 
+**Job 3: Auto protects the frame rate.** Auto is now a ladder of five steps, set by render scale, bloom and particle density.
+- It starts on step 2.
+- It steps down at once when frames average over 20 ms across half a second.
+- It climbs one step only after 3 s at full rate, and never within 10 s of a step down.
+- On a software rasteriser it sits on step 1 and the readout says "auto: lowest (software)".
+- Post stays on throughout, so a step never compiles a shader or reallocates anything; it only moves a viewport.
+
+In the profile, Auto on software WebGL now draws 88 frames in 15 s, where it drew 49 to 56 before, and the average frame went from about 330 ms to 206 ms (`perf/profile-auto-fix3.txt`). Fighters' detail is not on the ladder (that code is not mine).
+
 **Job 2: the readout.** Add `?perf=1` to the address, or press F3 in a match. A small corner panel then shows:
 - fps, with the average and worst frame time over the last second;
 - script time per frame;
@@ -625,7 +634,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** performance lead. Readback fixed, resolution thrash fixed, readout in. Next: Auto that protects the frame rate, then particles.
+**Where I am (keep current):** performance lead. Readback, resolution thrash, readout and Auto done; particles next.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 
