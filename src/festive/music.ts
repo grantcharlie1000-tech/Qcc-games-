@@ -4,13 +4,14 @@ import {christmas} from './festive';
 /** Watch pages are quiet before the frame loads, so video never competes with the app tune. */
 export const christmasMusicAllowed=(hash:string,studying:boolean)=>!studying&&!/^#\/study(?:[/?]|$)/.test(hash)&&!(hash.startsWith('#/movies/')&&/\/play(?:[?#]|$)/.test(hash));
 
-export function mountChristmasMusic(options:{sound:()=>boolean;studying:()=>boolean}){
+// `quiet`: a game that wants silence to focus (Breachline) holds the music while it is open.
+export function mountChristmasMusic(options:{sound:()=>boolean;studying:()=>boolean;quiet?:()=>boolean}){
  const player=new LoopMusic(`${import.meta.env.BASE_URL}audio/christmas/snowfall-on-the-square.mp3`,.12);
  const abort=new AbortController(),{signal}=abort;
  let activated=false,away=false,focused=document.hasFocus(),disposed=false;
  function sync(){
   if(disposed)return;
-  const allowed=activated&&!away&&focused&&!document.hidden&&christmas()&&christmasMusicAllowed(location.hash,options.studying());
+  const allowed=activated&&!away&&focused&&!document.hidden&&christmas()&&christmasMusicAllowed(location.hash,options.studying())&&!options.quiet?.();
   player.sync(allowed,options.sound());
  }
  function gesture(event:Event){if(!event.isTrusted)return;activated=true;focused=true;sync();player.unlock();}

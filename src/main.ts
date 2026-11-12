@@ -175,7 +175,7 @@ function leave(saveProgress=true){
   gameChrome?.dispose();gameChrome=undefined;
   gameMenu?.close();gameMenu=undefined;
   stopFitting?.();stopFitting=undefined;
-  if(saveProgress){save();void accounts.flush(false,false).catch(()=>{});if(!document.hidden)void leaderboards.sync.flush().catch(()=>{});}instance?.dispose();instance=undefined;activeId=undefined;
+  if(saveProgress){save();void accounts.flush(false,false).catch(()=>{});if(!document.hidden)void leaderboards.sync.flush().catch(()=>{});}instance?.dispose();instance=undefined;activeId=undefined;christmasMusic?.sync();
   clearInterval(autosave);paused=false;pausedForDialog=false;
   document.body.classList.remove('in-game');
   syncViewportLock();
@@ -376,7 +376,7 @@ async function route(){
   const token=++generation;leave();
   // A restored scroll position is part of the navigation, so the tab bar re-bases on it rather than counting it as a scroll.
   if(!id){library();if(wasInMovies||wasInApp)requestAnimationFrame(()=>{window.scrollTo(movieScroll.x,movieScroll.y);tabbar.reset();document.querySelector<HTMLElement>(wasInApp?'.app-tabbar [data-action="apps"]':'.app-tabbar .ui-tab[href="#/collection"]')?.focus({preventScroll:true});});if(wasInGame)requestAnimationFrame(()=>{if(!activeId){window.scrollTo(libraryScroll.x,libraryScroll.y);tabbar.reset();}});return;}
-  const info=games.find(g=>g.id===id)!;activeId=id;document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
+  const info=games.find(g=>g.id===id)!;activeId=id;christmasMusic?.sync();document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
   content.innerHTML=`<section class="game-view" data-game-id="${id}" data-reference-game="${referenceGames.has(id)}" aria-label="${info.title}">
     <div class="game-surface" aria-hidden="true"></div>
     <dialog id="game-options" class="ui-glass-sheet game-chrome-menu" aria-labelledby="game-title">
@@ -646,7 +646,7 @@ async function logoutAccount(switching=false){
 }
 document.querySelector('#logout-account')!.addEventListener('click',()=>void logoutAccount());
 document.querySelector('#switch-account')!.addEventListener('click',()=>void logoutAccount(true));
-christmasMusic=mountChristmasMusic({sound:()=>preferences.sound,studying:()=>study.isOpen||document.body.classList.contains('study-active')});
+christmasMusic=mountChristmasMusic({sound:()=>preferences.sound,studying:()=>study.isOpen||document.body.classList.contains('study-active'),quiet:()=>activeId==='breachline'});
 if(import.meta.hot)import.meta.hot.dispose(()=>christmasMusic?.dispose());
 accounts.start(false);updateAccountMenu();
 if(accounts.session()||store.read('accounts:guest',false))beginStudy();
