@@ -67,16 +67,23 @@ export interface BreachScene {
   project(x: number, y: number, z: number): { x: number; y: number; front: boolean };
   /** Where the camera is and which way it faces, for sound. */
   readonly ear: { x: number; y: number; z: number; yaw: number };
-  readonly stats: { calls: number; triangles: number; scale: number; level: number; gpu?: string; software?: boolean; size?: string; auto?: string; post?: string; art?: string; cpu?: number; programs?: number; textures?: number; geometries?: number; ready?: boolean };
+  readonly stats: { calls: number; triangles: number; scale: number; level: number; artTier?: string; gpu?: string; software?: boolean; size?: string; auto?: string; post?: string; art?: string; cpu?: number; programs?: number; textures?: number; geometries?: number; ready?: boolean };
   dispose(): void;
 }
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 /** True when WebGL is drawn by a CPU rasteriser (SwiftShader, llvmpipe), as on a machine with no usable GPU. */
-function softwareGL(renderer: THREE.WebGLRenderer): boolean {
+function gpuName(renderer: THREE.WebGLRenderer): string {
   const gl = renderer.getContext(), info = gl.getExtension('WEBGL_debug_renderer_info');
-  const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '');
-  return /swiftshader|llvmpipe|softpipe|software/i.test(name);
+  return String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '');
+}
+function softwareGL(renderer: THREE.WebGLRenderer): boolean { return /swiftshader|llvmpipe|softpipe|software/i.test(gpuName(renderer)); }
+/** The full art tier only for a clearly strong graphics card (a discrete NVIDIA, AMD or Intel Arc card, or Apple
+ * M-series) and not on ChromeOS, a phone or tablet, or software; everything else gets the light tier at start. */
+function strongGPU(renderer: THREE.WebGLRenderer): boolean {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  if (/CrOS|Android|iPhone|iPad|Mobile/i.test(ua) || softwareGL(renderer)) return false;
+  return /nvidia|geforce|rtx|gtx|quadro|radeon\s*(\(tm\)\s*)?(rx|pro)|apple m\d|intel.*arc/i.test(gpuName(renderer));
 }
 
 export function createScene(canvas: HTMLCanvasElement, initial: QualityId): BreachScene {
@@ -126,11 +133,13 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   }
   // Photo-sourced rooms stream in after the first frame; until then, and if anything fails, the procedural look stays.
   const artOff = typeof location !== 'undefined' && /[?&]art=off\b/.test(location.search);
+  let artLabel = 'off';
   if (!artOff) {
     // A software rasteriser (no usable GPU) gets the light art tier, the same as the Low setting: the full one costs it
     // seconds of CPU while it streams in. `?arttier=` forces either, for evidence renders.
     const forced = /[?&]arttier=(low|high)\b/.exec(location.search)?.[1];
-    const artTier = forced ?? (initial === 'low' || softwareGL(renderer) ? 'low' : 'high');
+    const artTier = forced ?? (initial !== 'low' && strongGPU(renderer) ? 'high' : 'low');
+    artLabel = artTier === 'high' ? 'full' : 'light';
     loadArtWorld(renderer, artTier as 'low' | 'high', textures, () => {}).then(a => {
       if (disposed) { a.dispose(); return; }
       // Compile the art's shaders before it joins the scene, so the frame that first draws it does not freeze.
@@ -327,7 +336,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const drawSize = new THREE.Vector2();
 
   const ear = { x: 0, y: 1.6, z: 0, yaw: 0 };
-  const stats: BreachScene['stats'] = { calls: 0, triangles: 0, scale, level: level.triangles };
+  const stats: BreachScene['stats'] = { calls: 0, triangles: 0, scale, level: level.triangles, artTier: artLabel };
   // The graphics card's name, for the performance readout; a CPU rasteriser is flagged.
   { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info');
     stats.gpu = String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '');

@@ -28,7 +28,7 @@ export const ROOM_LOOK: Record<string, { wall: RGB; band?: { height: number; tin
   lab: { wall: [1.18, 1.23, 1.28], band: { height: 1.5, tint: [1.3, 1.34, 1.38] }, rail: [1.2, 1.22, 1.25], tiles: [0.15, 0.15], light: [0.82, 0.92, 1.0], pool: 0.5, corners: 0.36, wear: [0.2, 0.2, 0.19], wearOpacity: 0.22, scuffs: false, tape: true },
 };
 
-let radial: THREE.CanvasTexture | null = null, ramp: THREE.CanvasTexture | null = null;
+let radial: HTMLCanvasElement | null = null, ramp: HTMLCanvasElement | null = null;
 /** A soft round spot, opaque at the centre and clear at the edge. */
 function radialTex() {
   if (radial) return radial;
@@ -36,7 +36,7 @@ function radialTex() {
   const g = c.getContext('2d')!, gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
   gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.55, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-  return (radial = new THREE.CanvasTexture(c));
+  return (radial = c);
 }
 /** A ramp from opaque (v = 0) to clear (v = 1). */
 function rampTex() {
@@ -45,10 +45,10 @@ function rampTex() {
   const g = c.getContext('2d')!, gr = g.createLinearGradient(0, 0, 0, 64);
   gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = gr; g.fillRect(0, 0, 4, 64);
-  return (ramp = new THREE.CanvasTexture(c));
+  return (ramp = c);
 }
 
-let wearTex: THREE.CanvasTexture | null = null, stripeTex: THREE.CanvasTexture | null = null;
+let wearTex: HTMLCanvasElement | null = null, stripeTex: HTMLCanvasElement | null = null;
 /** A worn path: a soft-edged band (across u) mottled along it (v), so the wear is uneven. */
 function wearMap() {
   if (wearTex) return wearTex;
@@ -59,8 +59,7 @@ function wearMap() {
     const e = Math.sin(Math.PI * (x + 0.5) / 64) ** 1.6, n = 0.7 + 0.3 * Math.sin(y * 0.11 + Math.sin(x * 0.2) * 2) * Math.sin(y * 0.037 + 1.3) + (rnd() - 0.5) * 0.25;
     g.fillStyle = `rgba(255,255,255,${Math.max(0, Math.min(1, e * n)).toFixed(3)})`; g.fillRect(x, y, 1, 1);
   }
-  const t = new THREE.CanvasTexture(c); t.wrapT = THREE.RepeatWrapping;
-  return (wearTex = t);
+  return (wearTex = c);
 }
 /** Yellow and black diagonal hazard stripes, repeating along u. */
 function stripeMap() {
@@ -69,8 +68,7 @@ function stripeMap() {
   const g = c.getContext('2d')!;
   g.fillStyle = '#d9b21c'; g.fillRect(0, 0, 64, 16); g.fillStyle = '#16161a';
   for (let k = -1; k < 5; k++) { g.beginPath(); g.moveTo(k * 16, 16); g.lineTo(k * 16 + 8, 16); g.lineTo(k * 16 + 24, 0); g.lineTo(k * 16 + 16, 0); g.fill(); }
-  const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
-  return (stripeTex = t);
+  return (stripeTex = c);
 }
 
 /** Quads collected for one material: corner positions and uvs. */
@@ -174,13 +172,57 @@ export function roomAmbience(region: Region, runs: readonly WallRunLike[]): { me
     if (!look.outdoor) quad(WALL_H - 0.55, WALL_H - 0.002, true);
     quad(0.002, 0.3, false);
   }
-  const radialMap = radialTex(), rampMap = rampTex();
-  const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, map: radialMap, transparent: true, opacity: 0.72, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-  const poolMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(...look.light).multiplyScalar(look.pool ?? 0.3), map: radialMap, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
-  const edgeMat = new THREE.MeshBasicMaterial({ color: 0x000000, map: rampMap, transparent: true, opacity: look.corners, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-  const wearMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(...look.wear), map: wearMap(), transparent: true, opacity: look.wearOpacity, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
-  const tapeMat = new THREE.MeshBasicMaterial({ map: stripeMap(), color: 0x8a8a8a, depthWrite: false, transparent: true, opacity: 0.92, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-  const stainMat = new THREE.MeshBasicMaterial({ color: 0x0b0a08, map: radialMap, transparent: true, opacity: 0.45, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
-  const meshes = [stains.mesh(stainMat), wear.mesh(wearMat), tape.mesh(tapeMat), shadows.mesh(shadowMat), pools.mesh(poolMat), edges.mesh(edgeMat)].filter(m => (m.geometry.index?.count ?? 0) > 0);
-  return { meshes, dispose() { for (const m of meshes) m.geometry.dispose(); shadowMat.dispose(); poolMat.dispose(); edgeMat.dispose(); wearMat.dispose(); tapeMat.dispose(); stainMat.dispose(); } };
+  // One mesh and one material for the room (one draw): the layers in drawing order, each with its atlas cell, colour
+  // and strength. The light pools lighten towards the light's colour (normal blending) instead of adding to it.
+  const pool = look.pool ?? 0.3;
+  const layers: [Quads, number, number, number, number, number][] = [
+    [stains, 0, 0.043, 0.039, 0.031, 0.45], [wear, 2, look.wear[0], look.wear[1], look.wear[2], look.wearOpacity], [tape, 3, 0.54, 0.54, 0.54, 0.92],
+    [shadows, 0, 0, 0, 0, 0.72], [pools, 0, look.light[0] * 1.4, look.light[1] * 1.4, look.light[2] * 1.4, pool], [edges, 1, 0, 0, 0, look.corners],
+  ];
+  const pos: number[] = [], uv: number[] = [], tint: number[] = [], cell: number[] = [], idx: number[] = [];
+  for (const [q, c, r, g, b, a] of layers) {
+    const base = pos.length / 3;
+    pos.push(...q.pos); uv.push(...q.uv);
+    for (let i = 0; i < q.pos.length / 3; i++) { tint.push(r, g, b, a); cell.push(c); }
+    for (const k of q.idx) idx.push(base + k);
+  }
+  if (!idx.length) return { meshes: [], dispose() {} };
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setAttribute('tint', new THREE.Float32BufferAttribute(tint, 4)); geo.setAttribute('cell', new THREE.Float32BufferAttribute(cell, 1));
+  geo.setIndex(idx); geo.computeBoundingSphere();
+  const mesh = new THREE.Mesh(geo, ambienceMaterial()); mesh.matrixAutoUpdate = false; mesh.renderOrder = 2;
+  return { meshes: [mesh], dispose() { geo.dispose(); } };
+}
+
+let atlasTex: THREE.CanvasTexture | null = null, ambienceMat: THREE.ShaderMaterial | null = null;
+/** The four ambience textures in one 2 x 2 atlas: the round spot, the ramp, the worn path and the hazard stripes. */
+function ambienceAtlas() {
+  if (atlasTex) return atlasTex;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  const cells = [radialTex(), rampTex(), wearMap(), stripeMap()];
+  cells.forEach((im, i) => g.drawImage(im, (i % 2) * 64, (i >> 1) * 64, 64, 64));
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (atlasTex = t);
+}
+/** Shared by every room: the atlas cell picked per vertex (spot and ramp clamped, path and stripes repeating), times
+ * the vertex colour and strength. */
+function ambienceMaterial() {
+  if (ambienceMat) return ambienceMat;
+  return (ambienceMat = new THREE.ShaderMaterial({
+    uniforms: { map: { value: ambienceAtlas() } },
+    vertexShader: `attribute vec4 tint; attribute float cell; varying vec2 vUv; varying vec4 vTint; varying float vCell;
+void main(){ vUv = uv; vTint = tint; vCell = cell; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `uniform sampler2D map; varying vec2 vUv; varying vec4 vTint; varying float vCell;
+void main(){
+  vec2 f = vCell < 1.5 ? clamp(vUv, 0.0, 1.0) : fract(vUv);
+  f = clamp(f, 0.02, 0.98) * 0.5 + vec2(mod(vCell, 2.0), 1.0 - floor(vCell / 2.0)) * 0.5;
+  vec4 t = texture2D(map, f);
+  gl_FragColor = vec4(t.rgb * vTint.rgb, t.a * vTint.a);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`,
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  }));
 }

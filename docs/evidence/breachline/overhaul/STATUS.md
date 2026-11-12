@@ -29,6 +29,16 @@ The fixes:
 
 **Result, as shipped:** Performance at 1280 x 720 is now 150 to 160 ms in the corridor (it was 201 to 229) and 134 to 138 ms in the Lab (it was 166 to 180).
 
+**Art tier chosen at start.** The full art tier (1024 px textures, 4x anisotropy, about 39 MB) is chosen only when the graphics card is clearly strong: a discrete NVIDIA, AMD or Intel Arc card, or Apple M-series. It is never chosen on ChromeOS, a phone or tablet, or software WebGL. Everything else gets the light tier (about 12 MB). The readout shows `art full` or `art light`.
+
+**Light tier: surfaces merged by texture set.** On the light art tier, room surfaces with no shader feature of their own (no painted band or worn path) that share a texture set are one mesh per set per room. Performance draws: corridor 235 to 222, Office 172 to 166, Lab 141 to 137.
+
+**Ambience in one draw per room.**
+- Each room's contact shadows, light pools, corner shading, worn paths, stripes and stains are now one mesh with one material: a 2 x 2 texture atlas, with colour and strength per vertex. The pools lighten towards the light colour instead of adding to it.
+- Pictures are unchanged apart from slightly stronger pools.
+- Performance draws: corridor 277 to 235, Office 193 to 172, Lab 155 to 141 (High: Office 209 to 164).
+- The ragdoll's allocations are also gone (bit-identical results, checked on six seeded deaths).
+
 **Garbage while firing.** Measured on Performance with a live 5v5 and the player shooting walls, using Chrome's sampling heap profiler with collected objects counted (`perf/allocations-before.txt`, `perf/allocations-after.txt`). It went from 10.5 MB/s to 5.1 MB/s.
 - **Ray against dressing.** It allocated two arrays per box per round. Now it is an unrolled slab test.
 - **Panel rebuilds.** They allocated a tuple, a point and a light array per vertex, and grew plain arrays. Now they use scratch values and reused typed buffers, so a rebuild allocates only its finished geometry.
