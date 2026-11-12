@@ -662,6 +662,37 @@ characters, signature silhouettes) and reject it if so. Credit each with its `cr
 `public/THIRD_PARTY_NOTICES.txt` and record id, source revision and licence in the manifest. Keep within the
 download and triangle budgets after decimation.
 
+## Weapons rebuild resumes, added 2026-11-12 03:20 UTC (owner: "Weapons need rebuilding to look better")
+
+The asset route is closed for weapons: the generated Patch rifle looked good side-on and failed in the hand (a dark
+block at the hip, a solid sight when aimed; a last attempt with our optic and a lighter finish was still worse than
+our own rifle), and no artist-made modern rifle, shotgun, submachine gun or first-person arms exists in the
+library. The owner has now asked for the weapons to be rebuilt. So the **second build** above resumes, for **all six
+weapons and the arms**, in a fresh session that takes over `models.ts`, `render/hero/`,
+`scripts/breachline-assets/hero/` and `public/game-art/breachline/hero/` from the paused weapons session.
+
+What the last day taught, to be applied from the start:
+1. **Judge in the hand, not side-on.** Every gate, including clay, is shown in the first-person frame (corridor and
+   Lab, hip and aimed, 1280x720 with a 2x crop) as well as in the studio. A weapon that only looks good in profile
+   has failed.
+2. **Slim and mid-dark, never a black mass.** Real proportions (receiver 25-30 mm wide, handguard 40-48 mm), finishes
+   in dark greys and earth tones with albedo no lower than about 0.06, so shapes read under indoor light.
+3. **Detail richest nearest the camera:** the rear of the receiver, the sight and its mount, the charging handle, the
+   top rail and the support hand are most of what the player sees.
+4. **Highlights controlled.** A thin moving gleam on edges; no blown-out white specks under the viewmodel light.
+5. **A sight you look through.** Aimed, the optic gives a clear window with the dot or post on the true crosshair.
+6. **Hands that read as hands:** forearm in from the lower left, fingers wrapped across the handguard (the owner
+   has already had the grip corrected in `render/hero/rig.ts`; keep that pose), anatomical sizes, a glove with
+   seams, knuckles and a strap, a sleeve with a cuff and folds.
+7. **The benchmark stays on screen:** Poly Haven's Service Pistol beside ours under the same light in every round.
+
+Order: the AR-5 with arms through all five gates (design sheet, clay, hand-and-arm clay, baked and textured, in the
+game), with the owner's agreement at the clay gate and again in the game; then the Halden 12 shotgun, Tern C8
+carbine, Wren-9, Corvin DMR and the sidearm, each through the same gates but faster, reusing parts (rails, sights,
+grips, magazines) from a shared kit. Reload animations stay our own and keep the shared beat table in `reloads.ts`.
+The `?weapons=patch` switch and `render/patchhero/` stay as they are until the new sidearm is judged against the
+Service Pistol.
+
 ## Working notes for whoever carries this out
 
 - Fresh checkout: `npm ci`. Type-check with `npx tsc --noEmit`; unit tests `npx vitest run tests/games/breachline`
