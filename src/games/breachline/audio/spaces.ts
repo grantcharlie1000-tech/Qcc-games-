@@ -30,7 +30,7 @@ interface SpaceDef {
 const DEFS: Record<Space, SpaceDef> = {
   // Lab, Server Room, Garage: about 10 by 8 m, hard floor and walls; dense, bright early pattern, under a second.
   hard: {
-    seconds: 1.3, rt: [1.0, 0.85, 0.5], tail: -7, bright: 10000, predelay: 0.012,
+    seconds: 1.15, rt: [1.0, 0.85, 0.5], tail: -7, bright: 10000, predelay: 0.012,
     early: r => Array.from({ length: 14 }, (_, i) => [0.004 + i * 0.0042 + r() * 0.003, -3 - i * 0.9 - r() * 2, r() * 1.6 - 0.8, 9000 - i * 350] as [number, number, number, number]),
   },
   // Office, Archive, Lobby, Break Room: carpet, shelving, ceiling tiles; few weak reflections and a short dull tail.
@@ -40,7 +40,7 @@ const DEFS: Record<Space, SpaceDef> = {
   },
   // Corridor: 30 by 3 m. Side walls make a flutter every ~17 ms; the far ends answer late; long mid-heavy tail.
   corridor: {
-    seconds: 1.6, rt: [1.2, 1.15, 0.6], tail: -9, bright: 7000, predelay: 0.018,
+    seconds: 1.4, rt: [1.2, 1.15, 0.6], tail: -9, bright: 7000, predelay: 0.018,
     early: r => [
       ...Array.from({ length: 10 }, (_, i) => [0.0088 + i * 0.0175 + r() * 0.0008, -2.5 - i * 1.6, i % 2 ? 0.75 : -0.75, 7000 - i * 450] as [number, number, number, number]),
       [0.075 + r() * 0.01, -9, 0.1, 3000], [0.16 + r() * 0.02, -13, -0.1, 2200],
@@ -49,7 +49,7 @@ const DEFS: Record<Space, SpaceDef> = {
   // Yards: open air between the building and the perimeter wall. No dense build-up: a few distinct slaps off the
   // walls, then a long, thin, dark tail that is mostly the far-off surroundings.
   yard: {
-    seconds: 1.9, rt: [2.0, 1.5, 0.7], tail: -22, bright: 4500, predelay: 0.06,
+    seconds: 1.7, rt: [2.0, 1.5, 0.7], tail: -22, bright: 4500, predelay: 0.06,
     early: r => [
       [0.035 + r() * 0.01, -3, -0.6, 3500], [0.07 + r() * 0.015, -5, 0.7, 2800], [0.12 + r() * 0.02, -8, -0.3, 2200],
       [0.19 + r() * 0.03, -11, 0.5, 1600], [0.28 + r() * 0.04, -15, -0.6, 1200],

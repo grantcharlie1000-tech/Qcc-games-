@@ -46,7 +46,7 @@ export const GUNS: Record<WeaponId, Gun> = {
   // 12 gauge: a wide, low, long boom with little crack.
   shotgun: { crack: [2600, 0.004, -9], blast: [900, 300, 0.06, 0.55, 1.5, 2.8], punch: [95, 44, 0.06, 180, 2], sizzle: [-16, 0.03], action: [1400, 0.08, 0.02, -18, 0] },
   // 7.62 marksman rifle: the heaviest crack and the longest blast; a deep punch.
-  dmr: { crack: [3300, 0.011, 0], blast: [1200, 450, 0.075, 0.65, 1, 3.0], punch: [105, 50, 0.055, 200, 1.5], sizzle: [-5, 0.034], action: [2100, 0.07, 0.018, -12, 4600] },
+  dmr: { crack: [3300, 0.011, 0], blast: [1200, 450, 0.075, 0.65, 1, 3.0], punch: [105, 50, 0.055, 200, 1.5], sizzle: [-5, 0.034], action: [2100, 0.07, 0.018, -20, 4600] },
   // Pistol: snappy and light, a bright slide clack.
   pistol: { crack: [3500, 0.002, -60], blast: [2800, 1300, 0.024, 1.3, -1, 2.0], punch: [200, 120, 0.024, 420, -3.5], sizzle: [-20, 0.01], action: [3100, 0.04, 0.009, -9, 6800] },
 };
@@ -73,25 +73,27 @@ export function gunshot(w: WeaponId, view: 'fp' | 'tp' | 'far', r: Rng, sr: numb
     for (let i = 0; i < nw; i++) out[pre + i] += (1 - 2 * i / nw) * dbToGain(g.crack[2]);
     mixInto(out, adExp(biquad(white(Math.ceil(sr * g.crack[1] * 4), r), sr, 'highpass', g.crack[0] * k, 0.7), sr, 0.0001, g.crack[1] / 2.5), pre, 0.8 * dbToGain(g.crack[2] + (tp ? 2 : 0)) * lv());
   }
-  // Blast: pink noise in a band falling in pitch, with a presence lift; saturated with the crack for density.
-  const [b0, b1, bt, bq, bl, drive] = g.blast, n = Math.ceil(sr * bt * 6);
-  const blast = biquad(pink(n, r), sr, 'bandpass', glide(b0 * k, b1 * k, n * 0.5), bq);
-  biquad(blast, sr, 'peaking', b0 * 2.2 * k, 1, 5);
-  mixInto(out, scale(adExp(blast, sr, 0.0003, bt * range(r, 0.9, 1.1)), 4.5), pre, dbToGain(bl) * lv());
-  saturate(out, drive);
+  // Blast: broadband noise, shaped only gently (a wide band, no pitch sweep: a swept resonant band reads as "pew").
+  const [b0, , bt, , bl, drive] = g.blast, n = Math.ceil(sr * bt * 6);
+  const blast = biquad(biquad(white(n, r), sr, 'lowpass', Math.min(sr * 0.45, b0 * 4 * k), 0.5), sr, 'highpass', 90, 0.5);
+  biquad(blast, sr, 'peaking', b0 * 0.6 * k, 0.5, 4);
+  // Fast: a real muzzle blast is mostly gone in 5-25 ms near the gun; the long tail is the room's, not the gun's.
+  mixInto(out, scale(adExp(blast, sr, 0.00005, bt * 0.35 * range(r, 0.85, 1.15)), 3), pre, dbToGain(bl) * lv());
+  // Light saturation only: heavy drive flattens the peak (a low crest factor sounds like a toy).
+  saturate(out, 1 + (drive - 1) * 0.35);
   // Sizzle: high air right after the crack, which is what makes a shot sound close.
-  mixInto(out, adExp(biquad(white(Math.ceil(sr * g.sizzle[1] * 6), r), sr, 'highpass', 6500, 0.7), sr, 0.0005, g.sizzle[1]), pre, dbToGain(g.sizzle[0] - (tp ? 4 : 0)) * lv());
-  // Punch: a falling sine and a low noise burst, short so automatic fire keeps its shape.
-  const [p0, p1, pt, plp, pl] = g.punch, pn = Math.ceil(sr * pt * 6);
-  const punch = adExp(osc(pn, sr, t => p1 * k + (p0 - p1) * k * Math.exp(-t / 0.01)), sr, 0.0008, pt);
-  mixInto(punch, adExp(biquad(biquad(brown(pn, r), sr, 'lowpass', plp), sr, 'highpass', 45), sr, 0.001, pt * 0.8), 0, 2.5);
-  mixInto(out, punch, pre, dbToGain(pl - (tp ? 4 : 0)) * lv());
+  mixInto(out, adExp(biquad(white(Math.ceil(sr * g.sizzle[1] * 6), r), sr, 'highpass', 6500, 0.7), sr, 0.0001, g.sizzle[1]), pre, dbToGain(g.sizzle[0] - (tp ? 4 : 0)) * lv());
+  // Punch: a low noise burst, no pitched sine (a falling sine is the cartoon "thoom").
+  const [, , pt, plp, pl] = g.punch, pn = Math.ceil(sr * pt * 6);
+  const punch = adExp(biquad(biquad(brown(pn, r), sr, 'lowpass', plp * 1.5), sr, 'highpass', 45), sr, 0.0002, pt * 0.8);
+  mixInto(out, scale(punch, 2), pre, dbToGain(pl - (tp ? 4 : 0)) * lv());
   // Action: the bolt or slide cycling, and its spring, heard only by the shooter.
   if (!tp) {
     const [ab, ar, at, al, spring] = g.action;
     const act = modal(click(sr, r, ab * 1.4, 0.9, 0.003, 0.0007), sr, [[ab * range(r, 0.97, 1.03), ar, 1], [ab * 1.63, ar * 0.7, 0.6], [ab * 2.71, ar * 0.5, 0.35]], Math.ceil(sr * 0.14));
     if (spring) mixInto(act, modal(click(sr, r, spring, 2, 0.002, 0.0004), sr, [[spring * range(r, 0.98, 1.02), 0.12, 1]], Math.ceil(sr * 0.14)), 0, 0.15);
-    mixInto(out, act, pre + sr * at * range(r, 0.92, 1.08), dbToGain(al) * 5);
+    // Well under the bang: a bolt louder than the shot was one of the cartoon tells.
+    mixInto(out, act, pre + sr * at * range(r, 0.92, 1.08), dbToGain(al) * 1.3);
   }
   return finish(biquad(out, sr, 'highpass', 38, 0.6), sr);
 }
@@ -206,12 +208,12 @@ interface FloorDef { thud: number; thudTau: number; click: number; clickQ: numbe
 const FLOOR: Record<Floor, FloorDef> = {
   asphalt: { thud: 110, thudTau: 0.02, click: 2400, clickQ: 0.7, clickLv: 0.25, scrape: 3500, scrapeLv: 0.35, modes: [], modeLv: 0, grit: 0.6 },
   grass: { thud: 90, thudTau: 0.03, click: 0, clickQ: 1, clickLv: 0, scrape: 4200, scrapeLv: 0.9, modes: [], modeLv: 0, grit: 0 },
-  slab: { thud: 130, thudTau: 0.02, click: 2000, clickQ: 0.9, clickLv: 0.5, scrape: 3200, scrapeLv: 0.15, modes: [], modeLv: 0, grit: 0.2 },
+  slab: { thud: 130, thudTau: 0.02, click: 2400, clickQ: 0.9, clickLv: 0.9, scrape: 3200, scrapeLv: 0.2, modes: [], modeLv: 0, grit: 0.45 },
   tile: { thud: 150, thudTau: 0.015, click: 3800, clickQ: 1.4, clickLv: 0.8, scrape: 5000, scrapeLv: 0.1, modes: [[2700, 0.03, 1]], modeLv: 0.15, grit: 0 },
   lino: { thud: 140, thudTau: 0.018, click: 1500, clickQ: 1.1, clickLv: 0.35, scrape: 2600, scrapeLv: 0.12, modes: [], modeLv: 0, grit: 0 },
   carpet: { thud: 100, thudTau: 0.025, click: 0, clickQ: 1, clickLv: 0, scrape: 1200, scrapeLv: 0.15, modes: [], modeLv: 0, grit: 0 },
-  planks: { thud: 120, thudTau: 0.03, click: 1100, clickQ: 1, clickLv: 0.3, scrape: 2200, scrapeLv: 0.08, modes: [[190, 0.09, 1], [430, 0.07, 0.7], [790, 0.05, 0.4]], modeLv: 0.8, grit: 0 },
-  raised: { thud: 160, thudTau: 0.02, click: 2600, clickQ: 1, clickLv: 0.3, scrape: 3000, scrapeLv: 0.08, modes: [[330, 0.16, 1], [880, 0.12, 0.6], [1650, 0.09, 0.5], [2950, 0.06, 0.3]], modeLv: 0.7, grit: 0 },
+  planks: { thud: 120, thudTau: 0.03, click: 1500, clickQ: 1, clickLv: 0.5, scrape: 2200, scrapeLv: 0.08, modes: [[210, 0.09, 0.7], [520, 0.08, 1], [980, 0.06, 0.7], [1700, 0.04, 0.4]], modeLv: 1.2, grit: 0 },
+  raised: { thud: 160, thudTau: 0.02, click: 2600, clickQ: 1, clickLv: 0.5, scrape: 3000, scrapeLv: 0.08, modes: [[330, 0.14, 0.45], [880, 0.12, 1], [1650, 0.09, 0.8], [2950, 0.06, 0.5]], modeLv: 0.9, grit: 0 },
   check: { thud: 145, thudTau: 0.017, click: 2900, clickQ: 1.2, clickLv: 0.6, scrape: 4000, scrapeLv: 0.1, modes: [], modeLv: 0, grit: 0 },
 };
 
@@ -226,6 +228,8 @@ export function footstep(floor: Floor, r: Rng, sr: number): Float32Array {
     if (d.modes.length) mixInto(o, modal(click(sr, r, 800, 0.7, 0.004, 0.001), sr, d.modes.map(([f, t, a]) => [f * k, t, a] as [number, number, number]), Math.ceil(sr * 0.2)), at, d.modeLv * lv);
   }
   if (d.scrapeLv) mixInto(o, scrape(r, sr, d.scrape * k, floor === 'grass' ? 0.16 : 0.07, false), toe * 0.5, d.scrapeLv);
+  // Lino and vinyl now and then squeak under a rubber sole.
+  if ((floor === 'lino' || floor === 'check') && r() < 0.35) { const n = Math.ceil(sr * 0.05), f0 = range(r, 1700, 2400); mixInto(o, ahr(osc(n, sr, t => f0 * (1 + 0.15 * t / 0.05)), sr, 0.005, 0.02, 0.01), toe, 0.12); }
   if (d.grit) for (let i = 0; i < 6; i++) mixInto(o, click(sr, r, range(r, 3000, 7000), 3, 0.004, 0.0006), range(r, 0, toe + sr * 0.04), d.grit * 0.3);
   return finish(o, sr);
 }
@@ -273,7 +277,7 @@ export const debris: Gen = (r, sr) => {
 
 /** An explosion. `near` keeps the pressure crack and the debris; far is the low boom and its long roll. */
 export function blast(near: boolean, impact: boolean, r: Rng, sr: number): Float32Array {
-  const o = buf(sr, near ? 2.4 : 2.8), k = range(r, 0.93, 1.07), size = impact ? 0.75 : 1;
+  const o = buf(sr, near ? 1.9 : 2.4), k = range(r, 0.93, 1.07), size = impact ? 0.75 : 1;
   if (near) {
     const nw = Math.round(sr * 0.0018);
     for (let i = 0; i < nw; i++) o[i] += (1 - 2 * i / nw) * 1.5;
@@ -317,14 +321,6 @@ export const beepSound = (urgent: boolean): Gen => (_r, sr) => finish(tone(sr, u
 
 // ---- Building and working ----------------------------------------------------------------------------------------------
 
-/** Reinforcement deploying: a ratchet, then the steel plate slamming home. */
-export const reinforceSound: Gen = (r, sr) => {
-  const o = buf(sr, 1.2);
-  for (let i = 0; i < 5; i++) mixInto(o, clack(r, sr, 2600, 0.02, 0.04), sr * i * 0.03, 0.35);
-  mixInto(o, modal(click(sr, r, 600, 0.6, 0.008, 0.002), sr, [[range(r, 160, 190), 0.6, 1], [range(r, 410, 450), 0.45, 0.7], [range(r, 1050, 1150), 0.3, 0.4], [range(r, 2300, 2500), 0.15, 0.2]], Math.ceil(sr * 1)), sr * 0.17, 1.4);
-  mixInto(o, adExp(biquad(pink(Math.ceil(sr * 0.15), r), sr, 'lowpass', 300), sr, 0.001, 0.03), sr * 0.17, 3);
-  return finish(o, sr);
-};
 /** A few turns of a ratchet strap. */
 export const ratchetSound: Gen = (r, sr) => { const o = buf(sr, 0.2); for (let i = 0; i < 3; i++) mixInto(o, clack(r, sr, 2400, 0.02, 0.04), sr * i * 0.045, 0.6); return finish(o, sr); };
 /** One hammer blow on a plank. */
@@ -428,6 +424,143 @@ export function ambience(bed: Bed, r: Rng, sr: number, seconds = 5): Float32Arra
   return out;
 }
 
+// ---- Impacts by material (bullets), glass, set pieces, bodies, reinforcement -----------------------------------------
+
+/** Materials a stopped round can hit, as named by render/surfacehit.ts (plus metal). */
+export type ImpactMat = 'wall' | 'concrete' | 'brick' | 'wood' | 'fabric' | 'earth' | 'ceiling' | 'tile' | 'plastic' | 'glass' | 'cardboard' | 'metal' | 'leaf';
+export const IMPACT_MATS: ImpactMat[] = ['wall', 'concrete', 'brick', 'wood', 'fabric', 'earth', 'ceiling', 'tile', 'plastic', 'glass', 'cardboard', 'metal', 'leaf'];
+
+/** A bullet stopping in a material: the hit, the material's own answer, and its debris. */
+export function impact(mat: ImpactMat, r: Rng, sr: number): Float32Array {
+  const o = buf(sr, 0.6), k = range(r, 0.92, 1.08);
+  const thud = (hz: number, tau: number, lv: number) => mixInto(o, adExp(biquad(pink(Math.ceil(sr * tau * 6), r), sr, 'bandpass', hz * k, 0.9), sr, 0.0004, tau), 0, lv);
+  switch (mat) {
+    case 'wall': thud(700, 0.012, 3); grains(o, r, sr, 34, 0.2, 1000, 4500, 0.9); mixInto(o, rustle(r, sr, 0.25, 2500), sr * 0.02, 0.15); break;
+    case 'concrete': mixInto(o, click(sr, r, 2600 * k, 1.2, 0.01, 0.0015), 0, 1.4); grains(o, r, sr, 26, 0.15, 2200, 7000, 1.0); thud(400, 0.01, 1.2); break;
+    case 'brick': mixInto(o, click(sr, r, 1700 * k, 1, 0.012, 0.002), 0, 1.3); thud(320, 0.015, 2); grains(o, r, sr, 34, 0.2, 1400, 5500, 1.0); break;
+    case 'wood': mixInto(o, modal(click(sr, r, 900, 0.7, 0.004, 0.001), sr, [[230 * k, 0.07, 1], [560 * k, 0.05, 0.6], [1040 * k, 0.03, 0.4]], Math.ceil(sr * 0.2)), 0, 1.4); grains(o, r, sr, 18, 0.12, 900, 3500, 0.7); break;
+    case 'fabric': thud(450, 0.02, 3); mixInto(o, adExp(biquad(white(Math.ceil(sr * 0.2), r), sr, 'bandpass', 3200, 0.6), sr, 0.005, 0.04), sr * 0.005, 0.15); break;
+    case 'earth': thud(160, 0.025, 3); grains(o, r, sr, 50, 0.25, 800, 3200, 0.6, 0.6); break;
+    case 'ceiling': thud(900, 0.01, 2); grains(o, r, sr, 40, 0.4, 1500, 5000, 0.6, 0.8); break;
+    case 'tile': mixInto(o, modal(click(sr, r, 4500, 1.2, 0.003, 0.0006), sr, [[3100 * k, 0.05, 1], [5600 * k, 0.035, 0.6], [8200 * k, 0.02, 0.3]], Math.ceil(sr * 0.12)), 0, 1); grains(o, r, sr, 20, 0.14, 3000, 8000, 0.8); break;
+    case 'plastic': mixInto(o, modal(click(sr, r, 1500, 0.8, 0.003, 0.0008), sr, [[620 * k, 0.04, 1], [1450 * k, 0.03, 0.6], [2700 * k, 0.02, 0.3]], Math.ceil(sr * 0.1)), 0, 1.5); break;
+    case 'glass': mixInto(o, glassCrack(r, sr), 0, 1); break;
+    case 'cardboard': thud(520, 0.018, 3); mixInto(o, rustle(r, sr, 0.15, 1800), 0, 0.3); break;
+    case 'metal': mixInto(o, modal(click(sr, r, 3000, 0.9, 0.003, 0.0006), sr, [[1850 * k, 0.25, 1], [3950 * k, 0.18, 0.7], [6300 * k, 0.12, 0.4], [920 * k, 0.15, 0.4]], Math.ceil(sr * 0.5)), 0, 1.2); break;
+    case 'leaf': mixInto(o, rustle(r, sr, 0.18, 3000), 0, 1); break;
+  }
+  return finish(o, sr);
+}
+/** A round glancing off: a falling whine with a flutter. */
+export const ricochet: Gen = (r, sr) => {
+  const n = Math.ceil(sr * 0.45), f0 = range(r, 2600, 3600), f1 = f0 * range(r, 0.35, 0.5), flutter = range(r, 25, 45);
+  const x = osc(n, sr, t => f1 + (f0 - f1) * Math.exp(-t / 0.12));
+  for (let i = 0; i < n; i++) x[i] *= (0.7 + 0.3 * Math.sin(2 * Math.PI * flutter * i / sr)) * Math.exp(-i / (sr * 0.12)) * Math.min(1, i / (sr * 0.004));
+  mixInto(x, adExp(biquad(white(Math.ceil(sr * 0.2), r), sr, 'bandpass', f0, 3), sr, 0.002, 0.06), 0, 0.3);
+  return finish(x, sr);
+};
+
+/** Glass cracking: a sharp tick and the crack running across the pane. */
+function glassCrack(r: Rng, sr: number): Float32Array {
+  const o = buf(sr, 0.3);
+  mixInto(o, click(sr, r, 6000, 1.5, 0.004, 0.0005), 0, 1.4);
+  for (let i = 0; i < 18; i++) mixInto(o, click(sr, r, range(r, 3500, 9000), range(r, 4, 9), 0.006, 0.0008), sr * range(r, 0.002, 0.07) ** 1.3 * 2, range(r, 0.2, 0.6));
+  mixInto(o, modal(click(sr, r, 5000, 2, 0.002, 0.0004), sr, [[range(r, 4200, 4800), 0.15, 1], [range(r, 7300, 7900), 0.1, 0.5]], Math.ceil(sr * 0.25)), 0, 0.12);
+  return o;
+}
+export const glassCrackSound: Gen = (r, sr) => finish(glassCrack(r, sr), sr);
+/** A pane shattering: the crash, then shards falling and settling for over a second. */
+export const glassShatter: Gen = (r, sr) => {
+  const o = buf(sr, 1.6);
+  mixInto(o, adExp(biquad(white(Math.ceil(sr * 0.15), r), sr, 'highpass', 2500), sr, 0.0005, 0.03), 0, 2.5);
+  mixInto(o, glassCrack(r, sr), 0, 0.8);
+  for (let i = 0; i < 70; i++) {
+    const t = 0.02 + range(r, 0, 1) ** 1.8 * 1.3, f = range(r, 3000, 10000);
+    mixInto(o, modal(click(sr, r, f, 3, 0.002, 0.0004), sr, [[f, range(r, 0.02, 0.07), 1], [f * 1.7, 0.03, 0.4]], Math.ceil(sr * 0.08)), t * sr, range(r, 0.15, 0.6) * Math.exp(-t * 1.6));
+  }
+  return finish(o, sr);
+};
+
+/** Set pieces breaking, by what they are made of. */
+export type BreakKind = 'wood' | 'metal' | 'fabric' | 'shelf' | 'drum' | 'crate';
+export const BREAKS: BreakKind[] = ['wood', 'metal', 'fabric', 'shelf', 'drum', 'crate'];
+export function breakSound(kind: BreakKind, r: Rng, sr: number): Float32Array {
+  const o = buf(sr, kind === 'shelf' ? 1.4 : 0.9), metal = (hz: number, ring: number, lv: number, at = 0) =>
+    mixInto(o, modal(click(sr, r, hz * 2, 0.7, 0.006, 0.0015), sr, [[hz * range(r, 0.95, 1.05), ring, 1], [hz * 2.6, ring * 0.6, 0.6], [hz * 5.1, ring * 0.4, 0.3]], Math.ceil(sr * (ring + 0.1))), at * sr, lv);
+  switch (kind) {
+    case 'wood': // a board splitting along the grain: a crack, a creak and the halves knocking
+      mixInto(o, click(sr, r, 2200, 0.8, 0.01, 0.002), 0, 1.5); grains(o, r, sr, 30, 0.25, 700, 3500, 0.7);
+      mixInto(o, modal(click(sr, r, 600, 0.7, 0.005, 0.001), sr, [[range(r, 170, 220), 0.12, 1], [range(r, 450, 520), 0.08, 0.6]], Math.ceil(sr * 0.3)), sr * 0.12, 1); break;
+    case 'metal': // sheet steel denting, then a door springing open on its hinge
+      metal(140, 0.35, 1.2); mixInto(o, adExp(biquad(biquad(brown(Math.ceil(sr * 0.2), r), sr, 'lowpass', 300), sr, 'highpass', 70), sr, 0.002, 0.03), 0, 0.9);
+      mixInto(o, scrape(r, sr, 1800, 0.12, true), sr * 0.18, 0.3); metal(420, 0.25, 0.6, 0.3); break;
+    case 'fabric': // fabric tearing and the stuffing giving way
+      { const n = Math.ceil(sr * 0.35), t = biquad(white(n, r), sr, 'bandpass', 2400, 0.7); let g = 0; for (let i = 0; i < n; i++) { if ((i & 127) === 0) g = r() < 0.7 ? range(r, 0.4, 1) : 0.1; t[i] *= g * Math.sin(Math.PI * i / n); } mixInto(o, t, 0, 1); }
+      mixInto(o, adExp(biquad(pink(Math.ceil(sr * 0.15), r), sr, 'lowpass', 500), sr, 0.005, 0.04), sr * 0.3, 1.5); break;
+    case 'shelf': // a shelf collapsing: the frame folding and its contents falling
+      metal(240, 0.3, 1); for (let i = 0; i < 9; i++) { const t = range(r, 0.08, 1.0); mixInto(o, i % 3 ? adExp(biquad(pink(Math.ceil(sr * 0.06), r), sr, 'bandpass', range(r, 300, 900), 1), sr, 0.001, 0.015) : modal(click(sr, r, 2000, 1, 0.003, 0.0006), sr, [[range(r, 900, 2200), 0.08, 1]], Math.ceil(sr * 0.12)), t * sr, 1.2 * Math.exp(-t)); }
+      metal(180, 0.25, 0.8, 0.45); break;
+    case 'drum': // a steel drum holed: a hollow boom and a leak hissing
+      metal(95, 0.5, 1.3); { const n = Math.ceil(sr * 0.7); mixInto(o, ahr(biquad(biquad(white(n, r), sr, 'bandpass', 3800, 3), sr, 'highpass', 1500), sr, 0.03, 0.3, 0.15), sr * 0.08, 0.3); } break;
+    case 'crate': // a crate bursting: boards splitting and what was inside spilling
+      mixInto(o, click(sr, r, 2000, 0.8, 0.01, 0.002), 0, 1.3); grains(o, r, sr, 50, 0.4, 500, 3000, 0.8, 0.7);
+      for (let i = 0; i < 4; i++) mixInto(o, modal(click(sr, r, 700, 0.7, 0.004, 0.001), sr, [[range(r, 180, 320), 0.08, 1]], Math.ceil(sr * 0.15)), sr * range(r, 0.05, 0.5), 0.6); break;
+  }
+  return finish(o, sr);
+};
+
+/** A body and its kit hitting the floor. */
+export const bodyFall: Gen = (r, sr) => {
+  const o = buf(sr, 0.9);
+  for (const [t, lv] of [[0, 1], [range(r, 0.12, 0.2), 0.7], [range(r, 0.3, 0.42), 0.35]] as const) {
+    mixInto(o, adExp(biquad(biquad(pink(Math.ceil(sr * 0.15), r), sr, 'lowpass', 350), sr, 'highpass', 50), sr, 0.003, 0.03), t * sr, 3 * lv);
+    mixInto(o, adExp(osc(Math.ceil(sr * 0.12), sr, x => 70 + 50 * Math.exp(-x / 0.01)), sr, 0.002, 0.03), t * sr, 0.6 * lv);
+  }
+  mixInto(o, rustle(r, sr, 0.5, 1800), sr * 0.02, 0.35);
+  for (let i = 0; i < 3; i++) mixInto(o, clack(r, sr, range(r, 1400, 2600), 0.04, 0.08), sr * range(r, 0.02, 0.4), 0.25);
+  return finish(o, sr);
+};
+/** The body coming to rest: a last shift of cloth and kit. */
+export const bodySettle: Gen = (r, sr) => { const o = buf(sr, 0.4); mixInto(o, rustle(r, sr, 0.3, 1500), 0, 1); mixInto(o, clack(r, sr, 1800, 0.03, 0.06), sr * range(r, 0.05, 0.2), 0.2); return finish(o, sr); };
+/** A dropped weapon clattering: two or three hits, each smaller. */
+export const weaponDrop: Gen = (r, sr) => {
+  const o = buf(sr, 0.7); let t = 0, lv = 1;
+  for (let i = 0; i < 3; i++) {
+    mixInto(o, modal(click(sr, r, 2500, 0.8, 0.004, 0.001), sr, [[range(r, 700, 900), 0.06, 1], [range(r, 1700, 2100), 0.05, 0.7], [range(r, 3300, 3900), 0.04, 0.4]], Math.ceil(sr * 0.15)), t * sr, lv);
+    mixInto(o, adExp(biquad(pink(Math.ceil(sr * 0.05), r), sr, 'lowpass', 400), sr, 0.001, 0.01), t * sr, 2 * lv);
+    t += range(r, 0.1, 0.18) * lv; lv *= range(r, 0.4, 0.6);
+  }
+  return finish(o, sr);
+};
+/** A round hitting someone: a wet slap on flesh, or a dull thud and a plate tick on armour. */
+export const fleshHit = (armour: boolean): Gen => (r, sr) => {
+  const o = buf(sr, 0.2);
+  mixInto(o, adExp(biquad(pink(Math.ceil(sr * 0.08), r), sr, 'lowpass', armour ? 600 : 1300), sr, 0.0005, 0.012), 0, 3);
+  if (armour) mixInto(o, modal(click(sr, r, 2000, 1, 0.003, 0.0006), sr, [[range(r, 1050, 1250), 0.05, 1], [range(r, 2600, 2900), 0.03, 0.4]], Math.ceil(sr * 0.1)), 0, 0.5);
+  else { const n = Math.ceil(sr * 0.07); mixInto(o, adExp(biquad(white(n, r), sr, 'bandpass', glide(900, 300, n), 3), sr, 0.002, 0.02), sr * 0.006, 1.2); }
+  return finish(o, sr);
+};
+
+/** Reinforcement deploying, in stages: the plate lifting, unfolding, and anchors firing into the wall. */
+export type ReinforceStage = 'lift' | 'unfold' | 'anchor';
+export function reinforceStage(stage: ReinforceStage, r: Rng, sr: number): Float32Array {
+  const o = buf(sr, stage === 'lift' ? 0.8 : 0.5);
+  if (stage === 'lift') {
+    // A servo whine rising as it lifts, not a drone: thin, mid-pitched and well under the anchors.
+    const n = Math.ceil(sr * 0.7), motor = osc(n, sr, t => 230 + 120 * Math.min(1, t / 0.5), 'saw');
+    mixInto(o, ahr(biquad(biquad(motor, sr, 'lowpass', 1600), sr, 'highpass', 180), sr, 0.06, 0.42, 0.06), 0, 0.12);
+    for (let i = 0; i < 10; i++) mixInto(o, clack(r, sr, 2400, 0.015, 0.03), sr * (0.05 + i * 0.06), 0.15);
+  } else if (stage === 'unfold') {
+    mixInto(o, scrape(r, sr, 1300, 0.15, true), 0, 0.5);
+    mixInto(o, modal(click(sr, r, 600, 0.6, 0.008, 0.002), sr, [[range(r, 170, 200), 0.35, 1], [range(r, 430, 470), 0.25, 0.6], [range(r, 1100, 1200), 0.15, 0.3]], Math.ceil(sr * 0.4)), sr * 0.14, 1.4);
+  } else {
+    mixInto(o, adExp(biquad(white(Math.ceil(sr * 0.04), r), sr, 'bandpass', 1100, 0.8), sr, 0.0003, 0.006), 0, 3);
+    mixInto(o, modal(click(sr, r, 3000, 1, 0.003, 0.0006), sr, [[range(r, 2300, 2600), 0.12, 1], [range(r, 5200, 5600), 0.08, 0.4]], Math.ceil(sr * 0.2)), sr * 0.003, 0.5);
+    mixInto(o, adExp(biquad(pink(Math.ceil(sr * 0.06), r), sr, 'lowpass', 300), sr, 0.001, 0.012), 0, 2);
+  }
+  return finish(o, sr);
+}
+
 // ---- Catalogue ---------------------------------------------------------------------------------------------------------
 
 export interface SoundDef {
@@ -467,16 +600,26 @@ export function catalogue(): SoundDef[] {
   add('gear', 4, 24000, -20, 3, gearSound);
   add('crumble.board', 4, 32000, -3, 5, crumbleBoard);
   add('crumble.wood', 4, 32000, -3, 5, crumbleWood);
+  for (const mat of IMPACT_MATS) add(`impact.${mat}`, 2, 22050, -8, 4, (r, sr) => impact(mat, r, sr));
+  add('ricochet', 3, 22050, -18, 4, ricochet);
+  add('glass.crack', 2, 32000, -6, 5, glassCrackSound);
+  add('glass.shatter', 2, 24000, -6, 5, glassShatter);
+  for (const b of BREAKS) add(`break.${b}`, 1, 22050, -6, 6, (r, sr) => breakSound(b, r, sr));
+  add('body.fall', 2, 22050, -8, 6, bodyFall);
+  add('body.settle', 2, 16000, -16, 6, bodySettle);
+  add('drop.weapon', 2, 22050, -12, 6, weaponDrop);
+  add('flesh', 3, 22050, -12, 4, fleshHit(false));
+  add('armour', 2, 22050, -12, 4, fleshHit(true));
+  for (const st of ['lift', 'unfold', 'anchor'] as ReinforceStage[]) add(`rf.${st}`, st === 'anchor' ? 2 : 1, 22050, -6, 6, (r, sr) => reinforceStage(st, r, sr));
   add('debris', 2, 16000, -8, 5, debris);
-  add('boom.near', 2, 24000, 4, 5, (r, sr) => blast(true, false, r, sr));
-  add('boom.impact', 2, 24000, 2, 5, (r, sr) => blast(true, true, r, sr));
+  add('boom.near', 2, 22050, 4, 5, (r, sr) => blast(true, false, r, sr));
+  add('boom.impact', 2, 22050, 2, 5, (r, sr) => blast(true, true, r, sr));
   add('boom.far', 2, 12000, 2, 6, (r, sr) => blast(false, false, r, sr));
   add('throw', 2, 32000, -10, 5, throwSound);
   add('bounce', 4, 32000, -10, 5, bounceSound);
   add('charge.set', 2, 32000, -8, 5, chargeSetSound);
   add('beep', 1, 32000, -14, 5, beepSound(false));
   add('beep.urgent', 1, 32000, -12, 5, beepSound(true));
-  add('build.reinforce', 2, 32000, -4, 6, reinforceSound);
   add('hammer', 4, 32000, -8, 6, hammerSound);
   add('work.plant', 4, 32000, -16, 6, keypadSound);
   add('work.defuse', 3, 32000, -16, 6, defuseSound);
@@ -487,8 +630,8 @@ export function catalogue(): SoundDef[] {
   add('kill', 1, 32000, -12, 2, killSound);
   add('hurt', 3, 32000, -8, 2, hurtSound);
   add('ui', 1, 32000, -16, 0, uiSound);
-  for (const c of ['start', 'go', 'win', 'lose', 'planted', 'matchWin', 'matchLose'] as CueKind[]) add(`cue.${c}`, 1, 24000, -14, 7, cueSound(c));
-  for (const b of ['hard', 'soft', 'corridor', 'yard'] as Bed[]) add(`amb.${b}`, 1, 16000, 0, 8, (r, sr) => ambience(b, r, sr), true);
+  for (const c of ['start', 'go', 'win', 'lose', 'planted', 'matchWin', 'matchLose'] as CueKind[]) add(`cue.${c}`, 1, 16000, -14, 7, cueSound(c));
+  for (const b of ['hard', 'soft', 'corridor', 'yard'] as Bed[]) add(`amb.${b}`, 1, b === 'hard' ? 16000 : 12000, 0, 8, (r, sr) => ambience(b, r, sr), true);
   return d;
 }
 

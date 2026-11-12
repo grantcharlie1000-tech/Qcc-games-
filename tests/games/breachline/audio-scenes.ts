@@ -42,9 +42,18 @@ export function catalogue(module: string): RenderJob[] {
   for (const block of [0, 1, 3, 4]) jobs.push(job(module, `shot-ar-12m-block${block}`, 1.6, [{ t: 0.1, call: 'shot', args: ['ar', at(0, -12, block)] }]));
   jobs.push(job(module, 'auto-ar-fp', 2.4, burst(0.1, 'ar', 20, null)));
   jobs.push(job(module, 'auto-smg-fp', 2.0, burst(0.1, 'smg', 24, null)));
-  for (const s of ['hard', 'soft', 'wood', 'metal', 'grass'] as const) {
+  for (const s of ['asphalt', 'grass', 'slab', 'tile', 'lino', 'carpet', 'planks', 'raised', 'check'] as const) {
     jobs.push(job(module, `step-${s}`, 2.2, [0.1, 0.52, 0.94, 1.36, 1.78].map(t => ({ t, call: 'step', args: [s, 0.8, null] }))));
   }
+  jobs.push(job(module, 'step-tile-crouch', 2.2, [0.1, 0.62, 1.14, 1.66].map(t => ({ t, call: 'step', args: ['tile', 0.3, null] }))));
+  jobs.push(job(module, 'step-tile-sprint', 2.2, [0.1, 0.42, 0.74, 1.06, 1.38, 1.7].map(t => ({ t, call: 'step', args: ['tile', 1.35, null] }))));
+  // Phase 3: what a stopped round sounds like in each material, glass, set pieces, bodies, hits, reinforcement.
+  const mats = ['wall', 'concrete', 'brick', 'wood', 'fabric', 'earth', 'ceiling', 'tile', 'plastic', 'glass', 'cardboard', 'metal', 'leaf'];
+  jobs.push(job(module, 'impacts', mats.length * 0.5 + 0.6, mats.map((m, i) => ({ t: 0.1 + i * 0.5, call: 'impact', args: [m, at(1.5, -4, 0, 1.2)] }))));
+  jobs.push(job(module, 'glass', 2.6, [{ t: 0.1, call: 'glass', args: ['crack', at(2, -3)] }, { t: 0.7, call: 'glass', args: ['shatter', at(2, -3)] }]));
+  jobs.push(job(module, 'breaks', 6.4, ['wood', 'metal', 'fabric', 'shelf', 'drum', 'crate'].map((f, i) => ({ t: 0.1 + i * 1.05, call: 'breakPiece', args: [f === 'shelf' || f === 'drum' || f === 'crate' ? 'metal' : f, f === 'shelf' ? 'shelf' : f === 'drum' ? 'barrel' : f === 'crate' ? 'crates' : 'table', 2, at(2, -4, 0, 0.6)] }))));
+  jobs.push(job(module, 'body', 2.4, [{ t: 0.1, call: 'flesh', args: [at(0.5, -6), false] }, { t: 0.35, call: 'flesh', args: [at(0.5, -6), true] }, { t: 0.6, call: 'body', args: [at(0.5, -6, 0, 0.3), false, 'tile'] }, { t: 0.6, call: 'dropWeapon', args: [at(0.5, -6, 0, 0.3)] }, { t: 1.9, call: 'body', args: [at(0.5, -6, 0, 0.3), true, 'tile'] }]));
+  jobs.push(job(module, 'reinforce', 2.2, [{ t: 0.1, call: 'build', args: [true, at(1, -2)] }]));
   jobs.push(job(module, 'step-hard-6m', 2.2, [0.1, 0.52, 0.94, 1.36, 1.78].map(t => ({ t, call: 'step', args: ['hard', 0.8, at(-4, -4.5, 0, 0.1)] }))));
   // Reloads by weapon, tactical and from empty (the weapon and empty flag are ignored by the baseline).
   for (const [w, empty] of [['ar', false], ['ar', true], ['smg', true], ['shotgun', false], ['shotgun', true], ['dmr', true], ['pistol', true]] as [WeaponId, boolean][]) {

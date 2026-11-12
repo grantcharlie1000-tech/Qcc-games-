@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { measure } from './audio-harness';
+import { profile } from './audio-reference';
 import { plan, run } from '../../../src/games/breachline/audio/render';
 import { catalogue, renderSound } from '../../../src/games/breachline/audio/sounds';
 import { impulse, SPACES } from '../../../src/games/breachline/audio/spaces';
@@ -56,11 +57,10 @@ describe('the sound bank', () => {
     expect(m('step.carpet').centroid).toBeLessThan(m('step.tile').centroid * 0.7);
   });
 
-  it('gives rifles weight and crack: energy below 150 Hz and above 4 kHz in every variant', () => {
-    for (const w of ['ar', 'dmr', 'carbine']) for (let v = 0; v < def(`gun.${w}.fp`).variants; v++) {
-      const b = m(`gun.${w}.fp`, v).bands;
-      expect(b.sub + b.low, `${w} ${v}`).toBeGreaterThan(0.1);
-      expect(b.pres + b.air, `${w} ${v}`).toBeGreaterThan(0.04);
+  it('keeps pitched tones out of the guns (the owner heard them as cartoonish)', () => {
+    for (const w of ['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol']) for (const v of ['fp', 'tp']) {
+      const d = def(`gun.${w}.${v}`), p = profile(renderSound(d, 0), d.sr);
+      expect(p.tonal, `${w} ${v}`).toBeLessThan(0.05);
     }
   });
 
@@ -75,11 +75,33 @@ describe('the sound bank', () => {
     }
   });
 
-  it("keeps someone else's gun leaner than your own (no action, less low end) and the far report darker still", () => {
+  it("keeps the far report much darker than the near one", () => {
     for (const w of ['ar', 'shotgun', 'pistol']) {
-      const fp = m(`gun.${w}.fp`), tp = m(`gun.${w}.tp`), far = m(`gun.${w}.far`);
-      expect(tp.bands.sub + tp.bands.low, w).toBeLessThan(fp.bands.sub + fp.bands.low);
+      const tp = m(`gun.${w}.tp`), far = m(`gun.${w}.far`);
       expect(far.centroid, w).toBeLessThan(tp.centroid * 0.6);
     }
+  });
+
+  it('gives each floor its own footstep: carpet the dullest, then boards, metal floor, concrete, tile', () => {
+    const c = (f: string) => [0, 1, 2, 3].reduce((a, v) => a + m(`step.${f}`, v).centroid, 0) / 4;
+    const order = ['carpet', 'planks', 'raised', 'slab', 'tile'].map(c);
+    for (let i = 1; i < order.length; i++) expect(order[i], `${i}`).toBeGreaterThan(order[i - 1] * 1.15);
+  });
+
+  it('makes impacts in different materials distinct', () => {
+    const mats = ['wall', 'concrete', 'brick', 'wood', 'fabric', 'earth', 'ceiling', 'tile', 'plastic', 'cardboard', 'metal'];
+    const f = mats.map(x => m(`impact.${x}`));
+    let close = 0;
+    for (let i = 0; i < mats.length; i++) for (let j = i + 1; j < mats.length; j++) {
+      const a = f[i], b = f[j];
+      const spec = Object.keys(a.bands).reduce((s, k) => s + Math.abs(Math.log((a.bands[k as keyof typeof a.bands] + 0.005) / (b.bands[k as keyof typeof b.bands] + 0.005))), 0);
+      if (spec + 3 * Math.abs(Math.log(a.decay40 / b.decay40)) < 0.5) close++;
+    }
+    expect(close).toBe(0);
+  });
+
+  it('cracks glass short and shatters it long, with shards still falling after a second', () => {
+    expect(m('glass.crack').span).toBeLessThan(0.35);
+    expect(m('glass.shatter').span).toBeGreaterThan(1.1);
   });
 });

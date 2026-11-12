@@ -6,7 +6,7 @@ import * as store from '../../core/storage';
 import { RoomDialog, inviteCodeFromHash, relayOnlyFromHash } from '../../multiplayer/panel';
 import type { Room } from '../../multiplayer/room';
 import { ATK, BOT_SKILL, CELL, CHARGE, KITS, ROUND, SKILLS, SQUADS, TICK, WEAPONS, type SkillId } from './config';
-import { createSfx, type At, type Surface } from './audio';
+import { createSfx, type At } from './audio';
 import { createHud, type Marker } from './hud';
 import { createInput } from './input';
 import { MAP, inRect, roomAt, type FloorMat } from './map';
@@ -50,10 +50,10 @@ const TEMPLATE = `<canvas class="bl-canvas" tabindex="0" aria-label="Breachline.
   <section class="bl-card bl-lost" hidden><h2 tabindex="-1">Graphics interrupted</h2><p>Leave and reopen Breachline to restore the graphics.</p><div class="bl-actions"><a class="game-button" href="#/collection">Back to games</a></div></section>
 </div>`;
 
-const SURFACES: Record<FloorMat, Surface> = { asphalt: 'hard', grass: 'grass', slab: 'hard', tile: 'hard', lino: 'hard', carpet: 'soft', planks: 'wood', raised: 'metal', check: 'hard' };
-function surfaceAt(x: number, z: number): Surface {
-  for (let i = MAP.floors.length - 1; i >= 0; i--) if (inRect(MAP.floors[i], x, z)) return SURFACES[MAP.floors[i].mat];
-  return 'hard';
+/** The floor material under a point: footsteps and falls sound of what is actually underfoot. */
+function surfaceAt(x: number, z: number): FloorMat {
+  for (let i = MAP.floors.length - 1; i >= 0; i--) if (inRect(MAP.floors[i], x, z)) return MAP.floors[i].mat;
+  return 'asphalt';
 }
 const REASONS: Record<string, [string, string]> = { eliminated: ['Every defender is down.', 'Every attacker is down.'], time: ['', 'The attackers ran out of time.'], uplink: ['The uplink completed.', ''], defused: ['', 'The uplink was shut down.'], '': ['', ''] };
 
@@ -262,6 +262,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
         }
         case 'hit':
           if (e.by === self && e.on !== self) { hud.hitmarker(false, e.head); sfx.hit(e.head); }
+          { const on = m.players[e.on]; if (on && e.on !== self) sfx.flesh(at(on.x, e.head ? 1.6 : 1.2, on.z), !e.head && Math.random() < 0.5); }
           if (e.on === self && me) {
             const a = m.players[e.by];
             if (a && a !== me) { const bearing = Math.atan2(-(a.x - me.x), -(a.z - me.z)) - input.state.yaw; hud.hurt(-bearing, e.dmg); } else hud.hurt(0, e.dmg);
@@ -273,6 +274,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
           if (!by || !on) break;
           hud.kill(by === on ? '' : by.name, on.name, e.w, e.head, by.squad, on.squad, e.by === self || e.on === self);
           if (e.by === self && e.on !== self) { hud.hitmarker(true, e.head); sfx.kill(); context.announce(`You eliminated ${on.name}${e.head ? ' with a headshot' : ''}.`); }
+          if (e.on !== self) { const p = at(on.x, 0.3, on.z); sfx.body(p, false, surfaceAt(on.x, on.z)); sfx.dropWeapon(p); }
           if (e.on === self) { context.announce(by === on ? 'You are down.' : `Eliminated by ${by.name}. Watching your squad; click to change view.`); nextWatch(0); }
           break;
         }

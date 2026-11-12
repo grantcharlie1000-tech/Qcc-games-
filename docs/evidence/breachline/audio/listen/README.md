@@ -23,6 +23,8 @@ destruction are first drafts and will be rebuilt in phases 2 and 3.
 
 ## Phase 2: the guns and reloads
 
+**Owner's verdict (2026-11-12): "nothing like actual weapons, super cartoonish". Failed.** The guns are being rebuilt against real recordings; see STATUS.md for the diagnosis. These files are kept as the record of what failed.
+
 Every gun is built from the same five parts in its own proportions: the crack (the bullet), the blast (the gas),
 the punch (the low thump you feel), the sizzle (the air right after the crack) and the action (the bolt or slide,
 heard only by whoever is firing). Each has six versions, so automatic fire should never sound like a loop.

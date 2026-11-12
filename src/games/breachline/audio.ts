@@ -6,7 +6,7 @@ import type { WeaponId } from './config';
 import { roomAt } from './map';
 import { RELOADS } from './reloads';
 import { Engine, type BusName, type Place, type PlayOpts } from './audio/engine';
-import { catalogue, RELOAD_CLASS, type Floor } from './audio/sounds';
+import { catalogue, IMPACT_MATS, RELOAD_CLASS, type BreakKind, type Floor, type ImpactMat } from './audio/sounds';
 import { spaceOfRoom, type Space } from './audio/spaces';
 
 export type Surface = 'hard' | 'soft' | 'wood' | 'metal' | 'grass' | Floor;
@@ -29,6 +29,17 @@ export interface Sfx {
   beep(at: At, urgent: boolean): void;
   hit(head: boolean): void; hurt(): void; kill(): void; dry(): void; swap(): void; ui(): void;
   round(kind: 'start' | 'go' | 'win' | 'lose' | 'planted' | 'matchWin' | 'matchLose'): void;
+  /** A stopped round in a material (names from render/surfacehit.ts; unknown names sound like concrete). */
+  impact(material: string, at: At): void;
+  glass(kind: 'crack' | 'shatter', at: At): void;
+  /** A set piece changing state (1 damaged, 2 wrecked), by its material and family. */
+  breakPiece(material: string, family: string, state: 1 | 2, at: At): void;
+  /** A body hitting the floor (`rest` false) or coming to rest (`rest` true), on a floor material if known. */
+  body(at: At, rest: boolean, floor?: string): void;
+  dropWeapon(at: At): void;
+  /** Someone hit: a wet hit on flesh, or a thud on armour. */
+  flesh(at: At, armour: boolean): void;
+  reinforceStage(stage: 'lift' | 'unfold' | 'anchor', at: At): void;
   suspend(): void; resume(): void; dispose(): void;
   /** Starts the context (if allowed) and resolves when every sound has been rendered. For tests and the lab. */
   ready(): Promise<void>;
@@ -134,7 +145,12 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
       for (const t of [0.35, 0.55]) play('beep', 'world', at, { delay: t, wet: 0.2, ref: 2, reach: 30, gain: 0.7 });
     },
     build(reinforce, at) {
-      if (reinforce) play('build.reinforce', 'world', at, { wet: 0.4, ref: 3, reach: 40 });
+      // Until the scene reports reinforcement stages, play the whole sequence: lift, unfold, four anchors.
+      if (reinforce) {
+        play('rf.lift', 'world', at, { wet: 0.4, ref: 3, reach: 40 });
+        play('rf.unfold', 'world', at, { delay: 0.6, wet: 0.4, ref: 3, reach: 40 });
+        for (let i = 0; i < 4; i++) play('rf.anchor', 'world', at, { delay: 0.95 + i * 0.14, wet: 0.4, ref: 3, reach: 45, rate: 0.96 + Math.random() * 0.08 });
+      }
       else for (let i = 0; i < 3; i++) play('hammer', 'world', at, { delay: i * 0.11, wet: 0.35, ref: 3, reach: 40 });
     },
     work(kind, at) {
@@ -149,6 +165,26 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
     swap() { play('swap', 'near', null); },
     ui() { play('ui', 'cue', null); },
     round(kind) { play(`cue.${kind}`, 'cue', null, { wet: 0.15 }); },
+    impact(material, at) {
+      const mat = (IMPACT_MATS as string[]).includes(material) ? (material as ImpactMat) : 'concrete';
+      play(`impact.${mat}`, 'world', at, { wet: 0.3, ref: 2, reach: 30, rate: 0.92 + Math.random() * 0.16 });
+      const ric = mat === 'metal' ? 0.35 : mat === 'concrete' || mat === 'brick' ? 0.12 : 0;
+      if (Math.random() < ric) play('ricochet', 'world', at, { delay: 0.01, wet: 0.3, ref: 3, reach: 35, rate: 0.9 + Math.random() * 0.2 });
+    },
+    glass(kind, at) { play(kind === 'crack' ? 'glass.crack' : 'glass.shatter', 'world', at, { wet: 0.4, ref: 3, reach: 40 }); },
+    breakPiece(material, family, state, at) {
+      const f = family.toLowerCase(), kind: BreakKind = /shelf|rack|locker/.test(f) ? 'shelf' : /barrel|drum/.test(f) ? 'drum' : /crate|pallet|box/.test(f) ? 'crate'
+        : material === 'metal' ? 'metal' : material === 'fabric' ? 'fabric' : 'wood';
+      play(`break.${kind}`, 'world', at, { gain: state === 2 ? 1 : 0.7, wet: 0.4, ref: 3, reach: 40, rate: state === 2 ? 0.94 : 1.04 });
+    },
+    body(at, rest, floor) {
+      const soft = floor === 'carpet' || floor === 'grass';
+      // The fall lands a beat after the kill; the settle is reported when it happens.
+      play(rest ? 'body.settle' : 'body.fall', 'world', at, { delay: rest ? 0 : 0.4, wet: 0.3, ref: 2, reach: rest ? 14 : 28, lowpass: soft ? 1400 : undefined, gain: soft ? 0.8 : 1 });
+    },
+    dropWeapon(at) { play('drop.weapon', 'world', at, { delay: 0.5, wet: 0.3, ref: 2, reach: 25, rate: 0.95 + Math.random() * 0.1 }); },
+    flesh(at, armour) { play(armour ? 'armour' : 'flesh', 'world', at, { wet: 0.15, ref: 2, reach: 25, rate: 0.93 + Math.random() * 0.14 }); },
+    reinforceStage(stage, at) { play(`rf.${stage}`, 'world', at, { wet: 0.4, ref: 3, reach: 45, rate: stage === 'anchor' ? 0.96 + Math.random() * 0.08 : 1 }); },
     suspend() { if (eng && eng.ctx.state === 'running') void eng.ctx.suspend(); },
     resume() { if (eng && eng.ctx.state === 'suspended' && enabled()) void eng.ctx.resume(); },
     dispose() { dead = true; removeEventListener('pointerdown', early, true); removeEventListener('keydown', early, true); if (eng) { eng.dispose(); void eng.ctx.close().catch(() => {}); } eng = null; beds.clear(); },

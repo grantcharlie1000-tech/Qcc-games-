@@ -41,10 +41,12 @@ export function pink(n: number, r: Rng): Float32Array {
   }
   return x;
 }
-/** Brown noise (integrated white), for rumble. */
+/** Brown noise (integrated white), for rumble. Run in for 2000 samples first: from a standing start the walk takes
+ * ~10 ms to reach its level, which turned every low hit into a swell. */
 export function brown(n: number, r: Rng): Float32Array {
   const x = new Float32Array(n);
   let v = 0;
+  for (let i = 0; i < 2000; i++) v = (v + 0.02 * (r() * 2 - 1)) * 0.998;
   for (let i = 0; i < n; i++) { v = (v + 0.02 * (r() * 2 - 1)) * 0.998; x[i] = v * 3.5; }
   return x;
 }
