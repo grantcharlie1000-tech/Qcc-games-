@@ -271,7 +271,9 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   // variant. Lit by a flat probe at the room's mean light, a little darker than the open room (they sit in shelving).
   if (boxes.length) {
     const room = boxes[0].room, k = 1.3 * Math.max(0.05, rooms[room].envLight), sh = [k, k * 0.97, k * 0.92, k * 0.3, k * 0.3, k * 0.3, 0, 0, 0, 0, 0, 0];
-    const [cm, cn, ca] = await set('Cardboard004', PROP_SIZE[tier]);
+    // A texture set (built at 512 and 1024), not a prop's (256 and 512): the prop size on Low asked for a 256 that
+    // does not exist, a 404 before the JPEG fallback.
+    const [cm, cn, ca] = await set('Cardboard004', Math.max(512, PROP_SIZE[tier]));
     const body = artMaterial({ map: cm, normalMap: cn, armMap: ca, sh, roughness: ca ? 1 : 0.85, metalness: 0, vertexTint: true });
     const atlasTex = labelAtlas(), labelMat = artMaterial({ map: atlasTex, normalMap: null, armMap: null, sh, roughness: 0.8, metalness: 0 });
     labelMat.polygonOffset = true; labelMat.polygonOffsetFactor = -2; labelMat.polygonOffsetUnits = -2;

@@ -4,6 +4,24 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: production build checked (`npm run build`, served by `scripts/serve-built.mjs` with the real headers).**
+Script: `scripts/breachline-assets/builtcheck.mjs --tier low|high` (policy violations, failed requests, console).
+- **Security policy:** no violations on either tier. The KTX2 transcoder's workers (`basis/`, same origin) start
+  under `worker-src 'self'` and textures transcode.
+- **404s:** mine: one, `tex/Cardboard004/diff-256.ktx2` (the archive boxes asked a texture set for a prop size on
+  Low; JPEG fallback hid it); fixed in this commit. Not mine: `hero/ar5/{diff,nor,arm}` at every size (the weapons
+  rebuild has pushed `hero/ar5/mesh.bin` but not its textures; the game keeps the procedural AR-5 and warns), and
+  `/.netlify/functions/chat` (site chat; no function locally).
+- **Not runnable on the build:** every Breachline browser test (`warm.spec`, `play.spec`, the online test) waits
+  for `window.__breachlineTest`, which `index.ts` installs only when `import.meta.env.DEV` (line 437). The online
+  test against the build times out on that hook. I have not touched `index.ts`. A suggestion for its owner: install
+  the hook also when the build is made with a test flag (for example `VITE_BREACHLINE_TEST=1`), so CI can run the
+  same specs against a production bundle without shipping the hook to players.
+- **Sizes:** the Breachline chunk `assets/index-*.js` is 703.6 kB (258 kB gzip); Three.js is a shared 604 kB chunk;
+  1.89 MB of JavaScript in all on the game page. Art downloaded on opening the game: Low 22.94 MB (bakes 2.27,
+  models 10.9, textures 0.97, transcoder 2.41, Patch fighters 4.14, hero 2.25), High 55.09 MB (textures 28.62,
+  bakes 4.45, hero 4.57; the rest as Low).
+
 **2026-11-12: Phase D (budgets and tiers) and the cosmetic event stream (7f42220).**
 - High, all 20 bookmarks: 135 to 354 draw calls and 69k to 262k triangles (budget under 400 and 500k).
 - Low: the run hit its time limit after 4 bookmarks (lab views: 107 to 228 calls, 72k to 240k triangles, each at or
