@@ -13,6 +13,15 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ### Performance
 
+**Job 4: particles.** Smoke, dust, blood spray and sparks are now one system of instanced camera-facing quads, two draw calls in all (blended and additive). There is no allocation per burst.
+- **The texture.** A small atlas of three lumpy smoke puffs and a spark core. Each puff turns slowly and fades in and out, so nothing pops.
+- **Sorting.** The blended pool is drawn back to front.
+- **Sparks** are stretched along their motion on screen, and are bright enough to bloom.
+- **Near the camera** a particle is capped at half its distance and fades out, so smoke never covers the screen. The old point sprites had a driver size limit and turned a frag into a flat white slab across the view (`perf/particles-before-after.png`).
+- **The frag's smoke** is fewer, denser puffs (9 instead of 16; a pressure ring of 16 instead of 28), because every screen-sized blended layer costs a full-screen fill on the GPU.
+- **Marks** (scars, powder, scorches) no longer allocate a quaternion each.
+- **Cost.** The update costs 0.03 to 0.04 ms a frame, the same as before (`scripts/breachline-assets/particles.mjs`).
+
 **Job 3: Auto protects the frame rate.** Auto is now a ladder of five steps, set by render scale, bloom and particle density.
 - It starts on step 2.
 - It steps down at once when frames average over 20 ms across half a second.
@@ -634,7 +643,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** performance lead. Readback, resolution thrash, readout and Auto done; particles next.
+**Where I am (keep current):** performance lead. Readback, resolution thrash, readout, Auto and particles done; next on the list: the 250 to 300 draw calls, and the panel geometry made per hit.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

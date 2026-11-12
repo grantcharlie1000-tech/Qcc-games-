@@ -297,6 +297,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   });
 
   const fx = new Effects();
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) (window as unknown as { __blFx: Effects }).__blFx = fx;
   // Window panes outside the barricaded windows (render/glass.ts): cosmetic, from the shot and blast events.
   const glass = new Glass(fx); scene.add(glass.group);
   glass.onEvent = (stage, x, y, z) => { if (!cosmetic.size) return; evGlass.stage = stage; evGlass.x = x; evGlass.y = y; evGlass.z = z; emit(evGlass); };
