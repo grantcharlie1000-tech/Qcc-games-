@@ -17,27 +17,33 @@ export interface LabRecord { name: string; m: Measure; nodes: Record<string, num
 export async function renderJobs(jobs: RenderJob[], base: string): Promise<{ result: RenderResult; ch: Float32Array[] }[]> {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium', args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
   try {
-    const page = await browser.newPage();
-    page.setDefaultTimeout(120_000);
     const logs: string[] = [];
-    page.on('pageerror', e => logs.push(e.message));
-    // The dev client's hot-reload socket is off for the lab; its connection errors are not the sound's.
-    page.on('console', m => { if (m.type() === 'error' && !/WebSocket|\[vite\]/.test(m.text())) logs.push(m.text()); });
-    await page.route(`${base}/__audio-lab`, r => r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>audio lab</title>' }));
-    await page.goto(`${base}/__audio-lab`);
+    const open = async () => {
+      const p = await browser.newPage();
+      p.setDefaultTimeout(60_000);
+      p.on('pageerror', e => logs.push(e.message));
+      // The dev client's hot-reload socket is off for the lab; its connection errors are not the sound's.
+      p.on('console', m => { if (m.type() === 'error' && !/WebSocket|\[vite\]/.test(m.text())) logs.push(m.text()); });
+      await p.route(`${base}/__audio-lab`, r => r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>audio lab</title>' }));
+      return p;
+    };
+    let page = await open();
     const out: { result: RenderResult; ch: Float32Array[] }[] = [];
     for (const job of jobs) {
       await page.goto(`${base}/__audio-lab`);
       const t0 = Date.now();
-      // A string, so the dynamic import runs in the page rather than being rewritten by vite-node. One retry on a
-      // fresh page if a render stalls (seen once in ~100 renders: the bank's worker never answered).
+      // A string, so the dynamic import runs in the page rather than being rewritten by vite-node. A render stalls
+      // about once in a hundred (Chromium's offline context stops answering and the page freezes): throw that page
+      // away and retry once on a new one.
       const once = () => Promise.race([
         page.evaluate(`import('/tests/games/breachline/audio-page.ts').then(lab => lab.renderInPage(${JSON.stringify(job)}))`) as Promise<RenderResult>,
         new Promise<never>((_, no) => setTimeout(() => no(new Error(`render of ${job.name} stalled`)), 60_000)),
       ]);
       let result: RenderResult;
       try { result = await once(); } catch (e) {
-        console.error(`  ${(e as Error).message}; retrying`);
+        console.error(`  ${(e as Error).message}; retrying on a new page`);
+        void page.close().catch(() => {});
+        page = await open(); logs.length = 0;
         await page.goto(`${base}/__audio-lab`);
         result = await once();
       }

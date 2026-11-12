@@ -93,17 +93,19 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
     },
     shot(w, at) {
       if (!at) {
-        const e = play(`gun.${w}.fp`, 'own', null, { wet: 0.4, rate: 0.985 + Math.random() * 0.03 });
+        const e = play(`gun.${w}.fp`, 'own', null, { wet: 0.32, rate: 0.985 + Math.random() * 0.03, gain: 0.9 + Math.random() * 0.2 });
         if (!e || !eng) return;
         eng.duck('world', 4, 0.06); eng.duck('amb', 9, 0.18);
-        if (w === 'shotgun') play('rl.shotgun.pump', 'near', null, { delay: 0.3, gain: 0.8 });
+        // The spent case lands a moment later (not every one is heard in a burst); the shotgun ejects on the pump.
+        if (w === 'shotgun') { play('rl.shotgun.pump', 'near', null, { delay: 0.3, gain: 0.8 }); play('casing.shell', 'near', null, { delay: 0.75 + Math.random() * 0.1, wet: 0.2 }); }
+        else if (Math.random() < 0.55) play('casing.brass', 'near', null, { delay: 0.35 + Math.random() * 0.25, wet: 0.2, rate: 0.95 + Math.random() * 0.1 });
         return;
       }
       // One buffer per shot (node budget): the near report up to ~38 m, the far one beyond; the engine's distance
       // low-pass and level carry the transition.
       const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z), rate = 0.98 + Math.random() * 0.04;
-      if (d < 38) play(`gun.${w}.tp`, 'world', at, { wet: 0.6, ref: 4.2, reach: 160, hrtf: d < 30, rate });
-      else play(`gun.${w}.far`, 'world', at, { wet: 0.5, ref: 4.2, reach: 160, rate, gain: 1.4 });
+      if (d < 38) play(`gun.${w}.tp`, 'world', at, { wet: 0.6, ref: 3.5, reach: 160, hrtf: d < 30, rate });
+      else play(`gun.${w}.far`, 'world', at, { wet: 0.5, ref: 3.5, reach: 160, rate, gain: 1.4 });
     },
     step(surface, loud, at) {
       const floor = OLD_SURFACE[surface] ?? (surface as Floor), crouch = loud < 0.5, sprint = loud > 1;

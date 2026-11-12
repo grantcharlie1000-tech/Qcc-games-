@@ -1,6 +1,7 @@
 // Builds the owner's listening files from a sound-lab render (tests/games/breachline/audio-lab.ts output).
 // Usage: node tests/games/breachline/audio-listen.mjs <labDir> <outDir> <set>
 //   set "phase1": scenes (stereo) plus "rooms" and "walls" comparisons (mono), 16-bit 22.05 kHz.
+//   set "phase2": each gun four ways (own shot indoors, outdoors; someone else's at 10 m; at 60 m), automatic fire, reloads.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -21,6 +22,13 @@ if (set === 'phase1') {
   single('scene-breach', 'p1-breach.wav', true); files.push('p1-breach.wav');
   chain(['shot-ar-fp-soft', 'shot-ar-fp-in', 'shot-ar-fp-corridor', 'shot-ar-fp-out'], 'p1-rooms.wav'); files.push('p1-rooms.wav');
   chain(['shot-ar-12m-block0', 'shot-ar-12m-block1', 'shot-ar-12m-block3', 'shot-ar-12m-block4'], 'p1-walls.wav'); files.push('p1-walls.wav');
+}
+if (set === 'phase2') {
+  for (const w of ['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol']) {
+    chain([`shot-${w}-fp-in`, `shot-${w}-fp-out`, `shot-${w}-10m-in`, `shot-${w}-60m-out`], `p2-gun-${w}.wav`); files.push(`p2-gun-${w}.wav`);
+  }
+  chain(['auto-ar-fp', 'auto-smg-fp'], 'p2-automatic.wav'); files.push('p2-automatic.wav');
+  chain(['reload-ar', 'reload-ar-empty', 'reload-shotgun-empty', 'reload-pistol-empty'], 'p2-reloads.wav'); files.push('p2-reloads.wav');
 }
 let total = 0;
 for (const f of files) { const b = statSync(join(out, f)).size; total += b; console.log(`${f} ${(b / 1024).toFixed(0)} KB`); }

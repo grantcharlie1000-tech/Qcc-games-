@@ -13,8 +13,8 @@ for that.
 | --- | --- | --- |
 | 0. Harness | **Done** (2026-11-11) | Passed: baseline numbers and pictures exist; scores confirmed, Mix corrected down |
 | 1. Graph and space | **Done** (2026-11-12) | Passed on measurement (below): Space 6, Mix 6, walls 6; the corridor and breach scenes render at −2.3 and −2.0 dBFS with no clipping. **Owner's listening still to come** (`listen/p1-*.wav`). |
-| 2. Weapons and reloads | Next | |
-| 3. Foley and destruction | | |
+| 2. Weapons and reloads | **Built** (2026-11-12) | **Partly met.** Sustained fire shows no repeating pattern (`phase2/auto-*`), and all six guns are distinct in unit tests. Gunfire scores **6.5, not the ≥ 7 asked**: synthesis without recordings lands here by my reading. The owner's notes on `listen/p2-*.wav` decide the next pass. |
+| 3. Foley and destruction | Next | |
 | 4. Blasts, objective, feedback | | |
 | 5. Ambience, cues, polish | | |
 
@@ -31,15 +31,15 @@ air absorption and the speed of sound. Phases 2–5 rebuild the sounds themselve
 Score /10, where 8 = would not stand out in a 2009 console shooter. Evidence is under `baseline/` and `phase1/`
 (spectrograms) with the numbers in each `metrics.json`; renders are offline through the whole graph at 48 kHz.
 
-| Row | Baseline | Phase 1 | Evidence (phase 1) |
-| --- | --- | --- | --- |
-| Gunfire | 2 | 3 | Six variants per gun, never the same twice, ±1.5% pitch; first- and third-person and far versions; own shot rings 0.40 s in a soft room, 0.73 s in a hard room, 1.06 s in the corridor and 1.33 s in the yard (`phase1/shot-ar-fp-*`). Still first-draft recipes: a mid-heavy noise bang (centroid ~1.8 kHz), light below 150 Hz (10% of energy). Phase 2. |
-| Space | 2 | **6** | Four distinct responses (unit-tested: soft decays fastest and darkest, the yard has the longest span). Every sound uses the reverb of the room it is in. Distance adds delay (343 m/s) and air absorption: a rifle at 60 m in the yard has a centroid of 502 Hz vs 1712 Hz at 12 m. |
-| Reading the fight through walls | 4 | **6** | Rifle at 12 m: open −6.9 dB peak / 1712 Hz centroid; one wallboard −11.3 / 1272; three −19.3 / 662; brick or reinforced −27.8 / 472 (`phase1/shot-ar-12m-block*`). Reads the live destructible state through `obstruction()`, so a hole opens the sound back up. Does not yet bend the direction toward an opening. |
-| Foley | 2 | 3 | Footsteps for all nine floors with four variants each, separate heel and toe; per-beat reloads from `reloads.ts` (wired, but `index.ts` doesn't pass the weapon yet). Phase 3. |
-| Destruction and explosions | 2 | 3 | No clipping now; the blast closes a low-pass over the mix. The breach scene shows the blast body as a 2 s wall below 200 Hz (`phase1/scene-breach`): too long. Phase 4. |
-| Mix | 1 | **6** | Every scene ≤ −2 dBFS with no clipped samples; the ceiling makes > −1 dBFS impossible. Own rifle 6.1 dB over someone else's at 10 m (short-term level; target ~6). Ambience 27.3 dB under own gunfire indoors and out (target ≥ 20). The world ducks 4 dB and the ambience 9 dB under own fire. |
-| Ambience and music cues | 2 | 3 | A loop per kind of space, cross-faded as you move, with the yard faintly audible from inside. First-draft content. Phase 5. |
+| Row | Baseline | Phase 1 | Phase 2 | Evidence |
+| --- | --- | --- | --- | --- |
+| Gunfire | 2 | 3 | **6.5** | Phase 2: every gun is five layers in its own proportions: crack, blast, punch, sizzle and action, plus a spring ring and casings for your own gun. Dry buffers have 15–20% of their energy below 150 Hz (was 10%) and 2.6–12% above 4 kHz; unit tests check rifles have both and that all six guns differ pairwise. Automatic fire: each shot separates below 200 Hz and there is no repeating pattern (`phase2/auto-ar-fp`). Your own gun sits 6.0–7.1 dB over the same gun at 10 m (carbine 4.0, shotgun 3.2). Not 7: it is synthetic and will not pass for a recording, and the SMG and pistol are the least distinct pair. Phase 1 note:  Six variants per gun, never the same twice, ±1.5% pitch; first- and third-person and far versions; own shot rings 0.40 s in a soft room, 0.73 s in a hard room, 1.06 s in the corridor and 1.33 s in the yard (`phase1/shot-ar-fp-*`). Still first-draft recipes: a mid-heavy noise bang (centroid ~1.8 kHz), light below 150 Hz (10% of energy). Phase 2. |
+| Space | 2 | **6** | 6 | Four distinct responses (unit-tested: soft decays fastest and darkest, the yard has the longest span). Every sound uses the reverb of the room it is in. Distance adds delay (343 m/s) and air absorption: a rifle at 60 m in the yard has a centroid of 502 Hz vs 1712 Hz at 12 m. |
+| Reading the fight through walls | 4 | **6** | 6 | Rifle at 12 m: open −6.9 dB peak / 1712 Hz centroid; one wallboard −11.3 / 1272; three −19.3 / 662; brick or reinforced −27.8 / 472 (`phase1/shot-ar-12m-block*`). Reads the live destructible state through `obstruction()`, so a hole opens the sound back up. Does not yet bend the direction toward an opening. |
+| Foley | 2 | 3 | 4 | Phase 2: reloads per weapon class, tactical and from empty, on the beats in `reloads.ts` (`index.ts` now passes the weapon and the empty flag); the seat and the bolt carry the gun body's knock and a spring; the shotgun loads shell by shell and pumps. Footsteps unchanged (phase 3). Phase 1 note:  Footsteps for all nine floors with four variants each, separate heel and toe; per-beat reloads from `reloads.ts` (wired, but `index.ts` doesn't pass the weapon yet). Phase 3. |
+| Destruction and explosions | 2 | 3 | 3 | No clipping now; the blast closes a low-pass over the mix. The breach scene shows the blast body as a 2 s wall below 200 Hz (`phase1/scene-breach`): too long. Phase 4. |
+| Mix | 1 | **6** | 6 | Every scene ≤ −2 dBFS with no clipped samples; the ceiling makes > −1 dBFS impossible. Own rifle 6.1 dB over someone else's at 10 m (short-term level; target ~6). Ambience 27.3 dB under own gunfire indoors and out (target ≥ 20). The world ducks 4 dB and the ambience 9 dB under own fire. |
+| Ambience and music cues | 2 | 3 | 3 | A loop per kind of space, cross-faded as you move, with the yard faintly audible from inside. First-draft content. Phase 5. |
 
 ## Iteration log
 
@@ -59,6 +59,29 @@ Looked at: the twelve baseline pictures in `baseline/`, plus the full sheets in 
 8. Footsteps are one identical filtered-noise lump per step; surfaces differ only in a filter cutoff.
 9. The ambience bed is constant broadband low noise, too loud relative to gunfire, the same everywhere.
 10. The uplink pulse is a fixed square beep, louder than the gunfire around it in `scene-uplink`.
+
+### Phase 2, rounds w1–p2 (guns and reloads; pictures in `phase2/`)
+
+Round w1:
+1. The SMG and the pistol looked almost identical. Fix: the SMG got a lower, wider blast (1.5 kHz falling to 650 Hz) and a louder open-bolt clatter; the pistol stays bright and thin.
+2. The SMG and the pistol had 2–3% of their energy in the low-mids. Fix: stronger, lower punch layers.
+3. The shotgun's blast was a full-band wash for 0.35 s and ran into the pump. Fix: blast decay 60 ms, drive 2.8.
+4. The AR and the DMR had too little above 4 kHz. Fix: a longer crack hiss, and sizzle up 5 dB.
+5. The carbine had only 8% of its energy below 150 Hz. Fix: punch +3 dB.
+
+Round w3:
+1. Someone else's gun at 10 m had 2–6% of its energy below 150 Hz. Fix: their punch is now 4 dB under your own, not 8.
+2. Automatic fire's 0.5–2 kHz band merged through the room's reverb. Fix: your own gun's reverb send 0.4 → 0.32.
+3. The magazine seat and the bolt knock rang at 200 Hz for about 0.25 s. Fix: knock decay 14 ms, level −4 dB.
+4. Scrapes buzzed (a hard level step every 64 samples). Fix: glide between target levels.
+5. Scrapes carried a low skirt down to 20 Hz. Fix: high-pass at 250 Hz.
+
+Round p2:
+1. Your own gun sat only 4.6 dB over the same gun at 10 m. Fix: the world gun's reference distance 4.2 → 3.5 m.
+
+Also in phase 2: a lab render stalls about once in a hundred, because Chromium's offline context stops answering
+and freezes the page. The lab now throws the page away and retries on a new one. This has not been seen with a
+live `AudioContext` (the live test has passed every run).
 
 ### Phase 1, rounds 1–5 (new sound; `test-results/breachline-audio/r1`…`p1`, final pictures in `phase1/`)
 
@@ -139,6 +162,10 @@ ARCADE_URL=http://127.0.0.1:<port> CHROMIUM_PATH=/opt/pw-browsers/chromium BLOCK
 
 ## Tests at this gate
 
+Phase 2 (2026-11-12): `tsc` clean. `npx vitest run tests/games/breachline` all green, including `audio-sounds.test.ts` 9/9, which adds rifle weight and crack, six distinct guns, and someone else's gun leaner and the far report darker. Browser: `play.spec.ts` 6/6, `warm.spec.ts` 1/1 plus its known-failure case, `audio.spec.ts` 2/2, two-device `breachline-online.spec.ts` 1/1.
+
+Phase 1:
+
 - `npx tsc --noEmit`: clean.
 - `npx vitest run` (whole repository): 5405 passed, 4 failed in a run alongside a browser. All 4 are outside the sound
   code and pass when re-run alone: social pagination, Ball Run Christmas course ride, the Breachline fighter frame-time
@@ -159,7 +186,8 @@ ARCADE_URL=http://127.0.0.1:<port> CHROMIUM_PATH=/opt/pw-browsers/chromium BLOCK
 
 The plain-words guide is `listen/README.md`. Phase 1 set (1.96 MB): `listen/p1-corridor-firefight.wav` (compare
 with `baseline/scene-corridor-baseline.wav`), `listen/p1-breach.wav`, `listen/p1-rooms.wav` (one shot in four
-rooms), `listen/p1-walls.wav` (a rifle through 0, 1 and 3 wallboards, then brick).
+rooms), `listen/p1-walls.wav` (a rifle through 0, 1 and 3 wallboards, then brick). Phase 2 set (2.76 MB):
+`listen/p2-gun-<weapon>.wav` (each gun four ways), `listen/p2-automatic.wav`, `listen/p2-reloads.wav`.
 
 ## Notes for the plan and the other sessions
 
@@ -182,9 +210,9 @@ rooms), `listen/p1-walls.wav` (a rifle through 0, 1 and 3 wallboards, then brick
 
 ## Still weak
 
-- The sounds themselves are first drafts: gunshots are mid-heavy and light in the low end; footsteps on soft floors
-  are low and alike; reloads are generic clicks; blasts have a 2 s low wall; ambience is plain noise beds.
-  Phases 2–5.
+- Guns are synthetic: weighty and distinct on measurement, but not recordings. The SMG and pistol are the least
+  distinct pair. Reloads are clean beats without hand or cloth detail between them.
+- Footsteps on soft floors are low and alike; blasts have a 2 s low wall; ambience is plain noise beds. Phases 3–5.
 - At 6x CPU throttle the first buffer waits about 3 s behind the match start on the main thread (see Budgets).
 - Sound does not yet bend toward a doorway or breach when the straight line is solid (plan §3.3, stretch goal).
 - New visual-only events (impacts by material, glass, set pieces, bodies, reinforcement stages) have no sound until

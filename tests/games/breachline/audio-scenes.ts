@@ -46,8 +46,10 @@ export function catalogue(module: string): RenderJob[] {
     jobs.push(job(module, `step-${s}`, 2.2, [0.1, 0.52, 0.94, 1.36, 1.78].map(t => ({ t, call: 'step', args: [s, 0.8, null] }))));
   }
   jobs.push(job(module, 'step-hard-6m', 2.2, [0.1, 0.52, 0.94, 1.36, 1.78].map(t => ({ t, call: 'step', args: ['hard', 0.8, at(-4, -4.5, 0, 0.1)] }))));
-  jobs.push(job(module, 'reload-ar', 2.8, [{ t: 0.1, call: 'reload', args: [2.3, null] }]));
-  jobs.push(job(module, 'reload-shotgun', 3.5, [{ t: 0.1, call: 'reload', args: [3, null] }]));
+  // Reloads by weapon, tactical and from empty (the weapon and empty flag are ignored by the baseline).
+  for (const [w, empty] of [['ar', false], ['ar', true], ['smg', true], ['shotgun', false], ['shotgun', true], ['dmr', true], ['pistol', true]] as [WeaponId, boolean][]) {
+    jobs.push(job(module, `reload-${w}${empty ? '-empty' : ''}`, RELOAD_SECONDS[w] + 0.5, [{ t: 0.1, call: 'reload', args: [RELOAD_SECONDS[w], null, w, empty] }]));
+  }
   jobs.push(job(module, 'melee', 1, [{ t: 0.1, call: 'melee', args: [null] }]));
   jobs.push(job(module, 'crumble-wall', 1.2, [{ t: 0.1, call: 'crumble', args: [false, false, at(2, -4)] }]));
   jobs.push(job(module, 'crumble-wood-big', 1.5, [{ t: 0.1, call: 'crumble', args: [true, true, at(2, -4)] }]));

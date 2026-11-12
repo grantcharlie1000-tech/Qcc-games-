@@ -19,80 +19,97 @@ type Gen = (r: Rng, sr: number) => Float32Array;
 
 // ---- Weapons ------------------------------------------------------------------------------------------------------
 
+/** Each gun is built from the same five layers in its own proportions, so it has its own identity:
+ * crack (the supersonic bullet and the muzzle's first pressure edge), blast (the gas: band noise falling in pitch,
+ * saturated), punch (a short low burst felt in the chest), sizzle (the high air after the crack) and action (the
+ * bolt or slide, heard only by the shooter). Tails are not baked: each room's reverb gives them. */
 interface Gun {
-  /** Supersonic crack: centre Hz and length s (0 for none). */
-  crack: number; crackLen: number;
-  /** Muzzle blast body: band centre Hz, decay time constant s, width (Q). */
-  body: number; bodyTau: number; bodyQ: number;
-  /** Low thump: start and end Hz, decay s. */
-  thump: [number, number]; thumpTau: number;
-  /** Action: modes of the bolt or slide, and when it moves after the shot. */
-  mech: [number, number, number][]; mechAt: number; mechLevel: number;
-  /** Saturation drive, which sets density. */
-  drive: number;
-  /** Layer levels in dB: crack, body, thump. */
-  mix: [number, number, number];
+  /** Crack: high-pass corner Hz, length s, level dB (−60 for none: subsonic 9 mm has no crack). */
+  crack: [number, number, number];
+  /** Blast: band centre Hz (start, end of the fall), decay s, width Q, level dB, saturation drive. */
+  blast: [number, number, number, number, number, number];
+  /** Punch: sine start and end Hz, decay s, noise low-pass Hz, level dB. */
+  punch: [number, number, number, number, number];
+  /** Sizzle: level dB and decay s. */
+  sizzle: [number, number];
+  /** Action: base Hz of the moving part, ring s, delay after the shot s, level dB, and a spring ring Hz (0 none). */
+  action: [number, number, number, number, number];
 }
 
 export const GUNS: Record<WeaponId, Gun> = {
-  ar: { crack: 5200, crackLen: 0.006, body: 950, bodyTau: 0.055, bodyQ: 0.7, thump: [150, 62], thumpTau: 0.07, mech: [[2650, 0.05, 1], [4150, 0.04, 0.6], [6900, 0.03, 0.3]], mechAt: 0.016, mechLevel: -14, drive: 2.4, mix: [-4, 0, -2] },
-  carbine: { crack: 6300, crackLen: 0.005, body: 1250, bodyTau: 0.045, bodyQ: 0.8, thump: [170, 72], thumpTau: 0.055, mech: [[3100, 0.045, 1], [5200, 0.03, 0.5], [7600, 0.02, 0.3]], mechAt: 0.014, mechLevel: -13, drive: 2.6, mix: [-2, 0, -4] },
-  smg: { crack: 0, crackLen: 0, body: 1700, bodyTau: 0.032, bodyQ: 1.0, thump: [210, 95], thumpTau: 0.04, mech: [[1900, 0.06, 1], [3400, 0.05, 0.7], [5600, 0.03, 0.4]], mechAt: 0.011, mechLevel: -9, drive: 2.0, mix: [-30, 0, -5] },
-  shotgun: { crack: 3200, crackLen: 0.004, body: 520, bodyTau: 0.1, bodyQ: 0.55, thump: [110, 42], thumpTau: 0.13, mech: [[1500, 0.08, 1], [2900, 0.05, 0.5]], mechAt: 0.02, mechLevel: -20, drive: 3.2, mix: [-8, 0, 0] },
-  dmr: { crack: 4600, crackLen: 0.008, body: 780, bodyTau: 0.08, bodyQ: 0.6, thump: [130, 50], thumpTau: 0.1, mech: [[2300, 0.06, 1], [3700, 0.05, 0.6], [6100, 0.03, 0.3]], mechAt: 0.018, mechLevel: -15, drive: 2.8, mix: [-1, 0, -1] },
-  pistol: { crack: 0, crackLen: 0, body: 1900, bodyTau: 0.028, bodyQ: 1.1, thump: [240, 120], thumpTau: 0.035, mech: [[3300, 0.04, 1], [5100, 0.03, 0.6]], mechAt: 0.01, mechLevel: -12, drive: 2.0, mix: [-30, 0, -6] },
+  // 5.56 rifle: hard crack, a mid blast, solid punch.
+  ar: { crack: [3800, 0.008, -1.5], blast: [1500, 600, 0.05, 0.8, 0, 2.6], punch: [120, 62, 0.04, 220, 0], sizzle: [-7, 0.026], action: [2400, 0.05, 0.016, -11, 5200] },
+  // Short-barrel carbine: brighter and snappier, a little less low end, a quicker action.
+  carbine: { crack: [4600, 0.005, -1.5], blast: [1900, 800, 0.04, 0.9, 0, 2.8], punch: [135, 72, 0.036, 260, 1], sizzle: [-10, 0.018], action: [2900, 0.045, 0.013, -10, 6100] },
+  // 9 mm SMG: no crack; a chunky, compact pop and a busy open-bolt clatter.
+  smg: { crack: [3000, 0.002, -60], blast: [1500, 650, 0.034, 0.8, 0, 2.4], punch: [150, 85, 0.03, 380, 0], sizzle: [-16, 0.012], action: [1600, 0.07, 0.011, -3, 3400] },
+  // 12 gauge: a wide, low, long boom with little crack.
+  shotgun: { crack: [2600, 0.004, -9], blast: [900, 300, 0.06, 0.55, 1.5, 2.8], punch: [95, 44, 0.06, 180, 2], sizzle: [-16, 0.03], action: [1400, 0.08, 0.02, -18, 0] },
+  // 7.62 marksman rifle: the heaviest crack and the longest blast; a deep punch.
+  dmr: { crack: [3300, 0.011, 0], blast: [1200, 450, 0.075, 0.65, 1, 3.0], punch: [105, 50, 0.055, 200, 1.5], sizzle: [-5, 0.034], action: [2100, 0.07, 0.018, -12, 4600] },
+  // Pistol: snappy and light, a bright slide clack.
+  pistol: { crack: [3500, 0.002, -60], blast: [2800, 1300, 0.024, 1.3, -1, 2.0], punch: [200, 120, 0.024, 420, -3.5], sizzle: [-20, 0.01], action: [3100, 0.04, 0.009, -9, 6800] },
 };
 
-/** One shot. `view` is how it is heard: first person (own gun, mechanism audible), third (someone else's, near),
- * or far (beyond ~40 m: the crack and the low boom survive, the middle is gone). */
+/** One shot. `view` is how it is heard: first person (own gun, action audible), third (someone else's, near), or
+ * far (beyond ~40 m: the crack and the low pop survive, the middle and top are gone). */
 export function gunshot(w: WeaponId, view: 'fp' | 'tp' | 'far', r: Rng, sr: number): Float32Array {
-  const g = GUNS[w], k = range(r, 0.95, 1.05), lv = () => dbToGain(range(r, -1.2, 1.2));
-  const len = view === 'far' ? 1.1 : view === 'fp' ? 0.45 : 0.4, out = buf(sr, len);
-  const pre = Math.round(sr * 0.0015);
-  if (view !== 'far') {
-    // Crack: a pressure pulse (one sharp N-wave) then a short bright hiss.
-    if (g.crackLen > 0) {
-      const n = Math.ceil(sr * g.crackLen), hiss = adExp(biquad(white(n, r), sr, 'highpass', g.crack * k, 0.8), sr, 0.0001, g.crackLen / 3);
-      const nw = Math.max(2, Math.round(sr * 0.0007));
-      for (let i = 0; i < nw; i++) out[pre + i] += (1 - 2 * i / nw) * 0.9;
-      mixInto(out, hiss, pre, dbToGain(g.mix[0] + (view === 'tp' ? 3 : 0)) * lv());
-    }
-    // Muzzle blast: noise in a band that falls in pitch as the gas expands; saturated for density. Only the crack
-    // and the blast are saturated: saturating the low layers lifts their tails into a drone.
-    const n = Math.ceil(sr * g.bodyTau * 7), body = biquad(pink(n, r), sr, 'bandpass', glide(g.body * 1.8 * k, g.body * 0.55 * k, n), g.bodyQ);
-    biquad(body, sr, 'peaking', g.body * 2.6 * k, 1.2, 4);
-    adExp(body, sr, 0.0004, g.bodyTau * range(r, 0.9, 1.1));
-    mixInto(out, scale(body, 4), pre, dbToGain(g.mix[1]) * lv());
-    saturate(out, g.drive);
-    // Low thump: a falling sine, felt more than heard; quieter for someone else's gun.
-    const tn = Math.ceil(sr * g.thumpTau * 6), f0 = g.thump[0] * k, f1 = g.thump[1] * k;
-    // Short enough that a burst at 900 rounds a minute still separates shot from shot below 200 Hz.
-    const thump = adExp(osc(tn, sr, t => f1 + (f0 - f1) * Math.exp(-t / 0.012)), sr, 0.0006, g.thumpTau * 0.45);
-    mixInto(out, thump, pre, 0.9 * dbToGain(g.mix[2] - (view === 'tp' ? 10 : 0)) * lv());
-    // A short low-mid push so the shot has weight after the attack, kept out of the sub-bass.
-    const push = adExp(biquad(biquad(brown(Math.ceil(sr * 0.15), r), sr, 'lowpass', 380), sr, 'highpass', 50), sr, 0.002, 0.022);
-    mixInto(out, push, pre, (view === 'tp' ? 0.7 : 0.45) * lv());
-    // The action cycling: only audible to the shooter.
-    if (view === 'fp') {
-      const exc = click(sr, r, 3000, 0.8, 0.004, 0.0008);
-      const mech = modal(exc, sr, g.mech.map(([f, t, a]) => [f * range(r, 0.97, 1.03), t, a] as [number, number, number]), Math.ceil(sr * 0.12));
-      mixInto(out, mech, pre + sr * g.mechAt * range(r, 0.9, 1.1), dbToGain(g.mechLevel) * 6);
-    }
-  } else {
-    // Far: the bang has lost its top; a dull pop with a short low-mid body and a rolling tail (the yard's own
-    // echoes come from the reverb). For supersonic rounds a dry crack sits on the front.
-    const n = Math.ceil(sr * 0.9), pop = adExp(biquad(biquad(pink(n, r), sr, 'lowpass', 1300 * k, 0.7), sr, 'highpass', 120), sr, 0.002, 0.05);
-    mixInto(out, scale(pop, 4), pre, lv());
-    const roll = adExp(biquad(biquad(brown(n, r), sr, 'lowpass', 500), sr, 'highpass', 60), sr, 0.03, 0.18);
-    mixInto(out, roll, pre, 0.9 * lv());
-    const tn = Math.ceil(sr * 0.3), f0 = g.thump[0] * k, f1 = g.thump[1] * k;
-    mixInto(out, adExp(osc(tn, sr, t => f1 + (f0 - f1) * Math.exp(-t / 0.02)), sr, 0.003, g.thumpTau * 0.8), pre, 0.5);
-    if (g.crackLen > 0) mixInto(out, adExp(biquad(white(Math.ceil(sr * 0.01), r), sr, 'bandpass', Math.min(sr * 0.4, 3000), 1.5), sr, 0.0002, 0.002), 0, 0.5 * lv());
+  const g = GUNS[w], k = range(r, 0.96, 1.04), lv = () => dbToGain(range(r, -1, 1));
+  const out = buf(sr, view === 'far' ? 1.0 : 0.42), pre = Math.round(sr * 0.0015);
+  if (view === 'far') {
+    // Far: a dull pop with a short low-mid body and a rolling tail (the yard's echoes come from the reverb). A
+    // supersonic round keeps a dry crack on the front.
+    const n = Math.ceil(sr * 0.8);
+    mixInto(out, adExp(biquad(biquad(pink(n, r), sr, 'lowpass', 1300 * k, 0.7), sr, 'highpass', 120), sr, 0.002, 0.045 + g.blast[2] * 0.3), pre, 4 * lv());
+    mixInto(out, adExp(biquad(biquad(brown(n, r), sr, 'lowpass', 500), sr, 'highpass', 60), sr, 0.03, 0.15 + g.punch[2]), pre, 0.9 * lv());
+    if (g.crack[2] > -30) mixInto(out, adExp(biquad(white(Math.ceil(sr * 0.01), r), sr, 'bandpass', Math.min(sr * 0.4, 3000), 1.5), sr, 0.0002, 0.002), 0, 0.5 * lv());
     saturate(out, 1.5);
+    return finish(biquad(out, sr, 'highpass', 45, 0.6), sr);
   }
-  // Nothing useful below ~40 Hz survives laptop and Chromebook speakers; it only eats headroom.
+  const tp = view === 'tp';
+  // Crack: an N-wave edge and a short bright hiss.
+  if (g.crack[2] > -30) {
+    const nw = Math.max(2, Math.round(sr * 0.0006));
+    for (let i = 0; i < nw; i++) out[pre + i] += (1 - 2 * i / nw) * dbToGain(g.crack[2]);
+    mixInto(out, adExp(biquad(white(Math.ceil(sr * g.crack[1] * 4), r), sr, 'highpass', g.crack[0] * k, 0.7), sr, 0.0001, g.crack[1] / 2.5), pre, 0.8 * dbToGain(g.crack[2] + (tp ? 2 : 0)) * lv());
+  }
+  // Blast: pink noise in a band falling in pitch, with a presence lift; saturated with the crack for density.
+  const [b0, b1, bt, bq, bl, drive] = g.blast, n = Math.ceil(sr * bt * 6);
+  const blast = biquad(pink(n, r), sr, 'bandpass', glide(b0 * k, b1 * k, n * 0.5), bq);
+  biquad(blast, sr, 'peaking', b0 * 2.2 * k, 1, 5);
+  mixInto(out, scale(adExp(blast, sr, 0.0003, bt * range(r, 0.9, 1.1)), 4.5), pre, dbToGain(bl) * lv());
+  saturate(out, drive);
+  // Sizzle: high air right after the crack, which is what makes a shot sound close.
+  mixInto(out, adExp(biquad(white(Math.ceil(sr * g.sizzle[1] * 6), r), sr, 'highpass', 6500, 0.7), sr, 0.0005, g.sizzle[1]), pre, dbToGain(g.sizzle[0] - (tp ? 4 : 0)) * lv());
+  // Punch: a falling sine and a low noise burst, short so automatic fire keeps its shape.
+  const [p0, p1, pt, plp, pl] = g.punch, pn = Math.ceil(sr * pt * 6);
+  const punch = adExp(osc(pn, sr, t => p1 * k + (p0 - p1) * k * Math.exp(-t / 0.01)), sr, 0.0008, pt);
+  mixInto(punch, adExp(biquad(biquad(brown(pn, r), sr, 'lowpass', plp), sr, 'highpass', 45), sr, 0.001, pt * 0.8), 0, 2.5);
+  mixInto(out, punch, pre, dbToGain(pl - (tp ? 4 : 0)) * lv());
+  // Action: the bolt or slide cycling, and its spring, heard only by the shooter.
+  if (!tp) {
+    const [ab, ar, at, al, spring] = g.action;
+    const act = modal(click(sr, r, ab * 1.4, 0.9, 0.003, 0.0007), sr, [[ab * range(r, 0.97, 1.03), ar, 1], [ab * 1.63, ar * 0.7, 0.6], [ab * 2.71, ar * 0.5, 0.35]], Math.ceil(sr * 0.14));
+    if (spring) mixInto(act, modal(click(sr, r, spring, 2, 0.002, 0.0004), sr, [[spring * range(r, 0.98, 1.02), 0.12, 1]], Math.ceil(sr * 0.14)), 0, 0.15);
+    mixInto(out, act, pre + sr * at * range(r, 0.92, 1.08), dbToGain(al) * 5);
+  }
   return finish(biquad(out, sr, 'highpass', 38, 0.6), sr);
 }
+
+/** A spent case landing: brass rings on a hard floor; a shotgun hull is a dull plastic tap. */
+export const casingSound = (shell: boolean): Gen => (r, sr) => {
+  const o = buf(sr, 0.5);
+  if (shell) {
+    for (const [t, lv] of [[0, 1], [range(r, 0.08, 0.12), 0.4]] as const) mixInto(o, modal(click(sr, r, 1200, 1, 0.003, 0.0008), sr, [[range(r, 650, 800), 0.03, 1], [range(r, 1500, 1800), 0.02, 0.5]], Math.ceil(sr * 0.08)), t * sr, lv);
+  } else {
+    let t = 0, lv = 1;
+    for (let i = 0; i < 3; i++) {
+      mixInto(o, modal(click(sr, r, 6000, 1.5, 0.002, 0.0003), sr, [[range(r, 4800, 5600), 0.09, 1], [range(r, 8200, 9400), 0.06, 0.6], [range(r, 11800, 12800), 0.04, 0.3]], Math.ceil(sr * 0.15)), t * sr, lv);
+      t += range(r, 0.07, 0.13) * lv; lv *= range(r, 0.35, 0.55);
+    }
+  }
+  return finish(o, sr);
+};
 
 /** Dry fire: the hammer or striker falling on nothing. */
 export const dryFire: Gen = (r, sr) => finish(modal(click(sr, r, 3500, 1, 0.003, 0.0006), sr, [[2400 * range(r, 0.95, 1.05), 0.03, 1], [5200, 0.02, 0.5], [7300, 0.012, 0.3]], Math.ceil(sr * 0.08)), sr);
@@ -106,9 +123,11 @@ function clack(r: Rng, sr: number, base: number, ring: number, len = 0.12): Floa
 }
 /** A part sliding against another: band noise with a rough, rising or falling amplitude. */
 function scrape(r: Rng, sr: number, hz: number, seconds: number, rising: boolean): Float32Array {
-  const n = Math.ceil(sr * seconds), x = biquad(white(n, r), sr, 'bandpass', glide(hz * (rising ? 0.8 : 1.2), hz * (rising ? 1.2 : 0.8), n), 2.2);
+  const n = Math.ceil(sr * seconds), x = biquad(biquad(white(n, r), sr, 'bandpass', glide(hz * (rising ? 0.8 : 1.2), hz * (rising ? 1.2 : 0.8), n), 2.2), sr, 'highpass', 250);
   let a = 0;
-  for (let i = 0; i < n; i++) { if ((i & 63) === 0) a = 0.5 + r() * 0.5; const t = i / n; x[i] *= a * Math.sin(Math.PI * t) ** 0.6; }
+  // Rough but smooth: a new target level every ~2 ms, glided to (a hard step every block would buzz).
+  let target = 0.75;
+  for (let i = 0; i < n; i++) { if ((i & 63) === 0) target = 0.5 + r() * 0.5; a += (target - a) * 0.02; const t = i / n; x[i] *= a * Math.sin(Math.PI * t) ** 0.6; }
   return x;
 }
 /** Cloth and webbing: a soft rustle. */
@@ -119,23 +138,50 @@ function rustle(r: Rng, sr: number, seconds: number, bright = 2200): Float32Arra
   return x;
 }
 
-const RELOAD_PITCH: Record<ReloadClass, number> = { rifle: 1, smg: 1.15, pistol: 1.35, shotgun: 0.9 };
+const RELOAD_PITCH: Record<ReloadClass, number> = { rifle: 1, smg: 1.12, pistol: 1.3, shotgun: 0.9 };
+/** The gun's body answering a firm hit: a short low knock. */
+function bodyKnock(r: Rng, sr: number, hz: number, tau = 0.014): Float32Array {
+  const n = Math.ceil(sr * tau * 6), x = adExp(osc(n, sr, t => hz * (1 + 0.6 * Math.exp(-t / 0.004))), sr, 0.0005, tau);
+  return mixInto(x, adExp(biquad(pink(n, r), sr, 'lowpass', hz * 3), sr, 0.0005, tau * 0.6), 0, 1.5);
+}
+/** A spring's brief ring after a part slams home. */
+const springRing = (r: Rng, sr: number, hz: number) => modal(click(sr, r, hz, 2, 0.002, 0.0004), sr, [[hz * range(r, 0.97, 1.03), 0.18, 1], [hz * 1.52, 0.1, 0.4]], Math.ceil(sr * 0.22));
 
+/** One beat of a reload (names from reloads.ts). Each class has its own pitch and weight; the seat and the bolt are
+ * the beats a player listens for, so they carry a body knock. */
 export function reloadBeat(cls: ReloadClass, beat: ReloadBeat['name'], r: Rng, sr: number): Float32Array {
-  const p = RELOAD_PITCH[cls], out = buf(sr, 0.45);
+  const p = RELOAD_PITCH[cls] * range(r, 0.97, 1.03), out = buf(sr, 0.45), heavy = cls === 'pistol' ? 0.6 : 1;
   switch (beat) {
-    case 'release': mixInto(out, clack(r, sr, 2900 * p, 0.04, 0.08), 0, 0.8); mixInto(out, click(sr, r, 5200 * p, 2, 0.006, 0.001), 0, 0.4); break;
-    case 'out': mixInto(out, scrape(r, sr, 1700 * p, 0.12, false), 0, 0.6); mixInto(out, clack(r, sr, 1300 * p, 0.05, 0.1), sr * 0.1, 0.5); break;
-    case 'fetch': mixInto(out, rustle(r, sr, 0.22, 1800), 0, 0.9); mixInto(out, clack(r, sr, 900 * p, 0.03, 0.06), sr * 0.16, 0.3); break;
-    case 'in': mixInto(out, scrape(r, sr, 1500 * p, 0.09, true), 0, 0.7); break;
-    case 'seat': mixInto(out, clack(r, sr, 1150 * p, 0.07, 0.15), 0, 1); mixInto(out, adExp(osc(Math.ceil(sr * 0.08), sr, () => 180 * p), sr, 0.001, 0.015), 0, 0.5); break;
-    case 'bolt':
-      mixInto(out, scrape(r, sr, 2200 * p, 0.07, true), 0, 0.5); mixInto(out, clack(r, sr, 2000 * p, 0.05, 0.08), sr * 0.07, 0.6);
-      mixInto(out, clack(r, sr, 1400 * p, 0.08, 0.15), sr * 0.16, 1); break;
-    case 'shell': mixInto(out, scrape(r, sr, 1200, 0.06, true), 0, 0.5); mixInto(out, clack(r, sr, 1700, 0.04, 0.08), sr * 0.05, 0.8); break;
-    case 'pump':
-      mixInto(out, scrape(r, sr, 1000, 0.08, false), 0, 0.6); mixInto(out, clack(r, sr, 900, 0.07, 0.12), sr * 0.08, 0.9);
-      mixInto(out, scrape(r, sr, 1100, 0.07, true), sr * 0.17, 0.5); mixInto(out, clack(r, sr, 1250, 0.08, 0.14), sr * 0.24, 1); break;
+    case 'release': // the release button, then the magazine dropping free of the catch
+      mixInto(out, click(sr, r, 4200 * p, 2.5, 0.006, 0.0008), 0, 0.5);
+      mixInto(out, clack(r, sr, 2500 * p, 0.035, 0.08), sr * 0.012, 0.7); break;
+    case 'out': // the magazine sliding out of the well
+      mixInto(out, scrape(r, sr, 1600 * p, 0.09, false), 0, 0.7);
+      mixInto(out, clack(r, sr, 1100 * p, 0.04, 0.08), sr * 0.085, 0.35); break;
+    case 'fetch': // a fresh one from the pouch: webbing, a flap, the magazine tapping gear
+      mixInto(out, rustle(r, sr, 0.24, 1700), 0, 1);
+      mixInto(out, clack(r, sr, 850 * p, 0.03, 0.06), sr * range(r, 0.12, 0.18), 0.3); break;
+    case 'in': // the new magazine's lips entering the well
+      mixInto(out, scrape(r, sr, 1400 * p, 0.07, true), 0, 0.8);
+      mixInto(out, click(sr, r, 3000 * p, 2, 0.006, 0.001), sr * 0.06, 0.3); break;
+    case 'seat': // the catch engaging: a firm clack and the gun body's knock
+      mixInto(out, clack(r, sr, 1250 * p, 0.06, 0.14), 0, 1);
+      mixInto(out, bodyKnock(r, sr, 210 * p), 0, 0.6 * heavy);
+      mixInto(out, click(sr, r, 5200 * p, 3, 0.004, 0.0006), sr * 0.004, 0.3); break;
+    case 'bolt': // charging handle (or slide) pulled back against its spring, released, slamming home
+      mixInto(out, scrape(r, sr, 2300 * p, 0.06, true), 0, 0.45);
+      mixInto(out, clack(r, sr, 1900 * p, 0.04, 0.08), sr * 0.06, 0.6);
+      mixInto(out, clack(r, sr, 1350 * p, 0.08, 0.16), sr * 0.15, 1);
+      mixInto(out, bodyKnock(r, sr, 180 * p, 0.018), sr * 0.15, 0.55 * heavy);
+      mixInto(out, springRing(r, sr, 4300 * p), sr * 0.15, 0.12); break;
+    case 'shell': // a shell thumbed into the tube past the spring: a plastic brush and a click
+      mixInto(out, scrape(r, sr, 1100, 0.05, true), 0, 0.5);
+      mixInto(out, clack(r, sr, 1700, 0.035, 0.07), sr * 0.05, 0.8);
+      mixInto(out, bodyKnock(r, sr, 260, 0.012), sr * 0.05, 0.4); break;
+    case 'pump': // the fore-end racked back and driven forward
+      mixInto(out, scrape(r, sr, 950, 0.07, false), 0, 0.6); mixInto(out, clack(r, sr, 880, 0.07, 0.12), sr * 0.07, 0.9);
+      mixInto(out, scrape(r, sr, 1050, 0.06, true), sr * 0.16, 0.5); mixInto(out, clack(r, sr, 1200, 0.08, 0.14), sr * 0.22, 1);
+      mixInto(out, bodyKnock(r, sr, 170, 0.025), sr * 0.22, 0.9); break;
   }
   return finish(out, sr);
 }
@@ -407,6 +453,8 @@ export function catalogue(): SoundDef[] {
     add(`gun.${w}.tp`, 3, 32000, GUN_LEVEL[w], 2, (r, sr) => gunshot(w, 'tp', r, sr));
     add(`gun.${w}.far`, 2, 12000, GUN_LEVEL[w], 4, (r, sr) => gunshot(w, 'far', r, sr));
   }
+  add('casing.brass', 4, 32000, -24, 2, casingSound(false));
+  add('casing.shell', 3, 32000, -22, 2, casingSound(true));
   for (const f of FLOORS) add(`step.${f}`, 4, 24000, -6, 1, (r, sr) => footstep(f, r, sr));
   add('dry', 3, 32000, -10, 1, dryFire);
   // Each class renders the beats its weapons use in reloads.ts; play-time falls back to the rifle's for any other.

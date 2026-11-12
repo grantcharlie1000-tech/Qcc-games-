@@ -20,3 +20,18 @@ What phase 1 changed is everything *around* them: rooms, walls, distance, loudne
 
 What we already know is weak: the gunshots themselves (synthetic, light in the low end), footsteps, reloads and
 destruction are first drafts and will be rebuilt in phases 2 and 3.
+
+## Phase 2: the guns and reloads
+
+Every gun is built from the same five parts in its own proportions: the crack (the bullet), the blast (the gas),
+the punch (the low thump you feel), the sizzle (the air right after the crack) and the action (the bolt or slide,
+heard only by whoever is firing). Each has six versions, so automatic fire should never sound like a loop.
+
+| File | What it is | What to listen for |
+| --- | --- | --- |
+| `p2-gun-ar.wav`, `-carbine`, `-smg`, `-shotgun`, `-dmr`, `-pistol` | Each gun four ways: your own shot in the Lab, your own shot in the yard, someone else's 10 m away, someone else's 60 m away outdoors. | Can you tell the six guns apart with your eyes closed? Does your own shot feel weighty (a thump, not a pop)? Does the yard shot ring out longer than the indoor one? Does 60 m sound like a distant pop rather than a quiet copy? The SMG and pistol have no supersonic crack on purpose. |
+| `p2-automatic.wav` | A two-second burst from the AR, then from the SMG. | Each shot should be distinct, with no machine-gun buzz, no obvious repeating pattern, and a few spent cases tinkling at the end. Is it tiring to listen to? |
+| `p2-reloads.wav` | Rifle reload (magazine not empty), rifle reload from empty, shotgun loading shell by shell from empty, pistol reload from empty. | The empty reloads end with the bolt or slide slamming home. The shotgun should go "pump, then shell, shell, shell". The magazine seating should be a firm click, not a boom. |
+
+What we already know is weak: the sounds are synthesised and will not pass for recordings; the SMG and pistol are
+the least distinctive pair; reloads are clean but simple (no hand or cloth detail between the beats).

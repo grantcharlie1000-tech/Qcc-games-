@@ -55,4 +55,31 @@ describe('the sound bank', () => {
   it('separates floors: carpet duller than tile, grass brightest scuff', () => {
     expect(m('step.carpet').centroid).toBeLessThan(m('step.tile').centroid * 0.7);
   });
+
+  it('gives rifles weight and crack: energy below 150 Hz and above 4 kHz in every variant', () => {
+    for (const w of ['ar', 'dmr', 'carbine']) for (let v = 0; v < def(`gun.${w}.fp`).variants; v++) {
+      const b = m(`gun.${w}.fp`, v).bands;
+      expect(b.sub + b.low, `${w} ${v}`).toBeGreaterThan(0.1);
+      expect(b.pres + b.air, `${w} ${v}`).toBeGreaterThan(0.04);
+    }
+  });
+
+  it('makes the six guns distinct from each other, by spectrum or by length', () => {
+    const ws = ['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol'];
+    const f = ws.map(w => m(`gun.${w}.fp`));
+    for (let i = 0; i < ws.length; i++) for (let j = i + 1; j < ws.length; j++) {
+      const a = f[i], b = f[j];
+      const spec = Object.keys(a.bands).reduce((s, k) => s + Math.abs(Math.log((a.bands[k as keyof typeof a.bands] + 0.005) / (b.bands[k as keyof typeof b.bands] + 0.005))), 0);
+      const len = Math.abs(Math.log(a.decay40 / b.decay40));
+      expect(spec + 3 * len, `${ws[i]} vs ${ws[j]}`).toBeGreaterThan(0.5);
+    }
+  });
+
+  it("keeps someone else's gun leaner than your own (no action, less low end) and the far report darker still", () => {
+    for (const w of ['ar', 'shotgun', 'pistol']) {
+      const fp = m(`gun.${w}.fp`), tp = m(`gun.${w}.tp`), far = m(`gun.${w}.far`);
+      expect(tp.bands.sub + tp.bands.low, w).toBeLessThan(fp.bands.sub + fp.bands.low);
+      expect(far.centroid, w).toBeLessThan(tp.centroid * 0.6);
+    }
+  });
 });

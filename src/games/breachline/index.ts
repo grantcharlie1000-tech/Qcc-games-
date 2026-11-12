@@ -242,7 +242,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
           if (mine && me) { const w = WEAPONS[e.w], k = (me.ads ? 0.62 : 1) * (me.crouching ? 0.85 : 1) * (0.8 + Math.random() * 0.4); input.state.pitch = Math.min(1.45, input.state.pitch + w.recoil * k); input.state.yaw += (Math.random() - 0.5) * 2 * w.recoilSide * k; }
           break;
         }
-        case 'reload': { const p = m.players[e.id]; if (p) sfx.reload(weaponOf(m, p).reload, e.id === self ? null : at(p.x, 1.2, p.z)); break; }
+        case 'reload': { const p = m.players[e.id]; if (p) { const w = weaponOf(m, p); sfx.reload(w.reload, e.id === self ? null : at(p.x, 1.2, p.z), w.id, p.mag[p.slot] === 0); } break; }
         case 'melee': { const p = m.players[e.id]; if (p) sfx.melee(e.id === self ? null : at(p.x, 1.2, p.z)); break; }
         case 'cells': {
           const panel = m.world.panels[e.p];

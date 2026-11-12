@@ -1,0 +1,2409 @@
+[
+ {
+  "name": "shot-ar-fp-in",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.4773787287819964,
+   "rmsDb": -24.55137676537757,
+   "dc": 0.000016274926377756552,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11408333333333333,
+   "span": 0.6536875,
+   "decay40": 0.3,
+   "bands": {
+    "sub": 0.07707777042635863,
+    "low": 0.04936531431403768,
+    "lowmid": 0.10438877511615428,
+    "mid": 0.5174559940350565,
+    "himid": 0.2045878087702352,
+    "pres": 0.04157365261083967,
+    "air": 0.005488595534383167
+   },
+   "centroid": 1512.5143517467218,
+   "shortTermDb": -18.54551822878571
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "shot": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-ar-fp-out",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.469690746069545,
+   "rmsDb": -24.487196081670596,
+   "dc": 0.00001627586706490547,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11408333333333333,
+   "span": 1.2257291666666668,
+   "decay40": 0.61,
+   "bands": {
+    "sub": 0.07645465041801042,
+    "low": 0.04902259330719876,
+    "lowmid": 0.10180304187425528,
+    "mid": 0.5210275238728735,
+    "himid": 0.2052375891871773,
+    "pres": 0.0409704343744652,
+    "air": 0.0054227872965322025
+   },
+   "centroid": 1510.9725315267974,
+   "shortTermDb": -18.507177738291613
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "shot": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-ar-10m-in",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -7.658962081866165,
+   "rmsDb": -30.45827992335085,
+   "dc": -4.6411356853089576e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.1504375,
+   "span": 1.2051666666666667,
+   "decay40": 0.64,
+   "bands": {
+    "sub": 0.05908998247111513,
+    "low": 0.03399275784267169,
+    "lowmid": 0.2356306753240653,
+    "mid": 0.367479321998281,
+    "himid": 0.27362505987375974,
+    "pres": 0.02741118020497461,
+    "air": 0.0027709984991069526
+   },
+   "centroid": 1426.2925752429019,
+   "shortTermDb": -24.57651196922781
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-ar-60m-out",
+  "m": {
+   "seconds": 1.8,
+   "peakDb": -22.517782527506945,
+   "rmsDb": -44.636931761435775,
+   "dc": -1.740153274349049e-8,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.29241666666666666,
+   "span": 1.2481666666666666,
+   "decay40": 0.71,
+   "bands": {
+    "sub": 0.05787299900152886,
+    "low": 0.09966792735462879,
+    "lowmid": 0.3894434694611475,
+    "mid": 0.4361959051261275,
+    "himid": 0.016686414109037397,
+    "pres": 0.00012835776167257663,
+    "air": 0.000004927151885555931
+   },
+   "centroid": 586.6211538769804,
+   "shortTermDb": -38.33523879527243
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-carbine-fp-in",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.6005239989254556,
+   "rmsDb": -26.546610923425163,
+   "dc": -2.426346041299136e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11447916666666667,
+   "span": 0.5818958333333333,
+   "decay40": 0.28,
+   "bands": {
+    "sub": 0.1224722366555604,
+    "low": 0.07062543294771692,
+    "lowmid": 0.06693242663676963,
+    "mid": 0.4171909477877116,
+    "himid": 0.23732485580996227,
+    "pres": 0.08015035773563396,
+    "air": 0.005232267565941145
+   },
+   "centroid": 1664.035081825377,
+   "shortTermDb": -20.537655912251253
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "shot": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-carbine-fp-out",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.6004464181946956,
+   "rmsDb": -26.509672402016005,
+   "dc": -6.225237122710799e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11447916666666667,
+   "span": 1.1559791666666666,
+   "decay40": 0.5700000000000001,
+   "bands": {
+    "sub": 0.12177395695752886,
+    "low": 0.07207085388111892,
+    "lowmid": 0.06953194117723147,
+    "mid": 0.4142417262032575,
+    "himid": 0.237064204998513,
+    "pres": 0.08004509276404043,
+    "air": 0.005201279571340037
+   },
+   "centroid": 1658.066729809061,
+   "shortTermDb": -20.520688728492047
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "shot": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-carbine-10m-in",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -7.506469134802746,
+   "rmsDb": -30.43533605536451,
+   "dc": -9.536723374973614e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.1494375,
+   "span": 1.2070208333333334,
+   "decay40": 0.68,
+   "bands": {
+    "sub": 0.07605538441424722,
+    "low": 0.07755236204611726,
+    "lowmid": 0.14260055097169952,
+    "mid": 0.33078198862940206,
+    "himid": 0.3367280404754045,
+    "pres": 0.03346632055683436,
+    "air": 0.002815327853249141
+   },
+   "centroid": 1520.1051831680854,
+   "shortTermDb": -24.53872240505431
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-carbine-60m-out",
+  "m": {
+   "seconds": 1.8,
+   "peakDb": -22.789035112876288,
+   "rmsDb": -44.89931523341713,
+   "dc": 3.0450072379742915e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.2913541666666667,
+   "span": 1.21675,
+   "decay40": 0.66,
+   "bands": {
+    "sub": 0.0501500407421319,
+    "low": 0.16586106569192088,
+    "lowmid": 0.3556955393822719,
+    "mid": 0.41588835186788886,
+    "himid": 0.012320797379885704,
+    "pres": 0.00008095742734960449,
+    "air": 0.0000032474837838931213
+   },
+   "centroid": 539.5750817302514,
+   "shortTermDb": -38.60406328341122
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-smg-fp-in",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.7651161655227323,
+   "rmsDb": -26.268596237357205,
+   "dc": 0.0000026655024498722923,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.1145,
+   "span": 0.6157916666666666,
+   "decay40": 0.26,
+   "bands": {
+    "sub": 0.04252799492140785,
+    "low": 0.07856329378883693,
+    "lowmid": 0.09044813322905929,
+    "mid": 0.5337102816570845,
+    "himid": 0.20675812442091257,
+    "pres": 0.04519066176312362,
+    "air": 0.002757592833796948
+   },
+   "centroid": 1487.9650803250634,
+   "shortTermDb": -20.259227083347817
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "shot": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-smg-fp-out",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.7585626153913094,
+   "rmsDb": -26.220435344054284,
+   "dc": 0.000002925405776371311,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.1145,
+   "span": 1.1344375,
+   "decay40": 0.52,
+   "bands": {
+    "sub": 0.04226305167780347,
+    "low": 0.07789123693719187,
+    "lowmid": 0.09061183584848127,
+    "mid": 0.535362617366488,
+    "himid": 0.20649861050235013,
+    "pres": 0.04460555605747744,
+    "air": 0.0027235531468166405
+   },
+   "centroid": 1485.5392497713858,
+   "shortTermDb": -20.231172438179353
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "shot": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-smg-10m-in",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -7.271881506504493,
+   "rmsDb": -33.10377779705719,
+   "dc": 2.809575122834455e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.15052083333333333,
+   "span": 1.1398541666666666,
+   "decay40": 0.61,
+   "bands": {
+    "sub": 0.02279248437522893,
+    "low": 0.1821783583991109,
+    "lowmid": 0.15831667361457488,
+    "mid": 0.41869538690570873,
+    "himid": 0.19845811588304207,
+    "pres": 0.018659247307121252,
+    "air": 0.0008997217935083739
+   },
+   "centroid": 1172.1928147128299,
+   "shortTermDb": -27.213785666915467
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-smg-60m-out",
+  "m": {
+   "seconds": 1.8,
+   "peakDb": -24.191422591268655,
+   "rmsDb": -46.082650165772456,
+   "dc": -3.889480703273202e-9,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.29220833333333335,
+   "span": 1.2790833333333333,
+   "decay40": 0.68,
+   "bands": {
+    "sub": 0.05080474869845729,
+    "low": 0.06479152311092497,
+    "lowmid": 0.401849643276434,
+    "mid": 0.4713187639567411,
+    "himid": 0.011108394973377823,
+    "pres": 0.00012344700481212113,
+    "air": 0.0000034789527915099926
+   },
+   "centroid": 593.3592433754228,
+   "shortTermDb": -39.783929625166316
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-shotgun-fp-in",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.282781330009154,
+   "rmsDb": -22.456405791682013,
+   "dc": 0.00001749647378536186,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11420833333333333,
+   "span": 0.9860416666666667,
+   "decay40": 0.4,
+   "bands": {
+    "sub": 0.07584986623730354,
+    "low": 0.06464972073796116,
+    "lowmid": 0.29875835207207624,
+    "mid": 0.4426133921609298,
+    "himid": 0.10015537141585572,
+    "pres": 0.01594565110797034,
+    "air": 0.0020066282786804688
+   },
+   "centroid": 948.2286313207802,
+   "shortTermDb": -16.736605995561707
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 20,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 3
+  },
+  "perCue": {
+   "shot": 8
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-shotgun-fp-out",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.2591475288019294,
+   "rmsDb": -22.368610705915284,
+   "dc": 0.000018787959001163774,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11420833333333333,
+   "span": 1.282875,
+   "decay40": 0.65,
+   "bands": {
+    "sub": 0.0748215606586048,
+    "low": 0.06445799136780979,
+    "lowmid": 0.3004405381395906,
+    "mid": 0.443398803752681,
+    "himid": 0.09929637331852545,
+    "pres": 0.015601575753029546,
+    "air": 0.0019625484361496665
+   },
+   "centroid": 942.1500970969541,
+   "shortTermDb": -16.67277755667779
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 20,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 3
+  },
+  "perCue": {
+   "shot": 8
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-shotgun-10m-in",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -6.006525214308219,
+   "rmsDb": -25.801663892217313,
+   "dc": -9.88558429260896e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.14960416666666668,
+   "span": 1.345125,
+   "decay40": 0.68,
+   "bands": {
+    "sub": 0.04607501254430277,
+    "low": 0.04377767024280911,
+    "lowmid": 0.4052388762624942,
+    "mid": 0.37429572498681896,
+    "himid": 0.11979372797180672,
+    "pres": 0.009747830199125241,
+    "air": 0.0010711495120487066
+   },
+   "centroid": 878.4814534220561,
+   "shortTermDb": -19.962669978852276
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-shotgun-60m-out",
+  "m": {
+   "seconds": 1.8,
+   "peakDb": -21.251246165280044,
+   "rmsDb": -42.97992095389509,
+   "dc": -1.0798383165685529e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.2921666666666667,
+   "span": 1.2843333333333333,
+   "decay40": 0.74,
+   "bands": {
+    "sub": 0.03619564780250665,
+    "low": 0.09665171851316395,
+    "lowmid": 0.4987943233791134,
+    "mid": 0.3523500425140467,
+    "himid": 0.01591118244053281,
+    "pres": 0.0000935543356586563,
+    "air": 0.000003530993574084981
+   },
+   "centroid": 524.2250973831434,
+   "shortTermDb": -36.67670009406383
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-dmr-fp-in",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.4988654479788184,
+   "rmsDb": -20.28844363327536,
+   "dc": 0.000025242801974438105,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11383333333333333,
+   "span": 0.7827291666666667,
+   "decay40": 0.4,
+   "bands": {
+    "sub": 0.11699965619774542,
+    "low": 0.026710520802339148,
+    "lowmid": 0.17710050505224975,
+    "mid": 0.45572579868749125,
+    "himid": 0.1858965887880052,
+    "pres": 0.032625707004626525,
+    "air": 0.004890683781323632
+   },
+   "centroid": 1316.1299169370152,
+   "shortTermDb": -14.281443178163487
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "shot": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-dmr-fp-out",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.5252565261794104,
+   "rmsDb": -20.244934108771897,
+   "dc": 0.00002245322818623663,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11383333333333333,
+   "span": 1.3223333333333334,
+   "decay40": 0.6900000000000001,
+   "bands": {
+    "sub": 0.11673530625984885,
+    "low": 0.02751390613506608,
+    "lowmid": 0.1774512352230346,
+    "mid": 0.4555632430765396,
+    "himid": 0.18516495367656285,
+    "pres": 0.03262222923197516,
+    "air": 0.004898667109191367
+   },
+   "centroid": 1313.1300078540305,
+   "shortTermDb": -14.268993918467132
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "shot": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-dmr-10m-in",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -7.341757998502549,
+   "rmsDb": -27.283843090015534,
+   "dc": 6.734965302257478e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.14977083333333333,
+   "span": 1.3288958333333334,
+   "decay40": 0.74,
+   "bands": {
+    "sub": 0.0579130257819335,
+    "low": 0.04724295512192878,
+    "lowmid": 0.34300409247758934,
+    "mid": 0.3438427126058329,
+    "himid": 0.19098521388716502,
+    "pres": 0.01469830858205219,
+    "air": 0.0023136673905563604
+   },
+   "centroid": 1076.0626783335217,
+   "shortTermDb": -21.426032800820586
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-dmr-60m-out",
+  "m": {
+   "seconds": 1.8,
+   "peakDb": -21.614526840081048,
+   "rmsDb": -43.630718673283965,
+   "dc": -1.6619039326070817e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.2923125,
+   "span": 1.276,
+   "decay40": 0.7000000000000001,
+   "bands": {
+    "sub": 0.03227752779628442,
+    "low": 0.11695478794387298,
+    "lowmid": 0.3989028801199995,
+    "mid": 0.43482137011211647,
+    "himid": 0.01681965236318134,
+    "pres": 0.00021897166829003674,
+    "air": 0.000004809970707206993
+   },
+   "centroid": 634.4286994589302,
+   "shortTermDb": -37.339489944728314
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-pistol-fp-in",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.966380471344859,
+   "rmsDb": -28.564468331388888,
+   "dc": -0.000001112480620122369,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11410416666666667,
+   "span": 0.5353958333333333,
+   "decay40": 0.18,
+   "bands": {
+    "sub": 0.05148162381156422,
+    "low": 0.1562246545376003,
+    "lowmid": 0.039868763520207726,
+    "mid": 0.2971874843883323,
+    "himid": 0.37354571777184464,
+    "pres": 0.07675704649185996,
+    "air": 0.0048809078008487045
+   },
+   "centroid": 1990.229239038393,
+   "shortTermDb": -22.553165680947306
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "shot": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-pistol-fp-out",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.966380471344859,
+   "rmsDb": -28.49814409761001,
+   "dc": -8.854351371686183e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11410416666666667,
+   "span": 1.03125,
+   "decay40": 0.44,
+   "bands": {
+    "sub": 0.05112752571228135,
+    "low": 0.15612658237704602,
+    "lowmid": 0.04044063992585924,
+    "mid": 0.29782091549153855,
+    "himid": 0.37375275699920435,
+    "pres": 0.07586627532641532,
+    "air": 0.00481196632830762
+   },
+   "centroid": 1985.049886156049,
+   "shortTermDb": -22.506079640126195
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "shot": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-pistol-10m-in",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -9.834350902900352,
+   "rmsDb": -35.44630225535924,
+   "dc": 9.64542872831468e-9,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.14979166666666666,
+   "span": 1.1637291666666667,
+   "decay40": 0.54,
+   "bands": {
+    "sub": 0.004220023737855216,
+    "low": 0.22583945643114367,
+    "lowmid": 0.0700242682721143,
+    "mid": 0.16343863355040253,
+    "himid": 0.48644368444653935,
+    "pres": 0.04793078176843933,
+    "air": 0.0021031250235702685
+   },
+   "centroid": 1844.6198595498422,
+   "shortTermDb": -29.55001779570578
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-pistol-60m-out",
+  "m": {
+   "seconds": 1.8,
+   "peakDb": -24.733020459117686,
+   "rmsDb": -46.909230468904056,
+   "dc": 1.0067496313476348e-8,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.2914791666666667,
+   "span": 1.2546458333333332,
+   "decay40": 0.68,
+   "bands": {
+    "sub": 0.0261437892220854,
+    "low": 0.11361588895478965,
+    "lowmid": 0.46469969943432826,
+    "mid": 0.3807594196401066,
+    "himid": 0.01466319754556218,
+    "pres": 0.00011433448723093894,
+    "air": 0.0000036706863073650287
+   },
+   "centroid": 534.0903940264516,
+   "shortTermDb": -40.619592485787535
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-ar-fp-soft",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.4661120355212587,
+   "rmsDb": -24.56628134756101,
+   "dc": 0.000016385734201662672,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11408333333333333,
+   "span": 0.3215,
+   "decay40": 0.27,
+   "bands": {
+    "sub": 0.07697121294700084,
+    "low": 0.04904143599074008,
+    "lowmid": 0.10339140986808357,
+    "mid": 0.5192605988706419,
+    "himid": 0.20476447155325322,
+    "pres": 0.041041105800810544,
+    "air": 0.005467821115236268
+   },
+   "centroid": 1509.6261862491885,
+   "shortTermDb": -18.548969349935525
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "shot": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-ar-fp-corridor",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -3.467648454569191,
+   "rmsDb": -24.49938870818803,
+   "dc": 0.000015899311979220935,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11408333333333333,
+   "span": 0.8902291666666666,
+   "decay40": 0.46,
+   "bands": {
+    "sub": 0.07628100476629962,
+    "low": 0.04874705503640543,
+    "lowmid": 0.10258496423921278,
+    "mid": 0.5212663147431958,
+    "himid": 0.20470617076469894,
+    "pres": 0.04092400875919947,
+    "air": 0.005429084503474723
+   },
+   "centroid": 1512.0204899015032,
+   "shortTermDb": -18.507110551835538
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "shot": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-ar-12m-block0",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -9.1808189904075,
+   "rmsDb": -32.0199884246935,
+   "dc": -3.786546490876693e-8,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.15627083333333333,
+   "span": 1.2051458333333334,
+   "decay40": 0.66,
+   "bands": {
+    "sub": 0.059301898928771864,
+    "low": 0.03409408615236575,
+    "lowmid": 0.2351707286080918,
+    "mid": 0.36678198683367536,
+    "himid": 0.27424054099631046,
+    "pres": 0.02765385896253776,
+    "air": 0.002756884056244708
+   },
+   "centroid": 1428.2470933169525,
+   "shortTermDb": -26.13203279246893
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-ar-12m-block1",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -14.21562426593933,
+   "rmsDb": -36.62111240740452,
+   "dc": -2.0805595302893682e-8,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.15683333333333332,
+   "span": 1.2052291666666666,
+   "decay40": 0.58,
+   "bands": {
+    "sub": 0.055360014297838774,
+    "low": 0.03237467801053764,
+    "lowmid": 0.3369423425012758,
+    "mid": 0.43365910941216207,
+    "himid": 0.14002960070533793,
+    "pres": 0.0016326883880695788,
+    "air": 0.0000015666819196155997
+   },
+   "centroid": 951.9297339340787,
+   "shortTermDb": -30.70864987348297
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 11,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 6
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-ar-12m-block3",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -20.994969200769123,
+   "rmsDb": -43.275234479240055,
+   "dc": -1.1213203189678703e-8,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.15716666666666668,
+   "span": 1.1675625,
+   "decay40": 0.58,
+   "bands": {
+    "sub": 0.06326456395426837,
+    "low": 0.0374025770393441,
+    "lowmid": 0.48906233290245993,
+    "mid": 0.4041248528598828,
+    "himid": 0.0060824118424862095,
+    "pres": 0.0000631909776284391,
+    "air": 7.041775256226988e-8
+   },
+   "centroid": 541.9676795918654,
+   "shortTermDb": -37.33676500876355
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 11,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 6
+  },
+  "errors": []
+ },
+ {
+  "name": "shot-ar-12m-block4",
+  "m": {
+   "seconds": 1.6,
+   "peakDb": -29.091858841667886,
+   "rmsDb": -50.06901168774323,
+   "dc": -1.1353561906920125e-8,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.1594375,
+   "span": 1.4006875,
+   "decay40": 0.73,
+   "bands": {
+    "sub": 0.09882132924594908,
+    "low": 0.06133168984742022,
+    "lowmid": 0.5684820148319455,
+    "mid": 0.27014041573656145,
+    "himid": 0.0012115880566888344,
+    "pres": 0.000012947481800006729,
+    "air": 1.4764976465067161e-8
+   },
+   "centroid": 417.1074196251117,
+   "shortTermDb": -44.41366260969566
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "shot": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "auto-ar-fp",
+  "m": {
+   "seconds": 2.4,
+   "peakDb": -2.4697144557838264,
+   "rmsDb": -13.452018395118234,
+   "dc": -0.000009408328754337466,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.1143125,
+   "span": 2.2861666666666665,
+   "decay40": 1.27,
+   "bands": {
+    "sub": 0.1030622563078391,
+    "low": 0.060757258064950304,
+    "lowmid": 0.08699623665076257,
+    "mid": 0.48517435156815475,
+    "himid": 0.2087008948087617,
+    "pres": 0.04594941842590801,
+    "air": 0.009254808157224183
+   },
+   "centroid": 1538.495288367977,
+   "shortTermDb": -11.765161939833169
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 83,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 34
+  },
+  "perCue": {
+   "shot": 6
+  },
+  "errors": []
+ },
+ {
+  "name": "auto-smg-fp",
+  "m": {
+   "seconds": 2,
+   "peakDb": -3.0120120775462933,
+   "rmsDb": -14.685331640887444,
+   "dc": -0.00009515572849234862,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.1145,
+   "span": 1.8861458333333334,
+   "decay40": 0.9,
+   "bands": {
+    "sub": 0.059496648677579235,
+    "low": 0.17781318441716842,
+    "lowmid": 0.08174079760739757,
+    "mid": 0.4272819396564782,
+    "himid": 0.2063316512044398,
+    "pres": 0.04256821378584894,
+    "air": 0.004716821692607915
+   },
+   "centroid": 1404.4282479965323,
+   "shortTermDb": -13.265294775968508
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 97,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 41
+  },
+  "perCue": {
+   "shot": 6
+  },
+  "errors": []
+ },
+ {
+  "name": "step-hard",
+  "m": {
+   "seconds": 2.2000208333333333,
+   "peakDb": -12.49147797749097,
+   "rmsDb": -34.559420577482896,
+   "dc": -0.000008383556727076836,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11272916666666667,
+   "span": 2.0778333333333334,
+   "decay40": 0.25,
+   "bands": {
+    "sub": 0.06322336754361878,
+    "low": 0.2606519534416483,
+    "lowmid": 0.44923372786892246,
+    "mid": 0.1016901566247264,
+    "himid": 0.08665557013900548,
+    "pres": 0.035486061975870425,
+    "air": 0.003008712895810881
+   },
+   "centroid": 731.8054558222775,
+   "shortTermDb": -31.985141801656756
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 29,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 7
+  },
+  "perCue": {
+   "step": 6
+  },
+  "errors": []
+ },
+ {
+  "name": "step-soft",
+  "m": {
+   "seconds": 2.2000208333333333,
+   "peakDb": -12.02644700601919,
+   "rmsDb": -29.58841838082052,
+   "dc": -0.000001665491775449686,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11320833333333333,
+   "span": 2.0860208333333334,
+   "decay40": 0.16,
+   "bands": {
+    "sub": 0.10895440168371705,
+    "low": 0.534289031579938,
+    "lowmid": 0.3151844469502717,
+    "mid": 0.03196333639034194,
+    "himid": 0.005855853782037727,
+    "pres": 0.0033380690464025263,
+    "air": 0.0004084963857844243
+   },
+   "centroid": 211.0874729748862,
+   "shortTermDb": -28.49891787327243
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 29,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 7
+  },
+  "perCue": {
+   "step": 6
+  },
+  "errors": []
+ },
+ {
+  "name": "step-wood",
+  "m": {
+   "seconds": 2.2000208333333333,
+   "peakDb": -12.412713738559347,
+   "rmsDb": -32.816119680798415,
+   "dc": -0.000006565116957668904,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11275,
+   "span": 2.0733958333333335,
+   "decay40": 0.25,
+   "bands": {
+    "sub": 0.07532252659921228,
+    "low": 0.279616055412987,
+    "lowmid": 0.5477194648473401,
+    "mid": 0.0708051471502172,
+    "himid": 0.016903638170995956,
+    "pres": 0.008639542086728423,
+    "air": 0.0009776201020057788
+   },
+   "centroid": 349.0288348587437,
+   "shortTermDb": -31.59021892880898
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 29,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 7
+  },
+  "perCue": {
+   "step": 6
+  },
+  "errors": []
+ },
+ {
+  "name": "step-metal",
+  "m": {
+   "seconds": 2.2000208333333333,
+   "peakDb": -12.491639377689516,
+   "rmsDb": -33.171200118336394,
+   "dc": -0.000004741263016607267,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11295833333333333,
+   "span": 2.0853333333333333,
+   "decay40": 0.21,
+   "bands": {
+    "sub": 0.07951727468961874,
+    "low": 0.14883590658738025,
+    "lowmid": 0.589614257128024,
+    "mid": 0.10517742458019905,
+    "himid": 0.052298244418982225,
+    "pres": 0.022759002484328772,
+    "air": 0.0017643379939198617
+   },
+   "centroid": 554.9141579382226,
+   "shortTermDb": -31.625513210187
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 29,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 7
+  },
+  "perCue": {
+   "step": 6
+  },
+  "errors": []
+ },
+ {
+  "name": "step-grass",
+  "m": {
+   "seconds": 2.2000208333333333,
+   "peakDb": -12.406287107101663,
+   "rmsDb": -28.73941418308477,
+   "dc": -0.000002727631708360394,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11347916666666667,
+   "span": 2.0873958333333333,
+   "decay40": 0.26,
+   "bands": {
+    "sub": 0.07410386886647576,
+    "low": 0.254955349742909,
+    "lowmid": 0.15970814277401646,
+    "mid": 0.022329162243337346,
+    "himid": 0.20473721409555448,
+    "pres": 0.2761642263167594,
+    "air": 0.00778869213158978
+   },
+   "centroid": 2240.189087249131,
+   "shortTermDb": -27.729138850625112
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 29,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 7
+  },
+  "perCue": {
+   "step": 6
+  },
+  "errors": []
+ },
+ {
+  "name": "step-hard-6m",
+  "m": {
+   "seconds": 2.2000208333333333,
+   "peakDb": -14.106146093126284,
+   "rmsDb": -36.820595404012764,
+   "dc": -1.828165974873079e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.13945833333333332,
+   "span": 2.0636666666666668,
+   "decay40": 0.3,
+   "bands": {
+    "sub": 0.03808419310602105,
+    "low": 0.3350489576981258,
+    "lowmid": 0.5739904934988458,
+    "mid": 0.018773715546483084,
+    "himid": 0.0270153105118277,
+    "pres": 0.006640680339775532,
+    "air": 0.00044655629383269166
+   },
+   "centroid": 310.89478691841686,
+   "shortTermDb": -35.52232020592324
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 29,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 16,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 7,
+   "createPanner": 7
+  },
+  "perCue": {
+   "step": 10
+  },
+  "errors": []
+ },
+ {
+  "name": "reload-ar",
+  "m": {
+   "seconds": 2.8,
+   "peakDb": -9.847207165151259,
+   "rmsDb": -32.15808060678376,
+   "dc": -1.7388546428351436e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.4008333333333333,
+   "span": 1.6716458333333333,
+   "decay40": 0.07,
+   "bands": {
+    "sub": 0.004531599070181404,
+    "low": 0.0021968330465313695,
+    "lowmid": 0.15358155776765275,
+    "mid": 0.5339782751096261,
+    "himid": 0.24307788998713745,
+    "pres": 0.054834239001134,
+    "air": 0.007690509461883588
+   },
+   "centroid": 1797.0234719457976,
+   "shortTermDb": -26.718270748724713
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 25,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 5
+  },
+  "perCue": {
+   "reload": 15
+  },
+  "errors": []
+ },
+ {
+  "name": "reload-ar-empty",
+  "m": {
+   "seconds": 2.8,
+   "peakDb": -9.774412320837559,
+   "rmsDb": -31.197050738716978,
+   "dc": -3.2993419348973214e-8,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.3318333333333333,
+   "span": 2.2117291666666667,
+   "decay40": 0.1,
+   "bands": {
+    "sub": 0.00963155721655449,
+    "low": 0.0038403536210331363,
+    "lowmid": 0.32324186183577713,
+    "mid": 0.4144939915252617,
+    "himid": 0.19899493483647226,
+    "pres": 0.04378405267887146,
+    "air": 0.005928970818804814
+   },
+   "centroid": 1467.7527838354433,
+   "shortTermDb": -26.71754687745343
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 27,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 6
+  },
+  "perCue": {
+   "reload": 18
+  },
+  "errors": []
+ },
+ {
+  "name": "reload-smg-empty",
+  "m": {
+   "seconds": 2.5,
+   "peakDb": -9.79580634519119,
+   "rmsDb": -31.798947241614364,
+   "dc": -6.217653364728903e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.3125833333333333,
+   "span": 1.9693541666666667,
+   "decay40": 0.08,
+   "bands": {
+    "sub": 0.014826625441048853,
+    "low": 0.01129595413410743,
+    "lowmid": 0.3142170035032353,
+    "mid": 0.376469648359429,
+    "himid": 0.23633899881845377,
+    "pres": 0.04043178674010389,
+    "air": 0.006335068488889855
+   },
+   "centroid": 1536.221681360962,
+   "shortTermDb": -28.0472556808558
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 27,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 6
+  },
+  "perCue": {
+   "reload": 18
+  },
+  "errors": []
+ },
+ {
+  "name": "reload-shotgun",
+  "m": {
+   "seconds": 3.5,
+   "peakDb": -9.835251250231586,
+   "rmsDb": -34.735631833532466,
+   "dc": 1.4547177722436442e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.6734166666666667,
+   "span": 2.2827291666666665,
+   "decay40": 0.11,
+   "bands": {
+    "sub": 0.08755233265502009,
+    "low": 0.01420361860347382,
+    "lowmid": 0.7318260327246635,
+    "mid": 0.15203104614751894,
+    "himid": 0.010671945527879067,
+    "pres": 0.0034083216760178365,
+    "air": 0.0003010904569602994
+   },
+   "centroid": 468.981543869122,
+   "shortTermDb": -31.122271042555347
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 25,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 5
+  },
+  "perCue": {
+   "reload": 15
+  },
+  "errors": []
+ },
+ {
+  "name": "reload-shotgun-empty",
+  "m": {
+   "seconds": 3.5,
+   "peakDb": -9.839854037092785,
+   "rmsDb": -33.79898930430236,
+   "dc": 1.6179314124677885e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.6434166666666666,
+   "span": 2.3910416666666667,
+   "decay40": 0.13,
+   "bands": {
+    "sub": 0.061555258561654703,
+    "low": 0.025680429300647158,
+    "lowmid": 0.7421341698936292,
+    "mid": 0.15700505509858506,
+    "himid": 0.010535337825909789,
+    "pres": 0.00279913438747078,
+    "air": 0.00028580430264705387
+   },
+   "centroid": 430.9260294727988,
+   "shortTermDb": -27.359401509350292
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 25,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 5
+  },
+  "perCue": {
+   "reload": 15
+  },
+  "errors": []
+ },
+ {
+  "name": "reload-dmr-empty",
+  "m": {
+   "seconds": 3.1,
+   "peakDb": -9.842526523945134,
+   "rmsDb": -31.639489007487178,
+   "dc": -2.7854185323268475e-8,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.35883333333333334,
+   "span": 2.4306041666666665,
+   "decay40": 0.1,
+   "bands": {
+    "sub": 0.009784499933734701,
+    "low": 0.004448756872721235,
+    "lowmid": 0.3089880302481942,
+    "mid": 0.4192801724474684,
+    "himid": 0.20590251468860743,
+    "pres": 0.04531857146041816,
+    "air": 0.00618727598096016
+   },
+   "centroid": 1503.652732388461,
+   "shortTermDb": -26.71841373080565
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 27,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 6
+  },
+  "perCue": {
+   "reload": 18
+  },
+  "errors": []
+ },
+ {
+  "name": "reload-pistol-empty",
+  "m": {
+   "seconds": 2.1,
+   "peakDb": -9.800206675950614,
+   "rmsDb": -30.23902226673142,
+   "dc": 4.1524588264038026e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.2725625,
+   "span": 1.6704166666666667,
+   "decay40": 0.12,
+   "bands": {
+    "sub": 0.013054680820104898,
+    "low": 0.005819809503296673,
+    "lowmid": 0.2795312006142518,
+    "mid": 0.2965190567856383,
+    "himid": 0.33309719001700205,
+    "pres": 0.06424698949820122,
+    "air": 0.007619575048249685
+   },
+   "centroid": 1826.9183804972986,
+   "shortTermDb": -26.631911230342862
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 27,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 6
+  },
+  "perCue": {
+   "reload": 18
+  },
+  "errors": []
+ },
+ {
+  "name": "melee",
+  "m": {
+   "seconds": 1,
+   "peakDb": -5.0888628972236685,
+   "rmsDb": -28.615451969206653,
+   "dc": -0.000012268530488654505,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.2630625,
+   "span": 0.538625,
+   "decay40": 0.11,
+   "bands": {
+    "sub": 0.2497693613749593,
+    "low": 0.4233377697848735,
+    "lowmid": 0.24690333849815735,
+    "mid": 0.060890633400222924,
+    "himid": 0.014602397202486314,
+    "pres": 0.0038855157646635855,
+    "air": 0.0006036634391129325
+   },
+   "centroid": 253.6741509610253,
+   "shortTermDb": -24.638554768465696
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1
+  },
+  "perCue": {
+   "melee": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "crumble-wall",
+  "m": {
+   "seconds": 1.2,
+   "peakDb": -8.479925790830057,
+   "rmsDb": -34.7400460288631,
+   "dc": -7.7796350145339e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.12727083333333333,
+   "span": 0.5269583333333333,
+   "decay40": 0.3,
+   "bands": {
+    "sub": 0.023461617252028638,
+    "low": 0.20456320177103027,
+    "lowmid": 0.1605720724268395,
+    "mid": 0.48914845585061023,
+    "himid": 0.07700157002390355,
+    "pres": 0.04207918250518823,
+    "air": 0.003169180879400767
+   },
+   "centroid": 1079.368802187841,
+   "shortTermDb": -30.22312911854403
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "crumble": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "crumble-wood-big",
+  "m": {
+   "seconds": 1.5,
+   "peakDb": -5.2220257515460835,
+   "rmsDb": -31.73409899979708,
+   "dc": -0.0000011510656248800741,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.12566666666666668,
+   "span": 1.3745625,
+   "decay40": 1.1300000000000001,
+   "bands": {
+    "sub": 0.007763754227608857,
+    "low": 0.023636371443551116,
+    "lowmid": 0.3958185649032964,
+    "mid": 0.5082011910866314,
+    "himid": 0.052734945158625327,
+    "pres": 0.010984752398404386,
+    "air": 0.0008598767126524246
+   },
+   "centroid": 812.1585894278802,
+   "shortTermDb": -27.687078932593217
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 19,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 11,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 2,
+   "createPanner": 2
+  },
+  "perCue": {
+   "crumble": 10
+  },
+  "errors": []
+ },
+ {
+  "name": "boom-8m",
+  "m": {
+   "seconds": 3,
+   "peakDb": -3.5669110969926097,
+   "rmsDb": -15.74573583571526,
+   "dc": 0.0004104646614360819,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.13597916666666668,
+   "span": 2.8465833333333332,
+   "decay40": 1.94,
+   "bands": {
+    "sub": 0.735380079062635,
+    "low": 0.11659113286409833,
+    "lowmid": 0.09364197722696094,
+    "mid": 0.0336156341983675,
+    "himid": 0.01655517269931551,
+    "pres": 0.004182774869028591,
+    "air": 0.00003322880079262977
+   },
+   "centroid": 169.30604321043566,
+   "shortTermDb": -11.160566717776256
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "boom": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "boom-40m-out",
+  "m": {
+   "seconds": 3,
+   "peakDb": -12.53438661428067,
+   "rmsDb": -28.544140320350362,
+   "dc": -4.079469599673757e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.23691666666666666,
+   "span": 2.5343125,
+   "decay40": 2.11,
+   "bands": {
+    "sub": 0.7828088767106756,
+    "low": 0.11340924801967037,
+    "lowmid": 0.08378245023378098,
+    "mid": 0.019841089144792934,
+    "himid": 0.00015587370119390164,
+    "pres": 0.0000018586811969865182,
+    "air": 6.035075684932877e-7
+   },
+   "centroid": 79.61290207227697,
+   "shortTermDb": -21.430351729690173
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 17,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 10,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 1,
+   "createPanner": 1
+  },
+  "perCue": {
+   "boom": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "grenade",
+  "m": {
+   "seconds": 2.5,
+   "peakDb": -9.239389615845205,
+   "rmsDb": -33.74550398759383,
+   "dc": -1.6921747846936341e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.390125,
+   "span": 1.4178541666666666,
+   "decay40": 0.26,
+   "bands": {
+    "sub": 0.0002010284811544021,
+    "low": 0.0003627274051422873,
+    "lowmid": 0.03509439469105827,
+    "mid": 0.7483822244623465,
+    "himid": 0.16003383935872073,
+    "pres": 0.04913500451505701,
+    "air": 0.006691993311125976
+   },
+   "centroid": 1608.2701202259868,
+   "shortTermDb": -25.85806928910468
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 21,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 11,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 3,
+   "createPanner": 2
+  },
+  "perCue": {
+   "throwIt": 3,
+   "bounce": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "charge",
+  "m": {
+   "seconds": 1,
+   "peakDb": -8.568297204328202,
+   "rmsDb": -27.74501781583238,
+   "dc": 0.000018045492770700852,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.11835416666666666,
+   "span": 0.872,
+   "decay40": 0.13,
+   "bands": {
+    "sub": 0.13700560489138155,
+    "low": 0.017193546993495932,
+    "lowmid": 0.007391356792130946,
+    "mid": 0.7950002483107466,
+    "himid": 0.0014984033748887456,
+    "pres": 0.04178657804670523,
+    "air": 0.00009742311176426346
+   },
+   "centroid": 1634.1806231568903,
+   "shortTermDb": -25.681568209955763
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 21,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 3,
+   "createPanner": 3
+  },
+  "perCue": {
+   "chargeSet": 12
+  },
+  "errors": []
+ },
+ {
+  "name": "build",
+  "m": {
+   "seconds": 1.5,
+   "peakDb": -5.108379127236576,
+   "rmsDb": -27.52893116304598,
+   "dc": 0.000021093241585428284,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.29060416666666666,
+   "span": 1.2484583333333332,
+   "decay40": 0.31,
+   "bands": {
+    "sub": 0.184378697661462,
+    "low": 0.15480194759056426,
+    "lowmid": 0.557009945610588,
+    "mid": 0.08148786343770209,
+    "himid": 0.016184350401279905,
+    "pres": 0.005887194929042821,
+    "air": 0.0002486505568187873
+   },
+   "centroid": 302.6173828281184,
+   "shortTermDb": -23.350232496311392
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 23,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 13,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 4,
+   "createPanner": 4
+  },
+  "perCue": {
+   "build": 15
+  },
+  "errors": []
+ },
+ {
+  "name": "work",
+  "m": {
+   "seconds": 2.2000208333333333,
+   "peakDb": -12.707153180736066,
+   "rmsDb": -30.520576711549275,
+   "dc": 1.6717821803141707e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.12435416666666667,
+   "span": 2.087625,
+   "decay40": 0.17,
+   "bands": {
+    "sub": 0.0005623249751682575,
+    "low": 0.0007848574290131955,
+    "lowmid": 0.007022065188828634,
+    "mid": 0.7558328513126679,
+    "himid": 0.1830514259658979,
+    "pres": 0.04912542750227255,
+    "air": 0.0035482510643673297
+   },
+   "centroid": 1733.4828023884265,
+   "shortTermDb": -26.25998111019974
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 25,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 5
+  },
+  "perCue": {
+   "work": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "beep",
+  "m": {
+   "seconds": 1.5,
+   "peakDb": -13.67405081220943,
+   "rmsDb": -30.203562475378778,
+   "dc": -4.553183967396358e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.126125,
+   "span": 1.1353958333333334,
+   "decay40": 0.04,
+   "bands": {
+    "sub": 1.0293177025546047e-8,
+    "low": 3.0302144309760215e-8,
+    "lowmid": 1.393108249043719e-7,
+    "mid": 0.4295527730847833,
+    "himid": 0.5233540018439412,
+    "pres": 0.04700863440450643,
+    "air": 0.0000839801735984851
+   },
+   "centroid": 2279.6166821533316,
+   "shortTermDb": -27.75268657292342
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 19,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 11,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 2,
+   "createPanner": 2
+  },
+  "perCue": {
+   "beep": 5
+  },
+  "errors": []
+ },
+ {
+  "name": "feedback",
+  "m": {
+   "seconds": 2.4,
+   "peakDb": -7.0811794516978255,
+   "rmsDb": -29.21305463709423,
+   "dc": -0.000006942123017981632,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 1.412,
+   "span": 2.2564166666666665,
+   "decay40": 0.3,
+   "bands": {
+    "sub": 0.1663936431270196,
+    "low": 0.11866514562515024,
+    "lowmid": 0.04321002436011873,
+    "mid": 0.5296377013775174,
+    "himid": 0.09629259073955644,
+    "pres": 0.04026681027068089,
+    "air": 0.005456297627708616
+   },
+   "centroid": 1133.3967414156007,
+   "shortTermDb": -25.659411758385904
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 22,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 7
+  },
+  "perCue": {
+   "hit": 2,
+   "kill": 2,
+   "hurt": 2,
+   "dry": 2,
+   "swap": 2,
+   "ui": 2
+  },
+  "errors": []
+ },
+ {
+  "name": "cues",
+  "m": {
+   "seconds": 9,
+   "peakDb": -16.43932639499119,
+   "rmsDb": -30.13801363056665,
+   "dc": -9.443595974045349e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.13075,
+   "span": 8.887520833333333,
+   "decay40": 0.73,
+   "bands": {
+    "sub": 0.00006391118143292507,
+    "low": 0.016892554530819295,
+    "lowmid": 0.6485019297792066,
+    "mid": 0.32101163329943627,
+    "himid": 0.0130310904067939,
+    "pres": 0.0004829657019286891,
+    "air": 0.00000969182174502079
+   },
+   "centroid": 502.6583514332468,
+   "shortTermDb": -26.708729744148844
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 29,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 7
+  },
+  "perCue": {
+   "round": 3
+  },
+  "errors": []
+ },
+ {
+  "name": "ambience-in",
+  "m": {
+   "seconds": 3,
+   "peakDb": -27.517905598482812,
+   "rmsDb": -43.92724599008436,
+   "dc": -5.190247639903747e-7,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.012875,
+   "span": 2.988916666666667,
+   "decay40": 2.97,
+   "bands": {
+    "sub": 0.015748423388218583,
+    "low": 0.04368057468093017,
+    "lowmid": 0.27692001266528843,
+    "mid": 0.591153390604453,
+    "himid": 0.06610076186272212,
+    "pres": 0.005604487774252704,
+    "air": 0.0007639071038356898
+   },
+   "centroid": 914.2958467204342,
+   "shortTermDb": -42.97847271443314
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 20,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 5
+  },
+  "perCue": {
+   "ui": 2
+  },
+  "errors": []
+ },
+ {
+  "name": "ambience-out",
+  "m": {
+   "seconds": 3,
+   "peakDb": -27.490335903004464,
+   "rmsDb": -45.9823681075969,
+   "dc": 0.0000022025495731617814,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 0.012875,
+   "span": 2.988916666666667,
+   "decay40": 2.97,
+   "bands": {
+    "sub": 0.1785596345121194,
+    "low": 0.12159226341502662,
+    "lowmid": 0.2701167185629197,
+    "mid": 0.41310123313773744,
+    "himid": 0.015302789671337708,
+    "pres": 0.0011493037126649684,
+    "air": 0.0001721232554052286
+   },
+   "centroid": 559.4099211322088,
+   "shortTermDb": -42.99699552044317
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 20,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 9,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 5
+  },
+  "perCue": {
+   "ui": 2
+  },
+  "errors": []
+ },
+ {
+  "name": "scene-corridor",
+  "m": {
+   "seconds": 9,
+   "peakDb": -2.4042343824054004,
+   "rmsDb": -18.788351636100636,
+   "dc": -0.000004805108239957513,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 1.413375,
+   "span": 8.936166666666667,
+   "decay40": 3.25,
+   "bands": {
+    "sub": 0.10097790316100458,
+    "low": 0.0645277944512899,
+    "lowmid": 0.09745334903571799,
+    "mid": 0.47731220233172184,
+    "himid": 0.20758420049692602,
+    "pres": 0.04346325206221627,
+    "air": 0.008588090388506888
+   },
+   "centroid": 1508.8443636838638,
+   "shortTermDb": -11.826904934882227
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 146,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 39,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 69,
+   "createPanner": 20
+  },
+  "perCue": {
+   "step": 6,
+   "shot": 6,
+   "hit": 2,
+   "hurt": 2,
+   "crumble": 5,
+   "kill": 2,
+   "reload": 15
+  },
+  "errors": []
+ },
+ {
+  "name": "scene-breach",
+  "m": {
+   "seconds": 6.5,
+   "peakDb": -2.234778064542025,
+   "rmsDb": -17.31507912280169,
+   "dc": 0.000310958648682432,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 1.822125,
+   "span": 6.448854166666667,
+   "decay40": 2.49,
+   "bands": {
+    "sub": 0.41662027474794944,
+    "low": 0.10194859338321122,
+    "lowmid": 0.1381495259580313,
+    "mid": 0.23331678367233555,
+    "himid": 0.0875430641778196,
+    "pres": 0.018952028948121626,
+    "air": 0.0034465520947786076
+   },
+   "centroid": 712.8714546049185,
+   "shortTermDb": -11.766780787834573
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 85,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 36,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 38,
+   "createPanner": 21
+  },
+  "perCue": {
+   "chargeSet": 18,
+   "work": 6,
+   "boom": 5,
+   "crumble": 10,
+   "shot": 6,
+   "step": 10,
+   "hit": 2,
+   "kill": 2
+  },
+  "errors": []
+ },
+ {
+  "name": "scene-uplink",
+  "m": {
+   "seconds": 11,
+   "peakDb": -3.5161755942461297,
+   "rmsDb": -23.553646126799393,
+   "dc": -0.0000029144904614110022,
+   "nan": 0,
+   "clipped": 0,
+   "attack": 1.1393541666666667,
+   "span": 10.9284375,
+   "decay40": 0.15,
+   "bands": {
+    "sub": 0.00429147916280232,
+    "low": 0.01968441413710385,
+    "lowmid": 0.043039906174681564,
+    "mid": 0.4514529389000297,
+    "himid": 0.41569801231008685,
+    "pres": 0.062928676203348,
+    "air": 0.002863095798978606
+   },
+   "centroid": 2064.8070464105604,
+   "shortTermDb": -17.610638842958622
+  },
+  "nodes": {
+   "createDynamicsCompressor": 1,
+   "createGain": 153,
+   "createWaveShaper": 1,
+   "createBiquadFilter": 55,
+   "createConvolver": 4,
+   "createBuffer": 238,
+   "createBufferSource": 71,
+   "createPanner": 41
+  },
+  "perCue": {
+   "beep": 5,
+   "work": 3,
+   "shot": 6,
+   "step": 12,
+   "round": 3
+  },
+  "errors": []
+ }
+]
