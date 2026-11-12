@@ -235,5 +235,5 @@ export function createFpRig(look: ArmsLook): FpRig {
 }
 
 // A lighter coyote glove than the handguard it holds, so the hand separates from the gun; darker palm and knuckle panel.
-export const DEFAULT_LOOK = (squad: 0 | 1, band: number): ArmsLook => ({ sleeve: SURF.cloth, glove: surf(SURF.glove, { color: 0xa08e6c }), palm: surf(SURF.gloveTan, { color: 0x4d473d }), guard: surf(SURF.knuckle, { color: 0x3b3c39 }), band, squad });
+export const DEFAULT_LOOK = (squad: 0 | 1, band: number): ArmsLook => ({ sleeve: SURF.cloth, glove: surf(SURF.glove, { color: 0x8a806e }), palm: surf(SURF.gloveTan, { color: 0x4d473d }), guard: surf(SURF.knuckle, { color: 0x3b3c39 }), band, squad });
 export { POSE, lerpPose, ARM_BONES, WB };
