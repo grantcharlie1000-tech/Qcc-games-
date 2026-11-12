@@ -1,6 +1,7 @@
 /** The picture. A baked-light level, destructible panel meshes, fighters, the weapon in hand and pooled effects,
  * drawn with unlit materials so integrated graphics can keep up. Resolution adapts to hold the frame rate. */
 import * as THREE from 'three';
+import { setCheapShading } from './render/materials';
 import { CELL, ROUND, WALL_H, WEAPONS } from './config';
 import { Effects } from './effects';
 import { createBake, SUN, SUN_COLOR, type Bake } from './lightbake';
@@ -146,6 +147,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       level = buildLevel(bake, materials, a.claim);
       scene.add(level.group);
       artScene.add(a.group);
+      if (cheap) shade(true);
       pieces = new SetPieces(fx, (x, z) => { const l = bake.probe(x, z); return [0.18 + l[0] * 1.9, 0.18 + l[1] * 1.9, 0.18 + l[2] * 1.9]; });
       scene.add(pieces.mesh);
       // Breakable dressing (render/breakables.ts): screens, lights, glass, mugs, bins, leaves, ceiling fittings.
@@ -202,6 +204,14 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       await done;
       // One real draw, so the flash's and the walls' textures are uploaded too.
       renderer.setRenderTarget(hdr); renderer.render(scene, camera); renderer.setRenderTarget(prev);
+      // The other shading path too (cheap or full), so a quality step in play never compiles a shader.
+      const was = cheap;
+      shade(!was);
+      renderer.setRenderTarget(hdr);
+      const both = Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(artScene, camera)]);
+      renderer.setRenderTarget(prev);
+      await both;
+      shade(was);
     } finally {
       gadgets.forEach((o, i) => { o.visible = kept[i][0]; o.position.copy(kept[i][1]); o.updateMatrixWorld(true); });
       fx.prime(false); fx.group.remove(wallWarm); tri.dispose(); renderer.setRenderTarget(prev); hdr.dispose(); }
@@ -297,7 +307,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   });
 
   const fx = new Effects();
-  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) (window as unknown as { __blFx: Effects }).__blFx = fx;
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blFx: fx, __blRenderer: renderer, __blScene: scene });
   // Window panes outside the barricaded windows (render/glass.ts): cosmetic, from the shot and blast events.
   const glass = new Glass(fx); scene.add(glass.group);
   glass.onEvent = (stage, x, y, z) => { if (!cosmetic.size) return; evGlass.stage = stage; evGlass.x = x; evGlass.y = y; evGlass.z = z; emit(evGlass); };
@@ -344,10 +354,16 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     { scale: 0.85, post: 'medium', density: 1 }, { scale: 1, post: 'medium', density: 1 },
   ];
   let step = 1, downAt = -Infinity, longMs = 0, fullFor = 0;
+  // The cheap shading path (render/materials.ts cheapTwin): on the bottom step of Auto, on Performance, and so always on
+  // a software rasteriser.
+  let cheap = false;
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blShade: (on: boolean) => setCheap(on) });
+  function shade(on: boolean) { setCheapShading(artScene, on); setCheapShading(scene, on); }
+  function setCheap(on: boolean) { if (on !== cheap) { cheap = on; shade(on); } }
   function setStep(n: number) {
     step = Math.max(0, Math.min(LADDER.length - 1, n));
     const l = LADDER[step];
-    scale = l.scale; fx.density = l.density;
+    scale = l.scale; fx.density = l.density; setCheap(step === 0);
     post.setTier(/[?&]post=off\b/.test(location.search) ? 'off' : l.post);
     applySize();
     stats.auto = stats.software ? 'auto: lowest (software)' : `auto ${step + 1}/${LADDER.length}`;
@@ -792,7 +808,10 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       if (art && !probesDone) { const t = performance.now(); probesDone = art.captureNext(renderer, artScene); if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: probe ${(performance.now() - t).toFixed(0)} ms`); }
       time += dt;
       if (view.m.world !== world) bind(view.m.world);
-      for (const p of panels) if (p.sync()) batches.update(p);
+      let synced = false;
+      for (const p of panels) if (p.sync()) { batches.update(p); synced = true; }
+      // A rebuilt panel takes its full material back; on the cheap path, swap it again.
+      if (synced && cheap) setCheapShading(panelGroup, true);
       batches.flush();
       updateDeploys(view.m);
       fighters.update(view);
@@ -836,7 +855,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       quality = q; const d = QUALITIES[q];
       stats.auto = undefined;
       if (q === 'auto') { setStep(stats.software ? 0 : 1); return; }
-      scale = Math.max(d.min, Math.min(d.max, d.max)); slow = fast = 0; fx.density = d.density;
+      scale = Math.max(d.min, Math.min(d.max, d.max)); slow = fast = 0; fx.density = d.density; setCheap(q === 'low');
       post.setTier(/[?&]post=off\b/.test(location.search) ? 'off' : postTier(q));
       applySize();
     },

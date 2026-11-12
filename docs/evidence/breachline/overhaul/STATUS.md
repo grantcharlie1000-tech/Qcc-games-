@@ -13,6 +13,25 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ### Performance
 
+**Job 5: the cheap shading path.**
+
+*What it does.* Every art material (level, props, dressing, panels) has a twin: base colour times its baked light (the lightmap, the panels' vertex light, or a prop probe's average), plus the same painted detail (bands, dado, tiles, joints). It has no normal, roughness, metal or occlusion maps, no reflections and no lights.
+- It is used on Auto's bottom step and on Performance, so always on software WebGL.
+- Both paths are compiled at warm-up. A browser test switches High to Performance after the warm-up and checks that no shader compiles (without the warm-up, 9 would).
+- Signs (emissive) keep the full shader.
+
+*Measured.* Software WebGL at 1280 x 720, High post, the same view, each frame forced to finish (`scripts/breachline-assets/shading.mjs`):
+
+| View | Full | Cheap | Speed-up |
+|---|---|---|---|
+| Corridor | 1400 ms | 731 ms | 1.9x |
+| Office | 1118 ms | 757 ms | 1.5x |
+| Lab | 1859 ms | 728 ms | 2.6x |
+
+- In the Lab view the post chain alone is 297 ms of that, so the scene's own shading went from about 1245 ms to 459 ms, 2.7x.
+- What is left is post, the fighters and the weapon in hand. Those keep their own shaders, which are not mine to change.
+- Side by side in `perf/shading-full-vs-cheap.png`: the cheap path loses the floor reflections and little else.
+
 **Job 4: particles.** Smoke, dust, blood spray and sparks are now one system of instanced camera-facing quads, two draw calls in all (blended and additive). There is no allocation per burst.
 - **The texture.** A small atlas of three lumpy smoke puffs and a spark core. Each puff turns slowly and fades in and out, so nothing pops.
 - **Sorting.** The blended pool is drawn back to front.
@@ -643,7 +662,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** performance lead. Readback, resolution thrash, readout, Auto and particles done; next on the list: the 250 to 300 draw calls, and the panel geometry made per hit.
+**Where I am (keep current):** performance lead. Cheap shading path in (job 5); next: the half-way step, then draws under 120 and no per-hit geometry (job 6), then fighters' detail (job 7).
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

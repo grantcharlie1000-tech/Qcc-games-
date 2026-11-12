@@ -2,7 +2,7 @@ import {test,expect,type Page} from '../../fixtures';
 
 interface Me{x:number;z:number;yaw:number;pitch:number;hp:number;alive:boolean;squad:number;role:number;kit:number;mag:number[];charges:number;grenades:number;reinforcements:number;act:number;kills:number;score:number}
 interface HookState{phase:string;t:number;round:number;wins:number[];attackers:number;self:number;watch:number;online:boolean;host:boolean;shown:string|null;paused:boolean;held:boolean;me:Me|null;players:{id:number;name:string;squad:number;bot:boolean;alive:boolean;hp:number;x:number;z:number}[];holes:number;reinforced:number;device:unknown}
-interface Hook{state():HookState;start(p?:Record<string,unknown>):void;freeze(on:boolean):void;advance(s:number):void;look(y:number,p:number):void;hold(patch:Record<string,unknown>,seconds:number,once?:Record<string,unknown>|null):void;place(x:number,z:number,yaw?:number,pitch?:number):void;skip(s:number):void;still():void;stats():{calls:number;triangles:number;scale:number;level:number};frames():number;draw():void}
+interface Hook{state():HookState;start(p?:Record<string,unknown>):void;freeze(on:boolean):void;advance(s:number):void;look(y:number,p:number):void;hold(patch:Record<string,unknown>,seconds:number,once?:Record<string,unknown>|null):void;place(x:number,z:number,yaw?:number,pitch?:number):void;skip(s:number):void;still():void;stats():{calls:number;triangles:number;scale:number;level:number;programs?:number;ready?:boolean};frames():number;draw():void}
 declare global{interface Window{__breachlineTest?:Hook}}
 
 // A static build has no server functions, so the site's chat summary request 404s there (the dev server answers it with
@@ -176,5 +176,17 @@ test('?perf=1 shows the performance readout in a match, Auto drops to its lowest
   if((await readout.innerText()).includes('software'))await expect(readout).toContainText('auto: lowest (software)');
   await page.keyboard.press('F3');
   await expect(readout).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test('switching to Performance (the cheap shading path) compiles no shader after the warm-up',async({page})=>{
+  test.setTimeout(300_000);
+  const errors=await open(page);
+  await action(page,{seed:7,quality:'high'});
+  await page.waitForFunction(()=>window.__breachlineTest!.stats().ready,undefined,{timeout:240_000,polling:500});
+  const draw=()=>page.evaluate(()=>{const h=window.__breachlineTest!;for(let i=0;i<3;i++)h.draw();return h.stats().programs;});
+  const before=await draw();
+  await page.evaluate(()=>{const h=window.__breachlineTest!;h.start({quality:'low'});h.freeze(true);h.advance(0.2);h.still();h.skip(19.9);h.advance(0.2);});
+  expect(await draw()).toBe(before);
   expect(errors).toEqual([]);
 });
