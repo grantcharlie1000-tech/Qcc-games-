@@ -1,0 +1,260 @@
+/** The Marrow AR-5 as a high-detail signed-distance sculpt (offline only: the mesher and baker in
+ * scripts/breachline-assets/hero/ read it; the game loads the baked result). Every dimension comes from `AR5` in
+ * designs.ts. `hi` adds what is too fine for triangles and goes into the normal map: stipple, knurling, serrations,
+ * screw sockets, pin dimples, slot-edge chamfers. Moving parts are separate parts with their own bone. */
+import { AR5 as A } from './designs';
+import {
+  alongZ, box, chamferJoin, cut, cutChamfer, cutRound, cylX, cylY, cylZ, fillet, inter, lathe, latheX, latheY, mirrorX, relief,
+  repeatU, rotX, rotZ, round2, sideX, stadium2, stadiumB, topY, union, type Fn, type Shape,
+} from './sdf';
+
+/** Surface finishes the painter knows. */
+export const MAT = { anod: 0, cerakote: 1, polymer: 2, steel: 3, rubber: 4, dark: 5, glow: 6, brass: 7, polymerFde: 8 } as const;
+/** Bones as in weapons.ts `WB`. */
+const BONE = { root: 0, mag: 1, bolt: 2, trigger: 3, handle: 4 } as const;
+
+export interface Part {
+  name: string; bone: number; mat: number; s: Shape;
+  /** Relative triangle budget weight when simplifying (detail nearest the camera gets more). */
+  weight: number;
+}
+
+// ---- Fine relief ---------------------------------------------------------------------------------------------------
+const hash = (x: number, y: number, z: number) => { let h = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(z | 0, 2147483647)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+function vnoise(x: number, y: number, z: number) {
+  const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z), fx = x - ix, fy = y - iy, fz = z - iz;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy), sz = fz * fz * (3 - 2 * fz), l = (a: number, b: number, t: number) => a + (b - a) * t;
+  const c = (dx: number, dy: number, dz: number) => hash(ix + dx, iy + dy, iz + dz);
+  return l(l(l(c(0, 0, 0), c(1, 0, 0), sx), l(c(0, 1, 0), c(1, 1, 0), sx), sy), l(l(c(0, 0, 1), c(1, 0, 1), sx), l(c(0, 1, 1), c(1, 1, 1), sx), sy), sz);
+}
+/** Moulded stipple: rounded bumps about 1 mm across. */
+const stipple = (x: number, y: number, z: number) => { const n = vnoise(x * 1.4, y * 1.4, z * 1.4); return Math.max(0, n - 0.45) * 0.32; };
+/** Diamond knurl around a vertical axis through (cx, cu). */
+const knurlY = (cx: number, cu: number, pitch: number, depth: number): Fn => (x, y, z) => {
+  const a = Math.atan2(-z - cu, x - cx), r = Math.hypot(x - cx, -z - cu), k = (Math.PI * 2 * r) / pitch;
+  return -depth * Math.max(Math.abs(Math.sin(a * k / 2 + y * Math.PI / pitch)), Math.abs(Math.sin(a * k / 2 - y * Math.PI / pitch)));
+};
+/** Straight ridges across u (serrations on a latch or a paddle). */
+const ridgesU = (pitch: number, depth: number): Fn => (_x, _y, z) => -depth * Math.abs(Math.sin(-z * Math.PI / pitch));
+
+// ---- Shared kit ----------------------------------------------------------------------------------------------------
+
+/** An accessory rail (21.2 mm over the dovetails, 45° flanks, 5.2 mm slots on a 10 mm pitch, 3 mm deep). */
+export function rail(u0: number, u1: number, hi: boolean, top = A.railTop, deck = A.deck): Shape {
+  const h = A.railHalf, prof: [number, number][] = [
+    [-11, deck - 0.4], [11, deck - 0.4], [11, deck + 0.5], [8.0, top - 5.4], [h, top - 2.8], [h, top - 2.4], [h - 2.4, top], [-(h - 2.4), top], [-h, top - 2.4], [-h, top - 2.8], [-8.0, top - 5.4], [-11, deck + 0.5],
+  ];
+  let s = alongZ(prof, u0, u1, -0.5);
+  const first = u0 + 3.4, n = Math.floor((u1 - first - A.slotW) / A.slotPitch) + 1;
+  const slot = repeatU(box(-12, top - A.slotDepth, first, 12, top + 1, first + A.slotW), A.slotPitch, n);
+  s = hi ? cutChamfer(s, slot, 0.45) : cut(s, slot);
+  return s;
+}
+
+/** A socket-head screw seen end on: head of radius r standing h proud of a face at x0 (dir ±1), hex socket in hi. */
+function screwX(y: number, u: number, x0: number, dir: 1 | -1, r: number, h: number, hi: boolean): Shape {
+  let s = latheX([[0, -0.5], [r, -0.5], [r, h - 0.35], [r - 0.35, h], [0, h]], y, u, x0, dir);
+  if (hi) s = cut(s, latheX([[0, h - 1.4], [r * 0.45, h - 1.4], [r * 0.45, h + 1], [0, h + 1]], y, u, x0, dir));
+  return s;
+}
+
+// ---- The rifle ------------------------------------------------------------------------------------------------------
+
+export function ar5Parts(hi: boolean): Part[] {
+  const parts: Part[] = [];
+  const add = (name: string, bone: number, mat: number, s: Shape, weight = 1) => parts.push({ name, bone, mat, s, weight });
+  const U = A.upper, L = A.lower, W = A.well, H = A.handguard, P = A.port;
+
+  // Upper receiver: a slim forging with a machined pocket on the left, the ejection port on the right with a brass
+  // deflector behind it, and the charging-handle channel at the rear of the deck.
+  {
+    let s = sideX(round2([[U.u0, U.bottom], [U.u1, U.bottom], [U.u1, A.deck], [U.u0, A.deck]], [1.5, 1.5, 0, 0]), -U.half, U.half, -0.8);
+    s = chamferJoin(s, cylZ(0, 1, 15.5, 178, 189, -0.6), 0.8);
+    s = chamferJoin(s, sideX(round2([[52, 2], [68, 2], [68, 9], [61, 17], [52, 17]], [0, 1, 2, 2, 1]), 12, 18.5, -0.8), 0.8);
+    s = cutChamfer(s, box(-15, 3, 20, -12.6, 15, 172), 0.8);
+    s = cutChamfer(s, box(4, P.y0, P.u0, 16, P.y1, P.u1), 0.5);
+    s = cut(s, box(-4.6, 14.6, -1, 4.6, 23, 44));
+    if (hi) s = cut(s, cylX(16.5, 186, 1.2, -14.5, -12.8)); // a witness hole on the left of the barrel-nut seat
+    add('upper', BONE.root, MAT.anod, s, 1.4);
+    add('upper rail', BONE.root, MAT.anod, rail(-1, U.u1, hi), 1.6);
+    // Ejection port door, open (hanging from its hinge rod under the port), and the hinge rod.
+    add('port door', BONE.root, MAT.anod, union(box(13.3, -24.5, 72, 14.7, -8.6, 134, -0.3), cylZ(14.2, -8.2, 1.15, 66, 140, -0.3)), 0.4);
+  }
+  // Bolt carrier, seen through the port (bolt bone).
+  {
+    let s = cylZ(0, 1, 8.6, 30, 152, -0.6);
+    s = cut(s, box(6.5, -3, 60, 10, 5, 150));
+    s = union(s, cylZ(0, 1, 6.6, 152, 166, -0.4), cylX(9, 120, 2.9, 4, 9.3, -0.3));
+    add('bolt carrier', BONE.bolt, MAT.steel, s, 0.6);
+  }
+  // Charging handle: a T behind the deck with latches on both wings (handle bone).
+  {
+    let s = topY(round2([[-23, -13], [23, -13], [24.5, -9], [21, -4.5], [4.3, -4], [4.3, 44], [-4.3, 44], [-4.3, -4], [-21, -4.5], [-24.5, -9]], [3, 3, 2, 1, 0, 0, 0, 0, 1, 2]), 15.3, 21.6, -0.7);
+    let latch = topY(round2([[-25.5, -16], [-14, -15], [-12.5, -6], [-22, -5], [-26.5, -10]], 1.6), 16.0, 23.4, -0.6);
+    if (hi) latch = relief(latch, (x, y, z) => (y > 22.8 ? ridgesU(1.1, 0.22)(x, y, z) : 0), 0.3);
+    s = union(s, mirrorX(latch));
+    add('charging handle', BONE.handle, MAT.anod, s, 1.5);
+  }
+  // Lower receiver: flared magazine well, trigger guard, bolt catch, selector, takedown pins, magazine release.
+  {
+    let s = sideX(round2([[L.u0, -13], [L.u1, -13], [L.u1, -20], [176, -27], [104, -28], [14, -28], [0, -24], [L.u0, -19]], [0, 0, 2, 3, 0, 2, 3, 2]), -L.half, L.half, -0.7);
+    const well = sideX(round2([[W.u0, -13], [W.u1, -13], [W.u1, -55], [W.u1 + 3, W.mouth], [W.u0 - 2, W.mouth], [W.u0, -55]], [0, 0, 2, 1, 1, 2]), -W.half, W.half, -0.8);
+    s = union(s, well);
+    s = union(s, sideX(round2([[W.u0 - 4, -56.5], [W.u1 + 5, -56.5], [W.u1 + 5, W.mouth], [W.u0 - 4, W.mouth]], 1.5), -W.half - 1, W.half + 1, -0.9));
+    const mid = (W.u0 + W.u1) / 2;
+    s = cutChamfer(s, box(-W.open[0] / 2, W.mouth - 8, mid - W.open[1] / 2, W.open[0] / 2, -8, mid + W.open[1] / 2), 2.6);
+    // Trigger guard loop.
+    const guardOut = round2([[106, -27], [106, -43], [98, -52], [54, -52], [47, -44], [47, -27]], [0, 3, 3, 3, 3, 0]);
+    const guardIn = round2([[100.5, -26], [100.5, -41.5], [95, -47], [57, -47], [52.5, -41.5], [52.5, -26]], [0, 3, 2.5, 2.5, 3, 0]);
+    s = fillet(s, cut(sideX(guardOut, -5.5, 5.5, 1.4), sideX(guardIn, -7, 7, 0)), 1.5);
+    // Takedown and pivot pins (both sides), magazine release and its fence (right), selector and bolt catch (left).
+    for (const pu of [4, 181]) {
+      let pin = union(cylX(-17.5, pu, 4.4, -13.4, 13.4, -0.4));
+      if (hi) pin = cut(pin, cylX(-17.5, pu, 1.3, -15, -12.6));
+      s = union(s, pin);
+    }
+    s = chamferJoin(s, sideX(round2([[89, -28], [100, -28], [100, -14.5], [89, -14.5]], 2), W.half - 4, W.half - 1.8, -0.6), 0.6); // release fence
+    s = union(s, latheX([[0, 0], [5, 0], [5, 2.4], [4.4, 3], [0, 3]], -21.5, 94.5, L.half, 1));
+    add('lower', BONE.root, MAT.anod, s, 1.1);
+    // Selector: a lever on a boss, pointing forward (fire), serrated thumb pad.
+    let sel = union(latheX([[0, 0], [6.2, 0], [6.2, 1.8], [5.4, 2.6], [0, 2.6]], -19, 30, -L.half, -1), sideX(round2([[29, -22.5], [50, -16.5], [53, -18], [52, -21], [31, -25.5]], [2, 2, 2, 2, 2]), -L.half - 3.4, -L.half - 1.2, -0.5));
+    if (hi) sel = relief(sel, (x, y, z) => (-z > 42 && x < -L.half - 3.2 ? ridgesU(1.0, 0.2)(x, y, z) : 0), 0.3);
+    add('selector', BONE.root, MAT.steel, sel, 0.9);
+    let bc = sideX(round2([[84, -14.5], [99, -14.5], [100, -19], [93, -26], [86, -25]], 1.8), -L.half - 2.6, -L.half + 0.5, -0.5);
+    if (hi) bc = relief(bc, (x, y, z) => (y < -20 && x < -L.half - 2.3 ? ridgesU(0.9, 0.2)(x, y, z) : 0), 0.3);
+    add('bolt catch', BONE.root, MAT.anod, bc, 0.7);
+  }
+  // Trigger (trigger bone).
+  add('trigger', BONE.trigger, MAT.steel, sideX(round2([[78.5, -26], [83, -26], [82, -35], [79, -42], [74, -47.5], [72.5, -46], [76, -40], [78, -34]], [0, 0, 2, 3, 1.2, 1.2, 3, 2]), -2.7, 2.7, 0.7), 0.4);
+  // Pistol grip: raked, a beavertail, a finger swell, stippled side panels and a base cap.
+  {
+    const g = A.grip;
+    let s = sideX(round2([[0, 2], [44, 2], [44, -20], [46.5, -36], [43, -54], [45.5, -74], [42, -96], [41, -100], [5, -102], [1, -82], [-1, -40], [-5, -10], [-12, 0], [-10, 3]], [0, 2, 4, 9, 9, 9, 6, 3, 4, 20, 20, 8, 4, 2]), -g.width / 2, g.width / 2, 6);
+    if (hi) s = relief(s, (x, y, z) => (Math.abs(x) > 9 && y < -10 && y > -92 ? stipple(x, y, z) : 0), 0.35);
+    s = union(s, sideX(round2([[3, -97], [43, -95], [42, -104], [5, -106]], 2.5), -g.width / 2 + 0.6, g.width / 2 - 0.6, 2));
+    s = rotX(s, -g.rake, 0, 0);
+    // Pivot: the grip's top rear is at `g.pivot`.
+    const m = (sh: Shape): Shape => { const f = sh.f, [pu, py] = g.pivot; return { b: [sh.b[0], sh.b[1] + py, sh.b[2] - pu, sh.b[3], sh.b[4] + py, sh.b[5] - pu], f: (x, y, z) => f(x, y - py, z + pu) }; };
+    add('grip', BONE.root, MAT.polymer, m(s), 0.9);
+  }
+  // Receiver extension, lock nut and end plate with a sling socket; the stock with cheek rest and butt pad.
+  {
+    const S = A.stock;
+    let tube = union(cylZ(0, S.tubeY, S.tubeR, -236, -2, -0.8), box(-3.8, S.tubeY + 10, -230, 3.8, S.tubeY + 16.6, -12, -0.5));
+    if (hi) tube = cut(tube, repeatU(box(-2, S.tubeY - 16, -228, 2, S.tubeY - 12.5, -224.5, 0), 11, 6));
+    add('buffer tube', BONE.root, MAT.anod, tube, 0.3);
+    add('lock nut', BONE.root, MAT.steel, union(lathe([[S.tubeR - 1, -13], [17.2, -13], [17.8, -12], [17.8, -5], [17.2, -4], [S.tubeR - 1, -4]], 0, S.tubeY)), 0.4);
+    let plate = alongZ(round2([[-14.5, -21], [14.5, -21], [14.5, 15], [-14.5, 15]], 4), -4, -1, -0.5);
+    plate = union(plate, cut(cylX(-9, -2.5, 5.6, -20.5, -13, -0.5), cylX(-9, -2.5, 3.1, -22, -17)));
+    add('end plate', BONE.root, MAT.anod, plate, 0.4);
+    // A collapsible stock: a collar round the tube, a cheek riser on top, an open frame below, slimmer toward the front.
+    let stock = sideX(round2([[-92, 6], [-104, 19], [-150, 21], [-236, 24], [-247, 19], [-247, -82], [-237, -86], [-212, -70], [-140, -30], [-102, -18]], [3, 8, 30, 6, 3, 3, 6, 14, 14, 6]), -16.5, 16.5, 6.5);
+    stock = inter(stock, topY(round2([[-12.5, -92], [12.5, -92], [16.5, -150], [16.5, -250], [-16.5, -250], [-16.5, -150]], [3, 3, 40, 0, 0, 40]), -100, 40));
+    stock = cutRound(stock, sideX(round2([[-150, -26], [-212, -26], [-228, -50], [-228, -66], [-214, -62], [-162, -36]], 6), -25, 25), 2.5);
+    stock = cutRound(stock, cylZ(0, S.tubeY, S.tubeR + 0.4, -250, -60), 0.8);
+    stock = union(stock, sideX(round2([[-110, -20], [-128, -26], [-128, -31], [-110, -25]], 2), -4, 4, 1));
+    add('stock', BONE.root, MAT.polymer, stock, 0.35);
+    let pad = sideX(round2([[-246, 21], [-262, 22], [-263, -82], [-246, -82]], [3, 5, 5, 3]), -21, 21, 5);
+    if (hi) pad = relief(pad, (_x, y, z) => (-z < -254 ? -0.35 * Math.max(0, Math.sin(y * Math.PI / 4)) : 0), 0.4);
+    add('butt pad', BONE.root, MAT.rubber, pad, 0.25);
+  }
+  // Handguard: an octagonal tube 44 mm across with rounded-end slots on the sides and bottom, a sling socket, and an
+  // integral top rail continuous with the receiver's.
+  {
+    const sec = round2([[-10, H.bottom], [10, H.bottom], [H.half, -9], [H.half, 10], [15, A.deck], [-15, A.deck], [-H.half, 10], [-H.half, -9]], 3);
+    let s = alongZ(sec, H.u0, H.u1, -1.1);
+    s = cut(s, alongZ(sec, H.u0 + 7, H.u1 + 2, 0, 2.6));
+    const first = 232;
+    const side = repeatU(mirrorX(sideX(stadium2(first, 0.5, H.slot[0], H.slot[1]), 15, 26)), H.slotPitch, H.slots);
+    const bottom = repeatU(topY(stadiumB(0, first + 20, H.slot[0] - 6, H.slot[1]), H.bottom - 3, H.bottom + 5), H.slotPitch, H.slots - 1);
+    s = hi ? cutChamfer(cutChamfer(s, side, 0.7), bottom, 0.7) : cut(s, side, bottom);
+    // Angled lower faces get one long vent each.
+    const vent = rotZ(sideX(stadium2(330, 0, 120, 6), 13, 30), -0.785, 0, 0);
+    s = cut(s, vent, mirrorX(vent));
+    s = union(s, cut(cylX(-2, 206, 6.2, -H.half - 3.6, -H.half + 1, -0.5), cylX(-2, 206, 3.3, -H.half - 5, -H.half - 1)));
+    // Index ring at the rear.
+    s = union(s, alongZ(round2([[-10.5, H.bottom - 1], [10.5, H.bottom - 1], [H.half + 1, -9.5], [H.half + 1, 10], [15.5, A.deck], [-15.5, A.deck], [-H.half - 1, 10], [-H.half - 1, -9.5]], 3), H.u0, H.u0 + 7, -0.8));
+    add('handguard', BONE.root, MAT.cerakote, s, 1.2);
+    add('handguard rail', BONE.root, MAT.cerakote, rail(H.u0 + 0.5, H.u1, hi), 1.3);
+  }
+  // Barrel, nut, muzzle device with three ports and wrench flats.
+  {
+    add('barrel', BONE.root, MAT.steel, union(cylZ(0, 0, A.barrel.r, 186, A.barrel.muzzle, -0.5), lathe([[A.barrel.r, 182], [16.4, 182], [16.8, 183], [16.8, 189], [16.4, 190], [A.barrel.r, 190]])), 0.5);
+    const M = A.muzzle;
+    let s = lathe([[2.9, M.u0], [M.r - 0.6, M.u0], [M.r, M.u0 + 1.2], [M.r, M.u1 - 4], [M.r - 1.6, M.u1], [2.9, M.u1]]);
+    const slot = topY(stadiumB(0, 583, 26, 4.6), 2, 14);
+    s = hi ? cutChamfer(s, slot, 0.5) : cut(s, slot);
+    s = cut(s, rotZ(slot, 1.05), rotZ(slot, -1.05));
+    s = cut(s, box(9.6, -12, M.u0 - 1, 14, 12, M.u0 + 9), box(-14, -12, M.u0 - 1, -9.6, 12, M.u0 + 9));
+    add('muzzle device', BONE.root, MAT.steel, s, 0.6);
+  }
+  // Red-dot sight: a 30 mm tube with lens hoods, elevation and windage turrets with knurled caps, an illumination knob
+  // on the left, on a two-ring riser that clamps the rail with a cross bolt.
+  {
+    const O = A.optic, cy = A.sightH, tu = (O.u0 + O.u1) / 2;
+    let tube = lathe([[O.bore, O.u0], [O.r, O.u0], [O.r + 0.6, O.u0 + 1], [O.r + 0.6, O.u0 + 8], [O.r - 0.2, O.u0 + 9.5], [O.r - 0.2, O.u1 - 9.5], [O.r + 0.6, O.u1 - 8], [O.r + 0.6, O.u1 - 1], [O.r, O.u1], [O.bore, O.u1]], 0, cy);
+    const tY = latheY([[0, 0], [10.6, 0], [10.6, 3.8], [9.8, 4.6], [0, 4.6]], 0, tu, cy + O.r - 2);
+    let capY = latheY([[0, 0], [8.8, 0], [8.8, 7.2], [8.1, 8], [0, 8]], 0, tu, cy + O.r + 2.6);
+    if (hi) capY = relief(capY, (x, y, z) => (y < cy + O.r + 9.8 && y > cy + O.r + 3.2 ? knurlY(0, tu, 1.1, 0.22)(x, y, z) : 0), 0.3);
+    tube = fillet(tube, tY, 1.6);
+    tube = union(tube, capY);
+    const tX = latheX([[0, 0], [10.6, 0], [10.6, 3.8], [9.8, 4.6], [0, 4.6]], cy, tu, O.r - 2, 1);
+    const capX = latheX([[0, 0], [8.8, 0], [8.8, 7.2], [8.1, 8], [0, 8]], cy, tu, O.r + 2.6, 1);
+    tube = union(fillet(tube, tX, 1.6), capX);
+    let knob = latheX([[0, 0], [8.2, 0], [8.2, 9], [7.4, 10], [0, 10]], cy, tu - 4, -(O.r - 2), -1);
+    if (hi) knob = relief(knob, (x, y, z) => (x < -(O.r + 1.5) ? -0.25 * Math.max(0, Math.cos(Math.atan2(y - cy, -z - (tu - 4)) * 16)) : 0), 0.3);
+    tube = fillet(tube, knob, 1.4);
+    if (hi) tube = cut(tube, cylZ(0, cy, O.r + 2, O.u0 + 3.6, O.u0 + 4.1), cylZ(0, cy, O.r + 2, O.u1 - 4.1, O.u1 - 3.6));
+    add('optic', BONE.root, MAT.anod, tube, 4);
+    // Riser and rings.
+    const ringR = O.r + 2.6;
+    const o0 = O.u0 - 64; // mount and rings were laid out for a tube starting at u = 64
+    let mount = box(-11.6, A.railTop, 78 + o0, 11.6, cy - ringR + 4, 122 + o0, -0.9);
+    if (hi) mount = cutChamfer(mount, mirrorX(box(10.6, A.railTop + 4, 86 + o0, 14, A.railTop + 10, 114 + o0)), 0.5);
+    mount = chamferJoin(mount, mirrorX(box(9.4, A.railTop - 5.6, 80 + o0, 12.6, A.railTop + 1, 120 + o0, -0.5)), 0.4);
+    for (const [r0, r1] of [[82 + o0, 92 + o0], [108 + o0, 118 + o0]]) {
+      let ring = cylZ(0, cy, ringR, r0, r1, -0.7);
+      ring = cut(ring, box(-30, cy - 0.35, r0 - 1, 30, cy + 0.35, r1 + 1));
+      mount = fillet(mount, ring, 2);
+      for (const sx of [1, -1] as const) mount = union(mount, screwX(cy + 5.5, (r0 + r1) / 2, sx * (ringR - 1.2), sx, 2.2, 1.6, hi));
+    }
+    mount = cut(mount, cylZ(0, cy, O.r + 0.05, O.u0, O.u1));
+    mount = union(mount, latheX([[0, 0], [6.4, 0], [6.4, 4.6], [5.8, 5.4], [0, 5.4]], A.railTop - 2.4, 101 + o0, 12.4, 1), screwX(A.railTop - 2.4, 101 + o0, -12.4, -1, 4.4, 1.6, hi));
+    add('optic mount', BONE.root, MAT.anod, mount, 2.2);
+  }
+  // Back-up sights, folded flat on the rail: the aperture at the rear, the post at the front.
+  {
+    let rear = box(-10.8, A.railTop - 3, 2, 10.8, A.railTop + 7, 30, -0.7);
+    rear = chamferJoin(rear, box(-8.4, A.railTop + 6, 5, 8.4, A.railTop + 9.6, 28.5, -0.6), 0.4);
+    if (hi) rear = cut(rear, cylY(0, 12, 1.4, A.railTop + 8, A.railTop + 11), cylX(A.railTop + 3, 26, 1.2, -12, 12));
+    rear = union(rear, latheX([[0, 0], [3.4, 0], [3.4, 2], [2.8, 2.6], [0, 2.6]], A.railTop + 2, 16, 10.8, 1));
+    add('rear sight', BONE.root, MAT.anod, rear, 1.2);
+    let front = box(-10.8, A.railTop - 3, 490, 10.8, A.railTop + 8, 518, -0.7);
+    front = chamferJoin(front, box(-7, A.railTop + 7, 492, 7, A.railTop + 10.4, 516, -0.6), 0.4);
+    if (hi) front = cut(front, cylX(A.railTop + 3, 494, 1.2, -12, 12));
+    add('front sight', BONE.root, MAT.anod, front, 0.7);
+  }
+  // Magazine: curved, 22.6 mm wide polymer body with ribs low on the sides, a wider floorplate, and the top round
+  // (mag bone).
+  {
+    const M = A.mag, n = 12, top = -12, len = 172;
+    const fr: [number, number][] = [], rr: [number, number][] = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n, y = top - len * t, bend = 34 * Math.pow(t, 1.7);
+      fr.push([168.6 + bend, y]); rr.push([106 + bend * 0.9 + 1.6 * t, y]);
+    }
+    let body = sideX(round2([...fr, ...rr.reverse()], [0, ...Array(n - 1).fill(0), 3, 3, ...Array(n - 1).fill(0), 0]), -M.width / 2, M.width / 2, 1.6);
+    // Ribs: raised bands across the lower side panels.
+    for (const t of [0.56, 0.66, 0.76]) {
+      const y = top - len * t, b0 = 34 * Math.pow(t, 1.7);
+      body = fillet(body, sideX(round2([[108 + b0 * 0.9, y + 1.6], [167 + b0, y + 1.6], [167 + b0, y - 1.6], [108 + b0 * 0.9, y - 1.6]], 1.2), -M.width / 2 - 0.9, M.width / 2 + 0.9, 0.8), 0.8);
+    }
+    const tb = 1, yb = top - len * tb, bb = 34;
+    const floor = sideX(round2([[104 + bb * 0.9, yb + 5], [172 + bb, yb + 5], [174 + bb, yb - 2], [170 + bb, yb - 6], [103 + bb * 0.9, yb - 6]], [1, 2, 2, 2, 2]), -M.width / 2 - 2, M.width / 2 + 2, -1);
+    body = union(body, floor);
+    if (hi) body = relief(body, (x, y, z) => (Math.abs(x) > M.width / 2 - 0.4 && y < top - 20 && y > top - 85 ? stipple(x, y, z) * 0.6 : 0), 0.3);
+    add('magazine', BONE.mag, MAT.polymerFde, body, 0.9);
+    add('top round', BONE.mag, MAT.brass, union(cylZ(-2.8, top + 3.6, 4.7, 112, 150, -0.4), lathe([[0, 150], [4.3, 150], [3.4, 158], [1.6, 164], [0, 165]], -2.8, top + 3.6)), 0.15);
+  }
+  return parts;
+}

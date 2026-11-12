@@ -10,6 +10,7 @@ import { makeSprite } from '../../textures';
 import { heroReady } from './geom';
 import { texturedMaterial } from './material';
 import { TEXTURED } from './weapons';
+import { BAKED, clayMaterial, loadBaked } from './baked';
 import { ArtLoader } from '../assets';
 import { reloadFrame, idleFrame } from './reload';
 import { DEFAULT_LOOK, createFpRig, holdFor, type FpRig } from './rig';
@@ -64,25 +65,30 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   const rigs = new Map<number, FpRig>();
   let rig: FpRig | null = null, ready = false;
   // Build the arms and the first weapon while the menu is up, not on the first frame of a match.
+  // The weapon in hand appears once the meshes and texture sets have settled (a baked weapon has no procedural look
+  // to show meanwhile), then everything is warmed at once.
   let disposed = false;
-  heroReady.then(() => { ready = true; setTimeout(() => { if (!disposed && !rigs.size) rigFor(0); }, 300); });
   // Baked texture sets (KTX2 through the art loader; 1024 maps on the Low tier). Until they arrive, or if they
   // fail, the weapon keeps the procedural hero material.
   const low = typeof location !== 'undefined' && /[?&]arttier=low\b/.test(location.search);
   const art = new ArtLoader(renderer, low ? 'low' : 'high');
   const sets = new Map<WeaponId, THREE.Material>();
   const loads: Promise<unknown>[] = [heroReady];
-  for (const id of TEXTURED) {
+  // `?heroclay`: weapons and arms in untextured grey clay, for the shape gates.
+  const clay = typeof location !== 'undefined' && /[?&]heroclay\b/.test(location.search) ? clayMaterial() : null;
+  const useSet = (id: WeaponId, m: THREE.Material) => { sets.set(id, m); for (const r of rigs.values()) r.setTextures(id, m); };
+  const procedural = (id: WeaponId) => {
     const size = low ? 1024 : 2048, set = `../hero/${id}`;
-    loads.push(Promise.all([art.texture(set, 'diff', size), art.texture(set, 'nor', size), art.texture(set, 'arm', size)]).then(([map, normalMap, armMap]) => {
+    return Promise.all([art.texture(set, 'diff', size), art.texture(set, 'nor', size), art.texture(set, 'arm', size)]).then(([map, normalMap, armMap]) => {
       for (const t of [map, normalMap, armMap]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
-      const m = texturedMaterial({ map, normalMap, arm: armMap });
-      sets.set(id, m);
-      for (const r of rigs.values()) r.setTextures(id, m);
-    }).catch(e => console.warn('Breachline weapon textures unavailable; procedural look kept.', e)));
-  }
-  let armMat: THREE.Material | null = null;
-  loads.push(Promise.all((['diff', 'nor', 'arm'] as const).map(k => art.texture('../hero/hands', k, 1024))).then(([map, normalMap, armMap]) => {
+      useSet(id, texturedMaterial({ map, normalMap, arm: armMap }));
+    }).catch(e => console.warn('Breachline weapon textures unavailable; procedural look kept.', e));
+  };
+  // Second-build weapons: the baked mesh and its set; the procedural model and its set if they fail to load.
+  for (const b of BAKED) loads.push(loadBaked(b, art, low ? 1024 : 2048, clay).then(m => useSet(b.id, m)).catch(e => { console.warn('Breachline baked weapon unavailable; procedural model kept.', b.dir, e); return TEXTURED.has(b.id) ? procedural(b.id) : undefined; }));
+  for (const id of TEXTURED) if (!BAKED.some(b => b.id === id)) loads.push(procedural(id));
+  let armMat: THREE.Material | null = clay;
+  if (!clay) loads.push(Promise.all((['diff', 'nor', 'arm'] as const).map(k => art.texture('../hero/hands', k, 1024))).then(([map, normalMap, armMap]) => {
     for (const t of [map, normalMap, armMap]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
     armMat = texturedMaterial({ map, normalMap, arm: armMap }, true);
     for (const r of rigs.values()) r.setArmMaterial(armMat);
@@ -117,7 +123,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
     warmed = true;
     return true;
   }
-  Promise.allSettled(loads).then(() => setTimeout(() => { if (!warmed) warm(); }, 0));
+  Promise.allSettled(loads).then(() => { ready = true; setTimeout(() => { if (!warmed && !disposed) warm(); }, 0); });
   // Motion state.
   const swayY = new Spring(14, 0.7), swayP = new Spring(14, 0.7), swayR = new Spring(12, 0.6);
   const kZ = new Spring(28, 0.55), kP = new Spring(22, 0.5), kY = new Spring(20, 0.6), kR = new Spring(18, 0.45), adsS = new Spring(22, 1), sprintS = new Spring(10, 1), useS = new Spring(9, 1);

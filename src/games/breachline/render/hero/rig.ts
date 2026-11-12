@@ -8,7 +8,7 @@ import { SURF } from './geom';
 import { ARM_BONES, POSE, armsGeometry, lerpPose, makeArm, type Arm, type ArmsLook, type HandPose } from './hands';
 import { heroMaterial } from './material';
 import { idleFrame, type ReloadFrame } from './reload';
-import { CASES, WB, WEAPON_BONES, weaponModel, type WeaponModel } from './weapons';
+import { CASES, WB, WEAPON_BONES, heldWeapon, type WeaponModel } from './weapons';
 
 type V3 = [number, number, number];
 /** A hand placement: the point on the palm surface that touches, the direction the palm faces, and the direction the
@@ -53,7 +53,7 @@ export const POSES = { RIFLE_GRIP, OFF_TRIGGER, RIFLE_SUPPORT, MAG_GRIP, HOOK, P
 /** A rifle-style hold built from a weapon's sockets: the trigger hand on the grip's palm point with fingers square to
  * the grip's rake, the support hand under the handguard. */
 function rifleHold(id: WeaponId, o: Partial<Hold> = {}): Hold {
-  const S = weaponModel(id).sockets, rake = S.grip.r[0];
+  const S = heldWeapon(id).sockets, rake = S.grip.r[0];
   const sup = S.support.p;
   return {
     right: { at: S.grip.p, palm: [-1, 0, 0], fingers: [0, Math.sin(rake), -Math.cos(rake)] },
@@ -73,14 +73,14 @@ const holds = new Map<WeaponId, Hold>();
 export function holdFor(id: WeaponId): Hold {
   let h = holds.get(id);
   if (h) return h;
-  const S = weaponModel(id).sockets;
+  const S = heldWeapon(id).sockets;
   switch (id) {
     case 'ar': h = rifleHold(id, {
       // Palm cupped up against the underside of the handguard (no gap), fingers running across it and wrapping the far
       // side, thumb straight along the near side. (Fingers pointing forward along the handguard read as a claw.)
       left: { at: [-0.008, S.support.p[1] + 0.008, S.support.p[2] - 0.03], palm: [0.35, 1, 0], fingers: [0.9, 0.1, -0.42] },
       // The left elbow out and down: the forearm enters from the lower left and runs diagonally to the handguard.
-      shoulderL: [-0.3, -0.37, 0.02], poleL: [-1, -1, 0.3],
+      shoulderL: [-0.3, -0.37, 0.02], poleL: [-1, -1, 0.3], adsZ: -0.075,
       leftPose: [[0.15, 0.05, 0.1, 0.15], [1.3, 1.25, 0.7, 0.02], [1.35, 1.25, 0.7, 0], [1.4, 1.25, 0.7, -0.02], [1.45, 1.25, 0.7, -0.05]],
     }); break;
     case 'smg': h = rifleHold(id, { hip: { p: [0.1, -0.08, -0.22], r: [0.03, 0.02, -0.03] }, adsZ: -0.13 }); break;
@@ -102,6 +102,8 @@ export function holdFor(id: WeaponId): Hold {
   holds.set(id, h);
   return h;
 }
+/** Forgets cached holds (after a baked weapon with new sockets is registered). */
+export function resetHolds() { holds.clear(); }
 /** Kept for the studio and tests: the hold of each weapon. */
 export const HOLDS = new Proxy({} as Record<WeaponId, Hold>, { get: (_, k) => holdFor(k as WeaponId) });
 
@@ -151,11 +153,11 @@ export function createFpRig(look: ArmsLook): FpRig {
   const toRoot = (p: THREE.Vector3, q: THREE.Quaternion) => { p.applyMatrix4(gun.matrixWorld).applyMatrix4(rootInv); q.premultiply(gunQ).premultiply(rootQInv); };
   const rig: FpRig = {
     root, gun, weaponBones, arms, lens: null, material, residual: [0, 0],
-    weapon: weaponModel('ar'),
+    weapon: heldWeapon('ar'),
     setWeapon(id) {
       if (weaponMesh) gun.remove(weaponMesh);
       if (lens) gun.remove(lens);
-      rig.weapon = weaponModel(id);
+      rig.weapon = heldWeapon(id);
       weaponMesh = new THREE.SkinnedMesh(rig.weapon.geo, textured.get(id) ?? material);
       weaponMesh.frustumCulled = false;
       gun.add(weaponMesh);

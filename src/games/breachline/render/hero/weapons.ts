@@ -686,4 +686,12 @@ export function weaponModel(id: WeaponId, lod = 0): WeaponModel {
   return m;
 }
 export const weaponBuilt = (id: WeaponId) => !!BUILDERS[id];
+
+/** Weapons rebuilt from SDF sculpts and baked offline (second build): the mesh in hand replaces the procedural one
+ * once loaded (render/hero/baked.ts). World weapons (`weaponModel(id, 1|2)`) stay procedural. */
+const baked = new Map<WeaponId, WeaponModel>();
+export function registerBaked(id: WeaponId, m: Omit<WeaponModel, 'id'>) { baked.set(id, { id, ...m }); }
+/** The weapon as held in first person: the baked model when one is registered, else the procedural one. */
+export const heldWeapon = (id: WeaponId): WeaponModel => baked.get(id) ?? weaponModel(id, 0);
+export const isBaked = (id: WeaponId) => baked.has(id);
 export type { V3 };
