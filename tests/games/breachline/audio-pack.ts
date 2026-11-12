@@ -22,6 +22,11 @@ export interface PackTake {
   group?: string;
   key: string; file: string; keepMs: number; fadeMs: number; max?: number; gainDb?: number; burst?: boolean; skip?: number;
   ranges?: [number, number][]; pitch?: number; lowpass?: number; under?: { file: string; startMs: number; gainDb: number; pitch?: number };
+  /** Imposes a natural decay after `holdMs` (for recordings whose body was compressed flat): below `splitHz` the
+   * level falls with time constant `lowS`, above it with `highS` (seconds). */
+  shape?: { holdMs: number; splitHz: number; lowS: number; highS: number };
+  /** With `ranges`: each range becomes a seamless loop, its last `fadeMs` cross-faded (equal power) into its start. */
+  loop?: boolean;
 }
 /** `hybrids`: keys whose takes are also recombined (each take's first 4 ms joined to another's body), for guns with
  * few takes, so automatic fire never alternates between two. */
@@ -61,6 +66,26 @@ export function cut(x: Float32Array, onset: number, keepMs: number, fadeMs: numb
   for (let i = 0; i < y.length; i++) y[i] -= m;
   return y;
 }
+/** A seamless loop from `x[a..b)`: the last `xf` samples are cross-faded into the first, so the end runs on into the start. */
+export function loopCut(x: Float32Array, a: number, b: number, xf: number): Float32Array {
+  const n = b - a - xf, y = x.slice(a, a + n);
+  for (let i = 0; i < xf; i++) { const w = i / xf; y[i] = x[a + i] * Math.sqrt(w) + x[a + n + i] * Math.sqrt(1 - w); }
+  let m = 0; for (const v of y) m += v; m /= y.length || 1;
+  for (let i = 0; i < y.length; i++) y[i] -= m;
+  return y;
+}
+/** Splits `y` at `splitHz` (one-pole) and lets each part decay exponentially after `holdMs`; in place. */
+export function shapeDecay(y: Float32Array, { holdMs, splitHz, lowS, highS }: NonNullable<PackTake['shape']>): Float32Array {
+  const hold = Math.round(SR * holdMs / 1000), a = 1 - Math.exp(-2 * Math.PI * splitHz / SR);
+  let low = 0;
+  for (let i = 0; i < y.length; i++) {
+    low += a * (y[i] - low);
+    if (i < hold) continue;
+    const t = (i - hold) / SR;
+    y[i] = low * Math.exp(-t / lowS) + (y[i] - low) * Math.exp(-t / highS);
+  }
+  return y;
+}
 /** The loudest 50 ms RMS in dB, a short-term loudness stand-in. */
 export function shortTerm(x: Float32Array): number {
   const w = SR / 20; let best = 0;
@@ -85,9 +110,11 @@ export function buildPack(manifest: PackManifest, sourceDir: string, outDir: str
   const emit = (key: string, y: Float32Array) => { (index.keys[key] ??= []).push({ start: at, length: y.length }); parts.push(y, new Float32Array(GAP)); at += y.length + GAP; };
   for (const t of manifest.takes) {
     const x = decode(join(sourceDir, t.file), t.pitch, t.lowpass), under = t.under ? decode(join(sourceDir, t.under.file), t.under.pitch) : null;
-    const cuts = t.ranges ? t.ranges.map(([a, b]) => { const y = cut(x, Math.round(SR * a / 1000) + Math.round(SR * 0.002), b - a, t.fadeMs); for (let i = 0; i < Math.min(y.length, SR * 0.003); i++) y[i] *= i / (SR * 0.003); return y; })
+    const ms = (v: number) => Math.round(SR * v / 1000);
+    const cuts = t.loop && t.ranges ? t.ranges.map(([a, b]) => loopCut(x, ms(a), ms(b), ms(t.fadeMs))) : t.ranges ? t.ranges.map(([a, b]) => { const y = cut(x, Math.round(SR * a / 1000) + Math.round(SR * 0.002), b - a, t.fadeMs); for (let i = 0; i < Math.min(y.length, SR * 0.003); i++) y[i] *= i / (SR * 0.003); return y; })
       : onsets(x, t.burst).slice(t.skip ?? 0, (t.skip ?? 0) + (t.max ?? 99)).map(o => cut(x, o, t.keepMs, t.fadeMs));
     for (const y0 of cuts) {
+      if (t.shape) shapeDecay(y0, t.shape);
       if (under && t.under) { const o = Math.round(SR * t.under.startMs / 1000), g = Math.pow(10, t.under.gainDb / 20); for (let i = 0; i < y0.length; i++) y0[i] += (under[o + i] ?? 0) * g * Math.min(1, i / (SR * 0.003), (y0.length - i) / (SR * 0.02)); }
       const y = y0, g = Math.pow(10, (target - shortTerm(y) + (t.gainDb ?? 0)) / 20);
       let pk = 0; for (let i = 0; i < y.length; i++) { y[i] *= g; pk = Math.max(pk, Math.abs(y[i])); }

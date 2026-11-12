@@ -70,13 +70,14 @@ const BED_GAIN: Record<Space, number> = { hard: 0.5, soft: 0.35, corridor: 0.5, 
  * Library, trimmed and levelled by tests/games/breachline/audio-pack.ts from audio-pack.planA.json; credited in
  * public/THIRD_PARTY_NOTICES.txt. Relative to the page, like the rest of the site's assets. If it cannot be
  * loaded, the synthesised guns play instead. */
-export const PACK_URLS: string[] = ['audio/breachline/guns.json', 'audio/breachline/foley.json'];
+export const PACK_URLS: string[] = ['audio/breachline/guns.json', 'audio/breachline/foley.json', 'audio/breachline/amb.json'];
 /** What the pack supplies (audio-pack.planA.json): the synthesis skips these while the pack loads, and renders them
  * if it fails. Reload slots and dry fire are recorded too (CC0 handling sounds; see THIRD_PARTY_NOTICES). */
 const PACK_KEYS: string[] = [
   ...(['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol'] as const).flatMap(w => ['fp', 'tp', 'far'].map(v => `gun.${w}.${v}`)),
   'rl.*', 'casing.*', 'dry', 'step.*', 'impact.*', 'glass.*', 'body.*', 'boom.*', 'flesh', 'armour', 'drop.weapon', 'rf.*',
   ...['wood', 'metal', 'shelf', 'drum', 'crate'].map(b => `break.${b}`),
+  'crumble.*', 'debris', 'gear', 'work.tape', 'charge.set', 'swap', 'melee', 'bounce', 'hammer', 'amb.*',
 ];
 
 export function createSfx(enabled: () => boolean, options: { ambience?: boolean; override?: Record<string, { sr: number; takes: number[][] }>; pack?: string | string[] | null } = {}): Sfx {
@@ -128,7 +129,10 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
   }
   /** Ambience: one loop per space, cross-faded as the listener moves; the yard is faintly heard from inside. */
   function ambience(e: Engine) {
-    for (const b of BEDS) if (!beds.has(b) && e.has(`amb.${b}`)) { const g = e.play(`amb.${b}`, { bus: 'amb', loop: true, gain: 0 }); if (g) beds.set(b, g); bedSpace = null; }
+    // The pack has two real beds (room tone, outdoor air): every indoor space uses the room tone, the soft rooms
+    // duller. Without the pack each space has its own synthesised bed.
+    const real = e.has('amb.room'), key = (b: Space) => (real ? (b === 'yard' ? 'amb.air' : 'amb.room') : `amb.${b}`);
+    for (const b of BEDS) if (!beds.has(b) && e.has(key(b))) { const g = e.play(key(b), { bus: 'amb', loop: true, gain: 0, lowpass: real && b === 'soft' ? 2500 : undefined }); if (g) beds.set(b, g); bedSpace = null; }
     const space = e.ear.space;
     if (space === bedSpace) return;
     bedSpace = space;

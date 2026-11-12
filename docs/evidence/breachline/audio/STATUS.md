@@ -15,7 +15,7 @@ for that.
 | 1. Graph and space | **Done** (2026-11-12) | Passed on measurement (below): Space 6, Mix 6, walls 6; the corridor and breach scenes render at −2.3 and −2.0 dBFS with no clipping. **Owner's listening still to come** (`listen/p1-*.wav`). |
 | 2. Weapons and reloads | **Failed by the owner's ear** (2026-11-12) | **Partly met.** Sustained fire shows no repeating pattern (`phase2/auto-*`), and all six guns are distinct in unit tests. Gunfire scores **6.5, not the ≥ 7 asked**: synthesis without recordings lands here by my reading. The owner's notes on `listen/p2-*.wav` decide the next pass. |
 | 3. Foley and destruction | **Built, on hold** (2026-11-12) | Footsteps by floor, impacts in 13 materials, ricochets, glass, set-piece breaks, bodies, hits and the reinforcement sequence are built, wired and tested. They use the same method as the guns, so they are expected to fail the same way, and no listening set was made. They wait for the rebuild. |
-| 4. Blasts, objective, feedback | **Blasts real** (2026-11-12) | Blasts, grenades, hits, breaks, reinforcement and the weapon drop are recordings; objective and feedback cues stay synthetic. Owner to listen: `listen/c1-round-in-sound.wav` |
+| 4. Blasts, objective, feedback | **Blasts real** (2026-11-12) | Blasts, grenades, hits, breaks, reinforcement and the weapon drop are recordings; objective and feedback cues stay synthetic. Owner to listen: `listen/c2-round-in-sound.wav (was c1)` |
 | 5. Ambience, cues, polish | | |
 
 ## The owner's verdict on phases 1–2, and the diagnosis
@@ -167,6 +167,30 @@ change checked against the reference sheets until every gun is within about 1.0 
    distance to the reference, and searches the gun's parameters (a few dozen) to minimise it. Then the takes'
    spread sets the variant range. Indoor rooms are not covered by these references and stay as designed.
 
+## Blasts reshaped; crumble, gear, melee and ambience real (2026-11-12, second pass)
+
+- **Blasts.** The recorded onset and first 90 to 110 ms are kept; after that the body is split at 300 Hz and each
+  part decays on its own (highs with a 0.09 to 0.12 s time constant, lows 0.32 to 0.45 s), so the old 1.3 s flat body
+  is gone. Under each onset sits a clean real pressure thump (BigSoundBank "Explosion #1" and "#2", a bird-scaring
+  gun at 10 and 150 m). Crest factor rose from about 10 dB to 20 to 23 dB (real gunshot takes: about 27). The room
+  tail is still the game's own reverb, and the dull "ears ringing" dip is unchanged. At 8 m a blast is 10 dB over
+  your own rifle (short-term); the level was raised 2 dB to keep that.
+- **Now real as well:** the wall crumbling (stone-wall breakage, wood smashed on a wall, wood splinters), the debris
+  (gravel fall, debris after a hit), kit rattle (soldiers moving with equipment), weapon swap (rifle handling),
+  melee (a punch with a stick whoosh before it), grenade bounce (an object dropped on a hard floor), charge set
+  (tape and a click), charge tape, the barricade hammer.
+- **Ambience:** two real beds, looped with a 1 s equal-power cross-fade: room tone (all indoor spaces, the soft rooms
+  low-passed at 2.5 kHz) and dull wind (the yard). They come from a third pack, `amb.ogg`, at 32 kb/s (39 KB).
+- **Rejected:** a rifle-handling take with a whirring tone; firecrackers (their low tail looks like microphone
+  overload); the tail of one debris take was cut before an edit gate in the source.
+- **Download 1,328 KB** (ceiling raised to 1.5 MB). **Bank 13.05 MB** (ceiling 14 MB).
+- **Still synthetic, besides the UI cues and beeps:** the fabric break, the grenade throw, the defuse.
+- **The round in sound** is re-rendered: `listen/c2-round-in-sound.wav` (replaces c1; picture beside it).
+  Peak -2.3 dBFS, no clipping.
+- **Tests:** 142 unit tests, including two new ones for the pack builder (the decay shaping, and a loop that runs on
+  into its start without a jump); `audio.spec.ts` 3/3 (4.7 nodes per shot); the production build loads all three
+  packs with no errors or policy violations.
+
 ## Blasts, hits, breaks, reinforcement and the weapon drop are real (2026-11-12)
 
 Sources: the Red Library on archive.org (CC0 declared in each item's metadata; credited in
@@ -191,7 +215,7 @@ sheet with an edit in it), R11-53 Explosive Blast (a narrow resonance at 300 Hz)
 - **Still synthetic, besides the UI cues:** the ambience beds (four real loops would not fit in what is left of
   the download), the fabric break, the barricade hammer, kit rattle, weapon swap, melee, grenade throw and bounce,
   charge set and tape, the defuse, and the wall crumbling with its debris.
-- **The round in sound:** `listen/c1-round-in-sound.wav` (one minute, stereo; picture `listen/c1-round-in-sound.png`)
+- **The round in sound:** `listen/c2-round-in-sound.wav (was c1)` (one minute, stereo; picture `listen/c1-round-in-sound.png`)
   plays a whole round through the game's sound: prep with reinforcement and a barricade, go, distant fire, a breach,
   the firefight through the hole, a grenade, a far blast, set pieces breaking, the uplink planted and defused, the
   win. Peak -2.0 dBFS, no clipping.
@@ -642,8 +666,8 @@ rooms), `listen/p1-walls.wav` (a rifle through 0, 1 and 3 wallboards, then brick
 
 - Guns are synthetic: weighty and distinct on measurement, but not recordings. The SMG and pistol are the least
   distinct pair. Reloads are clean beats without hand or cloth detail between them.
-- The recorded blasts are compressed old transfers: about 1.3 s at a near-flat level before they fall away.
-- Ambience is still plain synthetic noise beds; no room left in the download for real loops.
+- The blast bodies come from compressed old transfers, reshaped to decay; the reshaping is my judgement, not a recording.
+- The ambience is two short loops (5 s each); a listener may notice the repeat in a quiet room.
 - At 6x CPU throttle the first buffer waits about 3 s behind the match start on the main thread (see Budgets).
 - Sound does not yet bend toward a doorway or breach when the straight line is solid (plan §3.3, stretch goal).
 - New visual-only events (impacts by material, glass, set pieces, bodies, reinforcement stages) have no sound until

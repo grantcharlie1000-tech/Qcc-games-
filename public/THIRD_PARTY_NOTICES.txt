@@ -3884,4 +3884,15 @@ Breachline footsteps, glass, impacts and body falls (in public/audio/breachline/
   Red_Library_Impacts R27-18 "Axe Hits Wood Door"; Red_Library_Crashes R27-24 "Crashes - Wood and Glass",
   R29-32 "Large Quick Interior Crash" and R27-17 "Drop Object on Hard Surface"; Red_Library_Tools R18-01
   "Large Ratchet Turn and Spin" and R28-41 "Hammer Metal Stakes or Nails". https://archive.org/details/<item>.
+- Wall crumble, debris, kit rattle, weapon swap, melee, grenade bounce, the barricade hammer and the room and outdoor
+  beds: the Red Library sound effects (archive.org; CC0 1.0 as declared in the item metadata by the uploader,
+  jscott@archive.org): Red_Library_Foley_Props_4 R26-22 "Hitting Objects on Stone Wall with Breakage" and R26-23
+  "Smashing Wood on Wall"; Red_Library_Creaks R27-16 "Wood Splinters and Creaks"; Red_Library_Fights R09-79 "Fall on
+  Gravel" and R15-18 "Shot or Hit with Debris"; Red_Library_Footsteps_4 R24-02 "Men Moving Forward with Equipment";
+  Red_Library_Ambience_2 R21-47 "Noisy Room Tone"; Red_Library_Nature_Wind R22-15 "Noisy Dull Wind"; and the takes
+  credited above. https://archive.org/details/<item>.
+- BigSoundBank, CC0 1.0 as stated on each sound page: "Explosion #1" https://bigsoundbank.com/explosion-1-s1807.html
+  and "Explosion #2" https://bigsoundbank.com/explosion-2-s1808.html (an agricultural bird-scaring gun; under the
+  blasts), "Whoosh #5" https://bigsoundbank.com/whoosh-s1797.html, by Joseph Sardin; "Adhesive tape #3"
+  https://bigsoundbank.com/adhesive-tape-s0299.html, by Denis Chardonnet.
 We cut, levelled, pitch-shifted or filtered (carpet, lino, plaster and brick are derived from other takes) and re-encoded these (Opus).

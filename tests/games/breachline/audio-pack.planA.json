@@ -1554,50 +1554,83 @@
       "key": "boom.near",
       "file": "red4/R30-06-Big Crisp Explosions.wav",
       "keepMs": 0,
-      "fadeMs": 700,
+      "fadeMs": 500,
       "ranges": [
         [
           3166,
-          4866
+          4666
         ],
         [
           9773,
-          11473
+          11273
         ]
       ],
-      "gainDb": 6
+      "gainDb": 6,
+      "shape": {
+        "holdMs": 110,
+        "splitHz": 300,
+        "lowS": 0.45,
+        "highS": 0.12
+      },
+      "under": {
+        "file": "bsb4/1808.flac",
+        "startMs": 0,
+        "gainDb": -6
+      }
     },
     {
       "group": "foley",
       "key": "boom.near",
       "file": "red4/R30-07-Big Explosions Some Debris.wav",
       "keepMs": 0,
-      "fadeMs": 700,
+      "fadeMs": 500,
       "ranges": [
         [
           19988,
-          21688
+          21488
         ]
       ],
-      "gainDb": 6
+      "gainDb": 6,
+      "shape": {
+        "holdMs": 110,
+        "splitHz": 300,
+        "lowS": 0.45,
+        "highS": 0.12
+      },
+      "under": {
+        "file": "bsb4/1807.flac",
+        "startMs": 0,
+        "gainDb": -6
+      }
     },
     {
       "group": "foley",
       "key": "boom.impact",
       "file": "red4/R30-07-Big Explosions Some Debris.wav",
       "keepMs": 0,
-      "fadeMs": 500,
+      "fadeMs": 400,
       "ranges": [
         [
           4216,
-          5516
+          5316
         ],
         [
           12572,
-          13872
+          13672
         ]
       ],
-      "gainDb": 7
+      "gainDb": 7,
+      "shape": {
+        "holdMs": 90,
+        "splitHz": 300,
+        "lowS": 0.32,
+        "highS": 0.09
+      },
+      "under": {
+        "file": "bsb4/1807.flac",
+        "startMs": 0,
+        "gainDb": -8
+      }
     },
     {
       "group": "foley",
@@ -1824,6 +1857,266 @@
         ]
       ],
       "gainDb": -1
+    },
+    {
+      "group": "foley",
+      "key": "crumble.board",
+      "file": "red5/R26-22-Hitting Objects on Stone Wall with Breakage.wav",
+      "keepMs": 0,
+      "fadeMs": 250,
+      "ranges": [
+        [
+          3591,
+          4141
+        ],
+        [
+          7470,
+          8020
+        ],
+        [
+          11380,
+          11930
+        ]
+      ],
+      "gainDb": 1
+    },
+    {
+      "group": "foley",
+      "key": "crumble.wood",
+      "file": "red5/R26-23-Smashing Wood on Wall.wav",
+      "keepMs": 0,
+      "fadeMs": 200,
+      "ranges": [
+        [
+          8156,
+          8556
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "group": "foley",
+      "key": "crumble.wood",
+      "file": "red5/R27-16-Wood Splinters and Creaks.wav",
+      "keepMs": 0,
+      "fadeMs": 200,
+      "ranges": [
+        [
+          450,
+          850
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "group": "foley",
+      "key": "debris",
+      "file": "red5/R09-79-Fall on Gravel.wav",
+      "keepMs": 0,
+      "fadeMs": 300,
+      "ranges": [
+        [
+          1350,
+          2550
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "debris",
+      "file": "red5/R15-18-Shot or Hit with Debris.wav",
+      "keepMs": 0,
+      "fadeMs": 200,
+      "ranges": [
+        [
+          3700,
+          4500
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "gear",
+      "file": "red5/R24-02-Men Moving Forward with Equipment.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          11850,
+          12050
+        ],
+        [
+          12150,
+          12350
+        ],
+        [
+          12450,
+          12650
+        ],
+        [
+          12750,
+          12950
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "work.tape",
+      "file": "bsb5/0299.aiff",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          200,
+          500
+        ],
+        [
+          700,
+          1000
+        ],
+        [
+          1200,
+          1500
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "charge.set",
+      "file": "bsb5/0299.aiff",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          1600,
+          1850
+        ]
+      ],
+      "gainDb": 0,
+      "under": {
+        "file": "mech/equipmentclicks.wav",
+        "startMs": 2245,
+        "gainDb": 0
+      }
+    },
+    {
+      "group": "foley",
+      "key": "swap",
+      "file": "red/R28-36-Handling and Rattling Rifle.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          6658,
+          6900
+        ],
+        [
+          7528,
+          7800
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "melee",
+      "file": "red4/R17-40-Padded Punches.wav",
+      "keepMs": 0,
+      "fadeMs": 120,
+      "ranges": [
+        [
+          9950,
+          10350
+        ]
+      ],
+      "gainDb": 0,
+      "under": {
+        "file": "bsb5/1797.flac",
+        "startMs": 115,
+        "gainDb": -10
+      }
+    },
+    {
+      "group": "foley",
+      "key": "bounce",
+      "file": "red4/R27-17-Drop Object on Hard Surface.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          9975,
+          10175
+        ],
+        [
+          12724,
+          12924
+        ],
+        [
+          15477,
+          15677
+        ]
+      ],
+      "gainDb": -1
+    },
+    {
+      "group": "foley",
+      "key": "hammer",
+      "file": "red4/R28-41-Hammer Metal Stakes or Nails.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          30048,
+          30178
+        ],
+        [
+          30503,
+          30633
+        ],
+        [
+          31053,
+          31183
+        ],
+        [
+          32083,
+          32213
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "amb",
+      "key": "amb.room",
+      "file": "red4/R21-47-Noisy Room Tone.wav",
+      "keepMs": 0,
+      "fadeMs": 1000,
+      "ranges": [
+        [
+          2000,
+          8000
+        ]
+      ],
+      "gainDb": 3,
+      "loop": true
+    },
+    {
+      "group": "amb",
+      "key": "amb.air",
+      "file": "red4/R22-15-Noisy Dull Wind.wav",
+      "keepMs": 0,
+      "fadeMs": 1000,
+      "ranges": [
+        [
+          2000,
+          8000
+        ]
+      ],
+      "gainDb": 3,
+      "loop": true
     }
   ],
   "hybrids": [
@@ -1856,10 +2149,21 @@
     "flesh",
     "armour",
     "break.",
-    "rf."
+    "rf.",
+    "crumble.",
+    "debris",
+    "gear",
+    "work.tape",
+    "charge.set",
+    "swap",
+    "melee",
+    "bounce",
+    "hammer",
+    "amb."
   ],
   "bitrates": {
     "guns": 96,
-    "foley": 64
+    "foley": 64,
+    "amb": 32
   }
 }

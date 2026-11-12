@@ -2,15 +2,14 @@
 
 ## One round in sound (2026-11-12): please play this first
 
-`c1-round-in-sound.wav`: a whole round in one minute, stereo. Prep (a reinforcement going up, a barricade), go,
+`c2-round-in-sound.wav`: a whole round in one minute, stereo. Prep (a reinforcement going up, a barricade), go,
 distant fire, a breach blast, the fight through the hole, a grenade, a far blast, furniture breaking, the uplink
-planted and defused, the win.
+planted and defused, the win. New since the first version: the blasts fall away naturally instead of holding flat,
+and the wall crumbling, gear, melee, swap, tape, bounce, hammer and the room tone are now real.
 
-- **Real:** guns, reloads, casings, footsteps, impacts, glass, bodies, hits on flesh and armour, blasts, grenades,
-  wood, crate, shelf, metal and drum breaks, the weapon drop, the reinforcement ratchet and anchors.
-- **Still synthetic:** the round cues and hit markers, uplink beeps, the room tone, the sofa (fabric) break, the
-  barricade hammer, kit rattle, weapon swap, melee, grenade throw and bounce, setting the charge, the defuse, the
-  wall crumbling.
+- **Real:** almost everything.
+- **Still synthetic:** the round cues, hit markers and uplink beeps; the sofa (fabric) break; the grenade throw;
+  the defuse.
 
 The `b3-*` files below were re-rendered with the new real breaks, hits, reinforcement and weapon drop.
 

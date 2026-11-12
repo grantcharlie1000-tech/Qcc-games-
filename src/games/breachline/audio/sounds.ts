@@ -618,8 +618,8 @@ export function catalogue(): SoundDef[] {
   add('armour', 2, 22050, -12, 4, fleshHit(true));
   for (const st of ['lift', 'unfold', 'anchor'] as ReinforceStage[]) add(`rf.${st}`, st === 'anchor' ? 2 : 1, 22050, -6, 6, (r, sr) => reinforceStage(st, r, sr));
   add('debris', 2, 16000, -8, 5, debris);
-  add('boom.near', 1, 22050, 4, 5, (r, sr) => blast(false, r, sr));
-  add('boom.impact', 1, 22050, 2, 5, (r, sr) => blast(true, r, sr));
+  add('boom.near', 1, 22050, 6, 5, (r, sr) => blast(false, r, sr));
+  add('boom.impact', 1, 22050, 4, 5, (r, sr) => blast(true, r, sr));
   add('throw', 2, 32000, -10, 5, throwSound);
   add('bounce', 4, 32000, -10, 5, bounceSound);
   add('charge.set', 2, 32000, -8, 5, chargeSetSound);

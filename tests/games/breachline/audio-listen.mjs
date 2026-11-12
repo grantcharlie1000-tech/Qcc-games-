@@ -69,7 +69,7 @@ if (set === 'foley') {
 }
 if (set === 'round') {
   // One round in a minute, everything together, in stereo.
-  single('round-in-sound', 'c1-round-in-sound.wav', true); files.push('c1-round-in-sound.wav');
+  single('round-in-sound', 'c2-round-in-sound.wav', true); files.push('c2-round-in-sound.wav');
 }
 let total = 0;
 for (const f of files) { const b = statSync(join(out, f)).size; total += b; console.log(`${f} ${(b / 1024).toFixed(0)} KB`); }
