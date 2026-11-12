@@ -15,7 +15,7 @@ reads from stills; motion needs the owner's eye on a real machine.
 | Halden 12 | 6 | Real receiver forms (action bars, cross-bolt safety detail); furniture texture with grain; a saddle that leaves the markings in view. |
 | Tern C8 | 6 | A shaped holo housing (sloped hood, bevelled window) in place of a slimmed box. |
 | Wren-9 | 6 | Its own lower and a true SMG brace stock instead of the AR family's parts; a handstop. |
-| Corvin DMR | 6 | A darker scope finish, heavier rings, a cheek riser; correct sight labels on its design sheet. |
+| Corvin DMR | 6 | Heavier rings and a cheek riser; correct sight labels on its design sheet. Scope now dark anodised with dark coated lenses and a lower hold (`corvin-hip-dark-scope.jpg`). |
 | P-11 | 5.5 | A shaped grip (palm swell, front strap texture) and more slide detail; it is the plainest next to the benchmark. |
 | Hands | 6.5 | A higher-poly hand (the Base Hand is 3k triangles, the knuckles show), glove armour as geometry, fingers solved against the weapon surface. |
 | Aim | 5 | Curves tuned in motion on real hardware; per-weapon timing. |

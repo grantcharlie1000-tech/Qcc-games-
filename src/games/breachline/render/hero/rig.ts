@@ -86,7 +86,8 @@ export function holdFor(id: WeaponId): Hold {
       shoulderL: [-0.27, -0.36, -0.04], poleL: [-1, -1, 0.3], adsZ: id === 'carbine' ? -0.1 : id === 'smg' ? -0.12 : id === 'dmr' ? -0.09 : -0.075,
       // Lower right, barrel only slightly in from straight ahead, little cant: the receiver's left side, the magazine
       // well and the grip stay in frame (chosen by eye from the holds in hero/v2/gate5-ar5-holds.jpg).
-      hip: { p: [0.12, -0.1, -0.255], r: [0.015, 0.045, -0.13] },
+      // The DMR sits lower so the receiver and handguard, not the scope's eyepiece, lead at the hip.
+      hip: { p: [0.12, id === 'dmr' ? -0.125 : -0.1, -0.255], r: [0.015, 0.045, -0.13] },
       leftPose: [[0.15, 0.05, 0.1, 0.15], [1.25, 1.2, 0.65, 0.1], [1.3, 1.2, 0.65, 0.02], [1.35, 1.2, 0.65, -0.07], [1.4, 1.2, 0.65, -0.16]],
     }); break;
     case 'shotgun': h = rifleHold(id, {

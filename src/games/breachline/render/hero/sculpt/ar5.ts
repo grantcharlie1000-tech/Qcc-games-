@@ -157,7 +157,9 @@ export function ar5Parts(hi: boolean, A: RifleDesign = AR5): Part[] {
     if (hi) { capY = relief(capY, (x, y, z) => (y > cy + R + 8 ? knurlY(0, tu, 1.0, 0.2)(x, y, z) : 0), 0.25); knob = relief(knob, (x, y, z) => (x < -(R + 6) ? -0.25 * Math.max(0, Math.cos(Math.atan2(y - cy, -z - tu) * 20)) : 0), 0.3); }
     saddle = union(saddle, latheX([[0, 0], [10, 0], [10, 3], [0, 3]], cy, tu, R + 2, 1), latheX([[0, 0], [10, 0], [10, 3], [0, 3]], cy, tu, -(R + 2), -1));
     tube = union(fillet(tube, saddle, 2), capY, capX, knob);
-    add('scope', BONE.root, MAT.anod, tube, 4);
+    add('scope', BONE.root, MAT.scope, tube, 4);
+    // Coated lenses seen at the hip: dark glass a little inside each end, not a hollow ring.
+    add('scope lenses', BONE.root, MAT.glass, union(cylZ(0, cy, Sc.bore + 0.3, u0 + 5, u0 + 6.5), cylZ(0, cy, Sc.bore + 0.3, u1 - 9, u1 - 7.5)), 1);
     const rings = Sc.rings.map(ru => {
       let ring = cylZ(0, cy, R + 3.2, ru, ru + 13, -0.6);
       ring = cut(ring, box(-40, cy - 0.3, ru - 1, 40, cy + 0.3, ru + 14));
@@ -169,7 +171,7 @@ export function ar5Parts(hi: boolean, A: RifleDesign = AR5): Part[] {
     });
     let mount = union(...rings);
     mount = cut(mount, cylZ(0, cy, R + 0.05, u0, u1));
-    add('scope rings', BONE.root, MAT.anod, mount, 2);
+    add('scope rings', BONE.root, MAT.scope, mount, 2);
   } else if (A.reflex) {
     // Open reflex sight: a low base on the rail and a single thin window frame, tilted back a little, with a hood over
     // the top edge and an adjustment screw on the right.

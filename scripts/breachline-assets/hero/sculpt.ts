@@ -167,6 +167,8 @@ const FINISH: Record<number, { c: number; r: number; m: number; edge: number; ed
   [MAT.steel]: { c: 0x505254, r: 0.48, m: 0.55, edge: 0x8a8b8c, edgeR: 0.28, edgeM: 1, wear: 0.9 },
   [MAT.rubber]: { c: 0x434442, r: 0.86, m: 0, edge: 0x4a4b49, edgeR: 0.8, edgeM: 0, wear: 0.2 },
   [MAT.brass]: { c: 0xb08d57, r: 0.34, m: 1, edge: 0xd4b07a, edgeR: 0.25, edgeM: 1, wear: 0.4 },
+  [MAT.scope]: { c: 0x2b2d30, r: 0.55, m: 0.2, edge: 0x72767b, edgeR: 0.3, edgeM: 0.85, wear: 0.6 },
+  [MAT.glass]: { c: 0x0e1519, r: 0.06, m: 0, edge: 0x0e1519, edgeR: 0.06, edgeM: 0, wear: 0 },
   [MAT.dark]: { c: 0x161616, r: 0.9, m: 0, edge: 0x161616, edgeR: 0.9, edgeM: 0, wear: 0 },
   [MAT.blued]: { c: 0x4e5156, r: 0.4, m: 0.55, edge: 0x7a7c80, edgeR: 0.28, edgeM: 0.95, wear: 0.8 },
   [MAT.hull]: { c: 0x8c2c23, r: 0.5, m: 0, edge: 0xa3443a, edgeR: 0.45, edgeM: 0, wear: 0.3 },
