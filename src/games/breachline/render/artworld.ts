@@ -19,7 +19,7 @@ import type { DetailBuilder, DressProxy } from './detail';
 import { clockFace, exitSign, fireSign, roomSigns, safetySign } from './printed';
 import { artMaterial } from './materials';
 import { PROPS, propKey } from './props';
-import { PLANKS, SURFACES } from './surfaces';
+import { DEFAULT_ALBEDO, PLANKS, PROCEDURAL_ALBEDO, SET_ALBEDO, SURFACES } from './surfaces';
 
 interface BakeInfo {
   version: number; region: string; meanLight?: number; width: number; height: number; density: number; scale: number;
@@ -138,6 +138,9 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     // One mesh per surface type.
     const ids = [...new Set(atlas.charts.map(c => c.face.tex))];
     const merged = new Map<string, { a: ReturnType<typeof faceArrays>; mat: THREE.MeshStandardMaterial; id: string }>();
+    // Light tier: the whole room as one vertex-coloured mesh, for when it is seen far off through an opening: each
+    // surface's average colour times its tint times the baked light at the vertex (read once from the lightmap).
+    const far = tier === 'low' ? { pos: [] as number[], col: [] as number[], idx: [] as number[], lm: imagePixels(lightMap.image as CanvasImageSource & { width: number; height: number }) } : null;
     for (const id of ids) {
       const a = faceArrays(atlas, f => f.tex === id), s = SURFACES[id];
       let map: THREE.Texture, nor: THREE.Texture | null = null, arm: THREE.Texture | null = null;
@@ -154,6 +157,15 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       } else {
         map = procedural[id];
         if (!atlas.charts.some(c => c.face.tex === id && c.face.mode === 'fit')) mapUv(a.uv, TILE[id][0], TILE[id][1]);
+      }
+      if (far && far.lm) {
+        const alb = (s ? SET_ALBEDO[s.set] : PROCEDURAL_ALBEDO[id]) ?? DEFAULT_ALBEDO, base = far.pos.length / 3, { w, h, data } = far.lm;
+        for (let v = 0; v < a.position.length / 3; v++) {
+          const px = Math.min(w - 1, Math.max(0, Math.floor(a.uv1[v * 2] * w))), py = Math.min(h - 1, Math.max(0, Math.floor(a.uv1[v * 2 + 1] * h))), k = (py * w + px) * 4;
+          far.pos.push(a.position[v * 3], a.position[v * 3 + 1], a.position[v * 3 + 2]);
+          for (let c = 0; c < 3; c++) far.col.push(a.color[v * 3 + c] * alb[c] * srgbToLinear(data[k + c]) * info.scale);
+        }
+        for (const k of a.index) far.idx.push(base + k);
       }
       if (dbg.includes('nonormal')) nor = null;
       if (dbg.includes('noarm')) arm = null;
@@ -174,6 +186,13 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       const g = geometry(a), mesh = new THREE.Mesh(g, mat);
       mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:${id}`;
       group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
+    }
+    if (far && far.idx.length) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(far.pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(far.col, 3)); g.setIndex(far.idx);
+      g.computeBoundingSphere();
+      const mesh = new THREE.Mesh(g, farMaterial()); mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:far`; mesh.userData.farRoom = r;
+      group.add(mesh); geometries.push(g);
     }
     // Modelled dressing, lit by the lightmap of whatever it stands on.
     {
@@ -509,3 +528,16 @@ function panelLook(width: number, t: Map<number, Float32Array>, wall: THREE.Mate
     },
   };
 }
+
+/** A lightmap image's pixels, read once (no GPU readback: the image is drawn into a 2D canvas). */
+function imagePixels(img: CanvasImageSource & { width: number; height: number } | undefined) {
+  if (!img || !img.width || !img.height) return null;
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d', { willReadFrequently: true }); if (!g) return null;
+  g.drawImage(img, 0, 0);
+  return { w: c.width, h: c.height, data: g.getImageData(0, 0, c.width, c.height).data };
+}
+const srgbToLinear = (b: number) => { const c = b / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+let farMat: THREE.MeshBasicMaterial | null = null;
+/** Shared by every far room: vertex colour only. */
+function farMaterial() { return (farMat ??= new THREE.MeshBasicMaterial({ vertexColors: true })); }

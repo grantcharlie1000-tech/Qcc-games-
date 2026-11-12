@@ -387,10 +387,15 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const tags = new Map<THREE.Object3D, { mask: number; box: THREE.Box3 }>();
   /** Puts every tagged mesh back on all its rooms' layers (for the probes and the warm-up, which see everything). */
   function untag() { tags.forEach((t, o) => { o.layers.mask = t.mask; }); }
-  function tagRooms(root: THREE.Object3D) {
-    if (cullOff) return;
+  /** The light tier's far rooms (render/artworld.ts): room index to its one merged mesh, shown instead of the room
+   * when it is seen through an opening more than FAR metres away. Off until the culling chooses them. */
+  const farMeshes = new Map<number, THREE.Object3D>(), FAR = 12, FAR_SHIFT = 12;
+  /** `both`: things that stay drawn in a far room too (panels, so breach holes show; props). */
+  function tagRooms(root: THREE.Object3D, both = false) {
+    if (cullOff) { root.traverse(o => { if (o.userData.farRoom !== undefined) o.visible = false; }); return; }
     root.updateMatrixWorld(true);
     root.traverse(o => {
+      if (o.userData.farRoom !== undefined) { farMeshes.set(o.userData.farRoom as number, o); o.visible = false; return; }
       if (!(o as THREE.Mesh).isMesh || (o as THREE.SkinnedMesh).isSkinnedMesh) return;
       tagBox.setFromObject(o);
       if (tagBox.isEmpty()) return;
@@ -406,6 +411,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       // An indoor room's outside surfaces (its roof, outer brick, the ground under its floor) are seen only from outside.
       const outside = /^art:([a-z]+):(asphalt|line|grass|brick|roof|precast|concrete|container)$/.exec(o.name);
       if (outside && !OUTDOOR.has(outside[1])) mask = EXTERIOR;
+      // Panels and props stay drawn when their room is far (on its far layer as well).
+      let lod = false; for (let p = o.parent; p && !lod; p = p.parent) lod = (p as THREE.LOD).isLOD === true;
+      if (mask && mask !== EXTERIOR && (both || lod)) mask |= mask << FAR_SHIFT;
       if (mask) { o.layers.mask = mask; tags.set(o, { mask, box: tagBox.clone() }); }
     });
   }
@@ -442,10 +450,18 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const pr = [0, 0, 0, 0];
   let cullLog: string[] | null = null;
   if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blCullLog: (on: boolean) => { cullLog = on ? [] : null; return () => cullLog; } });
+  /** Whether room `i` draws as its merged mesh (light tier only): seen through two openings or more (only a slit of
+   * it shows), or its nearest point beyond FAR metres. */
+  function isFar(i: number, depth: number) {
+    if (!farMeshes.has(i)) return false;
+    if (depth >= 2) return true;
+    const r = REGIONS[i], x = camera.position.x, z = camera.position.z;
+    return Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1)) > FAR;
+  }
   function cullRooms() {
-    if (cullOff || !portals.length) { camera.layers.enableAll(); return; }
+    if (cullOff || !portals.length) { camera.layers.enableAll(); farMeshes.forEach(m => { m.visible = false; }); return; }
     const home = regionAt(camera.position.x, camera.position.z);
-    if (home < 0) { camera.layers.enableAll(); untag(); return; }
+    if (home < 0) { camera.layers.enableAll(); untag(); farMeshes.forEach(m => { m.visible = false; }); return; }
     camera.updateMatrixWorld(); viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     reach.fill(-1); reach[home] = 0; queue.length = 0; queue.push(home);
     rects[home * 4] = -1; rects[home * 4 + 1] = -1; rects[home * 4 + 2] = 1; rects[home * 4 + 3] = 1;
@@ -463,16 +479,18 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
         const x0 = Math.max(pr[0], rects[r * 4]), y0 = Math.max(pr[1], rects[r * 4 + 1]), x1 = Math.min(pr[2], rects[r * 4 + 2]), y1 = Math.min(pr[3], rects[r * 4 + 3]);
         if (x0 >= x1 || y0 >= y1) continue;
         if (cullLog) cullLog.push(`${REGIONS[r].name}>${REGIONS[o].name} ${p.panel.kind} [${pr.map(v => v.toFixed(2))}] in [${[0, 1, 2, 3].map(k => rects[r * 4 + k].toFixed(2))}]`);
-        if (reach[o] < 0) { reach[o] = reach[r] + 1; mask |= 1 << (o + 1); queue.push(o); rects[o * 4] = x0; rects[o * 4 + 1] = y0; rects[o * 4 + 2] = x1; rects[o * 4 + 3] = y1; }
+        if (reach[o] < 0) { reach[o] = reach[r] + 1; mask |= isFar(o, reach[o]) ? 1 << (o + 1 + FAR_SHIFT) : 1 << (o + 1); queue.push(o); rects[o * 4] = x0; rects[o * 4 + 1] = y0; rects[o * 4 + 2] = x1; rects[o * 4 + 3] = y1; }
         else { rects[o * 4] = Math.min(rects[o * 4], x0); rects[o * 4 + 1] = Math.min(rects[o * 4 + 1], y0); rects[o * 4 + 2] = Math.max(rects[o * 4 + 2], x1); rects[o * 4 + 3] = Math.max(rects[o * 4 + 3], y1); }
       }
     }
     camera.layers.mask = mask;
+    farMeshes.forEach((m, i) => { m.visible = !!(mask & (1 << (i + 1 + FAR_SHIFT))); });
     // Inside a room seen through an opening, a mesh of that room alone is drawn only if it shows through the opening.
     if (!probesDone) return;
     tags.forEach((t, o) => {
-      const m = t.mask, r = Math.log2(m) - 1;
-      if (m === EXTERIOR || (m & (m - 1)) !== 0 || !(m & mask) || reach[r] <= 0) { o.layers.mask = m; return; }
+      // One room's mesh (its near layer, and maybe its far layer too): bits 1 to 12 name the room.
+      const m = t.mask, near = m & ((1 << (FAR_SHIFT + 1)) - 2), r = Math.log2(near) - 1;
+      if (m === EXTERIOR || !near || (near & (near - 1)) !== 0 || !(m & mask) || reach[r] <= 0) { o.layers.mask = m; return; }
       project(t.box, pr);
       o.layers.mask = Math.max(pr[0], rects[r * 4]) < Math.min(pr[2], rects[r * 4 + 2]) && Math.max(pr[1], rects[r * 4 + 1]) < Math.min(pr[3], rects[r * 4 + 3]) ? m : 0;
     });
@@ -977,7 +995,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       // A rebuilt panel takes its full material back; on the cheap path, swap it again.
       if (synced && cheap) setCheapShading(panelGroup, true);
       batches.flush();
-      if (synced) tagRooms(panelGroup);
+      if (synced) tagRooms(panelGroup, true);
       updateDeploys(view.m);
       fighters.update(view);
       for (let i = pendingPools.length - 1; i >= 0; i--) {

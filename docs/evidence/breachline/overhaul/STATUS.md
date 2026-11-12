@@ -29,6 +29,13 @@ The fixes:
 
 **Result, as shipped:** Performance at 1280 x 720 is now 150 to 160 ms in the corridor (it was 201 to 229) and 134 to 138 ms in the Lab (it was 166 to 180).
 
+**Far rooms (light tier).**
+- Each room has one extra mesh: all its surfaces merged, vertex-coloured with each texture set's average colour (`SET_ALBEDO`, measured from the shipped 512 px JPEGs by `scripts/breachline-assets/setalbedo.py`), times the surface's tint, times the baked light read once from the lightmap. One shared untextured material.
+- A room seen through two openings or more, or whose nearest point is beyond 12 m, draws as that one mesh instead of its surfaces, dressing, fixtures and ambience. Its panels (so breach holes show), its props and the fighters stay drawn.
+- Performance draws: corridor 222 to 182, Office 166 to 159, Lab 137 to 127.
+- Pictures from both corridor ends match apart from the round banner (`perf/far-rooms.png`: left culling off, right far rooms on).
+- The corridor is still above the 150 target. What remains is the corridor itself and the rooms right beside its doorways, plus about 45 draws for ten fighters.
+
 **Culling: what counts as an opening.**
 - An intact wall panel (or a reinforced one) blocks sight; a hole in it opens the room behind from the same frame.
 - Doors and windows always count as openings, because a barricade's boards have gaps: with barricades treated as solid, the slits between the boards showed bare background (checked on the Garage's barricaded door and the Lab's windows; up to 1.3% of pixels wrong).

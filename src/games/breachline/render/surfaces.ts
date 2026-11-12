@@ -71,3 +71,19 @@ export const PROCEDURAL_ALBEDO: Partial<Record<TexId, RGB>> = {
   concrete: [0.35, 0.34, 0.32], roof: [0.15, 0.15, 0.15],
 };
 export const DEFAULT_ALBEDO: RGB = [0.4, 0.4, 0.4];
+/** Average linear colour of each room-surface texture set, from its shipped 512 px JPEG
+ * (scripts/breachline-assets/setalbedo.py): the far rooms' merged meshes are coloured with it. */
+export const SET_ALBEDO: Record<string, RGB> = {
+  OfficeCeiling001: [0.910, 0.910, 0.910],
+  aerial_grass_rock: [0.169, 0.121, 0.024],
+  asphalt_02: [0.104, 0.102, 0.091],
+  blue_metal_plate: [0.023, 0.049, 0.074],
+  concrete_floor_02: [0.191, 0.160, 0.107],
+  interior_tiles: [0.406, 0.316, 0.235],
+  painted_plaster_wall: [0.410, 0.364, 0.351],
+  preconcrete_wall_001: [0.471, 0.338, 0.232],
+  raw_plank_wall: [0.384, 0.224, 0.096],
+  red_brick_03: [0.149, 0.092, 0.076],
+  terrazzo_tiles: [0.251, 0.152, 0.095],
+  wood_planks: [0.191, 0.099, 0.041],
+};
