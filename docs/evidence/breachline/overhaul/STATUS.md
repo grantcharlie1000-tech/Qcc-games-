@@ -4,6 +4,12 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+### Outdoor areas
+
+- **What was added.** Contact shadows under the cover, worn paths from the outer doors, oil stains on the asphalt (12 to 22 per area), and darker wall bases. There is no ceiling ramp outside.
+- **Evidence:** `round2/outdoor-before-after.png` (south yard, west lot, north yard, east lane).
+- **Honest rating.** Outdoors stays at 6: the additions are real, but they barely show in daylight on dark asphalt. The outdoor limit is elsewhere: the flat sky and backdrop, and the long plain boundary walls.
+
 ### Break Room and Garage
 
 - **Break Room.** A teal accent wall on the kitchen side (east, x = 15) over warm off-white walls, warm light and worn paths. Its partitions carry pinboards, a calendar, posters, coats and prints.
@@ -566,7 +572,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** map-fill round 2, rolling through the rooms: all inner rooms done; outdoor areas next.
+**Where I am (keep current):** map-fill round 2 done for every area (rooms 6.5 to 7, outdoors unchanged at 6); waiting for the planner's next order.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

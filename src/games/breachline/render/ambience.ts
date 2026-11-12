@@ -11,7 +11,7 @@ import { SET_PIECES } from './setpieces-data';
 
 type RGB = readonly [number, number, number];
 /** Each room's identity: its wall tone, its dado (height and tone), the colour of its light, how dark its corners go. */
-export const ROOM_LOOK: Record<string, { wall: RGB; band?: { height: number; tint: RGB }; rail?: RGB; tiles?: readonly [number, number]; light: RGB; pool?: number; corners: number; wear: RGB; wearOpacity: number; scuffs?: boolean; tape?: boolean; accent?: { axis: 'x' | 'z'; at: number; tint: RGB }; stains?: number }> = {
+export const ROOM_LOOK: Record<string, { wall: RGB; band?: { height: number; tint: RGB }; rail?: RGB; tiles?: readonly [number, number]; light: RGB; pool?: number; corners: number; wear: RGB; wearOpacity: number; scuffs?: boolean; tape?: boolean; accent?: { axis: 'x' | 'z'; at: number; tint: RGB }; stains?: number; outdoor?: boolean }> = {
   office: { wall: [1.04, 0.98, 0.88], band: { height: 1.0, tint: [0.5, 0.36, 0.25] }, rail: [0.32, 0.22, 0.15], light: [1.0, 0.86, 0.66], corners: 0.42, wear: [0.16, 0.13, 0.1], wearOpacity: 0.3 },
   corridor: { wall: [1, 1, 1], light: [1.0, 0.95, 0.88], corners: 0.4, wear: [0.15, 0.14, 0.12], wearOpacity: 0.32 },
   lobby: { wall: [1.02, 0.99, 0.94], band: { height: 1.2, tint: [0.76, 0.69, 0.6] }, rail: [0.5, 0.46, 0.4], tiles: [0.6, 0.4], light: [1.0, 0.9, 0.75], pool: 0.35, corners: 0.4, wear: [0.16, 0.14, 0.12], wearOpacity: 0.28 },
@@ -19,6 +19,11 @@ export const ROOM_LOOK: Record<string, { wall: RGB; band?: { height: number; tin
   archive: { wall: [0.9, 0.98, 0.88], band: { height: 1.0, tint: [0.62, 0.72, 0.6] }, rail: [0.4, 0.28, 0.18], light: [1.0, 0.92, 0.8], corners: 0.44, wear: [0.15, 0.14, 0.11], wearOpacity: 0.26 },
   break: { wall: [1.04, 1.0, 0.94], accent: { axis: 'x', at: 15, tint: [0.42, 0.78, 0.8] }, light: [1.02, 0.94, 0.84], pool: 0.35, corners: 0.4, wear: [0.15, 0.13, 0.11], wearOpacity: 0.26 },
   garage: { wall: [0.9, 0.9, 0.88], band: { height: 3.5, tint: [1, 1, 1] }, tiles: [0.44, 0.215], light: [0.95, 0.98, 1.0], corners: 0.5, wear: [0.13, 0.13, 0.12], wearOpacity: 0.3, scuffs: false, stains: 12 },
+  // Outdoors: shadows under the cover, worn paths to the doors, oil stains, darker wall bases (no ceiling).
+  yard: { wall: [1, 1, 1], light: [1, 1, 1], corners: 0.35, wear: [0.08, 0.08, 0.08], wearOpacity: 0.22, scuffs: false, stains: 22, outdoor: true },
+  west: { wall: [1, 1, 1], light: [1, 1, 1], corners: 0.35, wear: [0.08, 0.08, 0.08], wearOpacity: 0.22, scuffs: false, stains: 18, outdoor: true },
+  north: { wall: [1, 1, 1], light: [1, 1, 1], corners: 0.35, wear: [0.08, 0.08, 0.08], wearOpacity: 0.22, scuffs: false, stains: 18, outdoor: true },
+  east: { wall: [1, 1, 1], light: [1, 1, 1], corners: 0.35, wear: [0.08, 0.08, 0.08], wearOpacity: 0.22, scuffs: false, stains: 12, outdoor: true },
   lab: { wall: [1.18, 1.23, 1.28], band: { height: 1.5, tint: [1.3, 1.34, 1.38] }, rail: [1.2, 1.22, 1.25], tiles: [0.15, 0.15], light: [0.82, 0.92, 1.0], pool: 0.5, corners: 0.36, wear: [0.2, 0.2, 0.19], wearOpacity: 0.22, scuffs: false, tape: true },
 };
 
@@ -165,7 +170,7 @@ export function roomAmbience(region: Region, runs: readonly WallRunLike[]): { me
       edges.pos.push(...a, ...b, ...cc, ...d); edges.uv.push(0, top ? 1 : 0, 1, top ? 1 : 0, 1, top ? 0 : 1, 0, top ? 0 : 1);
       edges.idx.push(...(flip ? [n, n + 2, n + 1, n, n + 3, n + 2] : [n, n + 1, n + 2, n, n + 2, n + 3]));
     };
-    quad(WALL_H - 0.55, WALL_H - 0.002, true);
+    if (!look.outdoor) quad(WALL_H - 0.55, WALL_H - 0.002, true);
     quad(0.002, 0.3, false);
   }
   const radialMap = radialTex(), rampMap = rampTex();
