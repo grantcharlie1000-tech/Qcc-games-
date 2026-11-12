@@ -82,7 +82,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   // every 140 ms. For a WebGL game that is a full GPU stall each time (149 ms of every frame in the profile). Marked
   // textured, the HUD takes the fixed white ink with a halo and the canvas is never read back.
   canvas.dataset.glassInk = 'textured';
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: initial === 'high', powerPreference: 'high-performance', stencil: false, alpha: false });
+  // No antialias buffer on the canvas: the post chain multisamples its own target, and the canvas only takes the composite.
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, alpha: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.autoClear = false;
@@ -315,14 +316,18 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   let orbit = 0, lastOrigin = { x: 0, y: 1, z: 0 }, time = 0;
   const cam = { x: 0, y: 12, z: 30, yaw: 0, pitch: -0.3, set: false };
 
+  // Resizing the canvas reallocates its drawing buffer (a GPU stall). With post-processing on, the canvas stays at full
+  // size and the render scale only moves the HDR target's viewport, which never reallocates; without it, the canvas
+  // is resized, and adapt() does that at most once every few seconds.
+  let sized = '';
   function applySize() {
-    const q = QUALITIES[quality], ratio = Math.min(window.devicePixelRatio || 1, q.cap) * scale;
-    renderer.setPixelRatio(ratio);
-    renderer.setSize(width, height, false);
+    const q = QUALITIES[quality], graded = post.tier !== 'off', ratio = Math.min(window.devicePixelRatio || 1, q.cap) * (graded ? 1 : scale), key = `${width}x${height}@${ratio}`;
+    if (key !== sized) { sized = key; renderer.setPixelRatio(ratio); renderer.setSize(width, height, false); }
     renderer.getDrawingBufferSize(drawSize);
-    post.setSize(drawSize.x, drawSize.y);
+    post.setSize(Math.max(1, Math.round(drawSize.x * (graded ? scale : 1))), Math.max(1, Math.round(drawSize.y * (graded ? scale : 1))));
     stats.scale = scale;
   }
+  let resizedAt = -Infinity;
   /** Lowers the resolution when frames run long and raises it again when there is headroom. */
   function adapt(dt: number) {
     const q = QUALITIES[quality];
@@ -330,8 +335,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     frameMs += (dt * 1000 - frameMs) * 0.08;
     const budget = 1000 / Math.min(q.fps, 60);
     if (frameMs > budget * 1.22) { slow++; fast = 0; } else if (frameMs < budget * 1.06) { fast++; slow = 0; } else slow = fast = 0;
-    if (slow > 25 && scale > q.min) { scale = Math.max(q.min, scale - 0.1); slow = 0; applySize(); }
-    else if (fast > 240 && scale < q.max) { scale = Math.min(q.max, scale + 0.05); fast = 0; applySize(); }
+    if (post.tier === 'off' && time - resizedAt < 4) return;
+    if (slow > 25 && scale > q.min) { scale = Math.max(q.min, scale - 0.1); slow = 0; resizedAt = time; applySize(); }
+    else if (fast > 240 && scale < q.max) { scale = Math.min(q.max, scale + 0.05); fast = 0; resizedAt = time; applySize(); }
   }
 
   function updateGadgets(m: Match, dt: number) {

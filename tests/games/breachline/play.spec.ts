@@ -143,3 +143,22 @@ test('P pauses a solo match through the shell and time stands still',async({page
   expect((await state(page)).t).toBe(t);
   expect(errors).toEqual([]);
 });
+
+test('nothing reads the game canvas back during a live match',async({page})=>{
+  // Every drawImage whose source is the game's WebGL canvas, and every getImageData after one, is counted.
+  await page.addInitScript(()=>{
+    const w=window as unknown as {__readbacks:number};w.__readbacks=0;
+    const draw=CanvasRenderingContext2D.prototype.drawImage;
+    CanvasRenderingContext2D.prototype.drawImage=function(this:CanvasRenderingContext2D,...a:unknown[]){
+      if(a[0] instanceof HTMLCanvasElement&&a[0].closest('.breachline'))w.__readbacks++;
+      return (draw as (...b:unknown[])=>void).apply(this,a);
+    } as typeof draw;
+  });
+  const errors=await open(page);
+  await action(page);
+  await page.evaluate(()=>window.__breachlineTest!.freeze(false));
+  await page.waitForTimeout(10_000);
+  expect((await state(page)).phase).not.toBe('lobby');
+  expect(await page.evaluate(()=>(window as unknown as {__readbacks:number}).__readbacks)).toBe(0);
+  expect(errors).toEqual([]);
+});

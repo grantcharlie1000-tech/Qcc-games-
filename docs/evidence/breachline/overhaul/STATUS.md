@@ -2,9 +2,15 @@
 
 Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch: `claude/zen-allen-otdlt6`.
 
+## For the owner
+
+- **Why the game crawled on a fast PC.** The arcade's adaptive text colour reads the game's picture back from the graphics card about every 140 ms, so the card has to stop and wait each time. Breachline now opts out.
+- **Other games.** The other 3D (WebGL) games in the arcade most likely have the same slowdown, and that code lives in the shared arcade interface (`src/ui/glass-ink.ts`, `canvas-ink.ts`).
+- **Smaller cost.** The same feature also scans the page's layout every 140 ms, which costs about 1 to 2 ms a frame even with the readback gone.
+
 ## For the planner (latest first)
 
-## Performance
+### Performance
 
 **Job 1: where the time goes.** These are CPU profiles of a live 5v5 bot match on the built site, with the player firing and walls breaking, 15 s per tier. The tables are in `perf/profile-*.txt`, and the tools are `scripts/breachline-assets/perfprofile.mjs` and `perfanalyze.py`.
 
@@ -12,7 +18,12 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
   - This was by far the biggest cost. `src/ui/glass-ink.ts` reads the game canvas back about every 140 ms (drawImage into a 2D canvas, then getImageData). At Auto it was 149 ms of every frame's script (`perf/profile-auto.txt`).
   - On a real GPU each readback makes the GPU finish its queued work and copy the frame back, so frames can never overlap.
   - Fixed for Breachline: the canvas is marked `data-glass-ink="textured"`, so nothing is read back (`perf/profile-*-fix1.txt`). Other WebGL games in the arcade likely have the same cost.
-- **Resolution thrash.** Auto and Low change resolution by resizing the drawing buffer, which reallocates it each step: 8 to 36 ms per frame averaged here. This is reworked in the Auto job.
+- **Resolution thrash (fixed).**
+  - Auto and Low changed resolution by resizing the drawing buffer, which reallocates it each step: 8 to 36 ms per frame averaged here.
+  - Now the canvas keeps its size and the render scale only moves the post target's viewport, which never reallocates. Without post, the canvas resizes at most once every 4 s.
+  - The canvas's own antialias buffer is gone on High, since the post chain multisamples its own target.
+  - setSize no longer appears in the profiles (`perf/profile-*-fix2.txt`).
+- **Test.** A browser test (`play.spec.ts`) plays 10 s live and fails if anything draws the game canvas into a 2D canvas. It fails without the fix (12 readbacks) and passes with it.
 - **Game script otherwise.**
   - About 4.5 ms per frame, mostly draw submission (250 to 300 draws).
   - The simulation is 0.3 ms.
