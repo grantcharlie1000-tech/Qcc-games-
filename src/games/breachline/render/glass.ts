@@ -39,6 +39,8 @@ export class Glass {
   private m = new THREE.Matrix4(); private q = new THREE.Quaternion(); private v = new THREE.Vector3(); private s = new THREE.Vector3();
   private static ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 
+  /** Called as a pane cracks or shatters (the scene's cosmetic event stream). */
+  onEvent: (stage: 'crack' | 'shatter', x: number, y: number, z: number) => void = () => {};
   constructor(private fx: Effects) {
     const B = MAP.building;
     this.panes = MAP.panels.filter(p => p.kind === 'window' && (p.axis === 'x' ? Math.abs(Math.abs(p.pos) - Math.abs(B.z1)) < 0.01 : Math.abs(Math.abs(p.pos) - Math.abs(B.x1)) < 0.01))
@@ -77,7 +79,7 @@ export class Glass {
       p.hits++;
       const x = p.axis === 'x' ? u : plane, z = p.axis === 'x' ? plane : u, n = -Math.sign(along);
       for (let k = 0; k < 5; k++) this.fx.debris(x, y, z, dx * 2 + (Math.random() - 0.5) * 1.5, Math.random() * 1.2, dz * 2 + (Math.random() - 0.5) * 1.5, 0.008 + Math.random() * 0.012, 0.75, 0.85, 0.9, true, 0.95);
-      if (p.hits === 1) this.fx.hole(x, y, z, p.axis === 'x' ? 0 : n, 0, p.axis === 'x' ? n : 0, 0.42 + Math.random() * 0.15, this.tag(i), MARK.glass, [1.1, 1.15, 1.2]);
+      if (p.hits === 1) { this.fx.hole(x, y, z, p.axis === 'x' ? 0 : n, 0, p.axis === 'x' ? n : 0, 0.42 + Math.random() * 0.15, this.tag(i), MARK.glass, [1.1, 1.15, 1.2]); this.onEvent('crack', x, y, z); }
       else this.shatter(i, dx, dz);
     });
   }
@@ -96,6 +98,7 @@ export class Glass {
   private shatter(i: number, dx: number, dz: number) {
     const p = this.panes[i];
     p.hits = 2;
+    { const u = (p.u0 + p.u1) / 2, y = (p.y0 + p.y1) / 2, plane = p.pos + p.out * OFF; this.onEvent('shatter', p.axis === 'x' ? u : plane, y, p.axis === 'x' ? plane : u); }
     this.fx.clearHoles(this.tag(i));
     this.place(this.sheet, i, false); this.place(this.rim, i, true);
     this.sheet.instanceMatrix.needsUpdate = this.rim.instanceMatrix.needsUpdate = true;

@@ -42,7 +42,19 @@ export interface SceneView {
   reduced: boolean;
   menu: boolean;
 }
+/** What the scene draws that the simulation does not know about, for the sound code (map-fill plan, sound hookup):
+ * every mark placed, with its material; glass cracking and shattering; a set piece reaching a damage state; a body
+ * coming to rest; a reinforcement or barricade starting, unfolding, anchoring or breaking. Emitted at the moment the
+ * picture changes, from the same shared events. The object passed is reused: copy what you keep. */
+export type CosmeticEvent =
+  | { k: 'impact'; mat: string; x: number; y: number; z: number; power: number }
+  | { k: 'glass'; stage: 'crack' | 'shatter'; x: number; y: number; z: number }
+  | { k: 'piece'; family: string; state: 'damaged' | 'wrecked'; x: number; y: number; z: number }
+  | { k: 'body'; x: number; y: number; z: number }
+  | { k: 'fort'; what: 'reinforce' | 'barricade'; stage: 'start' | 'unfold' | 'anchor' | 'break'; x: number; y: number; z: number };
 export interface BreachScene {
+  /** Subscribes to the cosmetic event stream; returns the unsubscribe. */
+  onCosmetic(fn: (e: CosmeticEvent) => void): () => void;
   render(view: SceneView): void;
   handle(events: readonly SimEvent[], m: Match, self: number): void;
   resize(width: number, height: number): void;
@@ -129,7 +141,11 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       artScene.add(a.group);
       pieces = new SetPieces(fx, (x, z) => { const l = bake.probe(x, z); return [0.18 + l[0] * 1.9, 0.18 + l[1] * 1.9, 0.18 + l[2] * 1.9]; });
       scene.add(pieces.mesh);
-      pieces.onState = (i, s) => a.pieceState(i, s);
+      pieces.onState = (i, s) => {
+        a.pieceState(i, s);
+        if (!s || !cosmetic.size) return;
+        const p = SET_PIECES[i]; evPiece.family = p.family; evPiece.state = s === 2 ? 'wrecked' : 'damaged'; evPiece.x = (p.x0 + p.x1) / 2; evPiece.y = p.y1 / 2; evPiece.z = (p.z0 + p.z1) / 2; emit(evPiece);
+      };
       if (/artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blPieces: pieces, __blPieceView: SetPieces.view, __blPieceDefs: SET_PIECES });
       if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: integrate ${(performance.now() - tI).toFixed(0)} ms`);
       probesDone = false;
@@ -268,6 +284,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const fx = new Effects();
   // Window panes outside the barricaded windows (render/glass.ts): cosmetic, from the shot and blast events.
   const glass = new Glass(fx); scene.add(glass.group);
+  glass.onEvent = (stage, x, y, z) => { if (!cosmetic.size) return; evGlass.stage = stage; evGlass.x = x; evGlass.y = y; evGlass.z = z; emit(evGlass); };
   // The map-fill set pieces (render/setpieces.ts): modelled in three damage states, from the shot and blast events.
   // They join with the art layer, which leaves their placeholder boxes out.
   fx.density = QUALITIES[quality].density;
@@ -427,12 +444,23 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       }
     }
   }
+  // The cosmetic event stream: one reused object per kind, handed to every listener.
+  const cosmetic = new Set<(e: CosmeticEvent) => void>();
+  const evImpact = { k: 'impact' as const, mat: '', x: 0, y: 0, z: 0, power: 0 }, evGlass = { k: 'glass' as const, stage: 'crack' as 'crack' | 'shatter', x: 0, y: 0, z: 0 };
+  const evPiece = { k: 'piece' as const, family: '', state: 'damaged' as 'damaged' | 'wrecked', x: 0, y: 0, z: 0 }, evBody = { k: 'body' as const, x: 0, y: 0, z: 0 };
+  const evFort = { k: 'fort' as const, what: 'reinforce' as 'reinforce' | 'barricade', stage: 'start' as 'start' | 'unfold' | 'anchor' | 'break', x: 0, y: 0, z: 0 };
+  const emit = (e: CosmeticEvent) => { for (const fn of cosmetic) fn(e); };
+  const fort = (what: 'reinforce' | 'barricade', stage: 'start' | 'unfold' | 'anchor' | 'break', x: number, y: number, z: number) => { if (!cosmetic.size) return; evFort.what = what; evFort.stage = stage; evFort.x = x; evFort.y = y; evFort.z = z; emit(evFort); };
+  const unfolding = new Set<number>(), barricading = new Set<number>();
   /** A reinforcement going up: while a defender works on a wall, the plate rises from the floor over the action's
    * duration (fast at first, settling at the top), drawn from the same geometry the finished plate will have. */
   const deploys = new Map<number, PanelView>();
   function updateDeploys(m: Match) {
     const live = new Set<number>();
     for (const pl of m.players) {
+      // A barricade being nailed up: its start (its completion arrives as the shared 'panel' event).
+      if (pl.alive && pl.act === ACT.barricade && pl.actTarget >= 0 && !barricading.has(pl.id)) { barricading.add(pl.id); const b = m.world.panels[pl.actTarget]; if (b) { const c = panelPoint(b, b.u0 + b.cols * CELL / 2, 1); fort('barricade', 'start', c.x, c.y, c.z); } }
+      else if (pl.act !== ACT.barricade) barricading.delete(pl.id);
       if (!pl.alive || pl.act !== ACT.reinforce || pl.actTarget < 0) continue;
       const panel = m.world.panels[pl.actTarget];
       if (!panel || panel.reinforced) continue;
@@ -441,10 +469,12 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       if (!v) {
         v = new PanelView({ ...panel, reinforced: true, version: panel.version + 1 }, bake, panelMats, art?.panelLook(panel.id) ?? null);
         v.sync(); panelGroup.add(v.mesh); deploys.set(panel.id, v);
+        const c = panelPoint(panel, panel.u0 + panel.cols * CELL / 2, 1); fort('reinforce', 'start', c.x, c.y, c.z);
       }
       // First half: the folded plate is lifted into place (rising from the floor, a third of its width); second half:
       // it unfolds sideways across the wall, about its middle.
       const t = Math.min(1, pl.actT / actDuration(ACT.reinforce)), rise = 1 - (1 - Math.min(1, t * 2)) ** 3, open = Math.max(0, t * 2 - 1);
+      if (open > 0 && !unfolding.has(panel.id)) { unfolding.add(panel.id); const c = panelPoint(panel, panel.u0 + panel.cols * CELL / 2, 1.2); fort('reinforce', 'unfold', c.x, c.y, c.z); }
       const sx = 0.33 + 0.67 * (1 - (1 - open) ** 2), mid = panel.u0 + panel.cols * CELL / 2;
       v.mesh.scale.set(panel.axis === 'x' ? sx : 1, Math.max(0.02, rise), panel.axis === 'z' ? sx : 1);
       v.mesh.position.set(panel.axis === 'x' ? mid * (1 - sx) : 0, 0, panel.axis === 'z' ? mid * (1 - sx) : 0);
@@ -453,7 +483,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     for (const [id, v] of deploys) if (!live.has(id)) {
       // Done (or abandoned): when the wall is now reinforced, the anchors fire into floor and ceiling.
       const panel = m.world.panels[id];
+      unfolding.delete(id);
       if (panel?.reinforced) {
+        { const c = panelPoint(panel, panel.u0 + panel.cols * CELL / 2, 0.1); fort('reinforce', 'anchor', c.x, c.y, c.z); }
         const W = panel.cols * CELL, leaves = Math.max(2, Math.round(W / 0.5));
         for (let i = 1; i < leaves; i += 2) for (const y of [0.04, panel.y0 + panel.rows * CELL - 0.04]) {
           const at = panelPoint(panel, panel.u0 + i * W / leaves, y, 0);
@@ -555,6 +587,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   }
   function impact(x: number, y: number, z: number, nx: number, ny: number, nz: number, kind: keyof typeof DUST, hard: boolean) {
     const c = DUST[kind], l = bake.probe(x, z), b = 0.35 + (l[0] + l[1] + l[2]) / 3;
+    if (cosmetic.size) { evImpact.mat = kind; evImpact.x = x; evImpact.y = y; evImpact.z = z; evImpact.power = hard ? 1 : 0.5; emit(evImpact); }
     const n = fx.density < 1 ? 1 : 2;
     for (let i = 0; i < n; i++) fx.dust(x + nx * 0.05, y + ny * 0.05, z + nz * 0.05, nx * (0.6 + Math.random()) + (Math.random() - 0.5) * 0.6, ny * (0.6 + Math.random()) + Math.random() * 0.5, nz * (0.6 + Math.random()) + (Math.random() - 0.5) * 0.6, 0.16 + Math.random() * 0.12, 0.5 + Math.random() * 0.4, c[0] * b, c[1] * b, c[2] * b, 0.5);
     if (hard) {
@@ -574,6 +607,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
 
   return {
     ear, stats,
+    onCosmetic(fn) { cosmetic.add(fn); return () => { cosmetic.delete(fn); }; },
     handle(events, m, self) {
       viewmodel.handle(events, m, self);
       fighters.handle?.(events, m, self);
@@ -620,6 +654,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             if (!panel) break;
             for (const c of e.c) fx.clearHoles(e.p * 4096 + c);
             if (panel.kind === 'wall') chipRim(panel, e.c, e.cause === 1 ? 1 : 2, e.cause === 1);
+            if (cosmetic.size && (panel.kind !== 'wall' || panel.reinforced)) { const at = cellCenter(panel, e.c[0]); fort(panel.kind !== 'wall' ? 'barricade' : 'reinforce', 'break', at.x, at.y, at.z); }
             const wood = panel.kind !== 'wall', max = e.cause === 1 ? 46 : 10, stride = Math.max(1, Math.ceil(e.c.length / max));
             const src = lastOrigin, side = (panel.axis === 'x' ? src.z : src.x) < panel.pos ? 1 : -1;
             for (let i = 0; i < e.c.length; i += stride) {
@@ -662,6 +697,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             const panel = m.world.panels[e.p];
             if (!panel) break;
             const c = panelPoint(panel, panel.u0 + panel.cols * CELL / 2, panel.y0 + panel.rows * CELL / 2);
+            if (e.s === 1) fort('barricade', 'anchor', c.x, c.y, c.z);
             for (let i = 0; i < 6; i++) fx.dust(c.x + (Math.random() - 0.5) * 1.5, c.y + (Math.random() - 0.5) * 1.5, c.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5), Math.random() * 0.5, (Math.random() - 0.5), 0.3, 0.8, 0.6, 0.58, 0.52, 0.35);
             break;
           }
@@ -693,7 +729,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
         if (body ? !body.still && pp.wait > -2.8 : pp.wait > 0) continue;
         pendingPools.splice(i, 1);
         const f = body ?? fighters.pose(pp.id), alive = view.m.players[pp.id]?.alive;
-        if (f && !alive) pool(pp.m, f.x, f.z);
+        if (f && !alive) { pool(pp.m, f.x, f.z); if (cosmetic.size) { evBody.x = f.x; evBody.y = 0.2; evBody.z = f.z; emit(evBody); } }
       }
       place(view);
       updateGadgets(view.m, dt);
