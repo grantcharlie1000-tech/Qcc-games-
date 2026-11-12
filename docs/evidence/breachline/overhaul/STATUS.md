@@ -4,6 +4,23 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: Phase B, sofa and steel redone to the reviewer's exact spec (7ad7bf0 and this commit).**
+`phaseb/owner-before-after.png` and every `phaseb/triples/<family>.png` re-rendered (three 640 px frames each).
+- **Seating:** the chesterfield is gone (sofa_02 removed from the assets). Code-built modern office seating: boxy
+  upholstered frame, two rounded seat and two back cushions with a little sag, piped seam along each seat front, slim
+  steel legs, mid teal-grey with the shader's weave; the Lobby's second seat is a pair of armchairs from the same set.
+  Damage is the fabric torn: slits with flaps peeled back and yellowed foam bulging out; wrecked, a leg is gone so the
+  frame leans, a gashed seat cushion lies on the floor, scorched cloth by an arm, foam crumbs. I did not search Patch.
+- **Painted steel:** lockers are clean, even grey-blue paint (linear albedo about 0.3, soft sheen, no texture grime);
+  their gaps, louvres, label plates and handles are modelled. The code-built cabinets match them (louvres, label
+  holder, handle and lock, hinge barrels, plinth); damage is punctures with bright torn rims and shallow dents, then a
+  door torn off and lying in front with the insides showing (shelf, hook, a bag), another door sprung, the side
+  buckled. The room dressing now skips set pieces, so each draws itself in all three states (that also lets filing
+  runs, the vending machines and the low table show their own damage).
+- Not yet to this standard: the code shader's steel on the skip, generator and bin store still carries its speckle
+  and floor grime; timber splits along the grain are splinters and holes rather than true splits.
+- Tests: unit and Breachline tests pass after the Lobby and Break Room rebake.
+
 **2026-11-12: Phase B, reviewer's three corrections applied (sofa as the pattern, then every pushed family).**
 `phaseb/owner-before-after.png` (redone) and `phaseb/triples/<family>.png`, now three 640 px frames stacked.
 - **Mid-tones:** the sofa's near-black leather (linear albedo about 0.005) is built as grey (`greyscale` in the

@@ -143,7 +143,7 @@ const BUILD: Record<string, (k: Kit, s: number, p: SetPieceDef) => void> = {
     // with crisp dark gaps, louvres top and bottom, a label holder, a handle with its lock, hinge barrels. Damaged:
     // punctures with bright torn rims and shallow dents. Wrecked: a door torn off and lying in front, the cabinet's
     // insides showing (a shelf, a hook, a bag), another door sprung on its lower hinge, the side buckled.
-    const { L, D, H } = k, UPS = p.name.includes('UPS'), hue = UPS ? 0x34383c : 0x8d969c, GAP = 0x101214;
+    const { L, D, H } = k, UPS = p.name.includes('UPS'), hue = UPS ? 0x34383c : 0x727b83, GAP = 0x101214;
     k.box(0, 0.08, 0, L, H, D * 0.94, hue);
     k.box(0.02, 0, 0.02, L - 0.02, 0.08, D * 0.9, 0x1c1e20);
     k.box(0, H - 0.02, 0, L, H, D * 0.97, hue, 1.05);
