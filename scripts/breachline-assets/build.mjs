@@ -188,12 +188,15 @@ async function main() {
       const src = k => join(CACHE, a.files.find(f => f.path.includes(`_${k}.`)).path);
       await textureSet(a.id, { diff: src('diff'), nor: src('nor_gl'), arm: src('arm') }, SURFACE_SIZES, join(OUT, 'tex', a.id));
     } else {
-      const gltf = JSON.parse(await readFile(join(dir, `${a.id}.gltf`), 'utf8'));
-      const bin = await readFile(join(dir, gltf.buffers[0].uri));
+      let gltf = JSON.parse(await readFile(join(dir, `${a.id}.gltf`), 'utf8'));
+      let bin = await readFile(join(dir, gltf.buffers[0].uri));
+      const textured = gltf;
+      // Heavy product scans drawn small (dressing): decimated to a share of their triangles, unused vertices dropped.
+      if (a.decimate) { const d = compact(...Object.values(await simplified(gltf, bin, a.decimate, false, 0.08))); gltf = d.gltf; bin = d.bin; }
       const glb = glbWithoutImages(gltf, bin);
       const size = await written(join(OUT, 'models', `${a.id}.glb`), glb, ['low', 'high']);
       // A far level at about 30 % of the triangles, used beyond a few metres and on the throttled tier.
-      const lod = await simplified(gltf, bin, 0.3);
+      const lod = compact(...Object.values(await simplified(gltf, bin, 0.3))); 
       const lodSize = await written(join(OUT, 'models', `${a.id}.lod1.glb`), glbWithoutImages(lod.gltf, lod.bin), ['low', 'high']);
       // Dressing drawn by the hundred (archive boxes) also gets a crude level: borders free, a few hundred triangles.
       let lod2Triangles;
@@ -204,10 +207,15 @@ async function main() {
       }
       // Textures per source material, named after it.
       const mats = [];
-      for (const m of gltf.materials) {
-        const img = t => (t ? join(dir, gltf.images[gltf.textures[t.index].source].uri) : null);
-        const diff = img(m.pbrMetallicRoughness?.baseColorTexture), nor = img(m.normalTexture), arm = img(m.pbrMetallicRoughness?.metallicRoughnessTexture);
-        if (!diff || !nor || !arm) throw new Error(`${a.id}/${m.name}: expected diffuse, normal and ARM maps`);
+      for (const m of textured.materials) {
+        const img = t => (t ? join(dir, textured.images[textured.textures[t.index].source].uri) : null);
+        const diff = img(m.pbrMetallicRoughness?.baseColorTexture);
+        if (!diff) throw new Error(`${a.id}/${m.name}: expected a colour map`);
+        // A material without a normal map gets a flat one; the ARM map is occlusion (red) with roughness and metal from
+        // the glTF metal-roughness map (green, blue), its red replaced unless the occlusion map is that same image.
+        const nor = img(m.normalTexture) ?? await flatMap(dir, 'flat-normal.png', [128, 128, 255]);
+        const mr = img(m.pbrMetallicRoughness?.metallicRoughnessTexture), occ = img(m.occlusionTexture);
+        const arm = !mr ? await flatMap(dir, 'flat-arm.png', [255, 200, 0]) : occ === mr ? mr : await armFrom(dir, m.name, mr, occ);
         const key = `${a.id}--${m.name}`;
         // A colour map turned to normalised grey, so one texture set serves every colour by per-instance tint.
         let base = diff;
@@ -223,6 +231,55 @@ async function main() {
   await notices();
   const mb = v => (v / 1e6).toFixed(2);
   console.log(`low tier ${mb(report.bytes.low)} MB, medium/high extra ${mb(report.bytes.high)} MB, fallback JPEGs ${mb(report.bytes.fallback)} MB`);
+}
+
+/** A small uniform image (a flat normal, a default ARM) for materials that lack the map. */
+async function flatMap(dir, name, rgb) {
+  const file = join(dir, name);
+  if (!(await exists(file))) await sharp({ create: { width: 64, height: 64, channels: 3, background: { r: rgb[0], g: rgb[1], b: rgb[2] } } }).png().toFile(file);
+  return file;
+}
+/** An ARM map from a glTF metal-roughness map and an occlusion map (or none: full occlusion light). */
+async function armFrom(dir, name, mr, occ) {
+  const file = join(dir, `${name}-arm.png`);
+  if (await exists(file)) return file;
+  const m = await sharp(mr).removeAlpha().raw().toBuffer({ resolveWithObject: true }), { width, height } = m.info;
+  const o = occ ? await sharp(occ).resize(width, height).greyscale().raw().toBuffer() : null;
+  for (let i = 0; i < width * height; i++) m.data[i * 3] = o ? o[i] : 255;
+  await sharp(m.data, { raw: { width, height, channels: 3 } }).png().toFile(file);
+  return file;
+}
+/** A copy of a glTF with each primitive's vertices cut to those its indices use (after simplifying, most are unused),
+ * in a new packed binary. Images are left out (the runtime brings its own textures). */
+function compact(gltf, bin) {
+  const g = structuredClone(gltf), parts = [];
+  let offset = 0;
+  const comps = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }, bytes = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 };
+  const read = (a, k, c) => { const v = gltf.bufferViews[a.bufferView], sz = bytes[a.componentType], at = (v.byteOffset ?? 0) + (a.byteOffset ?? 0) + k * (v.byteStride || comps[a.type] * sz) + c * sz;
+    return a.componentType === 5126 ? bin.readFloatLE(at) : a.componentType === 5125 ? bin.readUInt32LE(at) : a.componentType === 5123 ? bin.readUInt16LE(at) : a.componentType === 5122 ? bin.readInt16LE(at) : a.componentType === 5121 ? bin.readUInt8(at) : bin.readInt8(at); };
+  const write = (buf, type, at, val) => (type === 5126 ? buf.writeFloatLE(val, at) : type === 5125 ? buf.writeUInt32LE(val, at) : type === 5123 ? buf.writeUInt16LE(val, at) : type === 5122 ? buf.writeInt16LE(val, at) : type === 5121 ? buf.writeUInt8(val, at) : buf.writeInt8(val, at));
+  g.bufferViews = []; g.accessors = [];
+  const push = (buf, target) => { const pad = (4 - (offset % 4)) % 4; if (pad) { parts.push(Buffer.alloc(pad)); offset += pad; } g.bufferViews.push({ buffer: 0, byteOffset: offset, byteLength: buf.length, target }); parts.push(buf); offset += buf.length; return g.bufferViews.length - 1; };
+  for (const [mi, mesh] of gltf.meshes.entries()) for (const [pi, p] of mesh.primitives.entries()) {
+    const q = g.meshes[mi].primitives[pi], ia = gltf.accessors[p.indices], idx = Array.from({ length: ia.count }, (_, k) => read(ia, k, 0));
+    const remap = new Map(); for (const i of idx) if (!remap.has(i)) remap.set(i, remap.size);
+    const order = [...remap.keys()];
+    for (const [name, ai] of Object.entries(p.attributes)) {
+      const a = gltf.accessors[ai], n = comps[a.type], sz = bytes[a.componentType], buf = Buffer.alloc(order.length * n * sz);
+      const lo = Array(n).fill(Infinity), hi = Array(n).fill(-Infinity);
+      order.forEach((src, k) => { for (let c = 0; c < n; c++) { const v = read(a, src, c); write(buf, a.componentType, (k * n + c) * sz, v); lo[c] = Math.min(lo[c], v); hi[c] = Math.max(hi[c], v); } });
+      g.accessors.push({ bufferView: push(buf, 34962), componentType: a.componentType, normalized: a.normalized, count: order.length, type: a.type, ...(name === 'POSITION' ? { min: lo, max: hi } : {}) });
+      q.attributes[name] = g.accessors.length - 1;
+    }
+    const wide = order.length > 65535, ib = Buffer.alloc(idx.length * (wide ? 4 : 2));
+    idx.forEach((i, k) => (wide ? ib.writeUInt32LE(remap.get(i), k * 4) : ib.writeUInt16LE(remap.get(i), k * 2)));
+    g.accessors.push({ bufferView: push(ib, 34963), componentType: wide ? 5125 : 5123, count: idx.length, type: 'SCALAR' });
+    q.indices = g.accessors.length - 1;
+    delete q.targets;
+  }
+  delete g.images; delete g.textures; delete g.samplers; delete g.animations; delete g.skins;
+  g.buffers = [{ byteLength: offset }];
+  return { gltf: g, bin: Buffer.concat(parts) };
 }
 
 /** A lower level of detail: every indexed primitive simplified to `ratio` of its triangles (meshoptimizer, borders

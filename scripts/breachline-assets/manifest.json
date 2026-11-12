@@ -1228,6 +1228,122 @@
         }
       ],
       "use": "Shelving set pieces (a carton beside the rack)"
+    },
+    {
+      "id": "abo_B01D7P5NI8",
+      "patchId": "abo:B01D7P5NI8",
+      "kind": "model",
+      "name": "Low-back computer task office desk chair",
+      "source": "https://patch.gg/assets/abo%3AB01D7P5NI8",
+      "author": "see credit",
+      "licence": "CC-BY-4.0",
+      "ownerApproved": true,
+      "credit": "B01D7P5NI8 (\"Low-back computer task office desk chair\", title by Patch) by Amazon.com (Amazon Berkeley Objects, https://amazon-berkeley-objects.s3.amazonaws.com/3dmodels/original/8/B01D7P5NI8.glb), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). Changed by Patch: textures capped at 2048 px, pivot moved to the bottom centre, credit added to the file, simplified LODs added. Changed for Breachline: simplified to about 20 % of its triangles, unused vertices removed, textures re-encoded (KTX2 and JPEG) and drawn without the original materials.",
+      "provider": "patch",
+      "dimensions": null,
+      "files": [
+        {
+          "path": "abo_B01D7P5NI8/abo_B01D7P5NI8.glb",
+          "url": "https://assets.patchusercontent.com/sha256/b962e47b9c043acdbb2b1bc952c519fa880c61593e9015536269cccabe8a350e/B01D7P5NI8.glb",
+          "size": 7181740,
+          "sha256": "b962e47b9c043acdbb2b1bc952c519fa880c61593e9015536269cccabe8a350e"
+        }
+      ],
+      "use": "Office task chairs (render/labdress.ts dressing models)",
+      "decimate": 0.2
+    },
+    {
+      "id": "simready_computer_monitor_office_a01",
+      "patchId": "simready:computer_monitor_office_a01",
+      "kind": "model",
+      "name": "Computer monitor",
+      "source": "https://patch.gg/assets/simready%3Acomputer_monitor_office_a01",
+      "author": "see credit",
+      "licence": "CC-BY-4.0",
+      "ownerApproved": true,
+      "credit": "\"Computer monitor\" by NVIDIA (SimReady, https://huggingface.co/datasets/nvidia/simready-assets/tree/524747d9b5e1f21b5b18b56041788c01d745f1a1/computer_monitor_office_a01), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). Changed by Patch: converted from USD to glTF, MDL materials dropped for the UsdPreviewSurface textures, ambient occlusion mapped from the ORM texture, mass and one convex hull per part added as OMI_physics_body and OMI_physics_shape, pivot moved to the bottom centre, credit and license added to the file metadata. Changed for Breachline: simplified to about 25 % of its triangles, unused vertices removed, textures re-encoded (KTX2 and JPEG) and drawn without the original materials.",
+      "provider": "patch",
+      "dimensions": null,
+      "files": [
+        {
+          "path": "simready_computer_monitor_office_a01/simready_computer_monitor_office_a01.glb",
+          "url": "https://assets.patchusercontent.com/sha256/403b7c9c2987bae327f4763e23c9cdb5b8d4a0c2e463d78f32b1a4cf16be9e2a/computer_monitor_office_a01.glb",
+          "size": 9445716,
+          "sha256": "403b7c9c2987bae327f4763e23c9cdb5b8d4a0c2e463d78f32b1a4cf16be9e2a"
+        }
+      ],
+      "use": "Office monitors (dressing models)",
+      "decimate": 0.25
+    },
+    {
+      "id": "simready_computer_keyboard_a01",
+      "patchId": "simready:computer_keyboard_a01",
+      "kind": "model",
+      "name": "Computer keyboard",
+      "source": "https://patch.gg/assets/simready%3Acomputer_keyboard_a01",
+      "author": "see credit",
+      "licence": "CC-BY-4.0",
+      "ownerApproved": true,
+      "credit": "\"Computer keyboard\" by NVIDIA (SimReady, https://huggingface.co/datasets/nvidia/simready-assets/tree/524747d9b5e1f21b5b18b56041788c01d745f1a1/computer_keyboard_a01), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). Changed by Patch: converted from USD to glTF, MDL materials dropped for the UsdPreviewSurface textures, textures resized to 2048 px, ambient occlusion mapped from the ORM texture, mass and one convex hull per part added as OMI_physics_body and OMI_physics_shape, pivot moved to the bottom centre, credit and license added to the file metadata. Changed for Breachline: simplified to about 6 % of its triangles, unused vertices removed, textures re-encoded (KTX2 and JPEG) and drawn without the original materials.",
+      "provider": "patch",
+      "dimensions": null,
+      "files": [
+        {
+          "path": "simready_computer_keyboard_a01/simready_computer_keyboard_a01.glb",
+          "url": "https://assets.patchusercontent.com/sha256/7f65e945b69d5bdf3e4672d78dc56f7968659f123bfd41de0e00fd31ee8446f2/computer_keyboard_a01.glb",
+          "size": 2978152,
+          "sha256": "7f65e945b69d5bdf3e4672d78dc56f7968659f123bfd41de0e00fd31ee8446f2"
+        }
+      ],
+      "use": "Office keyboards (dressing models)",
+      "decimate": 0.06
+    },
+    {
+      "id": "vintage_electric_kettle",
+      "kind": "model",
+      "name": "Vintage Electric Kettle",
+      "source": "https://polyhaven.com/a/vintage_electric_kettle",
+      "author": "SV Garip",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.3209,
+        0.2486,
+        0.3047
+      ],
+      "files": [
+        {
+          "path": "vintage_electric_kettle/vintage_electric_kettle.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/vintage_electric_kettle/vintage_electric_kettle_1k.gltf",
+          "size": 4801,
+          "sha256": "c03d2ef0e9f46eb06a1ccef6ff78d7baf83e76808e31d7016505e3ee0a416859"
+        },
+        {
+          "path": "vintage_electric_kettle/textures/vintage_electric_kettle_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/vintage_electric_kettle/vintage_electric_kettle_nor_gl_1k.jpg",
+          "size": 624432,
+          "sha256": "7723e22b77b73c6cc20d2593849d56cc64ee5c8e54bacf3bf8b2f4dd4f2ffaf0"
+        },
+        {
+          "path": "vintage_electric_kettle/textures/vintage_electric_kettle_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/vintage_electric_kettle/vintage_electric_kettle_diff_1k.jpg",
+          "size": 584337,
+          "sha256": "eee3052a610f24055f7b25749cfaf64016a5621afcff931fe513ab62c0a829f3"
+        },
+        {
+          "path": "vintage_electric_kettle/textures/vintage_electric_kettle_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/vintage_electric_kettle/vintage_electric_kettle_arm_1k.jpg",
+          "size": 756927,
+          "sha256": "ff683e24348d6319edf7bd5a14659a846d3008ae614bf966d4db23fc156b5e0c"
+        },
+        {
+          "path": "vintage_electric_kettle/vintage_electric_kettle.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/vintage_electric_kettle/vintage_electric_kettle.bin",
+          "size": 416612,
+          "sha256": "6be39ebc1893feaef3aa05bec6d2bf069af65fec0c1500422aaedf14357dab59"
+        }
+      ],
+      "use": "Break Room kettle (dressing model)",
+      "decimate": 0.35
     }
   ]
 }

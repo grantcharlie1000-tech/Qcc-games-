@@ -46,6 +46,12 @@ export class DetailBuilder {
   /** A bounding box and material key for each piece, so the scene can mark dressing a round passes through; its role
    * when it can break (map-fill 10.2) and its vertices' range in its key's arrays, so the art layer can remove it. */
   readonly proxies: DressProxy[] = [];
+  /** Small CC-BY/CC0 product models placed as dressing (render/artworld.ts draws them instanced, lit by the room):
+   * the model's id, its floor point and its turn about the vertical. */
+  readonly models: { model: string; x: number; y: number; z: number; yaw: number }[] = [];
+  model(model: string, x: number, y: number, z: number, yaw: number) { this.models.push({ model, x, y, z, yaw }); }
+  /** A box that is only a proxy (a model's breakable part, for marks and breakage), drawn by nothing. */
+  proxyOnly(key: string, role: string, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number) { this.proxies.push({ x0, y0, z0, x1, y1, z1, key, role, from: 0, count: 0 }); }
   /** The breakable role given to pieces added from now on ('' derives it from the key). */
   tag = '';
   private proxy(key: string, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, from: number): DressProxy {

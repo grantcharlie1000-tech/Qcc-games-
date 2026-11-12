@@ -228,6 +228,27 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         if (own) dressAt.set(p, { geo: own, start: p.from }); else if (merged) dressAt.set(p, { geo: merged, start: mergedAt.get(p.key)! + p.from });
       }
       if (D.missed) console.warn(`Breachline art: ${D.missed} dressing pieces found no surface to stand on: ${D.misses.join(' ')}`);
+      // Dressing models (product scans, decimated): one instanced mesh per model part, a 256 px colour map only (no
+      // normal or ARM: they are small and seen at desk range), lit by a flat probe at the room's mean light.
+      const byModel = new Map<string, typeof D.models>();
+      for (const m of D.models) { const l = byModel.get(m.model) ?? []; l.push(m); byModel.set(m.model, l); }
+      const k = 1.3 * Math.max(0.05, rooms[r].envLight), flat = [k, k * 0.97, k * 0.92, k * 0.3, k * 0.3, k * 0.3, 0, 0, 0, 0, 0, 0];
+      const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1), at = new THREE.Vector3();
+      for (const [model, list] of byModel) {
+        const gl = await L.model(full ? model : `${model}.lod1`);
+        gl.scene.updateMatrixWorld(true);
+        const parts: THREE.Mesh[] = [];
+        gl.scene.traverse(o => { if ((o as THREE.Mesh).isMesh) parts.push(o as THREE.Mesh); });
+        for (const part of parts) {
+          const map = await L.texture(`${model}--${(part.material as THREE.Material).name}`, 'diff', 256);
+          const mat = artMaterial({ map, normalMap: null, armMap: null, sh: flat, roughness: 0.55, metalness: 0 });
+          const im = new THREE.InstancedMesh(part.geometry, mat, list.length);
+          list.forEach((p, i) => im.setMatrixAt(i, m4.compose(at.set(p.x, p.y, p.z), q4.setFromAxisAngle(up, p.yaw), one).multiply(part.matrixWorld)));
+          im.computeBoundingSphere();
+          im.name = `art:${region.name}:dressmodel:${model}`;
+          dressOf(region).push(im); group.add(im); materials.push(mat); envLights.push(mat);
+        }
+      }
     }
     // The room's own light fixtures glow (the map's lamp panels in this room are not drawn).
     const fx = fixtureMeshes(FIXTURES[region.name] ?? []);

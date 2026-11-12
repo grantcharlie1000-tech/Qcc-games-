@@ -760,21 +760,18 @@ function workstation(D: DetailBuilder, b: { x0: number; z0: number; x1: number; 
   const back = s > 0 ? b.z0 + 0.14 : b.z1 - 0.14, front = s > 0 ? b.z1 - 0.2 : b.z0 + 0.2, mx = (b.x0 + b.x1) / 2 + (r() - 0.5) * 0.4;
   const zb = (a: number, c: number) => [Math.min(a, c), Math.max(a, c)] as const;
   const box = (key: DressKey, x0: number, y0: number, za: number, x1: number, y1: number, zc: number, tint?: V3, o: V3 = on) => { const [z0, z1] = zb(za, zc); D.box(key, x0, y0, z0, x1, y1, z1, o, up, tint); };
-  box('chassis', mx - 0.11, top, back - 0.08, mx + 0.11, top + 0.012, back + 0.06, [0.9, 0.9, 0.9]);
-  box('chassis', mx - 0.02, top + 0.012, back - 0.03, mx + 0.02, top + 0.16, back, [0.9, 0.9, 0.9]);
-  box('chassis', mx - 0.27, top + 0.1, back, mx + 0.27, top + 0.42, back + s * 0.03, [0.55, 0.55, 0.55]);
-  box('screen', mx - 0.25, top + 0.12, back + s * 0.03, mx + 0.25, top + 0.4, back + s * 0.034);
-  box('chassis', mx - 0.22, top, front - 0.07, mx + 0.22, top + 0.02, front + 0.07, [1.1, 1.1, 1.1]);
+  // A real monitor and keyboard (SimReady, CC-BY; render/artworld.ts), facing the user's side; the screen keeps a
+  // proxy so it can crack and go dark (render/breakables.ts).
+  D.model('simready_computer_monitor_office_a01', mx, top, back, s > 0 ? 0 : Math.PI);
+  { const [z0, z1] = zb(back + s * 0.035, back + s * 0.05); D.proxyOnly('screen', 'screen', mx - 0.26, top + 0.1, z0, mx + 0.26, top + 0.39, z1); }
+  D.model('simready_computer_keyboard_a01', mx, top, front, s > 0 ? 0 : Math.PI);
   box('chassis', mx + 0.3, top, front - 0.03, mx + 0.36, top + 0.025, front + 0.04, [1.1, 1.1, 1.1]);
   for (let i = 0; i < 2; i++) { const px = b.x0 + 0.15 + r() * 0.3 + i * (b.x1 - b.x0 - 0.65), pz = (b.z0 + b.z1) / 2 - 0.15 + r() * 0.1; box('paper', px, top, pz, px + 0.21, top + 0.004 + r() * 0.02, pz + 0.3, [0.5, 0.5, 0.48]); }
   { const g = new THREE.CylinderGeometry(0.04, 0.036, 0.1, 14).translate(b.x1 - 0.18, top + 0.05, front); D.tag = 'mug'; D.mesh('casing', g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, up, r() < 0.5 ? [0.9, 0.3, 0.25] : [0.95, 0.95, 0.92]); D.tag = ''; g.dispose(); }
   // The chair, pulled out on the user's side: five-star base, column, seat and back (open and low; not cover).
-  const cx = mx + (r() - 0.5) * 0.3, cz = (s > 0 ? b.z1 : b.z0) + s * (0.45 + r() * 0.15), turn = (r() - 0.5) * 0.8, fl: V3 = [cx, 0.001, cz];
-  const mesh = (g: THREE.BufferGeometry, key: DressKey, tint?: V3) => { g.rotateY(turn); g.translate(cx, 0, cz); D.mesh(key, g.attributes.position.array, g.attributes.normal.array, g.index!.array, fl, up, tint ?? [1, 1, 1]); g.dispose(); };
-  for (let k = 0; k < 5; k++) mesh(new THREE.BoxGeometry(0.3, 0.03, 0.04).translate(0.15, 0.06, 0).rotateY(k * Math.PI * 2 / 5), 'chassis', [0.8, 0.8, 0.8]);
-  mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.38, 10).translate(0, 0.26, 0), 'chrome');
-  mesh(new THREE.BoxGeometry(0.46, 0.07, 0.46).translate(0, 0.48, 0), 'chassis', [0.5, 0.55, 0.75]);
-  mesh(new THREE.BoxGeometry(0.44, 0.5, 0.06).translate(0, 0.82, s * 0.22), 'chassis', [0.5, 0.55, 0.75]);
+  const cx = mx + (r() - 0.5) * 0.3, cz = (s > 0 ? b.z1 : b.z0) + s * (0.45 + r() * 0.15), turn = (r() - 0.5) * 0.8;
+  // A real task chair (Amazon Berkeley Objects, CC-BY), facing the desk.
+  D.model('abo_B01D7P5NI8', cx, 0, cz, turn + (s > 0 ? Math.PI : 0));
   // A bin by the desk end.
   { const bx = b.x0 - 0.22, bz = (s > 0 ? b.z1 : b.z0) - s * 0.2, g = new THREE.CylinderGeometry(0.13, 0.11, 0.32, 16, 1, true).translate(bx, 0.16, bz); D.tag = 'bin'; D.mesh('chassis', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [bx, 0.001, bz], up, [1, 1, 1]); D.tag = ''; g.dispose(); }
 }
@@ -844,7 +841,7 @@ function dressBreak(atlas: Atlas, room: Region): DetailBuilder {
       D.box('kick', b.x0 + 0.1, top + 0.001, 2.14, b.x1 - 0.12, top + 0.007, 2.66, on, up, [2, 2, 2]);
       mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.25, 8).translate(b.x1 - 0.1, top + 0.125, 2.4), 'chrome', on, up);
       mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.18, 8).rotateZ(Math.PI / 2).translate(b.x1 - 0.19, top + 0.25, 2.4), 'chrome', on, up);
-      mesh(new THREE.CylinderGeometry(0.075, 0.085, 0.22, 16).translate(cx, top + 0.11, 1.75), 'chassis', on, up, [3.5, 3.5, 3.5]);
+      D.model('vintage_electric_kettle', cx, top, 1.75, -Math.PI / 2);
       D.box('chassis', b.x0 + 0.02, top, 3.0, b.x1 - 0.05, top + 0.3, 3.5, on, up, [3, 3, 3]);
       D.box('screen', b.x0 + 0.015, top + 0.05, 3.04, b.x0 + 0.02, top + 0.26, 3.36, on, up);
       D.box('chassis', b.x0 + 0.06, top, 3.8, b.x1 - 0.08, top + 0.38, 4.15, on, up, [0.8, 0.8, 0.8]);

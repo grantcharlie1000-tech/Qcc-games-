@@ -4,6 +4,22 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: second round, small objects first** (`round2/small-objects.png`, before and after: office desk, office,
+break kitchen). The block-built task chairs, monitors and keyboards in the Office, and the Break Room kettle, are now
+real models: a task chair from Amazon Berkeley Objects (`abo:B01D7P5NI8`, CC-BY 4.0), a monitor and a keyboard from
+NVIDIA SimReady (CC-BY 4.0), Poly Haven's vintage electric kettle (CC0), all through Patch over HTTP. Credits and our
+changes are in THIRD_PARTY_NOTICES.
+- The build learnt to decimate a model (`decimate` in the manifest: chair 20 %, monitor 25 %, keyboard 6 %, kettle
+  35 %) and to drop the vertices a simplified mesh no longer uses (`compact`). Every model's simplified level is now
+  compacted too, which took the Low download from 16.22 to 12.06 MB. Materials without normal or ARM maps get flat
+  ones; ARM maps take occlusion from the occlusion map when it is a separate image.
+- They are drawn as dressing: one instanced mesh per model part, a 256 px colour map only, lit by the room's mean
+  light. The monitor keeps a screen proxy, so it still cracks and goes dark.
+- Downloads on the built site: High 37.16 MB (also helped by the weapons rebuild's smaller hero art), Low 12.06 MB; no
+  policy violations.
+- Not done in this pass: the microwave (the good candidates are untextured, which the build does not take yet), and
+  the other rooms' block-built small objects.
+
 **2026-11-12: Low per-view numbers for all 20 bookmarks** (run in batches of four): 108 to 306 draw calls, 72k to 272k
 triangles (lab 214/240k, lab-west 180/188k, lab-bench 228/224k, lab-ceiling 107/72k, corridor 282/259k, corridor-west
 306/198k, archive 270/181k, archive-north 169/107k, archive-desk 284/272k, server-room 227/220k, lobby 236/191k,
