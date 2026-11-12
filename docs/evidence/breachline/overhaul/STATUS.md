@@ -2,6 +2,41 @@
 
 Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch: `claude/zen-allen-otdlt6`.
 
+## State of performance
+
+**The main cause.** The arcade's adaptive text colour (`src/ui/glass-ink.ts`) read the game's picture back from the graphics card about every 140 ms. That stalls any GPU, and it was 149 ms of every frame's script in the first profile. Breachline now opts out, and a test fails if the canvas is ever read back. Other WebGL games in the arcade most likely still pay it.
+
+**What else was fixed.**
+- **Resolution changes** no longer reallocate the canvas.
+- **Auto** starts cheap, steps down fast, climbs slowly, and sits on its lowest step on software WebGL.
+- **Art tier at start.** The full art (39 MB) only loads on a clearly strong GPU; everything else gets the light set (12 MB).
+- **Cheap shading** on the low steps and Performance: base colour times baked light for the level, props and the weapon in hand. Both paths are compiled at warm-up.
+- **Auto's bottom step has no post pass.** The low post tier has no FXAA, and the light tier has no anisotropic filtering.
+- **Room and portal culling**, with far rooms on the light tier drawn as one mesh each, and each room's ambience in one draw.
+- **Particles rebuilt** as instanced quads; the old ones turned a frag into a flat white slab across the screen.
+- **Garbage while firing** went from 10.5 to about 4.5 MB/s. The ragdoll and IK changes give bit-identical results.
+
+**Numbers.** These are in software WebGL on this container's 4 cores at 1280 x 720. Pixels and triangles cost about a hundred times what they would on any real GPU; a draw costs a few times more.
+
+| What | Before | Now |
+|---|---|---|
+| Auto, whole frame (first profile) | 247 ms average, 171 ms of it script | |
+| Auto bottom step, corridor | 181 to 297 ms | 120 to 134 ms |
+| Performance, corridor | 255 to 292 ms | about 150 ms |
+| Draws, corridor, Performance | about 440 | 182 |
+| Draws, Lab, Performance | 361 | 127 |
+| Main-thread script per frame, Performance | | median 5.2 to 5.7 ms (worst 26 to 37) |
+| Main-thread script per frame, Auto bottom step | | median 6.8 to 7.1 ms |
+
+Of the script time, about 4 to 5 ms is three.js submitting the draws, under 1 ms is the scene's own update, and the simulation, HUD and garbage collection are under 0.5 ms each on average. The 4 ms target is not met yet. Fewer draws is the lever, and on a Chromebook's slower processor that share matters most.
+
+**What only a real device can answer.**
+- The real frame rate.
+- Whether the owner's browser was drawing in software or on an integrated GPU (the readout says which).
+- How much the GPU work costs once the readback is gone.
+
+Open the game with `?perf=1`, or press F3 in a match, and send a screenshot of the corner readout.
+
 ## For the owner
 
 - **Seeing your numbers.** Add `?perf=1` to the game's address, or press F3 during a match. A screenshot of that corner tells us what your machine is doing.
@@ -28,6 +63,20 @@ The fixes:
 - **No anisotropic filtering on the light art tier** (Performance chosen at start, or software WebGL), which is costly on weak and software GPUs. Every other device keeps 4x.
 
 **Result, as shipped:** Performance at 1280 x 720 is now 150 to 160 ms in the corridor (it was 201 to 229) and 134 to 138 ms in the Lab (it was 166 to 180).
+
+**Far rooms (light tier).**
+- Each room has one extra mesh: all its surfaces merged, vertex-coloured with each texture set's average colour (`SET_ALBEDO`, measured from the shipped 512 px JPEGs by `scripts/breachline-assets/setalbedo.py`), times the surface's tint, times the baked light read once from the lightmap. One shared untextured material.
+- A room seen through two openings or more, or whose nearest point is beyond 12 m, draws as that one mesh instead of its surfaces, dressing, fixtures and ambience. Its panels (so breach holes show), its props and the fighters stay drawn.
+- Performance draws: corridor 222 to 182, Office 166 to 159, Lab 137 to 127.
+- Pictures from both corridor ends match apart from the round banner (`perf/far-rooms.png`: left culling off, right far rooms on).
+- The corridor is still above the 150 target. What remains is the corridor itself and the rooms right beside its doorways, plus about 45 draws for ten fighters.
+
+**Culling: what counts as an opening.**
+- An intact wall panel (or a reinforced one) blocks sight; a hole in it opens the room behind from the same frame.
+- Doors and windows always count as openings, because a barricade's boards have gaps: with barricades treated as solid, the slits between the boards showed bare background (checked on the Garage's barricaded door and the Lab's windows; up to 1.3% of pixels wrong).
+- A browser test stands in the corridor facing the Lab's partition, with no doorway in view. It checks the Lab is not drawn, shoots the wall, and checks the Lab is drawn as soon as there is a hole. It fails if holes are ignored.
+
+**Online test flake.** `breachline-online.spec.ts` failed once in a full run of the three browser specs. The output I kept shows only the test's name without its tick; I did not keep the full error. It passed alone straight after, and in three later full runs. If it fails again, the full output goes here.
 
 **What a cheap-path pixel still does.** Two texture reads (the base map, already 512 px on the light tier, and the lightmap), vertex colour, a little maths for the painted wall details, and fog. Switching each off on Performance (software, two runs each):
 - base map off saves 5 to 60 ms;

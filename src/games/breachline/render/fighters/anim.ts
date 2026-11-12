@@ -92,12 +92,16 @@ const TOE_FROM_ANKLE = [0, 1].map(s => JOINT[SIDE[s].toe].clone().sub(JOINT[SIDE
 
 const _m1 = new THREE.Matrix4(), _m2 = new THREE.Matrix4();
 /** Rotation taking the bind frame (dir, pole) to the target frame (dir, pole). */
+// Scratch vectors: frameRot and limb run for every limb of every fighter every frame, so they allocate nothing.
+const _bpp = new THREE.Vector3(), _tpp = new THREE.Vector3(), _bx = new THREE.Vector3(), _tx = new THREE.Vector3();
 function frameRot(bd: THREE.Vector3, bp: THREE.Vector3, td: THREE.Vector3, tp: THREE.Vector3, out: THREE.Quaternion) {
-  const bpp = bp.clone().addScaledVector(bd, -bp.dot(bd)).normalize(), tpp = tp.clone().addScaledVector(td, -tp.dot(td)).normalize();
-  _m1.makeBasis(bd, bpp, new THREE.Vector3().crossVectors(bd, bpp));
-  _m2.makeBasis(td, tpp, new THREE.Vector3().crossVectors(td, tpp));
+  const bpp = _bpp.copy(bp).addScaledVector(bd, -bp.dot(bd)).normalize(), tpp = _tpp.copy(tp).addScaledVector(td, -tp.dot(td)).normalize();
+  _m1.makeBasis(bd, bpp, _bx.crossVectors(bd, bpp));
+  _m2.makeBasis(td, tpp, _tx.crossVectors(td, tpp));
   return out.setFromRotationMatrix(_m2.multiply(_m1.transpose()));
 }
+const _d = new THREE.Vector3(), _pv = new THREE.Vector3(), _mid = new THREE.Vector3(), _wr = new THREE.Vector3(), _ua = new THREE.Vector3(), _ub = new THREE.Vector3();
+const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion();
 
 export interface Diag { dbg?: Record<string, unknown>; headErr: number; head: THREE.Vector3; headTarget: THREE.Vector3; pelvisShift: THREE.Vector3; armReach: [number, number]; legReach: [number, number]; feet: THREE.Vector3[]; stance: [boolean, boolean]; muzzle: THREE.Vector3; aimErr: number; chest: THREE.Vector3; pelvis: THREE.Vector3 }
 
@@ -383,13 +387,13 @@ export class Animator {
    * Returns the reach ratio (1 = fully straight; above 1 the target was out of reach). */
   private limb(a: number, b: number, c: number, l1: number, l2: number, target: THREE.Vector3, pole: THREE.Vector3, bind: { up: THREE.Vector3; lo: THREE.Vector3; pole: THREE.Vector3 }, endQ: THREE.Quaternion) {
     const { lq, wq, wp } = this, sh = wp[a];
-    const d = target.clone().sub(sh), dist0 = d.length(), dist = clamp(dist0, 0.02, (l1 + l2) * 0.9995), dir = d.normalize();
+    const d = _d.copy(target).sub(sh), dist0 = d.length(), dist = clamp(dist0, 0.02, (l1 + l2) * 0.9995), dir = d.normalize();
     const cosA = clamp((l1 * l1 + dist * dist - l2 * l2) / (2 * l1 * dist), -1, 1), along = l1 * cosA, h = l1 * Math.sqrt(1 - cosA * cosA);
-    const pv = pole.clone().addScaledVector(dir, -pole.dot(dir)); if (pv.lengthSq() < 1e-8) pv.copy(bind.pole); pv.normalize();
-    const mid = sh.clone().addScaledVector(dir, along).addScaledVector(pv, h), wristR = sh.clone().addScaledVector(dir, dist);
-    const qa = Q(), qb = Q();
-    frameRot(bind.up, bind.pole, mid.clone().sub(sh).normalize(), pv, qa);
-    frameRot(bind.lo, bind.pole, wristR.clone().sub(mid).normalize(), pv, qb);
+    const pv = _pv.copy(pole).addScaledVector(dir, -pole.dot(dir)); if (pv.lengthSq() < 1e-8) pv.copy(bind.pole); pv.normalize();
+    const mid = _mid.copy(sh).addScaledVector(dir, along).addScaledVector(pv, h), wristR = _wr.copy(sh).addScaledVector(dir, dist);
+    const qa = _qa.identity(), qb = _qb.identity();
+    frameRot(bind.up, bind.pole, _ua.copy(mid).sub(sh).normalize(), pv, qa);
+    frameRot(bind.lo, bind.pole, _ub.copy(wristR).sub(mid).normalize(), pv, qb);
     const pa = wq[PARENT[a]];
     lq[a].copy(pa).invert().multiply(qa);
     lq[b].copy(qa).invert().multiply(qb);
