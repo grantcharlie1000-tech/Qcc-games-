@@ -445,10 +445,491 @@
         ]
       ],
       "gainDb": -8
+    },
+    {
+      "key": "casing.9mm",
+      "file": "bsb/1355.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8
+    },
+    {
+      "key": "casing.9mm",
+      "file": "bsb/1356.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8
+    },
+    {
+      "key": "casing.9mm",
+      "file": "bsb/1357.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8
+    },
+    {
+      "key": "casing.556",
+      "file": "bsb/1361.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8
+    },
+    {
+      "key": "casing.556",
+      "file": "bsb/1362.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8
+    },
+    {
+      "key": "casing.556",
+      "file": "bsb/1363.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8
+    },
+    {
+      "key": "casing.762",
+      "file": "bsb/1367.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8
+    },
+    {
+      "key": "casing.762",
+      "file": "bsb/1368.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8
+    },
+    {
+      "key": "casing.762",
+      "file": "bsb/1369.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8
+    },
+    {
+      "key": "rl.pistol.bolt",
+      "file": "bsb/1984.flac",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1440,
+          1640
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "key": "rl.pistol.bolt",
+      "file": "bsb/1985.flac",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          280,
+          470
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "key": "dry",
+      "file": "bsb/1994.flac",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          30,
+          200
+        ]
+      ],
+      "gainDb": -8
+    },
+    {
+      "key": "dry",
+      "file": "bsb/1995.flac",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          30,
+          260
+        ]
+      ],
+      "gainDb": -8
+    },
+    {
+      "key": "rl.dmr.bolt",
+      "file": "mech/equipment_clicks3.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          860,
+          1760
+        ],
+        [
+          3250,
+          3950
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "key": "rl.ar.out",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          290,
+          425
+        ]
+      ],
+      "gainDb": -4,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 6650,
+        "gainDb": -10
+      }
+    },
+    {
+      "key": "rl.ar.in",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1040,
+          1195
+        ]
+      ],
+      "gainDb": -4,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 7030,
+        "gainDb": -10
+      }
+    },
+    {
+      "key": "rl.ar.seat",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1190,
+          1300
+        ]
+      ],
+      "gainDb": -2,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 7520,
+        "gainDb": -8
+      }
+    },
+    {
+      "key": "rl.ar.bolt",
+      "file": "red/R12-24-Rifle Cocking, Close.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          1830,
+          2350
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "key": "rl.ar.bolt",
+      "file": "red/R12-25-Rifle Cocking.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          620,
+          870
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "key": "rl.carbine.out",
+      "file": "mech/gunreload1.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          120,
+          285
+        ]
+      ],
+      "gainDb": -4,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 12650,
+        "gainDb": -10
+      }
+    },
+    {
+      "key": "rl.carbine.in",
+      "file": "mech/gunreload1.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          680,
+          895
+        ]
+      ],
+      "gainDb": -4,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 13920,
+        "gainDb": -10
+      }
+    },
+    {
+      "key": "rl.carbine.seat",
+      "file": "mech/gunreload1.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1285,
+          1445
+        ]
+      ],
+      "gainDb": -3
+    },
+    {
+      "key": "rl.carbine.bolt",
+      "file": "red/R11-50-Cocking Rifle.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          230,
+          480
+        ],
+        [
+          1740,
+          2000
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "key": "rl.smg.release",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          95,
+          165
+        ]
+      ],
+      "gainDb": -6,
+      "pitch": 0.85
+    },
+    {
+      "key": "rl.smg.out",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          570,
+          660
+        ]
+      ],
+      "gainDb": -4,
+      "pitch": 0.85,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 16050,
+        "gainDb": -12
+      }
+    },
+    {
+      "key": "rl.smg.in",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          650,
+          770
+        ]
+      ],
+      "gainDb": -4,
+      "pitch": 0.85,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 18210,
+        "gainDb": -12
+      }
+    },
+    {
+      "key": "rl.smg.seat",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1025,
+          1185
+        ]
+      ],
+      "gainDb": -2,
+      "pitch": 0.85
+    },
+    {
+      "key": "rl.smg.bolt",
+      "file": "red/R12-26-Guns Cocking.wav",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          770,
+          1000
+        ],
+        [
+          12310,
+          12560
+        ]
+      ],
+      "gainDb": 0,
+      "pitch": 1.15
+    },
+    {
+      "key": "rl.fetch",
+      "file": "bsb/0013.ogg",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          100,
+          450
+        ],
+        [
+          480,
+          800
+        ],
+        [
+          1840,
+          2200
+        ],
+        [
+          2200,
+          2650
+        ]
+      ],
+      "gainDb": -10
+    },
+    {
+      "key": "rl.fetch",
+      "file": "red/R21-42-Heavy Fabric Rustling.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          6900,
+          7300
+        ]
+      ],
+      "gainDb": -10
+    },
+    {
+      "key": "drop.mag",
+      "file": "red/R15-08-Noisy Metal Item Dropping.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          14970,
+          15250
+        ],
+        [
+          32660,
+          32880
+        ],
+        [
+          23660,
+          23860
+        ]
+      ],
+      "gainDb": -6
     }
   ],
   "hybrids": [
     "gun.ar.fp",
     "gun.ar.tp"
+  ],
+  "half": [
+    "rl.",
+    "casing.",
+    "dry",
+    "drop."
   ]
 }

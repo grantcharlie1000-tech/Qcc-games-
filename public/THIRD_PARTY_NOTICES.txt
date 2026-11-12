@@ -3851,3 +3851,17 @@ Breachline reload and handling sounds (also in public/audio/breachline/pack.ogg)
 - "Gun Reload Sounds" by SpringySpringo, https://opengameart.org/content/gun-reload-sounds (rifle magazine, bolt, shotgun cock)
 - "Equipment Clicks II" by LFA, https://opengameart.org/content/equipment-clicks-ii (handling clicks, dry fire)
 We cut these into single beats, high-passed, levelled and re-encoded them (Opus).
+
+More Breachline handling and foley sounds (also in public/audio/breachline/pack.ogg):
+- BigSoundBank, by Joseph Sardin, each sound released under CC0 1.0 as stated on its page:
+  cartridge cases on concrete, 9 mm https://bigsoundbank.com/sound-s1355.html, -s1356, -s1357;
+  5.56 mm https://bigsoundbank.com/sound-s1361.html, -s1362, -s1363; 7.62 mm https://bigsoundbank.com/sound-s1367.html, -s1368, -s1369;
+  "Pistol, cocking" https://bigsoundbank.com/sound-s1984.html, -s1985; "Pistol, disarming hammer" https://bigsoundbank.com/sound-s1994.html, -s1995;
+  "Cloth" https://bigsoundbank.com/sound-s0013.html.
+- The Red Library sound effects, archive.org items Red_Library_Guns_Misc (R11-50 "Cocking Rifle", R12-24 "Rifle Cocking, Close",
+  R12-25 "Rifle Cocking", R12-26 "Guns Cocking", R28-36 "Handling and Rattling Rifle"), Red_Library_Foley_Props_2 (R21-42
+  "Heavy Fabric Rustling") and Red_Library_Foley_Props_3 (R15-08 "Noisy Metal Item Dropping"), https://archive.org/details/<item>.
+  CC0 1.0 as declared in the items' metadata by the uploader (jscott@archive.org); no author is named.
+- "Equipment Clicks III" by LFA, https://opengameart.org/content/equipment-clicks-iii, CC0 1.0 (made by cocking a bolt-action rifle).
+We cut, high-passed, levelled, layered, pitch-shifted (the SMG's magazine and bolt are derived from the pistol magazine and a
+rifle cocking) and re-encoded these (Opus).

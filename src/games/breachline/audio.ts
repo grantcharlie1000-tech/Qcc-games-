@@ -56,6 +56,8 @@ export interface Sfx {
   stats(): SfxStats;
 }
 
+/** Real cartridge cases on concrete by calibre (BigSoundBank), when the pack has them. */
+const CASING: Partial<Record<WeaponId, string>> = { pistol: 'casing.9mm', smg: 'casing.9mm', ar: 'casing.556', carbine: 'casing.556', dmr: 'casing.762' };
 const OLD_SURFACE: Record<string, Floor> = { hard: 'slab', soft: 'carpet', wood: 'planks', metal: 'raised', grass: 'grass' };
 const BEDS: Space[] = ['hard', 'soft', 'corridor', 'yard'];
 /** Ambience level per bed, linear, before the ambience bus. */
@@ -73,7 +75,7 @@ export const PACK_URL: string | null = 'audio/breachline/pack.json';
  * if it fails. Reload slots and dry fire are recorded too (CC0 handling sounds; see THIRD_PARTY_NOTICES). */
 const PACK_KEYS: string[] = [
   ...(['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol'] as const).flatMap(w => ['fp', 'tp', 'far'].map(v => `gun.${w}.${v}`)),
-  ...['release', 'out', 'in', 'seat', 'bolt'].flatMap(b => [`rl.rifle.${b}`, `rl.pistol.${b}`]), 'rl.shotgun.shell', 'rl.shotgun.pump', 'dry',
+  'rl.*', 'casing.*', 'dry',
 ];
 
 export function createSfx(enabled: () => boolean, options: { ambience?: boolean; override?: Record<string, { sr: number; takes: number[][] }>; pack?: string | null } = {}): Sfx {
@@ -81,6 +83,10 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
   let packDone: Promise<boolean> = Promise.resolve(false);
   let eng: Engine | null = null, dead = false;
   const levels = new Map(catalogue().map(d => [d.key, d.level]));
+  // Sounds only the pack supplies take their family's level (reload beats like the synthesised ones, and so on).
+  for (const w of ['ar', 'carbine', 'smg', 'dmr']) for (const b of ['release', 'out', 'in', 'seat', 'bolt']) levels.set(`rl.${w}.${b}`, -9);
+  for (const k of ['casing.9mm', 'casing.556', 'casing.762']) levels.set(k, -22);
+  levels.set('rl.fetch', -14); levels.set('drop.mag', -12);
   const beds = new Map<Space, GainNode>();
   let bedSpace: Space | null = null, indoors = false;
   const ear = { x: 0, y: 1.6, z: 0, yaw: 0 };
@@ -101,7 +107,9 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     // cannot be loaded they are rendered afterwards.
     const packKeys = packUrl ? PACK_KEYS : [];
     void eng.load(packKeys);
-    if (packUrl) { const e = eng; packDone = e.loadPack(packUrl).then(async ok => { if (!ok) await e.fill(packKeys.filter(k => !e.packed.has(k))); else { const missing = packKeys.filter(k => !e.packed.has(k)); if (missing.length) await e.fill(missing); } return ok; }); }
+    // A failed pack renders everything it would have supplied; a loaded one covers every reload beat in reloads.ts,
+    // and only the shotgun hull (no recording yet) is still synthesised.
+    if (packUrl) { const e = eng; packDone = e.loadPack(packUrl).then(async ok => { await e.fill(ok ? packKeys.filter(k => !k.endsWith('*') && !e.packed.has(k)) : packKeys); if (ok) await e.fillUnpacked(['casing.shell']); return ok; }); }
     return eng;
   }
   const spaceAt = (x: number, z: number) => spaceOfRoom(roomAt(x, z));
@@ -142,7 +150,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
         eng.duck('world', 4, 0.06); eng.duck('amb', 9, 0.18);
         // The spent case lands a moment later (not every one is heard in a burst); the shotgun ejects on the pump.
         if (w === 'shotgun') { play('rl.shotgun.pump', 'near', null, { delay: 0.3, gain: 0.8 }); play('casing.shell', 'near', null, { delay: 0.75 + Math.random() * 0.1, wet: 0.2 }); }
-        else if (Math.random() < 0.35) play('casing.brass', 'near', null, { delay: 0.35 + Math.random() * 0.25, wet: 0, rate: 0.95 + Math.random() * 0.1 });
+        else if (Math.random() < 0.35) play(CASING[w] && eng.packed.has(CASING[w]!) ? CASING[w]! : 'casing.brass', 'near', null, { delay: 0.35 + Math.random() * 0.25, wet: 0, rate: 0.95 + Math.random() * 0.1 });
         return;
       }
       // One buffer per shot (node budget): the near report up to ~38 m, the far one beyond; the engine's distance
@@ -162,17 +170,20 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
       // detail between beats, and on an empty reload the magazine hits the floor, so it is never a clean row of clicks.
       const id = w ?? 'ar', cls = RELOAD_CLASS[id], beats = RELOADS[id][empty ? 'empty' : 'tactical'], e = start();
       if (!e) return;
-      const slot = (b: string) => e.packed.has(`rl.${cls}.${b}`) ? `rl.${cls}.${b}`
-        : cls !== 'shotgun' && cls !== 'pistol' && e.packed.has(`rl.rifle.${b}`) ? `rl.rifle.${b}`
-        : e.has(`rl.${cls}.${b}`) ? `rl.${cls}.${b}` : `rl.rifle.${b}`;
-      const base = { wet: 0.2, ref: 2, reach: 22, hrtf: true } as const, bus: BusName = at ? 'world' : 'near', fast = cls === 'smg' ? 1.08 : 1;
+      // A slot of this weapon's own, else its class's, else the rifle's; the fetch beat is the pouch and cloth.
+      const slot = (b: string) => b === 'fetch' && e.packed.has('rl.fetch') ? 'rl.fetch'
+        : [`rl.${id}.${b}`, `rl.${cls}.${b}`, ...(cls !== 'shotgun' && cls !== 'pistol' ? [`rl.rifle.${b}`] : [])].find(k => e.has(k)) ?? `rl.rifle.${b}`;
+      const base = { wet: 0.2, ref: 2, reach: 22, hrtf: true } as const, bus: BusName = at ? 'world' : 'near', fast = cls === 'smg' && !e.packed.has('rl.smg.out') ? 1.08 : 1;
       let prev = -1;
       for (const b of beats) {
         const t = Math.max(0, seconds * b.at + (Math.random() - 0.5) * 0.03);
         play(slot(b.name), bus, at, { ...base, delay: t, gain: (at ? 1 : 0.8) * (0.85 + Math.random() * 0.3), rate: fast * (0.97 + Math.random() * 0.06) });
         if (prev >= 0 && t - prev > 0.25 && Math.random() < 0.6) play(e.packed.has('rl.detail') ? 'rl.detail' : 'gear', bus, at, { ...base, delay: prev + (t - prev) * (0.3 + Math.random() * 0.4), gain: 0.35 + Math.random() * 0.2, rate: 0.9 + Math.random() * 0.3 });
-        // The magazine hitting the floor (synthetic for now: no licensed take yet), light and without a thump.
-        if (empty && b.name === 'out') play('drop.weapon', bus, at, { ...base, delay: t + 0.32 + Math.random() * 0.1, gain: 0.18, rate: 1.7, lowpass: 9000 });
+        // The magazine hitting the floor: a real metal drop when the pack has it, else a light synthetic one.
+        if (empty && b.name === 'out' && cls !== 'shotgun') {
+          const real = e.packed.has('drop.mag');
+          play(real ? 'drop.mag' : 'drop.weapon', bus, at, { ...base, delay: t + 0.32 + Math.random() * 0.1, gain: real ? 0.5 : 0.18, rate: real ? 0.95 + Math.random() * 0.1 : 1.7, lowpass: real ? undefined : 9000 });
+        }
         prev = t;
       }
     },

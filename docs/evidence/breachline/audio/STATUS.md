@@ -167,6 +167,42 @@ change checked against the reference sheets until every gun is within about 1.0 
    distance to the reference, and searches the gun's parameters (a few dozen) to minimise it. Then the takes'
    spread sets the variant range. Indoor rooms are not covered by these references and stay as designed.
 
+## Reloads, second pass and real casings (2026-11-12)
+
+The researcher's sources. I read each page or record myself:
+- **BigSoundBank:** each sound page states CC0, author Joseph Sardin. I used the lossless FLAC rather than the MP3.
+- **archive.org Red Library:** the items' metadata declares CC0 (uploader jscott@archive.org, no author named).
+  Older recordings with an audible tape floor, so they are used short or layered quietly.
+- **"Equipment Clicks III" by LFA** (OpenGameArt, CC0): a real bolt-action rifle cocking.
+
+All are credited in THIRD_PARTY_NOTICES. The pack builder can now pitch-shift a take ("derived" takes), layer a
+second recording under a take, and mark families the game keeps at half rate (24 kHz) after decoding.
+
+| Slot | Source |
+| --- | --- |
+| AR out, in, seat | SpringySpringo rifle magazine with Red Library R28-36 real rifle handling layered 8–10 dB under, against the airsoft lightness the planner warned of |
+| AR bolt | Red Library R12-24 and R12-25 rifle cocking |
+| Carbine out, in, seat | SpringySpringo's other reload, with R28-36 under |
+| Carbine bolt | Red Library R11-50 |
+| DMR bolt | LFA bolt-action clicks (two takes of the bolt cycle); its other beats use the rifle slots |
+| SMG | **derived**: the pistol magazine pitched to 0.85 over R28-36 rattle; bolt from R12-26 rifle cocking pitched to 1.15 |
+| Pistol slide | zer0_sol, plus BigSoundBank "Pistol, cocking" |
+| Dry fire | BigSoundBank hammer release, and LFA |
+| Fetch (pouch) | BigSoundBank "Cloth" and Red Library R21-42 heavy fabric |
+| Magazine on the floor | Red Library R15-08 (the light drops) |
+| Casings | BigSoundBank cases on concrete, three takes per calibre: 9 mm (pistol, SMG), 5.56 (AR, carbine), 7.62 (DMR) |
+
+- **Levels:** pack-only slots take their family's level, so reloads peak at −10 to −13.5 dBFS against −3 for a
+  shot.
+- **Pack:** **768 KB**, up from 472. The guns are still 316 KB; the rest is real handling and casings at 96 kb/s
+  Opus. This is over the "≤ 400 KB for guns" aim only because of the non-gun sounds. Dropping to 64 kb/s would
+  save about 250 KB if the download matters more.
+- **Memory:** **11.95 MB** (budget 12). That is 7.85 MB of synthesis and 4.05 MB of decoded takes (handling and
+  casings kept at 24 kHz), plus the synthetic shotgun hull. Tight: phase 3 will need room, by lowering sample
+  rates or sharing takes.
+- **Still missing:** a shotgun hull on the floor; brass on tile and wood; separate SMG takes (derived for now);
+  a true bolt slam; a weapon swap.
+
 ## Route A, step 2: reloads from real recordings (2026-11-12)
 
 **Sources.** I read each page myself; all are CC0 1.0 on OpenGameArt:

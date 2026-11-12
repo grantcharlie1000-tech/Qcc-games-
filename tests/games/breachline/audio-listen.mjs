@@ -51,8 +51,10 @@ if (set === 'guns') {
   chain(['auto-ar-fp', 'auto-carbine-fp', 'auto-smg-fp'], 'a1-automatic.wav'); files.push('a1-automatic.wav');
 }
 if (set === 'reloads') {
-  // The owner's set after step 2: every reload, tactical then empty, weapon by weapon.
-  for (const w of ['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol']) { chain([`reload-${w}`, `reload-${w}-empty`], `a2-reload-${w}.wav`); files.push(`a2-reload-${w}.wav`); }
+  // The owner's reload set: every reload, tactical then empty, weapon by weapon; then bursts ending in real casings.
+  const p = process.argv[5] || 'a2';
+  for (const w of ['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol']) { chain([`reload-${w}`, `reload-${w}-empty`], `${p}-reload-${w}.wav`); files.push(`${p}-reload-${w}.wav`); }
+  if (process.argv[5]) { chain(['auto-ar-fp', 'auto-carbine-fp', 'auto-smg-fp'], `${p}-automatic-casings.wav`); files.push(`${p}-automatic-casings.wav`); }
 }
 let total = 0;
 for (const f of files) { const b = statSync(join(out, f)).size; total += b; console.log(`${f} ${(b / 1024).toFixed(0)} KB`); }

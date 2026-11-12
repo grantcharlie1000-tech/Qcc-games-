@@ -1,6 +1,20 @@
 # Breachline sound: listening guide
 
-## Route A, step 2: reloads from real handling recordings (2026-11-12): please play these first
+## Reloads, second pass: each gun its own, real casings (2026-11-12): please play these first
+
+| File | What to listen for |
+| --- | --- |
+| `a3-reload-ar.wav`, `-carbine`, `-smg`, `-shotgun`, `-dmr`, `-pistol` | Each weapon's reload with ammunition left, then from empty. The AR and carbine now differ, each with real rifle handling under the magazine and a real rifle cocking for the bolt. The DMR ends an empty reload with a **real bolt-action cycle**. The pistol slide is real. The new magazine comes out of a real cloth pouch, and from empty the old one hits the floor (a real metal drop). |
+| `a3-automatic-casings.wav` | AR, carbine and SMG bursts: the spent cases tinkling afterwards are now **real cases on concrete** (9 mm, 5.56 mm, 7.62 mm by gun). |
+
+Which sounds are real and which are "derived" (real recordings repurposed, because no licensed take exists):
+- **Real:** the guns; casings; pistol magazine, slide and hammer; shotgun shells and pump; the AR and carbine
+  magazines and bolts; the DMR bolt; the pouch and cloth; the magazine drop; the handling clicks.
+- **Derived:** the SMG magazine (the pistol magazine pitched down over real rifle rattle) and the SMG bolt (a real
+  rifle cocking pitched up).
+- **Still synthetic:** the shotgun hull hitting the floor.
+
+## Route A, step 2: reloads from real handling recordings (2026-11-12)
 
 You said the reloads need work. Each reload is now a sequence of **real recorded handling sounds** (CC0, from
 OpenGameArt: zer0_sol's handgun and shotgun reloads, SpringySpringo's gun reloads, LFA's equipment clicks), one per
@@ -8,7 +22,7 @@ step of the reload animation, with small handling clicks between steps and a lit
 
 | File | What to listen for |
 | --- | --- |
-| `a2-reload-ar.wav`, `-carbine`, `-smg`, `-shotgun`, `-dmr`, `-pistol` | Each weapon's reload with ammunition left, then from empty. From empty, the magazine drops to the floor and the bolt or slide slams home at the end. The shotgun loads shell by shell (and from empty, one through the port and a pump first). Does it sound like real hands on a real gun? |
+| (`a2-reload-*.wav`, removed: replaced by `a3`) | Each weapon's reload with ammunition left, then from empty. From empty, the magazine drops to the floor and the bolt or slide slams home at the end. The shotgun loads shell by shell (and from empty, one through the port and a pump first). Does it sound like real hands on a real gun? |
 
 Still synthetic: the cloth move as a new magazine comes out of the pouch, and the magazine hitting the floor (no
 licensed recording yet). The AR, carbine and DMR share one rifle reload recording; the SMG uses it slightly

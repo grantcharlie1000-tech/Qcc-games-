@@ -125,13 +125,19 @@ export class Engine {
     return this.done;
   }
   private async fallback(take: (d: Done | { kind: 'end' }) => void, only?: readonly string[]) {
-    const { plan, run } = await import('./render');
-    const jobs = plan(this.ctx.sampleRate).filter(j => !only || (j.kind === 'sound' && only.includes(j.key))).filter(j => j.kind === 'ir' ? !this.verb[j.space].buffer : !this.bank.get(j.key)?.bufs[j.v]);
+    const { plan, run, matches } = await import('./render');
+    const jobs = plan(this.ctx.sampleRate).filter(j => !only || (j.kind === 'sound' && matches(j.key, only))).filter(j => j.kind === 'ir' ? !this.verb[j.space].buffer : !this.bank.get(j.key)?.bufs[j.v]);
     for (let i = 0; i < jobs.length && !this.disposed; i++) {
       take(run(jobs[i]));
       if (i % 4 === 3) await new Promise(r => setTimeout(r, 0));
     }
     if (!only) take({ kind: 'end' });
+  }
+  /** Renders the synthesised sounds matching these patterns that the loaded pack did not supply. */
+  async fillUnpacked(patterns: readonly string[]) {
+    const { catalogue } = await import('./sounds'), { matches } = await import('./render');
+    const keys = catalogue().map(d => d.key).filter(k => matches(k, patterns) && !this.packed.has(k));
+    if (keys.length) await this.fill(keys);
   }
   /** Renders sounds that were skipped for a pack that then failed to load (main thread, in slices). */
   fill(keys: readonly string[]): Promise<void> { return this.fallback(d => { if (d.kind !== 'end') this.accept(d); }, keys); }
@@ -157,20 +163,24 @@ export class Engine {
    * synthesised sounds of the same keys. Any failure leaves the synthesis in place, silently. */
   async loadPack(indexUrl: string): Promise<boolean> {
     try {
-      const index = await (await fetch(indexUrl)).json() as { version: number; sr: number; keys: Record<string, { start: number; length: number }[]> };
+      const index = await (await fetch(indexUrl)).json() as { version: number; sr: number; keys: Record<string, { start: number; length: number }[]>; half?: string[] };
       const audio = await (await fetch(new URL('pack.ogg', new URL(indexUrl, location.href)).href)).arrayBuffer();
       const all = await this.ctx.decodeAudioData(audio), data = all.getChannelData(0);
       if (this.disposed) return false;
       for (const [key, takes] of Object.entries(index.keys)) {
+        // Short handling sounds are kept at half rate (a light low-pass, then every other sample) to save memory.
+        const half = !!index.half?.some(p => key.startsWith(p)) && all.sampleRate >= 44100;
         const bufs = takes.filter(t => t.start + t.length <= data.length).map(t => {
-          const b = this.ctx.createBuffer(1, t.length, all.sampleRate);
-          b.copyToChannel(data.slice(t.start, t.start + t.length), 0);
-          return b;
+          const src = data.subarray(t.start, t.start + t.length);
+          if (!half) { const b = this.ctx.createBuffer(1, t.length, all.sampleRate); b.copyToChannel(src.slice(), 0); return b; }
+          const n = t.length >> 1, y = new Float32Array(n);
+          for (let i = 0; i < n; i++) { const j = 2 * i; y[i] = 0.25 * (src[j - 1] ?? 0) + 0.5 * src[j] + 0.25 * (src[j + 1] ?? 0); }
+          const b = this.ctx.createBuffer(1, n, all.sampleRate / 2); b.copyToChannel(y, 0); return b;
         });
         if (!bufs.length) continue;
         this.packed.add(key);
         this.bank.set(key, { sr: all.sampleRate, loop: false, bufs });
-        this.bytes += takes.reduce((n, t) => n + t.length * 4, 0);
+        this.bytes += bufs.reduce((n, b) => n + b.length * 4, 0);
       }
       try { performance.measure('breachline-audio-pack', 'breachline-audio-load'); } catch { /* timing only */ }
       return true;

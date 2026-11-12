@@ -14,17 +14,25 @@ import { join } from 'node:path';
 /** `burst`: the file is automatic fire; shots are split 60 ms apart on an 8 dB rise (single shots need 300 ms and 15 dB). */
 /** `ranges`: cut these [start, end] ms spans as takes (for handling sounds with no single onset), with a 3 ms fade-in
  * and `fadeMs` out, instead of finding shots. */
-export interface PackTake { key: string; file: string; keepMs: number; fadeMs: number; max?: number; gainDb?: number; burst?: boolean; skip?: number; ranges?: [number, number][] }
+/** `pitch`: playback-rate factor applied before cutting (for "derived" takes: a real recording repurposed).
+ * `under`: another recording mixed under each take (same length, from `startMs`, at `gainDb`), e.g. real rifle
+ * handling under a light magazine click. */
+export interface PackTake {
+  key: string; file: string; keepMs: number; fadeMs: number; max?: number; gainDb?: number; burst?: boolean; skip?: number;
+  ranges?: [number, number][]; pitch?: number; under?: { file: string; startMs: number; gainDb: number; pitch?: number };
+}
 /** `hybrids`: keys whose takes are also recombined (each take's first 4 ms joined to another's body), for guns with
  * few takes, so automatic fire never alternates between two. */
-export interface PackManifest { takes: PackTake[]; loudness?: number; bitrate?: number; hybrids?: string[] }
-export interface PackIndex { version: 1; sr: number; keys: Record<string, { start: number; length: number }[]> }
+/** `half`: key prefixes the game may keep at half rate (24 kHz) after decoding: short handling sounds, to save memory. */
+export interface PackManifest { takes: PackTake[]; loudness?: number; bitrate?: number; hybrids?: string[]; half?: string[] }
+export interface PackIndex { version: 1; sr: number; keys: Record<string, { start: number; length: number }[]>; half?: string[] }
 
 const SR = 48000, GAP = Math.round(SR * 0.1);
 
 /** Mono float samples at 48 kHz, high-passed at 30 Hz, from any file ffmpeg reads. */
-export function decode(path: string): Float32Array {
-  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', path, '-af', 'highpass=f=30', '-ac', '1', '-ar', String(SR), '-f', 'f32le', '-'], { maxBuffer: 1 << 30 });
+export function decode(path: string, pitch = 1): Float32Array {
+  const af = (pitch !== 1 ? `asetrate=${Math.round(SR * pitch)},aresample=${SR},` : '') + 'highpass=f=30';
+  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', path, '-af', af, '-ac', '1', '-ar', String(SR), '-f', 'f32le', '-'], { maxBuffer: 1 << 30 });
   return new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4).slice();
 }
 /** Sample indices where a shot starts: a 10 ms window 15 dB over the 50 ms before it, within 12 dB of the loudest. */
@@ -60,15 +68,16 @@ export function shortTerm(x: Float32Array): number {
 
 export function buildPack(manifest: PackManifest, sourceDir: string, outDir: string): PackIndex {
   mkdirSync(outDir, { recursive: true });
-  const target = manifest.loudness ?? -14, parts: Float32Array[] = [], index: PackIndex = { version: 1, sr: SR, keys: {} };
+  const target = manifest.loudness ?? -14, parts: Float32Array[] = [], index: PackIndex = { version: 1, sr: SR, keys: {}, ...(manifest.half ? { half: manifest.half } : {}) };
   let at = 0;
   const byKey = new Map<string, Float32Array[]>();
   const emit = (key: string, y: Float32Array) => { (index.keys[key] ??= []).push({ start: at, length: y.length }); parts.push(y, new Float32Array(GAP)); at += y.length + GAP; };
   for (const t of manifest.takes) {
-    const x = decode(join(sourceDir, t.file));
+    const x = decode(join(sourceDir, t.file), t.pitch), under = t.under ? decode(join(sourceDir, t.under.file), t.under.pitch) : null;
     const cuts = t.ranges ? t.ranges.map(([a, b]) => { const y = cut(x, Math.round(SR * a / 1000) + Math.round(SR * 0.002), b - a, t.fadeMs); for (let i = 0; i < Math.min(y.length, SR * 0.003); i++) y[i] *= i / (SR * 0.003); return y; })
       : onsets(x, t.burst).slice(t.skip ?? 0, (t.skip ?? 0) + (t.max ?? 99)).map(o => cut(x, o, t.keepMs, t.fadeMs));
     for (const y0 of cuts) {
+      if (under && t.under) { const o = Math.round(SR * t.under.startMs / 1000), g = Math.pow(10, t.under.gainDb / 20); for (let i = 0; i < y0.length; i++) y0[i] += (under[o + i] ?? 0) * g * Math.min(1, i / (SR * 0.003), (y0.length - i) / (SR * 0.02)); }
       const y = y0, g = Math.pow(10, (target - shortTerm(y) + (t.gainDb ?? 0)) / 20);
       let pk = 0; for (let i = 0; i < y.length; i++) { y[i] *= g; pk = Math.max(pk, Math.abs(y[i])); }
       if (pk > 0.98) for (let i = 0; i < y.length; i++) y[i] *= 0.98 / pk; // never clip the encoder
