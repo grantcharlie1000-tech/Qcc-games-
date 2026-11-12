@@ -85,8 +85,10 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
     }).catch(e => console.warn('Breachline weapon textures unavailable; procedural look kept.', e));
   };
   // Second-build weapons: the baked mesh and its set; the procedural model and its set if they fail to load.
-  for (const b of BAKED) loads.push(loadBaked(b, art, low ? 1024 : 2048, clay).then(m => useSet(b.id, m)).catch(e => { console.warn('Breachline baked weapon unavailable; procedural model kept.', b.dir, e); return TEXTURED.has(b.id) ? procedural(b.id) : undefined; }));
-  for (const id of TEXTURED) if (!BAKED.some(b => b.id === id)) loads.push(procedural(id));
+  // `?heroold`: the previous procedural weapons, for side-by-side evidence.
+  const old = typeof location !== 'undefined' && /[?&]heroold\b/.test(location.search);
+  for (const b of old ? [] : BAKED) loads.push(loadBaked(b, art, low ? 1024 : 2048, clay).then(m => useSet(b.id, m)).catch(e => { console.warn('Breachline baked weapon unavailable; procedural model kept.', b.dir, e); return TEXTURED.has(b.id) ? procedural(b.id) : undefined; }));
+  for (const id of TEXTURED) if (old || !BAKED.some(b => b.id === id)) loads.push(procedural(id));
   let armMat: THREE.Material | null = clay;
   if (!clay) loads.push(Promise.all((['diff', 'nor', 'arm'] as const).map(k => art.texture('../hero/hands', k, 1024))).then(([map, normalMap, armMap]) => {
     for (const t of [map, normalMap, armMap]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;

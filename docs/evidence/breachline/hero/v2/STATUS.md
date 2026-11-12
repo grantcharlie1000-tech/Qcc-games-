@@ -5,8 +5,9 @@ Owns `models.ts`, `render/hero/`, `scripts/breachline-assets/hero/`, `public/gam
 
 ## Where I am
 
-**AR-5, gates 1 and 2 done (design sheet, clay).** Next: gate 3 (hand and arm in clay), then gate 4 (unwrap, bake
-from the field, paint, KTX2), gate 5 (in the game, old beside new).
+**AR-5: gates 1–4 done; gate 5 (in the game, old beside new) in progress.** Hands: anatomy rebuilt to the plan
+(gate 3), hands' set rebaked for the new mesh. Next: gate 5 evidence and message to the planner, then the shared kit
+and the Halden 12.
 
 ## Pipeline (new)
 
@@ -27,8 +28,8 @@ from the field, paint, KTX2), gate 5 (in the game, old beside new).
 | --- | --- | --- |
 | 1 Design sheet | done | `gate1-ar5-design-sheet.jpg` |
 | 2 Clay, studio and first person | done, sent to the planner | `gate2-ar5-clay-studio.jpg`, `gate2-ar5-clay-firstperson.jpg` |
-| 3 Hand and arm clay | next | |
-| 4 Baked and textured, moving light | | |
+| 3 Hand and arm clay | done | `gate3-hands-clay.jpg` |
+| 4 Baked and textured, moving light | done | `gate4-ar5-textured-studio.jpg`, `gate4-ar5-moving-light.jpg`, `gate4-ar5-atlas.jpg` |
 | 5 In the game, old beside new | | |
 
 ## Honest read at gate 2
@@ -42,6 +43,35 @@ from the field, paint, KTX2), gate 5 (in the game, old beside new).
   equal weight. The arms are the old glove (gate 3 work).
 - Aimed: the 31 mm window is centred on the crosshair with the dot in it (checked numerically: gun at (0, 0, -0.075)
   with no rotation after the aim settles).
+
+## Gate 3: hands
+
+- First person has its own anatomy (`FP_HAND` in `hands.ts`); `HAND` is untouched because the fighters build from it.
+  Plan sizes: palm about 85 × 29 mm, knuckles 101–106 mm from the wrist in an arc, fingers from the knuckle 72 / 80 /
+  74 / 58 mm split 50/28/22 %, 19–20 mm wide at the first joint tapering to 15–16, wrist 58 × 39. The arm bones follow
+  the same table, so the owner's grip pose in `rig.ts` is kept as it was.
+- Glove: a continuous moulded knuckle panel along the knuckle arc, finger-back guards, wrist strap with its buckle
+  tab and a pull tab. Sleeve: 112 mm at the forearm to an 85 mm cuff over the glove, deeper compression folds at the
+  elbow and above the cuff, turned hem and a cuff tab.
+- Honest read: the hand reads as a hand holding the handguard and the proportions are right, but in flat clay the
+  fingers do not separate well at game distance; the glove's seams and two tones do most of that work once
+  textured. The thumb and the strap tab look blocky when the hand is close (aimed view, lower left).
+
+## Gate 4: baked set
+
+- Unwrap (`scripts/breachline-assets/hero/chart.ts`): per part and dominant axis, connected by position; 1711 charts,
+  about 2000 texels/m at weight 1, 45 % of the 2048 atlas.
+- Field bake (`bakefield.ts`, four processes, about 6 min; cached by the texels and the sculpt, so a repaint takes under
+  a minute): normal from the high-detail field along the low mesh's normal (4 sub-samples per texel, encoded for the
+  shader's derivative tangent frame), occlusion traced through the field (14 rays, 32 mm), curvature at 0.35 and 1.5 mm.
+- Paint (`sculpt.ts`): per finish (anodised aluminium, dark-earth cerakote, polymer, dark-earth polymer, parkerised
+  steel, rubber, brass; matt black inside the optic), thin broken edge wear to bare metal on the sharpest edges only,
+  grime in cavities, roughness variation, handling polish on the grip, charging handle and magazine.
+- Encoding: ETC1S for all three maps (UASTC was 2 MB a map at 2048). High: 1.43 MB of textures plus a 544 KB mesh
+  (quantised); Low: 0.5 MB plus the mesh.
+- Honest read: the edges catch a thin gleam that moves with the light and the stipple, knurling and rail slots read;
+  the receiver is still very dark under the studio light; the stock is plain; the magazine and handguard colour is
+  flat between edges (little mid-frequency variation); no markings yet.
 
 ## Decisions (made without asking; say if wrong)
 

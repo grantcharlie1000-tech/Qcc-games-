@@ -256,5 +256,7 @@ export function ar5Parts(hi: boolean): Part[] {
     add('magazine', BONE.mag, MAT.polymerFde, body, 0.9);
     add('top round', BONE.mag, MAT.brass, union(cylZ(-2.8, top + 3.6, 4.7, 112, 150, -0.4), lathe([[0, 150], [4.3, 150], [3.4, 158], [1.6, 164], [0, 165]], -2.8, top + 3.6)), 0.15);
   }
+  // Spent cases for the ejection effect: one per case bone, at the port (the bone's offset is the flight).
+  for (let i = 0; i < 3; i++) add(`case ${i}`, 6 + i, MAT.brass, union(lathe([[0, 82], [4.8, 82], [4.8, 116], [3.2, 122], [3.0, 127], [0, 127]], 16, 1)), 0.5);
   return parts;
 }

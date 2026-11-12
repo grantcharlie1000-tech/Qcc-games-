@@ -27,9 +27,23 @@ export const HAND: Digit[] = [
   { base: [0.0108, 0.002, -0.087], len: [0.043, 0.027, 0.021], rad: [0.0093 + G, 0.0084 + G, 0.0076 + G, 0.0066 + G], yaw: -0.06, pitch: 0 },
   { base: [0.0272, -0.003, -0.077], len: [0.034, 0.021, 0.019], rad: [0.0083 + G, 0.0075 + G, 0.0068 + G, 0.006 + G], yaw: -0.15, pitch: 0 },
 ];
-/** First-person glove radii: slimmer than `HAND` (a fitted glove, not a padded mitt). `HAND` itself stays as it
- * was, because the fighters session builds its hands from it. */
-const fpRad = (d: number, s: number) => (HAND[d].rad[s] - 0.0005) * (d === 0 ? 1 : 0.9);
+/** First-person hand, to the plan's anatomy (hand 190 mm from the wrist to the middle fingertip, palm about 85 mm
+ * wide and 29 mm thick; fingers from the knuckle: index 72, middle 80, ring 74, little 58 mm, split 50/28/22 % into
+ * their bones; 18–20 mm wide at the first joint tapering to 15–16; knuckles in an arc with the middle highest and
+ * furthest forward), gloved 2 mm over. `HAND` stays as it was, because the fighters session builds its hands from it.
+ * Lengths are joint to joint; the tip's radius carries the last bone to the fingertip. */
+const fpDigit = (base: Vec, reach: number, r0: number, r3: number, yaw: number, pitch: number): Digit => {
+  const L = reach - r3;
+  return { base, len: [L * 0.5, L * 0.28, L * 0.22], rad: [r0, r0 + (r3 - r0) * 0.35, r0 + (r3 - r0) * 0.7, r3], yaw, pitch };
+};
+export const FP_HAND: Digit[] = [
+  { base: [-0.022, -0.011, -0.027], len: [0.042, 0.031, 0.025], rad: [0.0136, 0.0113, 0.0103, 0.0089], yaw: 0.62, pitch: -0.32 },
+  fpDigit([-0.0305, 0.001, -0.101], 0.072, 0.0098, 0.0077, 0.07, 0),
+  fpDigit([-0.0102, 0.003, -0.106], 0.080, 0.01, 0.0079, 0, 0),
+  fpDigit([0.0096, 0.001, -0.102], 0.074, 0.0095, 0.0075, -0.06, 0),
+  fpDigit([0.0278, -0.004, -0.093], 0.058, 0.0086, 0.0068, -0.15, 0),
+];
+const fpRad = (d: number, s: number) => FP_HAND[d].rad[s];
 /** Rest rotation of each digit's first bone: yaw (toward the thumb side) and pitch. */
 export function digitRest(d: number): THREE.Quaternion {
   const h = HAND[d];
@@ -51,27 +65,27 @@ function handField(wrist: Vec): Field {
   const HB = 2; // hand bone
   // Palm (group 0): metacarpals from the carpus to each knuckle, a palm pad, the heel and the wrist.
   for (let d = 1; d <= 4; d++) {
-    const k = HAND[d].base, r = fpRad(d, 0);
+    const k = FP_HAND[d].base, r = fpRad(d, 0);
     P.push(cone(W([k[0] * 0.55, k[1] - 0.002, -0.014]), W(k), r * 1.08, r * 1.02, HB, 0));
     P.push(ell(W([k[0], k[1] + 0.001, k[2] + 0.002]), [r * 1.05, r * 0.95, r * 1.1], HB, 0));
   }
-  P.push(ell(W([0.003, -0.005, -0.052]), [0.034, 0.0105, 0.04], HB, 0, TAG.palm));
-  P.push(ell(W([0.021, -0.006, -0.03]), [0.017, 0.0135, 0.03], HB, 0, TAG.palm));
-  P.push(ell(W([-0.002, -0.001, -0.006]), [0.027, 0.0165, 0.024], HB, 0));
+  P.push(ell(W([0.0, -0.005, -0.058]), [0.037, 0.0118, 0.046], HB, 0, TAG.palm));
+  P.push(ell(W([0.022, -0.007, -0.034]), [0.018, 0.0145, 0.032], HB, 0, TAG.palm));
+  P.push(ell(W([-0.002, -0.001, -0.006]), [0.029, 0.0195, 0.024], HB, 0));
   // Thumb (group 1): the thenar mound on the thumb's first bone, then the chain.
-  const t = HAND[0], tq = digitRest(0), tdir = new THREE.Vector3(0, 0, -1).applyQuaternion(tq);
+  const t = FP_HAND[0], tq = digitRest(0), tdir = new THREE.Vector3(0, 0, -1).applyQuaternion(tq);
   let at = new THREE.Vector3(...W(t.base));
-  P.push(ell(W([-0.019, -0.011, -0.04]), [0.017, 0.015, 0.027], fb(0, 0), 1, TAG.palm, new THREE.Euler(0, 0.45, 0)));
+  P.push(ell(W([-0.021, -0.011, -0.043]), [0.018, 0.0155, 0.029], fb(0, 0), 1, TAG.palm, new THREE.Euler(0, 0.45, 0)));
   for (let s = 0; s < 3; s++) {
     const next = at.clone().addScaledVector(tdir, t.len[s]);
     P.push(cone([at.x, at.y, at.z], [next.x, next.y, next.z], fpRad(0, s), fpRad(0, s + 1), fb(0, s), 1, s === 2 ? TAG.tip : TAG.back));
     at = next;
   }
   // Web between thumb and index.
-  P.push(ell(W([-0.03, -0.004, -0.056]), [0.008, 0.0065, 0.018], fb(0, 0), 1, TAG.palm, new THREE.Euler(0, 0.5, 0)));
+  P.push(ell(W([-0.032, -0.004, -0.06]), [0.008, 0.0065, 0.019], fb(0, 0), 1, TAG.palm, new THREE.Euler(0, 0.5, 0)));
   // Fingers (groups 2..5, a hard set so they never fuse with each other).
   for (let d = 1; d <= 4; d++) {
-    const h = HAND[d], dir = new THREE.Vector3(0, 0, -1).applyQuaternion(digitRest(d));
+    const h = FP_HAND[d], dir = new THREE.Vector3(0, 0, -1).applyQuaternion(digitRest(d));
     let p = new THREE.Vector3(...W(h.base));
     for (let s = 0; s < 3; s++) {
       const n = p.clone().addScaledVector(dir, h.len[s]);
@@ -83,16 +97,23 @@ function handField(wrist: Vec): Field {
     }
   }
   // Cuff (group 6) on the forearm bone, with a strap.
-  P.push(ell(W([0, 0.0, 0.03]), [0.034, 0.026, 0.03], 1, 6, TAG.cuff));
+  P.push(ell(W([0, 0.0, 0.03]), [0.035, 0.0275, 0.03], 1, 6, TAG.cuff));
   P.push(ell(W([0, 0.0, 0.05]), [0.035, 0.028, 0.02], 1, 6, TAG.cuff));
   // A thin strap band round the wrist with a pull tab, not a block.
-  P.push(ell(W([0, 0.0, 0.027]), [0.0355, 0.0275, 0.0055], 1, 6, TAG.strap));
-  P.push(rbox(W([0.03, 0.006, 0.027]), [0.004, 0.0012, 0.005], 0.001, 1, 6, TAG.strap));
+  P.push(ell(W([0, 0.0, 0.025]), [0.0365, 0.029, 0.0065], 1, 6, TAG.strap));
+  P.push(rbox(W([0.031, 0.008, 0.025]), [0.0045, 0.0016, 0.0062], 0.0012, 1, 6, TAG.strap));
+  // Pull tab at the back of the cuff.
+  P.push(rbox(W([0, 0.026, 0.05]), [0.006, 0.0018, 0.009], 0.0012, 1, 6, TAG.strap));
   // Knuckle guard (group 7): moulded pads over each knuckle and a bridge.
-  for (let d = 1; d <= 4; d++) { const k = HAND[d].base; P.push(ell(W([k[0], k[1] + fpRad(d, 0) + 0.003, k[2] + 0.004]), [0.0082, 0.0044, 0.0088], HB, 7, TAG.guard)); }
+  // A moulded knuckle panel following the knuckle arc: a pad over each knuckle joined by a ridge.
+  for (let d = 1; d <= 4; d++) { const k = FP_HAND[d].base; P.push(ell(W([k[0], k[1] + fpRad(d, 0) + 0.0028, k[2] + 0.004]), [0.0085, 0.0042, 0.009], HB, 7, TAG.guard)); }
+  for (let d = 1; d < 4; d++) {
+    const a = FP_HAND[d].base, c = FP_HAND[d + 1].base;
+    P.push(cone(W([a[0], a[1] + fpRad(d, 0) + 0.0022, a[2] + 0.009]), W([c[0], c[1] + fpRad(d + 1, 0) + 0.0022, c[2] + 0.009]), 0.0034, 0.0034, HB, 7, TAG.guard));
+  }
   // Finger-back guards on the middle phalanges.
   for (let d = 1; d <= 4; d++) {
-    const h = HAND[d], dir = new THREE.Vector3(0, 0, -1).applyQuaternion(digitRest(d));
+    const h = FP_HAND[d], dir = new THREE.Vector3(0, 0, -1).applyQuaternion(digitRest(d));
     const m = new THREE.Vector3(...W(h.base)).addScaledVector(dir, h.len[0] + h.len[1] * 0.35);
     P.push(ell([m.x, m.y + fpRad(d, 1) + 0.0012, m.z], [fpRad(d, 1) * 0.75, 0.0024, h.len[1] * 0.3], fb(d, 1), 7, TAG.guard));
   }
@@ -120,17 +141,18 @@ export interface ArmsLook { sleeve: Surface; glove: Surface; palm: Surface; guar
 /** Sleeve: a tube from the shoulder to just over the cuff, with folds at the elbow and wrist, a squad band on the
  * forearm and the squad's shape patch (diamond or triangle) on its outer face. */
 function sleeve(b: Builder, look: ArmsLook) {
-  const rings = 20, seg = 14, z0 = 0.02, z1 = -(UPPER + FORE) + 0.04;
+  const rings = 30, seg = 20, z0 = 0.02, z1 = -(UPPER + FORE) + 0.045;
   const pos: number[] = [], nor: number[] = [], si: number[] = [], sw: number[] = [], tag: number[] = [], idx: number[] = [];
   const radius = (z: number, a: number) => {
     const t = (z0 - z) / (z0 - z1);
-    let r = THREE.MathUtils.lerp(0.05, 0.042, Math.min(1, t / 0.55)) - Math.max(0, t - 0.55) / 0.45 * 0.009;
-    // Folds: bunching above the cuff and around the elbow, varying round the arm.
-    const nearElbow = Math.exp(-Math.pow((z + UPPER) / 0.05, 2)), nearCuff = Math.exp(-Math.pow((z - z1 - 0.03) / 0.04, 2));
-    r += (nearElbow * 0.0065 + nearCuff * 0.007) * Math.abs(Math.sin(z * 260 + Math.sin(a * 2) * 1.5)) * (0.6 + 0.4 * Math.sin(a * 3 + z * 40));
-    r += 0.0012 * Math.sin(a * 5 + z * 30) * Math.sin(z * 70);
+    // About 105 mm across the forearm, tapering to a 78 mm cuff.
+    let r = THREE.MathUtils.lerp(0.056, 0.0525, Math.min(1, t / 0.55)) - Math.pow(Math.max(0, t - 0.55) / 0.45, 1.3) * 0.0135;
+    // Compression folds near the elbow and above the cuff, deep enough to break the outline, varying round the arm.
+    const nearElbow = Math.exp(-Math.pow((z + UPPER) / 0.06, 2)), nearCuff = Math.exp(-Math.pow((z - z1 - 0.045) / 0.045, 2));
+    r += (nearElbow * 0.008 + nearCuff * 0.0085) * Math.pow(Math.abs(Math.sin(z * 210 + Math.sin(a * 2) * 1.6 + a * 0.5)), 1.6) * (0.55 + 0.45 * Math.sin(a * 3 + z * 40));
+    r += 0.0016 * Math.sin(a * 5 + z * 30) * Math.sin(z * 70);
     // A turned-back hem at the cuff.
-    r += Math.exp(-Math.pow((z - z1 - 0.008) / 0.006, 2)) * 0.0035;
+    r += Math.exp(-Math.pow((z - z1 - 0.009) / 0.0065, 2)) * 0.0042;
     // Slightly flattened: forearms are wider than deep.
     return r * (1 + 0.08 * Math.cos(2 * a));
   };
@@ -169,7 +191,10 @@ function sleeve(b: Builder, look: ArmsLook) {
   patch.translate(Math.cos(ang) * rr, Math.sin(ang) * rr, zc);
   b.bone = 1;
   b.add(patch, surf(SURF.white, { color: look.band, rough: 0.5 }));
-  // Border of the band patch in dark thread for contrast.
+  // Cuff tab with its hook-and-loop square, on the outer side of the hem.
+  b.bone = 1;
+  const cuffR = 0.0425;
+  b.box([0.0035, 0.018, 0.026], [cuffR * Math.cos(-0.35), cuffR * Math.sin(-0.35), z1 + 0.016], surf(look.sleeve, { color: 0x4a4f42 }), 0.0014);
   b.bone = 0;
 }
 
@@ -247,7 +272,7 @@ export interface Arm {
   pose(p: HandPose): void;
 }
 
-const restQ = HAND.map((_, d) => digitRest(d));
+const restQ = FP_HAND.map((_, d) => digitRest(d));
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _e = new THREE.Euler(), _m = new THREE.Matrix4();
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _x = new THREE.Vector3(), _y = new THREE.Vector3();
 
@@ -259,7 +284,7 @@ export function makeArm(side: 1 | -1): Arm {
   bones[2].position.set(0, 0, -FORE); bones[1].add(bones[2]);
   const mirror = (q: THREE.Quaternion) => (side === 1 ? q.clone() : new THREE.Quaternion(q.x, -q.y, -q.z, q.w));
   for (let d = 0; d < 5; d++) {
-    const h = HAND[d], b0 = bones[fb(d, 0)];
+    const h = FP_HAND[d], b0 = bones[fb(d, 0)];
     b0.position.set(h.base[0] * side, h.base[1], h.base[2]); b0.quaternion.copy(mirror(restQ[d])); bones[2].add(b0);
     for (let s = 1; s < 3; s++) { const bn = bones[fb(d, s)]; bn.position.set(0, 0, -h.len[s - 1]); bones[fb(d, s - 1)].add(bn); }
   }

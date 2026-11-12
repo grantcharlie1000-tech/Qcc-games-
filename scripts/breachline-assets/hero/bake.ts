@@ -20,7 +20,7 @@ import { MeshBVH } from 'three-mesh-bvh';
 import { encodeToKTX2 } from 'ktx2-encoder';
 import type { WeaponId } from '../../../src/games/breachline/config';
 import { PAT, heroReady } from '../../../src/games/breachline/render/hero/geom';
-import { FORE, HAND, UPPER, digitRest, rightArm } from '../../../src/games/breachline/render/hero/hands';
+import { FORE, FP_HAND as HAND, UPPER, digitRest, rightArm } from '../../../src/games/breachline/render/hero/hands';
 import { DEFAULT_LOOK } from '../../../src/games/breachline/render/hero/rig';
 import { WB, weaponModel } from '../../../src/games/breachline/render/hero/weapons';
 

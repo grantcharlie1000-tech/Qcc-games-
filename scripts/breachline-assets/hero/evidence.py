@@ -5,7 +5,7 @@ Usage: python3 evidence.py OUT.jpg WIDTH "label=path[@crop]" ... [--cols N]
 import sys
 from PIL import Image, ImageDraw, ImageFont
 
-CROPS = {'hip': (560, 300, 1200, 660), 'ads': (400, 180, 880, 450), 'hand': (300, 330, 940, 690)}
+CROPS = {'hip': (560, 300, 1200, 660), 'ads': (400, 225, 880, 495), 'hand': (300, 330, 940, 690)}
 args = [a for a in sys.argv[1:] if not a.startswith('--')]
 cols = int(next((a.split('=')[1] for a in sys.argv if a.startswith('--cols=')), '2'))
 out, width, items = args[0], int(args[1]), args[2:]
