@@ -160,6 +160,19 @@ Filmstrips: `animation-filmstrips.jpg` (aim, recoil, swap; about 4 to 8 drawn fr
   drop the old magazine out of frame, a clear tug to seat it, and on empty a palm slap on the bolt catch with a jolt.
 - Sway and walk bob: not filmed (needs live mouse input); in play they look reasonable but small.
 
+## Hand trial 2: Patch "Base Hand" (won, now the default)
+
+Base Hand by Polyfork (https://polyfork.dev/asset/base-hand-e3398a), CC BY 4.0; licence read from the GLB
+(`asset.extras.license`: "CC-BY-4.0 OR LicenseRef-Polyfork", credit in `asset.copyright`), not AI-generated, SHA-256
+checked; credited in `public/THIRD_PARTY_NOTICES.txt`. `scripts/breachline-assets/hero/hand-trial.ts` mirrors the left
+hand to a right hand and retargets its 26-joint rig onto our hand and finger bones (each joint's bind frame onto
+ours, blended by its weights), tagging back, palm and knuckle panel; `armsWithHand` in `hands.ts` puts it on our
+sleeve with a glove cuff and strap. Owner's grip and the 20° wrist roll kept. Evidence `gate5-hand-asset-trial-2.jpg`.
+Cost: 3,000 triangles a hand (sculpted 2,300), 18 bones an arm as before, the same one draw call.
+Verdict: it wins. The fingers read as fingers wrapping the handguard, and the trigger hand reads in the reload. Still
+to do: seams and a texture (it uses the procedural glove colours now), a slimmer cuff, and the sculpted glove is
+still built at load before being replaced (about 0.7 s once). `?herohand=sculpt` brings the old one back.
+
 ## Decisions (made without asking; say if wrong)
 
 - New assets go to `hero/ar5/`, not `hero/ar/`: `render/patchhero/` (the `?weapons=patch` switch, not mine) cuts its

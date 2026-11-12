@@ -6,6 +6,7 @@
  * right arm is authored; the left is its mirror in X. */
 import * as THREE from 'three';
 import { Builder, SURF, simplify, surf, type Surface } from './geom';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { unwrap } from './unwrap';
 import { cone, ell, meshField, rbox, type Field, type Prim, type Vec } from './sdf';
 
@@ -226,6 +227,40 @@ export function rightArm(look: ArmsLook): { geo: THREE.BufferGeometry; density: 
 export function armsGeometry(look: ArmsLook): THREE.BufferGeometry {
   const geo = rightArm(look).geo;
   // The left arm: mirror in X, flip winding, offset bones.
+  const left = geo.clone();
+  left.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
+  const ix = left.index!.array as Uint32Array | Uint16Array;
+  for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; }
+  const si = left.getAttribute('skinIndex');
+  for (let i = 0; i < si.count; i++) for (let k = 0; k < 4; k++) si.setComponent(i, k, si.getComponent(i, k) + ARM_BONES);
+  return mergeTwo(geo, left);
+}
+
+/** The asset hand trial (`?herohand=asset`): our sleeve, a glove cuff, and a retargeted hand mesh (hand.json from
+ * scripts/breachline-assets/hero/hand-trial.ts) in place of the sculpted glove; both arms, as `armsGeometry`. */
+export interface HandAsset { pos: number[]; nor: number[]; tag: number[]; si: number[]; sw: number[]; idx: number[] }
+export function armsWithHand(look: ArmsLook, h: HandAsset): THREE.BufferGeometry {
+  const b = new Builder(0);
+  let g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(h.pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(h.nor, 3));
+  g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(h.si, 4));
+  g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(h.sw, 4));
+  g.setAttribute('tag', new THREE.Float32BufferAttribute(h.tag, 1));
+  g.setIndex(h.idx);
+  // Smooth the low-poly hand: weld its seams, then average normals.
+  g.deleteAttribute('normal'); g = mergeVertices(g, 1e-5); g.computeVertexNormals();
+  b.addTagged(g, [look.glove, look.palm, look.guard]);
+  // Glove cuff and strap at the wrist (forearm bone), a clear step under the sleeve's hem.
+  const zw = -(UPPER + FORE);
+  b.bone = 1;
+  // Builder.lathe measures along -Z: pass -z, in increasing order.
+  const ring = (pts: [number, number][]) => pts.map(([r, z]) => [r, -z] as [number, number]).reverse();
+  b.lathe(ring([[0.0, zw + 0.008], [0.027, zw + 0.008], [0.0285, zw + 0.014], [0.0295, zw + 0.02], [0.0295, zw + 0.03], [0.029, zw + 0.05], [0, zw + 0.05]]), look.palm, [0, 0, 0], 20);
+  b.lathe(ring([[0.0, zw + 0.02], [0.0305, zw + 0.02], [0.0305, zw + 0.027], [0, zw + 0.027]]), surf(look.guard, { color: 0x2e2f2c }), [0, 0, 0], 20);
+  b.bone = 0;
+  sleeve(b, look);
+  const geo = b.build({ ao: false });
   const left = geo.clone();
   left.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
   const ix = left.index!.array as Uint32Array | Uint16Array;

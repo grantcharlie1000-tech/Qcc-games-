@@ -3830,6 +3830,9 @@ Changed for Breachline: from the 4096 px source; head cut at the neck and hands 
 Steel Helmet by Polyfork (https://polyfork.dev/asset/steel-helmet-f5aa7d), CC BY 4.0. Licence: https://creativecommons.org/licenses/by/4.0/. Changed by Patch: a compressed preview copy added for the viewer (web and src are as published).
 Changed for Breachline: recoloured dark slate; levels of detail added.
 
+Base Hand by Polyfork (https://polyfork.dev/asset/base-hand-e3398a), CC BY 4.0. Licence: https://creativecommons.org/licenses/by/4.0/. Changed by Patch: a compressed preview copy added for the viewer (web and src are as published).
+Changed for Breachline (first-person hand trial, `?herohand=asset`): mirrored to a right hand, retargeted to the first-person rig, coloured as a glove.
+
 Call Headset by Polyfork (https://polyfork.dev/asset/call-headset-a95887), CC BY 4.0. Licence: https://creativecommons.org/licenses/by/4.0/. Changed by Patch: a compressed preview copy added for the viewer (web and src are as published).
 Changed for Breachline: recoloured near-black; levels of detail added.
 
