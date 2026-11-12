@@ -9,7 +9,7 @@ import path from 'node:path';
 const [port, outDir] = process.argv.slice(2);
 await mkdir(outDir, { recursive: true });
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-const ARM = "teleport: (id, x, z, yaw) => { const p = host.m.players[id]; if (p) { p.x = x; p.z = z; if (yaw !== undefined) p.yaw = yaw; } }, arm: (w) => { const s = session(), me = s.m.players[s.self]; const k = KITS[roleOf(s.m, me)].findIndex(x => x.primary === w); if (k >= 0) me.kit = k; me.slot = 0; me.mag[0] = 30; me.reserve[0] = 90; me.grenades = 3; me.reload = 0; return k; }, still: () =>";
+const ARM = "teleport: (id, x, z, yaw) => { const p = host.m.players[id]; if (p) { p.x = x; p.z = z; if (yaw !== undefined) p.yaw = yaw; } }, arm: (w) => { const s = session(), me = s.m.players[s.self]; const k = KITS[roleOf(s.m, me)].findIndex(x => x.primary === w); if (k >= 0) me.kit = k; me.slot = 0; me.mag[0] = 30; me.reserve[0] = 90; me.grenades = 3; me.reload = 0; return k; }, seen: (ax, az, bx, bz) => obstruction(session().m.world, ax, 1.55, az, bx, 1.2, bz) === 0 && obstruction(session().m.world, ax, 1.55, az, bx, 0.3, bz) === 0, still: () =>";
 let page;
 for (let t = 0; t < 4; t++) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -28,7 +28,11 @@ for (let t = 0; t < 4; t++) {
 await page.waitForFunction(() => window.__breachlineTest.stats().art === 'env', undefined, { timeout: 180000, polling: 500 }).catch(() => console.log('art did not reach env'));
 await page.waitForTimeout(2500);
 await page.addStyleTag({ content: '.bl-toast, .bl-banner, .bl-prompt, .bl-hud, .bl-nametag, .bl-prep { visibility: hidden !important; }' });
-const shot = async name => { await page.waitForTimeout(300); await writeFile(path.join(outDir, `${name}.png`), await page.locator('canvas').first().screenshot({ timeout: 120000 })); };
+const shot = async name => {
+  await page.waitForTimeout(300);
+  try { await writeFile(path.join(outDir, `${name}.png`), await page.locator('canvas').first().screenshot({ timeout: 120000 })); }
+  catch (e) { console.log('screenshot failed', name, await page.evaluate(() => [location.hash, document.querySelectorAll('canvas').length]).catch(x => String(x))); throw e; }
+};
 
 // Each death: the weapon, where on the body to aim, the range, and how the kill is made.
 const cases = [
@@ -46,6 +50,7 @@ for (const c of cases) {
     for (const foe of foes) for (let k = 0; k < 8; k++) {
       const a = k * Math.PI / 4, x = foe.x + Math.sin(a) * c.range, z = foe.z + Math.cos(a) * c.range;
       const aim = y => { const s = h.state(), f = s.players.find(p => p.id === foe.id); return [Math.atan2(-(f.x - x), -(f.z - z)), Math.atan2(y - 1.6, Math.hypot(f.x - x, f.z - z))]; };
+      if (!h.seen(x, z, foe.x, foe.z)) continue;
       const hp0 = h.state().players.find(p => p.id === foe.id).hp;
       const [yaw, pitch] = aim(c.how === 'grenade' ? 1.15 : c.y);
       h.place(x, z, yaw, pitch); h.advance(0.05);
@@ -81,11 +86,15 @@ for (const c of cases) {
   const times = [0, 0.15, 0.4, 0.9, 3.4];
   let at = 0;
   for (const [i, t] of times.entries()) {
-    await page.evaluate(([r, frames, look]) => {
-      const h = window.__breachlineTest, dx = r.x - r.fx, dz = r.z - r.fz, d = Math.hypot(dx, dz), x = r.fx + dx / d * 3.4, z = r.fz + dz / d * 3.4;
-      if (look) { h.place(x, z, Math.atan2(-(r.fx - x), -(r.fz - z)), -0.36); h.advance(0); }
-      for (let k = 0; k < frames; k++) h.draw();
-    }, [r, Math.round((t - at) / 0.016), i === 0]);
+    // Drawn in batches so the page stays responsive; the ragdoll advances 0.016 s per drawn frame.
+    for (let left = Math.round((t - at) / 0.016), first = i === 0; left > 0 || first; first = false) {
+      const n = Math.min(left, 25); left -= n;
+      await page.evaluate(([r, frames, look]) => {
+        const h = window.__breachlineTest, dx = r.x - r.fx, dz = r.z - r.fz, d = Math.hypot(dx, dz), x = r.fx + dx / d * 3.4, z = r.fz + dz / d * 3.4;
+        if (look) { h.place(x, z, Math.atan2(-(r.fx - x), -(r.fz - z)), -0.36); h.advance(0); }
+        for (let k = 0; k < frames; k++) h.draw();
+      }, [r, n, first]);
+    }
     at = t;
     await shot(`${c.tag}-${i}`);
   }
