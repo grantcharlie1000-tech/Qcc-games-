@@ -31,9 +31,9 @@ function diffuser(): THREE.CanvasTexture {
 }
 
 /** One mesh for every housing (vertex-coloured, lit by its own glow) and one for every diffuser. */
-export function fixtureMeshes(list: readonly Fixture[]): { meshes: THREE.Mesh[]; dispose(): void } {
+export function fixtureMeshes(list: readonly Fixture[]): { meshes: THREE.Mesh[]; lenses: { f: Fixture; at: number }[]; dispose(): void } {
   const hp: number[] = [], hc: number[] = [], hi: number[] = [];
-  const dp: number[] = [], du: number[] = [], dc: number[] = [], di: number[] = [];
+  const dp: number[] = [], du: number[] = [], dc: number[] = [], di: number[] = [], lenses: { f: Fixture; at: number }[] = [];
   const quad = (p: number[], c: number[], idx: number[], v: number[][], col: number[]) => {
     const b = p.length / 3;
     for (const q of v) { p.push(...q); c.push(...col); }
@@ -55,6 +55,7 @@ export function fixtureMeshes(list: readonly Fixture[]): { meshes: THREE.Mesh[];
     quad(hp, hc, hi, [[X0, y, Z0], [X0, y, Z1], [X0, top, Z1], [X0, top, Z0]], side);
     // The prismatic lens bulges a few millimetres below the rim, so it shows at shallow angles.
     const b = dp.length / 3, yd = y - 0.004;
+    lenses.push({ f, at: b });
     for (const [s, t] of [[0, 0], [1, 0], [1, 1], [0, 1]]) {
       dp.push(x0 + s * f.w, yd, z0 + t * f.d); du.push(s, t); dc.push(f.color[0] * GLOW, f.color[1] * GLOW, f.color[2] * GLOW);
     }
@@ -73,5 +74,5 @@ export function fixtureMeshes(list: readonly Fixture[]): { meshes: THREE.Mesh[];
   const housing = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
   const lens = new THREE.MeshBasicMaterial({ vertexColors: true, map: diffuser(), side: THREE.DoubleSide });
   const meshes = [make(hp, hc, hi, null, housing), make(dp, dc, di, du, lens)];
-  return { meshes, dispose() { for (const m of meshes) m.geometry.dispose(); housing.dispose(); lens.dispose(); } };
+  return { meshes, lenses, dispose() { for (const m of meshes) m.geometry.dispose(); housing.dispose(); lens.dispose(); } };
 }

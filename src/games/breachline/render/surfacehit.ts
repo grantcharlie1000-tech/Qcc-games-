@@ -42,8 +42,8 @@ export const dressMaterial = (key: string) => KEY_MAT[key] ?? 'plastic';
 export const propMaterial = (model: string) => PROP_MAT[model] ?? 'plastic';
 type Proxy = { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; key: string };
 /** The first dressing piece a ray passes through before `tmax` (slab test on each piece's box), with the face normal. */
-export function firstDressing(list: readonly Proxy[], ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, tmax: number): { t: number; nx: number; ny: number; nz: number; key: string } | null {
-  let best: { t: number; nx: number; ny: number; nz: number; key: string } | null = null;
+export function firstDressing<P extends Proxy>(list: readonly P[], ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, tmax: number): { t: number; nx: number; ny: number; nz: number; key: string; p?: P } | null {
+  let best: { t: number; nx: number; ny: number; nz: number; key: string; p?: P } | null = null;
   const inv = [1 / dx, 1 / dy, 1 / dz], o = [ox, oy, oz];
   for (const b of list) {
     const lo = [b.x0, b.y0, b.z0], hi = [b.x1, b.y1, b.z1];
@@ -56,7 +56,7 @@ export function firstDressing(list: readonly Proxy[], ox: number, oy: number, oz
       if (t0 > t1) break;
     }
     if (t0 > t1 || axis < 0) continue;
-    best = { t: t0, nx: axis === 0 ? sign : 0, ny: axis === 1 ? sign : 0, nz: axis === 2 ? sign : 0, key: b.key };
+    best = { t: t0, nx: axis === 0 ? sign : 0, ny: axis === 1 ? sign : 0, nz: axis === 2 ? sign : 0, key: b.key, p: b };
   }
   return best;
 }

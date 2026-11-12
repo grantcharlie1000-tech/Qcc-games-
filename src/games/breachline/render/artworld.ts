@@ -13,7 +13,7 @@ import { FIXTURES } from './fixtures';
 import { fixtureMeshes } from './fixturemesh';
 import { dressRoom, type DressKey } from './labdress';
 import { BOX_H, BOX_W, LABEL_VARIANTS, archiveBoxGeometry, labelAtlas, labelGeometry } from './archivebox';
-import type { DetailBuilder } from './detail';
+import type { DetailBuilder, DressProxy } from './detail';
 import { clockFace, exitSign, fireSign, roomSigns, safetySign } from './printed';
 import { artMaterial } from './materials';
 import { PROPS, propKey } from './props';
@@ -37,6 +37,11 @@ export interface ArtWorld {
   cull(eye: THREE.Vector3): void;
   /** Shows the models of set piece `piece` that belong to damage state `state` (render/setpiecemodels.ts). */
   pieceState(piece: number, state: number): void;
+  /** Removes a breakable dressing piece from its merged mesh (10.2); `restoreDress` puts every one back. */
+  hideDress(p: DressProxy): void;
+  restoreDress(): void;
+  /** The ceiling fittings drawn in loaded rooms, and the lens of each (its glow goes when one is shot). */
+  fittings: { x: number; z: number; w: number; d: number; lens(on: boolean): void }[];
   /** What a round can mark on its way through (no collision: rounds pass): each dressing piece's box and material key,
    * and each modelled prop with its bounds (render/surfacehit.ts names their materials). */
   markables: { dress: { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; key: string }[]; props: { box: THREE.Box3; object: THREE.Object3D; model: string; piece?: number }[] };
@@ -96,6 +101,9 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
   const boxes: (DetailBuilder['boxes'][number] & { room: number })[] = [];
   const markables: ArtWorld['markables'] = { dress: [], props: [] };
   const pieceProps = new Map<number, { object: THREE.Object3D; states: number[] }[]>();
+  // Breakable dressing: each piece's geometry and first vertex there, and the positions it had before it was removed.
+  const dressAt = new Map<DressProxy, { geo: THREE.BufferGeometry; start: number }>(), hidden = new Map<DressProxy, Float32Array>();
+  const fittings: ArtWorld['fittings'] = [];
   const models = new Map<string, ReturnType<ArtLoader['model']>>();
   const lods = new Map<string, ReturnType<ArtLoader['model']>>();
   // High draws each prop's full model at every range (its simplified level keeps the full vertex data, so loading
@@ -182,7 +190,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         led: { ...plain([0.02, 0.08, 0.03], 0.2, 0), emissive: new THREE.Color(0.25, 1.6, 0.45) }, ledAmber: { ...plain([0.1, 0.05, 0.01], 0.2, 0), emissive: new THREE.Color(1.6, 0.8, 0.12) },
         bulb: { ...plain([1, 0.85, 0.6], 0.3, 0), emissive: new THREE.Color(6, 4.2, 2.4) }, glass: plain([0.1, 0.13, 0.125], 0.04, 0),
       };
-      const merged: GeoArrays = { position: [], normal: [], uv: [], uv1: [], color: [], index: [] };
+      const merged: GeoArrays = { position: [], normal: [], uv: [], uv1: [], color: [], index: [] }, mergedAt = new Map<string, number>(), keyGeo = new Map<string, THREE.BufferGeometry>();
       for (const [key, arrays] of D.parts) {
         const o = looks[key as DressKey];
         // The throttled tier has no reflection probe, so metals would read black: draw them as painted.
@@ -192,6 +200,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         // piece's colour into its vertex tint and draw them together after this loop.
         if (!full && !o.map && !o.emissive) {
           const c = (asPaint as { color?: THREE.Color }).color ?? new THREE.Color(1, 1, 1), base = merged.position.length / 3;
+          mergedAt.set(key, base);
           merged.position.push(...arrays.position); merged.normal.push(...arrays.normal); merged.uv.push(...arrays.uv); merged.uv1.push(...arrays.uv1);
           for (let i = 0; i < arrays.color.length; i += 3) merged.color.push(arrays.color[i] * c.r, arrays.color[i + 1] * c.g, arrays.color[i + 2] * c.b);
           for (const k of arrays.index) merged.index.push(base + k);
@@ -199,6 +208,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         }
         const mat = artMaterial({ ...o, ...asPaint, lightMap, lightScale: info.scale, dirMap, vertexTint: true });
         const g = geometry(arrays), mesh = new THREE.Mesh(g, mat);
+        keyGeo.set(key, g);
         mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:dress:${key}`;
         dressOf(region).push(mesh);
         group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
@@ -210,12 +220,20 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
         mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:dress:merged`;
         dressOf(region).push(mesh);
         group.add(mesh); materials.push(mat); geometries.push(g);
+        for (const key of mergedAt.keys()) keyGeo.set(`merged:${key}`, g);
+      }
+      for (const p of D.proxies) {
+        if (!p.role) continue;
+        const own = keyGeo.get(p.key), merged = keyGeo.get(`merged:${p.key}`);
+        if (own) dressAt.set(p, { geo: own, start: p.from }); else if (merged) dressAt.set(p, { geo: merged, start: mergedAt.get(p.key)! + p.from });
       }
       if (D.missed) console.warn(`Breachline art: ${D.missed} dressing pieces found no surface to stand on: ${D.misses.join(' ')}`);
     }
     // The room's own light fixtures glow (the map's lamp panels in this room are not drawn).
     const fx = fixtureMeshes(FIXTURES[region.name] ?? []);
     for (const m of fx.meshes) group.add(m);
+    { const lensGeo = fx.meshes[1]?.geometry, col = lensGeo?.attributes.color as THREE.BufferAttribute | undefined, orig = col ? Float32Array.from(col.array as Float32Array) : null;
+      for (const { f, at } of fx.lenses) fittings.push({ x: f.x, z: f.z, w: f.w, d: f.d, lens(on) { if (!col || !orig) return; for (let i = at * 3; i < (at + 4) * 3; i++) (col.array as Float32Array)[i] = on ? orig[i] : 0.16; col.needsUpdate = true; } }); }
     disposers.push(fx.dispose);
     // Destructible panels facing into the room.
     const wallSet = SURFACES.drywall;
@@ -324,6 +342,20 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     environmentScale(x, z) { const r = roomAt(x, z); return r >= 0 && rooms[r].env ? 1 / Math.max(0.05, rooms[r].envLight) : 1; },
     environment(x, z) { const r = roomAt(x, z); return r >= 0 ? rooms[r].env?.texture ?? null : null; },
     markables,
+    hideDress(p) {
+      const at = dressAt.get(p);
+      if (!at || hidden.has(p)) return;
+      const pos = at.geo.attributes.position as THREE.BufferAttribute, arr = pos.array as Float32Array, a = at.start * 3, b = (at.start + p.count) * 3;
+      hidden.set(p, arr.slice(a, b));
+      for (let i = a; i < b; i += 3) { arr[i] = arr[a]; arr[i + 1] = arr[a + 1]; arr[i + 2] = arr[a + 2]; }
+      pos.needsUpdate = true;
+    },
+    restoreDress() {
+      for (const [p, saved] of hidden) { const at = dressAt.get(p)!, pos = at.geo.attributes.position as THREE.BufferAttribute; (pos.array as Float32Array).set(saved, at.start * 3); pos.needsUpdate = true; }
+      hidden.clear();
+      for (const f of fittings) f.lens(true);
+    },
+    fittings,
     pieceState(piece, state) { for (const e of pieceProps.get(piece) ?? []) e.object.visible = e.states.includes(state); },
     cull(eye) {
       for (const d of dressing) {

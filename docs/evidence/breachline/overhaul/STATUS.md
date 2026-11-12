@@ -4,6 +4,26 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: 10.2's breakables** (`render/breakables.ts`; evidence `mapfill/shots/breakables.png`, before and after
+per class). Dressing pieces now carry a role and their vertex range in the merged dressing meshes, so one piece can be
+removed without rebuilding a mesh (`ArtWorld.hideDress`, restored at each round's preparation):
+- **Screens** (monitors, the TV, server panels): crack and go dark (a black face, a crack star, sparks).
+- **Status lights:** go out.
+- **Glass** (bottles, jars, glassware; flat glass such as puddles excluded) and **mugs** (tagged): shatter into shards
+  that stay.
+- **Bins** (tagged): dented and knocked over (a bin on its side), rubbish spilled.
+- **Plants** (tagged leaves): a round strips the leaves round where it passed; they fall and stay.
+- **Ceiling fittings:** a round into one takes its diffuser away (the lens dims, its shards fall, sparks); two bare tubes are
+  left and flicker (steady with reduced motion); the room keeps its baked light.
+- **Blast:** breakables and small loose things (paper, binders, card, cups) within 3 m are knocked off and thrown away from
+  it.
+- Each break emits a cosmetic event: glass as `{k:'glass', stage:'shatter'}`, the rest as `{k:'piece', family: role,
+  state:'wrecked'}` (roles: screen, led, mug, bin, leaf, fitting, loose).
+- Honest note: in the evidence, the screen, plant, fitting and glass changes read clearly; the status light, mug, bin and
+  blast frames do not show their change well from the chosen camera, though the pieces are removed and their debris
+  thrown (a closer framing per class is still to do). `warm.spec` passes; a risk to watch is a first instanced-colour
+  variant compiling the first time a fitting breaks in play.
+
 **2026-11-12: High's opening download from 55.08 MB to 39.25 MB** (built site, `builtcheck.mjs --tier high`).
 
 | category | before | after | how |

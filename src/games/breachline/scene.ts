@@ -10,6 +10,8 @@ import { loadArtWorld, type ArtWorld } from './render/artworld';
 import { PanelBatches } from './render/panelbatch';
 import { Glass } from './render/glass';
 import { SetPieces } from './render/setpieces';
+import { Breakables } from './render/breakables';
+import type { DressProxy } from './render/detail';
 import { SET_PIECES, TEXTURED_PIECES } from './render/setpieces-data';
 import { MARKS, dressMaterial, familyMaterial, firstDressing, propMaterial, surfaceAt } from './render/surfacehit';
 import { boxes } from './models';
@@ -99,7 +101,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const artScene = new THREE.Scene();
   if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blScenes: { scene, artScene, camera: () => camera } });
   artScene.fog = scene.fog;
-  let art: ArtWorld | null = null, disposed = false, probesDone = true, pieces: SetPieces | null = null;
+  let art: ArtWorld | null = null, disposed = false, probesDone = true, pieces: SetPieces | null = null, breakables: Breakables | null = null;
   const fxFast = typeof location !== 'undefined' && /artdbg=[^&]*fxfast/.test(location.search);
   const panelMats: PanelMaterials = { wall: materials.drywall, core: materials.core, planks: materials.planks, plate: materials.plate };
   const panelGroup = new THREE.Group(); scene.add(panelGroup);
@@ -141,6 +143,14 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       artScene.add(a.group);
       pieces = new SetPieces(fx, (x, z) => { const l = bake.probe(x, z); return [0.18 + l[0] * 1.9, 0.18 + l[1] * 1.9, 0.18 + l[2] * 1.9]; });
       scene.add(pieces.mesh);
+      // Breakable dressing (render/breakables.ts): screens, lights, glass, mugs, bins, leaves, ceiling fittings.
+      breakables = new Breakables(fx, a); scene.add(breakables.group);
+      if (/artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blBreak: breakables, __blArt: a, __blRooms: MAP.rooms });
+      breakables.onBreak = (role, x, y, z) => {
+        if (!cosmetic.size) return;
+        if (role === 'glass') { evGlass.stage = 'shatter'; evGlass.x = x; evGlass.y = y; evGlass.z = z; emit(evGlass); return; }
+        evPiece.family = role; evPiece.state = 'wrecked'; evPiece.x = x; evPiece.y = y; evPiece.z = z; emit(evPiece);
+      };
       pieces.onState = (i, s) => {
         a.pieceState(i, s);
         if (!s || !cosmetic.size) return;
@@ -565,6 +575,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       best = { t: hit.distance, nx: nrm.x, ny: nrm.y, nz: nrm.z, key: '' }; kind = propMaterial(p.model); ray.far = hit.distance;
     }
     if (!best) return;
+    const bp = (best as { p?: DressProxy }).p;
+    if (bp?.role && breakables) breakables.shotDress(bp, ox + dx * best.t, oy + dy * best.t, oz + dz * best.t, dx, dy, dz);
     const x = ox + dx * best.t + best.nx * 0.004, y = oy + dy * best.t + best.ny * 0.004, z = oz + dz * best.t + best.nz * 0.004;
     impact(x, y, z, best.nx, best.ny, best.nz, kind as keyof typeof DUST, true);
   }
@@ -631,6 +643,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
               if (art) passThrough(e.x, e.y, e.z, d.x, d.y, d.z, tr.solid ? tr.t : 120);
               glass.shot(e.x, e.y, e.z, d.x, d.y, d.z, tr.solid ? tr.t : 120);
               if (!tr.solid) return;
+              if (tr.ny < -0.5) breakables?.shotCeiling(hx, hy, hz);
               const piece = pieces ? pieces.indexOf(tr.box ?? null) : -1;
               if (piece >= 0) pieces!.hit(piece);
               if (piece >= 0 && !TEXTURED_PIECES.has(SET_PIECES[piece].name)) {
@@ -673,7 +686,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
           case 'boom': {
             lastOrigin = { x: e.x, y: e.y, z: e.z };
             const power = e.kind === 'impact' ? 0.7 : e.kind === 'charge' ? 1.1 : 1.25, l = bake.probe(e.x, e.z);
-            glass.blast(e.x, e.y, e.z); pieces?.blast(e.x, e.y, e.z, power);
+            glass.blast(e.x, e.y, e.z); pieces?.blast(e.x, e.y, e.z, power); breakables?.blast(e.x, e.y, e.z);
             fx.blast(e.x, e.y, e.z, power, l, e.kind === 'impact' ? 'impact' : e.kind === 'charge' ? 'charge' : 'frag');
             const d = Math.hypot(e.x - ear.x, e.z - ear.z);
             if (d < 16) exposure = Math.max(exposure, (1 - d / 16) * 1.1);
@@ -701,7 +714,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             for (let i = 0; i < 6; i++) fx.dust(c.x + (Math.random() - 0.5) * 1.5, c.y + (Math.random() - 0.5) * 1.5, c.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5), Math.random() * 0.5, (Math.random() - 0.5), 0.3, 0.8, 0.6, 0.58, 0.52, 0.35);
             break;
           }
-          case 'phase': if (e.phase === 'prep') { fx.clear(); fighters.reset(); glass.reset(); pieces?.reset(); pendingPools.length = 0; } break;
+          case 'phase': if (e.phase === 'prep') { fx.clear(); fighters.reset(); glass.reset(); pieces?.reset(); breakables?.reset(); pendingPools.length = 0; } break;
           case 'spawn': fighters.reset(e.at.map(([id]) => id)); break;
         }
       }
@@ -736,6 +749,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       viewmodel.update(view, time);
       // `?artdbg=fxfast` ages effects 25 times faster, for evidence renders of how smoke and dust clear.
       fx.update(fxFast ? dt * 25 : dt, height * (window.devicePixelRatio || 1) * scale, camera.fov);
+      breakables?.update(dt, view.reduced);
       exposure = Math.max(0, exposure - dt * 3.5);
       renderer.toneMappingExposure = 1.02 + (view.reduced ? 0 : exposure);
       const graded = post.begin();
@@ -773,7 +787,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       for (const p of panels) p.dispose();
       batches.dispose();
       fighters.dispose(); viewmodel.dispose();
-      fx.dispose(); glass.dispose(); pieces?.dispose();
+      fx.dispose(); glass.dispose(); pieces?.dispose(); breakables?.dispose();
       scene.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.geometry) mesh.geometry.dispose(); });
       for (const m of Object.values(materials)) m.dispose();
       for (const t of [...Object.values(textures), skyTex, sunTex, ringTex, ...siteTex]) t.dispose();

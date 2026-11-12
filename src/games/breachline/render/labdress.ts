@@ -767,7 +767,7 @@ function workstation(D: DetailBuilder, b: { x0: number; z0: number; x1: number; 
   box('chassis', mx - 0.22, top, front - 0.07, mx + 0.22, top + 0.02, front + 0.07, [1.1, 1.1, 1.1]);
   box('chassis', mx + 0.3, top, front - 0.03, mx + 0.36, top + 0.025, front + 0.04, [1.1, 1.1, 1.1]);
   for (let i = 0; i < 2; i++) { const px = b.x0 + 0.15 + r() * 0.3 + i * (b.x1 - b.x0 - 0.65), pz = (b.z0 + b.z1) / 2 - 0.15 + r() * 0.1; box('paper', px, top, pz, px + 0.21, top + 0.004 + r() * 0.02, pz + 0.3, [0.5, 0.5, 0.48]); }
-  { const g = new THREE.CylinderGeometry(0.04, 0.036, 0.1, 14).translate(b.x1 - 0.18, top + 0.05, front); D.mesh('casing', g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, up, r() < 0.5 ? [0.9, 0.3, 0.25] : [0.95, 0.95, 0.92]); g.dispose(); }
+  { const g = new THREE.CylinderGeometry(0.04, 0.036, 0.1, 14).translate(b.x1 - 0.18, top + 0.05, front); D.tag = 'mug'; D.mesh('casing', g.attributes.position.array, g.attributes.normal.array, g.index!.array, on, up, r() < 0.5 ? [0.9, 0.3, 0.25] : [0.95, 0.95, 0.92]); D.tag = ''; g.dispose(); }
   // The chair, pulled out on the user's side: five-star base, column, seat and back (open and low; not cover).
   const cx = mx + (r() - 0.5) * 0.3, cz = (s > 0 ? b.z1 : b.z0) + s * (0.45 + r() * 0.15), turn = (r() - 0.5) * 0.8, fl: V3 = [cx, 0.001, cz];
   const mesh = (g: THREE.BufferGeometry, key: DressKey, tint?: V3) => { g.rotateY(turn); g.translate(cx, 0, cz); D.mesh(key, g.attributes.position.array, g.attributes.normal.array, g.index!.array, fl, up, tint ?? [1, 1, 1]); g.dispose(); };
@@ -776,7 +776,7 @@ function workstation(D: DetailBuilder, b: { x0: number; z0: number; x1: number; 
   mesh(new THREE.BoxGeometry(0.46, 0.07, 0.46).translate(0, 0.48, 0), 'chassis', [0.5, 0.55, 0.75]);
   mesh(new THREE.BoxGeometry(0.44, 0.5, 0.06).translate(0, 0.82, s * 0.22), 'chassis', [0.5, 0.55, 0.75]);
   // A bin by the desk end.
-  { const bx = b.x0 - 0.22, bz = (s > 0 ? b.z1 : b.z0) - s * 0.2, g = new THREE.CylinderGeometry(0.13, 0.11, 0.32, 16, 1, true).translate(bx, 0.16, bz); D.mesh('chassis', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [bx, 0.001, bz], up, [1, 1, 1]); g.dispose(); }
+  { const bx = b.x0 - 0.22, bz = (s > 0 ? b.z1 : b.z0) - s * 0.2, g = new THREE.CylinderGeometry(0.13, 0.11, 0.32, 16, 1, true).translate(bx, 0.16, bz); D.tag = 'bin'; D.mesh('chassis', g.attributes.position.array, g.attributes.normal.array, g.index!.array, [bx, 0.001, bz], up, [1, 1, 1]); D.tag = ''; g.dispose(); }
 }
 
 /** The Office: three workstations, the filing cabinet's drawers, a whiteboard and clock on the south wall, skirting. */
@@ -878,7 +878,9 @@ function dressBreak(atlas: Atlas, room: Region): DetailBuilder {
         put(new THREE.BoxGeometry(0.42, 0.28, 0.025).translate(0, 0.7, -0.2), 'chassis', [0.9, 0.5, 0.35]);
         for (const lx of [-0.19, 0.19]) put(new THREE.CylinderGeometry(0.01, 0.01, 0.4, 6).translate(lx, 0.66, -0.2), 'chrome');
       }
+      D.tag = 'mug';
       for (let i = 0; i < 3; i++) mesh(new THREE.CylinderGeometry(0.04, 0.036, 0.1, 14).translate(b.x0 + 0.3 + r() * (b.x1 - b.x0 - 0.6), top + 0.05, b.z0 + 0.2 + r() * (b.z1 - b.z0 - 0.4)), 'casing', on, up, i === 1 ? [0.3, 0.5, 0.9] : [0.95, 0.95, 0.92]);
+      D.tag = '';
       D.box('paper', b.x0 + 0.6, top, cz - 0.12, b.x0 + 0.9, top + 0.006, cz + 0.12, on, up, [0.6, 0.6, 0.58]);
     }
   }
@@ -896,9 +898,12 @@ function dressBreak(atlas: Atlas, room: Region): DetailBuilder {
   { const fl = (x: number, z: number): V3 => [x, 0.001, z], upF: V3 = [0, 1, 0], top = 0.95, on = (x: number, z: number): V3 => [x, top + 0.001, z];
     put(D, new THREE.SphereGeometry(0.13, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2).translate(14.55, top + 0.13, 1.8), 'casing', on(14.55, 1.8), upF, [0.9, 0.9, 0.88]);
     for (let i = 0; i < 4; i++) put(D, new THREE.SphereGeometry(0.04, 10, 8).translate(14.5 + (i % 2) * 0.08, top + 0.06, 1.76 + Math.floor(i / 2) * 0.08), 'casing', on(14.55, 1.8), upF, [[1.2, 0.3, 0.2], [1.1, 0.9, 0.2], [0.4, 0.9, 0.3]][i % 3] as V3);
+    D.tag = 'mug';
     for (let i = 0; i < 4; i++) put(D, new THREE.CylinderGeometry(0.04, 0.034, 0.09, 12).translate(14.55, top + 0.045 + i * 0.07, 2.95), 'casing', on(14.55, 2.95), upF, [1.1, 1.1, 1.08]);
+    D.tag = 'bin';
     put(D, new THREE.CylinderGeometry(0.15, 0.15, 0.4, 16, 1, true).translate(13.5, 0.2, 9.6), 'steel', fl(13.5, 9.6), upF, [0.8, 0.8, 0.8]);
     put(D, new THREE.CylinderGeometry(0.155, 0.155, 0.03, 16).translate(13.5, 0.41, 9.6), 'steel', fl(13.5, 9.6), upF, [0.8, 0.8, 0.8]);
+    D.tag = '';
     D.box('kick', 6.6 + 1.6, 0.003, 7.55, 9.0, 0.01, 8.1, [8.6, 0.001, 7.8], upF, [2.5, 2.2, 1.8]); }
   return D;
 }
@@ -968,7 +973,7 @@ function plant(D: DetailBuilder, x: number, z: number, h: number, seed: number) 
   for (let i = 0; i < 14; i++) {
     const a = r() * Math.PI * 2, lean = 0.25 + r() * 0.5, len = h * (0.5 + r() * 0.5);
     const g = new THREE.PlaneGeometry(0.07, len).translate(0, len / 2, 0).rotateX(-lean).rotateY(a).translate(x + Math.cos(a) * 0.05, 0.42, z + Math.sin(a) * 0.05);
-    mesh(g, 'aid', [0.7 + r() * 0.5, 0.9 + r() * 0.4, 0.7]);
+    D.tag = 'leaf'; mesh(g, 'aid', [0.7 + r() * 0.5, 0.9 + r() * 0.4, 0.7]); D.tag = '';
   }
 }
 

@@ -29,6 +29,12 @@ export function chartUv(atlas: Atlas, c: Chart, p: V3): [number, number] {
   return [(c.x + PAD + (s / f.lu) * c.w) / atlas.width, (c.y + PAD + (t / f.lv) * c.h) / atlas.height];
 }
 
+/** A dressing piece's bounds, material key, breakable role ('' if it does not break) and vertex range. */
+export interface DressProxy { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; key: string; role: string; from: number; count: number }
+/** Roles that follow from the material: screens, status lights, glass (bottles, jars, glassware). Others (bins,
+ * mugs, a plant's leaves) are tagged where they are made. */
+const ROLE_OF_KEY: Record<string, string> = { screen: 'screen', led: 'led', ledAmber: 'led', glass: 'glass', amber: 'glass' };
+
 /** Collects detail geometry per material key. Each piece names the surface it stands on by a point and normal. */
 export class DetailBuilder {
   readonly parts = new Map<string, GeoArrays>();
@@ -37,8 +43,18 @@ export class DetailBuilder {
   /** Archive boxes to draw instanced (render/archivebox.ts): front centre-bottom on the shelf face, a turn about the
    * vertical, a tilt, the box front's width and height, its depth out from the face, a tint and a label variant. */
   readonly boxes: { x: number; y: number; z: number; yaw: number; tilt: number; w: number; h: number; depth: number; tint: V3; label: number }[] = [];
-  /** A bounding box and material key for each piece, so the scene can mark dressing a round passes through. */
-  readonly proxies: { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; key: string }[] = [];
+  /** A bounding box and material key for each piece, so the scene can mark dressing a round passes through; its role
+   * when it can break (map-fill 10.2) and its vertices' range in its key's arrays, so the art layer can remove it. */
+  readonly proxies: DressProxy[] = [];
+  /** The breakable role given to pieces added from now on ('' derives it from the key). */
+  tag = '';
+  private proxy(key: string, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, from: number): DressProxy {
+    // Flat glass (a puddle's sheen) is not a breakable.
+    const role = this.tag || ((key === 'glass' || key === 'amber') && y1 - y0 < 0.012 ? '' : ROLE_OF_KEY[key] || '');
+    const p: DressProxy = { x0, y0, z0, x1, y1, z1, key, role, from, count: 0 };
+    this.proxies.push(p);
+    return p;
+  }
   constructor(private atlas: Atlas) {}
   private arrays(key: string) {
     let a = this.parts.get(key);
@@ -49,8 +65,7 @@ export class DetailBuilder {
   box(key: string, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, on: V3, n: V3, tint: V3 = [1, 1, 1], skipBack = true) {
     const c = parentChart(this.atlas, on, n);
     if (!c) { this.missed++; this.misses.push(`${key}@${on.map(v => v.toFixed(2))}`); return; }
-    const a = this.arrays(key);
-    this.proxies.push({ x0, y0, z0, x1, y1, z1, key });
+    const a = this.arrays(key), px = this.proxy(key, x0, y0, z0, x1, y1, z1, a.position.length / 3);
     const faces: [V3, V3, V3, V3, V3][] = [
       [[1, 0, 0], [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]],
       [[-1, 0, 0], [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]],
@@ -70,6 +85,7 @@ export class DetailBuilder {
       }
       a.index.push(b, b + 1, b + 2, b, b + 2, b + 3);
     }
+    px.count = a.position.length / 3 - px.from;
   }
   /** Any indexed mesh (lathe, tube) placed in the world, standing on the surface through `on`. */
   mesh(key: string, position: ArrayLike<number>, normal: ArrayLike<number>, index: ArrayLike<number> | null, on: V3, n: V3, tint: V3 = [1, 1, 1], uv?: ArrayLike<number>) {
@@ -78,7 +94,7 @@ export class DetailBuilder {
     const a = this.arrays(key), b = a.position.length / 3, count = position.length / 3;
     { let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
       for (let i = 0; i < count; i++) { const x = position[i * 3], y = position[i * 3 + 1], z = position[i * 3 + 2]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z; }
-      if (count) this.proxies.push({ x0, y0, z0, x1, y1, z1, key }); }
+      if (count) this.proxy(key, x0, y0, z0, x1, y1, z1, b).count = count; }
     for (let i = 0; i < count; i++) {
       const p: V3 = [position[i * 3], position[i * 3 + 1], position[i * 3 + 2]];
       a.position.push(...p); a.normal.push(normal[i * 3], normal[i * 3 + 1], normal[i * 3 + 2]); a.color.push(...tint);
