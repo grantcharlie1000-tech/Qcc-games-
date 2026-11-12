@@ -60,6 +60,8 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   const hemi = new THREE.HemisphereLight(0xffffff, 0x6a645c, 0.6), key = new THREE.DirectionalLight(0xffffff, 1.4), fill = new THREE.DirectionalLight(0xc8d4ff, 0.35);
   scene.add(hemi, key, fill);
   const holder = new THREE.Group(); scene.add(holder);
+  // The flash's light on the weapon: always in the scene (a fixed light count), dark unless a shot is in flight.
+  const flashLight = new THREE.PointLight(0xffb070, 0, 1.2, 2); holder.add(flashLight);
   if (import.meta.env?.DEV) (globalThis as { __heroVM?: unknown }).__heroVM = { scene, hemi, key, fill, camera, renderer, get timing() { return timing; } };
   // Reflections: the environment session's probe when it exists, else a neutral studio room, prefiltered once.
   let ownEnv: THREE.Texture | null = null;
@@ -152,8 +154,9 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   Promise.allSettled(loads).then(() => { ready = true; setTimeout(() => { if (!warmed && !disposed) warm(); }, 0); });
   // Motion state.
   const swayY = new Spring(14, 0.7), swayP = new Spring(14, 0.7), swayR = new Spring(12, 0.6);
-  const kZ = new Spring(28, 0.55), kP = new Spring(22, 0.5), kY = new Spring(20, 0.6), kR = new Spring(18, 0.45), adsS = new Spring(22, 1), sprintS = new Spring(10, 1), useS = new Spring(9, 1);
-  let lastYaw = 0, lastPitch = 0, gait = 0, cycle = 1, shots = 0, empty = false, lastReload = 0, curId: WeaponId = 'ar', curSquad = -1, swapPrev = 0, time = 0;
+  // Recoil: a stiff, quick spring for the rearward kick so it snaps back; aim: about 0.25 s with a slight settle.
+  const kZ = new Spring(42, 0.62), kP = new Spring(22, 0.5), kY = new Spring(20, 0.6), kR = new Spring(18, 0.45), adsS = new Spring(13, 0.8), sprintS = new Spring(10, 1), useS = new Spring(9, 1);
+  let burst = 0, lastYaw = 0, lastPitch = 0, gait = 0, cycle = 1, shots = 0, empty = false, lastReload = 0, curId: WeaponId = 'ar', curSquad = -1, swapPrev = 0, time = 0;
   const cases = Array.from({ length: CASES }, () => ({ t: 9, p: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Euler(), w: new THREE.Vector3() }));
   let caseNext = 0, flashLife = 0;
   const frame = idleFrame();
@@ -163,8 +166,11 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
 
   function fire(id: WeaponId) {
     const k = KICK[id], first = cycle > 0.25 ? 1.35 : 1, r = (a: number) => (Math.random() * 2 - 1) * a;
-    kZ.v += k.back * first; kP.v += k.rise * first * (0.8 + Math.random() * 0.4); kY.v += r(k.yaw); kR.v += r(k.roll);
-    cycle = 0; shots++; flashLife = 0.05;
+    // Rise builds over a burst: each shot within a quarter second of the last adds to it.
+    burst = cycle < 0.25 ? Math.min(burst + 1, 7) : 0;
+    kZ.v += k.back * 1.4 * first; kP.v += k.rise * first * (0.8 + Math.random() * 0.4) * (1 + burst * 0.12); kY.v += r(k.yaw); kR.v += r(k.roll) + k.roll * 0.25;
+    // The flash lasts four frames at 60 fps, with a brief light on the weapon.
+    cycle = 0; shots++; flashLife = 0.066;
     flash.scale.setScalar(0.12 + Math.random() * 0.06); (flash.material as THREE.SpriteMaterial).rotation = Math.random() * 6;
     if (id === 'shotgun') return; // the hull ejects when the pump is worked
     const c = cases[caseNext++ % CASES];
@@ -183,7 +189,9 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       if (id !== curId) { r.setWeapon(id); curId = id; }
       const still = view.reduced ? 0 : 1;
       // Aim, sprint and "using something" blends.
-      const ads = smooth(Math.min(1, Math.max(0, adsS.step(p.adsT, dt))));
+      const adsRaw = adsS.step(p.adsT, dt), ads = smooth(Math.min(1, Math.max(0, adsRaw))), settle = Math.max(0, adsRaw - 1);
+      // The stock comes to the cheek first: the weapon's travel toward the eye leads its move to the centre.
+      const adsZ = smooth(Math.min(1, Math.max(0, adsRaw * 1.4)));
       const sprint = sprintS.step(p.sprint ? 1 : 0, dt), use = useS.step(p.act !== ACT.none || p.using ? 1 : 0, dt);
       // Look sway: mouse movement drives spring velocity, soft-clamped, much less when aimed.
       const dyaw = wrap(view.yaw - lastYaw), dpitch = view.pitch - lastPitch; lastYaw = view.yaw; lastPitch = view.pitch;
@@ -209,8 +217,8 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       r.weaponBones[WB.trigger].rotation.x = cycle < 0.08 ? -0.25 : 0;
       // Compose the weapon's pose in camera space.
       // Dev only: `__heroHip` overrides the hip placement, to try holds in the game (evidence script).
-      const H = (import.meta.env?.DEV && (globalThis as { __heroHip?: { p: [number, number, number]; r: [number, number, number] } }).__heroHip) || hold.hip, x0 = H.p[0] * (1 - ads), y0 = H.p[1] * (1 - ads), z0 = H.p[2] + (hold.adsZ - H.p[2]) * ads;
-      const arc = Math.sin(Math.PI * ads) * 0.02;
+      const H = (import.meta.env?.DEV && (globalThis as { __heroHip?: { p: [number, number, number]; r: [number, number, number] } }).__heroHip) || hold.hip, x0 = H.p[0] * (1 - ads), y0 = H.p[1] * (1 - ads) - settle * 0.03, z0 = H.p[2] + (hold.adsZ - H.p[2]) * adsZ;
+      const arc = Math.sin(Math.PI * ads) * 0.008;
       let x = x0 - arc * 0.5, y = y0 - arc, z = z0;
       let ax = H.r[0] * (1 - ads), ay = H.r[1] * (1 - ads), az = H.r[2] * (1 - ads);
       x += Math.sin(gait) * 0.006 * bobA - sy * 0.25 * (1 - ads * 0.6); y += -Math.abs(Math.cos(gait)) * 0.008 * bobA + Math.sin(time * 1.6) * 0.0012 * still * (1 - ads * 0.7) - sp * 0.2 * (1 - ads * 0.6);
@@ -218,7 +226,8 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       // Sprint: carried across the chest, muzzle down and left. Using: lowered out of the way.
       x -= sprint * 0.05; y -= sprint * 0.035 + use * 0.24; z += sprint * 0.03; ay += sprint * 0.62; ax -= sprint * 0.28 + use * 0.5; az += sprint * 0.25;
       // Swap: down and back up. Melee: a forward bash.
-      if (p.swap > 0) { const t = smooth(p.swap / 0.42); y -= t * 0.28; ax -= t * 0.7; }
+      // Swap: the weapon rolls out (and the next one in) low on the right, the holster side.
+      if (p.swap > 0) { const t = smooth(p.swap / 0.42); x += t * 0.1; y -= t * 0.24; ax -= t * 0.45; ay -= t * 0.3; az -= t * 0.85; }
       if (p.swap > swapPrev) cycle = 1;
       swapPrev = p.swap;
       if (p.meleeCool > 0.4) { const t = Math.sin(Math.PI * (0.75 - p.meleeCool) / 0.35); z -= t * 0.16; ay -= t * 0.45; x -= t * 0.06; ax += t * 0.15; }
@@ -260,6 +269,7 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       if (import.meta.env?.DEV && (globalThis as { __heroFlashHold?: boolean }).__heroFlashHold && shots > 0) flashLife = Math.max(flashLife, 0.05 + dt);
       if (flashLife > 0) { flashLife -= dt; flash.visible = flashLife > 0 && !scoped; muzzleInView(r.gun, S.muzzle, tmp); r.root.worldToLocal(tmp); flash.position.copy(tmp); }
       else flash.visible = false;
+      flashLight.intensity = flash.visible ? VM_GAIN * 1.6 : 0; flashLight.position.copy(flash.position).applyMatrix4(r.root.matrix);
       r.gun.visible = !scoped;
       for (const a of r.root.children) if ((a as THREE.SkinnedMesh).isSkinnedMesh) a.visible = !scoped;
       camera.fov = 54 - ads * 8; camera.updateProjectionMatrix();

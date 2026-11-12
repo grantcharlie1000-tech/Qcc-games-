@@ -173,6 +173,21 @@ Verdict: it wins. The fingers read as fingers wrapping the handguard, and the tr
 to do: seams and a texture (it uses the procedural glove colours now), a slimmer cuff, and the sculpted glove is
 still built at load before being replaced (about 0.7 s once). `?herohand=sculpt` brings the old one back.
 
+## First-person animation, pass 1 (approved changes)
+
+`animation-filmstrips-v2.jpg` (old above new: aim, recoil, swap; new walk bob and sway) and `animation-reload-v2.jpg`.
+- Aim: spring 13 rad/s, damping 0.8 (about 0.25 s with a slight overshoot that drops the weapon a few mm as it settles);
+  the travel toward the eye leads the move to the centre (stock to the cheek first); arc 8 mm instead of 20.
+- Recoil: rearward kick 1.4 times stronger on a stiffer spring (fast return); rise grows 12 % a shot over a burst (up to
+  7 shots); a constant roll added to the random one; flash 66 ms (4 frames at 60 fps) with a point light on the
+  weapon that is always in the scene (fixed light count) and dark between shots. The wall light needs a world flash for
+  own shots in scene.ts (`fx.flash` at the muzzle), not done.
+- Swap: the weapon rolls out and in low on the right (holster side) instead of straight down.
+- Reload: the spent magazine falls straight out of the well and out of frame; the hand lets go and then fetches the
+  fresh one; a downward tug after seating; the palm slap on the bolt catch from empty as before.
+- Honest re-rating from stills: aim 5, recoil 4, swap 4.5 to 5, reload 5, bob and sway about 5. The changes are real but
+  modest, and stills at software frame rates do not show timing well; it needs judging in motion on a real machine.
+
 ## Decisions (made without asking; say if wrong)
 
 - New assets go to `hero/ar5/`, not `hero/ar/`: `render/patchhero/` (the `?weapons=patch` switch, not mine) cuts its

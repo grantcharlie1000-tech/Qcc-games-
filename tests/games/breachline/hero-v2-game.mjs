@@ -54,6 +54,11 @@ for (const [name, at] of PLACES) {
     await frames('recoil', 5, 3, { fire: true });
     await hold({}, 1.2); await settle();
     await frames('swap', 5, 8, {}, { swap: true });
+    await hold({}, 1.0, { swap: true }); await hold({}, 1.0); await settle();
+    await frames('bob', 5, 6, { mz: 1 });
+    await hold({}, 0.8); await settle();
+    // Sway: turn by small steps between frames.
+    for (let i = 0; i < 5; i++) { await page.evaluate(k => { const h = window.__breachlineTest, s = h.state(), me = s.players[s.self]; h.look((me.yaw ?? 1.57) + 0.06 * (k + 1), -0.04); h.hold({}, 3 / 60); }, i); await shot(`film-sway-${i}`); }
   } else if (job === 'cost') {
     // The viewmodel's cost per frame in each state: script ms (mean over 30 drawn frames), draw calls, triangles.
     const measure = async (label, patch, once = null) => {

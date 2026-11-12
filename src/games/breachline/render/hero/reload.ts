@@ -52,21 +52,27 @@ function magReload(t: number, B: Record<string, number[]>, empty: boolean, pisto
   const drop = ease(t, o, o + (fe - o) * 0.7), rise = ease(t, fe, i - 0.05), insert = ease(t, i - 0.05, i), slam = ease(t, i + (s - i) * 0.5, s);
   const draw = ease(t, r, o);
   let y = -0.1 * draw, z = 0, rx = 0, rz = 0, x = 0;
-  // Away to the frame's lower left, turned so its side shows, rather than out of view.
-  if (t >= o && t < fe) { y += -0.17 * drop; x = -0.13 * drop; z = 0.05 * drop; rz = 0.95 * drop; rx = -0.35 * drop; }
+  // The spent magazine falls straight out of the well and out of frame; then, hidden, its bone waits at the lower left
+  // where the support hand takes the fresh one from the vest.
+  const fall = ease(t, o, o + (fe - o) * 0.3), gone = o + (fe - o) * 0.3;
+  if (t >= o && t < gone) { y += -0.42 * fall * fall; rx = -0.12 * fall; }
+  else if (t >= gone && t < fe) { y += -0.17 * drop; x = -0.13 * drop; z = 0.05 * drop; rz = 0.95 * drop; rx = -0.35 * drop; }
   if (t >= fe) {
     const away = 1 - rise;
     y = -0.07 * (1 - insert) - 0.012 * insert * (1 - slam) - 0.17 * away; x = -0.13 * away; z = 0.05 * away; rz = 0.95 * away; rx = -0.35 * away + 0.15 * (1 - insert) * rise;
     // A short wind-up before the slam.
     if (t > i && t < s) y -= 0.006 * pulse(t, i, i + (s - i) * 0.5);
   }
-  if (t >= s) { y = 0.0015 * pulse(t, s, s + 0.04); x = z = rx = rz = 0; }
+  // Seated, then a short downward tug to check it.
+  if (t >= s) { y = 0.0015 * pulse(t, s, s + 0.03) - 0.0045 * pulse(t, s + 0.035, s + 0.075); x = z = rx = rz = 0; }
   f.magP = [x, y, z]; f.magR = [rx, 0, rz];
   // The spent magazine is let go at the frame edge and the fresh one comes up from the vest in the same place.
-  f.magOn = !(t > o + (fe - o) * 0.85 && t < fe + (i - fe) * 0.06);
+  f.magOn = !(t > gone && t < fe);
   // Support hand: from the hold to the magazine by the release, with it until seated, then home or to the handle.
-  const toMag = ease(t, 0, r * 0.95), offMag = ease(t, s + 0.02, s + 0.1);
-  let hold = 1 - toMag, mag = toMag * (1 - offMag), handle = 0;
+  // The hand lets the spent magazine fall (back toward the handguard for a moment), then goes for the fresh one.
+  const letGo = pulse(t, o, gone + (fe - gone) * 0.4);
+  const toMag = ease(t, 0, r * 0.95), offMag = ease(t, s + 0.08, s + 0.14);
+  let hold = 1 - toMag + toMag * letGo * 0.85, mag = toMag * (1 - offMag) * (1 - letGo * 0.85), handle = 0;
   if (empty) {
     const toHandle = ease(t, s + 0.02, k - 0.03), offHandle = ease(t, k + 0.05, end);
     handle = toHandle * (1 - offHandle); hold = offHandle; mag = toMag * (1 - toHandle);
