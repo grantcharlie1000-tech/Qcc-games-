@@ -142,6 +142,24 @@ bone per hand and no finger bones, so the fingers cannot be posed round the hand
 405 in the hand (ours about 2,300 a hand), on the whole figure's texture. In the hand it reads worse: a black sleeve
 and an open, fanned hand that pokes through the handguard. Verdict: keep the sculpted arms.
 
+## First-person animation, honest read (item 5, not reworked yet)
+
+Filmstrips: `animation-filmstrips.jpg` (aim, recoil, swap; about 4 to 8 drawn frames apart) and the reload strips in
+`gate5-ar5-*-reload.jpg`.
+- Aim transition, about 4: hip to aimed in about 0.15 s with a swing up and left on the way; it snaps rather than
+  travels, and the support hand does not shift its grip. Would change: 0.25 s with an ease-in, a shorter arc, the stock
+  coming to the cheek first, and a small settle at the end.
+- Recoil, about 3.5: a small backward kick and a little rise; the rifle hardly moves at the hip, there is no
+  per-shot camera kick in this layer and the flash lasts 50 ms. Would change: a sharper rearward impulse with a fast
+  return, rise that builds over a burst, a slight roll, and the bolt and casing timed to the kick.
+- Swap, about 4.5: the rifle drops straight out of frame and the sidearm rises straight in; no wrist turn, no hand
+  change, and the sidearm is still the old model. Would change: the rifle rolls out to the right, the pistol comes up
+  from the holster side with the support hand joining.
+- Reload, about 5: the rifle tips and cants and the magazine change reads, but beats run together, the empty magazine
+  vanishes rather than falling, and the support hand cuts across the receiver. Would change: hold each beat a few frames,
+  drop the old magazine out of frame, a clear tug to seat it, and on empty a palm slap on the bolt catch with a jolt.
+- Sway and walk bob: not filmed (needs live mouse input); in play they look reasonable but small.
+
 ## Decisions (made without asking; say if wrong)
 
 - New assets go to `hero/ar5/`, not `hero/ar/`: `render/patchhero/` (the `?weapons=patch` switch, not mine) cuts its
