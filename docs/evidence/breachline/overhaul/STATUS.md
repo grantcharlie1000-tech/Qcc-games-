@@ -4,6 +4,28 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+### Corridor, Lobby, and the Lab lift
+
+**Lab lift**
+- White wall cupboards above head height lead every Lab partition face. They are panel items, so they fall with their cells.
+- Stronger cool pools of light.
+- Grout lines are a little wider, so the tiles no longer break up at distance.
+- The splashback is the existing tile band (to 1.5 m) behind everything.
+
+**Corridor**
+- Look as before, plus contact shadows, light pools, darker junctions, and heavier worn paths from every doorway.
+
+**Lobby**
+- Warm stone slab cladding to 1.2 m: 60 x 40 cm slabs in grout, each a shade off its neighbours. This uses the same shader as the Lab tiles, which now takes a size.
+- Off-white above, warm light, and wear from the doors.
+
+**Evidence:** `round2/lab-lift-before-after.png`, `round2/corridor-before-after.png`, `round2/lobby-before-after.png`.
+
+**Honest rating**
+- Lab 7: the cupboards break up the upper wall, and the tiles read.
+- Corridor 6.5: little changed by design ("as now").
+- Lobby 6.5: the cladding reads close up but is soft from the doorway.
+
 ### Office and Lab: wall items, room look and light, floor wear
 
 - **Wall items that fall with their cells.** Partition panels now carry room-specific hung items: whiteboards with writing or a diagram, pinboards with paper, framed prints and plans, a wall calendar, coat hooks with jackets, posters and a shelf (`levelmesh.ts` `ROOM_DECOR`, `decorItem`). They are drawn on the panel, so they go with its cells. When a cell under one goes, it drops as debris and emits the cosmetic event `{k:'piece', family:'wallitem', state:'wrecked'}` (`scene.ts` `dropDecor`). Nothing touches collision. Checked in the dev build by shooting a framed print on an Office partition; it goes with the hole (`round2/wallitem-fall.png`).
@@ -526,7 +548,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** map-fill round 2: Office and Lab taken through wall items, room look and light, and floor wear; Office rated 7, Lab 6.5; waiting for the planner before rolling through the other rooms.
+**Where I am (keep current):** map-fill round 2, rolling through the rooms: Office, Lab, corridor and Lobby done; Server Room and Archive next.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

@@ -33,8 +33,8 @@ export interface ArtMaterialOptions {
   specOnly?: boolean;
   /** Painted lower band by world height: tint below \`height\`, a dark 4 cm rail at the top of it. */
   band?: { height: number; tint: readonly [number, number, number] } | null;
-  /** Glazed 15 cm tiles below the band's height, with grout lines. */
-  tiles?: boolean;
+  /** Tiles or slabs (width, height in metres) below the band's height, with grout lines. */
+  tiles?: readonly [number, number] | null;
   /** A polished floor's wear: a dull walked path along the line at `centre` (on world x or z) and dull margins where the
    * polisher never reached, `half` metres either side. */
   wear?: { axis: 'x' | 'z'; centre: number; half: number } | null;
@@ -63,6 +63,7 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
     artBoxMax: { value: new THREE.Vector3(1e4, 1e4, 1e4) },
     artProbe: { value: new THREE.Vector3() },
     artWear: { value: new THREE.Vector4(o.wear?.axis === 'x' ? 1 : 0, o.wear?.centre ?? 0, o.wear?.half ?? 0, 0) },
+    artTile: { value: new THREE.Vector2(o.tiles?.[0] ?? 0.15, o.tiles?.[1] ?? 0.15) },
     artBand: { value: new THREE.Vector4(o.band?.tint[0] ?? 1, o.band?.tint[1] ?? 1, o.band?.tint[2] ?? 1, o.band?.height ?? -1) },
   };
   const defs = [o.dirMap && o.lightMap ? 'ART_DIRMAP' : '', o.vertexLight ? 'ART_VERTEX_LIGHT' : '', o.sh ? 'ART_SH' : '', o.band ? 'ART_BAND' : '', o.band && o.tiles ? 'ART_TILES' : '', o.wear ? 'ART_WEAR' : '', o.specOnly ? 'ART_SPECONLY' : ''].filter(Boolean);
@@ -74,18 +75,18 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
       .replace('#include <common>', '#include <common>\nvarying vec3 vArtWorld;')
       .replace('#include <project_vertex>', '#include <project_vertex>\n\tvArtWorld = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${defs.map(d => `#define ${d}`).join('\n')}\nuniform sampler2D artDirMap;\nuniform vec3 artSH[4];\nuniform float artEnvLight;\nuniform vec4 artBand;\nuniform vec4 artWear;\nuniform vec3 artBoxMin;\nuniform vec3 artBoxMax;\nuniform vec3 artProbe;\nvarying vec3 vArtWorld;`)
+      .replace('#include <common>', `#include <common>\n${defs.map(d => `#define ${d}`).join('\n')}\nuniform sampler2D artDirMap;\nuniform vec3 artSH[4];\nuniform float artEnvLight;\nuniform vec4 artBand;\nuniform vec2 artTile;\nuniform vec4 artWear;\nuniform vec3 artBoxMin;\nuniform vec3 artBoxMax;\nuniform vec3 artProbe;\nvarying vec3 vArtWorld;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
 #ifdef ART_BAND
 	float artRail = smoothstep( artBand.w - 0.002, artBand.w, vArtWorld.y ) - smoothstep( artBand.w + 0.038, artBand.w + 0.04, vArtWorld.y );
 	diffuseColor.rgb *= mix( vArtWorld.y < artBand.w ? artBand.rgb : vec3( 1.0 ), vec3( 0.18 ), artRail );
 	#ifdef ART_TILES
-		// Glazed tiles to the band: 15 cm squares in grey grout, each a shade off its neighbours.
+		// Tiles or slabs to the band, in grey grout, each a shade off its neighbours.
 		vec3 artTN = inverseTransformDirection( normalize( vNormal ), viewMatrix );
-		vec2 artTq = vec2( abs( artTN.x ) > 0.5 ? vArtWorld.z : vArtWorld.x, vArtWorld.y - 0.1 ) / 0.15;
-		vec2 artTD = ( 0.5 - abs( fract( artTq ) - 0.5 ) ) * 0.15;
-		float artGrout = 1.0 - smoothstep( 0.0012, 0.0035, min( artTD.x, artTD.y ) );
-		float artGlaze = 0.96 + 0.06 * fract( sin( dot( floor( artTq ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+		vec2 artTq = vec2( abs( artTN.x ) > 0.5 ? vArtWorld.z : vArtWorld.x, vArtWorld.y - 0.1 ) / artTile;
+		vec2 artTD = ( 0.5 - abs( fract( artTq ) - 0.5 ) ) * artTile;
+		float artGrout = 1.0 - smoothstep( 0.002, 0.005, min( artTD.x, artTD.y ) );
+		float artVar = artTile.x > 0.3 ? 0.18 : 0.06, artGlaze = 1.0 - artVar * 0.6 + artVar * fract( sin( dot( floor( artTq ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
 		diffuseColor.rgb *= vArtWorld.y < artBand.w && vArtWorld.y > 0.1 ? mix( vec3( artGlaze ), vec3( 0.62, 0.63, 0.64 ), artGrout ) : vec3( 1.0 );
 	#endif
 	// Boot-height grime on the band: darker and dirtier towards the floor.

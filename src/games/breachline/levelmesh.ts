@@ -255,7 +255,7 @@ const hash = (a: number, b: number, c: number) => { const v = Math.sin(a * 127.1
 /** What each room hangs on its partition walls (map-fill second round), in order of preference. */
 const ROOM_DECOR: Record<string, string[]> = {
   Office: ['whiteboard', 'pinboard', 'calendar', 'coats', 'print'],
-  Lab: ['whiteboard', 'shelf', 'plan', 'poster', 'pinboard'],
+  Lab: ['cupboard', 'plan', 'cupboard', 'whiteboard', 'poster'],
   Archive: ['shelf', 'plan', 'calendar', 'shelf', 'pinboard'],
   'Break Room': ['pinboard', 'calendar', 'poster', 'coats', 'print'],
   Lobby: ['print', 'plan', 'poster', 'print'],
@@ -263,7 +263,7 @@ const ROOM_DECOR: Record<string, string[]> = {
   Garage: ['pinboard', 'calendar', 'shelf', 'poster'],
   Corridor: ['poster', 'plan', 'print', 'poster', 'pinboard'],
 };
-const ITEM_W: Record<string, number> = { whiteboard: 1.3, pinboard: 1.0, calendar: 0.38, coats: 0.9, print: 0.6, plan: 0.75, poster: 0.5, shelf: 1.0 };
+const ITEM_W: Record<string, number> = { whiteboard: 1.3, pinboard: 1.0, calendar: 0.38, coats: 0.9, print: 0.6, plan: 0.75, poster: 0.5, shelf: 1.0, cupboard: 1.5 };
 /** One hung item's pieces, from u = a, as flat boxes standing off the face. */
 function decorItem(kind: string, a: number, side: 1 | -1, h: (k: number) => number, out: PanelDecor[]) {
   const b = a + ITEM_W[kind], box = (u0: number, u1: number, y0: number, y1: number, d: number, tint: RGB) => out.push({ u0, u1, y0, y1, side, d, tint });
@@ -319,6 +319,13 @@ function decorItem(kind: string, a: number, side: 1 | -1, h: (k: number) => numb
       for (let i = 0; i < 4; i++) box(a + 0.05, b - 0.05 - h(110 + i) * 0.15, 1.36 + i * 0.045, 1.38 + i * 0.045, 0.008, [0.25, 0.25, 0.27]);
       break;
     }
+    case 'cupboard': {
+      // A run of white wall cupboards above head height: the carcass, door gaps, handles and a shadow line under it.
+      box(a, b, 1.75, 2.35, 0.32, [1.25, 1.28, 1.3]);
+      for (let k = 1; k < 3; k++) box(a + k * 0.5 - 0.003, a + k * 0.5 + 0.003, 1.76, 2.34, 0.323, [0.35, 0.36, 0.38]);
+      for (let k = 0; k < 3; k++) { const u = a + k * 0.5 + (k % 2 ? 0.04 : 0.44); box(u, u + 0.02, 1.79, 1.91, 0.335, [0.5, 0.52, 0.55]); }
+      break;
+    }
     case 'shelf': {
       // Two wall shelves on brackets, lever-arch files standing on them.
       for (const y of [1.3, 1.72]) {
@@ -352,11 +359,12 @@ export function panelDecor(p: Panel): PanelDecor[] {
     const mid = p.u0 + w / 2, at = p.axis === 'x' ? [mid, p.pos + side * 0.6] : [p.pos + side * 0.6, mid];
     const room = MAP.rooms.find(q => at[0] > q.x0 && at[0] < q.x1 && at[1] > q.z0 && at[1] < q.z1)?.name ?? 'Corridor';
     const kinds = ROOM_DECOR[room] ?? ROOM_DECOR.Corridor;
-    let u = p.u0 + 0.25 + h(3) * 0.3, k = Math.floor(h(1) * kinds.length);
+    // The Lab's faces all lead with its wall cupboards.
+    let u = p.u0 + 0.25 + h(3) * 0.3, k = room === 'Lab' ? 0 : Math.floor(h(1) * kinds.length);
     for (let n = 0; n < 3; n++) {
       const kind = kinds[(k + n) % kinds.length], iw = ITEM_W[kind];
       if (u + iw > p.u0 + w - 0.25) break;
-      if (h(11 + n) < 0.82) decorItem(kind, u, side, q => h(q + n * 131), out);
+      if (kind === 'cupboard' || h(11 + n) < 0.82) decorItem(kind, u, side, q => h(q + n * 131), out);
       u += iw + 0.35 + h(21 + n) * 0.5;
     }
     // A double socket low down, and now and then a light switch near one end.

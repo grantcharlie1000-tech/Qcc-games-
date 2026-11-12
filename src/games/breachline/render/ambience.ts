@@ -11,9 +11,11 @@ import { SET_PIECES } from './setpieces-data';
 
 type RGB = readonly [number, number, number];
 /** Each room's identity: its wall tone, its dado (height and tone), the colour of its light, how dark its corners go. */
-export const ROOM_LOOK: Record<string, { wall: RGB; band?: { height: number; tint: RGB }; rail?: RGB; tiles?: boolean; light: RGB; corners: number; wear: RGB; wearOpacity: number; scuffs?: boolean; tape?: boolean }> = {
+export const ROOM_LOOK: Record<string, { wall: RGB; band?: { height: number; tint: RGB }; rail?: RGB; tiles?: readonly [number, number]; light: RGB; pool?: number; corners: number; wear: RGB; wearOpacity: number; scuffs?: boolean; tape?: boolean }> = {
   office: { wall: [1.04, 0.98, 0.88], band: { height: 1.0, tint: [0.5, 0.36, 0.25] }, rail: [0.32, 0.22, 0.15], light: [1.0, 0.86, 0.66], corners: 0.42, wear: [0.16, 0.13, 0.1], wearOpacity: 0.3 },
-  lab: { wall: [1.18, 1.23, 1.28], band: { height: 1.5, tint: [1.3, 1.34, 1.38] }, rail: [1.2, 1.22, 1.25], tiles: true, light: [0.82, 0.92, 1.0], corners: 0.36, wear: [0.2, 0.2, 0.19], wearOpacity: 0.22, scuffs: false, tape: true },
+  corridor: { wall: [1, 1, 1], light: [1.0, 0.95, 0.88], corners: 0.4, wear: [0.15, 0.14, 0.12], wearOpacity: 0.32 },
+  lobby: { wall: [1.02, 0.99, 0.94], band: { height: 1.2, tint: [0.76, 0.69, 0.6] }, rail: [0.5, 0.46, 0.4], tiles: [0.6, 0.4], light: [1.0, 0.9, 0.75], pool: 0.35, corners: 0.4, wear: [0.16, 0.14, 0.12], wearOpacity: 0.28 },
+  lab: { wall: [1.18, 1.23, 1.28], band: { height: 1.5, tint: [1.3, 1.34, 1.38] }, rail: [1.2, 1.22, 1.25], tiles: [0.15, 0.15], light: [0.82, 0.92, 1.0], pool: 0.5, corners: 0.36, wear: [0.2, 0.2, 0.19], wearOpacity: 0.22, scuffs: false, tape: true },
 };
 
 let radial: THREE.CanvasTexture | null = null, ramp: THREE.CanvasTexture | null = null;
@@ -156,7 +158,7 @@ export function roomAmbience(region: Region, runs: readonly WallRunLike[]): { me
   }
   const radialMap = radialTex(), rampMap = rampTex();
   const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, map: radialMap, transparent: true, opacity: 0.72, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-  const poolMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(look.light[0] * 0.3, look.light[1] * 0.3, look.light[2] * 0.3), map: radialMap, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+  const poolMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(...look.light).multiplyScalar(look.pool ?? 0.3), map: radialMap, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
   const edgeMat = new THREE.MeshBasicMaterial({ color: 0x000000, map: rampMap, transparent: true, opacity: look.corners, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const wearMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(...look.wear), map: wearMap(), transparent: true, opacity: look.wearOpacity, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   const tapeMat = new THREE.MeshBasicMaterial({ map: stripeMap(), color: 0x8a8a8a, depthWrite: false, transparent: true, opacity: 0.92, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
