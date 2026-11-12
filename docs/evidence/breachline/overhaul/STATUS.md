@@ -64,6 +64,9 @@ Fighters and the weapon in hand each cost 0 to 20 ms (noise).
   | Yard | 96 | 90 |
 
   Pictures still differ by at most 0.19% (edge noise).
+- **Exterior surfaces.**
+  - An indoor room's outside surfaces (roof, outer brick, the ground under its floor, road lines) are drawn only when the camera is outdoors or above 2.6 m (the menu's overview).
+  - Draws: corridor 320 (it was 405 with culling off), Lab 175 (358), Lobby 180 (409), standing outside the Lobby 155 (317). Pictures match within edge noise and the weapon's sway.
 - **What remains in the corridor:** it sees about ten rooms through their doorways, and each room's walls, floor and ceiling are many separate meshes (the Office alone draws 34).
 - A browser test checks that a room view draws less than with culling off.
 

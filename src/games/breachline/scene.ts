@@ -2,7 +2,7 @@
  * drawn with unlit materials so integrated graphics can keep up. Resolution adapts to hold the frame rate. */
 import * as THREE from 'three';
 import { setCheapShading } from './render/materials';
-import { REGIONS } from './render/levelgeo';
+import { OUTDOOR, REGIONS } from './render/levelgeo';
 import { CELL, ROUND, WALL_H, WEAPONS } from './config';
 import { Effects } from './effects';
 import { createBake, SUN, SUN_COLOR, type Bake } from './lightbake';
@@ -367,7 +367,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   // sky, meshes made later). Each frame the camera's layers are the rooms reached from its own through portals
   // (doorways, windows, holed walls) that lie in the view, up to four rooms deep. `?cull=off` draws everything.
   const cullOff = typeof location !== 'undefined' && /[?&]cull=off\b/.test(location.search);
-  const tagBox = new THREE.Box3();
+  const tagBox = new THREE.Box3(), EXTERIOR = 1 << 30;
   /** Every tagged mesh: its rooms (layer mask) and world bounds. */
   const tags = new Map<THREE.Object3D, { mask: number; box: THREE.Box3 }>();
   /** Puts every tagged mesh back on all its rooms' layers (for the probes and the warm-up, which see everything). */
@@ -388,6 +388,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
         const ox = Math.min(tagBox.max.x, r.x1) - Math.max(tagBox.min.x, r.x0), oz = Math.min(tagBox.max.z, r.z1) - Math.max(tagBox.min.z, r.z0);
         if (ox > 0 && oz > 0 && ox * oz > 0.15 * area) mask |= 1 << (i + 1);
       });
+      // An indoor room's outside surfaces (its roof, outer brick, the ground under its floor) are seen only from outside.
+      const outside = /^art:([a-z]+):(asphalt|line|grass|brick|roof|precast|concrete|container)$/.exec(o.name);
+      if (outside && !OUTDOOR.has(outside[1])) mask = EXTERIOR;
       if (mask) { o.layers.mask = mask; tags.set(o, { mask, box: tagBox.clone() }); }
     });
   }
@@ -431,7 +434,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     camera.updateMatrixWorld(); viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     reach.fill(-1); reach[home] = 0; queue.length = 0; queue.push(home);
     rects[home * 4] = -1; rects[home * 4 + 1] = -1; rects[home * 4 + 2] = 1; rects[home * 4 + 3] = 1;
-    let mask = 1 | (1 << (home + 1));
+    let mask = 1 | (1 << (home + 1)) | (OUTDOOR.has(REGIONS[home].name) || camera.position.y > 2.6 ? EXTERIOR : 0);
     while (queue.length) {
       const r = queue.shift()!;
       if (reach[r] >= 4) continue;
@@ -453,7 +456,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     if (!probesDone) return;
     for (const [o, t] of tags) {
       const m = t.mask, r = Math.log2(m) - 1;
-      if ((m & (m - 1)) !== 0 || !(m & mask) || reach[r] <= 0) { o.layers.mask = m; continue; }
+      if (m === EXTERIOR || (m & (m - 1)) !== 0 || !(m & mask) || reach[r] <= 0) { o.layers.mask = m; continue; }
       project(t.box, pr);
       o.layers.mask = Math.max(pr[0], rects[r * 4]) < Math.min(pr[2], rects[r * 4 + 2]) && Math.max(pr[1], rects[r * 4 + 1]) < Math.min(pr[3], rects[r * 4 + 3]) ? m : 0;
     }
