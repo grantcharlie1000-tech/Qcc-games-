@@ -45,6 +45,11 @@ if (set === 'decision') {
   const name = process.argv[5] || 'decision.wav';
   chain(['shot-ar-fp-in', 'shot-ar-fp-out', 'shot-ar-10m-in', 'shot-ar-60m-out', 'shot-shotgun-fp-in', 'shot-shotgun-fp-out', 'shot-shotgun-10m-in', 'shot-shotgun-60m-out', 'auto-ar-fp'], name); files.push(name);
 }
+if (set === 'guns') {
+  // The owner's set after step 1 (route A): each gun four ways, then a burst per automatic weapon.
+  for (const w of ['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol']) { chain([`shot-${w}-fp-in`, `shot-${w}-fp-out`, `shot-${w}-10m-in`, `shot-${w}-60m-out`], `a1-gun-${w}.wav`); files.push(`a1-gun-${w}.wav`); }
+  chain(['auto-ar-fp', 'auto-carbine-fp', 'auto-smg-fp'], 'a1-automatic.wav'); files.push('a1-automatic.wav');
+}
 let total = 0;
 for (const f of files) { const b = statSync(join(out, f)).size; total += b; console.log(`${f} ${(b / 1024).toFixed(0)} KB`); }
 console.log(`total ${(total / 1048576).toFixed(2)} MB`);

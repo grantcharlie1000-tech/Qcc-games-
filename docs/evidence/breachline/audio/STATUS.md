@@ -167,6 +167,48 @@ change checked against the reference sheets until every gun is within about 1.0 
    distance to the reference, and searches the gun's parameters (a few dozen) to minimise it. Then the takes'
    spread sets the variant range. Indoor rooms are not covered by these references and stay as designed.
 
+## Route A, step 1: the guns are real recordings (2026-11-12)
+
+The owner chose A ("i would pick a - real") and said the reloads need work. All six guns now play real CC0 takes:
+- **Pack:** `public/audio/breachline/pack.ogg` (316 KB, Opus 96 kb/s, mono 48 kHz) and `pack.json` (index).
+  It is built from `tests/games/breachline/audio-pack.planA.json` by `audio-pack.ts`; the library itself stays
+  outside the repository.
+- **Credit:** in `public/THIRD_PARTY_NOTICES.txt`.
+- **Loading:** the pack is fetched and decoded once at the first gesture (`Engine.loadPack`). The worker then
+  skips the synthesised guns, and if the pack fails they are rendered after all.
+- **Takes per gun:** AR 2 close takes plus 2 blends of them (each take's first 4 ms on the other's body), so a
+  burst never alternates between two. Carbine (SKS) 4. SMG 15 (3 single shots plus 12 split from the M45's
+  close bursts). Shotgun 4 (Nova and Model 12). DMR 3. Pistol 3.
+- **Mid and far takes:** 2–4 mid takes per gun for someone else's shot (kept to 150 ms so the blast after the
+  bullet's crack survives), and 2 for the far version.
+- **Trimming:** close takes are cut before the recordings' outdoor slap (45–70 ms plus a fade), so our rooms
+  supply the space.
+- **Action layer:** a synthetic bolt layer was tried on top and removed. It added ringing (the tonal term went
+  from 0 to 0.55–0.74), and the close recordings already contain the real action.
+
+| Gun | Ours vs real, near (floor 0.3–0.5) | Ours vs real, mid | Before (phase 2) near / mid |
+| --- | --- | --- | --- |
+| AR | 0.89 | 2.17 | 3.55 / 4.17 |
+| Carbine (SKS) | 0.99 | 2.48 | 3.57 / 3.06 |
+| SMG | 1.15 | 3.04 | 1.84 / 4.85 |
+| Shotgun | 1.16 | 2.32 | 3.57 / 4.05 |
+| DMR | 1.51 | 4.04 | 3.73 / 3.29 |
+| Pistol | 1.18 | 2.17 | 2.44 / 3.81 |
+
+The near shots are now within 2–4× the real take-to-take spread. The mid figures stay higher because "mid" in the
+library is an unknown distance; I compare with our 15 m.
+
+**Built site, checked:** `npm run build` passes, including the service-worker check. In the preview with sound
+on, `audio/breachline/pack.json` and `pack.ogg` load (200, `audio/ogg`), with no security-policy violations and
+no page errors, at 1x and 6x CPU throttle. The pack is decoded and in place 3.96 s (6x) and 5.0 s (1x) after the
+context starts, inside the 20 s preparation phase. Decoding takes 40–44 ms (off the main thread).
+
+**Budget:** measured, the synthesis bank without the guns is 8.89 MB and the decoded takes are 2.04 MB, so
+**10.93 MB** (budget 12). While it is being sliced, the whole decoded pack (about 2.7 MB) is held once,
+briefly. Download: 316 KB. Tests: all Breachline unit tests pass (136), and so do the sound browser tests
+(including the fixture-pack test), `play.spec`, `warm.spec` and the two-device online test. The scene-render test
+now retries a stalled offline render once.
+
 ## Decision pair for the owner (rifle and shotgun, 2026-11-12)
 
 `listen/decision-A-real.wav` and `listen/decision-B-fitted.wav` (0.79 MB each, mono 22.05 kHz) play the same nine
@@ -436,6 +478,8 @@ rooms), `listen/p1-walls.wav` (a rifle through 0, 1 and 3 wallboards, then brick
   convolvers, ducking with cancel-then-setTargetAtTime, buffer playback). That is enough; nothing of it is copied.
 
 ## Still weak
+
+- Reloads are synthetic and are the owner's named complaint: step 2.
 
 - Guns are synthetic: weighty and distinct on measurement, but not recordings. The SMG and pistol are the least
   distinct pair. Reloads are clean beats without hand or cloth detail between them.

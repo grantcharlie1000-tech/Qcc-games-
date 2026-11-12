@@ -64,9 +64,11 @@ const BED_GAIN: Record<Space, number> = { hard: 0.5, soft: 0.35, corridor: 0.5, 
 /** `options.ambience: false` leaves the room beds out (the sound lab measures single sounds that way).
  * `options.override` replaces sounds with given takes once the bank is ready: for the sound lab's auditions only;
  * the game never passes it. */
-/** A recorded sample pack to use for the guns (plan A). None ships until the owner decides; when one does, this is
- * its URL (built by tests/games/breachline/audio-pack.ts) and the credit goes in public/THIRD_PARTY_NOTICES.txt. */
-export const PACK_URL: string | null = null;
+/** The recorded gun pack (plan A, chosen by the owner 2026-11-12): real CC0 takes from The Free Firearm Sound
+ * Library, trimmed and levelled by tests/games/breachline/audio-pack.ts from audio-pack.planA.json; credited in
+ * public/THIRD_PARTY_NOTICES.txt. Relative to the page, like the rest of the site's assets. If it cannot be
+ * loaded, the synthesised guns play instead. */
+export const PACK_URL: string | null = 'audio/breachline/pack.json';
 
 export function createSfx(enabled: () => boolean, options: { ambience?: boolean; override?: Record<string, { sr: number; takes: number[][] }>; pack?: string | null } = {}): Sfx {
   const packUrl = options.pack === undefined ? PACK_URL : options.pack;
@@ -129,8 +131,6 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     },
     shot(w, at) {
       if (!at) {
-        // A recorded body (plan A) carries no action: the bolt or slide is added from synthesis.
-        if (eng?.packed.has(`gun.${w}.fp`)) play(`gun.${w}.action`, 'own', null, { gain: 0.9 + Math.random() * 0.2 });
         const e = play(`gun.${w}.fp`, 'own', null, { wet: 0.32, rate: 0.985 + Math.random() * 0.03, gain: 0.9 + Math.random() * 0.2 });
         if (!e || !eng) return;
         eng.duck('world', 4, 0.06); eng.duck('amb', 9, 0.18);

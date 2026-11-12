@@ -66,12 +66,12 @@ function handField(wrist: Vec): Field {
   // Palm (group 0): metacarpals from the carpus to each knuckle, a palm pad, the heel and the wrist.
   for (let d = 1; d <= 4; d++) {
     const k = FP_HAND[d].base, r = fpRad(d, 0);
-    P.push(cone(W([k[0] * 0.55, k[1] - 0.002, -0.014]), W(k), r * 1.08, r * 1.02, HB, 0));
+    P.push(cone(W([k[0] * 0.6, k[1] - 0.004, -0.014]), W([k[0], k[1] - 0.002, k[2]]), r * 0.92, r * 0.95, HB, 0));
     P.push(ell(W([k[0], k[1] + 0.001, k[2] + 0.002]), [r * 1.05, r * 0.95, r * 1.1], HB, 0));
   }
-  P.push(ell(W([0.0, -0.005, -0.058]), [0.037, 0.0118, 0.046], HB, 0, TAG.palm));
-  P.push(ell(W([0.022, -0.007, -0.034]), [0.018, 0.0145, 0.032], HB, 0, TAG.palm));
-  P.push(ell(W([-0.002, -0.001, -0.006]), [0.029, 0.0195, 0.024], HB, 0));
+  P.push(ell(W([0.0, -0.006, -0.058]), [0.038, 0.0092, 0.046], HB, 0, TAG.palm));
+  P.push(ell(W([0.022, -0.008, -0.034]), [0.017, 0.012, 0.03], HB, 0, TAG.palm));
+  P.push(ell(W([-0.002, -0.002, -0.006]), [0.027, 0.0165, 0.022], HB, 0));
   // Thumb (group 1): the thenar mound on the thumb's first bone, then the chain.
   const t = FP_HAND[0], tq = digitRest(0), tdir = new THREE.Vector3(0, 0, -1).applyQuaternion(tq);
   let at = new THREE.Vector3(...W(t.base));
@@ -97,19 +97,17 @@ function handField(wrist: Vec): Field {
     }
   }
   // Cuff (group 6) on the forearm bone, with a strap.
-  P.push(ell(W([0, 0.0, 0.03]), [0.035, 0.0275, 0.03], 1, 6, TAG.cuff));
+  P.push(ell(W([0, -0.001, 0.03]), [0.0305, 0.022, 0.028], 1, 6, TAG.cuff));
   P.push(ell(W([0, 0.0, 0.05]), [0.035, 0.028, 0.02], 1, 6, TAG.cuff));
   // A thin strap band round the wrist with a pull tab, not a block.
-  P.push(ell(W([0, 0.0, 0.025]), [0.0365, 0.029, 0.0065], 1, 6, TAG.strap));
-  P.push(rbox(W([0.031, 0.008, 0.025]), [0.0045, 0.0016, 0.0062], 0.0012, 1, 6, TAG.strap));
-  // Pull tab at the back of the cuff.
-  P.push(rbox(W([0, 0.026, 0.05]), [0.006, 0.0018, 0.009], 0.0012, 1, 6, TAG.strap));
+  P.push(ell(W([0, -0.001, 0.022]), [0.0318, 0.0232, 0.0055], 1, 6, TAG.strap));
+  P.push(rbox(W([0.027, 0.004, 0.022]), [0.0025, 0.0012, 0.0045], 0.0008, 1, 6, TAG.strap));
   // Knuckle guard (group 7): moulded pads over each knuckle and a bridge.
   // A moulded knuckle panel following the knuckle arc: a pad over each knuckle joined by a ridge.
-  for (let d = 1; d <= 4; d++) { const k = FP_HAND[d].base; P.push(ell(W([k[0], k[1] + fpRad(d, 0) + 0.0028, k[2] + 0.004]), [0.0085, 0.0042, 0.009], HB, 7, TAG.guard)); }
+  for (let d = 1; d <= 4; d++) { const k = FP_HAND[d].base; P.push(ell(W([k[0], k[1] + fpRad(d, 0) + 0.0016, k[2] + 0.003]), [0.0072, 0.0034, 0.0075], HB, 7, TAG.guard)); }
   for (let d = 1; d < 4; d++) {
     const a = FP_HAND[d].base, c = FP_HAND[d + 1].base;
-    P.push(cone(W([a[0], a[1] + fpRad(d, 0) + 0.0022, a[2] + 0.009]), W([c[0], c[1] + fpRad(d + 1, 0) + 0.0022, c[2] + 0.009]), 0.0034, 0.0034, HB, 7, TAG.guard));
+    P.push(cone(W([a[0], a[1] + fpRad(d, 0) + 0.0022, a[2] + 0.009]), W([c[0], c[1] + fpRad(d + 1, 0) + 0.0022, c[2] + 0.009]), 0.0024, 0.0024, HB, 7, TAG.guard));
   }
   // Finger-back guards on the middle phalanges.
   for (let d = 1; d <= 4; d++) {

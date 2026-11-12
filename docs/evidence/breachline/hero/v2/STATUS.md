@@ -102,6 +102,16 @@ shows its back and wrist strap, so it reads as a mitten; with the owner's pose t
 view. Showing four fingers needs a pose change (fingers over the top of the handguard), which is the owner's call.
 The receiver and magazine are still mostly below the frame at the hip; the reload frames show them.
 
+## Hand pass (time-boxed, owner's pose kept)
+
+Flatter back of the hand (palm 76 × 18 mm core, slimmer, lower metacarpals), a smaller crisper knuckle row, narrower
+wrist and a smaller glove cuff so the sleeve hem steps over it, the large strap and pull tabs removed, glove darker
+and less saturated (#8a806e). Evidence `gate5-ar5-hand-pass.jpg` (before left, after right, corridor and Lab, 2×).
+Honest read: a small improvement, still about 4.5–5. The "square patch" is the dark knuckle panel seen nearly end-on:
+from this camera, with the owner's pose, the back of the hand faces along the line of sight and is foreshortened
+into a ball. Shape changes alone barely move it; turning the hand's back toward the camera (a wrist roll of 20–30°
+toward the player, fingers still wrapping under) is the next lever, if the planner agrees.
+
 ## Decisions (made without asking; say if wrong)
 
 - New assets go to `hero/ar5/`, not `hero/ar/`: `render/patchhero/` (the `?weapons=patch` switch, not mine) cuts its

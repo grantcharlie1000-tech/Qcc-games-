@@ -43,6 +43,7 @@ export function catalogue(module: string): RenderJob[] {
   for (const block of [0, 1, 3, 4]) jobs.push(job(module, `shot-ar-12m-block${block}`, 1.6, [{ t: 0.1, call: 'shot', args: ['ar', at(0, -12, block)] }]));
   jobs.push(job(module, 'auto-ar-fp', 2.4, burst(0.1, 'ar', 20, null)));
   jobs.push(job(module, 'auto-smg-fp', 2.0, burst(0.1, 'smg', 24, null)));
+  jobs.push(job(module, 'auto-carbine-fp', 2.2, burst(0.1, 'carbine', 24, null)));
   for (const s of ['asphalt', 'grass', 'slab', 'tile', 'lino', 'carpet', 'planks', 'raised', 'check'] as const) {
     jobs.push(job(module, `step-${s}`, 2.2, [0.1, 0.52, 0.94, 1.36, 1.78].map(t => ({ t, call: 'step', args: [s, 0.8, null] }))));
   }

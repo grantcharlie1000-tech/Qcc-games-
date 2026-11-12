@@ -1,6 +1,20 @@
 # Breachline sound: listening guide
 
-## Decision pair (2026-11-12): please play these first, A then B
+## Route A, step 1: the guns from real recordings (2026-11-12): please play these first
+
+You chose A. All six guns are now **real public-domain (CC0) recordings** from The Free Firearm Sound Library by
+Ben Jaszczak, Brian Nelson, Kevin Heras and Matthew Nanney: AR-5 = AR-15, Tern C8 carbine = SKS (so it differs
+from the AR), Wren-9 SMG = Carl Gustav M45 9 mm, Halden 12 = Benelli Nova and Winchester Model 12, Corvin DMR =
+Mosin-Nagant, P-11 = Walther PPQ 9 mm. We cut and levelled them; the game's own rooms, walls and distance do the rest.
+
+| File | What to listen for |
+| --- | --- |
+| `a1-gun-ar.wav`, `-carbine`, `-smg`, `-shotgun`, `-dmr`, `-pistol` | Each gun four ways: your shot in the Lab, your shot in the yard, someone else's 10 m away indoors, someone else's 60 m away outdoors. Do they sound like those guns? Does indoors sound like a room and outdoors like open air? Is the 60 m shot believable? |
+| `a1-automatic.wav` | Two-second bursts from the AR, the carbine and the SMG. Does any of them sound like a loop? (The AR library has only two close takes, so the game also uses two blends of them.) |
+
+Still synthetic for now: the shotgun pump, the spent cases (and all reloads, which are next).
+
+
 
 **`decision-A-real.wav`**: the rifle and the shotgun built from **real public-domain (CC0) recordings** from The Free Firearm Sound Library by **Ben Jaszczak, Brian Nelson, Kevin Heras and Matthew Nanney**, trimmed and played through our own rooms, walls and distance. **`decision-B-fitted.wav`**: the same moments from our own synthesis, refitted to measure like those recordings.
 Each file plays the rifle then the shotgun, four ways each (your shot in the Lab, your shot in the yard, someone else's 10 m away indoors, someone else's 60 m away outdoors), then a two-second rifle burst. In both, the shotgun pump and the spent cases are still synthetic: there are no real takes of those yet.
