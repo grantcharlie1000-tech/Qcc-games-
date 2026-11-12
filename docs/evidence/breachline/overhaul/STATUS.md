@@ -4,6 +4,18 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: the specs on a production build (authorised `index.ts` line 437 change).** The hook is installed when
+`import.meta.env.DEV || import.meta.env.VITE_BREACHLINE_TEST === '1'`; `scripts/breachline-assets/hookcheck.mjs`
+proves it: a normal `npm run build` has `__breachlineTest` in no chunk (PASS), a `VITE_BREACHLINE_TEST=1` build has it
+(PASS). Against the flagged build served by `serve-built.mjs`:
+- `warm.spec.ts`: passes (nothing compiles or uploads in play); the stock-fighters variant fails as known.
+- **Online test: passed three times in a row** (1.1 to 1.2 min each), no pulls during the runs. So the earlier
+  flakiness was the dev server, not the game.
+- `play.spec.ts`: all six fail on one assertion only, "no console errors": seven 404s, six for `hero/ar5`
+  textures (the weapons rebuild, mid-way) and one for `/.netlify/functions/chat`. The dev server answers a missing
+  file with `index.html` (200), so the same specs pass there. Every other check in them passed. They will pass on the
+  build once the AR-5 textures land and the chat call is answered or excluded; neither is mine.
+
 **2026-11-12: production build checked (`npm run build`, served by `scripts/serve-built.mjs` with the real headers).**
 Script: `scripts/breachline-assets/builtcheck.mjs --tier low|high` (policy violations, failed requests, console).
 - **Security policy:** no violations on either tier. The KTX2 transcoder's workers (`basis/`, same origin) start

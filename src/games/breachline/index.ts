@@ -434,7 +434,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   window.addEventListener('resize', resizeCanvas, { signal });
 
   let removeHook: (() => void) | undefined;
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV || import.meta.env.VITE_BREACHLINE_TEST === '1') {
     let frames = 0;
     const count = () => { frames++; if (!disposed) countId = requestAnimationFrame(count); };
     let countId = requestAnimationFrame(count);
