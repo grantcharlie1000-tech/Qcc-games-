@@ -55,12 +55,52 @@ Open the game with `?perf=1`, or press F3 in a match, and send a screenshot of t
 
 ## For the owner
 
+- **Your readout (Sharp, 28 fps).** Your browser was drawing on the computer's built-in Intel graphics, not the gaming card. Switching Chrome to the gaming card should make the biggest difference. Sharp is lighter now: two-times edge smoothing instead of four, a smaller picture buffer, and it caps at 1.5 times your screen's resolution. If it still drops under 40 fps for three seconds, it lowers its own resolution a little, but never below 70%.
+- **Fixed from your frame:**
+  - "Go" no longer stays under the round banner;
+  - the uplink marker hides when the round ends;
+  - the yard keeps its asphalt all the way out;
+  - the corner pillar's texture is no longer blown up;
+  - the room through the doorway is drawn properly lit;
+  - the buildings in the distance have windows.
 - **Seeing your numbers.** Add `?perf=1` to the game's address, or press F3 during a match. A screenshot of that corner tells us what your machine is doing.
 - **Why the game crawled on a fast PC.** The arcade's adaptive text colour reads the game's picture back from the graphics card about every 140 ms, so the card has to stop and wait each time. Breachline now opts out.
 - **Other games.** The other 3D (WebGL) games in the arcade most likely have the same slowdown, and that code lives in the shared arcade interface (`src/ui/glass-ink.ts`, `canvas-ink.ts`).
 - **Smaller cost.** The same feature also scans the page's layout every 140 ms, which costs about 1 to 2 ms a frame even with the readback gone.
 
 ## For the planner (latest first)
+
+### The owner's readout (9076a82e, 1d700360, a3c72aa1)
+
+**1. Sharp's post chain.**
+- HDR target packed 11/11/10 float where drawable (half the bytes of half-float RGBA, still HDR), half-float otherwise.
+- 2x MSAA instead of 4x.
+- Bloom at half resolution with three levels instead of four.
+- Pixel ratio capped at 1.5.
+- Same picture (`perf/sharp-post-before-after.png`, 1.6% of pixels differ, the viewmodel's sway).
+- Software frame at 1890 x 1016: 1067 to 883 ms.
+- **Sharp's guard:** under 40 fps for 3 s, the render scale steps down by 0.1 to no lower than 0.7 (viewport only); after 6 s at full rate it steps back up.
+
+**2. Script in the readout view** (`scripts/breachline-assets/readout.mjs`: North Yard, round over, Sharp, light art). Fixed:
+- window glass and room ambience were drawn in two passes, with a program re-check every frame (three's transparent double-sided path);
+- the Patch rifle material, shared by every fighter, was changed back and forth every frame.
+
+What remains is three.js submission (4 to 6 ms). The HUD is under 0.1 ms, and the shell's text scan is 0.00 ms. On this machine the median is 5 to 7.6 ms across runs. An A/B of the same build shows about ±1.5 ms of run-to-run noise, so "under 5 ms" can't be shown here either way.
+
+**3. Faults.**
+- **(a)** Far rooms are now by distance only (past 16 m) and never outdoors. The yard keeps its asphalt and markings, at about 5 more draws. Backdrop buildings got shaded faces, window rows and darker roofs (`perf/skyline-before-after.png`).
+- **(b)** Narrow upright faces on large-repeat surfaces repeat every 1.5 m (`perf/quoin-before-after.png`).
+- **(c)** The room through the north door from the yard was a far mesh because it was two openings away, not because it was far. It is now drawn lit. The yards are at most about 12 m deep, so no room seen across a yard uses the far mesh now.
+- **(d)** No toast under the round or match end banner, and the uplink marker only while armed. This also fixes a toast-sticking bug from b3fcffe7's attribute cache. The test fails on the old code.
+
+**4. Readout view, software GL, before and after** (`perf/readout-sharp-before-after.png`, `perf/readout-auto-before-after.png`):
+
+| | Before | After |
+|---|---|---|
+| Sharp, 1890 x 1016 frame | 1067 to 1083 ms | 883 to 950 ms (the guard then lowers the scale) |
+| Sharp, draws | 157 | 162 |
+| Auto, frame | 133 ms | 133 to 150 ms |
+| Auto, script median | 5.0 ms | 5.2 ms |
 
 ### Hitches, fighters, garbage, HUD (e6deb846, 00dc2d30, b3fcffe7)
 
@@ -884,7 +924,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** performance lead. Hitches, fighters' draws, garbage, HUD prep and the moved-things test done (b3fcffe7). Stopped; waiting for the owner's readout and the planner.
+**Where I am (keep current):** performance lead. The owner's readout jobs are done (9076a82e, 1d700360, a3c72aa1); stopped, waiting for the planner.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 
