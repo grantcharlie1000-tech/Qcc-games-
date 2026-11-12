@@ -1,0 +1,42 @@
+name: Movie fullscreen regression
+on:
+  pull_request:
+    paths:
+      - 'src/movies/**'
+      - 'src/main.ts'
+      - 'tests/movies/fullscreen-exit.test.ts'
+      - 'tests/movies/auto-next.spec.ts'
+      - 'tests/movies/source-warning.spec.ts'
+      - '.github/workflows/movie-fullscreen.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fullscreen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx vitest run tests/movies/fullscreen-exit.test.ts --maxWorkers=1
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npx playwright test tests/movies/auto-next.spec.ts tests/movies/source-warning.spec.ts --grep 'fullscreen|Escape' --project=${{ matrix.browser }} --workers=1
+        env:
+          CI: 'true'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: movie-fullscreen-${{ matrix.browser }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7

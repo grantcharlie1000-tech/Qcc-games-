@@ -2,6 +2,7 @@ import {test,expect} from '../fixtures';
 import {readFileSync} from 'node:fs';
 const providers=['framextv.cc','framextv.xyz'];
 test.beforeEach(async({page})=>{
+ await page.route('**/api/movie-popularity*',r=>r.fulfill({status:503,json:{error:'popularity_unavailable'}}));
  await page.route('https://image.tmdb.org/**',r=>r.fulfill({status:204,body:''}));
  await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'fixture'}}));
  for(const host of providers)await page.route(`https://${host}/**`,r=>r.fulfill({contentType:'text/html',body:'<button>Fixture player</button>'}));
