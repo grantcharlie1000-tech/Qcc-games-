@@ -172,6 +172,7 @@ export class Engine {
         this.bank.set(key, { sr: all.sampleRate, loop: false, bufs });
         this.bytes += takes.reduce((n, t) => n + t.length * 4, 0);
       }
+      try { performance.measure('breachline-audio-pack', 'breachline-audio-load'); } catch { /* timing only */ }
       return true;
     } catch { return false; }
   }

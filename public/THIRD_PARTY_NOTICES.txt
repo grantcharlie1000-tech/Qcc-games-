@@ -3836,3 +3836,11 @@ Changed for Breachline: recoloured near-black; levels of detail added.
 "Protective eyewear" by NVIDIA (SimReady, https://huggingface.co/datasets/nvidia/simready-assets/tree/524747d9b5e1f21b5b18b56041788c01d745f1a1/ppe_eyeProtection_goggles_a01), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). Changed by Patch: converted from USD to glTF, MDL materials dropped for the UsdPreviewSurface textures, textures resized to 2048 px, ambient occlusion mapped from the ORM texture, mass and one convex hull per part added as OMI_physics_body and OMI_physics_shape, pivot moved to the bottom centre, credit and license added to the file metadata.
 Changed for Breachline: decimated to 2,499 triangles; plain dark plastic and smoked lens materials; levels of detail added.
 ----- end of Breachline soldiers -----
+
+Breachline gun sounds (public/audio/breachline/pack.ogg)
+The Free Firearm Sound Library, created and recorded by Ben Jaszczak, Brian Nelson, Kevin Heras and Matthew Nanney.
+https://opengameart.org/content/the-free-firearm-sound-library
+License: CC0 1.0 Universal (public domain dedication; "CC0 NO RIGHTS RESERVED").
+Takes used: AR-15, Norinco SKS, Carl Gustav M45, Benelli Nova, Winchester Model 12, Mosin-Nagant, Walther PPQ.
+We trimmed, high-passed, levelled, recombined and re-encoded the takes (Opus); the game plays them through its own
+room, wall and distance processing.

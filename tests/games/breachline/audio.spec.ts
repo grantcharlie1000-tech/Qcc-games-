@@ -5,7 +5,19 @@ import { catalogue, scenes } from './audio-scenes';
 
 /** Renders a lab job through the game's sound module offline in this page (see audio-page.ts). */
 async function render(page: Page, job: RenderJob) {
-  const r = await page.evaluate(`import('/tests/games/breachline/audio-page.ts').then(lab => lab.renderInPage(${JSON.stringify(job)}))`) as RenderResult;
+  // Chromium's offline context stalls about once in a hundred renders and freezes the page (see STATUS.md); give
+  // each render 40 s and retry once on a fresh page. A stall in the game's own (live) context has never been seen.
+  const once = (p: Page) => Promise.race([
+    p.evaluate(`import('/tests/games/breachline/audio-page.ts').then(lab => lab.renderInPage(${JSON.stringify(job)}))`) as Promise<RenderResult>,
+    new Promise<never>((_, no) => setTimeout(() => no(new Error('stalled')), 40_000)),
+  ]);
+  let r: RenderResult;
+  try { r = await once(page); } catch {
+    const fresh = await page.context().newPage();
+    await fresh.route('**/__audio-lab', rt => rt.fulfill({ contentType: 'text/html', body: '<!doctype html><title>audio lab</title>' }));
+    await fresh.goto('/__audio-lab');
+    r = await once(fresh);
+  }
   const ch = r.channels.map(b64 => { const b = Buffer.from(b64, 'base64'); return new Float32Array(b.buffer, b.byteOffset, b.length / 4); });
   return { r, m: measure(ch, r.sampleRate) };
 }

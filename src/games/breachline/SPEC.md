@@ -112,7 +112,10 @@ design budget, not a verified result.
 
 ## Sound
 
-Synthesised with Web Audio (`audio.ts`); there are no audio files. Every world sound is panned, fades with
+The guns are real public-domain (CC0) recordings from The Free Firearm Sound Library, trimmed and levelled into one
+small Opus pack (`public/audio/breachline/`, credited in `public/THIRD_PARTY_NOTICES.txt`), fetched and decoded
+once at the first gesture; everything else is synthesised with Web Audio (`audio.ts`, `audio/`), and the guns fall
+back to synthesis if the pack cannot be loaded. Every world sound is panned, fades with
 distance, is muffled by what stands between it and the listener (a little for wall board, a lot for brick) and
 feeds a shared reverb, so footsteps, reloads and gunfire can be placed through walls. Sound follows the arcade's
 sound setting, which is off by default.

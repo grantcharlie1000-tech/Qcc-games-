@@ -1,26 +1,153 @@
 {
-  "about": "Plan A manifest for audio-pack.ts. Paths are inside 'Prepared SFX Library' from The Free Firearm Sound Library (CC0; Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney). No audio is in the repository; build only after the owner approves recordings in the game.",
+  "about": "Plan A manifest for audio-pack.ts (approved by the owner 2026-11-12). Paths are inside 'Prepared SFX Library' from The Free Firearm Sound Library (CC0; Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney; https://opengameart.org/content/the-free-firearm-sound-library). Build: AUDIO_PACK_MAIN=1 npx vite-node tests/games/breachline/audio-pack.ts -- tests/games/breachline/audio-pack.planA.json '<library folder>' public/audio/breachline",
   "loudness": -14,
-  "bitrate": 64,
+  "bitrate": 96,
   "takes": [
-    { "key": "gun.ar.fp", "file": "AR-15/D_32P.wav", "keepMs": 55, "fadeMs": 60 },
-    { "key": "gun.ar.tp", "file": "AR-15/D_24P.wav", "keepMs": 150, "fadeMs": 60 },
-    { "key": "gun.ar.far", "file": "AR-15/D_24P.wav", "keepMs": 300, "fadeMs": 80, "gainDb": -2 },
-    { "key": "gun.carbine.fp", "file": "SKS/U_14P.wav", "keepMs": 55, "fadeMs": 60, "max": 4 },
-    { "key": "gun.carbine.tp", "file": "SKS/U_19P.wav", "keepMs": 150, "fadeMs": 60 },
-    { "key": "gun.carbine.far", "file": "SKS/U_19P.wav", "keepMs": 300, "fadeMs": 80, "max": 2, "gainDb": -2 },
-    { "key": "gun.smg.fp", "file": "Carl Gustav M45/G_31P.wav", "keepMs": 45, "fadeMs": 50 },
-    { "key": "gun.smg.tp", "file": "Carl Gustav M45/G_20P.wav", "keepMs": 120, "fadeMs": 50 },
-    { "key": "gun.smg.far", "file": "Carl Gustav M45/G_20P.wav", "keepMs": 250, "fadeMs": 80, "max": 2, "gainDb": -2 },
-    { "key": "gun.shotgun.fp", "file": "Nova/O_21P.wav", "keepMs": 60, "fadeMs": 60 },
-    { "key": "gun.shotgun.fp", "file": "Model 12/K_22P.wav", "keepMs": 60, "fadeMs": 60 },
-    { "key": "gun.shotgun.tp", "file": "Nova/O_17P.wav", "keepMs": 150, "fadeMs": 60 },
-    { "key": "gun.shotgun.far", "file": "Nova/O_17P.wav", "keepMs": 300, "fadeMs": 80, "gainDb": -2 },
-    { "key": "gun.dmr.fp", "file": "Mosin Nagant/M_21P.wav", "keepMs": 70, "fadeMs": 70, "max": 3 },
-    { "key": "gun.dmr.tp", "file": "Mosin Nagant/M_26P.wav", "keepMs": 150, "fadeMs": 60 },
-    { "key": "gun.dmr.far", "file": "Mosin Nagant/M_26P.wav", "keepMs": 300, "fadeMs": 80, "max": 2, "gainDb": -2 },
-    { "key": "gun.pistol.fp", "file": "Walther PPQ/X_39P.wav", "keepMs": 45, "fadeMs": 50 },
-    { "key": "gun.pistol.tp", "file": "Walther PPQ/X_31P.wav", "keepMs": 120, "fadeMs": 50 },
-    { "key": "gun.pistol.far", "file": "Walther PPQ/X_31P.wav", "keepMs": 250, "fadeMs": 80, "gainDb": -2 }
+    {
+      "key": "gun.ar.fp",
+      "file": "AR-15/D_32P.wav",
+      "keepMs": 55,
+      "fadeMs": 60
+    },
+    {
+      "key": "gun.ar.tp",
+      "file": "AR-15/D_24P.wav",
+      "keepMs": 150,
+      "fadeMs": 60
+    },
+    {
+      "key": "gun.ar.far",
+      "file": "AR-15/D_24P.wav",
+      "keepMs": 300,
+      "fadeMs": 80,
+      "gainDb": -2
+    },
+    {
+      "key": "gun.carbine.fp",
+      "file": "SKS/U_14P.wav",
+      "keepMs": 55,
+      "fadeMs": 60,
+      "max": 4
+    },
+    {
+      "key": "gun.carbine.tp",
+      "file": "SKS/U_19P.wav",
+      "keepMs": 150,
+      "fadeMs": 60
+    },
+    {
+      "key": "gun.carbine.far",
+      "file": "SKS/U_19P.wav",
+      "keepMs": 300,
+      "fadeMs": 80,
+      "max": 2,
+      "gainDb": -2
+    },
+    {
+      "key": "gun.smg.fp",
+      "file": "Carl Gustav M45/G_31P.wav",
+      "keepMs": 45,
+      "fadeMs": 50
+    },
+    {
+      "key": "gun.smg.fp",
+      "file": "Carl Gustav M45/G_33P.wav",
+      "keepMs": 45,
+      "fadeMs": 40,
+      "burst": true,
+      "max": 6
+    },
+    {
+      "key": "gun.smg.fp",
+      "file": "Carl Gustav M45/G_35P.wav",
+      "keepMs": 45,
+      "fadeMs": 40,
+      "burst": true,
+      "skip": 2,
+      "max": 6
+    },
+    {
+      "key": "gun.smg.tp",
+      "file": "Carl Gustav M45/G_20P.wav",
+      "keepMs": 120,
+      "fadeMs": 50
+    },
+    {
+      "key": "gun.smg.far",
+      "file": "Carl Gustav M45/G_20P.wav",
+      "keepMs": 250,
+      "fadeMs": 80,
+      "max": 2,
+      "gainDb": -2
+    },
+    {
+      "key": "gun.shotgun.fp",
+      "file": "Nova/O_21P.wav",
+      "keepMs": 60,
+      "fadeMs": 60
+    },
+    {
+      "key": "gun.shotgun.fp",
+      "file": "Model 12/K_22P.wav",
+      "keepMs": 60,
+      "fadeMs": 60
+    },
+    {
+      "key": "gun.shotgun.tp",
+      "file": "Nova/O_17P.wav",
+      "keepMs": 150,
+      "fadeMs": 60
+    },
+    {
+      "key": "gun.shotgun.far",
+      "file": "Nova/O_17P.wav",
+      "keepMs": 300,
+      "fadeMs": 80,
+      "gainDb": -2
+    },
+    {
+      "key": "gun.dmr.fp",
+      "file": "Mosin Nagant/M_21P.wav",
+      "keepMs": 70,
+      "fadeMs": 70,
+      "max": 3
+    },
+    {
+      "key": "gun.dmr.tp",
+      "file": "Mosin Nagant/M_26P.wav",
+      "keepMs": 150,
+      "fadeMs": 60
+    },
+    {
+      "key": "gun.dmr.far",
+      "file": "Mosin Nagant/M_26P.wav",
+      "keepMs": 300,
+      "fadeMs": 80,
+      "max": 2,
+      "gainDb": -2
+    },
+    {
+      "key": "gun.pistol.fp",
+      "file": "Walther PPQ/X_39P.wav",
+      "keepMs": 45,
+      "fadeMs": 50
+    },
+    {
+      "key": "gun.pistol.tp",
+      "file": "Walther PPQ/X_31P.wav",
+      "keepMs": 120,
+      "fadeMs": 50
+    },
+    {
+      "key": "gun.pistol.far",
+      "file": "Walther PPQ/X_31P.wav",
+      "keepMs": 250,
+      "fadeMs": 80,
+      "gainDb": -2
+    }
+  ],
+  "hybrids": [
+    "gun.ar.fp",
+    "gun.ar.tp"
   ]
 }

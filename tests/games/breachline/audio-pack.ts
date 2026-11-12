@@ -11,8 +11,11 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-export interface PackTake { key: string; file: string; keepMs: number; fadeMs: number; max?: number; gainDb?: number }
-export interface PackManifest { takes: PackTake[]; loudness?: number; bitrate?: number }
+/** `burst`: the file is automatic fire; shots are split 60 ms apart on an 8 dB rise (single shots need 300 ms and 15 dB). */
+export interface PackTake { key: string; file: string; keepMs: number; fadeMs: number; max?: number; gainDb?: number; burst?: boolean; skip?: number }
+/** `hybrids`: keys whose takes are also recombined (each take's first 4 ms joined to another's body), for guns with
+ * few takes, so automatic fire never alternates between two. */
+export interface PackManifest { takes: PackTake[]; loudness?: number; bitrate?: number; hybrids?: string[] }
 export interface PackIndex { version: 1; sr: number; keys: Record<string, { start: number; length: number }[]> }
 
 const SR = 48000, GAP = Math.round(SR * 0.1);
@@ -23,15 +26,16 @@ export function decode(path: string): Float32Array {
   return new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4).slice();
 }
 /** Sample indices where a shot starts: a 10 ms window 15 dB over the 50 ms before it, within 12 dB of the loudest. */
-export function onsets(x: Float32Array): number[] {
+export function onsets(x: Float32Array, burst = false): number[] {
+  const rise = burst ? 8 : 15, gap = burst ? 6 : 30;
   const w = SR / 100, db: number[] = [];
   for (let i = 0; i + w <= x.length; i += w) { let s = 0; for (let j = i; j < i + w; j++) s += x[j] * x[j]; db.push(10 * Math.log10(s / w + 1e-12)); }
   const top = Math.max(...db), out: number[] = [];
   for (let i = 5; i < db.length; i++) {
-    if (db[i] > top - 12 && db[i] - Math.max(...db.slice(i - 5, i)) > 15) {
+    if (db[i] > top - 12 && db[i] - Math.max(...db.slice(i - 5, i)) > rise) {
       const s = Math.max(0, (i - 1) * w), seg = x.subarray(s, s + 3 * w);
       let pk = 0; for (const v of seg) pk = Math.max(pk, Math.abs(v));
-      out.push(s + seg.findIndex(v => Math.abs(v) >= pk * 0.0316)); i += 30; // 300 ms before another shot can start
+      out.push(s + seg.findIndex(v => Math.abs(v) >= pk * 0.0316)); i += gap; // before another shot can start
     }
   }
   return out;
@@ -56,14 +60,25 @@ export function buildPack(manifest: PackManifest, sourceDir: string, outDir: str
   mkdirSync(outDir, { recursive: true });
   const target = manifest.loudness ?? -14, parts: Float32Array[] = [], index: PackIndex = { version: 1, sr: SR, keys: {} };
   let at = 0;
+  const byKey = new Map<string, Float32Array[]>();
+  const emit = (key: string, y: Float32Array) => { (index.keys[key] ??= []).push({ start: at, length: y.length }); parts.push(y, new Float32Array(GAP)); at += y.length + GAP; };
   for (const t of manifest.takes) {
     const x = decode(join(sourceDir, t.file));
-    for (const o of onsets(x).slice(0, t.max ?? 99)) {
+    for (const o of onsets(x, t.burst).slice(t.skip ?? 0, (t.skip ?? 0) + (t.max ?? 99))) {
       const y = cut(x, o, t.keepMs, t.fadeMs), g = Math.pow(10, (target - shortTerm(y) + (t.gainDb ?? 0)) / 20);
       let pk = 0; for (let i = 0; i < y.length; i++) { y[i] *= g; pk = Math.max(pk, Math.abs(y[i])); }
       if (pk > 0.98) for (let i = 0; i < y.length; i++) y[i] *= 0.98 / pk; // never clip the encoder
-      (index.keys[t.key] ??= []).push({ start: at, length: y.length });
-      parts.push(y, new Float32Array(GAP)); at += y.length + GAP;
+      emit(t.key, y);
+      byKey.set(t.key, [...(byKey.get(t.key) ?? []), y]);
+    }
+  }
+  for (const key of manifest.hybrids ?? []) {
+    const takes = byKey.get(key) ?? [], head = Math.round(SR * 0.004), xf = Math.round(SR * 0.001);
+    for (let i = 0; i < takes.length; i++) for (let j = 0; j < takes.length; j++) {
+      if (i === j) continue;
+      const a = takes[i], b = takes[j], y = b.slice();
+      for (let k = 0; k < Math.min(head + xf, y.length, a.length); k++) { const w = k < head ? 1 : 1 - (k - head) / xf; y[k] = a[k] * w + b[k] * (1 - w); }
+      emit(key, y);
     }
   }
   const all = new Float32Array(at); let o = 0; for (const p of parts) { all.set(p, o); o += p.length; }
