@@ -262,3 +262,19 @@ What changes:
    are used only as measurement references (never committed) and the synthesis is rebuilt to match them.
 4. **No pitched or swept tones in any weapon sound**, whichever route is taken.
 5. **The owner's ear is the gate for every phase**, before the next phase starts, not after.
+
+## Owner decision, 2026-11-12: real recordings
+
+After hearing the decision pair (A real, B fitted synthesis) the owner chose **A**: "The reload sounds need work and
+i would pick a - real."
+
+- **Real recordings may ship** for guns, reloads, casings, impacts and foley, under CC0 or CC-BY only, cut, layered and
+  mixed by us, each credited in `public/THIRD_PARTY_NOTICES.txt`. This replaces the earlier rule that sound effects
+  must be our own. Reload *animations* remain our own.
+- Guns: The Free Firearm Sound Library (CC0; Jaszczak, Nelson, Heras, Nanney). Indoor and distant versions come from
+  the near and mid takes through our room, wall and distance engine.
+- **Reloads are the owner's named complaint.** Real mechanical takes per beat on the `reloads.ts` timeline, with
+  handling detail between beats and small variation; no rows of clean clicks.
+- Synthesis stays only as the fallback when the pack fails to load, and for sounds with no licensed recording; the
+  listening guide says which is which.
+- Order: guns pack, then reloads, a listening set to the owner after each, then impacts, glass, footsteps and bodies.
