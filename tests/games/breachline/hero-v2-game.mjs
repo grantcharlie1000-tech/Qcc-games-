@@ -1,5 +1,5 @@
 // In-game evidence for the second-build weapons under the real lighting, at 1280×720.
-// Usage: QUERY='&heroclay' node tests/games/breachline/hero-v2-game.mjs <baseUrl> <outDir> [job] [kit]
+// Usage: QUERY='&heroclay' QUALITY=low node tests/games/breachline/hero-v2-game.mjs <baseUrl> <outDir> [job] [kit]
 //   job "fp" (default): hip and aimed in the corridor and the Lab. job "reload": four frames of a tactical reload in
 //   each place. Writes PNGs; crops are made afterwards (scripts/breachline-assets/hero/evidence.py).
 import { chromium } from 'playwright';
@@ -20,7 +20,7 @@ page.on('pageerror', e => console.log('[pageerror]', e.message));
 await page.goto(`${base}/?festive=off&arttier=high${process.env.QUERY ?? ''}#/game/breachline`);
 await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 60000 });
 if (process.env.SWAP) await page.click('.bl-swap').catch(e => console.log('no swap button', e.message));
-await page.evaluate(() => { const h = window.__breachlineTest; h.start({ seed: 7, quality: 'high', teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); });
+await page.evaluate(q => { const h = window.__breachlineTest; h.start({ seed: 7, quality: q, teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); }, process.env.QUALITY ?? 'high');
 await page.locator('.bl-canvas').focus();
 await page.keyboard.press(`Digit${Number(kitArg ?? 1)}`);
 await page.evaluate(() => { const h = window.__breachlineTest; h.advance(0.1); h.still(); h.skip(30); h.advance(0.3); h.advance(5); });
@@ -36,7 +36,21 @@ const settle = () => page.evaluate(() => { for (let i = 0; i < 24; i++) window._
 const PLACES = [['corridor', [13.5, -0.5, 1.5708, -0.04]], ['lab', [-0.6, -4.6, 1.2, -0.12]]];
 for (const [name, at] of PLACES) {
   await place(...at);
-  if (job === 'fp') {
+  if (job === 'glove') {
+    // The arms' material, and the gun pulled close (dev override) so the glove fills the frame.
+    console.log(await page.evaluate(() => { const out = []; window.__heroVM.scene.traverse(o => { if (o.isSkinnedMesh && o.geometry.getAttribute('uv') && o.material.map && o.geometry.attributes.position.count > 5000 && o.geometry.attributes.position.count < 40000) out.push(`${o.material.type} map ${o.material.map.image?.width ?? '?'} verts ${o.geometry.attributes.position.count}`); }); return out.join(' | '); }));
+    await page.evaluate(h => { globalThis.__heroHip = h; }, JSON.parse(process.env.HIP ?? '{"p":[0.03,-0.03,-0.17],"r":[0.2,0.5,-0.3]}'));
+    await hold({}, 0.6); await settle(); await shot(`${name}-glove`);
+    await page.evaluate(() => { delete globalThis.__heroHip; });
+    break;
+  } else if (job === 'aim') {
+    // Aimed with each weapon in turn (WEAPONS=ar,shotgun,carbine,smg), one browser run.
+    for (const w of (process.env.WEAPONS ?? 'ar,shotgun,carbine,smg').split(',')) {
+      await page.evaluate(w => { globalThis.__heroWeapon = w; }, w);
+      await hold({}, 0.6); await hold({ ads: true }, Number(process.env.ADS_S ?? 1.4)); await settle();
+      await shot(`${name}-${w}-ads`);
+    }
+  } else if (job === 'fp') {
     await hold({}, 0.6); await settle(); await shot(`${name}-hip`);
     await hold({ ads: true }, Number(process.env.ADS_S ?? 1.4));
     await settle();

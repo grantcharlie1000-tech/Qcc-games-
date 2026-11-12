@@ -910,7 +910,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             lastOrigin = { x: e.x, y: e.y, z: e.z };
             let ox = e.x, oy = e.y, oz = e.z;
             const fwd = viewDir(e.yaw, e.pitch);
-            if (mine && viewmodel.muzzle?.(v3, camera)) { ox = v3.x; oy = v3.y; oz = v3.z; }
+            if (mine && viewmodel.muzzle?.(v3, camera)) { ox = v3.x; oy = v3.y; oz = v3.z; fx.flash(ox, oy, oz, 0.35 + Math.random() * 0.15, 0.04); }
             else if (mine) { ox += fwd.x * 0.7 + Math.cos(e.yaw) * 0.1; oy += fwd.y * 0.7 - 0.09; oz += fwd.z * 0.7 - Math.sin(e.yaw) * 0.1; }
             else if (fighters.muzzle(e.id, v3)) { ox = v3.x; oy = v3.y; oz = v3.z; fx.flash(ox, oy, oz, 0.5 + Math.random() * 0.25, 0.05); }
             const dirs = shotDirs(e.yaw, e.pitch, e.spread, def.pellets, e.seed);

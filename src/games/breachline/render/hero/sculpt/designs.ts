@@ -96,7 +96,7 @@ export function haldenSockets(): WeaponSockets {
 /** Wren-9: a 9 mm submachine gun of the same family (Breachline's own design): a 140 mm barrel under a short handguard,
  * a straight 32-round magazine in a narrow well, an open reflex sight, the stock collapsed. About 610 mm overall. */
 export const WREN = {
-  ...AR5, name: 'Wren-9', sightH: 50,
+  ...AR5, name: 'Wren-9', sightH: 58,
   well: { ...AR5.well, u0: 128, u1: 170, half: 13.6, open: [21, 38] },
   mag: { ...AR5.mag, width: 19.6, depth: 32, length: 210, seat: [149, -24] },
   handguard: { ...AR5.handguard, u1: 330, slots: 2 },

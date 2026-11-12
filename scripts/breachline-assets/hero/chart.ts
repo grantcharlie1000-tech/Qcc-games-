@@ -7,7 +7,7 @@ import type { MeshArrays } from '../../../src/games/breachline/render/hero/meshb
 
 export interface ChartOptions { size: number; pad: number; axisWeight: readonly number[]; partWeight: (part: number) => number }
 
-export function chartUnwrap(m: MeshArrays & { part: Uint8Array }, o: ChartOptions): { mesh: MeshArrays & { part: Uint8Array }; density: number; charts: number; coverage: number } {
+export function chartUnwrap(m: MeshArrays & { part: Uint8Array }, o: ChartOptions): { mesh: MeshArrays & { part: Uint8Array }; src: Uint32Array; density: number; charts: number; coverage: number } {
   const P = m.pos, ix = m.idx, nt = ix.length / 3;
   const axis = new Uint8Array(nt), area = new Float64Array(nt);
   for (let t = 0; t < nt; t++) {
@@ -69,7 +69,7 @@ export function chartUnwrap(m: MeshArrays & { part: Uint8Array }, o: ChartOption
   for (let i = 0; i < 32; i++) { const mid = (lo + hi) / 2; if (pack(mid)) lo = mid; else hi = mid; }
   pack(lo);
   // Rebuild, splitting vertices per chart.
-  const pos: number[] = [], nor: number[] = [], uv: number[] = [], bone: number[] = [], flags: number[] = [], part: number[] = [], idx: number[] = [];
+  const pos: number[] = [], nor: number[] = [], uv: number[] = [], bone: number[] = [], flags: number[] = [], part: number[] = [], idx: number[] = [], src: number[] = [];
   let covered = 0;
   for (const I of isl) {
     const map = new Map<number, number>();
@@ -79,7 +79,7 @@ export function chartUnwrap(m: MeshArrays & { part: Uint8Array }, o: ChartOption
       if (n === undefined) {
         n = pos.length / 3; map.set(v, n);
         pos.push(P[v * 3], P[v * 3 + 1], P[v * 3 + 2]); nor.push(m.nor[v * 3], m.nor[v * 3 + 1], m.nor[v * 3 + 2]);
-        bone.push(m.bone[v]); flags.push(m.flags[v]); part.push(m.part[v]);
+        bone.push(m.bone[v]); flags.push(m.flags[v]); part.push(m.part[v]); src.push(v);
         const [u, w] = proj(I.ax, P[v * 3], P[v * 3 + 1], P[v * 3 + 2]), du = (u - I.u0) * lo * I.k, dv = (w - I.v0) * lo * I.k;
         uv.push((I.x + (I.rot ? dv : du)) / o.size, (I.y + (I.rot ? du : dv)) / o.size);
       }
@@ -89,6 +89,6 @@ export function chartUnwrap(m: MeshArrays & { part: Uint8Array }, o: ChartOption
   }
   return {
     mesh: { pos: new Float32Array(pos), nor: new Float32Array(nor), uv: new Float32Array(uv), bone: Uint8Array.from(bone), flags: Uint8Array.from(flags), part: Uint8Array.from(part), idx: Uint32Array.from(idx) },
-    density: lo, charts: nc, coverage: covered / (o.size * o.size),
+    src: Uint32Array.from(src), density: lo, charts: nc, coverage: covered / (o.size * o.size),
   };
 }

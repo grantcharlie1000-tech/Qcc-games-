@@ -144,14 +144,14 @@ const pA = new THREE.Vector3(), qA = new THREE.Quaternion(), magM = new THREE.Ma
 const sh = new THREE.Vector3(), pole = new THREE.Vector3(), target = new THREE.Vector3(), wq = new THREE.Quaternion();
 const IDLE = idleFrame();
 
-export function createFpRig(look: ArmsLook): FpRig {
+export function createFpRig(look: ArmsLook, armGeometry?: THREE.BufferGeometry): FpRig {
   const root = new THREE.Group(), gun = new THREE.Group();
   root.add(gun);
   const material = heroMaterial({ skinned: true });
   // Coated glass: a faint cool tint and a soft reflection, not an amber disc.
   const lensMat = new THREE.MeshStandardMaterial({ color: 0x9fb4c2, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.1, depthWrite: false, envMapIntensity: 1.3 });
   const arms: [Arm, Arm] = [makeArm(1), makeArm(-1)];
-  const armGeo = armsGeometry(look);
+  const armGeo = armGeometry ?? armsGeometry(look);
   const armMesh = new THREE.SkinnedMesh(armGeo, material);
   armMesh.frustumCulled = false;
   root.add(armMesh);

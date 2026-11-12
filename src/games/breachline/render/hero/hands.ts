@@ -6,7 +6,6 @@
  * right arm is authored; the left is its mirror in X. */
 import * as THREE from 'three';
 import { Builder, SURF, simplify, surf, type Surface } from './geom';
-import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { unwrap } from './unwrap';
 import { cone, ell, meshField, rbox, type Field, type Prim, type Vec } from './sdf';
 
@@ -140,24 +139,25 @@ export interface ArmsLook { sleeve: Surface; glove: Surface; palm: Surface; guar
 /** Sleeve: a tube from the shoulder to just over the cuff, with folds at the elbow and wrist, a squad band on the
  * forearm and the squad's shape patch (diamond or triangle) on its outer face. */
 function sleeve(b: Builder, look: ArmsLook) {
-  const rings = 30, seg = 20, z0 = 0.02, z1 = -(UPPER + FORE) + 0.045;
+  const rings = 34, seg = 20, z0 = 0.02, z1 = -(UPPER + FORE) + 0.012;
   const pos: number[] = [], nor: number[] = [], si: number[] = [], sw: number[] = [], tag: number[] = [], idx: number[] = [];
   const radius = (z: number, a: number) => {
     const t = (z0 - z) / (z0 - z1);
-    // About 105 mm across the forearm, tapering to a 78 mm cuff.
-    let r = THREE.MathUtils.lerp(0.054, 0.0475, Math.min(1, t / 0.55)) - Math.pow(Math.max(0, t - 0.55) / 0.45, 1.2) * 0.0105;
+    // About 105 mm across the upper arm, tapering from the elbow to about 64 x 44 mm at the wrist.
+    let r = THREE.MathUtils.lerp(0.054, 0.046, Math.min(1, t / 0.5)) - Math.pow(Math.max(0, t - 0.5) / 0.5, 1.3) * 0.019;
     // Compression folds near the elbow and above the cuff, deep enough to break the outline, varying round the arm.
     const nearElbow = Math.exp(-Math.pow((z + UPPER) / 0.06, 2)), nearCuff = Math.exp(-Math.pow((z - z1 - 0.045) / 0.045, 2));
-    r += (nearElbow * 0.008 + nearCuff * 0.0085) * Math.pow(Math.abs(Math.sin(z * 210 + Math.sin(a * 2) * 1.6 + a * 0.5)), 1.6) * (0.55 + 0.45 * Math.sin(a * 3 + z * 40));
+    r += (nearElbow * 0.008 + nearCuff * 0.005) * Math.pow(Math.abs(Math.sin(z * 210 + Math.sin(a * 2) * 1.6 + a * 0.5)), 1.6) * (0.55 + 0.45 * Math.sin(a * 3 + z * 40));
     r += 0.0016 * Math.sin(a * 5 + z * 30) * Math.sin(z * 70);
-    // A turned-back hem at the cuff.
-    r += Math.exp(-Math.pow((z - z1 - 0.008) / 0.006, 2)) * 0.005;
+    // A slight hem at the end.
+    r += Math.exp(-Math.pow((z - z1 - 0.006) / 0.005, 2)) * 0.0015;
     // Slightly flattened: forearms are wider than deep.
-    return r * (1 + 0.08 * Math.cos(2 * a));
+    return r * (1 + (0.08 + 0.1 * Math.max(0, t - 0.6) / 0.4) * Math.cos(2 * a));
   };
   for (let i = 0; i <= rings; i++) {
     const t = i / rings, z = z0 + (z1 - z0) * t;
-    const wFore = THREE.MathUtils.smoothstep(z, -UPPER + 0.035, -UPPER - 0.035), wHand = THREE.MathUtils.smoothstep(z, -UPPER - FORE + 0.075, -UPPER - FORE + 0.03) * 0.35;
+    // Weights by distance down the arm (z falls toward the wrist; smoothstep needs its edges in increasing order).
+      const wFore = 1 - THREE.MathUtils.smoothstep(z, -UPPER - 0.035, -UPPER + 0.035), wHand = (1 - THREE.MathUtils.smoothstep(z, -UPPER - FORE + 0.012, -UPPER - FORE + 0.045)) * 0.3;
     for (let j = 0; j <= seg; j++) {
       const a = (j / seg) * Math.PI * 2, r = radius(z, a), r2 = radius(z + 0.002, a);
       const x = Math.cos(a) * r, y = Math.sin(a) * r;
@@ -238,29 +238,38 @@ export function armsGeometry(look: ArmsLook): THREE.BufferGeometry {
 
 /** The asset hand trial (`?herohand=asset`): our sleeve, a glove cuff, and a retargeted hand mesh (hand.json from
  * scripts/breachline-assets/hero/hand-trial.ts) in place of the sculpted glove; both arms, as `armsGeometry`. */
-export interface HandAsset { pos: number[]; nor: number[]; tag: number[]; si: number[]; sw: number[]; idx: number[] }
-export function armsWithHand(look: ArmsLook, h: HandAsset): THREE.BufferGeometry {
+export interface HandAsset { pos: number[]; nor: number[]; uv: number[]; tag: number[]; si: number[]; sw: number[]; idx: number[] }
+export function armsWithHand(look: ArmsLook, h: HandAsset, textured = false): THREE.BufferGeometry {
   const b = new Builder(0);
-  let g = new THREE.BufferGeometry();
+  // The hand comes welded, smoothed and unwrapped (hand-trial.ts); its glove set holds the colours, seams and panels.
+  const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(h.pos, 3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(h.nor, 3));
   g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(h.si, 4));
   g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(h.sw, 4));
   g.setAttribute('tag', new THREE.Float32BufferAttribute(h.tag, 1));
   g.setIndex(h.idx);
-  // Smooth the low-poly hand: weld its seams, then average normals.
-  g.deleteAttribute('normal'); g = mergeVertices(g, 1e-5); g.computeVertexNormals();
   b.addTagged(g, [look.glove, look.palm, look.guard]);
-  // Glove cuff and strap at the wrist (forearm bone), a clear step under the sleeve's hem.
+  // The glove's knit cuff (forearm bone): a thin dark band between the hand and the sleeve, tucked under it, with a
+  // rounded front so a bent wrist shows a wrist, not a flat end.
   const zw = -(UPPER + FORE);
   b.bone = 1;
   // Builder.lathe measures along -Z: pass -z, in increasing order.
   const ring = (pts: [number, number][]) => pts.map(([r, z]) => [r, -z] as [number, number]).reverse();
-  b.lathe(ring([[0.0, zw + 0.008], [0.027, zw + 0.008], [0.0285, zw + 0.014], [0.0295, zw + 0.02], [0.0295, zw + 0.03], [0.029, zw + 0.05], [0, zw + 0.05]]), look.palm, [0, 0, 0], 20);
-  b.lathe(ring([[0.0, zw + 0.02], [0.0305, zw + 0.02], [0.0305, zw + 0.027], [0, zw + 0.027]]), surf(look.guard, { color: 0x2e2f2c }), [0, 0, 0], 20);
+  // Elliptical like the wrist (about 46 x 30 mm): flattened in Y after the lathe; long enough to end inside the sleeve.
+  const m0 = b.mark;
+  b.lathe(ring([[0.0, zw - 0.006], [0.012, zw - 0.004], [0.019, zw - 0.0005], [0.0235, zw + 0.004], [0.0255, zw + 0.008], [0.0262, zw + 0.03], [0, zw + 0.03]]), surf(look.guard, { color: 0x2e2f2c }), [0, 0, 0], 20);
+  b.transformSince(m0, new THREE.Matrix4().makeScale(1, 0.72, 1));
   b.bone = 0;
   sleeve(b, look);
   const geo = b.build({ ao: false });
+  // The hand's vertices come first: its UVs, then every other vertex on the set's plain top-right corner. With the set,
+  // the hand's vertex colours are white (the texture is the colour).
+  const n = h.pos.length / 3, uv = new Float32Array(geo.getAttribute('position').count * 2);
+  for (let i = 0; i < uv.length; i += 2) { uv[i] = 0.999; uv[i + 1] = 0.001; }
+  uv.set(h.uv);
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  if (textured) { const c = geo.getAttribute('color'); for (let i = 0; i < n; i++) c.setXYZ(i, 1, 1, 1); }
   const left = geo.clone();
   left.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
   const ix = left.index!.array as Uint32Array | Uint16Array;

@@ -103,8 +103,13 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   // The hands are the Patch "Base Hand" (Polyfork, CC BY 4.0) on our sleeve, as a two-tone glove (hand trial 2 won);
   // `?herohand=sculpt` brings back the sculpted glove and its texture set.
   const handTrial = !(typeof location !== 'undefined' && /[?&]herohand=sculpt\b/.test(location.search)) && !armsTrial;
-  let handAsset: HandAsset | null = null;
+  let handAsset: HandAsset | null = null, gloveMat: THREE.Material | null = null;
   if (handTrial) loads.push(fetch(`${ART_BASE}hero/hand-trial/hand.json`).then(r => r.json()).then((h: HandAsset) => { handAsset = h; }).catch(e => console.warn('Breachline hand trial unavailable.', e)));
+  // The glove's baked set (colours, seams, panels); without it the glove keeps flat region colours.
+  if (handTrial && !clay) loads.push(Promise.all((['diff', 'nor', 'arm'] as const).map(k => art.texture('../hero/hand-trial', k, low ? 512 : 1024))).then(([map, normalMap, armMap]) => {
+    for (const t of [map, normalMap, armMap]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+    gloveMat = texturedMaterial({ map, normalMap, arm: armMap }, true);
+  }).catch(e => console.warn('Breachline glove textures unavailable; flat glove kept.', e)));
   if (armsTrial) loads.push((async () => {
     const buf = await (await fetch(`${ART_BASE}hero/arms-trial/arms.bin`)).arrayBuffer(), right = readMeshBin(buf).geometries.get('arm')!;
     const left = right.clone(); left.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
@@ -123,7 +128,16 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
   }).catch(e => console.warn('Breachline hand textures unavailable; procedural look kept.', e)));
   const rigFor = (squad: 0 | 1) => {
     let r = rigs.get(squad);
-    if (!r) { r = createFpRig(DEFAULT_LOOK(squad, Number(`0x${SQUADS[squad].color.slice(1)}`))); for (const [id, m] of sets) r.setTextures(id, m); if (armMat) r.setArmMaterial(armMat); if (armGeo) r.setArmGeometry(armGeo); if (handAsset) { r.setArmGeometry(armsWithHand(DEFAULT_LOOK(squad, Number(`0x${SQUADS[squad].color.slice(1)}`)), handAsset)); if (!clay) r.setArmMaterial(r.material); } rigs.set(squad, r); }
+    if (!r) {
+      const look = DEFAULT_LOOK(squad, Number(`0x${SQUADS[squad].color.slice(1)}`));
+      // With the hand asset the sculpted glove is never built.
+      r = createFpRig(look, handAsset ? armsWithHand(look, handAsset, !!gloveMat) : undefined);
+      for (const [id, m] of sets) r.setTextures(id, m);
+      if (armMat) r.setArmMaterial(armMat);
+      if (armGeo) r.setArmGeometry(armGeo);
+      if (handAsset && !clay) r.setArmMaterial(gloveMat ?? r.material);
+      rigs.set(squad, r);
+    }
     return r;
   };
   /** Draws every weapon in both squads' arms once, with the flash and casings shown, into a tiny offscreen target:

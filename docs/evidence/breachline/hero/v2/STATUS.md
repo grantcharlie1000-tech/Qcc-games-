@@ -5,7 +5,8 @@ Owns `models.ts`, `render/hero/`, `scripts/breachline-assets/hero/`, `public/gam
 
 ## Where I am
 
-**Baked and held: AR-5, Halden 12, Tern C8, Wren-9.** Next: Corvin DMR, then the sidearm. Hands: anatomy rebuilt to the plan
+**Baked and held: AR-5, Halden 12, Tern C8, Wren-9.** Aimed views cleared, hands reworked (planner's items 1 and 2).
+Next: Halden 12 finish and markings, then the Corvin DMR, then the sidearm. Hands: anatomy rebuilt to the plan
 (gate 3), Base Hand is the default glove.
 
 ## Pipeline (new)
@@ -205,8 +206,34 @@ The AR-5 sculpt with its own table (`WREN` in designs.ts): short 9 mm upper (bar
 2 slots a side, flash hider), a straight 210 mm stick magazine in a flared well, folding-brace stock, a small open
 reflex sight (24 x 18 window, hood, dot). 10.5k triangles, 1.94 MB. Same hold as the AR-5 with the eye 0.12 m behind
 the sight. Evidence: `wren-gate1-design-sheet.jpg`, `wren-gate4-textured-studio.jpg`, `wren-gate5-corridor-lab.jpg`
-(old left). Honest read: about 6. Weak points: aimed, the receiver top hides the lower edge of the window and the dot
-is faint; the brace stock is plain.
+(old left). Honest read: about 6. The aimed defects (front sight in the window, faint dot) are fixed below; the
+brace stock is plain.
+
+## Aimed views (planner: "an obstructed aimed view is a defect")
+
+- The reticle glow no longer takes the baked texel colour times 6 (tone-mapped to a pale blob, and on the Wren to
+  nothing visible): it is a fixed red, the same on every sight. Dots are larger (AR-5 and Wren 1.1 mm, Tern 0.9 mm).
+- The folded front back-up sight now lies flat on the rail (it showed in the bottom of the AR-5, Tern and Wren windows).
+- Wren-9: sight line raised from 50 to 58 mm over the bore, so the handguard rail drops out of the window.
+- AR-5, Tern and Wren rebaked (12.5k, 11.6k, 10.5k triangles). Evidence: `aimed-four-weapons.jpg` (corridor and Lab,
+  2x): whole window clear, dot, ring or post found at once. The Halden's saddle shells show at the frame's lower left,
+  outside the ring. On Performance (cheap twins) all four render and the reticles show, dimmer (no glow on that path).
+
+## Hands, second pass (planner's item 2)
+
+- Real bug fixed: every sleeve vertex was skinned 100 % to the upper arm (`smoothstep` called with its edges reversed
+  returns 0), so the forearm half of the sleeve never followed the elbow and the cuff showed as a drum between sleeve
+  and hand. Test: `hero-arms.test.ts` (fails on the old weights by 0.39 m).
+- Sleeve tapers from the elbow to about 64 x 44 mm at the wrist and ends 12 mm from it; the cuff is a thin dark knit
+  band, elliptical like the wrist, with a rounded front.
+- Glove texture: the Base Hand is welded, smoothed and unwrapped offline (`hand-trial.ts`, 199 charts) and a 1024 set
+  baked in the bind pose: back, palm and knuckle-panel colours, seam grooves with stitches on every region border and
+  down the finger valleys, a padded ribbed knuckle panel, weave and grain. Both hands share it. 497 KB (1024 and 512).
+  `hand.json` is now 296 KB (was 700 KB).
+- The sculpted glove is no longer built at load (it was built for every rig and then replaced, about 0.7 s).
+- Shared texel code moved from `sculpt.ts` to `texels.ts` (rasterise, normal encoding, noise) for both bakes.
+- Honest read: the arm now reads as one arm into the glove; at play distance the seams are too fine to see, the
+  colours and panel carry it. The Base Hand's low polygon count shows at the knuckles. About 5.5.
 
 ## Decisions (made without asking; say if wrong)
 
@@ -219,6 +246,10 @@ is faint; the brace stock is plain.
   in the magazine well).
 
 ## Tests
+
+Aimed and hands push: `npx tsc --noEmit` clean; `npx vitest run tests/games/breachline` 148 passed; Chromium
+browser tests (`play.spec.ts`, `warm.spec.ts`) 12 of 13 then the two failures (soft-wall gunfire, stock fighters'
+warm-up) passed on rerun alone: flaky under load, not broken. WebKit is not installed here.
 
 Gate 5 push: `npx tsc --noEmit` clean; `npx vitest run tests/games/breachline` 121 passed (the fighters' frame-time test
 fails only while a browser capture loads the machine); Breachline browser tests 8/8 passed with the baked AR-5 in hand.

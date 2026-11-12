@@ -214,9 +214,9 @@ export function ar5Parts(hi: boolean, A: RifleDesign = AR5): Part[] {
     rear = union(rear, latheX([[0, 0], [3.4, 0], [3.4, 2], [2.8, 2.6], [0, 2.6]], A.railTop + 2, 16, 10.8, 1));
     add('rear sight', BONE.root, MAT.anod, rear, 1.2);
     const fu = A.handguard.u1;
-    let front = box(-10.8, A.railTop - 3, fu - 30, 10.8, A.railTop + 8, fu - 2, -0.7);
-    front = chamferJoin(front, box(-7, A.railTop + 7, fu - 28, 7, A.railTop + 10.4, fu - 4, -0.6), 0.4);
-    if (hi) front = cut(front, cylX(A.railTop + 3, fu - 26, 1.2, -12, 12));
+    let front = box(-10.8, A.railTop - 3, fu - 30, 10.8, A.railTop + 3.5, fu - 2, -0.7);
+    front = chamferJoin(front, box(-7, A.railTop + 3, fu - 28, 7, A.railTop + 5, fu - 4, -0.6), 0.4);
+    if (hi) front = cut(front, cylX(A.railTop + 1, fu - 26, 1.2, -12, 12));
     add('front sight', BONE.root, MAT.anod, front, 0.7);
   }
   // Magazine: curved (rifle) or straight (submachine gun), polymer body with ribs low on the sides, a wider floorplate,
