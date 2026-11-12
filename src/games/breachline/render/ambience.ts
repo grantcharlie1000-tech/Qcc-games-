@@ -15,6 +15,8 @@ export const ROOM_LOOK: Record<string, { wall: RGB; band?: { height: number; tin
   office: { wall: [1.04, 0.98, 0.88], band: { height: 1.0, tint: [0.5, 0.36, 0.25] }, rail: [0.32, 0.22, 0.15], light: [1.0, 0.86, 0.66], corners: 0.42, wear: [0.16, 0.13, 0.1], wearOpacity: 0.3 },
   corridor: { wall: [1, 1, 1], light: [1.0, 0.95, 0.88], corners: 0.4, wear: [0.15, 0.14, 0.12], wearOpacity: 0.32 },
   lobby: { wall: [1.02, 0.99, 0.94], band: { height: 1.2, tint: [0.76, 0.69, 0.6] }, rail: [0.5, 0.46, 0.4], tiles: [0.6, 0.4], light: [1.0, 0.9, 0.75], pool: 0.35, corners: 0.4, wear: [0.16, 0.14, 0.12], wearOpacity: 0.28 },
+  server: { wall: [0.36, 0.38, 0.42], band: { height: 1.0, tint: [0.7, 0.72, 0.76] }, rail: [0.3, 0.32, 0.35], light: [0.72, 0.86, 1.0], pool: 0.42, corners: 0.5, wear: [0.12, 0.12, 0.13], wearOpacity: 0.22, scuffs: false },
+  archive: { wall: [0.9, 0.98, 0.88], band: { height: 1.0, tint: [0.62, 0.72, 0.6] }, rail: [0.4, 0.28, 0.18], light: [1.0, 0.92, 0.8], corners: 0.44, wear: [0.15, 0.14, 0.11], wearOpacity: 0.26 },
   lab: { wall: [1.18, 1.23, 1.28], band: { height: 1.5, tint: [1.3, 1.34, 1.38] }, rail: [1.2, 1.22, 1.25], tiles: [0.15, 0.15], light: [0.82, 0.92, 1.0], pool: 0.5, corners: 0.36, wear: [0.2, 0.2, 0.19], wearOpacity: 0.22, scuffs: false, tape: true },
 };
 

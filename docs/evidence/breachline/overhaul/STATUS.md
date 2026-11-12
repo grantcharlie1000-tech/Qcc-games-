@@ -4,6 +4,15 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+### Server Room and Archive
+
+- **Server Room.** Dark grey walls over a lighter grey dado, cool light, and dark corners. The room's bake is very bright, so the tone has to be strong (0.36) or it clips back to white. Plans, a whiteboard and shelves hang on its partitions.
+- **Archive.** Green-grey walls over a darker green dado with a brown timber rail. Its partitions carry brown timber shelves of files, plans, a calendar and a pinboard. The light is warm, with worn paths from the doors.
+- **Evidence:** `round2/server-before-after.png`, `round2/archive-before-after.png`.
+- **Honest rating.**
+  - Server Room 6.5: the walls now read dark, but the ceiling and floor stay bright.
+  - Archive 7: green, brown and the shelving give it its own identity.
+
 ### Corridor, Lobby, and the Lab lift
 
 **Lab lift**
@@ -548,7 +557,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** map-fill round 2, rolling through the rooms: Office, Lab, corridor and Lobby done; Server Room and Archive next.
+**Where I am (keep current):** map-fill round 2, rolling through the rooms: Office, Lab, corridor, Lobby, Server Room and Archive done; Break Room and Garage next.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

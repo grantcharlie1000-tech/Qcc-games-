@@ -256,14 +256,14 @@ const hash = (a: number, b: number, c: number) => { const v = Math.sin(a * 127.1
 const ROOM_DECOR: Record<string, string[]> = {
   Office: ['whiteboard', 'pinboard', 'calendar', 'coats', 'print'],
   Lab: ['cupboard', 'plan', 'cupboard', 'whiteboard', 'poster'],
-  Archive: ['shelf', 'plan', 'calendar', 'shelf', 'pinboard'],
+  Archive: ['woodshelf', 'plan', 'woodshelf', 'calendar', 'pinboard'],
   'Break Room': ['pinboard', 'calendar', 'poster', 'coats', 'print'],
   Lobby: ['print', 'plan', 'poster', 'print'],
   'Server Room': ['plan', 'whiteboard', 'shelf', 'poster'],
   Garage: ['pinboard', 'calendar', 'shelf', 'poster'],
   Corridor: ['poster', 'plan', 'print', 'poster', 'pinboard'],
 };
-const ITEM_W: Record<string, number> = { whiteboard: 1.3, pinboard: 1.0, calendar: 0.38, coats: 0.9, print: 0.6, plan: 0.75, poster: 0.5, shelf: 1.0, cupboard: 1.5 };
+const ITEM_W: Record<string, number> = { whiteboard: 1.3, pinboard: 1.0, calendar: 0.38, coats: 0.9, print: 0.6, plan: 0.75, poster: 0.5, shelf: 1.0, woodshelf: 1.0, cupboard: 1.5 };
 /** One hung item's pieces, from u = a, as flat boxes standing off the face. */
 function decorItem(kind: string, a: number, side: 1 | -1, h: (k: number) => number, out: PanelDecor[]) {
   const b = a + ITEM_W[kind], box = (u0: number, u1: number, y0: number, y1: number, d: number, tint: RGB) => out.push({ u0, u1, y0, y1, side, d, tint });
@@ -326,10 +326,10 @@ function decorItem(kind: string, a: number, side: 1 | -1, h: (k: number) => numb
       for (let k = 0; k < 3; k++) { const u = a + k * 0.5 + (k % 2 ? 0.04 : 0.44); box(u, u + 0.02, 1.79, 1.91, 0.335, [0.5, 0.52, 0.55]); }
       break;
     }
-    case 'shelf': {
-      // Two wall shelves on brackets, lever-arch files standing on them.
+    case 'shelf': case 'woodshelf': {
+      // Two wall shelves on brackets (pale board, or brown timber in the Archive), lever-arch files standing on them.
       for (const y of [1.3, 1.72]) {
-        box(a, b, y, y + 0.02, 0.24, [0.85, 0.82, 0.76]);
+        box(a, b, y, y + 0.02, 0.24, kind === 'woodshelf' ? [0.5, 0.34, 0.22] : [0.85, 0.82, 0.76]);
         for (const u of [a + 0.08, b - 0.11]) box(u, u + 0.03, y - 0.12, y, 0.2, [0.55, 0.55, 0.57]);
         let u = a + 0.04;
         while (u < b - 0.1) { const fw = 0.055 + h(u * 31) * 0.02; if (h(u * 17 + y) > 0.12) box(u, u + fw, y + 0.02, y + 0.3, 0.21, ([[0.2, 0.3, 0.75], [0.75, 0.2, 0.18], [0.2, 0.55, 0.3], [0.2, 0.2, 0.22], [0.85, 0.75, 0.2]] as RGB[])[Math.floor(h(u * 7 + y) * 5)]); u += fw + 0.004; }
