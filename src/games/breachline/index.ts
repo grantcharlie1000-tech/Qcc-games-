@@ -19,8 +19,9 @@ import './style.css';
 
 const ID = 'breachline' as const;
 const SNAPSHOT_VERSION = 1;
-interface Prefs { teamSize: number; bots: boolean; skill: SkillId; sens: number; quality: QualityId }
-const DEFAULT_PREFS: Prefs = { teamSize: 5, bots: true, skill: 'regular', sens: 1, quality: 'auto' };
+interface Prefs { teamSize: number; bots: boolean; skill: SkillId; sens: number; quality: QualityId; sound: boolean }
+// Sound is on by default here, whatever the arcade's own Sound setting: it matters in this game.
+const DEFAULT_PREFS: Prefs = { teamSize: 5, bots: true, skill: 'regular', sens: 1, quality: 'auto', sound: true };
 type Layer = 'menu' | 'over' | 'wait' | 'lost' | null;
 
 const TEMPLATE = `<canvas class="bl-canvas" tabindex="0" aria-label="Breachline. W A S D move, mouse looks, click fires, right-click or Space aims, Shift sprints, C crouches, Q and E lean, F uses, G throws a grenade, B places or sets off a breach charge, V strikes, R reloads."></canvas>
@@ -34,6 +35,7 @@ const TEMPLATE = `<canvas class="bl-canvas" tabindex="0" aria-label="Breachline.
       <label><span>Team size</span><select class="bl-size">${[1, 2, 3, 4, 5].map(n => `<option value="${n}">${n} v ${n}</option>`).join('')}</select></label>
       <label><span>Bots</span><select class="bl-skill"><option value="off">No bots</option>${SKILLS.map(s => `<option value="${s}">${BOT_SKILL[s].name}</option>`).join('')}</select></label>
       <label><span>Graphics</span><select class="bl-quality">${(Object.keys(QUALITIES) as QualityId[]).map(q => `<option value="${q}">${QUALITIES[q].name}</option>`).join('')}</select></label>
+      <label><span>Sound</span><select class="bl-sound"><option value="on">On</option><option value="off">Off</option></select></label>
       <label class="bl-sens"><span>Look speed</span><input type="range" min="0.4" max="2.2" step="0.1" value="1"><output>1.0×</output></label>
     </div>
     <div class="bl-actions"><button type="button" class="game-button bl-play">Play</button><button type="button" class="game-button secondary bl-swap">Switch squad</button><button type="button" class="game-button secondary bl-online">Multiplayer</button></div>
@@ -75,7 +77,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   const abort = new AbortController(), signal = abort.signal;
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const reduced = () => context.settings.reducedMotion || motion.matches;
-  const sfx = createSfx(() => context.settings.sound);
+  const sfx = createSfx(() => prefs.sound);
   scene.onCosmetic(e => sfx.cosmetic(e, at(e.x, e.y, e.z)));
   const hud = createHud(root, signal);
   const layer = q('.bl-layer'), clickLayer = q('.bl-click');
@@ -104,7 +106,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   const inMatch = () => { const p = session().m.phase; return p !== 'lobby' && p !== 'over'; };
 
   // ---- Menu and lobby ----
-  const size = q<HTMLSelectElement>('.bl-size'), skill = q<HTMLSelectElement>('.bl-skill'), graphics = q<HTMLSelectElement>('.bl-quality'), sens = q<HTMLInputElement>('.bl-sens input'), sensOut = q<HTMLOutputElement>('.bl-sens output');
+  const size = q<HTMLSelectElement>('.bl-size'), skill = q<HTMLSelectElement>('.bl-skill'), graphics = q<HTMLSelectElement>('.bl-quality'), sens = q<HTMLInputElement>('.bl-sens input'), sensOut = q<HTMLOutputElement>('.bl-sens output'), sound = q<HTMLSelectElement>('.bl-sound');
   const play = q<HTMLButtonElement>('.bl-play'), swap = q<HTMLButtonElement>('.bl-swap'), online = q<HTMLButtonElement>('.bl-online');
   const dialog = new RoomDialog({
     game: ID, title: 'Breachline', version: NET_VERSION, maxPlayers: MAX_PLAYERS, inviteCode: inviteCodeFromHash(location.hash), relayOnly: relayOnlyFromHash(location.hash),
@@ -135,7 +137,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       for (const p of m.players.filter(v => v.squad === s)) { const li = document.createElement('li'); li.textContent = p.bot ? `${p.name} (bot)` : p.id === session().self ? `${p.name} (you)` : p.name; li.dataset.bot = String(p.bot); list.append(li); }
     }
     size.value = String(m.cfg.teamSize); skill.value = m.cfg.bots ? m.cfg.skill : 'off'; graphics.value = prefs.quality;
-    sens.value = String(prefs.sens); sensOut.textContent = `${prefs.sens.toFixed(1)}×`;
+    sens.value = String(prefs.sens); sensOut.textContent = `${prefs.sens.toFixed(1)}×`; sound.value = prefs.sound ? 'on' : 'off';
     size.disabled = skill.disabled = !isHost;
     const people = m.players.filter(p => !p.bot), bothSides = m.players.some(p => p.squad === 0) && m.players.some(p => p.squad === 1);
     play.textContent = !isHost ? 'Waiting for the host' : room ? 'Start match' : 'Play';
@@ -152,6 +154,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   size.addEventListener('change', () => { prefs.teamSize = Number(size.value) || 5; host.configure({ teamSize: prefs.teamSize }); syncMenu(); }, { signal });
   skill.addEventListener('change', () => { prefs.bots = skill.value !== 'off'; if (prefs.bots) prefs.skill = skill.value as SkillId; host.configure({ bots: prefs.bots, skill: prefs.skill }); syncMenu(); }, { signal });
   graphics.addEventListener('change', () => { if (isQuality(graphics.value)) { prefs.quality = graphics.value; scene.setQuality(prefs.quality); } }, { signal });
+  sound.addEventListener('change', () => { prefs.sound = sound.value !== 'off'; if (prefs.sound) sfx.resume(); else sfx.suspend(); }, { signal });
   sens.addEventListener('input', () => { prefs.sens = Number(sens.value) || 1; sensOut.textContent = `${prefs.sens.toFixed(1)}×`; }, { signal });
   play.addEventListener('click', () => { if (!guest) { sfx.ui(); if (!host.start()) syncMenu(); } }, { signal });
   swap.addEventListener('click', () => { sfx.ui(); if (guest) guest.swapSquad(); else host.swapSquad(); syncMenu(); }, { signal });
@@ -554,6 +557,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
         skill: SKILLS.includes(p.skill as SkillId) ? p.skill as SkillId : DEFAULT_PREFS.skill,
         sens: typeof p.sens === 'number' && Number.isFinite(p.sens) ? Math.max(0.4, Math.min(2.2, p.sens)) : 1,
         quality: isQuality(p.quality) ? p.quality : DEFAULT_PREFS.quality,
+        sound: typeof p.sound === 'boolean' ? p.sound : DEFAULT_PREFS.sound,
       };
       scene.setQuality(prefs.quality);
       if (!guest) host.configure({ teamSize: prefs.teamSize, bots: prefs.bots, skill: prefs.skill });

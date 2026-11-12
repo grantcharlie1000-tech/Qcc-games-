@@ -31,7 +31,7 @@ export type QualityId = 'auto' | 'low' | 'high';
 export const QUALITIES: Record<QualityId, { name: string; fps: number; min: number; max: number; cap: number; density: number }> = {
   auto: { name: 'Auto', fps: 60, min: 0.5, max: 1, cap: 1.5, density: 1 },
   low: { name: 'Performance (30 fps)', fps: 30, min: 0.55, max: 0.7, cap: 1, density: 0.5 },
-  high: { name: 'Sharp', fps: 60, min: 1, max: 1, cap: 2, density: 1 },
+  high: { name: 'Sharp', fps: 60, min: 0.7, max: 1, cap: 1.5, density: 1 },
 };
 export const isQuality = (v: unknown): v is QualityId => v === 'auto' || v === 'low' || v === 'high';
 
@@ -197,7 +197,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     await tick();
     try { await fighters.warm(renderer, camera); } catch (e) { console.warn('Breachline fighters warm-up failed', e); }
     if (disposed) return;
-    const prev = renderer.getRenderTarget(), hdr = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true, samples: post.tier === 'high' ? 4 : 0 });
+    const prev = renderer.getRenderTarget(), hdr = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true, samples: post.tier === 'high' ? 2 : 0 });
     camera.layers.enableAll(); untag(); // every room and mesh, whatever the room culling last chose
     fx.prime(true);
     // Every material a damaged wall can show (cut edges, cavity, studs, planks, plate): an intact wall draws only its
@@ -582,8 +582,21 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     fullFor = longMs < 17.5 ? fullFor + dt : 0;
     if (fullFor > 3 && time - downAt > 10 && step < LADDER.length - 1) { setStep(step + 1); fullFor = 0; }
   }
+  /** Sharp guards itself: under 40 fps (25 ms, averaged over half a second) for 3 s, the render scale steps down by
+   * 0.1 to no lower than 0.7 (a viewport change only, as on Auto); after 6 s at full rate it steps back up. The post
+   * quality never changes. */
+  let sharpMs = 16, sharpSlow = 0, sharpFast = 0;
+  function sharpGuard(dt: number) {
+    sharpMs += (dt * 1000 - sharpMs) * Math.min(1, dt / 0.5);
+    sharpSlow = sharpMs > 25 ? sharpSlow + dt : 0;
+    sharpFast = sharpMs < 17.5 ? sharpFast + dt : 0;
+    const q = QUALITIES.high;
+    if (sharpSlow > 3 && scale > q.min + 1e-3) { scale = Math.max(q.min, Math.round((scale - 0.1) * 100) / 100); sharpSlow = sharpFast = 0; applySize(); }
+    else if (sharpFast > 6 && scale < q.max - 1e-3) { scale = Math.min(q.max, Math.round((scale + 0.1) * 100) / 100); sharpSlow = sharpFast = 0; applySize(); }
+  }
   function adapt(dt: number) {
     if (quality === 'auto') { autoLadder(dt); return; }
+    if (quality === 'high') { sharpGuard(dt); return; }
     const q = QUALITIES[quality];
     if (q.min === q.max) return;
     frameMs += (dt * 1000 - frameMs) * 0.08;
@@ -1078,7 +1091,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       quality = q; const d = QUALITIES[q];
       stats.auto = undefined;
       if (q === 'auto') { setStep(stats.software ? 0 : 1); return; }
-      scale = Math.max(d.min, Math.min(d.max, d.max)); slow = fast = 0; fx.density = d.density; setCheap(q === 'low');
+      scale = Math.max(d.min, Math.min(d.max, d.max)); slow = fast = sharpSlow = sharpFast = 0; fx.density = d.density; setCheap(q === 'low');
       post.setTier(/[?&]post=off\b/.test(location.search) ? 'off' : postTier(q));
       applySize();
     },

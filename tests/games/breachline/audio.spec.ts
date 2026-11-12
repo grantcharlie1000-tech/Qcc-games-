@@ -152,3 +152,37 @@ test('a sample pack replaces the guns it covers, decoded once; without one the s
   expect(without).toBeLessThan(0.1);
   expect(none).toBeLessThan(0.1);
 });
+
+test('sound is on in Breachline even with the arcade Sound off; its own Sound control turns it off and on', async ({ browser }) => {
+  // Arcade Sound off (the default). Each case is a fresh page: the menu (and the control) is shown in the lobby.
+  const run = async (choices: string[]) => {
+    const context = await browser.newContext();
+    await context.addInitScript(() => {
+      if (window !== window.top) return;
+      localStorage.setItem('pocket-arcade:v1:settings', JSON.stringify({ sound: false }));
+      localStorage.setItem('pocket-arcade:v1:accounts:guest', 'true'); localStorage.setItem('pocket-arcade:study:v1:reading-choice', 'accept'); sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading');
+      const snd: { contexts: AudioContext[]; sources: number } = { contexts: [], sources: 0 };
+      (window as unknown as { __snd: typeof snd }).__snd = snd;
+      const Real = window.AudioContext;
+      window.AudioContext = class extends Real { constructor(o?: AudioContextOptions) { super(o); snd.contexts.push(this); } };
+      const make = BaseAudioContext.prototype.createBufferSource;
+      BaseAudioContext.prototype.createBufferSource = function (this: BaseAudioContext) { if (snd.contexts.includes(this as AudioContext)) snd.sources++; return make.call(this); };
+    });
+    const page = await context.newPage();
+    await page.goto('/?festive=off#/game/breachline');
+    const sound = page.locator('.bl-sound');
+    await expect(sound).toHaveValue('on');
+    for (const c of choices) await sound.selectOption(c);
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    await page.waitForTimeout(3000);
+    const r = await page.evaluate(() => { const s = (window as unknown as { __snd: { contexts: AudioContext[]; sources: number } }).__snd; return { contexts: s.contexts.length, state: s.contexts[0]?.state ?? 'none', sources: s.sources }; });
+    await context.close();
+    return r;
+  };
+  const on = await run([]);
+  expect(on.contexts).toBe(1); expect(on.state).toBe('running'); expect(on.sources).toBeGreaterThan(0);
+  const off = await run(['off']);
+  expect(off.contexts).toBe(0); expect(off.sources).toBe(0);
+  const back = await run(['off', 'on']);
+  expect(back.contexts).toBe(1); expect(back.state).toBe('running');
+});

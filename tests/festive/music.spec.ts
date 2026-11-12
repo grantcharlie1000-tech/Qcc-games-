@@ -48,3 +48,13 @@ test('losing focus and pagehide stop audio; return resumes without duplicate sou
  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));expect(await active(page)).toHaveLength(0);
  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));await expect.poll(async()=>(await active(page)).length).toBe(1);await other.close();
 });
+
+test('Breachline holds the app soundtrack while it is open; other games keep it',async({page})=>{
+ await prepare(page);await page.goto('/#/collection');await menuButton(page).click();await expect.poll(async()=>(await active(page)).length).toBe(1);
+ await page.evaluate(()=>{location.hash='#/game/breachline';});await expect(page.locator('.game-view')).toHaveAttribute('data-game-id','breachline');
+ await expect.poll(async()=>(await active(page)).length).toBe(0);
+ await page.evaluate(()=>{location.hash='#/game/snake';});await expect(page.locator('.game-view')).toHaveAttribute('data-game-id','snake');
+ await expect.poll(async()=>(await active(page)).length).toBe(1);
+ await page.evaluate(()=>{location.hash='#/game/breachline';});await expect.poll(async()=>(await active(page)).length).toBe(0);
+ await page.evaluate(()=>{location.hash='#/collection';});await expect.poll(async()=>(await active(page)).length).toBe(1);
+});
