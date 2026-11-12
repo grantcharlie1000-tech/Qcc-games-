@@ -105,6 +105,20 @@ let movies:MoviesView|undefined;
 let appView:AppView|undefined,appKind:'social'|'chat'|'santa'|'election'|'predictions'|'study'|undefined;
 // The saved Movies data is one copy for the page, so it outlives each MoviesView and keeps unsaved changes across a visit to the games.
 let movieStorage:MovieStorage|undefined;
+let movieStorageFlight:{token:string|null;promise:Promise<MovieStorage|undefined>}|undefined;
+async function ensureMovieStorage():Promise<MovieStorage|undefined>{
+ if(movieStorage)return movieStorage;
+ const session=accounts.session(),token=session?.token??null;
+ if(movieStorageFlight?.token===token)return movieStorageFlight.promise;
+ const promise=(async()=>{
+  const [storage,accountStorage]=await Promise.all([import('./movies/storage'),import('./movies/account-storage')]);
+  if((accounts.session()?.token??null)!==token)return;
+  const next=session?new accountStorage.AccountMovieStorage(session):new storage.MovieStorage();movieStorage=next;
+  void next.account?.sync();return next;
+ })();
+ movieStorageFlight={token,promise};
+ try{return await promise;}finally{if(movieStorageFlight?.promise===promise)movieStorageFlight=undefined;}
+}
 let movieScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
@@ -330,10 +344,8 @@ async function route(){
     setChromeInert(true);
     content.innerHTML='<div class="loading"><p>Opening Movies &amp; TV…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';
     try{
-      const [{MoviesView},storage,accountStorage]=await Promise.all([import('./movies/view'),import('./movies/storage'),import('./movies/account-storage')]);if(token!==generation)return;
-      movieStorage??=accounts.session()?new accountStorage.AccountMovieStorage(accounts.session()!):new storage.MovieStorage();
-      void movieStorage.account?.sync();
-      movies=new MoviesView(content,movieStorage,advance=>advance?openStudy(true):openStudyEntry(),()=>preferences.reducedMotion,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}},openMenu);
+      const [{MoviesView},saved]=await Promise.all([import('./movies/view'),ensureMovieStorage()]);if(token!==generation||!saved)return;
+      movies=new MoviesView(content,saved,advance=>advance?openStudy(true):openStudyEntry(),()=>preferences.reducedMotion,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}},openMenu);
       movies.navigate(location.hash);
     }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Movies &amp; TV could not load.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
     return;
@@ -622,7 +634,7 @@ accounts.beforeIdentityChange=()=>{generation++;if(christmasWelcome.root.open)ch
 let displayedAccount=accounts.session()?.token;
 accounts.onChange(()=>{
  const identity=accounts.session()?.token,changed=identity!==displayedAccount;displayedAccount=identity;
- if(changed){movieStorage?.account?.dispose();movieStorage=undefined;}
+ if(changed){movieStorage?.account?.dispose();movieStorage=undefined;movieStorageFlight=undefined;if(identity)void ensureMovieStorage().catch(()=>{});}
  updateAccountMenu();
  if(activeId)document.querySelector('#favourite-game')?.setAttribute('aria-pressed',String(store.favourites().includes(activeId)));
  if(identity){for(const game of [...SCORED_GAMES.filter(id=>id!=='minesweeper'),...MINESWEEPER_RANKINGS])leaderboards.sync.queue(game,Math.floor(store.read<number>('best:'+game,0)));if(changed&&!document.hidden)void leaderboards.sync.flush().catch(()=>{});}
@@ -651,3 +663,5 @@ if(import.meta.hot)import.meta.hot.dispose(()=>christmasMusic?.dispose());
 accounts.start(false);updateAccountMenu();
 if(accounts.session()||store.read('accounts:guest',false))beginStudy();
 else accountView.open();
+
+if(accounts.session())void ensureMovieStorage().catch(()=>{});
