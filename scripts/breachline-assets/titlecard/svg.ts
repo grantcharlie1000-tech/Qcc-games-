@@ -1,17 +1,24 @@
 /** Builds the Breachline cover and title SVG strings. Pure and deterministic. */
 import { CARD } from './palette.ts';
 import { ROOM, buildScene } from './scene.ts';
-import { pathsSvg, polygonCount, rasterise, toScreen, hash, type View } from './voxel.ts';
+import { pathsSvg, polygonCount, rasterise, toScreen, hash, type Polys, type View } from './voxel.ts';
 
 export const COVER = { w: 320, h: 410, band: 95 } as const;
+
+function bounds(polys: Polys) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const p of polys) for (const l of p.loops) for (const [X, Y] of l) { x0 = Math.min(x0, X); x1 = Math.max(x1, X); y0 = Math.min(y0, Y); y1 = Math.max(y1, Y); }
+  return { x0, x1, y0, y1 };
+}
 
 export type Built = { svg: string; polygons: number };
 
 export function generateCover(): Built {
   const polys = rasterise(buildScene());
-  // Anchor the middle of the hole on the card and crop the room's corners.
-  const s = 5.2, hole = { X: ROOM.holeX - (ROOM.wallY + 2), Y: ROOM.holeX + ROOM.wallY + 2 - 2 * ROOM.holeZ };
-  const view: View = { s, ox: 166 - s * hole.X, oy: 262 - (s * hole.Y) / 2 };
+  // Fit the whole diorama inside the card below the title band, centred.
+  const b = bounds(polys), s = Math.min(296 / (b.x1 - b.x0), 290 / ((b.y1 - b.y0) / 2));
+  const view: View = { s, ox: 160 - (s * (b.x0 + b.x1)) / 2, oy: 400 - (s * b.y1) / 2 };
+  const hole = { X: ROOM.holeX - ROOM.wallY - 2, Y: ROOM.holeX + ROOM.wallY + 2 - 2 * ROOM.holeZ };
   // Dust motes in the light from the hole.
   const [hx, hy] = toScreen(view, hole.X, hole.Y + 16);
   let dust = '';

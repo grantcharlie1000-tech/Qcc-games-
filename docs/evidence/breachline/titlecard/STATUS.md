@@ -1,6 +1,6 @@
 # Breachline title card: status
 
-Honest score after 5 rounds: **6/10**, measured against Last Light's cover at 7. The 7 target is not reached.
+Honest score after 6 rounds: **6.5/10**, measured against Last Light's cover at 7. The 7 target is not reached.
 
 ## Files
 - `scripts/breachline-assets/titlecard/palette.ts`: all colours, three-shade ramps and light colours.
@@ -26,7 +26,8 @@ The topmost scene point is at y = 101. Nothing is drawn in the title band except
 | 2 | 5 | Lit corridor behind the hole, light pool, defenders on the flanks, anchored crop. | The hole was too small for a figure. A defender stood in front of the hole. Lit strips at the edges. Murky palette. Busy at 160 px. |
 | 3 | 5.5 | Spot cones (no stains on the left wall), warmer palette, tighter crop, ragged cut on the outer wall. A compact room was tried and rejected because it was more crowded. | A third attacker darkened the hole. Debris was a grey heap. Left defender was cropped into slivers. Wall top was too close to the band. Large dull walls. |
 | 4 | 6 | Soot ring round the hole, debris flying through the glow, left defender fully framed in the light pool, helmet no wider than the head. | Attacker front too dark. Left half of the hole dim. No ceiling grid. Walls cool grey. Floor corner too bright. |
-| 5 | 6 | Lighter attacker gear, warmer ambient, second corridor light. A ceiling grid, a light shaft and a rim light were tried and rejected. | See "Still wrong". |
+| 5 | 6 | Lighter attacker gear, warmer ambient, second corridor light. A ceiling grid, a light shaft and a rim light were tried and rejected. | Planner review: the hero does not pop, the scene is too busy and cropped, the defender is a blob from behind, the soot is spread too wide, and the colours are one grey-blue. |
+| 6 | 6.5 | A whole diorama floating on the card, with a clean slab and wall ends. One hero attacker framed by the glow, a second kneeling behind him, and one defender in three-quarter view behind the overturned desk (face, chin strap, low banded helmet, rifle on the desk). Pale wallboard core and tight soot at the hole, four large chunks in the air, muted walls and a lighter blue hero. A smaller room (figures 1.4 times larger) was tried and rejected because the hero then filled the hole. | The figures are still smaller than Last Light's character. The second attacker is hard to see. The carpet corner is a large dark area. The hero's rifle points at the viewer, so it reads as a short bar. |
 
 ## Palette
 - Card: background `#1f2a33`, ink `#fff3df`, accent `#f0b429`.

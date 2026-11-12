@@ -1,17 +1,17 @@
-/** The Breachline title card scene: a cutaway office/lab room at the moment a partition wall is breached. */
+/** The Breachline title card scene: a small floating diorama of a room at the moment a wall is breached. */
 import { LIGHT, type Material } from './palette.ts';
 import { Grid, hash } from './voxel.ts';
 
-export const ROOM = { w: 48, d: 48, h: 26, wallY: 14, holeX: 24, holeZ: 10 } as const;
+export const ROOM = { w: 32, d: 28, h: 26, wallY: 7, holeX: 17, holeZ: 11 } as const;
 
-type Facing = '+y' | '-y' | '-x';
+type Facing = '+y' | '+x';
 type Team = 'atk' | 'def';
 type Pose = 'stand' | 'step' | 'kneel';
 
 /** A soldier, 9 wide, built in local (u lateral, v forward, w up) and turned to face `facing`. */
 export function soldier(g: Grid, ox: number, oy: number, oz: number, facing: Facing, team: Team, pose: Pose): void {
   const put = (u: number, v: number, w: number, m: Material | null) => {
-    const [x, y] = facing === '+y' ? [ox + u, oy + v] : facing === '-y' ? [ox + 8 - u, oy - v] : [ox - v, oy + u];
+    const [x, y] = facing === '+y' ? [ox + u, oy + v] : [ox + v, oy + 8 - u];
     g.set(x, y, oz + w, m);
   };
   const cube = (u0: number, v0: number, w0: number, du: number, dv: number, dw: number, m: Material) => {
@@ -31,133 +31,108 @@ export function soldier(g: Grid, ox: number, oy: number, oz: number, facing: Fac
   } else {
     const front = pose === 'step' ? 2 : 0, back = pose === 'step' ? -1 : 0;
     cube(2, 1 + front, 0, 2, 3, 1, 'boot'); cube(2, 1 + front, 1, 2, 2, 1, 'boot'); cube(2, 1 + front, 2, 2, 2, 3, cloth);
-    if (pose === 'step') cube(2, 1, 5, 2, 3, 3, cloth); else cube(2, 1, 5, 2, 2, 3, cloth);
+    cube(2, 1, 5, 2, pose === 'step' ? 3 : 2, 3, cloth);
     cube(5, 1 + back, 0, 2, 3, 1, 'boot'); cube(5, 1 + back, 1, 2, 2, 1, 'boot'); cube(5, 1 + back, 2, 2, 2, 6, cloth);
     h = 8;
   }
-  // Belt, then a recessed row, then the vest one voxel proud front and back.
+  // Belt, a recessed row, then the vest one voxel proud front and back, with pouches.
   cube(2, 0, h, 5, 4, 1, 'boot');
   cube(2, 1, h + 1, 5, 2, 6, cloth);
   cube(2, 0, h + 2, 5, 1, 5, vest); cube(2, 3, h + 2, 5, 1, 5, vest);
-  cube(3, 4, h + 3, 1, 1, 2, vest); cube(5, 4, h + 3, 1, 1, 2, vest); // pouches
-  // Shoulders and upper arms with the squad band, a gap at the elbow, forearms forward to the rifle.
-  for (const u of [1, 7]) { cube(u, 1, h + 3, 1, 2, 4, cloth); cube(u, 1, h + 5, 1, 2, 2, band); }
+  cube(3, 4, h + 3, 1, 1, 2, vest); cube(5, 4, h + 3, 1, 1, 2, vest);
+  // Upper arms with the squad band, a gap at the elbow, forearms forward to the rifle.
+  for (const u of [1, 7]) { cube(u, 1, h + 3, 1, 2, 4, cloth); cube(u, 1, h + 5, 1, 2, 1, band); }
   cube(7, 3, h + 3, 1, 2, 1, cloth); put(6, 5, h + 3, 'skin');
   cube(1, 3, h + 3, 1, 2, 1, cloth); cube(2, 5, h + 3, 1, 2, 1, cloth); put(3, 7, h + 3, 'skin');
-  // Rifle shouldered, pointing forward.
+  // Rifle shouldered, pointing forward: dark body, light top edge, sight and magazine.
   const rz = h + 4;
-  cube(4, 4, rz, 1, 9, 1, 'gun'); cube(4, 4, rz - 1, 1, 2, 1, 'gun'); // receiver and stock
-  cube(4, 8, rz - 2, 1, 1, 2, 'gun'); // magazine
-  cube(4, 6, rz + 1, 1, 2, 1, 'gunLight'); // sight
+  cube(4, 4, rz, 1, 9, 1, 'gun'); cube(4, 4, rz - 1, 1, 2, 1, 'gun');
+  cube(4, 8, rz - 2, 1, 1, 2, 'gun');
+  cube(4, 6, rz + 1, 1, 2, 1, 'gunLight');
   put(4, 13, rz, 'gunLight');
-  // Neck, head a voxel wider each side, face with a dark gap under the helmet brim.
+  // Neck, then the head: face with eyes or goggles under a dark brim gap, chin strap at the sides.
   cube(3, 1, h + 7, 3, 2, 1, 'skin');
-  cube(2, 0, h + 8, 5, 4, 3, vest);
+  cube(2, 0, h + 8, 5, 4, 3, team === 'atk' ? 'atkVest' : 'defCloth');
   cube(3, 3, h + 8, 3, 1, 2, 'skin');
-  cube(3, 3, h + 9, 3, 1, 1, 'visor');
-  cube(2, 3, h + 10, 5, 1, 1, 'visor');
-  // Helmet: a shell no wider than the head, brim over the face, squad band round the middle.
-  cube(2, -1, h + 10, 5, 1, 1, helmet); cube(2, 0, h + 10, 1, 3, 1, helmet); cube(6, 0, h + 10, 1, 3, 1, helmet);
-  cube(2, -1, h + 11, 5, 6, 1, band);
-  cube(2, -1, h + 12, 5, 5, 1, helmet); put(2, -1, h + 12, null); put(6, -1, h + 12, null);
-  cube(3, 0, h + 13, 3, 3, 1, helmet);
+  if (team === 'atk') cube(3, 3, h + 9, 3, 1, 1, 'goggle');
+  else { put(3, 3, h + 9, 'visor'); put(5, 3, h + 9, 'visor'); }
+  put(2, 3, h + 8, 'visor'); put(6, 3, h + 8, 'visor');
+  cube(3, 3, h + 10, 3, 1, 1, 'visor');
+  // Helmet: a low rounded dome with a short brim, the squad band round its widest row.
+  cube(2, -1, h + 10, 5, 1, 1, helmet); cube(2, 0, h + 10, 1, 4, 1, helmet); cube(6, 0, h + 10, 1, 4, 1, helmet);
+  cube(2, -1, h + 11, 5, 5, 1, band); cube(3, 4, h + 11, 3, 1, 1, helmet);
+  cube(3, -1, h + 12, 3, 5, 1, helmet); cube(2, 0, h + 12, 5, 3, 1, helmet);
 }
 
 export function buildScene(): Grid {
   const g = new Grid();
   const { w, d, h, wallY, holeX, holeZ } = ROOM;
-  const y0 = wallY - 8; // the corridor behind the partition is only deep enough for the stack
+  const y0 = wallY - 7; // the corridor is only deep enough for the stack
 
-  // Floor slab: tiles in the corridor and the lab half, carpet in the office half.
+  // The slab: three voxels of concrete under the floor, tiles in the corridor and lab half, carpet in the office half.
   for (let x = 0; x < w; x++) for (let y = y0; y < d; y++) {
-    g.set(x, y, -3, 'slab').set(x, y, -2, 'slab');
-    const lab = y < wallY || x >= 22;
-    const top: Material = lab ? (((x >> 1) + (y >> 1)) % 2 ? 'tile' : 'tileAlt') : 'carpet';
-    g.set(x, y, -1, top);
+    if (y < wallY && x >= w - 8) continue; // the corridor stops behind the partition's clean end
+    g.box(x, y, -3, 1, 1, 2, 'slab');
+    g.set(x, y, -1, y < wallY || x >= 15 ? (((x >> 1) + (y >> 1)) % 2 ? 'tile' : 'tileAlt') : 'carpet');
   }
 
-  // Outer wall along x = 0 (we see its inside face): dado, trim rail, plaster, a notice board.
-  // Plaster in sheet-sized panels, every other one a shade off, so big walls are not flat slabs.
-  const wallMat = (z: number, a = 0): Material => (z < 6 ? 'dado' : z === 6 ? 'trim' : z > 7 && Math.floor(a / 6) % 2 ? 'boardDim' : 'board');
-  // The outer wall is cut away in a ragged slope toward the viewer.
-  for (let y = y0; y < d; y++) {
-    const top = Math.round(h - Math.max(0, y - wallY - 4) * 0.45 - 2 * hash(y >> 1, 0, 0, 51));
-    g.box(0, y, 0, 2, 1, top, (_x, yy, z) => wallMat(z, yy));
-  }
-  g.box(2, 29, 12, 1, 7, 6, 'laminate');
-  for (const [y, z] of [[30, 16], [31, 16], [33, 15], [34, 15], [30, 13], [32, 13], [33, 13]] as const) g.set(3, y, z, 'paper');
+  // Outer wall along x = 0 and the corridor's far wall, both ending cleanly.
+  const wallMat = (z: number): Material => (z < 5 ? 'dado' : z === 5 ? 'trim' : 'board');
+  g.box(0, y0, 0, 2, d - y0, 16, (_x, _y, z) => wallMat(z));
+  g.box(2, y0, 0, w - 10, 1, h - 6, (_x, _y, z) => wallMat(z));
 
-  // The partition: board, stud frame, board. The front board is torn back further than the studs.
+  // The partition: board, stud frame, board. Torn board shows its pale core; soot stays tight to the edge.
   const hole = (x: number, z: number, k: number) => {
-    const dx = (x + 0.5 - holeX) / 10.5, dz = (z + 0.5 - holeZ) / 11.5;
-    return dx * dx + dz * dz < k * (1 + 0.45 * (hash(x, z, 0, 1) - 0.5));
+    const dx = (x + 0.5 - holeX) / 10, dz = (z + 0.5 - holeZ) / 13;
+    return dx * dx + dz * dz < k * (1 + 0.4 * (hash(x, z, 0, 1) - 0.5));
   };
   for (let x = 2; x < w; x++) for (let z = 0; z < h; z++) {
     if (!hole(x, z, 1)) g.set(x, wallY, z, 'boardDim');
-    const stud = x % 4 === 0 || z === 0 || z === h - 1 || x === w - 1;
-    if (stud && !hole(x, z, 0.8)) g.set(x, wallY + 1, z, 'stud');
-    if (!hole(x, z, 1.35)) g.set(x, wallY + 2, z, hole(x, z, 1.75) ? 'scorch' : hole(x, z, 2.6) && hash(x, z, 1, 2) < 0.45 ? 'soot' : wallMat(z, x + 3));
-  }
-  // The corridor's far wall, which takes the blast of light.
-  g.box(2, y0, 0, 40, 1, h - 8, (_x, _y, z) => wallMat(z));
-
-  // Reinforced steel panel on the right of the partition, braced and hazard striped.
-  g.box(35, wallY + 3, 0, 12, 1, 22, 'steel');
-  for (const x of [35, 40, 45]) g.box(x, wallY + 4, 0, 1, 1, 22, 'steelDark');
-  g.box(35, wallY + 4, 10, 12, 1, 1, 'steelDark');
-  for (let x = 35; x < 47; x++) for (let z = 1; z < 3; z++) g.set(x, wallY + 4, z, (x + z) % 4 < 2 ? 'hazard' : 'hazardInk');
-
-  // Attackers: one stepping through the hole, the stack behind it.
-  soldier(g, holeX - 9, wallY - 1, 0, '+y', 'atk', 'step');
-  soldier(g, holeX + 4, wallY - 4, 0, '+y', 'atk', 'stand');
-  soldier(g, holeX - 22, wallY - 4, 0, '+y', 'atk', 'stand');
-
-  // Debris thrown through the light shaft, and rubble on the floor.
-  for (let i = 0; i < 24; i++) {
-    const t = hash(i, 0, 0, 11);
-    const x = Math.round(holeX + 2 + 9 * hash(i, 1, 0, 11)), y = Math.round(wallY + 4 + 6 * t);
-    const z = Math.round(12 + 9 * hash(i, 2, 0, 11) - 4 * t);
-    if (g.get(x, y, z) || g.get(x, y, z - 1)) continue;
-    const m: Material = hash(i, 3, 0, 11) < 0.35 ? 'stud' : hash(i, 3, 0, 11) < 0.6 ? 'scorch' : 'gypsum';
-    g.set(x, y, z, m);
-    if (hash(i, 4, 0, 11) < 0.35) g.set(x + 1, y, z, m);
-  }
-  for (let x = holeX - 10; x <= holeX + 10; x++) for (let y = wallY + 3; y < wallY + 10; y++) {
-    if (!g.get(x, y, 0) && hash(x, y, 0, 21) < 0.3 - (y - wallY) * 0.025) g.set(x, y, 0, hash(x, y, 1, 21) < 0.5 ? 'gypsum' : 'boardDim');
+    const stud = x % 4 === 1 || z === 0 || z === h - 1 || x === w - 1;
+    if (stud && !hole(x, z, 0.75)) g.set(x, wallY + 1, z, 'stud');
+    if (hole(x, z, 1.25)) continue;
+    const m: Material = hole(x, z, 1.45) ? 'gypsum' : hole(x, z, 1.7) && hash(x, z, 1, 2) < 0.6 ? 'scorch' : wallMat(z);
+    g.set(x, wallY + 2, z, m);
   }
 
-  // Defenders: one kneeling behind an overturned desk on the left, one behind a barricade on the right.
-  g.box(15, 29, 0, 11, 1, 8, 'laminate');
-  for (const x of [16, 24]) for (const z of [1, 6]) g.box(x, 30, z, 1, 4, 1, 'desk');
-  g.box(16, 30, 0, 9, 3, 1, 'desk');
-  soldier(g, 16, 38, 0, '-y', 'def', 'kneel');
+  // Reinforced steel panel on the right end of the partition.
+  g.box(28, wallY + 3, 0, 4, 1, 19, 'steel');
+  g.box(28, wallY + 4, 0, 1, 1, 19, 'steelDark').box(31, wallY + 4, 0, 1, 1, 19, 'steelDark');
+  g.box(28, wallY + 4, 9, 4, 1, 1, 'steelDark');
 
-  g.box(38, 22, 0, 1, 11, 11, (_x, y, z) => (z === 6 && y >= 25 && y <= 28 ? null : z === 10 ? 'hazard' : 'steelDark'));
-  for (const y of [23, 31]) g.box(39, y, 0, 3, 1, 1, 'steel');
-  soldier(g, 45, 22, 0, '-x', 'def', 'stand');
+  // Attackers: the hero stepping through, a second one's helmet and muzzle behind him in the hole.
+  soldier(g, holeX - 6, wallY - 1, 0, '+y', 'atk', 'step');
+  soldier(g, holeX + 2, wallY - 4, 0, '+y', 'atk', 'kneel');
 
-  // Office dressing: a filing cabinet, a desk with a monitor, the uplink on its table.
-  g.box(2, 17, 0, 3, 5, 10, 'cabinet');
-  for (const z of [2, 5, 8]) for (const y of [18, 20]) g.set(5, y, z, 'steelDark');
-  g.box(2, 23, 0, 3, 7, 6, 'desk');
-  g.box(2, 23, 6, 6, 7, 1, 'laminate');
-  g.box(3, 25, 7, 1, 2, 2, 'monitor');
-  g.box(3, 24, 9, 1, 4, 3, 'monitor');
-  g.box(4, 24, 9, 1, 4, 3, 'screen');
+  // Large wallboard chunks in mid-air, flying toward the defender, and rubble on the floor.
+  const chunks = [[7, 12, 15, 3, 2], [4, 13, 19, 2, 1], [24, 11, 19, 2, 2], [26, 13, 13, 2, 1]] as const;
+  for (const [x, y, z, a, b] of chunks) {
+    g.box(x, y, z, a, 1, b, 'gypsum');
+    g.box(x, y + 1, z, a, 1, b, 'board');
+  }
+  for (let x = holeX - 8; x <= holeX + 8; x++) for (let y = wallY + 3; y < wallY + 9; y++) {
+    if (!g.get(x, y, 0) && hash(x, y, 0, 21) < 0.32 - (y - wallY) * 0.03) g.set(x, y, 0, hash(x, y, 1, 21) < 0.5 ? 'gypsum' : 'boardDim');
+  }
 
-  const tx = 35, ty = 36;
-  for (const [dx, dy] of [[1, 1], [8, 1], [1, 7], [8, 7]]) g.box(tx + dx, ty + dy, 0, 1, 1, 6, 'steelDark');
-  g.box(tx, ty, 6, 10, 9, 1, 'laminate');
-  g.box(tx + 2, ty + 2, 7, 6, 5, 2, 'uplink');
-  g.box(tx + 3, ty + 7, 7, 4, 1, 1, 'uplinkGlow');
-  g.box(tx + 3, ty + 3, 9, 4, 3, 1, 'uplinkGlow');
-  g.box(tx + 7, ty + 3, 9, 1, 1, 5, 'gunLight').set(tx + 7, ty + 3, 14, 'uplinkGlow');
+  // The defender holds the angle across the hole from behind an overturned desk, rifle resting on it.
+  g.box(9, 12, 0, 1, 11, 7, 'laminate');
+  for (const y of [12, 22]) for (const z of [1, 5]) g.box(6, y, z, 3, 1, 1, 'desk');
+  soldier(g, 4, 13, 0, '+x', 'def', 'kneel');
 
-  // Lights: the breach fire as a cone into the room, a glow on the corridor wall, teal on the uplink.
-  const fire = { x: holeX - 2, y: wallY - 4, z: 6, rgb: LIGHT.breach };
-  g.lights.push({ ...fire, range: 22, power: 2.6, dir: [0, 0.97, -0.24], cut: 0.55 });
-  g.lights.push({ ...fire, x: holeX - 1, y: wallY - 1.5, z: 10, range: 14, power: 2.4, dir: [0, -0.5, -0.87], cut: -0.2 });
-  g.lights.push({ ...fire, x: holeX - 9, y: wallY - 1.5, z: 10, range: 10, power: 1.8, dir: [0, -0.5, -0.87], cut: -0.2 });
-  g.lights.push({ x: tx + 5, y: ty + 5, z: 11, rgb: LIGHT.uplink, range: 6, power: 1.0 });
+  // The uplink on a small table in the lab half.
+  const tx = 24, ty = 22;
+  for (const [dx, dy] of [[0, 0], [5, 0], [0, 4], [5, 4]]) g.box(tx + dx, ty + dy, 0, 1, 1, 5, 'steelDark');
+  g.box(tx, ty, 5, 6, 5, 1, 'laminate');
+  g.box(tx + 1, ty + 1, 6, 4, 3, 2, 'uplink');
+  g.box(tx + 2, ty + 4, 6, 2, 1, 1, 'uplinkGlow');
+  g.box(tx + 2, ty + 2, 8, 2, 1, 1, 'uplinkGlow');
+  g.box(tx + 4, ty + 1, 8, 1, 1, 3, 'gunLight').set(tx + 4, ty + 1, 11, 'uplinkGlow');
+
+  // Lights: the breach as a cone into the room, the corridor lit behind the hero, a rim from above, teal on the uplink.
+  const fire = { x: holeX, y: wallY - 4, z: 6, rgb: LIGHT.breach };
+  g.lights.push({ ...fire, range: 20, power: 2.8, dir: [0, 0.97, -0.24], cut: 0.5 });
+  g.lights.push({ ...fire, y: wallY - 1.5, z: 10, range: 12, power: 2.8, dir: [0, -0.5, -0.87], cut: -0.3 });
+  g.lights.push({ ...fire, x: holeX + 1, y: wallY + 1, z: 25, range: 14, power: 1.6, dir: [0, 0.45, -0.89], cut: 0.55 });
+  g.lights.push({ x: tx + 3, y: ty + 3, z: 10, rgb: LIGHT.uplink, range: 6, power: 1.0 });
   return g;
 }
