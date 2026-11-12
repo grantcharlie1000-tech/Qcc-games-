@@ -427,8 +427,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     markers.length = 0;
     const seen = m.players[watch];
     if (inMatch() && seen) {
-      if (m.device) { const sec = Math.ceil(m.t); if (sec !== devSec) { devSec = sec; devText = `${sec}s`; } mark(m.device.x, 0.9, m.device.z, 'UPLINK', 'device', devText); }
-      else if (m.phase !== 'end') for (let i = 0; i < MAP.sites.length; i++) {
+      // The uplink's marker and countdown only while it is armed (not under the round's end banner).
+      if (m.device && m.phase === 'planted') { const sec = Math.ceil(m.t); if (sec !== devSec) { devSec = sec; devText = `${sec}s`; } mark(m.device.x, 0.9, m.device.z, 'UPLINK', 'device', devText); }
+      else if (m.phase !== 'end' && m.phase !== 'over' && !m.device) for (let i = 0; i < MAP.sites.length; i++) {
         const s = MAP.sites[i], cx = (s.x0 + s.x1) / 2, cz = (s.z0 + s.z1) / 2;
         if (inRect(s, seen.x, seen.z)) continue;
         const d = Math.round(Math.hypot(cx - seen.x, cz - seen.z));

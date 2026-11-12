@@ -264,8 +264,24 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   {
     let seed = 91; const rnd = () => { seed = (seed * 1664525 + 1013904223) | 0; return ((seed >>> 8) & 0xffff) / 65536; };
     const parts = [];
-    for (let i = 0; i < 46; i++) { const a = i / 46 * Math.PI * 2 + rnd() * 0.1, r = 120 + rnd() * 70, h = 8 + rnd() * 26, w = 14 + rnd() * 22; parts.push({ s: [w, h, w * (0.6 + rnd() * 0.6)] as [number, number, number], p: [Math.cos(a) * r, h / 2, Math.sin(a) * r] as [number, number, number], c: 0x56607a + (Math.floor(rnd() * 3) * 0x060606), r: [0, a, 0] as [number, number, number] }); }
-    const skyline = new THREE.Mesh(boxes(parts), new THREE.MeshBasicMaterial({ vertexColors: true }));
+    for (let i = 0; i < 46; i++) { const a = i / 46 * Math.PI * 2 + rnd() * 0.1, r = 120 + rnd() * 70, h = 8 + rnd() * 26, w = 14 + rnd() * 22; parts.push({ s: [w, h, w * (0.6 + rnd() * 0.6)] as [number, number, number], p: [Math.cos(a) * r, h / 2, Math.sin(a) * r] as [number, number, number], c: 0x3e4554 + (Math.floor(rnd() * 3) * 0x050505), r: [0, a, 0] as [number, number, number] }); }
+    // Backdrop buildings: walls shaded by which way they face, rows of dark windows above the ground floor, darker
+    // roofs; the scene's fog hazes them back. Window bands come from the world position (the boxes are in world space).
+    const skyMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+    skyMat.onBeforeCompile = sh => {
+      sh.vertexShader = 'varying vec3 vSkyP; varying vec3 vSkyN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvSkyP = position; vSkyN = normal;');
+      sh.fragmentShader = 'varying vec3 vSkyP; varying vec3 vSkyN;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+{ vec3 n = normalize( vSkyN );
+  if ( n.y < 0.5 ) {
+    float u = dot( vSkyP.xz, normalize( vec2( -n.z, n.x ) ) ), fy = fract( vSkyP.y / 3.4 ), fu = fract( u / 2.6 );
+    float win = step( 0.42, fy ) * step( fy, 0.82 ) * step( 0.22, fu ) * step( fu, 0.8 ) * step( 3.0, vSkyP.y );
+    diffuseColor.rgb *= 0.78 + 0.22 * abs( n.x );
+    diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * 0.5 + vec3( 0.05, 0.06, 0.08 ), win );
+  } else diffuseColor.rgb *= 0.8;
+}`);
+    };
+    skyMat.customProgramCacheKey = () => 'skyline';
+    const skyline = new THREE.Mesh(boxes(parts), skyMat);
     skyline.matrixAutoUpdate = false; scene.add(skyline);
   }
 
@@ -405,7 +421,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   function untag() { tags.forEach((t, o) => { o.layers.mask = t.mask; }); }
   /** The light tier's far rooms (render/artworld.ts): room index to its one merged mesh, shown instead of the room
    * when it is seen through an opening more than FAR metres away. Off until the culling chooses them. */
-  const farMeshes = new Map<number, THREE.Object3D>(), FAR = 12, FAR_SHIFT = 12;
+  const farMeshes = new Map<number, THREE.Object3D>(), FAR = 16, FAR_SHIFT = 12;
   /** `both`: things that stay drawn in a far room too (panels, so breach holes show; props). */
   function tagRooms(root: THREE.Object3D, both = false) {
     if (cullOff) { root.traverse(o => { if (o.userData.farRoom !== undefined) o.visible = false; }); return; }
@@ -471,11 +487,11 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const pr = [0, 0, 0, 0];
   let cullLog: string[] | null = null;
   if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blCullLog: (on: boolean) => { cullLog = on ? [] : null; return () => cullLog; } });
-  /** Whether room `i` draws as its merged mesh (light tier only): seen through two openings or more (only a slit of
-   * it shows), or its nearest point beyond FAR metres. */
-  function isFar(i: number, depth: number) {
-    if (!farMeshes.has(i)) return false;
-    if (depth >= 2) return true;
+  /** Whether room `i` draws as its merged mesh (light tier only): its nearest point beyond FAR metres. By distance
+   * only (a room two openings away can still be close), and never an outdoor region, so the yard's ground keeps its
+   * texture and markings however far it reaches. */
+  function isFar(i: number) {
+    if (!farMeshes.has(i) || OUTDOOR.has(REGIONS[i].name)) return false;
     const r = REGIONS[i], x = camera.position.x, z = camera.position.z;
     return Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1)) > FAR;
   }
@@ -500,7 +516,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
         const x0 = Math.max(pr[0], rects[r * 4]), y0 = Math.max(pr[1], rects[r * 4 + 1]), x1 = Math.min(pr[2], rects[r * 4 + 2]), y1 = Math.min(pr[3], rects[r * 4 + 3]);
         if (x0 >= x1 || y0 >= y1) continue;
         if (cullLog) cullLog.push(`${REGIONS[r].name}>${REGIONS[o].name} ${p.panel.kind} [${pr.map(v => v.toFixed(2))}] in [${[0, 1, 2, 3].map(k => rects[r * 4 + k].toFixed(2))}]`);
-        if (reach[o] < 0) { reach[o] = reach[r] + 1; mask |= isFar(o, reach[o]) ? 1 << (o + 1 + FAR_SHIFT) : 1 << (o + 1); queue.push(o); rects[o * 4] = x0; rects[o * 4 + 1] = y0; rects[o * 4 + 2] = x1; rects[o * 4 + 3] = y1; }
+        if (reach[o] < 0) { reach[o] = reach[r] + 1; mask |= isFar(o) ? 1 << (o + 1 + FAR_SHIFT) : 1 << (o + 1); queue.push(o); rects[o * 4] = x0; rects[o * 4 + 1] = y0; rects[o * 4 + 2] = x1; rects[o * 4 + 3] = y1; }
         else { rects[o * 4] = Math.min(rects[o * 4], x0); rects[o * 4 + 1] = Math.min(rects[o * 4 + 1], y0); rects[o * 4 + 2] = Math.max(rects[o * 4 + 2], x1); rects[o * 4 + 3] = Math.max(rects[o * 4 + 3], y1); }
       }
     }

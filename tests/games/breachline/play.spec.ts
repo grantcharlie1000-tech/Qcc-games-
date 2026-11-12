@@ -104,13 +104,31 @@ test('planting arms the uplink and holding it wins the round; the match goes on 
   let s=await state(page);
   expect(s.phase).toBe('planted');expect(s.device).not.toBeNull();
   await expect(page.locator('.bl-objective')).toContainText('Uplink armed in Lab (A)');
+  await page.evaluate(()=>window.__breachlineTest!.place(-1,2,Math.PI,0));
+  await expect(page.locator('.bl-marker[data-kind="device"]')).toBeVisible();
   await page.evaluate(()=>{const h=window.__breachlineTest!;h.skip(39.5);h.advance(0.8);});
   s=await state(page);
   expect(s.phase).toBe('end');expect(s.wins).toEqual([1,0]);
   await expect(page.locator('.bl-banner')).toContainText('Round won');
+  await expect(page.locator('.bl-marker[data-kind="device"]:visible')).toHaveCount(0);
   await page.evaluate(()=>{const h=window.__breachlineTest!;h.skip(6.9);h.advance(0.4);});
   s=await state(page);
   expect(s.phase).toBe('prep');expect(s.round).toBe(2);expect(s.me!.hp).toBe(100);expect(s.holes).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test('under the round-end banner there is no "Go", no objective prompt and no uplink marker',async({page})=>{
+  const errors=await open(page);
+  await action(page);
+  await expect(page.locator('.bl-toast')).toHaveAttribute('data-on','true');
+  await expect(page.locator('.bl-toast')).toContainText('Go');
+  // The clock runs out at once (no frames between), so the round's "Go" would still be up.
+  await page.evaluate(()=>{const h=window.__breachlineTest!;h.skip(999);h.advance(0.3);h.draw();});
+  expect((await state(page)).phase).toBe('end');
+  await expect(page.locator('.bl-banner')).toContainText('Round lost');
+  await expect(page.locator('.bl-toast')).toHaveAttribute('data-on','false');
+  await expect(page.locator('.bl-prompt')).toBeHidden();
+  await expect(page.locator('.bl-marker[data-kind="device"]:visible, .bl-marker[data-kind="site"]:visible')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

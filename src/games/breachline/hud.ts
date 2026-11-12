@@ -206,7 +206,8 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
       if (hurtLevel > 0) { hurtLevel = Math.max(0, hurtLevel - v.dt * 0.9); keys.delete(el.hurt); el.hurt.style.opacity = String(Math.min(0.85, hurtLevel)); }
       if (dirLife > 0) { dirLife -= v.dt; el.dir.style.opacity = String(Math.max(0, Math.min(1, dirLife * 1.5))); }
       if (hitLife > 0) { hitLife -= v.dt; if (hitLife <= 0) attr(el.hit, 'on', 'false'); }
-      if (toastLife > 0) { toastLife -= v.dt; if (toastLife <= 0) attr(el.toast, 'on', 'false'); }
+      // Round and match end: the banner says it all, so no toast (a round's "Go") stays under it.
+      if (toastLife > 0) { toastLife = m.phase === 'end' || m.phase === 'over' ? 0 : toastLife - v.dt; if (toastLife <= 0) attr(el.toast, 'on', 'false'); }
       if (bannerLife > 0) { bannerLife -= v.dt; if (bannerLife <= 0) show(el.banner, false); }
       const lowHp = alive && seen && seen.hp <= 35 && v.watch === v.self ? 0.35 : 0;
       if (hurtLevel < lowHp && changed(el.hurt, lowHp)) el.hurt.style.opacity = String(lowHp);
@@ -225,11 +226,11 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
       while (el.feed.children.length > 5) el.feed.lastElementChild!.remove();
       later(() => row.remove(), 6500);
     },
-    hitmarker(kill, head) { el.hit.dataset.on = 'true'; el.hit.dataset.kill = String(kill); el.hit.dataset.head = String(head); hitLife = kill ? 0.4 : 0.16; },
+    hitmarker(kill, head) { attr(el.hit, 'on', 'true'); attr(el.hit, 'kill', String(kill)); attr(el.hit, 'head', String(head)); hitLife = kill ? 0.4 : 0.16; },
     hurt(angle, amount) { hurtLevel = Math.min(1, hurtLevel + amount / 60 + 0.25); el.dir.style.transform = `rotate(${angle}rad)`; dirLife = 1.1; },
-    toast(title, sub = '') { el.toast.innerHTML = `<b>${escape(title)}</b>${sub ? `<span>${escape(sub)}</span>` : ''}`; el.toast.dataset.on = 'true'; toastLife = 2.6; },
-    banner(title, sub, tone, seconds) { el.banner.hidden = false; el.banner.dataset.tone = tone; (el.banner.firstElementChild as HTMLElement).textContent = title; (el.banner.lastElementChild as HTMLElement).textContent = sub; bannerLife = seconds; },
-    reset() { el.feed.replaceChildren(); hurtLevel = dirLife = hitLife = toastLife = bannerLife = 0; el.hurt.style.opacity = '0'; el.dir.style.opacity = '0'; el.banner.hidden = true; el.toast.dataset.on = 'false'; el.hit.dataset.on = 'false'; keys.clear(); },
+    toast(title, sub = '') { el.toast.innerHTML = `<b>${escape(title)}</b>${sub ? `<span>${escape(sub)}</span>` : ''}`; attr(el.toast, 'on', 'true'); toastLife = 2.6; },
+    banner(title, sub, tone, seconds) { el.banner.hidden = false; attr(el.banner, 'tone', tone); (el.banner.firstElementChild as HTMLElement).textContent = title; (el.banner.lastElementChild as HTMLElement).textContent = sub; bannerLife = seconds; },
+    reset() { el.feed.replaceChildren(); hurtLevel = dirLife = hitLife = toastLife = bannerLife = 0; el.hurt.style.opacity = '0'; el.dir.style.opacity = '0'; el.banner.hidden = true; attr(el.toast, 'on', 'false'); attr(el.hit, 'on', 'false'); keys.clear(); },
   };
 }
 function escape(s: string) { return s.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`); }

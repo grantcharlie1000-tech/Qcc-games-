@@ -147,6 +147,13 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       if (s) {
         [map, nor, arm] = await set(s.set, TEX_SIZE[tier]);
         mapUv(a.uv, s.size, s.size, s.rotate);
+        // A narrow upright face (a corner quoin, a post) on a large-repeat surface showed a few blotches the size of a
+        // hand: under a metre wide, it repeats every 1.5 m instead. Each face is four vertices (levelgeo faceArrays).
+        if (s.size > 1.5) for (let v = 0; v < a.uv.length / 2; v += 4) {
+          if (Math.abs(a.normal[v * 3 + 1]) > 0.5) continue;
+          const P = a.position, wide = Math.hypot(P[v * 3 + 3] - P[v * 3], P[v * 3 + 5] - P[v * 3 + 2]);
+          if (wide < 1) for (let k = v; k < v + 4; k++) { a.uv[k * 2] *= s.size / 1.5; a.uv[k * 2 + 1] *= s.size / 1.5; }
+        }
         if (s.tint) for (let i = 0; i < a.color.length; i++) a.color[i] *= s.tint[i % 3];
         // The room's own wall tone (render/ambience.ts ROOM_LOOK).
         // An accent wall takes its own paint: the faces on the plane x (or z) = at, facing into the room.
