@@ -1,3 +1,5 @@
+import {movieProgress} from './movie-progress';
+import {MAX_PROGRESS_BODY_BYTES} from '../movies/progress-shared';
 import {createHash,randomBytes,randomUUID,scrypt,timingSafeEqual} from 'node:crypto';
 import type {Database} from '../leaderboard/server';
 import {validUsername,validPassword,validSave,validSaves,MAX_BODY_BYTES,MAX_AUTH_BODY_BYTES,MAX_USER_BYTES,STORAGE_QUOTA,jsonBytes,SAVE_KEYS,validRevision,type Saves,type SyncV2Response} from './shared';
@@ -88,7 +90,7 @@ export function createAccountsHandler(db:Database,options:AccountsHandlerOptions
   const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
   const respond=(body:unknown,status=200,extra:Record<string,string>={})=>Response.json(body,{status,headers:{...headers,...extra}});
   const action=new URL(request.url).searchParams.get('action');
-  const allowed=action==='me'?['GET']:action==='sync'?['GET','PUT']:['signup','login','logout'].includes(action??'')?['POST']:[];
+  const allowed=action==='me'?['GET']:(action==='sync'||action==='movies')?['GET','PUT']:['signup','login','logout'].includes(action??'')?['POST']:[];
   if(!allowed.length)return respond({error:'Unknown account action.'},404);
   if(!allowed.includes(request.method))return respond({error:'Method not allowed.'},405,{Allow:allowed.join(', ')});
   try{
@@ -97,7 +99,7 @@ export function createAccountsHandler(db:Database,options:AccountsHandlerOptions
    if(request.method!=='GET'){
     const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return respond({error:'This request is not allowed.'},403);
     if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type')??''))return respond({error:'Send JSON.'},415);
-    try{data=await readJson(request,action==='sync'?MAX_BODY_BYTES:MAX_AUTH_BODY_BYTES);}catch(error){throw error===413?413:400;}
+    try{data=await readJson(request,action==='movies'?MAX_PROGRESS_BODY_BYTES:action==='sync'?MAX_BODY_BYTES:MAX_AUTH_BODY_BYTES);}catch(error){throw error===413?413:400;}
    }
    if(action==='signup'||action==='login'){
     const ip=request.headers.get('x-nf-client-connection-ip')?.trim()||'unknown';
@@ -153,6 +155,7 @@ export function createAccountsHandler(db:Database,options:AccountsHandlerOptions
     }
    }
    const account=await resolveAccount(db,request);if(!account)return respond({error:'Please log in again.'},401);
+   if(action==='movies'){const release=await lock('movies:'+account.id);try{return await movieProgress(db,request,data);}finally{release();}}
    if(action==='me')return respond({username:account.username});
    if(action==='logout'){
     const token=request.headers.get('authorization')!.slice(7);await db.query('DELETE FROM account_sessions WHERE token_hash=$1',[sha(token)]);return respond({ok:true});
