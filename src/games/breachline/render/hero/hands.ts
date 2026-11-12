@@ -38,10 +38,10 @@ const fpDigit = (base: Vec, reach: number, r0: number, r3: number, yaw: number, 
 };
 export const FP_HAND: Digit[] = [
   { base: [-0.022, -0.011, -0.027], len: [0.042, 0.031, 0.025], rad: [0.0136, 0.0113, 0.0103, 0.0089], yaw: 0.62, pitch: -0.32 },
-  fpDigit([-0.0305, 0.001, -0.101], 0.072, 0.0098, 0.0077, 0.07, 0),
-  fpDigit([-0.0102, 0.003, -0.106], 0.080, 0.01, 0.0079, 0, 0),
-  fpDigit([0.0096, 0.001, -0.102], 0.074, 0.0095, 0.0075, -0.06, 0),
-  fpDigit([0.0278, -0.004, -0.093], 0.058, 0.0086, 0.0068, -0.15, 0),
+  fpDigit([-0.0305, 0.001, -0.101], 0.072, 0.0089, 0.0071, 0.07, 0),
+  fpDigit([-0.0102, 0.003, -0.106], 0.080, 0.0091, 0.0073, 0, 0),
+  fpDigit([0.0096, 0.001, -0.102], 0.074, 0.0087, 0.007, -0.06, 0),
+  fpDigit([0.0278, -0.004, -0.093], 0.058, 0.0079, 0.0064, -0.15, 0),
 ];
 const fpRad = (d: number, s: number) => FP_HAND[d].rad[s];
 /** Rest rotation of each digit's first bone: yaw (toward the thumb side) and pitch. */
@@ -146,13 +146,13 @@ function sleeve(b: Builder, look: ArmsLook) {
   const radius = (z: number, a: number) => {
     const t = (z0 - z) / (z0 - z1);
     // About 105 mm across the forearm, tapering to a 78 mm cuff.
-    let r = THREE.MathUtils.lerp(0.056, 0.0525, Math.min(1, t / 0.55)) - Math.pow(Math.max(0, t - 0.55) / 0.45, 1.3) * 0.0135;
+    let r = THREE.MathUtils.lerp(0.054, 0.0475, Math.min(1, t / 0.55)) - Math.pow(Math.max(0, t - 0.55) / 0.45, 1.2) * 0.0105;
     // Compression folds near the elbow and above the cuff, deep enough to break the outline, varying round the arm.
     const nearElbow = Math.exp(-Math.pow((z + UPPER) / 0.06, 2)), nearCuff = Math.exp(-Math.pow((z - z1 - 0.045) / 0.045, 2));
     r += (nearElbow * 0.008 + nearCuff * 0.0085) * Math.pow(Math.abs(Math.sin(z * 210 + Math.sin(a * 2) * 1.6 + a * 0.5)), 1.6) * (0.55 + 0.45 * Math.sin(a * 3 + z * 40));
     r += 0.0016 * Math.sin(a * 5 + z * 30) * Math.sin(z * 70);
     // A turned-back hem at the cuff.
-    r += Math.exp(-Math.pow((z - z1 - 0.009) / 0.0065, 2)) * 0.0042;
+    r += Math.exp(-Math.pow((z - z1 - 0.008) / 0.006, 2)) * 0.005;
     // Slightly flattened: forearms are wider than deep.
     return r * (1 + 0.08 * Math.cos(2 * a));
   };
@@ -166,7 +166,7 @@ function sleeve(b: Builder, look: ArmsLook) {
       const dn = new THREE.Vector3(Math.cos(a), Math.sin(a), (r2 - r) / 0.002 * 0).normalize();
       nor.push(dn.x, dn.y, dn.z);
       si.push(0, 1, 2, 0); sw.push(1 - wFore, wFore * (1 - wHand), wFore * wHand, 0);
-      const band = z < -UPPER - 0.03 && z > -UPPER - 0.075;
+      const band = z < -UPPER - 0.035 && z > -UPPER - 0.062;
       tag.push(band ? 1 : 0);
     }
   }
@@ -179,7 +179,9 @@ function sleeve(b: Builder, look: ArmsLook) {
   geo.setAttribute('tag', new THREE.Float32BufferAttribute(tag, 1));
   geo.setIndex(idx);
   geo.computeVertexNormals();
-  b.addTagged(geo, [look.sleeve, surf(SURF.webbing, { color: look.band })]);
+  // The squad band, toned down toward the sleeve so it reads as a marking, not a bright block.
+  const toned = new THREE.Color(look.band).lerp(new THREE.Color(0x3c4334), 0.55).multiplyScalar(0.85).getHex();
+  b.addTagged(geo, [look.sleeve, surf(SURF.webbing, { color: toned })]);
   // Shape patch on the outer face of the forearm (+X for the right arm, which faces away from the gun).
   const zc = -UPPER - 0.115, rr = 0.047, ang = 0.25;
   const shape = new THREE.Shape(), sz = 0.013;
@@ -190,7 +192,7 @@ function sleeve(b: Builder, look: ArmsLook) {
   patch.applyMatrix4(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, -Math.sin(ang), Math.cos(ang)).cross(new THREE.Vector3(Math.cos(ang), Math.sin(ang), 0)).normalize(), new THREE.Vector3(0, 0, -1), new THREE.Vector3(Math.cos(ang), Math.sin(ang), 0)));
   patch.translate(Math.cos(ang) * rr, Math.sin(ang) * rr, zc);
   b.bone = 1;
-  b.add(patch, surf(SURF.white, { color: look.band, rough: 0.5 }));
+  b.add(patch, surf(SURF.white, { color: toned, rough: 0.6 }));
   // Cuff tab with its hook-and-loop square, on the outer side of the hem.
   b.bone = 1;
   const cuffR = 0.0425;

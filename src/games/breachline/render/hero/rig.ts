@@ -4,7 +4,7 @@
  * the game's viewmodel and the dev studio so both show exactly the same thing. */
 import * as THREE from 'three';
 import type { WeaponId } from '../../config';
-import { SURF } from './geom';
+import { SURF, surf } from './geom';
 import { ARM_BONES, POSE, armsGeometry, lerpPose, makeArm, type Arm, type ArmsLook, type HandPose } from './hands';
 import { heroMaterial } from './material';
 import { idleFrame, type ReloadFrame } from './reload';
@@ -81,7 +81,7 @@ export function holdFor(id: WeaponId): Hold {
       left: { at: [-0.008, S.support.p[1] + 0.008, S.support.p[2] - 0.03], palm: [0.35, 1, 0], fingers: [0.9, 0.1, -0.42] },
       // The left elbow out and down: the forearm enters from the lower left and runs diagonally to the handguard.
       shoulderL: [-0.3, -0.37, 0.02], poleL: [-1, -1, 0.3], adsZ: -0.075,
-      leftPose: [[0.15, 0.05, 0.1, 0.15], [1.3, 1.25, 0.7, 0.02], [1.35, 1.25, 0.7, 0], [1.4, 1.25, 0.7, -0.02], [1.45, 1.25, 0.7, -0.05]],
+      leftPose: [[0.15, 0.05, 0.1, 0.15], [1.25, 1.2, 0.65, 0.1], [1.3, 1.2, 0.65, 0.02], [1.35, 1.2, 0.65, -0.07], [1.4, 1.2, 0.65, -0.16]],
     }); break;
     case 'smg': h = rifleHold(id, { hip: { p: [0.1, -0.08, -0.22], r: [0.03, 0.02, -0.03] }, adsZ: -0.13 }); break;
     case 'shotgun': h = rifleHold(id, {
@@ -136,7 +136,8 @@ export function createFpRig(look: ArmsLook): FpRig {
   const root = new THREE.Group(), gun = new THREE.Group();
   root.add(gun);
   const material = heroMaterial({ skinned: true });
-  const lensMat = new THREE.MeshStandardMaterial({ color: 0xc08a3a, roughness: 0.03, metalness: 0.55, transparent: true, opacity: 0.2, depthWrite: false, envMapIntensity: 1.6 });
+  // Coated glass: a faint cool tint and a soft reflection, not an amber disc.
+  const lensMat = new THREE.MeshStandardMaterial({ color: 0x9fb4c2, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.1, depthWrite: false, envMapIntensity: 1.3 });
   const arms: [Arm, Arm] = [makeArm(1), makeArm(-1)];
   const armGeo = armsGeometry(look);
   const armMesh = new THREE.SkinnedMesh(armGeo, material);
@@ -230,5 +231,6 @@ export function createFpRig(look: ArmsLook): FpRig {
   return rig;
 }
 
-export const DEFAULT_LOOK = (squad: 0 | 1, band: number): ArmsLook => ({ sleeve: SURF.cloth, glove: SURF.glove, palm: SURF.gloveTan, guard: SURF.knuckle, band, squad });
+// A lighter coyote glove than the handguard it holds, so the hand separates from the gun; darker palm and knuckle panel.
+export const DEFAULT_LOOK = (squad: 0 | 1, band: number): ArmsLook => ({ sleeve: SURF.cloth, glove: surf(SURF.glove, { color: 0xa08e6c }), palm: surf(SURF.gloveTan, { color: 0x4d473d }), guard: surf(SURF.knuckle, { color: 0x3b3c39 }), band, squad });
 export { POSE, lerpPose, ARM_BONES, WB };

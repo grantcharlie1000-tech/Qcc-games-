@@ -150,7 +150,7 @@ const srgb8 = (v: number) => Math.round(255 * Math.min(1, Math.max(0, v <= 0.003
 
 /** Finishes: base colour (sRGB hex), roughness, metalness, what bare edges turn into, how readily edges wear. */
 const FINISH: Record<number, { c: number; r: number; m: number; edge: number; edgeR: number; edgeM: number; wear: number }> = {
-  [MAT.anod]: { c: 0x575a5e, r: 0.4, m: 0.18, edge: 0x7d8185, edgeR: 0.3, edgeM: 0.9, wear: 0.8 },
+  [MAT.anod]: { c: 0x676b70, r: 0.42, m: 0.16, edge: 0x8c9095, edgeR: 0.3, edgeM: 0.9, wear: 0.8 },
   [MAT.cerakote]: { c: 0x6d604e, r: 0.58, m: 0.05, edge: 0x86837d, edgeR: 0.35, edgeM: 0.75, wear: 0.6 },
   [MAT.polymer]: { c: 0x4f514e, r: 0.72, m: 0, edge: 0x5e605c, edgeR: 0.6, edgeM: 0, wear: 0.5 },
   [MAT.polymerFde]: { c: 0x70644f, r: 0.68, m: 0, edge: 0x857a66, edgeR: 0.6, edgeM: 0, wear: 0.5 },
@@ -160,6 +160,40 @@ const FINISH: Record<number, { c: number; r: number; m: number; edge: number; ed
   [MAT.dark]: { c: 0x161616, r: 0.9, m: 0, edge: 0x161616, edgeR: 0.9, edgeM: 0, wear: 0 },
   [MAT.glow]: { c: 0xff3a22, r: 0.5, m: 0, edge: 0xff3a22, edgeR: 0.5, edgeM: 0, wear: 0 },
 };
+
+/** A 5×7 font for the engraved markings (Breachline's own: model, calibre, serial, maker, selector). */
+const GLYPH: Record<string, string> = {
+  A: '01110100011000111111100011000110001', C: '01110100011000010000100001000101110', E: '11111100001000011110100001000011111',
+  F: '11111100001000011110100001000010000', I: '01110001000010000100001000010001110', L: '10000100001000010000100001000011111',
+  M: '10001110111010110101100011000110001', N: '10001110011010110011100011000110001', O: '01110100011000110001100011000101110',
+  R: '11110100011000111110101001001010001', S: '01111100001000001110000010000111110', T: '11111001000010000100001000010000100',
+  U: '10001100011000110001100011000101110', W: '10001100011000110101101011010101010', H: '10001100011000111111100011000110001',
+  K: '10001100101010011000101001001010001', '-': '00000000000000011111000000000000000', '.': '00000000000000000000000000110001100',
+  '0': '01110100011001110101110011000101110', '1': '00100011000010000100001000010001110', '2': '01110100010000100010001000100011111',
+  '4': '00010001100101010010111110001000010', '5': '11111100001111000001000011000101110', '6': '00110010001000011110100011000101110',
+  '7': '11111000010001000100010000100001000', ' ': '00000000000000000000000000000000000',
+};
+/** Engraved lines on a flat side, in design mm: text reads left to right seen from that side. */
+const MARKS: { part: string; side: -1 | 1; u: number; y: number; h: number; text: string }[] = [
+  { part: 'lower', side: -1, u: 171, y: -27, h: 3.4, text: 'MARROW AR-5' },
+  { part: 'lower', side: -1, u: 171, y: -33.5, h: 2.6, text: 'CAL 5.56' },
+  { part: 'lower', side: -1, u: 171, y: -39, h: 2.6, text: 'M5-04217' },
+  { part: 'lower', side: -1, u: 171, y: -47, h: 2.2, text: 'MRW WORKS' },
+  { part: 'lower', side: -1, u: 66, y: -21, h: 1.9, text: 'SAFE SEMI AUTO' },
+  { part: 'optic mount', side: -1, u: 92, y: 37.5, h: 2, text: 'MRW' },
+];
+function marked(name: string, x: number, y: number, z: number, nx: number): boolean {
+  for (const m of MARKS) {
+    if (m.part !== name || Math.sign(nx) !== m.side || Math.abs(nx) < 0.85) continue;
+    const cw = m.h * 5 / 7, pitch = cw * 1.25, u = -z, along = m.side < 0 ? m.u - u : u - m.u, down = m.y - y;
+    if (down < 0 || down >= m.h || along < 0) continue;
+    const ci = Math.floor(along / pitch), g = GLYPH[m.text[ci] ?? ' '];
+    if (!g || ci >= m.text.length) continue;
+    const col = Math.floor((along - ci * pitch) / (cw / 5)), row = Math.floor(down / (m.h / 7));
+    if (col < 5 && row < 7 && g[row * 5 + col] === '1') return true;
+  }
+  void x; return false;
+}
 
 function dilate(img: Buffer, cov: Uint8Array, S: number, passes: number) {
   const filled = new Uint8Array(cov);
@@ -253,15 +287,23 @@ async function bakeSet(w: Weapon, parts: Part[], m: MeshArrays & { part: Uint8Ar
     const wear = Math.min(0.8, sstep(0.6, 0.9, edge) * sstep(0.45, 0.65, chip) * F.wear);
     const tint = 1 + (blot - 0.5) * 0.12 + (fine - 0.5) * 0.05;
     const dust = lin(0x6e6656), up = Math.max(0, hn[1]);
+    // Mid-frequency drift on the coated parts: colour wander, handling polish where the support hand sits, scuffs
+    // along the bottom edges where the rifle is set down.
+    const drift = fbm(x * 0.02 + 3, y * 0.02, z * 0.02, 3), scuff = (mat === MAT.cerakote || mat === MAT.polymerFde) ? sstep(0.55, 0.8, fbm(x * 0.6, y * 0.6, z * 0.08, 3)) * sstep(-2, -16, y - (name === 'magazine' ? -150 : 0)) * 0.6 : 0;
+    const handPolish = name === 'handguard' && -z > 330 && -z < 470 && y < 0 ? 0.5 : 0;
+    const engraved = marked(name, x, y, z, hn[0]);
     const alb = [0, 1, 2].map(q => {
-      let v = base[q] * tint;
+      let v = base[q] * (tint + (drift - 0.5) * 0.16);
+      v = v + (lin(0x9a9184)[q] - v) * scuff * 0.35;
+      if (engraved) v = v + (lin(0xc9c4b8)[q] - v) * 0.75;
       v = v + (edgeC[q] - v) * wear;
       v *= 1 - cavity * 0.3;
       v = v + (dust[q] - v) * Math.min(0.35, cavity * 0.25 + up * 0.04 * blot);
       return v * (0.75 + 0.25 * ao);
     });
     let rough = F.r + (blot - 0.5) * 0.1 + (fine - 0.5) * 0.06 + cavity * 0.12;
-    rough = rough + (F.edgeR - rough) * wear;
+    rough = rough + (F.edgeR - rough) * wear + (drift - 0.5) * 0.12 - handPolish * 0.12 + scuff * 0.1;
+    if (engraved) rough = 0.65;
     // Machining marks along the receiver and rail: faint lengthwise streaks in the roughness.
     if (mat === MAT.anod) rough += 0.03 * (fbm(x * 0.9, y * 0.9, z * 0.04, 2) - 0.5);
     // Handling polish where hands go.

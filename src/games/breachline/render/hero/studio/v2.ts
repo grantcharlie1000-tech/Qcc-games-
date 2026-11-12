@@ -20,7 +20,7 @@ key.position.set(-1.2, 2.2, 1.4); rim.position.set(1.5, 0.8, -2); scene.add(key,
 const BASE = import.meta.env.BASE_URL;
 const clay = new THREE.MeshStandardMaterial({ color: 0x8e8e8c, roughness: 0.62, metalness: 0 });
 const clayDark = new THREE.MeshStandardMaterial({ color: 0x8e8e8c, roughness: 0.62, metalness: 0, side: THREE.DoubleSide });
-const lensMat = new THREE.MeshStandardMaterial({ color: 0xc08a3a, roughness: 0.03, metalness: 0.55, transparent: true, opacity: 0.2, depthWrite: false });
+const lensMat = new THREE.MeshStandardMaterial({ color: 0x9fb4c2, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.1, depthWrite: false });
 const art = new ArtLoader(renderer, 'high');
 
 let weapon: THREE.Mesh | null = null, lens: THREE.Mesh | null = null, pistol: THREE.Group | null = null, info: Record<string, unknown> = {};

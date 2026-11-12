@@ -184,7 +184,8 @@ export function createHeroViewmodel(renderer: THREE.WebGLRenderer, lighting: Her
       if (id === 'shotgun' && cycle > 0.12 && cycle < 0.5) { const t = (cycle - 0.12) / 0.38; frame.handle = Math.max(frame.handle, Math.sin(Math.PI * t)); frame.hand = [frame.hand[0], frame.hand[1], frame.hand[2], frame.hand[3]]; }
       r.weaponBones[WB.trigger].rotation.x = cycle < 0.08 ? -0.25 : 0;
       // Compose the weapon's pose in camera space.
-      const H = hold.hip, x0 = H.p[0] * (1 - ads), y0 = H.p[1] * (1 - ads), z0 = H.p[2] + (hold.adsZ - H.p[2]) * ads;
+      // Dev only: `__heroHip` overrides the hip placement, to try holds in the game (evidence script).
+      const H = (import.meta.env?.DEV && (globalThis as { __heroHip?: { p: [number, number, number]; r: [number, number, number] } }).__heroHip) || hold.hip, x0 = H.p[0] * (1 - ads), y0 = H.p[1] * (1 - ads), z0 = H.p[2] + (hold.adsZ - H.p[2]) * ads;
       const arc = Math.sin(Math.PI * ads) * 0.02;
       let x = x0 - arc * 0.5, y = y0 - arc, z = z0;
       let ax = H.r[0] * (1 - ads), ay = H.r[1] * (1 - ads), az = H.r[2] * (1 - ads);

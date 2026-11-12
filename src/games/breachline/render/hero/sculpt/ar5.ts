@@ -141,18 +141,24 @@ export function ar5Parts(hi: boolean): Part[] {
   {
     const S = A.stock;
     let tube = union(cylZ(0, S.tubeY, S.tubeR, -236, -2, -0.8), box(-3.8, S.tubeY + 10, -230, 3.8, S.tubeY + 16.6, -12, -0.5));
-    if (hi) tube = cut(tube, repeatU(box(-2, S.tubeY - 16, -228, 2, S.tubeY - 12.5, -224.5, 0), 11, 6));
+    tube = cut(tube, repeatU(box(-2.2, S.tubeY - 16, -226, 2.2, S.tubeY - 12.4, -222.5, -0.3), 11, 6));
     add('buffer tube', BONE.root, MAT.anod, tube, 0.3);
     add('lock nut', BONE.root, MAT.steel, union(lathe([[S.tubeR - 1, -13], [17.2, -13], [17.8, -12], [17.8, -5], [17.2, -4], [S.tubeR - 1, -4]], 0, S.tubeY)), 0.4);
     let plate = alongZ(round2([[-14.5, -21], [14.5, -21], [14.5, 15], [-14.5, 15]], 4), -4, -1, -0.5);
     plate = union(plate, cut(cylX(-9, -2.5, 5.6, -20.5, -13, -0.5), cylX(-9, -2.5, 3.1, -22, -17)));
     add('end plate', BONE.root, MAT.anod, plate, 0.4);
-    // A collapsible stock: a collar round the tube, a cheek riser on top, an open frame below, slimmer toward the front.
-    let stock = sideX(round2([[-92, 6], [-104, 19], [-150, 21], [-236, 24], [-247, 19], [-247, -82], [-237, -86], [-212, -70], [-140, -30], [-102, -18]], [3, 8, 30, 6, 3, 3, 6, 14, 14, 6]), -16.5, 16.5, 6.5);
-    stock = inter(stock, topY(round2([[-12.5, -92], [12.5, -92], [16.5, -150], [16.5, -250], [-16.5, -250], [-16.5, -150]], [3, 3, 40, 0, 0, 40]), -100, 40));
-    stock = cutRound(stock, sideX(round2([[-150, -26], [-212, -26], [-228, -50], [-228, -66], [-214, -62], [-162, -36]], 6), -25, 25), 2.5);
+    // An adjustable carbine stock: a blunt collar round the tube, a raised cheek surface, an open lower frame, a latch
+    // lever under the tube, a sling slot at the toe; rounded everywhere, nothing pointed.
+    let stock = sideX(round2([[-95, -19], [-95, 16], [-104, 23], [-240, 25], [-249, 20], [-249, -84], [-239, -88], [-214, -72], [-152, -32], [-112, -22]], [6, 6, 10, 6, 3, 3, 6, 18, 18, 8]), -16.5, 16.5, 6);
+    stock = inter(stock, topY(round2([[-14, -92], [14, -92], [16.5, -140], [16.5, -252], [-16.5, -252], [-16.5, -140]], [3, 3, 30, 0, 0, 30]), -100, 40));
+    stock = fillet(stock, sideX(round2([[-128, 22], [-226, 24], [-226, 29.5], [-138, 27.5]], 3), -14, 14, 3.5), 2.5);
+    // A shallow recessed panel each side instead of a through window (a window left pointed struts).
+    stock = cutRound(stock, mirrorX(sideX(round2([[-150, -22], [-214, -22], [-230, -48], [-230, -66], [-214, -64], [-162, -34]], 7), 14.6, 25)), 1.5);
+    stock = cutRound(stock, sideX(stadiumB(-238, -50, 22, 6), -25, 25), 1.2);
+    // A round collar where the stock rides on the tube.
+    stock = fillet(stock, cylZ(0, S.tubeY, 20, -132, -94, 4), 3);
     stock = cutRound(stock, cylZ(0, S.tubeY, S.tubeR + 0.4, -250, -60), 0.8);
-    stock = union(stock, sideX(round2([[-110, -20], [-128, -26], [-128, -31], [-110, -25]], 2), -4, 4, 1));
+    stock = union(stock, sideX(round2([[-100, -19], [-127, -23], [-129, -28.5], [-102, -25]], 2), -4.5, 4.5, 1.4));
     add('stock', BONE.root, MAT.polymer, stock, 0.35);
     let pad = sideX(round2([[-246, 21], [-262, 22], [-263, -82], [-246, -82]], [3, 5, 5, 3]), -21, 21, 5);
     if (hi) pad = relief(pad, (_x, y, z) => (-z < -254 ? -0.35 * Math.max(0, Math.sin(y * Math.PI / 4)) : 0), 0.4);
@@ -188,39 +194,42 @@ export function ar5Parts(hi: boolean): Part[] {
     s = cut(s, box(9.6, -12, M.u0 - 1, 14, 12, M.u0 + 9), box(-14, -12, M.u0 - 1, -9.6, 12, M.u0 + 9));
     add('muzzle device', BONE.root, MAT.steel, s, 0.6);
   }
-  // Red-dot sight: a 30 mm tube with lens hoods, elevation and windage turrets with knurled caps, an illumination knob
-  // on the left, on a two-ring riser that clamps the rail with a cross bolt.
+  // Red-dot sight: a compact 22 mm window in a 26 mm body with thin-rimmed lens hoods, elevation and windage caps, a
+  // battery and brightness knob on the left, on a low single-piece riser with two rings, clamp screws and a cross bolt.
   {
-    const O = A.optic, cy = A.sightH, tu = (O.u0 + O.u1) / 2;
-    let tube = lathe([[O.bore, O.u0], [O.r, O.u0], [O.r + 0.6, O.u0 + 1], [O.r + 0.6, O.u0 + 8], [O.r - 0.2, O.u0 + 9.5], [O.r - 0.2, O.u1 - 9.5], [O.r + 0.6, O.u1 - 8], [O.r + 0.6, O.u1 - 1], [O.r, O.u1], [O.bore, O.u1]], 0, cy);
-    const tY = latheY([[0, 0], [10.6, 0], [10.6, 3.8], [9.8, 4.6], [0, 4.6]], 0, tu, cy + O.r - 2);
-    let capY = latheY([[0, 0], [8.8, 0], [8.8, 7.2], [8.1, 8], [0, 8]], 0, tu, cy + O.r + 2.6);
-    if (hi) capY = relief(capY, (x, y, z) => (y < cy + O.r + 9.8 && y > cy + O.r + 3.2 ? knurlY(0, tu, 1.1, 0.22)(x, y, z) : 0), 0.3);
-    tube = fillet(tube, tY, 1.6);
-    tube = union(tube, capY);
-    const tX = latheX([[0, 0], [10.6, 0], [10.6, 3.8], [9.8, 4.6], [0, 4.6]], cy, tu, O.r - 2, 1);
-    const capX = latheX([[0, 0], [8.8, 0], [8.8, 7.2], [8.1, 8], [0, 8]], cy, tu, O.r + 2.6, 1);
-    tube = union(fillet(tube, tX, 1.6), capX);
-    let knob = latheX([[0, 0], [8.2, 0], [8.2, 9], [7.4, 10], [0, 10]], cy, tu - 4, -(O.r - 2), -1);
-    if (hi) knob = relief(knob, (x, y, z) => (x < -(O.r + 1.5) ? -0.25 * Math.max(0, Math.cos(Math.atan2(y - cy, -z - (tu - 4)) * 16)) : 0), 0.3);
-    tube = fillet(tube, knob, 1.4);
-    if (hi) tube = cut(tube, cylZ(0, cy, O.r + 2, O.u0 + 3.6, O.u0 + 4.1), cylZ(0, cy, O.r + 2, O.u1 - 4.1, O.u1 - 3.6));
+    const O = A.optic, cy = A.sightH, tu = (O.u0 + O.u1) / 2, R = O.r, L = O.u1 - O.u0;
+    let tube = lathe([[O.bore, O.u0], [R + 0.5, O.u0], [R + 0.9, O.u0 + 0.8], [R + 0.9, O.u0 + 5], [R - 0.3, O.u0 + 6.2], [R - 0.3, O.u1 - 6.2], [R + 0.9, O.u1 - 5], [R + 0.9, O.u1 - 0.8], [R + 0.5, O.u1], [O.bore, O.u1]], 0, cy);
+    const turret = (axis: 'y' | 'x', sx: 1 | -1) => {
+      const base: [number, number][] = [[0, 0], [7.6, 0], [7.6, 3], [7, 3.6], [0, 3.6]], cap: [number, number][] = [[0, 0], [6.3, 0], [6.3, 5.2], [5.8, 5.8], [0, 5.8]];
+      return axis === 'y' ? [latheY(base, 0, tu, cy + R - 1.5), latheY(cap, 0, tu, cy + R + 1.9)] : [latheX(base, cy, tu, sx * (R - 1.5), sx), latheX(cap, cy, tu, sx * (R + 1.9), sx)];
+    };
+    const [tY, capY0] = turret('y', 1), [tX, capX] = turret('x', 1);
+    let capY = capY0;
+    if (hi) capY = relief(capY, (x, y, z) => (y < cy + R + 7.2 && y > cy + R + 2.4 ? knurlY(0, tu, 0.9, 0.18)(x, y, z) : 0), 0.25);
+    tube = union(fillet(tube, tY, 1.2), capY);
+    tube = union(fillet(tube, tX, 1.2), capX);
+    // Battery cap and brightness knob on the left, toward the eye.
+    let knob = latheX([[0, 0], [6.2, 0], [6.2, 6.4], [5.6, 7.1], [0, 7.1]], cy, tu - 3, -(R - 1.5), -1);
+    if (hi) knob = relief(knob, (x, y, z) => (x < -(R + 1.2) ? -0.2 * Math.max(0, Math.cos(Math.atan2(y - cy, -z - (tu - 3)) * 14)) : 0), 0.25);
+    tube = fillet(tube, knob, 1.1);
+    if (hi) tube = cut(tube, latheX([[0, -1], [2.2, -1], [2.2, 0.6], [0, 0.6]], cy, tu - 3, -(R - 1.5) - 7.1, -1));
+    if (hi) tube = cut(tube, cylZ(0, cy, R + 2, O.u0 + 2.6, O.u0 + 3), cylZ(0, cy, R + 2, O.u1 - 3, O.u1 - 2.6));
     add('optic', BONE.root, MAT.anod, tube, 4);
-    // Riser and rings.
-    const ringR = O.r + 2.6;
-    const o0 = O.u0 - 64; // mount and rings were laid out for a tube starting at u = 64
-    let mount = box(-11.6, A.railTop, 78 + o0, 11.6, cy - ringR + 4, 122 + o0, -0.9);
-    if (hi) mount = cutChamfer(mount, mirrorX(box(10.6, A.railTop + 4, 86 + o0, 14, A.railTop + 10, 114 + o0)), 0.5);
-    mount = chamferJoin(mount, mirrorX(box(9.4, A.railTop - 5.6, 80 + o0, 12.6, A.railTop + 1, 120 + o0, -0.5)), 0.4);
-    for (const [r0, r1] of [[82 + o0, 92 + o0], [108 + o0, 118 + o0]]) {
-      let ring = cylZ(0, cy, ringR, r0, r1, -0.7);
-      ring = cut(ring, box(-30, cy - 0.35, r0 - 1, 30, cy + 0.35, r1 + 1));
-      mount = fillet(mount, ring, 2);
-      for (const sx of [1, -1] as const) mount = union(mount, screwX(cy + 5.5, (r0 + r1) / 2, sx * (ringR - 1.2), sx, 2.2, 1.6, hi));
+    // Low riser and rings.
+    const ringR = R + 2.2, r0 = O.u0 + 6.5, r1 = O.u1 - 14.5;
+    let mount = box(-11.4, A.railTop, O.u0 + 4, 11.4, cy - ringR + 3, O.u1 - 4, -0.9);
+    if (hi) mount = cutChamfer(mount, mirrorX(box(10.4, A.railTop + 3, O.u0 + 10, 14, A.railTop + 7.5, O.u1 - 10)), 0.5);
+    mount = chamferJoin(mount, mirrorX(box(9.4, A.railTop - 5.6, O.u0 + 6, 12.6, A.railTop + 1, O.u1 - 6, -0.5)), 0.4);
+    for (const ru of [r0, r1]) {
+      let ring = cylZ(0, cy, ringR, ru, ru + 8, -0.6);
+      ring = cut(ring, box(-30, cy - 0.3, ru - 1, 30, cy + 0.3, ru + 9));
+      mount = fillet(mount, ring, 1.6);
+      for (const sx of [1, -1] as const) mount = union(mount, screwX(cy + 4.2, ru + 4, sx * (ringR - 1), sx, 1.9, 1.4, hi));
     }
-    mount = cut(mount, cylZ(0, cy, O.r + 0.05, O.u0, O.u1));
-    mount = union(mount, latheX([[0, 0], [6.4, 0], [6.4, 4.6], [5.8, 5.4], [0, 5.4]], A.railTop - 2.4, 101 + o0, 12.4, 1), screwX(A.railTop - 2.4, 101 + o0, -12.4, -1, 4.4, 1.6, hi));
-    add('optic mount', BONE.root, MAT.anod, mount, 2.2);
+    mount = cut(mount, cylZ(0, cy, R + 0.05, O.u0, O.u1));
+    mount = union(mount, latheX([[0, 0], [5.6, 0], [5.6, 4], [5, 4.7], [0, 4.7]], A.railTop - 2.4, tu, 12.2, 1), screwX(A.railTop - 2.4, tu, -12.2, -1, 3.8, 1.4, hi));
+    add('optic mount', BONE.root, MAT.anod, mount, 2.4);
+    void L;
   }
   // Back-up sights, folded flat on the rail: the aperture at the rear, the post at the front.
   {

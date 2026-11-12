@@ -7,7 +7,7 @@ import type { WeaponSockets } from '../weapons';
 export const AR5 = {
   name: 'Marrow AR-5',
   /** Red-dot centre above the bore: the sight line. */
-  sightH: 68,
+  sightH: 58,
   railTop: 30, deck: 22, railHalf: 10.6, slotW: 5.2, slotPitch: 10, slotDepth: 3,
   upper: { u0: 0, u1: 188, half: 13.5, bottom: -13 },
   lower: { u0: -3, u1: 186, half: 12.4 },
@@ -19,7 +19,7 @@ export const AR5 = {
   grip: { pivot: [16, -28] as const, rake: 0.33, length: 102, width: 26 },
   mag: { width: 22.6, depth: 62, length: 182, seat: [137, -24] as const },
   stock: { tubeR: 14.6, tubeY: -2, butt: -262 },
-  optic: { u0: 90, u1: 162, r: 18, bore: 15.5, dot: 154, dotR: 0.6 },
+  optic: { u0: 66, u1: 116, r: 12.8, bore: 11, dot: 110, dotR: 0.75 },
   bolt: { travel: 60 },
 } as const;
 
