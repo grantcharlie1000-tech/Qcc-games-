@@ -23,6 +23,8 @@ export interface Hud {
   banner(title: string, sub: string, tone: 'good' | 'bad' | 'plain', seconds: number): void;
   reset(): void;
   onKit(cb: (kit: number) => void): void;
+  /** The performance readout in the corner: its lines, or null to hide it; `software` flags a CPU rasteriser. */
+  perf(lines: string[] | null, software: boolean): void;
   readonly root: HTMLElement;
 }
 
@@ -104,9 +106,21 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
     el.gadgets.innerHTML = role === ATK ? item('B', 'Breach', charges) + item('G', 'Frag', grenades) : item('F', 'Reinforce', reinforcements) + item('G', 'Impact', grenades);
   }
 
+  // The performance readout: small text in the top left corner, over everything.
+  let perfEl: HTMLElement | null = null;
   return {
     root,
     onKit(cb) { kitCb = cb; },
+    perf(lines, software) {
+      if (!lines) { if (perfEl) perfEl.hidden = true; return; }
+      if (!perfEl) {
+        perfEl = document.createElement('div'); perfEl.className = 'bl-perf';
+        perfEl.style.cssText = 'position:absolute;left:8px;top:8px;z-index:50;padding:4px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:#e8e8e8;font:11px/1.35 ui-monospace,monospace;white-space:pre;pointer-events:none';
+        parent.append(perfEl);
+      }
+      perfEl.hidden = false;
+      perfEl.innerHTML = lines.map(l => l.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('\n') + (software ? '\n<b style="color:#ff5a4f">software</b>' : '');
+    },
     update(v) {
       const { m } = v, me = m.players[v.self], seen = m.players[v.watch] ?? me, live = m.phase !== 'lobby';
       show(root, live);

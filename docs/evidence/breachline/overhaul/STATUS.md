@@ -4,6 +4,7 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the owner
 
+- **Seeing your numbers.** Add `?perf=1` to the game's address, or press F3 during a match. A screenshot of that corner tells us what your machine is doing.
 - **Why the game crawled on a fast PC.** The arcade's adaptive text colour reads the game's picture back from the graphics card about every 140 ms, so the card has to stop and wait each time. Breachline now opts out.
 - **Other games.** The other 3D (WebGL) games in the arcade most likely have the same slowdown, and that code lives in the shared arcade interface (`src/ui/glass-ink.ts`, `canvas-ink.ts`).
 - **Smaller cost.** The same feature also scans the page's layout every 140 ms, which costs about 1 to 2 ms a frame even with the readback gone.
@@ -11,6 +12,52 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 ## For the planner (latest first)
 
 ### Performance
+
+**Job 5: the cheap shading path.**
+
+*What it does.* Every art material (level, props, dressing, panels) has a twin: base colour times its baked light (the lightmap, the panels' vertex light, or a prop probe's average), plus the same painted detail (bands, dado, tiles, joints). It has no normal, roughness, metal or occlusion maps, no reflections and no lights.
+- It is used on Auto's bottom step and on Performance, so always on software WebGL.
+- Both paths are compiled at warm-up. A browser test switches High to Performance after the warm-up and checks that no shader compiles (without the warm-up, 9 would).
+- Signs (emissive) keep the full shader.
+
+*Measured.* Software WebGL at 1280 x 720, High post, the same view, each frame forced to finish (`scripts/breachline-assets/shading.mjs`):
+
+| View | Full | Cheap | Speed-up |
+|---|---|---|---|
+| Corridor | 1400 ms | 731 ms | 1.9x |
+| Office | 1118 ms | 757 ms | 1.5x |
+| Lab | 1859 ms | 728 ms | 2.6x |
+
+- In the Lab view the post chain alone is 297 ms of that, so the scene's own shading went from about 1245 ms to 459 ms, 2.7x.
+- What is left is post, the fighters and the weapon in hand. Those keep their own shaders, which are not mine to change.
+- Side by side in `perf/shading-full-vs-cheap.png`: the cheap path loses the floor reflections and little else.
+
+**Job 4: particles.** Smoke, dust, blood spray and sparks are now one system of instanced camera-facing quads, two draw calls in all (blended and additive). There is no allocation per burst.
+- **The texture.** A small atlas of three lumpy smoke puffs and a spark core. Each puff turns slowly and fades in and out, so nothing pops.
+- **Sorting.** The blended pool is drawn back to front.
+- **Sparks** are stretched along their motion on screen, and are bright enough to bloom.
+- **Near the camera** a particle is capped at half its distance and fades out, so smoke never covers the screen. The old point sprites had a driver size limit and turned a frag into a flat white slab across the view (`perf/particles-before-after.png`).
+- **The frag's smoke** is fewer, denser puffs (9 instead of 16; a pressure ring of 16 instead of 28), because every screen-sized blended layer costs a full-screen fill on the GPU.
+- **Marks** (scars, powder, scorches) no longer allocate a quaternion each.
+- **Cost.** The update costs 0.03 to 0.04 ms a frame, the same as before (`scripts/breachline-assets/particles.mjs`).
+
+**Job 3: Auto protects the frame rate.** Auto is now a ladder of five steps, set by render scale, bloom and particle density.
+- It starts on step 2.
+- It steps down at once when frames average over 20 ms across half a second.
+- It climbs one step only after 3 s at full rate, and never within 10 s of a step down.
+- On a software rasteriser it sits on step 1 and the readout says "auto: lowest (software)".
+- Post stays on throughout, so a step never compiles a shader or reallocates anything; it only moves a viewport.
+
+In the profile, Auto on software WebGL now draws 88 frames in 15 s, where it drew 49 to 56 before, and the average frame went from about 330 ms to 206 ms (`perf/profile-auto-fix3.txt`). Fighters' detail is not on the ladder (that code is not mine).
+
+**Job 2: the readout.** Add `?perf=1` to the address, or press F3 in a match. A small corner panel then shows:
+- fps, with the average and worst frame time over the last second;
+- script time per frame;
+- draw calls and triangles;
+- the render size, the quality setting and the post tier;
+- the graphics card's name, with "software" in red when it is a CPU rasteriser.
+
+It is checked by a browser test, and there is a screenshot in `perf/readout.png`.
 
 **Job 1: where the time goes.** These are CPU profiles of a live 5v5 bot match on the built site, with the player firing and walls breaking, 15 s per tier. The tables are in `perf/profile-*.txt`, and the tools are `scripts/breachline-assets/perfprofile.mjs` and `perfanalyze.py`.
 
@@ -615,7 +662,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** performance lead. Job 1 answered: the arcade's text-ink readback (fixed for Breachline). Next: the perf readout, then Auto, then particles.
+**Where I am (keep current):** performance lead. Cheap shading path in (job 5); next: the half-way step, then draws under 120 and no per-hit geometry (job 6), then fighters' detail (job 7).
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

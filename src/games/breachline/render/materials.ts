@@ -70,7 +70,7 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
     artBand: { value: new THREE.Vector4(o.band?.tint[0] ?? 1, o.band?.tint[1] ?? 1, o.band?.tint[2] ?? 1, o.band?.height ?? -1) },
   };
   const defs = [o.dirMap && o.lightMap ? 'ART_DIRMAP' : '', o.vertexLight ? 'ART_VERTEX_LIGHT' : '', o.sh ? 'ART_SH' : '', o.band ? 'ART_BAND' : '', o.band && o.tiles ? 'ART_TILES' : '', o.bands ? 'ART_BANDS' : '', o.wear ? 'ART_WEAR' : '', o.specOnly ? 'ART_SPECONLY' : ''].filter(Boolean);
-  m.userData.art = uniforms;
+  m.userData.art = uniforms; m.userData.artDefs = defs;
   m.customProgramCacheKey = () => `art:${defs.join(',')}`;
   m.onBeforeCompile = shader => {
     Object.assign(shader.uniforms, uniforms);
@@ -78,47 +78,8 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
       .replace('#include <common>', '#include <common>\nvarying vec3 vArtWorld;')
       .replace('#include <project_vertex>', '#include <project_vertex>\n\tvArtWorld = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${defs.map(d => `#define ${d}`).join('\n')}\nuniform sampler2D artDirMap;\nuniform vec3 artSH[4];\nuniform float artEnvLight;\nuniform vec4 artBand;\nuniform vec2 artTile;\nuniform vec3 artBands;\nuniform vec4 artWear;\nuniform vec3 artBoxMin;\nuniform vec3 artBoxMax;\nuniform vec3 artProbe;\nvarying vec3 vArtWorld;`)
-      .replace('#include <color_fragment>', `#include <color_fragment>
-#ifdef ART_BANDS
-	// Light rhythm: brightest under each fitting, darker between.
-	diffuseColor.rgb *= 1.0 - artBands.z * ( 0.5 - 0.5 * cos( 6.2832 * ( vArtWorld.x - artBands.x ) / artBands.y ) );
-#endif
-#ifdef ART_BAND
-	float artRail = smoothstep( artBand.w - 0.002, artBand.w, vArtWorld.y ) - smoothstep( artBand.w + 0.038, artBand.w + 0.04, vArtWorld.y );
-	diffuseColor.rgb *= mix( vArtWorld.y < artBand.w ? artBand.rgb : vec3( 1.0 ), vec3( 0.18 ), artRail );
-	#ifdef ART_TILES
-		// Tiles or slabs to the band, in grey grout, each a shade off its neighbours.
-		vec3 artTN = inverseTransformDirection( normalize( vNormal ), viewMatrix );
-		vec2 artTq = vec2( abs( artTN.x ) > 0.5 ? vArtWorld.z : vArtWorld.x, vArtWorld.y - 0.1 ) / artTile;
-		vec2 artTD = ( 0.5 - abs( fract( artTq ) - 0.5 ) ) * artTile;
-		float artGrout = 1.0 - smoothstep( 0.002, 0.005, min( artTD.x, artTD.y ) );
-		float artVar = artTile.x > 0.3 ? 0.18 : 0.06, artGlaze = 1.0 - artVar * 0.6 + artVar * fract( sin( dot( floor( artTq ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
-		diffuseColor.rgb *= vArtWorld.y < artBand.w && vArtWorld.y > 0.1 ? mix( vec3( artGlaze ), vec3( 0.62, 0.63, 0.64 ), artGrout ) : vec3( 1.0 );
-	#endif
-	// Boot-height grime on the band: darker and dirtier towards the floor.
-	diffuseColor.rgb *= vArtWorld.y < artBand.w ? mix( 0.72, 1.0, smoothstep( 0.1, 0.55, vArtWorld.y ) ) : 1.0;
-	#ifdef ART_VERTEX_LIGHT
-		// Destructible plasterboard: taped joints every 1.2 m and scuffs, all per pixel, so they break with the cells.
-		vec3 artWN = inverseTransformDirection( normalize( vNormal ), viewMatrix );
-		float artU = abs( artWN.x ) > 0.5 ? vArtWorld.z : vArtWorld.x;
-		float artJoint = 1.0 - 0.13 * ( 1.0 - smoothstep( 0.0, 0.012, abs( fract( artU / 1.2 + 0.5 ) - 0.5 ) * 1.2 ) );
-		// Boot scuffs: short horizontal streaks low on the wall, not blocks.
-		float artScuff = fract( sin( dot( floor( vec2( artU * 3.0, vArtWorld.y * 26.0 ) ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
-		float artStreak = smoothstep( 0.0, 0.2, fract( artU * 3.0 ) ) * smoothstep( 1.0, 0.55, fract( artU * 3.0 ) );
-		diffuseColor.rgb *= artJoint * ( vArtWorld.y < 0.42 && artScuff > 0.9 ? mix( 1.0, 0.8, artStreak ) : 1.0 );
-		// Trolley and bag rub at hip height: a broken grey line that comes and goes along the wall.
-		float artRub = fract( sin( floor( artU * 1.3 ) * 91.7 ) * 43758.5453 ), artRubY = 1.0 - smoothstep( 0.0, 0.035, abs( vArtWorld.y - 0.9 - 0.04 * artRub ) );
-		diffuseColor.rgb *= 1.0 - 0.14 * artRubY * step( 0.35, artRub ) * smoothstep( 0.2, 0.5, fract( artU * 1.3 ) ) * smoothstep( 1.0, 0.7, fract( artU * 1.3 ) );
-		// The odd repainted patch: a rectangle a shade cleaner and warmer than the wall round it.
-		float artCell = floor( artU / 2.4 ), artPatch = fract( sin( artCell * 47.3 + 3.1 ) * 43758.5453 ), artPU = fract( artU / 2.4 );
-		diffuseColor.rgb *= artPatch > 0.72 && artPU > 0.18 && artPU < 0.62 && vArtWorld.y > 1.05 && vArtWorld.y < 1.95 ? vec3( 1.05, 1.04, 1.0 ) : vec3( 1.0 );
-		// Years of grime gathered towards the ceiling.
-		diffuseColor.rgb *= mix( 1.0, 0.84, smoothstep( 2.0, 2.9, vArtWorld.y ) );
-	#endif
-	// Painted skirting zone at the floor.
-	diffuseColor.rgb *= vArtWorld.y < 0.1 ? vec3( 0.42 ) : vec3( 1.0 );
-#endif`)
+      .replace('#include <common>', `#include <common>\n${defs.map(d => `#define ${d}`).join('\n')}\n#define ART_NORMAL_W inverseTransformDirection( normalize( vNormal ), viewMatrix )\nuniform sampler2D artDirMap;\nuniform vec3 artSH[4];\nuniform float artEnvLight;\nuniform vec4 artBand;\nuniform vec2 artTile;\nuniform vec3 artBands;\nuniform vec4 artWear;\nuniform vec3 artBoxMin;\nuniform vec3 artBoxMax;\nuniform vec3 artProbe;\nvarying vec3 vArtWorld;`)
+      .replace('#include <color_fragment>', PAINT)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
 #ifdef ART_WEAR
 	float artWD = abs( ( artWear.x > 0.5 ? vArtWorld.x : vArtWorld.z ) - artWear.y );
@@ -136,6 +97,87 @@ export function artMaterial(o: ArtMaterialOptions): THREE.MeshStandardMaterial {
   };
   return m;
 }
+
+/** The cheap shading path (map-fill performance work): the same surface as base colour times its baked light (the
+ * lightmap, the panels' vertex light, or a prop probe's average), with the same painted detail, and nothing else: no
+ * normal, roughness, metal or occlusion maps, no reflections, no lights. A twin of an art material, made on first
+ * use and sharing its maps, colour and uniforms; emissive materials (signs) keep the full shader. */
+export function cheapTwin(m: THREE.Material): THREE.Material | null {
+  const u = m.userData as { art?: Record<string, THREE.IUniform>; artDefs?: string[]; cheap?: THREE.Material | null };
+  if (!u.art || !u.artDefs) return null;
+  if (u.cheap !== undefined) return u.cheap;
+  const sm = m as THREE.MeshStandardMaterial;
+  if (sm.emissive.r + sm.emissive.g + sm.emissive.b > 0) return (u.cheap = null);
+  const c = new THREE.MeshBasicMaterial({ map: sm.map, lightMap: sm.lightMap, lightMapIntensity: sm.lightMapIntensity, vertexColors: sm.vertexColors, side: sm.side, transparent: sm.transparent, opacity: sm.opacity, alphaTest: sm.alphaTest, depthWrite: sm.depthWrite, depthTest: sm.depthTest, polygonOffset: sm.polygonOffset, polygonOffsetFactor: sm.polygonOffsetFactor, polygonOffsetUnits: sm.polygonOffsetUnits, toneMapped: sm.toneMapped });
+  c.color = sm.color;
+  const defs = u.artDefs.filter(d => ['ART_VERTEX_LIGHT', 'ART_SH', 'ART_BAND', 'ART_TILES', 'ART_BANDS'].includes(d)), art = u.art;
+  c.customProgramCacheKey = () => `artcheap:${defs.join(',')}`;
+  c.onBeforeCompile = shader => {
+    Object.assign(shader.uniforms, art);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vArtWorld;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n\tvArtWorld = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\n${defs.map(d => `#define ${d}`).join('\n')}\n#define ART_NORMAL_W normalize( cross( dFdx( vArtWorld ), dFdy( vArtWorld ) ) )\nuniform vec3 artSH[4];\nuniform vec4 artBand;\nuniform vec2 artTile;\nuniform vec3 artBands;\nvarying vec3 vArtWorld;`)
+      .replace('#include <color_fragment>', `${PAINT}\n#ifdef ART_SH\n\tdiffuseColor.rgb *= max( 0.282095 * artSH[ 0 ], vec3( 0.0 ) );\n#endif`);
+  };
+  c.userData.full = m;
+  return (u.cheap = c);
+}
+/** Puts every art material under `root` on its cheap twin (or back on the full one). */
+export function setCheapShading(root: THREE.Object3D, on: boolean) {
+  const pick = (mat: THREE.Material) => (on ? cheapTwin(mat) ?? mat : (mat.userData.full as THREE.Material | undefined) ?? mat);
+  root.traverse(o => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.material) return;
+    if (Array.isArray(mesh.material)) { if (mesh.material.some(x => pick(x) !== x)) mesh.material = mesh.material.map(pick); }
+    else mesh.material = pick(mesh.material);
+  });
+}
+
+/** The art family's painted detail over the base colour (light rhythm, dado band, tiles, plasterboard joints and
+ * scuffs), shared by the full and the cheap shader. ART_NORMAL_W is the world normal's expression in each. */
+const PAINT = `#include <color_fragment>
+#if defined( ART_BAND )
+	vec3 artNW = ART_NORMAL_W;
+#endif
+#ifdef ART_BANDS
+	// Light rhythm: brightest under each fitting, darker between.
+	diffuseColor.rgb *= 1.0 - artBands.z * ( 0.5 - 0.5 * cos( 6.2832 * ( vArtWorld.x - artBands.x ) / artBands.y ) );
+#endif
+#ifdef ART_BAND
+	float artRail = smoothstep( artBand.w - 0.002, artBand.w, vArtWorld.y ) - smoothstep( artBand.w + 0.038, artBand.w + 0.04, vArtWorld.y );
+	diffuseColor.rgb *= mix( vArtWorld.y < artBand.w ? artBand.rgb : vec3( 1.0 ), vec3( 0.18 ), artRail );
+	#ifdef ART_TILES
+		// Tiles or slabs to the band, in grey grout, each a shade off its neighbours.
+		vec2 artTq = vec2( abs( artNW.x ) > 0.5 ? vArtWorld.z : vArtWorld.x, vArtWorld.y - 0.1 ) / artTile;
+		vec2 artTD = ( 0.5 - abs( fract( artTq ) - 0.5 ) ) * artTile;
+		float artGrout = 1.0 - smoothstep( 0.002, 0.005, min( artTD.x, artTD.y ) );
+		float artVar = artTile.x > 0.3 ? 0.18 : 0.06, artGlaze = 1.0 - artVar * 0.6 + artVar * fract( sin( dot( floor( artTq ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+		diffuseColor.rgb *= vArtWorld.y < artBand.w && vArtWorld.y > 0.1 ? mix( vec3( artGlaze ), vec3( 0.62, 0.63, 0.64 ), artGrout ) : vec3( 1.0 );
+	#endif
+	// Boot-height grime on the band: darker and dirtier towards the floor.
+	diffuseColor.rgb *= vArtWorld.y < artBand.w ? mix( 0.72, 1.0, smoothstep( 0.1, 0.55, vArtWorld.y ) ) : 1.0;
+	#ifdef ART_VERTEX_LIGHT
+		// Destructible plasterboard: taped joints every 1.2 m and scuffs, all per pixel, so they break with the cells.
+		float artU = abs( artNW.x ) > 0.5 ? vArtWorld.z : vArtWorld.x;
+		float artJoint = 1.0 - 0.13 * ( 1.0 - smoothstep( 0.0, 0.012, abs( fract( artU / 1.2 + 0.5 ) - 0.5 ) * 1.2 ) );
+		// Boot scuffs: short horizontal streaks low on the wall, not blocks.
+		float artScuff = fract( sin( dot( floor( vec2( artU * 3.0, vArtWorld.y * 26.0 ) ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+		float artStreak = smoothstep( 0.0, 0.2, fract( artU * 3.0 ) ) * smoothstep( 1.0, 0.55, fract( artU * 3.0 ) );
+		diffuseColor.rgb *= artJoint * ( vArtWorld.y < 0.42 && artScuff > 0.9 ? mix( 1.0, 0.8, artStreak ) : 1.0 );
+		// Trolley and bag rub at hip height: a broken grey line that comes and goes along the wall.
+		float artRub = fract( sin( floor( artU * 1.3 ) * 91.7 ) * 43758.5453 ), artRubY = 1.0 - smoothstep( 0.0, 0.035, abs( vArtWorld.y - 0.9 - 0.04 * artRub ) );
+		diffuseColor.rgb *= 1.0 - 0.14 * artRubY * step( 0.35, artRub ) * smoothstep( 0.2, 0.5, fract( artU * 1.3 ) ) * smoothstep( 1.0, 0.7, fract( artU * 1.3 ) );
+		// The odd repainted patch: a rectangle a shade cleaner and warmer than the wall round it.
+		float artCell = floor( artU / 2.4 ), artPatch = fract( sin( artCell * 47.3 + 3.1 ) * 43758.5453 ), artPU = fract( artU / 2.4 );
+		diffuseColor.rgb *= artPatch > 0.72 && artPU > 0.18 && artPU < 0.62 && vArtWorld.y > 1.05 && vArtWorld.y < 1.95 ? vec3( 1.05, 1.04, 1.0 ) : vec3( 1.0 );
+		// Years of grime gathered towards the ceiling.
+		diffuseColor.rgb *= mix( 1.0, 0.84, smoothstep( 2.0, 2.9, vArtWorld.y ) );
+	#endif
+	// Painted skirting zone at the floor.
+	diffuseColor.rgb *= vArtWorld.y < 0.1 ? vec3( 0.42 ) : vec3( 1.0 );
+#endif`;
 
 /** three's normal_fragment_maps with z rebuilt from the two stored channels. */
 const BC5_LINE = 'vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;';

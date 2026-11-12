@@ -203,9 +203,27 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     watch = pool[(i + step + pool.length) % pool.length].id;
   }
 
+  // ---- Performance readout (?perf=1, or F3 in a match): fps, frame and script time, draws, size, quality, GPU ----
+  let perfOn = /[?&]perf=1\b/.test(location.search + location.hash), perfAt = 0, perfFrames: number[] = [], perfScript = 0, perfLast = 0;
+  window.addEventListener('keydown', e => { if (e.key === 'F3') { e.preventDefault(); perfOn = !perfOn; if (!perfOn) hud.perf(null, false); } }, { signal });
+  function perfTick(now: number, drew: boolean, scriptMs: number) {
+    if (!perfOn) return;
+    perfScript += scriptMs;
+    if (drew) { if (perfLast) perfFrames.push(now - perfLast); perfLast = now; }
+    if (now - perfAt < 1000) return;
+    const n = perfFrames.length, avg = n ? perfFrames.reduce((a, b) => a + b, 0) / n : 0, worst = n ? Math.max(...perfFrames) : 0, st = scene.stats;
+    hud.perf([
+      `${Math.round(n * 1000 / Math.max(1, now - perfAt))} fps  ${avg.toFixed(1)} ms  worst ${worst.toFixed(1)} ms`,
+      `script ${(perfScript / Math.max(1, n)).toFixed(1)} ms  ${st.calls} draws  ${Math.round(st.triangles / 1000)}k tris`,
+      `${st.size ?? ''}  ${QUALITIES[prefs.quality].name}  post ${st.post ?? 'off'}${st.auto ? `  ${st.auto}` : ''}`,
+      (st.gpu ?? '').length > 56 ? `${(st.gpu ?? '').slice(0, 55)}...` : st.gpu ?? '',
+    ], !!st.software);
+    perfAt = now; perfFrames = []; perfScript = 0;
+  }
   function loop(now: number) {
     frameId = 0;
     if (!active()) return;
+    const perfStart = performance.now(); let drew = false;
     const interval = last ? (now - last) / 1000 : 0, dt = Math.min(interval, 0.1);
     last = now;
     input.frame(dt);
@@ -213,7 +231,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     // The performance preset draws every other frame on a 60 Hz screen; the simulation and input do not slow down.
     const period = 1 / QUALITIES[prefs.quality].fps;
     renderCarry += interval;
-    if (renderCarry >= period - 0.002 || shown !== null) { draw(Math.min(0.1, renderCarry)); renderCarry = renderCarry >= period * 2 ? 0 : Math.max(0, renderCarry - period); }
+    if (renderCarry >= period - 0.002 || shown !== null) { draw(Math.min(0.1, renderCarry)); drew = true; renderCarry = renderCarry >= period * 2 ? 0 : Math.max(0, renderCarry - period); }
+    perfTick(now, drew, performance.now() - perfStart);
     if (active()) frameId = requestAnimationFrame(loop);
   }
   function advance(seconds: number) {

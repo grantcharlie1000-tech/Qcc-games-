@@ -2,14 +2,13 @@
 
 ## One round in sound (2026-11-12): please play this first
 
-`c2-round-in-sound.wav`: a whole round in one minute, stereo. Prep (a reinforcement going up, a barricade), go,
-distant fire, a breach blast, the fight through the hole, a grenade, a far blast, furniture breaking, the uplink
-planted and defused, the win. New since the first version: the blasts fall away naturally instead of holding flat,
-and the wall crumbling, gear, melee, swap, tape, bounce, hammer and the room tone are now real.
+`c3-round-in-sound.wav`: a whole round in one minute, stereo. New since c2: the "piano keys" are gone. The round
+cues, hit markers, uplink ticks, keypad and defuse are now real clicks, ticks, a radio crackle and door slams, with
+no musical tones anywhere.
 
-- **Real:** almost everything.
-- **Still synthetic:** the round cues, hit markers and uplink beeps; the sofa (fabric) break; the grenade throw;
-  the defuse.
+- **Real:** everything you hear.
+- **Still rings:** real metal and glass (casings, glass, a struck barrel). If anything still sounds like a key, it is
+  probably the barrel at 36 s.
 
 The `b3-*` files below were re-rendered with the new real breaks, hits, reinforcement and weapon drop.
 

@@ -1,6 +1,7 @@
 /** The picture. A baked-light level, destructible panel meshes, fighters, the weapon in hand and pooled effects,
  * drawn with unlit materials so integrated graphics can keep up. Resolution adapts to hold the frame rate. */
 import * as THREE from 'three';
+import { setCheapShading } from './render/materials';
 import { CELL, ROUND, WALL_H, WEAPONS } from './config';
 import { Effects } from './effects';
 import { createBake, SUN, SUN_COLOR, type Bake } from './lightbake';
@@ -65,7 +66,7 @@ export interface BreachScene {
   project(x: number, y: number, z: number): { x: number; y: number; front: boolean };
   /** Where the camera is and which way it faces, for sound. */
   readonly ear: { x: number; y: number; z: number; yaw: number };
-  readonly stats: { calls: number; triangles: number; scale: number; level: number; post?: string; art?: string; cpu?: number; programs?: number; textures?: number; geometries?: number; ready?: boolean };
+  readonly stats: { calls: number; triangles: number; scale: number; level: number; gpu?: string; software?: boolean; size?: string; auto?: string; post?: string; art?: string; cpu?: number; programs?: number; textures?: number; geometries?: number; ready?: boolean };
   dispose(): void;
 }
 
@@ -146,6 +147,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       level = buildLevel(bake, materials, a.claim);
       scene.add(level.group);
       artScene.add(a.group);
+      if (cheap) shade(true);
       pieces = new SetPieces(fx, (x, z) => { const l = bake.probe(x, z); return [0.18 + l[0] * 1.9, 0.18 + l[1] * 1.9, 0.18 + l[2] * 1.9]; });
       scene.add(pieces.mesh);
       // Breakable dressing (render/breakables.ts): screens, lights, glass, mugs, bins, leaves, ceiling fittings.
@@ -202,6 +204,14 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       await done;
       // One real draw, so the flash's and the walls' textures are uploaded too.
       renderer.setRenderTarget(hdr); renderer.render(scene, camera); renderer.setRenderTarget(prev);
+      // The other shading path too (cheap or full), so a quality step in play never compiles a shader.
+      const was = cheap;
+      shade(!was);
+      renderer.setRenderTarget(hdr);
+      const both = Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(artScene, camera)]);
+      renderer.setRenderTarget(prev);
+      await both;
+      shade(was);
     } finally {
       gadgets.forEach((o, i) => { o.visible = kept[i][0]; o.position.copy(kept[i][1]); o.updateMatrixWorld(true); });
       fx.prime(false); fx.group.remove(wallWarm); tri.dispose(); renderer.setRenderTarget(prev); hdr.dispose(); }
@@ -297,6 +307,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   });
 
   const fx = new Effects();
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blFx: fx, __blRenderer: renderer, __blScene: scene });
   // Window panes outside the barricaded windows (render/glass.ts): cosmetic, from the shot and blast events.
   const glass = new Glass(fx); scene.add(glass.group);
   glass.onEvent = (stage, x, y, z) => { if (!cosmetic.size) return; evGlass.stage = stage; evGlass.x = x; evGlass.y = y; evGlass.z = z; emit(evGlass); };
@@ -313,6 +324,10 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
 
   const ear = { x: 0, y: 1.6, z: 0, yaw: 0 };
   const stats: BreachScene['stats'] = { calls: 0, triangles: 0, scale, level: level.triangles };
+  // The graphics card's name, for the performance readout; a CPU rasteriser is flagged.
+  { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info');
+    stats.gpu = String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '');
+    stats.software = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(stats.gpu); }
   let orbit = 0, lastOrigin = { x: 0, y: 1, z: 0 }, time = 0;
   const cam = { x: 0, y: 12, z: 30, yaw: 0, pitch: -0.3, set: false };
 
@@ -324,12 +339,45 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     const q = QUALITIES[quality], graded = post.tier !== 'off', ratio = Math.min(window.devicePixelRatio || 1, q.cap) * (graded ? 1 : scale), key = `${width}x${height}@${ratio}`;
     if (key !== sized) { sized = key; renderer.setPixelRatio(ratio); renderer.setSize(width, height, false); }
     renderer.getDrawingBufferSize(drawSize);
-    post.setSize(Math.max(1, Math.round(drawSize.x * (graded ? scale : 1))), Math.max(1, Math.round(drawSize.y * (graded ? scale : 1))));
-    stats.scale = scale;
+    const rw = Math.max(1, Math.round(drawSize.x * (graded ? scale : 1))), rh = Math.max(1, Math.round(drawSize.y * (graded ? scale : 1)));
+    post.setSize(rw, rh);
+    stats.scale = scale; stats.size = `${rw}x${rh}`;
   }
   let resizedAt = -Infinity;
   /** Lowers the resolution when frames run long and raises it again when there is headroom. */
+  // Auto: a ladder from cheap to rich. It starts near the cheap end, steps down at once when frames run long (over
+  // 20 ms, averaged over half a second), and climbs one step only after 3 s at full rate and never within 10 s of a
+  // step down. A software rasteriser stays on the bottom step. Post stays on throughout (the low tier, no bloom, at
+  // the bottom), so a step never changes the materials' output or compiles a shader; the scale only moves a viewport.
+  const LADDER: { scale: number; post: PostTier; density: number }[] = [
+    { scale: 0.5, post: 'low', density: 0.35 }, { scale: 0.62, post: 'low', density: 0.6 }, { scale: 0.72, post: 'medium', density: 0.8 },
+    { scale: 0.85, post: 'medium', density: 1 }, { scale: 1, post: 'medium', density: 1 },
+  ];
+  let step = 1, downAt = -Infinity, longMs = 0, fullFor = 0;
+  // The cheap shading path (render/materials.ts cheapTwin): on the bottom step of Auto, on Performance, and so always on
+  // a software rasteriser.
+  let cheap = false;
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blShade: (on: boolean) => setCheap(on) });
+  function shade(on: boolean) { setCheapShading(artScene, on); setCheapShading(scene, on); }
+  function setCheap(on: boolean) { if (on !== cheap) { cheap = on; shade(on); } }
+  function setStep(n: number) {
+    step = Math.max(0, Math.min(LADDER.length - 1, n));
+    const l = LADDER[step];
+    scale = l.scale; fx.density = l.density; setCheap(step === 0);
+    post.setTier(/[?&]post=off\b/.test(location.search) ? 'off' : l.post);
+    applySize();
+    stats.auto = stats.software ? 'auto: lowest (software)' : `auto ${step + 1}/${LADDER.length}`;
+  }
+  function autoLadder(dt: number) {
+    const ms = dt * 1000;
+    longMs += (ms - longMs) * Math.min(1, dt / 0.5);
+    if (stats.software) { if (step) setStep(0); return; }
+    if (longMs > 20 && step > 0) { setStep(step - 1); downAt = time; longMs = 16; fullFor = 0; return; }
+    fullFor = longMs < 17.5 ? fullFor + dt : 0;
+    if (fullFor > 3 && time - downAt > 10 && step < LADDER.length - 1) { setStep(step + 1); fullFor = 0; }
+  }
   function adapt(dt: number) {
+    if (quality === 'auto') { autoLadder(dt); return; }
     const q = QUALITIES[quality];
     if (q.min === q.max) return;
     frameMs += (dt * 1000 - frameMs) * 0.08;
@@ -760,7 +808,10 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       if (art && !probesDone) { const t = performance.now(); probesDone = art.captureNext(renderer, artScene); if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: probe ${(performance.now() - t).toFixed(0)} ms`); }
       time += dt;
       if (view.m.world !== world) bind(view.m.world);
-      for (const p of panels) if (p.sync()) batches.update(p);
+      let synced = false;
+      for (const p of panels) if (p.sync()) { batches.update(p); synced = true; }
+      // A rebuilt panel takes its full material back; on the cheap path, swap it again.
+      if (synced && cheap) setCheapShading(panelGroup, true);
       batches.flush();
       updateDeploys(view.m);
       fighters.update(view);
@@ -802,7 +853,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     },
     setQuality(q) {
       quality = q; const d = QUALITIES[q];
-      scale = Math.max(d.min, Math.min(d.max, q === 'auto' ? scale : d.max)); slow = fast = 0; fx.density = d.density;
+      stats.auto = undefined;
+      if (q === 'auto') { setStep(stats.software ? 0 : 1); return; }
+      scale = Math.max(d.min, Math.min(d.max, d.max)); slow = fast = 0; fx.density = d.density; setCheap(q === 'low');
       post.setTier(/[?&]post=off\b/.test(location.search) ? 'off' : postTier(q));
       applySize();
     },

@@ -86,6 +86,8 @@ test('live: no sound before a gesture; the bank fills on a throttled CPU; no hit
   // Wait for the whole bank (it stops growing).
   let n = -1;
   for (let i = 0; i < 120; i++) { const b = (await probe()).bankBuffers; if (b === n && b > 100) break; n = b; await page.waitForTimeout(500); }
+  // And for every sample pack to be decoded, so the ambience beds (started once theirs arrives) are not counted as shots.
+  await page.waitForFunction(() => performance.getEntriesByName('breachline-audio-pack').length >= 3, undefined, { timeout: 30000 }); // guns, foley, amb
   const loaded = await probe();
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   const first = loaded.firstBank - loaded.contexts[0].at;
