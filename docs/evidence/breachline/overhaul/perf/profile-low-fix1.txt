@@ -1,0 +1,29 @@
+wall 17483 ms, frames 136, idle+program 15453 ms, script/frame 14.9 ms
+frame ms: avg 135.0 worst 633.3
+
+Top self time:
+ 15117.1 ms  111.16 ms/frame  (idle) :0
+  1086.1 ms    7.99 ms/frame  WebGLRenderer.setSize three.module-oOWtHlpK.js:33085
+   335.7 ms    2.47 ms/frame  (program) :0
+    98.1 ms    0.72 ms/frame  visible2 index-CYoeL9TF.js:460
+    53.3 ms    0.39 ms/frame  updateMatrixWorld three.module-oOWtHlpK.js:8225
+    41.3 ms    0.30 ms/frame  elementsFromPoint :0
+    35.4 ms    0.26 ms/frame  sample index-CYoeL9TF.js:523
+    26.8 ms    0.20 ms/frame  draw index-DkDDDEd5.js:22274
+    21.9 ms    0.16 ms/frame  WebGLRenderer.renderBufferDirect three.module-oOWtHlpK.js:33273
+    20.4 ms    0.15 ms/frame  bindTexture :0
+    19.7 ms    0.15 ms/frame  update three.module-oOWtHlpK.js:27016
+    19.2 ms    0.14 ms/frame  projectObject three.module-oOWtHlpK.js:33552
+    18.5 ms    0.14 ms/frame  setProgram three.module-oOWtHlpK.js:33814
+    17.5 ms    0.13 ms/frame  bindVertexArray :0
+    17.5 ms    0.13 ms/frame  refreshUniformsCommon three.module-oOWtHlpK.js:32437
+    16.5 ms    0.12 ms/frame  refreshFogUniforms three.module-oOWtHlpK.js:32385
+    14.8 ms    0.11 ms/frame  querySelectorAll :0
+    14.7 ms    0.11 ms/frame  setup three.module-oOWtHlpK.js:25359
+    14.4 ms    0.11 ms/frame  update index-CYoeL9TF.js:581
+    14.1 ms    0.10 ms/frame  (garbage collector) :0
+    14.0 ms    0.10 ms/frame  drawElements :0
+    13.3 ms    0.10 ms/frame  multiplyMatrices three.module-oOWtHlpK.js:6552
+    12.0 ms    0.09 ms/frame  upload three.module-oOWtHlpK.js:27702
+    11.4 ms    0.08 ms/frame  update index-DkDDDEd5.js:2826
+    11.1 ms    0.08 ms/frame  texSubImage2D :0

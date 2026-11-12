@@ -1,0 +1,29 @@
+wall 17465 ms, frames 88, idle+program 16445 ms, script/frame 11.6 ms
+frame ms: avg 205.7 worst 416.7
+
+Top self time:
+ 16144.7 ms  183.46 ms/frame  (idle) :0
+   300.0 ms    3.41 ms/frame  (program) :0
+   120.3 ms    1.37 ms/frame  visible2 index-DHpKkNf9.js:460
+    54.1 ms    0.61 ms/frame  updateMatrixWorld three.module-oOWtHlpK.js:8225
+    52.1 ms    0.59 ms/frame  elementsFromPoint :0
+    39.2 ms    0.45 ms/frame  multiplyMatrices three.module-oOWtHlpK.js:6552
+    38.2 ms    0.43 ms/frame  sample index-DHpKkNf9.js:523
+    32.9 ms    0.37 ms/frame  setProgram three.module-oOWtHlpK.js:33814
+    32.3 ms    0.37 ms/frame  projectObject three.module-oOWtHlpK.js:33552
+    24.1 ms    0.27 ms/frame  querySelectorAll :0
+    23.9 ms    0.27 ms/frame  draw index-Dm5IgAJY.js:22435
+    21.9 ms    0.25 ms/frame  refreshUniformsCommon three.module-oOWtHlpK.js:32437
+    20.6 ms    0.23 ms/frame  bindVertexArray :0
+    20.5 ms    0.23 ms/frame  upload three.module-oOWtHlpK.js:27702
+    16.8 ms    0.19 ms/frame  drawElements :0
+    16.4 ms    0.19 ms/frame  WebGLRenderer.renderBufferDirect three.module-oOWtHlpK.js:33273
+    15.0 ms    0.17 ms/frame  needsUpdate three.module-oOWtHlpK.js:25429
+    14.7 ms    0.17 ms/frame  refreshFogUniforms three.module-oOWtHlpK.js:32385
+    14.1 ms    0.16 ms/frame  setup three.module-oOWtHlpK.js:25359
+    11.6 ms    0.13 ms/frame  setValueV3f three.module-oOWtHlpK.js:27130
+    11.2 ms    0.13 ms/frame  firstDressing index-Dm5IgAJY.js:12933
+    10.8 ms    0.12 ms/frame  markUniformsLightsNeedsUpdate three.module-oOWtHlpK.js:34007
+    10.7 ms    0.12 ms/frame  bindTexture :0
+    10.5 ms    0.12 ms/frame  vert index-Dm5IgAJY.js:7548
+     9.5 ms    0.11 ms/frame  update three.module-oOWtHlpK.js:24428

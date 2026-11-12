@@ -1,0 +1,29 @@
+wall 17442 ms, frames 85, idle+program 16520 ms, script/frame 10.9 ms
+frame ms: avg 217.1 worst 433.4
+
+Top self time:
+ 16223.0 ms  190.86 ms/frame  (idle) :0
+   296.7 ms    3.49 ms/frame  (program) :0
+   103.6 ms    1.22 ms/frame  visible2 index-8Z7spvh4.js:460
+    43.3 ms    0.51 ms/frame  updateMatrixWorld three.module-oOWtHlpK.js:8225
+    35.7 ms    0.42 ms/frame  elementsFromPoint :0
+    28.4 ms    0.33 ms/frame  draw index-tzX7uXDe.js:22282
+    27.3 ms    0.32 ms/frame  sample index-8Z7spvh4.js:523
+    26.8 ms    0.31 ms/frame  bindVertexArray :0
+    24.2 ms    0.28 ms/frame  projectObject three.module-oOWtHlpK.js:33552
+    21.3 ms    0.25 ms/frame  querySelectorAll :0
+    19.5 ms    0.23 ms/frame  firstDressing index-tzX7uXDe.js:12907
+    18.9 ms    0.22 ms/frame  setProgram three.module-oOWtHlpK.js:33814
+    18.4 ms    0.22 ms/frame  multiplyMatrices three.module-oOWtHlpK.js:6552
+    17.5 ms    0.21 ms/frame  refreshUniformsCommon three.module-oOWtHlpK.js:32437
+    16.2 ms    0.19 ms/frame  WebGLRenderer.renderBufferDirect three.module-oOWtHlpK.js:33273
+    15.8 ms    0.19 ms/frame  needsUpdate three.module-oOWtHlpK.js:25429
+    15.5 ms    0.18 ms/frame  markUniformsLightsNeedsUpdate three.module-oOWtHlpK.js:34007
+    15.0 ms    0.18 ms/frame  render index-tzX7uXDe.js:21599
+    14.6 ms    0.17 ms/frame  setup three.module-oOWtHlpK.js:25359
+    14.0 ms    0.16 ms/frame  schedule$1 index-8Z7spvh4.js:656
+    12.5 ms    0.15 ms/frame  panelGeometry index-tzX7uXDe.js:7503
+    11.9 ms    0.14 ms/frame  WebGLRenderer.render three.module-oOWtHlpK.js:33465
+    11.7 ms    0.14 ms/frame  drawElements :0
+    10.8 ms    0.13 ms/frame  upload three.module-oOWtHlpK.js:27702
+    10.1 ms    0.12 ms/frame  DOMRect :0

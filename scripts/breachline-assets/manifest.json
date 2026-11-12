@@ -1,0 +1,1349 @@
+{
+  "note": "Every external asset Breachline ships. Only CC0 without the owner. Sources live in .cache (not committed); build.mjs writes public/game-art/breachline/.",
+  "assets": [
+    {
+      "id": "interior_tiles",
+      "kind": "texture",
+      "name": "Interior Tiles",
+      "source": "https://polyhaven.com/a/interior_tiles",
+      "author": "Charlotte Baglioni",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.9,
+        1.9
+      ],
+      "files": [
+        {
+          "path": "interior_tiles/interior_tiles_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/interior_tiles/interior_tiles_diff_2k.jpg",
+          "size": 2879908,
+          "sha256": "57d3ce95255500e7b0fa677b99b258427a1b1676bd452e90f710eb4ac41f531f"
+        },
+        {
+          "path": "interior_tiles/interior_tiles_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/interior_tiles/interior_tiles_nor_gl_2k.jpg",
+          "size": 1924372,
+          "sha256": "67dc47321ca45fc71123eb3c285f7859ca47147d2a93655ee53d44f6a284bffe"
+        },
+        {
+          "path": "interior_tiles/interior_tiles_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/interior_tiles/interior_tiles_arm_2k.jpg",
+          "size": 2472830,
+          "sha256": "a0c9e96712f5184f569537b3efaf7179d15d4a6398c1fa69ededefc8227e30e1"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "painted_plaster_wall",
+      "kind": "texture",
+      "name": "Painted Plaster Wall",
+      "source": "https://polyhaven.com/a/painted_plaster_wall",
+      "author": "Amal Kumar",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        2,
+        2
+      ],
+      "files": [
+        {
+          "path": "painted_plaster_wall/painted_plaster_wall_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_diff_2k.jpg",
+          "size": 3132937,
+          "sha256": "6fd812ed8dd5be1873c29aeef38ce9bf1fb30a22c6d4b3a12db725e98c26a1be"
+        },
+        {
+          "path": "painted_plaster_wall/painted_plaster_wall_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_nor_gl_2k.jpg",
+          "size": 4048392,
+          "sha256": "2d601a46ed5ce2af866741c53cafa3cba472620c272e633b6484d4de16a80eb1"
+        },
+        {
+          "path": "painted_plaster_wall/painted_plaster_wall_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_arm_2k.jpg",
+          "size": 2159906,
+          "sha256": "8d6a2e391e87130aabb1dc6fea23e6ebcc80aca6559a0aa82e57b75729055be5"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "blue_metal_plate",
+      "kind": "texture",
+      "name": "Blue Metal Plate",
+      "source": "https://polyhaven.com/a/blue_metal_plate",
+      "author": "Rob Tuytel",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        2.5,
+        2.5
+      ],
+      "files": [
+        {
+          "path": "blue_metal_plate/blue_metal_plate_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/blue_metal_plate/blue_metal_plate_diff_2k.jpg",
+          "size": 1518621,
+          "sha256": "82855f6297ad07ea7ea4d1c501e6b56ed4c9c758653ca126bda9fd0ebba63c59"
+        },
+        {
+          "path": "blue_metal_plate/blue_metal_plate_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/blue_metal_plate/blue_metal_plate_nor_gl_2k.jpg",
+          "size": 948237,
+          "sha256": "4cd3069a918cf891295b369b26f47c0a0631c634d0fd1006b6b7412a8f2b3550"
+        },
+        {
+          "path": "blue_metal_plate/blue_metal_plate_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/blue_metal_plate/blue_metal_plate_arm_2k.jpg",
+          "size": 1640935,
+          "sha256": "64991aa1059eb36d74fb5973dcc55de9153cf277e8f587a5b7939966737a04e4"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "metal_tool_chest",
+      "kind": "model",
+      "name": "Metal Tool Chest",
+      "source": "https://polyhaven.com/a/metal_tool_chest",
+      "author": "Yann Kervran, John Hutcheson",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.6854,
+        0.4072,
+        0.6518
+      ],
+      "files": [
+        {
+          "path": "metal_tool_chest/metal_tool_chest.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/metal_tool_chest/metal_tool_chest_1k.gltf",
+          "size": 12256,
+          "sha256": "2f66fbb723cd52382f73daec184b68d9b36842a488ecaf120e5c3a6354e9dea4"
+        },
+        {
+          "path": "metal_tool_chest/metal_tool_chest.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/metal_tool_chest/metal_tool_chest.bin",
+          "size": 434496,
+          "sha256": "c2bde4e96af4aad171e57e00ff78f0aa9e3b603286a2c74cd6d7c2a20c487342"
+        },
+        {
+          "path": "metal_tool_chest/textures/metal_tool_chest_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_tool_chest/metal_tool_chest_nor_gl_1k.jpg",
+          "size": 604781,
+          "sha256": "bc5a4009a544a9504849b951afd984d6ac7c5adb0d43c5a08c0a834f8e811a01"
+        },
+        {
+          "path": "metal_tool_chest/textures/metal_tool_chest_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_tool_chest/metal_tool_chest_arm_1k.jpg",
+          "size": 755794,
+          "sha256": "d5552ee63ac9bc53527ee1bf19bcbd31d8424bcc15fe9861f79bba917e857828"
+        },
+        {
+          "path": "metal_tool_chest/textures/metal_tool_chest_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_tool_chest/metal_tool_chest_diff_1k.jpg",
+          "size": 552016,
+          "sha256": "da37ba2a8d064637c7206cb091597275986e788ce379bee58a96c949cce06511"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "korean_fire_extinguisher_01",
+      "kind": "model",
+      "name": "Korean Fire Extinguisher 01",
+      "source": "https://polyhaven.com/a/korean_fire_extinguisher_01",
+      "author": "UM JOORIN",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.28,
+        0.3674,
+        0.6593
+      ],
+      "files": [
+        {
+          "path": "korean_fire_extinguisher_01/korean_fire_extinguisher_01.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_1k.gltf",
+          "size": 7450,
+          "sha256": "565f9e41909165c2bead24b722746e29ba55e8eb5e541f61fe0d1ef7e66d2ecf"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_paper_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_paper_nor_gl_1k.jpg",
+          "size": 267306,
+          "sha256": "caaa26dd438e827e994c69605091d58ecc6a152813ece776cc561e0b24a8433a"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_paper_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_paper_diff_1k.jpg",
+          "size": 161849,
+          "sha256": "2d56948aa72a9bad6133db3e6b17fa0df1a56cdf25db4b7e21e6ceb21999a038"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_body_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_body_nor_gl_1k.jpg",
+          "size": 95607,
+          "sha256": "b6ba7a7cafa04557c93dc63b44260b635863f0a95f8ba1445b75758dac3443d3"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_paper_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_paper_arm_1k.jpg",
+          "size": 221117,
+          "sha256": "542b45184bb0ea66cdd2f180792148c45d45862a12f1ac341f798e53029015b9"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_glass_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_glass_diff_1k.jpg",
+          "size": 150097,
+          "sha256": "ca7e49959126aa51e2d4ab440aeb9f7ff17a8a6d025b116f6327f2343ee041af"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_glass_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_glass_nor_gl_1k.jpg",
+          "size": 36344,
+          "sha256": "3b299c54cb9b6f72d4f79e6ecd2f8cfcc618292c87881de1d17892b5ca668896"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_glass_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_glass_arm_1k.jpg",
+          "size": 61925,
+          "sha256": "412712fddc3654d801949889f78c9ee92d8855624a1fe1057be29a38e766bda0"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/korean_fire_extinguisher_01.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/korean_fire_extinguisher_01/korean_fire_extinguisher_01.bin",
+          "size": 279480,
+          "sha256": "a460dd65b63477bb641196d77393258af0c8a6e2a64728156cb45d92658c86bd"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_body_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_body_diff_1k.jpg",
+          "size": 127270,
+          "sha256": "2d874513cfb6d7485b67e936ee32e7af14992da6a5eedf980dbdfc32a2119987"
+        },
+        {
+          "path": "korean_fire_extinguisher_01/textures/korean_fire_extinguisher_01_body_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/korean_fire_extinguisher_01/korean_fire_extinguisher_01_body_arm_1k.jpg",
+          "size": 209865,
+          "sha256": "2c8fa0a85d5acc5f4e784ecefd8bfd16e1aafd112e553bfcece0c81c9b129eea"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "metal_stool_01",
+      "kind": "model",
+      "name": "Metal Stool 01",
+      "source": "https://polyhaven.com/a/metal_stool_01",
+      "author": "Ulan Cabanilla",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.352,
+        0.3546,
+        0.8828
+      ],
+      "files": [
+        {
+          "path": "metal_stool_01/metal_stool_01.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/metal_stool_01/metal_stool_01_1k.gltf",
+          "size": 2790,
+          "sha256": "e69a99778cacbbf0a2447971d8917a2463b411cdd2a50ff2c53c2230b4c43881"
+        },
+        {
+          "path": "metal_stool_01/textures/metal_stool_01_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_stool_01/metal_stool_01_nor_gl_1k.jpg",
+          "size": 667394,
+          "sha256": "55d71cb01dd9afba245d4513728ce0cde8b112d5a7e1695a68578445c7b02b82"
+        },
+        {
+          "path": "metal_stool_01/textures/metal_stool_01_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_stool_01/metal_stool_01_diff_1k.jpg",
+          "size": 617390,
+          "sha256": "d11949df1f0c59b5a85145395703a2aa7617e76b80759a5ef80b09e1798acb3d"
+        },
+        {
+          "path": "metal_stool_01/textures/metal_stool_01_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_stool_01/metal_stool_01_arm_1k.jpg",
+          "size": 783046,
+          "sha256": "eb13e80e9fe232d022b4136e817d4590a7279d8da327d35e525e1aa4cf30e334"
+        },
+        {
+          "path": "metal_stool_01/metal_stool_01.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/metal_stool_01/metal_stool_01.bin",
+          "size": 216340,
+          "sha256": "a57dae498990e7b56cba33b64721d1d0b940ca6352248de149740cd4678d451d"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "raw_plank_wall",
+      "kind": "texture",
+      "name": "Raw Plank Wall",
+      "source": "https://polyhaven.com/a/raw_plank_wall",
+      "author": "Dimitrios Savva",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.87,
+        1.87
+      ],
+      "files": [
+        {
+          "path": "raw_plank_wall/raw_plank_wall_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/raw_plank_wall/raw_plank_wall_diff_2k.jpg",
+          "size": 2522671,
+          "sha256": "dd9099dfffc98d897739d03714f863d5e55ac3ea95b5185914d03d789307c354"
+        },
+        {
+          "path": "raw_plank_wall/raw_plank_wall_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/raw_plank_wall/raw_plank_wall_nor_gl_2k.jpg",
+          "size": 3223836,
+          "sha256": "554a8c1cc95d86f0aa8844c4897a7dc5e269e40eac2f3254c22efb1b84599347"
+        },
+        {
+          "path": "raw_plank_wall/raw_plank_wall_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/raw_plank_wall/raw_plank_wall_arm_2k.jpg",
+          "size": 2432109,
+          "sha256": "ed9afe2fb246149f5c5f75ccede0a8db16db91089e0d33a157e4e9b019a8dd03"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "OfficeCeiling001",
+      "kind": "texture",
+      "name": "Office Ceiling 001",
+      "source": "https://ambientcg.com/a/OfficeCeiling001",
+      "author": "ambientCG (Lennart Demes)",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        3.85,
+        3.85
+      ],
+      "provider": "ambientcg",
+      "files": [
+        {
+          "path": "OfficeCeiling001/OfficeCeiling001_2K-JPG.zip",
+          "url": "https://ambientcg.com/get?file=OfficeCeiling001_2K-JPG.zip",
+          "size": 26204610,
+          "sha256": "c28085beb79758a5364a72a0b2e3270836eaaf73fc7ed60b7f1f1212eb5c2653"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "terrazzo_tiles",
+      "kind": "texture",
+      "name": "Terrazzo Tiles",
+      "source": "https://polyhaven.com/a/terrazzo_tiles",
+      "author": "Amal Kumar",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        2,
+        2
+      ],
+      "files": [
+        {
+          "path": "terrazzo_tiles/terrazzo_tiles_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/terrazzo_tiles/terrazzo_tiles_diff_2k.jpg",
+          "size": 4554044,
+          "sha256": "26cc390c19e468de03fc9699198398590a7adc1ddd4972e6d6fb65d76403bb66"
+        },
+        {
+          "path": "terrazzo_tiles/terrazzo_tiles_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/terrazzo_tiles/terrazzo_tiles_nor_gl_2k.jpg",
+          "size": 509402,
+          "sha256": "48f79a943f626c90cfeac4528b765d9f7df862883890a9d05ddf00a2209e0fa4"
+        },
+        {
+          "path": "terrazzo_tiles/terrazzo_tiles_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/terrazzo_tiles/terrazzo_tiles_arm_2k.jpg",
+          "size": 2023471,
+          "sha256": "4480ba6a92d33d475b730126bb9608cfaa93d9b4b668b57181102cf23c380f1e"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "wood_planks",
+      "kind": "texture",
+      "name": "Wood Planks",
+      "source": "https://polyhaven.com/a/wood_planks",
+      "author": "Amal Kumar",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.5,
+        1.5
+      ],
+      "files": [
+        {
+          "path": "wood_planks/wood_planks_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_planks/wood_planks_diff_2k.jpg",
+          "size": 2387732,
+          "sha256": "caa1e71809521050fe0753ee7c17aa2faf32055fe53aff013415bc459dd23ea7"
+        },
+        {
+          "path": "wood_planks/wood_planks_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_planks/wood_planks_nor_gl_2k.jpg",
+          "size": 2906326,
+          "sha256": "908d0fe05d5abd963f2e518776bbff0db9617d3ccbb09e5e8503290572caaf27"
+        },
+        {
+          "path": "wood_planks/wood_planks_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_planks/wood_planks_arm_2k.jpg",
+          "size": 1469083,
+          "sha256": "b89b3fe4e9bc95f6c80b3488eb2101266dee69d9fbd165bcc962f7ac5924586e"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "Cardboard004",
+      "kind": "texture",
+      "name": "Cardboard 004",
+      "source": "https://ambientcg.com/a/Cardboard004",
+      "author": "ambientCG (Lennart Demes)",
+      "licence": "CC0-1.0",
+      "dimensions": null,
+      "provider": "ambientcg",
+      "files": [
+        {
+          "path": "Cardboard004/Cardboard004_2K-JPG.zip",
+          "url": "https://ambientcg.com/get?file=Cardboard004_2K-JPG.zip",
+          "size": 23261239,
+          "sha256": "c75c518d8ab2cc54eb496a8c01d83236de29c8110590e0f8e599ef8e62e2caae"
+        }
+      ],
+      "use": "Archive boxes (render/archivebox.ts)"
+    },
+    {
+      "id": "security_camera_01",
+      "kind": "model",
+      "name": "Security Camera 01",
+      "source": "https://polyhaven.com/a/security_camera_01",
+      "author": "Alexander Otterbeck, Yann Kervran",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.1696,
+        0.5537,
+        0.286
+      ],
+      "files": [
+        {
+          "path": "security_camera_01/security_camera_01.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/security_camera_01/security_camera_01_1k.gltf",
+          "size": 4743,
+          "sha256": "d2468fe353cd9f992a5549709cf9efcfae67e9fd17f80bf7ff3866e2881dd2ae"
+        },
+        {
+          "path": "security_camera_01/security_camera_01.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/security_camera_01/security_camera_01.bin",
+          "size": 386836,
+          "sha256": "c43dd3576213c169d1b3a9968788c0da2d14073e59c7d2503bc230c05042bb21"
+        },
+        {
+          "path": "security_camera_01/textures/security_camera_01_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/security_camera_01/security_camera_01_diff_1k.jpg",
+          "size": 521174,
+          "sha256": "572968d8c693682aa5c87d59428e1db234b0d81ec620af8a019c72e3f011d53f"
+        },
+        {
+          "path": "security_camera_01/textures/security_camera_01_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/security_camera_01/security_camera_01_arm_1k.jpg",
+          "size": 530966,
+          "sha256": "68bb728aff5af6bd4141201cd221c7e17ef537f49978c321b0e183677f8877ba"
+        },
+        {
+          "path": "security_camera_01/textures/security_camera_01_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/security_camera_01/security_camera_01_nor_gl_1k.jpg",
+          "size": 315604,
+          "sha256": "80e791da5d975177d16d5f30202deac0b262ffe6b13311605c09c630b93d0de5"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "asphalt_02",
+      "kind": "texture",
+      "name": "Asphalt 02",
+      "source": "https://polyhaven.com/a/asphalt_02",
+      "author": "Rob Tuytel",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        3,
+        3
+      ],
+      "files": [
+        {
+          "path": "asphalt_02/asphalt_02_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/asphalt_02/asphalt_02_diff_2k.jpg",
+          "size": 3075676,
+          "sha256": "28f5ba8690553f192c0e5e1a5ff40f34765b4b93f4cc7059b1a3e9c795b6c28c"
+        },
+        {
+          "path": "asphalt_02/asphalt_02_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/asphalt_02/asphalt_02_nor_gl_2k.jpg",
+          "size": 4943950,
+          "sha256": "ffe49db71a0fd34c1e259625df66a302a237597d6ef655307987ec4e45bc6f21"
+        },
+        {
+          "path": "asphalt_02/asphalt_02_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/asphalt_02/asphalt_02_arm_2k.jpg",
+          "size": 1299186,
+          "sha256": "ed70e88640e4ed51cf1c3e57cb20db26983599b20b867c2526439e3a2c849fea"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "concrete_floor_02",
+      "kind": "texture",
+      "name": "Concrete Floor 02",
+      "source": "https://polyhaven.com/a/concrete_floor_02",
+      "author": "Rob Tuytel",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        2,
+        2
+      ],
+      "files": [
+        {
+          "path": "concrete_floor_02/concrete_floor_02_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_floor_02/concrete_floor_02_diff_2k.jpg",
+          "size": 3310792,
+          "sha256": "b08a20dcb306d08ee7f4a05ec216b19b7fd37e95745998ec5f81ecedaac1f0e9"
+        },
+        {
+          "path": "concrete_floor_02/concrete_floor_02_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_floor_02/concrete_floor_02_nor_gl_2k.jpg",
+          "size": 935810,
+          "sha256": "ce12d18f283f884f4be6f6c110f81582376049caada1e226958659d3d5fbaae1"
+        },
+        {
+          "path": "concrete_floor_02/concrete_floor_02_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_floor_02/concrete_floor_02_arm_2k.jpg",
+          "size": 702807,
+          "sha256": "bea1da529cfaf1dba9d127b8ae89793530d261f199409cdebb23abf750306c74"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "red_brick_03",
+      "kind": "texture",
+      "name": "Red Brick 03",
+      "source": "https://polyhaven.com/a/red_brick_03",
+      "author": "Rob Tuytel",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1,
+        1
+      ],
+      "files": [
+        {
+          "path": "red_brick_03/red_brick_03_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/red_brick_03/red_brick_03_diff_2k.jpg",
+          "size": 2969950,
+          "sha256": "c37ef11bb94a533d1c758c5c7d7199264e90f19b23946766c7c59aa189c11ff6"
+        },
+        {
+          "path": "red_brick_03/red_brick_03_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/red_brick_03/red_brick_03_nor_gl_2k.jpg",
+          "size": 3684630,
+          "sha256": "3bcb8714c450369915a9608a9e5318433a5e5df932184519bdbfd993dec16a9f"
+        },
+        {
+          "path": "red_brick_03/red_brick_03_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/red_brick_03/red_brick_03_arm_2k.jpg",
+          "size": 697262,
+          "sha256": "8866779a31fdda349433ed749b299bf0b4bb7c56b1ca12637ca3d17642a07982"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "aerial_grass_rock",
+      "kind": "texture",
+      "name": "Aerial Grass Rock",
+      "source": "https://polyhaven.com/a/aerial_grass_rock",
+      "author": "Rob Tuytel",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        15,
+        15
+      ],
+      "files": [
+        {
+          "path": "aerial_grass_rock/aerial_grass_rock_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/aerial_grass_rock/aerial_grass_rock_diff_2k.jpg",
+          "size": 2624635,
+          "sha256": "1a2ddfa4652adbe00447b940c40019d46f4b88245bc1b341cdf622c2110b7bc5"
+        },
+        {
+          "path": "aerial_grass_rock/aerial_grass_rock_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/aerial_grass_rock/aerial_grass_rock_nor_gl_2k.jpg",
+          "size": 3799025,
+          "sha256": "c6aa14b042ce243f93a6ca807f46a085711c23ad316b104578e92df7770ee285"
+        },
+        {
+          "path": "aerial_grass_rock/aerial_grass_rock_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/aerial_grass_rock/aerial_grass_rock_arm_2k.jpg",
+          "size": 945301,
+          "sha256": "a7daabd9aa877f861ced2830b792709f31a399324db47df2bdac256c0414fc14"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "covered_car",
+      "kind": "model",
+      "name": "Covered Car",
+      "source": "https://polyhaven.com/a/covered_car",
+      "author": "MP",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.789,
+        4.3803,
+        1.4111
+      ],
+      "files": [
+        {
+          "path": "covered_car/covered_car.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/covered_car/covered_car_1k.gltf",
+          "size": 9687,
+          "sha256": "80b210b08673833a8085812b9ee71286213b2af92654886e5a1a368977265aa7"
+        },
+        {
+          "path": "covered_car/covered_car.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/covered_car/covered_car.bin",
+          "size": 394464,
+          "sha256": "dcbd7bf82d415e30d02c3e7056013b44729de7b712868b5ab9bf29f2b3b8bc57"
+        },
+        {
+          "path": "covered_car/textures/covered_car_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/covered_car/covered_car_nor_gl_1k.jpg",
+          "size": 641340,
+          "sha256": "6769694abe28c53e5c35ad1cefdd462b56416e7d89a6bcf5a9d9f6c922b46d05"
+        },
+        {
+          "path": "covered_car/textures/covered_car_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/covered_car/covered_car_arm_1k.jpg",
+          "size": 745781,
+          "sha256": "e77f73234311701dd8088ec572e61d4ec7838bd28e9ea13ffe5e28f79da8e085"
+        },
+        {
+          "path": "covered_car/textures/covered_car_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/covered_car/covered_car_diff_1k.jpg",
+          "size": 558004,
+          "sha256": "c4616a5c7c1327e4bc127b600e59d9dcb2123f8926f1570a1ca4a068d97f4d34"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "old_military_crate",
+      "kind": "model",
+      "name": "Old Military Crate",
+      "source": "https://polyhaven.com/a/old_military_crate",
+      "author": "Jack Mava",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.8154,
+        0.9791,
+        0.3009
+      ],
+      "files": [
+        {
+          "path": "old_military_crate/old_military_crate.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/old_military_crate/old_military_crate_1k.gltf",
+          "size": 10126,
+          "sha256": "ef4b69dca61542c4d724c4807233161129150220695742b5137ed65d8d2e1f24"
+        },
+        {
+          "path": "old_military_crate/textures/old_military_crate_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/old_military_crate/old_military_crate_nor_gl_1k.jpg",
+          "size": 742682,
+          "sha256": "88935171626be79c4a44d0c52a33bc8d88b7b232ae48157d639a9ada0ab6e92b"
+        },
+        {
+          "path": "old_military_crate/textures/old_military_crate_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/old_military_crate/old_military_crate_diff_1k.jpg",
+          "size": 709506,
+          "sha256": "9e74a72787364fee09a450e442db97a687d237051e98f8ed709af516434e895d"
+        },
+        {
+          "path": "old_military_crate/textures/old_military_crate_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/old_military_crate/old_military_crate_arm_1k.jpg",
+          "size": 704105,
+          "sha256": "7b3a94f18f15783d9940fe4bd25316e8daffd0bdcbdfbe3e234b3cbb636bf5da"
+        },
+        {
+          "path": "old_military_crate/old_military_crate.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/old_military_crate/old_military_crate.bin",
+          "size": 329004,
+          "sha256": "80eb5ad690aaa6f4f401df0f8e323666bf8f3f9943c7cb703eb37002f5084ce1"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "wooden_military_crate",
+      "kind": "model",
+      "name": "Wooden Military Crate",
+      "source": "https://polyhaven.com/a/wooden_military_crate",
+      "author": "Prabhjinder Singh",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.2421,
+        0.5198,
+        0.4648
+      ],
+      "files": [
+        {
+          "path": "wooden_military_crate/wooden_military_crate.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/wooden_military_crate/wooden_military_crate_1k.gltf",
+          "size": 6002,
+          "sha256": "e8d8d21d112fef04c8e9fd05a62dc7c94260bc230a43d86d0e1f4b5a888a9499"
+        },
+        {
+          "path": "wooden_military_crate/textures/wooden_military_crate_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/wooden_military_crate/wooden_military_crate_nor_gl_1k.jpg",
+          "size": 745490,
+          "sha256": "89cc5ad94dd7ce425f2b9b04f37f2266778923369c77d8945101456f47579cf3"
+        },
+        {
+          "path": "wooden_military_crate/textures/wooden_military_crate_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/wooden_military_crate/wooden_military_crate_diff_1k.jpg",
+          "size": 824093,
+          "sha256": "aa6ace45bef9947586c07283cd11a2d737fe0783a18df69a76f77f59d4fb776d"
+        },
+        {
+          "path": "wooden_military_crate/textures/wooden_military_crate_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/wooden_military_crate/wooden_military_crate_arm_1k.jpg",
+          "size": 782386,
+          "sha256": "fe27fa628a9134f81958413c1a11deea8074fe40424c1a8a48ec459f2dde7955"
+        },
+        {
+          "path": "wooden_military_crate/wooden_military_crate.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/wooden_military_crate/wooden_military_crate.bin",
+          "size": 687548,
+          "sha256": "cf6fd469a476d834f9724f8b8f762630040d8e785e8697c5d7994ae3e840e727"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "metal_jerrycan_green",
+      "kind": "model",
+      "name": "Metal Jerrycan Green",
+      "source": "https://polyhaven.com/a/metal_jerrycan_green",
+      "author": "Ulan Cabanilla",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.3739,
+        0.1709,
+        0.5009
+      ],
+      "files": [
+        {
+          "path": "metal_jerrycan_green/metal_jerrycan_green.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/metal_jerrycan_green/metal_jerrycan_green_1k.gltf",
+          "size": 9539,
+          "sha256": "7c63c43f9042a08fff0cec69d1d954d029cc10d2546ba63072fcf719d5db49c5"
+        },
+        {
+          "path": "metal_jerrycan_green/textures/metal_jerrycan_green_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_jerrycan_green/metal_jerrycan_green_nor_gl_1k.jpg",
+          "size": 744758,
+          "sha256": "7af3a6bb717b13cfafaad5b933b40484983a57b3806992b1b349d2fa77eadb6c"
+        },
+        {
+          "path": "metal_jerrycan_green/textures/metal_jerrycan_green_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_jerrycan_green/metal_jerrycan_green_diff_1k.jpg",
+          "size": 577269,
+          "sha256": "422b63d79fd360a5d016b75ae110917da64ce682c9e1e97c73ac441a000652e9"
+        },
+        {
+          "path": "metal_jerrycan_green/textures/metal_jerrycan_green_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/metal_jerrycan_green/metal_jerrycan_green_arm_1k.jpg",
+          "size": 1050155,
+          "sha256": "5012d95478dc0818e9ad883eee6f4ce5d99523cc190d3c6543c0b5750d954239"
+        },
+        {
+          "path": "metal_jerrycan_green/metal_jerrycan_green.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/metal_jerrycan_green/metal_jerrycan_green.bin",
+          "size": 273368,
+          "sha256": "386534027d20514402c05d68115f4bff7b466db0b02022f9ab51ac6a576bb3fa"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "barrel_03",
+      "kind": "model",
+      "name": "Barrel 03",
+      "source": "https://polyhaven.com/a/barrel_03",
+      "author": "Serhii Khromov",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.6339,
+        0.6386,
+        0.9305
+      ],
+      "files": [
+        {
+          "path": "barrel_03/barrel_03.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/barrel_03/barrel_03_1k.gltf",
+          "size": 2638,
+          "sha256": "80e2faf48b7423bb522b573e459d99c5656a16763285ec8268e957fc7d41f9b8"
+        },
+        {
+          "path": "barrel_03/textures/barrel_03_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/barrel_03/barrel_03_diff_1k.jpg",
+          "size": 149997,
+          "sha256": "62feb27dfa9a0daf3f323fdc1ddc2d8e4a5996cf2c72fe50197b55c2b9cba7f3"
+        },
+        {
+          "path": "barrel_03/barrel_03.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/barrel_03/barrel_03.bin",
+          "size": 44872,
+          "sha256": "10f3202e9ac9acf8dd896f1562c64db58311ffef89efb402d8433e03ad486427"
+        },
+        {
+          "path": "barrel_03/textures/barrel_03_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/barrel_03/barrel_03_nor_gl_1k.jpg",
+          "size": 126707,
+          "sha256": "ade97c52985047858a4f38226a9b8a888e3a766ba0434700b4618fb25424c4b6"
+        },
+        {
+          "path": "barrel_03/textures/barrel_03_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/barrel_03/barrel_03_arm_1k.jpg",
+          "size": 249922,
+          "sha256": "2cec2338b36d7322bef55e6a1d0884b223c5ed383cf986a58bfa461478c64c7e"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "preconcrete_wall_001",
+      "kind": "texture",
+      "name": "Preconcrete Wall 001",
+      "source": "https://polyhaven.com/a/preconcrete_wall_001",
+      "author": "Dimitrios Savva, Rico Cilliers",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        4,
+        4
+      ],
+      "files": [
+        {
+          "path": "preconcrete_wall_001/preconcrete_wall_001_diff.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/preconcrete_wall_001/preconcrete_wall_001_diff_2k.jpg",
+          "size": 921611,
+          "sha256": "c5dd99db8726950122d1ebd49fdd6ead14b5d24c278e6559eba3128f86c7d797"
+        },
+        {
+          "path": "preconcrete_wall_001/preconcrete_wall_001_nor_gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/preconcrete_wall_001/preconcrete_wall_001_nor_gl_2k.jpg",
+          "size": 875406,
+          "sha256": "14a33abbf3126f7fe2c61c31906e2724174ec3a0467e24c73bec34b7c5d31969"
+        },
+        {
+          "path": "preconcrete_wall_001/preconcrete_wall_001_arm.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/preconcrete_wall_001/preconcrete_wall_001_arm_2k.jpg",
+          "size": 476534,
+          "sha256": "628f8a53c3360aa028b1ea0df6d2c23c542717aa59e85b9fc8263a144d308bb3"
+        }
+      ],
+      "use": ""
+    },
+    {
+      "id": "worn_metal_rack",
+      "kind": "model",
+      "name": "Worn Metal Rack",
+      "source": "https://polyhaven.com/a/worn_metal_rack",
+      "author": "Luca B",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.9154,
+        0.6,
+        1.9
+      ],
+      "files": [
+        {
+          "path": "worn_metal_rack/worn_metal_rack.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/worn_metal_rack/worn_metal_rack_1k.gltf",
+          "size": 2796,
+          "sha256": "e757448bd448460ecb6c7218e7857c8d071f271e3cdc2bd013ca63d824c0c308"
+        },
+        {
+          "path": "worn_metal_rack/textures/worn_metal_rack_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/worn_metal_rack/worn_metal_rack_nor_gl_1k.jpg",
+          "size": 435767,
+          "sha256": "3222c47e6fac0d103afec06b8a53476828777f5282d6703266010ecf587ad49e"
+        },
+        {
+          "path": "worn_metal_rack/textures/worn_metal_rack_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/worn_metal_rack/worn_metal_rack_diff_1k.jpg",
+          "size": 604202,
+          "sha256": "295c2d48ad55289fed76b7438513520cadd94516639ab8ffd8790ffe7c903dbb"
+        },
+        {
+          "path": "worn_metal_rack/textures/worn_metal_rack_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/worn_metal_rack/worn_metal_rack_arm_1k.jpg",
+          "size": 696941,
+          "sha256": "b3523f947b3ebd960d508361bb323cec5a959d0b7043a8a7118ffab781925a65"
+        },
+        {
+          "path": "worn_metal_rack/worn_metal_rack.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/worn_metal_rack/worn_metal_rack.bin",
+          "size": 269400,
+          "sha256": "b8cfa4138b7c0e0e69738c6f24dec7fecdc2f336f524312db48167816776fd13"
+        }
+      ],
+      "use": "Shelving set pieces (render/setpiecemodels.ts)"
+    },
+    {
+      "id": "wooden_crate_02",
+      "kind": "model",
+      "name": "Wooden Crate 02",
+      "source": "https://polyhaven.com/a/wooden_crate_02",
+      "author": "James Ray Cock, Jurita Burger",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.1663,
+        0.5291,
+        0.464
+      ],
+      "files": [
+        {
+          "path": "wooden_crate_02/wooden_crate_02.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/wooden_crate_02/wooden_crate_02_1k.gltf",
+          "size": 4150,
+          "sha256": "e90985d317664668988cb95ce707784c94ab0ccc6d13c980ca789fa69a5cf7b6"
+        },
+        {
+          "path": "wooden_crate_02/textures/wooden_crate_02_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/wooden_crate_02/wooden_crate_02_diff_1k.jpg",
+          "size": 716110,
+          "sha256": "a6e57123110d2899af9493c22b1918174f1c96c707e7126ac67738d98ee10c07"
+        },
+        {
+          "path": "wooden_crate_02/textures/wooden_crate_02_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/wooden_crate_02/wooden_crate_02_arm_1k.jpg",
+          "size": 819577,
+          "sha256": "a76af97005a66fe8c7cdcabf20174f06813e6a6d5cd9502157c93a57f3c89d5a"
+        },
+        {
+          "path": "wooden_crate_02/wooden_crate_02.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/wooden_crate_02/wooden_crate_02.bin",
+          "size": 150064,
+          "sha256": "e68e272641f704e5241e4108894f0b97363d511944db8b991a48787d0160ea5e"
+        },
+        {
+          "path": "wooden_crate_02/textures/wooden_crate_02_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/wooden_crate_02/wooden_crate_02_nor_gl_1k.jpg",
+          "size": 546319,
+          "sha256": "59342f730c9f336950f796ef5e4c3b8c794ce5adbd54d98a2ecb679a7e4ae5e8"
+        }
+      ],
+      "use": "Crate-stack set pieces"
+    },
+    {
+      "id": "Barrel_02",
+      "kind": "model",
+      "name": "Barrel 02",
+      "source": "https://polyhaven.com/a/Barrel_02",
+      "author": "Jorge Camacho",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.4882,
+        0.4846,
+        0.88
+      ],
+      "files": [
+        {
+          "path": "Barrel_02/Barrel_02.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/Barrel_02/Barrel_02_1k.gltf",
+          "size": 2639,
+          "sha256": "82204368af4d7211c440e7ebcd30979f48ba349d4439f3bf0212f86d4ba5d9d8"
+        },
+        {
+          "path": "Barrel_02/textures/Barrel_02_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/Barrel_02/Barrel_02_arm_1k.jpg",
+          "size": 166615,
+          "sha256": "bd69aa2c5c069482cb48a14aed1f3a1d079bd868d865247206427df5a53202e3"
+        },
+        {
+          "path": "Barrel_02/Barrel_02.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/Barrel_02/Barrel_02.bin",
+          "size": 77440,
+          "sha256": "a9a848743a7616710e2b3aee0b61c6fb69abc3910a150856ad21776a6089f29a"
+        },
+        {
+          "path": "Barrel_02/textures/Barrel_02_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/Barrel_02/Barrel_02_diff_1k.jpg",
+          "size": 74005,
+          "sha256": "2dd828ce25b5b6b0ffc9b7901d1778767f1897be1c8004f4ec047fc91742cf12"
+        },
+        {
+          "path": "Barrel_02/textures/Barrel_02_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/Barrel_02/Barrel_02_nor_gl_1k.jpg",
+          "size": 100819,
+          "sha256": "f7029669d04979d20bbe1a80d34e689aff4b1ebe1bcc37a3ee62c8e384229a77"
+        }
+      ],
+      "use": "Drum-cluster set pieces"
+    },
+    {
+      "id": "concrete_road_barrier_02",
+      "kind": "model",
+      "name": "Concrete Road Barrier 02",
+      "source": "https://polyhaven.com/a/concrete_road_barrier_02",
+      "author": "Amal Kumar",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.567,
+        0.4422,
+        1.112
+      ],
+      "files": [
+        {
+          "path": "concrete_road_barrier_02/concrete_road_barrier_02.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/concrete_road_barrier_02/concrete_road_barrier_02_1k.gltf",
+          "size": 2910,
+          "sha256": "52d13b5105ce861db5dd1413a1a924ad5594dee5a8eb37dbe1a9df441fcd7caf"
+        },
+        {
+          "path": "concrete_road_barrier_02/concrete_road_barrier_02.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/concrete_road_barrier_02/concrete_road_barrier_02.bin",
+          "size": 542900,
+          "sha256": "254ee05467733e224e127dc76e019e5b5211c0da4248fa3fc75117ec005d7c90"
+        },
+        {
+          "path": "concrete_road_barrier_02/textures/concrete_road_barrier_02_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/concrete_road_barrier_02/concrete_road_barrier_02_arm_1k.jpg",
+          "size": 717138,
+          "sha256": "6fb282f242ce86a3e44663678c2e0366c37de8244b08acc003d99771cb780e53"
+        },
+        {
+          "path": "concrete_road_barrier_02/textures/concrete_road_barrier_02_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/concrete_road_barrier_02/concrete_road_barrier_02_nor_gl_1k.jpg",
+          "size": 923479,
+          "sha256": "42ec702843df209f0aef1d247c76dfb91385f0bf3b226b752d22a4c0e3780a31"
+        },
+        {
+          "path": "concrete_road_barrier_02/textures/concrete_road_barrier_02_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/concrete_road_barrier_02/concrete_road_barrier_02_diff_1k.jpg",
+          "size": 741673,
+          "sha256": "9329260ebfc8632a5d47d9b344ab6f916e26604e73ebd2c495fee544df4bdefa"
+        }
+      ],
+      "use": "Low-wall set pieces (precast barriers)"
+    },
+    {
+      "id": "compost_bags",
+      "kind": "model",
+      "name": "Compost Bags",
+      "source": "https://polyhaven.com/a/compost_bags",
+      "author": "James Ray Cock",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        1.8473,
+        0.9464,
+        0.768
+      ],
+      "files": [
+        {
+          "path": "compost_bags/compost_bags.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/compost_bags/compost_bags_1k.gltf",
+          "size": 11308,
+          "sha256": "ccbb538016405b763fd09f804be2ea7d19c61702856b0c51d1d488ef0c88f489"
+        },
+        {
+          "path": "compost_bags/textures/compost_bags_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/compost_bags/compost_bags_arm_1k.jpg",
+          "size": 679780,
+          "sha256": "602437897781a5ff00e5edf5a29f881b884ea7f4965d9b26c770b5c5ff47ca72"
+        },
+        {
+          "path": "compost_bags/textures/compost_bags_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/compost_bags/compost_bags_nor_gl_1k.jpg",
+          "size": 537959,
+          "sha256": "84b10f72764874621df259a0e62e0e9d0e069f273da9911224eb9ab521863a01"
+        },
+        {
+          "path": "compost_bags/compost_bags.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/compost_bags/compost_bags.bin",
+          "size": 473352,
+          "sha256": "59f7bd0da2ed5cbed8f620bb48922591859db98ac5e4dbec035f6d44eae3c258"
+        },
+        {
+          "path": "compost_bags/textures/compost_bags_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/compost_bags/compost_bags_diff_1k.jpg",
+          "size": 523267,
+          "sha256": "20e0c2d0cc3f8706d8e602a67a450963b5ece5ed571175a2155e60b566dc6ca0"
+        },
+        {
+          "path": "compost_bags/textures/compost_bags_sss_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/compost_bags/compost_bags_sss_1k.jpg",
+          "size": 375670,
+          "sha256": "e537888b2e5c63aba0f74ce5947471ad1ccb739534368f1c257bfd2af94204e6"
+        }
+      ],
+      "use": "Materials-drop set pieces"
+    },
+    {
+      "id": "cement_bag",
+      "kind": "model",
+      "name": "Cement Bag",
+      "source": "https://polyhaven.com/a/cement_bag",
+      "author": "PierreB3D",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.4625,
+        0.6996,
+        0.1799
+      ],
+      "files": [
+        {
+          "path": "cement_bag/cement_bag.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/cement_bag/cement_bag_1k.gltf",
+          "size": 2745,
+          "sha256": "60749af5830f8df1bc1388b177763b1ab09b9f40de3577d21a8c88659f6562a7"
+        },
+        {
+          "path": "cement_bag/textures/cement_bag_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/cement_bag/cement_bag_nor_gl_1k.jpg",
+          "size": 397422,
+          "sha256": "4f9b5ff34b029b47744dca27b864d35c167472792073a2141a5f69fc4cb39ddd"
+        },
+        {
+          "path": "cement_bag/textures/cement_bag_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/cement_bag/cement_bag_diff_1k.jpg",
+          "size": 616339,
+          "sha256": "0f1a45ba37e569b744325976b0a4514bc9e0b073bc12f1adb4d3232f6e90ed3e"
+        },
+        {
+          "path": "cement_bag/textures/cement_bag_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/cement_bag/cement_bag_arm_1k.jpg",
+          "size": 409263,
+          "sha256": "ab39330e5c00b8d8c3febc58076717394d261daea50faba1c9fa90d8c51f06a4"
+        },
+        {
+          "path": "cement_bag/cement_bag.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/cement_bag/cement_bag.bin",
+          "size": 22280,
+          "sha256": "6f5bb09b0a706d330b208c5a820b23b03d1ddf535fea8c459de398b55bb9e3b0"
+        }
+      ],
+      "use": "Materials-drop set pieces (cement on a pallet)"
+    },
+    {
+      "id": "trashbag",
+      "kind": "model",
+      "name": "Trashbag",
+      "source": "https://polyhaven.com/a/trashbag",
+      "author": "Benny Weimer",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.5281,
+        0.4629,
+        0.575
+      ],
+      "files": [
+        {
+          "path": "trashbag/trashbag.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/trashbag/trashbag_1k.gltf",
+          "size": 2738,
+          "sha256": "22202e1ec48d924577584dce6751d5ab198fd7c0aee44602e9a7317b5b60a4a7"
+        },
+        {
+          "path": "trashbag/textures/trashbag_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/trashbag/trashbag_nor_gl_1k.jpg",
+          "size": 573449,
+          "sha256": "33ddb9711bb3ab2ff1ed19fa361a4251909643fada7e5579a28f6346a58b4daf"
+        },
+        {
+          "path": "trashbag/textures/trashbag_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/trashbag/trashbag_diff_1k.jpg",
+          "size": 332301,
+          "sha256": "676e01cbeef39b51c9ecd67315c952a605c8db9c11544fbe11e14dcbd00be27f"
+        },
+        {
+          "path": "trashbag/textures/trashbag_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/trashbag/trashbag_arm_1k.jpg",
+          "size": 684660,
+          "sha256": "95e69ba47bc7b84f342cdbe4385cfab670295827740fb09407b967ea2114c0aa"
+        },
+        {
+          "path": "trashbag/trashbag.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/trashbag/trashbag.bin",
+          "size": 106316,
+          "sha256": "7bfac5b9c39a058af347944b437f712718ec129ec883c16339179862cc155fe2"
+        }
+      ],
+      "use": "Bin-store set pieces"
+    },
+    {
+      "id": "cardboard_box_01",
+      "kind": "model",
+      "name": "Cardboard Box 01",
+      "source": "https://polyhaven.com/a/cardboard_box_01",
+      "author": "Rahul Chaudhary",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.387,
+        0.5159,
+        0.3418
+      ],
+      "files": [
+        {
+          "path": "cardboard_box_01/cardboard_box_01.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/cardboard_box_01/cardboard_box_01_1k.gltf",
+          "size": 2903,
+          "sha256": "6038bcc5bba5a08a5f6643a265977e37e3d14553e62981e144c33a89f10b78e1"
+        },
+        {
+          "path": "cardboard_box_01/textures/cardboard_box_01_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/cardboard_box_01/cardboard_box_01_arm_1k.jpg",
+          "size": 398433,
+          "sha256": "5db63828d0f904c6a8d9c83afc912260b2a27261c15a28d06360519384574d2b"
+        },
+        {
+          "path": "cardboard_box_01/cardboard_box_01.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/cardboard_box_01/cardboard_box_01.bin",
+          "size": 381936,
+          "sha256": "7212d43b4cb56459e46d31ab34dc7c310fcfbe170f4a588416dea07ae5628a4b"
+        },
+        {
+          "path": "cardboard_box_01/textures/cardboard_box_01_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/cardboard_box_01/cardboard_box_01_diff_1k.jpg",
+          "size": 567741,
+          "sha256": "122c7ba8c5935e289804a730b480677a4bffdf74a45c91970cba682df92e171c"
+        },
+        {
+          "path": "cardboard_box_01/textures/cardboard_box_01_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/cardboard_box_01/cardboard_box_01_nor_gl_1k.jpg",
+          "size": 817424,
+          "sha256": "d2d1f529a851966b65411b5094510dd9eba03cd5c0a89921f79325c377a8e8eb"
+        }
+      ],
+      "use": "Shelving set pieces (a carton beside the rack)"
+    },
+    {
+      "id": "abo_B01D7P5NI8",
+      "patchId": "abo:B01D7P5NI8",
+      "kind": "model",
+      "name": "Low-back computer task office desk chair",
+      "source": "https://patch.gg/assets/abo%3AB01D7P5NI8",
+      "author": "see credit",
+      "licence": "CC-BY-4.0",
+      "ownerApproved": true,
+      "credit": "B01D7P5NI8 (\"Low-back computer task office desk chair\", title by Patch) by Amazon.com (Amazon Berkeley Objects, https://amazon-berkeley-objects.s3.amazonaws.com/3dmodels/original/8/B01D7P5NI8.glb), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). Changed by Patch: textures capped at 2048 px, pivot moved to the bottom centre, credit added to the file, simplified LODs added. Changed for Breachline: simplified to about 20 % of its triangles, unused vertices removed, textures re-encoded (KTX2 and JPEG) and drawn without the original materials.",
+      "provider": "patch",
+      "dimensions": null,
+      "files": [
+        {
+          "path": "abo_B01D7P5NI8/abo_B01D7P5NI8.glb",
+          "url": "https://assets.patchusercontent.com/sha256/b962e47b9c043acdbb2b1bc952c519fa880c61593e9015536269cccabe8a350e/B01D7P5NI8.glb",
+          "size": 7181740,
+          "sha256": "b962e47b9c043acdbb2b1bc952c519fa880c61593e9015536269cccabe8a350e"
+        }
+      ],
+      "use": "Office task chairs (render/labdress.ts dressing models)",
+      "decimate": 0.2
+    },
+    {
+      "id": "simready_computer_monitor_office_a01",
+      "patchId": "simready:computer_monitor_office_a01",
+      "kind": "model",
+      "name": "Computer monitor",
+      "source": "https://patch.gg/assets/simready%3Acomputer_monitor_office_a01",
+      "author": "see credit",
+      "licence": "CC-BY-4.0",
+      "ownerApproved": true,
+      "credit": "\"Computer monitor\" by NVIDIA (SimReady, https://huggingface.co/datasets/nvidia/simready-assets/tree/524747d9b5e1f21b5b18b56041788c01d745f1a1/computer_monitor_office_a01), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). Changed by Patch: converted from USD to glTF, MDL materials dropped for the UsdPreviewSurface textures, ambient occlusion mapped from the ORM texture, mass and one convex hull per part added as OMI_physics_body and OMI_physics_shape, pivot moved to the bottom centre, credit and license added to the file metadata. Changed for Breachline: simplified to about 25 % of its triangles, unused vertices removed, textures re-encoded (KTX2 and JPEG) and drawn without the original materials.",
+      "provider": "patch",
+      "dimensions": null,
+      "files": [
+        {
+          "path": "simready_computer_monitor_office_a01/simready_computer_monitor_office_a01.glb",
+          "url": "https://assets.patchusercontent.com/sha256/403b7c9c2987bae327f4763e23c9cdb5b8d4a0c2e463d78f32b1a4cf16be9e2a/computer_monitor_office_a01.glb",
+          "size": 9445716,
+          "sha256": "403b7c9c2987bae327f4763e23c9cdb5b8d4a0c2e463d78f32b1a4cf16be9e2a"
+        }
+      ],
+      "use": "Office monitors (dressing models)",
+      "decimate": 0.25
+    },
+    {
+      "id": "simready_computer_keyboard_a01",
+      "patchId": "simready:computer_keyboard_a01",
+      "kind": "model",
+      "name": "Computer keyboard",
+      "source": "https://patch.gg/assets/simready%3Acomputer_keyboard_a01",
+      "author": "see credit",
+      "licence": "CC-BY-4.0",
+      "ownerApproved": true,
+      "credit": "\"Computer keyboard\" by NVIDIA (SimReady, https://huggingface.co/datasets/nvidia/simready-assets/tree/524747d9b5e1f21b5b18b56041788c01d745f1a1/computer_keyboard_a01), licensed Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). Changed by Patch: converted from USD to glTF, MDL materials dropped for the UsdPreviewSurface textures, textures resized to 2048 px, ambient occlusion mapped from the ORM texture, mass and one convex hull per part added as OMI_physics_body and OMI_physics_shape, pivot moved to the bottom centre, credit and license added to the file metadata. Changed for Breachline: simplified to about 6 % of its triangles, unused vertices removed, textures re-encoded (KTX2 and JPEG) and drawn without the original materials.",
+      "provider": "patch",
+      "dimensions": null,
+      "files": [
+        {
+          "path": "simready_computer_keyboard_a01/simready_computer_keyboard_a01.glb",
+          "url": "https://assets.patchusercontent.com/sha256/7f65e945b69d5bdf3e4672d78dc56f7968659f123bfd41de0e00fd31ee8446f2/computer_keyboard_a01.glb",
+          "size": 2978152,
+          "sha256": "7f65e945b69d5bdf3e4672d78dc56f7968659f123bfd41de0e00fd31ee8446f2"
+        }
+      ],
+      "use": "Office keyboards (dressing models)",
+      "decimate": 0.06
+    },
+    {
+      "id": "vintage_electric_kettle",
+      "kind": "model",
+      "name": "Vintage Electric Kettle",
+      "source": "https://polyhaven.com/a/vintage_electric_kettle",
+      "author": "SV Garip",
+      "licence": "CC0-1.0",
+      "dimensions": [
+        0.3209,
+        0.2486,
+        0.3047
+      ],
+      "files": [
+        {
+          "path": "vintage_electric_kettle/vintage_electric_kettle.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/vintage_electric_kettle/vintage_electric_kettle_1k.gltf",
+          "size": 4801,
+          "sha256": "c03d2ef0e9f46eb06a1ccef6ff78d7baf83e76808e31d7016505e3ee0a416859"
+        },
+        {
+          "path": "vintage_electric_kettle/textures/vintage_electric_kettle_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/vintage_electric_kettle/vintage_electric_kettle_nor_gl_1k.jpg",
+          "size": 624432,
+          "sha256": "7723e22b77b73c6cc20d2593849d56cc64ee5c8e54bacf3bf8b2f4dd4f2ffaf0"
+        },
+        {
+          "path": "vintage_electric_kettle/textures/vintage_electric_kettle_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/vintage_electric_kettle/vintage_electric_kettle_diff_1k.jpg",
+          "size": 584337,
+          "sha256": "eee3052a610f24055f7b25749cfaf64016a5621afcff931fe513ab62c0a829f3"
+        },
+        {
+          "path": "vintage_electric_kettle/textures/vintage_electric_kettle_arm_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/vintage_electric_kettle/vintage_electric_kettle_arm_1k.jpg",
+          "size": 756927,
+          "sha256": "ff683e24348d6319edf7bd5a14659a846d3008ae614bf966d4db23fc156b5e0c"
+        },
+        {
+          "path": "vintage_electric_kettle/vintage_electric_kettle.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/vintage_electric_kettle/vintage_electric_kettle.bin",
+          "size": 416612,
+          "sha256": "6be39ebc1893feaef3aa05bec6d2bf069af65fec0c1500422aaedf14357dab59"
+        }
+      ],
+      "use": "Break Room kettle (dressing model)",
+      "decimate": 0.35
+    }
+  ]
+}

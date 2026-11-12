@@ -1,0 +1,81 @@
+{
+ "id": "scenario:asset_e9xaKzrr8R1sMe2VMajWaAb1",
+ "variant": "src",
+ "triangles": {
+  "source": 18782,
+  "lod0": 11763,
+  "lod1": 3200
+ },
+ "refLum": {
+  "fatigues": 0.0614,
+  "kit": 0.0517
+ },
+ "lumRange": {
+  "fatigues": [
+   0,
+   0.00171,
+   0.01514
+  ],
+  "kit": [
+   0,
+   0.00122,
+   0.00928
+  ]
+ },
+ "skinned": {
+  "file": "body-skinned.glb",
+  "skeleton": "fighters/skeleton.ts, 32 bones, JOINTS_0 = bone order B, weights normalised bytes",
+  "frame": "fighters frame: facing -Z, bind pose, authored units (fighter group applies SCALE)"
+ },
+ "cuts": {
+  "neck": {
+   "p": [
+    0,
+    1.525,
+    0
+   ],
+   "n": [
+    0,
+    1,
+    0
+   ]
+  },
+  "wristL": {
+   "p": [
+    -0.388,
+    0.95,
+    0.08
+   ],
+   "n": [
+    -0.25,
+    -0.8,
+    0.53
+   ]
+  },
+  "wristR": {
+   "p": [
+    0.388,
+    0.95,
+    0.08
+   ],
+   "n": [
+    0.25,
+    -0.8,
+    0.53
+   ]
+  }
+ },
+ "files": {
+  "diff-2048.ktx2": 502800,
+  "diff-1024.ktx2": 159210,
+  "diff-512.jpg": 25043,
+  "nor-1024.ktx2": 425944,
+  "nor-512.jpg": 11173,
+  "arm-1024.ktx2": 821954,
+  "arm-512.jpg": 88019,
+  "mask-1024.ktx2": 198035,
+  "mask-256.png": 126976,
+  "body-skinned.glb": 1226140
+ },
+ "bytes": 3585294
+}

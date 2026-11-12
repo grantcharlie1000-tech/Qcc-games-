@@ -1,0 +1,44 @@
+{
+ "variant": "rifleman-azure",
+ "levels": [
+  {
+   "lod": 0,
+   "size": 2048,
+   "sizes": [
+    2048,
+    1024,
+    1024
+   ],
+   "vertices": 5255,
+   "outVertices": 6700,
+   "indices": 23412,
+   "wide": false
+  },
+  {
+   "lod": 1,
+   "size": 1024,
+   "sizes": [
+    1024,
+    512,
+    512
+   ],
+   "vertices": 3317,
+   "outVertices": 4073,
+   "indices": 10995,
+   "wide": false
+  },
+  {
+   "lod": 2,
+   "size": 512,
+   "sizes": [
+    512,
+    256,
+    256
+   ],
+   "vertices": 1385,
+   "outVertices": 1651,
+   "indices": 4011,
+   "wide": false
+  }
+ ]
+}

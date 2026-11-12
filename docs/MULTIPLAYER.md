@@ -1,4 +1,4 @@
-# Online multiplayer (Pool and Blockcraft)
+# Online multiplayer (Pool, Blockcraft and Breachline)
 
 Two games can be played online between devices: **Pool** (two players) and **Blockcraft** (up to four). Both use one shared
 service in `src/multiplayer/`. Everything else in the arcade stays offline and unchanged.
@@ -79,6 +79,19 @@ joining apply in order afterwards (a gap triggers a fresh snapshot).
   and health bar.
 - Guest progress (position, inventory, health) is stored in the host’s world save by name, so a guest who rejoins that
   world gets it back.
+
+## Breachline
+
+Up to ten players in two squads; bots fill empty seats when they are on. Open **Multiplayer** in the Breachline menu. The host chooses the team size and bots and starts the match; guests can switch squad in the lobby.
+
+- The host runs the only authoritative match (`src/games/breachline/sim.ts`): rounds, damage, wall destruction, grenades, breach charges, reinforcing, barricading, and arming or shutting down the uplink.
+- Every device runs its own fighter's movement and weapon handling and reports its pose 20 times a second. Shots, melee swings, throws and uses are sent as commands. The host refuses moves faster than a sprint allows and shots faster than the weapon fires, and judges each shot against target poses rewound by half the guest's round trip plus 100 ms.
+- The host sends events (destroyed cells, hits, eliminations, phase changes) in order, and 15 snapshots a second (poses, health, gadget counts, grenades). A shot's pellet pattern is derived from a seed, so every device draws the same tracers.
+- A guest who joins mid-match takes over a bot and receives the walls as they stand. A guest who leaves hands the seat back to a bot (or the fighter falls, with bots off).
+- The host's pause pauses the room. Matches are not saved.
+- `NET_VERSION` in `src/games/breachline/net.ts` must change whenever the simulation, map or messages change.
+
+A reported position is accepted only if the fighter could have walked there (speed, an open path, nothing solid, not frozen). Guests are still trusted about their own ammunition and aim; this is for friends, not a public server.
 
 ## TURN relay and the Netlify Function
 

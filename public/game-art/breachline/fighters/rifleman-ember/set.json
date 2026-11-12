@@ -1,0 +1,44 @@
+{
+ "variant": "rifleman-ember",
+ "levels": [
+  {
+   "lod": 0,
+   "size": 2048,
+   "sizes": [
+    2048,
+    1024,
+    1024
+   ],
+   "vertices": 5339,
+   "outVertices": 6766,
+   "indices": 23844,
+   "wide": false
+  },
+  {
+   "lod": 1,
+   "size": 1024,
+   "sizes": [
+    1024,
+    512,
+    512
+   ],
+   "vertices": 3364,
+   "outVertices": 4100,
+   "indices": 11211,
+   "wide": false
+  },
+  {
+   "lod": 2,
+   "size": 512,
+   "sizes": [
+    512,
+    256,
+    256
+   ],
+   "vertices": 1425,
+   "outVertices": 1676,
+   "indices": 4191,
+   "wide": false
+  }
+ ]
+}

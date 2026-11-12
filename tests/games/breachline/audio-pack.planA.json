@@ -1,0 +1,2473 @@
+{
+  "about": "Plan A manifest for audio-pack.ts (approved by the owner 2026-11-12). Paths are inside 'Prepared SFX Library' from The Free Firearm Sound Library (CC0; Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney; https://opengameart.org/content/the-free-firearm-sound-library). Build: AUDIO_PACK_MAIN=1 npx vite-node tests/games/breachline/audio-pack.ts -- tests/games/breachline/audio-pack.planA.json '<library folder>' public/audio/breachline (writes guns.ogg/json at 96 kb/s and foley.ogg/json at 64 kb/s)",
+  "loudness": -14,
+  "takes": [
+    {
+      "key": "gun.ar.fp",
+      "file": "lib/Prepared SFX Library/AR-15/D_32P.wav",
+      "keepMs": 55,
+      "fadeMs": 60,
+      "group": "guns"
+    },
+    {
+      "key": "gun.ar.tp",
+      "file": "lib/Prepared SFX Library/AR-15/D_24P.wav",
+      "keepMs": 150,
+      "fadeMs": 60,
+      "group": "guns"
+    },
+    {
+      "key": "gun.ar.far",
+      "file": "lib/Prepared SFX Library/AR-15/D_24P.wav",
+      "keepMs": 300,
+      "fadeMs": 80,
+      "gainDb": -2,
+      "group": "guns"
+    },
+    {
+      "key": "gun.carbine.fp",
+      "file": "lib/Prepared SFX Library/SKS/U_14P.wav",
+      "keepMs": 55,
+      "fadeMs": 60,
+      "max": 4,
+      "group": "guns"
+    },
+    {
+      "key": "gun.carbine.tp",
+      "file": "lib/Prepared SFX Library/SKS/U_19P.wav",
+      "keepMs": 150,
+      "fadeMs": 60,
+      "group": "guns"
+    },
+    {
+      "key": "gun.carbine.far",
+      "file": "lib/Prepared SFX Library/SKS/U_19P.wav",
+      "keepMs": 300,
+      "fadeMs": 80,
+      "max": 2,
+      "gainDb": -2,
+      "group": "guns"
+    },
+    {
+      "key": "gun.smg.fp",
+      "file": "lib/Prepared SFX Library/Carl Gustav M45/G_31P.wav",
+      "keepMs": 45,
+      "fadeMs": 50,
+      "group": "guns"
+    },
+    {
+      "key": "gun.smg.fp",
+      "file": "lib/Prepared SFX Library/Carl Gustav M45/G_33P.wav",
+      "keepMs": 45,
+      "fadeMs": 40,
+      "burst": true,
+      "max": 6,
+      "group": "guns"
+    },
+    {
+      "key": "gun.smg.fp",
+      "file": "lib/Prepared SFX Library/Carl Gustav M45/G_35P.wav",
+      "keepMs": 45,
+      "fadeMs": 40,
+      "burst": true,
+      "skip": 2,
+      "max": 6,
+      "group": "guns"
+    },
+    {
+      "key": "gun.smg.tp",
+      "file": "lib/Prepared SFX Library/Carl Gustav M45/G_20P.wav",
+      "keepMs": 120,
+      "fadeMs": 50,
+      "group": "guns"
+    },
+    {
+      "key": "gun.smg.far",
+      "file": "lib/Prepared SFX Library/Carl Gustav M45/G_20P.wav",
+      "keepMs": 250,
+      "fadeMs": 80,
+      "max": 2,
+      "gainDb": -2,
+      "group": "guns"
+    },
+    {
+      "key": "gun.shotgun.fp",
+      "file": "lib/Prepared SFX Library/Nova/O_21P.wav",
+      "keepMs": 60,
+      "fadeMs": 60,
+      "group": "guns"
+    },
+    {
+      "key": "gun.shotgun.fp",
+      "file": "lib/Prepared SFX Library/Model 12/K_22P.wav",
+      "keepMs": 60,
+      "fadeMs": 60,
+      "group": "guns"
+    },
+    {
+      "key": "gun.shotgun.tp",
+      "file": "lib/Prepared SFX Library/Nova/O_17P.wav",
+      "keepMs": 150,
+      "fadeMs": 60,
+      "group": "guns"
+    },
+    {
+      "key": "gun.shotgun.far",
+      "file": "lib/Prepared SFX Library/Nova/O_17P.wav",
+      "keepMs": 300,
+      "fadeMs": 80,
+      "gainDb": -2,
+      "group": "guns"
+    },
+    {
+      "key": "gun.dmr.fp",
+      "file": "lib/Prepared SFX Library/Mosin Nagant/M_21P.wav",
+      "keepMs": 70,
+      "fadeMs": 70,
+      "max": 3,
+      "group": "guns"
+    },
+    {
+      "key": "gun.dmr.tp",
+      "file": "lib/Prepared SFX Library/Mosin Nagant/M_26P.wav",
+      "keepMs": 150,
+      "fadeMs": 60,
+      "group": "guns"
+    },
+    {
+      "key": "gun.dmr.far",
+      "file": "lib/Prepared SFX Library/Mosin Nagant/M_26P.wav",
+      "keepMs": 300,
+      "fadeMs": 80,
+      "max": 2,
+      "gainDb": -2,
+      "group": "guns"
+    },
+    {
+      "key": "gun.pistol.fp",
+      "file": "lib/Prepared SFX Library/Walther PPQ/X_39P.wav",
+      "keepMs": 45,
+      "fadeMs": 50,
+      "group": "guns"
+    },
+    {
+      "key": "gun.pistol.tp",
+      "file": "lib/Prepared SFX Library/Walther PPQ/X_31P.wav",
+      "keepMs": 120,
+      "fadeMs": 50,
+      "group": "guns"
+    },
+    {
+      "key": "gun.pistol.far",
+      "file": "lib/Prepared SFX Library/Walther PPQ/X_31P.wav",
+      "keepMs": 250,
+      "fadeMs": 80,
+      "gainDb": -2,
+      "group": "guns"
+    },
+    {
+      "key": "rl.pistol.release",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          95,
+          165
+        ]
+      ],
+      "gainDb": -6,
+      "group": "foley"
+    },
+    {
+      "key": "rl.pistol.out",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          570,
+          660
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "rl.pistol.in",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          650,
+          770
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "rl.pistol.seat",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1025,
+          1185
+        ]
+      ],
+      "gainDb": -2,
+      "group": "foley"
+    },
+    {
+      "key": "rl.pistol.bolt",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1180,
+          1330
+        ]
+      ],
+      "gainDb": 0,
+      "group": "foley"
+    },
+    {
+      "key": "rl.shotgun.shell",
+      "file": "small/shotgun/x/ShotgunSounds/4 Shell Reload.mp3",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          65,
+          310
+        ],
+        [
+          1145,
+          1460
+        ],
+        [
+          2205,
+          2520
+        ],
+        [
+          3260,
+          3470
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "rl.shotgun.shell",
+      "file": "small/shotgun/x/ShotgunSounds/Subsequent Shells.mp3",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          670,
+          990
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "rl.shotgun.shell",
+      "file": "small/shotgun/x/ShotgunSounds/First Shell.mp3",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          360,
+          600
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "rl.shotgun.pump",
+      "file": "small/shotgun/x/ShotgunSounds/Rack.mp3",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          630,
+          1045
+        ]
+      ],
+      "gainDb": 0,
+      "group": "foley"
+    },
+    {
+      "key": "rl.shotgun.pump",
+      "file": "small/shotgun/x/ShotgunSounds/4 Shell Reload.mp3",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          4470,
+          4900
+        ]
+      ],
+      "gainDb": 0,
+      "group": "foley"
+    },
+    {
+      "key": "rl.shotgun.pump",
+      "file": "mech/shotguncock_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          45,
+          385
+        ]
+      ],
+      "gainDb": 0,
+      "group": "foley"
+    },
+    {
+      "key": "rl.rifle.release",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          145,
+          300
+        ]
+      ],
+      "gainDb": -6,
+      "group": "foley"
+    },
+    {
+      "key": "rl.rifle.out",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          290,
+          425
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "rl.rifle.out",
+      "file": "mech/gunreload1.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          120,
+          285
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "rl.rifle.in",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1040,
+          1195
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "rl.rifle.in",
+      "file": "mech/gunreload1.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          680,
+          895
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "rl.rifle.seat",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1190,
+          1300
+        ]
+      ],
+      "gainDb": -2,
+      "group": "foley"
+    },
+    {
+      "key": "rl.rifle.bolt",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1285,
+          1445
+        ]
+      ],
+      "gainDb": 0,
+      "group": "foley"
+    },
+    {
+      "key": "rl.rifle.bolt",
+      "file": "mech/gunreload1.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1285,
+          1445
+        ]
+      ],
+      "gainDb": 0,
+      "group": "foley"
+    },
+    {
+      "key": "rl.detail",
+      "file": "mech/equipmentclicks.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          135,
+          310
+        ],
+        [
+          2060,
+          2160
+        ],
+        [
+          2385,
+          2490
+        ],
+        [
+          3790,
+          4140
+        ],
+        [
+          5455,
+          5630
+        ]
+      ],
+      "gainDb": -10,
+      "group": "foley"
+    },
+    {
+      "key": "dry",
+      "file": "mech/equipmentclicks.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          2275,
+          2340
+        ]
+      ],
+      "gainDb": -8,
+      "group": "foley"
+    },
+    {
+      "key": "casing.9mm",
+      "file": "bsb/1355.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8,
+      "group": "foley"
+    },
+    {
+      "key": "casing.9mm",
+      "file": "bsb/1356.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8,
+      "group": "foley"
+    },
+    {
+      "key": "casing.9mm",
+      "file": "bsb/1357.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8,
+      "group": "foley"
+    },
+    {
+      "key": "casing.556",
+      "file": "bsb/1361.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8,
+      "group": "foley"
+    },
+    {
+      "key": "casing.556",
+      "file": "bsb/1362.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8,
+      "group": "foley"
+    },
+    {
+      "key": "casing.556",
+      "file": "bsb/1363.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8,
+      "group": "foley"
+    },
+    {
+      "key": "casing.762",
+      "file": "bsb/1367.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8,
+      "group": "foley"
+    },
+    {
+      "key": "casing.762",
+      "file": "bsb/1368.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8,
+      "group": "foley"
+    },
+    {
+      "key": "casing.762",
+      "file": "bsb/1369.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          620
+        ]
+      ],
+      "gainDb": -8,
+      "group": "foley"
+    },
+    {
+      "key": "rl.pistol.bolt",
+      "file": "bsb/1984.flac",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1440,
+          1640
+        ]
+      ],
+      "gainDb": 0,
+      "group": "foley"
+    },
+    {
+      "key": "rl.pistol.bolt",
+      "file": "bsb/1985.flac",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          280,
+          470
+        ]
+      ],
+      "gainDb": 0,
+      "group": "foley"
+    },
+    {
+      "key": "dry",
+      "file": "bsb/1994.flac",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          30,
+          200
+        ]
+      ],
+      "gainDb": -8,
+      "group": "foley"
+    },
+    {
+      "key": "dry",
+      "file": "bsb/1995.flac",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          30,
+          260
+        ]
+      ],
+      "gainDb": -8,
+      "group": "foley"
+    },
+    {
+      "key": "rl.dmr.bolt",
+      "file": "mech/equipment_clicks3.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          860,
+          1760
+        ],
+        [
+          3250,
+          3950
+        ]
+      ],
+      "gainDb": 0,
+      "group": "foley"
+    },
+    {
+      "key": "rl.ar.out",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          290,
+          425
+        ]
+      ],
+      "gainDb": -4,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 6650,
+        "gainDb": -10
+      },
+      "group": "foley"
+    },
+    {
+      "key": "rl.ar.in",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1040,
+          1195
+        ]
+      ],
+      "gainDb": -4,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 7030,
+        "gainDb": -10
+      },
+      "group": "foley"
+    },
+    {
+      "key": "rl.ar.seat",
+      "file": "mech/assaultriflereload1_0.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1190,
+          1300
+        ]
+      ],
+      "gainDb": -2,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 7520,
+        "gainDb": -8
+      },
+      "group": "foley"
+    },
+    {
+      "key": "rl.ar.bolt",
+      "file": "red/R12-24-Rifle Cocking, Close.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          1830,
+          2350
+        ]
+      ],
+      "gainDb": 0,
+      "group": "foley"
+    },
+    {
+      "key": "rl.ar.bolt",
+      "file": "red/R12-25-Rifle Cocking.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          620,
+          870
+        ]
+      ],
+      "gainDb": 0,
+      "group": "foley"
+    },
+    {
+      "key": "rl.carbine.out",
+      "file": "mech/gunreload1.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          120,
+          285
+        ]
+      ],
+      "gainDb": -4,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 12650,
+        "gainDb": -10
+      },
+      "group": "foley"
+    },
+    {
+      "key": "rl.carbine.in",
+      "file": "mech/gunreload1.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          680,
+          895
+        ]
+      ],
+      "gainDb": -4,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 13920,
+        "gainDb": -10
+      },
+      "group": "foley"
+    },
+    {
+      "key": "rl.carbine.seat",
+      "file": "mech/gunreload1.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1285,
+          1445
+        ]
+      ],
+      "gainDb": -3,
+      "group": "foley"
+    },
+    {
+      "key": "rl.carbine.bolt",
+      "file": "red/R11-50-Cocking Rifle.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          230,
+          480
+        ],
+        [
+          1740,
+          2000
+        ]
+      ],
+      "gainDb": 0,
+      "group": "foley"
+    },
+    {
+      "key": "rl.smg.release",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          95,
+          165
+        ]
+      ],
+      "gainDb": -6,
+      "pitch": 0.85,
+      "group": "foley"
+    },
+    {
+      "key": "rl.smg.out",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          570,
+          660
+        ]
+      ],
+      "gainDb": -4,
+      "pitch": 0.85,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 16050,
+        "gainDb": -12
+      },
+      "group": "foley"
+    },
+    {
+      "key": "rl.smg.in",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          650,
+          770
+        ]
+      ],
+      "gainDb": -4,
+      "pitch": 0.85,
+      "under": {
+        "file": "red/R28-36-Handling and Rattling Rifle.wav",
+        "startMs": 18210,
+        "gainDb": -12
+      },
+      "group": "foley"
+    },
+    {
+      "key": "rl.smg.seat",
+      "file": "small/reload/reload.wav",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1025,
+          1185
+        ]
+      ],
+      "gainDb": -2,
+      "pitch": 0.85,
+      "group": "foley"
+    },
+    {
+      "key": "rl.smg.bolt",
+      "file": "red/R12-26-Guns Cocking.wav",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          770,
+          1000
+        ],
+        [
+          12310,
+          12560
+        ]
+      ],
+      "gainDb": 0,
+      "pitch": 1.15,
+      "group": "foley"
+    },
+    {
+      "key": "rl.fetch",
+      "file": "bsb/0013.ogg",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          100,
+          450
+        ],
+        [
+          480,
+          800
+        ],
+        [
+          1840,
+          2200
+        ],
+        [
+          2200,
+          2650
+        ]
+      ],
+      "gainDb": -10,
+      "group": "foley"
+    },
+    {
+      "key": "rl.fetch",
+      "file": "red/R21-42-Heavy Fabric Rustling.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          6900,
+          7300
+        ]
+      ],
+      "gainDb": -10,
+      "group": "foley"
+    },
+    {
+      "key": "drop.mag",
+      "file": "red/R15-08-Noisy Metal Item Dropping.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          14970,
+          15250
+        ],
+        [
+          32660,
+          32880
+        ],
+        [
+          23660,
+          23860
+        ]
+      ],
+      "gainDb": -6,
+      "group": "foley"
+    },
+    {
+      "key": "step.slab",
+      "file": "bsb3/0514.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          400,
+          630
+        ],
+        [
+          1075,
+          1305
+        ],
+        [
+          3175,
+          3405
+        ],
+        [
+          6765,
+          6995
+        ]
+      ],
+      "gainDb": -6,
+      "group": "foley"
+    },
+    {
+      "key": "step.asphalt",
+      "file": "bsb3/1117.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          705,
+          935
+        ],
+        [
+          1635,
+          1865
+        ],
+        [
+          3830,
+          4060
+        ],
+        [
+          6395,
+          6625
+        ]
+      ],
+      "gainDb": -6,
+      "group": "foley"
+    },
+    {
+      "key": "step.planks",
+      "file": "bsb3/0376.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          30,
+          260
+        ],
+        [
+          1710,
+          1940
+        ],
+        [
+          3300,
+          3530
+        ],
+        [
+          8310,
+          8540
+        ]
+      ],
+      "gainDb": -3,
+      "group": "foley"
+    },
+    {
+      "key": "step.tile",
+      "file": "red3/R10-05-Footsteps on Hard Tile Floor.wav",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1560,
+          1790
+        ],
+        [
+          2415,
+          2645
+        ],
+        [
+          3245,
+          3475
+        ],
+        [
+          4795,
+          5025
+        ]
+      ],
+      "gainDb": -6,
+      "group": "foley"
+    },
+    {
+      "key": "step.check",
+      "file": "red3/R10-05-Footsteps on Hard Tile Floor.wav",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          7760,
+          7990
+        ],
+        [
+          2415,
+          2645
+        ],
+        [
+          4795,
+          5025
+        ],
+        [
+          3245,
+          3475
+        ]
+      ],
+      "gainDb": -7,
+      "pitch": 1.04,
+      "group": "foley"
+    },
+    {
+      "key": "step.lino",
+      "file": "red3/R10-05-Footsteps on Hard Tile Floor.wav",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1560,
+          1790
+        ],
+        [
+          3245,
+          3475
+        ],
+        [
+          5560,
+          5790
+        ],
+        [
+          6300,
+          6530
+        ]
+      ],
+      "gainDb": -8,
+      "pitch": 0.92,
+      "lowpass": 4000,
+      "group": "foley"
+    },
+    {
+      "key": "step.carpet",
+      "file": "bsb3/0376.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          30,
+          260
+        ],
+        [
+          1710,
+          1940
+        ],
+        [
+          3300,
+          3530
+        ],
+        [
+          8310,
+          8540
+        ]
+      ],
+      "gainDb": -10,
+      "pitch": 0.9,
+      "lowpass": 900,
+      "group": "foley"
+    },
+    {
+      "key": "step.grass",
+      "file": "bsb3/1253.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          5045,
+          5275
+        ],
+        [
+          12520,
+          12750
+        ],
+        [
+          12770,
+          13000
+        ],
+        [
+          14510,
+          14740
+        ]
+      ],
+      "gainDb": -6,
+      "group": "foley"
+    },
+    {
+      "key": "step.raised",
+      "file": "red3/R10-56-Footsteps on Metal Staircase.wav",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1195,
+          1425
+        ],
+        [
+          1725,
+          1955
+        ],
+        [
+          2240,
+          2470
+        ],
+        [
+          2770,
+          3000
+        ]
+      ],
+      "gainDb": -1,
+      "group": "foley"
+    },
+    {
+      "key": "glass.crack",
+      "file": "bsb3/0771.ogg",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          170,
+          420
+        ],
+        [
+          3870,
+          4120
+        ],
+        [
+          6235,
+          6480
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "glass.shatter",
+      "file": "bsb3/0148.ogg",
+      "keepMs": 0,
+      "fadeMs": 120,
+      "ranges": [
+        [
+          20,
+          1500
+        ]
+      ],
+      "gainDb": -2,
+      "group": "foley"
+    },
+    {
+      "key": "glass.shatter",
+      "file": "bsb3/0771.ogg",
+      "keepMs": 0,
+      "fadeMs": 120,
+      "ranges": [
+        [
+          1955,
+          3400
+        ]
+      ],
+      "gainDb": -2,
+      "group": "foley"
+    },
+    {
+      "key": "glass.small",
+      "file": "bsb3/2040.flac",
+      "keepMs": 0,
+      "fadeMs": 100,
+      "ranges": [
+        [
+          0,
+          1100
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "glass.small",
+      "file": "bsb3/2041.flac",
+      "keepMs": 0,
+      "fadeMs": 100,
+      "ranges": [
+        [
+          0,
+          1300
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "glass.small",
+      "file": "bsb3/2042.flac",
+      "keepMs": 0,
+      "fadeMs": 100,
+      "ranges": [
+        [
+          0,
+          1400
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "impact.concrete",
+      "file": "bsb3/1108.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          160,
+          420
+        ],
+        [
+          575,
+          760
+        ]
+      ],
+      "gainDb": -6,
+      "group": "foley"
+    },
+    {
+      "key": "impact.concrete",
+      "file": "bsb3/1022.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1715,
+          1960
+        ],
+        [
+          4645,
+          4900
+        ]
+      ],
+      "gainDb": -6,
+      "group": "foley"
+    },
+    {
+      "key": "impact.brick",
+      "file": "bsb3/1022.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1715,
+          1960
+        ],
+        [
+          6210,
+          6450
+        ],
+        [
+          4645,
+          4900
+        ]
+      ],
+      "gainDb": -6,
+      "pitch": 0.85,
+      "group": "foley"
+    },
+    {
+      "key": "impact.wall",
+      "file": "bsb3/1108.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          160,
+          420
+        ],
+        [
+          575,
+          760
+        ]
+      ],
+      "gainDb": -8,
+      "pitch": 1.25,
+      "lowpass": 3500,
+      "group": "foley"
+    },
+    {
+      "key": "impact.wood",
+      "file": "bsb3/0529.ogg",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1765,
+          1950
+        ],
+        [
+          2095,
+          2300
+        ],
+        [
+          2245,
+          2420
+        ],
+        [
+          2895,
+          3080
+        ]
+      ],
+      "gainDb": -6,
+      "group": "foley"
+    },
+    {
+      "key": "impact.metal",
+      "file": "bsb3/1771.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          40,
+          640
+        ]
+      ],
+      "gainDb": -6,
+      "group": "foley"
+    },
+    {
+      "key": "impact.metal",
+      "file": "bsb3/1774.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          700
+        ]
+      ],
+      "gainDb": -6,
+      "group": "foley"
+    },
+    {
+      "key": "body.fall",
+      "file": "red3/R09-76-Two Falls on Wooden Floor.wav",
+      "keepMs": 0,
+      "fadeMs": 100,
+      "ranges": [
+        [
+          1820,
+          2400
+        ],
+        [
+          4685,
+          5300
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "body.fall",
+      "file": "red3/R15-19-Muffled Body Fall.wav",
+      "keepMs": 0,
+      "fadeMs": 100,
+      "ranges": [
+        [
+          2575,
+          3150
+        ]
+      ],
+      "gainDb": -4,
+      "group": "foley"
+    },
+    {
+      "key": "body.settle",
+      "file": "red3/R15-19-Muffled Body Fall.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          1870,
+          2200
+        ]
+      ],
+      "gainDb": -10,
+      "group": "foley"
+    },
+    {
+      "key": "body.settle",
+      "file": "red3/R09-76-Two Falls on Wooden Floor.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          860,
+          1250
+        ]
+      ],
+      "gainDb": -10,
+      "group": "foley"
+    },
+    {
+      "group": "foley",
+      "key": "casing.shell",
+      "file": "bsb/1368.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          560
+        ]
+      ],
+      "gainDb": -8,
+      "pitch": 0.55,
+      "lowpass": 3000
+    },
+    {
+      "group": "foley",
+      "key": "casing.shell",
+      "file": "bsb/1369.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          560
+        ]
+      ],
+      "gainDb": -8,
+      "pitch": 0.6,
+      "lowpass": 3000
+    },
+    {
+      "group": "foley",
+      "key": "boom.near",
+      "file": "red4/R30-06-Big Crisp Explosions.wav",
+      "keepMs": 0,
+      "fadeMs": 500,
+      "ranges": [
+        [
+          3166,
+          4666
+        ],
+        [
+          9773,
+          11273
+        ]
+      ],
+      "gainDb": 6,
+      "shape": {
+        "holdMs": 110,
+        "splitHz": 300,
+        "lowS": 0.45,
+        "highS": 0.12
+      },
+      "under": {
+        "file": "bsb4/1808.flac",
+        "startMs": 0,
+        "gainDb": -12
+      }
+    },
+    {
+      "group": "foley",
+      "key": "boom.near",
+      "file": "red4/R30-07-Big Explosions Some Debris.wav",
+      "keepMs": 0,
+      "fadeMs": 500,
+      "ranges": [
+        [
+          19988,
+          21488
+        ]
+      ],
+      "gainDb": 6,
+      "shape": {
+        "holdMs": 110,
+        "splitHz": 300,
+        "lowS": 0.45,
+        "highS": 0.12
+      },
+      "under": {
+        "file": "bsb4/1807.flac",
+        "startMs": 0,
+        "gainDb": -12
+      }
+    },
+    {
+      "group": "foley",
+      "key": "boom.impact",
+      "file": "red4/R30-07-Big Explosions Some Debris.wav",
+      "keepMs": 0,
+      "fadeMs": 400,
+      "ranges": [
+        [
+          4216,
+          5316
+        ],
+        [
+          12572,
+          13672
+        ]
+      ],
+      "gainDb": 7,
+      "shape": {
+        "holdMs": 90,
+        "splitHz": 300,
+        "lowS": 0.32,
+        "highS": 0.09
+      },
+      "under": {
+        "file": "bsb4/1807.flac",
+        "startMs": 0,
+        "gainDb": -14
+      }
+    },
+    {
+      "group": "foley",
+      "key": "flesh",
+      "file": "red4/R17-40-Padded Punches.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          1448,
+          1568
+        ],
+        [
+          4943,
+          5063
+        ],
+        [
+          8603,
+          8723
+        ],
+        [
+          10158,
+          10278
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "flesh",
+      "file": "red4/R15-20-Padded Hits.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          5783,
+          5903
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "armour",
+      "file": "red4/R15-07-Metal Clangs and Hollow Hits.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          1878,
+          2028
+        ],
+        [
+          3783,
+          3933
+        ],
+        [
+          2853,
+          3003
+        ]
+      ],
+      "gainDb": -1
+    },
+    {
+      "group": "foley",
+      "key": "break.wood",
+      "file": "red4/R27-18-Axe Hits Wood Door.wav",
+      "keepMs": 0,
+      "fadeMs": 300,
+      "ranges": [
+        [
+          1263,
+          1663
+        ],
+        [
+          11618,
+          12018
+        ]
+      ],
+      "gainDb": -7
+    },
+    {
+      "group": "foley",
+      "key": "break.crate",
+      "file": "red4/R27-18-Axe Hits Wood Door.wav",
+      "keepMs": 0,
+      "fadeMs": 300,
+      "ranges": [
+        [
+          19813,
+          20213
+        ]
+      ],
+      "gainDb": -7
+    },
+    {
+      "group": "foley",
+      "key": "break.crate",
+      "file": "red4/R27-24-Crashes - Wood and Glass.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          4168,
+          4500
+        ]
+      ],
+      "gainDb": -7
+    },
+    {
+      "group": "foley",
+      "key": "break.shelf",
+      "file": "red4/R29-32-Large Quick Interior Crash.wav",
+      "keepMs": 0,
+      "fadeMs": 500,
+      "ranges": [
+        [
+          98,
+          1600
+        ]
+      ],
+      "gainDb": -1
+    },
+    {
+      "group": "foley",
+      "key": "break.metal",
+      "file": "red4/R15-07-Metal Clangs and Hollow Hits.wav",
+      "keepMs": 0,
+      "fadeMs": 200,
+      "ranges": [
+        [
+          1158,
+          1658
+        ],
+        [
+          12833,
+          13333
+        ]
+      ],
+      "gainDb": 3
+    },
+    {
+      "group": "foley",
+      "key": "break.drum",
+      "file": "red4/R15-07-Metal Clangs and Hollow Hits.wav",
+      "keepMs": 0,
+      "fadeMs": 200,
+      "ranges": [
+        [
+          4213,
+          4613
+        ],
+        [
+          22798,
+          23298
+        ]
+      ],
+      "gainDb": 5
+    },
+    {
+      "group": "foley",
+      "key": "drop.weapon",
+      "file": "red4/R27-17-Drop Object on Hard Surface.wav",
+      "keepMs": 0,
+      "fadeMs": 250,
+      "ranges": [
+        [
+          3293,
+          3793
+        ],
+        [
+          6688,
+          7188
+        ]
+      ],
+      "gainDb": -1
+    },
+    {
+      "group": "foley",
+      "key": "rf.lift",
+      "file": "red4/R18-01-Large Ratchet Turn and Spin.wav",
+      "keepMs": 0,
+      "fadeMs": 150,
+      "ranges": [
+        [
+          4700,
+          5600
+        ]
+      ],
+      "gainDb": 2
+    },
+    {
+      "group": "foley",
+      "key": "rf.unfold",
+      "file": "red4/R18-01-Large Ratchet Turn and Spin.wav",
+      "keepMs": 0,
+      "fadeMs": 200,
+      "ranges": [
+        [
+          27300,
+          28200
+        ]
+      ],
+      "gainDb": 3
+    },
+    {
+      "group": "foley",
+      "key": "rf.anchor",
+      "file": "red4/R28-41-Hammer Metal Stakes or Nails.wav",
+      "keepMs": 0,
+      "fadeMs": 100,
+      "ranges": [
+        [
+          27073,
+          27273
+        ],
+        [
+          29648,
+          29848
+        ],
+        [
+          31543,
+          31743
+        ]
+      ],
+      "gainDb": -1,
+      "lowpass": 3000
+    },
+    {
+      "group": "foley",
+      "key": "crumble.board",
+      "file": "red5/R26-22-Hitting Objects on Stone Wall with Breakage.wav",
+      "keepMs": 0,
+      "fadeMs": 250,
+      "ranges": [
+        [
+          3591,
+          4141
+        ],
+        [
+          7470,
+          8020
+        ],
+        [
+          11380,
+          11930
+        ]
+      ],
+      "gainDb": 1
+    },
+    {
+      "group": "foley",
+      "key": "crumble.wood",
+      "file": "red5/R26-23-Smashing Wood on Wall.wav",
+      "keepMs": 0,
+      "fadeMs": 200,
+      "ranges": [
+        [
+          8156,
+          8556
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "group": "foley",
+      "key": "crumble.wood",
+      "file": "red5/R27-16-Wood Splinters and Creaks.wav",
+      "keepMs": 0,
+      "fadeMs": 200,
+      "ranges": [
+        [
+          450,
+          850
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "group": "foley",
+      "key": "debris",
+      "file": "red5/R09-79-Fall on Gravel.wav",
+      "keepMs": 0,
+      "fadeMs": 300,
+      "ranges": [
+        [
+          1350,
+          2550
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "debris",
+      "file": "red5/R15-18-Shot or Hit with Debris.wav",
+      "keepMs": 0,
+      "fadeMs": 200,
+      "ranges": [
+        [
+          3700,
+          4500
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "gear",
+      "file": "red5/R24-02-Men Moving Forward with Equipment.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          11850,
+          12050
+        ],
+        [
+          12150,
+          12350
+        ],
+        [
+          12450,
+          12650
+        ],
+        [
+          12750,
+          12950
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "work.tape",
+      "file": "bsb5/0299.aiff",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          200,
+          500
+        ],
+        [
+          700,
+          1000
+        ],
+        [
+          1200,
+          1500
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "charge.set",
+      "file": "bsb5/0299.aiff",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          1600,
+          1850
+        ]
+      ],
+      "gainDb": 0,
+      "under": {
+        "file": "mech/equipmentclicks.wav",
+        "startMs": 2245,
+        "gainDb": 0
+      }
+    },
+    {
+      "group": "foley",
+      "key": "swap",
+      "file": "red/R28-36-Handling and Rattling Rifle.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          6658,
+          6900
+        ],
+        [
+          7528,
+          7800
+        ]
+      ],
+      "gainDb": 0
+    },
+    {
+      "group": "foley",
+      "key": "melee",
+      "file": "red4/R17-40-Padded Punches.wav",
+      "keepMs": 0,
+      "fadeMs": 120,
+      "ranges": [
+        [
+          9950,
+          10350
+        ]
+      ],
+      "gainDb": 0,
+      "under": {
+        "file": "bsb5/1797.flac",
+        "startMs": 115,
+        "gainDb": -10
+      }
+    },
+    {
+      "group": "foley",
+      "key": "bounce",
+      "file": "red4/R27-17-Drop Object on Hard Surface.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          9975,
+          10175
+        ],
+        [
+          12724,
+          12924
+        ],
+        [
+          15477,
+          15677
+        ]
+      ],
+      "gainDb": -1
+    },
+    {
+      "group": "foley",
+      "key": "hammer",
+      "file": "red4/R28-41-Hammer Metal Stakes or Nails.wav",
+      "keepMs": 0,
+      "fadeMs": 60,
+      "ranges": [
+        [
+          30048,
+          30178
+        ],
+        [
+          30503,
+          30633
+        ],
+        [
+          31053,
+          31183
+        ],
+        [
+          32083,
+          32213
+        ]
+      ],
+      "gainDb": 0,
+      "lowpass": 3000
+    },
+    {
+      "group": "amb",
+      "key": "amb.room",
+      "file": "red4/R21-47-Noisy Room Tone.wav",
+      "keepMs": 0,
+      "fadeMs": 1000,
+      "ranges": [
+        [
+          2000,
+          8000
+        ]
+      ],
+      "gainDb": 3,
+      "loop": true
+    },
+    {
+      "group": "amb",
+      "key": "amb.air",
+      "file": "red4/R22-15-Noisy Dull Wind.wav",
+      "keepMs": 0,
+      "fadeMs": 1000,
+      "ranges": [
+        [
+          2000,
+          8000
+        ]
+      ],
+      "gainDb": 3,
+      "loop": true
+    },
+    {
+      "group": "foley",
+      "key": "cue.start",
+      "file": "bsb6/0313.aiff",
+      "keepMs": 0,
+      "fadeMs": 150,
+      "ranges": [
+        [
+          778,
+          1150
+        ]
+      ],
+      "gainDb": 4
+    },
+    {
+      "group": "foley",
+      "key": "cue.go",
+      "file": "bsb6/0313.aiff",
+      "keepMs": 0,
+      "fadeMs": 150,
+      "ranges": [
+        [
+          148,
+          650
+        ]
+      ],
+      "gainDb": 4
+    },
+    {
+      "group": "foley",
+      "key": "cue.lose",
+      "file": "bsb6/0313.aiff",
+      "keepMs": 0,
+      "fadeMs": 300,
+      "ranges": [
+        [
+          1998,
+          3300
+        ]
+      ],
+      "gainDb": 4
+    },
+    {
+      "group": "foley",
+      "key": "cue.matchLose",
+      "file": "bsb6/0313.aiff",
+      "keepMs": 0,
+      "fadeMs": 400,
+      "ranges": [
+        [
+          1380,
+          3300
+        ]
+      ],
+      "gainDb": 5
+    },
+    {
+      "group": "foley",
+      "key": "cue.win",
+      "file": "bsb6/0223.aiff",
+      "keepMs": 0,
+      "fadeMs": 250,
+      "ranges": [
+        [
+          33,
+          700
+        ]
+      ],
+      "gainDb": 4
+    },
+    {
+      "group": "foley",
+      "key": "cue.matchWin",
+      "file": "bsb6/0223.aiff",
+      "keepMs": 0,
+      "fadeMs": 300,
+      "ranges": [
+        [
+          2743,
+          3500
+        ]
+      ],
+      "gainDb": 4
+    },
+    {
+      "group": "foley",
+      "key": "cue.planted",
+      "file": "bsb6/3061.aiff",
+      "keepMs": 0,
+      "fadeMs": 300,
+      "ranges": [
+        [
+          0,
+          900
+        ]
+      ],
+      "gainDb": 6
+    },
+    {
+      "group": "foley",
+      "key": "beep",
+      "file": "bsb6/0007.aiff",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          205,
+          330
+        ],
+        [
+          2205,
+          2315
+        ]
+      ],
+      "gainDb": 10
+    },
+    {
+      "group": "foley",
+      "key": "beep.urgent",
+      "file": "bsb6/0007.aiff",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1200,
+          1330
+        ],
+        [
+          3203,
+          3315
+        ]
+      ],
+      "gainDb": 10
+    },
+    {
+      "group": "foley",
+      "key": "hit",
+      "file": "bsb6/0321.aiff",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          256,
+          330
+        ],
+        [
+          778,
+          850
+        ]
+      ],
+      "gainDb": -1
+    },
+    {
+      "group": "foley",
+      "key": "hit.head",
+      "file": "bsb6/0321.aiff",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          2333,
+          2410
+        ]
+      ],
+      "gainDb": 2
+    },
+    {
+      "group": "foley",
+      "key": "kill",
+      "file": "bsb6/2842.aiff",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          120,
+          300
+        ]
+      ],
+      "gainDb": 6
+    },
+    {
+      "group": "foley",
+      "key": "ui",
+      "file": "bsb6/0321.aiff",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          1748,
+          1830
+        ]
+      ],
+      "gainDb": 4
+    },
+    {
+      "group": "foley",
+      "key": "work.plant",
+      "file": "bsb6/0229.aiff",
+      "keepMs": 0,
+      "fadeMs": 30,
+      "ranges": [
+        [
+          570,
+          640
+        ],
+        [
+          633,
+          700
+        ],
+        [
+          1255,
+          1320
+        ]
+      ],
+      "gainDb": 9
+    },
+    {
+      "group": "foley",
+      "key": "work.defuse",
+      "file": "bsb6/0321.aiff",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1253,
+          1330
+        ],
+        [
+          1748,
+          1830
+        ],
+        [
+          2333,
+          2410
+        ]
+      ],
+      "gainDb": 8
+    },
+    {
+      "group": "foley",
+      "key": "work.ratchet",
+      "file": "red4/R18-01-Large Ratchet Turn and Spin.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          5600,
+          5850
+        ],
+        [
+          27300,
+          27550
+        ]
+      ],
+      "gainDb": -3
+    },
+    {
+      "group": "foley",
+      "key": "hurt",
+      "file": "red4/R17-40-Padded Punches.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          633,
+          750
+        ],
+        [
+          1993,
+          2110
+        ]
+      ],
+      "gainDb": 4,
+      "lowpass": 1800
+    },
+    {
+      "group": "foley",
+      "key": "throw",
+      "file": "bsb6/0573.aiff",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          80,
+          300
+        ]
+      ],
+      "gainDb": 3,
+      "under": {
+        "file": "bsb6/0321.aiff",
+        "startMs": 240,
+        "gainDb": -8
+      }
+    }
+  ],
+  "hybrids": [
+    "gun.ar.fp",
+    "gun.ar.tp"
+  ],
+  "half": [
+    "rl.",
+    "casing.",
+    "dry",
+    "drop.",
+    "step.",
+    "impact.",
+    "glass.",
+    "body.",
+    "drop.weapon",
+    "gun.ar.far",
+    "gun.carbine.far",
+    "gun.smg.far",
+    "gun.shotgun.far",
+    "gun.dmr.far",
+    "gun.pistol.far",
+    "gun.ar.tp",
+    "gun.carbine.tp",
+    "gun.smg.tp",
+    "gun.shotgun.tp",
+    "gun.dmr.tp",
+    "gun.pistol.tp",
+    "boom.",
+    "flesh",
+    "armour",
+    "break.",
+    "rf.",
+    "crumble.",
+    "debris",
+    "gear",
+    "work.tape",
+    "charge.set",
+    "swap",
+    "melee",
+    "bounce",
+    "hammer",
+    "amb.",
+    "cue.",
+    "beep",
+    "hit",
+    "kill",
+    "ui",
+    "work.",
+    "hurt",
+    "throw"
+  ],
+  "bitrates": {
+    "guns": 96,
+    "foley": 64,
+    "amb": 32
+  }
+}

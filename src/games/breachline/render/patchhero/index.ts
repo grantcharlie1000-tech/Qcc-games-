@@ -1,0 +1,331 @@
+/** The weapon in hand with the Patch rifle (in place of the AR-5) and the Poly Haven Service Pistol (in place of the
+ * sidearm), behind the `?weapons=patch` switch. Every other weapon is the stock one.
+ *
+ * Why this file repeats the stock viewmodel's composition: `render/hero/viewmodel.ts` creates its rig inside a closure
+ * and offers no way to substitute a weapon model, so its frame logic (springs, sway, bob, recoil, aim, reload beats,
+ * casings, flash, lighting) is reproduced here verbatim, with the hooks marked PATCH. Everything it calls is imported
+ * from `render/hero/` (rig, arms, hands, holds, reload timelines, materials, Spring); nothing there is edited.
+ * Missing export, reported to the planner: a model override for the first-person rig (for example
+ * `createHeroViewmodel(renderer, lighting, { models })`, or `FpRig.setModel(id, object, sockets)`), which would let
+ * this module shrink to the model loading below.
+ *
+ * The Patch models are placed in the rig's gun space so their grip palm sits on the stock grip socket (the hands'
+ * targets come from the stock holds); the rig is given the Patch sockets (muzzle, ejection port, magazine seat, slide
+ * travel), so the flash, casings and magazine beats follow the Patch model. The rifle's sight sits higher above its
+ * grip than the AR-5's, so aiming lowers the gun by that height to keep the sight line on the crosshair. */
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { SQUADS, WEAPONS, type WeaponId } from '../../config';
+import { ACT, weaponIdOf, type Match, type SimEvent } from '../../state';
+import { makeSprite } from '../../textures';
+import { heroReady } from '../hero/geom';
+import { texturedMaterial } from '../hero/material';
+import { TEXTURED } from '../hero/weapons';
+import { ArtLoader } from '../assets';
+import { reloadFrame, idleFrame } from '../hero/reload';
+import { DEFAULT_LOOK, createFpRig, holdFor, type FpRig } from '../hero/rig';
+import { CASES, WB } from '../hero/weapons';
+import type { HeroLighting, HeroView, Viewmodel } from '../hero/index';
+import { weaponModel, type WeaponSockets } from '../hero/weapons';
+
+import { Spring } from '../hero/viewmodel';
+/** The weapon in hand is lit hotter than the world, as shooters have always done: dark coated metal under the
+ * room's light sits below the post grade's black point and would read as a silhouette. */
+const VM_GAIN = 2.2;
+const soft = (x: number, max: number) => max * Math.tanh(x / max);
+const smooth = (t: number) => t * t * (3 - 2 * t);
+const wrap = (a: number) => { a = (a + Math.PI) % (Math.PI * 2); return (a < 0 ? a + Math.PI * 2 : a) - Math.PI; };
+
+/** Recoil character per weapon: back, rise, yaw and roll impulses (spring velocities) and the bolt's cycle time. */
+const KICK: Record<WeaponId, { back: number; rise: number; yaw: number; roll: number; cycle: number }> = {
+  ar: { back: 0.55, rise: 1.6, yaw: 0.5, roll: 1.2, cycle: 0.06 },
+  carbine: { back: 0.5, rise: 1.5, yaw: 0.55, roll: 1.3, cycle: 0.055 },
+  smg: { back: 0.42, rise: 1.1, yaw: 0.5, roll: 1, cycle: 0.045 },
+  shotgun: { back: 1.3, rise: 4.2, yaw: 0.9, roll: 2.4, cycle: 0.3 },
+  dmr: { back: 0.85, rise: 2.8, yaw: 0.6, roll: 1.6, cycle: 0.07 },
+  pistol: { back: 0.5, rise: 3.2, yaw: 0.6, roll: 1.4, cycle: 0.08 },
+};
+
+export function createPatchViewmodel(renderer: THREE.WebGLRenderer, lighting: HeroLighting): Viewmodel {
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(54, 16 / 9, 0.04, 5);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x6a645c, 0.6), key = new THREE.DirectionalLight(0xffffff, 1.4), fill = new THREE.DirectionalLight(0xc8d4ff, 0.35);
+  scene.add(hemi, key, fill);
+  const holder = new THREE.Group(); scene.add(holder);
+  if (import.meta.env?.DEV) (globalThis as { __heroVM?: unknown }).__heroVM = { scene, hemi, key, fill, camera, renderer };
+  // Reflections: the environment session's probe when it exists, else a neutral studio room, prefiltered once.
+  let ownEnv: THREE.Texture | null = null;
+  const envFor = (x: number, z: number) => lighting.environment(x, z) ?? (ownEnv ??= new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture);
+  const flashTex = makeSprite('flash');
+  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true }));
+  flash.visible = false; flash.renderOrder = 5;
+  const rigs = new Map<number, FpRig>();
+  let rig: FpRig | null = null, ready = false;
+  // Build the arms and the first weapon while the menu is up, not on the first frame of a match.
+  let disposed = false;
+  heroReady.then(() => { ready = true; setTimeout(() => { if (!disposed && !rigs.size) rigFor(0); }, 300); });
+  // Baked texture sets (KTX2 through the art loader; 1024 maps on the Low tier). Until they arrive, or if they
+  // fail, the weapon keeps the procedural hero material.
+  const low = typeof location !== 'undefined' && /[?&]arttier=low\b/.test(location.search);
+  const art = new ArtLoader(renderer, low ? 'low' : 'high');
+  const sets = new Map<WeaponId, THREE.Material>();
+  const loads: Promise<unknown>[] = [heroReady];
+  for (const id of TEXTURED) {
+    const size = low ? 1024 : 2048, set = `../hero/${id}`;
+    loads.push(Promise.all([art.texture(set, 'diff', size), art.texture(set, 'nor', size), art.texture(set, 'arm', size)]).then(([map, normalMap, armMap]) => {
+      for (const t of [map, normalMap, armMap]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+      const m = texturedMaterial({ map, normalMap, arm: armMap });
+      sets.set(id, m);
+      for (const r of rigs.values()) r.setTextures(id, m);
+    }).catch(e => console.warn('Breachline weapon textures unavailable; procedural look kept.', e)));
+  }
+  let armMat: THREE.Material | null = null;
+  loads.push(Promise.all((['diff', 'nor', 'arm'] as const).map(k => art.texture('../hero/hands', k, 1024))).then(([map, normalMap, armMap]) => {
+    for (const t of [map, normalMap, armMap]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+    armMat = texturedMaterial({ map, normalMap, arm: armMap }, true);
+    for (const r of rigs.values()) r.setArmMaterial(armMat);
+  }).catch(e => console.warn('Breachline hand textures unavailable; procedural look kept.', e)));
+  // PATCH: the models, their gun-space placement and sockets, loaded with the rest.
+  type V3 = [number, number, number];
+  interface PatchModel { body: THREE.Object3D; mag: THREE.Object3D; slide: THREE.Object3D | null; sockets: WeaponSockets; sight: number; hipDrop: number; hipFwd: number }
+  const PATCH = new Map<WeaponId, PatchModel>();
+  const add = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const nodeMesh = (g: THREE.Object3D, name: string, mat: THREE.Material) => { const o = g.getObjectByName(name)!; o.traverse(c => { const m = c as THREE.Mesh; if (m.isMesh) { m.material = mat; m.frustumCulled = false; } }); return o; };
+  loads.push((async () => {
+    const [rg, pg, rmaps, pmaps] = await Promise.all([
+      art.model('../patch/rifle-scifi/rifle'), art.model('../patch/pistol/pistol'),
+      Promise.all([art.texture('../patch/rifle-scifi', 'diff', low ? 1024 : 2048), art.texture('../patch/rifle-scifi', 'nor', 1024), art.texture('../patch/rifle-scifi', 'arm', 1024)]),
+      Promise.all([art.texture('../patch/pistol', 'diff', 1024), art.texture('../patch/pistol', 'nor', 1024), art.texture('../patch/pistol', 'arm', 512)]),
+    ]);
+    for (const t of [...rmaps, ...pmaps]) { t.flipY = false; t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.needsUpdate = true; }
+    const rm = rifleFinish(rmaps[0], rmaps[1], rmaps[2]), pm = texturedMaterial({ map: pmaps[0], normalMap: pmaps[1], arm: pmaps[2] });
+    // Rifle (sockets in its own frame, see patch/rifle-scifi/sockets.json): grip palm (0, -0.07, 0.185) onto the AR-5's.
+    {
+      const A = weaponModel('ar').sockets, T: V3 = [0, A.grip.p[1] + 0.07, A.grip.p[2] - 0.185];
+      // Job 6: 15% narrower across its width (it read as a block).
+      const body = new THREE.Group(), b = nodeMesh(rg.scene, 'body', rm); b.position.set(...T); b.scale.x = 0.85; body.add(b);
+      const mag = new THREE.Group(), mm = nodeMesh(rg.scene, 'magazine', rm); mag.add(mm); mm.position.set(...add([0, -0.04, -0.05], T)); mm.scale.x = 0.85;
+      // Job 6: the generated box sight is removed (cut-rifle-sight.ts); the AR-5's own red-dot optic and lens go on the
+      // rail instead: cut from the AR-5 by position (above its rail, between z -0.16 and -0.04), raised 7.4 cm onto the
+      // Patch rail and moved 9 cm forward to its free length. Its sight line, the AR-5's axis, rises by the same 7.4 cm.
+      const OPT = new THREE.Vector3(0, 0.074, -0.09), arw = weaponModel('ar', 0), ap = arw.geo.getAttribute('position'), aix = arw.geo.index!.array, keep: number[] = [];
+      for (let t = 0; t < aix.length; t += 3) { let y = 0, z = 0; for (let q = 0; q < 3; q++) { y += ap.getY(aix[t + q]) / 3; z += ap.getZ(aix[t + q]) / 3; } if (y > -0.036 && z > -0.16 && z < -0.04) keep.push(aix[t], aix[t + 1], aix[t + 2]); }
+      const og = new THREE.BufferGeometry(); og.setAttribute('position', ap); og.setAttribute('normal', arw.geo.getAttribute('normal')); if (arw.geo.getAttribute('uv')) og.setAttribute('uv', arw.geo.getAttribute('uv')); og.setIndex(keep);
+      const [am, an, aa] = await Promise.all([art.texture('../hero/ar', 'diff', low ? 1024 : 2048), art.texture('../hero/ar', 'nor', low ? 1024 : 2048), art.texture('../hero/ar', 'arm', low ? 1024 : 2048)]);
+      for (const t of [am, an, aa]) t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+      const optic = new THREE.Mesh(og, texturedMaterial({ map: am, normalMap: an, arm: aa })); optic.position.copy(OPT); optic.frustumCulled = false; body.add(optic);
+      if (arw.lens) { const lens = new THREE.Mesh(arw.lens, new THREE.MeshStandardMaterial({ color: 0xc08a3a, roughness: 0.03, metalness: 0.55, transparent: true, opacity: 0.2, depthWrite: false, envMapIntensity: 1.6 })); lens.renderOrder = 2; lens.position.copy(OPT); body.add(lens); }
+      const sockets: WeaponSockets = { ...A, muzzle: add([0, 0.03, -0.44], T), eject: add([0.042, 0.06, 0.04], T), mag: add([0, -0.04, -0.05], T), handle: add([0, 0.11, 0.13], T), bore: 0.118 };
+      // The generated box sight is solid (no window to look through), so the aim is taken just over its top (0.166),
+      // and at the hip the rig is lowered 5 cm: the Patch receiver stands much taller above its grip than the AR-5's.
+      // At the hip the rig sits 8 cm lower and 4 cm further forward so the rifle takes no more of the frame than the AR-5.
+      PATCH.set('ar', { body, mag, slide: null, sockets, sight: OPT.y, hipDrop: 0.08, hipFwd: 0.04 });
+    }
+    // Pistol (patch/pistol/sockets.json): grip palm (0, -0.0053, 0.0698) onto the stock pistol's, on the bore's centre line.
+    {
+      const A = weaponModel('pistol').sockets, T: V3 = [0, A.grip.p[1] + 0.0053, A.grip.p[2] - 0.0698];
+      const body = new THREE.Group();
+      for (const n of ['frame', 'hammer', 'trigger']) { const o = nodeMesh(pg.scene, n, pm); o.position.add(new THREE.Vector3(...T)); body.add(o); }
+      const mag = new THREE.Group(), mo = nodeMesh(pg.scene, 'magazine', pm); mo.position.add(new THREE.Vector3(...T)); mag.add(mo);
+      const slide = new THREE.Group(), so = nodeMesh(pg.scene, 'slide', pm); so.position.add(new THREE.Vector3(...T)); slide.add(so);
+      const sockets: WeaponSockets = { ...A, muzzle: add([0, 0.0517, -0.1112], T), eject: add([0.016, 0.0527, 0.0198], T), mag: add([0, 0.0417, 0.0623], T), handle: add([0, 0.0497, 0.0848], T), boltTravel: 0.035, bore: 0.018 };
+      PATCH.set('pistol', { body, mag, slide, sockets, sight: 0.0517 + 0.018 + T[1], hipDrop: 0, hipFwd: 0 });
+    }
+    for (const [r, id] of [...rigs.entries()].map(([, r]) => [r, r.weapon.id] as const)) patchify(r, id);
+  })().catch(e => console.warn('Breachline: Patch weapons unavailable; stock weapons kept.', e)));
+  /** Job 6 finish for the rifle: dark grey (receiver albedo about 0.11, furniture a darker, warmer 0.07), the baked
+   * colour kept only as detail (its luminance against its mean), recesses darker, raised edges a thin lighter wear
+   * line where the detail is brightest, roughness 0.45 on the flats so the lights put a highlight on it. Furniture
+   * (grip, stock, handguard panels) is picked by position in the rifle's own frame. */
+  function rifleFinish(map: THREE.Texture, normalMap: THREE.Texture, arm: THREE.Texture) {
+    const m = new THREE.MeshStandardMaterial({ map, normalMap, roughness: 0.45, metalness: 0.35 });
+    m.onBeforeCompile = sh => {
+      sh.vertexShader = 'varying vec3 vRP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvRP = position;');
+      sh.fragmentShader = 'varying vec3 vRP;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+        { float l = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)), d = clamp(l / 0.03, 0.45, 2.2);
+          float furn = max(max(step(0.12, vRP.z) * step(vRP.y, -0.02) * step(vRP.z, 0.25), step(0.25, vRP.z)), step(vRP.z, -0.12) * step(vRP.y, 0.07) * step(0.0, -vRP.y + 0.07) * step(0.02, abs(vRP.x)));
+          vec3 base = mix(vec3(0.11, 0.112, 0.118), vec3(0.075, 0.07, 0.062), furn);
+          float wear = smoothstep(1.5, 2.1, d);
+          diffuseColor.rgb = mix(base * mix(0.55, 1.0, smoothstep(0.45, 1.0, d)), vec3(0.28, 0.28, 0.27), wear * 0.6); }`)
+        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(0.45, 0.7, smoothstep(0.0, 1.0, float(vRP.z > 0.25)));');
+    };
+    m.customProgramCacheKey = () => 'patch-rifle-finish';
+    void arm;
+    return m;
+  }
+  const brass = new THREE.MeshStandardMaterial({ color: 0xb08a3c, metalness: 1, roughness: 0.35 }), caseGeo = new THREE.CylinderGeometry(0.0045, 0.0045, 0.022, 8).rotateX(Math.PI / 2);
+  const applied = new Map<FpRig, THREE.Object3D[]>();
+  /** PATCH: after `setWeapon`, hide the stock model (and its casings) and attach the Patch one, with its sockets. */
+  function patchify(r: FpRig, id: WeaponId) {
+    for (const o of applied.get(r) ?? []) o.removeFromParent();
+    applied.delete(r);
+    const P = PATCH.get(id); if (!P) return;
+    for (const c of r.gun.children) if ((c as THREE.Mesh).isMesh) c.visible = false;
+    r.weapon = { ...r.weapon, sockets: P.sockets, lens: null };
+    const objs: THREE.Object3D[] = [P.body.clone(), P.mag.clone()];
+    r.gun.add(objs[0]); r.weaponBones[WB.mag].add(objs[1]);
+    if (P.slide) { const s = P.slide.clone(); r.weaponBones[WB.bolt].add(s); objs.push(s); }
+    for (let i = 0; i < CASES; i++) { const c = new THREE.Mesh(caseGeo, brass); c.position.set(...P.sockets.eject); r.weaponBones[WB.case0 + i].add(c); objs.push(c); }
+    applied.set(r, objs);
+  }
+  const rigFor = (squad: 0 | 1) => {
+    let r = rigs.get(squad);
+    if (!r) { r = createFpRig(DEFAULT_LOOK(squad, Number(`0x${SQUADS[squad].color.slice(1)}`))); for (const [id, m] of sets) r.setTextures(id, m); if (armMat) r.setArmMaterial(armMat); rigs.set(squad, r); }
+    return r;
+  };
+  /** Draws every weapon in both squads' arms once, with the flash and casings shown, into a tiny offscreen target:
+   * shader programs compile and geometry and textures upload here, behind the loading screen, never at first use in
+   * play. Also prefilters the fallback environment. Safe to call more than once; returns false if not ready. */
+  let warmed = false;
+  function warm(): boolean {
+    if (!ready || disposed) return false;
+    const target = new THREE.WebGLRenderTarget(4, 4), prev = renderer.getRenderTarget(), wasVisible = holder.visible;
+    scene.environment = envFor(0, 0);
+    holder.visible = true; flash.visible = true;
+    for (const squad of [0, 1] as const) {
+      const r = rigFor(squad);
+      holder.add(r.root); r.root.add(flash);
+      r.gun.position.set(0.1, -0.08, -0.25);
+      for (let i = 0; i < CASES; i++) r.weaponBones[WB.case0 + i].scale.setScalar(1);
+      for (const id of Object.keys(WEAPONS) as WeaponId[]) {
+        r.setWeapon(id); patchify(r, id); r.solve();
+        renderer.setRenderTarget(target); renderer.render(scene, camera);
+      }
+      holder.remove(r.root);
+    }
+    renderer.setRenderTarget(prev); target.dispose();
+    holder.visible = wasVisible; flash.visible = false; rig = null; curSquad = -1;
+    warmed = true;
+    return true;
+  }
+  Promise.allSettled(loads).then(() => setTimeout(() => { if (!warmed) warm(); }, 0));
+  // Motion state.
+  const swayY = new Spring(14, 0.7), swayP = new Spring(14, 0.7), swayR = new Spring(12, 0.6);
+  const kZ = new Spring(28, 0.55), kP = new Spring(22, 0.5), kY = new Spring(20, 0.6), kR = new Spring(18, 0.45), adsS = new Spring(22, 1), sprintS = new Spring(10, 1), useS = new Spring(9, 1);
+  let lastYaw = 0, lastPitch = 0, gait = 0, cycle = 1, shots = 0, empty = false, lastReload = 0, curId: WeaponId = 'ar', curSquad = -1, swapPrev = 0, time = 0;
+  const cases = Array.from({ length: CASES }, () => ({ t: 9, p: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Euler(), w: new THREE.Vector3() }));
+  let caseNext = 0, flashLife = 0;
+  const frame = idleFrame();
+  const eject = new THREE.Vector3(), tmp = new THREE.Vector3();
+
+  function fire(id: WeaponId) {
+    const k = KICK[id], first = cycle > 0.25 ? 1.35 : 1, r = (a: number) => (Math.random() * 2 - 1) * a;
+    kZ.v += k.back * first; kP.v += k.rise * first * (0.8 + Math.random() * 0.4); kY.v += r(k.yaw); kR.v += r(k.roll);
+    cycle = 0; shots++; flashLife = 0.05;
+    flash.scale.setScalar(0.12 + Math.random() * 0.06); (flash.material as THREE.SpriteMaterial).rotation = Math.random() * 6;
+    if (id === 'shotgun') return; // the hull ejects when the pump is worked
+    const c = cases[caseNext++ % CASES];
+    c.t = 0; c.p.set(0, 0, 0); c.v.set(1.6 + Math.random() * 0.8, 1.1 + Math.random() * 0.6, 0.3 + Math.random() * 0.4); c.r.set(0, 0, 0); c.w.set(r(20), 25 + r(8), r(10));
+  }
+
+  return {
+    get visible() { return holder.visible; },
+    warm,
+    update(view: HeroView, clock: number) {
+      const { m, dt } = view, p = m.players[view.self];
+      time = clock;
+      const show = ready && !!p && p.alive && view.watch === view.self && !view.menu && m.phase !== 'lobby';
+      holder.visible = show;
+      if (!show || !p) return;
+      if (p.squad !== curSquad) { if (rig) holder.remove(rig.root); rig = rigFor(p.squad); holder.add(rig.root); rig.root.add(flash); curSquad = p.squad; curId = '' as WeaponId; }
+      const r = rig!, id = weaponIdOf(m, p), def = WEAPONS[id], hold = holdFor(id);
+      if (id !== curId) { r.setWeapon(id); patchify(r, id); curId = id; }
+      const still = view.reduced ? 0 : 1;
+      // Aim, sprint and "using something" blends.
+      const ads = smooth(Math.min(1, Math.max(0, adsS.step(p.adsT, dt))));
+      const sprint = sprintS.step(p.sprint ? 1 : 0, dt), use = useS.step(p.act !== ACT.none || p.using ? 1 : 0, dt);
+      // Look sway: mouse movement drives spring velocity, soft-clamped, much less when aimed.
+      const dyaw = wrap(view.yaw - lastYaw), dpitch = view.pitch - lastPitch; lastYaw = view.yaw; lastPitch = view.pitch;
+      if (dt > 0) { swayY.v += soft(dyaw / dt, 3) * 0.6 * still; swayP.v += soft(dpitch / dt, 3) * 0.6 * still; swayR.v += soft(dyaw / dt, 3) * 0.8 * still; }
+      const sy = soft(swayY.step(0, dt), 0.08), sp = soft(swayP.step(0, dt), 0.06), sr = soft(swayR.step(0, dt), 0.1);
+      // Walk bob: a figure-of-eight from the gait phase.
+      gait += dt * (2.2 + Math.min(1.4, p.pace) * 7.5);
+      const bobA = Math.min(1.4, p.pace) * (1 - ads * 0.85) * still * (1 + sprint * 0.8);
+      // Recoil springs.
+      const rz = kZ.step(0, dt), rp = kP.step(0, dt), ry = kY.step(0, dt), rr = kR.step(0, dt);
+      // Reload: latch empty or tactical when it starts.
+      if (p.reload > 0 && lastReload <= 0) empty = p.mag[p.slot] === 0;
+      lastReload = p.reload;
+      const reloading = p.reload > 0;
+      if (reloading) reloadFrame(id, Math.min(1, 1 - p.reload / def.reload), empty, frame); else Object.assign(frame, idleFrame());
+      // Firing cycle: bolt back and forward; locked back when empty.
+      cycle += dt;
+      const kc = KICK[id], boltT = cycle < kc.cycle ? Math.sin(Math.PI * cycle / kc.cycle) : 0;
+      const locked = !reloading && p.mag[p.slot] === 0 && id !== 'shotgun' ? 1 : 0;
+      r.weaponBones[WB.bolt].position.z = 0;
+      frame.bolt = Math.max(frame.bolt, boltT, locked);
+      if (id === 'shotgun' && cycle > 0.12 && cycle < 0.5) { const t = (cycle - 0.12) / 0.38; frame.handle = Math.max(frame.handle, Math.sin(Math.PI * t)); frame.hand = [frame.hand[0], frame.hand[1], frame.hand[2], frame.hand[3]]; }
+      r.weaponBones[WB.trigger].rotation.x = cycle < 0.08 ? -0.25 : 0;
+      // Compose the weapon's pose in camera space.
+      const H = hold.hip, x0 = H.p[0] * (1 - ads), y0 = H.p[1] * (1 - ads), z0 = H.p[2] + (hold.adsZ - H.p[2]) * ads;
+      const arc = Math.sin(Math.PI * ads) * 0.02;
+      let x = x0 - arc * 0.5, y = y0 - arc, z = z0;
+      // PATCH: the Patch sight line sits higher (rifle) or lower (pistol) than the stock one in gun space.
+      { const P = PATCH.get(id); if (P) { y -= ads * P.sight + (1 - ads) * P.hipDrop; z -= (1 - ads) * P.hipFwd; } }
+      let ax = H.r[0] * (1 - ads), ay = H.r[1] * (1 - ads), az = H.r[2] * (1 - ads);
+      x += Math.sin(gait) * 0.006 * bobA - sy * 0.25 * (1 - ads * 0.6); y += -Math.abs(Math.cos(gait)) * 0.008 * bobA + Math.sin(time * 1.6) * 0.0012 * still * (1 - ads * 0.7) - sp * 0.2 * (1 - ads * 0.6);
+      ay += sy * (1 - ads * 0.85); ax += sp * (1 - ads * 0.85); az += -sr * 0.6 * (1 - ads * 0.7) + Math.sin(gait) * 0.01 * bobA - p.lean * 0.1;
+      // Sprint: carried across the chest, muzzle down and left. Using: lowered out of the way.
+      x -= sprint * 0.05; y -= sprint * 0.035 + use * 0.24; z += sprint * 0.03; ay += sprint * 0.62; ax -= sprint * 0.28 + use * 0.5; az += sprint * 0.25;
+      // Swap: down and back up. Melee: a forward bash.
+      if (p.swap > 0) { const t = smooth(p.swap / 0.42); y -= t * 0.28; ax -= t * 0.7; }
+      if (p.swap > swapPrev) cycle = 1;
+      swapPrev = p.swap;
+      if (p.meleeCool > 0.4) { const t = Math.sin(Math.PI * (0.75 - p.meleeCool) / 0.35); z -= t * 0.16; ay -= t * 0.45; x -= t * 0.06; ax += t * 0.15; }
+      // Reload's extra pose, recoil last.
+      x += frame.gunP[0]; y += frame.gunP[1]; z += frame.gunP[2]; ax += frame.gunR[0]; ay += frame.gunR[1]; az += frame.gunR[2];
+      const recoilScale = 1 - ads * 0.45;
+      z += rz * 0.035 * recoilScale; ax += rp * 0.025 * recoilScale; ay += ry * 0.012; az += rr * 0.02;
+      r.gun.position.set(x, y, z); r.gun.rotation.set(ax, ay, az, 'XYZ');
+      r.solve(frame);
+      // Casings: a short ballistic arc out of the port, then gone (the world's casings are the effects' job).
+      const S = r.weapon.sockets;
+      eject.set(...S.eject);
+      for (let i = 0; i < CASES; i++) {
+        const c = cases[i], b = r.weaponBones[WB.case0 + i];
+        if (c.t > 0.6) { b.scale.setScalar(0); continue; }
+        c.t += dt; c.v.y -= 9.8 * dt; c.p.addScaledVector(c.v, dt); c.r.x += c.w.x * dt; c.r.y += c.w.y * dt; c.r.z += c.w.z * dt;
+        // The case is bound at the port; its bone carries it along its arc (weapon space, ignoring the gun's own motion).
+        b.position.copy(c.p); b.rotation.copy(c.r); b.scale.setScalar(1);
+        tmp.copy(eject);
+      }
+      // Light from the probe where the shooter stands; the key from the sun direction, dimmed indoors by the probe.
+      const l = lighting.probe(p.x, 1.4, p.z).color, lum = (l[0] + l[1] + l[2]) / 3;
+      // Diffuse: the probe's light with a floor so nothing goes to black.
+      hemi.color.setRGB(0.12 + l[0] * 1.05, 0.12 + l[1] * 1.05, 0.12 + l[2] * 1.05); hemi.intensity = VM_GAIN * 1.5; hemi.groundColor.setRGB(0.06 + l[0] * 0.45, 0.06 + l[1] * 0.42, 0.06 + l[2] * 0.4);
+      key.color.setRGB(...lighting.sun.color.map(c => c / 1.55) as [number, number, number]);
+      key.intensity = VM_GAIN * (0.6 + Math.min(2, lum * 1.8)); fill.intensity = VM_GAIN * 0.4;
+      // Sun direction in camera space: rotate the world direction by the inverse view yaw.
+      const sy0 = Math.sin(view.yaw), cy0 = Math.cos(view.yaw), s = lighting.sun;
+      // Indoors the light comes from the ceiling fittings: the key leans toward overhead and slightly ahead, so the
+      // rail, the optic and the receiver's top edges catch a highlight; outdoors it follows the sun.
+      const indoor = lighting.environment(p.x, p.z) ? 0.75 : 0.45;
+      key.position.set((s.x * cy0 - s.z * sy0) * (1 - indoor) + 0.15 * indoor, Math.max(0.35, s.y) * (1 - indoor) + 1 * indoor, (s.x * sy0 + s.z * cy0) * (1 - indoor) - 0.35 * indoor);
+      fill.position.set(-key.position.x, 0.3, -key.position.z);
+      // Specular only (see material.ts), scaled into the probe's units.
+      scene.environment = envFor(p.x, p.z); scene.environmentIntensity = VM_GAIN * (lighting.environment(p.x, p.z) ? lighting.environmentScale(p.x, p.z) : 1) * Math.max(0.35, Math.min(1.6, lum * 1.2));
+      // Muzzle flash at the muzzle socket.
+      const scoped = id === 'dmr' && ads > 0.9;
+      if (flashLife > 0) { flashLife -= dt; flash.visible = flashLife > 0 && !scoped; tmp.set(...S.muzzle); tmp.z -= 0.03; r.gun.localToWorld(tmp); r.root.worldToLocal(tmp); flash.position.copy(tmp); }
+      else flash.visible = false;
+      r.gun.visible = !scoped;
+      for (const a of r.root.children) if ((a as THREE.SkinnedMesh).isSkinnedMesh) a.visible = !scoped;
+      camera.fov = 54 - ads * 8; camera.updateProjectionMatrix();
+      void shots;
+    },
+    handle(events: readonly SimEvent[], m: Match, self: number) {
+      for (const e of events) if (e.e === 'shot' && e.id === self && m.players[self]) fire(e.w);
+    },
+    render() {
+      if (!holder.visible) return 0;
+      renderer.clearDepth(); renderer.render(scene, camera);
+      return renderer.info.render.calls;
+    },
+    resize(aspect: number) { camera.aspect = aspect; camera.updateProjectionMatrix(); },
+    dispose() {
+      disposed = true;
+      for (const r of rigs.values()) r.dispose();
+      flashTex.dispose(); (flash.material as THREE.Material).dispose(); ownEnv?.dispose(); brass.dispose(); caseGeo.dispose();
+      for (const m of sets.values()) m.dispose(); armMat?.dispose(); art.dispose();
+    },
+  };
+}

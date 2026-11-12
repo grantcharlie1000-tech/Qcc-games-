@@ -1,0 +1,942 @@
+{
+ "version": 1,
+ "textures": {
+  "interior_tiles": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 54094,
+    "diff-1024.ktx2": 181134,
+    "diff-512.jpg": 26877,
+    "nor-512.ktx2": 165126,
+    "nor-1024.ktx2": 506918,
+    "nor-512.jpg": 15588,
+    "arm-512.ktx2": 125144,
+    "arm-1024.ktx2": 477321,
+    "arm-512.jpg": 28208
+   }
+  },
+  "painted_plaster_wall": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 49844,
+    "diff-1024.ktx2": 170228,
+    "diff-512.jpg": 14398,
+    "nor-512.ktx2": 218687,
+    "nor-1024.ktx2": 1099175,
+    "nor-512.jpg": 27663,
+    "arm-512.ktx2": 110623,
+    "arm-1024.ktx2": 439642,
+    "arm-512.jpg": 10118
+   }
+  },
+  "blue_metal_plate": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 40052,
+    "diff-1024.ktx2": 120733,
+    "diff-512.jpg": 11656,
+    "nor-512.ktx2": 137502,
+    "nor-1024.ktx2": 504909,
+    "nor-512.jpg": 7782,
+    "arm-512.ktx2": 127890,
+    "arm-1024.ktx2": 484561,
+    "arm-512.jpg": 22816
+   }
+  },
+  "metal_tool_chest--metal_tool_chest": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15513,
+    "diff-512.ktx2": 50729,
+    "diff-512.jpg": 31076,
+    "nor-256.ktx2": 50142,
+    "nor-512.ktx2": 179614,
+    "nor-512.jpg": 45462,
+    "arm-256.ktx2": 50649,
+    "arm-512.ktx2": 178179,
+    "arm-512.jpg": 64806
+   }
+  },
+  "korean_fire_extinguisher_01--korean_fire_extinguisher_01_body": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 17227,
+    "diff-512.ktx2": 55062,
+    "diff-512.jpg": 31824,
+    "nor-256.ktx2": 39391,
+    "nor-512.ktx2": 130005,
+    "nor-512.jpg": 33283,
+    "arm-256.ktx2": 52033,
+    "arm-512.ktx2": 189810,
+    "arm-512.jpg": 57518
+   }
+  },
+  "korean_fire_extinguisher_01--korean_fire_extinguisher_01_glass": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15519,
+    "diff-512.ktx2": 53858,
+    "diff-512.jpg": 29101,
+    "nor-256.ktx2": 21026,
+    "nor-512.ktx2": 62263,
+    "nor-512.jpg": 12998,
+    "arm-256.ktx2": 32858,
+    "arm-512.ktx2": 115534,
+    "arm-512.jpg": 15209
+   }
+  },
+  "korean_fire_extinguisher_01--korean_fire_extinguisher_01_paper": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 13466,
+    "diff-512.ktx2": 44959,
+    "diff-512.jpg": 32450,
+    "nor-256.ktx2": 35943,
+    "nor-512.ktx2": 164734,
+    "nor-512.jpg": 42094,
+    "arm-256.ktx2": 35732,
+    "arm-512.ktx2": 133948,
+    "arm-512.jpg": 51829
+   }
+  },
+  "metal_stool_01--metal_stool_01": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 16936,
+    "diff-512.ktx2": 58844,
+    "diff-512.jpg": 32166,
+    "nor-256.ktx2": 55607,
+    "nor-512.ktx2": 205641,
+    "nor-512.jpg": 47863,
+    "arm-256.ktx2": 54866,
+    "arm-512.ktx2": 199770,
+    "arm-512.jpg": 58187
+   }
+  },
+  "raw_plank_wall": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 56483,
+    "diff-1024.ktx2": 183443,
+    "diff-512.jpg": 33176,
+    "nor-512.ktx2": 162980,
+    "nor-1024.ktx2": 697188,
+    "nor-512.jpg": 41250,
+    "arm-512.ktx2": 156271,
+    "arm-1024.ktx2": 597641,
+    "arm-512.jpg": 39096
+   }
+  },
+  "OfficeCeiling001": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 18391,
+    "diff-1024.ktx2": 49628,
+    "diff-512.jpg": 7622,
+    "nor-512.ktx2": 267192,
+    "nor-1024.ktx2": 1209694,
+    "nor-512.jpg": 42966,
+    "arm-512.ktx2": 200947,
+    "arm-1024.ktx2": 818261,
+    "arm-512.jpg": 56283
+   }
+  },
+  "terrazzo_tiles": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 59911,
+    "diff-1024.ktx2": 204891,
+    "diff-512.jpg": 58855,
+    "nor-512.ktx2": 75477,
+    "nor-1024.ktx2": 348924,
+    "nor-512.jpg": 1403,
+    "arm-512.ktx2": 88062,
+    "arm-1024.ktx2": 379711,
+    "arm-512.jpg": 9269
+   }
+  },
+  "wood_planks": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 52596,
+    "diff-1024.ktx2": 175145,
+    "diff-512.jpg": 25515,
+    "nor-512.ktx2": 131526,
+    "nor-1024.ktx2": 563372,
+    "nor-512.jpg": 31931,
+    "arm-512.ktx2": 106247,
+    "arm-1024.ktx2": 397634,
+    "arm-512.jpg": 23709
+   }
+  },
+  "Cardboard004": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 45632,
+    "diff-1024.ktx2": 165056,
+    "diff-512.jpg": 10997,
+    "nor-512.ktx2": 81381,
+    "nor-1024.ktx2": 431821,
+    "nor-512.jpg": 10383,
+    "arm-512.ktx2": 63669,
+    "arm-1024.ktx2": 342655,
+    "arm-512.jpg": 24604
+   }
+  },
+  "security_camera_01--security_camera_01": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15157,
+    "diff-512.ktx2": 52547,
+    "diff-512.jpg": 28592,
+    "nor-256.ktx2": 45109,
+    "nor-512.ktx2": 144820,
+    "nor-512.jpg": 32493,
+    "arm-256.ktx2": 38700,
+    "arm-512.ktx2": 134716,
+    "arm-512.jpg": 30074
+   }
+  },
+  "security_camera_01--security_camera_01_glass": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15157,
+    "diff-512.ktx2": 52547,
+    "diff-512.jpg": 28592,
+    "nor-256.ktx2": 45109,
+    "nor-512.ktx2": 144820,
+    "nor-512.jpg": 32493,
+    "arm-256.ktx2": 38700,
+    "arm-512.ktx2": 134716,
+    "arm-512.jpg": 30074
+   }
+  },
+  "asphalt_02": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 59403,
+    "diff-1024.ktx2": 199896,
+    "diff-512.jpg": 57888,
+    "nor-512.ktx2": 295338,
+    "nor-1024.ktx2": 1297962,
+    "nor-512.jpg": 63865,
+    "arm-512.ktx2": 297031,
+    "arm-1024.ktx2": 1183715,
+    "arm-512.jpg": 79134
+   }
+  },
+  "concrete_floor_02": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 61267,
+    "diff-1024.ktx2": 202632,
+    "diff-512.jpg": 62504,
+    "nor-512.ktx2": 215462,
+    "nor-1024.ktx2": 1050006,
+    "nor-512.jpg": 30350,
+    "arm-512.ktx2": 181909,
+    "arm-1024.ktx2": 700312,
+    "arm-512.jpg": 36822
+   }
+  },
+  "red_brick_03": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 64822,
+    "diff-1024.ktx2": 217063,
+    "diff-512.jpg": 49669,
+    "nor-512.ktx2": 281352,
+    "nor-1024.ktx2": 1250183,
+    "nor-512.jpg": 67069,
+    "arm-512.ktx2": 196729,
+    "arm-1024.ktx2": 747028,
+    "arm-512.jpg": 53285
+   }
+  },
+  "aerial_grass_rock": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 64640,
+    "diff-1024.ktx2": 218055,
+    "diff-512.jpg": 46532,
+    "nor-512.ktx2": 325804,
+    "nor-1024.ktx2": 1309711,
+    "nor-512.jpg": 79300,
+    "arm-512.ktx2": 263942,
+    "arm-1024.ktx2": 1031265,
+    "arm-512.jpg": 64013
+   }
+  },
+  "covered_car--covered_car": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 16005,
+    "diff-512.ktx2": 55241,
+    "diff-512.jpg": 31889,
+    "nor-256.ktx2": 52254,
+    "nor-512.ktx2": 180901,
+    "nor-512.jpg": 35127,
+    "arm-256.ktx2": 52925,
+    "arm-512.ktx2": 181859,
+    "arm-512.jpg": 65896
+   }
+  },
+  "old_military_crate--military_crate_m_01": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 17347,
+    "diff-512.ktx2": 61366,
+    "diff-512.jpg": 35688,
+    "nor-256.ktx2": 52356,
+    "nor-512.ktx2": 190566,
+    "nor-512.jpg": 46849,
+    "arm-256.ktx2": 42201,
+    "arm-512.ktx2": 153091,
+    "arm-512.jpg": 48650
+   }
+  },
+  "wooden_military_crate--wooden_military_crate": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 17648,
+    "diff-512.ktx2": 62815,
+    "diff-512.jpg": 45957,
+    "nor-256.ktx2": 48945,
+    "nor-512.ktx2": 186237,
+    "nor-512.jpg": 42735,
+    "arm-256.ktx2": 51601,
+    "arm-512.ktx2": 185185,
+    "arm-512.jpg": 66612
+   }
+  },
+  "metal_jerrycan_green--metal_jerrycan_green": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15462,
+    "diff-512.ktx2": 55099,
+    "diff-512.jpg": 25308,
+    "nor-256.ktx2": 63822,
+    "nor-512.ktx2": 223787,
+    "nor-512.jpg": 57711,
+    "arm-256.ktx2": 72066,
+    "arm-512.ktx2": 265472,
+    "arm-512.jpg": 88477
+   }
+  },
+  "barrel_03--barrel_03": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15061,
+    "diff-512.ktx2": 51948,
+    "diff-512.jpg": 28574,
+    "nor-256.ktx2": 49666,
+    "nor-512.ktx2": 176386,
+    "nor-512.jpg": 39669,
+    "arm-256.ktx2": 54756,
+    "arm-512.ktx2": 204695,
+    "arm-512.jpg": 64832
+   }
+  },
+  "preconcrete_wall_001": {
+   "sizes": [
+    512,
+    1024
+   ],
+   "files": {
+    "diff-512.ktx2": 56454,
+    "diff-1024.ktx2": 185457,
+    "diff-512.jpg": 33771,
+    "nor-512.ktx2": 179507,
+    "nor-1024.ktx2": 824426,
+    "nor-512.jpg": 35792,
+    "arm-512.ktx2": 172548,
+    "arm-1024.ktx2": 643284,
+    "arm-512.jpg": 30149
+   }
+  },
+  "worn_metal_rack--worn_metal_rack": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15905,
+    "diff-512.ktx2": 57533,
+    "diff-512.jpg": 29385,
+    "nor-256.ktx2": 35744,
+    "nor-512.ktx2": 126542,
+    "nor-512.jpg": 30901,
+    "arm-256.ktx2": 59340,
+    "arm-512.ktx2": 216088,
+    "arm-512.jpg": 48151
+   }
+  },
+  "wooden_crate_02--wooden_crate_02": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 17176,
+    "diff-512.ktx2": 61451,
+    "diff-512.jpg": 39416,
+    "nor-256.ktx2": 52184,
+    "nor-512.ktx2": 191160,
+    "nor-512.jpg": 39947,
+    "arm-256.ktx2": 46597,
+    "arm-512.ktx2": 171161,
+    "arm-512.jpg": 64166
+   }
+  },
+  "Barrel_02--Barrel_02": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 12557,
+    "diff-512.ktx2": 38608,
+    "diff-512.jpg": 17630,
+    "nor-256.ktx2": 44205,
+    "nor-512.ktx2": 147361,
+    "nor-512.jpg": 35625,
+    "arm-256.ktx2": 46223,
+    "arm-512.ktx2": 162874,
+    "arm-512.jpg": 44103
+   }
+  },
+  "concrete_road_barrier_02--concrete_road_barrier_02": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 16686,
+    "diff-512.ktx2": 60071,
+    "diff-512.jpg": 41208,
+    "nor-256.ktx2": 67064,
+    "nor-512.ktx2": 270106,
+    "nor-512.jpg": 70682,
+    "arm-256.ktx2": 35558,
+    "arm-512.ktx2": 133762,
+    "arm-512.jpg": 41174
+   }
+  },
+  "compost_bags--compost_bags": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 15462,
+    "diff-512.ktx2": 51115,
+    "diff-512.jpg": 31616,
+    "nor-256.ktx2": 59265,
+    "nor-512.ktx2": 201744,
+    "nor-512.jpg": 59651,
+    "arm-256.ktx2": 35491,
+    "arm-512.ktx2": 127625,
+    "arm-512.jpg": 54423
+   }
+  },
+  "cement_bag--cement_bag": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 16591,
+    "diff-512.ktx2": 54425,
+    "diff-512.jpg": 35951,
+    "nor-256.ktx2": 46228,
+    "nor-512.ktx2": 152219,
+    "nor-512.jpg": 28329,
+    "arm-256.ktx2": 23909,
+    "arm-512.ktx2": 76465,
+    "arm-512.jpg": 9548
+   }
+  },
+  "trashbag--trashbag": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 13782,
+    "diff-512.ktx2": 44201,
+    "diff-512.jpg": 17742,
+    "nor-256.ktx2": 67840,
+    "nor-512.ktx2": 232445,
+    "nor-512.jpg": 69484,
+    "arm-256.ktx2": 43013,
+    "arm-512.ktx2": 144408,
+    "arm-512.jpg": 61618
+   }
+  },
+  "cardboard_box_01--cardboard_box_01": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 16318,
+    "diff-512.ktx2": 55894,
+    "diff-512.jpg": 29443,
+    "nor-256.ktx2": 68744,
+    "nor-512.ktx2": 251926,
+    "nor-512.jpg": 70362,
+    "arm-256.ktx2": 33869,
+    "arm-512.ktx2": 119856,
+    "arm-512.jpg": 24112
+   }
+  },
+  "abo_B01D7P5NI8--B01D7P5NI8_MAT_MR": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 6164,
+    "diff-512.ktx2": 18039,
+    "diff-512.jpg": 5600,
+    "nor-256.ktx2": 12417,
+    "nor-512.ktx2": 31201,
+    "nor-512.jpg": 7895,
+    "arm-256.ktx2": 42764,
+    "arm-512.ktx2": 146760,
+    "arm-512.jpg": 39390
+   }
+  },
+  "simready_computer_monitor_office_a01--opaque__plastic__glossy_black_a": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 789,
+    "diff-512.ktx2": 964,
+    "diff-512.jpg": 1091,
+    "nor-256.ktx2": 1081,
+    "nor-512.ktx2": 124676,
+    "nor-512.jpg": 1172,
+    "arm-256.ktx2": 27299,
+    "arm-512.ktx2": 94393,
+    "arm-512.jpg": 11844
+   }
+  },
+  "simready_computer_monitor_office_a01--opaque__plastic__black_a": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 2411,
+    "diff-512.ktx2": 7101,
+    "diff-512.jpg": 1513,
+    "nor-256.ktx2": 3217,
+    "nor-512.ktx2": 139589,
+    "nor-512.jpg": 1101,
+    "arm-256.ktx2": 19884,
+    "arm-512.ktx2": 70123,
+    "arm-512.jpg": 17596
+   }
+  },
+  "simready_computer_monitor_office_a01--opaque__plastic__unique_decal_a": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 9662,
+    "diff-512.ktx2": 22648,
+    "diff-512.jpg": 22995,
+    "nor-256.ktx2": 619,
+    "nor-512.ktx2": 685,
+    "nor-512.jpg": 1095,
+    "arm-256.ktx2": 613,
+    "arm-512.ktx2": 678,
+    "arm-512.jpg": 1096
+   }
+  },
+  "simready_computer_monitor_office_a01--opaque__metal__glossy_a": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 5798,
+    "diff-512.ktx2": 22457,
+    "diff-512.jpg": 5240,
+    "nor-256.ktx2": 8664,
+    "nor-512.ktx2": 19493,
+    "nor-512.jpg": 1889,
+    "arm-256.ktx2": 29846,
+    "arm-512.ktx2": 112360,
+    "arm-512.jpg": 6226
+   }
+  },
+  "simready_computer_monitor_office_a01--opaque__plastic__blue_a": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 3143,
+    "diff-512.ktx2": 12391,
+    "diff-512.jpg": 2049,
+    "nor-256.ktx2": 7374,
+    "nor-512.ktx2": 46368,
+    "nor-512.jpg": 1437,
+    "arm-256.ktx2": 21789,
+    "arm-512.ktx2": 83025,
+    "arm-512.jpg": 23935
+   }
+  },
+  "simready_computer_monitor_office_a01--opaque__plastic__unique_decal_screen_a": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 5764,
+    "diff-512.ktx2": 32584,
+    "diff-512.jpg": 5568,
+    "nor-256.ktx2": 619,
+    "nor-512.ktx2": 685,
+    "nor-512.jpg": 1095,
+    "arm-256.ktx2": 613,
+    "arm-512.ktx2": 678,
+    "arm-512.jpg": 1096
+   }
+  },
+  "simready_computer_keyboard_a01--opaque__plastic__unique_keyboard_a": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 4202,
+    "diff-512.ktx2": 9483,
+    "diff-512.jpg": 4833,
+    "nor-256.ktx2": 8746,
+    "nor-512.ktx2": 26473,
+    "nor-512.jpg": 1338,
+    "arm-256.ktx2": 22608,
+    "arm-512.ktx2": 78472,
+    "arm-512.jpg": 27790
+   }
+  },
+  "vintage_electric_kettle--vintage_electric_kettle": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 17220,
+    "diff-512.ktx2": 57519,
+    "diff-512.jpg": 41937,
+    "nor-256.ktx2": 48818,
+    "nor-512.ktx2": 181944,
+    "nor-512.jpg": 48944,
+    "arm-256.ktx2": 59996,
+    "arm-512.ktx2": 212581,
+    "arm-512.jpg": 69640
+   }
+  },
+  "vintage_electric_kettle--vintage_electric_kettle_glass": {
+   "sizes": [
+    256,
+    512
+   ],
+   "files": {
+    "diff-256.ktx2": 17220,
+    "diff-512.ktx2": 57519,
+    "diff-512.jpg": 41937,
+    "nor-256.ktx2": 48818,
+    "nor-512.ktx2": 181944,
+    "nor-512.jpg": 48944,
+    "arm-256.ktx2": 59996,
+    "arm-512.ktx2": 212581,
+    "arm-512.jpg": 69640
+   }
+  }
+ },
+ "models": {
+  "metal_tool_chest": {
+   "glb": 441212,
+   "lod1": 186700,
+   "materials": [
+    "metal_tool_chest"
+   ],
+   "triangles": 13360,
+   "lod1Triangles": 4002
+  },
+  "korean_fire_extinguisher_01": {
+   "glb": 282176,
+   "lod1": 104272,
+   "materials": [
+    "korean_fire_extinguisher_01_body",
+    "korean_fire_extinguisher_01_glass",
+    "korean_fire_extinguisher_01_paper"
+   ],
+   "triangles": 9913,
+   "lod1Triangles": 3050
+  },
+  "metal_stool_01": {
+   "glb": 217468,
+   "lod1": 76792,
+   "materials": [
+    "metal_stool_01"
+   ],
+   "triangles": 8334,
+   "lod1Triangles": 2500
+  },
+  "security_camera_01": {
+   "glb": 388804,
+   "lod1": 152344,
+   "materials": [
+    "security_camera_01",
+    "security_camera_01_glass"
+   ],
+   "triangles": 13571,
+   "lod1Triangles": 4071
+  },
+  "covered_car": {
+   "glb": 399044,
+   "lod1": 166496,
+   "materials": [
+    "covered_car",
+    "covered_car"
+   ],
+   "triangles": 12592,
+   "lod1Triangles": 3773
+  },
+  "old_military_crate": {
+   "glb": 334360,
+   "lod1": 125032,
+   "materials": [
+    "military_crate_m_01"
+   ],
+   "triangles": 10476,
+   "lod1Triangles": 3140
+  },
+  "wooden_military_crate": {
+   "glb": 690516,
+   "lod1": 260644,
+   "materials": [
+    "wooden_military_crate"
+   ],
+   "triangles": 22986,
+   "lod1Triangles": 6894
+  },
+  "metal_jerrycan_green": {
+   "glb": 278444,
+   "lod1": 104892,
+   "materials": [
+    "metal_jerrycan_green"
+   ],
+   "triangles": 9636,
+   "lod1Triangles": 2886
+  },
+  "barrel_03": {
+   "glb": 45920,
+   "lod1": 17448,
+   "materials": [
+    "barrel_03"
+   ],
+   "triangles": 1473,
+   "lod1Triangles": 441
+  },
+  "worn_metal_rack": {
+   "glb": 270528,
+   "lod1": 175000,
+   "materials": [
+    "worn_metal_rack"
+   ],
+   "triangles": 6372,
+   "lod1Triangles": 3038
+  },
+  "wooden_crate_02": {
+   "glb": 151972,
+   "lod1": 57524,
+   "materials": [
+    "wooden_crate_02"
+   ],
+   "triangles": 5176,
+   "lod1Triangles": 1550
+  },
+  "Barrel_02": {
+   "glb": 78484,
+   "lod1": 30924,
+   "materials": [
+    "Barrel_02"
+   ],
+   "triangles": 2688,
+   "lod1Triangles": 806
+  },
+  "concrete_road_barrier_02": {
+   "glb": 544088,
+   "lod1": 170744,
+   "materials": [
+    "concrete_road_barrier_02"
+   ],
+   "triangles": 23822,
+   "lod1Triangles": 7146
+  },
+  "compost_bags": {
+   "glb": 478940,
+   "lod1": 153224,
+   "materials": [
+    "compost_bags"
+   ],
+   "triangles": 18708,
+   "lod1Triangles": 5610
+  },
+  "cement_bag": {
+   "glb": 23400,
+   "lod1": 8552,
+   "materials": [
+    "cement_bag"
+   ],
+   "triangles": 844,
+   "lod1Triangles": 252
+  },
+  "trashbag": {
+   "glb": 107444,
+   "lod1": 35068,
+   "materials": [
+    "trashbag"
+   ],
+   "triangles": 4482,
+   "lod1Triangles": 1344
+  },
+  "cardboard_box_01": {
+   "glb": 383132,
+   "lod1": 119020,
+   "materials": [
+    "cardboard_box_01"
+   ],
+   "triangles": 16952,
+   "lod1Triangles": 5084
+  },
+  "abo_B01D7P5NI8": {
+   "glb": 166340,
+   "lod1": 155832,
+   "materials": [
+    "B01D7P5NI8_MAT_MR"
+   ],
+   "triangles": 3269,
+   "lod1Triangles": 2979
+  },
+  "simready_computer_monitor_office_a01": {
+   "glb": 183660,
+   "lod1": 108352,
+   "materials": [
+    "opaque__plastic__glossy_black_a",
+    "opaque__plastic__black_a",
+    "opaque__plastic__unique_decal_a",
+    "opaque__metal__glossy_a",
+    "opaque__plastic__blue_a",
+    "opaque__plastic__unique_decal_screen_a"
+   ],
+   "triangles": 2791,
+   "lod1Triangles": 1247
+  },
+  "simready_computer_keyboard_a01": {
+   "glb": 133964,
+   "lod1": 122800,
+   "materials": [
+    "opaque__plastic__unique_keyboard_a"
+   ],
+   "triangles": 1665,
+   "lod1Triangles": 1478
+  },
+  "vintage_electric_kettle": {
+   "glb": 159112,
+   "lod1": 64316,
+   "materials": [
+    "vintage_electric_kettle",
+    "vintage_electric_kettle_glass"
+   ],
+   "triangles": 5189,
+   "lod1Triangles": 1593
+  }
+ },
+ "bytes": {
+  "low": 16302963,
+  "high": 40059883,
+  "fallback": 4507971
+ }
+}

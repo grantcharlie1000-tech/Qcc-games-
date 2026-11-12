@@ -1,0 +1,67 @@
+{
+ "frame": "metres; muzzle toward -Z, +Y up, +X right; origin at the bounding-box centre; lengths after scaling to 0.88 m",
+ "muzzle": [
+  0,
+  0.03,
+  -0.44
+ ],
+ "bore": [
+  0,
+  0.03
+ ],
+ "sightLine": {
+  "rear": [
+   0,
+   0.148,
+   0.04
+  ],
+  "front": [
+   0,
+   0.148,
+   -0.06
+  ],
+  "heightAboveBore": 0.118
+ },
+ "grip": {
+  "palm": [
+   0,
+   -0.07,
+   0.185
+  ],
+  "axisDeg": 20,
+  "note": "pistol-grip centre, grip raked 20 degrees back from vertical"
+ },
+ "support": {
+  "palm": [
+   0,
+   -0.045,
+   -0.25
+  ],
+  "note": "under the handguard"
+ },
+ "trigger": [
+  0,
+  -0.03,
+  0.095
+ ],
+ "mag": {
+  "seat": [
+   0,
+   -0.04,
+   -0.05
+  ],
+  "node": "magazine",
+  "note": "the magazine mesh origin is this point; drop it along -Y"
+ },
+ "eject": [
+  0.042,
+  0.06,
+  0.04
+ ],
+ "handle": [
+  0,
+  0.11,
+  0.13
+ ],
+ "measured": "by eye from the side profile and renders; see STATUS.md"
+}

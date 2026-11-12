@@ -1,0 +1,1136 @@
+/** The picture. A baked-light level, destructible panel meshes, fighters, the weapon in hand and pooled effects,
+ * drawn with unlit materials so integrated graphics can keep up. Resolution adapts to hold the frame rate. */
+import * as THREE from 'three';
+import { setCheapShading } from './render/materials';
+import { OUTDOOR, REGIONS } from './render/levelgeo';
+import { CELL, ROUND, WALL_H, WEAPONS } from './config';
+import { Effects } from './effects';
+import { createBake, SUN, SUN_COLOR, type Bake } from './lightbake';
+import { PanelView, buildLevel, panelDecor, type PanelMaterials } from './levelmesh';
+import { MAP } from './map';
+import { loadArtWorld, type ArtWorld } from './render/artworld';
+import { PanelBatches } from './render/panelbatch';
+import { Glass } from './render/glass';
+import { SetPieces } from './render/setpieces';
+import { Breakables } from './render/breakables';
+import type { DressProxy } from './render/detail';
+import { SET_PIECES, TEXTURED_PIECES } from './render/setpieces-data';
+import { MARKS, dressMaterial, familyMaterial, firstDressing, propMaterial, surfaceAt } from './render/surfacehit';
+import { boxes } from './models';
+import { chargeGeometry, deviceGeometry, deviceScreenTexture } from './render/kit';
+import { createPatchFighters } from './render/patchfighters/index';
+import { createPatchViewmodel } from './render/patchhero/index';
+import { createFighters, createViewmodel, type HeroLighting } from './render/hero';
+import { createPost, type PostTier } from './render/post';
+import { ACT, shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
+import { actDuration } from './sim';
+import { MARK, makeSprite, makeTextures, type TexId } from './textures';
+import { PANEL_T, cellCenter, eyeOf, panelPoint, trace, viewDir, type Panel, type World } from './world';
+
+export type QualityId = 'auto' | 'low' | 'high';
+export const QUALITIES: Record<QualityId, { name: string; fps: number; min: number; max: number; cap: number; density: number }> = {
+  auto: { name: 'Auto', fps: 60, min: 0.5, max: 1, cap: 1.5, density: 1 },
+  low: { name: 'Performance (30 fps)', fps: 30, min: 0.55, max: 0.7, cap: 1, density: 0.5 },
+  high: { name: 'Sharp', fps: 60, min: 0.7, max: 1, cap: 1.5, density: 1 },
+};
+export const isQuality = (v: unknown): v is QualityId => v === 'auto' || v === 'low' || v === 'high';
+
+export interface SceneView {
+  m: Match;
+  /** This device's seat (-1 when it has none) and the seat whose eyes the camera uses (-1 for the overview). */
+  self: number; watch: number;
+  yaw: number; pitch: number;
+  /** Where the local fighter was one step ago, and how far between steps this frame is. */
+  px: number; pz: number; alpha: number;
+  dt: number;
+  reduced: boolean;
+  menu: boolean;
+}
+/** What the scene draws that the simulation does not know about, for the sound code (map-fill plan, sound hookup):
+ * every mark placed, with its material; glass cracking and shattering; a set piece reaching a damage state; a body
+ * coming to rest; a reinforcement or barricade starting, unfolding, anchoring or breaking. Emitted at the moment the
+ * picture changes, from the same shared events. The object passed is reused: copy what you keep. */
+export type CosmeticEvent =
+  | { k: 'impact'; mat: string; x: number; y: number; z: number; power: number }
+  | { k: 'glass'; stage: 'crack' | 'shatter'; x: number; y: number; z: number }
+  | { k: 'piece'; family: string; state: 'damaged' | 'wrecked'; x: number; y: number; z: number }
+  | { k: 'body'; x: number; y: number; z: number }
+  | { k: 'fort'; what: 'reinforce' | 'barricade'; stage: 'start' | 'unfold' | 'anchor' | 'break'; x: number; y: number; z: number };
+export interface BreachScene {
+  /** Subscribes to the cosmetic event stream; returns the unsubscribe. */
+  onCosmetic(fn: (e: CosmeticEvent) => void): () => void;
+  render(view: SceneView): void;
+  handle(events: readonly SimEvent[], m: Match, self: number): void;
+  resize(width: number, height: number): void;
+  setQuality(q: QualityId): void;
+  /** Screen position (0 to 1) of a world point, and whether it is in front of the camera. */
+  /** Screen position (0 to 1) of a world point; the result is reused by the next call. */
+  project(x: number, y: number, z: number): { x: number; y: number; front: boolean };
+  /** Where the camera is and which way it faces, for sound. */
+  readonly ear: { x: number; y: number; z: number; yaw: number };
+  readonly stats: { calls: number; triangles: number; scale: number; level: number; artTier?: string; gpu?: string; software?: boolean; size?: string; auto?: string; post?: string; art?: string; cpu?: number; programs?: number; textures?: number; geometries?: number; ready?: boolean };
+  dispose(): void;
+}
+
+const smooth = (t: number) => t * t * (3 - 2 * t);
+/** True when WebGL is drawn by a CPU rasteriser (SwiftShader, llvmpipe), as on a machine with no usable GPU. */
+function gpuName(renderer: THREE.WebGLRenderer): string {
+  const gl = renderer.getContext(), info = gl.getExtension('WEBGL_debug_renderer_info');
+  return String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '');
+}
+function softwareGL(renderer: THREE.WebGLRenderer): boolean { return /swiftshader|llvmpipe|softpipe|software/i.test(gpuName(renderer)); }
+/** The full art tier only for a clearly strong graphics card (a discrete NVIDIA, AMD or Intel Arc card, or Apple
+ * M-series) and not on ChromeOS, a phone or tablet, or software; everything else gets the light tier at start. */
+function strongGPU(renderer: THREE.WebGLRenderer): boolean {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  if (/CrOS|Android|iPhone|iPad|Mobile/i.test(ua) || softwareGL(renderer)) return false;
+  return /nvidia|geforce|rtx|gtx|quadro|radeon\s*(\(tm\)\s*)?(rx|pro)|apple m\d|intel.*arc/i.test(gpuName(renderer));
+}
+
+export function createScene(canvas: HTMLCanvasElement, initial: QualityId): BreachScene {
+  // The arcade's adaptive text ink samples a game canvas by drawing it into a 2D canvas and reading the pixels back
+  // every 140 ms. For a WebGL game that is a full GPU stall each time (149 ms of every frame in the profile). Marked
+  // textured, the HUD takes the fixed white ink with a halo and the canvas is never read back.
+  canvas.dataset.glassInk = 'textured';
+  // No antialias buffer on the canvas: the post chain multisamples its own target, and the canvas only takes the composite.
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, alpha: false });
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.autoClear = false;
+  const scene = new THREE.Scene();
+  const HORIZON = new THREE.Color(0xd9a37a);
+  scene.fog = new THREE.Fog(HORIZON, 50, 260);
+  const camera = new THREE.PerspectiveCamera(64, 16 / 9, 0.08, 600);
+  camera.rotation.order = 'YXZ';
+  let quality = initial, scale = QUALITIES[initial].max, width = 1, height = 1, slow = 0, fast = 0, frameMs = 16;
+
+  // ---- Level ----
+  const bake: Bake = createBake();
+  const aniso = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+  const textures = makeTextures(aniso);
+  const materials = {} as Record<TexId, THREE.Material>;
+  for (const id of Object.keys(textures) as TexId[]) materials[id] = new THREE.MeshBasicMaterial({ map: textures[id], vertexColors: true });
+  let level = buildLevel(bake, materials);
+  scene.add(level.group);
+  // The asset renderer's rooms draw first, in a scene with no run-time lights (their light is baked).
+  const artScene = new THREE.Scene();
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blScenes: { scene, artScene, camera: () => camera } });
+  artScene.fog = scene.fog;
+  let art: ArtWorld | null = null, disposed = false, probesDone = true, pieces: SetPieces | null = null, breakables: Breakables | null = null;
+  const fxFast = typeof location !== 'undefined' && /artdbg=[^&]*fxfast/.test(location.search);
+  const panelMats: PanelMaterials = { wall: materials.drywall, core: materials.core, planks: materials.planks, plate: materials.plate };
+  const panelGroup = new THREE.Group(); scene.add(panelGroup);
+  let world: World | null = null, panels: PanelView[] = [];
+  /** Whole panels join the wall batches at a round's start (and when a world is bound), not during it. */
+  let rejoin = true;
+  // Undamaged panels sharing a material draw as one merged mesh (render/panelbatch.ts).
+  let batches = new PanelBatches(panelGroup);
+  function bind(w: World) {
+    for (const p of panels) { panelGroup.remove(p.mesh); p.dispose(); }
+    batches.dispose(); batches = new PanelBatches(panelGroup); rejoin = true;
+    world = w;
+    // `?artdbg=world` exposes the bound world to evidence scripts (read-only use: finding damaged or reinforced panels).
+    if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) (window as unknown as { __blWorld: World }).__blWorld = w;
+    panels = w.panels.map((p, i) => { const v = new PanelView(p, bake, panelMats, art?.panelLook(i) ?? null); panelGroup.add(v.mesh); return v; });
+    buildPortals(w);
+  }
+  // Photo-sourced rooms stream in after the first frame; until then, and if anything fails, the procedural look stays.
+  const artOff = typeof location !== 'undefined' && /[?&]art=off\b/.test(location.search);
+  let artLabel = 'off';
+  if (!artOff) {
+    // A software rasteriser (no usable GPU) gets the light art tier, the same as the Low setting: the full one costs it
+    // seconds of CPU while it streams in. `?arttier=` forces either, for evidence renders.
+    const forced = /[?&]arttier=(low|high)\b/.exec(location.search)?.[1];
+    const artTier = forced ?? (initial !== 'low' && strongGPU(renderer) ? 'high' : 'low');
+    artLabel = artTier === 'high' ? 'full' : 'light';
+    loadArtWorld(renderer, artTier as 'low' | 'high', textures, () => {}).then(a => {
+      if (disposed) { a.dispose(); return; }
+      // Compile the art's shaders before it joins the scene, so the frame that first draws it does not freeze.
+      const tW = performance.now();
+      return a.warm(renderer, camera, artScene, post.tier === 'high' ? 4 : 0).catch(() => {}).then(() => {
+        if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: warm ${(performance.now() - tW).toFixed(0)} ms`);
+        return a;
+      });
+    }).then(a => {
+      if (!a) return;
+      if (disposed) { a.dispose(); return; }
+      art = a;
+      const tI = performance.now();
+      scene.remove(level.group);
+      level.group.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.isMesh) mesh.geometry.dispose(); });
+      level = buildLevel(bake, materials, a.claim);
+      scene.add(level.group);
+      artScene.add(a.group);
+      if (cheap) shade(true);
+      // Nothing in the art or the level moves: their world matrices are set once, not walked every frame.
+      artScene.updateMatrixWorld(true); artScene.matrixWorldAutoUpdate = false;
+      level.group.updateMatrixWorld(true); level.group.matrixWorldAutoUpdate = false;
+      tagRooms(artScene); tagRooms(level.group);
+      pieces = new SetPieces(fx, (x, z) => { const l = bake.probe(x, z); return [0.18 + l[0] * 1.9, 0.18 + l[1] * 1.9, 0.18 + l[2] * 1.9]; });
+      scene.add(pieces.mesh);
+      // Breakable dressing (render/breakables.ts): screens, lights, glass, mugs, bins, leaves, ceiling fittings.
+      breakables = new Breakables(fx, a); scene.add(breakables.group);
+      if (/artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blBreak: breakables, __blArt: a, __blRooms: MAP.rooms });
+      breakables.onBreak = (role, x, y, z) => {
+        if (!cosmetic.size) return;
+        if (role === 'glass') { evGlass.stage = 'shatter'; evGlass.x = x; evGlass.y = y; evGlass.z = z; emit(evGlass); return; }
+        evPiece.family = role; evPiece.state = 'wrecked'; evPiece.x = x; evPiece.y = y; evPiece.z = z; emit(evPiece);
+      };
+      pieces.onState = (i, s) => {
+        a.pieceState(i, s);
+        if (!s || !cosmetic.size) return;
+        const p = SET_PIECES[i]; evPiece.family = p.family; evPiece.state = s === 2 ? 'wrecked' : 'damaged'; evPiece.x = (p.x0 + p.x1) / 2; evPiece.y = p.y1 / 2; evPiece.z = (p.z0 + p.z1) / 2; emit(evPiece);
+      };
+      if (/artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blPieces: pieces, __blPieceView: SetPieces.view, __blPieceDefs: SET_PIECES });
+      if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: integrate ${(performance.now() - tI).toFixed(0)} ms`);
+      probesDone = false;
+      stats.level = level.triangles + a.stats.triangles;
+      if (world) bind(world);
+    }).catch(e => { console.warn('Breachline art unavailable; using the procedural look.', e); }).finally(() => { void warmRest(); });
+  } else queueMicrotask(() => { void warmRest(); });
+  /** After the art: compile and upload everything that otherwise appears first in a fight (the weapon in hand, the
+   * fighters, the effects), with the match's lights in place, so nothing is built during play. Then `stats.ready`. */
+  async function warmRest() {
+    const tick = (ms = 0) => new Promise(res => setTimeout(res, ms));
+    for (let i = 0; i < 600 && !disposed; i++) { if (viewmodel.warm()) break; await tick(100); }
+    if (disposed) return;
+    await tick();
+    try { await fighters.warm(renderer, camera); } catch (e) { console.warn('Breachline fighters warm-up failed', e); }
+    if (disposed) return;
+    const prev = renderer.getRenderTarget(), hdr = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true, samples: post.tier === 'high' ? 2 : 0 });
+    camera.layers.enableAll(); untag(); // every room and mesh, whatever the room culling last chose
+    fx.prime(true);
+    // Every material a damaged wall can show (cut edges, cavity, studs, planks, plate): an intact wall draws only its
+    // face, so without this the first bullet hole would compile them. A tiny triangle with the panels' attributes each.
+    const wallMats = new Set<THREE.Material>(Object.values(panelMats));
+    if (art) for (let i = 0; i < MAP.panels.length; i++) { const l = art.panelLook(i); if (l) { wallMats.add(l.wall); if (l.wallBack) wallMats.add(l.wallBack); if (l.planks) wallMats.add(l.planks); if (l.plate) wallMats.add(l.plate); } }
+    const tri = new THREE.BufferGeometry();
+    tri.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1e-3, 0, 0, 0, 1e-3, 0], 3));
+    tri.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+    tri.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1], 2));
+    tri.setAttribute('color', new THREE.Float32BufferAttribute([1, 1, 1, 1, 1, 1, 1, 1, 1], 3));
+    const wallWarm = new THREE.Group();
+    for (const m of wallMats) { const mesh = new THREE.Mesh(tri, m); mesh.frustumCulled = false; wallWarm.add(mesh); }
+    camera.updateMatrixWorld(); wallWarm.position.copy(camera.localToWorld(new THREE.Vector3(0, 0, -1))); fx.group.add(wallWarm); shade(cheap);
+    // The gadgets are hidden until used (charges, the uplink, grenades, the pulse ring): show them for this draw too.
+    const gadgets: THREE.Object3D[] = [device, pulse, ...chargeMeshes, ...nades.map(n => n.mesh)];
+    const kept = gadgets.map(o => [o.visible, o.position.clone()] as const);
+    for (const o of gadgets) { o.visible = true; o.position.copy(wallWarm.position); o.updateMatrixWorld(true); }
+    // Three compiles only what is visible: show every hidden mesh (far rooms, damage states, LOD levels) meanwhile.
+    const hidden: THREE.Object3D[] = [];
+    for (const root of [scene, artScene]) root.traverse(o => { if (!o.visible) { hidden.push(o); o.visible = true; } });
+    try {
+      renderer.setRenderTarget(hdr);
+      const done = Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(artScene, camera)]);
+      renderer.setRenderTarget(prev);
+      await done;
+      // One real draw, so the flash's and the walls' textures are uploaded too.
+      for (const o of hidden) o.visible = false;
+      renderer.setRenderTarget(hdr); renderer.render(scene, camera); renderer.setRenderTarget(prev);
+      for (const o of hidden) o.visible = true;
+      // The other shading path too (cheap or full), so a quality step in play never compiles a shader.
+      const was = cheap;
+      shade(!was);
+      renderer.setRenderTarget(hdr);
+      const both = Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(artScene, camera)]);
+      renderer.setRenderTarget(prev);
+      await both;
+      // The bottom step (and so software WebGL) draws straight to the screen with no post pass, on the cheap path:
+      // compile that output too.
+      shade(true); renderer.setRenderTarget(null);
+      const direct = Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(artScene, camera)]);
+      await direct;
+      shade(was);
+      // Some drivers finish linking a program only when it is first used: use each one now, not in a fight.
+      for (const p of renderer.info.programs ?? []) { p.getUniforms(); p.getAttributes(); }
+    } finally {
+      for (const o of hidden) o.visible = false;
+      gadgets.forEach((o, i) => { o.visible = kept[i][0]; o.position.copy(kept[i][1]); o.updateMatrixWorld(true); });
+      fx.prime(false); fx.group.remove(wallWarm); tri.dispose(); renderer.setRenderTarget(prev); hdr.dispose(); }
+    stats.ready = true;
+  }
+
+  // ---- Sky, sun and a far skyline (late afternoon, matching the bake's sun) ----
+  const skyCanvas = document.createElement('canvas'); skyCanvas.width = 4; skyCanvas.height = 256;
+  const sg = skyCanvas.getContext('2d')!, grad = sg.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, '#2f5d99'); grad.addColorStop(0.3, '#6b93c4'); grad.addColorStop(0.44, '#b8cbdc'); grad.addColorStop(0.5, '#e4e2d6'); grad.addColorStop(0.53, '#8c8a84'); grad.addColorStop(1, '#46464a');
+  sg.fillStyle = grad; sg.fillRect(0, 0, 4, 256);
+  const skyTex = new THREE.CanvasTexture(skyCanvas); skyTex.colorSpace = THREE.SRGBColorSpace;
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(450, 20, 12), new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false, toneMapped: false }));
+  sky.renderOrder = -10; scene.add(sky);
+  const sunTex = makeSprite('puff');
+  const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTex, color: 0xfff1d6, blending: THREE.AdditiveBlending, fog: false, depthWrite: false, toneMapped: false }));
+  sun.scale.setScalar(150); sun.renderOrder = -9; scene.add(sun);
+  {
+    let seed = 91; const rnd = () => { seed = (seed * 1664525 + 1013904223) | 0; return ((seed >>> 8) & 0xffff) / 65536; };
+    const parts = [];
+    for (let i = 0; i < 46; i++) { const a = i / 46 * Math.PI * 2 + rnd() * 0.1, r = 120 + rnd() * 70, h = 8 + rnd() * 26, w = 14 + rnd() * 22; parts.push({ s: [w, h, w * (0.6 + rnd() * 0.6)] as [number, number, number], p: [Math.cos(a) * r, h / 2, Math.sin(a) * r] as [number, number, number], c: 0x3e4554 + (Math.floor(rnd() * 3) * 0x050505), r: [0, a, 0] as [number, number, number] }); }
+    // Backdrop buildings: walls shaded by which way they face, rows of dark windows above the ground floor, darker
+    // roofs; the scene's fog hazes them back. Window bands come from the world position (the boxes are in world space).
+    const skyMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+    skyMat.onBeforeCompile = sh => {
+      sh.vertexShader = 'varying vec3 vSkyP; varying vec3 vSkyN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvSkyP = position; vSkyN = normal;');
+      sh.fragmentShader = 'varying vec3 vSkyP; varying vec3 vSkyN;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+{ vec3 n = normalize( vSkyN );
+  if ( n.y < 0.5 ) {
+    float u = dot( vSkyP.xz, normalize( vec2( -n.z, n.x ) ) ), fy = fract( vSkyP.y / 3.4 ), fu = fract( u / 2.6 );
+    float win = step( 0.42, fy ) * step( fy, 0.82 ) * step( 0.22, fu ) * step( fu, 0.8 ) * step( 3.0, vSkyP.y );
+    diffuseColor.rgb *= 0.78 + 0.22 * abs( n.x );
+    diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * 0.5 + vec3( 0.05, 0.06, 0.08 ), win );
+  } else diffuseColor.rgb *= 0.8;
+}`);
+    };
+    skyMat.customProgramCacheKey = () => 'skyline';
+    const skyline = new THREE.Mesh(boxes(parts), skyMat);
+    skyline.matrixAutoUpdate = false; scene.add(skyline);
+  }
+
+  // ---- Lights: only fighters, gadgets and the weapon in hand are lit at run time ----
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x8a847c, 1.5), key = new THREE.DirectionalLight(0xfff0dd, 0.9);
+  key.position.set(SUN.x, SUN.y + 0.5, SUN.z); scene.add(hemi, key);
+
+  // ---- Fighters and the weapon in hand (render/hero) ----
+  const heroLighting: HeroLighting = {
+    probe(x, _y, z) { const l = bake.probe(x, z); return { color: [l[0], l[1], l[2]] }; },
+    environment(x, z) { return art?.environment(x, z) ?? null; },
+    environmentScale(x, z) { return art?.environmentScale(x, z) ?? 1; },
+    sun: { x: SUN.x, y: SUN.y, z: SUN.z, color: SUN_COLOR },
+  };
+  // The Patch-asset soldiers are the default (they fall back to the stock ones if an asset fails to load);
+  // `?fighters=stock` keeps the old ones for comparison. `?weapons=patch` opts into the Patch viewmodel.
+  const opts = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
+  const fighters = opts.get('fighters') === 'stock' ? createFighters(scene, heroLighting) : createPatchFighters(scene, heroLighting);
+  const viewmodel = opts.get('weapons') === 'patch' ? createPatchViewmodel(renderer, heroLighting) : createViewmodel(renderer, heroLighting);
+  const v3 = new THREE.Vector3(), projected = { x: 0, y: 0, front: false };
+
+  // ---- Gadgets and markers ----
+  const lambert = new THREE.MeshLambertMaterial({ vertexColors: true });
+  // The uplink: the case (lit like the charges), a screen and progress bar drawn bright, three status lights, a glow
+  // over the screen and a pool of its light on the floor; all tinted by the device's state, nothing redrawn.
+  const dev = deviceGeometry(), screenTex = deviceScreenTexture(), devMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.1 });
+  const glowBasic = (map: THREE.Texture | null, extra: THREE.MeshBasicMaterialParameters = {}) => new THREE.MeshBasicMaterial({ map, toneMapped: false, ...extra });
+  const devScreen = glowBasic(screenTex), devBar = glowBasic(null), devLeds = [0, 1, 2].map(() => glowBasic(null));
+  const device = new THREE.Group();
+  device.add(new THREE.Mesh(dev.body, devMat), new THREE.Mesh(dev.screen, devScreen));
+  const barMesh = new THREE.Mesh(dev.bar, devBar); barMesh.position.x = -0.13; device.add(barMesh);
+  dev.leds.forEach((g, i) => device.add(new THREE.Mesh(g, devLeds[i])));
+  const devGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeSprite('puff'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }));
+  devGlow.position.set(0, 0.36, 0.05); devGlow.scale.setScalar(1); device.add(devGlow);
+  const poolGeo = new THREE.PlaneGeometry(1, 1); poolGeo.rotateX(-Math.PI / 2);
+  const devPool = new THREE.Mesh(poolGeo, new THREE.MeshBasicMaterial({ map: makeSprite('puff'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }));
+  devPool.position.set(0, 0.012, 0.25); devPool.scale.setScalar(2.6); devPool.renderOrder = 2; device.add(devPool);
+  device.visible = false; scene.add(device);
+  const ringTex = makeSprite('ring');
+  const ringGeo = new THREE.PlaneGeometry(1, 1); ringGeo.rotateX(-Math.PI / 2);
+  const pulse = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ map: ringTex, color: 0xff5a3c, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  pulse.visible = false; pulse.renderOrder = 3; scene.add(pulse);
+  // The LED is drawn bright enough to bloom; the charge itself is lit like the fighters (hemisphere and key light).
+  const led = new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 0.12, 0.06).multiplyScalar(6), toneMapped: false });
+  const kitMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0 });
+  const { body: chargeGeo, led: ledGeo } = chargeGeometry();
+  const chargeMeshes: THREE.Group[] = [];
+  // Each charge has its own copy of the material (same shader), tinted by the baked light where it sits, so it is lit
+  // like the wall behind it rather than only by the scene's two run-time lights.
+  const kitMats: THREE.MeshStandardMaterial[] = [];
+  for (let i = 0; i < 6; i++) { const mm = kitMat.clone(); kitMats.push(mm); const g = new THREE.Group(), l = new THREE.Mesh(ledGeo, led); g.add(new THREE.Mesh(chargeGeo, mm), l); g.visible = false; scene.add(g); chargeMeshes.push(g); }
+  const nadeGeo = [boxes([{ s: [0.07, 0.1, 0.07], p: [0, 0, 0], c: 0x39452f }, { s: [0.03, 0.04, 0.03], p: [0, 0.07, 0], c: 0x8a8d90 }]), boxes([{ s: [0.065, 0.13, 0.065], p: [0, 0, 0], c: 0x2a2d30 }, { s: [0.07, 0.03, 0.07], p: [0, 0.03, 0], c: 0xe0b020 }])];
+  const nades: { mesh: THREE.Mesh; id: number }[] = [];
+  for (let i = 0; i < 6; i++) { const mesh = new THREE.Mesh(nadeGeo[0], lambert); mesh.visible = false; scene.add(mesh); nades.push({ mesh, id: -1 }); }
+  // Site letters painted on the floor.
+  const siteTex: THREE.Texture[] = [];
+  MAP.sites.forEach(site => {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const g = c.getContext('2d')!;
+    g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 12; g.beginPath(); g.arc(128, 128, 112, 0, 7); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.9)'; g.font = 'bold 170px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(site.id, 128, 138);
+    // Worn floor paint: scuffed out in small patches, but the marker stays clearly readable.
+    let seed = site.id.charCodeAt(0) * 977;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    g.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(0,0,0,${0.25 + rnd() * 0.5})`; g.beginPath(); g.ellipse(rnd() * 256, rnd() * 256, 1 + rnd() * 5, 1 + rnd() * 2.5, rnd() * 3, 0, 7); g.fill(); }
+    g.globalCompositeOperation = 'source-over';
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; siteTex.push(t);
+    const mesh = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ map: t, color: 0xf2c23a, transparent: true, opacity: 0.85, depthWrite: false }));
+    mesh.position.set((site.x0 + site.x1) / 2, 0.035, (site.z0 + site.z1) / 2 + (site.id === 'A' ? 2 : -0.2)); mesh.scale.setScalar(1.8); mesh.renderOrder = 2; scene.add(mesh);
+  });
+
+  const fx = new Effects();
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blFx: fx, __blRenderer: renderer, __blScene: scene });
+  // Window panes outside the barricaded windows (render/glass.ts): cosmetic, from the shot and blast events.
+  const glass = new Glass(fx); scene.add(glass.group);
+  glass.onEvent = (stage, x, y, z) => { if (!cosmetic.size) return; evGlass.stage = stage; evGlass.x = x; evGlass.y = y; evGlass.z = z; emit(evGlass); };
+  // The map-fill set pieces (render/setpieces.ts): modelled in three damage states, from the shot and blast events.
+  // They join with the art layer, which leaves their placeholder boxes out.
+  fx.density = QUALITIES[quality].density;
+  scene.add(fx.group);
+
+  let exposure = 0;
+  // Post-processing by quality: the throttled setting keeps the grade and an edge pass but no bloom.
+  const postTier = (q: QualityId): PostTier => (q === 'low' ? 'low' : q === 'high' ? 'high' : 'medium');
+  const post = createPost(renderer, /[?&]post=off\b/.test(typeof location !== 'undefined' ? location.search : '') ? 'off' : postTier(initial));
+  const drawSize = new THREE.Vector2();
+
+  const ear = { x: 0, y: 1.6, z: 0, yaw: 0 };
+  const stats: BreachScene['stats'] = { calls: 0, triangles: 0, scale, level: level.triangles, artTier: artLabel };
+  // The graphics card's name, for the performance readout; a CPU rasteriser is flagged.
+  { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info');
+    stats.gpu = String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '');
+    stats.software = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(stats.gpu); }
+  let orbit = 0, lastOrigin = { x: 0, y: 1, z: 0 }, time = 0;
+  const cam = { x: 0, y: 12, z: 30, yaw: 0, pitch: -0.3, set: false };
+
+  // Resizing the canvas reallocates its drawing buffer (a GPU stall). With post-processing on, the canvas stays at full
+  // size and the render scale only moves the HDR target's viewport, which never reallocates; without it, the canvas
+  // is resized, and adapt() does that at most once every few seconds.
+  let sized = '';
+  function applySize() {
+    const q = QUALITIES[quality], graded = post.tier !== 'off', ratio = Math.min(window.devicePixelRatio || 1, q.cap) * (graded ? 1 : scale), key = `${width}x${height}@${ratio}`;
+    if (key !== sized) { sized = key; renderer.setPixelRatio(ratio); renderer.setSize(width, height, false); }
+    renderer.getDrawingBufferSize(drawSize);
+    const rw = Math.max(1, Math.round(drawSize.x * (graded ? scale : 1))), rh = Math.max(1, Math.round(drawSize.y * (graded ? scale : 1)));
+    post.setSize(rw, rh);
+    stats.scale = scale; stats.size = `${rw}x${rh}`;
+  }
+  let resizedAt = -Infinity;
+  /** Lowers the resolution when frames run long and raises it again when there is headroom. */
+  // Auto: a ladder from cheap to rich. It starts near the cheap end, steps down at once when frames run long (over
+  // 20 ms, averaged over half a second), and climbs one step only after 3 s at full rate and never within 10 s of a
+  // step down. A software rasteriser stays on the bottom step. The bottom step has no post pass (it draws straight to
+  // the screen, cheap shading, scale by canvas size); the others keep post on, so their scale only moves a viewport.
+  // Every output is compiled at warm-up, so no step compiles a shader.
+  const LADDER: { scale: number; post: PostTier; density: number }[] = [
+    { scale: 0.5, post: 'off', density: 0.35 }, { scale: 0.62, post: 'low', density: 0.6 }, { scale: 0.72, post: 'medium', density: 0.8 },
+    { scale: 0.85, post: 'medium', density: 1 }, { scale: 1, post: 'medium', density: 1 },
+  ];
+  let step = 1, downAt = -Infinity, longMs = 0, fullFor = 0;
+  // The cheap shading path (render/materials.ts cheapTwin): on the bottom step of Auto, on Performance, and so always on
+  // a software rasteriser.
+  let cheap = false;
+  // ---- Room culling: draw only the camera's room and the rooms seen through openings that are in view ----
+  // Each static mesh of the level, the art rooms and the panels is put on the camera layers of the rooms its bounds
+  // touch (layer i + 1 for REGIONS[i]); anything untagged stays on layer 0 and is always drawn (fighters, effects, the
+  // sky, meshes made later). Each frame the camera's layers are the rooms reached from its own through portals
+  // (doorways, windows, holes in walls) that lie in the view, up to four rooms deep. `?cull=off` draws everything.
+  const cullOff = typeof location !== 'undefined' && /[?&]cull=off\b/.test(location.search);
+  const tagBox = new THREE.Box3(), EXTERIOR = 1 << 30;
+  /** Every tagged mesh: its rooms (layer mask) and world bounds. */
+  const tags = new Map<THREE.Object3D, { mask: number; box: THREE.Box3 }>();
+  /** The single-room meshes by room, and those the opening test hid this frame. */
+  const byRoom = new Map<number, Map<THREE.Object3D, { mask: number; box: THREE.Box3 }>>(), hiddenNow: THREE.Object3D[] = [];
+  /** Puts every tagged mesh back on all its rooms' layers (for the probes and the warm-up, which see everything). */
+  function untag() { tags.forEach((t, o) => { o.layers.mask = t.mask; }); }
+  /** The light tier's far rooms (render/artworld.ts): room index to its one merged mesh, shown instead of the room
+   * when it is seen through an opening more than FAR metres away. Off until the culling chooses them. */
+  const farMeshes = new Map<number, THREE.Object3D>(), FAR = 16, FAR_SHIFT = 12;
+  /** `both`: things that stay drawn in a far room too (panels, so breach holes show; props). */
+  function tagRooms(root: THREE.Object3D, both = false) {
+    if (cullOff) { root.traverse(o => { if (o.userData.farRoom !== undefined) o.visible = false; }); return; }
+    root.updateMatrixWorld(true);
+    root.traverse(o => {
+      if (o.userData.farRoom !== undefined) { farMeshes.set(o.userData.farRoom as number, o); o.visible = false; return; }
+      if (!(o as THREE.Mesh).isMesh || (o as THREE.SkinnedMesh).isSkinnedMesh) return;
+      tagBox.setFromObject(o);
+      if (tagBox.isEmpty()) return;
+      let mask = 0;
+      // Thin things (walls, panels) belong to the rooms on both sides; anything else to the rooms that hold a fair
+      // share of its footprint (a room's merged mesh touches its neighbours only along the shared wall).
+      const w = tagBox.max.x - tagBox.min.x, d = tagBox.max.z - tagBox.min.z, thin = Math.min(w, d) < 0.6, area = Math.max(1e-4, w * d);
+      REGIONS.forEach((r, i) => {
+        if (thin) { if (tagBox.max.x > r.x0 - 0.25 && tagBox.min.x < r.x1 + 0.25 && tagBox.max.z > r.z0 - 0.25 && tagBox.min.z < r.z1 + 0.25) mask |= 1 << (i + 1); return; }
+        const ox = Math.min(tagBox.max.x, r.x1) - Math.max(tagBox.min.x, r.x0), oz = Math.min(tagBox.max.z, r.z1) - Math.max(tagBox.min.z, r.z0);
+        if (ox > 0 && oz > 0 && ox * oz > 0.15 * area) mask |= 1 << (i + 1);
+      });
+      // An indoor room's outside surfaces (its roof, outer brick, the ground under its floor) are seen only from outside.
+      const outside = /^art:([a-z]+):(asphalt|line|grass|brick|roof|precast|concrete|container)$/.exec(o.name);
+      if (outside && !OUTDOOR.has(outside[1])) mask = EXTERIOR;
+      // Panels and props stay drawn when their room is far (on its far layer as well).
+      let lod = false; for (let p = o.parent; p && !lod; p = p.parent) lod = (p as THREE.LOD).isLOD === true;
+      if (mask && mask !== EXTERIOR && (both || lod)) mask |= mask << FAR_SHIFT;
+      if (mask) {
+        o.layers.mask = mask; const t = { mask, box: tagBox.clone() }; tags.set(o, t);
+        // A mesh of one room only can be culled against that room's opening: listed under it.
+        const near = mask & ((1 << (FAR_SHIFT + 1)) - 2);
+        if (mask !== EXTERIOR && near && (near & (near - 1)) === 0) { const r = Math.log2(near) - 1; let list = byRoom.get(r); if (!list) byRoom.set(r, list = new Map()); list.set(o, t); }
+      }
+    });
+  }
+  interface Portal { box: THREE.Box3; a: number; b: number; panel: Panel }
+  let portals: Portal[] = [];
+  const regionAt = (x: number, z: number) => REGIONS.findIndex(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
+  function buildPortals(w: World) {
+    portals = [];
+    for (const p of w.panels) {
+      const mid = p.u0 + p.cols * CELL / 2, at = (side: number) => (p.axis === 'x' ? regionAt(mid, p.pos + side * 0.4) : regionAt(p.pos + side * 0.4, mid));
+      const a = at(1), b = at(-1);
+      if (a < 0 || b < 0 || a === b) continue;
+      const u1 = p.u0 + p.cols * CELL, y1 = p.y0 + p.rows * CELL;
+      const box = p.axis === 'x' ? new THREE.Box3(new THREE.Vector3(p.u0, p.y0, p.pos - 0.2), new THREE.Vector3(u1, y1, p.pos + 0.2)) : new THREE.Box3(new THREE.Vector3(p.pos - 0.2, p.y0, p.u0), new THREE.Vector3(p.pos + 0.2, y1, u1));
+      portals.push({ box, a, b, panel: p });
+    }
+  }
+  // Each room reached carries the screen rectangle it is seen through (NDC); a portal opens the next room only where its
+  // own projected rectangle overlaps that one, and the next room is seen through the overlap.
+  const viewProj = new THREE.Matrix4(), corner = new THREE.Vector4(), rects = new Float32Array(32 * 4), reach = new Int8Array(32), queue: number[] = [];
+  function project(b: THREE.Box3, out: number[]) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, behind = 0;
+    for (let k = 0; k < 8; k++) {
+      corner.set(k & 1 ? b.max.x : b.min.x, k & 2 ? b.max.y : b.min.y, k & 4 ? b.max.z : b.min.z, 1).applyMatrix4(viewProj);
+      if (corner.w <= 0.05) { behind++; continue; }
+      const x = corner.x / corner.w, y = corner.y / corner.w;
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+    }
+    // Wholly behind the eye: not seen. Partly behind (the eye is at the opening): it may fill the screen.
+    if (behind === 8) { out[0] = out[1] = 1; out[2] = out[3] = -1; return; }
+    if (behind) { out[0] = -1; out[1] = -1; out[2] = 1; out[3] = 1; return; }
+    out[0] = x0; out[1] = y0; out[2] = x1; out[3] = y1;
+  }
+  const pr = [0, 0, 0, 0];
+  let cullLog: string[] | null = null;
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blCullLog: (on: boolean) => { cullLog = on ? [] : null; return () => cullLog; } });
+  /** Whether room `i` draws as its merged mesh (light tier only): its nearest point beyond FAR metres. By distance
+   * only (a room two openings away can still be close), and never an outdoor region, so the yard's ground keeps its
+   * texture and markings however far it reaches. */
+  function isFar(i: number) {
+    if (!farMeshes.has(i) || OUTDOOR.has(REGIONS[i].name)) return false;
+    const r = REGIONS[i], x = camera.position.x, z = camera.position.z;
+    return Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1)) > FAR;
+  }
+  function cullRooms() {
+    if (cullOff || !portals.length) { camera.layers.enableAll(); farMeshes.forEach(m => { m.visible = false; }); return; }
+    const home = regionAt(camera.position.x, camera.position.z);
+    if (home < 0) { camera.layers.enableAll(); untag(); farMeshes.forEach(m => { m.visible = false; }); return; }
+    camera.updateMatrixWorld(); viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    reach.fill(-1); reach[home] = 0; queue.length = 0; queue.push(home);
+    rects[home * 4] = -1; rects[home * 4 + 1] = -1; rects[home * 4 + 2] = 1; rects[home * 4 + 3] = 1;
+    let mask = 1 | (1 << (home + 1)) | (OUTDOOR.has(REGIONS[home].name) || camera.position.y > 2.6 ? EXTERIOR : 0);
+    while (queue.length) {
+      const r = queue.shift()!;
+      if (reach[r] >= 4) continue;
+      for (const p of portals) {
+        if (p.a !== r && p.b !== r) continue;
+        const o = p.a === r ? p.b : p.a;
+        // An intact wall panel (or a reinforced one) blocks sight; a hole in it is an opening from the frame it appears.
+        // Doors and windows are always openings: a barricade's boards have gaps the far side shows through.
+        if ((p.panel.kind === 'wall' || p.panel.reinforced) && p.panel.intact === p.panel.cells.length) continue;
+        project(p.box, pr);
+        const x0 = Math.max(pr[0], rects[r * 4]), y0 = Math.max(pr[1], rects[r * 4 + 1]), x1 = Math.min(pr[2], rects[r * 4 + 2]), y1 = Math.min(pr[3], rects[r * 4 + 3]);
+        if (x0 >= x1 || y0 >= y1) continue;
+        if (cullLog) cullLog.push(`${REGIONS[r].name}>${REGIONS[o].name} ${p.panel.kind} [${pr.map(v => v.toFixed(2))}] in [${[0, 1, 2, 3].map(k => rects[r * 4 + k].toFixed(2))}]`);
+        if (reach[o] < 0) { reach[o] = reach[r] + 1; mask |= isFar(o) ? 1 << (o + 1 + FAR_SHIFT) : 1 << (o + 1); queue.push(o); rects[o * 4] = x0; rects[o * 4 + 1] = y0; rects[o * 4 + 2] = x1; rects[o * 4 + 3] = y1; }
+        else { rects[o * 4] = Math.min(rects[o * 4], x0); rects[o * 4 + 1] = Math.min(rects[o * 4 + 1], y0); rects[o * 4 + 2] = Math.max(rects[o * 4 + 2], x1); rects[o * 4 + 3] = Math.max(rects[o * 4 + 3], y1); }
+      }
+    }
+    camera.layers.mask = mask;
+    farMeshes.forEach((m, i) => { m.visible = !!(mask & (1 << (i + 1 + FAR_SHIFT))); });
+    // Inside a room seen through an opening, a mesh of that room alone is drawn only if it shows through the opening.
+    if (!probesDone) return;
+    // Only the rooms reached through an opening this frame are visited; what was hidden last frame is put back first.
+    for (const o of hiddenNow) { const t = tags.get(o); if (t) o.layers.mask = t.mask; }
+    hiddenNow.length = 0;
+    byRoom.forEach((list, r) => {
+      if (reach[r] <= 0 || !(mask & (1 << (r + 1)))) return;
+      list.forEach((t, o) => {
+        project(t.box, pr);
+        if (Math.max(pr[0], rects[r * 4]) < Math.min(pr[2], rects[r * 4 + 2]) && Math.max(pr[1], rects[r * 4 + 1]) < Math.min(pr[3], rects[r * 4 + 3])) return;
+        o.layers.mask = 0; hiddenNow.push(o);
+      });
+    });
+  }
+  // ---- Performance experiments (debug only, `?artdbg=world`: window.__blExperiment): each switch changes how the next
+  // frames are drawn, to find where the GPU time goes. Off by default; nothing here runs in a normal game.
+  const experiment: { on?: boolean; flat?: boolean; overdraw?: boolean; prepass?: boolean; noPost?: boolean; noFighters?: boolean; noViewmodel?: boolean; noTransparent?: boolean; noSmall?: boolean; noMap?: boolean; noLightMap?: boolean; noFog?: boolean; lowLod?: boolean; rooms?: { x0: number; z0: number; x1: number; z1: number }[] } = {};
+  const experimentMats = {
+    flat: new THREE.MeshBasicMaterial({ color: 0x808080 }),
+    count: new THREE.MeshBasicMaterial({ color: new THREE.Color(1 / 255, 1 / 255, 1 / 255), blending: THREE.AdditiveBlending, toneMapped: false }),
+    depth: new THREE.MeshBasicMaterial({ colorWrite: false }),
+  };
+  function experimentBegin(X: typeof experiment) {
+    const hidden: THREE.Object3D[] = [], lods: [THREE.LOD, boolean][] = [];
+    const keep = { tm: renderer.toneMapping, cs: renderer.outputColorSpace };
+    const roots = [scene, artScene];
+    for (const r of roots) r.traverse(o => {
+      const mesh = o as THREE.Mesh;
+      if (X.lowLod && (o as THREE.LOD).isLOD) { const l = o as THREE.LOD; lods.push([l, l.autoUpdate]); l.autoUpdate = false; l.levels.forEach((v, i) => { v.object.visible = i === l.levels.length - 1; }); }
+      if (!mesh.material || !o.visible) return;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const tris = mesh.geometry?.index ? mesh.geometry.index.count / 3 : (mesh.geometry?.attributes.position?.count ?? 0) / 3;
+      let hide = (X.noFighters && (o as THREE.SkinnedMesh).isSkinnedMesh) || (X.noTransparent && mats.every(m => m.transparent)) || (X.noSmall && !(o as THREE.InstancedMesh).isInstancedMesh && tris < 300);
+      if (!hide && X.rooms && !(o as THREE.SkinnedMesh).isSkinnedMesh) {
+        const g = mesh.geometry; if (g && !g.boundingSphere) g.computeBoundingSphere();
+        const c = g?.boundingSphere ? g.boundingSphere.center.clone().applyMatrix4(o.matrixWorld) : null;
+        if (c && g!.boundingSphere!.radius < 40) hide = !X.rooms.some(r => c.x > r.x0 && c.x < r.x1 && c.z > r.z0 && c.z < r.z1);
+      }
+      if (hide) { o.visible = false; hidden.push(o); }
+    });
+    const matKeep: [THREE.MeshBasicMaterial, THREE.Texture | null, THREE.Texture | null, boolean][] = [];
+    if (X.noMap || X.noLightMap || X.noFog) {
+      for (const r of roots) r.traverse(o => { const ms = (o as THREE.Mesh).material; if (!ms) return; for (const m of Array.isArray(ms) ? ms : [ms]) {
+        const b = m as THREE.MeshBasicMaterial; if (!m.userData.full || matKeep.some(k => k[0] === b)) continue;
+        matKeep.push([b, b.map, b.lightMap, b.fog]); if (X.noMap) b.map = null; if (X.noLightMap) b.lightMap = null; if (X.noFog) b.fog = false; b.needsUpdate = true; } });
+    }
+    if (X.flat) artScene.overrideMaterial = scene.overrideMaterial = experimentMats.flat;
+    if (X.overdraw) { artScene.overrideMaterial = scene.overrideMaterial = experimentMats.count; renderer.toneMapping = THREE.NoToneMapping; renderer.outputColorSpace = THREE.LinearSRGBColorSpace; }
+    return () => {
+      for (const [b, m, l, f] of matKeep) { b.map = m; b.lightMap = l; b.fog = f; b.needsUpdate = true; }
+      for (const o of hidden) o.visible = true;
+      for (const [l, a] of lods) { l.autoUpdate = a; l.levels.forEach((v, i) => { v.object.visible = i === 0; }); }
+      artScene.overrideMaterial = scene.overrideMaterial = null;
+      renderer.toneMapping = keep.tm; renderer.outputColorSpace = keep.cs;
+    };
+  }
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blExperiment: experiment });
+  if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) Object.assign(window, { __blShade: (on: boolean) => setCheap(on) });
+  function shade(on: boolean) { setCheapShading(artScene, on); setCheapShading(scene, on); }
+  function setCheap(on: boolean) { if (on !== cheap) { cheap = on; shade(on); viewmodel.setCheap?.(on); } }
+  function setStep(n: number) {
+    step = Math.max(0, Math.min(LADDER.length - 1, n));
+    const l = LADDER[step];
+    scale = l.scale; fx.density = l.density; setCheap(step === 0);
+    post.setTier(/[?&]post=off\b/.test(location.search) ? 'off' : l.post);
+    applySize();
+    stats.auto = stats.software ? 'auto: lowest (software)' : `auto ${step + 1}/${LADDER.length}`;
+  }
+  function autoLadder(dt: number) {
+    const ms = dt * 1000;
+    longMs += (ms - longMs) * Math.min(1, dt / 0.5);
+    if (stats.software) { if (step) setStep(0); return; }
+    if (longMs > 20 && step > 0) { setStep(step - 1); downAt = time; longMs = 16; fullFor = 0; return; }
+    fullFor = longMs < 17.5 ? fullFor + dt : 0;
+    if (fullFor > 3 && time - downAt > 10 && step < LADDER.length - 1) { setStep(step + 1); fullFor = 0; }
+  }
+  /** Sharp guards itself: under 40 fps (25 ms, averaged over half a second) for 3 s, the render scale steps down by
+   * 0.1 to no lower than 0.7 (a viewport change only, as on Auto); after 6 s at full rate it steps back up. The post
+   * quality never changes. */
+  let sharpMs = 16, sharpSlow = 0, sharpFast = 0;
+  function sharpGuard(dt: number) {
+    sharpMs += (dt * 1000 - sharpMs) * Math.min(1, dt / 0.5);
+    sharpSlow = sharpMs > 25 ? sharpSlow + dt : 0;
+    sharpFast = sharpMs < 17.5 ? sharpFast + dt : 0;
+    const q = QUALITIES.high;
+    if (sharpSlow > 3 && scale > q.min + 1e-3) { scale = Math.max(q.min, Math.round((scale - 0.1) * 100) / 100); sharpSlow = sharpFast = 0; applySize(); }
+    else if (sharpFast > 6 && scale < q.max - 1e-3) { scale = Math.min(q.max, Math.round((scale + 0.1) * 100) / 100); sharpSlow = sharpFast = 0; applySize(); }
+  }
+  function adapt(dt: number) {
+    if (quality === 'auto') { autoLadder(dt); return; }
+    if (quality === 'high') { sharpGuard(dt); return; }
+    const q = QUALITIES[quality];
+    if (q.min === q.max) return;
+    frameMs += (dt * 1000 - frameMs) * 0.08;
+    const budget = 1000 / Math.min(q.fps, 60);
+    if (frameMs > budget * 1.22) { slow++; fast = 0; } else if (frameMs < budget * 1.06) { fast++; slow = 0; } else slow = fast = 0;
+    if (post.tier === 'off' && time - resizedAt < 4) return;
+    if (slow > 25 && scale > q.min) { scale = Math.max(q.min, scale - 0.1); slow = 0; resizedAt = time; applySize(); }
+    else if (fast > 240 && scale < q.max) { scale = Math.min(q.max, scale + 0.05); fast = 0; resizedAt = time; applySize(); }
+  }
+
+  function updateGadgets(m: Match, dt: number) {
+    const blink = (time * 5) % 1 < 0.5;
+    chargeMeshes.forEach((g, i) => {
+      const c = m.charges[i], panel = c && m.world.panels[c.panel];
+      g.visible = !!panel;
+      if (!c || !panel) return;
+      const at = panelPoint(panel, c.u, c.y, c.side * (panel.kind === 'wall' ? PANEL_T / 2 : 0.035));
+      g.position.set(at.x, at.y, at.z);
+      const lit = bake.probe(at.x, at.z); kitMats[i].color.setRGB(1.2 + lit[0] * 2.4, 1.2 + lit[1] * 2.4, 1.2 + lit[2] * 2.4);
+      g.rotation.y = panel.axis === 'x' ? (c.side > 0 ? 0 : Math.PI) : c.side > 0 ? Math.PI / 2 : -Math.PI / 2;
+      g.children[1].visible = blink;
+    });
+    for (const n of nades) if (n.id >= 0 && !m.grenades.some(g => g.id === n.id)) { n.id = -1; n.mesh.visible = false; }
+    for (const g of m.grenades) {
+      let n = nades.find(v => v.id === g.id);
+      if (!n) { n = nades.find(v => v.id < 0); if (!n) continue; n.id = g.id; n.mesh.geometry = nadeGeo[g.kind === 'frag' ? 0 : 1]; n.mesh.position.set(g.x, g.y, g.z); n.mesh.visible = true; }
+      n.mesh.position.lerp(v3.set(g.x, g.y, g.z), Math.min(1, dt * 30));
+      n.mesh.rotation.x += dt * 9; n.mesh.rotation.z += dt * 6;
+    }
+    device.visible = pulse.visible = !!m.device && m.phase !== 'lobby';
+    if (m.device) {
+      device.position.set(m.device.x, 0, m.device.z);
+      device.rotation.y = ((m.device.x * 7.31 + m.device.z * 3.17) % 1) * 6.283;
+      // State: counting while planted, complete when the uplink went through, shut down when defused; armed otherwise.
+      // Each has its own colour and rhythm: armed breathes slowly (cyan), counting blinks faster as time runs out
+      // (amber), complete holds steady (green), shut down is dark with a single red flash every two seconds.
+      const counting = m.phase === 'planted', done = m.phase !== 'planted' && m.reason === 'uplink', off = m.phase !== 'planted' && m.reason === 'defused';
+      const progress = counting ? Math.min(1, Math.max(0, 1 - m.t / ROUND.fuse)) : done ? 1 : 0;
+      const hue = done ? [0.35, 1, 0.45] : off ? [1, 0.12, 0.08] : counting ? [1, 0.62, 0.16] : [0.3, 0.8, 1];
+      const rate = counting ? (m.t < 10 ? 6 : m.t < 20 ? 3 : 1.5) : 1;
+      const beat = counting ? ((time * rate) % 1 < 0.5 ? 1 : 0.35) : done ? 1 : off ? ((time * 0.5) % 1 < 0.08 ? 1 : 0) : 0.6 + 0.4 * Math.sin(time * 2.2);
+      const k = off ? 0.15 : 3;
+      devScreen.color.setRGB(hue[0] * k, hue[1] * k, hue[2] * k);
+      devBar.color.setRGB(hue[0] * 4, hue[1] * 4, hue[2] * 4); barMesh.scale.x = Math.max(0.001, progress); barMesh.visible = progress > 0;
+      devLeds[0].color.setRGB(off ? 0.05 : 0.3, off ? 0.05 : 5, off ? 0.05 : 0.6);
+      devLeds[1].color.setRGB(hue[0] * 6 * beat, hue[1] * 6 * beat, hue[2] * 6 * beat);
+      devLeds[2].color.setRGB(off ? 8 * beat + 0.05 : 0.05, 0.05, 0.05);
+      const glow = off ? 0.6 * beat : 0.75 * beat;
+      (devGlow.material as THREE.SpriteMaterial).color.setRGB(hue[0] * glow, hue[1] * glow, hue[2] * glow);
+      (devPool.material as THREE.MeshBasicMaterial).color.setRGB(hue[0] * glow * 0.6, hue[1] * glow * 0.6, hue[2] * glow * 0.6);
+      const lit = bake.probe(m.device.x, m.device.z); devMat.color.setRGB(1.2 + lit[0] * 2.4, 1.2 + lit[1] * 2.4, 1.2 + lit[2] * 2.4);
+      const ringRate = m.phase === 'planted' ? (m.t < 10 ? 4 : m.t < 20 ? 2 : 1) : 0, t = (time * ringRate) % 1;
+      pulse.position.set(m.device.x, 0.05, m.device.z); pulse.scale.setScalar(0.6 + t * 3.2);
+      (pulse.material as THREE.MeshBasicMaterial).opacity = ringRate ? 0.8 * (1 - t) : 0;
+    }
+  }
+
+  function place(view: SceneView) {
+    const { m, dt } = view, watched = view.watch >= 0 ? m.players[view.watch] : null;
+    let fov = 64, roll = 0;
+    if (view.menu || !watched || m.phase === 'lobby') {
+      // A slow circuit of the annex.
+      orbit += dt * (view.reduced ? 0 : 0.035);
+      const r = view.menu ? 36 : 30, tx = Math.cos(orbit) * r, tz = Math.sin(orbit) * r * 0.8, ty = view.menu ? 11 : 16;
+      const k = cam.set ? Math.min(1, dt * 2) : 1; cam.set = true;
+      cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k; cam.z += (tz - cam.z) * k;
+      cam.yaw = Math.atan2(cam.x, cam.z); cam.pitch = -Math.atan2(cam.y - 1.5, Math.hypot(cam.x, cam.z));
+      fov = 50;
+    } else {
+      const f = fighters.pose(view.watch), local = view.watch === view.self;
+      const pose = f ? { x: f.x, z: f.z, yaw: local ? view.yaw : f.yaw, crouch: f.crouch, lean: f.lean } : watched;
+      const eye = eyeOf(pose), def = WEAPONS[weaponIdOf(m, watched)], ads = smooth(watched.adsT);
+      const step = view.reduced ? 0 : Math.abs(Math.sin((f?.phase ?? 0))) * 0.018 * Math.min(1.3, watched.pace);
+      cam.x = eye.x; cam.y = eye.y - step; cam.z = eye.z; cam.yaw = pose.yaw; cam.pitch = local ? view.pitch : f ? f.pitch : watched.pitch; cam.set = true;
+      roll = -pose.lean * 0.11;
+      fov = 2 * Math.atan(Math.tan(64 * Math.PI / 360) / (1 + (def.zoom - 1) * (local ? ads : watched.ads ? 1 : 0))) * 180 / Math.PI;
+    }
+    camera.position.set(cam.x, cam.y, cam.z); camera.rotation.set(cam.pitch, cam.yaw, roll);
+    if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+    ear.x = cam.x; ear.y = cam.y; ear.z = cam.z; ear.yaw = cam.yaw;
+    sky.position.copy(camera.position); sun.position.set(cam.x + SUN.x * 400, cam.y + SUN.y * 400, cam.z + SUN.z * 400);
+  }
+
+  const DUST: Record<string, [number, number, number]> = { wall: [0.86, 0.83, 0.76], wood: [0.6, 0.45, 0.28], concrete: [0.62, 0.62, 0.6], brick: [0.62, 0.38, 0.3], metal: [0.5, 0.52, 0.55], fabric: [0.55, 0.5, 0.45], earth: [0.42, 0.36, 0.28], ceiling: [0.92, 0.9, 0.86], tile: [0.85, 0.84, 0.8], plastic: [0.4, 0.4, 0.42], glass: [0.85, 0.92, 0.95], cardboard: [0.7, 0.6, 0.45], leaf: [0.35, 0.55, 0.3] };
+
+  /** A round through a soft wall: a small entry hole with a puff of plaster on the near face, a wider blow-out on the
+   * far face with a spray of gypsum dust and crumbs that stay on the floor. Decals belong to the cell, so they go when
+   * the cell is knocked out. Planks splinter instead. */
+  function softHit(m: Match, panel: Panel, cell: number, x: number, y: number, z: number, dx: number, dy: number, dz: number) {
+    if (fx.density < 1 && Math.random() < 0.5) return;
+    const along = panel.axis === 'x', s = Math.sign(along ? dz : dx) || 1, nx = along ? 0 : -s, nz = along ? -s : 0;
+    const wood = panel.kind !== 'wall', half = (wood ? 0.07 : PANEL_T) / 2, tag = panel.id * 4096 + cell;
+    const l = bake.probe(x, z), b = 0.35 + (l[0] + l[1] + l[2]) / 3, c = wood ? DUST.wood : DUST.wall;
+    // Entry, on the face toward the shooter.
+    fx.hole(x + nx * half, y, z + nz * half, nx, 0, nz, (wood ? 0.05 : 0.045) + Math.random() * 0.02, tag);
+    impact(x + nx * half, y, z + nz * half, nx, 0, nz, wood ? 'wood' : 'wall', false);
+    // Exit: a wider, ragged blow-out and a cone of dust and crumbs on the far side.
+    const ex = x - nx * half, ez = z - nz * half;
+    fx.hole(ex, y, ez, -nx, 0, -nz, (wood ? 0.08 : 0.1) + Math.random() * 0.05, tag);
+    const n = fx.density < 1 ? 2 : 4;
+    for (let i = 0; i < n; i++) fx.dust(ex - nx * 0.04, y, ez - nz * 0.04, dx * (1 + Math.random() * 2) + (Math.random() - 0.5) * 0.7, dy + Math.random() * 0.4 - 0.1, dz * (1 + Math.random() * 2) + (Math.random() - 0.5) * 0.7, 0.12 + Math.random() * 0.12, 0.6 + Math.random() * 0.6, c[0] * b, c[1] * b, c[2] * b, 0.45, 1.8, 0.4);
+    // A haze that hangs for a few seconds, and powder settling on the floor below the hole on both sides.
+    fx.dust(ex - nx * 0.1, y, ez - nz * 0.1, dx * 0.25, 0.04, dz * 0.25, 0.45, 3 + Math.random(), c[0] * b, c[1] * b, c[2] * b, 0.16, 2.4, -0.02, 1.2);
+    if (Math.random() < 0.5) for (const sd of [1, -1]) fx.powder(x + nx * sd * (0.12 + Math.random() * 0.15), z + nz * sd * (0.12 + Math.random() * 0.15), 0.25 + Math.random() * 0.25);
+    for (let i = 0; i < (fx.density < 1 ? 1 : 2); i++) fx.debris(ex, y, ez, dx * (0.5 + Math.random() * 1.5) + (Math.random() - 0.5), Math.random() * 0.8, dz * (0.5 + Math.random() * 1.5) + (Math.random() - 0.5), 0.012 + Math.random() * 0.02, c[0] * b, c[1] * b, c[2] * b, true);
+  }
+  /** Chips on the intact board round a fresh hole, on both faces: rounds and blast tear more than they cut. */
+  const k0 = (i: number) => i % 2 === 0;
+  function chipRim(panel: Panel, broken: number[], per: number, scorched = false) {
+    if (fx.density < 1) per = 1;
+    const half = PANEL_T / 2, nx = panel.axis === 'z' ? 1 : 0, nz = panel.axis === 'x' ? 1 : 0;
+    for (const k of broken.slice(0, 12)) {
+      const c0 = k % panel.cols, r0 = Math.floor(k / panel.cols);
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const c = c0 + dc, r = r0 + dr;
+        if (c < 0 || r < 0 || c >= panel.cols || r >= panel.rows || !panel.cells[r * panel.cols + c]) continue;
+        for (let i = 0; i < per; i++) {
+          // A point in the neighbour, beyond where its board can tear back (up to half a cell from the break).
+          const back = Math.random() * 0.2, across = (Math.random() - 0.5) * 0.6;
+          const u = panel.u0 + (c + 0.5 + dc * back + (dr ? across : 0)) * CELL;
+          const y = panel.y0 + (r + 0.5 + dr * back + (dc ? across : 0)) * CELL;
+          for (const side of [1, -1]) {
+            const p = panelPoint(panel, u, y, side * half);
+            fx.hole(p.x, p.y, p.z, nx * side, 0, nz * side, 0.03 + Math.random() * 0.03, panel.id * 4096 + r * panel.cols + c);
+          }
+          // A charge blackens the board round the opening on the side it was set (once per neighbour).
+          if (scorched && i === 0 && Math.random() < 0.6) {
+            const side = (panel.axis === 'x' ? lastOrigin.z : lastOrigin.x) < panel.pos ? -1 : 1, p = panelPoint(panel, u, y, side * (half + 0.002));
+            fx.scorch(p.x, p.y, p.z, nx * side, 0, nz * side, 0.3 + Math.random() * 0.25, panel.id * 4096 + r * panel.cols + c);
+          }
+        }
+      }
+    }
+  }
+  // The cosmetic event stream: one reused object per kind, handed to every listener.
+  const cosmetic = new Set<(e: CosmeticEvent) => void>();
+  const evImpact = { k: 'impact' as const, mat: '', x: 0, y: 0, z: 0, power: 0 }, evGlass = { k: 'glass' as const, stage: 'crack' as 'crack' | 'shatter', x: 0, y: 0, z: 0 };
+  const evPiece = { k: 'piece' as const, family: '', state: 'damaged' as 'damaged' | 'wrecked', x: 0, y: 0, z: 0 }, evBody = { k: 'body' as const, x: 0, y: 0, z: 0 };
+  const evFort = { k: 'fort' as const, what: 'reinforce' as 'reinforce' | 'barricade', stage: 'start' as 'start' | 'unfold' | 'anchor' | 'break', x: 0, y: 0, z: 0 };
+  const emit = (e: CosmeticEvent) => { for (const fn of cosmetic) fn(e); };
+  const fort = (what: 'reinforce' | 'barricade', stage: 'start' | 'unfold' | 'anchor' | 'break', x: number, y: number, z: number) => { if (!cosmetic.size) return; evFort.what = what; evFort.stage = stage; evFort.x = x; evFort.y = y; evFort.z = z; emit(evFort); };
+  const unfolding = new Set<number>(), barricading = new Set<number>();
+  /** A reinforcement going up: while a defender works on a wall, the plate rises from the floor over the action's
+   * duration (fast at first, settling at the top), drawn from the same geometry the finished plate will have. */
+  const deploys = new Map<number, PanelView>();
+  function updateDeploys(m: Match) {
+    const live = new Set<number>();
+    for (const pl of m.players) {
+      // A barricade being nailed up: its start (its completion arrives as the shared 'panel' event).
+      if (pl.alive && pl.act === ACT.barricade && pl.actTarget >= 0 && !barricading.has(pl.id)) { barricading.add(pl.id); const b = m.world.panels[pl.actTarget]; if (b) { const c = panelPoint(b, b.u0 + b.cols * CELL / 2, 1); fort('barricade', 'start', c.x, c.y, c.z); } }
+      else if (pl.act !== ACT.barricade) barricading.delete(pl.id);
+      if (!pl.alive || pl.act !== ACT.reinforce || pl.actTarget < 0) continue;
+      const panel = m.world.panels[pl.actTarget];
+      if (!panel || panel.reinforced) continue;
+      live.add(panel.id);
+      let v = deploys.get(panel.id);
+      if (!v) {
+        v = new PanelView({ ...panel, reinforced: true, version: panel.version + 1 }, bake, panelMats, art?.panelLook(panel.id) ?? null);
+        v.sync(); panelGroup.add(v.mesh); deploys.set(panel.id, v);
+        const c = panelPoint(panel, panel.u0 + panel.cols * CELL / 2, 1); fort('reinforce', 'start', c.x, c.y, c.z);
+      }
+      // First half: the folded plate is lifted into place (rising from the floor, a third of its width); second half:
+      // it unfolds sideways across the wall, about its middle.
+      const t = Math.min(1, pl.actT / actDuration(ACT.reinforce)), rise = 1 - (1 - Math.min(1, t * 2)) ** 3, open = Math.max(0, t * 2 - 1);
+      if (open > 0 && !unfolding.has(panel.id)) { unfolding.add(panel.id); const c = panelPoint(panel, panel.u0 + panel.cols * CELL / 2, 1.2); fort('reinforce', 'unfold', c.x, c.y, c.z); }
+      const sx = 0.33 + 0.67 * (1 - (1 - open) ** 2), mid = panel.u0 + panel.cols * CELL / 2;
+      v.mesh.scale.set(panel.axis === 'x' ? sx : 1, Math.max(0.02, rise), panel.axis === 'z' ? sx : 1);
+      v.mesh.position.set(panel.axis === 'x' ? mid * (1 - sx) : 0, 0, panel.axis === 'z' ? mid * (1 - sx) : 0);
+      v.mesh.updateMatrix();
+    }
+    for (const [id, v] of deploys) if (!live.has(id)) {
+      // Done (or abandoned): when the wall is now reinforced, the anchors fire into floor and ceiling.
+      const panel = m.world.panels[id];
+      unfolding.delete(id);
+      if (panel?.reinforced) {
+        { const c = panelPoint(panel, panel.u0 + panel.cols * CELL / 2, 0.1); fort('reinforce', 'anchor', c.x, c.y, c.z); }
+        const W = panel.cols * CELL, leaves = Math.max(2, Math.round(W / 0.5));
+        for (let i = 1; i < leaves; i += 2) for (const y of [0.04, panel.y0 + panel.rows * CELL - 0.04]) {
+          const at = panelPoint(panel, panel.u0 + i * W / leaves, y, 0);
+          for (let k = 0; k < 6; k++) fx.spark(at.x, at.y, at.z, (Math.random() - 0.5) * 3, (y < 1 ? 1 : -1) * Math.random() * 2, (Math.random() - 0.5) * 3, 0.04, 0.25);
+          fx.dust(at.x, at.y, at.z, 0, y < 1 ? 0.3 : -0.2, 0, 0.18, 0.8, 0.6, 0.58, 0.55, 0.4, 1.8);
+        }
+      }
+      panelGroup.remove(v.mesh); v.dispose(); deploys.delete(id);
+    }
+  }
+  /** Blood (map-fill plan 12.1), or with `?blood=off` dust and dark scuffs instead. Every client derives it from the same
+   * `shot` and `hit` events: the hit point is the nearest point on the shooter's last shot to the victim's body. */
+  const bloodOff = typeof location !== 'undefined' && /[?&]blood=off\b/.test(location.search);
+  const lastShot = new Map<number, { x: number; y: number; z: number; dirs: { x: number; y: number; z: number }[]; pellets: number }>();
+  const RED: [number, number, number] = [0.42, 0.03, 0.025];
+  function bleed(m: Match, by: number, bx: number, by0: number, bz: number, head: boolean, dmg: number) {
+    const sh = lastShot.get(by);
+    let px = bx, py = by0, pz = bz, dx = 0, dy = 0, dz = 1;
+    if (sh) {
+      let best = Infinity;
+      for (const d of sh.dirs) {
+        const t = Math.max(0, (bx - sh.x) * d.x + (by0 - sh.y) * d.y + (bz - sh.z) * d.z), qx = sh.x + d.x * t, qy = sh.y + d.y * t, qz = sh.z + d.z * t;
+        const e2 = (qx - bx) ** 2 + (qy - by0) ** 2 + (qz - bz) ** 2;
+        if (e2 < best) { best = e2; px = qx; py = qy; pz = qz; dx = d.x; dy = d.y; dz = d.z; }
+      }
+      // From the near point on the ray, step back to the body's surface (a 0.2 m radius), where the round went in.
+      px -= dx * 0.15; pz -= dz * 0.15;
+    }
+    const big = head || (sh?.pellets ?? 1) > 1, l = bake.probe(px, pz), b = 0.35 + (l[0] + l[1] + l[2]) / 3, col = bloodOff ? [0.45, 0.43, 0.4] : RED;
+    // The spray: a short burst thrown along the bullet, and droplets that land and stay.
+    // A burst plain to see at 5 m: a dense core and a wider mist, thrown along the bullet and out of the entry.
+    for (let i = 0; i < (big ? 12 : 8); i++) fx.dust(px, py, pz, dx * (1.5 + Math.random() * 2) + (Math.random() - 0.5) * 0.9, dy * 2 + Math.random() * 0.7, dz * (1.5 + Math.random() * 2) + (Math.random() - 0.5) * 0.9, 0.16 + Math.random() * (big ? 0.26 : 0.18), 0.5 + Math.random() * 0.4, col[0] * b, col[1] * b, col[2] * b, 0.95, 1.8, -5, 1.6);
+    for (let i = 0; i < (big ? 5 : 3); i++) fx.dust(px, py, pz, -dx * (0.4 + Math.random() * 0.6) + (Math.random() - 0.5) * 0.6, Math.random() * 0.4, -dz * (0.4 + Math.random() * 0.6) + (Math.random() - 0.5) * 0.6, 0.12 + Math.random() * 0.12, 0.35 + Math.random() * 0.25, col[0] * b, col[1] * b, col[2] * b, 0.8, 1.6, -4, 2);
+    if (!bloodOff) for (let i = 0; i < (big ? 6 : 3); i++) fx.debris(px, py, pz, dx * (2 + Math.random() * 2) + (Math.random() - 0.5), Math.random() * 1.5, dz * (2 + Math.random() * 2) + (Math.random() - 0.5), 0.008 + Math.random() * 0.008, RED[0] * b, RED[1] * b, RED[2] * b, true, 0.95);
+    // Spatter on whatever lies within about 3 m behind, elongated at a shallow angle; drips on a wall.
+    const tr = trace(m.world, px, py, pz, dx, dy, dz, 3);
+    const hit = tr.soft.length ? { t: tr.soft[0].t, nx: 0, ny: 0, nz: 0, tag: tr.soft[0].panel.id * 4096 + tr.soft[0].cell, panel: tr.soft[0].panel } : tr.solid ? { t: tr.t, nx: tr.nx, ny: tr.ny, nz: tr.nz, tag: -1, panel: null } : null;
+    if (hit) {
+      if (hit.panel) { const ax = hit.panel.axis === 'x'; hit.nx = ax ? 0 : -Math.sign(dx) || 1; hit.nz = ax ? -Math.sign(dz) || 1 : 0; }
+      // On a panel the mark sits on its face (half its thickness out from its line); on a room floor, above its 2 cm lift.
+      const face = hit.panel ? PANEL_T / 2 : 0, sx = px + dx * hit.t + hit.nx * face, sz = pz + dz * hit.t + hit.nz * face;
+      const sy = hit.ny > 0.5 && py + dy * hit.t < 0.05 ? 0.026 : py + dy * hit.t, graze = Math.abs(dx * hit.nx + dy * hit.ny + dz * hit.nz);
+      const size = (big ? 0.6 : 0.45) * (0.85 + Math.random() * 0.3) * Math.min(1.4, 0.6 + dmg / 40), stretch = 1 / Math.max(0.45, graze);
+      fx.hole(sx, sy, sz, hit.nx, hit.ny, hit.nz, size, hit.tag, bloodOff ? MARK.scuff : MARK.spatter, bloodOff ? [1, 1, 1] : [1, 1, 1], [1, stretch], Math.abs(hit.ny) < 0.5);
+      if (!bloodOff && Math.abs(hit.ny) < 0.5 && sy > 0.6) fx.hole(sx, sy - size * 0.55, sz, hit.nx, hit.ny, hit.nz, size * 0.7, hit.tag, MARK.drip, [1, 1, 1], [0.8, 1.4], true);
+      // Satellite drops round the main mark, along the surface.
+      if (!bloodOff) {
+        const wall = Math.abs(hit.ny) < 0.5, ux = wall ? -hit.nz : 1, uz = wall ? hit.nx : 0;
+        for (let i = 0; i < (big ? 6 : 4); i++) {
+          const a = Math.random() * 6.283, d = size * (0.55 + Math.random() * 0.5), ox = Math.cos(a) * d, oy = Math.sin(a) * d;
+          fx.hole(sx + ux * ox, wall ? sy + oy : sy, sz + uz * ox + (wall ? 0 : oy), hit.nx, hit.ny, hit.nz, 0.04 + Math.random() * 0.05, hit.tag, MARK.spatter, [1, 1, 1], [1, 1], wall);
+        }
+      }
+    }
+  }
+  /** Things hung on a partition (render: levelmesh panelDecor) fall when a cell under them goes: a few pieces in the
+   * item's colours drop away from the wall and stay, once per item per round. */
+  const fallenDecor = new Set<string>();
+  function dropDecor(panel: Panel, cells: readonly number[]) {
+    const items = panelDecor(panel);
+    if (!items.length) return;
+    const gone = cells.map(c => { const col = c % panel.cols, row = (c - col) / panel.cols; return [panel.u0 + col * CELL, panel.y0 + row * CELL]; });
+    items.forEach((d, i) => {
+      if (d.y0 < 0.5 || d.u1 - d.u0 < 0.12 || fallenDecor.has(`${panel.id}:${i}`)) return;  // skirting, sockets and small marks just go
+      if (!gone.some(([u, y]) => u < d.u1 && u + CELL > d.u0 && y < d.y1 && y + CELL > d.y0)) return;
+      fallenDecor.add(`${panel.id}:${i}`);
+      const at = panelPoint(panel, (d.u0 + d.u1) / 2, (d.y0 + d.y1) / 2, d.side * (PANEL_T / 2 + d.d)), l = bake.probe(at.x, at.z), b = 0.3 + (l[0] + l[1] + l[2]) / 3;
+      const nx = panel.axis === 'z' ? d.side : 0, nz = panel.axis === 'x' ? d.side : 0, size = Math.min(0.25, Math.max(d.u1 - d.u0, d.y1 - d.y0) / 2.5);
+      const tint = [Math.min(1, d.tint[0] * 0.6), Math.min(1, d.tint[1] * 0.6), Math.min(1, d.tint[2] * 0.6)];
+      for (let k = 0; k < (size > 0.1 ? 3 : 1); k++) fx.debris(at.x, at.y, at.z, nx * (0.6 + Math.random()) + (Math.random() - 0.5) * 0.4, Math.random() * 0.6, nz * (0.6 + Math.random()) + (Math.random() - 0.5) * 0.4, size * (0.6 + Math.random() * 0.4), tint[0] * b, tint[1] * b, tint[2] * b, true, 0.2);
+      if (cosmetic.size) { evPiece.family = 'wallitem'; evPiece.state = 'wrecked'; evPiece.x = at.x; evPiece.y = at.y; evPiece.z = at.z; emit(evPiece); }
+    });
+  }
+  /** Pools waiting for their body to settle. */
+  const pendingPools: { id: number; wait: number; m: Match }[] = [];
+  /** A pool spreading under a fallen fighter, shaped by what is round it (short traces stop it at walls and furniture). */
+  function pool(m: Match, x: number, z: number) {
+    const reach = (ux: number, uz: number) => { const t = trace(m.world, x, 0.06, z, ux, 0, uz, 0.9); return t.solid ? Math.max(0.15, t.t - 0.05) : 0.9; };
+    const rx = Math.min(reach(1, 0), reach(-1, 0), 0.9) * (0.85 + Math.random() * 0.2), rz = Math.min(reach(0, 1), reach(0, -1), 0.9) * (0.85 + Math.random() * 0.2);
+    let floorY = 0.024;
+    for (const f of MAP.floors) if (x >= f.x0 && x <= f.x1 && z >= f.z0 && z <= f.z1) floorY = f === MAP.floors[0] ? 0.006 : f.mat === 'grass' ? 0.018 : 0.026;
+    fx.pool(x, floorY, z, rx, rz, 5, bloodOff ? MARK.scuff : MARK.pool, [1, 1, 1], 0);
+  }
+  const ray = new THREE.Raycaster(); ray.layers.enableAll();
+  const rayO = new THREE.Vector3(), rayD = new THREE.Vector3(), rayHit = new THREE.Vector3(), nrm = new THREE.Vector3();
+  function passThrough(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, tmax: number) {
+    const a = art!;
+    let best = firstDressing(a.markables.dress, ox, oy, oz, dx, dy, dz, tmax), kind = best ? dressMaterial(best.key) : '';
+    rayO.set(ox, oy, oz); rayD.set(dx, dy, dz); ray.set(rayO, rayD); ray.near = 0.05; ray.far = best ? best.t : tmax - 0.02;
+    for (const p of a.markables.props) {
+      if (!ray.ray.intersectBox(p.box, rayHit) || rayHit.distanceTo(rayO) > ray.far) continue;
+      const hit = ray.intersectObject(p.object, true)[0];
+      if (!hit || hit.distance > ray.far) continue;
+      nrm.copy(hit.face?.normal ?? rayD.clone().negate()).transformDirection(hit.object.matrixWorld);
+      if (nrm.dot(rayD) > 0) nrm.negate();
+      best = { t: hit.distance, nx: nrm.x, ny: nrm.y, nz: nrm.z, key: '' }; kind = propMaterial(p.model); ray.far = hit.distance;
+    }
+    if (!best) return;
+    const bp = (best as { p?: DressProxy }).p;
+    if (bp?.role && breakables) breakables.shotDress(bp, ox + dx * best.t, oy + dy * best.t, oz + dz * best.t, dx, dy, dz);
+    const x = ox + dx * best.t + best.nx * 0.004, y = oy + dy * best.t + best.ny * 0.004, z = oz + dz * best.t + best.nz * 0.004;
+    impact(x, y, z, best.nx, best.ny, best.nz, kind as keyof typeof DUST, true);
+  }
+  /** Marks the first visible surface of set piece `i` along the ray, from where it meets the piece's box onwards. */
+  function pieceSurface(i: number, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, t0: number) {
+    const a = art!;
+    rayO.set(ox, oy, oz); rayD.set(dx, dy, dz); ray.set(rayO, rayD); ray.near = Math.max(0.05, t0 - 0.1); ray.far = t0 + 3.5;
+    let best: { t: number; n: THREE.Vector3; kind: string } | null = null;
+    const take = (hit: THREE.Intersection | undefined, kind: string) => {
+      if (!hit || (best && hit.distance >= best.t)) return;
+      const n = (hit.face?.normal ?? rayD.clone().negate()).clone().transformDirection(hit.object.matrixWorld);
+      if (n.dot(rayD) > 0) n.negate();
+      best = { t: hit.distance, n, kind };
+    };
+    for (const p of a.markables.props) if (p.piece === i && p.object.visible && ray.ray.intersectBox(p.box, rayHit)) take(ray.intersectObject(p.object, true)[0], propMaterial(p.model));
+    if (pieces) take(ray.intersectObject(pieces.mesh, false).find(h => (h as THREE.Intersection & { batchId?: number }).batchId === i), familyMaterial(SET_PIECES[i].family));
+    const b = best as { t: number; n: THREE.Vector3; kind: string } | null;
+    if (!b) return;
+    impact(ox + dx * b.t + b.n.x * 0.004, oy + dy * b.t + b.n.y * 0.004, oz + dz * b.t + b.n.z * 0.004, b.n.x, b.n.y, b.n.z, b.kind as keyof typeof DUST, true);
+  }
+  function impact(x: number, y: number, z: number, nx: number, ny: number, nz: number, kind: keyof typeof DUST, hard: boolean) {
+    const c = DUST[kind], l = bake.probe(x, z), b = 0.35 + (l[0] + l[1] + l[2]) / 3;
+    if (cosmetic.size) { evImpact.mat = kind; evImpact.x = x; evImpact.y = y; evImpact.z = z; evImpact.power = hard ? 1 : 0.5; emit(evImpact); }
+    const n = fx.density < 1 ? 1 : 2;
+    for (let i = 0; i < n; i++) fx.dust(x + nx * 0.05, y + ny * 0.05, z + nz * 0.05, nx * (0.6 + Math.random()) + (Math.random() - 0.5) * 0.6, ny * (0.6 + Math.random()) + Math.random() * 0.5, nz * (0.6 + Math.random()) + (Math.random() - 0.5) * 0.6, 0.16 + Math.random() * 0.12, 0.5 + Math.random() * 0.4, c[0] * b, c[1] * b, c[2] * b, 0.5);
+    if (hard) {
+      if (kind === 'metal') {
+        // Steel stops rounds: a bright scar and a spray of sparks, never a hole.
+        fx.scar(x, y, z, nx, ny, nz, 0.045 + Math.random() * 0.035);
+        for (let i = 0; i < (fx.density < 1 ? 3 : 6); i++) fx.spark(x, y, z, nx * 3 + (Math.random() - 0.5) * 4, ny * 3 + Math.random() * 3, nz * 3 + (Math.random() - 0.5) * 4);
+      } else {
+        const k = MARKS[kind] ?? MARKS.concrete, sz = k.size * (0.8 + Math.random() * 0.45);
+        if (k.cell >= 0) fx.hole(x, y, z, nx, ny, nz, sz, -1, k.cell, k.tint);
+        if (k.chips) for (let i = 0; i < (fx.density < 1 ? 2 : 4); i++) fx.debris(x + nx * 0.03, y + ny * 0.03, z + nz * 0.03, nx * (1 + Math.random() * 2) + (Math.random() - 0.5) * 1.5, ny * 1.5 + Math.random() * 1.5, nz * (1 + Math.random() * 2) + (Math.random() - 0.5) * 1.5, 0.012 + Math.random() * 0.018, k.chips[0] * b, k.chips[1] * b, k.chips[2] * b, Math.random() < 0.5);
+        if (kind === 'earth') fx.dust(x, y + 0.05, z, (Math.random() - 0.5) * 0.4, 1.2 + Math.random(), (Math.random() - 0.5) * 0.4, 0.2, 0.9, c[0] * b, c[1] * b, c[2] * b, 0.55, 1.4, -2.5, 1.5);
+        if (kind === 'ceiling') for (let i = 0; i < 3; i++) fx.dust(x, y - 0.05, z, (Math.random() - 0.5) * 0.3, -0.2 - Math.random() * 0.3, (Math.random() - 0.5) * 0.3, 0.12, 1.6, c[0] * b, c[1] * b, c[2] * b, 0.5, 1.8, 0.4, 1.2);
+      }
+    }
+  }
+
+  return {
+    ear, stats,
+    onCosmetic(fn) { cosmetic.add(fn); return () => { cosmetic.delete(fn); }; },
+    handle(events, m, self) {
+      viewmodel.handle(events, m, self);
+      fighters.handle?.(events, m, self);
+      for (const e of events) {
+        switch (e.e) {
+          case 'shot': {
+            const def = WEAPONS[e.w], mine = e.id === self;
+            lastOrigin = { x: e.x, y: e.y, z: e.z };
+            let ox = e.x, oy = e.y, oz = e.z;
+            const fwd = viewDir(e.yaw, e.pitch);
+            if (mine && viewmodel.muzzle?.(v3, camera)) { ox = v3.x; oy = v3.y; oz = v3.z; fx.flash(ox, oy, oz, 0.35 + Math.random() * 0.15, 0.04); }
+            else if (mine) { ox += fwd.x * 0.7 + Math.cos(e.yaw) * 0.1; oy += fwd.y * 0.7 - 0.09; oz += fwd.z * 0.7 - Math.sin(e.yaw) * 0.1; }
+            else if (fighters.muzzle(e.id, v3)) { ox = v3.x; oy = v3.y; oz = v3.z; fx.flash(ox, oy, oz, 0.5 + Math.random() * 0.25, 0.05); }
+            const dirs = shotDirs(e.yaw, e.pitch, e.spread, def.pellets, e.seed);
+            lastShot.set(e.id, { x: e.x, y: e.y, z: e.z, dirs, pellets: def.pellets });
+            dirs.forEach((d, i) => {
+              const tr = trace(m.world, e.x, e.y, e.z, d.x, d.y, d.z, 120), hx = e.x + d.x * tr.t, hy = e.y + d.y * tr.t, hz = e.z + d.z * tr.t;
+              if (def.pellets === 1 || i % 2 === 0) fx.tracer(ox, oy, oz, hx, hy, hz);
+              for (const sh of tr.soft) softHit(m, sh.panel, sh.cell, e.x + d.x * sh.t, e.y + d.y * sh.t, e.z + d.z * sh.t, d.x, d.y, d.z);
+              // Dressing and props have no collision, so the round passes through; it still marks the first one it meets
+              // (plan section 10.1), by that object's material. Cosmetic only, from the shot every client already has.
+              if (art) passThrough(e.x, e.y, e.z, d.x, d.y, d.z, tr.solid ? tr.t : 120);
+              glass.shot(e.x, e.y, e.z, d.x, d.y, d.z, tr.solid ? tr.t : 120);
+              if (!tr.solid) return;
+              if (tr.ny < -0.5) breakables?.shotCeiling(hx, hy, hz);
+              const piece = pieces ? pieces.indexOf(tr.box ?? null) : -1;
+              if (piece >= 0) pieces!.hit(piece);
+              if (piece >= 0 && !TEXTURED_PIECES.has(SET_PIECES[piece].name)) {
+                // A modelled set piece: the round stops at its box, but the mark goes on the surface the shooter sees.
+                pieceSurface(piece, e.x, e.y, e.z, d.x, d.y, d.z, tr.t);
+                return;
+              }
+              const mat = tr.panel ? 'metal' : surfaceAt(tr.box ?? null, hx, hy, hz, tr.ny);
+              // The simulation stops a round at a reinforced panel's centre plane; the steel face the shooter sees is
+              // in front of that (plate half-thickness plus its folds).
+              // Dressed furniture (racks, cabinets, shelving, benches) carries modelled fronts up to 4 cm proud of its box,
+              // and room floors sit 2 cm above the ground: marks go on the visible face, not the collision face.
+              const dressed = tr.box && ['rack', 'steel', 'shelf', 'counter'].includes(tr.box.mat) && tr.box.y0 < WALL_H - 0.01;
+              const lift = tr.panel ? 0.12 : dressed ? 0.04 : (!tr.box || hy < 0.05) && tr.ny > 0.5 && hy < 0.05 ? 0.025 : 0;
+              impact(hx + tr.nx * lift, hy + tr.ny * lift, hz + tr.nz * lift, tr.nx, tr.ny, tr.nz, mat, true);
+            });
+            break;
+          }
+          case 'cells': {
+            const panel = m.world.panels[e.p];
+            if (!panel) break;
+            for (const c of e.c) fx.clearHoles(e.p * 4096 + c);
+            if (panel.kind === 'wall') chipRim(panel, e.c, e.cause === 1 ? 1 : 2, e.cause === 1);
+            if (panel.kind === 'wall') dropDecor(panel, e.c);
+            if (cosmetic.size && (panel.kind !== 'wall' || panel.reinforced)) { const at = cellCenter(panel, e.c[0]); fort(panel.kind !== 'wall' ? 'barricade' : 'reinforce', 'break', at.x, at.y, at.z); }
+            const wood = panel.kind !== 'wall', max = e.cause === 1 ? 46 : 10, stride = Math.max(1, Math.ceil(e.c.length / max));
+            const src = lastOrigin, side = (panel.axis === 'x' ? src.z : src.x) < panel.pos ? 1 : -1;
+            for (let i = 0; i < e.c.length; i += stride) {
+              const at = cellCenter(panel, e.c[i]), l = bake.probe(at.x, at.z), b = 0.3 + (l[0] + l[1] + l[2]) / 3;
+              const lowWood = wood || at.y < 1.1, c = lowWood ? [0.5, 0.36, 0.22] : [0.85, 0.82, 0.74];
+              const speed = e.cause === 1 ? 3 + Math.random() * 6 : 1 + Math.random() * 2.5, nx = panel.axis === 'z' ? side : 0, nz = panel.axis === 'x' ? side : 0;
+              const count = e.cause === 1 ? 1 : 2;
+              // Board fragments: thin, flat pieces that come to rest and stay; a broken barricade also leaves long
+              // splintered shards of plank.
+              if (wood && k0(i)) fx.debris(at.x, at.y, at.z, nx * speed * 0.6 + (Math.random() - 0.5), Math.random() * 1.5, nz * speed * 0.6 + (Math.random() - 0.5), 0.16 + Math.random() * 0.1, 0.55 * b, 0.4 * b, 0.26 * b, true, 0.1);
+              for (let k = 0; k < count; k++) fx.debris(at.x, at.y, at.z, nx * speed + (Math.random() - 0.5) * 2, Math.random() * 2.5, nz * speed + (Math.random() - 0.5) * 2, 0.05 + Math.random() * (e.cause === 1 ? 0.13 : 0.07), c[0] * b, c[1] * b, c[2] * b, true, wood ? 0.3 : 0.12);
+              if (i % (stride * 2) === 0) impact(at.x, at.y, at.z, nx, 0, nz, wood ? 'wood' : 'wall', false);
+            }
+            break;
+          }
+          case 'boom': {
+            lastOrigin = { x: e.x, y: e.y, z: e.z };
+            const power = e.kind === 'impact' ? 0.7 : e.kind === 'charge' ? 1.1 : 1.25, l = bake.probe(e.x, e.z);
+            glass.blast(e.x, e.y, e.z); pieces?.blast(e.x, e.y, e.z, power); breakables?.blast(e.x, e.y, e.z);
+            fx.blast(e.x, e.y, e.z, power, l, e.kind === 'impact' ? 'impact' : e.kind === 'charge' ? 'charge' : 'frag');
+            const d = Math.hypot(e.x - ear.x, e.z - ear.z);
+            if (d < 16) exposure = Math.max(exposure, (1 - d / 16) * 1.1);
+            break;
+          }
+          case 'hit': {
+            const f = fighters.pose(e.on), p = m.players[e.on];
+            if (!f || !p) break;
+            const y = e.head ? 1.6 - f.crouch * 0.6 : 1.1 - f.crouch * 0.4;
+            bleed(m, e.by, f.x, y, f.z, e.head, e.dmg);
+            for (let i = 0; i < 3; i++) fx.dust(f.x + (Math.random() - 0.5) * 0.2, y + (Math.random() - 0.5) * 0.2, f.z + (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 1.5, Math.random(), (Math.random() - 0.5) * 1.5, 0.12, 0.35, 0.5, 0.06, 0.05, 0.6, 1.2, 2);
+            break;
+          }
+          case 'kill': {
+            // The pool spreads where the body comes to rest, once it has settled (about a second after the kill):
+            // fighters.pose follows the ragdoll's pelvis, or the end of the keyed fall.
+            pendingPools.push({ id: e.on, wait: 1.2, m });
+            break;
+          }
+          case 'panel': {
+            const panel = m.world.panels[e.p];
+            if (!panel) break;
+            const c = panelPoint(panel, panel.u0 + panel.cols * CELL / 2, panel.y0 + panel.rows * CELL / 2);
+            if (e.s === 1) fort('barricade', 'anchor', c.x, c.y, c.z);
+            for (let i = 0; i < 6; i++) fx.dust(c.x + (Math.random() - 0.5) * 1.5, c.y + (Math.random() - 0.5) * 1.5, c.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5), Math.random() * 0.5, (Math.random() - 0.5), 0.3, 0.8, 0.6, 0.58, 0.52, 0.35);
+            break;
+          }
+          case 'phase': if (e.phase === 'prep') { rejoin = true; fx.clear(); fighters.reset(); glass.reset(); pieces?.reset(); breakables?.reset(); pendingPools.length = 0; fallenDecor.clear(); } break;
+          case 'spawn': fighters.reset(e.at.map(([id]) => id)); break;
+        }
+      }
+    },
+    render(view) {
+      const cpuStart = performance.now();
+      const dt = Math.min(0.1, view.dt);
+      // Resolution changes resize (and so clear) the canvas: do them before drawing, never after, or the frame
+      // just drawn is lost and the screen flashes empty.
+      if (dt > 0) adapt(view.dt);
+      // Reflection probes are captured one room per frame after the art arrives, so no single frame stalls.
+      art?.cull(camera.position);
+      if (art && !probesDone) { const t = performance.now(); probesDone = art.captureNext(renderer, artScene); if (/artdbg=[^&]*timing/.test(location.search)) console.warn(`art timing: probe ${(performance.now() - t).toFixed(0)} ms`); }
+      time += dt;
+      if (view.m.world !== world) bind(view.m.world);
+      // In a fight, rebuild only the nearest changed panel each frame, so a burst of breaks never stalls one frame;
+      // between rounds and after binding a world, all of them at once.
+      let synced = false, next: PanelView | null = null, best = Infinity;
+      const fight = !rejoin && (view.m.phase === 'action' || view.m.phase === 'planted');
+      for (const p of panels) {
+        if (!p.stale()) continue;
+        if (!fight) { p.sync(); batches.update(p, rejoin); synced = true; continue; }
+        const d = p.distSq(camera.position.x, camera.position.z);
+        if (d < best) { best = d; next = p; }
+      }
+      if (next) { next.sync(); batches.update(next, false); synced = true; }
+      if (synced) rejoin = false;
+      // A rebuilt panel takes its full material back; on the cheap path, swap it again.
+      if (synced && cheap) setCheapShading(panelGroup, true);
+      batches.flush();
+      if (synced) tagRooms(panelGroup, true);
+      updateDeploys(view.m);
+      fighters.update(view);
+      for (let i = pendingPools.length - 1; i >= 0; i--) {
+        const pp = pendingPools[i];
+        pp.wait -= fxFast ? dt * 25 : dt;
+        // Fighters that report their bodies (render/patchfighters) say when one is still; others settle in a second.
+        const body = (fighters as { bodies?: () => { id: number; x: number; z: number; still?: boolean }[] }).bodies?.().find(b => b.id === pp.id);
+        if (body ? !body.still && pp.wait > -2.8 : pp.wait > 0) continue;
+        pendingPools.splice(i, 1);
+        const f = body ?? fighters.pose(pp.id), alive = view.m.players[pp.id]?.alive;
+        if (f && !alive) { pool(pp.m, f.x, f.z); if (cosmetic.size) { evBody.x = f.x; evBody.y = 0.2; evBody.z = f.z; emit(evBody); } }
+      }
+      place(view);
+      updateGadgets(view.m, dt);
+      viewmodel.update(view, time);
+      // `?artdbg=fxfast` ages effects 25 times faster, for evidence renders of how smoke and dust clear.
+      fx.update(fxFast ? dt * 25 : dt, height * (window.devicePixelRatio || 1) * scale, camera.fov);
+      breakables?.update(dt, view.reduced);
+      exposure = Math.max(0, exposure - dt * 3.5);
+      renderer.toneMappingExposure = 1.02 + (view.reduced ? 0 : exposure);
+      cullRooms();
+      const X = experiment, undo = X.on ? experimentBegin(X) : null;
+      const graded = !X.noPost && !X.overdraw && post.begin();
+      if (!graded) renderer.setRenderTarget(null);
+      renderer.clear();
+      let calls = 0, tris = 0;
+      if (X.prepass) { const keep = [artScene.overrideMaterial, scene.overrideMaterial]; artScene.overrideMaterial = scene.overrideMaterial = experimentMats.depth; if (art) renderer.render(artScene, camera); renderer.render(scene, camera); [artScene.overrideMaterial, scene.overrideMaterial] = keep; }
+      if (art) { renderer.render(artScene, camera); calls = renderer.info.render.calls; tris = renderer.info.render.triangles; }
+      renderer.render(scene, camera);
+      stats.calls = calls + renderer.info.render.calls; stats.triangles = tris + renderer.info.render.triangles;
+      if (!X.noViewmodel) stats.calls += viewmodel.render();
+      if (graded) post.end(renderer.toneMappingExposure);
+      undo?.();
+      // Script time on the main thread for this frame (command submission included, GPU work not), smoothed.
+      stats.cpu = +((stats.cpu ?? 0) * 0.9 + (performance.now() - cpuStart) * 0.1).toFixed(3);
+      stats.programs = renderer.info.programs?.length ?? 0; stats.textures = renderer.info.memory.textures; stats.geometries = renderer.info.memory.geometries;
+      stats.post = graded ? post.tier : 'off'; stats.art = art ? (art.envReady ? 'env' : 'noenv') : 'none';
+    },
+    resize(w, h) {
+      width = Math.max(1, Math.round(w)); height = Math.max(1, Math.round(h));
+      camera.aspect = width / height; camera.updateProjectionMatrix(); viewmodel.resize(camera.aspect);
+      applySize();
+    },
+    setQuality(q) {
+      quality = q; const d = QUALITIES[q];
+      stats.auto = undefined;
+      if (q === 'auto') { setStep(stats.software ? 0 : 1); return; }
+      scale = Math.max(d.min, Math.min(d.max, d.max)); slow = fast = sharpSlow = sharpFast = 0; fx.density = d.density; setCheap(q === 'low');
+      post.setTier(/[?&]post=off\b/.test(location.search) ? 'off' : postTier(q));
+      applySize();
+    },
+    project(x, y, z) {
+      v3.set(x, y, z).project(camera);
+      projected.x = v3.x * 0.5 + 0.5; projected.y = 0.5 - v3.y * 0.5; projected.front = v3.z < 1 && v3.z > -1;
+      return projected;
+    },
+    dispose() {
+      disposed = true;
+      art?.dispose();
+      post.dispose();
+      for (const p of panels) p.dispose();
+      batches.dispose();
+      fighters.dispose(); viewmodel.dispose();
+      fx.dispose(); glass.dispose(); pieces?.dispose(); breakables?.dispose();
+      scene.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.geometry) mesh.geometry.dispose(); });
+      for (const m of Object.values(materials)) m.dispose();
+      for (const t of [...Object.values(textures), skyTex, sunTex, ringTex, ...siteTex]) t.dispose();
+      for (const m of [lambert, led, kitMat, ...kitMats, devMat, devScreen, devBar, ...devLeds, devGlow.material, devPool.material]) m.dispose();
+      screenTex.dispose(); (devGlow.material as THREE.SpriteMaterial).map?.dispose(); (devPool.material as THREE.MeshBasicMaterial).map?.dispose();
+      renderer.dispose();
+    },
+  };
+}
+
