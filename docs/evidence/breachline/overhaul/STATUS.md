@@ -4,6 +4,16 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: section 10.2, window glass.** `mapfill/shots/glass.png` (intact, one round, two rounds; zoom below): a pane
+outside each of the eleven barricaded windows in the brick shell (`render/glass.ts`, one instanced sheet and one
+instanced jagged rim). The first round through a pane leaves a crack star; the second, or any blast within 5 m,
+shatters it: the pane goes, a jagged rim stays in the frame, shards fly out along the shot and stay. Glass never stops
+a round or changes sight; it is driven by the `shot` and `boom` events, so every client sees the same, and resets at
+each round's preparation. The light square in the frames is the hole the same rounds broke in the barricade behind.
+Not done in 10.2 yet: Lobby entrance glazing and door vision panels (the doors are open frames with no leaf to hold
+one), monitors and screens going dark, shot light fittings, breakable bottles, boxes, bins, plants, tyres and drums;
+these arrive with their dressing in Phase B.
+
 **2026-11-12: section 12.1, blood in the world.** `mapfill/shots/blood.png`: hits in the leg, the chest and the head
 (spray along the bullet; spatter and a drip on the wall behind the head shot), then the body down and its pool
 spreading; bottom row `?blood=off` (dust and dark scuffs). From the shared events only: the shooter's last `shot` rays

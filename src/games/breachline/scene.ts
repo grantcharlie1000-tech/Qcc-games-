@@ -8,6 +8,7 @@ import { PanelView, buildLevel, type PanelMaterials } from './levelmesh';
 import { MAP } from './map';
 import { loadArtWorld, type ArtWorld } from './render/artworld';
 import { PanelBatches } from './render/panelbatch';
+import { Glass } from './render/glass';
 import { MARKS, dressMaterial, firstDressing, propMaterial, surfaceAt } from './render/surfacehit';
 import { boxes } from './models';
 import { chargeGeometry, deviceGeometry, deviceScreenTexture } from './render/kit';
@@ -259,6 +260,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   });
 
   const fx = new Effects();
+  // Window panes outside the barricaded windows (render/glass.ts): cosmetic, from the shot and blast events.
+  const glass = new Glass(fx); scene.add(glass.group);
   fx.density = QUALITIES[quality].density;
   scene.add(fx.group);
 
@@ -556,6 +559,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
               // Dressing and props have no collision, so the round passes through; it still marks the first one it meets
               // (plan section 10.1), by that object's material. Cosmetic only, from the shot every client already has.
               if (art) passThrough(e.x, e.y, e.z, d.x, d.y, d.z, tr.solid ? tr.t : 120);
+              glass.shot(e.x, e.y, e.z, d.x, d.y, d.z, tr.solid ? tr.t : 120);
               if (!tr.solid) return;
               const mat = tr.panel ? 'metal' : surfaceAt(tr.box ?? null, hx, hy, hz, tr.ny);
               // The simulation stops a round at a reinforced panel's centre plane; the steel face the shooter sees is
@@ -591,6 +595,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
           case 'boom': {
             lastOrigin = { x: e.x, y: e.y, z: e.z };
             const power = e.kind === 'impact' ? 0.7 : e.kind === 'charge' ? 1.1 : 1.25, l = bake.probe(e.x, e.z);
+            glass.blast(e.x, e.y, e.z);
             fx.blast(e.x, e.y, e.z, power, l, e.kind === 'impact' ? 'impact' : e.kind === 'charge' ? 'charge' : 'frag');
             const d = Math.hypot(e.x - ear.x, e.z - ear.z);
             if (d < 16) exposure = Math.max(exposure, (1 - d / 16) * 1.1);
@@ -617,7 +622,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             for (let i = 0; i < 6; i++) fx.dust(c.x + (Math.random() - 0.5) * 1.5, c.y + (Math.random() - 0.5) * 1.5, c.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5), Math.random() * 0.5, (Math.random() - 0.5), 0.3, 0.8, 0.6, 0.58, 0.52, 0.35);
             break;
           }
-          case 'phase': if (e.phase === 'prep') { fx.clear(); fighters.reset(); } break;
+          case 'phase': if (e.phase === 'prep') { fx.clear(); fighters.reset(); glass.reset(); } break;
           case 'spawn': fighters.reset(e.at.map(([id]) => id)); break;
         }
       }
@@ -679,7 +684,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       for (const p of panels) p.dispose();
       batches.dispose();
       fighters.dispose(); viewmodel.dispose();
-      fx.dispose();
+      fx.dispose(); glass.dispose();
       scene.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.geometry) mesh.geometry.dispose(); });
       for (const m of Object.values(materials)) m.dispose();
       for (const t of [...Object.values(textures), skyTex, sunTex, ringTex, ...siteTex]) t.dispose();
