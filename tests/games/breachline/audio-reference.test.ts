@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { distance, profile, sheetSvg } from './audio-reference';
+import { distance, profile } from './audio-reference';
 
 const SR = 48000;
 function rnd(seed: number) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 * 2 - 1; }; }
@@ -41,9 +41,4 @@ describe('reference matching', () => {
     expect(distance(a, long).total).toBeGreaterThan(same + 0.7);
   });
 
-  it('draws a sheet', () => {
-    const svg = sheetSvg('ours', profile(sineBurst(120), SR), 'reference', profile(noiseBurst(9), SR));
-    expect(svg.startsWith('<svg')).toBe(true);
-    expect(svg).toContain('distance');
-  });
 });

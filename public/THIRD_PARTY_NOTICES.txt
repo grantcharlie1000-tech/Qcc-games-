@@ -3837,7 +3837,7 @@ Changed for Breachline: recoloured near-black; levels of detail added.
 Changed for Breachline: decimated to 2,499 triangles; plain dark plastic and smoked lens materials; levels of detail added.
 ----- end of Breachline soldiers -----
 
-Breachline gun sounds (public/audio/breachline/pack.ogg)
+Breachline gun sounds (public/audio/breachline/guns.ogg)
 The Free Firearm Sound Library, created and recorded by Ben Jaszczak, Brian Nelson, Kevin Heras and Matthew Nanney.
 https://opengameart.org/content/the-free-firearm-sound-library
 License: CC0 1.0 Universal (public domain dedication; "CC0 NO RIGHTS RESERVED").
@@ -3845,14 +3845,14 @@ Takes used: AR-15, Norinco SKS, Carl Gustav M45, Benelli Nova, Winchester Model 
 We trimmed, high-passed, levelled, recombined and re-encoded the takes (Opus); the game plays them through its own
 room, wall and distance processing.
 
-Breachline reload and handling sounds (also in public/audio/breachline/pack.ogg), all CC0 1.0, from OpenGameArt.org:
+Breachline reload and handling sounds (in public/audio/breachline/foley.ogg), all CC0 1.0, from OpenGameArt.org:
 - "Handgun Reload Sound Effect" by zer0_sol, https://opengameart.org/content/handgun-reload-sound-effect (pistol magazine and slide)
 - "Shotgun Reload Sound Effects" by zer0_sol, https://opengameart.org/content/shotgun-reload-sound-effects (shell inserts, racks)
 - "Gun Reload Sounds" by SpringySpringo, https://opengameart.org/content/gun-reload-sounds (rifle magazine, bolt, shotgun cock)
 - "Equipment Clicks II" by LFA, https://opengameart.org/content/equipment-clicks-ii (handling clicks, dry fire)
 We cut these into single beats, high-passed, levelled and re-encoded them (Opus).
 
-More Breachline handling and foley sounds (also in public/audio/breachline/pack.ogg):
+More Breachline handling and foley sounds (in public/audio/breachline/foley.ogg):
 - BigSoundBank, by Joseph Sardin, each sound released under CC0 1.0 as stated on its page:
   cartridge cases on concrete, 9 mm https://bigsoundbank.com/sound-s1355.html, -s1356, -s1357;
   5.56 mm https://bigsoundbank.com/sound-s1361.html, -s1362, -s1363; 7.62 mm https://bigsoundbank.com/sound-s1367.html, -s1368, -s1369;
@@ -3866,7 +3866,7 @@ More Breachline handling and foley sounds (also in public/audio/breachline/pack.
 We cut, high-passed, levelled, layered, pitch-shifted (the SMG's magazine and bolt are derived from the pistol magazine and a
 rifle cocking) and re-encoded these (Opus).
 
-Breachline footsteps, glass, impacts and body falls (also in public/audio/breachline/pack.ogg):
+Breachline footsteps, glass, impacts and body falls (in public/audio/breachline/foley.ogg):
 - BigSoundBank, CC0 1.0 as stated on each sound page; by Joseph Sardin unless noted:
   footsteps on concrete https://bigsoundbank.com/sound-s0514.html; gravel https://bigsoundbank.com/sound-s1117.html;
   parquet https://bigsoundbank.com/sound-s0376.html; grass https://bigsoundbank.com/sound-s1253.html;

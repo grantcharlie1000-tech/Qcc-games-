@@ -1,39 +1,43 @@
 {
-  "about": "Plan A manifest for audio-pack.ts (approved by the owner 2026-11-12). Paths are inside 'Prepared SFX Library' from The Free Firearm Sound Library (CC0; Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney; https://opengameart.org/content/the-free-firearm-sound-library). Build: AUDIO_PACK_MAIN=1 npx vite-node tests/games/breachline/audio-pack.ts -- tests/games/breachline/audio-pack.planA.json '<library folder>' public/audio/breachline",
+  "about": "Plan A manifest for audio-pack.ts (approved by the owner 2026-11-12). Paths are inside 'Prepared SFX Library' from The Free Firearm Sound Library (CC0; Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney; https://opengameart.org/content/the-free-firearm-sound-library). Build: AUDIO_PACK_MAIN=1 npx vite-node tests/games/breachline/audio-pack.ts -- tests/games/breachline/audio-pack.planA.json '<library folder>' public/audio/breachline (writes guns.ogg/json at 96 kb/s and foley.ogg/json at 64 kb/s)",
   "loudness": -14,
-  "bitrate": 64,
   "takes": [
     {
       "key": "gun.ar.fp",
       "file": "lib/Prepared SFX Library/AR-15/D_32P.wav",
       "keepMs": 55,
-      "fadeMs": 60
+      "fadeMs": 60,
+      "group": "guns"
     },
     {
       "key": "gun.ar.tp",
       "file": "lib/Prepared SFX Library/AR-15/D_24P.wav",
       "keepMs": 150,
-      "fadeMs": 60
+      "fadeMs": 60,
+      "group": "guns"
     },
     {
       "key": "gun.ar.far",
       "file": "lib/Prepared SFX Library/AR-15/D_24P.wav",
       "keepMs": 300,
       "fadeMs": 80,
-      "gainDb": -2
+      "gainDb": -2,
+      "group": "guns"
     },
     {
       "key": "gun.carbine.fp",
       "file": "lib/Prepared SFX Library/SKS/U_14P.wav",
       "keepMs": 55,
       "fadeMs": 60,
-      "max": 4
+      "max": 4,
+      "group": "guns"
     },
     {
       "key": "gun.carbine.tp",
       "file": "lib/Prepared SFX Library/SKS/U_19P.wav",
       "keepMs": 150,
-      "fadeMs": 60
+      "fadeMs": 60,
+      "group": "guns"
     },
     {
       "key": "gun.carbine.far",
@@ -41,13 +45,15 @@
       "keepMs": 300,
       "fadeMs": 80,
       "max": 2,
-      "gainDb": -2
+      "gainDb": -2,
+      "group": "guns"
     },
     {
       "key": "gun.smg.fp",
       "file": "lib/Prepared SFX Library/Carl Gustav M45/G_31P.wav",
       "keepMs": 45,
-      "fadeMs": 50
+      "fadeMs": 50,
+      "group": "guns"
     },
     {
       "key": "gun.smg.fp",
@@ -55,7 +61,8 @@
       "keepMs": 45,
       "fadeMs": 40,
       "burst": true,
-      "max": 6
+      "max": 6,
+      "group": "guns"
     },
     {
       "key": "gun.smg.fp",
@@ -64,13 +71,15 @@
       "fadeMs": 40,
       "burst": true,
       "skip": 2,
-      "max": 6
+      "max": 6,
+      "group": "guns"
     },
     {
       "key": "gun.smg.tp",
       "file": "lib/Prepared SFX Library/Carl Gustav M45/G_20P.wav",
       "keepMs": 120,
-      "fadeMs": 50
+      "fadeMs": 50,
+      "group": "guns"
     },
     {
       "key": "gun.smg.far",
@@ -78,45 +87,52 @@
       "keepMs": 250,
       "fadeMs": 80,
       "max": 2,
-      "gainDb": -2
+      "gainDb": -2,
+      "group": "guns"
     },
     {
       "key": "gun.shotgun.fp",
       "file": "lib/Prepared SFX Library/Nova/O_21P.wav",
       "keepMs": 60,
-      "fadeMs": 60
+      "fadeMs": 60,
+      "group": "guns"
     },
     {
       "key": "gun.shotgun.fp",
       "file": "lib/Prepared SFX Library/Model 12/K_22P.wav",
       "keepMs": 60,
-      "fadeMs": 60
+      "fadeMs": 60,
+      "group": "guns"
     },
     {
       "key": "gun.shotgun.tp",
       "file": "lib/Prepared SFX Library/Nova/O_17P.wav",
       "keepMs": 150,
-      "fadeMs": 60
+      "fadeMs": 60,
+      "group": "guns"
     },
     {
       "key": "gun.shotgun.far",
       "file": "lib/Prepared SFX Library/Nova/O_17P.wav",
       "keepMs": 300,
       "fadeMs": 80,
-      "gainDb": -2
+      "gainDb": -2,
+      "group": "guns"
     },
     {
       "key": "gun.dmr.fp",
       "file": "lib/Prepared SFX Library/Mosin Nagant/M_21P.wav",
       "keepMs": 70,
       "fadeMs": 70,
-      "max": 3
+      "max": 3,
+      "group": "guns"
     },
     {
       "key": "gun.dmr.tp",
       "file": "lib/Prepared SFX Library/Mosin Nagant/M_26P.wav",
       "keepMs": 150,
-      "fadeMs": 60
+      "fadeMs": 60,
+      "group": "guns"
     },
     {
       "key": "gun.dmr.far",
@@ -124,26 +140,30 @@
       "keepMs": 300,
       "fadeMs": 80,
       "max": 2,
-      "gainDb": -2
+      "gainDb": -2,
+      "group": "guns"
     },
     {
       "key": "gun.pistol.fp",
       "file": "lib/Prepared SFX Library/Walther PPQ/X_39P.wav",
       "keepMs": 45,
-      "fadeMs": 50
+      "fadeMs": 50,
+      "group": "guns"
     },
     {
       "key": "gun.pistol.tp",
       "file": "lib/Prepared SFX Library/Walther PPQ/X_31P.wav",
       "keepMs": 120,
-      "fadeMs": 50
+      "fadeMs": 50,
+      "group": "guns"
     },
     {
       "key": "gun.pistol.far",
       "file": "lib/Prepared SFX Library/Walther PPQ/X_31P.wav",
       "keepMs": 250,
       "fadeMs": 80,
-      "gainDb": -2
+      "gainDb": -2,
+      "group": "guns"
     },
     {
       "key": "rl.pistol.release",
@@ -156,7 +176,8 @@
           165
         ]
       ],
-      "gainDb": -6
+      "gainDb": -6,
+      "group": "foley"
     },
     {
       "key": "rl.pistol.out",
@@ -169,7 +190,8 @@
           660
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "rl.pistol.in",
@@ -182,7 +204,8 @@
           770
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "rl.pistol.seat",
@@ -195,7 +218,8 @@
           1185
         ]
       ],
-      "gainDb": -2
+      "gainDb": -2,
+      "group": "foley"
     },
     {
       "key": "rl.pistol.bolt",
@@ -208,7 +232,8 @@
           1330
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "group": "foley"
     },
     {
       "key": "rl.shotgun.shell",
@@ -233,7 +258,8 @@
           3470
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "rl.shotgun.shell",
@@ -246,7 +272,8 @@
           990
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "rl.shotgun.shell",
@@ -259,7 +286,8 @@
           600
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "rl.shotgun.pump",
@@ -272,7 +300,8 @@
           1045
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "group": "foley"
     },
     {
       "key": "rl.shotgun.pump",
@@ -285,7 +314,8 @@
           4900
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "group": "foley"
     },
     {
       "key": "rl.shotgun.pump",
@@ -298,7 +328,8 @@
           385
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "group": "foley"
     },
     {
       "key": "rl.rifle.release",
@@ -311,7 +342,8 @@
           300
         ]
       ],
-      "gainDb": -6
+      "gainDb": -6,
+      "group": "foley"
     },
     {
       "key": "rl.rifle.out",
@@ -324,7 +356,8 @@
           425
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "rl.rifle.out",
@@ -337,7 +370,8 @@
           285
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "rl.rifle.in",
@@ -350,7 +384,8 @@
           1195
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "rl.rifle.in",
@@ -363,7 +398,8 @@
           895
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "rl.rifle.seat",
@@ -376,7 +412,8 @@
           1300
         ]
       ],
-      "gainDb": -2
+      "gainDb": -2,
+      "group": "foley"
     },
     {
       "key": "rl.rifle.bolt",
@@ -389,7 +426,8 @@
           1445
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "group": "foley"
     },
     {
       "key": "rl.rifle.bolt",
@@ -402,7 +440,8 @@
           1445
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "group": "foley"
     },
     {
       "key": "rl.detail",
@@ -431,7 +470,8 @@
           5630
         ]
       ],
-      "gainDb": -10
+      "gainDb": -10,
+      "group": "foley"
     },
     {
       "key": "dry",
@@ -444,7 +484,8 @@
           2340
         ]
       ],
-      "gainDb": -8
+      "gainDb": -8,
+      "group": "foley"
     },
     {
       "key": "casing.9mm",
@@ -457,7 +498,8 @@
           620
         ]
       ],
-      "gainDb": -8
+      "gainDb": -8,
+      "group": "foley"
     },
     {
       "key": "casing.9mm",
@@ -470,7 +512,8 @@
           620
         ]
       ],
-      "gainDb": -8
+      "gainDb": -8,
+      "group": "foley"
     },
     {
       "key": "casing.9mm",
@@ -483,7 +526,8 @@
           620
         ]
       ],
-      "gainDb": -8
+      "gainDb": -8,
+      "group": "foley"
     },
     {
       "key": "casing.556",
@@ -496,7 +540,8 @@
           620
         ]
       ],
-      "gainDb": -8
+      "gainDb": -8,
+      "group": "foley"
     },
     {
       "key": "casing.556",
@@ -509,7 +554,8 @@
           620
         ]
       ],
-      "gainDb": -8
+      "gainDb": -8,
+      "group": "foley"
     },
     {
       "key": "casing.556",
@@ -522,7 +568,8 @@
           620
         ]
       ],
-      "gainDb": -8
+      "gainDb": -8,
+      "group": "foley"
     },
     {
       "key": "casing.762",
@@ -535,7 +582,8 @@
           620
         ]
       ],
-      "gainDb": -8
+      "gainDb": -8,
+      "group": "foley"
     },
     {
       "key": "casing.762",
@@ -548,7 +596,8 @@
           620
         ]
       ],
-      "gainDb": -8
+      "gainDb": -8,
+      "group": "foley"
     },
     {
       "key": "casing.762",
@@ -561,7 +610,8 @@
           620
         ]
       ],
-      "gainDb": -8
+      "gainDb": -8,
+      "group": "foley"
     },
     {
       "key": "rl.pistol.bolt",
@@ -574,7 +624,8 @@
           1640
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "group": "foley"
     },
     {
       "key": "rl.pistol.bolt",
@@ -587,7 +638,8 @@
           470
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "group": "foley"
     },
     {
       "key": "dry",
@@ -600,7 +652,8 @@
           200
         ]
       ],
-      "gainDb": -8
+      "gainDb": -8,
+      "group": "foley"
     },
     {
       "key": "dry",
@@ -613,7 +666,8 @@
           260
         ]
       ],
-      "gainDb": -8
+      "gainDb": -8,
+      "group": "foley"
     },
     {
       "key": "rl.dmr.bolt",
@@ -630,7 +684,8 @@
           3950
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "group": "foley"
     },
     {
       "key": "rl.ar.out",
@@ -648,7 +703,8 @@
         "file": "red/R28-36-Handling and Rattling Rifle.wav",
         "startMs": 6650,
         "gainDb": -10
-      }
+      },
+      "group": "foley"
     },
     {
       "key": "rl.ar.in",
@@ -666,7 +722,8 @@
         "file": "red/R28-36-Handling and Rattling Rifle.wav",
         "startMs": 7030,
         "gainDb": -10
-      }
+      },
+      "group": "foley"
     },
     {
       "key": "rl.ar.seat",
@@ -684,7 +741,8 @@
         "file": "red/R28-36-Handling and Rattling Rifle.wav",
         "startMs": 7520,
         "gainDb": -8
-      }
+      },
+      "group": "foley"
     },
     {
       "key": "rl.ar.bolt",
@@ -697,7 +755,8 @@
           2350
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "group": "foley"
     },
     {
       "key": "rl.ar.bolt",
@@ -710,7 +769,8 @@
           870
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "group": "foley"
     },
     {
       "key": "rl.carbine.out",
@@ -728,7 +788,8 @@
         "file": "red/R28-36-Handling and Rattling Rifle.wav",
         "startMs": 12650,
         "gainDb": -10
-      }
+      },
+      "group": "foley"
     },
     {
       "key": "rl.carbine.in",
@@ -746,7 +807,8 @@
         "file": "red/R28-36-Handling and Rattling Rifle.wav",
         "startMs": 13920,
         "gainDb": -10
-      }
+      },
+      "group": "foley"
     },
     {
       "key": "rl.carbine.seat",
@@ -759,7 +821,8 @@
           1445
         ]
       ],
-      "gainDb": -3
+      "gainDb": -3,
+      "group": "foley"
     },
     {
       "key": "rl.carbine.bolt",
@@ -776,7 +839,8 @@
           2000
         ]
       ],
-      "gainDb": 0
+      "gainDb": 0,
+      "group": "foley"
     },
     {
       "key": "rl.smg.release",
@@ -790,7 +854,8 @@
         ]
       ],
       "gainDb": -6,
-      "pitch": 0.85
+      "pitch": 0.85,
+      "group": "foley"
     },
     {
       "key": "rl.smg.out",
@@ -809,7 +874,8 @@
         "file": "red/R28-36-Handling and Rattling Rifle.wav",
         "startMs": 16050,
         "gainDb": -12
-      }
+      },
+      "group": "foley"
     },
     {
       "key": "rl.smg.in",
@@ -828,7 +894,8 @@
         "file": "red/R28-36-Handling and Rattling Rifle.wav",
         "startMs": 18210,
         "gainDb": -12
-      }
+      },
+      "group": "foley"
     },
     {
       "key": "rl.smg.seat",
@@ -842,7 +909,8 @@
         ]
       ],
       "gainDb": -2,
-      "pitch": 0.85
+      "pitch": 0.85,
+      "group": "foley"
     },
     {
       "key": "rl.smg.bolt",
@@ -860,7 +928,8 @@
         ]
       ],
       "gainDb": 0,
-      "pitch": 1.15
+      "pitch": 1.15,
+      "group": "foley"
     },
     {
       "key": "rl.fetch",
@@ -885,7 +954,8 @@
           2650
         ]
       ],
-      "gainDb": -10
+      "gainDb": -10,
+      "group": "foley"
     },
     {
       "key": "rl.fetch",
@@ -898,7 +968,8 @@
           7300
         ]
       ],
-      "gainDb": -10
+      "gainDb": -10,
+      "group": "foley"
     },
     {
       "key": "drop.mag",
@@ -919,7 +990,8 @@
           23860
         ]
       ],
-      "gainDb": -6
+      "gainDb": -6,
+      "group": "foley"
     },
     {
       "key": "step.slab",
@@ -944,7 +1016,8 @@
           6995
         ]
       ],
-      "gainDb": -6
+      "gainDb": -6,
+      "group": "foley"
     },
     {
       "key": "step.asphalt",
@@ -969,7 +1042,8 @@
           6625
         ]
       ],
-      "gainDb": -6
+      "gainDb": -6,
+      "group": "foley"
     },
     {
       "key": "step.planks",
@@ -994,7 +1068,8 @@
           8540
         ]
       ],
-      "gainDb": -3
+      "gainDb": -3,
+      "group": "foley"
     },
     {
       "key": "step.tile",
@@ -1019,7 +1094,8 @@
           5025
         ]
       ],
-      "gainDb": -6
+      "gainDb": -6,
+      "group": "foley"
     },
     {
       "key": "step.check",
@@ -1045,7 +1121,8 @@
         ]
       ],
       "gainDb": -7,
-      "pitch": 1.04
+      "pitch": 1.04,
+      "group": "foley"
     },
     {
       "key": "step.lino",
@@ -1072,7 +1149,8 @@
       ],
       "gainDb": -8,
       "pitch": 0.92,
-      "lowpass": 4000
+      "lowpass": 4000,
+      "group": "foley"
     },
     {
       "key": "step.carpet",
@@ -1099,7 +1177,8 @@
       ],
       "gainDb": -10,
       "pitch": 0.9,
-      "lowpass": 900
+      "lowpass": 900,
+      "group": "foley"
     },
     {
       "key": "step.grass",
@@ -1124,7 +1203,8 @@
           14740
         ]
       ],
-      "gainDb": -6
+      "gainDb": -6,
+      "group": "foley"
     },
     {
       "key": "step.raised",
@@ -1149,7 +1229,8 @@
           3000
         ]
       ],
-      "gainDb": -1
+      "gainDb": -1,
+      "group": "foley"
     },
     {
       "key": "glass.crack",
@@ -1170,7 +1251,8 @@
           6480
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "glass.shatter",
@@ -1183,7 +1265,8 @@
           1500
         ]
       ],
-      "gainDb": -2
+      "gainDb": -2,
+      "group": "foley"
     },
     {
       "key": "glass.shatter",
@@ -1196,7 +1279,8 @@
           3400
         ]
       ],
-      "gainDb": -2
+      "gainDb": -2,
+      "group": "foley"
     },
     {
       "key": "glass.small",
@@ -1209,7 +1293,8 @@
           1100
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "glass.small",
@@ -1222,7 +1307,8 @@
           1300
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "glass.small",
@@ -1235,7 +1321,8 @@
           1400
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "impact.concrete",
@@ -1252,7 +1339,8 @@
           760
         ]
       ],
-      "gainDb": -6
+      "gainDb": -6,
+      "group": "foley"
     },
     {
       "key": "impact.concrete",
@@ -1269,7 +1357,8 @@
           4900
         ]
       ],
-      "gainDb": -6
+      "gainDb": -6,
+      "group": "foley"
     },
     {
       "key": "impact.brick",
@@ -1291,7 +1380,8 @@
         ]
       ],
       "gainDb": -6,
-      "pitch": 0.85
+      "pitch": 0.85,
+      "group": "foley"
     },
     {
       "key": "impact.wall",
@@ -1310,7 +1400,8 @@
       ],
       "gainDb": -8,
       "pitch": 1.25,
-      "lowpass": 3500
+      "lowpass": 3500,
+      "group": "foley"
     },
     {
       "key": "impact.wood",
@@ -1335,7 +1426,8 @@
           3080
         ]
       ],
-      "gainDb": -6
+      "gainDb": -6,
+      "group": "foley"
     },
     {
       "key": "impact.metal",
@@ -1348,7 +1440,8 @@
           640
         ]
       ],
-      "gainDb": -6
+      "gainDb": -6,
+      "group": "foley"
     },
     {
       "key": "impact.metal",
@@ -1361,7 +1454,8 @@
           700
         ]
       ],
-      "gainDb": -6
+      "gainDb": -6,
+      "group": "foley"
     },
     {
       "key": "body.fall",
@@ -1378,7 +1472,8 @@
           5300
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "body.fall",
@@ -1391,7 +1486,8 @@
           3150
         ]
       ],
-      "gainDb": -4
+      "gainDb": -4,
+      "group": "foley"
     },
     {
       "key": "body.settle",
@@ -1404,7 +1500,8 @@
           2200
         ]
       ],
-      "gainDb": -10
+      "gainDb": -10,
+      "group": "foley"
     },
     {
       "key": "body.settle",
@@ -1417,7 +1514,40 @@
           1250
         ]
       ],
-      "gainDb": -10
+      "gainDb": -10,
+      "group": "foley"
+    },
+    {
+      "group": "foley",
+      "key": "casing.shell",
+      "file": "bsb/1368.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          560
+        ]
+      ],
+      "gainDb": -8,
+      "pitch": 0.55,
+      "lowpass": 3000
+    },
+    {
+      "group": "foley",
+      "key": "casing.shell",
+      "file": "bsb/1369.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          560
+        ]
+      ],
+      "gainDb": -8,
+      "pitch": 0.6,
+      "lowpass": 3000
     }
   ],
   "hybrids": [
@@ -1446,5 +1576,9 @@
     "gun.shotgun.tp",
     "gun.dmr.tp",
     "gun.pistol.tp"
-  ]
+  ],
+  "bitrates": {
+    "guns": 96,
+    "foley": 64
+  }
 }

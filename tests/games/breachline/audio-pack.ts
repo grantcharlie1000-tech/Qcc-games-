@@ -18,13 +18,15 @@ import { join } from 'node:path';
  * `under`: another recording mixed under each take (same length, from `startMs`, at `gainDb`), e.g. real rifle
  * handling under a light magazine click. */
 export interface PackTake {
+  /** Which output pack the take goes in (each pack has its own bitrate); default 'guns'. */
+  group?: string;
   key: string; file: string; keepMs: number; fadeMs: number; max?: number; gainDb?: number; burst?: boolean; skip?: number;
   ranges?: [number, number][]; pitch?: number; lowpass?: number; under?: { file: string; startMs: number; gainDb: number; pitch?: number };
 }
 /** `hybrids`: keys whose takes are also recombined (each take's first 4 ms joined to another's body), for guns with
  * few takes, so automatic fire never alternates between two. */
 /** `half`: key prefixes the game may keep at half rate (24 kHz) after decoding: short handling sounds, to save memory. */
-export interface PackManifest { takes: PackTake[]; loudness?: number; bitrate?: number; hybrids?: string[]; half?: string[] }
+export interface PackManifest { takes: PackTake[]; loudness?: number; bitrate?: number; bitrates?: Record<string, number>; hybrids?: string[]; half?: string[] }
 export interface PackIndex { version: 1; sr: number; keys: Record<string, { start: number; length: number }[]>; half?: string[] }
 
 const SR = 48000, GAP = Math.round(SR * 0.1);
@@ -66,7 +68,16 @@ export function shortTerm(x: Float32Array): number {
   return 10 * Math.log10(best + 1e-12);
 }
 
-export function buildPack(manifest: PackManifest, sourceDir: string, outDir: string): PackIndex {
+/** Builds one pack per group (`<group>.ogg` and `<group>.json`), each at its group's bitrate. */
+export function buildPacks(manifest: PackManifest, sourceDir: string, outDir: string): Record<string, PackIndex> {
+  const groups = [...new Set(manifest.takes.map(t => t.group ?? 'guns'))], out: Record<string, PackIndex> = {};
+  for (const g of groups) {
+    out[g] = buildPack({ ...manifest, takes: manifest.takes.filter(t => (t.group ?? 'guns') === g), bitrate: manifest.bitrates?.[g] ?? manifest.bitrate }, sourceDir, outDir, g);
+  }
+  return out;
+}
+
+export function buildPack(manifest: PackManifest, sourceDir: string, outDir: string, name = 'pack'): PackIndex {
   mkdirSync(outDir, { recursive: true });
   const target = manifest.loudness ?? -14, parts: Float32Array[] = [], index: PackIndex = { version: 1, sr: SR, keys: {}, ...(manifest.half ? { half: manifest.half } : {}) };
   let at = 0;
@@ -95,18 +106,18 @@ export function buildPack(manifest: PackManifest, sourceDir: string, outDir: str
     }
   }
   const all = new Float32Array(at); let o = 0; for (const p of parts) { all.set(p, o); o += p.length; }
-  const raw = join(outDir, 'pack.f32');
+  const raw = join(outDir, `${name}.f32`);
   writeFileSync(raw, Buffer.from(all.buffer));
-  execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'f32le', '-ar', String(SR), '-ac', '1', '-i', raw, '-c:a', 'libopus', '-b:a', `${manifest.bitrate ?? 64}k`, '-application', 'audio', join(outDir, 'pack.ogg')]);
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'f32le', '-ar', String(SR), '-ac', '1', '-i', raw, '-c:a', 'libopus', '-b:a', `${manifest.bitrate ?? 64}k`, '-application', 'audio', join(outDir, `${name}.ogg`)]);
   execFileSync('rm', ['-f', raw]);
-  writeFileSync(join(outDir, 'pack.json'), JSON.stringify(index));
+  writeFileSync(join(outDir, `${name}.json`), JSON.stringify(index));
   return index;
 }
 
 if (process.env.AUDIO_PACK_MAIN === '1') {
   const [manifest, src, out] = process.argv.slice(2).filter(a => a !== '--');
   if (manifest && src && out) {
-    const idx = buildPack(JSON.parse(readFileSync(manifest, 'utf8')), src, out);
-    console.log(Object.entries(idx.keys).map(([k, v]) => `${k}: ${v.length} takes`).join('\n'));
+    const all = buildPacks(JSON.parse(readFileSync(manifest, 'utf8')), src, out);
+    for (const [g, idx] of Object.entries(all)) console.log(`${g}: ${Object.entries(idx.keys).map(([k, v]) => `${k} ${v.length}`).join(', ')}`);
   }
 }

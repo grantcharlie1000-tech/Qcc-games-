@@ -66,11 +66,11 @@ const BED_GAIN: Record<Space, number> = { hard: 0.5, soft: 0.35, corridor: 0.5, 
 /** `options.ambience: false` leaves the room beds out (the sound lab measures single sounds that way).
  * `options.override` replaces sounds with given takes once the bank is ready: for the sound lab's auditions only;
  * the game never passes it. */
-/** The recorded gun pack (plan A, chosen by the owner 2026-11-12): real CC0 takes from The Free Firearm Sound
+/** The recorded packs (guns at 96 kb/s, foley at 64 kb/s; plan A, chosen by the owner 2026-11-12): real CC0 takes from The Free Firearm Sound
  * Library, trimmed and levelled by tests/games/breachline/audio-pack.ts from audio-pack.planA.json; credited in
  * public/THIRD_PARTY_NOTICES.txt. Relative to the page, like the rest of the site's assets. If it cannot be
  * loaded, the synthesised guns play instead. */
-export const PACK_URL: string | null = 'audio/breachline/pack.json';
+export const PACK_URLS: string[] = ['audio/breachline/guns.json', 'audio/breachline/foley.json'];
 /** What the pack supplies (audio-pack.planA.json): the synthesis skips these while the pack loads, and renders them
  * if it fails. Reload slots and dry fire are recorded too (CC0 handling sounds; see THIRD_PARTY_NOTICES). */
 const PACK_KEYS: string[] = [
@@ -78,8 +78,8 @@ const PACK_KEYS: string[] = [
   'rl.*', 'casing.*', 'dry', 'step.*', 'impact.*', 'glass.*', 'body.*',
 ];
 
-export function createSfx(enabled: () => boolean, options: { ambience?: boolean; override?: Record<string, { sr: number; takes: number[][] }>; pack?: string | null } = {}): Sfx {
-  const packUrl = options.pack === undefined ? PACK_URL : options.pack;
+export function createSfx(enabled: () => boolean, options: { ambience?: boolean; override?: Record<string, { sr: number; takes: number[][] }>; pack?: string | string[] | null } = {}): Sfx {
+  const packUrls = options.pack === undefined ? PACK_URLS : options.pack === null ? [] : [options.pack].flat();
   let packDone: Promise<boolean> = Promise.resolve(false);
   let eng: Engine | null = null, dead = false;
   const levels = new Map(catalogue().map(d => [d.key, d.level]));
@@ -105,11 +105,18 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     Object.assign(eng.ear, ear);
     // With a pack configured the synthesised guns are not rendered (they would only be thrown away); if the pack
     // cannot be loaded they are rendered afterwards.
-    const packKeys = packUrl ? PACK_KEYS : [];
+    const packKeys = packUrls.length ? PACK_KEYS : [];
     void eng.load(packKeys);
     // A failed pack renders everything it would have supplied; a loaded one covers every reload beat in reloads.ts,
     // and only the shotgun hull (no recording yet) is still synthesised.
-    if (packUrl) { const e = eng; packDone = e.loadPack(packUrl).then(async ok => { await e.fill(ok ? packKeys.filter(k => !k.endsWith('*') && !e.packed.has(k)) : packKeys); if (ok) await e.fillUnpacked(['casing.shell', 'impact.*']); return ok; }); }
+    if (packUrls.length) {
+      const e = eng;
+      packDone = Promise.all(packUrls.map(u => e.loadPack(u))).then(async oks => {
+        const ok = oks.every(Boolean);
+        await e.fillUnpacked(ok ? ['impact.*'] : packKeys);
+        return ok;
+      });
+    }
     return eng;
   }
   const spaceAt = (x: number, z: number) => spaceOfRoom(roomAt(x, z));
@@ -263,6 +270,8 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
           if (f === 'bin') { play('impact.metal', 'world', p, { gain: 0.8, rate: 0.85, ref: 2, reach: 25 }); break; }
           if (f === 'leaf') { play('impact.leaf', 'world', p, { ref: 2, reach: 18 }); break; }
           if (f === 'loose') { play('impact.cardboard', 'world', p, { ref: 2, reach: 20 }); break; }
+          // A board, frame or shelf falling off a broken wall: a light wooden clatter on the floor.
+          if (f === 'wallitem') { play('impact.wood', 'world', p, { gain: 0.8, rate: 0.7 + Math.random() * 0.15, wet: 0.3, ref: 2, reach: 25 }); break; }
           // Set pieces by family (render/setpieces-data.ts).
           const kind: BreakKind = /shelving|filing|cabinet|mapchest|vending|trolley|display/.test(f) ? 'shelf' : /drums|generator|skip/.test(f) ? 'drum'
             : /crates|pallets|materials|binstore|benchboxes/.test(f) ? 'crate' : /sofa|trailer/.test(f) ? 'fabric' : /lowwall|planter/.test(f) ? 'wood' : /island|deskpod|tableset|lowtable|sideboard/.test(f) ? 'wood' : 'metal';

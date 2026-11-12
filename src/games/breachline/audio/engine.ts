@@ -158,13 +158,13 @@ export class Engine {
   has(key: string) { return !!this.bank.get(key)?.bufs.length; }
   /** Sounds that come from a sample pack (recordings) rather than synthesis. */
   readonly packed = new Set<string>();
-  /** Loads a sample pack (pack.json and pack.ogg beside it; see tests/games/breachline/audio-pack.ts): fetched
+  /** Loads a sample pack (an index .json and the .ogg of the same name beside it; see tests/games/breachline/audio-pack.ts): fetched
    * and decoded once (the browser decodes off the main thread), sliced into takes, and used in place of the
    * synthesised sounds of the same keys. Any failure leaves the synthesis in place, silently. */
   async loadPack(indexUrl: string): Promise<boolean> {
     try {
       const index = await (await fetch(indexUrl)).json() as { version: number; sr: number; keys: Record<string, { start: number; length: number }[]>; half?: string[] };
-      const audio = await (await fetch(new URL('pack.ogg', new URL(indexUrl, location.href)).href)).arrayBuffer();
+      const audio = await (await fetch(new URL(indexUrl, location.href).href.replace(/\.json$/, '.ogg'))).arrayBuffer();
       const all = await this.ctx.decodeAudioData(audio), data = all.getChannelData(0);
       if (this.disposed) return false;
       for (const [key, takes] of Object.entries(index.keys)) {

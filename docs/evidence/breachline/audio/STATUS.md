@@ -167,6 +167,21 @@ change checked against the reference sheets until every gun is within about 1.0 
    distance to the reference, and searches the gun's parameters (a few dozen) to minimise it. Then the takes'
    spread sets the variant range. Indoor rooms are not covered by these references and stay as designed.
 
+## Packs split by bitrate, shotgun hull, falling wall items (2026-11-12)
+
+- **Two packs.** `guns.ogg` holds the guns at 96 kb/s (316 KB). `foley.ogg` holds reloads, casings, footsteps,
+  impacts, glass and bodies at 64 kb/s (619 KB). Together that is **935 KB**, inside the planner's 1.2 MB ceiling.
+  The game loads both at the first gesture. If either fails, everything it would have supplied is synthesised
+  instead.
+- **48 kb/s was tried and rejected for footsteps and cloth:** against the uncompressed take, the harness distance
+  went from 0.06 at 64 kb/s to 0.22 (footstep) and 0.35 (cloth) at 48 kb/s.
+- **Shotgun hull:** derived from the real 7.62 casings, pitched to 0.55–0.6 and low-passed.
+- **Falling wall items** (the scene's `wallitem` pieces): the real wood hit, pitched lower.
+- **Bank 11.87 MB.** The synthetic guns, reloads, steps, glass and bodies are rendered only if a pack fails.
+- **Tests:** a test that only checked that the comparison sheet contained the word "distance" was removed (owner
+  rule: only real-behaviour tests). Current results: 140 unit tests; audio.spec, play.spec, warm.spec and the
+  two-device test pass; the production build loads both packs with no errors or policy violations.
+
 ## Phase 3 on real sources (2026-11-12)
 
 **Sources** (each BigSoundBank page and Red Library record read; all CC0; credited in THIRD_PARTY_NOTICES):
@@ -510,7 +525,7 @@ Still visible in the final phase 1 pictures, for later phases: the blast body is
 | Master peak | ≤ −1 dBFS | +6.1 (breach) | −2.0 worst scene; the ceiling caps at −1.0 |
 | Own weapon over world gun at 10 m | ~6 dB | ~4.4 dB | **6.1 dB** |
 | Ambience under gunfire | ≥ 20 dB | ~12 dB | **27.3 dB** |
-| Script cost | no per-frame allocation | — | `listen` per frame does a room lookup and sets gains only when the room changes; no allocation |
+| Script cost | no per-frame allocation |: | `listen` per frame does a room lookup and sets gains only when the room changes; no allocation |
 
 ## The lab (how this is measured)
 
