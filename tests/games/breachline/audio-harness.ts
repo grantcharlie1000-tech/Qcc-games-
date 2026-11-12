@@ -146,7 +146,9 @@ export function decodeWav(buf: Buffer): { ch: Float32Array[]; sr: number } {
   const len = buf.readUInt32LE(o + 4) / (nc * bits / 8), ch = Array.from({ length: nc }, () => new Float32Array(len));
   for (let i = 0; i < len; i++) for (let c = 0; c < nc; c++) {
     const p = o + 8 + (i * nc + c) * bits / 8;
-    ch[c][i] = fmt === 3 ? buf.readFloatLE(p) : buf.readInt16LE(p) / 32767;
+    // Format 3 is float; 0xFFFE (extensible, as ffmpeg writes) carries the real type in its sub-format, which for
+    // these files follows the bit depth: 32-bit is float here, 24 and 16 are integers.
+    ch[c][i] = fmt === 3 || (fmt === 0xfffe && bits === 32) ? buf.readFloatLE(p) : bits === 24 ? buf.readIntLE(p, 3) / 8388607 : buf.readInt16LE(p) / 32767;
   }
   return { ch, sr };
 }

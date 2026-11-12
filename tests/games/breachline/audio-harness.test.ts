@@ -43,4 +43,18 @@ describe('the sound lab measures what it is given', () => {
     const pcm = decodeWav(encodeWav([a], SR));
     expect(pcm.ch[0][77]).toBeCloseTo(a[77], 3);
   });
+
+  it('reads WAVs written by ffmpeg (extensible 32-bit float, and 24-bit)', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const { mkdtempSync, writeFileSync, readFileSync } = await import('node:fs');
+    const { join } = await import('node:path'); const { tmpdir } = await import('node:os');
+    const dir = mkdtempSync(join(tmpdir(), 'wav-')), src = join(dir, 'a.wav'), a = sine(440, 0.05, 0.5);
+    writeFileSync(src, encodeWav([a], SR, true));
+    for (const codec of ['pcm_f32le', 'pcm_s24le']) {
+      const out = join(dir, `${codec}.wav`);
+      execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', src, '-c:a', codec, out]);
+      const back = decodeWav(readFileSync(out));
+      expect(back.ch[0][100], codec).toBeCloseTo(a[100], 3);
+    }
+  });
 });

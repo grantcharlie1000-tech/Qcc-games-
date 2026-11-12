@@ -54,6 +54,119 @@ crack hiss and sizzle hold a plateau), and the tonal ratio is ≤ 0.03 for every
 rebuild waits for the reference recordings and the owner's decision on whether recordings may be used as source
 material.
 
+## Real recordings: inventory and comparison (2026-11-12)
+
+**Source.** The Free Firearm Sound Library ("Prepared SFX Library.7z", 194 MB) from
+https://opengameart.org/content/the-free-firearm-sound-library. The page states **CC0**: "Our team holds CC0 NO
+RIGHTS RESERVED for this library. It may be used without royalty or credit … for any application", recorded by Ben
+Jaszczak, Brian Nelson, Kevin Heras and Matthew Nanney. The archive has no readme. Each WAV carries a description in
+its `comment` tag (weapon, calibre, near or mid distance, single shot or burst). Following the owner's open decision,
+the recordings are **measurement references only**. They were downloaded and unpacked (with a scratch-installed
+`py7zr`, nothing run from the archive) to `/tmp/claude-0/refs/`, outside the repository. **No audio from them is
+committed.** Only analysis pictures are, and those contain spectrograms of the references.
+
+**Inventory.** 56 WAVs, all 96 kHz 24-bit stereo, 5–30 s each, all **outdoors**, all "front of shooter" at
+**near** or **mid** distance (two microphone pairs: near is left-right, mid is forward-back). There are no indoor
+takes, no distant takes, and no separate mechanical sounds (no magazine, bolt, charging handle, pump, shell insert,
+dry fire or casings). A few files have quiet events between shots, −12 to −42 dB under the shot, which are probably
+actions cycling, but they are not labelled.
+
+| Gun in the library | Kind | Files (near / mid) | Single-shot takes found |
+| --- | --- | --- | --- |
+| AR-15 (5.56) | semi-auto rifle | 1 / 1 | 2 / 2 |
+| AK-47 (7.62×39) | auto rifle: single, short and long bursts | 3 / 3 | bursts of 4–12 |
+| SKS (7.62×39) | semi-auto carbine | 1 / 1 | 5 / 3 |
+| Carl Gustav M45 "Swedish K" (**9 mm**) | SMG: single, short and long bursts | 3 / 3 | 3 / 3, plus bursts |
+| PPSh (7.62×25) | SMG: single and bursts | 3 / 3 | 5 / 4, plus bursts |
+| Benelli Nova, Winchester Model 12, Charles Daly (12 ga pump) | shotgun | 1 / 1 each | 2 / 2 each |
+| Mossberg 190 (12 ga bolt) | shotgun | 1 / 1 | 2 / 3 |
+| Mosin-Nagant (**7.62×54R**), Tikka T3 / Springfield 1917 / Arisaka (.30-06), Savage 10 (.300 BLK) | bolt rifles | 1 / 1 each | 2–4 each |
+| Marlin 336, Winchester 1894 | lever rifles | 1 / 1 each | 2 each |
+| Walther PPQ (**9 mm**), 1911 (.45), Bersa (.380), Ruger Mk III (.22) | pistols | 1 / 1 each | 2–3 each |
+| S&W 642 (.38), Ruger Single Six (.22) | revolvers | 1 / 1 each | 2 each |
+
+**Mapping to our six guns** (nearest real match): AR-5 → AR-15. Tern C8 carbine → AR-15 (same round, shorter
+barrel), or the SKS as a second, different carbine. Wren-9 SMG → **Carl Gustav M45**, a true 9 mm SMG (the
+researcher thought none existed: this library has one). Halden 12 pump → Benelli Nova, with the Model 12 as a
+second voice. Corvin DMR (7.62 marksman) → **Mosin-Nagant 7.62×54R**, the closest full-power 7.62 (Tikka .30-06 as
+an alternate). P-11 → **Walther PPQ 9 mm**.
+
+**Comparison.** For each gun I cut the first single shot (10 ms before the onset, 1 s long, mono 48 kHz). Ours is
+the game's current sound, rendered through the whole graph in the South Yard. Near is your own shot vs the near
+take; mid is someone else's shot at 15 m vs the mid take. Floor is take 1 vs take 2 of the same real gun: how far
+two real shots differ.
+
+| Gun | Floor (real vs real) | Ours vs real, near | Ours vs real, mid | Largest near terms |
+| --- | --- | --- | --- | --- |
+| AR | 0.31 | 3.55 | 4.17 | crest 0.98, envelope 0.92, decay 0.89 |
+| Carbine (vs SKS) | 0.33 | 3.57 | 3.06 | decay 1.11, envelope 1.02, attack 0.93 |
+| SMG | 0.41 | **1.84** | 4.85 | decay 0.69, envelope 0.56 |
+| Shotgun | 0.53 | 3.57 | 4.05 | decay 1.40, crest 1.00, envelope 0.91 |
+| DMR (vs Mosin) | 0.38 | 3.73 | 3.29 | decay 1.45, envelope 0.83, crest 0.62 |
+| Pistol (vs PPQ) | 0.50 | 2.44 | 3.81 | envelope 1.11, decay 0.69 |
+
+Sheets: `reference/near-<gun>.jpg` and `reference/mid-<gun>.jpg` (both spectrograms, then envelopes, flatness,
+band decay curves and the numbers). What they show, which corrects part of the diagnosis above:
+- **Real shots are peakier:** the AR has a crest factor of 26.8 dB against our 21.0, with all the energy in a
+  few milliseconds and then a much lower tail.
+- **Real shots are more coloured early, not flatter.** Their spectral flatness at 5–20 ms is lower than ours (the
+  AR is ~0.1 against our ~0.2): the energy sits in a broad hump around 250–600 Hz and falls away above 2 kHz, about
+  5 dB under ours at 8–12 kHz. Diagnosis item 5 ("too clean and too coloured") was wrong about the colour: the
+  current stop-gap blast is too white.
+- **Highs die faster and lows last longer:** in the real AR every band above 1 kHz falls 20 dB in 20–40 ms (ours
+  holds its highs about twice as long). The 31–63 Hz bands rise more slowly and roll on as a sub rumble for
+  0.3–0.5 s, which ours lacks.
+- **There is a distinct slap echo about 70 ms after the shot,** then a long diffuse tail around 250 Hz–2 kHz at
+  about −30 dB lasting most of a second. Our yard response has no clear slap and a thinner tail.
+- **The SMG is already the closest (1.84):** the 9 mm report is short and mid-heavy, as ours is.
+- **Ours is further off at 15 m** (3.1–4.9): the real mid takes keep more low end and more tail than our distance
+  chain leaves.
+
+**Caveats.** One take per comparison. "Mid" in the library is unspecified (I compared with 15 m). The references
+are outdoors only, so indoor sound cannot be judged against them. The floor figures show this measure separates
+real from ours by 4–10× the take-to-take spread.
+
+## Plans for the gun rebuild (the owner's decision chooses one)
+
+**A. If recordings may be used in the game.**
+- **Sources:**
+  - Near takes become our own-gun body (first person), with 2–5 takes per gun.
+  - Mid takes become someone else's gun up close.
+  - The far version is the mid take through our distance chain (air absorption, the yard response), checked
+    against the mid takes.
+  - The bolt or slide layer, casings and every reload beat stay synthesised: the library has no clean mechanical
+    takes. Those may be filled later from the smaller CC0 sets the researcher listed (`reload.wav`,
+    `shotgunsounds.zip`), after an audit.
+- **Trimming:** from 2 ms before the onset; keep up to −45 dB or 350 ms, whichever comes first, then a 40 ms fade.
+  The recordings' own outdoor tail is cut off, because each room's response supplies the tail; in the yard the
+  first 150 ms of the recorded tail is kept for the slap. Each take is high-passed at 30 Hz with its DC removed.
+- **Levels:** every take normalised to the same short-term loudness, then a per-gun offset (the shotgun and DMR
+  loudest, the pistol quietest). Our engine's ceiling and ducking stay.
+- **Variety:** round-robin over the takes, never the same twice, with ±3% rate and ±1 dB per shot. Bursts use only
+  single-shot takes, so each round's onset is clean.
+- **Encoding and memory:**
+  - The takes would ship as files: about 30 takes of about 0.35 s each, Opus or OGG at about 64 kb/s, roughly
+    200 KB to download, served from the site.
+  - They would be decoded once at the first gesture (`decodeAudioData`), never during play.
+  - Decoded at 32 kHz mono they take about 1.4 MB, replacing the 2.3 MB of synthesised guns, so the bank stays
+    under 12 MB.
+  - This changes the "no audio files" rule in SPEC.md and the plan; the owner decides.
+
+**B. If recordings may only be measured.** The synthesis must close the measured gaps, in this order, each
+change checked against the reference sheets until every gun is within about 1.0 of its reference (the floor is
+0.3–0.5):
+1. **Shape:** a single very short initial pressure spike (≤ 2 ms) carrying the peak, with the body 15–20 dB under
+   it, to bring the crest factor from ~21 to ~27 dB.
+2. **Colour:** move the body's energy into a broad hump around 250–600 Hz (wide, gentle shelving, never a
+   resonant peak, and checked by the tonal ratio), with −5 dB at 8–12 kHz.
+3. **Decay by band:** highs (> 1 kHz) fall 20 dB within 20–40 ms; lows (31–63 Hz) swell more slowly and roll on
+   for 0.3–0.5 s as a sub rumble.
+4. **Outdoor response:** a distinct slap at 60–90 ms and a longer diffuse 250 Hz–2 kHz tail at about −30 dB in the
+   yard response. This is a change to `spaces.ts`, matched against the references' tails.
+5. **Fitting:** a Node script that renders each gun dry, convolves it with the yard response offline, measures the
+   distance to the reference, and searches the gun's parameters (a few dozen) to minimise it. Then the takes'
+   spread sets the variant range. Indoor rooms are not covered by these references and stay as designed.
+
 ## Reference matching (built for the rebuild)
 
 `tests/games/breachline/audio-reference.ts` measures a sound the way a recording of the real thing can be

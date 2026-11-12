@@ -36,6 +36,7 @@ export function catalogue(module: string): RenderJob[] {
     jobs.push(job(module, `shot-${w}-fp-out`, 1.6, [{ t: 0.1, call: 'shot', args: [w, null] }], false));
     jobs.push(job(module, `shot-${w}-10m-in`, 1.6, [{ t: 0.1, call: 'shot', args: [w, at(0, -10)] }]));
     jobs.push(job(module, `shot-${w}-60m-out`, 1.8, [{ t: 0.1, call: 'shot', args: [w, at(20, -57)] }], false));
+    jobs.push(job(module, `shot-${w}-15m-out`, 1.6, [{ t: 0.1, call: 'shot', args: [w, at(0, -15)] }], false));
   }
   // The same own rifle shot in each of the four spaces, for the room comparison listening file.
   for (const [room, f] of [['soft', ARCHIVE], ['corridor', CORRIDOR]] as const) jobs.push(job(module, `shot-ar-fp-${room}`, 1.6, [{ t: 0.1, call: 'shot', args: ['ar', null] }], true, 1, f));
