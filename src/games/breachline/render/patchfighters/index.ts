@@ -21,7 +21,9 @@ import type { HeroLighting } from '../hero/index';
 import { WEAPON_BONES } from '../hero/weapons';
 import { ArtLoader } from '../assets';
 import { Animator, idleInput, type PoseInput } from '../fighters/anim';
-import { B, SCALE, makeBones } from '../fighters/skeleton';
+import { B, HEAD_CENTRE, JOINT, SCALE, SIDE, makeBones } from '../fighters/skeleton';
+import type { World } from '../../world';
+import * as RD from './ragdoll';
 import { weaponFor } from '../fighters/weapon';
 import { fighterMaterial, type FighterMaterial } from '../fighters/material';
 import { LOD_DIST, LOD0_MAX, createFighters, type FightersWithEvents } from '../fighters/index';
@@ -147,11 +149,13 @@ roughnessFactor *= mix(1.0, kitGloss, smoothstep(0.3, 0.7, texture2D(tMask, vMap
   return m;
 }
 
+/** Job 12.6: what killed a fighter, from the shared events, for the ragdoll's impulse. */
+interface KillInfo { kind: 'gun' | 'blast' | 'melee'; shot: { x: number; y: number; z: number; yaw: number; pitch: number; w: WeaponId } | null; boom: { x: number; y: number; z: number } | null; head: boolean; kx: number; kz: number; seed: number }
 interface Fig {
   squad: 0 | 1; group: THREE.Group; meshes: THREE.SkinnedMesh[]; gear: THREE.Group[]; skeleton: THREE.Skeleton; bones: THREE.Bone[];
   weapon: THREE.SkinnedMesh; wbones: THREE.Bone[]; dressed: THREE.Object3D[]; wid: WeaponId; anim: Animator; mats: ProbeMaterial[]; weaponMat: FighterMaterial; wlod: 1 | 2;
   x: number; z: number; yaw: number; pitch: number; crouch: number; lean: number; phase: number;
-  fresh: boolean; lod: number; remoteReload: number; deathKind: number; dist: number; wounds: THREE.Vector4[]; nWound: number; hurt: number; react: { t: number; ax: number; az: number; limb: number }; died: number; reloadEmpty: boolean; wasReloading: boolean; input: PoseInput;
+  fresh: boolean; lod: number; remoteReload: number; deathKind: number; dist: number; wounds: THREE.Vector4[]; nWound: number; hurt: number; react: { t: number; ax: number; az: number; limb: number }; died: number; kill: KillInfo | null; rag: RD.Ragdoll | null; ragInv: THREE.Matrix4; gunQ: THREE.Quaternion; gunF: THREE.Quaternion; px: number; pz: number; vx: number; vz: number; reloadEmpty: boolean; wasReloading: boolean; input: PoseInput;
 }
 const wrap = (a: number) => { a = (a + Math.PI) % (Math.PI * 2); return (a < 0 ? a + Math.PI * 2 : a) - Math.PI; };
 
@@ -236,7 +240,7 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
     const weapon = new THREE.SkinnedMesh(w.geo, weaponMat); weapon.add(...wb); weapon.bind(new THREE.Skeleton(wb)); weapon.frustumCulled = false;
     group.add(weapon); scene.add(group);
     const anim = new Animator(bones, weapon, wb, w); anim.setWeapon(wid, w);
-    f = { wounds: Array.from({ length: MAX_WOUNDS }, () => new THREE.Vector4(0, -9, 0, 0)), nWound: 0, hurt: 0, react: { t: 9, ax: 0, az: 0, limb: -1 }, died: -1, squad, group, meshes, gear, skeleton, bones, weapon, wbones: wb, dressed: [], wid, anim, mats, weaponMat, wlod: 1, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, remoteReload: 0, deathKind: -1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
+    f = { wounds: Array.from({ length: MAX_WOUNDS }, () => new THREE.Vector4(0, -9, 0, 0)), nWound: 0, hurt: 0, react: { t: 9, ax: 0, az: 0, limb: -1 }, died: -1, kill: null, rag: null, ragInv: new THREE.Matrix4(), gunQ: new THREE.Quaternion(), gunF: new THREE.Quaternion(), px: NaN, pz: NaN, vx: 0, vz: 0, squad, group, meshes, gear, skeleton, bones, weapon, wbones: wb, dressed: [], wid, anim, mats, weaponMat, wlod: 1, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, remoteReload: 0, deathKind: -1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
     figs[i] = f;
     dress(f);
     return f;
@@ -244,7 +248,8 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
   function drop(f: Fig) { scene.remove(f.group); for (const m of f.mats) m.dispose(); f.weaponMat.dispose(); }
 
   /** Job 12.2: the last shot of each shooter (origin and look), to place the wound its hit makes. */
-  const lastShot = new Map<number, { x: number; y: number; z: number; yaw: number; pitch: number }>();
+  const lastShot = new Map<number, { x: number; y: number; z: number; yaw: number; pitch: number; w: WeaponId }>();
+  let lastBoom: { x: number; y: number; z: number } | null = null;
   const SEGS: [number, number, number][] = [[B.head, -1, 0.11], [B.spine2, B.neck, 0.15], [B.spine1, B.spine2, 0.15], [B.pelvis, B.spine1, 0.15],
     [B.upperL, B.foreL, 0.06], [B.foreL, B.handL, 0.05], [B.upperR, B.foreR, 0.06], [B.foreR, B.handR, 0.05],
     [B.thighL, B.shinL, 0.085], [B.shinL, B.footL, 0.065], [B.thighR, B.shinR, 0.085], [B.shinR, B.footR, 0.065]];
@@ -279,6 +284,106 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
     const yaw = f.anim.yaw, lx = rd.x * Math.cos(yaw) - rd.z * Math.sin(yaw), lz = rd.x * Math.sin(yaw) + rd.z * Math.cos(yaw);
     f.react.t = 0; f.react.ax = lx; f.react.az = lz; f.react.limb = [B.upperL, B.upperR, B.thighL, B.thighR, B.shinL, B.shinR, B.foreL, B.foreR].includes(b as never) ? b : -1;
   }
+  // ---- Job 12.6: ragdoll on death -------------------------------------------------------------------------------------
+  /** The bone at each ragdoll point (the head point is the head's centre, not its pivot). */
+  const PT_BONE = [B.pelvis, B.spine2, B.neck, B.head, B.upperL, B.upperR, B.foreL, B.foreR, B.handL, B.handR, B.thighL, B.thighR, B.shinL, B.shinR, B.footL, B.footR];
+  const bindPt = PT_BONE.map((b, i) => (i === RD.P.head ? JOINT[b].clone().add(HEAD_CENTRE) : JOINT[b].clone()));
+  const pv = { x: 0, y: 0, z: 0 }, mp = PT_BONE.map(() => new THREE.Vector3()), wq = Array.from({ length: 32 }, () => new THREE.Quaternion());
+  const fx = new THREE.Vector3(), fy = new THREE.Vector3(), fz = new THREE.Vector3(), fm = new THREE.Matrix4(), qa = new THREE.Quaternion(), qb = new THREE.Quaternion(), d0 = new THREE.Vector3(), d1 = new THREE.Vector3();
+  /** The rotation of the frame whose X runs along `x` and whose Y is `y` made square to it. */
+  const frame = (x: THREE.Vector3, y: THREE.Vector3, out: THREE.Quaternion) => {
+    fx.copy(x).normalize(); fy.copy(y).addScaledVector(fx, -fy.copy(y).dot(fx)).normalize(); fz.crossVectors(fx, fy);
+    return out.setFromRotationMatrix(fm.makeBasis(fx, fy, fz));
+  };
+  const BIND_PELVIS = frame(bindPt[RD.P.hipR].clone().sub(bindPt[RD.P.hipL]), bindPt[RD.P.chest].clone().sub(bindPt[RD.P.pelvis]), new THREE.Quaternion()).invert();
+  const BIND_CHEST = frame(bindPt[RD.P.shR].clone().sub(bindPt[RD.P.shL]), bindPt[RD.P.neck].clone().sub(bindPt[RD.P.chest]), new THREE.Quaternion()).invert();
+  const GUN_UP = new THREE.Vector3(0, 0.08, 0), gp = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  /** Weapon speed given to the body by the killing round, in m/s at the point hit. */
+  const KICK: Record<WeaponId, number> = { ar: 2.6, carbine: 2.5, smg: 2.1, shotgun: 5.5, dmr: 3.6, pistol: 2.0 };
+
+  /** Starts the ragdoll from the live pose (the bones as last drawn), the fighter's own speed, and an impulse from
+   * what killed them, seeded from the kill so every client plays the same fall. */
+  function startRag(f: Fig, k: KillInfo) {
+    f.group.updateMatrixWorld(true);
+    const pts = PT_BONE.map((b, i) => (i === RD.P.head ? f.bones[b].localToWorld(HEAD_CENTRE.clone()) : f.bones[b].getWorldPosition(new THREE.Vector3())));
+    f.weapon.updateMatrixWorld(true);
+    const gun = [new THREE.Vector3(), f.anim.w.muzzle.clone(), GUN_UP.clone()].map(v => v.applyMatrix4(f.weapon.matrixWorld));
+    const r = RD.createRagdoll(pts, { x: f.vx, y: 0, z: f.vz }, gun), rnd = RD.rng(k.seed);
+    f.ragInv.copy(f.group.matrixWorld).invert();
+    f.weapon.getWorldQuaternion(f.gunQ); gunFrame(gun, f.gunF).invert();
+    const near = (cx: number, cy: number, cz: number, fall: number, speed: number, vx: number, vy: number, vz: number) => {
+      for (let i = 0; i < RD.POINTS; i++) { const p = pts[i], d = Math.hypot(p.x - cx, p.y - cy, p.z - cz), w = Math.max(0, 1 - d / fall); if (w > 0) RD.push(r, i, vx * speed * w, vy * speed * w, vz * speed * w); }
+    };
+    if (k.kind === 'gun' && k.shot) {
+      const s = k.shot;
+      rd.set(-Math.sin(s.yaw) * Math.cos(s.pitch), Math.sin(s.pitch), -Math.cos(s.yaw) * Math.cos(s.pitch)).normalize(); ro.set(s.x, s.y, s.z);
+      // The body region the round struck: the head on a head shot, otherwise the point nearest the shot's line.
+      let hit: number = RD.P.head, bd = Infinity;
+      if (!k.head) pts.forEach((p, i) => { const t = Math.max(0, cp.copy(p).sub(ro).dot(rd)), d = cq.copy(ro).addScaledVector(rd, t).distanceTo(p); if (i !== RD.P.head && d < bd) { bd = d; hit = i; } });
+      const h = pts[hit], v = KICK[s.w] ?? 2.5, shotgun = s.w === 'shotgun';
+      near(h.x, h.y, h.z, shotgun ? 0.75 : 0.42, v * (k.head ? 1.25 : 1), rd.x, rd.y + (shotgun ? 0.15 : 0), rd.z);
+      RD.push(r, hit, rd.x * v * 0.6, rd.y * v * 0.6, rd.z * v * 0.6);
+    } else if (k.kind === 'blast' && k.boom) {
+      const b = k.boom;
+      for (let i = 0; i < RD.POINTS; i++) {
+        const p = pts[i], dx = p.x - b.x, dy = p.y - b.y, dz = p.z - b.z, d = Math.max(0.2, Math.hypot(dx, dy, dz)), sp = Math.min(9, Math.max(2.5, 9 * (1 - d / 6)));
+        RD.push(r, i, (dx / d) * sp, (Math.max(0, dy / d) + 0.55) * sp, (dz / d) * sp);
+      }
+    } else {
+      // Melee, or a gun kill whose shot this client missed: away from the killer.
+      const dx = pts[RD.P.chest].x - k.kx, dz = pts[RD.P.chest].z - k.kz, d = Math.hypot(dx, dz) || 1;
+      near(pts[RD.P.chest].x, pts[RD.P.chest].y, pts[RD.P.chest].z, 0.6, k.kind === 'melee' ? 2.4 : 1.8, dx / d, 0.05, dz / d);
+    }
+    // The legs give way: knees forward (the way the body faces) and a little seeded scatter in the arms.
+    const fw = { x: -Math.sin(f.anim.yaw), z: -Math.cos(f.anim.yaw) };
+    for (const kn of [RD.P.knL, RD.P.knR]) { const a = 0.5 + rnd() * 0.5; RD.push(r, kn, fw.x * a, 0, fw.z * a); }
+    for (const i of [RD.P.elL, RD.P.elR, RD.P.haL, RD.P.haR]) RD.push(r, i, (rnd() - 0.5) * 1.2, (rnd() - 0.5) * 0.6, (rnd() - 0.5) * 1.2);
+    // The weapon leaves the hands sideways.
+    const side = rnd() < 0.5 ? -1 : 1; RD.pushGun(r, -fw.z * side * 1.1, 0.6, fw.x * side * 1.1);
+    f.rag = r;
+  }
+  function gunFrame(g: readonly { x: number; y: number; z: number }[], out: THREE.Quaternion) {
+    return frame(d0.set(g[1].x - g[0].x, g[1].y - g[0].y, g[1].z - g[0].z), d1.set(g[2].x - g[0].x, g[2].y - g[0].y, g[2].z - g[0].z), out);
+  }
+  /** World rotation of a bone aimed from its bind direction `from` (rotated by its parent) to the direction `to`. */
+  const aim = (parent: THREE.Quaternion, from: THREE.Vector3, to: THREE.Vector3, out: THREE.Quaternion) => out.setFromUnitVectors(d0.copy(from).applyQuaternion(parent).normalize(), d1.copy(to).normalize()).multiply(parent);
+  /** Drives the skeleton from the ragdoll points (in the fighter's model space, as it stood at death): pelvis and
+   * chest from the hip and shoulder lines, the other bones aimed along their sticks, helper bones halfway. */
+  function writeRag(f: Fig) {
+    const r = f.rag!, local = (b: number, parent: number) => f.bones[b].quaternion.copy(qa.copy(wq[parent]).invert().multiply(wq[b]));
+    for (let i = 0; i < RD.POINTS; i++) { RD.point(r, i, pv); mp[i].set(pv.x, pv.y, pv.z).applyMatrix4(f.ragInv); }
+    const sub = (a: number, b: number, out: THREE.Vector3) => out.copy(mp[a]).sub(mp[b]);
+    const bv = (a: number, b: number) => new THREE.Vector3().copy(JOINT[a]).sub(JOINT[b]);
+    wq[B.root].identity(); f.bones[B.root].quaternion.identity();
+    frame(sub(RD.P.hipR, RD.P.hipL, fx.clone()), sub(RD.P.chest, RD.P.pelvis, fy.clone()), wq[B.pelvis]).multiply(BIND_PELVIS);
+    frame(sub(RD.P.shR, RD.P.shL, fx.clone()), sub(RD.P.neck, RD.P.chest, fy.clone()), wq[B.spine2]).multiply(BIND_CHEST);
+    wq[B.spine1].copy(wq[B.pelvis]).slerp(wq[B.spine2], 0.5);
+    f.bones[B.pelvis].position.copy(mp[RD.P.pelvis]);
+    local(B.pelvis, B.root); local(B.spine1, B.pelvis); local(B.spine2, B.spine1);
+    aim(wq[B.spine2], bindPt[RD.P.head].clone().sub(JOINT[B.neck]), sub(RD.P.head, RD.P.neck, new THREE.Vector3()), wq[B.neck]); local(B.neck, B.spine2);
+    f.bones[B.head].quaternion.identity();
+    for (const sd of [0, 1]) {
+      const S = SIDE[sd], o = sd ? 1 : 0;
+      wq[S.clav].copy(wq[B.spine2]); f.bones[S.clav].quaternion.identity();
+      aim(wq[S.clav], bv(S.fore, S.upper), sub(RD.P.elL + o, RD.P.shL + o, new THREE.Vector3()), wq[S.upper]); local(S.upper, S.clav);
+      aim(wq[S.upper], bv(S.hand, S.fore), sub(RD.P.haL + o, RD.P.elL + o, new THREE.Vector3()), wq[S.fore]); local(S.fore, S.upper);
+      aim(wq[B.pelvis], bv(S.shin, S.thigh), sub(RD.P.knL + o, RD.P.hipL + o, new THREE.Vector3()), wq[S.thigh]); local(S.thigh, B.pelvis);
+      aim(wq[S.thigh], bv(S.foot, S.shin), sub(RD.P.ftL + o, RD.P.knL + o, new THREE.Vector3()), wq[S.shin]); local(S.shin, S.thigh);
+      for (const b of [S.hand, S.foot, S.toe, S.twist]) f.bones[b].quaternion.identity();
+      f.bones[S.elbow].quaternion.identity().slerp(f.bones[S.fore].quaternion, 0.5);
+      f.bones[S.knee].quaternion.identity().slerp(f.bones[S.shin].quaternion, 0.5);
+      f.bones[S.delt].quaternion.identity().slerp(f.bones[S.upper].quaternion, 0.5); f.bones[S.delt].scale.setScalar(1);
+      f.bones[S.hip].quaternion.identity().slerp(f.bones[S.thigh].quaternion, 0.5);
+    }
+    // The weapon: its own three points give its turn since death; its origin is the first point.
+    if (r.gun) {
+      for (let i = 0; i < 3; i++) { RD.gunPoint(r, i, pv); gp[i].set(pv.x, pv.y, pv.z); }
+      gunFrame(gp, qb).multiply(f.gunF).multiply(f.gunQ);
+      fm.compose(gp[0], qb, s3.set(SCALE, SCALE, SCALE)).premultiply(f.ragInv);
+      fm.decompose(f.weapon.position, f.weapon.quaternion, f.weapon.scale);
+    }
+  }
+
   const api: PatchFighters = {
     update(view) {
       if (fallback) return fallback.update(view);
@@ -306,9 +411,14 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
         inp.reload = reloading ? p.reload / def.reload : f.remoteReload > 0 ? f.remoteReload / def.reload : 0; inp.empty = f.reloadEmpty;
         inp.deathKind = p.alive ? (f.deathKind = -1) : f.deathKind;
         inp.act = p.act; inp.actT = p.actT; inp.hp = p.hp; inp.deaths = p.deaths;
-        if (f.fresh) { f.anim.reset(inp); f.fresh = false; }
+        if (p.alive && f.rag) { f.rag = null; f.kill = null; f.fresh = true; }
+        if (f.fresh) { f.anim.reset(inp); f.fresh = false; f.px = NaN; }
+        // The fighter's own speed, carried into the ragdoll at death.
+        if (dt > 0 && p.alive) { if (Number.isFinite(f.px)) { f.vx = (f.anim.root.x - f.px) / dt; f.vz = (f.anim.root.z - f.pz) / dt; } f.px = f.anim.root.x; f.pz = f.anim.root.z; }
         if (!show) continue;
-        f.anim.update(inp, dt);
+        if (!p.alive && f.kill && !f.rag && m.world) startRag(f, f.kill);
+        if (f.rag) { RD.advance(f.rag, m.world as World, dt); writeRag(f); }
+        else f.anim.update(inp, dt);
         // Job 12.2: wounds and hurt state into the body material; a reaction away from the last hit.
         const bm = f.mats[0] as unknown as { userData: { wound?: { value: THREE.Vector4[] }; hurt?: { value: number } } };
         bm.userData.wound!.value = f.wounds; bm.userData.hurt!.value = Math.max(f.hurt, p.alive ? 0 : 0.85);
@@ -318,7 +428,7 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
           if (f.react.limb >= 0) { q4.setFromAxisAngle(v3.set(1, 0, 0), k * 1.3); f.bones[f.react.limb].quaternion.premultiply(q4); }
         }
         f.phase = f.anim.gaitPhase * Math.PI * 2;
-        f.group.position.set(f.anim.root.x, 0, f.anim.root.z); f.group.rotation.y = f.anim.yaw;
+        if (!f.rag) { f.group.position.set(f.anim.root.x, 0, f.anim.root.z); f.group.rotation.y = f.anim.yaw; }
         const l = lighting.probe(f.x, 1.1, f.z).color;
         color.setRGB(SHADE_FILL + l[0] * PROBE_GAIN, SHADE_FILL + l[1] * PROBE_GAIN, SHADE_FILL * 1.06 + l[2] * PROBE_GAIN).multiplyScalar(Math.PI);
         f.weaponMat.userData.probe.value.copy(color);
@@ -328,7 +438,7 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
         f.weaponMat.envMapIntensity = es; for (const mt of f.mats) mt.envMapIntensity = es;
         f.dist = camOk ? Math.hypot(cam.x - f.x, cam.y - 1.2, cam.z - f.z) : Math.hypot(view.px - f.x, view.pz - f.z);
         order.push(f);
-        if (blob < 10) { const lie = p.alive ? 0 : 0.9; blobs.setMatrixAt(blob++, m4.compose(v3.set(f.x, 0.04, f.z), q4.identity(), s3.set(1.0 + lie, 1, 1.0 + lie))); }
+        if (blob < 10) { const lie = p.alive ? 0 : 0.9; if (f.rag) RD.point(f.rag, RD.P.pelvis, pv); else { pv.x = f.x; pv.z = f.z; } blobs.setMatrixAt(blob++, m4.compose(v3.set(pv.x, 0.04, pv.z), q4.identity(), s3.set(1.0 + lie, 1, 1.0 + lie))); }
       }
       order.sort((x, y) => x.dist - y.dist);
       order.forEach((f, n) => {
@@ -376,6 +486,7 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
       const f = figs[i]; if (!f) return null;
       // A fallen fighter is where its body came to rest (the animator's root after the fall), which the environment's
       // blood pool follows; a living one is its simulated position.
+      if (f.rag) { RD.point(f.rag, RD.P.pelvis, pv); return { x: pv.x, z: pv.z, yaw: f.anim.yaw, pitch: f.pitch, crouch: f.crouch, lean: f.lean, phase: f.phase }; }
       return f.died >= 0 ? { x: f.anim.root.x, z: f.anim.root.z, yaw: f.anim.yaw, pitch: f.pitch, crouch: f.crouch, lean: f.lean, phase: f.phase } : f;
     },
     muzzle(i, out) {
@@ -391,6 +502,7 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
       if (fallback) return fallback.handle(events, m, self);
       for (const e of events) {
         if (e.e === 'shot') lastShot.set(e.id, e);
+        else if (e.e === 'boom') lastBoom = { x: e.x, y: e.y, z: e.z };
         else if (e.e === 'hit') wound(e.on, e.by, e.head, e.hp);
         else if (e.e === 'reload' && e.id !== self) { const f = figs[e.id], p = m.players[e.id]; if (f && p && p.reload <= 0) { f.remoteReload = WEAPONS[weaponIdOf(m, p)].reload; f.reloadEmpty = p.mag[p.slot] === 0; } }
         else if (e.e === 'kill') {
@@ -399,13 +511,16 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
           const a = wrap(Math.atan2(-(k.x - v.x), -(k.z - v.z)) - v.yaw);
           f.deathKind = Math.abs(a) < 0.9 ? 0 : Math.abs(a) > 2.3 ? 1 : 2;
           f.died = m.t;
+          // Job 12.6: what the ragdoll starts from. Explosions name a grenade or the breach charge; melee is 'Melee'.
+          const s = lastShot.get(e.by), kind = /grenade|charge/i.test(e.w) ? 'blast' : e.w === 'Melee' ? 'melee' : 'gun';
+          f.kill = { kind, shot: s ? { x: s.x, y: s.y, z: s.z, yaw: s.yaw, pitch: s.pitch, w: s.w } : null, boom: lastBoom && { ...lastBoom }, head: e.head, kx: k.x, kz: k.z, seed: e.on * 7919 + v.deaths * 131 + e.by * 17 };
         }
       }
     },
     reset(ids) {
       if (fallback) return fallback.reset(ids);
       // A new round (or a respawn) clears wounds, hurt state and the body.
-      const clear = (f: Fig) => { f.fresh = true; f.nWound = 0; f.hurt = 0; f.died = -1; f.react.t = 9; for (const w of f.wounds) w.set(0, -9, 0, 0); };
+      const clear = (f: Fig) => { f.fresh = true; f.nWound = 0; f.hurt = 0; f.died = -1; f.kill = null; f.rag = null; f.react.t = 9; for (const w of f.wounds) w.set(0, -9, 0, 0); };
       if (!ids) { for (const f of figs) if (f) clear(f); return; }
       for (const id of ids) { const f = figs[id]; if (f) clear(f); }
     },
@@ -413,7 +528,7 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
      * the match time of death, for the environment's blood pool. */
     bodies() {
       const out: PatchBody[] = [];
-      figs.forEach((f, id) => { if (f && f.died >= 0 && f.group.visible) out.push({ id, x: f.anim.root.x, z: f.anim.root.z, yaw: f.anim.yaw, t: f.died }); });
+      figs.forEach((f, id) => { if (!f || f.died < 0 || !f.group.visible) return; if (f.rag) RD.point(f.rag, RD.P.pelvis, pv); else { pv.x = f.anim.root.x; pv.z = f.anim.root.z; } out.push({ id, x: pv.x, z: pv.z, yaw: f.anim.yaw, t: f.died }); });
       return out;
     },
     dispose() {

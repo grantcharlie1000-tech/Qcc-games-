@@ -29,9 +29,9 @@ await page.addStyleTag({ content: '.bl-toast, .bl-banner, .bl-prompt, .bl-hud, .
 const st = await page.evaluate(() => window.__breachlineTest.state());
 const A = st.players.find(p => p.squad === 0 && p.id !== st.self), E = st.players.find(p => p.squad === 1);
 const sx = A.x, sz = A.z;
-// Both face the camera, which stands 3 m away (south of them).
-await page.evaluate(([a, e, x, z]) => { const h = window.__breachlineTest; h.teleport(a, x - 0.55, z, Math.PI); h.teleport(e, x + 0.55, z, Math.PI); h.place(x, z + 3, 0, -0.08); h.advance(0.3); h.draw(); }, [A.id, E.id, sx, sz]);
-const self = st.self, eye = [sx, 1.6, sz + 3];
+// The camera stands 3 m north of them, on the side the parked fighters face (they keep facing -Z).
+await page.evaluate(([a, e, x, z]) => { const h = window.__breachlineTest; h.teleport(a, x - 0.55, z, Math.PI); h.teleport(e, x + 0.55, z, Math.PI); h.place(x, z - 3, Math.PI, -0.08); h.advance(0.3); h.draw(); }, [A.id, E.id, sx, sz]);
+const self = st.self, eye = [sx, 1.6, sz - 3];
 const fire = (on, tx, ty, head, hp) => page.evaluate(([self, on, eye, tx, tz, ty, head, hp]) => {
   const yaw = Math.atan2(-(tx - eye[0]), -(tz - eye[2])), pitch = Math.atan2(ty - eye[1], Math.hypot(tx - eye[0], tz - eye[2]));
   window.__pf.handle([{ e: 'shot', id: self, w: 'ar', x: eye[0], y: eye[1], z: eye[2], yaw, pitch, spread: 0, seed: 1 }, { e: 'hit', by: self, on, dmg: 20, head, hp }], { players: [] }, self);
@@ -49,13 +49,13 @@ for (const [on, dx] of [[A.id, -0.55], [E.id, 0.55]]) {
 // A real kill: the player (squad A, no friendly fire in the sim) shoots fighter B in the chest until it dies. Fighter A
 // cannot be shot by its own side, so it gets the test kill, which pushes the same sim 'kill' event. The death
 // animation advances with drawn frames, so draw through the fall.
-console.log('real kill', JSON.stringify(await page.evaluate(([e, eye, ex, ez]) => {
-  const h = window.__breachlineTest, yaw = Math.atan2(-(ex - eye[0]), -(ez - eye[2])), pitch = Math.atan2(1.15 - eye[1], Math.hypot(ex - eye[0], ez - eye[2]));
+console.log('real kill', JSON.stringify(await page.evaluate(([e, eye]) => {
+  const h = window.__breachlineTest, foe = () => h.state().players.find(p => p.id === e);
   let n = 0;
-  for (; n < 40 && h.state().players.find(p => p.id === e).alive; n++) { h.place(eye[0], eye[2], yaw, pitch); h.hold({ fire: true }, 0.05, { fire: true }); h.advance(0.12); h.draw(); }
-  return { shots: n, alive: h.state().players.find(p => p.id === e).alive };
-}, [E.id, eye, sx + 0.55, sz])));
-await page.evaluate(([a, me, x, z]) => { const h = window.__breachlineTest; h.kill(a, me); for (let i = 0; i < 90; i++) { h.advance(1 / 30); h.draw(); } h.place(x, z + 3.2, 0, -0.42); h.advance(0.02); h.draw(); h.draw(); }, [A.id, self, sx, sz]);
+  for (; n < 40 && foe().alive; n++) { const f = foe(); h.place(eye[0], eye[2], Math.atan2(-(f.x - eye[0]), -(f.z - eye[2])), Math.atan2(1.15 - eye[1], Math.hypot(f.x - eye[0], f.z - eye[2]))); h.hold({ fire: true }, 0.05, { fire: true }); h.advance(0.12); h.draw(); }
+  return { shots: n, alive: foe().alive, hp: foe().hp, at: [foe().x, foe().z] };
+}, [E.id, eye])));
+await page.evaluate(([a, me, x, z]) => { const h = window.__breachlineTest; h.kill(a, me); for (let i = 0; i < 90; i++) { h.advance(1 / 30); h.draw(); } h.place(x, z - 3.2, Math.PI, -0.42); h.advance(0.02); h.draw(); h.draw(); }, [A.id, self, sx, sz]);
 console.log('alive after', JSON.stringify(await page.evaluate(() => window.__breachlineTest.state().players.map(p => [p.id, p.squad, p.alive]))), await page.evaluate(() => window.__breachlineTest.state().phase));
 await shot('bodies');
 console.log('bodies', JSON.stringify(await page.evaluate(() => window.__pf.bodies())));
