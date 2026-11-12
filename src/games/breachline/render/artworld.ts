@@ -137,6 +137,7 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
     rooms[r].props = info.propKeys ? PROPS.map(p => info.props[info.propKeys!.indexOf(propKey(p))]) : info.props;
     // One mesh per surface type.
     const ids = [...new Set(atlas.charts.map(c => c.face.tex))];
+    const merged = new Map<string, { a: ReturnType<typeof faceArrays>; mat: THREE.MeshStandardMaterial; id: string }>();
     for (const id of ids) {
       const a = faceArrays(atlas, f => f.tex === id), s = SURFACES[id];
       let map: THREE.Texture, nor: THREE.Texture | null = null, arm: THREE.Texture | null = null;
@@ -157,6 +158,19 @@ export async function loadArtWorld(renderer: THREE.WebGLRenderer, tier: Tier, pr
       if (dbg.includes('nonormal')) nor = null;
       if (dbg.includes('noarm')) arm = null;
       const mat = artMaterial({ map, normalMap: nor, armMap: dbg.includes('metal') ? null : arm, lightMap, lightScale: info.scale, dirMap: dbg.includes('nodir') ? null : dirMap, vertexTint: true, roughness: dbg.includes('mirror') ? 0.02 : arm ? s?.gloss ?? 1 : 0.85, metalness: dbg.includes('metal') ? 1 : arm ? 1 : 0, band: (id === 'drywall' || id === 'cinder') && look?.band ? look.band : s?.band, tiles: (id === 'drywall' || id === 'cinder') ? look?.tiles : null, bands: look?.bands, wear: s?.wear, spec: s?.spec, normalScale: s?.normal, specOnly: dbg.includes('speconly') });
+      // On the light tier, surfaces with nothing of their own in the shader (no painted band or worn path) that share a
+      // texture set are drawn as one mesh per set: their tint and scale are already in the vertices.
+      if (tier === 'low' && s && !s.band && !s.wear && !(look?.band && (id === 'drywall' || id === 'cinder'))) {
+        const m = merged.get(s.set);
+        if (!m) merged.set(s.set, { a, mat, id });
+        else { const base = m.a.position.length / 3; for (const k of ['position', 'normal', 'uv', 'uv1', 'color'] as const) for (const v of a[k]) m.a[k].push(v); for (const k of a.index) m.a.index.push(base + k); m.id = `${m.id}+${id}`; mat.dispose(); }
+        continue;
+      }
+      const g = geometry(a), mesh = new THREE.Mesh(g, mat);
+      mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:${id}`;
+      group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);
+    }
+    for (const { a, mat, id } of merged.values()) {
       const g = geometry(a), mesh = new THREE.Mesh(g, mat);
       mesh.matrixAutoUpdate = false; mesh.name = `art:${region.name}:${id}`;
       group.add(mesh); materials.push(mat); geometries.push(g); envLights.push(mat);

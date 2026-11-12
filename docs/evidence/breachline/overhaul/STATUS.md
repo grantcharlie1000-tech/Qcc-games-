@@ -29,6 +29,8 @@ The fixes:
 
 **Result, as shipped:** Performance at 1280 x 720 is now 150 to 160 ms in the corridor (it was 201 to 229) and 134 to 138 ms in the Lab (it was 166 to 180).
 
+**Light tier: surfaces merged by texture set.** On the light art tier, room surfaces with no shader feature of their own (no painted band or worn path) that share a texture set are one mesh per set per room. Performance draws: corridor 235 to 222, Office 172 to 166, Lab 141 to 137.
+
 **Ambience in one draw per room.**
 - Each room's contact shadows, light pools, corner shading, worn paths, stripes and stains are now one mesh with one material: a 2 x 2 texture atlas, with colour and strength per vertex. The pools lighten towards the light colour instead of adding to it.
 - Pictures are unchanged apart from slightly stronger pools.
