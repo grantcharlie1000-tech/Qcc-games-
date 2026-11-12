@@ -5,7 +5,11 @@ interface HookState{phase:string;t:number;round:number;wins:number[];attackers:n
 interface Hook{state():HookState;start(p?:Record<string,unknown>):void;freeze(on:boolean):void;advance(s:number):void;look(y:number,p:number):void;hold(patch:Record<string,unknown>,seconds:number,once?:Record<string,unknown>|null):void;place(x:number,z:number,yaw?:number,pitch?:number):void;skip(s:number):void;still():void;stats():{calls:number;triangles:number;scale:number;level:number};frames():number;draw():void}
 declare global{interface Window{__breachlineTest?:Hook}}
 
-function watch(page:Page){const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});return errors;}
+// A static build has no server functions, so the site's chat summary request 404s there (the dev server answers it with
+// index.html). That one URL is ignored; any other failed load is still an error.
+const CHAT_SUMMARY='/.netlify/functions/chat?action=summary';
+const chatOnly=(url:string)=>{try{const u=new URL(url);return u.pathname+u.search===CHAT_SUMMARY;}catch{return false;}};
+function watch(page:Page){const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!chatOnly(m.location().url))errors.push(m.text());});return errors;}
 async function open(page:Page){
   const errors=watch(page);
   await page.goto('/?festive=off#/game/breachline');

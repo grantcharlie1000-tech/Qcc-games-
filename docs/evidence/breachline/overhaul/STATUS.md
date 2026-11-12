@@ -4,6 +4,11 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: `play.spec` passes on the built site.** As decided, its console check ignores exactly one URL, the
+site's `/.netlify/functions/chat?action=summary` (a static build has no server functions); every other failed load
+still fails it. With the weapons session's AR-5 textures now in, all six specs pass on the flagged production build
+and on the dev server.
+
 **2026-11-12: second round, small objects first** (`round2/small-objects.png`, before and after: office desk, office,
 break kitchen). The block-built task chairs, monitors and keyboards in the Office, and the Break Room kettle, are now
 real models: a task chair from Amazon Berkeley Objects (`abo:B01D7P5NI8`, CC-BY 4.0), a monitor and a keyboard from
