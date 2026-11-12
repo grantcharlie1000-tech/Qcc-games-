@@ -148,6 +148,22 @@ it.each(['binding','date','logging'])('blocks production enablement when cleanup
  if(kind==='binding')worker.metadata.bindings[0].id='another-database';
  else if(kind==='date')worker.metadata.compatibility_date='2020-01-01';
  else worker.privacy.observability.enabled=true;
- await expect(op.enableProduction()).rejects.toThrow(`cleanup_${kind}_invalid`);
+ await expect(op.enableProduction()).rejects.toThrow(kind==='logging'?'cleanup_observability_logging_enabled':`cleanup_${kind}_invalid`);
  expect(p.project.deployment_configs.production.env_vars.MOVIE_POPULARITY_ENABLED.value).toBe('false');
+});
+describe('Cloudflare disabled logging representations',()=>{
+ it.each([{}, {logpush:false,observability:null}, {observability:{}}, {observability:{enabled:false,logs:{},traces:{}}}])('accepts omitted/null disabled API fields after explicit privacy update: %j',async privacy=>{
+  const {createOperator}=await load(),p=platform();
+  const fetcher=async(url:string,init:any)=>{const response=await p.fetcher(url,init);if(url.endsWith('/script-settings')&&init.method==='GET')return Response.json({success:true,result:privacy});return response;};
+  const op=createOperator({env,fetcher,readText:async(path:string)=>String(path).endsWith('.sql')?schema():'export default {};'});
+  await op.prepare();
+  for(const request of p.requests.filter(r=>r.path.endsWith('/script-settings')&&r.method==='PATCH'))expect(request.body).toEqual({logpush:false,observability:{enabled:false,logs:{enabled:false,invocation_logs:false,persist:false},traces:{enabled:false,persist:false}}});
+ });
+ it.each([
+  [{logpush:true},'cleanup_logpush_enabled'],
+  ...[{enabled:true},{logs:{enabled:true}},{logs:{invocation_logs:true}},{logs:{persist:true}},{traces:{enabled:true}},{traces:{persist:true}}].map(observability=>[{logpush:false,observability},'cleanup_observability_logging_enabled']),
+  ...[null,[],{logpush:'false'},{logpush:null},{observability:[]},{observability:{enabled:'false'}},{observability:{logs:[]}}, {observability:{logs:{persist:0}}},{observability:{unknown:true}}].map(privacy=>[privacy,'cleanup_logging_configuration_invalid']),
+ ] as [unknown,string][])('rejects active or invalid logging configuration %j',async(privacy,error)=>{
+  const {assertLoggingDisabled}=await load();expect(()=>assertLoggingDisabled(privacy)).toThrow(error as string);
+ });
 });
