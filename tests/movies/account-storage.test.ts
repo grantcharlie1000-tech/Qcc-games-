@@ -6,7 +6,7 @@ const token='acct_'+'a'.repeat(64);
 const fake=(values=new Map<string,string>())=>({getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>values.set(k,v),removeItem:(k:string)=>values.delete(k),key:(n:number)=>[...values.keys()][n]??null,get length(){return values.size;}} as unknown as Storage);
 const empty={entries:{},cleared:0};
 const cloud=(time=75,updated=1000)=>({entries:{'movie-1':{time,updated,snapshot}},cleared:0});
-it('loads account progress without attaching guest history or exposing it to another account',async()=>{
+it('without safe migration capability, loads account progress without attaching guest history to another account',async()=>{
  const local=fake();new MovieStorage(()=>local).progress('movie-2',42,undefined,{...snapshot,id:'movie-2'});
  const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>Response.json(init?.headers&&new Headers(init.headers).get('authorization')==='Bearer '+token?cloud():empty));
  const one=new AccountMovieStorage({username:'One',token},()=>local,fetcher as typeof fetch);
@@ -32,7 +32,7 @@ it('keeps playback saved during a request and ignores a result after account dis
  const waiting=s.account!.sync();s.account!.dispose();done(Response.json(cloud(999,Date.now()+1)));await waiting;
  expect(s.data.progress['movie-1']).toBe(120);
 });
-it('imports device history only on an explicit action and leaves the original intact',async()=>{
+it('without safe migration capability, manual Add keeps the original device copy intact',async()=>{
  const local=fake();new MovieStorage(()=>local).progress('movie-1',42,100,snapshot);
  const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>Response.json(init?.body?JSON.parse(init.body as string):empty));
  const s=new AccountMovieStorage({username:'One',token},()=>local,fetcher as typeof fetch);await s.account!.sync();
@@ -95,4 +95,51 @@ it('a full account still updates an existing title behind fifty rejected additio
 it('an acknowledged clear watermark does not remain queued during a later flush',async()=>{
  const local=fake();const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>Response.json(init?.body?JSON.parse(init.body as string):empty));
  const s=new AccountMovieStorage({username:'One',token},()=>local,fetcher as typeof fetch);s.clear();await s.account!.flush();fetcher.mockClear();await s.account!.flush();expect(fetcher).toHaveBeenCalledTimes(1);expect(fetcher.mock.calls[0][1]?.method).toBe('GET');s.account!.dispose();
+});
+const serialMigrationLock=()=>{let tail=Promise.resolve();return (work:()=>Promise<void>)=>{const next=tail.then(work);tail=next.catch(()=>{});return next;};};
+it('automatically merges the first account once and keeps its source snapshot owned across switches',async()=>{
+ const local=fake(),clock=vi.spyOn(Date,'now').mockReturnValue(1000);new MovieStorage(()=>local).progress('movie-1',42,100,snapshot);clock.mockReturnValue(5000);const lock=serialMigrationLock();
+ const states:Record<string,any>={};const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>{const who=new Headers(init?.headers).get('Authorization')!;let state=states[who]??empty;if(init?.body){const sent=JSON.parse(init.body as string);state={entries:{...state.entries,...sent.entries},cleared:0};states[who]=state;}return Response.json(state);});
+ const one=new AccountMovieStorage({username:'One',token},()=>local,fetcher as typeof fetch,lock);await one.account!.sync();await one.account!.flush();expect(one.data.progress['movie-1']).toBe(42);expect(one.data.meta['movie-1'].updated).toBe(1000);one.account!.dispose();
+ new MovieStorage(()=>local).progress('movie-2',60,100,{...snapshot,id:'movie-2'});
+ const other=new AccountMovieStorage({username:'Other',token:'acct_'+'b'.repeat(64)},()=>local,fetcher as typeof fetch,lock);await other.account!.sync();expect(other.continueItems()).toEqual([]);expect(other.account!.status).toContain('another account');other.account!.dispose();
+ const back=new AccountMovieStorage({username:'One',token},()=>local,fetcher as typeof fetch,lock);await back.account!.sync();expect(back.data.progress['movie-2']).toBeUndefined();expect(new MovieStorage(()=>local).data.progress['movie-1']).toBe(42);back.account!.dispose();clock.mockRestore();
+});
+it('serializes first-account claims across tabs so only one account receives guest history',async()=>{
+ const local=fake(),lock=serialMigrationLock();new MovieStorage(()=>local).progress('movie-1',42,100,snapshot);const sent:string[]=[];
+ const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>{if(init?.body){sent.push(new Headers(init.headers).get('Authorization')!);return Response.json(JSON.parse(init.body as string));}return Response.json(empty);});
+ const one=new AccountMovieStorage({username:'One',token},()=>local,fetcher as typeof fetch,lock),other=new AccountMovieStorage({username:'Other',token:'acct_'+'b'.repeat(64)},()=>local,fetcher as typeof fetch,lock);await Promise.all([one.account!.sync(),other.account!.sync()]);await Promise.all([one.account!.flush(),other.account!.flush()]);expect(new Set(sent).size).toBe(1);expect([one,other].filter(s=>s.continueItems().length>0)).toHaveLength(1);one.account!.dispose();other.account!.dispose();
+});
+it('does not claim or upload history when refresh fails, storage cannot claim, or the identity closes',async()=>{
+ const local=fake(),lock=serialMigrationLock();new MovieStorage(()=>local).progress('movie-1',42,100,snapshot);const offline=vi.fn(async()=>{throw new Error('offline');});const first=new AccountMovieStorage({username:'One',token},()=>local,offline as typeof fetch,lock);await first.account!.sync();expect(local.getItem('qcc:movies:v1:cloud-migration:v1')).toBeNull();first.account!.dispose();
+ const blocked={getItem:local.getItem,key:local.key,removeItem:local.removeItem,get length(){return local.length;},setItem:(k:string,v:string)=>{if(k==='qcc:movies:v1:cloud-migration:v1')throw new Error('quota');local.setItem(k,v);}} as Storage;
+ const online=vi.fn(async(_url:unknown,init?:RequestInit)=>Response.json(init?.body?JSON.parse(init.body as string):empty));const second=new AccountMovieStorage({username:'One',token},()=>blocked,online as typeof fetch,lock);await second.account!.sync();expect(online.mock.calls.every(c=>!c[1]?.body)).toBe(true);expect(second.continueItems()).toEqual([]);second.account!.dispose();
+ let respond!:(r:Response)=>void;const waiting=new AccountMovieStorage({username:'One',token},()=>local,vi.fn(()=>new Promise<Response>(r=>{respond=r;})) as typeof fetch,lock);const sync=waiting.account!.sync();waiting.account!.dispose();respond(Response.json(empty));await sync;expect(local.getItem('qcc:movies:v1:cloud-migration:v1')).toBeNull();
+});
+it('resumes only the claimed snapshot after a failed journal write, not later guest activity',async()=>{
+ const local=fake(),lock=serialMigrationLock();new MovieStorage(()=>local).progress('movie-1',42,100,snapshot);let rejectJournal=true;const store={getItem:local.getItem,key:local.key,removeItem:local.removeItem,get length(){return local.length;},setItem:(k:string,v:string)=>{if(rejectJournal&&k.includes(':pending:'))throw new Error('quota');local.setItem(k,v);}} as Storage;
+ const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>Response.json(init?.body?JSON.parse(init.body as string):empty));const first=new AccountMovieStorage({username:'One',token},()=>store,fetcher as typeof fetch,lock);await first.account!.sync();first.account!.dispose();expect(JSON.parse(local.getItem('qcc:movies:v1:cloud-migration:v1')!).done).toBe(false);
+ new MovieStorage(()=>local).progress('movie-2',60,100,{...snapshot,id:'movie-2'});rejectJournal=false;
+ const again=new AccountMovieStorage({username:'One',token},()=>store,fetcher as typeof fetch,lock);await again.account!.sync();await again.account!.flush();expect(again.data.progress['movie-1']).toBe(42);expect(again.data.progress['movie-2']).toBeUndefined();expect(JSON.parse(local.getItem('qcc:movies:v1:cloud-migration:v1')!).done).toBe(true);again.account!.dispose();
+});
+
+it('automatic merge keeps original timestamps so a newer cloud write arriving after refresh wins',async()=>{
+ const local=fake(),clock=vi.spyOn(Date,'now').mockReturnValue(1000);new MovieStorage(()=>local).progress('movie-1',42,100,snapshot);clock.mockReturnValue(4000);let sent:any;
+ const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>{if(!init?.body)return Response.json(empty);sent=JSON.parse(init.body as string);return Response.json(cloud(120,3000));});
+ const s=new AccountMovieStorage({username:'One',token},()=>local,fetcher as typeof fetch,serialMigrationLock());await s.account!.sync();await s.account!.flush();expect(sent.entries['movie-1'].updated).toBe(1000);expect(s.data.progress['movie-1']).toBe(120);s.account!.dispose();clock.mockRestore();
+});
+it('automatic merge adopts newer local progress but protects newer cloud completion and clear',async()=>{
+ const local=fake(),clock=vi.spyOn(Date,'now').mockReturnValue(2000),guest=new MovieStorage(()=>local);guest.progress('movie-1',42,100,snapshot);guest.progress('movie-2',60,100,{...snapshot,id:'movie-2'});clock.mockReturnValue(5000);let server:any={entries:{'movie-1':{time:10,updated:1000,snapshot},'movie-2':{time:0,updated:3000,snapshot:{...snapshot,id:'movie-2'}}},cleared:0};
+ const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>{if(init?.body){const sent=JSON.parse(init.body as string);server={...server,entries:{...server.entries,...sent.entries}};}return Response.json(server);});const s=new AccountMovieStorage({username:'One',token},()=>local,fetcher as typeof fetch,serialMigrationLock());await s.account!.sync();await s.account!.flush();expect(s.data.progress['movie-1']).toBe(42);expect(s.data.meta['movie-1'].updated).toBe(2000);expect(s.data.progress['movie-2']).toBe(0);s.account!.dispose();
+ const clearedLocal=fake();clearedLocal.setItem(MOVIES_KEY,local.getItem(MOVIES_KEY)!);const calls=vi.fn(async(_url:unknown,_init?:RequestInit)=>Response.json({entries:{},cleared:3000}));const cleared=new AccountMovieStorage({username:'One',token},()=>clearedLocal,calls as typeof fetch,serialMigrationLock());await cleared.account!.sync();await cleared.account!.flush();expect(cleared.continueItems()).toEqual([]);expect(calls.mock.calls.every(c=>!c[1]?.body)).toBe(true);cleared.account!.dispose();clock.mockRestore();
+});
+it('an empty first signed-in boot claims an empty snapshot so later guests cannot be attributed to another account',async()=>{
+ const local=fake(),lock=serialMigrationLock(),fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>Response.json(init?.body?JSON.parse(init.body as string):empty));const one=new AccountMovieStorage({username:'One',token},()=>local,fetcher as typeof fetch,lock);await one.account!.sync();one.account!.dispose();expect(JSON.parse(local.getItem('qcc:movies:v1:cloud-migration:v1')!)).toMatchObject({owner:'one',done:true,snapshot:{entries:{},cleared:0}});
+ new MovieStorage(()=>local).progress('movie-1',42,100,snapshot);const other=new AccountMovieStorage({username:'Other',token},()=>local,fetcher as typeof fetch,lock);await other.account!.sync();expect(other.continueItems()).toEqual([]);expect(fetcher.mock.calls.every(c=>!c[1]?.body)).toBe(true);other.account!.dispose();
+});
+it('manual Add remains available for a newer same-title device position when automatic locking is unavailable',async()=>{
+ const local=fake(),clock=vi.spyOn(Date,'now').mockReturnValue(2000);new MovieStorage(()=>local).progress('movie-1',42,100,snapshot);clock.mockReturnValue(5000);let server=cloud(10,1000);const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>{if(init?.body)server=JSON.parse(init.body as string);return Response.json(server);});const s=new AccountMovieStorage({username:'One',token},()=>local,fetcher as typeof fetch);await s.account!.sync();expect(s.account!.hasDeviceHistory()).toBe(true);await s.account!.importDeviceHistory();await s.account!.flush();expect(s.data.progress['movie-1']).toBe(42);expect(s.data.meta['movie-1'].updated).toBe(2000);s.account!.dispose();clock.mockRestore();
+});
+it('clears a transient automatic migration failure notice after a successful retry',async()=>{
+ const local=fake();new MovieStorage(()=>local).progress('movie-1',42,100,snapshot);let fail=true;const lock=async(work:()=>Promise<void>)=>{if(fail)throw new Error('lock unavailable');await work();};const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>Response.json(init?.body?JSON.parse(init.body as string):empty));const s=new AccountMovieStorage({username:'One',token},()=>local,fetcher as typeof fetch,lock);await s.account!.sync();expect(s.account!.status).toContain('Add device history');fail=false;await s.account!.sync();await s.account!.flush();expect(s.data.progress['movie-1']).toBe(42);expect(s.account!.status).not.toContain('Add device history');s.account!.dispose();
 });

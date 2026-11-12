@@ -3,19 +3,23 @@ import type {TitleSnapshot} from './storage';
 import {mergeMovieProgress,parseMovieProgress,MAX_PROGRESS_ENTRIES} from './progress-shared';
 import type {MovieProgressDocument} from './progress-shared';
 const empty=():MovieProgressDocument=>({entries:{},cleared:0});
+export const DEVICE_HISTORY_MIGRATION_KEY=MOVIES_KEY+':cloud-migration:v1';
+export type DeviceHistoryLock=(work:()=>Promise<void>)=>Promise<void>;
+interface DeviceHistoryClaim {version:1;owner:string;snapshot:MovieProgressDocument;done:boolean}
+const browserMigrationLock=():DeviceHistoryLock|undefined=>typeof window!=='undefined'&&navigator.locks?async work=>{await navigator.locks.request('qcc:movies:cloud-migration:v1',work);}:undefined;
 // Account caches and pending writes never share the guest namespace. Only this
-// account's explicitly recorded progress goes to the authenticated endpoint.
+// account's scoped progress goes to the authenticated endpoint.
 export class AccountMovieStorage extends MovieStorage {
  private pending=empty();private cleared=0;private acknowledgedClear=0;private closed=false;
  private flight:Promise<void>|undefined;private timer:ReturnType<typeof setTimeout>|undefined;
- private abort=new AbortController();private retry=5000;private synced=false;
+ private abort=new AbortController();private retry=5000;private synced=false;private migrationDone=false;private migrationFlight:Promise<void>|undefined;private migrationNotice='';
  private readonly queueKey:string;
  private journal=new Map<string,MovieProgressDocument>();
  private refresh=()=>{if(typeof document==='undefined'||!document.hidden)void this.account!.sync();};
- constructor(private session:{username:string;token:string},storage:()=>Storage=()=>localStorage,private fetcher:typeof fetch=globalThis.fetch.bind(globalThis)){
+ constructor(private session:{username:string;token:string},storage:()=>Storage=()=>localStorage,private fetcher:typeof fetch=globalThis.fetch.bind(globalThis),private migrationLock:DeviceHistoryLock|undefined=browserMigrationLock()){
   super(storage,`${MOVIES_KEY}:account:${session.username.toLowerCase()}`,true);
   this.queueKey=this.key+':pending';this.readQueue();this.apply(mergeMovieProgress(this.document(),this.pending));
-  this.account={username:session.username,status:'Continue watching is saved on this device. Connecting to your account…',sync:()=>this.sync(),flush:()=>this.flush(),dispose:()=>this.dispose(),hasDeviceHistory:()=>this.deviceEntries().some(item=>!(item.key in this.data.progress)),importDeviceHistory:()=>this.importDeviceHistory()};
+  this.account={username:session.username,status:'Continue watching is saved on this device. Connecting to your account…',sync:()=>this.syncWithMigration(),flush:()=>this.flush(),dispose:()=>this.dispose(),hasDeviceHistory:()=>this.hasDeviceHistory(),importDeviceHistory:()=>this.importDeviceHistory()};
   if(typeof window!=='undefined'){window.addEventListener('online',this.refresh);window.addEventListener('focus',this.refresh);window.addEventListener('storage',this.external);document.addEventListener('visibilitychange',this.refresh);}
  }
  private readQueue(){try{
@@ -27,12 +31,13 @@ export class AccountMovieStorage extends MovieStorage {
  }catch{/* Keep this visit's unsaved queue. */}}
  // Immutable journal records avoid a shared read-modify-write race between tabs.
  // Cache races can be repaired from the journal even if one tab closes at once.
- private persistQueue(document:MovieProgressDocument,watermark=false){try{
+ private persistQueue(document:MovieProgressDocument,watermark=false):boolean{try{
   const key=this.queueKey+(watermark?':cleared:':':')+crypto.randomUUID();this.storage().setItem(key,JSON.stringify(document));this.journal.set(key,document);
   for(const [old,value] of this.journal)if(old!==key&&value.cleared<=document.cleared&&Object.entries(value.entries).every(([media,entry])=>entry.updated<=document.cleared||(document.entries[media]?.updated??-1)>=entry.updated)){
    this.storage().removeItem(old);this.journal.delete(old);
   }
- }catch{this.durable=false;}}
+  return true;
+ }catch{this.durable=false;return false;}}
  private acknowledge(remote:MovieProgressDocument){
   if(remote.cleared>this.acknowledgedClear){this.persistQueue({entries:{},cleared:remote.cleared},true);this.acknowledgedClear=remote.cleared;}
   for(const [key,document] of this.journal){
@@ -42,7 +47,7 @@ export class AccountMovieStorage extends MovieStorage {
    if(covered)try{this.storage().removeItem(key);this.journal.delete(key);}catch{/* Retry cleanup later. */}
   }
  }
- private schedule(delay=5000){clearTimeout(this.timer);if(!this.closed)this.timer=setTimeout(()=>{void this.sync();},delay);}
+ private schedule(delay=5000){clearTimeout(this.timer);if(!this.closed)this.timer=setTimeout(()=>{void this.syncWithMigration();},delay);}
  private external=(event:StorageEvent)=>{if(event.key===this.key||event.key?.startsWith(this.queueKey+':')||event.key===null){this.reload();this.readQueue();this.apply(mergeMovieProgress(this.document(),this.pending),false);this.schedule(100);}};
  override progress(key:string,time:number,duration?:number,snapshot?:TitleSnapshot){
   if(this.closed||!Number.isFinite(time)||time<0||!/^(?:movie-[a-z0-9-]+|tv-[a-z0-9-]+:s\d{1,4}:e\d{1,4})$/.test(key))return;
@@ -62,14 +67,60 @@ export class AccountMovieStorage extends MovieStorage {
   let guest:MovieStorage;try{const raw=this.storage().getItem(MOVIES_KEY);guest=new MovieStorage(()=>({getItem:()=>raw,setItem:()=>{}} as unknown as Storage));}catch{return [];}
   return guest.continueItems().flatMap(item=>{const snapshot=guest.snapshot(item.id);return snapshot?[{key:item.key,time:item.time,duration:item.duration,updated:item.updated,snapshot}]:[];}).slice(0,MAX_PROGRESS_ENTRIES);
  }
+ private deviceDocument():MovieProgressDocument {
+  const entries:MovieProgressDocument['entries']={};
+  for(const item of this.deviceEntries()){
+   const document=parseMovieProgress({entries:{[item.key]:{time:item.time,...(item.duration?{duration:item.duration}:{}),updated:Math.max(1,item.updated),snapshot:item.snapshot}},cleared:0});
+   if(document)Object.assign(entries,document.entries);
+  }return {entries,cleared:0};
+ }
+ private hasDeviceHistory(){
+  return this.deviceEntries().some(item=>!(item.key in this.data.progress))||Object.entries(this.deviceDocument().entries).some(([key,entry])=>entry.updated>this.cleared&&entry.updated>(this.data.meta[key]?.updated??0));
+ }
+ private queueDeviceMerge(source:MovieProgressDocument):boolean {
+  let durable=true,changed=false;
+  for(const [key,entry] of Object.entries(source.entries))if(entry.updated>this.cleared&&entry.updated>=(this.data.meta[key]?.updated??0)){
+   changed=true;const document={entries:{[key]:entry},cleared:0};this.pending=mergeMovieProgress(document,this.pending);if(!this.persistQueue(document))durable=false;
+  }
+  if(changed){this.account!.status='Device history merged. Syncing to your account.';this.apply(mergeMovieProgress(this.document(),this.pending));this.schedule(0);}return durable;
+ }
+ private async syncWithMigration(){
+  await this.sync();if(this.closed||!this.synced)return;
+  await this.migrateDeviceHistory();
+  if(this.migrationNotice&&!this.closed){this.account!.status=this.migrationNotice;this.emit();}
+ }
+ private migrateDeviceHistory():Promise<void>{
+  if(this.closed||this.migrationDone)return Promise.resolve();if(this.migrationFlight)return this.migrationFlight;
+  if(!this.migrationLock){this.migrationDone=true;if(Object.keys(this.deviceDocument().entries).length)this.migrationNotice='Automatic device merge is unavailable. Use Add device history.';return Promise.resolve();}
+  this.migrationFlight=this.migrationLock(async()=>{
+   if(this.closed)return;
+   try{
+    const raw=this.storage().getItem(DEVICE_HISTORY_MIGRATION_KEY),owner=this.session.username.toLowerCase();let claim:DeviceHistoryClaim|undefined;
+    if(raw!==null){
+     const value=JSON.parse(raw),snapshot=parseMovieProgress(value?.snapshot);
+     if(value?.version!==1||typeof value.owner!=='string'||!/^[a-z0-9_.-]{3,24}$/.test(value.owner)||typeof value.done!=='boolean'||!snapshot)throw new Error('Invalid migration claim.');
+     claim={version:1,owner:value.owner,snapshot,done:value.done};
+     if(claim.owner!==owner){this.migrationDone=true;this.migrationNotice='Device history is linked to another account. Automatic merge was skipped.';return;}
+     if(claim.done){this.migrationDone=true;this.migrationNotice='';return;}
+    }
+    // Re-read cloud progress inside the origin-wide lock before claiming data.
+    await this.sync();if(this.closed||!this.synced)return;
+    if(!claim){claim={version:1,owner,snapshot:this.deviceDocument(),done:false};this.storage().setItem(DEVICE_HISTORY_MIGRATION_KEY,JSON.stringify(claim));}
+    // A durable immutable snapshot makes retries safe even if later guests use
+    // this device. Only its first claimed account may migrate it automatically.
+    if(!this.queueDeviceMerge(claim.snapshot))return;
+    claim.done=true;this.storage().setItem(DEVICE_HISTORY_MIGRATION_KEY,JSON.stringify(claim));this.migrationDone=true;this.migrationNotice='';
+   }catch{if(!this.closed)this.migrationNotice='Device history remains here. Use Add device history.';}
+  }).catch(()=>{if(!this.closed)this.migrationNotice='Automatic device merge is unavailable. Use Add device history.';}).finally(()=>{this.migrationFlight=undefined;});return this.migrationFlight;
+ }
  private async importDeviceHistory(){
   if(this.closed)return;
-  // Import is an explicit new account action, but only after a fresh pull so an
-  // older guest position never replaces an existing account position unseen.
   await this.sync();if(this.closed)return;
   if(!this.synced){this.account!.status='Connect to add device history.';this.emit();return;}
+  // The explicit Add action may copy an unclaimed account's history or re-add
+  // absent history after a clear. Automatic migration never uses fresh stamps.
   for(const item of this.deviceEntries())if(!(item.key in this.data.progress))this.progress(item.key,item.time,item.duration,item.snapshot);
-  this.emit();this.schedule(0);
+  this.queueDeviceMerge(this.deviceDocument());this.migrationNotice='';this.emit();this.schedule(0);
  }
  private document():MovieProgressDocument {
   const entries:MovieProgressDocument['entries']={};for(const [key,time] of Object.entries(this.data.progress)){const snapshot=this.snapshot(key.split(':')[0]),meta=this.data.meta[key];if(snapshot&&meta)entries[key]={time,...meta,snapshot};}return {entries,cleared:this.cleared};
