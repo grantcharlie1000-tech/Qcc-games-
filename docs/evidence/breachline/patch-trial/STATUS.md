@@ -664,3 +664,66 @@ Not done:
 - **The dropped weapon** follows the stock animator's behaviour.
 
 How the evidence was made: `scripts/breachline-assets/patch-trial/wounds-test.mjs` and `wounds-sheet.mjs`. Hits are synthetic `shot` and `hit` events fed through `fighters.handle`, and the kills are a test-only injection into the served `index.ts`. No files in `src/` outside my folders were changed. `tests/games/breachline/warm.spec.ts` was not run in this pass, because usage is tight.
+
+### 12.2 corrections (planner review)
+
+- **Bodies.** The first sheet showed two dead fighters standing. That was the evidence script's fault, not the game's: it drew a single frame after a kill, and the death pose only advances with drawn frames. Since 12.6, bodies fall as ragdolls. `job12-wounds.jpg` is rebuilt: B dies to real gunfire (3 rounds through the sim), A to the test kill, and both lie where they fell.
+- **Wound look.** Each wound now has a dark entry core about 1.5 cm across with a darker ring, and a stain that is densest at the hole and thins outward instead of an even wash. Head wounds are half the size and lighter, so a single round no longer reddens the whole face. Honest limit: at 3 m in a 720p frame the entry core is only a few pixels.
+- **Camera.** The evidence script now turns the fighters to face the camera before each hit and each picture.
+
+## 12.6 Ragdoll on death — done
+
+Evidence: `job12-ragdoll.jpg` (139 KB). Four real kills by this player through the test hook, each confirmed by the sim's own kill event:
+- rifle to the chest (`Marrow AR-5`)
+- DMR head shot (`Corvin DMR`, head)
+- shotgun at 1.8 m (`Halden 12`)
+- frag grenade at the feet (`Frag grenade`)
+
+Each strip shows the kill, then 0.15 s, 0.4 s, 0.9 s and 3.4 s, by which time the body is at rest. The script holds the game's own frame loop during each capture, so only fixed 0.016 s draws advance the ragdoll.
+
+How the ragdoll works:
+- **Model.** `render/patchfighters/ragdoll.ts`, with no physics library, written in plain arithmetic rather than three.js.
+- **Points and sticks.** 16 points (pelvis, chest, neck, head centre, shoulders, elbows, hands, hips, knees, feet), joined by 25 sticks. The sticks include braces that keep the chest and the pelvis rigid.
+- **Joint limits.** Minimum distances, taken from the bone lengths, stand in for joint limits. A hinge rule keeps the knees bending forward only.
+- **Physics.** Verlet integration at a fixed 1/120 s step with 6 constraint passes, gravity and damping.
+- **Collision.** Points collide with the floor, the map's solid boxes, intact or reinforced panel cells, and the map bounds. The map data is only read. Only the map within 3 m is checked, gathered again whenever the body has moved 1.5 m.
+- **Friction and sleep.** Friction removes the velocity into a surface and 22% of the velocity along it, each step. The ragdoll sleeps once nothing has moved 0.6 mm per step for 0.3 s (after at least 0.5 s), or at 3 s. It then stays as the body until the round reset or a respawn.
+
+Start state and impulse:
+- **Start.** The live bone positions as last drawn, plus the fighter's own speed.
+- **Gun kills.** The killing shooter's last `shot` ray hits the body point nearest it, or the head on a head shot. That point and its neighbours get a kick along the ray: 2 to 3.6 m/s by weapon, and 5.5 m/s with a wider spread and a little lift for the shotgun.
+- **Blasts.** Kills whose weapon name is a grenade or the breach charge use the last `boom`. The kick points outward along the floor, strongest at the parts nearest the blast, so the legs are swept and the body turns over.
+- **Melee, or a gun kill whose shot this client missed.** A kick away from the killer.
+- **Every death.** The knees buckle forward, and a little seeded scatter goes into the arms. The seed comes from the victim, their death count and the killer. The weapon drops as its own 3-point body and lands beside them.
+
+Driving the skeleton:
+- **Torso.** The pelvis and chest bones take their rotation from the hip and shoulder lines (current frame times the inverse of the bind frame). spine1 sits halfway between them.
+- **Limbs and neck.** Aimed along their sticks with a swing from the parent bone, so they don't twist.
+- **Helper bones.** Elbow, knee, deltoid and hip helpers take half the rotation, as the animator does.
+- **What follows.** The skinned mesh, its wounds and the headgear all follow. The weapon takes the turn of its three points since death.
+
+Same on every client: the ragdoll starts only from shared events and is stepped at a fixed rate, so frame rate doesn't change the result. Clients can still differ slightly, because each starts from its own interpolated live pose.
+
+Reporting:
+- `pose(id)` and `bodies()` report the pelvis position of the ragdoll.
+- `bodies()` items gain `still` (true once the ragdoll sleeps). **Note for the environment session:** the blood pool is placed at death and does not move afterwards. In the blast strip the body lands about 2.4 m from the pool. Placing the pool when `still` turns true (or moving it then) would put it under the body.
+
+Budget:
+- Nothing is compiled or uploaded at death.
+- `warm.spec.ts` passes (2/2) with the ragdoll in place.
+- In the unit test, about 0.08 ms per step per ragdoll (under vitest). Ten bodies at once cost about 2 ms per frame for at most 3 s, then nothing.
+
+Test: `tests/games/breachline/ragdoll.test.ts`.
+- **Every spawn and roam point.** Deaths there (chest shot from the front, head shot from the side, a strong blast from behind) end asleep within the time limit, with the head below 1.1 m, nothing above 1.25 m, and no point inside a solid box or outside the bounds.
+- **Wall.** A body thrown at a wall stops on its own side.
+- **Repeatability.** The same start gives the same rest position.
+
+Tests run on this head:
+- `npx vitest run tests/games/breachline`: 12 files, 111 tests passed.
+- Playwright `warm.spec.ts`: 2 passed. `play.spec.ts`: 6 passed.
+- `audio.spec.ts`: 1 passed when run alone. It timed out at 120 s when run alongside a capture, because of CPU contention; it renders sound offline and doesn't touch the fighters.
+
+Not done:
+- Bodies don't block each other.
+- A body resting on a panel stays put if the panel is later destroyed under it, because collision is only checked while the ragdoll is awake.
+- The stock fighters (`?fighters=stock`) keep their canned death.

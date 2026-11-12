@@ -32,12 +32,17 @@ const sx = A.x, sz = A.z;
 // The camera stands 3 m north of them, on the side the parked fighters face (they keep facing -Z).
 await page.evaluate(([a, e, x, z]) => { const h = window.__breachlineTest; h.teleport(a, x - 0.55, z, Math.PI); h.teleport(e, x + 0.55, z, Math.PI); h.place(x, z - 3, Math.PI, -0.08); h.advance(0.3); h.draw(); }, [A.id, E.id, sx, sz]);
 const self = st.self, eye = [sx, 1.6, sz - 3];
-const fire = (on, tx, ty, head, hp) => page.evaluate(([self, on, eye, tx, tz, ty, head, hp]) => {
+// The sim turns parked fighters as it likes, so before each hit (the wound is placed on the pose as drawn) and
+// before each picture, both are turned to face the camera and drawn until the renderer's smoothing has caught up.
+const face = ids => { const h = window.__breachlineTest, s = h.state(); for (const id of ids) { const p = s.players.find(q => q.id === id), [ex, , ez] = window.__eye; h.teleport(id, p.x, p.z, Math.atan2(-(ex - p.x), -(ez - p.z))); } for (let i = 0; i < 14; i++) h.draw(); };
+await page.evaluate(([eye, face]) => { window.__eye = eye; window.__face = eval(face); }, [eye, face.toString()]);
+const fire = (on, tx, ty, head, hp) => page.evaluate(([self, on, eye, tx, tz, ty, head, hp, ids]) => {
+  window.__face(ids);
   const yaw = Math.atan2(-(tx - eye[0]), -(tz - eye[2])), pitch = Math.atan2(ty - eye[1], Math.hypot(tx - eye[0], tz - eye[2]));
   window.__pf.handle([{ e: 'shot', id: self, w: 'ar', x: eye[0], y: eye[1], z: eye[2], yaw, pitch, spread: 0, seed: 1 }, { e: 'hit', by: self, on, dmg: 20, head, hp }], { players: [] }, self);
-  const h = window.__breachlineTest; h.advance(0.6); h.draw();
-}, [self, on, eye, tx, sz, ty, head, hp]);
-const shot = async name => { await page.waitForTimeout(500); await writeFile(path.join(outDir, `${name}.png`), await page.locator('canvas').first().screenshot()); console.log(name); };
+  const h = window.__breachlineTest; h.advance(0.6); window.__face(ids);
+}, [self, on, eye, tx, sz, ty, head, hp, [A.id, E.id]]);
+const shot = async name => { await page.waitForTimeout(500); await writeFile(path.join(outDir, `${name}.png`), await page.locator('canvas').first().screenshot({ timeout: 120000 })); console.log(name); };
 for (const [on, dx] of [[A.id, -0.55], [E.id, 0.55]]) {
   const tag = on === A.id ? 'A' : 'B', tx = sx + dx;
   await fire(on, tx + 0.04, 1.28, false, 80); await shot(`${tag}-chest`);
