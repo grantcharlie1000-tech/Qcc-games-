@@ -1,6 +1,6 @@
 # Breachline title card: status
 
-Honest score after 6 rounds: **6.5/10**, measured against Last Light's cover at 7. The 7 target is not reached.
+Honest score after 7 rounds: **7/10**, measured against Last Light's cover at 7. The 7 target is not reached.
 
 ## Files
 - `scripts/breachline-assets/titlecard/palette.ts`: all colours, three-shade ramps and light colours.
@@ -28,6 +28,7 @@ The topmost scene point is at y = 101. Nothing is drawn in the title band except
 | 4 | 6 | Soot ring round the hole, debris flying through the glow, left defender fully framed in the light pool, helmet no wider than the head. | Attacker front too dark. Left half of the hole dim. No ceiling grid. Walls cool grey. Floor corner too bright. |
 | 5 | 6 | Lighter attacker gear, warmer ambient, second corridor light. A ceiling grid, a light shaft and a rim light were tried and rejected. | Planner review: the hero does not pop, the scene is too busy and cropped, the defender is a blob from behind, the soot is spread too wide, and the colours are one grey-blue. |
 | 6 | 6.5 | A whole diorama floating on the card, with a clean slab and wall ends. One hero attacker framed by the glow, a second kneeling behind him, and one defender in three-quarter view behind the overturned desk (face, chin strap, low banded helmet, rifle on the desk). Pale wallboard core and tight soot at the hole, four large chunks in the air, muted walls and a lighter blue hero. A smaller room (figures 1.4 times larger) was tried and rejected because the hero then filled the hole. | The figures are still smaller than Last Light's character. The second attacker is hard to see. The carpet corner is a large dark area. The hero's rifle points at the viewer, so it reads as a short bar. |
+| 7 | 7 | The hero's rifle swings across the frame toward the defender, with a muzzle flash and spent cases, and stops short of him so there is clear air between the rifles. Rifles are mid-grey with a light top edge. The second attacker is reduced to a banded helmet peeking into the hole. Paper, wall chunks and a fallen chair fill the carpet corner. The diorama is scaled about 10 percent larger. Sparse amber and pale specks sit round the slab, and the goggles glow. | Still busier than Last Light. The peeking helmet sits near the centre of the hole rather than at its edge. The fallen chair reads as a dark block. |
 
 ## Palette
 - Card: background `#1f2a33`, ink `#fff3df`, accent `#f0b429`.
@@ -43,14 +44,14 @@ The topmost scene point is at y = 101. Nothing is drawn in the title band except
 - `npm run build`: passes.
 
 ## Still wrong
-- It is busier than Last Light at card size. Last Light has one hero on open space; this is a full scene.
-- The attacker is backlit, so his face is small and dark.
-- The defenders face the hole, so we see their backs, and their banded helmets still half read as hats.
-- The left half of the hole is dimmer than the right.
+- Still busier than Last Light at card size. Last Light has one figure on open space; this is a whole room.
+- The second attacker's helmet sits near the centre of the hole rather than at its edge.
+- The fallen chair in the carpet corner reads as a dark block.
 - The brief's ceiling grid is not drawn. Two versions both hid the breach, so the ceiling is shown fully cut away.
+- The figures are about 1.1 times their round 4 size, not the 1.4 times asked for. Any larger and the hero fills the hole.
 
 ## Proposed change to show title.svg in the game (not made, `index.ts` is not mine)
-This follows Last Light's pattern: an `sr-only` heading with a decorative image. The crest is dropped because the wordmark replaces it. Preview: `round-5-title-in-menu-preview.png`.
+This follows Last Light's pattern: an `sr-only` heading with a decorative image. The crest is dropped because the wordmark replaces it. Preview: `round-7-title-in-menu-preview.png` (desktop) and `round-7-title-in-menu-preview-phone.png`.
 
 ```diff
 --- a/src/games/breachline/index.ts

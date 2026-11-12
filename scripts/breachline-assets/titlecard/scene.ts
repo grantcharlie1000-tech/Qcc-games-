@@ -9,7 +9,7 @@ type Team = 'atk' | 'def';
 type Pose = 'stand' | 'step' | 'kneel';
 
 /** A soldier, 9 wide, built in local (u lateral, v forward, w up) and turned to face `facing`. */
-export function soldier(g: Grid, ox: number, oy: number, oz: number, facing: Facing, team: Team, pose: Pose): void {
+export function soldier(g: Grid, ox: number, oy: number, oz: number, facing: Facing, team: Team, pose: Pose, aimLeft = false): void {
   const put = (u: number, v: number, w: number, m: Material | null) => {
     const [x, y] = facing === '+y' ? [ox + u, oy + v] : [ox + v, oy + 8 - u];
     g.set(x, y, oz + w, m);
@@ -42,14 +42,28 @@ export function soldier(g: Grid, ox: number, oy: number, oz: number, facing: Fac
   cube(3, 4, h + 3, 1, 1, 2, vest); cube(5, 4, h + 3, 1, 1, 2, vest);
   // Upper arms with the squad band, a gap at the elbow, forearms forward to the rifle.
   for (const u of [1, 7]) { cube(u, 1, h + 3, 1, 2, 4, cloth); cube(u, 1, h + 5, 1, 2, 1, band); }
-  cube(7, 3, h + 3, 1, 2, 1, cloth); put(6, 5, h + 3, 'skin');
-  cube(1, 3, h + 3, 1, 2, 1, cloth); cube(2, 5, h + 3, 1, 2, 1, cloth); put(3, 7, h + 3, 'skin');
-  // Rifle shouldered, pointing forward: dark body, light top edge, sight and magazine.
   const rz = h + 4;
-  cube(4, 4, rz, 1, 9, 1, 'gun'); cube(4, 4, rz - 1, 1, 2, 1, 'gun');
-  cube(4, 8, rz - 2, 1, 1, 2, 'gun');
-  cube(4, 6, rz + 1, 1, 2, 1, 'gunLight');
-  put(4, 13, rz, 'gunLight');
+  if (aimLeft) {
+    // Rifle swung across the body, firing along (-u, +v): a staircase that reads as a level line on screen.
+    cube(7, 3, h + 3, 1, 2, 1, cloth); put(6, 5, h + 3, cloth); put(5, 5, h + 3, 'skin');
+    cube(1, 3, h + 3, 1, 2, 1, cloth); put(1, 5, h + 3, cloth); put(1, 7, h + 3, 'skin');
+    for (let k = 0; k < 7; k++) put(4 - k, 4 + k, rz, 'gun');
+    put(5, 3, rz, 'gun'); put(5, 3, rz - 1, 'gun');
+    put(2, 6, rz + 1, 'gunLight'); put(3, 5, rz + 1, 'gunLight');
+    put(0, 8, rz - 1, 'gun'); put(0, 8, rz - 2, 'gun');
+    put(-3, 11, rz, 'gunLight');
+    // Muzzle flash and spent cases ejected to the right.
+    put(-4, 12, rz, 'flash'); put(-5, 13, rz, 'flash'); put(-4, 12, rz + 1, 'fire'); put(-4, 12, rz - 1, 'fire'); put(-6, 14, rz, 'fire'); put(-5, 12, rz, 'fire');
+    put(8, 6, rz + 3, 'brass'); put(9, 5, rz + 5, 'brass');
+  } else {
+    cube(7, 3, h + 3, 1, 2, 1, cloth); put(6, 5, h + 3, 'skin');
+    cube(1, 3, h + 3, 1, 2, 1, cloth); cube(2, 5, h + 3, 1, 2, 1, cloth); put(3, 7, h + 3, 'skin');
+    // Rifle shouldered, pointing forward: mid-grey body, light top edge, sight and magazine.
+    cube(4, 4, rz, 1, 9, 1, 'gun'); cube(4, 4, rz - 1, 1, 2, 1, 'gun');
+    cube(4, 8, rz - 2, 1, 1, 2, 'gun');
+    cube(4, 6, rz + 1, 1, 2, 1, 'gunLight');
+    put(4, 13, rz, 'gunLight');
+  }
   // Neck, then the head: face with eyes or goggles under a dark brim gap, chin strap at the sides.
   cube(3, 1, h + 7, 3, 2, 1, 'skin');
   cube(2, 0, h + 8, 5, 4, 3, team === 'atk' ? 'atkVest' : 'defCloth');
@@ -101,11 +115,14 @@ export function buildScene(): Grid {
   g.box(28, wallY + 4, 9, 4, 1, 1, 'steelDark');
 
   // Attackers: the hero stepping through, a second one's helmet and muzzle behind him in the hole.
-  soldier(g, holeX - 6, wallY - 1, 0, '+y', 'atk', 'step');
-  soldier(g, holeX + 2, wallY - 4, 0, '+y', 'atk', 'kneel');
+  soldier(g, holeX - 1, wallY - 1, 0, '+y', 'atk', 'step', true);
+  // The second attacker: only his banded helmet, leaning into the light at the edge of the hole.
+  const [hx, hy, hz] = [holeX - 9, wallY - 4, 15];
+  g.box(hx, hy, hz, 5, 5, 1, 'atkBand').box(hx + 1, hy, hz + 1, 3, 5, 1, 'atkHelmet').box(hx, hy + 1, hz + 1, 5, 3, 1, 'atkHelmet');
+  g.box(hx, hy, hz - 1, 5, 4, 1, 'atkHelmet').box(hx + 1, hy + 4, hz - 1, 3, 1, 1, 'visor').box(hx + 1, hy + 4, hz - 2, 3, 1, 1, 'goggle');
 
   // Large wallboard chunks in mid-air, flying toward the defender, and rubble on the floor.
-  const chunks = [[7, 12, 15, 3, 2], [4, 13, 19, 2, 1], [24, 11, 19, 2, 2], [26, 13, 13, 2, 1]] as const;
+  const chunks = [[7, 12, 16, 3, 2], [4, 13, 20, 2, 1], [11, 14, 21, 2, 1]] as const;
   for (const [x, y, z, a, b] of chunks) {
     g.box(x, y, z, a, 1, b, 'gypsum');
     g.box(x, y + 1, z, a, 1, b, 'board');
@@ -115,9 +132,16 @@ export function buildScene(): Grid {
   }
 
   // The defender holds the angle across the hole from behind an overturned desk, rifle resting on it.
-  g.box(9, 12, 0, 1, 11, 7, 'laminate');
-  for (const y of [12, 22]) for (const z of [1, 5]) g.box(6, y, z, 3, 1, 1, 'desk');
-  soldier(g, 4, 13, 0, '+x', 'def', 'kneel');
+  g.box(8, 16, 0, 1, 11, 7, 'laminate');
+  for (const y of [16, 26]) for (const z of [1, 5]) g.box(5, y, z, 3, 1, 1, 'desk');
+  soldier(g, 3, 17, 0, '+x', 'def', 'kneel');
+
+  // The office corner, lit by the breach: scattered paper, a fallen chair, landed wall chunks.
+  for (let i = 0; i < 14; i++) {
+    const x = 2 + Math.floor(13 * hash(i, 0, 0, 61)), y = 12 + Math.floor(15 * hash(i, 1, 0, 61));
+    if (!g.get(x, y, 0)) g.set(x, y, 0, i % 3 ? 'paper' : 'gypsum');
+  }
+  g.box(12, 23, 0, 4, 3, 1, 'chair').box(12, 26, 0, 4, 1, 3, 'chair').box(16, 24, 0, 1, 1, 2, 'steelDark');
 
   // The uplink on a small table in the lab half.
   const tx = 24, ty = 22;

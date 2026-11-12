@@ -9,7 +9,7 @@ export type Vox = { m: Material; noShadow?: boolean };
 /** A point light; with `dir` and `cut` it is a spot whose cone ends where cos(angle) = cut. */
 export type PointLight = { x: number; y: number; z: number; rgb: readonly number[]; range: number; power: number; dir?: readonly number[]; cut?: number };
 
-const EMISSIVE = new Set<Material>(['uplinkGlow', 'screen', 'fire']);
+const EMISSIVE = new Set<Material>(['uplinkGlow', 'screen', 'fire', 'flash', 'goggle']);
 const K = (x: number, y: number, z: number) => ((x + 128) * 512 + (y + 128)) * 512 + (z + 128);
 
 /** Deterministic hash noise in [0, 1). */

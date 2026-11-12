@@ -37,8 +37,8 @@ export const P = {
   paper: r('#f6f1e6', '#e3ddcf', '#c2bcae'),
   // people
   skin: r('#e9b893', '#cf9876', '#a8775b'),
-  gun: r('#7b818b', '#2a2d32', '#1d1f23'),
-  gunLight: r('#5b6068', '#474b52', '#363a40'),
+  gun: r('#9aa1ab', '#5a6069', '#454a52'),
+  gunLight: r('#b5bcc5', '#7d848e', '#636a73'),
   boot: r('#2c2a28', '#232120', '#1a1918'),
   goggle: r('#bfe3f2', '#93c4d9', '#6c9fb6'),
   visor: r('#1a1d22', '#15171b', '#101215'),
@@ -56,6 +56,8 @@ export const P = {
   screen: r('#9fe0ff', '#7fcff5', '#5fb3dc'),
   soot: r('#a59a88', '#8f8473', '#71685a'),
   scorch: r('#6e5f4f', '#5b4e41', '#473d33'),
+  flash: r('#ffffff', '#fff6d8', '#ffe7a0'),
+  brass: r('#f2c96a', '#d9a843', '#b0852c'),
   fire: r('#fff1c4', '#ffd277', '#f0b429'),
 } as const;
 
