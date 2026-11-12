@@ -25,7 +25,8 @@ export const P = {
   tile: r('#e3e0d7', '#cdc9bf', '#aca89e'),
   tileAlt: r('#cfd0ca', '#b9bab4', '#9a9b95'),
   // furniture
-  steel: r('#8592a0', '#67737f', '#4d5761'),
+  steel: r('#b3bdc7', '#97a2ad', '#7a8591'),
+  brace: r('#8a96a2', '#717d89', '#5a6570'),
   steelDark: r('#56616c', '#444e58', '#343c45'),
   hazard: r('#f5c040', '#f0b429', '#c48c14'),
   hazardInk: r('#2c3138', '#23272d', '#1a1d21'),
@@ -33,7 +34,6 @@ export const P = {
   laminate: r('#d3bd94', '#bba57b', '#968260'),
   cabinet: r('#a2abb4', '#858f98', '#69727b'),
   monitor: r('#2f343b', '#25292f', '#1b1e22'),
-  chair: r('#3a3f47', '#2e3238', '#23262b'),
   paper: r('#f6f1e6', '#e3ddcf', '#c2bcae'),
   // people
   skin: r('#e9b893', '#cf9876', '#a8775b'),

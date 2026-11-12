@@ -1,6 +1,6 @@
 # Breachline title card: status
 
-Honest score after 7 rounds: **7/10**, measured against Last Light's cover at 7. The 7 target is not reached.
+Final, after 8 rounds: honest score **7/10**, measured against Last Light's cover at 7. The planner accepted round 7 at 7; round 8 was a last polish.
 
 ## Files
 - `scripts/breachline-assets/titlecard/palette.ts`: all colours, three-shade ramps and light colours.
@@ -14,10 +14,10 @@ Honest score after 7 rounds: **7/10**, measured against Last Light's cover at 7.
 ## Budgets
 | File | Polygons | Size | Budget |
 | --- | --- | --- | --- |
-| cover.svg | 1170 | 71 KB | 150 KB |
+| cover.svg | 903 | 61 KB | 150 KB |
 | title.svg | 108 | 5.9 KB | 250 KB |
 
-The topmost scene point is at y = 101. Nothing is drawn in the title band except the background.
+The topmost scene point is at y = 106. Nothing is drawn in the title band except the background.
 
 ## Rounds
 | Round | Score | Change | Mismatches found and fixed in the next round |
@@ -29,6 +29,7 @@ The topmost scene point is at y = 101. Nothing is drawn in the title band except
 | 5 | 6 | Lighter attacker gear, warmer ambient, second corridor light. A ceiling grid, a light shaft and a rim light were tried and rejected. | Planner review: the hero does not pop, the scene is too busy and cropped, the defender is a blob from behind, the soot is spread too wide, and the colours are one grey-blue. |
 | 6 | 6.5 | A whole diorama floating on the card, with a clean slab and wall ends. One hero attacker framed by the glow, a second kneeling behind him, and one defender in three-quarter view behind the overturned desk (face, chin strap, low banded helmet, rifle on the desk). Pale wallboard core and tight soot at the hole, four large chunks in the air, muted walls and a lighter blue hero. A smaller room (figures 1.4 times larger) was tried and rejected because the hero then filled the hole. | The figures are still smaller than Last Light's character. The second attacker is hard to see. The carpet corner is a large dark area. The hero's rifle points at the viewer, so it reads as a short bar. |
 | 7 | 7 | The hero's rifle swings across the frame toward the defender, with a muzzle flash and spent cases, and stops short of him so there is clear air between the rifles. Rifles are mid-grey with a light top edge. The second attacker is reduced to a banded helmet peeking into the hole. Paper, wall chunks and a fallen chair fill the carpet corner. The diorama is scaled about 10 percent larger. Sparse amber and pale specks sit round the slab, and the goggles glow. | Still busier than Last Light. The peeking helmet sits near the centre of the hole rather than at its edge. The fallen chair reads as a dark block. |
+| 8 | 7 | Last polish: the reinforced panel and its braces are a step lighter, so the hero's right side no longer merges with it, and the chair is replaced by a tipped waste bin spilling paper. The title now shows in the game menu. | None found. |
 
 ## Palette
 - Card: background `#1f2a33`, ink `#fff3df`, accent `#f0b429`.
@@ -46,17 +47,20 @@ The topmost scene point is at y = 101. Nothing is drawn in the title band except
 ## Still wrong
 - Still busier than Last Light at card size. Last Light has one figure on open space; this is a whole room.
 - The second attacker's helmet sits near the centre of the hole rather than at its edge.
-- The fallen chair in the carpet corner reads as a dark block.
 - The brief's ceiling grid is not drawn. Two versions both hid the breach, so the ceiling is shown fully cut away.
 - The figures are about 1.1 times their round 4 size, not the 1.4 times asked for. Any larger and the hero fills the hole.
 
-## Proposed change to show title.svg in the game (not made, `index.ts` is not mine)
-This follows Last Light's pattern: an `sr-only` heading with a decorative image. The crest is dropped because the wordmark replaces it. Preview: `round-7-title-in-menu-preview.png` (desktop) and `round-7-title-in-menu-preview-phone.png`.
+## Title in the game menu (made with the planner's authorisation)
+`src/games/breachline/index.ts`: the menu header is now an `sr-only` heading named "Breachline", followed by a decorative `title.svg` image with `alt=""`, at 190 × 130. The crest and the tagline paragraph are removed. Nothing else in the file changed.
+`src/games/breachline/style.css`: one rule for the wordmark (`.bl-title`) replaces the tagline rule. The two crest rules, unused now, are removed.
 
-```diff
---- a/src/games/breachline/index.ts
--    <header class="bl-brand"><span class="bl-crest" aria-hidden="true"><i></i></span><div><h2 id="bl-menu-title">Breachline</h2><p>Breach the annex. Plant the uplink. Or hold the line.</p></div></header>
-+    <header class="bl-brand"><div><h2 id="bl-menu-title" class="bl-title"><span class="sr-only">Breachline</span><img src="${import.meta.env.BASE_URL}game-art/breachline/title.svg" alt="" width="190" height="130"></h2><p>Breach the annex. Plant the uplink. Or hold the line.</p></div></header>
---- a/src/games/breachline/style.css
-+.bl-title{margin:0;line-height:0}.bl-title img{display:block;width:190px;max-width:100%;height:auto}
-```
+Checked with the dev server: at desktop and phone width, with the image loaded and with it blocked, the menu has exactly one heading named "Breachline" and no page errors.
+- `final-menu-desktop.png` and `final-menu-phone.png`: image loaded.
+- `final-menu-desktop-image-blocked.png` and `final-menu-phone-image-blocked.png`: image blocked.
+- `final-card-desktop.png` and `final-card-phone.png`: the final card on the library page.
+
+## Final gates
+- `npx tsc --noEmit`: passes.
+- `npx vitest run tests/games/breachline`: 17 files, 141 tests, all pass.
+- `npx playwright test tests/games/breachline/play.spec.ts --project=chromium`: 6 of 6 pass.
+- `npm run build`: passes.

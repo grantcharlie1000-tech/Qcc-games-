@@ -27,7 +27,7 @@ const TEMPLATE = `<canvas class="bl-canvas" tabindex="0" aria-label="Breachline.
 <div class="bl-click" hidden><button type="button" class="game-button bl-click-btn">Click to play</button><p>The mouse aims. Esc frees it.</p></div>
 <div class="bl-layer">
   <section class="bl-card bl-menu" aria-labelledby="bl-menu-title">
-    <header class="bl-brand"><span class="bl-crest" aria-hidden="true"><i></i></span><div><h2 id="bl-menu-title">Breachline</h2><p>Breach the annex. Plant the uplink. Or hold the line.</p></div></header>
+    <header class="bl-brand"><h2 id="bl-menu-title" class="bl-title"><span class="sr-only">Breachline</span><img src="${import.meta.env.BASE_URL}game-art/breachline/title.svg" alt="" width="190" height="130"></h2></header>
     <p class="bl-mode"><b>Uplink</b> · Tidewater Annex · first to ${ROUND.toWin} rounds</p>
     <div class="bl-roster" aria-live="polite"><div class="bl-squad-list" data-squad="0"><h3></h3><ul></ul></div><div class="bl-squad-list" data-squad="1"><h3></h3><ul></ul></div></div>
     <div class="bl-settings">

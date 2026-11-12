@@ -146,9 +146,7 @@ body.in-game .game-view[data-game-id=breachline]:has(.breachline[data-layer=""][
 .bl-card h2{margin:0;font:800 26px/1.1 var(--font-sans);letter-spacing:.01em}
 .bl-card p{margin:0;color:#c9d2d8}
 .bl-brand{display:flex;align-items:center;gap:12px}
-.bl-brand p{font-size:13px}
-.bl-crest{position:relative;display:grid;place-items:center;flex:none;width:50px;height:50px;border-radius:12px;background:#f0b429}
-.bl-crest i{width:26px;height:30px;background:#141a1f;clip-path:polygon(0 0,100% 0,100% 38%,70% 38%,70% 62%,100% 62%,100% 100%,0 100%,0 62%,30% 62%,30% 38%,0 38%)}
+.bl-title{margin:0;line-height:0}.bl-title img{display:block;width:190px;max-width:100%;height:auto}
 .bl-mode{font-size:13px}.bl-mode b{color:var(--bl-amber)}
 .bl-roster{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .bl-squad-list{padding:8px 10px;border-radius:10px;background:rgb(255 255 255 / .05);border-top:3px solid var(--bl-s0)}

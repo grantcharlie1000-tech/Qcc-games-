@@ -111,8 +111,8 @@ export function buildScene(): Grid {
 
   // Reinforced steel panel on the right end of the partition.
   g.box(28, wallY + 3, 0, 4, 1, 19, 'steel');
-  g.box(28, wallY + 4, 0, 1, 1, 19, 'steelDark').box(31, wallY + 4, 0, 1, 1, 19, 'steelDark');
-  g.box(28, wallY + 4, 9, 4, 1, 1, 'steelDark');
+  g.box(28, wallY + 4, 0, 1, 1, 19, 'brace').box(31, wallY + 4, 0, 1, 1, 19, 'brace');
+  g.box(28, wallY + 4, 9, 4, 1, 1, 'brace');
 
   // Attackers: the hero stepping through, a second one's helmet and muzzle behind him in the hole.
   soldier(g, holeX - 1, wallY - 1, 0, '+y', 'atk', 'step', true);
@@ -136,12 +136,12 @@ export function buildScene(): Grid {
   for (const y of [16, 26]) for (const z of [1, 5]) g.box(5, y, z, 3, 1, 1, 'desk');
   soldier(g, 3, 17, 0, '+x', 'def', 'kneel');
 
-  // The office corner, lit by the breach: scattered paper, a fallen chair, landed wall chunks.
+  // The office corner, lit by the breach: scattered paper, a tipped waste bin, landed wall chunks.
   for (let i = 0; i < 14; i++) {
     const x = 2 + Math.floor(13 * hash(i, 0, 0, 61)), y = 12 + Math.floor(15 * hash(i, 1, 0, 61));
     if (!g.get(x, y, 0)) g.set(x, y, 0, i % 3 ? 'paper' : 'gypsum');
   }
-  g.box(12, 23, 0, 4, 3, 1, 'chair').box(12, 26, 0, 4, 1, 3, 'chair').box(16, 24, 0, 1, 1, 2, 'steelDark');
+  g.box(12, 22, 0, 3, 4, 3, 'cabinet').set(13, 25, 1, 'visor').set(13, 26, 0, 'paper').set(12, 27, 0, 'paper').set(14, 27, 0, 'paper');
 
   // The uplink on a small table in the lab half.
   const tx = 24, ty = 22;
