@@ -4,6 +4,19 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: second rounds, Lab, Archive, Break Room, Server Room, Garage** (`round2/<room>.png`, each room's two
+bookmarks before and after). The same `roomLife()` with per-room choices (no plants in the Lab, Server Room or Garage;
+a TV in the Break Room and a screen in the Server Room; no ceiling-tile pieces in the Garage, whose ceiling is not a
+tile grid). What shows: trunking and socket drops, notice boards (Break Room, Garage), signs, blinds on the Break Room
+window, vent grilles and a stained tile, sprinklers, a water cooler, cartons and cables along the walls.
+**Ratings (stricter scale, gate 7), honestly:** Lab 6 (benches, bottles, lockers and now a vent and a stained tile; the
+north partitions are bare), Archive 6 (shelving and boxes carry it; little changed from across), Break Room 6 (TV,
+board, blinds and cooler help), Server Room 6.5 (the racks carry it), Garage 6 (car, crates and drums; the board
+helps a little). None reaches 7 yet. What would move them most, in order: dressing on the partition panels that
+falls when their cells are blown (the large bare walls are what every room still shows from its doorway), wall
+colour and material variety by room (all rooms share the same painted plaster and dado), and floor wear and
+markings. Downloads and triangles are unchanged in kind (dressing is built in the browser): High views 82k to 267k.
+
 **2026-11-12: High's triangles back down.** Now that the build compacts each simplified level, High loads it again
 for props beyond 5 m (full model nearer): Lab 204k, Lobby 219k (was 463k), Garage 218k triangles. Built-site
 download High 39.09 MB (ceiling 40), Low 12.05 MB.

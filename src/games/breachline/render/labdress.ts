@@ -158,6 +158,7 @@ function dressArchive(atlas: Atlas, room: Region): DetailBuilder {
     const fl: V3 = [7.4, 0.001, 3.6], up3: V3 = [0, 1, 0];
     for (const [yy, rr] of [[0.2, 0.2], [0.42, 0.17]] as const) { const g = new THREE.CylinderGeometry(rr, rr + 0.03, 0.03, 18).translate(7.4, yy, 3.6); D.mesh('steel', g.attributes.position.array, g.attributes.normal.array, g.index!.array, fl, up3, [0.6, 0.6, 0.62]); g.dispose(); }
     const body = new THREE.CylinderGeometry(0.17, 0.24, 0.42, 18, 1, true).translate(7.4, 0.21, 3.6); D.mesh('steel', body.attributes.position.array, body.attributes.normal.array, body.index!.array, fl, up3, [0.5, 0.5, 0.52]); body.dispose(); }
+  roomLife(D, atlas, room, 113);
   return D;
 }
 
@@ -389,6 +390,7 @@ function dressLab(atlas: Atlas, room: Region): DetailBuilder {
     for (const x of [-4.4, -3.2, -2.0]) D.box('conduit', x - 0.006, 2.88, -9.32, x + 0.006, WALL_H, -9.28, [x, WALL_H - 0.001, -9.3], dn);
     const up: V3 = [0, 1, 0], cx = -1, cz = -6, h = 1.35;
     for (const [x0, z0, x1, z1] of [[cx - h, cz - h, cx + h, cz - h + 0.05], [cx - h, cz + h - 0.05, cx + h, cz + h], [cx - h, cz - h, cx - h + 0.05, cz + h], [cx + h - 0.05, cz - h, cx + h, cz + h]] as const) D.box('paper', x0, 0.021, z0, x1, 0.024, z1, [(x0 + x1) / 2, 0.022, (z0 + z1) / 2], up, [1.3, 1.1, 0.25]); }
+  roomLife(D, atlas, room, 97, { plants: false });
   return D;
 }
 
@@ -672,6 +674,7 @@ function dressServer(atlas: Atlas, room: Region): DetailBuilder {
     for (const [dx, dz] of [[-0.23, -0.15], [0.23, -0.15], [-0.23, 0.15], [0.23, 0.15]]) put(D, new THREE.CylinderGeometry(0.012, 0.012, 0.85, 6).translate(cx + dx, 0.43, cz + dz), 'chrome', fl(cx, cz), upF);
     put(D, new THREE.BoxGeometry(0.36, 0.26, 0.04).translate(cx, 1.0, cz - 0.08).rotateX(0), 'chassis', fl(cx, cz), upF, [0.8, 0.8, 0.8]);
     put(D, new THREE.BoxGeometry(0.33, 0.22, 0.005).translate(cx, 1.0, cz - 0.055), 'screen', fl(cx, cz), upF); }
+  roomLife(D, atlas, room, 149, { screen: true, board: false, plants: false });
   return D;
 }
 
@@ -904,6 +907,7 @@ function dressBreak(atlas: Atlas, room: Region): DetailBuilder {
     put(D, new THREE.CylinderGeometry(0.155, 0.155, 0.03, 16).translate(13.5, 0.41, 9.6), 'steel', fl(13.5, 9.6), upF, [0.8, 0.8, 0.8]);
     D.tag = '';
     D.box('kick', 6.6 + 1.6, 0.003, 7.55, 9.0, 0.01, 8.1, [8.6, 0.001, 7.8], upF, [2.5, 2.2, 1.8]); }
+  roomLife(D, atlas, room, 131, { screen: true });
   return D;
 }
 
@@ -951,6 +955,7 @@ function dressGarage(atlas: Atlas, room: Region): DetailBuilder {
     }
     put(D, new THREE.BoxGeometry(0.45, 0.04, 1.0).translate(-7.9, 0.09, -5.0), 'alarm', fl(-7.9, -5.0), upF, [0.25, 0.25, 0.3]);
     for (const [dx, dz] of [[-0.18, -0.4], [0.18, -0.4], [-0.18, 0.4], [0.18, 0.4]]) put(D, new THREE.SphereGeometry(0.035, 8, 6).translate(-7.9 + dx, 0.035, -5.0 + dz), 'chassis', fl(-7.9, -5.0), upF); }
+  roomLife(D, atlas, room, 167, { plants: false, ceiling: false });
   return D;
 }
 
@@ -1037,7 +1042,7 @@ export function wallRuns(atlas: Atlas, room: Region): WallRun[] {
  * sockets, a notice board with pinned papers, a wall-mounted screen, safety signs, blinds over the windows, vent
  * grilles, a stained tile and sprinkler heads in the ceiling, and bins, boxes and cable runs along the walls' feet.
  * Seeded, so every client builds the same room; nothing stands where it could pass for cover. */
-function roomLife(D: DetailBuilder, atlas: Atlas, room: Region, seed: number, opt: { board?: boolean; screen?: boolean; blinds?: boolean; ceiling?: boolean; floor?: boolean } = {}) {
+function roomLife(D: DetailBuilder, atlas: Atlas, room: Region, seed: number, opt: { board?: boolean; screen?: boolean; blinds?: boolean; ceiling?: boolean; floor?: boolean; plants?: boolean } = {}) {
   const r = seeded(seed), runs = wallRuns(atlas, room).sort((a, b) => (b.a1 - b.a0) - (a.a1 - a.a0)), up: V3 = [0, 1, 0];
   // A box on a run: u along the wall, y up, d out from it (0 is the face).
   const wall = (key: DressKey, w: WallRun, u0: number, u1: number, y0: number, y1: number, d0: number, d1: number, tint?: V3) => {
@@ -1130,7 +1135,7 @@ function roomLife(D: DetailBuilder, atlas: Atlas, room: Region, seed: number, op
     // and open enough not to pass for cover.
     let plants = 0;
     for (const [cx, cz] of [[room.x0 + 0.45, room.z0 + 0.45], [room.x1 - 0.45, room.z0 + 0.45], [room.x0 + 0.45, room.z1 - 0.45], [room.x1 - 0.45, room.z1 - 0.45]] as const) {
-      if (plants >= 2 || !clear(cx, cz, 0.35) || D.proxies.some(p => p.y0 < 0.5 && Math.hypot((p.x0 + p.x1) / 2 - cx, (p.z0 + p.z1) / 2 - cz) < 0.5)) continue;
+      if (opt.plants === false || plants >= 2 || !clear(cx, cz, 0.35) || D.proxies.some(p => p.y0 < 0.5 && Math.hypot((p.x0 + p.x1) / 2 - cx, (p.z0 + p.z1) / 2 - cz) < 0.5)) continue;
       plant(D, cx, cz, 0.9 + r() * 0.4, seed + plants * 7); plants++;
     }
     { const cx = (room.x0 + room.x1) / 2 + (r() - 0.5) * (room.x1 - room.x0 - 2), cz = room.z0 + 0.35;
