@@ -196,7 +196,7 @@ export function createPost(renderer: THREE.WebGLRenderer, initial: PostTier): Po
       }
       comp.uniforms.scene.value = hdr.texture; comp.uniforms.bloom.value = levels[0]?.texture ?? black; comp.uniforms.exposure.value = exposure;
       comp.uniforms.bloomStrength.value = levels.length ? GRADE.bloom : 0;
-      comp.uniforms.fxaa.value = tier === 'high' ? 0 : 1; comp.uniforms.texel.value.set(1 / cw, 1 / ch);
+      comp.uniforms.fxaa.value = tier === 'medium' ? 1 : 0; comp.uniforms.texel.value.set(1 / cw, 1 / ch);
       comp.uniforms.aspect.value.set(w / Math.max(w, h), h / Math.max(w, h));
       draw(comp, null);
       renderer.autoClear = auto;

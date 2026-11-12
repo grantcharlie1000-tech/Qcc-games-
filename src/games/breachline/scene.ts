@@ -463,7 +463,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   }
   // ---- Performance experiments (debug only, `?artdbg=world`: window.__blExperiment): each switch changes how the next
   // frames are drawn, to find where the GPU time goes. Off by default; nothing here runs in a normal game.
-  const experiment: { on?: boolean; flat?: boolean; overdraw?: boolean; prepass?: boolean; noPost?: boolean; noFighters?: boolean; noViewmodel?: boolean; noTransparent?: boolean; lowLod?: boolean; rooms?: { x0: number; z0: number; x1: number; z1: number }[] } = {};
+  const experiment: { on?: boolean; flat?: boolean; overdraw?: boolean; prepass?: boolean; noPost?: boolean; noFighters?: boolean; noViewmodel?: boolean; noTransparent?: boolean; noSmall?: boolean; lowLod?: boolean; rooms?: { x0: number; z0: number; x1: number; z1: number }[] } = {};
   const experimentMats = {
     flat: new THREE.MeshBasicMaterial({ color: 0x808080 }),
     count: new THREE.MeshBasicMaterial({ color: new THREE.Color(1 / 255, 1 / 255, 1 / 255), blending: THREE.AdditiveBlending, toneMapped: false }),
@@ -478,7 +478,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       if (X.lowLod && (o as THREE.LOD).isLOD) { const l = o as THREE.LOD; lods.push([l, l.autoUpdate]); l.autoUpdate = false; l.levels.forEach((v, i) => { v.object.visible = i === l.levels.length - 1; }); }
       if (!mesh.material || !o.visible) return;
       const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      let hide = (X.noFighters && (o as THREE.SkinnedMesh).isSkinnedMesh) || (X.noTransparent && mats.every(m => m.transparent));
+      const tris = mesh.geometry?.index ? mesh.geometry.index.count / 3 : (mesh.geometry?.attributes.position?.count ?? 0) / 3;
+      let hide = (X.noFighters && (o as THREE.SkinnedMesh).isSkinnedMesh) || (X.noTransparent && mats.every(m => m.transparent)) || (X.noSmall && !(o as THREE.InstancedMesh).isInstancedMesh && tris < 300);
       if (!hide && X.rooms && !(o as THREE.SkinnedMesh).isSkinnedMesh) {
         const g = mesh.geometry; if (g && !g.boundingSphere) g.computeBoundingSphere();
         const c = g?.boundingSphere ? g.boundingSphere.center.clone().applyMatrix4(o.matrixWorld) : null;
