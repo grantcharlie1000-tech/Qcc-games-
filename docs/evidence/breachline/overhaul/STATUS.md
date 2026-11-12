@@ -29,6 +29,8 @@ The fixes:
 
 **Result, as shipped:** Performance at 1280 x 720 is now 150 to 160 ms in the corridor (it was 201 to 229) and 134 to 138 ms in the Lab (it was 166 to 180).
 
+**Art tier chosen at start.** The full art tier (1024 px textures, 4x anisotropy, about 39 MB) is chosen only when the graphics card is clearly strong: a discrete NVIDIA, AMD or Intel Arc card, or Apple M-series. It is never chosen on ChromeOS, a phone or tablet, or software WebGL. Everything else gets the light tier (about 12 MB). The readout shows `art full` or `art light`.
+
 **Light tier: surfaces merged by texture set.** On the light art tier, room surfaces with no shader feature of their own (no painted band or worn path) that share a texture set are one mesh per set per room. Performance draws: corridor 235 to 222, Office 172 to 166, Lab 141 to 137.
 
 **Ambience in one draw per room.**

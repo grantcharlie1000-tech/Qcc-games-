@@ -173,7 +173,8 @@ test('?perf=1 shows the performance readout in a match, Auto drops to its lowest
   await expect(readout).toContainText(/\d+ fps/,{timeout:15_000});
   await expect(readout).toContainText('draws');
   // On a software rasteriser (as in CI) Auto sits on its lowest step and says so.
-  if((await readout.innerText()).includes('software'))await expect(readout).toContainText('auto: lowest (software)');
+  // ...and loads the light art tier.
+  if((await readout.innerText()).includes('software')){await expect(readout).toContainText('auto: lowest (software)');await expect(readout).toContainText('art light');}
   await page.keyboard.press('F3');
   await expect(readout).toBeHidden();
   expect(errors).toEqual([]);
