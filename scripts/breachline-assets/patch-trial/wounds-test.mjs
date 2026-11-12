@@ -8,19 +8,20 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 const [port, outDir] = process.argv.slice(2);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-await context.addInitScript(() => { if (window !== window.top) return; localStorage.setItem('pocket-arcade:v1:accounts:guest', 'true'); localStorage.setItem('qcc:festive', 'off'); localStorage.setItem('pocket-arcade:study:v1:reading-choice', 'accept'); sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading'); });
-const page = await context.newPage();
-page.on('pageerror', e => console.log(`[pageerror] ${e.message}`));
-page.on('console', m => { if (m.type() === 'error') console.log(`[error] ${m.text().slice(0, 200)}`); });
-await page.route(/\/src\/games\/breachline\/scene\.ts(\?.*)?$/, async r => { const resp = await r.fetch(); let b = await resp.text(); b = b.replace(/(const fighters = [^;]+;)/, '$1 window.__pf = fighters;'); await r.fulfill({ response: resp, body: b }); });
-await page.route(/\/src\/games\/breachline\/index\.ts(\?.*)?$/, async r => { const resp = await r.fetch(); const b = (await resp.text()).replace('still: () =>', "teleport: (id, x, z, yaw) => { const p = host.m.players[id]; if (p) { p.x = x; p.z = z; if (yaw !== undefined) p.yaw = yaw; } }, kill: (id) => { const p = host.m.players[id]; if (p) { p.alive = false; p.hp = 0; } }, still: () =>"); await r.fulfill({ response: resp, body: b }); });
-for (let t = 0; t < 3; t++) {
+let page;
+for (let t = 0; t < 4; t++) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  await context.addInitScript(() => { if (window !== window.top) return; localStorage.setItem('pocket-arcade:v1:accounts:guest', 'true'); localStorage.setItem('qcc:festive', 'off'); localStorage.setItem('pocket-arcade:study:v1:reading-choice', 'accept'); sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading'); });
+  page = await context.newPage();
+  page.on('pageerror', e => console.log(`[pageerror] ${e.message}`));
+  await page.route(/\/src\/games\/breachline\/scene\.ts(\?.*)?$/, async r => { const resp = await r.fetch(); let b = await resp.text(); b = b.replace(/(const fighters = [^;]+;)/, '$1 window.__pf = fighters;'); await r.fulfill({ response: resp, body: b }); });
+  await page.route(/\/src\/games\/breachline\/index\.ts(\?.*)?$/, async r => { const resp = await r.fetch(); const b = (await resp.text()).replace('still: () =>', "teleport: (id, x, z, yaw) => { const p = host.m.players[id]; if (p) { p.x = x; p.z = z; if (yaw !== undefined) p.yaw = yaw; } }, kill: (id) => { const p = host.m.players[id]; if (p) { p.alive = false; p.hp = 0; } }, still: () =>"); await r.fulfill({ response: resp, body: b }); });
   await page.goto(`http://127.0.0.1:${port}/?festive=off&arttier=high#/game/breachline`);
-  await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 120000 });
-  await page.evaluate(() => { const h = window.__breachlineTest; h.start({ seed: 7, quality: 'high', teamSize: 3, bots: true }); h.freeze(true); h.advance(0.2); h.still(); h.skip(30); h.advance(0.3); h.advance(5); });
-  if (await page.evaluate(() => window.__breachlineTest?.state()?.phase !== 'lobby' && !!window.__pf)) break;
-  console.log('start failed, retrying');
+  await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 120000 }).catch(() => {});
+  const ok = await page.evaluate(() => { const h = window.__breachlineTest; if (!h) return false; h.start({ seed: 7, quality: 'high', teamSize: 3, bots: true }); h.freeze(true); h.advance(0.2); h.still(); h.skip(30); h.advance(0.3); h.advance(5); return h.state().phase !== 'lobby' && !!window.__pf; }).catch(() => false);
+  await page.waitForTimeout(1500);
+  if (ok && await page.evaluate(() => window.__breachlineTest?.state()?.phase !== 'lobby').catch(() => false)) break;
+  console.log('start failed, retrying'); await context.close();
 }
 await page.waitForFunction(() => window.__breachlineTest.stats().art === 'env', undefined, { timeout: 180000, polling: 500 }).catch(() => console.log('art did not reach env'));
 await page.waitForTimeout(2500);

@@ -366,7 +366,13 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
         keep.push(...made);
       })());
     },
-    pose(i) { if (fallback) return fallback.pose(i); return figs[i] ?? null; },
+    pose(i) {
+      if (fallback) return fallback.pose(i);
+      const f = figs[i]; if (!f) return null;
+      // A fallen fighter is where its body came to rest (the animator's root after the fall), which the environment's
+      // blood pool follows; a living one is its simulated position.
+      return f.died >= 0 ? { x: f.anim.root.x, z: f.anim.root.z, yaw: f.anim.yaw, pitch: f.pitch, crouch: f.crouch, lean: f.lean, phase: f.phase } : f;
+    },
     muzzle(i, out) {
       if (fallback) return fallback.muzzle(i, out);
       const f = figs[i];
