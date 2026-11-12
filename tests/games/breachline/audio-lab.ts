@@ -18,6 +18,7 @@ export async function renderJobs(jobs: RenderJob[], base: string): Promise<{ res
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium', args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
   try {
     const page = await browser.newPage();
+    page.setDefaultTimeout(120_000);
     const logs: string[] = [];
     page.on('pageerror', e => logs.push(e.message));
     // The dev client's hot-reload socket is off for the lab; its connection errors are not the sound's.
@@ -27,9 +28,21 @@ export async function renderJobs(jobs: RenderJob[], base: string): Promise<{ res
     const out: { result: RenderResult; ch: Float32Array[] }[] = [];
     for (const job of jobs) {
       await page.goto(`${base}/__audio-lab`);
-      // A string, so the dynamic import runs in the page rather than being rewritten by vite-node.
-      const result = await page.evaluate(`import('/tests/games/breachline/audio-page.ts').then(lab => lab.renderInPage(${JSON.stringify(job)}))`) as RenderResult;
+      const t0 = Date.now();
+      // A string, so the dynamic import runs in the page rather than being rewritten by vite-node. One retry on a
+      // fresh page if a render stalls (seen once in ~100 renders: the bank's worker never answered).
+      const once = () => Promise.race([
+        page.evaluate(`import('/tests/games/breachline/audio-page.ts').then(lab => lab.renderInPage(${JSON.stringify(job)}))`) as Promise<RenderResult>,
+        new Promise<never>((_, no) => setTimeout(() => no(new Error(`render of ${job.name} stalled`)), 60_000)),
+      ]);
+      let result: RenderResult;
+      try { result = await once(); } catch (e) {
+        console.error(`  ${(e as Error).message}; retrying`);
+        await page.goto(`${base}/__audio-lab`);
+        result = await once();
+      }
       result.errors.push(...logs.splice(0));
+      if (process.env.AUDIO_LAB_VERBOSE) console.error(`  rendered ${job.name} in ${Date.now() - t0} ms`);
       const ch = result.channels.map(b64 => { const b = Buffer.from(b64, 'base64'); return new Float32Array(b.buffer, b.byteOffset, b.length / 4); });
       out.push({ result, ch });
     }
@@ -47,7 +60,8 @@ export async function withServer<T>(fn: (base: string) => Promise<T>): Promise<T
 
 async function main() {
   const args = process.argv.slice(2).filter(a => a !== '--');
-  const [label = 'now', module = '/src/games/breachline/audio.ts', outArg, filter] = args;
+  const [label = 'now', modArg, outArg, filter] = args;
+  const module = modArg && modArg !== '-' ? modArg : '/src/games/breachline/audio.ts';
   const outDir = outArg && outArg !== '-' ? outArg : join('test-results/breachline-audio', label);
   mkdirSync(join(outDir, 'wav'), { recursive: true }); mkdirSync(join(outDir, 'png'), { recursive: true });
   let jobs = [...catalogue(module), ...scenes(module)];

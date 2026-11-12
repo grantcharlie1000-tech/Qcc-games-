@@ -40,8 +40,11 @@ Roles: the commissioning session plans and reviews. An Opus 5.5 session builds.
 ### 3.1 Render once, play many
 
 Rich sound built live from oscillators costs too many nodes per shot. Instead, **pre-render** each sound's layers
-into `AudioBuffer`s with `OfflineAudioContext` after the first user gesture (progressively, most-needed first, so
-nothing blocks), then play buffers. Each sound gets several variants (round-robin, never the same twice in a row)
+into `AudioBuffer`s after the first user gesture. *(Changed in phase 1, approved by the planner: the rendering is
+plain-JavaScript DSP in a same-origin module worker, with a chunked main-thread fallback, rather than
+`OfflineAudioContext`, so the same generators run in Node unit tests and the buffer measured is byte-identical to the
+buffer played. Budgets are checked with the main thread throttled 6x.)* The rendering runs progressively (most-needed first, so
+nothing blocks); play-time then plays buffers. Each sound gets several variants (round-robin, never the same twice in a row)
 plus small random pitch and level changes at play time. All generators are deterministic from a seed.
 
 ### 3.2 Bus graph

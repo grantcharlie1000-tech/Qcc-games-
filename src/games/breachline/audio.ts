@@ -38,7 +38,7 @@ export interface Sfx {
 const OLD_SURFACE: Record<string, Floor> = { hard: 'slab', soft: 'carpet', wood: 'planks', metal: 'raised', grass: 'grass' };
 const BEDS: Space[] = ['hard', 'soft', 'corridor', 'yard'];
 /** Ambience level per bed, linear, before the ambience bus. */
-const BED_GAIN: Record<Space, number> = { hard: 0.5, soft: 0.35, corridor: 0.5, yard: 0.7 };
+const BED_GAIN: Record<Space, number> = { hard: 0.5, soft: 0.35, corridor: 0.5, yard: 0.5 };
 
 /** `options.ambience: false` leaves the room beds out (the sound lab measures single sounds that way). */
 export function createSfx(enabled: () => boolean, options: { ambience?: boolean } = {}): Sfx {
@@ -77,6 +77,12 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
     for (const [b, g] of beds) g.gain.setTargetAtTime(BED_GAIN[b] * (b === space ? 1 : b === 'yard' && indoors ? 0.18 : 0), t, 0.6);
   }
 
+  // Start rendering at the first press anywhere (a user gesture), not at the first sound: on a slow machine the
+  // bank then fills while the player is still in the lobby. Passive and removed once started.
+  const early = () => { if (start()) { removeEventListener('pointerdown', early, true); removeEventListener('keydown', early, true); } };
+  addEventListener('pointerdown', early, { capture: true, passive: true });
+  addEventListener('keydown', early, { capture: true, passive: true });
+
   return {
     listen(x, y, z, yaw, inside) {
       ear.x = x; ear.y = y; ear.z = z; ear.yaw = yaw; indoors = inside;
@@ -93,10 +99,11 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
         if (w === 'shotgun') play('rl.shotgun.pump', 'near', null, { delay: 0.3, gain: 0.8 });
         return;
       }
-      const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z), far = Math.min(1, Math.max(0, (d - 25) / 25));
-      const rate = 0.98 + Math.random() * 0.04;
-      if (far < 1) play(`gun.${w}.tp`, 'world', at, { gain: 1 - far, wet: 0.6, ref: 5, reach: 160, hrtf: d < 30, rate });
-      if (far > 0) play(`gun.${w}.far`, 'world', at, { gain: far, wet: 0.5, ref: 5, reach: 160, rate });
+      // One buffer per shot (node budget): the near report up to ~38 m, the far one beyond; the engine's distance
+      // low-pass and level carry the transition.
+      const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z), rate = 0.98 + Math.random() * 0.04;
+      if (d < 38) play(`gun.${w}.tp`, 'world', at, { wet: 0.6, ref: 4.2, reach: 160, hrtf: d < 30, rate });
+      else play(`gun.${w}.far`, 'world', at, { wet: 0.5, ref: 4.2, reach: 160, rate, gain: 1.4 });
     },
     step(surface, loud, at) {
       const floor = OLD_SURFACE[surface] ?? (surface as Floor), crouch = loud < 0.5, sprint = loud > 1;
@@ -113,9 +120,9 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
       if (big) play('debris', 'world', at, { delay: 0.12, wet: 0.4, ref: 4, reach: 40 });
     },
     boom(at, power) {
-      const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z), far = Math.min(1, Math.max(0, (d - 20) / 30));
-      if (far < 1) play(power >= 1 ? 'boom.near' : 'boom.impact', 'world', at, { gain: 1 - far, wet: 0.8, ref: 6, reach: 140 });
-      if (far > 0) play('boom.far', 'world', at, { gain: far * power, wet: 0.7, ref: 6, reach: 160 });
+      const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z);
+      if (d < 32) play(power >= 1 ? 'boom.near' : 'boom.impact', 'world', at, { wet: 0.8, ref: 6, reach: 140 });
+      else play('boom.far', 'world', at, { gain: 1.3 * power, wet: 0.7, ref: 6, reach: 160 });
       if (eng && d < 14) { const k = 1 - d / 14; eng.muffle(20000 * Math.pow(0.04, k * power), 0.6 + 1.2 * k); eng.duck('amb', 12 * k, 1); }
     },
     bounce(at) { play('bounce', 'world', at, { wet: 0.3, ref: 2, reach: 28, rate: 0.95 + Math.random() * 0.1 }); },
@@ -142,7 +149,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
     round(kind) { play(`cue.${kind}`, 'cue', null, { wet: 0.15 }); },
     suspend() { if (eng && eng.ctx.state === 'running') void eng.ctx.suspend(); },
     resume() { if (eng && eng.ctx.state === 'suspended' && enabled()) void eng.ctx.resume(); },
-    dispose() { dead = true; if (eng) { eng.dispose(); void eng.ctx.close().catch(() => {}); } eng = null; beds.clear(); },
+    dispose() { dead = true; removeEventListener('pointerdown', early, true); removeEventListener('keydown', early, true); if (eng) { eng.dispose(); void eng.ctx.close().catch(() => {}); } eng = null; beds.clear(); },
     ready() { const e = start(); return e ? e.load() : Promise.resolve(); },
     stats() { return eng ? { voices: eng.activeVoices, hrtf: eng.activeHrtf, bytes: eng.bytes, loaded: eng.loaded, firstMs: eng.readyAt, state: eng.ctx.state } : { voices: 0, hrtf: 0, bytes: 0, loaded: 0, firstMs: -1, state: 'none' }; },
   };

@@ -3,6 +3,7 @@
  * worker), as the security policy requires. Receives the context's sample rate, posts each finished job back. */
 import { plan, run } from './render';
 
+(self as unknown as Worker).postMessage({ kind: 'up', at: performance.timeOrigin + performance.now() });
 self.onmessage = (e: MessageEvent<{ rate: number }>) => {
   for (const job of plan(e.data.rate)) {
     const done = run(job);

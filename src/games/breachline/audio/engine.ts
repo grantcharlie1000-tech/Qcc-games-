@@ -42,7 +42,7 @@ export interface PlayOpts {
 }
 
 /** Bus levels (linear) and each space's reverb return. */
-const BUS_GAIN: Record<BusName, number> = { own: 1, near: 0.85, world: 0.9, amb: 0.06, cue: 0.55 };
+const BUS_GAIN: Record<BusName, number> = { own: 1, near: 0.85, world: 0.9, amb: 0.04, cue: 0.55 };
 const RETURN: Record<Space, number> = { hard: 0.55, soft: 0.35, corridor: 0.6, yard: 0.5 };
 export const MAX_VOICES = 32, MAX_HRTF = 6;
 /** Occlusion by the number of soft layers (index 1..3) or solid (4): [low-pass Hz, gain dB, wall-colour dB at 280 Hz, send ×]. */
@@ -84,7 +84,10 @@ export class Engine {
     for (const s of SPACES) {
       const inp = c.createGain(), conv = c.createConvolver(), ret = c.createGain();
       ret.gain.value = RETURN[s];
-      inp.connect(conv); conv.connect(ret); ret.connect(this.bus.world);
+      // Low end into a reverb is what turns sustained fire into mud: the rooms only answer above ~180 Hz.
+      const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = s === 'yard' ? 140 : 180; hp.Q.value = 0.6;
+      const hp2 = c.createBiquadFilter(); hp2.type = 'highpass'; hp2.frequency.value = hp.frequency.value; hp2.Q.value = 0.6;
+      inp.connect(hp); hp.connect(hp2); hp2.connect(conv); conv.connect(ret); ret.connect(this.bus.world);
       this.verbIn[s] = inp; this.verb[s] = conv;
     }
   }
@@ -94,17 +97,23 @@ export class Engine {
     if (this.done) return this.done;
     const t0 = performance.now();
     this.done = new Promise<void>(resolve => {
-      const take = (d: Done | { kind: 'end' }) => {
-        if (d.kind === 'end') { resolve(); return; }
+      performance.mark('breachline-audio-load');
+      const take = (d: Done | { kind: 'end' } | { kind: 'up'; at: number }) => {
+        if (d.kind === 'up') { clearTimeout(watchdog); try { performance.measure('breachline-audio-worker-up', { start: 'breachline-audio-load', end: d.at - performance.timeOrigin }); } catch { /* timing only */ } return; }
+        if (d.kind === 'end') { performance.measure('breachline-audio-all', 'breachline-audio-load'); resolve(); return; }
+        if (this.readyAt < 0) performance.measure('breachline-audio-first', 'breachline-audio-load');
         if (this.readyAt < 0) this.readyAt = performance.now() - t0;
         this.accept(d);
       };
+      // A worker that never answers (seen once in the lab) must not leave the game silent: after 8 s without a word
+      // from it, render on the main thread in slices instead.
+      const watchdog = setTimeout(() => { if (this.worker && !this.disposed) { this.worker.terminate(); this.worker = null; void this.fallback(take); } }, 8000);
       try {
         this.worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
         this.worker.onmessage = e => take(e.data as Done);
-        this.worker.onerror = () => { this.worker?.terminate(); this.worker = null; void this.fallback(take); };
+        this.worker.onerror = () => { clearTimeout(watchdog); this.worker?.terminate(); this.worker = null; void this.fallback(take); };
         this.worker.postMessage({ rate: this.ctx.sampleRate });
-      } catch { void this.fallback(take); }
+      } catch { clearTimeout(watchdog); void this.fallback(take); }
     });
     return this.done;
   }
@@ -153,7 +162,7 @@ export class Engine {
       const ref = o.ref ?? 3;
       gain *= Math.min(1, ref / Math.max(ref, dist)) * (1 - Math.pow(dist / (o.reach ?? 80), 3));
       const [cut, db, col, sendK] = BLOCK[Math.max(0, Math.min(4, Math.round(at.block)))];
-      gain *= dbToGain(db); lp = Math.min(lp, cut, 20000 * Math.exp(-dist / 90)); colour = col; send *= sendK;
+      gain *= dbToGain(db); lp = Math.min(lp, cut, 20000 * Math.exp(-dist / 40)); colour = col; send *= sendK;
       delay += dist / 343;
     }
     if (gain < 1e-4 && !o.loop) return null;

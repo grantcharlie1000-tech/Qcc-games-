@@ -12,7 +12,7 @@ async function render(page: Page, job: RenderJob) {
 
 test.setTimeout(120_000);
 
-test('the sound lab renders the three scenes through the game sound offline, with no errors or broken samples', async ({ page }) => {
+test('the sound lab renders the three scenes through the game sound offline, with no errors or broken samples, never above −1 dBFS', async ({ page }) => {
   await page.route('**/__audio-lab', r => r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>audio lab</title>' }));
   for (const job of scenes('/src/games/breachline/audio.ts')) {
     await page.goto('/__audio-lab');
@@ -21,5 +21,90 @@ test('the sound lab renders the three scenes through the game sound offline, wit
     expect(m.nan, job.name).toBe(0);
     expect(m.rmsDb, job.name).toBeGreaterThan(-60);
     expect(m.span, job.name).toBeGreaterThan(job.seconds * 0.5);
+    // Phase 1 gate: the whole graph never goes over −1 dBFS.
+    expect(m.peakDb, job.name).toBeLessThanOrEqual(-1);
+    expect(m.clipped, job.name).toBe(0);
   }
+});
+
+interface Probe { contexts: { at: number; active: boolean | null }[]; created: Record<string, number>; total: number; firstBank: number; bankBuffers: number; acceptMax: number; acceptSum: number; ctx: AudioContext | null }
+interface LiveHook { state(): { phase: string; me: { mag: number[] } | null }; freeze(on: boolean): void; advance(s: number): void; still(): void; skip(s: number): void; place(x: number, z: number, yaw?: number, pitch?: number): void; hold(p: Record<string, unknown>, s: number): void }
+type ProbeWin = { __audioProbe: Probe; __breachlineTest?: LiveHook };
+
+test('live: no sound before a gesture; the bank fills on a throttled CPU; no hitch; few nodes per shot; pause and leave release it', async ({ page, context }) => {
+  await context.addInitScript(() => {
+    if (window !== window.top) return;
+    localStorage.setItem('pocket-arcade:v1:settings', JSON.stringify({ sound: true }));
+    const probe: Probe = { contexts: [], created: {}, total: 0, firstBank: -1, bankBuffers: 0, acceptMax: 0, acceptSum: 0, ctx: null };
+    (window as unknown as ProbeWin).__audioProbe = probe;
+    const Real = window.AudioContext;
+    window.AudioContext = class extends Real {
+      constructor(o?: AudioContextOptions) { super(o); probe.contexts.push({ at: performance.now(), active: (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive ?? null }); probe.ctx = this; }
+    };
+    const proto = BaseAudioContext.prototype as unknown as Record<string, (...a: unknown[]) => unknown>;
+    for (const k of Object.getOwnPropertyNames(BaseAudioContext.prototype)) {
+      if (!k.startsWith('create') || typeof proto[k] !== 'function') continue;
+      const fn = proto[k];
+      proto[k] = function (this: BaseAudioContext, ...a: unknown[]) {
+        probe.created[k] = (probe.created[k] ?? 0) + 1;
+        if (k === 'createBuffer') { probe.bankBuffers++; if (probe.firstBank < 0) probe.firstBank = performance.now(); } else probe.total++;
+        return fn.apply(this, a);
+      };
+    }
+    // Main-thread cost of taking each rendered buffer from the worker (create + copy), the only audio work there.
+    const copy = AudioBuffer.prototype.copyToChannel;
+    AudioBuffer.prototype.copyToChannel = function (this: AudioBuffer, ...a: Parameters<typeof copy>) {
+      const t = performance.now(); copy.apply(this, a); const d = performance.now() - t;
+      probe.acceptMax = Math.max(probe.acceptMax, d); probe.acceptSum += d;
+    };
+  });
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  await page.goto('/?festive=off#/game/breachline');
+  await page.waitForFunction(() => (window as unknown as ProbeWin).__breachlineTest !== undefined, undefined, { timeout: 60000 });
+  await page.waitForTimeout(500);
+  const probe = () => page.evaluate(() => { const p = (window as unknown as ProbeWin).__audioProbe; return { ...p, ctx: null, state: p.ctx?.state ?? 'none' }; });
+  expect((await probe()).contexts).toHaveLength(0);
+
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await page.waitForFunction(() => (window as unknown as ProbeWin).__audioProbe.firstBank > 0, undefined, { timeout: 30000 });
+  // Wait for the whole bank (it stops growing).
+  let n = -1;
+  for (let i = 0; i < 120; i++) { const b = (await probe()).bankBuffers; if (b === n && b > 100) break; n = b; await page.waitForTimeout(500); }
+  const loaded = await probe();
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  const first = loaded.firstBank - loaded.contexts[0].at;
+  console.log(JSON.stringify(await page.evaluate(() => performance.getEntriesByType('measure').filter(m => m.name.startsWith('breachline-audio')).map(m => [m.name, Math.round(m.duration)]))));
+  console.log(`first buffer ${first.toFixed(0)} ms after the context (6x throttle); ${loaded.bankBuffers} buffers; main-thread accept max ${loaded.acceptMax.toFixed(2)} ms, total ${loaded.acceptSum.toFixed(0)} ms`);
+  expect(loaded.contexts).toHaveLength(1);
+  expect(loaded.contexts[0].active).not.toBe(false);
+  // Under the dev server each worker module is transformed and served on demand, so time to first sound here swings
+  // from 1 to 17 s and says nothing about a real build: that budget is measured on a production build with
+  // audio-prodtime.mjs (STATUS.md). Here: the whole bank arrives, and taking each buffer never costs a frame.
+  expect(first).toBeGreaterThan(0);
+  expect(loaded.bankBuffers).toBeGreaterThanOrEqual(231);
+  expect(loaded.acceptMax).toBeLessThan(12);
+
+  // A burst of rifle fire into a soft wall: count the nodes it makes.
+  await page.evaluate(() => { const h = (window as unknown as ProbeWin).__breachlineTest!; h.freeze(true); h.advance(0.2); h.still(); h.skip(19.9); h.advance(0.3); });
+  const before = await probe(), magBefore = await page.evaluate(() => (window as unknown as ProbeWin).__breachlineTest!.state().me!.mag[0]);
+  await page.evaluate(() => { const h = (window as unknown as ProbeWin).__breachlineTest!; h.place(-4.6, 0.2, 0, -0.05); h.advance(0.1); h.hold({ fire: true }, 0.6); });
+  const after = await probe(), shots = magBefore - await page.evaluate(() => (window as unknown as ProbeWin).__breachlineTest!.state().me!.mag[0]);
+  const perShot = (after.total - before.total) / Math.max(1, shots);
+  console.log(`${shots} shots, ${after.total - before.total} nodes (${perShot.toFixed(1)} per shot, impacts and crumbles included)`);
+  expect(shots).toBeGreaterThan(3);
+  expect(perShot).toBeLessThanOrEqual(8);
+  expect(after.state).toBe('running');
+
+  await page.locator('.bl-canvas').focus();
+  await page.keyboard.press('KeyP');
+  await expect.poll(async () => (await probe()).state).toBe('suspended');
+  await page.keyboard.press('KeyP');
+  await expect.poll(async () => (await probe()).state).toBe('running');
+  await page.goto('/?festive=off#/collection');
+  await expect.poll(async () => (await probe()).state).toBe('closed');
+  expect(errors).toEqual([]);
 });

@@ -5,7 +5,7 @@
 import type { WeaponId } from '../config';
 import { RELOADS, type ReloadBeat } from '../reloads';
 import {
-  adExp, ahr, biquad, brown, buf, click, dbToGain, fadeIn, finish, glide, mixInto, modal, osc, pink, range, rng, saturate, scale, seedOf, white,
+  adExp, ahr, biquad, brown, buf, click, dcBlock, dbToGain, fadeIn, finish, glide, mixInto, modal, osc, pink, range, rng, saturate, scale, seedOf, white,
   type Rng,
 } from './dsp';
 
@@ -66,11 +66,12 @@ export function gunshot(w: WeaponId, view: 'fp' | 'tp' | 'far', r: Rng, sr: numb
     saturate(out, g.drive);
     // Low thump: a falling sine, felt more than heard; quieter for someone else's gun.
     const tn = Math.ceil(sr * g.thumpTau * 6), f0 = g.thump[0] * k, f1 = g.thump[1] * k;
-    const thump = adExp(osc(tn, sr, t => f1 + (f0 - f1) * Math.exp(-t / 0.012)), sr, 0.0006, g.thumpTau * 0.7);
-    mixInto(out, thump, pre, 0.8 * dbToGain(g.mix[2] - (view === 'tp' ? 6 : 0)) * lv());
+    // Short enough that a burst at 900 rounds a minute still separates shot from shot below 200 Hz.
+    const thump = adExp(osc(tn, sr, t => f1 + (f0 - f1) * Math.exp(-t / 0.012)), sr, 0.0006, g.thumpTau * 0.45);
+    mixInto(out, thump, pre, 0.9 * dbToGain(g.mix[2] - (view === 'tp' ? 10 : 0)) * lv());
     // A short low-mid push so the shot has weight after the attack, kept out of the sub-bass.
-    const push = adExp(biquad(biquad(brown(Math.ceil(sr * 0.15), r), sr, 'lowpass', 380), sr, 'highpass', 50), sr, 0.002, 0.03);
-    mixInto(out, push, pre, 0.45 * lv());
+    const push = adExp(biquad(biquad(brown(Math.ceil(sr * 0.15), r), sr, 'lowpass', 380), sr, 'highpass', 50), sr, 0.002, 0.022);
+    mixInto(out, push, pre, (view === 'tp' ? 0.7 : 0.45) * lv());
     // The action cycling: only audible to the shooter.
     if (view === 'fp') {
       const exc = click(sr, r, 3000, 0.8, 0.004, 0.0008);
@@ -89,7 +90,8 @@ export function gunshot(w: WeaponId, view: 'fp' | 'tp' | 'far', r: Rng, sr: numb
     if (g.crackLen > 0) mixInto(out, adExp(biquad(white(Math.ceil(sr * 0.01), r), sr, 'bandpass', Math.min(sr * 0.4, 3000), 1.5), sr, 0.0002, 0.002), 0, 0.5 * lv());
     saturate(out, 1.5);
   }
-  return finish(out, sr);
+  // Nothing useful below ~40 Hz survives laptop and Chromebook speakers; it only eats headroom.
+  return finish(biquad(out, sr, 'highpass', 38, 0.6), sr);
 }
 
 /** Dry fire: the hammer or striker falling on nothing. */
@@ -367,12 +369,13 @@ export function ambience(bed: Bed, r: Rng, sr: number, seconds = 5): Float32Arra
     case 'soft': // fluorescent ballast hum, very quiet air
       mixInto(x, biquad(pink(n, r), sr, 'lowpass', 500), 0, 0.15); hum(120, 0.01); break;
     case 'corridor': // air handling: a duct rumble with slow swells
-      { const air = biquad(brown(n, r), sr, 'lowpass', 300); for (let i = 0; i < n; i++) air[i] *= 0.8 + 0.2 * Math.sin(2 * Math.PI * i / n * 3); mixInto(x, air, 0, 0.8); }
+      { const air = biquad(biquad(brown(n, r), sr, 'lowpass', 300), sr, 'highpass', 70); for (let i = 0; i < n; i++) air[i] *= 0.8 + 0.2 * Math.sin(2 * Math.PI * i / n * 3); mixInto(x, air, 0, 0.8); }
       mixInto(x, biquad(pink(n, r), sr, 'bandpass', 1500, 0.5), 0, 0.06); break;
     case 'yard': // wind in gusts and a far-off city
       { const w = biquad(pink(n, r), sr, 'bandpass', 450, 0.5); let a = 0.5; for (let i = 0; i < n; i++) { if ((i & 1023) === 0) a = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(2 * Math.PI * i / n * 2 + Math.sin(i / n * 13))); w[i] *= a; } mixInto(x, w, 0, 0.9); }
-      mixInto(x, biquad(brown(n, r), sr, 'lowpass', 150), 0, 0.6); break;
+      mixInto(x, biquad(biquad(brown(n, r), sr, 'lowpass', 150), sr, 'highpass', 45), 0, 0.6); break;
   }
+  dcBlock(x, sr, 25);
   const out = x.slice(0, n - fade);
   for (let i = 0; i < fade; i++) { const t = i / fade; out[i] = out[i] * Math.sqrt(t) + x[n - fade + i] * Math.sqrt(1 - t); }
   scale(out, 0.9 / Math.max(1e-6, out.reduce((p, v) => Math.max(p, Math.abs(v)), 0)));
