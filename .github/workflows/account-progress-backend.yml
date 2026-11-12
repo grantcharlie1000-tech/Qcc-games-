@@ -1,0 +1,32 @@
+name: Account Continue Watching backend
+on:
+  pull_request:
+    paths:
+      - 'src/accounts/**'
+      - 'src/movies/progress-shared.ts'
+      - 'db/migrations/20261112220000_account_movie_progress.sql'
+      - 'scripts/migrate-movie-progress.*'
+      - 'tests/accounts/movie-progress.test.ts'
+      - 'tests/database/movie-progress-release.test.ts'
+      - 'vercel.json'
+      - '.github/workflows/account-progress-backend.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check:server && npm run build:server
+      - run: npx vitest run tests/accounts/movie-progress.test.ts tests/database/movie-progress-release.test.ts tests/database/last-light-release.test.ts --maxWorkers=2 --testTimeout=15000
+      - name: Confirm preview build cannot migrate production
+        run: node scripts/migrate-movie-progress.mjs
+        env:
+          VERCEL_ENV: preview

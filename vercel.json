@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci",
-  "buildCommand": "npm run check:server && npm run build:server && node scripts/migrate-last-light.mjs",
+  "buildCommand": "npm run check:server && npm run build:server && node scripts/migrate-last-light.mjs && node scripts/migrate-movie-progress.mjs",
   "outputDirectory": "server/public",
   "functions": {
     "api/[route].js": {
