@@ -243,3 +243,22 @@ to the `sfx.*` call sites. Confirmed the arcade's sound setting is off by defaul
 before a gesture, so pre-rendering starts at the first gesture, not at load. Checked the security policy: workers
 must be same-origin, which rules out worklets built from `blob:` URLs. Footstep surfaces were listed from the
 floor materials actually in `map.ts` rather than from memory.
+
+## Owner verdict on phases 1 and 2, 2026-11-12
+
+The owner listened to the phase 1 and phase 2 files: **"The sounds sound nothing like actual weapons and sound super
+cartoonish."** The measurements passed and the ear did not, so the measurements were the wrong ones.
+
+What changes:
+
+1. **Sources are rebuilt; the engine stays.** Rooms, walls, distance, the mix ceiling, layering and event wiring are
+   kept. The synthesised gun, reload and foley sources are not.
+2. **Judged against real recordings.** A reference-matching harness measures attack time, per-band decay, long-term
+   spectrum, flatness over time, crest factor and tonal-peak ratio, ours beside a real recording, with one distance
+   figure. A pass on our own invented targets no longer counts.
+3. **Source material: awaiting the owner's decision.** The earlier rule was that sound effects must be our own.
+   Recommendation put to the owner: build guns, reloads and impacts from real recordings under CC0 or CC-BY, cut,
+   layered and mixed by us and credited in `public/THIRD_PARTY_NOTICES.txt`. If the owner keeps the rule, recordings
+   are used only as measurement references (never committed) and the synthesis is rebuilt to match them.
+4. **No pitched or swept tones in any weapon sound**, whichever route is taken.
+5. **The owner's ear is the gate for every phase**, before the next phase starts, not after.
