@@ -4,6 +4,24 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+## Performance
+
+**Job 1: where the time goes.** These are CPU profiles of a live 5v5 bot match on the built site, with the player firing and walls breaking, 15 s per tier. The tables are in `perf/profile-*.txt`, and the tools are `scripts/breachline-assets/perfprofile.mjs` and `perfanalyze.py`.
+
+- **The arcade's text-ink readback.**
+  - This was by far the biggest cost. `src/ui/glass-ink.ts` reads the game canvas back about every 140 ms (drawImage into a 2D canvas, then getImageData). At Auto it was 149 ms of every frame's script (`perf/profile-auto.txt`).
+  - On a real GPU each readback makes the GPU finish its queued work and copy the frame back, so frames can never overlap.
+  - Fixed for Breachline: the canvas is marked `data-glass-ink="textured"`, so nothing is read back (`perf/profile-*-fix1.txt`). Other WebGL games in the arcade likely have the same cost.
+- **Resolution thrash.** Auto and Low change resolution by resizing the drawing buffer, which reallocates it each step: 8 to 36 ms per frame averaged here. This is reworked in the Auto job.
+- **Game script otherwise.**
+  - About 4.5 ms per frame, mostly draw submission (250 to 300 draws).
+  - The simulation is 0.3 ms.
+  - Each damaged panel rebuilds its geometry: one new geometry per hit.
+- **GPU, by reading the code.**
+  - **High:** a 4x MSAA half-float target at up to 2x pixel ratio, plus a second MSAA buffer on the canvas itself that only the composite uses, then 4 bloom levels and a composite.
+  - **Auto:** 1.5x pixel ratio cap, 3 bloom levels and FXAA.
+  - No shadow maps, and nothing calls finish.
+
 ### Corridor, second pass
 
 - **Light rhythm.** Every corridor surface (floor, walls, ceiling, partitions) is brightest under each fitting and up to 55% darker between them. This is done in the shader (`ART_BANDS`), with the period set by the fittings 4.5 m apart. The wall tone above the dado is deeper (0.84).
@@ -586,7 +604,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** corridor second pass done; outdoors (sky, backdrop, building shadow, boundary walls) next, then Server Room brightness and Lobby cladding.
+**Where I am (keep current):** performance lead. Job 1 answered: the arcade's text-ink readback (fixed for Breachline). Next: the perf readout, then Auto, then particles.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

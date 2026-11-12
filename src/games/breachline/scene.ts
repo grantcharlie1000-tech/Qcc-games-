@@ -78,6 +78,10 @@ function softwareGL(renderer: THREE.WebGLRenderer): boolean {
 }
 
 export function createScene(canvas: HTMLCanvasElement, initial: QualityId): BreachScene {
+  // The arcade's adaptive text ink samples a game canvas by drawing it into a 2D canvas and reading the pixels back
+  // every 140 ms. For a WebGL game that is a full GPU stall each time (149 ms of every frame in the profile). Marked
+  // textured, the HUD takes the fixed white ink with a halo and the canvas is never read back.
+  canvas.dataset.glassInk = 'textured';
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: initial === 'high', powerPreference: 'high-performance', stencil: false, alpha: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
