@@ -167,3 +167,17 @@ describe('Cloudflare disabled logging representations',()=>{
   const {assertLoggingDisabled}=await load();expect(()=>assertLoggingDisabled(privacy)).toThrow(error as string);
  });
 });
+
+it('waits for read-only preview readiness before any synthetic POST',async()=>{
+ const {createOperator}=await load(),p=platform();let reads=0,posts=0,sequence=0;
+ function adapter():PopularityDatabase{const db=p.sqlite.get('1')!;return {prepare(sql:string){let values:any[]=[];return {bind(...args:any[]){values=args;return this;},async all(){return {results:db.prepare(sql).all(...values) as any};}};},async batch(statements:any[]){return Promise.all(statements.map(statement=>statement.all()));}};}
+ const fetcher=async(url:string,init:any)=>{
+  if(!url.startsWith('https://test-preview.nceastudy.pages.dev'))return p.fetcher(url,init);
+  if(init.method==='GET'&&++reads<=2){expect(posts).toBe(0);return Response.json({error:'popularity_unavailable'},{status:503});}
+  if(init.method==='POST')posts++;
+  const headers=new Headers(init.headers);headers.set('cf-connecting-ip','192.0.2.1');
+  return handleMoviePopularity(new Request(url,{...init,headers}),{MOVIE_POPULARITY_DB:adapter(),MOVIE_POPULARITY_ENABLED:'true',MOVIE_POPULARITY_SECRET:'s'.repeat(64)});
+ };
+ const op=createOperator({env,fetcher,readText:async(path:string)=>String(path).endsWith('.sql')?schema():'export default {};',randomHex:()=> (++sequence).toString(16).padEnd(64,'0'),sleep:async()=>{await cleanupMoviePopularity(adapter());}});
+ await op.prepare();await op.verifyPreview('https://test-preview.nceastudy.pages.dev');expect(posts).toBe(6);expect(reads).toBeGreaterThan(2);
+});

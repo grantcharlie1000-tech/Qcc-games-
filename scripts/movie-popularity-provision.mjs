@@ -144,6 +144,11 @@ export function createOperator({env=process.env,fetcher=fetch,readText=p=>readFi
   const remove=()=>query(id,'DELETE FROM movie_popularity_tokens WHERE title_id = ?',[TITLE]).then(()=>query(id,'DELETE FROM movie_popularity_daily WHERE title_id = ?',[TITLE])).then(()=>query(id,'DELETE FROM movie_popularity_rate WHERE bucket_hash = ?',[rateFixture]));
   async function endpoint(body){let response;try{response=await fetcher(`${url.origin}/api/movie-popularity`,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json',Origin:url.origin}:{},body:body?JSON.stringify(body):undefined,credentials:'omit',redirect:'error',signal:AbortSignal.timeout(15000)});}catch{fail('preview_request_failed');}if(body){if(response.status!==204)fail('preview_post_failed');return;}if(response.status!==200||response.headers.get('cache-control')!=='no-store')fail('preview_get_failed');let data;try{data=await response.json();}catch{fail('preview_response_invalid');}if(!Array.isArray(data.titleIds)||data.windowDays!==7)fail('preview_response_invalid');return data.titleIds;}
   const count=async()=>{const rows=await query(id,'SELECT views FROM movie_popularity_daily WHERE title_id = ?',[TITLE]);return rows.reduce((total,row)=>total+row.views,0);};
+  // Fresh Pages deployments can serve transient unavailable responses while bindings propagate.
+  // Only read-only readiness checks retry; synthetic POSTs remain single attempts.
+  for(let attempt=0;attempt<24;attempt++){
+   try{await endpoint();break;}catch(error){if(attempt===23)throw error;await sleep(5000);}
+  }
   try{
    await remove();if((await endpoint()).includes(TITLE))fail('preview_empty_failed');
    const first={titleId:TITLE,token:randomHex().slice(0,32)};
