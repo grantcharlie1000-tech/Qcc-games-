@@ -11,7 +11,7 @@ it('ships real TMDB artwork rather than generated substitutes',()=>{
  expect(JSON.parse(readFileSync('public/movies/licenses.json','utf8'))).toEqual([]);
  expect(readdirSync('public/movies/art').filter(name=>!name.startsWith('.'))).toEqual([]);
 });
-it('adds no tracking, extraction, proxy endpoint or parent-page provider script',()=>{
+it('adds no beacon, socket, extraction or parent-page provider script',()=>{
  const code=readdirSync('src/movies').filter(p=>/\.(ts|css)$/.test(p)).map(p=>readFileSync('src/movies/'+p,'utf8')).join('\n');
  expect(code).not.toMatch(/sendBeacon|WebSocket|RTCPeerConnection|dns-prefetch|preconnect|<script|eval\(/i);
 });
