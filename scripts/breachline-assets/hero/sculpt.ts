@@ -160,6 +160,7 @@ const FINISH: Record<number, { c: number; r: number; m: number; edge: number; ed
   [MAT.rubber]: { c: 0x434442, r: 0.86, m: 0, edge: 0x4a4b49, edgeR: 0.8, edgeM: 0, wear: 0.2 },
   [MAT.brass]: { c: 0xb08d57, r: 0.34, m: 1, edge: 0xd4b07a, edgeR: 0.25, edgeM: 1, wear: 0.4 },
   [MAT.dark]: { c: 0x161616, r: 0.9, m: 0, edge: 0x161616, edgeR: 0.9, edgeM: 0, wear: 0 },
+  [MAT.blued]: { c: 0x3f4145, r: 0.36, m: 0.55, edge: 0x7a7c80, edgeR: 0.28, edgeM: 0.95, wear: 0.8 },
   [MAT.hull]: { c: 0x8c2c23, r: 0.5, m: 0, edge: 0xa3443a, edgeR: 0.45, edgeM: 0, wear: 0.3 },
   [MAT.glow]: { c: 0xff3a22, r: 0.5, m: 0, edge: 0xff3a22, edgeR: 0.5, edgeM: 0, wear: 0 },
 };

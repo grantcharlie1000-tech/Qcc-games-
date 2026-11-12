@@ -27,12 +27,15 @@ export function haldenParts(hi: boolean): Part[] {
     let rel = sideX(round2([[100, -22], [116, -22], [116, -16], [100, -16]], 2), -R.half - 2.2, -R.half + 0.5, -0.4);
     if (hi) rel = relief(rel, (x, y, z) => (x < -R.half - 1.9 ? ridgesU(0.9, 0.18)(x, y, z) : 0), 0.25);
     s = union(s, rel);
-    add('receiver', BONE.root, MAT.anod, s, 1.4);
-    add('receiver rail', BONE.root, MAT.anod, rail(44, 180, hi, 30, R.top), 1.4);
+    // A raised machined rib along the lower edge of each side, a flared loading port and a stock tang at the rear.
+    s = union(s, mirrorX(sideX(round2([[6, R.bottom], [R.u1 - 6, R.bottom], [R.u1 - 6, R.bottom + 5], [6, R.bottom + 5]], 1.5), R.half - 1, R.half + 0.9, -0.5)));
+    s = union(s, sideX(round2([[R.u0 - 22, -20], [R.u0 + 2, -20], [R.u0 + 2, 10], [R.u0 - 22, 8]], 3), -12, 12, -0.8));
+    add('receiver', BONE.root, MAT.blued, s, 1.4);
+    add('receiver rail', BONE.root, MAT.blued, rail(44, 180, hi, 30, R.top), 1.4);
     // Ghost ring: an aperture on a post between two ears.
     let gr = union(lathe([[3.8, 14], [6.9, 14], [6.9, 21], [3.8, 21]], 0, sh), box(-2.4, R.top, 14, 2.4, sh - 6.2, 21, -0.4), box(-8, R.top - 1, 6, 8, R.top + 5, 32, -0.6));
-    gr = union(gr, mirrorX(sideX(round2([[8, R.top + 4], [30, R.top + 4], [28, sh + 7], [12, sh + 9]], [0, 0, 3, 3]), 7, 10, -0.5)));
-    add('ghost ring', BONE.root, MAT.anod, gr, 2);
+    gr = union(gr, mirrorX(sideX(round2([[10, R.top + 4], [28, R.top + 4], [26, sh + 3], [14, sh + 4.5]], [0, 0, 3, 3]), 7.5, 9.2, -0.4)));
+    add('ghost ring', BONE.root, MAT.blued, gr, 2);
   }
   // Bolt, seen in the port (bolt bone).
   add('bolt', BONE.bolt, MAT.steel, union(box(-8, -5, 40, 9, 11, 150, -0.5), cylX(4, 112, 2.6, 6, 12, -0.3)), 0.5);
@@ -52,7 +55,7 @@ export function haldenParts(hi: boolean): Part[] {
     let st = sideX(round2([[3, 14], [-40, 16], [-200, 14], [-322, 12], [-331, 8], [-331, -90], [-320, -96], [-250, -78], [-120, -46], [-56, -38], [-30, -36], [3, -27]], [3, 30, 40, 6, 3, 3, 6, 40, 30, 10, 6, 3]), -17, 17, 7);
     st = cutRound(st, mirrorX(sideX(round2([[-120, -10], [-285, -8], [-300, -28], [-288, -68], [-140, -38]], 10), 15.6, 30)), 1.6);
     st = cutRound(st, sideX(round2([[-298, -80], [-312, -80], [-312, -66], [-298, -66]], 3), -30, 30), 1);
-    add('stock', BONE.root, MAT.polymer, st, 0.35);
+    add('stock', BONE.root, MAT.polymerFde, st, 0.35);
     let pad = sideX(round2([[-331, 11], [-347, 12], [-348, -95], [-331, -95]], [3, 5, 5, 3]), -19, 19, 5);
     if (hi) pad = relief(pad, (_x, y, z) => (-z < -339 ? -0.35 * Math.max(0, Math.sin(y * Math.PI / 4)) : 0), 0.4);
     add('butt pad', BONE.root, MAT.rubber, pad, 0.25);
@@ -72,7 +75,7 @@ export function haldenParts(hi: boolean): Part[] {
     let clamp = sideX(round2([[582, -38], [600, -38], [600, 14], [582, 14]], 3), -13, 13, 2);
     clamp = cut(clamp, cylZ(0, 0, B.r + 0.1, 570, 610), cylZ(0, T.y, T.r + 0.1, 570, 610));
     clamp = union(clamp, screwX(-12, 591, 13, 1, 3, 1.6, hi));
-    add('barrel clamp', BONE.root, MAT.anod, clamp, 0.6);
+    add('barrel clamp', BONE.root, MAT.blued, clamp, 0.6);
   }
   // Pump: a ribbed polymer forend round the tube (handle bone).
   {
@@ -84,19 +87,19 @@ export function haldenParts(hi: boolean): Part[] {
     }
     if (hi) pump = relief(pump, (x, y, z) => (Math.abs(x) > P.half - 0.6 ? stipple(x, y, z) * 0.6 : 0), 0.3);
     pump = cut(pump, cylZ(0, H.tube.y, H.tube.r + 0.6, P.u0 - 5, P.u1 + 5));
-    add('pump', BONE.handle, MAT.polymer, pump, 1.2);
+    add('pump', BONE.handle, MAT.polymerFde, pump, 1.2);
   }
   // Side saddle on the left: a plate, a strap and five shells, brass up.
   {
     const S = H.saddle;
-    let plate = sideX(round2([[S.u0, -22], [S.u1, -22], [S.u1, 12], [S.u0, 12]], 4), -R.half - 4, -R.half + 0.3, 1.2);
-    for (const [u, y] of [[S.u0 + 8, -14], [S.u1 - 8, -14], [S.u0 + 8, 4], [S.u1 - 8, 4]]) plate = union(plate, screwX(y, u, -R.half - 4, -1, 2.6, 1.4, hi));
-    plate = union(plate, sideX(round2([[S.u0 - 2, -8], [S.u1 + 2, -8], [S.u1 + 2, 0], [S.u0 - 2, 0]], 2), -R.half - 26.5, -R.half - 3.8, 1.5));
+    let plate = sideX(round2([[S.u0, -26], [S.u1, -26], [S.u1, 4], [S.u0, 4]], 4), -R.half - 4, -R.half + 0.3, 1.2);
+    for (const [u, y] of [[S.u0 + 8, -18], [S.u1 - 8, -18], [S.u0 + 8, -4], [S.u1 - 8, -4]]) plate = union(plate, screwX(y, u, -R.half - 4, -1, 2.6, 1.4, hi));
+    plate = union(plate, sideX(round2([[S.u0 - 2, -16], [S.u1 + 2, -16], [S.u1 + 2, -8], [S.u0 - 2, -8]], 2), -R.half - 26.5, -R.half - 3.8, 1.5));
     add('side saddle', BONE.root, MAT.polymer, plate, 1.1);
     const hulls: Shape[] = [], heads: Shape[] = [];
     for (let i = 0; i < S.shells; i++) {
       const u = S.u0 + 11 + i * 19.5, x = -R.half - 15;
-      hulls.push(cylY(x, u, 9.6, -36, 16, 1));
+      hulls.push(cylY(x, u, 9.6, -46, 4, 1));
       heads.push(latheYHead(x, u));
     }
     add('saddle hulls', BONE.root, MAT.hull, union(...hulls), 0.9);
@@ -118,5 +121,5 @@ export function haldenParts(hi: boolean): Part[] {
 
 /** A shell's brass head, upward, on a saddle shell at (x, u). */
 function latheYHead(x: number, u: number): Shape {
-  return cylY(x, u, 10.3, 15, 27, -0.8);
+  return cylY(x, u, 10.3, 3, 14, -0.8);
 }

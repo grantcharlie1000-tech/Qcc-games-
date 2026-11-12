@@ -4,7 +4,7 @@ import { AR5 as A } from './designs';
 import { alongZ, box, cut, cutChamfer, latheX, relief, repeatU, rotX, round2, sideX, union, type Fn, type Shape } from './sdf';
 
 /** Surface finishes the painter knows. */
-export const MAT = { anod: 0, cerakote: 1, polymer: 2, steel: 3, rubber: 4, dark: 5, glow: 6, brass: 7, polymerFde: 8, hull: 9 } as const;
+export const MAT = { anod: 0, cerakote: 1, polymer: 2, steel: 3, rubber: 4, dark: 5, glow: 6, brass: 7, polymerFde: 8, hull: 9, blued: 10 } as const;
 /** Bones as in weapons.ts `WB`. */
 export const BONE = { root: 0, mag: 1, bolt: 2, trigger: 3, handle: 4, aux: 5 } as const;
 
