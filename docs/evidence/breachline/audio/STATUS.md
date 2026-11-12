@@ -167,6 +167,72 @@ change checked against the reference sheets until every gun is within about 1.0 
    distance to the reference, and searches the gun's parameters (a few dozen) to minimise it. Then the takes'
    spread sets the variant range. Indoor rooms are not covered by these references and stay as designed.
 
+## Decision pair for the owner (rifle and shotgun, 2026-11-12)
+
+`listen/decision-A-real.wav` and `listen/decision-B-fitted.wav` (0.79 MB each, mono 22.05 kHz) play the same nine
+moments: AR then shotgun, each your own shot in the Lab, your own shot in the yard, someone else's at 10 m
+indoors and someone else's at 60 m outdoors; then a two-second AR burst. Evidence only. **The game does not load
+any recording**, and nothing from the library is under `public/` or `src/`. A is rendered by the lab's audition
+override (`createSfx(…, { override })`, which the game never passes).
+
+- **A (real):**
+  - Your own shot uses the near takes only: the AR-15's two, and two each from the Benelli Nova and the Model 12.
+    The mid mic hears the bullet's crack about 30 ms before the blast, which is wrong for the shooter.
+  - Each take is cut from 2 ms before the onset and kept for 55–60 ms, then faded over 60 ms, so the recording's
+    outdoor slap (about 70 ms) is gone and our rooms supply the space.
+  - Someone else's shot uses the mid takes, kept for 150 ms so the blast after the crack survives.
+  - Far is the mid take kept for 300 ms, then our air absorption and the yard response.
+  - Each take is high-passed at 30 Hz, its DC removed, levelled +6 dB over peak normalisation, varied ±1.5% in
+    pitch and ±1 dB per shot by the engine, never the same take twice in a row.
+- **B (fitted):** the five measured fixes are in `sounds.ts` (`SHAPES`, the yard slap at about 68 ms and its
+  longer mid tail). Then a fit through the real engine (`tests/games/breachline/audio-fit-lab.ts`: candidates
+  rendered in Node, played through the lab, measured against the reference), 5–6 rounds of 12 per gun inside the
+  time box.
+
+| | AR near | AR at 15 m | Shotgun near | Shotgun at 15 m |
+| --- | --- | --- | --- | --- |
+| Two real takes (the floor) | 0.31 | – | 0.53 | – |
+| Before (phase 2 guns) | 3.55 | 4.17 | 3.57 | 4.05 |
+| **A, real takes through our engine** | **0.91** | 5.09 | **1.27** | 2.38 |
+| **B, fitted synthesis through our engine** | 2.46 (1.70 at fit) | 4.19 | 3.81 (2.97 at fit) | 6.06 |
+
+The figures are one in-game render each, with a random variant, so they move by a few tenths between runs. The
+"at fit" figures are the best candidate over two variants. Mid distance in the library is unspecified, so the
+15 m column is a weaker test. A's 5.09 at 15 m comes from mixing near and mid takes for someone else's shot; the
+mid takes alone would be closer. B's shotgun at 15 m got worse than before. Sheets: `reference/decision-*.jpg`.
+**B is now what the game plays for all six guns**: the rifle and shotgun shapes are fitted; the other four use
+starting shapes from the same model and are not fitted yet.
+
+**Node budget after wiring the scene's impacts.** A burst into a wall now makes impact sounds too, and the live
+test caught 13.2 nodes per shot (budget 8). Three changes fixed it, with no change to how a shot sounds:
+impacts (and casings) have no reverb send; impact sounds are limited to one per 50 ms (a round through a wall
+marks both faces); and your own gun reaches the reverb through one fixed send per space, switched with the
+listener, instead of a node per shot. The live figure is now 4.8 nodes per shot, impacts and crumbles included.
+The casing is heard on 35% of shots.
+
+**Plan A coverage of what the library lacks:**
+- *Indoor:* the near body, cut before its outdoor slap, then our room responses (as in A).
+- *Distant:* the mid take with our air absorption, the speed-of-sound delay and the yard response (as in A).
+- *Mechanics, reloads, casings:* these still need real sources; generated ones were part of what the owner
+  called cartoonish. I audited the small CC0 files (licence as stated by the researcher; I have not seen their
+  pages), downloaded to their own scratch folders:
+  - `reload.wav` (44.1 kHz stereo, 1.6 s): three clean handgun magazine and slide events. Noise floor 71 dB
+    under the sound, with a faint hum at about −70 dB. Usable for the pistol's release, in and seat, and the
+    slide.
+  - `shotgunsounds.zip` (six MP3s, 44.1 kHz mono): "4 Shell Reload" and "5 Shell Reload" (clean inserts plus a
+    rack), "First Shell", "Subsequent Shells", "Shell in Chamber", "Rack". Noise floors 75–80 dB under. "Rack"
+    opens with a 0.13 s burst of low hum that must be cut off. Usable for every shotgun beat (shell, pump).
+  - Both are band-limited a little (99.5% of their energy is below 9–10 kHz, normal for MP3), which is acceptable
+    for handling sounds.
+- *Still missing* (to get from Freesound CC0 or elsewhere): rifle and SMG magazine out, in and seat; a charging
+  handle or bolt (AR, SMG, DMR); a bolt-action cycle for the DMR (the Mosin files may hold one between shots at
+  −11 dB, unconfirmed); dry fire; brass casings on hard floors (Freesound 210102 was suggested); weapon swap and
+  handling.
+
+**Budget:** 30 Opus takes at 64 kb/s come to 66 KB for 5.8 s; a full plan-A set (about 10–12 s) would be about
+150 KB. `decodeAudioData` took 23 ms unthrottled and 20 ms with the CPU throttled 6x: Chromium decodes off the
+main thread, so the throttle barely touches it. That is about 45 ms for the full set, once, at the first gesture.
+
 ## Reference matching (built for the rebuild)
 
 `tests/games/breachline/audio-reference.ts` measures a sound the way a recording of the real thing can be

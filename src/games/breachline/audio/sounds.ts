@@ -51,6 +51,18 @@ export const GUNS: Record<WeaponId, Gun> = {
   pistol: { crack: [3500, 0.002, -60], blast: [2800, 1300, 0.024, 1.3, -1, 2.0], punch: [200, 120, 0.024, 420, -3.5], sizzle: [-20, 0.01], action: [3100, 0.04, 0.009, -9, 6800] },
 };
 
+/** The shape of each gun's report, fitted against the CC0 references (AR-15, SKS, Carl Gustav M45, Benelli Nova,
+ * Mosin-Nagant, Walther PPQ): body and air levels in dB under the spike, decay constants in seconds, hump in Hz. */
+export interface Shape { spikeTau: number; hump: number; body: number; bodyTau: number; air: number; airTau: number; rumble: number; rumbleTau: number }
+export const SHAPES: Record<WeaponId, Shape> = {
+  ar: { spikeTau: 0.0006, hump: 244, body: -3.4, bodyTau: 0.0088, air: -12, airTau: 0.0062, rumble: -25, rumbleTau: 0.042 }, // fitted against the AR-15 near take
+  carbine: { spikeTau: 0.0007, hump: 480, body: -6, bodyTau: 0.011, air: -12, airTau: 0.006, rumble: -16, rumbleTau: 0.1 },
+  smg: { spikeTau: 0.0006, hump: 520, body: -5, bodyTau: 0.009, air: -16, airTau: 0.005, rumble: -18, rumbleTau: 0.08 },
+  shotgun: { spikeTau: 0.00066, hump: 385, body: -0.1, bodyTau: 0.022, air: -11, airTau: 0.0063, rumble: -18, rumbleTau: 0.1 }, // fitted against the Benelli Nova near take
+  dmr: { spikeTau: 0.0009, hump: 380, body: -5, bodyTau: 0.016, air: -13, airTau: 0.007, rumble: -12, rumbleTau: 0.14 },
+  pistol: { spikeTau: 0.0005, hump: 600, body: -6, bodyTau: 0.008, air: -16, airTau: 0.004, rumble: -20, rumbleTau: 0.07 },
+};
+
 /** One shot. `view` is how it is heard: first person (own gun, action audible), third (someone else's, near), or
  * far (beyond ~40 m: the crack and the low pop survive, the middle and top are gone). */
 export function gunshot(w: WeaponId, view: 'fp' | 'tp' | 'far', r: Rng, sr: number): Float32Array {
@@ -60,33 +72,31 @@ export function gunshot(w: WeaponId, view: 'fp' | 'tp' | 'far', r: Rng, sr: numb
     // Far: a dull pop with a short low-mid body and a rolling tail (the yard's echoes come from the reverb). A
     // supersonic round keeps a dry crack on the front.
     const n = Math.ceil(sr * 0.8);
-    mixInto(out, adExp(biquad(biquad(pink(n, r), sr, 'lowpass', 1300 * k, 0.7), sr, 'highpass', 120), sr, 0.002, 0.045 + g.blast[2] * 0.3), pre, 4 * lv());
+    mixInto(out, adExp(biquad(biquad(pink(n, r), sr, 'lowpass', 800 * k, 0.7), sr, 'highpass', 110), sr, 0.002, 0.045 + g.blast[2] * 0.3), pre, 4 * lv());
     mixInto(out, adExp(biquad(biquad(brown(n, r), sr, 'lowpass', 500), sr, 'highpass', 60), sr, 0.03, 0.15 + g.punch[2]), pre, 0.9 * lv());
     if (g.crack[2] > -30) mixInto(out, adExp(biquad(white(Math.ceil(sr * 0.01), r), sr, 'bandpass', Math.min(sr * 0.4, 3000), 1.5), sr, 0.0002, 0.002), 0, 0.5 * lv());
     saturate(out, 1.5);
     return finish(biquad(out, sr, 'highpass', 45, 0.6), sr);
   }
-  const tp = view === 'tp';
-  // Crack: an N-wave edge and a short bright hiss.
-  if (g.crack[2] > -30) {
-    const nw = Math.max(2, Math.round(sr * 0.0006));
-    for (let i = 0; i < nw; i++) out[pre + i] += (1 - 2 * i / nw) * dbToGain(g.crack[2]);
-    mixInto(out, adExp(biquad(white(Math.ceil(sr * g.crack[1] * 4), r), sr, 'highpass', g.crack[0] * k, 0.7), sr, 0.0001, g.crack[1] / 2.5), pre, 0.8 * dbToGain(g.crack[2] + (tp ? 2 : 0)) * lv());
-  }
-  // Blast: broadband noise, shaped only gently (a wide band, no pitch sweep: a swept resonant band reads as "pew").
-  const [b0, , bt, , bl, drive] = g.blast, n = Math.ceil(sr * bt * 6);
-  const blast = biquad(biquad(white(n, r), sr, 'lowpass', Math.min(sr * 0.45, b0 * 4 * k), 0.5), sr, 'highpass', 90, 0.5);
-  biquad(blast, sr, 'peaking', b0 * 0.6 * k, 0.5, 4);
-  // Fast: a real muzzle blast is mostly gone in 5-25 ms near the gun; the long tail is the room's, not the gun's.
-  mixInto(out, scale(adExp(blast, sr, 0.00005, bt * 0.35 * range(r, 0.85, 1.15)), 3), pre, dbToGain(bl) * lv());
-  // Light saturation only: heavy drive flattens the peak (a low crest factor sounds like a toy).
-  saturate(out, 1 + (drive - 1) * 0.35);
-  // Sizzle: high air right after the crack, which is what makes a shot sound close.
-  mixInto(out, adExp(biquad(white(Math.ceil(sr * g.sizzle[1] * 6), r), sr, 'highpass', 6500, 0.7), sr, 0.0001, g.sizzle[1]), pre, dbToGain(g.sizzle[0] - (tp ? 4 : 0)) * lv());
-  // Punch: a low noise burst, no pitched sine (a falling sine is the cartoon "thoom").
-  const [, , pt, plp, pl] = g.punch, pn = Math.ceil(sr * pt * 6);
-  const punch = adExp(biquad(biquad(brown(pn, r), sr, 'lowpass', plp * 1.5), sr, 'highpass', 45), sr, 0.0002, pt * 0.8);
-  mixInto(out, scale(punch, 2), pre, dbToGain(pl - (tp ? 4 : 0)) * lv());
+  const tp = view === 'tp', sh = SHAPES[w];
+  // Built to match real recordings (docs/evidence/breachline/audio/STATUS.md, "Real recordings"): a sub-2 ms
+  // broadband spike carries the peak; the body is a wide low-mid hump with the top shelved down, decaying fast;
+  // a slow sub rumble rolls on underneath. No pitched layer anywhere.
+  // 1. The spike: a pressure edge (one N-wave) and a very short burst of white noise.
+  const nw = Math.max(2, Math.round(sr * 0.0005));
+  for (let i = 0; i < nw; i++) out[pre + i] += (1 - 2 * i / nw);
+  mixInto(out, adExp(white(Math.ceil(sr * 0.006), r), sr, 0.00005, sh.spikeTau), pre, 0.8 * lv());
+  // 2. The body: pink noise through a wide hump at `hump` Hz, highs shelved down, decaying with `bodyTau`.
+  const bn = Math.ceil(sr * sh.bodyTau * 8), body = biquad(biquad(pink(bn, r), sr, 'lowpass', 2600 * k, 0.5), sr, 'highpass', 90, 0.5);
+  biquad(body, sr, 'peaking', sh.hump * k, 0.5, 6);
+  biquad(body, sr, 'highshelf', 6000, 0.7, -6);
+  mixInto(out, scale(adExp(body, sr, 0.0002, sh.bodyTau * range(r, 0.85, 1.15)), 4), pre, dbToGain(sh.body - (tp ? 1 : 0)) * lv());
+  // 3. High air that dies fast (real highs fall 20 dB in 20-40 ms).
+  mixInto(out, adExp(biquad(white(Math.ceil(sr * 0.05), r), sr, 'highpass', 3500, 0.6), sr, 0.0001, sh.airTau), pre, dbToGain(sh.air) * lv());
+  // 4. Sub rumble: rises slower than the rest and rolls on for a few hundred ms.
+  const rn = Math.ceil(sr * 0.5), rumble = adExp(biquad(biquad(brown(rn, r), sr, 'lowpass', 110), sr, 'highpass', 30), sr, 0.006, sh.rumbleTau);
+  mixInto(out, scale(rumble, 3), pre, dbToGain(sh.rumble - (tp ? 2 : 0)) * lv());
+  saturate(out, 1.2);
   // Action: the bolt or slide cycling, and its spring, heard only by the shooter.
   if (!tp) {
     const [ab, ar, at, al, spring] = g.action;
@@ -183,7 +193,7 @@ export function reloadBeat(cls: ReloadClass, beat: ReloadBeat['name'], r: Rng, s
     case 'pump': // the fore-end racked back and driven forward
       mixInto(out, scrape(r, sr, 950, 0.07, false), 0, 0.6); mixInto(out, clack(r, sr, 880, 0.07, 0.12), sr * 0.07, 0.9);
       mixInto(out, scrape(r, sr, 1050, 0.06, true), sr * 0.16, 0.5); mixInto(out, clack(r, sr, 1200, 0.08, 0.14), sr * 0.22, 1);
-      mixInto(out, bodyKnock(r, sr, 170, 0.025), sr * 0.22, 0.9); break;
+      mixInto(out, bodyKnock(r, sr, 190, 0.012), sr * 0.22, 0.35); break;
   }
   return finish(out, sr);
 }

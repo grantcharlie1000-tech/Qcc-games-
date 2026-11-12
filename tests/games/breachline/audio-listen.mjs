@@ -1,6 +1,7 @@
 // Builds the owner's listening files from a sound-lab render (tests/games/breachline/audio-lab.ts output).
 // Usage: node tests/games/breachline/audio-listen.mjs <labDir> <outDir> <set>
 //   set "phase1": scenes (stereo) plus "rooms" and "walls" comparisons (mono), 16-bit 22.05 kHz.
+//   set "decision" <name>: rifle and shotgun four ways, then a rifle burst (the plan A / plan B pair).
 //   set "phase3": footsteps by floor and pace, impacts by material, glass, set pieces, bodies, reinforcement, breach.
 //   set "phase2": each gun four ways (own shot indoors, outdoors; someone else's at 10 m; at 60 m), automatic fire, reloads.
 import { execFileSync } from 'node:child_process';
@@ -38,6 +39,11 @@ if (set === 'phase3') {
   chain(['glass', 'breaks'], 'p3-glass-and-breaks.wav'); files.push('p3-glass-and-breaks.wav');
   chain(['body', 'reinforce', 'crumble-wood-big'], 'p3-bodies-reinforcement-barricade.wav'); files.push('p3-bodies-reinforcement-barricade.wav');
   single('scene-breach', 'p3-breach.wav', true); files.push('p3-breach.wav');
+}
+if (set === 'decision') {
+  // The owner's A/B: rifle and shotgun four ways each, then a two-second rifle burst. File name from argv[5].
+  const name = process.argv[5] || 'decision.wav';
+  chain(['shot-ar-fp-in', 'shot-ar-fp-out', 'shot-ar-10m-in', 'shot-ar-60m-out', 'shot-shotgun-fp-in', 'shot-shotgun-fp-out', 'shot-shotgun-10m-in', 'shot-shotgun-60m-out', 'auto-ar-fp'], name); files.push(name);
 }
 let total = 0;
 for (const f of files) { const b = statSync(join(out, f)).size; total += b; console.log(`${f} ${(b / 1024).toFixed(0)} KB`); }

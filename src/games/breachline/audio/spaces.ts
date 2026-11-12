@@ -49,9 +49,10 @@ const DEFS: Record<Space, SpaceDef> = {
   // Yards: open air between the building and the perimeter wall. No dense build-up: a few distinct slaps off the
   // walls, then a long, thin, dark tail that is mostly the far-off surroundings.
   yard: {
-    seconds: 1.7, rt: [2.0, 1.5, 0.7], tail: -22, bright: 4500, predelay: 0.06,
+    seconds: 1.7, rt: [1.6, 2.0, 0.7], tail: -17, bright: 4500, predelay: 0.06,
     early: r => [
-      [0.035 + r() * 0.01, -3, -0.6, 3500], [0.07 + r() * 0.015, -5, 0.7, 2800], [0.12 + r() * 0.02, -8, -0.3, 2200],
+      // The ground-and-structure slap the real recordings show about 70 ms after the shot (STATUS.md).
+      [0.035 + r() * 0.01, -6, -0.6, 3500], [0.068 + r() * 0.006, 0, 0.3, 2400], [0.12 + r() * 0.02, -8, -0.3, 2200],
       [0.19 + r() * 0.03, -11, 0.5, 1600], [0.28 + r() * 0.04, -15, -0.6, 1200],
     ],
   },

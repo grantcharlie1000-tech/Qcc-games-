@@ -4,7 +4,7 @@
  *   npx vite-node tests/games/breachline/audio-lab.ts -- <label> [module] [outDir] [nameFilter]
  * e.g. `-- baseline /tests/games/breachline/audio-baseline/audio-v0.ts` or `-- now` (defaults to the game's audio.ts).
  * Output goes to test-results/breachline-audio/<label>/ unless outDir is given. Plan §6. */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
@@ -72,6 +72,11 @@ async function main() {
   mkdirSync(join(outDir, 'wav'), { recursive: true }); mkdirSync(join(outDir, 'png'), { recursive: true });
   let jobs = [...catalogue(module), ...scenes(module)];
   if (filter) jobs = jobs.filter(j => new RegExp(filter).test(j.name));
+  // AUDIO_LAB_OVERRIDE=<json of { key: { sr, takes: number[][] } }>: audition other sources through the same engine.
+  if (process.env.AUDIO_LAB_OVERRIDE) {
+    const override = JSON.parse(readFileSync(process.env.AUDIO_LAB_OVERRIDE, 'utf8'));
+    jobs = jobs.map(j => ({ ...j, options: { ...j.options, override } }));
+  }
   const t0 = Date.now();
   const rendered = await withServer(base => renderJobs(jobs, base));
   const records: LabRecord[] = [];

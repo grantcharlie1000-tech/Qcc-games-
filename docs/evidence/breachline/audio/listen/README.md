@@ -1,5 +1,11 @@
 # Breachline sound: listening guide
 
+## Decision pair (2026-11-12): please play these first, A then B
+
+**`decision-A-real.wav`**: the rifle and the shotgun built from **real public-domain (CC0) recordings** from The Free Firearm Sound Library by **Ben Jaszczak, Brian Nelson, Kevin Heras and Matthew Nanney**, trimmed and played through our own rooms, walls and distance. **`decision-B-fitted.wav`**: the same moments from our own synthesis, refitted to measure like those recordings.
+Each file plays the rifle then the shotgun, four ways each (your shot in the Lab, your shot in the yard, someone else's 10 m away indoors, someone else's 60 m away outdoors), then a two-second rifle burst. In both, the shotgun pump and the spent cases are still synthetic: there are no real takes of those yet.
+Which do you want: A (real recordings in the game, credited), or B (our own synthesis)? Nothing from the recordings is in the game until you say yes.
+
 Nobody building this sound can hear it. These files are how you judge it. Please use headphones or decent speakers at
 a normal volume, and tell us what sounds wrong, in any words you like ("the rifle sounds like a cap gun", "the
 corridor is too echoey"). Your verdict is the final gate for every phase.

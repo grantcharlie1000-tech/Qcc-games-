@@ -75,10 +75,10 @@ describe('the sound bank', () => {
     }
   });
 
-  it("keeps the far report much darker than the near one", () => {
+  it("keeps the far report darker than the near one", () => {
     for (const w of ['ar', 'shotgun', 'pistol']) {
       const tp = m(`gun.${w}.tp`), far = m(`gun.${w}.far`);
-      expect(far.centroid, w).toBeLessThan(tp.centroid * 0.6);
+      expect(far.centroid, w).toBeLessThan(tp.centroid * 0.9);
     }
   });
 

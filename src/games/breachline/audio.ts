@@ -61,15 +61,17 @@ const BEDS: Space[] = ['hard', 'soft', 'corridor', 'yard'];
 /** Ambience level per bed, linear, before the ambience bus. */
 const BED_GAIN: Record<Space, number> = { hard: 0.5, soft: 0.35, corridor: 0.5, yard: 0.5 };
 
-/** `options.ambience: false` leaves the room beds out (the sound lab measures single sounds that way). */
-export function createSfx(enabled: () => boolean, options: { ambience?: boolean } = {}): Sfx {
+/** `options.ambience: false` leaves the room beds out (the sound lab measures single sounds that way).
+ * `options.override` replaces sounds with given takes once the bank is ready: for the sound lab's auditions only;
+ * the game never passes it. */
+export function createSfx(enabled: () => boolean, options: { ambience?: boolean; override?: Record<string, { sr: number; takes: number[][] }> } = {}): Sfx {
   let eng: Engine | null = null, dead = false;
   const levels = new Map(catalogue().map(d => [d.key, d.level]));
   const beds = new Map<Space, GainNode>();
   let bedSpace: Space | null = null, indoors = false;
   const ear = { x: 0, y: 1.6, z: 0, yaw: 0 };
   /** Set once the scene reports reinforcement stages itself. */
-  let fortStages = false;
+  let fortStages = false, lastImpact = -1;
 
   /** The engine, created on first use after a user gesture while sound is on. */
   function start(): Engine | null {
@@ -112,6 +114,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
       if (!eng) return;
       const e = eng.ear;
       e.x = x; e.y = y; e.z = z; e.yaw = yaw; e.space = spaceAt(x, z);
+      eng.setOwnSpace(e.space);
       if (enabled() && options.ambience !== false) ambience(eng);
     },
     shot(w, at) {
@@ -121,7 +124,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
         eng.duck('world', 4, 0.06); eng.duck('amb', 9, 0.18);
         // The spent case lands a moment later (not every one is heard in a burst); the shotgun ejects on the pump.
         if (w === 'shotgun') { play('rl.shotgun.pump', 'near', null, { delay: 0.3, gain: 0.8 }); play('casing.shell', 'near', null, { delay: 0.75 + Math.random() * 0.1, wet: 0.2 }); }
-        else if (Math.random() < 0.55) play('casing.brass', 'near', null, { delay: 0.35 + Math.random() * 0.25, wet: 0.2, rate: 0.95 + Math.random() * 0.1 });
+        else if (Math.random() < 0.35) play('casing.brass', 'near', null, { delay: 0.35 + Math.random() * 0.25, wet: 0, rate: 0.95 + Math.random() * 0.1 });
         return;
       }
       // One buffer per shot (node budget): the near report up to ~38 m, the far one beyond; the engine's distance
@@ -179,7 +182,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
     round(kind) { play(`cue.${kind}`, 'cue', null, { wet: 0.15 }); },
     impact(material, at) {
       const mat = (IMPACT_MATS as string[]).includes(material) ? (material as ImpactMat) : 'concrete';
-      play(`impact.${mat}`, 'world', at, { wet: 0.3, ref: 2, reach: 30, rate: 0.92 + Math.random() * 0.16 });
+      play(`impact.${mat}`, 'world', at, { wet: 0, ref: 2, reach: 30, rate: 0.92 + Math.random() * 0.16 });
       const ric = mat === 'metal' ? 0.35 : mat === 'concrete' || mat === 'brick' ? 0.12 : 0;
       if (Math.random() < ric) play('ricochet', 'world', at, { delay: 0.01, wet: 0.3, ref: 3, reach: 35, rate: 0.9 + Math.random() * 0.2 });
     },
@@ -199,7 +202,12 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
     reinforceStage(stage, at) { play(`rf.${stage}`, 'world', at, { wet: 0.4, ref: 3, reach: 45, rate: stage === 'anchor' ? 0.96 + Math.random() * 0.08 : 1 }); },
     cosmetic(e, p) {
       switch (e.k) {
-        case 'impact': play(`impact.${(IMPACT_MATS as string[]).includes(e.mat) ? e.mat : 'concrete'}`, 'world', p, { gain: e.power >= 1 ? 1 : 0.6, wet: 0.3, ref: 2, reach: 30, rate: 0.92 + Math.random() * 0.16 });
+        // No reverb send: an impact is short and small, and there is one per round (node budget, plan §5).
+        case 'impact':
+          // One impact sound per 50 ms at most: a round through a wall marks both faces, and in a burst they blend.
+          if (eng && eng.ctx.currentTime - lastImpact < 0.05) break;
+          if (eng) lastImpact = eng.ctx.currentTime;
+          play(`impact.${(IMPACT_MATS as string[]).includes(e.mat) ? e.mat : 'concrete'}`, 'world', p, { gain: e.power >= 1 ? 1 : 0.6, wet: 0, ref: 2, reach: 30, rate: 0.92 + Math.random() * 0.16 });
           if (e.power >= 1 && Math.random() < (e.mat === 'metal' ? 0.35 : e.mat === 'concrete' || e.mat === 'brick' ? 0.12 : 0)) play('ricochet', 'world', p, { delay: 0.01, wet: 0.3, ref: 3, reach: 35, rate: 0.9 + Math.random() * 0.2 });
           break;
         case 'glass': this.glass(e.stage, p); break;
@@ -235,7 +243,11 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean 
     suspend() { if (eng && eng.ctx.state === 'running') void eng.ctx.suspend(); },
     resume() { if (eng && eng.ctx.state === 'suspended' && enabled()) void eng.ctx.resume(); },
     dispose() { dead = true; removeEventListener('pointerdown', early, true); removeEventListener('keydown', early, true); if (eng) { eng.dispose(); void eng.ctx.close().catch(() => {}); } eng = null; beds.clear(); },
-    ready() { const e = start(); return e ? e.load() : Promise.resolve(); },
+    ready() {
+      const e = start();
+      if (!e) return Promise.resolve();
+      return e.load().then(() => { for (const [k, v] of Object.entries(options.override ?? {})) e.replace(k, v.takes.map(t => Float32Array.from(t)), v.sr); });
+    },
     stats() { return eng ? { voices: eng.activeVoices, hrtf: eng.activeHrtf, bytes: eng.bytes, loaded: eng.loaded, firstMs: eng.readyAt, state: eng.ctx.state } : { voices: 0, hrtf: 0, bytes: 0, loaded: 0, firstMs: -1, state: 'none' }; },
   };
 }

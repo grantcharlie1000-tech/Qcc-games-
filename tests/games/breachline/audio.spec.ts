@@ -95,6 +95,7 @@ test('live: no sound before a gesture; the bank fills on a throttled CPU; no hit
   const after = await probe(), shots = magBefore - await page.evaluate(() => (window as unknown as ProbeWin).__breachlineTest!.state().me!.mag[0]);
   const perShot = (after.total - before.total) / Math.max(1, shots);
   console.log(`${shots} shots, ${after.total - before.total} nodes (${perShot.toFixed(1)} per shot, impacts and crumbles included)`);
+  console.log('by type', JSON.stringify(Object.fromEntries(Object.entries(after.created).map(([k, v]) => [k, v - (before.created[k] ?? 0)]).filter(([, v]) => (v as number) > 0))));
   expect(shots).toBeGreaterThan(3);
   expect(perShot).toBeLessThanOrEqual(8);
   expect(after.state).toBe('running');

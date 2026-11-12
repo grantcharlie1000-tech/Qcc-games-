@@ -57,6 +57,11 @@ export class Engine {
   private bus: Record<BusName, GainNode>;
   private verbIn = {} as Record<Space, GainNode>;
   private verb = {} as Record<Space, ConvolverNode>;
+  /** The player's own gun reaches the reverb through one fixed send per space (not a node per shot), switched by
+   * the listener's space. */
+  private ownSend = {} as Record<Space, GainNode>;
+  private ownSpace: Space | null = null;
+  static readonly OWN_WET = 0.32;
   private voices: Voice[] = [];
   private bank = new Map<string, { sr: number; loop: boolean; bufs: AudioBuffer[] }>();
   private levels = new Map<string, number>();
@@ -89,6 +94,7 @@ export class Engine {
       const hp2 = c.createBiquadFilter(); hp2.type = 'highpass'; hp2.frequency.value = hp.frequency.value; hp2.Q.value = 0.6;
       inp.connect(hp); hp.connect(hp2); hp2.connect(conv); conv.connect(ret); ret.connect(this.bus.world);
       this.verbIn[s] = inp; this.verb[s] = conv;
+      const os = c.createGain(); os.gain.value = 0; this.bus.own.connect(os); os.connect(inp); this.ownSend[s] = os;
     }
   }
 
@@ -140,6 +146,11 @@ export class Engine {
     e.bufs[d.v] = b; this.bank.set(d.key, e); this.bytes += d.data.length * 4;
   }
   has(key: string) { return !!this.bank.get(key)?.bufs.length; }
+  /** Replaces a sound's variants (the sound lab uses this to audition other sources; the game never calls it). */
+  replace(key: string, takes: Float32Array[], sr: number) {
+    const bufs = takes.map(t => { const b = this.ctx.createBuffer(1, t.length, sr); b.copyToChannel(t as Float32Array<ArrayBuffer>, 0); return b; });
+    this.bank.set(key, { sr, loop: false, bufs });
+  }
   /** Count of buffers loaded, for tests. */
   get loaded() { let n = 0; for (const e of this.bank.values()) n += e.bufs.filter(Boolean).length; return n; }
 
@@ -180,7 +191,7 @@ export class Engine {
     const out = c.createGain(); out.gain.value = gain;
     src.connect(out);
     let tail: AudioNode = out, hrtf = false;
-    if (lp < 19000) { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; f.Q.value = 0.6; tail.connect(f); tail = f; }
+    if (lp < 16000) { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; f.Q.value = 0.6; tail.connect(f); tail = f; }
     if (colour) { const f = c.createBiquadFilter(); f.type = 'peaking'; f.frequency.value = 280; f.Q.value = 1.1; f.gain.value = colour; tail.connect(f); tail = f; }
     if (at) {
       hrtf = !!o.hrtf && this.voices.filter(x => x.hrtf).length < MAX_HRTF;
@@ -192,6 +203,7 @@ export class Engine {
       tail.connect(p); tail = p;
     }
     tail.connect(this.bus[o.bus]);
+    if (o.bus === 'own' && !at) { this.setOwnSpace(this.ear.space); send = 0; }
     if (send > 0) { const s = c.createGain(); s.gain.value = send; tail.connect(s); s.connect(this.verbIn[at ? at.space : this.ear.space]); }
     const t = now + 0.005 + delay;
     src.start(t);
@@ -204,6 +216,13 @@ export class Engine {
     const t = this.ctx.currentTime;
     v.out.gain.cancelScheduledValues(t); v.out.gain.setTargetAtTime(0, t, 0.004);
     try { v.src.stop(t + 0.03); } catch { /* already stopped */ }
+  }
+  /** Points the own gun's reverb send at the listener's space (cross-fading when it changes). */
+  setOwnSpace(space: Space) {
+    if (space === this.ownSpace) return;
+    this.ownSpace = space;
+    const t = this.ctx.currentTime;
+    for (const s of SPACES) this.ownSend[s].gain.setTargetAtTime(s === space ? Engine.OWN_WET : 0, t, 0.05);
   }
   /** Pulls a bus down by `db`, holds, then lets it back up; repeated calls do not stack. */
   duck(bus: BusName, db: number, hold: number, release = 0.25) {
