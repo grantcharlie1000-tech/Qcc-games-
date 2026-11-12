@@ -2,7 +2,7 @@ import {imageAsset} from './model';
 import type {Title} from './model';
 import {STREAM_PROVIDERS,START_THRESHOLD} from './provider';
 import type {StreamProviderId} from './provider';
-// Separate namespace. Watch history is never used for game saves, scores, sync or popularity reporting.
+// Separate namespace. Watch history is never used for game saves, scores or popularity reporting.
 export const MOVIES_KEY='qcc:movies:v1';
 export interface TitleSnapshot {id:string;kind:'movie'|'tv';name:string;year:number;poster:string;backdrop?:string}
 export interface MediaMeta {duration?:number;updated:number}
@@ -45,16 +45,21 @@ function parseStored(raw:string|null):MoviePreferences {
  if(isProvider(stored.provider))data.provider=stored.provider;
  return data;
 }
+export interface MovieAccountSync {username:string;status:string;sync():Promise<void>;flush():Promise<void>;dispose():void;hasDeviceHistory():boolean;importDeviceHistory():Promise<void>}
 export class MovieStorage {
+ account?:MovieAccountSync;
+ private listeners=new Set<()=>void>();
+ onChange(listener:()=>void){this.listeners.add(listener);return ()=>{this.listeners.delete(listener);};}
+ protected emit(){for(const listener of this.listeners)listener();}
  data:MoviePreferences={list:[],progress:{},titles:{},meta:{}};
  durable=true;
  // The stored text this page last read or wrote. A reload adopts storage only when that text has changed.
  private seen?:string|null;
  // Set when a write is refused, so this page holds changes that storage does not. A write that saves clears it.
  private unsaved=false;
- constructor(private storage:()=>Storage=()=>localStorage){
+ constructor(protected storage:()=>Storage=()=>localStorage,readonly key=MOVIES_KEY,private keepCompleted=false){
   try {
-   const raw=this.storage().getItem(MOVIES_KEY);
+   const raw=this.storage().getItem(this.key);
    this.seen=raw;
    this.data=parseStored(raw);
    // Only a read that succeeded may be written back, so unreadable storage is left exactly as found.
@@ -65,21 +70,21 @@ export class MovieStorage {
  // Returns whether the data changed.
  reload():boolean{
   try{
-   const raw=this.storage().getItem(MOVIES_KEY);
+   const raw=this.storage().getItem(this.key);
    // While this page holds changes it could not save, another page's data waits. The next write that saves replaces the stored text.
    if(raw===this.seen||this.unsaved)return false;
    this.data=parseStored(raw);this.seen=raw;this.durable=true;
    return true;
   }catch{this.durable=false;return false;}
  }
- private write(){
+ protected write(){
   // A snapshot stays while its title is listed or has a position above zero. Only unlisted snapshots count toward the cap.
-  const live=new Set([...this.data.list,...Object.entries(this.data.progress).filter(([,time])=>time>0).map(([key])=>idOf(key))]);
+  const live=new Set([...this.data.list,...Object.entries(this.data.progress).filter(([,time])=>time>0||this.keepCompleted).map(([key])=>idOf(key))]);
   for(const id of Object.keys(this.data.titles))if(!live.has(id))delete this.data.titles[id];
   const unlisted=Object.keys(this.data.titles).filter(id=>!this.data.list.includes(id));
   for(const id of unlisted.slice(0,-MAX_SNAPSHOTS))delete this.data.titles[id];
   const json=JSON.stringify(this.data);
-  try{this.storage().setItem(MOVIES_KEY,json);this.seen=json;this.durable=true;this.unsaved=false;}catch{this.durable=false;this.unsaved=true;}
+  try{this.storage().setItem(this.key,json);this.seen=json;this.durable=true;this.unsaved=false;}catch{this.durable=false;this.unsaved=true;}
  }
  // Re-inserting moves a snapshot to the end, so key order runs least to most recently remembered and the cap drops the oldest.
  private remember(id:string,snapshot?:TitleSnapshot){const valid=parseSnapshot(id,snapshot);if(valid){delete this.data.titles[id];this.data.titles[id]=valid;}}

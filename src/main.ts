@@ -330,8 +330,9 @@ async function route(){
     setChromeInert(true);
     content.innerHTML='<div class="loading"><p>Opening Movies &amp; TV…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';
     try{
-      const [{MoviesView},storage]=await Promise.all([import('./movies/view'),import('./movies/storage')]);if(token!==generation)return;
-      movieStorage??=new storage.MovieStorage();
+      const [{MoviesView},storage,accountStorage]=await Promise.all([import('./movies/view'),import('./movies/storage'),import('./movies/account-storage')]);if(token!==generation)return;
+      movieStorage??=accounts.session()?new accountStorage.AccountMovieStorage(accounts.session()!):new storage.MovieStorage();
+      void movieStorage.account?.sync();
       movies=new MoviesView(content,movieStorage,advance=>advance?openStudy(true):openStudyEntry(),()=>preferences.reducedMotion,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}},openMenu);
       movies.navigate(location.hash);
     }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Movies &amp; TV could not load.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
@@ -574,7 +575,7 @@ festiveInput.addEventListener('change',()=>{
 });
 
 window.addEventListener('hashchange',()=>void route());
-window.addEventListener('pagehide',()=>{save();movies?.pause();appView?.pause();void accounts.flush(true,false).catch(()=>{});});
+window.addEventListener('pagehide',()=>{save();movies?.pause();void movieStorage?.account?.sync();appView?.pause();void accounts.flush(true,false).catch(()=>{});});
 // A page restored from the back/forward cache missed its pagehide resume: live results start refreshing again.
 window.addEventListener('pageshow',event=>{if(event.persisted&&appKind==='election'&&!study.isOpen)appView?.resume();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance){instance.dismissMenu?.();pausedForDialog=false;setPaused(true);}});
@@ -621,12 +622,13 @@ accounts.beforeIdentityChange=()=>{generation++;if(christmasWelcome.root.open)ch
 let displayedAccount=accounts.session()?.token;
 accounts.onChange(()=>{
  const identity=accounts.session()?.token,changed=identity!==displayedAccount;displayedAccount=identity;
+ if(changed){movieStorage?.account?.dispose();movieStorage=undefined;}
  updateAccountMenu();
  if(activeId)document.querySelector('#favourite-game')?.setAttribute('aria-pressed',String(store.favourites().includes(activeId)));
  if(identity){for(const game of [...SCORED_GAMES.filter(id=>id!=='minesweeper'),...MINESWEEPER_RANKINGS])leaderboards.sync.queue(game,Math.floor(store.read<number>('best:'+game,0)));if(changed&&!document.hidden)void leaderboards.sync.flush().catch(()=>{});}
  if(changed&&initialized&&!accountView.root.open){if(study.isOpen)accountRoutePending=true;else void route();}
 });
-document.querySelector('#sync-account')!.addEventListener('click',()=>{save();void Promise.all([accounts.flush(),leaderboards.sync.flush()]).catch(()=>{});});
+document.querySelector('#sync-account')!.addEventListener('click',()=>{save();void Promise.all([accounts.flush(),leaderboards.sync.flush(),movieStorage?.account?.sync()]).catch(()=>{});});
 document.querySelector('#open-accounts')!.addEventListener('click',()=>{menu.close();accountView.open();});
 async function logoutAccount(switching=false){
  if(signingOut)return;signingOut=true;
@@ -635,6 +637,8 @@ async function logoutAccount(switching=false){
  try{
   if(activeId)setPaused(true);
   closeWhetuForIdentityChange();
+  movies?.pause();
+  await movieStorage?.account?.flush();
   await accounts.logout();signingOut=false;menu.close();
   if(switching)accountView.open();else finishEntry();
  }catch(error){accounts.message=error instanceof Error?error.message:'Could not sign out securely. Try again.';updateAccountMenu();}
