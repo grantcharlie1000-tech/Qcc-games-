@@ -42,25 +42,72 @@ export const dressMaterial = (key: string) => KEY_MAT[key] ?? 'plastic';
 export const propMaterial = (model: string) => PROP_MAT[model] ?? 'plastic';
 type Proxy = { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; key: string };
 /** The first dressing piece a ray passes through before `tmax` (slab test on each piece's box), with the face normal. */
+/** Dressing filed by 2 m ground cells, so a round tests only the pieces in the cells it crosses. */
+const CELL_M = 2;
+interface Grid { x0: number; z0: number; nx: number; nz: number; cells: number[][]; seen: Uint32Array; stamp: number; n: number }
+const grids = new WeakMap<readonly Proxy[], Grid>();
+function gridFor(list: readonly Proxy[]): Grid {
+  const had = grids.get(list);
+  if (had && had.n === list.length) return had;
+  let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+  for (const b of list) { x0 = Math.min(x0, b.x0); z0 = Math.min(z0, b.z0); x1 = Math.max(x1, b.x1); z1 = Math.max(z1, b.z1); }
+  if (!list.length) x0 = z0 = x1 = z1 = 0;
+  const nx = Math.max(1, Math.ceil((x1 - x0) / CELL_M + 1e-9)), nz = Math.max(1, Math.ceil((z1 - z0) / CELL_M + 1e-9));
+  const g: Grid = { x0, z0, nx, nz, cells: Array.from({ length: nx * nz }, () => []), seen: new Uint32Array(list.length), stamp: 0, n: list.length };
+  list.forEach((b, i) => {
+    const cx0 = Math.min(nx - 1, Math.floor((b.x0 - x0) / CELL_M)), cx1 = Math.min(nx - 1, Math.floor((b.x1 - x0) / CELL_M));
+    const cz0 = Math.min(nz - 1, Math.floor((b.z0 - z0) / CELL_M)), cz1 = Math.min(nz - 1, Math.floor((b.z1 - z0) / CELL_M));
+    for (let cz = cz0; cz <= cz1; cz++) for (let cx = cx0; cx <= cx1; cx++) g.cells[cz * nx + cx].push(i);
+  });
+  grids.set(list, g);
+  return g;
+}
+
+/** The nearest dressing piece a round from (ox, oy, oz) along unit (dx, dy, dz) passes through before tmax. */
 export function firstDressing<P extends Proxy>(list: readonly P[], ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, tmax: number): { t: number; nx: number; ny: number; nz: number; key: string; p?: P } | null {
-  // No allocation per box (this runs over every dressing piece for every round): the slab test unrolled per axis.
+  // No allocation per box: the slab test unrolled per axis, over the pieces in the ground cells the round crosses,
+  // nearest cell first, stopping once a hit is nearer than the next cell.
+  const g = gridFor(list);
   let bt = Infinity, bAxis = -1, bSign = 0, bp: P | null = null;
-  const ix = 1 / dx, iy = 1 / dy, iz = 1 / dz;
-  for (let i = 0; i < list.length; i++) {
-    const b = list[i];
-    let t0 = 0.05, t1 = bp ? bt : tmax - 0.02, axis = -1, sign = 0;
-    for (let k = 0; k < 3 && t0 <= t1; k++) {
-      const lo = k === 0 ? b.x0 : k === 1 ? b.y0 : b.z0, hi = k === 0 ? b.x1 : k === 1 ? b.y1 : b.z1, o = k === 0 ? ox : k === 1 ? oy : oz, inv = k === 0 ? ix : k === 1 ? iy : iz;
-      let a = (lo - o) * inv, c = (hi - o) * inv, sg = -1;
-      if (a > c) { const tt = a; a = c; c = tt; sg = 1; }
-      if (a > t0) { t0 = a; axis = k; sign = sg; }
-      if (c < t1) t1 = c;
+  const ix = 1 / dx, iy = 1 / dy, iz = 1 / dz, stamp = ++g.stamp;
+  if (stamp === 0xffffffff) { g.seen.fill(0); g.stamp = 1; }
+  // The part of the round's path over the grid.
+  let ta = 0, tb = tmax;
+  if (dx === 0) { if (ox < g.x0 || ox > g.x0 + g.nx * CELL_M) return null; }
+  else { const a = (g.x0 - ox) * ix, c = (g.x0 + g.nx * CELL_M - ox) * ix; ta = Math.max(ta, Math.min(a, c)); tb = Math.min(tb, Math.max(a, c)); }
+  if (dz === 0) { if (oz < g.z0 || oz > g.z0 + g.nz * CELL_M) return null; }
+  else { const a = (g.z0 - oz) * iz, c = (g.z0 + g.nz * CELL_M - oz) * iz; ta = Math.max(ta, Math.min(a, c)); tb = Math.min(tb, Math.max(a, c)); }
+  if (ta > tb) return null;
+  const sx = ox + dx * ta, sz = oz + dz * ta;
+  let cx = Math.min(g.nx - 1, Math.max(0, Math.floor((sx - g.x0) / CELL_M))), cz = Math.min(g.nz - 1, Math.max(0, Math.floor((sz - g.z0) / CELL_M)));
+  const stepX = dx > 0 ? 1 : -1, stepZ = dz > 0 ? 1 : -1;
+  const dtX = dx !== 0 ? CELL_M / Math.abs(dx) : Infinity, dtZ = dz !== 0 ? CELL_M / Math.abs(dz) : Infinity;
+  let nextX = dx !== 0 ? (g.x0 + (cx + (dx > 0 ? 1 : 0)) * CELL_M - ox) * ix : Infinity;
+  let nextZ = dz !== 0 ? (g.z0 + (cz + (dz > 0 ? 1 : 0)) * CELL_M - oz) * iz : Infinity;
+  for (;;) {
+    const cell = g.cells[cz * g.nx + cx];
+    for (let j = 0; j < cell.length; j++) {
+      const i = cell[j];
+      if (g.seen[i] === stamp) continue;
+      g.seen[i] = stamp;
+      const b = list[i];
+      let t0 = 0.05, t1 = bp ? bt : tmax - 0.02, axis = -1, sign = 0;
+      for (let k = 0; k < 3 && t0 <= t1; k++) {
+        const lo = k === 0 ? b.x0 : k === 1 ? b.y0 : b.z0, hi = k === 0 ? b.x1 : k === 1 ? b.y1 : b.z1, o = k === 0 ? ox : k === 1 ? oy : oz, inv = k === 0 ? ix : k === 1 ? iy : iz;
+        let a = (lo - o) * inv, c = (hi - o) * inv, sg = -1;
+        if (a > c) { const tt = a; a = c; c = tt; sg = 1; }
+        if (a > t0) { t0 = a; axis = k; sign = sg; }
+        if (c < t1) t1 = c;
+      }
+      if (t0 > t1 || axis < 0) continue;
+      bt = t0; bAxis = axis; bSign = sign; bp = b;
     }
-    if (t0 > t1 || axis < 0) continue;
-    bt = t0; bAxis = axis; bSign = sign; bp = b;
+    const exit = Math.min(nextX, nextZ);
+    if (exit >= tb || (bp && bt <= exit)) break;
+    if (nextX < nextZ) { cx += stepX; nextX += dtX; if (cx < 0 || cx >= g.nx) break; }
+    else { cz += stepZ; nextZ += dtZ; if (cz < 0 || cz >= g.nz) break; }
   }
-  const best = bp ? { t: bt, nx: bAxis === 0 ? bSign : 0, ny: bAxis === 1 ? bSign : 0, nz: bAxis === 2 ? bSign : 0, key: bp.key, p: bp } : null;
-  return best;
+  return bp ? { t: bt, nx: bAxis === 0 ? bSign : 0, ny: bAxis === 1 ? bSign : 0, nz: bAxis === 2 ? bSign : 0, key: bp.key, p: bp } : null;
 }
 /** What covers the ground in each floor area. */
 const FLOOR_KIND: Record<string, string> = { asphalt: 'earth', grass: 'earth', slab: 'concrete', tile: 'tile', lino: 'tile', check: 'tile', raised: 'tile', carpet: 'fabric', planks: 'wood' };

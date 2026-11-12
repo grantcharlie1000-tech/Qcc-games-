@@ -13,6 +13,7 @@
  * program compiled in `warm()`; nothing is created during play. If the assets cannot load, the stock fighters take
  * over, so the switch can never leave a match without fighters. */
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { WEAPONS, type WeaponId } from '../../config';
 import { weaponIdOf, type Match, type SimEvent } from '../../state';
 import { makeSprite } from '../../textures';
@@ -52,7 +53,7 @@ export const PATCH_LOOKS = [
 const RIM = 0.35;
 
 interface Maps { map: THREE.Texture; normalMap: THREE.Texture; arm: THREE.Texture; mask: THREE.Texture }
-interface Assets { rifle: { body: THREE.BufferGeometry; mag: THREE.BufferGeometry; magSeat: THREE.Vector3; maps: { map: THREE.Texture; arm: THREE.Texture } } | null; body: THREE.BufferGeometry[]; maps: Maps; lumRange: { fatigues: number[]; kit: number[] }; headgear: { geo: THREE.BufferGeometry; set: string; lod: number; color: string; roughness: number; metalness: number; opacity: number }[] }
+interface Assets { rifle: { body: THREE.BufferGeometry; mag: THREE.BufferGeometry; magSeat: THREE.Vector3; maps: { map: THREE.Texture; arm: THREE.Texture } } | null; body: THREE.BufferGeometry[]; withGear: THREE.BufferGeometry[][]; rifleGeo: Map<number, THREE.BufferGeometry>; maps: Maps; lumRange: { fatigues: number[]; kit: number[] }; headgear: { geo: THREE.BufferGeometry; set: string; lod: number; color: string; roughness: number; metalness: number; opacity: number }[] }
 type ProbeMaterial = THREE.MeshStandardMaterial & { userData: { probe: { value: THREE.Color } } };
 
 /** Probe lighting as the stock baked material does it: the reflection probe for specular only, the light probe as
@@ -145,6 +146,17 @@ float pfNoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 
   c = mix(c, entryC, entry);
   diffuseColor.rgb = c; }`).replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
 roughnessFactor *= mix(1.0, kitGloss, smoothstep(0.3, 0.7, texture2D(tMask, vMapUv).r));`), u);
+  // Merged headgear (bodyWithGear): its own colour, roughness and metalness, and no body maps.
+  const base = m.onBeforeCompile.bind(m);
+  m.onBeforeCompile = (shader, renderer) => {
+    base(shader, renderer);
+    shader.vertexShader = 'attribute vec4 gear; varying vec4 vGear;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvGear = gear;');
+    shader.fragmentShader = 'varying vec4 vGear;\n' + shader.fragmentShader
+      .replace('diffuseColor.rgb = c; }', 'diffuseColor.rgb = c; }\nif (vGear.a > 0.5) diffuseColor.rgb = vGear.rgb;')
+      .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nfloat gearM = floor((vGear.a - 1.0) * 0.5 + 0.001);\nif (vGear.a > 0.5) { metalnessFactor = gearM * 0.1; roughnessFactor = vGear.a - 1.0 - 2.0 * gearM; }')
+      .replace('#include <normal_fragment_maps>', 'if (vGear.a < 0.5) {\n#include <normal_fragment_maps>\n}')
+      .replace('#include <aomap_fragment>', 'if (vGear.a < 0.5) {\n#include <aomap_fragment>\n}');
+  };
   (m.userData as Record<string, unknown>).wound = u.uWound; (m.userData as Record<string, unknown>).hurt = u.uHurt;
   return m;
 }
@@ -152,8 +164,8 @@ roughnessFactor *= mix(1.0, kitGloss, smoothstep(0.3, 0.7, texture2D(tMask, vMap
 /** Job 12.6: what killed a fighter, from the shared events, for the ragdoll's impulse. */
 interface KillInfo { kind: 'gun' | 'blast' | 'melee'; shot: { x: number; y: number; z: number; yaw: number; pitch: number; w: WeaponId } | null; boom: { x: number; y: number; z: number } | null; head: boolean; kx: number; kz: number; seed: number }
 interface Fig {
-  squad: 0 | 1; group: THREE.Group; meshes: THREE.SkinnedMesh[]; gear: THREE.Group[]; skeleton: THREE.Skeleton; bones: THREE.Bone[];
-  weapon: THREE.SkinnedMesh; wbones: THREE.Bone[]; dressed: THREE.Object3D[]; wid: WeaponId; anim: Animator; mats: ProbeMaterial[]; weaponMat: FighterMaterial; wlod: 1 | 2;
+  squad: 0 | 1; group: THREE.Group; meshes: THREE.SkinnedMesh[]; skeleton: THREE.Skeleton; bones: THREE.Bone[];
+  weapon: THREE.SkinnedMesh; wbones: THREE.Bone[]; wid: WeaponId; anim: Animator; mats: ProbeMaterial[]; weaponMat: FighterMaterial; wlod: 1 | 2;
   x: number; z: number; yaw: number; pitch: number; crouch: number; lean: number; phase: number;
   fresh: boolean; lod: number; remoteReload: number; deathKind: number; dist: number; wounds: THREE.Vector4[]; nWound: number; hurt: number; react: { t: number; ax: number; az: number; limb: number }; died: number; kill: KillInfo | null; rag: RD.Ragdoll | null; ragInv: THREE.Matrix4; gunQ: THREE.Quaternion; gunF: THREE.Quaternion; px: number; pz: number; vx: number; vz: number; reloadEmpty: boolean; wasReloading: boolean; input: PoseInput;
 }
@@ -174,6 +186,59 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
   const cam = new THREE.Vector3(NaN, 0, 0);
   blobs.onBeforeRender = (renderer, _s, camera) => { cam.setFromMatrixPosition(camera.matrixWorld); if (!warmed) { warmed = true; void api.warm(renderer, camera); } };
   const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3(), color = new THREE.Color();
+
+  /** A body level with its headgear merged in, so a fighter's body and headgear are one draw. The headgear rides the
+   * head bone (skinned to it alone, placed by the head's bind pose); its `gear` attribute carries its colour and
+   * 1 + roughness + 2 x metalness in tenths (0 marks the body), which the body shader uses instead of its maps. */
+  function bodyWithGear(body: THREE.BufferGeometry, gear: Assets['headgear']): THREE.BufferGeometry {
+    const bones = makeBones(), holder = new THREE.Object3D(); holder.add(bones[0]); holder.updateMatrixWorld(true);
+    const headBind = new THREE.Skeleton(bones).boneInverses[B.head].clone().invert();
+    const like = (name: string, n: number, size: number, fill: (i: number, a: THREE.TypedArray) => void) => {
+      const A = body.attributes[name].array.constructor as new (n: number) => THREE.TypedArray, a = new A(n * size);
+      for (let i = 0; i < n; i++) fill(i, a);
+      return new THREE.BufferAttribute(a, size, body.attributes[name].normalized);
+    };
+    const parts = [body.clone()];
+    parts[0].setAttribute('gear', new THREE.Float32BufferAttribute(new Float32Array(body.attributes.position.count * 4), 4));
+    for (const h of gear) {
+      const g = h.geo.clone(), n = g.attributes.position.count, c = new THREE.Color(h.color), tag = 1 + Math.min(0.999, h.roughness) + 2 * Math.round(h.metalness * 10);
+      for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+      g.applyMatrix4(headBind);
+      if (!g.index) g.setIndex(Array.from({ length: n }, (_, i) => i));
+      g.setAttribute('uv', like('uv', n, 2, (i, a) => { a[i * 2] = a[i * 2 + 1] = 0; }));
+      g.setAttribute('skinIndex', like('skinIndex', n, 4, (i, a) => { a[i * 4] = B.head; a[i * 4 + 1] = a[i * 4 + 2] = a[i * 4 + 3] = 0; }));
+      const one = body.attributes.skinWeight.normalized ? (body.attributes.skinWeight.array as Uint8Array).constructor === Uint8Array ? 255 : 65535 : 1;
+      g.setAttribute('skinWeight', like('skinWeight', n, 4, (i, a) => { a[i * 4] = one; a[i * 4 + 1] = a[i * 4 + 2] = a[i * 4 + 3] = 0; }));
+      const ga = new Float32Array(n * 4); for (let i = 0; i < n; i++) ga.set([c.r, c.g, c.b, tag], i * 4);
+      g.setAttribute('gear', new THREE.Float32BufferAttribute(ga, 4));
+      parts.push(g);
+    }
+    const merged = mergeGeometries(parts, false);
+    if (!merged) throw new Error('patch fighters: headgear does not merge with the body');
+    for (const g of parts) g.dispose();
+    return merged;
+  }
+  /** The Patch rifle as one geometry skinned to the world weapon's bones: the body on bone 0 and the magazine on bone 1
+   * (the weapon's bones bind at identity, so bone space is the model's space), placed so the grip palm sits on the
+   * world weapon's grip socket. */
+  function rifleGeo(a: Assets, lod: 1 | 2): THREE.BufferGeometry {
+    const r = a.rifle!, had = a.rifleGeo.get(lod);
+    if (had) return had;
+    const g = weaponFor('ar', lod).grip.p, T = new THREE.Vector3(g.x, g.y + 0.07, g.z - 0.185), M = r.magSeat.clone().add(T);
+    const part = (src: THREE.BufferGeometry, at: THREE.Vector3, bone: number) => {
+      const p = src.clone(); for (const k of Object.keys(p.attributes)) if (!['position', 'normal', 'uv'].includes(k)) p.deleteAttribute(k);
+      p.translate(at.x, at.y, at.z);
+      if (!p.index) p.setIndex(Array.from({ length: p.attributes.position.count }, (_, i) => i));
+      const n = p.attributes.position.count, si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+      for (let i = 0; i < n; i++) { si[i * 4] = bone; sw[i * 4] = 1; }
+      p.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); p.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+      return p;
+    };
+    const merged = mergeGeometries([part(r.body, T, 0), part(r.mag, M, 1)], false);
+    if (!merged) throw new Error('patch fighters: the rifle does not merge');
+    a.rifleGeo.set(lod, merged);
+    return merged;
+  }
 
   async function load(renderer: THREE.WebGLRenderer): Promise<Assets> {
     const art = new ArtLoader(renderer, 'high');
@@ -196,29 +261,20 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
       rifle = { body: b.geometry, mag: m.geometry, magSeat: m.position.clone(), maps: { map: rmap, arm: rarm } };
     } catch (e) { console.warn('Breachline: Patch world rifle unavailable; stock world AR kept', e); }
     const extras = (body.parser.json as { asset?: { extras?: { lumRange?: Assets['lumRange'] } } }).asset?.extras;
-    return { rifle, body: [geo('body_lod0'), geo('body_lod1'), geo('body_lod2')], maps: { map, normalMap, arm, mask }, lumRange: extras?.lumRange ?? { fatigues: [0, 0.0017, 0.015], kit: [0, 0.0012, 0.0093] }, headgear: hg };
+    const bodies = [geo('body_lod0'), geo('body_lod1'), geo('body_lod2')];
+    return { rifle, body: bodies, withGear: [0, 1].map(sq => bodies.map((b, lod) => bodyWithGear(b, hg.filter(h => h.lod === lod && (PATCH_LOOKS[sq].headgear as readonly string[]).includes(h.set))))), rifleGeo: new Map(), maps: { map, normalMap, arm, mask }, lumRange: extras?.lumRange ?? { fatigues: [0, 0.0017, 0.015], kit: [0, 0.0012, 0.0093] }, headgear: hg };
   }
 
   function weaponMesh(f: Fig, id: WeaponId, lod: 1 | 2) { const w = weaponFor(id, lod); f.weapon.geometry = w.geo; f.wid = id; f.wlod = lod; f.anim.setWeapon(id, w); dress(f); }
-  /** Job 5.3: a fighter carrying the AR shows the Patch rifle instead of the stock world model. The stock skinned
-   * mesh keeps its bones (the animator drives them) but draws nothing; the Patch body rides bone 0 and its magazine
-   * bone 1, placed so the Patch grip palm sits on the world weapon's grip socket. */
-  const EMPTY = (() => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([], 3)); g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute([], 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute([], 4)); return g; })();
+  /** Job 5.3: a fighter carrying the AR shows the Patch rifle instead of the stock world model, on the same skinned
+   * mesh and bones (the animator drives them), so it is still one draw. */
   let rifleMat: ProbeMaterial | null = null;
   function dress(f: Fig) {
-    for (const o of f.dressed) o.removeFromParent();
-    f.dressed.length = 0;
-    const r = assets?.rifle; if (!r || f.wid !== 'ar') return;
-    const w = weaponFor('ar', f.wlod), g = w.grip.p, T = new THREE.Vector3(g.x, g.y + 0.07, g.z - 0.185);
+    const a = assets, r = a?.rifle;
+    if (!a || !r || f.wid !== 'ar') { f.weapon.material = f.weaponMat; return; }
     rifleMat ??= probeMaterial({ map: r.maps.map, aoMap: r.maps.arm, roughnessMap: r.maps.arm, metalnessMap: r.maps.arm, roughness: 1, metalness: 1 }, 'patch-gear');
     if (!f.mats.includes(rifleMat)) f.mats.push(rifleMat);
-    const body = new THREE.Mesh(r.body, rifleMat), mag = new THREE.Mesh(r.mag, rifleMat);
-    body.position.copy(T); mag.position.copy(r.magSeat).add(T).sub(w.mag);
-    for (const m of [body, mag]) { m.frustumCulled = false; m.castShadow = true; }
-    // The magazine bone's origin is the world model's magazine seat; the Patch magazine is offset from it.
-    const holder = new THREE.Group(); holder.position.copy(w.mag); holder.add(mag);
-    f.wbones[0].add(body); f.wbones[1].add(holder); f.dressed.push(body, holder);
-    f.weapon.geometry = EMPTY;
+    f.weapon.geometry = rifleGeo(a, f.wlod); f.weapon.material = rifleMat;
   }
 
   function figFor(a: Assets, i: number, squad: 0 | 1, wid: WeaponId): Fig {
@@ -230,19 +286,12 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
     const group = new THREE.Group(), bones = makeBones(), holder = new THREE.Object3D(); holder.add(bones[0]); holder.updateMatrixWorld(true);
     const skeleton = new THREE.Skeleton(bones); group.scale.setScalar(SCALE); group.add(holder);
     const body = bodyMaterial(a, squad), mats: ProbeMaterial[] = [body];
-    const meshes = a.body.map(g => { const m = new THREE.SkinnedMesh(g, body); m.frustumCulled = false; m.castShadow = true; m.bind(skeleton, new THREE.Matrix4()); group.add(m); return m; });
-    const gear = [0, 1, 2].map(() => new THREE.Group());
-    for (const h of a.headgear) {
-      if (!(PATCH_LOOKS[squad].headgear as readonly string[]).includes(h.set)) continue;
-      const hm = probeMaterial({ color: h.color, roughness: h.roughness, metalness: h.metalness, transparent: h.opacity < 1, opacity: h.opacity }, h.opacity < 1 ? 'patch-gear-t' : 'patch-gear'); mats.push(hm);
-      const mesh = new THREE.Mesh(h.geo, hm); mesh.frustumCulled = false; mesh.castShadow = h.opacity >= 1; gear[h.lod].add(mesh);
-    }
-    for (const g of gear) bones[B.head].add(g);
+    const meshes = a.withGear[squad].map(g => { const m = new THREE.SkinnedMesh(g, body); m.frustumCulled = false; m.castShadow = true; m.bind(skeleton, new THREE.Matrix4()); group.add(m); return m; });
     const weaponMat = fighterMaterial(), w = weaponFor(wid), wb = Array.from({ length: WEAPON_BONES }, () => new THREE.Bone());
     const weapon = new THREE.SkinnedMesh(w.geo, weaponMat); weapon.add(...wb); weapon.bind(new THREE.Skeleton(wb)); weapon.frustumCulled = false;
     group.add(weapon); scene.add(group);
     const anim = new Animator(bones, weapon, wb, w); anim.setWeapon(wid, w);
-    f = { wounds: Array.from({ length: MAX_WOUNDS }, () => new THREE.Vector4(0, -9, 0, 0)), nWound: 0, hurt: 0, react: { t: 9, ax: 0, az: 0, limb: -1 }, died: -1, kill: null, rag: null, ragInv: new THREE.Matrix4(), gunQ: new THREE.Quaternion(), gunF: new THREE.Quaternion(), px: NaN, pz: NaN, vx: 0, vz: 0, squad, group, meshes, gear, skeleton, bones, weapon, wbones: wb, dressed: [], wid, anim, mats, weaponMat, wlod: 1, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, remoteReload: 0, deathKind: -1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
+    f = { wounds: Array.from({ length: MAX_WOUNDS }, () => new THREE.Vector4(0, -9, 0, 0)), nWound: 0, hurt: 0, react: { t: 9, ax: 0, az: 0, limb: -1 }, died: -1, kill: null, rag: null, ragInv: new THREE.Matrix4(), gunQ: new THREE.Quaternion(), gunF: new THREE.Quaternion(), px: NaN, pz: NaN, vx: 0, vz: 0, squad, group, meshes, skeleton, bones, weapon, wbones: wb, wid, anim, mats, weaponMat, wlod: 1, x: 0, z: 0, yaw: 0, pitch: 0, crouch: 0, lean: 0, phase: 0, fresh: true, lod: 2, remoteReload: 0, deathKind: -1, dist: 0, reloadEmpty: false, wasReloading: false, input: idleInput() };
     figs[i] = f;
     dress(f);
     return f;
@@ -395,7 +444,7 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
       const { m, dt } = view, k = 1 - Math.exp(-dt * 16), a = assets;
       if (!a) { for (const f of figs) if (f) f.group.visible = false; return; }
       const camOk = Number.isFinite(cam.x), order: Fig[] = [];
-      let blob = 0;
+      let blob = 0, ragged = false;
       for (let i = 0; i < Math.max(figs.length, m.players.length); i++) {
         const p = m.players[i];
         if (!p || m.phase === 'lobby') { const f = figs[i]; if (f) f.group.visible = false; continue; }
@@ -421,7 +470,8 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
         // The fighter's own speed, carried into the ragdoll at death.
         if (dt > 0 && p.alive) { if (Number.isFinite(f.px)) { f.vx = (f.anim.root.x - f.px) / dt; f.vz = (f.anim.root.z - f.pz) / dt; } f.px = f.anim.root.x; f.pz = f.anim.root.z; }
         if (!show) continue;
-        if (!p.alive && f.kill && !f.rag && m.world) startRag(f, f.kill);
+        // One body starts falling per frame: a second death in the same frame waits one.
+        if (!p.alive && f.kill && !f.rag && m.world && !ragged) { startRag(f, f.kill); ragged = true; }
         if (f.rag) { RD.advance(f.rag, m.world as World, dt); writeRag(f); }
         else f.anim.update(inp, dt);
         // Job 12.2: wounds and hurt state into the body material; a reaction away from the last hit.
@@ -450,7 +500,7 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
         const lod = f.dist < LOD_DIST[0] && n < LOD0_MAX ? 0 : f.dist < LOD_DIST[1] ? 1 : 2;
         f.lod = lod;
         const wl = lod === 2 ? 2 : 1; if (f.wlod !== wl) weaponMesh(f, f.wid, wl);
-        f.meshes.forEach((ms, l) => { ms.visible = l === lod; }); f.gear.forEach((g, l) => { g.visible = l === lod; });
+        f.meshes.forEach((ms, l) => { ms.visible = l === lod; });
       });
       for (let i = blob; i < 10; i++) blobs.setMatrixAt(i, m4.makeScale(0, 0, 0));
       blobs.instanceMatrix.needsUpdate = true;
@@ -474,13 +524,20 @@ export function createPatchFighters(scene: THREE.Scene, lighting: HeroLighting):
         tmp.add(holder, ...scene.children.filter(o => (o as THREE.Light).isLight).map(l => l.clone()));
         for (const e of env ? [null, env] : [null]) for (const squad of [0, 1] as const) {
           const bm = bodyMaterial(assets, squad); bm.envMap = e; made.push(bm);
-          for (const g of assets.body) { const s = new THREE.SkinnedMesh(g, bm); s.bind(sk, new THREE.Matrix4()); s.frustumCulled = false; tmp.add(s); }
-          for (const opaque of [true, false]) { const hm = probeMaterial({ color: 0x222222, transparent: !opaque, opacity: opaque ? 1 : 0.85 }, opaque ? 'patch-gear' : 'patch-gear-t'); hm.envMap = e; made.push(hm); const hgm = new THREE.Mesh(assets.headgear[0]?.geo ?? new THREE.BoxGeometry(0.1, 0.1, 0.1), hm); hgm.frustumCulled = false; tmp.add(hgm); }
+          for (const g of assets.withGear[squad]) { const s = new THREE.SkinnedMesh(g, bm); s.bind(sk, new THREE.Matrix4()); s.frustumCulled = false; tmp.add(s); }
+          // The world weapons, and the Patch rifle on the same skinned mesh.
           const wmat = fighterMaterial(); wmat.envMap = e; made.push(wmat);
-          const w = weaponFor('ar'), wb = Array.from({ length: WEAPON_BONES }, () => new THREE.Bone()), wm = new THREE.SkinnedMesh(w.geo, wmat);
-          wm.add(...wb); wm.bind(new THREE.Skeleton(wb)); wm.frustumCulled = false; tmp.add(wm);
+          const rmat = assets.rifle ? probeMaterial({ map: assets.rifle.maps.map, aoMap: assets.rifle.maps.arm, roughnessMap: assets.rifle.maps.arm, metalnessMap: assets.rifle.maps.arm, roughness: 1, metalness: 1 }, 'patch-gear') : null;
+          if (rmat) { rmat.envMap = e; made.push(rmat); }
+          for (const [geo, mat] of [[weaponFor('ar').geo, wmat], ...(rmat ? [[rifleGeo(assets, 1), rmat]] : [])] as [THREE.BufferGeometry, THREE.Material][]) {
+            const wb = Array.from({ length: WEAPON_BONES }, () => new THREE.Bone()), wm = new THREE.SkinnedMesh(geo, mat);
+            wm.add(...wb); wm.bind(new THREE.Skeleton(wb)); wm.frustumCulled = false; tmp.add(wm);
+          }
         }
         await renderer.compileAsync(tmp, camera);
+        // Run a ragdoll once, so the first death does not also pay for compiling its code.
+        const pts = Array.from({ length: RD.POINTS }, (_, i) => ({ x: (i % 4) * 0.1, y: 0.3 + i * 0.1, z: 0 })), rag = RD.createRagdoll(pts, { x: 1, y: 0, z: 0 }, pts.slice(0, 3));
+        for (let i = 0; i < 60; i++) RD.advance(rag, null, 1 / 60);
         // Upload the shared textures and geometry now, not on the first frame a fighter is seen.
         for (const t of Object.values(assets.maps)) renderer.initTexture(t);
         keep.push(...made);
