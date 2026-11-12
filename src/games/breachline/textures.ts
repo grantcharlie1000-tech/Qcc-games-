@@ -342,8 +342,23 @@ export function makeMarks(): THREE.CanvasTexture {
   cell(9, r => { g.fillStyle = 'rgba(105,8,6,0.85)'; g.beginPath(); g.ellipse(c, S * 0.18, c * 0.45, S * 0.08, 0, 0, 7); g.fill(); for (let i = 0; i < 3; i++) { const x = c + (i - 1) * c * 0.35 + (r() - 0.5) * 6, l = S * (0.35 + r() * 0.5), w = 3 + r() * 3; g.fillRect(x - w / 2, S * 0.18, w, l); g.beginPath(); g.arc(x, S * 0.18 + l, w * 0.75, 0, 7); g.fill(); } });
   // 10: a dark scuff (the `?blood=off` stand-in for spatter): grime and a smear.
   cell(10, r => { blot(c * 0.8, 0.45, '30,28,26'); ragged(r, c * 0.35, 0.5, 'rgba(25,23,21,0.5)'); });
-  // 11: a pool: one smooth dark-red body with a soft, slightly lobed edge and a lighter wet rim.
-  cell(11, r => { const gr = g.createRadialGradient(c, c, 0, c, c, c * 0.95); gr.addColorStop(0, 'rgba(70,4,3,0.96)'); gr.addColorStop(0.75, 'rgba(85,6,5,0.92)'); gr.addColorStop(0.92, 'rgba(120,12,10,0.6)'); gr.addColorStop(1, 'rgba(120,12,10,0)'); g.fillStyle = gr; g.beginPath(); for (let i = 0; i <= 24; i++) { const a = i / 24 * 6.283, q = c * (0.82 + r() * 0.14); if (i) g.lineTo(c + Math.cos(a) * q, c + Math.sin(a) * q); else g.moveTo(c + Math.cos(a) * q, c + Math.sin(a) * q); } g.closePath(); g.fill(); });
+  // 11: a pool: an irregular outline with a couple of runnels along the floor's joints, darker where it is deep at the
+  // centre, a thin dried rim at the edge, a wet highlight, a few drops round it.
+  cell(11, r => {
+    const p1 = r() * 6.28, p2 = r() * 6.28, edge: [number, number][] = [];
+    for (let i = 0; i < 48; i++) { const a = i / 48 * 6.283, q = c * (0.62 + 0.13 * Math.sin(3 * a + p1) + 0.07 * Math.sin(7 * a + p2) + r() * 0.05); edge.push([c + Math.cos(a) * q, c + Math.sin(a) * q]); }
+    const path = () => { g.beginPath(); edge.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
+    // Runnels: blood run along a joint, straight and narrow, from the edge outwards.
+    g.fillStyle = 'rgba(80,6,5,0.9)';
+    for (let k = 0; k < 2; k++) { const horiz = r() < 0.5, at = c + (r() - 0.5) * c * 0.5, len = c * (0.85 + r() * 0.12), w = 2 + r() * 2.5; if (horiz) g.fillRect(c, at - w / 2, (r() < 0.5 ? -1 : 1) * len, w); else g.fillRect(at - w / 2, c, w, (r() < 0.5 ? -1 : 1) * len); }
+    const gr = g.createRadialGradient(c * 0.95, c * 1.02, 0, c, c, c * 0.8); gr.addColorStop(0, 'rgba(38,2,2,0.98)'); gr.addColorStop(0.6, 'rgba(62,4,3,0.95)'); gr.addColorStop(1, 'rgba(96,9,7,0.9)');
+    g.fillStyle = gr; path(); g.fill();
+    g.strokeStyle = 'rgba(52,16,10,0.85)'; g.lineWidth = 2.2; path(); g.stroke();
+    const hl = g.createRadialGradient(c * 0.78, c * 0.74, 0, c * 0.78, c * 0.74, c * 0.3); hl.addColorStop(0, 'rgba(255,235,230,0.22)'); hl.addColorStop(1, 'rgba(255,235,230,0)');
+    g.fillStyle = hl; g.beginPath(); g.ellipse(c * 0.78, c * 0.74, c * 0.3, c * 0.14, -0.5, 0, 6.283); g.fill();
+    g.fillStyle = 'rgba(70,5,4,0.9)';
+    for (let k = 0; k < 6; k++) { const a = r() * 6.283, q = c * (0.78 + r() * 0.15); g.beginPath(); g.arc(c + Math.cos(a) * q, c + Math.sin(a) * q, 1 + r() * 2.2, 0, 6.283); g.fill(); }
+  });
   const t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

@@ -61,7 +61,8 @@ function layout(p: SetPieceDef, index: number) {
       // contents are on the floor (drawn in code) and the carton is knocked onto its side.
       const s = Math.min(1, H / 1.9, D / 0.6);
       put('worn_metal_rack', 0.03 + 0.46 * s, D / 2, 0, 0, s, STANDING);
-      put('worn_metal_rack', 0.03 + 0.52 * s, D / 2, 0, 0, s * 0.97, WRECKED, RACK_TILT);
+      const lean = Math.min(s * 0.97, (L - 0.06) / (0.915 + 1.9 * Math.sin(RACK_TILT)));
+      put('worn_metal_rack', 0.03 + (0.915 + 1.9 * Math.sin(RACK_TILT)) * lean / 2, D / 2, 0, 0, lean, WRECKED, RACK_TILT);
       if (L - 0.95 * s > 0.4) {
         put('cardboard_box_01', (0.95 * s + L) / 2, D / 2, 0, 0, 1, STANDING);
         put('cardboard_box_01', (0.95 * s + L) / 2, D / 2, 0, 0.3, 0.95, WRECKED, Math.PI / 2);

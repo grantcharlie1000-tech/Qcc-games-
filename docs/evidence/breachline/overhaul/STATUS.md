@@ -4,6 +4,32 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: Phase B complete (all 46 fill pieces plus the two old sofas), generator, clean shader steel, blood polish.**
+`phaseb/triples/{island,deskpod,mapchest,benchboxes,tableset,sideboard,generator,stub,trolleyboxes,sofa}.png`,
+`mapfill/shots/blood-2.png`.
+- **The last ten pieces:** lab island benches (epoxy top, laminate doors and drawers both sides, gas tap, bottles; then
+  broken bottles and spill; then the top cracked through and dropped, a door hanging, a drawer on the floor), office desk
+  pods (two desks across a fabric screen, monitors, keyboards, mugs, pedestals; cracked screens and a holed screen; a
+  corner collapsed onto a broken leg, a monitor face down, the screen leaning), the Archive map chest (eight drawers
+  with brass pulls and card holders; drawers out, then the top split along its grain and plans fanned on the floor),
+  the corridor bench with boxes (slats split along the grain, the stack collapsed), the Break Room table set (table and
+  four chairs; split top, a chair down) and sideboard (a door off, the top split, kettle and mugs on the floor), the
+  shelving stub (the rack family) and the trolley of boxes (the trolley family). The room dressing skips them.
+- **Timber:** true splits along the grain (a dark crack with pale fresh wood along both lips and splinters across it)
+  and rounds that burst pale splinters out round a dark hole.
+- **Generator:** rebuilt as an enclosed set on a plinth (fuel-tank base, louvred doors with handles and hinges, control
+  window, hazard labels, exhaust with rain cap); damage punctures and dents, then a door torn off on the engine, louvres
+  stove in, the exhaust bent over, oil from the base.
+- **Shader steel:** clean, even paint everywhere it is used (skip, bin store, generator, cabinets): the all-over speckle,
+  scratches and floor grime are gone; wear stays at edges, more at the base.
+- **Sofa tears:** larger, with a darker slit and the flaps visible.
+- **Blood:** the pool has an irregular outline with runnels along floor joints, a darker centre, a thin dried rim, a wet
+  highlight and drops round it, and it spreads from where the ragdoll comes to rest; spray is larger (a dense core and a
+  mist, some back out of the entry); spatter behind is hand-sized with satellite drops and comes from body shots as well
+  as head shots. Honest note: the evidence frames catch the spatter and the pool but not the spray burst, which is over
+  before the frame is captured.
+- Tests: unit 5403 passed (rebaked Lab, Corridor, Office, Archive, Break Room, Garage). Next: Phase D.
+
 **2026-11-12: Phase B, sofa and steel redone to the reviewer's exact spec (7ad7bf0 and this commit).**
 `phaseb/owner-before-after.png` and every `phaseb/triples/<family>.png` re-rendered (three 640 px frames each).
 - **Seating:** the chesterfield is gone (sofa_02 removed from the assets). Code-built modern office seating: boxy
@@ -335,9 +361,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** map fill Phase B: every pushed family redone to the reviewer's standard (states with
-their own geometry, mid-tones, 640 px evidence); next the generator and the eight unmodelled set pieces (desk pods
-first), then the blood corrections, then Phase D.
+**Where I am (keep current):** map fill Phase B complete (every fill set piece in three states); blood polish done; next Phase D (budgets per tier, `warm.spec.ts`, the online test three times alone).
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 

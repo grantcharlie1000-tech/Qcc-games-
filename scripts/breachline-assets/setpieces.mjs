@@ -16,6 +16,8 @@ await context.addInitScript(() => { localStorage.setItem('pocket-arcade:v1:accou
 const page = await context.newPage();
 page.on('pageerror', e => console.log('[pageerror]', e.message));
 await page.goto(`${url}/?festive=off&arttier=high&artdbg=world#/game/breachline`);
+if (process.env.FAR) await page.evaluate(() => { window.__blFar = true; });
+if (process.env.BACK) await page.evaluate(() => { window.__blBack = true; });
 await page.waitForFunction(() => window.__breachlineTest !== undefined, undefined, { timeout: 60000 });
 await page.evaluate(() => { const h = window.__breachlineTest; h.start({ seed: 7, quality: 'high', teamSize: 1, bots: true }); h.freeze(true); h.advance(0.2); h.still(); h.skip(30); h.advance(0.3); });
 await page.waitForFunction(() => window.__breachlineTest.stats().art === 'env' && window.__blPieces, undefined, { timeout: 180000, polling: 500 });
@@ -23,7 +25,7 @@ await page.addStyleTag({ content: '.bl-toast, .bl-banner, .bl-prompt, .bl-prep, 
 await mkdir(out, { recursive: true });
 // One piece per family (the first of each), with a few named instead: a sofa seen without the Lobby table in front, and
 // the server rack as its own entry.
-const NAMED = { sofa: 'break room sofa', rack: 'network cabinet', cabinet: 'storage cabinet' };
+const NAMED = { sofa: 'break room sofa', rack: 'network cabinet', cabinet: 'storage cabinet', stub: 'shelving stub', trolleyboxes: 'trolley of boxes' };
 const picks = await page.evaluate(named => {
   const defs = window.__blPieceDefs, seen = new Map();
   defs.forEach((p, i) => { if (!seen.has(p.family)) seen.set(p.family, i); });
@@ -35,7 +37,7 @@ for (const [family, i] of picks) {
   for (const [s, name] of [[0, 'intact'], [1, 'damaged'], [2, 'wrecked']]) {
     await page.evaluate(([i, s]) => {
       const h = window.__breachlineTest, p = window.__blPieceDefs[i], big = Math.max(p.x1 - p.x0, p.z1 - p.z0) > 2;
-      const [x, z, yaw] = window.__blPieceView(i, big ? 3.4 : 2.2);
+      const [x, z, yaw] = window.__blPieceView(i, big || window.__blFar ? 3.4 : 2.2, !!window.__blBack);
       window.__blPieces.force(i, s);
       h.place(x, z, yaw, p.y1 > 1.5 ? -0.12 : -0.38); h.advance(0.1); for (let k = 0; k < 4; k++) h.draw();
     }, [i, s]);

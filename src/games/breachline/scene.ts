@@ -484,7 +484,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     }
     const big = head || (sh?.pellets ?? 1) > 1, l = bake.probe(px, pz), b = 0.35 + (l[0] + l[1] + l[2]) / 3, col = bloodOff ? [0.45, 0.43, 0.4] : RED;
     // The spray: a short burst thrown along the bullet, and droplets that land and stay.
-    for (let i = 0; i < (big ? 9 : 5); i++) fx.dust(px, py, pz, dx * (1.5 + Math.random() * 2) + (Math.random() - 0.5) * 0.8, dy * 2 + Math.random() * 0.6, dz * (1.5 + Math.random() * 2) + (Math.random() - 0.5) * 0.8, 0.08 + Math.random() * (big ? 0.16 : 0.1), 0.55 + Math.random() * 0.4, col[0] * b, col[1] * b, col[2] * b, 0.9, 1.4, -5, 1.6);
+    // A burst plain to see at 5 m: a dense core and a wider mist, thrown along the bullet and out of the entry.
+    for (let i = 0; i < (big ? 12 : 8); i++) fx.dust(px, py, pz, dx * (1.5 + Math.random() * 2) + (Math.random() - 0.5) * 0.9, dy * 2 + Math.random() * 0.7, dz * (1.5 + Math.random() * 2) + (Math.random() - 0.5) * 0.9, 0.16 + Math.random() * (big ? 0.26 : 0.18), 0.5 + Math.random() * 0.4, col[0] * b, col[1] * b, col[2] * b, 0.95, 1.8, -5, 1.6);
+    for (let i = 0; i < (big ? 5 : 3); i++) fx.dust(px, py, pz, -dx * (0.4 + Math.random() * 0.6) + (Math.random() - 0.5) * 0.6, Math.random() * 0.4, -dz * (0.4 + Math.random() * 0.6) + (Math.random() - 0.5) * 0.6, 0.12 + Math.random() * 0.12, 0.35 + Math.random() * 0.25, col[0] * b, col[1] * b, col[2] * b, 0.8, 1.6, -4, 2);
     if (!bloodOff) for (let i = 0; i < (big ? 6 : 3); i++) fx.debris(px, py, pz, dx * (2 + Math.random() * 2) + (Math.random() - 0.5), Math.random() * 1.5, dz * (2 + Math.random() * 2) + (Math.random() - 0.5), 0.008 + Math.random() * 0.008, RED[0] * b, RED[1] * b, RED[2] * b, true, 0.95);
     // Spatter on whatever lies within about 3 m behind, elongated at a shallow angle; drips on a wall.
     const tr = trace(m.world, px, py, pz, dx, dy, dz, 3);
@@ -494,9 +496,17 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       // On a panel the mark sits on its face (half its thickness out from its line); on a room floor, above its 2 cm lift.
       const face = hit.panel ? PANEL_T / 2 : 0, sx = px + dx * hit.t + hit.nx * face, sz = pz + dz * hit.t + hit.nz * face;
       const sy = hit.ny > 0.5 && py + dy * hit.t < 0.05 ? 0.026 : py + dy * hit.t, graze = Math.abs(dx * hit.nx + dy * hit.ny + dz * hit.nz);
-      const size = (big ? 0.5 : 0.32) * (0.8 + Math.random() * 0.4) * Math.min(1.4, 0.5 + dmg / 40), stretch = 1 / Math.max(0.45, graze);
+      const size = (big ? 0.6 : 0.45) * (0.85 + Math.random() * 0.3) * Math.min(1.4, 0.6 + dmg / 40), stretch = 1 / Math.max(0.45, graze);
       fx.hole(sx, sy, sz, hit.nx, hit.ny, hit.nz, size, hit.tag, bloodOff ? MARK.scuff : MARK.spatter, bloodOff ? [1, 1, 1] : [1, 1, 1], [1, stretch], Math.abs(hit.ny) < 0.5);
       if (!bloodOff && Math.abs(hit.ny) < 0.5 && sy > 0.6) fx.hole(sx, sy - size * 0.55, sz, hit.nx, hit.ny, hit.nz, size * 0.7, hit.tag, MARK.drip, [1, 1, 1], [0.8, 1.4], true);
+      // Satellite drops round the main mark, along the surface.
+      if (!bloodOff) {
+        const wall = Math.abs(hit.ny) < 0.5, ux = wall ? -hit.nz : 1, uz = wall ? hit.nx : 0;
+        for (let i = 0; i < (big ? 6 : 4); i++) {
+          const a = Math.random() * 6.283, d = size * (0.55 + Math.random() * 0.5), ox = Math.cos(a) * d, oy = Math.sin(a) * d;
+          fx.hole(sx + ux * ox, wall ? sy + oy : sy, sz + uz * ox + (wall ? 0 : oy), hit.nx, hit.ny, hit.nz, 0.04 + Math.random() * 0.05, hit.tag, MARK.spatter, [1, 1, 1], [1, 1], wall);
+        }
+      }
     }
   }
   /** Pools waiting for their body to settle. */

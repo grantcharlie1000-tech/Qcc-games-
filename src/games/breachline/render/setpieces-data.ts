@@ -43,6 +43,17 @@ export const SET_PIECES: SetPieceDef[] = [
   { x0: 26.5, z0: -6, x1: 28, y1: 1.9, z1: -3, name: 'bin store', family: 'binstore' },
   { x0: 20.5, z0: -3.4, x1: 23.0, y1: 1, z1: -2.4, name: 'materials drop', family: 'materials' },
   { x0: 22.0, z0: 7.5, x1: 25.0, y1: 1.8, z1: 9.2, name: 'skip', family: 'skip' },
+  // The remaining fill pieces (Phase B, second part).
+  { x0: -4.2, z0: -5.6, x1: -2.8, y1: 0.95, z1: -4.9, name: 'island bench', family: 'island' },
+  { x0: 1.6, z0: -5.6, x1: 2.6, y1: 0.95, z1: -4.9, name: 'island bench', family: 'island' },
+  { x0: 1.7, z0: 0.43, x1: 3.1, y1: 1, z1: 0.93, name: 'bench with boxes', family: 'benchboxes' },
+  { x0: -5.25, z0: 5.45, x1: -3.85, y1: 1, z1: 6.85, name: 'desk pod', family: 'deskpod' },
+  { x0: -2.8, z0: 3.6, x1: -1.4, y1: 1, z1: 5.0, name: 'desk pod', family: 'deskpod' },
+  { x0: 1.9, z0: 7.6, x1: 3.3, y1: 1, z1: 8.4, name: 'map chest', family: 'mapchest' },
+  { x0: 5.9, z0: 4.2, x1: 6.5, y1: 2, z1: 5.2, name: 'shelving stub', family: 'shelving' },
+  { x0: 4.6, z0: 2.6, x1: 5.3, y1: 1, z1: 3.6, name: 'trolley of boxes', family: 'trolley' },
+  { x0: 11.4, z0: 2.3, x1: 12.4, y1: 0.78, z1: 3.3, name: 'table set', family: 'tableset' },
+  { x0: 9.0, z0: 9.25, x1: 10.25, y1: 1, z1: 9.85, name: 'sideboard', family: 'sideboard' },
 ];
 /** Set pieces whose box the art layer still draws, textured (the server racks' photo texture), with only their
  * damage drawn over it by render/setpieces.ts. */
