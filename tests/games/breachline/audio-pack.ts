@@ -19,7 +19,7 @@ import { join } from 'node:path';
  * handling under a light magazine click. */
 export interface PackTake {
   key: string; file: string; keepMs: number; fadeMs: number; max?: number; gainDb?: number; burst?: boolean; skip?: number;
-  ranges?: [number, number][]; pitch?: number; under?: { file: string; startMs: number; gainDb: number; pitch?: number };
+  ranges?: [number, number][]; pitch?: number; lowpass?: number; under?: { file: string; startMs: number; gainDb: number; pitch?: number };
 }
 /** `hybrids`: keys whose takes are also recombined (each take's first 4 ms joined to another's body), for guns with
  * few takes, so automatic fire never alternates between two. */
@@ -30,8 +30,8 @@ export interface PackIndex { version: 1; sr: number; keys: Record<string, { star
 const SR = 48000, GAP = Math.round(SR * 0.1);
 
 /** Mono float samples at 48 kHz, high-passed at 30 Hz, from any file ffmpeg reads. */
-export function decode(path: string, pitch = 1): Float32Array {
-  const af = (pitch !== 1 ? `asetrate=${Math.round(SR * pitch)},aresample=${SR},` : '') + 'highpass=f=30';
+export function decode(path: string, pitch = 1, lowpass = 0): Float32Array {
+  const af = (pitch !== 1 ? `asetrate=${Math.round(SR * pitch)},aresample=${SR},` : '') + 'highpass=f=30' + (lowpass ? `,lowpass=f=${lowpass},lowpass=f=${lowpass}` : '');
   const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', path, '-af', af, '-ac', '1', '-ar', String(SR), '-f', 'f32le', '-'], { maxBuffer: 1 << 30 });
   return new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4).slice();
 }
@@ -73,7 +73,7 @@ export function buildPack(manifest: PackManifest, sourceDir: string, outDir: str
   const byKey = new Map<string, Float32Array[]>();
   const emit = (key: string, y: Float32Array) => { (index.keys[key] ??= []).push({ start: at, length: y.length }); parts.push(y, new Float32Array(GAP)); at += y.length + GAP; };
   for (const t of manifest.takes) {
-    const x = decode(join(sourceDir, t.file), t.pitch), under = t.under ? decode(join(sourceDir, t.under.file), t.under.pitch) : null;
+    const x = decode(join(sourceDir, t.file), t.pitch, t.lowpass), under = t.under ? decode(join(sourceDir, t.under.file), t.under.pitch) : null;
     const cuts = t.ranges ? t.ranges.map(([a, b]) => { const y = cut(x, Math.round(SR * a / 1000) + Math.round(SR * 0.002), b - a, t.fadeMs); for (let i = 0; i < Math.min(y.length, SR * 0.003); i++) y[i] *= i / (SR * 0.003); return y; })
       : onsets(x, t.burst).slice(t.skip ?? 0, (t.skip ?? 0) + (t.max ?? 99)).map(o => cut(x, o, t.keepMs, t.fadeMs));
     for (const y0 of cuts) {

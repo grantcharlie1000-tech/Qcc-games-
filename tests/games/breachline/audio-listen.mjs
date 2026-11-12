@@ -56,6 +56,16 @@ if (set === 'reloads') {
   for (const w of ['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol']) { chain([`reload-${w}`, `reload-${w}-empty`], `${p}-reload-${w}.wav`); files.push(`${p}-reload-${w}.wav`); }
   if (process.argv[5]) { chain(['auto-ar-fp', 'auto-carbine-fp', 'auto-smg-fp'], `${p}-automatic-casings.wav`); files.push(`${p}-automatic-casings.wav`); }
 }
+if (set === 'foley') {
+  // Phase 3 on real sources: footsteps by floor, crouch/walk/sprint, impacts by material, glass and set pieces,
+  // bodies and hits with reinforcement, then the breach scene.
+  chain(['step-asphalt', 'step-grass', 'step-slab', 'step-tile', 'step-lino', 'step-carpet', 'step-planks', 'step-raised', 'step-check'], 'b3-footsteps-by-floor.wav'); files.push('b3-footsteps-by-floor.wav');
+  chain(['step-tile-crouch', 'step-tile', 'step-tile-sprint'], 'b3-crouch-walk-sprint.wav'); files.push('b3-crouch-walk-sprint.wav');
+  single('impacts', 'b3-impacts.wav', false); files.push('b3-impacts.wav');
+  chain(['glass', 'breaks'], 'b3-glass-and-breaks.wav'); files.push('b3-glass-and-breaks.wav');
+  chain(['body', 'reinforce'], 'b3-bodies-and-reinforcement.wav'); files.push('b3-bodies-and-reinforcement.wav');
+  single('scene-breach', 'b3-breach.wav', true); files.push('b3-breach.wav');
+}
 let total = 0;
 for (const f of files) { const b = statSync(join(out, f)).size; total += b; console.log(`${f} ${(b / 1024).toFixed(0)} KB`); }
 console.log(`total ${(total / 1048576).toFixed(2)} MB`);

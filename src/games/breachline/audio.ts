@@ -75,7 +75,7 @@ export const PACK_URL: string | null = 'audio/breachline/pack.json';
  * if it fails. Reload slots and dry fire are recorded too (CC0 handling sounds; see THIRD_PARTY_NOTICES). */
 const PACK_KEYS: string[] = [
   ...(['ar', 'carbine', 'smg', 'shotgun', 'dmr', 'pistol'] as const).flatMap(w => ['fp', 'tp', 'far'].map(v => `gun.${w}.${v}`)),
-  'rl.*', 'casing.*', 'dry',
+  'rl.*', 'casing.*', 'dry', 'step.*', 'impact.*', 'glass.*', 'body.*',
 ];
 
 export function createSfx(enabled: () => boolean, options: { ambience?: boolean; override?: Record<string, { sr: number; takes: number[][] }>; pack?: string | null } = {}): Sfx {
@@ -86,7 +86,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
   // Sounds only the pack supplies take their family's level (reload beats like the synthesised ones, and so on).
   for (const w of ['ar', 'carbine', 'smg', 'dmr']) for (const b of ['release', 'out', 'in', 'seat', 'bolt']) levels.set(`rl.${w}.${b}`, -9);
   for (const k of ['casing.9mm', 'casing.556', 'casing.762']) levels.set(k, -22);
-  levels.set('rl.fetch', -14); levels.set('drop.mag', -12);
+  levels.set('rl.fetch', -14); levels.set('drop.mag', -12); levels.set('glass.small', -10);
   const beds = new Map<Space, GainNode>();
   let bedSpace: Space | null = null, indoors = false;
   const ear = { x: 0, y: 1.6, z: 0, yaw: 0 };
@@ -109,7 +109,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     void eng.load(packKeys);
     // A failed pack renders everything it would have supplied; a loaded one covers every reload beat in reloads.ts,
     // and only the shotgun hull (no recording yet) is still synthesised.
-    if (packUrl) { const e = eng; packDone = e.loadPack(packUrl).then(async ok => { await e.fill(ok ? packKeys.filter(k => !k.endsWith('*') && !e.packed.has(k)) : packKeys); if (ok) await e.fillUnpacked(['casing.shell']); return ok; }); }
+    if (packUrl) { const e = eng; packDone = e.loadPack(packUrl).then(async ok => { await e.fill(ok ? packKeys.filter(k => !k.endsWith('*') && !e.packed.has(k)) : packKeys); if (ok) await e.fillUnpacked(['casing.shell', 'impact.*']); return ok; }); }
     return eng;
   }
   const spaceAt = (x: number, z: number) => spaceOfRoom(roomAt(x, z));
@@ -194,7 +194,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     },
     boom(at, power) {
       const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z);
-      if (d < 32) play(power >= 1 ? 'boom.near' : 'boom.impact', 'world', at, { wet: 0.8, ref: 6, reach: 140 });
+      if (d < 32) play(power >= 1 ? 'boom.near' : 'boom.impact', 'world', at, { wet: 0.8, ref: 6, reach: 140, rate: 0.93 + Math.random() * 0.14 });
       else play('boom.far', 'world', at, { gain: 1.3 * power, wet: 0.7, ref: 6, reach: 160 });
       if (eng && d < 14) { const k = 1 - d / 14; eng.muffle(20000 * Math.pow(0.04, k * power), 0.6 + 1.2 * k); eng.duck('amb', 12 * k, 1); }
     },
@@ -228,8 +228,6 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
     impact(material, at) {
       const mat = (IMPACT_MATS as string[]).includes(material) ? (material as ImpactMat) : 'concrete';
       play(`impact.${mat}`, 'world', at, { wet: 0, ref: 2, reach: 30, rate: 0.92 + Math.random() * 0.16 });
-      const ric = mat === 'metal' ? 0.35 : mat === 'concrete' || mat === 'brick' ? 0.12 : 0;
-      if (Math.random() < ric) play('ricochet', 'world', at, { delay: 0.01, wet: 0.3, ref: 3, reach: 35, rate: 0.9 + Math.random() * 0.2 });
     },
     glass(kind, at) { play(kind === 'crack' ? 'glass.crack' : 'glass.shatter', 'world', at, { wet: 0.4, ref: 3, reach: 40 }); },
     breakPiece(material, family, state, at) {
@@ -253,14 +251,14 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
           if (eng && eng.ctx.currentTime - lastImpact < 0.05) break;
           if (eng) lastImpact = eng.ctx.currentTime;
           play(`impact.${(IMPACT_MATS as string[]).includes(e.mat) ? e.mat : 'concrete'}`, 'world', p, { gain: e.power >= 1 ? 1 : 0.6, wet: 0, ref: 2, reach: 30, rate: 0.92 + Math.random() * 0.16 });
-          if (e.power >= 1 && Math.random() < (e.mat === 'metal' ? 0.35 : e.mat === 'concrete' || e.mat === 'brick' ? 0.12 : 0)) play('ricochet', 'world', p, { delay: 0.01, wet: 0.3, ref: 3, reach: 35, rate: 0.9 + Math.random() * 0.2 });
           break;
         case 'glass': this.glass(e.stage, p); break;
         case 'piece': {
           const f = e.family, gain = e.state === 'wrecked' ? 1 : 0.65;
           // Small breakable dressing (screens, lights, mugs, bins, plants, fittings, loose items).
-          if (f === 'screen' || f === 'fitting') { play('glass.shatter', 'world', p, { gain: 0.6, rate: 1.25, wet: 0.3, ref: 2, reach: 30 }); play('impact.plastic', 'world', p, { gain: 0.7, ref: 2, reach: 25 }); break; }
-          if (f === 'mug') { play('glass.shatter', 'world', p, { gain: 0.45, rate: 0.8, wet: 0.3, ref: 2, reach: 25 }); break; }
+          const small = eng?.packed.has('glass.small') ? 'glass.small' : 'glass.shatter';
+          if (f === 'screen' || f === 'fitting') { play(small, 'world', p, { gain: 0.8, wet: 0.3, ref: 2, reach: 30 }); play('impact.plastic', 'world', p, { gain: 0.5, ref: 2, reach: 25 }); break; }
+          if (f === 'mug') { play(small, 'world', p, { gain: 0.6, rate: 0.8, wet: 0.3, ref: 2, reach: 25 }); break; }
           if (f === 'led') { play('impact.plastic', 'world', p, { gain: 0.6, rate: 1.3, ref: 2, reach: 20 }); break; }
           if (f === 'bin') { play('impact.metal', 'world', p, { gain: 0.8, rate: 0.85, ref: 2, reach: 25 }); break; }
           if (f === 'leaf') { play('impact.leaf', 'world', p, { ref: 2, reach: 18 }); break; }

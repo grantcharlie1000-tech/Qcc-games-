@@ -3865,3 +3865,16 @@ More Breachline handling and foley sounds (also in public/audio/breachline/pack.
 - "Equipment Clicks III" by LFA, https://opengameart.org/content/equipment-clicks-iii, CC0 1.0 (made by cocking a bolt-action rifle).
 We cut, high-passed, levelled, layered, pitch-shifted (the SMG's magazine and bolt are derived from the pistol magazine and a
 rifle cocking) and re-encoded these (Opus).
+
+Breachline footsteps, glass, impacts and body falls (also in public/audio/breachline/pack.ogg):
+- BigSoundBank, CC0 1.0 as stated on each sound page; by Joseph Sardin unless noted:
+  footsteps on concrete https://bigsoundbank.com/sound-s0514.html; gravel https://bigsoundbank.com/sound-s1117.html;
+  parquet https://bigsoundbank.com/sound-s0376.html; grass https://bigsoundbank.com/sound-s1253.html;
+  "Broken glass" https://bigsoundbank.com/sound-s0771.html; "Glass Burst" https://bigsoundbank.com/sound-s0148.html;
+  "Bulb bursting" https://bigsoundbank.com/sound-s2040.html, -s2041, -s2042; "Hammer fall on concrete" https://bigsoundbank.com/sound-s1108.html;
+  "Fall of Stone" https://bigsoundbank.com/sound-s1022.html; "Paintball: Shots, wood impacts" https://bigsoundbank.com/sound-s0529.html;
+  "Falling sheet steel bar" https://bigsoundbank.com/sound-s1771.html, -s1774.
+- The Red Library sound effects (archive.org; CC0 1.0 as declared in the item metadata by the uploader, jscott@archive.org):
+  Red_Library_Footsteps_1 R10-05 "Footsteps on Hard Tile Floor"; Red_Library_Footsteps_2 R10-56 "Footsteps on Metal Staircase";
+  Red_Library_Fights R09-76 "Two Falls on Wooden Floor" and R15-19 "Muffled Body Fall".
+We cut, levelled, pitch-shifted or filtered (carpet, lino, plaster and brick are derived from other takes) and re-encoded these (Opus).

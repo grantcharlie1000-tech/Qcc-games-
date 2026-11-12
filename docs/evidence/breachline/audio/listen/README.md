@@ -1,6 +1,19 @@
 # Breachline sound: listening guide
 
-## Reloads, second pass: each gun its own, real casings (2026-11-12): please play these first
+## Phase 3: footsteps, impacts, glass, bodies (2026-11-12): please play these first
+
+| File | What it is | Real, derived or synthetic |
+| --- | --- | --- |
+| `b3-footsteps-by-floor.wav` | Walking on asphalt, grass, concrete, tile, lino, carpet, boards, the raised metal floor, chequered tile | **Real**: concrete, gravel (for asphalt), grass, parquet (boards), tile, metal stairs (raised floor). **Derived**: lino (tile, lower and softer), chequered tile (tile, slightly higher), carpet (parquet, heavily damped). The occasional gear rustle is synthetic. |
+| `b3-crouch-walk-sprint.wav` | Crouching, walking, sprinting on tile | Real steps; crouching is much quieter and duller |
+| `b3-impacts.wav` | A bullet stopping in: wallboard, concrete, brick, wood, fabric, earth, ceiling tile, floor tile, plastic, glass, cardboard, metal, leaves | **Derived** from real hits (no licensed bullet impacts exist): wallboard and brick (a hammer on concrete and falling stone, re-pitched), concrete (hammer and stone), wood (paintball hits on wood). **Real**: glass, metal (a steel bar). **Synthetic**: fabric, earth, ceiling tile, floor tile, plastic, cardboard, leaves. |
+| `b3-glass-and-breaks.wav` | A pane cracking then shattering; then furniture breaking: wood, steel, fabric, a shelf, a drum, a crate | Glass **real**; the furniture breaks still **synthetic** (no sources yet) |
+| `b3-bodies-and-reinforcement.wav` | Hits on flesh and armour, a body falling and settling, a dropped weapon; then a reinforcement deploying | Body fall and settle **real**; hits, weapon drop and reinforcement **synthetic** |
+| `b3-breach.wav` | The breach scene with everything together | Mixed |
+
+No more ricochets: the only licensed ones are Western-film ricochets, the cartoon sound you rejected.
+
+## Reloads, second pass: each gun its own, real casings (2026-11-12)
 
 | File | What to listen for |
 | --- | --- |

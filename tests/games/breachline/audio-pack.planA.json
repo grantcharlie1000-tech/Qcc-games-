@@ -1,7 +1,7 @@
 {
   "about": "Plan A manifest for audio-pack.ts (approved by the owner 2026-11-12). Paths are inside 'Prepared SFX Library' from The Free Firearm Sound Library (CC0; Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney; https://opengameart.org/content/the-free-firearm-sound-library). Build: AUDIO_PACK_MAIN=1 npx vite-node tests/games/breachline/audio-pack.ts -- tests/games/breachline/audio-pack.planA.json '<library folder>' public/audio/breachline",
   "loudness": -14,
-  "bitrate": 96,
+  "bitrate": 64,
   "takes": [
     {
       "key": "gun.ar.fp",
@@ -920,6 +920,504 @@
         ]
       ],
       "gainDb": -6
+    },
+    {
+      "key": "step.slab",
+      "file": "bsb3/0514.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          400,
+          630
+        ],
+        [
+          1075,
+          1305
+        ],
+        [
+          3175,
+          3405
+        ],
+        [
+          6765,
+          6995
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "key": "step.asphalt",
+      "file": "bsb3/1117.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          705,
+          935
+        ],
+        [
+          1635,
+          1865
+        ],
+        [
+          3830,
+          4060
+        ],
+        [
+          6395,
+          6625
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "key": "step.planks",
+      "file": "bsb3/0376.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          30,
+          260
+        ],
+        [
+          1710,
+          1940
+        ],
+        [
+          3300,
+          3530
+        ],
+        [
+          8310,
+          8540
+        ]
+      ],
+      "gainDb": -3
+    },
+    {
+      "key": "step.tile",
+      "file": "red3/R10-05-Footsteps on Hard Tile Floor.wav",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1560,
+          1790
+        ],
+        [
+          2415,
+          2645
+        ],
+        [
+          3245,
+          3475
+        ],
+        [
+          4795,
+          5025
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "key": "step.check",
+      "file": "red3/R10-05-Footsteps on Hard Tile Floor.wav",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          7760,
+          7990
+        ],
+        [
+          2415,
+          2645
+        ],
+        [
+          4795,
+          5025
+        ],
+        [
+          3245,
+          3475
+        ]
+      ],
+      "gainDb": -7,
+      "pitch": 1.04
+    },
+    {
+      "key": "step.lino",
+      "file": "red3/R10-05-Footsteps on Hard Tile Floor.wav",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1560,
+          1790
+        ],
+        [
+          3245,
+          3475
+        ],
+        [
+          5560,
+          5790
+        ],
+        [
+          6300,
+          6530
+        ]
+      ],
+      "gainDb": -8,
+      "pitch": 0.92,
+      "lowpass": 4000
+    },
+    {
+      "key": "step.carpet",
+      "file": "bsb3/0376.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          30,
+          260
+        ],
+        [
+          1710,
+          1940
+        ],
+        [
+          3300,
+          3530
+        ],
+        [
+          8310,
+          8540
+        ]
+      ],
+      "gainDb": -10,
+      "pitch": 0.9,
+      "lowpass": 900
+    },
+    {
+      "key": "step.grass",
+      "file": "bsb3/1253.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          5045,
+          5275
+        ],
+        [
+          12520,
+          12750
+        ],
+        [
+          12770,
+          13000
+        ],
+        [
+          14510,
+          14740
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "key": "step.raised",
+      "file": "red3/R10-56-Footsteps on Metal Staircase.wav",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1195,
+          1425
+        ],
+        [
+          1725,
+          1955
+        ],
+        [
+          2240,
+          2470
+        ],
+        [
+          2770,
+          3000
+        ]
+      ],
+      "gainDb": -1
+    },
+    {
+      "key": "glass.crack",
+      "file": "bsb3/0771.ogg",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          170,
+          420
+        ],
+        [
+          3870,
+          4120
+        ],
+        [
+          6235,
+          6480
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "glass.shatter",
+      "file": "bsb3/0148.ogg",
+      "keepMs": 0,
+      "fadeMs": 120,
+      "ranges": [
+        [
+          20,
+          1500
+        ]
+      ],
+      "gainDb": -2
+    },
+    {
+      "key": "glass.shatter",
+      "file": "bsb3/0771.ogg",
+      "keepMs": 0,
+      "fadeMs": 120,
+      "ranges": [
+        [
+          1955,
+          3400
+        ]
+      ],
+      "gainDb": -2
+    },
+    {
+      "key": "glass.small",
+      "file": "bsb3/2040.flac",
+      "keepMs": 0,
+      "fadeMs": 100,
+      "ranges": [
+        [
+          0,
+          1100
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "glass.small",
+      "file": "bsb3/2041.flac",
+      "keepMs": 0,
+      "fadeMs": 100,
+      "ranges": [
+        [
+          0,
+          1300
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "glass.small",
+      "file": "bsb3/2042.flac",
+      "keepMs": 0,
+      "fadeMs": 100,
+      "ranges": [
+        [
+          0,
+          1400
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "impact.concrete",
+      "file": "bsb3/1108.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          160,
+          420
+        ],
+        [
+          575,
+          760
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "key": "impact.concrete",
+      "file": "bsb3/1022.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1715,
+          1960
+        ],
+        [
+          4645,
+          4900
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "key": "impact.brick",
+      "file": "bsb3/1022.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1715,
+          1960
+        ],
+        [
+          6210,
+          6450
+        ],
+        [
+          4645,
+          4900
+        ]
+      ],
+      "gainDb": -6,
+      "pitch": 0.85
+    },
+    {
+      "key": "impact.wall",
+      "file": "bsb3/1108.flac",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          160,
+          420
+        ],
+        [
+          575,
+          760
+        ]
+      ],
+      "gainDb": -8,
+      "pitch": 1.25,
+      "lowpass": 3500
+    },
+    {
+      "key": "impact.wood",
+      "file": "bsb3/0529.ogg",
+      "keepMs": 0,
+      "fadeMs": 40,
+      "ranges": [
+        [
+          1765,
+          1950
+        ],
+        [
+          2095,
+          2300
+        ],
+        [
+          2245,
+          2420
+        ],
+        [
+          2895,
+          3080
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "key": "impact.metal",
+      "file": "bsb3/1771.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          40,
+          640
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "key": "impact.metal",
+      "file": "bsb3/1774.flac",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          30,
+          700
+        ]
+      ],
+      "gainDb": -6
+    },
+    {
+      "key": "body.fall",
+      "file": "red3/R09-76-Two Falls on Wooden Floor.wav",
+      "keepMs": 0,
+      "fadeMs": 100,
+      "ranges": [
+        [
+          1820,
+          2400
+        ],
+        [
+          4685,
+          5300
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "body.fall",
+      "file": "red3/R15-19-Muffled Body Fall.wav",
+      "keepMs": 0,
+      "fadeMs": 100,
+      "ranges": [
+        [
+          2575,
+          3150
+        ]
+      ],
+      "gainDb": -4
+    },
+    {
+      "key": "body.settle",
+      "file": "red3/R15-19-Muffled Body Fall.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          1870,
+          2200
+        ]
+      ],
+      "gainDb": -10
+    },
+    {
+      "key": "body.settle",
+      "file": "red3/R09-76-Two Falls on Wooden Floor.wav",
+      "keepMs": 0,
+      "fadeMs": 80,
+      "ranges": [
+        [
+          860,
+          1250
+        ]
+      ],
+      "gainDb": -10
     }
   ],
   "hybrids": [
@@ -930,6 +1428,23 @@
     "rl.",
     "casing.",
     "dry",
-    "drop."
+    "drop.",
+    "step.",
+    "impact.",
+    "glass.",
+    "body.",
+    "drop.weapon",
+    "gun.ar.far",
+    "gun.carbine.far",
+    "gun.smg.far",
+    "gun.shotgun.far",
+    "gun.dmr.far",
+    "gun.pistol.far",
+    "gun.ar.tp",
+    "gun.carbine.tp",
+    "gun.smg.tp",
+    "gun.shotgun.tp",
+    "gun.dmr.tp",
+    "gun.pistol.tp"
   ]
 }

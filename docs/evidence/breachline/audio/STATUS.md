@@ -167,6 +167,39 @@ change checked against the reference sheets until every gun is within about 1.0 
    distance to the reference, and searches the gun's parameters (a few dozen) to minimise it. Then the takes'
    spread sets the variant range. Indoor rooms are not covered by these references and stay as designed.
 
+## Phase 3 on real sources (2026-11-12)
+
+**Sources** (each BigSoundBank page and Red Library record read; all CC0; credited in THIRD_PARTY_NOTICES):
+- footsteps on concrete 0514, gravel 1117, parquet 0376, grass 1253; Red Library tile R10-05 and metal stairs
+  R10-56;
+- glass 0771 and 0148, bulbs 2040–2042;
+- hammer on concrete 1108, stone fall 1022, paintball wood hits 0529, sheet steel 1771 and 1774;
+- Red Library body falls R09-76 and R15-19.
+
+BigSoundBank 0165 is by DavidGreck, not Sardin; downloaded but unused. Older BigSoundBank sounds have no FLAC, so
+their OGG was used.
+
+**Mapping:**
+- *Real:* slab ← concrete, asphalt ← gravel, planks ← parquet, grass, tile, raised ← metal stairs.
+- *Derived:* lino ← tile at 0.92 pitch, low-passed 4 kHz; check ← tile at 1.04; carpet ← parquet at 0.9,
+  low-passed 900 Hz.
+- *Impacts:* concrete and brick ← hammer and stone (brick at 0.85); wall ← the hammer at 1.25, low-passed (plaster,
+  derived); wood ← paintball on wood; metal ← steel bar; glass crack ← 0771. The other materials stay synthetic
+  (rendered after the pack loads).
+- *Glass and bodies:* glass shatter ← 0148 and 0771; screens, lights and mugs ← bulbs; body fall and settle ← Red
+  Library.
+- **Ricochets removed:** the only licensed ones are Western-film ricochets, and our own was a tonal whine. Both are
+  cartoon tells.
+
+**Pack 809 KB** at 64 kb/s: guns, reloads, casings and foley, now about 22 s of audio. Families kept at half rate
+after decoding: handling, casings, steps, impacts, glass, bodies, and someone else's and far gun takes.
+**Bank 11.80 MB** (budget 12). To make room: one variant each for the near blasts (pitch varied at play time) and
+4 s room loops.
+
+**Still synthetic:** furniture breaks; flesh and armour hits; the weapon drop; the reinforcement stages;
+fabric, earth, ceiling, floor-tile, plastic, cardboard and leaf impacts; the shotgun hull; blasts; ambience;
+cues.
+
 ## Reloads, second pass and real casings (2026-11-12)
 
 The researcher's sources. I read each page or record myself:

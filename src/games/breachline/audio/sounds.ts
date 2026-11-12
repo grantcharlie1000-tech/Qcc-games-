@@ -410,7 +410,7 @@ export const cueSound = (kind: CueKind): Gen => (_r, sr) => {
 
 export type Bed = 'hard' | 'soft' | 'corridor' | 'yard';
 /** A seamless loop for a space: rendered longer than needed and cross-faded end into start. */
-export function ambience(bed: Bed, r: Rng, sr: number, seconds = 5): Float32Array {
+export function ambience(bed: Bed, r: Rng, sr: number, seconds = 4): Float32Array {
   const fade = Math.round(sr * 0.5), n = Math.ceil(sr * seconds) + fade, x = new Float32Array(n);
   const hum = (hz: number, lv: number) => { for (const [m, a] of [[1, 1], [2, 0.5], [3, 0.2]]) mixInto(x, osc(n, sr, () => hz * m), 0, lv * a); };
   switch (bed) {
@@ -611,7 +611,6 @@ export function catalogue(): SoundDef[] {
   add('crumble.board', 4, 32000, -3, 5, crumbleBoard);
   add('crumble.wood', 4, 32000, -3, 5, crumbleWood);
   for (const mat of IMPACT_MATS) add(`impact.${mat}`, 2, 22050, -8, 4, (r, sr) => impact(mat, r, sr));
-  add('ricochet', 3, 22050, -18, 4, ricochet);
   add('glass.crack', 2, 32000, -6, 5, glassCrackSound);
   add('glass.shatter', 2, 24000, -6, 5, glassShatter);
   for (const b of BREAKS) add(`break.${b}`, 1, 22050, -6, 6, (r, sr) => breakSound(b, r, sr));
@@ -622,8 +621,8 @@ export function catalogue(): SoundDef[] {
   add('armour', 2, 22050, -12, 4, fleshHit(true));
   for (const st of ['lift', 'unfold', 'anchor'] as ReinforceStage[]) add(`rf.${st}`, st === 'anchor' ? 2 : 1, 22050, -6, 6, (r, sr) => reinforceStage(st, r, sr));
   add('debris', 2, 16000, -8, 5, debris);
-  add('boom.near', 2, 22050, 4, 5, (r, sr) => blast(true, false, r, sr));
-  add('boom.impact', 2, 22050, 2, 5, (r, sr) => blast(true, true, r, sr));
+  add('boom.near', 1, 22050, 4, 5, (r, sr) => blast(true, false, r, sr));
+  add('boom.impact', 1, 22050, 2, 5, (r, sr) => blast(true, true, r, sr));
   add('boom.far', 2, 12000, 2, 6, (r, sr) => blast(false, false, r, sr));
   add('throw', 2, 32000, -10, 5, throwSound);
   add('bounce', 4, 32000, -10, 5, bounceSound);
