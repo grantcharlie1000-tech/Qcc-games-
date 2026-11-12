@@ -1,22 +1,9 @@
 /** Builds the Breachline cover and title SVG strings. Pure and deterministic. */
 import { CARD } from './palette.ts';
 import { ROOM, buildScene } from './scene.ts';
-import { pathsSvg, polygonCount, rasterise, toScreen, hash, type Polys, type View } from './voxel.ts';
+import { pathsSvg, polygonCount, rasterise, toScreen, hash, type View } from './voxel.ts';
 
 export const COVER = { w: 320, h: 410, band: 95 } as const;
-
-function bounds(polys: Polys) {
-  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-  for (const p of polys) for (const l of p.loops) for (const [X, Y] of l) { x0 = Math.min(x0, X); x1 = Math.max(x1, X); y0 = Math.min(y0, Y); y1 = Math.max(y1, Y); }
-  return { x0, x1, y0, y1 };
-}
-
-/** Fit lattice bounds into a box: width may overflow (the card crops), height must fit. */
-function fit(polys: Polys, box: { x0: number; x1: number; y0: number; y1: number }, widthScale = 1): View {
-  const b = bounds(polys);
-  const s = Math.min(((box.x1 - box.x0) * widthScale) / (b.x1 - b.x0), (box.y1 - box.y0) / ((b.y1 - b.y0) / 2));
-  return { s, ox: (box.x0 + box.x1) / 2 - s * (b.x0 + b.x1) / 2, oy: box.y1 - s * b.y1 / 2 };
-}
 
 export type Built = { svg: string; polygons: number };
 

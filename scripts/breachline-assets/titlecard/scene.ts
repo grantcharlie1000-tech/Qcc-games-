@@ -157,6 +157,7 @@ export function buildScene(): Grid {
   const fire = { x: holeX - 2, y: wallY - 4, z: 6, rgb: LIGHT.breach };
   g.lights.push({ ...fire, range: 22, power: 2.6, dir: [0, 0.97, -0.24], cut: 0.55 });
   g.lights.push({ ...fire, x: holeX - 1, y: wallY - 1.5, z: 10, range: 14, power: 2.4, dir: [0, -0.5, -0.87], cut: -0.2 });
+  g.lights.push({ ...fire, x: holeX - 9, y: wallY - 1.5, z: 10, range: 10, power: 1.8, dir: [0, -0.5, -0.87], cut: -0.2 });
   g.lights.push({ x: tx + 5, y: ty + 5, z: 11, rgb: LIGHT.uplink, range: 6, power: 1.0 });
   return g;
 }

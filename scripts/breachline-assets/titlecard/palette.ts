@@ -41,9 +41,9 @@ export const P = {
   gunLight: r('#5b6068', '#474b52', '#363a40'),
   boot: r('#2c2a28', '#232120', '#1a1918'),
   visor: r('#1a1d22', '#15171b', '#101215'),
-  atkCloth: r('#4b5a6e', '#3b4859', '#2d3746'),
-  atkVest: r('#2f3946', '#262e39', '#1d232c'),
-  atkHelmet: r('#56657a', '#435065', '#343f50'),
+  atkCloth: r('#5c6e86', '#4a5a70', '#3a4759'),
+  atkVest: r('#3b4859', '#303b4a', '#252e3a'),
+  atkHelmet: r('#647790', '#4f6079', '#3e4c61'),
   atkBand: r('#6cb8ff', '#3b93f5', '#2470cc'),
   defCloth: r('#bea275', '#9f8558', '#7c6741'),
   defVest: r('#757b55', '#5e6444', '#484d33'),
@@ -62,8 +62,8 @@ export type Material = keyof typeof P;
 
 /** Lights, as linear multipliers. */
 export const LIGHT = {
-  ambient: [0.42, 0.45, 0.54],
-  fill: [0.2, 0.21, 0.25],
+  ambient: [0.46, 0.47, 0.54],
+  fill: [0.2, 0.2, 0.23],
   breach: [1.3, 0.85, 0.35],
   uplink: [0.2, 0.7, 0.55],
 } as const;
