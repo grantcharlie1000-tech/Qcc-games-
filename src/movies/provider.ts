@@ -21,9 +21,9 @@ export function frameSource(title:Title,route:MovieRoute,_providerId:StreamProvi
  return `${FRAME_ORIGIN}/embed/${match[2]}${episode}?autoplay=1&muted=0&no_ads=1${start===undefined?'':`&t=${start}`}`;
 }
 export type ProviderSignal={kind:'ready'}|{kind:'ended'}|{kind:'progress';currentTime:number;duration?:number;ended:boolean};
-// Only this historical message shape can qualify. The public framextv.cc script fetched on
-// 2026-11-07 did not contain these event names (it posts a different `__syncxtv` hello).
-// Anything else, including Archive.org and messages from the parent page, is ignored and not counted.
+// Documented at /api and emitted by the native video in /assets/Player-lMmZlVTB.js
+// (checked 2026-11-12). The lazy player, not the entry bundle, contains timeupdate.
+// Unsupported nested fallback players remain uncounted. The caller also checks the exact frame window.
 export function providerSignal(_providerId:StreamProviderId,origin:string,message:unknown):ProviderSignal|undefined {
  if(!FRAME_MESSAGE_ORIGINS.has(origin))return;
  if(!message||typeof message!=='object')return;

@@ -1,0 +1,80 @@
+name: Verify movie popularity
+on:
+  push:
+    branches: [feat/framextv-fresh-popularity]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/movies/**'
+      - 'server/movie-popularity.ts'
+      - 'functions/api/movie-popularity.ts'
+      - 'workers/movie-popularity-cleanup.ts'
+      - 'tests/movies/**'
+      - 'scripts/framextv-live-check.mjs'
+      - '.github/workflows/movie-popularity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: movie-popularity-${{ github.event_name == 'pull_request' && github.event.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  playback:
+    name: Movie popularity (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    env:
+      XDG_CONFIG_HOME: /tmp/qcc-cloudflare
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test -- tests/movies/framextv-contract.test.ts tests/movies/popularity-view.test.ts tests/movies/popularity.test.ts tests/movies/provider.test.ts tests/movies/privacy.test.ts tests/movies/popularity-api.test.ts tests/movies/popularity-d1.test.ts
+      - run: npm run build
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: xvfb-run -a npm run test:e2e -- tests/movies/popularity.spec.ts --project=${{ matrix.browser }} --workers=1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: movie-popularity-${{ matrix.browser }}
+          path: |
+            test-results
+            playwright-report
+          retention-days: 7
+
+  live-provider:
+    name: Untouched lawful native FrameXTV contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/framextv-live-check.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: untouched-lawful-framextv-contract
+          path: artifacts/framextv-live
+          retention-days: 7
