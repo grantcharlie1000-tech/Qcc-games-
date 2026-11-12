@@ -311,10 +311,10 @@ export function makeSprite(kind: 'puff' | 'flash' | 'hole' | 'blob' | 'ring' | '
   return t;
 }
 
-/** Bullet marks by material, one 128 px cell each in a 4 x 2 atlas (cell index = MARK.* below). Our own drawings. */
-export const MARK = { crater: 0, brick: 1, wood: 2, fabric: 3, tile: 4, glass: 5, earth: 6, ceiling: 7 } as const;
+/** Bullet marks by material, one 128 px cell each in a 4 x 3 atlas (cell index = MARK.* below). Our own drawings. */
+export const MARK = { crater: 0, brick: 1, wood: 2, fabric: 3, tile: 4, glass: 5, earth: 6, ceiling: 7, spatter: 8, drip: 9, scuff: 10, pool: 11 } as const;
 export function makeMarks(): THREE.CanvasTexture {
-  const S = 128, canvas = document.createElement('canvas'); canvas.width = S * 4; canvas.height = S * 2;
+  const S = 128, canvas = document.createElement('canvas'); canvas.width = S * 4; canvas.height = S * 3;
   const g = canvas.getContext('2d')!, c = S / 2;
   const cell = (i: number, draw: (r: () => number) => void) => { g.save(); g.translate((i % 4) * S, Math.floor(i / 4) * S); g.beginPath(); g.rect(0, 0, S, S); g.clip(); draw(rng(101 + i * 17)); g.restore(); };
   const blot = (rad: number, a: number, rgb: string) => { const gr = g.createRadialGradient(c, c, 0, c, c, rad); gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(1, `rgba(${rgb},0)`); g.fillStyle = gr; g.fillRect(0, 0, S, S); };
@@ -336,6 +336,14 @@ export function makeMarks(): THREE.CanvasTexture {
   cell(6, r => { blot(c * 0.85, 0.5, '35,30,24'); ragged(r, c * 0.35, 0.45, 'rgba(25,21,17,0.8)'); for (let i = 0; i < 18; i++) { g.fillStyle = 'rgba(40,34,28,0.6)'; g.beginPath(); const a = r() * 6.283, d = c * (0.4 + r() * 0.5); g.arc(c + Math.cos(a) * d, c + Math.sin(a) * d, 1 + r() * 3, 0, 7); g.fill(); } });
   // 7: ceiling tile: a punched dark hole with a fluffy pale mineral-fibre rim.
   cell(7, r => { blot(c * 0.7, 0.3, '120,116,108'); rays(r, 26, 0.2, 0.6, 'rgba(250,248,240,0.7)', 1.5); ragged(r, c * 0.24, 0.35, 'rgba(18,16,14,0.97)'); });
+  // 8: blood spatter: a dense centre, satellite drops and a few thrown streaks (dark red, tinted by the caller).
+  cell(8, r => { ragged(r, c * 0.3, 0.45, 'rgba(110,8,6,0.9)'); for (let i = 0; i < 40; i++) { const a = r() * 6.283, d = c * (0.25 + r() * 0.65), rad = 1 + r() * 5 * (1 - d / c); g.fillStyle = `rgba(${95 + r() * 30},6,5,${0.6 + r() * 0.35})`; g.beginPath(); g.arc(c + Math.cos(a) * d, c + Math.sin(a) * d, rad, 0, 7); g.fill(); } rays(r, 7, 0.25, 0.95, 'rgba(100,6,5,0.6)', 2); });
+  // 9: blood running down: three drips of different lengths from a smear at the top.
+  cell(9, r => { g.fillStyle = 'rgba(105,8,6,0.85)'; g.beginPath(); g.ellipse(c, S * 0.18, c * 0.45, S * 0.08, 0, 0, 7); g.fill(); for (let i = 0; i < 3; i++) { const x = c + (i - 1) * c * 0.35 + (r() - 0.5) * 6, l = S * (0.35 + r() * 0.5), w = 3 + r() * 3; g.fillRect(x - w / 2, S * 0.18, w, l); g.beginPath(); g.arc(x, S * 0.18 + l, w * 0.75, 0, 7); g.fill(); } });
+  // 10: a dark scuff (the `?blood=off` stand-in for spatter): grime and a smear.
+  cell(10, r => { blot(c * 0.8, 0.45, '30,28,26'); ragged(r, c * 0.35, 0.5, 'rgba(25,23,21,0.5)'); });
+  // 11: a pool: one smooth dark-red body with a soft, slightly lobed edge and a lighter wet rim.
+  cell(11, r => { const gr = g.createRadialGradient(c, c, 0, c, c, c * 0.95); gr.addColorStop(0, 'rgba(70,4,3,0.96)'); gr.addColorStop(0.75, 'rgba(85,6,5,0.92)'); gr.addColorStop(0.92, 'rgba(120,12,10,0.6)'); gr.addColorStop(1, 'rgba(120,12,10,0)'); g.fillStyle = gr; g.beginPath(); for (let i = 0; i <= 24; i++) { const a = i / 24 * 6.283, q = c * (0.82 + r() * 0.14); if (i) g.lineTo(c + Math.cos(a) * q, c + Math.sin(a) * q); else g.moveTo(c + Math.cos(a) * q, c + Math.sin(a) * q); } g.closePath(); g.fill(); });
   const t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

@@ -4,6 +4,16 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 
 ## For the planner (latest first)
 
+**2026-11-12: section 12.1, blood in the world.** `mapfill/shots/blood.png`: hits in the leg, the chest and the head
+(spray along the bullet; spatter and a drip on the wall behind the head shot), then the body down and its pool
+spreading; bottom row `?blood=off` (dust and dark scuffs). From the shared events only: the shooter's last `shot` rays
+are kept, and on `hit` the nearest point on them to the victim's body (the head on a head hit) is where the round
+went in. A cosmetic trace 3 m on from there puts spatter on the first wall, panel cell (it goes with the cell),
+furniture or floor, stretched at a grazing angle, with drips on a wall. On `kill` a pool spreads over 5 s under where
+the body comes to rest, its size limited by short traces to walls and furniture. Pools are pooled (24), marks share the
+256 decal pool, both warmed at load (`warm.spec.ts` passes). The atlas gained spatter, drip, scuff and pool cells.
+Next: window glass (10.2).
+
 **2026-11-11: section 10.1, bullet marks by material.** `mapfill/shots/marks-by-material.png` (a burst into each, then
 the marks): one pooled decal mesh now draws a mark per material from an atlas (`makeMarks` in `textures.ts`: crater
 for plaster and concrete, brick pock, timber splinter hole, fabric tear, ceramic star crack, glass crack, earth divot,

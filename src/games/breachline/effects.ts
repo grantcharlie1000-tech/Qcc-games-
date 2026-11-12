@@ -62,6 +62,7 @@ class Points {
   dispose() { this.object.geometry.dispose(); this.material.dispose(); }
 }
 
+const bx = new THREE.Vector3(), by = new THREE.Vector3(), flat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2), yawQ = new THREE.Quaternion();
 const mat = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s = new THREE.Vector3(), up = new THREE.Vector3(0, 0, 1), n = new THREE.Vector3(), e = new THREE.Euler(), col = new THREE.Color();
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 
@@ -73,8 +74,10 @@ export class Effects {
   private scorches: THREE.InstancedMesh; private scorchNext = 0; private scorchTag = new Int32Array(32).fill(-1);
   private scars: THREE.InstancedMesh; private scarNext = 0;
   private powders: THREE.InstancedMesh; private powderNext = 0;
-  private holes: THREE.InstancedMesh; private holeNext = 0; private holeTag = new Int32Array(160).fill(-1);
-  private holeCell = new THREE.InstancedBufferAttribute(new Float32Array(160), 1);
+  private holes: THREE.InstancedMesh; private holeNext = 0; private holeTag = new Int32Array(256).fill(-1);
+  private holeCell = new THREE.InstancedBufferAttribute(new Float32Array(256), 1);
+  private pools: THREE.InstancedMesh; private poolNext = 0; private poolLive = 0; private poolCell = new THREE.InstancedBufferAttribute(new Float32Array(24), 1);
+  private poolState: ({ x: number; y: number; z: number; rx: number; rz: number; t: number; grow: number; yaw: number } | null)[] = new Array(24).fill(null);
   private flashes: { sprite: THREE.Sprite; life: number; span: number; size: number }[] = [];
   private rings: { mesh: THREE.Mesh; life: number; span: number; size: number }[] = [];
   private textures: THREE.Texture[] = [];
@@ -107,14 +110,17 @@ export class Effects {
     for (let i = 0; i < 40; i++) this.tracers.setMatrixAt(i, ZERO);
     // Bullet marks: one pool, the mark per material picked from an atlas by a per-instance cell, tinted per instance.
     const markMat = new THREE.MeshBasicMaterial({ map: hole, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-    markMat.onBeforeCompile = sh => { sh.vertexShader = 'attribute float markCell;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\n  vMapUv = (vMapUv + vec2(mod(markCell, 4.0), 1.0 - floor(markCell / 4.0))) * vec2(0.25, 0.5);'); };
+    markMat.onBeforeCompile = sh => { sh.vertexShader = 'attribute float markCell;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\n  vMapUv = (vMapUv + vec2(mod(markCell, 4.0), 2.0 - floor(markCell / 4.0))) * vec2(0.25, 1.0 / 3.0);'); };
     markMat.customProgramCacheKey = () => 'breachline-marks';
     const markGeo = new THREE.PlaneGeometry(1, 1);
     markGeo.setAttribute('markCell', this.holeCell);
-    this.holes = new THREE.InstancedMesh(markGeo, markMat, 160);
-    for (let i = 0; i < 160; i++) this.holes.setColorAt(i, col.setRGB(1, 1, 1));
+    this.holes = new THREE.InstancedMesh(markGeo, markMat, 256);
+    const poolGeo = new THREE.PlaneGeometry(1, 1); poolGeo.setAttribute('markCell', this.poolCell);
+    this.pools = new THREE.InstancedMesh(poolGeo, markMat, 24); this.pools.frustumCulled = false; this.pools.renderOrder = 1;
+    for (let i = 0; i < 24; i++) { this.pools.setMatrixAt(i, ZERO); this.pools.setColorAt(i, col.setRGB(1, 1, 1)); }
+    for (let i = 0; i < 256; i++) this.holes.setColorAt(i, col.setRGB(1, 1, 1));
     this.holes.frustumCulled = false; this.holes.renderOrder = 2;
-    for (let i = 0; i < 160; i++) this.holes.setMatrixAt(i, ZERO);
+    for (let i = 0; i < 256; i++) this.holes.setMatrixAt(i, ZERO);
     for (let i = 0; i < 10; i++) {
       const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: flash, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
       sprite.visible = false; sprite.renderOrder = 7; this.group.add(sprite); this.flashes.push({ sprite, life: 0, span: 1, size: 1 });
@@ -126,7 +132,7 @@ export class Effects {
       const mesh = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ map: ringTex, color: 0xd8ecff, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false }));
       mesh.visible = false; mesh.renderOrder = 6; this.group.add(mesh); this.rings.push({ mesh, life: 0, span: 1, size: 1 });
     }
-    this.group.add(this.scorches, this.powders, this.scars, this.holes, this.chunks, this.tracers, this.dustP.object, this.sparkP.object);
+    this.group.add(this.pools, this.scorches, this.powders, this.scars, this.holes, this.chunks, this.tracers, this.dustP.object, this.sparkP.object);
   }
   dust(x: number, y: number, z: number, vx: number, vy: number, vz: number, size: number, life: number, r: number, g: number, b: number, alpha = 0.5, grow = 1.6, gravity = 0, drag = 2.2) { this.dustP.add(x, y, z, vx, vy, vz, size, life, r, g, b, alpha, grow, gravity, drag); }
   spark(x: number, y: number, z: number, vx: number, vy: number, vz: number, size = 0.05, life = 0.3) { this.sparkP.add(x, y, z, vx, vy, vz, size, life, 1, 0.72, 0.3, 1, -0.6, 9, 1); }
@@ -149,14 +155,25 @@ export class Effects {
     this.tracers.instanceMatrix.needsUpdate = true; this.tracerLife[i] = 0.06; this.tracerLive = 1;
   }
   /** A bullet-hole decal. `tag` names what it is painted on (a wall cell), so it can go when that falls away. */
-  hole(x: number, y: number, z: number, nx: number, ny: number, nz: number, size = 0.09, tag = -1, cell = 0, tint: readonly [number, number, number] = [1, 1, 1]) {
-    const i = this.holeNext; this.holeNext = (this.holeNext + 1) % 160;
+  hole(x: number, y: number, z: number, nx: number, ny: number, nz: number, size = 0.09, tag = -1, cell = 0, tint: readonly [number, number, number] = [1, 1, 1], aspect: readonly [number, number] = [1, 1], upright = false) {
+    const i = this.holeNext; this.holeNext = (this.holeNext + 1) % 256;
     this.holeTag[i] = tag;
     this.holeCell.setX(i, cell); this.holeCell.needsUpdate = true;
     this.holes.setColorAt(i, col.setRGB(tint[0], tint[1], tint[2])); this.holes.instanceColor!.needsUpdate = true;
-    q.setFromUnitVectors(up, n.set(nx, ny, nz));
-    this.holes.setMatrixAt(i, mat.compose(v.set(x + nx * 0.012, y + ny * 0.012, z + nz * 0.012), q, s.set(size, size, size)));
+    if (upright && Math.abs(ny) < 0.9) {
+      // Keep the mark's up along the world's up (drips run down), stretched by `aspect` along it.
+      n.set(nx, ny, nz); bx.set(0, 1, 0).cross(n).normalize(); by.copy(n).cross(bx);
+      q.setFromRotationMatrix(mat.makeBasis(bx, by, n));
+    } else q.setFromUnitVectors(up, n.set(nx, ny, nz));
+    this.holes.setMatrixAt(i, mat.compose(v.set(x + nx * 0.012, y + ny * 0.012, z + nz * 0.012), q, s.set(size * aspect[0], size * aspect[1], size)));
     this.holes.instanceMatrix.needsUpdate = true;
+  }
+  /** A pool spreading on the floor at (x, z) to rx by rz metres over `grow` seconds, at height y (stays for the round). */
+  pool(x: number, y: number, z: number, rx: number, rz: number, grow = 4, cell = 11, tint: readonly [number, number, number] = [1, 1, 1], delay = 0) {
+    const i = this.poolNext; this.poolNext = (this.poolNext + 1) % 24;
+    this.poolState[i] = { x, y, z, rx, rz, t: -delay, grow, yaw: Math.random() * 6.28 };
+    this.pools.setColorAt(i, col.setRGB(tint[0], tint[1], tint[2])); this.pools.instanceColor!.needsUpdate = true;
+    this.poolCell.setX(i, cell); this.poolCell.needsUpdate = true; this.poolLive = 1;
   }
   /** A round stopped by steel: a bright scar where the paint came off (never a hole). */
   scar(x: number, y: number, z: number, nx: number, ny: number, nz: number, size = 0.06) {
@@ -184,7 +201,7 @@ export class Effects {
   clearHoles(tag: number) {
     let any = false;
     for (let i = 0; i < 32; i++) if (this.scorchTag[i] === tag) { this.scorchTag[i] = -1; this.scorches.setMatrixAt(i, ZERO); this.scorches.instanceMatrix.needsUpdate = true; }
-    for (let i = 0; i < 160; i++) if (this.holeTag[i] === tag) { this.holeTag[i] = -1; this.holes.setMatrixAt(i, ZERO); any = true; }
+    for (let i = 0; i < 256; i++) if (this.holeTag[i] === tag) { this.holeTag[i] = -1; this.holes.setMatrixAt(i, ZERO); any = true; }
     if (any) this.holes.instanceMatrix.needsUpdate = true;
   }
   flash(x: number, y: number, z: number, size: number, life: number, tint: readonly [number, number, number] = [1, 1, 1]) {
@@ -224,6 +241,18 @@ export class Effects {
     if (y < 2.2) this.scorch(x, 0.002, z, 0, 1, 0, (kind === 'impact' ? 0.8 : 1.4) * power + Math.random() * 0.4);
   }
   update(dt: number, pixelHeight: number, fov: number) {
+    if (this.poolLive) {
+      let growing = 0;
+      this.poolState.forEach((p, i) => {
+        if (!p || p.t >= p.grow) return;
+        p.t = Math.min(p.grow, p.t + dt); growing++;
+        const k = p.t <= 0 ? 0 : 1 - (1 - p.t / p.grow) ** 2;
+        yawQ.setFromAxisAngle(n.set(0, 1, 0), p.yaw);
+        this.pools.setMatrixAt(i, mat.compose(v.set(p.x, p.y, p.z), q.copy(yawQ).multiply(flat), s.set(Math.max(0.01, p.rx * 2 * k), Math.max(0.01, p.rz * 2 * k), 1)));
+      });
+      this.pools.instanceMatrix.needsUpdate = true;
+      if (!growing) this.poolLive = 0;
+    }
     const scale = pixelHeight / (2 * Math.tan(fov * Math.PI / 360));
     this.dustP.material.uniforms.scale.value = scale; this.sparkP.material.uniforms.scale.value = scale;
     this.dustP.update(dt); this.sparkP.update(dt);
@@ -276,8 +305,9 @@ export class Effects {
   clear() {
     this.dustP.clear(); this.sparkP.clear();
     for (let i = 0; i < this.maxChunks; i++) { this.chunk[i].life = 0; this.chunks.setMatrixAt(i, ZERO); }
-    for (let i = 0; i < 160; i++) this.holes.setMatrixAt(i, ZERO);
+    for (let i = 0; i < 256; i++) this.holes.setMatrixAt(i, ZERO);
     this.holeTag.fill(-1);
+    for (let i = 0; i < 24; i++) { this.poolState[i] = null; this.pools.setMatrixAt(i, ZERO); } this.pools.instanceMatrix.needsUpdate = true;
     for (let i = 0; i < 32; i++) this.scorches.setMatrixAt(i, ZERO);
     this.scorchTag.fill(-1); this.scorches.instanceMatrix.needsUpdate = true;
     for (let i = 0; i < 40; i++) { this.tracerLife[i] = 0; this.tracers.setMatrixAt(i, ZERO); }
@@ -287,7 +317,7 @@ export class Effects {
   }
   dispose() {
     this.dustP.dispose(); this.sparkP.dispose();
-    for (const m of [this.chunks, this.tracers, this.holes, this.scorches, this.scars, this.powders]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }
+    for (const m of [this.pools, this.chunks, this.tracers, this.holes, this.scorches, this.scars, this.powders]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }
     for (const f of this.flashes) f.sprite.material.dispose();
     for (const r of this.rings) (r.mesh.material as THREE.Material).dispose();
     this.rings[0]?.mesh.geometry.dispose();

@@ -17,7 +17,7 @@ import { createFighters, createViewmodel, type HeroLighting } from './render/her
 import { createPost, type PostTier } from './render/post';
 import { ACT, shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
 import { actDuration } from './sim';
-import { makeSprite, makeTextures, type TexId } from './textures';
+import { MARK, makeSprite, makeTextures, type TexId } from './textures';
 import { PANEL_T, cellCenter, eyeOf, panelPoint, trace, viewDir, type Panel, type World } from './world';
 
 export type QualityId = 'auto' | 'low' | 'high';
@@ -453,6 +453,50 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       panelGroup.remove(v.mesh); v.dispose(); deploys.delete(id);
     }
   }
+  /** Blood (map-fill plan 12.1), or with `?blood=off` dust and dark scuffs instead. Every client derives it from the same
+   * `shot` and `hit` events: the hit point is the nearest point on the shooter's last shot to the victim's body. */
+  const bloodOff = typeof location !== 'undefined' && /[?&]blood=off\b/.test(location.search);
+  const lastShot = new Map<number, { x: number; y: number; z: number; dirs: { x: number; y: number; z: number }[]; pellets: number }>();
+  const RED: [number, number, number] = [0.42, 0.03, 0.025];
+  function bleed(m: Match, by: number, bx: number, by0: number, bz: number, head: boolean, dmg: number) {
+    const sh = lastShot.get(by);
+    let px = bx, py = by0, pz = bz, dx = 0, dy = 0, dz = 1;
+    if (sh) {
+      let best = Infinity;
+      for (const d of sh.dirs) {
+        const t = Math.max(0, (bx - sh.x) * d.x + (by0 - sh.y) * d.y + (bz - sh.z) * d.z), qx = sh.x + d.x * t, qy = sh.y + d.y * t, qz = sh.z + d.z * t;
+        const e2 = (qx - bx) ** 2 + (qy - by0) ** 2 + (qz - bz) ** 2;
+        if (e2 < best) { best = e2; px = qx; py = qy; pz = qz; dx = d.x; dy = d.y; dz = d.z; }
+      }
+      // From the near point on the ray, step back to the body's surface (a 0.2 m radius), where the round went in.
+      px -= dx * 0.15; pz -= dz * 0.15;
+    }
+    const big = head || (sh?.pellets ?? 1) > 1, l = bake.probe(px, pz), b = 0.35 + (l[0] + l[1] + l[2]) / 3, col = bloodOff ? [0.45, 0.43, 0.4] : RED;
+    // The spray: a short burst thrown along the bullet, and droplets that land and stay.
+    for (let i = 0; i < (big ? 9 : 5); i++) fx.dust(px, py, pz, dx * (1.5 + Math.random() * 2) + (Math.random() - 0.5) * 0.8, dy * 2 + Math.random() * 0.6, dz * (1.5 + Math.random() * 2) + (Math.random() - 0.5) * 0.8, 0.08 + Math.random() * (big ? 0.16 : 0.1), 0.55 + Math.random() * 0.4, col[0] * b, col[1] * b, col[2] * b, 0.9, 1.4, -5, 1.6);
+    if (!bloodOff) for (let i = 0; i < (big ? 6 : 3); i++) fx.debris(px, py, pz, dx * (2 + Math.random() * 2) + (Math.random() - 0.5), Math.random() * 1.5, dz * (2 + Math.random() * 2) + (Math.random() - 0.5), 0.008 + Math.random() * 0.008, RED[0] * b, RED[1] * b, RED[2] * b, true, 0.95);
+    // Spatter on whatever lies within about 3 m behind, elongated at a shallow angle; drips on a wall.
+    const tr = trace(m.world, px, py, pz, dx, dy, dz, 3);
+    const hit = tr.soft.length ? { t: tr.soft[0].t, nx: 0, ny: 0, nz: 0, tag: tr.soft[0].panel.id * 4096 + tr.soft[0].cell, panel: tr.soft[0].panel } : tr.solid ? { t: tr.t, nx: tr.nx, ny: tr.ny, nz: tr.nz, tag: -1, panel: null } : null;
+    if (hit) {
+      if (hit.panel) { const ax = hit.panel.axis === 'x'; hit.nx = ax ? 0 : -Math.sign(dx) || 1; hit.nz = ax ? -Math.sign(dz) || 1 : 0; }
+      // On a panel the mark sits on its face (half its thickness out from its line); on a room floor, above its 2 cm lift.
+      const face = hit.panel ? PANEL_T / 2 : 0, sx = px + dx * hit.t + hit.nx * face, sz = pz + dz * hit.t + hit.nz * face;
+      const sy = hit.ny > 0.5 && py + dy * hit.t < 0.05 ? 0.026 : py + dy * hit.t, graze = Math.abs(dx * hit.nx + dy * hit.ny + dz * hit.nz);
+      const size = (big ? 0.5 : 0.32) * (0.8 + Math.random() * 0.4) * Math.min(1.4, 0.5 + dmg / 40), stretch = 1 / Math.max(0.45, graze);
+      fx.hole(sx, sy, sz, hit.nx, hit.ny, hit.nz, size, hit.tag, bloodOff ? MARK.scuff : MARK.spatter, bloodOff ? [1, 1, 1] : [1, 1, 1], [1, stretch], Math.abs(hit.ny) < 0.5);
+      if (!bloodOff && Math.abs(hit.ny) < 0.5 && sy > 0.6) fx.hole(sx, sy - size * 0.55, sz, hit.nx, hit.ny, hit.nz, size * 0.7, hit.tag, MARK.drip, [1, 1, 1], [0.8, 1.4], true);
+    }
+  }
+  /** A pool spreading under a fallen fighter, shaped by what is round it (short traces stop it at walls and furniture). */
+  function pool(m: Match, x: number, z: number) {
+    const reach = (ux: number, uz: number) => { const t = trace(m.world, x, 0.06, z, ux, 0, uz, 0.9); return t.solid ? Math.max(0.15, t.t - 0.05) : 0.9; };
+    const rx = Math.min(reach(1, 0), reach(-1, 0), 0.9) * (0.85 + Math.random() * 0.2), rz = Math.min(reach(0, 1), reach(0, -1), 0.9) * (0.85 + Math.random() * 0.2);
+    let floorY = 0.024;
+    for (const f of MAP.floors) if (x >= f.x0 && x <= f.x1 && z >= f.z0 && z <= f.z1) floorY = f === MAP.floors[0] ? 0.006 : f.mat === 'grass' ? 0.018 : 0.026;
+    // It starts spreading once the body is down (about a second after the kill).
+    fx.pool(x, floorY, z, rx, rz, 5, bloodOff ? MARK.scuff : MARK.pool, [1, 1, 1], 1);
+  }
   const ray = new THREE.Raycaster(), rayO = new THREE.Vector3(), rayD = new THREE.Vector3(), rayHit = new THREE.Vector3(), nrm = new THREE.Vector3();
   function passThrough(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, tmax: number) {
     const a = art!;
@@ -504,6 +548,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             if (mine) { ox += fwd.x * 0.7 + Math.cos(e.yaw) * 0.1; oy += fwd.y * 0.7 - 0.09; oz += fwd.z * 0.7 - Math.sin(e.yaw) * 0.1; }
             else if (fighters.muzzle(e.id, v3)) { ox = v3.x; oy = v3.y; oz = v3.z; fx.flash(ox, oy, oz, 0.5 + Math.random() * 0.25, 0.05); }
             const dirs = shotDirs(e.yaw, e.pitch, e.spread, def.pellets, e.seed);
+            lastShot.set(e.id, { x: e.x, y: e.y, z: e.z, dirs, pellets: def.pellets });
             dirs.forEach((d, i) => {
               const tr = trace(m.world, e.x, e.y, e.z, d.x, d.y, d.z, 120), hx = e.x + d.x * tr.t, hy = e.y + d.y * tr.t, hz = e.z + d.z * tr.t;
               if (def.pellets === 1 || i % 2 === 0) fx.tracer(ox, oy, oz, hx, hy, hz);
@@ -555,7 +600,14 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             const f = fighters.pose(e.on), p = m.players[e.on];
             if (!f || !p) break;
             const y = e.head ? 1.6 - f.crouch * 0.6 : 1.1 - f.crouch * 0.4;
+            bleed(m, e.by, f.x, y, f.z, e.head, e.dmg);
             for (let i = 0; i < 3; i++) fx.dust(f.x + (Math.random() - 0.5) * 0.2, y + (Math.random() - 0.5) * 0.2, f.z + (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 1.5, Math.random(), (Math.random() - 0.5) * 1.5, 0.12, 0.35, 0.5, 0.06, 0.05, 0.6, 1.2, 2);
+            break;
+          }
+          case 'kill': {
+            // The body falls back along the shot that killed it; the pool spreads where it settles.
+            // Under where the body comes to rest: it falls away from the shot, its chest about 0.6 m from its feet.
+            { const d = lastShot.get(e.by)?.dirs[0], f = fighters.pose(e.on); if (f) pool(m, f.x + (d?.x ?? 0) * 0.6, f.z + (d?.z ?? 0) * 0.6); }
             break;
           }
           case 'panel': {
