@@ -64,6 +64,7 @@ export interface BreachScene {
   resize(width: number, height: number): void;
   setQuality(q: QualityId): void;
   /** Screen position (0 to 1) of a world point, and whether it is in front of the camera. */
+  /** Screen position (0 to 1) of a world point; the result is reused by the next call. */
   project(x: number, y: number, z: number): { x: number; y: number; front: boolean };
   /** Where the camera is and which way it faces, for sound. */
   readonly ear: { x: number; y: number; z: number; yaw: number };
@@ -120,11 +121,13 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const panelMats: PanelMaterials = { wall: materials.drywall, core: materials.core, planks: materials.planks, plate: materials.plate };
   const panelGroup = new THREE.Group(); scene.add(panelGroup);
   let world: World | null = null, panels: PanelView[] = [];
+  /** Whole panels join the wall batches at a round's start (and when a world is bound), not during it. */
+  let rejoin = true;
   // Undamaged panels sharing a material draw as one merged mesh (render/panelbatch.ts).
   let batches = new PanelBatches(panelGroup);
   function bind(w: World) {
     for (const p of panels) { panelGroup.remove(p.mesh); p.dispose(); }
-    batches.dispose(); batches = new PanelBatches(panelGroup);
+    batches.dispose(); batches = new PanelBatches(panelGroup); rejoin = true;
     world = w;
     // `?artdbg=world` exposes the bound world to evidence scripts (read-only use: finding damaged or reinforced panels).
     if (typeof location !== 'undefined' && /artdbg=[^&]*world/.test(location.search)) (window as unknown as { __blWorld: World }).__blWorld = w;
@@ -282,7 +285,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const opts = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
   const fighters = opts.get('fighters') === 'stock' ? createFighters(scene, heroLighting) : createPatchFighters(scene, heroLighting);
   const viewmodel = opts.get('weapons') === 'patch' ? createPatchViewmodel(renderer, heroLighting) : createViewmodel(renderer, heroLighting);
-  const v3 = new THREE.Vector3();
+  const v3 = new THREE.Vector3(), projected = { x: 0, y: 0, front: false };
 
   // ---- Gadgets and markers ----
   const lambert = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -996,7 +999,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
             for (let i = 0; i < 6; i++) fx.dust(c.x + (Math.random() - 0.5) * 1.5, c.y + (Math.random() - 0.5) * 1.5, c.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5), Math.random() * 0.5, (Math.random() - 0.5), 0.3, 0.8, 0.6, 0.58, 0.52, 0.35);
             break;
           }
-          case 'phase': if (e.phase === 'prep') { fx.clear(); fighters.reset(); glass.reset(); pieces?.reset(); breakables?.reset(); pendingPools.length = 0; fallenDecor.clear(); } break;
+          case 'phase': if (e.phase === 'prep') { rejoin = true; fx.clear(); fighters.reset(); glass.reset(); pieces?.reset(); breakables?.reset(); pendingPools.length = 0; fallenDecor.clear(); } break;
           case 'spawn': fighters.reset(e.at.map(([id]) => id)); break;
         }
       }
@@ -1013,16 +1016,17 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       time += dt;
       if (view.m.world !== world) bind(view.m.world);
       // In a fight, rebuild only the nearest changed panel each frame, so a burst of breaks never stalls one frame;
-      // between rounds, all of them at once.
+      // between rounds and after binding a world, all of them at once.
       let synced = false, next: PanelView | null = null, best = Infinity;
-      const fight = view.m.phase === 'action' || view.m.phase === 'planted';
+      const fight = !rejoin && (view.m.phase === 'action' || view.m.phase === 'planted');
       for (const p of panels) {
         if (!p.stale()) continue;
-        if (!fight) { p.sync(); batches.update(p); synced = true; continue; }
+        if (!fight) { p.sync(); batches.update(p, rejoin); synced = true; continue; }
         const d = p.distSq(camera.position.x, camera.position.z);
         if (d < best) { best = d; next = p; }
       }
-      if (next) { next.sync(); batches.update(next); synced = true; }
+      if (next) { next.sync(); batches.update(next, false); synced = true; }
+      if (synced) rejoin = false;
       // A rebuilt panel takes its full material back; on the cheap path, swap it again.
       if (synced && cheap) setCheapShading(panelGroup, true);
       batches.flush();
@@ -1080,7 +1084,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     },
     project(x, y, z) {
       v3.set(x, y, z).project(camera);
-      return { x: v3.x * 0.5 + 0.5, y: 0.5 - v3.y * 0.5, front: v3.z < 1 && v3.z > -1 };
+      projected.x = v3.x * 0.5 + 0.5; projected.y = 0.5 - v3.y * 0.5; projected.front = v3.z < 1 && v3.z > -1;
+      return projected;
     },
     dispose() {
       disposed = true;

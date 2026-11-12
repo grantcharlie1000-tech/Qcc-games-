@@ -2,11 +2,11 @@
 /** Allocation profile: the same live match as perfprofile.mjs (firing at walls, or idle with `idle`), sampled by the
  * heap profiler including objects already collected, so the total is what the frame loop allocates. Prints MB/s and
  * the functions that allocate most.
- *   node scripts/breachline-assets/allocprofile.mjs <auto|low|high> <seconds> [fire|idle]   */
+ *   node scripts/breachline-assets/allocprofile.mjs <auto|low|high> <seconds> [fire|idle]   (W and H set the window size; a small one gives software GL enough frames) */
 import { chromium } from 'playwright';
 const quality = process.argv[2] || 'auto', secs = Number(process.argv[3] || 15), url = process.env.URL || 'http://127.0.0.1:4175', idle = process.argv[4] === 'idle';
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+const context = await browser.newContext({ viewport: { width: Number(process.env.W || 1280), height: Number(process.env.H || 720) } });
 await context.addInitScript(() => { localStorage.setItem('pocket-arcade:v1:accounts:guest', 'true'); localStorage.setItem('qcc:festive', 'off'); localStorage.setItem('pocket-arcade:study:v1:reading-choice', 'accept'); sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading'); });
 const page = await context.newPage();
 page.on('pageerror', e => console.log('[pageerror]', e.message));
@@ -36,8 +36,11 @@ const { profile } = await cdp.send('HeapProfiler.stopSampling');
 const el = (Date.now() - t0) / 1000, frames = (await page.evaluate(() => window.__perfFrames.length)) - f0;
 await page.mouse.up();
 const self = new Map(); let total = 0;
-const walk = (n, path) => { const name = `${n.callFrame.functionName || '(anon)'} ${n.callFrame.url.split('/').pop()}:${n.callFrame.lineNumber + 1}`; const s = n.selfSize || 0; total += s; if (s) self.set(name, (self.get(name) || 0) + s); for (const c of n.children || []) walk(c, path); };
-walk(profile.head, '');
+// Native frames (iterators, Array.from, push) are named with the script function that called them.
+const label = n => `${n.callFrame.functionName || '(anon)'} ${n.callFrame.url.split('/').pop()}:${n.callFrame.lineNumber + 1}`;
+const via = new Map();
+const walk = (n, caller, path) => { const native = !n.callFrame.url, name = native ? `${n.callFrame.functionName || '(native)'} in ${caller}` : label(n), s = n.selfSize || 0, here = [...path, n.callFrame.functionName || '(anon)'].slice(-6); total += s; if (s) { self.set(name, (self.get(name) || 0) + s); const m = via.get(name) || new Map(), k = here.slice(0, -1).join(' > '); m.set(k, (m.get(k) || 0) + s); via.set(name, m); } for (const c of n.children || []) walk(c, native ? caller : label(n), here); };
+walk(profile.head, '(root)', []);
 console.log(`${quality} ${idle ? 'idle' : 'firing'}: ${(total / 1048576 / el).toFixed(2)} MB/s, ${(total / 1024 / Math.max(1, frames)).toFixed(1)} KB per frame, ${frames} frames in ${el.toFixed(1)} s`);
-for (const [n, s] of [...self].sort((x, y) => y[1] - x[1]).slice(0, 25)) console.log(`  ${(s / 1048576 / el).toFixed(3).padStart(7)} MB/s  ${n}`);
+[...self].sort((x, y) => y[1] - x[1]).slice(0, 25).forEach(([n, s], i) => { console.log(`  ${(s / 1048576 / el).toFixed(3).padStart(7)} MB/s  ${n}`); if (i < 6 && process.env.VIA) console.log(`           via ${[...via.get(n)].sort((x, y) => y[1] - x[1])[0][0]}`); });
 await browser.close();

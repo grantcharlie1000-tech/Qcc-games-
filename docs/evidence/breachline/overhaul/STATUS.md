@@ -14,7 +14,15 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 - **Auto's bottom step has no post pass.** The low post tier has no FXAA, and the light tier has no anisotropic filtering.
 - **Room and portal culling**, with far rooms on the light tier drawn as one mesh each, and each room's ambience in one draw.
 - **Particles rebuilt** as instanced quads; the old ones turned a frag into a flat white slab across the screen.
-- **Garbage while firing** went from 10.5 to about 4.5 MB/s. The ragdoll and IK changes give bit-identical results.
+- **Garbage while firing** went from 10.5 to about 4.5 MB/s at first. In a second pass, High at 480 x 270 went from 4.0 to 2.1 MB/s firing and from 3.1 to 1.0 MB/s idle. The ragdoll, IK and animator changes give bit-identical results.
+- **No shader compiles in a match.** The warm-up now covers every output and hidden mesh. The worst frame went from 164 ms to about 16 ms.
+- **Fighters draw 2 each** (it was 7): headgear merged into the body, rifle on the weapon mesh.
+- **Spikes flattened:**
+  - one wall rebuilt per frame in a fight, nearest first;
+  - one ragdoll started per frame;
+  - damaged walls leave their batch without a re-merge;
+  - rounds test dressing through a ground grid;
+  - the HUD writes the page only when a shown value changes.
 
 **Numbers.** These are in software WebGL on this container's 4 cores at 1280 x 720. Pixels and triangles cost about a hundred times what they would on any real GPU; a draw costs a few times more.
 
@@ -25,10 +33,18 @@ Plan: `docs/superpowers/plans/2026-11-11-breachline-visual-overhaul.md`. Branch:
 | Performance, corridor | 255 to 292 ms | about 150 ms |
 | Draws, corridor, Performance | about 440 | 182 |
 | Draws, Lab, Performance | 361 | 127 |
-| Main-thread script per frame, Performance | | median 5.2 to 5.7 ms (worst 26 to 37) |
+| Main-thread script per frame, Performance | median 5.2 to 5.7 ms (worst 26 to 37) | median 5.0 to 5.1 ms (worst 15 to 16) |
+| Frames over 12 ms of script, Performance, 15 s firefight | 10 of 144 (one compile at 164 ms) | 6 of 129 and 2 of 135 |
+| Frames over 8 ms of script, Performance, 15 s firefight | 25 of 144 | 20 of 129 and 17 of 135 |
+| Main-thread script per frame, High | | median 5.5 to 6.3 ms; garbage collection 3.4 to 3.9 ms per drawn frame at 2 fps |
 | Main-thread script per frame, Auto bottom step | | median 6.8 to 7.1 ms |
 
-Of the script time, about 4 to 5 ms is three.js submitting the draws, under 1 ms is the scene's own update, and the simulation, HUD and garbage collection are under 0.5 ms each on average. The 4 ms target is not met yet. Fewer draws is the lever, and on a Chromebook's slower processor that share matters most.
+Of the script time, about 3.5 to 4 ms is three.js submitting the draws, under 1 ms is the scene's own update, and the simulation and HUD are under 0.25 ms each on average. **Targets not met:**
+- Performance median: 5 ms against 4.
+- Frames over 12 ms on Performance: a few remain (panel rebuild, culling walk and draw submission each 3 to 6 ms in a bad frame).
+- High: 5.5 to 6.3 ms against 6, on the edge.
+
+Draw submission is the bulk, so fewer draws is still the lever. Software GL also adds noise of about 25% between runs.
 
 **What only a real device can answer.**
 - The real frame rate.
@@ -45,6 +61,38 @@ Open the game with `?perf=1`, or press F3 in a match, and send a screenshot of t
 - **Smaller cost.** The same feature also scans the page's layout every 140 ms, which costs about 1 to 2 ms a frame even with the readback gone.
 
 ## For the planner (latest first)
+
+### Hitches, fighters, garbage, HUD (e6deb846, 00dc2d30, b3fcffe7)
+
+**Hitches.** The big spikes (115 to 165 ms) were shader compiles in play:
+- the cheap art twins had never been compiled into the HDR target;
+- hidden meshes were skipped, because three compiles only what is visible;
+- ANGLE finishes linking a program at first use.
+
+The warm-up now covers all three. Also:
+- in a fight, one wall is rebuilt per frame, nearest first;
+- one ragdoll starts per frame, and its code is warmed;
+- a ground grid for the dressing ray test (tested to match the full scan);
+- static art and level matrices are frozen.
+
+**Fighters.** 2 draws each on both tiers (was 7). Evidence: `perf/fighter-draws-before-after.png` and `perf/fighter-draws-rifle.png`.
+
+**Garbage.** `allocprofile.mjs` measures it. High at 480 x 270: firing 4.04 to 2.10 MB/s, idle 3.07 to 1.03 MB/s. What went:
+- batch re-merges;
+- boxed numbers in panel geometry;
+- the animator's per-frame objects;
+- three skinning every vertex for a new fighter's bounding sphere.
+
+**HUD prep.** In `index.ts` and `hud.ts`, the view, markers and HUD input are reused, and text and the DOM are written only when a shown value changes.
+
+**Test.** A wrecked set piece and what falls from a shot wall are drawn where they are, and every object's drawn transform matches its own position chain. I checked it fails if a frozen object moves.
+
+**Final split.** 15 s firefight:
+
+| | Median | Worst | Over 8 ms | Over 12 ms |
+|---|---|---|---|---|
+| Performance | 5.0 to 5.1 ms | 15 to 16 ms | 20 and 17 | 6 and 2 |
+| High | 5.5 to 6.3 ms | | | |
 
 ### Performance
 
@@ -836,7 +884,7 @@ Weapons, hands and fighters (rows E and F, phases 6 and 7) now belong to the her
 contrast and modelled fixtures, visible specular, post chain basics, dense Lab props; then KTX2 and the phase-1
 renderer work, measured against section 5.
 
-**Where I am (keep current):** performance lead. Experiments done, room culling in; next: fewer draws inside a room (merging), no per-hit geometry, then the low steps' remaining scene cost.
+**Where I am (keep current):** performance lead. Hitches, fighters' draws, garbage, HUD prep and the moved-things test done (b3fcffe7). Stopped; waiting for the owner's readout and the planner.
 
 ## Map fill, Phase A, revision 2 (`mapfill/greybox-plan-2.png`, 960 px)
 
