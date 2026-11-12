@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { readMeshBin } from '../meshbin';
-import { AR5, at } from '../sculpt/designs';
+import { AR5, HALDEN, at } from '../sculpt/designs';
 import { ArtLoader } from '../../assets';
 import { texturedMaterial } from '../material';
 
@@ -24,8 +24,10 @@ const lensMat = new THREE.MeshStandardMaterial({ color: 0x9fb4c2, roughness: 0.0
 const art = new ArtLoader(renderer, 'high');
 
 let weapon: THREE.Mesh | null = null, lens: THREE.Mesh | null = null, pistol: THREE.Group | null = null, info: Record<string, unknown> = {};
+let curDir = 'ar5';
 let weaponTex: THREE.Material | null = null, pistolTex: THREE.Material | null = null;
 async function load(dir = 'ar5', textured = false) {
+  curDir = dir;
   const buf = await (await fetch(`${BASE}game-art/breachline/hero/${dir}/mesh.bin`)).arrayBuffer();
   const { geometries, header } = readMeshBin(buf);
   info = header.info ?? {};
@@ -73,7 +75,8 @@ function sheet() {
   for (const c of [...scene.children]) if (c !== key && c !== rim && c !== hemi) scene.remove(c);
   finish(false); scene.add(weapon!);
   scene.background = new THREE.Color(0xe9e6df); renderer.setScissorTest(true);
-  const S = 1.22; // px per mm
+  const S = curDir === 'halden12' ? 1.05 : 1.22; // px per mm
+  const SHt = curDir === 'halden12' ? HALDEN.sightH : AR5.sightH;
   // Side view: muzzle left. Region centre is the bore at u = 175.
   const views: { name: string; cx: number; cy: number; s: number; cam: THREE.OrthographicCamera; map: (x: number, y: number, u: number) => [number, number] }[] = [];
   const mk = (name: string, cx: number, cy: number, rw: number, rh: number, s: number, pos: THREE.Vector3, up: THREE.Vector3, look: THREE.Vector3, map: (x: number, y: number, u: number) => [number, number]) => {
@@ -86,10 +89,10 @@ function sheet() {
   const uc = 175, sideC = [600, 330], topC = [600, 660], frontC = [1400, 380];
   renderer.setScissorTest(false); renderer.setClearColor(0xf4f2ee, 1); renderer.clear(); renderer.setScissorTest(true);
   const yc = -0.068 - 0.04; // look a little below the bore
-  mk('side', sideC[0], sideC[1], 1140, 430, S, new THREE.Vector3(-3, yc, -uc / 1000), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, yc, -uc / 1000), (x, y, u) => [sideC[0] + (uc - u) * S, sideC[1] - (y - AR5.sightH - yc * 1000) * S]);
+  mk('side', sideC[0], sideC[1], 1140, 430, S, new THREE.Vector3(-3, yc, -uc / 1000), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, yc, -uc / 1000), (x, y, u) => [sideC[0] + (uc - u) * S, sideC[1] - (y - SHt - yc * 1000) * S]);
   mk('top', topC[0], topC[1], 1140, 120, S, new THREE.Vector3(0, 3, -uc / 1000), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, -uc / 1000), (x, _y, u) => [topC[0] + (uc - u) * S, topC[1] - x * S]);
   const SF = 2.2;
-  mk('front', frontC[0], frontC[1], 300, 640, SF, new THREE.Vector3(0, yc, -3), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, yc, 0), (x, y) => [frontC[0] - x * SF, frontC[1] - (y - AR5.sightH - yc * 1000) * SF]);
+  mk('front', frontC[0], frontC[1], 300, 640, SF, new THREE.Vector3(0, yc, -3), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, yc, 0), (x, y) => [frontC[0] - x * SF, frontC[1] - (y - SHt - yc * 1000) * SF]);
   renderer.setScissorTest(false); renderer.setViewport(0, 0, w, h); scene.background = new THREE.Color(0x34373a); renderer.setClearColor(0x000000, 1);
   // Annotations.
   const V = Object.fromEntries(views.map(v => [v.name, v]));
@@ -115,6 +118,7 @@ function sheet() {
     if (v === 'top') { const lx = a + off; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(a, ya); g.lineTo(lx, ya); g.moveTo(b, yb); g.lineTo(lx, yb); g.stroke(); g.setLineDash([]); arrow(lx, ya, lx, yb); label(t, lx + (off > 0 ? 6 : -6), (ya + yb) / 2 + 4, off > 0 ? 'left' : 'right'); }
     else { const ly = ya + off; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(a, ya); g.lineTo(a, ly); g.moveTo(b, yb); g.lineTo(b, ly); g.stroke(); g.setLineDash([]); arrow(a, ly, b, ly); label(t, (a + b) / 2, ly - 4); }
   };
+  if (curDir === 'halden12') return haldenDims(V, dimU, dimY, dimX, label, g, h);
   const A = AR5, H = A.handguard, M = A.muzzle;
   dimU('side', A.stock.butt, M.u1, -200, 40, `overall ${M.u1 - A.stock.butt}`);
   dimU('side', 186, A.barrel.muzzle, 0, -150, `barrel ${A.barrel.muzzle - 186}`);
@@ -150,6 +154,27 @@ function sheet() {
   ];
   notes.forEach((t, i) => g.fillText(t, 24, h - 80 + i * 18));
   return { triangles: weapon!.geometry.index!.count / 3, sockets: at(0, 0, 0) };
+}
+
+type Dim = (v: string, a: number, b: number, c: number, off: number, t: string, x?: number) => void;
+/** The Halden 12's dimensions, from its design table. */
+function haldenDims(V: Record<string, { map: (x: number, y: number, u: number) => [number, number] }>, dimU: Dim, dimY: (v: string, a: number, b: number, u: number, off: number, t: string) => void, dimX: Dim, label: (t: string, x: number, y: number, al?: CanvasTextAlign) => void, g: CanvasRenderingContext2D, h: number) {
+  const D = HALDEN; void V; void label;
+  dimU('side', D.stock.butt - 18, D.barrel.u1, -110, 40, `overall ${D.barrel.u1 - D.stock.butt + 18}`);
+  dimU('side', D.barrel.u0, D.barrel.u1, 12, -95, `barrel ${D.barrel.u1 - D.barrel.u0}`);
+  dimU('side', D.receiver.u0, D.receiver.u1, D.receiver.top, -125, `receiver ${D.receiver.u1 - D.receiver.u0}`);
+  dimU('side', D.pump.u0, D.pump.u1, D.pump.bottom, 40, `pump ${D.pump.u1 - D.pump.u0}, travel ${D.pump.travel}`);
+  dimU('side', D.tube.u1 + 15, D.barrel.u0, D.tube.y - 12, 70, `magazine tube ${D.tube.u1 + 15 - D.barrel.u0}`);
+  dimY('side', 0, D.sightH, 20, -60, `sight height ${D.sightH}`);
+  dimX('top', -D.receiver.half, D.receiver.half, 150, 200, `receiver ${D.receiver.half * 2}`);
+  dimX('top', -D.pump.half, D.pump.half, 400, 200, `pump ${D.pump.half * 2}`);
+  dimX('front', -D.pump.half, D.pump.half, 400, 70, `pump ${D.pump.half * 2}`, D.pump.bottom);
+  g.textAlign = 'left'; g.fillStyle = '#1d1d1d'; g.font = 'bold 20px sans-serif'; g.fillText(`${D.name}: design sheet (Breachline's own design), millimetres`, 24, 34);
+  g.font = '13px sans-serif'; g.fillStyle = '#333';
+  ['Pump shotgun, 12 gauge: ghost-ring rear sight with ears, ramped front post with a tritium dot, tube magazine with cap and sling loop, barrel clamp.',
+    `Ribbed polymer pump (moving part, ${D.pump.travel} mm travel), five-shell side saddle on the left, pistol grip raked ${Math.round(D.grip.rake * 180 / Math.PI)}°, stock with recessed panels and a ribbed pad.`,
+    'Moving parts: pump, bolt, trigger, loading shell, three spent hulls. Dimensions from HALDEN in render/hero/sculpt/designs.ts.'].forEach((t, i) => g.fillText(t, 24, h - 62 + i * 18));
+  return {};
 }
 
 declare global { interface Window { __heroV2: unknown; __heroV2Ready: boolean } }

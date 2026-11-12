@@ -16,7 +16,8 @@ import { MeshoptSimplifier } from 'meshoptimizer';
 import * as THREE from 'three';
 import { mergeVertices, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MAT, ar5Parts, type Part } from '../../../src/games/breachline/render/hero/sculpt/ar5';
-import { AR5 } from '../../../src/games/breachline/render/hero/sculpt/designs';
+import { AR5, HALDEN } from '../../../src/games/breachline/render/hero/sculpt/designs';
+import { haldenParts } from '../../../src/games/breachline/render/hero/sculpt/halden12';
 import { packMeshBin, type MeshArrays } from '../../../src/games/breachline/render/hero/meshbin';
 import { meshField, type RawMesh } from './mesher';
 import { chartUnwrap } from './chart';
@@ -27,14 +28,15 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const arg = (k: string, d: string) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
 const CLAY = process.argv.includes('--clay');
 
-export interface Weapon { id: string; dir: string; parts: (hi: boolean) => Part[]; sightH: number; budget: number; grid: number; lens?: { r: number; u: number[] }; dot?: { u: number; r: number } }
+export interface Weapon { id: string; dir: string; parts: (hi: boolean) => Part[]; sightH: number; budget: number; grid: number; lens?: { r: number; u: number[] }; dot?: { u: number; r: number; y?: number } }
 export const WEAPONS: Record<string, Weapon> = {
+  halden12: { id: 'halden12', dir: 'halden12', parts: haldenParts, sightH: HALDEN.sightH, budget: 10500, grid: 0.4, dot: { u: 661, r: 0.9, y: HALDEN.sightH - 2.2 } },
   ar5: { id: 'ar5', dir: 'ar5', parts: ar5Parts, sightH: AR5.sightH, budget: 12500, grid: 0.4, lens: { r: AR5.optic.bore, u: [AR5.optic.u0 + 2.5, AR5.optic.u1 - 2.5] }, dot: { u: AR5.optic.dot, r: AR5.optic.dotR } },
 };
 
 /** Meshes each part (cached by the sculpt sources' hash) and pre-simplifies to 0.03 mm. */
 async function meshParts(w: Weapon, parts: Part[]): Promise<RawMesh[]> {
-  const src = await Promise.all(['src/games/breachline/render/hero/sculpt/sdf.ts', `src/games/breachline/render/hero/sculpt/${w.id}.ts`, 'src/games/breachline/render/hero/sculpt/designs.ts', 'scripts/breachline-assets/hero/mesher.ts'].map(f => readFile(join(ROOT, f))));
+  const src = await Promise.all(['src/games/breachline/render/hero/sculpt/sdf.ts', `src/games/breachline/render/hero/sculpt/${w.id}.ts`, 'src/games/breachline/render/hero/sculpt/kit.ts', 'src/games/breachline/render/hero/sculpt/designs.ts', 'scripts/breachline-assets/hero/mesher.ts'].map(f => readFile(join(ROOT, f))));
   const key = createHash('sha256').update(Buffer.concat(src)).update(String(w.grid)).digest('hex').slice(0, 16);
   const cache = join(ROOT, '.cache/hero-sculpt', `${w.id}-${key}.json`);
   try { const j = JSON.parse(await readFile(cache, 'utf8')); return j.map((m: { pos: number[]; nor: number[]; idx: number[] }) => ({ pos: new Float32Array(m.pos), nor: new Float32Array(m.nor), idx: new Uint32Array(m.idx) })); } catch { /* build */ }
@@ -128,7 +130,7 @@ export async function buildGameMesh(w: Weapon) {
   const meshes = toBudget(await meshParts(w, parts), parts, w.budget);
   parts.forEach((p, k) => console.log(`  ${p.name.padEnd(18)} ${String(meshes[k].idx.length / 3).padStart(6)} tris`));
   const list = meshes.map((m, k) => ({ m, bone: parts[k].bone, flag: 0, part: k }));
-  if (w.dot) list.push({ m: disc(w.sightH, w.dot.u, w.dot.r, 10), bone: 0, flag: 1, part: 255 });
+  if (w.dot) list.push({ m: disc(w.dot.y ?? w.sightH, w.dot.u, w.dot.r, 10), bone: 0, flag: 1, part: 255 });
   const game = creased(merge(list, w.sightH), 40);
   const lens = w.lens ? merge(w.lens.u.map(u => ({ m: disc(w.sightH, u, w.lens!.r, 32), bone: 0, flag: 0, part: 254 })), w.sightH) : null;
   return { parts, game, lens };
@@ -158,6 +160,7 @@ const FINISH: Record<number, { c: number; r: number; m: number; edge: number; ed
   [MAT.rubber]: { c: 0x434442, r: 0.86, m: 0, edge: 0x4a4b49, edgeR: 0.8, edgeM: 0, wear: 0.2 },
   [MAT.brass]: { c: 0xb08d57, r: 0.34, m: 1, edge: 0xd4b07a, edgeR: 0.25, edgeM: 1, wear: 0.4 },
   [MAT.dark]: { c: 0x161616, r: 0.9, m: 0, edge: 0x161616, edgeR: 0.9, edgeM: 0, wear: 0 },
+  [MAT.hull]: { c: 0x8c2c23, r: 0.5, m: 0, edge: 0xa3443a, edgeR: 0.45, edgeM: 0, wear: 0.3 },
   [MAT.glow]: { c: 0xff3a22, r: 0.5, m: 0, edge: 0xff3a22, edgeR: 0.5, edgeM: 0, wear: 0 },
 };
 
@@ -171,7 +174,8 @@ const GLYPH: Record<string, string> = {
   K: '10001100101010011000101001001010001', '-': '00000000000000011111000000000000000', '.': '00000000000000000000000000110001100',
   '0': '01110100011001110101110011000101110', '1': '00100011000010000100001000010001110', '2': '01110100010000100010001000100011111',
   '4': '00010001100101010010111110001000010', '5': '11111100001111000001000011000101110', '6': '00110010001000011110100011000101110',
-  '7': '11111000010001000100010000100001000', ' ': '00000000000000000000000000000000000',
+  '7': '11111000010001000100010000100001000', '3': '11110000010000101110000010000111110',
+  D: '11110100011000110001100011000111110', G: '01110100011000010111100011000101110', ' ': '00000000000000000000000000000000000',
 };
 /** Engraved lines on a flat side, in design mm: text reads left to right seen from that side. */
 const MARKS: { part: string; side: -1 | 1; u: number; y: number; h: number; text: string }[] = [
@@ -181,6 +185,10 @@ const MARKS: { part: string; side: -1 | 1; u: number; y: number; h: number; text
   { part: 'lower', side: -1, u: 171, y: -47, h: 2.2, text: 'MRW WORKS' },
   { part: 'lower', side: -1, u: 66, y: -21, h: 1.9, text: 'SAFE SEMI AUTO' },
   { part: 'optic mount', side: -1, u: 92, y: 37.5, h: 2, text: 'MRW' },
+  { part: 'receiver', side: -1, u: 182, y: 9, h: 3.6, text: 'HALDEN 12' },
+  { part: 'receiver', side: -1, u: 182, y: 2.5, h: 2.6, text: '12 GA 3 IN' },
+  { part: 'receiver', side: -1, u: 182, y: -3.5, h: 2.6, text: 'HN-31740' },
+  { part: 'receiver', side: -1, u: 182, y: -9.5, h: 2.2, text: 'MRW WORKS' },
 ];
 function marked(name: string, x: number, y: number, z: number, nx: number): boolean {
   for (const m of MARKS) {

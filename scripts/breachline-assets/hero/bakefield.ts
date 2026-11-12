@@ -7,19 +7,24 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { haldenParts } from '../../../src/games/breachline/render/hero/sculpt/halden12';
 import { ar5Parts } from '../../../src/games/breachline/render/hero/sculpt/ar5';
 import type { Fn } from '../../../src/games/breachline/render/hero/sculpt/sdf';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const [id, sliceS, slicesS] = process.argv.slice(2).filter(a => !a.startsWith('--'));
 const slice = Number(sliceS), slices = Number(slicesS);
-const PARTS: Record<string, (hi: boolean) => { f: Fn; bone: number }[]> = { ar5: hi => ar5Parts(hi).map(p => ({ f: p.s.f, bone: p.bone })) };
+const PARTS: Record<string, (hi: boolean) => { f: Fn; bone: number }[]> = {
+  ar5: hi => ar5Parts(hi).map(p => ({ f: p.s.f, bone: p.bone })),
+  halden12: hi => haldenParts(hi).map(p => ({ f: p.s.f, bone: p.bone })),
+};
 
 const buf = await readFile(join(ROOT, '.cache/hero-bake', `${id}-texels.bin`));
 const T = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4), STRIDE = 13, n = T.length / STRIDE;
 const hi = PARTS[id](true), lo = PARTS[id](false);
 // Occlusion: everything at rest except the casings (lo detail is enough at this scale).
-const occl = lo.filter(p => p.bone < 6).map(p => p.f), no = occl.length;
+// Occlusion from the weapon at rest: not the loading shell (aux) or the spent cases.
+const occl = lo.filter(p => p.bone < 5).map(p => p.f), no = occl.length;
 const F = (x: number, y: number, z: number) => { let d = 1e9; for (let i = 0; i < no; i++) { const v = occl[i](x, y, z); if (v < d) d = v; } return d; };
 // Fixed ray set: cosine-weighted, rotated per texel.
 const RAYS = 14, ray: number[][] = [];

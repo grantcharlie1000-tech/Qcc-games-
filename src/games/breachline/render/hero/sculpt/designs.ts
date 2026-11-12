@@ -26,9 +26,9 @@ export const AR5 = {
 /** Sight-line metres from design millimetres: x, y above the bore, u forward. */
 export const at = (x: number, y: number, u: number, sightH: number = AR5.sightH): [number, number, number] => [x / 1000, (y - sightH) / 1000, -u / 1000];
 
-/** The palm point on the grip: a third of the way down the raked grip, on its centre plane. */
-function gripPoint(): [number, number] {
-  const { pivot, rake } = AR5.grip, c = Math.cos(-rake), s = Math.sin(-rake), lu = 6, ly = -35;
+/** The palm point on a raked grip: a third of the way down, on its centre plane. */
+function gripPoint(pivot: readonly [number, number] = AR5.grip.pivot, rake: number = AR5.grip.rake): [number, number] {
+  const c = Math.cos(-rake), s = Math.sin(-rake), lu = 6, ly = -35;
   return [pivot[0] + (-ly * s + lu * c), pivot[1] + (ly * c + lu * s)];
 }
 
@@ -42,5 +42,35 @@ export function ar5Sockets(): WeaponSockets {
     handle: at(-16, -20, 93),
     boltTravel: A.bolt.travel / 1000, handleTravel: 0,
     trigger: at(0, -36, 80), bore: A.sightH / 1000,
+  };
+}
+
+/** Halden 12: a pump shotgun (Breachline's own design) with a ghost-ring rear sight on the receiver, a ramped front
+ * post with a tritium dot, a tube magazine under the barrel, a ribbed pump, a six-shell side saddle on the left and a
+ * polymer stock with a pistol grip. About 1015 mm overall with a 470 mm barrel. */
+export const HALDEN = {
+  name: 'Halden 12',
+  sightH: 46,
+  receiver: { u0: 0, u1: 205, half: 15, top: 22, bottom: -26 },
+  port: { u0: 72, u1: 142, y0: -6, y1: 12 },
+  loading: { u0: 70, u1: 150, half: 11.5 },
+  barrel: { r: 10.5, u0: 205, u1: 675 },
+  tube: { r: 11, y: -24, u1: 600 },
+  pump: { u0: 300, u1: 515, half: 25, top: -8, bottom: -46, travel: 90 },
+  grip: { pivot: [8, -30] as const, rake: 0.4, width: 26 },
+  stock: { butt: -330 },
+  saddle: { u0: 40, u1: 140, x: -15, shells: 5 },
+  front: { u: 662 },
+} as const;
+
+export function haldenSockets(): WeaponSockets {
+  const H = HALDEN, sh = H.sightH, [gu, gy] = gripPoint(H.grip.pivot, H.grip.rake);
+  const a = (x: number, y: number, u: number) => at(x, y, u, sh);
+  return {
+    grip: { p: a(0, gy, gu), r: [-H.grip.rake, 0, 0] },
+    support: { p: a(0, H.pump.bottom - 2, 405), r: [0, 0, 0] },
+    mag: a(0, -50, 120), muzzle: a(0, 0, H.barrel.u1), eject: a(20, 2, 105),
+    handle: a(0, -26, 405), boltTravel: 0.09, handleTravel: H.pump.travel / 1000,
+    trigger: a(0, -40, 66), bore: sh / 1000, port: a(0, -45, 120),
   };
 }
