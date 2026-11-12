@@ -4,7 +4,9 @@
  * Bloom is a small mip pyramid: a soft-knee bright pass at half resolution, blurred down four levels and summed back
  * up. Cost per tier: Low has no bloom but keeps the grade and an FXAA edge pass (it renders at reduced resolution,
  * where unfiltered edges stair-step badly); Medium blooms from quarter resolution with three levels, plus FXAA;
- * High uses half resolution, four levels and MSAA on the HDR target. 'off' draws straight to the screen. */
+ * High blooms from half resolution with three levels and has 2x MSAA on the HDR target. 'off' draws straight to the
+ * screen. Where the GPU can draw into it, the HDR target is packed 11/11/10-bit float (half the bytes of half-float
+ * RGBA, and still HDR, so bloom and the curve are unchanged); otherwise half-float. */
 import * as THREE from 'three';
 
 export type PostTier = 'off' | 'low' | 'medium' | 'high';
@@ -143,7 +145,10 @@ export function createPost(renderer: THREE.WebGLRenderer, initial: PostTier): Po
     vignette: { value: GRADE.vignette }, aspect: { value: new THREE.Vector2(1, 1) },
     texel: { value: new THREE.Vector2(1, 1) }, fxaa: { value: 0 }, blackPoint: { value: GRADE.blackPoint },
   });
-  const opts = { type: THREE.HalfFloatType, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter } as const;
+  // Packed float colour needs EXT_color_buffer_float to be drawn into; half-float is the fallback.
+  const packed = renderer.capabilities.isWebGL2 && renderer.extensions.has('EXT_color_buffer_float');
+  const fmt = packed ? { type: THREE.UnsignedInt101111Type, format: THREE.RGBFormat } : { type: THREE.HalfFloatType };
+  const opts = { ...fmt, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter } as const;
   let hdr: THREE.WebGLRenderTarget | null = null, levels: THREE.WebGLRenderTarget[] = [];
   const black = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); black.needsUpdate = true;
   const draw = (m: THREE.ShaderMaterial, target: THREE.WebGLRenderTarget | null) => { quad.material = m; renderer.setRenderTarget(target); renderer.render(scene, cam); };
@@ -152,8 +157,8 @@ export function createPost(renderer: THREE.WebGLRenderer, initial: PostTier): Po
     hdr?.dispose(); for (const l of levels) l.dispose();
     hdr = null; levels = [];
     if (tier === 'off') { cw = ch = 0; return; }
-    hdr = new THREE.WebGLRenderTarget(cw, ch, { type: THREE.HalfFloatType, depthBuffer: true, samples: tier === 'high' ? 4 : 0 });
-    const start = tier === 'high' ? 2 : 4, count = tier === 'high' ? 4 : tier === 'medium' ? 3 : 0;
+    hdr = new THREE.WebGLRenderTarget(cw, ch, { ...fmt, depthBuffer: true, samples: tier === 'high' ? 2 : 0 });
+    const start = tier === 'high' ? 2 : 4, count = tier === 'low' ? 0 : 3;
     for (let i = 0; i < count; i++) {
       const d = start << i;
       levels.push(new THREE.WebGLRenderTarget(Math.max(1, Math.round(cw / d)), Math.max(1, Math.round(ch / d)), opts));
