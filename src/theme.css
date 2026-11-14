@@ -341,6 +341,7 @@
 /* Fallbacks: no backdrop filter, reduced transparency, more contrast, and forced colours. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ui-glass-sheet,.movies-view .movies-next{background:rgb(18 22 28 / .94)}}
 @media (prefers-reduced-transparency:reduce){.ui-glass-sheet,.movies-view .movies-next{background:rgb(28 28 32);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media not (forced-colors:active){.reduce-transparency :is(.ui-glass-sheet,.movies-view .movies-next){background:rgb(28 28 32);-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media (prefers-contrast:more){
   .ui-glass-sheet,.movies-view .movies-next{background:rgb(18 18 20);border:2px solid rgb(255 255 255 / .7);-webkit-backdrop-filter:none;backdrop-filter:none}
   .ui-glass-sheet .muted,.ui-glass-sheet .menu-note,.ui-glass-sheet .search-label,.ui-glass-sheet #rules-text,.ui-glass-sheet input::placeholder{color:rgb(255 255 255 / .9)}
@@ -461,12 +462,13 @@
 @media(hover:hover) and (pointer:fine){:is(.game-glass,.glass-control).ui-tab:not([aria-current=page]):not([aria-pressed=true]):hover{color:var(--glass-ink);background:var(--glass-hover-surface,transparent)}:is(.game-glass,.glass-control).ui-tab:hover::before{box-shadow:var(--glass-rim-edge),inset 0 0 12px rgb(255 255 255 / .12),var(--glass-lift)}.arcade-glass .ui-tab:not([aria-current=page]):not([aria-pressed=true]):hover{color:var(--glass-ink)}}
 .arcade-glass-mini{background:var(--glass-tint);box-shadow:var(--glass-rim-edge),var(--glass-glow),var(--glass-lift);color:var(--glass-ink)}
 dialog.ui-glass-sheet .icon-button.sheet-close-glass{--glass-radius:22px;flex:0 0 44px;background:transparent;box-shadow:none;color:var(--glass-ink)}
-dialog.ui-glass-sheet .icon-button.sheet-close-glass[data-glass=off]{background:var(--glass-solid)}
+dialog.ui-glass-sheet .icon-button.sheet-close-glass[data-glass=off]{--glass-solid:#20262b;background:var(--glass-solid)}
 .sheet-close-glass .glass-ink{border-radius:50%}
 /* Accessibility variants are real opaque surfaces, including the separate
    buttons. An outline inside each surface leaves their geometry unchanged. */
 .arcade-glass[data-glass=off]{--glass-hover-surface:var(--glass-solid);background:var(--glass-solid);border:1px solid var(--glass-ink);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
 .arcade-glass[data-glass=off]::before{display:none}
+.arcade-glass.ui-tabbar[data-glass=off]::after{background:rgb(255 255 255 / .16)}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.arcade-glass,.arcade-glass-mini{background:transparent}.arcade-glass[data-glass=off]{background:var(--glass-solid)}}
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more){.arcade-glass,.arcade-glass-mini{background:var(--glass-solid);border:1px solid var(--glass-ink);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}.arcade-glass::before{display:none}}
 @media(forced-colors:active){.arcade-glass,.arcade-glass-mini,.arcade-glass[data-glass=off]{--glass-ink:CanvasText;--glass-solid:Canvas;background:Canvas;border:1px solid CanvasText;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}.arcade-glass::before{display:none}}

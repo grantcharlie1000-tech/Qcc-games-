@@ -380,7 +380,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   };
   // A change of mode takes out what the new mode does not draw, and draws what it does.
   const applyMode=()=>{
-    const preferred=glassMode(brands,{reducedTransparency:queries[0].matches,moreContrast:queries[1].matches,forcedColours:queries[2].matches});
+    const preferred=glassMode(brands,{reducedTransparency:queries[0].matches||document.documentElement.classList.contains('reduce-transparency'),moreContrast:queries[1].matches,forcedColours:queries[2].matches});
     const next=lensless&&preferred==='backdrop'?'frost':preferred;
     if(next===mode)return;
     mode=next;
@@ -408,6 +408,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   });
   void document.fonts?.ready.then(()=>{if(!disposed)sync(false);});
   for(const query of queries)query.addEventListener('change',applyMode);
+  const preferenceObserver=new MutationObserver(applyMode);
+  preferenceObserver.observe(document.documentElement,{attributes:true,attributeFilter:['class']});
 
   applyMode();
   sync(false);
@@ -422,6 +424,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       stopResize();
       parentWatch.disconnect();
       for(const query of queries)query.removeEventListener('change',applyMode);
+      preferenceObserver.disconnect();
       densityQuery?.removeEventListener('change',onDensity);
       densityQuery=undefined;
       bar.removeEventListener('pointerdown',down);
