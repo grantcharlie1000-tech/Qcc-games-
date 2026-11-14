@@ -36,7 +36,7 @@ describe("Pages /api/movies",()=>{
   expectHeaders(result);
  });
 
- it.each([["home",8],["movie",9],["tv",9]] as const)("returns complete %s rails with the existing CDN header",async(name,count)=>{
+ it.each([["home",9],["movie",10],["tv",9]] as const)("returns complete %s rails with the existing CDN header",async(name,count)=>{
   const fetcher=vi.fn(async(input:RequestInfo|URL)=>railResponse(input));
   vi.stubGlobal("fetch",fetcher);
   const result=await onRequest({request:request(`?rails=${name}`),env});
@@ -54,7 +54,7 @@ describe("Pages /api/movies",()=>{
    ?new Response(null,{status:429}):railResponse(input)));
   const result=await onRequest({request:request("?rails=home"),env});
   expect(result.status).toBe(200);
-  expect((await result.json()).rails.map((rail:{id:string})=>rail.id)).toEqual(["trending","popular-tv","top-movies","action","comedy","scifi","thriller"]);
+  expect((await result.json()).rails.map((rail:{id:string})=>rail.id)).toEqual(["trending","christmas","popular-tv","top-movies","action","comedy","scifi","thriller"]);
   expectHeaders(result);
  });
 
