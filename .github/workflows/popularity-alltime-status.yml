@@ -38,6 +38,8 @@ jobs:
           if(project?.name!=='nceastudy'||project?.subdomain!=='nceastudy.pages.dev'||project?.production_branch!=='production')throw new Error('existing_pages_target_invalid');
           const databases=await api('/d1/database?per_page=100&page=1');
           if(!Array.isArray(databases))throw new Error('database_list_invalid');
+          const expectedOldTrigger="CREATE TRIGGER IF NOT EXISTS movie_popularity_count_insert\nAFTER INSERT ON movie_popularity_tokens\nBEGIN\n INSERT INTO movie_popularity_daily (title_id, day, views) VALUES (NEW.title_id, NEW.day, 1)\n ON CONFLICT(title_id, day) DO UPDATE SET views = views + 1;\nEND;";
+          const normalize=sql=>String(sql||'').replace(/\bIF\s+NOT\s+EXISTS\b/ig,'').replace(/\s+/g,' ').trim().replace(/;$/,'').toLowerCase();
           let failed=false;
           for(const environment of ['preview','production']){
            try{
@@ -51,7 +53,9 @@ jobs:
             const schema=result[0].results||[],aggregate=result[1].results?.[0];
             if(!['movie_popularity_tokens','movie_popularity_daily','movie_popularity_rate','movie_popularity_count_insert'].every(name=>schema.some(row=>row.name===name)))throw new Error('popularity_schema_incomplete');
             if(!aggregate||!['title_days','reports','first_day','last_day'].every(key=>Number.isSafeInteger(aggregate[key])&&aggregate[key]>=0))throw new Error('aggregate_consistency_invalid');
-            console.log(`${environment}_read_only_schema_and_aggregate_check_passed`);
+            const trigger=schema.find(row=>row.name==='movie_popularity_count_insert');
+            if(schema.some(row=>row.name==='movie_popularity_totals')||normalize(trigger?.sql)!==normalize(expectedOldTrigger))throw new Error('legacy_schema_changed_requires_review');
+            console.log(`${environment}_legacy_table_trigger_aggregate_state_verified_after_quota_refusal`);
            }catch(error){
             failed=true;const code=error instanceof Error&&/^[a-z0-9_]+$/.test(error.message)?error.message:'read_only_check_failed';
             console.log(`${environment}_${code}`);
