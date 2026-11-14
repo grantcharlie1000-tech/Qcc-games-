@@ -62,13 +62,12 @@ export async function handleMoviePopularity(request:Request,env:PopularityEnv,no
    if(Object.keys(value).length!==2||typeof value.titleId!=='string'||!/^movie-[1-9][0-9]{0,9}$/.test(value.titleId)||typeof value.token!=='string'||!/^[a-f0-9]{32}$/.test(value.token))return reply(400,'invalid_event');
    event={titleId:value.titleId,token:value.token};
   }
-  await cleanupMoviePopularity(db,now);
   if(!event){
-   // Suppress EACH day before summing. Daily token rotation cannot establish distinct weekly people.
-   const {results}=await db.prepare(`SELECT title_id FROM movie_popularity_daily
-    WHERE day >= ? AND day <= ? AND views >= 5
-    GROUP BY title_id ORDER BY SUM(views) DESC, title_id ASC LIMIT 20`).bind(day-6,day).all<{title_id:string}>();
-   return Response.json({titleIds:results.map(row=>row.title_id),windowDays:7},{headers});
+   // Lifetime title totals contain no viewer identifiers. GET must remain read-only,
+   // without unnecessary cleanup writes on read requests.
+   const {results}=await db.prepare(`SELECT title_id FROM movie_popularity_totals
+    WHERE views >= 1 ORDER BY views DESC, title_id ASC LIMIT 10`).all<{title_id:string}>();
+   return Response.json({titleIds:results.map(row=>row.title_id),windowDays:null},{headers});
   }
   const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
   async function hash(value:string){const digest=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(value));return Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');}
