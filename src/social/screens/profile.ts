@@ -26,8 +26,11 @@ export class ProfileScreen implements Screen {
  private disposed=false;
  private root=document.createElement('div');
  private target:HTMLElement|null=null;
+ private readonly resize=new ResizeObserver(()=>this.syncPinnedTabs());
  constructor(private readonly ctx:SocialContext,column:HTMLElement,private readonly username:string,tab:ProfileTab) {
   this.tab=tab;this.root.className='social-profile';column.append(this.root);
+  this.ctx.scroller.addEventListener('scroll',this.syncPinnedTabs,{passive:true});
+  this.resize.observe(this.root);this.resize.observe(this.ctx.scroller);
   this.root.append(skeletonPosts(3,'Loading profile…'));
   void this.load();
  }
@@ -83,7 +86,14 @@ export class ProfileScreen implements Screen {
   this.panel.className='social-profile-panel';this.panel.id='profile-panel';this.panel.setAttribute('role','tabpanel');
   this.root.append(bar,this.panel);
   this.select(this.tab,false);
+  this.syncPinnedTabs();
  }
+ /** Fill the floating toolbar's gap only after the tabs pin, never over the profile bio. */
+ private readonly syncPinnedTabs=():void=>{
+  const bar=this.tabs;if(!bar||this.disposed)return;
+  const top=bar.getBoundingClientRect().top-this.ctx.scroller.getBoundingClientRect().top;
+  bar.classList.toggle('is-pinned',top<=parseFloat(getComputedStyle(bar).top)+.5);
+ };
  private select(tab:ProfileTab,user:boolean):void {
   this.tab=tab;const profile=this.profile!;
   for(const b of this.tabs!.querySelectorAll<HTMLElement>('[role=tab]')){
@@ -129,5 +139,5 @@ export class ProfileScreen implements Screen {
   };
   void load();
  }
- dispose():void{this.disposed=true;this.controller.abort();this.photoCtl?.abort();this.list?.dispose();this.root.remove();}
+ dispose():void{this.disposed=true;this.ctx.scroller.removeEventListener('scroll',this.syncPinnedTabs);this.resize.disconnect();this.controller.abort();this.photoCtl?.abort();this.list?.dispose();this.root.remove();}
 }
