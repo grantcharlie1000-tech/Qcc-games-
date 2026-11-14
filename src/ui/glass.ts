@@ -23,9 +23,8 @@ export const LENS_MARGIN=LENS_BEND+4;
 // The arcade's clear material has a narrower, lower-power bezel. Keep these
 // separate from the legacy unmarked-bar map and its displacement scale.
 export const ARCADE_LENS_BEVEL=12;
-// The actual convex profile peaks below 5px. A tight encoding range avoids
-// wasting 8-bit displacement precision, especially on DPR3 circular controls.
-export const ARCADE_LENS_BEND=5;
+// Keep the convex profile within a 3.5px offset and preserve map precision.
+export const ARCADE_LENS_BEND=3.5;
 const CURRENT='.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]';
 const PILL_VARS=['--ui-pill-x','--ui-pill-w','--ui-pill-on'];
 let filterSeq=0;
@@ -219,6 +218,9 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const edge=document.createElement('div');
   edge.className='ui-scroll-edge';
   edge.setAttribute('aria-hidden','true');
+  const dragStyle=document.createElement('style');
+  dragStyle.textContent='.ui-tabbar[data-glass-dragging]::after{transition:scale 140ms var(--ease-out),opacity 120ms var(--ease)!important}';
+  document.head.append(dragStyle);
   const stretchable=canStretch(bar);
   let mode:GlassMode|undefined;
   // True once the map has decoded and the filter is in the document. Until then nothing refers to the filter.
@@ -226,7 +228,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   let mapWidth=0,mapHeight=0,mapDensity=0,mapSeq=0;
   // Set when the browser cannot make the map (no 2D canvas context, or a map that fails to decode). Such a bar has no lens at all.
   let lensless=false;
-  let press:{tab:HTMLElement;pointerId:number}|null=null;
+  let press:{tab:HTMLElement;pointerId:number;startX:number;left:number;transform:string;priority:string;dragging:boolean}|null=null;
   let placedLeft:number|null=null;
   let stretch:Animation|undefined;
 
@@ -262,9 +264,13 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(press)release(null,true);
     const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.ui-tab'):null;
     if(!tab||!bar.contains(tab))return;
-    press={tab,pointerId:event.pointerId};
+    press={tab,pointerId:event.pointerId,startX:event.clientX,left:tab.offsetLeft,transform:tab.style.getPropertyValue('transform'),priority:tab.style.getPropertyPriority('transform'),dragging:false};
+    // Keep the actual control in place while the decorative pill moves.
+    tab.style.setProperty('transform','none','important');
     bar.setAttribute('data-pressing','');
     document.addEventListener('pointerup',up);
+    document.addEventListener('pointermove',move);
+    document.addEventListener('dragstart',preventDrag);
     document.addEventListener('pointercancel',cancel);
     document.addEventListener('lostpointercapture',cancel);
     window.addEventListener('blur',lost);
@@ -273,6 +279,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   };
   const stopListening=()=>{
     document.removeEventListener('pointerup',up);
+    document.removeEventListener('pointermove',move);
+    document.removeEventListener('dragstart',preventDrag);
     document.removeEventListener('pointercancel',cancel);
     document.removeEventListener('lostpointercapture',cancel);
     window.removeEventListener('blur',lost);
@@ -280,9 +288,12 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   };
   const release=(event:PointerEvent|null,cancelled:boolean)=>{
     if(!press)return;
-    const {tab}=press;
+    const {tab,transform,priority,dragging}=press;
     press=null;
     stopListening();
+    if(transform)tab.style.setProperty('transform',transform,priority);
+    else tab.style.removeProperty('transform');
+    if(dragging){void bar.offsetWidth;bar.removeAttribute('data-glass-dragging');}
     bar.removeAttribute('data-pressing');
     // A tap ends over the same tab. The point decides, not the target, because a touch keeps its target after the finger leaves.
     const tapped=!cancelled&&!!event&&document.elementFromPoint(event.clientX,event.clientY)?.closest('.ui-tab')===tab;
@@ -292,7 +303,18 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(tapped&&(tab.tagName==='A'||tab.hasAttribute('aria-pressed'))){requestAnimationFrame(()=>sync(false));return;}
     sync(true);
   };
+  const move=(event:PointerEvent)=>{
+    if(!press||event.pointerId!==press.pointerId||standalone)return;
+    const delta=(event.clientX-press.startX)*(bar.offsetWidth/bar.getBoundingClientRect().width);
+    if(!press.dragging&&Math.abs(delta)<1)return;
+    press.dragging=true;
+    // Disabling the CSS transition lets each pointer sample paint immediately.
+    bar.setAttribute('data-glass-dragging','');
+    const left=Math.max(0,Math.min(bar.offsetWidth-press.tab.offsetWidth,press.left+delta));
+    bar.style.setProperty('--ui-pill-x',`${round(left)}px`);
+  };
   const up=(event:PointerEvent)=>{if(event.pointerId===press?.pointerId)release(event,false);};
+  const preventDrag=(event:DragEvent)=>{if(press?.tab.contains(event.target as Node))event.preventDefault();};
   const cancel=(event:PointerEvent)=>{if(event.pointerId===press?.pointerId)release(null,true);};
   const lost=()=>release(null,true);
   const hidden=()=>{if(document.hidden)release(null,true);};
@@ -425,8 +447,11 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       densityQuery?.removeEventListener('change',onDensity);
       densityQuery=undefined;
       bar.removeEventListener('pointerdown',down);
+      if(press){if(press.transform)press.tab.style.setProperty('transform',press.transform,press.priority);else press.tab.style.removeProperty('transform');}
       stopListening();
       press=null;
+      bar.removeAttribute('data-glass-dragging');
+      dragStyle.remove();
       stretch?.cancel();
       live.dispose();
       lens.remove();
