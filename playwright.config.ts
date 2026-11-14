@@ -35,6 +35,7 @@ export default defineConfig({
   webServer: externalURL ? undefined : {
     command: `npm run dev -- --port ${port} --strictPort`,
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    // Reuse is explicit: a listener on this port may belong to another worktree.
+    reuseExistingServer: !process.env.CI && process.env.PLAYWRIGHT_REUSE_SERVER === '1',
   },
 });
