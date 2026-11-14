@@ -1,0 +1,111 @@
+# Exact reviewed SQL only. No raw data, identifiers, counts or credentials are logged.
+name: Apply reviewed Popular all-time migration
+on:
+  push:
+    branches: [ops/popularity-alltime-migration-20261114]
+    paths: [.github/workflows/popularity-alltime-migrate.yml]
+permissions:
+  contents: read
+concurrency:
+  group: popularity-alltime-migration
+  cancel-in-progress: false
+jobs:
+  migrate:
+    if: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 42cb7a2b97d01806e4bf356fd2d895a6a2474536
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply one atomic batch to preview then production and verify each
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          const source=readFileSync('docs/movie-popularity-alltime-migration.sql','utf8');
+          if(createHash('sha256').update(source).digest('hex')!=='15aefafbb4bdc5ada57983990fc79fd2a8ab9cb9d771f9f5fc6d8e2b2abdf278')throw new Error('reviewed_migration_hash_mismatch');
+          function splitSql(text){
+           const result=[];let current='';
+           for(const line of text.split('\n')){
+            if(!line.trim()||line.trim().startsWith('--'))continue;
+            current+=line+'\n';
+            if(line.trim().endsWith(';')&&(!/^CREATE\s+TRIGGER/i.test(current.trim())||/^END;$/i.test(line.trim()))){result.push(current.trim());current='';}
+           }
+           if(current.trim()||result.length!==4)throw new Error('reviewed_migration_shape_invalid');
+           return result.map(sql=>({sql}));
+          }
+          const statements=splitSql(source),normalize=sql=>String(sql||'').replace(/\bIF\s+NOT\s+EXISTS\b/ig,'').replace(/\s+/g,' ').trim().replace(/;$/,'').toLowerCase();
+          if(!/^CREATE TABLE IF NOT EXISTS movie_popularity_totals\b/.test(statements[0].sql)||!/^INSERT OR IGNORE INTO movie_popularity_totals\b/.test(statements[1].sql)||!/^DROP TRIGGER IF EXISTS movie_popularity_count_insert;?$/.test(statements[2].sql)||!/^CREATE TRIGGER movie_popularity_count_insert\b/.test(statements[3].sql))throw new Error('reviewed_migration_shape_invalid');
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token||!/^[a-f0-9]{32}$/i.test(account||''))throw new Error('existing_backend_credentials_unavailable');
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}`;
+          async function api(path,body){
+           let response,data;
+           try{response=await fetch(root+path,{method:body?'POST':'GET',headers:{Authorization:`Bearer ${token}`,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,redirect:'error',signal:AbortSignal.timeout(30000)});data=await response.json();}catch{throw new Error('platform_request_outcome_unavailable');}
+           if(!response.ok||data.success!==true){
+            const message=JSON.stringify(data.errors||[])+JSON.stringify(data.result||[]);
+            if(/quota|daily.{0,120}limit|limit.{0,120}daily|exceeded.{0,120}(?:read|write)|(?:read|write).{0,120}exceeded/i.test(message))throw new Error('d1_daily_quota_blocked');
+            throw new Error(`platform_http_${response.status}_operation_unavailable`);
+           }
+           return data.result;
+          }
+          async function query(id,batch){
+           const result=await api(`/d1/database/${encodeURIComponent(id)}/query`,{batch});
+           if(!Array.isArray(result)||result.length!==batch.length||result.some(row=>row.success!==true))throw new Error('d1_batch_result_unavailable');
+           return result;
+          }
+          async function schema(id){
+           const result=await query(id,[{sql:"SELECT name,type,sql FROM sqlite_master WHERE type IN ('table','trigger')"}]);
+           const rows=result[0].results||[];
+           const allowed=new Set(['movie_popularity_tokens','movie_popularity_daily','movie_popularity_rate','movie_popularity_totals','movie_popularity_count_insert','_cf_METADATA','_cf_KV']);
+           if(rows.some(row=>!allowed.has(row.name)&&!String(row.name).startsWith('sqlite_')))throw new Error('dedicated_schema_contains_unexpected_object');
+           if(!['movie_popularity_tokens','movie_popularity_daily','movie_popularity_rate','movie_popularity_count_insert'].every(name=>rows.some(row=>row.name===name)))throw new Error('existing_popularity_schema_incomplete');
+           return rows;
+          }
+          function migrated(rows){return rows.some(row=>row.type==='table'&&row.name==='movie_popularity_totals')&&rows.some(row=>row.type==='trigger'&&row.name==='movie_popularity_count_insert'&&normalize(row.sql)===normalize(statements[3].sql));}
+          async function verify(id){
+           const rows=await schema(id);if(!migrated(rows))throw new Error('alltime_table_or_trigger_unverified');
+           const checks=await query(id,[
+            {sql:'PRAGMA table_info(movie_popularity_totals)'},
+            {sql:'SELECT COUNT(*) AS invalid FROM (SELECT d.title_id FROM movie_popularity_daily d LEFT JOIN movie_popularity_totals t ON t.title_id=d.title_id GROUP BY d.title_id HAVING t.views IS NULL OR t.views < SUM(d.views))'},
+            {sql:"SELECT COUNT(*) AS invalid FROM movie_popularity_totals WHERE typeof(views) <> 'integer' OR views < 0"}
+           ]);
+           const columns=checks[0].results||[];
+           if(columns.length!==2||!columns.some(row=>row.name==='title_id'&&row.type==='TEXT'&&row.pk===1)||!columns.some(row=>row.name==='views'&&row.type==='INTEGER'&&row.notnull===1)||checks[1].results?.[0]?.invalid!==0||checks[2].results?.[0]?.invalid!==0)throw new Error('alltime_aggregate_invariant_failed');
+          }
+          const project=await api('/pages/projects/nceastudy');
+          if(project?.name!=='nceastudy'||project?.subdomain!=='nceastudy.pages.dev'||project?.production_branch!=='production')throw new Error('existing_pages_target_invalid');
+          const databases=await api('/d1/database?per_page=100&page=1');if(!Array.isArray(databases))throw new Error('database_list_invalid');
+          for(const environment of ['preview','production']){
+           const matches=databases.filter(row=>row.name===`nceastudy-movie-popularity-${environment}-v1`);
+           if(matches.length!==1||!matches[0].uuid||project.deployment_configs?.[environment]?.d1_databases?.MOVIE_POPULARITY_DB?.id!==matches[0].uuid)throw new Error(`${environment}_dedicated_database_binding_invalid`);
+           const id=matches[0].uuid;
+           const schedule=await api(`/workers/scripts/nceastudy-movie-popularity-${environment}-cleanup/schedules`);
+           if(!Array.isArray(schedule?.schedules)||schedule.schedules.length!==1||schedule.schedules[0].cron!=='* * * * *')throw new Error(`${environment}_existing_cleanup_schedule_unverified`);
+           const before=await schema(id);
+           if(migrated(before)){await verify(id);console.log(`${environment}_existing_atomic_migration_verified_cleanup_schedule_unchanged`);continue;}
+           if(before.some(row=>row.name==='movie_popularity_totals'))throw new Error(`${environment}_preexisting_partial_migration_requires_review`);
+           const oldTrigger=before.find(row=>row.name==='movie_popularity_count_insert');
+           if(!oldTrigger?.sql?.includes('movie_popularity_daily')||oldTrigger.sql.includes('movie_popularity_totals'))throw new Error(`${environment}_existing_trigger_unexpected`);
+           try{
+            // One request is one atomic D1 transaction. Never loop over migration statements.
+            await query(id,statements);
+           }catch(error){
+            // A timed-out write may have committed. Inspect before any retry, and do not repeat writes here.
+            let after;try{after=await schema(id);}catch{throw new Error(`${environment}_migration_outcome_unverified_no_retry`);}
+            if(migrated(after)){await verify(id);console.log(`${environment}_atomic_migration_verified_after_uncertain_response`);continue;}
+            const code=error instanceof Error&&/^[a-z0-9_]+$/.test(error.message)?error.message:'migration_request_failed';
+            throw new Error(`${environment}_${code}_new_schema_not_observed_no_retry`);
+           }
+           await verify(id);
+           console.log(`${environment}_atomic_migration_table_trigger_aggregate_invariants_verified_cleanup_schedule_unchanged`);
+          }
+          console.log('Both dedicated databases verified. No synthetic events, enablement changes, deployments, secret changes or cleanup changes were performed.');
+          JS
