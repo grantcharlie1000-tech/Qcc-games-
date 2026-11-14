@@ -80,5 +80,5 @@ export const popularityStorageChangeStopsReporting=(key:string|null)=>key===POPU
 
 export function parsePopularIds(value:unknown):string[]{
  if(!value||typeof value!=='object'||!('titleIds' in value)||!Array.isArray(value.titleIds))throw new Error('Invalid popularity response');
- return [...new Set(value.titleIds.filter((id:unknown):id is string=>typeof id==='string'&&movieId(id)))].slice(0,20);
+ return [...new Set(value.titleIds.filter((id:unknown):id is string=>typeof id==='string'&&movieId(id)))].slice(0,10);
 }
