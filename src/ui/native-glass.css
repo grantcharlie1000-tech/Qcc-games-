@@ -33,10 +33,21 @@ html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dial
 html body #study-view .study-privacy .study-privacy-actions button{background:rgb(0 0 0 / .13)!important}
 
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
-  body.in-game #game-stage .nc-card{--glass-frost-fill:#1c1c20;--glass-frost-blur:none;--native-glass-ink:#fff;--native-glass-halo:transparent;border-color:rgb(255 255 255 / .24)}
+  body.in-game #game-stage .nc-card{--glass-frost-fill:var(--glass-solid);--glass-frost-blur:none;--native-glass-ink:#fff;--native-glass-halo:transparent;border-color:rgb(255 255 255 / .24)}
   body.in-game #game-stage .nc-card::after{display:none}
   body.in-game .game-view[data-glass-tone=light] #game-stage .nc-card{--native-glass-ink:#fff;--native-glass-halo:transparent}
-  html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog){background:#f5f5f5;backdrop-filter:none;-webkit-backdrop-filter:none;text-shadow:none}
+  html body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog){background:var(--glass-solid);color:#fff;backdrop-filter:none;-webkit-backdrop-filter:none;text-shadow:none}
+  html body #study-view .study-privacy .study-privacy-actions button{background:var(--glass-solid)!important}
+  :root .nc-stick{opacity:1}
+  :is(.nc-stick-ring,.nc-stick-knob,.movies-view .movies-resume-pill){background:var(--glass-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+@media not (forced-colors:active){
+  .reduce-transparency body.in-game #game-stage .nc-card{--glass-frost-fill:var(--glass-solid);--glass-frost-blur:none}
+  .reduce-transparency body.in-game #game-stage .nc-card::after{display:none}
+  .reduce-transparency body #study-view .study-privacy :is(.study-cookie-panel,.study-privacy-dialog){background:var(--glass-solid);color:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .reduce-transparency body #study-view .study-privacy .study-privacy-actions button{background:var(--glass-solid)!important}
+  .reduce-transparency .nc-stick{opacity:1}
+  .reduce-transparency :is(.nc-stick-ring,.nc-stick-knob,.movies-view .movies-resume-pill){background:var(--glass-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 @media(forced-colors:active){
   body.in-game #game-stage .nc-card{--glass-frost-fill:Canvas;--glass-frost-blur:none;--native-glass-ink:CanvasText;--native-glass-halo:transparent;border-color:CanvasText}
