@@ -652,7 +652,7 @@ export class MoviesView {
   return shelves.join('');
  }
  private popularRail(){
-  const subtitle='Across QCC · Past 7 days';
+  const subtitle='Across QCC · All time';
   if(this.popularTitles.length)return this.shelf('popular-marlborough','Popular in Marlborough',this.popularTitles,subtitle);
   const message=this.popularState==='loading'?'Loading popular picks…':this.popularState==='error'?'Popular picks are unavailable right now.':'Not enough viewing activity yet.';
   return `<section class="movies-shelf ui-rail movies-popular-empty" data-rail="popular-marlborough"><div class="ui-rail-head"><h2>Popular in Marlborough</h2><p class="ui-rail-sub">${subtitle}</p></div><p role="status">${message}</p>${this.popularState==='error'?'<button class="ui-btn secondary small" data-action="retry-popular">Retry popular picks</button>':''}</section>`;
