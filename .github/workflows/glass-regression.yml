@@ -17,6 +17,9 @@ on:
       - 'tests/e2e/live-glass.spec.ts'
       - 'tests/e2e/see-through-material.spec.ts'
       - 'tests/games/globle/**'
+      - 'playwright.config.ts'
+      - 'vite.config.ts'
+      - 'package-lock.json'
       - '.github/workflows/glass-regression.yml'
 permissions:
   contents: read
@@ -45,6 +48,12 @@ jobs:
           if [ -f /etc/apt/apt-mirrors.txt ]; then
             sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ matrix.browser }}-${{ hashFiles('package-lock.json') }}
+      # Always install OS dependencies and validate the requested browser revision.
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} tests/e2e/glass-visibility.spec.ts tests/e2e/clear-ink-adaptation.spec.ts tests/e2e/game-control-surfaces.spec.ts tests/e2e/live-glass.spec.ts tests/e2e/see-through-material.spec.ts tests/e2e/apple-glass.spec.ts tests/e2e/arcade-sheets.spec.ts tests/games/globle/ tests/games/snake/ tests/games/neon-coil/play.spec.ts --workers=1
       - uses: actions/upload-artifact@v4
