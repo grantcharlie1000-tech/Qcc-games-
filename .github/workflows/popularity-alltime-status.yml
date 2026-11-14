@@ -1,0 +1,61 @@
+# Read-only scoped status check. No identifiers, aggregates, secrets or raw responses are logged.
+name: Check Popular all-time migration prerequisites
+on:
+  push:
+    branches: [ops/popularity-alltime-status-20261114]
+    paths: [.github/workflows/popularity-alltime-status.yml]
+permissions:
+  contents: read
+jobs:
+  status:
+    if: github.repository == 'grantcharlie1000-tech/Qcc-games-'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check dedicated D1 quota and schema without changes
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token||!/^[a-f0-9]{32}$/i.test(account||''))throw new Error('existing_backend_credentials_unavailable');
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}`;
+          async function api(path,body){
+           let response,data;
+           try{response=await fetch(root+path,{method:body?'POST':'GET',headers:{Authorization:`Bearer ${token}`,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,redirect:'error',signal:AbortSignal.timeout(20000)});data=await response.json();}catch{throw new Error('platform_request_unavailable');}
+           if(!response.ok||data.success!==true){
+            const message=JSON.stringify(data.errors||[])+JSON.stringify(data.result||[]);
+            if(/quota|daily.{0,120}limit|limit.{0,120}daily|exceeded.{0,120}(?:read|write)|(?:read|write).{0,120}exceeded/i.test(message))throw new Error('d1_daily_quota_blocked');
+            throw new Error(`platform_http_${response.status}_operation_unavailable`);
+           }
+           return data.result;
+          }
+          const project=await api('/pages/projects/nceastudy');
+          if(project?.name!=='nceastudy'||project?.subdomain!=='nceastudy.pages.dev'||project?.production_branch!=='production')throw new Error('existing_pages_target_invalid');
+          const databases=await api('/d1/database?per_page=100&page=1');
+          if(!Array.isArray(databases))throw new Error('database_list_invalid');
+          let failed=false;
+          for(const environment of ['preview','production']){
+           try{
+            const matches=databases.filter(row=>row.name===`nceastudy-movie-popularity-${environment}-v1`);
+            if(matches.length!==1||!matches[0].uuid||project.deployment_configs?.[environment]?.d1_databases?.MOVIE_POPULARITY_DB?.id!==matches[0].uuid)throw new Error('dedicated_database_binding_invalid');
+            const result=await api(`/d1/database/${encodeURIComponent(matches[0].uuid)}/query`,{batch:[
+             {sql:"SELECT name, type, sql FROM sqlite_master WHERE name IN ('movie_popularity_tokens','movie_popularity_daily','movie_popularity_rate','movie_popularity_totals','movie_popularity_count_insert')"},
+             {sql:'SELECT COUNT(*) AS title_days, COALESCE(SUM(views),0) AS reports, COALESCE(MIN(day),0) AS first_day, COALESCE(MAX(day),0) AS last_day FROM movie_popularity_daily'}
+            ]});
+            if(!Array.isArray(result)||result.length!==2||result.some(row=>row.success!==true))throw new Error('read_only_batch_unavailable');
+            const schema=result[0].results||[],aggregate=result[1].results?.[0];
+            if(!['movie_popularity_tokens','movie_popularity_daily','movie_popularity_rate','movie_popularity_count_insert'].every(name=>schema.some(row=>row.name===name)))throw new Error('popularity_schema_incomplete');
+            if(!aggregate||!['title_days','reports','first_day','last_day'].every(key=>Number.isSafeInteger(aggregate[key])&&aggregate[key]>=0))throw new Error('aggregate_consistency_invalid');
+            console.log(`${environment}_read_only_schema_and_aggregate_check_passed`);
+           }catch(error){
+            failed=true;const code=error instanceof Error&&/^[a-z0-9_]+$/.test(error.message)?error.message:'read_only_check_failed';
+            console.log(`${environment}_${code}`);
+           }
+          }
+          if(failed)process.exitCode=1;
+          JS
