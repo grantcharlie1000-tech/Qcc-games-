@@ -231,6 +231,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   let press:{tab:HTMLElement;pointerId:number;startX:number;left:number;transform:string;priority:string;dragging:boolean}|null=null;
   let placedLeft:number|null=null;
   let stretch:Animation|undefined;
+  let settleTimer:ReturnType<typeof setTimeout>|undefined;
+  let clickTimer:ReturnType<typeof setTimeout>|undefined;
 
   const current=()=>bar.querySelector<HTMLElement>(CURRENT);
   // Moves the pill over a tab. The first placement after the bar has a size is instant, so the pill never slides in
@@ -253,7 +255,21 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(box&&!pressing)placedLeft=box.left;
   };
   // Nothing re-places the pill under a finger that is still down.
-  const sync=(animate:boolean)=>{if(!press)place(current(),animate);};
+  const sync=(animate:boolean)=>{if(!press&&!settleTimer)place(current(),animate);};
+  const stopSettle=(restore=true)=>{
+    if(!settleTimer)return;
+    clearTimeout(settleTimer);settleTimer=undefined;
+    document.removeEventListener('pointerdown',interruptSettle,true);
+    document.removeEventListener('keydown',interruptSettle,true);
+    document.removeEventListener('click',interruptClick,true);
+    document.removeEventListener('visibilitychange',interruptHidden);
+    window.removeEventListener('hashchange',interruptSettle);
+    window.removeEventListener('blur',interruptSettle);
+    if(restore)sync(true);
+  };
+  const interruptSettle=()=>stopSettle();
+  const interruptClick=(event:MouseEvent)=>{if(!event.isTrusted||event.detail===0)stopSettle();};
+  const interruptHidden=()=>{if(document.hidden)stopSettle();};
 
   // A press moves the pill under the finger and swells it. Keyboard activation sends no pointer events, so it never swells.
   // The release can land anywhere on the page, so the press listens on the document until it ends. Only the pointer that
@@ -261,7 +277,9 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   // A window that loses focus or a page that is hidden ends it too, for the same reason.
   const down=(event:PointerEvent)=>{
     if(event.button!==0)return;
+    stopSettle();
     if(press)release(null,true);
+    clearClickGuard();
     const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.ui-tab'):null;
     if(!tab||!bar.contains(tab))return;
     press={tab,pointerId:event.pointerId,startX:event.clientX,left:tab.offsetLeft,transform:tab.style.getPropertyValue('transform'),priority:tab.style.getPropertyPriority('transform'),dragging:false};
@@ -295,6 +313,42 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     else tab.style.removeProperty('transform');
     if(dragging){void bar.offsetWidth;bar.removeAttribute('data-glass-dragging');}
     bar.removeAttribute('data-pressing');
+    if(dragging){
+      // Touch can deliver a click to the tab where the gesture started.
+      // Ignore that native click; the selected destination is activated below.
+      bar.addEventListener('click',guardClick,true);
+      clickTimer=setTimeout(clearClickGuard,600);
+      const bounds=bar.getBoundingClientRect();
+      const inside=!cancelled&&event&&event.clientX>=bounds.left&&event.clientX<=bounds.right&&event.clientY>=bounds.top&&event.clientY<=bounds.bottom;
+      const tabs=inside?[...bar.querySelectorAll<HTMLElement>('.ui-tab')].filter(candidate=>candidate.getClientRects().length&&!candidate.matches(':disabled,[aria-disabled="true"]')):[];
+      const nearest=tabs.reduce<HTMLElement|null>((best,candidate)=>{
+        const centre=(element:HTMLElement)=>{const box=element.getBoundingClientRect();return box.left+box.width/2;};
+        return !best||Math.abs(centre(candidate)-event!.clientX)<Math.abs(centre(best)-event!.clientX)?candidate:best;
+      },null);
+      if(nearest&&nearest!==current()){
+        place(nearest,true);
+        // Let the pill settle before a destination replaces or hides the bar.
+        const key=['href','data-kind','data-action'].find(name=>nearest.hasAttribute(name));
+        const value=key?nearest.getAttribute(key):null;
+        const activate=()=>{
+          stopSettle(false);
+          const target=nearest.isConnected&&bar.contains(nearest)?nearest:key?[...bar.querySelectorAll<HTMLElement>('.ui-tab')].find(candidate=>candidate.tagName===nearest.tagName&&candidate.getAttribute(key)===value):null;
+          if(target&&!target.matches(':disabled,[aria-disabled="true"]'))target.click();else sync(true);
+        };
+        if(reduceMotion())activate();else{
+          settleTimer=setTimeout(activate,340);
+          document.addEventListener('pointerdown',interruptSettle,true);
+          document.addEventListener('keydown',interruptSettle,true);
+          document.addEventListener('click',interruptClick,true);
+          document.addEventListener('visibilitychange',interruptHidden);
+          window.addEventListener('hashchange',interruptSettle);
+          window.addEventListener('blur',interruptSettle);
+        }
+        return;
+      }
+      sync(true);
+      return;
+    }
     // A tap ends over the same tab. The point decides, not the target, because a touch keeps its target after the finger leaves.
     const tapped=!cancelled&&!!event&&document.elementFromPoint(event.clientX,event.clientY)?.closest('.ui-tab')===tab;
     // A completed tap on a tab that selects itself keeps the pill under the finger: its click makes that tab current, and the
@@ -303,6 +357,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(tapped&&(tab.tagName==='A'||tab.hasAttribute('aria-pressed'))){requestAnimationFrame(()=>sync(false));return;}
     sync(true);
   };
+  const guardClick=(event:MouseEvent)=>{if(event.isTrusted&&event.detail>0){event.preventDefault();event.stopImmediatePropagation();clearClickGuard();}};
+  const clearClickGuard=()=>{clearTimeout(clickTimer);clickTimer=undefined;bar.removeEventListener('click',guardClick,true);};
   const move=(event:PointerEvent)=>{
     if(!press||event.pointerId!==press.pointerId||standalone)return;
     const delta=(event.clientX-press.startX)*(bar.offsetWidth/bar.getBoundingClientRect().width);
@@ -450,6 +506,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       if(press){if(press.transform)press.tab.style.setProperty('transform',press.transform,press.priority);else press.tab.style.removeProperty('transform');}
       stopListening();
       press=null;
+      stopSettle(false);
+      clearClickGuard();
       bar.removeAttribute('data-glass-dragging');
       dragStyle.remove();
       stretch?.cancel();
