@@ -1,0 +1,59 @@
+name: Christmas movies regression
+on:
+  pull_request:
+    branches: [main, production]
+    paths:
+      - 'src/movies/**'
+      - 'src/festive/**'
+      - 'server/movies-catalog.ts'
+      - 'functions/api/movies.ts'
+      - 'netlify/functions/movies-search.mts'
+      - 'tests/movies/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'playwright.config.ts'
+      - '.github/workflows/movie-christmas.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: movie-christmas-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  christmas:
+    name: Christmas movies (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    env:
+      CI: 'true'
+      XDG_CONFIG_HOME: /tmp/qcc-cloudflare
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Verify movie behavior
+        run: npx vitest run tests/movies --maxWorkers=1
+      - run: npm run build
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify permanent Christmas rail
+        run: xvfb-run -a npx playwright test tests/movies/christmas.spec.ts --project=${{ matrix.browser }} --workers=1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: movie-christmas-${{ matrix.browser }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7

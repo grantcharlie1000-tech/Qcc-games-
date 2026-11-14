@@ -89,16 +89,43 @@ describe("full catalog metadata endpoint",()=>{
   const result=await handleMoviesCatalog(request("?q=hello"),"secret",async()=>new Response("",{status:429}));
   expect(result.status).toBe(502);expect(await result.json()).toEqual({error:"metadata_unavailable"});
  });
+ it.each(["home","movie"])("includes Christmas movies in %s using TMDB keyword metadata",async section=>{
+  const fetcher=vi.fn(async(url:RequestInfo|URL)=>{
+   const path=new URL(String(url));
+   if(path.searchParams.get("with_keywords")==="207317")return tmdb([{id:771,title:"Home Alone",release_date:"1990-11-16",genre_ids:[35,10751],overview:"Christmas fixture",poster_path:"/homealone.jpg"}]);
+   return railResponse(String(url));
+  });
+  const result=await handleMoviesCatalog(request(`?rails=${section}`),"secret",fetcher);
+  const payload=await result.json();
+  expect(payload.rails.find((rail:{id:string})=>rail.id==="christmas")).toMatchObject({title:"Christmas movies",titles:[{id:"movie-771",kind:"movie",name:"Home Alone",year:1990}]});
+  const christmas=fetcher.mock.calls.map(([url])=>new URL(String(url))).find(url=>url.searchParams.has("with_keywords"));
+  expect(christmas?.pathname).toBe("/3/discover/movie");
+  expect(christmas?.searchParams.get("include_adult")).toBe("false");
+  expect(christmas?.searchParams.get("sort_by")).toBe("popularity.desc");
+ });
+ it("keeps other rails usable and uncached when Christmas metadata fails",async()=>{
+  const result=await handleMoviesCatalog(request("?rails=home"),"secret",async url=>String(url).includes("with_keywords=")?new Response(null,{status:503}):railResponse(String(url)));
+  const payload=await result.json();
+  expect(result.status).toBe(200);
+  expect(payload.rails.map((rail:{id:string})=>rail.id)).not.toContain("christmas");
+  expect(payload.rails.map((rail:{id:string})=>rail.id)).toContain("trending");
+  expect(result.headers.has("netlify-cdn-cache-control")).toBe(false);
+ });
+ it.each(["?rails=tv","?q=home&type=movie"])("does not inject Christmas discovery into %s",async query=>{
+  const fetcher=vi.fn(async(url:RequestInfo|URL)=>railResponse(String(url)));
+  await handleMoviesCatalog(request(query),"secret",fetcher);
+  expect(fetcher.mock.calls.some(([url])=>new URL(String(url)).searchParams.has("with_keywords"))).toBe(false);
+ });
  it("rails fan out and omit a failing rail",async()=>{
   const fetcher=vi.fn(async(url:RequestInfo|URL)=>String(url).includes("/movie/popular?")?new Response("",{status:500}):railResponse(String(url)));
   const result=await handleMoviesCatalog(request("?rails=home"),"secret",fetcher);
   const payload=await result.json();
-  expect(result.status).toBe(200);expect(fetcher).toHaveBeenCalledTimes(8);
-  expect(payload.rails.map((rail:{id:string})=>rail.id)).toEqual(["trending","popular-tv","top-movies","action","comedy","scifi","thriller"]);
+  expect(result.status).toBe(200);expect(fetcher).toHaveBeenCalledTimes(9);
+  expect(payload.rails.map((rail:{id:string})=>rail.id)).toEqual(["trending","christmas","popular-tv","top-movies","action","comedy","scifi","thriller"]);
   expect(payload.rails[0].titles).toHaveLength(20);
   expect(payload.rails.find((rail:{id:string})=>rail.id==="popular-tv").titles[0]).toMatchObject({id:"tv-1",kind:"tv",name:"Show 1"});
   expect(payload.rails.find((rail:{id:string})=>rail.id==="action").titles[0]).toMatchObject({id:"movie-1",kind:"movie",name:"Movie 1"});
-  expect(parseRails(payload)).toHaveLength(7);
+  expect(parseRails(payload)).toHaveLength(8);
   expect(result.headers.get("netlify-cdn-cache-control")).toBeNull();
  });
  it("rails fail with 502 only when every rail fails",async()=>{
@@ -268,7 +295,7 @@ it('treats a rail without a results array as a failed rail',async()=>{
  const payload=await oneRail.json();
  expect(oneRail.status).toBe(200);
  expect(payload.rails.map((rail:{id:string})=>rail.id)).not.toContain("now-playing");
- expect(payload.rails).toHaveLength(8);
+ expect(payload.rails).toHaveLength(9);
  expect(oneRail.headers.get("netlify-cdn-cache-control")).toBeNull();
 });
 
