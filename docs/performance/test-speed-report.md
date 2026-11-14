@@ -1,47 +1,28 @@
 # Test infrastructure measurements, 2026-11-14
 
-## Result
+No score-loop speedup is established. Ship opt-in measurement tooling, explicit server ownership and browser download caching. Production code, assertions, score definitions and sample durations are unchanged. Warmup and extra workers were rejected.
 
-Ship a Playwright browser download cache for the Chromium and WebKit glass CI jobs, and require explicit local server reuse. Do not ship Vite warmup or increased worker concurrency: measurements did not support either on this shared machine. No measured score speedup is claimed.
+Matched comparison: base 3821f655 and head 1f2526c, same Linux host, Node 24.22.1, Playwright 1.64.1 and installed dependencies. Independent git archives had cold Vite caches. The authoritative uncommitted harness was copied read-only from the climb-liquid-glass worktree. Only copied output destinations and server ports changed. Fresh servers, one worker, both engines and all four score matrices remained. Our runs were sequential. Another worktree ran hill-climb measurements concurrently, so these are shared-host observations.
 
-## Environment and method
+| Command | Base seconds | Head seconds | Outcome |
+| --- | ---: | ---: | --- |
+| Full liquid-glass.spec.ts, both engines | 156.563 | 190.780 | Both 106 passed, 9 skipped, 1 failed |
+| Frozen check-liquid-glass.mjs | 358.739 | 339.757 | Both 336 assertions, no infrastructure failures; scores 124 and 126 |
 
-Worktree: perf/test-speed, base origin/main 3821f655. Node 24.22.1, Playwright 1.64.1, Linux, Intel Xeon, eight available logical CPUs. Dependencies were already installed. The parent session 38355 could not be resumed from this agent; no npm ci process remained. No competing install was started.
+Two score outcomes changed: chromium/1280 timing/on-p95 and chromium/390 timing/added-p95 passed on base and failed on head. Every other assertion outcome matched. Numeric frame evidence differed. This does not establish identical scores. The apparent 5.3% wall reduction is not claimed as an optimization. The observed command range is 340 to 359 seconds with full coverage; an isolated floor requires a host without competing browser measurements.
 
-Wall time uses Python time.monotonic around subprocess.run, including CLI, server startup and browser teardown. Browser projects, assertions, timeouts, screenshots on failure and traces on failure remained unchanged. Existing browser downloads and Vite dependency cache were warm. Other worktrees were running browser and Vitest jobs, so these are shared-machine samples, not isolated performance benchmarks.
+Base failed WebKit minimized capsule at 1440px; head failed the same assertion at 320px. Both waited unsuccessfully for data-pill-ready=true. The earlier head Chromium Movies alignment failure remains a separate observation; these runs do not prove its cause. Neither suite is reported green.
 
-| Experiment | Wall seconds | Outcome |
-| --- | ---: | --- |
-| Exploratory serial full file | 152.404 | 107 passed, 9 existing skips; config edited during execution, exclude from comparisons |
-| Startup subset, before, sample 1 | 7.960 | exit 0 |
-| Startup subset, warmup, sample 1 | 8.447 | exit 0 |
-| Startup subset, before, sample 2 | 8.197 | exit 0 |
-| Startup subset, warmup, sample 2 | 10.308 | exit 0 |
-| Two workers, test-level parallelism, dedicated port | 154.002 | 105 passed, 9 skipped, 2 failed; Chromium D-Bus disconnect and abort in failure logs |
-| Serial full file, dedicated port | 141.709 | 107 passed, 9 skipped, exit 0 |
+Suite command: `PLAYWRIGHT_PORT=<port> node node_modules/@playwright/test/cli.js test tests/e2e/liquid-glass.spec.ts --workers=1 --reporter=json`. Score command: `PLAYWRIGHT_PORT=<port> node scripts/check-liquid-glass.mjs`. Suite ports 4891/4892; score ports 4893/4894. An initial interrupted run and a score collision on port 4600 were excluded. Raw logs, score reports, screenshots and timing JSON: `/tmp/qcc-speed-evidence`.
 
-Startup subset command: `npx playwright test tests/e2e/liquid-glass.spec.ts --workers=1 --reporter=list --grep 'the arcade pill sits under Games'`. Alternated before/after twice, changing only Vite server.warmup.clientFiles for src/main.ts. Mean before 8.079 seconds, after 9.378 seconds, approximately 16.1% slower. Warmup was removed.
+## Browser cache
 
-Full serial command: `PLAYWRIGHT_PORT=4798 npx playwright test tests/e2e/liquid-glass.spec.ts --workers=1 --reporter=list`. Parallel experiment added `--fully-parallel --workers=2`. It was approximately 8.7% slower than the subsequent serial sample and failed, so no worker change is shipped. This ordering and concurrent host load prevent causal attribution.
+Local command: `node node_modules/@playwright/test/cli.js install chromium webkit`, first with a new PLAYWRIGHT_BROWSERS_PATH, then the identical populated directory. Miss 10.605 seconds, hit 0.716 seconds, both exit 0. This excludes GitHub transfer and OS dependency installation. CI retains install --with-deps on hits and misses. No GitHub-hosted savings are claimed.
 
-One earlier parallel attempt reused another worktree's listener on port 4600. That run was stopped and discarded. Dedicated port 4798 was used afterward. The server ownership change prevents this silent cross-worktree reuse by default. Deliberate reuse remains available through PLAYWRIGHT_REUSE_SERVER=1; ARCADE_URL remains an explicit external-server option.
+## Reusable comparison
 
-## CI cache
+`scripts/perf/compare-glass-infrastructure.py` freezes the supplied harness once, records hashes and revisions, runs full suite and scoring serially, isolates reports and ports, and compares assertion identities and outcomes. Python 3.12+, installed npm dependencies and browsers are required. No writes go to the source harness. No scoring servers are reused and no fixed waits are shortened. The harness remains opt-in rather than imported into this branch.
 
-Glass CI now restores ~/.cache/ms-playwright using OS, architecture, browser and lockfile hash. The install command still runs with --with-deps on every run, including cache hits. Thus system packages and requested revisions are checked; a cache miss follows the existing installation path. Cache download and upload overhead may exceed savings for a particular runner. No GitHub-hosted before/after run was available locally, so saved CI seconds are unmeasured. No test command or assertion was changed in CI. Workflow path filters now include the relevant infrastructure files.
+Earlier warmup averages: before 8.079 seconds, after 9.378 seconds, rejected. Earlier two-worker suite: 154.002 seconds with two failures versus subsequent serial 141.709 seconds, rejected. Concurrent host load prevents causal attribution.
 
-## Locked score integration boundary
-
-Read only: /home/box/.t3/worktrees/Qcc-games-/climb-liquid-glass-3f28349dfd303692, including its uncommitted scripts, tests/liquid-glass-score and .hill-climb/liquid-glass/best.txt. The saved best output ends with 336 assertions and 124 failures. Those are historical source-worktree results, not measurements from this task.
-
-The harness is absent from main. Importing it here would introduce a new scoring suite and its contract as part of an infrastructure PR. The minimal integration is therefore the shared Playwright infrastructure only; no partial or rewritten harness is added. The score config overrides its webServer and forces one worker, so it retains fresh-server isolation. Its check script removes ARCADE_URL and controls project coverage. Holdout retains its long paired runs and ten existing test files. Neither scoring command, aggregation, exit behavior, thresholds, durations nor production material code was edited.
-
-This PR does not accelerate the locked verify/score loop. Safely measuring that requires an agreed harness integration and isolated timing runs after the harness is committed. Reusing its server or parallelizing its matrices without that work could alter frame interval results. No claim of identical numeric frame scores is made because the score harness was not run here. Independent review is arranged by the parent, not run by this agent.
-
-## Repeat verification limitation
-
-A second serial dedicated-port run took 180.041 seconds and returned 1: 106 passed, 9 skipped, 1 failed. The existing Chromium Movies pill at 1440px assertion timed out polling the 2px alignment threshold. The assertion and its timeout were retained. This repeat means the full suite cannot be reported as consistently green. A recheck attempted while the screenshot server owned port 4798 failed immediately on the port collision, confirming the new fail-fast ownership behavior.
-
-`npm run check` passed. `git diff --check` passed. No production source or test assertion files differ from base.
-
-The failed Movies case passed unchanged on targeted Chromium recheck: 1 passed in 4.8 seconds. This does not erase the full-run failure. Chromium and WebKit screenshots were captured separately at 390x844. A first WebKit screenshot attempt timed out waiting for a hidden tab bar; the final capture records the actual initial UI without forcing the bar visible.
+`npm run check` and `git diff --check` passed. Python CLI help and compilation passed. Parent performs independent review. No production glass or test assertions changed. Long holdout was not run; no runtime or score claim is made for it.
