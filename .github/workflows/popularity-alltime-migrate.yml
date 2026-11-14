@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   migrate:
-    if: false
+    if: github.repository == 'grantcharlie1000-tech/Qcc-games-' && github.ref == 'refs/heads/ops/popularity-alltime-migration-20261114'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
