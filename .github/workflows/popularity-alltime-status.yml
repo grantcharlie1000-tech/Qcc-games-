@@ -1,5 +1,5 @@
 # Read-only scoped status check. No identifiers, aggregates, secrets or raw responses are logged.
-name: Check Popular all-time migration prerequisites
+name: Verify live Popular and Christmas release
 on:
   push:
     branches: [ops/popularity-quota-recheck-20261115]
@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: c2beb682c270880a8cd6ca890ba320674c4a2646
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -21,6 +24,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const normalize=sql=>String(sql||'').replace(/\bIF\s+NOT\s+EXISTS\b/ig,'').replace(/\s+/g,' ').trim().replace(/;$/,'').toLowerCase();
           const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
           if(!token||!/^[a-f0-9]{32}$/i.test(account||''))throw new Error('existing_backend_credentials_unavailable');
           const root=`https://api.cloudflare.com/client/v4/accounts/${account}`;
@@ -49,32 +54,32 @@ jobs:
           const writes=groups.reduce((sum,row)=>sum+row.sum.rowsWritten,0);
           if(writes>=90000)throw new Error('account_d1_write_quota_headroom_insufficient');
           console.log(`account_d1_current_day_write_usage_below_90000_verified_${day}`);
+          const expectedCommit='3842356129ab54aebbb0e99852fe5caefcd6d90e';
+          if(!/^[a-f0-9]{40}$/.test(expectedCommit))throw new Error('expected_production_commit_unset');
           const project=await api('/pages/projects/nceastudy');
-          if(project?.name!=='nceastudy'||project?.subdomain!=='nceastudy.pages.dev'||project?.production_branch!=='production')throw new Error('existing_pages_target_invalid');
+          if(project?.name!=='nceastudy'||project?.production_branch!=='production')throw new Error('production_target_invalid');
           const databases=await api('/d1/database?per_page=100&page=1');
-          if(!Array.isArray(databases))throw new Error('database_list_invalid');
-          const expectedOldTrigger="CREATE TRIGGER IF NOT EXISTS movie_popularity_count_insert\nAFTER INSERT ON movie_popularity_tokens\nBEGIN\n INSERT INTO movie_popularity_daily (title_id, day, views) VALUES (NEW.title_id, NEW.day, 1)\n ON CONFLICT(title_id, day) DO UPDATE SET views = views + 1;\nEND;";
-          const normalize=sql=>String(sql||'').replace(/\bIF\s+NOT\s+EXISTS\b/ig,'').replace(/\s+/g,' ').trim().replace(/;$/,'').toLowerCase();
-          let failed=false;
-          for(const environment of ['preview','production']){
-           try{
-            const matches=databases.filter(row=>row.name===`nceastudy-movie-popularity-${environment}-v1`);
-            if(matches.length!==1||!matches[0].uuid||project.deployment_configs?.[environment]?.d1_databases?.MOVIE_POPULARITY_DB?.id!==matches[0].uuid)throw new Error('dedicated_database_binding_invalid');
-            const result=await api(`/d1/database/${encodeURIComponent(matches[0].uuid)}/query`,{batch:[
-             {sql:"SELECT name, type, sql FROM sqlite_master WHERE name IN ('movie_popularity_tokens','movie_popularity_daily','movie_popularity_rate','movie_popularity_totals','movie_popularity_count_insert')"},
-             {sql:'SELECT COUNT(*) AS title_days, COALESCE(SUM(views),0) AS reports, COALESCE(MIN(day),0) AS first_day, COALESCE(MAX(day),0) AS last_day FROM movie_popularity_daily'}
-            ]});
-            if(!Array.isArray(result)||result.length!==2||result.some(row=>row.success!==true))throw new Error('read_only_batch_unavailable');
-            const schema=result[0].results||[],aggregate=result[1].results?.[0];
-            if(!['movie_popularity_tokens','movie_popularity_daily','movie_popularity_rate','movie_popularity_count_insert'].every(name=>schema.some(row=>row.name===name)))throw new Error('popularity_schema_incomplete');
-            if(!aggregate||!['title_days','reports','first_day','last_day'].every(key=>Number.isSafeInteger(aggregate[key])&&aggregate[key]>=0))throw new Error('aggregate_consistency_invalid');
-            const trigger=schema.find(row=>row.name==='movie_popularity_count_insert');
-            if(schema.some(row=>row.name==='movie_popularity_totals')||normalize(trigger?.sql)!==normalize(expectedOldTrigger))throw new Error('legacy_schema_changed_requires_review');
-            console.log(`${environment}_legacy_table_trigger_aggregate_state_verified_after_quota_refusal`);
-           }catch(error){
-            failed=true;const code=error instanceof Error&&/^[a-z0-9_]+$/.test(error.message)?error.message:'read_only_check_failed';
-            console.log(`${environment}_${code}`);
-           }
-          }
-          if(failed)process.exitCode=1;
+          const matches=databases.filter(row=>row.name==='nceastudy-movie-popularity-production-v1');
+          if(matches.length!==1||project.deployment_configs?.production?.d1_databases?.MOVIE_POPULARITY_DB?.id!==matches[0].uuid)throw new Error('production_database_binding_invalid');
+          const id=matches[0].uuid;
+          async function query(sql){const result=await api(`/d1/database/${encodeURIComponent(id)}/query`,{sql});if(!Array.isArray(result)||result.length!==1||result[0].success!==true)throw new Error('read_only_query_unavailable');return result[0].results;}
+          const schema=await query("SELECT name,type,sql FROM sqlite_master WHERE name IN ('movie_popularity_totals','movie_popularity_count_insert')");
+          const source=readFileSync('docs/movie-popularity-alltime-migration.sql','utf8');
+          const expectedTrigger=source.slice(source.lastIndexOf('CREATE TRIGGER movie_popularity_count_insert'));
+          if(!schema.some(row=>row.name==='movie_popularity_totals')||!schema.some(row=>row.name==='movie_popularity_count_insert'&&normalize(row.sql)===normalize(expectedTrigger)))throw new Error('alltime_schema_invalid');
+          const inconsistent=await query('SELECT COUNT(*) AS invalid FROM (SELECT d.title_id FROM movie_popularity_daily d LEFT JOIN movie_popularity_totals t ON t.title_id=d.title_id GROUP BY d.title_id HAVING t.views IS NULL OR t.views<SUM(d.views))');
+          if(inconsistent[0]?.invalid!==0)throw new Error('alltime_counts_invariant_invalid');
+          async function live(path){const response=await fetch('https://nceastudy.pages.dev'+path,{cache:'no-store',headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(20000)});if(!response.ok)throw new Error('live_get_unavailable');try{return await response.json();}catch{throw new Error('live_json_unavailable');}}
+          const revision=await live('/deploy-info.json?release='+expectedCommit);
+          if(revision.commit!==expectedCommit)throw new Error('live_revision_mismatch');
+          const ranking=await live('/api/movie-popularity');
+          const expectedRanking=(await query('SELECT title_id FROM movie_popularity_totals WHERE views>=1 ORDER BY views DESC,title_id ASC LIMIT 10')).map(row=>row.title_id);
+          if(Object.keys(ranking).sort().join(',')!=='titleIds,windowDays'||ranking.windowDays!==null||JSON.stringify(ranking.titleIds)!==JSON.stringify(expectedRanking))throw new Error('live_alltime_ranking_mismatch');
+          const catalogue=await live('/api/movies?rails=movie');
+          if(!Array.isArray(catalogue.rails)||!catalogue.rails.some(row=>row.id==='christmas'&&row.title==='Christmas movies'))throw new Error('live_christmas_catalogue_missing');
+          const schedule=await api('/workers/scripts/nceastudy-movie-popularity-production-cleanup/schedules');
+          if(schedule?.schedules?.length!==1||schedule.schedules[0].cron!=='* * * * *')throw new Error('cleanup_schedule_changed');
+          console.log('production_live_revision_verified_'+expectedCommit);
+          console.log('production_alltime_top_ten_matches_preserved_d1_totals_public_response_has_no_counts_or_identities');
+          console.log('production_christmas_catalogue_and_cleanup_schedule_verified');
           JS
