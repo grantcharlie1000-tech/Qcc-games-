@@ -42,6 +42,7 @@ for label, ref, port in [('base', args.base, args.port), ('head', args.head, arg
     with tarfile.open(fileobj=io.BytesIO(archive)) as archive_file:
         archive_file.extractall(checkout, filter='data')
     (checkout / 'node_modules').symlink_to(root / 'node_modules', target_is_directory=True)
+    shutil.rmtree(checkout / 'tests/liquid-glass-score', ignore_errors=True)
     shutil.copytree(frozen / 'tests/liquid-glass-score', checkout / 'tests/liquid-glass-score')
     shutil.copy2(frozen / 'scripts/check-liquid-glass.mjs', checkout / 'scripts')
     outputs = out / (label + '-outputs')

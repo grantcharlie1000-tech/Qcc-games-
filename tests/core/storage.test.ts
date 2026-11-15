@@ -1,7 +1,7 @@
 import {beforeEach,expect,test,vi} from 'vitest';
 import {GAME_IDS} from '../../src/core/types';
 import {games} from '../../src/core/catalog';
-import {canRetain,probeStorage,flushPending,write,read,recordScore,highScore,savedGame,saveGame,toggleFavourite,favourites,settings,subscribe} from '../../src/core/storage';
+import {canRetain,probeStorage,flushPending,write,read,recordScore,highScore,savedGame,saveGame,toggleFavourite,favourites,settings,writeSettings,subscribe} from '../../src/core/storage';
 beforeEach(()=>{const map=new Map<string,string>();vi.stubGlobal('localStorage',{getItem:(k:string)=>map.get(k)??null,setItem:(k:string,v:string)=>map.set(k,v),removeItem:(k:string)=>map.delete(k)});});
 test('library contains every registered game including Drift Club, Last Light and Breachline',()=>{expect(games).toHaveLength(28);expect(new Set(games.map(g=>g.id))).toEqual(new Set(GAME_IDS));});
 test('high scores cannot decrease',()=>{recordScore('snake',21);recordScore('snake',5);expect(highScore('snake')).toBe(21);});
@@ -49,4 +49,16 @@ test('retrying an unchanged snapshot after quota recovery persists its original 
  vi.stubGlobal('localStorage',{getItem:(k:string)=>disk.get(k)??null,setItem:(k:string,v:string)=>{if(full)throw Error('quota');disk.set(k,v);},removeItem:(k:string)=>disk.delete(k)});
  expect(saveGame('quadfall',{piece:1})).toBe(false);const updated=read<any>('save:quadfall',null).updated;
  full=false;expect(saveGame('quadfall',{piece:1})).toBe(true);expect(JSON.parse(disk.get('pocket-arcade:v1:save:quadfall')!).updated).toBe(updated);
+});
+
+
+test('transparency stays on this device while synced settings keep the deployed account format',()=>{
+ vi.stubGlobal('matchMedia',()=>({matches:false}));
+ writeSettings({sound:true,reducedMotion:false,reducedTransparency:true,colorBlind:false,autoNextEpisode:true});
+ expect(read('settings',{})).toEqual({sound:true,reducedMotion:false,colorBlind:false,autoNextEpisode:true});
+ expect(settings().reducedTransparency).toBe(true);
+ write('settings',{sound:false,reducedMotion:false,colorBlind:false,autoNextEpisode:true});
+ expect(settings().reducedTransparency).toBe(true);
+ writeSettings({...settings(),reducedTransparency:false});
+ expect(settings().reducedTransparency).toBe(false);
 });

@@ -22,13 +22,8 @@ describe('account save merging and validation',()=>{
  });
 });
 
-it('preserves the newest transparency choice with the other synced settings',()=>{
- const previous={settings:{value:{sound:true,reducedMotion:true},updated:1}};
- const newest={settings:{value:{sound:false,reducedMotion:true,reducedTransparency:true},updated:2}};
- expect(validSaves(newest)).toBe(true);
- expect(mergeSaves(previous,newest).settings).toEqual(newest.settings);
- expect(validSave('settings',{value:{reducedTransparency:false},updated:3})).toBe(true);
- for(const value of ['true',1,null,{}])expect(validSave('settings',{value:{reducedTransparency:value},updated:3})).toBe(false);
+it('keeps device transparency out of the deployed cloud settings format',()=>{
+ expect(validSave('settings',{value:{reducedTransparency:true},updated:3})).toBe(false);
 });
 
 it('accepts only boolean auto-next settings and syncs the newest choice',()=>{
