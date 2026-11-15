@@ -2,7 +2,7 @@
 name: Check Popular all-time migration prerequisites
 on:
   push:
-    branches: [ops/popularity-alltime-status-20261114]
+    branches: [ops/popularity-quota-recheck-20261115]
     paths: [.github/workflows/popularity-alltime-status.yml]
 permissions:
   contents: read
@@ -34,6 +34,21 @@ jobs:
            }
            return data.result;
           }
+          const day=new Date().toISOString().slice(0,10);
+          if(day<'2026-11-15')throw new Error('expected_quota_reset_day_not_reached');
+          const analytics=await fetch('https://api.cloudflare.com/client/v4/graphql',{
+           method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+           body:JSON.stringify({query:'query($accountTag: string!, $day: Date!) { viewer { accounts(filter: {accountTag: $accountTag}) { d1AnalyticsAdaptiveGroups(limit: 10000, filter: {date: $day}) { sum { rowsWritten } } } } }',variables:{accountTag:account,day}}),
+           redirect:'error',signal:AbortSignal.timeout(20000)
+          });
+          const usage=await analytics.json();
+          const accounts=usage.data?.viewer?.accounts;
+          if(!analytics.ok||usage.errors?.length||!Array.isArray(accounts)||accounts.length!==1||!Array.isArray(accounts[0].d1AnalyticsAdaptiveGroups))throw new Error('account_d1_write_quota_analytics_unavailable');
+          const groups=accounts[0].d1AnalyticsAdaptiveGroups;
+          if(groups.length>=10000||groups.some(row=>!Number.isFinite(row.sum?.rowsWritten)||row.sum.rowsWritten<0))throw new Error('account_d1_write_quota_analytics_invalid');
+          const writes=groups.reduce((sum,row)=>sum+row.sum.rowsWritten,0);
+          if(writes>=90000)throw new Error('account_d1_write_quota_headroom_insufficient');
+          console.log(`account_d1_current_day_write_usage_below_90000_verified_${day}`);
           const project=await api('/pages/projects/nceastudy');
           if(project?.name!=='nceastudy'||project?.subdomain!=='nceastudy.pages.dev'||project?.production_branch!=='production')throw new Error('existing_pages_target_invalid');
           const databases=await api('/d1/database?per_page=100&page=1');
