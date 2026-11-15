@@ -10,7 +10,7 @@ jobs:
   status:
     if: github.repository == 'grantcharlie1000-tech/Qcc-games-'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -83,3 +83,71 @@ jobs:
           console.log('production_alltime_top_ten_matches_preserved_d1_totals_public_response_has_no_counts_or_identities');
           console.log('production_christmas_catalogue_and_cleanup_schedule_verified');
           JS
+      - run: npm ci
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps chromium
+      - name: Verify actual production Movies with normal browser TLS
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium,expect} from '@playwright/test';
+          import {writeFileSync,mkdirSync} from 'node:fs';
+          mkdirSync('artifacts/live-release',{recursive:true});
+          const expected='3842356129ab54aebbb0e99852fe5caefcd6d90e';
+          if(!/^[a-f0-9]{40}$/.test(expected||''))throw new Error('expected_commit_required');
+          const origin='https://nceastudy.pages.dev';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const context=await browser.newContext({viewport:{width:1280,height:900}});
+          await context.addInitScript(()=>{
+           localStorage.setItem('pocket-arcade:v1:accounts:guest','true');
+           localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');
+           sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');
+          });
+          const page=await context.newPage();
+          const findings={expectedCommit:expected,origin,checkedAt:new Date().toISOString(),themes:[],screenshots:[]};
+          try{
+           const revisionResponse=await context.request.get(origin+'/deploy-info.json');
+           if(!revisionResponse.ok())throw new Error('live_revision_get_failed');
+           const revision=await revisionResponse.json();
+           if(revision.commit!==expected)throw new Error('live_revision_mismatch');
+           findings.liveCommit=revision.commit;
+           const rankingResponse=await context.request.get(origin+'/api/movie-popularity');
+           if(!rankingResponse.ok())throw new Error('live_popularity_get_failed');
+           const ranking=await rankingResponse.json();
+           if(Object.keys(ranking).sort().join(',')!=='titleIds,windowDays'||ranking.windowDays!==null||!Array.isArray(ranking.titleIds)||ranking.titleIds.length>10||ranking.titleIds.some(id=>!/^movie-[1-9][0-9]{0,9}$/.test(id)))throw new Error('live_public_popularity_contract_invalid');
+           findings.rankedTitles=ranking.titleIds.length;
+           findings.publicPopularityKeys=Object.keys(ranking).sort();
+           for(const theme of ['off','christmas']){
+            await page.goto(origin+'/?festive='+theme+'#/movies/browse/movie',{waitUntil:'domcontentloaded',timeout:60000});
+            await expect(page.locator('html')).toHaveAttribute('data-festive',theme,{timeout:60000});
+            const rail=page.locator('[data-rail="christmas"]');
+            await expect(rail.getByRole('heading',{name:'Christmas movies',exact:true})).toBeAttached({timeout:60000});
+            await expect(rail.locator('[data-title]').first()).toBeAttached({timeout:60000});
+            await expect(page.locator('[data-rail="popular-marlborough"] .ui-rail-sub')).toHaveText('Across QCC · All time',{timeout:60000});
+            await rail.scrollIntoViewIfNeeded();
+            const shot='artifacts/live-release/live-christmas-'+theme+'-1280.png';
+            await page.screenshot({path:shot});findings.screenshots.push(shot);findings.themes.push(theme);
+           }
+           await page.setViewportSize({width:390,height:844});
+           await page.goto(origin+'/?festive=off#/movies/browse/movie',{waitUntil:'domcontentloaded',timeout:60000});
+           const popular=page.locator('[data-rail="popular-marlborough"]');
+           await expect(popular.locator('.ui-rail-sub')).toHaveText('Across QCC · All time',{timeout:60000});
+           await popular.scrollIntoViewIfNeeded();
+           const shot='artifacts/live-release/live-popular-all-time-390.png';
+           await page.screenshot({path:shot});findings.screenshots.push(shot);
+           findings.result='passed';
+           console.log(JSON.stringify({result:findings.result,liveCommit:findings.liveCommit,themes:findings.themes,rankedTitles:findings.rankedTitles,publicPopularityKeys:findings.publicPopularityKeys}));
+          }finally{
+           writeFileSync('artifacts/live-release/live-verification.json',JSON.stringify(findings,null,2)+'\n');
+           await browser.close();
+          }
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qcc-production-movies-verification
+          path: artifacts/live-release/
+          retention-days: 7
