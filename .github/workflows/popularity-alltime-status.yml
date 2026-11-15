@@ -143,7 +143,8 @@ jobs:
             await expect(rail.getByRole('heading',{name:'Christmas movies',exact:true})).toBeAttached({timeout:60000});
             await expect(rail.locator('[data-title]').first()).toBeAttached({timeout:60000});
             await expect(page.locator('[data-rail="popular-marlborough"] .ui-rail-sub')).toHaveText('Across QCC · All time',{timeout:60000});
-            await rail.scrollIntoViewIfNeeded();
+            await rail.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
+            await expect(rail.getByRole('heading',{name:'Christmas movies',exact:true})).toBeVisible({timeout:60000});
             const shot='artifacts/live-release/live-christmas-'+theme+'-1280.png';
             await page.screenshot({path:shot});findings.screenshots.push(shot);findings.themes.push(theme);
            }
@@ -151,7 +152,8 @@ jobs:
            await page.goto(origin+'/?festive=off#/movies/browse/movie',{waitUntil:'domcontentloaded',timeout:60000});
            const popular=page.locator('[data-rail="popular-marlborough"]');
            await expect(popular.locator('.ui-rail-sub')).toHaveText('Across QCC · All time',{timeout:60000});
-           await popular.scrollIntoViewIfNeeded();
+           await popular.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
+           await expect(popular.getByRole('heading',{name:'Popular in Marlborough',exact:true})).toBeVisible({timeout:60000});
            const shot='artifacts/live-release/live-popular-all-time-390.png';
            await page.screenshot({path:shot});findings.screenshots.push(shot);
            findings.result='passed';
