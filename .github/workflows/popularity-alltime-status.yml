@@ -59,6 +59,8 @@ jobs:
           if(!/^[a-f0-9]{40}$/.test(expectedCommit))throw new Error('expected_production_commit_unset');
           const project=await api('/pages/projects/nceastudy');
           if(project?.name!=='nceastudy'||project?.production_branch!=='production')throw new Error('production_target_invalid');
+          const deployments=await api('/pages/projects/nceastudy/deployments?env=production&per_page=5');
+          console.log(JSON.stringify({canonical:project.canonical_deployment?{id:project.canonical_deployment.id,commit:project.canonical_deployment.deployment_trigger?.metadata?.commit_hash,type:project.canonical_deployment.deployment_trigger?.type,created:project.canonical_deployment.created_on}:null,productionDeployments:(Array.isArray(deployments)?deployments:[]).slice(0,5).map(row=>({id:row.id,commit:row.deployment_trigger?.metadata?.commit_hash,type:row.deployment_trigger?.type,created:row.created_on,stage:row.latest_stage?.name,status:row.latest_stage?.status}))}));
           const databases=await api('/d1/database?per_page=100&page=1');
           const matches=databases.filter(row=>row.name==='nceastudy-movie-popularity-production-v1');
           if(matches.length!==1||project.deployment_configs?.production?.d1_databases?.MOVIE_POPULARITY_DB?.id!==matches[0].uuid)throw new Error('production_database_binding_invalid');
