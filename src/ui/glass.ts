@@ -23,9 +23,8 @@ export const LENS_MARGIN=LENS_BEND+4;
 // The arcade's clear material has a narrower, lower-power bezel. Keep these
 // separate from the legacy unmarked-bar map and its displacement scale.
 export const ARCADE_LENS_BEVEL=12;
-// The actual convex profile peaks below 5px. A tight encoding range avoids
-// wasting 8-bit displacement precision, especially on DPR3 circular controls.
-export const ARCADE_LENS_BEND=5;
+// Keep the convex profile within a 3.5px offset and preserve map precision.
+export const ARCADE_LENS_BEND=3.5;
 const CURRENT='.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]';
 const PILL_VARS=['--ui-pill-x','--ui-pill-w','--ui-pill-on'];
 let filterSeq=0;
@@ -219,6 +218,9 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const edge=document.createElement('div');
   edge.className='ui-scroll-edge';
   edge.setAttribute('aria-hidden','true');
+  const dragStyle=document.createElement('style');
+  dragStyle.textContent='.ui-tabbar[data-glass-dragging]::after{transition:scale 140ms var(--ease-out),opacity 120ms var(--ease)!important}';
+  document.head.append(dragStyle);
   const stretchable=canStretch(bar);
   let mode:GlassMode|undefined;
   // True once the map has decoded and the filter is in the document. Until then nothing refers to the filter.
@@ -226,9 +228,11 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   let mapWidth=0,mapHeight=0,mapDensity=0,mapSeq=0;
   // Set when the browser cannot make the map (no 2D canvas context, or a map that fails to decode). Such a bar has no lens at all.
   let lensless=false;
-  let press:{tab:HTMLElement;pointerId:number}|null=null;
+  let press:{tab:HTMLElement;pointerId:number;startX:number;left:number;transform:string;priority:string;dragging:boolean}|null=null;
   let placedLeft:number|null=null;
   let stretch:Animation|undefined;
+  let settleTimer:ReturnType<typeof setTimeout>|undefined;
+  let clickTimer:ReturnType<typeof setTimeout>|undefined;
 
   const current=()=>bar.querySelector<HTMLElement>(CURRENT);
   // Moves the pill over a tab. The first placement after the bar has a size is instant, so the pill never slides in
@@ -251,7 +255,21 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(box&&!pressing)placedLeft=box.left;
   };
   // Nothing re-places the pill under a finger that is still down.
-  const sync=(animate:boolean)=>{if(!press)place(current(),animate);};
+  const sync=(animate:boolean)=>{if(!press&&!settleTimer)place(current(),animate);};
+  const stopSettle=(restore=true)=>{
+    if(!settleTimer)return;
+    clearTimeout(settleTimer);settleTimer=undefined;
+    document.removeEventListener('pointerdown',interruptSettle,true);
+    document.removeEventListener('keydown',interruptSettle,true);
+    document.removeEventListener('click',interruptClick,true);
+    document.removeEventListener('visibilitychange',interruptHidden);
+    window.removeEventListener('hashchange',interruptSettle);
+    window.removeEventListener('blur',interruptSettle);
+    if(restore)sync(true);
+  };
+  const interruptSettle=()=>stopSettle();
+  const interruptClick=(event:MouseEvent)=>{if(!event.isTrusted||event.detail===0)stopSettle();};
+  const interruptHidden=()=>{if(document.hidden)stopSettle();};
 
   // A press moves the pill under the finger and swells it. Keyboard activation sends no pointer events, so it never swells.
   // The release can land anywhere on the page, so the press listens on the document until it ends. Only the pointer that
@@ -259,12 +277,18 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   // A window that loses focus or a page that is hidden ends it too, for the same reason.
   const down=(event:PointerEvent)=>{
     if(event.button!==0)return;
+    stopSettle();
     if(press)release(null,true);
+    clearClickGuard();
     const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.ui-tab'):null;
     if(!tab||!bar.contains(tab))return;
-    press={tab,pointerId:event.pointerId};
+    press={tab,pointerId:event.pointerId,startX:event.clientX,left:tab.offsetLeft,transform:tab.style.getPropertyValue('transform'),priority:tab.style.getPropertyPriority('transform'),dragging:false};
+    // Keep the actual control in place while the decorative pill moves.
+    tab.style.setProperty('transform','none','important');
     bar.setAttribute('data-pressing','');
     document.addEventListener('pointerup',up);
+    document.addEventListener('pointermove',move);
+    document.addEventListener('dragstart',preventDrag);
     document.addEventListener('pointercancel',cancel);
     document.addEventListener('lostpointercapture',cancel);
     window.addEventListener('blur',lost);
@@ -273,6 +297,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   };
   const stopListening=()=>{
     document.removeEventListener('pointerup',up);
+    document.removeEventListener('pointermove',move);
+    document.removeEventListener('dragstart',preventDrag);
     document.removeEventListener('pointercancel',cancel);
     document.removeEventListener('lostpointercapture',cancel);
     window.removeEventListener('blur',lost);
@@ -280,10 +306,49 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   };
   const release=(event:PointerEvent|null,cancelled:boolean)=>{
     if(!press)return;
-    const {tab}=press;
+    const {tab,transform,priority,dragging}=press;
     press=null;
     stopListening();
+    if(transform)tab.style.setProperty('transform',transform,priority);
+    else tab.style.removeProperty('transform');
+    if(dragging){void bar.offsetWidth;bar.removeAttribute('data-glass-dragging');}
     bar.removeAttribute('data-pressing');
+    if(dragging){
+      // Touch can deliver a click to the tab where the gesture started.
+      // Ignore that native click; the selected destination is activated below.
+      bar.addEventListener('click',guardClick,true);
+      clickTimer=setTimeout(clearClickGuard,600);
+      const bounds=bar.getBoundingClientRect();
+      const inside=!cancelled&&event&&event.clientX>=bounds.left&&event.clientX<=bounds.right&&event.clientY>=bounds.top&&event.clientY<=bounds.bottom;
+      const tabs=inside?[...bar.querySelectorAll<HTMLElement>('.ui-tab')].filter(candidate=>candidate.getClientRects().length&&!candidate.matches(':disabled,[aria-disabled="true"]')):[];
+      const nearest=tabs.reduce<HTMLElement|null>((best,candidate)=>{
+        const centre=(element:HTMLElement)=>{const box=element.getBoundingClientRect();return box.left+box.width/2;};
+        return !best||Math.abs(centre(candidate)-event!.clientX)<Math.abs(centre(best)-event!.clientX)?candidate:best;
+      },null);
+      if(nearest&&nearest!==current()){
+        place(nearest,true);
+        // Let the pill settle before a destination replaces or hides the bar.
+        const key=['href','data-kind','data-action'].find(name=>nearest.hasAttribute(name));
+        const value=key?nearest.getAttribute(key):null;
+        const activate=()=>{
+          stopSettle(false);
+          const target=nearest.isConnected&&bar.contains(nearest)?nearest:key?[...bar.querySelectorAll<HTMLElement>('.ui-tab')].find(candidate=>candidate.tagName===nearest.tagName&&candidate.getAttribute(key)===value):null;
+          if(target&&!target.matches(':disabled,[aria-disabled="true"]'))target.click();else sync(true);
+        };
+        if(reduceMotion())activate();else{
+          settleTimer=setTimeout(activate,340);
+          document.addEventListener('pointerdown',interruptSettle,true);
+          document.addEventListener('keydown',interruptSettle,true);
+          document.addEventListener('click',interruptClick,true);
+          document.addEventListener('visibilitychange',interruptHidden);
+          window.addEventListener('hashchange',interruptSettle);
+          window.addEventListener('blur',interruptSettle);
+        }
+        return;
+      }
+      sync(true);
+      return;
+    }
     // A tap ends over the same tab. The point decides, not the target, because a touch keeps its target after the finger leaves.
     const tapped=!cancelled&&!!event&&document.elementFromPoint(event.clientX,event.clientY)?.closest('.ui-tab')===tab;
     // A completed tap on a tab that selects itself keeps the pill under the finger: its click makes that tab current, and the
@@ -292,7 +357,20 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(tapped&&(tab.tagName==='A'||tab.hasAttribute('aria-pressed'))){requestAnimationFrame(()=>sync(false));return;}
     sync(true);
   };
+  const guardClick=(event:MouseEvent)=>{if(event.isTrusted&&event.detail>0){event.preventDefault();event.stopImmediatePropagation();clearClickGuard();}};
+  const clearClickGuard=()=>{clearTimeout(clickTimer);clickTimer=undefined;bar.removeEventListener('click',guardClick,true);};
+  const move=(event:PointerEvent)=>{
+    if(!press||event.pointerId!==press.pointerId||standalone)return;
+    const delta=(event.clientX-press.startX)*(bar.offsetWidth/bar.getBoundingClientRect().width);
+    if(!press.dragging&&Math.abs(delta)<1)return;
+    press.dragging=true;
+    // Disabling the CSS transition lets each pointer sample paint immediately.
+    bar.setAttribute('data-glass-dragging','');
+    const left=Math.max(0,Math.min(bar.offsetWidth-press.tab.offsetWidth,press.left+delta));
+    bar.style.setProperty('--ui-pill-x',`${round(left)}px`);
+  };
   const up=(event:PointerEvent)=>{if(event.pointerId===press?.pointerId)release(event,false);};
+  const preventDrag=(event:DragEvent)=>{if(press?.tab.contains(event.target as Node))event.preventDefault();};
   const cancel=(event:PointerEvent)=>{if(event.pointerId===press?.pointerId)release(null,true);};
   const lost=()=>release(null,true);
   const hidden=()=>{if(document.hidden)release(null,true);};
@@ -380,7 +458,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   };
   // A change of mode takes out what the new mode does not draw, and draws what it does.
   const applyMode=()=>{
-    const preferred=glassMode(brands,{reducedTransparency:queries[0].matches,moreContrast:queries[1].matches,forcedColours:queries[2].matches});
+    const preferred=glassMode(brands,{reducedTransparency:queries[0].matches||document.documentElement.classList.contains('reduce-transparency'),moreContrast:queries[1].matches,forcedColours:queries[2].matches});
     const next=lensless&&preferred==='backdrop'?'frost':preferred;
     if(next===mode)return;
     mode=next;
@@ -408,6 +486,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   });
   void document.fonts?.ready.then(()=>{if(!disposed)sync(false);});
   for(const query of queries)query.addEventListener('change',applyMode);
+  const preferenceObserver=new MutationObserver(applyMode);
+  preferenceObserver.observe(document.documentElement,{attributes:true,attributeFilter:['class']});
 
   applyMode();
   sync(false);
@@ -422,11 +502,17 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       stopResize();
       parentWatch.disconnect();
       for(const query of queries)query.removeEventListener('change',applyMode);
+      preferenceObserver.disconnect();
       densityQuery?.removeEventListener('change',onDensity);
       densityQuery=undefined;
       bar.removeEventListener('pointerdown',down);
+      if(press){if(press.transform)press.tab.style.setProperty('transform',press.transform,press.priority);else press.tab.style.removeProperty('transform');}
       stopListening();
       press=null;
+      stopSettle(false);
+      clearClickGuard();
+      bar.removeAttribute('data-glass-dragging');
+      dragStyle.remove();
       stretch?.cancel();
       live.dispose();
       lens.remove();

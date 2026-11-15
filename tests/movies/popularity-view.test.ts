@@ -18,7 +18,7 @@ beforeEach(()=>{
  settings.fetch.interceptor={beforeAsyncRequest:async()=>new Promise(()=>{})};
  vi.stubGlobal('fetch',vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{
   const path=String(url);
-  if(path.includes('/api/movie-popularity')){if(init?.method==='POST'){posts.push(JSON.parse(init.body as string));return new Response(null,{status:204});}return Response.json({titleIds:[],windowDays:7});}
+  if(path.includes('/api/movie-popularity')){if(init?.method==='POST'){posts.push(JSON.parse(init.body as string));return new Response(null,{status:204});}return Response.json({titleIds:[],windowDays:null});}
   if(path.includes('movies/catalog.json')){const catalog=JSON.parse(readFileSync('public/movies/catalog.json','utf8'));catalog.titles=[{...catalog.titles[0],id:titleId}];return Response.json(catalog);}
   if(path.includes('movies/licenses.json'))return Response.json([]);
   return Response.json({error:'catalog_not_configured'},{status:503});
@@ -118,4 +118,13 @@ it('does not reuse saved resume positions or partial evidence after reopening Mo
  const first=await start();first.report(3000);await first.play(3000,55);expect(posts).toEqual([]);first.view.dispose();views.pop();
  const second=await start();second.report(3055);await second.play(3055,55);expect(posts).toEqual([]);
  await second.play(3110,5);await vi.waitFor(()=>expect(posts).toHaveLength(1));
+});
+
+it.each([false,true])('shows all-time copy in empty/populated rail (%s)',async(populated)=>{
+ const fetcher=fetch;vi.stubGlobal('fetch',vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>String(url).includes('/api/movie-popularity')?Response.json({titleIds:populated?[titleId]:[],windowDays:null}):fetcher(url,init)));
+ const container=document.createElement('main');document.body.append(container);
+ const view=new MoviesView(container,new MovieStorage(),()=>{},true);views.push(view);
+ await vi.waitFor(()=>expect(container.querySelector('[data-rail="popular-marlborough"]')?.textContent).toContain('All time'));
+ expect(container.querySelector('[data-rail="popular-marlborough"]')?.textContent).not.toContain('Past 7 days');
+ if(populated)await vi.waitFor(()=>expect(container.querySelector('[data-rail="popular-marlborough"] .movies-poster')).not.toBeNull());
 });

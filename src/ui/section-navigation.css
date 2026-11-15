@@ -13,6 +13,21 @@
   --glass-tint:rgb(8 12 18 / .36);--glass-frost:blur(12px);
   --glass-tone:saturate(1.4) brightness(.94);
 }
+.section-navigation>:is(.app-tabbar,.movies-mobile-nav).arcade-glass{
+  /* The fill separates light content; the translucent 1px rim separates dark
+     content. Contrast takes precedence over the regular tint's starting alpha. */
+  --glass-tint:rgb(8 12 18 / .86);
+  --glass-rim-edge:inset 0 0 0 1px rgb(255 255 255 / .72),inset 0 1px 0 rgb(255 255 255 / .16);
+}
+.section-navigation>.app-tabbar.arcade-glass[data-glass=frost]{
+  /* Some WebKit renderers omit backdrop diffusion. Limit transmission while
+     retaining the themed surface and blur on renderers that support it. */
+  --glass-tint:rgb(8 12 18 / .92);
+}
+.section-navigation>:is(.app-tabbar,.movies-mobile-nav).arcade-glass::after{
+  /* Keep the selection's inner highlight from washing out the outer cap. */
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .16),0 2px 5px rgb(0 0 0 / .04);
+}
 .section-navigation>.arcade-glass:is([data-glass=frost],[data-glass=backdrop]){
   background:none;border:0;box-shadow:none;
 }

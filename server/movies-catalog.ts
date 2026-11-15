@@ -36,10 +36,14 @@ const ratingOf=(value:unknown,votes:unknown)=>typeof value==="number"&&typeof vo
 const discoverPath=(kind:MediaKind,genre:number)=>`discover/${kind}?with_genres=${genre}&sort_by=popularity.desc&include_adult=false`;
 const withPage=(path:string,page:number)=>`${path}${path.includes("?")?"&":"?"}language=en-US&page=${page}`;
 const pageParam=(url:URL)=>{const value=url.searchParams.get("page");return value===null?1:integer(value,1,500);};
+// TMDB's Christmas keyword: https://www.themoviedb.org/keyword/207317-christmas/movie
+// A permanent catalog rail, independent of the arcade's seasonal artwork setting.
+const christmasRail:RailSpec={id:"christmas",title:"Christmas movies",path:"discover/movie?with_keywords=207317&sort_by=popularity.desc&include_adult=false",kind:"movie"};
 // Only the home trending rail mixes movies and TV, so it alone leaves each item's kind to its media_type.
 const RAILS:Record<RailName,RailSpec[]>={
   home:[
     {id:"trending",title:"Trending now",path:"trending/all/week"},
+    christmasRail,
     {id:"popular-movies",title:"Popular movies",path:"movie/popular",kind:"movie"},
     {id:"popular-tv",title:"Popular TV",path:"tv/popular",kind:"tv"},
     {id:"top-movies",title:"Top rated movies",path:"movie/top_rated",kind:"movie"},
@@ -50,6 +54,7 @@ const RAILS:Record<RailName,RailSpec[]>={
   ],
   movie:[
     {id:"trending",title:"Trending movies",path:"trending/movie/week",kind:"movie"},
+    christmasRail,
     {id:"popular",title:"Popular",path:"movie/popular",kind:"movie"},
     {id:"now-playing",title:"In cinemas",path:"movie/now_playing",kind:"movie"},
     {id:"top",title:"Top rated",path:"movie/top_rated",kind:"movie"},

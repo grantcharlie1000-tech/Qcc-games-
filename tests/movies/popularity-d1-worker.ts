@@ -13,6 +13,7 @@ export default {
    for(const statement of popularitySqlStatements(await request.text())){const prepared=db.prepare(statement);if(!prepared.run)return new Response('no run',{status:500});await prepared.run();}
    return new Response('sql');
   }
+  if(url.pathname==='/__isolated_preview/migrate'){await db.batch(popularitySqlStatements(await request.text()).map(sql=>db.prepare(sql)));return new Response('migrated');}
   if(url.pathname==='/__isolated_preview/disabled')return handleMoviePopularity(new Request('https://qcc.test/api/movie-popularity'),{...env,MOVIE_POPULARITY_ENABLED:'false'});
   if(url.pathname==='/__isolated_preview/scheduled'){
    try{await onMoviePopularityScheduled({scheduledTime:Date.now(),cron:'15 * * * *'},{...env,MOVIE_POPULARITY_ENABLED:'false'},{waitUntil(){}});return new Response('scheduled');}

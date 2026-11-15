@@ -67,6 +67,80 @@ async function open(page:Page,name:string,hash='#/social'){
 const view=(page:Page)=>page.locator('section.social-view');
 const png=(width=600,height=400,color='#a684ff')=>sharp({create:{width,height,channels:3,background:color}}).png().toBuffer();
 
+for(const width of [390,1440])test(`profile sticky tabs hide scrolled reply fragments at ${width}px`,async({page,context},testInfo)=>{
+ await connect(context);await page.setViewportSize({width,height:844});
+ const a=await user('pin');
+ await call(social,'profile',a.token,{displayName:'Visible reply author',bio:'This biography must remain visible before the tabs stick.'});
+ const root=await post(a.token,'Original discussion');
+ for(let i=0;i<12;i++)await post(a.token,`Reply ${i}: enough content to scroll beneath the floating toolbar.`,{replyTo:root.id});
+ await open(page,a.name,`#/social/u/${a.name}/replies`);
+ const tabs=page.getByRole('tablist',{name:'Profile sections'}),cards=page.locator('.social-profile-panel .social-post');
+ await expect(cards).toHaveCount(12);
+ const headerVisible=async()=>{
+  await expect(page.locator('.social-profile-bio')).toBeInViewport();
+  expect(await page.locator('.social-profile-counts').evaluate(el=>{
+   const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+20,r.y+r.height/2));
+  })).toBe(true);
+  const banner=await page.locator('.social-banner').evaluate(el=>{
+   const r=el.getBoundingClientRect();
+   const toolbar=el.closest('.social-view')!.querySelector('.apps-top')!.getBoundingClientRect();
+   // The current opaque toolbar covers the banner's top edge at scroll zero.
+   // Test its visible area below the toolbar, while still rejecting a covered banner.
+   const y=Math.max(r.y+30,toolbar.bottom+1),hit=document.elementFromPoint(r.x+r.width/2,y);
+   return {visible:y<r.bottom&&el.contains(hit),top:r.top,height:r.height,hit:hit?.className};
+  });
+  expect(banner.visible,JSON.stringify(banner)).toBe(true);
+ };
+ await headerVisible();
+ for(const top of [64,84]){
+ await view(page).evaluate((el,inset)=>{(el as HTMLElement).style.setProperty('--app-top',`${inset}px`);},top);
+ for(const index of [0,1,2]){
+  await cards.nth(index).evaluate(el=>{
+   const scroller=el.closest<HTMLElement>('.social-view')!;
+   scroller.scrollTop+=el.getBoundingClientRect().top-scroller.getBoundingClientRect().top-20;
+  });
+  await expect.poll(async()=>Math.round((await tabs.boundingBox())!.y)).toBe(top);
+  // The middle of the floating toolbar must not reveal a detached author or image
+  // above the tabs. Exclude the intentionally visible back/settings controls.
+  // Use CSS pixels on Retina too, and materialize the crop before stats():
+  // Sharp stats() otherwise reads the original screenshot (including alpha).
+  await expect.poll(async()=>{
+   const r=(await tabs.boundingBox())!;
+   const controls=await page.locator('.social-view .apps-top .arcade-glass,.social-view .apps-top .social-fab').evaluateAll(elements=>elements.map(el=>{const box=el.getBoundingClientRect();return {left:box.left,right:box.right};}));
+   let left=Math.round(r.x)+72,right=Math.floor(r.x+r.width)-72;
+   const centre=r.x+r.width/2;
+   for(const box of controls){
+    if((box.left+box.right)/2<centre)left=Math.max(left,Math.ceil(box.right)+8);
+    else right=Math.min(right,Math.floor(box.left)-8);
+   }
+   // Compose now shares the toolbar, so exclude the real control bounds rather than a fixed inset.
+   expect(right-left,'Keep a substantial uncovered toolbar gap in the pixel check').toBeGreaterThan(80);
+   const image=await page.screenshot({scale:'css'});
+   const band=await sharp(image).extract({left,top:2,width:right-left,height:Math.round(r.y)-4}).removeAlpha().toBuffer();
+   const stats=await sharp(band).stats();
+   return Math.max(...stats.channels.map(c=>c.max));
+  },{message:'Scrolled posts must remain hidden above the pinned profile tabs'}).toBeLessThanOrEqual(1);
+  expect(await tabs.evaluate(el=>{const r=el.getBoundingClientRect();return !!document.elementFromPoint(r.x+100,30)?.closest('.social-post');})).toBe(false);
+ }
+ }
+ await page.screenshot({path:testInfo.outputPath(`profile-sticky-${width}.png`)});
+ await page.getByRole('tab',{name:'Photos',exact:true}).click();
+ await expect(page.getByText('No photos yet',{exact:true})).toBeVisible();
+ await view(page).evaluate(el=>{el.scrollTop=0;});await headerVisible();
+ await page.getByRole('tab',{name:'Replies',exact:true}).click();
+ await expect(cards).toHaveCount(12);
+ await view(page).evaluate(el=>{el.scrollTop=0;});await headerVisible();
+ // The mask must neither eat toolbar clicks nor survive profile disposal.
+ await cards.nth(1).evaluate(el=>{el.closest<HTMLElement>('.social-view')!.scrollTop+=el.getBoundingClientRect().top-20;});
+ await expect.poll(async()=>Math.round((await tabs.boundingBox())!.y)).toBe(84);
+ await page.getByRole('link',{name:'Social settings',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Settings',level:1})).toBeVisible();
+ await page.evaluate(h=>{location.hash=h;},`#/social/u/${a.name}/replies`);
+ await expect(cards).toHaveCount(12);await headerVisible();
+ await page.getByRole('button',{name:'Back to feed',exact:true}).click();
+ await expect(page.locator('.social-profile')).toHaveCount(0);
+});
+
 test('signed out shows log in prompt',async({page,context})=>{
  await connect(context);await page.goto('/');await guest(page);
  await page.evaluate(()=>{location.hash='#/social';});

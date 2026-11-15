@@ -20,9 +20,15 @@ CREATE TABLE IF NOT EXISTS movie_popularity_rate (
  expires_at INTEGER NOT NULL
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS movie_popularity_rate_expiry ON movie_popularity_rate(expires_at);
+CREATE TABLE IF NOT EXISTS movie_popularity_totals (
+ title_id TEXT PRIMARY KEY,
+ views INTEGER NOT NULL CHECK (views >= 0)
+) WITHOUT ROWID;
 CREATE TRIGGER IF NOT EXISTS movie_popularity_count_insert
 AFTER INSERT ON movie_popularity_tokens
 BEGIN
  INSERT INTO movie_popularity_daily (title_id, day, views) VALUES (NEW.title_id, NEW.day, 1)
  ON CONFLICT(title_id, day) DO UPDATE SET views = views + 1;
+ INSERT INTO movie_popularity_totals (title_id, views) VALUES (NEW.title_id, 1)
+ ON CONFLICT(title_id) DO UPDATE SET views = views + 1;
 END;

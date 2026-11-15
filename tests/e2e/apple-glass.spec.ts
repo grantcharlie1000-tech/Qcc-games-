@@ -89,7 +89,7 @@ test('both home lenses use opaque surfaces with reduced transparency',async({pag
   const objects=page.locator('.app-navigation > .arcade-glass');await expect(objects).toHaveCount(2);
   for(const object of await objects.all()){
     await expect(object).toHaveAttribute('data-glass','off');
-    await expect(object).toHaveCSS('background-color','rgb(241, 243, 245)');
+    await expect(object).toHaveCSS('background-color','rgb(32, 38, 43)');
     await expect(object).toHaveCSS('border-top-width','1px');
   }
 });
@@ -179,16 +179,16 @@ test('reduced transparency replaces each lens with an opaque bordered surface',a
   await expect(page.locator('.game-dock .ui-glass-lens')).toHaveCount(0);
 });
 
-test('pale home glass keeps keyboard focus visible with increased contrast',async({page})=>{
+test('solid home glass keeps keyboard focus visible with increased contrast',async({page})=>{
   await page.emulateMedia({contrast:'more'});
   await page.goto('/#/collection');
   await page.keyboard.press('Tab');
   const tab=page.locator('.app-tabbar').getByRole('button',{name:'Study',exact:true});
   await tab.focus();
   await expect(tab).toBeFocused();
-  await expect(tab).toHaveCSS('outline-color','rgb(11, 16, 21)');
+  await expect(tab).toHaveCSS('outline-color','rgb(255, 255, 255)');
   await expect(tab).toHaveCSS('outline-style','solid');
-  await expect(page.locator('.app-tabbar')).toHaveCSS('background-color','rgb(241, 243, 245)');
+  await expect(page.locator('.app-tabbar')).toHaveCSS('background-color','rgb(32, 38, 43)');
 });
 
 test('pointer press lifts the individual button and reduced motion removes the lift',async({page})=>{
@@ -209,7 +209,7 @@ test('pointer press lifts the individual button and reduced motion removes the l
 });
 
 for(const [theme,tone,fill,ink] of [
-  ['original','light','rgb(241, 243, 245)','rgb(11, 16, 21)'],
+  ['original','light','rgb(32, 38, 43)','rgb(255, 255, 255)'],
   ['christmas','dark','rgb(32, 38, 43)','rgb(255, 255, 255)'],
 ] as const)test(`${theme} Suika desktop controls keep white hover ink and an opaque accessible surface`,async({page,context})=>{
   if(theme==='original')await originalTheme(context);

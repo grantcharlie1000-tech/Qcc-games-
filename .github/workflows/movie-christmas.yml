@@ -1,0 +1,66 @@
+name: Movie release regression
+on:
+  pull_request:
+    branches: [main, production]
+    paths:
+      - 'src/movies/**'
+      - 'src/ui/**'
+      - 'src/core/storage.ts'
+      - 'src/main.ts'
+      - 'src/theme.css'
+      - 'tests/e2e/**'
+      - 'src/festive/**'
+      - 'server/movies-catalog.ts'
+      - 'functions/api/movies.ts'
+      - 'netlify/functions/movies-search.mts'
+      - 'tests/movies/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'playwright.config.ts'
+      - '.github/workflows/movie-christmas.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: movie-christmas-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  christmas:
+    name: Movies and navigation (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    env:
+      CI: 'true'
+      XDG_CONFIG_HOME: /tmp/qcc-cloudflare
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Verify movie behavior
+        run: npx vitest run tests/movies tests/core/storage.test.ts tests/core/glass-lens-profile.test.ts tests/accounts/merge.test.ts tests/accounts/client.test.ts tests/accounts/sync-v2-client.test.ts --maxWorkers=1
+      - run: npm run build
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      # The historical uniform-optics contract measures the previous navigation tint.
+      # It remains in Verify arcade; this gate covers the requested interactions and palette.
+      - name: Verify release behavior
+        run: xvfb-run -a npx playwright test tests/movies/christmas.spec.ts tests/movies/popularity.spec.ts tests/e2e/reduce-transparency.spec.ts tests/e2e/glass-drag-selection.spec.ts tests/e2e/apple-glass.spec.ts --project=${{ matrix.browser }} --workers=1 --grep-invert 'uniform arcade optics'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: movie-christmas-${{ matrix.browser }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7

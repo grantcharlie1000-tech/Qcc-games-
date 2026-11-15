@@ -35,7 +35,12 @@ export function write(key:string,value:unknown):boolean {
   if(!same)changed(key);return durable;
 }
 export function probeStorage():boolean { try { localStorage.setItem(prefix+'probe','1'); localStorage.removeItem(prefix+'probe'); } catch { retained=false; } return retained; }
-export function settings():Settings { return {...{sound:false,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,colorBlind:false,autoNextEpisode:true},...read<Partial<Settings>>('settings',{})}; }
+export function settings():Settings { return {...{sound:false,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,colorBlind:false,autoNextEpisode:true},...read<Partial<Settings>>('settings',{}),reducedTransparency:read('accessibility:reduced-transparency',false)}; }
+export function writeSettings(value:Settings):boolean {
+ const {reducedTransparency,...synced}=value;
+ const local=write('accessibility:reduced-transparency',!!reducedTransparency);
+ return write('settings',synced)&&local;
+}
 export function highScore(id:GameId):number { const score=read('best:'+id,0);if(typeof score!=='number'||!Number.isFinite(score))return 0;const normalized=id==='last-light'?normalizeLastLightScore(score):score;if(normalized!==score)write('best:'+id,normalized);return normalized; }
 export function recordScore(id:GameId,score:number):number { const old=highScore(id),best=Math.max(old,Number.isFinite(score)?score:0);if(best>old)write('best:'+id,best);return best; }
 export function saveGame(id:GameId,data:unknown):boolean {
