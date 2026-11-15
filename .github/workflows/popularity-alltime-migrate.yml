@@ -2,7 +2,7 @@
 name: Apply reviewed Popular all-time migration
 on:
   push:
-    branches: [ops/popularity-alltime-migration-20261114]
+    branches: [ops/popularity-safe-migrate-20261115]
     paths: [.github/workflows/popularity-alltime-migrate.yml]
 permissions:
   contents: read
@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   migrate:
-    if: github.repository == 'grantcharlie1000-tech/Qcc-games-' && github.ref == 'refs/heads/ops/popularity-alltime-migration-20261114'
+    if: github.repository == 'grantcharlie1000-tech/Qcc-games-' && github.ref == 'refs/heads/ops/popularity-safe-migrate-20261115'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -80,6 +80,21 @@ jobs:
            const columns=checks[0].results||[];
            if(columns.length!==2||!columns.some(row=>row.name==='title_id'&&row.type==='TEXT'&&row.pk===1)||!columns.some(row=>row.name==='views'&&row.type==='INTEGER'&&row.notnull===1)||checks[1].results?.[0]?.invalid!==0||checks[2].results?.[0]?.invalid!==0)throw new Error('alltime_aggregate_invariant_failed');
           }
+          const day=new Date().toISOString().slice(0,10);
+          if(day<'2026-11-15')throw new Error('expected_quota_reset_day_not_reached');
+          const analytics=await fetch('https://api.cloudflare.com/client/v4/graphql',{
+           method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+           body:JSON.stringify({query:'query($accountTag: string!, $day: Date!) { viewer { accounts(filter: {accountTag: $accountTag}) { d1AnalyticsAdaptiveGroups(limit: 10000, filter: {date: $day}) { sum { rowsWritten } } } } }',variables:{accountTag:account,day}}),
+           redirect:'error',signal:AbortSignal.timeout(20000)
+          });
+          const usage=await analytics.json();
+          const accounts=usage.data?.viewer?.accounts;
+          if(!analytics.ok||usage.errors?.length||!Array.isArray(accounts)||accounts.length!==1||!Array.isArray(accounts[0].d1AnalyticsAdaptiveGroups))throw new Error('account_d1_write_quota_analytics_unavailable');
+          const groups=accounts[0].d1AnalyticsAdaptiveGroups;
+          if(groups.length>=10000||groups.some(row=>!Number.isFinite(row.sum?.rowsWritten)||row.sum.rowsWritten<0))throw new Error('account_d1_write_quota_analytics_invalid');
+          const writes=groups.reduce((sum,row)=>sum+row.sum.rowsWritten,0);
+          if(writes>=90000)throw new Error('account_d1_write_quota_headroom_insufficient');
+          console.log(`account_d1_current_day_write_usage_below_90000_verified_${day}`);
           const project=await api('/pages/projects/nceastudy');
           if(project?.name!=='nceastudy'||project?.subdomain!=='nceastudy.pages.dev'||project?.production_branch!=='production')throw new Error('existing_pages_target_invalid');
           const databases=await api('/d1/database?per_page=100&page=1');if(!Array.isArray(databases))throw new Error('database_list_invalid');
@@ -94,6 +109,25 @@ jobs:
            if(before.some(row=>row.name==='movie_popularity_totals'))throw new Error(`${environment}_preexisting_partial_migration_requires_review`);
            const oldTrigger=before.find(row=>row.name==='movie_popularity_count_insert');
            if(!oldTrigger?.sql?.includes('movie_popularity_daily')||oldTrigger.sql.includes('movie_popularity_totals'))throw new Error(`${environment}_existing_trigger_unexpected`);
+           if(environment==='preview'){
+            const probe='__qcc_migration_probe_'+crypto.randomUUID().replaceAll('-','');
+            const existing=await query(id,[{sql:'SELECT COUNT(*) AS found FROM sqlite_master WHERE name=?',params:[probe]}]);
+            if(existing[0].results?.[0]?.found!==0)throw new Error('preview_probe_name_collision');
+            const response=await fetch(root+`/d1/database/${encodeURIComponent(id)}/query`,{
+             method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+             body:JSON.stringify({batch:[{sql:`CREATE TABLE ${probe}(marker INTEGER PRIMARY KEY CHECK(marker=1)) WITHOUT ROWID`},{sql:`INSERT INTO ${probe}(marker) VALUES(1)`},{sql:`INSERT INTO ${probe}(marker) VALUES(2)`}]}),
+             redirect:'error',signal:AbortSignal.timeout(30000)
+            });
+            const failed=await response.json();
+            const absent=await query(id,[{sql:'SELECT COUNT(*) AS found FROM sqlite_master WHERE name=?',params:[probe]}]);
+            if(absent[0].results?.[0]?.found!==0){
+             const content=await query(id,[{sql:`SELECT marker FROM ${probe}`}]);
+             if(content[0].results?.length===1&&content[0].results[0].marker===1)await query(id,[{sql:`DROP TABLE ${probe}`}]);
+             throw new Error('preview_rest_batch_partial_commit_detected_migration_blocked');
+            }
+            if(failed.success!==false||!/CHECK constraint failed/i.test(JSON.stringify(failed.errors||failed.result||[])))throw new Error('preview_rest_batch_expected_runtime_failure_unverified');
+            console.log('preview_rest_batch_runtime_failure_rolled_back_ddl_and_dml_verified');
+           }
            try{
             // One request is one atomic D1 transaction. Never loop over migration statements.
             await query(id,statements);
