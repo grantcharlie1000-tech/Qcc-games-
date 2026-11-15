@@ -106,8 +106,17 @@ for(const width of [390,1440])test(`profile sticky tabs hide scrolled reply frag
   // Sharp stats() otherwise reads the original screenshot (including alpha).
   await expect.poll(async()=>{
    const r=(await tabs.boundingBox())!;
+   const controls=await page.locator('.social-view .apps-top .arcade-glass,.social-view .apps-top .social-fab').evaluateAll(elements=>elements.map(el=>{const box=el.getBoundingClientRect();return {left:box.left,right:box.right};}));
+   let left=Math.round(r.x)+72,right=Math.floor(r.x+r.width)-72;
+   const centre=r.x+r.width/2;
+   for(const box of controls){
+    if((box.left+box.right)/2<centre)left=Math.max(left,Math.ceil(box.right)+8);
+    else right=Math.min(right,Math.floor(box.left)-8);
+   }
+   // Compose now shares the toolbar, so exclude the real control bounds rather than a fixed inset.
+   expect(right-left,'Keep a substantial uncovered toolbar gap in the pixel check').toBeGreaterThan(80);
    const image=await page.screenshot({scale:'css'});
-   const band=await sharp(image).extract({left:Math.round(r.x)+72,top:2,width:Math.floor(r.width)-144,height:Math.round(r.y)-4}).removeAlpha().toBuffer();
+   const band=await sharp(image).extract({left,top:2,width:right-left,height:Math.round(r.y)-4}).removeAlpha().toBuffer();
    const stats=await sharp(band).stats();
    return Math.max(...stats.channels.map(c=>c.max));
   },{message:'Scrolled posts must remain hidden above the pinned profile tabs'}).toBeLessThanOrEqual(1);

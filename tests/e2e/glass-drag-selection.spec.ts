@@ -30,6 +30,8 @@ test('a Movies drag selects the destination and keeps the pill there',async({pag
   const movies=bar.locator('[data-kind="movie"]');
   const tv=bar.locator('[data-kind="tv"]');
   await expect(movies).toHaveAttribute('aria-pressed','true');
+  await expect(movies).toBeVisible();
+  await expect(tv).toBeVisible();
   const start=(await movies.boundingBox())!;
   const end=(await tv.boundingBox())!;
   await page.mouse.move(start.x+start.width/2,start.y+start.height/2);
