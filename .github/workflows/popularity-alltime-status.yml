@@ -146,16 +146,22 @@ jobs:
             await rail.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
             await expect(rail.getByRole('heading',{name:'Christmas movies',exact:true})).toBeVisible({timeout:60000});
             const shot='artifacts/live-release/live-christmas-'+theme+'-1280.png';
-            await page.screenshot({path:shot});findings.screenshots.push(shot);findings.themes.push(theme);
+            await page.screenshot({path:shot,animations:'disabled'});findings.screenshots.push(shot);findings.themes.push(theme);
            }
            await page.setViewportSize({width:390,height:844});
+           const mobileRankingResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/movie-popularity'&&response.request().method()==='GET',{timeout:60000});
            await page.goto(origin+'/?festive=off#/movies/browse/movie',{waitUntil:'domcontentloaded',timeout:60000});
+           const observedRanking=await (await mobileRankingResponse).json();
            const popular=page.locator('[data-rail="popular-marlborough"]');
+           await expect(popular.locator('[data-title]')).toHaveCount(observedRanking.titleIds.length,{timeout:60000});
+           const renderedRanking=await popular.locator('[data-title]').evaluateAll(elements=>elements.map(el=>el.getAttribute('data-title')));
+           expect(renderedRanking).toEqual(observedRanking.titleIds);
+           findings.renderedRankingMatchesLiveResponse=true;
            await expect(popular.locator('.ui-rail-sub')).toHaveText('Across QCC · All time',{timeout:60000});
            await popular.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
            await expect(popular.getByRole('heading',{name:'Popular in Marlborough',exact:true})).toBeVisible({timeout:60000});
            const shot='artifacts/live-release/live-popular-all-time-390.png';
-           await page.screenshot({path:shot});findings.screenshots.push(shot);
+           await page.screenshot({path:shot,animations:'disabled'});findings.screenshots.push(shot);
            findings.result='passed';
            console.log(JSON.stringify({result:findings.result,liveCommit:findings.liveCommit,themes:findings.themes,rankedTitles:findings.rankedTitles,publicPopularityKeys:findings.publicPopularityKeys}));
           }finally{
