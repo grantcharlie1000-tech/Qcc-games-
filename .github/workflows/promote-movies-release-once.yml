@@ -49,7 +49,7 @@ jobs:
           const appHash=createHash('sha256').update(Buffer.from(await app.arrayBuffer())).digest('hex');
           const directPopularity=await fetch(deployment.url+'/api/movie-popularity',{cache:'no-store',signal:AbortSignal.timeout(10000)});
           const directRanking=await directPopularity.json();
-          if(!directPopularity.ok||directRanking.windowDays!==null||Object.keys(directRanking).sort().join(',')!=='titleIds,windowDays')throw new Error('Verified bundle all-time API unavailable.');
+          if(!directPopularity.ok||directRanking.windowDays!==null||!Array.isArray(directRanking.titleIds)||directRanking.titleIds.length>10||Object.keys(directRanking).sort().join(',')!=='titleIds,windowDays')throw new Error('Verified bundle all-time API unavailable.');
           if(project.canonical_deployment.id!==target){
             const current=await api();
             const source=execFileSync('git',['ls-remote','https://github.com/grantcharlie1000-tech/Qcc-games-.git','refs/heads/production'],{encoding:'utf8'}).trim().split(/\s/)[0];
