@@ -66,6 +66,8 @@ jobs:
             sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
       - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Install audio test tools
+        run: sudo apt-get install -y ffmpeg
       - run: xvfb-run -a npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
       - uses: actions/upload-artifact@v4
         if: always()
@@ -85,6 +87,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Install audio test tools
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       # Timing budgets must not compete with other test workers on shared runners.
       - run: npm test -- --maxWorkers=1
       # Production worker recovery uses Chromium against the built site on port 4618.
