@@ -10,6 +10,8 @@ process.env.ARCADE_URL = baseURL;
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.ts',
+  // Opt-in measurement runs need their own timeout, reporter and complete matrix.
+  testIgnore: '**/liquid-glass-score/**',
   timeout: 30000,
   expect: { timeout: 7000 },
   // Full CI shards opt into test-level parallelism and two workers via CLI.

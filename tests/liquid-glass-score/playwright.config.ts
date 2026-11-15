@@ -4,6 +4,7 @@ export default defineConfig({
   ...base,
   testDir: ".",
   testMatch: ["score.spec.ts", "pixels.spec.ts"],
+  testIgnore: [],
   workers: 1,
   retries: 0,
   timeout: process.env.LIQUID_GLASS_LONG === "1" ? 600000 : 240000,
