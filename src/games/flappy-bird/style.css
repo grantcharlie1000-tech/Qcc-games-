@@ -1,13 +1,34 @@
-/* Input lives on the scene; only the shared dock reserves control space. */
-body.in-game .game-view[data-game-id=flappy-bird] #game-stage.viewport-fitted{position:static!important;transform:none!important;width:100%!important;height:100%!important;max-height:none;display:grid;place-items:center}
-.flappy-bird{width:100%;height:100%;margin:auto;display:grid;place-items:center;container-type:size;color:#244e50}
-.fb-scene{position:relative;width:min(100cqw,calc((100cqh - 6px)*2/3 + 6px));border:3px solid #284e50;border-radius:22px;overflow:hidden;background:#f9d9a7;box-shadow:0 5px 0 #0c2429}
-.fb-scene canvas{display:block;width:100%;height:auto;aspect-ratio:2/3;touch-action:none;outline-offset:-6px}
-.fb-card{position:absolute;left:5%;right:5%;top:50%;transform:translateY(-50%);padding:20px 14px;text-align:center;border:2px solid #315c58;border-radius:18px;background:#fff3d9f5;box-shadow:0 5px 0 #315c5840}
-.fb-card[hidden]{display:none}.fb-card h2{font:24px/1.1 Arcade,system-ui,sans-serif;margin:8px 0 12px}.fb-eyebrow{font:800 10px/1 system-ui,sans-serif;letter-spacing:2px;margin:0}.fb-copy{font:600 13px/1.5 system-ui,sans-serif;margin:0 0 16px}
-.flappy-bird .game-button{background:#275e60;color:#fff3d9;border:2px solid #194044;box-shadow:0 3px 0 #173538;font-size:19px;min-height:44px;padding:9px 18px}
+/* The world fills the viewport. Only floating controls receive safe-area insets. */
+body.in-game .game-view[data-game-id=flappy-bird]{padding:0;display:block;background:#294c58}
+body.in-game .game-view[data-game-id=flappy-bird] .stage-wrap,
+body.in-game .game-view[data-game-id=flappy-bird] #game-stage.viewport-fitted{position:absolute!important;inset:0;transform:none!important;width:100%!important;height:100%!important;max-height:none;display:block}
+body.in-game .game-view[data-game-id=flappy-bird] .game-surface{background:transparent}
+body.in-game .game-view[data-game-id=flappy-bird] .game-dock{position:absolute;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(calc(100% - 24px),560px);margin:0}
+.flappy-bird,.fb-scene{position:relative;width:100%;height:100%;overflow:hidden}
+.flappy-bird{--fb-cream:#fff0ce;--fb-ink:#29394b;color:var(--fb-cream)}
+.fb-scene canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:pixelated;outline-offset:-6px}
+.fb-location{position:absolute;right:max(28px,env(safe-area-inset-right));top:max(28px,env(safe-area-inset-top));font:700 11px/1.4 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:#fff0d6;opacity:.8;text-shadow:1px 1px #37435c;pointer-events:none}
+.fb-card{position:absolute;left:50%;top:35%;transform:translate(-50%,-50%);width:min(520px,calc(100% - 36px));text-align:center;padding:12px 0;color:var(--fb-cream);text-shadow:2px 2px 0 #344252;transition:opacity 180ms var(--ease-out),transform 180ms var(--ease-out)}
+.fb-card[hidden]{display:none}
+.fb-eyebrow{font:700 10px/1.4 ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;margin:0 0 14px}
+.fb-card h2{font:900 clamp(38px,5.5vw,76px)/.95 ui-monospace,monospace;letter-spacing:-.075em;text-transform:uppercase;margin:0 0 16px;text-shadow:3px 3px 0 #344252,0 3px 0 #344252}
+.fb-copy{font:600 12px/1.4 ui-monospace,monospace;letter-spacing:.03em;margin:0 0 22px;color:#fff3dc}
+.flappy-bird .fb-start{min-height:48px;min-width:154px;padding:12px 22px;border:2px solid var(--fb-ink);border-radius:5px;background:var(--fb-cream);color:var(--fb-ink);box-shadow:0 4px 0 var(--fb-ink),inset 0 2px #fff8e5;font:800 14px/1 ui-monospace,monospace;text-shadow:none;transition:transform 120ms var(--ease-out),box-shadow 120ms var(--ease-out)}
+.flappy-bird .fb-start:active{transform:translateY(3px);box-shadow:0 1px 0 var(--fb-ink),inset 0 2px #fff8e5}
+.flappy-bird .fb-start:focus-visible{outline:3px solid #fff6da;outline-offset:5px}
 .flappy-bird button:disabled{opacity:.55}
-@media(max-height:700px){.fb-card{padding:14px 10px}.fb-card h2{font-size:21px;margin:8px 0 14px}.fb-copy{display:none}}
-@media(max-height:480px){.fb-card{padding:10px 5px;border-radius:12px}.fb-card h2{font-size:18px;margin:6px 0 10px}.fb-copy,.fb-eyebrow{display:none}.flappy-bird .fb-start{font-size:14px;padding:8px}}
-/* Preserve the existing taller phone scene, now using the space freed by Flap. */
-@media(max-width:600px) and (min-height:700px){.fb-scene{width:100%;height:100cqh}.fb-scene canvas{height:100%;aspect-ratio:auto}}
+@starting-style{.fb-card{opacity:0;transform:translate(-50%,-46%)}}
+@media(hover:hover) and (pointer:fine){.flappy-bird .fb-start:hover{transform:translateY(-2px);filter:none;box-shadow:0 6px 0 var(--fb-ink),inset 0 2px #fff8e5}}
+@media(max-width:699px){
+ .fb-card{top:34%}.fb-card h2{font-size:clamp(36px,10vw,60px)}
+ .fb-location{right:max(18px,env(safe-area-inset-right));top:max(28px,env(safe-area-inset-top));font-size:9px;letter-spacing:.06em}
+ body.in-game:has(.game-view[data-game-id=flappy-bird]) .lb-sidebar{top:max(16px,env(safe-area-inset-top));bottom:auto;left:max(12px,env(safe-area-inset-left))}
+}
+@media(max-height:480px){
+ .fb-card{top:40%;width:min(380px,calc(100% - 32px))}.fb-eyebrow{margin-bottom:8px;font-size:9px}
+ .fb-card h2{font-size:40px;margin-bottom:10px}.fb-copy{margin-bottom:12px;font-size:10px}
+ .fb-location{top:18px;right:18px;font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){.fb-card,.flappy-bird .fb-start{transition:none}.flappy-bird .fb-start:hover,.flappy-bird .fb-start:active{transform:none}}
+.reduce-motion .fb-card,.reduce-motion .flappy-bird .fb-start{transition:none}
+.reduce-motion .flappy-bird .fb-start:hover,.reduce-motion .flappy-bird .fb-start:active{transform:none}

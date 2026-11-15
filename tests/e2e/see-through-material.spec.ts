@@ -65,7 +65,6 @@ test('native start/end cards retain their original game palettes',async({page,co
     ['snake','.snake-card','rgba(20, 55, 38, 0.59)'],
     ['quadfall','.qf-card','rgba(23, 34, 57, 0.96)'],
     ['maze-muncher','.mm-card','rgba(5, 7, 26, 0.816)'],
-    ['flappy-bird','.fb-card','rgba(255, 243, 217, 0.96)'],
     ['ball-run','.br-setup','rgba(29, 29, 34, 0.95)'],
     ['minesweeper','.ms-hint-message','rgba(201, 220, 159, 0.03)'],
     ['tower','.tower-end-card','rgb(244, 227, 229)'],

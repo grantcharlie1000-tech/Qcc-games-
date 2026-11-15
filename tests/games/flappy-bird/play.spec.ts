@@ -1,7 +1,8 @@
 import {appSettings,backToGames,gameAction,pauseGame,resumeGame} from '../../game-menu';
 import {test,expect,seedStudyTopic} from '../../fixtures';
 import type {Page} from '../../fixtures';
-async function frames(page:Page,count=10){await page.evaluate(n=>new Promise<void>(resolve=>{let i=0;function next(){if(++i>=n)resolve();else requestAnimationFrame(next);}requestAnimationFrame(next);}),count);}
+async function frames(page:Page,count=10){await page.clock.runFor(count*17);}
+async function freezeClock(page:Page){await page.clock.pauseAt(await page.evaluate(()=>Date.now()+60_000));}
 async function snapshot(page:Page){await pauseGame(page);return page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:flappy-bird')!).data);}
 async function observePointerFlap(page:Page){
   // Let gravity change the starting lift so a missing handler cannot pass.
@@ -19,23 +20,25 @@ async function expectPointerFlap(page:Page){
 }
 
 test('keyboard and mouse flap, pause and Study freeze, restore waits, restart and disposal clean up',async({page})=>{
+  await page.clock.install();
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/#/game/flappy-bird');
   const root=page.locator('.flappy-bird');await expect(root).toHaveAttribute('data-phase','ready');
+  await freezeClock(page);
   await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('Space');await page.getByRole('button',{name:'Let’s play'}).click();await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
   await root.locator('canvas').focus();await page.keyboard.press('Space');await expect(root).toHaveAttribute('data-phase','running');
-  await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.flappy-bird')!.dataset.tick)>12);
+  await page.clock.runFor(150);expect(Number(await root.getAttribute('data-tick'))).toBeGreaterThan(12);
   await observePointerFlap(page);await root.locator('canvas').click({position:{x:170,y:240}});await expectPointerFlap(page);const saved=await snapshot(page);
   await root.locator('canvas').focus();await page.keyboard.press('Space');await frames(page);expect(await root.getAttribute('data-tick')).toBe(String(saved.tick));
   await page.reload();await expect(page.getByRole('button',{name:'Continue flight',exact:true})).toBeVisible();const tick=await root.getAttribute('data-tick');await frames(page);expect(await root.getAttribute('data-tick')).toBe(tick);
   await page.getByRole('button',{name:'Continue flight',exact:true}).click();await page.keyboard.press('Escape');const studyTick=await root.getAttribute('data-tick');await page.keyboard.press('Space');await frames(page);expect(await root.getAttribute('data-tick')).toBe(studyTick);
   await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();await gameAction(page,'Restart game');await expect(root).toHaveAttribute('data-phase','ready');await expect(root).toHaveAttribute('data-tick','0');
-  await page.locator('.fb-start').click();await expect(root).toHaveAttribute('data-phase','running');await expect(root).toHaveAttribute('data-phase','over');
+  await page.locator('.fb-start').click();await expect(root).toHaveAttribute('data-phase','running');await page.clock.runFor(2000);await expect(root).toHaveAttribute('data-phase','over');
   await page.getByRole('button',{name:'Fly again',exact:true}).click();await expect(root).toHaveAttribute('data-phase','running');
   await backToGames(page);await expect(root).toHaveCount(0);await page.keyboard.press('Space');await page.getByRole('link',{name:'Play Flappy Bird',exact:true}).click();await expect(page.getByRole('button',{name:'Continue flight',exact:true})).toBeVisible();expect(errors).toEqual([]);
 });
 
 test('a real scored flight persists its record and ignores held repeat and dialog keys',async({page},testInfo)=>{
-  await page.clock.install();await page.goto('/#/game/flappy-bird');await expect(page.locator('.flappy-bird')).toHaveAttribute('data-phase','ready');await page.clock.pauseAt(new Date(Date.now()+1000));
+  await page.clock.install();await page.goto('/#/game/flappy-bird');await expect(page.locator('.flappy-bird')).toHaveAttribute('data-phase','ready');await freezeClock(page);
   await page.getByRole('button',{name:'Take flight',exact:true}).click({force:true});
   for(let i=0;i<80;i++){
     const state=await page.locator('.flappy-bird').evaluate(el=>({y:Number((el as HTMLElement).dataset.y),vy:Number((el as HTMLElement).dataset.vy),target:Number((el as HTMLElement).dataset.target)}));
@@ -50,15 +53,39 @@ test('a real scored flight persists its record and ignores held repeat and dialo
 });
 
 test('native phone touch is a single flap and pointer cancellation does not leave input held',async({browser,browserName})=>{
-  test.skip(browserName!=='chromium','Native CDP touch uses Chromium');const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:3});await seedStudyTopic(context);const page=await context.newPage();await page.goto('/#/game/flappy-bird');await page.getByRole('button',{name:'Take flight',exact:true}).tap();
-  await expect(page.locator('.flappy-bird canvas')).toHaveAttribute('width','720');await expect(page.locator('.flappy-bird canvas')).toHaveAttribute('height','1080');
+  test.skip(browserName!=='chromium','Native CDP touch uses Chromium');const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:3});await seedStudyTopic(context);const page=await context.newPage();await page.clock.install();await page.goto('/#/game/flappy-bird');await expect(page.locator('.flappy-bird')).toHaveAttribute('data-phase','ready');await freezeClock(page);await page.getByRole('button',{name:'Take flight',exact:true}).tap();await page.clock.runFor(150);
+  await expect(page.locator('.flappy-bird canvas')).toHaveAttribute('width','780');await expect(page.locator('.flappy-bird canvas')).toHaveAttribute('height','1688');
   const canvas=page.locator('.flappy-bird canvas'),box=(await canvas.boundingBox())!,cdp=await context.newCDPSession(page);
   await observePointerFlap(page);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height/2}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
-  await expectPointerFlap(page);await snapshot(page);await resumeGame(page);await expect(page.locator('.flappy-bird')).toHaveAttribute('data-phase','over');await context.close();
+  await expectPointerFlap(page);await snapshot(page);await resumeGame(page);await page.clock.runFor(2000);await expect(page.locator('.flappy-bird')).toHaveAttribute('data-phase','over');await context.close();
 });
 
-for(const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`original scene and controls fit ${size.width}x${size.height}`,async({page},testInfo)=>{
+test('wingbeat responds once and settles into a glide',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto('/?festive=off#/game/flappy-bird');
+  await expect(page.locator('.flappy-bird')).toHaveAttribute('data-phase','ready');
+  const poses=await page.evaluate(async()=>{
+    const artPath='/src/games/flappy-bird/art.ts',modelPath='/src/games/flappy-bird/model.ts';
+    const {drawFlight}=await import(artPath),{createFlight,flap}=await import(modelPath);
+    const state=createFlight();flap(state);
+    const canvas=document.createElement('canvas');canvas.width=360;canvas.height=540;
+    const ctx=canvas.getContext('2d')!;
+    const outline=[32,56,74];
+    function pose(flapAge:number,time:number,reducedMotion=false){
+      drawFlight(ctx,state,{width:360,time,tilt:0,flapAge,scoreAge:10,reducedMotion});
+      const data=ctx.getImageData(54,228,64,64).data;
+      let silhouette='';
+      for(let i=0;i<data.length;i+=4)silhouette+=Number(data[i]===outline[0]&&data[i+1]===outline[1]&&data[i+2]===outline[2]);
+      return silhouette;
+    }
+    const pressed=pose(0,0),stroke=pose(.075,.075),glide=pose(.4,0);
+    return {responds:pressed!==glide,moves:stroke!==pressed,settles:glide===pose(.4,.2),reduced:pose(0,0,true)===pose(.075,.2,true)};
+  });
+  expect(poses).toEqual({responds:true,moves:true,settles:true,reduced:true});
+});
+
+for(const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`pixel scene and controls fit ${size.width}x${size.height}`,async({page},testInfo)=>{
   await page.setViewportSize(size);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#/game/flappy-bird');await expect(page.locator('.flappy-bird canvas')).toBeVisible();await expect(page.locator('#game-stage')).toHaveAttribute('data-viewport-scale',/./);
   // Native actionability waits for the stage's asynchronous fit before the
   // strict bounds and hit-target measurements below.
