@@ -1,7 +1,29 @@
 import {describe,it,expect} from 'vitest';
-import {createFlight,flap,advance,restoreFlight,gateAt,visibleGates,STEP,BIRD_X,RADIUS,FLOOR,GATE_WIDTH} from '../../../src/games/flappy-bird/model';
+import {createFlight,flap,advance,restoreFlight,gateAt,visibleGates,distanceOf,speedOf,STEP,BIRD_X,RADIUS,FLOOR,GATE_WIDTH} from '../../../src/games/flappy-bird/model';
 
-describe('Flappy Bird original reed flight',()=>{
+it('increases travel speed as real gates are cleared without jumping position',()=>{
+  const s=createFlight(42);flap(s);let initial=0,later=0;
+  for(let i=0;i<4000&&s.score<6&&s.phase==='running';i++){
+    const target=visibleGates(s).find(g=>g.x+GATE_WIDTH>=BIRD_X-RADIUS)!;
+    if(s.y>target.center+22&&s.vy>0)flap(s);
+    const before=distanceOf(s),score=s.score;advance(s,STEP);
+    const movement=distanceOf(s)-before;
+    expect(movement).toBeGreaterThan(0);expect(movement).toBeLessThan(2.2);
+    if(score===0)initial=movement;if(score>=4)later=movement;
+  }
+  expect(s.score).toBe(6);expect(later).toBeGreaterThan(initial*1.1);
+});
+
+it('migrates an existing saved flight without moving the bird or gates',()=>{
+  const legacy={version:1,seed:99,run:2,phase:'running',tick:108,accumulator:.002,y:220,vy:15,score:0,best:7,reason:''};
+  const restored=restoreFlight(legacy)!;
+  expect(restored).toMatchObject({version:2,y:220,vy:15,score:0,best:7});
+  expect(distanceOf(restored)).toBe(121.5);
+  const copy=restoreFlight(JSON.parse(JSON.stringify(restored)))!;
+  advance(restored,.1);advance(copy,.1);expect(copy).toEqual(restored);
+});
+
+describe('Flappy Bird flight',()=>{
   it('starts on an explicit flap, rises, falls, and freezes after loss',()=>{
     const s=createFlight(42);advance(s,1);expect(s.tick).toBe(0);
     flap(s);advance(s,.1);expect(s.y).toBeLessThan(260);
@@ -28,18 +50,21 @@ describe('Flappy Bird original reed flight',()=>{
         advance(s,STEP);
       }
       expect(s.phase,`seed ${seed} score ${s.score}`).toBe('running');expect(s.score).toBe(100);
+      expect(speedOf(s)).toBe(255);
+      const copy=restoreFlight(JSON.parse(JSON.stringify(s)))!;
+      expect(copy).toEqual(s);advance(copy,STEP);advance(s,STEP);expect(copy).toEqual(s);
     }
   });
   it('collides with both gate ends and scores only fully cleared gates once',()=>{
     const s=createFlight(1);flap(s);const g=gateAt(1,0);
-    s.tick=Math.floor((g.distance-BIRD_X-RADIUS)/135/STEP);s.y=g.top-8;s.vy=0;advance(s,.04);expect(s.phase).toBe('over');
-    const low=createFlight(1);flap(low);low.tick=Math.floor((g.distance-BIRD_X-RADIUS)/135/STEP);low.y=g.bottom+8;advance(low,.04);expect(low.phase).toBe('over');
-    const pass=createFlight(1);flap(pass);pass.tick=Math.ceil((g.distance+GATE_WIDTH-BIRD_X+RADIUS)/135/STEP);pass.y=g.center;pass.vy=0;advance(pass,STEP);expect(pass.score).toBe(1);advance(pass,STEP);expect(pass.score).toBe(1);
+    s.tick=Math.floor((g.distance-BIRD_X-RADIUS)/135/STEP);s.distance=s.tick*STEP*135;s.y=g.top-8;s.vy=0;advance(s,.04);expect(s.phase).toBe('over');
+    const low=createFlight(1);flap(low);low.tick=Math.floor((g.distance-BIRD_X-RADIUS)/135/STEP);low.distance=low.tick*STEP*135;low.y=g.bottom+8;advance(low,.04);expect(low.phase).toBe('over');
+    const pass=createFlight(1);flap(pass);pass.tick=Math.ceil((g.distance+GATE_WIDTH-BIRD_X+RADIUS)/135/STEP);pass.distance=pass.tick*STEP*135;pass.y=g.center;pass.vy=0;advance(pass,STEP);expect(pass.score).toBe(1);advance(pass,STEP);expect(pass.score).toBe(1);
   });
   it('round trips a fractional frame and rejects malformed or contradictory saves',()=>{
     const s=createFlight(99);flap(s);advance(s,.123);const copy=restoreFlight(JSON.parse(JSON.stringify(s)))!;expect(copy).toEqual(s);
     for(let i=0;i<10;i++){advance(copy,STEP);advance(s,STEP);}expect(copy).toEqual(s);
-    for(const value of [null,{}, {...s,seed:0},{...s,y:NaN},{...s,tick:1.5},{...s,score:100},{...s,phase:'oops'},{...s,accumulator:1}])expect(restoreFlight(value)).toBeNull();
+    for(const value of [null,{}, {...s,seed:0},{...s,y:NaN},{...s,tick:1.5},{...s,score:100},{...s,phase:'oops'},{...s,accumulator:1},{...s,distance:NaN},{...s,distance:-1},{...s,distance:1e10}])expect(restoreFlight(value)).toBeNull();
   });
 });
 
@@ -47,5 +72,5 @@ it('lets a diagonal near miss pass the rounded reed corner without a false colli
   const s=createFlight(1);flap(s);const gate=gateAt(1,0);
   // The center moves from (407.75, top+4) to (408.875, top+6.53125).
   // Both the endpoints and the entire segment stay >12px from the corner at (420,top).
-  s.tick=270;s.y=gate.top+4;s.vy=300;advance(s,STEP);expect(s.phase).toBe('running');
+  s.tick=270;s.distance=303.75;s.y=gate.top+4;s.vy=300;advance(s,STEP);expect(s.phase).toBe('running');
 });
