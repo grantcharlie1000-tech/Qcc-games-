@@ -81,9 +81,15 @@ for(const width of [390,1440])test(`profile sticky tabs hide scrolled reply frag
   expect(await page.locator('.social-profile-counts').evaluate(el=>{
    const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+20,r.y+r.height/2));
   })).toBe(true);
-  expect(await page.locator('.social-banner').evaluate(el=>{
-   const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+30));
-  })).toBe(true);
+  const banner=await page.locator('.social-banner').evaluate(el=>{
+   const r=el.getBoundingClientRect();
+   const toolbar=el.closest('.social-view')!.querySelector('.apps-top')!.getBoundingClientRect();
+   // The current opaque toolbar covers the banner's top edge at scroll zero.
+   // Test its visible area below the toolbar, while still rejecting a covered banner.
+   const y=Math.max(r.y+30,toolbar.bottom+1),hit=document.elementFromPoint(r.x+r.width/2,y);
+   return {visible:y<r.bottom&&el.contains(hit),top:r.top,height:r.height,hit:hit?.className};
+  });
+  expect(banner.visible,JSON.stringify(banner)).toBe(true);
  };
  await headerVisible();
  for(const top of [64,84]){
