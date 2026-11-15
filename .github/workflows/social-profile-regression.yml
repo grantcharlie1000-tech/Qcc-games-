@@ -1,7 +1,7 @@
 name: Verify Social profile scrolling
 on:
   pull_request:
-    branches: [main]
+    branches: [main, production]
     paths:
       - src/social/**
       - src/apps/apps.css
