@@ -22,6 +22,10 @@ describe('account save merging and validation',()=>{
  });
 });
 
+it('keeps device transparency out of the deployed cloud settings format',()=>{
+ expect(validSave('settings',{value:{reducedTransparency:true},updated:3})).toBe(false);
+});
+
 it('accepts only boolean auto-next settings and syncs the newest choice',()=>{
  for(const value of [true,false])expect(validSave('settings',{value:{autoNextEpisode:value},updated:1})).toBe(true);
  for(const value of ['true',1,null,{}])expect(validSave('settings',{value:{autoNextEpisode:value},updated:1})).toBe(false);

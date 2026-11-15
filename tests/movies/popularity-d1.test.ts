@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import {afterAll, describe, expect, it} from 'vitest';
 import {MoviePopularity, parsePopularIds} from '../../src/movies/popularity';
 import {POPULARITY_D1_COMPATIBILITY_DATE, startIsolatedPopularity} from './popularity-d1';
@@ -35,10 +36,10 @@ describe('isolated local D1 preview',()=>{
   expect((await counts()).tokens[0].n).toBe(0);
 
   for(let n=1;n<=4;n++)await play(contributor(n));
-  expect(await ranking()).toEqual([]);
+  expect(await ranking()).toContain('movie-157336');
   await play(contributor(5));
   await play(contributor(5));
-  expect(await ranking()).toEqual(['movie-157336']);
+  expect(await ranking()).toEqual(['movie-157336','movie-9']);
   const ranked=await counts();
   expect(ranked.daily.find(row=>row.title_id==='movie-157336')).toEqual({title_id:'movie-157336',views:5,day:serverDay});
   expect(JSON.stringify(ranked.rate)+JSON.stringify(ranked.tokens)).not.toMatch(/192\.0\.2|00000000000000000000000000000005/);
@@ -56,6 +57,18 @@ describe('isolated local D1 preview',()=>{
   expect((await counts()).daily.some(row=>row.title_id==='movie-11')).toBe(false);
   expect((await counts()).tokens[0].n).toBe(6);
   await preview.call(new Request('http://pop.test/__isolated_preview/sql',{method:'POST',body:'DROP TRIGGER fail_count;'}));
+ });
+ it('migrates an old schema atomically on D1 and retains totals after cleanup',async()=>{
+  const isolated=await startIsolatedPopularity();
+  try{
+   const call=(route:string,body:string)=>isolated.call(new Request(`http://pop.test/__isolated_preview/${route}`,{method:'POST',body}));
+   await call('sql',"DROP TRIGGER movie_popularity_count_insert; DROP TABLE movie_popularity_totals; INSERT INTO movie_popularity_daily VALUES ('movie-10',1,1);");
+   const migration=readFileSync('docs/movie-popularity-alltime-migration.sql','utf8');
+   expect((await call('migrate',migration)).status).toBe(200);
+   expect((await call('migrate',migration)).status).toBe(200);
+   await isolated.call(new Request('http://pop.test/__isolated_preview/scheduled'));
+   expect(await (await isolated.call(new Request('https://qcc.test/api/movie-popularity'))).json()).toEqual({titleIds:['movie-10'],windowDays:null});
+  }finally{await isolated.dispose();}
  });
  it('runs scheduled cleanup with no collection flag and no popularity route',async()=>{
   expect(POPULARITY_D1_COMPATIBILITY_DATE).toBe('2026-11-04');

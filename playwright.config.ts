@@ -10,6 +10,8 @@ process.env.ARCADE_URL = baseURL;
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.ts',
+  // Opt-in measurement runs need their own timeout, reporter and complete matrix.
+  testIgnore: '**/liquid-glass-score/**',
   timeout: 30000,
   expect: { timeout: 7000 },
   // Full CI shards opt into test-level parallelism and two workers via CLI.
@@ -35,6 +37,7 @@ export default defineConfig({
   webServer: externalURL ? undefined : {
     command: `npm run dev -- --port ${port} --strictPort`,
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    // Reuse is explicit: a listener on this port may belong to another worktree.
+    reuseExistingServer: !process.env.CI && process.env.PLAYWRIGHT_REUSE_SERVER === '1',
   },
 });

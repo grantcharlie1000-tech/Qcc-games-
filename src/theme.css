@@ -1,6 +1,8 @@
 /* Shared streaming-style tokens and components (redesign spec, sections 4 and 5). */
 :root{
 --c-bg:#000;
+--glass-solid:#20262b;
+--glass-solid-edge:#39434b;
 --c-950:#09090b;--c-900:#18181b;--c-800:#27272a;--c-700:#3f3f46;--c-600:#52525c;
 --c-500:#71717b;--c-400:#9f9fa9;--c-300:#d4d4d8;--c-200:#e4e4e7;--c-100:#f4f4f5;
 --c-rose:#ff2056;--c-rose-soft:#ff637e;--c-amber:#ffb900;--c-red:#ff6467;--c-green:#00d492;
@@ -340,7 +342,21 @@
 :root[data-input="keyboard"] .ui-glass-sheet :focus-visible{outline:2px solid #fff;outline-offset:2px}
 /* Fallbacks: no backdrop filter, reduced transparency, more contrast, and forced colours. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ui-glass-sheet,.movies-view .movies-next{background:rgb(18 22 28 / .94)}}
-@media (prefers-reduced-transparency:reduce){.ui-glass-sheet,.movies-view .movies-next{background:rgb(28 28 32);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-transparency:reduce){
+  :root{--glass-frost-fill:var(--glass-solid);--glass-frost-blur:none}
+  .ui-glass-sheet,.movies-view .movies-next{background:var(--glass-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+@media (prefers-reduced-transparency:reduce) and (forced-colors:none){
+  :is(.ui-pill,.ui-icon-btn){background:var(--glass-solid)!important;color:var(--glass-ink,#fff)!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .ui-pill .glass-ink{color:inherit!important}
+}
+@media not (forced-colors:active){
+  :root.reduce-transparency{--glass-frost-fill:var(--glass-solid);--glass-frost-blur:none}
+  .reduce-transparency :is(.ui-glass-sheet,.movies-view .movies-next){background:var(--glass-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .reduce-transparency :is(.ui-pill,.ui-icon-btn){background:var(--glass-solid)!important;color:var(--glass-ink,#fff)!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .reduce-transparency .ui-pill .glass-ink{color:inherit!important}
+  .reduce-transparency :is(.ui-glass-lens,.ui-glass-gl,.ui-glass-glow,.ui-scroll-edge){display:none!important}
+}
 @media (prefers-contrast:more){
   .ui-glass-sheet,.movies-view .movies-next{background:rgb(18 18 20);border:2px solid rgb(255 255 255 / .7);-webkit-backdrop-filter:none;backdrop-filter:none}
   .ui-glass-sheet .muted,.ui-glass-sheet .menu-note,.ui-glass-sheet .search-label,.ui-glass-sheet #rules-text,.ui-glass-sheet input::placeholder{color:rgb(255 255 255 / .9)}
@@ -377,7 +393,6 @@
   --glass-body:var(--glass-frost) var(--glass-tone);
   --glass-frost-body:var(--glass-frost) var(--glass-tone);
   --glass-ink:#fff;
-  --glass-solid:#20262b;
   --glass-pill:linear-gradient(180deg,rgb(0 0 0 / .014),rgb(0 0 0 / .006) 40%),rgb(255 255 255 / .005);
   --glass-rim-edge:inset 0 1px 0 rgb(255 255 255 / .192),inset 0 -1px 0 rgb(255 255 255 / .195),0 0 0 .5px rgb(0 0 0 / .144);
   --glass-glow:inset 0 3px 8px -3px rgb(255 255 255 / .09),inset 0 -3px 8px -3px rgb(255 255 255 / .09);
@@ -386,15 +401,7 @@
   --glass-glyph:none;--glass-glyph-icon:none;
   color:var(--glass-ink);text-shadow:none;
 }
-/* Normal glass always uses white ink. Only opaque accessibility palettes
-   adopt a matching dark foreground on light routes. */
-:is(.arcade-glass,.arcade-glass-mini)[data-glass-tone=light],[data-glass-tone=light] .arcade-glass{
-  --glass-solid:#f1f3f5;
-}
-/* Keep the light opaque palette readable when glass is disabled. */
-:where(.arcade-glass,.arcade-glass-mini):where([data-glass-tone=light])[data-glass=off],
-:where([data-glass-tone=light]) .arcade-glass:where([data-glass=off]),
-:where(.section-navigation:has(.arcade-glass[data-glass-tone=light][data-glass=off]))>.arcade-glass-mini{--glass-ink:#0b1015}
+/* Opaque accessibility surfaces share the dark theme token and white ink. */
 .section-tabbar.arcade-glass{--glass-radius:32px}
 .section-menu.arcade-glass{--glass-radius:calc(var(--home-action)/2)}
 .arcade-glass::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:var(--glass-tint);box-shadow:var(--glass-rim-edge),var(--glass-glow),var(--glass-lift);transition:opacity 100ms var(--ease)}
@@ -465,10 +472,14 @@ dialog.ui-glass-sheet .icon-button.sheet-close-glass[data-glass=off]{background:
 .sheet-close-glass .glass-ink{border-radius:50%}
 /* Accessibility variants are real opaque surfaces, including the separate
    buttons. An outline inside each surface leaves their geometry unchanged. */
-.arcade-glass[data-glass=off]{--glass-hover-surface:var(--glass-solid);background:var(--glass-solid);border:1px solid var(--glass-ink);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
-.arcade-glass[data-glass=off]::before{display:none}
+:is(.arcade-glass,.ui-tabbar)[data-glass=off]{--glass-hover-surface:var(--glass-solid);background:var(--glass-solid);border:1px solid var(--glass-solid-edge);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+:root:not([data-input=keyboard]) [data-glass=off]:focus,[data-glass=off]:focus:not(:focus-visible){outline:none;box-shadow:none}
+:is(.arcade-glass,.ui-tabbar)[data-glass=off]::before{display:none}
+[data-glass=off] :is(.ui-glass-lens,.ui-glass-gl,.ui-glass-glow){display:none!important}
+.ui-tabbar[data-glass=off]::after{background:var(--glass-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+.section-tabbar[data-glass=off]~.ui-tabbar-mini{background:var(--glass-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.arcade-glass,.arcade-glass-mini{background:transparent}.arcade-glass[data-glass=off]{background:var(--glass-solid)}}
-@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){.arcade-glass,.arcade-glass-mini{background:var(--glass-solid);border:1px solid var(--glass-ink);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}.arcade-glass::before{display:none}}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){.arcade-glass,.arcade-glass-mini{background:var(--glass-solid);border:1px solid var(--glass-solid-edge);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}.arcade-glass::before{display:none}}
 @media(forced-colors:active){.arcade-glass,.arcade-glass-mini,.arcade-glass[data-glass=off]{--glass-ink:CanvasText;--glass-solid:Canvas;background:Canvas;border:1px solid CanvasText;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}.arcade-glass::before{display:none}}
 @media(prefers-reduced-motion:reduce){:is(.game-glass,.glass-control),:is(.game-glass,.glass-control)[data-pressing]{scale:none;translate:none;transition:none}.arcade-glass .ui-tab:active{transform:none}}
 .reduce-motion :is(.game-glass,.glass-control),.reduce-motion :is(.game-glass,.glass-control)[data-pressing]{scale:none;translate:none;transition:none}
