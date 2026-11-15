@@ -70,7 +70,7 @@ jobs:
           const inconsistent=await query('SELECT COUNT(*) AS invalid FROM (SELECT d.title_id FROM movie_popularity_daily d LEFT JOIN movie_popularity_totals t ON t.title_id=d.title_id GROUP BY d.title_id HAVING t.views IS NULL OR t.views<SUM(d.views))');
           if(inconsistent[0]?.invalid!==0)throw new Error('alltime_counts_invariant_invalid');
           async function live(path){const response=await fetch('https://nceastudy.pages.dev'+path,{cache:'no-store',headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(20000)});if(!response.ok)throw new Error('live_get_unavailable');try{return await response.json();}catch{throw new Error('live_json_unavailable');}}
-          const revision=await live('/deploy-info.json?release='+expectedCommit);
+          const revision=await live('/deploy-info.json');
           if(revision.commit!==expectedCommit)throw new Error('live_revision_mismatch');
           const ranking=await live('/api/movie-popularity');
           const expectedRanking=(await query('SELECT title_id FROM movie_popularity_totals WHERE views>=1 ORDER BY views DESC,title_id ASC LIMIT 10')).map(row=>row.title_id);
