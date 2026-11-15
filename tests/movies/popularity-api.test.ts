@@ -30,11 +30,11 @@ describe('movie popularity aggregate API',()=>{
  it('fails closed until all bindings exist',async()=>{
   for(const env of [{},{...database().env,MOVIE_POPULARITY_ENABLED:'false'},{...database().env,MOVIE_POPULARITY_SECRET:'short'}])expect((await handleMoviePopularity(get(),env,now)).status).toBe(503);
  });
- it('suppresses low-count daily buckets and never exposes counts',async()=>{
-  const {env}=database();for(let n=1;n<=4;n++)expect((await handleMoviePopularity(post(n),env,now)).status).toBe(204);
-  expect(await (await handleMoviePopularity(get(),env,now)).json()).toEqual({titleIds:[],windowDays:7});
+ it('qualifies a single watch and never exposes counts',async()=>{
+  const {env}=database();for(let n=1;n<=1;n++)expect((await handleMoviePopularity(post(n),env,now)).status).toBe(204);
+  expect(await (await handleMoviePopularity(get(),env,now)).json()).toEqual({titleIds:['movie-7'],windowDays:null});
   await handleMoviePopularity(post(5),env,now);
-  const result=await handleMoviePopularity(get(),env,now);expect(await result.json()).toEqual({titleIds:['movie-7'],windowDays:7});expect(result.headers.get('cache-control')).toBe('no-store');
+  const result=await handleMoviePopularity(get(),env,now);expect(await result.json()).toEqual({titleIds:['movie-7'],windowDays:null});expect(result.headers.get('cache-control')).toBe('no-store');
  });
  it('atomically deduplicates concurrent attempts and isolates titles',async()=>{
   const {env,sql}=database();await Promise.all(Array.from({length:20},()=>handleMoviePopularity(post(),env,now)));
@@ -49,24 +49,32 @@ describe('movie popularity aggregate API',()=>{
   sql.exec('DROP TRIGGER fail_count');expect((await handleMoviePopularity(post(),env,now)).status).toBe(204);
   expect(sql.prepare('SELECT views FROM movie_popularity_daily').get()?.views).toBe(1);
  });
- it('does not let one daily token repeated across days pass the threshold',async()=>{
+ it('counts qualifying watches on different days',async()=>{
   const {env}=database();for(let day=0;day<7;day++)await handleMoviePopularity(post(),env,now+day*86400000);
-  expect((await (await handleMoviePopularity(get(),env,now+6*86400000)).json()).titleIds).toEqual([]);
- });
- it('purges expired tokens, hourly rate buckets and old aggregates on access',async()=>{
-  const {env,sql}=database();for(let n=1;n<=5;n++)await handleMoviePopularity(post(n),env,now);
-  await handleMoviePopularity(get(),env,now+86400000);
-  expect(sql.prepare('SELECT COUNT(*) n FROM movie_popularity_tokens').get()?.n).toBe(0);
-  expect(sql.prepare('SELECT COUNT(*) n FROM movie_popularity_rate').get()?.n).toBe(0);
   expect((await (await handleMoviePopularity(get(),env,now+6*86400000)).json()).titleIds).toEqual(['movie-7']);
-  expect((await (await handleMoviePopularity(get(),env,now+7*86400000)).json()).titleIds).toEqual([]);
-  expect(sql.prepare('SELECT COUNT(*) n FROM movie_popularity_daily').get()?.n).toBe(0);
  });
- it('ranks qualifying buckets deterministically, at most 20 titles',async()=>{
-  const {env,sql}=database();const day=Math.floor(now/86400000);
-  for(let n=1;n<=25;n++)sql.prepare('INSERT INTO movie_popularity_daily VALUES (?, ?, ?)').run(`movie-${n}`,day,5);
-  sql.prepare('UPDATE movie_popularity_daily SET views=6 WHERE title_id=?').run('movie-9');
-  const data=await (await handleMoviePopularity(get(),env,now)).json();expect(data.titleIds).toHaveLength(20);expect(data.titleIds[0]).toBe('movie-9');expect(data.titleIds.slice(1)).toEqual([...data.titleIds.slice(1)].sort());
+ it('keeps lifetime totals through scheduled expiry and GET performs no writes',async()=>{
+  const {env,sql}=database();await handleMoviePopularity(post(),env,now);
+  await onMoviePopularityScheduled({scheduledTime:now+8*86400000,cron:'* * * * *'},{MOVIE_POPULARITY_DB:env.MOVIE_POPULARITY_DB},{waitUntil(){}});
+  for(const table of ['tokens','rate','daily'])expect(sql.prepare(`SELECT COUNT(*) n FROM movie_popularity_${table}`).get()?.n).toBe(0);
+  sql.exec('PRAGMA query_only = ON');
+  const result=await handleMoviePopularity(get(),env,now+365*86400000);
+  expect(result.status).toBe(200);expect(await result.json()).toEqual({titleIds:['movie-7'],windowDays:null});
+ });
+ it('ranks qualifying buckets deterministically, at most 10 titles',async()=>{
+  const {env,sql}=database();
+  for(let n=1;n<=25;n++)sql.prepare('INSERT INTO movie_popularity_totals VALUES (?, ?)').run(`movie-${n}`,1);
+  sql.prepare('UPDATE movie_popularity_totals SET views=2 WHERE title_id=?').run('movie-9');
+  const data=await (await handleMoviePopularity(get(),env,now)).json();expect(data.titleIds).toHaveLength(10);expect(data.titleIds[0]).toBe('movie-9');expect(data.titleIds.slice(1)).toEqual([...data.titleIds.slice(1)].sort());
+ });
+ it('migrates only surviving counts and is safe to rerun',async()=>{
+  const {env,sql}=database();sql.exec('DROP TRIGGER movie_popularity_count_insert; DROP TABLE movie_popularity_totals;');
+  sql.exec("INSERT INTO movie_popularity_daily VALUES ('movie-7',1,2),('movie-7',2,3),('movie-8',2,1);");
+  const migration=readFileSync(new URL('../../docs/movie-popularity-alltime-migration.sql',import.meta.url),'utf8');
+  sql.exec(migration);sql.exec(migration);
+  expect(sql.prepare('SELECT * FROM movie_popularity_totals ORDER BY title_id').all()).toEqual([{title_id:'movie-7',views:5},{title_id:'movie-8',views:1}]);
+  await handleMoviePopularity(post(),env,now);sql.exec(migration);
+  expect(sql.prepare("SELECT views FROM movie_popularity_totals WHERE title_id='movie-7'").get()?.views).toBe(6);
  });
  it('requires same-origin JSON POST, valid exact schema and a trusted platform IP',async()=>{
   const {env}=database();
@@ -108,6 +116,6 @@ describe('movie popularity aggregate API',()=>{
  });
  it('Pages adapter fails closed and datastore errors do not disclose details',async()=>{
   expect((await onRequest({request:get(),env:{}})).status).toBe(503);
-  const {env,sql}=database();sql.exec('DROP TABLE movie_popularity_tokens');const response=await handleMoviePopularity(get(),env,now);expect(response.status).toBe(503);expect(await response.json()).toEqual({error:'popularity_unavailable'});
+  const {env,sql}=database();sql.exec('DROP TABLE movie_popularity_totals');const response=await handleMoviePopularity(get(),env,now);expect(response.status).toBe(503);expect(await response.json()).toEqual({error:'popularity_unavailable'});
  });
 });
