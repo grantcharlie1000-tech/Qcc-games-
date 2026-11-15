@@ -345,7 +345,7 @@ async function route(){
     content.innerHTML='<div class="loading"><p>Opening Movies &amp; TV…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';
     try{
       const [{MoviesView},saved]=await Promise.all([import('./movies/view'),ensureMovieStorage()]);if(token!==generation||!saved)return;
-      movies=new MoviesView(content,saved,advance=>advance?openStudy(true):openStudyEntry(),()=>preferences.reducedMotion,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}},openMenu);
+      movies=new MoviesView(content,saved,advance=>advance?openStudy(true):openStudyEntry(),()=>preferences.reducedMotion,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.writeSettings(preferences);}},openMenu);
       movies.navigate(location.hash);
     }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Movies &amp; TV could not load.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
     return;
@@ -565,7 +565,7 @@ document.querySelector<HTMLInputElement>('#search')!.addEventListener('input',ev
 for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#transparency','reducedTransparency'],['#colour','colorBlind']] as const){
   const input=document.querySelector<HTMLInputElement>(selector)!;input.checked=!!preferences[key];
   input.addEventListener('change',()=>{
-    preferences[key]=input.checked;store.write('settings',preferences);
+    preferences[key]=input.checked;store.writeSettings(preferences);
     document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);
     document.documentElement.classList.toggle('reduce-transparency',!!preferences.reducedTransparency);storageStatus();christmasMusic?.sync();
   });
