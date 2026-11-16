@@ -12,6 +12,9 @@
 //    cached redirected response breaks navigation (the cause of the 2026-11-03 outage). Every response is
 //    rebuilt before it is stored, and the page is stored under the scope URL.
 //  - A new version waits. The app asks it to take over (SKIP_WAITING) from the library, never mid-game.
+//  - Online, the page comes from the network, so a returning visitor gets the deployed version and its
+//    chunk names. The stored page is for offline (or a network slower than PAGE_TIMEOUT).
+//  - Stored copies keep the site's security headers (Content-Security-Policy and the rest).
 //  - Install fails, and the current version stays, if any shell file cannot be fetched and verified.
 const VERSION = '__OFFLINE_VERSION__';
 const SCOPE = self.registration.scope;
@@ -21,6 +24,8 @@ const BASE = new URL(SCOPE).pathname;
 // Accounts, sync, leaderboards, Movies and live data always go to the network.
 const NETWORK_ONLY = /^(?:\.netlify\/|api\/|movies\/|deploy-info\.json|santa\/departure\.json)/;
 const at = path => new URL(path, SCOPE).href;
+const PAGE_TIMEOUT = 3000;
+const KEPT_HEADERS = ['content-type', 'content-security-policy', 'x-content-type-options', 'referrer-policy', 'x-robots-tag', 'x-dns-prefetch-control'];
 
 async function digest(buffer) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', buffer))].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -32,8 +37,7 @@ async function store(cache, file) {
   const body = await response.arrayBuffer();
   if (body.byteLength !== file.size || await digest(body) !== file.sha256) throw new Error(`${file.path}: content does not match this version`);
   const headers = {'x-qcc-sha256': file.sha256};
-  const type = response.headers.get('content-type');
-  if (type) headers['content-type'] = type;
+  for (const name of KEPT_HEADERS) { const value = response.headers.get(name); if (value) headers[name] = value; }
   await cache.put(at(file.path), new Response(body, {headers}));
 }
 async function has(cache, file) {
@@ -64,7 +68,7 @@ async function install() {
   const meta = await caches.open(META);
   for (const request of await meta.keys()) {
     const record = await (await meta.match(request)).json();
-    if (record.state !== 'ready') continue;
+    if (record.state !== 'ready' && record.state !== 'stale') continue;
     const pack = packs.games[record.id];
     if (!pack) { await meta.delete(request); continue; }
     try {
@@ -82,7 +86,8 @@ async function install() {
   if ((await caches.keys()).some(key => /^pocket-arcade(?::|-v2:)/.test(key))) await self.skipWaiting();
 }
 
-/** Delete game files that no download (finished or in progress) still lists. */
+/** Delete game files that no download (finished or in progress) still lists.
+ * Caches belong to the whole origin: the site is served from one path per origin (/ on Pages). */
 async function prune() {
   const meta = await caches.open(META), files = await caches.open(FILES), keep = new Set();
   for (const request of await meta.keys()) for (const path of (await (await meta.match(request)).json()).files || []) keep.add(at(path));
@@ -114,27 +119,58 @@ async function partial(request, response) {
   headers.set('content-length', String(end - start + 1));
   return new Response(blob.slice(start, end + 1), {status: 206, headers});
 }
+// Expected hashes for this version, so a game file stored by an older version is never served while online.
+let expected;
+function expectedHashes() {
+  expected ??= (async () => {
+    const map = new Map();
+    try {
+      const packs = await (await (await caches.open(SHELL)).match(at('offline/packs.json'))).json();
+      for (const game of Object.values(packs.games)) for (const file of game.files) map.set(at(file.path), file.sha256);
+    } catch { /* No packs: every stored file is trusted as before. */ }
+    return map;
+  })();
+  return expected;
+}
+const answer = (request, hit) => request.method === 'HEAD' ? new Response(null, {headers: hit.headers}) : request.headers.has('range') ? partial(request, hit) : hit;
 async function cached(request) {
   const key = request.url.split('#')[0];
-  for (const name of [SHELL, FILES]) {
-    const hit = await (await caches.open(name)).match(key, {ignoreMethod: true});
-    if (hit) {
-      if (request.method === 'HEAD') return new Response(null, {headers: hit.headers});
-      return request.headers.has('range') ? partial(request, hit) : hit;
-    }
+  const shellHit = await (await caches.open(SHELL)).match(key, {ignoreMethod: true});
+  if (shellHit) return answer(request, shellHit);
+  const hit = await (await caches.open(FILES)).match(key, {ignoreMethod: true});
+  if (hit) {
+    const sha = (await expectedHashes()).get(key);
+    if (!sha || hit.headers.get('x-qcc-sha256') === sha) return answer(request, hit);
+    // An older version's copy: the network first, the old copy only if that fails.
+    try { const fresh = await fetch(request); if (fresh.ok) return fresh; } catch { /* offline */ }
+    return answer(request, hit);
   }
   return fetch(request);
 }
 async function page(request) {
-  // The app shell this worker was installed with, so the page and its downloaded games always match.
-  const hit = await (await caches.open(SHELL)).match(at('./'));
-  return hit || fetch(request);
+  const stored = () => caches.open(SHELL).then(cache => cache.match(at('./')));
+  // Online, the deployed page: its chunk names exist on the server. Offline or very slow, the stored page,
+  // which matches this version's downloaded games.
+  try {
+    const response = await Promise.race([fetch(request), new Promise((_, fail) => setTimeout(() => fail(new Error('slow')), PAGE_TIMEOUT))]);
+    if (response.ok || response.type === 'opaqueredirect') return response;
+    return (await stored()) || response;
+  } catch {
+    const hit = await stored();
+    if (hit) return hit;
+    return fetch(request);
+  }
 }
 self.addEventListener('fetch', event => {
   const request = event.request, url = new URL(request.url);
   if ((request.method !== 'GET' && request.method !== 'HEAD') || url.origin !== self.location.origin || !url.pathname.startsWith(BASE)) return;
   const path = url.pathname.slice(BASE.length);
   if (NETWORK_ONLY.test(path)) return;
+  // The page asks for the file list of its own version, which online is the deployed one.
+  if (path === 'offline/packs.json') {
+    event.respondWith(fetch(request).then(response => response.ok ? response : cached(request), () => cached(request)));
+    return;
+  }
   if (request.mode === 'navigate') {
     if (path === '' || path === 'index.html') event.respondWith(page(request));
     return;

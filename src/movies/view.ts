@@ -219,8 +219,8 @@ export class MoviesView {
  }
  private paintPip(){
   const button=this.root.querySelector<HTMLButtonElement>('[data-action="pip"]');if(!button)return;
-  const on=this.inPictureInPicture();
-  button.setAttribute('aria-pressed',String(on));button.textContent=on?'Back to page':'Picture in picture';
+  const on=this.inPictureInPicture(),moved=on&&!this.keepPlaying;
+  button.setAttribute('aria-pressed',String(on));button.textContent=moved?'Back to page':'Picture in picture';
  }
  private async pictureInPicture(){
   const video=this.video as (HTMLVideoElement&{webkitSetPresentationMode?:(mode:string)=>void;webkitPresentationMode?:string})|undefined;
@@ -239,7 +239,7 @@ export class MoviesView {
   if(!opener){
    this.keepPlaying=!this.keepPlaying;this.paintPip();
    const status=this.root.querySelector('#movies-player-status');
-   if(status&&this.keepPlaying)status.textContent='Keeps playing when you switch apps. Play full screen, then tap the player\'s picture in picture button.';
+   if(status&&this.keepPlaying)status.textContent='Stays loaded when you switch apps. Use the player\'s picture in picture button.';
    return;
   }
   let win:Window;

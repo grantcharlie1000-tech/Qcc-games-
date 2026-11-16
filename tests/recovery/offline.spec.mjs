@@ -12,6 +12,8 @@ const mime = {'.html': 'text/html', '.js': 'application/javascript', '.mjs': 'ap
   '.wasm': 'application/wasm', '.mp3': 'audio/mpeg', '.webmanifest': 'application/manifest+json', '.glb': 'model/gltf-binary', '.ktx2': 'image/ktx2'};
 const evidence = resolve('docs/evidence/offline');
 const sha = data => createHash('sha256').update(data).digest('hex');
+// The production policy from public/_headers, sent on every response as Cloudflare Pages does.
+const csp = (await readFile('public/_headers', 'utf8')).match(/Content-Security-Policy: (.+)/)[1];
 
 // Per-test server state: overrides stand in for a new deploy, failures for a dropped connection.
 let server, overrides, failures, served, legacyWorker;
@@ -33,14 +35,14 @@ test.beforeAll(async () => {
     if (failures[relative] > 0) { failures[relative]--; res.writeHead(200, {'Content-Type': 'application/octet-stream', 'Content-Length': '999999'}); res.write('partial'); res.destroy(); return; }
     if (overrides[relative] !== undefined) {
       const body = overrides[relative];
-      if (body === 404) res.writeHead(404).end(); else res.writeHead(200, {'Content-Type': mime[extname(relative)] || 'application/octet-stream', 'Cache-Control': 'no-cache'}).end(body);
+      if (body === 404) res.writeHead(404).end(); else res.writeHead(200, {'Content-Type': mime[extname(relative || 'index.html')] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'Content-Security-Policy': csp}).end(body);
       return;
     }
     const file = resolve(root, relative === '' ? 'index.html' : relative);
     if (!file.startsWith(root + sep)) { res.writeHead(403).end(); return; }
     try {
       const data = await readFile(file);
-      res.writeHead(200, {'Content-Type': mime[extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache'}).end(data);
+      res.writeHead(200, {'Content-Type': mime[extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'Content-Security-Policy': csp}).end(data);
     } catch { res.writeHead(404).end(); }
   });
   await new Promise((done, fail) => { server.once('error', fail); server.listen(port, '127.0.0.1', done); });
@@ -115,6 +117,21 @@ for (const base of ['/', '/Qcc-games-/']) {
     await expect(offline.locator('#game-stage .game-error')).toHaveText('Not downloaded. Connect to the internet to play.');
   });
 }
+
+test('online, a returning visitor gets the deployed page; offline, the stored one with its security policy', async ({page, context}) => {
+  await install(page);
+  // A deploy changes the page (and in real life its chunk names). Online, the visitor must get it at once.
+  overrides[''] = (await readFile(join(root, 'index.html'), 'utf8')).replace('</head>', '<meta name="deployed" content="next"></head>');
+  await page.reload();
+  await expect(page.locator('meta[name="deployed"]')).toHaveCount(1);
+  for (const open of context.pages()) await open.close();
+  await context.setOffline(true);
+  const offline = await context.newPage();
+  const response = await offline.goto(origin + '/#/collection');
+  await expect(offline.locator('.game-card').first()).toBeVisible();
+  await expect(offline.locator('meta[name="deployed"]')).toHaveCount(0);
+  expect(response.headers()['content-security-policy']).toContain("frame-ancestors 'none'");
+});
 
 test('every downloaded game opens and loads all its files with no network', async ({page, context}) => {
   test.setTimeout(900000);
@@ -199,6 +216,19 @@ test('an interrupted download fails honestly, then resumes without fetching fini
   await page.getByRole('button', {name: 'Retry Pool', exact: true}).click();
   await expect(page.locator('.dl-row[data-game="pool"] .dl-meta:not(.dl-hint)').first()).toContainText('Downloaded', {timeout: 30000});
   expect(served.filter(path => files.includes(path))).toEqual([files.at(-1)]);
+});
+
+test('a failure part way stops the whole download, which stays failed until retried', async ({page}) => {
+  await install(page);
+  failures[packs.games['femboy-obby'].files[0].path] = 100;
+  await page.evaluate(() => { location.hash = '#/downloads'; });
+  await page.getByRole('button', {name: 'Download Femboy Frosthop', exact: true}).click();
+  const state = page.locator('.dl-row[data-game="femboy-obby"] .dl-meta:not(.dl-hint)');
+  await expect(state).toContainText('Failed', {timeout: 30000});
+  // The other fetches of that run must not bring back "Downloading".
+  await page.waitForTimeout(3000);
+  await expect(state).toHaveAttribute('data-state', 'failed');
+  await expect(page.getByRole('button', {name: 'Retry Femboy Frosthop', exact: true})).toBeEnabled();
 });
 
 test('a download that does not fit says so before it starts', async ({page, context}) => {

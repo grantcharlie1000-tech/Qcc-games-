@@ -64,8 +64,6 @@ export class Downloads {
       const record=await (await meta.match(request))?.json() as Saved|undefined;
       if(record?.id)this.saved.set(record.id,record);
     }
-    // A record from another version is only trusted after its files are found for this one.
-    for(const record of this.saved.values())if(record.state==='ready'&&record.version!==this.packs.version)await this.verify(record.id as GameId);
     this.emit();
   }
 
@@ -78,6 +76,7 @@ export class Downloads {
     if(record.state==='stale')return {state:'update',done:0,total,message:'Download again to keep playing offline.'};
     return {state:'failed',done:0,total,message:'Download stopped. Tap to resume.'};
   }
+  hasAny():boolean{return this.saved.size>0||this.queue.length>0||!!this.running;}
   downloaded():GameId[]{return [...this.saved.values()].filter(record=>record.state==='ready').map(record=>record.id as GameId);}
   /** Bytes stored for finished downloads, counting shared files once. */
   storedBytes():number{
@@ -99,7 +98,7 @@ export class Downloads {
       try{await this.fetchGame(id);this.live.delete(id);}
       catch(error){
         if(error instanceof Cancelled||this.cancelled.has(id))this.live.delete(id);
-        else this.live.set(id,{state:'failed',done:0,total:this.size(id),message:quota(error)?'Not enough storage on this device.':error instanceof Error&&error.message?error.message:'Download failed. Try again.'});
+        else this.live.set(id,{state:'failed',done:0,total:this.size(id),message:quota(error)?'Not enough storage on this device.':error instanceof TypeError?'No connection. Try again.':error instanceof Error&&error.message?error.message:'Download failed. Try again.'});
       }
       this.running=undefined;this.emit(id);
     }
@@ -118,49 +117,53 @@ export class Downloads {
     if(estimate?.quota&&estimate.usage!==undefined&&estimate.quota-estimate.usage<need)throw new Error(`Not enough storage. Needs ${megabytes(need)}.`);
     // Asks the browser to keep this data. Safari may still remove it when the device is low on space.
     void navigator.storage?.persist?.().catch(()=>false);
+    // One failure stops the whole run: the other fetches stop taking files and stop reporting progress.
+    const run={stopped:false};
     let shown=0;
-    const progress=()=>{if(done-shown>65536||done===pack.size){shown=done;this.live.set(id,{state:'downloading',done,total:pack.size});this.emit(id);}};
+    const progress=()=>{if(run.stopped)return;if(done-shown>65536||done===pack.size){shown=done;this.live.set(id,{state:'downloading',done,total:pack.size});this.emit(id);}};
     this.live.set(id,{state:'downloading',done,total:pack.size});this.emit(id);
     await pool(missing,4,async file=>{
-      for(let attempt=0;;attempt++){
+      for(let attempt=0;!run.stopped;attempt++){
         let counted=0;
-        try{await this.fetchFile(id,files,file,bytes=>{counted+=bytes;done+=bytes;progress();});return;}
+        try{await this.fetchFile(id,files,file,()=>run.stopped,bytes=>{counted+=bytes;done+=bytes;progress();});return;}
         catch(error){
           done-=counted;
-          if(error instanceof Cancelled||this.cancelled.has(id)||quota(error)||attempt>=2)throw error;
+          if(error instanceof Cancelled||this.cancelled.has(id)||quota(error)||attempt>=2){run.stopped=true;throw error;}
           await sleep(1000*2**attempt);
         }
       }
     });
     for(const file of pack.files)if(!await has(files,file))throw new Error('Download incomplete. Try again.');
-    if(this.cancelled.has(id))throw new Cancelled();
+    if(this.cancelled.has(id)||!this.saved.has(id))throw new Cancelled();
     const finished:Saved={...record,state:'ready'};
     await meta.put(recordUrl(id),json(finished));this.saved.set(id,finished);
   }
-  private async fetchFile(id:GameId,cache:Cache,file:PackFile,onBytes:(bytes:number)=>void){
+  private async fetchFile(id:GameId,cache:Cache,file:PackFile,stopped:()=>boolean,onBytes:(bytes:number)=>void){
     // The query skips the worker's copy and any HTTP cache, so an outdated file is never stored again.
     const response=await fetch(at(file.path)+'?v='+file.sha256.slice(0,12),{cache:'no-store',credentials:'same-origin'});
     if(!response.ok)throw new Error(`Download failed (${response.status}). Try again.`);
     const body=new Uint8Array(file.size);let length=0;
     const reader=response.body!.getReader();
     for(;;){
-      if(this.cancelled.has(id)){void reader.cancel();throw new Cancelled();}
+      if(this.cancelled.has(id)||stopped()){void reader.cancel();throw new Cancelled();}
       const {done,value}=await reader.read();if(done)break;
       if(length+value.length>file.size)throw new Error('A file did not match this version. Try again.');
       body.set(value,length);length+=value.length;onBytes(value.length);
     }
     if(length!==file.size||await sha256(body.buffer)!==file.sha256)throw new Error('A file did not match this version. Try again.');
+    if(this.cancelled.has(id)||stopped())throw new Cancelled();
     const headers:Record<string,string>={'x-qcc-sha256':file.sha256};
     const type=response.headers.get('content-type');if(type)headers['content-type']=type;
     await cache.put(at(file.path),new Response(body,{headers}));
   }
 
-  /** Confirm a finished download still has every file; the browser may have removed some. */
+  /** Confirm a finished download still has every file it recorded; the browser may have removed some.
+   * Its own list, not this page's: after a deploy the worker brings downloads up to date before it takes over. */
   async verify(id:GameId):Promise<boolean>{
-    const record=this.saved.get(id),pack=this.packs?.games[id];
-    if(!record||record.state!=='ready'||!pack)return false;
+    const record=this.saved.get(id);
+    if(!record||record.state!=='ready')return false;
     const files=await caches.open(FILES);
-    for(const file of pack.files)if(!await has(files,file)){
+    for(const path of record.files)if(!await files.match(at(path))){
       const stale:Saved={...record,state:'stale'};
       await (await caches.open(META)).put(recordUrl(id),json(stale));this.saved.set(id,stale);this.emit(id);
       return false;
@@ -183,6 +186,8 @@ export class Downloads {
   }
   /** Delete stored files that no download still lists. */
   private async prune(){
+    // A waiting version has already stored files for its own records; it cleans up when it takes over.
+    if(this.updateWaiting())return;
     const keep=new Set<string>();
     const meta=await caches.open(META);
     for(const request of await meta.keys())for(const path of ((await (await meta.match(request))?.json()) as Saved|undefined)?.files??[])keep.add(at(path));

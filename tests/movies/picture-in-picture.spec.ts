@@ -26,7 +26,7 @@ test('picture in picture keeps the stream playing while the app is in the backgr
  await openPlayer(page);
  const button=page.getByRole('button',{name:'Picture in picture'});
  await button.click();
- await expect(page.getByRole('button',{name:'Back to page'})).toHaveAttribute('aria-pressed','true');
+ await expect(button).toHaveAttribute('aria-pressed','true');
  await expect(page.locator('#movies-player-status')).toContainText('picture in picture');
  await hide(page);
  await expect(page.locator('.movies-provider-frame')).toHaveCount(1);

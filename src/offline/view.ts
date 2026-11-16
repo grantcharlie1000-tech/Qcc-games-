@@ -25,7 +25,7 @@ ${Downloads.supported()?`<div class="dl-actions"><button type="button" class="ga
 :'<p class="dl-note">Downloads need the installed app or a secure connection. Open this site over HTTPS, then add it to your Home Screen.</p>'}
 </section>`;
     root.addEventListener('click',this.click);
-    this.stop=downloads.subscribe(id=>{if(id)this.paintRow(id);else this.paintAll();void this.storage();});
+    this.stop=downloads.subscribe(id=>{if(id)this.paintRow(id);else{this.paintAll();void this.storage();}});
     void downloads.ready.then(()=>{this.paint();void this.storage();});
   }
   dispose(){this.stop();this.root.removeEventListener('click',this.click);}
@@ -68,7 +68,7 @@ ${Downloads.supported()?`<div class="dl-actions"><button type="button" class="ga
       :status.state==='failed'?button('download','Retry',ICON.retry,true)+button('remove','Delete',ICON.remove)
       :button('download','Download',ICON.download,true);
     // Rewriting buttons on every progress tick would drop focus and taps.
-    if(buttons.dataset.state!==status.state){buttons.dataset.state=status.state;buttons.innerHTML=html;}
+    if(buttons.dataset.state!==status.state){buttons.dataset.state=status.state;buttons.innerHTML=html;void this.storage();}
   }
   private async storage(){
     const line=this.root.querySelector('.dl-storage');if(!line)return;
@@ -83,7 +83,7 @@ ${Downloads.supported()?`<div class="dl-actions"><button type="button" class="ga
     if(action==='download'&&id)this.downloads.download(id);
     else if(action==='play'&&id)location.hash=entryHash(id);
     else if(action==='remove'&&id)await this.downloads.remove(id);
-    else if(action==='clear'){if(this.downloads.downloaded().length&&confirm('Delete all downloaded games?'))await this.downloads.removeAll();}
+    else if(action==='clear'){if(this.downloads.hasAny()&&confirm('Delete all downloaded games?'))await this.downloads.removeAll();}
     else if(action==='check'){
       button.disabled=true;button.textContent='Checking…';
       await this.downloads.verifyAll();

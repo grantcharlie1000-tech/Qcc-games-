@@ -30,15 +30,15 @@ iOS can remove a web app's stored data when the device runs low on space, and Sa
 
 Caches:
 
-- `pocket-arcade-v3:shell:<version>`: the page, entry script, styles, fonts, icons and covers of one version. Navigations are served from it, so the page always matches its downloaded games.
+- `pocket-arcade-v3:shell:<version>`: the page, entry script, styles, fonts, icons and covers of one version. Online, the page comes from the network (the deployed version); offline, or after 3 seconds without an answer, from here, so it matches the downloaded games. Stored copies keep the site's security headers.
 - `pocket-arcade-v3:files`: downloaded game files, shared by every game that uses them (Three.js is stored once) and kept across versions.
 - `pocket-arcade-v3:meta`: one record per download (`partial`, `ready` or `stale`) listing its files. Cleanup keeps any file a record lists, so a download in progress is never cleaned up under itself.
 
-Every stored file carries its SHA-256 in an `x-qcc-sha256` header, so checking "already have it" needs no body read.
+Every stored file carries its SHA-256 in an `x-qcc-sha256` header, so checking "already have it" needs no body read. Online, a stored game file is only served if its hash matches the running version; an older copy is used only when the network fails.
 
 ### Updates
 
-A new deploy changes `sw.js` only when content changes. The new worker fetches and verifies the new shell, then brings every downloaded game to the new version, fetching only changed files. If it goes offline part way, install fails and the current version keeps working. If a game cannot be refreshed (storage full, missing file), that game is marked **Update needed** instead of blocking the update.
+A new deploy changes `sw.js` only when content changes. The new worker fetches and verifies the new shell, then brings every downloaded game to the new version, fetching only changed files. If it goes offline part way, install fails and the current version keeps working. If a game cannot be refreshed (storage full, missing file), that game is marked **Update needed** instead of blocking the update; the next version tries it again.
 
 The new version never takes over a running app. The library shows **Restart to update**; closing the app also lets it take over. Nothing appears during a game.
 
@@ -52,7 +52,7 @@ The Movies & TV player has a **Picture in picture** button.
 
 - **Local video files:** the browser's own picture in picture window (iPhone, Safari, Chrome, Edge).
 - **Streaming player, Chrome and Edge on desktop:** the player moves into a Document Picture-in-Picture window, resuming at the last reported time, and moves back when the window closes.
-- **Streaming player elsewhere (iPhone, Safari, Firefox):** a cross-origin player's video cannot be pulled out by this page. The button keeps the stream playing when you switch apps or tabs; use the player's own picture in picture control (on iPhone, play full screen, then tap its picture in picture button).
+- **Streaming player elsewhere (iPhone, Safari, Firefox):** a cross-origin player's video cannot be pulled out by this page. The button keeps the player loaded when you switch apps or tabs; the player's own picture in picture control gives the floating window (on iPhone, play full screen, then tap its picture in picture button). Whether a backgrounded stream keeps playing without that control is up to the browser.
 
 Without picture in picture, hiding the page still stops the stream, as before. Escape to Study always stops it.
 
@@ -62,9 +62,9 @@ Throttled Chromium (4x CPU, 1.6 Mbps, 150 ms) at 390 x 844, median of five runs,
 
 | | Before | After |
 | --- | --- | --- |
-| First library load | 9.5 s | 5.8 s |
-| Returning launch | 9.6 s | 0.94 s |
-| Transferred on first load | 1,653 KB | 873 KB |
-| Open Suika Game / Snake / Pool | 1.01 / 0.41 / 0.99 s | 0.37 / 0.20 / 0.31 s |
+| First library load | 9.5 s | 6.9 s |
+| Returning launch | 9.6 s | 0.86 s |
+| Transferred on first load | 1,653 KB | 1,133 KB |
+| Open Suika Game / Snake / Pool | 1.01 / 0.41 / 0.99 s | 0.71 / 0.16 / 0.26 s |
 
-Changes behind these numbers: covers below the first rows load lazily, hashed assets are cached for a year (`public/_headers`), and the worker serves the shell from the device.
+Changes behind these numbers: covers below the first rows load lazily, hashed assets are cached for a year (`public/_headers`), and the worker serves the entry script, styles and covers from the device. The page itself comes from the network when online (within 3 seconds), so a returning visitor always gets the deployed version. The current lit posters are larger files than the old flat ones, which accounts for part of the first-load transfer.
