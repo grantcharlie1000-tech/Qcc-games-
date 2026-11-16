@@ -256,8 +256,7 @@ function keepRange(attribute: THREE.BufferAttribute, range: { start: number; cou
 
 /** Throws when a WebGL renderer cannot be created. */
 export function createScene(canvas: HTMLCanvasElement, options: { quality?: Quality } = {}): CrossyRoadScene {
-  // Phones at 2x and above get little from MSAA but pay for it on every pixel of a large buffer.
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: (window.devicePixelRatio || 1) < 2, stencil: true, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, stencil: true, powerPreference: 'high-performance' });
   renderer.setClearColor(CLEAR_COLOR);
   renderer.shadowMap.enabled = false;
   const scene = new THREE.Scene();

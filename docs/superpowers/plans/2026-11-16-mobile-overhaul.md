@@ -36,7 +36,7 @@ Goal: fix the defects that make QCC feel like a desktop site on an iPhone, keepi
 14. Breachline does not release its WebGL context on exit. Fix: `forceContextLoss()`.
 15. Neon Coil joystick and Claimline ranking use `backdrop-filter` over canvases that repaint every frame. Fix: translucent fills.
 16. Fruit Merge redraws twice per frame while aiming. Fix: let the running loop draw.
-17. Crossy Road and Quad Clash run MSAA on 2x and 3x phone buffers. Fix: MSAA only below 2x.
+17. Quad Clash runs MSAA on 2x and 3x phone buffers. Fix: MSAA only below 2x. Crossy Road keeps MSAA: its rendering test requires antialiasing on 3x phones, and it already lowers its resolution when frames are slow.
 
 ### P3 polish
 
