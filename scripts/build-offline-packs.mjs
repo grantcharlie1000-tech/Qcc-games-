@@ -27,7 +27,7 @@ function addGraph(key,files,includeDynamic=false,visited=new Set()){
  if(visited.has(key))return;
  visited.add(key);
  const entry=vite[key];
- if(!entry)throw new Error('Missing built Vite module: '+key);
+ if(!entry)throw new Error('Missing built Vite module: '+key+'; available game keys: '+Object.keys(vite).filter(x=>x.includes('game')||x.includes('index.ts')).slice(0,50).join(' | '));
  for(const name of [entry.file,...(entry.css||[]),...(entry.assets||[])].filter(Boolean)){
   if(!known.has(name))throw new Error('Missing emitted file: '+name);
   files.add(name);
