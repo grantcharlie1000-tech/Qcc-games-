@@ -906,7 +906,7 @@ export class MoviesView {
   // A licensed file plays from its own file before any provider is asked, whether or not its season has loaded.
   const archive=t.source.type==='archive'?t.source:undefined;
   const source=archive?undefined:(licensedSource(this.licenses,key)??this.downloads.source(key));
-  const needsWarning=!archive&&!source&&this.confirmedPlayback!==this.playbackHash();
+  const needsWarning=!archive&&!this.downloads.source(key)&&this.confirmedPlayback!==this.playbackHash();
   if(needsWarning&&!this.suspended)queueMicrotask(()=>{
    if(!this.disposed&&this.route.play&&this.currentTitle()?.id===t.id&&!this.suspended&&this.confirmedPlayback!==this.playbackHash())this.warnBeforePlayback(undefined,()=>{this.confirmedPlayback=this.playbackHash();this.renderKeepingFocus();},()=>{location.hash=titleHash(t.id);});
   });
@@ -1228,7 +1228,7 @@ export class MoviesView {
    const title=this.lookup(playRoute.id!);
    this.confirmedPlayback='';
    const sourceKey=title?mediaKey(title,playRoute):'';
-   if(title?.source.type!=='archive'&&!licensedSource(this.licenses,sourceKey)&&!this.downloads.source(sourceKey)){
+   if(title?.source.type!=='archive'&&!this.downloads.source(sourceKey)){
     event.preventDefault();
     this.warnBeforePlayback(control,()=>{this.confirmedPlayback=play!;if(location.hash===play){this.suspended=false;this.renderKeepingFocus();}else location.hash=play!;});return;
    }
