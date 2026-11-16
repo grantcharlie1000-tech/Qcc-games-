@@ -1,34 +1,44 @@
-# Opt-in movie playback failure reports
+# Automatic movie playback failure diagnostics
 
-The external FrameXTV player runs in a cross-origin iframe. The app cannot inspect its internal DNS queries, HTTP failures, stream hosts, or error pages. Do not diagnose DNS blocking from an iframe timeout alone.
+NCEAstudy reports observable playback failures **automatically**, with no diagnostic opt-in/opt-out, popup, code, or confirmation UI. A failed report never blocks playback or creates a visible notification. The existing **Before you watch** warning about third-party streaming is unchanged and is not a reporting dialog.
 
-## Enable email delivery
+A cross-origin FrameXTV or archive iframe cannot expose its own video-host DNS lookups, individual network failures or stream URLs to the parent page. A failure reason is an observation, not proof of DNS filtering. An iframe `load` event may occur even after an error page has loaded. `no-playback-after-ready` may reflect autoplay restrictions, unsupported players or a blocked stream.
 
-In **Cloudflare Pages → nceastudy → Settings → Variables and Secrets**, configure these four values in the environment used for testing (Production or Preview), then deploy the matching branch:
+## Stored data
 
-| Name | Purpose |
-| --- | --- |
-| `RESEND_API_KEY` | Secret API key for the Resend email service |
-| `QCC_MOVIE_REPORT_TO` | Owner's email address where reports arrive |
-| `QCC_MOVIE_REPORT_FROM` | Verified Resend sender address, e.g. `QCC Alerts <alerts@your-verified-domain.example>` |
-| `QCC_MOVIE_REPORT_CODE` | Private, random 24 to 128 character alphanumeric/underscore/hyphen code, ideally 32+ random characters |
+Every observable failed attempt triggers one best-effort POST to `/api/movie-failure-report`. The native client sends **exactly** `{reason,stage,online}` (fixed enumerations and a boolean). The backend adds `received_at` (UTC epoch milliseconds) and a database-generated integer row ID.
 
-Never put these values in the repository, `VITE_` variables, URLs or public front-end assets. Do not share the Resend API key or sender configuration with testers. Share **only the diagnostic code** privately with a trusted tester. Rotate the code after the investigation. The API refuses to send any emails until all four values are set.
+The dedicated table **`movie_playback_failures`** stores `id`, `received_at`, `reason`, `stage`, `online`. No account, movie/TV title, episode, watchlist, route URL, referrer, user agent, raw IP address, cookies or device ID is sent as a field or stored in this table.
 
-To generate a random diagnostic code locally with Node: `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`.
+To prevent unbounded writes, a separate `movie_playback_failure_rate` table temporarily stores an HMAC of the trusted Cloudflare-provided IP address, scoped to the current UTC hour, plus an attempt count and expiry. The IP address itself is never written to either table. The key is the existing server-only `MOVIE_POPULARITY_SECRET`. The cap is 500 valid attempts per network address per UTC hour. Shared school IP addresses mean this is a safety limit, not a user count.
 
-## How to test
+The supported reason categories are `frame-load-timeout`, `frame-ready-timeout`, `frame-error`, `frame-csp-blocked`, `no-playback-after-ready`, `local-media-error` and `archive-frame-error`. Browsers may not raise error events for a blocked iframe's internal requests. Reports are not queued for later transmission if the reporting endpoint is unreachable.
 
-1. The tester opens NCEAstudy, selects a movie, and clicks Play.
-2. In **Before you watch**, they actively select **Send error report if playback fails**, enter the diagnostic code, then Continue. Leaving it unchecked sends nothing.
-3. If FrameXTV's iframe does not load in 15 seconds, or loads but never sends the ready signal within 12 seconds, the browser posts the failure to the same-origin endpoint `/api/movie-failure-report`.
-4. If the iframe claims it is ready but never reports playback progress, an opt-in diagnostic is sent after 30 seconds. This is a **possible stall**, not proof of a failed request or filtering. Browser autoplay restrictions can cause it too.
-5. The player shows **Diagnostic sent** only when the email API accepted the report, otherwise **Diagnostic could not be sent**.
+## One-time deployment steps
 
-Each attempt sends at most one report. The tester's choice is held in memory for that playback and is not saved to localStorage, accounts or cookies.
+1. In the Cloudflare dashboard, open the existing **movie popularity D1 database** bound to Pages as `MOVIE_POPULARITY_DB`, first in **Preview**. Apply [movie-failure-schema.sql](movie-failure-schema.sql) using D1's SQL console/CLI. Its `CREATE TABLE/INDEX IF NOT EXISTS` statements only add diagnostic structures.
+2. Verify the two new tables and indexes in Preview; apply the identical migration to the **Production** D1 database. Do not reset or re-create the existing database, and do not run the whole popularity setup again.
+3. Confirm Pages already has `MOVIE_POPULARITY_DB` and `MOVIE_POPULARITY_SECRET` in the correct environments. Both are existing movie-popularity settings; **no Resend email keys, address, extra D1 binding or diagnostic access code are needed**.
+4. Only after both databases are migrated, deploy the Pages application with the new `/api/movie-failure-report` endpoint.
+5. Redeploy the existing dedicated `workers/movie-popularity-cleanup.ts` scheduled Worker after migration, preserving its current D1 binding and cron trigger. It now deletes playback failures older than 30 days and hourly rate buckets past expiry alongside existing popularity cleanup. Publishing Pages alone does not update this separately deployed cleanup Worker.
+6. Run controlled playback-error tests on Preview and inspect table rows. Do not generate synthetic reports in Production. Verify the scheduled cleanup Worker is running and check rate limiting.
 
-Email content includes **UTC timestamp, failure reason, last player stage and the browser's online/offline flag**. It excludes account names, user/session identifiers, IP addresses, title/episode identifiers, URLs and viewing history. Like any website, the origin host may still process the visitor's IP as part of the normal network connection, but this implementation does not include it in the email. The server rejects extra fields, large bodies, wrong origins, unknown reasons, and incorrect diagnostic codes. The code is used only to authorize this one email destination. It is not included in the email.
+To inspect the newest events privately from the D1 console:
 
-Report categories: `frame-load-timeout`, `frame-ready-timeout`, `frame-error`, `frame-csp-blocked` and `no-playback-after-ready`. The last category is observational. Browser `iframe.onload` can fire for failed cross-origin navigations, so categories do not directly identify DNS blocks.
+```sql
+SELECT datetime(received_at / 1000, 'unixepoch') AS time_utc,
+       reason, stage, online
+FROM movie_playback_failures
+ORDER BY received_at DESC, id DESC
+LIMIT 100;
+```
 
-**Operations:** The report code limits unauthorised use but is not a substitute for rate limiting. Configure a Cloudflare WAF/rate-limit rule on `/api/movie-failure-report` (for example, limit a single IP to a handful of posts per minute), monitor email delivery and disable the feature by removing a binding after testing. A school's public IP may be shared by many users, so avoid excessively strict rules.
+There is no public GET listing endpoint. The POST endpoint validates exact fields, same-origin JSON, a 512-byte body cap, platform IP availability and a bounded per-hour rate. It returns no personal data.
+
+## Retention and privacy
+
+The scheduled cleanup deletes diagnostics after 30 days, but **only once the updated cleanup Worker has been deployed and remains active**. The table is not automatically purged by Cloudflare merely because a row is old; before deploying that Worker, manually clean up if needed. Cloudflare's D1 Time Travel backups and infrastructure/network logs have separate retention policies, so deleting rows does not guarantee immediate erasure everywhere.
+
+Because students may be minors, document the automatic technical error collection in the site's general privacy notice and comply with the operator's privacy obligations, even though this release adds no in-player reporting UI. This feature must not be expanded to collect visitor identities, location, title IDs, detailed browsing logs, DNS requests or school-network fingerprints.
+
+Browser signal visibility does not establish whether a connection failed because of DNS, TLS, firewall policy, a remote outage or browser autoplay rules. Diagnosing the exact blocking layer would require a permitted test environment with network access and logs.
