@@ -9,7 +9,7 @@ function scheduledInstant(value:number|Date|undefined){
  return Date.now();
 }
 
-/** Deletes expired popularity rows even when nobody is watching and collection is off.
+/** Deletes expired popularity rows and anonymous movie diagnostics even when nobody is watching and collection is off.
  * This is not a Pages Function: `functions/` is what Pages publishes, and Pages has no cron.
  * Do not add a wrangler config that binds a database until that deploy is separately approved.
  * The handler does not log tokens, addresses, secrets, or the database error. */
