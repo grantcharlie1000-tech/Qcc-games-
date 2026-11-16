@@ -37,6 +37,24 @@ const init = async () => provider.initialize({ signal: new AbortController().sig
 const flush = async () => { await new Promise<void>((resolve) => setTimeout(resolve, 0)); };
 
 describe('Stockfish session lifecycle', () => {
+  it('compiles the engine while its WASM preflight is still in flight', async () => {
+    let verify!: () => void;
+    vi.stubGlobal('fetch', () => new Promise<Response>((resolve) => {
+      verify = () => resolve(new Response(null, { headers: { 'content-type': 'application/wasm' } }));
+    }));
+    const loading = init();
+    await flush();
+    const startedBeforePreflight = TestWorker.instances.length;
+    verify();
+    await loading;
+    expect(startedBeforePreflight).toBe(1);
+  });
+
+  it('returns the only legal move without spending a search budget', async () => {
+    await expect(provider.chooseMove({ ...request(), legalMovesUci: ['e2e4'] })).resolves.toEqual({ moveUci: 'e2e4' });
+    expect(TestWorker.instances).toHaveLength(0);
+  });
+
   it('handshakes before search and preserves White perspective analysis', async () => {
     await init();
     const w = TestWorker.instances[0];
@@ -114,7 +132,20 @@ describe('Stockfish session lifecycle', () => {
   it('rejects missing WASM and wrong MIME without searching', async () => {
     vi.stubGlobal('fetch', async () => new Response('not found', { status: 404 }));
     await expect(init()).rejects.toThrow('WASM unavailable');
-    expect(TestWorker.instances).toHaveLength(0);
+    expect(TestWorker.instances[0].terminated).toBe(true);
+  });
+
+  it('releases a failed cold-search preflight and can retry on the same provider', async () => {
+    vi.stubGlobal('fetch', async () => new Response('<html>not WASM</html>', { headers: { 'content-type': 'text/html' } }));
+    await expect(provider.chooseMove(request())).rejects.toThrow('WASM unavailable');
+    const failed = TestWorker.instances[0];
+    expect(failed.terminated).toBe(true);
+    vi.stubGlobal('fetch', async () => new Response(null, { headers: { 'content-type': 'application/wasm' } }));
+    const retry = provider.chooseMove(request());
+    await flush();
+    failed.reply('bestmove e2e4');
+    TestWorker.instances[1].reply('bestmove d2d4');
+    await expect(retry).resolves.toEqual({ moveUci: 'd2d4' });
   });
 
   it('settles an aborted initialize and rejects calls after disposal', async () => {
@@ -149,6 +180,6 @@ describe('Stockfish session lifecycle', () => {
     await expect(provider.chooseMove({ ...request(), clock: { remainingMs: 25, incrementMs: 0 } }))
       .rejects.toMatchObject({ code: 'timeout' });
     await new Promise((resolve) => setTimeout(resolve, 55));
-    expect(TestWorker.instances).toHaveLength(0);
+    expect(TestWorker.instances[0].terminated).toBe(true);
   });
 });

@@ -30,6 +30,10 @@ Preserve `ONNXRUNTIME-LICENSE` and `ONNXRUNTIME-ThirdPartyNotices.txt`.
 
 - A dedicated module Worker downloads the selected model, compiles a real ORT
   session and performs a real inference before initialization succeeds.
+- Model parts stream concurrently into disjoint slices of one assembly buffer.
+  Exact part lengths and the official model checksum remain mandatory.
+- Model weights, runtime graph options, Elo conditioning and policy sampling
+  are unchanged. Moves return immediately after inference, with no pacing delay.
 - One WASM thread runs on CPU. No WebGPU, shared memory, remote service or
   cross-origin isolation is required. The upstream runtime binary's filename
   includes `threaded`; `numThreads = 1` disables its thread pool.
@@ -48,7 +52,9 @@ Preserve `ONNXRUNTIME-LICENSE` and `ONNXRUNTIME-ThirdPartyNotices.txt`.
   and rejects the pending operation. Idle cancellation preserves the warm
   session. A later request after an interrupted inference reloads lazily.
 - Reload is bounded by the remaining chess clock and the loader's grace
-  period. Search/pacing then uses at most the requested soft thinking budget.
+  period. A single fixed-work inference may exceed the soft thinking target
+  inside that same grace period, avoiding a forced model reload on slow CPUs.
+  It remains bounded by the actual remaining chess clock and absolute deadline.
   A clock that cannot accommodate reload or inference yields a timeout rather
   than a stale, invented or late move.
 - Dispose the provider/session on leaving chess. Each game has its own Worker.
@@ -71,7 +77,8 @@ logit units to accommodate fp16 graph optimization differences.
 model and WASM from a production-style repository subpath. Browser results
 and measured timings are recorded with that harness and the main handoff.
 
-Measured local browser runs on 2026-11-16, using the same Linux host:
+Historical measurements before the pacing removal and concurrent downloads,
+on 2026-11-16 using the same Linux host:
 
 | Environment | First initialization | Three 700 ms budget moves | Interrupted search and recovery |
 | --- | ---: | ---: | ---: |

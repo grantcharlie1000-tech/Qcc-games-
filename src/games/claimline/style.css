@@ -3,13 +3,13 @@
 .cl-canvas{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none!important;margin:0!important;touch-action:none;outline:none;cursor:crosshair}
 .cl-canvas:focus-visible{outline:3px solid #1e4a3d;outline-offset:-4px}
 
-.cl-share{position:absolute;top:10px;left:10px;min-width:118px;padding:8px 12px 9px;border-radius:14px;background:#ffffffc7;box-shadow:0 2px 8px #1e4a3d33;pointer-events:none;backdrop-filter:blur(3px)}
+.cl-share{position:absolute;top:10px;left:10px;min-width:118px;padding:8px 12px 9px;border-radius:14px;background:#ffffffeb;box-shadow:0 2px 8px #1e4a3d33;pointer-events:none}
 .cl-share-label{display:block;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#46786a}
 .cl-share-value{display:block;font-size:28px;line-height:1.1;font-weight:850;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#1e4a3d}
 .cl-share-bar{height:5px;margin-top:5px;border-radius:3px;background:#1e4a3d26;overflow:hidden}
 .cl-share-bar i{display:block;height:100%;width:2%;border-radius:3px;background:#ff4d6a;transition:width .2s}
 
-.cl-ranking{position:absolute;top:10px;right:10px;width:168px;padding:7px 9px;border-radius:14px;background:#ffffffc7;box-shadow:0 2px 8px #1e4a3d33;pointer-events:none;backdrop-filter:blur(3px)}
+.cl-ranking{position:absolute;top:10px;right:10px;width:168px;padding:7px 9px;border-radius:14px;background:#ffffffeb;box-shadow:0 2px 8px #1e4a3d33;pointer-events:none}
 .cl-ranking ol{list-style:none;margin:0;padding:0}
 .cl-ranking li{display:grid;grid-template-columns:12px 15px minmax(0,1fr) auto;align-items:center;gap:5px;min-height:21px;font-size:12px;font-weight:650;font-variant-numeric:tabular-nums}
 .cl-ranking li.is-you{color:#b3203d;font-weight:800}

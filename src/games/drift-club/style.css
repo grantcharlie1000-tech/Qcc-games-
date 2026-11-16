@@ -1,6 +1,8 @@
-body.in-game .game-view[data-game-id=drift-club]{--game-surface:#15383c;background:#15383c;padding:0;gap:0}
-body.in-game .game-view[data-game-id=drift-club] .game-dock{order:0;margin:4px auto;flex-basis:54px}
-body.in-game .game-view[data-game-id=drift-club] #game-stage{height:100%;max-height:none}
+/* Liquid Glass floats over the court and takes no room. The paper and the harbour run to every screen edge;
+   --dc-clear is how far their contents keep clear of the glass dock at the top. */
+body.in-game .game-view[data-game-id=drift-club]{--game-surface:#15383c;--dc-clear:calc(max(8px,env(safe-area-inset-top,0px)) + 64px);background:#15383c;padding:0;display:block}
+body.in-game .game-view[data-game-id=drift-club] :is(.stage-wrap,#game-stage){position:absolute;inset:0;width:100%;height:100%;max-height:none}
+body.in-game .game-view[data-game-id=drift-club] .game-dock{position:absolute;left:50%;top:max(8px,env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(calc(100% - 24px),560px);margin:0}
 .dc{--ink:#183e40;--paper:#fff2d9;--gold:#fac567;width:100%;height:100%;display:grid;grid-template-columns:clamp(270px,27vw,385px) minmax(0,1fr);padding:0 clamp(10px,2vw,36px) clamp(10px,2vw,30px);color:var(--ink);text-align:left;isolation:isolate;font:500 15px/1.36 var(--font-sans,system-ui);overflow:hidden}
 .dc *{box-sizing:border-box}.dc button,.dc input{font:inherit}.dc button{cursor:pointer}.dc button:focus-visible,.dc input:focus-visible,.dc canvas:focus-visible{outline:3px solid #ee9844;outline-offset:2px}
 .dc-desk{min-width:0;min-height:0;display:flex;flex-direction:column;padding:clamp(16px,2.1vw,32px);background:var(--paper);border-radius:19px 0 0 19px;border-right:1px solid #173d3f;overflow:auto;scrollbar-width:thin}
@@ -39,17 +41,17 @@ body.in-game .game-view[data-game-id=drift-club] #game-stage{height:100%;max-hei
 @media(max-width:900px) and (min-height:521px) and (orientation:portrait){
  .dc{display:grid;grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto;padding:0 7px max(7px,env(safe-area-inset-bottom));overflow:hidden}
  .dc-desk{display:contents}.dc-brand{display:none}.dc-modes{order:0;grid-row:1;grid-column:1;justify-self:end;align-self:center;margin:0 8px 0 0;width:min(52%,215px);background:#fff3df;z-index:1}
- .dc-modes button{font-size:10px;min-height:35px}.dc-tour{grid-column:1;grid-row:1;margin:0;padding:9px 8px 9px 12px;border:0;border-radius:13px 13px 0 0;background:var(--paper)}
- .dc-tour .dc-overline{font-size:8px}.dc-course{font-size:clamp(17px,4.9vw,30px);max-width:46%;margin:2px 0!important}.dc-stops,.dc-tip{display:none}
+ .dc-modes button{font-size:12px;min-height:40px}.dc-tour{grid-column:1;grid-row:1;margin:0;padding:9px 8px 9px 12px;border:0;border-radius:13px 13px 0 0;background:var(--paper)}
+ .dc-tour .dc-overline{font-size:10px}.dc-course{font-size:clamp(17px,4.9vw,30px);max-width:46%;margin:2px 0!important}.dc-stops,.dc-tip{display:none}
  .dc-window{grid-row:2;grid-column:1;border-radius:0}.dc-control{grid-row:3;grid-column:1;background:var(--paper);padding:8px 12px 10px;margin:0;border-radius:0 0 13px 13px;display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;align-items:center}
- .dc-turn{gap:8px}.dc-player{font-size:17px}.dc-token{width:25px;height:20px}.dc-delivery{font-size:8px}
- .dc-inputs{grid-row:2;grid-column:1/-1;grid-template-columns:1fr 1fr;gap:12px;margin:0}.dc-inputs input{height:30px}
- .dc-spin{grid-row:1;grid-column:2}.dc-spin button{font-size:10px;min-height:35px;padding:0 3px}
- .dc-shoot{margin:0;grid-row:3;grid-column:1/-1;min-height:39px}.dc-venue,.dc-board-score{top:8px;padding:5px 8px}.dc-venue{left:8px;font-size:8px}.dc-board-score{right:8px;font-size:10px}.dc-caption{bottom:6px;padding:4px 8px;font-size:10px}
+ .dc-turn{gap:8px}.dc-player{font-size:17px}.dc-token{width:25px;height:20px}.dc-delivery{font-size:10px}
+ .dc-inputs{grid-row:2;grid-column:1/-1;grid-template-columns:1fr 1fr;gap:12px;margin:0}.dc-inputs input{height:36px}
+ .dc-spin{grid-row:1;grid-column:2}.dc-spin button{font-size:12px;min-height:40px;padding:0 3px}
+ .dc-shoot{margin:0;grid-row:3;grid-column:1/-1;min-height:46px}.dc-venue,.dc-board-score{top:8px;padding:5px 8px}.dc-venue{left:8px;font-size:10px}.dc-board-score{right:8px;font-size:12px}.dc-caption{bottom:6px;padding:4px 8px;font-size:12px}
 }
 @media(max-width:520px) and (orientation:portrait){
- .dc-modes{width:55%;padding:2px;gap:0;margin-right:4px}.dc-modes button{font-size:9px;padding:0 2px}
- .dc-course{max-width:42%}.dc-book-open{top:36px;right:8px;padding:5px 8px;font-size:10px!important}
+ .dc-modes{width:58%;padding:2px;gap:0;margin-right:4px}.dc-modes button,.dc-modes button[data-mode]{flex:auto;font-size:11px;padding:0 4px}
+ .dc-course{max-width:42%}.dc-book-open{top:36px;right:8px;min-height:32px;padding:5px 10px;font-size:12px!important}
 }
 @media(max-height:420px){
  .dc .dc-brand{display:none}.dc .dc-modes{margin-top:0}.dc .dc-desk{padding-block:6px}
@@ -57,4 +59,26 @@ body.in-game .game-view[data-game-id=drift-club] #game-stage{height:100%;max-hei
 }
 @media(max-height:620px) and (min-width:701px), (max-height:520px){
  .dc{grid-template-columns:clamp(205px,29vw,320px) 1fr;padding:0 6px 6px}.dc-desk{padding:10px 14px}.dc-brand h2{font-size:29px}.dc-monogram{width:32px;height:32px;font-size:22px}.dc-modes{margin-top:6px}.dc-tour{margin:8px 0;padding-bottom:8px}.dc-course{font-size:26px;margin:3px 0!important}.dc-tip,.dc-stops{display:none}.dc-inputs{grid-template-columns:1fr 1fr;margin:5px 0;gap:8px}.dc-spin button{min-height:29px}.dc-shoot{min-height:34px;margin-top:4px}.dc-player{font-size:17px}.dc-venue,.dc-board-score{font-size:9px}
+}
+/* Edge to edge: the glass, the notch and the home indicator sit on the paper and the harbour; only what is on them keeps clear. */
+.dc .dc-desk{border-top-left-radius:0;padding-top:var(--dc-clear)}
+.dc-window{border-top-right-radius:0}
+.dc-venue,.dc-board-score{top:calc(var(--dc-clear) + 6px)}
+.dc-book-open{top:calc(var(--dc-clear) + 46px)}
+@media(max-height:620px) and (min-width:701px), (max-height:520px){
+ .dc{padding:0;grid-template-columns:calc(clamp(205px,29vw,320px) + env(safe-area-inset-left,0px)) 1fr}
+ .dc-modes button,.dc-modes button[data-mode]{flex:auto;padding-inline:4px;font-size:11px}
+ .dc .dc-desk{border-radius:0;padding-left:max(14px,calc(env(safe-area-inset-left) + 8px));padding-bottom:max(10px,calc(env(safe-area-inset-bottom) + 6px))}
+ .dc-window{border-radius:0}
+ .dc-board-score,.dc-book-open{right:max(14px,calc(env(safe-area-inset-right) + 8px))}
+ .dc-caption{bottom:max(12px,calc(env(safe-area-inset-bottom) + 6px))}
+}
+/* Portrait: the paper header meets the glass at the top; the harbour sits between the header and the controls. */
+@media(max-width:900px) and (min-height:521px) and (orientation:portrait){
+ .dc{padding-bottom:0}
+ .dc .dc-tour{padding-top:calc(var(--dc-clear) + 16px);border-radius:0}
+ .dc .dc-modes{align-self:end;margin-bottom:8px}
+ .dc-venue,.dc-board-score{top:8px}
+ .dc-book-open{top:36px}
+ .dc-control{border-radius:0;padding-bottom:max(10px,calc(env(safe-area-inset-bottom) + 6px))}
 }

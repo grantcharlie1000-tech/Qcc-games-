@@ -12,3 +12,4 @@ body.in-game .game-view[data-game-id=snake] #game-stage.viewport-fitted{position
 .snake-card button:focus-visible{outline:3px solid #fff4a4;outline-offset:3px}
 @media(max-height:600px){.snake-card{gap:6px;padding:12px}.snake-card strong{font-size:26px}.snake-card p{font-size:13px}}
 @media(max-width:420px){.snake-garden{padding:7px;border-width:2px;border-radius:24px}.snake-garden::after{inset:7px;border-radius:15px}.snake-canvas{border-radius:min(15px,3.125%)}}
+.game-view[data-game-id=snake] .stage-wrap{touch-action:none}

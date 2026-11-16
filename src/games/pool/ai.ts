@@ -57,7 +57,7 @@ export function bestEase(balls:readonly Ball[],cue:{x:number;y:number},targets:r
   const c=candidates(balls,cue,targets);return c.length?c[0].ease:0;
 }
 
-function score(s:PoolState,plan:Plan):number{
+function evaluate(s:PoolState,plan:Plan):{value:number;called:number|null}{
   const player=s.turn,copy=JSON.parse(JSON.stringify(s)) as PoolState;
   const balls=copy.balls;
   if(plan.place)Object.assign(balls[0],{x:plan.place.x,y:plan.place.y,on:true});
@@ -70,8 +70,10 @@ function score(s:PoolState,plan:Plan):number{
   const pots=log.pots.filter(p=>p.id!==0);
   const foul=log.scratch||log.first===null||!legal.has(log.first)||(!pots.length&&!log.railAfterContact);
   const eight=pots.find(p=>p.id===8);
-  if(eight)return !foul&&onEight&&eight.pocket===plan.called?1000:-1000;
-  if(foul)return -300;
+  // Choose the call before playing, using the predicted destination. Fallback
+  // safeties/kicks can pot a hanging eight outside their default called pocket.
+  if(eight)return {value:!foul&&onEight?1000:-1000,called:onEight?eight.pocket:plan.called};
+  if(foul)return {value:-300,called:plan.called};
   const group=s.groups[player];
   const mine=group??(pots.find(p=>groupOf(p.id))?groupOf(pots.find(p=>groupOf(p.id))!.id):null);
   const own=pots.filter(p=>mine&&groupOf(p.id)===mine).length;
@@ -81,16 +83,16 @@ function score(s:PoolState,plan:Plan):number{
     if(!group&&mine){copy.groups[player]=mine;copy.groups[other(player)]=mine==='solids'?'stripes':'solids';}
     const next=legalFirst(copy,player);
     const leave=next.length?bestEase(balls,balls[0],next):.5;
-    return 200+own*20+leave*120;
+    return {value:200+own*20+leave*120,called:plan.called};
   }
   // Safety: the less the opponent can see, the better.
   const theirs=s.groups[other(player)];
   const oppTargets=theirs?balls.filter(b=>b.on&&groupOf(b.id)===theirs).map(b=>b.id):balls.filter(b=>b.on&&b.id!==0&&b.id!==8).map(b=>b.id);
   const opp=bestEase(balls,balls[0],oppTargets.length?oppTargets:[8]);
-  return -40-opp*160;
+  return {value:-40-opp*160,called:plan.called};
 }
 
-const ACCURACY={easy:{angle:.022,power:.12,options:3,variants:2,think:.9},medium:{angle:.0075,power:.06,options:5,variants:4,think:.8},hard:{angle:.0016,power:.025,options:8,variants:7,think:.7}} as const;
+const ACCURACY={easy:{angle:.014,power:.04,options:3,variants:2,think:.9},medium:{angle:.005,power:.03,options:5,variants:4,think:.8},hard:{angle:0,power:0,options:8,variants:7,think:.7}} as const;
 export const thinkTime=(s:PoolState)=>ACCURACY[s.difficulty].think;
 
 export function* plan(s:PoolState):Generator<void,Plan>{
@@ -128,7 +130,7 @@ export function* plan(s:PoolState):Generator<void,Plan>{
   const spins:[number,number][]=[[0,0],[0,.5],[0,-.5],[0,.9],[0,-.9],[.5,0],[-.5,0]];
   const powers=[1,1.4,.8,1.9];
   let best:Plan|null=null,bestScore=-Infinity;
-  const consider=(p:Plan)=>{const v=score(s,p);if(v>bestScore){bestScore=v;best=p;}};
+  const consider=(p:Plan)=>{const result=evaluate(s,p);if(result.value>bestScore){bestScore=result.value;best={...p,called:result.called};}};
   for(const c of options){
     for(let k=0;k<settings.variants;k++){
       const [spinX,spinY]=spins[k%spins.length],extra=powers[Math.floor(k/2)%powers.length];
@@ -152,6 +154,8 @@ export function* plan(s:PoolState):Generator<void,Plan>{
     }
   }
   const chosen:Plan=best??{angle:0,power:.5,spinX:0,spinY:0,called:onEight?0:null,place,target:null};
+  // Hard plays the shot it verified, including the speed needed to reach a rail.
+  if(s.difficulty==='hard')return chosen;
   // Human-like error, seeded so replays and tests are repeatable.
   const gauss=()=>{let t=0;for(let i=0;i<4;i++)t+=random();return (t-2)/.58;};
   return {...chosen,angle:chosen.angle+gauss()*settings.angle,power:Math.max(.05,Math.min(1,chosen.power*(1+gauss()*settings.power)))};

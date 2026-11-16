@@ -2,14 +2,14 @@ import { build } from 'vite';
 import { chromium, webkit, firefox, devices } from '@playwright/test';
 import { createServer } from 'node:http';
 import { readFile, stat, mkdir, writeFile } from 'node:fs/promises';
-import { resolve, extname, join } from 'node:path';
+import { resolve, extname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 const directory = fileURLToPath(new URL('.', import.meta.url));
 const root = resolve(directory, '../../../..');
 const output = join(tmpdir(), `qcc-chess-browser-${process.pid}`);
-const artifacts = join(directory, 'artifacts');
+const artifacts = process.env.CHESS_BROWSER_ARTIFACTS || join(directory, 'artifacts');
 await mkdir(artifacts, { recursive: true });
 await build({ root, configFile: false, base: './', publicDir: join(root, 'public'), build: { target: 'es2022', outDir: output, emptyOutDir: true, rollupOptions: { input: join(directory, 'harness.html') } }, logLevel: 'warn' });
 const fixtureHTML = await readFile(join(output, 'tests/chess-ai/providers/browser/harness.html'), 'utf8');
@@ -21,7 +21,7 @@ const server = createServer(async (req, res) => {
   const path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
   if (!path.startsWith(prefix)) { res.writeHead(404); res.end('Use repository subpath'); return; }
   const location = resolve(output, path.slice(prefix.length));
-  if (!location.startsWith(output + '/')) { res.writeHead(403); res.end(); return; }
+  if (!location.startsWith(output + sep)) { res.writeHead(403); res.end(); return; }
   try {
     const metadata = await stat(location);
     if (!metadata.isFile()) throw new Error('not a file');
@@ -33,12 +33,13 @@ const server = createServer(async (req, res) => {
 await new Promise((done) => server.listen(0, '127.0.0.1', done));
 const url = `http://127.0.0.1:${server.address().port}${prefix}index.html`;
 const neuralOnly = process.env.CHESS_NEURAL_ONLY === '1';
+const stockfishOnly = process.env.CHESS_STOCKFISH_ONLY === '1';
 const firefoxOnly = process.env.CHESS_FIREFOX_ONLY === '1';
 const reportFileName = firefoxOnly ? (neuralOnly ? 'report-firefox-neural.json' : 'report-firefox.json') : (neuralOnly ? 'report-neural.json' : 'report.json');
 const report = { date: new Date().toISOString(), base: prefix, fullGame: !neuralOnly && process.env.CHESS_SKIP_FULL_GAME !== '1', notes: ['Mobile Chrome and iPhone runs are browser/device emulation, not physical phone tests.', 'Timings use the same-host localhost static server, with no network throttle; OS and file caches may be warm.', 'JS heap counters exclude native/WASM engine memory. Worker counts track actual constructed/terminated workers.', 'Optional Linux Chromium snapshots report aggregate renderer/worker RSS and full browser process RSS via CDP and /proc. Shared pages may be counted more than once. These are process observations, not isolated engine allocations; RSS need not immediately return after termination.', 'Tests build a separate fixture with production Vite chunking; the main production website is verified separately.'], browsers: [], failures: [] };
 const browsers = firefoxOnly ? [{ name: 'desktop-firefox', type: firefox, launch: {}, context: devices['Desktop Firefox'] }] : [
-  { name: 'desktop-chromium', type: chromium, launch: { executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox'] }, context: { viewport: { width: 1280, height: 900 } } },
-  { name: 'mobile-chromium-emulated', type: chromium, launch: { executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox'] }, context: devices['Pixel 7'] },
+  { name: 'desktop-chromium', type: chromium, launch: { ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}), args: ['--no-sandbox'] }, context: { viewport: { width: 1280, height: 900 } } },
+  { name: 'mobile-chromium-emulated', type: chromium, launch: { ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}), args: ['--no-sandbox'] }, context: devices['Pixel 7'] },
   { name: 'iphone-webkit-emulated', type: webkit, launch: {}, context: devices['iPhone 13'] },
 ];
 try {
@@ -82,7 +83,8 @@ try {
       await observeMemory('registry-ready-before-engines');
       const eagerEngineAssets = requests.filter((request) => /chess-engines\//.test(request));
       if (eagerEngineAssets.length) throw new Error(`Eager engine fetches ${eagerEngineAssets}`);
-      const result = neuralOnly ? await page.evaluate(() => window.qccNeural.run()) : await page.evaluate((full) => window.qccSmoke.run(full), process.env.CHESS_SKIP_FULL_GAME !== '1' && (config.name === 'desktop-chromium' || config.name === 'desktop-firefox'));
+      const result = neuralOnly ? await page.evaluate(() => window.qccNeural.run()) : await page.evaluate(({ full, stockfish }) => window.qccSmoke.run(full, stockfish), {
+        full: process.env.CHESS_SKIP_FULL_GAME !== '1' && (config.name === 'desktop-chromium' || config.name === 'desktop-firefox'), stockfish: stockfishOnly });
       result.errors = errors;
       result.requests = requests.map((request) => new URL(request).pathname);
       result.name = config.name;
@@ -97,9 +99,17 @@ try {
       }
       if (errors.length) report.failures.push({ browser: config.name, name: 'page errors', errors });
       await page.screenshot({ path: join(artifacts, `${neuralOnly ? 'neural-' : ''}${config.name}.png`), fullPage: true });
-      for (const failure of (neuralOnly ? ['missing-model'] : ['missing-wasm', 'crashed-engine-script'])) {
+      for (const failure of (neuralOnly ? ['missing-model', 'truncated-model', 'corrupt-model', 'missing-runtime'] : ['missing-wasm', 'crashed-engine-script'])) {
         const broken = await context.newPage();
         if (failure === 'missing-model') await broken.route('**/chess-engines/maia/model.part1', (route) => route.fulfill({ status: 404, body: 'Missing model fixture' }));
+        else if (failure === 'truncated-model') await broken.route('**/chess-engines/maia/model.part2', (route) => route.fulfill({ status: 200, body: 'Incomplete model fixture' }));
+        else if (failure === 'corrupt-model') await broken.route('**/chess-engines/maia/model.part3', async (route) => {
+          const response = await route.fetch();
+          const body = await response.body();
+          body[0] ^= 1;
+          await route.fulfill({ response, body });
+        });
+        else if (failure === 'missing-runtime') await broken.route('**/chess-engines/maia/ort.wasm.min.mjs', (route) => route.fulfill({ status: 404, body: 'Missing runtime fixture' }));
         else if (failure === 'missing-wasm') await broken.route('**/*.wasm', (route) => route.fulfill({ status: 404, body: 'Missing WASM fixture' }));
         else await broken.route('**/chess-engines/stockfish/*.js*', (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: 'throw new Error("Intentional test worker crash")' }));
         await broken.goto(url); await broken.waitForFunction(() => !!window.qccSmoke);

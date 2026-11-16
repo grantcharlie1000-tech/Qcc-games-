@@ -21,25 +21,28 @@ async function loadModel(assetBase: string, id: number): Promise<Uint8Array> {
   const model = new Uint8Array(MODEL_BYTES);
   let loaded = 0;
   send({ type: 'progress', id, progress: { phase: 'download', fraction: 0, loadedBytes: 0, totalBytes: MODEL_BYTES } });
-  for (let part = 0; part < PART_BYTES.length; part++) {
-    const response = await fetch(`${assetBase}model.part${part + 1}`);
+  const downloads = new AbortController();
+  try { await Promise.all(PART_BYTES.map(async (size, part) => {
+    const response = await fetch(`${assetBase}model.part${part + 1}`, { signal: downloads.signal });
     if (!response.ok || !response.body) throw new Error(`Maia3 model part ${part + 1} unavailable (${response.status}).`);
     const reader = response.body.getReader();
     let partLoaded = 0;
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      if (partLoaded + value.length > PART_BYTES[part]) {
+      if (partLoaded + value.length > size) {
         await reader.cancel();
         throw new Error(`Maia3 model part ${part + 1} has an invalid size.`);
       }
-      model.set(value, loaded);
+      // Stream straight into disjoint slices of one allocation. Do not retain
+      // three downloaded buffers alongside the assembled 46 MB model.
+      model.set(value, part * PART_BYTES[0] + partLoaded);
       loaded += value.length;
       partLoaded += value.length;
       send({ type: 'progress', id, progress: { phase: 'download', fraction: loaded / MODEL_BYTES, loadedBytes: loaded, totalBytes: MODEL_BYTES } });
     }
-    if (partLoaded !== PART_BYTES[part]) throw new Error(`Maia3 model part ${part + 1} is incomplete.`);
-  }
+    if (partLoaded !== size) throw new Error(`Maia3 model part ${part + 1} is incomplete.`);
+  })); } catch (error) { downloads.abort(); throw error; }
   const digest = await crypto.subtle.digest('SHA-256', model);
   const actual = [...new Uint8Array(digest)].map((n) => n.toString(16).padStart(2, '0')).join('');
   if (actual !== MODEL_SHA256) throw new Error('Maia3 model checksum mismatch.');
@@ -63,9 +66,14 @@ self.onmessage = async ({ data }: MessageEvent<MaiaCommand>) => {
   try {
     if (data.type === 'init') {
       if (typeof WebAssembly === 'undefined') throw new Error('Maia3 requires WebAssembly.');
-      const model = await loadModel(data.assetBase, data.id);
+      // Download the runtime alongside the model, rather than waiting for all
+      // model parts and their checksum before requesting the runtime module.
+      const [model, runtime] = await Promise.all([
+        loadModel(data.assetBase, data.id),
+        import(/* @vite-ignore */ `${data.assetBase}ort.wasm.min.mjs`) as Promise<OrtModule>,
+      ]);
       send({ type: 'progress', id: data.id, progress: { phase: 'compile', fraction: 0 } });
-      ort = await import(/* @vite-ignore */ `${data.assetBase}ort.wasm.min.mjs`) as OrtModule;
+      ort = runtime;
       ort.env.wasm.numThreads = 1;
       ort.env.wasm.proxy = false;
       ort.env.wasm.wasmPaths = data.assetBase;
@@ -81,8 +89,6 @@ self.onmessage = async ({ data }: MessageEvent<MaiaCommand>) => {
       const policy = policyDistribution(logits, data.fen.split(' ')[1] === 'b', data.legalMovesUci);
       const moveUci = samplePolicy(policy, data.random);
       const inferenceMs = performance.now() - started;
-      const wait = data.pacingMs - inferenceMs;
-      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
       send({ type: 'move', id: data.id, revision: data.revision, moveUci, inferenceMs });
     }
   } catch (error) {
