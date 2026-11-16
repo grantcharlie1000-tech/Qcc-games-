@@ -30,6 +30,9 @@ export function cleanupMoviePopularity(db:PopularityDatabase,now=Date.now()){
   db.prepare('DELETE FROM movie_popularity_tokens WHERE expires_at <= ?').bind(now),
   db.prepare('DELETE FROM movie_popularity_rate WHERE expires_at <= ?').bind(now),
   db.prepare('DELETE FROM movie_popularity_daily WHERE day < ?').bind(day-6),
+  // Anonymous operational failures expire after 30 days, including idle periods.
+  db.prepare('DELETE FROM movie_playback_failures WHERE received_at < ?').bind(now-30*DAY),
+  db.prepare('DELETE FROM movie_playback_failure_rate WHERE expires_at <= ?').bind(now),
  ]);
 }
 const headers={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer'};
