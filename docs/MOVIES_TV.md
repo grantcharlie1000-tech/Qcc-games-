@@ -4,7 +4,7 @@ Movies & TV opens from the Movies, TV Shows and My list tabs on the glass island
 
 Screenshots of each screen are at the end of this page.
 
-The optional diagnostic reporter, including its private code, email configuration, privacy limitations and test procedure, is documented in [Movie failure reports](MOVIE_FAILURE_REPORTS.md). It never reads requests inside the external player.
+Automatic failure-only movie diagnostics are documented in [Movie failure reports](MOVIE_FAILURE_REPORTS.md), including their D1 storage, migration, retention and privacy limitations. There are no reporting controls on the watch page; they cannot observe individual requests inside an external player.
 
 ## Provider and privacy model
 
