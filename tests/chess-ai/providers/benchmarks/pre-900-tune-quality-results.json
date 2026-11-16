@@ -1,0 +1,779 @@
+{
+  "generatedAt": "2026-11-16T03:52:10.884Z",
+  "sourceSha256": "6b53499eaa8e56377b3f835cae9ee01882b3ad3b3c81c2dabd81d87aac54d816",
+  "engine": "Stockfish 19 Lite WASM from stockfish.js 19.0.1, unrestricted, 16MiB hash, one thread",
+  "depth": 8,
+  "samplesPerPosition": 20,
+  "method": "Six fixed positions, same seeds for all opponents. Root unrestricted best and forced chosen move each searched independently to stated depth. Scores are side-to-move. Centipawn loss clamped at zero; finite-depth search may be inconsistent. Not an Elo estimate or a representative game blunder rate.",
+  "summary": [
+    {
+      "opponentId": "elo-300",
+      "samples": 120,
+      "meanCentipawnLoss": 216.24545454545455,
+      "blunderFraction": 0.35
+    },
+    {
+      "opponentId": "elo-500",
+      "samples": 120,
+      "meanCentipawnLoss": 124.5137614678899,
+      "blunderFraction": 0.26666666666666666
+    },
+    {
+      "opponentId": "elo-700",
+      "samples": 120,
+      "meanCentipawnLoss": 100.94495412844037,
+      "blunderFraction": 0.23333333333333334
+    },
+    {
+      "opponentId": "elo-900",
+      "samples": 120,
+      "meanCentipawnLoss": 72.03669724770643,
+      "blunderFraction": 0.18333333333333332
+    }
+  ],
+  "results": [
+    {
+      "position": "opening-1",
+      "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 1 5",
+      "opponentId": "elo-300",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 21,
+        "depth": 8,
+        "bestmove": "c2c3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 104.7,
+      "blundersOver200CpOrAllowsMate": 5,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "g2g3": 2,
+        "g2g4": 3,
+        "b2b3": 1,
+        "b1d2": 1,
+        "b1c3": 2,
+        "f3d2": 1,
+        "b2b4": 1,
+        "f3g5": 1,
+        "d3d4": 1,
+        "h1f1": 1,
+        "f3h4": 2,
+        "h1g1": 1,
+        "h2h3": 2,
+        "a2a3": 1
+      }
+    },
+    {
+      "position": "opening-1",
+      "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 1 5",
+      "opponentId": "elo-500",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 21,
+        "depth": 8,
+        "bestmove": "c2c3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 98.75,
+      "blundersOver200CpOrAllowsMate": 5,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "c1g5": 1,
+        "g2g3": 1,
+        "g2g4": 3,
+        "b2b3": 1,
+        "b1d2": 1,
+        "b1c3": 2,
+        "f3d2": 1,
+        "b2b4": 1,
+        "f3g5": 1,
+        "d3d4": 1,
+        "h1f1": 1,
+        "f3h4": 2,
+        "c4d5": 1,
+        "h2h3": 2,
+        "a2a3": 1
+      }
+    },
+    {
+      "position": "opening-1",
+      "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 1 5",
+      "opponentId": "elo-700",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 21,
+        "depth": 8,
+        "bestmove": "c2c3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 82,
+      "blundersOver200CpOrAllowsMate": 4,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "c1g5": 1,
+        "g2g3": 1,
+        "g2g4": 3,
+        "b2b3": 1,
+        "b1d2": 3,
+        "b1c3": 2,
+        "f3d2": 1,
+        "f3g5": 1,
+        "h2h3": 3,
+        "h1f1": 1,
+        "h1g1": 1,
+        "f3h4": 1,
+        "a2a3": 1
+      }
+    },
+    {
+      "position": "opening-1",
+      "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 1 5",
+      "opponentId": "elo-900",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 21,
+        "depth": 8,
+        "bestmove": "c2c3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 61.55,
+      "blundersOver200CpOrAllowsMate": 2,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "c1g5": 1,
+        "g2g3": 1,
+        "c1d2": 1,
+        "b1c3": 3,
+        "b1d2": 4,
+        "f3d2": 1,
+        "f3g5": 1,
+        "h1f1": 1,
+        "h1g1": 1,
+        "g2g4": 1,
+        "e1g1": 2,
+        "f3h4": 1,
+        "h2h3": 1,
+        "a2a3": 1
+      }
+    },
+    {
+      "position": "opening-2",
+      "fen": "rnbq1rk1/ppp1bppp/4pn2/3p2B1/2PP4/2N1P3/PP3PPP/R2QKBNR w KQ - 1 6",
+      "opponentId": "elo-300",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 25,
+        "depth": 8,
+        "bestmove": "g1f3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 78.85,
+      "blundersOver200CpOrAllowsMate": 4,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a2a3": 1,
+        "b2b4": 2,
+        "f2f4": 2,
+        "g5f6": 3,
+        "f2f3": 1,
+        "g1f3": 2,
+        "e1d2": 1,
+        "d1b3": 1,
+        "g1e2": 1,
+        "g1h3": 1,
+        "e3e4": 2,
+        "g2g3": 1,
+        "c4c5": 1,
+        "d1e2": 1
+      }
+    },
+    {
+      "position": "opening-2",
+      "fen": "rnbq1rk1/ppp1bppp/4pn2/3p2B1/2PP4/2N1P3/PP3PPP/R2QKBNR w KQ - 1 6",
+      "opponentId": "elo-500",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 25,
+        "depth": 8,
+        "bestmove": "g1f3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 71.3,
+      "blundersOver200CpOrAllowsMate": 4,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a2a3": 1,
+        "b2b4": 2,
+        "f2f4": 2,
+        "g5f6": 2,
+        "f2f3": 1,
+        "g1f3": 2,
+        "a1b1": 1,
+        "d1b3": 2,
+        "g1h3": 1,
+        "c4d5": 1,
+        "e3e4": 2,
+        "g2g3": 1,
+        "c4c5": 1,
+        "b2b3": 1
+      }
+    },
+    {
+      "position": "opening-2",
+      "fen": "rnbq1rk1/ppp1bppp/4pn2/3p2B1/2PP4/2N1P3/PP3PPP/R2QKBNR w KQ - 1 6",
+      "opponentId": "elo-700",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 25,
+        "depth": 8,
+        "bestmove": "g1f3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 66,
+      "blundersOver200CpOrAllowsMate": 3,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a2a3": 2,
+        "f2f4": 3,
+        "g5f6": 2,
+        "f1e2": 1,
+        "g1f3": 1,
+        "e1d2": 1,
+        "b2b4": 1,
+        "g1e2": 1,
+        "g1h3": 1,
+        "c4d5": 1,
+        "e3e4": 2,
+        "g2g3": 1,
+        "d1b3": 1,
+        "c4c5": 1,
+        "b2b3": 1
+      }
+    },
+    {
+      "position": "opening-2",
+      "fen": "rnbq1rk1/ppp1bppp/4pn2/3p2B1/2PP4/2N1P3/PP3PPP/R2QKBNR w KQ - 1 6",
+      "opponentId": "elo-900",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 25,
+        "depth": 8,
+        "bestmove": "g1f3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 42.55,
+      "blundersOver200CpOrAllowsMate": 1,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a2a3": 1,
+        "c4d5": 6,
+        "f2f4": 2,
+        "f2f3": 1,
+        "g1f3": 1,
+        "e1d2": 1,
+        "f1d3": 1,
+        "g1h3": 1,
+        "e3e4": 1,
+        "g5f6": 3,
+        "g2g3": 1,
+        "b2b3": 1
+      }
+    },
+    {
+      "position": "opening-3",
+      "fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "opponentId": "elo-300",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 37,
+        "depth": 8,
+        "bestmove": "f1d3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 188.35,
+      "blundersOver200CpOrAllowsMate": 5,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a2a4": 2,
+        "g2g4": 1,
+        "a1b1": 2,
+        "f1e2": 1,
+        "f1d3": 2,
+        "f1a6": 2,
+        "d1g4": 1,
+        "c1g5": 1,
+        "d4e6": 1,
+        "d1e2": 1,
+        "d4c6": 1,
+        "c1d2": 1,
+        "b2b3": 1,
+        "e4e5": 1,
+        "d4f3": 1,
+        "d1d3": 1
+      }
+    },
+    {
+      "position": "opening-3",
+      "fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "opponentId": "elo-500",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 37,
+        "depth": 8,
+        "bestmove": "f1d3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 167.85,
+      "blundersOver200CpOrAllowsMate": 4,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a2a4": 2,
+        "g2g4": 1,
+        "a1b1": 2,
+        "f1e2": 1,
+        "f1d3": 2,
+        "f1a6": 1,
+        "d1g4": 1,
+        "c1g5": 2,
+        "d4e6": 1,
+        "c3d5": 1,
+        "d4c6": 1,
+        "c1d2": 1,
+        "b2b3": 2,
+        "e4e5": 1,
+        "d4f3": 1
+      }
+    },
+    {
+      "position": "opening-3",
+      "fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "opponentId": "elo-700",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 37,
+        "depth": 8,
+        "bestmove": "f1d3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 132,
+      "blundersOver200CpOrAllowsMate": 4,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a2a4": 2,
+        "c1g5": 4,
+        "c1f4": 1,
+        "f1e2": 1,
+        "f1d3": 2,
+        "f1a6": 1,
+        "d4e6": 1,
+        "d1e2": 1,
+        "d4c6": 1,
+        "c1d2": 1,
+        "a1b1": 1,
+        "b2b3": 2,
+        "e4e5": 1,
+        "d4e2": 1
+      }
+    },
+    {
+      "position": "opening-3",
+      "fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "opponentId": "elo-900",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 37,
+        "depth": 8,
+        "bestmove": "f1d3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 132.1,
+      "blundersOver200CpOrAllowsMate": 5,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a2a4": 2,
+        "c1g5": 4,
+        "c1f4": 1,
+        "f1e2": 1,
+        "f1d3": 2,
+        "f1a6": 3,
+        "d4e6": 1,
+        "d1e2": 1,
+        "g2g3": 1,
+        "c1d2": 1,
+        "b2b3": 2,
+        "d4e2": 1
+      }
+    },
+    {
+      "position": "opening-4",
+      "fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 2 6",
+      "opponentId": "elo-300",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 51,
+        "depth": 8,
+        "bestmove": "h2h3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 113.35,
+      "blundersOver200CpOrAllowsMate": 3,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "c1h6": 1,
+        "f1e2": 4,
+        "h2h3": 3,
+        "b2b4": 1,
+        "a2a3": 3,
+        "d1c2": 1,
+        "c1g5": 1,
+        "c3e2": 1,
+        "f1d3": 1,
+        "c1f4": 1,
+        "f3e5": 1,
+        "d1d2": 1,
+        "d1d3": 1
+      }
+    },
+    {
+      "position": "opening-4",
+      "fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 2 6",
+      "opponentId": "elo-500",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 51,
+        "depth": 8,
+        "bestmove": "h2h3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 81.85,
+      "blundersOver200CpOrAllowsMate": 2,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "c1h6": 1,
+        "f1e2": 4,
+        "h2h3": 3,
+        "c1f4": 2,
+        "a2a3": 3,
+        "d1c2": 1,
+        "c1g5": 1,
+        "c3e2": 1,
+        "f1d3": 1,
+        "e4e5": 1,
+        "d1d2": 1,
+        "d1d3": 1
+      }
+    },
+    {
+      "position": "opening-4",
+      "fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 2 6",
+      "opponentId": "elo-700",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 51,
+        "depth": 8,
+        "bestmove": "h2h3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 66.8,
+      "blundersOver200CpOrAllowsMate": 1,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "c1h6": 1,
+        "f1e2": 4,
+        "h2h3": 3,
+        "c1f4": 2,
+        "a2a3": 3,
+        "d1c2": 1,
+        "c1g5": 1,
+        "h2h4": 1,
+        "f1d3": 1,
+        "e4e5": 1,
+        "c1d2": 1,
+        "d1d3": 1
+      }
+    },
+    {
+      "position": "opening-4",
+      "fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 2 6",
+      "opponentId": "elo-900",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 51,
+        "depth": 8,
+        "bestmove": "h2h3"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 23,
+      "blundersOver200CpOrAllowsMate": 0,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a1b1": 1,
+        "f1e2": 4,
+        "h2h3": 3,
+        "c1f4": 2,
+        "a2a3": 3,
+        "d1c2": 1,
+        "c1g5": 1,
+        "h2h4": 1,
+        "f1d3": 1,
+        "e4e5": 1,
+        "c1d2": 1,
+        "d1d3": 1
+      }
+    },
+    {
+      "position": "hanging-queen",
+      "fen": "q5k1/8/8/8/8/8/8/R5K1 w - - 0 1",
+      "opponentId": "elo-300",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 515,
+        "depth": 8,
+        "bestmove": "a1a8"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 640.5,
+      "blundersOver200CpOrAllowsMate": 13,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a1a8": 7,
+        "a1a4": 3,
+        "a1a3": 2,
+        "a1b1": 1,
+        "a1a7": 2,
+        "a1f1": 3,
+        "a1c1": 1,
+        "g1h2": 1
+      }
+    },
+    {
+      "position": "hanging-queen",
+      "fen": "q5k1/8/8/8/8/8/8/R5K1 w - - 0 1",
+      "opponentId": "elo-500",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 515,
+        "depth": 8,
+        "bestmove": "a1a8"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 227.05,
+      "blundersOver200CpOrAllowsMate": 5,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a1a8": 15,
+        "a1b1": 1,
+        "a1a4": 1,
+        "a1f1": 1,
+        "a1e1": 1,
+        "g1h2": 1
+      }
+    },
+    {
+      "position": "hanging-queen",
+      "fen": "q5k1/8/8/8/8/8/8/R5K1 w - - 0 1",
+      "opponentId": "elo-700",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 515,
+        "depth": 8,
+        "bestmove": "a1a8"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 171.55,
+      "blundersOver200CpOrAllowsMate": 4,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a1a8": 16,
+        "a1b1": 1,
+        "a1f1": 1,
+        "a1e1": 1,
+        "g1h2": 1
+      }
+    },
+    {
+      "position": "hanging-queen",
+      "fen": "q5k1/8/8/8/8/8/8/R5K1 w - - 0 1",
+      "opponentId": "elo-900",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": 515,
+        "depth": 8,
+        "bestmove": "a1a8"
+      },
+      "centipawnSamples": 20,
+      "meanCentipawnLoss": 133.4,
+      "blundersOver200CpOrAllowsMate": 3,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 0,
+      "choices": {
+        "a1a8": 17,
+        "a1b1": 1,
+        "a1f1": 1,
+        "g1h2": 1
+      }
+    },
+    {
+      "position": "back-rank-threat",
+      "fen": "r5k1/5ppp/8/8/8/5R2/5PPP/6K1 w - - 0 1",
+      "opponentId": "elo-300",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": -12,
+        "depth": 8,
+        "bestmove": "g2g3"
+      },
+      "centipawnSamples": 10,
+      "meanCentipawnLoss": 127.2,
+      "blundersOver200CpOrAllowsMate": 12,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 10,
+      "choices": {
+        "f3g3": 2,
+        "f3a3": 2,
+        "g2g3": 1,
+        "f3c3": 2,
+        "h2h3": 3,
+        "f3f5": 1,
+        "g1f1": 2,
+        "f3f6": 2,
+        "f3h3": 2,
+        "f3f7": 1,
+        "g2g4": 2
+      }
+    },
+    {
+      "position": "back-rank-threat",
+      "fen": "r5k1/5ppp/8/8/8/5R2/5PPP/6K1 w - - 0 1",
+      "opponentId": "elo-500",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": -12,
+        "depth": 8,
+        "bestmove": "g2g3"
+      },
+      "centipawnSamples": 9,
+      "meanCentipawnLoss": 70.66666666666667,
+      "blundersOver200CpOrAllowsMate": 12,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 11,
+      "choices": {
+        "f3g3": 2,
+        "f3a3": 1,
+        "g2g3": 1,
+        "f3c3": 2,
+        "f3e3": 1,
+        "h2h3": 3,
+        "f3f5": 1,
+        "g1f1": 1,
+        "f3f6": 2,
+        "f3h3": 2,
+        "h2h4": 1,
+        "f3f4": 1,
+        "g2g4": 2
+      }
+    },
+    {
+      "position": "back-rank-threat",
+      "fen": "r5k1/5ppp/8/8/8/5R2/5PPP/6K1 w - - 0 1",
+      "opponentId": "elo-700",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": -12,
+        "depth": 8,
+        "bestmove": "g2g3"
+      },
+      "centipawnSamples": 9,
+      "meanCentipawnLoss": 70.66666666666667,
+      "blundersOver200CpOrAllowsMate": 12,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 11,
+      "choices": {
+        "f3g3": 1,
+        "f3a3": 1,
+        "g2g3": 1,
+        "f3f7": 1,
+        "f3c3": 3,
+        "f3e3": 1,
+        "h2h3": 4,
+        "f3f5": 1,
+        "f3f6": 1,
+        "f3h3": 2,
+        "h2h4": 1,
+        "f3f4": 1,
+        "g2g4": 2
+      }
+    },
+    {
+      "position": "back-rank-threat",
+      "fen": "r5k1/5ppp/8/8/8/5R2/5PPP/6K1 w - - 0 1",
+      "opponentId": "elo-900",
+      "samples": 20,
+      "best": {
+        "kind": "cp",
+        "value": -12,
+        "depth": 8,
+        "bestmove": "g2g3"
+      },
+      "centipawnSamples": 9,
+      "meanCentipawnLoss": 0,
+      "blundersOver200CpOrAllowsMate": 11,
+      "missedForcedMate": 0,
+      "allowsForcedMate": 11,
+      "choices": {
+        "f3g3": 2,
+        "g2g4": 3,
+        "g2g3": 1,
+        "f3c3": 3,
+        "f3e3": 1,
+        "h2h3": 4,
+        "f3f5": 1,
+        "f3f4": 2,
+        "f3h3": 2,
+        "h2h4": 1
+      }
+    }
+  ]
+}
