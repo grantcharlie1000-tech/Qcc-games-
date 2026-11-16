@@ -385,7 +385,11 @@ export class GameScreen {
     });
   }
 
-  dismissOptions(): boolean { if (!this.options) return false; this.options.close(); return true; }
+  dismissMenu(): boolean {
+    if (this.share) { this.share.close(); return true; }
+    if (this.options) { this.options.close(); return true; }
+    return false;
+  }
 
   // Review ---------------------------------------------------------------
 
@@ -510,13 +514,18 @@ export class GameScreen {
     return this.rules.pgn({ White: p.w.name, Black: p.b.name, Event: this.session.rated ? 'Rated game' : 'Casual game', ...(this.session.tc ? { TimeControl: `${this.session.tc.baseMs / 1000}+${this.session.tc.incrementMs / 1000}` } : {}), ...(o ? { Termination: TERMINATION_TEXT[o.termination] ?? o.termination } : {}) }, o?.result ?? '*');
   }
 
+  private share?: { el: HTMLDialogElement; close: () => void };
+
   private exportSheet() {
+    if (this.share) return;
     const fen = this.shownRules().fen;
     const pgn = this.pgn();
-    const s = sheet(this.host.root, `<form method="dialog" class="dialog-head"><h2>Share game</h2><button class="icon-button" aria-label="Close">${ico('close')}</button></form>
+    const s = this.share = sheet(this.host.root, `<form method="dialog" class="dialog-head"><h2>Share game</h2><button class="icon-button" aria-label="Close">${ico('close')}</button></form>
+      <div class="ch-share-body">
       <label class="ch-field"><span>FEN</span><input readonly value="${esc(fen)}"></label>
-      <div class="ch-row"><button type="button" class="ch-pill" data-x="fen">${ico('copy')} Copy FEN</button><button type="button" class="ch-pill" data-x="pgn">${ico('copy')} Copy PGN</button><button type="button" class="ch-pill" data-x="file">Download PGN</button>${'share' in navigator ? '<button type="button" class="ch-pill" data-x="share">Share</button>' : ''}</div>
-      <p class="ch-muted ch-x-status" role="status"></p>`, { label: 'Share game' });
+      <div class="ch-row"><button type="button" class="ch-pill" data-x="fen">${ico('copy')} Copy FEN</button><button type="button" class="ch-pill" data-x="pgn">${ico('copy')} Copy PGN</button><button type="button" class="ch-pill" data-x="file">Download PGN</button></div>
+      ${'share' in navigator ? '<div class="ch-row"><button type="button" class="ch-pill" data-x="share">Share</button></div>' : ''}
+      <p class="ch-muted ch-x-status" role="status"></p></div>`, { label: 'Share game', onClose: () => { this.share = undefined; } });
     s.el.addEventListener('click', async (e) => {
       const x = (e.target as HTMLElement).closest<HTMLElement>('[data-x]')?.dataset.x;
       const status = s.el.querySelector('.ch-x-status')!;
@@ -541,6 +550,7 @@ export class GameScreen {
 
   dispose() {
     this.disposed = true;
+    this.share?.close();
     this.options?.close();
     clearInterval(this.timer);
     cancelAnimationFrame(this.scrollFrame);
