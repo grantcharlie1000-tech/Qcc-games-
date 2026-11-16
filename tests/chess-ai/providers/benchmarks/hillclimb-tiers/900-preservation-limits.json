@@ -1,0 +1,85 @@
+{
+  "generatedAt": "2026-11-16T12:44:23.603Z",
+  "sourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
+  "method": "Descriptive audit of existing reports only. Paired loss differences average the fixed seeds within each position before cluster bootstrap. No model reruns, tuning or new acceptance gate. Historical evidence was reused for node-budget selection; it is not held out. Device-dependent timed baselines are not a fixed absolute strength.",
+  "fresh": {
+    "positions": 88,
+    "acceptedRerunMeanCpLoss": 55.1875,
+    "currentMeanCpLoss": 72.28977272727273,
+    "differenceCp": 17.102272727272727,
+    "gameBootstrap": {
+      "clusters": 22,
+      "resamples": 4000,
+      "seed": 732187,
+      "difference95Cp": [
+        1.0596590909090908,
+        36.07102272727273
+      ]
+    },
+    "contributorBootstrap": {
+      "clusters": 6,
+      "resamples": 4000,
+      "seed": 732187,
+      "difference95Cp": [
+        1.180921052631579,
+        36.359375
+      ]
+    },
+    "currentWork": {
+      "choices": 352,
+      "medianNodes": 1201,
+      "completedDepthCounts": {
+        "1": 1,
+        "2": 284,
+        "3": 67
+      }
+    },
+    "acceptedRerunWork": {
+      "choices": 352,
+      "medianNodes": 3840,
+      "completedDepthCounts": {
+        "1": 1,
+        "2": 110,
+        "3": 185,
+        "4": 56
+      }
+    }
+  },
+  "historical": {
+    "acceptedWork": {
+      "choices": 1408,
+      "medianNodes": 6912,
+      "completedDepthCounts": {
+        "0": 1,
+        "1": 14,
+        "2": 258,
+        "3": 1059,
+        "4": 76
+      }
+    },
+    "currentWork": {
+      "choices": 1408,
+      "medianNodes": 1201,
+      "completedDepthCounts": {
+        "1": 62,
+        "2": 1264,
+        "3": 82
+      }
+    },
+    "identicalMoves": 785,
+    "choices": 1408
+  },
+  "speedCorpus": {
+    "choices": 40,
+    "completedDepthCounts": {
+      "2": 40
+    }
+  },
+  "inputs": {
+    "900-post-round15-v2.json": "6665de4b176a2c55b8ccc18bf4df2902a77af03040b373987fc81bcc8b1dc7cc",
+    "900-baseline-bundle-heldout-v2.json": "8302f76bae90936911911ba26a8f1da5b89cff2353e3a56d39e11f3182f1f7be",
+    "900-post-round15-regression-v2.json": "8a12c25d57e5a26fa8f5311d7861fd29b0ef838f899b9a6d55248cf25cd95bd1",
+    "../hillclimb-900/window-validation-2.json": "0e418a6deca73835ecfa7999379284607ba0a8c5381c1534d4de5bf1ab529132",
+    "browser-speed.json": "b5c4df3ae8b5af6de87e606a4fd6767d7f1b17427b5b1462827d871c7cfef50a"
+  }
+}

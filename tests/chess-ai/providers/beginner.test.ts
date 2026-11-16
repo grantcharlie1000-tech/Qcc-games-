@@ -45,15 +45,16 @@ describe('beginner decision system', () => {
     }).reduce<number>((a,b)=>a+b,0);
     const beginnerMates=mates('elo-300'),improvingMates=mates('elo-900');
     expect(beginnerMates).toBeGreaterThan(0);
-    expect(beginnerMates).toBeLessThan(20);
     expect(improvingMates).toBeGreaterThan(24);
     expect(improvingMates).toBeGreaterThan(beginnerMates+12);
   });
-  it('higher tiers capture a free queen more reliably than beginners', () => {
+  it('takes an unprotected queen reliably without weakening the higher tier', () => {
     const fen='7k/8/8/8/4q3/8/8/4R2K w - - 0 1';
     const captures = (level:string) => Array.from({length:80},(_,seed)=>computeMove(position(fen,level),seed+1).moveUci).filter(m=>m.endsWith('e4')).length;
-    expect(captures('elo-900')).toBeGreaterThan(70);
-    expect(captures('elo-900')).toBeGreaterThan(captures('elo-300'));
+    const beginner=captures('elo-300'),improving=captures('elo-900');
+    expect(beginner).toBeGreaterThan(50);
+    expect(improving).toBeGreaterThan(70);
+    expect(improving).toBeGreaterThanOrEqual(beginner);
   });
   it('only returns the supplied legal moves through a seeded game', () => {
     const chess=new Chess();

@@ -1,0 +1,102 @@
+{
+  "generatedAt": "2026-11-16T11:13:46.622Z",
+  "method": "Frozen metadata only. Contributor and game disjointness is checked between tuning and validation. This does not establish both-player disjointness because opponents were not the split unit. Common opening boards may recur. No positions are removed.",
+  "rows": [
+    {
+      "tier": 300,
+      "sha256": "7054f3b15bbbdbe6bf7640b3b315484a976e3ea745d2127fb44242da99ad67eb",
+      "tuning": {
+        "positions": 80,
+        "contributors": 7,
+        "games": 20,
+        "uniqueBoards": 80
+      },
+      "validation": {
+        "positions": 80,
+        "contributors": 6,
+        "games": 20,
+        "uniqueBoards": 80
+      },
+      "overlap": {
+        "contributors": 0,
+        "games": 0,
+        "boards": 0
+      }
+    },
+    {
+      "tier": 500,
+      "sha256": "27d70ef7ddc3c4cf293171f93e2c741cfc79f88f67c879204d3a61beae87cb8f",
+      "tuning": {
+        "positions": 76,
+        "contributors": 7,
+        "games": 19,
+        "uniqueBoards": 76
+      },
+      "validation": {
+        "positions": 84,
+        "contributors": 6,
+        "games": 21,
+        "uniqueBoards": 84
+      },
+      "overlap": {
+        "contributors": 0,
+        "games": 0,
+        "boards": 1
+      }
+    },
+    {
+      "tier": 700,
+      "sha256": "dbb9d803f03a88c84c8ad8f68df281e0340fe51ca25f688c6f52d5494b7a7039",
+      "tuning": {
+        "positions": 84,
+        "contributors": 6,
+        "games": 21,
+        "uniqueBoards": 84
+      },
+      "validation": {
+        "positions": 76,
+        "contributors": 5,
+        "games": 19,
+        "uniqueBoards": 76
+      },
+      "overlap": {
+        "contributors": 0,
+        "games": 0,
+        "boards": 3
+      }
+    },
+    {
+      "tier": 900,
+      "sha256": "e17b5cccafb941a7c3b00b6afc76855eb3577d3cca36c502b108627ec8ca850a",
+      "tuning": {
+        "positions": 72,
+        "contributors": 6,
+        "games": 18,
+        "uniqueBoards": 72
+      },
+      "validation": {
+        "positions": 88,
+        "contributors": 6,
+        "games": 22,
+        "uniqueBoards": 88
+      },
+      "overlap": {
+        "contributors": 0,
+        "games": 0,
+        "boards": 1
+      }
+    }
+  ],
+  "prior900": [
+    {
+      "name": "human-900-validation-2.json",
+      "sha256": "70eac3a46d96dfc0b39c30d48760186a7348e0b529de8dc1b895b8614050ec5b",
+      "overlappingGames": 0
+    },
+    {
+      "name": "human-900.json",
+      "sha256": "198c434a4cdb7d041d212817a98203bcf4cebf20d29a8eadc71c26120bb6bf80",
+      "overlappingGames": 0
+    }
+  ]
+}

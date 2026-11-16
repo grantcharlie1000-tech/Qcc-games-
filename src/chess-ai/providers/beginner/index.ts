@@ -3,20 +3,24 @@ import {manifest} from './manifest';
 import type {ReplyMessage,SearchMessage} from './protocol';
 
 interface Pending {
-  id:number;revision:number;legal:readonly string[];started:number;paceMs:number;hardDeadline:number;
+  id:number;revision:number;legal:readonly string[];hardDeadline:number;
   resolve(value:ChessAIMoveResponse):void;reject(error:unknown):void;unlink():void;
-  timer?:ReturnType<typeof setTimeout>;
   deadlineTimer?:ReturnType<typeof setTimeout>;
 }
 
-/** Conservative clock use, including pacing and worker startup. */
+/** Conservative clock use, including worker startup and delivery. */
 export function moveBudget(request:Pick<ChessAIMoveRequest,'thinkingTimeMs'|'clock'>):number {
   let budget=Math.max(1,Math.min(10_000,request.thinkingTimeMs));
   if(request.clock) budget=Math.max(1,Math.min(budget,request.clock.remainingMs*.08,request.clock.remainingMs-35));
   return budget;
 }
 
-/** Every factory owns its worker, request sequence, seed and pacing timer. */
+/** Soft compute allocations; normal fixed work usually finishes earlier. */
+export function searchBudget(opponentId:string,budgetMs:number):number {
+  return Math.min(opponentId==='elo-900'?200:75,budgetMs*.65);
+}
+
+/** Every factory owns its worker, request sequence, seed and watchdog. */
 export function createProvider():ChessAIProvider {
   let worker:Worker|undefined;
   let ready:Promise<void>|undefined;
@@ -30,7 +34,7 @@ export function createProvider():ChessAIProvider {
   const aborted=()=>new ChessAIError('aborted','The engine request was cancelled.');
   function settle(error?:unknown,reply?:ChessAIMoveResponse):void {
     const p=current;if(!p)return;current=undefined;
-    clearTimeout(p.timer);clearTimeout(p.deadlineTimer);p.unlink();
+    clearTimeout(p.deadlineTimer);p.unlink();
     if(error)p.reject(error);else p.resolve(reply!);
   }
   function stopWorker(error:unknown):void {
@@ -59,13 +63,7 @@ export function createProvider():ChessAIProvider {
         if(performance.now()>=p.hardDeadline){stopWorker(new ChessAIError('timeout','The beginner engine exceeded its move allowance.'));return;}
         if(data.type==='error'){settle(new ChessAIError('engine-error',data.message));return;}
         if(!p.legal.includes(data.result?.moveUci)){settle(new ChessAIError('illegal-move','Beginner engine returned an illegal move.'));return;}
-        // Search has finished. Wait only inside this move's clock-aware UX budget.
-        const remaining=Math.max(0,p.paceMs-(performance.now()-p.started));
-        p.timer=setTimeout(()=>{
-          if(current!==p)return;
-          if(performance.now()>=p.hardDeadline)stopWorker(new ChessAIError('timeout','The beginner engine exceeded its move allowance.'));
-          else settle(undefined,{moveUci:data.result.moveUci});
-        },remaining);
+        settle(undefined,{moveUci:data.result.moveUci});
       };
     });
     return ready;
@@ -95,13 +93,13 @@ export function createProvider():ChessAIProvider {
           : budget+250;
         const started=performance.now();
         const p:Pending={id,revision:request.positionRevision,legal:request.legalMovesUci,resolve,reject,
-          started,hardDeadline:started+hardAllowance,paceMs:budget*(.65+((seed[0]^id)>>>0)%100/400),unlink:()=>request.signal.removeEventListener('abort',abort)};
+          hardDeadline:started+hardAllowance,unlink:()=>request.signal.removeEventListener('abort',abort)};
         current=p;
         p.deadlineTimer=setTimeout(()=>{if(current===p)stopWorker(new ChessAIError('timeout','The beginner engine exceeded its move allowance.'));},hardAllowance);
         void ensureReady().then(()=>{
           if(current!==p||request.signal.aborted)return;
           const message:SearchMessage={type:'search',id,revision:p.revision,seed:seed[0]^id,
-            input:{fen:request.fen,startFen:request.startFen,moveHistoryUci:request.moveHistoryUci,legalMovesUci:request.legalMovesUci,opponentId:request.opponentId,thinkingTimeMs:Math.min(75,budget*.65)}};
+            input:{fen:request.fen,startFen:request.startFen,moveHistoryUci:request.moveHistoryUci,legalMovesUci:request.legalMovesUci,opponentId:request.opponentId,thinkingTimeMs:searchBudget(request.opponentId,budget)}};
           worker!.postMessage(message);
         }).catch(error=>{if(current===p)settle(error);});
       });

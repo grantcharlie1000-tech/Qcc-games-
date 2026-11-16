@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-11-16T08:18:09.805Z",
+  "method": "Snapshot of the accepted 900 work and unchanged lower tiers before the follow-up. Only provider type import paths are relocated.",
+  "hashes": {
+    "engine.ts": "c261a549bba247a272510b3391844c45c529d75a98bb3dc5d60250a1cf726721",
+    "brook.ts": "4fc4fdec6a2dbe8ebddb2da6e5ce553cacdb2c2eee536264575d5ecfa5e1b7c9",
+    "index.ts": "bd5a8420c800abb7a6c3b436bb1d086cb20f4cf09b0f5dccc14cbdcf8cc50a45",
+    "manifest.ts": "1725d323b711ddc43c5ef515bfe14318896257154b2730f5f466690c21976fd7",
+    "protocol.ts": "b0db4cf52f32bdd39050183e4b06054197bc02ddf8d5e3ca0588f2fa85909fbc",
+    "engine.worker.ts": "8fffa72ade55568146ed3740f0627c7021b59d0a7f2d3b6397a31cfb04b23042",
+    "vendor/chess.js": "6ec742c5b513c309938634dbc29b7fa302b37da6e8adebcded0694290582a22a",
+    "vendor/chess.d.ts": "29f09463bf7aedb31c93b4f692b9001eb5529b9dcc52829a1c0d5895e2f2e8f8"
+  }
+}
