@@ -124,7 +124,7 @@ let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft','crossy-road','quad-clash','femboy-obby','last-light','breachline']);
 // Responsive layouts fill the standard stage; scaling their whole UI would shrink labels and controls.
-const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','claimline','drift-club']);
+const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','claimline','drift-club','chess']);
 // Shell score/best text; Claimline's integer score is its peak share in hundredths of a percent.
 const metricText=(id:GameId,score:number)=>id==='claimline'||id==='femboy-obby'?formatScore(id,score):String(Math.floor(score));
 
@@ -427,7 +427,8 @@ async function route(){
     pausedForDialog=!paused;setPaused(true);menuButton.setAttribute('aria-expanded','true');openSheet(currentMenu,menuButton);
   });
   document.querySelector('#game-settings')!.addEventListener('click',()=>transferDialog(()=>openMenu(menuButton)));
-  document.querySelector('#game-rankings')!.addEventListener('click',()=>transferDialog(()=>leaderboards.open(id==='minesweeper'?'minesweeper-score':id)));
+  // Chess ratings rise and fall, so chess shows its own rating board instead of the shared best-score board.
+  document.querySelector('#game-rankings')!.addEventListener('click',()=>{if(id==='chess'){closeGameMenu();(instance as {openLeaderboard?:()=>void}|undefined)?.openLeaderboard?.();return;}transferDialog(()=>leaderboards.open(id==='minesweeper'?'minesweeper-score':id));});
   const fullscreenButton=document.querySelector<HTMLButtonElement>('#fullscreen-game')!;
   detachFullscreen=attachFullscreen(fullscreenButton,state=>{
     fullscreenButton.setAttribute('aria-pressed',String(state.expanded));

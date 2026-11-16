@@ -39,6 +39,7 @@ export const POSTERS = {
   'femboy-obby':  {hue: 256, accent: C.pink,   title: 'A blocky boy in a pink cat-ear beanie and snowflake jumper hopping across gift boxes in the snow'},
   'last-light': {hue: 218, accent: C.gold, title: 'A voxel courier holding a golden lantern on a broken rooftop above a sleeping city'},
   'drift-club':   {hue: 183, accent: C.yellow, title: 'A voxel harbour shuffleboard with coral and blue pucks, a bullseye and a striped lighthouse'},
+  'chess':        {hue: 312, accent: C.gold, title: 'A white king, a charcoal knight and two pawns on a tan chessboard in a walnut tray'},
 };
 
 async function build(id) {

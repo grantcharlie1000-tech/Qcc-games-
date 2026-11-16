@@ -7,7 +7,7 @@ interface ProxyContext {
 }
 
 const PREFIX='/.netlify/functions/';
-const ROUTES=new Set(['accounts','leaderboard','turn','social','chat','media','predictions']);
+const ROUTES=new Set(['accounts','leaderboard','turn','social','chat','media','predictions','chess']);
 const UPSTREAM_TIMEOUT_MS=10_000;
 const REQUEST_HEADERS=['Authorization','Content-Type','X-QCC-Sync','Accept'];
 const RESPONSE_HEADERS=['Content-Type','Retry-After','Cache-Control','ETag','Vary'];

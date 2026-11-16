@@ -1,0 +1,344 @@
+{
+  "generatedAt": "2026-11-16T03:40:08.450Z",
+  "sourceSha256": "c9c13cea80b9e539f7e9a3b7699a79cd344a6a0a958edde1dfaddba315f1a13d",
+  "budgetMs": 75,
+  "trials": 100,
+  "results": [
+    {
+      "opponentId": "elo-300",
+      "probe": "mate-in-one",
+      "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
+      "trials": 100,
+      "successes": 20,
+      "failures": 0,
+      "successFraction": 0.2,
+      "meanMs": 29.558202449999996,
+      "choices": {
+        "g6d3": 7,
+        "g6g4": 5,
+        "f6f5": 6,
+        "g6h7": 3,
+        "g6g7": 20,
+        "g6g5": 4,
+        "g6f5": 3,
+        "g6g2": 3,
+        "g6f7": 4,
+        "f6e5": 1,
+        "g6g8": 4,
+        "g6e8": 2,
+        "g6c2": 2,
+        "f6e7": 3,
+        "g6g3": 4,
+        "f6f7": 6,
+        "g6e4": 7,
+        "g6h5": 3,
+        "g6b1": 2,
+        "f6e6": 4,
+        "g6g1": 1,
+        "g6h6": 4,
+        "f6g5": 2
+      }
+    },
+    {
+      "opponentId": "elo-300",
+      "probe": "capture-free-queen",
+      "fen": "q5k1/8/8/8/8/8/8/R5K1 w - - 0 1",
+      "trials": 100,
+      "successes": 54,
+      "failures": 0,
+      "successFraction": 0.54,
+      "meanMs": 11.542308459999994,
+      "choices": {
+        "a1a8": 54,
+        "a1b1": 5,
+        "a1e1": 4,
+        "g1h2": 4,
+        "a1a2": 2,
+        "a1a5": 2,
+        "a1a3": 6,
+        "a1c1": 5,
+        "a1d1": 6,
+        "a1f1": 2,
+        "a1a6": 2,
+        "a1a7": 1,
+        "a1a4": 6,
+        "g1f1": 1
+      }
+    },
+    {
+      "opponentId": "elo-300",
+      "probe": "queen-promotion",
+      "fen": "7k/P7/6K1/8/8/8/8/8 w - - 0 1",
+      "trials": 100,
+      "successes": 98,
+      "failures": 0,
+      "successFraction": 0.98,
+      "meanMs": 6.2009827899999985,
+      "choices": {
+        "a7a8q": 98,
+        "g6f7": 1,
+        "g6h5": 1
+      }
+    },
+    {
+      "opponentId": "elo-300",
+      "probe": "avoid-mate-in-one",
+      "fen": "r5k1/5ppp/8/8/8/5R2/5PPP/6K1 w - - 0 1",
+      "trials": 100,
+      "successes": 61,
+      "failures": 0,
+      "successFraction": 0.61,
+      "meanMs": 6.122116300000007,
+      "choices": {
+        "f3f4": 6,
+        "f3d3": 6,
+        "f3f7": 6,
+        "f3c3": 8,
+        "f3g3": 5,
+        "f3e3": 8,
+        "f3a3": 4,
+        "f3f5": 3,
+        "g2g3": 7,
+        "f3f6": 1,
+        "h2h3": 8,
+        "f3h3": 15,
+        "g1f1": 4,
+        "h2h4": 5,
+        "g1h1": 3,
+        "f3b3": 8,
+        "g2g4": 3
+      }
+    },
+    {
+      "opponentId": "elo-500",
+      "probe": "mate-in-one",
+      "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
+      "trials": 100,
+      "successes": 51,
+      "failures": 0,
+      "successFraction": 0.51,
+      "meanMs": 14.468605770000158,
+      "choices": {
+        "g6g7": 51,
+        "g6g4": 2,
+        "g6f5": 3,
+        "g6f7": 3,
+        "g6g5": 2,
+        "g6c2": 2,
+        "g6g3": 5,
+        "f6f7": 6,
+        "g6h5": 2,
+        "g6b1": 2,
+        "g6d3": 4,
+        "g6g1": 1,
+        "g6g2": 1,
+        "g6h6": 2,
+        "g6e8": 1,
+        "f6e6": 2,
+        "g6e4": 3,
+        "f6e7": 2,
+        "f6f5": 3,
+        "f6g5": 3
+      }
+    },
+    {
+      "opponentId": "elo-500",
+      "probe": "capture-free-queen",
+      "fen": "q5k1/8/8/8/8/8/8/R5K1 w - - 0 1",
+      "trials": 100,
+      "successes": 84,
+      "failures": 0,
+      "successFraction": 0.84,
+      "meanMs": 19.87274377999982,
+      "choices": {
+        "a1a8": 84,
+        "a1a5": 1,
+        "a1a3": 1,
+        "a1d1": 3,
+        "a1e1": 2,
+        "a1c1": 4,
+        "a1f1": 2,
+        "a1a4": 2,
+        "a1b1": 1
+      }
+    },
+    {
+      "opponentId": "elo-500",
+      "probe": "queen-promotion",
+      "fen": "7k/P7/6K1/8/8/8/8/8 w - - 0 1",
+      "trials": 100,
+      "successes": 100,
+      "failures": 0,
+      "successFraction": 1,
+      "meanMs": 2.6807414700000844,
+      "choices": {
+        "a7a8q": 100
+      }
+    },
+    {
+      "opponentId": "elo-500",
+      "probe": "avoid-mate-in-one",
+      "fen": "r5k1/5ppp/8/8/8/5R2/5PPP/6K1 w - - 0 1",
+      "trials": 100,
+      "successes": 61,
+      "failures": 0,
+      "successFraction": 0.61,
+      "meanMs": 9.681246530000099,
+      "choices": {
+        "f3f4": 6,
+        "f3d3": 5,
+        "f3f7": 7,
+        "f3c3": 7,
+        "f3g3": 4,
+        "f3e3": 7,
+        "h2h4": 10,
+        "f3f5": 3,
+        "g2g3": 6,
+        "f3a3": 1,
+        "f3f6": 1,
+        "h2h3": 8,
+        "f3h3": 16,
+        "g1f1": 3,
+        "f3b3": 7,
+        "g2g4": 7,
+        "g1h1": 2
+      }
+    },
+    {
+      "opponentId": "elo-700",
+      "probe": "mate-in-one",
+      "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
+      "trials": 100,
+      "successes": 86,
+      "failures": 0,
+      "successFraction": 0.86,
+      "meanMs": 11.69219474999987,
+      "choices": {
+        "g6g7": 86,
+        "g6g4": 3,
+        "g6f5": 2,
+        "g6c2": 1,
+        "g6g1": 1,
+        "g6e4": 3,
+        "g6d3": 2,
+        "g6g3": 1,
+        "g6g5": 1
+      }
+    },
+    {
+      "opponentId": "elo-700",
+      "probe": "capture-free-queen",
+      "fen": "q5k1/8/8/8/8/8/8/R5K1 w - - 0 1",
+      "trials": 100,
+      "successes": 97,
+      "failures": 0,
+      "successFraction": 0.97,
+      "meanMs": 40.167326529999976,
+      "choices": {
+        "a1a8": 97,
+        "a1c1": 1,
+        "a1d1": 2
+      }
+    },
+    {
+      "opponentId": "elo-700",
+      "probe": "queen-promotion",
+      "fen": "7k/P7/6K1/8/8/8/8/8 w - - 0 1",
+      "trials": 100,
+      "successes": 100,
+      "failures": 0,
+      "successFraction": 1,
+      "meanMs": 5.61434526999994,
+      "choices": {
+        "a7a8q": 100
+      }
+    },
+    {
+      "opponentId": "elo-700",
+      "probe": "avoid-mate-in-one",
+      "fen": "r5k1/5ppp/8/8/8/5R2/5PPP/6K1 w - - 0 1",
+      "trials": 100,
+      "successes": 65,
+      "failures": 0,
+      "successFraction": 0.65,
+      "meanMs": 17.126104490000035,
+      "choices": {
+        "f3f4": 6,
+        "h2h3": 7,
+        "f3c3": 7,
+        "f3g3": 8,
+        "f3e3": 6,
+        "h2h4": 14,
+        "f3d3": 4,
+        "f3f5": 3,
+        "g2g3": 8,
+        "g2g4": 10,
+        "f3h3": 17,
+        "g1f1": 1,
+        "f3b3": 8,
+        "g1h1": 1
+      }
+    },
+    {
+      "opponentId": "elo-900",
+      "probe": "mate-in-one",
+      "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
+      "trials": 100,
+      "successes": 100,
+      "failures": 0,
+      "successFraction": 1,
+      "meanMs": 13.12787447999992,
+      "choices": {
+        "g6g7": 100
+      }
+    },
+    {
+      "opponentId": "elo-900",
+      "probe": "capture-free-queen",
+      "fen": "q5k1/8/8/8/8/8/8/R5K1 w - - 0 1",
+      "trials": 100,
+      "successes": 99,
+      "failures": 0,
+      "successFraction": 0.99,
+      "meanMs": 32.127898630000125,
+      "choices": {
+        "a1a8": 99,
+        "a1c1": 1
+      }
+    },
+    {
+      "opponentId": "elo-900",
+      "probe": "queen-promotion",
+      "fen": "7k/P7/6K1/8/8/8/8/8 w - - 0 1",
+      "trials": 100,
+      "successes": 100,
+      "failures": 0,
+      "successFraction": 1,
+      "meanMs": 3.546411520000074,
+      "choices": {
+        "a7a8q": 100
+      }
+    },
+    {
+      "opponentId": "elo-900",
+      "probe": "avoid-mate-in-one",
+      "fen": "r5k1/5ppp/8/8/8/5R2/5PPP/6K1 w - - 0 1",
+      "trials": 100,
+      "successes": 100,
+      "failures": 0,
+      "successFraction": 1,
+      "meanMs": 16.409370339999914,
+      "choices": {
+        "g2g4": 27,
+        "h2h3": 8,
+        "f3c3": 6,
+        "h2h4": 30,
+        "f3e3": 6,
+        "f3d3": 5,
+        "g2g3": 12,
+        "f3b3": 6
+      }
+    }
+  ],
+  "note": "Hand-authored elementary probes repeated with paired random seeds. Success fractions show behavior on these positions only, not general accuracy or calibrated Elo."
+}
