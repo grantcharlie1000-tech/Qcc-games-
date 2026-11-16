@@ -67,4 +67,6 @@ Throttled Chromium (4x CPU, 1.6 Mbps, 150 ms) at 390 x 844, median of five runs,
 | Transferred on first load | 1,653 KB | 1,133 KB |
 | Open Suika Game / Snake / Pool | 1.01 / 0.41 / 0.99 s | 0.71 / 0.16 / 0.26 s |
 
+Live check after release: the worker installed on https://nceastudy.pages.dev, Snake downloaded, the network was cut and Snake opened offline ([screenshot](evidence/offline/live-offline-snake.png)).
+
 Changes behind these numbers: covers below the first rows load lazily, hashed assets are cached for a year (`public/_headers`), and the worker serves the entry script, styles and covers from the device. The page itself comes from the network when online (within 3 seconds), so a returning visitor always gets the deployed version. The current lit posters are larger files than the old flat ones, which accounts for part of the first-load transfer.
