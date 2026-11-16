@@ -13,7 +13,6 @@ import {
   type ChessAIProvider,
   type ChessAIProviderManifest,
   type ChessAIProviderModule,
-  type ChessEngineFamily,
 } from './types';
 
 /** A discovered provider: its eager manifest and its lazy module. */
@@ -84,13 +83,15 @@ export interface ChessAIRegistryOptions {
   readonly opponents?: readonly ChessAIOpponent[];
   /** Extra time after `thinkingTimeMs` before a request fails with `timeout`. */
   readonly graceMs?: number;
+  /** Time allowed for `initialize` (download and warm-up) before the provider counts as failed. Default 120 s. */
+  readonly initTimeoutMs?: number;
   /** Folders rejected during discovery, reported through `rejected`. */
   readonly rejected?: readonly ChessAIRejectedProvider[];
 }
 
-const ENGINES: readonly ChessEngineFamily[] = ['custom', 'lightweight', 'dala', 'maia', 'stockfish', 'leela'];
 const UCI = /^[a-h][1-8][a-h][1-8][qrbn]?$/;
 const DEFAULT_GRACE_MS = 10_000;
+const DEFAULT_INIT_TIMEOUT_MS = 120_000;
 
 /** Checks an unknown value against the manifest contract. Returns a reason or undefined. */
 export function manifestProblem(value: unknown): string | undefined {
@@ -100,7 +101,7 @@ export function manifestProblem(value: unknown): string | undefined {
   for (const key of ['name', 'version', 'license'] as const) {
     if (typeof m[key] !== 'string' || !(m[key] as string).trim()) return `${key} must be a non-empty string`;
   }
-  if (!ENGINES.includes(m.engine as never)) return 'engine is not a known engine family';
+  if (typeof m.engine !== 'string' || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(m.engine)) return 'engine must be a lowercase engine family name';
   if (!Array.isArray(m.opponents) || !m.opponents.every((o) => typeof o === 'string')) return 'opponents must be a string array';
   if (typeof m.analysis !== 'boolean') return 'analysis must be a boolean';
   if (m.downloadBytes !== undefined && !(Number.isFinite(m.downloadBytes) && (m.downloadBytes as number) >= 0)) return 'downloadBytes must be a nonnegative number';
@@ -188,9 +189,13 @@ function optionalNumber(value: unknown): boolean {
 }
 
 function checkPosition(input: ChessAIPosition): void {
-  if (typeof input.fen !== 'string' || !input.fen) throw new ChessAIError('engine-error', 'fen is required.');
-  if (!Array.isArray(input.legalMovesUci)) throw new ChessAIError('engine-error', 'legalMovesUci is required.');
-  if (!Number.isInteger(input.positionRevision)) throw new ChessAIError('engine-error', 'positionRevision must be an integer.');
+  const bad = (m: string) => new ChessAIError('invalid-request', m);
+  if (!input || typeof input !== 'object') throw bad('A position is required.');
+  if (typeof input.fen !== 'string' || !input.fen) throw bad('fen is required.');
+  if (typeof input.startFen !== 'string' || !input.startFen) throw bad('startFen is required.');
+  if (!Array.isArray(input.moveHistoryUci) || !input.moveHistoryUci.every((m) => typeof m === 'string')) throw bad('moveHistoryUci must be a string array.');
+  if (!Array.isArray(input.legalMovesUci) || !input.legalMovesUci.every((m) => typeof m === 'string')) throw bad('legalMovesUci must be a string array.');
+  if (!Number.isSafeInteger(input.positionRevision)) throw bad('positionRevision must be an integer.');
 }
 
 /** Validates a provider answer against the position the game sent. */
@@ -242,16 +247,22 @@ export function validateAnalysis(value: unknown, legalMovesUci: readonly string[
  * the old one (`stale`); cancel aborts it (`aborted`); dispose ends everything.
  */
 class RequestRunner {
-  private current?: { controller: AbortController; revision: number };
+  private current?: AbortController;
+  private latestRevision = -Infinity;
   private disposed = false;
   constructor(private readonly provider: ChessAIProvider, private readonly graceMs: number) {}
 
   async run<T>(revision: number, budgetMs: number, outer: AbortSignal | undefined, call: (signal: AbortSignal) => Promise<unknown>, validate: (raw: unknown) => T): Promise<T> {
     if (this.disposed) throw new ChessAIError('disposed', 'The engine has been closed.');
-    if (this.current) this.abortCurrent(new ChessAIError('stale', 'A newer position replaced this request.'));
+    if (revision < this.latestRevision) throw new ChessAIError('stale', 'This position is older than one already requested.');
+    this.latestRevision = revision;
+    // Aborting the old request calls provider.cancel() synchronously, before the new search starts.
+    this.abortCurrent(new ChessAIError('stale', 'A newer position replaced this request.'));
     const controller = new AbortController();
-    const entry = { controller, revision };
-    this.current = entry;
+    controller.signal.addEventListener('abort', () => {
+      try { this.provider.cancel(); } catch { /* provider cleanup is best effort */ }
+    }, { once: true });
+    this.current = controller;
     const unlink = linkSignal(controller, outer);
     const timer = setTimeout(() => controller.abort(new ChessAIError('timeout', 'The engine took too long.')), Math.max(0, budgetMs) + this.graceMs);
     try {
@@ -263,22 +274,17 @@ class RequestRunner {
       }), controller.signal);
       if (controller.signal.aborted) throw abortError(controller.signal);
       return validate(raw);
-    } catch (e) {
-      if (controller.signal.aborted) {
-        try { this.provider.cancel(); } catch { /* provider cleanup is best effort */ }
-      }
-      throw e;
     } finally {
       clearTimeout(timer);
       unlink();
-      if (this.current === entry) this.current = undefined;
+      if (this.current === controller) this.current = undefined;
     }
   }
 
   abortCurrent(reason: ChessAIError): void {
     const c = this.current;
     this.current = undefined;
-    c?.controller.abort(reason);
+    c?.abort(reason);
   }
 
   dispose(): void {
@@ -289,7 +295,7 @@ class RequestRunner {
   }
 }
 
-async function startProvider(candidates: readonly ChessAIProviderSource[], options: ChessAIOpenOptions | undefined): Promise<ChessAIProvider> {
+async function startProvider(candidates: readonly ChessAIProviderSource[], options: ChessAIOpenOptions | undefined, initTimeoutMs: number, needsAnalysis: boolean): Promise<{ provider: ChessAIProvider; manifest: ChessAIProviderManifest }> {
   const signal = options?.signal;
   const failures: string[] = [];
   for (const source of candidates) {
@@ -304,16 +310,20 @@ async function startProvider(candidates: readonly ChessAIProviderSource[], optio
         provider = undefined;
         throw new Error('createProvider() did not return a ChessAIProvider');
       }
+      if (needsAnalysis && typeof provider.analyze !== 'function') throw new Error('analyze() is missing');
       const controller = new AbortController();
       const unlink = linkSignal(controller, signal);
+      const timer = setTimeout(() => controller.abort(new ChessAIError('timeout', 'The engine took too long to start.')), initTimeoutMs);
       const started = provider;
       try {
-        await raceAbort(Promise.resolve(started.initialize({
+        let work: Promise<void>;
+        try { work = Promise.resolve(started.initialize({
           signal: controller.signal,
           onProgress: (p) => { if (!controller.signal.aborted) options?.onProgress?.({ ...p, provider: source.manifest }); },
-        })), controller.signal);
-      } finally { unlink(); }
-      return provider;
+        })); } catch (e) { work = Promise.reject(e); }
+        await raceAbort(work, controller.signal);
+      } finally { clearTimeout(timer); unlink(); }
+      return { provider, manifest: source.manifest };
     } catch (e) {
       try { provider?.dispose(); } catch { /* best effort */ }
       if (signal?.aborted) throw abortError(signal);
@@ -329,6 +339,7 @@ const byPriority = (a: ChessAIProviderSource, b: ChessAIProviderSource) =>
 export function createChessAIRegistry(sources: readonly ChessAIProviderSource[], options: ChessAIRegistryOptions = {}): ChessAIRegistry {
   const opponents = options.opponents ?? CHESS_AI_OPPONENTS;
   const graceMs = options.graceMs ?? DEFAULT_GRACE_MS;
+  const initTimeoutMs = options.initTimeoutMs ?? DEFAULT_INIT_TIMEOUT_MS;
   const sorted = [...sources].sort(byPriority);
   const playersOf = (id: string) => sorted.filter((s) => s.manifest.opponents.includes(id));
   const analysts = () => sorted.filter((s) => s.manifest.analysis);
@@ -349,16 +360,16 @@ export function createChessAIRegistry(sources: readonly ChessAIProviderSource[],
       if (!opponent) throw new ChessAIError('unavailable', `Unknown opponent ${opponentId}.`);
       const candidates = playersOf(opponentId);
       if (!candidates.length) throw new ChessAIError('unavailable', `${opponent.name} is not installed.`);
-      const provider = await startProvider(candidates, openOptions);
+      const { provider, manifest } = await startProvider(candidates, openOptions, initTimeoutMs, false);
       const runner = new RequestRunner(provider, graceMs);
       return Object.freeze({
         opponent,
-        provider: provider.manifest ?? candidates[0].manifest,
-        requestMove(input: ChessAIMoveInput) {
+        provider: manifest,
+        async requestMove(input: ChessAIMoveInput) {
           checkPosition(input);
           const thinkingTimeMs = input.thinkingTimeMs ?? opponent.defaultThinkingTimeMs;
           const legal = Object.freeze([...input.legalMovesUci]);
-          return runner.run(input.positionRevision, thinkingTimeMs, input.signal, (signal) => provider.chooseMove(Object.freeze({
+          return await runner.run(input.positionRevision, thinkingTimeMs, input.signal, (signal) => provider.chooseMove(Object.freeze({
             opponentId,
             fen: input.fen,
             startFen: input.startFen,
@@ -378,18 +389,14 @@ export function createChessAIRegistry(sources: readonly ChessAIProviderSource[],
     async openAnalysis(openOptions) {
       const candidates = analysts();
       if (!candidates.length) throw new ChessAIError('unavailable', 'Analysis is not installed.');
-      const provider = await startProvider(candidates, openOptions);
-      if (typeof provider.analyze !== 'function') {
-        try { provider.dispose(); } catch { /* best effort */ }
-        throw new ChessAIError('init-failed', 'The analysis engine does not implement analyze().');
-      }
+      const { provider, manifest } = await startProvider(candidates, openOptions, initTimeoutMs, true);
       const runner = new RequestRunner(provider, graceMs);
       return Object.freeze({
-        provider: provider.manifest ?? candidates[0].manifest,
-        analyze(input: ChessAIAnalysisInput) {
+        provider: manifest,
+        async analyze(input: ChessAIAnalysisInput) {
           checkPosition(input);
           const legal = Object.freeze([...input.legalMovesUci]);
-          return runner.run(input.positionRevision, input.thinkingTimeMs, input.signal, (signal) => provider.analyze!(Object.freeze({
+          return await runner.run(input.positionRevision, input.thinkingTimeMs, input.signal, (signal) => provider.analyze!(Object.freeze({
             fen: input.fen,
             startFen: input.startFen,
             moveHistoryUci: Object.freeze([...input.moveHistoryUci]),

@@ -80,7 +80,7 @@ export const manifest: ChessAIProviderManifest = {
   id: 'stockfish-wasm',            // lowercase letters, digits, hyphens; unique
   name: 'Stockfish',
   version: '17.1',
-  engine: 'stockfish',             // custom | lightweight | dala | maia | stockfish | leela
+  engine: 'stockfish',             // custom | lightweight | dala | maia | stockfish | leela, or another lowercase name
   license: 'GPL-3.0-or-later',     // SPDX id of engine and weights
   opponents: ['elo-2200', 'elo-2600', 'elo-3000', 'max'],
   analysis: true,                  // true only if analyze() is implemented
@@ -125,6 +125,8 @@ export function createProvider(): ChessAIProvider {
 - Run search off the UI thread (module Worker). Never block the main thread.
 - Load assets from `public/chess-engines/` with relative or `import.meta.env.BASE_URL` paths. No runtime CDN.
 - Respect `request.signal`. Stop searching and settle promptly after it aborts.
+- `cancel()` stops whatever search is running. The loader calls it synchronously when a request's signal aborts, before it sends any newer request, so it never stops the newer search.
+- `initialize` must settle within 120 seconds (download included) or the provider counts as failed. Watch `options.signal`.
 - `initialize` must reject when the engine cannot run (no WASM, no SharedArrayBuffer, failed download). Never pretend.
 - Return moves from `request.legalMovesUci` only. Anything else is rejected.
 - Report evaluations from White's point of view. `mateIn` is positive when White mates.
@@ -173,18 +175,23 @@ and the game shows that analysis is not installed. It never invents evaluations.
 | --- | --- |
 | No provider lists the opponent | `availability: unavailable`; `openOpponent` rejects `unavailable` |
 | Manifest invalid, `index.ts` missing, or duplicate id | Folder ignored and listed in `registry.rejected` |
-| Module fails to load, `createProvider` throws, `initialize` rejects | Next provider by priority is tried; if none starts, `init-failed` |
+| Module fails to load, `createProvider` throws, `initialize` rejects or takes over 120 s | Provider disposed; next provider by priority is tried; if none starts, `init-failed` |
+| Analysis provider without `analyze()` | Skipped like a failed start |
 | Caller aborts opening | `aborted`; the partly started provider is disposed |
-| New `requestMove` before the previous settles | Previous rejects `stale`; its signal aborts; `provider.cancel()` is called |
+| New `requestMove` before the previous settles | Previous rejects `stale`; its signal aborts and `provider.cancel()` runs before the new request starts |
+| `positionRevision` lower than one already requested | `stale`, without contacting the provider |
+| Malformed position from the game | `invalid-request` (always a rejected promise, never a synchronous throw) |
 | `session.cancel()` or caller signal aborts | `aborted` |
 | No answer within `thinkingTimeMs + 10 s` | `timeout` |
 | Move not in `legalMovesUci` | `illegal-move` |
 | Malformed move, NaN evaluation, provider throws | `engine-error` |
 | Request after `dispose()` | `disposed`; provider disposed exactly once |
 
-`positionRevision` must increase on every move, takeback or restart. The game
-also checks the revision when a reply arrives, so a reply for an old position is
-never played.
+`positionRevision` must increase on every move, takeback or restart; the loader
+rejects older revisions. The game also checks its own revision when a reply
+arrives, so a reply for an old position is never played.
+
+`session.provider` is always the validated manifest from `manifest.ts`.
 
 ## Testing without engines
 

@@ -6,8 +6,9 @@
  * is the king's two-square move). Evaluations are always from White's point of view.
  */
 
-/** Engine families named by the opponent catalog. */
-export type ChessEngineFamily = 'custom' | 'lightweight' | 'dala' | 'maia' | 'stockfish' | 'leela';
+/** Engine families named by the opponent catalog. Providers may use any other lowercase family name. */
+export type KnownChessEngineFamily = 'custom' | 'lightweight' | 'dala' | 'maia' | 'stockfish' | 'leela';
+export type ChessEngineFamily = KnownChessEngineFamily | (string & {});
 
 /** One opponent the game can offer. Data only; who plays it is decided by providers. */
 export interface ChessAIOpponent {
@@ -67,7 +68,10 @@ export interface ChessAIPosition {
   readonly moveHistoryUci: readonly string[];
   /** Every legal move in `fen`. A response outside this list is rejected. */
   readonly legalMovesUci: readonly string[];
-  /** Increases on every change of the game position (move, takeback, restart). */
+  /**
+   * Increases on every change of the game position (move, takeback, restart).
+   * A request with a lower revision than one already sent is rejected as `stale`.
+   */
   readonly positionRevision: number;
 }
 
@@ -128,7 +132,11 @@ export interface ChessAIProvider {
   chooseMove(request: ChessAIMoveRequest): Promise<ChessAIMoveResponse>;
   /** Present only when `manifest.analysis` is true. */
   analyze?(request: ChessAIAnalysisRequest): Promise<ChessAIAnalysis>;
-  /** Stop any search in progress. Safe to call at any time. */
+  /**
+   * Stop the search in progress. The loader calls it synchronously when a
+   * request's signal aborts, before any newer request is sent, so stopping
+   * "whatever is running now" is correct. Safe to call at any time.
+   */
   cancel(): void;
   /** Release Workers, memory and listeners. Safe to call twice. */
   dispose(): void;
@@ -147,6 +155,7 @@ export type ChessAIErrorCode =
   | 'timeout' // no answer within the hard deadline
   | 'illegal-move' // provider answered a move not in legalMovesUci
   | 'engine-error' // provider threw or returned malformed data
+  | 'invalid-request' // the game sent a malformed position
   | 'disposed'; // session already disposed
 
 export class ChessAIError extends Error {

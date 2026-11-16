@@ -24,11 +24,17 @@ export interface MockProviderOptions {
   readonly failInit?: string;
   /** Reject module loading with this message. */
   readonly failLoad?: string;
+  /** Never finish initialize (until its signal aborts). */
+  readonly hangInit?: boolean;
+  /** Return a provider without analyze() even if `analyze` is given. */
+  readonly omitAnalyze?: boolean;
 }
 
 export interface MockProviderProbe {
   readonly requests: ChessAIMoveRequest[];
   readonly analysisRequests: ChessAIAnalysisRequest[];
+  /** Ordered lifecycle log: "go <revision>", "stop", "dispose". */
+  readonly log: string[];
   created: number;
   initialized: number;
   cancelled: number;
@@ -46,38 +52,41 @@ export function createMockProviderSource(options: MockProviderOptions = {}): { s
     analysis: Boolean(options.analyze),
     ...options.manifest,
   });
-  const probe: MockProviderProbe = { requests: [], analysisRequests: [], created: 0, initialized: 0, cancelled: 0, disposed: 0 };
+  const probe: MockProviderProbe = { requests: [], analysisRequests: [], log: [], created: 0, initialized: 0, cancelled: 0, disposed: 0 };
 
-  const wait = (signal: AbortSignal) => new Promise<void>((resolve, reject) => {
-    if (!options.delayMs) return resolve();
-    const t = setTimeout(resolve, options.delayMs);
-    signal.addEventListener('abort', () => { clearTimeout(t); reject(signal.reason); }, { once: true });
+  const wait = (signal: AbortSignal, ms: number) => new Promise<void>((resolve, reject) => {
+    if (signal.aborted) return reject(signal.reason);
+    const onAbort = () => { clearTimeout(t); reject(signal.reason); };
+    const t = Number.isFinite(ms) ? setTimeout(() => { signal.removeEventListener('abort', onAbort); resolve(); }, ms) : undefined;
+    signal.addEventListener('abort', onAbort, { once: true });
   });
 
   const createProvider = (): ChessAIProvider => {
     probe.created++;
     const provider: ChessAIProvider = {
       manifest,
-      async initialize({ onProgress }) {
+      async initialize({ onProgress, signal }) {
         onProgress({ phase: 'download', fraction: 0.5, loadedBytes: 1, totalBytes: 2 });
         if (options.failInit) throw new Error(options.failInit);
+        if (options.hangInit) await wait(signal, Infinity);
         onProgress({ phase: 'warmup', fraction: 1 });
         probe.initialized++;
       },
       async chooseMove(request) {
         probe.requests.push(request);
-        await wait(request.signal);
+        probe.log.push(`go ${request.positionRevision}`);
+        await wait(request.signal, options.delayMs ?? 0);
         if (options.choose) return options.choose(request);
         return { moveUci: request.legalMovesUci[0] };
       },
-      cancel() { probe.cancelled++; },
-      dispose() { probe.disposed++; },
+      cancel() { probe.cancelled++; probe.log.push('stop'); },
+      dispose() { probe.disposed++; probe.log.push('dispose'); },
     };
-    if (options.analyze) {
+    if (options.analyze && !options.omitAnalyze) {
       const analyze = options.analyze;
       provider.analyze = async (request) => {
         probe.analysisRequests.push(request);
-        await wait(request.signal);
+        await wait(request.signal, options.delayMs ?? 0);
         return analyze(request);
       };
     }

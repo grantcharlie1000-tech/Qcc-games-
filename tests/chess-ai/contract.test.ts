@@ -107,7 +107,27 @@ describe('chess AI sessions', () => {
     expect(await codeOf(old)).toBe('stale');
     expect((await fresh).moveUci).toBe('e7e5');
     expect(probe.requests[0].signal.aborted).toBe(true);
-    expect(probe.cancelled).toBeGreaterThan(0);
+    // The old search is stopped before the new one starts, so the stop never hits the new search.
+    expect(probe.log).toEqual(['go 1', 'stop', 'go 2']);
+  });
+
+  it('rejects a request for an older position than one already sent', async () => {
+    const { source, probe } = createMockProviderSource();
+    const session = await createChessAIRegistry([source]).openOpponent('elo-300');
+    await session.requestMove(position({ positionRevision: 5 }));
+    expect(await codeOf(session.requestMove(position({ positionRevision: 4 })))).toBe('stale');
+    expect((await session.requestMove(position({ positionRevision: 5 }))).moveUci).toBe('a2a3');
+    expect(probe.requests).toHaveLength(2);
+  });
+
+  it('rejects malformed positions without throwing synchronously', async () => {
+    const { source, probe } = createMockProviderSource();
+    const session = await createChessAIRegistry([source]).openOpponent('elo-300');
+    const bad = { ...position(), moveHistoryUci: undefined } as unknown as ChessAIMoveInput;
+    let pending: Promise<unknown> | undefined;
+    expect(() => { pending = session.requestMove(bad); }).not.toThrow();
+    expect(await codeOf(pending!)).toBe('invalid-request');
+    expect(probe.requests).toHaveLength(0);
   });
 
   it('cancels through the session and through the caller signal', async () => {
@@ -123,6 +143,15 @@ describe('chess AI sessions', () => {
     expect(probe.requests.every((r) => r.signal.aborted)).toBe(true);
   });
 
+  it('times out an engine that never starts, then tries the next provider', async () => {
+    const stuck = createMockProviderSource({ manifest: { id: 'stuck', priority: 1 }, hangInit: true });
+    expect(await codeOf(createChessAIRegistry([stuck.source], { initTimeoutMs: 20 }).openOpponent('elo-300'))).toBe('init-failed');
+    expect(stuck.probe.disposed).toBe(1);
+    const backup = createMockProviderSource({ manifest: { id: 'backup' } });
+    const session = await createChessAIRegistry([stuck.source, backup.source], { initTimeoutMs: 20 }).openOpponent('elo-300');
+    expect(session.provider.id).toBe('backup');
+  });
+
   it('times out an engine that never answers', async () => {
     const { source } = createMockProviderSource({ choose: () => new Promise(() => {}) });
     const session = await createChessAIRegistry([source], { graceMs: 20 }).openOpponent('elo-300');
@@ -136,7 +165,7 @@ describe('chess AI sessions', () => {
     const missing = createMockProviderSource({ manifest: { id: 'missing', priority: 1 }, failLoad: 'chunk 404' });
     const backup = createMockProviderSource({ manifest: { id: 'backup' } });
     const session = await createChessAIRegistry([broken.source, missing.source, backup.source]).openOpponent('elo-300');
-    expect(session.provider.id).toBe('backup');
+    expect(session.provider).toBe(backup.source.manifest);
     await expect(createChessAIRegistry([broken.source]).openOpponent('elo-300')).rejects.toThrow(/no WebAssembly/);
   });
 
@@ -179,5 +208,14 @@ describe('chess AI sessions', () => {
     const result = await session.analyze({ ...position(), thinkingTimeMs: 100, multiPv: 9 });
     expect(result.lines.map((l) => l.pvUci[0])).toEqual(['e2e4', 'g1f3']);
     expect(probe.analysisRequests[0].multiPv).toBe(5);
+  });
+
+  it('analysis skips a provider that lacks analyze()', async () => {
+    const analyze = () => ({ depth: 1, lines: [{ pvUci: ['e2e4'], evaluationCp: 20 }] });
+    const broken = createMockProviderSource({ manifest: { id: 'broken', opponents: [], priority: 3 }, analyze, omitAnalyze: true });
+    const good = createMockProviderSource({ manifest: { id: 'good', opponents: [] }, analyze });
+    const session = await createChessAIRegistry([broken.source, good.source]).openAnalysis();
+    expect(session.provider.id).toBe('good');
+    expect(broken.probe.disposed).toBe(1);
   });
 });
