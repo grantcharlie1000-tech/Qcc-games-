@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-16T12:45:21.756Z",
+  "generatedAt": "2026-11-16T20:57:18.038Z",
   "sourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
   "method": "Assembly of final metric2 reports. 300/700 are independent original validation cohorts with exact final-source preservation. 500 is the larger third holdout, frozen before round15; the two earlier holdouts failed and became training. 900 primary check reuses approved historical choices, not a new holdout. Mean capped oracle loss is a proxy, not an Elo conversion or a platform rating.",
   "tiers": [

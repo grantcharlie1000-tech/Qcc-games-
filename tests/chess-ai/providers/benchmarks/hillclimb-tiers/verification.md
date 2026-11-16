@@ -1,12 +1,18 @@
 # Custom opponents: final verification
 
 Scope: Chess.com rapid targets 300, 500 and 700, plus responsiveness and a
-historical average-loss guard for the accepted 900. No external engine changed. No commit, push
-or deployment was made.
+historical average-loss guard for the accepted 900. No external engine changed.
+At the calibration freeze no commit, push or deployment had been made.
+Subsequent integration checks are recorded in [merge-verification.md](merge-verification.md).
 
 Current application source SHA-256, using the strength runner's file order:
 `2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e`.
 `final-tiers-summary.mjs` checks the current files against this hash.
+Git normalizes `engine.ts` from CRLF to LF, producing committed source hash
+`3d86be321089efa3a2b9923adafc6d49619ace249e4a19c7b0f6c4dfe36cfb5c`.
+[merge-source-identity.json](merge-source-identity.json) records that line-ending-only
+mapping. The assembler accepts it only after reconstructing the exact measured
+byte image and rechecking its hash; other source changes still fail.
 
 ## Strength
 

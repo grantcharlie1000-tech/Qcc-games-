@@ -13,8 +13,17 @@ const sources=new Set([...tiers.map(t=>t.sourceSha256),regression.sourceSha256,m
 if(sources.size!==1||tiers.some(t=>t.failures))throw Error('Final reports are not the same complete source');
 const root='src/chess-ai/providers/beginner/';
 const files=['engine.ts',...(await readdir(root)).filter(name=>name.endsWith('.ts')&&name!=='engine.ts').sort(),'vendor/chess.js'];
-const currentHash=createHash('sha256').update(Buffer.concat(await Promise.all(files.map(name=>readFile(root+name))))).digest('hex');
-if(currentHash!==[...sources][0])throw Error('Current application source differs from the final strength reports');
+const sourceBytes=await Promise.all(files.map(name=>readFile(root+name)));
+const hash=bytes=>createHash('sha256').update(Buffer.concat(bytes)).digest('hex');
+const currentHash=hash(sourceBytes);
+if(currentHash!==[...sources][0]) {
+  // Git's eol=lf policy normalizes the measured engine.ts CRLF byte image.
+  // Reconstruct that exact measured image; any content change still fails.
+  const identity=await read('merge-source-identity.json');
+  const measured=sourceBytes.map((bytes,index)=>identity.lineEndingOnly.includes(files[index])
+    ?Buffer.from(bytes.toString().replaceAll('\r\n','\n').replaceAll('\n','\r\n')):bytes);
+  if(identity.measuredWorkingTreeSourceSha256!==[...sources][0]||identity.committedSourceSha256!==currentHash||hash(measured)!==[...sources][0])throw Error('Current application source differs from the final strength reports');
+}
 if(tiers.some(t=>t.tier!==900&&(t.ratio<.8||t.ratio>1.2))||regression.summary.ratio>1.2)throw Error('Declared strength gate missed');
 const report={generatedAt:new Date().toISOString(),sourceSha256:[...sources][0],method:'Assembly of final metric2 reports. 300/700 are independent original validation cohorts with exact final-source preservation. 500 is the larger third holdout, frozen before round15; the two earlier holdouts failed and became training. 900 primary check reuses approved historical choices, not a new holdout. Mean capped oracle loss is a proxy, not an Elo conversion or a platform rating.',tiers,historical900:regression.summary,preservation:{choices:exact.rows.reduce((sum,row)=>sum+row.choices,0),unchangedNon500Games:exact.unchangedGames},matches:matches.summary,inputs:['post-round15-v2-summary.json','final-500-validation-v3-summary.json','post-round15-regression-v2-regression-summary.json','post-round15-v2-preservation.json','match-round15.json']};
 await writeFile(new URL('final-strength-summary.json',folder),JSON.stringify(report,null,2)+'\n');
