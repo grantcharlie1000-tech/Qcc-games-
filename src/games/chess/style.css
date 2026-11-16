@@ -6,9 +6,9 @@ body.in-game .game-view[data-game-id=chess] #game-stage{height:100%;display:flex
   --ch-glass:rgb(14 16 28 / .52);--ch-glass-strong:rgb(14 16 28 / .72);--ch-blur:blur(18px) saturate(1.5);
   --ch-edge:rgb(255 255 255 / .16);--ch-edge-hi:rgb(255 255 255 / .28);--ch-text:#f5f3ff;--ch-muted:rgb(235 232 255 / .66);
   --ch-accent:#f2c14e;--ch-up:#5fd38d;--ch-down:#ff7b7b;--ch-spring:var(--ease-glass-pop,cubic-bezier(.32,.72,0,1));
-  --ch-light:#ecd3a8;--ch-dark:#b5835a;--ch-last:rgb(255 214 92 / .42);--ch-sel:rgb(255 214 92 / .62);--ch-dot:rgb(20 16 10 / .26);
-  --ch-w-fill:#f3eee3;--ch-w-hi:#ffffff;--ch-w-line:#2a2420;--ch-w-detail:#2a2420;
-  --ch-b-fill:#26232a;--ch-b-hi:#4d4856;--ch-b-line:#0b0a0d;--ch-b-detail:#d8d0c2;
+  --ch-light:#eedcc0;--ch-dark:#b89b7c;--ch-last:rgb(186 104 66 / .55);--ch-sel:rgb(186 104 66 / .72);--ch-dot:rgb(40 24 12 / .24);--ch-frame:#141414;
+  --ch-w-fill:#e4e4e6;--ch-w-hi:#ffffff;--ch-w-line:#141414;--ch-w-detail:#141414;
+  --ch-b-fill:#34363c;--ch-b-hi:#4b4e56;--ch-b-line:#141414;--ch-b-detail:#ececec;--ch-shadow:rgb(0 0 0 / .2);
   position:relative;flex:1;min-width:0;height:100%;container-type:size;color:var(--ch-text);font-family:var(--font-sans);
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
 }
@@ -22,26 +22,26 @@ body.in-game .game-view[data-game-id=chess] #game-stage{height:100%;display:flex
 .ch[data-theme=neutral]{--ch-light:#e9e6df;--ch-dark:#8f9ba7;--ch-last:rgb(120 190 255 / .38);--ch-sel:rgb(120 190 255 / .58)}
 .ch[data-theme=dark]{--ch-light:#7d8796;--ch-dark:#424a58;--ch-last:rgb(172 140 255 / .42);--ch-sel:rgb(172 140 255 / .62);--ch-dot:rgb(0 0 0 / .3)}
 .ch[data-theme=contrast]{--ch-light:#ffffff;--ch-dark:#1b3a8a;--ch-last:rgb(255 212 0 / .55);--ch-sel:rgb(255 212 0 / .8);--ch-dot:rgb(0 0 0 / .45)}
-.ch[data-pieces=glass]{--ch-w-fill:#dfe9fb;--ch-w-hi:#ffffff;--ch-w-line:#41557a;--ch-w-detail:#41557a;--ch-b-fill:#28324e;--ch-b-hi:#62729e;--ch-b-line:#0c1222;--ch-b-detail:#b8c6ec}
+.ch[data-pieces=glass]{--ch-w-fill:#d3e1f8;--ch-w-hi:#f4f8ff;--ch-w-line:#2c3d5c;--ch-w-detail:#2c3d5c;--ch-b-fill:#2a3552;--ch-b-hi:#4c5c86;--ch-b-line:#0c1222;--ch-b-detail:#c4d2f2}
 .ch[data-theme=contrast]{--ch-w-line:#000;--ch-w-detail:#000;--ch-b-line:#fff;--ch-b-fill:#111;--ch-b-hi:#2a2a2a;--ch-b-detail:#fff}
 
 /* Pieces */
-.ch-body{stroke-width:3.2;stroke-linejoin:round;stroke-linecap:round}
-.ch-body.ch-w{fill:url(#ch-grad-w);stroke:var(--ch-w-line)}
-.ch-body.ch-b{fill:url(#ch-grad-b);stroke:var(--ch-b-line)}
-.ch-detail .ch-line{fill:none;stroke-width:3;stroke-linecap:round}
-.ch-detail.ch-w .ch-line{stroke:var(--ch-w-detail)}.ch-detail.ch-b .ch-line{stroke:var(--ch-b-detail)}
-.ch-detail.ch-w .ch-ink{fill:var(--ch-w-detail)}.ch-detail.ch-b .ch-ink{fill:var(--ch-b-detail)}
+/* Layers: offset shadow, a heavy outline drawn as a stroke under the body, the flat body, then detail lines. */
+.ch-shadow{fill:var(--ch-shadow);stroke:var(--ch-shadow);stroke-width:8;stroke-linejoin:round}
+.ch-outline{stroke-width:8;stroke-linejoin:round}
+.ch-outline.ch-w{fill:var(--ch-w-line);stroke:var(--ch-w-line)}.ch-outline.ch-b{fill:var(--ch-b-line);stroke:var(--ch-b-line)}
+.ch-body.ch-w{fill:url(#ch-grad-w)}.ch-body.ch-b{fill:url(#ch-grad-b)}
+.ch-detail{fill:none;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.ch-detail.ch-w{stroke:var(--ch-w-detail)}.ch-detail.ch-b{stroke:var(--ch-b-detail)}
+.ch-detail.ch-w .ch-ink{fill:var(--ch-w-detail);stroke:none}.ch-detail.ch-b .ch-ink{fill:var(--ch-b-detail);stroke:none}
 
 /* Board */
-.ch-board{position:relative;width:var(--bs);height:var(--bs);border-radius:10px;overflow:hidden;touch-action:none;outline:none;
-  box-shadow:0 0 0 1px rgb(255 255 255 / .14),0 18px 40px rgb(0 0 0 / .45),0 2px 6px rgb(0 0 0 / .35);contain:layout paint}
-.ch-board:focus-visible{box-shadow:0 0 0 3px #fff,0 18px 40px rgb(0 0 0 / .45)}
+.ch-board{position:relative;width:var(--bs);height:var(--bs);border-radius:4px;overflow:hidden;touch-action:none;outline:none;
+  box-shadow:0 0 0 3px var(--ch-frame),0 18px 40px rgb(0 0 0 / .45),0 2px 6px rgb(0 0 0 / .35);contain:layout paint}
+.ch-board:focus-visible{box-shadow:0 0 0 3px var(--ch-frame),0 0 0 6px #fff,0 18px 40px rgb(0 0 0 / .45)}
 .ch-squares{position:absolute;inset:0;display:grid;grid-template:repeat(8,1fr)/repeat(8,1fr)}
 .ch-sq{position:relative;background:var(--ch-light)}
 .ch-sq.ch-dark{background:var(--ch-dark)}
-.ch[data-theme=wood] .ch-squares{background:linear-gradient(115deg,rgb(255 255 255 / .06),transparent 40%,rgb(0 0 0 / .06))}
-.ch[data-theme=wood] .ch-sq{background-image:repeating-linear-gradient(100deg,rgb(120 70 30 / .045) 0 3px,transparent 3px 9px)}
 .ch-sq::before,.ch-sq::after{content:'';position:absolute;pointer-events:none}
 .ch-sq::before{inset:0}
 .ch-sq.ch-last::before{background:var(--ch-last)}
@@ -64,7 +64,7 @@ body.in-game .game-view[data-game-id=chess] #game-stage{height:100%;display:flex
 .ch-coords-off :is(.ch-rank,.ch-file){display:none}
 .ch-pieces{position:absolute;inset:0;pointer-events:none}
 .ch-piece{position:absolute;left:0;top:0;width:12.5%;height:12.5%;transition:transform 170ms cubic-bezier(.2,.75,.25,1);will-change:transform}
-.ch-piece svg{width:100%;height:100%;display:block;filter:drop-shadow(0 calc(var(--bs) * .004) calc(var(--bs) * .003) rgb(0 0 0 / .32))}
+.ch-piece svg{width:100%;height:100%;display:block}
 .ch-instant .ch-piece,.ch-flipping .ch-piece{transition:none}
 .ch-flipping .ch-pieces{animation:ch-flip 260ms ease-out}
 @keyframes ch-flip{from{opacity:.2;scale:.97}}
@@ -182,7 +182,7 @@ body.in-game .game-view[data-game-id=chess] #game-stage{height:100%;display:flex
 .ch-home{align-items:stretch;justify-content:center;min-height:100%}
 .ch-hero{display:flex;justify-content:center;gap:2px;height:64px}
 .ch-hero i{width:48px;height:56px;animation:ch-rise 500ms var(--ch-spring) both;animation-delay:calc(var(--i) * 60ms)}
-.ch-hero i svg{width:100%;height:100%;filter:drop-shadow(0 6px 8px rgb(0 0 0 / .4))}
+.ch-hero i svg{width:100%;height:100%}
 .ch-title{margin:0 0 6px;text-align:center;font:800 40px/1 Arcade,var(--font-sans);letter-spacing:.5px;outline:none}
 .ch-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ch-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:4px;min-height:96px;padding:14px;border-radius:22px;text-align:left;color:#fff;
@@ -271,7 +271,7 @@ body.in-game .game-view[data-game-id=chess] #game-stage{height:100%;display:flex
 .ch-theme-swatch i:nth-child(2),.ch-theme-swatch i:nth-child(3){background:var(--sw-d)}
 .ch-theme-swatch span{grid-column:span 2;padding:6px 2px;font-size:12px;background:rgb(0 0 0 / .35)}
 .ch-theme-swatch[aria-checked=true]{box-shadow:0 0 0 3px #f2c14e}
-.ch-theme-swatch[data-theme=wood]{--sw-l:#ecd3a8;--sw-d:#b5835a}.ch-theme-swatch[data-theme=neutral]{--sw-l:#e9e6df;--sw-d:#8f9ba7}
+.ch-theme-swatch[data-theme=wood]{--sw-l:#eedcc0;--sw-d:#b89b7c}.ch-theme-swatch[data-theme=neutral]{--sw-l:#e9e6df;--sw-d:#8f9ba7}
 .ch-theme-swatch[data-theme=dark]{--sw-l:#7d8796;--sw-d:#424a58}.ch-theme-swatch[data-theme=contrast]{--sw-l:#fff;--sw-d:#1b3a8a}
 .ch-sheet .ch-toggles{margin-top:14px}
 .ch-sheet .ch-chip,.ch-sheet .ch-pill{color:#fff}

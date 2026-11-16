@@ -1,26 +1,27 @@
 import type { Color, PieceType } from './rules';
 
 /**
- * Original QCC piece silhouettes on a 100×100 grid, drawn for this game.
- * Colours come from CSS variables so piece styles are a class change.
+ * Original QCC piece silhouettes on a 100×100 grid: chunky rounded shapes with a
+ * heavy outline, flat fills and a soft offset shadow. Each piece is drawn in
+ * layers (shadow, outline, body, details) so overlapping parts share one outline.
+ * Colours come from CSS variables, so piece styles are a class change.
  */
-const BASE = '<rect x="22" y="80" width="56" height="11" rx="5"/><rect x="29" y="72" width="42" height="10" rx="4"/>';
 const SHAPES: Record<PieceType, string> = {
-  p: `<circle cx="50" cy="30" r="12"/><path d="M42 42 Q50 47 58 42 L62 56 Q66 66 68 73 H32 Q34 66 38 56 Z"/>`,
-  r: `<path d="M27 16 H38 V24 H45 V16 H55 V24 H62 V16 H73 V36 L66 40 H34 L27 36 Z"/><path d="M35 40 H65 L67 73 H33 Z"/>`,
-  n: `<path d="M33 73 C32 62 39 55 43 47 C37 50 30 52 25 48 C20 43 25 37 31 33 C38 27 40 21 45 16 L46 9 L52 15 C66 19 75 32 75 50 C75 60 71 67 69 73 Z"/>`,
-  b: `<circle cx="50" cy="11" r="5"/><path d="M50 16 C63 26 67 39 61 50 H39 C33 39 37 26 50 16 Z"/><rect x="38" y="50" width="24" height="7" rx="3"/><path d="M41 57 H59 L65 73 H35 Z"/>`,
-  q: `<circle cx="22" cy="27" r="5"/><circle cx="36" cy="20" r="5"/><circle cx="50" cy="16" r="5"/><circle cx="64" cy="20" r="5"/><circle cx="78" cy="27" r="5"/><path d="M23 31 L34 53 L37 25 L50 49 L63 25 L66 53 L77 31 L70 62 H30 Z"/><path d="M30 62 H70 L67 73 H33 Z"/>`,
-  k: `<path d="M46 6 H54 V13 H61 V21 H54 V29 H46 V21 H39 V13 H46 Z"/><path d="M50 30 C65 30 74 38 71 49 L65 62 H35 L29 49 C26 38 35 30 50 30 Z"/><path d="M33 62 H67 L65 73 H35 Z"/>`,
+  p: `<circle cx="50" cy="29" r="13"/><path d="M42 39 C45 48 43 58 33 69 H67 C57 58 55 48 58 39 Z"/><rect x="27" y="68" width="46" height="15" rx="6"/>`,
+  r: `<path d="M27 17 H39 V25 H45 V17 H55 V25 H61 V17 H73 V38 H27 Z"/><path d="M33 38 H67 L64 68 H36 Z"/><rect x="24" y="67" width="52" height="16" rx="6"/>`,
+  n: `<path d="M71 69 C74 51 71 33 59 22 C55 18 49 16 44 13 L42 21 C34 24 26 31 23 40 C21 47 27 51 34 49 C38 48 42 45 46 45 C44 53 36 59 34 69 Z"/><rect x="26" y="67" width="50" height="16" rx="6"/>`,
+  b: `<circle cx="50" cy="13" r="6"/><path d="M50 19 C65 29 69 44 61 56 H39 C31 44 35 29 50 19 Z"/><path d="M39 55 H61 L65 68 H35 Z"/><rect x="27" y="67" width="46" height="16" rx="6"/>`,
+  q: `<circle cx="21" cy="29" r="6"/><circle cx="35.5" cy="20" r="6"/><circle cx="50" cy="16" r="6"/><circle cx="64.5" cy="20" r="6"/><circle cx="79" cy="29" r="6"/><path d="M22 32 L32 56 L36 25 L50 50 L64 25 L68 56 L78 32 L72 64 H28 Z"/><rect x="23" y="63" width="54" height="20" rx="7"/>`,
+  k: `<path d="M46 5 H54 V12 H61 V20 H54 V27 H46 V20 H39 V12 H46 Z"/><path d="M50 29 C40 22 21 23 17 36 C14 47 23 56 30 63 H70 C77 56 86 47 83 36 C79 23 60 22 50 29 Z"/><rect x="23" y="62" width="54" height="21" rx="7"/>`,
 };
-/** Inner detail lines, drawn in the outline colour. */
-const DETAILS: Partial<Record<PieceType, string>> = {
-  n: `<circle cx="53" cy="28" r="3.2" class="ch-ink"/><path d="M58 18 C66 28 68 40 66 52" class="ch-line"/><path d="M27 45 L33 43" class="ch-line"/>`,
-  b: `<path d="M54 26 L46 39" class="ch-line"/>`,
-  r: `<path d="M35 40 H65" class="ch-line"/>`,
-  q: `<path d="M30 62 H70" class="ch-line"/>`,
-  k: `<path d="M35 62 H65" class="ch-line"/><path d="M50 36 V54 M42 44 H58" class="ch-line"/>`,
-  p: `<path d="M38 56 H62" class="ch-line"/>`,
+/** Inner lines in the detail colour (dark on light pieces, light on dark pieces). */
+const DETAILS: Record<PieceType, string> = {
+  p: `<path d="M35 76 H65"/>`,
+  r: `<path d="M33 38 H67"/><path d="M32 75 H68"/>`,
+  n: `<circle cx="40" cy="30" r="3.4" class="ch-ink"/><path d="M58 33 L66 31 M60 42 L69 41 M60 51 L70 51"/><path d="M34 75 H68"/>`,
+  b: `<path d="M57 29 L48 40"/><path d="M35 75 H65"/>`,
+  q: `<path d="M31 72 H69"/>`,
+  k: `<path d="M38 50 C42 41 46 41 50 49 C54 41 58 41 62 50"/><path d="M31 72 H69"/>`,
 };
 
 export const PIECE_NAMES: Record<PieceType, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
@@ -28,10 +29,10 @@ export const PIECE_NAMES: Record<PieceType, string> = { p: 'pawn', n: 'knight', 
 /** One hidden sprite per page holds every piece; pieces reference it with <use>. */
 export function pieceSprite(): string {
   const defs = (['w', 'b'] as Color[]).flatMap((c) => (Object.keys(SHAPES) as PieceType[]).map((t) =>
-    `<symbol id="ch-${c}${t}" viewBox="0 0 100 100"><g class="ch-body ch-${c}">${SHAPES[t]}${t === 'p' || t === 'n' ? BASE.replace('x="22"', 'x="24"').replace('width="56"', 'width="52"') : BASE}</g><g class="ch-detail ch-${c}">${DETAILS[t] ?? ''}</g></symbol>`)).join('');
+    `<symbol id="ch-${c}${t}" viewBox="4 1 92 92"><g class="ch-shadow" transform="translate(4.5 4)">${SHAPES[t]}</g><g class="ch-outline ch-${c}">${SHAPES[t]}</g><g class="ch-body ch-${c}">${SHAPES[t]}</g><g class="ch-detail ch-${c}">${DETAILS[t]}</g></symbol>`)).join('');
   return `<svg class="ch-sprite" aria-hidden="true" width="0" height="0" focusable="false"><defs>
-<linearGradient id="ch-grad-w" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--ch-w-hi)"/><stop offset="1" stop-color="var(--ch-w-fill)"/></linearGradient>
-<linearGradient id="ch-grad-b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--ch-b-hi)"/><stop offset="1" stop-color="var(--ch-b-fill)"/></linearGradient>
+<linearGradient id="ch-grad-w" x1="0" y1="0" x2="1" y2="0"><stop offset=".55" stop-color="var(--ch-w-hi)"/><stop offset="1" stop-color="var(--ch-w-fill)"/></linearGradient>
+<linearGradient id="ch-grad-b" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="var(--ch-b-hi)"/><stop offset=".45" stop-color="var(--ch-b-fill)"/></linearGradient>
 </defs>${defs}</svg>`;
 }
 

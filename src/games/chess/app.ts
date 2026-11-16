@@ -20,10 +20,10 @@ interface Setup { opponentId: string; color: Color | 'random'; tc: string; hints
 interface Archived { id: string; kind: 'local' | 'computer' | 'friend'; startFen: string; moves: string[]; outcome: Outcome; names: { w: string; b: string }; perspective: Color; tc: string; at: number }
 interface Saved { v: 1; prefs: Prefs; setup: Setup; resume: LocalSaved | null; archive: Archived[] }
 
-const DEFAULT_PREFS: Prefs = { theme: 'wood', pieces: 'classic', coords: true, hints: true, premove: true, autoFlip: false };
+const DEFAULT_PREFS: Prefs = { theme: 'wood', pieces: 'classic', coords: false, hints: true, premove: true, autoFlip: false };
 const DEFAULT_SETUP: Setup = { opponentId: 'elo-1100', color: 'w', tc: 'none', hints: false, takebacks: true, localTc: 'none', friendTc: '5+3', friendColor: 'random', rankedTc: '5+0' };
 const THEMES: Prefs['theme'][] = ['wood', 'neutral', 'dark', 'contrast'];
-const THEME_LABEL: Record<Prefs['theme'], string> = { wood: 'Wood', neutral: 'Neutral', dark: 'Dark', contrast: 'High contrast' };
+const THEME_LABEL: Record<Prefs['theme'], string> = { wood: 'Classic', neutral: 'Neutral', dark: 'Dark', contrast: 'High contrast' };
 const tcOf = (id: string): TimeControl | null => (id === 'none' ? null : parseTimeControl(id));
 const now = () => performance.now();
 
@@ -102,7 +102,7 @@ export class ChessApp implements GameInstance {
       const p = d.prefs;
       this.prefs = {
         theme: THEMES.includes(p.theme) ? p.theme : DEFAULT_PREFS.theme, pieces: p.pieces === 'glass' ? 'glass' : 'classic',
-        coords: p.coords !== false, hints: p.hints !== false, premove: p.premove !== false, autoFlip: p.autoFlip === true,
+        coords: typeof p.coords === 'boolean' ? p.coords : DEFAULT_PREFS.coords, hints: p.hints !== false, premove: p.premove !== false, autoFlip: p.autoFlip === true,
       };
     }
     if (d.setup && typeof d.setup === 'object') {
