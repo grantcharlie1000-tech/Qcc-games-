@@ -6,7 +6,7 @@ function browser(options:{registrationDenied?:boolean;unregisterFails?:boolean;c
  const registrations=new Set(['old-root','old-subpath','modern','unrelated']);
  const scripts:Record<string,string>={'old-root':'https://arcade.test/sw.js','old-subpath':'https://arcade.test/Qcc-games-/sw.js',modern:'https://arcade.test/offline-sw.js',unrelated:'https://arcade.test/other-sw.js'};
  const cacheNames=new Set(['pocket-arcade:/:old:shell','pocket-arcade-v2:/Qcc-games-/:old:pack','qcc-offline-shell:/:current','qcc-offline-game:/:new:snake','other-cache']);
- const register=vi.fn(async()=>({scope:'https://arcade.test/'}));
+ const register=vi.fn(async(_url:URL,_options:{scope:string;updateViaCache:string})=>({scope:'https://arcade.test/'}));
  vi.stubGlobal('location',{href:'https://arcade.test/'});
  vi.stubGlobal('navigator',options.noWorker?{}:{serviceWorker:{register,async getRegistrations(){
   if(options.registrationDenied)throw new Error('Registration denied');
