@@ -20,6 +20,7 @@ import {formatClock,formatRuntime,initials} from './format';
 import {cachedJson,SEARCH_STALE} from './query';
 import {movieJson,movieNetworkMessage,MovieNetworkError} from './network';
 import {PlaybackSupervisor,clearFailures,failedProviders} from './playback';
+import {MovieDownloads} from './downloads';
 import {moviePopularity,POPULARITY_ENDPOINT,parsePopularIds} from './popularity';
 import type {AttemptState,SupervisorEvents} from './playback';
 const base=import.meta.env.BASE_URL;
@@ -98,6 +99,7 @@ export class MoviesView {
  readonly root=document.createElement('section');
  private catalog:Catalog={titles:[],source:'starter',trending:[]};
  private licenses:unknown=[];
+ private downloads=new MovieDownloads();
  private confirmedPlayback='';
  private warning?:HTMLDialogElement;
  private abort=new AbortController();
@@ -206,6 +208,7 @@ export class MoviesView {
  private failedImages=new Set<string>();
  private readonly disposeImages:()=>void;
  private readonly disposeStorage:()=>void;
+ private readonly disposeDownloads:()=>void;
  private onVisibility=()=>{if(document.hidden&&!this.inPictureInPicture())this.pause();};
  // Picture in picture. A local video uses the browser's own window. A provider player moves into a Document
  // Picture-in-Picture window where that exists (Chrome and Edge on desktop), resuming at the last reported time.
@@ -303,16 +306,27 @@ export class MoviesView {
   // Another page may have written the saved data while Movies was closed. Storage that still holds what this page saw changes nothing.
   this.storage.reload();this.render();void this.load();
   this.disposeStorage=this.storage.onChange(()=>this.storageChanged());
+  this.disposeDownloads=this.downloads.subscribe(()=>this.refreshDownloadControls());
  }
  async load(){
   // Each state the collection passes through replaces the header and the island, so a control that has focus keeps it.
   this.failed=false;this.loadError='';this.ready=false;this.renderKeepingFocus();
   try{
-   this.catalog=parseCatalog(await loadWithDeadline(signal=>movieJson(asset('movies/catalog.json'),signal),this.abort.signal,20000,()=>new MovieNetworkError('timeout')));
-   if(!this.catalog.titles.length)throw new Error('Empty catalog');
+   await this.downloads.ready;
+   try{
+    this.catalog=parseCatalog(await loadWithDeadline(signal=>movieJson(asset('movies/catalog.json'),signal),this.abort.signal,20000,()=>new MovieNetworkError('timeout')));
+    if(!this.catalog.titles.length)throw new Error('Empty catalog');
+   }catch(error){
+    if(!this.downloads.downloadedTitles().length)throw error;
+    this.catalog={titles:[],source:'starter',trending:[]};
+   }
+   // The licence registry ships with the offline shell. Revoked and expired files are removed.
+   let registryLoaded=false;
+   try{this.licenses=await loadWithDeadline(signal=>movieJson(asset('movies/licenses.json'),signal,5000),this.abort.signal,5000,()=>new MovieNetworkError('timeout'));registryLoaded=true;}
+   catch{this.licenses=[];}
+   if(registryLoaded)await this.downloads.reconcile(this.licenses);
+   for(const title of this.downloads.downloadedTitles())if(!this.catalog.titles.some(item=>item.id===title.id))this.catalog.titles.push(title);
    this.bundledIds=new Set(this.catalog.titles.map(t=>t.id));
-   // An unavailable optional registry disables local media, never discovery.
-   try {this.licenses=await loadWithDeadline(signal=>movieJson(asset('movies/licenses.json'),signal,5000),this.abort.signal,5000,()=>new MovieNetworkError('timeout'));}catch{this.licenses=[];}
    if(this.abort.signal.aborted)return;
    this.ready=true;void this.loadPopular();
    // As in applyRoute, a route whose details are not loaded is pending before the page renders.
@@ -545,7 +559,7 @@ export class MoviesView {
   return `<section class="movies-shelf ui-rail" data-rail="${escape(id)}"><div class="ui-rail-head"><h2>${label}</h2><span class="ui-count">${count} ${count===1?'title':'titles'}</span>${subtitle?`<p class="ui-rail-sub">${escape(subtitle)}</p>`:''}</div><div class="ui-rail-body"><button class="ui-rail-arrow prev" data-scroll="-1" aria-label="Previous ${label}">${uiIcon('chevron-left')}</button><div class="ui-rail-row">${tiles}</div><button class="ui-rail-arrow next" data-scroll="1" aria-label="Next ${label}">${uiIcon('chevron-right')}</button></div></section>`;
  }
  private shelf(id:string,name:string,titles:Title[],subtitle=''){return this.rail(id,name,titles.map(t=>this.card(t)).join(''),titles.length,subtitle);}
- private footer(){return `<footer class="movies-footer ui-footer" aria-label="Credits and privacy"><div class="ui-footer-brand"><span class="ui-brand-tile">${mauriMark}</span><strong>Mauri Study Notes</strong><span>Movies &amp; TV</span></div><nav class="ui-footer-links" aria-label="Movies and TV sections"><a href="#/movies">Home</a><a href="#/movies/browse/movie">Movies</a><a href="#/movies/browse/tv">TV Shows</a><a href="#/movies/list">My list</a></nav><strong>Your screen. Your privacy.</strong><p>${this.storage.account?'Continue watching syncs to your QCC account. Existing device history merges once with the first account on this browser. It is not merged automatically into other accounts. My list stays on this device.':'My list and resume positions stay on this device.'} When contributions are on, QCC receives a movie ID and a short-lived movie-specific token after sustained playback to build Popular in Marlborough. Turn contributions off in Menu. The service also processes connection information for abuse protection. Full-catalog searches go through QCC’s metadata service to TMDB. Real posters and backdrops load from TMDB; its image server receives ordinary image requests.</p><p>${this.catalog.source==='tmdb'?`${this.catalog.attributionLogo?`<img class="movies-tmdb" src="${escape(asset(this.catalog.attributionLogo))}" alt="TMDB" width="100" height="40">`:''}This product uses the TMDB API but is not endorsed or certified by TMDB.`:'Starter selection · Real title artwork from TMDB. Original summaries. Ratings are not supplied. This is not a live trending feed.'}</p>${this.catalog.updated?`<p>Catalog snapshot: ${escape(this.catalog.updated)}</p>`:''}<p>Streaming is provided by an external service. QCC does not verify its availability or distribution rights. Movies are excluded from game offline downloads.</p><button data-action="clear" class="ui-btn secondary small">Clear my list &amp; watch history</button>${this.storage.account?`<button data-action="import-device" class="ui-btn secondary small"${this.storage.account.hasDeviceHistory()?'':' hidden'}>Add device history</button>`:''}<p class="movies-storage" role="status">${escape(this.storage.durable?(this.storage.account?.status??'My list and resume positions are saved on this device.'):'Browser storage is unavailable. Changes last only for this visit.')}</p></footer>`;}
+ private footer(){return `<footer class="movies-footer ui-footer" aria-label="Credits and privacy"><div class="ui-footer-brand"><span class="ui-brand-tile">${mauriMark}</span><strong>Mauri Study Notes</strong><span>Movies &amp; TV</span></div><nav class="ui-footer-links" aria-label="Movies and TV sections"><a href="#/movies">Home</a><a href="#/movies/browse/movie">Movies</a><a href="#/movies/browse/tv">TV Shows</a><a href="#/movies/list">My list</a></nav><strong>Your screen. Your privacy.</strong><p>${this.storage.account?'Continue watching syncs to your QCC account. Existing device history merges once with the first account on this browser. It is not merged automatically into other accounts. My list stays on this device.':'My list and resume positions stay on this device.'} When contributions are on, QCC receives a movie ID and a short-lived movie-specific token after sustained playback to build Popular in Marlborough. Turn contributions off in Menu. The service also processes connection information for abuse protection. Full-catalog searches go through QCC’s metadata service to TMDB. Real posters and backdrops load from TMDB; its image server receives ordinary image requests.</p><p>${this.catalog.source==='tmdb'?`${this.catalog.attributionLogo?`<img class="movies-tmdb" src="${escape(asset(this.catalog.attributionLogo))}" alt="TMDB" width="100" height="40">`:''}This product uses the TMDB API but is not endorsed or certified by TMDB.`:'Starter selection · Real title artwork from TMDB. Original summaries. Ratings are not supplied. This is not a live trending feed.'}</p>${this.catalog.updated?`<p>Catalog snapshot: ${escape(this.catalog.updated)}</p>`:''}<p>Streaming is provided by an external service. QCC does not verify its availability or distribution rights. Licensed video downloads are stored separately from games. Third-party streams cannot be downloaded.</p><button data-action="clear" class="ui-btn secondary small">Clear my list &amp; watch history</button>${this.storage.account?`<button data-action="import-device" class="ui-btn secondary small"${this.storage.account.hasDeviceHistory()?'':' hidden'}>Add device history</button>`:''}<p class="movies-storage" role="status">${escape(this.storage.durable?(this.storage.account?.status??'My list and resume positions are saved on this device.'):'Browser storage is unavailable. Changes last only for this visit.')}</p></footer>`;}
  private browse(){const {head,body,gridKey}=this.browseParts();this.resultGridKey=gridKey;return `${head}<div class="movies-browse">${this.filterBar()}<div id="movies-results">${body}</div>${this.footer()}</div>`;}
  // The title block and the results of a browse page. A redraw in place replaces these two and leaves the rest of the page alone.
  private browseParts(){
@@ -817,7 +831,7 @@ export class MoviesView {
   const percent=saved>0&&duration?Math.round(Math.min(100,saved/duration*100)):undefined;
   const image=this.artImage([...(e.still?[asset(e.still)]:[]),...(t.backdrop?[asset(t.backdrop)]:[]),asset(t.poster)],'movies-episode-still','alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"');
   const meta=[e.airDate??'',e.runtime?formatRuntime(e.runtime):'',e.rating===undefined?'':`★ ${e.rating.toFixed(1)}`].filter(Boolean).map(part=>escape(part)).join(' · ');
-  return `<article class="movies-episode"><a class="movies-episode-thumb" href="${escape(play)}" tabindex="-1" aria-hidden="true">${image}<span class="ui-chip">EP ${e.number}</span><span class="ui-card-play">${uiIcon('play')}</span>${percent===undefined?'':`<span class="movies-progress"><span style="width:${percent}%"></span></span>`}</a><div class="movies-episode-body"><h3>${name}</h3>${meta?`<p class="movies-episode-meta">${meta}</p>`:''}<p>${escape(e.overview||'No description supplied.')}</p></div><a class="ui-btn primary small" href="${escape(play)}" aria-label="Play ${name}">${uiIcon('play')}Play</a></article>`;
+  return `<article class="movies-episode"><a class="movies-episode-thumb" href="${escape(play)}" tabindex="-1" aria-hidden="true">${image}<span class="ui-chip">EP ${e.number}</span><span class="ui-card-play">${uiIcon('play')}</span>${percent===undefined?'':`<span class="movies-progress"><span style="width:${percent}%"></span></span>`}</a><div class="movies-episode-body"><h3>${name}</h3>${meta?`<p class="movies-episode-meta">${meta}</p>`:''}<p>${escape(e.overview||'No description supplied.')}</p></div><a class="ui-btn primary small" href="${escape(play)}" aria-label="Play ${name}">${uiIcon('play')}Play</a>${this.downloadButton(t,{id:t.id,season:season.number,episode:e.number,play:false})}</article>`;
  }
  // The cast: up to twelve people as photo cards. A person with no photo, or whose photo failed, shows initials.
  private castSection(cast:CastMember[]){
@@ -831,7 +845,7 @@ export class MoviesView {
  // and episodes, and the cast and the titles like this one follow.
  private detail(t:Title){
   const name=escape(t.name),season=this.shownSeason(t);
-  const source=t.kind==='movie'?(t.source.type==='archive'||(licensedSource(this.licenses,mediaKey(t,this.route))??frameSource(t,this.route))):undefined;
+  const source=t.kind==='movie'?(t.source.type==='archive'||(licensedSource(this.licenses,mediaKey(t,this.route))??this.downloads.source(mediaKey(t,this.route))??frameSource(t,this.route))):undefined;
   const saved=this.storage.data.progress[t.id]??0;
   const chips=[`<span class="ui-chip">${t.kind==='tv'?'Series':'Movie'}</span>`,t.year?`<span class="ui-chip">${escape(String(t.year))}</span>`:'',t.rating===undefined?'':`<span class="ui-chip rating">★ ${t.rating.toFixed(1)}</span>`,t.runtime?`<span class="ui-chip">${escape(formatRuntime(t.runtime))}</span>`:''].join('');
   const backdrop=this.artImage([...(t.backdrop?[asset(t.backdrop)]:[]),asset(t.poster)],'movies-detail-backdrop-img','alt="" referrerpolicy="no-referrer"');
@@ -841,13 +855,13 @@ export class MoviesView {
    :this.seriesPrimary(t);
   // A movie's saved position is offered as a resume point only from START_THRESHOLD seconds, and only where it can start there: from a local
   // file, or with the current server. The title page and the watch page follow the same server.
-  const server=this.chooseServer(mediaKey(t,this.route));const resumes=!!licensedSource(this.licenses,mediaKey(t,this.route))||!!server;
+  const server=this.chooseServer(mediaKey(t,this.route));const resumes=!!licensedSource(this.licenses,mediaKey(t,this.route))||!!this.downloads.source(mediaKey(t,this.route))||!!server;
   const resume=t.kind==='movie'&&source&&saved>=START_THRESHOLD&&resumes?`<small class="movies-resume">Resume at ${escape(formatClock(saved))}</small>`:'';
-  const list=this.listButton(t.id);
+  const list=this.listButton(t.id),download=t.kind==='movie'?this.downloadButton(t,{id:t.id,play:false}):'';
   const note=t.kind==='movie'
-   ?(source?'Streaming available. An external player receives normal connection and playback information.':'No provider identifier is available for this title.')
+   ?(licensedSource(this.licenses,t.id)||this.downloads.source(t.id)?'Licensed video. Download for offline viewing.':source?'Streaming available. An external player receives normal connection and playback information. Offline downloads are unavailable.':'No provider identifier is available for this title.')
    :season?.episodes.length?'Choose an episode below to stream this series.':this.pendingTitle?'Loading episodes…':'Episode details are not in this snapshot.';
-  const info=`<div class="movies-detail-info"><div class="movies-chips">${chips}</div><h1 tabindex="-1">${name}</h1><div class="movies-tags">${t.genres.map(g=>`<span class="ui-chip">${escape(g)}</span>`).join('')}</div><p class="movies-overview">${escape(t.overview)}</p><div class="movies-actions">${primary}${resume}${list}</div><p id="movies-unavailable" class="movies-availability">${escape(note)}</p></div>`;
+  const info=`<div class="movies-detail-info"><div class="movies-chips">${chips}</div><h1 tabindex="-1">${name}</h1><div class="movies-tags">${t.genres.map(g=>`<span class="ui-chip">${escape(g)}</span>`).join('')}</div><p class="movies-overview">${escape(t.overview)}</p><div class="movies-actions">${primary}${resume}${list}${download}</div><p id="movies-unavailable" class="movies-availability">${escape(note)}</p></div>`;
   // The backdrop carries the hero's shade from theme.css. Without a poster, the grid drops the poster column.
   const header=`<section class="movies-detail"><div class="movies-detail-backdrop" aria-hidden="true">${backdrop}<span class="ui-hero-shade" aria-hidden="true"></span></div><div class="movies-detail-inner ui-container${poster?'':' movies-detail-bare'}">${poster}${info}</div></section>`;
   const episodes=t.kind==='tv'?this.episodesSection(t,season):'';
@@ -891,8 +905,8 @@ export class MoviesView {
   const key=mediaKey(t,route),saved=this.storage.data.progress[key]??0;
   // A licensed file plays from its own file before any provider is asked, whether or not its season has loaded.
   const archive=t.source.type==='archive'?t.source:undefined;
-  const source=archive?undefined:licensedSource(this.licenses,key);
-  const needsWarning=!archive&&this.confirmedPlayback!==this.playbackHash();
+  const source=archive?undefined:(licensedSource(this.licenses,key)??this.downloads.source(key));
+  const needsWarning=!archive&&!source&&this.confirmedPlayback!==this.playbackHash();
   if(needsWarning&&!this.suspended)queueMicrotask(()=>{
    if(!this.disposed&&this.route.play&&this.currentTitle()?.id===t.id&&!this.suspended&&this.confirmedPlayback!==this.playbackHash())this.warnBeforePlayback(undefined,()=>{this.confirmedPlayback=this.playbackHash();this.renderKeepingFocus();},()=>{location.hash=titleHash(t.id);});
   });
@@ -915,12 +929,12 @@ export class MoviesView {
   const status=archive?`From the Internet Archive · ${escape(archive.license)}`
    :needsWarning?'Playback is waiting for your confirmation.'
    :source?`Licensed under ${escape(source.license)} · ${escape(source.credit)}. Progress stays on this device.`
-   :server&&external?`External player provided by ${escape(streamProvider(server).name)}. It and its streaming providers receive your IP address and normal playback requests and may serve ads or use cookies. Availability and distribution rights are not verified by QCC. No account data or watchlist is sent by QCC.`
+   :server&&external?`External player provided by ${escape(streamProvider(server).name)}. It and its streaming providers receive your IP address and normal playback requests and may serve ads or use cookies. Availability and distribution rights are not verified by QCC. Offline downloading is not available for this stream. No account data or watchlist is sent by QCC.`
    :exhausted?'FrameXTV could not play this title.'
    :missing?''
    :'No provider identifier is available for this title.';
   // Watch page order: back, title, episode heading, My list, screen, reload, episode controls (TV), status.
-  return `<div class="movies-player"><a class="movies-detail-back" href="${escape(back)}" aria-label="Back to ${escape(t.name)}">${uiIcon('back')}Back</a><h1 tabindex="-1">${escape(t.name)}</h1>${episode?`<h2>S${route.season} · E${episode.number} — ${escape(episode.name)}</h2>`:''}<div class="movies-watch-actions">${this.listButton(t.id)}</div><div class="movies-screen" data-title="${escape(t.id)}" tabindex="-1" aria-label="Player area"><div class="movies-media">${media}</div><div class="movies-connecting" hidden><span class="movies-spinner" aria-hidden="true"></span>${server?`<p>Connecting to FrameXTV…</p>`:''}</div><div class="movies-next" role="dialog" aria-label="Up next" hidden></div><p class="movies-next-announcement sr-only" role="status" aria-live="polite"></p><button data-action="fullscreen" class="movies-fullscreen"${this.fullscreenSupported()?'':' hidden'} aria-pressed="false">Full screen</button>${source||external?`<button data-action="pip" class="movies-pip" aria-pressed="false">Picture in picture</button>`:''}<div class="movies-resume-pill" hidden></div></div>${showReload?'<div class="movies-player-controls"><button data-action="reload-stream" class="ui-btn secondary small">Reload player</button></div>':''}${t.kind==='tv'&&episode?this.episodeControls(t,route.season!,route.episode!):''}<p id="movies-player-status" role="status">${status}</p></div>`;
+  return `<div class="movies-player"><a class="movies-detail-back" href="${escape(back)}" aria-label="Back to ${escape(t.name)}">${uiIcon('back')}Back</a><h1 tabindex="-1">${escape(t.name)}</h1>${episode?`<h2>S${route.season} · E${episode.number} — ${escape(episode.name)}</h2>`:''}<div class="movies-watch-actions">${this.listButton(t.id)}${this.downloadButton(t,route)}</div><div class="movies-screen" data-title="${escape(t.id)}" tabindex="-1" aria-label="Player area"><div class="movies-media">${media}</div><div class="movies-connecting" hidden><span class="movies-spinner" aria-hidden="true"></span>${server?`<p>Connecting to FrameXTV…</p>`:''}</div><div class="movies-next" role="dialog" aria-label="Up next" hidden></div><p class="movies-next-announcement sr-only" role="status" aria-live="polite"></p><button data-action="fullscreen" class="movies-fullscreen"${this.fullscreenSupported()?'':' hidden'} aria-pressed="false">Full screen</button>${source||external?`<button data-action="pip" class="movies-pip" aria-pressed="false">Picture in picture</button>`:''}<div class="movies-resume-pill" hidden></div></div>${showReload?'<div class="movies-player-controls"><button data-action="reload-stream" class="ui-btn secondary small">Reload player</button></div>':''}${t.kind==='tv'&&episode?this.episodeControls(t,route.season!,route.episode!):''}<p id="movies-player-status" role="status">${status}</p></div>`;
  }
  // A failed title waits for a retry rather than trying another provider.
  private chooseServer(key:string):StreamProviderId|undefined{
@@ -947,6 +961,42 @@ export class MoviesView {
   const season=t.seasons.find(s=>s.number===route.season);
   const href=titleHash(t.id)+(season?`/season/${season.number}/episode/${season.episodes[0]?.number??1}`:'');
   return `<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Episode unavailable</h2><p>This episode isn't in this season's list.</p><a class="ui-btn primary" href="${escape(href)}">Choose another episode</a></div>`;
+ }
+
+ private downloadLabels(key:string){
+  const status=this.downloads.status(key);
+  const mb=(bytes:number)=>(bytes/1048576).toFixed(1)+' MB';
+  if(status.state==='ready')return {label:'Remove download',note:'Saved for offline'};
+  if(status.state==='downloading')return {label:'Stop download',note:mb(status.done)+(status.total?' / '+mb(status.total):'')};
+  if(status.state==='failed')return {label:'Retry download',note:status.message||'Download failed'};
+  return {label:'Download',note:''};
+ }
+ private downloadButton(title:Title,route:MovieRoute){
+  const key=mediaKey(title,route);
+  if(!MovieDownloads.supported()||(!licensedSource(this.licenses,key)&&!this.downloads.source(key)))return '';
+  const display=this.downloadLabels(key);
+  return '<span class="movies-download-wrap"><button type="button" class="ui-btn secondary movies-download" data-download-media="'+escape(key)+'">'+escape(display.label)+'</button><small role="status" class="movies-download-note" data-download-note="'+escape(key)+'">'+escape(display.note)+'</small></span>';
+ }
+ private refreshDownloadControls(){
+  if(this.disposed)return;
+  for(const button of this.root.querySelectorAll<HTMLButtonElement>('[data-download-media]')){
+   const key=button.dataset.downloadMedia!,display=this.downloadLabels(key);
+   button.textContent=display.label;
+   const note=button.parentElement?.querySelector<HTMLElement>('[data-download-note]');
+   if(note)note.textContent=display.note;
+  }
+ }
+ private async downloadPressed(key:string){
+  const status=this.downloads.status(key);
+  if(status.state==='downloading'){this.downloads.cancel(key);return;}
+  if(status.state==='ready'){await this.downloads.remove(key);return;}
+  const title=this.lookup(key.split(':')[0])??this.downloads.downloadedTitles().find(item=>item.id===key.split(':')[0]);
+  const source=licensedSource(this.licenses,key)??this.downloads.source(key);
+  if(!title||!source)return;
+  const episode=/^tv-[a-z0-9-]+:s([1-9]\d{0,3}):e([1-9]\d{0,3})$/.exec(key);
+  if(title.kind==='tv'&&!episode)return;
+  const route:MovieRoute=episode?{id:title.id,season:Number(episode[1]),episode:Number(episode[2]),play:false}:{id:title.id,play:false};
+  try{await this.downloads.download(title,route,source);}catch{/* Status is shown next to the button. */}
  }
  private listButton(id:string){const selected=this.storage.data.list.includes(id);return `<button class="ui-btn secondary" data-list="${escape(id)}">${uiIcon(selected?'check':'plus')}${selected?'In my list':'Add to my list'}</button>`;}
  private currentTitle(){return this.catalog.titles.find(t=>t.id===this.route.id);}
@@ -1201,6 +1251,7 @@ export class MoviesView {
   if(target.dataset.season)this.pickSeason(Number(target.dataset.season));
   if(target.dataset.drawerSeason)this.pickDrawerSeason(Number(target.dataset.drawerSeason));
   if(target.dataset.titleSeason&&this.route.id)void this.loadDrawerSeason(this.route.id,Number(target.dataset.titleSeason));
+  if(target.dataset.downloadMedia){void this.downloadPressed(target.dataset.downloadMedia);return;}
   switch(target.dataset.action){case 'pip':void this.pictureInPicture();break;case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(Number(target.dataset.page));break;case 'retry-rails':this.retryRails();break;case 'retry-popular':this.popularRequested=false;void this.loadPopular();break;case 'retry-search':void this.fetchCatalog(this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season,true);break;case 'retry-stream':this.retryStream();break;case 'episodes':this.openDrawer(target);break;case 'close-drawer':this.closeDrawer();this.root.querySelector<HTMLElement>('[data-action="episodes"]')?.focus({preventScroll:true});break;case 'reload-stream':this.retryStream(true);break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.renderKeepingFocus();break;case 'reset':this.query='';this.genre='All';this.resetRemote();this.showSection('all');break;case 'import-device':this.storage.account?.importDeviceHistory();this.render();break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
  };
  // A section is a route. The current section re-renders in place; any other one changes the address, and navigate() shows it.
@@ -1413,5 +1464,5 @@ export class MoviesView {
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
  private releaseMedia(){this.keepPlaying=false;if(this.pipWindow){const win=this.pipWindow;this.pipWindow=undefined;win.close();}this.nativeFullscreen=false;this.releaseFullscreenEscape();this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  private endSession(){moviePopularity.reset();this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
- dispose(){this.disposeStorage();moviePopularity.stop();this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.menuGlass.dispose();this.headerGlass?.dispose();this.yieldGuard.disconnect();this.abort.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
+ dispose(){this.disposeDownloads();this.disposeStorage();moviePopularity.stop();this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.menuGlass.dispose();this.headerGlass?.dispose();this.yieldGuard.disconnect();this.abort.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }
