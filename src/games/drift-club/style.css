@@ -1,4 +1,4 @@
-body.in-game .game-view[data-game-id=drift-club]{--game-surface:#15383c;background:#15383c;padding:0;gap:0}
+body.in-game .game-view[data-game-id=drift-club]{--game-surface:#15383c;background:#15383c;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);gap:0}
 body.in-game .game-view[data-game-id=drift-club] .game-dock{order:0;margin:4px auto;flex-basis:54px}
 body.in-game .game-view[data-game-id=drift-club] #game-stage{height:100%;max-height:none}
 .dc{--ink:#183e40;--paper:#fff2d9;--gold:#fac567;width:100%;height:100%;display:grid;grid-template-columns:clamp(270px,27vw,385px) minmax(0,1fr);padding:0 clamp(10px,2vw,36px) clamp(10px,2vw,30px);color:var(--ink);text-align:left;isolation:isolate;font:500 15px/1.36 var(--font-sans,system-ui);overflow:hidden}
@@ -39,17 +39,17 @@ body.in-game .game-view[data-game-id=drift-club] #game-stage{height:100%;max-hei
 @media(max-width:900px) and (min-height:521px) and (orientation:portrait){
  .dc{display:grid;grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto;padding:0 7px max(7px,env(safe-area-inset-bottom));overflow:hidden}
  .dc-desk{display:contents}.dc-brand{display:none}.dc-modes{order:0;grid-row:1;grid-column:1;justify-self:end;align-self:center;margin:0 8px 0 0;width:min(52%,215px);background:#fff3df;z-index:1}
- .dc-modes button{font-size:10px;min-height:35px}.dc-tour{grid-column:1;grid-row:1;margin:0;padding:9px 8px 9px 12px;border:0;border-radius:13px 13px 0 0;background:var(--paper)}
- .dc-tour .dc-overline{font-size:8px}.dc-course{font-size:clamp(17px,4.9vw,30px);max-width:46%;margin:2px 0!important}.dc-stops,.dc-tip{display:none}
+ .dc-modes button{font-size:12px;min-height:40px}.dc-tour{grid-column:1;grid-row:1;margin:0;padding:9px 8px 9px 12px;border:0;border-radius:13px 13px 0 0;background:var(--paper)}
+ .dc-tour .dc-overline{font-size:10px}.dc-course{font-size:clamp(17px,4.9vw,30px);max-width:46%;margin:2px 0!important}.dc-stops,.dc-tip{display:none}
  .dc-window{grid-row:2;grid-column:1;border-radius:0}.dc-control{grid-row:3;grid-column:1;background:var(--paper);padding:8px 12px 10px;margin:0;border-radius:0 0 13px 13px;display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;align-items:center}
- .dc-turn{gap:8px}.dc-player{font-size:17px}.dc-token{width:25px;height:20px}.dc-delivery{font-size:8px}
- .dc-inputs{grid-row:2;grid-column:1/-1;grid-template-columns:1fr 1fr;gap:12px;margin:0}.dc-inputs input{height:30px}
- .dc-spin{grid-row:1;grid-column:2}.dc-spin button{font-size:10px;min-height:35px;padding:0 3px}
- .dc-shoot{margin:0;grid-row:3;grid-column:1/-1;min-height:39px}.dc-venue,.dc-board-score{top:8px;padding:5px 8px}.dc-venue{left:8px;font-size:8px}.dc-board-score{right:8px;font-size:10px}.dc-caption{bottom:6px;padding:4px 8px;font-size:10px}
+ .dc-turn{gap:8px}.dc-player{font-size:17px}.dc-token{width:25px;height:20px}.dc-delivery{font-size:10px}
+ .dc-inputs{grid-row:2;grid-column:1/-1;grid-template-columns:1fr 1fr;gap:12px;margin:0}.dc-inputs input{height:36px}
+ .dc-spin{grid-row:1;grid-column:2}.dc-spin button{font-size:12px;min-height:40px;padding:0 3px}
+ .dc-shoot{margin:0;grid-row:3;grid-column:1/-1;min-height:46px}.dc-venue,.dc-board-score{top:8px;padding:5px 8px}.dc-venue{left:8px;font-size:10px}.dc-board-score{right:8px;font-size:12px}.dc-caption{bottom:6px;padding:4px 8px;font-size:12px}
 }
 @media(max-width:520px) and (orientation:portrait){
- .dc-modes{width:55%;padding:2px;gap:0;margin-right:4px}.dc-modes button{font-size:9px;padding:0 2px}
- .dc-course{max-width:42%}.dc-book-open{top:36px;right:8px;padding:5px 8px;font-size:10px!important}
+ .dc-modes{width:58%;padding:2px;gap:0;margin-right:4px}.dc-modes button,.dc-modes button[data-mode]{flex:auto;font-size:11px;padding:0 4px}
+ .dc-course{max-width:42%}.dc-book-open{top:36px;right:8px;min-height:32px;padding:5px 10px;font-size:12px!important}
 }
 @media(max-height:420px){
  .dc .dc-brand{display:none}.dc .dc-modes{margin-top:0}.dc .dc-desk{padding-block:6px}

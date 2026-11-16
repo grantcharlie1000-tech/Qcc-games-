@@ -216,7 +216,7 @@ body.in-game .game-view[data-game-id=chess] #game-stage{height:100%;display:flex
 
 /* Menus */
 .ch-home,.ch-setup{width:min(100%,560px);margin:0 auto;padding:12px 14px 24px;display:flex;flex-direction:column;gap:12px}
-.ch-home{align-items:stretch;justify-content:center;min-height:100%}
+.ch-home{align-items:stretch;justify-content:safe center;min-height:100%}
 .ch-hero{display:flex;justify-content:center;gap:2px;height:64px}
 .ch-hero i{width:48px;height:56px;animation:ch-rise 500ms var(--ch-spring) both;animation-delay:calc(var(--i) * 60ms)}
 .ch-hero i svg{width:100%;height:100%}
@@ -334,3 +334,5 @@ body.in-game .game-view[data-game-id=chess] #game-stage{height:100%;display:flex
 .reduce-transparency .ch,.ch:where(.ch-solid){--ch-glass:#1f2333;--ch-glass-strong:#1f2333;--ch-blur:none}
 @media (prefers-reduced-transparency:reduce){.ch{--ch-glass:#1f2333;--ch-glass-strong:#1f2333;--ch-blur:none}}
 @media (forced-colors:active){.ch-sq.ch-selected,.ch-sq.ch-last{outline:2px solid Highlight}}
+/* Short landscape phones: the four modes in one row and no decorative pieces, so the whole menu fits above the dock. */
+@media (orientation:landscape) and (max-height:500px){.ch-home{gap:8px;padding-top:8px}.ch-hero{display:none}.ch-title{font-size:30px;margin:0}.ch-cards{grid-template-columns:repeat(4,minmax(0,1fr))}.ch-card{min-height:72px;padding:12px}}

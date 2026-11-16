@@ -11,6 +11,8 @@ import './style.css';
 import './christmas.css';
 import { christmas } from '../../festive/festive';
 import { festiveAnimalSvg, festiveBox, festiveBackdrop, drawFestivePlatform } from './christmas-art';
+// World units around the waiting animal's centre where a touch still picks it up.
+const TOUCH_SLOP=36;
 const module:GameModule={
  id:'animal-stack',title:'Animal Stack',cover:'game-art/animal-stack/cover.svg',
  rules:'Drag only the waiting animal left or right. A short tap rotates it 45°. Press DROP, Space or Enter to release. A/D or Left/Right move; Q/E rotate. Wait for each animal to settle. Each animal connected to the platform and still for half a second earns 100 points, plus 2 points per centimetre of your best tower height. Whole animals can tip and tumble. An animal falling off ends the run. Balance 40 animals to complete the stack.',
@@ -66,12 +68,14 @@ const module:GameModule={
   function clearInput(){heldAimAt=0;clearPointer();keys.clear();}
   function rotate(direction=1){if(paused||disposed||!world.ready)return;world.rotateBy(TAP_ROTATION_RADIANS*direction);sync();context.save(world.snapshot());}
   function drop(){if(paused||disposed)return;clearInput();if(world.drop()){context.sound('tap');context.save(world.snapshot());sync();}}
+  // A fingertip covers more than the animal's outline, so touch also accepts a press just beside it.
+  function nearPreview(e:PointerEvent,p:{x:number;y:number}){return e.pointerType!=='mouse'&&Math.hypot(p.x-preview.body.position.x,p.y-preview.body.position.y)<TOUCH_SLOP;}
   function local(e:PointerEvent){const box=canvas.getBoundingClientRect();return{x:(e.clientX-box.left-left)/scale,y:(e.clientY-box.top-top)/scale-camera};}
   function releaseKey(e:KeyboardEvent){const key=e.key.toLowerCase();if(key!==' '&&key!=='enter')return;e.preventDefault();if(paused||disposed||e.repeat||keys.has(key))return;drop();keys.add(key);}
   const controller=new AbortController(),options={signal:controller.signal};
   dropButton.addEventListener('keydown',releaseKey,options);
   root.addEventListener('focusout',e=>{if(!root.contains(e.relatedTarget as Node|null))clearInput();},options);
-  canvas.addEventListener('pointerdown',e=>{if(paused||!world.ready||e.button!==0||gesture.pointer!==null)return;preparePreview();const p=local(e);if(!Matter.Query.point(preview.body.parts.slice(1),p).length)return;keys.clear();if(gesture.begin(e.pointerId,p.x,p.y,world.aimX,e.timeStamp)){canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});e.preventDefault();}},options);
+  canvas.addEventListener('pointerdown',e=>{if(paused||!world.ready||e.button!==0||gesture.pointer!==null)return;preparePreview();const p=local(e);if(!Matter.Query.point(preview.body.parts.slice(1),p).length&&!nearPreview(e,p))return;keys.clear();if(gesture.begin(e.pointerId,p.x,p.y,world.aimX,e.timeStamp)){canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});e.preventDefault();}},options);
   canvas.addEventListener('pointermove',e=>{if(paused||gesture.pointer!==e.pointerId)return;const p=local(e),x=gesture.move(e.pointerId,p.x,p.y);if(x!==null){world.aim(x);sync();}},options);
   canvas.addEventListener('pointerup',e=>{if(gesture.pointer!==e.pointerId)return;const p=local(e),x=gesture.move(e.pointerId,p.x,p.y);if(x!==null)world.aim(x);const tap=gesture.end(e.pointerId,p.x,p.y,e.timeStamp);if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);if(tap)rotate();sync();context.save(world.snapshot());},options);
   canvas.addEventListener('pointercancel',clearInput,options);canvas.addEventListener('lostpointercapture',()=>gesture.clear(),options);window.addEventListener('blur',clearInput,options);dropButton.addEventListener('click',drop,options);
