@@ -73,7 +73,12 @@ test('two players are matched, play, agree a draw, then a decisive game updates 
     }
     await a.getByRole('button', { name: 'Find opponent' }).click();
     await expect(a.getByRole('heading', { name: 'Finding opponent' })).toBeVisible();
-    if (info.project.name === 'chromium') await a.screenshot({ path: EVIDENCE + 'matchmaking-390.png' });
+    if (info.project.name === 'chromium') {
+      await a.screenshot({ path: EVIDENCE + 'matchmaking-390.png' });
+      await a.setViewportSize({ width: 1440, height: 900 });
+      await a.screenshot({ path: EVIDENCE + 'matchmaking-1440.png' });
+      await a.setViewportSize({ width: 390, height: 844 });
+    }
     await b.getByRole('button', { name: 'Find opponent' }).click();
     for (const p of [a, b]) await expect(p.locator('.ch-board')).toBeVisible({ timeout: 15000 });
 
@@ -156,6 +161,10 @@ test('two players are matched, play, agree a draw, then a decisive game updates 
     await expect(b.locator('.ch-lb-row')).toHaveCount(2);
     await expect(b.locator('.ch-lb-row').first()).toContainText(winnerName);
     await expect(b.locator('.ch-lb-mine')).toContainText('Ben_Ranked');
-    if (info.project.name === 'chromium') await b.screenshot({ path: EVIDENCE + 'leaderboard-1440.png' });
+    if (info.project.name === 'chromium') {
+      await b.screenshot({ path: EVIDENCE + 'leaderboard-1440.png' });
+      await b.setViewportSize({ width: 390, height: 844 });
+      await b.screenshot({ path: EVIDENCE + 'leaderboard-390.png' });
+    }
   } finally { await ca.close(); await cb.close(); }
 });
