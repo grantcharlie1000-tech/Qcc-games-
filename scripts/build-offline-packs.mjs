@@ -40,7 +40,14 @@ for(const file of allFiles)if(/^assets\/.*\.(?:woff2?|ttf|otf)$/.test(file))shel
 const games={};
 for(const id of gameIds){
  const pack=new Set();
- addGraph('src/games/'+id+'/index.ts',pack,true);
+ const gameEntry='src/games/'+id+'/index.ts';
+ if(vite[gameEntry])addGraph(gameEntry,pack,true);
+ else{
+  // Rollup can inline a dynamic game entry into a shared chunk. In that case
+  // the manifest has no source-keyed entry. Include every emitted JS/CSS file
+  // for this one pack rather than silently producing a broken offline game.
+  for(const file of allFiles)if(/^assets\/.*\.(?:m?js|css)$/.test(file))pack.add(file);
+ }
  for(const file of allFiles){
   if(file.startsWith('game-art/'+id+'/')||file.startsWith('audio/'+id+'/')||(id==='chess'&&file.startsWith('chess-engines/')))
    pack.add(file);
