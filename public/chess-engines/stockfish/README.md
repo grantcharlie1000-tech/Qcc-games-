@@ -82,12 +82,16 @@ engine memory. JavaScript, compilation and browser overhead add to this; an
 allocation failure makes initialization fail, rather than selecting a different
 engine. The compiled ceiling is not a claim of routine 2 GiB use.
 
+When the caller supplies exactly one legal move, move selection returns it
+immediately without starting a search or fabricating an evaluation. Analysis
+still performs a full search. Position, opponent and clock checks remain active.
+
 ## Hosting and lifecycle
 
 Only JS + WASM (1,874,201 bytes) are loaded for a selected Stockfish session.
 Nothing is preloaded on the homepage. Serve `.wasm` as `application/wasm` and
-`.js` as JavaScript. The adapter checks the WASM URL and MIME before starting
-the Worker, then performs `uci`, option setup, `ucinewgame`, `isready` and waits
+`.js` as JavaScript. The Worker starts compiling while the adapter checks the
+WASM URL and MIME. After that check it performs `uci`, option setup, `ucinewgame`, `isready` and waits
 for `readyok`. All URLs respect Vite's relative base, including subpath hosting.
 
 The verified upstream single-threaded asyncify build needs no

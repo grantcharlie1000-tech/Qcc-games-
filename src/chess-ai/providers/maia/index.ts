@@ -94,9 +94,10 @@ export function createProvider(): ChessAIProvider {
       const clockBudget = input.clock ? Math.max(0, input.clock.remainingMs - Math.min(75, input.clock.remainingMs * 0.1)) : Infinity;
       const budget = input.thinkingTimeMs;
       if (!Number.isFinite(budget) || budget <= 0) throw new ChessAIError('invalid-request', 'Maia3 needs a positive thinking budget.');
-      // Terminating an in-flight inference frees memory but requires a cold
-      // model session on reuse. Allow recovery inside the loader's 10 s grace,
-      // bounded by the actual remaining chess clock when one is present.
+      // A policy inference is fixed work, unlike an interruptible tree search.
+      // Allow that one inference and any cold reload inside the loader's grace,
+      // bounded by the actual remaining chess clock. Cutting it off at the soft
+      // target repeatedly discards the loaded model on slower devices.
       const wallBudget = Math.min(budget + 9_000, clockBudget);
       if (wallBudget <= 0) throw new ChessAIError('timeout', 'Maia3 has no chess clock time remaining.');
       // Mark active synchronously, before awaiting even an already warm start.
@@ -108,15 +109,14 @@ export function createProvider(): ChessAIProvider {
         await start(input.signal);
         if (choice.error) throw choice.error;
         if (input.positionRevision !== latestRevision || input.signal.aborted) throw new ChessAIError('stale', 'Maia3 position changed while loading.');
-        const left = Math.min(budget, wallBudget - (performance.now() - started));
+        const left = wallBudget - (performance.now() - started);
         if (left <= 0) throw new ChessAIError('timeout', 'Maia3 reloading exhausted the thinking budget.');
-        const randomBytes = new Uint32Array(2);
+        const randomBytes = new Uint32Array(1);
         crypto.getRandomValues(randomBytes);
         const reply = await request({
           type: 'move', id: ++sequence, revision: input.positionRevision,
           fen: input.fen, legalMovesUci: input.legalMovesUci, rating,
           random: randomBytes[0] / 0x1_0000_0000,
-          pacingMs: left * (0.7 + 0.2 * randomBytes[1] / 0x1_0000_0000),
         }, input.signal, Math.max(1, left));
         if (choice.error) throw choice.error;
         // A throttled/backgrounded UI thread can deliver a response before an
