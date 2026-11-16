@@ -1,14 +1,14 @@
-# QCC Beginner 1.0.0
+# QCC Beginner 1.2.0
 
 The engine source lives in `src/chess-ai/providers/beginner/` in this repository.
-It is original QCC utility AI, not Dala, Maia, Stockfish or a neural model.
+It is original QCC utility AI and shallow search, not Dala, Maia, Stockfish or a neural model.
 No weights or runtime downloads are required. The Vite worker bundle contains
 all code. The manifest's download estimate is an estimate of compressed worker
 transfer size, not model size.
 
 | Component | Version | Source | License |
 | --- | --- | --- | --- |
-| QCC beginner AI | 1.0.0 | This repository, `src/chess-ai/providers/beginner/` | MIT |
+| QCC beginner AI | 1.2.0 | This repository, `src/chess-ai/providers/beginner/` | MIT |
 | chess.js rules | 1.4.0 | https://github.com/jhlywa/chess.js/tree/v1.4.0 | BSD-2-Clause |
 
 The chess.js distribution came from

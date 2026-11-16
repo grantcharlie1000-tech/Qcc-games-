@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-11-16T11:49:07.320Z",
+  "method": "Metadata-only audit. All original opponents resolved from cached raw archives; subsequent corpora retain both names. Verify both-player and game separation, exact pooled training preservation, fixed eligibility and sizes. Common boards are reported without filtering. No quality scores read.",
+  "inputs": [
+    {
+      "name": "human-500.json",
+      "sha256": "27d70ef7ddc3c4cf293171f93e2c741cfc79f88f67c879204d3a61beae87cb8f"
+    },
+    {
+      "name": "human-500-validation-2.json",
+      "sha256": "2650ef901795ea90915531e3746aa41f0fac4819083628b0aec90f4b6d30cd8c"
+    },
+    {
+      "name": "human-500-validation-3.json",
+      "sha256": "bba02dba7483fdfe55d94a46d4a4bae16032a2cf901656956777154e1516e27c"
+    },
+    {
+      "name": "human-500-pooled-training.json",
+      "sha256": "4685604a78680c77d80c803551b52a691e62aaefbe75bb153b4c1431e001df0a"
+    }
+  ],
+  "retired": {
+    "positions": 352,
+    "games": 88,
+    "players": 117
+  },
+  "fresh": {
+    "positions": 320,
+    "games": 80,
+    "contributors": 31,
+    "players": 107,
+    "maxGamesPerContributor": 3,
+    "meanMoverRating": 487.746875,
+    "uniqueBoards": 317,
+    "boardsAlsoInTraining": 3
+  },
+  "overlap": {
+    "players": 0,
+    "games": 0
+  },
+  "pooledTrainingExact": true
+}

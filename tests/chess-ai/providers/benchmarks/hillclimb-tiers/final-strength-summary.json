@@ -1,0 +1,270 @@
+{
+  "generatedAt": "2026-11-16T12:45:21.756Z",
+  "sourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
+  "method": "Assembly of final metric2 reports. 300/700 are independent original validation cohorts with exact final-source preservation. 500 is the larger third holdout, frozen before round15; the two earlier holdouts failed and became training. 900 primary check reuses approved historical choices, not a new holdout. Mean capped oracle loss is a proxy, not an Elo conversion or a platform rating.",
+  "tiers": [
+    {
+      "tier": 300,
+      "split": "validation",
+      "sourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
+      "baselineSourceSha256": "ee899ed7288159a009edd7f9f002db63747a38df0c8f61b37e10672f581c5871",
+      "corpusSha256": "7054f3b15bbbdbe6bf7640b3b315484a976e3ea745d2127fb44242da99ad67eb",
+      "positions": 80,
+      "games": 20,
+      "contributors": 6,
+      "humanMeanCpLoss": 162.1625,
+      "baselineMeanCpLoss": 304.321875,
+      "candidateMeanCpLoss": 145.846875,
+      "ratio": 0.8993871887766901,
+      "absoluteLogRatio": 0.10604164893567179,
+      "reductionFromBaselineFraction": 0.5207479744924678,
+      "contributorBootstrapDifference95Cp": [
+        -50.20238095238095,
+        9.449404761904763
+      ],
+      "histograms": {
+        "human": {
+          "0-10": 0.425,
+          "10-50": 0.0875,
+          "50-100": 0.075,
+          "100-200": 0.1,
+          "200-500": 0.2,
+          "500-1000": 0.1125
+        },
+        "candidate": {
+          "0-10": 0.375,
+          "10-50": 0.14375,
+          "50-100": 0.071875,
+          "100-200": 0.184375,
+          "200-500": 0.165625,
+          "500-1000": 0.059375
+        },
+        "baseline": {
+          "0-10": 0.184375,
+          "10-50": 0.09375,
+          "50-100": 0.05625,
+          "100-200": 0.18125,
+          "200-500": 0.234375,
+          "500-1000": 0.25
+        }
+      },
+      "failures": 0
+    },
+    {
+      "tier": 500,
+      "split": "validation",
+      "sourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
+      "baselineSourceSha256": "ee899ed7288159a009edd7f9f002db63747a38df0c8f61b37e10672f581c5871",
+      "corpusSha256": "bba02dba7483fdfe55d94a46d4a4bae16032a2cf901656956777154e1516e27c",
+      "positions": 320,
+      "games": 80,
+      "contributors": 31,
+      "humanMeanCpLoss": 101.834375,
+      "baselineMeanCpLoss": 243.16484375,
+      "candidateMeanCpLoss": 100.24140625,
+      "ratio": 0.9843572590296744,
+      "absoluteLogRatio": 0.015766379703576857,
+      "reductionFromBaselineFraction": 0.5877635734503663,
+      "contributorBootstrapDifference95Cp": [
+        -22.868303571428573,
+        18.46484375
+      ],
+      "histograms": {
+        "human": {
+          "0-10": 0.45625,
+          "10-50": 0.16875,
+          "50-100": 0.125,
+          "100-200": 0.1125,
+          "200-500": 0.078125,
+          "500-1000": 0.059375
+        },
+        "candidate": {
+          "0-10": 0.39609375,
+          "10-50": 0.1515625,
+          "50-100": 0.17265625,
+          "100-200": 0.1296875,
+          "200-500": 0.10703125,
+          "500-1000": 0.04296875
+        },
+        "baseline": {
+          "0-10": 0.1984375,
+          "10-50": 0.1296875,
+          "50-100": 0.12734375,
+          "100-200": 0.17421875,
+          "200-500": 0.17890625,
+          "500-1000": 0.19140625
+        }
+      },
+      "failures": 0
+    },
+    {
+      "tier": 700,
+      "split": "validation",
+      "sourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
+      "baselineSourceSha256": "ee899ed7288159a009edd7f9f002db63747a38df0c8f61b37e10672f581c5871",
+      "corpusSha256": "dbb9d803f03a88c84c8ad8f68df281e0340fe51ca25f688c6f52d5494b7a7039",
+      "positions": 76,
+      "games": 19,
+      "contributors": 5,
+      "humanMeanCpLoss": 55.276315789473685,
+      "baselineMeanCpLoss": 230.6184210526316,
+      "candidateMeanCpLoss": 65.77302631578948,
+      "ratio": 1.1898952630326114,
+      "absoluteLogRatio": 0.17386528899164616,
+      "reductionFromBaselineFraction": 0.7147971700804473,
+      "contributorBootstrapDifference95Cp": [
+        -15.25,
+        30.665625
+      ],
+      "histograms": {
+        "human": {
+          "0-10": 0.5526315789473685,
+          "10-50": 0.21052631578947367,
+          "50-100": 0.07894736842105263,
+          "100-200": 0.06578947368421052,
+          "200-500": 0.06578947368421052,
+          "500-1000": 0.02631578947368421
+        },
+        "candidate": {
+          "0-10": 0.4769736842105263,
+          "10-50": 0.16776315789473684,
+          "50-100": 0.13157894736842105,
+          "100-200": 0.125,
+          "200-500": 0.09210526315789473,
+          "500-1000": 0.006578947368421052
+        },
+        "baseline": {
+          "0-10": 0.22697368421052633,
+          "10-50": 0.10197368421052631,
+          "50-100": 0.16447368421052633,
+          "100-200": 0.15460526315789475,
+          "200-500": 0.18092105263157895,
+          "500-1000": 0.17105263157894737
+        }
+      },
+      "failures": 0
+    },
+    {
+      "tier": 900,
+      "split": "validation",
+      "sourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
+      "baselineSourceSha256": "ee899ed7288159a009edd7f9f002db63747a38df0c8f61b37e10672f581c5871",
+      "corpusSha256": "e17b5cccafb941a7c3b00b6afc76855eb3577d3cca36c502b108627ec8ca850a",
+      "positions": 88,
+      "games": 22,
+      "contributors": 6,
+      "humanMeanCpLoss": 78.7159090909091,
+      "baselineMeanCpLoss": 55.1875,
+      "candidateMeanCpLoss": 72.28977272727273,
+      "ratio": 0.9183629276743179,
+      "absoluteLogRatio": 0.0851626204398499,
+      "reductionFromBaselineFraction": -0.3098939565530734,
+      "contributorBootstrapDifference95Cp": [
+        -43.505208333333336,
+        31.696428571428573
+      ],
+      "histograms": {
+        "human": {
+          "0-10": 0.5340909090909091,
+          "10-50": 0.13636363636363635,
+          "50-100": 0.13636363636363635,
+          "100-200": 0.07954545454545454,
+          "200-500": 0.056818181818181816,
+          "500-1000": 0.056818181818181816
+        },
+        "candidate": {
+          "0-10": 0.5738636363636364,
+          "10-50": 0.11079545454545454,
+          "50-100": 0.10227272727272728,
+          "100-200": 0.08522727272727272,
+          "200-500": 0.09375,
+          "500-1000": 0.03409090909090909
+        },
+        "baseline": {
+          "0-10": 0.6136363636363636,
+          "10-50": 0.11363636363636363,
+          "50-100": 0.09943181818181818,
+          "100-200": 0.07386363636363637,
+          "200-500": 0.08238636363636363,
+          "500-1000": 0.017045454545454544
+        }
+      },
+      "failures": 0
+    }
+  ],
+  "historical900": {
+    "positions": 176,
+    "seedsPerPosition": 8,
+    "acceptedMeanCpLoss": 76.0546875,
+    "currentMeanCpLoss": 76.63210227272727,
+    "humanMeanCpLoss": 73.5909090909091,
+    "ratio": 1.007592099733856
+  },
+  "preservation": {
+    "choices": 976,
+    "unchangedNon500Games": 24
+  },
+  "matches": [
+    {
+      "lower": 300,
+      "upper": 500,
+      "upper-win": 6,
+      "lower-win": 2,
+      "draw": 0,
+      "unfinished": 0,
+      "upperScore": 0.75
+    },
+    {
+      "lower": 300,
+      "upper": 700,
+      "upper-win": 8,
+      "lower-win": 0,
+      "draw": 0,
+      "unfinished": 0,
+      "upperScore": 1
+    },
+    {
+      "lower": 300,
+      "upper": 900,
+      "upper-win": 8,
+      "lower-win": 0,
+      "draw": 0,
+      "unfinished": 0,
+      "upperScore": 1
+    },
+    {
+      "lower": 500,
+      "upper": 700,
+      "upper-win": 5,
+      "lower-win": 2,
+      "draw": 1,
+      "unfinished": 0,
+      "upperScore": 0.6875
+    },
+    {
+      "lower": 500,
+      "upper": 900,
+      "upper-win": 4,
+      "lower-win": 3,
+      "draw": 1,
+      "unfinished": 0,
+      "upperScore": 0.5625
+    },
+    {
+      "lower": 700,
+      "upper": 900,
+      "upper-win": 5,
+      "lower-win": 3,
+      "draw": 0,
+      "unfinished": 0,
+      "upperScore": 0.625
+    }
+  ],
+  "inputs": [
+    "post-round15-v2-summary.json",
+    "final-500-validation-v3-summary.json",
+    "post-round15-regression-v2-regression-summary.json",
+    "post-round15-v2-preservation.json",
+    "match-round15.json"
+  ]
+}

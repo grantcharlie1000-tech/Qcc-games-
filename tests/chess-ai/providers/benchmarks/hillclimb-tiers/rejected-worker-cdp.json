@@ -1,0 +1,121 @@
+{
+  "protocol": "actual-worker-target-cdp-throttle-diagnostic-v1",
+  "generatedAt": "2026-11-16T12:12:57.168Z",
+  "method": "Direct CDP attachment to one actual dedicated Worker. Attempt Worker-target Emulation.setCPUThrottlingRate=6; stop immediately on target-domain rejection. If supported, retain five alternating1/6pairs of three200M arithmetic loops in that same warm Worker. No page throttle, Windows job cap, providers, server, physical-device or production-runtime claim.",
+  "iterationsPerSample": 200000000,
+  "repetitionsPerLeg": 3,
+  "cpu": "Intel(R) Core(TM) i5-7300HQ CPU @ 2.50GHz",
+  "logicalCpuCount": 4,
+  "workerMarker": "qcc-worker-target-69817357-50de-45c5-a8d2-9fa715eecce0",
+  "workerSourceSha256": "606cbb59ba76f5e4b4f2665f2c04732b4be875f4916a7e9c9f75cb6ea4361078",
+  "commands": [
+    {
+      "id": 1,
+      "method": "Runtime.evaluate",
+      "params": {
+        "expression": "({marker:globalThis.__qccWorkerMarker,url:self.location.href,scope:globalThis.constructor.name})",
+        "returnByValue": true
+      },
+      "targetId": "AE0C7A63196BB61D548A73E47643662D",
+      "sessionId": "67B459E8D16585523225934D90033E6E",
+      "scope": "actual-dedicated-worker",
+      "transportAcknowledgement": {},
+      "rawResponse": {
+        "id": 1,
+        "result": {
+          "result": {
+            "type": "object",
+            "value": {
+              "marker": "qcc-worker-target-69817357-50de-45c5-a8d2-9fa715eecce0",
+              "url": "blob:null/aebdac64-1b8a-489b-aaca-d17606bc32b5",
+              "scope": "DedicatedWorkerGlobalScope"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "method": "Emulation.setCPUThrottlingRate",
+      "params": {
+        "rate": 6
+      },
+      "targetId": "AE0C7A63196BB61D548A73E47643662D",
+      "sessionId": "67B459E8D16585523225934D90033E6E",
+      "scope": "actual-dedicated-worker",
+      "transportAcknowledgement": {},
+      "rawResponse": {
+        "id": 2,
+        "error": {
+          "code": -32000,
+          "message": "Operation is only supported for pages, not workers"
+        }
+      },
+      "error": {
+        "message": "Operation is only supported for pages, not workers",
+        "targetProtocolError": {
+          "code": -32000,
+          "message": "Operation is only supported for pages, not workers"
+        }
+      }
+    }
+  ],
+  "legs": [],
+  "errorCount": 1,
+  "cleanup": {
+    "restoreRequired": false,
+    "rateRestored": true,
+    "workerTerminated": true,
+    "workerSessionDetached": true,
+    "browserSessionDetached": true,
+    "browserExited": true,
+    "errors": []
+  },
+  "browserRootPid": 40148,
+  "browserVersion": "157.0.8103.78",
+  "workerBlobURL": "blob:null/aebdac64-1b8a-489b-aaca-d17606bc32b5",
+  "matchingWorkerTargets": [
+    {
+      "targetId": "AE0C7A63196BB61D548A73E47643662D",
+      "type": "worker",
+      "title": "qcc-worker-target-69817357-50de-45c5-a8d2-9fa715eecce0",
+      "url": "blob:null/aebdac64-1b8a-489b-aaca-d17606bc32b5",
+      "attached": true,
+      "parentId": "C7C8361C3E2291B632AF8C1F4E05BC3E",
+      "canAccessOpener": false,
+      "parentFrameId": "C7C8361C3E2291B632AF8C1F4E05BC3E",
+      "browserContextId": "293800DC64F9DA8F9C7F6B0CB7D40274"
+    }
+  ],
+  "workerAttachment": {
+    "targetId": "AE0C7A63196BB61D548A73E47643662D",
+    "sessionId": "67B459E8D16585523225934D90033E6E",
+    "flatten": false
+  },
+  "workerRuntimeIdentity": {
+    "result": {
+      "type": "object",
+      "value": {
+        "marker": "qcc-worker-target-69817357-50de-45c5-a8d2-9fa715eecce0",
+        "url": "blob:null/aebdac64-1b8a-489b-aaca-d17606bc32b5",
+        "scope": "DedicatedWorkerGlobalScope"
+      }
+    }
+  },
+  "error": {
+    "message": "Operation is only supported for pages, not workers",
+    "targetProtocolError": {
+      "code": -32000,
+      "message": "Operation is only supported for pages, not workers"
+    },
+    "method": "Emulation.setCPUThrottlingRate"
+  },
+  "status": "diagnostic-failed",
+  "successfulWork": {
+    "retainedSamples": 0,
+    "retainedIterations": 0,
+    "retainedChecksumCount": 0,
+    "warmupSamples": 0
+  },
+  "totalWallMs": 1226.2779
+}

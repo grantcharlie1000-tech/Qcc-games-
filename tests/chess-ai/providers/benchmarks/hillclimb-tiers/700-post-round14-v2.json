@@ -1,0 +1,8741 @@
+{
+  "generatedAt": "2026-11-16T11:33:56.466Z",
+  "label": "post-round14-v2",
+  "sourceSha256": "ac21aff952aac9be8ee537bccf694726472b67530f6ae199e11d94df1d6e014f",
+  "benchmarkSha256": "8f38952f37e3fac28aded42b3e565278140dc8cd782ee893857be1917d23a801",
+  "corpusSha256": "dbb9d803f03a88c84c8ad8f68df281e0340fe51ca25f688c6f52d5494b7a7039",
+  "oracle": {
+    "name": "Stockfish 19 Lite",
+    "depth": 10,
+    "hashMiB": 16,
+    "threads": 1,
+    "jsSha256": "ccb130d7ff29408531c47d859a49f91d59d4f482d05a53eb1a3231a4f624c91a",
+    "wasmSha256": "ee4f115bdb2d32cadf96cada104a05b5ec257d7ad6f57582190b49bc71f096de"
+  },
+  "loader": {
+    "name": "esbuild",
+    "version": "0.28.2",
+    "bundle": true,
+    "minify": false,
+    "treeShaking": false,
+    "sha256": "4657463a3fc74ada9ca257ebb6307ee174f338470cf10b74c3ff4d97709ce51e"
+  },
+  "metricVersion": 2,
+  "seedsPerPosition": 4,
+  "method": "Paired same-position comparison against real Chess.com rapid moves within the tier interval. 4 fixed bot seeds, shipped allowance and worker allocation. Stockfish 19 Lite depth10, hash cleared. Anchor is a forced root search of the unrestricted preferred move, compared with identical forced root searches of human/bot moves; preferred-root loss is asserted zero. Loss capped at1000cp including mate transitions. Contributor accounts split before tuning. Mean loss ratio measures calibration distance, not competitive Elo. No skipped positions or failures.",
+  "tier": 700,
+  "moveAllowanceMs": 500,
+  "workerBudgetMs": 75,
+  "environment": {
+    "node": "v24.17.0",
+    "cpu": "Intel(R) Core(TM) i5-7300HQ CPU @ 2.50GHz",
+    "logicalCpus": 4,
+    "loadavg": [
+      0,
+      0,
+      0
+    ]
+  },
+  "elapsedMs": 4449.7582999999995,
+  "failures": 0,
+  "summary": {
+    "validation": {
+      "positions": 76,
+      "humanMeanCappedCpLoss": 55.276315789473685,
+      "botMeanCappedCpLoss": 65.77302631578948,
+      "ratio": 1.1898952630326114,
+      "humanBlunderFraction": 0.09210526315789473,
+      "botBlunderFraction": 0.09868421052631579
+    }
+  },
+  "timing": {
+    "moves": 304,
+    "p50Ms": 8.3725000000004,
+    "p95Ms": 23.159400000000005,
+    "maxMs": 67.52149999999983
+  },
+  "rows": [
+    {
+      "id": "700-16",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/148548660228",
+      "club": "the-beginners-chess-club",
+      "contributor": "1960mka",
+      "whiteRating": 627,
+      "blackRating": 682,
+      "rating": 682,
+      "timeControl": "600",
+      "fen": "rnbqk2r/ppppbppp/5B2/4p3/3PP3/8/PPP2PPP/RN1QKBNR b KQkq - 0 4",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "d2d4",
+        "g8f6",
+        "c1g5",
+        "f8e7",
+        "g5f6"
+      ],
+      "humanMove": "e7f6",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 17,
+        "depth": 10,
+        "bestmove": "e7f6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 20,
+        "depth": 10,
+        "bestmove": "e7f6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 20,
+        "depth": 10,
+        "bestmove": "e7f6"
+      },
+      "humanLoss": 0,
+      "botLoss": 79.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -86,
+            "depth": 10,
+            "bestmove": "g7f6"
+          },
+          "loss": 106,
+          "nodes": 237,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -86,
+            "depth": 10,
+            "bestmove": "g7f6"
+          },
+          "loss": 106,
+          "nodes": 231,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -86,
+            "depth": 10,
+            "bestmove": "g7f6"
+          },
+          "loss": 106,
+          "nodes": 231,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "e7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 20,
+            "depth": 10,
+            "bestmove": "e7f6"
+          },
+          "loss": 0,
+          "nodes": 249,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-17",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/148548660228",
+      "club": "the-beginners-chess-club",
+      "contributor": "1960mka",
+      "whiteRating": 627,
+      "blackRating": 682,
+      "rating": 627,
+      "timeControl": "600",
+      "fen": "rnb2rk1/pp3ppp/2p2b2/4p3/4P3/N4N2/PPP2PPP/R3KB1R w KQ - 4 10",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "d2d4",
+        "g8f6",
+        "c1g5",
+        "f8e7",
+        "g5f6",
+        "e7f6",
+        "d4d5",
+        "c7c6",
+        "d5c6",
+        "d7c6",
+        "d1d8",
+        "f6d8",
+        "g1f3",
+        "d8f6",
+        "b1a3",
+        "e8g8"
+      ],
+      "humanMove": "f1d3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -20,
+        "depth": 10,
+        "bestmove": "a3c4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -5,
+        "depth": 10,
+        "bestmove": "a3c4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -39,
+        "depth": 10,
+        "bestmove": "f1d3"
+      },
+      "humanLoss": 34,
+      "botLoss": 89,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f1d3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -39,
+            "depth": 10,
+            "bestmove": "f1d3"
+          },
+          "loss": 34,
+          "nodes": 282,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f1c4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -109,
+            "depth": 10,
+            "bestmove": "f1c4"
+          },
+          "loss": 104,
+          "nodes": 387,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "c2c4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -223,
+            "depth": 10,
+            "bestmove": "c2c4"
+          },
+          "loss": 218,
+          "nodes": 250,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "a3c4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -5,
+            "depth": 10,
+            "bestmove": "a3c4"
+          },
+          "loss": 0,
+          "nodes": 267,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-18",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/148548660228",
+      "club": "the-beginners-chess-club",
+      "contributor": "1960mka",
+      "whiteRating": 627,
+      "blackRating": 682,
+      "rating": 682,
+      "timeControl": "600",
+      "fen": "rn2r1k1/p4ppp/2p5/1p2N3/4P3/8/PPP2PPP/3R1RK1 b - - 2 16",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "d2d4",
+        "g8f6",
+        "c1g5",
+        "f8e7",
+        "g5f6",
+        "e7f6",
+        "d4d5",
+        "c7c6",
+        "d5c6",
+        "d7c6",
+        "d1d8",
+        "f6d8",
+        "g1f3",
+        "d8f6",
+        "b1a3",
+        "e8g8",
+        "f1d3",
+        "c8e6",
+        "e1g1",
+        "f8d8",
+        "d3c4",
+        "e6c4",
+        "a3c4",
+        "b7b5",
+        "c4e5",
+        "f6e5",
+        "f3e5",
+        "d8e8",
+        "a1d1"
+      ],
+      "humanMove": "b8a6",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -141,
+        "depth": 10,
+        "bestmove": "f7f6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -165,
+        "depth": 10,
+        "bestmove": "f7f6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -285,
+        "depth": 10,
+        "bestmove": "b8a6"
+      },
+      "humanLoss": 120,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -165,
+            "depth": 10,
+            "bestmove": "f7f6"
+          },
+          "loss": 0,
+          "nodes": 642,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -165,
+            "depth": 10,
+            "bestmove": "f7f6"
+          },
+          "loss": 0,
+          "nodes": 644,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -165,
+            "depth": 10,
+            "bestmove": "f7f6"
+          },
+          "loss": 0,
+          "nodes": 642,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -165,
+            "depth": 10,
+            "bestmove": "f7f6"
+          },
+          "loss": 0,
+          "nodes": 645,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-19",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/148548660228",
+      "club": "the-beginners-chess-club",
+      "contributor": "1960mka",
+      "whiteRating": 627,
+      "blackRating": 682,
+      "rating": 682,
+      "timeControl": "600",
+      "fen": "1r2r1k1/5pp1/7p/pp1R4/4P3/5P2/PPP3PP/5RK1 b - - 1 21",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "d2d4",
+        "g8f6",
+        "c1g5",
+        "f8e7",
+        "g5f6",
+        "e7f6",
+        "d4d5",
+        "c7c6",
+        "d5c6",
+        "d7c6",
+        "d1d8",
+        "f6d8",
+        "g1f3",
+        "d8f6",
+        "b1a3",
+        "e8g8",
+        "f1d3",
+        "c8e6",
+        "e1g1",
+        "f8d8",
+        "d3c4",
+        "e6c4",
+        "a3c4",
+        "b7b5",
+        "c4e5",
+        "f6e5",
+        "f3e5",
+        "d8e8",
+        "a1d1",
+        "b8a6",
+        "e5c6",
+        "h7h6",
+        "f2f3",
+        "a6b8",
+        "c6b8",
+        "a8b8",
+        "d1d7",
+        "a7a5",
+        "d7d5"
+      ],
+      "humanMove": "a5a4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -356,
+        "depth": 10,
+        "bestmove": "a5a4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -388,
+        "depth": 10,
+        "bestmove": "a5a4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -388,
+        "depth": 10,
+        "bestmove": "a5a4"
+      },
+      "humanLoss": 0,
+      "botLoss": 25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "a5a4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -388,
+            "depth": 10,
+            "bestmove": "a5a4"
+          },
+          "loss": 0,
+          "nodes": 278,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -436,
+            "depth": 10,
+            "bestmove": "f7f6"
+          },
+          "loss": 48,
+          "nodes": 268,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g8h8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -420,
+            "depth": 10,
+            "bestmove": "g8h8"
+          },
+          "loss": 32,
+          "nodes": 307,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "g8f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -408,
+            "depth": 10,
+            "bestmove": "g8f8"
+          },
+          "loss": 20,
+          "nodes": 351,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-20",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/148548893476",
+      "club": "the-beginners-chess-club",
+      "contributor": "1960mka",
+      "whiteRating": 719,
+      "blackRating": 667,
+      "rating": 719,
+      "timeControl": "600",
+      "fen": "r2qkbnr/ppp2ppp/2np4/4p3/2B1P1b1/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 2 5",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "d7d6",
+        "b1c3",
+        "c8g4"
+      ],
+      "humanMove": "h2h3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 50,
+        "depth": 10,
+        "bestmove": "h2h3"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 59,
+        "depth": 10,
+        "bestmove": "h2h3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 59,
+        "depth": 10,
+        "bestmove": "h2h3"
+      },
+      "humanLoss": 0,
+      "botLoss": 36,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "a2a4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 7,
+            "depth": 10,
+            "bestmove": "a2a4"
+          },
+          "loss": 52,
+          "nodes": 632,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "h2h3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 59,
+            "depth": 10,
+            "bestmove": "h2h3"
+          },
+          "loss": 0,
+          "nodes": 750,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "c3e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -33,
+            "depth": 10,
+            "bestmove": "c3e2"
+          },
+          "loss": 92,
+          "nodes": 714,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "h2h3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 59,
+            "depth": 10,
+            "bestmove": "h2h3"
+          },
+          "loss": 0,
+          "nodes": 616,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-21",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/148548893476",
+      "club": "the-beginners-chess-club",
+      "contributor": "1960mka",
+      "whiteRating": 719,
+      "blackRating": 667,
+      "rating": 719,
+      "timeControl": "600",
+      "fen": "r3kbnr/ppp2ppp/2np2b1/3Np1q1/2B1P1P1/3P3P/PPP2P2/R2QK2R w KQkq - 0 11",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "d7d6",
+        "b1c3",
+        "c8g4",
+        "h2h3",
+        "g4h5",
+        "g2g4",
+        "h5g6",
+        "f3g5",
+        "d8g5",
+        "d2d3",
+        "g5f6",
+        "c3d5",
+        "f6d8",
+        "c1g5",
+        "d8g5"
+      ],
+      "humanMove": "d5c7",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -456,
+        "depth": 10,
+        "bestmove": "d5c7"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -433,
+        "depth": 10,
+        "bestmove": "d5c7"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -433,
+        "depth": 10,
+        "bestmove": "d5c7"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d5c7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -433,
+            "depth": 10,
+            "bestmove": "d5c7"
+          },
+          "loss": 0,
+          "nodes": 223,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "d5c7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -433,
+            "depth": 10,
+            "bestmove": "d5c7"
+          },
+          "loss": 0,
+          "nodes": 220,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "d5c7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -433,
+            "depth": 10,
+            "bestmove": "d5c7"
+          },
+          "loss": 0,
+          "nodes": 219,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "d5c7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -433,
+            "depth": 10,
+            "bestmove": "d5c7"
+          },
+          "loss": 0,
+          "nodes": 219,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-22",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/148548893476",
+      "club": "the-beginners-chess-club",
+      "contributor": "1960mka",
+      "whiteRating": 719,
+      "blackRating": 667,
+      "rating": 667,
+      "timeControl": "600",
+      "fen": "N1kn1b1r/pp3ppp/3p2b1/3Pp3/1Q4P1/3P3P/PPP2q2/2KR1R2 b - - 1 18",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "d7d6",
+        "b1c3",
+        "c8g4",
+        "h2h3",
+        "g4h5",
+        "g2g4",
+        "h5g6",
+        "f3g5",
+        "d8g5",
+        "d2d3",
+        "g5f6",
+        "c3d5",
+        "f6d8",
+        "c1g5",
+        "d8g5",
+        "d5c7",
+        "e8d8",
+        "c7a8",
+        "d8c8",
+        "d1d2",
+        "g5h4",
+        "e1c1",
+        "g8f6",
+        "c4d5",
+        "c6d8",
+        "d2b4",
+        "f6d5",
+        "e4d5",
+        "h4f2",
+        "h1f1"
+      ],
+      "humanMove": "f2e3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 511,
+        "depth": 10,
+        "bestmove": "f2c5"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 444,
+        "depth": 10,
+        "bestmove": "f2c5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 405,
+        "depth": 10,
+        "bestmove": "f2e3"
+      },
+      "humanLoss": 39,
+      "botLoss": 39,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f2e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 405,
+            "depth": 10,
+            "bestmove": "f2e3"
+          },
+          "loss": 39,
+          "nodes": 489,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f2e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 405,
+            "depth": 10,
+            "bestmove": "f2e3"
+          },
+          "loss": 39,
+          "nodes": 481,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f2e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 405,
+            "depth": 10,
+            "bestmove": "f2e3"
+          },
+          "loss": 39,
+          "nodes": 577,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f2e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 405,
+            "depth": 10,
+            "bestmove": "f2e3"
+          },
+          "loss": 39,
+          "nodes": 422,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-23",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/148548893476",
+      "club": "the-beginners-chess-club",
+      "contributor": "1960mka",
+      "whiteRating": 719,
+      "blackRating": 667,
+      "rating": 667,
+      "timeControl": "600",
+      "fen": "Nk1n1b1r/pp5p/3R2b1/3Pp3/6Q1/3P4/PPP5/1K1R4 b - - 0 24",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "d7d6",
+        "b1c3",
+        "c8g4",
+        "h2h3",
+        "g4h5",
+        "g2g4",
+        "h5g6",
+        "f3g5",
+        "d8g5",
+        "d2d3",
+        "g5f6",
+        "c3d5",
+        "f6d8",
+        "c1g5",
+        "d8g5",
+        "d5c7",
+        "e8d8",
+        "c7a8",
+        "d8c8",
+        "d1d2",
+        "g5h4",
+        "e1c1",
+        "g8f6",
+        "c4d5",
+        "c6d8",
+        "d2b4",
+        "f6d5",
+        "e4d5",
+        "h4f2",
+        "h1f1",
+        "f2e3",
+        "c1b1",
+        "e3h3",
+        "g4g5",
+        "f7f6",
+        "g5f6",
+        "g7f6",
+        "f1f6",
+        "h3g4",
+        "b4g4",
+        "c8b8",
+        "f6d6"
+      ],
+      "humanMove": "f8d6",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -428,
+        "depth": 10,
+        "bestmove": "f8d6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -420,
+        "depth": 10,
+        "bestmove": "f8d6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -420,
+        "depth": 10,
+        "bestmove": "f8d6"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f8d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -420,
+            "depth": 10,
+            "bestmove": "f8d6"
+          },
+          "loss": 0,
+          "nodes": 166,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f8d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -420,
+            "depth": 10,
+            "bestmove": "f8d6"
+          },
+          "loss": 0,
+          "nodes": 166,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f8d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -420,
+            "depth": 10,
+            "bestmove": "f8d6"
+          },
+          "loss": 0,
+          "nodes": 166,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f8d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -420,
+            "depth": 10,
+            "bestmove": "f8d6"
+          },
+          "loss": 0,
+          "nodes": 167,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-24",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/148549216454",
+      "club": "the-beginners-chess-club",
+      "contributor": "1960mka",
+      "whiteRating": 687,
+      "blackRating": 746,
+      "rating": 746,
+      "timeControl": "600",
+      "fen": "r3kb1r/ppp1qppp/3p4/4N3/6b1/2P1B3/PPP1BPPP/R2Q1RK1 b kq - 0 10",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "g8f6",
+        "f3e5",
+        "f6e4",
+        "b1c3",
+        "e4c3",
+        "d2c3",
+        "d7d6",
+        "e5f3",
+        "d8e7",
+        "c1e3",
+        "c8g4",
+        "f1e2",
+        "b8c6",
+        "e1g1",
+        "c6e5",
+        "f3e5"
+      ],
+      "humanMove": "d6e5",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -103,
+        "depth": 10,
+        "bestmove": "g4e2"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -141,
+        "depth": 10,
+        "bestmove": "g4e2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -671,
+        "depth": 10,
+        "bestmove": "d6e5"
+      },
+      "humanLoss": 530,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g4e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -141,
+            "depth": 10,
+            "bestmove": "g4e2"
+          },
+          "loss": 0,
+          "nodes": 281,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g4e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -141,
+            "depth": 10,
+            "bestmove": "g4e2"
+          },
+          "loss": 0,
+          "nodes": 281,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g4e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -141,
+            "depth": 10,
+            "bestmove": "g4e2"
+          },
+          "loss": 0,
+          "nodes": 281,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "g4e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -141,
+            "depth": 10,
+            "bestmove": "g4e2"
+          },
+          "loss": 0,
+          "nodes": 281,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/148549216454",
+      "club": "the-beginners-chess-club",
+      "contributor": "1960mka",
+      "whiteRating": 687,
+      "blackRating": 746,
+      "rating": 687,
+      "timeControl": "600",
+      "fen": "r4r2/pR3B1p/5ppk/4p3/8/8/PPP2PPP/R5K1 w - - 3 23",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "g8f6",
+        "f3e5",
+        "f6e4",
+        "b1c3",
+        "e4c3",
+        "d2c3",
+        "d7d6",
+        "e5f3",
+        "d8e7",
+        "c1e3",
+        "c8g4",
+        "f1e2",
+        "b8c6",
+        "e1g1",
+        "c6e5",
+        "f3e5",
+        "d6e5",
+        "e2g4",
+        "e7d6",
+        "d1d6",
+        "c7d6",
+        "f1d1",
+        "g7g6",
+        "d1d5",
+        "f7f6",
+        "c3c4",
+        "f8e7",
+        "c4c5",
+        "d6c5",
+        "e3c5",
+        "e7c5",
+        "d5c5",
+        "e8g8",
+        "g4e6",
+        "g8g7",
+        "c5c7",
+        "g7h6",
+        "c7b7",
+        "f8e8",
+        "e6f7",
+        "e8f8"
+      ],
+      "humanMove": "a1e1",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 571,
+        "depth": 10,
+        "bestmove": "g1f1"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 552,
+        "depth": 10,
+        "bestmove": "g1f1"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 538,
+        "depth": 10,
+        "bestmove": "a1e1"
+      },
+      "humanLoss": 14,
+      "botLoss": 15.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f7d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 531,
+            "depth": 10,
+            "bestmove": "f7d5"
+          },
+          "loss": 21,
+          "nodes": 361,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f7d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 531,
+            "depth": 10,
+            "bestmove": "f7d5"
+          },
+          "loss": 21,
+          "nodes": 363,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f7e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 540,
+            "depth": 10,
+            "bestmove": "f7e6"
+          },
+          "loss": 12,
+          "nodes": 358,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f7c4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 545,
+            "depth": 10,
+            "bestmove": "f7c4"
+          },
+          "loss": 7,
+          "nodes": 355,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-26",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/148549216454",
+      "club": "the-beginners-chess-club",
+      "contributor": "1960mka",
+      "whiteRating": 687,
+      "blackRating": 746,
+      "rating": 687,
+      "timeControl": "600",
+      "fen": "8/8/7k/4p1p1/4B3/r4PP1/P1R2K2/8 w - - 0 39",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "g8f6",
+        "f3e5",
+        "f6e4",
+        "b1c3",
+        "e4c3",
+        "d2c3",
+        "d7d6",
+        "e5f3",
+        "d8e7",
+        "c1e3",
+        "c8g4",
+        "f1e2",
+        "b8c6",
+        "e1g1",
+        "c6e5",
+        "f3e5",
+        "d6e5",
+        "e2g4",
+        "e7d6",
+        "d1d6",
+        "c7d6",
+        "f1d1",
+        "g7g6",
+        "d1d5",
+        "f7f6",
+        "c3c4",
+        "f8e7",
+        "c4c5",
+        "d6c5",
+        "e3c5",
+        "e7c5",
+        "d5c5",
+        "e8g8",
+        "g4e6",
+        "g8g7",
+        "c5c7",
+        "g7h6",
+        "c7b7",
+        "f8e8",
+        "e6f7",
+        "e8f8",
+        "a1e1",
+        "a7a6",
+        "f7d5",
+        "f8d8",
+        "d5c6",
+        "d8d2",
+        "b7h7",
+        "h6h7",
+        "c6a8",
+        "d2c2",
+        "e1b1",
+        "a6a5",
+        "a8e4",
+        "c2e2",
+        "f2f3",
+        "f6f5",
+        "g1f1",
+        "e2e3",
+        "f1f2",
+        "f5f4",
+        "g2g3",
+        "a5a4",
+        "b1c1",
+        "a4a3",
+        "b2a3",
+        "e3a3",
+        "c1c7",
+        "h7h6",
+        "c7c2",
+        "f4g3",
+        "h2g3",
+        "g6g5"
+      ],
+      "humanMove": "f2g2",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 621,
+        "depth": 10,
+        "bestmove": "g3g4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 626,
+        "depth": 10,
+        "bestmove": "g3g4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 520,
+        "depth": 10,
+        "bestmove": "f2g2"
+      },
+      "humanLoss": 106,
+      "botLoss": 67.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c2d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 553,
+            "depth": 10,
+            "bestmove": "c2d2"
+          },
+          "loss": 73,
+          "nodes": 331,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g3g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 626,
+            "depth": 10,
+            "bestmove": "g3g4"
+          },
+          "loss": 0,
+          "nodes": 294,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "c2c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 543,
+            "depth": 10,
+            "bestmove": "c2c6"
+          },
+          "loss": 83,
+          "nodes": 300,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "c2e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 512,
+            "depth": 10,
+            "bestmove": "c2e2"
+          },
+          "loss": 114,
+          "nodes": 313,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-27",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/148549216454",
+      "club": "the-beginners-chess-club",
+      "contributor": "1960mka",
+      "whiteRating": 687,
+      "blackRating": 746,
+      "rating": 687,
+      "timeControl": "600",
+      "fen": "6R1/7B/5kP1/2r5/P7/6PK/8/8 w - - 5 52",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "g8f6",
+        "f3e5",
+        "f6e4",
+        "b1c3",
+        "e4c3",
+        "d2c3",
+        "d7d6",
+        "e5f3",
+        "d8e7",
+        "c1e3",
+        "c8g4",
+        "f1e2",
+        "b8c6",
+        "e1g1",
+        "c6e5",
+        "f3e5",
+        "d6e5",
+        "e2g4",
+        "e7d6",
+        "d1d6",
+        "c7d6",
+        "f1d1",
+        "g7g6",
+        "d1d5",
+        "f7f6",
+        "c3c4",
+        "f8e7",
+        "c4c5",
+        "d6c5",
+        "e3c5",
+        "e7c5",
+        "d5c5",
+        "e8g8",
+        "g4e6",
+        "g8g7",
+        "c5c7",
+        "g7h6",
+        "c7b7",
+        "f8e8",
+        "e6f7",
+        "e8f8",
+        "a1e1",
+        "a7a6",
+        "f7d5",
+        "f8d8",
+        "d5c6",
+        "d8d2",
+        "b7h7",
+        "h6h7",
+        "c6a8",
+        "d2c2",
+        "e1b1",
+        "a6a5",
+        "a8e4",
+        "c2e2",
+        "f2f3",
+        "f6f5",
+        "g1f1",
+        "e2e3",
+        "f1f2",
+        "f5f4",
+        "g2g3",
+        "a5a4",
+        "b1c1",
+        "a4a3",
+        "b2a3",
+        "e3a3",
+        "c1c7",
+        "h7h6",
+        "c7c2",
+        "f4g3",
+        "h2g3",
+        "g6g5",
+        "f2g2",
+        "h6h5",
+        "g2h3",
+        "a3e3",
+        "c2c5",
+        "g5g4",
+        "f3g4",
+        "h5g5",
+        "c5e5",
+        "g5f6",
+        "e5e8",
+        "f6g5",
+        "a2a4",
+        "e3c3",
+        "e8g8",
+        "g5f6",
+        "g4g5",
+        "f6e5",
+        "e4h7",
+        "c3c5",
+        "g5g6",
+        "e5f6",
+        "g8f8",
+        "f6g7",
+        "f8g8",
+        "g7f6"
+      ],
+      "humanMove": "g6g7",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 505,
+        "depth": 10,
+        "bestmove": "g8b8"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 555,
+        "depth": 10,
+        "bestmove": "g8b8"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 501,
+        "depth": 10,
+        "bestmove": "g6g7"
+      },
+      "humanLoss": 54,
+      "botLoss": 65,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g3g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 486,
+            "depth": 10,
+            "bestmove": "g3g4"
+          },
+          "loss": 69,
+          "nodes": 112,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g3g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 486,
+            "depth": 10,
+            "bestmove": "g3g4"
+          },
+          "loss": 69,
+          "nodes": 235,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g3g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 486,
+            "depth": 10,
+            "bestmove": "g3g4"
+          },
+          "loss": 69,
+          "nodes": 234,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "h3g2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 502,
+            "depth": 10,
+            "bestmove": "h3g2"
+          },
+          "loss": 53,
+          "nodes": 236,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-44",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171500521420",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 653,
+      "blackRating": 614,
+      "rating": 653,
+      "timeControl": "600",
+      "fen": "r1b1kbnr/ppp1pppp/2nq4/3p4/3P4/2P2N2/PP2PPPP/RNBQKB1R w KQkq - 3 4",
+      "history": [
+        "d2d4",
+        "d7d5",
+        "c2c3",
+        "b8c6",
+        "g1f3",
+        "d8d6"
+      ],
+      "humanMove": "g2g3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 52,
+        "depth": 10,
+        "bestmove": "c3c4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 57,
+        "depth": 10,
+        "bestmove": "c3c4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 57,
+        "depth": 10,
+        "bestmove": "g2g3"
+      },
+      "humanLoss": 0,
+      "botLoss": 35.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b1d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 10,
+            "depth": 10,
+            "bestmove": "b1d2"
+          },
+          "loss": 47,
+          "nodes": 464,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "b1d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 10,
+            "depth": 10,
+            "bestmove": "b1d2"
+          },
+          "loss": 47,
+          "nodes": 459,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g2g3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 57,
+            "depth": 10,
+            "bestmove": "g2g3"
+          },
+          "loss": 0,
+          "nodes": 458,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "b1d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 10,
+            "depth": 10,
+            "bestmove": "b1d2"
+          },
+          "loss": 47,
+          "nodes": 438,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-45",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171500521420",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 653,
+      "blackRating": 614,
+      "rating": 653,
+      "timeControl": "600",
+      "fen": "rnb1kbnr/ppp2ppp/4q3/3p4/3PpP2/2P1B1P1/PP1NP2P/RN1QKB1R w KQkq - 1 8",
+      "history": [
+        "d2d4",
+        "d7d5",
+        "c2c3",
+        "b8c6",
+        "g1f3",
+        "d8d6",
+        "g2g3",
+        "e7e5",
+        "c1e3",
+        "e5e4",
+        "f3d2",
+        "c6b8",
+        "f2f4",
+        "d6e6"
+      ],
+      "humanMove": "f1g2",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -61,
+        "depth": 10,
+        "bestmove": "c3c4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -40,
+        "depth": 10,
+        "bestmove": "c3c4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -53,
+        "depth": 10,
+        "bestmove": "f1g2"
+      },
+      "humanLoss": 13,
+      "botLoss": 81.75,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d1c2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -102,
+            "depth": 10,
+            "bestmove": "d1c2"
+          },
+          "loss": 62,
+          "nodes": 650,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "b1a3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -109,
+            "depth": 10,
+            "bestmove": "b1a3"
+          },
+          "loss": 69,
+          "nodes": 422,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "b2b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -171,
+            "depth": 10,
+            "bestmove": "b2b4"
+          },
+          "loss": 131,
+          "nodes": 471,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "h2h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -105,
+            "depth": 10,
+            "bestmove": "h2h4"
+          },
+          "loss": 65,
+          "nodes": 368,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-46",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171500521420",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 653,
+      "blackRating": 614,
+      "rating": 614,
+      "timeControl": "600",
+      "fen": "rnb1kb1r/ppp2ppp/6q1/3p4/3PpP2/2P1P1PP/PP1N1RB1/RN1Q2K1 b kq - 0 13",
+      "history": [
+        "d2d4",
+        "d7d5",
+        "c2c3",
+        "b8c6",
+        "g1f3",
+        "d8d6",
+        "g2g3",
+        "e7e5",
+        "c1e3",
+        "e5e4",
+        "f3d2",
+        "c6b8",
+        "f2f4",
+        "d6e6",
+        "f1g2",
+        "g8h6",
+        "e1g1",
+        "h6g4",
+        "e3f2",
+        "e6h6",
+        "h2h3",
+        "g4f2",
+        "f1f2",
+        "h6g6",
+        "e2e3"
+      ],
+      "humanMove": "g6g3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 68,
+        "depth": 10,
+        "bestmove": "g6g3"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 77,
+        "depth": 10,
+        "bestmove": "g6g3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 77,
+        "depth": 10,
+        "bestmove": "g6g3"
+      },
+      "humanLoss": 0,
+      "botLoss": 54.75,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b8d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -17,
+            "depth": 10,
+            "bestmove": "b8d7"
+          },
+          "loss": 94,
+          "nodes": 882,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g6g3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 77,
+            "depth": 10,
+            "bestmove": "g6g3"
+          },
+          "loss": 0,
+          "nodes": 901,
+          "depth": 1
+        },
+        {
+          "seed": 1118197,
+          "move": "g6g3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 77,
+            "depth": 10,
+            "bestmove": "g6g3"
+          },
+          "loss": 0,
+          "nodes": 901,
+          "depth": 1
+        },
+        {
+          "seed": 1183734,
+          "move": "b8c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -48,
+            "depth": 10,
+            "bestmove": "b8c6"
+          },
+          "loss": 125,
+          "nodes": 887,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-47",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171500521420",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 653,
+      "blackRating": 614,
+      "rating": 614,
+      "timeControl": "600",
+      "fen": "rnb1kb1r/ppp2ppp/8/8/2pPNP2/4P1q1/PP2Q1B1/RN3RK1 b kq - 0 17",
+      "history": [
+        "d2d4",
+        "d7d5",
+        "c2c3",
+        "b8c6",
+        "g1f3",
+        "d8d6",
+        "g2g3",
+        "e7e5",
+        "c1e3",
+        "e5e4",
+        "f3d2",
+        "c6b8",
+        "f2f4",
+        "d6e6",
+        "f1g2",
+        "g8h6",
+        "e1g1",
+        "h6g4",
+        "e3f2",
+        "e6h6",
+        "h2h3",
+        "g4f2",
+        "f1f2",
+        "h6g6",
+        "e2e3",
+        "g6g3",
+        "f2f1",
+        "c8h3",
+        "d1e2",
+        "h3c8",
+        "c3c4",
+        "d5c4",
+        "d2e4"
+      ],
+      "humanMove": "g3h4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 26,
+        "depth": 10,
+        "bestmove": "g3g6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 53,
+        "depth": 10,
+        "bestmove": "g3g6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -71,
+        "depth": 10,
+        "bestmove": "g3h4"
+      },
+      "humanLoss": 124,
+      "botLoss": 31,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g3g6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 53,
+            "depth": 10,
+            "bestmove": "g3g6"
+          },
+          "loss": 0,
+          "nodes": 338,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g3h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -71,
+            "depth": 10,
+            "bestmove": "g3h4"
+          },
+          "loss": 124,
+          "nodes": 295,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g3g6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 53,
+            "depth": 10,
+            "bestmove": "g3g6"
+          },
+          "loss": 0,
+          "nodes": 335,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "g3g6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 53,
+            "depth": 10,
+            "bestmove": "g3g6"
+          },
+          "loss": 0,
+          "nodes": 366,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-48",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171500618992",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 636,
+      "blackRating": 682,
+      "rating": 636,
+      "timeControl": "600",
+      "fen": "rnbqkbnr/pp3ppp/4p3/2pp4/3P4/1P6/P1PNPPPP/R1BQKBNR w KQkq - 0 4",
+      "history": [
+        "d2d4",
+        "e7e6",
+        "b1d2",
+        "d7d5",
+        "b2b3",
+        "c7c5"
+      ],
+      "humanMove": "c1b2",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -13,
+        "depth": 10,
+        "bestmove": "e2e3"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -7,
+        "depth": 10,
+        "bestmove": "e2e3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -40,
+        "depth": 10,
+        "bestmove": "c1b2"
+      },
+      "humanLoss": 33,
+      "botLoss": 45,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g1f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -52,
+            "depth": 10,
+            "bestmove": "g1f3"
+          },
+          "loss": 45,
+          "nodes": 176,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g1f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -52,
+            "depth": 10,
+            "bestmove": "g1f3"
+          },
+          "loss": 45,
+          "nodes": 140,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g1f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -52,
+            "depth": 10,
+            "bestmove": "g1f3"
+          },
+          "loss": 45,
+          "nodes": 143,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "g1f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -52,
+            "depth": 10,
+            "bestmove": "g1f3"
+          },
+          "loss": 45,
+          "nodes": 164,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171500618992",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 636,
+      "blackRating": 682,
+      "rating": 682,
+      "timeControl": "600",
+      "fen": "r1bqkbnr/pp3ppp/2n1p3/3p4/8/1P6/PBPN1PPP/R2QKBNR b KQkq - 2 8",
+      "history": [
+        "d2d4",
+        "e7e6",
+        "b1d2",
+        "d7d5",
+        "b2b3",
+        "c7c5",
+        "c1b2",
+        "b8c6",
+        "e2e4",
+        "c5d4",
+        "e4e5",
+        "c6e5",
+        "b2d4",
+        "e5c6",
+        "d4b2"
+      ],
+      "humanMove": "g8f6",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 172,
+        "depth": 10,
+        "bestmove": "d8b6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 173,
+        "depth": 10,
+        "bestmove": "d8b6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 209,
+        "depth": 10,
+        "bestmove": "g8f6"
+      },
+      "humanLoss": 0,
+      "botLoss": 40,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g8e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 154,
+            "depth": 10,
+            "bestmove": "g8e7"
+          },
+          "loss": 19,
+          "nodes": 336,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g8e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 154,
+            "depth": 10,
+            "bestmove": "g8e7"
+          },
+          "loss": 19,
+          "nodes": 357,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "e8d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 51,
+            "depth": 10,
+            "bestmove": "e8d7"
+          },
+          "loss": 122,
+          "nodes": 553,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "g8f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 209,
+            "depth": 10,
+            "bestmove": "g8f6"
+          },
+          "loss": 0,
+          "nodes": 416,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-50",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171500618992",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 636,
+      "blackRating": 682,
+      "rating": 636,
+      "timeControl": "600",
+      "fen": "2rq1rk1/pp2bppp/2b1pn2/3pN3/8/1P6/PBPN1PPP/R2Q1RK1 w - - 6 14",
+      "history": [
+        "d2d4",
+        "e7e6",
+        "b1d2",
+        "d7d5",
+        "b2b3",
+        "c7c5",
+        "c1b2",
+        "b8c6",
+        "e2e4",
+        "c5d4",
+        "e4e5",
+        "c6e5",
+        "b2d4",
+        "e5c6",
+        "d4b2",
+        "g8f6",
+        "f1b5",
+        "c8d7",
+        "b5c6",
+        "d7c6",
+        "g1f3",
+        "f8e7",
+        "f3e5",
+        "a8c8",
+        "e1g1",
+        "e8g8"
+      ],
+      "humanMove": "f1e1",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -204,
+        "depth": 10,
+        "bestmove": "d1e2"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -199,
+        "depth": 10,
+        "bestmove": "d1e2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -232,
+        "depth": 10,
+        "bestmove": "f1e1"
+      },
+      "humanLoss": 33,
+      "botLoss": 161,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b2d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -260,
+            "depth": 10,
+            "bestmove": "b2d4"
+          },
+          "loss": 61,
+          "nodes": 359,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "b2d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -260,
+            "depth": 10,
+            "bestmove": "b2d4"
+          },
+          "loss": 61,
+          "nodes": 359,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "b2c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -629,
+            "depth": 10,
+            "bestmove": "b2c3"
+          },
+          "loss": 430,
+          "nodes": 398,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "b2c1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -291,
+            "depth": 10,
+            "bestmove": "b2c1"
+          },
+          "loss": 92,
+          "nodes": 398,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-51",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171500618992",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 636,
+      "blackRating": 682,
+      "rating": 682,
+      "timeControl": "600",
+      "fen": "3q1rk1/2r1bppp/4pn2/pp1pN3/8/1P5P/PBP2PP1/R2QR1K1 b - - 0 18",
+      "history": [
+        "d2d4",
+        "e7e6",
+        "b1d2",
+        "d7d5",
+        "b2b3",
+        "c7c5",
+        "c1b2",
+        "b8c6",
+        "e2e4",
+        "c5d4",
+        "e4e5",
+        "c6e5",
+        "b2d4",
+        "e5c6",
+        "d4b2",
+        "g8f6",
+        "f1b5",
+        "c8d7",
+        "b5c6",
+        "d7c6",
+        "g1f3",
+        "f8e7",
+        "f3e5",
+        "a8c8",
+        "e1g1",
+        "e8g8",
+        "f1e1",
+        "a7a5",
+        "d2f3",
+        "b7b5",
+        "e5c6",
+        "c8c6",
+        "f3e5",
+        "c6c7",
+        "h2h3"
+      ],
+      "humanMove": "a5a4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 230,
+        "depth": 10,
+        "bestmove": "f6e4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 218,
+        "depth": 10,
+        "bestmove": "f6e4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 194,
+        "depth": 10,
+        "bestmove": "a5a4"
+      },
+      "humanLoss": 24,
+      "botLoss": 74,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f6e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 144,
+            "depth": 10,
+            "bestmove": "f6e8"
+          },
+          "loss": 74,
+          "nodes": 464,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f6e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 144,
+            "depth": 10,
+            "bestmove": "f6e8"
+          },
+          "loss": 74,
+          "nodes": 430,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f6e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 144,
+            "depth": 10,
+            "bestmove": "f6e8"
+          },
+          "loss": 74,
+          "nodes": 455,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f6e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 144,
+            "depth": 10,
+            "bestmove": "f6e8"
+          },
+          "loss": 74,
+          "nodes": 512,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-52",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171500759836",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 708,
+      "blackRating": 662,
+      "rating": 662,
+      "timeControl": "600",
+      "fen": "rnbqkbnr/ppp1pppp/8/8/2pPP3/8/PP3PPP/RNBQKBNR b KQkq - 0 3",
+      "history": [
+        "c2c4",
+        "d7d5",
+        "d2d4",
+        "d5c4",
+        "e2e4"
+      ],
+      "humanMove": "c7c6",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -26,
+        "depth": 10,
+        "bestmove": "e7e5"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -37,
+        "depth": 10,
+        "bestmove": "e7e5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -114,
+        "depth": 10,
+        "bestmove": "c7c6"
+      },
+      "humanLoss": 77,
+      "botLoss": 1,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b7b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -38,
+            "depth": 10,
+            "bestmove": "b7b5"
+          },
+          "loss": 1,
+          "nodes": 425,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "b7b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -38,
+            "depth": 10,
+            "bestmove": "b7b5"
+          },
+          "loss": 1,
+          "nodes": 423,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "b7b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -38,
+            "depth": 10,
+            "bestmove": "b7b5"
+          },
+          "loss": 1,
+          "nodes": 412,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "b7b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -38,
+            "depth": 10,
+            "bestmove": "b7b5"
+          },
+          "loss": 1,
+          "nodes": 421,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-53",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171500759836",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 708,
+      "blackRating": 662,
+      "rating": 708,
+      "timeControl": "600",
+      "fen": "rnb1kbnr/p2q1ppp/2p1p3/1p6/2BPP3/2N2N2/PP3PPP/R1BQK2R w KQkq - 0 7",
+      "history": [
+        "c2c4",
+        "d7d5",
+        "d2d4",
+        "d5c4",
+        "e2e4",
+        "c7c6",
+        "b1c3",
+        "e7e6",
+        "f1c4",
+        "d8d7",
+        "g1f3",
+        "b7b5"
+      ],
+      "humanMove": "c4b3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 257,
+        "depth": 10,
+        "bestmove": "c4d3"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 270,
+        "depth": 10,
+        "bestmove": "c4d3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 225,
+        "depth": 10,
+        "bestmove": "c4b3"
+      },
+      "humanLoss": 45,
+      "botLoss": 83,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f3e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 187,
+            "depth": 10,
+            "bestmove": "f3e5"
+          },
+          "loss": 83,
+          "nodes": 399,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f3e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 187,
+            "depth": 10,
+            "bestmove": "f3e5"
+          },
+          "loss": 83,
+          "nodes": 399,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f3e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 187,
+            "depth": 10,
+            "bestmove": "f3e5"
+          },
+          "loss": 83,
+          "nodes": 413,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f3e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 187,
+            "depth": 10,
+            "bestmove": "f3e5"
+          },
+          "loss": 83,
+          "nodes": 399,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-54",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171500759836",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 708,
+      "blackRating": 662,
+      "rating": 708,
+      "timeControl": "600",
+      "fen": "rn2k2r/p3bppp/b1pqpn2/4N3/1p1PPB2/1B4N1/PP3PPP/R2QK2R w KQkq - 8 12",
+      "history": [
+        "c2c4",
+        "d7d5",
+        "d2d4",
+        "d5c4",
+        "e2e4",
+        "c7c6",
+        "b1c3",
+        "e7e6",
+        "f1c4",
+        "d8d7",
+        "g1f3",
+        "b7b5",
+        "c4b3",
+        "b5b4",
+        "c3e2",
+        "g8f6",
+        "e2g3",
+        "c8a6",
+        "f3e5",
+        "d7d6",
+        "c1f4",
+        "f8e7"
+      ],
+      "humanMove": "e5g6",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 580,
+        "depth": 10,
+        "bestmove": "e5g6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 541,
+        "depth": 10,
+        "bestmove": "e5g6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 541,
+        "depth": 10,
+        "bestmove": "e5g6"
+      },
+      "humanLoss": 0,
+      "botLoss": 269.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e5g6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 541,
+            "depth": 10,
+            "bestmove": "e5g6"
+          },
+          "loss": 0,
+          "nodes": 895,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "e5f7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 182,
+            "depth": 10,
+            "bestmove": "e5f7"
+          },
+          "loss": 359,
+          "nodes": 901,
+          "depth": 1
+        },
+        {
+          "seed": 1118197,
+          "move": "e5f7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 182,
+            "depth": 10,
+            "bestmove": "e5f7"
+          },
+          "loss": 359,
+          "nodes": 901,
+          "depth": 1
+        },
+        {
+          "seed": 1183734,
+          "move": "e5f7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 182,
+            "depth": 10,
+            "bestmove": "e5f7"
+          },
+          "loss": 359,
+          "nodes": 901,
+          "depth": 1
+        }
+      ]
+    },
+    {
+      "id": "700-55",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171500759836",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 708,
+      "blackRating": 662,
+      "rating": 662,
+      "timeControl": "600",
+      "fen": "rn1q4/p3bkpp/b1p1pn2/4P3/1p1P1B2/1B4N1/PP3PPP/R2QK2R b KQ - 0 15",
+      "history": [
+        "c2c4",
+        "d7d5",
+        "d2d4",
+        "d5c4",
+        "e2e4",
+        "c7c6",
+        "b1c3",
+        "e7e6",
+        "f1c4",
+        "d8d7",
+        "g1f3",
+        "b7b5",
+        "c4b3",
+        "b5b4",
+        "c3e2",
+        "g8f6",
+        "e2g3",
+        "c8a6",
+        "f3e5",
+        "d7d6",
+        "c1f4",
+        "f8e7",
+        "e5g6",
+        "d6d8",
+        "g6h8",
+        "e8f8",
+        "h8f7",
+        "f8f7",
+        "e4e5"
+      ],
+      "humanMove": "f6g4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -511,
+        "depth": 10,
+        "bestmove": "f6d5"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -552,
+        "depth": 10,
+        "bestmove": "f6d5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -1151,
+        "depth": 10,
+        "bestmove": "f6g4"
+      },
+      "humanLoss": 599,
+      "botLoss": 340.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f6d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -913,
+            "depth": 10,
+            "bestmove": "f6d7"
+          },
+          "loss": 361,
+          "nodes": 677,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f6d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -913,
+            "depth": 10,
+            "bestmove": "f6d7"
+          },
+          "loss": 361,
+          "nodes": 708,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f6d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -913,
+            "depth": 10,
+            "bestmove": "f6d7"
+          },
+          "loss": 361,
+          "nodes": 675,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f6e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -830,
+            "depth": 10,
+            "bestmove": "f6e8"
+          },
+          "loss": 278,
+          "nodes": 676,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-56",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171501091474",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 682,
+      "blackRating": 700,
+      "rating": 700,
+      "timeControl": "600",
+      "fen": "rnbqkb1r/pp2nppp/4p3/2ppP3/3P4/2P2N2/PP3PPP/RNBQKB1R b KQkq - 2 5",
+      "history": [
+        "c2c3",
+        "e7e6",
+        "e2e4",
+        "d7d5",
+        "e4e5",
+        "c7c5",
+        "d2d4",
+        "g8e7",
+        "g1f3"
+      ],
+      "humanMove": "e7f5",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -42,
+        "depth": 10,
+        "bestmove": "b8c6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -41,
+        "depth": 10,
+        "bestmove": "b8c6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -54,
+        "depth": 10,
+        "bestmove": "e7f5"
+      },
+      "humanLoss": 13,
+      "botLoss": 1,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -42,
+            "depth": 10,
+            "bestmove": "c5d4"
+          },
+          "loss": 1,
+          "nodes": 266,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "c5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -42,
+            "depth": 10,
+            "bestmove": "c5d4"
+          },
+          "loss": 1,
+          "nodes": 267,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "c5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -42,
+            "depth": 10,
+            "bestmove": "c5d4"
+          },
+          "loss": 1,
+          "nodes": 268,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "c5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -42,
+            "depth": 10,
+            "bestmove": "c5d4"
+          },
+          "loss": 1,
+          "nodes": 303,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-57",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171501091474",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 682,
+      "blackRating": 700,
+      "rating": 700,
+      "timeControl": "600",
+      "fen": "r3kb1r/pp3ppp/2b1p3/2ppP3/3P3q/2P1B3/PP1N1PPP/R2QK2R b KQkq - 1 11",
+      "history": [
+        "c2c3",
+        "e7e6",
+        "e2e4",
+        "d7d5",
+        "e4e5",
+        "c7c5",
+        "d2d4",
+        "g8e7",
+        "g1f3",
+        "e7f5",
+        "f1d3",
+        "f5h4",
+        "f3h4",
+        "d8h4",
+        "c1e3",
+        "b8c6",
+        "d3b5",
+        "c8d7",
+        "b5c6",
+        "d7c6",
+        "b1d2"
+      ],
+      "humanMove": "c5d4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -12,
+        "depth": 10,
+        "bestmove": "b7b6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -15,
+        "depth": 10,
+        "bestmove": "b7b6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -28,
+        "depth": 10,
+        "bestmove": "c5d4"
+      },
+      "humanLoss": 13,
+      "botLoss": 15.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -28,
+            "depth": 10,
+            "bestmove": "c5d4"
+          },
+          "loss": 13,
+          "nodes": 361,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "c5c4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -33,
+            "depth": 10,
+            "bestmove": "c5c4"
+          },
+          "loss": 18,
+          "nodes": 383,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "c5c4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -33,
+            "depth": 10,
+            "bestmove": "c5c4"
+          },
+          "loss": 18,
+          "nodes": 380,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "c5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -28,
+            "depth": 10,
+            "bestmove": "c5d4"
+          },
+          "loss": 13,
+          "nodes": 355,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-58",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171501091474",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 682,
+      "blackRating": 700,
+      "rating": 682,
+      "timeControl": "600",
+      "fen": "2r2rk1/1p2qppp/pbb1p3/3pP3/1P1P4/PQ2BN2/5PPP/1R3RK1 w - - 2 19",
+      "history": [
+        "c2c3",
+        "e7e6",
+        "e2e4",
+        "d7d5",
+        "e4e5",
+        "c7c5",
+        "d2d4",
+        "g8e7",
+        "g1f3",
+        "e7f5",
+        "f1d3",
+        "f5h4",
+        "f3h4",
+        "d8h4",
+        "c1e3",
+        "b8c6",
+        "d3b5",
+        "c8d7",
+        "b5c6",
+        "d7c6",
+        "b1d2",
+        "c5d4",
+        "c3d4",
+        "f8b4",
+        "e1g1",
+        "e8g8",
+        "a2a3",
+        "b4a5",
+        "b2b4",
+        "a5b6",
+        "d2f3",
+        "h4e7",
+        "a1b1",
+        "a7a6",
+        "d1b3",
+        "a8c8"
+      ],
+      "humanMove": "f1c1",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 22,
+        "depth": 10,
+        "bestmove": "a3a4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 8,
+        "depth": 10,
+        "bestmove": "a3a4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -35,
+        "depth": 10,
+        "bestmove": "f1c1"
+      },
+      "humanLoss": 43,
+      "botLoss": 109.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g2g3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -114,
+            "depth": 10,
+            "bestmove": "g2g3"
+          },
+          "loss": 122,
+          "nodes": 596,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -114,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 122,
+          "nodes": 499,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "e3g5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -85,
+            "depth": 10,
+            "bestmove": "e3g5"
+          },
+          "loss": 93,
+          "nodes": 597,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "e3d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -93,
+            "depth": 10,
+            "bestmove": "e3d2"
+          },
+          "loss": 101,
+          "nodes": 636,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-59",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/171501091474",
+      "club": "the-beginners-chess-club",
+      "contributor": "vnmes211",
+      "whiteRating": 682,
+      "blackRating": 700,
+      "rating": 682,
+      "timeControl": "600",
+      "fen": "2r2rk1/1p3pp1/1b2p2p/pP1pP3/P2P1P2/1Q2B1qP/3Nb1P1/1RR3K1 w - - 1 25",
+      "history": [
+        "c2c3",
+        "e7e6",
+        "e2e4",
+        "d7d5",
+        "e4e5",
+        "c7c5",
+        "d2d4",
+        "g8e7",
+        "g1f3",
+        "e7f5",
+        "f1d3",
+        "f5h4",
+        "f3h4",
+        "d8h4",
+        "c1e3",
+        "b8c6",
+        "d3b5",
+        "c8d7",
+        "b5c6",
+        "d7c6",
+        "b1d2",
+        "c5d4",
+        "c3d4",
+        "f8b4",
+        "e1g1",
+        "e8g8",
+        "a2a3",
+        "b4a5",
+        "b2b4",
+        "a5b6",
+        "d2f3",
+        "h4e7",
+        "a1b1",
+        "a7a6",
+        "d1b3",
+        "a8c8",
+        "f1c1",
+        "c6b5",
+        "f3d2",
+        "b5e2",
+        "a3a4",
+        "a6a5",
+        "b4b5",
+        "h7h6",
+        "f2f4",
+        "e7h4",
+        "h2h3",
+        "h4g3"
+      ],
+      "humanMove": "d2f1",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -74,
+        "depth": 10,
+        "bestmove": "c1c3"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -84,
+        "depth": 10,
+        "bestmove": "c1c3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -499,
+        "depth": 10,
+        "bestmove": "d2f1"
+      },
+      "humanLoss": 415,
+      "botLoss": 83.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c1c8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -195,
+            "depth": 10,
+            "bestmove": "c1c8"
+          },
+          "loss": 111,
+          "nodes": 413,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "c1c8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -195,
+            "depth": 10,
+            "bestmove": "c1c8"
+          },
+          "loss": 111,
+          "nodes": 396,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "c1e1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -85,
+            "depth": 10,
+            "bestmove": "c1e1"
+          },
+          "loss": 1,
+          "nodes": 618,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "c1c8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -195,
+            "depth": 10,
+            "bestmove": "c1c8"
+          },
+          "loss": 111,
+          "nodes": 413,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-76",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186563965604",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 616,
+      "blackRating": 666,
+      "rating": 616,
+      "timeControl": "600+5",
+      "fen": "r1bqk1nr/pp1p1p1p/2n1p1p1/2p5/2B1P3/3P1N2/PPP2PPP/RNbQK2R w KQkq - 0 7",
+      "history": [
+        "e2e4",
+        "c7c5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "g7g6",
+        "f3g5",
+        "e7e6",
+        "d2d3",
+        "f8h6",
+        "g5f3",
+        "h6c1"
+      ],
+      "humanMove": "d1c1",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 23,
+        "depth": 10,
+        "bestmove": "d1c1"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 32,
+        "depth": 10,
+        "bestmove": "d1c1"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 32,
+        "depth": 10,
+        "bestmove": "d1c1"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d1c1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 32,
+            "depth": 10,
+            "bestmove": "d1c1"
+          },
+          "loss": 0,
+          "nodes": 242,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "d1c1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 32,
+            "depth": 10,
+            "bestmove": "d1c1"
+          },
+          "loss": 0,
+          "nodes": 239,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "d1c1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 32,
+            "depth": 10,
+            "bestmove": "d1c1"
+          },
+          "loss": 0,
+          "nodes": 239,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "d1c1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 32,
+            "depth": 10,
+            "bestmove": "d1c1"
+          },
+          "loss": 0,
+          "nodes": 239,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-77",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186563965604",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 616,
+      "blackRating": 666,
+      "rating": 666,
+      "timeControl": "600+5",
+      "fen": "r3k1nr/pb1p1p1p/1p2pqp1/2p3N1/2P1P1Q1/2N5/P1P2PPP/5RK1 b kq - 5 15",
+      "history": [
+        "e2e4",
+        "c7c5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "g7g6",
+        "f3g5",
+        "e7e6",
+        "d2d3",
+        "f8h6",
+        "g5f3",
+        "h6c1",
+        "d1c1",
+        "c6a5",
+        "f3g5",
+        "a5c4",
+        "d3c4",
+        "b7b6",
+        "c1f4",
+        "d8f6",
+        "f4e3",
+        "f6b2",
+        "e1g1",
+        "b2a1",
+        "e3f3",
+        "a1f6",
+        "f3g4",
+        "c8b7",
+        "b1c3"
+      ],
+      "humanMove": "f6c3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 627,
+        "depth": 10,
+        "bestmove": "f6c3"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 799,
+        "depth": 10,
+        "bestmove": "f6c3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 799,
+        "depth": 10,
+        "bestmove": "f6c3"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f6c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 799,
+            "depth": 10,
+            "bestmove": "f6c3"
+          },
+          "loss": 0,
+          "nodes": 425,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f6c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 799,
+            "depth": 10,
+            "bestmove": "f6c3"
+          },
+          "loss": 0,
+          "nodes": 425,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f6c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 799,
+            "depth": 10,
+            "bestmove": "f6c3"
+          },
+          "loss": 0,
+          "nodes": 425,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f6c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 799,
+            "depth": 10,
+            "bestmove": "f6c3"
+          },
+          "loss": 0,
+          "nodes": 425,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-78",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186563965604",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 616,
+      "blackRating": 666,
+      "rating": 616,
+      "timeControl": "600+5",
+      "fen": "2r2rk1/3p1p1p/2n1p1p1/2Q5/q7/6P1/5P1P/5RK1 w - - 1 26",
+      "history": [
+        "e2e4",
+        "c7c5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "g7g6",
+        "f3g5",
+        "e7e6",
+        "d2d3",
+        "f8h6",
+        "g5f3",
+        "h6c1",
+        "d1c1",
+        "c6a5",
+        "f3g5",
+        "a5c4",
+        "d3c4",
+        "b7b6",
+        "c1f4",
+        "d8f6",
+        "f4e3",
+        "f6b2",
+        "e1g1",
+        "b2a1",
+        "e3f3",
+        "a1f6",
+        "f3g4",
+        "c8b7",
+        "b1c3",
+        "f6c3",
+        "e4e5",
+        "c3e5",
+        "g5f3",
+        "b7f3",
+        "g4f3",
+        "a8d8",
+        "c2c3",
+        "g8e7",
+        "a2a4",
+        "e8g8",
+        "f3b7",
+        "e5c3",
+        "b7a7",
+        "c3c4",
+        "g2g3",
+        "e7c6",
+        "a7b6",
+        "c4a4",
+        "b6c5",
+        "d8c8"
+      ],
+      "humanMove": "c5e3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -646,
+        "depth": 10,
+        "bestmove": "h2h4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -740,
+        "depth": 10,
+        "bestmove": "h2h4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -573,
+        "depth": 10,
+        "bestmove": "c5e3"
+      },
+      "humanLoss": 0,
+      "botLoss": 104.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h2h3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -827,
+            "depth": 10,
+            "bestmove": "h2h3"
+          },
+          "loss": 87,
+          "nodes": 425,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f1c1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -887,
+            "depth": 10,
+            "bestmove": "f1c1"
+          },
+          "loss": 147,
+          "nodes": 547,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "c5e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -573,
+            "depth": 10,
+            "bestmove": "c5e3"
+          },
+          "loss": 0,
+          "nodes": 513,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "c5c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -924,
+            "depth": 10,
+            "bestmove": "c5c3"
+          },
+          "loss": 184,
+          "nodes": 468,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-79",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186563965604",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 616,
+      "blackRating": 666,
+      "rating": 666,
+      "timeControl": "600+5",
+      "fen": "2r3k1/5p1p/4p1p1/3p4/1n4P1/5KPP/2r5/5R2 b - - 4 34",
+      "history": [
+        "e2e4",
+        "c7c5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "g7g6",
+        "f3g5",
+        "e7e6",
+        "d2d3",
+        "f8h6",
+        "g5f3",
+        "h6c1",
+        "d1c1",
+        "c6a5",
+        "f3g5",
+        "a5c4",
+        "d3c4",
+        "b7b6",
+        "c1f4",
+        "d8f6",
+        "f4e3",
+        "f6b2",
+        "e1g1",
+        "b2a1",
+        "e3f3",
+        "a1f6",
+        "f3g4",
+        "c8b7",
+        "b1c3",
+        "f6c3",
+        "e4e5",
+        "c3e5",
+        "g5f3",
+        "b7f3",
+        "g4f3",
+        "a8d8",
+        "c2c3",
+        "g8e7",
+        "a2a4",
+        "e8g8",
+        "f3b7",
+        "e5c3",
+        "b7a7",
+        "c3c4",
+        "g2g3",
+        "e7c6",
+        "a7b6",
+        "c4a4",
+        "b6c5",
+        "d8c8",
+        "c5e3",
+        "d7d5",
+        "e3g5",
+        "a4e4",
+        "f2f3",
+        "e4d4",
+        "g1h1",
+        "c6b4",
+        "g5g4",
+        "d4g4",
+        "f3g4",
+        "c8c4",
+        "h2h3",
+        "f8c8",
+        "h1g2",
+        "c4c2",
+        "g2f3"
+      ],
+      "humanMove": "c8c3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 996,
+        "depth": 10,
+        "bestmove": "c2c4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 937,
+        "depth": 10,
+        "bestmove": "c2c4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 1015,
+        "depth": 10,
+        "bestmove": "c8c3"
+      },
+      "humanLoss": 0,
+      "botLoss": 18.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h7h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 963,
+            "depth": 10,
+            "bestmove": "h7h5"
+          },
+          "loss": 0,
+          "nodes": 180,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "h7h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 963,
+            "depth": 10,
+            "bestmove": "h7h5"
+          },
+          "loss": 0,
+          "nodes": 191,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g8f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 898,
+            "depth": 10,
+            "bestmove": "g8f8"
+          },
+          "loss": 39,
+          "nodes": 178,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f7f5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 902,
+            "depth": 10,
+            "bestmove": "f7f5"
+          },
+          "loss": 35,
+          "nodes": 172,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-80",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186623638926",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 676,
+      "blackRating": 600,
+      "rating": 676,
+      "timeControl": "600+5",
+      "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6"
+      ],
+      "humanMove": "f1b5",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 37,
+        "depth": 10,
+        "bestmove": "d2d4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 25,
+        "depth": 10,
+        "bestmove": "d2d4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 17,
+        "depth": 10,
+        "bestmove": "f1b5"
+      },
+      "humanLoss": 8,
+      "botLoss": 44.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f1b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 17,
+            "depth": 10,
+            "bestmove": "f1b5"
+          },
+          "loss": 8,
+          "nodes": 352,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "b1c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 23,
+            "depth": 10,
+            "bestmove": "b1c3"
+          },
+          "loss": 2,
+          "nodes": 422,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "b1c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 23,
+            "depth": 10,
+            "bestmove": "b1c3"
+          },
+          "loss": 2,
+          "nodes": 262,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -140,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 165,
+          "nodes": 369,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-81",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186623638926",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 676,
+      "blackRating": 600,
+      "rating": 676,
+      "timeControl": "600+5",
+      "fen": "r1b1kb1r/ppp1qppp/2p2n2/4N3/4P3/8/PPPP1PPP/RNBQK2R w KQkq - 1 6",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1b5",
+        "g8f6",
+        "b5c6",
+        "d7c6",
+        "f3e5",
+        "d8e7"
+      ],
+      "humanMove": "d2d4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 40,
+        "depth": 10,
+        "bestmove": "d2d4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 56,
+        "depth": 10,
+        "bestmove": "d2d4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 56,
+        "depth": 10,
+        "bestmove": "d2d4"
+      },
+      "humanLoss": 0,
+      "botLoss": 40.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f2f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -25,
+            "depth": 10,
+            "bestmove": "f2f4"
+          },
+          "loss": 81,
+          "nodes": 274,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "d2d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 56,
+            "depth": 10,
+            "bestmove": "d2d4"
+          },
+          "loss": 0,
+          "nodes": 322,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f2f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -25,
+            "depth": 10,
+            "bestmove": "f2f4"
+          },
+          "loss": 81,
+          "nodes": 308,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "d2d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 56,
+            "depth": 10,
+            "bestmove": "d2d4"
+          },
+          "loss": 0,
+          "nodes": 318,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-82",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186623638926",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 676,
+      "blackRating": 600,
+      "rating": 600,
+      "timeControl": "600+5",
+      "fen": "r1b1k2r/ppp2ppp/2pbq3/8/3Pn3/5N2/PPP2PPP/RNBQR1K1 b kq - 5 9",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1b5",
+        "g8f6",
+        "b5c6",
+        "d7c6",
+        "f3e5",
+        "d8e7",
+        "d2d4",
+        "f6e4",
+        "e1g1",
+        "e7e6",
+        "e5f3",
+        "f8d6",
+        "f1e1"
+      ],
+      "humanMove": "e8g8",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -20,
+        "depth": 10,
+        "bestmove": "e8g8"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -17,
+        "depth": 10,
+        "bestmove": "e8g8"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -17,
+        "depth": 10,
+        "bestmove": "e8g8"
+      },
+      "humanLoss": 0,
+      "botLoss": 340.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h7h6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -320,
+            "depth": 10,
+            "bestmove": "h7h6"
+          },
+          "loss": 303,
+          "nodes": 901,
+          "depth": 1
+        },
+        {
+          "seed": 1052660,
+          "move": "g7g5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -423,
+            "depth": 10,
+            "bestmove": "g7g5"
+          },
+          "loss": 406,
+          "nodes": 901,
+          "depth": 1
+        },
+        {
+          "seed": 1118197,
+          "move": "f7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -276,
+            "depth": 10,
+            "bestmove": "f7f6"
+          },
+          "loss": 259,
+          "nodes": 901,
+          "depth": 1
+        },
+        {
+          "seed": 1183734,
+          "move": "g7g6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -410,
+            "depth": 10,
+            "bestmove": "g7g6"
+          },
+          "loss": 393,
+          "nodes": 901,
+          "depth": 1
+        }
+      ]
+    },
+    {
+      "id": "700-83",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186623638926",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 676,
+      "blackRating": 600,
+      "rating": 600,
+      "timeControl": "600+5",
+      "fen": "r4rk1/ppp2ppp/2pb2q1/8/3P4/6Nb/PPP2PPP/RNBQR1K1 b - - 2 12",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1b5",
+        "g8f6",
+        "b5c6",
+        "d7c6",
+        "f3e5",
+        "d8e7",
+        "d2d4",
+        "f6e4",
+        "e1g1",
+        "e7e6",
+        "e5f3",
+        "f8d6",
+        "f1e1",
+        "e8g8",
+        "f3g5",
+        "e6g6",
+        "g5e4",
+        "c8h3",
+        "e4g3"
+      ],
+      "humanMove": "h3g4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -513,
+        "depth": 10,
+        "bestmove": "f7f5"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -465,
+        "depth": 10,
+        "bestmove": "f7f5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -525,
+        "depth": 10,
+        "bestmove": "h3g4"
+      },
+      "humanLoss": 60,
+      "botLoss": 60.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h3g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -525,
+            "depth": 10,
+            "bestmove": "h3g4"
+          },
+          "loss": 60,
+          "nodes": 681,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "h3g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -525,
+            "depth": 10,
+            "bestmove": "h3g4"
+          },
+          "loss": 60,
+          "nodes": 682,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "h3g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -525,
+            "depth": 10,
+            "bestmove": "h3g4"
+          },
+          "loss": 60,
+          "nodes": 654,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "h3f5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -527,
+            "depth": 10,
+            "bestmove": "h3f5"
+          },
+          "loss": 62,
+          "nodes": 570,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-84",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/187162879142",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 618,
+      "blackRating": 606,
+      "rating": 618,
+      "timeControl": "600",
+      "fen": "r1bqkb1r/ppppn1pp/2n2p2/4p3/2B1P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 4 5",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "f7f6",
+        "f1c4",
+        "g8e7",
+        "e1g1",
+        "b8c6"
+      ],
+      "humanMove": "b1c3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 142,
+        "depth": 10,
+        "bestmove": "d2d4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 129,
+        "depth": 10,
+        "bestmove": "d2d4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 126,
+        "depth": 10,
+        "bestmove": "b1c3"
+      },
+      "humanLoss": 3,
+      "botLoss": 21,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b1c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 126,
+            "depth": 10,
+            "bestmove": "b1c3"
+          },
+          "loss": 3,
+          "nodes": 210,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "b1c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 126,
+            "depth": 10,
+            "bestmove": "b1c3"
+          },
+          "loss": 3,
+          "nodes": 209,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "b1c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 126,
+            "depth": 10,
+            "bestmove": "b1c3"
+          },
+          "loss": 3,
+          "nodes": 208,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "a2a3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 54,
+            "depth": 10,
+            "bestmove": "a2a3"
+          },
+          "loss": 75,
+          "nodes": 234,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-85",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/187162879142",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 618,
+      "blackRating": 606,
+      "rating": 606,
+      "timeControl": "600",
+      "fen": "r1bqk2r/ppp1b1pp/3p1p2/3P4/2Bp4/3P4/PPP2PPP/R1B1QRK1 b kq - 0 10",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "f7f6",
+        "f1c4",
+        "g8e7",
+        "e1g1",
+        "b8c6",
+        "b1c3",
+        "c6d4",
+        "f3d4",
+        "e5d4",
+        "c3d5",
+        "e7d5",
+        "e4d5",
+        "d7d6",
+        "d1e1",
+        "f8e7",
+        "d2d3"
+      ],
+      "humanMove": "c8d7",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -45,
+        "depth": 10,
+        "bestmove": "e8g8"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -21,
+        "depth": 10,
+        "bestmove": "e8g8"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -44,
+        "depth": 10,
+        "bestmove": "c8d7"
+      },
+      "humanLoss": 23,
+      "botLoss": 106.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c8f5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -139,
+            "depth": 10,
+            "bestmove": "c8f5"
+          },
+          "loss": 118,
+          "nodes": 299,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "c8g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -124,
+            "depth": 10,
+            "bestmove": "c8g4"
+          },
+          "loss": 103,
+          "nodes": 298,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "c8f5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -139,
+            "depth": 10,
+            "bestmove": "c8f5"
+          },
+          "loss": 118,
+          "nodes": 252,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "b7b6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -107,
+            "depth": 10,
+            "bestmove": "b7b6"
+          },
+          "loss": 86,
+          "nodes": 297,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-86",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/187162879142",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 618,
+      "blackRating": 606,
+      "rating": 618,
+      "timeControl": "600",
+      "fen": "2r1k2r/4b1pp/p1bq1p2/1p1p4/3P4/1B1PQ3/PP1B1PPP/2R2RK1 w k - 0 18",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "f7f6",
+        "f1c4",
+        "g8e7",
+        "e1g1",
+        "b8c6",
+        "b1c3",
+        "c6d4",
+        "f3d4",
+        "e5d4",
+        "c3d5",
+        "e7d5",
+        "e4d5",
+        "d7d6",
+        "d1e1",
+        "f8e7",
+        "d2d3",
+        "c8d7",
+        "c2c3",
+        "c7c5",
+        "d5c6",
+        "d7c6",
+        "c3d4",
+        "d6d5",
+        "c4b3",
+        "b7b5",
+        "c1d2",
+        "d8d6",
+        "a1c1",
+        "a8c8",
+        "e1e3",
+        "a7a6"
+      ],
+      "humanMove": "e3f4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 429,
+        "depth": 10,
+        "bestmove": "f1e1"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 471,
+        "depth": 10,
+        "bestmove": "f1e1"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 65,
+        "depth": 10,
+        "bestmove": "e3f4"
+      },
+      "humanLoss": 406,
+      "botLoss": 191.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f2f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 215,
+            "depth": 10,
+            "bestmove": "f2f4"
+          },
+          "loss": 256,
+          "nodes": 511,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "h2h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 329,
+            "depth": 10,
+            "bestmove": "h2h4"
+          },
+          "loss": 142,
+          "nodes": 613,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "e3f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 344,
+            "depth": 10,
+            "bestmove": "e3f3"
+          },
+          "loss": 127,
+          "nodes": 678,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "e3h3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 230,
+            "depth": 10,
+            "bestmove": "e3h3"
+          },
+          "loss": 241,
+          "nodes": 639,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-87",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/187162879142",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 618,
+      "blackRating": 606,
+      "rating": 606,
+      "timeControl": "600",
+      "fen": "4k3/2B1b2r/p1b2p1p/1p1p2p1/3P4/3P4/PP3PPP/3BRRK1 b - - 2 23",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "f7f6",
+        "f1c4",
+        "g8e7",
+        "e1g1",
+        "b8c6",
+        "b1c3",
+        "c6d4",
+        "f3d4",
+        "e5d4",
+        "c3d5",
+        "e7d5",
+        "e4d5",
+        "d7d6",
+        "d1e1",
+        "f8e7",
+        "d2d3",
+        "c8d7",
+        "c2c3",
+        "c7c5",
+        "d5c6",
+        "d7c6",
+        "c3d4",
+        "d6d5",
+        "c4b3",
+        "b7b5",
+        "c1d2",
+        "d8d6",
+        "a1c1",
+        "a8c8",
+        "e1e3",
+        "a7a6",
+        "e3f4",
+        "d6f4",
+        "d2f4",
+        "g7g5",
+        "f4g3",
+        "h7h6",
+        "c1e1",
+        "c8c7",
+        "g3c7",
+        "h8h7",
+        "b3d1"
+      ],
+      "humanMove": "e8f8",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -580,
+        "depth": 10,
+        "bestmove": "e8d7"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -668,
+        "depth": 10,
+        "bestmove": "e8d7"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -666,
+        "depth": 10,
+        "bestmove": "e8f8"
+      },
+      "humanLoss": 0,
+      "botLoss": 15.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e8d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -668,
+            "depth": 10,
+            "bestmove": "e8d7"
+          },
+          "loss": 0,
+          "nodes": 243,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "b5b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -693,
+            "depth": 10,
+            "bestmove": "b5b4"
+          },
+          "loss": 25,
+          "nodes": 311,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "b5b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -693,
+            "depth": 10,
+            "bestmove": "b5b4"
+          },
+          "loss": 25,
+          "nodes": 255,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "h6h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -680,
+            "depth": 10,
+            "bestmove": "h6h5"
+          },
+          "loss": 12,
+          "nodes": 278,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-88",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/187225546194",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 609,
+      "blackRating": 645,
+      "rating": 645,
+      "timeControl": "600",
+      "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq - 1 3",
+      "history": [
+        "e2e4",
+        "b8c6",
+        "g1f3",
+        "e7e5",
+        "b1c3"
+      ],
+      "humanMove": "f8c5",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -28,
+        "depth": 10,
+        "bestmove": "g8f6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -24,
+        "depth": 10,
+        "bestmove": "g8f6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -52,
+        "depth": 10,
+        "bestmove": "f8c5"
+      },
+      "humanLoss": 28,
+      "botLoss": 25.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g8e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -84,
+            "depth": 10,
+            "bestmove": "g8e7"
+          },
+          "loss": 60,
+          "nodes": 244,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g8f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -24,
+            "depth": 10,
+            "bestmove": "g8f6"
+          },
+          "loss": 0,
+          "nodes": 251,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g8f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -24,
+            "depth": 10,
+            "bestmove": "g8f6"
+          },
+          "loss": 0,
+          "nodes": 213,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f8e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -66,
+            "depth": 10,
+            "bestmove": "f8e7"
+          },
+          "loss": 42,
+          "nodes": 295,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-89",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/187225546194",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 609,
+      "blackRating": 645,
+      "rating": 645,
+      "timeControl": "600",
+      "fen": "r1b1k2r/ppppqppp/5n2/2b1p3/2BNP3/2NP4/PPP2PPP/R1BQ1RK1 b kq - 0 7",
+      "history": [
+        "e2e4",
+        "b8c6",
+        "g1f3",
+        "e7e5",
+        "b1c3",
+        "f8c5",
+        "f1c4",
+        "d8e7",
+        "e1g1",
+        "g8f6",
+        "d2d3",
+        "c6d4",
+        "f3d4"
+      ],
+      "humanMove": "c5d4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -63,
+        "depth": 10,
+        "bestmove": "c5d4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -48,
+        "depth": 10,
+        "bestmove": "c5d4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -48,
+        "depth": 10,
+        "bestmove": "c5d4"
+      },
+      "humanLoss": 0,
+      "botLoss": 42,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -90,
+            "depth": 10,
+            "bestmove": "e5d4"
+          },
+          "loss": 42,
+          "nodes": 413,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "e5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -90,
+            "depth": 10,
+            "bestmove": "e5d4"
+          },
+          "loss": 42,
+          "nodes": 415,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "e5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -90,
+            "depth": 10,
+            "bestmove": "e5d4"
+          },
+          "loss": 42,
+          "nodes": 415,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "e5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -90,
+            "depth": 10,
+            "bestmove": "e5d4"
+          },
+          "loss": 42,
+          "nodes": 415,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-90",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/187225546194",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 609,
+      "blackRating": 645,
+      "rating": 609,
+      "timeControl": "600",
+      "fen": "r3k2r/ppp1qppp/3p1n2/4p1B1/2B1P3/2PP2Q1/P1P1bPPP/R4RK1 w kq - 4 12",
+      "history": [
+        "e2e4",
+        "b8c6",
+        "g1f3",
+        "e7e5",
+        "b1c3",
+        "f8c5",
+        "f1c4",
+        "d8e7",
+        "e1g1",
+        "g8f6",
+        "d2d3",
+        "c6d4",
+        "f3d4",
+        "c5d4",
+        "d1f3",
+        "d4c3",
+        "b2c3",
+        "d7d6",
+        "c1g5",
+        "c8g4",
+        "f3g3",
+        "g4e2"
+      ],
+      "humanMove": "f1e1",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 214,
+        "depth": 10,
+        "bestmove": "f1e1"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 298,
+        "depth": 10,
+        "bestmove": "f1e1"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 298,
+        "depth": 10,
+        "bestmove": "f1e1"
+      },
+      "humanLoss": 0,
+      "botLoss": 224.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c4b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 52,
+            "depth": 10,
+            "bestmove": "c4b5"
+          },
+          "loss": 246,
+          "nodes": 379,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "c4b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 52,
+            "depth": 10,
+            "bestmove": "c4b5"
+          },
+          "loss": 246,
+          "nodes": 379,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g5f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 138,
+            "depth": 10,
+            "bestmove": "g5f6"
+          },
+          "loss": 160,
+          "nodes": 410,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "c4b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 52,
+            "depth": 10,
+            "bestmove": "c4b5"
+          },
+          "loss": 246,
+          "nodes": 388,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-91",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/187225546194",
+      "club": "the-beginners-chess-club",
+      "contributor": "nessrawrrr",
+      "whiteRating": 609,
+      "blackRating": 645,
+      "rating": 609,
+      "timeControl": "600",
+      "fen": "2kr3r/ppp1qppp/3p1n2/6B1/3pP3/2P3Q1/P1P1RPPP/R5K1 w - - 0 16",
+      "history": [
+        "e2e4",
+        "b8c6",
+        "g1f3",
+        "e7e5",
+        "b1c3",
+        "f8c5",
+        "f1c4",
+        "d8e7",
+        "e1g1",
+        "g8f6",
+        "d2d3",
+        "c6d4",
+        "f3d4",
+        "c5d4",
+        "d1f3",
+        "d4c3",
+        "b2c3",
+        "d7d6",
+        "c1g5",
+        "c8g4",
+        "f3g3",
+        "g4e2",
+        "f1e1",
+        "e2h5",
+        "d3d4",
+        "e8c8",
+        "c4e2",
+        "h5e2",
+        "e1e2",
+        "e5d4"
+      ],
+      "humanMove": "c3d4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 69,
+        "depth": 10,
+        "bestmove": "c3d4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 67,
+        "depth": 10,
+        "bestmove": "c3d4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 67,
+        "depth": 10,
+        "bestmove": "c3d4"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c3d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 67,
+            "depth": 10,
+            "bestmove": "c3d4"
+          },
+          "loss": 0,
+          "nodes": 328,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "c3d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 67,
+            "depth": 10,
+            "bestmove": "c3d4"
+          },
+          "loss": 0,
+          "nodes": 321,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "c3d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 67,
+            "depth": 10,
+            "bestmove": "c3d4"
+          },
+          "loss": 0,
+          "nodes": 334,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "c3d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 67,
+            "depth": 10,
+            "bestmove": "c3d4"
+          },
+          "loss": 0,
+          "nodes": 324,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-108",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107571970074",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 623,
+      "blackRating": 651,
+      "rating": 623,
+      "timeControl": "600",
+      "fen": "r1b1kbnr/pppp1ppp/2n2q2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "d8f6"
+      ],
+      "humanMove": "e1g1",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 101,
+        "depth": 10,
+        "bestmove": "b1c3"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 110,
+        "depth": 10,
+        "bestmove": "b1c3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 78,
+        "depth": 10,
+        "bestmove": "e1g1"
+      },
+      "humanLoss": 32,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b1c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 110,
+            "depth": 10,
+            "bestmove": "b1c3"
+          },
+          "loss": 0,
+          "nodes": 490,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "b1c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 110,
+            "depth": 10,
+            "bestmove": "b1c3"
+          },
+          "loss": 0,
+          "nodes": 490,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "b1c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 110,
+            "depth": 10,
+            "bestmove": "b1c3"
+          },
+          "loss": 0,
+          "nodes": 420,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "b1c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 110,
+            "depth": 10,
+            "bestmove": "b1c3"
+          },
+          "loss": 0,
+          "nodes": 427,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-109",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107571970074",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 623,
+      "blackRating": 651,
+      "rating": 623,
+      "timeControl": "600",
+      "fen": "r1b1kb1r/pppp1ppp/5q2/4p3/2B1P1n1/2PP1n2/PP1B1PPP/RN1Q1RK1 w kq - 0 8",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "d8f6",
+        "e1g1",
+        "g8h6",
+        "d2d3",
+        "h6g4",
+        "c1d2",
+        "c6d4",
+        "c2c3",
+        "d4f3"
+      ],
+      "humanMove": "d1f3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 1,
+        "depth": 10,
+        "bestmove": "d1f3"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 3,
+        "depth": 10,
+        "bestmove": "d1f3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 3,
+        "depth": 10,
+        "bestmove": "d1f3"
+      },
+      "humanLoss": 0,
+      "botLoss": 119,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g2f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -116,
+            "depth": 10,
+            "bestmove": "g2f3"
+          },
+          "loss": 119,
+          "nodes": 109,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g2f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -116,
+            "depth": 10,
+            "bestmove": "g2f3"
+          },
+          "loss": 119,
+          "nodes": 110,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g2f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -116,
+            "depth": 10,
+            "bestmove": "g2f3"
+          },
+          "loss": 119,
+          "nodes": 110,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "g2f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -116,
+            "depth": 10,
+            "bestmove": "g2f3"
+          },
+          "loss": 119,
+          "nodes": 110,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-110",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107571970074",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 623,
+      "blackRating": 651,
+      "rating": 651,
+      "timeControl": "600",
+      "fen": "r3kb1r/ppN3pp/3p4/4pb1q/2B3n1/2PP2Q1/PP1B1PPP/R4RK1 b kq - 0 13",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "d8f6",
+        "e1g1",
+        "g8h6",
+        "d2d3",
+        "h6g4",
+        "c1d2",
+        "c6d4",
+        "c2c3",
+        "d4f3",
+        "d1f3",
+        "d7d6",
+        "b1a3",
+        "f6h4",
+        "f3g3",
+        "h4h5",
+        "a3b5",
+        "f7f5",
+        "e4f5",
+        "c8f5",
+        "b5c7"
+      ],
+      "humanMove": "e8d8",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -568,
+        "depth": 10,
+        "bestmove": "e8d7"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -651,
+        "depth": 10,
+        "bestmove": "e8d7"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -624,
+        "depth": 10,
+        "bestmove": "e8d8"
+      },
+      "humanLoss": 0,
+      "botLoss": 15.75,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e8d8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -624,
+            "depth": 10,
+            "bestmove": "e8d8"
+          },
+          "loss": 0,
+          "nodes": 163,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "e8d8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -624,
+            "depth": 10,
+            "bestmove": "e8d8"
+          },
+          "loss": 0,
+          "nodes": 163,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "e8e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -714,
+            "depth": 10,
+            "bestmove": "e8e7"
+          },
+          "loss": 63,
+          "nodes": 109,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "e8d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -651,
+            "depth": 10,
+            "bestmove": "e8d7"
+          },
+          "loss": 0,
+          "nodes": 161,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-111",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107571970074",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 623,
+      "blackRating": 651,
+      "rating": 651,
+      "timeControl": "600",
+      "fen": "N2k3r/pp2b1pp/6q1/3Bpb2/6n1/2PP1P1Q/PP1B2PP/R4RK1 b - - 0 17",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "d8f6",
+        "e1g1",
+        "g8h6",
+        "d2d3",
+        "h6g4",
+        "c1d2",
+        "c6d4",
+        "c2c3",
+        "d4f3",
+        "d1f3",
+        "d7d6",
+        "b1a3",
+        "f6h4",
+        "f3g3",
+        "h4h5",
+        "a3b5",
+        "f7f5",
+        "e4f5",
+        "c8f5",
+        "b5c7",
+        "e8d8",
+        "c7a8",
+        "d6d5",
+        "c4d5",
+        "f8e7",
+        "g3h3",
+        "h5g6",
+        "f2f3"
+      ],
+      "humanMove": "g4e3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -343,
+        "depth": 10,
+        "bestmove": "g4e3"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -374,
+        "depth": 10,
+        "bestmove": "g4e3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -374,
+        "depth": 10,
+        "bestmove": "g4e3"
+      },
+      "humanLoss": 0,
+      "botLoss": 47,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g4e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -374,
+            "depth": 10,
+            "bestmove": "g4e3"
+          },
+          "loss": 0,
+          "nodes": 777,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g4e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -374,
+            "depth": 10,
+            "bestmove": "g4e3"
+          },
+          "loss": 0,
+          "nodes": 776,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g4e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -374,
+            "depth": 10,
+            "bestmove": "g4e3"
+          },
+          "loss": 0,
+          "nodes": 865,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "g4f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -562,
+            "depth": 10,
+            "bestmove": "g4f6"
+          },
+          "loss": 188,
+          "nodes": 862,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-112",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107572030036",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 631,
+      "blackRating": 609,
+      "rating": 631,
+      "timeControl": "600",
+      "fen": "r2qk2r/ppp2ppp/2npbn2/2b1p3/3PP3/2P2P1N/PP2B1PP/RNBQK2R w KQkq - 1 7",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "f2f3",
+        "b8c6",
+        "f1e2",
+        "f8c5",
+        "g1h3",
+        "d7d6",
+        "c2c3",
+        "g8f6",
+        "d2d4",
+        "c8e6"
+      ],
+      "humanMove": "d4c5",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 598,
+        "depth": 10,
+        "bestmove": "d4c5"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 523,
+        "depth": 10,
+        "bestmove": "d4c5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 523,
+        "depth": 10,
+        "bestmove": "d4c5"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d4c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 523,
+            "depth": 10,
+            "bestmove": "d4c5"
+          },
+          "loss": 0,
+          "nodes": 285,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "d4c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 523,
+            "depth": 10,
+            "bestmove": "d4c5"
+          },
+          "loss": 0,
+          "nodes": 285,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "d4c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 523,
+            "depth": 10,
+            "bestmove": "d4c5"
+          },
+          "loss": 0,
+          "nodes": 285,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "d4c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 523,
+            "depth": 10,
+            "bestmove": "d4c5"
+          },
+          "loss": 0,
+          "nodes": 285,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-113",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107572030036",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 631,
+      "blackRating": 609,
+      "rating": 631,
+      "timeControl": "600",
+      "fen": "3r1rk1/ppp2p2/2n1bp1p/2p5/2N1Pp2/2P4N/PP2B1PP/R4RK1 w - - 0 15",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "f2f3",
+        "b8c6",
+        "f1e2",
+        "f8c5",
+        "g1h3",
+        "d7d6",
+        "c2c3",
+        "g8f6",
+        "d2d4",
+        "c8e6",
+        "d4c5",
+        "d6c5",
+        "d1d8",
+        "c6d8",
+        "e1g1",
+        "d8c6",
+        "b1a3",
+        "e8g8",
+        "a3c4",
+        "a8d8",
+        "c1g5",
+        "h7h6",
+        "g5f6",
+        "g7f6",
+        "f3f4",
+        "e5f4"
+      ],
+      "humanMove": "f1f4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 548,
+        "depth": 10,
+        "bestmove": "h3f4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 510,
+        "depth": 10,
+        "bestmove": "h3f4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 452,
+        "depth": 10,
+        "bestmove": "f1f4"
+      },
+      "humanLoss": 58,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h3f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 510,
+            "depth": 10,
+            "bestmove": "h3f4"
+          },
+          "loss": 0,
+          "nodes": 235,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "h3f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 510,
+            "depth": 10,
+            "bestmove": "h3f4"
+          },
+          "loss": 0,
+          "nodes": 248,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "h3f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 510,
+            "depth": 10,
+            "bestmove": "h3f4"
+          },
+          "loss": 0,
+          "nodes": 233,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "h3f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 510,
+            "depth": 10,
+            "bestmove": "h3f4"
+          },
+          "loss": 0,
+          "nodes": 235,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-114",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107572030036",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 631,
+      "blackRating": 609,
+      "rating": 631,
+      "timeControl": "600",
+      "fen": "6k1/p4p2/1p5R/5P2/8/2P4N/PP3KPP/2r5 w - - 3 25",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "f2f3",
+        "b8c6",
+        "f1e2",
+        "f8c5",
+        "g1h3",
+        "d7d6",
+        "c2c3",
+        "g8f6",
+        "d2d4",
+        "c8e6",
+        "d4c5",
+        "d6c5",
+        "d1d8",
+        "c6d8",
+        "e1g1",
+        "d8c6",
+        "b1a3",
+        "e8g8",
+        "a3c4",
+        "a8d8",
+        "c1g5",
+        "h7h6",
+        "g5f6",
+        "g7f6",
+        "f3f4",
+        "e5f4",
+        "f1f4",
+        "f6f5",
+        "e4f5",
+        "e6c4",
+        "e2c4",
+        "c6a5",
+        "a1e1",
+        "a5c4",
+        "f4c4",
+        "c7c6",
+        "c4c5",
+        "b7b6",
+        "c5c6",
+        "f8e8",
+        "e1e8",
+        "d8e8",
+        "c6h6",
+        "e8e1",
+        "g1f2",
+        "e1c1"
+      ],
+      "humanMove": "f5f6",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 589,
+        "depth": 10,
+        "bestmove": "f5f6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 562,
+        "depth": 10,
+        "bestmove": "f5f6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 562,
+        "depth": 10,
+        "bestmove": "f5f6"
+      },
+      "humanLoss": 0,
+      "botLoss": 3,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f2f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 552,
+            "depth": 10,
+            "bestmove": "f2f3"
+          },
+          "loss": 10,
+          "nodes": 613,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f2g3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 590,
+            "depth": 10,
+            "bestmove": "f2g3"
+          },
+          "loss": 0,
+          "nodes": 635,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f2g3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 590,
+            "depth": 10,
+            "bestmove": "f2g3"
+          },
+          "loss": 0,
+          "nodes": 594,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f2e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 560,
+            "depth": 10,
+            "bestmove": "f2e3"
+          },
+          "loss": 2,
+          "nodes": 637,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-115",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107572030036",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 631,
+      "blackRating": 609,
+      "rating": 631,
+      "timeControl": "600",
+      "fen": "8/5pR1/1p3P1k/8/p3N3/2P5/r5PP/4K3 w - - 0 33",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "f2f3",
+        "b8c6",
+        "f1e2",
+        "f8c5",
+        "g1h3",
+        "d7d6",
+        "c2c3",
+        "g8f6",
+        "d2d4",
+        "c8e6",
+        "d4c5",
+        "d6c5",
+        "d1d8",
+        "c6d8",
+        "e1g1",
+        "d8c6",
+        "b1a3",
+        "e8g8",
+        "a3c4",
+        "a8d8",
+        "c1g5",
+        "h7h6",
+        "g5f6",
+        "g7f6",
+        "f3f4",
+        "e5f4",
+        "f1f4",
+        "f6f5",
+        "e4f5",
+        "e6c4",
+        "e2c4",
+        "c6a5",
+        "a1e1",
+        "a5c4",
+        "f4c4",
+        "c7c6",
+        "c4c5",
+        "b7b6",
+        "c5c6",
+        "f8e8",
+        "e1e8",
+        "d8e8",
+        "c6h6",
+        "e8e1",
+        "g1f2",
+        "e1c1",
+        "f5f6",
+        "c1c2",
+        "f2e1",
+        "c2b2",
+        "h6h5",
+        "b2a2",
+        "h5d5",
+        "g8h7",
+        "h3g5",
+        "h7g6",
+        "g5e4",
+        "a7a5",
+        "d5g5",
+        "g6h6",
+        "g5g7",
+        "a5a4"
+      ],
+      "humanMove": "g7f7",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 529,
+        "depth": 10,
+        "bestmove": "e4d6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 751,
+        "depth": 10,
+        "bestmove": "e4d6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 527,
+        "depth": 10,
+        "bestmove": "g7f7"
+      },
+      "humanLoss": 224,
+      "botLoss": 352.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h2h3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 339,
+            "depth": 10,
+            "bestmove": "h2h3"
+          },
+          "loss": 412,
+          "nodes": 221,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 367,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 384,
+          "nodes": 232,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "g7g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 362,
+            "depth": 10,
+            "bestmove": "g7g8"
+          },
+          "loss": 389,
+          "nodes": 232,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "g7f7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 527,
+            "depth": 10,
+            "bestmove": "g7f7"
+          },
+          "loss": 224,
+          "nodes": 228,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-116",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107572094534",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 644,
+      "blackRating": 639,
+      "rating": 639,
+      "timeControl": "600",
+      "fen": "r1bqkb1r/ppp2ppp/2n1pn2/3p4/3P1B2/3BPN2/PPP2PPP/RN1QK2R b KQkq - 1 5",
+      "history": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "g8f6",
+        "e2e3",
+        "b8c6",
+        "g1f3",
+        "e7e6",
+        "f1d3"
+      ],
+      "humanMove": "f8e7",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -40,
+        "depth": 10,
+        "bestmove": "f8d6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -43,
+        "depth": 10,
+        "bestmove": "f8d6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -42,
+        "depth": 10,
+        "bestmove": "f8e7"
+      },
+      "humanLoss": 0,
+      "botLoss": 19.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f8b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -69,
+            "depth": 10,
+            "bestmove": "f8b4"
+          },
+          "loss": 26,
+          "nodes": 694,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f8e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -42,
+            "depth": 10,
+            "bestmove": "f8e7"
+          },
+          "loss": 0,
+          "nodes": 784,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "h8g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -92,
+            "depth": 10,
+            "bestmove": "h8g8"
+          },
+          "loss": 49,
+          "nodes": 832,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "a7a5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -45,
+            "depth": 10,
+            "bestmove": "a7a5"
+          },
+          "loss": 2,
+          "nodes": 605,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-117",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107572094534",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 644,
+      "blackRating": 639,
+      "rating": 644,
+      "timeControl": "600",
+      "fen": "r2q1rk1/pp1b1ppp/2n2n2/3pp3/8/2PBPN1P/PP1N1PP1/R2Q1RK1 w - - 0 12",
+      "history": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "g8f6",
+        "e2e3",
+        "b8c6",
+        "g1f3",
+        "e7e6",
+        "f1d3",
+        "f8e7",
+        "e1g1",
+        "e8g8",
+        "c2c3",
+        "c8d7",
+        "b1d2",
+        "e7d6",
+        "f4d6",
+        "c7d6",
+        "h2h3",
+        "e6e5",
+        "d4e5",
+        "d6e5"
+      ],
+      "humanMove": "d3b5",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 18,
+        "depth": 10,
+        "bestmove": "e3e4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 13,
+        "depth": 10,
+        "bestmove": "e3e4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -41,
+        "depth": 10,
+        "bestmove": "d3b5"
+      },
+      "humanLoss": 54,
+      "botLoss": 491.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "a2a4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -449,
+            "depth": 10,
+            "bestmove": "a2a4"
+          },
+          "loss": 462,
+          "nodes": 607,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -502,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 515,
+          "nodes": 589,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "d1b3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -586,
+            "depth": 10,
+            "bestmove": "d1b3"
+          },
+          "loss": 599,
+          "nodes": 639,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f3g5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -377,
+            "depth": 10,
+            "bestmove": "f3g5"
+          },
+          "loss": 390,
+          "nodes": 650,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-118",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107572094534",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 644,
+      "blackRating": 639,
+      "rating": 644,
+      "timeControl": "600",
+      "fen": "2rq1rk1/pp3ppp/8/3p4/P2PP3/2Pb1Q1P/1P1Nn1P1/R3R1K1 w - - 3 20",
+      "history": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "g8f6",
+        "e2e3",
+        "b8c6",
+        "g1f3",
+        "e7e6",
+        "f1d3",
+        "f8e7",
+        "e1g1",
+        "e8g8",
+        "c2c3",
+        "c8d7",
+        "b1d2",
+        "e7d6",
+        "f4d6",
+        "c7d6",
+        "h2h3",
+        "e6e5",
+        "d4e5",
+        "d6e5",
+        "d3b5",
+        "e5e4",
+        "f3d4",
+        "c6d4",
+        "e3d4",
+        "d7b5",
+        "f1e1",
+        "a8c8",
+        "a2a4",
+        "b5d3",
+        "f2f3",
+        "f6h5",
+        "f3e4",
+        "h5g3",
+        "d1f3",
+        "g3e2"
+      ],
+      "humanMove": "g1h2",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -182,
+        "depth": 10,
+        "bestmove": "e1e2"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -272,
+        "depth": 10,
+        "bestmove": "e1e2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -507,
+        "depth": 10,
+        "bestmove": "g1h2"
+      },
+      "humanLoss": 235,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -272,
+            "depth": 10,
+            "bestmove": "e1e2"
+          },
+          "loss": 0,
+          "nodes": 120,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "e1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -272,
+            "depth": 10,
+            "bestmove": "e1e2"
+          },
+          "loss": 0,
+          "nodes": 120,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "e1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -272,
+            "depth": 10,
+            "bestmove": "e1e2"
+          },
+          "loss": 0,
+          "nodes": 120,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "e1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -272,
+            "depth": 10,
+            "bestmove": "e1e2"
+          },
+          "loss": 0,
+          "nodes": 120,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-119",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107572094534",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 644,
+      "blackRating": 639,
+      "rating": 639,
+      "timeControl": "600",
+      "fen": "2r2rk1/pp3p1p/8/4P1p1/P2P1n1P/1RPb1Q2/1q1N2PK/4R3 b - - 1 26",
+      "history": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "g8f6",
+        "e2e3",
+        "b8c6",
+        "g1f3",
+        "e7e6",
+        "f1d3",
+        "f8e7",
+        "e1g1",
+        "e8g8",
+        "c2c3",
+        "c8d7",
+        "b1d2",
+        "e7d6",
+        "f4d6",
+        "c7d6",
+        "h2h3",
+        "e6e5",
+        "d4e5",
+        "d6e5",
+        "d3b5",
+        "e5e4",
+        "f3d4",
+        "c6d4",
+        "e3d4",
+        "d7b5",
+        "f1e1",
+        "a8c8",
+        "a2a4",
+        "b5d3",
+        "f2f3",
+        "f6h5",
+        "f3e4",
+        "h5g3",
+        "d1f3",
+        "g3e2",
+        "g1h2",
+        "d8d6",
+        "e4e5",
+        "d6a6",
+        "f3d5",
+        "e2f4",
+        "d5f3",
+        "g7g5",
+        "a1a3",
+        "a6b6",
+        "h3h4",
+        "b6b2",
+        "a3b3"
+      ],
+      "humanMove": "b2d2",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 509,
+        "depth": 10,
+        "bestmove": "b2d2"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 532,
+        "depth": 10,
+        "bestmove": "b2d2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 532,
+        "depth": 10,
+        "bestmove": "b2d2"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b2d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 532,
+            "depth": 10,
+            "bestmove": "b2d2"
+          },
+          "loss": 0,
+          "nodes": 444,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "b2d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 532,
+            "depth": 10,
+            "bestmove": "b2d2"
+          },
+          "loss": 0,
+          "nodes": 444,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "b2d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 532,
+            "depth": 10,
+            "bestmove": "b2d2"
+          },
+          "loss": 0,
+          "nodes": 444,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "b2d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 532,
+            "depth": 10,
+            "bestmove": "b2d2"
+          },
+          "loss": 0,
+          "nodes": 444,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-120",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107575830962",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 631,
+      "blackRating": 667,
+      "rating": 667,
+      "timeControl": "600",
+      "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3"
+      ],
+      "humanMove": "b8c6",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -25,
+        "depth": 10,
+        "bestmove": "b8c6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -38,
+        "depth": 10,
+        "bestmove": "b8c6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -38,
+        "depth": 10,
+        "bestmove": "b8c6"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b8c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -38,
+            "depth": 10,
+            "bestmove": "b8c6"
+          },
+          "loss": 0,
+          "nodes": 169,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "b8c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -38,
+            "depth": 10,
+            "bestmove": "b8c6"
+          },
+          "loss": 0,
+          "nodes": 185,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "b8c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -38,
+            "depth": 10,
+            "bestmove": "b8c6"
+          },
+          "loss": 0,
+          "nodes": 174,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "b8c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -38,
+            "depth": 10,
+            "bestmove": "b8c6"
+          },
+          "loss": 0,
+          "nodes": 167,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-121",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107575830962",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 631,
+      "blackRating": 667,
+      "rating": 667,
+      "timeControl": "600",
+      "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R b KQkq - 5 4",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "b1c3",
+        "g8f6",
+        "f1c4"
+      ],
+      "humanMove": "f6g4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 0,
+        "depth": 10,
+        "bestmove": "f6e4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 8,
+        "depth": 10,
+        "bestmove": "f6e4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -127,
+        "depth": 10,
+        "bestmove": "f6g4"
+      },
+      "humanLoss": 135,
+      "botLoss": 39.75,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f8c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -16,
+            "depth": 10,
+            "bestmove": "f8c5"
+          },
+          "loss": 24,
+          "nodes": 446,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f8d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -36,
+            "depth": 10,
+            "bestmove": "f8d6"
+          },
+          "loss": 44,
+          "nodes": 376,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f8e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -34,
+            "depth": 10,
+            "bestmove": "f8e7"
+          },
+          "loss": 42,
+          "nodes": 446,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f8b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -41,
+            "depth": 10,
+            "bestmove": "f8b4"
+          },
+          "loss": 49,
+          "nodes": 501,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-122",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107575830962",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 631,
+      "blackRating": 667,
+      "rating": 667,
+      "timeControl": "600",
+      "fen": "r1b1kb1r/pppp1ppp/2n5/4p3/2B1P1nq/2NP2P1/PPP2P1P/R1BQK2R b KQkq - 0 7",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "b1c3",
+        "g8f6",
+        "f1c4",
+        "f6g4",
+        "f3g5",
+        "d8g5",
+        "d2d3",
+        "g5h4",
+        "g2g3"
+      ],
+      "humanMove": "h4h3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 414,
+        "depth": 10,
+        "bestmove": "h4h3"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 427,
+        "depth": 10,
+        "bestmove": "h4h3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 427,
+        "depth": 10,
+        "bestmove": "h4h3"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h4h3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 427,
+            "depth": 10,
+            "bestmove": "h4h3"
+          },
+          "loss": 0,
+          "nodes": 438,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "h4h3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 427,
+            "depth": 10,
+            "bestmove": "h4h3"
+          },
+          "loss": 0,
+          "nodes": 438,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "h4h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 431,
+            "depth": 10,
+            "bestmove": "h4h5"
+          },
+          "loss": 0,
+          "nodes": 410,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "h4h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 431,
+            "depth": 10,
+            "bestmove": "h4h5"
+          },
+          "loss": 0,
+          "nodes": 407,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-123",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/107575830962",
+      "club": "the-beginners-chess-club",
+      "contributor": "vihaansingh4562sachss",
+      "whiteRating": 631,
+      "blackRating": 667,
+      "rating": 667,
+      "timeControl": "600",
+      "fen": "r1b1k2r/ppNp1ppp/2n5/2b1p3/2B1P1n1/3P2Pq/PPP2P1P/R1BQK2R b KQkq - 0 9",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "b1c3",
+        "g8f6",
+        "f1c4",
+        "f6g4",
+        "f3g5",
+        "d8g5",
+        "d2d3",
+        "g5h4",
+        "g2g3",
+        "h4h3",
+        "c3d5",
+        "f8c5",
+        "d5c7"
+      ],
+      "humanMove": "e8d8",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 383,
+        "depth": 10,
+        "bestmove": "e8d8"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 380,
+        "depth": 10,
+        "bestmove": "e8d8"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 380,
+        "depth": 10,
+        "bestmove": "e8d8"
+      },
+      "humanLoss": 0,
+      "botLoss": 62,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e8d8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 380,
+            "depth": 10,
+            "bestmove": "e8d8"
+          },
+          "loss": 0,
+          "nodes": 137,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "e8d8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 380,
+            "depth": 10,
+            "bestmove": "e8d8"
+          },
+          "loss": 0,
+          "nodes": 139,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "e8f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 256,
+            "depth": 10,
+            "bestmove": "e8f8"
+          },
+          "loss": 124,
+          "nodes": 96,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "e8f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 256,
+            "depth": 10,
+            "bestmove": "e8f8"
+          },
+          "loss": 124,
+          "nodes": 143,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-124",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164218037336",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 616,
+      "blackRating": 614,
+      "rating": 614,
+      "timeControl": "600",
+      "fen": "r1bqk1nr/pppp1ppp/2n5/3Np3/1b2P3/5N2/PPPP1PPP/R1BQKB1R b KQkq - 5 4",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "b1c3",
+        "f8b4",
+        "c3d5"
+      ],
+      "humanMove": "d7d6",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -58,
+        "depth": 10,
+        "bestmove": "g8f6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -56,
+        "depth": 10,
+        "bestmove": "g8f6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -115,
+        "depth": 10,
+        "bestmove": "d7d6"
+      },
+      "humanLoss": 59,
+      "botLoss": 62.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b4a5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -110,
+            "depth": 10,
+            "bestmove": "b4a5"
+          },
+          "loss": 54,
+          "nodes": 381,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "b4c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -118,
+            "depth": 10,
+            "bestmove": "b4c5"
+          },
+          "loss": 62,
+          "nodes": 335,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "b4d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -123,
+            "depth": 10,
+            "bestmove": "b4d6"
+          },
+          "loss": 67,
+          "nodes": 397,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "b4d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -123,
+            "depth": 10,
+            "bestmove": "b4d6"
+          },
+          "loss": 67,
+          "nodes": 479,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-125",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164218037336",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 616,
+      "blackRating": 614,
+      "rating": 614,
+      "timeControl": "600",
+      "fen": "r1b1k1nr/2pq1ppp/3p4/p3N3/4P3/5N2/PPPP1PPP/R1BQK2R b KQkq - 0 9",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "b1c3",
+        "f8b4",
+        "c3d5",
+        "d7d6",
+        "f1b5",
+        "a7a6",
+        "b5c6",
+        "b7c6",
+        "d5b4",
+        "a6a5",
+        "b4c6",
+        "d8d7",
+        "c6e5"
+      ],
+      "humanMove": "d6e5",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -454,
+        "depth": 10,
+        "bestmove": "d6e5"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -452,
+        "depth": 10,
+        "bestmove": "d6e5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -452,
+        "depth": 10,
+        "bestmove": "d6e5"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d6e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -452,
+            "depth": 10,
+            "bestmove": "d6e5"
+          },
+          "loss": 0,
+          "nodes": 233,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "d6e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -452,
+            "depth": 10,
+            "bestmove": "d6e5"
+          },
+          "loss": 0,
+          "nodes": 312,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "d6e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -452,
+            "depth": 10,
+            "bestmove": "d6e5"
+          },
+          "loss": 0,
+          "nodes": 230,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "d6e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -452,
+            "depth": 10,
+            "bestmove": "d6e5"
+          },
+          "loss": 0,
+          "nodes": 320,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-126",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164218037336",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 616,
+      "blackRating": 614,
+      "rating": 614,
+      "timeControl": "600",
+      "fen": "r4rk1/2pq1ppp/b1N2n2/p2P4/4P3/4Q3/PPP2PPP/R1B1K2R b KQ - 2 15",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "b1c3",
+        "f8b4",
+        "c3d5",
+        "d7d6",
+        "f1b5",
+        "a7a6",
+        "b5c6",
+        "b7c6",
+        "d5b4",
+        "a6a5",
+        "b4c6",
+        "d8d7",
+        "c6e5",
+        "d6e5",
+        "f3e5",
+        "d7e7",
+        "d2d4",
+        "g8f6",
+        "d1e2",
+        "e8g8",
+        "e5c6",
+        "e7d7",
+        "d4d5",
+        "c8a6",
+        "e2e3"
+      ],
+      "humanMove": "f6g4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 94,
+        "depth": 10,
+        "bestmove": "f6e4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -84,
+        "depth": 10,
+        "bestmove": "f6e4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -351,
+        "depth": 10,
+        "bestmove": "f6g4"
+      },
+      "humanLoss": 267,
+      "botLoss": 247.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d7g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -357,
+            "depth": 10,
+            "bestmove": "d7g4"
+          },
+          "loss": 273,
+          "nodes": 801,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "a6c4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -442,
+            "depth": 10,
+            "bestmove": "a6c4"
+          },
+          "loss": 358,
+          "nodes": 653,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "a6c4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -442,
+            "depth": 10,
+            "bestmove": "a6c4"
+          },
+          "loss": 358,
+          "nodes": 795,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f6e4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -84,
+            "depth": 10,
+            "bestmove": "f6e4"
+          },
+          "loss": 0,
+          "nodes": 901,
+          "depth": 1
+        }
+      ]
+    },
+    {
+      "id": "700-127",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164218037336",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 616,
+      "blackRating": 614,
+      "rating": 614,
+      "timeControl": "600",
+      "fen": "r6k/2p3pp/b7/p2P1r2/6Q1/8/PPP2PPP/R1B1K2R b KQ - 0 20",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "b1c3",
+        "f8b4",
+        "c3d5",
+        "d7d6",
+        "f1b5",
+        "a7a6",
+        "b5c6",
+        "b7c6",
+        "d5b4",
+        "a6a5",
+        "b4c6",
+        "d8d7",
+        "c6e5",
+        "d6e5",
+        "f3e5",
+        "d7e7",
+        "d2d4",
+        "g8f6",
+        "d1e2",
+        "e8g8",
+        "e5c6",
+        "e7d7",
+        "d4d5",
+        "c8a6",
+        "e2e3",
+        "f6g4",
+        "e3h3",
+        "f7f5",
+        "e4f5",
+        "d7f5",
+        "c6e7",
+        "g8h8",
+        "e7f5",
+        "f8f5",
+        "h3g4"
+      ],
+      "humanMove": "a8e8",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -815,
+        "depth": 10,
+        "bestmove": "f5d5"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -922,
+        "depth": 10,
+        "bestmove": "f5d5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -968,
+        "depth": 10,
+        "bestmove": "a8e8"
+      },
+      "humanLoss": 46,
+      "botLoss": 34.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "a8e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -968,
+            "depth": 10,
+            "bestmove": "a8e8"
+          },
+          "loss": 46,
+          "nodes": 330,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f5d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -922,
+            "depth": 10,
+            "bestmove": "f5d5"
+          },
+          "loss": 0,
+          "nodes": 343,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "a8e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -968,
+            "depth": 10,
+            "bestmove": "a8e8"
+          },
+          "loss": 46,
+          "nodes": 270,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "a8e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -968,
+            "depth": 10,
+            "bestmove": "a8e8"
+          },
+          "loss": 46,
+          "nodes": 325,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-128",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164226304238",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 610,
+      "blackRating": 603,
+      "rating": 603,
+      "timeControl": "600",
+      "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/8/4PQP1/PPPP1P1P/RNB1KBNR b KQkq - 2 4",
+      "history": [
+        "e2e3",
+        "e7e5",
+        "d1h5",
+        "b8c6",
+        "g2g3",
+        "g8f6",
+        "h5f3"
+      ],
+      "humanMove": "e5e4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 221,
+        "depth": 10,
+        "bestmove": "d7d5"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 234,
+        "depth": 10,
+        "bestmove": "d7d5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 198,
+        "depth": 10,
+        "bestmove": "e5e4"
+      },
+      "humanLoss": 36,
+      "botLoss": 53.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f8c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 194,
+            "depth": 10,
+            "bestmove": "f8c5"
+          },
+          "loss": 40,
+          "nodes": 531,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f8d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 80,
+            "depth": 10,
+            "bestmove": "f8d6"
+          },
+          "loss": 154,
+          "nodes": 512,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f8e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 215,
+            "depth": 10,
+            "bestmove": "f8e7"
+          },
+          "loss": 19,
+          "nodes": 448,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "d7d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 234,
+            "depth": 10,
+            "bestmove": "d7d5"
+          },
+          "loss": 0,
+          "nodes": 513,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-129",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164226304238",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 610,
+      "blackRating": 603,
+      "rating": 610,
+      "timeControl": "600",
+      "fen": "r1b1kb1r/ppp2p1p/2n2np1/3p4/4p1Pq/1P2P2P/P1PP1P2/RNB1KBNR w KQkq - 1 10",
+      "history": [
+        "e2e3",
+        "e7e5",
+        "d1h5",
+        "b8c6",
+        "g2g3",
+        "g8f6",
+        "h5f3",
+        "e5e4",
+        "f3f4",
+        "d7d5",
+        "h2h3",
+        "f6h5",
+        "f4h4",
+        "g7g6",
+        "g3g4",
+        "d8h4",
+        "b2b3",
+        "h5f6"
+      ],
+      "humanMove": "c1b2",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -905,
+        "depth": 10,
+        "bestmove": "c1b2"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -900,
+        "depth": 10,
+        "bestmove": "c1b2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -900,
+        "depth": 10,
+        "bestmove": "c1b2"
+      },
+      "humanLoss": 0,
+      "botLoss": 114.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1016,
+            "depth": 10,
+            "bestmove": "g1e2"
+          },
+          "loss": 116,
+          "nodes": 263,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "g1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1016,
+            "depth": 10,
+            "bestmove": "g1e2"
+          },
+          "loss": 116,
+          "nodes": 280,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "a2a4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1121,
+            "depth": 10,
+            "bestmove": "a2a4"
+          },
+          "loss": 221,
+          "nodes": 315,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -904,
+            "depth": 10,
+            "bestmove": "f1e2"
+          },
+          "loss": 4,
+          "nodes": 279,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-130",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164226304238",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 610,
+      "blackRating": 603,
+      "rating": 603,
+      "timeControl": "600",
+      "fen": "r1b1k2B/ppp2p1p/1b4p1/6Pn/P2Pp2q/1P5P/2NP1P2/R3KBNR b KQq - 0 16",
+      "history": [
+        "e2e3",
+        "e7e5",
+        "d1h5",
+        "b8c6",
+        "g2g3",
+        "g8f6",
+        "h5f3",
+        "e5e4",
+        "f3f4",
+        "d7d5",
+        "h2h3",
+        "f6h5",
+        "f4h4",
+        "g7g6",
+        "g3g4",
+        "d8h4",
+        "b2b3",
+        "h5f6",
+        "c1b2",
+        "c6b4",
+        "b1a3",
+        "b4c2",
+        "a3c2",
+        "f8c5",
+        "g4g5",
+        "f6h5",
+        "b2h8",
+        "d5d4",
+        "e3d4",
+        "c5b6",
+        "a2a4"
+      ],
+      "humanMove": "h4g5",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 530,
+        "depth": 10,
+        "bestmove": "c7c6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 565,
+        "depth": 10,
+        "bestmove": "c7c6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 367,
+        "depth": 10,
+        "bestmove": "h4g5"
+      },
+      "humanLoss": 198,
+      "botLoss": 198,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h4g5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 367,
+            "depth": 10,
+            "bestmove": "h4g5"
+          },
+          "loss": 198,
+          "nodes": 776,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "h4g5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 367,
+            "depth": 10,
+            "bestmove": "h4g5"
+          },
+          "loss": 198,
+          "nodes": 775,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "h4g5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 367,
+            "depth": 10,
+            "bestmove": "h4g5"
+          },
+          "loss": 198,
+          "nodes": 775,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "h4g5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 367,
+            "depth": 10,
+            "bestmove": "h4g5"
+          },
+          "loss": 198,
+          "nodes": 775,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-131",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164226304238",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 610,
+      "blackRating": 603,
+      "rating": 610,
+      "timeControl": "600",
+      "fen": "r1b1k2B/ppp2p1p/1b4p1/8/PP1Ppq1P/8/2NPBn2/1K1R2NR w q - 3 22",
+      "history": [
+        "e2e3",
+        "e7e5",
+        "d1h5",
+        "b8c6",
+        "g2g3",
+        "g8f6",
+        "h5f3",
+        "e5e4",
+        "f3f4",
+        "d7d5",
+        "h2h3",
+        "f6h5",
+        "f4h4",
+        "g7g6",
+        "g3g4",
+        "d8h4",
+        "b2b3",
+        "h5f6",
+        "c1b2",
+        "c6b4",
+        "b1a3",
+        "b4c2",
+        "a3c2",
+        "f8c5",
+        "g4g5",
+        "f6h5",
+        "b2h8",
+        "d5d4",
+        "e3d4",
+        "c5b6",
+        "a2a4",
+        "h4g5",
+        "b3b4",
+        "h5f4",
+        "e1c1",
+        "f4d3",
+        "c1b1",
+        "d3f2",
+        "h3h4",
+        "g5g4",
+        "f1e2",
+        "g4f4"
+      ],
+      "humanMove": "d1f1",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -399,
+        "depth": 10,
+        "bestmove": "d1f1"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -454,
+        "depth": 10,
+        "bestmove": "d1f1"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -454,
+        "depth": 10,
+        "bestmove": "d1f1"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h8e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -443,
+            "depth": 10,
+            "bestmove": "h8e5"
+          },
+          "loss": 0,
+          "nodes": 305,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "h8e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -443,
+            "depth": 10,
+            "bestmove": "h8e5"
+          },
+          "loss": 0,
+          "nodes": 305,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "h8e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -443,
+            "depth": 10,
+            "bestmove": "h8e5"
+          },
+          "loss": 0,
+          "nodes": 307,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "h8e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -443,
+            "depth": 10,
+            "bestmove": "h8e5"
+          },
+          "loss": 0,
+          "nodes": 315,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-132",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164282837014",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 626,
+      "blackRating": 629,
+      "rating": 626,
+      "timeControl": "600",
+      "fen": "r1bqkb1r/pppp1ppp/2n2n2/8/3pP3/2N2N2/PPP2PPP/R1BQKB1R w KQkq - 0 5",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "b1c3",
+        "g8f6",
+        "d2d4",
+        "e5d4"
+      ],
+      "humanMove": "f3d4",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 27,
+        "depth": 10,
+        "bestmove": "f3d4"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 13,
+        "depth": 10,
+        "bestmove": "f3d4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 13,
+        "depth": 10,
+        "bestmove": "f3d4"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f3d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 13,
+            "depth": 10,
+            "bestmove": "f3d4"
+          },
+          "loss": 0,
+          "nodes": 282,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "f3d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 13,
+            "depth": 10,
+            "bestmove": "f3d4"
+          },
+          "loss": 0,
+          "nodes": 283,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "f3d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 13,
+            "depth": 10,
+            "bestmove": "f3d4"
+          },
+          "loss": 0,
+          "nodes": 281,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "f3d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 13,
+            "depth": 10,
+            "bestmove": "f3d4"
+          },
+          "loss": 0,
+          "nodes": 266,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-133",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164282837014",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 626,
+      "blackRating": 629,
+      "rating": 629,
+      "timeControl": "600",
+      "fen": "r1bqk2r/pp1pbppp/7B/2pQP3/2B5/2N5/PPP2PPP/R3K2R b KQkq - 0 10",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "b1c3",
+        "g8f6",
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "c6d4",
+        "d1d4",
+        "f8e7",
+        "e4e5",
+        "f6g8",
+        "f1c4",
+        "c7c5",
+        "d4d5",
+        "g8h6",
+        "c1h6"
+      ],
+      "humanMove": "e8g8",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -626,
+        "depth": 10,
+        "bestmove": "e8g8"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -753,
+        "depth": 10,
+        "bestmove": "e8g8"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -753,
+        "depth": 10,
+        "bestmove": "e8g8"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e8g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -753,
+            "depth": 10,
+            "bestmove": "e8g8"
+          },
+          "loss": 0,
+          "nodes": 732,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "e8g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -753,
+            "depth": 10,
+            "bestmove": "e8g8"
+          },
+          "loss": 0,
+          "nodes": 737,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "e8g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -753,
+            "depth": 10,
+            "bestmove": "e8g8"
+          },
+          "loss": 0,
+          "nodes": 708,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "e8g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -753,
+            "depth": 10,
+            "bestmove": "e8g8"
+          },
+          "loss": 0,
+          "nodes": 694,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-134",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164282837014",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 626,
+      "blackRating": 629,
+      "rating": 626,
+      "timeControl": "600",
+      "fen": "r4r1k/pp2Nppp/2q5/2B5/8/8/PPP1BPPP/R3K2R w KQ - 5 18",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "b1c3",
+        "g8f6",
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "c6d4",
+        "d1d4",
+        "f8e7",
+        "e4e5",
+        "f6g8",
+        "f1c4",
+        "c7c5",
+        "d4d5",
+        "g8h6",
+        "c1h6",
+        "e8g8",
+        "h6f4",
+        "d7d6",
+        "e5d6",
+        "e7d6",
+        "f4d6",
+        "c8e6",
+        "d6c5",
+        "e6d5",
+        "c3d5",
+        "d8e8",
+        "c4e2",
+        "e8c6",
+        "d5e7",
+        "g8h8"
+      ],
+      "humanMove": "e7c6",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 927,
+        "depth": 10,
+        "bestmove": "e7c6"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 944,
+        "depth": 10,
+        "bestmove": "e7c6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 944,
+        "depth": 10,
+        "bestmove": "e7c6"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e7c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 944,
+            "depth": 10,
+            "bestmove": "e7c6"
+          },
+          "loss": 0,
+          "nodes": 185,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "e7c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 944,
+            "depth": 10,
+            "bestmove": "e7c6"
+          },
+          "loss": 0,
+          "nodes": 185,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "e7c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 944,
+            "depth": 10,
+            "bestmove": "e7c6"
+          },
+          "loss": 0,
+          "nodes": 185,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "e7c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 944,
+            "depth": 10,
+            "bestmove": "e7c6"
+          },
+          "loss": 0,
+          "nodes": 185,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-135",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164282837014",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 626,
+      "blackRating": 629,
+      "rating": 629,
+      "timeControl": "600",
+      "fen": "7k/p4p1p/2p3p1/8/8/5B2/PPP2PPP/2K1R3 b - - 0 23",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "b1c3",
+        "g8f6",
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "c6d4",
+        "d1d4",
+        "f8e7",
+        "e4e5",
+        "f6g8",
+        "f1c4",
+        "c7c5",
+        "d4d5",
+        "g8h6",
+        "c1h6",
+        "e8g8",
+        "h6f4",
+        "d7d6",
+        "e5d6",
+        "e7d6",
+        "f4d6",
+        "c8e6",
+        "d6c5",
+        "e6d5",
+        "c3d5",
+        "d8e8",
+        "c4e2",
+        "e8c6",
+        "d5e7",
+        "g8h8",
+        "e7c6",
+        "b7c6",
+        "c5f8",
+        "a8f8",
+        "e1c1",
+        "f8e8",
+        "h1e1",
+        "g7g6",
+        "e2f3",
+        "e8e1",
+        "d1e1"
+      ],
+      "humanMove": "h8g7",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -999,
+        "depth": 10,
+        "bestmove": "h8g7"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -952,
+        "depth": 10,
+        "bestmove": "h8g7"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -952,
+        "depth": 10,
+        "bestmove": "h8g7"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c6c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -942,
+            "depth": 10,
+            "bestmove": "c6c5"
+          },
+          "loss": 0,
+          "nodes": 68,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "c6c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -942,
+            "depth": 10,
+            "bestmove": "c6c5"
+          },
+          "loss": 0,
+          "nodes": 69,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "c6c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -942,
+            "depth": 10,
+            "bestmove": "c6c5"
+          },
+          "loss": 0,
+          "nodes": 100,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "c6c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -942,
+            "depth": 10,
+            "bestmove": "c6c5"
+          },
+          "loss": 0,
+          "nodes": 101,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-136",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164953279436",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 625,
+      "blackRating": 624,
+      "rating": 625,
+      "timeControl": "600",
+      "fen": "rnbqkbnr/ppp1pppp/8/8/3Pp3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3",
+      "history": [
+        "e2e4",
+        "d7d5",
+        "d2d4",
+        "d5e4"
+      ],
+      "humanMove": "b1c3",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": -63,
+        "depth": 10,
+        "bestmove": "g1e2"
+      },
+      "best": {
+        "kind": "cp",
+        "value": -73,
+        "depth": 10,
+        "bestmove": "g1e2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -61,
+        "depth": 10,
+        "bestmove": "b1c3"
+      },
+      "humanLoss": 0,
+      "botLoss": 11.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -73,
+            "depth": 10,
+            "bestmove": "g1e2"
+          },
+          "loss": 0,
+          "nodes": 554,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "b1c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -61,
+            "depth": 10,
+            "bestmove": "b1c3"
+          },
+          "loss": 0,
+          "nodes": 407,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "h2h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -119,
+            "depth": 10,
+            "bestmove": "h2h4"
+          },
+          "loss": 46,
+          "nodes": 457,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "b1c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -61,
+            "depth": 10,
+            "bestmove": "b1c3"
+          },
+          "loss": 0,
+          "nodes": 283,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-137",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164953279436",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 625,
+      "blackRating": 624,
+      "rating": 625,
+      "timeControl": "600",
+      "fen": "r2qkb1r/ppp1pppp/2n1bn2/8/2BPpB2/2N5/PPP2PPP/R2QK1NR w KQkq - 6 6",
+      "history": [
+        "e2e4",
+        "d7d5",
+        "d2d4",
+        "d5e4",
+        "b1c3",
+        "g8f6",
+        "c1f4",
+        "b8c6",
+        "f1c4",
+        "c8e6"
+      ],
+      "humanMove": "d4d5",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 73,
+        "depth": 10,
+        "bestmove": "d4d5"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 23,
+        "depth": 10,
+        "bestmove": "d4d5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 23,
+        "depth": 10,
+        "bestmove": "d4d5"
+      },
+      "humanLoss": 0,
+      "botLoss": 30,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c4e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -7,
+            "depth": 10,
+            "bestmove": "c4e6"
+          },
+          "loss": 30,
+          "nodes": 384,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "c4e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -7,
+            "depth": 10,
+            "bestmove": "c4e6"
+          },
+          "loss": 30,
+          "nodes": 361,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "c4e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -7,
+            "depth": 10,
+            "bestmove": "c4e6"
+          },
+          "loss": 30,
+          "nodes": 377,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "c4e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -7,
+            "depth": 10,
+            "bestmove": "c4e6"
+          },
+          "loss": 30,
+          "nodes": 346,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-138",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164953279436",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 625,
+      "blackRating": 624,
+      "rating": 624,
+      "timeControl": "600",
+      "fen": "r2qkb1r/ppp1p1pp/2n5/3b1p2/5B2/2N5/PPP2PPP/R2QK1NR b KQkq - 1 9",
+      "history": [
+        "e2e4",
+        "d7d5",
+        "d2d4",
+        "d5e4",
+        "b1c3",
+        "g8f6",
+        "c1f4",
+        "b8c6",
+        "f1c4",
+        "c8e6",
+        "d4d5",
+        "f6d5",
+        "c3e4",
+        "f7f5",
+        "c4d5",
+        "e6d5",
+        "e4c3"
+      ],
+      "humanMove": "d5g2",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 454,
+        "depth": 10,
+        "bestmove": "d5g2"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 447,
+        "depth": 10,
+        "bestmove": "d5g2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 447,
+        "depth": 10,
+        "bestmove": "d5g2"
+      },
+      "humanLoss": 0,
+      "botLoss": 0,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d5g2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 447,
+            "depth": 10,
+            "bestmove": "d5g2"
+          },
+          "loss": 0,
+          "nodes": 532,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "d5g2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 447,
+            "depth": 10,
+            "bestmove": "d5g2"
+          },
+          "loss": 0,
+          "nodes": 500,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "d5g2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 447,
+            "depth": 10,
+            "bestmove": "d5g2"
+          },
+          "loss": 0,
+          "nodes": 505,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "d5g2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 447,
+            "depth": 10,
+            "bestmove": "d5g2"
+          },
+          "loss": 0,
+          "nodes": 529,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "id": "700-139",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164953279436",
+      "club": "the-beginners-chess-club",
+      "contributor": "lordoflor",
+      "whiteRating": 625,
+      "blackRating": 624,
+      "rating": 624,
+      "timeControl": "600",
+      "fen": "r2Qkb1r/ppp1p2p/2n3p1/5p2/5B2/2N5/PPP2P1P/R3K1Nb b Qkq - 0 12",
+      "history": [
+        "e2e4",
+        "d7d5",
+        "d2d4",
+        "d5e4",
+        "b1c3",
+        "g8f6",
+        "c1f4",
+        "b8c6",
+        "f1c4",
+        "c8e6",
+        "d4d5",
+        "f6d5",
+        "c3e4",
+        "f7f5",
+        "c4d5",
+        "e6d5",
+        "e4c3",
+        "d5g2",
+        "d1h5",
+        "g7g6",
+        "h5d1",
+        "g2h1",
+        "d1d8"
+      ],
+      "humanMove": "a8d8",
+      "unrestrictedBest": {
+        "kind": "cp",
+        "value": 589,
+        "depth": 10,
+        "bestmove": "a8d8"
+      },
+      "best": {
+        "kind": "cp",
+        "value": 670,
+        "depth": 10,
+        "bestmove": "a8d8"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 670,
+        "depth": 10,
+        "bestmove": "a8d8"
+      },
+      "humanLoss": 0,
+      "botLoss": 21.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "a8d8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 670,
+            "depth": 10,
+            "bestmove": "a8d8"
+          },
+          "loss": 0,
+          "nodes": 96,
+          "depth": 2
+        },
+        {
+          "seed": 1052660,
+          "move": "a8d8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 670,
+            "depth": 10,
+            "bestmove": "a8d8"
+          },
+          "loss": 0,
+          "nodes": 96,
+          "depth": 2
+        },
+        {
+          "seed": 1118197,
+          "move": "c6d8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 585,
+            "depth": 10,
+            "bestmove": "c6d8"
+          },
+          "loss": 85,
+          "nodes": 129,
+          "depth": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "a8d8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 670,
+            "depth": 10,
+            "bestmove": "a8d8"
+          },
+          "loss": 0,
+          "nodes": 96,
+          "depth": 2
+        }
+      ]
+    }
+  ]
+}
