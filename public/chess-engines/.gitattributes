@@ -1,0 +1,2 @@
+# Preserve exact upstream asset/license bytes for the recorded SHA-256 hashes.
+* -text
