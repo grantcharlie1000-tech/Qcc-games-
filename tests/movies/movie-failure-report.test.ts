@@ -1,74 +1,122 @@
-import {afterEach,describe,expect,it,vi} from 'vitest';
-import {handleMovieFailureReport} from '../../server/movie-failure-report';
+import {readFileSync} from 'node:fs';
+import {DatabaseSync} from 'node:sqlite';
+import {describe,expect,it} from 'vitest';
+import {FAILURE_POST_LIMIT,handleMovieFailureReport} from '../../server/movie-failure-report';
 
 const origin='https://nceastudy.pages.dev';
-const code='random-private-report-code-12345';
-const env={
- QCC_MOVIE_REPORT_CODE:code,
- QCC_MOVIE_REPORT_TO:'owner@example.test',
- QCC_MOVIE_REPORT_FROM:'QCC Diagnostics <alerts@example.test>',
- RESEND_API_KEY:'re_test_key',
-};
-const event={code,reason:'frame-load-timeout',stage:'connecting',online:true};
-function post(body:unknown=event,headers:Record<string,string>={}){
- return new Request(origin+'/api/movie-failure-report',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json',...headers},body:typeof body==='string'?body:JSON.stringify(body)});
+const secret='12345678901234567890123456789012';
+const event={reason:'frame-load-timeout',stage:'connecting',online:true};
+function localDb(){
+ const sql=new DatabaseSync(':memory:');
+ sql.exec(readFileSync('docs/movie-failure-schema.sql','utf8'));
+ const statement=(query:string,values:(string|number)[]=[])=>({
+  bind(...args:(string|number)[]){return statement(query,args);},
+  async all<T=Record<string,unknown>>(){return {results:sql.prepare(query).all(...values) as T[]};},
+ });
+ return {sql,db:{prepare(query:string){return statement(query);}}};
 }
-afterEach(()=>vi.unstubAllGlobals());
+function post(body:unknown=event,headers:Record<string,string>={}):Request{
+ return new Request(origin+'/api/movie-failure-report',{
+  method:'POST',
+  headers:{Origin:origin,'Content-Type':'application/json','CF-Connecting-IP':'192.0.2.5',...headers},
+  body:typeof body==='string'?body:JSON.stringify(body),
+ });
+}
+const env=(db:ReturnType<typeof localDb>['db'])=>({MOVIE_POPULARITY_DB:db,MOVIE_POPULARITY_SECRET:secret});
 
-describe('private opt-in movie failure reports',()=>{
- it('emails only the minimal diagnostics to the server-configured recipient',async()=>{
-  const fetcher=vi.fn(async (_url:string,_init?:RequestInit)=>new Response(null,{status:202}));
-  vi.stubGlobal('fetch',fetcher);
-  const response=await handleMovieFailureReport(post(),env,Date.UTC(2026,10,17,1,2,3));
-  expect(response.status).toBe(204);
-  expect(response.headers.get('cache-control')).toBe('no-store');
-  expect(fetcher).toHaveBeenCalledTimes(1);
-  const [url,init]=fetcher.mock.calls[0];
-  expect(url).toBe('https://api.resend.com/emails');
-  expect(init).toMatchObject({method:'POST',redirect:'manual',headers:{Authorization:'Bearer re_test_key','Content-Type':'application/json'}});
-  const mail=JSON.parse(String(init?.body));
-  expect(mail).toMatchObject({from:env.QCC_MOVIE_REPORT_FROM,to:[env.QCC_MOVIE_REPORT_TO],subject:'NCEAstudy playback diagnostic'});
-  expect(mail.text).toContain('Reason: frame-load-timeout');
-  expect(mail.text).toContain('Stage: connecting');
-  expect(mail.text).toContain('Time: 2026-11-17T01:02:03.000Z');
-  expect(mail.text).not.toContain(code);
-  expect(mail.text).not.toContain('owner@example.test');
+describe('automatic movie playback failure telemetry',()=>{
+ it('stores a server timestamp and minimal enum fields in an existing D1 database',async()=>{
+  const {sql,db}=localDb();
+  try{
+   const at=Date.UTC(2026,10,17,1,2,3);
+   const response=await handleMovieFailureReport(post(),env(db),at);
+   expect(response.status).toBe(204);
+   expect(response.headers.get('cache-control')).toBe('no-store');
+   expect(sql.prepare('SELECT received_at,reason,stage,online FROM movie_playback_failures').all()).toEqual([
+    {received_at:at,reason:'frame-load-timeout',stage:'connecting',online:1},
+   ]);
+   const columns=(sql.prepare('PRAGMA table_info(movie_playback_failures)').all() as {name:string}[]).map(col=>col.name);
+   expect(columns).toEqual(['id','received_at','reason','stage','online']);
+   const rate=JSON.stringify(sql.prepare('SELECT * FROM movie_playback_failure_rate').all());
+   expect(rate).not.toContain('192.0.2.5');
+  }finally{sql.close();}
  });
 
- it('refuses to forward when the report code is incorrect',async()=>{
-  const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
-  const response=await handleMovieFailureReport(post({...event,code:'not-the-code-xxxxxxxxxxx'}),env);
-  expect(response.status).toBe(403);
-  expect(fetcher).not.toHaveBeenCalled();
+ it.each([
+  'frame-load-timeout','frame-ready-timeout','frame-error','frame-csp-blocked',
+  'no-playback-after-ready','local-media-error','archive-frame-error',
+ ] as const)('accepts the specific failure reason %s',async reason=>{
+  const {sql,db}=localDb();
+  try{
+   const response=await handleMovieFailureReport(post({reason,stage:'loaded',online:false}),env(db));
+   expect(response.status).toBe(204);
+   expect(sql.prepare('SELECT reason,stage,online FROM movie_playback_failures').get()).toEqual({reason,stage:'loaded',online:0});
+  }finally{sql.close();}
  });
 
- it('rejects missing configuration without sending',async()=>{
-  const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
-  const response=await handleMovieFailureReport(post(),{});
-  expect(response.status).toBe(503);
-  expect(fetcher).not.toHaveBeenCalled();
+ it('needs no email service, diagnostic access code or user account',async()=>{
+  const {sql,db}=localDb();
+  try{
+   const result=await handleMovieFailureReport(post(),env(db));
+   expect(result.status).toBe(204);
+   expect(sql.prepare('SELECT count(*) AS n FROM movie_playback_failures').get()).toEqual({n:1});
+  }finally{sql.close();}
  });
 
- it('requires same-origin POST with JSON content',async()=>{
-  const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
-  const wrongOrigin=await handleMovieFailureReport(post(event,{Origin:'https://attacker.test'}),env);
-  const wrongType=await handleMovieFailureReport(post(event,{'Content-Type':'text/plain'}),env);
-  const wrongMethod=await handleMovieFailureReport(new Request(origin+'/api/movie-failure-report'),env);
-  expect([wrongOrigin.status,wrongType.status,wrongMethod.status]).toEqual([403,415,405]);
-  expect(fetcher).not.toHaveBeenCalled();
+ it('rejects non-POST, cross-origin and non-JSON requests',async()=>{
+  const {sql,db}=localDb();
+  try{
+   const replies=await Promise.all([
+    handleMovieFailureReport(new Request(origin+'/api/movie-failure-report'),env(db)),
+    handleMovieFailureReport(post(event,{Origin:'https://another.example'}),env(db)),
+    handleMovieFailureReport(post(event,{'Content-Type':'text/plain'}),env(db)),
+    handleMovieFailureReport(post(event,{'Sec-Fetch-Site':'cross-site'}),env(db)),
+   ]);
+   expect(replies.map(r=>r.status)).toEqual([405,403,415,403]);
+   expect(sql.prepare('SELECT count(*) AS n FROM movie_playback_failures').get()).toEqual({n:0});
+  }finally{sql.close();}
  });
 
- it('rejects extra fields and overlarge payloads without forwarding',async()=>{
-  const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
-  const extra=await handleMovieFailureReport(post({...event,title:'Private viewing title'}),env);
-  const tooLarge=await handleMovieFailureReport(post({...event,garbage:'x'.repeat(1100)}),env);
-  expect([extra.status,tooLarge.status]).toEqual([400,413]);
-  expect(fetcher).not.toHaveBeenCalled();
+ it('rejects tracking fields, invalid enums, and oversized payloads',async()=>{
+  const {sql,db}=localDb();
+  try{
+   const replies=await Promise.all([
+    handleMovieFailureReport(post({...event,title:'Private film'}),env(db)),
+    handleMovieFailureReport(post({...event,accountId:'do-not-store'}),env(db)),
+    handleMovieFailureReport(post({...event,reason:'dns_is_blocked'}),env(db)),
+    handleMovieFailureReport(post({...event,stage:'foobar'}),env(db)),
+    handleMovieFailureReport(post('x'.repeat(513)),env(db)),
+   ]);
+   expect(replies.map(r=>r.status)).toEqual([400,400,400,400,413]);
+   expect(sql.prepare('SELECT count(*) AS n FROM movie_playback_failures').get()).toEqual({n:0});
+  }finally{sql.close();}
  });
 
- it('returns a failure instead of pretending an email was delivered',async()=>{
-  vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:429})));
-  const response=await handleMovieFailureReport(post(),env);
-  expect(response.status).toBe(502);
+ it('requires the trusted Cloudflare address and rate-limit secret',async()=>{
+  const {sql,db}=localDb();
+  try{
+   expect((await handleMovieFailureReport(post(event,{'CF-Connecting-IP':''}),env(db))).status).toBe(503);
+   expect((await handleMovieFailureReport(post(),{MOVIE_POPULARITY_DB:db})).status).toBe(503);
+   expect((await handleMovieFailureReport(post(),{})).status).toBe(503);
+  }finally{sql.close();}
+ });
+
+ it('throttles abusive clients without inserting additional event rows',async()=>{
+  const {sql,db}=localDb();
+  try{
+   expect((await handleMovieFailureReport(post(),env(db))).status).toBe(204);
+   expect(sql.prepare('SELECT count(*) AS n FROM movie_playback_failure_rate').get()).toEqual({n:1});
+   sql.prepare('UPDATE movie_playback_failure_rate SET attempts=?').run(FAILURE_POST_LIMIT);
+   expect((await handleMovieFailureReport(post(),env(db))).status).toBe(429);
+   expect(sql.prepare('SELECT count(*) AS n FROM movie_playback_failures').get()).toEqual({n:1});
+  }finally{sql.close();}
+ });
+
+ it('fails closed when the telemetry table has not been migrated',async()=>{
+  const {sql,db}=localDb();
+  try{
+   sql.exec('DROP TABLE movie_playback_failures');
+   expect((await handleMovieFailureReport(post(),env(db))).status).toBe(503);
+  }finally{sql.close();}
  });
 });
