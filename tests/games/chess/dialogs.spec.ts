@@ -20,6 +20,92 @@ async function open(page: Page) {
   await expect(share(page)).toBeVisible();
 }
 
+for (const width of [1440, 390]) test(`Board settings closes with X and Escape at ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/#/game/chess');
+  const board = page.getByRole('dialog', { name: 'Board settings' });
+  const trigger = page.getByRole('button', { name: 'Board', exact: true });
+  for (const close of ['X', 'Escape', 'Enter']) {
+    await trigger.click();
+    await expect(board).toBeVisible();
+    if (close === 'X') {
+      await board.getByRole('radio', { name: 'Neutral', exact: true }).click();
+      await expect(board).toBeVisible();
+      if (info.project.name === 'chromium') await page.screenshot({ path: `/tmp/qcc-share-evidence/board-${width}.png` });
+      await board.getByRole('button', { name: 'Close', exact: true }).locator('svg').click();
+    } else if (close === 'Escape') {
+      await expect(board.getByRole('radio', { name: 'Neutral', exact: true })).toHaveAttribute('aria-checked', 'true');
+      await board.getByLabel('Coordinates', { exact: true }).focus();
+      await page.keyboard.press('Escape');
+    } else await board.getByRole('button', { name: 'Close', exact: true }).press('Enter');
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('.ch-sheet')).toHaveCount(0);
+    await expect(page.locator('#study-view')).toBeHidden();
+    await expect(trigger).toBeFocused();
+  }
+});
+
+test('Game options uses the same working X and Escape dismissal', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await start(page);
+  const options = page.getByRole('dialog', { name: 'Game options' });
+  const trigger = page.getByRole('button', { name: 'Options', exact: true });
+  for (const close of ['X', 'Escape']) {
+    await trigger.click();
+    await expect(options).toBeVisible();
+    if (close === 'X') await options.getByRole('button', { name: 'Close', exact: true }).click();
+    else await page.keyboard.press('Escape');
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('.ch-sheet')).toHaveCount(0);
+    await expect(page.locator('#study-view')).toBeHidden();
+    await expect(trigger).toBeFocused();
+  }
+  // Board opened from the in-game Options sheet closes without leaving either overlay.
+  await trigger.click();
+  await options.getByRole('button', { name: 'Board settings', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Board settings' }).getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.locator('.ch-sheet')).toHaveCount(0);
+  await expect(page.locator('#study-view')).toBeHidden();
+});
+
+test('the game result releases its overlay before Study navigation', async ({ page }) => {
+  await start(page);
+  for (const [from, to] of [['f2', 'f3'], ['e7', 'e5'], ['g2', 'g4'], ['d8', 'h4']]) {
+    await page.locator(`#ch-sq-${from}`).click();
+    await page.locator(`#ch-sq-${to}`).click();
+  }
+  await expect(page.getByRole('dialog', { name: 'Game over' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.ch-sheet')).toHaveCount(0);
+  await expect(page.locator('#study-view')).toBeHidden();
+  await open(page);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.ch-sheet')).toHaveCount(0);
+  await expect(page.locator('#study-view')).toBeHidden();
+});
+
+test('player profiles share the native X and Escape dismissal', async ({ page }) => {
+  // Only the remote records are fixtures. The chess UI and dialog are real.
+  const stats = { rating: 1500, provisional: true, games: 0, wins: 0, losses: 0, draws: 0, streak: 0, best: 1500, change: 0 };
+  await page.route('**/.netlify/functions/chess?*', route => {
+    const action = new URL(route.request().url()).searchParams.get('action');
+    return route.fulfill({ json: action === 'profile'
+      ? { name: 'Test player', ratings: { bullet: stats, blitz: stats, rapid: stats, classical: stats }, recent: [] }
+      : { category: 'blitz', entries: [{ ...stats, rank: 1, name: 'Test player' }], me: null } });
+  });
+  await page.goto('/#/game/chess');
+  await page.locator('.ch-links').getByRole('button', { name: 'Leaderboard', exact: true }).click();
+  const profile = page.getByRole('dialog', { name: 'Test player' });
+  for (const close of ['X', 'Escape']) {
+    await page.locator('.ch-lb-row').click();
+    await expect(profile).toContainText('No games yet.');
+    if (close === 'X') await profile.getByRole('button', { name: 'Close', exact: true }).click();
+    else await page.keyboard.press('Escape');
+    await expect(page.locator('.ch-sheet')).toHaveCount(0);
+    await expect(page.locator('#study-view')).toBeHidden();
+  }
+});
+
 test('Share X closes the overlay and can reopen repeatedly', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await start(page);
