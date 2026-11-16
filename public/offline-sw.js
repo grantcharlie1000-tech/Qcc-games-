@@ -53,6 +53,10 @@ self.addEventListener('fetch',event=>{
  const path=url.pathname.slice(new URL(SCOPE).pathname.length);
  // Never cache private account, leaderboard, movie, chat or multiplayer traffic.
  if(!/^(?:assets\/|game-art\/|audio\/|chess-engines\/|icon\.svg$|manifest\.webmanifest$|offline-packs\.json$)/.test(path))return;
+ if(path==='offline-packs.json'){
+  event.respondWith((async()=>{try{const response=await fetch(request);if(response.ok)return response;}catch{}return await caches.match(request)||new Response('Unavailable',{status:503});})());
+  return;
+ }
  event.respondWith((async()=>{
   const local=await caches.match(request);
   if(local)return local;
