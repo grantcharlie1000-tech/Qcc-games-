@@ -21,6 +21,8 @@ body.in-game #pause-overlay{border-radius:16px}
 /* Native full-bleed canvas scenes already paint behind their top dock. */
 .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=claimline],[data-game-id=quad-clash],[data-game-id=femboy-obby]) .game-surface{background:transparent}
 .game-dock{background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;position:relative;order:2;flex:0 0 56px;width:min(100%,560px);height:56px;margin:0 auto;padding:2px;display:flex;align-items:center;justify-content:center;gap:10px;z-index:30;font-family:var(--font-sans)}
+/* The dock box paints nothing and floats over some games: taps between the pills reach the game. */
+.game-dock{pointer-events:none}.game-dock>*{pointer-events:auto}
 .game-dock>.game-glass{position:relative;border-radius:999px;height:52px;min-height:52px;min-width:0}
 /* A faint frosted sheen and directional highlights keep the clear controls
    visible on flat dark scenes. No enclosing dock panel or opaque white fill. */

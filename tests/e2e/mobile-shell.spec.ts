@@ -103,23 +103,30 @@ base.describe('first visit on a phone',()=>{
 });
 
 test.describe('games on phones',()=>{
-  test('Drift Club runs edge to edge under the notch and home indicator, with its controls clear',async({page,browserName})=>{
+  test('Drift Club: the glass dock floats on the game, which runs to every edge, and only its controls keep clear',async({page,browserName})=>{
     test.skip(browserName!=='chromium','safe-area insets are emulated through Chromium');
     const cdp=await page.context().newCDPSession(page);
+    const box=async(selector:string)=>(await page.locator(selector).first().boundingBox())!;
+    const bottom=(b:{y:number;height:number})=>b.y+b.height;
+    // The visible glass: the dock's own box paints nothing and lets taps through.
+    const glassBottom=()=>page.locator('.game-dock > *').evaluateAll(pills=>Math.max(...pills.map(p=>p.getBoundingClientRect().bottom)));
     await page.setViewportSize({width:390,height:844});
     await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:47,bottom:34,left:0,right:0}});
     await page.goto('/#/game/drift-club');await expect(page.locator('.dc')).toBeVisible();
-    expect((await page.locator('.game-dock').boundingBox())!.y).toBeGreaterThanOrEqual(47);
-    let panel=(await page.locator('.dc-control').boundingBox())!,shoot=(await page.locator('.dc-shoot').boundingBox())!;
-    expect(panel.y+panel.height).toBeCloseTo(844,0);
-    expect(shoot.y+shoot.height).toBeLessThanOrEqual(844-34);
+    expect((await box('.game-dock')).y).toBeGreaterThanOrEqual(47);
+    expect((await box('.dc-tour')).y).toBe(0);
+    expect((await box('.dc-modes')).y).toBeGreaterThanOrEqual(await glassBottom()+8);
+    expect(bottom(await box('.dc-control'))).toBeCloseTo(844,0);
+    expect(bottom(await box('.dc-shoot'))).toBeLessThanOrEqual(844-34);
     await page.setViewportSize({width:844,height:390});
     await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:0,bottom:21,left:47,right:0}});
-    await expect.poll(async()=>(await page.locator('.dc-desk').boundingBox())!.x).toBe(0);
-    panel=(await page.locator('.dc-desk').boundingBox())!;shoot=(await page.locator('.dc-shoot').boundingBox())!;
-    expect(panel.y+panel.height).toBeCloseTo(390,0);
+    await expect.poll(async()=>(await box('.dc-desk')).x).toBe(0);
+    for(const selector of ['.dc-desk','.dc-window'])expect((await box(selector)).y).toBe(0);
+    const glass=await glassBottom();
+    for(const selector of ['.dc-modes','.dc-venue'])expect((await box(selector)).y).toBeGreaterThanOrEqual(glass+8);
+    const shoot=await box('.dc-shoot');
     expect(shoot.x).toBeGreaterThanOrEqual(47);
-    expect(shoot.y+shoot.height).toBeLessThanOrEqual(390-21);
+    expect(bottom(shoot)).toBeLessThanOrEqual(390-21);
   });
 
   test('Fivefold keeps readable tiles on a landscape phone',async({page})=>{
