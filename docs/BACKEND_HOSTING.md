@@ -48,6 +48,8 @@ upstream fetch uses manual redirects and a 10-second deadline; credentials and
 the secret are never followed to a redirect destination. A later failure after
 a response stream begins cannot change its status.
 
+Optional movie player failure emails use the native Pages route `/api/movie-failure-report` (not the Vercel proxy). Set `RESEND_API_KEY`, `QCC_MOVIE_REPORT_TO`, `QCC_MOVIE_REPORT_FROM`, and `QCC_MOVIE_REPORT_CODE` as secret/runtime bindings in Cloudflare Pages. Details, privacy and setup: [Movie failure reports](MOVIE_FAILURE_REPORTS.md). The route is disabled until all bindings are present.
+
 The movies fetch also uses `redirect: 'manual'`. Workers implements only
 `follow` and `manual`; `error` throws before making the request. Every non-2xx,
 including redirects, fails metadata retrieval (404 keeps the existing
