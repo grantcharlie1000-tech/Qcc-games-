@@ -38,8 +38,7 @@ const game:GameModule={
     function pointer(event:PointerEvent){if(event.isPrimary&&event.button===0&&!blocked(event.target)){event.preventDefault();canvas.focus({preventScroll:true});place();}}
     function key(event:KeyboardEvent){
       if((event.code!=='Space'&&event.code!=='Enter')||event.repeat||blocked(event.target))return;
-      // Native buttons own their keyboard activation; the stage/canvas uses this action binding.
-      if(event.target instanceof Element&&event.target.closest('button,a'))return;
+      // Native buttons own their keyboard activation (blocked() skips them); the stage/canvas uses this action binding.
       event.preventDefault();place();
     }
     function restart(){if(disposed)return;state=createTower();lastTick=performance.now();update();context.save(state);schedule();}

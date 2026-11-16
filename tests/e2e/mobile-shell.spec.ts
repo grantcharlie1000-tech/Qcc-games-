@@ -26,7 +26,8 @@ test.describe('phone sheets',()=>{
     const cdp=await page.context().newCDPSession(page);
     await openMenu(page);await expect(menu).toBeVisible();
     let top=(await menu.boundingBox())!.y;
-    await drag(cdp,195,top+20,top+50);
+    // 20 px: below the flick distance, so speed cannot decide it.
+    await drag(cdp,195,top+20,top+40);
     await expect(menu).toBeVisible();
     await expect.poll(()=>menu.evaluate(d=>(d as HTMLElement).style.translate)).toBe('');
     top=(await menu.boundingBox())!.y;
@@ -66,7 +67,8 @@ test.describe('phone sheets',()=>{
     expect(box.width).toBeGreaterThan(200);
   });
 
-  test('leaving fullscreen with a system gesture keeps the game open',async({page})=>{
+  test('leaving fullscreen with a system gesture keeps the game open',async({page,browserName})=>{
+    test.skip(browserName!=='chromium','touch pointer media is emulated reliably only in Chromium');
     await page.goto('/#/game/tower');await expect(page.locator('.tower-game')).toBeVisible();
     expect(await page.evaluate(()=>matchMedia('(pointer:fine)').matches)).toBe(false);
     await gameAction(page,'Enter full screen');

@@ -41,7 +41,7 @@ export function requestSheetClose(dialog:HTMLDialogElement):void{
 }
 
 /** Whether a pull of this distance and speed dismisses a sheet: a third of its height, or a quick downward flick. */
-export function pullDismisses(distance:number,velocity:number,height:number):boolean{
+function pullDismisses(distance:number,velocity:number,height:number):boolean{
   return distance>Math.min(140,height/3)||(distance>24&&velocity>0.5);
 }
 
@@ -50,9 +50,14 @@ const outside=(dialog:HTMLDialogElement,x:number,y:number)=>{
   return x<r.left||x>r.right||y<r.top||y>r.bottom;
 };
 // Inside a sheet these keep their own touch gestures.
-const OWN_GESTURES='input,textarea,select,[contenteditable="true"],[data-own-gestures]';
+const OWN_GESTURES='input,textarea,select,[contenteditable="true"]';
+// A list inside the sheet that has scrolled keeps a downward drag to scroll back up.
+const innerScrolled=(target:EventTarget|null,dialog:HTMLDialogElement)=>{
+  for(let node=target instanceof Element?target:null;node&&node!==dialog;node=node.parentElement)if(node.scrollTop>0)return true;
+  return false;
+};
 
-// Phone sheets close like native ones: a tap on the dimmed area, or a pull down from the top of the sheet.
+// Sheets close like native ones: a tap on the dimmed area (as Escape does), and on phones a pull down from the top of the sheet.
 function bindDismiss(dialog:HTMLDialogElement):()=>void{
   const events=new AbortController(),options={signal:events.signal};
   let pressedOutside=false;
@@ -67,13 +72,15 @@ function bindDismiss(dialog:HTMLDialogElement):()=>void{
   dialog.addEventListener('touchstart',event=>{
     start=undefined;pulling=false;
     if(!phone.matches||event.touches.length!==1||dialog.scrollTop>0)return;
-    if(event.target instanceof Element&&event.target.closest(OWN_GESTURES))return;
+    if(event.target instanceof Element&&event.target.closest(OWN_GESTURES)||innerScrolled(event.target,dialog))return;
     const touch=event.touches[0];start={x:touch.clientX,y:touch.clientY,t:event.timeStamp};last={y:touch.clientY,t:event.timeStamp};velocity=0;
   },{...options,passive:true});
   dialog.addEventListener('touchmove',event=>{
     if(!start||event.touches.length!==1)return;
     const touch=event.touches[0],dy=touch.clientY-start.y,dx=touch.clientX-start.x;
     if(!pulling){
+      // Hold the page still from the first downward pixel, so iOS does not start its own bounce first.
+      if(dy>0&&dy>=Math.abs(dx)&&dialog.scrollTop<=0&&event.cancelable)event.preventDefault();
       if(Math.abs(dy)<8&&Math.abs(dx)<8)return;
       // Up, sideways or a sheet that has scrolled: the sheet's own scrolling keeps the gesture.
       if(dy<=0||Math.abs(dx)>dy||dialog.scrollTop>0){start=undefined;return;}
@@ -86,6 +93,8 @@ function bindDismiss(dialog:HTMLDialogElement):()=>void{
   const finish=(event:TouchEvent)=>{
     if(!start)return;
     const was=pulling,distance=last.y-start.y;start=undefined;pulling=false;
+    // A pull held still before release is not a flick.
+    if(event.timeStamp-last.t>100)velocity=0;
     if(!was)return;
     dialog.style.removeProperty('transition');
     if(event.type==='touchend'&&pullDismisses(distance,velocity,dialog.offsetHeight)){

@@ -198,8 +198,10 @@ function filterNotice(){
   if(onlyFavourites&&search)return `Favourites matching “${search}”`;
   return onlyFavourites?'Showing your favourites':`Games matching “${search}”`;
 }
+// One rule for the library and the Menu's search results.
+const matchingGames=()=>games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.trim().toLowerCase()));
 function library(){
-  const items=games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.toLowerCase()));
+  const items=matchingGames();
   const filtered=onlyFavourites||search!=='';
   // The notice text is user input, so it is filled in with textContent below, never through this template.
   content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" tabindex="0" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
@@ -557,13 +559,13 @@ document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
 document.querySelector('.rules-done')!.addEventListener('click',()=>rulesDialog.close());
 document.querySelector('#open-study')!.addEventListener('click',openStudyEntry);
 document.querySelector<HTMLInputElement>('#favourites-only')!.addEventListener('change',event=>{
-  onlyFavourites=(event.target as HTMLInputElement).checked;
+  onlyFavourites=(event.target as HTMLInputElement).checked;searchResults();
   if(activeId||movies||appView)location.hash=collectionHash;else library();
 });
 // The library behind the open sheet is hidden, so the sheet shows the first matches itself.
 function searchResults(){
   const list=document.querySelector<HTMLUListElement>('#search-results')!;
-  const matches=search.trim()?games.filter(g=>g.title.toLowerCase().includes(search.trim().toLowerCase())).slice(0,5):[];
+  const matches=search.trim()?matchingGames().slice(0,5):[];
   list.hidden=!search.trim();
   list.innerHTML=matches.length?matches.map(g=>`<li><a class="search-result" href="${entryHash(g.id)}" style="--card:${g.color}"><img src="${artUrl(g.id)}" alt="" width="32" height="32"><span></span></a></li>`).join(''):'<li class="search-empty">No games found</li>';
   list.querySelectorAll('.search-result span').forEach((span,index)=>{span.textContent=matches[index].title;});

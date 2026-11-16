@@ -32,21 +32,27 @@ Goal: fix the defects that make QCC feel like a desktop site on an iPhone, keepi
 
 ### P2 performance
 
-13. Maze Muncher draws every frame while paused. Fix: stop the loop when paused.
+13. Maze Muncher draws every frame while paused (35 frames in 600 ms, measured). Fix: stop the loop when paused (0 frames after).
 14. Breachline does not release its WebGL context on exit. Fix: `forceContextLoss()`.
-15. Snake draws the full garden every frame on the ready and game-over screens. Fix: loop only while running.
-16. Neon Coil joystick and Claimline ranking use `backdrop-filter` over canvases that repaint every frame. Fix: translucent fills.
-17. Fruit Merge redraws twice per frame while aiming. Fix: let the running loop draw.
+15. Neon Coil joystick and Claimline ranking use `backdrop-filter` over canvases that repaint every frame. Fix: translucent fills.
+16. Fruit Merge redraws twice per frame while aiming. Fix: let the running loop draw.
+17. Crossy Road and Quad Clash run MSAA on 2x and 3x phone buffers. Fix: MSAA only below 2x.
+
+### P3 polish
+
+18. Tower ignores taps beside its portrait canvas in landscape. Fix: the whole game area takes the tap.
 
 ### Kept as is
 
 - Study has no visible header or Return button: a tested, deliberate disguise. Its way back is the inline "games" link.
 - Board cells under 40 px in Color Blocks, Minesweeper and Solitaire at 320 px are drag targets inside fixed boards; enlarging them would change the games.
 - Tab labels at 9 to 10 px match native tab bars.
+- Snake keeps drawing on its ready and game-over screens: its end-of-run reveal and apple animations run on that loop.
+- Pause stopping the Maze Muncher loop has no browser test: the test runner throttles frames to about 8 a second, too few to tell the loops apart. It was measured directly instead.
 
 ## Verification
 
 - `npm run check`, `npm test`, focused and full `npm run test:e2e` on Chromium, `npm run build`.
-- New regression tests: sheet dismissal (tap outside, pull, sign-in close), fullscreen exit on touch, refresh button size, menu search results, safe areas in Drift Club, Fivefold landscape grid, pause stopping the Maze Muncher loop.
+- New regression tests: sheet dismissal (tap outside, pull, sign-in close), fullscreen exit on touch and on desktop, refresh button size, menu search results, safe areas in Drift Club, Fivefold and Chess on landscape phones.
 - After screenshots with the same script, a phone journey (library, game, pause, back, settings, Study, back) in portrait and landscape.
 - Independent code review.
