@@ -206,7 +206,62 @@ export class MoviesView {
  private failedImages=new Set<string>();
  private readonly disposeImages:()=>void;
  private readonly disposeStorage:()=>void;
- private onVisibility=()=>{if(document.hidden)this.pause();};
+ private onVisibility=()=>{if(document.hidden&&!this.inPictureInPicture())this.pause();};
+ // Picture in picture. A local video uses the browser's own window. A provider player moves into a Document
+ // Picture-in-Picture window where that exists (Chrome and Edge on desktop), resuming at the last reported time.
+ // Elsewhere a cross-origin player's video cannot be pulled out by this page, so the button keeps the stream
+ // playing while the app is in the background and the player's own picture in picture control takes it from there.
+ private pipWindow?:Window;
+ private keepPlaying=false;
+ private inPictureInPicture():boolean{
+  const video=this.video as (HTMLVideoElement&{webkitPresentationMode?:string})|undefined;
+  return !!this.pipWindow||this.keepPlaying||!!video&&(document.pictureInPictureElement===video||video.webkitPresentationMode==='picture-in-picture');
+ }
+ private paintPip(){
+  const button=this.root.querySelector<HTMLButtonElement>('[data-action="pip"]');if(!button)return;
+  const on=this.inPictureInPicture(),moved=on&&!this.keepPlaying;
+  button.setAttribute('aria-pressed',String(on));button.textContent=moved?'Back to page':'Picture in picture';
+ }
+ private async pictureInPicture(){
+  const video=this.video as (HTMLVideoElement&{webkitSetPresentationMode?:(mode:string)=>void;webkitPresentationMode?:string})|undefined;
+  if(video){
+   try{
+    if(this.inPictureInPicture()){if(document.pictureInPictureElement)await document.exitPictureInPicture();else video.webkitSetPresentationMode?.('inline');}
+    else if(typeof video.requestPictureInPicture==='function'&&document.pictureInPictureEnabled)await video.requestPictureInPicture();
+    else video.webkitSetPresentationMode?.('picture-in-picture');
+   }catch{/* The browser can refuse, for example before the video has loaded. */}
+   video.addEventListener('leavepictureinpicture',()=>this.paintPip(),{once:true});
+   this.paintPip();return;
+  }
+  const frame=this.frame;if(!frame)return;
+  const opener=(window as Window&{documentPictureInPicture?:{requestWindow(options:{width:number;height:number}):Promise<Window>}}).documentPictureInPicture;
+  if(this.pipWindow){this.pipWindow.close();return;}
+  if(!opener){
+   this.keepPlaying=!this.keepPlaying;this.paintPip();
+   const status=this.root.querySelector('#movies-player-status');
+   if(status&&this.keepPlaying)status.textContent='Stays loaded when you switch apps. Use the player\'s picture in picture button.';
+   return;
+  }
+  let win:Window;
+  try{win=await opener.requestWindow({width:480,height:270});}catch{return;}
+  if(this.frame!==frame||this.disposed){win.close();return;}
+  this.pipWindow=win;
+  win.document.title=frame.title;
+  const style=win.document.createElement('style');style.textContent='html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100%;height:100%;display:block}';
+  win.document.head.append(style);
+  const media=frame.parentElement!;
+  // Moving a frame reloads it, so it reloads at the last reported time.
+  const resumeAt=()=>{const url=new URL(frame.src);if(this.frameTime>=START_THRESHOLD)url.searchParams.set('t',String(Math.floor(this.frameTime)));frame.src=url.href;};
+  resumeAt();win.document.body.append(frame);
+  win.addEventListener('message',this.providerMessage);
+  media.insertAdjacentHTML('beforeend','<div class="movies-player-unavailable movies-pip-note"><h2>Playing in picture in picture</h2></div>');
+  win.addEventListener('pagehide',()=>{
+   this.pipWindow=undefined;media.querySelector('.movies-pip-note')?.remove();
+   if(this.frame===frame&&!this.disposed&&media.isConnected){resumeAt();media.append(frame);}
+   this.paintPip();
+  },{once:true});
+  this.paintPip();
+ }
  // The island is one element that survives renders: render() swaps the page around it and refreshes its items.
  private readonly navigation=createSectionNavigation('movies');
  private readonly tabbar=this.navigation.bar;
@@ -865,7 +920,7 @@ export class MoviesView {
    :missing?''
    :'No provider identifier is available for this title.';
   // Watch page order: back, title, episode heading, My list, screen, reload, episode controls (TV), status.
-  return `<div class="movies-player"><a class="movies-detail-back" href="${escape(back)}" aria-label="Back to ${escape(t.name)}">${uiIcon('back')}Back</a><h1 tabindex="-1">${escape(t.name)}</h1>${episode?`<h2>S${route.season} · E${episode.number} — ${escape(episode.name)}</h2>`:''}<div class="movies-watch-actions">${this.listButton(t.id)}</div><div class="movies-screen" data-title="${escape(t.id)}" tabindex="-1" aria-label="Player area"><div class="movies-media">${media}</div><div class="movies-connecting" hidden><span class="movies-spinner" aria-hidden="true"></span>${server?`<p>Connecting to FrameXTV…</p>`:''}</div><div class="movies-next" role="dialog" aria-label="Up next" hidden></div><p class="movies-next-announcement sr-only" role="status" aria-live="polite"></p><button data-action="fullscreen" class="movies-fullscreen"${this.fullscreenSupported()?'':' hidden'} aria-pressed="false">Full screen</button><div class="movies-resume-pill" hidden></div></div>${showReload?'<div class="movies-player-controls"><button data-action="reload-stream" class="ui-btn secondary small">Reload player</button></div>':''}${t.kind==='tv'&&episode?this.episodeControls(t,route.season!,route.episode!):''}<p id="movies-player-status" role="status">${status}</p></div>`;
+  return `<div class="movies-player"><a class="movies-detail-back" href="${escape(back)}" aria-label="Back to ${escape(t.name)}">${uiIcon('back')}Back</a><h1 tabindex="-1">${escape(t.name)}</h1>${episode?`<h2>S${route.season} · E${episode.number} — ${escape(episode.name)}</h2>`:''}<div class="movies-watch-actions">${this.listButton(t.id)}</div><div class="movies-screen" data-title="${escape(t.id)}" tabindex="-1" aria-label="Player area"><div class="movies-media">${media}</div><div class="movies-connecting" hidden><span class="movies-spinner" aria-hidden="true"></span>${server?`<p>Connecting to FrameXTV…</p>`:''}</div><div class="movies-next" role="dialog" aria-label="Up next" hidden></div><p class="movies-next-announcement sr-only" role="status" aria-live="polite"></p><button data-action="fullscreen" class="movies-fullscreen"${this.fullscreenSupported()?'':' hidden'} aria-pressed="false">Full screen</button>${source||external?`<button data-action="pip" class="movies-pip" aria-pressed="false">Picture in picture</button>`:''}<div class="movies-resume-pill" hidden></div></div>${showReload?'<div class="movies-player-controls"><button data-action="reload-stream" class="ui-btn secondary small">Reload player</button></div>':''}${t.kind==='tv'&&episode?this.episodeControls(t,route.season!,route.episode!):''}<p id="movies-player-status" role="status">${status}</p></div>`;
  }
  // A failed title waits for a retry rather than trying another provider.
  private chooseServer(key:string):StreamProviderId|undefined{
@@ -1146,7 +1201,7 @@ export class MoviesView {
   if(target.dataset.season)this.pickSeason(Number(target.dataset.season));
   if(target.dataset.drawerSeason)this.pickDrawerSeason(Number(target.dataset.drawerSeason));
   if(target.dataset.titleSeason&&this.route.id)void this.loadDrawerSeason(this.route.id,Number(target.dataset.titleSeason));
-  switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(Number(target.dataset.page));break;case 'retry-rails':this.retryRails();break;case 'retry-popular':this.popularRequested=false;void this.loadPopular();break;case 'retry-search':void this.fetchCatalog(this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season,true);break;case 'retry-stream':this.retryStream();break;case 'episodes':this.openDrawer(target);break;case 'close-drawer':this.closeDrawer();this.root.querySelector<HTMLElement>('[data-action="episodes"]')?.focus({preventScroll:true});break;case 'reload-stream':this.retryStream(true);break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.renderKeepingFocus();break;case 'reset':this.query='';this.genre='All';this.resetRemote();this.showSection('all');break;case 'import-device':this.storage.account?.importDeviceHistory();this.render();break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
+  switch(target.dataset.action){case 'pip':void this.pictureInPicture();break;case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(Number(target.dataset.page));break;case 'retry-rails':this.retryRails();break;case 'retry-popular':this.popularRequested=false;void this.loadPopular();break;case 'retry-search':void this.fetchCatalog(this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season,true);break;case 'retry-stream':this.retryStream();break;case 'episodes':this.openDrawer(target);break;case 'close-drawer':this.closeDrawer();this.root.querySelector<HTMLElement>('[data-action="episodes"]')?.focus({preventScroll:true});break;case 'reload-stream':this.retryStream(true);break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.renderKeepingFocus();break;case 'reset':this.query='';this.genre='All';this.resetRemote();this.showSection('all');break;case 'import-device':this.storage.account?.importDeviceHistory();this.render();break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
  };
  // A section is a route. The current section re-renders in place; any other one changes the address, and navigate() shows it.
  private showSection(kind:MovieKind){
@@ -1356,7 +1411,7 @@ export class MoviesView {
  private stopVideo(){this.endSession();this.closeDrawer();this.releaseMedia();}
  // Takes the stream and the local video off the screen during a redraw.
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
- private releaseMedia(){this.nativeFullscreen=false;this.releaseFullscreenEscape();this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
+ private releaseMedia(){this.keepPlaying=false;if(this.pipWindow){const win=this.pipWindow;this.pipWindow=undefined;win.close();}this.nativeFullscreen=false;this.releaseFullscreenEscape();this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  private endSession(){moviePopularity.reset();this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
  dispose(){this.disposeStorage();moviePopularity.stop();this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.menuGlass.dispose();this.headerGlass?.dispose();this.yieldGuard.disconnect();this.abort.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }

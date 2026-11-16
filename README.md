@@ -1,6 +1,6 @@
 # Pocket Arcade
 
-A static, private browser arcade with twenty-nine playable games: **Block Blast, Water Sort, Suika Game, Stack, Flappy Bird, Ball Run, Animal Stack, Snake, Slither.io, Minesweeper, Solitaire, Block Fill, Flow Free, Pool, Globle, Minecraft, Pac-Man, Corn Clicker, Slipline, Tetris, Wordle, Claimline, Crossy Road, Quad Clash, Femboy Frosthop, Drift Club, Last Light, Breachline and Chess**. Original SVG covers, a compact portrait-card library, favourites and local saves. The site requires a network connection; service-worker caching and offline downloads are retired. No advertisements or currency. Accounts are optional for play and required for publishing leaderboard scores. Gameplay stays local; optional shared leaderboards use a score service reached through the Cloudflare Pages proxy, Pool, Minecraft, Drift Club, Breachline and Chess can be played online between devices ([setup](docs/MULTIPLAYER.md)), and Chess has rated online play ([chess](docs/CHESS.md)).
+A static, private browser arcade with twenty-nine playable games: **Block Blast, Water Sort, Suika Game, Stack, Flappy Bird, Ball Run, Animal Stack, Snake, Slither.io, Minesweeper, Solitaire, Block Fill, Flow Free, Pool, Globle, Minecraft, Pac-Man, Corn Clicker, Slipline, Tetris, Wordle, Claimline, Crossy Road, Quad Clash, Femboy Frosthop, Drift Club, Last Light, Breachline and Chess**. Original SVG covers, a compact portrait-card library, favourites and local saves. Downloaded games play offline, including from the iPhone Home Screen in Airplane Mode ([offline play](docs/OFFLINE.md)). No advertisements or currency. Accounts are optional for play and required for publishing leaderboard scores. Gameplay stays local; optional shared leaderboards use a score service reached through the Cloudflare Pages proxy, Pool, Minecraft, Drift Club, Breachline and Chess can be played online between devices ([setup](docs/MULTIPLAYER.md)), and Chess has rated online play ([chess](docs/CHESS.md)).
 
 The latest [gameplay correction record](docs/GAMEPLAY_CORRECTIONS.md) includes the four referenced scenes, six Animal Stack cutouts, actual interaction recordings and viewport checks.
 
@@ -24,7 +24,7 @@ npm run build
 npm run verify:offline
 ```
 
-`verify:offline` now checks the production service-worker kill switch and runs Chromium recovery tests on port 4618. It installs an old caching worker whose `cache.addAll` stores `index.html` after a real 308 redirect to the scope root, confirms the cached response has `redirected === true`, and reproduces Chrome's `ERR_FAILED` when the worker serves it for navigation. The replacement deletes only caches starting with `pocket-arcade`, unregisters and reloads controlled windows from the network; the failed tab recovers after one more load. Tests cover `/` and `/Qcc-games-/`, independent app-startup cleanup, and preservation of unrelated cached content, local saves and cookies. `verify:update` remains a compatibility alias for this same audit. Set `CHROMIUM_PATH` to use a system Chromium binary when needed. Game tests and shell tests are under `tests/`; historical offline reports describe behavior that has been retired.
+`verify:offline` checks that `dist/offline/packs.json` matches every built file, then runs the offline browser suite on port 4618 in Chromium and WebKit against the production build, served with Cloudflare's 308 for `index.html`: the library opens offline at `/` and `/Qcc-games-/`, all 29 games download and launch with no network, offline progress survives closing the app, a new version refreshes downloads before it takes over, and interrupted downloads, low storage, evicted files and the old redirected-page worker all recover. `verify:update` is an alias. Set `CHROMIUM_PATH` to use a system Chromium binary.
 
 ## Play and save
 
@@ -36,9 +36,9 @@ With **Sound** and **Christmas theme** enabled, the original “Snowfall on the 
 
 Scores, settings, favourites and compact game snapshots stay in this browser's local storage. If storage is blocked or full, play continues in memory and the menu explains that progress cannot be retained. Signed-in accounts can sync supported game snapshots between devices. Open **Menu → Leaderboards** to view shared scores for the fifteen scored games. Log in to publish personal bests; account scores queue offline until the connection returns. Guest scores and runs stay local and are not automatically imported into public rankings. Globle retains its own statistics and has no score leaderboard; Pac-Man keeps a local best score only; Corn Clicker keeps its own farm save, backups and statistics, and ranks lifetime kernels harvested on the leaderboards. Restart starts a new run; leaving a game saves its current state. A hidden tab pauses real-time play.
 
-The app loads from the network. The recovery worker remains at the previous `sw.js` URL so returning browsers can remove their old worker and caches. App startup also unregisters existing workers and deletes only CacheStorage caches whose names start with `pocket-arcade`. Unrelated caches, saved games, preferences, accounts and cookies remain in their existing storage.
+Open **Downloads** (the last card in the library, or **Menu → Downloads**) to download games for offline play, check for updates, see storage and delete downloads. The service worker serves the app and downloaded games from the device, and the installed app opens straight to the games. Online rooms, leaderboards, accounts, Movies & TV, Social and Chat still need internet. iOS may remove offline data when the device is low on space. See [offline play](docs/OFFLINE.md).
 
-The confirmed failure was a redirected cached navigation: Pages redirects `/index.html` to `/` with HTTP 308; the old precache retained the response's `redirected` flag, and Chrome rejected it when the navigation handler served it. Any future caching service worker must not store redirected responses: drop `index.html` from precache or rebuild the `Response` before storing it.
+Movies & TV has **Picture in picture**, so a title keeps playing while you use other apps or tabs (see [offline play](docs/OFFLINE.md#picture-in-picture)).
 
 ## The look
 
@@ -50,7 +50,7 @@ Movies & TV uses a streaming-style design system. Its tokens and shared `ui-` co
 
 ## Deploy the same output
 
-`npm run build` creates `dist/` with relative asset paths, hash routes and a `sw.js` recovery worker that removes old service workers and caches; offline play is retired. The unchanged build supports an origin root and a repository subpath.
+`npm run build` creates `dist/` with relative asset paths, hash routes, the offline worker `sw.js` and `offline/packs.json`. The unchanged build supports an origin root and a repository subpath.
 
 - **Cloudflare Pages (live):** the existing project is `nceastudy`. Cloudflare Git integration publishes the `production` branch. The [manual recovery workflow](.github/workflows/publish-arcade.yml) uses repository Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, includes the Pages Functions and checks the public release commit. See [Cloudflare deployment](docs/CLOUDFLARE_PAGES.md).
 - **Netlify (legacy, not used for production):** [netlify.toml](netlify.toml) and the `netlify/` functions remain in the repository for reference. Production no longer publishes there; see [Netlify deployment evidence](docs/NETLIFY_DEPLOYMENT.md).

@@ -27,7 +27,11 @@ import {games, artUrl, loadGame} from './core/catalog';
 import type {GameId, GameInstance} from './core/types';
 import * as store from './core/storage';
 import {playSound} from './core/audio';
-import {retireOffline} from './core/offline';
+import {trackAudioContexts} from './core/audio-unlock';
+import {Downloads} from './offline/downloads';
+import {registerWorker,updateWaiting,applyUpdate} from './offline/worker';
+import {DownloadsView} from './offline/view';
+import './offline/style.css';
 import {StudyView} from './study/view';
 import {integrationEnabled} from './study/whetu-integration';
 import {StudyPairingClient} from './study/whetu-pairing';
@@ -53,20 +57,23 @@ const WHETU_STUDY=integrationEnabled(import.meta.env.VITE_QCC_WHETU_STUDY);
 // Re-enable only with a server-verified, Study-scoped identity transition.
 const WHETU_STUDY_PAUSED=false;
 
+// Before any game creates audio, so iOS interruptions can be undone on the next tap.
+trackAudioContexts();
 // Before any game mounts: games read the seasonal theme when they draw.
 applyFestiveTheme();
-void retireOffline();
+// Offline play: the worker serves the app shell and downloaded games (see docs/OFFLINE.md).
+const downloads=new Downloads(updateWaiting);
 
 const icon=(name:string)=>{
-  const paths:Record<string,string>={menu:'<path d="M4 9.5h16M4 14.5h10"/>',back:'<path d="m12 5-7 7 7 7M5 12h14"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',pause:'<path d="M8 5v14M16 5v14"/>',play:'<path d="m8 4 12 8-12 8z"/>',restart:'<path d="M4 5v6h6M4 11a8 8 0 1 1 1 7"/>',rules:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',fullscreen:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',exitfs:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>'};
+  const paths:Record<string,string>={menu:'<path d="M4 9.5h16M4 14.5h10"/>',back:'<path d="m12 5-7 7 7 7M5 12h14"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',pause:'<path d="M8 5v14M16 5v14"/>',play:'<path d="m8 4 12 8-12 8z"/>',restart:'<path d="M4 5v6h6M4 11a8 8 0 1 1 1 7"/>',rules:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',fullscreen:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',exitfs:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>',download:'<path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/>'};
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.grid}</svg>`;
 };
 // Before the window keydown handler below, so its key presses are already counted when it runs.
 trackInputMode();
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<main id="content"></main>
-<dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><ul id="search-results" class="search-results" aria-label="Matching games" hidden></ul><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Reduce transparency</span><input type="checkbox" id="transparency"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label><label><span>Christmas theme</span><input type="checkbox" id="festive"></label><label><span>Contribute to Popular in Marlborough</span><input type="checkbox" id="movie-popularity"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><a id="open-election" class="game-button secondary election-menu-button" href="#/election">Election results <span class="election-menu-live">Results</span></a>${PREDICTIONS_MENU?'<a id="open-predictions" class="game-button secondary predictions-menu-button" href="#/predictions">Predictions <span class="predictions-menu-note">Free credits</span></a>':''}<button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
-<dialog id="rules-dialog" class="ui-glass-sheet" aria-labelledby="rules-title"><form method="dialog" class="dialog-head"><h2 id="rules-title">How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
+<dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><ul id="search-results" class="search-results" aria-label="Matching games" hidden></ul><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Reduce transparency</span><input type="checkbox" id="transparency"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label><label><span>Christmas theme</span><input type="checkbox" id="festive"></label><label><span>Contribute to Popular in Marlborough</span><input type="checkbox" id="movie-popularity"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><a id="open-downloads" class="game-button secondary" href="#/downloads">Downloads</a><a id="open-election" class="game-button secondary election-menu-button" href="#/election">Election results <span class="election-menu-live">Results</span></a>${PREDICTIONS_MENU?'<a id="open-predictions" class="game-button secondary predictions-menu-button" href="#/predictions">Predictions <span class="predictions-menu-note">Free credits</span></a>':''}<button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
+<dialog id="rules-dialog" class="ui-glass-sheet" aria-labelledby="rules-title"><form method="dialog" class="dialog-head"><h2 id="rules-title">How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div><a class="offline-pill" href="#/downloads" hidden>Offline</a><button type="button" class="update-pill" hidden>Restart to update</button>`;
 const navigation=createSectionNavigation('app');
 navigation.bar.innerHTML=`<a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('games')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv" aria-label="TV Shows">${uiIcon('tv')}<span class="tab-tv">TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button>`;
 app.prepend(navigation.root);
@@ -101,6 +108,7 @@ let focusLabelBeforeStudy:string|null=null;
 let accountRoutePending=false,signingOut=false;
 let libraryScroll={x:0,y:0};
 let movies:MoviesView|undefined;
+let downloadsView:DownloadsView|undefined,stopDownloadWatch:(()=>void)|undefined;
 // QCC Social, QCC Chat or the Santa Tracker: one lazy view at a time, replaced when another opens.
 let appView:AppView|undefined,appKind:'social'|'chat'|'santa'|'election'|'predictions'|'study'|undefined;
 // The saved Movies data is one copy for the page, so it outlives each MoviesView and keeps unsaved changes across a visit to the games.
@@ -178,6 +186,7 @@ function showWhetuIdentityHold(){
 }
 function leave(saveProgress=true){
   movies?.dispose();movies=undefined;
+  downloadsView?.dispose();downloadsView=undefined;stopDownloadWatch?.();stopDownloadWatch=undefined;
   appView?.dispose();appView=undefined;appKind=undefined;document.body.classList.remove('social-active','chat-active','santa-active','election-active','predictions-active','whetu-study-active');
   if(WHETU_STUDY){document.querySelector('.app-tabbar [data-action="study"]')?.removeAttribute('aria-current');document.querySelector('.app-tabbar a[href="#/collection"]')?.setAttribute('aria-current','page');}
   setChromeInert(false);
@@ -204,15 +213,19 @@ function library(){
   const items=matchingGames();
   const filtered=onlyFavourites||search!=='';
   // The notice text is user input, so it is filled in with textContent below, never through this template.
-  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" tabindex="0" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
+  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map((g,index)=>`<a class="game-card" data-game="${g.id}" href="${entryHash(g.id)}" tabindex="0" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" loading="${index<6?'eager':'lazy'}" decoding="async" draggable="false"></a>`).join('')}${filtered?'':`<a class="downloads-card" href="#/downloads" aria-label="Downloads" style="--card:#1f4c21;--ink:#fff3df;--accent:#f7c531"><h2>Downloads</h2><span class="title-line"></span><img src="${import.meta.env.BASE_URL}offline/cover.svg" alt="" width="320" height="400" loading="lazy" decoding="async" draggable="false"></a>`}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
   // Predictions sits in the middle of the unfiltered library, where the election strip used to be.
   if(!filtered)mountPredictionsStrip(content.querySelector('.game-grid')!);
   // The compact Santa countdown belongs to the seasonal theme and the unfiltered library.
   if(!filtered&&christmas())mountSantaBanner(content.querySelector('.game-grid')!);
+  paintOfflineBadges();
   if(filtered){
     content.querySelector<HTMLElement>('.library-filter-text')!.textContent=filterNotice();
     content.querySelector('[data-action="show-all"]')!.addEventListener('click',showAllGames);
   }
+}
+function paintOfflineBadges(){
+  for(const card of content.querySelectorAll<HTMLElement>('.game-card[data-game]'))card.dataset.offline=downloads.status(card.dataset.game as GameId).state==='ready'?'ready':'';
 }
 function showAllGames(){
   onlyFavourites=false;search='';
@@ -378,6 +391,16 @@ async function route(){
     }catch{if(token===generation)content.innerHTML=`<div class="game-error"><p>${name[0].toUpperCase()+name.slice(1)} couldn’t open. Check your connection and try again.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>`;}
     return;
   }
+  if(location.hash==='#/downloads'){
+    if(downloadsView)return;
+    if(menu.open)menu.close();
+    if(rulesDialog.open)rulesDialog.close();
+    if(leaderboards.root.open)leaderboards.root.close();
+    if(!activeId&&!movies&&!appView)libraryScroll={x:scrollX,y:scrollY};
+    ++generation;leave();
+    downloadsView=new DownloadsView(content,downloads);window.scrollTo(0,0);
+    return;
+  }
   const wasInMovies=!!movies,wasInApp=!!appView;
   const requested=entryFromHash(location.hash);
   const id=requested&&games.some(g=>g.id===requested)?requested:undefined;
@@ -403,6 +426,7 @@ async function route(){
         <button id="rules-game" class="game-menu-action" aria-label="Game rules">${icon('rules')}<span>How to play</span></button>
         <button id="favourite-game" class="game-menu-action" aria-label="Favourite ${info.title}" aria-pressed="${store.favourites().includes(id)}">${icon('star')}<span>Favourite</span></button>
         <button id="fullscreen-game" class="game-menu-action" type="button" aria-label="Enter full screen" aria-pressed="false" title="Enter full screen">${icon('fullscreen')}<span>Full screen</span></button>
+        <button id="download-game" class="game-menu-action" hidden>${icon('download')}<span>Download</span></button>
         <button id="game-settings" class="game-menu-action">${icon('menu')}<span>Settings</span></button>
         <button id="game-rankings" class="game-menu-action">${icon('star')}<span>Leaderboards</span></button>
         <button id="game-local-options" class="game-menu-action" hidden>Game options</button>
@@ -431,6 +455,17 @@ async function route(){
   document.querySelector('#game-settings')!.addEventListener('click',()=>transferDialog(()=>openMenu(menuButton)));
   // Chess ratings rise and fall, so chess shows its own rating board instead of the shared best-score board.
   document.querySelector('#game-rankings')!.addEventListener('click',()=>{if(id==='chess'){closeGameMenu();(instance as {openLeaderboard?:()=>void}|undefined)?.openLeaderboard?.();return;}transferDialog(()=>leaderboards.open(id==='minesweeper'?'minesweeper-score':id));});
+  const downloadButton=document.querySelector<HTMLButtonElement>('#download-game')!;
+  const paintDownload=()=>{
+    const status=downloads.status(id),percent=status.total?Math.floor(status.done/status.total*100):0;
+    const label=status.state==='ready'?'Downloaded':status.state==='downloading'?`Downloading ${percent}%`:status.state==='queued'?'Waiting':status.state==='update'?'Update download':status.state==='failed'?'Retry download':'Download';
+    downloadButton.hidden=!Downloads.supported()||!downloads.packs;
+    downloadButton.disabled=['ready','downloading','queued'].includes(status.state);
+    downloadButton.querySelector('span')!.textContent=label;downloadButton.setAttribute('aria-label',`${label}: ${info.title}`);
+  };
+  stopDownloadWatch=downloads.subscribe(changed=>{if(!changed||changed===id)paintDownload();});
+  void downloads.ready.then(()=>{if(token===generation)paintDownload();});
+  downloadButton.addEventListener('click',()=>downloads.download(id));
   const fullscreenButton=document.querySelector<HTMLButtonElement>('#fullscreen-game')!;
   detachFullscreen=attachFullscreen(fullscreenButton,state=>{
     fullscreenButton.setAttribute('aria-pressed',String(state.expanded));
@@ -527,7 +562,7 @@ async function route(){
     if(token!==generation)return;
     const stage=document.querySelector('#game-stage')!;
     stage.innerHTML=`<p class="game-error"></p><a class="game-button" href="${collectionHash}">Back to library</a>`;
-    stage.querySelector('.game-error')!.textContent=error instanceof Error?error.message:'Could not load this game.';
+    stage.querySelector('.game-error')!.textContent=!navigator.onLine&&downloads.status(id).state!=='ready'?'Not downloaded. Connect to the internet to play.':error instanceof Error?error.message:'Could not load this game.';
   }
 }
 
@@ -548,7 +583,7 @@ function dialogClosed(){
   const resume=pausedForDialog;pausedForDialog=false;
   if(resume&&!study.isOpen&&!document.hidden)setPaused(false);
 }
-menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!appView&&!/^#\/(movies|social|chat|santa|election|predictions|study)(\/|\?|$)/.test(location.hash)&&!study.isOpen)library();});
+menu.addEventListener('close',()=>{dialogClosed();if(!activeId&&!movies&&!appView&&!/^#\/(movies|social|chat|santa|election|predictions|study|downloads)(\/|\?|$)/.test(location.hash)&&!study.isOpen)library();});
 rulesDialog.addEventListener('close',dialogClosed);
 leaderboards.root.addEventListener('close',dialogClosed);
 document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
@@ -603,6 +638,12 @@ festiveInput.addEventListener('change',()=>{
 });
 
 window.addEventListener('hashchange',()=>void route());
+const offlinePill=document.querySelector<HTMLElement>('.offline-pill')!,updatePill=document.querySelector<HTMLButtonElement>('.update-pill')!;
+function syncOnline(){const offline=!navigator.onLine;document.body.classList.toggle('is-offline',offline);offlinePill.hidden=!offline;}
+window.addEventListener('online',syncOnline);window.addEventListener('offline',syncOnline);syncOnline();
+downloads.subscribe(()=>{if(!activeId)paintOfflineBadges();});
+updatePill.addEventListener('click',()=>{if(!activeId){save();applyUpdate();}});
+void registerWorker(()=>{updatePill.hidden=false;});
 window.addEventListener('pagehide',()=>{save();movies?.pause();void movieStorage?.account?.sync();appView?.pause();void accounts.flush(true,false).catch(()=>{});});
 // A page restored from the back/forward cache missed its pagehide resume: live results start refreshing again.
 window.addEventListener('pageshow',event=>{if(event.persisted&&appKind==='election'&&!study.isOpen)appView?.resume();});
@@ -626,8 +667,10 @@ window.addEventListener('keydown',event=>{
 },{capture:true});
 window.addEventListener('keyup',event=>{if(event.key==='Escape')movies?.releaseFullscreenEscape();if(study.isOpen)event.stopImmediatePropagation();},{capture:true});
 updateStudySummary();
+function installedApp(){return matchMedia('(display-mode: standalone)').matches||(navigator as Navigator&{standalone?:boolean}).standalone===true;}
 function beginStudy(){
- if(WHETU_STUDY||study.session.topic()){initialized=true;showArcade();void route();}
+ // The installed app opens straight to the games: no chapter picker on each launch. Study stays one tab away.
+ if(WHETU_STUDY||installedApp()||study.session.topic()){initialized=true;showArcade();void route();}
  else {hideArcade();study.showPicker();}
 }
 function finishEntry(){
