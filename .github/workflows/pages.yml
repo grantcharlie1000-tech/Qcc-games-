@@ -91,16 +91,16 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
       # Timing budgets must not compete with other test workers on shared runners.
       - run: npm test -- --maxWorkers=1
-      # Production worker recovery uses Chromium against the built site on port 4618.
+      # Offline play is checked in Chromium and WebKit against the built site on port 4618.
       - name: Use Ubuntu archive for browser dependencies
         run: |
           if [ -f /etc/apt/apt-mirrors.txt ]; then
             sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run build
       - run: npm run verify:noindex
-      - name: Verify service worker kill switch and returning-visitor recovery
+      - name: Verify offline downloads, updates and returning-visitor recovery (Chromium and WebKit)
         run: npm run verify:offline
       - uses: actions/upload-artifact@v4
         if: always()

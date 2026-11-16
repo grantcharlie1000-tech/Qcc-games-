@@ -1,0 +1,70 @@
+# Offline play
+
+Download games once, then play them with no internet, including from the iPhone Home Screen in Airplane Mode.
+
+## Using it
+
+- **Downloads** is the last card in the library and is also in **Menu**. Each game shows its size and a Download button. The game menu has a Download action too.
+- A download shows bytes done. It is only marked **Downloaded** after every file has been fetched, checked against the build's size and SHA-256, and found again.
+- **Failed** keeps the files already fetched. **Retry** fetches only the rest.
+- **Update needed** means a new version could not refresh that game, or the browser removed some of its files. **Update** repairs it.
+- **Check for updates** looks for a new app version and confirms every download still has its files.
+- Offline, the library shows a small **Offline** pill, and games that are not downloaded fade and say **Needs internet**.
+- The installed app (Home Screen) opens straight to the games. Study is still one tab away.
+
+All 29 games play offline in their local modes. Online rooms (Pool, Minecraft, Drift Club, Breachline, Chess), leaderboards, accounts, Movies & TV, Social and Chat need internet. Account saves and scores made offline sync when the connection returns, through the existing [sync protocol](SYNC.md), which never creates duplicate records.
+
+iOS can remove a web app's stored data when the device runs low on space, and Safari may clear it for sites not opened for a long time. The app asks the browser to keep its data (`navigator.storage.persist()`), but this is not guaranteed.
+
+## How it works
+
+| Part | File |
+| --- | --- |
+| Build: shell and per-game file lists with size and SHA-256, version stamped into `sw.js` | `scripts/offline-packs.mjs` |
+| Build check: every listed file matches `dist` | `scripts/verify-offline-build.mjs` |
+| Service worker | `public/sw.js` |
+| Downloads, verification, deletion, storage | `src/offline/downloads.ts` |
+| Worker registration and updates | `src/offline/worker.ts` |
+| Downloads page | `src/offline/view.ts` |
+| Browser suite (Chromium and WebKit) | `tests/recovery/offline.spec.mjs` |
+
+Caches:
+
+- `pocket-arcade-v3:shell:<version>`: the page, entry script, styles, fonts, icons and covers of one version. Navigations are served from it, so the page always matches its downloaded games.
+- `pocket-arcade-v3:files`: downloaded game files, shared by every game that uses them (Three.js is stored once) and kept across versions.
+- `pocket-arcade-v3:meta`: one record per download (`partial`, `ready` or `stale`) listing its files. Cleanup keeps any file a record lists, so a download in progress is never cleaned up under itself.
+
+Every stored file carries its SHA-256 in an `x-qcc-sha256` header, so checking "already have it" needs no body read.
+
+### Updates
+
+A new deploy changes `sw.js` only when content changes. The new worker fetches and verifies the new shell, then brings every downloaded game to the new version, fetching only changed files. If it goes offline part way, install fails and the current version keeps working. If a game cannot be refreshed (storage full, missing file), that game is marked **Update needed** instead of blocking the update.
+
+The new version never takes over a running app. The library shows **Restart to update**; closing the app also lets it take over. Nothing appears during a game.
+
+### Rules from the November 2026 outage
+
+The old worker precached `index.html`. Cloudflare Pages answers that with a 308 to `/`, and browsers refuse a cached redirected response for a navigation, so returning visitors could not open the site. The current worker stores the page under the scope URL and rebuilds every response before storing it. A browser still running that old worker is taken over at once (its legacy caches are deleted), and the browser suite reproduces that exact failure.
+
+## Picture in picture
+
+The Movies & TV player has a **Picture in picture** button.
+
+- **Local video files:** the browser's own picture in picture window (iPhone, Safari, Chrome, Edge).
+- **Streaming player, Chrome and Edge on desktop:** the player moves into a Document Picture-in-Picture window, resuming at the last reported time, and moves back when the window closes.
+- **Streaming player elsewhere (iPhone, Safari, Firefox):** a cross-origin player's video cannot be pulled out by this page. The button keeps the stream playing when you switch apps or tabs; use the player's own picture in picture control (on iPhone, play full screen, then tap its picture in picture button).
+
+Without picture in picture, hiding the page still stops the stream, as before. Escape to Study always stops it.
+
+## Measured
+
+Throttled Chromium (4x CPU, 1.6 Mbps, 150 ms) at 390 x 844, median of five runs, `scripts/perf/startup.mjs`. This stands in for an older iPhone; it is not a Safari measurement.
+
+| | Before | After |
+| --- | --- | --- |
+| First library load | 9.5 s | 5.8 s |
+| Returning launch | 9.6 s | 0.94 s |
+| Transferred on first load | 1,653 KB | 873 KB |
+| Open Suika Game / Snake / Pool | 1.01 / 0.41 / 0.99 s | 0.37 / 0.20 / 0.31 s |
+
+Changes behind these numbers: covers below the first rows load lazily, hashed assets are cached for a year (`public/_headers`), and the worker serves the shell from the device.
