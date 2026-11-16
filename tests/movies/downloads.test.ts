@@ -29,7 +29,7 @@ describe('Movies & TV offline downloads',()=>{
    if(!buckets.has(name))buckets.set(name,new MemoryCache());
    return buckets.get(name)!;
   }});
-  vi.stubGlobal('navigator',{storage:{estimate:async()=>({usage:0,quota:100000})},serviceWorker:{controller:{postMessage:vi.fn()}}});
+  vi.stubGlobal('navigator',{storage:{estimate:async()=>({usage:0,quota:10_000_000})},serviceWorker:{controller:{postMessage:vi.fn()}}});
  });
  afterEach(()=>vi.unstubAllGlobals());
 
@@ -63,7 +63,7 @@ describe('Movies & TV offline downloads',()=>{
  it('rejects unreviewed and expired sources before downloading',async()=>{
   const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
   const downloads=new MovieDownloads(true);await downloads.ready;
-  await expect(downloads.download(title,{id:title.id,play:false},{...license,reviewed:false} as LicensedMedia)).rejects.toThrow('approved');
+  await expect(downloads.download(title,{id:title.id,play:false},{...license,reviewed:false} as unknown as LicensedMedia)).rejects.toThrow('approved');
   await expect(downloads.download(title,{id:title.id,play:false},{...license,expires:'2020-01-01'})).rejects.toThrow('approved');
   expect(fetcher).not.toHaveBeenCalled();
  });
