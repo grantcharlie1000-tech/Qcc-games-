@@ -35,7 +35,7 @@ body.movies-active.study-active{overflow:auto}
 @media(max-width:650px){.movies-view .movies-catalog-status{font-size:12px}.movies-pagination{gap:8px;font-size:11px}}
 
 .movies-screen:fullscreen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:-webkit-full-screen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}:root[data-input="keyboard"] .movies-screen:focus-visible{outline:2px solid #fff;outline-offset:2px}
-:root[data-input="keyboard"] :is(.movies-fullscreen,.movies-auto-next input):focus-visible{outline:2px solid #fff;outline-offset:2px}
+:root[data-input="keyboard"] :is(.movies-fullscreen,.movies-pip,.movies-auto-next input):focus-visible{outline:2px solid #fff;outline-offset:2px}
 .movies-screen>.movies-detail-error{position:absolute;left:12px;right:12px;bottom:12px;z-index:3;max-height:calc(100% - 24px);overflow:auto}.movies-view .movies-screen>.movies-detail-error{margin:0}
 :root[data-input="keyboard"] :is(.movies-catalog-status button,.movies-empty [data-action="retry-title"],.movies-player [data-action="reload-stream"]):focus-visible{outline:2px solid #fff;outline-offset:2px}
 
@@ -286,6 +286,8 @@ body.movies-active.study-active{overflow:auto}
 @media (prefers-reduced-motion:reduce){.movies-view .movies-next-bar>span{transition:none}}
 .reduce-motion .movies-view .movies-next-bar>span{transition:none}
 .movies-view .movies-fullscreen{position:absolute;right:10px;top:10px;z-index:3;min-height:44px;border-color:#ffffff33;background:#101923e8;color:#fff}
+.movies-view .movies-pip{position:absolute;right:10px;top:62px;z-index:3;min-height:44px;border-color:#ffffff33;background:#101923e8;color:#fff}
+.movies-view .movies-pip[aria-pressed=true]{background:#fff;color:#101923}
 /* The resume pill names the position a stream starts from. It sits top left and clears the Full screen button. */
 .movies-view .movies-resume-pill{position:absolute;left:12px;top:12px;z-index:2;max-width:calc(100% - 150px);padding:6px 12px;border:1px solid var(--line-strong);border-radius:999px;background:#000000b3;color:#fff;font-family:var(--font-mono);font-size:12px;line-height:1.4;pointer-events:none;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .movies-view .movies-resume-pill[hidden]{display:none}
