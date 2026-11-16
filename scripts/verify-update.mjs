@@ -1,3 +1,2 @@
-// Compatibility entry point: caching-worker updates have been retired.
-// The replacement audit proves worker removal and network recovery instead.
+// Compatibility entry point: version updates are covered by the offline browser suite.
 await import('./verify-offline.mjs');

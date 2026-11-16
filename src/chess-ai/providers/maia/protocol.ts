@@ -2,7 +2,7 @@ import type { ChessAIProgress } from '../../types';
 
 export type MaiaCommand =
   | { type: 'init'; id: number; assetBase: string }
-  | { type: 'move'; id: number; revision: number; fen: string; legalMovesUci: readonly string[]; rating: number; random: number; pacingMs: number };
+  | { type: 'move'; id: number; revision: number; fen: string; legalMovesUci: readonly string[]; rating: number; random: number };
 
 export type MaiaReply =
   | { type: 'progress'; id: number; progress: ChessAIProgress }

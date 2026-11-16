@@ -4,13 +4,27 @@ import { Chess, DEFAULT_POSITION } from '../../../../src/chess-ai/providers/begi
 const nativeWorker = window.Worker;
 const liveWorkers = new Set<Worker>();
 let peakWorkers = 0;
+let lastMaiaInferenceMs = 0;
+let onMaiaMovePosted: (() => void) | undefined;
 class ObservedWorker extends nativeWorker {
   constructor(scriptURL: string | URL, options?: WorkerOptions) {
     super(scriptURL, options);
     liveWorkers.add(this);
     peakWorkers = Math.max(peakWorkers, liveWorkers.size);
+    this.addEventListener('message', ({ data }) => {
+      if (data?.type === 'move' && typeof data.inferenceMs === 'number') lastMaiaInferenceMs = data.inferenceMs;
+    });
   }
   override terminate() { liveWorkers.delete(this); super.terminate(); }
+  override postMessage(message: unknown, options: Transferable[] | StructuredSerializeOptions = []) {
+    if (Array.isArray(options)) super.postMessage(message, options);
+    else super.postMessage(message, options);
+    if (message && typeof message === 'object' && 'type' in message && message.type === 'move') {
+      const posted = onMaiaMovePosted;
+      onMaiaMovePosted = undefined;
+      posted?.();
+    }
+  }
 }
 window.Worker = ObservedWorker;
 
@@ -41,7 +55,8 @@ async function check(name: string, fn: () => Promise<unknown> | unknown) {
   document.querySelector('#result')!.textContent = results.map((r) => `${r.ok ? 'PASS' : 'FAIL'} ${r.name} (${Math.round(r.elapsedMs)}ms)`).join('\n');
 }
 
-async function run(fullGame = false) {
+async function run(fullGame = false, stockfishOnly = false) {
+  const opponents = stockfishOnly ? ['max'] : ['elo-300', 'elo-700', 'max'];
   await check('discovery and honest metadata', () => {
     assert(registry.rejected.length === 0, JSON.stringify(registry.rejected));
     for (const id of ['elo-300', 'elo-500', 'elo-700', 'elo-900', 'elo-2200', 'elo-2600', 'elo-3000', 'max']) {
@@ -50,7 +65,7 @@ async function run(fullGame = false) {
     assert(registry.analysisProvider()?.engine === 'stockfish', 'Real Stockfish analysis missing');
     return registry.opponents().map(({ opponent, availability }) => ({ id: opponent.id, targetElo: opponent.targetElo, engine: availability.state === 'available' ? availability.provider.engine : 'unavailable' }));
   });
-  for (const id of ['elo-300', 'elo-700', 'max']) {
+  for (const id of opponents) {
     await check(`${id}: real initialize, legal move, pacing, disposal`, async () => {
       const progress: unknown[] = [];
       const began = performance.now();
@@ -80,7 +95,7 @@ async function run(fullGame = false) {
       } finally { session.dispose(); session.dispose(); assert(liveWorkers.size === 0, `${liveWorkers.size} leaked workers`); await sampleMemory(`${id}:disposed`); }
     });
   }
-  for (const id of ['elo-300', 'elo-700', 'max']) {
+  for (const id of opponents) {
     await check(`${id}: abort, stale requests, restart and independent games`, async () => {
       const a = await registry.openOpponent(id);
       const b = await registry.openOpponent(id);
@@ -110,7 +125,7 @@ async function run(fullGame = false) {
     { name: 'castling', fen: 'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', moves: ['e1g1', 'e1c1'] },
     { name: 'en passant', fen: '7k/8/8/3pP3/8/8/8/6K1 w - d6 0 1', moves: ['e5d6'] },
   ];
-  for (const id of ['elo-300', 'elo-700', 'max']) {
+  for (const id of opponents) {
     await check(`${id}: promotion, castling, en passant and invalid FEN`, async () => {
       const session = await registry.openOpponent(id);
       try {
@@ -198,20 +213,28 @@ async function neural() {
         const reply = await session.requestMove(input);
         const elapsedMs = performance.now() - started;
         assert(legal(game).includes(reply.moveUci), 'Invalid neural move');
+        assert(elapsedMs - lastMaiaInferenceMs < 150, `Maia delayed a completed inference by ${elapsedMs - lastMaiaInferenceMs}ms`);
         game.move({ from: reply.moveUci.slice(0, 2), to: reply.moveUci.slice(2, 4), promotion: reply.moveUci[4] });
         history.push(reply.moveUci); moves.push({ moveUci: reply.moveUci, elapsedMs });
       }
       const controller = new AbortController();
+      const dispatched = new Promise<void>((resolve) => { onMaiaMovePosted = resolve; });
       const pending = session.requestMove({ ...position(game, 4, DEFAULT_POSITION, history), thinkingTimeMs: 700, signal: controller.signal });
       const canceled = rejects(pending, ['aborted']);
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await dispatched;
       controller.abort(); await canceled;
       const recoveryStarted = performance.now();
       const recovered = await session.requestMove({ ...position(game, 5, DEFAULT_POSITION, history), thinkingTimeMs: 700 });
       assert(legal(game).includes(recovered.moveUci), 'Recovery move invalid');
       const recoveryMs = performance.now() - recoveryStarted;
+      const warmWorker = [...liveWorkers][0];
+      const softTargetStarted = performance.now();
+      const softTargetMove = await session.requestMove({ ...position(game, 6, DEFAULT_POSITION, history), thinkingTimeMs: 1 });
+      const softTargetMs = performance.now() - softTargetStarted;
+      assert(legal(game).includes(softTargetMove.moveUci), 'Slow inference returned an invalid move');
+      assert(liveWorkers.has(warmWorker), 'Soft thinking target discarded the warm model');
       await sampleMemory('maia3:recovered-after-cancel');
-      return { provider: session.provider, loadMs, moves, recoveryMs, recovered, progress };
+      return { provider: session.provider, loadMs, moves, recoveryMs, recovered, softTargetMs, softTargetMove, progress };
     } finally { session.dispose(); session.dispose(); assert(liveWorkers.size === 0, 'Maia Worker leaked'); await sampleMemory('maia3:disposed'); }
   });
   await check('Maia3 numerical parity with Python ONNX Runtime reference', async () => {

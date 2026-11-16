@@ -56,11 +56,6 @@ export function createProvider(): ChessAIProvider {
         // A tiny HEAD request makes missing assets fail immediately and also
         // catches a static host returning HTML for an unknown WASM URL.
         const wasmUrl = new URL(path.replace(/\.js$/, '.wasm'), document.baseURI);
-        const asset = await fetch(wasmUrl, { method: 'HEAD', signal: assetController.signal });
-        if (!asset.ok || !asset.headers.get('content-type')?.includes('application/wasm')) {
-          throw new Error(`Stockfish WASM unavailable or served with an incorrect MIME type (${asset.status}).`);
-        }
-        if (assetController.signal.aborted) throw abortError();
         const current = new Worker(new URL(path, document.baseURI), { type: 'module', name: 'qcc-stockfish' });
         worker = current;
         current.onmessage = (event: MessageEvent<unknown>) => {
@@ -101,13 +96,28 @@ export function createProvider(): ChessAIProvider {
         };
         closeProgress = () => { channel.port1.close(); channel.port2.close(); };
         current.postMessage({ progressPort: channel.port2 }, [channel.port2]);
+        // Worker compilation overlaps the preflight network round trip. Gate
+        // the handshake on validation so broken asset hosts still fail early.
+        const asset = await fetch(wasmUrl, { method: 'HEAD', signal: assetController.signal });
+        if (!asset.ok || !asset.headers.get('content-type')?.includes('application/wasm')) {
+          throw new Error(`Stockfish WASM unavailable or served with an incorrect MIME type (${asset.status}).`);
+        }
+        if (assetController.signal.aborted) throw abortError();
         current.postMessage('uci');
       } catch (error) {
         clearTimeout(timer);
         reject(error);
       } })();
     });
-    return boot;
+    const opening = boot;
+    const guarded = opening.catch((error: unknown) => {
+      // Recovery searches also initialize lazily. Release a failed worker and
+      // its progress ports here, including when initialize() was not called.
+      if (boot === guarded) terminate(error instanceof Error ? error : new Error(String(error)));
+      throw error;
+    });
+    boot = guarded;
+    return guarded;
   }
 
   async function search(request: ChessAIMoveRequest | ChessAIAnalysisRequest, analyzing: boolean): Promise<ChessAIMoveResponse | ChessAIAnalysis> {
@@ -129,6 +139,13 @@ export function createProvider(): ChessAIProvider {
     const clockTimer = clockDeadline === undefined ? undefined
       : setTimeout(() => terminate(clockError()), Math.max(1, clockDeadline - performance.now()));
     try {
+      if (!analyzing && request.legalMovesUci.length === 1) {
+        stockfishSettings((request as ChessAIMoveRequest).opponentId);
+        const moveUci = request.legalMovesUci[0];
+        if (!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(moveUci)) throw new Error('Invalid legal move.');
+        if (clockDeadline !== undefined && performance.now() >= clockDeadline) throw clockError();
+        return { moveUci };
+      }
       await ready();
       if (request.signal.aborted || token !== generation) throw abortError();
       if (clockDeadline !== undefined && performance.now() >= clockDeadline) throw clockError();
