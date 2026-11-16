@@ -16,7 +16,7 @@ test('download Snake, reload offline and render the game without a redirected re
  const stored=await page.evaluate(async()=>{
   const names=await caches.keys();
   const shell=names.find(name=>name.startsWith('qcc-offline-shell:'));
-  const response=shell&&await(await caches.open(shell)).match(new URL('./',location.href).href);
+  const response=shell?await(await caches.open(shell)).match(new URL('./',location.href).href):undefined;
   return {shell:!!shell,entry:!!response,redirected:response?.redirected};
  });
  expect(stored).toEqual({shell:true,entry:true,redirected:false});
