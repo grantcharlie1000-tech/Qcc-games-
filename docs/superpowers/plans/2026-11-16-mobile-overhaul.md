@@ -29,7 +29,7 @@ Goal: fix the defects that make QCC feel like a desktop site on an iPhone, keepi
 9. Election: tabs, refresh and auto-refresh controls are 24 to 30 px tall. Fix: 44 px targets.
 10. Animal Stack: drag and tap only start exactly on the animal's collider. Fix: touch slop for touch pointers.
 11. Snake: swipes only register on the square canvas, not the space around it. Fix: listen on the whole stage.
-12. Home Screen: older iOS needs the Apple web-app meta to open in standalone mode. Fix: Apple web-app meta and title. iOS ignores the SVG icon; the PNG icon comes in a separate commit by the owner.
+12. Home Screen: older iOS needs the Apple web-app meta to open in standalone mode. Fix: Apple web-app meta and title. iOS ignores the SVG icon; the PNG icon comes in a separate commit by the owner. The installed app draws under the status bar (black-translucent): a soft fading blur behind the clock keeps it readable over light scenes and scrolled content, and Study's white page gets a solid dark band with its text starting below it.
 
 ### P2 performance
 

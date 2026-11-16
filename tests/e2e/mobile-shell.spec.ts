@@ -90,6 +90,22 @@ test('on a desktop, a fullscreen exit the browser made still opens Study',async(
   await expect(page.locator('#study-view')).toBeVisible();
 });
 
+test.describe('installed app under the status bar',()=>{
+  test.use(phone);
+  test('Study starts below the clock on a solid band, and other screens keep a fading edge behind it',async({page,browserName})=>{
+    test.skip(browserName!=='chromium','safe-area insets are emulated through Chromium');
+    const cdp=await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:59,bottom:34,left:0,right:0}});
+    const edge=()=>page.evaluate(()=>{const s=getComputedStyle(document.body,'::after');return {height:parseFloat(s.height),background:s.backgroundColor};});
+    await page.goto('/#/collection');await expect(page.locator('.game-card').first()).toBeVisible();
+    expect((await edge()).height).toBeGreaterThanOrEqual(59);
+    await page.locator('.app-tabbar [data-action="study"]').click();await expect(page.locator('#study-view')).toBeVisible();
+    await page.evaluate(()=>scrollTo(0,0));
+    expect(await edge()).toEqual({height:59,background:'rgb(25, 27, 26)'});
+    expect((await page.locator('.study-eyebrow').first().boundingBox())!.y).toBeGreaterThanOrEqual(59);
+  });
+});
+
 base.describe('first visit on a phone',()=>{
   base.use(phone);
   base('the sign-in sheet has a close button that continues as a guest',async({page})=>{
