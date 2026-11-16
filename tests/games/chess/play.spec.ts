@@ -102,12 +102,20 @@ test.describe('chess', () => {
     await expect(page.locator('.ch-state')).toHaveText('White to move');
   });
 
-  test('says truthfully when no engines are installed', async ({ page }) => {
+  test('lists real engine availability and plays the installed beginner engine', async ({ page }) => {
     await page.goto('/#/game/chess');
     await page.getByRole('button', { name: /Computer/ }).click();
-    await expect(page.getByText('No engines are installed yet.')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeDisabled();
-    await expect(page.locator('.ch-opp').first()).toContainText('Not installed');
+    // Installed providers name their engine; opponents with no provider say so and cannot be picked.
+    await expect(page.locator('.ch-opp[data-value="elo-300"]')).toContainText('QCC Beginner');
+    await expect(page.locator('.ch-opp[data-value="elo-2200"]')).toContainText('Stockfish');
+    await expect(page.locator('.ch-opp[data-value="leela-expert"]')).toContainText('Not installed');
+    await expect(page.locator('.ch-opp[data-value="leela-expert"]')).toBeDisabled();
+    await page.locator('.ch-opp[data-value="elo-300"]').click();
+    await page.getByRole('radio', { name: 'White' }).click();
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    await move(page, 'e2', 'e4');
+    // The real engine answers through the contract with a legal move.
+    await expect(moves(page)).toHaveCount(2, { timeout: 20000 });
   });
 
   test('plays the computer through the AI contract with the test engine', async ({ page, context }, info) => {
@@ -130,12 +138,14 @@ test.describe('chess', () => {
     await expect(moves(page)).toHaveCount(0);
   });
 
-  test('reviews a finished game, stepping through moves, and never invents an evaluation', async ({ page }) => {
+  test('reviews a finished game, stepping through moves, and shows no evaluation before analysis', async ({ page }) => {
     await startLocal(page);
     for (const [a, b] of [['f2', 'f3'], ['e7', 'e5'], ['g2', 'g4'], ['d8', 'h4']]) await move(page, a, b);
     await page.getByRole('dialog', { name: 'Game over' }).getByRole('button', { name: 'Review' }).click();
-    await expect(page.getByText('Engine analysis is not installed.')).toBeVisible();
+    // No evaluation is shown until a real engine has analysed the game.
+    await expect(page.getByRole('button', { name: /Analyze with Stockfish/ })).toBeVisible();
     await expect(page.locator('.ch-evalbar')).toBeHidden();
+    await expect(page.locator('.ch-graph')).toHaveCount(0);
     await page.getByRole('button', { name: 'First move' }).click();
     await expect(page.locator('.ch-piece[data-square="h4"]')).toHaveCount(0);
     await page.getByRole('button', { name: 'Next move' }).click();
