@@ -20,6 +20,8 @@ import {formatClock,formatRuntime,initials} from './format';
 import {cachedJson,SEARCH_STALE} from './query';
 import {movieJson,movieNetworkMessage,MovieNetworkError} from './network';
 import {PlaybackSupervisor,clearFailures,failedProviders} from './playback';
+import {REPORT_CODE_PATTERN,sendMovieFailureReport} from './failure-report';
+import type {MovieFailureReason,MovieFailureStage} from './failure-report';
 import {moviePopularity,POPULARITY_ENDPOINT,parsePopularIds} from './popularity';
 import type {AttemptState,SupervisorEvents} from './playback';
 const base=import.meta.env.BASE_URL;
@@ -158,6 +160,12 @@ export class MoviesView {
  // The playback session of the title on screen. Its supervisor is stopped by stopVideo, pause and dispose.
  private supervisor?:PlaybackSupervisor;
  private supervisorKey='';
+ // Only the current playback's explicit diagnostic consent. Never persisted.
+ private reportCode='';
+ private reportedAttempt=false;
+ private lastAttemptStage:MovieFailureStage='connecting';
+ private pendingFailureReason?:MovieFailureReason;
+ private noPlaybackTimer?:ReturnType<typeof setTimeout>;
  // The saved position a provider frame starts from, and whether its Resumed pill has shown for the current attempt.
  private frameStart=0;
  private lifeShown=false;
@@ -870,12 +878,21 @@ export class MoviesView {
   dialog.className='movies-warning ui-glass-sheet';
   dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');
   dialog.setAttribute('aria-labelledby','movies-warning-title');dialog.setAttribute('aria-describedby','movies-warning-description');
-  dialog.innerHTML=`<h2 id="movies-warning-title">Before you watch</h2><p id="movies-warning-description">This video player is run by an outside website, not QCC. It may show ads that are inappropriate or harmful, and QCC can't control or block them. We're doing everything we can to prevent this.</p><div class="movies-warning-actions"><button class="ui-btn secondary" autofocus>Go back</button><button class="ui-btn primary">Continue</button></div>`;
+ dialog.innerHTML=`<h2 id="movies-warning-title">Before you watch</h2><p id="movies-warning-description">This video player is run by an outside website, not QCC. It may show ads that are inappropriate or harmful, and QCC can't control or block them. We're doing everything we can to prevent this.</p><label class="movies-report-choice"><input type="checkbox" data-report-optin> Send error report if playback fails</label><label class="movies-report-code" hidden>Diagnostic code<input data-report-code type="text" maxlength="128" autocomplete="off" autocapitalize="off" spellcheck="false"></label><p class="movies-report-help">Reports contain the player stage and error type, not your account or title.</p><p class="movies-report-error" role="alert" hidden></p><div class="movies-warning-actions"><button class="ui-btn secondary" autofocus>Go back</button><button class="ui-btn primary">Continue</button></div>`;
   const [back,forward]=dialog.querySelectorAll<HTMLButtonElement>('button');
+  const optin=dialog.querySelector<HTMLInputElement>('[data-report-optin]')!;
+  const code=dialog.querySelector<HTMLInputElement>('[data-report-code]')!;
+  const codeLabel=dialog.querySelector<HTMLElement>('.movies-report-code')!;
+  const reportError=dialog.querySelector<HTMLElement>('.movies-report-error')!;
+  optin.addEventListener('change',()=>{codeLabel.hidden=!optin.checked;if(optin.checked)code.focus();});
   const finder=trigger?finderFor(trigger):undefined;
   const finish=(accepted:boolean)=>{
+   if(accepted&&optin.checked&&!REPORT_CODE_PATTERN.test(code.value.trim())){
+    reportError.textContent='Enter the diagnostic code from the site owner.';reportError.hidden=false;code.focus();return;
+   }
    this.dismissWarning();
-   if(accepted){this.suspended=false;proceed();}else {cancel();if(reopenDrawer&&drawer?.isConnected)openSheet(drawer);(trigger?.isConnected?trigger:finder?.(this.root)[0])?.focus({preventScroll:true});}
+   if(accepted){this.reportCode=optin.checked?code.value.trim():'';this.suspended=false;proceed();}
+   else {this.reportCode='';cancel();if(reopenDrawer&&drawer?.isConnected)openSheet(drawer);(trigger?.isConnected?trigger:finder?.(this.root)[0])?.focus({preventScroll:true});}
   };
   back.addEventListener('click',()=>finish(false));forward.addEventListener('click',()=>finish(true));
   dialog.addEventListener('cancel',event=>{event.preventDefault();finish(false);});
@@ -1119,8 +1136,9 @@ export class MoviesView {
  private providerMessage=(event:MessageEvent)=>{
   if(!this.frame||!this.providerId||event.source!==this.frame.contentWindow)return;
   const signal=providerSignal(this.providerId,event.origin,event.data);if(!signal)return;
-  if(signal.kind==='ready'){this.supervisor?.message('ready');return;}
+  if(signal.kind==='ready'){this.supervisor?.message('ready');if(this.supervisor?.state==='ready')this.watchNoPlayback();return;}
   this.frameReported=true;
+  this.clearNoPlaybackTimer();
   this.supervisor?.message('progress');
   if(signal.kind==='ended'){this.episodeEnded();return;}
   // The native FrameXTV player reports an advancing clock. Unsupported nested players
@@ -1169,7 +1187,7 @@ export class MoviesView {
   primary.replaceWith(fresh);if(focused)fresh.focus({preventScroll:true});
  }
  // A provider frame that our frame-src policy blocks fails its live attempt. The listener only reads the event.
- private violation=(event:SecurityPolicyViolationEvent)=>{if(event.effectiveDirective==='frame-src')this.supervisor?.violation();};
+ private violation=(event:SecurityPolicyViolationEvent)=>{if(event.effectiveDirective==='frame-src'&&this.frame?.classList.contains('movies-provider-frame')){this.pendingFailureReason='frame-csp-blocked';this.supervisor?.violation();}};
  private click=(event:MouseEvent)=>{
   const control=(event.target as Element).closest<HTMLElement>('a,button');
   const play=control?.dataset.playRoute??(control?.dataset.play?titleHash(control.dataset.play)+'/play':control?.getAttribute('href'));
@@ -1227,18 +1245,24 @@ export class MoviesView {
  }
  private supervisorEvents():SupervisorEvents{
   return {
-   status:state=>this.attemptStatus(state),
-   exhausted:()=>this.exhaust(),
+   status:state=>{if(state==='connecting'||state==='loaded'||state==='ready'||state==='playing')this.lastAttemptStage=state;this.attemptStatus(state);},
+   exhausted:()=>{
+    const reason=this.pendingFailureReason??(this.lastAttemptStage==='connecting'?'frame-load-timeout':'frame-ready-timeout');
+    this.reportMovieFailure(reason,this.lastAttemptStage);
+    this.exhaust();
+   },
    working:provider=>this.storage.setProvider(provider),
   };
  }
  // A provider frame starts an attempt in the playback session. Its load and its messages drive the supervisor, which reports back here.
  private bindAttempt(frame:HTMLIFrameElement,provider:StreamProviderId){
+  this.clearNoPlaybackTimer();this.reportedAttempt=false;this.pendingFailureReason=undefined;this.lastAttemptStage='connecting';
   const key=this.progressKey;
   let supervisor=this.supervisor;
   if(!supervisor||this.supervisorKey!==key){supervisor?.stop();supervisor=new PlaybackSupervisor(key,this.supervisorEvents());this.supervisor=supervisor;this.supervisorKey=key;}
   this.frameStart=this.storage.data.progress[key]??0;this.lifeShown=false;
   frame.addEventListener('load',()=>{if(this.frame===frame){moviePopularity.reset();this.supervisor?.loaded();}});
+  frame.addEventListener('error',()=>{if(this.frame===frame){this.pendingFailureReason='frame-error';this.supervisor?.violation();}});
   supervisor.start(provider);
  }
  // A loaded provider page takes its own clicks; a ready or playing frame may show its resume pill.
@@ -1246,6 +1270,27 @@ export class MoviesView {
   const overlay=this.root.querySelector<HTMLElement>('.movies-connecting');
   if(overlay)overlay.hidden=state!=='connecting';
   if(state==='ready'||state==='playing')this.showLife();
+ }
+ // A ready iframe may still fail to fetch its video. This is only a suspected stall,
+ // not proof of DNS filtering, and is reported only after explicit consent.
+ private watchNoPlayback(){
+  if(!this.reportCode||this.reportedAttempt||this.noPlaybackTimer)return;
+  this.noPlaybackTimer=setTimeout(()=>{
+   this.noPlaybackTimer=undefined;
+   if(this.frame&&this.supervisor?.state==='ready'&&!this.suspended&&!document.hidden)
+    this.reportMovieFailure('no-playback-after-ready','ready');
+  },30000);
+ }
+ private clearNoPlaybackTimer(){clearTimeout(this.noPlaybackTimer);this.noPlaybackTimer=undefined;}
+ private reportMovieFailure(reason:MovieFailureReason,stage:MovieFailureStage){
+  if(!this.reportCode||this.reportedAttempt||this.disposed)return;
+  this.reportedAttempt=true;this.clearNoPlaybackTimer();
+  const key=this.progressKey;
+  void sendMovieFailureReport(this.reportCode,reason,stage,navigator.onLine).then(sent=>{
+   if(this.disposed||this.progressKey!==key||!this.route.play)return;
+   const status=this.root.querySelector<HTMLElement>('#movies-player-status');
+   if(status)status.append(sent?' Diagnostic sent.':' Diagnostic could not be sent.');
+  });
  }
  // The Resumed pill waits for the first sign of life.
  private showLife(){
@@ -1412,6 +1457,6 @@ export class MoviesView {
  // Takes the stream and the local video off the screen during a redraw.
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
  private releaseMedia(){this.keepPlaying=false;if(this.pipWindow){const win=this.pipWindow;this.pipWindow=undefined;win.close();}this.nativeFullscreen=false;this.releaseFullscreenEscape();this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
- private endSession(){moviePopularity.reset();this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
+ private endSession(){this.clearNoPlaybackTimer();moviePopularity.reset();this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
  dispose(){this.disposeStorage();moviePopularity.stop();this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.menuGlass.dispose();this.headerGlass?.dispose();this.yieldGuard.disconnect();this.abort.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }
