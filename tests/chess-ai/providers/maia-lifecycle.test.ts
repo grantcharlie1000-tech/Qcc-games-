@@ -42,6 +42,17 @@ async function tick() { await new Promise((resolve) => setTimeout(resolve, 0)); 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('Maia provider cancellation and transport failures', () => {
+  it('finishes one inference beyond the soft thinking target without reloading the model', async () => {
+    const provider = setup();
+    await provider.initialize({ signal: new AbortController().signal, onProgress() {} });
+    const result = provider.chooseMove({ ...position(), thinkingTimeMs: 20 }).then(value => value, error => error);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const worker = FaultWorker.instances[0];
+    const command = worker.commands.at(-1)!;
+    worker.send({ type: 'move', id: command.id, revision: 1, moveUci: 'e2e4', inferenceMs: 50 });
+    expect(await result).toEqual({ moveUci: 'e2e4' });
+    provider.dispose();
+  });
   it('rejects a response arriving after the clock deadline even before its timer runs', async () => {
     const provider = setup();
     await provider.initialize({ signal: new AbortController().signal, onProgress() {} });

@@ -38,3 +38,9 @@ The generator writes `color`, `ink` and `accent` for each game in `src/core/cata
 ## Provenance
 
 All posters are original voxel models drawn in code. They contain no linked images, downloaded artwork, proprietary sprites or game branding.
+
+## Downloads card and app icon
+
+The Downloads card (`public/offline/cover.svg`, model `scripts/posters/models/downloads.mjs`) and the installed app's icon (`public/app-icon.svg` and the PNG icons, model `scripts/posters/models/app-icon.mjs`, rendered by `node scripts/posters/render-icon.mjs`) use the same engine, palette and lighting as the game posters. Neither is a game, so neither is in `POSTERS`.
+
+`main` and `production` must carry the same poster files. Change posters on `main` and release them; `tests/core/poster-models.test.ts` fails if a game has no engine model.
