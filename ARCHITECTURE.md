@@ -70,7 +70,7 @@ Cloudflare Pages reads the server-only secret binding `TMDB_READ_TOKEN` from `co
 
 The player is a cross-origin iframe with the sandbox `allow-scripts allow-same-origin` and nothing more. No popups, top navigation, downloads, camera, microphone, location, clipboard, USB, serial or payment capabilities are granted. Parent-page scripts remain same-origin. Study and tab hiding unload the iframe, and a Resume stream button starts it again. Optional reviewed local media takes priority and plays in a video element. A file that fails shows an error line and does not switch to a streaming server. No streams are extracted or proxied, and no DRM or access controls are bypassed. External provider availability, rights and tracking are not guaranteed. Routes, playback timeouts, storage and the API are described in [Movies & TV](docs/MOVIES_TV.md).
 
-`movies/` and external resources stay outside the games offline manifest and worker caches. `scripts/movies-import.mjs` is an operator-only TMDB snapshot command; `scripts/movies-validate.mjs` validates optional self-hosted media rights. See [provider and setup details](docs/MOVIES_TV.md).
+`movies/` video files remain outside the **games** manifest and caches. The Movies UI and tiny static catalogue/licence registry are in the offline shell. Rights-reviewed MP4/WebM movies and episodes are individually downloadable to separate media caches and served with HTTP byte-range support, while third-party iframe streams remain online-only. `scripts/movies-import.mjs` is an operator-only TMDB snapshot command; `scripts/movies-validate.mjs` validates optional self-hosted media rights. See [provider and setup details](docs/MOVIES_TV.md).
 
 ## Fivefold
 
