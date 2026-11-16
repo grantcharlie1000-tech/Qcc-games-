@@ -2,6 +2,7 @@ import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import {describe,expect,it} from 'vitest';
 import {FAILURE_POST_LIMIT,handleMovieFailureReport} from '../../server/movie-failure-report';
+import {cleanupMoviePopularity,type PopularityDatabase,type PopularityStatement} from '../../server/movie-popularity';
 
 const origin='https://nceastudy.pages.dev';
 const secret='12345678901234567890123456789012';
@@ -15,12 +16,12 @@ function localDb(){
   bind(...args:(string|number)[]){return statement(query,args);},
   async all<T=Record<string,unknown>>(){return {results:sql.prepare(query).all(...values) as T[]};},
  });
- const db={
+ const db:PopularityDatabase={
   prepare(query:string){return statement(query);},
-  async batch(statements:Statement[]){
+  async batch(statements:PopularityStatement[]){
    sql.exec('BEGIN IMMEDIATE');
    try{
-    const results=statements.map(s=>sql.prepare(s.query).all(...s.values));
+    const results=statements.map(s=>{const q=s as Statement;return sql.prepare(q.query).all(...q.values);});
     sql.exec('COMMIT');return results;
    }catch(error){sql.exec('ROLLBACK');throw error;}
   },
@@ -121,6 +122,23 @@ describe('automatic movie playback failure telemetry',()=>{
    sql.prepare('UPDATE movie_playback_failure_rate SET attempts=?').run(FAILURE_POST_LIMIT);
    expect((await handleMovieFailureReport(post(),env(db))).status).toBe(429);
    expect(sql.prepare('SELECT count(*) AS n FROM movie_playback_failures').get()).toEqual({n:1});
+  }finally{sql.close();}
+ });
+
+
+ it('expires rows after 30 days and short-lived abuse buckets using existing cleanup',async()=>{
+  const {sql,db}=localDb();
+  try{
+   sql.exec(readFileSync('docs/movie-popularity-schema.sql','utf8'));
+   const at=Date.UTC(2026,10,17);
+   const expired=at-31*86400000, recent=at-2*86400000;
+   sql.prepare("INSERT INTO movie_playback_failures(received_at,reason,stage,online) VALUES(?,?,?,?)").run(expired,'frame-error','connecting',1);
+   sql.prepare("INSERT INTO movie_playback_failures(received_at,reason,stage,online) VALUES(?,?,?,?)").run(recent,'frame-error','connecting',1);
+   sql.prepare("INSERT INTO movie_playback_failure_rate(bucket_hash,attempts,expires_at) VALUES(?,?,?)").run('old',1,at-100);
+   sql.prepare("INSERT INTO movie_playback_failure_rate(bucket_hash,attempts,expires_at) VALUES(?,?,?)").run('new',1,at+100);
+   await cleanupMoviePopularity(db,at);
+   expect(sql.prepare('SELECT received_at FROM movie_playback_failures').all()).toEqual([{received_at:recent}]);
+   expect(sql.prepare('SELECT bucket_hash FROM movie_playback_failure_rate').all()).toEqual([{bucket_hash:'new'}]);
   }finally{sql.close();}
  });
 
