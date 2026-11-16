@@ -41,7 +41,7 @@ export class MovieDownloads {
   'serviceWorker' in navigator&&typeof isSecureContext!=='undefined'&&isSecureContext;
 
  constructor(private enabled=MovieDownloads.supported()){
-  this.ready=enabled?this.restore():Promise.resolve();
+  this.ready=enabled?this.restore().catch(()=>{this.enabled=false;}):Promise.resolve();
  }
  subscribe(listener:(key:string)=>void){this.listeners.add(listener);return ()=>this.listeners.delete(listener);}
  private notify(key:string){for(const listener of this.listeners)listener(key);}
