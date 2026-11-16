@@ -160,3 +160,6 @@ export class MovieDownloads {
   for(const request of await cache.keys())if(!used.has(request.url))await cache.delete(request);
  }
 }
+
+// Shared across MoviesView navigations, so an in-progress video download is never lost.
+export const movieDownloads=new MovieDownloads();
