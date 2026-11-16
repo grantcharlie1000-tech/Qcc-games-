@@ -96,7 +96,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
   /** The engine, created on first use after a user gesture while sound is on. */
   function start(): Engine | null {
     if (dead || !enabled()) return null;
-    if (eng) { if (eng.ctx.state === 'suspended') void eng.ctx.resume().catch(() => {}); return eng; }
+    if (eng) { if (eng.ctx.state !== 'running' && eng.ctx.state !== 'closed') void eng.ctx.resume().catch(() => {}); return eng; }
     const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
     if (ua && !ua.hasBeenActive) return null;
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -293,7 +293,7 @@ export function createSfx(enabled: () => boolean, options: { ambience?: boolean;
       }
     },
     suspend() { if (eng && eng.ctx.state === 'running') void eng.ctx.suspend(); },
-    resume() { if (eng && eng.ctx.state === 'suspended' && enabled()) void eng.ctx.resume(); },
+    resume() { if (eng && eng.ctx.state !== 'running' && eng.ctx.state !== 'closed' && enabled()) void eng.ctx.resume().catch(() => {}); },
     dispose() { dead = true; removeEventListener('pointerdown', early, true); removeEventListener('keydown', early, true); if (eng) { eng.dispose(); void eng.ctx.close().catch(() => {}); } eng = null; beds.clear(); },
     ready() {
       const e = start();

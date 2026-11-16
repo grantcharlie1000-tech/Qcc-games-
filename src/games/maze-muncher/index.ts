@@ -82,7 +82,8 @@ const module: GameModule = {
       if (state.score !== score || (state.fright > 0) !== fright || state.level !== level || state.lives !== spareLives) update();
     }
     function loop(now: number) {
-      if (disposed) return;
+      // A paused game draws nothing new; resume() restarts the loop.
+      if (disposed || paused) {frameId = null; return;}
       advance(now);
       render();
       frameId = requestAnimationFrame(loop);
@@ -131,7 +132,7 @@ const module: GameModule = {
       // Pause idempotently through the shell so its overlay and saved state agree.
       dismissMenu() {context.setPaused?.(true); return true;},
       pause() {paused = true; last = null; gesture = null; update(); render();},
-      resume() {paused = false; last = null; update();},
+      resume() {paused = false; last = null; update(); if (frameId === null && !disposed) frameId = requestAnimationFrame(loop);},
       restart() {state = createState(Date.now() | 0); last = null; carry = 0; update(); render(); persist();},
       serialize() {return JSON.parse(JSON.stringify(state)) as unknown;},
       restore(data) {

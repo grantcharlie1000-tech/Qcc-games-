@@ -9,7 +9,7 @@ export class Sfx {
     if(!this.enabled)return undefined;
     try{
       if(!this.ctx){this.ctx=new AudioContext();this.master=this.ctx.createGain();this.master.connect(this.ctx.destination);}
-      if(this.ctx.state==='suspended')void this.ctx.resume();
+      if(this.ctx.state!=='running'&&this.ctx.state!=='closed')void this.ctx.resume().catch(()=>{});
       this.master!.gain.value=this.volume*0.5;
       return this.ctx;
     }catch{return undefined;}
