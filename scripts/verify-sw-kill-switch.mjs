@@ -34,19 +34,33 @@ export async function verifyBuiltKillSwitch(directory='dist'){
  const headers=await readFile(join(directory,'_headers'),'utf8');
  const workerHeaders=headers.split(/\n\s*\n/).find(block=>block.startsWith('/sw.js\n'));
  assert.match(workerHeaders||'',/Cache-Control:.*no-cache.*max-age=0/,'sw.js must be served without a long cache');
- await assert.rejects(access(join(directory,'offline-manifest.json')),'Offline packs must no longer be generated');
+ await assert.rejects(access(join(directory,'offline-manifest.json')),'The broken legacy offline manifest must stay retired');
+ const packs=JSON.parse(await readFile(join(directory,'offline-packs.json'),'utf8'));
+ const offlineWorker=await readFile(join(directory,'offline-sw.js'),'utf8');
+ assert.match(packs.version,/^[a-f0-9]{16}$/);
+ assert(!offlineWorker.includes('__QCC_VERSION__'),'The safe worker must be versioned by the build');
+ assert(offlineWorker.includes(packs.version),'The safe worker must match the downloaded files');
+ assert.match(offlineWorker,/new Response\(await response\.blob\(\)/,'Redirected responses must be reconstructed before caching');
+ assert.match(offlineWorker,/request\.mode==='navigate'/,'The offline worker must support an offline app launch');
+ assert(packs.shell.includes('./')&&packs.shell.includes('offline-packs.json'),'The shell and pack metadata must be cached');
+ assert.equal(Object.keys(packs.games).length,29,'Each game must have an explicit offline pack');
+ for(const [id,pack]of Object.entries(packs.games)){
+  assert(Array.isArray(pack.files)&&pack.files.length>0, 'Missing offline files for '+id);
+  for(const file of pack.files)assert(!file.startsWith('/')&&!file.startsWith('..')&&!file.includes('://'),'Unsafe offline file in '+id);
+ }
+ 
  async function scan(path){
   for(const item of await readdir(path,{withFileTypes:true})){
    const file=join(path,item.name);
    if(item.isDirectory())await scan(file);
    else if(/\.(?:[cm]?js|ts|html)$/.test(item.name)){
     const code=await readFile(file,'utf8');
-    assert(!/\bserviceWorker\s*(?:\?\.|\.)\s*register\s*\(|\bserviceWorker\s*\[\s*['"]register['"]\s*\]/.test(code),'Worker registration is forbidden: '+file);
+    assert(!/\bserviceWorker\s*\.\s*register\s*\(\s*(?:new URL\s*\(\s*)?['"]sw\.js['"]/.test(code),'The broken legacy worker must never be registered: '+file);
    }
   }
  }
  await scan('src');await scan(directory);
- console.log('PASS: built sw.js skips waiting, clears only pocket-arcade caches, claims, enumerates windows, unregisters and navigates once; no fetch handler, offline manifest or app worker registration.');
+ console.log('PASS: legacy worker retires safely; the new versioned offline worker and 29 opt-in game packs are emitted.');
 }
 
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)await verifyBuiltKillSwitch(process.argv[2]);

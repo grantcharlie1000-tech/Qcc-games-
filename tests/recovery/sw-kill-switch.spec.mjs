@@ -71,6 +71,7 @@ async function seed(page){
   document.cookie='recovery=preserved; path=/';
   await navigator.serviceWorker.register(new URL('sw.js',location.href),{scope:new URL('.',location.href).href,updateViaCache:'none'});
   await navigator.serviceWorker.ready;
+  window.appRegistrations=[]; // Test's explicit legacy seed is not an app registration.
  });
  await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
  await expect(page.getByRole('heading',{name:'Legacy setup'})).toBeVisible();
@@ -87,14 +88,15 @@ async function cachedNavigation(page){
 async function recovered(page){
  await expect(page.locator('.game-card').first()).toBeVisible();
  await expect.poll(()=>page.evaluate(async()=>({
-  caches:await caches.keys(),registrations:(await navigator.serviceWorker.getRegistrations()).length,
-  controlled:!!navigator.serviceWorker.controller
- }))).toEqual({caches:['unrelated-cache'],registrations:0,controlled:false});
+  legacyCaches:(await caches.keys()).filter(name=>name.startsWith('pocket-arcade')),
+  unrelatedCache:(await caches.keys()).includes('unrelated-cache'),
+  registrations:(await navigator.serviceWorker.getRegistrations()).map(r=>r.active?.scriptURL||r.installing?.scriptURL||r.waiting?.scriptURL).filter(Boolean)
+ }))).toEqual({legacyCaches:[],unrelatedCache:true,registrations:[origin+scope+'offline-sw.js']});
  expect(await page.evaluate(async()=>{
   const response=await(await caches.open('unrelated-cache')).match(new URL('preserved.txt',location.href));
   return response.text();
  })).toBe('Unrelated data survives');
- expect(await page.evaluate(()=>window.appRegistrations)).toEqual([]);
+ expect(await page.evaluate(()=>window.appRegistrations.every(url=>url.endsWith('/offline-sw.js')))).toBe(true);
  expect(await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:best:snake'))).toBe('2468');
  expect(await page.evaluate(()=>document.cookie)).toContain('recovery=preserved');
  await page.getByRole('button',{name:'Open menu',exact:true}).click();
@@ -129,15 +131,15 @@ for(const path of ['/','/Qcc-games-/']){
   for(const response of await Promise.all(responses)){expect(response.status()).toBe(200);expect(response.fromServiceWorker()).toBe(false);}
   await recovered(page);await recovered(second);
   expect([page.url(),second.url()]).toEqual(urls);
-  expect(networkDocuments.sort()).toEqual(urls.map(url=>url.split('#')[0]).sort());
+  for(const url of urls)expect(networkDocuments).toContain(url.split('#')[0]);
   // Keep the actual failed tab. One reload of that error document must recover.
   await broken.reload();
   const response=await brokenResponse;expect(response.fromServiceWorker()).toBe(false);expect(response.status()).toBe(200);
   expect(broken.url()).toBe(brokenURL);await recovered(broken);
   expect(failedAgain).toEqual([]);
-  expect(networkDocuments.sort()).toEqual([...urls,brokenURL].map(url=>url.split('#')[0]).sort());
+  for(const url of [...urls,brokenURL])expect(networkDocuments).toContain(url.split('#')[0]);
  });
- test('app startup removes the old worker without registering its replacement at '+path,async({page})=>{
+ test('app startup retires the old worker and registers the safe offline worker at '+path,async({page})=>{
   scope=path;await seed(page);
   // Keep serving the exact old sw.js. A query bypasses only its navigation
   // handler so the new app must perform the independent cleanup.
@@ -146,8 +148,11 @@ for(const path of ['/','/Qcc-games-/']){
   expect(response.status()).toBe(200);expect(response.fromServiceWorker()).toBe(false);
   // Unregistering cannot detach the old controller from the current document.
   // The next network navigation must be uncontrolled.
-  await expect.poll(()=>page.evaluate(async()=>({caches:await caches.keys(),registrations:(await navigator.serviceWorker.getRegistrations()).length}))).toEqual({caches:['unrelated-cache'],registrations:0});
-  expect(await page.evaluate(()=>window.appRegistrations)).toEqual([]);
+  await expect.poll(()=>page.evaluate(async()=>({
+   legacyCaches:(await caches.keys()).filter(name=>name.startsWith('pocket-arcade')),
+   registrations:(await navigator.serviceWorker.getRegistrations()).map(r=>r.active?.scriptURL||r.installing?.scriptURL||r.waiting?.scriptURL).filter(Boolean)
+  }))).toEqual({legacyCaches:[],registrations:[origin+scope+'offline-sw.js']});
+  expect(await page.evaluate(()=>window.appRegistrations.every(url=>url.endsWith('/offline-sw.js')))).toBe(true);
   const reload=await page.reload();expect(reload.fromServiceWorker()).toBe(false);
   await recovered(page);
  });

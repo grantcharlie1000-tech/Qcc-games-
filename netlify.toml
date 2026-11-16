@@ -27,3 +27,13 @@
   for = "/santa/departure.json"
   [headers.values]
     Cache-Control = "no-store"
+
+[[headers]]
+  for = "/offline-sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/offline-packs.json"
+  [headers.values]
+    Cache-Control = "no-cache, max-age=0, must-revalidate"
