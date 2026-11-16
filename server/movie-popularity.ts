@@ -22,7 +22,7 @@ const DAY=86400000,HOUR=3600000,MAX_BODY=1024;
  * account, or any identifier that would outlive the hour. One client on that
  * address can still consume the whole ceiling. */
 export const POPULARITY_POST_LIMIT=2000;
-/** Deletes expired dedup tokens, hourly rate buckets and daily rows outside the 7-day window.
+/** Deletes expired popularity tokens, rate buckets, daily rows, and 30-day anonymous failure diagnostics.
  * Safe to run with no traffic and while collection is disabled. It does not read the enable flag or the secret. */
 export function cleanupMoviePopularity(db:PopularityDatabase,now=Date.now()){
  const day=Math.floor(now/DAY);
