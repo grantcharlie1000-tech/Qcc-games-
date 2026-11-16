@@ -9,11 +9,23 @@ const event={reason:'frame-load-timeout',stage:'connecting',online:true};
 function localDb(){
  const sql=new DatabaseSync(':memory:');
  sql.exec(readFileSync('docs/movie-failure-schema.sql','utf8'));
- const statement=(query:string,values:(string|number)[]=[])=>({
+ type Statement={query:string;values:(string|number)[];bind(...args:(string|number)[]):Statement;all<T=Record<string,unknown>>():Promise<{results:T[]}>};
+ const statement=(query:string,values:(string|number)[]=[]):Statement=>({
+  query,values,
   bind(...args:(string|number)[]){return statement(query,args);},
   async all<T=Record<string,unknown>>(){return {results:sql.prepare(query).all(...values) as T[]};},
  });
- return {sql,db:{prepare(query:string){return statement(query);}}};
+ const db={
+  prepare(query:string){return statement(query);},
+  async batch(statements:Statement[]){
+   sql.exec('BEGIN IMMEDIATE');
+   try{
+    const results=statements.map(s=>sql.prepare(s.query).all(...s.values));
+    sql.exec('COMMIT');return results;
+   }catch(error){sql.exec('ROLLBACK');throw error;}
+  },
+ };
+ return {sql,db};
 }
 function post(body:unknown=event,headers:Record<string,string>={}):Request{
  return new Request(origin+'/api/movie-failure-report',{
