@@ -11,6 +11,7 @@ function bindCloseControls(dialog:HTMLDialogElement):void{
   const disposers=new Map<HTMLElement,()=>void>();
   const disposeInk=bindGlassInk(dialog);
   const disposeLens=bindSheetLens(dialog);
+  const disposeDismiss=bindDismiss(dialog);
   const sync=()=>{
     syncSheetIconInk(dialog);
     const controls=new Set(dialog.querySelectorAll<HTMLElement>('.dialog-head .icon-button,.movies-drawer-head [data-action=close-drawer]'));
@@ -21,7 +22,7 @@ function bindCloseControls(dialog:HTMLDialogElement):void{
     }
   };
   const dispose=()=>{
-    observer.disconnect();disposeInk();disposeLens();dialog.removeEventListener('close',dispose);
+    observer.disconnect();disposeInk();disposeLens();disposeDismiss();dialog.removeEventListener('close',dispose);
     disposers.forEach(dispose=>dispose());disposers.clear();closeControls.delete(dialog);
   };
   // A Movies re-render can detach an open drawer without firing close.
@@ -34,6 +35,72 @@ function bindCloseControls(dialog:HTMLDialogElement):void{
   dialog.addEventListener('close',dispose,{once:true});
   closeControls.set(dialog,dispose);
 }
+/** Close a sheet the way Escape does: its cancel handlers run first and may keep it open. */
+export function requestSheetClose(dialog:HTMLDialogElement):void{
+  if(dialog.open&&dialog.dispatchEvent(new Event('cancel',{cancelable:true})))dialog.close();
+}
+
+/** Whether a pull of this distance and speed dismisses a sheet: a third of its height, or a quick downward flick. */
+export function pullDismisses(distance:number,velocity:number,height:number):boolean{
+  return distance>Math.min(140,height/3)||(distance>24&&velocity>0.5);
+}
+
+const outside=(dialog:HTMLDialogElement,x:number,y:number)=>{
+  const r=dialog.getBoundingClientRect();
+  return x<r.left||x>r.right||y<r.top||y>r.bottom;
+};
+// Inside a sheet these keep their own touch gestures.
+const OWN_GESTURES='input,textarea,select,[contenteditable="true"],[data-own-gestures]';
+
+// Phone sheets close like native ones: a tap on the dimmed area, or a pull down from the top of the sheet.
+function bindDismiss(dialog:HTMLDialogElement):()=>void{
+  const events=new AbortController(),options={signal:events.signal};
+  let pressedOutside=false;
+  dialog.addEventListener('pointerdown',event=>{pressedOutside=event.target===dialog&&outside(dialog,event.clientX,event.clientY);},options);
+  dialog.addEventListener('click',event=>{
+    if(pressedOutside&&event.target===dialog&&outside(dialog,event.clientX,event.clientY))requestSheetClose(dialog);
+    pressedOutside=false;
+  },options);
+  const phone=matchMedia('(max-width:639px)');
+  let start:{x:number;y:number;t:number}|undefined,pulling=false,last={y:0,t:0},velocity=0;
+  const reset=()=>{dialog.style.removeProperty('translate');dialog.style.removeProperty('transition');};
+  dialog.addEventListener('touchstart',event=>{
+    start=undefined;pulling=false;
+    if(!phone.matches||event.touches.length!==1||dialog.scrollTop>0)return;
+    if(event.target instanceof Element&&event.target.closest(OWN_GESTURES))return;
+    const touch=event.touches[0];start={x:touch.clientX,y:touch.clientY,t:event.timeStamp};last={y:touch.clientY,t:event.timeStamp};velocity=0;
+  },{...options,passive:true});
+  dialog.addEventListener('touchmove',event=>{
+    if(!start||event.touches.length!==1)return;
+    const touch=event.touches[0],dy=touch.clientY-start.y,dx=touch.clientX-start.x;
+    if(!pulling){
+      if(Math.abs(dy)<8&&Math.abs(dx)<8)return;
+      // Up, sideways or a sheet that has scrolled: the sheet's own scrolling keeps the gesture.
+      if(dy<=0||Math.abs(dx)>dy||dialog.scrollTop>0){start=undefined;return;}
+      pulling=true;dialog.style.transition='none';
+    }
+    if(event.cancelable)event.preventDefault();
+    const dt=Math.max(1,event.timeStamp-last.t);velocity=(touch.clientY-last.y)/dt;last={y:touch.clientY,t:event.timeStamp};
+    dialog.style.translate=`0 ${Math.max(0,dy)}px`;
+  },{...options,passive:false});
+  const finish=(event:TouchEvent)=>{
+    if(!start)return;
+    const was=pulling,distance=last.y-start.y;start=undefined;pulling=false;
+    if(!was)return;
+    dialog.style.removeProperty('transition');
+    if(event.type==='touchend'&&pullDismisses(distance,velocity,dialog.offsetHeight)){
+      dialog.style.translate='0 100%';
+      requestSheetClose(dialog);
+      // Cancel handlers can keep the sheet open (a sign-in in progress); it then springs back.
+      if(dialog.open)reset();else setTimeout(()=>{if(!dialog.open)reset();},240);
+    }else reset();
+  };
+  dialog.addEventListener('touchend',finish,options);
+  dialog.addEventListener('touchcancel',finish,options);
+  // A sheet that a pull just closed keeps its offset until its exit has played; finish() and openSheet clear it.
+  return ()=>{events.abort();if(dialog.open)reset();};
+}
+
 type Box=Pick<DOMRectReadOnly,'left'|'top'|'width'|'height'>;
 
 // The trigger's centre measured from the sheet's top-left corner, clamped to the sheet's box and rounded to whole pixels.
@@ -52,6 +119,8 @@ export function openSheet(dialog:HTMLDialogElement,trigger?:Element|null):void{
     dialog.classList.add('arcade-sheet');
     dialog.dataset.glassTone=document.body.classList.contains('study-active')?'light':document.querySelector<HTMLElement>('.game-view')?.dataset.glassTone??(document.body.classList.contains('movies-active')||document.body.classList.contains('social-active')||document.body.classList.contains('chat-active')||document.body.classList.contains('predictions-active')?'dark':'light');
   }
+  // A pull that closed this sheet a moment ago must not leave it offset.
+  dialog.style.removeProperty('translate');dialog.style.removeProperty('transition');
   dialog.showModal();
   bindCloseControls(dialog);
   if(!trigger){dialog.style.removeProperty('--sheet-origin');return;}
