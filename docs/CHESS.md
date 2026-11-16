@@ -66,6 +66,10 @@ On phones and portrait screens the board runs edge to edge. The move list is a s
 
 The board is keyboard playable (arrow keys, Enter, Escape) with spoken square and move announcements. Every action has a labelled button. Piece moves slide for 170 ms, captures fade, the check square pulses once, and sheets spring in. Reduced motion (system or QCC setting) removes animation; reduced transparency (system or QCC setting) replaces glass with solid panels. The default board is flat tan with a dark frame and bold outlined pieces with a soft offset shadow. The high-contrast theme uses white and deep blue squares with strong highlights.
 
+## Poster
+
+`public/game-art/chess/cover.svg` is a lit voxel diorama (a white king, a charcoal knight and two pawns on a tan board in a walnut tray, plum backdrop). It is built with the poster system on the `production` branch from `scripts/posters/models/chess.mjs`; that branch's `POSTERS` needs `'chess': {hue: 312, accent: C.gold, title: 'A white king, a charcoal knight and two pawns on a tan chessboard in a walnut tray'}`. Regenerate it there with `node scripts/generate-posters.mjs chess`.
+
 ## Tests
 
 ```sh

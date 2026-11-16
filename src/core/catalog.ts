@@ -29,7 +29,7 @@ export const games: GameInfo[] = [
 {id:'drift-club',title:'Drift Club',color:'#1f4a4c',ink:'#fff3df',accent:'#f7c531'},
 {id:'last-light',title:'Last Light',color:'#1f304c',ink:'#fff3df',accent:'#e9b023'},
 {id:'breachline',title:'Breachline',color:'#1f2a33',ink:'#fff3df',accent:'#f0b429'},
-{id:'chess',title:'Chess',color:'#1f4c1f',ink:'#fff3df',accent:'#e9b023'}
+{id:'chess',title:'Chess',color:'#4c1f43',ink:'#fff3df',accent:'#e9b023'}
 ];
 const modules = import.meta.glob<{default:GameModule}>('../games/*/index.ts');
 export async function loadGame(id:GameId):Promise<GameModule> {

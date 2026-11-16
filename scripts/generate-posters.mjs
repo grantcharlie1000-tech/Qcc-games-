@@ -54,7 +54,6 @@ export const POSTERS = {
   'femboy-obby':  {hue: 256, accent: C.pink,   title: 'A blocky boy in a pink cat-ear beanie and snowflake jumper hopping across gift boxes in the snow'},
   'last-light': {hue: 218, accent: C.gold, title: 'A voxel courier holding a golden lantern on a broken rooftop above a sleeping city'},
   'drift-club':   {hue: 183, accent: C.yellow, title: 'A voxel harbour shuffleboard with coral and blue pucks, a bullseye and a striped lighthouse'},
-  'chess':        {hue: 120, accent: C.gold,   title: 'A voxel chessboard with a cream king facing a dark knight and pawn'},
 };
 
 // ---------- colour ----------
@@ -628,25 +627,8 @@ art['last-light'] = s => {
  s.set(-10,3,9,C.gold).set(-10,3,10,C.cream);
 };
 
-art['chess'] = s => {
-  const light = C.cream, dark = '#9a6440', ivory = C.white, ebony = '#3a3346';
-  s.box(-1, -1, -1, 18, 18, 1, C.dkwood);
-  for (let x = 0; x < 16; x += 2) for (let y = 0; y < 16; y += 2) s.box(x, y, -1, 2, 2, 1, ((x + y) / 2) % 2 ? dark : light);
-  // King: plinth, body, collar, crown and cross.
-  const king = (x, y, c) => s.box(x, y, 0, 4, 4, 1, c).box(x + 1, y + 1, 1, 2, 2, 6, c).box(x, y, 7, 4, 4, 1, c)
-    .box(x + 1, y + 1, 8, 2, 2, 2, c).box(x + 1, y + 2, 10, 2, 1, 3, c).box(x, y + 2, 11, 4, 1, 1, c);
-  // Knight: plinth, body, neck and a head reaching forward, with ears and an eye.
-  const knight = (x, y, c) => {
-    s.box(x, y, 0, 4, 4, 1, c).box(x + 1, y + 1, 1, 2, 2, 4, c).box(x + 1, y, 5, 2, 3, 2, c).box(x + 1, y + 1, 7, 2, 4, 2, c)
-      .set(x + 1, y + 1, 9, c).set(x + 2, y + 1, 9, c);
-    s.left(x + 1, y + 4, 8, ['01', '00'], C.gold);
-  };
-  const pawn = (x, y, c) => s.box(x, y, 0, 2, 2, 1, c).box(x, y, 1, 2, 2, 2, c).box(x, y, 3, 2, 2, 1, c);
-  king(9, 9, ivory);
-  knight(2, 2, ebony);
-  pawn(12, 3, ebony);
-  pawn(4, 11, ivory);
-};
+// Chess uses the lit poster system on the production branch: scripts/posters/models/chess.mjs
+// (POSTERS entry there: hue 312, accent C.gold). Its cover.svg is generated with that system, not here.
 
 // ---------- backdrop and assembly ----------
 function backdropSvg(id, hue, box) {
